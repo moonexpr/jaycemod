@@ -22,6 +22,8 @@ local Controller = {
 	pathProfile = nil, -- a foundation.npc.profile while wetsand_path_profile's window is open
 	spawnRoomTeams = {}, -- nav area id -> the team whose spawn room holds it, this round
 	searches = {}, -- the Lua route searches still running, oldest first
+	neighbors = {}, -- nav area id -> its floor neighbours' ids (the mesh is fixed for the map)
+	centers = {}, -- nav area id -> its centre
 }
 
 function Controller:CheckNavMesh()
@@ -204,21 +206,33 @@ local function Area(id)
 	return navmesh.GetNavAreaByID(id)
 end
 
+local function Center(id)
+	local center = Controller.centers[id]
+	if not center then
+		center = Area(id):GetCenter()
+		Controller.centers[id] = center
+	end
+	return center
+end
+
 function NavGraph:Neighbors(id)
-	local ids = {}
-	for i, area in ipairs(Area(id):GetAdjacentAreas()) do ids[i] = area:GetID() end
+	local ids = Controller.neighbors[id]
+	if not ids then
+		ids = {}
+		for i, area in ipairs(Area(id):GetAdjacentAreas()) do ids[i] = area:GetID() end
+		Controller.neighbors[id] = ids
+	end
 	return ids
 end
 
 function NavGraph:Cost(fromId, toId, costSoFar)
-	local area, fromArea = Area(toId), Area(fromId)
-	self.controller:FillStep(self.step, area, fromArea, nil, area:GetCenter():Distance(fromArea:GetCenter()), costSoFar, self.traversable)
+	self.controller:FillStep(self.step, Area(toId), Area(fromId), nil, Center(toId):Distance(Center(fromId)), costSoFar, self.traversable)
 	self.bot.now = CurTime()
 	return self.strategy.Cost(self.step, self.limits, self.bot)
 end
 
 function NavGraph:Estimate(id)
-	return Area(id):GetCenter():Distance(self.goalPos)
+	return Center(id):Distance(self.goalPos)
 end
 
 -- request = { from, to (positions), strategy, limits, bot (the strategy's,
@@ -226,7 +240,11 @@ end
 -- from the start's to the goal's (found), or to the one that came closest
 -- when the goal is out of reach, and nil when either end is off the mesh.
 local NEAREST_AREA_RANGE = 200
-local SEARCH_BUDGET = 300 -- expansions per tick, over every running search
+-- Each tick the searches run in turn, SEARCH_CHUNK expansions at a time,
+-- until SEARCH_SECONDS of the tick are spent. A search may cover the whole
+-- mesh, as the engine's may: spread over ticks, that costs time, not a hitch.
+local SEARCH_SECONDS = 0.002
+local SEARCH_CHUNK = 16
 
 local function NearestArea(pos)
 	return navmesh.GetNearestNavArea(pos, false, NEAREST_AREA_RANGE, false, true)
@@ -248,7 +266,8 @@ function Controller:RequestRoute(request)
 		goalPos = request.to,
 		traversable = function(area) return not area:IsBlocked(team) end,
 	}, NavGraph)
-	self.searches[#self.searches + 1] = { search = Route.New(graph, start:GetID(), goal:GetID()), onDone = request.onDone }
+	local search = Route.New(graph, start:GetID(), goal:GetID(), navmesh.GetNavAreaCount())
+	self.searches[#self.searches + 1] = { search = search, onDone = request.onDone }
 end
 
 local function AreasOf(ids)
@@ -257,20 +276,22 @@ local function AreasOf(ids)
 	return areas
 end
 
--- Runs the searches in turn within the tick's budget; each that finishes
+-- Runs the searches in turn within the tick's time; each that finishes
 -- reports its route.
 function Controller:ThinkSearches()
-	local budget = SEARCH_BUDGET
-	while budget > 0 and #self.searches > 0 do
+	local deadline = SysTime() + SEARCH_SECONDS
+	while #self.searches > 0 and SysTime() < deadline do
 		local running = table.remove(self.searches, 1)
-		local before = running.search.expanded
-		if running.search:Step(budget) == Route.RUNNING then
+		if running.search:Step(SEARCH_CHUNK) == Route.RUNNING then
 			self.searches[#self.searches + 1] = running
 		else
 			running.onDone(AreasOf(running.search:Route()), running.search.status == Route.FOUND)
 		end
-		budget = budget - math.max(1, running.search.expanded - before)
 	end
+end
+
+function Controller:SearchesRunning()
+	return #self.searches
 end
 
 -- Where to walk along a route of areas: into each next area at its point

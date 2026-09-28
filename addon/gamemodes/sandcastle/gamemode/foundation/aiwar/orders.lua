@@ -14,6 +14,9 @@
 --                          hold or fight near the goal, else SuspendFor
 --       Travel             follow a Lua route there, re-routing as the goal
 --                          moves or the soldier stops making progress
+--
+-- For the war report, a soldier's state shows its goal, route and waypoint
+-- (goal, route, routeIndex) and how its last trip ended (trip).
 local ceil, cos, floor, min, sin = math.ceil, math.cos, math.floor, math.min, math.sin
 local pairs = pairs
 local N = require("foundation.npc")
@@ -128,8 +131,21 @@ end
 function Travel:Plan(me)
 	self.goal = self.role.Goal(self.state.war:Field(), self.state.member)
 	self.plannedAt = me:Now()
-	self.route = nil
+	self:SetRoute(nil)
+	self.state.goal = self.goal
 	me:RequestRoute(self.goal)
+end
+
+function Travel:SetRoute(route)
+	self.route = route
+	self.index = 1
+	self.state.route = route
+	self.state.routeIndex = 1
+end
+
+function Travel:End(reason)
+	self.state.trip = reason
+	return self:Done(reason)
 end
 
 function Travel:OnStart(me)
@@ -155,6 +171,7 @@ function Travel:Advance(me)
 	end
 	if index ~= self.index then
 		self.index = index
+		self.state.routeIndex = index
 		self:Progressed(me)
 	end
 end
@@ -170,7 +187,7 @@ end
 
 function Travel:Fail(reason)
 	self.failed = true
-	return self:Done(reason)
+	return self:End(reason)
 end
 
 -- A route came back: start walking it, or fail without one.
@@ -178,8 +195,7 @@ function Travel:TakeRoute(me)
 	local result = me:RouteResult()
 	if result == nil then return nil end
 	if result == false then return self:Fail("no route") end
-	self.route = result
-	self.index = 1
+	self:SetRoute(result)
 	self:Progressed(me)
 	return nil
 end
@@ -188,13 +204,13 @@ function Travel:Update(me)
 	local state, role = self.state, self.role
 	local field = state.war:Field()
 	if state.member.role == nil or ROLES[state.member.role] ~= role or not OrdersRun(field) then
-		return self:Done("orders changed")
+		return self:End("orders changed")
 	end
 	local goal = role.Goal(field, state.member)
-	if goal == nil then return self:Done("no goal") end
+	if goal == nil then return self:End("no goal") end
 	local range = me:RangeTo(goal)
-	if range <= role.arrive then return self:Done("arrived") end
-	if not role.rushes and me:HasEnemy() and range <= role.leash then return self:Done("engaging") end
+	if range <= role.arrive then return self:End("arrived") end
+	if not role.rushes and me:HasEnemy() and range <= role.leash then return self:End("engaging") end
 	if self.route == nil then
 		local failed = self:TakeRoute(me)
 		if failed then return failed end

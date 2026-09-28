@@ -71,17 +71,17 @@ function Soldier:HasEnemy()
 	return IsValid(self.ent:GetEnemy()) and self.ent:HasCondition(COND_SEE_ENEMY)
 end
 
--- Pushers and blockers take the fastest route to the cart; everyone else
--- the bot's own (TF2's DEFAULT_ROUTE), which spreads soldiers over routes.
-local RUSHING = { [AiWar.PUSH] = true, [AiWar.BLOCK] = true }
-
+-- Every soldier takes the fastest route. TF2's DEFAULT_ROUTE weighs each
+-- area by up to 101 times its length to spread bots over routes, which
+-- leaves the straight-line estimate almost no guidance: the search floods
+-- most of the mesh, and on a large map (plr_hightower_event) soldiers
+-- waited on searches that gave up and walked to where they had got to.
 function Soldier:Bot()
-	local member = self.controller.war:Member(self.ent)
 	return {
 		entIndex = self.ent:EntIndex(),
 		now = CurTime(),
 		team = self.team,
-		route = member and RUSHING[member.role] and TFBot.FASTEST_ROUTE or TFBot.DEFAULT_ROUTE,
+		route = TFBot.FASTEST_ROUTE,
 		miniBoss = false,
 		roundWon = WETSAND.State() == WETSAND.STATE.TEAM_WIN,
 		winningTeam = GetGlobal2Int("tf2.winner", WETSAND.TEAM_UNASSIGNED),
@@ -414,10 +414,116 @@ function Controller:End()
 	return true
 end
 
+-- Debugging: wetsand_aiwar_report and wetsand_aiwar_debug ------------------------------
+
+local DEBUG_NET = "wetsand_aiwar_debug"
+local DEBUG_INTERVAL = 0.5
+local DEBUG_MAX_POINTS = 24
+util.AddNetworkString(DEBUG_NET)
+
+local TEAM_LABEL = { [RED] = "RED", [BLUE] = "BLU" }
+
+local function Round(n) return math.floor(n + 0.5) end
+
+-- One line on a soldier: who, what for, what it is doing, and where its
+-- route stands.
+function Controller:Describe(ent, entry)
+	local member = self.war:Member(ent)
+	local state = entry.npc:State()
+	local role = member.role and (member.role .. member.slot) or "no role"
+	local route = "no route"
+	if entry.soldier.result == nil and entry.soldier.ticket > 0 then route = "searching" end
+	if entry.soldier.result == false then route = "off the mesh" end
+	if state.route then route = string.format("waypoint %d/%d", state.routeIndex, #state.route) end
+	local goal = state.goal and Round(entry.soldier:RangeTo(state.goal)) .. "u to goal" or "no goal"
+	return string.format("%s %s | %s | %s | %s | %s | last trip: %s%s%s",
+		TEAM_LABEL[entry.soldier.team], ent:GetClass(), role, entry.npc:Describe(), route, goal,
+		state.trip or "none",
+		entry.soldier.moveTarget and " | running" or "",
+		entry.soldier:HasEnemy() and " | enemy in sight" or "")
+end
+
+function Controller:Report()
+	local lines = {}
+	local field = self.war:Field()
+	lines[1] = string.format("AI war on %s: phase %s, %d nav areas, %d spawn-door triggers open to NPCs, %d route searches running",
+		game.GetMap(), field and field.phase.name or "none", navmesh.GetNavAreaCount(), table.Count(self.doorFlags),
+		WETSAND.Feature("npc"):SearchesRunning())
+	for team, cart in pairs(field and field.carts or {}) do
+		lines[#lines + 1] = string.format("  %s cart: %d of %d units along its track", TEAM_LABEL[team], Round(cart.distance), Round(cart.track:Length()))
+	end
+	local list = {}
+	for ent, entry in pairs(self.soldiers) do
+		if IsValid(ent) then list[#list + 1] = { ent = ent, entry = entry } end
+	end
+	table.sort(list, function(a, b) return a.ent:EntIndex() < b.ent:EntIndex() end)
+	for _, item in ipairs(list) do
+		lines[#lines + 1] = string.format("  #%d %s", item.ent:EntIndex(), self:Describe(item.ent, item.entry))
+	end
+	if #list == 0 then lines[#lines + 1] = "  no soldiers" end
+	return lines
+end
+
+-- The overlay: each soldier's line, goal and remaining route, to the
+-- admins who asked for it.
+function Controller:SendDebug(now)
+	if now < (self.nextDebug or 0) then return end
+	self.nextDebug = now + DEBUG_INTERVAL
+	local viewers = {}
+	for _, ply in ipairs(player.GetAll()) do
+		if ply.wetsandAiwarDebug then viewers[#viewers + 1] = ply end
+	end
+	if #viewers == 0 then return end
+	local list = {}
+	for ent, entry in pairs(self.soldiers) do
+		if IsValid(ent) then list[#list + 1] = { ent = ent, entry = entry } end
+	end
+	net.Start(DEBUG_NET)
+	net.WriteUInt(#list, 8)
+	for _, item in ipairs(list) do
+		local state = item.entry.npc:State()
+		net.WriteEntity(item.ent)
+		net.WriteUInt(item.entry.soldier.team, 3)
+		net.WriteString(self:Describe(item.ent, item.entry))
+		net.WriteBool(state.goal ~= nil)
+		if state.goal then net.WriteVector(ToVector(state.goal)) end
+		local route, first = state.route or {}, state.routeIndex or 1
+		local last = math.min(#route, first + DEBUG_MAX_POINTS - 1)
+		net.WriteUInt(math.max(0, last - first + 1), 8)
+		for i = first, last do net.WriteVector(ToVector(route[i])) end
+	end
+	net.Send(viewers)
+end
+
+local function Tell(ply, lines)
+	for _, line in ipairs(lines) do
+		print(line)
+		if IsValid(ply) then ply:PrintMessage(HUD_PRINTCONSOLE, line) end
+	end
+end
+
+concommand.Add("wetsand_aiwar_report", function(ply)
+	if IsValid(ply) and not ply:IsAdmin() then return end
+	if not Controller.war then
+		Tell(ply, { "AI war: not running" })
+		return
+	end
+	Tell(ply, Controller:Report())
+	if IsValid(ply) then ply:ChatPrint("AI war: report printed to your console") end
+end, nil, "Print every AI war soldier's role, action, route and last trip to the console")
+
+concommand.Add("wetsand_aiwar_debug", function(ply)
+	if not IsValid(ply) or not ply:IsAdmin() then return end
+	ply.wetsandAiwarDebug = not ply.wetsandAiwarDebug
+	ply:ChatPrint("AI war overlay " .. (ply.wetsandAiwarDebug and "on" or "off"))
+end, nil, "Toggle drawing each AI war soldier's route, goal and state")
+
 -- Hooks ------------------------------------------------------------------------------
 
 hook.Add("Think", "wetsand_aiwar", function()
-	if Controller.war then Controller:Think(CurTime()) end
+	if not Controller.war then return end
+	Controller:Think(CurTime())
+	Controller:SendDebug(CurTime())
 end)
 
 hook.Add("OnEntityCreated", "wetsand_aiwar", function(ent)
