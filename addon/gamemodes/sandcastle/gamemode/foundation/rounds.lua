@@ -181,6 +181,15 @@ function StalemateOutcome(teams)
 	return nil, dead ~= nil and alive == nil
 end
 
+-- The respawn wave length a team gets: an admin's override (the Game Rules
+-- editor), else the map's (SetRed/BlueTeamRespawnWaveTime), else
+-- mp_respawnwavetime. A negative value is unset.
+function WaveTime(override, mapTime, default)
+	if override >= 0 then return override end
+	if mapTime >= 0 then return mapTime end
+	return default
+end
+
 -- CTeamplayRoundBasedRules::GetTimeLeft
 function TimeLeft(mapResetTime, timelimitMinutes, now)
 	return math.max(0, math.floor(mapResetTime + timelimitMinutes * 60 - now))

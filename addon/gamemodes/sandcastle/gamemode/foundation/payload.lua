@@ -246,3 +246,25 @@ function FinalPoint(miniRounds, playableRounds, points, index, cappingTeams)
 	end
 	return false
 end
+
+-- Admin controls (the Game Rules editor) --------------------------------------------
+
+-- The cart's top speed scale an admin may set, and how much faster it runs
+-- while driven on to the next checkpoint.
+CART_SPEED_MIN, CART_SPEED_MAX = 0.1, 4
+ADVANCE_SPEED_SCALE = 4
+
+-- links: the watcher's checkpoints in path order, { distance, index }.
+-- The first one farther along the path than `distance`, or nil.
+function NextCheckpoint(links, distance)
+	for _, link in ipairs(links) do
+		if link.distance > distance then return link end
+	end
+	return nil
+end
+
+-- The train's m_maxSpeed for the map's top speed `base`.
+function MaxSpeed(base, scale, advancing)
+	scale = math.min(math.max(scale, CART_SPEED_MIN), CART_SPEED_MAX)
+	return base * scale * (advancing and ADVANCE_SPEED_SCALE or 1)
+end

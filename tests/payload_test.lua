@@ -298,4 +298,21 @@ T.test("final point with mini-rounds: only in the last playable round", function
 	T.eq(P.FinalPoint(true, 1, Points(BLU, RED), 2, { BLU }), true)
 end)
 
+-- Admin controls (the Game Rules editor) ---------------------------------------
+
+T.test("the next checkpoint is the first one past the cart", function()
+	local links = { { distance = 0, index = 1 }, { distance = 800, index = 6 }, { distance = 2000, index = 14 } }
+	T.eq(P.NextCheckpoint(links, 100).index, 6, "the second")
+	T.eq(P.NextCheckpoint(links, 800).index, 14, "a cart sitting on one goes on to the next")
+	T.eq(P.NextCheckpoint(links, 2000), nil, "none past the last")
+end)
+
+T.test("the cart's top speed is the map's times the admin's scale, faster while advancing", function()
+	T.eq(P.MaxSpeed(90, 1, false), 90, "the map's")
+	T.eq(P.MaxSpeed(90, 2, false), 180, "doubled")
+	T.eq(P.MaxSpeed(90, 1, true), 90 * P.ADVANCE_SPEED_SCALE, "advancing")
+	T.eq(P.MaxSpeed(90, P.CART_SPEED_MAX * 10, false), 90 * P.CART_SPEED_MAX, "scale clamped high")
+	T.eq(P.MaxSpeed(90, 0, false), 90 * P.CART_SPEED_MIN, "scale clamped low")
+end)
+
 T.finish()
