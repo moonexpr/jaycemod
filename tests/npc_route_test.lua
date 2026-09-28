@@ -1,5 +1,6 @@
--- foundation.npc.route: an A* search over any graph the caller describes,
--- run here on small grids whose costs the tests control.
+-- foundation.npc.route: NavAreaBuildPath (nav_pathfind.h) over any graph
+-- the caller describes, run here on small grids whose costs the tests
+-- control, whole or a few expansions at a time.
 local T = dofile("tests/harness.lua")
 local Route = T.require("foundation.npc.route")
 local Path = T.require("foundation.npc.path")
@@ -80,6 +81,74 @@ T.test("a cheaper way to a node found later replaces the first", function()
 		return Cost(self, from, to, costSoFar)
 	end
 	T.eq(Joined(Route.Find(graph, "s", "g")), "s x m g", "relaxed")
+end)
+
+T.test("equal routes go by the neighbour found first, as the engine's open list keeps ties in order", function()
+	--  a - b
+	--  |   |
+	--  c - d
+	local nodes = { a = { 0, 0 }, b = { 1, 0 }, c = { 0, 1 }, d = { 1, 1 } }
+	local graph = Graph(nodes, { { "a", "b" }, { "a", "c" }, { "b", "d" }, { "c", "d" } })
+	T.eq(Joined(Route.Find(graph, "a", "d")), "a b d", "b was listed first")
+	graph.adjacent.a = { "c", "b" }
+	T.eq(Joined(Route.Find(graph, "a", "d")), "a c d", "c was listed first")
+end)
+
+T.test("a failed search still gives the route to the node that came closest to the goal", function()
+	local graph = Graph(RING.nodes, RING.edges, { bc = true, ef = true })
+	local route, closest = Route.Find(graph, "a", "c")
+	T.eq(route, nil, "no route")
+	T.eq(Joined(closest), "a b", "b is nearest c")
+end)
+
+T.test("a found route is its own closest route", function()
+	local route, closest = Route.Find(Graph(RING.nodes, RING.edges), "a", "c")
+	T.eq(Joined(closest), Joined(route), "the same")
+end)
+
+T.test("a search run a few expansions at a time finds what one run does", function()
+	local graph = Graph(RING.nodes, RING.edges, { bc = true })
+	local search = Route.New(graph, "a", "c")
+	local steps = 0
+	while search:Step(1) == Route.RUNNING do steps = steps + 1 end
+	T.eq(search.status, Route.FOUND, "found")
+	T.eq(Joined(search:Route()), "a d e f c", "same route")
+	T.eq(steps > 2, true, "it took several steps")
+end)
+
+T.test("a cost below the parent's is raised just above it, so every step costs something", function()
+	local nodes = { s = { 0, 0 }, m = { 1, 0 }, g = { 2, 0 } }
+	local graph = Graph(nodes, { { "s", "m" }, { "m", "g" } })
+	local seen = {}
+	function graph:Cost(from, to, costSoFar)
+		seen[to] = costSoFar
+		if to == "m" then return 10 end
+		return costSoFar - 5
+	end
+	local search = Route.New(graph, "s", "g")
+	while search:Step(10) == Route.RUNNING do end
+	T.eq(search.status, Route.FOUND, "found")
+	T.near(search.costSoFar.g, 10 * 1.00001 + 0.00001, 1e-9, "clamped")
+end)
+
+T.test("a closed node reached more cheaply is opened again", function()
+	-- The estimate overrates x, so y closes first by the long way; the
+	-- cheaper way through x reopens it.
+	local nodes = { s = { 0, 0 }, x = { 1, 0 }, y = { 2, 0 }, g = { 3, 0 } }
+	local graph = Graph(nodes, { { "s", "x" }, { "s", "y" }, { "x", "y" }, { "y", "g" } })
+	local COST = { sx = 1, sy = 10, xy = 1, yg = 100 }
+	function graph:Cost(from, to, costSoFar) return costSoFar + (COST[from .. to] or COST[to .. from]) end
+	function graph:Estimate(node) return node == "x" and 50 or 0 end
+	T.eq(Joined(Route.Find(graph, "s", "g")), "s x y g", "reopened")
+end)
+
+T.test("a cost that is not a number counts as enormous, not as a dead end", function()
+	local graph = Graph(RING.nodes, RING.edges)
+	function graph:Cost(from, to, costSoFar)
+		if from .. to == "bc" then return 0 / 0 end
+		return costSoFar + 1
+	end
+	T.eq(Joined(Route.Find(graph, "a", "c")), "a d e f c", "around the NaN")
 end)
 
 T.finish()
