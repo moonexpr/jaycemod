@@ -91,6 +91,13 @@ T.test("scatter weighs the distance by a per-bot, per-area, per-ten-seconds pref
 	T.eq(Scatter.Cost(Step({ hasFrom = false }), LIMITS, BOT), 0, "first area")
 end)
 
+-- NavAreaBuildPath's first call has no from-area, so the binding fills
+-- nothing else in, not even the area id.
+T.test("scatter costs the first area nothing without reading its id", function()
+	local first = { hasFrom = false }
+	T.eq(Scatter.Cost(first, LIMITS, BOT), 0, "first area, bare")
+end)
+
 T.test("scatter keeps a route for ten seconds and differs between bots", function()
 	local at = function(entIndex, now)
 		return Scatter.Cost(Step(), LIMITS, {

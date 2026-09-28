@@ -13,6 +13,9 @@ function Preference(entIndex, areaId, now)
 	return 1 + PREFERENCE_SPREAD * (1 + cos(entIndex * areaId * timeMod))
 end
 
+-- The first area of a search has no from-area and no other fields, so it
+-- is priced before the preference reads the area id.
 function Cost(step, limits, bot)
+	if not step.hasFrom then return 0 end
 	return Ground.Weighted(step, limits, Preference(bot.entIndex, step.areaId, bot.now))
 end
