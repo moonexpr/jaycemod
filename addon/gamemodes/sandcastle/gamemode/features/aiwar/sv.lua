@@ -64,6 +64,9 @@ function Soldier:Now() return CurTime() end
 function Soldier:IsAlive() return IsValid(self.ent) and self.ent:Health() > 0 end
 function Soldier:RangeTo(p) return self.ent:GetPos():Distance(ToVector(p)) end
 
+-- COND_SEE_ENEMY (ai_condition.h's SCOND_t); GMod defines no global for it.
+local COND_SEE_ENEMY = 10
+
 function Soldier:HasEnemy()
 	return IsValid(self.ent:GetEnemy()) and self.ent:HasCondition(COND_SEE_ENEMY)
 end
