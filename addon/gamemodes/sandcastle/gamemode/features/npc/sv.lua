@@ -127,7 +127,8 @@ local NOBODY = WETSAND.TEAM_UNASSIGNED
 
 -- TF_NAV_SPAWN_ROOM_RED/_BLUE, which GMod's nav areas do not carry: the
 -- team of the func_respawnroom holding the area's centre, found once per
--- area per round (rooms take their teams at round start).
+-- area per round (rooms take their teams at round start, some only once
+-- the round is active).
 function Controller:SpawnRoomTeam(area)
 	local id = area:GetID()
 	local team = self.spawnRoomTeams[id]
@@ -149,6 +150,7 @@ local function ForgetSpawnRooms()
 end
 hook.Add("PostCleanupMap", "wetsand_npc_spawn_rooms", ForgetSpawnRooms)
 hook.Add("TF2RoundActivate", "wetsand_npc_spawn_rooms", ForgetSpawnRooms)
+hook.Add("TF2RoundActive", "wetsand_npc_spawn_rooms", ForgetSpawnRooms)
 
 -- Fills `step` for the move from fromArea (nil for the first area) into
 -- area. traversable(area) is the mover's ILocomotion::IsAreaTraversable.
@@ -220,9 +222,9 @@ function NavGraph:Estimate(id)
 end
 
 -- request = { from, to (positions), strategy, limits, bot (the strategy's,
--- with team), onDone(route) } where route is the list of nav areas from the
--- start's to the goal's, or to the one that came closest when the goal is
--- out of reach, and nil when either end is off the mesh.
+-- with team), onDone(route, found) } where route is the list of nav areas
+-- from the start's to the goal's (found), or to the one that came closest
+-- when the goal is out of reach, and nil when either end is off the mesh.
 local NEAREST_AREA_RANGE = 200
 local SEARCH_BUDGET = 300 -- expansions per tick, over every running search
 
@@ -265,20 +267,21 @@ function Controller:ThinkSearches()
 		if running.search:Step(budget) == Route.RUNNING then
 			self.searches[#self.searches + 1] = running
 		else
-			running.onDone(AreasOf(running.search:Route()))
+			running.onDone(AreasOf(running.search:Route()), running.search.status == Route.FOUND)
 		end
 		budget = budget - math.max(1, running.search.expanded - before)
 	end
 end
 
 -- Where to walk along a route of areas: into each next area at its point
--- nearest the last area's centre, then to `goal`.
-function Controller:RouteWaypoints(areas, goal)
+-- nearest the last area's centre, then to `goal`, or for a route that fell
+-- short of it, to the last area's point nearest it.
+function Controller:RouteWaypoints(areas, goal, found)
 	local points = {}
 	for i = 2, #areas do
 		points[#points + 1] = areas[i]:GetClosestPointOnArea(areas[i - 1]:GetCenter())
 	end
-	points[#points + 1] = goal
+	points[#points + 1] = found and goal or areas[#areas]:GetClosestPointOnArea(goal)
 	return points
 end
 
