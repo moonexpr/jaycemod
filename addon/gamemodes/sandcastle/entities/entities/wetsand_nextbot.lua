@@ -145,13 +145,15 @@ end
 -- Binding
 
 -- IPathCost, built from GMod's (area, fromArea, ladder, elevator, length).
+-- While a path profile measures a compute, self.pathProbe counts the calls
+-- and the time spent in them.
 local function PathCost(self, strategy, limits)
 	local step = {}
 	local bot = {
 		entIndex = self:EntIndex(),
 		now = 0,
 	}
-	return function(area, fromArea, ladder, elevator, length)
+	local function Cost(area, fromArea, ladder, elevator, length)
 		step.hasFrom = IsValid(fromArea)
 		if step.hasFrom then
 			step.traversable = self.loco:IsAreaTraversable(area)
@@ -164,6 +166,15 @@ local function PathCost(self, strategy, limits)
 		end
 		bot.now = CurTime()
 		return strategy.Cost(step, limits, bot)
+	end
+	return function(area, fromArea, ladder, elevator, length)
+		local probe = self.pathProbe
+		if not probe then return Cost(area, fromArea, ladder, elevator, length) end
+		local started = SysTime()
+		local cost = Cost(area, fromArea, ladder, elevator, length)
+		probe.costCalls = probe.costCalls + 1
+		probe.costSeconds = probe.costSeconds + SysTime() - started
+		return cost
 	end
 end
 
@@ -364,7 +375,14 @@ function ENT:GetGroundSpeed() return self.motion.GetGroundSpeed(self) end
 local FollowPath = {}
 FollowPath.__index = FollowPath
 
-function FollowPath:Compute(goal) return self.path:Compute(self.bot, goal, self.bot.pathCost) end
+function FollowPath:Compute(goal)
+	local bot = self.bot
+	local profile = bot.npcs:PathProfile()
+	if not profile then return self.path:Compute(bot, goal, bot.pathCost) end
+	return bot.npcs:MeasureCompute(profile, bot.Variant, bot, function()
+		return self.path:Compute(bot, goal, bot.pathCost)
+	end)
+end
 function FollowPath:Update() self.path:Update(self.bot) end
 function FollowPath:GetAge() return self.path:GetAge() end
 function FollowPath:IsValid() return self.path:IsValid() end
