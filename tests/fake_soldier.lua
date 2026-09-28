@@ -44,6 +44,7 @@ function Soldier:Advance(dt) self.now = self.now + dt end
 -- port
 function Soldier:Now() return self.now end
 function Soldier:IsAlive() return self.alive end
+function Soldier:Position() return { x = self.pos.x, y = self.pos.y, z = self.pos.z } end
 function Soldier:RangeTo(p) return Distance(self.pos, p) end
 function Soldier:HasEnemy() return self.enemy end
 

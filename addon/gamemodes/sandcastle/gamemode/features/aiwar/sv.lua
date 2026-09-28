@@ -62,6 +62,7 @@ end
 
 function Soldier:Now() return CurTime() end
 function Soldier:IsAlive() return IsValid(self.ent) and self.ent:Health() > 0 end
+function Soldier:Position() return Point(self.ent:GetPos()) end
 function Soldier:RangeTo(p) return self.ent:GetPos():Distance(ToVector(p)) end
 
 -- COND_SEE_ENEMY (ai_condition.h's SCOND_t); GMod defines no global for it.
@@ -130,10 +131,15 @@ function Soldier:CanWalkTo(p)
 end
 
 -- A forced run ignores enemies until it arrives (SCHED_FORCED_GO_RUN to
--- the last position).
+-- the last position). A run already going to within MOVE_RETARGET of p
+-- carries on: restarting the schedule every think for a target that moves
+-- a little (the cart) would make the NPC stutter.
+local MOVE_RETARGET = 24
+
 function Soldier:MoveTo(p)
 	local ent = self.ent
-	if self.moveTarget == p and ent:IsCurrentSchedule(SCHED_FORCED_GO_RUN) then return end
+	local current = self.moveTarget
+	if current and Track.Distance(current, p) < MOVE_RETARGET and ent:IsCurrentSchedule(SCHED_FORCED_GO_RUN) then return end
 	self.moveTarget = p
 	ent:SetLastPosition(ToVector(p))
 	ent:SetSchedule(SCHED_FORCED_GO_RUN)

@@ -105,8 +105,8 @@ T.test("a pusher asks for a route to the cart and walks it waypoint by waypoint"
 	local me, npc = Enlist({ role = AiWar.PUSH, route = function() return route end })
 	Tick(me, npc)
 	T.eq(npc:Describe(), "SoldierBehavior/Travel", "travelling")
-	T.eq(#me.requests, 1, "one route asked for")
 	Tick(me, npc)
+	T.eq(#me.requests, 1, "one route asked for, the cart being out of walking line")
 	Near(me.moving, route[1], "to the first waypoint")
 	me.pos = P(90, 0)
 	Tick(me, npc)
@@ -233,6 +233,54 @@ T.test("a dead soldier's orders end", function()
 	me.alive = false
 	Tick(me, npc)
 	T.eq(npc:IsEmpty(), true, "empty")
+end)
+
+-- Following a moving cart ------------------------------------------------------
+
+local function PushSpot(distance)
+	return Orders.Goal(Field({ carts = { [BLUE] = Cart(distance) } }), { team = BLUE, role = AiWar.PUSH, slot = 0 })
+end
+
+T.test("a pusher at the cart keeps to its spot as the cart moves, without searching", function()
+	local me, npc, war = Enlist({ role = AiWar.PUSH, walkable = function() return true end })
+	me.pos = PushSpot(1000)
+	Tick(me, npc)
+	T.eq(me.moving, nil, "in place: left to the engine")
+	war:SetField(Field({ carts = { [BLUE] = Cart(1040) } }))
+	Tick(me, npc)
+	Near(me.moving, PushSpot(1040), "runs after its spot")
+	T.eq(#me.requests, 0, "no route needed")
+	me.pos = PushSpot(1040)
+	Tick(me, npc)
+	T.eq(me.moving, nil, "caught up: left to the engine")
+end)
+
+T.test("a soldier that can walk straight to its goal chases it without waiting on a route", function()
+	local me, npc, war = Enlist({ role = AiWar.PUSH, routeDelay = 100, walkable = function() return true end })
+	Tick(me, npc, 2)
+	Near(me.moving, PushSpot(1000), "straight at the cart")
+	war:SetField(Field({ carts = { [BLUE] = Cart(1200) } }))
+	Tick(me, npc)
+	Near(me.moving, PushSpot(1200), "follows it as it moves")
+end)
+
+T.test("a soldier chasing a goal it keeps closing on is not stuck, however far the goal moves", function()
+	local me, npc, war = Enlist({ role = AiWar.PUSH, walkable = function() return true end })
+	Tick(me, npc)
+	for i = 1, (Orders.STUCK_TIME * 3) / TICK do
+		war:SetField(Field({ carts = { [BLUE] = Cart(1000 + i * 20) } }))
+		me.pos = P(me.pos.x + 20, 0)
+		Tick(me, npc)
+	end
+	T.eq(npc:Describe(), "SoldierBehavior/Travel", "still going")
+	T.eq(npc:State().trip, nil, "never gave up")
+end)
+
+T.test("a straight chase that goes nowhere falls back to a route", function()
+	local me, npc = Enlist({ role = AiWar.PUSH, walkable = function() return true end })
+	Tick(me, npc)
+	Tick(me, npc, (Orders.STUCK_TIME + TICK) / TICK + 1)
+	T.eq(#me.requests >= 1, true, "asked for a route")
 end)
 
 T.test("the soldier's state shows its route and how its last trip ended, for the war report", function()

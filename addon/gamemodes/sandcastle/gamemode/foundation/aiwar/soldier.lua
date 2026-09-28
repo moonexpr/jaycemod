@@ -6,6 +6,7 @@
 -- Positions are plain { x, y, z } tables.
 --   Now() -> the time
 --   IsAlive()
+--   Position() -> my origin
 --   RangeTo(p) -> the distance from my origin to p
 --   HasEnemy() -> I have an enemy in sight (the engine's COND_SEE_ENEMY)
 --   RequestRoute(goal): start a route search from here to goal, dropping
@@ -24,6 +25,7 @@ module(...)
 METHODS = {
 	"Now",
 	"IsAlive",
+	"Position",
 	"RangeTo",
 	"HasEnemy",
 	"RequestRoute",

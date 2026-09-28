@@ -11,9 +11,13 @@
 --
 --   SoldierBehavior        ends when the soldier dies
 --     Push/Escort/Block/Defend/Idle   the objective of the member's role:
---                          hold or fight near the goal, else SuspendFor
---       Travel             follow a Lua route there, re-routing as the goal
---                          moves or the soldier stops making progress
+--                          hold or fight near the goal (pushers and
+--                          blockers keep to their spot as the cart moves),
+--                          else SuspendFor
+--       Travel             run straight at the goal while nothing is in the
+--                          way, following it as it moves; otherwise follow a
+--                          Lua route, re-routing as the goal moves or when
+--                          the soldier stops moving
 --
 -- For the war report, a soldier's state shows its goal, route and waypoint
 -- (goal, route, routeIndex) and how its last trip ended (trip).
@@ -36,13 +40,19 @@ DEFEND_ARRIVE, DEFEND_LEASH = 150, 900
 LATERAL, LATERAL_STEPS = 80, 2
 local GOLDEN_ANGLE = 2.39996323 -- radians: ring slots never line up
 
+-- A pusher or blocker at its cart runs to its spot again once the cart
+-- has carried the spot this far away.
+STATION = 36
+
 -- Travel
 WAYPOINT_RADIUS = 48
 LOOKAHEAD = 3 -- waypoints past the current one tested for a straight walk
 REPATH_INTERVAL, REPATH_DISTANCE = 2, 150
+-- Stuck: moved less than STUCK_PROGRESS in STUCK_TIME while running.
 STUCK_TIME, STUCK_PROGRESS = 3, 24
 MAX_REPATHS = 2
-RETRY_WAIT = 3 -- after a failed trip, before the next
+CHASE_BACKOFF = 3 -- after a straight run got stuck, routes only for this long
+RETRY_WAIT = 1 -- after a failed trip, before the next
 
 local Distance = Track.Distance
 
@@ -126,14 +136,14 @@ function Travel:Init(state, role)
 	self.role = role
 	self.repaths = 0
 	self.failed = false
+	self.requested = false
+	self.chaseBlockedUntil = 0
 end
 
-function Travel:Plan(me)
-	self.goal = self.role.Goal(self.state.war:Field(), self.state.member)
-	self.plannedAt = me:Now()
+function Travel:OnStart(me)
 	self:SetRoute(nil)
-	self.state.goal = self.goal
-	me:RequestRoute(self.goal)
+	self:ResetProgress(me)
+	return self:Continue()
 end
 
 function Travel:SetRoute(route)
@@ -143,19 +153,43 @@ function Travel:SetRoute(route)
 	self.state.routeIndex = 1
 end
 
+function Travel:Plan(me, goal)
+	self.goal = goal
+	self.plannedAt = me:Now()
+	self.requested = true
+	self:SetRoute(nil)
+	me:RequestRoute(goal)
+end
+
 function Travel:End(reason)
 	self.state.trip = reason
 	return self:Done(reason)
 end
 
-function Travel:OnStart(me)
-	self:Plan(me)
-	return self:Continue()
+function Travel:Fail(reason)
+	self.failed = true
+	return self:End(reason)
 end
 
-function Travel:Progressed(me)
-	self.best = me:RangeTo(self.route[self.index])
+-- Stuck is judged by the soldier's own movement, so a soldier running
+-- after a goal that moves away as fast is not stuck.
+function Travel:ResetProgress(me)
+	self.anchor = me:Position()
 	self.progressAt = me:Now()
+end
+
+function Travel:IsStuck(me)
+	if Distance(me:Position(), self.anchor) > STUCK_PROGRESS then self:ResetProgress(me) end
+	return me:Now() - self.progressAt > STUCK_TIME
+end
+
+-- A new route after getting stuck, or the end of the trip after too many.
+function Travel:Unstick(me, goal)
+	self.repaths = self.repaths + 1
+	if self.repaths > MAX_REPATHS then return self:Fail("stuck") end
+	self:ResetProgress(me)
+	self:Plan(me, goal)
+	return self:Continue()
 end
 
 -- Past waypoints already reached, then to the farthest of the next few that
@@ -169,25 +203,8 @@ function Travel:Advance(me)
 			break
 		end
 	end
-	if index ~= self.index then
-		self.index = index
-		self.state.routeIndex = index
-		self:Progressed(me)
-	end
-end
-
-function Travel:IsStuck(me)
-	local range = me:RangeTo(self.route[self.index])
-	if range < self.best - STUCK_PROGRESS then
-		self.best = range
-		self.progressAt = me:Now()
-	end
-	return me:Now() - self.progressAt > STUCK_TIME
-end
-
-function Travel:Fail(reason)
-	self.failed = true
-	return self:End(reason)
+	self.index = index
+	self.state.routeIndex = index
 end
 
 -- A route came back: start walking it, or fail without one.
@@ -196,8 +213,40 @@ function Travel:TakeRoute(me)
 	if result == nil then return nil end
 	if result == false then return self:Fail("no route") end
 	self:SetRoute(result)
-	self:Progressed(me)
 	return nil
+end
+
+-- Straight at the goal, wherever it has moved to. A run that goes nowhere
+-- hands over to routes for a while.
+function Travel:Chase(me, goal)
+	if self:IsStuck(me) then
+		self.chaseBlockedUntil = me:Now() + CHASE_BACKOFF
+		return self:Unstick(me, goal)
+	end
+	me:MoveTo(goal)
+	return self:Continue()
+end
+
+function Travel:FollowRoute(me, goal)
+	if not self.requested then self:Plan(me, goal) end
+	if self.route == nil then
+		local failed = self:TakeRoute(me)
+		if failed then return failed end
+		if self.route == nil then
+			-- waiting on the search is not being stuck
+			me:Release()
+			self:ResetProgress(me)
+			return self:Continue()
+		end
+	end
+	if Distance(goal, self.goal) > REPATH_DISTANCE and me:Now() - self.plannedAt >= REPATH_INTERVAL then
+		self:Plan(me, goal)
+		return self:Continue()
+	end
+	self:Advance(me)
+	if self:IsStuck(me) then return self:Unstick(me, goal) end
+	me:MoveTo(self.route[self.index])
+	return self:Continue()
 end
 
 function Travel:Update(me)
@@ -208,30 +257,12 @@ function Travel:Update(me)
 	end
 	local goal = role.Goal(field, state.member)
 	if goal == nil then return self:End("no goal") end
+	state.goal = goal
 	local range = me:RangeTo(goal)
 	if range <= role.arrive then return self:End("arrived") end
 	if not role.rushes and me:HasEnemy() and range <= role.leash then return self:End("engaging") end
-	if self.route == nil then
-		local failed = self:TakeRoute(me)
-		if failed then return failed end
-		if self.route == nil then
-			me:Release()
-			return self:Continue()
-		end
-	end
-	if Distance(goal, self.goal) > REPATH_DISTANCE and me:Now() - self.plannedAt >= REPATH_INTERVAL then
-		self:Plan(me)
-		return self:Continue()
-	end
-	self:Advance(me)
-	if self:IsStuck(me) then
-		self.repaths = self.repaths + 1
-		if self.repaths > MAX_REPATHS then return self:Fail("stuck") end
-		self:Plan(me)
-		return self:Continue()
-	end
-	me:MoveTo(self.route[self.index])
-	return self:Continue()
+	if me:Now() >= self.chaseBlockedUntil and me:CanWalkTo(goal) then return self:Chase(me, goal) end
+	return self:FollowRoute(me, goal)
 end
 
 -------------------------------------------------------------------------------
@@ -259,7 +290,13 @@ function Objective:Update(me)
 		me:Release()
 		return self:Continue()
 	end
+	state.goal = goal
 	local range = me:RangeTo(goal)
+	-- at the cart: keep to the spot as the cart carries it off
+	if self.role.rushes and range <= self.role.arrive then
+		if range > STATION and me:CanWalkTo(goal) then me:MoveTo(goal) else me:Release() end
+		return self:Continue()
+	end
 	local fighting = me:HasEnemy() and range <= self.role.leash
 	if range <= self.role.arrive or fighting or me:Now() < self.retryAt then
 		me:Release()
