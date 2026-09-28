@@ -144,40 +144,6 @@ end
 -------------------------------------------------------------------------------
 -- Binding
 
--- IPathCost, built from GMod's (area, fromArea, ladder, elevator, length).
--- While a path profile measures a compute, self.pathProbe counts the calls
--- and the time spent in them.
-local function PathCost(self, strategy, limits)
-	local step = {}
-	local bot = {
-		entIndex = self:EntIndex(),
-		now = 0,
-	}
-	local function Cost(area, fromArea, ladder, elevator, length)
-		step.hasFrom = IsValid(fromArea)
-		if step.hasFrom then
-			step.traversable = self.loco:IsAreaTraversable(area)
-			step.ladderLength = IsValid(ladder) and ladder:GetLength() or nil
-			step.length = length
-			step.centerDistance = area:GetCenter():Distance(fromArea:GetCenter())
-			step.heightChange = fromArea:ComputeAdjacentConnectionHeightChange(area)
-			step.fromCostSoFar = fromArea:GetCostSoFar()
-			step.areaId = area:GetID()
-		end
-		bot.now = CurTime()
-		return strategy.Cost(step, limits, bot)
-	end
-	return function(area, fromArea, ladder, elevator, length)
-		local probe = self.pathProbe
-		if not probe then return Cost(area, fromArea, ladder, elevator, length) end
-		local started = SysTime()
-		local cost = Cost(area, fromArea, ladder, elevator, length)
-		probe.costCalls = probe.costCalls + 1
-		probe.costSeconds = probe.costSeconds + SysTime() - started
-		return cost
-	end
-end
-
 function ENT:Initialize()
 	self.alive = true
 	self.npcs = WETSAND.Feature("npc")
@@ -191,7 +157,8 @@ function ENT:Initialize()
 		GroundMotion.Setup(self, variant.LOCOMOTION)
 	end
 	if variant.PATH then
-		self.pathCost = PathCost(self, WETSAND.require(variant.PATH), variant.LOCOMOTION)
+		local bot = { entIndex = self:EntIndex(), now = 0 }
+		self.pathCost = self.npcs:EnginePathCost(self, WETSAND.require(variant.PATH), variant.LOCOMOTION, bot)
 	end
 end
 

@@ -6,6 +6,7 @@
 local NpcSystem = WETSAND.require("foundation.npc")
 local Spawner = WETSAND.require("foundation.npc.spawner")
 local Profile = WETSAND.require("foundation.npc.profile")
+local Route = WETSAND.require("foundation.npc.route")
 
 local NAV_MESSAGE = "wetsand_nextbot: %s has no usable navigation mesh; run .devtools/bin/nav_convert.py or nav_generate"
 local BOSS_HEALTH = "wetsand_boss_health" -- the boss bar's fraction; 0 hides it
@@ -19,6 +20,8 @@ local Controller = {
 	spawnedBy = {}, -- NPC entity -> Spawner
 	navChecked = false,
 	pathProfile = nil, -- a foundation.npc.profile while wetsand_path_profile's window is open
+	spawnRoomTeams = {}, -- nav area id -> the team whose spawn room holds it, this round
+	searches = {}, -- the Lua route searches still running, oldest first
 }
 
 function Controller:CheckNavMesh()
@@ -112,6 +115,171 @@ function Controller:ThinkSpawners(now)
 			end
 		end
 	end
+end
+
+-------------------------------------------------------------------------------
+-- Path costs: one step builder for both searches. A path strategy
+-- (foundation.npc.path) reads the same step whether the engine's search
+-- (Path:Compute on a NextBot) or the Lua one (foundation.npc.route, for
+-- NPCs that are not NextBots) asks.
+
+local NOBODY = WETSAND.TEAM_UNASSIGNED
+
+-- TF_NAV_SPAWN_ROOM_RED/_BLUE, which GMod's nav areas do not carry: the
+-- team of the func_respawnroom holding the area's centre, found once per
+-- area per round (rooms take their teams at round start).
+function Controller:SpawnRoomTeam(area)
+	local id = area:GetID()
+	local team = self.spawnRoomTeams[id]
+	if team then return team end
+	team = NOBODY
+	local center = area:GetCenter()
+	for _, room in ipairs(ents.FindByClass("func_respawnroom")) do
+		if room:PointIsWithin(center) then
+			team = room.team
+			break
+		end
+	end
+	self.spawnRoomTeams[id] = team
+	return team
+end
+
+local function ForgetSpawnRooms()
+	Controller.spawnRoomTeams = {}
+end
+hook.Add("PostCleanupMap", "wetsand_npc_spawn_rooms", ForgetSpawnRooms)
+hook.Add("TF2RoundActivate", "wetsand_npc_spawn_rooms", ForgetSpawnRooms)
+
+-- Fills `step` for the move from fromArea (nil for the first area) into
+-- area. traversable(area) is the mover's ILocomotion::IsAreaTraversable.
+function Controller:FillStep(step, area, fromArea, ladder, length, fromCostSoFar, traversable)
+	step.hasFrom = IsValid(fromArea)
+	if not step.hasFrom then return step end
+	step.traversable = traversable(area)
+	step.ladderLength = IsValid(ladder) and ladder:GetLength() or nil
+	step.length = length
+	step.centerDistance = area:GetCenter():Distance(fromArea:GetCenter())
+	step.heightChange = fromArea:ComputeAdjacentConnectionHeightChange(area)
+	step.fromCostSoFar = fromCostSoFar
+	step.areaId = area:GetID()
+	step.spawnRoomTeam = self:SpawnRoomTeam(area)
+	return step
+end
+
+-- The cost callback Path:Compute takes (IPathCost), for a NextBot. bot is
+-- the strategy's bot table; its `now` is kept current. While a path profile
+-- measures a compute, ent.pathProbe counts the calls and their time.
+function Controller:EnginePathCost(ent, strategy, limits, bot)
+	local step = {}
+	local function Traversable(area) return ent.loco:IsAreaTraversable(area) end
+	local function Cost(area, fromArea, ladder, elevator, length)
+		self:FillStep(step, area, fromArea, ladder, length, IsValid(fromArea) and fromArea:GetCostSoFar() or 0, Traversable)
+		bot.now = CurTime()
+		return strategy.Cost(step, limits, bot)
+	end
+	return function(area, fromArea, ladder, elevator, length)
+		local probe = ent.pathProbe
+		if not probe then return Cost(area, fromArea, ladder, elevator, length) end
+		local started = SysTime()
+		local cost = Cost(area, fromArea, ladder, elevator, length)
+		probe.costCalls = probe.costCalls + 1
+		probe.costSeconds = probe.costSeconds + SysTime() - started
+		return cost
+	end
+end
+
+-- The graph foundation.npc.route searches: nav area ids, their floor
+-- neighbours in GetAdjacentAreas' order (north, east, south, west; nav
+-- ladders are left out, as no engine NPC climbs them), the strategy's cost
+-- with ILocomotion's default traversal rule (not blocked for the mover's
+-- team), and the straight-line estimate to the goal position. The engine
+-- measures a floor connection as the distance between centres, so that is
+-- the step's length.
+local NavGraph = {}
+NavGraph.__index = NavGraph
+
+local function Area(id)
+	return navmesh.GetNavAreaByID(id)
+end
+
+function NavGraph:Neighbors(id)
+	local ids = {}
+	for i, area in ipairs(Area(id):GetAdjacentAreas()) do ids[i] = area:GetID() end
+	return ids
+end
+
+function NavGraph:Cost(fromId, toId, costSoFar)
+	local area, fromArea = Area(toId), Area(fromId)
+	self.controller:FillStep(self.step, area, fromArea, nil, area:GetCenter():Distance(fromArea:GetCenter()), costSoFar, self.traversable)
+	self.bot.now = CurTime()
+	return self.strategy.Cost(self.step, self.limits, self.bot)
+end
+
+function NavGraph:Estimate(id)
+	return Area(id):GetCenter():Distance(self.goalPos)
+end
+
+-- request = { from, to (positions), strategy, limits, bot (the strategy's,
+-- with team), onDone(route) } where route is the list of nav areas from the
+-- start's to the goal's, or to the one that came closest when the goal is
+-- out of reach, and nil when either end is off the mesh.
+local NEAREST_AREA_RANGE = 200
+local SEARCH_BUDGET = 300 -- expansions per tick, over every running search
+
+local function NearestArea(pos)
+	return navmesh.GetNearestNavArea(pos, false, NEAREST_AREA_RANGE, false, true)
+end
+
+function Controller:RequestRoute(request)
+	local start, goal = NearestArea(request.from), NearestArea(request.to)
+	if not (IsValid(start) and IsValid(goal)) then
+		request.onDone(nil)
+		return
+	end
+	local team = request.bot.team or NOBODY
+	local graph = setmetatable({
+		controller = self,
+		step = {},
+		strategy = request.strategy,
+		limits = request.limits,
+		bot = request.bot,
+		goalPos = request.to,
+		traversable = function(area) return not area:IsBlocked(team) end,
+	}, NavGraph)
+	self.searches[#self.searches + 1] = { search = Route.New(graph, start:GetID(), goal:GetID()), onDone = request.onDone }
+end
+
+local function AreasOf(ids)
+	local areas = {}
+	for i, id in ipairs(ids) do areas[i] = Area(id) end
+	return areas
+end
+
+-- Runs the searches in turn within the tick's budget; each that finishes
+-- reports its route.
+function Controller:ThinkSearches()
+	local budget = SEARCH_BUDGET
+	while budget > 0 and #self.searches > 0 do
+		local running = table.remove(self.searches, 1)
+		local before = running.search.expanded
+		if running.search:Step(budget) == Route.RUNNING then
+			self.searches[#self.searches + 1] = running
+		else
+			running.onDone(AreasOf(running.search:Route()))
+		end
+		budget = budget - math.max(1, running.search.expanded - before)
+	end
+end
+
+-- Where to walk along a route of areas: into each next area at its point
+-- nearest the last area's centre, then to `goal`.
+function Controller:RouteWaypoints(areas, goal)
+	local points = {}
+	for i = 2, #areas do
+		points[#points + 1] = areas[i]:GetClosestPointOnArea(areas[i - 1]:GetCenter())
+	end
+	points[#points + 1] = goal
+	return points
 end
 
 -------------------------------------------------------------------------------
@@ -213,6 +381,7 @@ end, nil, "Compute N paths (default 200) from the live NextBots to random nav ar
 
 hook.Add("Think", "wetsand_npc_spawners", function()
 	Controller:ThinkSpawners(CurTime())
+	Controller:ThinkSearches()
 end)
 
 -- The model's FilterDamage decides what an NPC takes.
