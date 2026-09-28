@@ -109,7 +109,7 @@ function ENT:BuildLinks()
 		local cp = WETSAND.FindByName(self:Key("linked_cp_" .. n))
 		if IsValid(track) and IsValid(cp) then
 			local i = self.nodeIndex[track]
-			self.links[#self.links + 1] = { cp = cp, distance = i and self.distanceAt[i] or 0, alerted = false }
+			self.links[#self.links + 1] = { cp = cp, distance = i and self.distanceAt[i] or 0, index = i, alerted = false }
 		end
 	end
 end
@@ -166,6 +166,7 @@ function ENT:WatcherActivate()
 	self:StopCaptureAlarm()
 	self.alarm = P.NewAlarm()
 	self.train = WETSAND.FindByName(self:Key("train"))
+	self.advanceTo = nil
 	self:BuildPath()
 	self:BuildLinks()
 	self:BuildHills()
@@ -175,6 +176,7 @@ function ENT:WatcherActivate()
 		self.pathIndex = self:NearestPathIndex()
 	end
 	self:InternalSetSpeedForwardModifier(self.forwardModifier)
+	self:CaptureMaxSpeed()
 	self.activated = true
 end
 
@@ -197,6 +199,8 @@ end
 function ENT:HandleTrainMovement(startReceding)
 	if self.disabled or not self.handleMovement or not IsValid(self.train) then return end
 	local speed, receding = P.TrainSpeed(self, startReceding)
+	-- driven on to a checkpoint by an admin, whoever is on it
+	if self.advanceTo then speed, receding = 1, false end
 	self.receding = receding
 	if speed == self.currentSpeed then return end
 	self.currentSpeed = speed
@@ -277,6 +281,51 @@ function ENT:PathPassed(node, train)
 	end
 end
 
+-- Admin controls (the Game Rules editor) ----------------------------------------------
+
+-- The map's top speed for the train, read once per train entity (a full
+-- reset makes a new one), before any scale is applied to it.
+function ENT:CaptureMaxSpeed()
+	if not IsValid(self.train) then return end
+	if self.speedTrain ~= self.train then
+		self.speedTrain = self.train
+		self.baseMaxSpeed = self.train:GetInternalVariable("m_maxSpeed")
+	end
+	self:ApplyMaxSpeed()
+end
+
+-- The train's top speed (func_tracktrain's startspeed keyfield, m_maxSpeed,
+-- which SetSpeedDirAccel scales) under the admin's cart speed; the watcher
+-- then asks for its current speed again so the change shows at once.
+function ENT:ApplyMaxSpeed()
+	if not IsValid(self.train) or not self.baseMaxSpeed then return end
+	local maxSpeed = P.MaxSpeed(self.baseMaxSpeed, WETSAND.CartSpeedScale(), self.advanceTo ~= nil)
+	self.train:SetKeyValue("startspeed", tostring(maxSpeed))
+	if self.handleMovement and not self.disabled then self.train:Fire("SetSpeedDirAccel", tostring(self.currentSpeed)) end
+end
+
+-- Drive the cart at full (and boosted) speed until it passes the next
+-- checkpoint's path_track, so the map's own OnPass logic captures it.
+-- Returns true, or false and why not.
+function ENT:AdvanceToNextCheckpoint()
+	if not self:IsActive() or not IsValid(self.train) then return false, "the cart is not active" end
+	if not self.handleMovement then return false, "this map moves its cart itself" end
+	if WETSAND.State() ~= WETSAND.STATE.RND_RUNNING then return false, "the round is not running" end
+	local link = P.NextCheckpoint(self.links, self.distanceFromStart or 0)
+	if not link or not link.index then return false, "no checkpoint ahead" end
+	self.advanceTo = link
+	self:ApplyMaxSpeed()
+	self:HandleTrainMovement()
+	return true
+end
+
+function ENT:CheckAdvance()
+	if not self.advanceTo or self.pathIndex < self.advanceTo.index then return end
+	self.advanceTo = nil
+	self:ApplyMaxSpeed()
+	self:HandleTrainMovement()
+end
+
 -- Alerts and the capture alarm ---------------------------------------------------------
 
 -- CTFGameRules::PlayTrainCaptureAlert: everyone hears it, while the round runs.
@@ -355,6 +404,7 @@ function ENT:WatcherThink()
 	local speed = self.train:GetInternalVariable("m_flSpeed")
 	self:UpdateSpeedLevel(speed)
 	self:UpdateProgress(speed)
+	self:CheckAdvance()
 	for _, i in ipairs(P.AlertsDue(self.links, self.distanceFromStart, self.canRecede)) do
 		self:PlayCaptureAlert(self.links[i].cp)
 	end

@@ -9,6 +9,19 @@ WETSAND.PayloadRace = WETSAND.require("foundation.payload.race")
 
 local P, R = WETSAND.Payload, WETSAND.PayloadRace
 
+-- The Game Rules editor's cart speed: a scale on every cart's top speed,
+-- kept for the rest of the map.
+local cartSpeedScale = 1
+
+function WETSAND.CartSpeedScale()
+	return cartSpeedScale
+end
+
+function WETSAND.SetCartSpeedScale(scale)
+	cartSpeedScale = math.Clamp(scale, P.CART_SPEED_MIN, P.CART_SPEED_MAX)
+	for _, watcher in ipairs(ents.FindByClass("team_train_watcher")) do watcher:ApplyMaxSpeed() end
+end
+
 -- tf_logic_multiple_escort marks a payload race map (CTFGameRules::SetMultipleTrains).
 function WETSAND.HasMultipleTrains()
 	return #ents.FindByClass("tf_logic_multiple_escort") > 0

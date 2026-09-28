@@ -41,6 +41,10 @@ local ROLE_NONE = 0 -- TEAM_ROLE_NONE
 local MIN_SCALED_WAVE = 5
 
 local TIMELIMIT_TIMER_NAME = "zz_teamplay_timelimit_timer"
+local UNSET = -1 -- an admin override not given
+
+-- A full reset keeps the gamerules, as TF2 does, and the admin editors.
+local CLEANUP_KEEPS = { "tf_gamerules", "edit_gamerules", "edit_roundtimer" }
 
 local function Lib() return WETSAND.RoundsLib end
 
@@ -66,6 +70,9 @@ function ENT:Initialize()
 	self.mapResetTime = CurTime()
 	self.nextPeriodic = 0
 	self.teamCounts = {}
+	-- The Game Rules editor's overrides, kept across rounds.
+	self.adminWaveTime = { [RED] = UNSET, [BLUE] = UNSET }
+	self.respawnsDisabled = false
 	self:StateEnter(S.PREGAME)
 end
 
@@ -451,7 +458,7 @@ function ENT:RoundRespawn()
 	self.roundStartTime = CurTime()
 	SetGlobal2Int("tf2.winner", WETSAND.TEAM_UNASSIGNED)
 	if self.forceMapReset then
-		if not self.mapFresh then game.CleanUpMap(false, { "tf_gamerules" }) end
+		if not self.mapFresh then game.CleanUpMap(false, CLEANUP_KEEPS) end
 		self.mapFresh = false
 		self.previousRounds = {}
 		WETSAND.ActivateTimers()
@@ -551,9 +558,15 @@ function ENT:GetRespawnTimeScalar(team)
 	return math.Remap(math.Clamp(n, 1, OPTIMAL_TEAM_SIZE), 1, OPTIMAL_TEAM_SIZE, 0.25, 1.0)
 end
 
+-- The wave length a team is set to: an admin's, else the map's, else
+-- mp_respawnwavetime.
+function ENT:TeamRespawnWaveTime(team)
+	return Lib().WaveTime(self.adminWaveTime[team], self.waveTime[team], respawnwavetime:GetFloat())
+end
+
 function ENT:GetRespawnWaveMaxLength(team, scaleWithNumPlayers)
 	if self.state ~= S.RND_RUNNING then return 0 end
-	local t = self.waveTime[team] >= 0 and self.waveTime[team] or respawnwavetime:GetFloat()
+	local t = self:TeamRespawnWaveTime(team)
 	if scaleWithNumPlayers and t > MIN_SCALED_WAVE then
 		t = math.max(MIN_SCALED_WAVE, t * self:GetRespawnTimeScalar(team))
 	end
@@ -586,8 +599,8 @@ end
 
 function ENT:OnPlayerDeath(ply)
 	ply.tf2DeathTime = CurTime()
-	-- Sudden death has no respawns.
-	if self.state == S.STALEMATE then
+	-- Sudden death has no respawns, nor does a game an admin stopped them in.
+	if self.state == S.STALEMATE or self.respawnsDisabled then
 		ply:SetNW2Float("tf2.respawnAt", 0)
 		return
 	end
@@ -595,6 +608,7 @@ function ENT:OnPlayerDeath(ply)
 end
 
 function ENT:RespawnTeam(team)
+	if self.respawnsDisabled then return end
 	local now = CurTime()
 	for _, ply in ipairs(self:TeamPlayers(team)) do
 		if not ply:Alive() and now >= self:GetMinTimeWhenPlayerMaySpawn(ply) then
@@ -610,6 +624,33 @@ function ENT:CheckRespawnWaves()
 			self:RespawnTeam(team)
 			local length = self:GetRespawnWaveMaxLength(team, true)
 			self.nextWave[team] = length > 0 and now + length or 0
+		end
+	end
+end
+
+-- Admin overrides (the Game Rules editor) --------------------------------------------
+
+-- seconds >= 0 overrides the team's wave length for the rest of the map;
+-- nil gives the map's back.
+function ENT:SetAdminRespawnWaveTime(team, seconds)
+	self.adminWaveTime[team] = seconds or UNSET
+end
+
+function ENT:RespawnsDisabled()
+	return self.respawnsDisabled
+end
+
+-- Stopping respawns leaves the dead dead until the next full round (every
+-- player respawns then); allowing them again puts the dead back in the
+-- waves.
+function ENT:SetRespawnsDisabled(disabled)
+	if self.respawnsDisabled == disabled then return end
+	self.respawnsDisabled = disabled
+	if disabled or self.state == S.STALEMATE then return end
+	for _, ply in ipairs(player.GetAll()) do
+		local team = WETSAND.TeamOf(ply)
+		if team ~= WETSAND.TEAM_UNASSIGNED and not ply:Alive() then
+			ply:SetNW2Float("tf2.respawnAt", self:GetNextRespawnWave(team, ply))
 		end
 	end
 end

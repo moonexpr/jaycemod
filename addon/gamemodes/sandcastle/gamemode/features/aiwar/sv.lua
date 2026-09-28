@@ -64,6 +64,9 @@ function Soldier:Now() return CurTime() end
 function Soldier:IsAlive() return IsValid(self.ent) and self.ent:Health() > 0 end
 function Soldier:RangeTo(p) return self.ent:GetPos():Distance(ToVector(p)) end
 
+-- COND_SEE_ENEMY (ai_condition.h's SCOND_t); GMod defines no global for it.
+local COND_SEE_ENEMY = 10
+
 function Soldier:HasEnemy()
 	return IsValid(self.ent:GetEnemy()) and self.ent:HasCondition(COND_SEE_ENEMY)
 end
@@ -270,9 +273,12 @@ function Controller:Draft(team, pos, ang)
 end
 
 -- TF2's respawn wave for the team (0 during setup, when TF2 respawns at
--- once), or none without gamerules.
+-- once), or none without gamerules. With respawns stopped by an admin, the
+-- first wave of a round is the last.
 local function WaveLength(team)
-	if not IsValid(WETSAND.Rules) or WETSAND.InSetup() then return 0 end
+	if not IsValid(WETSAND.Rules) then return 0 end
+	if WETSAND.Rules:RespawnsDisabled() then return math.huge end
+	if WETSAND.InSetup() then return 0 end
 	return WETSAND.Rules:GetRespawnWaveMaxLength(team, true)
 end
 

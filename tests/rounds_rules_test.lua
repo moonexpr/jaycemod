@@ -294,4 +294,11 @@ T.test("tf_caplinear 0 allows everything", function()
 	T.eq(R.TeamMayCapturePoint(Q({ caplinear = false, locked = true })), true)
 end)
 
+T.test("a team's respawn wave is an admin's override, else the map's, else mp_respawnwavetime", function()
+	T.eq(R.WaveTime(-1, -1, 10), 10, "the convar")
+	T.eq(R.WaveTime(-1, 6, 10), 6, "the map's")
+	T.eq(R.WaveTime(2, 6, 10), 2, "the admin's")
+	T.eq(R.WaveTime(0, 6, 10), 0, "instant")
+end)
+
 T.finish()
