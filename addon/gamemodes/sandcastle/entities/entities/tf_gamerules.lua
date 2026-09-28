@@ -143,12 +143,13 @@ local function Ready(ply)
 	return ply.tf2Ready or ply:IsBot()
 end
 
--- BHavePlayers: someone ready and on RED or BLU.
+-- BHavePlayers: someone ready and on RED or BLU, or something else fighting
+-- for a team (the AI war says so through TF2HaveCombatants).
 function ENT:HavePlayers()
 	for _, ply in ipairs(player.GetAll()) do
 		if Ready(ply) and WETSAND.TeamOf(ply) ~= WETSAND.TEAM_UNASSIGNED then return true end
 	end
-	return false
+	return hook.Run("TF2HaveCombatants") == true
 end
 
 -- RespawnPlayers(true): everyone but spectators, now.
@@ -174,6 +175,19 @@ function ENT:Scores()
 end
 
 -- PREGAME --------------------------------------------------------------------------------
+
+-- Back to PREGAME with a full reset to come: the next pre-round cleans the
+-- map up and respawns everyone, as a restart does. The AI war starts this
+-- way. Out of the intermission, the frozen players are let go.
+function ENT:RestartRound()
+	if self.state == S.GAME_OVER then
+		self.intermissionEnd = nil
+		for _, ply in ipairs(player.GetAll()) do ply:Freeze(false) end
+	end
+	self.forceMapReset = true
+	self.switchTeams = false
+	self:StateTransition(S.PREGAME)
+end
 
 function ENT:StateThink_PREGAME()
 	if self:HavePlayers() then self:StateTransition(S.PREROUND) end

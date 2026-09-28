@@ -86,14 +86,16 @@ function ENT:TeamCounts(point, team)
 	return team == self.cap.owner or not self.canCap[team] or WETSAND.TeamCanCapPoint(point, team)
 end
 
--- A disabled trigger touches nobody.
+-- A disabled trigger touches nobody. Team members that are not players
+-- (the AI war's soldiers) count as their team's players do.
 function ENT:Counts(point)
 	local counts = { [WETSAND.TEAM_RED] = 0, [WETSAND.TEAM_BLUE] = 0 }
 	if not self.enabled then return counts end
-	for _, ply in ipairs(WETSAND.PlayersInside(self)) do
-		local team = WETSAND.TeamOf(ply)
+	local function Add(team)
 		if counts[team] and self:TeamCounts(point, team) then counts[team] = counts[team] + 1 end
 	end
+	for _, ply in ipairs(WETSAND.PlayersInside(self)) do Add(WETSAND.TeamOf(ply)) end
+	for _, member in ipairs(WETSAND.MembersInside(self)) do Add(WETSAND.TeamNumber(member)) end
 	return counts
 end
 

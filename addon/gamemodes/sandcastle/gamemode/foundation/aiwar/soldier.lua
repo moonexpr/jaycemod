@@ -1,0 +1,34 @@
+-- The soldier port: what foundation.aiwar.orders may ask of the HL2 engine
+-- NPC it drives. The features/aiwar controller implements it over an NPC
+-- (NPC:SetLastPosition and SCHED_FORCED_GO_RUN, the npc controller's Lua
+-- route search) and tests/fake_soldier.lua fakes it.
+--
+-- Positions are plain { x, y, z } tables.
+--   Now() -> the time
+--   IsAlive()
+--   RangeTo(p) -> the distance from my origin to p
+--   HasEnemy() -> I have an enemy in sight (the engine's COND_SEE_ENEMY)
+--   RequestRoute(goal): start a route search from here to goal, dropping
+--     any search still running
+--   RouteResult() -> nil while the search runs, false when there is no
+--     route (either end off the nav mesh), else the waypoints to walk, the
+--     last being the goal, or the nearest reachable point when the goal
+--     is cut off
+--   CanWalkTo(p) -> nothing solid between me and p at walking height
+--   MoveTo(p): run to p, ignoring enemies on the way (a forced move); the
+--     same p again keeps the move going
+--   Release(): end any forced move, handing me back to the engine's own AI,
+--     which fights, takes cover or idles
+module(...)
+
+METHODS = {
+	"Now",
+	"IsAlive",
+	"RangeTo",
+	"HasEnemy",
+	"RequestRoute",
+	"RouteResult",
+	"CanWalkTo",
+	"MoveTo",
+	"Release",
+}

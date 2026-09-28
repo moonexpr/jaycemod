@@ -27,9 +27,10 @@ function ENT:Initialize()
 end
 
 -- Team numbers are compared raw, as TF2 does: a player on another addon's
--- team matches neither RED nor BLU.
+-- team matches neither RED nor BLU. An NPC fighting for a team (the AI
+-- war's) passes as that team's player would.
 function ENT:PassesFilter(trigger, ent)
-	return WETSAND.TeamRules.FilterPasses(self.team, self.negated, ent:Team(), WETSAND.State(), GetGlobal2Int("tf2.winner", WETSAND.TEAM_UNASSIGNED))
+	return WETSAND.TeamRules.FilterPasses(self.team, self.negated, WETSAND.TeamNumber(ent), WETSAND.State(), GetGlobal2Int("tf2.winner", WETSAND.TEAM_UNASSIGNED))
 end
 
 -- CFilterTFTeam::InputRoundActivate

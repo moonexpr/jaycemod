@@ -385,6 +385,16 @@ function ENT:UsesArea(area)
 	return area == self.area or (IsValid(self.train) and area:GetParent() == self.train)
 end
 
+function ENT:Train()
+	return self.train
+end
+
+-- The path_track chain from start_node to goal_node, as BuildPath found it
+-- (a new list each time the watcher activates).
+function ENT:PathNodes()
+	return self.nodes
+end
+
 function ENT:TrainDistanceAlongTrack()
 	return self.distanceFromStart or 0
 end

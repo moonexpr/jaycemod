@@ -144,29 +144,6 @@ end
 -------------------------------------------------------------------------------
 -- Binding
 
--- IPathCost, built from GMod's (area, fromArea, ladder, elevator, length).
-local function PathCost(self, strategy, limits)
-	local step = {}
-	local bot = {
-		entIndex = self:EntIndex(),
-		now = 0,
-	}
-	return function(area, fromArea, ladder, elevator, length)
-		step.hasFrom = IsValid(fromArea)
-		if step.hasFrom then
-			step.traversable = self.loco:IsAreaTraversable(area)
-			step.ladderLength = IsValid(ladder) and ladder:GetLength() or nil
-			step.length = length
-			step.centerDistance = area:GetCenter():Distance(fromArea:GetCenter())
-			step.heightChange = fromArea:ComputeAdjacentConnectionHeightChange(area)
-			step.fromCostSoFar = fromArea:GetCostSoFar()
-			step.areaId = area:GetID()
-		end
-		bot.now = CurTime()
-		return strategy.Cost(step, limits, bot)
-	end
-end
-
 function ENT:Initialize()
 	self.alive = true
 	self.npcs = WETSAND.Feature("npc")
@@ -180,7 +157,8 @@ function ENT:Initialize()
 		GroundMotion.Setup(self, variant.LOCOMOTION)
 	end
 	if variant.PATH then
-		self.pathCost = PathCost(self, WETSAND.require(variant.PATH), variant.LOCOMOTION)
+		local bot = { entIndex = self:EntIndex(), now = 0 }
+		self.pathCost = self.npcs:EnginePathCost(self, WETSAND.require(variant.PATH), variant.LOCOMOTION, bot)
 	end
 end
 
@@ -364,7 +342,14 @@ function ENT:GetGroundSpeed() return self.motion.GetGroundSpeed(self) end
 local FollowPath = {}
 FollowPath.__index = FollowPath
 
-function FollowPath:Compute(goal) return self.path:Compute(self.bot, goal, self.bot.pathCost) end
+function FollowPath:Compute(goal)
+	local bot = self.bot
+	local profile = bot.npcs:PathProfile()
+	if not profile then return self.path:Compute(bot, goal, bot.pathCost) end
+	return bot.npcs:MeasureCompute(profile, bot.Variant, bot, function()
+		return self.path:Compute(bot, goal, bot.pathCost)
+	end)
+end
 function FollowPath:Update() self.path:Update(self.bot) end
 function FollowPath:GetAge() return self.path:GetAge() end
 function FollowPath:IsValid() return self.path:IsValid() end

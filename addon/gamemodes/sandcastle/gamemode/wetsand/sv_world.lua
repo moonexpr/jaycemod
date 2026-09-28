@@ -118,19 +118,47 @@ end
 -- space so a volume parented to the moving cart turns with it. Brush volumes
 -- are treated as their bounding box.
 local HULL = Vector(16, 16, 36)
-function WETSAND.PlayersInside(ent)
+
+local function Inside(volume, candidates, alive)
 	local inside = {}
-	if not IsValid(ent) then return inside end
-	local mins, maxs = ent:OBBMins() - HULL, ent:OBBMaxs() + HULL
-	for _, ply in ipairs(player.GetAll()) do
-		if WETSAND.IsAliveInGame(ply) then
-			local p = ent:WorldToLocal(ply:WorldSpaceCenter())
-			if p:WithinAABox(mins, maxs) then
-				inside[#inside + 1] = ply
-			end
+	if not IsValid(volume) then return inside end
+	local mins, maxs = volume:OBBMins() - HULL, volume:OBBMaxs() + HULL
+	for _, ent in ipairs(candidates) do
+		if alive(ent) and volume:WorldToLocal(ent:WorldSpaceCenter()):WithinAABox(mins, maxs) then
+			inside[#inside + 1] = ent
 		end
 	end
 	return inside
+end
+
+function WETSAND.PlayersInside(ent)
+	return Inside(ent, player.GetAll(), WETSAND.IsAliveInGame)
+end
+
+-- Entities other than players that fight for a team (the AI war's
+-- soldiers): they stand on capture areas as its members and pass its team
+-- filters. entity -> team; SetTeamMember(ent, nil) lets one go.
+local teamMembers = setmetatable({}, { __mode = "k" })
+
+function WETSAND.SetTeamMember(ent, team)
+	teamMembers[ent] = team
+end
+
+-- A player's own team, else the team an entity fights for, else UNASSIGNED.
+function WETSAND.TeamNumber(ent)
+	if ent:IsPlayer() then return ent:Team() end
+	return teamMembers[ent] or WETSAND.TEAM_UNASSIGNED
+end
+
+local function MemberAlive(ent)
+	return IsValid(ent) and ent:Health() > 0
+end
+
+-- Living team members (not players) whose hull overlaps the entity's bounds.
+function WETSAND.MembersInside(ent)
+	local members = {}
+	for member in pairs(teamMembers) do members[#members + 1] = member end
+	return Inside(ent, members, MemberAlive)
 end
 
 -- A weapon's ammo ceiling: GMod's own per-type maximum when it sets one,
