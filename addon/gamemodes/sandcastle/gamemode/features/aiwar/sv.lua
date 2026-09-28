@@ -270,9 +270,12 @@ function Controller:Draft(team, pos, ang)
 end
 
 -- TF2's respawn wave for the team (0 during setup, when TF2 respawns at
--- once), or none without gamerules.
+-- once), or none without gamerules. With respawns stopped by an admin, the
+-- first wave of a round is the last.
 local function WaveLength(team)
-	if not IsValid(WETSAND.Rules) or WETSAND.InSetup() then return 0 end
+	if not IsValid(WETSAND.Rules) then return 0 end
+	if WETSAND.Rules:RespawnsDisabled() then return math.huge end
+	if WETSAND.InSetup() then return 0 end
 	return WETSAND.Rules:GetRespawnWaveMaxLength(team, true)
 end
 
