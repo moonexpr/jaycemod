@@ -14,6 +14,20 @@ local Controller = {
 local COUNTDOWN = 5
 local TIMER = "wetsand_new_game"
 
+-- Free play begins with one of GMod's save/load chimes; gameplay with
+-- Mann vs. Machine's mid-wave music and one of the announcer's
+-- tournament-start lines.
+local FREE_PLAY_SOUNDS = { "garrysmod/save_load1.wav", "garrysmod/save_load2.wav", "garrysmod/save_load3.wav", "garrysmod/save_load4.wav" }
+local GAMEPLAY_MUSIC = "music/mvm_start_mid_wave.wav"
+local GAMEPLAY_VOICES = {
+	"vo/announcer_tournament_started1.mp3", "vo/announcer_tournament_started2.mp3",
+	"vo/announcer_tournament_started3.mp3", "vo/announcer_tournament_started4.mp3",
+}
+
+local function PlayToAll(path)
+	WETSAND.BroadcastSound(WETSAND.TEAM_UNASSIGNED, path)
+end
+
 local function Rules()
 	return IsValid(WETSAND.Rules) and WETSAND.Rules or nil
 end
@@ -29,6 +43,7 @@ function Controller:Stop()
 	timer.Remove(TIMER)
 	self.counting = false
 	rules:Halt()
+	PlayToAll(FREE_PLAY_SOUNDS[math.random(#FREE_PLAY_SOUNDS)])
 	WETSAND.Announce("The game has been stopped. Free play until a new game starts.")
 	return true
 end
@@ -69,6 +84,8 @@ function Controller:Begin()
 		WETSAND.ShowTeamMenu(ply)
 	end
 	Center("Choose a team!")
+	PlayToAll(GAMEPLAY_MUSIC)
+	PlayToAll(GAMEPLAY_VOICES[math.random(#GAMEPLAY_VOICES)])
 end
 
 function Controller:Status()
