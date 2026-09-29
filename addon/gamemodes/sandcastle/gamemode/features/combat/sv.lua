@@ -1,5 +1,6 @@
 -- The combat feature's controller. It binds projectile entities to
--- foundation.projectile models, runs foundation.combat Explosions against
+-- foundation.projectile models, fires weapon mimics' projectiles
+-- (foundation.combat.weapon_mimic), runs foundation.combat Explosions against
 -- the world, and answers the side questions the combatant port asks: an
 -- entity's team, and whether it stands in a respawn room. The rules live in
 -- the models; this file only finds entities, traces, and deals damage.
@@ -9,12 +10,43 @@ local Projectile = WETSAND.require("foundation.projectile")
 -- MASK_RADIUS_DAMAGE (tf_gamerules.cpp): what stops a blast.
 local BLAST_MASK = bit.band(MASK_SHOT, bit.bnot(CONTENTS_HITBOX))
 
+local WEAPON_MIMIC = "foundation.combat.weapon_mimic"
+
 local Controller = {}
 
 -- The model for a wetsand_projectile entity; its variant is a
 -- foundation.projectile part.
 function Controller:BindProjectile(ent, variantName, config)
 	return Projectile.New(WETSAND.require(variantName), config, CurTime())
+end
+
+-- tf_point_weapon_mimic: config from its keyvalues (see
+-- foundation.combat.weapon_mimic). The first mimic loads the model.
+function Controller:BindWeaponMimic(ent, config)
+	return WETSAND.require(WEAPON_MIMIC).New(config)
+end
+
+-- CTFPointWeaponMimic::Fire, count times: each projectile leaves the
+-- mimic's origin, credited to the mimic and never hitting it.
+function Controller:FireWeaponMimic(ent, mimic, count)
+	local angles = ent:GetAngles()
+	local aim = {
+		forward = angles:Forward(),
+		right = angles:Right(),
+		up = angles:Up(),
+	}
+	for _ = 1, count do
+		local shot = mimic:Shot(aim, math.Rand, math.random)
+		local config = shot.config
+		config.attacker = ent
+		config.launcher = ent
+		if config.spin then config.spin = Angle(config.spin.x, config.spin.y, config.spin.z) end
+		local projectile = ents.Create(shot.class)
+		projectile:SetPos(ent:GetPos())
+		projectile:SetAngles(config.velocity:Angle())
+		projectile:Configure(config)
+		projectile:Spawn()
+	end
 end
 
 -- A player's team; an entity that takes sides reports its own through
