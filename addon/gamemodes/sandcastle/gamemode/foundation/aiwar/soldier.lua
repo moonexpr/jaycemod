@@ -22,6 +22,9 @@
 --     which fights, takes cover or idles
 --   PassBlocker(p) -> whether something between me and p that only NPCs
 --     collide with (not players) was found and I may now pass through it
+--   Detour(p) -> a point beside the solid entity (not map geometry) that
+--     stands between me and p and would stop a player too (a cart, a
+--     prop), which I can walk to; or nil
 --   Hop(p) -> whether I will be carried to p: only where a player could
 --     walk from here to p, so never through a wall, door or gate; I am
 --     moved there over a moment, running, and MoveTo and Release wait
@@ -40,5 +43,6 @@ METHODS = {
 	"MoveTo",
 	"Release",
 	"PassBlocker",
+	"Detour",
 	"Hop",
 }

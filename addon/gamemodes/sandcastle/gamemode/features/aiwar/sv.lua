@@ -107,7 +107,9 @@ function Soldier:RequestRoute(goal)
 	self.result = nil
 	local ticket, goalPos, npcs = self.ticket, ToVector(goal), WETSAND.Feature("npc")
 	local start = self.ent:GetPos()
+	local controller = self.controller
 	npcs:RequestRoute({
+		avoid = function(area) return controller:UnderCart(area) end,
 		from = start,
 		to = goalPos,
 		strategy = HL2Path,
@@ -226,6 +228,33 @@ function Soldier:PassBlocker(p)
 	self.passed[blocker] = true
 	PassThrough(self.ent, blocker)
 	return true
+end
+
+-- A point beside the solid entity that stands between me and p and would
+-- stop a player too (a cart, a prop; not map geometry, which hops deal
+-- with), clear of its bounds, on the side I am already on, else the other
+-- side, whichever I can walk to; or nil.
+local DETOUR_CLEARANCE = 40
+
+function Soldier:Detour(p)
+	local blocker, playersPass = self:Blocker(p)
+	if not blocker or blocker:IsWorld() or blocker:IsPlayer() or playersPass then return nil end
+	local mins, maxs = blocker:WorldSpaceAABB()
+	local center = (mins + maxs) / 2
+	local reach = math.max(maxs.x - mins.x, maxs.y - mins.y) / 2 + DETOUR_CLEARANCE
+	local here = self.ent:GetPos()
+	local ahead = ToVector(p) - here
+	ahead.z = 0
+	ahead:Normalize()
+	local side = Vector(-ahead.y, ahead.x, 0)
+	if (here - center):Dot(side) < 0 then side = -side end
+	for _, way in ipairs({ side, -side }) do
+		local point = center + way * reach
+		point.z = here.z
+		local candidate = Point(OnFloor(point))
+		if self:CanWalkTo(candidate) then return candidate end
+	end
+	return nil
 end
 
 function Soldier:Hop(p)
@@ -545,6 +574,33 @@ function Controller:SetForcefieldsPassable(passable)
 	for _, visualizer in ipairs(ents.FindByClass("func_respawnroomvisualizer")) do visualizer:SetNotSolid(passable) end
 end
 
+-- Carts in the way of routes -------------------------------------------------------------
+-- The nav mesh does not know where the carts are, so routes led through
+-- them. An area whose centre is under a cart (its bounds widened by
+-- CART_MARGIN) counts as blocked for routes, the goal's area aside
+-- (a pusher's spot is beside its cart). Refreshed every think.
+local CART_MARGIN = Vector(24, 24, 64)
+
+function Controller:RefreshCartBounds()
+	local bounds = {}
+	for _, watcher in ipairs(ents.FindByClass("team_train_watcher")) do
+		local train = watcher:IsActive() and watcher:Train()
+		if IsValid(train) then
+			local mins, maxs = train:WorldSpaceAABB()
+			bounds[#bounds + 1] = { mins = mins - CART_MARGIN, maxs = maxs + CART_MARGIN }
+		end
+	end
+	self.cartBounds = bounds
+end
+
+function Controller:UnderCart(area)
+	local center = area:GetCenter()
+	for _, box in ipairs(self.cartBounds or {}) do
+		if center:WithinAABox(box.mins, box.maxs) then return true end
+	end
+	return false
+end
+
 -- The field -----------------------------------------------------------------------------
 
 -- Each team's first active cart: its path, how far along it is, where its
@@ -576,6 +632,7 @@ function Controller:Think(now)
 	self.nextThink = now + THINK_INTERVAL
 	local phase = AiWar.PhaseOf(WETSAND.Active(), WETSAND.State())
 	local field = self:Field(phase)
+	self:RefreshCartBounds()
 	if field.setup and self.gates == nil then self:FindGates(field) end
 	self.war:Assign(CartTeams(field.carts))
 	self.war:SetField(field)

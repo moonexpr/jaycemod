@@ -238,7 +238,8 @@ function NavGraph:Estimate(id)
 end
 
 -- request = { from, to (positions), strategy, limits, bot (the strategy's,
--- with team), onDone(route, found) } where route is the list of nav areas
+-- with team), avoid(area) -> bool (optional: areas to route around, as
+-- if blocked; the goal's area is never avoided), onDone(route, found) } where route is the list of nav areas
 -- from the start's to the goal's (found), or to the one that came closest
 -- when the goal is out of reach, and nil when either end is off the mesh.
 local NEAREST_AREA_RANGE = 200
@@ -265,6 +266,7 @@ function Controller:RequestRoute(request)
 		return
 	end
 	local team = request.bot.team or NOBODY
+	local avoid, goalId = request.avoid, goal:GetID()
 	local graph = setmetatable({
 		controller = self,
 		step = {},
@@ -272,7 +274,10 @@ function Controller:RequestRoute(request)
 		limits = request.limits,
 		bot = request.bot,
 		goalPos = request.to,
-		traversable = function(area) return not area:IsBlocked(team) end,
+		traversable = function(area)
+			if avoid and area:GetID() ~= goalId and avoid(area) then return false end
+			return not area:IsBlocked(team)
+		end,
 	}, NavGraph)
 	local search = Route.New(graph, start:GetID(), goal:GetID(), navmesh.GetNavAreaCount())
 	self.searches[#self.searches + 1] = { search = search, onDone = request.onDone }

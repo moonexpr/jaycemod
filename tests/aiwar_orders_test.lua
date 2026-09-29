@@ -355,6 +355,24 @@ T.test("a soldier stuck on something only NPCs collide with is let through it, a
 	T.eq(npc:State().passed, 1, "counted for the report")
 end)
 
+T.test("a soldier stuck against a solid entity walks round it, then goes on along its route", function()
+	local route = { P(900, 0) }
+	local beside = P(300, 120)
+	local me, npc = Enlist({
+		role = AiWar.PUSH,
+		route = function() return route end,
+		detour = function() return beside end,
+	})
+	Tick(me, npc, 2)
+	Tick(me, npc, (Orders.STUCK_TIME + TICK) / TICK)
+	T.eq(#me.detours, 1, "a detour")
+	Near(me.moving, beside, "to the point beside it")
+	T.eq(#me.requests, 1, "no new route")
+	me.pos = P(beside.x, beside.y)
+	Tick(me, npc)
+	Near(me.moving, route[1], "back on its route")
+end)
+
 T.test("a soldier stuck while climbing hops at once, without stepping aside first", function()
 	local me, npc = Enlist({
 		role = AiWar.PUSH,

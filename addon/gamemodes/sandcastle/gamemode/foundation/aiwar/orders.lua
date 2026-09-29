@@ -69,6 +69,9 @@ HOP_DISTANCE = 160
 -- (stairs players take on a smooth clip ramp and NPCs on the steps), and
 -- hops at once rather than stepping aside first.
 CLIMB_RISE = 12
+-- A soldier stuck against a solid entity (a cart, a prop) walks to a point
+-- beside it, for up to this long, then goes on along its route.
+DETOUR_TIME = 3
 RETRY_WAIT = 1 -- after a failed trip, before the next
 
 local Distance = Track.Distance
@@ -246,13 +249,21 @@ function Travel:StuckTarget(goal)
 end
 
 -- Stuck: first, if what holds it is something only NPCs collide with, it
--- is let through and runs on; otherwise a step aside and a new route;
--- after too many, a hop, or the end of the trip.
+-- is let through and runs on; if it is a solid entity (a cart), it walks
+-- round it; if it is climbing, it hops; otherwise a step aside and a new
+-- route; after too many, a hop, or the end of the trip.
 function Travel:Unstick(me, goal)
 	local target = self:StuckTarget(goal)
 	if me:PassBlocker(target) then
 		self.state.passed = (self.state.passed or 0) + 1
 		self:ResetProgress(me)
+		return self:Continue()
+	end
+	local detour = me:Detour(target)
+	if detour then
+		self.detour, self.detourUntil = detour, me:Now() + DETOUR_TIME
+		self:ResetProgress(me)
+		me:MoveTo(detour)
 		return self:Continue()
 	end
 	if target.z - me:Position().z > CLIMB_RISE and self:HopOn(me, goal) then return self:Continue() end
@@ -340,6 +351,13 @@ function Travel:Update(me)
 	local range = me:RangeTo(goal)
 	if range <= role.arrive then return self:End("arrived") end
 	if not role.rushes and me:HasEnemy() and range <= role.leash then return self:End("engaging") end
+	if self.detour then
+		if me:Now() < self.detourUntil and me:RangeTo(self.detour) > WAYPOINT_RADIUS then
+			me:MoveTo(self.detour)
+			return self:Continue()
+		end
+		self.detour = nil
+	end
 	if self.sidestep then
 		if me:Now() < self.sidestepUntil then
 			me:MoveTo(self.sidestep)
