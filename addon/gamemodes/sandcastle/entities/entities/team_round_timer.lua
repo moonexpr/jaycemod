@@ -151,16 +151,27 @@ function ENT:FireMark(mark)
 	self:TriggerOutput(WETSAND.RoundsLib.TimerOutputName(mark), self)
 end
 
+-- Setup's end, as the clock reaching zero brings it: OnSetupFinished (maps
+-- wire their setup gates to it), then the round's clock with OnRoundStart.
+-- Stopping the game for free play ends setup so, early.
+function ENT:InSetup()
+	return self.state == STATE_SETUP
+end
+
+function ENT:FinishSetup()
+	self.armed.finished = false
+	self:TriggerOutput("OnSetupFinished", self)
+	self:SetState(STATE_NORMAL, true)
+	self:SetTimeRemaining(self.timeAfterSetup)
+end
+
 -- RoundTimerSetupThink
 function ENT:SetupThink()
 	WETSAND.SetOvertime(false)
 	local left = self:TimeRemaining()
 	local next = WETSAND.RoundsLib.NextTimerOutput(self.armed, left, true)
 	if next == "finished" then
-		self.armed.finished = false
-		self:TriggerOutput("OnSetupFinished", self)
-		self:SetState(STATE_NORMAL, true)
-		self:SetTimeRemaining(self.timeAfterSetup)
+		self:FinishSetup()
 	elseif next then
 		self:FireMark(next)
 	end

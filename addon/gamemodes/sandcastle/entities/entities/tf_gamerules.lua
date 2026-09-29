@@ -114,11 +114,13 @@ end
 -- Stopping the game (the Gameplay Settings' Stop Game): non-gameplay mode,
 -- which plays like Sandbox, and TF2's tournament ready-up: the rounds wait
 -- in BETWEEN_RNDS with every timer paused, and the state machine thinks no
--- more until a new game (Unhalt, then RestartRound). Entering it, as
--- CTFGameRules::BetweenRounds_Start does, fires the map's
+-- more until a new game (Unhalt, then RestartRound). Setup, if it is on,
+-- ends as its clock running out would (team_round_timer's FinishSetup,
+-- firing OnSetupFinished), so the map opens its own setup gates. Entering
+-- it, as CTFGameRules::BetweenRounds_Start does, fires the map's
 -- OnStateEnterBetweenRounds and every tf_logic_competitive's
--- OnSpawnRoomDoorsShouldUnlock, which maps wire to their spawn doors. The spawn doors (func_doors a trigger with
--- a team filter opens) stand open, and the filters and forcefields let
+-- OnSpawnRoomDoorsShouldUnlock, which maps wire to their spawn doors. The
+-- spawn doors (func_doors a trigger with a team filter opens) stand open, and the filters and forcefields let
 -- everyone through (WETSAND.GameplayStopped). A dead player on a team is
 -- back after HALT_RESPAWN seconds, as no respawn wave comes.
 local HALT_RESPAWN = 3
@@ -168,7 +170,10 @@ function ENT:Halt()
 	self.halted = true
 	SetGlobal2Bool("tf2.halted", true)
 	if self.state ~= S.BETWEEN_RNDS then self:StateTransition(S.BETWEEN_RNDS) end
-	for _, t in ipairs(ents.FindByClass("team_round_timer")) do t:Pause() end
+	for _, t in ipairs(ents.FindByClass("team_round_timer")) do
+		if t:InSetup() then t:FinishSetup() end
+		t:Pause()
+	end
 	WETSAND.SetSetup(false)
 	-- the doors stand open: their triggers, which would shut them as players
 	-- leave, are off until the next game's map reset restores them
