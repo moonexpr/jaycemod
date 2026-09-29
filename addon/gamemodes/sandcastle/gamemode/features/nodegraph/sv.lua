@@ -46,7 +46,12 @@ local BUDGET = 0.004 -- seconds of each tick the generation may take
 -- shut when an NPC walks it.
 -- A door's visible part is often a model parented to an invisible
 -- func_door (a grate, a shutter), so what rides on a door counts as it.
-local DOOR_CLASSES = { func_door = true, func_door_rotating = true, prop_door_rotating = true, func_movelinear = true }
+-- A spawn room's forcefield (func_respawnroomvisualizer) is left out too:
+-- it stops only the other team's players, and only while a round runs.
+local DOOR_CLASSES = {
+	func_door = true, func_door_rotating = true, prop_door_rotating = true, func_movelinear = true,
+	func_respawnroomvisualizer = true,
+}
 local PARENT_DEPTH = 4
 
 local function NotDoor(ent)
