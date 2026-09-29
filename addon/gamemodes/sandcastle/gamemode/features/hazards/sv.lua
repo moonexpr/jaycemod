@@ -55,6 +55,10 @@ function Controller:Unbind(ent)
 	self.hazards[ent] = nil
 end
 
+-- UTIL_Remove (a map's Kill, or a pumpkin's own blast) unbinds at once, but
+-- the entity lives out the frame: it may still think, be touched, or take a
+-- chained blast. Those callbacks find no hazard and do nothing.
+
 -- No attacker is the world.
 local function Credited(hazard, attacker)
 	if not IsValid(attacker) then return game.GetWorld() end
@@ -65,6 +69,7 @@ end
 -- OnTakeDamage
 function Controller:Damaged(ent, dmg)
 	local hazard = self.hazards[ent]
+	if not hazard then return end
 	local attacker = Credited(hazard, dmg:GetAttacker())
 	self:Apply(ent, hazard:Damaged({
 		team = self.combat:TeamOf(attacker),
@@ -80,10 +85,12 @@ end
 
 -- A touch. A projectile counts as its thrower's.
 function Controller:Touched(ent, other)
+	local hazard = self.hazards[ent]
+	if not hazard then return end
 	local projectile = IsProjectile(other)
 	local credited = other
 	if projectile and IsValid(other:GetOwner()) then credited = other:GetOwner() end
-	self:Apply(ent, self.hazards[ent]:Touch({
+	self:Apply(ent, hazard:Touch({
 		target = other,
 		team = self.combat:TeamOf(credited),
 		projectile = projectile,
@@ -95,7 +102,9 @@ end
 
 -- The end of a touch; other may be gone already (a player who left).
 function Controller:Left(ent, other)
-	self:Apply(ent, self.hazards[ent]:Touch({
+	local hazard = self.hazards[ent]
+	if not hazard then return end
+	self:Apply(ent, hazard:Touch({
 		target = other,
 		leaving = true,
 	}), nil)
@@ -103,11 +112,15 @@ end
 
 -- An input the hazard accepts (Hazard:Accepts); inputs carry no attacker.
 function Controller:Input(ent, name, value)
-	self:Apply(ent, self.hazards[ent]:Input(name, value), nil)
+	local hazard = self.hazards[ent]
+	if not hazard then return end
+	self:Apply(ent, hazard:Input(name, value), nil)
 end
 
 function Controller:Think(ent)
-	self:Apply(ent, self.hazards[ent]:Tick(CurTime()), nil)
+	local hazard = self.hazards[ent]
+	if not hazard then return end
+	self:Apply(ent, hazard:Tick(CurTime()), nil)
 end
 
 -- Where a blast starts: the named attachment when the model has it.
