@@ -663,7 +663,7 @@ function Controller:FindGates(field)
 				npcs:RequestRoute({
 					from = from,
 					to = target,
-					ignoreDoors = true, -- the route is looked for through the shut gates
+					ignoreBlockers = true, -- the route is looked for through the shut gates
 					strategy = HL2Path,
 					limits = HL2Path.LIMITS,
 					bot = { entIndex = 0, now = CurTime(), team = team, route = TFBot.FASTEST_ROUTE, miniBoss = false, roundWon = false, winningTeam = WETSAND.TEAM_UNASSIGNED },
@@ -722,8 +722,9 @@ end
 -- The setup zone -------------------------------------------------------------------------
 -- The ground behind the setup gates, where the attackers wander in setup
 -- (foundation.aiwar.zone): flooded over the nav mesh from the team's spawn
--- points, held back by the doors that close areas to the team (the shut
--- setup gates, the enemy's spawn doors: foundation.npc.doors) and by rises
+-- points, held back by what closes areas to the team (the shut setup
+-- gates, the enemy's spawn doors, solid brushes: the npc feature's
+-- NavBlocks) and by rises
 -- no soldier walks. A flood that reaches the checkpoint the team's cart
 -- heads for, or the enemy's spawn, got past a gate standing open, and
 -- gives no zone. Taken again every ZONE_REFRESH seconds.
@@ -762,7 +763,7 @@ function Controller:FloodZone(team)
 	end
 	local function Blocked(id)
 		local area = navmesh.GetNavAreaByID(id)
-		return area:IsBlocked(team) or npcs:DoorBlocks(area, team)
+		return area:IsBlocked(team) or npcs:NavBlocks(area, team)
 	end
 	local ids, leaked = Zone.Flood(starts, Neighbors, Blocked, function(id) return outside[id] == true end, ZONE_LIMIT)
 	if leaked then return nil end

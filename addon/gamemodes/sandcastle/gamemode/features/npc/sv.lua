@@ -9,6 +9,7 @@ local Profile = WETSAND.require("foundation.npc.profile")
 local Route = WETSAND.require("foundation.npc.route")
 local Portal = WETSAND.require("foundation.npc.portal")
 local Doors = WETSAND.require("foundation.npc.doors")
+local Brushes = WETSAND.require("foundation.npc.brushes")
 
 local NAV_MESSAGE = "wetsand_nextbot: %s has no usable navigation mesh; run .devtools/bin/nav_convert.py or nav_generate"
 local BOSS_HEALTH = "wetsand_boss_health" -- the boss bar's fraction; 0 hides it
@@ -26,8 +27,9 @@ local Controller = {
 	searches = {}, -- the Lua route searches still running, oldest first
 	neighbors = {}, -- nav area id -> its floor neighbours' ids (the mesh is fixed for the map)
 	centers = {}, -- nav area id -> its centre
-	doorBlocked = {}, -- nav area id -> the teams its doors block (foundation.npc.doors)
-	nextDoorRefresh = 0,
+	navBlocked = {}, -- nav area id -> the teams its doors and brushes block (foundation.npc.doors)
+	nextBlockerRefresh = 0,
+	brushAreas = setmetatable({}, { __mode = "k" }), -- func_brush -> { pos, areas it stands in }
 }
 
 function Controller:CheckNavMesh()
@@ -151,12 +153,15 @@ function Controller:SpawnRoomTeam(area)
 	return team
 end
 
--- Doors on the nav mesh (foundation.npc.doors): which areas each func_door
--- blocks to whom, taken again every DOOR_REFRESH seconds a route is asked
--- for, as doors open and shut with the round (setup gates, doors opened by
--- captures). The box searched reaches DOOR_FLOOR below a door, so the
--- areas on the floor it closes on count.
-local DOOR_REFRESH = 1
+-- Blockers on the nav mesh, as TF2's nav mesh has them
+-- (CTFNavMesh::ComputeBlockedAreas): which areas each func_door blocks to
+-- whom (foundation.npc.doors), and which a solid func_brush stands in
+-- (foundation.npc.brushes), taken again every BLOCKER_REFRESH seconds a
+-- route is asked for, as doors open and shut and brushes are toggled with
+-- the round (setup gates, doors opened by captures, walls map logic turns
+-- on). The box searched reaches DOOR_FLOOR below a door, so the areas on
+-- the floor it closes on count.
+local BLOCKER_REFRESH = 1
 local DOOR_FLOOR = Vector(0, 0, 32)
 local UNASSIGNED = WETSAND.TEAM_UNASSIGNED
 
@@ -186,10 +191,54 @@ local function DoorTriggers()
 	return triggers
 end
 
-function Controller:RefreshDoors(now)
-	if now < self.nextDoorRefresh then return end
-	self.nextDoorRefresh = now + DOOR_REFRESH
+local function Block(blocked, area, team)
+	local id = area:GetID()
+	blocked[id] = blocked[id] or {}
+	table.insert(blocked[id], team)
+end
+
+-- TestAndBlockOverlappingAreas: the areas the brush stands in.
+local NW, NE, SE, SW = 0, 1, 2, 3
+
+local function BrushIn(brush, area)
+	local from, to, mins, maxs = Brushes.Sweep(area:GetCorner(NW), area:GetCorner(NE), area:GetCorner(SE), area:GetCorner(SW),
+		area:GetSizeX(), area:GetSizeY())
+	local tr = util.TraceHull({
+		start = from,
+		endpos = to,
+		mins = Vector(mins.x, mins.y, mins.z),
+		maxs = Vector(maxs.x, maxs.y, maxs.z),
+		mask = MASK_PLAYERSOLID,
+		filter = function(ent) return ent == brush end,
+		ignoreworld = true,
+	})
+	return tr.Hit and tr.Entity == brush
+end
+
+-- A brush's areas, swept again only once it has moved: a map may have
+-- many func_brushes, some over hundreds of areas.
+function Controller:BrushAreas(brush)
+	local pos, cached = brush:GetPos(), self.brushAreas[brush]
+	if cached and cached.pos == pos then return cached.areas end
+	local mins, maxs = brush:WorldSpaceAABB()
+	local areas = {}
+	for _, area in ipairs(navmesh.FindInBox(mins, maxs)) do
+		if BrushIn(brush, area) then areas[#areas + 1] = area end
+	end
+	self.brushAreas[brush] = { pos = pos, areas = areas }
+	return areas
+end
+
+function Controller:RefreshBlockers(now)
+	if now < self.nextBlockerRefresh then return end
+	self.nextBlockerRefresh = now + BLOCKER_REFRESH
 	local blocked, triggers = {}, DoorTriggers()
+	-- exactly func_brush: func_respawnroomvisualizer, a func_brush too, is not one
+	for _, brush in ipairs(ents.FindByClass("func_brush")) do
+		if brush:IsSolid() then
+			for _, area in ipairs(self:BrushAreas(brush)) do Block(blocked, area, Doors.ANY) end
+		end
+	end
 	for _, door in ipairs(ents.FindByClass("func_door*")) do
 		local mins, maxs = door:WorldSpaceAABB()
 		local state = { closed = Doors.IsClosed(door:GetInternalVariable("m_toggle_state")), controlled = false }
@@ -201,20 +250,16 @@ function Controller:RefreshDoors(now)
 		end
 		local team = Doors.BlockedTeam(state, EnemyOf)
 		if team then
-			for _, area in ipairs(navmesh.FindInBox(mins - DOOR_FLOOR, maxs)) do
-				local id = area:GetID()
-				blocked[id] = blocked[id] or {}
-				table.insert(blocked[id], team)
-			end
+			for _, area in ipairs(navmesh.FindInBox(mins - DOOR_FLOOR, maxs)) do Block(blocked, area, team) end
 		end
 	end
-	self.doorBlocked = blocked
+	self.navBlocked = blocked
 end
 
--- Whether a door closes the area to the team.
-function Controller:DoorBlocks(area, team)
-	self:RefreshDoors(CurTime())
-	return Doors.Blocks(self.doorBlocked[area:GetID()], team)
+-- Whether a door or brush closes the area to the team.
+function Controller:NavBlocks(area, team)
+	self:RefreshBlockers(CurTime())
+	return Doors.Blocks(self.navBlocked[area:GetID()], team)
 end
 
 local function ForgetSpawnRooms()
@@ -242,15 +287,15 @@ function Controller:FillStep(step, area, fromArea, ladder, length, fromCostSoFar
 end
 
 -- The cost callback Path:Compute takes (IPathCost), for a NextBot. bot is
--- the strategy's bot table; its `now` is kept current. Areas a door closes
--- to the bot's team are not traversable. While a path profile
+-- the strategy's bot table; its `now` is kept current. Areas a door or a
+-- brush closes to the bot's team are not traversable. While a path profile
 -- measures a compute, ent.pathProbe counts the calls and their time.
 function Controller:EnginePathCost(ent, strategy, limits, bot)
 	local step = {}
-	self:RefreshDoors(CurTime())
+	self:RefreshBlockers(CurTime())
 	local team = WETSAND.TeamNumber(ent)
 	local function Traversable(area)
-		return ent.loco:IsAreaTraversable(area) and not Doors.Blocks(self.doorBlocked[area:GetID()], team)
+		return ent.loco:IsAreaTraversable(area) and not Doors.Blocks(self.navBlocked[area:GetID()], team)
 	end
 	local function Cost(area, fromArea, ladder, elevator, length)
 		self:FillStep(step, area, fromArea, ladder, length, IsValid(fromArea) and fromArea:GetCostSoFar() or 0, Traversable)
@@ -313,8 +358,8 @@ end
 
 -- request = { from, to (positions), strategy, limits, bot (the strategy's,
 -- with team), avoid(area) -> bool (optional: areas to route around, as
--- if blocked; the goal's area is never avoided), ignoreDoors (optional:
--- route through doors shut to the team), onDone(route, found) } where route is the list of nav areas
+-- if blocked; the goal's area is never avoided), ignoreBlockers (optional:
+-- route through doors shut to the team and solid brushes), onDone(route, found) } where route is the list of nav areas
 -- from the start's to the goal's (found), or to the one that came closest
 -- when the goal is out of reach, and nil when either end is off the mesh.
 local NEAREST_AREA_RANGE = 200
@@ -341,8 +386,8 @@ function Controller:RequestRoute(request)
 		return
 	end
 	local team = request.bot.team or NOBODY
-	self:RefreshDoors(CurTime())
-	local avoid, goalId, ignoreDoors = request.avoid, goal:GetID(), request.ignoreDoors
+	self:RefreshBlockers(CurTime())
+	local avoid, goalId, ignoreBlockers = request.avoid, goal:GetID(), request.ignoreBlockers
 	local graph = setmetatable({
 		controller = self,
 		step = {},
@@ -352,7 +397,7 @@ function Controller:RequestRoute(request)
 		goalPos = request.to,
 		traversable = function(area)
 			if avoid and area:GetID() ~= goalId and avoid(area) then return false end
-			if not ignoreDoors and Doors.Blocks(self.doorBlocked[area:GetID()], team) then return false end
+			if not ignoreBlockers and Doors.Blocks(self.navBlocked[area:GetID()], team) then return false end
 			return not area:IsBlocked(team)
 		end,
 	}, NavGraph)
