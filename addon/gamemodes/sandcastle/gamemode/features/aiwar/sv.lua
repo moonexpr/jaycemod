@@ -2015,11 +2015,20 @@ concommand.Add("wetsand_aiwar_report", function(ply)
 	if IsValid(ply) then ply:ChatPrint("AI war: report printed to your console") end
 end, nil, "Print every AI war soldier's role, action, route and last trip to the console")
 
+-- The overlay is the nbdebug feature's AIWAR layer (wetsand_nb_debug AIWAR),
+-- drawn with the other NPC debug layers; it sets ply.wetsandAiwarDebug.
 concommand.Add("wetsand_aiwar_debug", function(ply)
 	if not IsValid(ply) or not ply:IsAdmin() then return end
-	ply.wetsandAiwarDebug = not ply.wetsandAiwarDebug
-	ply:ChatPrint("AI war overlay " .. (ply.wetsandAiwarDebug and "on" or "off"))
-end, nil, "Toggle drawing each AI war soldier's route, goal and state")
+	WETSAND.Feature("nbdebug"):ToggleLayer(ply, WETSAND.require("foundation.npc.debug").AIWAR)
+end, nil, "Toggle drawing each AI war soldier's route, goal and state (wetsand_nb_debug AIWAR)")
+
+-- The soldiers' Npcs, for the nbdebug feature's other layers (PATH, COST,
+-- BEHAVIOR, NAV): see the npc controller's WetsandNbDebugNpcs.
+hook.Add("WetsandNbDebugNpcs", "wetsand_aiwar", function(found)
+	for ent, entry in pairs(Controller.soldiers) do
+		if IsValid(ent) then found[ent] = entry.npc end
+	end
+end)
 
 -- Tracing a soldier's bridge (docs/aiwar-command.md §6): every query DrGBase
 -- asks its orders, with the answer, and every event it tells them, printed
