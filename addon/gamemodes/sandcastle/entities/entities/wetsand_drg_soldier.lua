@@ -26,11 +26,17 @@ local GOAL_TOLERANCE = 32
 if SERVER then
 	AddCSLuaFile()
 
-	-- Walks the controller's target, if it has one: true when it does.
-	function ENT:WetsandSteer()
+	-- Walks the controller's target, if it has one, or, there, faces the
+	-- enemy so it can fire (a soldier holding its ground): true when it has
+	-- a target.
+	function ENT:WetsandSteer(enemy)
 		local target = self.WetsandTarget
 		if not target then return false end
-		self.WetsandMoveResult = self:FollowPath(target, GOAL_TOLERANCE)
+		if self:GetPos():DistToSqr(target) > GOAL_TOLERANCE * GOAL_TOLERANCE then
+			self.WetsandMoveResult = self:FollowPath(target, GOAL_TOLERANCE)
+		elseif IsValid(enemy) then
+			self:FaceTowards(enemy)
+		end
 		return true
 	end
 
@@ -42,16 +48,16 @@ if SERVER then
 	-- An enemy: with a target the soldier keeps to it, and HandleEnemy
 	-- still aims and fires at the enemy in sight; without one, DrGBase's
 	-- own chase, retreat and facing.
-	function ENT:OnChaseEnemy()
-		return self:WetsandSteer()
+	function ENT:OnChaseEnemy(enemy)
+		return self:WetsandSteer(enemy)
 	end
 
-	function ENT:OnAvoidEnemy()
-		return self:WetsandSteer()
+	function ENT:OnAvoidEnemy(enemy)
+		return self:WetsandSteer(enemy)
 	end
 
-	function ENT:OnIdleEnemy()
-		return self:WetsandSteer()
+	function ENT:OnIdleEnemy(enemy)
+		return self:WetsandSteer(enemy)
 	end
 
 	-- Returning true skips DrGBase's firing: the humiliated do not attack.

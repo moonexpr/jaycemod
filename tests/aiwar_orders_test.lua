@@ -169,6 +169,78 @@ T.test("a route planned before a door shut is planned again", function()
 	T.eq(#me.requests, 2, "another, around the door")
 end)
 
+-- Tactics in a fight.
+
+local Tactics = T.require("foundation.aiwar.tactics")
+
+local function Fighting(t)
+	local me, npc, war, member = Enlist(t)
+	me.enemy = true
+	me.enemyPos = t.enemyAt or P(2000, 300)
+	return me, npc, war, member
+end
+
+T.test("an attacker in contact bounds to cover toward its goal", function()
+	local cover = P(1300, 60)
+	local me, npc, _, member = Fighting({ role = AiWar.ESCORT, pos = P(1000, 0), covers = { cover }, walkable = function() return true end })
+	member.fireTeam.index = 0
+	Tick(me, npc, 2)
+	T.eq(npc:State().fighting, true, "fighting")
+	Near(me.moving, cover, "to the cover ahead")
+	T.eq(npc:State().tactic, "bounding", "bounding")
+end)
+
+T.test("the other element holds and fires while its mates bound", function()
+	local me, npc, _, member = Fighting({ role = AiWar.ESCORT, pos = P(1000, 0), walkable = function() return true end })
+	member.fireTeam.index = 0
+	member.fireTeam.members[member.place] = nil
+	member.place = 1
+	member.fireTeam.members[1] = member
+	member.fireTeam.members[0] = { place = 0, fireTeam = member.fireTeam } -- a mate still bounding
+	Tick(me, npc, 2)
+	T.eq(npc:State().tactic, "overwatch", "overwatch")
+	T.eq(me.holding, true, "holding its ground")
+end)
+
+T.test("a flanking team swings out beside the enemy first", function()
+	local me, npc, _, member = Fighting({ role = AiWar.ESCORT, pos = P(1000, 0), enemyAt = P(2000, 0), walkable = function() return true end })
+	member.fireTeam.index = 1
+	Tick(me, npc, 2)
+	T.eq(npc:State().tactic, "flanking", "flanking")
+	T.near(math.abs(me.moving.y), Tactics.FLANK_OFFSET, 1, "off to the enemy's side")
+end)
+
+T.test("a defender in contact takes cover near its post, and moves when hurt", function()
+	local first, second = P(1500, 100), P(1450, -120)
+	local me, npc = Fighting({ team = RED, role = AiWar.DEFEND, pos = P(1500, 0), enemyAt = P(900, 0), covers = { first, second }, walkable = function() return true end })
+	Tick(me, npc, 2)
+	T.eq(npc:State().tactic, "holding cover", "holding")
+	Near(me.moving, first, "to cover")
+	me.hurtAt = me.now
+	Tick(me, npc, 8)
+	Near(me.moving, second, "to other cover once hurt")
+end)
+
+T.test("a defender's team falls back when the enemy is on its post", function()
+	local member0
+	local me, npc, _, member = Fighting({ team = RED, role = AiWar.DEFEND, pos = P(1500, 0), walkable = function() return true end })
+	local post = Orders.Goal(Field({}), member)
+	me.enemyPos = { x = post.x + 50, y = post.y, z = 0 }
+	Tick(me, npc, 2)
+	T.eq(member.fireTeam.fallback, 1, "a step back")
+	T.eq(npc:State().tactic, "falling back, step 1", "shown")
+end)
+
+T.test("a trip to the objective ends on contact, for the fight", function()
+	local me, npc = Enlist({ role = AiWar.ESCORT, pos = P(0, 0), walkable = function() return true end })
+	Tick(me, npc, 2)
+	me.enemy = true
+	me.enemyPos = P(700, 0)
+	Tick(me, npc, 2)
+	T.eq(npc:State().trip, "contact", "the trip ended")
+	T.eq(npc:State().fighting, true, "into the fight")
+end)
+
 -- Escorts follow their cart.
 
 T.test("an escort that can follows its cart, and stops when setup comes", function()

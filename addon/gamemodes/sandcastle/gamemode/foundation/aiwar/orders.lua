@@ -26,6 +26,7 @@ local pairs = pairs
 local N = require("foundation.npc")
 local AiWar = require("foundation.aiwar")
 local Track = require("foundation.aiwar.track")
+local Tactics = require("foundation.aiwar.tactics")
 module(...)
 
 KIND = "aiwar"
@@ -159,6 +160,7 @@ ROLES = {
 	[AiWar.BLOCK] = {
 		name = "Block",
 		patrols = true,
+		tactic = "attack",
 		arrive = PUSH_ARRIVE,
 		leash = PUSH_LEASH,
 		rushes = true,
@@ -176,6 +178,7 @@ ROLES = {
 	[AiWar.ESCORT] = {
 		name = "Escort",
 		follows = true,
+		tactic = "attack",
 		arrive = ESCORT_ARRIVE,
 		leash = ESCORT_LEASH,
 		rushes = false,
@@ -192,6 +195,7 @@ ROLES = {
 	[AiWar.DEFEND] = {
 		name = "EstablishLine",
 		patrols = true,
+		tactic = "defend",
 		arrive = DEFEND_ARRIVE,
 		leash = DEFEND_LEASH,
 		rushes = false,
@@ -212,6 +216,18 @@ ROLES = {
 function Goal(field, member)
 	local role = ROLES[member.role]
 	return role and role.Goal(field, member)
+end
+
+-- The member's fire team's contact, reporting the enemy the member sees:
+-- what one sees, its team knows (foundation.aiwar.tactics).
+function TeamContact(state, me)
+	local fireTeam = state.member.fireTeam
+	if not fireTeam then return nil end
+	if me:HasEnemy() then
+		local enemy = me:EnemyPosition()
+		if enemy then Tactics.Report(fireTeam, enemy, me:Now()) end
+	end
+	return Tactics.Contact(fireTeam, me:Now())
 end
 
 local function OrdersRun(field)
@@ -427,6 +443,7 @@ end
 function Travel:Update(me)
 	local state, role = self.state, self.role
 	local field = state.war:Field()
+	if not self.spot and role.tactic and TeamContact(state, me) then return self:End("contact") end
 	local goal, over = self:Goal(me, field)
 	self.gait = (self.spot and WALK) or (field and field.setup and PANIC) or (role.rushes and RUSH) or RUN
 	if goal == nil then
@@ -572,6 +589,11 @@ function Objective:Update(me)
 		return self:Continue()
 	end
 	local range = me:RangeTo(goal)
+	if self.role.tactic and not field.setup then
+		local contact = TeamContact(state, me)
+		if contact then return self:Fight(me, goal, contact) end
+		self:EndFight()
+	end
 	if self.role.patrols then
 		if self.anchor and AnchorHolds(self.anchor, field, state.member, goal) and range <= PATROL_RADIUS + self.role.arrive then
 			return self:Patrol(me, field, goal)
@@ -601,6 +623,90 @@ function Objective:Update(me)
 		return self:Continue()
 	end
 	return self:SuspendFor(Travel:New(state, self.role), "to the objective")
+end
+
+-- A fight, by the role's tactic (foundation.aiwar.tactics).
+BOUND_RADIUS, COVER_RADIUS, SPOT_ARRIVE = 200, 320, 48
+FLANK_TIME, FLANK_ARRIVE = 15, 160
+
+function Objective:Fight(me, goal, contact)
+	local state, now = self.state, me:Now()
+	local fireTeam = state.member.fireTeam
+	state.fighting = true
+	state.patrolling = false
+	self.anchor = nil
+	if self.role.tactic == "attack" then return self:Attack(me, goal, contact, fireTeam, now) end
+	return self:Defend(me, goal, contact, fireTeam, now)
+end
+
+-- Bounding overwatch toward the goal, after a flank for a flanking team.
+function Objective:Attack(me, goal, contact, fireTeam, now)
+	local state = self.state
+	if Tactics.Flanks(fireTeam) and not fireTeam.flankDone then
+		if not fireTeam.flank then
+			fireTeam.flank = Tactics.FlankPoint(me:Position(), contact.pos, Tactics.FlankSide(fireTeam))
+			fireTeam.flankUntil = now + FLANK_TIME
+		end
+		if now < fireTeam.flankUntil and me:RangeTo(fireTeam.flank) > FLANK_ARRIVE then
+			state.tactic = "flanking"
+			me:MoveTo(fireTeam.flank, RUN)
+			return self:Continue()
+		end
+		fireTeam.flankDone = true
+	end
+	local members = state.war:FireTeamMembers(fireTeam)
+	Tactics.Bound(fireTeam, now)
+	Tactics.UpdateBound(fireTeam, members, now)
+	local bound = fireTeam.bound
+	if Tactics.Element(state.member) ~= bound.moving then
+		state.tactic = "overwatch"
+		me:Hold()
+		return self:Continue()
+	end
+	if self.boundFor ~= bound then
+		local ahead = Tactics.Toward(me:Position(), goal, Tactics.BOUND_DISTANCE)
+		self.boundSpot = me:CoverSpot(ahead, BOUND_RADIUS, contact.pos) or ahead
+		self.boundFor = bound
+	end
+	if me:RangeTo(self.boundSpot) <= SPOT_ARRIVE then
+		Tactics.Arrived(fireTeam, state.member)
+		state.tactic = "bounded; covering"
+		me:Hold()
+	else
+		state.tactic = "bounding"
+		me:MoveTo(self.boundSpot, RUN)
+	end
+	return self:Continue()
+end
+
+-- Holding the line from cover near the post, falling back when it breaks.
+function Objective:Defend(me, post, contact, fireTeam, now)
+	local state = self.state
+	local members = state.war:FireTeamMembers(fireTeam)
+	if Tactics.ShouldFallBack(fireTeam, #members, Distance(contact.pos, post), now) then Tactics.FallBack(fireTeam, now) end
+	local steps = fireTeam.fallback or 0
+	if not self.cover or self.coverSteps ~= steps or me:HurtSince(self.coverAt) then
+		local anchor = Tactics.FallbackPoint(post, contact.pos, steps)
+		self.cover = me:CoverSpot(anchor, COVER_RADIUS, contact.pos, self.cover) or anchor
+		self.coverAt, self.coverSteps = now, steps
+	end
+	state.tactic = steps > 0 and ("falling back, step " .. steps) or "holding cover"
+	if me:RangeTo(self.cover) > SPOT_ARRIVE then me:MoveTo(self.cover, RUN) else me:Hold() end
+	return self:Continue()
+end
+
+-- Contact lost: the team stands down and regroups.
+function Objective:EndFight()
+	local state = self.state
+	if not state.fighting then return end
+	state.fighting, state.tactic = false, nil
+	self.boundSpot, self.boundFor, self.cover = nil, nil, nil
+	local fireTeam = state.member.fireTeam
+	if fireTeam then
+		Tactics.Stand(fireTeam)
+		fireTeam.flankDone = nil
+		Tactics.Regroup(fireTeam)
+	end
 end
 
 function Objective:OnResume(me, interrupting)

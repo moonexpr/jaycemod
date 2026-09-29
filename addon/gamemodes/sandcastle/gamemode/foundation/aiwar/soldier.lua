@@ -40,6 +40,12 @@
 --     rebels follow Gordon (keeping formation near it, fighting as it
 --     goes); asking again keeps it following
 --   Unfollow(): stop following the cart
+--   EnemyPosition() -> where the enemy I have is, or nil
+--   CoverSpot(center, radius, threat, exclude) -> a spot within radius of
+--     center that the threat (a position) cannot see, nearest center first,
+--     not within reach of exclude; or nil
+--   HurtSince(t) -> whether I have been hurt after time t
+--   Hold(): stay where I am, fighting from here
 --   RouteStale() -> whether the route I was given was planned before a
 --     door shut or a brush was switched on, and may lead into it
 --   Hop(p) -> whether I will be carried to p: only where a player could
@@ -62,6 +68,10 @@ METHODS = {
 	"PassBlocker",
 	"Detour",
 	"WanderSpot",
+	"EnemyPosition",
+	"CoverSpot",
+	"HurtSince",
+	"Hold",
 	"FollowCart",
 	"Unfollow",
 	"PlansRoutes",

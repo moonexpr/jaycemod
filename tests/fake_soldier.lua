@@ -45,6 +45,8 @@ function Fake.Soldier(t)
 		patrolSpots = t.patrolSpots,
 		plansRoutes = t.plansRoutes,
 		follows = t.follows,
+		enemyPos = t.enemyPos,
+		covers = t.covers,
 		wandered = 0,
 		hops = {},
 		requests = {},
@@ -115,6 +117,22 @@ function Soldier:FollowCart()
 end
 
 function Soldier:Unfollow() self.following = false end
+
+-- enemyPos: where the enemy is (default: none); covers: the spots
+-- CoverSpot hands out in turn (default: none); hurtAt: when last hurt.
+function Soldier:EnemyPosition() return self.enemyPos end
+
+function Soldier:CoverSpot(center, radius, threat, exclude)
+	self.covered = (self.covered or 0) + 1
+	return (self.covers or {})[self.covered]
+end
+
+function Soldier:HurtSince(t) return self.hurtAt ~= nil and self.hurtAt > (t or 0) end
+
+function Soldier:Hold()
+	self.holding = true
+	self.moving = self.pos
+end
 
 function Soldier:WanderSpot()
 	self.wandered = self.wandered + 1

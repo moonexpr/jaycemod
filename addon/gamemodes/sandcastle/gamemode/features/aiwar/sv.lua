@@ -344,6 +344,43 @@ function Soldier:WanderSpot()
 	return nil
 end
 
+function Soldier:EnemyPosition()
+	local enemy = self.ent:GetEnemy()
+	return IsValid(enemy) and Point(enemy:GetPos()) or nil
+end
+
+function Soldier:HurtSince(t)
+	return self.hurtAt ~= nil and self.hurtAt > (t or 0)
+end
+
+function Soldier:Hold()
+	self:MoveTo(self:Position(), self.gait)
+end
+
+-- Cover: the nav mesh's hiding spots in cover (CNavArea::GetHidingSpots)
+-- within radius of center, that the threat cannot see from eye height to
+-- a crouching soldier's chest, nearest center first, COVER_EXCLUDE clear of
+-- the spot to leave.
+local HIDING_IN_COVER_SPOT = 1
+local THREAT_EYE, COVER_CHEST = Vector(0, 0, 64), Vector(0, 0, 36)
+local COVER_EXCLUDE = 96
+
+function Soldier:CoverSpot(center, radius, threat, exclude)
+	local c, t = ToVector(center), ToVector(threat)
+	local best, bestDistance
+	for _, area in ipairs(navmesh.Find(c, radius, 96, 96)) do
+		for _, spot in ipairs(area:GetHidingSpots(HIDING_IN_COVER_SPOT) or {}) do
+			local d = spot:Distance(c)
+			if d <= radius and (not bestDistance or d < bestDistance)
+				and not (exclude and spot:Distance(ToVector(exclude)) < COVER_EXCLUDE) then
+				local tr = util.TraceLine({ start = t + THREAT_EYE, endpos = spot + COVER_CHEST, mask = MASK_SOLID_BRUSHONLY })
+				if tr.Hit then best, bestDistance = spot, d end
+			end
+		end
+	end
+	return best and Point(best) or nil
+end
+
 -- Poses and following the cart are not yet made for DrGBase soldiers.
 function Soldier:Pose() return nil end
 function Soldier:Unpose() end
@@ -1232,7 +1269,11 @@ function Controller:Describe(ent, entry)
 		"Enemy: " .. (soldier:HasEnemy() and "in sight" or "none in sight"),
 	}
 	if state.wandering then lines[#lines + 1] = "Setup: wandering until it ends" end
-	if state.following then lines[#lines + 1] = "Following: its cart, as rebels follow Gordon (ai_goal_follow)" end
+	if state.following then lines[#lines + 1] = "Following: its cart" end
+	if state.fighting then
+		local fireTeam = member.fireTeam
+		lines[#lines + 1] = string.format("Fighting: %s (fire team %s %d)", state.tactic or "?", fireTeam and fireTeam.role or "-", fireTeam and fireTeam.index or 0)
+	end
 	if state.patrolling then lines[#lines + 1] = "Patrol: walking its rounds near its post until the cart moves" end
 	if entry.disarmed then lines[#lines + 1] = "Humiliated: cannot attack, fears the winners" end
 	if soldier.failures then
@@ -1393,6 +1434,11 @@ end)
 
 hook.Add("EntityRemoved", "wetsand_aiwar", function(ent)
 	if Controller.war then Controller:Discharge(ent) end
+end)
+
+hook.Add("EntityTakeDamage", "wetsand_aiwar", function(target, dmg)
+	local entry = Controller.war and Controller.soldiers[target]
+	if entry and dmg:GetDamage() > 0 then entry.soldier.hurtAt = CurTime() end
 end)
 
 hook.Add("OnNPCKilled", "wetsand_aiwar", function(ent)
