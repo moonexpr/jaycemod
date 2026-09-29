@@ -985,7 +985,7 @@ function Controller:FloodZone(team)
 	end
 	local function Blocked(id)
 		local area = navmesh.GetNavAreaByID(id)
-		return area:IsBlocked(team) or npcs:NavBlocks(area, team) or npcs:DoorWallIn(area)
+		return npcs:EngineBlocks(area, team) or npcs:NavBlocks(area, team) or npcs:DoorWallIn(area)
 	end
 	local ids, leaked = Zone.Flood(starts, Neighbors, Blocked, function(id) return outside[id] == true end, ZONE_LIMIT)
 	if leaked then return nil end

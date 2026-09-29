@@ -228,6 +228,8 @@ function Controller:RefreshBlockers(now)
 	if now < self.nextBlockerRefresh then return end
 	self.nextBlockerRefresh = now + BLOCKER_REFRESH
 	local blocked, triggers, states, walls = {}, DoorTriggers(), setmetatable({}, { __mode = "k" }), {}
+	local doorAreas = {}
+	self.doorAreas = doorAreas
 	self.doorStates = states
 	self.doorWalls = walls
 	-- exactly func_brush: func_respawnroomvisualizer, a func_brush too, is not one
@@ -252,11 +254,10 @@ function Controller:RefreshBlockers(now)
 		states[door] = state
 		local team = Doors.BlockedTeam(state)
 		state.blocks = team
-		if team or Doors.IsWall(state) then
-			for _, area in ipairs(navmesh.FindInBox(mins - DOOR_FLOOR, maxs)) do
-				if team then Block(blocked, area, team) end
-				if Doors.IsWall(state) then walls[area:GetID()] = true end
-			end
+		for _, area in ipairs(navmesh.FindInBox(mins - DOOR_FLOOR, maxs)) do
+			doorAreas[area:GetID()] = true
+			if team then Block(blocked, area, team) end
+			if Doors.IsWall(state) then walls[area:GetID()] = true end
 		end
 	end
 	self.navBlocked = blocked
@@ -288,6 +289,17 @@ end
 function Controller:DoorWallIn(area)
 	self:RefreshBlockers(CurTime())
 	return self.doorWalls ~= nil and self.doorWalls[area:GetID()] == true
+end
+
+-- The engine's own blocked flag (CNavArea::IsBlocked), without what it
+-- makes of doors: it marks an area blocked wherever its hull test finds a
+-- solid entity, a shut door among them, and TF2 maps put an area under
+-- every door. Doors are judged by foundation.npc.doors instead; the
+-- map's func_nav_blockers still count.
+function Controller:EngineBlocks(area, team)
+	if not area:IsBlocked(team) then return false end
+	self:RefreshBlockers(CurTime())
+	return not (self.doorAreas and self.doorAreas[area:GetID()])
 end
 
 -- Whether a door or brush closes the area to the team.
@@ -432,7 +444,7 @@ function Controller:RequestRoute(request)
 		traversable = function(area)
 			if avoid and area:GetID() ~= goalId and avoid(area) then return false end
 			if not ignoreBlockers and Doors.Blocks(self.navBlocked[area:GetID()], team) then return false end
-			return not area:IsBlocked(team)
+			return not self:EngineBlocks(area, team)
 		end,
 	}, NavGraph)
 	local search = Route.New(graph, start:GetID(), goal:GetID(), navmesh.GetNavAreaCount())
