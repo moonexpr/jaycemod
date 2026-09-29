@@ -72,6 +72,12 @@ CLIMB_RISE = 12
 -- A soldier stuck against a solid entity (a cart, a prop) walks to a point
 -- beside it, for up to this long, then goes on along its route.
 DETOUR_TIME = 3
+
+-- In setup the attackers cannot push their cart (TF2 lets no point be
+-- captured) and the gates are shut, so they wander near where they are:
+-- to a spot (the soldier port's WanderSpot), resting WANDER_REST there,
+-- giving a spot up after WANDER_GIVE_UP; when setup ends they go to work.
+WANDER_ARRIVE, WANDER_REST, WANDER_GIVE_UP = 48, 3, 8
 RETRY_WAIT = 1 -- after a failed trip, before the next
 
 local Distance = Track.Distance
@@ -168,6 +174,11 @@ end
 
 local function OrdersRun(field)
 	return field ~= nil and field.phase.orders
+end
+
+-- An attacker (a team with a cart the other side lacks) in setup.
+local function WaitingForSetup(field, member)
+	return field.setup == true and field.carts[member.team] ~= nil and field.carts[AiWar.EnemyOf(member.team)] == nil
 end
 
 -------------------------------------------------------------------------------
@@ -345,6 +356,7 @@ function Travel:Update(me)
 	if state.member.role == nil or ROLES[state.member.role] ~= role or not OrdersRun(field) then
 		return self:End("orders changed")
 	end
+	if WaitingForSetup(field, state.member) then return self:End("setup began") end
 	local goal = role.Goal(field, state.member)
 	if goal == nil then return self:End("no goal") end
 	state.goal = goal
@@ -386,10 +398,40 @@ function Objective:Init(state)
 	self.retryAt = 0
 end
 
+-- Setup's wandering: a spot, a walk there, a rest, another spot.
+function Objective:Wander(me)
+	local state, now = self.state, me:Now()
+	state.wandering = true
+	local wander = self.wander
+	if wander and ((wander.restUntil and now >= wander.restUntil) or (not wander.restUntil and now >= wander.giveUpAt)) then
+		wander = nil
+	end
+	if not wander then
+		local spot = me:WanderSpot()
+		if not spot then
+			me:Release()
+			return self:Continue()
+		end
+		wander = { spot = spot, giveUpAt = now + WANDER_GIVE_UP }
+		self.wander = wander
+	end
+	state.goal = wander.spot
+	if wander.restUntil or me:RangeTo(wander.spot) <= WANDER_ARRIVE then
+		wander.restUntil = wander.restUntil or now + WANDER_REST
+		me:Release()
+		return self:Continue()
+	end
+	me:MoveTo(wander.spot)
+	return self:Continue()
+end
+
 function Objective:Update(me)
 	local state = self.state
 	if state.member.role ~= self.roleName then return self:ChangeTo(ObjectiveFor(state), "new role") end
 	local field = state.war:Field()
+	if OrdersRun(field) and WaitingForSetup(field, state.member) then return self:Wander(me) end
+	state.wandering = false
+	self.wander = nil
 	local goal = OrdersRun(field) and self.role.Goal(field, state.member)
 	if not goal then
 		me:Release()

@@ -25,6 +25,8 @@
 --   Detour(p) -> a point beside the solid entity (not map geometry) that
 --     stands between me and p and would stop a player too (a cart, a
 --     prop), which I can walk to; or nil
+--   WanderSpot() -> a spot near me I can walk to in a straight line, picked
+--     at random, or nil
 --   Hop(p) -> whether I will be carried to p: only where a player could
 --     walk from here to p, so never through a wall, door or gate; I am
 --     moved there over a moment, running, and MoveTo and Release wait
@@ -44,5 +46,6 @@ METHODS = {
 	"Release",
 	"PassBlocker",
 	"Detour",
+	"WanderSpot",
 	"Hop",
 }

@@ -142,6 +142,47 @@ T.test("without gates, or once setup ends, defenders hold the track as before", 
 	T.eq(Orders.Goal(SetupField({ GATE }), { team = BLUE, role = AiWar.PUSH, slot = 0 }) ~= nil, true, "attackers unchanged")
 end)
 
+-- Setup: the attackers wander near where they are until it ends.
+
+T.test("in setup an attacker wanders from spot to spot, resting at each, with no route searches", function()
+	local spots = { P(100, 0), P(0, 150) }
+	local field = SetupField({})
+	local me, npc, war = Enlist({ role = AiWar.PUSH, field = field, wanderSpots = spots })
+	Tick(me, npc)
+	Near(me.moving, spots[1], "to a spot")
+	me.pos = P(100, 0)
+	Tick(me, npc)
+	T.eq(me.moving, nil, "resting there")
+	Tick(me, npc, Orders.WANDER_REST / TICK)
+	Near(me.moving, spots[2], "then on to another")
+	T.eq(#me.requests, 0, "no routes")
+	T.eq(npc:State().wandering, true, "shown as wandering")
+end)
+
+T.test("a wander spot not reached in time is given up for another", function()
+	local spots = { P(100, 0), P(0, 150) }
+	local me, npc = Enlist({ role = AiWar.ESCORT, field = SetupField({}), wanderSpots = spots })
+	Tick(me, npc)
+	Tick(me, npc, Orders.WANDER_GIVE_UP / TICK + 1)
+	Near(me.moving, spots[2], "another spot")
+end)
+
+T.test("when setup ends the attackers head for the cart", function()
+	local field = SetupField({})
+	local me, npc, war = Enlist({ role = AiWar.PUSH, field = field, wanderSpots = { P(100, 0) } })
+	Tick(me, npc)
+	war:SetField(Field({}))
+	Tick(me, npc, 3)
+	T.eq(#me.requests, 1, "a route to the cart")
+	T.eq(npc:State().wandering, false, "no longer wandering")
+end)
+
+T.test("the defenders do not wander in setup", function()
+	local me, npc = Enlist({ team = RED, role = AiWar.DEFEND, field = SetupField({}), wanderSpots = { P(100, 0) } })
+	Tick(me, npc, 2)
+	T.eq(me.wandered, 0, "no wandering")
+end)
+
 -- Behaviour -----------------------------------------------------------------
 
 T.test("a pusher asks for a route to the cart and walks it waypoint by waypoint", function()

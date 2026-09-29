@@ -257,6 +257,21 @@ function Soldier:Detour(p)
 	return nil
 end
 
+-- A random spot on the nav mesh within WANDER_RADIUS that I can walk to in
+-- a straight line (so not beyond a shut gate), or nil after a few tries.
+local WANDER_RADIUS, WANDER_TRIES = 300, 6
+
+function Soldier:WanderSpot()
+	local step = HL2Path.LIMITS.stepHeight
+	local areas = navmesh.Find(self.ent:GetPos(), WANDER_RADIUS, step, step)
+	if #areas == 0 then return nil end
+	for _ = 1, WANDER_TRIES do
+		local spot = Point(areas[math.random(#areas)]:GetRandomPoint())
+		if self:CanWalkTo(spot) then return spot end
+	end
+	return nil
+end
+
 function Soldier:Hop(p)
 	local ent, controller = self.ent, self.controller
 	local from, to = ent:GetPos(), OnFloor(ToVector(p))
@@ -738,6 +753,7 @@ function Controller:Describe(ent, entry)
 		"Movement: " .. (soldier:RunState() or "left to the engine's AI"),
 		"Enemy: " .. (soldier:HasEnemy() and "in sight" or "none in sight"),
 	}
+	if state.wandering then lines[#lines + 1] = "Setup: wandering until it ends" end
 	if state.hops then lines[#lines + 1] = "Hops: " .. state.hops end
 	if state.passed then lines[#lines + 1] = "Let through: " .. state.passed .. " NPC-only blocker(s)" end
 	local blocked = self:BlockedBy(soldier)
