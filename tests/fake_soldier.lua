@@ -43,6 +43,7 @@ function Fake.Soldier(t)
 		detours = {},
 		wanderSpots = t.wanderSpots or {},
 		patrolSpots = t.patrolSpots,
+		plansRoutes = t.plansRoutes,
 		wandered = 0,
 		hops = {},
 		requests = {},
@@ -102,6 +103,9 @@ function Soldier:PatrolSpot(center, radius)
 	self.patrolled = (self.patrolled or 0) + 1
 	return (self.patrolSpots or {})[self.patrolled]
 end
+
+-- plansRoutes: the engine finds its own way (default: no).
+function Soldier:PlansRoutes() return self.plansRoutes == true end
 
 function Soldier:WanderSpot()
 	self.wandered = self.wandered + 1

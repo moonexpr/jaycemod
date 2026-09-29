@@ -35,6 +35,8 @@
 --     setup gates (else near me, in a straight line), or nil
 --   PatrolSpot(center, radius) -> a spot picked at random on the nav mesh
 --     within radius of center, or nil
+--   PlansRoutes() -> whether MoveTo's engine finds its own way to any p (over
+--     the map's AI node graph), so a far goal needs no route of ours
 --   RouteStale() -> whether the route I was given was planned before a
 --     door shut or a brush was switched on, and may lead into it
 --   Hop(p) -> whether I will be carried to p: only where a player could
@@ -57,6 +59,7 @@ METHODS = {
 	"PassBlocker",
 	"Detour",
 	"WanderSpot",
+	"PlansRoutes",
 	"PatrolSpot",
 	"Pose",
 	"Unpose",

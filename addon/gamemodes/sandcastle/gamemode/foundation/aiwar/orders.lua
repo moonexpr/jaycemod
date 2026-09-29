@@ -59,7 +59,10 @@ MAX_REPATHS = 2
 CHASE_BACKOFF = 3 -- after a straight run got stuck, routes only for this long
 -- A goal is gone straight at only within CHASE_RANGE: a clear line (the
 -- port's CanWalkTo) says nothing of the drops, pits and ledges on the way,
--- so anything farther follows a route over the nav mesh.
+-- so anything farther follows a route over the nav mesh. A soldier whose
+-- engine plans its own routes (the port's PlansRoutes: an AI node graph)
+-- is given the goal itself, whatever its range; the nav mesh route is its
+-- fallback for CHASE_BACKOFF after the engine's run gets it nowhere.
 CHASE_RANGE = 256
 -- A stuck soldier first steps this far aside, for this long, in a direction
 -- that turns with each attempt and differs between soldiers: most are held
@@ -443,7 +446,9 @@ function Travel:Update(me)
 		-- a step aside that moved counts as progress by itself
 		self.sidestep = nil
 	end
-	if range <= CHASE_RANGE and me:Now() >= self.chaseBlockedUntil and me:CanWalkTo(goal) then return self:Chase(me, goal) end
+	if me:Now() >= self.chaseBlockedUntil and (me:PlansRoutes() or (range <= CHASE_RANGE and me:CanWalkTo(goal))) then
+		return self:Chase(me, goal)
+	end
 	return self:FollowRoute(me, goal)
 end
 

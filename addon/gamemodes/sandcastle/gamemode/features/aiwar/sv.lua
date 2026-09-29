@@ -195,39 +195,7 @@ local TRAVERSE_FLOOR_ABOVE, TRAVERSE_FLOOR_BELOW = 48, 64
 
 local function NotCharacter(hit) return not (hit:IsNPC() or hit:IsPlayer()) end
 
--- Movement: the soldiers are moved by the controller, not the engine,
--- whose runs refuse bumpy ground (displacements) and stall in place.
--- Each tick a moving soldier steps toward its target at its gait's pace,
--- as a player would walk: a soldier-sized box swept above step height
--- (MASK_PLAYERSOLID, teammates aside) stops it or slides it along what it
--- touches; then it is set on the floor a player would stand on (stairs'
--- clip ramps included), stepping up at most WALK_STEP and down at most
--- WALK_DROP, never onto ground steeper than WALK_SLOPE. The gait's
--- animation plays at its own ground speed, so the feet do not slide; the
--- engine's AI keeps aiming and shooting, but may not move the soldier.
-local WALK_STEP, WALK_DROP, WALK_SLOPE = 18, 64, 0.7
 local WALK_ARRIVE = 8
-local SLIDE_MIN = 0.2
-local GAITS = {
-	walk = { acts = { ACT_WALK }, speed = 80 },
-	run = { acts = { ACT_RUN }, speed = 190 },
-	-- citizens' cowering run, else a plain one
-	panic = { acts = { ACT_RUN_PROTECTED, ACT_RUN_STIMULATED, ACT_RUN }, speed = 210 },
-}
-
--- The gait's activity this model has, and the pace it moves at.
-local function GaitOf(ent, gaitName)
-	local gait = GAITS[gaitName] or GAITS.run
-	for _, act in ipairs(gait.acts) do
-		local sequence = ent:SelectWeightedSequence(act)
-		if sequence and sequence > 0 then
-			local speed = ent:GetSequenceGroundSpeed(sequence)
-			return act, speed > 1 and speed or gait.speed
-		end
-	end
-	return ACT_RUN, gait.speed
-end
-
 function Soldier:MoveTo(p, gait)
 	if self.traverse then return end
 	self:Unpose()
@@ -251,55 +219,89 @@ function Soldier:Sweep(from, to)
 	})
 end
 
--- Where a step of `step` from pos along dir lands, or nil when it cannot
--- and what stopped it.
-function Soldier:Step(pos, dir, step)
-	local nextPos = pos + dir * step
-	local sweep = self:Sweep(pos, nextPos)
-	if sweep.StartSolid then return nil, sweep.Entity end
-	if sweep.Hit then
-		local normal = Vector(sweep.HitNormal.x, sweep.HitNormal.y, 0)
-		local slide = dir - normal * dir:Dot(normal)
-		if slide:Length() < SLIDE_MIN then return nil, sweep.Entity end
-		nextPos = pos + slide * step
-		if self:Sweep(pos, nextPos).Hit then return nil end
-	end
-	local floor = util.TraceLine({
-		start = nextPos + Vector(0, 0, WALK_STEP),
-		endpos = nextPos - Vector(0, 0, WALK_DROP),
-		mask = MASK_PLAYERSOLID,
-		filter = NotCharacter,
-	})
-	if floor.StartSolid or not floor.Hit or floor.HitNormal.z < WALK_SLOPE then return nil end
-	return floor.HitPos
+-- Movement, nodegraph assisted: the engine moves a soldier, running its
+-- own route over the map's AI node graph (the nodegraph feature) to each
+-- target, with its own animations, and touching the triggers that open
+-- doors. A run the engine refuses (ended RUN_ENDED_NEAR or more short of
+-- its target) or that stalls (under ENGINE_STALL_SPEED for
+-- ENGINE_STALL_TIME, as on displacements) is asked for again after
+-- RETRY_TIME; meanwhile the trip's own stuck handling (orders' Unstick:
+-- detours, sidesteps, new routes, hops) sees a soldier making no progress.
+-- A stall against a door is the door watchdog's (HeldByDoor).
+local ENGINE_RETARGET = 24
+local ENGINE_STALL_SPEED, ENGINE_STALL_TIME = 20, 1
+local RUN_ENDED_NEAR = 48
+local RETRY_TIME = 1
+local ENGINE_SCHEDULE = { walk = SCHED_FORCED_GO, run = SCHED_FORCED_GO_RUN, panic = SCHED_FORCED_GO_RUN }
+
+function Soldier:EngineRunning()
+	return self.ent:IsCurrentSchedule(SCHED_FORCED_GO_RUN) or self.ent:IsCurrentSchedule(SCHED_FORCED_GO)
 end
 
-function Soldier:Walk(dt)
-	local ent = self.ent
-	local pos = ent:GetPos()
-	local delta = ToVector(self.moveTarget) - pos
-	delta.z = 0
-	local distance = delta:Length()
-	self.walkSpeed = 0
-	if distance <= WALK_ARRIVE then return end
-	local act, speed = GaitOf(ent, self.gait)
-	local step = math.min(distance, speed * dt)
-	local nextPos, stoppedBy = self:Step(pos, delta / distance, step)
-	if not nextPos then
-		if IsValid(stoppedBy) and IsDoor(stoppedBy) then self:HeldByDoor(stoppedBy) else self.heldBy = nil end
+-- The engine plans its own routes where the map has an AI node graph.
+-- There is no Lua call to count the engine's nodes, so the installed graph
+-- file is read once per map (its header, as the engine checked it).
+local graphLoaded
+
+function Soldier:PlansRoutes()
+	if graphLoaded == nil then
+		local header = WETSAND.Feature("nodegraph"):Installed(true)
+		graphLoaded = header ~= nil and header.mapVersion == game.GetMapVersion() and (header.nodeCount or 0) > 0
+	end
+	return graphLoaded
+end
+
+-- The run failed: drop it, try again after RETRY_TIME.
+function Soldier:RunFailed(now, why)
+	self.retryAt = now + RETRY_TIME
+	self.runFailure = why
+	self.engineTarget, self.stalledSince = nil, nil
+	if self:EngineRunning() then self.ent:ClearSchedule() end
+end
+
+-- Each tick of a move: the engine's run, started and watched.
+function Soldier:Move()
+	local now = CurTime()
+	if now < (self.retryAt or 0) then return end
+	local ent, target = self.ent, self.moveTarget
+	local range = self:RangeTo(target)
+	local sameTarget = self.engineTarget ~= nil and Track.Distance(self.engineTarget, target) < ENGINE_RETARGET
+	if sameTarget and self:EngineRunning() then
+		local speed = ent:GetVelocity():Length2D()
+		self.walkSpeed = speed
+		if speed < ENGINE_STALL_SPEED then
+			self.stalledSince = self.stalledSince or now
+			local door = self:DoorAhead(target)
+			if door then
+				self:HeldByDoor(door)
+			elseif now - self.stalledSince >= ENGINE_STALL_TIME then
+				self:RunFailed(now, "stalled")
+			end
+		else
+			self.stalledSince, self.heldBy = nil, nil
+		end
 		return
 	end
-	self.heldBy = nil
-	ent:SetPos(nextPos)
-	if ent:IsMoving() then ent:StopMoving() end
-	-- with an enemy in sight the engine aims and shoots as it moves
-	if not self:HasEnemy() then
-		local yaw = delta:Angle().y
-		ent:SetAngles(Angle(0, yaw, 0))
-		ent:SetIdealYawAndUpdate(yaw)
-		ent:SetIdealActivity(act)
+	if sameTarget then
+		-- the run is over: arrived, or refused short of the target
+		self.walkSpeed = 0
+		if range > RUN_ENDED_NEAR then
+			local door = self:DoorAhead(target)
+			if door then self:HeldByDoor(door) end
+			self:RunFailed(now, "refused")
+		end
+		return
 	end
-	self.walkSpeed = step / dt
+	if range <= WALK_ARRIVE then return end
+	self.engineTarget, self.stalledSince = target, nil
+	ent:SetLastPosition(OnFloor(ToVector(target)))
+	ent:SetSchedule(ENGINE_SCHEDULE[self.gait] or SCHED_FORCED_GO_RUN)
+end
+
+-- The door between me and p, if one stands in the way.
+function Soldier:DoorAhead(p)
+	local blocker = self:Blocker(p)
+	return IsValid(blocker) and IsDoor(blocker) and blocker or nil
 end
 
 -- Stopped by a door: open it if my team may, and after DOOR_STUCK_TIME
@@ -325,7 +327,8 @@ function Soldier:RunState()
 	if self.traverse then return "carried over an obstacle, walking" end
 	if self.moveTarget == nil then return nil end
 	if self:RangeTo(self.moveTarget) <= WALK_ARRIVE * 2 then return "at its target" end
-	return string.format("%s at %d u/s", self.gait or "run", math.floor(self.walkSpeed or 0))
+	if CurTime() < (self.retryAt or 0) then return "run " .. (self.runFailure or "failed") .. " by the engine; asking again" end
+	return string.format("%s at %d u/s (engine)", self.gait or "run", math.floor(self.walkSpeed or 0))
 end
 
 -- What stands between me and p for an NPC's movement (a soldier-sized box
@@ -558,6 +561,10 @@ function Soldier:Release()
 	if self.traverse then return end
 	self.moveTarget = nil
 	self.walkSpeed = 0
+	if self.engineTarget then
+		self.engineTarget = nil
+		if self:EngineRunning() then self.ent:ClearSchedule() end
+	end
 end
 
 -------------------------------------------------------------------------------
@@ -1595,7 +1602,7 @@ hook.Add("Tick", "wetsand_aiwar_traverse", function()
 			if soldier.traverse then
 				soldier:Traverse(now)
 			elseif soldier.moveTarget then
-				soldier:Walk(dt)
+				soldier:Move()
 			elseif soldier.pose then
 				soldier:HoldPose()
 			end

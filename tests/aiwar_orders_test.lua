@@ -256,6 +256,14 @@ T.test("a far goal is reached by a route even when the line to it looks clear", 
 	T.eq(#me2.requests, 0, "a spot close by and in sight is walked to straight")
 end)
 
+T.test("an engine that plans its own routes is given the goal itself, however far", function()
+	local spot = P(3000, 0)
+	local me, npc = Enlist({ role = AiWar.ESCORT, field = SetupField({}), wanderSpots = { spot }, plansRoutes = true })
+	Tick(me, npc, 3)
+	Near(me.moving, spot, "straight to the goal")
+	T.eq(#me.requests, 0, "no route of ours")
+end)
+
 T.test("a wander spot not reached in time is given up for another", function()
 	local spots = { P(100, 0), P(0, 150) }
 	local me, npc = Enlist({ role = AiWar.ESCORT, field = SetupField({}), wanderSpots = spots })
