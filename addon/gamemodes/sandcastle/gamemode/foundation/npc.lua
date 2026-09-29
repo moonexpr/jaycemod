@@ -271,10 +271,16 @@ APPLY[DONE] = function(self, me, behavior, result)
 	return resumed:_ApplyResult(me, behavior, resumeResult)
 end
 
--- Action::ApplyResult: returns the action now active in my place.
+-- Action::ApplyResult: returns the action now active in my place. A
+-- Behavior's watcher (Behavior:Watch) hears of each change first.
 function Action:_ApplyResult(me, behavior, result)
 	local apply = APPLY[result.type]
 	if apply == nil then return self end -- CONTINUE and SUSTAIN
+	local watcher = behavior.watcher
+	if watcher then
+		local nextAction = result.action
+		watcher:Transition(result.type, self.name, nextAction and nextAction.name, result.reason, nextAction == self)
+	end
 	return apply(self, me, behavior, result)
 end
 
@@ -310,7 +316,36 @@ function Behavior:New(action, name)
 		name = name,
 		me = nil,
 		dead = {},
+		watcher = nil,
 	}, Behavior)
+end
+
+-- A debugger's watcher, or nil to stop: watcher:Transition(resultType,
+-- fromName, toName, reason, starting) before each change of action
+-- (starting: an action starting itself), and watcher:Event(name) for each
+-- event, as nb_debug BEHAVIOR prints them.
+function Behavior:Watch(watcher)
+	self.watcher = watcher
+end
+
+local function StackFrames(action, depth, frames)
+	while action do
+		frames[#frames + 1] = {
+			name = action.name,
+			depth = depth,
+			suspended = action._suspended,
+		}
+		if action._child then StackFrames(action._child, depth + 1, frames) end
+		action = action._buried
+	end
+	return frames
+end
+
+-- The whole action stack in Action::DebugString's order: each action, then
+-- the actions it contains a level deeper, then the actions buried under it.
+-- A list of { name, depth (1 outermost), suspended }.
+function Behavior:Stack()
+	return StackFrames(self.action, 1, {})
 end
 
 function Behavior:IsEmpty()
@@ -328,6 +363,7 @@ end
 -- Behavior's event responder: the top action of the stack takes it.
 function Behavior:Event(me, name, ...)
 	if self.action == nil then return end
+	if self.watcher then self.watcher:Event(name) end
 	self.action:_ProcessEvent(name, ...)
 end
 
@@ -490,6 +526,8 @@ function Npc:Query(name, ...) return self.behavior:Query(self.actor, name, ...) 
 function Npc:State() return self.state end
 function Npc:Describe() return self.behavior:Describe() end
 function Npc:IsEmpty() return self.behavior:IsEmpty() end
+function Npc:Watch(watcher) self.behavior:Watch(watcher) end
+function Npc:Stack() return self.behavior.name, self.behavior:Stack() end
 function Npc:Destroy() self.behavior:Destroy() end
 
 -- FilterDamage is optional in a variant; without it all damage is taken.

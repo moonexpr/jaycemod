@@ -611,6 +611,106 @@ T.test("destroying an Npc ends its actions", function()
 	Expect({ "Idle:OnEnd" }, "ended")
 end)
 
+-- Debugging (wetsand_nb_debug BEHAVIOR): the stack and the watcher
+
+-- A watcher that writes down what its Behavior tells it.
+local function Watcher()
+	local watcher = { seen = {} }
+	function watcher:Transition(kind, fromName, toName, reason, starting)
+		self.seen[#self.seen + 1] = table.concat({ tostring(kind), fromName, tostring(toName), tostring(reason), tostring(starting) }, " ")
+	end
+	function watcher:Event(name)
+		self.seen[#self.seen + 1] = "event " .. name
+	end
+	return watcher
+end
+
+T.test("a Behavior's stack lists each action, then its children a level deeper, then the actions buried under it", function()
+	local me = Setup()
+	local B = Probe("B")
+	local Child = Probe("Child")
+	local suspended = false
+	local A = Probe("A", {
+		child = function() return Child:New() end,
+		Update = function(self)
+			if suspended then return self:Continue() end
+			suspended = true
+			return self:SuspendFor(B:New(), "interrupt")
+		end,
+	})
+	local b = Behavior:New(A:New(), "Test")
+	b:Update(me, 0.1)
+	local frames = b:Stack()
+	T.eq(#frames, 2, "A( Child ) before the suspension")
+	T.eq(frames[1].name .. frames[1].depth, "A1", "A outermost")
+	T.eq(frames[2].name .. frames[2].depth, "Child2", "Child inside it")
+	b:Update(me, 0.1)
+	frames = b:Stack()
+	T.eq(#frames, 3, "B<<A( Child )")
+	T.eq(frames[1].name .. frames[1].depth .. tostring(frames[1].suspended), "B1false", "B on top")
+	T.eq(frames[2].name .. frames[2].depth .. tostring(frames[2].suspended), "A1true", "A buried under it")
+	T.eq(frames[3].name .. frames[3].depth .. tostring(frames[3].suspended), "Child2true", "A's child, suspended with it")
+end)
+
+T.test("an empty Behavior has an empty stack", function()
+	T.eq(#Behavior:New(nil, "Test"):Stack(), 0, "no frames")
+end)
+
+T.test("a watcher sees each start and change with its reason, and each event", function()
+	local me = Setup()
+	local B = Probe("B")
+	local A = Probe("A", { Update = function(self) return self:ChangeTo(B:New(), "bored") end })
+	local b = Behavior:New(A:New(), "Test")
+	local watcher = Watcher()
+	b:Watch(watcher)
+	b:Update(me, 0.1)
+	b:Update(me, 0.1)
+	b:Event(me, "OnInjured", {})
+	T.eq(table.concat(watcher.seen, "; "), table.concat({
+		N.CHANGE_TO .. " A A Starting Action true",
+		N.CHANGE_TO .. " A B bored false",
+		"event OnInjured",
+	}, "; "), "seen")
+	b:Watch(nil)
+	b:Event(me, "OnInjured", {})
+	T.eq(#watcher.seen, 3, "nothing once unwatched")
+end)
+
+T.test("a watcher sees a suspension and the Done that ends it", function()
+	local me = Setup()
+	local B = Probe("B", { Update = function(self) return self:Done("finished") end })
+	local suspended = false
+	local A = Probe("A", {
+		Update = function(self)
+			if suspended then return self:Continue() end
+			suspended = true
+			return self:SuspendFor(B:New(), "interrupt")
+		end,
+	})
+	local b = Behavior:New(A:New(), "Test")
+	b:Update(me, 0.1)
+	local watcher = Watcher()
+	b:Watch(watcher)
+	b:Update(me, 0.1)
+	b:Update(me, 0.1)
+	T.eq(table.concat(watcher.seen, "; "), table.concat({
+		N.SUSPEND_FOR .. " A B interrupt false",
+		N.DONE .. " B nil finished false",
+	}, "; "), "seen")
+end)
+
+T.test("an Npc gives its Behavior's name and stack, and passes a watcher on", function()
+	local me = Setup()
+	local npc = N.Npc.New(Variant(), { health = 50 }, me)
+	local watcher = Watcher()
+	npc:Watch(watcher)
+	npc:Update(0.1)
+	local name, frames = npc:Stack()
+	T.eq(name, Variant().KIND, "the Behavior is named for the variant's kind")
+	T.eq(frames[1].name, "Idle", "its action")
+	T.eq(#watcher.seen, 1, "the start was seen")
+end)
+
 -- The actor port contract
 
 local function ReadFile(path)

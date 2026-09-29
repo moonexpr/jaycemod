@@ -1,0 +1,427 @@
+-- The nbdebug feature's controller: the NextBot debug layer for admins,
+-- after the engine's nb_select, nb_debug and nb_debug_filter, drawing what
+-- the engine's cannot: our Lua Behaviors, our path strategies' costs, and
+-- routes searched in Lua. The rules are foundation.npc.debug's; this file
+-- keeps one Subscription per admin, finds the NPCs through the hook
+-- WetsandNbDebugNpcs (the npc and aiwar controllers answer it), asks the npc
+-- controller to watch the path searches of the NPCs someone draws, watches
+-- their Behaviors, and sends each admin only what they asked for. The AIWAR
+-- layer is the AI war's own soldier overlay: its controller sends it to the
+-- players whose ply.wetsandAiwarDebug this file sets.
+--
+-- Loaded by the first wetsand_nb_* command (wetsand/sv_nbdebug.lua) or
+-- wetsand_aiwar_debug; its client part (cl.lua) is the one view for all of it.
+local Debug = WETSAND.require("foundation.npc.debug")
+
+local STATE_NET = "wetsand_nb_debug_state_send"
+local PATH_NET = "wetsand_nb_debug_path_send"
+local COST_NET = "wetsand_nb_debug_cost_send"
+local BEHAVIOR_NET = "wetsand_nb_debug_behavior_send"
+local NAV_NET = "wetsand_nb_debug_nav_send"
+local REMOVED_NET = "wetsand_nb_debug_npc_removed"
+for _, name in ipairs({ STATE_NET, PATH_NET, COST_NET, BEHAVIOR_NET, NAV_NET, REMOVED_NET }) do
+	util.AddNetworkString(name)
+end
+
+-- Field widths on the wire; the client reads with the same.
+local INDEX_BITS = 16 -- entity indexes
+local LAYER_COUNT_BITS = 4
+local POINT_COUNT_BITS = 12
+local MOVE_BITS = 3
+local AREA_COUNT_BITS = 16
+local TOTAL_BITS = 32
+local AREA_ID_BITS = 32
+local NPC_COUNT_BITS = 8
+local LINE_COUNT_BITS = 6
+local ATTRIBUTE_COUNT_BITS = 4
+local MAX_POINTS = 2 ^ POINT_COUNT_BITS - 1
+local MAX_NPCS = 2 ^ NPC_COUNT_BITS - 1
+local MAX_LINES = 2 ^ LINE_COUNT_BITS - 1
+local NO_SELECTION = 0
+
+local TICK_INTERVAL = 0.25
+local NAV_INTERVAL = 0.5
+local NAV_STEP_DOWN, NAV_STEP_UP = 200, 200 -- navmesh.Find's reach below and above the NPC
+local NW, NE, SE, SW = 0, 1, 2, 3 -- CNavArea::GetCorner's NavCornerType
+
+local NPCS_HOOK = "WetsandNbDebugNpcs"
+
+-- Where the NAV layer takes an area's attribute names: :Of(area) -> list.
+-- GMod's nav mesh has no TF2 attributes (TF_NAV_*); they will come from a
+-- sidecar written beside the converted mesh, through a source like this.
+local NoAttributes = {}
+function NoAttributes:Of(area) return {} end
+
+local Clock = {}
+function Clock:Now() return CurTime() end
+
+local Controller = {
+	subscriptions = {}, -- player -> foundation.npc.debug Subscription
+	bots = {}, -- entity -> bot, as foundation.npc.debug sees an NPC, from the last collection
+	npcs = {}, -- entity -> its foundation.npc Npc, from the last collection
+	pathWatches = {}, -- entity -> { costs }, as last given to the npc controller
+	reports = {}, -- entity -> its last path report, while watched
+	logs = {}, -- entity -> its BehaviorLog, while watched
+	nextTick = 0,
+	nextNav = 0,
+	navAttributes = NoAttributes,
+}
+
+local function Tell(ply, text)
+	ply:ChatPrint(text)
+end
+
+function Controller:SubscriptionOf(ply)
+	local sub = self.subscriptions[ply]
+	if not sub then
+		sub = Debug.NewSubscription()
+		self.subscriptions[ply] = sub
+	end
+	return sub
+end
+
+-- The subscriptions of players still here.
+function Controller:Subscriptions()
+	local list = {}
+	for ply, sub in pairs(self.subscriptions) do
+		if IsValid(ply) then
+			list[#list + 1] = sub
+		else
+			self.subscriptions[ply] = nil
+		end
+	end
+	return list
+end
+
+-- The NPCs every system offers (entity -> Npc), as bots.
+function Controller:Collect()
+	local found = {}
+	hook.Run(NPCS_HOOK, found)
+	local bots = {}
+	for ent, npc in pairs(found) do
+		bots[ent] = {
+			key = ent,
+			index = ent:EntIndex(),
+			class = ent:GetClass(),
+			variant = npc.variant._NAME,
+		}
+	end
+	self.bots, self.npcs = bots, found
+end
+
+local function SameWatch(a, b)
+	if a == nil or b == nil then return a == b end
+	return a.costs == b.costs
+end
+
+function Controller:SetPathWatch(ent, index, watch)
+	if SameWatch(self.pathWatches[ent], watch) then return end
+	WETSAND.Feature("npc"):WatchPaths(index, watch)
+	self.pathWatches[ent] = watch
+	if watch == nil then self.reports[ent] = nil end
+end
+
+function Controller:SetBehaviorWatch(ent, npc, on)
+	local log = self.logs[ent]
+	if on and not log then
+		log = Debug.NewBehaviorLog(Clock, Debug.BEHAVIOR_LOG_SIZE)
+		self.logs[ent] = log
+		npc:Watch(log)
+	elseif not on and log then
+		npc:Watch(nil)
+		self.logs[ent] = nil
+	end
+end
+
+-- Watches what the subscriptions want of each NPC, and nothing more.
+function Controller:ApplyWatches(subs)
+	for ent, bot in pairs(self.bots) do
+		self:SetPathWatch(ent, bot.index, Debug.PathWatch(subs, bot))
+		self:SetBehaviorWatch(ent, self.npcs[ent], Debug.WatchesBehavior(subs, bot))
+	end
+end
+
+function Controller:Forget(ent)
+	if self.pathWatches[ent] then WETSAND.Feature("npc"):WatchPaths(ent:EntIndex(), nil) end
+	self.pathWatches[ent], self.reports[ent], self.logs[ent] = nil, nil, nil
+	self.bots[ent], self.npcs[ent] = nil, nil
+	for _, sub in pairs(self.subscriptions) do sub:Forget(ent) end
+end
+
+-------------------------------------------------------------------------------
+-- Sending
+
+local function Recipients(self, bot, layer)
+	local list = {}
+	for ply, sub in pairs(self.subscriptions) do
+		if IsValid(ply) and sub:Wants(bot, layer) then list[#list + 1] = ply end
+	end
+	return list
+end
+
+local function WriteCorners(area)
+	for corner = NW, SW do net.WriteVector(area:GetCorner(corner)) end
+end
+
+local function WriteOptionalFloat(value)
+	net.WriteBool(value ~= nil)
+	if value ~= nil then net.WriteFloat(value) end
+end
+
+function Controller:SendState(ply, sub)
+	local names = Debug.LayerNames(sub.layers)
+	net.Start(STATE_NET)
+	net.WriteUInt(#names, LAYER_COUNT_BITS)
+	for _, name in ipairs(names) do net.WriteString(name) end
+	local selected = sub.selected
+	net.WriteUInt(IsValid(selected) and selected:EntIndex() or NO_SELECTION, INDEX_BITS)
+	net.Send(ply)
+end
+
+function Controller:SendPath(recipients, bot, report)
+	if #recipients == 0 then return end
+	local count = math.min(#report.points, MAX_POINTS)
+	net.Start(PATH_NET)
+	net.WriteUInt(bot.index, INDEX_BITS)
+	net.WriteString(report.strategy)
+	net.WriteString(report.source)
+	net.WriteBool(report.found)
+	WriteOptionalFloat(report.totalCost)
+	net.WriteFloat(report.microseconds)
+	WriteOptionalFloat(report.nodesExpanded)
+	net.WriteFloat(report.computedAt)
+	net.WriteVector(report.goal)
+	net.WriteUInt(count, POINT_COUNT_BITS)
+	for i = 1, count do
+		net.WriteVector(report.points[i].pos)
+		net.WriteUInt(report.points[i].move, MOVE_BITS)
+	end
+	net.Send(recipients)
+end
+
+-- The explored areas, decimated to fit one message; none when this search's
+-- costs were not recorded (the NPC was selected after it began).
+function Controller:SendCost(recipients, bot, report)
+	if #recipients == 0 or report.explored == nil then return end
+	local kept = Debug.Decimate(report.explored, report.areaIds, Debug.MAX_COST_AREAS)
+	local areas = {}
+	for _, explored in ipairs(kept) do
+		local area = navmesh.GetNavAreaByID(explored.id)
+		if IsValid(area) then
+			areas[#areas + 1] = {
+				explored = explored,
+				area = area,
+			}
+		end
+	end
+	net.Start(COST_NET)
+	net.WriteUInt(bot.index, INDEX_BITS)
+	net.WriteUInt(#report.explored, TOTAL_BITS)
+	net.WriteUInt(#areas, AREA_COUNT_BITS)
+	for _, item in ipairs(areas) do
+		net.WriteUInt(item.explored.id, AREA_ID_BITS)
+		net.WriteFloat(item.explored.cost)
+		net.WriteBool(item.explored.impassable)
+		WriteCorners(item.area)
+	end
+	net.Send(recipients)
+end
+
+-- What the server already knows, to a player whose view just changed.
+function Controller:Resend(ply)
+	local sub = self.subscriptions[ply]
+	for ent, report in pairs(self.reports) do
+		local bot = self.bots[ent]
+		if bot and sub:Wants(bot, Debug.PATH) then self:SendPath({ ply }, bot, report) end
+		if bot and sub:Wants(bot, Debug.COST) then self:SendCost({ ply }, bot, report) end
+	end
+end
+
+function Controller:SendBehavior(ply, sub, now)
+	local items = {}
+	for ent, bot in pairs(self.bots) do
+		local log = self.logs[ent]
+		if log and sub:Wants(bot, Debug.BEHAVIOR) and #items < MAX_NPCS then
+			local name, frames = self.npcs[ent]:Stack()
+			items[#items + 1] = {
+				index = bot.index,
+				lines = Debug.BehaviorLines(name, frames, log:Entries(), now),
+			}
+		end
+	end
+	net.Start(BEHAVIOR_NET)
+	net.WriteUInt(#items, NPC_COUNT_BITS)
+	for _, item in ipairs(items) do
+		local count = math.min(#item.lines, MAX_LINES)
+		net.WriteUInt(item.index, INDEX_BITS)
+		net.WriteUInt(count, LINE_COUNT_BITS)
+		for i = 1, count do net.WriteString(item.lines[i]) end
+	end
+	net.Send(ply)
+end
+
+function Controller:SendNav(ply, sub)
+	local ent = sub.selected
+	local pos = ent:GetPos()
+	local items = {}
+	for _, area in ipairs(navmesh.Find(pos, Debug.NAV_RADIUS, NAV_STEP_DOWN, NAV_STEP_UP)) do
+		items[#items + 1] = {
+			area = area,
+			distance = area:GetCenter():DistToSqr(pos),
+		}
+	end
+	local nearest = Debug.NearestFirst(items, Debug.MAX_NAV_AREAS)
+	net.Start(NAV_NET)
+	net.WriteUInt(#nearest, NPC_COUNT_BITS)
+	for _, item in ipairs(nearest) do
+		local attributes = self.navAttributes:Of(item.area)
+		net.WriteUInt(item.area:GetID(), AREA_ID_BITS)
+		WriteCorners(item.area)
+		net.WriteUInt(#attributes, ATTRIBUTE_COUNT_BITS)
+		for _, name in ipairs(attributes) do net.WriteString(name) end
+	end
+	net.Send(ply)
+end
+
+-------------------------------------------------------------------------------
+-- The tick and the hooks
+
+function Controller:Tick(now)
+	if now < self.nextTick then return end
+	self.nextTick = now + TICK_INTERVAL
+	local subs = self:Subscriptions()
+	local anyActive = false
+	for _, sub in ipairs(subs) do anyActive = anyActive or sub:IsActive() end
+	if not anyActive and next(self.pathWatches) == nil and next(self.logs) == nil then return end
+	self:Collect()
+	self:ApplyWatches(subs)
+	local sendNav = now >= self.nextNav
+	if sendNav then self.nextNav = now + NAV_INTERVAL end
+	for ply, sub in pairs(self.subscriptions) do
+		if sub:Shows(Debug.BEHAVIOR) then self:SendBehavior(ply, sub, now) end
+		if sendNav and sub:Shows(Debug.NAV) and IsValid(sub.selected) then self:SendNav(ply, sub) end
+	end
+end
+
+-- A watched NPC's search is done (the npc controller's report).
+function Controller:OnPathComputed(ent, report)
+	local bot = self.bots[ent]
+	if not bot then return end
+	self.reports[ent] = report
+	self:SendPath(Recipients(self, bot, Debug.PATH), bot, report)
+	self:SendCost(Recipients(self, bot, Debug.COST), bot, report)
+end
+
+function Controller:OnRemoved(ent)
+	if not self.bots[ent] then return end
+	local index = ent:EntIndex()
+	self:Forget(ent)
+	local viewers = {}
+	for ply, sub in pairs(self.subscriptions) do
+		if IsValid(ply) and sub:IsActive() then viewers[#viewers + 1] = ply end
+	end
+	if #viewers == 0 then return end
+	net.Start(REMOVED_NET)
+	net.WriteUInt(index, INDEX_BITS)
+	net.Send(viewers)
+end
+
+hook.Add("Think", "wetsand_nbdebug", function()
+	Controller:Tick(CurTime())
+end)
+
+hook.Add("WetsandNpcPathComputed", "wetsand_nbdebug", function(ent, report)
+	Controller:OnPathComputed(ent, report)
+end)
+
+hook.Add("EntityRemoved", "wetsand_nbdebug", function(ent)
+	Controller:OnRemoved(ent)
+end)
+
+-------------------------------------------------------------------------------
+-- Commands (registered by wetsand/sv_nbdebug.lua, which checks who may run them)
+
+-- After a change to what a player sees: watch accordingly, tell their view,
+-- and send what is already known.
+function Controller:Changed(ply, sub)
+	ply.wetsandAiwarDebug = sub:Shows(Debug.AIWAR) or nil
+	self:Collect()
+	self:ApplyWatches(self:Subscriptions())
+	self:SendState(ply, sub)
+	self:Resend(ply)
+end
+
+local COMMANDS = {}
+
+-- nb_select: the NPC under the crosshair, or none.
+COMMANDS.wetsand_nb_select = function(self, ply, sub)
+	self:Collect()
+	local candidates = {}
+	for ent, bot in pairs(self.bots) do
+		candidates[#candidates + 1] = {
+			bot = bot,
+			center = ent:WorldSpaceCenter(),
+			alive = ent:Health() > 0,
+		}
+	end
+	local pick = Debug.Pick(ply:EyePos(), ply:GetAimVector(), candidates)
+	sub:Select(pick and pick.bot.key)
+	if pick then
+		Tell(ply, string.format("wetsand_nb_select: %s #%d (%s)", pick.bot.class, pick.bot.index, pick.bot.variant))
+	else
+		Tell(ply, "wetsand_nb_select: selection cleared")
+	end
+	self:Changed(ply, sub)
+end
+
+COMMANDS.wetsand_nb_debug = function(self, ply, sub, args)
+	for _, token in ipairs(sub:SetLayers(args)) do
+		Tell(ply, string.format("wetsand_nb_debug: invalid layer '%s' (%s, ALL or OFF)", token, table.concat(Debug.LAYERS, ", ")))
+	end
+	Tell(ply, "wetsand_nb_debug: " .. Debug.DescribeLayers(sub.layers))
+	if (sub:Shows(Debug.COST) or sub:Shows(Debug.NAV)) and sub.selected == nil then
+		Tell(ply, "wetsand_nb_debug: COST and NAV draw the selected NPC only; aim at one and run wetsand_nb_select")
+	end
+	self:Changed(ply, sub)
+end
+
+COMMANDS.wetsand_nb_debug_filter = function(self, ply, sub, args)
+	sub:SetFilter(args)
+	Tell(ply, "wetsand_nb_debug_filter: " .. Debug.DescribeFilter(sub.filter))
+	self:Changed(ply, sub)
+end
+
+COMMANDS.wetsand_nb_dump = function(self, ply, sub)
+	local ent = sub.selected
+	if not IsValid(ent) then
+		Tell(ply, "wetsand_nb_dump: select an NPC first (wetsand_nb_select)")
+		return
+	end
+	local report, bot = self.reports[ent], self.bots[ent]
+	if not report then
+		Tell(ply, string.format("wetsand_nb_dump: #%d has not searched for a path since it was selected; try again once it repaths", ent:EntIndex()))
+		return
+	end
+	local map = game.GetMap()
+	local doc = Debug.DumpDocument({
+		map = map,
+		index = bot.index,
+		class = bot.class,
+		variant = bot.variant,
+	}, report)
+	local path = Debug.DumpPath(map, bot.index, os.time())
+	file.CreateDir(Debug.DUMP_DIR)
+	file.Write(path, util.TableToJSON(doc, true))
+	Tell(ply, "wetsand_nb_dump: wrote garrysmod/data/" .. path .. (report.explored and "" or " (no costs: the search began before the selection)"))
+end
+
+function Controller:Command(name, ply, args)
+	COMMANDS[name](self, ply, self:SubscriptionOf(ply), args)
+end
+
+-- Toggles one layer, as wetsand_nb_debug <layer> does (wetsand_aiwar_debug).
+function Controller:ToggleLayer(ply, layer)
+	self:Command("wetsand_nb_debug", ply, { layer })
+end
+
+return Controller
