@@ -333,12 +333,17 @@ function ENT:SetBoneScale(bone, s)
 	self:ManipulateBoneScale(self:LookupBone(bone), Vector(s, s, s))
 end
 
+-- CZombie::AddHat: placed at the bone, then bone-merged (FollowEntity(this,
+-- true)), so the hat's own bones lock to ours at any model scale.
 function ENT:AttachProp(model, bone)
 	local prop = ents.Create("prop_dynamic")
 	prop:SetModel(model)
-	prop:SetPos(self:GetPos())
+	local pos, ang = self:GetBonePosition(self:LookupBone(bone))
+	prop:SetPos(pos)
+	prop:SetAngles(ang)
 	prop:Spawn()
-	prop:FollowBone(self, self:LookupBone(bone))
+	prop:SetParent(self)
+	prop:AddEffects(EF_BONEMERGE)
 	self:DeleteOnRemove(prop)
 	return prop
 end
