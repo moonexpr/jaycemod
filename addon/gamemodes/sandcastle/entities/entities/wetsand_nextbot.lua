@@ -162,19 +162,30 @@ function ENT:Initialize()
 	end
 end
 
+-- A failed Bind errors out of Initialize, which reports it once, and leaves
+-- the entity unbound (no self.npc). Its first update then removes it,
+-- rather than erroring every tick.
 function ENT:OnRemove()
-	self.npcs:Unbind(self)
+	if self.npc then self.npcs:Unbind(self) end
 end
 
 function ENT:BehaveStart() end
 
 function ENT:BehaveUpdate(interval)
+	if not self.npc then
+		if not self.removing then
+			self.removing = true
+			self:Remove()
+		end
+		return
+	end
 	self.npc:Update(interval)
 	self.motion.Update(self, interval)
 end
 
 -- CHeadlessHatmanBody::Update
 function ENT:BodyUpdate()
+	if not self.npc then return end
 	local speed = self:GetGroundSpeed()
 	if speed < STOPPED_SPEED then
 		self:SetPoseParameter("move_x", 0)

@@ -762,6 +762,43 @@ T.test("wetsand_nextbot defines every actor method the engine does not already p
 	end
 end)
 
+-- wetsand_nextbot's binding run under LuaJIT: the file's ENT against a stub
+-- of the GMod globals it touches, with an npc controller whose Bind fails.
+T.test("a nextbot whose binding fails reports it once from Initialize, then removes itself without erroring", function()
+	local bindError = "bind failed"
+	local interval = 0.1
+	local controller = { unbinds = 0 }
+	function controller:Bind() error(bindError, 0) end
+	function controller:Unbind() self.unbinds = self.unbinds + 1 end
+	local ENT = {}
+	local env = setmetatable({
+		ENT = ENT,
+		CLIENT = false,
+		AddCSLuaFile = function() end,
+		WETSAND = {
+			Feature = function() return controller end,
+			require = function(name) return T.require(name) end,
+		},
+	}, { __index = _G })
+	local chunk = assert(loadfile("addon/gamemodes/sandcastle/entities/entities/wetsand_nextbot.lua"))
+	setfenv(chunk, env)()
+
+	local ent = setmetatable({
+		Variant = "foundation.npc.zombie",
+		removes = 0,
+	}, { __index = ENT })
+	function ent:Remove() self.removes = self.removes + 1 end
+	local ok, err = pcall(ent.Initialize, ent)
+	T.eq(ok, false, "Initialize fails")
+	T.eq(err, bindError, "with the binding's error")
+	T.eq(pcall(ent.BehaveUpdate, ent, interval), true, "no error per tick")
+	T.eq(pcall(ent.BehaveUpdate, ent, interval), true, "nor on the next")
+	T.eq(pcall(ent.BodyUpdate, ent), true, "nor in BodyUpdate")
+	T.eq(ent.removes, 1, "removed once")
+	T.eq(pcall(ent.OnRemove, ent), true, "its removal does not error")
+	T.eq(controller.unbinds, 0, "and unbinds nothing")
+end)
+
 T.test("the damage types keep Source's bits", function()
 	T.eq(Actor.DMG_GENERIC, 0, "generic")
 	T.eq(Actor.DMG_CRUSH, 1, "crush")
