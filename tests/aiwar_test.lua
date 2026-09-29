@@ -133,11 +133,53 @@ T.test("the defending team mostly holds the track ahead and sends some to block 
 	T.eq(Roles(war, RED), "defend0 block0 raid0 defend1 defend2 support0", "5:2:2:1, ties to the first role")
 end)
 
-T.test("on a race map each side pushes its cart, blocks the other and escorts", function()
+T.test("on an even race each side both defends against the other's cart and pushes its own", function()
 	local war = AiWar.War.New()
 	war:Assign({ [BLUE] = true, [RED] = true })
 	for i = 1, 3 do war:Enlist("r" .. i, RED, true) end
-	T.eq(Roles(war, RED), "push0 block0 escort0", "one of each")
+	T.eq(Roles(war, RED), "defend0 push0 raid0", "one of each work first")
+	T.eq(war.defense[RED], 0.5, "an even share")
+end)
+
+T.test("a team's defense share: all offense or all defense with one cart, leaning with the race", function()
+	T.eq(AiWar.DefenseShare(RED, { [RED] = true }), 0, "only its own cart")
+	T.eq(AiWar.DefenseShare(RED, { [BLUE] = true }), 1, "only the enemy's")
+	T.eq(AiWar.DefenseShare(RED, {}), nil, "no cart")
+	local function Race(red, blue) return AiWar.DefenseShare(RED, { [RED] = red, [BLUE] = blue }) end
+	T.eq(Race({ progress = 0.3 }, { progress = 0.3 }), 0.5, "level")
+	T.eq(Race({ progress = 0.2 }, { progress = 0.4 }), 0.8, "the enemy 0.2 ahead: more defense")
+	T.eq(Race({ progress = 0.5 }, { progress = 0.4 }), 0.4, "ahead: less")
+	T.eq(Race({ progress = 0.3 }, { progress = 0.3, close = true }), 0.7, "the enemy's cart close to its checkpoint")
+	T.eq(Race({ progress = 0.3, close = true }, { progress = 0.3 }), 0.3, "its own close")
+	T.eq(Race({ progress = 0 }, { progress = 1 }), AiWar.DEFENSE_MAX, "never all defense in a race")
+	T.eq(Race({ progress = 1 }, { progress = 0 }), AiWar.DEFENSE_MIN, "nor all offense")
+end)
+
+T.test("a race turning moves as few soldiers as it can from one cart to the other", function()
+	local war = AiWar.War.New()
+	war:Assign({ [RED] = { progress = 0.3 }, [BLUE] = { progress = 0.3 } })
+	for i = 1, 10 do war:Enlist("r" .. i, RED, true) end
+	local function Split()
+		local offense, defense, changed = 0, 0, 0
+		for _, member in ipairs(war:Members()) do
+			if member.role == AiWar.PUSH or member.role == AiWar.ESCORT then offense = offense + 1 end
+			if member.role == AiWar.DEFEND or member.role == AiWar.BLOCK then defense = defense + 1 end
+		end
+		return offense, defense
+	end
+	local offense, defense = Split()
+	T.eq(offense + defense, 7, "seven on the carts")
+	local before = {}
+	for _, member in ipairs(war:Members()) do before[member] = member.role end
+	war:Assign({ [RED] = { progress = 0.3 }, [BLUE] = { progress = 0.5 } })
+	T.eq(war.defense[RED], 0.8, "BLU pulled ahead")
+	local offense2, defense2 = Split()
+	T.eq(defense2 > defense and offense2 < offense, true, "more on BLU's cart, fewer on RED's own")
+	local changed = 0
+	for member, role in pairs(before) do
+		if member.role ~= role then changed = changed + 1 end
+	end
+	T.eq(changed, defense2 - defense, "only those that had to")
 end)
 
 T.test("without a cart nobody has a role", function()
@@ -160,9 +202,9 @@ T.test("a change of stance reassigns the team's roles, oldest first", function()
 	war:Assign({ [BLUE] = true })
 	for i = 1, 3 do war:Enlist("r" .. i, RED, true) end
 	war:Assign({ [BLUE] = true, [RED] = true })
-	T.eq(Roles(war, RED), "push0 block0 escort0", "race roles")
+	T.eq(Roles(war, RED), "defend0 push0 raid0", "race roles")
 	war:Assign({ [BLUE] = true, [RED] = true })
-	T.eq(Roles(war, RED), "push0 block0 escort0", "unchanged stance keeps them")
+	T.eq(Roles(war, RED), "defend0 push0 raid0", "unchanged stance keeps them")
 end)
 
 T.test("a cart near its checkpoint throws more of the defenders at it, fewest changed", function()

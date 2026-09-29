@@ -242,20 +242,37 @@ ROLES = {
 	},
 }
 
+-- The cart a raider or support soldier works, as no team is simply the
+-- attacker or the defender: "defense" (against the enemy's cart) or
+-- "offense" (for its own), or nil with no cart. With both carts it follows
+-- its team's defense share (field.defense, foundation.aiwar's
+-- DefenseShare), the soldiers' slots spread over it by the golden ratio:
+-- at a share of 0.7 about seven in ten work the enemy's cart.
+local GOLDEN = 0.6180339887
+
+function Focus(field, member)
+	local own, theirs = OwnCart(field, member), EnemyCart(field, member)
+	if not own then return theirs and "defense" or nil end
+	if not theirs then return "offense" end
+	local share = field.defense and field.defense[member.team] or AiWar.DefenseShare(member.team, field.carts)
+	return ((member.slot + 1) * GOLDEN) % 1 < share and "defense" or "offense"
+end
+
 -- The enemy's line a raider goes for, and the point its own side comes
--- from: against a cart, the enemy's escorts' posts ahead of it (else the
--- cart), coming from the checkpoint it heads for; pushing a cart, the
+-- from: against the enemy's cart, its escorts' posts ahead of it (else the
+-- cart), coming from the checkpoint it heads for; for its own, the enemy
 -- defenders' posts (else the track ahead), coming from the cart.
 function EnemyLine(field, member)
 	local enemy = AiWar.EnemyOf(member.team)
 	local theirs, own = EnemyCart(field, member), OwnCart(field, member)
-	if theirs then
+	local focus = Focus(field, member)
+	if focus == "defense" then
 		local from = theirs.track:PointAt(theirs.nextCheckpoint or theirs.track:Length())
 		local posts = field.forwardPosts and field.forwardPosts[enemy]
 		if posts and #posts > 0 then return posts[member.slot % #posts + 1], from end
 		return theirs.pos, from
 	end
-	if own then
+	if focus == "offense" then
 		local posts = field.posts and field.posts[enemy]
 		if posts and #posts > 0 then return posts[member.slot % #posts + 1], own.pos end
 		return own.track:Offset(own.distance + DEFEND_LEAD, 0), own.pos
@@ -285,10 +302,15 @@ ROLES[AiWar.RAID] = {
 		if not line then return nil end
 		return Tactics.FlankPoint(from, line, member.slot % 2 == 0 and 1 or -1)
 	end,
-	-- The line broken: attackers push their cart, defenders hit theirs.
+	-- The line broken: on offense it joins the push, on defense it falls
+	-- on the enemy's cart.
 	Cleared = function(field, member)
-		local own, theirs = OwnCart(field, member), EnemyCart(field, member)
-		if own and not theirs then return Ring(own.pos, member.slot + 8, Reach(own)) end
+		local focus = Focus(field, member)
+		if focus == "offense" then
+			local own = OwnCart(field, member)
+			return Ring(own.pos, member.slot + 8, Reach(own))
+		end
+		local theirs = focus == "defense" and EnemyCart(field, member)
 		return theirs and Ring(theirs.pos, member.slot + 8, Reach(theirs) * 3)
 	end,
 }
@@ -303,12 +325,13 @@ ROLES[AiWar.SUPPORT] = {
 		local spot = GateSpot(field, member, GATE_ROW * 2)
 		if spot then return spot end
 		local own, theirs = OwnCart(field, member), EnemyCart(field, member)
-		if theirs and not own then
+		local focus = Focus(field, member)
+		if focus == "defense" then
 			local posts = field.posts and field.posts[member.team]
 			if posts and #posts > 0 then return Behind(posts[member.slot % #posts + 1], theirs.pos, SUPPORT_BEHIND) end
 			return theirs.track:Offset(theirs.distance + DEFEND_LEAD + DEFEND_DEPTH * DEFEND_ROWS, Lateral(member.slot))
 		end
-		if own then return own.track:Offset(own.distance - SUPPORT_BEHIND, Lateral(member.slot)) end
+		if focus == "offense" then return own.track:Offset(own.distance - SUPPORT_BEHIND, Lateral(member.slot)) end
 		return nil
 	end,
 }

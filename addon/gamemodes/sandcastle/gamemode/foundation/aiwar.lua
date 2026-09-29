@@ -7,7 +7,7 @@
 --
 -- Members are opaque handles (the NPC entities). Carts are given as the set
 -- of teams with a cart moving on the map.
-local floor, ipairs, next, pairs, setmetatable, sort, table, type = math.floor, ipairs, next, pairs, setmetatable, table.sort, table, type
+local floor, max, min, ipairs, next, pairs, setmetatable, sort, table, type = math.floor, math.max, math.min, ipairs, next, pairs, setmetatable, table.sort, table, type
 local Teams = require("foundation.teams")
 local STATE = require("foundation.rounds.state")
 module(...)
@@ -75,23 +75,81 @@ function FactionTeam(class)
 end
 
 -- Stances: how a team splits its soldiers between roles, as integer
--- weights, first role first on a tie. A team with its own cart pushes it;
--- one facing only the enemy's defends, and throws more blockers at the
--- cart once it is close to its checkpoint; on a race map each does both.
--- Every side keeps a fifth of its soldiers raiding and a tenth in support.
-local ATTACK = { { role = PUSH, weight = 4 }, { role = ESCORT, weight = 3 }, { role = RAID, weight = 2 }, { role = SUPPORT, weight = 1 } }
-local DEFEND_STANCE = { { role = DEFEND, weight = 5 }, { role = BLOCK, weight = 2 }, { role = RAID, weight = 2 }, { role = SUPPORT, weight = 1 } }
-local DEFEND_CLOSE = { { role = DEFEND, weight = 2 }, { role = BLOCK, weight = 5 }, { role = RAID, weight = 2 }, { role = SUPPORT, weight = 1 } }
-local RACE = { { role = PUSH, weight = 4 }, { role = BLOCK, weight = 2 }, { role = ESCORT, weight = 2 }, { role = RAID, weight = 1 }, { role = SUPPORT, weight = 1 } }
-
+-- weights, first role first on a tie. No team is the attacker or the
+-- defender: each has a defense share (DefenseShare), the part of its cart
+-- work that goes against the enemy's cart (defending its line, blocking
+-- it) rather than to its own (pushing, escorting). With only its own cart
+-- a team is all offense, with only the enemy's all defense; on a race it
+-- leans on whichever cart matters more. Its blockers outnumber its
+-- defenders while the enemy's cart is close to its checkpoint. Every team
+-- keeps a fifth of its soldiers raiding and a tenth in support, whose
+-- focus follows the share too (foundation.aiwar.orders' Focus).
+--
 -- carts: team -> true, or { close = the cart is near its next checkpoint
--- (CartClose) }, for each team with a cart.
-function Stance(team, carts)
+-- (CartClose), progress = how far along its track, 0 to 1 }, for each team
+-- with a cart.
+
+-- A race: the share starts even, grows DEFENSE_LEAD per whole track the
+-- enemy's cart is ahead of the team's, and by DEFENSE_CLOSE while the
+-- enemy's is close to its checkpoint (shrinks the same while the team's
+-- own is), kept within DEFENSE_MIN..DEFENSE_MAX, in tenths.
+DEFENSE_EVEN, DEFENSE_LEAD, DEFENSE_CLOSE = 0.5, 1.5, 0.2
+DEFENSE_MIN, DEFENSE_MAX = 0.2, 0.8
+
+local function Info(cart) return type(cart) == "table" and cart or {} end
+
+-- The team's defense share, in tenths (0 to 10), or nil with no cart at all.
+function DefenseTenths(team, carts)
 	local own, enemy = carts[team], carts[ENEMY[team]]
-	if own and enemy then return RACE end
-	if own then return ATTACK end
-	if enemy then return (type(enemy) == "table" and enemy.close) and DEFEND_CLOSE or DEFEND_STANCE end
-	return nil
+	if not own and not enemy then return nil end
+	if not enemy then return 0 end
+	if not own then return 10 end
+	own, enemy = Info(own), Info(enemy)
+	local share = DEFENSE_EVEN + ((enemy.progress or 0) - (own.progress or 0)) * DEFENSE_LEAD
+	if enemy.close then share = share + DEFENSE_CLOSE end
+	if own.close then share = share - DEFENSE_CLOSE end
+	share = min(DEFENSE_MAX, max(DEFENSE_MIN, share))
+	return floor(share * 10 + 0.5)
+end
+
+function DefenseShare(team, carts)
+	local tenths = DefenseTenths(team, carts)
+	return tenths and tenths / 10 or nil
+end
+
+-- Per tenth of offense, pushers and escorts 4:3; per tenth of defense,
+-- defenders and blockers 5:2, or 2:5 with the enemy's cart close; raiders
+-- and support as two and one tenths of the whole.
+local PUSH_W, ESCORT_W = 4, 3
+local DEFEND_W, BLOCK_W = 5, 2
+local RAID_W, SUPPORT_W = 20, 10
+
+local stances = {} -- key -> stance: the same situation, the same table
+
+function Stance(team, carts)
+	local tenths = DefenseTenths(team, carts)
+	if not tenths then return nil end
+	local close = tenths > 0 and Info(carts[ENEMY[team]]).close == true
+	local key = tenths .. (close and "c" or "")
+	if stances[key] then return stances[key] end
+	local offense, defense = 10 - tenths, tenths
+	local defendW, blockW = DEFEND_W, BLOCK_W
+	if close then defendW, blockW = BLOCK_W, DEFEND_W end
+	local cartWork = {
+		offense = { { role = PUSH, weight = offense * PUSH_W }, { role = ESCORT, weight = offense * ESCORT_W } },
+		defense = { { role = DEFEND, weight = defense * defendW }, { role = BLOCK, weight = defense * blockW } },
+	}
+	local order = tenths >= 5 and { "defense", "offense" } or { "offense", "defense" }
+	local stance = {}
+	for _, side in ipairs(order) do
+		for _, share in ipairs(cartWork[side]) do
+			if share.weight > 0 then stance[#stance + 1] = share end
+		end
+	end
+	stance[#stance + 1] = { role = RAID, weight = RAID_W }
+	stance[#stance + 1] = { role = SUPPORT, weight = SUPPORT_W }
+	stances[key] = stance
+	return stance
 end
 
 -- A cart is close to its checkpoint within CLOSE_RANGE along the track,
@@ -168,6 +226,7 @@ function War.New()
 		fireTeams = {}, -- every fire team: { team, role, index (per team and role), squad, members = place -> member }
 		enlisted = 0, -- members ever enlisted, for their order
 		stances = {}, -- team -> stance
+		defense = {}, -- team -> its defense share (DefenseShare), or nil
 		drafts = { [RED] = 0, [BLUE] = 0 },
 		nextWave = { [RED] = 0, [BLUE] = 0 },
 		field = nil,
@@ -329,6 +388,7 @@ end
 -- cart appears or goes) from scratch, oldest first.
 function War:Assign(carts)
 	for _, team in ipairs({ RED, BLUE }) do
+		self.defense[team] = DefenseShare(team, carts)
 		local stance = Stance(team, carts)
 		local old = self.stances[team]
 		if stance ~= old and stance and old and SameRoles(stance, old) then
@@ -392,8 +452,10 @@ end
 -- { pos, dir }: the doors that team must pass to reach the rest of the map,
 -- dir the way it passes them, posts = team -> points where its defenders
 -- establish their line, forwardPosts = team -> points ahead of its own
--- cart where its escorts do (foundation.aiwar.posts) }.
+-- cart where its escorts do (foundation.aiwar.posts) }. The war adds
+-- defense = team -> its defense share (DefenseShare).
 function War:SetField(field)
+	field.defense = self.defense
 	self.field = field
 end
 

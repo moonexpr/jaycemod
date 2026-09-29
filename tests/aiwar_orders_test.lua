@@ -253,6 +253,34 @@ T.test("raiders go round the enemy's line, to either side by slot", function()
 	Near(Orders.Goal(field, red), P(1000, -Tactics.FLANK_OFFSET), "beside BLU's cart, coming from the checkpoint")
 end)
 
+T.test("in a race, raiders and support split between the carts by their team's defense share", function()
+	local field = Field({ carts = { [BLUE] = Cart(1000), [RED] = Cart(2000) } })
+	field.defense = { [RED] = 0.8 }
+	local defense = 0
+	for slot = 0, 9 do
+		if Orders.Focus(field, { team = RED, role = AiWar.RAID, slot = slot }) == "defense" then defense = defense + 1 end
+	end
+	T.eq(defense, 8, "eight in ten on BLU's cart")
+	field.defense[RED] = 0.2
+	defense = 0
+	for slot = 0, 9 do
+		if Orders.Focus(field, { team = RED, role = AiWar.RAID, slot = slot }) == "defense" then defense = defense + 1 end
+	end
+	T.eq(defense, 2, "two in ten once RED leads")
+	T.eq(Orders.Focus(Field({}), { team = RED, slot = 0 }), "defense", "one cart, the enemy's: defense")
+	T.eq(Orders.Focus(Field({}), { team = BLUE, slot = 0 }), "offense", "one cart, its own: offense")
+end)
+
+T.test("a race raider on offense goes round the line ahead of its own cart, on defense round the enemy's escorts", function()
+	local field = Field({ carts = { [BLUE] = Cart(1000), [RED] = Cart(2000) } })
+	field.defense = { [RED] = 1 }
+	local member = { team = RED, role = AiWar.RAID, slot = 0 }
+	T.eq(Orders.Focus(field, member), "defense", "all defense")
+	Near(Orders.Goal(field, member), Tactics.FlankPoint(P(4000, 0), P(1000, 0), 1), "beside BLU's cart")
+	field.defense[RED] = 0
+	Near(Orders.Goal(field, member), Tactics.FlankPoint(P(2000, 0), P(2000 + Orders.DEFEND_LEAD, 0), 1), "beside the track ahead of its own")
+end)
+
 T.test("an attacking raider round the line joins the push", function()
 	local me, npc = Enlist({ role = AiWar.RAID, pos = P(1000 + Orders.DEFEND_LEAD, Tactics.FLANK_OFFSET), walkable = function() return true end })
 	Tick(me, npc, 2)

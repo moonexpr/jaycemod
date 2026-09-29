@@ -1459,15 +1459,16 @@ function Controller:Field(phase)
 	}
 end
 
--- The teams with a cart, and whether each cart is close to its next
--- checkpoint (the end of its track after the last), which throws the
--- defenders' blockers at it (foundation.aiwar's Stance).
+-- The teams with a cart, how far along its track each cart is, and whether
+-- it is close to its next checkpoint (the end of its track after the
+-- last): what each team's defense share and stance are made of
+-- (foundation.aiwar's DefenseShare and Stance).
 function Controller:CartTeams(carts)
 	local teams, close = {}, {}
 	for team, cart in pairs(carts) do
 		local target = cart.nextCheckpoint or cart.track:Length()
 		close[team] = AiWar.CartClose(self.cartClose and self.cartClose[team], target - cart.distance)
-		teams[team] = { close = close[team] }
+		teams[team] = { close = close[team], progress = cart.distance / math.max(cart.track:Length(), 1) }
 	end
 	self.cartClose = close
 	return teams
@@ -1613,7 +1614,10 @@ function Controller:Describe(ent, entry)
 	if state.route then route = string.format("waypoint %d of %d", state.routeIndex, #state.route) end
 	local heading = string.format("%s %s #%d", TEAM_LABEL[soldier.team], ent:GetClass(), ent:EntIndex())
 	local lines = {
-		"Role: " .. (member.role and (member.role .. " " .. member.slot) or "none"),
+		"Role: " .. (member.role and (member.role .. " " .. member.slot) or "none")
+			.. string.format(" (team %d%% on defense)", math.floor((self.war.defense[soldier.team] or 0) * 100 + 0.5))
+			.. ((member.role == AiWar.RAID or member.role == AiWar.SUPPORT) and self.war:Field()
+				and (", working " .. ((Orders.Focus(self.war:Field(), member) == "defense") and "the enemy's cart" or "its own cart")) or ""),
 		"Action: " .. entry.npc:Describe(),
 		"Route: " .. route,
 		"Goal: " .. (state.goal and (Round(soldier:RangeTo(state.goal)) .. " units away") or "none"),
