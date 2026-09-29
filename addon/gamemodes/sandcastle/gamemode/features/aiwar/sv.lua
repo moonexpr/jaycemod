@@ -1115,21 +1115,6 @@ local function CartRadius(train)
 	return math.sqrt(size.x * size.x + size.y * size.y) / 2 + CART_CLEARANCE
 end
 
--- The push sphere's radius (foundation.aiwar.orders): the capture area
--- riding the cart (team_train_watcher's), as the largest circle inside it
--- less a soldier's hull; nil without one.
-local HULL_RADIUS = 16
-
-local function PushRadius(train)
-	for _, area in ipairs(ents.FindByClass("trigger_capture_area")) do
-		if area:GetParent() == train then
-			local mins, maxs = area:WorldSpaceAABB()
-			return math.max(8, math.min(maxs.x - mins.x, maxs.y - mins.y) / 2 - HULL_RADIUS)
-		end
-	end
-	return nil
-end
-
 -- Carts' kill triggers: maps put a trigger_hurt inside the cart, parented
 -- to it, to kill players stuck in it. A soldier the cart drove over (a
 -- NextBot is not pushed as a player is) is not killed by it but set down
@@ -1528,7 +1513,6 @@ function Controller:Field(phase)
 			self.cartEntities[team] = watcher:Train()
 			carts[team] = {
 				radius = CartRadius(watcher:Train()),
-				pushRadius = PushRadius(watcher:Train()),
 				track = self:TrackOf(watcher),
 				distance = watcher:TrainDistanceAlongTrack(),
 				nextCheckpoint = watcher:NextCheckpointDistance(),
@@ -1904,13 +1888,11 @@ function Controller:SendDebug(now)
 		net.WriteBool(fireTeam.flank ~= nil and not fireTeam.flankDone)
 		if fireTeam.flank and not fireTeam.flankDone then net.WriteVector(ToVector(fireTeam.flank)) end
 	end
-	-- the cart spheres: push and support, per team with a cart
+	-- the support sphere of each team with a cart
 	local spheres = {}
 	local field = self.war:Field()
 	for team, cart in pairs(field and field.carts or {}) do
-		local center, radius = Orders.PushSphere(cart)
-		spheres[#spheres + 1] = { team = team, center = center, radius = radius, push = true }
-		center, radius = Orders.SupportSphere(cart)
+		local center, radius = Orders.SupportSphere(cart)
 		spheres[#spheres + 1] = { team = team, center = center, radius = radius, push = false }
 	end
 	net.WriteUInt(#spheres, 4)
