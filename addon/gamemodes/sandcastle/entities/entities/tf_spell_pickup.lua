@@ -44,6 +44,13 @@ function ENT:Configure(config)
 	self.launch = config.velocity
 end
 
+-- CItem::Spawn takes its bounds from the model, and CTFPowerup::Spawn's
+-- SetSolidFlags drops the trigger bloat; the spellbooks have no physics
+-- model, so the touch box is the model's hull.
+function ENT:TouchBounds()
+	return self:GetModelBounds()
+end
+
 -- CSpellPickup::GetPowerupModel
 function ENT:PowerupModel()
 	if self.tier == self.set.TIER_RARE then return MAJOR_MODEL end

@@ -14,9 +14,16 @@ ENT.Model = "models/items/medkit_small.mdl"
 ENT.Size = "small"
 ENT.Kind = "health"
 
+-- The idle sequence plays, as TF2's powerups' does.
+ENT.AutomaticFrameAdvance = true
+
 if CLIENT then return end
 
 local P = WETSAND.PlayerRules
+
+-- A kit's touch box.
+local KIT_MINS = Vector(-16, -16, 0)
+local KIT_MAXS = Vector(16, 16, 24)
 
 local SOUNDS = {
 	health = "HealthKit.Touch",
@@ -38,6 +45,10 @@ function ENT:KeyValue(key, value)
 	end
 end
 
+function ENT:TouchBounds()
+	return KIT_MINS, KIT_MAXS
+end
+
 -- CTFPowerup::GetPowerupModel: the map's model when it exists.
 function ENT:PowerupModel()
 	if self.powerupModel and self.powerupModel ~= "" and util.IsValidModel(self.powerupModel) then
@@ -50,7 +61,7 @@ function ENT:Initialize()
 	self:SetModel(self:PowerupModel())
 	self:SetMoveType(MOVETYPE_NONE)
 	self:SetSolid(SOLID_BBOX)
-	self:SetCollisionBounds(Vector(-16, -16, 0), Vector(16, 16, 24))
+	self:SetCollisionBounds(self:TouchBounds())
 	self:SetTrigger(true)
 	self:AddSolidFlags(FSOLID_NOT_SOLID)
 	self:ResetSequence(self:LookupSequence("idle"))
@@ -58,6 +69,12 @@ function ENT:Initialize()
 	if self.autoMaterialize == nil then self.autoMaterialize = true end
 	self.respawning = false
 	self:SetDisabled(self.startDisabled == true)
+end
+
+-- The server's cycle advances every frame, so the idle sequence plays.
+function ENT:Think()
+	self:NextThink(CurTime())
+	return true
 end
 
 -- CTFPowerup::SetDisabled
