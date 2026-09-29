@@ -103,6 +103,9 @@ PATROL_SHIFT, CART_STILL = 64, 8
 -- a panicked run for the defenders racing to their line in setup, a run
 -- otherwise.
 WALK, RUN, PANIC = "walk", "run", "panic"
+-- A cart's rushers run and only break off when hit (the port's engine
+-- lets them be interrupted by damage alone).
+RUSH = "rush"
 RETRY_WAIT = 1 -- after a failed trip, before the next
 
 local Distance = Track.Distance
@@ -422,7 +425,7 @@ function Travel:Update(me)
 	local state, role = self.state, self.role
 	local field = state.war:Field()
 	local goal, over = self:Goal(me, field)
-	self.gait = (self.spot and WALK) or (field and field.setup and PANIC) or RUN
+	self.gait = (self.spot and WALK) or (field and field.setup and PANIC) or (role.rushes and RUSH) or RUN
 	if goal == nil then
 		if over == "gave up" then return self:Fail(over) end
 		return self:End(over)
@@ -570,7 +573,7 @@ function Objective:Update(me)
 	state.goal = goal
 	-- at the cart: keep to the spot as the cart carries it off
 	if self.role.rushes and range <= self.role.arrive then
-		if range > STATION and me:CanWalkTo(goal) then me:MoveTo(goal, RUN) else me:Release() end
+		if range > STATION and me:CanWalkTo(goal) then me:MoveTo(goal, RUSH) else me:Release() end
 		return self:Continue()
 	end
 	local fighting = me:HasEnemy() and range <= self.role.leash

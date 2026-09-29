@@ -206,6 +206,7 @@ local SLIDE_MIN = 0.2
 local GAITS = {
 	walk = { acts = { ACT_WALK }, speed = 80 },
 	run = { acts = { ACT_RUN }, speed = 190 },
+	rush = { acts = { ACT_RUN }, speed = 190 },
 	-- citizens' cowering run, else a plain one
 	panic = { acts = { ACT_RUN_PROTECTED, ACT_RUN_STIMULATED, ACT_RUN }, speed = 210 },
 }
@@ -246,24 +247,81 @@ function Soldier:Sweep(from, to)
 	})
 end
 
--- Movement, nodegraph assisted: the engine moves a soldier, running its
--- own route over the map's AI node graph (the nodegraph feature) to each
--- target, with its own animations, and touching the triggers that open
--- doors. A run the engine refuses (ended RUN_ENDED_NEAR or more short of
--- its target) or that stalls (moving no more than ENGINE_STALL_PROGRESS
--- in ENGINE_STALL_TIME) is walked by hand (Soldier:Walk) for BY_HAND_TIME,
--- so the soldier keeps to its objective, then the engine is asked again.
--- Each failure's kind and whether the engine can path to the target at all
--- (NPC:NavSetGoal on the node graph) go to the report, to find out why. A stall against a door is the door watchdog's
--- (HeldByDoor).
-local ENGINE_RETARGET = 24
+-- Movement, through the engine's own AI: each soldier has a goal marker
+-- (an info_target) and an aiscripted_schedule, the Hammer entity maps use
+-- to send an NPC somewhere without taking it out of its AI
+-- (CAI_ScriptedSchedule, scripted.cpp). Our orders move the marker; the
+-- schedule walks or runs the soldier after it (ScheduledMoveToGoalEntity,
+-- over the node graph, following the marker as it moves), with the
+-- engine's own animations and door triggers. Its interruptability lets
+-- the engine's combat AI take over: at GENERAL (escorts, defenders,
+-- wanderers) on sight of an enemy, cover and squad slots and all; at
+-- DAMAGE_OR_DEATH (a cart's rushers) only when hit. While the engine
+-- fights (an enemy seen in the last COMBAT_LINGER seconds) the move waits;
+-- then it starts again. A move that ends short of its target unasked
+-- (refused) or stalls (moving no more than ENGINE_STALL_PROGRESS in
+-- ENGINE_STALL_TIME) is walked by hand (Soldier:Walk) for BY_HAND_TIME,
+-- then given back to the engine. Each failure's kind and whether the
+-- engine can path to the target at all (NPC:NavSetGoal) go to the report.
+-- A stall against a door is the door watchdog's (HeldByDoor).
 local ENGINE_STALL_PROGRESS, ENGINE_STALL_TIME = 16, 1.5
 local RUN_ENDED_NEAR = 48
 local BY_HAND_TIME = 3
-local ENGINE_SCHEDULE = { walk = SCHED_FORCED_GO, run = SCHED_FORCED_GO_RUN, panic = SCHED_FORCED_GO_RUN }
+local START_GRACE = 0.5 -- the schedule starts on the script's next think
+local COMBAT_LINGER = 5
+local MARKER_MOVE = 8
+local SCRIPT_WALK, SCRIPT_RUN = 1, 2 -- SCHED_SCRIPT_WALK_TO_GOAL, SCHED_SCRIPT_RUN_TO_GOAL
+local GENERAL_INTERRUPTABILITY, DAMAGEORDEATH_INTERRUPTABILITY = 0, 1
+local SF_SCRIPT_REPEATABLE, SF_SCRIPT_NO_COMPLAINTS = 4, 2048
 
+-- ScheduledMoveToGoalEntity runs as SCHED_IDLE_WALK.
 function Soldier:EngineRunning()
-	return self.ent:IsCurrentSchedule(SCHED_FORCED_GO_RUN) or self.ent:IsCurrentSchedule(SCHED_FORCED_GO)
+	return self.ent:IsCurrentSchedule(SCHED_IDLE_WALK)
+end
+
+-- The soldier's marker and script, made once.
+function Soldier:Script()
+	if IsValid(self.script) then return self.script, self.marker end
+	local ent, index = self.ent, self.ent:EntIndex()
+	local name = ent:GetName()
+	if name == "" then
+		name = "wetsand_soldier_" .. index
+		ent:SetName(name)
+	end
+	local marker = ents.Create("info_target")
+	marker:SetName("wetsand_goal_" .. index)
+	marker:SetPos(ent:GetPos())
+	marker:Spawn()
+	local script = ents.Create("aiscripted_schedule")
+	script:SetKeyValue("m_iszEntity", name)
+	script:SetKeyValue("goalent", "wetsand_goal_" .. index)
+	script:SetKeyValue("forcestate", "0")
+	script:SetKeyValue("m_flRadius", "0")
+	script:SetKeyValue("spawnflags", tostring(SF_SCRIPT_REPEATABLE + SF_SCRIPT_NO_COMPLAINTS))
+	script:Spawn()
+	self.script, self.marker = script, marker
+	return script, marker
+end
+
+function Soldier:RemoveScript()
+	SafeRemoveEntity(self.script)
+	SafeRemoveEntity(self.marker)
+	self.script, self.marker = nil, nil
+end
+
+function Soldier:StartScript(target)
+	local script = self:Script()
+	script:SetKeyValue("schedule", tostring(self.gait == "walk" and SCRIPT_WALK or SCRIPT_RUN))
+	script:SetKeyValue("interruptability", tostring(self.gait == "rush" and DAMAGEORDEATH_INTERRUPTABILITY or GENERAL_INTERRUPTABILITY))
+	script:Fire("StartSchedule")
+	self.startedAt, self.engineTarget = CurTime(), target
+	self.stallAnchor, self.lastPos = nil, nil
+end
+
+-- The engine is fighting: an enemy seen lately, and our move not running.
+function Soldier:EngineFighting(now)
+	if self:HasEnemy() then self.enemySeenAt = now end
+	return now - (self.enemySeenAt or -math.huge) < COMBAT_LINGER
 end
 
 -- The engine plans its own routes where the map has an AI node graph.
@@ -279,7 +337,7 @@ function Soldier:PlansRoutes()
 	return graphLoaded
 end
 
--- The run failed: drop it, walk by hand for BY_HAND_TIME.
+-- The move failed: drop it, walk by hand for BY_HAND_TIME.
 function Soldier:RunFailed(now, why)
 	self.retryAt = now + BY_HAND_TIME
 	self.failures = self.failures or {}
@@ -295,17 +353,18 @@ function Soldier:RunFailed(now, why)
 	if self:EngineRunning() then self.ent:ClearSchedule() end
 end
 
--- Each tick of a move: the engine's run, started and watched, or a step
--- by hand while the engine has failed.
+-- Each tick of a move: the marker kept on the target, the engine's move
+-- started and watched, or a step by hand while the engine has failed.
 function Soldier:Move(dt)
 	local now = CurTime()
 	if now < (self.retryAt or 0) then return self:Walk(dt) end
 	local ent, target = self.ent, self.moveTarget
-	local range = self:RangeTo(target)
-	local sameTarget = self.engineTarget ~= nil and Track.Distance(self.engineTarget, target) < ENGINE_RETARGET
-	if sameTarget and self:EngineRunning() then
+	local _, marker = self:Script()
+	local goal = OnFloor(ToVector(target))
+	if marker:GetPos():Distance(goal) > MARKER_MOVE then marker:SetPos(goal) end
+	if self:EngineRunning() then
 		-- progress is measured by position: an engine-driven NPC's velocity
-		-- can read 0 while it runs
+		-- can read 0 while it moves
 		local pos = ent:GetPos()
 		self.walkSpeed = self.lastPos and pos:Distance(self.lastPos) / math.max(dt, 1e-3) or 0
 		self.lastPos = pos
@@ -322,20 +381,18 @@ function Soldier:Move(dt)
 		end
 		return
 	end
-	if sameTarget then
-		-- the run is over: arrived, or refused short of the target
-		self.walkSpeed = 0
-		if range > RUN_ENDED_NEAR then
-			local door = self:DoorAhead(target)
-			if door then self:HeldByDoor(door) end
-			self:RunFailed(now, "refused")
-		end
-		return
-	end
+	self.walkSpeed = 0
+	if self:EngineFighting(now) then return end
+	local range = self:RangeTo(target)
 	if range <= WALK_ARRIVE then return end
-	self.engineTarget, self.stallAnchor, self.lastPos = target, nil, nil
-	ent:SetLastPosition(OnFloor(ToVector(target)))
-	ent:SetSchedule(ENGINE_SCHEDULE[self.gait] or SCHED_FORCED_GO_RUN)
+	if self.engineTarget and now - self.startedAt < START_GRACE then return end
+	if self.engineTarget and range > RUN_ENDED_NEAR and now - self.startedAt < ENGINE_STALL_TIME then
+		-- ended short of the target, unasked and not fighting
+		local door = self:DoorAhead(target)
+		if door then self:HeldByDoor(door) end
+		return self:RunFailed(now, "refused")
+	end
+	self:StartScript(target)
 end
 
 -- Where a step of `step` from pos along dir lands, or nil when it cannot
@@ -803,6 +860,7 @@ function Controller:Discharge(ent)
 	if not entry then return end
 	self.soldiers[ent] = nil
 	entry.soldier:Unpose()
+	entry.soldier:RemoveScript()
 	if IsValid(ent) then self:Rearm(ent, entry) end
 	self.war:Discharge(ent)
 	entry.npc:Destroy()

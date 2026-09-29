@@ -16,10 +16,9 @@
 --     last being the goal, or the nearest reachable point when the goal
 --     is cut off
 --   CanWalkTo(p) -> nothing solid between me and p at walking height
---   MoveTo(p, gait): go to p in a straight line at the gait
---     (foundation.aiwar.orders' WALK, RUN or PANIC; default RUN), moved by
---     the controller rather than the engine, whatever my AI is doing; a
---     new p retargets the move
+--   MoveTo(p, gait): go to p at the gait (foundation.aiwar.orders' WALK,
+--     RUN, PANIC or RUSH; default RUN), letting my own AI fight on the way
+--     (at RUSH only once I am hit); a new p retargets the move
 --   Release(): end any move, handing me back to the engine's own AI,
 --     which fights, takes cover or idles
 --   Pose() -> strike a pose where I stand (sitting, lying down, dancing),
