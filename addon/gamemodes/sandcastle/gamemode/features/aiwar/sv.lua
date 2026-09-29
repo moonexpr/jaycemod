@@ -188,19 +188,29 @@ local function OnFloor(pos)
 	return tr.HitPos + Vector(0, 0, FLOOR_CLEARANCE)
 end
 
+-- The engine refuses runs it cannot build a way for, as over displacement
+-- ground, where an NPC stands a little sunk into the bumps and its move
+-- probe starts in solid. A run to the same target refused again is walked
+-- by hand instead: a hop of up to CARRY_STEP toward it, when a player
+-- could walk that line (Soldier:Hop).
+local CARRY_STEP = 128
+local RUN_ENDED_NEAR = 48
+
 function Soldier:MoveTo(p)
 	if self.traverse then return end
 	local ent = self.ent
 	local current = self.moveTarget
-	if current and Track.Distance(current, p) < MOVE_RETARGET and ent:IsCurrentSchedule(SCHED_FORCED_GO_RUN) then return end
+	local same = current and Track.Distance(current, p) < MOVE_RETARGET
+	if same and ent:IsCurrentSchedule(SCHED_FORCED_GO_RUN) then return end
+	if same and self.ranFor == current and self:RangeTo(p) > RUN_ENDED_NEAR and self:Carry(p) then return end
 	self.moveTarget = p
+	self.ranFor = p
 	ent:SetLastPosition(OnFloor(ToVector(p)))
 	ent:SetSchedule(SCHED_FORCED_GO_RUN)
 end
 
 -- For the report: whether the forced run is on, or ended away from its
 -- target, which means the engine could not build a way there.
-local RUN_ENDED_NEAR = 48
 
 function Soldier:RunState()
 	if self.traverse then return "carried over an obstacle, walking" end
@@ -329,6 +339,20 @@ end
 -- stand on there, so on stairs it rides the players' smooth clip ramp.
 -- At the end its AI is free again and its orders' moves go on.
 local function NotCharacter(hit) return not (hit:IsNPC() or hit:IsPlayer()) end
+
+function Soldier:Carry(p)
+	local from, to = self.ent:GetPos(), ToVector(p)
+	local length = from:Distance(to)
+	if length > CARRY_STEP then to = from + (to - from) * (CARRY_STEP / length) end
+	local target = self.moveTarget
+	if not self:Hop(Point(to)) then return false end
+	-- the hop is a leg of the same run: its target stands, and the
+	-- engine is asked to run the rest again
+	self.moveTarget = target
+	self.ranFor = nil
+	self.carries = (self.carries or 0) + 1
+	return true
+end
 
 function Soldier:Traverse(now)
 	local traverse, ent = self.traverse, self.ent
@@ -1181,6 +1205,7 @@ function Controller:Describe(ent, entry)
 	if entry.disarmed then lines[#lines + 1] = "Humiliated: cannot attack, fears the winners" end
 	if soldier.recoveries then lines[#lines + 1] = string.format("Recovered: %d time(s), last %s", soldier.recoveries, soldier.recoveredWhy) end
 	if state.hops then lines[#lines + 1] = "Hops: " .. state.hops end
+	if soldier.carries then lines[#lines + 1] = "Carried past refused runs: " .. soldier.carries .. " time(s)" end
 	if state.passed then lines[#lines + 1] = "Let through: " .. state.passed .. " NPC-only blocker(s)" end
 	local blocked = self:BlockedBy(soldier)
 	if blocked then lines[#lines + 1] = "Blocked by: " .. blocked end
