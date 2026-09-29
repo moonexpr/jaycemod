@@ -229,6 +229,32 @@ function Controller:RelatePlayers()
 	end
 end
 
+-- Teammates pass through each other ---------------------------------------------------
+-- An engine NPC's movement checks (CTraceFilterNav, ai_utils.cpp) skip any
+-- entity it is paired with in the engine's collision pair table, which
+-- logic_collision_pair fills (as Sandbox's No Collide does), so a teammate
+-- in a doorway no longer blocks a soldier's run. Enemies still collide.
+-- Each pair goes with either of its soldiers.
+
+local function PassThrough(a, b)
+	local physA, physB = a:GetPhysicsObject(), b:GetPhysicsObject()
+	if not (IsValid(physA) and IsValid(physB)) then return end
+	local pair = ents.Create("logic_collision_pair")
+	pair:SetKeyValue("startdisabled", "1")
+	pair:SetPhysConstraintObjects(physA, physB)
+	pair:Spawn()
+	pair:Activate()
+	pair:Input("DisableCollisions")
+	a:DeleteOnRemove(pair)
+	b:DeleteOnRemove(pair)
+end
+
+function Controller:PassTeammates(ent, team)
+	for other, entry in pairs(self.soldiers) do
+		if other ~= ent and IsValid(other) and entry.soldier.team == team then PassThrough(ent, other) end
+	end
+end
+
 -- Enlisting ---------------------------------------------------------------------
 
 function Controller:Enlist(ent, team, drafted)
@@ -240,6 +266,7 @@ function Controller:Enlist(ent, team, drafted)
 	}
 	WETSAND.SetTeamMember(ent, team)
 	self:RelateSoldiers(ent, team)
+	self:PassTeammates(ent, team)
 	self.nextRelations = 0
 end
 
