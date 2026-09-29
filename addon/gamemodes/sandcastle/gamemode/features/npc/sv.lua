@@ -247,8 +247,14 @@ local NEAREST_AREA_RANGE = 200
 local SEARCH_SECONDS = 0.002
 local SEARCH_CHUNK = 16
 
+local NEAREST_AREA_FAR = 600
+
+-- The area under pos, else (a point over a wall, a pit or a roof, as a
+-- goal offset from a cart's track can be) the nearest at any height.
 local function NearestArea(pos)
-	return navmesh.GetNearestNavArea(pos, false, NEAREST_AREA_RANGE, false, true)
+	local area = navmesh.GetNearestNavArea(pos, false, NEAREST_AREA_RANGE, false, true)
+	if IsValid(area) then return area end
+	return navmesh.GetNearestNavArea(pos, true, NEAREST_AREA_FAR, false, false)
 end
 
 function Controller:RequestRoute(request)

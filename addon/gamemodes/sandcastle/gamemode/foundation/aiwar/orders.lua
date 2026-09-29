@@ -57,6 +57,10 @@ REPATH_INTERVAL, REPATH_DISTANCE = 2, 150
 STUCK_TIME, STUCK_PROGRESS = 3, 24
 MAX_REPATHS = 2
 CHASE_BACKOFF = 3 -- after a straight run got stuck, routes only for this long
+-- A stuck soldier first steps this far aside, for this long, in a direction
+-- that turns with each attempt and differs between soldiers: most are held
+-- by a corner, a door frame or someone in the way, not by the route.
+SIDESTEP_DISTANCE, SIDESTEP_TIME = 96, 1.5
 RETRY_WAIT = 1 -- after a failed trip, before the next
 
 local Distance = Track.Distance
@@ -212,12 +216,18 @@ function Travel:IsStuck(me)
 	return me:Now() - self.progressAt > STUCK_TIME
 end
 
--- A new route after getting stuck, or the end of the trip after too many.
+-- A step aside and a new route after getting stuck, or the end of the
+-- trip after too many.
 function Travel:Unstick(me, goal)
 	self.repaths = self.repaths + 1
 	if self.repaths > MAX_REPATHS then return self:Fail("stuck") end
 	self:ResetProgress(me)
 	self:Plan(me, goal)
+	local angle = ((self.state.member.seq or 0) + self.repaths) * GOLDEN_ANGLE
+	local here = me:Position()
+	self.sidestep = { x = here.x + cos(angle) * SIDESTEP_DISTANCE, y = here.y + sin(angle) * SIDESTEP_DISTANCE, z = here.z }
+	self.sidestepUntil = me:Now() + SIDESTEP_TIME
+	me:MoveTo(self.sidestep)
 	return self:Continue()
 end
 
@@ -290,6 +300,14 @@ function Travel:Update(me)
 	local range = me:RangeTo(goal)
 	if range <= role.arrive then return self:End("arrived") end
 	if not role.rushes and me:HasEnemy() and range <= role.leash then return self:End("engaging") end
+	if self.sidestep then
+		if me:Now() < self.sidestepUntil then
+			me:MoveTo(self.sidestep)
+			return self:Continue()
+		end
+		-- a step aside that moved counts as progress by itself
+		self.sidestep = nil
+	end
 	if me:Now() >= self.chaseBlockedUntil and me:CanWalkTo(goal) then return self:Chase(me, goal) end
 	return self:FollowRoute(me, goal)
 end

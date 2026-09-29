@@ -320,6 +320,26 @@ T.test("a soldier chasing a goal it keeps closing on is not stuck, however far t
 	T.eq(npc:State().trip, nil, "never gave up")
 end)
 
+T.test("a stuck soldier first steps aside, then goes on along its new route", function()
+	local route = { P(900, 0) }
+	local me, npc = Enlist({ role = AiWar.PUSH, route = function() return route end })
+	Tick(me, npc, 2)
+	Tick(me, npc, (Orders.STUCK_TIME + TICK) / TICK)
+	T.eq(#me.requests, 2, "a new route")
+	T.near(FS.Distance(me.moving, P(0, 0)), Orders.SIDESTEP_DISTANCE, 1e-6, "a step aside first")
+	local aside = me.moving
+	Tick(me, npc, Orders.SIDESTEP_TIME / TICK + 1)
+	Near(me.moving, route[1], "then the route again")
+	local before = #me.moves
+	Tick(me, npc, (Orders.STUCK_TIME + TICK) / TICK)
+	local another = false
+	for i = before + 1, #me.moves do
+		local move = me.moves[i]
+		if math.abs(FS.Distance(move, P(0, 0)) - Orders.SIDESTEP_DISTANCE) < 1e-6 and FS.Distance(move, aside) > 1 then another = true end
+	end
+	T.eq(another, true, "the next step aside goes another way")
+end)
+
 T.test("a straight chase that goes nowhere falls back to a route", function()
 	local me, npc = Enlist({ role = AiWar.PUSH, walkable = function() return true end })
 	Tick(me, npc)
