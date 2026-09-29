@@ -15,6 +15,7 @@ local HL2Path = WETSAND.require("foundation.npc.path.hl2")
 local Posts = WETSAND.require("foundation.aiwar.posts")
 local Zone = WETSAND.require("foundation.aiwar.zone")
 local Tactics = WETSAND.require("foundation.aiwar.tactics")
+local Squad = WETSAND.require("foundation.aiwar.squad")
 
 local ACTIVE_KEY = "wetsand.aiwar" -- Global2: the Utilities menu reads it
 local THINK_INTERVAL = 0.25
@@ -354,6 +355,11 @@ function Soldier:WanderSpot()
 	return nil
 end
 
+function Soldier:Enemy()
+	local enemy = self.ent:GetEnemy()
+	return IsValid(enemy) and enemy or nil
+end
+
 function Soldier:EnemyPosition()
 	local enemy = self.ent:GetEnemy()
 	return IsValid(enemy) and Point(enemy:GetPos()) or nil
@@ -375,14 +381,15 @@ local HIDING_IN_COVER_SPOT = 1
 local THREAT_EYE, COVER_CHEST = Vector(0, 0, 64), Vector(0, 0, 36)
 local COVER_EXCLUDE = 96
 
-function Soldier:CoverSpot(center, radius, threat, exclude)
+function Soldier:CoverSpot(center, radius, threat, exclude, taken)
 	local c, t = ToVector(center), ToVector(threat)
 	local best, bestDistance
 	for _, area in ipairs(navmesh.Find(c, radius, 96, 96)) do
 		for _, spot in ipairs(area:GetHidingSpots(HIDING_IN_COVER_SPOT) or {}) do
 			local d = spot:Distance(c)
 			if d <= radius and (not bestDistance or d < bestDistance)
-				and not (exclude and spot:Distance(ToVector(exclude)) < COVER_EXCLUDE) then
+				and not (exclude and spot:Distance(ToVector(exclude)) < COVER_EXCLUDE)
+				and not (taken and taken(Point(spot))) then
 				local tr = util.TraceLine({ start = t + THREAT_EYE, endpos = spot + COVER_CHEST, mask = MASK_SOLID_BRUSHONLY })
 				if tr.Hit then best, bestDistance = spot, d end
 			end
@@ -757,8 +764,8 @@ local KITS = {
 -- The Resistance's heroes, one of each alive at a time; support beyond them
 -- are veterans.
 local HEROES = {
-	{ name = "Alyx", model = "models/player/alyx.mdl", weapons = { "weapon_357" }, health = 250, damage = 2 },
-	{ name = "Barney", model = "models/player/barney.mdl", weapons = { "weapon_ar2" }, health = 300, damage = 1.75 },
+	{ name = "Alyx", hero = true, model = "models/player/alyx.mdl", weapons = { "weapon_357" }, health = 250, damage = 2 },
+	{ name = "Barney", hero = true, model = "models/player/barney.mdl", weapons = { "weapon_ar2" }, health = 300, damage = 1.75 },
 }
 local VETERAN = { name = "veteran", weapons = { "weapon_ar2" }, health = 200, damage = 1.5 }
 
@@ -787,6 +794,8 @@ function Controller:Equip(ent, entry, member)
 	local kits = KITS[team] or {}
 	local kit = kits[role] or (team == BLUE and role == AiWar.SUPPORT and self:HeroKit(ent)) or kits.default or {}
 	entry.soldier.kit = kit
+	-- a hero leads its squad (foundation.aiwar.squad)
+	if member then member.hero = kit.hero == true or nil end
 	ent:WetsandKit(kit)
 end
 
@@ -1634,6 +1643,27 @@ local TEAM_LABEL = { [RED] = "RED", [BLUE] = "BLU" }
 
 local function Round(n) return math.floor(n + 0.5) end
 
+-- A soldier's action for reports: "SquadLeader …/Push/Travel", or the full
+-- name when something above the job holds it (Humiliated).
+-- A soldier's squad for reports: its place and its leader.
+local function SquadLine(member)
+	local fireTeam = member.fireTeam
+	if not fireTeam then return "none" end
+	local leader = Squad.Leader(fireTeam)
+	local count = 0
+	for _ in pairs(fireTeam.members) do count = count + 1 end
+	local of = string.format("%s %d, %d strong", fireTeam.role, fireTeam.index, count)
+	if leader == member then return "leads " .. of .. (member.hero and " (hero)" or "") end
+	local handle = leader and leader.handle
+	return string.format("in %s, led by #%s", of, IsValid(handle) and handle:EntIndex() or "?")
+end
+
+local function ActionLine(fullName)
+	local job, role = Orders.JobOf(fullName)
+	if not job then return fullName end
+	return role .. " …/" .. job
+end
+
 -- A soldier described: a heading that says who it is ("BLU npc_citizen
 -- #45"), and labelled lines on what it is for, what it is doing, and where
 -- its route stands.
@@ -1650,8 +1680,10 @@ function Controller:Describe(ent, entry)
 			.. string.format(" (team %d%% on defense)", math.floor((self.war.defense[soldier.team] or 0) * 100 + 0.5))
 			.. ((member.role == AiWar.RAID or member.role == AiWar.SUPPORT) and self.war:Field()
 				and (", working " .. ((Orders.Focus(self.war:Field(), member) == "defense") and "the enemy's cart" or "its own cart")) or ""),
-		-- the monitors' chain is the same for everyone doing a job: shown as "…/"
-		"Action: " .. (entry.npc:Describe():gsub("^" .. Orders.JOB_PATH:gsub("%p", "%%%0"), "…/")),
+		-- the monitors' chain is the same for everyone doing a job: only its
+		-- squad role is shown
+		"Action: " .. ActionLine(entry.npc:Describe()),
+		"Squad: " .. SquadLine(member),
 		"Route: " .. route,
 		"Goal: " .. (state.goal and (Round(soldier:RangeTo(state.goal)) .. " units away") or "none"),
 		"Last trip: " .. (state.trip or "none"),

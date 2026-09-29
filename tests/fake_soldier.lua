@@ -122,10 +122,21 @@ function Soldier:Unfollow() self.following = false end
 -- CoverSpot hands out in turn (default: none); hurtAt: when last hurt.
 function Soldier:EnemyPosition() return self.enemyPos end
 
-function Soldier:CoverSpot(center, radius, threat, exclude)
-	self.covered = (self.covered or 0) + 1
-	return (self.covers or {})[self.covered]
+-- Hands out the covers after the last one it gave, skipping those taken.
+function Soldier:CoverSpot(center, radius, threat, exclude, taken)
+	local covers = self.covers or {}
+	for i = (self.covered or 0) + 1, #covers do
+		if not (taken and taken(covers[i])) then
+			self.covered = i
+			return covers[i]
+		end
+	end
+	self.covered = #covers
+	return nil
 end
+
+-- enemyHandle: the enemy Enemy() gives (default: none).
+function Soldier:Enemy() return self.enemyHandle end
 
 function Soldier:HurtSince(t) return self.hurtAt ~= nil and self.hurtAt > (t or 0) end
 

@@ -289,10 +289,19 @@ Each phase ships on its own and keeps the suite green.
    `TacticalMonitor` (with `Humiliated`), `SquadMonitor` (Solo only) and
    `ScenarioMonitor`. The orders tests must pass unchanged apart from
    action names in `Describe`.
-3. **Squads.** Leader, intent, member following, and bounding and flanking
-   as leader modes. Claims replace slot arithmetic. Tests: leader election
-   and succession; members taking element spots from the intent; claims
-   never double-booked.
+3. **Squads.** Built as:
+   - leader election (heroes, then the oldest, sticky) and
+     `SquadLeader`, `SquadMember` or `Solo` under `SquadMonitor`;
+   - members regroup on a far leader in a fight, bound on the leader's line
+     (spread by place), and fight the leader's enemy
+     (`SelectMoreDangerousThreat`);
+   - cover spots are claimed.
+
+   Not yet:
+   - a published leader intent with modes: bounding and flanking are still
+     the fire team's shared state, which works without one;
+   - claims for posts and ring slots: role slots already keep those
+     exclusive within a role.
 4. **Reports and Situation.** Sightings, line integrity and casualty rates
    on the blackboards. Tests: decay, and no enemy fact without a report.
 5. **Commander.** Allocation by utility, damping and suitability-based

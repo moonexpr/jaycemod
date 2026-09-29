@@ -15,8 +15,10 @@
 --     StrategyMonitor      applies the war's allocation: the member's job
 --       TacticalMonitor    self-preservation (CTFBotTacticalMonitor): the
 --                          humiliated SuspendFor Humiliated
---         SquadMonitor     leader, member or, for now, Solo
---           Solo
+--         SquadMonitor     leader, member or solo (foundation.aiwar.squad)
+--           SquadLeader | SquadMember | Solo   a member takes its bound line
+--                          from its leader, regroups on it in a fight, and
+--                          fights the enemy its leader fights
 --             ScenarioMonitor   runs the job (CTFBotScenarioMonitor)
 --               Push/Escort/Block/Defend/Raid/Support/Idle   the job:
 --                          hold or fight near the goal (pushers and
@@ -40,6 +42,7 @@ local N = require("foundation.npc")
 local AiWar = require("foundation.aiwar")
 local Track = require("foundation.aiwar.track")
 local Tactics = require("foundation.aiwar.tactics")
+local Squad = require("foundation.aiwar.squad")
 module(...)
 
 KIND = "aiwar"
@@ -288,6 +291,15 @@ function EnemyLine(field, member)
 		return own.track:Offset(own.distance + DEFEND_LEAD, 0), own.pos
 	end
 	return nil
+end
+
+-- `to` moved `offset` sideways, across the line from `from` to it (left
+-- for a positive offset).
+function Across(from, to, offset)
+	local dx, dy = to.x - from.x, to.y - from.y
+	local length = sqrt(dx * dx + dy * dy)
+	if length == 0 or offset == 0 then return to end
+	return { x = to.x - dy / length * offset, y = to.y + dx / length * offset, z = to.z }
 end
 
 -- A point `distance` from p, away from `from`.
@@ -794,6 +806,51 @@ end
 -- A fight, by the role's tactic (foundation.aiwar.tactics).
 BOUND_RADIUS, COVER_RADIUS, SPOT_ARRIVE = 200, 320, 48
 FLANK_TIME, FLANK_ARRIVE = 15, 160
+-- A squad member farther than REGROUP_RANGE from its leader in a fight runs
+-- to it first, to SQUAD_SPACING per place behind it; its bound spots are
+-- spread across the leader's line, SQUAD_SPACING apart by place. A cover
+-- spot a soldier takes is claimed for COVER_CLAIM seconds (renewed while
+-- it holds it), so no two soldiers pick the same one.
+REGROUP_RANGE, SQUAD_SPACING, COVER_CLAIM = 700, 96, 20
+
+-- The member's squad leader, other than itself, with a known position.
+local function LeaderOf(member)
+	local fireTeam = member.fireTeam
+	local leader = fireTeam and Squad.Leader(fireTeam)
+	if leader == nil or leader == member or leader.pos == nil then return nil end
+	return leader
+end
+
+-- A cover spot near center no one else holds, claimed for the member.
+function Objective:ClaimCover(me, center, radius, threat, exclude)
+	local state, now = self.state, me:Now()
+	local claims, member = state.war.claims, state.member
+	local spot = me:CoverSpot(center, radius, threat, exclude, function(p)
+		return not claims:FreeFor(Squad.Key("cover", p), member, now)
+	end)
+	if self.claimed then claims:Release(self.claimed, member) end
+	self.claimed = spot and Squad.Key("cover", spot) or nil
+	if self.claimed then claims:Take(self.claimed, member, now, COVER_CLAIM) end
+	return spot
+end
+
+-- Renews the member's cover claim while it holds the spot.
+function Objective:KeepClaim(me)
+	if self.claimed then self.state.war.claims:Take(self.claimed, self.state.member, me:Now(), COVER_CLAIM) end
+end
+
+-- A member far from its leader in a fight: to the leader first.
+function Objective:Regroup(me)
+	local member = self.state.member
+	local leader = LeaderOf(member)
+	if not leader or me:RangeTo(leader.pos) <= REGROUP_RANGE then return nil end
+	local spot = Tactics.Toward(leader.pos, me:Position(), SQUAD_SPACING * (member.place or 1))
+	local state = self.state
+	state.tactic, state.element = "regrouping on its leader", "moving"
+	state.goal, state.coverSpot = spot, nil
+	me:MoveTo(spot, RUN)
+	return self:Continue()
+end
 
 function Objective:Fight(me, goal, contact)
 	local state, now = self.state, me:Now()
@@ -803,6 +860,8 @@ function Objective:Fight(me, goal, contact)
 	self.anchor = nil
 	local tactic = self.role.tactic
 	if tactic == "raid" or tactic == "support" then self:Gadget(me, contact, now) end
+	local regroup = self:Regroup(me)
+	if regroup then return regroup end
 	if tactic == "attack" then return self:Attack(me, goal, contact, fireTeam, now) end
 	-- raiders always go round first, then bound onto the line itself
 	if tactic == "raid" then return self:Attack(me, EnemyLine(state.war:Field(), state.member) or goal, contact, fireTeam, now, true) end
@@ -837,11 +896,16 @@ function Objective:Attack(me, goal, contact, fireTeam, now, flanks)
 		return self:Continue()
 	end
 	if self.boundFor ~= bound then
-		local ahead = Tactics.Toward(me:Position(), goal, Tactics.BOUND_DISTANCE)
-		self.boundCover = me:CoverSpot(ahead, BOUND_RADIUS, contact.pos)
+		-- the squad bounds on one line: ahead of its leader, spread by place
+		local leader = LeaderOf(state.member)
+		local from = leader and leader.pos or me:Position()
+		local ahead = Tactics.Toward(from, goal, Tactics.BOUND_DISTANCE)
+		if leader then ahead = Across(from, ahead, Lateral(state.member.place or 0) / LATERAL * SQUAD_SPACING) end
+		self.boundCover = self:ClaimCover(me, ahead, BOUND_RADIUS, contact.pos)
 		self.boundSpot = self.boundCover or ahead
 		self.boundFor = bound
 	end
+	self:KeepClaim(me)
 	state.goal, state.coverSpot = self.boundSpot, self.boundCover
 	if me:RangeTo(self.boundSpot) <= SPOT_ARRIVE then
 		Tactics.Arrived(fireTeam, state.member)
@@ -863,10 +927,11 @@ function Objective:Defend(me, post, contact, fireTeam, now, stands)
 	local steps = fireTeam.fallback or 0
 	if not self.cover or self.coverSteps ~= steps or me:HurtSince(self.coverAt) then
 		local anchor = Tactics.FallbackPoint(post, contact.pos, steps)
-		local spot = me:CoverSpot(anchor, COVER_RADIUS, contact.pos, self.cover)
+		local spot = self:ClaimCover(me, anchor, COVER_RADIUS, contact.pos, self.cover)
 		self.cover, self.coverFound = spot or anchor, spot ~= nil
 		self.coverAt, self.coverSteps = now, steps
 	end
+	self:KeepClaim(me)
 	state.tactic = steps > 0 and ("falling back, step " .. steps) or "holding cover"
 	state.goal, state.coverSpot = self.cover, self.coverFound and self.cover or nil
 	if me:RangeTo(self.cover) > SPOT_ARRIVE then
@@ -885,6 +950,10 @@ function Objective:EndFight()
 	if not state.fighting then return end
 	state.fighting, state.tactic, state.element, state.coverSpot = false, nil, nil, nil
 	self.boundSpot, self.boundFor, self.boundCover, self.cover, self.coverFound = nil, nil, nil, nil, nil
+	if self.claimed then
+		state.war.claims:Release(self.claimed, state.member)
+		self.claimed = nil
+	end
 	local fireTeam = state.member.fireTeam
 	if fireTeam then
 		Tactics.Stand(fireTeam)
@@ -940,11 +1009,45 @@ end
 -- ScenarioMonitor: runs the member's job.
 local ScenarioMonitor = Monitor("ScenarioMonitor", ObjectiveFor)
 
--- Solo: a soldier in no squad does its job alone (squads come with phase 3).
-local Solo = Monitor("Solo", function(state) return ScenarioMonitor:New(state) end)
+-- The squad roles: each runs the job; which one runs follows the member's
+-- place in its squad (foundation.aiwar.squad's Kind), changing itself when
+-- that changes (a leader died, a hero joined, a new job's squad).
+local SquadRoles = {}
 
--- SquadMonitor: leader, member or solo; for now always solo.
-local SquadMonitor = Monitor("SquadMonitor", function(state) return Solo:New(state) end)
+local function SquadRole(kind, name)
+	local class = Monitor(name, function(state) return ScenarioMonitor:New(state) end)
+	class.kind = kind
+	function class:Update(me)
+		local now = Squad.Kind(self.state.member)
+		if now ~= self.kind then return self:ChangeTo(SquadRoles[now]:New(self.state), "now " .. now) end
+		return self:Continue()
+	end
+	SquadRoles[kind] = class
+	return class
+end
+
+-- SquadLeader: does its job; its squad takes its line, place and enemy from it.
+SquadRole("leader", "SquadLeader")
+
+-- SquadMember (TF2's CTFBotEscortSquadLeader): does its job, and fights the
+-- enemy its leader fights when that is one of the two DrGBase compares.
+local SquadMember = SquadRole("member", "SquadMember")
+
+function SquadMember:SelectMoreDangerousThreat(me, a, b)
+	local fireTeam = self.state.member.fireTeam
+	local leader = fireTeam and Squad.Leader(fireTeam)
+	local focus = leader and leader ~= self.state.member and leader.enemy
+	if focus ~= nil and (a == focus or b == focus) then return focus end
+	return N.ANSWER_UNDEFINED
+end
+
+-- Solo: in no squad (no job yet).
+SquadRole("solo", "Solo")
+
+-- SquadMonitor: leader, member or solo.
+local SquadMonitor = Monitor("SquadMonitor", function(state)
+	return SquadRoles[Squad.Kind(state.member)]:New(state)
+end)
 
 -- Humiliated: its side lost the round. Orders are dropped (DrGBase keeps
 -- away from what it fears), it holds its fire and hurries, until the next
@@ -981,8 +1084,13 @@ end
 -- checks the member's job itself (ChangeTo on "new role").
 local StrategyMonitor = Monitor("StrategyMonitor", function(state) return TacticalMonitor:New(state) end)
 
+-- It also keeps the member's record current with what its squad reads of
+-- it: where it is and the enemy it fights (foundation.aiwar.squad).
 function StrategyMonitor:Update(me)
-	self.state.job = self.state.member.role
+	local member = self.state.member
+	self.state.job = member.role
+	member.pos = me:Position()
+	member.enemy = me:HasEnemy() and me:Enemy() or nil
 	return self:Continue()
 end
 
@@ -996,8 +1104,12 @@ function SoldierAction:Update(me)
 	return self:Continue()
 end
 
--- The prefix every job's full name starts with, for reports.
-JOB_PATH = "SoldierAction/StrategyMonitor/TacticalMonitor/SquadMonitor/Solo/ScenarioMonitor/"
+-- The job part of a full action name (what follows ScenarioMonitor/), and
+-- the squad role it runs under; nil when it runs none (suspended above).
+function JobOf(fullName)
+	local role, job = fullName:match("^SoldierAction/StrategyMonitor/TacticalMonitor/SquadMonitor/(%a+)/ScenarioMonitor/(.+)$")
+	return job, role
+end
 
 -- config = { war (foundation.aiwar War), member (its roster entry) }
 function NewState(config, me)

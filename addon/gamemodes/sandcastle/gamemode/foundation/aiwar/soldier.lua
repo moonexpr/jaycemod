@@ -43,9 +43,12 @@
 --     goes); asking again keeps it following
 --   Unfollow(): stop following the cart
 --   EnemyPosition() -> where the enemy I have is, or nil
---   CoverSpot(center, radius, threat, exclude) -> a spot within radius of
---     center that the threat (a position) cannot see, nearest center first,
---     not within reach of exclude; or nil
+--   Enemy() -> the enemy I have (an opaque handle, as DrGBase's queries
+--     pass them), or nil
+--   CoverSpot(center, radius, threat, exclude, taken) -> a spot within
+--     radius of center that the threat (a position) cannot see, nearest
+--     center first, not within reach of exclude, and not one taken(spot)
+--     says another holds; or nil
 --   HurtSince(t) -> whether I have been hurt after time t
 --   Hold(): stay where I am, fighting from here
 --   UseGadget(p) -> throw, deploy or send my role's gadget at p (a
@@ -75,6 +78,7 @@ METHODS = {
 	"Detour",
 	"WanderSpot",
 	"EnemyPosition",
+	"Enemy",
 	"CoverSpot",
 	"HurtSince",
 	"Hold",

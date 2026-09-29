@@ -10,6 +10,7 @@
 local floor, max, min, ipairs, next, pairs, setmetatable, sort, table, type = math.floor, math.max, math.min, ipairs, next, pairs, setmetatable, table.sort, table, type
 local Teams = require("foundation.teams")
 local STATE = require("foundation.rounds.state")
+local Squad = require("foundation.aiwar.squad")
 module(...)
 
 local RED, BLUE = Teams.RED, Teams.BLUE
@@ -225,6 +226,7 @@ function War.New()
 		members = {}, -- handle -> member
 		fireTeams = {}, -- every fire team: { team, role, index (per team and role), squad, members = place -> member }
 		enlisted = 0, -- members ever enlisted, for their order
+		claims = Squad.Claims.New(), -- spots soldiers hold (foundation.aiwar.squad)
 		stances = {}, -- team -> stance
 		defense = {}, -- team -> its defense share (DefenseShare), or nil
 		drafts = { [RED] = 0, [BLUE] = 0 },
@@ -271,6 +273,7 @@ function War:LeaveFireTeam(member)
 	local fireTeam = member.fireTeam
 	if not fireTeam then return end
 	fireTeam.members[member.place] = nil
+	if fireTeam.leader == member then fireTeam.leader = nil end
 	member.fireTeam, member.place = nil, nil
 	if next(fireTeam.members) == nil then
 		for i, other in ipairs(self.fireTeams) do
@@ -342,7 +345,10 @@ end
 
 function War:Discharge(handle)
 	local member = self.members[handle]
-	if member then self:LeaveFireTeam(member) end
+	if member then
+		self:LeaveFireTeam(member)
+		self.claims:ReleaseAll(member)
+	end
 	self.members[handle] = nil
 end
 
