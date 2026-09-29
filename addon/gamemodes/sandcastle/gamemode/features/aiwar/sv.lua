@@ -404,31 +404,6 @@ end
 
 local DOOR_CLASSES = { func_door = true, func_door_rotating = true, prop_door_rotating = true }
 local DOOR_TRACE_LIFT = Vector(0, 0, 36)
--- A door within this of a team's spawn room is that room's door.
-local SPAWN_DOOR_REACH = 96
-local REACH_OFFSETS = {
-	Vector(0, 0, 0),
-	Vector(SPAWN_DOOR_REACH, 0, 0), Vector(-SPAWN_DOOR_REACH, 0, 0),
-	Vector(0, SPAWN_DOOR_REACH, 0), Vector(0, -SPAWN_DOOR_REACH, 0),
-}
-
--- The team whose spawn room the door belongs to, or false; found once per
--- door entity (a cleanup makes new ones).
-Controller.doorTeams = setmetatable({}, { __mode = "k" })
-
-function Controller:SpawnDoorTeam(door)
-	local team = self.doorTeams[door]
-	if team ~= nil then return team end
-	team = false
-	local center = door:WorldSpaceCenter()
-	for _, room in ipairs(ents.FindByClass("func_respawnroom")) do
-		for _, offset in ipairs(REACH_OFFSETS) do
-			if room.team ~= WETSAND.TEAM_UNASSIGNED and room:PointIsWithin(center + offset) then team = room.team end
-		end
-	end
-	self.doorTeams[door] = team
-	return team
-end
 
 local function IsDoor(ent)
 	return DOOR_CLASSES[ent:GetClass()] == true
@@ -493,31 +468,7 @@ function Controller:FindGates(field)
 	end
 end
 
--- Spawn doors and forcefields -----------------------------------------------------------
-
--- A soldier near a door of its own team's spawn room opens it, whatever
--- the map's triggers make of NPCs. Not during setup, when TF2 holds the
--- attackers in (on some maps the spawn exits are the setup gates), and
--- never a door the map has locked; other doors stay as the map has them.
-local DOOR_OPEN_REACH = 128
-
-function Controller:OpenSpawnDoors()
-	if WETSAND.InSetup() then return end
-	for class in pairs(DOOR_CLASSES) do
-		for _, door in ipairs(ents.FindByClass(class)) do
-			local team = self:SpawnDoorTeam(door)
-			if team and not door:GetInternalVariable("m_bLocked") then
-				local center = door:WorldSpaceCenter()
-				for ent, entry in pairs(self.soldiers) do
-					if entry.soldier.team == team and IsValid(ent) and ent:GetPos():Distance(center) <= DOOR_OPEN_REACH then
-						door:Fire("Open")
-						break
-					end
-				end
-			end
-		end
-	end
-end
+-- Forcefields -----------------------------------------------------------------------------
 
 -- TF2's forcefields stop only players, but the engine NPCs' movement takes
 -- a visualizer for a wall, so while the war runs they are not solid.
@@ -560,7 +511,6 @@ function Controller:Think(now)
 	if field.setup and self.gates == nil then self:FindGates(field) end
 	self.war:Assign(CartTeams(field.carts))
 	self.war:SetField(field)
-	self:OpenSpawnDoors()
 	if phase.reinforce then self:Reinforce(now) end
 	for ent, entry in pairs(self.soldiers) do
 		if IsValid(ent) then entry.npc:Update(THINK_INTERVAL) end
