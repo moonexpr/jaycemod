@@ -185,14 +185,25 @@ function WETSAND.DrgSoldier(ENT, baseName)
 		return self.WetsandDamageScale
 	end
 
-	-- Dead, a clientside ragdoll (the engine's NextBot:BecomeRagdoll, kept
-	-- by wetsand/sh_aiwar.lua) while wetsand_aiwar_client_ragdolls is on;
-	-- otherwise, or when the engine's was not kept, DrGBase's serverside one.
+	-- Dead: while wetsand_aiwar_client_ragdolls is on, no ragdoll on the
+	-- server at all. Every client near is told to make its own from the
+	-- soldier's last pose (wetsand/sh_aiwar.lua), and the soldier is removed
+	-- a moment later, once they have. Off, DrGBase's serverside one.
+	local RAGDOLL_HANDOFF = 0.3
+
 	function ENT:BecomeRagdoll(dmg)
-		local engineRagdoll = WETSAND.EngineBecomeRagdoll
 		local clientside = GetConVar("wetsand_aiwar_client_ragdolls")
-		if engineRagdoll and clientside and clientside:GetBool() then return engineRagdoll(self, dmg or DamageInfo()) end
-		return FindMetaTable("NextBot").BecomeRagdoll(self, dmg)
+		if clientside and not clientside:GetBool() then return FindMetaTable("NextBot").BecomeRagdoll(self, dmg) end
+		if self.WetsandRagdolled then return NULL end
+		self.WetsandRagdolled = true
+		net.Start("wetsand_soldier_ragdoll")
+		net.WriteEntity(self)
+		net.WriteVector(dmg and dmg:GetDamageForce() or vector_origin)
+		net.SendPVS(self:GetPos())
+		self:SetNotSolid(true)
+		self.WetsandTarget = nil
+		SafeRemoveEntityDelayed(self, RAGDOLL_HANDOFF)
+		return NULL
 	end
 end
 
