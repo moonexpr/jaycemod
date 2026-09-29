@@ -112,9 +112,12 @@ function ENT:StateTransition(state)
 end
 
 -- Stopping the game (the Gameplay Settings' Stop Game): non-gameplay mode,
--- which plays like Sandbox. The rounds stand still in PREGAME with every
--- timer paused, and the state machine thinks no more until a new game
--- (Unhalt, then RestartRound). The spawn doors (func_doors a trigger with
+-- which plays like Sandbox, and TF2's tournament ready-up: the rounds wait
+-- in BETWEEN_RNDS with every timer paused, and the state machine thinks no
+-- more until a new game (Unhalt, then RestartRound). Entering it, as
+-- CTFGameRules::BetweenRounds_Start does, fires the map's
+-- OnStateEnterBetweenRounds and every tf_logic_competitive's
+-- OnSpawnRoomDoorsShouldUnlock, which maps wire to their spawn doors. The spawn doors (func_doors a trigger with
 -- a team filter opens) stand open, and the filters and forcefields let
 -- everyone through (WETSAND.GameplayStopped). A dead player on a team is
 -- back after HALT_RESPAWN seconds, as no respawn wave comes.
@@ -164,7 +167,7 @@ function ENT:Halt()
 	end
 	self.halted = true
 	SetGlobal2Bool("tf2.halted", true)
-	if self.state ~= S.PREGAME then self:StateTransition(S.PREGAME) end
+	if self.state ~= S.BETWEEN_RNDS then self:StateTransition(S.BETWEEN_RNDS) end
 	for _, t in ipairs(ents.FindByClass("team_round_timer")) do t:Pause() end
 	WETSAND.SetSetup(false)
 	-- the doors stand open: their triggers, which would shut them as players
@@ -177,6 +180,11 @@ function ENT:Halt()
 		door:Fire("Open")
 	end
 	self.nextDoorsOpen = CurTime() + HALT_DOORS_INTERVAL
+end
+
+function ENT:StateEnter_BETWEEN_RNDS()
+	self:TriggerOutput("OnStateEnterBetweenRounds", self)
+	for _, logic in ipairs(ents.FindByClass("tf_logic_competitive")) do logic:SpawnRoomDoorsShouldUnlock() end
 end
 
 function ENT:Unhalt()
