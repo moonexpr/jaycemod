@@ -14,7 +14,7 @@ ENT.Models = {
 	"models/player/group03/female_01.mdl", "models/player/group03/female_02.mdl", "models/player/group03/female_03.mdl",
 	"models/player/group03/female_04.mdl", "models/player/group03/female_06.mdl",
 }
-ENT.Weapons = { "weapon_smg1", "weapon_ar2", "weapon_shotgun", "weapon_pistol" }
+ENT.Weapons = { "weapon_smg1", "weapon_ar2", "weapon_shotgun", "weapon_pistol", "weapon_crossbow", "weapon_357" }
 ENT.Factions = { FACTION_REBELS }
 
 if SERVER then AddCSLuaFile() end

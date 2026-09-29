@@ -397,6 +397,90 @@ function Soldier:FollowCart() return false end
 function Soldier:Unfollow() end
 function Soldier:RemoveScript() end
 
+-- Gadgets: what a kit's soldier throws, deploys or sends (the kit's
+-- gadgets, first ready first): a frag grenade lobbed at p when nothing
+-- solid stands between (every time asked); a floor turret set down toward
+-- p (one per soldier, standing until it dies); a manhack sent from its hand
+-- (one per soldier at a time, gone after MANHACK_LIFE).
+local GRENADE_FUSE, GRENADE_SPEED, GRENADE_MIN, GRENADE_MAX = 2.5, 700, 256, 1000
+local TURRET_STEP, MANHACK_LIFE = 48, 45
+local GADGET_CHEST = Vector(0, 0, 32)
+
+local function ThrowAnimation(ent)
+	if ent.AddGesture then ent:AddGesture(ACT_GMOD_GESTURE_ITEM_THROW) end
+end
+
+local GADGETS = {}
+
+function GADGETS.grenade(soldier, target)
+	local ent = soldier.ent
+	local from = ent:EyePos()
+	local distance = from:Distance(target)
+	if distance < GRENADE_MIN or distance > GRENADE_MAX then return false end
+	local tr = util.TraceLine({ start = from, endpos = target + GADGET_CHEST, mask = MASK_SOLID_BRUSHONLY })
+	if tr.Hit then return false end
+	local grenade = ents.Create("npc_grenade_frag")
+	if not IsValid(grenade) then return false end
+	grenade:SetPos(from + ent:GetForward() * 16)
+	grenade:SetOwner(ent)
+	grenade:Spawn()
+	grenade:Activate()
+	grenade:Fire("SetTimer", tostring(GRENADE_FUSE))
+	-- a lob: across at GRENADE_SPEED, up enough to land on target
+	local t = distance / GRENADE_SPEED
+	local velocity = (target - from) / t
+	velocity.z = velocity.z + 0.5 * physenv.GetGravity():Length() * t
+	local phys = grenade:GetPhysicsObject()
+	if IsValid(phys) then phys:SetVelocity(velocity) end
+	ThrowAnimation(ent)
+	soldier.controller:AddGadget(grenade, soldier, "grenade", CurTime() + GRENADE_FUSE + 1)
+	return true
+end
+
+function GADGETS.turret(soldier, target)
+	if soldier.controller:GadgetsOf(soldier, "turret") > 0 then return false end
+	local ent = soldier.ent
+	local dir = target - ent:GetPos()
+	dir.z = 0
+	if dir:IsZero() then return false end
+	dir:Normalize()
+	local pos = ent:GetPos() + dir * TURRET_STEP
+	local tr = util.TraceHull({ start = pos + Vector(0, 0, 8), endpos = pos + Vector(0, 0, 8), mins = Vector(-16, -16, 0), maxs = Vector(16, 16, 64), mask = MASK_SOLID })
+	if tr.Hit then return false end
+	local turret = ents.Create("npc_turret_floor")
+	if not IsValid(turret) then return false end
+	turret:SetPos(pos)
+	turret:SetAngles(Angle(0, dir:Angle().y, 0))
+	turret:Spawn()
+	turret:Activate()
+	ThrowAnimation(ent)
+	soldier.controller:AddGadget(turret, soldier, "turret")
+	return true
+end
+
+function GADGETS.manhack(soldier)
+	if soldier.controller:GadgetsOf(soldier, "manhack") > 0 then return false end
+	local ent = soldier.ent
+	local manhack = ents.Create("npc_manhack")
+	if not IsValid(manhack) then return false end
+	manhack:SetPos(ent:EyePos() + ent:GetForward() * 32)
+	manhack:SetAngles(ent:GetAngles())
+	manhack:Spawn()
+	manhack:Activate()
+	ThrowAnimation(ent)
+	soldier.controller:AddGadget(manhack, soldier, "manhack", CurTime() + MANHACK_LIFE)
+	return true
+end
+
+function Soldier:UseGadget(p)
+	if not self.kit or not self.kit.gadgets or self.ent.WetsandDisarmed then return nil end
+	local target = ToVector(p)
+	for _, name in ipairs(self.kit.gadgets) do
+		if GADGETS[name](self, target) then return name end
+	end
+	return nil
+end
+
 -------------------------------------------------------------------------------
 -- Controller
 
@@ -432,6 +516,82 @@ function Controller:RelateSoldiers(ent, team)
 			other:AddEntityRelationship(ent, self:Disposition(entry.soldier.team, team), RELATIONSHIP_PRIORITY)
 		end
 	end
+end
+
+-- Gadgets: the grenades, turrets and manhacks soldiers put in the field,
+-- each { owner (the soldier's entity), team, kind, expires (or nil) }. They
+-- fight for their owner's side, their damage is their owner's, and they do
+-- none to its side.
+function Controller:AddGadget(gadget, soldier, kind, expires)
+	self.gadgets = self.gadgets or {}
+	self.gadgets[gadget] = { owner = soldier.ent, team = soldier.team, kind = kind, expires = expires }
+	if gadget:IsNPC() then self:RelateGadget(gadget) end
+end
+
+function Controller:GadgetsOf(soldier, kind)
+	local n = 0
+	for gadget, info in pairs(self.gadgets or {}) do
+		if info.owner == soldier.ent and info.kind == kind and IsValid(gadget) and gadget:Health() > 0 then n = n + 1 end
+	end
+	return n
+end
+
+function Controller:RelateGadget(gadget)
+	local info = self.gadgets[gadget]
+	for ent, entry in pairs(self.soldiers) do
+		if IsValid(ent) then
+			gadget:AddEntityRelationship(ent, self:Disposition(info.team, entry.soldier.team), RELATIONSHIP_PRIORITY)
+			ent:AddEntityRelationship(gadget, self:Disposition(entry.soldier.team, info.team), RELATIONSHIP_PRIORITY)
+		end
+	end
+	for _, ply in ipairs(player.GetAll()) do
+		gadget:AddEntityRelationship(ply, self:Disposition(info.team, WETSAND.TeamOf(ply)), RELATIONSHIP_PRIORITY)
+	end
+	for other, otherInfo in pairs(self.gadgets) do
+		if other ~= gadget and IsValid(other) and other:IsNPC() then
+			gadget:AddEntityRelationship(other, self:Disposition(info.team, otherInfo.team), RELATIONSHIP_PRIORITY)
+			other:AddEntityRelationship(gadget, self:Disposition(otherInfo.team, info.team), RELATIONSHIP_PRIORITY)
+		end
+	end
+end
+
+-- Gone gadgets are forgotten, spent manhacks removed, and the rest related
+-- again to soldiers and players that came since. owner: only that
+-- soldier's (which leaves); all: every one (the war ends or the round resets).
+function Controller:SweepGadgets(owner, all)
+	if not self.gadgets then return end
+	local now = CurTime()
+	for gadget, info in pairs(self.gadgets) do
+		local remove = all or (owner and info.owner == owner and info.kind ~= "grenade") or (info.expires and now >= info.expires)
+		if not IsValid(gadget) then
+			self.gadgets[gadget] = nil
+		elseif remove then
+			self.gadgets[gadget] = nil
+			gadget:Remove()
+		elseif not owner and gadget:IsNPC() then
+			self:RelateGadget(gadget)
+		end
+	end
+end
+
+-- The team a damaged entity fights for, or nil.
+function Controller:TeamOf(ent)
+	if ent:IsPlayer() then return WETSAND.TeamOf(ent) end
+	local entry = self.soldiers[ent]
+	if entry then return entry.soldier.team end
+	local info = self.gadgets and self.gadgets[ent]
+	return info and info.team or nil
+end
+
+-- A gadget's damage: its owner's, and none to its own side. Returns true
+-- to cancel it.
+function Controller:GadgetDamage(target, dmg)
+	local gadgets = self.gadgets
+	if not gadgets then return false end
+	local info = gadgets[dmg:GetInflictor()] or gadgets[dmg:GetAttacker()]
+	if not info then return false end
+	if IsValid(info.owner) then dmg:SetAttacker(info.owner) end
+	return info.team == self:TeamOf(target)
 end
 
 -- RED players fight beside the Combine, BLU beside the Resistance, and the
@@ -525,22 +685,70 @@ function Controller:JoinSquad(ent, member)
 	ent.wetsandSquad = member and member.fireTeam and member.fireTeam.squad or nil
 end
 
--- Each role's kit (wetsand_drg_soldier's WetsandKit): blockers carry the
--- shotgun, hit harder and charge faster; the rest leave the shotgun to them.
-local BLOCKER_KIT = { weapon = "weapon_shotgun", damage = 1.5, runSpeed = 260 }
-local DEFAULT_KIT = { avoid = "weapon_shotgun" }
+-- Kits (wetsand_drg_soldier's WetsandKit), by side and role: blockers
+-- carry the shotgun, hit harder and charge faster; raiders carry the
+-- crossbow (the Resistance) and throw grenades; the Combine's support are
+-- metrocops who deploy a turret and send manhacks, the Resistance's are its
+-- heroes, who hit hard; the rest leave those weapons to them. Soldier:UseGadget
+-- uses a kit's gadgets.
+local BLOCKER_KIT = { name = "shotgunner", weapons = { "weapon_shotgun" }, damage = 1.5, runSpeed = 260 }
+local KITS = {
+	[RED] = {
+		[AiWar.BLOCK] = BLOCKER_KIT,
+		[AiWar.RAID] = { name = "grenadier", weapons = { "weapon_ar2" }, gadgets = { "grenade" } },
+		[AiWar.SUPPORT] = {
+			name = "metrocop", model = "models/player/police.mdl", weapons = { "weapon_smg1", "weapon_pistol" },
+			gadgets = { "turret", "manhack" },
+		},
+		default = { avoid = { weapon_shotgun = true, weapon_pistol = true } },
+	},
+	[BLUE] = {
+		[AiWar.BLOCK] = BLOCKER_KIT,
+		[AiWar.RAID] = { name = "crossbow", weapons = { "weapon_crossbow" }, gadgets = { "grenade" } },
+		default = { avoid = { weapon_shotgun = true, weapon_crossbow = true, weapon_357 = true } },
+	},
+}
+-- The Resistance's heroes, one of each alive at a time; support beyond them
+-- are veterans.
+local HEROES = {
+	{ name = "Alyx", model = "models/player/alyx.mdl", weapons = { "weapon_357" }, health = 250, damage = 2 },
+	{ name = "Barney", model = "models/player/barney.mdl", weapons = { "weapon_ar2" }, health = 300, damage = 1.75 },
+}
+local VETERAN = { name = "veteran", weapons = { "weapon_ar2" }, health = 200, damage = 1.5 }
+
+function Controller:HeroKit(ent)
+	self.heroes = self.heroes or {}
+	for _, hero in ipairs(HEROES) do
+		local holder = self.heroes[hero.name]
+		if holder == ent or not (IsValid(holder) and self.soldiers[holder]) then
+			self.heroes[hero.name] = ent
+			return hero
+		end
+	end
+	return VETERAN
+end
 
 function Controller:Equip(ent, entry, member)
 	local role = member and member.role or false
 	if entry.equipped == role or not ent.WetsandKit then return end
 	entry.equipped = role
-	ent:WetsandKit(role == AiWar.BLOCK and BLOCKER_KIT or DEFAULT_KIT)
+	local team = entry.soldier.team
+	if self.heroes then
+		for name, holder in pairs(self.heroes) do
+			if holder == ent then self.heroes[name] = nil end
+		end
+	end
+	local kits = KITS[team] or {}
+	local kit = kits[role] or (team == BLUE and role == AiWar.SUPPORT and self:HeroKit(ent)) or kits.default or {}
+	entry.soldier.kit = kit
+	ent:WetsandKit(kit)
 end
 
 function Controller:Discharge(ent)
 	local entry = self.soldiers[ent]
 	if not entry then return end
 	self.soldiers[ent] = nil
+	self:SweepGadgets(ent)
 	entry.soldier:Unpose()
 	entry.soldier:RemoveScript()
 	if IsValid(ent) then self:Rearm(ent, entry) end
@@ -620,6 +828,7 @@ end
 -- and moved to a spawn point (on a stage of a multi-stage map, the new
 -- stage's), and their orders start over.
 function Controller:RespawnAll()
+	self:SweepGadgets(nil, true)
 	self.gates = nil
 	self.shutDoors = nil
 	self.zones = nil
@@ -1179,6 +1388,7 @@ function Controller:Think(now)
 	if now >= self.nextRelations then
 		self.nextRelations = now + RELATIONSHIP_INTERVAL
 		self:RelatePlayers()
+		self:SweepGadgets()
 	end
 	if now >= (self.nextWatch or 0) then
 		self.nextWatch = now + WATCH_INTERVAL
@@ -1261,6 +1471,8 @@ function Controller:End()
 	end
 	self.soldiers = {}
 	self.losers = nil
+	self:SweepGadgets(nil, true)
+	self.heroes = nil
 	self:CloseDoorsToSoldiers()
 	self:SetForcefieldsPassable(false)
 	self.war = nil
@@ -1313,6 +1525,10 @@ function Controller:Describe(ent, entry)
 			soldier.graphPath == nil and "untested" or (soldier.graphPath and "had a path" or "had NO path"))
 	end
 	if soldier.recoveries then lines[#lines + 1] = string.format("Recovered: %d time(s), last %s", soldier.recoveries, soldier.recoveredWhy) end
+	if soldier.kit and soldier.kit.name then
+		lines[#lines + 1] = "Kit: " .. soldier.kit.name .. (state.gadget and ("; last used " .. state.gadget) or "")
+	end
+	if state.cleared then lines[#lines + 1] = "Raid: round the enemy's line" end
 	if state.hops then lines[#lines + 1] = "Hops: " .. state.hops end
 	if state.passed then lines[#lines + 1] = "Let through: " .. state.passed .. " NPC-only blocker(s)" end
 	local blocked = self:BlockedBy(soldier)
@@ -1492,6 +1708,7 @@ hook.Add("EntityRemoved", "wetsand_aiwar", function(ent)
 end)
 
 hook.Add("EntityTakeDamage", "wetsand_aiwar", function(target, dmg)
+	if Controller.war and Controller:GadgetDamage(target, dmg) then return true end
 	local entry = Controller.war and Controller.soldiers[target]
 	if entry and dmg:GetDamage() > 0 then entry.soldier.hurtAt = CurTime() end
 end)

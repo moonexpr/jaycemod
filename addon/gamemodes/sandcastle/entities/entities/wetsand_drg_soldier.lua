@@ -69,19 +69,33 @@ if SERVER then
 		if self.WetsandDisarmed then return true end
 	end
 
-	-- The controller's kit for the soldier's role: { weapon (a class it
-	-- carries, to hold), avoid (a class not to hold, when it has another),
-	-- damage (its damage scale), runSpeed }; nil fields take the defaults.
+	-- The controller's kit for the soldier's role: { weapons (classes to
+	-- hold, the first it carries), avoid (classes not to hold, as a set, when
+	-- it has another), model, health (its most), damage (its damage scale),
+	-- runSpeed }; nil fields take the soldier's own.
 	function ENT:WetsandKit(kit)
+		self.WetsandOwnModel = self.WetsandOwnModel or self:GetModel()
+		local model = kit.model or self.WetsandOwnModel
+		if self:GetModel() ~= model then self:SetModel(model) end
+		local held
+		for _, class in ipairs(kit.weapons or {}) do
+			if self:HasWeapon(class) then
+				held = self:SelectWeapon(class)
+				break
+			end
+		end
 		local active = self:GetActiveWeapon()
-		if kit.weapon and self:HasWeapon(kit.weapon) then
-			self:SelectWeapon(kit.weapon)
-		elseif kit.avoid and IsValid(active) and active:GetClass() == kit.avoid then
+		if not held and kit.avoid and IsValid(active) and kit.avoid[active:GetClass()] then
 			local others = {}
 			for class, weapon in pairs(self:GetWeapons()) do
-				if class ~= kit.avoid and IsValid(weapon) then others[#others + 1] = class end
+				if not kit.avoid[class] and IsValid(weapon) then others[#others + 1] = class end
 			end
 			if #others > 0 then self:SelectWeapon(others[math.random(#others)]) end
+		end
+		local most = kit.health or self.SpawnHealth
+		if self:GetMaxHealth() ~= most then
+			self:SetHealth(math.max(1, math.floor(self:Health() * most / math.max(self:GetMaxHealth(), 1))))
+			self:SetMaxHealth(most)
 		end
 		self.WetsandDamageScale = kit.damage
 		self.RunSpeed = kit.runSpeed

@@ -242,6 +242,55 @@ T.test("a defender's team falls back when the enemy is on its post", function()
 	T.eq(npc:State().tactic, "falling back, step 1", "shown")
 end)
 
+T.test("raiders go round the enemy's line, to either side by slot", function()
+	local field = Field({})
+	local blue = { team = BLUE, role = AiWar.RAID, slot = 0 }
+	Near(Orders.Goal(field, blue), P(1000 + Orders.DEFEND_LEAD, Tactics.FLANK_OFFSET), "beside the track ahead, no posts")
+	field.posts = { [RED] = { P(1600, -300) } }
+	blue.slot = 1
+	Near(Orders.Goal(field, blue), Tactics.FlankPoint(P(1000, 0), P(1600, -300), -1), "beside the defenders' post")
+	local red = { team = RED, role = AiWar.RAID, slot = 0 }
+	Near(Orders.Goal(field, red), P(1000, -Tactics.FLANK_OFFSET), "beside BLU's cart, coming from the checkpoint")
+end)
+
+T.test("an attacking raider round the line joins the push", function()
+	local me, npc = Enlist({ role = AiWar.RAID, pos = P(1000 + Orders.DEFEND_LEAD, Tactics.FLANK_OFFSET), walkable = function() return true end })
+	Tick(me, npc, 2)
+	T.eq(npc:State().cleared, true, "the line broken")
+	T.near(FS.Distance(npc:State().goal, P(1000, 0)), Orders.PUSH_RING, 1e-6, "on to its cart")
+end)
+
+T.test("a raider in contact always goes round first, and uses its gadget now and then", function()
+	local me, npc, _, member = Fighting({ role = AiWar.RAID, pos = P(1000, 0), enemyAt = P(1500, 0), walkable = function() return true end })
+	member.fireTeam.index = 0
+	me.gadget = "grenade"
+	Tick(me, npc, 2)
+	T.eq(npc:State().tactic, "flanking", "flanking though its team is even")
+	T.eq(#me.gadgetsAt, 1, "a grenade at the contact")
+	Near(me.gadgetsAt[1], P(1500, 0), "thrown at the enemy")
+	Tick(me, npc, 4)
+	T.eq(#me.gadgetsAt, 1, "not again before GADGET_INTERVAL")
+	Tick(me, npc, Orders.GADGET_INTERVAL / TICK)
+	T.eq(#me.gadgetsAt, 2, "again after it")
+end)
+
+T.test("support stands behind its side's line", function()
+	local field = Field({})
+	Near(Orders.Goal(field, { team = BLUE, role = AiWar.SUPPORT, slot = 0 }), P(1000 - Orders.SUPPORT_BEHIND, 0), "behind its own cart")
+	field.posts = { [RED] = { P(1600, 0) } }
+	Near(Orders.Goal(field, { team = RED, role = AiWar.SUPPORT, slot = 0 }), P(1600 + Orders.SUPPORT_BEHIND, 0), "behind the defenders' post")
+end)
+
+T.test("support holds its cover and never falls back", function()
+	local me, npc, _, member = Fighting({ team = RED, role = AiWar.SUPPORT, pos = P(1920, 0), walkable = function() return true end })
+	me.enemyPos = P(1700, 0)
+	me.gadget = "manhack"
+	Tick(me, npc, 2)
+	T.eq(member.fireTeam.fallback, nil, "no step back with the enemy at its post")
+	T.eq(npc:State().tactic, "holding cover", "holding")
+	T.eq(me.gadgetsAt ~= nil, true, "sends its manhack")
+end)
+
 T.test("a trip to the objective ends on contact, for the fight", function()
 	local me, npc = Enlist({ role = AiWar.ESCORT, pos = P(0, 0), walkable = function() return true end })
 	Tick(me, npc, 2)

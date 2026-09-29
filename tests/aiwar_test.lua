@@ -119,18 +119,18 @@ end)
 
 -- Roles --------------------------------------------------------------------
 
-T.test("the pushing team splits between pushing and escorting the cart", function()
+T.test("the pushing team splits between pushing, escorting, raiding and support", function()
 	local war = AiWar.War.New()
 	war:Assign({ [BLUE] = true })
-	for i = 1, 4 do war:Enlist("b" .. i, BLUE, true) end
-	T.eq(Roles(war, BLUE), "push0 escort0 push1 escort1", "alternating")
+	for i = 1, 6 do war:Enlist("b" .. i, BLUE, true) end
+	T.eq(Roles(war, BLUE), "push0 escort0 raid0 push1 escort1 support0", "4:3:2:1")
 end)
 
 T.test("the defending team mostly holds the track ahead and sends some to block the cart", function()
 	local war = AiWar.War.New()
 	war:Assign({ [BLUE] = true })
-	for i = 1, 5 do war:Enlist("r" .. i, RED, true) end
-	T.eq(Roles(war, RED), "defend0 block0 defend1 defend2 defend3", "7 to 3, ties to the first role")
+	for i = 1, 6 do war:Enlist("r" .. i, RED, true) end
+	T.eq(Roles(war, RED), "defend0 block0 raid0 defend1 defend2 support0", "5:2:2:1, ties to the first role")
 end)
 
 T.test("on a race map each side pushes its cart, blocks the other and escorts", function()
@@ -176,19 +176,20 @@ T.test("a cart near its checkpoint throws more of the defenders at it, fewest ch
 		end
 		return n
 	end
-	T.eq(Count(AiWar.BLOCK), 3, "three blockers while the cart is far")
+	T.eq(Count(AiWar.BLOCK), 2, "two blockers while the cart is far")
 	local before = {}
 	for _, member in ipairs(war:Members()) do before[member] = member.role end
 	war:Assign({ [BLUE] = { close = true } })
-	T.eq(Count(AiWar.BLOCK), 6, "six once it is close")
+	T.eq(Count(AiWar.BLOCK), 5, "five once it is close")
 	local changed = 0
 	for member, role in pairs(before) do
 		if member.role ~= role then changed = changed + 1 end
 		T.eq(member.fireTeam.role, member.role, "in a fire team of its new role")
 	end
 	T.eq(changed, 3, "only three defenders turned blocker")
+	T.eq(Count(AiWar.RAID), 2, "the raiders left alone")
 	war:Assign({ [BLUE] = { close = false } })
-	T.eq(Count(AiWar.BLOCK), 3, "back to three when it is pushed back")
+	T.eq(Count(AiWar.BLOCK), 2, "back to two when it is pushed back")
 end)
 
 T.test("a cart is close within CLOSE_RANGE, and stays close a little past it", function()

@@ -38,6 +38,10 @@ end
 
 -- Roles: what a soldier is for. foundation.aiwar.orders gives each its goal.
 PUSH, ESCORT, BLOCK, DEFEND = "push", "escort", "block", "defend"
+-- Raiders, on either side, go round the enemy's line and break it up;
+-- support stands behind its own line and hits hard from there (the
+-- Combine's metrocops with manhacks and turrets, the Resistance's heroes).
+RAID, SUPPORT = "raid", "support"
 
 TEAM_SIZE_DEFAULT = 8
 TEAM_SIZE_MAX = 32
@@ -74,10 +78,11 @@ end
 -- weights, first role first on a tie. A team with its own cart pushes it;
 -- one facing only the enemy's defends, and throws more blockers at the
 -- cart once it is close to its checkpoint; on a race map each does both.
-local ATTACK = { { role = PUSH, weight = 5 }, { role = ESCORT, weight = 5 } }
-local DEFEND_STANCE = { { role = DEFEND, weight = 7 }, { role = BLOCK, weight = 3 } }
-local DEFEND_CLOSE = { { role = DEFEND, weight = 4 }, { role = BLOCK, weight = 6 } }
-local RACE = { { role = PUSH, weight = 4 }, { role = BLOCK, weight = 3 }, { role = ESCORT, weight = 3 } }
+-- Every side keeps a fifth of its soldiers raiding and a tenth in support.
+local ATTACK = { { role = PUSH, weight = 4 }, { role = ESCORT, weight = 3 }, { role = RAID, weight = 2 }, { role = SUPPORT, weight = 1 } }
+local DEFEND_STANCE = { { role = DEFEND, weight = 5 }, { role = BLOCK, weight = 2 }, { role = RAID, weight = 2 }, { role = SUPPORT, weight = 1 } }
+local DEFEND_CLOSE = { { role = DEFEND, weight = 2 }, { role = BLOCK, weight = 5 }, { role = RAID, weight = 2 }, { role = SUPPORT, weight = 1 } }
+local RACE = { { role = PUSH, weight = 4 }, { role = BLOCK, weight = 2 }, { role = ESCORT, weight = 2 }, { role = RAID, weight = 1 }, { role = SUPPORT, weight = 1 } }
 
 -- carts: team -> true, or { close = the cart is near its next checkpoint
 -- (CartClose) }, for each team with a cart.

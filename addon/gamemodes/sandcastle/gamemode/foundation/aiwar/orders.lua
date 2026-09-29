@@ -41,6 +41,18 @@ PUSH_ARRIVE, PUSH_LEASH = 72, 110
 -- and inside its capture area: BLOCK_LEAD ahead of it, BLOCK_COLUMNS
 -- abreast BLOCK_SPREAD apart, further rows BLOCK_DEPTH ahead.
 BLOCK_LEAD, BLOCK_SPREAD, BLOCK_COLUMNS, BLOCK_DEPTH = 56, 40, 3, 40
+-- Raiders go round the enemy's line to a point FLANK_OFFSET (tactics)
+-- beside it, off the line from their own side; there, the line broken,
+-- the attackers' raiders join the push and the defenders' fall on the
+-- enemy's cart. A new line (posts moved RAID_SHIFT) sends them round again.
+RAID_ARRIVE, RAID_LEASH, RAID_SHIFT = 150, 900, 256
+-- Support stands SUPPORT_BEHIND behind its side's line (or its cart),
+-- and fights from cover there.
+SUPPORT_BEHIND, SUPPORT_ARRIVE, SUPPORT_LEASH = 320, 120, 1200
+-- Raiders and support use their gadgets (the soldier port's UseGadget:
+-- grenades, manhacks, turrets) on a contact within GADGET_RANGE, once
+-- every GADGET_INTERVAL.
+GADGET_RANGE, GADGET_INTERVAL = 1200, 12
 ESCORT_LEAD = 300
 ESCORT_ARRIVE, ESCORT_LEASH = 150, 700
 DEFEND_LEAD, DEFEND_DEPTH, DEFEND_ROWS = 600, 250, 3
@@ -222,6 +234,77 @@ ROLES = {
 			return cart.track:Offset(cart.distance + DEFEND_LEAD + row * DEFEND_DEPTH, Lateral(column))
 		end,
 	},
+}
+
+-- The enemy's line a raider goes for, and the point its own side comes
+-- from: against a cart, the enemy's escorts' posts ahead of it (else the
+-- cart), coming from the checkpoint it heads for; pushing a cart, the
+-- defenders' posts (else the track ahead), coming from the cart.
+function EnemyLine(field, member)
+	local enemy = AiWar.EnemyOf(member.team)
+	local theirs, own = EnemyCart(field, member), OwnCart(field, member)
+	if theirs then
+		local from = theirs.track:PointAt(theirs.nextCheckpoint or theirs.track:Length())
+		local posts = field.forwardPosts and field.forwardPosts[enemy]
+		if posts and #posts > 0 then return posts[member.slot % #posts + 1], from end
+		return theirs.pos, from
+	end
+	if own then
+		local posts = field.posts and field.posts[enemy]
+		if posts and #posts > 0 then return posts[member.slot % #posts + 1], own.pos end
+		return own.track:Offset(own.distance + DEFEND_LEAD, 0), own.pos
+	end
+	return nil
+end
+
+-- A point `distance` from p, away from `from`.
+local function Behind(p, from, distance)
+	local dx, dy = p.x - from.x, p.y - from.y
+	local length = sqrt(dx * dx + dy * dy)
+	if length == 0 then return p end
+	return { x = p.x + dx / length * distance, y = p.y + dy / length * distance, z = p.z }
+end
+
+ROLES[AiWar.RAID] = {
+	name = "Raid",
+	tactic = "raid",
+	raids = true,
+	arrive = RAID_ARRIVE,
+	leash = RAID_LEASH,
+	rushes = false,
+	Goal = function(field, member)
+		local spot = GateSpot(field, member, 0)
+		if spot then return spot end
+		local line, from = EnemyLine(field, member)
+		if not line then return nil end
+		return Tactics.FlankPoint(from, line, member.slot % 2 == 0 and 1 or -1)
+	end,
+	-- The line broken: attackers push their cart, defenders hit theirs.
+	Cleared = function(field, member)
+		local own, theirs = OwnCart(field, member), EnemyCart(field, member)
+		if own and not theirs then return Ring(own.pos, member.slot + 8, PUSH_RING) end
+		return theirs and Ring(theirs.pos, member.slot + 8, PUSH_RING * 3)
+	end,
+}
+
+ROLES[AiWar.SUPPORT] = {
+	name = "Support",
+	tactic = "support",
+	arrive = SUPPORT_ARRIVE,
+	leash = SUPPORT_LEASH,
+	rushes = false,
+	Goal = function(field, member)
+		local spot = GateSpot(field, member, GATE_ROW * 2)
+		if spot then return spot end
+		local own, theirs = OwnCart(field, member), EnemyCart(field, member)
+		if theirs and not own then
+			local posts = field.posts and field.posts[member.team]
+			if posts and #posts > 0 then return Behind(posts[member.slot % #posts + 1], theirs.pos, SUPPORT_BEHIND) end
+			return theirs.track:Offset(theirs.distance + DEFEND_LEAD + DEFEND_DEPTH * DEFEND_ROWS, Lateral(member.slot))
+		end
+		if own then return own.track:Offset(own.distance - SUPPORT_BEHIND, Lateral(member.slot)) end
+		return nil
+	end,
 }
 
 -- The member's goal on the field, or nil (no role, or no cart for it).
@@ -448,6 +531,8 @@ function Travel:Goal(me, field)
 	if ROLES[state.member.role] ~= self.role then return nil, "orders changed" end
 	if WaitingForSetup(field, state.member) then return nil, "setup began" end
 	local goal = self.role.Goal(field, state.member)
+	-- a raider round the line: its side's cart (Objective:RaidGoal)
+	if self.role.raids and state.cleared and not field.setup then goal = self.role.Cleared(field, state.member) or goal end
 	if goal == nil then return nil, "no goal" end
 	return goal
 end
@@ -600,6 +685,7 @@ function Objective:Update(me)
 		me:Release()
 		return self:Continue()
 	end
+	if self.role.raids and not field.setup then goal = self:RaidGoal(me, field, goal) end
 	local range = me:RangeTo(goal)
 	if self.role.tactic and not field.setup then
 		local contact = TeamContact(state, me)
@@ -642,6 +728,30 @@ function Objective:Update(me)
 	return self:SuspendFor(Travel:New(state, self.role), "to the objective")
 end
 
+-- A raider's goal: round the enemy's line, then, once there, on to its
+-- side's cart (Cleared) until the enemy's line moves.
+function Objective:RaidGoal(me, field, goal)
+	local line = EnemyLine(field, self.state.member)
+	if not self.raidLine or not line or Distance(line, self.raidLine) > RAID_SHIFT then
+		self.raidLine, self.cleared = line, false
+	end
+	if not self.cleared and me:RangeTo(goal) <= self.role.arrive then self.cleared = true end
+	self.state.cleared = self.cleared
+	if self.cleared then return self.role.Cleared(field, self.state.member) or goal end
+	return goal
+end
+
+-- A raider or support soldier throws, deploys or sends its gadget at the
+-- contact, when it has one.
+function Objective:Gadget(me, contact, now)
+	if now < (self.gadgetAt or 0) or me:RangeTo(contact.pos) > GADGET_RANGE then return end
+	local used = me:UseGadget(contact.pos)
+	if used then
+		self.gadgetAt = now + GADGET_INTERVAL
+		self.state.gadget = used
+	end
+end
+
 -- A fight, by the role's tactic (foundation.aiwar.tactics).
 BOUND_RADIUS, COVER_RADIUS, SPOT_ARRIVE = 200, 320, 48
 FLANK_TIME, FLANK_ARRIVE = 15, 160
@@ -652,14 +762,19 @@ function Objective:Fight(me, goal, contact)
 	state.fighting = true
 	state.patrolling = false
 	self.anchor = nil
-	if self.role.tactic == "attack" then return self:Attack(me, goal, contact, fireTeam, now) end
+	local tactic = self.role.tactic
+	if tactic == "raid" or tactic == "support" then self:Gadget(me, contact, now) end
+	if tactic == "attack" then return self:Attack(me, goal, contact, fireTeam, now) end
+	-- raiders always go round first, then bound onto the line itself
+	if tactic == "raid" then return self:Attack(me, EnemyLine(state.war:Field(), state.member) or goal, contact, fireTeam, now, true) end
+	if tactic == "support" then return self:Defend(me, goal, contact, fireTeam, now, true) end
 	return self:Defend(me, goal, contact, fireTeam, now)
 end
 
 -- Bounding overwatch toward the goal, after a flank for a flanking team.
-function Objective:Attack(me, goal, contact, fireTeam, now)
+function Objective:Attack(me, goal, contact, fireTeam, now, flanks)
 	local state = self.state
-	if Tactics.Flanks(fireTeam) and not fireTeam.flankDone then
+	if (flanks or Tactics.Flanks(fireTeam)) and not fireTeam.flankDone then
 		if not fireTeam.flank then
 			fireTeam.flank = Tactics.FlankPoint(me:Position(), contact.pos, Tactics.FlankSide(fireTeam))
 			fireTeam.flankUntil = now + FLANK_TIME
@@ -701,10 +816,11 @@ function Objective:Attack(me, goal, contact, fireTeam, now)
 end
 
 -- Holding the line from cover near the post, falling back when it breaks.
-function Objective:Defend(me, post, contact, fireTeam, now)
+-- Support (stands) holds its cover and never falls back.
+function Objective:Defend(me, post, contact, fireTeam, now, stands)
 	local state = self.state
 	local members = state.war:FireTeamMembers(fireTeam)
-	if Tactics.ShouldFallBack(fireTeam, #members, Distance(contact.pos, post), now) then Tactics.FallBack(fireTeam, now) end
+	if not stands and Tactics.ShouldFallBack(fireTeam, #members, Distance(contact.pos, post), now) then Tactics.FallBack(fireTeam, now) end
 	local steps = fireTeam.fallback or 0
 	if not self.cover or self.coverSteps ~= steps or me:HurtSince(self.coverAt) then
 		local anchor = Tactics.FallbackPoint(post, contact.pos, steps)

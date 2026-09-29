@@ -46,6 +46,9 @@
 --     not within reach of exclude; or nil
 --   HurtSince(t) -> whether I have been hurt after time t
 --   Hold(): stay where I am, fighting from here
+--   UseGadget(p) -> throw, deploy or send my role's gadget at p (a
+--     grenade, a manhack, a turret), if I have one ready and in reach: its
+--     name, or nil
 --   RouteStale() -> whether the route I was given was planned before a
 --     door shut or a brush was switched on, and may lead into it
 --   Hop(p) -> whether I will be carried to p: only where a player could
@@ -80,4 +83,5 @@ METHODS = {
 	"Unpose",
 	"RouteStale",
 	"Hop",
+	"UseGadget",
 }

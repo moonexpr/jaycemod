@@ -129,6 +129,14 @@ end
 
 function Soldier:HurtSince(t) return self.hurtAt ~= nil and self.hurtAt > (t or 0) end
 
+-- gadget: what UseGadget uses (default none); gadgetsAt: where it was used.
+function Soldier:UseGadget(p)
+	if not self.gadget then return nil end
+	self.gadgetsAt = self.gadgetsAt or {}
+	self.gadgetsAt[#self.gadgetsAt + 1] = p
+	return self.gadget
+end
+
 function Soldier:Hold()
 	self.holding = true
 	self.moving = self.pos
