@@ -241,6 +241,17 @@ T.test("it makes the nearest chaseable player within 1500 of home IT and chases 
 	T.eq(path.computes, computes + 1, "repath after a second")
 end)
 
+T.test("with no player to make IT, it chases the nearest AI war soldier near home, who is never IT", function()
+	local s = Scene({})
+	local near = s.world:AddMember({ team = Teams.RED, origin = V(900, 0, 0) })
+	s.world:AddMember({ team = Teams.BLUE, origin = V(1300, 0, 0) })
+	s.world:AddMember({ team = Teams.BLUE, origin = V(1700, 0, 0) }) -- beyond 1500 of home
+	Emerged(s)
+	Tick(s, TICK)
+	T.eq(s.tag:Get(), nil, "no IT")
+	T.eq(s.me.paths[1].goal, near.origin, "after the nearest soldier")
+end)
+
 T.test("a player off the mesh counts only while standing on the ground", function()
 	local s = Scene({
 		players = {

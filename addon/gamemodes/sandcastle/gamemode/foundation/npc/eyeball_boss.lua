@@ -209,6 +209,12 @@ function FindClosestVisibleVictim(state, me)
 		for _, ply in ipairs(me:CollectPlayers(team or nil)) do
 			if not Targeting.IsHiddenFromNPC(function(cond) return me:InCond(ply, cond) end) then Consider(ply) end
 		end
+		-- Sandcastle's own: the AI war's soldiers, as their team's players
+		for _, memberTeam in ipairs(team and { team } or { Teams.RED, Teams.BLUE }) do
+			for _, soldier in ipairs(me:CollectMembers(memberTeam)) do
+				if me:IsTargetAlive(soldier) then Consider(soldier) end
+			end
+		end
 	end
 	OtherTeamsOf(ZOMBIE_KIND)
 	return victim

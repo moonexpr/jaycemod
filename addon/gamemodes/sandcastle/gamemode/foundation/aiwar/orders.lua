@@ -689,7 +689,7 @@ function Travel:Update(me)
 	local state, role = self.state, self.role
 	local field = state.war:Field()
 	if not self.spot and role.tactic and TeamContact(state, me) then return self:End("contact") end
-	if not self.spot and role.chases and ChaseWanted(role, me) then return self:End("a weakened enemy") end
+	if not self.spot and role.chases and ChaseWanted(role, me, field, state.member) then return self:End("a weakened enemy") end
 	local goal, over = self:Goal(me, field)
 	self.gait = (self.spot and WALK) or (field and field.setup and PANIC) or (role.rushes and RUSH) or RUN
 	if goal == nil then
@@ -737,22 +737,37 @@ end
 -- blockers eagerly (they finish the job: a pusher off the cart to heal comes
 -- back), the line's soldiers only when the kill is close and they are well
 -- themselves. Pushers keep to the cart, medics to their patients, support
--- to its post: they never chase. A chase ends when the enemy is dead or
--- lost from sight for CHASE_LOST, or its time is up; the tactical monitor
--- above still sends a chaser that gets hurt into retreat.
+-- to its post: they never chase. A chase keeps within CHASE_LEASH of the
+-- cart it is about (the enemy's, else its own): it neither starts nor goes
+-- on with the chaser or its quarry beyond it. It ends when the enemy is dead
+-- or lost from sight for CHASE_LOST, or its time is up; one that needs to
+-- retreat does not chase, and the tactical monitor above sends a chaser that
+-- gets hurt into retreat, whatever the chase.
 CHASES = {
-	eager = { health = 0.5, range = 1000, time = 10, fit = 0, gait = RUSH },
+	eager = { health = 0.5, range = 1000, time = 10, fit = 0.35, gait = RUSH },
 	opportunist = { health = 0.3, range = 500, time = 5, fit = 0.6, gait = RUN },
 }
-CHASE_LOST, CHASE_COOLDOWN = 1.5, 3
+CHASE_LOST, CHASE_COOLDOWN, CHASE_LEASH = 1.5, 3, 1500
+
+-- The cart a chase keeps near: the enemy's, else its own; nil for none.
+local function ChaseCart(field, member)
+	if not field or not field.carts then return nil end
+	return EnemyCart(field, member) or OwnCart(field, member)
+end
+
+local function Leashed(field, member, p)
+	local cart = ChaseCart(field, member)
+	return cart == nil or Distance(p, cart.pos) <= CHASE_LEASH
+end
 
 -- The role's chase profile when its soldier should chase its enemy now.
-function ChaseWanted(role, me)
+function ChaseWanted(role, me, field, member)
 	local profile = CHASES[role.chases]
 	if not profile or not me:HasEnemy() then return nil end
 	local share, pos = me:EnemyHealth(), me:EnemyPosition()
 	if not share or not pos or share >= profile.health or me:RangeTo(pos) > profile.range then return nil end
-	if me:Health() / max(me:MaxHealth(), 1) < profile.fit then return nil end
+	if me:Health() / max(me:MaxHealth(), 1) < max(profile.fit, RETREAT_HEALTH) then return nil end
+	if not (Leashed(field, member, pos) and Leashed(field, member, me:Position())) then return nil end
 	return profile
 end
 
@@ -779,6 +794,10 @@ function Chase:Update(me)
 	end
 	if now - self.seenAt > CHASE_LOST then return self:Done("lost") end
 	if now >= self.untilAt then return self:Done("gave up") end
+	local field = state.war:Field()
+	if not Leashed(field, state.member, me:Position()) or (self.lastPos and not Leashed(field, state.member, self.lastPos)) then
+		return self:Done("too far from the cart")
+	end
 	state.tactic = "chasing a weakened enemy"
 	state.goal = self.lastPos
 	if self.lastPos then me:MoveTo(self.lastPos, self.profile.gait) end
@@ -896,7 +915,7 @@ function Objective:Update(me)
 	end
 	-- a weakened enemy in reach: after it (Chase)
 	if self.role.chases and OrdersRun(field) and not field.setup and me:Now() >= (self.chaseReadyAt or 0) then
-		local profile = ChaseWanted(self.role, me)
+		local profile = ChaseWanted(self.role, me, field, state.member)
 		if profile then return self:SuspendFor(Chase:New(state, me:Enemy(), profile), "finishing a weakened enemy") end
 	end
 	local cart = OrdersRun(field) and OwnCart(field, state.member)

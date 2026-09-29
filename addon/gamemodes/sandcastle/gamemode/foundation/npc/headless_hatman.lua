@@ -253,9 +253,30 @@ function Attack:SelectVictim(me)
 		if newVictim then tag:Set(newVictim) end
 	end
 
+	-- Sandcastle's own: with no player IT, the nearest chaseable AI war
+	-- soldier near home is its victim. A soldier is never IT: IT is the tag
+	-- feature's, a player's mark.
+	self.soldierVictim = nil
+	if tag:Get() == nil then
+		local chaseRange = self.state.convars.tf_halloween_bot_chase_range
+		local best = huge
+		for _, team in ipairs({ Teams.RED, Teams.BLUE }) do
+			for _, soldier in ipairs(me:CollectMembers(team)) do
+				local range = me:RangeTo(soldier)
+				if range < best and self:IsPotentiallyChaseable(me, soldier)
+					and (self.home - me:TargetOrigin(soldier)):Length() <= chaseRange then
+					self.soldierVictim, best = soldier, range
+				end
+			end
+		end
+		if self.soldierVictim and self.closestVisible == nil and me:IsLineOfSightClear(self.soldierVictim) then
+			self.closestVisible = self.soldierVictim
+		end
+	end
+
 	local target = self.attackTarget
 	if target == nil or self.attackTargetFocusTimer:IsElapsed() or not me:IsTargetAlive(target) then
-		self.attackTarget = tag:Get()
+		self.attackTarget = tag:Get() or self.soldierVictim
 	end
 end
 
@@ -316,10 +337,12 @@ function Attack:Laugh(me, it)
 	end
 end
 
--- With nobody IT, go home; with IT, warn them and chase.
+-- With nobody IT, go home; with IT, warn them and chase. (Sandcastle's
+-- own: with no IT, a soldier victim is chased as IT would be, unwarned.)
 function Attack:Move(me, it)
 	local path = self.path
-	if it == nil then
+	local quarry = it or self.soldierVictim
+	if quarry == nil then
 		if me:IsRangeGreaterThan(self.home, AT_HOME_RANGE) then
 			if path:GetAge() > HOME_REPATH_AGE then path:Compute(self.home) end
 			path:Update()
@@ -328,12 +351,12 @@ function Attack:Move(me, it)
 		end
 		return
 	end
-	if self.warnITTimer:IsElapsed() then
+	if it ~= nil and self.warnITTimer:IsElapsed() then
 		self.warnITTimer:Start(WARN_IT_INTERVAL)
 		me:Tag():Warn(it)
 	end
-	if me:IsRangeGreaterThan(it, STAND_AND_SWING_RANGE) or not me:IsLineOfSightClear(it) then
-		if path:GetAge() > CHASE_REPATH_AGE then path:Compute(me:TargetOrigin(it)) end
+	if me:IsRangeGreaterThan(quarry, STAND_AND_SWING_RANGE) or not me:IsLineOfSightClear(quarry) then
+		if path:GetAge() > CHASE_REPATH_AGE then path:Compute(me:TargetOrigin(quarry)) end
 		path:Update()
 	end
 end

@@ -585,6 +585,12 @@ T.test("victims: the nearest visible player not hidden, and skeletons of other t
 	T.eq(Eyeball.FindClosestVisibleVictim(state, s.me), red, "a RED skeleton")
 end)
 
+T.test("victims: AI war soldiers count as their team's players", function()
+	local s = Scene({ players = { { team = Teams.BLUE, origin = V(0, -900, 0) } } })
+	local soldier = s.world:AddMember({ team = Teams.RED, origin = V(0, 300, 0) })
+	T.eq(Eyeball.FindClosestVisibleVictim(s.npc:State(), s.me), soldier, "the nearer soldier")
+end)
+
 T.test("a spell's eyeball hunts only the enemy team, and other teams' bosses", function()
 	local s = Scene({
 		team = Teams.RED,
