@@ -30,6 +30,18 @@ T.test("the Combine fight for RED and the Resistance for BLU", function()
 	T.eq(AiWar.FactionTeam("npc_manhack"), nil, "fliers take no orders")
 end)
 
+T.test("sides stand by their team and fight the other; the losers of a round fear their enemies", function()
+	T.eq(AiWar.Relation(RED, RED), AiWar.ALLY, "teammates")
+	T.eq(AiWar.Relation(RED, BLUE), AiWar.ENEMY_OF, "enemies")
+	T.eq(AiWar.Relation(RED, Teams.UNASSIGNED), AiWar.NEUTRAL, "the unassigned")
+	local losers = AiWar.LosersOf(BLUE)
+	T.eq(losers, RED, "BLU won, RED lost")
+	T.eq(AiWar.Relation(RED, BLUE, losers), AiWar.FEAR, "the losers fear the winners")
+	T.eq(AiWar.Relation(BLUE, RED, losers), AiWar.ENEMY_OF, "the winners hunt the losers")
+	T.eq(AiWar.Relation(RED, RED, losers), AiWar.ALLY, "the losers still stand together")
+	T.eq(AiWar.LosersOf(Teams.UNASSIGNED), nil, "a stalemate humiliates nobody")
+end)
+
 T.test("each recruit of a faction is one of its members", function()
 	for team, faction in pairs(AiWar.FACTIONS) do
 		T.eq(faction.team, team, faction.name .. " team")

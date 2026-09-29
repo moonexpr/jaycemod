@@ -345,18 +345,17 @@ end
 
 -- Relationships ---------------------------------------------------------------
 
-local function Disposition(team, otherTeam)
-	if team == otherTeam then return D_LI end
-	if AiWar.EnemyOf(team) == otherTeam then return D_HT end
-	return D_NU
+local DISPOSITION = { [AiWar.ALLY] = D_LI, [AiWar.ENEMY_OF] = D_HT, [AiWar.FEAR] = D_FR, [AiWar.NEUTRAL] = D_NU }
+
+function Controller:Disposition(team, otherTeam)
+	return DISPOSITION[AiWar.Relation(team, otherTeam, self.losers)]
 end
 
 function Controller:RelateSoldiers(ent, team)
 	for other, entry in pairs(self.soldiers) do
 		if other ~= ent and IsValid(other) then
-			local disposition = Disposition(team, entry.soldier.team)
-			ent:AddEntityRelationship(other, disposition, RELATIONSHIP_PRIORITY)
-			other:AddEntityRelationship(ent, disposition, RELATIONSHIP_PRIORITY)
+			ent:AddEntityRelationship(other, self:Disposition(team, entry.soldier.team), RELATIONSHIP_PRIORITY)
+			other:AddEntityRelationship(ent, self:Disposition(entry.soldier.team, team), RELATIONSHIP_PRIORITY)
 		end
 	end
 end
@@ -367,7 +366,7 @@ function Controller:RelatePlayers()
 	for ent, entry in pairs(self.soldiers) do
 		if IsValid(ent) then
 			for _, ply in ipairs(player.GetAll()) do
-				local disposition = Disposition(entry.soldier.team, WETSAND.TeamOf(ply))
+				local disposition = self:Disposition(entry.soldier.team, WETSAND.TeamOf(ply))
 				if entry.soldier.relations[ply] ~= disposition then
 					entry.soldier.relations[ply] = disposition
 					ent:AddEntityRelationship(ply, disposition, RELATIONSHIP_PRIORITY)
@@ -375,6 +374,52 @@ function Controller:RelatePlayers()
 			end
 		end
 	end
+end
+
+-- Every soldier toward every other and every player, again (the losers changed).
+function Controller:RelateEveryone()
+	for ent, entry in pairs(self.soldiers) do
+		if IsValid(ent) then
+			self:RelateSoldiers(ent, entry.soldier.team)
+			entry.soldier.relations = {}
+		end
+	end
+	self.nextRelations = 0
+end
+
+-- Humiliation ------------------------------------------------------------------------
+-- TF2's losers cannot attack while the winners celebrate (for players,
+-- WETSAND.RestrictCommand). An engine NPC only gathers the conditions to
+-- attack with the capabilities for it (CAI_BaseNPC::GatherAttackConditions),
+-- so the losing side's soldiers lose those, forget their enemies and fear
+-- them instead: the base AI runs from what it fears. The winners hunt them.
+local ATTACK_CAPS = bit.bor(
+	CAP_WEAPON_RANGE_ATTACK1, CAP_WEAPON_RANGE_ATTACK2, CAP_WEAPON_MELEE_ATTACK1, CAP_WEAPON_MELEE_ATTACK2,
+	CAP_INNATE_RANGE_ATTACK1, CAP_INNATE_RANGE_ATTACK2, CAP_INNATE_MELEE_ATTACK1, CAP_INNATE_MELEE_ATTACK2)
+
+function Controller:Disarm(ent, entry)
+	if entry.disarmed then return end
+	entry.disarmed = bit.band(ent:CapabilitiesGet(), ATTACK_CAPS)
+	ent:CapabilitiesRemove(entry.disarmed)
+	ent:ClearEnemyMemory()
+	if not entry.soldier.traverse then ent:ClearSchedule() end
+end
+
+function Controller:Rearm(ent, entry)
+	if not entry.disarmed then return end
+	ent:CapabilitiesAdd(entry.disarmed)
+	entry.disarmed = nil
+end
+
+-- losers: the team humiliated, or nil for none.
+function Controller:Humiliate(losers)
+	self.losers = losers
+	for ent, entry in pairs(self.soldiers) do
+		if IsValid(ent) then
+			if entry.soldier.team == losers then self:Disarm(ent, entry) else self:Rearm(ent, entry) end
+		end
+	end
+	self:RelateEveryone()
 end
 
 -- Teammates pass through each other ---------------------------------------------------
@@ -402,6 +447,7 @@ function Controller:Enlist(ent, team, drafted)
 	WETSAND.SetTeamMember(ent, team)
 	self:RelateSoldiers(ent, team)
 	self:PassTeammates(ent, team)
+	if team == self.losers then self:Disarm(ent, self.soldiers[ent]) end
 	self.nextRelations = 0
 end
 
@@ -409,6 +455,7 @@ function Controller:Discharge(ent)
 	local entry = self.soldiers[ent]
 	if not entry then return end
 	self.soldiers[ent] = nil
+	if IsValid(ent) then self:Rearm(ent, entry) end
 	self.war:Discharge(ent)
 	entry.npc:Destroy()
 	WETSAND.SetTeamMember(ent, nil)
@@ -483,6 +530,47 @@ function Controller:Reinforce(now)
 			if pos then self:Draft(team, pos, spot:GetAngles()) end
 		end
 	end
+end
+
+-- A new round or stage: every soldier starts again from its side's spawn,
+-- as TF2 respawns every player (RoundRespawn). The war's own soldiers are
+-- replaced by a fresh wave; the ones players spawned are healed, rearmed
+-- and moved to a spawn point (on a stage of a multi-stage map, the new
+-- stage's), and their orders start over.
+function Controller:RespawnAll()
+	self.gates = nil
+	self.postCache = nil
+	self.losers = nil
+	local entries = {}
+	for ent, entry in pairs(self.soldiers) do entries[#entries + 1] = { ent = ent, entry = entry } end
+	local spots, used = {}, {}
+	for _, e in ipairs(entries) do
+		local ent, team = e.ent, e.entry.soldier.team
+		if IsValid(ent) then
+			local drafted = self.war:Member(ent).drafted
+			e.entry.soldier.traverse = nil
+			e.entry.soldier:Release()
+			self:Discharge(ent)
+			if drafted then
+				ent:Remove()
+			else
+				spots[team] = spots[team] or WETSAND.SpawnPoints(team)
+				used[team] = (used[team] or 0) + 1
+				local spot = spots[team][(used[team] - 1) % math.max(#spots[team], 1) + 1]
+				local pos = spot and ClearSpotNear(spot:GetPos())
+				if pos then
+					ent:SetPos(pos + SPAWN_LIFT)
+					ent:SetAngles(spot:GetAngles())
+				end
+				ent:SetHealth(ent:GetMaxHealth())
+				ent:ClearEnemyMemory()
+				ent:ClearSchedule()
+				self:Enlist(ent, team, false)
+			end
+		end
+	end
+	self:RelateEveryone()
+	self.war:ResetWaves()
 end
 
 -- The field ------------------------------------------------------------------------
@@ -829,6 +917,7 @@ function Controller:End()
 		end
 	end
 	self.soldiers = {}
+	self.losers = nil
 	self:CloseDoorsToSoldiers()
 	self:SetForcefieldsPassable(false)
 	self.war = nil
@@ -868,6 +957,7 @@ function Controller:Describe(ent, entry)
 		"Enemy: " .. (soldier:HasEnemy() and "in sight" or "none in sight"),
 	}
 	if state.wandering then lines[#lines + 1] = "Setup: wandering until it ends" end
+	if entry.disarmed then lines[#lines + 1] = "Humiliated: cannot attack, fears the winners" end
 	if state.hops then lines[#lines + 1] = "Hops: " .. state.hops end
 	if state.passed then lines[#lines + 1] = "Let through: " .. state.passed .. " NPC-only blocker(s)" end
 	local blocked = self:BlockedBy(soldier)
@@ -1026,9 +1116,16 @@ hook.Add("PostCleanupMap", "wetsand_aiwar", function()
 	Controller.war:ResetWaves()
 end)
 
--- A new mini-round (or round) may put the gates elsewhere.
+-- Every round and every stage of a multi-stage map (pl_dustbowl,
+-- pl_goldrush) starts with everyone back at spawn: a stage keeps the map
+-- as it is, so without this the soldiers would stay where the last stage
+-- left them.
 hook.Add("TF2RoundActivate", "wetsand_aiwar", function()
-	if Controller.war then Controller.gates = nil end
+	if Controller.war then Controller:RespawnAll() end
+end)
+
+hook.Add("TF2RoundWin", "wetsand_aiwar", function(winner)
+	if Controller.war then Controller:Humiliate(AiWar.LosersOf(winner)) end
 end)
 
 -- The round keeps running with no human on a team while the war is on.

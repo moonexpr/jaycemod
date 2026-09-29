@@ -19,6 +19,23 @@ function EnemyOf(team)
 	return ENEMY[team]
 end
 
+-- How a soldier of `team` stands toward someone of `otherTeam`. `losers` is
+-- the team that lost the round, while the winners celebrate (TF2's
+-- humiliation): its soldiers fear their enemies instead of fighting them.
+ALLY, ENEMY_OF, FEAR, NEUTRAL = "ally", "enemy", "fear", "neutral"
+
+function Relation(team, otherTeam, losers)
+	if team == otherTeam then return ALLY end
+	if ENEMY[team] ~= otherTeam then return NEUTRAL end
+	if team == losers then return FEAR end
+	return ENEMY_OF
+end
+
+-- The team humiliated when `winner` wins: its enemy, or none on a stalemate.
+function LosersOf(winner)
+	return ENEMY[winner]
+end
+
 -- Roles: what a soldier is for. foundation.aiwar.orders gives each its goal.
 PUSH, ESCORT, BLOCK, DEFEND = "push", "escort", "block", "defend"
 
