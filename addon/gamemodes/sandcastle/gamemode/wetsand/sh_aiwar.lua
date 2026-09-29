@@ -68,7 +68,7 @@ local debug = { soldiers = {}, received = 0 }
 
 -- Brighter than the teams' HUD colours, to read over any map.
 local DEBUG_COLOR = { [WETSAND.TEAM_RED] = Color(255, 90, 90), [WETSAND.TEAM_BLUE] = Color(110, 175, 255) }
-local DEBUG_BACKGROUND = Color(0, 0, 0, 185)
+local DEBUG_BACKGROUND = Color(24, 24, 28)
 local DEBUG_PADDING, DEBUG_LINE_GAP = 6, 1
 
 surface.CreateFont("WetsandAiwarHeading", { font = "Tahoma", size = 15, weight = 800 })
@@ -105,34 +105,64 @@ hook.Add("PostDrawTranslucentRenderables", "wetsand_aiwar_debug", function(depth
 	end
 end)
 
--- A box above the soldier's head: the heading in bold and its team's
--- colour, then the labelled details in white.
-local function DrawSoldierBox(soldier, x, bottom)
+-- A box above each soldier's head: the heading in bold and its team's
+-- colour, then the labelled details in white, on an opaque background.
+-- Boxes are laid out nearest soldier first so none covers another
+-- (foundation.aiwar.overlay); a box moved off its soldier keeps a line to
+-- its head.
+local Overlay = WETSAND.require("foundation.aiwar.overlay")
+
+local function Measure(soldier)
 	surface.SetFont("WetsandAiwarHeading")
 	local width, headingHeight = surface.GetTextSize(soldier.heading)
 	surface.SetFont("WetsandAiwarDetail")
 	local _, lineHeight = surface.GetTextSize("Ag")
 	for _, detail in ipairs(soldier.details) do width = math.max(width, (surface.GetTextSize(detail))) end
 	local height = headingHeight + #soldier.details * (lineHeight + DEBUG_LINE_GAP)
-	local left, top = x - width / 2 - DEBUG_PADDING, bottom - height - DEBUG_PADDING * 2
-	draw.RoundedBox(4, left, top, width + DEBUG_PADDING * 2, height + DEBUG_PADDING * 2, DEBUG_BACKGROUND)
-	local y = top + DEBUG_PADDING
-	draw.SimpleText(soldier.heading, "WetsandAiwarHeading", left + DEBUG_PADDING, y, DEBUG_COLOR[soldier.team] or color_white)
-	y = y + headingHeight
+	return width + DEBUG_PADDING * 2, height + DEBUG_PADDING * 2, headingHeight, lineHeight
+end
+
+local function DrawSoldierBox(soldier, rect, anchor)
+	local color = DEBUG_COLOR[soldier.team] or color_white
+	if rect.moved then
+		surface.SetDrawColor(color)
+		surface.DrawLine(rect.left + rect.w / 2, rect.top + rect.h, anchor.x, anchor.y)
+	end
+	draw.RoundedBox(4, rect.left - 1, rect.top - 1, rect.w + 2, rect.h + 2, color)
+	draw.RoundedBox(4, rect.left, rect.top, rect.w, rect.h, DEBUG_BACKGROUND)
+	local x, y = rect.left + DEBUG_PADDING, rect.top + DEBUG_PADDING
+	draw.SimpleText(soldier.heading, "WetsandAiwarHeading", x, y, color)
+	y = y + soldier.headingHeight
 	for _, detail in ipairs(soldier.details) do
-		draw.SimpleText(detail, "WetsandAiwarDetail", left + DEBUG_PADDING, y, color_white)
-		y = y + lineHeight + DEBUG_LINE_GAP
+		draw.SimpleText(detail, "WetsandAiwarDetail", x, y, color_white)
+		y = y + soldier.lineHeight + DEBUG_LINE_GAP
 	end
 end
 
 hook.Add("HUDPaint", "wetsand_aiwar_debug", function()
 	if not DebugLive() then return end
+	local eye = EyePos()
+	local shown = {}
 	for _, soldier in ipairs(debug.soldiers) do
 		if IsValid(soldier.ent) then
-			local screen = (soldier.ent:GetPos() + Vector(0, 0, DEBUG_TEXT_HEIGHT)):ToScreen()
-			if screen.visible then DrawSoldierBox(soldier, screen.x, screen.y) end
+			local head = soldier.ent:GetPos() + Vector(0, 0, DEBUG_TEXT_HEIGHT)
+			local screen = head:ToScreen()
+			if screen.visible then
+				soldier.anchor, soldier.distance = screen, eye:DistToSqr(head)
+				shown[#shown + 1] = soldier
+			end
 		end
 	end
+	table.sort(shown, function(a, b) return a.distance < b.distance end)
+	local boxes = {}
+	for i, soldier in ipairs(shown) do
+		local w, h, headingHeight, lineHeight = Measure(soldier)
+		soldier.headingHeight, soldier.lineHeight = headingHeight, lineHeight
+		boxes[i] = { x = soldier.anchor.x, bottom = soldier.anchor.y, w = w, h = h }
+	end
+	local rects = Overlay.Layout(boxes)
+	-- farthest first, so a leader line never crosses a nearer box
+	for i = #shown, 1, -1 do DrawSoldierBox(shown[i], rects[i], shown[i].anchor) end
 end)
 
 hook.Add("PopulateToolMenu", "wetsand_aiwar", function()
