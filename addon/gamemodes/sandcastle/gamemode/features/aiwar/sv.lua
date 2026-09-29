@@ -392,6 +392,23 @@ local WANDER_RADIUS, WANDER_TRIES = 300, 6
 
 local function AreaSize(area) return area:GetSizeX() * area:GetSizeY() end
 
+-- A random spot on the nav mesh within radius of center, on floor a
+-- soldier can walk (no crouch or jump areas).
+local PATROL_TRIES = 6
+
+function Soldier:PatrolSpot(center, radius)
+	local step = HL2Path.LIMITS.stepHeight
+	local areas = navmesh.Find(ToVector(center), radius, step * 4, step * 4)
+	if #areas == 0 then return nil end
+	for _ = 1, PATROL_TRIES do
+		local area = areas[math.random(#areas)]
+		if bit.band(area:GetAttributes(), HL2Path.NAV_MESH_CROUCH + HL2Path.NAV_MESH_JUMP) == 0 and not self.controller:UnderCart(area) then
+			return Point(area:GetRandomPoint())
+		end
+	end
+	return nil
+end
+
 function Soldier:WanderSpot()
 	local zone = self.controller:SetupZone(self.team)
 	if zone then
@@ -1429,6 +1446,7 @@ function Controller:Describe(ent, entry)
 		"Enemy: " .. (soldier:HasEnemy() and "in sight" or "none in sight"),
 	}
 	if state.wandering then lines[#lines + 1] = "Setup: wandering until it ends" end
+	if state.patrolling then lines[#lines + 1] = "Patrol: walking its rounds near its post until the cart moves" end
 	if entry.disarmed then lines[#lines + 1] = "Humiliated: cannot attack, fears the winners" end
 	if soldier.recoveries then lines[#lines + 1] = string.format("Recovered: %d time(s), last %s", soldier.recoveries, soldier.recoveredWhy) end
 	if state.hops then lines[#lines + 1] = "Hops: " .. state.hops end

@@ -169,6 +169,47 @@ T.test("a route planned before a door shut is planned again", function()
 	T.eq(#me.requests, 2, "another, around the door")
 end)
 
+-- The defenders' patrol.
+
+-- Ticks until the soldier moves (at most `limit`); how many it took.
+local function TicksUntilMoving(me, npc, limit)
+	for i = 1, limit do
+		Tick(me, npc)
+		if me.moving then return i end
+	end
+	return limit
+end
+
+T.test("a defender at its post walks its rounds while the cart stands still", function()
+	local field = Field({})
+	local member = { team = RED, role = AiWar.DEFEND, slot = 0 }
+	local post = Orders.Goal(field, member)
+	local spot = P(post.x + 100, post.y + 50)
+	local me, npc = Enlist({ team = RED, role = AiWar.DEFEND, field = field, pos = post, patrolSpots = { spot }, walkable = function() return true end })
+	Tick(me, npc, 2)
+	T.eq(me.moving, nil, "resting at the post first")
+	T.eq(npc:State().patrolling, true, "shown as patrolling")
+	local ticks = TicksUntilMoving(me, npc, Orders.PATROL_REST / TICK + 4)
+	T.eq(ticks * TICK >= Orders.PATROL_REST - 1, true, "after its rest")
+	Near(me.moving, spot, "then off on its round")
+	T.eq(me.gait, Orders.WALK, "at a walk")
+end)
+
+T.test("a patrolling defender goes back to its post when the cart is pushed", function()
+	local field = Field({})
+	local member = { team = RED, role = AiWar.DEFEND, slot = 0 }
+	local post = Orders.Goal(field, member)
+	local spot = P(post.x + 200, post.y + 100)
+	local me, npc, war = Enlist({ team = RED, role = AiWar.DEFEND, field = field, pos = post, patrolSpots = { spot }, walkable = function() return true end })
+	TicksUntilMoving(me, npc, Orders.PATROL_REST / TICK + 4)
+	Near(me.moving, spot, "on its round")
+	me.pos = P(post.x - 300, post.y)
+	war:SetField(Field({ carts = { [BLUE] = Cart(1100) } }))
+	Tick(me, npc, 4)
+	T.eq(npc:State().patrolling, false, "the round is over")
+	Near(npc:State().goal, Orders.Goal(Field({ carts = { [BLUE] = Cart(1100) } }), member), "back to the post")
+end)
+
 -- Setup: the attackers wander near where they are until it ends.
 
 T.test("in setup an attacker wanders from spot to spot, resting at each, with no route searches for spots in sight", function()

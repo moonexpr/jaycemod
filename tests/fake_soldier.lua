@@ -42,6 +42,7 @@ function Fake.Soldier(t)
 		detour = t.detour or function() return nil end,
 		detours = {},
 		wanderSpots = t.wanderSpots or {},
+		patrolSpots = t.patrolSpots,
 		wandered = 0,
 		hops = {},
 		requests = {},
@@ -94,6 +95,12 @@ function Soldier:RouteStale()
 	local stale = self.stale
 	self.stale = false
 	return stale == true
+end
+
+-- patrolSpots: the points PatrolSpot hands out in turn (default: none).
+function Soldier:PatrolSpot(center, radius)
+	self.patrolled = (self.patrolled or 0) + 1
+	return (self.patrolSpots or {})[self.patrolled]
 end
 
 function Soldier:WanderSpot()

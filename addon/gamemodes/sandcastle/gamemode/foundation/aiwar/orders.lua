@@ -21,7 +21,7 @@
 --
 -- For the war report, a soldier's state shows its goal, route and waypoint
 -- (goal, route, routeIndex) and how its last trip ended (trip).
-local ceil, cos, floor, min, sin, sqrt = math.ceil, math.cos, math.floor, math.min, math.sin, math.sqrt
+local abs, ceil, cos, floor, min, sin, sqrt = math.abs, math.ceil, math.cos, math.floor, math.min, math.sin, math.sqrt
 local pairs = pairs
 local N = require("foundation.npc")
 local AiWar = require("foundation.aiwar")
@@ -86,6 +86,16 @@ DETOUR_TIME = 3
 -- lies down, dances) until it moves on.
 WANDER_ARRIVE, WANDER_REST, WANDER_GIVE_UP = 48, 12, 30
 
+-- The defenders' patrol: a defender or blocker at its spot, while the
+-- enemy's cart stands still (moved no more than CART_STILL) and the
+-- checkpoint it heads for stays the same, walks its own rounds: spots
+-- within PATROL_RADIUS of its post (the soldier port's PatrolSpot),
+-- PATROL_REST at each. When the cart is pushed, the objective moves on or
+-- the post shifts more than PATROL_SHIFT, it goes back to its post; an
+-- enemy in sight ends a round, and the engine's AI fights.
+PATROL_RADIUS, PATROL_REST, PATROL_GIVE_UP = 384, 6, 20
+PATROL_SHIFT, CART_STILL = 64, 8
+
 -- Gaits (the soldier port's MoveTo): a casual walk for setup's wanderers,
 -- a panicked run for the defenders racing to their line in setup, a run
 -- otherwise.
@@ -142,6 +152,7 @@ ROLES = {
 	},
 	[AiWar.BLOCK] = {
 		name = "Block",
+		patrols = true,
 		arrive = PUSH_ARRIVE,
 		leash = PUSH_LEASH,
 		rushes = true,
@@ -171,6 +182,7 @@ ROLES = {
 	-- the checkpoint the attackers head for), where it waits for them.
 	[AiWar.DEFEND] = {
 		name = "EstablishLine",
+		patrols = true,
 		arrive = DEFEND_ARRIVE,
 		leash = DEFEND_LEASH,
 		rushes = false,
@@ -207,14 +219,18 @@ end
 
 local Travel = N.Action:Extend("Travel")
 
--- A wander spot is travelled to as a role's goal is, with WANDER's terms.
-local WANDER = { name = "Wander", arrive = WANDER_ARRIVE, leash = 0, rushes = false }
+-- A wander or patrol spot is travelled to as a role's goal is, with these
+-- terms.
+local WANDER = { name = "Wander", arrive = WANDER_ARRIVE, leash = 0, rushes = false, giveUp = WANDER_GIVE_UP }
+local PATROL = { name = "Patrol", arrive = WANDER_ARRIVE, leash = 0, rushes = false, giveUp = PATROL_GIVE_UP }
 
--- spot: a wander spot to go to instead of the role's goal.
-function Travel:Init(state, role, spot)
+-- spot: a spot to go to instead of the role's goal, while keep(field, me)
+-- -> true, or why not (by default: while the soldier waits for setup).
+function Travel:Init(state, role, spot, keep)
 	self.state = state
 	self.role = role
 	self.spot = spot
+	self.keep = keep
 	self.repaths = 0
 	self.failed = false
 	self.requested = false
@@ -222,7 +238,7 @@ function Travel:Init(state, role, spot)
 end
 
 function Travel:OnStart(me)
-	if self.spot then self.giveUpAt = me:Now() + WANDER_GIVE_UP end
+	if self.spot then self.giveUpAt = me:Now() + (self.role.giveUp or WANDER_GIVE_UP) end
 	self:SetRoute(nil)
 	self:ResetProgress(me)
 	return self:Continue()
@@ -383,7 +399,12 @@ function Travel:Goal(me, field)
 	local state = self.state
 	if state.member.role == nil or not OrdersRun(field) then return nil, "orders changed" end
 	if self.spot then
-		if not WaitingForSetup(field, state.member) then return nil, "setup ended" end
+		if self.keep then
+			local keep, why = self.keep(field, me)
+			if not keep then return nil, why end
+		elseif not WaitingForSetup(field, state.member) then
+			return nil, "setup ended"
+		end
 		if me:Now() >= self.giveUpAt then return nil, "gave up" end
 		return self.spot
 	end
@@ -463,13 +484,54 @@ function Objective:Wander(me)
 	return self:SuspendFor(Travel:New(state, WANDER, spot), "wandering")
 end
 
+-- The patrol's anchor: the post, and the cart and checkpoint it was taken
+-- for.
+local function Anchor(field, member, goal)
+	local cart = EnemyCart(field, member)
+	return { goal = goal, cartDistance = cart and cart.distance, checkpoint = cart and cart.nextCheckpoint }
+end
+
+local function AnchorHolds(anchor, field, member, goal)
+	if Distance(goal, anchor.goal) > PATROL_SHIFT then return false, "the post moved" end
+	local cart = EnemyCart(field, member)
+	if cart and anchor.cartDistance and abs(cart.distance - anchor.cartDistance) > CART_STILL then return false, "the cart moved" end
+	if cart and cart.nextCheckpoint ~= anchor.checkpoint then return false, "the objective moved on" end
+	return true
+end
+
+-- A round of the patrol: a rest, then a walk to another spot near the post.
+function Objective:Patrol(me, field, goal)
+	local state, now = self.state, me:Now()
+	state.patrolling = true
+	if me:HasEnemy() or now < (self.restUntil or 0) then
+		me:Release()
+		return self:Continue()
+	end
+	local spot = me:PatrolSpot(self.anchor.goal, PATROL_RADIUS)
+	if not spot then
+		self.restUntil = now + PATROL_REST
+		me:Release()
+		return self:Continue()
+	end
+	local anchor, member = self.anchor, state.member
+	local function Keep(currentField, soldier)
+		if soldier:HasEnemy() then return false, "enemy in sight" end
+		local post = self.role.Goal(currentField, member)
+		if not post then return false, "no post" end
+		return AnchorHolds(anchor, currentField, member, post)
+	end
+	return self:SuspendFor(Travel:New(state, PATROL, spot, Keep), "patrolling")
+end
+
 function Objective:Update(me)
 	local state = self.state
 	if state.member.role ~= self.roleName then return self:ChangeTo(ObjectiveFor(state), "new role") end
 	local field = state.war:Field()
 	if OrdersRun(field) and WaitingForSetup(field, state.member) then return self:Wander(me) end
-	state.wandering = false
-	self.restUntil = nil
+	if state.wandering then
+		state.wandering = false
+		self.restUntil = nil
+	end
 	if state.pose then
 		me:Unpose()
 		state.pose = nil
@@ -479,8 +541,25 @@ function Objective:Update(me)
 		me:Release()
 		return self:Continue()
 	end
-	state.goal = goal
 	local range = me:RangeTo(goal)
+	if self.role.patrols then
+		if self.anchor and AnchorHolds(self.anchor, field, state.member, goal) and range <= PATROL_RADIUS + self.role.arrive then
+			return self:Patrol(me, field, goal)
+		end
+		state.patrolling = false
+		if self.anchor then
+			self.anchor = nil
+			self.restUntil = nil
+		end
+		if range <= self.role.arrive then
+			-- at the post: its patrol starts after a first rest
+			self.anchor = Anchor(field, state.member, goal)
+			self.restUntil = me:Now() + PATROL_REST
+			state.goal = goal
+			return self:Patrol(me, field, goal)
+		end
+	end
+	state.goal = goal
 	-- at the cart: keep to the spot as the cart carries it off
 	if self.role.rushes and range <= self.role.arrive then
 		if range > STATION and me:CanWalkTo(goal) then me:MoveTo(goal, RUN) else me:Release() end
@@ -497,7 +576,8 @@ end
 function Objective:OnResume(me, interrupting)
 	if interrupting.spot then
 		-- rest where it got to; a spot given up is traded for another at once
-		self.restUntil = interrupting.failed and 0 or me:Now() + WANDER_REST
+		local rest = interrupting.role == PATROL and PATROL_REST or WANDER_REST
+		self.restUntil = interrupting.failed and 0 or me:Now() + rest
 	elseif interrupting.failed then
 		self.retryAt = me:Now() + RETRY_WAIT
 	end
