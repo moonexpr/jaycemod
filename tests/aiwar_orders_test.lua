@@ -340,6 +340,28 @@ T.test("a stuck soldier first steps aside, then goes on along its new route", fu
 	T.eq(another, true, "the next step aside goes another way")
 end)
 
+T.test("a soldier stuck through every step aside hops toward its waypoint when a player could walk there", function()
+	local me, npc = Enlist({
+		role = AiWar.PUSH,
+		route = function() return { P(900, 0) } end,
+		hoppable = function() return true end,
+	})
+	Tick(me, npc, 2)
+	for _ = 1, Orders.MAX_REPATHS + 1 do Tick(me, npc, (Orders.STUCK_TIME + TICK) / TICK + 1) end
+	T.eq(#me.hops, 1, "one hop")
+	Near(me.hops[1], P(Orders.HOP_DISTANCE, 0), "a hop's length toward the waypoint")
+	T.eq(npc:Describe(), "SoldierBehavior/Travel", "still on its way")
+	T.eq(npc:State().hops, 1, "counted for the report")
+end)
+
+T.test("a hop to somewhere a player could not walk is refused, and the trip ends", function()
+	local me, npc = Enlist({ role = AiWar.PUSH, route = function() return { P(900, 0) } end })
+	Tick(me, npc, 2)
+	for _ = 1, Orders.MAX_REPATHS + 1 do Tick(me, npc, (Orders.STUCK_TIME + TICK) / TICK + 1) end
+	T.eq(#me.hops, 0, "no hop")
+	T.eq(npc:State().trip, "stuck", "gave up")
+end)
+
 T.test("a straight chase that goes nowhere falls back to a route", function()
 	local me, npc = Enlist({ role = AiWar.PUSH, walkable = function() return true end })
 	Tick(me, npc)

@@ -21,7 +21,7 @@
 --
 -- For the war report, a soldier's state shows its goal, route and waypoint
 -- (goal, route, routeIndex) and how its last trip ended (trip).
-local ceil, cos, floor, min, sin = math.ceil, math.cos, math.floor, math.min, math.sin
+local ceil, cos, floor, min, sin, sqrt = math.ceil, math.cos, math.floor, math.min, math.sin, math.sqrt
 local pairs = pairs
 local N = require("foundation.npc")
 local AiWar = require("foundation.aiwar")
@@ -61,6 +61,10 @@ CHASE_BACKOFF = 3 -- after a straight run got stuck, routes only for this long
 -- that turns with each attempt and differs between soldiers: most are held
 -- by a corner, a door frame or someone in the way, not by the route.
 SIDESTEP_DISTANCE, SIDESTEP_TIME = 96, 1.5
+-- Last resort, when every step aside and new route has failed: a hop of
+-- up to this far toward the waypoint, where a player could walk (a brush
+-- only NPCs collide with, a lip their step cannot take).
+HOP_DISTANCE = 160
 RETRY_WAIT = 1 -- after a failed trip, before the next
 
 local Distance = Track.Distance
@@ -216,11 +220,29 @@ function Travel:IsStuck(me)
 	return me:Now() - self.progressAt > STUCK_TIME
 end
 
--- A step aside and a new route after getting stuck, or the end of the
--- trip after too many.
+-- A hop of up to HOP_DISTANCE toward the waypoint (or the goal) the
+-- soldier is stuck on, if the soldier port allows it there.
+function Travel:HopOn(me, goal)
+	local target = self.route and self.route[self.index] or goal
+	local here = me:Position()
+	local dx, dy, dz = target.x - here.x, target.y - here.y, target.z - here.z
+	local length = sqrt(dx * dx + dy * dy + dz * dz)
+	local t = length > HOP_DISTANCE and HOP_DISTANCE / length or 1
+	if not me:Hop({ x = here.x + dx * t, y = here.y + dy * t, z = here.z + dz * t }) then return false end
+	self.state.hops = (self.state.hops or 0) + 1
+	self.repaths = 0
+	self:ResetProgress(me)
+	return true
+end
+
+-- A step aside and a new route after getting stuck; after too many, a hop,
+-- or the end of the trip.
 function Travel:Unstick(me, goal)
 	self.repaths = self.repaths + 1
-	if self.repaths > MAX_REPATHS then return self:Fail("stuck") end
+	if self.repaths > MAX_REPATHS then
+		if self:HopOn(me, goal) then return self:Continue() end
+		return self:Fail("stuck")
+	end
 	self:ResetProgress(me)
 	self:Plan(me, goal)
 	local angle = ((self.state.member.seq or 0) + self.repaths) * GOLDEN_ANGLE

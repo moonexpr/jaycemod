@@ -169,6 +169,28 @@ function Soldier:RunState()
 	return "at its run target"
 end
 
+-- The last resort of a stuck soldier: set down at p, if a soldier-sized
+-- box sweeps there under player movement's mask (so only what would stop
+-- a player stops the hop: no wall, door or gate) and fits at p under the
+-- NPC's own mask.
+local HOP_MINS, HOP_MAXS = Vector(-13, -13, 0), Vector(13, 13, 72)
+local HOP_LIFT = Vector(0, 0, 18)
+local HOP_MAX_RISE = 64
+
+function Soldier:Hop(p)
+	local ent, controller = self.ent, self.controller
+	local from, to = ent:GetPos(), OnFloor(ToVector(p))
+	if math.abs(to.z - from.z) > HOP_MAX_RISE then return false end
+	local function NotSoldier(hit) return controller.soldiers[hit] == nil end
+	local sweep = util.TraceHull({ start = from + HOP_LIFT, endpos = to + HOP_LIFT, mins = HOP_MINS, maxs = HOP_MAXS - HOP_LIFT, mask = MASK_PLAYERSOLID, filter = NotSoldier })
+	if sweep.Hit then return false end
+	local fit = util.TraceHull({ start = to, endpos = to, mins = HOP_MINS, maxs = HOP_MAXS, mask = MASK_NPCSOLID, filter = NotSoldier })
+	if fit.Hit then return false end
+	ent:SetPos(to)
+	self.moveTarget = nil
+	return true
+end
+
 function Soldier:Release()
 	if self.moveTarget == nil then return end
 	self.moveTarget = nil
@@ -628,9 +650,10 @@ function Controller:Describe(ent, entry)
 	if entry.soldier.result == false then route = "off the mesh" end
 	if state.route then route = string.format("waypoint %d/%d", state.routeIndex, #state.route) end
 	local goal = state.goal and Round(entry.soldier:RangeTo(state.goal)) .. "u to goal" or "no goal"
-	return string.format("%s %s | %s | %s | %s | %s | last trip: %s%s%s",
+	return string.format("%s %s | %s | %s | %s | %s | last trip: %s%s%s%s",
 		TEAM_LABEL[entry.soldier.team], ent:GetClass(), role, entry.npc:Describe(), route, goal,
 		state.trip or "none",
+		state.hops and (" | hops: " .. state.hops) or "",
 		entry.soldier:RunState() and (" | " .. entry.soldier:RunState()) or "",
 		entry.soldier:HasEnemy() and " | enemy in sight" or "")
 end

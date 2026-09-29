@@ -20,6 +20,8 @@
 --     same p again keeps the move going
 --   Release(): end any forced move, handing me back to the engine's own AI,
 --     which fights, takes cover or idles
+--   Hop(p) -> whether I was set down at p: only where a player could walk
+--     from here to p, so never through a wall, door or gate
 module(...)
 
 METHODS = {
@@ -33,4 +35,5 @@ METHODS = {
 	"CanWalkTo",
 	"MoveTo",
 	"Release",
+	"Hop",
 }
