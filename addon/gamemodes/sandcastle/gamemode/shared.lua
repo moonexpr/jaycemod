@@ -11,14 +11,14 @@ DeriveGamemode("sandbox")
 -- Modules in gamemode/wetsand/ load by prefix: sh_ on both realms, sv_ on the
 -- server, cl_ on clients. sh_core defines the TF2 table and loads first;
 -- the rest load in name order.
-function GM:TF2Modules(prefix)
+function GM:WetsandModules(prefix)
 	local files = file.Find(self.FolderName .. "/gamemode/wetsand/" .. prefix .. "*.lua", "LUA")
 	table.sort(files)
 	return files
 end
 
 include("wetsand/sh_core.lua")
-for _, f in ipairs(GM:TF2Modules("sh_")) do
+for _, f in ipairs(GM:WetsandModules("sh_")) do
 	if f ~= "sh_core.lua" then include("wetsand/" .. f) end
 end
 

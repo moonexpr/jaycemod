@@ -5,7 +5,7 @@
 local Controller = {}
 
 local RED, BLUE = WETSAND.TEAM_RED, WETSAND.TEAM_BLUE
-local NO_ROUNDS = "this map has no TF2 rounds (no tf_gamerules)"
+local NO_ROUNDS = "this map has no rounds (no tf_gamerules)"
 local NO_TIMER = "no round timer is showing"
 
 local function Rules()

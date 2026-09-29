@@ -1,6 +1,6 @@
 -- The round states of TF2's gamerules (gamerules_roundstate_t,
 -- teamplayroundbased_gamerules.h), with TF2's values, which the server
--- replicates as tf2.state. A part of its own because the team rules read it
+-- replicates as wetsand_round_state. A part of its own because the team rules read it
 -- too, and the round rules read the team numbers.
 module(...)
 

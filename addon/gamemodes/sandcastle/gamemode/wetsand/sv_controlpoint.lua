@@ -111,7 +111,7 @@ local function InternalSetOwner(ent, team, makeSound, activator)
 		WETSAND.FireOutput(ent, team == WETSAND.TEAM_RED and "OnOwnerChangedToTeam1" or "OnOwnerChangedToTeam2", activator)
 		WETSAND.Announce(WETSAND.TeamName[team] .. " captured point " .. WETSAND.PointIndex(ent), team)
 	end
-	hook.Run("TF2PointCaptured", ent, team)
+	hook.Run("WetsandPointCaptured", ent, team)
 	CheckMasters()
 end
 
@@ -165,7 +165,7 @@ local function SetUnlockTime(ent, seconds)
 end
 
 -- CTeamControlPoint::UnlockThink: the timed unlock waits for the round to run.
-timer.Create("tf2.controlpoint.unlock", 0.1, 0, function()
+timer.Create("wetsand_control_point_unlock", 0.1, 0, function()
 	if WETSAND.Active() and WETSAND.State() ~= WETSAND.STATE.RND_RUNNING then return end
 	for _, ent in ipairs(ents.FindByClass("team_control_point")) do
 		local at = WETSAND.KeyValues(ent).unlockAt
@@ -238,7 +238,7 @@ function WETSAND.PointCaptureStarted(point, team)
 		if not sound or sound == "" then sound = DEFAULT_WARN_SOUND end
 		WETSAND.SoundTo(WETSAND.PlayersNotOn(team), sound)
 	end
-	hook.Run("TF2PointCaptureStarted", point, team)
+	hook.Run("WetsandPointCaptureStarted", point, team)
 end
 
 -- The team that blocked a capture (CTeamControlPoint::CaptureBlocked): the
@@ -248,7 +248,7 @@ function WETSAND.PointCaptureBlocked(point, team)
 	if name and name ~= "" then
 		WETSAND.RoundNotice(WETSAND.TeamName[team] .. " defended " .. name, team)
 	end
-	hook.Run("TF2PointCaptureBlocked", point, team)
+	hook.Run("WetsandPointCaptureBlocked", point, team)
 end
 
 -- Inputs ------------------------------------------------------------------------------------
@@ -268,7 +268,7 @@ local INPUTS = {
 	roundactivate = function(ent) WETSAND.PointRoundActivate(ent) end,
 }
 
-hook.Add("AcceptInput", "tf2.controlpoint", function(ent, input, activator, caller, value)
+hook.Add("AcceptInput", "wetsand_control_point", function(ent, input, activator, caller, value)
 	if ent:GetClass() ~= "team_control_point" then return end
 	local handler = INPUTS[string.lower(input)]
 	if not handler then return end
@@ -283,5 +283,5 @@ local function ApplyAll()
 		WETSAND.ApplyPointModel(ent)
 	end
 end
-hook.Add("InitPostEntity", "tf2.controlpoint", ApplyAll)
-hook.Add("PostCleanupMap", "tf2.controlpoint", ApplyAll)
+hook.Add("InitPostEntity", "wetsand_control_point", ApplyAll)
+hook.Add("PostCleanupMap", "wetsand_control_point", ApplyAll)

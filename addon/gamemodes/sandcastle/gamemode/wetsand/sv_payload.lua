@@ -81,9 +81,10 @@ function WETSAND.FinalPointInMap(point)
 end
 
 -- HUD publishing --------------------------------------------------------------------
--- tf2.cart.count, tf2.cart.race, tf2.cart.leader, and per cart i (1-based)
--- tf2.cart.<i>.{team,progress,speed,cappers,recedeAt,canRecede,alarm,cps,owners,hills};
--- tf2.cap.count and per timed capture i tf2.cap.<i>.{index,owner,capping,progress,blocked,cappers}.
+-- wetsand_cart_count, wetsand_cart_race, wetsand_cart_race_leader, and per cart i (1-based)
+-- wetsand_cart_<i>_{team,progress,speed,cappers,recede_time,can_recede,alarm,cps,owners,hills};
+-- wetsand_capture_count and per timed capture i
+-- wetsand_capture_<i>_{index,owner,capping,progress,blocked,cappers}.
 
 local function Joined(list, format)
 	local parts = {}
@@ -113,13 +114,13 @@ local function ActiveWatchers()
 end
 
 local function PublishCart(i, hud)
-	local key = "tf2.cart." .. i .. "."
+	local key = "wetsand_cart_" .. i .. "_"
 	SetGlobal2Int(key .. "team", hud.team)
 	SetGlobal2Float(key .. "progress", hud.progress)
 	SetGlobal2Int(key .. "speed", hud.speed)
 	SetGlobal2Int(key .. "cappers", hud.cappers)
-	SetGlobal2Float(key .. "recedeAt", hud.recedeAt)
-	SetGlobal2Bool(key .. "canRecede", hud.canRecede)
+	SetGlobal2Float(key .. "recede_time", hud.recedeAt)
+	SetGlobal2Bool(key .. "can_recede", hud.canRecede)
 	SetGlobal2Bool(key .. "alarm", hud.alarm)
 	SetGlobal2String(key .. "cps", Joined(hud.cps, "%.4f"))
 	SetGlobal2String(key .. "owners", Joined(hud.owners, "%d"))
@@ -135,9 +136,9 @@ local function PublishCarts()
 		distances[hud.team] = watcher:TrainDistanceAlongTrack()
 	end
 	local race = WETSAND.HasMultipleTrains()
-	SetGlobal2Int("tf2.cart.count", #watchers)
-	SetGlobal2Bool("tf2.cart.race", race)
-	SetGlobal2Int("tf2.cart.leader", race and R.Leader(distances) or 0)
+	SetGlobal2Int("wetsand_cart_count", #watchers)
+	SetGlobal2Bool("wetsand_cart_race", race)
+	SetGlobal2Int("wetsand_cart_race_leader", race and R.Leader(distances) or 0)
 	return watchers
 end
 
@@ -155,7 +156,7 @@ local function PublishCaptures(watchers)
 		local hud = area:HudState()
 		if hud and not IsCartArea(area, watchers) then
 			n = n + 1
-			local key = "tf2.cap." .. n .. "."
+			local key = "wetsand_capture_" .. n .. "_"
 			SetGlobal2Int(key .. "index", hud.index)
 			SetGlobal2Int(key .. "owner", hud.owner)
 			SetGlobal2Int(key .. "capping", hud.capping)
@@ -164,11 +165,11 @@ local function PublishCaptures(watchers)
 			SetGlobal2Int(key .. "cappers", hud.cappers)
 		end
 	end
-	SetGlobal2Int("tf2.cap.count", n)
+	SetGlobal2Int("wetsand_capture_count", n)
 end
 
 local nextPublish = 0
-hook.Add("Think", "tf2.payload.hud", function()
+hook.Add("Think", "wetsand_payload_hud", function()
 	if not WETSAND.Active() or CurTime() < nextPublish then return end
 	nextPublish = CurTime() + 0.1
 	PublishCaptures(PublishCarts())
@@ -176,7 +177,7 @@ end)
 
 -- CTeamTrainWatcherMaster::FireGameEvent("teamplay_round_win"): on a race map
 -- each side hears its stage outcome; full_round is a win that resets the map.
-hook.Add("TF2RoundWin", "tf2.payload.race", function(winner)
+hook.Add("WetsandRoundWin", "wetsand_payload_race", function(winner)
 	if not WETSAND.HasMultipleTrains() then return end
 	for team, line in pairs(R.OutcomeLines(winner, WETSAND.Rules.forceMapReset)) do
 		WETSAND.BroadcastSound(team, line)

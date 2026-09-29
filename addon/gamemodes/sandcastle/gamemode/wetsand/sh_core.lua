@@ -156,18 +156,18 @@ function WETSAND.EnemyOf(team)
 end
 
 function WETSAND.Active()
-	return GetGlobal2Bool("tf2.active", false)
+	return GetGlobal2Bool("wetsand_rounds_active", false)
 end
 
 function WETSAND.State()
-	return GetGlobal2Int("tf2.state", WETSAND.STATE.INIT)
+	return GetGlobal2Int("wetsand_round_state", WETSAND.STATE.INIT)
 end
 
 -- Non-gameplay mode (the Gameplay Settings' Stop Game): the rounds and
 -- timers stand still and the map plays like Sandbox, its spawn doors and
 -- forcefields open to everyone, until a new game starts.
 function WETSAND.GameplayStopped()
-	return GetGlobal2Bool("tf2.halted", false)
+	return GetGlobal2Bool("wetsand_gameplay_halted", false)
 end
 
 -- TF2's convar; the map's SetRoundRespawnFreezeEnabled input sets it.
@@ -192,7 +192,7 @@ function WETSAND.RestrictCommand(ply, cmd)
 		cmd:RemoveKey(IN_JUMP)
 		cmd:RemoveKey(IN_DUCK)
 	elseif state == WETSAND.STATE.TEAM_WIN then
-		local winner = GetGlobal2Int("tf2.winner", WETSAND.TEAM_UNASSIGNED)
+		local winner = GetGlobal2Int("wetsand_round_winner", WETSAND.TEAM_UNASSIGNED)
 		if winner ~= WETSAND.TEAM_UNASSIGNED and WETSAND.TeamOf(ply) ~= winner then
 			cmd:RemoveKey(IN_ATTACK)
 			cmd:RemoveKey(IN_ATTACK2)
@@ -204,8 +204,8 @@ end
 -- takes movement and attacks, TF_STUN_LOSER_STATE attacks. The server sets
 -- the NW2 vars (sv_teams_conditions.lua).
 function WETSAND.RestrictStunned(ply, cmd)
-	if CurTime() >= ply:GetNW2Float("tf2.stunEnd", 0) then return end
-	local flags = ply:GetNW2Int("tf2.stunFlags", 0)
+	if CurTime() >= ply:GetNW2Float("wetsand_stun_end_time", 0) then return end
+	local flags = ply:GetNW2Int("wetsand_stun_flags", 0)
 	local STUN = WETSAND.PlayerRules.STUN
 	if bit.band(flags, STUN.CONTROLS) ~= 0 then
 		cmd:ClearMovement()
@@ -219,10 +219,10 @@ end
 
 -- Speed boost and a stun's slow on the player's top speed, predicted on
 -- both realms (TeamFortress_CalculateMaxSpeed, CTFGameMovement).
-hook.Add("SetupMove", "tf2.conditions", function(ply, mv)
-	local boost = ply:GetNW2Bool("tf2.speedboost", false)
+hook.Add("SetupMove", "wetsand_conditions", function(ply, mv)
+	local boost = ply:GetNW2Bool("wetsand_speed_boosted", false)
 	local reduction = 0
-	if CurTime() < ply:GetNW2Float("tf2.stunEnd", 0) then reduction = ply:GetNW2Float("tf2.stunAmount", 0) end
+	if CurTime() < ply:GetNW2Float("wetsand_stun_end_time", 0) then reduction = ply:GetNW2Float("wetsand_stun_speed_reduction", 0) end
 	if not boost and reduction == 0 then return end
 	local speed = WETSAND.PlayerRules.MaxSpeed(mv:GetMaxClientSpeed(), boost, reduction)
 	mv:SetMaxClientSpeed(speed)

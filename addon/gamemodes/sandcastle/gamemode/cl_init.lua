@@ -1,5 +1,5 @@
 include("shared.lua")
-for _, f in ipairs(GM:TF2Modules("cl_")) do include("wetsand/" .. f) end
+for _, f in ipairs(GM:WetsandModules("cl_")) do include("wetsand/" .. f) end
 
 -- Tell the server this client has loaded, so the first round's pre-round
 -- freeze is not spent on the loading screen.

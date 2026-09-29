@@ -7,7 +7,8 @@
 --   BLAST_IMMUNE: no blast damage. SPEED_BOOST: +40% speed (max +105).
 --   HALLOWEEN_QUICK_HEAL: heals 30 health a second, up to max health.
 -- Movement and stun state reach clients as NW2 vars for prediction:
--- tf2.speedboost, tf2.stunEnd, tf2.stunAmount, tf2.stunFlags.
+-- wetsand_speed_boosted, wetsand_stun_end_time, wetsand_stun_speed_reduction,
+-- wetsand_stun_flags.
 local P = WETSAND.PlayerRules
 local C = P.COND
 
@@ -16,12 +17,12 @@ local QUICK_HEAL_RATE = 30
 local THINK_INTERVAL = 0.1
 
 local function Conds(ply)
-	ply.tf2Conds = ply.tf2Conds or {}
-	return ply.tf2Conds
+	ply.wetsandConds = ply.wetsandConds or {}
+	return ply.wetsandConds
 end
 
 local function SyncMovement(ply)
-	ply:SetNW2Bool("tf2.speedboost", P.InCond(Conds(ply), C.SPEED_BOOST, CurTime()))
+	ply:SetNW2Bool("wetsand_speed_boosted", P.InCond(Conds(ply), C.SPEED_BOOST, CurTime()))
 end
 
 function WETSAND.AddCondition(ply, cond, duration)
@@ -42,10 +43,10 @@ end
 
 -- CTFPlayerShared::RemoveAllCond: also ends a stun.
 function WETSAND.RemoveAllConditions(ply)
-	ply.tf2Conds = {}
-	ply.tf2Stun = nil
-	ply:SetNW2Float("tf2.stunEnd", 0)
-	ply:SetNW2Int("tf2.stunFlags", 0)
+	ply.wetsandConds = {}
+	ply.wetsandStun = nil
+	ply:SetNW2Float("wetsand_stun_end_time", 0)
+	ply:SetNW2Int("wetsand_stun_flags", 0)
 	SyncMovement(ply)
 end
 
@@ -57,18 +58,18 @@ function WETSAND.ClearConditionsOnRegenerate(ply)
 end
 
 function WETSAND.StunPlayer(ply, duration, reduction, flags)
-	local stun = P.Stun(ply.tf2Stun, duration, reduction, flags, CurTime())
-	ply.tf2Stun = stun
-	ply:SetNW2Float("tf2.stunEnd", stun.ends)
-	ply:SetNW2Float("tf2.stunAmount", stun.reduction)
-	ply:SetNW2Int("tf2.stunFlags", stun.flags)
+	local stun = P.Stun(ply.wetsandStun, duration, reduction, flags, CurTime())
+	ply.wetsandStun = stun
+	ply:SetNW2Float("wetsand_stun_end_time", stun.ends)
+	ply:SetNW2Float("wetsand_stun_speed_reduction", stun.reduction)
+	ply:SetNW2Int("wetsand_stun_flags", stun.flags)
 end
 
 -- A player starts each life with no conditions.
-hook.Add("PlayerSpawn", "tf2.conditions", WETSAND.RemoveAllConditions)
-hook.Add("PostPlayerDeath", "tf2.conditions", WETSAND.RemoveAllConditions)
+hook.Add("PlayerSpawn", "wetsand_conditions", WETSAND.RemoveAllConditions)
+hook.Add("PostPlayerDeath", "wetsand_conditions", WETSAND.RemoveAllConditions)
 
-hook.Add("EntityTakeDamage", "tf2.conditions", function(target, dmg)
+hook.Add("EntityTakeDamage", "wetsand_conditions", function(target, dmg)
 	if not target:IsPlayer() then return end
 	local attacker = dmg:GetAttacker()
 	local attackerConds = IsValid(attacker) and attacker:IsPlayer() and Conds(attacker) or {}
@@ -76,10 +77,10 @@ hook.Add("EntityTakeDamage", "tf2.conditions", function(target, dmg)
 	if scale ~= 1 then dmg:ScaleDamage(scale) end
 end)
 
-timer.Create("tf2.conditions", THINK_INTERVAL, 0, function()
+timer.Create("wetsand_conditions", THINK_INTERVAL, 0, function()
 	local now = CurTime()
 	for _, ply in ipairs(player.GetAll()) do
-		local conds = ply.tf2Conds
+		local conds = ply.wetsandConds
 		if conds and next(conds) then
 			if #P.ExpireConds(conds, now) > 0 then SyncMovement(ply) end
 			if P.InCond(conds, C.HALLOWEEN_QUICK_HEAL, now) and ply:Alive() and ply:Health() < ply:GetMaxHealth() then

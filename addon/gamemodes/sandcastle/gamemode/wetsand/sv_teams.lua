@@ -35,9 +35,9 @@ end
 
 -- A switch's suicide is not a death that drops an ammo pack.
 local function Die(ply)
-	ply.tf2ChangingTeam = true
+	ply.wetsandChangingTeam = true
 	ply:Kill()
-	ply.tf2ChangingTeam = nil
+	ply.wetsandChangingTeam = nil
 end
 
 -- The one way to change a player's TF2 team. The team is remembered, so a
@@ -49,7 +49,7 @@ end
 -- nobody dies (the round-end team swap, whose players are respawned anyway).
 function WETSAND.SetPlayerTeam(ply, newTeam, force)
 	local old = ply:Team()
-	ply.tf2Team = newTeam
+	ply.wetsandTeam = newTeam
 	if newTeam == old then return end
 	if Observes(newTeam) then
 		-- HandleCommand_JoinTeam: a live player dies before becoming a spectator.
@@ -74,7 +74,7 @@ end
 -- GM:PlayerSpawn keeps them observing, and the team menu opens once their
 -- client is ready for it ("wetsand_team_menu_request").
 function WETSAND.SetInitialTeam(ply)
-	ply.tf2Team = UNASSIGNED
+	ply.wetsandTeam = UNASSIGNED
 	ply:SetTeam(UNASSIGNED)
 end
 
@@ -83,23 +83,23 @@ end
 -- A player who never had a TF2 team keeps it if they are on one, and is
 -- otherwise left without a team and shown the team menu.
 function WETSAND.RestoreTeam(ply)
-	if not ply.tf2Team then
+	if not ply.wetsandTeam then
 		local current = ply:Team()
 		if Observes(current) or Playing(current) then
-			ply.tf2Team = current
+			ply.wetsandTeam = current
 		else
 			WETSAND.SetPlayerTeam(ply, UNASSIGNED, true)
 			WETSAND.ShowTeamMenu(ply)
 		end
-	elseif ply:Team() ~= ply.tf2Team then
-		ply:SetTeam(ply.tf2Team)
+	elseif ply:Team() ~= ply.wetsandTeam then
+		ply:SetTeam(ply.wetsandTeam)
 	end
 end
 
 -- CTFTeamMenu::ShowPanel refuses to open during game over, and for a
 -- losing player while the winners celebrate.
 function WETSAND.ShowTeamMenu(ply)
-	if not L.TeamMenuAllowed(WETSAND.State(), ply:Team(), GetGlobal2Int("tf2.winner", WETSAND.TEAM_UNASSIGNED)) then
+	if not L.TeamMenuAllowed(WETSAND.State(), ply:Team(), GetGlobal2Int("wetsand_round_winner", WETSAND.TEAM_UNASSIGNED)) then
 		ply:PrintMessage(HUD_PRINTCENTER, "You can't change team at this time.")
 		return
 	end
@@ -110,7 +110,7 @@ end
 -- Net messages sent during PlayerInitialSpawn can arrive before the client
 -- can take them, so the client says when it is ready for the menu.
 net.Receive("wetsand_team_menu_request", function(_, ply)
-	if WETSAND.Active() and ply.tf2Team == UNASSIGNED then WETSAND.ShowTeamMenu(ply) end
+	if WETSAND.Active() and ply.wetsandTeam == UNASSIGNED then WETSAND.ShowTeamMenu(ply) end
 end)
 
 -- CTFPlayer::HandleCommand_JoinTeam: "red", "blue", "auto" or "spectate".
@@ -160,7 +160,7 @@ function WETSAND.BalanceTeams(requireDead)
 		byId[id] = ply
 		candidates[#candidates + 1] = {
 			id = id,
-			score = L.BalanceScore(now, now - ply:TimeConnected(), ply.tf2ForcedTeamAt),
+			score = L.BalanceScore(now, now - ply:TimeConnected(), ply.wetsandForcedTeamAt),
 			alive = ply:Alive(),
 		}
 	end
@@ -168,7 +168,7 @@ function WETSAND.BalanceTeams(requireDead)
 	for _, id in ipairs(L.PickBalanceSwitches(candidates, required, requireDead)) do
 		local ply = byId[id]
 		WETSAND.SetPlayerTeam(ply, light)
-		ply.tf2ForcedTeamAt = now
+		ply.wetsandForcedTeamAt = now
 		PrintMessage(HUD_PRINTTALK, ply:Nick() .. " was moved to the other team for game balance")
 	end
 end
@@ -177,11 +177,11 @@ end
 -- round; State_Think_RND_RUNNING balances dead players once a second.
 local balanceFrom = 0
 
-hook.Add("TF2RoundActive", "tf2.teams", function()
+hook.Add("WetsandRoundActive", "wetsand_teams", function()
 	balanceFrom = CurTime() + 60
 end)
 
-timer.Create("tf2.teams.balance", 1, 0, function()
+timer.Create("wetsand_teams_balance", 1, 0, function()
 	if not WETSAND.Active() or WETSAND.State() ~= WETSAND.STATE.RND_RUNNING then return end
 	if CurTime() < balanceFrom then return end
 	WETSAND.BalanceTeams(true)

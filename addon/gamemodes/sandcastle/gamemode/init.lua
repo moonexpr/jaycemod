@@ -29,9 +29,9 @@ local function SendFeatureClientParts()
 end
 SendFeatureClientParts()
 
-for _, f in ipairs(GM:TF2Modules("sh_")) do AddCSLuaFile("wetsand/" .. f) end
-for _, f in ipairs(GM:TF2Modules("cl_")) do AddCSLuaFile("wetsand/" .. f) end
-for _, f in ipairs(GM:TF2Modules("sv_")) do include("wetsand/" .. f) end
+for _, f in ipairs(GM:WetsandModules("sh_")) do AddCSLuaFile("wetsand/" .. f) end
+for _, f in ipairs(GM:WetsandModules("cl_")) do AddCSLuaFile("wetsand/" .. f) end
+for _, f in ipairs(GM:WetsandModules("sv_")) do include("wetsand/" .. f) end
 
 -- As in TF2, a new player joins no team: they watch until they pick one
 -- from the team menu (auto-assign is one click there).
@@ -47,7 +47,7 @@ function GM:PlayerSpawn(ply, transition)
 	end
 	-- CTFPlayer::StateEnterWELCOME: a player without a team is an observer,
 	-- never a live Sandbox player.
-	if ply.tf2Team == WETSAND.TEAM_UNASSIGNED then
+	if ply.wetsandTeam == WETSAND.TEAM_UNASSIGNED then
 		WETSAND.StartObserving(ply)
 	else
 		self.BaseClass.PlayerSpawn(self, ply, transition)
@@ -80,7 +80,7 @@ end
 -- CTFPlayer::Event_Killed drops an ammo pack where the player died.
 function GM:DoPlayerDeath(ply, attacker, dmg)
 	self.BaseClass.DoPlayerDeath(self, ply, attacker, dmg)
-	if WETSAND.Active() and not ply.tf2ChangingTeam then WETSAND.DropAmmoPack(ply) end
+	if WETSAND.Active() and not ply.wetsandChangingTeam then WETSAND.DropAmmoPack(ply) end
 end
 
 -- Neither Sandbox nor base defines PostPlayerDeath.

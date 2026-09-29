@@ -110,7 +110,7 @@ is proposed. Each controller below lists what it owns and its methods.
 
 | feature | controller owns | controller methods (server) | view (client) |
 |---|---|---|---|
-| `npc` | one `Npc` model per NPC entity; the `Spawner` models; a registry by kind; per-variant shared state; the nav check | `Bind(ent, variantName, config) -> npc` (then calls the variant's `Cull`), `Unbind(ent)`, `All(kind) -> list`, `Spawn(class, config, pos, ang) -> ent`, `BindSpawner(ent, config) -> spawner`, `Shared(variantName) -> table` (cross-instance state for a variant, e.g. the eyeball level), `SetBossHealth(fraction)` | boss health bar (reads Global2 `tf2.halloween.bossHealth`); registers `halloween, scary_ghost, eyeboss, cinefx` pcfs |
+| `npc` | one `Npc` model per NPC entity; the `Spawner` models; a registry by kind; per-variant shared state; the nav check | `Bind(ent, variantName, config) -> npc` (then calls the variant's `Cull`), `Unbind(ent)`, `All(kind) -> list`, `Spawn(class, config, pos, ang) -> ent`, `BindSpawner(ent, config) -> spawner`, `Shared(variantName) -> table` (cross-instance state for a variant, e.g. the eyeball level), `SetBossHealth(fraction)` | boss health bar (reads Global2 `wetsand_boss_health`); registers `halloween, scary_ghost, eyeboss, cinefx` pcfs |
 | `combat` | `Projectile` models per projectile entity | `BindProjectile(ent, variantName, config) -> projectile`, `Explode(explosionConfig)` (runs an `Explosion` against the world), `TeamOf(ent)`, `InRespawnRoom(ent)` | none |
 | `holiday` | the `Holiday` model; the Halloween mode's gift schedule; fortune teller models (P2) | `BindHoliday(ent, kv)`, `HolidayActive(h)`, `UsingSpells()`, `SetUsingSpells(b)`, `DropSpellPickup(pos, tier)`, `AddGiftLocation(pos)`, `BindFortuneTeller(ent, kv)` | none |
 | `spells` | one `SpellBook` per player; the caster port | `BookOf(ply) -> book`, `Grant(ply)`, `Revoke(ply)`, `Pickup(ply, tier) -> bool`, `Cast(ply) -> bool`, `BindSpellProjectile(ent, spellIndex, config)` | spell HUD (icon, charges, roll animation, key); registers `halloween, drg_cowmangler, class_fx, rocketjumptrail, cinefx, eyeboss` pcfs |
@@ -724,7 +724,7 @@ binding resolves the move with hull traces and reflects off surfaces.
   the enemy team) who is not `IsHiddenFromNPC`, plus visible `zombie` NPCs of
   other teams, and `boss` NPCs when it is a spell.
 - **ModifyDamage:** a spell eyeball takes 0. `SetBossHealth(health/max)`
-  (the controller networks Global2 `tf2.halloween.bossHealth`; 0 hides the bar).
+  (the controller networks Global2 `wetsand_boss_health`; 0 hides the bar).
 - **teleport_vortex** (a model in the eyeball part, bound by an entity):
   - A ±50 trigger living 5 s.
   - It pulls airborne players who are looking at it and in LOS within 500

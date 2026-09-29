@@ -92,9 +92,9 @@ function ENT:PublishStage()
 		end
 		name = self.current.printName
 	end
-	SetGlobal2Int("tf2.round.stage", stage)
-	SetGlobal2Int("tf2.round.stages", #self.rounds)
-	SetGlobal2String("tf2.round.name", name)
+	SetGlobal2Int("wetsand_mini_round_stage", stage)
+	SetGlobal2Int("wetsand_mini_round_count", #self.rounds)
+	SetGlobal2String("wetsand_mini_round_name", name)
 end
 
 -- GetControlPointRoundToPlay and RegisterRoundBeingPlayed. The gamerules
@@ -121,7 +121,7 @@ function ENT:ChooseRound()
 	end
 	self:PublishStage()
 	self.current:FireOnStart()
-	hook.Run("TF2MiniRoundStart", self.current)
+	hook.Run("WetsandMiniRoundStart", self.current)
 end
 
 -- CTeamControlPointMaster::InputRoundSpawn

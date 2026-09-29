@@ -5,13 +5,13 @@ ENT.Type = "point"
 ENT.Base = "base_point"
 
 function ENT:KeyValue(key, value)
-	self.tf2kv = self.tf2kv or {}
-	self.tf2kv[string.lower(key)] = value
+	self.wetsandKv = self.wetsandKv or {}
+	self.wetsandKv[string.lower(key)] = value
 	if string.sub(key, 1, 2) == "On" then self:StoreOutput(key, value) end
 end
 
 function ENT:Initialize()
-	local kv = self.tf2kv or {}
+	local kv = self.wetsandKv or {}
 	self.enabled = kv.startdisabled ~= "1"
 	self.team = tonumber(kv.teamnum) or WETSAND.TEAM_UNASSIGNED
 end

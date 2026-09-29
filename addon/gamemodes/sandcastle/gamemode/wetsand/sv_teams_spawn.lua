@@ -28,7 +28,7 @@ local SPAWN_INPUTS = {
 	roundspawn = function() end,
 }
 
-hook.Add("AcceptInput", "tf2.teamspawn", function(ent, input, activator, caller, value)
+hook.Add("AcceptInput", "wetsand_team_spawn", function(ent, input, activator, caller, value)
 	if ent:GetClass() ~= "info_player_teamspawn" then return end
 	local handler = SPAWN_INPUTS[string.lower(input)]
 	if not handler then return end
@@ -79,7 +79,7 @@ end
 -- spawns, so it clears this.
 local applied = {}
 
-hook.Add("PostCleanupMap", "tf2.spawns", function() applied = {} end)
+hook.Add("PostCleanupMap", "wetsand_spawns", function() applied = {} end)
 
 local function PlayingMiniRounds()
 	return #ents.FindByClass("team_control_point_round") > 0
@@ -132,17 +132,17 @@ local function EnsureRoundSetup()
 end
 
 -- A mini-round is (re)selected: set its spawns up even if it is the same one.
-hook.Add("TF2MiniRoundStart", "tf2.spawns", function(round)
+hook.Add("WetsandMiniRoundStart", "wetsand_spawns", function(round)
 	applied.round = nil
 	EnsureRoundSetup()
 end)
 
-hook.Add("TF2RoundActive", "tf2.spawns", function()
+hook.Add("WetsandRoundActive", "wetsand_spawns", function()
 	EnsureRoundSetup()
 	WETSAND.RoundActivateSpawnRooms()
 end)
 
-hook.Add("TF2PointCaptured", "tf2.spawns", function()
+hook.Add("WetsandPointCaptured", "wetsand_spawns", function()
 	if applied.controlSpawns then RecalculateControlPointSpawns() end
 end)
 

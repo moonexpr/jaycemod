@@ -18,13 +18,13 @@ local P
 
 function ENT:KeyValue(key, value)
 	local k = string.lower(key)
-	self.tf2kv = self.tf2kv or {}
-	self.tf2kv[k] = value
+	self.wetsandKv = self.wetsandKv or {}
+	self.wetsandKv[k] = value
 	if string.sub(key, 1, 2) == "On" then self:StoreOutput(key, value) end
 end
 
 function ENT:Key(name, default)
-	local v = (self.tf2kv or {})[name]
+	local v = (self.wetsandKv or {})[name]
 	if v == nil or v == "" then return default end
 	return v
 end
@@ -59,8 +59,8 @@ function ENT:Initialize()
 	self.subscribed = {}
 	-- path_track OnPass reaches the watcher by name, so a nameless one gets one
 	if self:GetName() == "" then self:SetName("wetsand_train_watcher_" .. self:EntIndex()) end
-	hook.Add("TF2RoundActive", self, self.RoundActivate)
-	hook.Add("TF2Overtime", self, self.OnOvertime)
+	hook.Add("WetsandRoundActive", self, self.RoundActivate)
+	hook.Add("WetsandOvertime", self, self.OnOvertime)
 end
 
 function ENT:UpdateTransmitState()
@@ -141,7 +141,7 @@ function ENT:SubscribePath()
 	for _, node in ipairs(self.nodes) do
 		if not self.subscribed[node] then
 			self.subscribed[node] = true
-			node:Fire("AddOutput", "OnPass " .. self:GetName() .. ":TF2PathPassed::0:-1")
+			node:Fire("AddOutput", "OnPass " .. self:GetName() .. ":WetsandPathPassed::0:-1")
 		end
 	end
 end
@@ -215,7 +215,7 @@ function ENT:InternalSetSpeedForwardModifier(modifier)
 end
 
 local function InOvertime()
-	return GetGlobal2Bool("tf2.overtime", false)
+	return GetGlobal2Bool("wetsand_round_overtime", false)
 end
 
 function ENT:StartRecedeCountdown(delay)
@@ -248,7 +248,7 @@ function ENT:SetNumTrainCappers(num, area)
 	self:InternalSetNumTrainCappers(num, area)
 end
 
--- InputOnStartOvertime, raised by the round timer's TF2Overtime hook.
+-- InputOnStartOvertime, raised by the round timer's WetsandOvertime hook.
 function ENT:OnOvertime(active)
 	if not active or not self.waitingToRecede then return end
 	self.recedeAt = P.OvertimeRecedeAt(self.recedeAt, CurTime(), recede_time_overtime:GetFloat())
@@ -265,7 +265,7 @@ function ENT:PathPassed(node, train)
 	-- here and will not pass it again going forward, so keep the hill state
 	if self.receding then
 		local prev = self.nodes[i - 1]
-		if IsValid(prev) and WETSAND.KeyValues(prev).tf2disabled then return end
+		if IsValid(prev) and WETSAND.KeyValues(prev).wetsandDisabled then return end
 	end
 	local hill = HillType(node)
 	local update = hill ~= self.hill
@@ -487,7 +487,7 @@ end
 -- Inputs ----------------------------------------------------------------------------------
 
 local INPUTS = {
-	tf2pathpassed = function(self, value, activator, caller) self:PathPassed(caller, activator) end,
+	wetsandpathpassed = function(self, value, activator, caller) self:PathPassed(caller, activator) end,
 	roundactivate = function(self) self:RoundActivate() end,
 	enable = function(self)
 		self:StopCaptureAlarm()
