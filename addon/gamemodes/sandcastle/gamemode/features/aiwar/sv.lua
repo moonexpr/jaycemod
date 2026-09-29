@@ -251,15 +251,16 @@ function Soldier:Sweep(from, to)
 	})
 end
 
--- Where a step of `step` from pos along dir lands, or nil when it cannot.
+-- Where a step of `step` from pos along dir lands, or nil when it cannot
+-- and what stopped it.
 function Soldier:Step(pos, dir, step)
 	local nextPos = pos + dir * step
 	local sweep = self:Sweep(pos, nextPos)
-	if sweep.StartSolid then return nil end
+	if sweep.StartSolid then return nil, sweep.Entity end
 	if sweep.Hit then
 		local normal = Vector(sweep.HitNormal.x, sweep.HitNormal.y, 0)
 		local slide = dir - normal * dir:Dot(normal)
-		if slide:Length() < SLIDE_MIN then return nil end
+		if slide:Length() < SLIDE_MIN then return nil, sweep.Entity end
 		nextPos = pos + slide * step
 		if self:Sweep(pos, nextPos).Hit then return nil end
 	end
@@ -283,8 +284,11 @@ function Soldier:Walk(dt)
 	if distance <= WALK_ARRIVE then return end
 	local act, speed = GaitOf(ent, self.gait)
 	local step = math.min(distance, speed * dt)
-	local nextPos = self:Step(pos, delta / distance, step)
-	if not nextPos then return end
+	local nextPos, stoppedBy = self:Step(pos, delta / distance, step)
+	if not nextPos then
+		if IsValid(stoppedBy) and IsDoor(stoppedBy) then self.controller:OpenDoorFor(stoppedBy, self.team) end
+		return
+	end
 	ent:SetPos(nextPos)
 	if ent:IsMoving() then ent:StopMoving() end
 	-- with an enemy in sight the engine aims and shoots as it moves
@@ -969,6 +973,52 @@ function Controller:SetupZone(team)
 	return cached.zone
 end
 
+-- Opening doors -------------------------------------------------------------------------------
+-- The soldiers' own movement sets the ground under them, which touches no
+-- trigger, so the trigger that opens a door for a player never sees them.
+-- A soldier that walks into a door opens it as that trigger would: only a
+-- door a trigger opens (not a setup gate, which map logic opens), not
+-- locked, and whose trigger's filter admits the soldier's team (not the
+-- enemy's spawn door). Many spawn doors close only when their trigger
+-- sees everyone leave, which it never sees of a soldier, so a door a
+-- soldier opened is closed again once no soldier or player is within
+-- DOOR_CLOSE_RANGE of it.
+local DOOR_OPEN_INTERVAL = 1
+local DOOR_CLOSE_RANGE = 192
+
+function Controller:OpenDoorFor(door, team)
+	local state = WETSAND.Feature("npc"):DoorState(door)
+	if not state or state.locked or not state.controlled then return end
+	if state.owner and state.owner ~= team then return end
+	self.doorOpened = self.doorOpened or setmetatable({}, { __mode = "k" })
+	local now = CurTime()
+	if now < (self.doorOpened[door] or 0) then return end
+	self.doorOpened[door] = now + DOOR_OPEN_INTERVAL
+	self.openedDoors = self.openedDoors or setmetatable({}, { __mode = "k" })
+	self.openedDoors[door] = true
+	door:Fire("Open")
+end
+
+function Controller:CloseOpenedDoors()
+	for door in pairs(self.openedDoors or {}) do
+		if not IsValid(door) then
+			self.openedDoors[door] = nil
+		else
+			local center, near = door:WorldSpaceCenter(), false
+			for _, ent in ipairs(ents.FindInSphere(center, DOOR_CLOSE_RANGE)) do
+				if self.soldiers[ent] or (ent:IsPlayer() and ent:Alive()) then
+					near = true
+					break
+				end
+			end
+			if not near then
+				self.openedDoors[door] = nil
+				door:Fire("Close")
+			end
+		end
+	end
+end
+
 -- Doors that stayed shut --------------------------------------------------------------------
 -- A door a soldier ran into and could not open, whatever the blockers made
 -- of it (a trigger that ignores NPCs, map logic yet to open it): its team's
@@ -1235,6 +1285,7 @@ function Controller:Think(now)
 		for ent, entry in pairs(self.soldiers) do
 			if IsValid(ent) then self:Watch(ent, entry, now) end
 		end
+		self:CloseOpenedDoors()
 	end
 end
 
