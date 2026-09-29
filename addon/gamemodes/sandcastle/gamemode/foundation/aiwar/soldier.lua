@@ -1,7 +1,7 @@
--- The soldier port: what foundation.aiwar.orders may ask of the HL2 engine
--- NPC it drives. The features/aiwar controller implements it over an NPC
--- (its own floor-following movement, the npc controller's Lua route
--- search) and tests/fake_soldier.lua fakes it.
+-- The soldier port: what foundation.aiwar.orders may ask of the
+-- soldier it drives. The features/aiwar controller implements it over a
+-- DrGBase NextBot soldier (wetsand_drg_soldier) and tests/fake_soldier.lua
+-- fakes it.
 --
 -- Positions are plain { x, y, z } tables.
 --   Now() -> the time

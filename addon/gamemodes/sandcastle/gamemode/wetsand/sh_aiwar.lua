@@ -37,8 +37,8 @@ if SERVER then
 end
 
 local HELP = "Restarts the round: the Resistance spawn at BLU's spawn and push the cart, "
-	.. "the Combine spawn at RED's and defend it. Combine and Resistance NPCs you spawn join their side. "
-	.. "Payload maps only."
+	.. "the Combine spawn at RED's and defend it. Sandcastle's Combine and Resistance soldiers you spawn join their side. "
+	.. "Payload maps only. Needs DrGBase (Steam Workshop) for its soldiers."
 
 local function BuildPanel(panel)
 	panel:ClearControls()

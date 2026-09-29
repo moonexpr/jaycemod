@@ -42,49 +42,23 @@ PUSH, ESCORT, BLOCK, DEFEND = "push", "escort", "block", "defend"
 TEAM_SIZE_DEFAULT = 8
 TEAM_SIZE_MAX = 32
 -- Fire teams: a side's soldiers fight in teams of at most FIRE_TEAM_SIZE,
--- each with one role, each an HL2 squad of its own (squad slots, who
--- covers and who moves), so squadmates are soldiers fighting together.
+-- each with one role, so teammates are soldiers fighting together.
 FIRE_TEAM_SIZE = 4
 
--- npc_citizen spawnflags (npc_citizen17.h)
-local SF_CITIZEN_MEDIC = 131072
-local SF_CITIZEN_NOT_COMMANDABLE = 1048576
-local CT_REBEL = "3" -- citizentype
-
--- Ground NPCs only: the orders walk them over the nav mesh, which fliers
--- (manhacks, scanners) and gunships do not use.
+-- The sides' soldiers: DrGBase NextBots (the entities wetsand_drg_combine
+-- and wetsand_drg_rebel), each drafting its own model and weapons.
 FACTIONS = {
 	[RED] = {
 		name = "Combine",
 		team = RED,
-		classes = { npc_combine_s = true, npc_metropolice = true, npc_hunter = true },
-		recruits = {
-			{ class = "npc_combine_s", weapon = "weapon_smg1", model = "models/combine_soldier.mdl" },
-			{ class = "npc_combine_s", weapon = "weapon_ar2", model = "models/combine_soldier.mdl" },
-			{ class = "npc_metropolice", weapon = "weapon_pistol" },
-			{ class = "npc_combine_s", weapon = "weapon_shotgun", model = "models/combine_soldier.mdl", skin = 1 },
-			{ class = "npc_combine_s", weapon = "weapon_ar2", model = "models/combine_super_soldier.mdl" },
-			{ class = "npc_metropolice", weapon = "weapon_smg1" },
-		},
+		classes = { wetsand_drg_combine = true },
+		recruits = { { class = "wetsand_drg_combine" } },
 	},
 	[BLUE] = {
 		name = "Resistance",
 		team = BLUE,
-		classes = {
-			npc_citizen = true,
-			npc_alyx = true,
-			npc_barney = true,
-			npc_vortigaunt = true,
-			npc_monk = true,
-		},
-		recruits = {
-			{ class = "npc_citizen", weapon = "weapon_smg1", keyvalues = { citizentype = CT_REBEL }, spawnflags = SF_CITIZEN_NOT_COMMANDABLE },
-			{ class = "npc_citizen", weapon = "weapon_ar2", keyvalues = { citizentype = CT_REBEL }, spawnflags = SF_CITIZEN_NOT_COMMANDABLE },
-			{ class = "npc_citizen", weapon = "weapon_shotgun", keyvalues = { citizentype = CT_REBEL }, spawnflags = SF_CITIZEN_NOT_COMMANDABLE },
-			{ class = "npc_citizen", weapon = "weapon_smg1", keyvalues = { citizentype = CT_REBEL }, spawnflags = SF_CITIZEN_NOT_COMMANDABLE + SF_CITIZEN_MEDIC },
-			{ class = "npc_citizen", weapon = "weapon_ar2", keyvalues = { citizentype = CT_REBEL }, spawnflags = SF_CITIZEN_NOT_COMMANDABLE },
-			{ class = "npc_citizen", weapon = "weapon_pistol", keyvalues = { citizentype = CT_REBEL }, spawnflags = SF_CITIZEN_NOT_COMMANDABLE },
-		},
+		classes = { wetsand_drg_rebel = true },
+		recruits = { { class = "wetsand_drg_rebel" } },
 	},
 }
 

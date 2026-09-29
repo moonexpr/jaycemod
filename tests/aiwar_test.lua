@@ -20,14 +20,10 @@ end
 -- Factions ---------------------------------------------------------------
 
 T.test("the Combine fight for RED and the Resistance for BLU", function()
-	T.eq(AiWar.FactionTeam("npc_combine_s"), RED, "soldier")
-	T.eq(AiWar.FactionTeam("npc_metropolice"), RED, "civil protection")
-	T.eq(AiWar.FactionTeam("npc_hunter"), RED, "hunter")
-	T.eq(AiWar.FactionTeam("npc_citizen"), BLUE, "rebel")
-	T.eq(AiWar.FactionTeam("npc_alyx"), BLUE, "Alyx")
-	T.eq(AiWar.FactionTeam("npc_vortigaunt"), BLUE, "vortigaunt")
+	T.eq(AiWar.FactionTeam("wetsand_drg_combine"), RED, "Combine soldier")
+	T.eq(AiWar.FactionTeam("wetsand_drg_rebel"), BLUE, "Resistance fighter")
+	T.eq(AiWar.FactionTeam("npc_combine_s"), nil, "HL2's own NPCs take no part")
 	T.eq(AiWar.FactionTeam("npc_zombie"), nil, "no side")
-	T.eq(AiWar.FactionTeam("npc_manhack"), nil, "fliers take no orders")
 end)
 
 T.test("sides stand by their team and fight the other; the losers of a round fear their enemies", function()
@@ -47,7 +43,6 @@ T.test("each recruit of a faction is one of its members", function()
 		T.eq(faction.team, team, faction.name .. " team")
 		for i, recruit in ipairs(faction.recruits) do
 			T.eq(AiWar.FactionTeam(recruit.class), team, faction.name .. " recruit " .. i)
-			T.eq(type(recruit.weapon), "string", faction.name .. " recruit " .. i .. " weapon")
 		end
 	end
 end)
