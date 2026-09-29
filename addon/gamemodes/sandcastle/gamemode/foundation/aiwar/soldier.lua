@@ -27,6 +27,8 @@
 --     prop), which I can walk to; or nil
 --   WanderSpot() -> a spot picked at random on the ground behind my side's
 --     setup gates (else near me, in a straight line), or nil
+--   RouteStale() -> whether the route I was given was planned before a
+--     door shut or a brush was switched on, and may lead into it
 --   Hop(p) -> whether I will be carried to p: only where a player could
 --     walk from here to p, so never through a wall, door or gate; I am
 --     moved there over a moment, running, and MoveTo and Release wait
@@ -47,5 +49,6 @@ METHODS = {
 	"PassBlocker",
 	"Detour",
 	"WanderSpot",
+	"RouteStale",
 	"Hop",
 }

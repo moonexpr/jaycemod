@@ -356,7 +356,8 @@ function Travel:FollowRoute(me, goal)
 			return self:Continue()
 		end
 	end
-	if Distance(goal, self.goal) > REPATH_DISTANCE and me:Now() - self.plannedAt >= REPATH_INTERVAL then
+	-- a door shut or a brush switched on since: the route may lead into it
+	if me:RouteStale() or (Distance(goal, self.goal) > REPATH_DISTANCE and me:Now() - self.plannedAt >= REPATH_INTERVAL) then
 		self:Plan(me, goal)
 		return self:Continue()
 	end

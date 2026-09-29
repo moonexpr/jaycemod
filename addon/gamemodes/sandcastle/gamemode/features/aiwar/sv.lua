@@ -117,6 +117,7 @@ function Soldier:RequestRoute(goal)
 	local start = self.ent:GetPos()
 	local controller = self.controller
 	local team = self.team
+	self.routeGeneration = self:Generation()
 	npcs:RequestRoute({
 		avoid = function(area) return controller:UnderCart(area) or controller:ShutDoorIn(area, team) end,
 		from = start,
@@ -139,6 +140,16 @@ end
 
 function Soldier:RouteResult()
 	return self.result
+end
+
+-- What the route was planned under: the blockers' changes and the doors
+-- found shut.
+function Soldier:Generation()
+	return WETSAND.Feature("npc"):BlockerGeneration() .. ":" .. (self.controller.shutDoorGeneration or 0)
+end
+
+function Soldier:RouteStale()
+	return type(self.result) == "table" and self.routeGeneration ~= self:Generation()
 end
 
 function Soldier:CanWalkTo(p)
@@ -810,6 +821,7 @@ function Controller:NoteShutDoor(door, team)
 		self.shutDoors[door] = noted
 	end
 	noted.untilFor[team] = CurTime() + SHUT_DOOR_MEMORY
+	self.shutDoorGeneration = (self.shutDoorGeneration or 0) + 1
 end
 
 function Controller:ShutDoorIn(area, team)
@@ -823,6 +835,73 @@ function Controller:ShutDoorIn(area, team)
 		end
 	end
 	return false
+end
+
+-- The observer ---------------------------------------------------------------------------------
+-- A soldier that fell out of the map, or is wedged where nothing gets it
+-- out, is put back: one outside the world or off the nav mesh onto the
+-- nearest nav area (within RECOVER_REACH, else at its spawn); one that has
+-- tried to move for STRANDED_TIME without getting STRANDED_PROGRESS from
+-- where it was, onto the next waypoint of its route. A soldier recovered
+-- again within RELAPSE_TIME goes back to spawn.
+local WATCH_INTERVAL = 2
+local STRANDED_TIME, STRANDED_PROGRESS = 15, 48
+local OFF_MESH_BELOW, OFF_MESH_LIFT = 96, Vector(0, 0, 16)
+local RECOVER_REACH = 1000
+local RELAPSE_TIME = 60
+
+local function OnMesh(pos)
+	return IsValid(navmesh.GetNavArea(pos + OFF_MESH_LIFT, OFF_MESH_BELOW))
+end
+
+function Controller:SpawnSpot(team)
+	local spots = WETSAND.SpawnPoints(team)
+	if #spots == 0 then return nil end
+	local spot = spots[math.random(#spots)]
+	return ClearSpotNear(spot:GetPos())
+end
+
+function Controller:Recover(ent, entry, reason, pos)
+	local soldier, now = entry.soldier, CurTime()
+	local relapse = soldier.recoveredAt and now - soldier.recoveredAt < RELAPSE_TIME
+	if relapse or not pos then
+		pos = self:SpawnSpot(soldier.team)
+		reason = reason .. (relapse and ", again: back to spawn" or ": back to spawn")
+	end
+	soldier.recoveredAt = now
+	soldier.recoveries = (soldier.recoveries or 0) + 1
+	soldier.recoveredWhy = reason
+	soldier.watch = nil
+	if not pos then
+		-- nowhere to put it: the next wave replaces it
+		ent:TakeDamage(ent:Health() + 1, game.GetWorld(), game.GetWorld())
+		return
+	end
+	soldier.traverse = nil
+	soldier:Release()
+	ent:SetPos(pos + SPAWN_LIFT)
+	ent:SetVelocity(-ent:GetVelocity())
+	ent:ClearSchedule()
+end
+
+function Controller:Watch(ent, entry, now)
+	local soldier = entry.soldier
+	if soldier.traverse then return end
+	local pos = ent:GetPos()
+	if not util.IsInWorld(pos + OFF_MESH_LIFT) or not OnMesh(pos) then
+		local area = navmesh.GetNearestNavArea(pos, false, RECOVER_REACH, false, false)
+		local spot = IsValid(area) and ClearSpotNear(area:GetClosestPointOnArea(pos)) or nil
+		return self:Recover(ent, entry, util.IsInWorld(pos + OFF_MESH_LIFT) and "off the nav mesh" or "out of the world", spot)
+	end
+	local watch = soldier.watch
+	if not soldier.moveTarget or not watch or pos:Distance(watch.pos) > STRANDED_PROGRESS then
+		soldier.watch = { pos = pos, since = now }
+		return
+	end
+	if now - watch.since < STRANDED_TIME then return end
+	local state = entry.npc:State()
+	local waypoint = state.route and state.route[math.min((state.routeIndex or 1) + 1, #state.route)]
+	self:Recover(ent, entry, "stranded", waypoint and ClearSpotNear(OnFloor(ToVector(waypoint))) or nil)
 end
 
 -- Posts: where soldiers establish their line ----------------------------------------------
@@ -981,6 +1060,12 @@ function Controller:Think(now)
 		self.nextRelations = now + RELATIONSHIP_INTERVAL
 		self:RelatePlayers()
 	end
+	if now >= (self.nextWatch or 0) then
+		self.nextWatch = now + WATCH_INTERVAL
+		for ent, entry in pairs(self.soldiers) do
+			if IsValid(ent) then self:Watch(ent, entry, now) end
+		end
+	end
 end
 
 -- Spawn doors ---------------------------------------------------------------------
@@ -1094,6 +1179,7 @@ function Controller:Describe(ent, entry)
 	}
 	if state.wandering then lines[#lines + 1] = "Setup: wandering until it ends" end
 	if entry.disarmed then lines[#lines + 1] = "Humiliated: cannot attack, fears the winners" end
+	if soldier.recoveries then lines[#lines + 1] = string.format("Recovered: %d time(s), last %s", soldier.recoveries, soldier.recoveredWhy) end
 	if state.hops then lines[#lines + 1] = "Hops: " .. state.hops end
 	if state.passed then lines[#lines + 1] = "Let through: " .. state.passed .. " NPC-only blocker(s)" end
 	local blocked = self:BlockedBy(soldier)

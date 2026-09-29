@@ -160,6 +160,15 @@ T.test("without gates, or once setup ends, defenders hold the track as before", 
 	T.eq(Orders.Goal(SetupField({ GATE }), { team = BLUE, role = AiWar.PUSH, slot = 0 }) ~= nil, true, "attackers unchanged")
 end)
 
+T.test("a route planned before a door shut is planned again", function()
+	local me, npc = Enlist({ role = AiWar.PUSH, field = Field({}) })
+	Tick(me, npc, 3)
+	T.eq(#me.requests, 1, "one route")
+	me.stale = true
+	Tick(me, npc, 2)
+	T.eq(#me.requests, 2, "another, around the door")
+end)
+
 -- Setup: the attackers wander near where they are until it ends.
 
 T.test("in setup an attacker wanders from spot to spot, resting at each, with no route searches for spots in sight", function()

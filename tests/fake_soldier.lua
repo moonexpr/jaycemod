@@ -89,6 +89,13 @@ function Soldier:Detour(p)
 	return point
 end
 
+-- The test sets me.stale for the next poll.
+function Soldier:RouteStale()
+	local stale = self.stale
+	self.stale = false
+	return stale == true
+end
+
 function Soldier:WanderSpot()
 	self.wandered = self.wandered + 1
 	return self.wanderSpots[self.wandered]

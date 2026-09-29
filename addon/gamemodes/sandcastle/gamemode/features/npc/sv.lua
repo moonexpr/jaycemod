@@ -29,6 +29,7 @@ local Controller = {
 	centers = {}, -- nav area id -> its centre
 	navBlocked = {}, -- nav area id -> the teams its doors and brushes block (foundation.npc.doors)
 	nextBlockerRefresh = 0,
+	blockerGeneration = 0,
 	brushAreas = setmetatable({}, { __mode = "k" }), -- func_brush -> { pos, areas it stands in }
 }
 
@@ -257,6 +258,21 @@ function Controller:RefreshBlockers(now)
 		end
 	end
 	self.navBlocked = blocked
+	local signature = {}
+	for id, teams in SortedPairs(blocked) do signature[#signature + 1] = id .. "=" .. table.concat(teams, "+") end
+	signature = table.concat(signature, ",")
+	if signature ~= self.blockerSignature then
+		self.blockerSignature = signature
+		self.blockerGeneration = self.blockerGeneration + 1
+	end
+end
+
+-- Counts the changes to what the blockers block (a door shutting on a
+-- capture, a brush switched on): a route planned under an older count may
+-- lead into one.
+function Controller:BlockerGeneration()
+	self:RefreshBlockers(CurTime())
+	return self.blockerGeneration
 end
 
 -- How the blockers see a func_door: { closed, controlled, owner, blocks
