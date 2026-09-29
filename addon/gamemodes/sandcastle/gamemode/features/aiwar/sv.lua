@@ -397,9 +397,10 @@ end
 
 -- Setup gates -------------------------------------------------------------------------
 -- In setup the defending side lines up past the gates the attackers must
--- come through (foundation.aiwar.orders). A gate is the first door on the
--- attackers' route from their spawn to their cart's next checkpoint that is
--- not one of their spawn-room doors, found once per round.
+-- come through (foundation.aiwar.orders). A gate is the last door on the
+-- attackers' route from their spawn to their cart's next checkpoint: the
+-- setup gate beyond a spawn door, or the spawn exit on maps whose exits
+-- are the gates. Found once per round.
 
 local DOOR_CLASSES = { func_door = true, func_door_rotating = true, prop_door_rotating = true }
 local DOOR_TRACE_LIFT = Vector(0, 0, 36)
@@ -433,20 +434,21 @@ local function IsDoor(ent)
 	return DOOR_CLASSES[ent:GetClass()] == true
 end
 
--- The first door along the waypoints that is not a spawn door of team.
-function Controller:GateAlong(points, team)
+-- The last door along the waypoints, where the route passes it.
+function Controller:GateAlong(points)
+	local gate = nil
 	for i = 1, #points - 1 do
 		local from, to = points[i] + DOOR_TRACE_LIFT, points[i + 1] + DOOR_TRACE_LIFT
 		local tr = util.TraceLine({ start = from, endpos = to, mask = MASK_SOLID, filter = IsDoor })
 		local door = tr.Entity
-		if IsValid(door) and IsDoor(door) and self:SpawnDoorTeam(door) ~= team then
+		if IsValid(door) and IsDoor(door) then
 			local dir = to - from
 			dir.z = 0
 			dir:Normalize()
-			return { pos = Point(tr.HitPos - DOOR_TRACE_LIFT), dir = { x = dir.x, y = dir.y }, door = door }
+			gate = { pos = Point(tr.HitPos - DOOR_TRACE_LIFT), dir = { x = dir.x, y = dir.y }, door = door }
 		end
 	end
-	return nil
+	return gate
 end
 
 -- A team's spawn points far apart: the first and the one farthest from it.
@@ -477,7 +479,7 @@ function Controller:FindGates(field)
 					bot = { entIndex = 0, now = CurTime(), team = team, route = TFBot.FASTEST_ROUTE, miniBoss = false, roundWon = false, winningTeam = WETSAND.TEAM_UNASSIGNED },
 					onDone = function(areas, found)
 						if not areas or self.gates ~= gates then return end
-						local gate = self:GateAlong(npcs:RouteWaypoints(areas, target, found), team)
+						local gate = self:GateAlong(npcs:RouteWaypoints(areas, target, found))
 						if not gate then return end
 						gates[team] = gates[team] or {}
 						for _, known in ipairs(gates[team]) do
@@ -494,15 +496,17 @@ end
 -- Spawn doors and forcefields -----------------------------------------------------------
 
 -- A soldier near a door of its own team's spawn room opens it, whatever
--- the map's triggers make of NPCs; other doors (setup gates) stay as the
--- map has them.
+-- the map's triggers make of NPCs. Not during setup, when TF2 holds the
+-- attackers in (on some maps the spawn exits are the setup gates), and
+-- never a door the map has locked; other doors stay as the map has them.
 local DOOR_OPEN_REACH = 128
 
 function Controller:OpenSpawnDoors()
+	if WETSAND.InSetup() then return end
 	for class in pairs(DOOR_CLASSES) do
 		for _, door in ipairs(ents.FindByClass(class)) do
 			local team = self:SpawnDoorTeam(door)
-			if team then
+			if team and not door:GetInternalVariable("m_bLocked") then
 				local center = door:WorldSpaceCenter()
 				for ent, entry in pairs(self.soldiers) do
 					if entry.soldier.team == team and IsValid(ent) and ent:GetPos():Distance(center) <= DOOR_OPEN_REACH then
