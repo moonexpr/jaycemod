@@ -31,7 +31,8 @@ if SERVER then
 	end
 
 	Command("wetsand_aiwar_start", "Start",
-		"Restart the round with the Combine (RED) defending the cart against the Resistance (BLU)")
+		"Start the war, the Combine (RED) defending the cart against the Resistance (BLU); in Sandbox mode, "
+			.. "Gameplay mode counts down and begins")
 	Command("wetsand_aiwar_end", "End", "End the AI war; its soldiers leave, NPCs players spawned stay")
 	return
 end
@@ -43,7 +44,8 @@ hook.Add("CreateClientsideRagdoll", "wetsand_aiwar_ragdoll_fade", function(owner
 	if IsValid(owner) and AiWar.FactionTeam(owner:GetClass()) then WETSAND.FadeRagdollLater(ragdoll) end
 end)
 
-local HELP = "Restarts the round: the Resistance spawn at BLU's spawn and push the cart, "
+local HELP = "In Sandbox mode, counts down to Gameplay mode and a new round. "
+	.. "The Resistance spawn at BLU's spawn and push the cart, "
 	.. "the Combine spawn at RED's and defend it. Sandcastle's Combine and Resistance soldiers you spawn join their side. "
 	.. "Payload maps only. Needs DrGBase (Steam Workshop) for its soldiers."
 

@@ -17,6 +17,7 @@ local Zone = WETSAND.require("foundation.aiwar.zone")
 local Tactics = WETSAND.require("foundation.aiwar.tactics")
 local Squad = WETSAND.require("foundation.aiwar.squad")
 local Lanes = WETSAND.require("foundation.aiwar.lanes")
+local Gamemode = WETSAND.require("foundation.gamemode")
 
 local ACTIVE_KEY = "wetsand.aiwar" -- Global2: the Utilities menu reads it
 local THINK_INTERVAL = 0.25
@@ -1809,7 +1810,25 @@ end
 
 -- Starting and ending ------------------------------------------------------------------
 
--- Returns true, or false and why not.
+-- The war as the gamemode tells it (features/gamemode): its sides and size
+-- in the chat when it starts or joins the countdown to Gameplay mode, an
+-- announcement when it starts in Gameplay mode.
+local function Story()
+	local red, blue = AiWar.FACTIONS[WETSAND.TEAM_RED].name, AiWar.FACTIONS[WETSAND.TEAM_BLUE].name
+	local size = TeamSize()
+	return {
+		title = "AI war declared!",
+		lines = {
+			string.format("The %s fight for %s, the %s for %s.", red, WETSAND.TeamName[WETSAND.TEAM_RED], blue,
+				WETSAND.TeamName[WETSAND.TEAM_BLUE]),
+			string.format("%d soldiers a side, reinforced in respawn waves; the soldiers you spawn join their side.", size),
+		},
+		announcement = string.format("AI war: the %s and the %s join the fight, %d soldiers a side", red, blue, size),
+	}
+end
+
+-- Starts the war at once and requests Gameplay mode, whose countdown
+-- restarts the rounds. Returns true, or false and why not.
 function Controller:Start()
 	if self.war then return false, "the war is already on" end
 	if not DrGBase then return false, "the AI war needs DrGBase (Steam Workshop) for its soldiers" end
@@ -1824,7 +1843,7 @@ function Controller:Start()
 		self:Consider(ent)
 		self:NoteMonster(ent)
 	end
-	if IsValid(WETSAND.Rules) then WETSAND.Rules:RestartRound() end
+	WETSAND.Feature("gamemode"):Request(Gamemode.GAMEPLAY, Gamemode.SOURCE_AI_WAR, nil, Story())
 	return true
 end
 
