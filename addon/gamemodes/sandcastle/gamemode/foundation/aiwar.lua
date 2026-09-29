@@ -261,8 +261,10 @@ function War:ResetWaves()
 	self.nextWave = { [RED] = 0, [BLUE] = 0 }
 end
 
--- The battlefield the orders read: { phase, carts = team -> { track
--- (foundation.aiwar.track), distance along it, pos } }.
+-- The battlefield the orders read: { phase, setup (the round is in
+-- setup), carts = team -> { track (foundation.aiwar.track), distance along
+-- it, pos }, gates = team -> list of { pos, dir }: the doors that team must
+-- pass to reach the rest of the map, dir the way it passes them }.
 function War:SetField(field)
 	self.field = field
 end

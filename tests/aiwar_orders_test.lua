@@ -98,6 +98,50 @@ T.test("defenders hold rows ahead of the enemy's cart, then spread sideways", fu
 	Near(Orders.Goal(field, member), P(1000 + Orders.DEFEND_LEAD, Orders.LATERAL), "first row, left")
 end)
 
+-- Setup: the defenders line up past the gates the attackers must come through.
+
+local function SetupField(gates)
+	local field = Field({})
+	field.setup = true
+	field.gates = { [BLUE] = gates }
+	return field
+end
+
+-- A gate at x = 500 that BLU passes going +x.
+local GATE = { pos = P(500, 0), dir = { x = 1, y = 0 } }
+
+T.test("in setup a defender stands in line past the attackers' gate, not at the cart", function()
+	local field = SetupField({ GATE })
+	local member = { team = RED, role = AiWar.DEFEND, slot = 0 }
+	Near(Orders.Goal(field, member), P(500 + Orders.GATE_STANDOFF, 0), "the middle of the line")
+	member.slot = 1
+	Near(Orders.Goal(field, member), P(500 + Orders.GATE_STANDOFF, Orders.GATE_SPACING), "next along, left")
+	member.slot = 2
+	Near(Orders.Goal(field, member), P(500 + Orders.GATE_STANDOFF, -Orders.GATE_SPACING), "next along, right")
+	member.slot = 3
+	Near(Orders.Goal(field, member), P(500 + Orders.GATE_STANDOFF, 2 * Orders.GATE_SPACING), "further along, left")
+end)
+
+T.test("blockers line up too, a row behind the defenders", function()
+	local field = SetupField({ GATE })
+	Near(Orders.Goal(field, { team = RED, role = AiWar.BLOCK, slot = 0 }), P(500 + Orders.GATE_STANDOFF + Orders.GATE_ROW, 0), "second row")
+end)
+
+T.test("several gates share the line out between them", function()
+	local other = { pos = P(0, 900), dir = { x = 0, y = -1 } }
+	local field = SetupField({ GATE, other })
+	Near(Orders.Goal(field, { team = RED, role = AiWar.DEFEND, slot = 1 }), P(0, 900 - Orders.GATE_STANDOFF), "the second gate")
+end)
+
+T.test("without gates, or once setup ends, defenders hold the track as before", function()
+	local member = { team = RED, role = AiWar.DEFEND, slot = 0 }
+	Near(Orders.Goal(SetupField({}), member), P(1000 + Orders.DEFEND_LEAD, 0), "no gates found")
+	local field = SetupField({ GATE })
+	field.setup = false
+	Near(Orders.Goal(field, member), P(1000 + Orders.DEFEND_LEAD, 0), "setup over")
+	T.eq(Orders.Goal(SetupField({ GATE }), { team = BLUE, role = AiWar.PUSH, slot = 0 }) ~= nil, true, "attackers unchanged")
+end)
+
 -- Behaviour -----------------------------------------------------------------
 
 T.test("a pusher asks for a route to the cart and walks it waypoint by waypoint", function()

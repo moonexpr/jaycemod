@@ -445,6 +445,12 @@ function ENT:PathNodes()
 	return self.nodes
 end
 
+-- How far along the path the next checkpoint ahead of the cart lies, or nil.
+function ENT:NextCheckpointDistance()
+	local link = P.NextCheckpoint(self.links or {}, self.distanceFromStart or 0)
+	return link and link.distance
+end
+
 function ENT:TrainDistanceAlongTrack()
 	return self.distanceFromStart or 0
 end

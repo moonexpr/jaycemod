@@ -38,6 +38,11 @@ ESCORT_ARRIVE, ESCORT_LEASH = 150, 700
 DEFEND_LEAD, DEFEND_DEPTH, DEFEND_ROWS = 600, 250, 3
 DEFEND_ARRIVE, DEFEND_LEASH = 150, 900
 LATERAL, LATERAL_STEPS = 80, 2
+-- In setup the defending side lines up past each gate the attackers must
+-- come through (field.gates: { pos, dir } with dir the way attackers pass
+-- it): defenders GATE_STANDOFF past it, blockers a row behind, spaced
+-- GATE_SPACING along the line from its middle out.
+GATE_STANDOFF, GATE_ROW, GATE_SPACING = 256, 96, 64
 local GOLDEN_ANGLE = 2.39996323 -- radians: ring slots never line up
 
 -- A pusher or blocker at its cart runs to its spot again once the cart
@@ -68,6 +73,26 @@ local function Ring(pos, slot, radius)
 	return { x = pos.x + cos(angle) * radius, y = pos.y + sin(angle) * radius, z = pos.z }
 end
 
+-- 0 in the middle, then alternately left and right, one spacing further
+-- out each pair.
+local function AlongLine(k)
+	if k == 0 then return 0 end
+	local magnitude = ceil(k / 2) * GATE_SPACING
+	return k % 2 == 1 and magnitude or -magnitude
+end
+
+-- The member's spot in the setup line, or nil when there is no setup
+-- line to stand in (not in setup, or no gate found).
+local function GateSpot(field, member, row)
+	local gates = field.setup and field.gates and field.gates[AiWar.EnemyOf(member.team)]
+	if not gates or #gates == 0 then return nil end
+	local gate = gates[member.slot % #gates + 1]
+	local lateral = AlongLine(floor(member.slot / #gates))
+	local depth = GATE_STANDOFF + row
+	local dir, pos = gate.dir, gate.pos
+	return { x = pos.x + dir.x * depth - dir.y * lateral, y = pos.y + dir.y * depth + dir.x * lateral, z = pos.z }
+end
+
 local function OwnCart(field, member) return field.carts[member.team] end
 local function EnemyCart(field, member) return field.carts[AiWar.EnemyOf(member.team)] end
 
@@ -88,6 +113,8 @@ ROLES = {
 		leash = PUSH_LEASH,
 		rushes = true,
 		Goal = function(field, member)
+			local spot = GateSpot(field, member, GATE_ROW)
+			if spot then return spot end
 			local cart = EnemyCart(field, member)
 			return cart and Ring(cart.pos, member.slot, PUSH_RING)
 		end,
@@ -108,6 +135,8 @@ ROLES = {
 		leash = DEFEND_LEASH,
 		rushes = false,
 		Goal = function(field, member)
+			local spot = GateSpot(field, member, 0)
+			if spot then return spot end
 			local cart = EnemyCart(field, member)
 			if not cart then return nil end
 			local row, column = member.slot % DEFEND_ROWS, floor(member.slot / DEFEND_ROWS)

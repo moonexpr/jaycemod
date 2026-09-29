@@ -346,8 +346,137 @@ function Controller:TrackOf(watcher)
 	return track
 end
 
--- Each team's first active cart: its path, how far along it is, and the
--- ground under it.
+-- Setup gates -------------------------------------------------------------------------
+-- In setup the defending side lines up past the gates the attackers must
+-- come through (foundation.aiwar.orders). A gate is the first door on the
+-- attackers' route from their spawn to their cart's next checkpoint that is
+-- not one of their spawn-room doors, found once per round.
+
+local DOOR_CLASSES = { func_door = true, func_door_rotating = true, prop_door_rotating = true }
+local DOOR_TRACE_LIFT = Vector(0, 0, 36)
+-- A door within this of a team's spawn room is that room's door.
+local SPAWN_DOOR_REACH = 96
+local REACH_OFFSETS = {
+	Vector(0, 0, 0),
+	Vector(SPAWN_DOOR_REACH, 0, 0), Vector(-SPAWN_DOOR_REACH, 0, 0),
+	Vector(0, SPAWN_DOOR_REACH, 0), Vector(0, -SPAWN_DOOR_REACH, 0),
+}
+
+-- The team whose spawn room the door belongs to, or false; found once per
+-- door entity (a cleanup makes new ones).
+Controller.doorTeams = setmetatable({}, { __mode = "k" })
+
+function Controller:SpawnDoorTeam(door)
+	local team = self.doorTeams[door]
+	if team ~= nil then return team end
+	team = false
+	local center = door:WorldSpaceCenter()
+	for _, room in ipairs(ents.FindByClass("func_respawnroom")) do
+		for _, offset in ipairs(REACH_OFFSETS) do
+			if room.team ~= WETSAND.TEAM_UNASSIGNED and room:PointIsWithin(center + offset) then team = room.team end
+		end
+	end
+	self.doorTeams[door] = team
+	return team
+end
+
+local function IsDoor(ent)
+	return DOOR_CLASSES[ent:GetClass()] == true
+end
+
+-- The first door along the waypoints that is not a spawn door of team.
+function Controller:GateAlong(points, team)
+	for i = 1, #points - 1 do
+		local from, to = points[i] + DOOR_TRACE_LIFT, points[i + 1] + DOOR_TRACE_LIFT
+		local tr = util.TraceLine({ start = from, endpos = to, mask = MASK_SOLID, filter = IsDoor })
+		local door = tr.Entity
+		if IsValid(door) and IsDoor(door) and self:SpawnDoorTeam(door) ~= team then
+			local dir = to - from
+			dir.z = 0
+			dir:Normalize()
+			return { pos = Point(tr.HitPos - DOOR_TRACE_LIFT), dir = { x = dir.x, y = dir.y }, door = door }
+		end
+	end
+	return nil
+end
+
+-- A team's spawn points far apart: the first and the one farthest from it.
+local function SpreadSpawns(team)
+	local spawns = WETSAND.SpawnPoints(team)
+	local first, far, farthest = spawns[1], nil, -1
+	for _, spawn in ipairs(spawns) do
+		local d = spawn:GetPos():DistToSqr(first:GetPos())
+		if d > farthest then far, farthest = spawn, d end
+	end
+	return first and { first:GetPos(), far:GetPos() } or {}
+end
+
+function Controller:FindGates(field)
+	local gates = {}
+	self.gates = gates
+	local npcs = WETSAND.Feature("npc")
+	for team, cart in pairs(field.carts) do
+		-- an attacking team: the other side has no cart to push
+		if not field.carts[AiWar.EnemyOf(team)] then
+			local target = ToVector(cart.track:PointAt(cart.nextCheckpoint or cart.track:Length()))
+			for _, from in ipairs(SpreadSpawns(team)) do
+				npcs:RequestRoute({
+					from = from,
+					to = target,
+					strategy = HL2Path,
+					limits = HL2Path.LIMITS,
+					bot = { entIndex = 0, now = CurTime(), team = team, route = TFBot.FASTEST_ROUTE, miniBoss = false, roundWon = false, winningTeam = WETSAND.TEAM_UNASSIGNED },
+					onDone = function(areas, found)
+						if not areas or self.gates ~= gates then return end
+						local gate = self:GateAlong(npcs:RouteWaypoints(areas, target, found), team)
+						if not gate then return end
+						gates[team] = gates[team] or {}
+						for _, known in ipairs(gates[team]) do
+							if known.door == gate.door then return end
+						end
+						table.insert(gates[team], gate)
+					end,
+				})
+			end
+		end
+	end
+end
+
+-- Spawn doors and forcefields -----------------------------------------------------------
+
+-- A soldier near a door of its own team's spawn room opens it, whatever
+-- the map's triggers make of NPCs; other doors (setup gates) stay as the
+-- map has them.
+local DOOR_OPEN_REACH = 128
+
+function Controller:OpenSpawnDoors()
+	for class in pairs(DOOR_CLASSES) do
+		for _, door in ipairs(ents.FindByClass(class)) do
+			local team = self:SpawnDoorTeam(door)
+			if team then
+				local center = door:WorldSpaceCenter()
+				for ent, entry in pairs(self.soldiers) do
+					if entry.soldier.team == team and IsValid(ent) and ent:GetPos():Distance(center) <= DOOR_OPEN_REACH then
+						door:Fire("Open")
+						break
+					end
+				end
+			end
+		end
+	end
+end
+
+-- TF2's forcefields stop only players, but the engine NPCs' movement takes
+-- a visualizer for a wall, so while the war runs they are not solid.
+-- Soldiers still keep out of enemy spawn rooms: their routes refuse them.
+function Controller:SetForcefieldsPassable(passable)
+	for _, visualizer in ipairs(ents.FindByClass("func_respawnroomvisualizer")) do visualizer:SetNotSolid(passable) end
+end
+
+-- The field -----------------------------------------------------------------------------
+
+-- Each team's first active cart: its path, how far along it is, where its
+-- next checkpoint is, and the ground under it.
 function Controller:Field(phase)
 	local carts = {}
 	for _, watcher in ipairs(ents.FindByClass("team_train_watcher")) do
@@ -356,11 +485,12 @@ function Controller:Field(phase)
 			carts[team] = {
 				track = self:TrackOf(watcher),
 				distance = watcher:TrainDistanceAlongTrack(),
+				nextCheckpoint = watcher:NextCheckpointDistance(),
 				pos = Point(GroundBelow(watcher:Train():GetPos())),
 			}
 		end
 	end
-	return { phase = phase, carts = carts }
+	return { phase = phase, setup = WETSAND.Active() and WETSAND.InSetup(), carts = carts, gates = self.gates or {} }
 end
 
 local function CartTeams(carts)
@@ -374,8 +504,10 @@ function Controller:Think(now)
 	self.nextThink = now + THINK_INTERVAL
 	local phase = AiWar.PhaseOf(WETSAND.Active(), WETSAND.State())
 	local field = self:Field(phase)
+	if field.setup and self.gates == nil then self:FindGates(field) end
 	self.war:Assign(CartTeams(field.carts))
 	self.war:SetField(field)
+	self:OpenSpawnDoors()
 	if phase.reinforce then self:Reinforce(now) end
 	for ent, entry in pairs(self.soldiers) do
 		if IsValid(ent) then entry.npc:Update(THINK_INTERVAL) end
@@ -416,8 +548,10 @@ function Controller:Start()
 	if #ents.FindByClass("team_train_watcher") == 0 then return false, "this map has no payload cart" end
 	WETSAND.Feature("npc"):CheckNavMesh()
 	self.war = AiWar.War.New()
+	self.gates = nil
 	SetGlobal2Bool(ACTIVE_KEY, true)
 	self:OpenDoorsToSoldiers()
+	self:SetForcefieldsPassable(true)
 	for _, ent in ipairs(ents.GetAll()) do self:Consider(ent) end
 	if IsValid(WETSAND.Rules) then WETSAND.Rules:RestartRound() end
 	return true
@@ -439,6 +573,7 @@ function Controller:End()
 	end
 	self.soldiers = {}
 	self:CloseDoorsToSoldiers()
+	self:SetForcefieldsPassable(false)
 	self.war = nil
 	SetGlobal2Bool(ACTIVE_KEY, false)
 	return true
@@ -481,6 +616,11 @@ function Controller:Report()
 		WETSAND.Feature("npc"):SearchesRunning())
 	for team, cart in pairs(field and field.carts or {}) do
 		lines[#lines + 1] = string.format("  %s cart: %d of %d units along its track", TEAM_LABEL[team], Round(cart.distance), Round(cart.track:Length()))
+	end
+	for team, gates in pairs(self.gates or {}) do
+		for _, gate in ipairs(gates) do
+			lines[#lines + 1] = string.format("  %s must pass gate %s at (%d, %d, %d)", TEAM_LABEL[team], tostring(gate.door), Round(gate.pos.x), Round(gate.pos.y), Round(gate.pos.z))
+		end
 	end
 	local list = {}
 	for ent, entry in pairs(self.soldiers) do
@@ -575,7 +715,14 @@ hook.Add("PostCleanupMap", "wetsand_aiwar", function()
 	if not Controller.war then return end
 	Controller.doorFlags = {}
 	Controller:OpenDoorsToSoldiers()
+	Controller:SetForcefieldsPassable(true)
+	Controller.gates = nil
 	Controller.war:ResetWaves()
+end)
+
+-- A new mini-round (or round) may put the gates elsewhere.
+hook.Add("TF2RoundActivate", "wetsand_aiwar", function()
+	if Controller.war then Controller.gates = nil end
 end)
 
 -- The round keeps running with no human on a team while the war is on.
