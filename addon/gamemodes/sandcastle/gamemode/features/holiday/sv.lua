@@ -75,6 +75,11 @@ function Controller:AddGiftLocation(pos)
 	self.giftLocations[#self.giftLocations + 1] = pos
 end
 
+-- tf_halloween_gift_pickup: config = { player, lifetime }.
+function Controller:BindGift(ent, config)
+	return WETSAND.require("foundation.holiday.gift").New(config, CurTime())
+end
+
 function Controller:SpawnGift(gift)
 	local pickup = ents.Create(GIFT_PICKUP)
 	pickup:Configure({
