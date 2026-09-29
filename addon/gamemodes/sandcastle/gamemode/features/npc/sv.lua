@@ -167,6 +167,7 @@ function Controller:FillStep(step, area, fromArea, ladder, length, fromCostSoFar
 	step.fromCostSoFar = fromCostSoFar
 	step.areaId = area:GetID()
 	step.spawnRoomTeam = self:SpawnRoomTeam(area)
+	step.attributes = area:GetAttributes()
 	return step
 end
 

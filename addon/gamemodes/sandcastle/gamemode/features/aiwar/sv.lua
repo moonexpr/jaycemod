@@ -10,18 +10,13 @@ local Track = WETSAND.require("foundation.aiwar.track")
 local Orders = WETSAND.require("foundation.aiwar.orders")
 local NpcSystem = WETSAND.require("foundation.npc")
 local TFBot = WETSAND.require("foundation.npc.path.tfbot")
+local HL2Path = WETSAND.require("foundation.npc.path.hl2")
 
 local ACTIVE_KEY = "wetsand.aiwar" -- Global2: the Utilities menu reads it
 local THINK_INTERVAL = 0.25
 local RELATIONSHIP_INTERVAL = 1
 local RELATIONSHIP_PRIORITY = 99
 
--- HL2's ground NPCs step 18 units and do not jump. A climb above the step
--- height up to jumpHeight is only penalised, since area edges measure a
--- little high on slopes; drops past deathDropHeight are refused, as the
--- engine NPCs will not walk off tall ledges. Both are estimates, not
--- measured in game.
-local LIMITS = { stepHeight = 18, jumpHeight = 32, deathDropHeight = 120 }
 
 -- CanWalkTo's sweep: a soldier's hull above its step height, so stairs and
 -- slopes pass and walls do not.
@@ -96,8 +91,8 @@ function Soldier:RequestRoute(goal)
 	npcs:RequestRoute({
 		from = self.ent:GetPos(),
 		to = goalPos,
-		strategy = TFBot,
-		limits = LIMITS,
+		strategy = HL2Path,
+		limits = HL2Path.LIMITS,
 		bot = self:Bot(),
 		onDone = function(areas, found)
 			if self.ticket ~= ticket then return end
