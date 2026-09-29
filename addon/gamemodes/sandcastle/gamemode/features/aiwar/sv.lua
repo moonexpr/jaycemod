@@ -374,12 +374,15 @@ end
 -- file is read once per map (its header, as the engine checked it).
 local graphLoaded
 
+-- While the engine is failing a soldier (walked by hand, see Move) it
+-- plans nothing: the trip takes our nav mesh route, whose waypoints the
+-- hand walk follows, rather than a straight line at a far goal.
 function Soldier:PlansRoutes()
 	if graphLoaded == nil then
 		local header = WETSAND.Feature("nodegraph"):Installed(true)
 		graphLoaded = header ~= nil and header.mapVersion == game.GetMapVersion() and (header.nodeCount or 0) > 0
 	end
-	return graphLoaded
+	return graphLoaded and CurTime() >= (self.retryAt or 0)
 end
 
 -- The move failed: drop it, walk by hand for BY_HAND_TIME.
