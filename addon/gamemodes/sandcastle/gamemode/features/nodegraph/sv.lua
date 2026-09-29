@@ -31,7 +31,10 @@ local MAX_NODES = CreateConVar("wetsand_nodegraph_max_nodes", tostring(Graph.MAX
 
 local SPACING_START, SPACING_GROW = 96, 1.25
 local LINK_RANGE, LINKS_PER_NODE = 400, 12
-local STEP, FLOOR_SAMPLE, FLOOR_SLOPE, FLOOR_PROBE = 18, 24, 0.7, 64
+-- The floor is sampled every FLOOR_SAMPLE units along a link, finer than
+-- a stair's tread, so each sample rises at most one step; the engine's own
+-- builder steps a hull every 16 (HULL_TEST_STEP_SIZE).
+local STEP, FLOOR_SAMPLE, FLOOR_SLOPE, FLOOR_PROBE = 18, 12, 0.7, 64
 local HIDING_IN_COVER = 1
 local HIDING_BONUS = 1e9 -- hiding spots are picked before any area
 local NAV_MESH_CROUCH, NAV_MESH_JUMP = 1, 2
