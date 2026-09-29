@@ -177,6 +177,53 @@ T.test("a caster who left keeps no book; Sync leaves casters it was not given al
 	T.eq(library:BookOf(npc), nil, "revoked")
 end)
 
+T.test("a book armed by the weapon outlasts the rules until the weapon goes", function()
+	local library = Spells.Library.New(SpellSet)
+	local holder = {}
+	T.eq(library:Arm(holder), true, "a holder with no book is armed with one")
+	T.eq(library:BookOf(holder) ~= nil, true, "it holds a book while spells are off")
+	local granted, revoked = library:Sync(false, { Candidate(holder, Teams.RED) })
+	T.eq(#granted + #revoked, 0, "spells off take nothing from it")
+	granted, revoked = library:Sync(true, { Candidate(holder, Teams.SPECTATOR) })
+	T.eq(#revoked, 0, "nor does leaving RED and BLU")
+	local taken = library:Pickup(holder, SpellSet.TIER_COMMON, 0, Landing(FIRST))
+	T.eq(taken, true, "it collects pickups")
+	T.eq(library:Respawn(false, Candidate(holder, Teams.RED)), true, "a respawn keeps a book")
+	T.eq(library:BookOf(holder):State().selected, Spells.EMPTY, "starting over")
+	library:Disarm(holder)
+	T.eq(library:BookOf(holder), nil, "the weapon gone, the book goes")
+end)
+
+T.test("arming a holder of the rules' book changes nothing, and the rules still take it back", function()
+	local library = Spells.Library.New(SpellSet)
+	local holder = {}
+	local players = { Candidate(holder, Teams.BLUE) }
+	library:Sync(true, players)
+	local book = library:BookOf(holder)
+	T.eq(library:Arm(holder), false, "already holds one")
+	T.eq(library:BookOf(holder), book, "the same book")
+	library:Disarm(holder)
+	T.eq(library:BookOf(holder), book, "disarming leaves the rules' book")
+	local _, revoked = library:Sync(false, players)
+	T.eq(revoked[1], holder, "spells off revoke it")
+end)
+
+T.test("revoking or forgetting an armed holder ends its arming", function()
+	local library = Spells.Library.New(SpellSet)
+	local revoked, forgotten = {}, {}
+	library:Arm(revoked)
+	library:Arm(forgotten)
+	library:Revoke(revoked)
+	library:Forget(forgotten)
+	local players = {
+		Candidate(revoked, Teams.RED),
+		Candidate(forgotten, Teams.RED),
+	}
+	library:Sync(true, players)
+	local _, taken = library:Sync(false, players)
+	T.eq(#taken, 2, "the rules' books, revoked as usual")
+end)
+
 T.test("pickups through the library: only a caster holding a book collects one", function()
 	local library = Spells.Library.New(SpellSet)
 	local holder = {}

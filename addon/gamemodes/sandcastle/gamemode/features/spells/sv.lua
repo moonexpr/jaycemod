@@ -2,7 +2,8 @@
 -- (one SpellBook per caster: a player, or an NPC an AI layer grants one to)
 -- and a Shot per spell projectile or spawner, implements the caster port
 -- over any caster entity, hands living RED and BLU players
--- tf_weapon_spellbook while spells are on, casts on TF2's
+-- tf_weapon_spellbook while spells are on (and a book to anyone who equips
+-- the weapon otherwise), casts on TF2's
 -- +use_action_slot_item, networks a player's book to the weapon, and
 -- applies the conditions only spells give. The holiday controller loads
 -- this feature when spells turn on; the players' books follow its
@@ -318,6 +319,18 @@ end
 function Controller:Revoke(caster)
 	self.library:Revoke(caster)
 	if caster:IsPlayer() then caster:StripWeapon(WEAPON) end
+end
+
+-- The weapon equipped: a caster without a book (one given the weapon from
+-- the spawn menu, whether or not spells are on) holds one while it holds the
+-- weapon. One the rules armed keeps its book.
+function Controller:Arm(caster)
+	if self.library:Arm(caster) then self:Publish(caster) end
+end
+
+-- The weapon dropped or removed.
+function Controller:Disarm(caster)
+	self.library:Disarm(caster)
 end
 
 -- Players' books follow who may cast: deaths, team changes and spells

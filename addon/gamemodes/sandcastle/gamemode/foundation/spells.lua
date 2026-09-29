@@ -173,6 +173,7 @@ function Library.New(set)
 	return setmetatable({
 		set = set,
 		books = {},
+		armed = {}, -- holders whose book came with the weapon, not the rules
 	}, Library)
 end
 
@@ -194,21 +195,38 @@ end
 
 function Library:Revoke(holder)
 	self.books[holder] = nil
+	self.armed[holder] = nil
 end
 
 -- A caster gone from the game.
 function Library:Forget(holder)
 	self.books[holder] = nil
+	self.armed[holder] = nil
+end
+
+-- The weapon equipped (from the spawn menu, say) by a holder with no book:
+-- it is armed with one that the rules leave alone until Disarm. Returns
+-- whether it was; a holder of the rules' book keeps that one.
+function Library:Arm(holder)
+	if self.books[holder] then return false end
+	self.books[holder] = SpellBook.New(self.set)
+	self.armed[holder] = true
+	return true
+end
+
+-- The weapon gone: an armed holder's book goes with it.
+function Library:Disarm(holder)
+	if self.armed[holder] then self:Revoke(holder) end
 end
 
 -- Grants and revokes the candidates' books to match; returns the holders
 -- granted and those revoked, in the candidates' order. Casters that are
--- not candidates keep what they hold.
+-- not candidates, and armed ones, keep what they hold.
 function Library:Sync(on, candidates)
 	local granted, revoked = {}, {}
 	for _, candidate in ipairs(candidates) do
 		local holder = candidate.holder
-		local holds, may = self.books[holder] ~= nil, MayHold(on, candidate)
+		local holds, may = self.books[holder] ~= nil, self.armed[holder] or MayHold(on, candidate)
 		if may and not holds then
 			self:Grant(holder)
 			granted[#granted + 1] = holder
@@ -231,7 +249,7 @@ end
 -- Returns whether the player holds one.
 function Library:Respawn(on, candidate)
 	self.books[candidate.holder] = nil
-	if not MayHold(on, candidate) then return false end
+	if not (self.armed[candidate.holder] or MayHold(on, candidate)) then return false end
 	self.books[candidate.holder] = SpellBook.New(self.set)
 	return true
 end
