@@ -2,7 +2,7 @@
 -- over a spawn room's doors. At round start it takes its func_respawnroom's
 -- team; the room's SetActive switches it on and off. It stops the enemies of
 -- its team, shows itself only to them while its room is active, and opens
--- for everyone during team win.
+-- for everyone during team win and out of gameplay.
 -- It is an "anim" entity rather than "brush" so clients can draw it.
 AddCSLuaFile()
 
@@ -27,6 +27,8 @@ local visualizers = setmetatable({}, { __mode = "k" })
 function ENT:CollisionTeam()
 	if not (self:GetEnabled() and self:GetFieldOn()) then return WETSAND.TEAM_UNASSIGNED end
 	if WETSAND.State() == WETSAND.STATE.TEAM_WIN then return WETSAND.TEAM_UNASSIGNED end
+	-- out of gameplay the spawn rooms are open to everyone
+	if WETSAND.GameplayStopped() then return WETSAND.TEAM_UNASSIGNED end
 	return self:GetRoomTeam()
 end
 
@@ -74,7 +76,8 @@ if CLIENT then
 	end
 
 	function ENT:Draw()
-		local teamWin = WETSAND.State() == WETSAND.STATE.TEAM_WIN
+		-- shown as in team win, to nobody's enemies, out of gameplay
+		local teamWin = WETSAND.State() == WETSAND.STATE.TEAM_WIN or WETSAND.GameplayStopped()
 		if self:GetEnabled() and WETSAND.TeamRules.VisualizerVisible(self:GetRoomTeam(), self:GetRoomActive(), teamWin, LocalPlayer():Team()) then
 			self:DrawModel()
 		end

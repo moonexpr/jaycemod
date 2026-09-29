@@ -163,6 +163,13 @@ function WETSAND.State()
 	return GetGlobal2Int("tf2.state", WETSAND.STATE.INIT)
 end
 
+-- Non-gameplay mode (the Gameplay Settings' Stop Game): the rounds and
+-- timers stand still and the map plays like Sandbox, its spawn doors and
+-- forcefields open to everyone, until a new game starts.
+function WETSAND.GameplayStopped()
+	return GetGlobal2Bool("tf2.halted", false)
+end
+
 -- TF2's convar; the map's SetRoundRespawnFreezeEnabled input sets it.
 -- Replicated, so client prediction freezes too.
 WETSAND.RestartFreeze = CreateConVar("tf_player_movement_restart_freeze", "1", FCVAR_REPLICATED,

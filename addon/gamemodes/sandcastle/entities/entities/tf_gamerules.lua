@@ -111,7 +111,97 @@ function ENT:StateTransition(state)
 	self:StateEnter(state)
 end
 
+-- Stopping the game (the Gameplay Settings' Stop Game): non-gameplay mode,
+-- which plays like Sandbox. The rounds stand still in PREGAME with every
+-- timer paused, and the state machine thinks no more until a new game
+-- (Unhalt, then RestartRound). The spawn doors (func_doors a trigger with
+-- a team filter opens) stand open, and the filters and forcefields let
+-- everyone through (WETSAND.GameplayStopped). A dead player on a team is
+-- back after HALT_RESPAWN seconds, as no respawn wave comes.
+local HALT_RESPAWN = 3
+local HALT_DOORS_INTERVAL = 2
+
+local function Overlap(aMins, aMaxs, bMins, bMaxs)
+	return aMins.x <= bMaxs.x and bMins.x <= aMaxs.x and aMins.y <= bMaxs.y and bMins.y <= aMaxs.y
+		and aMins.z <= bMaxs.z and bMins.z <= aMaxs.z
+end
+
+-- The spawn doors: func_doors overlapped by a trigger_multiple whose
+-- filter is a filter_activator_tfteam.
+local function SpawnDoors()
+	local triggers = {}
+	for _, trigger in ipairs(ents.FindByClass("trigger_multiple")) do
+		local filter = trigger:GetInternalVariable("m_hFilter")
+		if IsValid(filter) and filter:GetClass() == "filter_activator_tfteam" then
+			local mins, maxs = trigger:WorldSpaceAABB()
+			triggers[#triggers + 1] = { mins = mins, maxs = maxs }
+		end
+	end
+	local doors = {}
+	for _, door in ipairs(ents.FindByClass("func_door*")) do
+		local mins, maxs = door:WorldSpaceAABB()
+		for _, trigger in ipairs(triggers) do
+			if Overlap(mins, maxs, trigger.mins, trigger.maxs) then
+				doors[#doors + 1] = door
+				break
+			end
+		end
+	end
+	return doors
+end
+
+function ENT:Halted()
+	return self.halted == true
+end
+
+function ENT:Halt()
+	if self.state == S.GAME_OVER then
+		-- out of the intermission: the frozen players are let go
+		self.intermissionEnd = nil
+		for _, ply in ipairs(player.GetAll()) do ply:Freeze(false) end
+	end
+	self.halted = true
+	SetGlobal2Bool("tf2.halted", true)
+	if self.state ~= S.PREGAME then self:StateTransition(S.PREGAME) end
+	for _, t in ipairs(ents.FindByClass("team_round_timer")) do t:Pause() end
+	WETSAND.SetSetup(false)
+	self.spawnDoors = SpawnDoors()
+	self.nextDoorsOpen = 0
+end
+
+function ENT:Unhalt()
+	self.halted = false
+	self.spawnDoors = nil
+	SetGlobal2Bool("tf2.halted", false)
+end
+
+function ENT:HaltedThink()
+	local now = CurTime()
+	if now >= (self.nextDoorsOpen or 0) then
+		self.nextDoorsOpen = now + HALT_DOORS_INTERVAL
+		for _, door in ipairs(self.spawnDoors or {}) do
+			if IsValid(door) then door:Fire("Open") end
+		end
+	end
+	for _, ply in ipairs(player.GetAll()) do
+		if not ply:Alive() and WETSAND.TeamOf(ply) ~= WETSAND.TEAM_UNASSIGNED and ply:Team() ~= WETSAND.TEAM_SPECTATOR then
+			ply.tf2HaltedDeath = ply.tf2HaltedDeath or now
+			if now - ply.tf2HaltedDeath >= HALT_RESPAWN then
+				ply.tf2HaltedDeath = nil
+				ply:Spawn()
+			end
+		else
+			ply.tf2HaltedDeath = nil
+		end
+	end
+end
+
 function ENT:Think()
+	if self.halted then
+		self:HaltedThink()
+		self:NextThink(CurTime() + 0.1)
+		return true
+	end
 	local think = self["StateThink_" .. StateName(self.state)]
 	if think then think(self) end
 	if self.state ~= S.GAME_OVER and CurTime() > self.nextPeriodic then

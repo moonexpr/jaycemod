@@ -30,6 +30,8 @@ end
 -- team matches neither RED nor BLU. An NPC fighting for a team (the AI
 -- war's) passes as that team's player would.
 function ENT:PassesFilter(trigger, ent)
+	-- out of gameplay, every door opens for everyone
+	if WETSAND.GameplayStopped() then return true end
 	return WETSAND.TeamRules.FilterPasses(self.team, self.negated, WETSAND.TeamNumber(ent), WETSAND.State(), GetGlobal2Int("tf2.winner", WETSAND.TEAM_UNASSIGNED))
 end
 
