@@ -140,24 +140,33 @@ ROLES = {
 			return cart and Ring(cart.pos, member.slot, PUSH_RING)
 		end,
 	},
+	-- An escort establishes its line at a post pushed ahead of its cart
+	-- (field.forwardPosts), else leads the cart along the track.
 	[AiWar.ESCORT] = {
 		name = "Escort",
 		arrive = ESCORT_ARRIVE,
 		leash = ESCORT_LEASH,
 		rushes = false,
 		Goal = function(field, member)
+			local posts = field.forwardPosts and field.forwardPosts[member.team]
+			if posts and posts[member.slot + 1] then return posts[member.slot + 1] end
 			local cart = OwnCart(field, member)
 			return cart and cart.track:Offset(cart.distance + ESCORT_LEAD, Lateral(member.slot))
 		end,
 	},
+	-- EstablishLine: a post found for the defenders (field.posts, from
+	-- foundation.aiwar.posts: high or low ground, hiding spots, watching
+	-- the checkpoint the attackers head for), where it waits for them.
 	[AiWar.DEFEND] = {
-		name = "Defend",
+		name = "EstablishLine",
 		arrive = DEFEND_ARRIVE,
 		leash = DEFEND_LEASH,
 		rushes = false,
 		Goal = function(field, member)
 			local spot = GateSpot(field, member, 0)
 			if spot then return spot end
+			local posts = field.posts and field.posts[member.team]
+			if posts and posts[member.slot + 1] then return posts[member.slot + 1] end
 			local cart = EnemyCart(field, member)
 			if not cart then return nil end
 			local row, column = member.slot % DEFEND_ROWS, floor(member.slot / DEFEND_ROWS)

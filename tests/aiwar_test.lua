@@ -186,4 +186,12 @@ T.test("a track of one point is that point everywhere", function()
 	T.eq(p.x .. "," .. p.y .. "," .. p.z, "5,6,7", "the point")
 end)
 
+T.test("a point projects onto the track as the distance along it of its nearest point", function()
+	local track = Track.New({ P(0, 0), P(100, 0), P(100, 100) })
+	T.near(track:DistanceOf(P(40, 30)), 40, 1e-9, "beside the first leg")
+	T.near(track:DistanceOf(P(130, 60)), 160, 1e-9, "beside the second leg")
+	T.near(track:DistanceOf(P(-50, 0)), 0, 1e-9, "before the start")
+	T.near(track:DistanceOf(P(100, 500)), 200, 1e-9, "past the end")
+end)
+
 T.finish()

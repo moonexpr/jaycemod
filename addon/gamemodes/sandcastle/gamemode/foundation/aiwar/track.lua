@@ -57,3 +57,27 @@ function Track:Offset(d, lateral)
 	point.y = point.y + dx / length * lateral
 	return point
 end
+
+-- How far along the track the point nearest p lies: p projected onto the
+-- nearest leg.
+function Track:DistanceOf(p)
+	local points, at = self.points, self.at
+	if #points == 1 then return 0 end
+	local best, bestSq = 0, nil
+	for i = 1, #points - 1 do
+		local a, b = points[i], points[i + 1]
+		local dx, dy, dz = b.x - a.x, b.y - a.y, b.z - a.z
+		local lengthSq = dx * dx + dy * dy + dz * dz
+		local t = 0
+		if lengthSq > 0 then
+			t = ((p.x - a.x) * dx + (p.y - a.y) * dy + (p.z - a.z) * dz) / lengthSq
+			if t < 0 then t = 0 elseif t > 1 then t = 1 end
+		end
+		local nx, ny, nz = a.x + dx * t - p.x, a.y + dy * t - p.y, a.z + dz * t - p.z
+		local dSq = nx * nx + ny * ny + nz * nz
+		if not bestSq or dSq < bestSq then
+			best, bestSq = at[i] + (at[i + 1] - at[i]) * t, dSq
+		end
+	end
+	return best
+end

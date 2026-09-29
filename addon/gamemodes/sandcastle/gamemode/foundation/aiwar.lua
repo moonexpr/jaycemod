@@ -263,8 +263,11 @@ end
 
 -- The battlefield the orders read: { phase, setup (the round is in
 -- setup), carts = team -> { track (foundation.aiwar.track), distance along
--- it, pos }, gates = team -> list of { pos, dir }: the doors that team must
--- pass to reach the rest of the map, dir the way it passes them }.
+-- it, pos, nextCheckpoint (distance along it) }, gates = team -> list of
+-- { pos, dir }: the doors that team must pass to reach the rest of the map,
+-- dir the way it passes them, posts = team -> points where its defenders
+-- establish their line, forwardPosts = team -> points ahead of its own
+-- cart where its escorts do (foundation.aiwar.posts) }.
 function War:SetField(field)
 	self.field = field
 end

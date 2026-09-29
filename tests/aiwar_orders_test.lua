@@ -133,6 +133,24 @@ T.test("several gates share the line out between them", function()
 	Near(Orders.Goal(field, { team = RED, role = AiWar.DEFEND, slot = 1 }), P(0, 900 - Orders.GATE_STANDOFF), "the second gate")
 end)
 
+T.test("defenders establish their line at the posts found for them, one each by slot", function()
+	local field = Field({})
+	field.posts = { [RED] = { P(1400, 300, 128), P(1300, -200, -96) } }
+	Near(Orders.Goal(field, { team = RED, role = AiWar.DEFEND, slot = 0 }), P(1400, 300, 128), "the first post")
+	Near(Orders.Goal(field, { team = RED, role = AiWar.DEFEND, slot = 1 }), P(1300, -200, -96), "the second")
+	Near(Orders.Goal(field, { team = RED, role = AiWar.DEFEND, slot = 2 }), P(1000 + Orders.DEFEND_LEAD + 2 * Orders.DEFEND_DEPTH, 0), "more defenders than posts hold the track")
+	local setup = SetupField({ GATE })
+	setup.posts = field.posts
+	Near(Orders.Goal(setup, { team = RED, role = AiWar.DEFEND, slot = 0 }), P(500 + Orders.GATE_STANDOFF, 0), "setup's gate line comes first")
+end)
+
+T.test("escorts establish their line at the posts pushed ahead of their cart", function()
+	local field = Field({})
+	field.forwardPosts = { [BLUE] = { P(1500, 200, 64) } }
+	Near(Orders.Goal(field, { team = BLUE, role = AiWar.ESCORT, slot = 0 }), P(1500, 200, 64), "the forward post")
+	Near(Orders.Goal(field, { team = BLUE, role = AiWar.ESCORT, slot = 1 }), P(1000 + Orders.ESCORT_LEAD, Orders.LATERAL), "beyond the posts, the track")
+end)
+
 T.test("without gates, or once setup ends, defenders hold the track as before", function()
 	local member = { team = RED, role = AiWar.DEFEND, slot = 0 }
 	Near(Orders.Goal(SetupField({}), member), P(1000 + Orders.DEFEND_LEAD, 0), "no gates found")
@@ -234,7 +252,7 @@ T.test("a defender that sees an enemy near its post fights instead of walking", 
 	local me, npc = Enlist({ team = RED, role = AiWar.DEFEND, pos = P(1300, 0) })
 	me.enemy = true
 	Tick(me, npc)
-	T.eq(npc:Describe(), "SoldierBehavior/Defend", "fighting at the post")
+	T.eq(npc:Describe(), "SoldierBehavior/EstablishLine", "fighting at the post")
 	T.eq(#me.requests, 0, "no route")
 end)
 

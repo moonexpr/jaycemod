@@ -11,6 +11,7 @@ local Orders = WETSAND.require("foundation.aiwar.orders")
 local NpcSystem = WETSAND.require("foundation.npc")
 local TFBot = WETSAND.require("foundation.npc.path.tfbot")
 local HL2Path = WETSAND.require("foundation.npc.path.hl2")
+local Posts = WETSAND.require("foundation.aiwar.posts")
 
 local ACTIVE_KEY = "wetsand.aiwar" -- Global2: the Utilities menu reads it
 local THINK_INTERVAL = 0.25
@@ -616,6 +617,106 @@ function Controller:UnderCart(area)
 	return false
 end
 
+-- Posts: where soldiers establish their line ----------------------------------------------
+-- foundation.aiwar.posts picks among the nav mesh's hiding spots (with
+-- their cover and sniper flags) and the centres of areas well above or
+-- below the place in question (high ground, pits), each tested for a
+-- clear line from eye height:
+-- - a team's defenders: near the checkpoint the enemy cart heads for,
+--   seeing it; found once per checkpoint;
+-- - a team's escorts: ahead of its own cart along the track, seeing the
+--   cart; found again every FORWARD_STEP the cart moves, so the line is
+--   pushed forward with it.
+local HIDING_IN_COVER, HIDING_GOOD_SNIPER, HIDING_IDEAL_SNIPER = 1, 2, 4 -- CNavArea hiding spot flags
+local POST_EYE, TARGET_EYE = Vector(0, 0, 64), Vector(0, 0, 48)
+local HIGH_OR_LOW = 48 -- an area this far above or below the place is high or low ground
+local SEARCH_HEIGHT = 1000
+local FORWARD_STEP = 200
+
+local function Sees(pos, target)
+	local tr = util.TraceLine({ start = pos + POST_EYE, endpos = target + TARGET_EYE, mask = MASK_SOLID_BRUSHONLY })
+	return not tr.Hit
+end
+
+-- Every candidate spot within radius of center, once each, with its flags.
+local function CandidateSpots(center, radius)
+	local spots, order = {}, {}
+	local function Add(pos, cover, sniper)
+		local key = string.format("%d %d %d", pos.x, pos.y, pos.z)
+		local spot = spots[key]
+		if not spot then
+			spot = { pos = pos, cover = false, sniper = 0 }
+			spots[key] = spot
+			order[#order + 1] = spot
+		end
+		spot.cover = spot.cover or cover
+		spot.sniper = math.max(spot.sniper, sniper)
+	end
+	for _, area in ipairs(navmesh.Find(center, radius, SEARCH_HEIGHT, SEARCH_HEIGHT)) do
+		for _, pos in ipairs(area:GetHidingSpots(HIDING_IN_COVER) or {}) do Add(pos, true, 0) end
+		for _, pos in ipairs(area:GetHidingSpots(HIDING_GOOD_SNIPER) or {}) do Add(pos, false, Posts.GOOD_SNIPER) end
+		for _, pos in ipairs(area:GetHidingSpots(HIDING_IDEAL_SNIPER) or {}) do Add(pos, false, Posts.IDEAL_SNIPER) end
+		local areaCenter = area:GetCenter()
+		if math.abs(areaCenter.z - center.z) >= HIGH_OR_LOW then Add(areaCenter, false, 0) end
+	end
+	return order
+end
+
+function Controller:CachedPosts(kind, team, key, find)
+	self.postCache = self.postCache or {}
+	local cacheKey = kind .. team
+	local cached = self.postCache[cacheKey]
+	if cached and cached.key == key then return cached.posts end
+	local posts = find()
+	self.postCache[cacheKey] = { key = key, posts = posts }
+	return posts
+end
+
+-- Where a team's defenders wait for the enemy cart.
+function Controller:DefendersPosts(team, cart)
+	if not cart.nextCheckpoint then return nil end
+	return self:CachedPosts("defend", team, tostring(cart.track) .. "@" .. cart.nextCheckpoint, function()
+		local objective = GroundBelow(ToVector(cart.track:PointAt(cart.nextCheckpoint)))
+		local cartPos = ToVector(cart.pos)
+		local candidates = {}
+		for _, spot in ipairs(CandidateSpots(objective, Posts.MAX_RANGE)) do
+			candidates[#candidates + 1] = {
+				pos = Point(spot.pos),
+				sees = Sees(spot.pos, objective),
+				toObjective = spot.pos:Distance(objective),
+				toCart = spot.pos:Distance(cartPos),
+				elevation = spot.pos.z - objective.z,
+				cover = spot.cover,
+				sniper = spot.sniper,
+			}
+		end
+		return Posts.Pick(candidates, AiWar.TEAM_SIZE_MAX)
+	end)
+end
+
+-- Where a team's escorts push their line ahead of their own cart.
+function Controller:ForwardPosts(team, cart)
+	local step = math.floor(cart.distance / FORWARD_STEP)
+	return self:CachedPosts("forward", team, tostring(cart.track) .. "@" .. step, function()
+		local cartPos = ToVector(cart.pos)
+		local ahead = GroundBelow(ToVector(cart.track:PointAt(cart.distance + Posts.MAX_LEAD / 2)))
+		local candidates = {}
+		for _, spot in ipairs(CandidateSpots(ahead, Posts.MAX_LEAD)) do
+			local point = Point(spot.pos)
+			candidates[#candidates + 1] = {
+				pos = point,
+				sees = Sees(spot.pos, cartPos),
+				ahead = cart.track:DistanceOf(point) - cart.distance,
+				toCart = spot.pos:Distance(cartPos),
+				elevation = spot.pos.z - cartPos.z,
+				cover = spot.cover,
+				sniper = spot.sniper,
+			}
+		end
+		return Posts.Pick(candidates, AiWar.TEAM_SIZE_MAX, Posts.ScoreForward)
+	end)
+end
+
 -- The field -----------------------------------------------------------------------------
 
 -- Each team's first active cart: its path, how far along it is, where its
@@ -633,7 +734,20 @@ function Controller:Field(phase)
 			}
 		end
 	end
-	return { phase = phase, setup = WETSAND.Active() and WETSAND.InSetup(), carts = carts, gates = self.gates or {} }
+	local posts, forwardPosts = {}, {}
+	for _, team in ipairs({ RED, BLUE }) do
+		local enemyCart, ownCart = carts[AiWar.EnemyOf(team)], carts[team]
+		if enemyCart then posts[team] = self:DefendersPosts(team, enemyCart) end
+		if ownCart then forwardPosts[team] = self:ForwardPosts(team, ownCart) end
+	end
+	return {
+		phase = phase,
+		setup = WETSAND.Active() and WETSAND.InSetup(),
+		carts = carts,
+		gates = self.gates or {},
+		posts = posts,
+		forwardPosts = forwardPosts,
+	}
 end
 
 local function CartTeams(carts)
@@ -908,6 +1022,7 @@ hook.Add("PostCleanupMap", "wetsand_aiwar", function()
 	Controller:OpenDoorsToSoldiers()
 	Controller:SetForcefieldsPassable(true)
 	Controller.gates = nil
+	Controller.postCache = nil
 	Controller.war:ResetWaves()
 end)
 
