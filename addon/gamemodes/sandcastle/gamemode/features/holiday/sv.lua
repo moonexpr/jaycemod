@@ -56,8 +56,17 @@ function Controller:Mode() return self.holiday:Mode() end
 function Controller:UsingSpells() return self.holiday:UsingSpells() end
 
 -- Spells turning on load the spells feature, which hands out the books.
+function Controller:SpellsChanged(changed)
+	if changed and self.holiday:UsingSpells() then WETSAND.Feature("spells") end
+end
+
 function Controller:SetUsingSpells(on)
-	if self.holiday:SetUsingSpells(on) and self.holiday:UsingSpells() then WETSAND.Feature("spells") end
+	self:SpellsChanged(self.holiday:SetUsingSpells(on))
+end
+
+-- A tf_spell_pickup the map placed reports itself as it initializes.
+function Controller:SpellPickupPlaced()
+	self:SpellsChanged(self.holiday:SpellPickupPlaced())
 end
 
 -- CTFGameRules::DropSpellPickup. The pickup flies with the velocity given

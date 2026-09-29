@@ -74,6 +74,7 @@ function New(config)
 		spellsForced = config.spellsForced,
 		modes = config.modes,
 		usingSpells = false,
+		spellPickupPlaced = false,
 	}, Holiday)
 end
 
@@ -96,15 +97,29 @@ function Holiday:Mode()
 	return nil
 end
 
+-- CTFGameRules::IsUsingSpells, with its map-name check (Helltower, which
+-- never sends HalloweenSetUsingSpells) replaced by the map's entities: a map
+-- that places a spell pickup uses spells.
 function Holiday:UsingSpells()
-	return self.spellsForced or self.usingSpells
+	return self.spellsForced or self.spellPickupPlaced or self.usingSpells
+end
+
+-- Sets one of UsingSpells()'s inputs; returns whether UsingSpells() changed.
+local function SetSpellsInput(self, field, on)
+	local before = self:UsingSpells()
+	self[field] = on
+	return self:UsingSpells() ~= before
 end
 
 -- HalloweenSetUsingSpells: returns whether UsingSpells() changed.
 function Holiday:SetUsingSpells(on)
-	local before = self:UsingSpells()
-	self.usingSpells = on
-	return self:UsingSpells() ~= before
+	return SetSpellsInput(self, "usingSpells", on)
+end
+
+-- A tf_spell_pickup the map placed (not one thrown by a skeleton king):
+-- returns whether UsingSpells() changed.
+function Holiday:SpellPickupPlaced()
+	return SetSpellsInput(self, "spellPickupPlaced", true)
 end
 
 -- CTFGameRules::DropSpellPickup: nothing while spells are off; otherwise a

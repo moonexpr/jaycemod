@@ -50,9 +50,11 @@ function ENT:PowerupModel()
 	return Base.PowerupModel(self)
 end
 
--- m_nTier starts at 0.
+-- m_nTier starts at 0. A pickup the map placed turns spells on
+-- (foundation.holiday); a thrown one does not.
 function ENT:Initialize()
 	self.set = WETSAND.require("foundation.spells.halloween")
+	if not self.dropped then WETSAND.Feature("holiday"):SpellPickupPlaced() end
 	self.spells = WETSAND.Feature("spells")
 	self.tier = self.tier or self.set.TIER_COMMON
 	Base.Initialize(self)
