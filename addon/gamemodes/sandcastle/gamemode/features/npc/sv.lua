@@ -232,7 +232,8 @@ end
 function Controller:RefreshBlockers(now)
 	if now < self.nextBlockerRefresh then return end
 	self.nextBlockerRefresh = now + BLOCKER_REFRESH
-	local blocked, triggers = {}, DoorTriggers()
+	local blocked, triggers, states = {}, DoorTriggers(), setmetatable({}, { __mode = "k" })
+	self.doorStates = states
 	-- exactly func_brush: func_respawnroomvisualizer, a func_brush too, is not one
 	for _, brush in ipairs(ents.FindByClass("func_brush")) do
 		if brush:IsSolid() then
@@ -248,12 +249,21 @@ function Controller:RefreshBlockers(now)
 				state.owner = trigger.owner or state.owner
 			end
 		end
+		states[door] = state
 		local team = Doors.BlockedTeam(state, EnemyOf)
+		state.blocks = team
 		if team then
 			for _, area in ipairs(navmesh.FindInBox(mins - DOOR_FLOOR, maxs)) do Block(blocked, area, team) end
 		end
 	end
 	self.navBlocked = blocked
+end
+
+-- How the blockers see a func_door: { closed, controlled, owner, blocks
+-- (the team it blocks, foundation.npc.doors.ANY, or nil) }, or nil.
+function Controller:DoorState(door)
+	self:RefreshBlockers(CurTime())
+	return self.doorStates and self.doorStates[door]
 end
 
 -- Whether a door or brush closes the area to the team.

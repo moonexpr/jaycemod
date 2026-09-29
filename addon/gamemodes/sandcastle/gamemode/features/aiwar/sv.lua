@@ -39,6 +39,12 @@ local RED, BLUE = WETSAND.TEAM_RED, WETSAND.TEAM_BLUE
 local function Point(v) return { x = v.x, y = v.y, z = v.z } end
 local function ToVector(p) return Vector(p.x, p.y, p.z) end
 
+local DOOR_CLASSES = { func_door = true, func_door_rotating = true, prop_door_rotating = true }
+
+local function IsDoor(ent)
+	return DOOR_CLASSES[ent:GetClass()] == true
+end
+
 -- Two entities that no longer collide, in physics or in an engine NPC's
 -- movement checks (CTraceFilterNav skips pairs in the engine's collision
 -- pair table, which logic_collision_pair fills, as Sandbox's No Collide
@@ -110,8 +116,9 @@ function Soldier:RequestRoute(goal)
 	local ticket, goalPos, npcs = self.ticket, ToVector(goal), WETSAND.Feature("npc")
 	local start = self.ent:GetPos()
 	local controller = self.controller
+	local team = self.team
 	npcs:RequestRoute({
-		avoid = function(area) return controller:UnderCart(area) end,
+		avoid = function(area) return controller:UnderCart(area) or controller:ShutDoorIn(area, team) end,
 		from = start,
 		to = goalPos,
 		strategy = HL2Path,
@@ -241,6 +248,11 @@ local DETOUR_CLEARANCE = 40
 function Soldier:Detour(p)
 	local blocker, playersPass = self:Blocker(p)
 	if not blocker or blocker:IsWorld() or blocker:IsPlayer() or playersPass then return nil end
+	-- a shut door is no prop to walk round: routes keep off it for a while
+	if IsDoor(blocker) then
+		self.controller:NoteShutDoor(blocker, self.team)
+		return nil
+	end
 	local mins, maxs = blocker:WorldSpaceAABB()
 	local center = (mins + maxs) / 2
 	local reach = math.max(maxs.x - mins.x, maxs.y - mins.y) / 2 + DETOUR_CLEARANCE
@@ -551,6 +563,7 @@ end
 -- stage's), and their orders start over.
 function Controller:RespawnAll()
 	self.gates = nil
+	self.shutDoors = nil
 	self.zones = nil
 	self.postCache = nil
 	self.losers = nil
@@ -616,12 +629,7 @@ end
 -- setup gate beyond a spawn door, or the spawn exit on maps whose exits
 -- are the gates. Found once per round.
 
-local DOOR_CLASSES = { func_door = true, func_door_rotating = true, prop_door_rotating = true }
 local DOOR_TRACE_LIFT = Vector(0, 0, 36)
-
-local function IsDoor(ent)
-	return DOOR_CLASSES[ent:GetClass()] == true
-end
 
 -- The last door along the waypoints, where the route passes it.
 function Controller:GateAlong(points)
@@ -781,6 +789,40 @@ function Controller:SetupZone(team)
 		self.zones[team] = cached
 	end
 	return cached.zone
+end
+
+-- Doors that stayed shut --------------------------------------------------------------------
+-- A door a soldier ran into and could not open, whatever the blockers made
+-- of it (a trigger that ignores NPCs, map logic yet to open it): its team's
+-- routes keep off the areas under it for SHUT_DOOR_MEMORY seconds, then
+-- try it again.
+local SHUT_DOOR_MEMORY = 20
+local SHUT_DOOR_FLOOR = Vector(0, 0, 32)
+
+function Controller:NoteShutDoor(door, team)
+	self.shutDoors = self.shutDoors or {}
+	local noted = self.shutDoors[door]
+	if not noted then
+		local mins, maxs = door:WorldSpaceAABB()
+		local areas = {}
+		for _, area in ipairs(navmesh.FindInBox(mins - SHUT_DOOR_FLOOR, maxs)) do areas[area:GetID()] = true end
+		noted = { areas = areas, untilFor = {} }
+		self.shutDoors[door] = noted
+	end
+	noted.untilFor[team] = CurTime() + SHUT_DOOR_MEMORY
+end
+
+function Controller:ShutDoorIn(area, team)
+	if not self.shutDoors then return false end
+	local now, id = CurTime(), area:GetID()
+	for door, noted in pairs(self.shutDoors) do
+		if not IsValid(door) then
+			self.shutDoors[door] = nil
+		elseif noted.areas[id] and now < (noted.untilFor[team] or 0) then
+			return true
+		end
+	end
+	return false
 end
 
 -- Posts: where soldiers establish their line ----------------------------------------------
@@ -1071,6 +1113,12 @@ local function DescribeBlocker(blocker)
 			tostring(blocker:GetInternalVariable("m_iSolidity")), tostring(blocker:GetInternalVariable("m_iszExcludedClass")),
 			tostring(blocker:GetInternalVariable("m_bInvertExclusion")))
 	end
+	local door = IsDoor(blocker) and WETSAND.Feature("npc"):DoorState(blocker)
+	if door then
+		local opener = door.controlled and ("a trigger" .. (door.owner and (" for " .. (TEAM_LABEL[door.owner] or door.owner)) or "")) or "none"
+		local routes = door.blocks == nil and "open" or door.blocks == "any" and "closed to everyone" or ("closed to " .. (TEAM_LABEL[door.blocks] or door.blocks))
+		text = text .. string.format(" (%s, opened by %s, routes: %s)", door.closed and "shut" or "open", opener, routes)
+	end
 	return text
 end
 
@@ -1207,6 +1255,7 @@ hook.Add("PostCleanupMap", "wetsand_aiwar", function()
 	Controller:SetForcefieldsPassable(true)
 	Controller.gates = nil
 	Controller.zones = nil
+	Controller.shutDoors = nil
 	Controller.postCache = nil
 	Controller.war:ResetWaves()
 end)
