@@ -204,6 +204,17 @@ T.test("a wander spot out of sight, rooms away behind the gates, is reached by a
 	T.eq(npc:State().wandering, true, "still wandering")
 end)
 
+T.test("a far goal is reached by a route even when the line to it looks clear", function()
+	local spot = P(1000, 0)
+	local me, npc = Enlist({ role = AiWar.ESCORT, field = SetupField({}), wanderSpots = { spot }, walkable = function() return true end })
+	Tick(me, npc, 3)
+	T.eq(#me.requests, 1, "a route searched")
+	local near = P(100, 0)
+	local me2, npc2 = Enlist({ role = AiWar.ESCORT, field = SetupField({}), wanderSpots = { near }, walkable = function() return true end })
+	Tick(me2, npc2, 3)
+	T.eq(#me2.requests, 0, "a spot close by and in sight is walked to straight")
+end)
+
 T.test("a wander spot not reached in time is given up for another", function()
 	local spots = { P(100, 0), P(0, 150) }
 	local me, npc = Enlist({ role = AiWar.ESCORT, field = SetupField({}), wanderSpots = spots })
@@ -411,13 +422,13 @@ T.test("a pusher at the cart keeps to its spot as the cart moves, without search
 	T.eq(me.moving, nil, "caught up: left to the engine")
 end)
 
-T.test("a soldier that can walk straight to its goal chases it without waiting on a route", function()
-	local me, npc, war = Enlist({ role = AiWar.PUSH, routeDelay = 100, walkable = function() return true end })
+T.test("a soldier near its goal that can walk straight to it chases it without waiting on a route", function()
+	local me, npc, war = Enlist({ role = AiWar.PUSH, routeDelay = 100, pos = P(900, 0), walkable = function() return true end })
 	Tick(me, npc, 2)
 	Near(me.moving, PushSpot(1000), "straight at the cart")
-	war:SetField(Field({ carts = { [BLUE] = Cart(1200) } }))
+	war:SetField(Field({ carts = { [BLUE] = Cart(1100) } }))
 	Tick(me, npc)
-	Near(me.moving, PushSpot(1200), "follows it as it moves")
+	Near(me.moving, PushSpot(1100), "follows it as it moves")
 end)
 
 T.test("a soldier chasing a goal it keeps closing on is not stuck, however far the goal moves", function()
