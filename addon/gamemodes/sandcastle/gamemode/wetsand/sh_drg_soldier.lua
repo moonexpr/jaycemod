@@ -29,6 +29,11 @@ function WETSAND.DrgSoldier(ENT, baseName)
 	-- enemy so it can fight (a soldier holding its ground): true when it has
 	-- a target.
 	function ENT:WetsandSteer(enemy)
+		-- riding the cart: the controller carries it; it only turns to fight
+		if self.WetsandSeated then
+			if IsValid(enemy) then self:FaceTowards(enemy) end
+			return true
+		end
 		local target = self.WetsandTarget
 		if not target then return false end
 		if self:GetPos():DistToSqr(target) > GOAL_TOLERANCE * GOAL_TOLERANCE then
@@ -168,6 +173,12 @@ function WETSAND.DrgSoldier(ENT, baseName)
 		end
 		self.WetsandDamageScale = kit.damage
 		self.RunSpeed = kit.runSpeed
+	end
+
+	-- Seated on the cart: the sitting pose, whatever DrGBase would play.
+	function ENT:OnUpdateAnimation()
+		if self.WetsandSeated then return ACT_HL2MP_SIT, 1 end
+		return Base().OnUpdateAnimation(self)
 	end
 
 	function ENT:OnDealtDamage()

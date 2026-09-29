@@ -148,6 +148,19 @@ function Soldier:UseGadget(p)
 	return self.gadget
 end
 
+-- health, maxHealth: default 100 each.
+function Soldier:Health() return self.health or 100 end
+function Soldier:MaxHealth() return self.maxHealth or 100 end
+
+-- seats: whether Sit finds a seat (default true); seated: sitting now.
+function Soldier:Sit()
+	if self.seats == false then return false end
+	self.seated = true
+	return true
+end
+function Soldier:Stand() self.seated = false end
+function Soldier:IsSeated() return self.seated == true end
+
 -- disarmed: my side is humiliated.
 function Soldier:IsDisarmed() return self.disarmed == true end
 

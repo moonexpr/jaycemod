@@ -211,6 +211,7 @@ local function EnemyCart(field, member) return field.carts[AiWar.EnemyOf(member.
 ROLES = {
 	[AiWar.PUSH] = {
 		name = "Push",
+		sits = true,
 		arrive = PUSH_ARRIVE,
 		leash = PUSH_LEASH,
 		rushes = true,
@@ -849,6 +850,15 @@ function Objective:Update(me)
 		end
 	end
 	state.goal = goal
+	-- a pusher at its cart sits on it, where a seat is free (the port's Sit),
+	-- and rides it until it must get off
+	if self.role.sits then
+		if me:IsSeated() then
+			state.tactic = "riding the cart"
+			return self:Continue()
+		end
+		if range <= self.role.arrive and me:Sit() then return self:Continue() end
+	end
 	-- at the cart: keep to the spot as the cart carries it off
 	if self.role.rushes and range <= self.role.arrive then
 		if range > STATION and me:CanWalkTo(goal) then me:MoveTo(goal, RUSH) else me:Release() end
@@ -1168,6 +1178,7 @@ function Humiliated:Init(state) self.state = state end
 
 function Humiliated:OnStart(me)
 	StopFollowing(self.state, me)
+	me:Stand()
 	me:Release()
 	return self:Continue()
 end
@@ -1182,10 +1193,89 @@ function Humiliated:ShouldHurry(me) return N.ANSWER_YES end
 
 -- TacticalMonitor: what keeps the soldier alive comes before its squad and
 -- its job.
+-- RetreatToCover (CTFBotRetreatToCover): a soldier hurt badly (under
+-- RETREAT_HEALTH of its most) or hard (RETREAT_BURST of its most in the
+-- last RETREAT_WINDOW seconds) gets off the cart and runs to cover from its
+-- threat (else RETREAT_DISTANCE away from it), and stays there until healed
+-- back to RETREAT_RECOVER (its medics come to the most hurt) or RETREAT_TIME
+-- passes; then back to its squad and job, and no retreat for
+-- RETREAT_COOLDOWN.
+RETREAT_HEALTH, RETREAT_BURST, RETREAT_WINDOW = 0.35, 0.4, 3
+RETREAT_RECOVER, RETREAT_TIME, RETREAT_COOLDOWN = 0.7, 12, 8
+RETREAT_DISTANCE, RETREAT_COVER = 400, 480
+
+local function HealthShare(me)
+	return me:Health() / max(me:MaxHealth(), 1)
+end
+
+local RetreatToCover = N.Action:Extend("RetreatToCover")
+
+function RetreatToCover:Init(state) self.state = state end
+
+function RetreatToCover:OnStart(me)
+	local state, now = self.state, me:Now()
+	me:Stand()
+	StopFollowing(state, me)
+	self.untilAt = now + RETREAT_TIME
+	local contact = state.member.fireTeam and Tactics.Contact(state.member.fireTeam, now)
+	local threat = me:EnemyPosition() or (contact and contact.pos)
+	if threat then
+		self.spot = me:CoverSpot(me:Position(), RETREAT_COVER, threat) or Behind(me:Position(), threat, RETREAT_DISTANCE)
+	end
+	state.retreats = (state.retreats or 0) + 1
+	return self:Continue()
+end
+
+function RetreatToCover:Update(me)
+	local state, now = self.state, me:Now()
+	if HealthShare(me) >= RETREAT_RECOVER or now >= self.untilAt then
+		state.retreatReadyAt = now + RETREAT_COOLDOWN
+		state.hurtLog = {}
+		return self:Done("recovered")
+	end
+	state.tactic = "retreating to cover"
+	state.goal = self.spot
+	if self.spot and me:RangeTo(self.spot) > SPOT_ARRIVE then me:MoveTo(self.spot, RUN) else me:Hold() end
+	return self:Continue()
+end
+
+function RetreatToCover:ShouldHurry(me) return N.ANSWER_YES end
+
+-- TacticalMonitor: what keeps the soldier alive comes before its squad and
+-- its job: humiliation, then retreat, which what it runs may refuse
+-- (ShouldRetreat NO).
 local TacticalMonitor = Monitor("TacticalMonitor", function(state) return SquadMonitor:New(state) end)
 
+-- The damage it took, kept for RETREAT_WINDOW (OnInjured, from DrGBase).
+function TacticalMonitor:OnInjured(me, attacker, amount)
+	local log = self.state.hurtLog or {}
+	log[#log + 1] = { at = me:Now(), amount = amount or 0 }
+	self.state.hurtLog = log
+	return self:TryContinue()
+end
+
+local function RecentDamage(state, now)
+	local total, kept = 0, {}
+	for _, hurt in ipairs(state.hurtLog or {}) do
+		if now - hurt.at <= RETREAT_WINDOW then
+			total = total + hurt.amount
+			kept[#kept + 1] = hurt
+		end
+	end
+	state.hurtLog = kept
+	return total
+end
+
 function TacticalMonitor:Update(me)
-	if me:IsDisarmed() then return self:SuspendFor(Humiliated:New(self.state), "humiliated") end
+	local state, now = self.state, me:Now()
+	if me:IsDisarmed() then return self:SuspendFor(Humiliated:New(state), "humiliated") end
+	if now >= (state.retreatReadyAt or 0) then
+		local badly = HealthShare(me) < RETREAT_HEALTH
+		local hard = RecentDamage(state, now) >= RETREAT_BURST * me:MaxHealth()
+		if (badly or hard) and self:QueryBelow(me, "ShouldRetreat") ~= N.ANSWER_NO then
+			return self:SuspendFor(RetreatToCover:New(state), badly and "badly hurt" or "hurt hard")
+		end
+	end
 	return self:Continue()
 end
 
@@ -1199,6 +1289,8 @@ local StrategyMonitor = Monitor("StrategyMonitor", function(state) return Tactic
 function StrategyMonitor:Update(me)
 	local member = self.state.member
 	self.state.job = member.role
+	-- only a pusher rides its cart
+	if member.role ~= AiWar.PUSH and me:IsSeated() then me:Stand() end
 	member.pos = me:Position()
 	member.enemy = me:HasEnemy() and me:Enemy() or nil
 	return self:Continue()

@@ -8,6 +8,10 @@
 --   IsAlive()
 --   IsDisarmed() -> my side lost the round and I may not attack (TF2's
 --     humiliation)
+--   Health(), MaxHealth() -> my health and its most
+--   Sit() -> whether I now sit on my side's cart (I am beside it and a seat
+--     is free; asking again keeps me there); Stand(): get off it, beside it;
+--     IsSeated() -> whether I sit on it
 --   Position() -> my origin
 --   RangeTo(p) -> the distance from my origin to p
 --   HasEnemy() -> I have an enemy in sight (the engine's COND_SEE_ENEMY)
@@ -68,6 +72,11 @@ METHODS = {
 	"Now",
 	"IsAlive",
 	"IsDisarmed",
+	"Health",
+	"MaxHealth",
+	"Sit",
+	"Stand",
+	"IsSeated",
 	"Position",
 	"RangeTo",
 	"HasEnemy",

@@ -356,6 +356,29 @@ function Behavior:Query(me, name, ...)
 	return ANSWER_UNDEFINED
 end
 
+-- The same query, asked only of the actions this one contains: from its
+-- innermost active child out, stopping before this action itself (a
+-- monitor asking what it runs, as CTFBotTacticalMonitor asks ShouldRetreat).
+function Action:QueryBelow(me, name, ...)
+	local action = self._child
+	if action == nil then return ANSWER_UNDEFINED end
+	while action._child do action = action._child end
+	while action and action ~= self do
+		local container = action._parent
+		local current = action
+		while current do
+			local handler = current[name]
+			if handler then
+				local answer = handler(current, me, ...)
+				if answer ~= nil and answer ~= ANSWER_UNDEFINED then return answer end
+			end
+			current = current._buried
+		end
+		action = container
+	end
+	return ANSWER_UNDEFINED
+end
+
 -- ~Behavior: the actions end, if the behavior ever ran.
 function Behavior:Destroy()
 	if self.me and self.action then

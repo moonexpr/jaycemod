@@ -370,6 +370,50 @@ T.test("a medic out of reach closes in before its beam goes on", function()
 	Near(me.moving, P(2000 - Orders.MEDIC_STANDOFF, 0), "to its standoff")
 end)
 
+-- Riding the cart and retreating
+
+T.test("a pusher at its cart sits on it, and gets off when it takes another job", function()
+	local me, npc, _, member = Enlist({ role = AiWar.PUSH })
+	me.pos = Orders.Goal(Field({}), { team = BLUE, role = AiWar.PUSH, slot = 0 })
+	Tick(me, npc, 2)
+	T.eq(me.seated, true, "sitting on the cart")
+	T.eq(npc:State().tactic, "riding the cart", "riding")
+	member.role = AiWar.ESCORT
+	Tick(me, npc)
+	T.eq(me.seated, false, "off it")
+end)
+
+T.test("a soldier badly hurt gets off the cart and retreats to cover, until healed", function()
+	local cover = P(700, 0)
+	local me, npc = Enlist({ role = AiWar.PUSH, covers = { cover }, enemyPos = P(1400, 0) })
+	me.pos = Orders.Goal(Field({}), { team = BLUE, role = AiWar.PUSH, slot = 0 })
+	Tick(me, npc, 2)
+	T.eq(me.seated, true, "riding")
+	me.health = 30
+	Tick(me, npc)
+	T.eq(npc:Describe(), "SoldierAction/StrategyMonitor/RetreatToCover", "retreating, its squad and job waiting")
+	T.eq(me.seated, false, "off the cart")
+	Tick(me, npc)
+	Near(me.moving, cover, "to cover from the threat")
+	T.eq(npc:Query("ShouldHurry"), N.ANSWER_YES, "running")
+	me.health = 75
+	Tick(me, npc, 2)
+	T.eq(Orders.JobOf(npc:Describe()) ~= nil, true, "healed: back to its job")
+	me.health = 30
+	Tick(me, npc)
+	T.eq(Orders.JobOf(npc:Describe()) ~= nil, true, "not again before RETREAT_COOLDOWN")
+end)
+
+T.test("a soldier hurt hard in a moment retreats even with health left", function()
+	local me, npc = Enlist({ role = AiWar.DEFEND, team = RED, enemyPos = P(1400, 0) })
+	Tick(me, npc)
+	npc:Event("OnInjured", "attacker", 25)
+	npc:Event("OnInjured", "attacker", 20)
+	me.health = 55
+	Tick(me, npc)
+	T.eq(npc:Describe(), "SoldierAction/StrategyMonitor/RetreatToCover", "45 of 100 in a moment")
+end)
+
 -- Squads
 
 -- Two soldiers of one role in one squad of one war: a (older) and b.
@@ -661,6 +705,7 @@ end)
 
 T.test("a soldier that reaches its goal stops travelling and holds", function()
 	local me, npc = Enlist({ role = AiWar.PUSH })
+	me.seats = false -- no free seat on the cart
 	Tick(me, npc, 2)
 	me.pos = Orders.Goal(Field({}), { team = BLUE, role = AiWar.PUSH, slot = 0 })
 	Tick(me, npc)
@@ -779,6 +824,7 @@ end
 
 T.test("a pusher at the cart keeps to its spot as the cart moves, without searching", function()
 	local me, npc, war = Enlist({ role = AiWar.PUSH, walkable = function() return true end })
+	me.seats = false -- no free seat on the cart
 	me.pos = PushSpot(1000)
 	Tick(me, npc)
 	T.eq(me.moving, nil, "in place: left to the engine")

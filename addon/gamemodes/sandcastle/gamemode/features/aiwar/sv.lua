@@ -92,6 +92,72 @@ function Soldier:Heal(handle)
 	self.healTarget = handle
 end
 function Soldier:IsDisarmed() return self.disarmed == true end
+function Soldier:Health() return self.ent:Health() end
+function Soldier:MaxHealth() return self.ent:GetMaxHealth() end
+
+-- Riding the cart: SEATS_PER_CART seats on top of each cart, SEAT_SPREAD
+-- either side of its middle, taken by a soldier within SEAT_REACH of the
+-- cart's edge. A seated soldier is carried along by the controller's tick
+-- (Controller:CarrySeated), sits (wetsand_drg_soldier's WetsandSeated pose)
+-- and fights from there; it gets off beside the cart (EjectFromCart).
+local SEATS_PER_CART, SEAT_SPREAD, SEAT_REACH = 2, 16, 72
+
+function Soldier:IsSeated() return self.seat ~= nil end
+
+function Soldier:Sit()
+	if self.seat then return true end
+	local controller = self.controller
+	local train = controller.cartEntities and controller.cartEntities[self.team]
+	if not IsValid(train) then return false end
+	local mins, maxs = train:WorldSpaceAABB()
+	for _, child in ipairs(train:GetChildren()) do
+		-- the cart's model rides it too; its triggers (capture area, kill
+		-- trigger) are not what one sits on
+		if IsValid(child) and child:GetSolid() ~= SOLID_NONE and bit.band(child:GetSolidFlags(), FSOLID_TRIGGER) == 0 then
+			local _, cMaxs = child:WorldSpaceAABB()
+			maxs.z = math.max(maxs.z, cMaxs.z)
+		end
+	end
+	local center = (mins + maxs) / 2
+	local pos = self.ent:GetPos()
+	if math.abs(pos.x - center.x) > (maxs.x - mins.x) / 2 + SEAT_REACH
+		or math.abs(pos.y - center.y) > (maxs.y - mins.y) / 2 + SEAT_REACH then
+		return false
+	end
+	controller.seats = controller.seats or {}
+	local seats = controller.seats[train] or {}
+	controller.seats[train] = seats
+	for index = 1, SEATS_PER_CART do
+		local holder = seats[index]
+		if not (IsValid(holder) and controller.soldiers[holder] and controller.soldiers[holder].soldier.seat) then
+			local side = index % 2 == 1 and 1 or -1
+			local seatPos = Vector(center.x, center.y, maxs.z + 1) + train:GetRight() * (side * SEAT_SPREAD)
+			seats[index] = self.ent
+			self.seat = { train = train, index = index, side = side, offset = train:WorldToLocal(seatPos) }
+			self.moveTarget = nil
+			self.ent.WetsandTarget = nil
+			self.ent.WetsandSeated = true
+			self.seatGroup = self.ent:GetCollisionGroup()
+			self.ent:SetCollisionGroup(COLLISION_GROUP_DEBRIS)
+			return true
+		end
+	end
+	return false
+end
+
+function Soldier:Stand()
+	local seat = self.seat
+	if not seat then return end
+	self.seat = nil
+	local controller = self.controller
+	local seats = controller.seats and controller.seats[seat.train]
+	if seats and seats[seat.index] == self.ent then seats[seat.index] = nil end
+	if not IsValid(self.ent) then return end
+	self.ent.WetsandSeated = nil
+	self.ent:SetCollisionGroup(self.seatGroup or COLLISION_GROUP_NPC)
+	local entry = controller.soldiers[self.ent]
+	if entry and IsValid(seat.train) then controller:EjectFromCart(self.ent, entry, seat.train, true) end
+end
 function Soldier:IsAlive() return IsValid(self.ent) and self.ent:Health() > 0 end
 function Soldier:Position() return Point(self.ent:GetPos()) end
 function Soldier:RangeTo(p) return self.ent:GetPos():Distance(ToVector(p)) end
@@ -214,6 +280,7 @@ function Soldier:PlansRoutes() return true end
 function Soldier:RouteStale() return false end
 
 function Soldier:MoveTo(p, gait)
+	if self.seat then self:Stand() end
 	self.moveTarget = p
 	self.gait = gait or "run"
 	self.ent.WetsandTarget = OnFloor(ToVector(p))
@@ -865,6 +932,7 @@ end
 function Controller:Discharge(ent)
 	local entry = self.soldiers[ent]
 	if not entry then return end
+	entry.soldier:Stand()
 	self.soldiers[ent] = nil
 	if IsValid(ent) then ent.WetsandBrain = nil end
 	self:TellKilled(ent, entry)
@@ -1140,7 +1208,8 @@ function Controller:CartTrigger(dmg)
 	return nil
 end
 
-function Controller:EjectFromCart(ent, entry, train)
+-- quiet: getting off after a ride, not a rescue (not counted).
+function Controller:EjectFromCart(ent, entry, train, quiet)
 	local mins, maxs = train:WorldSpaceAABB()
 	local center = (mins + maxs) / 2
 	local out = ent:GetPos() - center
@@ -1158,7 +1227,7 @@ function Controller:EjectFromCart(ent, entry, train)
 		local spot = IsValid(area) and area:GetClosestPointOnArea(candidate) or candidate
 		if spot:Distance2D(center) >= radius - 8 and Clear(spot) then
 			ent:SetPos(spot + SPAWN_LIFT)
-			entry.soldier.cartRescues = (entry.soldier.cartRescues or 0) + 1
+			if not quiet then entry.soldier.cartRescues = (entry.soldier.cartRescues or 0) + 1 end
 			return true
 		end
 	end
@@ -1784,6 +1853,8 @@ function Controller:Describe(ent, entry)
 	end
 	if state.cleared then lines[#lines + 1] = "Raid: round the enemy's line" end
 	if soldier.cartRescues then lines[#lines + 1] = "Pulled out of a cart: " .. soldier.cartRescues .. " time(s)" end
+	if soldier.seat then lines[#lines + 1] = "Riding: seat " .. soldier.seat.index .. " on its cart" end
+	if state.retreats then lines[#lines + 1] = "Retreated: " .. state.retreats .. " time(s)" end
 	if state.hops then lines[#lines + 1] = "Hops: " .. state.hops end
 	if state.passed then lines[#lines + 1] = "Let through: " .. state.passed .. " NPC-only blocker(s)" end
 	local blocked = self:BlockedBy(soldier)
@@ -2022,10 +2093,24 @@ function Controller:ApplyHeal(ent, entry, dt)
 	end
 end
 
+-- A seated soldier rides its seat: moved with the cart every tick, facing
+-- out over its side; a cart gone, it stands.
+function Controller:CarrySeated(ent, soldier)
+	local seat = soldier.seat
+	if not IsValid(seat.train) then
+		soldier:Stand()
+		return
+	end
+	ent:SetPos(seat.train:LocalToWorld(seat.offset))
+	ent:SetAngles(Angle(0, seat.train:GetAngles().y + 90 * seat.side, 0))
+	if ent.loco then ent.loco:SetVelocity(vector_origin) end
+end
+
 hook.Add("Tick", "wetsand_aiwar_move", function()
 	if not Controller.war then return end
 	local dt = engine.TickInterval()
 	for ent, entry in pairs(Controller.soldiers) do
+		if IsValid(ent) and entry.soldier.seat then Controller:CarrySeated(ent, entry.soldier) end
 		if IsValid(ent) then
 			if entry.soldier.moveTarget then entry.soldier:Move(dt) end
 			if entry.soldier.healTarget or IsValid(ent:GetNW2Entity("WetsandHealing")) then Controller:ApplyHeal(ent, entry, dt) end
@@ -2050,7 +2135,8 @@ hook.Add("EntityTakeDamage", "wetsand_aiwar", function(target, dmg)
 	if soldier then
 		local train = Controller:CartTrigger(dmg)
 		if train then
-			Controller:EjectFromCart(target, soldier, train)
+			-- a rider sits over the cart's kill trigger: no harm, no rescue
+			if not soldier.soldier.seat then Controller:EjectFromCart(target, soldier, train) end
 			return true
 		end
 	end
