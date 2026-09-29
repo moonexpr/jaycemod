@@ -934,6 +934,12 @@ function SoldierBehavior:Update(me)
 	return self:Continue()
 end
 
+-- The humiliated hold their fire, whatever their orders.
+function SoldierBehavior:ShouldAttack(me, them)
+	if me:IsDisarmed() then return N.ANSWER_NO end
+	return N.ANSWER_UNDEFINED
+end
+
 -- config = { war (foundation.aiwar War), member (its roster entry) }
 function NewState(config, me)
 	return { war = config.war, member = config.member }

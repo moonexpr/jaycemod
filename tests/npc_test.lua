@@ -430,6 +430,63 @@ end)
 
 -- Timers (util_shared.h)
 
+-- Queries
+
+-- A query probe: answers ShouldAttack with `answer` (nil: no method) and
+-- logs that it was asked.
+local function Answering(name, answer, script)
+	local class = Probe(name, script)
+	if answer ~= nil then
+		function class:ShouldAttack(me, them)
+			Log(name .. ":ShouldAttack")
+			return answer
+		end
+	end
+	return class
+end
+
+T.test("a query asks the innermost child first, then what it buries, then its container", function()
+	local me = Setup()
+	local Top = Answering("Top", N.ANSWER_UNDEFINED)
+	local Buried = Answering("Buried", N.ANSWER_UNDEFINED, { Update = function(self) return self:SuspendFor(Top:New(), "cover") end })
+	local Outer = Answering("Outer", N.ANSWER_YES, { child = function() return Buried:New() end })
+	local b = Behavior:New(Outer:New(), "test")
+	b:Update(me, 0.1)
+	b:Update(me, 0.1)
+	log = {}
+	T.eq(b:Query(me, "ShouldAttack", "them"), N.ANSWER_YES, "the container answers")
+	Expect({ "Top:ShouldAttack", "Buried:ShouldAttack", "Outer:ShouldAttack" }, "innermost, buried, container")
+end)
+
+T.test("the first defined answer wins, and nothing defined is undefined", function()
+	local me = Setup()
+	local Inner = Answering("Inner", N.ANSWER_NO)
+	local Outer = Answering("Outer", N.ANSWER_YES, { child = function() return Inner:New() end })
+	local b = Behavior:New(Outer:New(), "test")
+	b:Update(me, 0.1)
+	log = {}
+	T.eq(b:Query(me, "ShouldAttack"), N.ANSWER_NO, "the inner NO outranks the outer YES")
+	Expect({ "Inner:ShouldAttack" }, "the outer is not asked")
+	T.eq(b:Query(me, "ShouldHurry"), N.ANSWER_UNDEFINED, "nobody answers ShouldHurry")
+	T.eq(Behavior:New(nil, "empty"):Query(me, "ShouldAttack"), N.ANSWER_UNDEFINED, "an empty behavior")
+end)
+
+T.test("a group passes an event to each member once, in the order they joined", function()
+	local seen = {}
+	local function Member(name) return { Event = function(_, event, arg) seen[#seen + 1] = name .. ":" .. event .. ":" .. arg end } end
+	local a, b = Member("a"), Member("b")
+	local group = N.Group.New()
+	group:Add(a)
+	group:Add(b)
+	group:Add(a)
+	group:Event("OnCommandApproach", "x")
+	T.eq(table.concat(seen, " "), "a:OnCommandApproach:x b:OnCommandApproach:x", "each once")
+	group:Remove(a)
+	seen = {}
+	group:Event("OnCommandPause", "y")
+	T.eq(table.concat(seen, " "), "b:OnCommandPause:y", "a left")
+end)
+
 T.test("an unstarted countdown has elapsed; a started one elapses after its duration", function()
 	local clock = Fake.Clock(10)
 	local t = N.CountdownTimer(clock)

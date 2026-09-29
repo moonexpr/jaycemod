@@ -84,6 +84,7 @@ function Soldier.New(ent, controller, team)
 end
 
 function Soldier:Now() return CurTime() end
+function Soldier:IsDisarmed() return self.disarmed == true end
 function Soldier:IsAlive() return IsValid(self.ent) and self.ent:Health() > 0 end
 function Soldier:Position() return Point(self.ent:GetPos()) end
 function Soldier:RangeTo(p) return self.ent:GetPos():Distance(ToVector(p)) end
@@ -473,7 +474,7 @@ function GADGETS.manhack(soldier)
 end
 
 function Soldier:UseGadget(p)
-	if not self.kit or not self.kit.gadgets or self.ent.WetsandDisarmed then return nil end
+	if not self.kit or not self.kit.gadgets or self.disarmed then return nil end
 	local target = ToVector(p)
 	for _, name in ipairs(self.kit.gadgets) do
 		if GADGETS[name](self, target) then return name end
@@ -666,19 +667,19 @@ end
 
 -- Humiliation ------------------------------------------------------------------------
 -- TF2's losers cannot attack while the winners celebrate (for players,
--- WETSAND.RestrictCommand). A losing soldier stops firing
--- (wetsand_drg_soldier's WetsandDisarmed) and fears its enemies: DrGBase
--- keeps away from what it fears. The winners hunt them.
+-- WETSAND.RestrictCommand). A losing soldier stops firing (the port's
+-- IsDisarmed, which its orders answer ShouldAttack with) and fears its
+-- enemies: DrGBase keeps away from what it fears. The winners hunt them.
 function Controller:Disarm(ent, entry)
 	if entry.disarmed then return end
 	entry.disarmed = true
-	ent.WetsandDisarmed = true
+	entry.soldier.disarmed = true
 end
 
 function Controller:Rearm(ent, entry)
 	if not entry.disarmed then return end
 	entry.disarmed = nil
-	ent.WetsandDisarmed = nil
+	entry.soldier.disarmed = nil
 end
 
 -- losers: the team humiliated, or nil for none.
@@ -714,6 +715,8 @@ function Controller:Enlist(ent, team, drafted)
 		soldier = soldier,
 		npc = NpcSystem.Npc.New(Orders, { war = self.war, member = member }, soldier),
 	}
+	-- DrGBase's hooks ask and tell the orders (wetsand_drg_soldier's bridge)
+	ent.WetsandBrain = self.soldiers[ent].npc
 	WETSAND.SetTeamMember(ent, team)
 	self:RelateSoldiers(ent, team)
 	self:PassTeammates(ent, team)
@@ -787,10 +790,26 @@ function Controller:Equip(ent, entry, member)
 	ent:WetsandKit(kit)
 end
 
+-- A soldier died: OnOtherKilled(victim, its team) to every soldier within
+-- OTHER_KILLED_RANGE (TF2's tactical monitor hears of every death).
+local OTHER_KILLED_RANGE = 1500
+
+function Controller:TellKilled(ent, entry)
+	if not IsValid(ent) or ent:Health() > 0 then return end
+	local pos = ent:GetPos()
+	for other, otherEntry in pairs(self.soldiers) do
+		if IsValid(other) and other:GetPos():DistToSqr(pos) <= OTHER_KILLED_RANGE * OTHER_KILLED_RANGE then
+			otherEntry.npc:Event("OnOtherKilled", ent, entry.soldier.team)
+		end
+	end
+end
+
 function Controller:Discharge(ent)
 	local entry = self.soldiers[ent]
 	if not entry then return end
 	self.soldiers[ent] = nil
+	if IsValid(ent) then ent.WetsandBrain = nil end
+	self:TellKilled(ent, entry)
 	self:SweepGadgets(ent)
 	entry.soldier:Unpose()
 	entry.soldier:RemoveScript()

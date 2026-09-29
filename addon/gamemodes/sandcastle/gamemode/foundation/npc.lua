@@ -7,7 +7,7 @@
 -- InitialAction(state), and optionally FilterDamage(state, damageEvent,
 -- actor) and Cull(liveStates). Actions receive the actor as `me`.
 local error, ipairs, setmetatable = error, ipairs, setmetatable
-local concat = table.concat
+local concat, remove = table.concat, table.remove
 module(...)
 
 -- ActionResultType
@@ -15,6 +15,11 @@ CONTINUE, CHANGE_TO, SUSPEND_FOR, DONE, SUSTAIN = 0, 1, 2, 3, 4
 
 -- EventResultPriorityType
 RESULT_NONE, RESULT_TRY, RESULT_IMPORTANT, RESULT_CRITICAL = 0, 1, 2, 3
+
+-- QueryResultType (NextBotContextualQueryInterface.h). An action answers a
+-- query by defining a method of the query's name (ShouldAttack(me, them),
+-- ShouldHurry(me), ShouldRetreat(me)...); one without it is undefined.
+ANSWER_NO, ANSWER_YES, ANSWER_UNDEFINED = 0, 1, 2
 
 -- IntervalTimer::GetElapsedTime when unstarted.
 INTERVAL_UNSTARTED = 99999.9
@@ -326,6 +331,31 @@ function Behavior:Event(me, name, ...)
 	self.action:_ProcessEvent(name, ...)
 end
 
+-- Behavior's contextual query (NextBotBehavior.h): from the innermost
+-- active child, ask each action and the actions buried under it, then move
+-- out to the containing action and do the same; the first answer that is
+-- not undefined wins. An answer is anything but nil or ANSWER_UNDEFINED
+-- (SelectMoreDangerousThreat answers with a threat).
+function Behavior:Query(me, name, ...)
+	local action = self.action
+	if action == nil then return ANSWER_UNDEFINED end
+	while action._child do action = action._child end
+	while action do
+		local container = action._parent
+		local current = action
+		while current do
+			local handler = current[name]
+			if handler then
+				local answer = handler(current, me, ...)
+				if answer ~= nil and answer ~= ANSWER_UNDEFINED then return answer end
+			end
+			current = current._buried
+		end
+		action = container
+	end
+	return ANSWER_UNDEFINED
+end
+
 -- ~Behavior: the actions end, if the behavior ever ran.
 function Behavior:Destroy()
 	if self.me and self.action then
@@ -433,6 +463,7 @@ end
 
 function Npc:Update(interval) self.behavior:Update(self.actor, interval) end
 function Npc:Event(name, ...) self.behavior:Event(self.actor, name, ...) end
+function Npc:Query(name, ...) return self.behavior:Query(self.actor, name, ...) end
 function Npc:State() return self.state end
 function Npc:Describe() return self.behavior:Describe() end
 function Npc:IsEmpty() return self.behavior:IsEmpty() end
@@ -457,4 +488,37 @@ function Cull(variant, npcs)
 	local culled = variant.Cull(live)
 	for _, state in ipairs(culled) do state.culled = true end
 	return culled
+end
+
+-------------------------------------------------------------------------------
+-- Group: an event responder over Npcs (CTFBotSquad's contained responders):
+-- an event sent to the group reaches each member, in the order they joined.
+
+Group = {}
+Group.__index = Group
+
+function Group.New()
+	return setmetatable({ members = {} }, Group)
+end
+
+function Group:Add(npc)
+	for _, member in ipairs(self.members) do
+		if member == npc then return end
+	end
+	self.members[#self.members + 1] = npc
+end
+
+function Group:Remove(npc)
+	for i, member in ipairs(self.members) do
+		if member == npc then
+			remove(self.members, i)
+			return
+		end
+	end
+end
+
+function Group:Members() return self.members end
+
+function Group:Event(name, ...)
+	for _, member in ipairs(self.members) do member:Event(name, ...) end
 end

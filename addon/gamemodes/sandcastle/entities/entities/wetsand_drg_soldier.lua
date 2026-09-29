@@ -3,8 +3,8 @@
 -- DrGBase's human AI does (aiming, firing, reloading, chasing and keeping
 -- its distance by weapon) while the war's orders steer it. The controller
 -- (features/aiwar) sets WetsandTarget, a position to go to, WetsandRun,
--- whether to run there, and WetsandDisarmed, whether it may attack (a
--- losing side's humiliation). With a target, the soldier walks it whatever
+-- whether to run there, and WetsandBrain, the orders it asks and tells
+-- (whether to attack, which enemy, what it saw and suffered). With a target, the soldier walks it whatever
 -- else it does, firing on the way at an enemy in sight; without one it is
 -- left to DrGBase: fighting an enemy, else standing.
 -- wetsand_drg_combine and wetsand_drg_rebel are its two sides.
@@ -60,14 +60,71 @@ if SERVER then
 		return self:WetsandSteer(enemy)
 	end
 
-	-- Returning true skips DrGBase's firing: the humiliated do not attack.
+	-- The bridge to the war's orders (docs/aiwar-command.md §6): the
+	-- controller sets WetsandBrain, the soldier's foundation.npc Npc, and
+	-- DrGBase's hooks become its queries and events. DrGBase's own hooks
+	-- that do work (spotting an attacker, reloading) are called through.
+	local Engine -- foundation.npc, required on first use
+
+	local function Brain(self)
+		local brain = self.WetsandBrain
+		if not brain then return nil end
+		Engine = Engine or WETSAND.require("foundation.npc")
+		return brain
+	end
+
+	-- The answer, or nil without a brain (Engine is loaded when it is not nil).
+	local function Ask(self, name, ...)
+		local brain = Brain(self)
+		if not brain then return nil end
+		return brain:Query(name, ...)
+	end
+
+	local function Answered(answer, which)
+		return answer ~= nil and answer == Engine[which]
+	end
+
+	local function Tell(self, name, ...)
+		local brain = Brain(self)
+		if brain then brain:Event(name, ...) end
+	end
+
+	local function Base() return baseclass.Get("drgbase_nextbot_human") end
+
+	-- ShouldAttack NO skips DrGBase's firing (the humiliated).
 	function ENT:OnRangeAttack()
-		if self.WetsandDisarmed then return true end
+		if Answered(Ask(self, "ShouldAttack", self:GetEnemy()), "ANSWER_NO") then return true end
 	end
 
 	function ENT:OnMeleeAttack()
-		if self.WetsandDisarmed then return true end
+		if Answered(Ask(self, "ShouldAttack", self:GetEnemy()), "ANSWER_NO") then return true end
 	end
+
+	-- SelectMoreDangerousThreat: true when a is the one to fight; nil leaves
+	-- DrGBase's order (priority, then range).
+	function ENT:OnFetchEnemy(a, b)
+		local pick = Ask(self, "SelectMoreDangerousThreat", a, b)
+		if pick == a then return true end
+		if pick == b then return false end
+		return nil
+	end
+
+	function ENT:OnTakeDamage(dmg, hitgroup)
+		local result = Base().OnTakeDamage(self, dmg, hitgroup)
+		Tell(self, "OnInjured", dmg:GetAttacker(), dmg:GetDamage())
+		return result
+	end
+
+	function ENT:OnSpotted(ent) Tell(self, "OnSight", ent) end
+	function ENT:OnLost(ent) Tell(self, "OnLostSight", ent) end
+	function ENT:OnNewEnemy(ent) Tell(self, "OnContact", ent) end
+
+	function ENT:OnLastEnemy(ent)
+		Base().OnLastEnemy(self, ent)
+		Tell(self, "OnContactLost", ent)
+	end
+
+	function ENT:OnNavAreaChanged(old, new) Tell(self, "OnNavAreaChanged", old, new) end
 
 	-- The controller's kit for the soldier's role: { weapons (classes to
 	-- hold, the first it carries), avoid (classes not to hold, as a set, when
@@ -115,7 +172,11 @@ if SERVER then
 		return self.WetsandDamageScale
 	end
 
+	-- ShouldHurry, else the controller's gait (WetsandRun), else run at an enemy.
 	function ENT:ShouldRun()
+		local hurry = Ask(self, "ShouldHurry")
+		if Answered(hurry, "ANSWER_YES") then return true end
+		if Answered(hurry, "ANSWER_NO") then return false end
 		if self.WetsandRun ~= nil then return self.WetsandRun end
 		return self:HasEnemy()
 	end

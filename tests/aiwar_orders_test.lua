@@ -166,6 +166,13 @@ T.test("without gates, or once setup ends, defenders hold the track as before", 
 	T.eq(Orders.Goal(SetupField({ GATE }), { team = BLUE, role = AiWar.PUSH, slot = 0 }) ~= nil, true, "attackers unchanged")
 end)
 
+T.test("DrGBase asks the orders whether to attack: the humiliated hold fire", function()
+	local me, npc = Enlist({ role = AiWar.DEFEND, team = RED })
+	T.eq(npc:Query("ShouldAttack", "them"), N.ANSWER_UNDEFINED, "armed: DrGBase decides")
+	me.disarmed = true
+	T.eq(npc:Query("ShouldAttack", "them"), N.ANSWER_NO, "humiliated: no")
+end)
+
 T.test("a route planned before a door shut is planned again", function()
 	local me, npc = Enlist({ role = AiWar.PUSH, field = Field({}) })
 	Tick(me, npc, 3)

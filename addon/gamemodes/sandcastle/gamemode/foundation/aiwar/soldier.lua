@@ -6,6 +6,8 @@
 -- Positions are plain { x, y, z } tables.
 --   Now() -> the time
 --   IsAlive()
+--   IsDisarmed() -> my side lost the round and I may not attack (TF2's
+--     humiliation)
 --   Position() -> my origin
 --   RangeTo(p) -> the distance from my origin to p
 --   HasEnemy() -> I have an enemy in sight (the engine's COND_SEE_ENEMY)
@@ -60,6 +62,7 @@ module(...)
 METHODS = {
 	"Now",
 	"IsAlive",
+	"IsDisarmed",
 	"Position",
 	"RangeTo",
 	"HasEnemy",

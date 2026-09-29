@@ -137,6 +137,9 @@ function Soldier:UseGadget(p)
 	return self.gadget
 end
 
+-- disarmed: my side is humiliated.
+function Soldier:IsDisarmed() return self.disarmed == true end
+
 function Soldier:Hold()
 	self.holding = true
 	self.moving = self.pos
