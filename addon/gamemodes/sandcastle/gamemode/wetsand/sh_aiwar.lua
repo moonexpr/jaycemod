@@ -14,6 +14,18 @@ function WETSAND.AiWarActive()
 end
 
 if SERVER then
+	-- The engine's NextBot:BecomeRagdoll, which leaves a clientside ragdoll,
+	-- taken before DrGBase's entities replace it with one that spawns a
+	-- serverside prop_ragdoll (the gamemode loads before scripted
+	-- entities); only ever the engine's own (a C function), so a Lua
+	-- refresh after DrGBase has loaded keeps what was taken, or takes none.
+	local becomeRagdoll = FindMetaTable("NextBot").BecomeRagdoll
+	if not WETSAND.EngineBecomeRagdoll and debug.getinfo(becomeRagdoll, "S").what == "C" then
+		WETSAND.EngineBecomeRagdoll = becomeRagdoll
+	end
+	CreateConVar("wetsand_aiwar_client_ragdolls", "1", FCVAR_ARCHIVE,
+		"Dead soldiers leave clientside ragdolls (cheap, no physics on the server) rather than DrGBase's serverside ones")
+
 	local function Tell(ply, text)
 		if IsValid(ply) then ply:ChatPrint(text) else print(text) end
 	end

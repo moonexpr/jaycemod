@@ -101,6 +101,16 @@ if SERVER then
 		self.RunSpeed = kit.runSpeed
 	end
 
+	-- Dead, a clientside ragdoll (the engine's NextBot:BecomeRagdoll, kept
+	-- by wetsand/sh_aiwar.lua) while wetsand_aiwar_client_ragdolls is on;
+	-- otherwise, or when the engine's was not kept, DrGBase's serverside one.
+	function ENT:BecomeRagdoll(dmg)
+		local engineRagdoll = WETSAND and WETSAND.EngineBecomeRagdoll
+		local clientside = GetConVar("wetsand_aiwar_client_ragdolls")
+		if engineRagdoll and clientside and clientside:GetBool() then return engineRagdoll(self, dmg or DamageInfo()) end
+		return FindMetaTable("NextBot").BecomeRagdoll(self, dmg)
+	end
+
 	function ENT:OnDealtDamage()
 		return self.WetsandDamageScale
 	end
