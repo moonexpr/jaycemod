@@ -44,8 +44,19 @@ local BUDGET = 0.004 -- seconds of each tick the generation may take
 -- Doors are left out of every trace: a graph links through them whether
 -- they stand open or shut, as HL2's maps do, and the engine finds a door
 -- shut when an NPC walks it.
+-- A door's visible part is often a model parented to an invisible
+-- func_door (a grate, a shutter), so what rides on a door counts as it.
 local DOOR_CLASSES = { func_door = true, func_door_rotating = true, prop_door_rotating = true, func_movelinear = true }
-local function NotDoor(ent) return not DOOR_CLASSES[ent:GetClass()] end
+local PARENT_DEPTH = 4
+
+local function NotDoor(ent)
+	for _ = 1, PARENT_DEPTH do
+		if not IsValid(ent) then return true end
+		if DOOR_CLASSES[ent:GetClass()] then return false end
+		ent = ent:GetParent()
+	end
+	return true
+end
 
 local function Point(v) return { x = v.x, y = v.y, z = v.z } end
 local function ToVector(p) return Vector(p.x, p.y, p.z) end
