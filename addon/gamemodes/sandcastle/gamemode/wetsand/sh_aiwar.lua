@@ -89,6 +89,7 @@ local function BuildPanel(panel)
 	panel:Button("Print Soldier Report", "wetsand_aiwar_report")
 	panel:Help("Trace the soldier you aim at: every question DrGBase asks its orders and every event it tells them, in the server console. Aim at nothing to stop.")
 	panel:Button("Trace Soldier Aimed At", "wetsand_aiwar_trace")
+	panel:CheckBox("Overlay shows the whole action stack", "wetsand_aiwar_debug_full")
 end
 
 -- The soldier overlay (wetsand_aiwar_debug): what the server last sent,

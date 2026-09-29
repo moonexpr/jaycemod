@@ -1727,7 +1727,13 @@ local function SquadLine(member)
 	return string.format("in %s, led by #%s", of, IsValid(handle) and handle:EntIndex() or "?")
 end
 
+-- wetsand_aiwar_debug_full shows the whole action stack instead, one
+-- level per step: SoldierAction > StrategyMonitor > ... > Travel.
+local DEBUG_FULL = CreateConVar("wetsand_aiwar_debug_full", "0", FCVAR_ARCHIVE,
+	"Show each soldier's whole action stack (the monitors too) in the AI war overlay and report")
+
 local function ActionLine(fullName)
+	if DEBUG_FULL:GetBool() then return (fullName:gsub("/", " > ")) end
 	local job, role = Orders.JobOf(fullName)
 	if not job then return fullName end
 	return role .. " …/" .. job
