@@ -15,7 +15,7 @@ ENT.Spawnable = false
 ENT.SpawnHealth = 100
 ENT.WalkSpeed = 90
 ENT.RunSpeed = 220
-ENT.RagdollOnDeath = true
+ENT.RagdollOnDeath = false -- dies into clientside ragdolls (WETSAND.DrgSoldier)
 
 if SERVER then AddCSLuaFile() end
 

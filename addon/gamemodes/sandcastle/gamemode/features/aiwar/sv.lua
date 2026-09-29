@@ -2226,32 +2226,10 @@ hook.Add("Tick", "wetsand_aiwar_move", function()
 	end
 end)
 
--- Serverside ragdolls that still appear while the war runs (DrGBase's,
--- with client ragdolls turned off, or a death DrGBase handles itself):
--- none made by a player; each fades after SERVER_RAGDOLL_LIFE, and past
--- SERVER_RAGDOLL_MAX the oldest goes at once. They cost every client memory.
-local SERVER_RAGDOLL_MAX, SERVER_RAGDOLL_LIFE = 6, 15
-
-function Controller:NoteServerRagdoll(ent)
-	if IsValid(ent:GetCreator()) then return end
-	self.serverRagdolls = self.serverRagdolls or {}
-	local list = self.serverRagdolls
-	for i = #list, 1, -1 do
-		if not IsValid(list[i]) then table.remove(list, i) end
-	end
-	list[#list + 1] = ent
-	ent:Fire("FadeAndRemove", "1", SERVER_RAGDOLL_LIFE)
-	while #list > SERVER_RAGDOLL_MAX do
-		local oldest = table.remove(list, 1)
-		if IsValid(oldest) then oldest:Remove() end
-	end
-end
-
 hook.Add("OnEntityCreated", "wetsand_aiwar", function(ent)
 	if not Controller.war then return end
 	timer.Simple(0, function()
 		if not Controller.war or not IsValid(ent) then return end
-		if ent:GetClass() == "prop_ragdoll" then Controller:NoteServerRagdoll(ent) return end
 		if AiWar.FactionTeam(ent:GetClass()) then Controller:Consider(ent) else Controller:NoteMonster(ent) end
 	end)
 end)

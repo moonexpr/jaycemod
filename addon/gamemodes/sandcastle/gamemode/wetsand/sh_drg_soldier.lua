@@ -24,6 +24,7 @@ end
 
 function WETSAND.DrgSoldier(ENT, baseName)
 	if CLIENT then return end
+	local Ragdoll = WETSAND.require("foundation.npc.ragdoll")
 
 	-- Walks the controller's target, if it has one, or, there, faces the
 	-- enemy so it can fight (a soldier holding its ground): true when it has
@@ -185,25 +186,24 @@ function WETSAND.DrgSoldier(ENT, baseName)
 		return self.WetsandDamageScale
 	end
 
-	-- Dead: while wetsand_aiwar_client_ragdolls is on, no ragdoll on the
-	-- server at all. Every client near is told to make its own from the
-	-- soldier's last pose (wetsand/sh_aiwar.lua), and the soldier is removed
-	-- a moment later, once they have. Off, DrGBase's serverside one.
-	local RAGDOLL_HANDOFF = 0.3
-
-	function ENT:BecomeRagdoll(dmg)
-		local clientside = GetConVar("wetsand_aiwar_client_ragdolls")
-		if clientside and not clientside:GetBool() then return FindMetaTable("NextBot").BecomeRagdoll(self, dmg) end
-		if self.WetsandRagdolled then return NULL end
-		self.WetsandRagdolled = true
-		net.Start("wetsand_soldier_ragdoll")
-		net.WriteEntity(self)
-		net.WriteVector(dmg and dmg:GetDamageForce() or vector_origin)
-		net.SendPVS(self:GetPos())
+	-- Dead: no ragdoll on the server at all (RagdollOnDeath is false, so
+	-- DrGBase only removes the body). DrGBase's death callback, OnDeath, runs
+	-- in its behaviour coroutine: every client near is told to ragdoll its
+	-- own copy of the soldier (wetsand/sv_npc_ragdolls.lua), and the soldier
+	-- lingers, not solid, Ragdoll.HANDOFF seconds while the message arrives,
+	-- before DrGBase removes it. The method is ours: NextBot's BecomeRagdoll
+	-- belongs to the engine (and DrGBase), and an ENT method of that name is
+	-- never reached.
+	function ENT:WetsandClientRagdoll(dmg)
+		if not Ragdoll.LeavesBody(self:IsFlagSet(FL_DISSOLVING), dmg:IsDamageType(DMG_REMOVENORAGDOLL)) then return false end
 		self:SetNotSolid(true)
 		self.WetsandTarget = nil
-		SafeRemoveEntityDelayed(self, RAGDOLL_HANDOFF)
-		return NULL
+		WETSAND.SendClientRagdoll(self, dmg:GetDamageForce())
+		return true
+	end
+
+	function ENT:OnDeath(dmg)
+		if self:WetsandClientRagdoll(dmg) then self:PauseCoroutine(Ragdoll.HANDOFF) end
 	end
 end
 

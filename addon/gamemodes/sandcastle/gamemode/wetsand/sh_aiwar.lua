@@ -14,13 +14,6 @@ function WETSAND.AiWarActive()
 end
 
 if SERVER then
-	-- Dead soldiers' ragdolls are made by each client (WETSAND.DrgSoldier's
-	-- BecomeRagdoll sends RAGDOLL_NET), never by the server, unless this is
-	-- turned off (then DrGBase's serverside ones, which the war still caps).
-	CreateConVar("wetsand_aiwar_client_ragdolls", "1", FCVAR_ARCHIVE,
-		"Dead soldiers leave clientside ragdolls (no server physics, no shared memory) rather than DrGBase's serverside ones")
-	util.AddNetworkString("wetsand_soldier_ragdoll")
-
 	local function Tell(ply, text)
 		if IsValid(ply) then ply:ChatPrint(text) else print(text) end
 	end
@@ -43,57 +36,11 @@ if SERVER then
 	return
 end
 
--- Dead soldiers' clientside ragdolls (wetsand_aiwar_client_ragdolls) fade
--- by each player's own settings: after wetsand_ragdoll_lifetime seconds (0
--- keeps them), the engine's own fade (at g_ragdoll_fadespeed) removes them;
--- g_ragdoll_maxcount caps how many stay, as for any clientside ragdoll.
-local RAGDOLL_LIFETIME = CreateClientConVar("wetsand_ragdoll_lifetime", "20", true, false,
-	"Seconds a dead soldier's ragdoll stays before fading away (0: until g_ragdoll_maxcount pushes it out)", 0, 600)
-
-local function FadeLater(ragdoll)
-	if ragdoll.wetsandFading then return end
-	ragdoll.wetsandFading = true
-	local lifetime = RAGDOLL_LIFETIME:GetFloat()
-	if lifetime <= 0 then return end
-	timer.Simple(lifetime, function()
-		if IsValid(ragdoll) then ragdoll:SetSaveValue("m_bFadingOut", true) end
-	end)
-end
-
+-- Dead soldiers' ragdolls are made on clients, as every NPC's is
+-- (wetsand/cl_npc_ragdolls.lua); engine NPCs fighting in the war die into
+-- the engine's own clientside ragdolls, which fade the same way.
 hook.Add("CreateClientsideRagdoll", "wetsand_aiwar_ragdoll_fade", function(owner, ragdoll)
-	if IsValid(owner) and AiWar.FactionTeam(owner:GetClass()) then FadeLater(ragdoll) end
-end)
-
--- A soldier died: its ragdoll, made here from its last pose (the engine's
--- clientside ragdoll; else a ClientsideRagdoll posed bone by bone), pushed
--- by the killing blow. The server removes the soldier a moment later.
-net.Receive("wetsand_soldier_ragdoll", function()
-	local ent, force = net.ReadEntity(), net.ReadVector()
-	if not IsValid(ent) then return end
-	local ragdoll = ent.BecomeRagdollOnClient and ent:BecomeRagdollOnClient()
-	if not IsValid(ragdoll) then
-		ragdoll = ClientsideRagdoll(ent:GetModel())
-		if not IsValid(ragdoll) then return end
-		ragdoll:SetSkin(ent:GetSkin())
-		for _, group in ipairs(ent:GetBodyGroups() or {}) do ragdoll:SetBodygroup(group.id, ent:GetBodygroup(group.id)) end
-		ent:SetupBones()
-		for i = 0, ragdoll:GetPhysicsObjectCount() - 1 do
-			local phys = ragdoll:GetPhysicsObjectNum(i)
-			local matrix = IsValid(phys) and ent:GetBoneMatrix(ragdoll:TranslatePhysBoneToBone(i))
-			if matrix then
-				phys:SetPos(matrix:GetTranslation())
-				phys:SetAngles(matrix:GetAngles())
-				phys:Wake()
-			end
-		end
-	end
-	local count = ragdoll:GetPhysicsObjectCount()
-	for i = 0, count - 1 do
-		local phys = ragdoll:GetPhysicsObjectNum(i)
-		if IsValid(phys) then phys:ApplyForceCenter(force / math.max(count, 1)) end
-	end
-	ent:SetNoDraw(true)
-	FadeLater(ragdoll)
+	if IsValid(owner) and AiWar.FactionTeam(owner:GetClass()) then WETSAND.FadeRagdollLater(ragdoll) end
 end)
 
 local HELP = "Restarts the round: the Resistance spawn at BLU's spawn and push the cart, "
