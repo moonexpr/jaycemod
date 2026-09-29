@@ -11,14 +11,6 @@ ENT.Variant = "foundation.npc.headless_hatman"
 
 if CLIENT then return end
 
-ENT.ParticleFiles = { "particles/scary_ghost.pcf" }
-ENT.Particles = {
-	"halloween_boss_summon",
-	"halloween_boss_axe_hit_world",
-	"halloween_boss_injured",
-	"halloween_boss_death",
-}
-
 -------------------------------------------------------------------------------
 -- The Horsemann's port (foundation.npc.headless_hatman.METHODS)
 

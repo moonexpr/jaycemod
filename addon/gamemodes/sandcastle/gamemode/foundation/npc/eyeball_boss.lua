@@ -70,6 +70,19 @@ VORTEX_CLASS = "teleport_vortex"
 SPAWN_SPOTS = "spawn_boss_alt"
 HULL_HALF_WIDTH = 50 -- bounds ±50
 
+-- Its particle systems, and the list the npc controller precaches (the
+-- files: features/npc/sh.lua). The summon is the Horsemann's.
+SUMMON_PARTICLE = "halloween_boss_summon" -- scary_ghost.pcf
+TELEPORT_PARTICLE = "eyeboss_tp_normal" -- eyeboss.pcf, as are the rest
+ESCAPE_PARTICLE = "eyeboss_tp_escape"
+DEATH_PARTICLE = "eyeboss_death"
+PARTICLES = {
+	SUMMON_PARTICLE,
+	TELEPORT_PARTICLE,
+	ESCAPE_PARTICLE,
+	DEATH_PARTICLE,
+}
+
 SKIN_NORMAL, SKIN_RED, SKIN_TEAM_RED, SKIN_TEAM_BLUE = 0, 1, 2, 3
 ANGER_ENRAGED, ANGER_GRUMPY, ANGER_CALM = 1, 0.4, 0
 
@@ -262,12 +275,12 @@ function Emerge:OnStart(me, priorAction)
 	self.rumbleTimer = NpcSystem.CountdownTimer(me)
 	self.killTimer = NpcSystem.CountdownTimer(me)
 	if state.spell then
-		me:DispatchParticleEffect("eyeboss_tp_normal", me:GetAbsOrigin())
+		me:DispatchParticleEffect(TELEPORT_PARTICLE, me:GetAbsOrigin())
 		Play(state, me, "teleport_in")
 		return self:Continue()
 	end
 	Play(state, me, "arrives")
-	me:DispatchParticleEffect("halloween_boss_summon", me:GetAbsOrigin())
+	me:DispatchParticleEffect(SUMMON_PARTICLE, me:GetAbsOrigin())
 	self.groundPos = me:GetAbsOrigin()
 	self.riseTimer:Start(RISE_TIME)
 	self.emergePos = me:GetAbsOrigin() + me:Vector(0, 0, EMERGE_OFFSET)
@@ -597,14 +610,14 @@ function Teleport:Update(me, interval)
 	if not me:IsSequenceFinished() then return self:Continue() end
 	if self.phase == TELEPORTING_OUT then
 		me:SpawnEntity(VORTEX_CLASS, { death = false }, me:GetAbsOrigin())
-		me:DispatchParticleEffect("eyeboss_tp_normal", me:GetAbsOrigin())
+		me:DispatchParticleEffect(TELEPORT_PARTICLE, me:GetAbsOrigin())
 		me:EmitSound("Halloween.EyeballBossTeleport")
 		me:SetHidden(true)
 		me:SetAbsOrigin(PickNewSpawnSpot(me) + me:Vector(0, 0, TELEPORT_HEIGHT))
 		self.phase = TELEPORTING_IN
 	elseif self.phase == TELEPORTING_IN then
 		me:SetHidden(false)
-		me:DispatchParticleEffect("eyeboss_tp_normal", me:GetAbsOrigin())
+		me:DispatchParticleEffect(TELEPORT_PARTICLE, me:GetAbsOrigin())
 		Play(self.state, me, "teleport_in")
 		self.phase = TELEPORT_DONE
 	else
@@ -623,7 +636,7 @@ end
 function Escape:Update(me, interval)
 	if not me:IsSequenceFinished() then return self:Continue() end
 	if self.state.spell then me:EmitSound("Halloween.spell_spawn_boss_disappear") end
-	me:DispatchParticleEffect("eyeboss_tp_escape", me:GetAbsOrigin())
+	me:DispatchParticleEffect(ESCAPE_PARTICLE, me:GetAbsOrigin())
 	me:SetBossHealth(0)
 	me:Remove()
 	me:Shared().level = FIRST_LEVEL
@@ -660,7 +673,7 @@ end
 function Dead:Update(me, interval)
 	if not (self.giveUpTimer:IsElapsed() or IsNearGround(me)) then return self:Continue() end
 	local origin = me:GetAbsOrigin()
-	me:DispatchParticleEffect("eyeboss_death", origin)
+	me:DispatchParticleEffect(DEATH_PARTICLE, origin)
 	me:EmitSound("Cart.Explode")
 	me:EmitSound("Halloween.EyeballBossDie")
 	me:ScreenShake(origin, POP_SHAKE_AMPLITUDE, POP_SHAKE_FREQUENCY, POP_SHAKE_DURATION, SHAKE_RADIUS)

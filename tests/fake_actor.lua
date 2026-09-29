@@ -2,6 +2,11 @@
 -- scripted random source, fake targets, and a log of every effect the model
 -- asked for. It implements every name in foundation.npc.actor.METHODS
 -- (npc_test checks that).
+--
+-- Given its variant (Fake.Actor{ variant = Zombie }), the actor refuses a
+-- particle system the variant does not list in PARTICLES: the npc
+-- controller precaches only those, and the engine draws nothing for a
+-- name it has not precached.
 local Fake = {}
 
 -- Vec: the vector the port hands out, with the operations models use.
@@ -148,6 +153,7 @@ function Fake.Actor(t)
 		health = t.health or 100,
 		maxHealth = t.maxHealth or 100,
 		owner = t.owner,
+		variant = t.variant,
 		index = t.index or 1,
 		shared = t.shared or {},
 		calls = {},
@@ -286,7 +292,20 @@ end
 
 -- effects
 function Actor:EmitSound(name) self:Record("EmitSound", name) end
-function Actor:DispatchParticleEffect(name, v) self:Record("DispatchParticleEffect", name, v) end
+local function Declares(variant, name)
+	assert(type(variant.PARTICLES) == "table", "the variant has no PARTICLES list")
+	for _, declared in ipairs(variant.PARTICLES) do
+		if declared == name then return true end
+	end
+	return false
+end
+
+function Actor:DispatchParticleEffect(name, v)
+	if self.variant and not Declares(self.variant, name) then
+		error(string.format("particle system %q is not in the variant's PARTICLES", name), 2)
+	end
+	self:Record("DispatchParticleEffect", name, v)
+end
 function Actor:ScreenShake(v, amp, freq, dur, radius) self:Record("ScreenShake", v, amp, freq, dur, radius) end
 function Actor:ApplyImpulse(t, v) self:Record("ApplyImpulse", t, v) end
 function Actor:DealDamage(t, amount, dmgType, attacker) self:Record("DealDamage", t, amount, dmgType, attacker) end

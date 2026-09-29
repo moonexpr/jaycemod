@@ -23,6 +23,15 @@ local CRIT_TRAILS = {
 }
 local CRIT_TRAIL_OTHER = "eyeboss_projectile"
 
+-- Every trail, for the binding to precache: rockettrail.pcf, but for the
+-- eyeball's crit (eyeboss.pcf).
+PARTICLES = {
+	TRAIL,
+	CRIT_TRAILS[Teams.RED],
+	CRIT_TRAILS[Teams.BLUE],
+	CRIT_TRAIL_OTHER,
+}
+
 function NewState(config, now)
 	return {
 		damage = config.damage,

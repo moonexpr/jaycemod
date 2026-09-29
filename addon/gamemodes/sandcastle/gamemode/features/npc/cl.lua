@@ -1,16 +1,7 @@
 -- The npc feature's view: the boss health bar (TF2's monster resource
 -- meter), drawn from the wetsand_boss_health Global2 the npc controller
--- networks (0 hides it), and the particle files the NPCs' effects use.
+-- networks (0 hides it). The particle files are sh.lua's, in both realms.
 local BOSS_HEALTH = "wetsand_boss_health"
-
-local PARTICLE_FILES = {
-	"particles/halloween.pcf",
-	"particles/scary_ghost.pcf",
-	"particles/eyeboss.pcf",
-	"particles/cinefx.pcf",
-	"particles/rockettrail.pcf",
-	"particles/explosion.pcf",
-}
 
 -- Under the round timer (cl_hud.lua), centred.
 local BAR_TOP = 0.17 -- of the screen height
@@ -20,8 +11,6 @@ local BAR_PADDING = 4
 local BAR_CORNER = 4
 local BAR_BACK = Color(0, 0, 0, 170)
 local BAR_FILL = Color(118, 196, 52)
-
-for _, pcf in ipairs(PARTICLE_FILES) do game.AddParticles(pcf) end
 
 local View = {}
 

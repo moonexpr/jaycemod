@@ -5,7 +5,8 @@
 -- An NPC variant is a part of this system (foundation.npc.<variant>) and
 -- provides KIND, LOCOMOTION or HOVER, PATH, NewState(config, actor),
 -- InitialAction(state), and optionally FilterDamage(state, damageEvent,
--- actor) and Cull(liveStates). Actions receive the actor as `me`.
+-- actor), Cull(liveStates) and PARTICLES (every particle system its NPCs
+-- dispatch; see Particles). Actions receive the actor as `me`.
 local error, ipairs, setmetatable = error, ipairs, setmetatable
 local concat, remove = table.concat, table.remove
 module(...)
@@ -549,6 +550,13 @@ function Cull(variant, npcs)
 	local culled = variant.Cull(live)
 	for _, state in ipairs(culled) do state.culled = true end
 	return culled
+end
+
+-- The particle systems a variant's NPCs dispatch, which the npc controller
+-- precaches when the variant first binds: its PARTICLES, or none.
+function Particles(variant)
+	if variant.PARTICLES == nil then return {} end
+	return variant.PARTICLES
 end
 
 -------------------------------------------------------------------------------

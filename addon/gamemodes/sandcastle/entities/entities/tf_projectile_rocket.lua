@@ -27,13 +27,26 @@ local PARTICLE_FILES = {
 local EXPLOSION_WALL = "ExplosionCore_Wall"
 local EXPLOSION_MIDAIR = "ExplosionCore_MidAir"
 local EXPLOSION_SOUND = "BaseExplosionEffect.Sound"
+local particlesReady = false -- the files added and the systems precached, once per map
 local PULL_OUT = 1 -- CTFBaseRocket::Explode moves the blast off the surface
+
+-- The server adds the files and precaches every name it sends: the
+-- rocket's trails and the blasts. Clients add them in the npc feature
+-- (features/npc/sh.lua).
+local function ReadyParticles(Rocket)
+	if particlesReady then return end
+	particlesReady = true
+	for _, pcf in ipairs(PARTICLE_FILES) do game.AddParticles(pcf) end
+	for _, name in ipairs(Rocket.PARTICLES) do PrecacheParticleSystem(name) end
+	PrecacheParticleSystem(EXPLOSION_WALL)
+	PrecacheParticleSystem(EXPLOSION_MIDAIR)
+end
 
 function ENT:Initialize()
 	local Rocket = WETSAND.require(self.Variant)
 	local config = self:Config()
 	config.model = config.model or Rocket.MODEL
-	for _, pcf in ipairs(PARTICLE_FILES) do game.AddParticles(pcf) end
+	ReadyParticles(Rocket)
 	Base.Initialize(self)
 	if IsValid(config.launcher) then self:SetOwner(config.launcher) end
 	self:SetAngles(config.velocity:Angle())

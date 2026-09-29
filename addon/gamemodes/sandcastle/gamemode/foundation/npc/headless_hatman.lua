@@ -53,6 +53,19 @@ MODEL = "models/bots/headless_hatman.mdl"
 AXE_MODEL = "models/weapons/c_models/c_bigaxe/c_bigaxe.mdl"
 AXE_BONE = "weapon_bone"
 
+-- Its particle systems, all in scary_ghost.pcf, and the list the npc
+-- controller precaches (the files: features/npc/sh.lua).
+SUMMON_PARTICLE = "halloween_boss_summon"
+AXE_HIT_PARTICLE = "halloween_boss_axe_hit_world"
+DEATH_PARTICLE = "halloween_boss_death"
+INJURED_PARTICLE = "halloween_boss_injured"
+PARTICLES = {
+	SUMMON_PARTICLE,
+	AXE_HIT_PARTICLE,
+	DEATH_PARTICLE,
+	INJURED_PARTICLE,
+}
+
 -- Emerge
 RISE_TIME = 3
 EMERGE_OFFSET = 10
@@ -131,7 +144,7 @@ end
 
 function Emerge:OnStart(me, priorAction)
 	me:StartActivity(me:Activity("ACT_TRANSITION"))
-	me:DispatchParticleEffect("halloween_boss_summon", me:GetAbsOrigin())
+	me:DispatchParticleEffect(SUMMON_PARTICLE, me:GetAbsOrigin())
 	self.riseTimer = NpcSystem.CountdownTimer(me)
 	self.riseTimer:Start(RISE_TIME)
 	self.rumbleTimer = NpcSystem.CountdownTimer(me)
@@ -321,7 +334,7 @@ function Attack:UpdateAxeSwing(me)
 	end
 	me:EmitSound("Halloween.HeadlessBossAxeHitWorld")
 	Shake(me)
-	me:DispatchParticleEffect("halloween_boss_axe_hit_world", me:WorldSpaceCenter())
+	me:DispatchParticleEffect(AXE_HIT_PARTICLE, me:WorldSpaceCenter())
 end
 
 function Attack:Laugh(me, it)
@@ -472,7 +485,7 @@ end
 function Dying:Update(me, interval)
 	if not me:IsActivityFinished() then return self:Continue() end
 	me:Break()
-	me:DispatchParticleEffect("halloween_boss_death", me:GetAbsOrigin())
+	me:DispatchParticleEffect(DEATH_PARTICLE, me:GetAbsOrigin())
 	me:Remove()
 	return self:Done()
 end
@@ -496,7 +509,7 @@ end
 
 -- CHeadlessHatman::OnTakeDamage_Alive
 function ModifyDamage(state, damageEvent, me)
-	me:DispatchParticleEffect("halloween_boss_injured", damageEvent.position)
+	me:DispatchParticleEffect(INJURED_PARTICLE, damageEvent.position)
 	return damageEvent.amount
 end
 

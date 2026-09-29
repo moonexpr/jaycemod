@@ -24,8 +24,19 @@ local OPEN_EFFECTS = {
 		sound = "Halloween.TeleportVortex.EyeballMovedVortex",
 	},
 }
+local PARTICLE_FILE = "particles/eyeboss.pcf"
+local particlesReady = false -- the file added and the effects precached, once per map
 local SCREEN_FADE = Color(255, 255, 255, 100)
 local SCREEN_FADE_TIME, SCREEN_FADE_HOLD = 0.25, 0.4
+
+-- The server adds the file and precaches the names it sends; clients have
+-- the file from the npc feature (features/npc/sh.lua).
+local function ReadyParticles()
+	if particlesReady then return end
+	particlesReady = true
+	game.AddParticles(PARTICLE_FILE)
+	for _, effect in pairs(OPEN_EFFECTS) do PrecacheParticleSystem(effect.particle) end
+end
 
 function ENT:Configure(config)
 	self.configured = config
@@ -45,7 +56,7 @@ function ENT:Initialize()
 	self:SetCollisionBounds(Vector(-half, -half, -half), Vector(half, half, half))
 	self:SetCollisionGroup(COLLISION_GROUP_WEAPON)
 	self:SetTrigger(true)
-	game.AddParticles("particles/eyeboss.pcf")
+	ReadyParticles()
 	local effect = OPEN_EFFECTS[death]
 	ParticleEffectAttach(effect.particle, PATTACH_ABSORIGIN_FOLLOW, self, 0)
 	self:EmitSound(effect.sound)

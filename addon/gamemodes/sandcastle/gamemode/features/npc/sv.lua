@@ -19,6 +19,7 @@ local Controller = {
 	variantNames = {}, -- entity -> variant name
 	kinds = {}, -- kind -> { [entity] = true }
 	shared = {}, -- variant name -> table
+	precached = {}, -- variant name -> true once its particle systems are precached
 	spawners = {}, -- spawner entity -> Spawner
 	spawnedBy = {}, -- NPC entity -> Spawner
 	navChecked = false,
@@ -54,9 +55,19 @@ function Controller:NpcsOf(variantName)
 	return npcs
 end
 
+-- The first NPC of a variant precaches the particle systems it may send
+-- (their files are sh.lua's), so clients can look the names up; before it
+-- binds, since its first action may send one.
+function Controller:PrecacheParticles(variantName, variant)
+	if self.precached[variantName] then return end
+	self.precached[variantName] = true
+	for _, name in ipairs(NpcSystem.Particles(variant)) do PrecacheParticleSystem(name) end
+end
+
 function Controller:Bind(ent, variantName, config)
 	self:CheckNavMesh()
 	local variant = WETSAND.require(variantName)
+	self:PrecacheParticles(variantName, variant)
 	local npc = NpcSystem.Npc.New(variant, config, ent)
 	self.npcs[ent] = npc
 	self.variantNames[ent] = variantName

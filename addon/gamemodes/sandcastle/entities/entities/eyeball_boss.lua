@@ -17,17 +17,6 @@ local Base = baseclass.Get("halloween_base_boss")
 
 local LOOK_APPROACH_RATE = 3 -- CEyeballBossBody::Update's myApproachRate
 
-ENT.ParticleFiles = {
-	"particles/scary_ghost.pcf",
-	"particles/eyeboss.pcf",
-}
-ENT.Particles = {
-	"halloween_boss_summon",
-	"eyeboss_tp_normal",
-	"eyeboss_tp_escape",
-	"eyeboss_death",
-}
-
 -- CEyeballBoss::Spawn: bounds of ±50 about its origin.
 function ENT:Initialize()
 	Base.Initialize(self)

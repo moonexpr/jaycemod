@@ -22,6 +22,7 @@ local EPSILON = 0.01 -- a step past a timer's end
 local function Skeleton(t)
 	local me = FC.Combatant({
 		world = t.world or FC.World(),
+		variant = Zombie,
 		team = t.team or Teams.UNASSIGNED,
 		clock = FC.Clock(START),
 		random = FC.Random(t.fractions or { MID }),
@@ -556,6 +557,39 @@ T.test("goop matches the team: green for Halloween, red for RED, blue otherwise"
 	T.eq(Zombie.GoopParticle(Teams.BLUE), "spell_pumpkin_mirv_goop_blue", "blue")
 end)
 
+T.test("a skeleton of each team, hit, splashes its team's goop, a system its variant declares", function()
+	local cases = {
+		{
+			team = Teams.HALLOWEEN,
+			enemy = Teams.RED,
+			goop = Zombie.GOOP_HALLOWEEN,
+		},
+		{
+			team = Teams.RED,
+			enemy = Teams.BLUE,
+			goop = Zombie.GOOP_RED,
+		},
+		{
+			team = Teams.BLUE,
+			enemy = Teams.RED,
+			goop = Zombie.GOOP_BLUE,
+		},
+	}
+	for _, case in ipairs(cases) do
+		local world = FC.World()
+		local enemy = world:AddPlayer({ team = case.enemy })
+		local me, npc = Skeleton({
+			world = world,
+			team = case.team,
+		})
+		T.eq(npc:FilterDamage({
+			attacker = enemy,
+			position = V(0, 0, 0),
+		}), true, "the hit is taken")
+		T.eq(me:Called("DispatchParticleEffect")[1][1], case.goop, "team " .. case.team)
+	end
+end)
+
 T.test("a skeleton killed by no player or NPC throws nothing, but still fires OnDeath once and breaks", function()
 	local world = FC.World()
 	local me, npc = Skeleton({ world = world })
@@ -705,10 +739,16 @@ T.test("a tf_zombie's config: what its spawner or skull gave, or a placed normal
 	T.eq(placed.skeletonType, Zombie.SKELETON_NORMAL, "normal")
 	T.eq(placed.modelScale, 2.25, "the map's scale")
 
-	local big = FC.Combatant({ world = FC.World() })
+	local big = FC.Combatant({
+		world = FC.World(),
+		variant = Zombie,
+	})
 	N.Npc.New(Zombie, placed, big)
 	T.eq(big:Called("SetModelScale")[1][1], 2.25, "a placed skeleton takes the map's scale")
-	local king = FC.Combatant({ world = FC.World() })
+	local king = FC.Combatant({
+		world = FC.World(),
+		variant = Zombie,
+	})
 	N.Npc.New(Zombie, Zombie.BindingConfig({
 		lifetime = 0,
 		skeletonType = Zombie.SKELETON_KING,

@@ -48,6 +48,7 @@ local function Scene(t)
 	local tag = TagController(world, t.halloween ~= false)
 	local me = FakeCombatant.Combatant({
 		world = world,
+		variant = HHH,
 		team = Teams.HALLOWEEN,
 		origin = t.origin or V(0, 0, 0),
 		random = t.random,

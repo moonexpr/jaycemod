@@ -19,6 +19,20 @@ local Base = baseclass.Get("wetsand_projectile")
 
 -- InitialExplodeEffects pulls the skeleton this far out of the surface.
 local HATCH_LIFT = 2
+local GOOP_FILE = "particles/halloween.pcf"
+local particlesReady = false -- the file added and the goops precached, once per map
+
+-- The server adds the file and precaches every team's goop, which the skull
+-- sends when it hatches; clients add it in the npc feature
+-- (features/npc/sh.lua), which the hatched skeleton loads.
+local function ReadyParticles(Zombie)
+	if particlesReady then return end
+	particlesReady = true
+	game.AddParticles(GOOP_FILE)
+	for _, name in ipairs({ Zombie.GOOP_HALLOWEEN, Zombie.GOOP_RED, Zombie.GOOP_BLUE }) do
+		PrecacheParticleSystem(name)
+	end
+end
 
 function ENT:Configure(skull)
 	self.skull = skull
@@ -26,6 +40,7 @@ end
 
 function ENT:Initialize()
 	self.zombie = WETSAND.require("foundation.npc.zombie")
+	ReadyParticles(self.zombie)
 	local throw = self.zombie.SkullThrow(math.Rand, Vector)
 	self:SetPos(self:GetPos() + throw.offset)
 	self:SetAngles(AngleRand())

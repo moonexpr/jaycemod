@@ -727,6 +727,30 @@ T.test("the fake actor implements every actor method", function()
 	end
 end)
 
+T.test("a variant's particle systems are its PARTICLES, and a variant without the list has none", function()
+	local listed = { "some_particle" }
+	T.eq(N.Particles({ PARTICLES = listed }), listed, "listed")
+	T.eq(#N.Particles({}), 0, "none")
+	for _, name in ipairs({ "foundation.npc.zombie", "foundation.npc.headless_hatman", "foundation.npc.eyeball_boss" }) do
+		T.eq(#N.Particles(T.require(name)) > 0, true, name .. " lists its systems")
+	end
+end)
+
+T.test("a variant's fake actor dispatches only the particle systems its variant declares", function()
+	local declared, undeclared = "declared_particle", "undeclared_particle"
+	local fake = Fake.Actor({ variant = { PARTICLES = { declared } } })
+	fake:DispatchParticleEffect(declared, Fake.Vector(0, 0, 0))
+	T.eq(#fake:Called("DispatchParticleEffect"), 1, "a declared system plays")
+	local ok, err = pcall(fake.DispatchParticleEffect, fake, undeclared, Fake.Vector(0, 0, 0))
+	T.eq(ok, false, "an undeclared system is refused")
+	T.eq(err:find(undeclared, 1, true) ~= nil, true, "the refusal names it: " .. tostring(err))
+	local listless = Fake.Actor({ variant = {} })
+	T.eq(pcall(listless.DispatchParticleEffect, listless, declared, Fake.Vector(0, 0, 0)), false, "a variant with no PARTICLES refuses all")
+	local plain = Fake.Actor()
+	plain:DispatchParticleEffect(undeclared, Fake.Vector(0, 0, 0))
+	T.eq(#plain:Called("DispatchParticleEffect"), 1, "an actor with no variant checks nothing")
+end)
+
 T.test("wetsand_nextbot defines every actor method the engine does not already provide", function()
 	local text = ReadFile("addon/gamemodes/sandcastle/entities/entities/wetsand_nextbot.lua")
 	for _, name in ipairs(Actor.METHODS) do

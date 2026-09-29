@@ -82,6 +82,21 @@ T.test("a rocket trails smoke, and a crit one its team's crit glow or the eyebal
 	T.eq(Trails({ crit = true }), Rocket.TRAIL .. ",eyeboss_projectile", "the eyeball's crit")
 end)
 
+T.test("every trail a rocket carries is in the rocket's PARTICLES, which its binding precaches", function()
+	local declared = {}
+	for _, name in ipairs(Rocket.PARTICLES) do declared[name] = true end
+	for _, team in ipairs({ Teams.RED, Teams.BLUE, Teams.HALLOWEEN }) do
+		for _, crit in ipairs({ false, true }) do
+			for _, trail in ipairs(Rocket.Trails(NewRocket({
+				crit = crit,
+				team = team,
+			}).state)) do
+				T.eq(declared[trail], true, trail)
+			end
+		end
+	end
+end)
+
 -------------------------------------------------------------------------------
 -- MONOCULUS (CEyeballBoss and eyeball_behavior/*.cpp)
 
@@ -94,6 +109,7 @@ local CV = Eyeball.CONVARS
 local function Eye(world, t)
 	local me = FakeCombatant.Combatant({
 		world = world,
+		variant = Eyeball,
 		team = t.team or Teams.HALLOWEEN,
 		origin = t.origin or V(0, 0, 0),
 		random = t.random,

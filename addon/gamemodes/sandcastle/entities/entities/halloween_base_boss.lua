@@ -2,8 +2,8 @@
 -- bosses, a wetsand_combat_nextbot whose variant is a
 -- foundation.npc.halloween_boss part. It implements the boss port
 -- (foundation.npc.halloween_boss.METHODS) and passes the boss's convars in
--- its config. A subclass sets ENT.Variant, ENT.ParticleFiles (the .pcf files
--- its particles live in) and ENT.Particles.
+-- its config. A subclass sets ENT.Variant. The npc feature adds the
+-- particle files (features/npc/sh.lua) and precaches the variant's PARTICLES.
 --
 -- Configure{ team, owner } before Spawn (SpawnBossAtPos; the caller spawns
 -- 10 above the spot: foundation.npc.halloween_boss.SpawnAt). A map's boss
@@ -19,9 +19,6 @@ if CLIENT then return end
 -- GMod looks up Entity and NextBot methods before the entity's own table,
 -- so no port method here shares an engine method's name.
 local Base = baseclass.Get("wetsand_combat_nextbot")
-
-ENT.ParticleFiles = {}
-ENT.Particles = {}
 
 -- TF2's convars for this boss (its variant's CONVARS), created by the first
 -- binding, and their values now.
@@ -49,8 +46,6 @@ function ENT:Initialize()
 	self:SetModel(variant.MODEL)
 	local owner = self:Config().owner
 	if IsValid(owner) then self:SetOwner(owner) end
-	for _, pcf in ipairs(self.ParticleFiles) do game.AddParticles(pcf) end
-	for _, name in ipairs(self.Particles) do PrecacheParticleSystem(name) end
 	Base.Initialize(self)
 end
 

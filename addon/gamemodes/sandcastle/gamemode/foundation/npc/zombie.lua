@@ -87,6 +87,15 @@ GOOP_HALLOWEEN = "spell_skeleton_goop_green"
 GOOP_RED = "spell_pumpkin_mirv_goop_red"
 GOOP_BLUE = "spell_pumpkin_mirv_goop_blue"
 
+-- Every particle system a skeleton or its skull dispatches, for the npc
+-- controller to precache (the files: features/npc/sh.lua).
+PARTICLES = {
+	STOMP_PARTICLE, -- cinefx.pcf
+	GOOP_HALLOWEEN, -- halloween.pcf
+	GOOP_RED, -- halloween.pcf
+	GOOP_BLUE, -- halloween.pcf
+}
+
 ZOMBIE_CLASS = "tf_zombie"
 SPAWNER_MAX_DEFAULT = 1 -- CZombieSpawner::CZombieSpawner
 
