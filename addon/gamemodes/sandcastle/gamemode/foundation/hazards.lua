@@ -1,5 +1,5 @@
 -- The hazards system: a Hazard model per hazard entity (a pumpkin bomb, a
--- generic bomb, a zapper), turning what happens to it (damage, inputs,
+-- generic bomb, a zapper, a croc), turning what happens to it (damage, inputs,
 -- touches, time) into outcomes the hazards controller carries out. It holds
 -- the rule every hazard shares: once it has exploded or fizzled it is dead,
 -- and nothing more happens to it (TF2's m_bDead).
@@ -7,9 +7,10 @@
 -- New(variant, config, now), then:
 --   :Damaged{ team, amount }: team is the attacker's;
 --   :Input(name, value): name lower-cased;
---   :Touch{ target, team, projectile, triggerHurt, leaving }: target is an
---     opaque handle, team the toucher's (a projectile's thrower's),
---     projectile and triggerHurt what it is, leaving an end of touch;
+--   :Touch{ target, team, projectile, triggerHurt, leaving, now }: target
+--     is an opaque handle, team the toucher's (a projectile's thrower's),
+--     projectile and triggerHurt what it is, leaving an end of touch, now
+--     the time of a start of touch;
 --   :Tick(now);
 -- each returning an outcome, a table whose kind is one of:
 --   NONE;
@@ -19,7 +20,12 @@
 --     the named attachment (nil: the origin); output fires with the attacker
 --     as activator when activatorIsAttacker, otherwise with the hazard;
 --   FIZZLE { particles }: gone without a blast;
---   ZAP { targets, particle }: a beam to each target, nothing more.
+--   ZAP { targets, particle }: a beam to each target, nothing more;
+--   ANIMATE { model, sequence, target }: a prop of model appears at the
+--     target's feet, plays sequence once and is gone at its end;
+--   HURT { hits, damage, dmgType }: each hit { target, outputs } takes
+--     damage from the hazard, which then fires that hit's outputs with
+--     itself as activator.
 -- Plus :Team(), :Body(), :Accepts(name) and :CreditsOwner() for the binding.
 --
 -- A variant is a part (foundation.hazards.<name>) providing
@@ -34,6 +40,7 @@ local ceil, floor = math.ceil, math.floor
 module(...)
 
 NONE, EXPLODE, FIZZLE, ZAP = "none", "explode", "fizzle", "zap"
+ANIMATE, HURT = "animate", "hurt"
 
 -- How a hazard with a body moves: vphysics (MOVETYPE_VPHYSICS), or falling
 -- and bouncing (MOVETYPE_FLYGRAVITY with MOVECOLLIDE_FLY_BOUNCE).
@@ -59,6 +66,24 @@ function Zap(targets, particle)
 		kind = ZAP,
 		targets = targets,
 		particle = particle,
+	}
+end
+
+function Animate(model, sequence, target)
+	return {
+		kind = ANIMATE,
+		model = model,
+		sequence = sequence,
+		target = target,
+	}
+end
+
+function Hurt(hits, damage, dmgType)
+	return {
+		kind = HURT,
+		hits = hits,
+		damage = damage,
+		dmgType = dmgType,
 	}
 end
 

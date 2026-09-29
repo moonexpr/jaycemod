@@ -1,8 +1,9 @@
 -- The hazards feature's controller. It owns one foundation.hazards model per
--- hazard entity (tf_pumpkin_bomb, tf_generic_bomb, halloween_zapper), gives
--- the model what happens to the entity (damage with the attacker's team,
--- inputs, touches, time) and carries out what the model answers: a blast
--- through the combat controller, goop, gibs, outputs, or a zap's beam.
+-- hazard entity (tf_pumpkin_bomb, tf_generic_bomb, halloween_zapper,
+-- func_croc), gives the model what happens to the entity (damage with the
+-- attacker's team, inputs, touches, time) and carries out what the model
+-- answers: a blast through the combat controller, goop, gibs, outputs, a
+-- zap's beam, or a croc and its bite.
 local Hazards = WETSAND.require("foundation.hazards")
 
 local TRIGGER_HURT = "trigger_hurt"
@@ -14,6 +15,9 @@ local SCORCH_DECAL = "Scorch"
 local SCORCH_TRACE_UP, SCORCH_TRACE_DOWN = 8, 32
 
 local NO_ATTACHMENT = -1 -- a beam from a point, not an attachment
+
+local ANIMATED_PROP = "prop_dynamic"
+local NOT_SOLID = "0" -- prop_dynamic's solid keyvalue: SOLID_NONE
 
 local Controller = {
 	combat = WETSAND.Feature("combat"),
@@ -85,6 +89,7 @@ function Controller:Touched(ent, other)
 		projectile = projectile,
 		triggerHurt = other:GetClass() == TRIGGER_HURT,
 		leaving = false,
+		now = CurTime(),
 	}), credited)
 end
 
@@ -177,6 +182,40 @@ local APPLY = {
 		for _, target in ipairs(outcome.targets) do
 			if IsValid(target) then
 				util.ParticleTracerEx(outcome.particle, from, target:WorldSpaceCenter(), false, ent:EntIndex(), NO_ATTACHMENT)
+			end
+		end
+	end,
+
+	-- CEntityCroc::InitCroc: a prop that is not solid, gone when its
+	-- sequence ends (at once when the model lacks it).
+	[Hazards.ANIMATE] = function(self, ent, outcome)
+		if not IsValid(outcome.target) then return end
+		local prop = ents.Create(ANIMATED_PROP)
+		prop:SetModel(outcome.model)
+		prop:SetKeyValue("DefaultAnim", outcome.sequence)
+		prop:SetKeyValue("solid", NOT_SOLID)
+		prop:SetPos(outcome.target:GetPos())
+		prop:SetAngles(angle_zero)
+		prop:Spawn()
+		local sequence = prop:LookupSequence(outcome.sequence)
+		if sequence < 0 then
+			prop:Remove()
+			return
+		end
+		SafeRemoveEntityDelayed(prop, prop:SequenceDuration(sequence))
+	end,
+
+	-- The hazard is both attacker and inflictor, and the outputs' activator.
+	[Hazards.HURT] = function(self, ent, outcome)
+		for _, hit in ipairs(outcome.hits) do
+			if IsValid(hit.target) then
+				local dmg = DamageInfo()
+				dmg:SetDamage(outcome.damage)
+				dmg:SetDamageType(outcome.dmgType)
+				dmg:SetAttacker(ent)
+				dmg:SetInflictor(ent)
+				hit.target:TakeDamageInfo(dmg)
+				for _, output in ipairs(hit.outputs) do ent:TriggerOutput(output, ent) end
 			end
 		end
 	end,
