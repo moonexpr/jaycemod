@@ -1,6 +1,6 @@
 -- team_round_timer: the round clock, with an optional setup phase first
 -- (CTeamRoundTimer, teamplay_round_timer.cpp). A map may have several; the
--- one shown in the HUD (WETSAND.HudTimer) publishes the tf2.timer.* keys, speaks
+-- one shown in the HUD (WETSAND.HudTimer) publishes the wetsand_timer_* keys, speaks
 -- the countdown on clients, and puts the round into overtime.
 ENT.Type = "point"
 ENT.Base = "base_point"
@@ -72,13 +72,13 @@ end
 
 function ENT:Publish()
 	if not WETSAND.IsHudTimer(self) then return end
-	SetGlobal2Bool("tf2.timer.show", true)
-	SetGlobal2Bool("tf2.timer.paused", self.paused)
-	SetGlobal2Float("tf2.timer.left", self:TimeRemaining())
-	SetGlobal2Float("tf2.timer.end", CurTime() + self:TimeRemaining())
-	SetGlobal2Bool("tf2.timer.setup", self.state == STATE_SETUP)
-	SetGlobal2Bool("tf2.timer.autocountdown", self.autoCountdown ~= 0)
-	SetGlobal2Int("tf2.timer.serial", self.serial)
+	SetGlobal2Bool("wetsand_timer_shown", true)
+	SetGlobal2Bool("wetsand_timer_paused", self.paused)
+	SetGlobal2Float("wetsand_timer_time_left", self:TimeRemaining())
+	SetGlobal2Float("wetsand_timer_end_time", CurTime() + self:TimeRemaining())
+	SetGlobal2Bool("wetsand_timer_in_setup", self.state == STATE_SETUP)
+	SetGlobal2Bool("wetsand_timer_auto_countdown", self.autoCountdown ~= 0)
+	SetGlobal2Int("wetsand_timer_serial", self.serial)
 end
 
 -- Every change to the timer's length bumps the serial, which is how clients

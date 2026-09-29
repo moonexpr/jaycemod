@@ -20,7 +20,7 @@ end
 
 -- GMod caches ShouldCollide answers per pair until CollisionRulesChanged is
 -- called, so the answer is computed from cached values that change only
--- together with that call (see the tf2.visualizers Think hook below).
+-- together with that call (see the wetsand_visualizers Think hook below).
 local visualizers = setmetatable({}, { __mode = "k" })
 
 -- The team this forcefield stops the enemies of, or nobody.
@@ -41,7 +41,7 @@ end
 
 function ENT:Blocks(ent)
 	if not ent:IsPlayer() then return false end
-	return WETSAND.TeamRules.VisualizerBlocks(self.collisionTeam, ent.tf2CollisionTeam or ent:Team())
+	return WETSAND.TeamRules.VisualizerBlocks(self.collisionTeam, ent.wetsandCollisionTeam or ent:Team())
 end
 
 function ENT:InitCollision()
@@ -50,21 +50,21 @@ function ENT:InitCollision()
 	self:SetCustomCollisionCheck(true)
 end
 
-hook.Add("ShouldCollide", "tf2.respawnroomvisualizer", function(a, b)
+hook.Add("ShouldCollide", "wetsand_respawn_room_visualizer", function(a, b)
 	if visualizers[a] then return a:Blocks(b) end
 	if visualizers[b] then return b:Blocks(a) end
 end)
 
 -- Both realms, every tick: pick up round-state changes (team win opens the
 -- doors) and player team changes, and declare them to the physics engine.
-hook.Add("Think", "tf2.visualizers", function()
+hook.Add("Think", "wetsand_visualizers", function()
 	for viz in pairs(visualizers) do
 		if IsValid(viz) then viz:RefreshCollision() end
 	end
 	for _, ply in ipairs(player.GetAll()) do
 		local team = ply:Team()
-		if ply.tf2CollisionTeam ~= team then
-			ply.tf2CollisionTeam = team
+		if ply.wetsandCollisionTeam ~= team then
+			ply.wetsandCollisionTeam = team
 			ply:CollisionRulesChanged()
 		end
 	end

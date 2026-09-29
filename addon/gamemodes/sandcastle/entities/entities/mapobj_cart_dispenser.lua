@@ -17,13 +17,13 @@ local HULL = Vector(16, 16, 36)
 
 function ENT:KeyValue(key, value)
 	local k = string.lower(key)
-	self.tf2kv = self.tf2kv or {}
-	self.tf2kv[k] = value
+	self.wetsandKv = self.wetsandKv or {}
+	self.wetsandKv[k] = value
 	if string.sub(key, 1, 2) == "On" then self:StoreOutput(key, value) end
 end
 
 function ENT:Key(name, default)
-	local v = (self.tf2kv or {})[name]
+	local v = (self.wetsandKv or {})[name]
 	if v == nil or v == "" then return default end
 	return v
 end

@@ -10,7 +10,7 @@ local L = WETSAND.RoundsLib
 local overtimeNag = CreateConVar("tf_overtime_nag", "0", FCVAR_NOTIFY, "Announcer overtime nag.")
 
 -- Sounds to a chosen set of players, as TF2 plays them to each client's
--- local player (tf2.sound is received by cl_announcer.lua).
+-- local player (wetsand_pa_sound_file is received by cl_announcer.lua).
 function WETSAND.SoundTo(players, name)
 	if #players == 0 then return end
 	net.Start("wetsand_pa_sound_file")
@@ -32,23 +32,23 @@ end
 
 -- CTeamplayRoundBasedRules::SetSetup: every timer entering or leaving setup sets it.
 function WETSAND.SetSetup(inSetup)
-	SetGlobal2Bool("tf2.setup", inSetup)
+	SetGlobal2Bool("wetsand_round_in_setup", inSetup)
 end
 
 function WETSAND.InSetup()
-	return GetGlobal2Bool("tf2.setup", false)
+	return GetGlobal2Bool("wetsand_round_in_setup", false)
 end
 
 -- CTeamplayRoundBasedRules::SetOvertime; train watchers hear it through the
--- TF2Overtime hook (the SDK sends them OnStartOvertime).
+-- WetsandOvertime hook (the SDK sends them OnStartOvertime).
 function WETSAND.SetOvertime(overtime)
-	if GetGlobal2Bool("tf2.overtime", false) == overtime then return end
-	SetGlobal2Bool("tf2.overtime", overtime)
-	hook.Run("TF2Overtime", overtime)
+	if GetGlobal2Bool("wetsand_round_overtime", false) == overtime then return end
+	SetGlobal2Bool("wetsand_round_overtime", overtime)
+	hook.Run("WetsandOvertime", overtime)
 end
 
 function WETSAND.InOvertime()
-	return GetGlobal2Bool("tf2.overtime", false)
+	return GetGlobal2Bool("wetsand_round_overtime", false)
 end
 
 -- The overtime nag (tf_overtime_nag): a coin flip each second.
@@ -69,7 +69,7 @@ end
 
 -- The HUD timer -------------------------------------------------------------------------
 
-local TIMER_KEYS = { "tf2.timer.show", "tf2.timer.paused", "tf2.timer.setup" }
+local TIMER_KEYS = { "wetsand_timer_shown", "wetsand_timer_paused", "wetsand_timer_in_setup" }
 
 local function ClearTimerKeys()
 	for _, key in ipairs(TIMER_KEYS) do SetGlobal2Bool(key, false) end
@@ -104,7 +104,7 @@ function WETSAND.ActivateTimers()
 end
 
 -- Without tf_gamerules nothing sends RoundSpawn, so timers run from map spawn.
-hook.Add("InitPostEntity", "tf2.rounds", function()
+hook.Add("InitPostEntity", "wetsand_rounds", function()
 	WETSAND.ActivateTimers()
 	if WETSAND.Active() then return end
 	for _, t in ipairs(ents.FindByClass("team_round_timer")) do t:RoundSpawn() end

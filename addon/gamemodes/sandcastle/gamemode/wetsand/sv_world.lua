@@ -27,7 +27,7 @@ end
 
 -- Sent by the client once it has finished loading (InitPostEntity).
 net.Receive("wetsand_client_loaded", function(_, ply)
-	ply.tf2Ready = true
+	ply.wetsandReady = true
 end)
 
 -- Keyvalues of engine entities we read but do not implement. GMod exposes no
@@ -42,7 +42,7 @@ local RECORDED = {
 }
 
 -- Outputs are kept in map order in kv.outputs, since an output key may repeat.
-hook.Add("EntityKeyValue", "tf2.record", function(ent, key, value)
+hook.Add("EntityKeyValue", "wetsand_record_keyvalues", function(ent, key, value)
 	if not RECORDED[ent:GetClass()] then return end
 	local kv = WETSAND.KV[ent]
 	if not kv then
@@ -206,16 +206,16 @@ end
 
 -- path_track handles its own Enable/DisablePath; the train watcher only needs
 -- to know which nodes are disabled, so note it and let the input through.
-hook.Add("AcceptInput", "tf2.pathtrack", function(ent, input)
+hook.Add("AcceptInput", "wetsand_path_track", function(ent, input)
 	if ent:GetClass() ~= "path_track" then return end
 	local kv = WETSAND.KV[ent]
 	if not kv then return end
 	input = string.lower(input)
 	if input == "disablepath" then
-		kv.tf2disabled = true
+		kv.wetsandDisabled = true
 	elseif input == "enablepath" then
-		kv.tf2disabled = nil
+		kv.wetsandDisabled = nil
 	elseif input == "togglepath" then
-		kv.tf2disabled = not kv.tf2disabled or nil
+		kv.wetsandDisabled = not kv.wetsandDisabled or nil
 	end
 end)

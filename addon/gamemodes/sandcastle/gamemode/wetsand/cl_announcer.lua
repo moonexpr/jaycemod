@@ -4,7 +4,7 @@
 -- time, and the siren when setup gives way to the round. Only the timer shown
 -- in the HUD speaks, and only while it runs with auto_countdown on. Overtime
 -- is CTFGameRules::HandleOvertimeBegin. Win, loss, stalemate and sudden death
--- music arrive from the server as tf2.sound.
+-- music arrive from the server as wetsand_pa_sound_file.
 WETSAND.RoundsLib = WETSAND.require("foundation.rounds")
 
 local SETUP_SOUND = {
@@ -39,21 +39,21 @@ local armed = {}
 
 -- OnDataChanged: overtime beginning is announced once.
 local function OvertimeThink()
-	local overtime = GetGlobal2Bool("tf2.overtime", false)
+	local overtime = GetGlobal2Bool("wetsand_round_overtime", false)
 	if overtime and not wasOvertime then Play(OVERTIME) end
 	wasOvertime = overtime
 end
 
 local function CountdownThink()
-	if not GetGlobal2Bool("tf2.timer.show", false) or WETSAND.GameplayStopped() then return end
-	local setup = GetGlobal2Bool("tf2.timer.setup", false)
-	local paused = GetGlobal2Bool("tf2.timer.paused", true)
-	local speaks = not paused and GetGlobal2Bool("tf2.timer.autocountdown", true)
+	if not GetGlobal2Bool("wetsand_timer_shown", false) or WETSAND.GameplayStopped() then return end
+	local setup = GetGlobal2Bool("wetsand_timer_in_setup", false)
+	local paused = GetGlobal2Bool("wetsand_timer_paused", true)
+	local speaks = not paused and GetGlobal2Bool("wetsand_timer_auto_countdown", true)
 	local left
 	if paused then
-		left = GetGlobal2Float("tf2.timer.left", 0)
+		left = GetGlobal2Float("wetsand_timer_time_left", 0)
 	else
-		left = GetGlobal2Float("tf2.timer.end", 0) - CurTime()
+		left = GetGlobal2Float("wetsand_timer_end_time", 0) - CurTime()
 	end
 
 	-- OnDataChanged: setup giving way to normal time rings the bell.
@@ -61,7 +61,7 @@ local function CountdownThink()
 	wasSetup = setup
 
 	-- The warnings are re-armed whenever the timer's length changes.
-	local s = GetGlobal2Int("tf2.timer.serial", 0)
+	local s = GetGlobal2Int("wetsand_timer_serial", 0)
 	if s ~= serial then
 		serial = s
 		armed = WETSAND.RoundsLib.ArmClientWarnings(left)

@@ -3,8 +3,8 @@
 -- freezecam sound so it ends as the camera locks on the killer.
 local Spec = WETSAND.require("foundation.spectate")
 
-surface.CreateFont("TF2Ents.Spectate", { font = "Roboto", size = 26, weight = 800 })
-surface.CreateFont("TF2Ents.SpectateHint", { font = "Roboto", size = 16, weight = 600 })
+surface.CreateFont("Sandcastle.Spectate.Title", { font = "Roboto", size = 26, weight = 800 })
+surface.CreateFont("Sandcastle.Spectate.Hint", { font = "Roboto", size = 16, weight = 600 })
 
 local MODE_NAMES = {
 	[OBS_MODE_FIXED] = "Camera",
@@ -43,26 +43,26 @@ local function Draw(w, h)
 	local target = ply:GetObserverTarget()
 	local watching = IsValid(target) and target ~= ply
 	if mode == OBS_MODE_DEATHCAM or mode == OBS_MODE_FREEZECAM then
-		if watching then Line("Killed by " .. Name(target), "TF2Ents.Spectate", TargetColor(target), w, y) end
+		if watching then Line("Killed by " .. Name(target), "Sandcastle.Spectate.Title", TargetColor(target), w, y) end
 		return
 	end
 	local label = MODE_NAMES[mode] or ""
 	if watching and mode ~= OBS_MODE_ROAMING then
-		Line("Spectating " .. Name(target) .. "  (" .. label .. ")", "TF2Ents.Spectate", TargetColor(target), w, y)
+		Line("Spectating " .. Name(target) .. "  (" .. label .. ")", "Sandcastle.Spectate.Title", TargetColor(target), w, y)
 	else
-		Line(label, "TF2Ents.Spectate", color_white, w, y)
+		Line(label, "Sandcastle.Spectate.Title", color_white, w, y)
 	end
 	local hint = string.format("%s / %s: change target    %s: camera mode", Key("+attack"), Key("+attack2"), Key("+jump"))
-	Line(hint, "TF2Ents.SpectateHint", HINT_COLOR, w, y + 26)
+	Line(hint, "Sandcastle.Spectate.Hint", HINT_COLOR, w, y + 26)
 end
 
-hook.Add("SandcastleHUDPaint", "tf2.spectate", Draw)
+hook.Add("SandcastleHUDPaint", "wetsand_spectate", Draw)
 
 -- CTFPlayer::StateThinkDYING starts TFPlayer.FreezeCam so it ends at the
 -- lock-on; the client sees the freezecam begin and plays it for itself.
 local SOUND_DELAY = Spec.TIMES.freezeTravel - Spec.TIMES.freezeSoundLength
 local lastMode = OBS_MODE_NONE
-hook.Add("Think", "tf2.spectate", function()
+hook.Add("Think", "wetsand_spectate", function()
 	local ply = LocalPlayer()
 	if not IsValid(ply) then return end
 	local mode = ply:GetObserverMode()

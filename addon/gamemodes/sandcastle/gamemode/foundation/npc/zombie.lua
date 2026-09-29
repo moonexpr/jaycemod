@@ -50,7 +50,7 @@ SPAWN_HEALTH = 50 -- CZombie::Spawn; a king sets its own
 YAW_RANGE = 360
 
 -- CTFSpellBook's rare tier (TFGameRules()->DropSpellPickup(pos, 1)); the
--- same number as foundation.spells.tf2's TIER_RARE.
+-- same number as the spellbook's TIER_RARE.
 SPELL_TIER_RARE = 1
 
 SKIN_RED, SKIN_BLUE, SKIN_HALLOWEEN = 0, 1, 2

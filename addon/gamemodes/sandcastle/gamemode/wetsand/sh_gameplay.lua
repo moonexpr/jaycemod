@@ -35,7 +35,7 @@ local function BuildPanel(panel)
 	function status:Think()
 		local text
 		if not WETSAND.Active() then
-			text = "This map has no TF2 rounds."
+			text = "This map has no rounds (no tf_gamerules)."
 		elseif WETSAND.GameplayStopped() then
 			text = "Status: stopped (free play)"
 		else

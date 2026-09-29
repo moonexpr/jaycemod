@@ -280,12 +280,12 @@ local function Killer(victim, attacker)
 	return attacker
 end
 
-hook.Add("PlayerDeath", "tf2.spectate", function(victim, inflictor, attacker)
+hook.Add("PlayerDeath", "wetsand_spectate", function(victim, inflictor, attacker)
 	killers[victim] = Killer(victim, attacker)
 end)
 
 -- PostPlayerDeath follows every death, KillSilent included.
-hook.Add("PostPlayerDeath", "tf2.spectate", function(ply)
+hook.Add("PostPlayerDeath", "wetsand_spectate", function(ply)
 	if not WETSAND.Active() then return end
 	local killer = killers[ply]
 	killers[ply] = nil
@@ -298,7 +298,7 @@ end)
 
 -- Spawning ends observing. A spectator is put straight back (tf_gamerules
 -- spawns everyone at round start), skipping Sandbox's loadout.
-hook.Add("PlayerSpawn", "tf2.spectate", function(ply)
+hook.Add("PlayerSpawn", "wetsand_spectate", function(ply)
 	if not WETSAND.Active() then return end
 	if IsSpectator(ply) then
 		WETSAND.StartObserving(ply)
@@ -331,7 +331,7 @@ local KEYS = {
 	[IN_JUMP] = CycleMode,
 }
 
-hook.Add("KeyPress", "tf2.spectate", function(ply, key)
+hook.Add("KeyPress", "wetsand_spectate", function(ply, key)
 	local st = observing[ply]
 	local handler = KEYS[key]
 	if not st or not handler then return end
@@ -347,7 +347,7 @@ end)
 
 -- Every tick -------------------------------------------------------------------------
 
-hook.Add("Think", "tf2.spectate", function()
+hook.Add("Think", "wetsand_spectate", function()
 	for ply, st in pairs(observing) do
 		if IsValid(ply) then Apply(ply, st) end
 	end
@@ -355,7 +355,7 @@ end)
 
 -- The observer stands where it died (or roams); the watched entity's area
 -- must still reach the client for chase, in-eye and the killer cams.
-hook.Add("SetupPlayerVisibility", "tf2.spectate", function(ply)
+hook.Add("SetupPlayerVisibility", "wetsand_spectate", function(ply)
 	local st = observing[ply]
 	if st and IsValid(st.appliedTarget) and Kind(st.appliedTarget) ~= "point" then
 		AddOriginToPVS(st.appliedTarget:GetPos())

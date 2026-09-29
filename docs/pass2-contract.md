@@ -78,14 +78,14 @@ Existing, keep signatures stable:
 - `WETSAND.KeyValues(ent)`, `WETSAND.FireOutput(ent, name, activator)`, `WETSAND.ParseOutput(name, value)`, `WETSAND.FindByName(name)`
 - `WETSAND.PlayersInside(ent)`, `WETSAND.IsAliveInGame(ply)`, `WETSAND.HealFraction(ply, f)`, `WETSAND.GiveAmmoFraction(ply, f)`
 - `WETSAND.SpawnPoints(team)`, `WETSAND.PickSpawn(team)`, `WETSAND.Announce(text, team)`, `WETSAND.BroadcastSound(team, name)` (team 0 = everyone)
-- hooks: `TF2RoundActive()`, `TF2RoundWin(winner)`, `TF2PointCaptured(point, team)`, client `SandcastleHUDPaint(w, h)`
+- hooks: `WetsandRoundActive()`, `WetsandRoundWin(winner)`, `WetsandPointCaptured(point, team)`, client `SandcastleHUDPaint(w, h)`
 
 New, each provided by its owner exactly as named (others may call them):
 
 - **B** `WETSAND.TeamCanCapPoint(point, team) -> bool`: not locked, team does not own it, previous points owned, point belongs to the current round (if rounds are in use). A's capture areas call it.
-- **B** `WETSAND.CurrentRound() -> team_control_point_round entity or NULL`; hook `TF2MiniRoundStart(round)` after a mini-round begins (after its spawn changes apply).
+- **B** `WETSAND.CurrentRound() -> team_control_point_round entity or NULL`; hook `WetsandMiniRoundStart(round)` after a mini-round begins (after its spawn changes apply).
 - **B** `WETSAND.SwitchTeams()`: swap every RED/BLU player (used by switch_teams on win). Implement via `WETSAND.SetPlayerTeam`.
-- **B** hook `TF2Overtime(active)` when the timer enters/leaves overtime.
+- **B** hook `WetsandOvertime(active)` when the timer enters/leaves overtime.
 - **C** `WETSAND.SetPlayerTeam(ply, team)`: the one way to change a player's TF2 team (TF2 semantics: a live player switching teams dies and respawns with the waves; spectator).
 - **C** `WETSAND.RoundSpawnFilter` is not an API; C decides spawn selection per round from `WETSAND.CurrentRound()`.
 - **D** `WETSAND.StartObserving(ply)` / `WETSAND.StopObserving(ply)`: put a player into / out of observer mode (dead players and the spectator team). C's `WETSAND.SetPlayerTeam` calls them for team 1.
@@ -94,9 +94,11 @@ New, each provided by its owner exactly as named (others may call them):
 
 ## Networked keys (Global2 vars)
 
-- B owns and may add, not rename: `tf2.active`, `tf2.state`, `tf2.setup`, `tf2.winner`, `tf2.preroundEnd`, `tf2.overtime`, `tf2.timer.{show,paused,left,end,setup,autocountdown,serial}`.
-- A owns `tf2.cart.*` and may reshape it for several carts (A also owns cl_hud.lua, which reads it and the timer keys).
-- Anything else: prefix with your area (`tf2.round.*` B, `tf2.team.*` C, `tf2.spec.*` D).
+Keys are snake_case with the `wetsand_` prefix, named for what they hold.
+
+- B owns and may add, not rename: `wetsand_rounds_active`, `wetsand_round_state`, `wetsand_round_in_setup`, `wetsand_round_winner`, `wetsand_preround_end_time`, `wetsand_round_overtime`, `wetsand_timer_{shown,paused,time_left,end_time,in_setup,auto_countdown,serial}`.
+- A owns `wetsand_cart_*` and `wetsand_capture_*` and may reshape them for several carts (A also owns cl_hud.lua, which reads them and the timer keys).
+- Anything else: prefix with your area after `wetsand_` (`wetsand_round_*` B, `wetsand_team_*` C, `wetsand_spectate_*` D).
 
 ## Conventions
 

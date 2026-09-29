@@ -182,7 +182,7 @@ function Soldier:Bot()
 		route = TFBot.FASTEST_ROUTE,
 		miniBoss = false,
 		roundWon = WETSAND.State() == WETSAND.STATE.TEAM_WIN,
-		winningTeam = GetGlobal2Int("tf2.winner", WETSAND.TEAM_UNASSIGNED),
+		winningTeam = GetGlobal2Int("wetsand_round_winner", WETSAND.TEAM_UNASSIGNED),
 	}
 end
 
@@ -2297,16 +2297,16 @@ end)
 -- pl_goldrush) starts with everyone back at spawn: a stage keeps the map
 -- as it is, so without this the soldiers would stay where the last stage
 -- left them.
-hook.Add("TF2RoundActivate", "wetsand_aiwar", function()
+hook.Add("WetsandRoundActivate", "wetsand_aiwar", function()
 	if Controller.war then Controller:RespawnAll() end
 end)
 
-hook.Add("TF2RoundWin", "wetsand_aiwar", function(winner)
+hook.Add("WetsandRoundWin", "wetsand_aiwar", function(winner)
 	if Controller.war then Controller:Humiliate(AiWar.LosersOf(winner)) end
 end)
 
 -- The round keeps running with no human on a team while the war is on.
-hook.Add("TF2HaveCombatants", "wetsand_aiwar", function()
+hook.Add("WetsandHaveCombatants", "wetsand_aiwar", function()
 	if Controller.war then return true end
 end)
 

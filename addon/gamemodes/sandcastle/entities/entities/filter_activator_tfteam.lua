@@ -32,7 +32,7 @@ end
 function ENT:PassesFilter(trigger, ent)
 	-- out of gameplay, every door opens for everyone
 	if WETSAND.GameplayStopped() then return true end
-	return WETSAND.TeamRules.FilterPasses(self.team, self.negated, WETSAND.TeamNumber(ent), WETSAND.State(), GetGlobal2Int("tf2.winner", WETSAND.TEAM_UNASSIGNED))
+	return WETSAND.TeamRules.FilterPasses(self.team, self.negated, WETSAND.TeamNumber(ent), WETSAND.State(), GetGlobal2Int("wetsand_round_winner", WETSAND.TEAM_UNASSIGNED))
 end
 
 -- CFilterTFTeam::InputRoundActivate

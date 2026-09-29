@@ -22,11 +22,11 @@ local SHADE = Color(0, 0, 0, 170)
 
 local function CreateFonts()
 	local s = ScrH() / UNIT
-	surface.CreateFont("TF2TeamMenuTitle", { font = "Coolvetica", size = math.Round(26 * s) })
-	surface.CreateFont("TF2TeamMenuCount", { font = "Coolvetica", size = math.Round(34 * s) })
-	surface.CreateFont("TF2TeamMenuName", { font = "Coolvetica", size = math.Round(30 * s) })
-	surface.CreateFont("TF2TeamMenuLabel", { font = "Coolvetica", size = math.Round(16 * s) })
-	surface.CreateFont("TF2TeamMenuSmall", { font = "Roboto", size = math.Round(9 * s), weight = 800 })
+	surface.CreateFont("Sandcastle.TeamMenu.Title", { font = "Coolvetica", size = math.Round(26 * s) })
+	surface.CreateFont("Sandcastle.TeamMenu.Count", { font = "Coolvetica", size = math.Round(34 * s) })
+	surface.CreateFont("Sandcastle.TeamMenu.Name", { font = "Coolvetica", size = math.Round(30 * s) })
+	surface.CreateFont("Sandcastle.TeamMenu.Label", { font = "Coolvetica", size = math.Round(16 * s) })
+	surface.CreateFont("Sandcastle.TeamMenu.Small", { font = "Roboto", size = math.Round(9 * s), weight = 800 })
 end
 CreateFonts()
 
@@ -73,7 +73,7 @@ end
 function CHOICE:DrawHotkey(x, y)
 	local s = self.scale
 	Rect(SHADE, x, y, 14 * s, 14 * s)
-	draw.SimpleText(self.choice.hotkey, "TF2TeamMenuSmall", x + 7 * s, y + 7 * s, TEXT, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+	draw.SimpleText(self.choice.hotkey, "Sandcastle.TeamMenu.Small", x + 7 * s, y + 7 * s, TEXT, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 end
 
 -- A panelled door in the choice's colour below the header.
@@ -94,9 +94,9 @@ function CHOICE:DrawMarks(w, h, top)
 	if c.current then
 		surface.SetDrawColor(TEXT)
 		surface.DrawOutlinedRect(0, top, w, h - top, math.max(1, math.Round(2 * s)))
-		Band("YOUR TEAM", "TF2TeamMenuSmall", w, h - 20 * s, s)
+		Band("YOUR TEAM", "Sandcastle.TeamMenu.Small", w, h - 20 * s, s)
 	end
-	if c.reason then Band(string.upper(c.reason), "TF2TeamMenuSmall", w, top + (h - top) * 0.2, s) end
+	if c.reason then Band(string.upper(c.reason), "Sandcastle.TeamMenu.Small", w, top + (h - top) * 0.2, s) end
 end
 
 local PAINT = {}
@@ -104,18 +104,18 @@ local PAINT = {}
 function PAINT.team(self, w, h)
 	local c, s = self.choice, self.scale
 	local top = HEADER * s
-	draw.SimpleText(c.count, "TF2TeamMenuCount", w / 2, top / 2, c.color, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+	draw.SimpleText(c.count, "Sandcastle.TeamMenu.Count", w / 2, top / 2, c.color, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 	self:DrawDoor(w, h, top)
-	draw.SimpleText(c.label, "TF2TeamMenuName", w / 2, top + (h - top) * 0.82, TEXT, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+	draw.SimpleText(c.label, "Sandcastle.TeamMenu.Name", w / 2, top + (h - top) * 0.82, TEXT, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 	self:DrawMarks(w, h, top)
 end
 
 function PAINT.auto(self, w, h)
 	local c, s = self.choice, self.scale
 	local top = HEADER * s
-	draw.SimpleText(c.label, "TF2TeamMenuLabel", w / 2, top / 2, TEXT, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+	draw.SimpleText(c.label, "Sandcastle.TeamMenu.Label", w / 2, top / 2, TEXT, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 	self:DrawDoor(w, h, top)
-	draw.SimpleText("?", "TF2TeamMenuCount", w / 2, top + (h - top) * 0.5, TEXT, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+	draw.SimpleText("?", "Sandcastle.TeamMenu.Count", w / 2, top + (h - top) * 0.5, TEXT, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 end
 
 -- A screen, with the spectator count, above its label.
@@ -125,9 +125,9 @@ function PAINT.spectate(self, w, h)
 	local color = self:BodyColor()
 	Rect(Scale(color, 0.45), 0, 0, w, box)
 	Rect(color, inset, inset, w - 2 * inset, box - 2 * inset)
-	draw.SimpleText(c.count, "TF2TeamMenuLabel", w / 2, box / 2, TEXT, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+	draw.SimpleText(c.count, "Sandcastle.TeamMenu.Label", w / 2, box / 2, TEXT, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 	self:DrawHotkey(inset, inset)
-	draw.SimpleText(c.label, "TF2TeamMenuLabel", w / 2, box + BOX_LABEL * s / 2, TEXT, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+	draw.SimpleText(c.label, "Sandcastle.TeamMenu.Label", w / 2, box + BOX_LABEL * s / 2, TEXT, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 	if c.current then
 		surface.SetDrawColor(TEXT)
 		surface.DrawOutlinedRect(0, 0, w, box, math.max(1, math.Round(2 * s)))
@@ -138,7 +138,7 @@ function CHOICE:Paint(w, h)
 	PAINT[self.choice.kind](self, w, h)
 end
 
-vgui.Register("TF2TeamChoice", CHOICE, "DButton")
+vgui.Register("WetsandTeamChoice", CHOICE, "DButton")
 
 -- The cancel button ----------------------------------------------------------------
 
@@ -146,7 +146,7 @@ local CANCEL = {}
 
 function CANCEL:Init()
 	self:SetKeyboardInputEnabled(false)
-	self:SetFont("TF2TeamMenuLabel")
+	self:SetFont("Sandcastle.TeamMenu.Label")
 	self:SetTextColor(TEXT)
 end
 
@@ -158,7 +158,7 @@ function CANCEL:Paint(w, h)
 	Rect(self:IsHovered() and Color(120, 60, 40) or Color(60, 55, 50), 0, 0, w, h)
 end
 
-vgui.Register("TF2TeamCancel", CANCEL, "DButton")
+vgui.Register("WetsandTeamCancel", CANCEL, "DButton")
 
 -- The menu -------------------------------------------------------------------------
 
@@ -177,7 +177,7 @@ end
 
 function MENU:Init()
 	self:SetSize(ScrW(), ScrH())
-	self.cancelButton = vgui.Create("TF2TeamCancel", self)
+	self.cancelButton = vgui.Create("WetsandTeamCancel", self)
 	self.nextRefresh = 0
 end
 
@@ -195,7 +195,7 @@ function MENU:SetConfig(config)
 	self.scoreKey = BoundKey("+showscores")
 	self.menu = self:Build()
 	self.choicePanels = {}
-	for i in ipairs(self.menu.choices) do self.choicePanels[i] = vgui.Create("TF2TeamChoice", self) end
+	for i in ipairs(self.menu.choices) do self.choicePanels[i] = vgui.Create("WetsandTeamChoice", self) end
 	self:Refresh()
 end
 
@@ -257,7 +257,7 @@ function MENU:Paint(w, h)
 	local s = h / UNIT
 	Rect(BACKDROP, 0, 0, w, h)
 	Rect(BAR, 0, h - BAR_H * s, w, BAR_H * s)
-	draw.SimpleText(self.config.title, "TF2TeamMenuTitle", 30 * s, h - BAR_H / 2 * s, TEXT, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
+	draw.SimpleText(self.config.title, "Sandcastle.TeamMenu.Title", 30 * s, h - BAR_H / 2 * s, TEXT, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
 end
 
 -- CTFTeamMenu::OnCommand: a disabled team keeps the menu open; picking the
@@ -296,11 +296,11 @@ function MENU:OnRemove()
 	if self.scoreboardShown then GAMEMODE:ScoreboardHide() end
 end
 
-vgui.Register("TF2TeamMenu", MENU, "EditablePanel")
+vgui.Register("WetsandTeamMenu", MENU, "EditablePanel")
 
 -- TF2's team menu ------------------------------------------------------------------
 
-local TF2_MENU = {
+local TEAM_MENU = {
 	title = "SELECT A TEAM",
 	teams = {
 		{ index = WETSAND.TEAM_BLUE, name = WETSAND.TeamName[WETSAND.TEAM_BLUE], color = WETSAND.TeamColor[WETSAND.TEAM_BLUE], command = "blue" },
@@ -319,8 +319,8 @@ local menu
 -- CTFTeamMenu::ShowPanel does nothing while the menu is already up.
 function WETSAND.OpenTeamMenu()
 	if IsValid(menu) then return end
-	menu = vgui.Create("TF2TeamMenu")
-	menu:SetConfig(TF2_MENU)
+	menu = vgui.Create("WetsandTeamMenu")
+	menu:SetConfig(TEAM_MENU)
 	menu:MakePopup()
 end
 
@@ -330,12 +330,12 @@ end)
 
 -- The server opens the menu for a player without a team once the client can
 -- receive it.
-hook.Add("InitPostEntity", "tf2.teams", function()
+hook.Add("InitPostEntity", "wetsand_teams", function()
 	net.Start("wetsand_team_menu_request")
 	net.SendToServer()
 end)
 
-hook.Add("OnScreenSizeChanged", "tf2.teams", function()
+hook.Add("OnScreenSizeChanged", "wetsand_teams", function()
 	CreateFonts()
 	if IsValid(menu) then
 		menu:SetSize(ScrW(), ScrH())

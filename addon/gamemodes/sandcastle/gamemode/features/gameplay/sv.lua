@@ -94,7 +94,7 @@ end
 
 function Controller:Stop()
 	local rules = Rules()
-	if not rules then return false, "this map has no TF2 rounds (no tf_gamerules)" end
+	if not rules then return false, "this map has no rounds (no tf_gamerules)" end
 	local cancelled = self:CancelCountdown()
 	if rules:Halted() then
 		if not cancelled then return false, "the game is already stopped" end
@@ -109,7 +109,7 @@ end
 
 function Controller:StartNewGame()
 	local rules = Rules()
-	if not rules then return false, "this map has no TF2 rounds (no tf_gamerules)" end
+	if not rules then return false, "this map has no rounds (no tf_gamerules)" end
 	if self.counting then return false, "a new game is already counting down" end
 	self.counting = true
 	self.countdownSounds = {}
@@ -156,7 +156,7 @@ end
 
 function Controller:Status()
 	local rules = Rules()
-	if not rules then return "no TF2 rounds on this map" end
+	if not rules then return "no rounds on this map (no tf_gamerules)" end
 	if self.counting then return "a new game is counting down" end
 	return rules:Halted() and "stopped (free play)" or "running"
 end

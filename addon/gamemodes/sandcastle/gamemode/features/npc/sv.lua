@@ -313,8 +313,8 @@ local function ForgetSpawnRooms()
 	Controller.spawnRoomTeams = {}
 end
 hook.Add("PostCleanupMap", "wetsand_npc_spawn_rooms", ForgetSpawnRooms)
-hook.Add("TF2RoundActivate", "wetsand_npc_spawn_rooms", ForgetSpawnRooms)
-hook.Add("TF2RoundActive", "wetsand_npc_spawn_rooms", ForgetSpawnRooms)
+hook.Add("WetsandRoundActivate", "wetsand_npc_spawn_rooms", ForgetSpawnRooms)
+hook.Add("WetsandRoundActive", "wetsand_npc_spawn_rooms", ForgetSpawnRooms)
 
 -- Fills `step` for the move from fromArea (nil for the first area) into
 -- area. traversable(area) is the mover's ILocomotion::IsAreaTraversable.

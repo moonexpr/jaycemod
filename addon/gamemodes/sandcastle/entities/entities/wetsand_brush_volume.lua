@@ -6,14 +6,14 @@ ENT.Base = "base_brush"
 
 function ENT:KeyValue(key, value)
 	local k = string.lower(key)
-	self.tf2kv = self.tf2kv or {}
-	self.tf2kv[k] = value
+	self.wetsandKv = self.wetsandKv or {}
+	self.wetsandKv[k] = value
 	if k == "model" then self.brushModel = value end
 	if string.sub(key, 1, 2) == "On" then self:StoreOutput(key, value) end
 end
 
 function ENT:Key(name, default)
-	local v = (self.tf2kv or {})[name]
+	local v = (self.wetsandKv or {})[name]
 	if v == nil or v == "" then return default end
 	return v
 end

@@ -6,13 +6,13 @@ ENT.Type = "point"
 ENT.Base = "base_point"
 
 function ENT:KeyValue(key, value)
-	self.tf2kv = self.tf2kv or {}
-	self.tf2kv[string.lower(key)] = value
+	self.wetsandKv = self.wetsandKv or {}
+	self.wetsandKv[string.lower(key)] = value
 	if string.sub(key, 1, 2) == "On" then self:StoreOutput(key, value) end
 end
 
 function ENT:Key(name, default)
-	local v = (self.tf2kv or {})[name]
+	local v = (self.wetsandKv or {})[name]
 	if v == nil or v == "" then return default end
 	return v
 end
