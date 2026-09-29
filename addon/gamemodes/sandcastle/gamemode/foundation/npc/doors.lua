@@ -1,12 +1,12 @@
--- Which doors close the nav mesh to whom: TF2's rule
--- (CTFNavMesh::ComputeBlockedAreas, tf_nav_mesh.cpp), which GMod's nav
--- mesh lacks, so routes led through shut doors. A func_door that an
--- enabled trigger_multiple overlaps is opened by that trigger; if the
--- trigger's filter_activator_tfteam admits one team, the door is that
--- team's (a spawn door) and blocks the other team, open or shut. A closed
--- door no trigger opens is a wall until map logic opens it (a setup gate,
--- a door opened by a capture) and blocks everyone. Every nav area the door
--- overlaps is blocked so.
+-- Which doors close the nav mesh, which GMod's nav mesh does not know:
+-- a door shut and locked (map logic locks a door a capture closes for
+-- good) blocks every route through the areas it overlaps. Any other door
+-- is left to open as a soldier reaches it: TF2's own rule
+-- (CTFNavMesh::ComputeBlockedAreas) also walls off a shut door no trigger
+-- opens, and a team's spawn door to the other team, which shut soldiers
+-- in their own spawn. That rule still marks the walls of setup: a shut
+-- door no trigger opens (a setup gate) bounds the ground the attackers
+-- wander in setup, though routes may pass it.
 module(...)
 
 -- CBaseToggle's m_toggle_state
@@ -18,13 +18,17 @@ function IsClosed(toggleState)
 	return toggleState == TS_AT_BOTTOM or toggleState == TS_GOING_DOWN
 end
 
--- door = { closed, controlled (an enabled trigger overlaps it), owner (the
--- team its trigger's filter admits, or nil) }; EnemyOf(team) -> the other
--- team. Returns the team the door blocks (ANY for everyone), or nil.
-function BlockedTeam(door, EnemyOf)
-	if door.owner then return EnemyOf(door.owner) or ANY end
-	if door.closed and not door.controlled then return ANY end
+-- door = { closed, locked, controlled (an enabled trigger overlaps it),
+-- owner (the team its trigger's filter admits, or nil) }. Returns the team
+-- the door blocks routes for (ANY for everyone), or nil.
+function BlockedTeam(door)
+	if door.closed and door.locked then return ANY end
 	return nil
+end
+
+-- Whether the door walls in setup's ground: shut, and no trigger opens it.
+function IsWall(door)
+	return door.closed and not door.controlled
 end
 
 -- blockedTeams: the teams an area's doors block (a list, or nil).

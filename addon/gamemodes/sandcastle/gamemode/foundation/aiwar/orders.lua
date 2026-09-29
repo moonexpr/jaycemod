@@ -78,7 +78,14 @@ DETOUR_TIME = 3
 -- gates: to a spot (the soldier port's WanderSpot), which may be rooms
 -- away, travelling there as to any goal, resting WANDER_REST there,
 -- giving a spot up after WANDER_GIVE_UP; when setup ends they go to work.
-WANDER_ARRIVE, WANDER_REST, WANDER_GIVE_UP = 48, 3, 20
+-- At each spot a wanderer strikes a pose (the soldier port's Pose: sits,
+-- lies down, dances) until it moves on.
+WANDER_ARRIVE, WANDER_REST, WANDER_GIVE_UP = 48, 12, 30
+
+-- Gaits (the soldier port's MoveTo): a casual walk for setup's wanderers,
+-- a panicked run for the defenders racing to their line in setup, a run
+-- otherwise.
+WALK, RUN, PANIC = "walk", "run", "panic"
 RETRY_WAIT = 1 -- after a failed trip, before the next
 
 local Distance = Track.Distance
@@ -290,7 +297,7 @@ function Travel:Unstick(me, goal)
 	if detour then
 		self.detour, self.detourUntil = detour, me:Now() + DETOUR_TIME
 		self:ResetProgress(me)
-		me:MoveTo(detour)
+		me:MoveTo(detour, self.gait)
 		return self:Continue()
 	end
 	if target.z - me:Position().z > CLIMB_RISE and self:HopOn(me, goal) then return self:Continue() end
@@ -305,7 +312,7 @@ function Travel:Unstick(me, goal)
 	local here = me:Position()
 	self.sidestep = { x = here.x + cos(angle) * SIDESTEP_DISTANCE, y = here.y + sin(angle) * SIDESTEP_DISTANCE, z = here.z }
 	self.sidestepUntil = me:Now() + SIDESTEP_TIME
-	me:MoveTo(self.sidestep)
+	me:MoveTo(self.sidestep, self.gait)
 	return self:Continue()
 end
 
@@ -340,7 +347,7 @@ function Travel:Chase(me, goal)
 		self.chaseBlockedUntil = me:Now() + CHASE_BACKOFF
 		return self:Unstick(me, goal)
 	end
-	me:MoveTo(goal)
+	me:MoveTo(goal, self.gait)
 	return self:Continue()
 end
 
@@ -363,7 +370,7 @@ function Travel:FollowRoute(me, goal)
 	end
 	self:Advance(me)
 	if self:IsStuck(me) then return self:Unstick(me, goal) end
-	me:MoveTo(self.route[self.index])
+	me:MoveTo(self.route[self.index], self.gait)
 	return self:Continue()
 end
 
@@ -385,7 +392,9 @@ end
 
 function Travel:Update(me)
 	local state, role = self.state, self.role
-	local goal, over = self:Goal(me, state.war:Field())
+	local field = state.war:Field()
+	local goal, over = self:Goal(me, field)
+	self.gait = (self.spot and WALK) or (field and field.setup and PANIC) or RUN
 	if goal == nil then
 		if over == "gave up" then return self:Fail(over) end
 		return self:End(over)
@@ -396,14 +405,14 @@ function Travel:Update(me)
 	if not role.rushes and me:HasEnemy() and range <= role.leash then return self:End("engaging") end
 	if self.detour then
 		if me:Now() < self.detourUntil and me:RangeTo(self.detour) > WAYPOINT_RADIUS then
-			me:MoveTo(self.detour)
+			me:MoveTo(self.detour, self.gait)
 			return self:Continue()
 		end
 		self.detour = nil
 	end
 	if self.sidestep then
 		if me:Now() < self.sidestepUntil then
-			me:MoveTo(self.sidestep)
+			me:MoveTo(self.sidestep, self.gait)
 			return self:Continue()
 		end
 		-- a step aside that moved counts as progress by itself
@@ -435,6 +444,7 @@ function Objective:Wander(me)
 	state.wandering = true
 	if now < (self.restUntil or 0) then
 		me:Release()
+		state.pose = me:Pose()
 		return self:Continue()
 	end
 	local spot = me:WanderSpot()
@@ -444,6 +454,8 @@ function Objective:Wander(me)
 		return self:Continue()
 	end
 	state.goal = spot
+	me:Unpose()
+	state.pose = nil
 	return self:SuspendFor(Travel:New(state, WANDER, spot), "wandering")
 end
 
@@ -454,6 +466,10 @@ function Objective:Update(me)
 	if OrdersRun(field) and WaitingForSetup(field, state.member) then return self:Wander(me) end
 	state.wandering = false
 	self.restUntil = nil
+	if state.pose then
+		me:Unpose()
+		state.pose = nil
+	end
 	local goal = OrdersRun(field) and self.role.Goal(field, state.member)
 	if not goal then
 		me:Release()
@@ -463,7 +479,7 @@ function Objective:Update(me)
 	local range = me:RangeTo(goal)
 	-- at the cart: keep to the spot as the cart carries it off
 	if self.role.rushes and range <= self.role.arrive then
-		if range > STATION and me:CanWalkTo(goal) then me:MoveTo(goal) else me:Release() end
+		if range > STATION and me:CanWalkTo(goal) then me:MoveTo(goal, RUN) else me:Release() end
 		return self:Continue()
 	end
 	local fighting = me:HasEnemy() and range <= self.role.leash

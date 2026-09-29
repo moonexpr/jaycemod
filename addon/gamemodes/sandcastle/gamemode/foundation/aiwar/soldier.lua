@@ -1,7 +1,7 @@
 -- The soldier port: what foundation.aiwar.orders may ask of the HL2 engine
 -- NPC it drives. The features/aiwar controller implements it over an NPC
--- (NPC:SetLastPosition and SCHED_FORCED_GO_RUN, the npc controller's Lua
--- route search) and tests/fake_soldier.lua fakes it.
+-- (its own floor-following movement, the npc controller's Lua route
+-- search) and tests/fake_soldier.lua fakes it.
 --
 -- Positions are plain { x, y, z } tables.
 --   Now() -> the time
@@ -16,10 +16,16 @@
 --     last being the goal, or the nearest reachable point when the goal
 --     is cut off
 --   CanWalkTo(p) -> nothing solid between me and p at walking height
---   MoveTo(p): run to p, ignoring enemies on the way (a forced move); the
---     same p again keeps the move going
---   Release(): end any forced move, handing me back to the engine's own AI,
+--   MoveTo(p, gait): go to p in a straight line at the gait
+--     (foundation.aiwar.orders' WALK, RUN or PANIC; default RUN), moved by
+--     the controller rather than the engine, whatever my AI is doing; a
+--     new p retargets the move
+--   Release(): end any move, handing me back to the engine's own AI,
 --     which fights, takes cover or idles
+--   Pose() -> strike a pose where I stand (sitting, lying down, dancing),
+--     keeping it until Unpose or MoveTo; the pose's name, or nil if I have
+--     none to strike; asking again keeps the same pose
+--   Unpose(): end any pose
 --   PassBlocker(p) -> whether something between me and p that only NPCs
 --     collide with (not players) was found and I may now pass through it
 --   Detour(p) -> a point beside the solid entity (not map geometry) that
@@ -49,6 +55,8 @@ METHODS = {
 	"PassBlocker",
 	"Detour",
 	"WanderSpot",
+	"Pose",
+	"Unpose",
 	"RouteStale",
 	"Hop",
 }

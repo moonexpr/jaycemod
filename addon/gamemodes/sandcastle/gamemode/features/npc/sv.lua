@@ -166,12 +166,6 @@ local BLOCKER_REFRESH = 1
 local DOOR_FLOOR = Vector(0, 0, 32)
 local UNASSIGNED = WETSAND.TEAM_UNASSIGNED
 
-local function EnemyOf(team)
-	if team == WETSAND.TEAM_RED then return WETSAND.TEAM_BLUE end
-	if team == WETSAND.TEAM_BLUE then return WETSAND.TEAM_RED end
-	return nil
-end
-
 local function Overlapping(aMins, aMaxs, bMins, bMaxs)
 	return aMins.x <= bMaxs.x and bMins.x <= aMaxs.x and aMins.y <= bMaxs.y and bMins.y <= aMaxs.y
 		and aMins.z <= bMaxs.z and bMins.z <= aMaxs.z
@@ -233,8 +227,9 @@ end
 function Controller:RefreshBlockers(now)
 	if now < self.nextBlockerRefresh then return end
 	self.nextBlockerRefresh = now + BLOCKER_REFRESH
-	local blocked, triggers, states = {}, DoorTriggers(), setmetatable({}, { __mode = "k" })
+	local blocked, triggers, states, walls = {}, DoorTriggers(), setmetatable({}, { __mode = "k" }), {}
 	self.doorStates = states
+	self.doorWalls = walls
 	-- exactly func_brush: func_respawnroomvisualizer, a func_brush too, is not one
 	for _, brush in ipairs(ents.FindByClass("func_brush")) do
 		if brush:IsSolid() then
@@ -243,7 +238,11 @@ function Controller:RefreshBlockers(now)
 	end
 	for _, door in ipairs(ents.FindByClass("func_door*")) do
 		local mins, maxs = door:WorldSpaceAABB()
-		local state = { closed = Doors.IsClosed(door:GetInternalVariable("m_toggle_state")), controlled = false }
+		local state = {
+			closed = Doors.IsClosed(door:GetInternalVariable("m_toggle_state")),
+			locked = door:GetInternalVariable("m_bLocked") == true,
+			controlled = false,
+		}
 		for _, trigger in ipairs(triggers) do
 			if Overlapping(mins, maxs, trigger.mins, trigger.maxs) then
 				state.controlled = true
@@ -251,10 +250,13 @@ function Controller:RefreshBlockers(now)
 			end
 		end
 		states[door] = state
-		local team = Doors.BlockedTeam(state, EnemyOf)
+		local team = Doors.BlockedTeam(state)
 		state.blocks = team
-		if team then
-			for _, area in ipairs(navmesh.FindInBox(mins - DOOR_FLOOR, maxs)) do Block(blocked, area, team) end
+		if team or Doors.IsWall(state) then
+			for _, area in ipairs(navmesh.FindInBox(mins - DOOR_FLOOR, maxs)) do
+				if team then Block(blocked, area, team) end
+				if Doors.IsWall(state) then walls[area:GetID()] = true end
+			end
 		end
 	end
 	self.navBlocked = blocked
@@ -275,11 +277,17 @@ function Controller:BlockerGeneration()
 	return self.blockerGeneration
 end
 
--- How the blockers see a func_door: { closed, controlled, owner, blocks
+-- How the blockers see a func_door: { closed, locked, controlled, owner, blocks
 -- (the team it blocks, foundation.npc.doors.ANY, or nil) }, or nil.
 function Controller:DoorState(door)
 	self:RefreshBlockers(CurTime())
 	return self.doorStates and self.doorStates[door]
+end
+
+-- Whether a shut door no trigger opens (a setup gate) stands in the area.
+function Controller:DoorWallIn(area)
+	self:RefreshBlockers(CurTime())
+	return self.doorWalls ~= nil and self.doorWalls[area:GetID()] == true
 end
 
 -- Whether a door or brush closes the area to the team.

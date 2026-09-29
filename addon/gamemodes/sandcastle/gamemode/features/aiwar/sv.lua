@@ -166,16 +166,10 @@ function Soldier:CanWalkTo(p)
 	return not tr.Hit
 end
 
--- A forced run ignores enemies until it arrives (SCHED_FORCED_GO_RUN to
--- the last position). A run already going to within MOVE_RETARGET of p
--- carries on: restarting the schedule every think for a target that moves
--- a little (the cart) would make the NPC stutter.
-local MOVE_RETARGET = 24
-
 -- A nav area over stairs is a ramp, while the steps under it are not, so
--- a point taken from the mesh can lie inside a step; the engine refuses a
--- run to a point in solid ground. The target is dropped onto the floor
--- found by a trace down from above it, or kept when no floor is found.
+-- a point taken from the mesh can lie inside a step. A point is dropped
+-- onto the floor found by a trace down from above it, or kept when no
+-- floor is found.
 local FLOOR_ABOVE, FLOOR_BELOW, FLOOR_CLEARANCE = 32, 64, 2
 
 local function OnFloor(pos)
@@ -188,40 +182,6 @@ local function OnFloor(pos)
 	return tr.HitPos + Vector(0, 0, FLOOR_CLEARANCE)
 end
 
--- The engine refuses runs it cannot build a way for, as over displacement
--- ground, where an NPC stands a little sunk into the bumps and its move
--- probe starts in solid. A run to the same target refused again is walked
--- by hand instead: a hop of up to CARRY_STEP toward it, when a player
--- could walk that line (Soldier:Hop).
-local CARRY_STEP = 128
-local RUN_ENDED_NEAR = 48
-
-function Soldier:MoveTo(p)
-	if self.traverse then return end
-	local ent = self.ent
-	local current = self.moveTarget
-	local same = current and Track.Distance(current, p) < MOVE_RETARGET
-	if same and ent:IsCurrentSchedule(SCHED_FORCED_GO_RUN) then return end
-	if same and self.ranFor == current and self:RangeTo(p) > RUN_ENDED_NEAR and self:Carry(p) then return end
-	self.moveTarget = p
-	self.ranFor = p
-	ent:SetLastPosition(OnFloor(ToVector(p)))
-	ent:SetSchedule(SCHED_FORCED_GO_RUN)
-end
-
--- For the report: whether the forced run is on, or ended away from its
--- target, which means the engine could not build a way there.
-
-function Soldier:RunState()
-	if self.traverse then return "carried over an obstacle, walking" end
-	if self.moveTarget == nil then return nil end
-	if self.ent:IsCurrentSchedule(SCHED_FORCED_GO_RUN) then
-		return string.format("running at %d u/s", math.floor(self.ent:GetVelocity():Length2D()))
-	end
-	if self:RangeTo(self.moveTarget) > RUN_ENDED_NEAR then return "run refused by the engine" end
-	return "at its run target"
-end
-
 -- The last resort of a stuck soldier: carried to p, if a soldier-sized
 -- box sweeps there under player movement's mask (so only what would stop
 -- a player stops the hop: no wall, door or gate) and fits at p under the
@@ -232,6 +192,118 @@ local HOP_MAX_RISE = 64
 local TRAVERSE_SPEED = 170 -- units a second, about an HL2 soldier's run
 local TRAVERSE_MIN_TIME = 0.1
 local TRAVERSE_FLOOR_ABOVE, TRAVERSE_FLOOR_BELOW = 48, 64
+
+local function NotCharacter(hit) return not (hit:IsNPC() or hit:IsPlayer()) end
+
+-- Movement: the soldiers are moved by the controller, not the engine,
+-- whose runs refuse bumpy ground (displacements) and stall in place.
+-- Each tick a moving soldier steps toward its target at its gait's pace,
+-- as a player would walk: a soldier-sized box swept above step height
+-- (MASK_PLAYERSOLID, teammates aside) stops it or slides it along what it
+-- touches; then it is set on the floor a player would stand on (stairs'
+-- clip ramps included), stepping up at most WALK_STEP and down at most
+-- WALK_DROP, never onto ground steeper than WALK_SLOPE. The gait's
+-- animation plays at its own ground speed, so the feet do not slide; the
+-- engine's AI keeps aiming and shooting, but may not move the soldier.
+local WALK_STEP, WALK_DROP, WALK_SLOPE = 18, 64, 0.7
+local WALK_ARRIVE = 8
+local SLIDE_MIN = 0.2
+local GAITS = {
+	walk = { acts = { ACT_WALK }, speed = 80 },
+	run = { acts = { ACT_RUN }, speed = 190 },
+	-- citizens' cowering run, else a plain one
+	panic = { acts = { ACT_RUN_PROTECTED, ACT_RUN_STIMULATED, ACT_RUN }, speed = 210 },
+}
+
+-- The gait's activity this model has, and the pace it moves at.
+local function GaitOf(ent, gaitName)
+	local gait = GAITS[gaitName] or GAITS.run
+	for _, act in ipairs(gait.acts) do
+		local sequence = ent:SelectWeightedSequence(act)
+		if sequence and sequence > 0 then
+			local speed = ent:GetSequenceGroundSpeed(sequence)
+			return act, speed > 1 and speed or gait.speed
+		end
+	end
+	return ACT_RUN, gait.speed
+end
+
+function Soldier:MoveTo(p, gait)
+	if self.traverse then return end
+	self:Unpose()
+	self.moveTarget = p
+	self.gait = gait or "run"
+end
+
+function Soldier:Sweep(from, to)
+	local controller, ent, team = self.controller, self.ent, self.team
+	return util.TraceHull({
+		start = from + HOP_LIFT,
+		endpos = to + HOP_LIFT,
+		mins = HOP_MINS,
+		maxs = HOP_MAXS - HOP_LIFT,
+		mask = MASK_PLAYERSOLID,
+		filter = function(hit)
+			if hit == ent then return false end
+			local entry = controller.soldiers[hit]
+			return not (entry and entry.soldier.team == team)
+		end,
+	})
+end
+
+-- Where a step of `step` from pos along dir lands, or nil when it cannot.
+function Soldier:Step(pos, dir, step)
+	local nextPos = pos + dir * step
+	local sweep = self:Sweep(pos, nextPos)
+	if sweep.StartSolid then return nil end
+	if sweep.Hit then
+		local normal = Vector(sweep.HitNormal.x, sweep.HitNormal.y, 0)
+		local slide = dir - normal * dir:Dot(normal)
+		if slide:Length() < SLIDE_MIN then return nil end
+		nextPos = pos + slide * step
+		if self:Sweep(pos, nextPos).Hit then return nil end
+	end
+	local floor = util.TraceLine({
+		start = nextPos + Vector(0, 0, WALK_STEP),
+		endpos = nextPos - Vector(0, 0, WALK_DROP),
+		mask = MASK_PLAYERSOLID,
+		filter = NotCharacter,
+	})
+	if floor.StartSolid or not floor.Hit or floor.HitNormal.z < WALK_SLOPE then return nil end
+	return floor.HitPos
+end
+
+function Soldier:Walk(dt)
+	local ent = self.ent
+	local pos = ent:GetPos()
+	local delta = ToVector(self.moveTarget) - pos
+	delta.z = 0
+	local distance = delta:Length()
+	self.walkSpeed = 0
+	if distance <= WALK_ARRIVE then return end
+	local act, speed = GaitOf(ent, self.gait)
+	local step = math.min(distance, speed * dt)
+	local nextPos = self:Step(pos, delta / distance, step)
+	if not nextPos then return end
+	ent:SetPos(nextPos)
+	if ent:IsMoving() then ent:StopMoving() end
+	-- with an enemy in sight the engine aims and shoots as it moves
+	if not self:HasEnemy() then
+		local yaw = delta:Angle().y
+		ent:SetAngles(Angle(0, yaw, 0))
+		ent:SetIdealYawAndUpdate(yaw)
+		ent:SetIdealActivity(act)
+	end
+	self.walkSpeed = step / dt
+end
+
+-- For the report: the gait and pace, or that the soldier is at its target.
+function Soldier:RunState()
+	if self.traverse then return "carried over an obstacle, walking" end
+	if self.moveTarget == nil then return nil end
+	if self:RangeTo(self.moveTarget) <= WALK_ARRIVE * 2 then return "at its target" end
+	return string.format("%s at %d u/s", self.gait or "run", math.floor(self.walkSpeed or 0))
+end
 
 -- What stands between me and p for an NPC's movement (a soldier-sized box
 -- above step height, under the NPC's mask, teammates and the enemy aside),
@@ -269,9 +341,10 @@ local DETOUR_CLEARANCE = 40
 function Soldier:Detour(p)
 	local blocker, playersPass = self:Blocker(p)
 	if not blocker or blocker:IsWorld() or blocker:IsPlayer() or playersPass then return nil end
-	-- a shut door is no prop to walk round: routes keep off it for a while
+	-- a shut door is no prop to walk round: it opens as I reach it, or,
+	-- locked, routes keep off it for a while
 	if IsDoor(blocker) then
-		self.controller:NoteShutDoor(blocker, self.team)
+		if blocker:GetInternalVariable("m_bLocked") == true then self.controller:NoteShutDoor(blocker, self.team) end
 		return nil
 	end
 	local mins, maxs = blocker:WorldSpaceAABB()
@@ -338,21 +411,6 @@ end
 -- facing its way and playing its run, set on the floor a player would
 -- stand on there, so on stairs it rides the players' smooth clip ramp.
 -- At the end its AI is free again and its orders' moves go on.
-local function NotCharacter(hit) return not (hit:IsNPC() or hit:IsPlayer()) end
-
-function Soldier:Carry(p)
-	local from, to = self.ent:GetPos(), ToVector(p)
-	local length = from:Distance(to)
-	if length > CARRY_STEP then to = from + (to - from) * (CARRY_STEP / length) end
-	local target = self.moveTarget
-	if not self:Hop(Point(to)) then return false end
-	-- the hop is a leg of the same run: its target stands, and the
-	-- engine is asked to run the rest again
-	self.moveTarget = target
-	self.ranFor = nil
-	self.carries = (self.carries or 0) + 1
-	return true
-end
 
 function Soldier:Traverse(now)
 	local traverse, ent = self.traverse, self.ent
@@ -376,10 +434,94 @@ function Soldier:Traverse(now)
 	end
 end
 
-function Soldier:Release()
-	if self.traverse or self.moveTarget == nil then return end
+-- Poses: what a wanderer does at each spot in setup, the kinds its model
+-- has picked at random. A schedule pose is set again whenever the engine
+-- ends it (SCHED_VICTORY_DANCE plays ACT_VICTORY_DANCE once); an activity
+-- pose holds the activity each tick; a sequence pose is played by a
+-- scripted_sequence, as maps script their NPCs, looping in its post idle.
+local POSES = {
+	{ name = "dancing", sched = SCHED_VICTORY_DANCE, act = ACT_VICTORY_DANCE },
+	{ name = "sitting", act = ACT_BUSY_SIT_GROUND },
+	{ name = "sitting", sequence = "sit_ground" },
+	{ name = "lying down", sequence = "d1_town05_wounded_idle_1" },
+	{ name = "lying down", sequence = "lying_down" },
+	{ name = "cheering", sequence = "cheer1" },
+	{ name = "cheering", sequence = "cheer2" },
+	{ name = "waving", sequence = "wave" },
+	{ name = "crouching", act = ACT_COVER_LOW },
+	{ name = "looking around", sched = SCHED_ALERT_SCAN },
+}
+local SF_SCRIPT_NO_TELEPORT_AT_END, SF_SCRIPT_LOOP_IN_POST_IDLE = 128, 256
+
+local function PoseAvailable(ent, pose)
+	if pose.sequence then return ent:LookupSequence(pose.sequence) > 0 end
+	if pose.act then
+		local sequence = ent:SelectWeightedSequence(pose.act)
+		return sequence ~= nil and sequence > 0
+	end
+	return true
+end
+
+function Soldier:Pose()
+	if self.pose then return self.pose.name end
+	local ent, choices = self.ent, {}
+	for _, pose in ipairs(POSES) do
+		if pose ~= self.lastPose and PoseAvailable(ent, pose) then choices[#choices + 1] = pose end
+	end
+	if #choices == 0 then return nil end
+	local pose = choices[math.random(#choices)]
+	self.pose, self.lastPose = pose, pose
 	self.moveTarget = nil
-	if self.ent:IsCurrentSchedule(SCHED_FORCED_GO_RUN) then self.ent:ClearSchedule() end
+	if pose.sequence then
+		self.poseName = ent:GetName()
+		local name = "wetsand_pose_" .. ent:EntIndex()
+		ent:SetName(name)
+		local script = ents.Create("scripted_sequence")
+		script:SetPos(ent:GetPos())
+		script:SetAngles(ent:GetAngles())
+		script:SetKeyValue("m_iszEntity", name)
+		script:SetKeyValue("m_iszPlay", pose.sequence)
+		script:SetKeyValue("m_iszPostIdle", pose.sequence)
+		script:SetKeyValue("m_fMoveTo", "0")
+		script:SetKeyValue("spawnflags", tostring(SF_SCRIPT_NO_TELEPORT_AT_END + SF_SCRIPT_LOOP_IN_POST_IDLE))
+		script:Spawn()
+		script:Fire("BeginSequence")
+		self.script = script
+	end
+	self:HoldPose()
+	return pose.name
+end
+
+-- Each tick of a pose.
+function Soldier:HoldPose()
+	local pose, ent = self.pose, self.ent
+	if pose.sched then
+		if not ent:IsCurrentSchedule(pose.sched) then ent:SetSchedule(pose.sched) end
+	elseif pose.act then
+		ent:SetIdealActivity(pose.act)
+	end
+end
+
+function Soldier:Unpose()
+	local pose = self.pose
+	if not pose then return end
+	self.pose = nil
+	local ent, script = self.ent, self.script
+	self.script = nil
+	if IsValid(script) then
+		script:Fire("CancelSequence")
+		SafeRemoveEntityDelayed(script, 1)
+	end
+	if IsValid(ent) then
+		if pose.sequence then ent:SetName(self.poseName or "") end
+		if pose.sched and ent:IsCurrentSchedule(pose.sched) then ent:ClearSchedule() end
+	end
+end
+
+function Soldier:Release()
+	if self.traverse then return end
+	self.moveTarget = nil
+	self.walkSpeed = 0
 end
 
 -------------------------------------------------------------------------------
@@ -514,6 +656,7 @@ function Controller:Discharge(ent)
 	local entry = self.soldiers[ent]
 	if not entry then return end
 	self.soldiers[ent] = nil
+	entry.soldier:Unpose()
 	if IsValid(ent) then self:Rearm(ent, entry) end
 	self.war:Discharge(ent)
 	entry.npc:Destroy()
@@ -765,9 +908,9 @@ end
 -- The setup zone -------------------------------------------------------------------------
 -- The ground behind the setup gates, where the attackers wander in setup
 -- (foundation.aiwar.zone): flooded over the nav mesh from the team's spawn
--- points, held back by what closes areas to the team (the shut setup
--- gates, the enemy's spawn doors, solid brushes: the npc feature's
--- NavBlocks) and by rises
+-- points, held back by the shut doors no trigger opens (the setup gates),
+-- by what closes areas to routes (locked doors, solid brushes: the npc
+-- feature's NavBlocks) and by rises
 -- no soldier walks. A flood that reaches the checkpoint the team's cart
 -- heads for, or the enemy's spawn, got past a gate standing open, and
 -- gives no zone. Taken again every ZONE_REFRESH seconds.
@@ -806,7 +949,7 @@ function Controller:FloodZone(team)
 	end
 	local function Blocked(id)
 		local area = navmesh.GetNavAreaByID(id)
-		return area:IsBlocked(team) or npcs:NavBlocks(area, team)
+		return area:IsBlocked(team) or npcs:NavBlocks(area, team) or npcs:DoorWallIn(area)
 	end
 	local ids, leaked = Zone.Flood(starts, Neighbors, Blocked, function(id) return outside[id] == true end, ZONE_LIMIT)
 	if leaked then return nil end
@@ -925,7 +1068,10 @@ function Controller:Watch(ent, entry, now)
 	if now - watch.since < STRANDED_TIME then return end
 	local state = entry.npc:State()
 	local waypoint = state.route and state.route[math.min((state.routeIndex or 1) + 1, #state.route)]
-	self:Recover(ent, entry, "stranded", waypoint and ClearSpotNear(OnFloor(ToVector(waypoint))) or nil)
+	local spot = waypoint and ClearSpotNear(OnFloor(ToVector(waypoint)))
+	-- never through what would stop a player: a shut door, a wall
+	if spot and soldier:Sweep(pos, spot).Hit then spot = nil end
+	self:Recover(ent, entry, "stranded", spot)
 end
 
 -- Posts: where soldiers establish their line ----------------------------------------------
@@ -1205,7 +1351,6 @@ function Controller:Describe(ent, entry)
 	if entry.disarmed then lines[#lines + 1] = "Humiliated: cannot attack, fears the winners" end
 	if soldier.recoveries then lines[#lines + 1] = string.format("Recovered: %d time(s), last %s", soldier.recoveries, soldier.recoveredWhy) end
 	if state.hops then lines[#lines + 1] = "Hops: " .. state.hops end
-	if soldier.carries then lines[#lines + 1] = "Carried past refused runs: " .. soldier.carries .. " time(s)" end
 	if state.passed then lines[#lines + 1] = "Let through: " .. state.passed .. " NPC-only blocker(s)" end
 	local blocked = self:BlockedBy(soldier)
 	if blocked then lines[#lines + 1] = "Blocked by: " .. blocked end
@@ -1228,17 +1373,17 @@ local function DescribeBlocker(blocker)
 	if door then
 		local opener = door.controlled and ("a trigger" .. (door.owner and (" for " .. (TEAM_LABEL[door.owner] or door.owner)) or "")) or "none"
 		local routes = door.blocks == nil and "open" or door.blocks == "any" and "closed to everyone" or ("closed to " .. (TEAM_LABEL[door.blocks] or door.blocks))
-		text = text .. string.format(" (%s, opened by %s, routes: %s)", door.closed and "shut" or "open", opener, routes)
+		text = text .. string.format(" (%s%s, opened by %s, routes: %s)", door.closed and "shut" or "open", door.locked and ", locked" or "", opener, routes)
 	end
 	return text
 end
 
 function Controller:BlockedBy(soldier)
 	local target = soldier.moveTarget
-	if not target or not soldier.ent:IsCurrentSchedule(SCHED_FORCED_GO_RUN) then return nil end
-	if soldier.ent:GetVelocity():Length2D() > SLOW_RUN then return nil end
+	if not target or soldier.traverse or soldier:RangeTo(target) <= WALK_ARRIVE * 2 then return nil end
+	if (soldier.walkSpeed or 0) > SLOW_RUN then return nil end
 	local blocker, playersPass = soldier:Blocker(target)
-	if not blocker then return "nothing in the way (the engine will not move it)" end
+	if not blocker then return "nothing in the way (the floor ahead is too steep, too high a step or missing)" end
 	return DescribeBlocker(blocker) .. (playersPass and "; a player would pass" or "; blocks players too")
 end
 
@@ -1338,9 +1483,18 @@ end)
 -- Hops are walked every tick, for smooth motion.
 hook.Add("Tick", "wetsand_aiwar_traverse", function()
 	if not Controller.war then return end
-	local now = CurTime()
+	local now, dt = CurTime(), engine.TickInterval()
 	for ent, entry in pairs(Controller.soldiers) do
-		if entry.soldier.traverse and IsValid(ent) then entry.soldier:Traverse(now) end
+		if IsValid(ent) then
+			local soldier = entry.soldier
+			if soldier.traverse then
+				soldier:Traverse(now)
+			elseif soldier.moveTarget then
+				soldier:Walk(dt)
+			elseif soldier.pose then
+				soldier:HoldPose()
+			end
+		end
 	end
 end)
 

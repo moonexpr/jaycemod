@@ -108,10 +108,19 @@ function Soldier:Hop(p)
 	return true
 end
 
-function Soldier:MoveTo(p)
+function Soldier:MoveTo(p, gait)
 	self.moving = p
+	self.gait = gait
+	self.posing = nil
 	self.moves[#self.moves + 1] = p
 end
+
+function Soldier:Pose()
+	self.posing = self.posing or "sitting"
+	return self.posing
+end
+
+function Soldier:Unpose() self.posing = nil end
 
 function Soldier:Release()
 	self.moving = nil
