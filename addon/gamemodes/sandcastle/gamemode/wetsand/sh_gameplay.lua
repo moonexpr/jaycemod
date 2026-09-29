@@ -47,6 +47,23 @@ local function BuildPanel(panel)
 	panel:Button("Start New Game", "wetsand_game_new")
 end
 
+-- A new game's description in chat: the title in gold, the objectives in white.
+local TITLE_COLOR, LINE_COLOR = Color(255, 205, 80), Color(235, 235, 235)
+
+net.Receive("wetsand_gameplay_chat", function()
+	chat.AddText(TITLE_COLOR, net.ReadString())
+	for _ = 1, net.ReadUInt(8) do chat.AddText(LINE_COLOR, net.ReadString()) end
+end)
+
+-- A countdown called off: silence what it played.
+net.Receive("wetsand_gameplay_stop_sounds", function()
+	local ply = LocalPlayer()
+	for _ = 1, net.ReadUInt(8) do
+		local path = net.ReadString()
+		if IsValid(ply) then ply:StopSound(path) end
+	end
+end)
+
 hook.Add("PopulateToolMenu", "wetsand_gameplay", function()
 	spawnmenu.AddToolMenuOption("Utilities", "Sandcastle", "wetsand_gameplay", "Gameplay Settings", "", "", BuildPanel)
 end)

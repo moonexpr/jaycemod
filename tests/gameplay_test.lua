@@ -1,0 +1,26 @@
+-- foundation.gameplay: the game mode and objectives told as a new game starts.
+local T = dofile("tests/harness.lua")
+local Gameplay = T.require("foundation.gameplay")
+
+T.test("a map with a train is payload, and its checkpoints and stages are told", function()
+	local title, lines = Gameplay.Describe({ map = "pl_goldrush", trains = 1, points = 7, rounds = 3 })
+	T.eq(title, "Payload gameplay activated!", "payload")
+	T.eq(lines[1]:find("BLU", 1, true) ~= nil, true, "BLU's objective")
+	T.eq(lines[2]:find("RED", 1, true) ~= nil, true, "RED's objective")
+	T.eq(lines[3], "7 checkpoints on the track.", "checkpoints")
+	T.eq(lines[4]:find("3 stages", 1, true) ~= nil, true, "stages")
+end)
+
+T.test("a race is told as a race, even with trains", function()
+	T.eq((Gameplay.Describe({ map = "plr_hightower", trains = 2, race = true })), "Payload Race gameplay activated!", "race")
+	T.eq((Gameplay.Describe({ map = "plr_pipeline" })), "Payload Race gameplay activated!", "by prefix")
+end)
+
+T.test("other modes by what the map holds or its prefix", function()
+	T.eq((Gameplay.Describe({ map = "koth_harvest", points = 1 })), "King of the Hill gameplay activated!", "koth")
+	T.eq((Gameplay.Describe({ map = "ctf_2fort", flags = 2 })), "Capture the Flag gameplay activated!", "ctf")
+	T.eq((Gameplay.Describe({ map = "cp_dustbowl", points = 6 })), "Control Points gameplay activated!", "cp")
+	T.eq((Gameplay.Describe({ map = "gm_construct" })), "Sandcastle gameplay activated!", "anything else")
+end)
+
+T.finish()

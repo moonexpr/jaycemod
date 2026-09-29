@@ -10,9 +10,16 @@
 -- RestartRound's full reset) and everyone is made a spectator with the
 -- team menu open until they choose a team. An action returns true, or
 -- false and why not.
+local Gameplay = WETSAND.require("foundation.gameplay")
+
 local Controller = {
 	counting = false,
+	countdownSounds = {}, -- what the countdown has played, to silence if it is called off
 }
+
+local CHAT_NET, STOP_SOUNDS_NET = "wetsand_gameplay_chat", "wetsand_gameplay_stop_sounds"
+util.AddNetworkString(CHAT_NET)
+util.AddNetworkString(STOP_SOUNDS_NET)
 
 local COUNTDOWN = 12
 local ADMIN_LINE_AT = 13
@@ -36,6 +43,47 @@ local function PlayToAll(path)
 	WETSAND.BroadcastSound(WETSAND.TEAM_UNASSIGNED, path)
 end
 
+-- A countdown sound, remembered so Stop Game can silence it.
+function Controller:CountdownSound(path)
+	self.countdownSounds[#self.countdownSounds + 1] = path
+	PlayToAll(path)
+end
+
+-- A title and lines in every player's chat (the client colours the title).
+local function Chat(title, lines)
+	net.Start(CHAT_NET)
+	net.WriteString(title)
+	net.WriteUInt(#lines, 8)
+	for _, line in ipairs(lines) do net.WriteString(line) end
+	net.Broadcast()
+end
+
+-- What the map plays, for foundation.gameplay.
+local function MapInfo()
+	return {
+		map = game.GetMap(),
+		trains = #ents.FindByClass("team_train_watcher"),
+		race = #ents.FindByClass("tf_logic_multiple_escort") > 0,
+		points = #ents.FindByClass("team_control_point"),
+		rounds = #ents.FindByClass("team_control_point_round"),
+		flags = #ents.FindByClass("item_teamflag"),
+	}
+end
+
+-- Calls off a countdown under way, silencing what it played. Returns
+-- whether there was one.
+function Controller:CancelCountdown()
+	if not self.counting then return false end
+	timer.Remove(TIMER)
+	self.counting = false
+	net.Start(STOP_SOUNDS_NET)
+	net.WriteUInt(#self.countdownSounds, 8)
+	for _, path in ipairs(self.countdownSounds) do net.WriteString(path) end
+	net.Broadcast()
+	self.countdownSounds = {}
+	return true
+end
+
 local function Rules()
 	return IsValid(WETSAND.Rules) and WETSAND.Rules or nil
 end
@@ -47,9 +95,12 @@ end
 function Controller:Stop()
 	local rules = Rules()
 	if not rules then return false, "this map has no TF2 rounds (no tf_gamerules)" end
-	if rules:Halted() then return false, "the game is already stopped" end
-	timer.Remove(TIMER)
-	self.counting = false
+	local cancelled = self:CancelCountdown()
+	if rules:Halted() then
+		if not cancelled then return false, "the game is already stopped" end
+		Chat("New game called off.", { "Free play goes on." })
+		return true
+	end
 	rules:Halt()
 	PlayToAll(FREE_PLAY_SOUNDS[math.random(#FREE_PLAY_SOUNDS)])
 	WETSAND.Announce("The game has been stopped. Free play until a new game starts.")
@@ -61,9 +112,12 @@ function Controller:StartNewGame()
 	if not rules then return false, "this map has no TF2 rounds (no tf_gamerules)" end
 	if self.counting then return false, "a new game is already counting down" end
 	self.counting = true
-	WETSAND.Announce("A new game is starting!")
-	PlayToAll(GAMEPLAY_MUSIC)
-	PlayToAll(GAMEPLAY_VOICES[math.random(#GAMEPLAY_VOICES)])
+	self.countdownSounds = {}
+	local title, lines = Gameplay.Describe(MapInfo())
+	lines[#lines + 1] = string.format("The game begins in %d seconds; then choose a team.", ADMIN_LINE_AT)
+	Chat(title, lines)
+	self:CountdownSound(GAMEPLAY_MUSIC)
+	self:CountdownSound(GAMEPLAY_VOICES[math.random(#GAMEPLAY_VOICES)])
 	local elapsed = 0
 	timer.Create(TIMER, 1, ADMIN_LINE_AT, function()
 		elapsed = elapsed + 1
@@ -71,13 +125,14 @@ function Controller:StartNewGame()
 		if elapsed <= COUNTDOWN then
 			Center("New game in " .. left)
 			if left <= SPOKEN_COUNT then
-				WETSAND.BroadcastSound(WETSAND.TEAM_UNASSIGNED, "Announcer.RoundBegins" .. left .. "Seconds")
+				self:CountdownSound("Announcer.RoundBegins" .. left .. "Seconds")
 			end
 		end
 		if elapsed >= ADMIN_LINE_AT then
 			PlayToAll(ADMIN_LINES[math.random(#ADMIN_LINES)])
 			timer.Remove(TIMER)
 			self.counting = false
+			self.countdownSounds = {}
 			self:Begin()
 		end
 	end)
