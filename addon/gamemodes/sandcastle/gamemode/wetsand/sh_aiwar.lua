@@ -48,6 +48,22 @@ if SERVER then
 	return
 end
 
+-- Dead soldiers' clientside ragdolls (wetsand_aiwar_client_ragdolls) fade
+-- by each player's own settings: after wetsand_ragdoll_lifetime seconds (0
+-- keeps them), the engine's own fade (at g_ragdoll_fadespeed) removes them;
+-- g_ragdoll_maxcount caps how many stay, as for any clientside ragdoll.
+local RAGDOLL_LIFETIME = CreateClientConVar("wetsand_ragdoll_lifetime", "20", true, false,
+	"Seconds a dead soldier's ragdoll stays before fading away (0: until g_ragdoll_maxcount pushes it out)", 0, 600)
+
+hook.Add("CreateClientsideRagdoll", "wetsand_aiwar_ragdoll_fade", function(owner, ragdoll)
+	if not IsValid(owner) or not AiWar.FactionTeam(owner:GetClass()) then return end
+	local lifetime = RAGDOLL_LIFETIME:GetFloat()
+	if lifetime <= 0 then return end
+	timer.Simple(lifetime, function()
+		if IsValid(ragdoll) then ragdoll:SetSaveValue("m_bFadingOut", true) end
+	end)
+end)
+
 local HELP = "Restarts the round: the Resistance spawn at BLU's spawn and push the cart, "
 	.. "the Combine spawn at RED's and defend it. Sandcastle's Combine and Resistance soldiers you spawn join their side. "
 	.. "Payload maps only. Needs DrGBase (Steam Workshop) for its soldiers."
@@ -66,6 +82,8 @@ local function BuildPanel(panel)
 		RunConsoleCommand(WETSAND.AiWarActive() and "wetsand_aiwar_end" or "wetsand_aiwar_start")
 	end
 	panel:NumSlider("Soldiers per side", "wetsand_aiwar_team_size", 1, AiWar.TEAM_SIZE_MAX, 0)
+	panel:NumSlider("Ragdolls fade after (s, 0: never)", "wetsand_ragdoll_lifetime", 0, 120, 0)
+	panel:NumSlider("Most ragdolls kept", "g_ragdoll_maxcount", 0, 64, 0)
 	panel:Help("Debugging (admins): draw each soldier's route and state, or print them all to the console.")
 	panel:Button("Toggle Soldier Overlay", "wetsand_aiwar_debug")
 	panel:Button("Print Soldier Report", "wetsand_aiwar_report")

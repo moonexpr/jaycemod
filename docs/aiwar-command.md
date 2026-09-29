@@ -326,13 +326,15 @@ Each phase ships on its own and keeps the suite green.
   hooks confirmed in its source. How DrGBase behaves when a hook returns
   mid-action is untested.
 
-## 10. Open questions
+## 10. Settled after review
 
-1. Should the hero kits (Alyx, Barney) always lead a squad when present?
-   It fits HL2, but it makes squad leadership depend on a kit.
-2. Should players count in the Commander's situation as friendly strength
-   near a cart? Their positions are HUD-equivalent for teammates, but
-   whether they follow any plan is unknown.
-3. Should commands be visible to players, for example a chat line or a
-   voice line ("Blockers, to the cart!")? It would be good feedback and it
-   is cheap, but it is outside this plan.
+1. **Heroes lead.** A hero (Alyx, Barney) in a squad is always its leader;
+   election by tenure then health applies only to squads without one.
+2. **Players count, discounted.** The Commander counts a teammate player
+   near a cart as half a soldier of friendly strength: their positions are
+   what a teammate's HUD shows, but they follow no plan.
+3. **Commands are voiced and shown.** The squad leader who receives a
+   command speaks an HL2 line for it (Combine radio chatter, rebel shouts)
+   and shows it as a chat bubble above its head for a few seconds (a
+   client view of a networked "said" event). Chat lines are for admins with
+   the soldier overlay on.
