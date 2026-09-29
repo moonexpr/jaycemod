@@ -30,7 +30,7 @@ local MAX_NODES = CreateConVar("wetsand_nodegraph_max_nodes", tostring(Graph.MAX
 	"The most nodes a generated AI node graph may have (the engine's limit is 1500 in the 2013 SDK)", 64, 8192)
 
 local SPACING_START, SPACING_GROW = 96, 1.25
-local LINK_RANGE, LINKS_PER_NODE = 400, 12
+local LINK_RANGE, LINKS_PER_NODE = 512, 16
 local BRIDGES_PER_NODE = 4
 -- The floor is sampled every FLOOR_SAMPLE units along a link, finer than
 -- a stair's tread, so each sample rises at most one step; the engine's own
@@ -110,40 +110,63 @@ local function Offsets(origin)
 	return offsets
 end
 
--- Whether the floor between a and b is walkable by an HL2 NPC.
-local function FloorWalkable(a, b)
+-- The floor between a and b as an HL2 NPC walks it: the points found every
+-- FLOOR_SAMPLE units, a first, b last; or nil where it rises or falls more
+-- than a step between samples, or has no floor.
+local function FloorPath(a, b)
 	local from, to = ToVector(a), ToVector(b)
 	local steps = math.max(1, math.ceil(from:Distance(to) / FLOOR_SAMPLE))
-	local lastZ = from.z
+	local path, lastZ = { from }, from.z
 	for i = 1, steps do
 		local floor = FloorBelow(LerpVector(i / steps, from, to))
-		if not floor or math.abs(floor.z - lastZ) > STEP then return false end
+		if not floor or math.abs(floor.z - lastZ) > STEP then return nil end
 		lastZ = floor.z
+		path[#path + 1] = floor
+	end
+	return path
+end
+
+-- Whether the hull's box, above step height, sweeps from `from` to `to`.
+local function Sweeps(box, from, to)
+	return not util.TraceHull({
+		start = from + Vector(0, 0, STEP),
+		endpos = to + Vector(0, 0, STEP),
+		mins = Vector(box.mins[1], box.mins[2], 0),
+		maxs = Vector(box.maxs[1], box.maxs[2], math.max(box.maxs[3] - STEP, 1)),
+		mask = MASK_NPCSOLID_BRUSHONLY,
+		filter = NotDoor,
+	}).Hit
+end
+
+-- Whether the hull walks the floor path: in one sweep where the ground is
+-- flat enough, else leg by leg along the floor, every FOLLOW_STRIDE
+-- samples, as the engine's builder steps its hull over the ground; a
+-- straight line up a stair to a landing set back from its top runs
+-- shallower than the stair and cuts through its last steps.
+local FOLLOW_STRIDE = 2
+
+local function Walks(box, path)
+	if Sweeps(box, path[1], path[#path]) then return true end
+	local last = 1
+	for i = 1 + FOLLOW_STRIDE, #path + FOLLOW_STRIDE - 1, FOLLOW_STRIDE do
+		local j = math.min(i, #path)
+		if not Sweeps(box, path[last], path[j]) then return false end
+		last = j
 	end
 	return true
 end
 
 -- The hulls that can walk from a to b: CAP_MOVE_GROUND per hull, or nil.
 local function Moves(a, b)
-	if not FloorWalkable(a, b) then return nil end
-	local from, to = ToVector(a) + Vector(0, 0, STEP), ToVector(b) + Vector(0, 0, STEP)
+	local path = FloorPath(a, b)
+	if not path then return nil end
 	local moves, any = {}, false
 	for hull = 0, Graph.NUM_HULLS - 1 do
 		local box = Graph.HULLS[hull]
 		moves[hull] = 0
-		if box.ground then
-			local tr = util.TraceHull({
-				start = from,
-				endpos = to,
-				mins = Vector(box.mins[1], box.mins[2], 0),
-				maxs = Vector(box.maxs[1], box.maxs[2], math.max(box.maxs[3] - STEP, 1)),
-				mask = MASK_NPCSOLID_BRUSHONLY,
-				filter = NotDoor,
-			})
-			if not tr.Hit then
-				moves[hull] = Graph.CAP_MOVE_GROUND
-				any = true
-			end
+		if box.ground and Walks(box, path) then
+			moves[hull] = Graph.CAP_MOVE_GROUND
+			any = true
 		end
 	end
 	return any and moves or nil
