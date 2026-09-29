@@ -106,8 +106,9 @@ function Soldier:RequestRoute(goal)
 	self.ticket = self.ticket + 1
 	self.result = nil
 	local ticket, goalPos, npcs = self.ticket, ToVector(goal), WETSAND.Feature("npc")
+	local start = self.ent:GetPos()
 	npcs:RequestRoute({
-		from = self.ent:GetPos(),
+		from = start,
 		to = goalPos,
 		strategy = HL2Path,
 		limits = HL2Path.LIMITS,
@@ -119,7 +120,7 @@ function Soldier:RequestRoute(goal)
 				return
 			end
 			local points = {}
-			for i, v in ipairs(npcs:RouteWaypoints(areas, goalPos, found)) do points[i] = Point(v) end
+			for i, v in ipairs(npcs:RouteWaypoints(areas, goalPos, found, start)) do points[i] = Point(v) end
 			self.result = points
 		end,
 	})

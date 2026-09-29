@@ -7,6 +7,7 @@ local NpcSystem = WETSAND.require("foundation.npc")
 local Spawner = WETSAND.require("foundation.npc.spawner")
 local Profile = WETSAND.require("foundation.npc.profile")
 local Route = WETSAND.require("foundation.npc.route")
+local Portal = WETSAND.require("foundation.npc.portal")
 
 local NAV_MESSAGE = "wetsand_nextbot: %s has no usable navigation mesh; run .devtools/bin/nav_convert.py or nav_generate"
 local BOSS_HEALTH = "wetsand_boss_health" -- the boss bar's fraction; 0 hides it
@@ -301,13 +302,43 @@ function Controller:SearchesRunning()
 	return #self.searches
 end
 
--- Where to walk along a route of areas: into each next area at its point
--- nearest the last area's centre, then to `goal`, or for a route that fell
--- short of it, to the last area's point nearest it.
-function Controller:RouteWaypoints(areas, goal, found)
+-- Where to walk along a route of areas, as the engine's Path::Compute
+-- places its points: each step crosses into the next area where
+-- foundation.npc.portal says (nearest the previous crossing, off the
+-- opening's walled ends), from `start` (default: the first area's centre);
+-- then to `goal`, or for a route that fell short of it, to the last area's
+-- point nearest it.
+local function Rect(area)
+	local extent = area:GetExtentInfo()
+	return { lo = { x = extent.lo.x, y = extent.lo.y }, hi = { x = extent.hi.x, y = extent.hi.y }, edges = {} }
+end
+
+-- The side of `from` that `to` is connected on, or nil.
+local function SideOf(from, to)
+	for dir = Portal.NORTH, Portal.WEST do
+		if from:IsConnectedAtSide(to, dir) then return dir end
+	end
+	return nil
+end
+
+local function Crossing(from, to, pos)
+	local dir = SideOf(from, to)
+	if not dir then return to:GetClosestPointOnArea(from:GetCenter()) end
+	local toRect = Rect(to)
+	for side = Portal.NORTH, Portal.WEST do toRect.edges[side] = to:GetAdjacentCountAtSide(side) == 0 end
+	local x, y = Portal.ClosestPointInPortal(Rect(from), toRect, dir, pos)
+	local crossing = Vector(x, y, 0)
+	-- walk out of `from` at a height it can reach
+	crossing.z = from:GetZ(crossing)
+	return crossing
+end
+
+function Controller:RouteWaypoints(areas, goal, found, start)
 	local points = {}
+	local pos = start or areas[1]:GetCenter()
 	for i = 2, #areas do
-		points[#points + 1] = areas[i]:GetClosestPointOnArea(areas[i - 1]:GetCenter())
+		pos = Crossing(areas[i - 1], areas[i], pos)
+		points[#points + 1] = pos
 	end
 	points[#points + 1] = found and goal or areas[#areas]:GetClosestPointOnArea(goal)
 	return points
