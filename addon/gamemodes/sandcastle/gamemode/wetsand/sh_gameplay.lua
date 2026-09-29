@@ -19,13 +19,13 @@ if SERVER then
 
 	Command("wetsand_game_stop", "Stop", "Stop the game: no rounds or timer, spawn doors open, free play like Sandbox")
 	Command("wetsand_game_new", "StartNewGame",
-		"Start a new game: a 5 second countdown, then everyone spectates and chooses a team")
+		"Start a new game: a 12 second countdown, then everyone spectates and chooses a team")
 	return
 end
 
 local HELP = "Stop Game ends the round system and pauses the timer: the map plays like Sandbox, "
 	.. "with spawn doors and forcefields open to everyone. Start New Game announces a new game, "
-	.. "counts down from 5, clears the scores, restarts the rounds and sends everyone to the team menu "
+	.. "counts down from 12, clears the scores, restarts the rounds and sends everyone to the team menu "
 	.. "as spectators until they choose a team."
 
 local function BuildPanel(panel)

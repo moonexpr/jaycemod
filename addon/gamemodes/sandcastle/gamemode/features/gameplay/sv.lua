@@ -1,8 +1,11 @@
 -- The gameplay feature's controller: the Gameplay Settings' switches.
 -- Stopping the game puts the map in non-gameplay mode, which plays like
 -- Sandbox (tf_gamerules' Halt: no rounds, timers paused, spawn doors and
--- forcefields open). A new game is announced and counted down from
--- COUNTDOWN with the announcer's round-start lines; then the scores are
+-- forcefields open). A new game is announced with the matchmaking start
+-- sting and the announcer's tournament-start line, counted down from
+-- COUNTDOWN on screen (the announcer speaking the last five), and
+-- ADMIN_LINE_AT seconds after it was called the Administrator says the
+-- match begins; then the scores are
 -- cleared, the round system restarts from scratch (as a map's first round:
 -- RestartRound's full reset) and everyone is made a spectator with the
 -- team menu open until they choose a team. An action returns true, or
@@ -11,18 +14,23 @@ local Controller = {
 	counting = false,
 }
 
-local COUNTDOWN = 5
+local COUNTDOWN = 12
+local ADMIN_LINE_AT = 13
 local TIMER = "wetsand_new_game"
 
--- Free play begins with one of GMod's save/load chimes; gameplay with
--- Mann vs. Machine's mid-wave music and one of the announcer's
--- tournament-start lines.
+-- Free play begins with one of GMod's save/load chimes. A new game with
+-- the casual matchmaking start sting and one of the announcer's
+-- tournament-start lines, and at its start one of the Administrator's
+-- competitive-match lines.
 local FREE_PLAY_SOUNDS = { "garrysmod/save_load1.wav", "garrysmod/save_load2.wav", "garrysmod/save_load3.wav", "garrysmod/save_load4.wav" }
-local GAMEPLAY_MUSIC = "music/mvm_start_mid_wave.wav"
+local GAMEPLAY_MUSIC = "ui/mm_round_start_casual.wav"
 local GAMEPLAY_VOICES = {
 	"vo/announcer_tournament_started1.mp3", "vo/announcer_tournament_started2.mp3",
 	"vo/announcer_tournament_started3.mp3", "vo/announcer_tournament_started4.mp3",
 }
+local ADMIN_LINES = {}
+for i = 1, 13 do ADMIN_LINES[i] = string.format("vo/compmode/cm_admin_compbeginsstart_%02d.mp3", i) end
+local SPOKEN_COUNT = 5 -- the announcer's "Announcer.RoundBeginsNSeconds" lines exist for 5..1
 
 local function PlayToAll(path)
 	WETSAND.BroadcastSound(WETSAND.TEAM_UNASSIGNED, path)
@@ -54,20 +62,25 @@ function Controller:StartNewGame()
 	if self.counting then return false, "a new game is already counting down" end
 	self.counting = true
 	WETSAND.Announce("A new game is starting!")
-	local left = COUNTDOWN
-	local function Tick()
-		if left > 0 then
+	PlayToAll(GAMEPLAY_MUSIC)
+	PlayToAll(GAMEPLAY_VOICES[math.random(#GAMEPLAY_VOICES)])
+	local elapsed = 0
+	timer.Create(TIMER, 1, ADMIN_LINE_AT, function()
+		elapsed = elapsed + 1
+		local left = COUNTDOWN - elapsed + 1
+		if elapsed <= COUNTDOWN then
 			Center("New game in " .. left)
-			WETSAND.BroadcastSound(WETSAND.TEAM_UNASSIGNED, "Announcer.RoundBegins" .. left .. "Seconds")
-			left = left - 1
-			return
+			if left <= SPOKEN_COUNT then
+				WETSAND.BroadcastSound(WETSAND.TEAM_UNASSIGNED, "Announcer.RoundBegins" .. left .. "Seconds")
+			end
 		end
-		timer.Remove(TIMER)
-		self.counting = false
-		self:Begin()
-	end
-	Tick()
-	timer.Create(TIMER, 1, COUNTDOWN, Tick)
+		if elapsed >= ADMIN_LINE_AT then
+			PlayToAll(ADMIN_LINES[math.random(#ADMIN_LINES)])
+			timer.Remove(TIMER)
+			self.counting = false
+			self:Begin()
+		end
+	end)
 	return true
 end
 
@@ -84,8 +97,6 @@ function Controller:Begin()
 		WETSAND.ShowTeamMenu(ply)
 	end
 	Center("Choose a team!")
-	PlayToAll(GAMEPLAY_MUSIC)
-	PlayToAll(GAMEPLAY_VOICES[math.random(#GAMEPLAY_VOICES)])
 end
 
 function Controller:Status()
