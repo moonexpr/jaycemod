@@ -241,6 +241,28 @@ T.test("a cart is close within CLOSE_RANGE, and stays close a little past it", f
 	T.eq(AiWar.CartClose(true, AiWar.CLOSE_RANGE + AiWar.CLOSE_HYSTERESIS + 1), false, "far again")
 end)
 
+T.test("medics: a few per side, drafted first while short, and never moved to another job", function()
+	T.eq(AiWar.MedicsFor(3), 0, "too few soldiers for one")
+	T.eq(AiWar.MedicsFor(8), 1, "one for eight")
+	T.eq(AiWar.MedicsFor(16), 2, "two for sixteen")
+	T.eq(AiWar.FixedRole("wetsand_drg_vortigaunt"), AiWar.MEDIC, "a vortigaunt only heals")
+	T.eq(AiWar.FactionTeam("wetsand_drg_vortigaunt"), BLUE, "for the Resistance")
+	T.eq(AiWar.FixedRole("wetsand_drg_rebel"), nil, "a rebel does any job")
+	local war = AiWar.War.New()
+	war:Assign({ [BLUE] = true })
+	war:Reinforcements(0, 8, function() return 0 end)
+	local draft = war:Draft(BLUE)
+	T.eq(draft.role, AiWar.MEDIC, "a medic first")
+	T.eq(draft.recruit.class, "wetsand_drg_vortigaunt", "a vortigaunt")
+	local medic = war:Enlist("vort", BLUE, true, draft.role)
+	T.eq(medic.role, AiWar.MEDIC, "enlisted a medic")
+	T.eq(war:Draft(BLUE).role, nil, "then soldiers")
+	T.eq(war:Draft(RED).recruit.class, "wetsand_drg_combine", "the Combine's medic is a soldier in a medic's kit")
+	for i = 1, 6 do war:Enlist("b" .. i, BLUE, true) end
+	war:Assign({ [BLUE] = { progress = 0.2 }, [RED] = { progress = 0.9 } })
+	T.eq(medic.role, AiWar.MEDIC, "a turning race does not move it")
+end)
+
 -- Reinforcements ---------------------------------------------------------------
 
 local function WaveOf(seconds)

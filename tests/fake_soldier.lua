@@ -151,6 +151,9 @@ end
 -- disarmed: my side is humiliated.
 function Soldier:IsDisarmed() return self.disarmed == true end
 
+-- healing: the handle Heal was last given (nil: stopped).
+function Soldier:Heal(handle) self.healing = handle end
+
 function Soldier:Hold()
 	self.holding = true
 	self.moving = self.pos

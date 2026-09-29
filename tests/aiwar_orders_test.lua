@@ -333,6 +333,39 @@ T.test("support holds its cover and never falls back", function()
 	T.eq(me.gadgetsAt ~= nil, true, "sends its manhack")
 end)
 
+-- Medics
+
+T.test("a medic heals the teammate that needs it most, players first, and holds fire while it does", function()
+	local field = Field({})
+	field.patients = { [BLUE] = {
+		{ handle = "soldier", pos = P(900, 0), health = 0.3, player = false },
+		{ handle = "player", pos = P(1100, 0), health = 0.5, player = true },
+		{ handle = "scratched", pos = P(1000, 50), health = 0.97, player = false },
+	} }
+	local me, npc = Enlist({ role = AiWar.MEDIC, pos = P(1000, 0), field = field, walkable = function() return true end })
+	Tick(me, npc)
+	T.eq(npc:State().tactic, "healing", "healing")
+	T.eq(npc:State().healing.handle, "player", "the player: half its health, counting double")
+	T.eq(me.healing, "player", "its beam on it")
+	T.eq(npc:Query("ShouldAttack", "them"), N.ANSWER_NO, "holding fire")
+	field.patients[BLUE][2].health = 0.99
+	Tick(me, npc)
+	T.eq(npc:State().healing.handle, "soldier", "healed: the next")
+	field.patients[BLUE] = {}
+	Tick(me, npc)
+	T.eq(me.healing, nil, "no one left: the beam off")
+	T.eq(npc:Query("ShouldAttack", "them"), N.ANSWER_UNDEFINED, "free to fight")
+end)
+
+T.test("a medic out of reach closes in before its beam goes on", function()
+	local field = Field({})
+	field.patients = { [BLUE] = { { handle = "far", pos = P(2000, 0), health = 0.2, player = false } } }
+	local me, npc = Enlist({ role = AiWar.MEDIC, pos = P(1000, 0), field = field, walkable = function() return true end })
+	Tick(me, npc)
+	T.eq(me.healing, nil, "beyond HEAL_RANGE: no beam")
+	Near(me.moving, P(2000 - Orders.MEDIC_STANDOFF, 0), "to its standoff")
+end)
+
 -- Squads
 
 -- Two soldiers of one role in one squad of one war: a (older) and b.

@@ -37,7 +37,7 @@
 -- the tactic, the member's element ("moving" or "holding") and the cover spot
 -- it chose, if any (tactic, element, coverSpot).
 local abs, ceil, cos, floor, max, min, sin, sqrt = math.abs, math.ceil, math.cos, math.floor, math.max, math.min, math.sin, math.sqrt
-local pairs = pairs
+local ipairs, pairs = ipairs, pairs
 local N = require("foundation.npc")
 local AiWar = require("foundation.aiwar")
 local Track = require("foundation.aiwar.track")
@@ -356,6 +356,43 @@ ROLES[AiWar.SUPPORT] = {
 		if focus == "offense" then return own.track:Offset(own.distance - SUPPORT_BEHIND, Lateral(member.slot)) end
 		return nil
 	end,
+}
+
+-- Medics (TF2's CTFBotMedicHeal, in HL2's faces): a medic picks, among its
+-- side's hurt soldiers and players (field.patients: team -> { handle, pos,
+-- health (0 to 1), player }), the one that needs it most (players count
+-- double, distance costs a little), keeps it until it is HEALED or lost
+-- (gone, or beyond MEDIC_LOSE), and heals it with its beam (the port's
+-- Heal) from MEDIC_STANDOFF away, holding fire while it does. With no one
+-- to heal it stands where its side's support does.
+HEAL_RANGE, MEDIC_STANDOFF, MEDIC_LOSE = 450, 160, 1500
+PATIENT_HURT, HEALED = 0.95, 0.98
+
+function PickPatient(field, member, here, current)
+	local patients = field.patients and field.patients[member.team] or {}
+	local best, bestScore
+	for _, patient in ipairs(patients) do
+		if patient.handle ~= member.handle then
+			local range = Distance(here, patient.pos)
+			if current and patient.handle == current.handle and patient.health < HEALED and range <= MEDIC_LOSE then
+				return patient
+			end
+			if patient.health < PATIENT_HURT and range <= MEDIC_LOSE then
+				local score = (1 - patient.health) * (patient.player and 2 or 1) - range / 3000
+				if not bestScore or score > bestScore then best, bestScore = patient, score end
+			end
+		end
+	end
+	return best
+end
+
+ROLES[AiWar.MEDIC] = {
+	name = "Medic",
+	heals = true,
+	arrive = SUPPORT_ARRIVE,
+	leash = SUPPORT_LEASH,
+	rushes = false,
+	Goal = function(field, member) return ROLES[AiWar.SUPPORT].Goal(field, member) end,
 }
 
 -- The member's goal on the field, or nil (no role, or no cart for it).
@@ -723,6 +760,10 @@ function Objective:Update(me)
 		me:Unpose()
 		state.pose = nil
 	end
+	if self.role.heals and OrdersRun(field) then
+		local healing = self:Heal(me, field)
+		if healing then return healing end
+	end
 	local cart = OrdersRun(field) and OwnCart(field, state.member)
 	if self.role.follows and cart and me:FollowCart() then
 		state.following = true
@@ -801,6 +842,33 @@ function Objective:Gadget(me, contact, now)
 		self.gadgetAt = now + GADGET_INTERVAL
 		self.state.gadget = used
 	end
+end
+
+-- A medic's patient, if it has one: to MEDIC_STANDOFF from it, the beam on
+-- within HEAL_RANGE. Nil when there is no one to heal.
+function Objective:Heal(me, field)
+	local state = self.state
+	local patient = PickPatient(field, state.member, me:Position(), state.healing)
+	if not patient then
+		if state.healing then
+			me:Heal(nil)
+			state.healing = nil
+		end
+		return nil
+	end
+	state.healing = patient
+	local range = me:RangeTo(patient.pos)
+	local spot = Tactics.Toward(patient.pos, me:Position(), MEDIC_STANDOFF)
+	state.goal, state.tactic = spot, "healing"
+	me:Heal(range <= HEAL_RANGE and patient.handle or nil)
+	if range > MEDIC_STANDOFF + SPOT_ARRIVE then me:MoveTo(spot, RUN) else me:Hold() end
+	return self:Continue()
+end
+
+-- A medic holds its fire while it heals, as TF2's cannot fire and heal.
+function Objective:ShouldAttack(me, them)
+	if self.role.heals and self.state.healing then return N.ANSWER_NO end
+	return N.ANSWER_UNDEFINED
 end
 
 -- A fight, by the role's tactic (foundation.aiwar.tactics).

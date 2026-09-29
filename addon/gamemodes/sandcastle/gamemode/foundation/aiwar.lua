@@ -43,6 +43,16 @@ PUSH, ESCORT, BLOCK, DEFEND = "push", "escort", "block", "defend"
 -- support stands behind its own line and hits hard from there (the
 -- Combine's metrocops with manhacks and turrets, the Resistance's heroes).
 RAID, SUPPORT = "raid", "support"
+-- Medics heal their side: a job apart from the stance's shares. Each side
+-- keeps MedicsFor(its size) of them, drafted as medics (a class that is only
+-- ever one, as the vortigaunt, or its side's soldier given the job) and never
+-- rebalanced into another job.
+MEDIC = "medic"
+
+function MedicsFor(teamSize)
+	if (teamSize or 0) < 4 then return 0 end
+	return max(1, floor(teamSize / 8 + 0.5))
+end
 
 TEAM_SIZE_DEFAULT = 8
 TEAM_SIZE_MAX = 32
@@ -58,14 +68,26 @@ FACTIONS = {
 		team = RED,
 		classes = { wetsand_drg_combine = true },
 		recruits = { { class = "wetsand_drg_combine" } },
+		medic = { class = "wetsand_drg_combine" }, -- in a metrocop's kit
 	},
 	[BLUE] = {
 		name = "Resistance",
 		team = BLUE,
-		classes = { wetsand_drg_rebel = true },
+		-- a class whose value is a job only ever does that job
+		classes = { wetsand_drg_rebel = true, wetsand_drg_vortigaunt = MEDIC },
 		recruits = { { class = "wetsand_drg_rebel" } },
+		medic = { class = "wetsand_drg_vortigaunt" },
 	},
 }
+
+-- The job a class only ever does (the vortigaunt heals), or nil.
+function FixedRole(class)
+	for _, faction in pairs(FACTIONS) do
+		local value = faction.classes[class]
+		if type(value) == "string" then return value end
+	end
+	return nil
+end
 
 -- The team an NPC class fights for, or nil for a class in no faction.
 function FactionTeam(class)
@@ -328,16 +350,20 @@ end
 function War:AssignRole(member)
 	self:LeaveFireTeam(member)
 	local stance = self.stances[member.team]
-	member.role = stance and PickRole(stance, RoleCounts(self.members, member.team, member)) or nil
+	if member.fixed then
+		member.role = member.fixed
+	else
+		member.role = stance and PickRole(stance, RoleCounts(self.members, member.team, member)) or nil
+	end
 	member.slot = member.role and FreeSlot(self.members, member.team, member.role, member) or 0
 	if member.role then self:JoinFireTeam(member) end
 end
 
 -- drafted: spawned by the war (counted against the team's size), rather
--- than added by a player.
-function War:Enlist(handle, team, drafted)
+-- than added by a player. fixed: the job it only ever does (MEDIC), or nil.
+function War:Enlist(handle, team, drafted, fixed)
 	self.enlisted = self.enlisted + 1
-	local member = { handle = handle, team = team, drafted = drafted, seq = self.enlisted, role = nil, slot = 0 }
+	local member = { handle = handle, team = team, drafted = drafted, seq = self.enlisted, role = nil, slot = 0, fixed = fixed }
 	self.members[handle] = member
 	self:AssignRole(member)
 	return member
@@ -366,7 +392,7 @@ end
 function War:Rebalance(team, stance)
 	local list = {}
 	for _, member in ipairs(self:Members()) do
-		if member.team == team and member.role then list[#list + 1] = member end
+		if member.team == team and member.role and not member.fixed then list[#list + 1] = member end
 	end
 	local target = {}
 	for _ = 1, #list do
@@ -417,10 +443,18 @@ end
 
 -- The next recruit to spawn for a team (its squad is its fire team's,
 -- given once it is enlisted).
+-- A medic comes first while the side has fewer than MedicsFor its size:
+-- { recruit, role = MEDIC }.
 function War:Draft(team)
+	local faction = FACTIONS[team]
+	local medics = 0
+	for _, member in pairs(self.members) do
+		if member.team == team and member.role == MEDIC then medics = medics + 1 end
+	end
+	if faction.medic and medics < MedicsFor(self.teamSize) then return { recruit = faction.medic, role = MEDIC } end
 	local n = self.drafts[team] + 1
 	self.drafts[team] = n
-	local recruits = FACTIONS[team].recruits
+	local recruits = faction.recruits
 	return { recruit = recruits[(n - 1) % #recruits + 1] }
 end
 
@@ -437,6 +471,7 @@ end
 -- is waveLength(team) seconds away (0: every call). Returns team -> how
 -- many to spawn now.
 function War:Reinforcements(now, teamSize, waveLength)
+	self.teamSize = teamSize
 	local wave = {}
 	for _, team in ipairs({ RED, BLUE }) do
 		if now >= self.nextWave[team] then

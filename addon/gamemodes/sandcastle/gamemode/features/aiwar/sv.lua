@@ -85,6 +85,12 @@ function Soldier.New(ent, controller, team)
 end
 
 function Soldier:Now() return CurTime() end
+
+-- Healing: the target the controller's tick heals (Controller:ApplyHeal).
+function Soldier:Heal(handle)
+	if handle ~= nil and not IsValid(handle) then handle = nil end
+	self.healTarget = handle
+end
 function Soldier:IsDisarmed() return self.disarmed == true end
 function Soldier:IsAlive() return IsValid(self.ent) and self.ent:Health() > 0 end
 function Soldier:Position() return Point(self.ent:GetPos()) end
@@ -715,8 +721,10 @@ end
 
 -- Enlisting ---------------------------------------------------------------------
 
-function Controller:Enlist(ent, team, drafted)
-	local member = self.war:Enlist(ent, team, drafted)
+-- fixed: the job it only ever does (a drafted medic); by default its
+-- class's (the vortigaunt's).
+function Controller:Enlist(ent, team, drafted, fixed)
+	local member = self.war:Enlist(ent, team, drafted, fixed or AiWar.FixedRole(ent:GetClass()))
 	local soldier = Soldier.New(ent, self, team)
 	self.soldiers[ent] = {
 		soldier = soldier,
@@ -761,6 +769,47 @@ local KITS = {
 		default = { avoid = { weapon_shotgun = true, weapon_crossbow = true, weapon_357 = true } },
 	},
 }
+-- Medics: the Combine's are metrocops, the Resistance's vortigaunts (their
+-- own class, AiWar.FixedRole). They speak on taking a patient: HL2's lines,
+-- those of the list the game has (MedicLines keeps only files that exist,
+-- so a missing episode costs lines, not errors).
+local MEDIC_KITS = {
+	[RED] = {
+		name = "metrocop medic", model = "models/player/police.mdl", weapons = { "weapon_pistol" },
+		voice = {
+			"npc/metropolice/vo/administer.wav", "npc/metropolice/vo/affirmative.wav",
+			"npc/metropolice/vo/affirmative2.wav", "npc/metropolice/vo/tenfour.wav",
+			"npc/metropolice/vo/ten8standingby.wav", "npc/metropolice/vo/copy.wav",
+			"npc/metropolice/vo/rodgerthat.wav", "npc/metropolice/vo/officerneedshelp.wav",
+		},
+	},
+	[BLUE] = {
+		name = "vortigaunt medic",
+		voice = {
+			"vo/npc/vortigaunt/vques01.wav", "vo/npc/vortigaunt/vques02.wav", "vo/npc/vortigaunt/vques03.wav",
+			"vo/npc/vortigaunt/vanswer01.wav", "vo/npc/vortigaunt/vanswer02.wav", "vo/npc/vortigaunt/vanswer03.wav",
+			"vo/npc/vortigaunt/vanswer04.wav", "vo/npc/vortigaunt/vanswer05.wav",
+			"vo/npc/vortigaunt/allowme.wav", "vo/npc/vortigaunt/certainly.wav",
+		},
+		-- the vortigaunt's charge as the beam starts
+		beamSound = "npc/vort/attack_charge.wav",
+	},
+}
+
+local medicLines = {}
+
+local function MedicLines(kit)
+	if medicLines[kit] == nil then
+		local found = {}
+		for _, path in ipairs(kit.voice or {}) do
+			if file.Exists("sound/" .. path, "GAME") then found[#found + 1] = path end
+		end
+		medicLines[kit] = found
+		print(string.format("AI war: %s voice: %d of %d lines found", kit.name, #found, #(kit.voice or {})))
+	end
+	return medicLines[kit]
+end
+
 -- The Resistance's heroes, one of each alive at a time; support beyond them
 -- are veterans.
 local HEROES = {
@@ -792,7 +841,7 @@ function Controller:Equip(ent, entry, member)
 		end
 	end
 	local kits = KITS[team] or {}
-	local kit = kits[role] or (team == BLUE and role == AiWar.SUPPORT and self:HeroKit(ent)) or kits.default or {}
+	local kit = (role == AiWar.MEDIC and MEDIC_KITS[team]) or kits[role] or (team == BLUE and role == AiWar.SUPPORT and self:HeroKit(ent)) or kits.default or {}
 	entry.soldier.kit = kit
 	-- a hero leads its squad (foundation.aiwar.squad)
 	if member then member.hero = kit.hero == true or nil end
@@ -869,7 +918,7 @@ function Controller:Draft(team, pos, ang)
 	ent:SetAngles(ang)
 	ent:Spawn()
 	ent:Activate()
-	self:Enlist(ent, team, true)
+	self:Enlist(ent, team, true, draft.role)
 end
 
 -- TF2's respawn wave for the team (0 during setup, when TF2 respawns at
@@ -1484,7 +1533,27 @@ function Controller:Field(phase)
 		gates = self.gates or {},
 		posts = posts,
 		forwardPosts = forwardPosts,
+		patients = self:Patients(),
 	}
+end
+
+-- Each side's soldiers and players, for its medics: { handle, pos, health
+-- (a share of their most), player }.
+function Controller:Patients()
+	local patients = { [RED] = {}, [BLUE] = {} }
+	local function Add(team, ent, player)
+		local list = patients[team]
+		if list and ent:Health() > 0 then
+			list[#list + 1] = { handle = ent, pos = Point(ent:GetPos()), health = ent:Health() / math.max(ent:GetMaxHealth(), 1), player = player }
+		end
+	end
+	for ent, entry in pairs(self.soldiers) do
+		if IsValid(ent) then Add(entry.soldier.team, ent, false) end
+	end
+	for _, ply in ipairs(player.GetAll()) do
+		if ply:Alive() then Add(WETSAND.TeamOf(ply), ply, true) end
+	end
+	return patients
 end
 
 -- The teams with a cart, how far along its track each cart is, and whether
@@ -1861,6 +1930,28 @@ concommand.Add("wetsand_aiwar_debug", function(ply)
 	ply:ChatPrint("AI war overlay " .. (ply.wetsandAiwarDebug and "on" or "off"))
 end, nil, "Toggle drawing each AI war soldier's route, goal and state")
 
+-- Tracing a soldier's bridge (docs/aiwar-command.md §6): every query DrGBase
+-- asks its orders, with the answer, and every event it tells them, printed
+-- to the server console. Aim at a soldier (or give its entity index) to
+-- toggle it; no soldier in sight turns all tracing off.
+concommand.Add("wetsand_aiwar_trace", function(ply, _, args)
+	if IsValid(ply) and not ply:IsAdmin() then return end
+	local ent = args[1] and Entity(tonumber(args[1]) or -1) or (IsValid(ply) and ply:GetEyeTrace().Entity)
+	local function Say(text)
+		print(text)
+		if IsValid(ply) then ply:ChatPrint(text) end
+	end
+	if not (IsValid(ent) and Controller.soldiers[ent]) then
+		for other in pairs(Controller.soldiers) do
+			if IsValid(other) then other.WetsandTrace = nil end
+		end
+		Say("AI war trace: off for every soldier")
+		return
+	end
+	ent.WetsandTrace = not ent.WetsandTrace or nil
+	Say(string.format("AI war trace: #%d %s (server console)", ent:EntIndex(), ent.WetsandTrace and "on" or "off"))
+end, nil, "Trace the queries and events between an AI war soldier (aimed at, or by entity index) and its orders")
+
 -- Hooks ------------------------------------------------------------------------------
 
 hook.Add("Think", "wetsand_aiwar", function()
@@ -1870,11 +1961,55 @@ hook.Add("Think", "wetsand_aiwar", function()
 end)
 
 -- Each tick, a moving soldier's pace and the door watchdog.
+-- A medic's beam: HEAL_RATE health a second (TF2's medigun) to its target
+-- while it is alive, in reach (HEAL_REACH) and in sight, up to its most.
+-- The beam is shown while it heals ("WetsandHealing", drawn on clients),
+-- and the medic speaks on taking a new patient, at most every HEAL_VOICE.
+local HEAL_RATE, HEAL_REACH, HEAL_VOICE = 24, 520, 10
+
+function Controller:ApplyHeal(ent, entry, dt)
+	local soldier, target = entry.soldier, entry.soldier.healTarget
+	local member = self.war:Member(ent)
+	local healing = IsValid(target) and target:Health() > 0 and member and member.role == AiWar.MEDIC
+		and not soldier.disarmed and ent:GetPos():Distance(target:GetPos()) <= HEAL_REACH
+	if healing then
+		local tr = util.TraceLine({ start = ent:WorldSpaceCenter(), endpos = target:WorldSpaceCenter(), mask = MASK_SOLID_BRUSHONLY })
+		healing = not tr.Hit
+	end
+	local shown = ent:GetNW2Entity("WetsandHealing")
+	if not healing then
+		if IsValid(shown) then ent:SetNW2Entity("WetsandHealing", NULL) end
+		soldier.healCarry = 0
+		return
+	end
+	if shown ~= target then
+		ent:SetNW2Entity("WetsandHealing", target)
+		local kit = soldier.kit or {}
+		if kit.beamSound then ent:EmitSound(kit.beamSound, 70, 110) end
+		local lines = MedicLines(kit)
+		if #lines > 0 and CurTime() >= (soldier.voiceAt or 0) then
+			soldier.voiceAt = CurTime() + HEAL_VOICE
+			ent:EmitSound(lines[math.random(#lines)], 80)
+		end
+	end
+	local most = target:GetMaxHealth()
+	if target:Health() >= most then return end
+	soldier.healCarry = (soldier.healCarry or 0) + HEAL_RATE * dt
+	local whole = math.floor(soldier.healCarry)
+	if whole > 0 then
+		soldier.healCarry = soldier.healCarry - whole
+		target:SetHealth(math.min(most, target:Health() + whole))
+	end
+end
+
 hook.Add("Tick", "wetsand_aiwar_move", function()
 	if not Controller.war then return end
 	local dt = engine.TickInterval()
 	for ent, entry in pairs(Controller.soldiers) do
-		if IsValid(ent) and entry.soldier.moveTarget then entry.soldier:Move(dt) end
+		if IsValid(ent) then
+			if entry.soldier.moveTarget then entry.soldier:Move(dt) end
+			if entry.soldier.healTarget or IsValid(ent:GetNW2Entity("WetsandHealing")) then Controller:ApplyHeal(ent, entry, dt) end
+		end
 	end
 end)
 

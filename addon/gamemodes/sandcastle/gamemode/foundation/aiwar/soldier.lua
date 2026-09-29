@@ -51,6 +51,8 @@
 --     says another holds; or nil
 --   HurtSince(t) -> whether I have been hurt after time t
 --   Hold(): stay where I am, fighting from here
+--   Heal(handle): heal that teammate (a patient's handle) with my beam
+--     while it is in reach and in sight; nil stops
 --   UseGadget(p) -> throw, deploy or send my role's gadget at p (a
 --     grenade, a manhack, a turret), if I have one ready and in reach: its
 --     name, or nil
@@ -91,4 +93,5 @@ METHODS = {
 	"RouteStale",
 	"Hop",
 	"UseGadget",
+	"Heal",
 }
