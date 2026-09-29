@@ -166,6 +166,7 @@ local function OnFloor(pos)
 end
 
 function Soldier:MoveTo(p)
+	if self.traverse then return end
 	local ent = self.ent
 	local current = self.moveTarget
 	if current and Track.Distance(current, p) < MOVE_RETARGET and ent:IsCurrentSchedule(SCHED_FORCED_GO_RUN) then return end
@@ -179,6 +180,7 @@ end
 local RUN_ENDED_NEAR = 48
 
 function Soldier:RunState()
+	if self.traverse then return "carried over an obstacle, walking" end
 	if self.moveTarget == nil then return nil end
 	if self.ent:IsCurrentSchedule(SCHED_FORCED_GO_RUN) then
 		return string.format("running at %d u/s", math.floor(self.ent:GetVelocity():Length2D()))
@@ -187,13 +189,16 @@ function Soldier:RunState()
 	return "at its run target"
 end
 
--- The last resort of a stuck soldier: set down at p, if a soldier-sized
+-- The last resort of a stuck soldier: carried to p, if a soldier-sized
 -- box sweeps there under player movement's mask (so only what would stop
 -- a player stops the hop: no wall, door or gate) and fits at p under the
--- NPC's own mask.
+-- NPC's own mask. The hop is walked, not jumped (Soldier:Traverse).
 local HOP_MINS, HOP_MAXS = Vector(-13, -13, 0), Vector(13, 13, 72)
 local HOP_LIFT = Vector(0, 0, 18)
 local HOP_MAX_RISE = 64
+local TRAVERSE_SPEED = 170 -- units a second, about an HL2 soldier's run
+local TRAVERSE_MIN_TIME = 0.1
+local TRAVERSE_FLOOR_ABOVE, TRAVERSE_FLOOR_BELOW = 48, 64
 
 -- What stands between me and p for an NPC's movement (a soldier-sized box
 -- above step height, under the NPC's mask, teammates and the enemy aside),
@@ -231,13 +236,43 @@ function Soldier:Hop(p)
 	if sweep.Hit then return false end
 	local fit = util.TraceHull({ start = to, endpos = to, mins = HOP_MINS, maxs = HOP_MAXS, mask = MASK_NPCSOLID, filter = NotSoldier })
 	if fit.Hit then return false end
-	ent:SetPos(to)
 	self.moveTarget = nil
+	self.traverse = { from = from, to = to, started = CurTime(), seconds = math.max(from:Distance(to) / TRAVERSE_SPEED, TRAVERSE_MIN_TIME) }
+	-- the engine's AI must not steer the soldier while it is carried
+	ent:SetSchedule(SCHED_IDLE_STAND)
 	return true
 end
 
+-- Each tick of a hop: the soldier moves along the line at a run's pace,
+-- facing its way and playing its run, set on the floor a player would
+-- stand on there, so on stairs it rides the players' smooth clip ramp.
+-- At the end its AI is free again and its orders' moves go on.
+local function NotCharacter(hit) return not (hit:IsNPC() or hit:IsPlayer()) end
+
+function Soldier:Traverse(now)
+	local traverse, ent = self.traverse, self.ent
+	local t = math.min((now - traverse.started) / traverse.seconds, 1)
+	local pos = LerpVector(t, traverse.from, traverse.to)
+	local floor = util.TraceLine({
+		start = pos + Vector(0, 0, TRAVERSE_FLOOR_ABOVE),
+		endpos = pos - Vector(0, 0, TRAVERSE_FLOOR_BELOW),
+		mask = MASK_PLAYERSOLID,
+		filter = NotCharacter,
+	})
+	if floor.Hit and not floor.StartSolid then pos = floor.HitPos end
+	ent:SetPos(pos)
+	local yaw = (traverse.to - traverse.from):Angle().y
+	ent:SetAngles(Angle(0, yaw, 0))
+	ent:SetIdealYawAndUpdate(yaw)
+	ent:SetIdealActivity(ACT_RUN)
+	if t >= 1 then
+		self.traverse = nil
+		ent:ClearSchedule()
+	end
+end
+
 function Soldier:Release()
-	if self.moveTarget == nil then return end
+	if self.traverse or self.moveTarget == nil then return end
 	self.moveTarget = nil
 	if self.ent:IsCurrentSchedule(SCHED_FORCED_GO_RUN) then self.ent:ClearSchedule() end
 end
@@ -767,6 +802,15 @@ hook.Add("Think", "wetsand_aiwar", function()
 	if not Controller.war then return end
 	Controller:Think(CurTime())
 	Controller:SendDebug(CurTime())
+end)
+
+-- Hops are walked every tick, for smooth motion.
+hook.Add("Tick", "wetsand_aiwar_traverse", function()
+	if not Controller.war then return end
+	local now = CurTime()
+	for ent, entry in pairs(Controller.soldiers) do
+		if entry.soldier.traverse and IsValid(ent) then entry.soldier:Traverse(now) end
+	end
 end)
 
 hook.Add("OnEntityCreated", "wetsand_aiwar", function(ent)

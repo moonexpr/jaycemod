@@ -22,8 +22,10 @@
 --     which fights, takes cover or idles
 --   PassBlocker(p) -> whether something between me and p that only NPCs
 --     collide with (not players) was found and I may now pass through it
---   Hop(p) -> whether I was set down at p: only where a player could walk
---     from here to p, so never through a wall, door or gate
+--   Hop(p) -> whether I will be carried to p: only where a player could
+--     walk from here to p, so never through a wall, door or gate; I am
+--     moved there over a moment, running, and MoveTo and Release wait
+--     until I arrive
 module(...)
 
 METHODS = {
