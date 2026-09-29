@@ -73,7 +73,7 @@ function New(config)
 		forced = config.forced,
 		spellsForced = config.spellsForced,
 		modes = config.modes,
-		usingSpells = false,
+		usingSpells = nil, -- the last HalloweenSetUsingSpells, nil until one comes
 		spellPickupPlaced = false,
 	}, Holiday)
 end
@@ -99,9 +99,14 @@ end
 
 -- CTFGameRules::IsUsingSpells, with its map-name check (Helltower, which
 -- never sends HalloweenSetUsingSpells) replaced by the map's entities: a map
--- that places a spell pickup uses spells.
+-- that places a spell pickup uses spells until its first
+-- HalloweenSetUsingSpells, and the last input decides from then on (so
+-- ctf_helltrain_event's minigame turns them off). tf_spells_enabled forces
+-- them on.
 function Holiday:UsingSpells()
-	return self.spellsForced or self.spellPickupPlaced or self.usingSpells
+	if self.spellsForced then return true end
+	if self.usingSpells ~= nil then return self.usingSpells end
+	return self.spellPickupPlaced
 end
 
 -- Sets one of UsingSpells()'s inputs; returns whether UsingSpells() changed.

@@ -95,23 +95,32 @@ T.test("tf_spells_enabled keeps spells on", function()
 end)
 
 -- IsUsingSpells's map-name check (HALLOWEEN_SCENARIO_HIGHTOWER), made
--- entity-driven: a map that places tf_spell_pickup uses spells.
+-- entity-driven: a map that places tf_spell_pickup uses spells until its
+-- first HalloweenSetUsingSpells; from then on the last input decides.
 
 T.test("a map that places a spell pickup uses spells", function()
 	local h = New()
 	T.eq(h:SpellPickupPlaced(), true, "the first placed pickup turns spells on")
 	T.eq(h:UsingSpells(), true, "on")
 	T.eq(h:SpellPickupPlaced(), false, "a second one changes nothing")
-	T.eq(h:SetUsingSpells(false), false, "HalloweenSetUsingSpells 0 leaves a pickup map's spells on")
-	T.eq(h:UsingSpells(), true, "still on")
 end)
 
-T.test("a placed pickup changes nothing once spells are on", function()
-	T.eq(New({ spellsForced = true }):SpellPickupPlaced(), false, "tf_spells_enabled")
+T.test("HalloweenSetUsingSpells overrides the placed pickups", function()
 	local h = New()
-	h:SetUsingSpells(true)
-	T.eq(h:SpellPickupPlaced(), false, "HalloweenSetUsingSpells 1")
-	T.eq(h:SetUsingSpells(false), false, "the placed pickup keeps them on")
+	h:SpellPickupPlaced()
+	T.eq(h:SetUsingSpells(false), true, "input 0 turns a pickup map's spells off")
+	T.eq(h:UsingSpells(), false, "off")
+	T.eq(h:SpellPickupPlaced(), false, "a pickup placed after the input changes nothing")
+	T.eq(h:SetUsingSpells(true), true, "input 1 turns them back on")
+	T.eq(h:UsingSpells(), true, "on")
+	T.eq(h:SetUsingSpells(true), false, "already on")
+end)
+
+T.test("tf_spells_enabled keeps a pickup map's spells on through input 0", function()
+	local h = New({ spellsForced = true })
+	T.eq(h:SpellPickupPlaced(), false, "already on")
+	T.eq(h:SetUsingSpells(false), false, "input 0 changes nothing")
+	T.eq(h:UsingSpells(), true, "forced on")
 end)
 
 -- CTFGameRules::DropSpellPickup
