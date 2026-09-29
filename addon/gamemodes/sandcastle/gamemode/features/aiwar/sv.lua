@@ -33,7 +33,7 @@ local SPAWN_LIFT = Vector(0, 0, 4)
 local SPAWN_SPREAD, SPAWN_TRIES = 48, 8
 
 local GROUND_PROBE = 256
-local SF_TRIGGER_ALLOW_NPCS = 2
+local SF_TRIGGER_ALLOW_CLIENTS, SF_TRIGGER_ALLOW_NPCS, SF_TRIGGER_ALLOW_ALL = 1, 2, 64 -- CBaseTrigger (triggers.h)
 
 local RED, BLUE = WETSAND.TEAM_RED, WETSAND.TEAM_BLUE
 
@@ -1551,6 +1551,19 @@ function Controller:OpenDoorsToSoldiers()
 		local teamDoor = IsValid(filter) and filter:GetClass() == "filter_activator_tfteam"
 		if self.doorFlags[trigger] == nil and (teamDoor or AroundADoor(trigger, doors)) then
 			local flags = trigger:GetSpawnFlags()
+			self.doorFlags[trigger] = flags
+			trigger:SetKeyValue("spawnflags", tostring(bit.bor(flags, SF_TRIGGER_ALLOW_NPCS)))
+		end
+	end
+	-- Hazards: TF2 maps tick only "Clients" on their trigger_hurts (pits,
+	-- saws, trains, the kill triggers inside carts), having no NPCs, so a
+	-- soldier (a DrGBase NextBot: FL_NPC) fell through every one. They hurt
+	-- soldiers as they hurt players; their filters (filter_activator_tfteam)
+	-- already take a soldier as its team's player. Restored with the doors.
+	for _, trigger in ipairs(ents.FindByClass("trigger_hurt")) do
+		local flags = trigger:GetSpawnFlags()
+		if self.doorFlags[trigger] == nil and bit.band(flags, SF_TRIGGER_ALLOW_CLIENTS) ~= 0
+			and bit.band(flags, SF_TRIGGER_ALLOW_NPCS + SF_TRIGGER_ALLOW_ALL) == 0 then
 			self.doorFlags[trigger] = flags
 			trigger:SetKeyValue("spawnflags", tostring(bit.bor(flags, SF_TRIGGER_ALLOW_NPCS)))
 		end
