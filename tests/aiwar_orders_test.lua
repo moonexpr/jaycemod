@@ -70,10 +70,16 @@ T.test("a pusher's goal is a spot on a ring around its own cart", function()
 	T.eq(FS.Distance(Orders.Goal(field, member), goal) > 1, true, "another slot, another spot")
 end)
 
-T.test("a blocker rings the enemy's cart, and has no goal without one", function()
+T.test("blockers stand across the enemy cart's nose, and have no goal without one", function()
 	local field = Field({})
 	local member = { team = RED, role = AiWar.BLOCK, slot = 0 }
-	T.near(FS.Distance(Orders.Goal(field, member), field.carts[BLUE].pos), Orders.PUSH_RING, 1e-9, "BLU's cart")
+	Near(Orders.Goal(field, member), P(1000 + Orders.BLOCK_LEAD, 0), "slot 0 dead ahead")
+	member.slot = 1
+	Near(Orders.Goal(field, member), P(1000 + Orders.BLOCK_LEAD, Orders.BLOCK_SPREAD), "slot 1 left")
+	member.slot = 2
+	Near(Orders.Goal(field, member), P(1000 + Orders.BLOCK_LEAD, -Orders.BLOCK_SPREAD), "slot 2 right")
+	member.slot = Orders.BLOCK_COLUMNS
+	Near(Orders.Goal(field, member), P(1000 + Orders.BLOCK_LEAD + Orders.BLOCK_DEPTH, 0), "a row further ahead")
 	member.team = BLUE
 	T.eq(Orders.Goal(field, member), nil, "RED has no cart")
 end)

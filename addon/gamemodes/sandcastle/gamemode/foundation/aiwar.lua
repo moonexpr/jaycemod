@@ -7,7 +7,7 @@
 --
 -- Members are opaque handles (the NPC entities). Carts are given as the set
 -- of teams with a cart moving on the map.
-local floor, ipairs, next, pairs, setmetatable, sort, table = math.floor, ipairs, next, pairs, setmetatable, table.sort, table
+local floor, ipairs, next, pairs, setmetatable, sort, table, type = math.floor, ipairs, next, pairs, setmetatable, table.sort, table, type
 local Teams = require("foundation.teams")
 local STATE = require("foundation.rounds.state")
 module(...)
@@ -72,17 +72,43 @@ end
 
 -- Stances: how a team splits its soldiers between roles, as integer
 -- weights, first role first on a tie. A team with its own cart pushes it;
--- one facing only the enemy's defends; on a race map each does both.
+-- one facing only the enemy's defends, and throws more blockers at the
+-- cart once it is close to its checkpoint; on a race map each does both.
 local ATTACK = { { role = PUSH, weight = 5 }, { role = ESCORT, weight = 5 } }
 local DEFEND_STANCE = { { role = DEFEND, weight = 7 }, { role = BLOCK, weight = 3 } }
+local DEFEND_CLOSE = { { role = DEFEND, weight = 4 }, { role = BLOCK, weight = 6 } }
 local RACE = { { role = PUSH, weight = 4 }, { role = BLOCK, weight = 3 }, { role = ESCORT, weight = 3 } }
 
+-- carts: team -> true, or { close = the cart is near its next checkpoint
+-- (CartClose) }, for each team with a cart.
 function Stance(team, carts)
 	local own, enemy = carts[team], carts[ENEMY[team]]
 	if own and enemy then return RACE end
 	if own then return ATTACK end
-	if enemy then return DEFEND_STANCE end
+	if enemy then return (type(enemy) == "table" and enemy.close) and DEFEND_CLOSE or DEFEND_STANCE end
 	return nil
+end
+
+-- A cart is close to its checkpoint within CLOSE_RANGE along the track,
+-- and stays close until it is CLOSE_RANGE + CLOSE_HYSTERESIS away, so a
+-- cart rocking at the edge does not swap the defenders' roles back and forth.
+CLOSE_RANGE, CLOSE_HYSTERESIS = 1024, 384
+
+function CartClose(wasClose, remaining)
+	if remaining <= CLOSE_RANGE then return true end
+	return wasClose and remaining <= CLOSE_RANGE + CLOSE_HYSTERESIS or false
+end
+
+-- Whether two stances share their roles (weights aside): a team moving
+-- between them keeps its members' roles where it can.
+local function SameRoles(a, b)
+	if #a ~= #b then return false end
+	local roles = {}
+	for _, share in ipairs(a) do roles[share.role] = true end
+	for _, share in ipairs(b) do
+		if not roles[share.role] then return false end
+	end
+	return true
 end
 
 -- The role most short of its share once one more soldier joins.
@@ -256,12 +282,54 @@ function War:Discharge(handle)
 	self.members[handle] = nil
 end
 
--- A team whose stance changes (a cart appears or goes) is reassigned
--- from scratch, oldest first.
+-- The member takes another role, in its own fire team of that role.
+function War:ChangeRole(member, role)
+	self:LeaveFireTeam(member)
+	member.role = role
+	member.slot = FreeSlot(self.members, member.team, role, member)
+	self:JoinFireTeam(member)
+end
+
+-- Rebalances a team to its stance's shares with as few role changes as
+-- possible: the newest members of the roles over their share take the
+-- roles under theirs.
+function War:Rebalance(team, stance)
+	local list = {}
+	for _, member in ipairs(self:Members()) do
+		if member.team == team and member.role then list[#list + 1] = member end
+	end
+	local target = {}
+	for _ = 1, #list do
+		local role = PickRole(stance, target)
+		target[role] = (target[role] or 0) + 1
+	end
+	local counts = RoleCounts(self.members, team)
+	for i = #list, 1, -1 do
+		local member = list[i]
+		if (counts[member.role] or 0) > (target[member.role] or 0) then
+			for _, share in ipairs(stance) do
+				if (counts[share.role] or 0) < (target[share.role] or 0) then
+					counts[member.role] = counts[member.role] - 1
+					counts[share.role] = (counts[share.role] or 0) + 1
+					self:ChangeRole(member, share.role)
+					break
+				end
+			end
+		end
+	end
+end
+
+-- A team whose stance changes is reassigned: rebalanced when the new
+-- stance has the same roles (a cart nearing its checkpoint), otherwise (a
+-- cart appears or goes) from scratch, oldest first.
 function War:Assign(carts)
 	for _, team in ipairs({ RED, BLUE }) do
 		local stance = Stance(team, carts)
-		if stance ~= self.stances[team] then
+		local old = self.stances[team]
+		if stance ~= old and stance and old and SameRoles(stance, old) then
+			self.stances[team] = stance
+			self:Rebalance(team, stance)
+		elseif stance ~= old then
 			self.stances[team] = stance
 			local list = {}
 			for _, member in ipairs(self:Members()) do

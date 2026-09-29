@@ -37,6 +37,10 @@ KIND = "aiwar"
 -- Goals
 PUSH_RING = 56 -- just outside a cart's body, inside its capture area
 PUSH_ARRIVE, PUSH_LEASH = 72, 110
+-- Blockers charge the enemy's cart and stand across its nose, in its way
+-- and inside its capture area: BLOCK_LEAD ahead of it, BLOCK_COLUMNS
+-- abreast BLOCK_SPREAD apart, further rows BLOCK_DEPTH ahead.
+BLOCK_LEAD, BLOCK_SPREAD, BLOCK_COLUMNS, BLOCK_DEPTH = 56, 40, 3, 40
 ESCORT_LEAD = 300
 ESCORT_ARRIVE, ESCORT_LEASH = 150, 700
 DEFEND_LEAD, DEFEND_DEPTH, DEFEND_ROWS = 600, 250, 3
@@ -160,10 +164,12 @@ ROLES = {
 			return cart and Ring(cart.pos, member.slot, PUSH_RING)
 		end,
 	},
+	-- A blocker (a shotgunner: the controller arms it) patrols behind the
+	-- defenders' line in setup; after, it charges the enemy's cart, whatever
+	-- shoots at it, and stands in its way.
 	[AiWar.BLOCK] = {
 		name = "Block",
-		patrols = true,
-		tactic = "attack",
+		patrols = "setup",
 		arrive = PUSH_ARRIVE,
 		leash = PUSH_LEASH,
 		rushes = true,
@@ -171,7 +177,10 @@ ROLES = {
 			local spot = GateSpot(field, member, GATE_ROW)
 			if spot then return spot end
 			local cart = EnemyCart(field, member)
-			return cart and Ring(cart.pos, member.slot, PUSH_RING)
+			if not cart then return nil end
+			local column, row = member.slot % BLOCK_COLUMNS, floor(member.slot / BLOCK_COLUMNS)
+			local lateral = (column == 0 and 0) or (column % 2 == 1 and 1 or -1) * ceil(column / 2) * BLOCK_SPREAD
+			return cart.track:Offset(cart.distance + BLOCK_LEAD + row * BLOCK_DEPTH, lateral)
 		end,
 	},
 	-- An escort follows its cart as HL2's rebels follow Gordon (the port's
@@ -597,7 +606,12 @@ function Objective:Update(me)
 		if contact then return self:Fight(me, goal, contact) end
 		self:EndFight()
 	end
-	if self.role.patrols then
+	local patrols = self.role.patrols == true or (self.role.patrols == "setup" and field.setup)
+	if not patrols and self.anchor then
+		state.patrolling = false
+		self.anchor, self.restUntil = nil, nil
+	end
+	if patrols then
 		if self.anchor and AnchorHolds(self.anchor, field, state.member, goal) and range <= PATROL_RADIUS + self.role.arrive then
 			return self:Patrol(me, field, goal)
 		end

@@ -69,6 +69,28 @@ if SERVER then
 		if self.WetsandDisarmed then return true end
 	end
 
+	-- The controller's kit for the soldier's role: { weapon (a class it
+	-- carries, to hold), avoid (a class not to hold, when it has another),
+	-- damage (its damage scale), runSpeed }; nil fields take the defaults.
+	function ENT:WetsandKit(kit)
+		local active = self:GetActiveWeapon()
+		if kit.weapon and self:HasWeapon(kit.weapon) then
+			self:SelectWeapon(kit.weapon)
+		elseif kit.avoid and IsValid(active) and active:GetClass() == kit.avoid then
+			local others = {}
+			for class, weapon in pairs(self:GetWeapons()) do
+				if class ~= kit.avoid and IsValid(weapon) then others[#others + 1] = class end
+			end
+			if #others > 0 then self:SelectWeapon(others[math.random(#others)]) end
+		end
+		self.WetsandDamageScale = kit.damage
+		self.RunSpeed = kit.runSpeed
+	end
+
+	function ENT:OnDealtDamage()
+		return self.WetsandDamageScale
+	end
+
 	function ENT:ShouldRun()
 		if self.WetsandRun ~= nil then return self.WetsandRun end
 		return self:HasEnemy()

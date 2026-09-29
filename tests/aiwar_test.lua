@@ -165,6 +165,39 @@ T.test("a change of stance reassigns the team's roles, oldest first", function()
 	T.eq(Roles(war, RED), "push0 block0 escort0", "unchanged stance keeps them")
 end)
 
+T.test("a cart near its checkpoint throws more of the defenders at it, fewest changed", function()
+	local war = AiWar.War.New()
+	war:Assign({ [BLUE] = true })
+	for i = 1, 10 do war:Enlist("r" .. i, RED, true) end
+	local function Count(role)
+		local n = 0
+		for _, member in ipairs(war:Members()) do
+			if member.team == RED and member.role == role then n = n + 1 end
+		end
+		return n
+	end
+	T.eq(Count(AiWar.BLOCK), 3, "three blockers while the cart is far")
+	local before = {}
+	for _, member in ipairs(war:Members()) do before[member] = member.role end
+	war:Assign({ [BLUE] = { close = true } })
+	T.eq(Count(AiWar.BLOCK), 6, "six once it is close")
+	local changed = 0
+	for member, role in pairs(before) do
+		if member.role ~= role then changed = changed + 1 end
+		T.eq(member.fireTeam.role, member.role, "in a fire team of its new role")
+	end
+	T.eq(changed, 3, "only three defenders turned blocker")
+	war:Assign({ [BLUE] = { close = false } })
+	T.eq(Count(AiWar.BLOCK), 3, "back to three when it is pushed back")
+end)
+
+T.test("a cart is close within CLOSE_RANGE, and stays close a little past it", function()
+	T.eq(AiWar.CartClose(false, AiWar.CLOSE_RANGE), true, "at the range")
+	T.eq(AiWar.CartClose(false, AiWar.CLOSE_RANGE + 1), false, "past it")
+	T.eq(AiWar.CartClose(true, AiWar.CLOSE_RANGE + AiWar.CLOSE_HYSTERESIS), true, "still close, once close")
+	T.eq(AiWar.CartClose(true, AiWar.CLOSE_RANGE + AiWar.CLOSE_HYSTERESIS + 1), false, "far again")
+end)
+
 -- Reinforcements ---------------------------------------------------------------
 
 local function WaveOf(seconds)

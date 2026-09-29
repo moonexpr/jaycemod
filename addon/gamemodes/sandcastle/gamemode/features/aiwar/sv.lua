@@ -525,6 +525,18 @@ function Controller:JoinSquad(ent, member)
 	ent.wetsandSquad = member and member.fireTeam and member.fireTeam.squad or nil
 end
 
+-- Each role's kit (wetsand_drg_soldier's WetsandKit): blockers carry the
+-- shotgun, hit harder and charge faster; the rest leave the shotgun to them.
+local BLOCKER_KIT = { weapon = "weapon_shotgun", damage = 1.5, runSpeed = 260 }
+local DEFAULT_KIT = { avoid = "weapon_shotgun" }
+
+function Controller:Equip(ent, entry, member)
+	local role = member and member.role or false
+	if entry.equipped == role or not ent.WetsandKit then return end
+	entry.equipped = role
+	ent:WetsandKit(role == AiWar.BLOCK and BLOCKER_KIT or DEFAULT_KIT)
+end
+
 function Controller:Discharge(ent)
 	local entry = self.soldiers[ent]
 	if not entry then return end
@@ -1132,9 +1144,17 @@ function Controller:Field(phase)
 	}
 end
 
-local function CartTeams(carts)
-	local teams = {}
-	for team in pairs(carts) do teams[team] = true end
+-- The teams with a cart, and whether each cart is close to its next
+-- checkpoint (the end of its track after the last), which throws the
+-- defenders' blockers at it (foundation.aiwar's Stance).
+function Controller:CartTeams(carts)
+	local teams, close = {}, {}
+	for team, cart in pairs(carts) do
+		local target = cart.nextCheckpoint or cart.track:Length()
+		close[team] = AiWar.CartClose(self.cartClose and self.cartClose[team], target - cart.distance)
+		teams[team] = { close = close[team] }
+	end
+	self.cartClose = close
 	return teams
 end
 
@@ -1145,12 +1165,14 @@ function Controller:Think(now)
 	local field = self:Field(phase)
 	self:RefreshCartBounds()
 	if field.setup and self.gates == nil then self:FindGates(field) end
-	self.war:Assign(CartTeams(field.carts))
+	self.war:Assign(self:CartTeams(field.carts))
 	self.war:SetField(field)
 	if phase.reinforce then self:Reinforce(now) end
 	for ent, entry in pairs(self.soldiers) do
 		if IsValid(ent) then
-			self:JoinSquad(ent, self.war:Member(ent))
+			local member = self.war:Member(ent)
+			self:JoinSquad(ent, member)
+			self:Equip(ent, entry, member)
 			entry.npc:Update(THINK_INTERVAL)
 		end
 	end
