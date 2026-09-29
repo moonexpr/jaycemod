@@ -195,7 +195,34 @@ local TRAVERSE_FLOOR_ABOVE, TRAVERSE_FLOOR_BELOW = 48, 64
 
 local function NotCharacter(hit) return not (hit:IsNPC() or hit:IsPlayer()) end
 
+-- Walking by hand, where the engine will not move a soldier: each tick a
+-- step toward the target at the gait's pace, as a player walks (a soldier
+-- box swept above step height, sliding along what it touches, set on the
+-- floor a player stands on), playing the gait's animation at its own
+-- ground speed.
+local WALK_STEP, WALK_DROP, WALK_SLOPE = 18, 64, 0.7
 local WALK_ARRIVE = 8
+local SLIDE_MIN = 0.2
+local GAITS = {
+	walk = { acts = { ACT_WALK }, speed = 80 },
+	run = { acts = { ACT_RUN }, speed = 190 },
+	-- citizens' cowering run, else a plain one
+	panic = { acts = { ACT_RUN_PROTECTED, ACT_RUN_STIMULATED, ACT_RUN }, speed = 210 },
+}
+
+-- The gait's activity this model has, and the pace it moves at.
+local function GaitOf(ent, gaitName)
+	local gait = GAITS[gaitName] or GAITS.run
+	for _, act in ipairs(gait.acts) do
+		local sequence = ent:SelectWeightedSequence(act)
+		if sequence and sequence > 0 then
+			local speed = ent:GetSequenceGroundSpeed(sequence)
+			return act, speed > 1 and speed or gait.speed
+		end
+	end
+	return ACT_RUN, gait.speed
+end
+
 function Soldier:MoveTo(p, gait)
 	if self.traverse then return end
 	self:Unpose()
@@ -224,14 +251,15 @@ end
 -- target, with its own animations, and touching the triggers that open
 -- doors. A run the engine refuses (ended RUN_ENDED_NEAR or more short of
 -- its target) or that stalls (under ENGINE_STALL_SPEED for
--- ENGINE_STALL_TIME, as on displacements) is asked for again after
--- RETRY_TIME; meanwhile the trip's own stuck handling (orders' Unstick:
--- detours, sidesteps, new routes, hops) sees a soldier making no progress.
--- A stall against a door is the door watchdog's (HeldByDoor).
+-- ENGINE_STALL_TIME) is walked by hand (Soldier:Walk) for BY_HAND_TIME,
+-- so the soldier keeps to its objective, then the engine is asked again.
+-- Each failure's kind and whether the engine can path to the target at all
+-- (NPC:NavSetGoal on the node graph) go to the report, to find out why. A stall against a door is the door watchdog's
+-- (HeldByDoor).
 local ENGINE_RETARGET = 24
 local ENGINE_STALL_SPEED, ENGINE_STALL_TIME = 20, 1
 local RUN_ENDED_NEAR = 48
-local RETRY_TIME = 1
+local BY_HAND_TIME = 3
 local ENGINE_SCHEDULE = { walk = SCHED_FORCED_GO, run = SCHED_FORCED_GO_RUN, panic = SCHED_FORCED_GO_RUN }
 
 function Soldier:EngineRunning()
@@ -251,18 +279,27 @@ function Soldier:PlansRoutes()
 	return graphLoaded
 end
 
--- The run failed: drop it, try again after RETRY_TIME.
+-- The run failed: drop it, walk by hand for BY_HAND_TIME.
 function Soldier:RunFailed(now, why)
-	self.retryAt = now + RETRY_TIME
+	self.retryAt = now + BY_HAND_TIME
+	self.failures = self.failures or {}
+	self.failures[why] = (self.failures[why] or 0) + 1
+	-- does the engine find a path to the target over its node graph at all?
+	local ent, target = self.ent, self.engineTarget
+	if target then
+		self.graphPath = ent:NavSetGoal(OnFloor(ToVector(target)))
+		ent:ClearGoal()
+	end
 	self.runFailure = why
 	self.engineTarget, self.stalledSince = nil, nil
 	if self:EngineRunning() then self.ent:ClearSchedule() end
 end
 
--- Each tick of a move: the engine's run, started and watched.
-function Soldier:Move()
+-- Each tick of a move: the engine's run, started and watched, or a step
+-- by hand while the engine has failed.
+function Soldier:Move(dt)
 	local now = CurTime()
-	if now < (self.retryAt or 0) then return end
+	if now < (self.retryAt or 0) then return self:Walk(dt) end
 	local ent, target = self.ent, self.moveTarget
 	local range = self:RangeTo(target)
 	local sameTarget = self.engineTarget ~= nil and Track.Distance(self.engineTarget, target) < ENGINE_RETARGET
@@ -298,6 +335,57 @@ function Soldier:Move()
 	ent:SetSchedule(ENGINE_SCHEDULE[self.gait] or SCHED_FORCED_GO_RUN)
 end
 
+-- Where a step of `step` from pos along dir lands, or nil when it cannot
+-- and what stopped it.
+function Soldier:Step(pos, dir, step)
+	local nextPos = pos + dir * step
+	local sweep = self:Sweep(pos, nextPos)
+	if sweep.StartSolid then return nil, sweep.Entity end
+	if sweep.Hit then
+		local normal = Vector(sweep.HitNormal.x, sweep.HitNormal.y, 0)
+		local slide = dir - normal * dir:Dot(normal)
+		if slide:Length() < SLIDE_MIN then return nil, sweep.Entity end
+		nextPos = pos + slide * step
+		if self:Sweep(pos, nextPos).Hit then return nil end
+	end
+	local floor = util.TraceLine({
+		start = nextPos + Vector(0, 0, WALK_STEP),
+		endpos = nextPos - Vector(0, 0, WALK_DROP),
+		mask = MASK_PLAYERSOLID,
+		filter = NotCharacter,
+	})
+	if floor.StartSolid or not floor.Hit or floor.HitNormal.z < WALK_SLOPE then return nil end
+	return floor.HitPos
+end
+
+function Soldier:Walk(dt)
+	local ent = self.ent
+	local pos = ent:GetPos()
+	local delta = ToVector(self.moveTarget) - pos
+	delta.z = 0
+	local distance = delta:Length()
+	self.walkSpeed = 0
+	if distance <= WALK_ARRIVE then return end
+	local act, speed = GaitOf(ent, self.gait)
+	local step = math.min(distance, speed * dt)
+	local nextPos, stoppedBy = self:Step(pos, delta / distance, step)
+	if not nextPos then
+		if IsValid(stoppedBy) and IsDoor(stoppedBy) then self:HeldByDoor(stoppedBy) else self.heldBy = nil end
+		return
+	end
+	self.heldBy = nil
+	ent:SetPos(nextPos)
+	if ent:IsMoving() then ent:StopMoving() end
+	-- with an enemy in sight the engine aims and shoots as it moves
+	if not self:HasEnemy() then
+		local yaw = delta:Angle().y
+		ent:SetAngles(Angle(0, yaw, 0))
+		ent:SetIdealYawAndUpdate(yaw)
+		ent:SetIdealActivity(act)
+	end
+	self.walkSpeed = step / dt
+end
+
 -- The door between me and p, if one stands in the way.
 function Soldier:DoorAhead(p)
 	local blocker = self:Blocker(p)
@@ -327,7 +415,9 @@ function Soldier:RunState()
 	if self.traverse then return "carried over an obstacle, walking" end
 	if self.moveTarget == nil then return nil end
 	if self:RangeTo(self.moveTarget) <= WALK_ARRIVE * 2 then return "at its target" end
-	if CurTime() < (self.retryAt or 0) then return "run " .. (self.runFailure or "failed") .. " by the engine; asking again" end
+	if CurTime() < (self.retryAt or 0) then
+		return string.format("by hand (engine %s) %s at %d u/s", self.runFailure or "failed", self.gait or "run", math.floor(self.walkSpeed or 0))
+	end
 	return string.format("%s at %d u/s (engine)", self.gait or "run", math.floor(self.walkSpeed or 0))
 end
 
@@ -691,8 +781,18 @@ function Controller:Enlist(ent, team, drafted)
 	WETSAND.SetTeamMember(ent, team)
 	self:RelateSoldiers(ent, team)
 	self:PassTeammates(ent, team)
+	self:JoinSquad(ent, member)
 	if team == self.losers then self:Disarm(ent, self.soldiers[ent]) end
 	self.nextRelations = 0
+end
+
+-- The member's HL2 squad is its fire team's; members move between teams
+-- as roles change, so it is set again whenever it differs.
+function Controller:JoinSquad(ent, member)
+	local squad = member.fireTeam and member.fireTeam.squad or ""
+	if ent.wetsandSquad == squad then return end
+	ent.wetsandSquad = squad
+	ent:SetSquad(squad)
 end
 
 function Controller:Discharge(ent)
@@ -749,7 +849,6 @@ function Controller:Draft(team, pos, ang)
 	for key, value in pairs(recruit.keyvalues or {}) do ent:SetKeyValue(key, value) end
 	ent:SetKeyValue("spawnflags", tostring(bit.bor(recruit.spawnflags or 0, SF_NPC_LONG_RANGE, SF_NPC_FADE_CORPSE)))
 	ent:SetKeyValue("additionalequipment", recruit.weapon)
-	ent:SetKeyValue("squadname", draft.squad)
 	ent:Spawn()
 	ent:Activate()
 	if recruit.skin then ent:SetSkin(recruit.skin) end
@@ -1328,7 +1427,10 @@ function Controller:Think(now)
 	self.war:SetField(field)
 	if phase.reinforce then self:Reinforce(now) end
 	for ent, entry in pairs(self.soldiers) do
-		if IsValid(ent) then entry.npc:Update(THINK_INTERVAL) end
+		if IsValid(ent) then
+			self:JoinSquad(ent, self.war:Member(ent))
+			entry.npc:Update(THINK_INTERVAL)
+		end
 	end
 	if now >= self.nextRelations then
 		self.nextRelations = now + RELATIONSHIP_INTERVAL
@@ -1455,6 +1557,11 @@ function Controller:Describe(ent, entry)
 	if state.wandering then lines[#lines + 1] = "Setup: wandering until it ends" end
 	if state.patrolling then lines[#lines + 1] = "Patrol: walking its rounds near its post until the cart moves" end
 	if entry.disarmed then lines[#lines + 1] = "Humiliated: cannot attack, fears the winners" end
+	if soldier.failures then
+		lines[#lines + 1] = string.format("Engine runs failed: %d refused, %d stalled; last target %s over the node graph",
+			soldier.failures.refused or 0, soldier.failures.stalled or 0,
+			soldier.graphPath == nil and "untested" or (soldier.graphPath and "had a path" or "had NO path"))
+	end
 	if soldier.recoveries then lines[#lines + 1] = string.format("Recovered: %d time(s), last %s", soldier.recoveries, soldier.recoveredWhy) end
 	if state.hops then lines[#lines + 1] = "Hops: " .. state.hops end
 	if state.passed then lines[#lines + 1] = "Let through: " .. state.passed .. " NPC-only blocker(s)" end
@@ -1602,7 +1709,7 @@ hook.Add("Tick", "wetsand_aiwar_traverse", function()
 			if soldier.traverse then
 				soldier:Traverse(now)
 			elseif soldier.moveTarget then
-				soldier:Move()
+				soldier:Move(dt)
 			elseif soldier.pose then
 				soldier:HoldPose()
 			end

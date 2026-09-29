@@ -7,7 +7,7 @@
 --
 -- Members are opaque handles (the NPC entities). Carts are given as the set
 -- of teams with a cart moving on the map.
-local floor, ipairs, pairs, setmetatable, sort = math.floor, ipairs, pairs, setmetatable, table.sort
+local floor, ipairs, next, pairs, setmetatable, sort, table = math.floor, ipairs, next, pairs, setmetatable, table.sort, table
 local Teams = require("foundation.teams")
 local STATE = require("foundation.rounds.state")
 module(...)
@@ -41,9 +41,10 @@ PUSH, ESCORT, BLOCK, DEFEND = "push", "escort", "block", "defend"
 
 TEAM_SIZE_DEFAULT = 8
 TEAM_SIZE_MAX = 32
--- HL2's squads coordinate at most 16 (MAX_SQUAD_MEMBERS); smaller squads
--- fight better.
-SQUAD_SIZE = 8
+-- Fire teams: a side's soldiers fight in teams of at most FIRE_TEAM_SIZE,
+-- each with one role, each an HL2 squad of its own (squad slots, who
+-- covers and who moves), so squadmates are soldiers fighting together.
+FIRE_TEAM_SIZE = 4
 
 -- npc_citizen spawnflags (npc_citizen17.h)
 local SF_CITIZEN_MEDIC = 131072
@@ -159,6 +160,7 @@ War.__index = War
 function War.New()
 	return setmetatable({
 		members = {}, -- handle -> member
+		fireTeams = {}, -- every fire team: { team, role, index (per team and role), squad, members = place -> member }
 		enlisted = 0, -- members ever enlisted, for their order
 		stances = {}, -- team -> stance
 		drafts = { [RED] = 0, [BLUE] = 0 },
@@ -200,10 +202,68 @@ local function RoleCounts(members, team, except)
 	return counts
 end
 
+-- Leaves the member's fire team, which goes when empty.
+function War:LeaveFireTeam(member)
+	local fireTeam = member.fireTeam
+	if not fireTeam then return end
+	fireTeam.members[member.place] = nil
+	member.fireTeam, member.place = nil, nil
+	if next(fireTeam.members) == nil then
+		for i, other in ipairs(self.fireTeams) do
+			if other == fireTeam then
+				table.remove(self.fireTeams, i)
+				break
+			end
+		end
+	end
+end
+
+local function FreePlace(fireTeam)
+	for place = 0, FIRE_TEAM_SIZE - 1 do
+		if not fireTeam.members[place] then return place end
+	end
+	return nil
+end
+
+-- Joins an open fire team of the member's team and role, the lowest
+-- indexed first, or starts one at the lowest free index.
+function War:JoinFireTeam(member)
+	local open, used = nil, {}
+	for _, fireTeam in ipairs(self.fireTeams) do
+		if fireTeam.team == member.team and fireTeam.role == member.role then
+			used[fireTeam.index] = true
+			if FreePlace(fireTeam) and (not open or fireTeam.index < open.index) then open = fireTeam end
+		end
+	end
+	if not open then
+		local index = 0
+		while used[index] do index = index + 1 end
+		open = {
+			team = member.team, role = member.role, index = index, members = {},
+			squad = "wetsand_aiwar_" .. member.team .. "_" .. member.role .. "_" .. index,
+		}
+		self.fireTeams[#self.fireTeams + 1] = open
+	end
+	member.place = FreePlace(open)
+	member.fireTeam = open
+	open.members[member.place] = member
+end
+
+-- The member's fire team's members in place order.
+function War:FireTeamMembers(fireTeam)
+	local list = {}
+	for place = 0, FIRE_TEAM_SIZE - 1 do
+		if fireTeam.members[place] then list[#list + 1] = fireTeam.members[place] end
+	end
+	return list
+end
+
 function War:AssignRole(member)
+	self:LeaveFireTeam(member)
 	local stance = self.stances[member.team]
 	member.role = stance and PickRole(stance, RoleCounts(self.members, member.team, member)) or nil
 	member.slot = member.role and FreeSlot(self.members, member.team, member.role, member) or 0
+	if member.role then self:JoinFireTeam(member) end
 end
 
 -- drafted: spawned by the war (counted against the team's size), rather
@@ -217,6 +277,8 @@ function War:Enlist(handle, team, drafted)
 end
 
 function War:Discharge(handle)
+	local member = self.members[handle]
+	if member then self:LeaveFireTeam(member) end
 	self.members[handle] = nil
 end
 
@@ -230,6 +292,7 @@ function War:Assign(carts)
 			local list = {}
 			for _, member in ipairs(self:Members()) do
 				if member.team == team then
+					self:LeaveFireTeam(member)
 					member.role = nil
 					list[#list + 1] = member
 				end
@@ -239,15 +302,13 @@ function War:Assign(carts)
 	end
 end
 
--- The next recruit to spawn for a team and the squad it joins.
+-- The next recruit to spawn for a team (its squad is its fire team's,
+-- given once it is enlisted).
 function War:Draft(team)
 	local n = self.drafts[team] + 1
 	self.drafts[team] = n
 	local recruits = FACTIONS[team].recruits
-	return {
-		recruit = recruits[(n - 1) % #recruits + 1],
-		squad = "wetsand_aiwar_" .. team .. "_" .. floor((n - 1) / SQUAD_SIZE),
-	}
+	return { recruit = recruits[(n - 1) % #recruits + 1] }
 end
 
 function War:DraftedCount(team)

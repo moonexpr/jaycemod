@@ -52,17 +52,74 @@ T.test("each recruit of a faction is one of its members", function()
 	end
 end)
 
-T.test("drafts cycle through the recruits and fill squads of SQUAD_SIZE", function()
+T.test("drafts cycle through the recruits", function()
 	local war = AiWar.War.New()
 	local recruits = AiWar.FACTIONS[RED].recruits
-	local first = war:Draft(RED)
-	T.eq(first.recruit, recruits[1], "first recruit")
+	T.eq(war:Draft(RED).recruit, recruits[1], "first recruit")
 	for _ = 2, #recruits do war:Draft(RED) end
 	T.eq(war:Draft(RED).recruit, recruits[1], "the cycle restarts")
-	for _ = #recruits + 2, AiWar.SQUAD_SIZE do war:Draft(RED) end
-	local next = war:Draft(RED)
-	T.eq(first.squad ~= next.squad, true, "a new squad after SQUAD_SIZE")
-	T.eq(war:Draft(BLUE).squad ~= first.squad, true, "teams never share a squad")
+end)
+
+-- Fire teams ---------------------------------------------------------------
+
+T.test("soldiers of a role form fire teams of FIRE_TEAM_SIZE, each its own squad", function()
+	local war = AiWar.War.New()
+	war:Assign({ [BLUE] = true })
+	local defenders = {}
+	for i = 1, 20 do
+		local member = war:Enlist("red" .. i, RED, true)
+		if member.role == AiWar.DEFEND then defenders[#defenders + 1] = member end
+	end
+	local teams, squads = {}, {}
+	for _, member in ipairs(defenders) do
+		T.eq(member.fireTeam.role, AiWar.DEFEND, "a defenders' team")
+		teams[member.fireTeam] = (teams[member.fireTeam] or 0) + 1
+		squads[member.fireTeam.squad] = true
+	end
+	local count = 0
+	for fireTeam, n in pairs(teams) do
+		count = count + 1
+		T.eq(n <= AiWar.FIRE_TEAM_SIZE, true, "no more than FIRE_TEAM_SIZE")
+	end
+	T.eq(count, math.ceil(#defenders / AiWar.FIRE_TEAM_SIZE), "as few teams as fit")
+	local squadCount = 0
+	for _ in pairs(squads) do squadCount = squadCount + 1 end
+	T.eq(squadCount, count, "one squad per team")
+end)
+
+T.test("members take places 0 up in their team, and a place freed is taken again", function()
+	local war = AiWar.War.New()
+	war:Assign({ [BLUE] = true })
+	local first = war:Enlist("a", BLUE, true)
+	local fireTeam = first.fireTeam
+	local mates = {}
+	for i = 1, 20 do
+		local member = war:Enlist("b" .. i, BLUE, true)
+		if member.fireTeam == fireTeam then mates[#mates + 1] = member end
+	end
+	T.eq(first.place, 0, "the first place")
+	T.eq(#war:FireTeamMembers(fireTeam), AiWar.FIRE_TEAM_SIZE, "full")
+	local leaving = mates[1]
+	local place = leaving.place
+	war:Discharge(leaving.handle)
+	T.eq(fireTeam.members[place], nil, "the place is free")
+	local newcomer
+	repeat newcomer = war:Enlist("c" .. math.random(1e9), BLUE, true) until newcomer.role == fireTeam.role
+	T.eq(newcomer.fireTeam, fireTeam, "joins the open team")
+	T.eq(newcomer.place, place, "in the freed place")
+end)
+
+T.test("a team emptied goes, and teams never cross sides", function()
+	local war = AiWar.War.New()
+	war:Assign({ [BLUE] = true })
+	local red = war:Enlist("r", RED, true)
+	local blue = war:Enlist("b", BLUE, true)
+	T.eq(red.fireTeam ~= blue.fireTeam, true, "separate sides")
+	local fireTeam = red.fireTeam
+	war:Discharge("r")
+	local still = false
+	for _, other in ipairs(war.fireTeams) do still = still or other == fireTeam end
+	T.eq(still, false, "gone once empty")
 end)
 
 -- Roles --------------------------------------------------------------------
