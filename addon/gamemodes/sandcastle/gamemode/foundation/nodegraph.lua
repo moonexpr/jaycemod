@@ -88,6 +88,21 @@ function PickNodes(areas, spacing, limit)
 	return chosen
 end
 
+-- The middle of the edge two connected areas share: from and to are
+-- rectangles { lo = { x, y }, hi = { x, y } } (a nav area's extent), `to`
+-- lying in direction dir of `from` (NavDirType: 0 north (-y), 1 east (+x),
+-- 2 south (+y), 3 west (-x)). Returns x, y.
+function SeamPoint(from, to, dir)
+	if dir == 0 or dir == 2 then
+		local low = from.lo.x > to.lo.x and from.lo.x or to.lo.x
+		local high = from.hi.x < to.hi.x and from.hi.x or to.hi.x
+		return (low + high) / 2, dir == 0 and from.lo.y or from.hi.y
+	end
+	local low = from.lo.y > to.lo.y and from.lo.y or to.lo.y
+	local high = from.hi.y < to.hi.y and from.hi.y or to.hi.y
+	return dir == 3 and from.lo.x or from.hi.x, (low + high) / 2
+end
+
 -- The links worth testing: each node's `perNode` nearest within
 -- maxDistance, each pair once. positions: a list; returns { a, b, distance }
 -- with a < b, nearest first.

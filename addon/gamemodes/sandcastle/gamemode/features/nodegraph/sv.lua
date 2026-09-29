@@ -95,11 +95,55 @@ local function FloorBelow(pos)
 	return tr.HitPos
 end
 
--- The candidates: hiding spots and walkable area centres, on the floor.
+-- A seam where the ground changes height (a stair's top or bottom): the
+-- middle of the edge two walkable areas share, where either area slopes
+-- (its corners rise SLOPE_RISE or more) or their centres differ by more
+-- than a step. Long stairs have no node near their ends otherwise, and
+-- their top and bottom lie beyond a link's reach of each other.
+local SLOPE_RISE = 24
+local SEAM_BONUS = HIDING_BONUS / 2 -- after cover spots, before any area
+
+local function Walkable(area)
+	return bit.band(area:GetAttributes(), NAV_MESH_CROUCH + NAV_MESH_JUMP) == 0 and not area:IsUnderwater()
+end
+
+local function Slopes(area)
+	local low, high = math.huge, -math.huge
+	for corner = 0, 3 do
+		local z = area:GetCorner(corner).z
+		low, high = math.min(low, z), math.max(high, z)
+	end
+	return high - low >= SLOPE_RISE
+end
+
+local function Rect(area)
+	local extent = area:GetExtentInfo()
+	return { lo = { x = extent.lo.x, y = extent.lo.y }, hi = { x = extent.hi.x, y = extent.hi.y } }
+end
+
+local function Seams(area, list, seen)
+	for dir = 0, 3 do
+		for _, other in ipairs(area:GetAdjacentAreasAtSide(dir) or {}) do
+			local key = math.min(area:GetID(), other:GetID()) .. ":" .. math.max(area:GetID(), other:GetID())
+			if not seen[key] and Walkable(other)
+				and (Slopes(area) or Slopes(other) or math.abs(area:GetCenter().z - other:GetCenter().z) > STEP) then
+				seen[key] = true
+				local x, y = Graph.SeamPoint(Rect(area), Rect(other), dir)
+				local z = math.max(area:GetZ(Vector(x, y, 0)), other:GetZ(Vector(x, y, 0)))
+				local floor = FloorBelow(Vector(x, y, z))
+				if floor then list[#list + 1] = { pos = Point(floor), size = SEAM_BONUS } end
+			end
+		end
+	end
+end
+
+-- The candidates: hiding spots, seams where the ground changes height and
+-- walkable area centres, on the floor.
 local function Candidates()
-	local list = {}
+	local list, seen = {}, {}
 	for _, area in ipairs(navmesh.GetAllNavAreas()) do
-		if bit.band(area:GetAttributes(), NAV_MESH_CROUCH + NAV_MESH_JUMP) == 0 and not area:IsUnderwater() then
+		if Walkable(area) then
+			Seams(area, list, seen)
 			local floor = FloorBelow(area:GetCenter())
 			if floor then list[#list + 1] = { pos = Point(floor), size = area:GetSizeX() * area:GetSizeY() } end
 			for _, spot in ipairs(area:GetHidingSpots(HIDING_IN_COVER) or {}) do

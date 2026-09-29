@@ -18,6 +18,19 @@ T.test("nodes are the largest areas' centres, spaced apart, up to the limit", fu
 	T.eq(#Graph.PickNodes(areas, 128, 2), 2, "no more than the limit")
 end)
 
+T.test("a seam's node goes in the middle of the edge two areas share", function()
+	local function Rect(x1, y1, x2, y2) return { lo = { x = x1, y = y1 }, hi = { x = x2, y = y2 } } end
+	local stairs = Rect(0, 0, 100, 400)
+	local x, y = Graph.SeamPoint(stairs, Rect(-50, -200, 60, 0), 0)
+	T.eq(x .. "," .. y, "30,0", "north: the middle of the overlap, on the stairs' top edge")
+	x, y = Graph.SeamPoint(stairs, Rect(0, 400, 100, 600), 2)
+	T.eq(x .. "," .. y, "50,400", "south")
+	x, y = Graph.SeamPoint(stairs, Rect(100, 100, 300, 200), 1)
+	T.eq(x .. "," .. y, "100,150", "east")
+	x, y = Graph.SeamPoint(stairs, Rect(-200, 300, 0, 500), 3)
+	T.eq(x .. "," .. y, "0,350", "west")
+end)
+
 T.test("candidate links are each node's nearest within range, each pair once, nearest first", function()
 	local positions = { P(0, 0), P(100, 0), P(250, 0), P(2000, 0) }
 	local links = Graph.Candidates(positions, 300, 2)
