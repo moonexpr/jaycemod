@@ -593,23 +593,28 @@ local TEAM_LABEL = { [RED] = "RED", [BLUE] = "BLU" }
 
 local function Round(n) return math.floor(n + 0.5) end
 
--- One line on a soldier: who, what for, what it is doing, and where its
--- route stands.
+-- A soldier described: a heading that says who it is ("BLU npc_citizen
+-- #45"), and labelled lines on what it is for, what it is doing, and where
+-- its route stands.
 function Controller:Describe(ent, entry)
 	local member = self.war:Member(ent)
-	local state = entry.npc:State()
-	local role = member.role and (member.role .. member.slot) or "no role"
-	local route = "no route"
-	if entry.soldier.result == nil and entry.soldier.ticket > 0 then route = "searching" end
-	if entry.soldier.result == false then route = "off the mesh" end
-	if state.route then route = string.format("waypoint %d/%d", state.routeIndex, #state.route) end
-	local goal = state.goal and Round(entry.soldier:RangeTo(state.goal)) .. "u to goal" or "no goal"
-	return string.format("%s %s | %s | %s | %s | %s | last trip: %s%s%s%s",
-		TEAM_LABEL[entry.soldier.team], ent:GetClass(), role, entry.npc:Describe(), route, goal,
-		state.trip or "none",
-		state.hops and (" | hops: " .. state.hops) or "",
-		entry.soldier:RunState() and (" | " .. entry.soldier:RunState()) or "",
-		entry.soldier:HasEnemy() and " | enemy in sight" or "")
+	local state, soldier = entry.npc:State(), entry.soldier
+	local route = "none"
+	if soldier.result == nil and soldier.ticket > 0 then route = "searching" end
+	if soldier.result == false then route = "off the nav mesh" end
+	if state.route then route = string.format("waypoint %d of %d", state.routeIndex, #state.route) end
+	local heading = string.format("%s %s #%d", TEAM_LABEL[soldier.team], ent:GetClass(), ent:EntIndex())
+	local lines = {
+		"Role: " .. (member.role and (member.role .. " " .. member.slot) or "none"),
+		"Action: " .. entry.npc:Describe(),
+		"Route: " .. route,
+		"Goal: " .. (state.goal and (Round(soldier:RangeTo(state.goal)) .. " units away") or "none"),
+		"Last trip: " .. (state.trip or "none"),
+		"Movement: " .. (soldier:RunState() or "left to the engine's AI"),
+		"Enemy: " .. (soldier:HasEnemy() and "in sight" or "none in sight"),
+	}
+	if state.hops then lines[#lines + 1] = "Hops: " .. state.hops end
+	return heading, lines
 end
 
 function Controller:Report()
@@ -632,7 +637,9 @@ function Controller:Report()
 	end
 	table.sort(list, function(a, b) return a.ent:EntIndex() < b.ent:EntIndex() end)
 	for _, item in ipairs(list) do
-		lines[#lines + 1] = string.format("  #%d %s", item.ent:EntIndex(), self:Describe(item.ent, item.entry))
+		local heading, details = self:Describe(item.ent, item.entry)
+		lines[#lines + 1] = "  " .. heading
+		for _, detail in ipairs(details) do lines[#lines + 1] = "    " .. detail end
 	end
 	if #list == 0 then lines[#lines + 1] = "  no soldiers" end
 	return lines
@@ -658,7 +665,10 @@ function Controller:SendDebug(now)
 		local state = item.entry.npc:State()
 		net.WriteEntity(item.ent)
 		net.WriteUInt(item.entry.soldier.team, 3)
-		net.WriteString(self:Describe(item.ent, item.entry))
+		local heading, details = self:Describe(item.ent, item.entry)
+		net.WriteString(heading)
+		net.WriteUInt(#details, 4)
+		for _, detail in ipairs(details) do net.WriteString(detail) end
 		net.WriteBool(state.goal ~= nil)
 		if state.goal then net.WriteVector(ToVector(state.goal)) end
 		local route, first = state.route or {}, state.routeIndex or 1

@@ -66,10 +66,19 @@ local DEBUG_STALE = 2
 local DEBUG_TEXT_HEIGHT = 80
 local debug = { soldiers = {}, received = 0 }
 
+-- Brighter than the teams' HUD colours, to read over any map.
+local DEBUG_COLOR = { [WETSAND.TEAM_RED] = Color(255, 90, 90), [WETSAND.TEAM_BLUE] = Color(110, 175, 255) }
+local DEBUG_BACKGROUND = Color(0, 0, 0, 185)
+local DEBUG_PADDING, DEBUG_LINE_GAP = 6, 1
+
+surface.CreateFont("WetsandAiwarHeading", { font = "Tahoma", size = 15, weight = 800 })
+surface.CreateFont("WetsandAiwarDetail", { font = "Tahoma", size = 13, weight = 500 })
+
 net.Receive(DEBUG_NET, function()
 	local soldiers = {}
 	for i = 1, net.ReadUInt(8) do
-		local soldier = { ent = net.ReadEntity(), team = net.ReadUInt(3), text = net.ReadString(), route = {} }
+		local soldier = { ent = net.ReadEntity(), team = net.ReadUInt(3), heading = net.ReadString(), details = {}, route = {} }
+		for j = 1, net.ReadUInt(4) do soldier.details[j] = net.ReadString() end
 		if net.ReadBool() then soldier.goal = net.ReadVector() end
 		for j = 1, net.ReadUInt(8) do soldier.route[j] = net.ReadVector() end
 		soldiers[i] = soldier
@@ -85,7 +94,7 @@ hook.Add("PostDrawTranslucentRenderables", "wetsand_aiwar_debug", function(depth
 	if skybox or not DebugLive() then return end
 	for _, soldier in ipairs(debug.soldiers) do
 		if IsValid(soldier.ent) then
-			local color = WETSAND.TeamColor[soldier.team] or color_white
+			local color = DEBUG_COLOR[soldier.team] or color_white
 			local from = soldier.ent:GetPos() + Vector(0, 0, 8)
 			for _, point in ipairs(soldier.route) do
 				render.DrawLine(from, point + Vector(0, 0, 8), color, false)
@@ -96,14 +105,32 @@ hook.Add("PostDrawTranslucentRenderables", "wetsand_aiwar_debug", function(depth
 	end
 end)
 
+-- A box above the soldier's head: the heading in bold and its team's
+-- colour, then the labelled details in white.
+local function DrawSoldierBox(soldier, x, bottom)
+	surface.SetFont("WetsandAiwarHeading")
+	local width, headingHeight = surface.GetTextSize(soldier.heading)
+	surface.SetFont("WetsandAiwarDetail")
+	local _, lineHeight = surface.GetTextSize("Ag")
+	for _, detail in ipairs(soldier.details) do width = math.max(width, (surface.GetTextSize(detail))) end
+	local height = headingHeight + #soldier.details * (lineHeight + DEBUG_LINE_GAP)
+	local left, top = x - width / 2 - DEBUG_PADDING, bottom - height - DEBUG_PADDING * 2
+	draw.RoundedBox(4, left, top, width + DEBUG_PADDING * 2, height + DEBUG_PADDING * 2, DEBUG_BACKGROUND)
+	local y = top + DEBUG_PADDING
+	draw.SimpleText(soldier.heading, "WetsandAiwarHeading", left + DEBUG_PADDING, y, DEBUG_COLOR[soldier.team] or color_white)
+	y = y + headingHeight
+	for _, detail in ipairs(soldier.details) do
+		draw.SimpleText(detail, "WetsandAiwarDetail", left + DEBUG_PADDING, y, color_white)
+		y = y + lineHeight + DEBUG_LINE_GAP
+	end
+end
+
 hook.Add("HUDPaint", "wetsand_aiwar_debug", function()
 	if not DebugLive() then return end
 	for _, soldier in ipairs(debug.soldiers) do
 		if IsValid(soldier.ent) then
 			local screen = (soldier.ent:GetPos() + Vector(0, 0, DEBUG_TEXT_HEIGHT)):ToScreen()
-			if screen.visible then
-				draw.SimpleTextOutlined(soldier.text, "DefaultSmall", screen.x, screen.y, color_white, TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM, 1, color_black)
-			end
+			if screen.visible then DrawSoldierBox(soldier, screen.x, screen.y) end
 		end
 	end
 end)
