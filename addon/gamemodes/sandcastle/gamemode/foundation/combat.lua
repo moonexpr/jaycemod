@@ -49,13 +49,16 @@ local function Spared(config, victim)
 end
 
 -- RemapValClamped(distance, 0, radius, damage, damage * falloff), tripled
--- for a crit. Nothing passes through the world, and a blast with no radius
--- (CTFGameRules::RadiusDamage) hurts nobody.
+-- for a crit. Nothing passes through the world, a blast with no radius
+-- (CTFGameRules::RadiusDamage) hurts nobody, and neither does one that
+-- comes to no damage (CTFRadiusDamageInfo::ApplyToEntity), so a harmless
+-- blast sets off no pumpkin.
 function Explosion:DamageTo(victim)
 	local config = self.config
 	if config.radius <= 0 or not victim.visible or Spared(config, victim) then return nil end
 	local t = math.min(victim.distance, config.radius) / config.radius
 	local amount = config.damage + (config.damage * Falloff(config) - config.damage) * t
+	if amount <= 0 then return nil end
 	if config.crit then amount = amount * CRIT_MULTIPLIER end
 	return amount
 end
