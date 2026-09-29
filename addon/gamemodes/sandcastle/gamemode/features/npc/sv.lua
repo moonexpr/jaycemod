@@ -23,6 +23,7 @@ local Controller = {
 	spawnedBy = {}, -- NPC entity -> Spawner
 	navChecked = false,
 	pathProfile = nil, -- a foundation.npc.profile while wetsand_path_profile's window is open
+	pathWatch = {}, -- entity index -> { costs } while the nbdebug feature watches its path searches
 	spawnRoomTeams = {}, -- nav area id -> the team whose spawn room holds it, this round
 	searches = {}, -- the Lua route searches still running, oldest first
 	neighbors = {}, -- nav area id -> its floor neighbours' ids (the mesh is fixed for the map)
@@ -335,7 +336,8 @@ end
 -- The cost callback Path:Compute takes (IPathCost), for a NextBot. bot is
 -- the strategy's bot table; its `now` is kept current. Areas a door or a
 -- brush closes to the bot's team are not traversable. While a path profile
--- measures a compute, ent.pathProbe counts the calls and their time.
+-- measures a compute, or the nbdebug feature watches it, ent.pathProbe
+-- counts the calls and their time, and its recorder (if any) each cost.
 function Controller:EnginePathCost(ent, strategy, limits, bot)
 	local step = {}
 	self:RefreshBlockers(CurTime())
@@ -355,6 +357,7 @@ function Controller:EnginePathCost(ent, strategy, limits, bot)
 		local cost = Cost(area, fromArea, ladder, elevator, length)
 		probe.costCalls = probe.costCalls + 1
 		probe.costSeconds = probe.costSeconds + SysTime() - started
+		if probe.recorder then probe.recorder:Record(area:GetID(), IsValid(fromArea) and fromArea:GetID() or nil, cost) end
 		return cost
 	end
 end
@@ -447,8 +450,14 @@ function Controller:RequestRoute(request)
 			return not self:EngineBlocks(area, team)
 		end,
 	}, NavGraph)
+	local watch = self.pathWatch[request.bot.entIndex]
+	local observed = watch and self:ObserveRoute(graph, request, start, watch) or nil
 	local search = Route.New(graph, start:GetID(), goal:GetID(), navmesh.GetNavAreaCount())
-	self.searches[#self.searches + 1] = { search = search, onDone = request.onDone }
+	self.searches[#self.searches + 1] = {
+		search = search,
+		onDone = request.onDone,
+		observed = observed,
+	}
 end
 
 local function AreasOf(ids)
@@ -463,10 +472,16 @@ function Controller:ThinkSearches()
 	local deadline = SysTime() + SEARCH_SECONDS
 	while #self.searches > 0 and SysTime() < deadline do
 		local running = table.remove(self.searches, 1)
-		if running.search:Step(SEARCH_CHUNK) == Route.RUNNING then
+		local observed = running.observed
+		local began = observed and SysTime()
+		local status = running.search:Step(SEARCH_CHUNK)
+		if observed then observed.seconds = observed.seconds + SysTime() - began end
+		if status == Route.RUNNING then
 			self.searches[#self.searches + 1] = running
 		else
-			running.onDone(AreasOf(running.search:Route()), running.search.status == Route.FOUND)
+			local areas, found = AreasOf(running.search:Route()), running.search.status == Route.FOUND
+			if observed then self:PublishRoute(running, areas, found) end
+			running.onDone(areas, found)
 		end
 	end
 end
@@ -528,15 +543,24 @@ function Controller:PathProfile()
 	return self.pathProfile
 end
 
--- Runs compute(), a Path:Compute through bot's cost function, and records
--- how long it took and how much of that was the cost callback.
-function Controller:MeasureCompute(profile, label, bot, compute)
-	local probe = { costCalls = 0, costSeconds = 0 }
+-- Runs compute(), a Path:Compute through bot's cost function, with a probe
+-- on that function (and its costs to `recorder`, if given). Returns what
+-- compute returned, the seconds it took, and the probe.
+local function Probed(bot, recorder, compute)
+	local probe = {
+		costCalls = 0,
+		costSeconds = 0,
+		recorder = recorder,
+	}
 	bot.pathProbe = probe
 	local started = SysTime()
 	local found = compute()
 	local seconds = SysTime() - started
 	bot.pathProbe = nil
+	return found, seconds, probe
+end
+
+local function RecordProfile(profile, label, found, seconds, probe)
 	profile:Record({
 		label = label,
 		seconds = seconds,
@@ -544,8 +568,137 @@ function Controller:MeasureCompute(profile, label, bot, compute)
 		costSeconds = probe.costSeconds,
 		found = found,
 	})
+end
+
+-- Records in the profile how long compute() took and how much of that was
+-- the cost callback.
+function Controller:MeasureCompute(profile, label, bot, compute)
+	local found, seconds, probe = Probed(bot, nil, compute)
+	RecordProfile(profile, label, found, seconds, probe)
 	return found
 end
+
+-------------------------------------------------------------------------------
+-- Watching path searches for the nbdebug feature (foundation.npc.debug).
+-- Only the NPCs it asks for are watched; for them each search is timed and,
+-- with watch.costs, every cost it asked for is recorded, and when it is done
+-- a foundation.npc.debug path report goes out as the hook
+-- WetsandNpcPathComputed(ent, report). Nothing else changes for them.
+
+local PATH_COMPUTED_HOOK = "WetsandNpcPathComputed"
+local ENGINE_DEFAULT_COST = "the engine's default cost"
+local MICROSECONDS = 1e6
+
+-- watch: { costs }, or nil to stop watching.
+function Controller:WatchPaths(entIndex, watch)
+	self.pathWatch[entIndex] = watch
+end
+
+function Controller:PathWatch(ent)
+	return self.pathWatch[ent:EntIndex()]
+end
+
+-- A watched NextBot's Path:Compute (wetsand_nextbot's FollowPath). An open
+-- path profile records it too.
+function Controller:ObserveCompute(watch, bot, path, goal, compute)
+	local Debug = WETSAND.require("foundation.npc.debug")
+	local recorder = watch.costs and bot.pathCost and Debug.NewCostRecorder() or nil
+	local start = bot:GetPos()
+	local found, seconds, probe = Probed(bot, recorder, compute)
+	if self.pathProfile then RecordProfile(self.pathProfile, bot.Variant, found, seconds, probe) end
+	local points, areaIds, lastArea = {}, {}, nil
+	for i, segment in ipairs(path:GetAllSegments()) do
+		points[i] = {
+			pos = segment.pos,
+			move = Debug.MoveOfSegment(segment.type),
+		}
+		if IsValid(segment.area) then
+			lastArea = segment.area
+			areaIds[#areaIds + 1] = lastArea:GetID()
+		end
+	end
+	local variant = WETSAND.require(bot.Variant)
+	hook.Run(PATH_COMPUTED_HOOK, bot, Debug.NewPathReport({
+		source = Debug.SOURCE_ENGINE,
+		strategy = bot.pathCost and variant.PATH or ENGINE_DEFAULT_COST,
+		start = start,
+		goal = goal,
+		limits = variant.LOCOMOTION,
+		found = found,
+		points = points,
+		areaIds = areaIds,
+		totalCost = lastArea and lastArea:GetCostSoFar() or nil,
+		microseconds = seconds * MICROSECONDS,
+		nodesExpanded = recorder and recorder:Expanded() or nil,
+		explored = recorder and recorder:Explored() or nil,
+		computedAt = CurTime(),
+	}))
+	return found
+end
+
+local function RecordedCost(graph, fromId, toId, costSoFar)
+	local cost = NavGraph.Cost(graph, fromId, toId, costSoFar)
+	graph.recorder:Record(toId, fromId, cost)
+	return cost
+end
+
+-- A watched NPC's route search (RequestRoute): with watch.costs its graph
+-- records every cost. Returns what ThinkSearches keeps of it.
+function Controller:ObserveRoute(graph, request, start, watch)
+	if watch.costs then
+		graph.recorder = WETSAND.require("foundation.npc.debug").NewCostRecorder()
+		graph.recorder:Record(start:GetID(), nil, 0)
+		graph.Cost = RecordedCost
+	end
+	return {
+		index = request.bot.entIndex,
+		request = request,
+		recorder = graph.recorder,
+		seconds = 0,
+	}
+end
+
+-- A watched route search is done: its report, with the waypoints the NPC
+-- will be given (RouteWaypoints), all on the ground.
+function Controller:PublishRoute(running, areas, found)
+	local Debug = WETSAND.require("foundation.npc.debug")
+	local observed, search = running.observed, running.search
+	local ent, request = Entity(observed.index), observed.request
+	if not IsValid(ent) then return end
+	local route = search:Route()
+	local points = {}
+	for i, pos in ipairs(self:RouteWaypoints(areas, request.to, found, request.from)) do
+		points[i] = {
+			pos = pos,
+			move = Debug.MOVE_GROUND,
+		}
+	end
+	local recorder = observed.recorder
+	hook.Run(PATH_COMPUTED_HOOK, ent, Debug.NewPathReport({
+		source = Debug.SOURCE_ROUTE,
+		strategy = request.strategy._NAME,
+		start = request.from,
+		goal = request.to,
+		limits = request.limits,
+		found = found,
+		points = points,
+		areaIds = route,
+		totalCost = search.costSoFar[route[#route]],
+		microseconds = observed.seconds * MICROSECONDS,
+		nodesExpanded = search.expanded,
+		explored = recorder and recorder:Explored() or nil,
+		computedAt = CurTime(),
+	}))
+end
+
+-- The nbdebug feature finds the NPCs it can show through the hook
+-- WetsandNbDebugNpcs(found): each system adds its entities' foundation.npc
+-- Npcs to `found` (entity -> Npc).
+hook.Add("WetsandNbDebugNpcs", "wetsand_npc", function(found)
+	for ent, npc in pairs(Controller.npcs) do
+		if IsValid(ent) then found[ent] = npc end
+	end
+end)
 
 -- Every live NextBot of this gamemode that searches with a Lua cost.
 local function PathingBots()
