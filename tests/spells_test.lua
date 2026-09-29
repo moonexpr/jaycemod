@@ -233,4 +233,60 @@ T.test("a spawn_boss spell with no room for the eyeball is given back", function
 	T.eq(book:State().charges, 0, "and the spell is spent")
 end)
 
+-------------------------------------------------------------------------------
+-- The flights spell projectiles bind to (foundation.projectile variants)
+
+local Projectile = T.require("foundation.projectile")
+local Jar = T.require("foundation.projectile.jar")
+local Orb = T.require("foundation.projectile.orb")
+
+local WORLD = {
+	world = true,
+	enemy = false,
+}
+local ENEMY = {
+	world = false,
+	enemy = true,
+}
+local FRIEND = {
+	world = false,
+	enemy = false,
+}
+
+T.test("a jar falls and breaks on the world or an enemy, or when its fuse runs out", function()
+	T.eq(Jar.GRAVITY > 0, true, "ballistic")
+	local jar = Projectile.New(Jar, Tf2.JAR_FLIGHT, 0)
+	T.eq(jar:Touch(FRIEND), Projectile.BOUNCE, "a teammate or a prop: bounces")
+	T.eq(jar:Touch(ENEMY), Projectile.DETONATE, "an enemy: breaks")
+	jar = Projectile.New(Jar, Tf2.JAR_FLIGHT, 0)
+	T.eq(jar:Touch(WORLD), Projectile.DETONATE, "the world: breaks")
+	jar = Projectile.New(Jar, Tf2.JAR_FLIGHT, 0)
+	T.eq(jar:Tick(Tf2.JAR_FUSE - 0.1), Projectile.NONE, "flying")
+	T.eq(jar:Tick(Tf2.JAR_FUSE), Projectile.DETONATE, "the fuse")
+end)
+
+T.test("a mirv bomblet ignores touches for its first second, then breaks on them", function()
+	local bomblet = Projectile.New(Jar, {
+		fuse = 2.1,
+		armDelay = 1,
+	}, 10)
+	T.eq(bomblet:Touch(WORLD), Projectile.BOUNCE, "unarmed")
+	T.eq(bomblet:Tick(10.5), Projectile.NONE, "still unarmed")
+	T.eq(bomblet:Touch(ENEMY), Projectile.BOUNCE, "unarmed")
+	T.eq(bomblet:Tick(11), Projectile.NONE, "armed now")
+	T.eq(bomblet:Touch(WORLD), Projectile.DETONATE, "breaks")
+end)
+
+T.test("a lightning orb flies straight, bounces off the world, passes through the rest, ends after 5 s", function()
+	T.eq(Orb.GRAVITY, 0, "straight")
+	local orb = Projectile.New(Orb, {
+		fuse = 5,
+	}, 0)
+	T.eq(orb:Touch(WORLD), Projectile.BOUNCE, "bounces")
+	T.eq(orb:Touch(ENEMY), Projectile.NONE, "passes through players")
+	T.eq(orb:Touch(FRIEND), Projectile.NONE, "and everything else")
+	T.eq(orb:Tick(4.9), Projectile.NONE, "alive")
+	T.eq(orb:Tick(5), Projectile.DETONATE, "its end")
+end)
+
 T.finish()
