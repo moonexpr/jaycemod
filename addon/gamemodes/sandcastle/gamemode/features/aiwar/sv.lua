@@ -326,6 +326,14 @@ function Soldier:PatrolSpot(center, radius)
 	return nil
 end
 
+-- A random spot on the ground behind the setup gates (the controller's
+-- SetupZone), by area size; else, with no zone to trust, one within
+-- WANDER_RADIUS that I can walk to in a straight line, or nil after a few
+-- tries.
+local WANDER_RADIUS, WANDER_TRIES = 300, 6
+
+local function AreaSize(area) return area:GetSizeX() * area:GetSizeY() end
+
 function Soldier:WanderSpot()
 	local zone = self.controller:SetupZone(self.team)
 	if zone then
