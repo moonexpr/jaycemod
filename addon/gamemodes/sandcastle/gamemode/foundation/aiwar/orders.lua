@@ -9,15 +9,25 @@
 -- (leash), and whether it ignores enemies on the way (rushes: cart pushers
 -- and blockers, who must stand on the cart to count).
 --
---   SoldierBehavior        ends when the soldier dies
---     Push/Escort/Block/Defend/Idle   the objective of the member's role:
+-- The tree follows TF2's bots (docs/aiwar-command.md):
+--
+--   SoldierAction          ends when the soldier dies (CTFBotMainAction)
+--     StrategyMonitor      applies the war's allocation: the member's job
+--       TacticalMonitor    self-preservation (CTFBotTacticalMonitor): the
+--                          humiliated SuspendFor Humiliated
+--         SquadMonitor     leader, member or, for now, Solo
+--           Solo
+--             ScenarioMonitor   runs the job (CTFBotScenarioMonitor)
+--               Push/Escort/Block/Defend/Raid/Support/Idle   the job:
 --                          hold or fight near the goal (pushers and
 --                          blockers keep to their spot as the cart moves),
---                          else SuspendFor
---       Travel             run straight at the goal while nothing is in the
+--                          else SuspendFor; a job whose member's job
+--                          changed ChangeTo's the new one
+--                 Travel   run straight at the goal while nothing is in the
 --                          way, following it as it moves; otherwise follow a
 --                          Lua route, re-routing as the goal moves or when
---                          the soldier stops moving
+--                          the soldier stops moving; getting unstuck is its
+--                          own, as moving actions handle OnStuck in TF2
 --
 -- For the war report, a soldier's state shows its goal, route and waypoint
 -- (goal, route, routeIndex) and how its last trip ended (trip); in a fight,
@@ -917,28 +927,77 @@ function Idle:Update(me)
 end
 
 -------------------------------------------------------------------------------
+-- The monitors (docs/aiwar-command.md §1)
+
+-- A monitor holds the state and contains one action.
+local function Monitor(name, contained)
+	local class = N.Action:Extend(name)
+	function class:Init(state) self.state = state end
+	function class:InitialContainedAction(me) return contained(self.state) end
+	return class
+end
+
+-- ScenarioMonitor: runs the member's job.
+local ScenarioMonitor = Monitor("ScenarioMonitor", ObjectiveFor)
+
+-- Solo: a soldier in no squad does its job alone (squads come with phase 3).
+local Solo = Monitor("Solo", function(state) return ScenarioMonitor:New(state) end)
+
+-- SquadMonitor: leader, member or solo; for now always solo.
+local SquadMonitor = Monitor("SquadMonitor", function(state) return Solo:New(state) end)
+
+-- Humiliated: its side lost the round. Orders are dropped (DrGBase keeps
+-- away from what it fears), it holds its fire and hurries, until the next
+-- round rearms it (TF2's losers retreat: CTFBotTacticalMonitor).
+local Humiliated = N.Action:Extend("Humiliated")
+
+function Humiliated:Init(state) self.state = state end
+
+function Humiliated:OnStart(me)
+	StopFollowing(self.state, me)
+	me:Release()
+	return self:Continue()
+end
+
+function Humiliated:Update(me)
+	if not me:IsDisarmed() then return self:Done("rearmed") end
+	return self:Continue()
+end
+
+function Humiliated:ShouldAttack(me, them) return N.ANSWER_NO end
+function Humiliated:ShouldHurry(me) return N.ANSWER_YES end
+
+-- TacticalMonitor: what keeps the soldier alive comes before its squad and
+-- its job.
+local TacticalMonitor = Monitor("TacticalMonitor", function(state) return SquadMonitor:New(state) end)
+
+function TacticalMonitor:Update(me)
+	if me:IsDisarmed() then return self:SuspendFor(Humiliated:New(self.state), "humiliated") end
+	return self:Continue()
+end
+
+-- StrategyMonitor: applies the war's allocation for this soldier. It
+-- decides nothing: the War (later the Commander) decides, and each job
+-- checks the member's job itself (ChangeTo on "new role").
+local StrategyMonitor = Monitor("StrategyMonitor", function(state) return TacticalMonitor:New(state) end)
+
+function StrategyMonitor:Update(me)
+	self.state.job = self.state.member.role
+	return self:Continue()
+end
+
+-------------------------------------------------------------------------------
 -- The variant
 
-local SoldierBehavior = N.Action:Extend("SoldierBehavior")
+local SoldierAction = Monitor("SoldierAction", function(state) return StrategyMonitor:New(state) end)
 
-function SoldierBehavior:Init(state)
-	self.state = state
-end
-
-function SoldierBehavior:InitialContainedAction(me)
-	return ObjectiveFor(self.state)
-end
-
-function SoldierBehavior:Update(me)
+function SoldierAction:Update(me)
 	if not me:IsAlive() then return self:Done("dead") end
 	return self:Continue()
 end
 
--- The humiliated hold their fire, whatever their orders.
-function SoldierBehavior:ShouldAttack(me, them)
-	if me:IsDisarmed() then return N.ANSWER_NO end
-	return N.ANSWER_UNDEFINED
-end
+-- The prefix every job's full name starts with, for reports.
+JOB_PATH = "SoldierAction/StrategyMonitor/TacticalMonitor/SquadMonitor/Solo/ScenarioMonitor/"
 
 -- config = { war (foundation.aiwar War), member (its roster entry) }
 function NewState(config, me)
@@ -946,5 +1005,5 @@ function NewState(config, me)
 end
 
 function InitialAction(state)
-	return SoldierBehavior:New(state)
+	return SoldierAction:New(state)
 end

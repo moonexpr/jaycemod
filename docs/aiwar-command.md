@@ -68,8 +68,8 @@ files under LuaJIT; controllers feed them; entities bind; views draw.
 | Level | TF2 counterpart | Owns | Reads | Handles (events) | Answers (queries) |
 |---|---|---|---|---|---|
 | `SoldierAction` | `CTFBotMainAction` | life and death | port | — | — |
-| `StrategyMonitor` | — (new) | my job, my squad | Commander's allocation, round state | `OnCommand*` from the Commander, round won/lost | — |
-| `TacticalMonitor` | `CTFBotTacticalMonitor` | survival: retreat to cover, unstuck, doors, humiliation | my health, threats, stuck state | `OnInjured`, `OnStuck`, `OnSight` | `ShouldRetreat` (default rule) |
+| `StrategyMonitor` | — (new) | my job, my squad | Commander's allocation | `OnCommand*` from the Commander | — |
+| `TacticalMonitor` | `CTFBotTacticalMonitor` | survival: humiliation, retreat to cover | my health, threats, round state | `OnInjured`, `OnSight`, `OnOtherKilled` | `ShouldRetreat` (default rule) |
 | `SquadMonitor` | squad branch of `CTFBotScenarioMonitor::InitialContainedAction` | leader, member or solo | squad roster | squad formed, disbanded, leader lost | — |
 | `SquadLeader` | — | the squad's intent: where it goes, bound or flank, target | squad blackboard, job | reports from members | `ShouldAttack` (squad's target first) |
 | `SquadMember` | `CTFBotEscortSquadLeader` | keeping formation or element on the leader's intent | leader's intent, claims | leader's orders | `ShouldRetreat` = NO while its element holds |
@@ -89,24 +89,28 @@ Its whole job is to turn the Commander's allocation into this soldier's
 - A soldier keeps a job for at least `MIN_TENURE` (15 s) unless the change
   comes from a CRITICAL command. This damps oscillation per soldier; the
   Commander damps it per team (§2.2).
-- Round won or lost: the winners `SuspendFor` a hunt (TF2's
-  `CTFBotSeekAndDestroy`), and the losers flee (the port's `Disarm`, which
-  exists today). TF2 does this in its tactical monitor. Here it belongs to
-  strategy, because it is a team outcome.
+(Round won or lost is the tactical monitor's, as in TF2: §1.2.)
 
 ### 1.2 TacticalMonitor
 
-It moves the self-preservation that is now spread through `Objective`,
-`Travel` and the port into one place:
+Self-preservation lives here, as it does in TF2
+(`CTFBotTacticalMonitor::Update`):
 
+- **Round lost:** the losers `SuspendFor` `Humiliated`. Their orders are
+  dropped, they answer `ShouldAttack` NO and `ShouldHurry` YES, and DrGBase
+  keeps them away from what they fear. This is built (phase 2).
 - **Retreat:** when `ShouldRetreat` from the stack is not NO, and health is
   under `RETREAT_HEALTH`, suspend for `RetreatToCover`: the port's
   `CoverSpot` away from the threat, held until healed or `RETREAT_TIME`
-  passes.
-- **Stuck:** `OnStuck` suspends for recovery (sidestep, then hop: today's
-  `Travel` stuck ladder).
-- **Doors:** the door watchdog's "held by a door" suspends for a wait or a
-  reroute.
+  passes. Not built yet.
+
+A monitor's `SuspendFor` buries the monitor itself and everything under
+it, as TF2's `SuspendFor( new CTFBotRetreatToCover )` does. The squad and
+the job resume when the suspension is over.
+
+Getting unstuck is **not** the tactical monitor's. In TF2 it belongs to the
+moving actions and `CTFBotMainAction::OnStuck`, and here it stays in
+`Travel` (sidestep, reroute, hop). The door watchdog stays in the port.
 
 ### 1.3 SquadMonitor, SquadLeader, SquadMember
 
@@ -268,8 +272,8 @@ target comes from changes.
 | fire team `{ contact, bound, flank }` | `Squad` with blackboard, leader and intent |
 | `Objective` per role | job actions under `ScenarioMonitor` |
 | `Objective:Fight`, `Attack`, `Defend` | squad modes (leader) and element roles (member) |
-| `Travel` stuck ladder, door watchdog | `TacticalMonitor` suspensions |
-| `Controller:Disarm` and humiliation | `StrategyMonitor` round outcome; queries for holding fire |
+| `Travel` stuck ladder, door watchdog | unchanged: moving actions and the port (as in TF2) |
+| `Controller:Disarm` and humiliation | `TacticalMonitor` → `Humiliated` (answers `ShouldAttack` NO) |
 | slot arithmetic for spots | claims |
 | `Controller:Equip` kits | kit assignment by the Commander's suitability (phase 6) |
 
@@ -282,9 +286,9 @@ Each phase ships on its own and keeps the suite green.
    the query walk order against NextBot's (innermost first, buried, then
    parent); every hook in §6 reaching the stack.
 2. **The tree with today's behaviour.** Insert `StrategyMonitor`,
-   `TacticalMonitor`, `SquadMonitor` (Solo only) and `ScenarioMonitor`, and
-   move the stuck and door handling up. The orders tests must pass
-   unchanged apart from action names in `Describe`.
+   `TacticalMonitor` (with `Humiliated`), `SquadMonitor` (Solo only) and
+   `ScenarioMonitor`. The orders tests must pass unchanged apart from
+   action names in `Describe`.
 3. **Squads.** Leader, intent, member following, and bounding and flanking
    as leader modes. Claims replace slot arithmetic. Tests: leader election
    and succession; members taking element spots from the intent; claims

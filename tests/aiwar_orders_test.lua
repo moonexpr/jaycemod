@@ -170,7 +170,14 @@ T.test("DrGBase asks the orders whether to attack: the humiliated hold fire", fu
 	local me, npc = Enlist({ role = AiWar.DEFEND, team = RED })
 	T.eq(npc:Query("ShouldAttack", "them"), N.ANSWER_UNDEFINED, "armed: DrGBase decides")
 	me.disarmed = true
+	Tick(me, npc)
 	T.eq(npc:Query("ShouldAttack", "them"), N.ANSWER_NO, "humiliated: no")
+	T.eq(npc:Query("ShouldHurry"), N.ANSWER_YES, "and away")
+	T.eq(npc:Describe(), "SoldierAction/StrategyMonitor/Humiliated", "the tactical monitor and all under it buried")
+	me.disarmed = false
+	Tick(me, npc, 2)
+	T.eq(npc:Query("ShouldAttack", "them"), N.ANSWER_UNDEFINED, "rearmed")
+	T.eq(npc:Describe():sub(1, #Orders.JOB_PATH), Orders.JOB_PATH, "back to its job")
 end)
 
 T.test("a route planned before a door shut is planned again", function()
@@ -507,7 +514,7 @@ T.test("a pusher asks for a route to the cart and walks it waypoint by waypoint"
 	local route = { P(100, 0), P(500, 0), P(950, 0) }
 	local me, npc = Enlist({ role = AiWar.PUSH, route = function() return route end })
 	Tick(me, npc)
-	T.eq(npc:Describe(), "SoldierBehavior/Travel", "travelling")
+	T.eq(npc:Describe(), Orders.JOB_PATH .. "Travel", "travelling")
 	Tick(me, npc)
 	T.eq(#me.requests, 1, "one route asked for, the cart being out of walking line")
 	Near(me.moving, route[1], "to the first waypoint")
@@ -541,7 +548,7 @@ T.test("a soldier that reaches its goal stops travelling and holds", function()
 	Tick(me, npc, 2)
 	me.pos = Orders.Goal(Field({}), { team = BLUE, role = AiWar.PUSH, slot = 0 })
 	Tick(me, npc)
-	T.eq(npc:Describe(), "SoldierBehavior/Push", "arrived")
+	T.eq(npc:Describe(), Orders.JOB_PATH .. "Push", "arrived")
 	local releases = me.releases
 	Tick(me, npc)
 	T.eq(me.releases > releases, true, "holds, leaving fights to the engine")
@@ -552,32 +559,32 @@ T.test("a defender that sees an enemy near its post fights instead of walking", 
 	local me, npc = Enlist({ team = RED, role = AiWar.DEFEND, pos = P(1300, 0) })
 	me.enemy = true
 	Tick(me, npc)
-	T.eq(npc:Describe(), "SoldierBehavior/EstablishLine", "fighting at the post")
+	T.eq(npc:Describe(), Orders.JOB_PATH .. "EstablishLine", "fighting at the post")
 	T.eq(#me.requests, 0, "no route")
 end)
 
 T.test("an escort on the way breaks off to fight once near its goal", function()
 	local me, npc = Enlist({ role = AiWar.ESCORT, pos = P(0, 0) })
 	Tick(me, npc, 2)
-	T.eq(npc:Describe(), "SoldierBehavior/Travel", "travelling")
+	T.eq(npc:Describe(), Orders.JOB_PATH .. "Travel", "travelling")
 	me.enemy = true
 	me.pos = P(1000, 0)
 	Tick(me, npc)
-	T.eq(npc:Describe(), "SoldierBehavior/Escort", "stopped to fight")
+	T.eq(npc:Describe(), Orders.JOB_PATH .. "Escort", "stopped to fight")
 end)
 
 T.test("a pusher rushes the cart through enemy fire", function()
 	local me, npc = Enlist({ role = AiWar.PUSH, pos = P(0, 0) })
 	me.enemy = true
 	Tick(me, npc, 2)
-	T.eq(npc:Describe(), "SoldierBehavior/Travel", "still travelling")
+	T.eq(npc:Describe(), Orders.JOB_PATH .. "Travel", "still travelling")
 	T.eq(me.moving ~= nil, true, "moving")
 end)
 
 T.test("with no route the soldier holds and tries again later", function()
 	local me, npc = Enlist({ role = AiWar.PUSH, route = function() return false end })
 	Tick(me, npc, 2)
-	T.eq(npc:Describe(), "SoldierBehavior/Push", "gave up for now")
+	T.eq(npc:Describe(), Orders.JOB_PATH .. "Push", "gave up for now")
 	Tick(me, npc, 2)
 	T.eq(#me.requests, 1, "waiting before retrying")
 	Tick(me, npc, Orders.RETRY_WAIT / TICK)
@@ -590,7 +597,7 @@ T.test("a soldier that stops getting closer asks for a new route, and gives up a
 	Tick(me, npc, (Orders.STUCK_TIME + TICK) / TICK)
 	T.eq(#me.requests, 2, "a new route")
 	for _ = 1, Orders.MAX_REPATHS do Tick(me, npc, (Orders.STUCK_TIME + TICK) / TICK + 1) end
-	T.eq(npc:Describe(), "SoldierBehavior/Push", "gave up")
+	T.eq(npc:Describe(), Orders.JOB_PATH .. "Push", "gave up")
 end)
 
 T.test("a goal that moves far off is routed to again, no more often than REPATH_INTERVAL", function()
@@ -613,21 +620,21 @@ end)
 T.test("a new role changes the soldier's objective", function()
 	local me, npc, _, member = Enlist({ role = AiWar.PUSH, pos = Orders.Goal(Field({}), { team = BLUE, role = AiWar.PUSH, slot = 0 }) })
 	Tick(me, npc)
-	T.eq(npc:Describe(), "SoldierBehavior/Push", "pushing")
+	T.eq(npc:Describe(), Orders.JOB_PATH .. "Push", "pushing")
 	member.role = AiWar.ESCORT
 	Tick(me, npc)
-	T.eq(npc:Describe() == "SoldierBehavior/Escort" or npc:Describe() == "SoldierBehavior/Travel", true, "escorting")
+	T.eq(npc:Describe() == Orders.JOB_PATH .. "Escort" or npc:Describe() == Orders.JOB_PATH .. "Travel", true, "escorting")
 end)
 
 T.test("a soldier without a role holds, and takes up one when given", function()
 	local me, npc, _, member = Enlist({ role = AiWar.PUSH })
 	member.role = nil
 	Tick(me, npc, 2)
-	T.eq(npc:Describe(), "SoldierBehavior/Idle", "idle")
+	T.eq(npc:Describe(), Orders.JOB_PATH .. "Idle", "idle")
 	T.eq(#me.moves, 0, "no moves")
 	member.role = AiWar.PUSH
 	Tick(me, npc)
-	T.eq(npc:Describe() ~= "SoldierBehavior/Idle", true, "back to work")
+	T.eq(npc:Describe() ~= Orders.JOB_PATH .. "Idle", true, "back to work")
 end)
 
 T.test("a dead soldier's orders end", function()
@@ -675,7 +682,7 @@ T.test("a soldier chasing a goal it keeps closing on is not stuck, however far t
 		me.pos = P(me.pos.x + 20, 0)
 		Tick(me, npc)
 	end
-	T.eq(npc:Describe(), "SoldierBehavior/Travel", "still going")
+	T.eq(npc:Describe(), Orders.JOB_PATH .. "Travel", "still going")
 	T.eq(npc:State().trip, nil, "never gave up")
 end)
 
@@ -755,7 +762,7 @@ T.test("a soldier stuck through every step aside hops toward its waypoint when a
 	for _ = 1, Orders.MAX_REPATHS + 1 do Tick(me, npc, (Orders.STUCK_TIME + TICK) / TICK + 1) end
 	T.eq(#me.hops, 1, "one hop")
 	Near(me.hops[1], P(Orders.HOP_DISTANCE, 0), "a hop's length toward the waypoint")
-	T.eq(npc:Describe(), "SoldierBehavior/Travel", "still on its way")
+	T.eq(npc:Describe(), Orders.JOB_PATH .. "Travel", "still on its way")
 	T.eq(npc:State().hops, 1, "counted for the report")
 end)
 

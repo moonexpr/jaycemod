@@ -1637,7 +1637,8 @@ function Controller:Describe(ent, entry)
 			.. string.format(" (team %d%% on defense)", math.floor((self.war.defense[soldier.team] or 0) * 100 + 0.5))
 			.. ((member.role == AiWar.RAID or member.role == AiWar.SUPPORT) and self.war:Field()
 				and (", working " .. ((Orders.Focus(self.war:Field(), member) == "defense") and "the enemy's cart" or "its own cart")) or ""),
-		"Action: " .. entry.npc:Describe(),
+		-- the monitors' chain is the same for everyone doing a job: shown as "…/"
+		"Action: " .. (entry.npc:Describe():gsub("^" .. Orders.JOB_PATH:gsub("%p", "%%%0"), "…/")),
 		"Route: " .. route,
 		"Goal: " .. (state.goal and (Round(soldier:RangeTo(state.goal)) .. " units away") or "none"),
 		"Last trip: " .. (state.trip or "none"),
