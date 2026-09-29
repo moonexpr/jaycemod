@@ -250,14 +250,14 @@ end
 -- own route over the map's AI node graph (the nodegraph feature) to each
 -- target, with its own animations, and touching the triggers that open
 -- doors. A run the engine refuses (ended RUN_ENDED_NEAR or more short of
--- its target) or that stalls (under ENGINE_STALL_SPEED for
--- ENGINE_STALL_TIME) is walked by hand (Soldier:Walk) for BY_HAND_TIME,
+-- its target) or that stalls (moving no more than ENGINE_STALL_PROGRESS
+-- in ENGINE_STALL_TIME) is walked by hand (Soldier:Walk) for BY_HAND_TIME,
 -- so the soldier keeps to its objective, then the engine is asked again.
 -- Each failure's kind and whether the engine can path to the target at all
 -- (NPC:NavSetGoal on the node graph) go to the report, to find out why. A stall against a door is the door watchdog's
 -- (HeldByDoor).
 local ENGINE_RETARGET = 24
-local ENGINE_STALL_SPEED, ENGINE_STALL_TIME = 20, 1
+local ENGINE_STALL_PROGRESS, ENGINE_STALL_TIME = 16, 1.5
 local RUN_ENDED_NEAR = 48
 local BY_HAND_TIME = 3
 local ENGINE_SCHEDULE = { walk = SCHED_FORCED_GO, run = SCHED_FORCED_GO_RUN, panic = SCHED_FORCED_GO_RUN }
@@ -291,7 +291,7 @@ function Soldier:RunFailed(now, why)
 		ent:ClearGoal()
 	end
 	self.runFailure = why
-	self.engineTarget, self.stalledSince = nil, nil
+	self.engineTarget, self.stallAnchor = nil, nil
 	if self:EngineRunning() then self.ent:ClearSchedule() end
 end
 
@@ -304,18 +304,21 @@ function Soldier:Move(dt)
 	local range = self:RangeTo(target)
 	local sameTarget = self.engineTarget ~= nil and Track.Distance(self.engineTarget, target) < ENGINE_RETARGET
 	if sameTarget and self:EngineRunning() then
-		local speed = ent:GetVelocity():Length2D()
-		self.walkSpeed = speed
-		if speed < ENGINE_STALL_SPEED then
-			self.stalledSince = self.stalledSince or now
+		-- progress is measured by position: an engine-driven NPC's velocity
+		-- can read 0 while it runs
+		local pos = ent:GetPos()
+		self.walkSpeed = self.lastPos and pos:Distance(self.lastPos) / math.max(dt, 1e-3) or 0
+		self.lastPos = pos
+		local anchor = self.stallAnchor
+		if not anchor or pos:Distance(anchor.pos) > ENGINE_STALL_PROGRESS then
+			self.stallAnchor, self.heldBy = { pos = pos, since = now }, nil
+		elseif now - anchor.since >= ENGINE_STALL_TIME then
 			local door = self:DoorAhead(target)
 			if door then
 				self:HeldByDoor(door)
-			elseif now - self.stalledSince >= ENGINE_STALL_TIME then
+			else
 				self:RunFailed(now, "stalled")
 			end
-		else
-			self.stalledSince, self.heldBy = nil, nil
 		end
 		return
 	end
@@ -330,7 +333,7 @@ function Soldier:Move(dt)
 		return
 	end
 	if range <= WALK_ARRIVE then return end
-	self.engineTarget, self.stalledSince = target, nil
+	self.engineTarget, self.stallAnchor, self.lastPos = target, nil, nil
 	ent:SetLastPosition(OnFloor(ToVector(target)))
 	ent:SetSchedule(ENGINE_SCHEDULE[self.gait] or SCHED_FORCED_GO_RUN)
 end
