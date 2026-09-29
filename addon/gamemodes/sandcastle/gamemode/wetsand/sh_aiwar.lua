@@ -119,6 +119,13 @@ net.Receive(DEBUG_NET, function()
 		spheres[i] = { team = net.ReadUInt(3), center = net.ReadVector(), radius = net.ReadFloat(), push = net.ReadBool() }
 	end
 	debug.spheres = spheres
+	local lanes = {}
+	for i = 1, net.ReadUInt(4) do
+		local lane = { team = net.ReadUInt(3), index = net.ReadUInt(3), points = {} }
+		for j = 1, net.ReadUInt(6) do lane.points[j] = net.ReadVector() end
+		lanes[i] = lane
+	end
+	debug.lanes = lanes
 	for i = 1, net.ReadUInt(8) do
 		local soldier = { ent = net.ReadEntity(), team = net.ReadUInt(3), heading = net.ReadString(), details = {}, route = {} }
 		for j = 1, net.ReadUInt(4) do soldier.details[j] = net.ReadString() end
@@ -136,6 +143,7 @@ end)
 -- points as diamonds in the team's colour.
 local CONTACT_COLOR, COVER_COLOR = Color(255, 190, 40), Color(90, 230, 120)
 local COVER_BOX, FLANK_BOX, FLANK_ANGLE = Vector(8, 8, 8), Vector(14, 14, 14), Angle(45, 45, 0)
+local LANE_MARK = Vector(4, 4, 4)
 
 local function Dim(color)
 	return Color(color.r * 0.45, color.g * 0.45, color.b * 0.45)
@@ -177,6 +185,13 @@ hook.Add("PostDrawTranslucentRenderables", "wetsand_aiwar_debug", function(depth
 			if last then render.DrawLine(last, point, color, false) end
 			last = point
 		end
+	end
+	-- each team's lanes: a dim line along its waypoints, a mark at each
+	for _, lane in ipairs(debug.lanes or {}) do
+		local color = Dim(DEBUG_COLOR[lane.team] or color_white)
+		local lift = Vector(0, 0, 12 + lane.index * 4)
+		for j = 2, #lane.points do render.DrawLine(lane.points[j - 1] + lift, lane.points[j] + lift, color, false) end
+		for _, point in ipairs(lane.points) do render.DrawWireframeBox(point + lift, angle_zero, -LANE_MARK, LANE_MARK, color, false) end
 	end
 	-- each fire team in contact: the enemy's last seen place, its flank point
 	for _, fireTeam in ipairs(debug.teams) do

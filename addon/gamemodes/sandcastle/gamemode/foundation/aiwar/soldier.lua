@@ -49,6 +49,8 @@
 --   EnemyPosition() -> where the enemy I have is, or nil
 --   Enemy() -> the enemy I have (an opaque handle, as DrGBase's queries
 --     pass them), or nil
+--   EnemyHealth() -> my enemy's health as a share of its most, or nil (none,
+--     or dead)
 --   CoverSpot(center, radius, threat, exclude, taken) -> a spot within
 --     radius of center that the threat (a position) cannot see, nearest
 --     center first, not within reach of exclude, and not one taken(spot)
@@ -90,6 +92,7 @@ METHODS = {
 	"WanderSpot",
 	"EnemyPosition",
 	"Enemy",
+	"EnemyHealth",
 	"CoverSpot",
 	"HurtSince",
 	"Hold",

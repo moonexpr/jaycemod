@@ -16,6 +16,7 @@ local Posts = WETSAND.require("foundation.aiwar.posts")
 local Zone = WETSAND.require("foundation.aiwar.zone")
 local Tactics = WETSAND.require("foundation.aiwar.tactics")
 local Squad = WETSAND.require("foundation.aiwar.squad")
+local Lanes = WETSAND.require("foundation.aiwar.lanes")
 
 local ACTIVE_KEY = "wetsand.aiwar" -- Global2: the Utilities menu reads it
 local THINK_INTERVAL = 0.25
@@ -431,6 +432,12 @@ end
 function Soldier:Enemy()
 	local enemy = self.ent:GetEnemy()
 	return IsValid(enemy) and enemy or nil
+end
+
+function Soldier:EnemyHealth()
+	local enemy = self.ent:GetEnemy()
+	if not IsValid(enemy) or enemy:Health() <= 0 then return nil end
+	return enemy:Health() / math.max(enemy:GetMaxHealth(), 1)
 end
 
 function Soldier:EnemyPosition()
@@ -1017,6 +1024,7 @@ end
 -- stage's), and their orders start over.
 function Controller:RespawnAll()
 	self:SweepGadgets(nil, true)
+	self.lanePlans, self.laneSets = nil, nil
 	self.gates = nil
 	self.shutDoors = nil
 	self.zones = nil
@@ -1625,6 +1633,80 @@ function Controller:Patients()
 	return patients
 end
 
+-- Lanes (foundation.aiwar.lanes): each team's ways from its spawn out to
+-- its front (its own cart, else the enemy's), planned one after the other,
+-- each costing more through the areas the ones before took. A team's lanes
+-- are planned again once its front has moved LANE_REPLAN from where they
+-- led, and tried again after LANE_RETRY when no route was found (a shut
+-- gate in setup); the last lanes found stand until new ones are ready.
+local LANE_REPLAN, LANE_RETRY = 1024, 5
+
+function Controller:UpdateLanes(field, now)
+	self.lanePlans = self.lanePlans or {}
+	self.laneSets = self.laneSets or {}
+	field.lanes = {}
+	for _, team in ipairs({ RED, BLUE }) do
+		local own, theirs = field.carts[team], field.carts[AiWar.EnemyOf(team)]
+		local front = (own and own.pos) or (theirs and theirs.pos)
+		local plan = self.lanePlans[team]
+		if front and not (plan and plan.planning) and now >= (plan and plan.retryAt or 0)
+			and (not plan or Track.Distance(front, plan.to) > LANE_REPLAN) then
+			self:PlanLanes(team, front, now)
+		end
+		if not front then self.laneSets[team] = nil end
+		field.lanes[team] = self.laneSets[team]
+	end
+end
+
+function Controller:PlanLanes(team, to, now)
+	local target = ToVector(to)
+	local from, best
+	for _, spot in ipairs(WETSAND.SpawnPoints(team)) do
+		local d = spot:GetPos():DistToSqr(target)
+		if not best or d < best then from, best = spot:GetPos(), d end
+	end
+	if not from then return end
+	local plan = { to = to, planning = true, tries = 0, penalized = {}, lanes = { key = team .. ":" .. now } }
+	self.lanePlans[team] = plan
+	local npcs = WETSAND.Feature("npc")
+	local function Finish()
+		plan.planning = false
+		if #plan.lanes > 0 then
+			self.laneSets[team] = plan.lanes
+		else
+			plan.retryAt = CurTime() + LANE_RETRY
+			plan.to = { x = math.huge, y = 0, z = 0 } -- stale: plan again after the retry
+		end
+	end
+	local function Try()
+		plan.tries = plan.tries + 1
+		npcs:RequestRoute({
+			avoid = function(area) return self:UnderCart(area) end,
+			from = from,
+			to = target,
+			strategy = Lanes.Strategy,
+			limits = HL2Path.LIMITS,
+			bot = { entIndex = 0, now = CurTime(), team = team, route = TFBot.FASTEST_ROUTE, miniBoss = false,
+				roundWon = false, winningTeam = WETSAND.TEAM_UNASSIGNED, penalized = plan.penalized },
+			onDone = function(areas, found)
+				if self.lanePlans[team] ~= plan then return end
+				if areas then
+					local ids, raw = {}, {}
+					for i, area in ipairs(areas) do ids[i] = area:GetID() end
+					for i, v in ipairs(npcs:RouteWaypoints(areas, target, found, from)) do raw[i] = Point(v) end
+					local points, length = Lanes.Thin(raw)
+					local route = { ids = ids, points = points, length = length }
+					plan.shortest = plan.shortest or length
+					if Lanes.Accept(plan.lanes, route, plan.shortest) then plan.lanes[#plan.lanes + 1] = route end
+					for _, id in ipairs(ids) do plan.penalized[id] = true end
+				end
+				if areas and #plan.lanes < Lanes.LANES_MAX and plan.tries < Lanes.LANE_TRIES then Try() else Finish() end
+			end,
+		})
+	end
+	Try()
+end
+
 -- The teams with a cart, how far along its track each cart is, and whether
 -- it is close to its next checkpoint (the end of its track after the
 -- last): what each team's defense share and stance are made of
@@ -1648,6 +1730,7 @@ function Controller:Think(now)
 	self:RefreshCartBounds()
 	if field.setup and self.gates == nil then self:FindGates(field) end
 	self.war:Assign(self:CartTeams(field.carts))
+	self:UpdateLanes(field, now)
 	self.war:SetField(field)
 	if phase.reinforce then self:Reinforce(now) end
 	for ent, entry in pairs(self.soldiers) do
@@ -1828,6 +1911,7 @@ function Controller:Describe(ent, entry)
 		-- squad role is shown
 		"Action: " .. ActionLine(entry.npc:Describe()),
 		"Squad: " .. SquadLine(member),
+		"Lane: " .. (member.fireTeam and member.fireTeam.laneIndex and ("lane " .. member.fireTeam.laneIndex .. (state.onLane and ", walking it" or "")) or "none"),
 		"Route: " .. route,
 		"Goal: " .. (state.goal and (Round(soldier:RangeTo(state.goal)) .. " units away") or "none"),
 		"Last trip: " .. (state.trip or "none"),
@@ -1855,6 +1939,7 @@ function Controller:Describe(ent, entry)
 	if soldier.cartRescues then lines[#lines + 1] = "Pulled out of a cart: " .. soldier.cartRescues .. " time(s)" end
 	if soldier.seat then lines[#lines + 1] = "Riding: seat " .. soldier.seat.index .. " on its cart" end
 	if state.retreats then lines[#lines + 1] = "Retreated: " .. state.retreats .. " time(s)" end
+	if state.chases then lines[#lines + 1] = "Chased: " .. state.chases .. " weakened enemies" end
 	if state.hops then lines[#lines + 1] = "Hops: " .. state.hops end
 	if state.passed then lines[#lines + 1] = "Let through: " .. state.passed .. " NPC-only blocker(s)" end
 	local blocked = self:BlockedBy(soldier)
@@ -1972,6 +2057,20 @@ function Controller:SendDebug(now)
 		net.WriteVector(ToVector(sphere.center))
 		net.WriteFloat(sphere.radius)
 		net.WriteBool(sphere.push)
+	end
+	-- each team's lanes
+	local lanes = {}
+	for team, set in pairs(field and field.lanes or {}) do
+		for index, lane in ipairs(set) do lanes[#lanes + 1] = { team = team, index = index, points = lane.points } end
+	end
+	net.WriteUInt(math.min(#lanes, 15), 4)
+	for i = 1, math.min(#lanes, 15) do
+		local lane = lanes[i]
+		net.WriteUInt(lane.team, 3)
+		net.WriteUInt(lane.index, 3)
+		local count = math.min(#lane.points, 63)
+		net.WriteUInt(count, 6)
+		for j = 1, count do net.WriteVector(ToVector(lane.points[j])) end
 	end
 	net.WriteUInt(#list, 8)
 	for _, item in ipairs(list) do

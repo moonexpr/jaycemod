@@ -11,6 +11,7 @@ local floor, max, min, ipairs, next, pairs, setmetatable, sort, table, type = ma
 local Teams = require("foundation.teams")
 local STATE = require("foundation.rounds.state")
 local Squad = require("foundation.aiwar.squad")
+local Lanes = require("foundation.aiwar.lanes")
 module(...)
 
 local RED, BLUE = Teams.RED, Teams.BLUE
@@ -497,6 +498,8 @@ end
 -- defense = team -> its defense share (DefenseShare).
 function War:SetField(field)
 	field.defense = self.defense
+	-- each offensive squad holds one of its team's lanes (field.lanes)
+	Lanes.Assign(self.fireTeams, field.lanes or {})
 	self.field = field
 end
 

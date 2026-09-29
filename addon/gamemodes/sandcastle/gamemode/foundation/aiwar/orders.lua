@@ -43,6 +43,7 @@ local AiWar = require("foundation.aiwar")
 local Track = require("foundation.aiwar.track")
 local Tactics = require("foundation.aiwar.tactics")
 local Squad = require("foundation.aiwar.squad")
+local Lanes = require("foundation.aiwar.lanes")
 module(...)
 
 KIND = "aiwar"
@@ -225,6 +226,7 @@ ROLES = {
 	-- shoots at it, and stands in its way.
 	[AiWar.BLOCK] = {
 		name = "Block",
+		chases = "eager",
 		patrols = "setup",
 		arrive = PUSH_ARRIVE,
 		leash = PUSH_LEASH,
@@ -244,6 +246,7 @@ ROLES = {
 	-- FollowCart, HL2's follow behaviour, first when it has it).
 	[AiWar.ESCORT] = {
 		name = "Escort",
+		chases = "opportunist",
 		follows = true,
 		tactic = "attack",
 		arrive = ESCORT_ARRIVE,
@@ -266,6 +269,7 @@ ROLES = {
 	-- the checkpoint the attackers head for), where it waits for them.
 	[AiWar.DEFEND] = {
 		name = "EstablishLine",
+		chases = "opportunist",
 		patrols = true,
 		tactic = "defend",
 		arrive = DEFEND_ARRIVE,
@@ -341,6 +345,7 @@ end
 
 ROLES[AiWar.RAID] = {
 	name = "Raid",
+	chases = "opportunist",
 	tactic = "raid",
 	raids = true,
 	arrive = RAID_ARRIVE,
@@ -599,6 +604,32 @@ end
 
 -- Straight at the goal, wherever it has moved to. A run that goes nowhere
 -- hands over to routes for a while.
+-- The lane waypoint a squad leader of a lane job makes for, or nil (no
+-- lane, not its leader, or the lane walked: then straight on to the goal,
+-- and not back onto that lane).
+function Travel:LaneTarget(me, goal)
+	local state = self.state
+	local member = state.member
+	local fireTeam = member.fireTeam
+	local lane = fireTeam and fireTeam.lane
+	if not lane or not Lanes.JOBS[member.role] or Squad.Kind(member) ~= "leader" or state.laneDone == lane then
+		state.onLane = nil
+		return nil
+	end
+	if state.lane ~= lane then state.lane, state.laneIndex = lane, 1 end
+	local here = me:Position()
+	state.laneIndex = Lanes.Next(lane, here, state.laneIndex)
+	local target = Lanes.Target(lane, here, state.laneIndex, goal)
+	if not target then state.laneDone = lane end
+	state.onLane = target ~= nil and fireTeam.laneIndex or nil
+	return target
+end
+
+-- A trip over: off any lane.
+function Travel:OnEnd(me)
+	self.state.onLane = nil
+end
+
 function Travel:Chase(me, goal)
 	if self:IsStuck(me) then
 		self.chaseBlockedUntil = me:Now() + CHASE_BACKOFF
@@ -658,6 +689,7 @@ function Travel:Update(me)
 	local state, role = self.state, self.role
 	local field = state.war:Field()
 	if not self.spot and role.tactic and TeamContact(state, me) then return self:End("contact") end
+	if not self.spot and role.chases and ChaseWanted(role, me) then return self:End("a weakened enemy") end
 	local goal, over = self:Goal(me, field)
 	self.gait = (self.spot and WALK) or (field and field.setup and PANIC) or (role.rushes and RUSH) or RUN
 	if goal == nil then
@@ -687,6 +719,9 @@ function Travel:Update(me)
 		-- a step aside that moved counts as progress by itself
 		self.sidestep = nil
 	end
+	-- a squad leader on a lane walks it, waypoint by waypoint
+	local laneTarget = not self.spot and self:LaneTarget(me, goal)
+	if laneTarget then return self:Chase(me, laneTarget) end
 	-- an engine that plans its own routes keeps the goal: changing its target
 	-- to our waypoints would only restart its runs
 	if me:PlansRoutes() then return self:Chase(me, goal) end
@@ -694,6 +729,68 @@ function Travel:Update(me)
 		return self:Chase(me, goal)
 	end
 	return self:FollowRoute(me, goal)
+end
+
+-------------------------------------------------------------------------------
+-- Chase: retreat's other half. A soldier whose enemy is weakened (under its
+-- job's share of its health) and in reach goes after it to finish it:
+-- blockers eagerly (they finish the job: a pusher off the cart to heal comes
+-- back), the line's soldiers only when the kill is close and they are well
+-- themselves. Pushers keep to the cart, medics to their patients, support
+-- to its post: they never chase. A chase ends when the enemy is dead or
+-- lost from sight for CHASE_LOST, or its time is up; the tactical monitor
+-- above still sends a chaser that gets hurt into retreat.
+CHASES = {
+	eager = { health = 0.5, range = 1000, time = 10, fit = 0, gait = RUSH },
+	opportunist = { health = 0.3, range = 500, time = 5, fit = 0.6, gait = RUN },
+}
+CHASE_LOST, CHASE_COOLDOWN = 1.5, 3
+
+-- The role's chase profile when its soldier should chase its enemy now.
+function ChaseWanted(role, me)
+	local profile = CHASES[role.chases]
+	if not profile or not me:HasEnemy() then return nil end
+	local share, pos = me:EnemyHealth(), me:EnemyPosition()
+	if not share or not pos or share >= profile.health or me:RangeTo(pos) > profile.range then return nil end
+	if me:Health() / max(me:MaxHealth(), 1) < profile.fit then return nil end
+	return profile
+end
+
+local Chase = N.Action:Extend("Chase")
+Chase.chase = true
+
+function Chase:Init(state, target, profile)
+	self.state, self.target, self.profile = state, target, profile
+end
+
+function Chase:OnStart(me)
+	local now = me:Now()
+	self.untilAt, self.seenAt = now + self.profile.time, now
+	self.state.chases = (self.state.chases or 0) + 1
+	return self:Continue()
+end
+
+function Chase:Update(me)
+	local state, now = self.state, me:Now()
+	local sees = me:HasEnemy() and me:Enemy() == self.target
+	if sees then
+		if not me:EnemyHealth() then return self:Done("killed") end
+		self.seenAt, self.lastPos = now, me:EnemyPosition()
+	end
+	if now - self.seenAt > CHASE_LOST then return self:Done("lost") end
+	if now >= self.untilAt then return self:Done("gave up") end
+	state.tactic = "chasing a weakened enemy"
+	state.goal = self.lastPos
+	if self.lastPos then me:MoveTo(self.lastPos, self.profile.gait) end
+	return self:Continue()
+end
+
+function Chase:ShouldHurry(me) return N.ANSWER_YES end
+
+-- It keeps shooting at the one it chases.
+function Chase:SelectMoreDangerousThreat(me, a, b)
+	if a == self.target or b == self.target then return self.target end
+	return N.ANSWER_UNDEFINED
 end
 
 -------------------------------------------------------------------------------
@@ -797,6 +894,11 @@ function Objective:Update(me)
 		local healing = self:Heal(me, field)
 		if healing then return healing end
 	end
+	-- a weakened enemy in reach: after it (Chase)
+	if self.role.chases and OrdersRun(field) and not field.setup and me:Now() >= (self.chaseReadyAt or 0) then
+		local profile = ChaseWanted(self.role, me)
+		if profile then return self:SuspendFor(Chase:New(state, me:Enemy(), profile), "finishing a weakened enemy") end
+	end
 	local cart = OrdersRun(field) and OwnCart(field, state.member)
 	if self.role.follows and cart and me:FollowCart() then
 		state.following = true
@@ -817,15 +919,16 @@ function Objective:Update(me)
 		if contact then return self:Fight(me, goal, contact) end
 		self:EndFight()
 	end
-	-- inside its sphere, an escort is free
+	-- an offensive squad moves as one: its members follow their leader
+	if Lanes.JOBS[state.member.role] and not field.setup then
+		local following = self:FollowLeader(me)
+		if following then return following end
+	end
+	-- inside its sphere, an escort squad's leader roams it
 	if self.role.Sphere and not field.setup then
 		local center, radius = self.role.Sphere(field, state.member)
 		state.inSphere = center ~= nil and InSphere(me:Position(), center, radius)
-		if state.inSphere then
-			state.goal = center
-			me:Release()
-			return self:Continue()
-		end
+		if state.inSphere then return self:Roam(me, center, radius) end
 	end
 	local patrols = self.role.patrols == true or (self.role.patrols == "setup" and field.setup)
 	if not patrols and self.anchor then
@@ -864,6 +967,8 @@ function Objective:Update(me)
 		if range > STATION and me:CanWalkTo(goal) then me:MoveTo(goal, RUSH) else me:Release() end
 		return self:Continue()
 	end
+	-- a raider squad's leader at its goal roams round it
+	if self.role.raids and not field.setup and range <= self.role.arrive then return self:Roam(me, goal, RAID_ROAM) end
 	local fighting = me:HasEnemy() and range <= self.role.leash
 	if range <= self.role.arrive or fighting or me:Now() < self.retryAt then
 		me:Release()
@@ -940,6 +1045,44 @@ local function LeaderOf(member)
 	if leader == nil or leader == member or leader.pos == nil then return nil end
 	return leader
 end
+
+-- Offensive squads (foundation.aiwar.lanes' JOBS) move as one, roaming
+-- their objective and fighting there together: a member follows its
+-- leader FOLLOW_SPACING per place behind it, loosely (within FOLLOW_SLACK
+-- it is left to fight as it will); a leader at the objective takes a new
+-- spot in it (the port's PatrolSpot) each time it has rested ROAM_REST
+-- at the last, or the objective moved away from it.
+FOLLOW_SPACING, FOLLOW_SLACK = 72, 96
+ROAM_REST, RAID_ROAM = 8, 350
+
+function Objective:FollowLeader(me)
+	local state, member = self.state, self.state.member
+	local leader = LeaderOf(member)
+	if not leader then return nil end
+	local spot = Tactics.Toward(leader.pos, me:Position(), FOLLOW_SPACING * ((member.place or 0) + 1))
+	state.tactic, state.goal = "following its leader", spot
+	if me:RangeTo(spot) > FOLLOW_SLACK then me:MoveTo(spot, RUN) else me:Release() end
+	return self:Continue()
+end
+
+function Objective:Roam(me, center, radius)
+	local state, now = self.state, me:Now()
+	local spot = self.roamSpot
+	local rested = self.roamRestUntil and now >= self.roamRestUntil
+	if not spot or rested or Distance(spot, center) > radius then
+		spot = me:PatrolSpot(center, radius) or center
+		self.roamSpot, self.roamRestUntil = spot, nil
+	end
+	state.tactic, state.goal = "roaming the objective", spot
+	if me:RangeTo(spot) > SPOT_ARRIVE then
+		me:MoveTo(spot, RUN)
+	else
+		self.roamRestUntil = self.roamRestUntil or now + ROAM_REST
+		me:Release()
+	end
+	return self:Continue()
+end
+
 
 -- A cover spot near center no one else holds, claimed for the member.
 function Objective:ClaimCover(me, center, radius, threat, exclude)
@@ -1083,6 +1226,8 @@ function Objective:EndFight()
 end
 
 function Objective:OnResume(me, interrupting)
+	-- after a chase, a moment before the next
+	if interrupting.chase then self.chaseReadyAt = me:Now() + CHASE_COOLDOWN end
 	if interrupting.spot then
 		-- rest where it got to; a spot given up is traded for another at once
 		local rest = interrupting.role == PATROL and PATROL_REST or WANDER_REST

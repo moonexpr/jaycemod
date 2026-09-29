@@ -414,6 +414,53 @@ T.test("a soldier hurt hard in a moment retreats even with health left", functio
 	T.eq(npc:Describe(), "SoldierAction/StrategyMonitor/RetreatToCover", "45 of 100 in a moment")
 end)
 
+-- Chasing
+
+T.test("a blocker goes after a weakened enemy to finish it, and back to work when it is dead", function()
+	local me, npc = Enlist({ role = AiWar.BLOCK, team = RED, pos = P(1000, 0) })
+	me.enemy, me.enemyHandle, me.enemyPos, me.enemyHealth = true, "pusher", P(1800, 200), 0.4
+	Tick(me, npc, 2)
+	T.eq(Orders.JobOf(npc:Describe()), "Chase", "chasing")
+	Near(me.moving, P(1800, 200), "to it")
+	T.eq(npc:Query("ShouldHurry"), N.ANSWER_YES, "running")
+	T.eq(npc:Query("SelectMoreDangerousThreat", "other", "pusher"), "pusher", "shooting the one it chases")
+	me.enemyHealth = nil
+	Tick(me, npc, 2)
+	T.eq(Orders.JobOf(npc:Describe()) ~= "Chase", true, "killed: back to blocking")
+end)
+
+T.test("a line soldier chases only a nearly dead enemy close by, and only when well itself", function()
+	local me, npc = Enlist({ role = AiWar.ESCORT, pos = P(1000, 0) })
+	me.enemy, me.enemyHandle, me.enemyPos, me.enemyHealth = true, "defender", P(1300, 0), 0.4
+	Tick(me, npc, 2)
+	T.eq(npc:State().chases, nil, "40% left: not worth it")
+	me.enemyHealth = 0.2
+	me.health = 50
+	Tick(me, npc, 2)
+	T.eq(npc:State().chases, nil, "hurt itself: no")
+	me.health = 100
+	Tick(me, npc, 2)
+	T.eq(npc:State().chases, 1, "then it goes")
+end)
+
+T.test("a pusher never leaves the cart to chase", function()
+	local me, npc = Enlist({ role = AiWar.PUSH })
+	me.pos = Orders.Goal(Field({}), { team = BLUE, role = AiWar.PUSH, slot = 0 })
+	me.enemy, me.enemyHandle, me.enemyPos, me.enemyHealth = true, "blocker", P(1100, 0), 0.1
+	Tick(me, npc, 3)
+	T.eq(npc:State().chases, nil, "stays")
+end)
+
+T.test("a chaser that gets hurt badly still retreats", function()
+	local me, npc = Enlist({ role = AiWar.BLOCK, team = RED, pos = P(1000, 0) })
+	me.enemy, me.enemyHandle, me.enemyPos, me.enemyHealth = true, "pusher", P(1600, 0), 0.4
+	Tick(me, npc, 2)
+	T.eq(Orders.JobOf(npc:Describe()), "Chase", "chasing")
+	me.health = 20
+	Tick(me, npc)
+	T.eq(npc:Describe(), "SoldierAction/StrategyMonitor/RetreatToCover", "retreat wins")
+end)
+
 -- Squads
 
 -- Two soldiers of one role in one squad of one war: a (older) and b.
@@ -491,6 +538,29 @@ T.test("squadmates never take the same cover", function()
 	s.Tick(2)
 	T.eq(s.npcA:State().coverSpot ~= nil and s.npcB:State().coverSpot ~= nil, true, "both in cover")
 	T.eq(FS.Distance(s.npcA:State().coverSpot, s.npcB:State().coverSpot) > 1, true, "different spots")
+end)
+
+-- Lanes and following
+
+T.test("an offensive squad's member follows its leader, spaced by place", function()
+	local s = Squadmates({ role = AiWar.ESCORT, a = { pos = P(3000, 0) }, b = { pos = P(3500, 0) } })
+	s.Tick(2)
+	T.eq(s.npcB:State().tactic, "following its leader", "following")
+	Near(s.meB.moving, P(3000 + Orders.FOLLOW_SPACING * (s.b.place + 1), 0), "behind it")
+end)
+
+T.test("a squad leader walks its lane to its goal, then leaves it", function()
+	local field = Field({})
+	field.lanes = { [BLUE] = { key = "plan", { ids = { 1, 2, 3 }, points = { P(2500, 500), P(2000, 600), P(1500, 300) }, length = 1800 } } }
+	local s = Squadmates({ role = AiWar.ESCORT, field = field, a = { pos = P(3000, 0), walkable = function() return true end } })
+	s.war:SetField(field)
+	s.Tick(2)
+	T.eq(s.a.fireTeam.lane ~= nil, true, "the squad holds the lane")
+	Near(s.meA.moving, P(2500, 500), "the lane's first waypoint")
+	T.eq(s.npcA:State().onLane, 1, "on lane 1")
+	s.meA.pos = P(1500, 300)
+	s.Tick(2)
+	T.eq(s.npcA:State().onLane, nil, "walked: off the lane")
 end)
 
 T.test("a trip to the objective ends on contact, for the fight", function()
@@ -717,13 +787,20 @@ T.test("a soldier that reaches its goal stops travelling and holds", function()
 end)
 
 
-T.test("an escort in its sphere is left to its own AI", function()
-	local me, npc = Enlist({ role = AiWar.ESCORT, pos = P(1300, 100) })
-	local releases = me.releases
+T.test("an escort squad's leader roams its sphere, resting at each spot", function()
+	local first, second = P(1400, 200), P(900, -300)
+	local me, npc = Enlist({ role = AiWar.ESCORT, pos = P(1300, 100), patrolSpots = { first, second } })
 	Tick(me, npc, 2)
 	T.eq(npc:State().inSphere, true, "in the support sphere")
-	T.eq(me.releases > releases, true, "released")
+	T.eq(npc:State().tactic, "roaming the objective", "roaming")
+	Near(me.moving, first, "to a spot in it")
 	T.eq(#me.requests, 0, "no trip")
+	me.pos = first
+	local releases = me.releases
+	Tick(me, npc)
+	T.eq(me.releases > releases, true, "resting there, free to fight")
+	Tick(me, npc, Orders.ROAM_REST / TICK + 1)
+	Near(me.moving, second, "then on to another")
 end)
 
 T.test("a defender that sees an enemy near its post fights instead of walking", function()
