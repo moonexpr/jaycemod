@@ -286,9 +286,10 @@ function Soldier:Walk(dt)
 	local step = math.min(distance, speed * dt)
 	local nextPos, stoppedBy = self:Step(pos, delta / distance, step)
 	if not nextPos then
-		if IsValid(stoppedBy) and IsDoor(stoppedBy) then self.controller:OpenDoorFor(stoppedBy, self.team) end
+		if IsValid(stoppedBy) and IsDoor(stoppedBy) then self:HeldByDoor(stoppedBy) else self.heldBy = nil end
 		return
 	end
+	self.heldBy = nil
 	ent:SetPos(nextPos)
 	if ent:IsMoving() then ent:StopMoving() end
 	-- with an enemy in sight the engine aims and shoots as it moves
@@ -299,6 +300,24 @@ function Soldier:Walk(dt)
 		ent:SetIdealActivity(act)
 	end
 	self.walkSpeed = step / dt
+end
+
+-- Stopped by a door: open it if my team may, and after DOOR_STUCK_TIME
+-- held by it, label it blocked for my team (the door watchdog, with the
+-- controller's shut doors).
+local DOOR_STUCK_TIME = 3
+
+function Soldier:HeldByDoor(door)
+	local now, held = CurTime(), self.heldBy
+	if not held or held.door ~= door then
+		held = { door = door, since = now }
+		self.heldBy = held
+	end
+	self.controller:OpenDoorFor(door, self.team)
+	if now - held.since >= DOOR_STUCK_TIME then
+		self.controller:NoteShutDoor(door, self.team)
+		self.heldBy = nil
+	end
 end
 
 -- For the report: the gait and pace, or that the soldier is at its target.
@@ -345,12 +364,8 @@ local DETOUR_CLEARANCE = 40
 function Soldier:Detour(p)
 	local blocker, playersPass = self:Blocker(p)
 	if not blocker or blocker:IsWorld() or blocker:IsPlayer() or playersPass then return nil end
-	-- a shut door is no prop to walk round: it opens as I reach it, or,
-	-- locked, routes keep off it for a while
-	if IsDoor(blocker) then
-		if blocker:GetInternalVariable("m_bLocked") == true then self.controller:NoteShutDoor(blocker, self.team) end
-		return nil
-	end
+	-- a shut door is no prop to walk round: the door watchdog judges it
+	if IsDoor(blocker) then return nil end
 	local mins, maxs = blocker:WorldSpaceAABB()
 	local center = (mins + maxs) / 2
 	local reach = math.max(maxs.x - mins.x, maxs.y - mins.y) / 2 + DETOUR_CLEARANCE
@@ -1020,11 +1035,13 @@ function Controller:CloseOpenedDoors()
 end
 
 -- Doors that stayed shut --------------------------------------------------------------------
--- A door a soldier ran into and could not open, whatever the blockers made
--- of it (a trigger that ignores NPCs, map logic yet to open it): its team's
--- routes keep off the areas under it for SHUT_DOOR_MEMORY seconds, then
--- try it again.
-local SHUT_DOOR_MEMORY = 20
+-- The door watchdog: a soldier held up by the same door for DOOR_STUCK_TIME
+-- (its own try at opening it included, Controller:OpenDoorFor) found it
+-- impassable, whatever the blockers made of it (a door map logic shut, a
+-- door the soldier's team may not open). The door is labelled blocked for
+-- that team: its routes keep off the areas under it, and every route the
+-- team planned before is planned again (Soldier:RouteStale). The labels
+-- last the round: a new round or stage (RespawnAll, a cleanup) erases them.
 local SHUT_DOOR_FLOOR = Vector(0, 0, 32)
 
 function Controller:NoteShutDoor(door, team)
@@ -1034,20 +1051,21 @@ function Controller:NoteShutDoor(door, team)
 		local mins, maxs = door:WorldSpaceAABB()
 		local areas = {}
 		for _, area in ipairs(navmesh.FindInBox(mins - SHUT_DOOR_FLOOR, maxs)) do areas[area:GetID()] = true end
-		noted = { areas = areas, untilFor = {} }
+		noted = { areas = areas, teams = {} }
 		self.shutDoors[door] = noted
 	end
-	noted.untilFor[team] = CurTime() + SHUT_DOOR_MEMORY
+	if noted.teams[team] then return end
+	noted.teams[team] = true
 	self.shutDoorGeneration = (self.shutDoorGeneration or 0) + 1
 end
 
 function Controller:ShutDoorIn(area, team)
 	if not self.shutDoors then return false end
-	local now, id = CurTime(), area:GetID()
+	local id = area:GetID()
 	for door, noted in pairs(self.shutDoors) do
 		if not IsValid(door) then
 			self.shutDoors[door] = nil
-		elseif noted.areas[id] and now < (noted.untilFor[team] or 0) then
+		elseif noted.areas[id] and noted.teams[team] then
 			return true
 		end
 	end
@@ -1425,6 +1443,12 @@ local function DescribeBlocker(blocker)
 		local opener = door.controlled and ("a trigger" .. (door.owner and (" for " .. (TEAM_LABEL[door.owner] or door.owner)) or "")) or "none"
 		local routes = door.blocks == nil and "open" or door.blocks == "any" and "closed to everyone" or ("closed to " .. (TEAM_LABEL[door.blocks] or door.blocks))
 		text = text .. string.format(" (%s%s, opened by %s, routes: %s)", door.closed and "shut" or "open", door.locked and ", locked" or "", opener, routes)
+		local noted = Controller.shutDoors and Controller.shutDoors[blocker]
+		if noted then
+			local teams = {}
+			for team in pairs(noted.teams) do teams[#teams + 1] = TEAM_LABEL[team] or tostring(team) end
+			text = text .. "; labelled blocked for " .. table.concat(teams, " and ") .. " this round"
+		end
 	end
 	return text
 end
