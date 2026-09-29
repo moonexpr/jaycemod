@@ -12,6 +12,7 @@ local NpcSystem = WETSAND.require("foundation.npc")
 local TFBot = WETSAND.require("foundation.npc.path.tfbot")
 local HL2Path = WETSAND.require("foundation.npc.path.hl2")
 local Posts = WETSAND.require("foundation.aiwar.posts")
+local Zone = WETSAND.require("foundation.aiwar.zone")
 
 local ACTIVE_KEY = "wetsand.aiwar" -- Global2: the Utilities menu reads it
 local THINK_INTERVAL = 0.25
@@ -258,11 +259,22 @@ function Soldier:Detour(p)
 	return nil
 end
 
--- A random spot on the nav mesh within WANDER_RADIUS that I can walk to in
--- a straight line (so not beyond a shut gate), or nil after a few tries.
+-- A random spot on the ground behind the setup gates (the controller's
+-- SetupZone), by area size; else, with no zone to trust, one within
+-- WANDER_RADIUS that I can walk to in a straight line, or nil after a few
+-- tries.
 local WANDER_RADIUS, WANDER_TRIES = 300, 6
 
+local function AreaSize(area) return area:GetSizeX() * area:GetSizeY() end
+
 function Soldier:WanderSpot()
+	local zone = self.controller:SetupZone(self.team)
+	if zone then
+		for _ = 1, WANDER_TRIES do
+			local area = Zone.PickWeighted(zone, AreaSize, math.random())
+			if not self.controller:UnderCart(area) then return Point(area:GetRandomPoint()) end
+		end
+	end
 	local step = HL2Path.LIMITS.stepHeight
 	local areas = navmesh.Find(self.ent:GetPos(), WANDER_RADIUS, step, step)
 	if #areas == 0 then return nil end
@@ -539,6 +551,7 @@ end
 -- stage's), and their orders start over.
 function Controller:RespawnAll()
 	self.gates = nil
+	self.zones = nil
 	self.postCache = nil
 	self.losers = nil
 	local entries = {}
@@ -650,6 +663,7 @@ function Controller:FindGates(field)
 				npcs:RequestRoute({
 					from = from,
 					to = target,
+					ignoreDoors = true, -- the route is looked for through the shut gates
 					strategy = HL2Path,
 					limits = HL2Path.LIMITS,
 					bot = { entIndex = 0, now = CurTime(), team = team, route = TFBot.FASTEST_ROUTE, miniBoss = false, roundWon = false, winningTeam = WETSAND.TEAM_UNASSIGNED },
@@ -703,6 +717,69 @@ function Controller:UnderCart(area)
 		if center:WithinAABox(box.mins, box.maxs) then return true end
 	end
 	return false
+end
+
+-- The setup zone -------------------------------------------------------------------------
+-- The ground behind the setup gates, where the attackers wander in setup
+-- (foundation.aiwar.zone): flooded over the nav mesh from the team's spawn
+-- points, held back by the doors that close areas to the team (the shut
+-- setup gates, the enemy's spawn doors: foundation.npc.doors) and by rises
+-- no soldier walks. A flood that reaches the checkpoint the team's cart
+-- heads for, or the enemy's spawn, got past a gate standing open, and
+-- gives no zone. Taken again every ZONE_REFRESH seconds.
+local ZONE_LIMIT, ZONE_REFRESH = 4000, 10
+local ZONE_SNAP = 256
+
+local function AreaAt(pos)
+	local area = navmesh.GetNearestNavArea(pos, false, ZONE_SNAP, false, true)
+	return IsValid(area) and area or nil
+end
+
+function Controller:FloodZone(team)
+	local npcs = WETSAND.Feature("npc")
+	local starts, outside = {}, {}
+	for _, spot in ipairs(WETSAND.SpawnPoints(team)) do
+		local area = AreaAt(spot:GetPos())
+		if area then starts[#starts + 1] = area:GetID() end
+	end
+	if #starts == 0 then return nil end
+	for _, spot in ipairs(WETSAND.SpawnPoints(AiWar.EnemyOf(team))) do
+		local area = AreaAt(spot:GetPos())
+		if area then outside[area:GetID()] = true end
+	end
+	local field = self.war:Field()
+	local cart = field and field.carts[team]
+	if cart then
+		local area = AreaAt(ToVector(cart.track:PointAt(cart.nextCheckpoint or cart.track:Length())))
+		if area then outside[area:GetID()] = true end
+	end
+	local function Neighbors(id)
+		local area, ids = navmesh.GetNavAreaByID(id), {}
+		for _, next in ipairs(area:GetAdjacentAreas()) do
+			if area:ComputeAdjacentConnectionHeightChange(next) <= WALK_MAX_RISE then ids[#ids + 1] = next:GetID() end
+		end
+		return ids
+	end
+	local function Blocked(id)
+		local area = navmesh.GetNavAreaByID(id)
+		return area:IsBlocked(team) or npcs:DoorBlocks(area, team)
+	end
+	local ids, leaked = Zone.Flood(starts, Neighbors, Blocked, function(id) return outside[id] == true end, ZONE_LIMIT)
+	if leaked then return nil end
+	local areas = {}
+	for i, id in ipairs(ids) do areas[i] = navmesh.GetNavAreaByID(id) end
+	return areas
+end
+
+-- The team's setup zone, a list of nav areas, or nil.
+function Controller:SetupZone(team)
+	self.zones = self.zones or {}
+	local cached, now = self.zones[team], CurTime()
+	if not cached or now >= cached.expires then
+		cached = { zone = self:FloodZone(team), expires = now + ZONE_REFRESH }
+		self.zones[team] = cached
+	end
+	return cached.zone
 end
 
 -- Posts: where soldiers establish their line ----------------------------------------------
@@ -866,11 +943,27 @@ end
 -- Spawn doors ---------------------------------------------------------------------
 
 -- A team's spawn doors open through trigger_multiples filtered by
--- filter_activator_tfteam, and NPCs only touch triggers flagged for them.
+-- filter_activator_tfteam, other doors through a trigger_multiple around
+-- them (TF2's nav mesh counts a door so overlapped as one anyone opens,
+-- foundation.npc.doors), and NPCs only touch triggers flagged for them.
+local function AroundADoor(trigger, doors)
+	local mins, maxs = trigger:WorldSpaceAABB()
+	for _, door in ipairs(doors) do
+		local doorMins, doorMaxs = door:WorldSpaceAABB()
+		if mins.x <= doorMaxs.x and doorMins.x <= maxs.x and mins.y <= doorMaxs.y and doorMins.y <= maxs.y
+			and mins.z <= doorMaxs.z and doorMins.z <= maxs.z then
+			return true
+		end
+	end
+	return false
+end
+
 function Controller:OpenDoorsToSoldiers()
+	local doors = ents.FindByClass("func_door*")
 	for _, trigger in ipairs(ents.FindByClass("trigger_multiple")) do
 		local filter = trigger:GetInternalVariable("m_hFilter")
-		if IsValid(filter) and filter:GetClass() == "filter_activator_tfteam" and self.doorFlags[trigger] == nil then
+		local teamDoor = IsValid(filter) and filter:GetClass() == "filter_activator_tfteam"
+		if self.doorFlags[trigger] == nil and (teamDoor or AroundADoor(trigger, doors)) then
 			local flags = trigger:GetSpawnFlags()
 			self.doorFlags[trigger] = flags
 			trigger:SetKeyValue("spawnflags", tostring(bit.bor(flags, SF_TRIGGER_ALLOW_NPCS)))
@@ -1112,6 +1205,7 @@ hook.Add("PostCleanupMap", "wetsand_aiwar", function()
 	Controller:OpenDoorsToSoldiers()
 	Controller:SetForcefieldsPassable(true)
 	Controller.gates = nil
+	Controller.zones = nil
 	Controller.postCache = nil
 	Controller.war:ResetWaves()
 end)

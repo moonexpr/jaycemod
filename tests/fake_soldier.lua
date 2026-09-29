@@ -23,7 +23,8 @@ Soldier.__index = Soldier
 -- passable = function(from, to) -> bool: a blocker only NPCs collide with
 -- stands between (default: never), detour = function(from, to) -> point
 -- beside a solid entity in the way, or nil (default: nil), wanderSpots =
--- list of points WanderSpot hands out in turn (default: none) }. Without route, a route is the goal alone; without walkable,
+-- list of points WanderSpot hands out in turn (default: none) }. Without
+-- route, a route is the goal alone; without walkable,
 -- nothing past the current waypoint counts as walkable.
 function Fake.Soldier(t)
 	t = t or {}

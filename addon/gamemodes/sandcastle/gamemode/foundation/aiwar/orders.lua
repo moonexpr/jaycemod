@@ -74,10 +74,11 @@ CLIMB_RISE = 12
 DETOUR_TIME = 3
 
 -- In setup the attackers cannot push their cart (TF2 lets no point be
--- captured) and the gates are shut, so they wander near where they are:
--- to a spot (the soldier port's WanderSpot), resting WANDER_REST there,
+-- captured) and the gates are shut, so they wander the ground behind the
+-- gates: to a spot (the soldier port's WanderSpot), which may be rooms
+-- away, travelling there as to any goal, resting WANDER_REST there,
 -- giving a spot up after WANDER_GIVE_UP; when setup ends they go to work.
-WANDER_ARRIVE, WANDER_REST, WANDER_GIVE_UP = 48, 3, 8
+WANDER_ARRIVE, WANDER_REST, WANDER_GIVE_UP = 48, 3, 20
 RETRY_WAIT = 1 -- after a failed trip, before the next
 
 local Distance = Track.Distance
@@ -191,13 +192,18 @@ local function WaitingForSetup(field, member)
 end
 
 -------------------------------------------------------------------------------
--- Travel: follow a route to the role's goal
+-- Travel: follow a route to the role's goal, or (in setup) to a wander spot
 
 local Travel = N.Action:Extend("Travel")
 
-function Travel:Init(state, role)
+-- A wander spot is travelled to as a role's goal is, with WANDER's terms.
+local WANDER = { name = "Wander", arrive = WANDER_ARRIVE, leash = 0, rushes = false }
+
+-- spot: a wander spot to go to instead of the role's goal.
+function Travel:Init(state, role, spot)
 	self.state = state
 	self.role = role
+	self.spot = spot
 	self.repaths = 0
 	self.failed = false
 	self.requested = false
@@ -205,6 +211,7 @@ function Travel:Init(state, role)
 end
 
 function Travel:OnStart(me)
+	if self.spot then self.giveUpAt = me:Now() + WANDER_GIVE_UP end
 	self:SetRoute(nil)
 	self:ResetProgress(me)
 	return self:Continue()
@@ -359,15 +366,29 @@ function Travel:FollowRoute(me, goal)
 	return self:Continue()
 end
 
+-- The goal to travel to now, or nil and why the trip is over.
+function Travel:Goal(me, field)
+	local state = self.state
+	if state.member.role == nil or not OrdersRun(field) then return nil, "orders changed" end
+	if self.spot then
+		if not WaitingForSetup(field, state.member) then return nil, "setup ended" end
+		if me:Now() >= self.giveUpAt then return nil, "gave up" end
+		return self.spot
+	end
+	if ROLES[state.member.role] ~= self.role then return nil, "orders changed" end
+	if WaitingForSetup(field, state.member) then return nil, "setup began" end
+	local goal = self.role.Goal(field, state.member)
+	if goal == nil then return nil, "no goal" end
+	return goal
+end
+
 function Travel:Update(me)
 	local state, role = self.state, self.role
-	local field = state.war:Field()
-	if state.member.role == nil or ROLES[state.member.role] ~= role or not OrdersRun(field) then
-		return self:End("orders changed")
+	local goal, over = self:Goal(me, state.war:Field())
+	if goal == nil then
+		if over == "gave up" then return self:Fail(over) end
+		return self:End(over)
 	end
-	if WaitingForSetup(field, state.member) then return self:End("setup began") end
-	local goal = role.Goal(field, state.member)
-	if goal == nil then return self:End("no goal") end
 	state.goal = goal
 	local range = me:RangeTo(goal)
 	if range <= role.arrive then return self:End("arrived") end
@@ -407,31 +428,22 @@ function Objective:Init(state)
 	self.retryAt = 0
 end
 
--- Setup's wandering: a spot, a walk there, a rest, another spot.
+-- Setup's wandering: a spot, a trip there, a rest, another spot.
 function Objective:Wander(me)
 	local state, now = self.state, me:Now()
 	state.wandering = true
-	local wander = self.wander
-	if wander and ((wander.restUntil and now >= wander.restUntil) or (not wander.restUntil and now >= wander.giveUpAt)) then
-		wander = nil
-	end
-	if not wander then
-		local spot = me:WanderSpot()
-		if not spot then
-			me:Release()
-			return self:Continue()
-		end
-		wander = { spot = spot, giveUpAt = now + WANDER_GIVE_UP }
-		self.wander = wander
-	end
-	state.goal = wander.spot
-	if wander.restUntil or me:RangeTo(wander.spot) <= WANDER_ARRIVE then
-		wander.restUntil = wander.restUntil or now + WANDER_REST
+	if now < (self.restUntil or 0) then
 		me:Release()
 		return self:Continue()
 	end
-	me:MoveTo(wander.spot)
-	return self:Continue()
+	local spot = me:WanderSpot()
+	if not spot then
+		self.restUntil = now + WANDER_REST
+		me:Release()
+		return self:Continue()
+	end
+	state.goal = spot
+	return self:SuspendFor(Travel:New(state, WANDER, spot), "wandering")
 end
 
 function Objective:Update(me)
@@ -440,7 +452,7 @@ function Objective:Update(me)
 	local field = state.war:Field()
 	if OrdersRun(field) and WaitingForSetup(field, state.member) then return self:Wander(me) end
 	state.wandering = false
-	self.wander = nil
+	self.restUntil = nil
 	local goal = OrdersRun(field) and self.role.Goal(field, state.member)
 	if not goal then
 		me:Release()
@@ -462,7 +474,12 @@ function Objective:Update(me)
 end
 
 function Objective:OnResume(me, interrupting)
-	if interrupting.failed then self.retryAt = me:Now() + RETRY_WAIT end
+	if interrupting.spot then
+		-- rest where it got to; a spot given up is traded for another at once
+		self.restUntil = interrupting.failed and 0 or me:Now() + WANDER_REST
+	elseif interrupting.failed then
+		self.retryAt = me:Now() + RETRY_WAIT
+	end
 	return self:Continue()
 end
 

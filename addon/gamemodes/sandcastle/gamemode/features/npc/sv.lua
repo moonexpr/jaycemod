@@ -8,6 +8,7 @@ local Spawner = WETSAND.require("foundation.npc.spawner")
 local Profile = WETSAND.require("foundation.npc.profile")
 local Route = WETSAND.require("foundation.npc.route")
 local Portal = WETSAND.require("foundation.npc.portal")
+local Doors = WETSAND.require("foundation.npc.doors")
 
 local NAV_MESSAGE = "wetsand_nextbot: %s has no usable navigation mesh; run .devtools/bin/nav_convert.py or nav_generate"
 local BOSS_HEALTH = "wetsand_boss_health" -- the boss bar's fraction; 0 hides it
@@ -25,6 +26,8 @@ local Controller = {
 	searches = {}, -- the Lua route searches still running, oldest first
 	neighbors = {}, -- nav area id -> its floor neighbours' ids (the mesh is fixed for the map)
 	centers = {}, -- nav area id -> its centre
+	doorBlocked = {}, -- nav area id -> the teams its doors block (foundation.npc.doors)
+	nextDoorRefresh = 0,
 }
 
 function Controller:CheckNavMesh()
@@ -148,6 +151,72 @@ function Controller:SpawnRoomTeam(area)
 	return team
 end
 
+-- Doors on the nav mesh (foundation.npc.doors): which areas each func_door
+-- blocks to whom, taken again every DOOR_REFRESH seconds a route is asked
+-- for, as doors open and shut with the round (setup gates, doors opened by
+-- captures). The box searched reaches DOOR_FLOOR below a door, so the
+-- areas on the floor it closes on count.
+local DOOR_REFRESH = 1
+local DOOR_FLOOR = Vector(0, 0, 32)
+local UNASSIGNED = WETSAND.TEAM_UNASSIGNED
+
+local function EnemyOf(team)
+	if team == WETSAND.TEAM_RED then return WETSAND.TEAM_BLUE end
+	if team == WETSAND.TEAM_BLUE then return WETSAND.TEAM_RED end
+	return nil
+end
+
+local function Overlapping(aMins, aMaxs, bMins, bMaxs)
+	return aMins.x <= bMaxs.x and bMins.x <= aMaxs.x and aMins.y <= bMaxs.y and bMins.y <= aMaxs.y
+		and aMins.z <= bMaxs.z and bMins.z <= aMaxs.z
+end
+
+-- The enabled trigger_multiples, with their boxes and the team their
+-- filter_activator_tfteam admits (or nil).
+local function DoorTriggers()
+	local triggers = {}
+	for _, trigger in ipairs(ents.FindByClass("trigger_multiple")) do
+		if not trigger:GetInternalVariable("m_bDisabled") then
+			local mins, maxs = trigger:WorldSpaceAABB()
+			local filter, owner = trigger:GetInternalVariable("m_hFilter"), nil
+			if IsValid(filter) and filter:GetClass() == "filter_activator_tfteam" and filter.team ~= UNASSIGNED then owner = filter.team end
+			triggers[#triggers + 1] = { mins = mins, maxs = maxs, owner = owner }
+		end
+	end
+	return triggers
+end
+
+function Controller:RefreshDoors(now)
+	if now < self.nextDoorRefresh then return end
+	self.nextDoorRefresh = now + DOOR_REFRESH
+	local blocked, triggers = {}, DoorTriggers()
+	for _, door in ipairs(ents.FindByClass("func_door*")) do
+		local mins, maxs = door:WorldSpaceAABB()
+		local state = { closed = Doors.IsClosed(door:GetInternalVariable("m_toggle_state")), controlled = false }
+		for _, trigger in ipairs(triggers) do
+			if Overlapping(mins, maxs, trigger.mins, trigger.maxs) then
+				state.controlled = true
+				state.owner = trigger.owner or state.owner
+			end
+		end
+		local team = Doors.BlockedTeam(state, EnemyOf)
+		if team then
+			for _, area in ipairs(navmesh.FindInBox(mins - DOOR_FLOOR, maxs)) do
+				local id = area:GetID()
+				blocked[id] = blocked[id] or {}
+				table.insert(blocked[id], team)
+			end
+		end
+	end
+	self.doorBlocked = blocked
+end
+
+-- Whether a door closes the area to the team.
+function Controller:DoorBlocks(area, team)
+	self:RefreshDoors(CurTime())
+	return Doors.Blocks(self.doorBlocked[area:GetID()], team)
+end
+
 local function ForgetSpawnRooms()
 	Controller.spawnRoomTeams = {}
 end
@@ -173,11 +242,16 @@ function Controller:FillStep(step, area, fromArea, ladder, length, fromCostSoFar
 end
 
 -- The cost callback Path:Compute takes (IPathCost), for a NextBot. bot is
--- the strategy's bot table; its `now` is kept current. While a path profile
+-- the strategy's bot table; its `now` is kept current. Areas a door closes
+-- to the bot's team are not traversable. While a path profile
 -- measures a compute, ent.pathProbe counts the calls and their time.
 function Controller:EnginePathCost(ent, strategy, limits, bot)
 	local step = {}
-	local function Traversable(area) return ent.loco:IsAreaTraversable(area) end
+	self:RefreshDoors(CurTime())
+	local team = WETSAND.TeamNumber(ent)
+	local function Traversable(area)
+		return ent.loco:IsAreaTraversable(area) and not Doors.Blocks(self.doorBlocked[area:GetID()], team)
+	end
 	local function Cost(area, fromArea, ladder, elevator, length)
 		self:FillStep(step, area, fromArea, ladder, length, IsValid(fromArea) and fromArea:GetCostSoFar() or 0, Traversable)
 		bot.now = CurTime()
@@ -239,7 +313,8 @@ end
 
 -- request = { from, to (positions), strategy, limits, bot (the strategy's,
 -- with team), avoid(area) -> bool (optional: areas to route around, as
--- if blocked; the goal's area is never avoided), onDone(route, found) } where route is the list of nav areas
+-- if blocked; the goal's area is never avoided), ignoreDoors (optional:
+-- route through doors shut to the team), onDone(route, found) } where route is the list of nav areas
 -- from the start's to the goal's (found), or to the one that came closest
 -- when the goal is out of reach, and nil when either end is off the mesh.
 local NEAREST_AREA_RANGE = 200
@@ -266,7 +341,8 @@ function Controller:RequestRoute(request)
 		return
 	end
 	local team = request.bot.team or NOBODY
-	local avoid, goalId = request.avoid, goal:GetID()
+	self:RefreshDoors(CurTime())
+	local avoid, goalId, ignoreDoors = request.avoid, goal:GetID(), request.ignoreDoors
 	local graph = setmetatable({
 		controller = self,
 		step = {},
@@ -276,6 +352,7 @@ function Controller:RequestRoute(request)
 		goalPos = request.to,
 		traversable = function(area)
 			if avoid and area:GetID() ~= goalId and avoid(area) then return false end
+			if not ignoreDoors and Doors.Blocks(self.doorBlocked[area:GetID()], team) then return false end
 			return not area:IsBlocked(team)
 		end,
 	}, NavGraph)
