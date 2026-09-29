@@ -226,6 +226,7 @@ ROLES = {
 	-- shoots at it, and stands in its way.
 	[AiWar.BLOCK] = {
 		name = "Block",
+		chases = "eager",
 		patrols = "setup",
 		arrive = PUSH_ARRIVE,
 		leash = PUSH_LEASH,
@@ -245,6 +246,7 @@ ROLES = {
 	-- FollowCart, HL2's follow behaviour, first when it has it).
 	[AiWar.ESCORT] = {
 		name = "Escort",
+		chases = "opportunist",
 		follows = true,
 		tactic = "attack",
 		arrive = ESCORT_ARRIVE,
@@ -267,6 +269,7 @@ ROLES = {
 	-- the checkpoint the attackers head for), where it waits for them.
 	[AiWar.DEFEND] = {
 		name = "EstablishLine",
+		chases = "opportunist",
 		patrols = true,
 		tactic = "defend",
 		arrive = DEFEND_ARRIVE,
@@ -342,6 +345,7 @@ end
 
 ROLES[AiWar.RAID] = {
 	name = "Raid",
+	chases = "opportunist",
 	tactic = "raid",
 	raids = true,
 	arrive = RAID_ARRIVE,
@@ -685,6 +689,7 @@ function Travel:Update(me)
 	local state, role = self.state, self.role
 	local field = state.war:Field()
 	if not self.spot and role.tactic and TeamContact(state, me) then return self:End("contact") end
+	if not self.spot and role.chases and ChaseWanted(role, me) then return self:End("a weakened enemy") end
 	local goal, over = self:Goal(me, field)
 	self.gait = (self.spot and WALK) or (field and field.setup and PANIC) or (role.rushes and RUSH) or RUN
 	if goal == nil then
@@ -724,6 +729,68 @@ function Travel:Update(me)
 		return self:Chase(me, goal)
 	end
 	return self:FollowRoute(me, goal)
+end
+
+-------------------------------------------------------------------------------
+-- Chase: retreat's other half. A soldier whose enemy is weakened (under its
+-- job's share of its health) and in reach goes after it to finish it:
+-- blockers eagerly (they finish the job: a pusher off the cart to heal comes
+-- back), the line's soldiers only when the kill is close and they are well
+-- themselves. Pushers keep to the cart, medics to their patients, support
+-- to its post: they never chase. A chase ends when the enemy is dead or
+-- lost from sight for CHASE_LOST, or its time is up; the tactical monitor
+-- above still sends a chaser that gets hurt into retreat.
+CHASES = {
+	eager = { health = 0.5, range = 1000, time = 10, fit = 0, gait = RUSH },
+	opportunist = { health = 0.3, range = 500, time = 5, fit = 0.6, gait = RUN },
+}
+CHASE_LOST, CHASE_COOLDOWN = 1.5, 3
+
+-- The role's chase profile when its soldier should chase its enemy now.
+function ChaseWanted(role, me)
+	local profile = CHASES[role.chases]
+	if not profile or not me:HasEnemy() then return nil end
+	local share, pos = me:EnemyHealth(), me:EnemyPosition()
+	if not share or not pos or share >= profile.health or me:RangeTo(pos) > profile.range then return nil end
+	if me:Health() / max(me:MaxHealth(), 1) < profile.fit then return nil end
+	return profile
+end
+
+local Chase = N.Action:Extend("Chase")
+Chase.chase = true
+
+function Chase:Init(state, target, profile)
+	self.state, self.target, self.profile = state, target, profile
+end
+
+function Chase:OnStart(me)
+	local now = me:Now()
+	self.untilAt, self.seenAt = now + self.profile.time, now
+	self.state.chases = (self.state.chases or 0) + 1
+	return self:Continue()
+end
+
+function Chase:Update(me)
+	local state, now = self.state, me:Now()
+	local sees = me:HasEnemy() and me:Enemy() == self.target
+	if sees then
+		if not me:EnemyHealth() then return self:Done("killed") end
+		self.seenAt, self.lastPos = now, me:EnemyPosition()
+	end
+	if now - self.seenAt > CHASE_LOST then return self:Done("lost") end
+	if now >= self.untilAt then return self:Done("gave up") end
+	state.tactic = "chasing a weakened enemy"
+	state.goal = self.lastPos
+	if self.lastPos then me:MoveTo(self.lastPos, self.profile.gait) end
+	return self:Continue()
+end
+
+function Chase:ShouldHurry(me) return N.ANSWER_YES end
+
+-- It keeps shooting at the one it chases.
+function Chase:SelectMoreDangerousThreat(me, a, b)
+	if a == self.target or b == self.target then return self.target end
+	return N.ANSWER_UNDEFINED
 end
 
 -------------------------------------------------------------------------------
@@ -826,6 +893,11 @@ function Objective:Update(me)
 	if self.role.heals and OrdersRun(field) then
 		local healing = self:Heal(me, field)
 		if healing then return healing end
+	end
+	-- a weakened enemy in reach: after it (Chase)
+	if self.role.chases and OrdersRun(field) and not field.setup and me:Now() >= (self.chaseReadyAt or 0) then
+		local profile = ChaseWanted(self.role, me)
+		if profile then return self:SuspendFor(Chase:New(state, me:Enemy(), profile), "finishing a weakened enemy") end
 	end
 	local cart = OrdersRun(field) and OwnCart(field, state.member)
 	if self.role.follows and cart and me:FollowCart() then
@@ -1154,6 +1226,8 @@ function Objective:EndFight()
 end
 
 function Objective:OnResume(me, interrupting)
+	-- after a chase, a moment before the next
+	if interrupting.chase then self.chaseReadyAt = me:Now() + CHASE_COOLDOWN end
 	if interrupting.spot then
 		-- rest where it got to; a spot given up is traded for another at once
 		local rest = interrupting.role == PATROL and PATROL_REST or WANDER_REST

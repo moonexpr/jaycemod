@@ -135,8 +135,10 @@ function Soldier:CoverSpot(center, radius, threat, exclude, taken)
 	return nil
 end
 
--- enemyHandle: the enemy Enemy() gives (default: none).
+-- enemyHandle: the enemy Enemy() gives (default: none); enemyHealth: its
+-- share of health (default: none).
 function Soldier:Enemy() return self.enemyHandle end
+function Soldier:EnemyHealth() return self.enemyHealth end
 
 function Soldier:HurtSince(t) return self.hurtAt ~= nil and self.hurtAt > (t or 0) end
 

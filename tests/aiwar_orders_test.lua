@@ -414,6 +414,53 @@ T.test("a soldier hurt hard in a moment retreats even with health left", functio
 	T.eq(npc:Describe(), "SoldierAction/StrategyMonitor/RetreatToCover", "45 of 100 in a moment")
 end)
 
+-- Chasing
+
+T.test("a blocker goes after a weakened enemy to finish it, and back to work when it is dead", function()
+	local me, npc = Enlist({ role = AiWar.BLOCK, team = RED, pos = P(1000, 0) })
+	me.enemy, me.enemyHandle, me.enemyPos, me.enemyHealth = true, "pusher", P(1800, 200), 0.4
+	Tick(me, npc, 2)
+	T.eq(Orders.JobOf(npc:Describe()), "Chase", "chasing")
+	Near(me.moving, P(1800, 200), "to it")
+	T.eq(npc:Query("ShouldHurry"), N.ANSWER_YES, "running")
+	T.eq(npc:Query("SelectMoreDangerousThreat", "other", "pusher"), "pusher", "shooting the one it chases")
+	me.enemyHealth = nil
+	Tick(me, npc, 2)
+	T.eq(Orders.JobOf(npc:Describe()) ~= "Chase", true, "killed: back to blocking")
+end)
+
+T.test("a line soldier chases only a nearly dead enemy close by, and only when well itself", function()
+	local me, npc = Enlist({ role = AiWar.ESCORT, pos = P(1000, 0) })
+	me.enemy, me.enemyHandle, me.enemyPos, me.enemyHealth = true, "defender", P(1300, 0), 0.4
+	Tick(me, npc, 2)
+	T.eq(npc:State().chases, nil, "40% left: not worth it")
+	me.enemyHealth = 0.2
+	me.health = 50
+	Tick(me, npc, 2)
+	T.eq(npc:State().chases, nil, "hurt itself: no")
+	me.health = 100
+	Tick(me, npc, 2)
+	T.eq(npc:State().chases, 1, "then it goes")
+end)
+
+T.test("a pusher never leaves the cart to chase", function()
+	local me, npc = Enlist({ role = AiWar.PUSH })
+	me.pos = Orders.Goal(Field({}), { team = BLUE, role = AiWar.PUSH, slot = 0 })
+	me.enemy, me.enemyHandle, me.enemyPos, me.enemyHealth = true, "blocker", P(1100, 0), 0.1
+	Tick(me, npc, 3)
+	T.eq(npc:State().chases, nil, "stays")
+end)
+
+T.test("a chaser that gets hurt badly still retreats", function()
+	local me, npc = Enlist({ role = AiWar.BLOCK, team = RED, pos = P(1000, 0) })
+	me.enemy, me.enemyHandle, me.enemyPos, me.enemyHealth = true, "pusher", P(1600, 0), 0.4
+	Tick(me, npc, 2)
+	T.eq(Orders.JobOf(npc:Describe()), "Chase", "chasing")
+	me.health = 20
+	Tick(me, npc)
+	T.eq(npc:Describe(), "SoldierAction/StrategyMonitor/RetreatToCover", "retreat wins")
+end)
+
 -- Squads
 
 -- Two soldiers of one role in one squad of one war: a (older) and b.

@@ -434,6 +434,12 @@ function Soldier:Enemy()
 	return IsValid(enemy) and enemy or nil
 end
 
+function Soldier:EnemyHealth()
+	local enemy = self.ent:GetEnemy()
+	if not IsValid(enemy) or enemy:Health() <= 0 then return nil end
+	return enemy:Health() / math.max(enemy:GetMaxHealth(), 1)
+end
+
 function Soldier:EnemyPosition()
 	local enemy = self.ent:GetEnemy()
 	return IsValid(enemy) and Point(enemy:GetPos()) or nil
@@ -1933,6 +1939,7 @@ function Controller:Describe(ent, entry)
 	if soldier.cartRescues then lines[#lines + 1] = "Pulled out of a cart: " .. soldier.cartRescues .. " time(s)" end
 	if soldier.seat then lines[#lines + 1] = "Riding: seat " .. soldier.seat.index .. " on its cart" end
 	if state.retreats then lines[#lines + 1] = "Retreated: " .. state.retreats .. " time(s)" end
+	if state.chases then lines[#lines + 1] = "Chased: " .. state.chases .. " weakened enemies" end
 	if state.hops then lines[#lines + 1] = "Hops: " .. state.hops end
 	if state.passed then lines[#lines + 1] = "Let through: " .. state.passed .. " NPC-only blocker(s)" end
 	local blocked = self:BlockedBy(soldier)
