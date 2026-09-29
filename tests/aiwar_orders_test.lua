@@ -451,6 +451,29 @@ T.test("a pusher never leaves the cart to chase", function()
 	T.eq(npc:State().chases, nil, "stays")
 end)
 
+T.test("a chase keeps within CHASE_LEASH of the cart", function()
+	local me, npc = Enlist({ role = AiWar.BLOCK, team = RED, pos = P(1000, 0) })
+	me.enemy, me.enemyHandle, me.enemyHealth = true, "pusher", 0.4
+	me.enemyPos = P(1000, Orders.CHASE_LEASH + 100)
+	Tick(me, npc, 2)
+	T.eq(npc:State().chases, nil, "its quarry beyond the leash: no chase")
+	me.enemyPos = P(1000, 800)
+	Tick(me, npc, 2)
+	T.eq(Orders.JobOf(npc:Describe()), "Chase", "within it: after it")
+	me.enemyPos = P(1000, Orders.CHASE_LEASH + 100)
+	Tick(me, npc, 2)
+	T.eq(Orders.JobOf(npc:Describe()) ~= "Chase", true, "it ran past the leash: let go")
+end)
+
+T.test("a soldier that needs to retreat does not start a chase", function()
+	local me, npc = Enlist({ role = AiWar.BLOCK, team = RED, pos = P(1000, 0) })
+	me.enemy, me.enemyHandle, me.enemyPos, me.enemyHealth = true, "pusher", P(1400, 0), 0.2
+	me.health = 30
+	Tick(me, npc, 2)
+	T.eq(npc:State().chases, nil, "no chase")
+	T.eq(npc:Describe(), "SoldierAction/StrategyMonitor/RetreatToCover", "it retreats instead")
+end)
+
 T.test("a chaser that gets hurt badly still retreats", function()
 	local me, npc = Enlist({ role = AiWar.BLOCK, team = RED, pos = P(1000, 0) })
 	me.enemy, me.enemyHandle, me.enemyPos, me.enemyHealth = true, "pusher", P(1600, 0), 0.4
