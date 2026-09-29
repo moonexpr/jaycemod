@@ -97,7 +97,7 @@ end
 local DEBUG_NET = "wetsand_aiwar_debug"
 local DEBUG_STALE = 2
 local DEBUG_TEXT_HEIGHT = 80
-local debug = { soldiers = {}, teams = {}, received = 0 }
+local debug = { soldiers = {}, teams = {}, spheres = {}, received = 0 }
 
 -- Brighter than the teams' HUD colours, to read over any map.
 local DEBUG_COLOR = { [WETSAND.TEAM_RED] = Color(255, 90, 90), [WETSAND.TEAM_BLUE] = Color(110, 175, 255) }
@@ -114,6 +114,11 @@ net.Receive(DEBUG_NET, function()
 		if net.ReadBool() then fireTeam.flank = net.ReadVector() end
 		teams[i] = fireTeam
 	end
+	local spheres = {}
+	for i = 1, net.ReadUInt(4) do
+		spheres[i] = { team = net.ReadUInt(3), center = net.ReadVector(), radius = net.ReadFloat(), push = net.ReadBool() }
+	end
+	debug.spheres = spheres
 	for i = 1, net.ReadUInt(8) do
 		local soldier = { ent = net.ReadEntity(), team = net.ReadUInt(3), heading = net.ReadString(), details = {}, route = {} }
 		for j = 1, net.ReadUInt(4) do soldier.details[j] = net.ReadString() end
@@ -157,6 +162,20 @@ hook.Add("PostDrawTranslucentRenderables", "wetsand_aiwar_debug", function(depth
 				local body = soldier.ent:GetPos() + Vector(0, 0, 40)
 				render.DrawLine(body, soldier.fireTeam.contact, soldier.moving and color or Dim(color), false)
 			end
+		end
+	end
+	-- the cart spheres: rings on the ground, the push sphere bright, the
+	-- support sphere dim
+	for _, sphere in ipairs(debug.spheres) do
+		local color = DEBUG_COLOR[sphere.team] or color_white
+		if not sphere.push then color = Dim(color) end
+		local segments, lift = sphere.push and 24 or 48, Vector(0, 0, 6)
+		local last
+		for i = 0, segments do
+			local angle = i / segments * math.pi * 2
+			local point = sphere.center + Vector(math.cos(angle) * sphere.radius, math.sin(angle) * sphere.radius, 0) + lift
+			if last then render.DrawLine(last, point, color, false) end
+			last = point
 		end
 	end
 	-- each fire team in contact: the enemy's last seen place, its flank point

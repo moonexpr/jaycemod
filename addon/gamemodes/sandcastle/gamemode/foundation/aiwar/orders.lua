@@ -182,6 +182,37 @@ end
 local function OwnCart(field, member) return field.carts[member.team] end
 
 local function Reach(cart) return max(PUSH_RING, cart.radius or 0) end
+
+-- Cart spheres (flat: a circle, SPHERE_HEIGHT tall). Pushers keep inside
+-- the push sphere, the cart's own capture area (field.carts' pushRadius;
+-- else its reach and PUSH_DEPTH); escorts inside the support sphere,
+-- SUPPORT_SPHERE around a point ESCORT_SPHERE_LEAD ahead of the cart. Inside
+-- its sphere a pusher holds where it stands, and an escort is left to its
+-- own tactics and its engine's AI; outside, either goes to the nearest point
+-- SPHERE_ENTER of the way in from the centre, so the cart can roll a fair
+-- way before anyone moves again.
+PUSH_DEPTH, SUPPORT_SPHERE, ESCORT_SPHERE_LEAD = 64, 900, 200
+SPHERE_ENTER, SPHERE_HEIGHT = 0.6, 160
+
+function PushSphere(cart)
+	return cart.pos, cart.pushRadius or (Reach(cart) + PUSH_DEPTH)
+end
+
+function SupportSphere(cart)
+	return cart.track:Offset(cart.distance + ESCORT_SPHERE_LEAD, 0), SUPPORT_SPHERE
+end
+
+function InSphere(p, center, radius)
+	local dx, dy = p.x - center.x, p.y - center.y
+	return dx * dx + dy * dy <= radius * radius and abs((p.z or 0) - (center.z or 0)) <= SPHERE_HEIGHT
+end
+
+-- Where to enter a sphere from p: SPHERE_ENTER of its radius from the
+-- centre (and no nearer than `least`), on p's side; p itself when p is
+-- already that far in.
+local function EntryPoint(center, radius, p, least)
+	return Tactics.Toward(center, p, max(radius * SPHERE_ENTER, least or 0))
+end
 local function EnemyCart(field, member) return field.carts[AiWar.EnemyOf(member.team)] end
 
 ROLES = {
@@ -190,9 +221,16 @@ ROLES = {
 		arrive = PUSH_ARRIVE,
 		leash = PUSH_LEASH,
 		rushes = true,
+		Sphere = function(field, member)
+			local cart = OwnCart(field, member)
+			if cart then return PushSphere(cart) end
+		end,
 		Goal = function(field, member)
 			local cart = OwnCart(field, member)
-			return cart and Ring(cart.pos, member.slot, Reach(cart))
+			if not cart then return nil end
+			if not member.pos then return Ring(cart.pos, member.slot, Reach(cart)) end
+			local center, radius = PushSphere(cart)
+			return EntryPoint(center, radius, member.pos, Reach(cart))
 		end,
 	},
 	-- A blocker (a shotgunner: the controller arms it) patrols behind the
@@ -214,22 +252,27 @@ ROLES = {
 			return cart.track:Offset(cart.distance + max(BLOCK_LEAD, Reach(cart)) + row * BLOCK_DEPTH, lateral)
 		end,
 	},
-	-- An escort follows its cart as HL2's rebels follow Gordon (the port's
-	-- FollowCart: the engine's follow behaviour, in formation, fighting as
-	-- it goes); a soldier that cannot establishes its line at a post pushed
-	-- ahead of its cart (field.forwardPosts), else leads the cart.
+	-- An escort keeps inside the support sphere around its cart, and there
+	-- fights as its tactics and its engine's AI see fit (the port's
+	-- FollowCart, HL2's follow behaviour, first when it has it).
 	[AiWar.ESCORT] = {
 		name = "Escort",
 		follows = true,
 		tactic = "attack",
+		free = true,
 		arrive = ESCORT_ARRIVE,
 		leash = ESCORT_LEASH,
 		rushes = false,
-		Goal = function(field, member)
-			local posts = field.forwardPosts and field.forwardPosts[member.team]
-			if posts and posts[member.slot + 1] then return posts[member.slot + 1] end
+		Sphere = function(field, member)
 			local cart = OwnCart(field, member)
-			return cart and cart.track:Offset(cart.distance + ESCORT_LEAD, Lateral(member.slot))
+			if cart then return SupportSphere(cart) end
+		end,
+		Goal = function(field, member)
+			local cart = OwnCart(field, member)
+			if not cart then return nil end
+			local center, radius = SupportSphere(cart)
+			if not member.pos then return cart.track:Offset(cart.distance + ESCORT_LEAD, Lateral(member.slot)) end
+			return EntryPoint(center, radius, member.pos)
 		end,
 	},
 	-- EstablishLine: a post found for the defenders (field.posts, from
@@ -638,6 +681,10 @@ function Travel:Update(me)
 	state.goal = goal
 	local range = me:RangeTo(goal)
 	if range <= role.arrive then return self:End("arrived") end
+	if role.Sphere and not self.spot and not (field and field.setup) then
+		local center, radius = role.Sphere(field, state.member)
+		if center and InSphere(me:Position(), center, radius) then return self:End("in its sphere") end
+	end
 	if not role.rushes and me:HasEnemy() and range <= role.leash then return self:End("engaging") end
 	if self.detour then
 		if me:Now() < self.detourUntil and me:RangeTo(self.detour) > WAYPOINT_RADIUS then
@@ -783,6 +830,16 @@ function Objective:Update(me)
 		local contact = TeamContact(state, me)
 		if contact then return self:Fight(me, goal, contact) end
 		self:EndFight()
+	end
+	-- inside its sphere: a pusher holds, an escort is free
+	if self.role.Sphere and not field.setup then
+		local center, radius = self.role.Sphere(field, state.member)
+		state.inSphere = center ~= nil and InSphere(me:Position(), center, radius)
+		if state.inSphere then
+			state.goal = center
+			if self.role.free then me:Release() else me:Hold() end
+			return self:Continue()
+		end
 	end
 	local patrols = self.role.patrols == true or (self.role.patrols == "setup" and field.setup)
 	if not patrols and self.anchor then
