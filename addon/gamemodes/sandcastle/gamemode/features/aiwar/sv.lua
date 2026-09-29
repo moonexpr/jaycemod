@@ -136,13 +136,42 @@ end
 -- a little (the cart) would make the NPC stutter.
 local MOVE_RETARGET = 24
 
+-- A nav area over stairs is a ramp, while the steps under it are not, so
+-- a point taken from the mesh can lie inside a step; the engine refuses a
+-- run to a point in solid ground. The target is dropped onto the floor
+-- found by a trace down from above it, or kept when no floor is found.
+local FLOOR_ABOVE, FLOOR_BELOW, FLOOR_CLEARANCE = 32, 64, 2
+
+local function OnFloor(pos)
+	local tr = util.TraceLine({
+		start = pos + Vector(0, 0, FLOOR_ABOVE),
+		endpos = pos - Vector(0, 0, FLOOR_BELOW),
+		mask = MASK_NPCSOLID_BRUSHONLY,
+	})
+	if tr.StartSolid or not tr.Hit then return pos end
+	return tr.HitPos + Vector(0, 0, FLOOR_CLEARANCE)
+end
+
 function Soldier:MoveTo(p)
 	local ent = self.ent
 	local current = self.moveTarget
 	if current and Track.Distance(current, p) < MOVE_RETARGET and ent:IsCurrentSchedule(SCHED_FORCED_GO_RUN) then return end
 	self.moveTarget = p
-	ent:SetLastPosition(ToVector(p))
+	ent:SetLastPosition(OnFloor(ToVector(p)))
 	ent:SetSchedule(SCHED_FORCED_GO_RUN)
+end
+
+-- For the report: whether the forced run is on, or ended away from its
+-- target, which means the engine could not build a way there.
+local RUN_ENDED_NEAR = 48
+
+function Soldier:RunState()
+	if self.moveTarget == nil then return nil end
+	if self.ent:IsCurrentSchedule(SCHED_FORCED_GO_RUN) then
+		return string.format("running at %d u/s", math.floor(self.ent:GetVelocity():Length2D()))
+	end
+	if self:RangeTo(self.moveTarget) > RUN_ENDED_NEAR then return "run refused by the engine" end
+	return "at its run target"
 end
 
 function Soldier:Release()
@@ -445,7 +474,7 @@ function Controller:Describe(ent, entry)
 	return string.format("%s %s | %s | %s | %s | %s | last trip: %s%s%s",
 		TEAM_LABEL[entry.soldier.team], ent:GetClass(), role, entry.npc:Describe(), route, goal,
 		state.trip or "none",
-		entry.soldier.moveTarget and " | running" or "",
+		entry.soldier:RunState() and (" | " .. entry.soldier:RunState()) or "",
 		entry.soldier:HasEnemy() and " | enemy in sight" or "")
 end
 
