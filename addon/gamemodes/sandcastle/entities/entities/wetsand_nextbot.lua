@@ -342,13 +342,15 @@ function ENT:GetGroundSpeed() return self.motion.GetGroundSpeed(self) end
 local FollowPath = {}
 FollowPath.__index = FollowPath
 
+-- A path profile measures the compute; the nbdebug feature, watching this
+-- NPC, has it reported (the npc controller's ObserveCompute).
 function FollowPath:Compute(goal)
-	local bot = self.bot
-	local profile = bot.npcs:PathProfile()
-	if not profile then return self.path:Compute(bot, goal, bot.pathCost) end
-	return bot.npcs:MeasureCompute(profile, bot.Variant, bot, function()
-		return self.path:Compute(bot, goal, bot.pathCost)
-	end)
+	local bot, npcs = self.bot, self.bot.npcs
+	local profile, watch = npcs:PathProfile(), npcs:PathWatch(bot)
+	if not (profile or watch) then return self.path:Compute(bot, goal, bot.pathCost) end
+	local function compute() return self.path:Compute(bot, goal, bot.pathCost) end
+	if watch then return npcs:ObserveCompute(watch, bot, self.path, goal, compute) end
+	return npcs:MeasureCompute(profile, bot.Variant, bot, compute)
 end
 function FollowPath:Update() self.path:Update(self.bot) end
 function FollowPath:GetAge() return self.path:GetAge() end
