@@ -808,7 +808,7 @@ How the maps drive them:
 
 Parts are loaded lazily per index (`require` of `set.Strategy(index)`).
 
-**`foundation.spells.tf2`**, the TF2 set (`g_NormalSpellList`, `g_RareSpellList`,
+**`foundation.spells.halloween`**, the TF2 set (`g_NormalSpellList`, `g_RareSpellList`,
 `g_generalSpellIndexList`):
 
 - Indices: `SPELL_FIREBALL=0, SPELL_BATS=1, SPELL_OVERHEAL=2, SPELL_MIRV=3,
@@ -1103,7 +1103,7 @@ clock and a scripted random source.
     accepted;
   - casting spends a charge and respects the 0.5 s cooldown;
   - a failed spawn_boss keeps the spell.
-- `spells_tf2_test`: COUNT; charges and kinds; `COMMON_ROLL` has 27 entries
+- `spells_halloween_test`: COUNT; charges and kinds; `COMMON_ROLL` has 27 entries
   with the right counts; a rare roll gives only 7–11.
 - `spells_cast_test`: each self spell's effects on `fake_caster`, and each
   projectile spell's launch parameters and Impact effects, with their numbers.
@@ -1174,7 +1174,7 @@ These are TF2 content and stay TF2's:
 
 - the variants `zombie`, `halloween_boss`, `headless_hatman`, `eyeball_boss`
   and `tag`;
-- `foundation.spells.tf2` and its strategies;
+- `foundation.spells.halloween` and its strategies;
 - `foundation.holiday.halloween` and `.fortune`;
 - the hazard variants;
 - every `tf_*` and `halloween_*` binding.
