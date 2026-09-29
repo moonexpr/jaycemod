@@ -14,6 +14,7 @@ local TFBot = WETSAND.require("foundation.npc.path.tfbot")
 local HL2Path = WETSAND.require("foundation.npc.path.hl2")
 local Posts = WETSAND.require("foundation.aiwar.posts")
 local Zone = WETSAND.require("foundation.aiwar.zone")
+local Tactics = WETSAND.require("foundation.aiwar.tactics")
 
 local ACTIVE_KEY = "wetsand.aiwar" -- Global2: the Utilities menu reads it
 local THINK_INTERVAL = 0.25
@@ -1375,7 +1376,25 @@ function Controller:SendDebug(now)
 	for ent, entry in pairs(self.soldiers) do
 		if IsValid(ent) then list[#list + 1] = { ent = ent, entry = entry } end
 	end
+	-- fire teams in contact: where they last saw the enemy, their flank point
+	local teams, teamIndex = {}, {}
+	for _, fireTeam in ipairs(self.war.fireTeams) do
+		local contact = Tactics.Contact(fireTeam, now)
+		if contact and #teams < 255 then
+			teams[#teams + 1] = { fireTeam = fireTeam, contact = contact }
+			teamIndex[fireTeam] = #teams
+		end
+	end
 	net.Start(DEBUG_NET)
+	net.WriteUInt(#teams, 8)
+	for _, item in ipairs(teams) do
+		local fireTeam = item.fireTeam
+		net.WriteUInt(fireTeam.team, 3)
+		net.WriteString(string.format("%s %d", fireTeam.role, fireTeam.index))
+		net.WriteVector(ToVector(item.contact.pos))
+		net.WriteBool(fireTeam.flank ~= nil and not fireTeam.flankDone)
+		if fireTeam.flank and not fireTeam.flankDone then net.WriteVector(ToVector(fireTeam.flank)) end
+	end
 	net.WriteUInt(#list, 8)
 	for _, item in ipairs(list) do
 		local state = item.entry.npc:State()
@@ -1391,6 +1410,12 @@ function Controller:SendDebug(now)
 		local last = math.min(#route, first + DEBUG_MAX_POINTS - 1)
 		net.WriteUInt(math.max(0, last - first + 1), 8)
 		for i = first, last do net.WriteVector(ToVector(route[i])) end
+		-- its fight: fire team (1-based in the list above, 0 for none), element, cover
+		local fireTeam = state.fighting and state.member and state.member.fireTeam
+		net.WriteUInt(fireTeam and teamIndex[fireTeam] or 0, 8)
+		net.WriteBool(state.element == "moving")
+		net.WriteBool(state.coverSpot ~= nil)
+		if state.coverSpot then net.WriteVector(ToVector(state.coverSpot)) end
 	end
 	net.Send(viewers)
 end

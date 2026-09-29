@@ -64,7 +64,7 @@ end
 local DEBUG_NET = "wetsand_aiwar_debug"
 local DEBUG_STALE = 2
 local DEBUG_TEXT_HEIGHT = 80
-local debug = { soldiers = {}, received = 0 }
+local debug = { soldiers = {}, teams = {}, received = 0 }
 
 -- Brighter than the teams' HUD colours, to read over any map.
 local DEBUG_COLOR = { [WETSAND.TEAM_RED] = Color(255, 90, 90), [WETSAND.TEAM_BLUE] = Color(110, 175, 255) }
@@ -75,16 +75,33 @@ surface.CreateFont("WetsandAiwarHeading", { font = "Tahoma", size = 15, weight =
 surface.CreateFont("WetsandAiwarDetail", { font = "Tahoma", size = 13, weight = 500 })
 
 net.Receive(DEBUG_NET, function()
-	local soldiers = {}
+	local teams, soldiers = {}, {}
+	for i = 1, net.ReadUInt(8) do
+		local fireTeam = { team = net.ReadUInt(3), name = net.ReadString(), contact = net.ReadVector() }
+		if net.ReadBool() then fireTeam.flank = net.ReadVector() end
+		teams[i] = fireTeam
+	end
 	for i = 1, net.ReadUInt(8) do
 		local soldier = { ent = net.ReadEntity(), team = net.ReadUInt(3), heading = net.ReadString(), details = {}, route = {} }
 		for j = 1, net.ReadUInt(4) do soldier.details[j] = net.ReadString() end
 		if net.ReadBool() then soldier.goal = net.ReadVector() end
 		for j = 1, net.ReadUInt(8) do soldier.route[j] = net.ReadVector() end
+		soldier.fireTeam = teams[net.ReadUInt(8)]
+		soldier.moving = net.ReadBool()
+		if net.ReadBool() then soldier.cover = net.ReadVector() end
 		soldiers[i] = soldier
 	end
-	debug.soldiers, debug.received = soldiers, CurTime()
+	debug.teams, debug.soldiers, debug.received = teams, soldiers, CurTime()
 end)
+
+-- The tactics markers: contacts in amber, cover spots in green, flank
+-- points as diamonds in the team's colour.
+local CONTACT_COLOR, COVER_COLOR = Color(255, 190, 40), Color(90, 230, 120)
+local COVER_BOX, FLANK_BOX, FLANK_ANGLE = Vector(8, 8, 8), Vector(14, 14, 14), Angle(45, 45, 0)
+
+local function Dim(color)
+	return Color(color.r * 0.45, color.g * 0.45, color.b * 0.45)
+end
 
 local function DebugLive()
 	return CurTime() - debug.received < DEBUG_STALE
@@ -101,6 +118,22 @@ hook.Add("PostDrawTranslucentRenderables", "wetsand_aiwar_debug", function(depth
 				from = point + Vector(0, 0, 8)
 			end
 			if soldier.goal then render.DrawWireframeSphere(soldier.goal, 16, 8, 8, color, false) end
+			if soldier.cover then render.DrawWireframeBox(soldier.cover, angle_zero, -COVER_BOX, COVER_BOX, COVER_COLOR, false) end
+			-- in a fight: a line to its team's contact, bright moving, dim holding
+			if soldier.fireTeam then
+				local body = soldier.ent:GetPos() + Vector(0, 0, 40)
+				render.DrawLine(body, soldier.fireTeam.contact, soldier.moving and color or Dim(color), false)
+			end
+		end
+	end
+	-- each fire team in contact: the enemy's last seen place, its flank point
+	for _, fireTeam in ipairs(debug.teams) do
+		local color = DEBUG_COLOR[fireTeam.team] or color_white
+		render.DrawWireframeSphere(fireTeam.contact, 24, 6, 6, CONTACT_COLOR, false)
+		render.DrawLine(fireTeam.contact, fireTeam.contact + Vector(0, 0, 96), CONTACT_COLOR, false)
+		if fireTeam.flank then
+			render.DrawWireframeBox(fireTeam.flank, FLANK_ANGLE, -FLANK_BOX, FLANK_BOX, color, false)
+			render.DrawLine(fireTeam.contact, fireTeam.flank, Dim(color), false)
 		end
 	end
 end)
@@ -163,6 +196,20 @@ hook.Add("HUDPaint", "wetsand_aiwar_debug", function()
 	local rects = Overlay.Layout(boxes)
 	-- farthest first, so a leader line never crosses a nearer box
 	for i = #shown, 1, -1 do DrawSoldierBox(shown[i], rects[i], shown[i].anchor) end
+	for _, fireTeam in ipairs(debug.teams) do
+		local screen = (fireTeam.contact + Vector(0, 0, 104)):ToScreen()
+		if screen.visible then
+			draw.SimpleTextOutlined("contact: " .. fireTeam.name, "WetsandAiwarDetail", screen.x, screen.y,
+				DEBUG_COLOR[fireTeam.team] or color_white, TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM, 1, color_black)
+		end
+		if fireTeam.flank then
+			screen = (fireTeam.flank + Vector(0, 0, 24)):ToScreen()
+			if screen.visible then
+				draw.SimpleTextOutlined("flank: " .. fireTeam.name, "WetsandAiwarDetail", screen.x, screen.y,
+					DEBUG_COLOR[fireTeam.team] or color_white, TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM, 1, color_black)
+			end
+		end
+	end
 end)
 
 hook.Add("PopulateToolMenu", "wetsand_aiwar", function()

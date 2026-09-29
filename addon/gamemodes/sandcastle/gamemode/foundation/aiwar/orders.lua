@@ -20,7 +20,10 @@
 --                          the soldier stops moving
 --
 -- For the war report, a soldier's state shows its goal, route and waypoint
--- (goal, route, routeIndex) and how its last trip ended (trip).
+-- (goal, route, routeIndex) and how its last trip ended (trip); in a fight,
+-- the goal is the tactical destination (flank point, bound spot, cover), with
+-- the tactic, the member's element ("moving" or "holding") and the cover spot
+-- it chose, if any (tactic, element, coverSpot).
 local abs, ceil, cos, floor, min, sin, sqrt = math.abs, math.ceil, math.cos, math.floor, math.min, math.sin, math.sqrt
 local pairs = pairs
 local N = require("foundation.npc")
@@ -648,7 +651,8 @@ function Objective:Attack(me, goal, contact, fireTeam, now)
 			fireTeam.flankUntil = now + FLANK_TIME
 		end
 		if now < fireTeam.flankUntil and me:RangeTo(fireTeam.flank) > FLANK_ARRIVE then
-			state.tactic = "flanking"
+			state.tactic, state.element = "flanking", "moving"
+			state.goal, state.coverSpot = fireTeam.flank, nil
 			me:MoveTo(fireTeam.flank, RUN)
 			return self:Continue()
 		end
@@ -659,21 +663,24 @@ function Objective:Attack(me, goal, contact, fireTeam, now)
 	Tactics.UpdateBound(fireTeam, members, now)
 	local bound = fireTeam.bound
 	if Tactics.Element(state.member) ~= bound.moving then
-		state.tactic = "overwatch"
+		state.tactic, state.element = "overwatch", "holding"
+		state.goal, state.coverSpot = me:Position(), nil
 		me:Hold()
 		return self:Continue()
 	end
 	if self.boundFor ~= bound then
 		local ahead = Tactics.Toward(me:Position(), goal, Tactics.BOUND_DISTANCE)
-		self.boundSpot = me:CoverSpot(ahead, BOUND_RADIUS, contact.pos) or ahead
+		self.boundCover = me:CoverSpot(ahead, BOUND_RADIUS, contact.pos)
+		self.boundSpot = self.boundCover or ahead
 		self.boundFor = bound
 	end
+	state.goal, state.coverSpot = self.boundSpot, self.boundCover
 	if me:RangeTo(self.boundSpot) <= SPOT_ARRIVE then
 		Tactics.Arrived(fireTeam, state.member)
-		state.tactic = "bounded; covering"
+		state.tactic, state.element = "bounded; covering", "holding"
 		me:Hold()
 	else
-		state.tactic = "bounding"
+		state.tactic, state.element = "bounding", "moving"
 		me:MoveTo(self.boundSpot, RUN)
 	end
 	return self:Continue()
@@ -687,11 +694,19 @@ function Objective:Defend(me, post, contact, fireTeam, now)
 	local steps = fireTeam.fallback or 0
 	if not self.cover or self.coverSteps ~= steps or me:HurtSince(self.coverAt) then
 		local anchor = Tactics.FallbackPoint(post, contact.pos, steps)
-		self.cover = me:CoverSpot(anchor, COVER_RADIUS, contact.pos, self.cover) or anchor
+		local spot = me:CoverSpot(anchor, COVER_RADIUS, contact.pos, self.cover)
+		self.cover, self.coverFound = spot or anchor, spot ~= nil
 		self.coverAt, self.coverSteps = now, steps
 	end
 	state.tactic = steps > 0 and ("falling back, step " .. steps) or "holding cover"
-	if me:RangeTo(self.cover) > SPOT_ARRIVE then me:MoveTo(self.cover, RUN) else me:Hold() end
+	state.goal, state.coverSpot = self.cover, self.coverFound and self.cover or nil
+	if me:RangeTo(self.cover) > SPOT_ARRIVE then
+		state.element = "moving"
+		me:MoveTo(self.cover, RUN)
+	else
+		state.element = "holding"
+		me:Hold()
+	end
 	return self:Continue()
 end
 
@@ -699,8 +714,8 @@ end
 function Objective:EndFight()
 	local state = self.state
 	if not state.fighting then return end
-	state.fighting, state.tactic = false, nil
-	self.boundSpot, self.boundFor, self.cover = nil, nil, nil
+	state.fighting, state.tactic, state.element, state.coverSpot = false, nil, nil, nil
+	self.boundSpot, self.boundFor, self.boundCover, self.cover, self.coverFound = nil, nil, nil, nil, nil
 	local fireTeam = state.member.fireTeam
 	if fireTeam then
 		Tactics.Stand(fireTeam)
