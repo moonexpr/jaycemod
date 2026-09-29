@@ -43,6 +43,7 @@ local AiWar = require("foundation.aiwar")
 local Track = require("foundation.aiwar.track")
 local Tactics = require("foundation.aiwar.tactics")
 local Squad = require("foundation.aiwar.squad")
+local Lanes = require("foundation.aiwar.lanes")
 module(...)
 
 KIND = "aiwar"
@@ -599,6 +600,32 @@ end
 
 -- Straight at the goal, wherever it has moved to. A run that goes nowhere
 -- hands over to routes for a while.
+-- The lane waypoint a squad leader of a lane job makes for, or nil (no
+-- lane, not its leader, or the lane walked: then straight on to the goal,
+-- and not back onto that lane).
+function Travel:LaneTarget(me, goal)
+	local state = self.state
+	local member = state.member
+	local fireTeam = member.fireTeam
+	local lane = fireTeam and fireTeam.lane
+	if not lane or not Lanes.JOBS[member.role] or Squad.Kind(member) ~= "leader" or state.laneDone == lane then
+		state.onLane = nil
+		return nil
+	end
+	if state.lane ~= lane then state.lane, state.laneIndex = lane, 1 end
+	local here = me:Position()
+	state.laneIndex = Lanes.Next(lane, here, state.laneIndex)
+	local target = Lanes.Target(lane, here, state.laneIndex, goal)
+	if not target then state.laneDone = lane end
+	state.onLane = target ~= nil and fireTeam.laneIndex or nil
+	return target
+end
+
+-- A trip over: off any lane.
+function Travel:OnEnd(me)
+	self.state.onLane = nil
+end
+
 function Travel:Chase(me, goal)
 	if self:IsStuck(me) then
 		self.chaseBlockedUntil = me:Now() + CHASE_BACKOFF
@@ -687,6 +714,9 @@ function Travel:Update(me)
 		-- a step aside that moved counts as progress by itself
 		self.sidestep = nil
 	end
+	-- a squad leader on a lane walks it, waypoint by waypoint
+	local laneTarget = not self.spot and self:LaneTarget(me, goal)
+	if laneTarget then return self:Chase(me, laneTarget) end
 	-- an engine that plans its own routes keeps the goal: changing its target
 	-- to our waypoints would only restart its runs
 	if me:PlansRoutes() then return self:Chase(me, goal) end
@@ -817,15 +847,16 @@ function Objective:Update(me)
 		if contact then return self:Fight(me, goal, contact) end
 		self:EndFight()
 	end
-	-- inside its sphere, an escort is free
+	-- an offensive squad moves as one: its members follow their leader
+	if Lanes.JOBS[state.member.role] and not field.setup then
+		local following = self:FollowLeader(me)
+		if following then return following end
+	end
+	-- inside its sphere, an escort squad's leader roams it
 	if self.role.Sphere and not field.setup then
 		local center, radius = self.role.Sphere(field, state.member)
 		state.inSphere = center ~= nil and InSphere(me:Position(), center, radius)
-		if state.inSphere then
-			state.goal = center
-			me:Release()
-			return self:Continue()
-		end
+		if state.inSphere then return self:Roam(me, center, radius) end
 	end
 	local patrols = self.role.patrols == true or (self.role.patrols == "setup" and field.setup)
 	if not patrols and self.anchor then
@@ -864,6 +895,8 @@ function Objective:Update(me)
 		if range > STATION and me:CanWalkTo(goal) then me:MoveTo(goal, RUSH) else me:Release() end
 		return self:Continue()
 	end
+	-- a raider squad's leader at its goal roams round it
+	if self.role.raids and not field.setup and range <= self.role.arrive then return self:Roam(me, goal, RAID_ROAM) end
 	local fighting = me:HasEnemy() and range <= self.role.leash
 	if range <= self.role.arrive or fighting or me:Now() < self.retryAt then
 		me:Release()
@@ -940,6 +973,44 @@ local function LeaderOf(member)
 	if leader == nil or leader == member or leader.pos == nil then return nil end
 	return leader
 end
+
+-- Offensive squads (foundation.aiwar.lanes' JOBS) move as one, roaming
+-- their objective and fighting there together: a member follows its
+-- leader FOLLOW_SPACING per place behind it, loosely (within FOLLOW_SLACK
+-- it is left to fight as it will); a leader at the objective takes a new
+-- spot in it (the port's PatrolSpot) each time it has rested ROAM_REST
+-- at the last, or the objective moved away from it.
+FOLLOW_SPACING, FOLLOW_SLACK = 72, 96
+ROAM_REST, RAID_ROAM = 8, 350
+
+function Objective:FollowLeader(me)
+	local state, member = self.state, self.state.member
+	local leader = LeaderOf(member)
+	if not leader then return nil end
+	local spot = Tactics.Toward(leader.pos, me:Position(), FOLLOW_SPACING * ((member.place or 0) + 1))
+	state.tactic, state.goal = "following its leader", spot
+	if me:RangeTo(spot) > FOLLOW_SLACK then me:MoveTo(spot, RUN) else me:Release() end
+	return self:Continue()
+end
+
+function Objective:Roam(me, center, radius)
+	local state, now = self.state, me:Now()
+	local spot = self.roamSpot
+	local rested = self.roamRestUntil and now >= self.roamRestUntil
+	if not spot or rested or Distance(spot, center) > radius then
+		spot = me:PatrolSpot(center, radius) or center
+		self.roamSpot, self.roamRestUntil = spot, nil
+	end
+	state.tactic, state.goal = "roaming the objective", spot
+	if me:RangeTo(spot) > SPOT_ARRIVE then
+		me:MoveTo(spot, RUN)
+	else
+		self.roamRestUntil = self.roamRestUntil or now + ROAM_REST
+		me:Release()
+	end
+	return self:Continue()
+end
+
 
 -- A cover spot near center no one else holds, claimed for the member.
 function Objective:ClaimCover(me, center, radius, threat, exclude)

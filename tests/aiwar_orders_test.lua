@@ -493,6 +493,29 @@ T.test("squadmates never take the same cover", function()
 	T.eq(FS.Distance(s.npcA:State().coverSpot, s.npcB:State().coverSpot) > 1, true, "different spots")
 end)
 
+-- Lanes and following
+
+T.test("an offensive squad's member follows its leader, spaced by place", function()
+	local s = Squadmates({ role = AiWar.ESCORT, a = { pos = P(3000, 0) }, b = { pos = P(3500, 0) } })
+	s.Tick(2)
+	T.eq(s.npcB:State().tactic, "following its leader", "following")
+	Near(s.meB.moving, P(3000 + Orders.FOLLOW_SPACING * (s.b.place + 1), 0), "behind it")
+end)
+
+T.test("a squad leader walks its lane to its goal, then leaves it", function()
+	local field = Field({})
+	field.lanes = { [BLUE] = { key = "plan", { ids = { 1, 2, 3 }, points = { P(2500, 500), P(2000, 600), P(1500, 300) }, length = 1800 } } }
+	local s = Squadmates({ role = AiWar.ESCORT, field = field, a = { pos = P(3000, 0), walkable = function() return true end } })
+	s.war:SetField(field)
+	s.Tick(2)
+	T.eq(s.a.fireTeam.lane ~= nil, true, "the squad holds the lane")
+	Near(s.meA.moving, P(2500, 500), "the lane's first waypoint")
+	T.eq(s.npcA:State().onLane, 1, "on lane 1")
+	s.meA.pos = P(1500, 300)
+	s.Tick(2)
+	T.eq(s.npcA:State().onLane, nil, "walked: off the lane")
+end)
+
 T.test("a trip to the objective ends on contact, for the fight", function()
 	local me, npc = Enlist({ role = AiWar.ESCORT, pos = P(0, 0), walkable = function() return true end })
 	Tick(me, npc, 2)
@@ -717,13 +740,20 @@ T.test("a soldier that reaches its goal stops travelling and holds", function()
 end)
 
 
-T.test("an escort in its sphere is left to its own AI", function()
-	local me, npc = Enlist({ role = AiWar.ESCORT, pos = P(1300, 100) })
-	local releases = me.releases
+T.test("an escort squad's leader roams its sphere, resting at each spot", function()
+	local first, second = P(1400, 200), P(900, -300)
+	local me, npc = Enlist({ role = AiWar.ESCORT, pos = P(1300, 100), patrolSpots = { first, second } })
 	Tick(me, npc, 2)
 	T.eq(npc:State().inSphere, true, "in the support sphere")
-	T.eq(me.releases > releases, true, "released")
+	T.eq(npc:State().tactic, "roaming the objective", "roaming")
+	Near(me.moving, first, "to a spot in it")
 	T.eq(#me.requests, 0, "no trip")
+	me.pos = first
+	local releases = me.releases
+	Tick(me, npc)
+	T.eq(me.releases > releases, true, "resting there, free to fight")
+	Tick(me, npc, Orders.ROAM_REST / TICK + 1)
+	Near(me.moving, second, "then on to another")
 end)
 
 T.test("a defender that sees an enemy near its post fights instead of walking", function()
