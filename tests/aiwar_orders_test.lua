@@ -340,6 +340,34 @@ T.test("a stuck soldier first steps aside, then goes on along its new route", fu
 	T.eq(another, true, "the next step aside goes another way")
 end)
 
+T.test("a soldier stuck on something only NPCs collide with is let through it, and runs on", function()
+	local me, npc = Enlist({
+		role = AiWar.PUSH,
+		route = function() return { P(900, 0) } end,
+		passable = function() return true end,
+	})
+	Tick(me, npc, 2)
+	Tick(me, npc, (Orders.STUCK_TIME + TICK) / TICK)
+	T.eq(#me.passed, 1, "let through")
+	Near(me.passed[1], P(900, 0), "toward its waypoint")
+	T.eq(#me.requests, 1, "no new route needed")
+	Near(me.moving, P(900, 0), "running on")
+	T.eq(npc:State().passed, 1, "counted for the report")
+end)
+
+T.test("a soldier stuck while climbing hops at once, without stepping aside first", function()
+	local me, npc = Enlist({
+		role = AiWar.PUSH,
+		route = function() return { P(100, 0, 60), P(900, 0, 120) } end,
+		hoppable = function() return true end,
+	})
+	Tick(me, npc, 2)
+	Tick(me, npc, (Orders.STUCK_TIME + TICK) / TICK)
+	T.eq(#me.hops, 1, "hopped up")
+	T.eq(me.hops[1].z, 60, "onto the waypoint above")
+	T.eq(#me.requests, 1, "no step aside, no new route")
+end)
+
 T.test("a soldier stuck through every step aside hops toward its waypoint when a player could walk there", function()
 	local me, npc = Enlist({
 		role = AiWar.PUSH,

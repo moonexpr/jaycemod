@@ -65,6 +65,10 @@ SIDESTEP_DISTANCE, SIDESTEP_TIME = 96, 1.5
 -- up to this far toward the waypoint, where a player could walk (a brush
 -- only NPCs collide with, a lip their step cannot take).
 HOP_DISTANCE = 160
+-- A soldier stuck on a waypoint this much above its feet is climbing
+-- (stairs players take on a smooth clip ramp and NPCs on the steps), and
+-- hops at once rather than stepping aside first.
+CLIMB_RISE = 12
 RETRY_WAIT = 1 -- after a failed trip, before the next
 
 local Distance = Track.Distance
@@ -223,7 +227,7 @@ end
 -- A hop of up to HOP_DISTANCE toward the waypoint (or the goal) the
 -- soldier is stuck on, if the soldier port allows it there.
 function Travel:HopOn(me, goal)
-	local target = self.route and self.route[self.index] or goal
+	local target = self:StuckTarget(goal)
 	local here = me:Position()
 	local dx, dy, dz = target.x - here.x, target.y - here.y, target.z - here.z
 	local length = sqrt(dx * dx + dy * dy + dz * dz)
@@ -235,9 +239,23 @@ function Travel:HopOn(me, goal)
 	return true
 end
 
--- A step aside and a new route after getting stuck; after too many, a hop,
--- or the end of the trip.
+-- What the soldier is stuck heading for: its waypoint, or the goal it
+-- runs straight at.
+function Travel:StuckTarget(goal)
+	return self.route and self.route[self.index] or goal
+end
+
+-- Stuck: first, if what holds it is something only NPCs collide with, it
+-- is let through and runs on; otherwise a step aside and a new route;
+-- after too many, a hop, or the end of the trip.
 function Travel:Unstick(me, goal)
+	local target = self:StuckTarget(goal)
+	if me:PassBlocker(target) then
+		self.state.passed = (self.state.passed or 0) + 1
+		self:ResetProgress(me)
+		return self:Continue()
+	end
+	if target.z - me:Position().z > CLIMB_RISE and self:HopOn(me, goal) then return self:Continue() end
 	self.repaths = self.repaths + 1
 	if self.repaths > MAX_REPATHS then
 		if self:HopOn(me, goal) then return self:Continue() end

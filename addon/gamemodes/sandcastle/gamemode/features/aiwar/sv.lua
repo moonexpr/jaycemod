@@ -37,6 +37,23 @@ local RED, BLUE = WETSAND.TEAM_RED, WETSAND.TEAM_BLUE
 local function Point(v) return { x = v.x, y = v.y, z = v.z } end
 local function ToVector(p) return Vector(p.x, p.y, p.z) end
 
+-- Two entities that no longer collide, in physics or in an engine NPC's
+-- movement checks (CTraceFilterNav skips pairs in the engine's collision
+-- pair table, which logic_collision_pair fills, as Sandbox's No Collide
+-- does). The pair goes with either entity.
+local function PassThrough(a, b)
+	local physA, physB = a:GetPhysicsObject(), b:GetPhysicsObject()
+	if not (IsValid(physA) and IsValid(physB)) then return end
+	local pair = ents.Create("logic_collision_pair")
+	pair:SetKeyValue("startdisabled", "1")
+	pair:SetPhysConstraintObjects(physA, physB)
+	pair:Spawn()
+	pair:Activate()
+	pair:Input("DisableCollisions")
+	a:DeleteOnRemove(pair)
+	b:DeleteOnRemove(pair)
+end
+
 -------------------------------------------------------------------------------
 -- The soldier port (foundation.aiwar.soldier) over an engine NPC
 
@@ -52,6 +69,7 @@ function Soldier.New(ent, controller, team)
 		result = nil,
 		moveTarget = nil,
 		relations = {}, -- player -> disposition last set
+		passed = {}, -- blockers it was let through
 	}, Soldier)
 end
 
@@ -177,6 +195,33 @@ local HOP_MINS, HOP_MAXS = Vector(-13, -13, 0), Vector(13, 13, 72)
 local HOP_LIFT = Vector(0, 0, 18)
 local HOP_MAX_RISE = 64
 
+-- What stands between me and p for an NPC's movement (a soldier-sized box
+-- above step height, under the NPC's mask, teammates and the enemy aside),
+-- and whether a player would pass it (the same sweep under player
+-- movement's mask does not hit it).
+function Soldier:Blocker(p)
+	local controller = self.controller
+	local from, to = self.ent:GetPos() + HOP_LIFT, ToVector(p) + HOP_LIFT
+	local function NotSoldier(hit) return controller.soldiers[hit] == nil end
+	local hit = util.TraceHull({ start = from, endpos = to, mins = HOP_MINS, maxs = HOP_MAXS - HOP_LIFT, mask = MASK_NPCSOLID, filter = NotSoldier })
+	if not hit.Hit then return nil, false end
+	-- map geometry (func_detail is compiled into it) is the world
+	local blocker = hit.HitWorld and game.GetWorld() or hit.Entity
+	local function OnlyBlocker(other) return other == blocker end
+	local asPlayer = util.TraceHull({ start = from, endpos = to, mins = HOP_MINS, maxs = HOP_MAXS - HOP_LIFT, mask = MASK_PLAYERSOLID, filter = OnlyBlocker })
+	if hit.HitWorld then return blocker, not asPlayer.HitWorld end
+	return blocker, asPlayer.Entity ~= blocker
+end
+
+-- Let me through a blocker only NPCs collide with, once per blocker.
+function Soldier:PassBlocker(p)
+	local blocker, playersPass = self:Blocker(p)
+	if not playersPass or blocker:IsWorld() or blocker:IsNPC() or blocker:IsPlayer() or self.passed[blocker] then return false end
+	self.passed[blocker] = true
+	PassThrough(self.ent, blocker)
+	return true
+end
+
 function Soldier:Hop(p)
 	local ent, controller = self.ent, self.controller
 	local from, to = ent:GetPos(), OnFloor(ToVector(p))
@@ -257,19 +302,6 @@ end
 -- logic_collision_pair fills (as Sandbox's No Collide does), so a teammate
 -- in a doorway no longer blocks a soldier's run. Enemies still collide.
 -- Each pair goes with either of its soldiers.
-
-local function PassThrough(a, b)
-	local physA, physB = a:GetPhysicsObject(), b:GetPhysicsObject()
-	if not (IsValid(physA) and IsValid(physB)) then return end
-	local pair = ents.Create("logic_collision_pair")
-	pair:SetKeyValue("startdisabled", "1")
-	pair:SetPhysConstraintObjects(physA, physB)
-	pair:Spawn()
-	pair:Activate()
-	pair:Input("DisableCollisions")
-	a:DeleteOnRemove(pair)
-	b:DeleteOnRemove(pair)
-end
 
 function Controller:PassTeammates(ent, team)
 	for other, entry in pairs(self.soldiers) do
@@ -614,7 +646,34 @@ function Controller:Describe(ent, entry)
 		"Enemy: " .. (soldier:HasEnemy() and "in sight" or "none in sight"),
 	}
 	if state.hops then lines[#lines + 1] = "Hops: " .. state.hops end
+	if state.passed then lines[#lines + 1] = "Let through: " .. state.passed .. " NPC-only blocker(s)" end
+	local blocked = self:BlockedBy(soldier)
+	if blocked then lines[#lines + 1] = "Blocked by: " .. blocked end
 	return heading, lines
+end
+
+-- What holds a soldier that is running but barely moving, in words, or nil.
+local SLOW_RUN = 20
+
+local function DescribeBlocker(blocker)
+	if blocker:IsWorld() then return "map geometry (world brushes, func_detail among them)" end
+	local text = blocker:GetClass()
+	if blocker:GetName() ~= "" then text = text .. " '" .. blocker:GetName() .. "'" end
+	if blocker:GetClass() == "func_brush" then
+		text = text .. string.format(" (solidity %s, excluded NPC '%s', inverted %s)",
+			tostring(blocker:GetInternalVariable("m_iSolidity")), tostring(blocker:GetInternalVariable("m_iszExcludedClass")),
+			tostring(blocker:GetInternalVariable("m_bInvertExclusion")))
+	end
+	return text
+end
+
+function Controller:BlockedBy(soldier)
+	local target = soldier.moveTarget
+	if not target or not soldier.ent:IsCurrentSchedule(SCHED_FORCED_GO_RUN) then return nil end
+	if soldier.ent:GetVelocity():Length2D() > SLOW_RUN then return nil end
+	local blocker, playersPass = soldier:Blocker(target)
+	if not blocker then return "nothing in the way (the engine will not move it)" end
+	return DescribeBlocker(blocker) .. (playersPass and "; a player would pass" or "; blocks players too")
 end
 
 function Controller:Report()

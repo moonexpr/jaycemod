@@ -19,7 +19,9 @@ Soldier.__index = Soldier
 
 -- t = { now, pos, route = function(from, goal) -> points | false,
 -- routeDelay = polls before the answer, walkable = function(from, to) ->
--- bool, hoppable = function(from, to) -> bool (default: never) }. Without route, a route is the goal alone; without walkable,
+-- bool, hoppable = function(from, to) -> bool (default: never),
+-- passable = function(from, to) -> bool: a blocker only NPCs collide with
+-- stands between (default: never) }. Without route, a route is the goal alone; without walkable,
 -- nothing past the current waypoint counts as walkable.
 function Fake.Soldier(t)
 	t = t or {}
@@ -32,6 +34,8 @@ function Fake.Soldier(t)
 		routeDelay = t.routeDelay or 0,
 		walkable = t.walkable or function() return false end,
 		hoppable = t.hoppable or function() return false end,
+		passable = t.passable or function() return false end,
+		passed = {},
 		hops = {},
 		requests = {},
 		pending = nil,
@@ -65,6 +69,12 @@ function Soldier:RouteResult()
 end
 
 function Soldier:CanWalkTo(p) return self.walkable(self.pos, p) end
+
+function Soldier:PassBlocker(p)
+	if not self.passable(self.pos, p) then return false end
+	self.passed[#self.passed + 1] = p
+	return true
+end
 
 function Soldier:Hop(p)
 	if not self.hoppable(self.pos, p) then return false end

@@ -20,6 +20,8 @@
 --     same p again keeps the move going
 --   Release(): end any forced move, handing me back to the engine's own AI,
 --     which fights, takes cover or idles
+--   PassBlocker(p) -> whether something between me and p that only NPCs
+--     collide with (not players) was found and I may now pass through it
 --   Hop(p) -> whether I was set down at p: only where a player could walk
 --     from here to p, so never through a wall, door or gate
 module(...)
@@ -35,5 +37,6 @@ METHODS = {
 	"CanWalkTo",
 	"MoveTo",
 	"Release",
+	"PassBlocker",
 	"Hop",
 }
