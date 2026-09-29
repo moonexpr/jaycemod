@@ -2,10 +2,10 @@
 -- only spell CastSpell plays no cast wheel for.
 local require = require
 local Spells = require("foundation.spells")
-local Tf2 = require("foundation.spells.tf2")
+local SpellSet = require("foundation.spells.halloween")
 module(...)
 
-INDEX = Tf2.SPELL_STEALTH
+INDEX = SpellSet.SPELL_STEALTH
 
 HEAL = 40
 DURATION = 8
@@ -19,9 +19,9 @@ USE = {
 }
 
 function Cast(caster)
-	Tf2.CastSound(caster, INDEX)
+	SpellSet.CastSound(caster, INDEX)
 	local owner = caster:Owner()
 	caster:Heal(owner, HEAL)
-	caster:AddCond(owner, Tf2.COND.STEALTHED_USER_BUFF, DURATION)
+	caster:AddCond(owner, SpellSet.COND.STEALTHED_USER_BUFF, DURATION)
 	return true
 end

@@ -1,9 +1,9 @@
--- foundation.spells.tf2: TF2's spell set (g_NormalSpellList, g_RareSpellList,
+-- foundation.spells.halloween: TF2's spell set (g_NormalSpellList, g_RareSpellList,
 -- g_generalSpellIndexList) and the strategy parts it names.
 local T = dofile("tests/harness.lua")
-local Tf2 = T.require("foundation.spells.tf2")
+local SpellSet = T.require("foundation.spells.halloween")
 
-local S = Tf2
+local S = SpellSet
 
 local function Want(charges, kind, speedScale)
 	return {

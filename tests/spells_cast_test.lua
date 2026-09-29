@@ -4,7 +4,7 @@
 local T = dofile("tests/harness.lua")
 local Fake = dofile("tests/fake_caster.lua")
 local Spells = T.require("foundation.spells")
-local Tf2 = T.require("foundation.spells.tf2")
+local SpellSet = T.require("foundation.spells.halloween")
 local CasterPort = T.require("foundation.spells.caster")
 local Teams = T.require("foundation.teams")
 local Players = T.require("foundation.players")
@@ -109,7 +109,7 @@ T.test("a fireball flies from the hand along the eyes at the toss's speed", func
 	T.eq(Fireball.Cast(caster), true, "thrown")
 	local wheel = caster:Calls("Particle")[1]
 	T.eq(wheel.name, "spell_cast_wheel_red", "RED's cast wheel")
-	Near(wheel.pos, V(0, 0, Tf2.CAST_WHEEL_HEIGHT), "the wheel 100 above")
+	Near(wheel.pos, V(0, 0, SpellSet.CAST_WHEEL_HEIGHT), "the wheel 100 above")
 	local trace = caster:Calls("TraceHull")[1]
 	Near(trace.from, EYE, "the hull starts at the eyes")
 	Near(trace.to, HAND, "and ends at the hand")
@@ -117,7 +117,7 @@ T.test("a fireball flies from the hand along the eyes at the toss's speed", func
 	T.eq(caster:Calls("EmitSound")[1].name, "Halloween.spell_fireball_cast", "cast sound")
 	local launch = caster:Calls("LaunchProjectile")[1]
 	T.eq(launch.class, "tf_projectile_spellfireball", "class")
-	T.eq(launch.config.spell, Tf2.SPELL_FIREBALL, "spell index")
+	T.eq(launch.config.spell, SpellSet.SPELL_FIREBALL, "spell index")
 	T.eq(launch.config.team, RED, "team")
 	Near(launch.config.position, HAND, "from the hand")
 	Near(launch.config.velocity, V(JAR_VELOCITY:Length(), 0, 0), "straight along the eyes")
@@ -129,7 +129,7 @@ T.test("the toss's spread: 200 up, then +-10 right and up", function()
 	local launch = caster:Calls("LaunchProjectile")[1]
 	Near(launch.config.velocity, V(1000, -10, 190), "right +10 (right is -y), up -10")
 	T.eq(launch.class, "tf_projectile_spellbats", "class")
-	T.eq(launch.config.fuse, Tf2.JAR_FUSE, "a jar's fuse")
+	T.eq(launch.config.fuse, SpellSet.JAR_FUSE, "a jar's fuse")
 end)
 
 T.test("a jar flies with the toss's velocity; lightning at 0.4 of the speed with a 5 s fuse", function()
@@ -373,7 +373,7 @@ end)
 T.test("a thrown spell whose thrower cannot use it plays the deny sound", function()
 	local caster = NewCaster({ owner = Owner({ alive = false }) })
 	Shot(Teleport, Teleport.PROJECTILE):Impact(caster, Impact({}))
-	T.eq(Names(caster:Calls("EmitSound")), Tf2.DENY_SOUND, "deny")
+	T.eq(Names(caster:Calls("EmitSound")), SpellSet.DENY_SOUND, "deny")
 	T.eq(#caster:Calls("Heal"), 0, "no heal")
 	T.eq(#caster:Calls("Teleport"), 0, "no teleport")
 end)
@@ -393,7 +393,7 @@ T.test("mirv: six pumpkin bomblets at the fixed offsets with staggered fuses", f
 	}
 	for i, launch in ipairs(launches) do
 		T.eq(launch.class, "tf_projectile_spellpumpkin", "bomblet class")
-		T.eq(launch.config.spell, Tf2.SPELL_MIRV, "still the mirv's")
+		T.eq(launch.config.spell, SpellSet.SPELL_MIRV, "still the mirv's")
 		Near(launch.config.velocity, offsets[i], "offset " .. i)
 		Near(launch.config.position, V(10, 20, 1), "from the impact")
 		T.near(launch.config.fuse, 2 + 0.05 * (i - 1), EPSILON, "fuse " .. i)
@@ -472,7 +472,7 @@ T.test("teleport: to the newest spot the caster fits, starting 50 off the surfac
 	local cramped = NewCaster({ fits = function() return false end })
 	Shot(Teleport, Teleport.PROJECTILE, {}, 0):Impact(cramped, Impact({}))
 	T.eq(#cramped:Calls("Teleport"), 0, "nowhere fits: no teleport")
-	T.eq(Names(cramped:Calls("EmitSound")), Tf2.DENY_SOUND, "deny")
+	T.eq(Names(cramped:Calls("EmitSound")), SpellSet.DENY_SOUND, "deny")
 	T.eq(#cramped:Calls("Heal"), 1, "the heal came first")
 end)
 
@@ -560,7 +560,7 @@ T.test("meteor shower: lands a spawner that drops 1-2 meteors every 0.2 s for 4 
 	T.eq(caster:Calls("EmitSound")[1].name, "Halloween.spell_meteor_impact", "sound")
 	local spawner = caster:Calls("Spawn")[1]
 	T.eq(spawner.class, Meteor.SPAWNER, "the spawner")
-	T.eq(spawner.config.spell, Tf2.SPELL_METEOR, "the meteor's")
+	T.eq(spawner.config.spell, SpellSet.SPELL_METEOR, "the meteor's")
 	Near(spawner.config.normal, V(0, 0, 1), "with the surface's normal")
 
 	local rain = NewCaster({ random = Fake.Random({ 0.99 }) })
@@ -573,7 +573,7 @@ T.test("meteor shower: lands a spawner that drops 1-2 meteors every 0.2 s for 4 
 	local meteors = rain:Calls("LaunchProjectile")
 	T.eq(#meteors, 2, "two this time")
 	T.eq(meteors[1].class, Meteor.METEOR, "fireballs")
-	T.eq(meteors[1].config.spell, Tf2.SPELL_METEOR, "the meteor's")
+	T.eq(meteors[1].config.spell, SpellSet.SPELL_METEOR, "the meteor's")
 	T.eq(meteors[1].config.velocity.z, -700, "falling at 700")
 	T.eq(meteors[1].config.velocity.x <= 75, true, "sideways at most 75")
 	T.eq(meteors[1].config.position.z >= 1 + 400 and meteors[1].config.position.z <= 1 + 500, true, "400-500 up")
@@ -589,7 +589,7 @@ end)
 T.test("meteor shower under a ceiling drops from 45-60 below it", function()
 	local caster = NewCaster({ random = Fake.Random({ 0 }) })
 	local shot = Shot(Meteor, Meteor.SPAWNER, {
-		spell = Tf2.SPELL_METEOR,
+		spell = SpellSet.SPELL_METEOR,
 		normal = V(0, 0, -1),
 		team = RED,
 	}, 0)
@@ -612,7 +612,7 @@ T.test("meteor shower: a blocked drop point is pulled back off the surface", fun
 		end,
 	})
 	local shot = Shot(Meteor, Meteor.SPAWNER, {
-		spell = Tf2.SPELL_METEOR,
+		spell = SpellSet.SPELL_METEOR,
 		normal = V(0, 0, 1),
 		team = RED,
 	}, 0)
@@ -626,7 +626,7 @@ end)
 T.test("meteor shower stops when its caster changes team", function()
 	local caster = NewCaster({ owner = Owner({ team = BLUE }) })
 	local shot = Shot(Meteor, Meteor.SPAWNER, {
-		spell = Tf2.SPELL_METEOR,
+		spell = SpellSet.SPELL_METEOR,
 		normal = V(0, 0, 1),
 		team = RED,
 	}, 0)
@@ -701,7 +701,7 @@ T.test("spawn boss with no room: refunded, with the deny sound", function()
 	local outcome = Shot(SpawnBoss, SpawnBoss.PROJECTILE):Impact(caster, Impact({}))
 	T.eq(outcome, Spells.REFUND, "refund")
 	T.eq(#caster:Calls("TraceHull"), 5, "five spots tried")
-	T.eq(Names(caster:Calls("EmitSound")), Tf2.DENY_SOUND, "deny")
+	T.eq(Names(caster:Calls("EmitSound")), SpellSet.DENY_SOUND, "deny")
 end)
 
 T.test("skeleton horde: three skull grenades of the caster's team", function()

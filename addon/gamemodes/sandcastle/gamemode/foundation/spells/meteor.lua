@@ -7,13 +7,13 @@
 local require = require
 local Teams = require("foundation.teams")
 local Spells = require("foundation.spells")
-local Tf2 = require("foundation.spells.tf2")
+local SpellSet = require("foundation.spells.halloween")
 local Fireball = require("foundation.spells.fireball")
 module(...)
 
-INDEX = Tf2.SPELL_METEOR
+INDEX = SpellSet.SPELL_METEOR
 PROJECTILE = "tf_projectile_spellmeteorshower"
-FLIGHT = Tf2.JAR_FLIGHT
+FLIGHT = SpellSet.JAR_FLIGHT
 SPAWNER = "tf_spell_meteorshowerspawner"
 METEOR = Fireball.PROJECTILE
 
@@ -36,15 +36,15 @@ TENDRILS = {
 
 USE = {
 	kind = Spells.USE_ATTACK,
-	range = Tf2.THROW_RANGE,
+	range = SpellSet.THROW_RANGE,
 	radius = RANGE + Fireball.RADIUS,
 	needsLineOfSight = true,
 	selfOnly = false,
 }
 
 function Cast(caster)
-	Tf2.CastWheel(caster)
-	return Tf2.Toss(caster, _M)
+	SpellSet.CastWheel(caster)
+	return SpellSet.Toss(caster, _M)
 end
 
 function NewShot(class, config, now)

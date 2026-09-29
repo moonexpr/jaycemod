@@ -5,11 +5,11 @@
 local require = require
 local Teams = require("foundation.teams")
 local Spells = require("foundation.spells")
-local Tf2 = require("foundation.spells.tf2")
+local SpellSet = require("foundation.spells.halloween")
 local ipairs, min = ipairs, math.min
 module(...)
 
-INDEX = Tf2.SPELL_LIGHTNING
+INDEX = SpellSet.SPELL_LIGHTNING
 PROJECTILE = "tf_projectile_lightningorb"
 LIFETIME = 5 -- ExplodeAndRemoveThink
 FLIGHT = { fuse = LIFETIME }
@@ -38,15 +38,15 @@ BURST = {
 
 USE = {
 	kind = Spells.USE_ATTACK,
-	range = Tf2.PROJECTILE_SPEED * Tf2.Definition(INDEX).speedScale * LIFETIME,
+	range = SpellSet.PROJECTILE_SPEED * SpellSet.Definition(INDEX).speedScale * LIFETIME,
 	radius = RADIUS,
 	needsLineOfSight = true,
 	selfOnly = false,
 }
 
 function Cast(caster)
-	Tf2.CastWheel(caster)
-	return Tf2.Toss(caster, _M)
+	SpellSet.CastWheel(caster)
+	return SpellSet.Toss(caster, _M)
 end
 
 function NewShot(class, config, now)
@@ -71,9 +71,9 @@ local function Zap(caster, where, count)
 	for _, target in ipairs(list) do
 		if hits >= count then break end
 		if caster:IsAlive(target) and caster:TeamOf(target) ~= caster:TeamOf(owner)
-			and caster:IsVisible(where.position, caster:Origin(target)) and not Tf2.Spared(caster, target) then
+			and caster:IsVisible(where.position, caster:Origin(target)) and not SpellSet.Spared(caster, target) then
 			caster:Tracer(HIT[where.team], where.position, caster:EyePosition(target))
-			caster:Damage(target, DAMAGE, Tf2.DMG_BURN, where.projectile)
+			caster:Damage(target, DAMAGE, SpellSet.DMG_BURN, where.projectile)
 			hits = hits + 1
 		end
 	end

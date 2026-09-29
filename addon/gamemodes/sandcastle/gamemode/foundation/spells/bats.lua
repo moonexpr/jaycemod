@@ -5,12 +5,12 @@
 local require = require
 local Teams = require("foundation.teams")
 local Spells = require("foundation.spells")
-local Tf2 = require("foundation.spells.tf2")
+local SpellSet = require("foundation.spells.halloween")
 module(...)
 
-INDEX = Tf2.SPELL_BATS
+INDEX = SpellSet.SPELL_BATS
 PROJECTILE = "tf_projectile_spellbats"
-FLIGHT = Tf2.JAR_FLIGHT
+FLIGHT = SpellSet.JAR_FLIGHT
 
 RADIUS = 250
 STUN_TIME, STUN_SLOW = 0.5, 0.5
@@ -31,30 +31,30 @@ SWARM = {
 
 USE = {
 	kind = Spells.USE_ATTACK,
-	range = Tf2.THROW_RANGE,
+	range = SpellSet.THROW_RANGE,
 	radius = RADIUS,
 	needsLineOfSight = true,
 	selfOnly = false,
 }
 
 function Cast(caster)
-	Tf2.CastWheel(caster)
-	return Tf2.Toss(caster, _M)
+	SpellSet.CastWheel(caster)
+	return SpellSet.Toss(caster, _M)
 end
 
 -- ExplodeEffectOnTarget
 local function OnTarget(caster, impact, target)
-	if caster:TeamOf(target) == impact.team or Tf2.Spared(caster, target) then return end
+	if caster:TeamOf(target) == impact.team or SpellSet.Spared(caster, target) then return end
 	local away = (caster:Center(target) - impact.position):GetNormalized()
 	if caster:IsPlayer(target) then
 		caster:Stun(target, STUN_TIME, STUN_SLOW)
 		caster:Push(target, away * PUSH + caster:Vector(0, 0, LIFT))
 		caster:AttachParticle(SWARM[impact.team], target)
-		caster:AddCond(target, Tf2.COND.BLEEDING, BLEED_TIME)
+		caster:AddCond(target, SpellSet.COND.BLEEDING, BLEED_TIME)
 	else
 		caster:Push(target, away * NPC_PUSH)
 	end
-	caster:Damage(target, DAMAGE, Tf2.DMG_BURN, impact.projectile)
+	caster:Damage(target, DAMAGE, SpellSet.DMG_BURN, impact.projectile)
 end
 
 local function Initial(caster, impact)
@@ -72,5 +72,5 @@ local JAR = {
 }
 
 function Impact(caster, impact)
-	Tf2.JarImpact(caster, impact, JAR)
+	SpellSet.JarImpact(caster, impact, JAR)
 end

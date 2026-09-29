@@ -5,11 +5,11 @@
 local require = require
 local Teams = require("foundation.teams")
 local Spells = require("foundation.spells")
-local Tf2 = require("foundation.spells.tf2")
+local SpellSet = require("foundation.spells.halloween")
 local ipairs = ipairs
 module(...)
 
-INDEX = Tf2.SPELL_OVERHEAL
+INDEX = SpellSet.SPELL_OVERHEAL
 
 RADIUS = 250
 HEAL = 50
@@ -30,8 +30,8 @@ USE = {
 }
 
 function Cast(caster)
-	Tf2.CastWheel(caster)
-	Tf2.CastSound(caster, INDEX)
+	SpellSet.CastWheel(caster)
+	SpellSet.CastSound(caster, INDEX)
 	local owner = caster:Owner()
 	local origin, team = caster:Origin(owner), caster:TeamOf(owner)
 	caster:AttachParticle(RING[team], owner)
@@ -40,8 +40,8 @@ function Cast(caster)
 		if reached and caster:IsAlive(target) and caster:IsVisible(origin, caster:Origin(target)) then
 			if caster:TeamOf(target) == team then
 				caster:Heal(target, HEAL)
-				caster:AddCond(target, Tf2.COND.INVULNERABLE_USER_BUFF, INVULNERABLE_TIME)
-				caster:AddCond(target, Tf2.COND.HALLOWEEN_QUICK_HEAL, QUICK_HEAL_TIME)
+				caster:AddCond(target, SpellSet.COND.INVULNERABLE_USER_BUFF, INVULNERABLE_TIME)
+				caster:AddCond(target, SpellSet.COND.HALLOWEEN_QUICK_HEAL, QUICK_HEAL_TIME)
 			else
 				caster:Push(target, (caster:Center(target) - origin):GetNormalized() * PUSH)
 			end

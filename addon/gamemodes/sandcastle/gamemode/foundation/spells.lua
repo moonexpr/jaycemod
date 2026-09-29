@@ -3,7 +3,7 @@
 -- Library holds the books of the casters, players or NPCs, and grants and
 -- revokes them. A Shot is one spell projectile or spawner in flight.
 --
--- A spell set is a part (foundation.spells.tf2) providing COUNT,
+-- A spell set is a part (foundation.spells.halloween) providing COUNT,
 -- Definition(index) -> { name, charges, kind, castSound, speedScale, icon },
 -- Roll(tier, random) -> index, Strategy(index) -> part name, TIER_COMMON,
 -- TIER_RARE, ROLL_TIME and CAST_COOLDOWN.

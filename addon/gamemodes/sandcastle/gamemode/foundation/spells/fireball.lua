@@ -4,13 +4,13 @@
 -- Meteors burst the same way (Burst).
 local require = require
 local Spells = require("foundation.spells")
-local Tf2 = require("foundation.spells.tf2")
+local SpellSet = require("foundation.spells.halloween")
 local ipairs = ipairs
 module(...)
 
-INDEX = Tf2.SPELL_FIREBALL
+INDEX = SpellSet.SPELL_FIREBALL
 PROJECTILE = "tf_projectile_spellfireball"
-FLIGHT = Tf2.ROCKET_FLIGHT
+FLIGHT = SpellSet.ROCKET_FLIGHT
 
 RADIUS = 200 -- GetDamageRadius
 BURN_TIME = 5 -- SelfBurn
@@ -23,22 +23,22 @@ SOUND = "Halloween.spell_fireball_impact"
 
 USE = {
 	kind = Spells.USE_ATTACK,
-	range = Tf2.THROW_RANGE,
+	range = SpellSet.THROW_RANGE,
 	radius = RADIUS,
 	needsLineOfSight = true,
 	selfOnly = false,
 }
 
 function Cast(caster)
-	Tf2.CastWheel(caster)
-	return Tf2.Toss(caster, _M)
+	SpellSet.CastWheel(caster)
+	return SpellSet.Toss(caster, _M)
 end
 
 -- ExplodeEffectOnTarget
 local function Burn(caster, impact, target)
-	if caster:TeamOf(target) == impact.team or Tf2.Spared(caster, target) then return end
-	caster:AddCond(target, Tf2.COND.BURNING, BURN_TIME)
-	caster:Damage(target, BURN_DAMAGE, Tf2.DMG_BURN, impact.projectile)
+	if caster:TeamOf(target) == impact.team or SpellSet.Spared(caster, target) then return end
+	caster:AddCond(target, SpellSet.COND.BURNING, BURN_TIME)
+	caster:Damage(target, BURN_DAMAGE, SpellSet.DMG_BURN, impact.projectile)
 	local away = (caster:Center(target) - impact.position):GetNormalized()
 	caster:Push(target, caster:Vector(away.x, away.y, NUDGE_LIFT) * NUDGE)
 end
@@ -53,7 +53,7 @@ function Burst(caster, impact, particle)
 			Burn(caster, impact, target)
 		end
 	end
-	caster:Explode(Tf2.Blast(caster, origin, RADIUS, BLAST_DAMAGE))
+	caster:Explode(SpellSet.Blast(caster, origin, RADIUS, BLAST_DAMAGE))
 end
 
 function Impact(caster, impact)

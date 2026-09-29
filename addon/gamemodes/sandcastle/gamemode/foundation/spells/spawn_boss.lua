@@ -6,15 +6,15 @@
 local require = require
 local Teams = require("foundation.teams")
 local Spells = require("foundation.spells")
-local Tf2 = require("foundation.spells.tf2")
+local SpellSet = require("foundation.spells.halloween")
 local HalloweenBoss = require("foundation.npc.halloween_boss")
 local EyeballBoss = require("foundation.npc.eyeball_boss")
 local ipairs = ipairs
 module(...)
 
-INDEX = Tf2.SPELL_SPAWN_BOSS
+INDEX = SpellSet.SPELL_SPAWN_BOSS
 PROJECTILE = "tf_projectile_spellspawnboss"
-FLIGHT = Tf2.JAR_FLIGHT
+FLIGHT = SpellSet.JAR_FLIGHT
 
 RADIUS = 1
 SURFACE_OFFSET = 30
@@ -33,15 +33,15 @@ local CORNERS = {
 
 USE = {
 	kind = Spells.USE_SUMMON,
-	range = Tf2.THROW_RANGE,
+	range = SpellSet.THROW_RANGE,
 	radius = 0,
 	needsLineOfSight = true,
 	selfOnly = false,
 }
 
 function Cast(caster)
-	Tf2.CastWheel(caster)
-	return Tf2.Toss(caster, _M)
+	SpellSet.CastWheel(caster)
+	return SpellSet.Toss(caster, _M)
 end
 
 local function Summon(caster, impact)
@@ -77,6 +77,6 @@ local JAR = {
 }
 
 function Impact(caster, impact)
-	if Tf2.JarImpact(caster, impact, JAR) then return nil end
+	if SpellSet.JarImpact(caster, impact, JAR) then return nil end
 	return Spells.REFUND
 end

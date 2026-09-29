@@ -3,11 +3,11 @@
 -- flung 800 away, then a blast of 20 over 100 that spares the caster.
 local require = require
 local Spells = require("foundation.spells")
-local Tf2 = require("foundation.spells.tf2")
+local SpellSet = require("foundation.spells.halloween")
 local ipairs = ipairs
 module(...)
 
-INDEX = Tf2.SPELL_BLASTJUMP
+INDEX = SpellSet.SPELL_BLASTJUMP
 
 RADIUS = 100
 LIFT = 800
@@ -27,8 +27,8 @@ USE = {
 }
 
 function Cast(caster)
-	Tf2.CastWheel(caster)
-	Tf2.CastSound(caster, INDEX)
+	SpellSet.CastWheel(caster)
+	SpellSet.CastSound(caster, INDEX)
 	local owner = caster:Owner()
 	local velocity = caster:GetVelocity(owner)
 	if velocity.z < 0 then velocity = caster:Vector(velocity.x, velocity.y, 0) end
@@ -45,6 +45,6 @@ function Cast(caster)
 			caster:Push(target, (caster:Center(target) - origin):GetNormalized() * FLING)
 		end
 	end
-	caster:Explode(Tf2.Blast(caster, origin, RADIUS, DAMAGE))
+	caster:Explode(SpellSet.Blast(caster, origin, RADIUS, DAMAGE))
 	return true
 end

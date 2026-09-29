@@ -4,13 +4,13 @@
 local require = require
 local Teams = require("foundation.teams")
 local Spells = require("foundation.spells")
-local Tf2 = require("foundation.spells.tf2")
+local SpellSet = require("foundation.spells.halloween")
 local Zombie = require("foundation.npc.zombie")
 module(...)
 
-INDEX = Tf2.SPELL_SKELETON_HORDE
+INDEX = SpellSet.SPELL_SKELETON_HORDE
 PROJECTILE = "tf_projectile_spellspawnhorde"
-FLIGHT = Tf2.JAR_FLIGHT
+FLIGHT = SpellSet.JAR_FLIGHT
 
 RADIUS = 1
 SKULLS = 3
@@ -22,15 +22,15 @@ GOOP = {
 
 USE = {
 	kind = Spells.USE_SUMMON,
-	range = Tf2.THROW_RANGE,
+	range = SpellSet.THROW_RANGE,
 	radius = 0,
 	needsLineOfSight = true,
 	selfOnly = false,
 }
 
 function Cast(caster)
-	Tf2.CastWheel(caster)
-	return Tf2.Toss(caster, _M)
+	SpellSet.CastWheel(caster)
+	return SpellSet.Toss(caster, _M)
 end
 
 local function Raise(caster, impact)
@@ -53,5 +53,5 @@ local JAR = {
 }
 
 function Impact(caster, impact)
-	Tf2.JarImpact(caster, impact, JAR)
+	SpellSet.JarImpact(caster, impact, JAR)
 end

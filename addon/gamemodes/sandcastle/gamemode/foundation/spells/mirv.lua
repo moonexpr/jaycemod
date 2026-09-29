@@ -5,13 +5,13 @@
 local require = require
 local Teams = require("foundation.teams")
 local Spells = require("foundation.spells")
-local Tf2 = require("foundation.spells.tf2")
+local SpellSet = require("foundation.spells.halloween")
 local ipairs = ipairs
 module(...)
 
-INDEX = Tf2.SPELL_MIRV
+INDEX = SpellSet.SPELL_MIRV
 PROJECTILE = "tf_projectile_spellmirv"
-FLIGHT = Tf2.JAR_FLIGHT
+FLIGHT = SpellSet.JAR_FLIGHT
 BOMBLET = "tf_projectile_spellpumpkin"
 
 RADIUS = 1 -- GetDamageRadius, for the blast of 10
@@ -42,15 +42,15 @@ GOOP = {
 
 USE = {
 	kind = Spells.USE_ATTACK,
-	range = Tf2.THROW_RANGE,
+	range = SpellSet.THROW_RANGE,
 	radius = PUMPKIN_RADIUS,
 	needsLineOfSight = true,
 	selfOnly = false,
 }
 
 function Cast(caster)
-	Tf2.CastWheel(caster)
-	return Tf2.Toss(caster, _M)
+	SpellSet.CastWheel(caster)
+	return SpellSet.Toss(caster, _M)
 end
 
 local function Scatter(caster, impact)
@@ -98,5 +98,5 @@ local JARS = {
 }
 
 function Impact(caster, impact)
-	Tf2.JarImpact(caster, impact, JARS[impact.class])
+	SpellSet.JarImpact(caster, impact, JARS[impact.class])
 end

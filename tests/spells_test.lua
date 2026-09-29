@@ -4,7 +4,7 @@
 local T = dofile("tests/harness.lua")
 local Fake = dofile("tests/fake_caster.lua")
 local Spells = T.require("foundation.spells")
-local Tf2 = T.require("foundation.spells.tf2")
+local SpellSet = T.require("foundation.spells.halloween")
 local Teams = T.require("foundation.teams")
 
 local V = Fake.Vector
@@ -39,48 +39,48 @@ local function Candidate(holder, team, alive)
 end
 
 T.test("a common pickup rolls for 2 s, then the book holds that spell's charges", function()
-	local book = Spells.SpellBook.New(Tf2)
+	local book = Spells.SpellBook.New(SpellSet)
 	T.eq(book:State().selected, Spells.EMPTY, "a new book is empty")
 	T.eq(book:HasASpellWithCharges(), false, "empty")
 
-	T.eq(book:Pickup(Tf2.TIER_COMMON, 10, Landing(FIRST)), true, "taken")
+	T.eq(book:Pickup(SpellSet.TIER_COMMON, 10, Landing(FIRST)), true, "taken")
 	local rolling = book:State()
 	T.eq(rolling.selected, Spells.UNKNOWN, "unknown while rolling")
 	T.eq(rolling.charges, 0, "no charges while rolling")
-	T.eq(rolling.rollingUntil, 10 + Tf2.ROLL_TIME, "rolls for ROLL_TIME")
+	T.eq(rolling.rollingUntil, 10 + SpellSet.ROLL_TIME, "rolls for ROLL_TIME")
 	T.eq(book:HasASpellWithCharges(), true, "a roll counts as a spell")
 	T.eq(book:CanCast(11), false, "nothing to cast while rolling")
 
 	T.eq(book:Tick(11.9), nil, "still rolling")
 	T.eq(book:Tick(12), Spells.ROLLED, "rolled at 2 s")
 	local rolled = book:State()
-	T.eq(rolled.selected, Tf2.SPELL_FIREBALL, "the first common entry")
-	T.eq(rolled.charges, Tf2.Definition(Tf2.SPELL_FIREBALL).charges, "fireball's charges")
+	T.eq(rolled.selected, SpellSet.SPELL_FIREBALL, "the first common entry")
+	T.eq(rolled.charges, SpellSet.Definition(SpellSet.SPELL_FIREBALL).charges, "fireball's charges")
 	T.eq(rolled.rollingUntil, nil, "done rolling")
 	T.eq(book:Tick(13), nil, "rolls once")
 end)
 
 T.test("a second common pickup is refused while charges remain or a roll runs, a rare one is taken", function()
-	local book = Spells.SpellBook.New(Tf2)
-	book:Pickup(Tf2.TIER_COMMON, 0, Landing(FIRST))
-	T.eq(book:Pickup(Tf2.TIER_COMMON, 1, Landing(FIRST)), false, "refused while rolling")
+	local book = Spells.SpellBook.New(SpellSet)
+	book:Pickup(SpellSet.TIER_COMMON, 0, Landing(FIRST))
+	T.eq(book:Pickup(SpellSet.TIER_COMMON, 1, Landing(FIRST)), false, "refused while rolling")
 	book:Tick(2)
-	T.eq(book:Pickup(Tf2.TIER_COMMON, 3, Landing(FIRST)), false, "refused while charges remain")
-	T.eq(book:State().selected, Tf2.SPELL_FIREBALL, "kept")
+	T.eq(book:Pickup(SpellSet.TIER_COMMON, 3, Landing(FIRST)), false, "refused while charges remain")
+	T.eq(book:State().selected, SpellSet.SPELL_FIREBALL, "kept")
 
-	T.eq(book:Pickup(Tf2.TIER_RARE, 3, Landing(LAST)), true, "rare always rolls")
+	T.eq(book:Pickup(SpellSet.TIER_RARE, 3, Landing(LAST)), true, "rare always rolls")
 	T.eq(book:State().selected, Spells.UNKNOWN, "rolling again")
-	book:Tick(3 + Tf2.ROLL_TIME)
-	T.eq(book:State().selected, Tf2.SPELL_SKELETON_HORDE, "the last rare spell")
+	book:Tick(3 + SpellSet.ROLL_TIME)
+	T.eq(book:State().selected, SpellSet.SPELL_SKELETON_HORDE, "the last rare spell")
 	T.eq(book:State().charges, 1, "horde has one charge")
 end)
 
 T.test("pickup -> roll -> cast spends charges under a 0.5 s cooldown until empty", function()
 	local owner = Player()
 	local caster = NewCaster(owner)
-	local book = Spells.SpellBook.New(Tf2)
-	book:Pickup(Tf2.TIER_COMMON, 0, Landing(FIRST))
-	book:Tick(Tf2.ROLL_TIME)
+	local book = Spells.SpellBook.New(SpellSet)
+	book:Pickup(SpellSet.TIER_COMMON, 0, Landing(FIRST))
+	book:Tick(SpellSet.ROLL_TIME)
 
 	T.eq(book:Cast(caster, 5), true, "first cast")
 	T.eq(book:State().charges, 1, "a charge spent")
@@ -91,9 +91,9 @@ T.test("pickup -> roll -> cast spends charges under a 0.5 s cooldown until empty
 	T.eq(book:Deny(5.4), false, "no deny sound during the cooldown")
 	T.eq(book:State().charges, 1, "nothing spent")
 
-	T.eq(book:Cast(caster, 5 + Tf2.CAST_COOLDOWN), true, "second cast")
+	T.eq(book:Cast(caster, 5 + SpellSet.CAST_COOLDOWN), true, "second cast")
 	T.eq(book:State().charges, 0, "empty")
-	T.eq(book:State().selected, Tf2.SPELL_FIREBALL, "the spell stays selected with no charges")
+	T.eq(book:State().selected, SpellSet.SPELL_FIREBALL, "the spell stays selected with no charges")
 	T.eq(book:HasASpellWithCharges(), false, "no spell with charges")
 	T.eq(#caster:Calls("LaunchProjectile"), 2, "two fireballs")
 
@@ -102,7 +102,7 @@ T.test("pickup -> roll -> cast spends charges under a 0.5 s cooldown until empty
 	T.eq(book:Deny(7.2), false, "at most every DENY_INTERVAL")
 	T.eq(book:Deny(7 + Spells.DENY_INTERVAL), true, "and again after it")
 
-	T.eq(book:Pickup(Tf2.TIER_COMMON, 8, Landing(FIRST)), true, "an empty book takes a common pickup")
+	T.eq(book:Pickup(SpellSet.TIER_COMMON, 8, Landing(FIRST)), true, "an empty book takes a common pickup")
 end)
 
 T.test("the charge is spent even when the toss starts in solid", function()
@@ -115,15 +115,15 @@ T.test("the charge is spent even when the toss starts in solid", function()
 			}
 		end,
 	})
-	local book = Spells.SpellBook.New(Tf2)
-	book:Select(Tf2.SPELL_BATS)
+	local book = Spells.SpellBook.New(SpellSet)
+	book:Select(SpellSet.SPELL_BATS)
 	T.eq(book:Cast(caster, 0), true, "cast")
 	T.eq(book:State().charges, 1, "spent")
 	T.eq(#caster:Calls("LaunchProjectile"), 0, "nothing thrown")
 end)
 
 T.test("the library grants books to living RED and BLU players while spells are on", function()
-	local library = Spells.Library.New(Tf2)
+	local library = Spells.Library.New(SpellSet)
 	local red, blue, spectator, dead = {}, {}, {}, {}
 	local players = {
 		Candidate(red, Teams.RED),
@@ -147,7 +147,7 @@ T.test("the library grants books to living RED and BLU players while spells are 
 	granted = library:Sync(true, players)
 	T.eq(#granted, 0, "a second sync grants nothing new")
 
-	library:BookOf(red):Select(Tf2.SPELL_METEOR)
+	library:BookOf(red):Select(SpellSet.SPELL_METEOR)
 	T.eq(library:Respawn(true, Candidate(red, Teams.RED)), true, "a respawn is granted a book")
 	T.eq(library:BookOf(red):State().selected, Spells.EMPTY, "and it starts empty, as TF2 regenerates items")
 
@@ -163,7 +163,7 @@ T.test("the library grants books to living RED and BLU players while spells are 
 end)
 
 T.test("a caster who left keeps no book; Sync leaves casters it was not given alone", function()
-	local library = Spells.Library.New(Tf2)
+	local library = Spells.Library.New(SpellSet)
 	local gone, npc = {}, {}
 	library:Sync(true, { Candidate(gone, Teams.RED) })
 	library:Grant(npc)
@@ -178,19 +178,19 @@ T.test("a caster who left keeps no book; Sync leaves casters it was not given al
 end)
 
 T.test("pickups through the library: only a caster holding a book collects one", function()
-	local library = Spells.Library.New(Tf2)
+	local library = Spells.Library.New(SpellSet)
 	local holder = {}
-	local taken, rolled = library:Pickup(holder, Tf2.TIER_COMMON, 0, Landing(FIRST))
+	local taken, rolled = library:Pickup(holder, SpellSet.TIER_COMMON, 0, Landing(FIRST))
 	T.eq(taken, false, "no book: a common pickup stays")
-	taken, rolled = library:Pickup(holder, Tf2.TIER_RARE, 0, Landing(FIRST))
+	taken, rolled = library:Pickup(holder, SpellSet.TIER_RARE, 0, Landing(FIRST))
 	T.eq(taken, false, "no book: a rare pickup stays too")
 	T.eq(rolled, false, "and rolls nothing")
 
 	library:Sync(true, { Candidate(holder, Teams.BLUE) })
-	taken, rolled = library:Pickup(holder, Tf2.TIER_COMMON, 0, Landing(FIRST))
+	taken, rolled = library:Pickup(holder, SpellSet.TIER_COMMON, 0, Landing(FIRST))
 	T.eq(taken and rolled, true, "a book rolls")
 	T.eq(#library:Tick(1), 0, "nothing rolled yet")
-	local done = library:Tick(Tf2.ROLL_TIME)
+	local done = library:Tick(SpellSet.ROLL_TIME)
 	T.eq(#done, 1, "one book rolled")
 	T.eq(done[1], holder, "the holder's")
 end)
@@ -203,23 +203,23 @@ T.test("an NPC caster holds a book, picks up, rolls and casts through the same p
 		player = false,
 	})
 	local caster = NewCaster(npc, { shoot = V(0, 0, 50) })
-	local library = Spells.Library.New(Tf2)
+	local library = Spells.Library.New(SpellSet)
 	library:Grant(npc)
-	local taken = library:Pickup(npc, Tf2.TIER_RARE, 0, Landing(FIRST))
+	local taken = library:Pickup(npc, SpellSet.TIER_RARE, 0, Landing(FIRST))
 	T.eq(taken, true, "the NPC collects a pickup")
-	library:Tick(Tf2.ROLL_TIME)
+	library:Tick(SpellSet.ROLL_TIME)
 	local book = library:BookOf(npc)
-	T.eq(book:State().selected, Tf2.SPELL_LIGHTNING, "a rare spell")
-	T.eq(book:Cast(caster, Tf2.ROLL_TIME), true, "cast")
+	T.eq(book:State().selected, SpellSet.SPELL_LIGHTNING, "a rare spell")
+	T.eq(book:Cast(caster, SpellSet.ROLL_TIME), true, "cast")
 	local launch = caster:Calls("LaunchProjectile")[1]
 	T.eq(launch.class, "tf_projectile_lightningorb", "the orb flies")
 	T.eq(launch.config.team, Teams.BLUE, "on the NPC's team")
 	T.eq(caster:Calls("Particle")[1].name, "spell_cast_wheel_blue", "BLU's cast wheel")
 
-	book:Select(Tf2.SPELL_ATHLETIC)
+	book:Select(SpellSet.SPELL_ATHLETIC)
 	book:Cast(caster, 10)
-	T.eq(npc.conds[Tf2.COND.HALLOWEEN_SPEED_BOOST], 20, "a movement spell works on the NPC")
-	book:Select(Tf2.SPELL_OVERHEAL)
+	T.eq(npc.conds[SpellSet.COND.HALLOWEEN_SPEED_BOOST], 20, "a movement spell works on the NPC")
+	book:Select(SpellSet.SPELL_OVERHEAL)
 	npc.health = 100
 	book:Cast(caster, 20)
 	T.eq(npc.health, 150, "and a heal")
@@ -227,10 +227,10 @@ end)
 
 T.test("a spawn_boss spell with no room for the eyeball is given back", function()
 	local owner = Player(Teams.BLUE)
-	local library = Spells.Library.New(Tf2)
+	local library = Spells.Library.New(SpellSet)
 	library:Sync(true, { Candidate(owner, Teams.BLUE) })
 	local book = library:BookOf(owner)
-	book:Select(Tf2.SPELL_SPAWN_BOSS)
+	book:Select(SpellSet.SPELL_SPAWN_BOSS)
 	local caster = NewCaster(owner)
 	T.eq(book:Cast(caster, 0), true, "cast")
 	T.eq(book:State().charges, 0, "spent")
@@ -253,12 +253,12 @@ T.test("a spawn_boss spell with no room for the eyeball is given back", function
 		projectile = {},
 	})
 	T.eq(#blocked:Calls("SpawnNPC"), 0, "no eyeball")
-	T.eq(book:State().selected, Tf2.SPELL_SPAWN_BOSS, "the spell is back")
+	T.eq(book:State().selected, SpellSet.SPELL_SPAWN_BOSS, "the spell is back")
 	T.eq(book:State().charges, 1, "with its charge")
 
 	local roomy = NewCaster(owner)
 	book:Cast(roomy, 1)
-	shot = library:Shot(Tf2.SPELL_SPAWN_BOSS, launch.class, launch.config, 1)
+	shot = library:Shot(SpellSet.SPELL_SPAWN_BOSS, launch.class, launch.config, 1)
 	library:Impact(owner, shot, roomy, {
 		position = V(100, 0, 1),
 		hitPosition = V(100, 0, 0),
@@ -292,14 +292,14 @@ local FRIEND = {
 
 T.test("a jar falls and breaks on the world or an enemy, or when its fuse runs out", function()
 	T.eq(Jar.GRAVITY > 0, true, "ballistic")
-	local jar = Projectile.New(Jar, Tf2.JAR_FLIGHT, 0)
+	local jar = Projectile.New(Jar, SpellSet.JAR_FLIGHT, 0)
 	T.eq(jar:Touch(FRIEND), Projectile.BOUNCE, "a teammate or a prop: bounces")
 	T.eq(jar:Touch(ENEMY), Projectile.DETONATE, "an enemy: breaks")
-	jar = Projectile.New(Jar, Tf2.JAR_FLIGHT, 0)
+	jar = Projectile.New(Jar, SpellSet.JAR_FLIGHT, 0)
 	T.eq(jar:Touch(WORLD), Projectile.DETONATE, "the world: breaks")
-	jar = Projectile.New(Jar, Tf2.JAR_FLIGHT, 0)
-	T.eq(jar:Tick(Tf2.JAR_FUSE - 0.1), Projectile.NONE, "flying")
-	T.eq(jar:Tick(Tf2.JAR_FUSE), Projectile.DETONATE, "the fuse")
+	jar = Projectile.New(Jar, SpellSet.JAR_FLIGHT, 0)
+	T.eq(jar:Tick(SpellSet.JAR_FUSE - 0.1), Projectile.NONE, "flying")
+	T.eq(jar:Tick(SpellSet.JAR_FUSE), Projectile.DETONATE, "the fuse")
 end)
 
 T.test("a mirv bomblet ignores touches for its first second, then breaks on them", function()
