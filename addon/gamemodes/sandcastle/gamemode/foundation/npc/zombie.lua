@@ -568,16 +568,21 @@ local PLACED = {
 	skeletonType = SKELETON_NORMAL,
 }
 
+local function OrPlaced(given, key)
+	if given[key] == nil then return PLACED[key] end
+	return given[key]
+end
+
 -- tf_zombie's config: what its spawner or skull gave (nil for one the map
 -- placed; its TeamNum keyvalue then gives the team), its keyvalues, and
--- tf_max_active_zombie.
+-- tf_max_active_zombie. A field the caller leaves out is the placed one's.
 function BindingConfig(given, kv, maxActive)
 	local from = given or PLACED
 	return {
 		team = from.team,
-		lifetime = from.lifetime,
+		lifetime = OrPlaced(from, "lifetime"),
 		owner = from.owner,
-		skeletonType = from.skeletonType,
+		skeletonType = OrPlaced(from, "skeletonType"),
 		modelScale = kv.modelscale and tonumber(kv.modelscale),
 		maxActive = maxActive,
 	}

@@ -557,6 +557,25 @@ T.test("goop matches the team: green for Halloween, red for RED, blue otherwise"
 	T.eq(Zombie.GoopParticle(Teams.BLUE), "spell_pumpkin_mirv_goop_blue", "blue")
 end)
 
+T.test("a partial config overrides only the placed skeleton's defaults it names, and binds", function()
+	local typed = Zombie.BindingConfig({ skeletonType = Zombie.SKELETON_MINI }, {}, Zombie.MAX_ACTIVE_DEFAULT)
+	T.eq(typed.skeletonType, Zombie.SKELETON_MINI, "the given type")
+	T.eq(typed.lifetime, 0, "no lifetime, as placed")
+	local timed = Zombie.BindingConfig({ lifetime = Zombie.MINI_LIFETIME }, {}, Zombie.MAX_ACTIVE_DEFAULT)
+	T.eq(timed.lifetime, Zombie.MINI_LIFETIME, "the given lifetime")
+	T.eq(timed.skeletonType, Zombie.SKELETON_NORMAL, "normal, as placed")
+	local empty = Zombie.BindingConfig({}, {}, Zombie.MAX_ACTIVE_DEFAULT)
+	T.eq(empty.lifetime, 0, "an empty config: no lifetime")
+	T.eq(empty.skeletonType, Zombie.SKELETON_NORMAL, "an empty config: normal")
+	local me = FC.Combatant({
+		world = FC.World(),
+		variant = Zombie,
+	})
+	local npc = N.Npc.New(Zombie, Zombie.BindingConfig({ skeletonType = Zombie.SKELETON_NORMAL }, {}, Zombie.MAX_ACTIVE_DEFAULT), me)
+	npc:Update(TICK)
+	T.eq(npc.state.skeletonType, Zombie.SKELETON_NORMAL, "bound and running")
+end)
+
 T.test("a skeleton of each team, hit, splashes its team's goop, a system its variant declares", function()
 	local cases = {
 		{
