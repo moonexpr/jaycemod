@@ -1074,19 +1074,24 @@ end
 
 -- The observer ---------------------------------------------------------------------------------
 -- A soldier that fell out of the map, or is wedged where nothing gets it
--- out, is put back: one outside the world or off the nav mesh onto the
--- nearest nav area (within RECOVER_REACH, else at its spawn); one that has
--- tried to move for STRANDED_TIME without getting STRANDED_PROGRESS from
--- where it was, onto the next waypoint of its route. A soldier recovered
--- again within RELAPSE_TIME goes back to spawn.
+-- out, is put back: one outside the world, or off the nav mesh for
+-- OFF_MESH_TIME, where it last stood on the mesh (on its own side of any
+-- wall; the nearest nav area may be beyond one), else at its spawn; one
+-- that has tried to move for STRANDED_TIME without getting
+-- STRANDED_PROGRESS from where it was, onto the next waypoint of its route
+-- when a player could walk there. A soldier recovered again within
+-- RELAPSE_TIME goes back to spawn. The mesh leaves gaps along walls and
+-- round corners, which a soldier sliding along a wall walks into: it is
+-- off the mesh only with no nav area it can see within OFF_MESH_REACH.
 local WATCH_INTERVAL = 2
 local STRANDED_TIME, STRANDED_PROGRESS = 15, 48
 local OFF_MESH_BELOW, OFF_MESH_LIFT = 96, Vector(0, 0, 16)
-local RECOVER_REACH = 1000
+local OFF_MESH_REACH, OFF_MESH_TIME = 48, 5
 local RELAPSE_TIME = 60
 
 local function OnMesh(pos)
-	return IsValid(navmesh.GetNavArea(pos + OFF_MESH_LIFT, OFF_MESH_BELOW))
+	if IsValid(navmesh.GetNavArea(pos + OFF_MESH_LIFT, OFF_MESH_BELOW)) then return true end
+	return IsValid(navmesh.GetNearestNavArea(pos + OFF_MESH_LIFT, false, OFF_MESH_REACH, true, true))
 end
 
 function Controller:SpawnSpot(team)
@@ -1123,10 +1128,17 @@ function Controller:Watch(ent, entry, now)
 	local soldier = entry.soldier
 	if soldier.traverse then return end
 	local pos = ent:GetPos()
-	if not util.IsInWorld(pos + OFF_MESH_LIFT) or not OnMesh(pos) then
-		local area = navmesh.GetNearestNavArea(pos, false, RECOVER_REACH, false, false)
-		local spot = IsValid(area) and ClearSpotNear(area:GetClosestPointOnArea(pos)) or nil
-		return self:Recover(ent, entry, util.IsInWorld(pos + OFF_MESH_LIFT) and "off the nav mesh" or "out of the world", spot)
+	local inWorld = util.IsInWorld(pos + OFF_MESH_LIFT)
+	if inWorld and OnMesh(pos) then
+		soldier.lastOnMesh = pos
+		soldier.offMeshSince = nil
+	else
+		soldier.offMeshSince = soldier.offMeshSince or now
+		if not inWorld or now - soldier.offMeshSince >= OFF_MESH_TIME then
+			soldier.offMeshSince = nil
+			local spot = soldier.lastOnMesh and ClearSpotNear(soldier.lastOnMesh)
+			return self:Recover(ent, entry, inWorld and "off the nav mesh" or "out of the world", spot)
+		end
 	end
 	local watch = soldier.watch
 	if not soldier.moveTarget or not watch or pos:Distance(watch.pos) > STRANDED_PROGRESS then
