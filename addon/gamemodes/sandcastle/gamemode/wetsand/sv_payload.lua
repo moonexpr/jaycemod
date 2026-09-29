@@ -4,7 +4,7 @@
 -- plays the payload race stage-outcome lines.
 
 WETSAND.Payload = WETSAND.require("foundation.payload")
-WETSAND.PayloadCapture = WETSAND.require("foundation.capture")
+WETSAND.PayloadCapture = WETSAND.require("foundation.capture.area")
 WETSAND.PayloadRace = WETSAND.require("foundation.payload.race")
 
 local P, R = WETSAND.Payload, WETSAND.PayloadRace
