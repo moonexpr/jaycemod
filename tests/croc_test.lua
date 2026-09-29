@@ -136,4 +136,41 @@ T.test("the croc keeps its TeamNum, and takes no inputs of its own", function()
 	T.eq(croc:Accepts("kill"), false, "Kill is the engine's")
 end)
 
+-- Package W8's bindings, all loaded lazily.
+
+local ENTITIES = "addon/gamemodes/sandcastle/entities/entities/"
+local W8_BINDINGS = {
+	"func_croc.lua",
+	"halloween_fortune_teller.lua",
+	"tf_point_weapon_mimic.lua",
+	"tf_projectile_pipe.lua",
+	"filter_tf_damaged_by_weapon_in_slot.lua",
+	"trigger_add_or_remove_tf_player_attributes.lua",
+	"merasmus.lua",
+	"tf_halloween_minigame.lua",
+	"tf_logic_minigames.lua",
+	"wetsand_stub_point.lua",
+}
+
+local function ReadFile(path)
+	local f = assert(io.open(path, "r"))
+	local text = f:read("*a")
+	f:close()
+	return text
+end
+
+-- A load inside a function is indented or on a one-line function.
+local function LoadsAtTopLevel(line)
+	if line:match("^%s") or line:match("^function ") then return false end
+	return line:find("WETSAND.require", 1, true) ~= nil or line:find("WETSAND.Feature", 1, true) ~= nil
+end
+
+T.test("the W8 bindings load nothing at top level", function()
+	for _, file in ipairs(W8_BINDINGS) do
+		for line in ReadFile(ENTITIES .. file):gmatch("[^\n]+") do
+			T.eq(LoadsAtTopLevel(line), false, file .. ": " .. line)
+		end
+	end
+end)
+
 T.finish()
