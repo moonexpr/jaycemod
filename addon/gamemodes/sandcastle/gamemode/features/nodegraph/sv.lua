@@ -31,6 +31,7 @@ local MAX_NODES = CreateConVar("wetsand_nodegraph_max_nodes", tostring(Graph.MAX
 
 local SPACING_START, SPACING_GROW = 96, 1.25
 local LINK_RANGE, LINKS_PER_NODE = 400, 12
+local BRIDGES_PER_NODE = 4
 -- The floor is sampled every FLOOR_SAMPLE units along a link, finer than
 -- a stair's tread, so each sample rises at most one step; the engine's own
 -- builder steps a hull every 16 (HULL_TEST_STEP_SIZE).
@@ -39,6 +40,12 @@ local HIDING_IN_COVER = 1
 local HIDING_BONUS = 1e9 -- hiding spots are picked before any area
 local NAV_MESH_CROUCH, NAV_MESH_JUMP = 1, 2
 local BUDGET = 0.004 -- seconds of each tick the generation may take
+
+-- Doors are left out of every trace: a graph links through them whether
+-- they stand open or shut, as HL2's maps do, and the engine finds a door
+-- shut when an NPC walks it.
+local DOOR_CLASSES = { func_door = true, func_door_rotating = true, prop_door_rotating = true, func_movelinear = true }
+local function NotDoor(ent) return not DOOR_CLASSES[ent:GetClass()] end
 
 local function Point(v) return { x = v.x, y = v.y, z = v.z } end
 local function ToVector(p) return Vector(p.x, p.y, p.z) end
@@ -66,6 +73,7 @@ local function FloorBelow(pos)
 		start = pos + Vector(0, 0, STEP * 2),
 		endpos = pos - Vector(0, 0, FLOOR_PROBE),
 		mask = MASK_NPCSOLID_BRUSHONLY,
+		filter = NotDoor,
 	})
 	if tr.StartSolid or not tr.Hit or tr.HitNormal.z < FLOOR_SLOPE then return nil end
 	return tr.HitPos
@@ -96,7 +104,7 @@ local function Offsets(origin)
 		local box = Graph.HULLS[hull]
 		local mins, maxs = Vector(box.mins[1], box.mins[2], box.mins[3]), Vector(box.maxs[1], box.maxs[2], box.mins[3])
 		local start = origin + Vector(0, 0, 0.1 - mins.z)
-		local tr = util.TraceHull({ start = start, endpos = start - Vector(0, 0, 384), mins = mins, maxs = maxs, mask = MASK_NPCSOLID_BRUSHONLY })
+		local tr = util.TraceHull({ start = start, endpos = start - Vector(0, 0, 384), mins = mins, maxs = maxs, mask = MASK_NPCSOLID_BRUSHONLY, filter = NotDoor })
 		offsets[hull] = tr.StartSolid and (-mins.z + 0.1) or (tr.HitPos.z - origin.z + 0.1)
 	end
 	return offsets
@@ -130,6 +138,7 @@ local function Moves(a, b)
 				mins = Vector(box.mins[1], box.mins[2], 0),
 				maxs = Vector(box.maxs[1], box.maxs[2], math.max(box.maxs[3] - STEP, 1)),
 				mask = MASK_NPCSOLID_BRUSHONLY,
+				filter = NotDoor,
 			})
 			if not tr.Hit then
 				moves[hull] = Graph.CAP_MOVE_GROUND
@@ -168,8 +177,21 @@ function Controller:Build(ply)
 		end
 		Pause()
 	end
-	links = Graph.CapLinks(links, Graph.MAX_NODE_LINKS)
+	-- join what the nearest links left apart (a wall's far side, a doorway)
 	local zones = Graph.Zones(#nodes, links)
+	local bridged = 0
+	for _, link in ipairs(Graph.Bridges(positions, zones, Graph.MAX_LINK_DISTANCE, BRIDGES_PER_NODE)) do
+		local moves = Moves(positions[link.a], positions[link.b])
+		if moves then
+			link.moves = moves
+			links[#links + 1] = link
+			bridged = bridged + 1
+		end
+		Pause()
+	end
+	table.sort(links, function(x, y) return x.distance < y.distance end)
+	links = Graph.CapLinks(links, Graph.MAX_NODE_LINKS)
+	zones = Graph.Zones(#nodes, links)
 	local zoneCount = {}
 	for i, node in ipairs(nodes) do
 		node.zone = zones[i]
@@ -182,8 +204,8 @@ function Controller:Build(ply)
 	if not out then return Tell(ply, "could not write data/" .. self:DataPath()) end
 	out:Write(Graph.Encode(graph))
 	out:Close()
-	Tell(ply, string.format("%d nodes (%d at cover spots), %d links, %d zones. Written to garrysmod/data/%s",
-		#nodes, covers, #links, self.graph.zones, self:DataPath()))
+	Tell(ply, string.format("%d nodes (%d at cover spots), %d links (%d joining zones), %d zones. Written to garrysmod/data/%s",
+		#nodes, covers, #links, bridged, self.graph.zones, self:DataPath()))
 	Tell(ply, "to use it: copy that file to garrysmod/" .. self:InstalledPath() .. " and reload the map")
 end
 

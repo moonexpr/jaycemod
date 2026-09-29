@@ -118,6 +118,37 @@ function Candidates(positions, maxDistance, perNode)
 	return pairsOut
 end
 
+-- Links that would join zones: for each node, its `perNode` nearest nodes
+-- of other zones within maxDistance, each pair once, nearest first. A
+-- node's nearest few may all lie on its own side of a wall or doorway, so
+-- Candidates alone can leave rooms unjoined.
+function Bridges(positions, zones, maxDistance, perNode)
+	local hash = {}
+	for i, p in ipairs(positions) do Put(hash, p, maxDistance, i) end
+	local seen, out = {}, {}
+	for i, p in ipairs(positions) do
+		local near = {}
+		Near(hash, p, maxDistance, function(j)
+			if zones[j] ~= zones[i] then
+				local d = Distance(p, positions[j])
+				if d <= maxDistance then near[#near + 1] = { j = j, d = d } end
+			end
+		end)
+		sort(near, function(a, b) return a.d < b.d end)
+		for k = 1, perNode < #near and perNode or #near do
+			local j = near[k].j
+			local a, b = i < j and i or j, i < j and j or i
+			local key = a * 65536 + b
+			if not seen[key] then
+				seen[key] = true
+				out[#out + 1] = { a = a, b = b, distance = near[k].d }
+			end
+		end
+	end
+	sort(out, function(x, y) return x.distance < y.distance end)
+	return out
+end
+
 -- Keeps the shortest links, at most `limit` on any node. links: { a, b,
 -- distance, ... } nearest first (Candidates' order).
 function CapLinks(links, limit)

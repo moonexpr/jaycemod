@@ -28,6 +28,15 @@ T.test("candidate links are each node's nearest within range, each pair once, ne
 	T.eq(far, false, "nothing reaches the far node")
 end)
 
+T.test("bridges are tried only between nodes of different zones", function()
+	local positions = { P(0, 0), P(50, 0), P(120, 0), P(5000, 0) }
+	local zones = { 4, 4, 5, 1 }
+	local bridges = Graph.Bridges(positions, zones, 720, 2)
+	T.eq(#bridges, 2, "the two nodes of zone 4 to zone 5's node")
+	T.eq(bridges[1].a .. "-" .. bridges[1].b, "2-3", "nearest first")
+	for _, link in ipairs(bridges) do T.eq(zones[link.a] ~= zones[link.b], true, "across zones") end
+end)
+
 T.test("no node keeps more than the link limit", function()
 	local links = {}
 	for i = 2, 40 do links[#links + 1] = { a = 1, b = i, distance = i } end
