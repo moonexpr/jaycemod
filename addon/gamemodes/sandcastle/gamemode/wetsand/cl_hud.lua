@@ -29,7 +29,8 @@ local function Clock(seconds)
 end
 
 local function DrawTimer(w, h)
-	if not GetGlobal2Bool("tf2.timer.show", false) then return end
+	-- free play shows no timer, as TF2's tournament pre-ready state
+	if not GetGlobal2Bool("tf2.timer.show", false) or WETSAND.GameplayStopped() then return end
 	local top = math.floor(h * timer_y:GetFloat())
 	local left
 	if GetGlobal2Bool("tf2.timer.paused", true) then

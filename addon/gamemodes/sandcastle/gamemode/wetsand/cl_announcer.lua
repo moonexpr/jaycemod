@@ -45,7 +45,7 @@ local function OvertimeThink()
 end
 
 local function CountdownThink()
-	if not GetGlobal2Bool("tf2.timer.show", false) then return end
+	if not GetGlobal2Bool("tf2.timer.show", false) or WETSAND.GameplayStopped() then return end
 	local setup = GetGlobal2Bool("tf2.timer.setup", false)
 	local paused = GetGlobal2Bool("tf2.timer.paused", true)
 	local speaks = not paused and GetGlobal2Bool("tf2.timer.autocountdown", true)

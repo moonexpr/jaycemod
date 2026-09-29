@@ -127,27 +127,29 @@ local function Overlap(aMins, aMaxs, bMins, bMaxs)
 end
 
 -- The spawn doors: func_doors overlapped by a trigger_multiple whose
--- filter is a filter_activator_tfteam.
+-- filter is a filter_activator_tfteam, and those triggers.
 local function SpawnDoors()
 	local triggers = {}
 	for _, trigger in ipairs(ents.FindByClass("trigger_multiple")) do
 		local filter = trigger:GetInternalVariable("m_hFilter")
 		if IsValid(filter) and filter:GetClass() == "filter_activator_tfteam" then
 			local mins, maxs = trigger:WorldSpaceAABB()
-			triggers[#triggers + 1] = { mins = mins, maxs = maxs }
+			triggers[#triggers + 1] = { ent = trigger, mins = mins, maxs = maxs }
 		end
 	end
-	local doors = {}
+	local doors, doorTriggers = {}, {}
 	for _, door in ipairs(ents.FindByClass("func_door*")) do
 		local mins, maxs = door:WorldSpaceAABB()
+		local found = false
 		for _, trigger in ipairs(triggers) do
 			if Overlap(mins, maxs, trigger.mins, trigger.maxs) then
-				doors[#doors + 1] = door
-				break
+				found = true
+				doorTriggers[trigger.ent] = true
 			end
 		end
+		if found then doors[#doors + 1] = door end
 	end
-	return doors
+	return doors, doorTriggers
 end
 
 function ENT:Halted()
@@ -165,8 +167,16 @@ function ENT:Halt()
 	if self.state ~= S.PREGAME then self:StateTransition(S.PREGAME) end
 	for _, t in ipairs(ents.FindByClass("team_round_timer")) do t:Pause() end
 	WETSAND.SetSetup(false)
-	self.spawnDoors = SpawnDoors()
-	self.nextDoorsOpen = 0
+	-- the doors stand open: their triggers, which would shut them as players
+	-- leave, are off until the next game's map reset restores them
+	local triggers
+	self.spawnDoors, triggers = SpawnDoors()
+	for trigger in pairs(triggers) do trigger:Fire("Disable") end
+	for _, door in ipairs(self.spawnDoors) do
+		door:Fire("Unlock")
+		door:Fire("Open")
+	end
+	self.nextDoorsOpen = CurTime() + HALT_DOORS_INTERVAL
 end
 
 function ENT:Unhalt()
