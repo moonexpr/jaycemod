@@ -44,6 +44,7 @@ function Fake.Soldier(t)
 		wanderSpots = t.wanderSpots or {},
 		patrolSpots = t.patrolSpots,
 		plansRoutes = t.plansRoutes,
+		follows = t.follows,
 		wandered = 0,
 		hops = {},
 		requests = {},
@@ -106,6 +107,14 @@ end
 
 -- plansRoutes: the engine finds its own way (default: no).
 function Soldier:PlansRoutes() return self.plansRoutes == true end
+
+-- follows: whether FollowCart succeeds (default: no).
+function Soldier:FollowCart()
+	if self.follows then self.following = true end
+	return self.follows == true
+end
+
+function Soldier:Unfollow() self.following = false end
 
 function Soldier:WanderSpot()
 	self.wandered = self.wandered + 1

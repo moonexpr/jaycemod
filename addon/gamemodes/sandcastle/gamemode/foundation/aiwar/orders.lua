@@ -169,10 +169,13 @@ ROLES = {
 			return cart and Ring(cart.pos, member.slot, PUSH_RING)
 		end,
 	},
-	-- An escort establishes its line at a post pushed ahead of its cart
-	-- (field.forwardPosts), else leads the cart along the track.
+	-- An escort follows its cart as HL2's rebels follow Gordon (the port's
+	-- FollowCart: the engine's follow behaviour, in formation, fighting as
+	-- it goes); a soldier that cannot establishes its line at a post pushed
+	-- ahead of its cart (field.forwardPosts), else leads the cart.
 	[AiWar.ESCORT] = {
 		name = "Escort",
+		follows = true,
 		arrive = ESCORT_ARRIVE,
 		leash = ESCORT_LEASH,
 		rushes = false,
@@ -474,9 +477,17 @@ function Objective:Init(state)
 	self.retryAt = 0
 end
 
+-- Stops following the cart, if it was.
+local function StopFollowing(state, me)
+	if not state.following then return end
+	state.following = false
+	me:Unfollow()
+end
+
 -- Setup's wandering: a spot, a trip there, a rest, another spot.
 function Objective:Wander(me)
 	local state, now = self.state, me:Now()
+	StopFollowing(state, me)
 	state.wandering = true
 	if now < (self.restUntil or 0) then
 		me:Release()
@@ -547,6 +558,14 @@ function Objective:Update(me)
 		me:Unpose()
 		state.pose = nil
 	end
+	local cart = OrdersRun(field) and OwnCart(field, state.member)
+	if self.role.follows and cart and me:FollowCart() then
+		state.following = true
+		state.goal = cart.pos
+		me:Release()
+		return self:Continue()
+	end
+	StopFollowing(state, me)
 	local goal = OrdersRun(field) and self.role.Goal(field, state.member)
 	if not goal then
 		me:Release()
@@ -612,6 +631,7 @@ end
 
 function Idle:Update(me)
 	if self.state.member.role ~= nil then return self:ChangeTo(ObjectiveFor(self.state), "given a role") end
+	StopFollowing(self.state, me)
 	me:Release()
 	return self:Continue()
 end

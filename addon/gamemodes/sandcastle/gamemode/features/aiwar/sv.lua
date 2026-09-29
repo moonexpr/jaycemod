@@ -279,15 +279,22 @@ function Soldier:EngineRunning()
 	return self.ent:IsCurrentSchedule(SCHED_IDLE_WALK)
 end
 
+-- The soldier's name, for the AI entities that find it by name.
+function Soldier:Name()
+	local ent = self.ent
+	local name = ent:GetName()
+	if name == "" then
+		name = "wetsand_soldier_" .. ent:EntIndex()
+		ent:SetName(name)
+	end
+	return name
+end
+
 -- The soldier's marker and script, made once.
 function Soldier:Script()
 	if IsValid(self.script) then return self.script, self.marker end
 	local ent, index = self.ent, self.ent:EntIndex()
-	local name = ent:GetName()
-	if name == "" then
-		name = "wetsand_soldier_" .. index
-		ent:SetName(name)
-	end
+	local name = self:Name()
 	local marker = ents.Create("info_target")
 	marker:SetName("wetsand_goal_" .. index)
 	marker:SetPos(ent:GetPos())
@@ -306,7 +313,45 @@ end
 function Soldier:RemoveScript()
 	SafeRemoveEntity(self.script)
 	SafeRemoveEntity(self.marker)
-	self.script, self.marker = nil, nil
+	SafeRemoveEntity(self.follow)
+	self.script, self.marker, self.follow = nil, nil, nil
+end
+
+-- Following the cart as HL2's rebels follow Gordon: an ai_goal_follow
+-- (CAI_FollowGoal, ai_behavior_follow.cpp) with the soldier as its actor
+-- and the cart's train as its goal, in the Wide formation (120 to 240
+-- units out, fighting and taking cover within 600). HL2 gives the follow
+-- behaviour to the Resistance (FOLLOW_CLASSES); other classes do not
+-- follow. A cart without a name is given one.
+local FOLLOW_CLASSES = { npc_citizen = true, npc_alyx = true, npc_barney = true, npc_monk = true, npc_vortigaunt = true }
+local AIF_WIDE = 1
+
+function Soldier:FollowCart()
+	if not FOLLOW_CLASSES[self.ent:GetClass()] then return false end
+	local cart = self.controller.cartEntities and self.controller.cartEntities[self.team]
+	if not IsValid(cart) then return false end
+	if cart:GetName() == "" then cart:SetName("wetsand_cart_" .. self.team) end
+	if self.following == cart and IsValid(self.follow) then return true end
+	self:Unfollow()
+	local follow = ents.Create("ai_goal_follow")
+	follow:SetKeyValue("Actor", self:Name())
+	follow:SetKeyValue("Goal", cart:GetName())
+	follow:SetKeyValue("Formation", tostring(AIF_WIDE))
+	follow:SetKeyValue("SearchType", "0")
+	follow:SetKeyValue("StartActive", "0")
+	follow:Spawn()
+	follow:Activate()
+	follow:Fire("Activate")
+	self.follow, self.following = follow, cart
+	return true
+end
+
+function Soldier:Unfollow()
+	if IsValid(self.follow) then
+		self.follow:Fire("Deactivate")
+		SafeRemoveEntityDelayed(self.follow, 1)
+	end
+	self.follow, self.following = nil, nil
 end
 
 function Soldier:StartScript(target)
@@ -1444,9 +1489,11 @@ end
 -- next checkpoint is, and the ground under it.
 function Controller:Field(phase)
 	local carts = {}
+	self.cartEntities = {}
 	for _, watcher in ipairs(ents.FindByClass("team_train_watcher")) do
 		local team = watcher.team
 		if watcher:IsActive() and IsValid(watcher:Train()) and #watcher:PathNodes() > 0 and not carts[team] then
+			self.cartEntities[team] = watcher:Train()
 			carts[team] = {
 				track = self:TrackOf(watcher),
 				distance = watcher:TrainDistanceAlongTrack(),
@@ -1616,6 +1663,7 @@ function Controller:Describe(ent, entry)
 		"Enemy: " .. (soldier:HasEnemy() and "in sight" or "none in sight"),
 	}
 	if state.wandering then lines[#lines + 1] = "Setup: wandering until it ends" end
+	if state.following then lines[#lines + 1] = "Following: its cart, as rebels follow Gordon (ai_goal_follow)" end
 	if state.patrolling then lines[#lines + 1] = "Patrol: walking its rounds near its post until the cart moves" end
 	if entry.disarmed then lines[#lines + 1] = "Humiliated: cannot attack, fears the winners" end
 	if soldier.failures then

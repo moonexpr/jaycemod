@@ -169,6 +169,26 @@ T.test("a route planned before a door shut is planned again", function()
 	T.eq(#me.requests, 2, "another, around the door")
 end)
 
+-- Escorts follow their cart.
+
+T.test("an escort that can follows its cart, and stops when setup comes", function()
+	local field = Field({})
+	local me, npc, war = Enlist({ role = AiWar.ESCORT, field = field, follows = true })
+	Tick(me, npc, 2)
+	T.eq(me.following, true, "following the cart")
+	T.eq(me.moving, nil, "its own AI moves it")
+	T.eq(npc:State().following, true, "shown")
+	war:SetField(SetupField({}))
+	Tick(me, npc, 2)
+	T.eq(me.following, false, "setup: no following")
+end)
+
+T.test("an escort that cannot follow travels to its post as before", function()
+	local me, npc = Enlist({ role = AiWar.ESCORT, field = Field({}), follows = false, walkable = function() return true end })
+	Tick(me, npc, 3)
+	T.eq(me.moving ~= nil or #me.requests > 0, true, "on its way")
+end)
+
 -- The defenders' patrol.
 
 -- Ticks until the soldier moves (at most `limit`); how many it took.
