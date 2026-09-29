@@ -124,7 +124,7 @@ function Caster:IsVisible(from, to)
 	return not (self.wall and self.wall(from, to))
 end
 
-function Caster:PlayerFits(t, pos)
+function Caster:Fits(t, pos)
 	if self.fits then return self.fits(pos) end
 	return true
 end

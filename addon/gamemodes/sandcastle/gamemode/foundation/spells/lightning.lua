@@ -4,6 +4,7 @@
 -- zaps 2 of them for 20 burn damage; at the end it zaps up to 16.
 local require = require
 local Teams = require("foundation.teams")
+local Spells = require("foundation.spells")
 local Tf2 = require("foundation.spells.tf2")
 local ipairs, min = ipairs, math.min
 module(...)
@@ -33,6 +34,14 @@ HIT = {
 BURST = {
 	[Teams.RED] = "drg_cow_explosioncore_charged",
 	[Teams.BLUE] = "drg_cow_explosioncore_charged_blue",
+}
+
+USE = {
+	kind = Spells.USE_ATTACK,
+	range = Tf2.PROJECTILE_SPEED * Tf2.Definition(INDEX).speedScale * LIFETIME,
+	radius = RADIUS,
+	needsLineOfSight = true,
+	selfOnly = false,
 }
 
 function Cast(caster)

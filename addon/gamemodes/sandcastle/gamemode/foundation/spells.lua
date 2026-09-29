@@ -1,6 +1,6 @@
 -- The spells system. A SpellBook ports CTFSpellBook's state: the selected
 -- spell, its charges, the roll that picks it and the cast cooldown. The
--- Library holds the books of the players who may cast and grants and
+-- Library holds the books of the casters, players or NPCs, and grants and
 -- revokes them. A Shot is one spell projectile or spawner in flight.
 --
 -- A spell set is a part (foundation.spells.tf2) providing COUNT,
@@ -8,8 +8,8 @@
 -- Roll(tier, random) -> index, Strategy(index) -> part name, TIER_COMMON,
 -- TIER_RARE, ROLL_TIME and CAST_COOLDOWN.
 --
--- A spell is a strategy part, loaded on first use, providing INDEX and
--- Cast(caster) -> bool (whether anything was cast). A spell that throws
+-- A spell is a strategy part, loaded on first use, providing INDEX, USE
+-- (below) and Cast(caster) -> bool (whether anything was cast). A spell that throws
 -- something also provides PROJECTILE (the class it launches) and
 -- Impact(caster, impact) -> nil | REFUND, and may provide
 -- NewShot(class, config, now) -> state and
@@ -32,6 +32,18 @@ REFUND = "refund" -- a spell failed and is given back (the spawn boss's)
 DONE = "done" -- a shot has nothing more to do
 
 DENY_INTERVAL = 0.5 -- m_flTimeNextErrorSound
+
+-- A spell's USE: plain data, read from how the spell behaves, for an AI
+-- that will one day choose spells (nothing here decides).
+--   USE = { kind, range (how far it reaches from the caster; 0 for one
+--   that acts where the caster stands), radius (the area it affects),
+--   needsLineOfSight (thrown at what the caster sees), selfOnly (needs no
+--   target) }
+USE_ATTACK = "attack"
+USE_ESCAPE = "escape"
+USE_HEAL = "heal"
+USE_SUMMON = "summon"
+USE_MOBILITY = "mobility"
 
 -------------------------------------------------------------------------------
 -- SpellBook
@@ -174,27 +186,45 @@ local function MayHold(on, candidate)
 	return on and candidate.alive and (candidate.team == Teams.RED or candidate.team == Teams.BLUE)
 end
 
--- Grants and revokes books to match; returns the holders granted and those
--- revoked, in the candidates' order. Holders missing from the candidates
--- (gone from the game) lose their books too.
+-- A book for any caster (a player or an NPC); a holder keeps the one it has.
+function Library:Grant(holder)
+	self.books[holder] = self.books[holder] or SpellBook.New(self.set)
+	return self.books[holder]
+end
+
+function Library:Revoke(holder)
+	self.books[holder] = nil
+end
+
+-- A caster gone from the game.
+function Library:Forget(holder)
+	self.books[holder] = nil
+end
+
+-- Grants and revokes the candidates' books to match; returns the holders
+-- granted and those revoked, in the candidates' order. Casters that are
+-- not candidates keep what they hold.
 function Library:Sync(on, candidates)
-	local granted, revoked, present = {}, {}, {}
+	local granted, revoked = {}, {}
 	for _, candidate in ipairs(candidates) do
 		local holder = candidate.holder
-		present[holder] = true
 		local holds, may = self.books[holder] ~= nil, MayHold(on, candidate)
 		if may and not holds then
-			self.books[holder] = SpellBook.New(self.set)
+			self:Grant(holder)
 			granted[#granted + 1] = holder
 		elseif holds and not may then
-			self.books[holder] = nil
+			self:Revoke(holder)
 			revoked[#revoked + 1] = holder
 		end
 	end
-	for holder in pairs(self.books) do
-		if not present[holder] then self.books[holder] = nil end
-	end
 	return granted, revoked
+end
+
+-- Every caster holding a book.
+function Library:Holders()
+	local holders = {}
+	for holder in pairs(self.books) do holders[#holders + 1] = holder end
+	return holders
 end
 
 -- A new life: TF2 regenerates the player's items, so any book starts over.
@@ -207,11 +237,12 @@ function Library:Respawn(on, candidate)
 end
 
 -- CSpellPickup: returns whether the pickup is taken and whether a spell is
--- rolling for it. A common pickup needs a book; a rare one is taken even by
--- a player without one, who gets nothing (MyTouch returns true).
+-- rolling for it. Only a caster holding a book collects one (TF2 lets a
+-- player with none take a rare pickup and get nothing; any passing caster,
+-- NPCs included, would waste it here).
 function Library:Pickup(holder, tier, now, random)
 	local book = self.books[holder]
-	if book == nil then return tier ~= self.set.TIER_COMMON, false end
+	if book == nil then return false, false end
 	local rolled = book:Pickup(tier, now, random)
 	return rolled, rolled
 end

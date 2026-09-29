@@ -3,6 +3,7 @@
 -- team; each hatches a normal skeleton the caster owns.
 local require = require
 local Teams = require("foundation.teams")
+local Spells = require("foundation.spells")
 local Tf2 = require("foundation.spells.tf2")
 local Zombie = require("foundation.npc.zombie")
 module(...)
@@ -17,6 +18,14 @@ SOUND = "Halloween.spell_skeleton_horde_rise"
 GOOP = {
 	[Teams.RED] = "spell_pumpkin_mirv_goop_red",
 	[Teams.BLUE] = "spell_pumpkin_mirv_goop_blue",
+}
+
+USE = {
+	kind = Spells.USE_SUMMON,
+	range = Tf2.THROW_RANGE,
+	radius = 0,
+	needsLineOfSight = true,
+	selfOnly = false,
 }
 
 function Cast(caster)

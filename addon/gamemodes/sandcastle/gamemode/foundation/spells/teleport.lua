@@ -4,6 +4,7 @@
 -- 50 off the surface it hit, then back along the trail.
 local require = require
 local Teams = require("foundation.teams")
+local Spells = require("foundation.spells")
 local Tf2 = require("foundation.spells.tf2")
 local ipairs, remove = ipairs, table.remove
 module(...)
@@ -19,6 +20,14 @@ SURFACE_OFFSET = 50
 HEAL = 30
 FLASH = "eyeboss_tp_player"
 SOUND = "Building_Teleporter.Ready"
+
+USE = {
+	kind = Spells.USE_MOBILITY,
+	range = Tf2.THROW_RANGE,
+	radius = 0,
+	needsLineOfSight = true,
+	selfOnly = false,
+}
 
 function Cast(caster)
 	Tf2.CastWheel(caster)
@@ -51,7 +60,7 @@ local function Initial(caster, impact)
 	for i, spot in ipairs(impact.state.trail) do spots[i] = spot end
 	spots[#spots + 1] = impact.hitPosition + impact.normal * SURFACE_OFFSET
 	for i = #spots, 1, -1 do
-		if caster:PlayerFits(owner, spots[i]) then
+		if caster:Fits(owner, spots[i]) then
 			caster:Particle(FLASH, caster:Origin(owner))
 			caster:Teleport(owner, spots[i])
 			caster:ScreenFade(owner)

@@ -1,8 +1,10 @@
--- Overheal (CTFSpellBook::CastSelfHeal): every teammate in sight within 250,
--- the caster too, gains 50 health, 1 s of invulnerability and 3 s of quick
--- healing; enemy players are pushed 300 away.
+-- Overheal (CTFSpellBook::CastSelfHeal): every teammate player in sight
+-- within 250, the caster too (an NPC caster as well), gains 50 health, 1 s
+-- of invulnerability and 3 s of quick healing; enemy players are pushed 300
+-- away.
 local require = require
 local Teams = require("foundation.teams")
+local Spells = require("foundation.spells")
 local Tf2 = require("foundation.spells.tf2")
 local ipairs = ipairs
 module(...)
@@ -19,6 +21,14 @@ RING = {
 	[Teams.BLUE] = "spell_overheal_blue",
 }
 
+USE = {
+	kind = Spells.USE_HEAL,
+	range = 0,
+	radius = RADIUS,
+	needsLineOfSight = false,
+	selfOnly = true,
+}
+
 function Cast(caster)
 	Tf2.CastWheel(caster)
 	Tf2.CastSound(caster, INDEX)
@@ -26,7 +36,8 @@ function Cast(caster)
 	local origin, team = caster:Origin(owner), caster:TeamOf(owner)
 	caster:AttachParticle(RING[team], owner)
 	for _, target in ipairs(caster:EntitiesInSphere(origin, RADIUS)) do
-		if caster:IsPlayer(target) and caster:IsAlive(target) and caster:IsVisible(origin, caster:Origin(target)) then
+		local reached = caster:IsPlayer(target) or target == owner
+		if reached and caster:IsAlive(target) and caster:IsVisible(origin, caster:Origin(target)) then
 			if caster:TeamOf(target) == team then
 				caster:Heal(target, HEAL)
 				caster:AddCond(target, Tf2.COND.INVULNERABLE_USER_BUFF, INVULNERABLE_TIME)

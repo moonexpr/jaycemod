@@ -4,6 +4,7 @@
 -- then a blast of 10.
 local require = require
 local Teams = require("foundation.teams")
+local Spells = require("foundation.spells")
 local Tf2 = require("foundation.spells.tf2")
 module(...)
 
@@ -26,6 +27,14 @@ IMPACT_PARTICLES = {
 SWARM = {
 	[Teams.RED] = "spell_batball_red",
 	[Teams.BLUE] = "spell_batball_blue",
+}
+
+USE = {
+	kind = Spells.USE_ATTACK,
+	range = Tf2.THROW_RANGE,
+	radius = RADIUS,
+	needsLineOfSight = true,
+	selfOnly = false,
 }
 
 function Cast(caster)

@@ -162,6 +162,9 @@ JAR_FLIGHT = {
 }
 ROCKET_FLIGHT = {}
 
+-- A thrown spell's rough reach for its USE: a jar's flight before its fuse.
+THROW_RANGE = PROJECTILE_SPEED * JAR_FUSE
+
 -- TossJarThink for a spell that throws its PROJECTILE: from the hand, if an
 -- 8-unit hull fits between the eyes and the hand; otherwise nothing is
 -- thrown (and the charge is gone). Returns whether it threw.

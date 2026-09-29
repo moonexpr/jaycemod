@@ -101,4 +101,36 @@ T.test("each index names a strategy part that registers that index", function()
 	end
 end)
 
+T.test("each spell declares how an AI could use it", function()
+	local Spells = T.require("foundation.spells")
+	local KINDS = {
+		[S.SPELL_FIREBALL] = Spells.USE_ATTACK,
+		[S.SPELL_BATS] = Spells.USE_ATTACK,
+		[S.SPELL_OVERHEAL] = Spells.USE_HEAL,
+		[S.SPELL_MIRV] = Spells.USE_ATTACK,
+		[S.SPELL_BLASTJUMP] = Spells.USE_MOBILITY,
+		[S.SPELL_STEALTH] = Spells.USE_ESCAPE,
+		[S.SPELL_TELEPORT] = Spells.USE_MOBILITY,
+		[S.SPELL_LIGHTNING] = Spells.USE_ATTACK,
+		[S.SPELL_ATHLETIC] = Spells.USE_MOBILITY,
+		[S.SPELL_METEOR] = Spells.USE_ATTACK,
+		[S.SPELL_SPAWN_BOSS] = Spells.USE_SUMMON,
+		[S.SPELL_SKELETON_HORDE] = Spells.USE_SUMMON,
+	}
+	for index = 0, S.COUNT - 1 do
+		local part = T.require(S.Strategy(index))
+		local use, name = part.USE, S.Strategy(index)
+		T.eq(use.kind, KINDS[index], name .. " kind")
+		T.eq(type(use.range), "number", name .. " range")
+		T.eq(type(use.radius), "number", name .. " radius")
+		local thrown = S.Definition(index).kind ~= S.KIND_SELF
+		T.eq(use.selfOnly, not thrown, name .. " needs no target unless thrown")
+		T.eq(use.needsLineOfSight, thrown, name .. " is thrown at what it sees")
+		if thrown then T.eq(use.range > 0, true, name .. " reaches") end
+	end
+	T.eq(T.require("foundation.spells.overheal").USE.radius, 250, "overheal reaches 250 around")
+	T.eq(T.require("foundation.spells.fireball").USE.range, S.THROW_RANGE, "a fireball flies a throw's range")
+	T.eq(T.require("foundation.spells.lightning").USE.range, S.PROJECTILE_SPEED * 0.4 * 5, "the orb's 5 s at 0.4 speed")
+end)
+
 T.finish()

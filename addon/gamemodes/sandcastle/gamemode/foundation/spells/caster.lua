@@ -1,7 +1,12 @@
--- The caster port: everything a spell may ask of the world, for one caster
--- (a player). The spells controller implements it; tests/fake_caster.lua
--- fakes it. Targets are opaque handles; vectors support + - * (by a number),
--- :Length(), :GetNormalized(), :Dot(v) and .x .y .z.
+-- The caster port: everything a spell may ask of the world, for one caster,
+-- a player or an NPC (wetsand_combat_nextbot, AI War soldiers). Owner() is
+-- the caster itself, credited with the damage its spells deal; its aim is
+-- ShootPosition() and EyeVectors(). No method needs a player: one with no
+-- meaning for an NPC (ScreenFade) does nothing for it. The spells
+-- controller implements the port over any caster entity;
+-- tests/fake_caster.lua fakes it. Targets are opaque handles; vectors
+-- support + - * (by a number), :Length(), :GetNormalized(), :Dot(v) and
+-- .x .y .z.
 --
 --   time, chance     Now(), RandomFloat(lo, hi), RandomInt(lo, hi), Vector(x, y, z)
 --   who              Owner() (the caster), TeamOf(t), IsAlive(t), IsPlayer(t),
@@ -12,7 +17,7 @@
 --                    (solid world and props; players and NPCs pass),
 --                    TraceLine(from, to) -> { hit, endPos, normal },
 --                    IsVisible(from, to) (no world between the points),
---                    PlayerFits(t, pos) (t's hull is clear at pos),
+--                    Fits(t, pos) (t's hull is clear at pos),
 --                    EntitiesInSphere(v, r) -> the players and NPCs within r
 --   effects          Heal(t, n) (up to max health), AddCond(t, cond, d),
 --                    Stun(t, d, reduction), GetVelocity(t), SetVelocity(t, v),
@@ -55,7 +60,7 @@ METHODS = {
 	"TraceHull",
 	"TraceLine",
 	"IsVisible",
-	"PlayerFits",
+	"Fits",
 	"EntitiesInSphere",
 	"Heal",
 	"AddCond",

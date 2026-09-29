@@ -162,22 +162,29 @@ T.test("the library grants books to living RED and BLU players while spells are 
 	T.eq(library:Respawn(false, Candidate(red, Teams.RED)), false, "no book on respawn while off")
 end)
 
-T.test("a player who left keeps no book", function()
+T.test("a caster who left keeps no book; Sync leaves casters it was not given alone", function()
 	local library = Spells.Library.New(Tf2)
-	local gone = {}
+	local gone, npc = {}, {}
 	library:Sync(true, { Candidate(gone, Teams.RED) })
+	library:Grant(npc)
 	library:Sync(true, {})
+	T.eq(library:BookOf(gone) ~= nil, true, "Sync only judges its candidates")
+	T.eq(library:BookOf(npc) ~= nil, true, "a book granted directly stays")
+	library:Forget(gone)
 	T.eq(library:BookOf(gone), nil, "forgotten")
+	T.eq(library:Grant(npc), library:BookOf(npc), "granting again keeps the same book")
+	library:Revoke(npc)
+	T.eq(library:BookOf(npc), nil, "revoked")
 end)
 
-T.test("pickups through the library: a common one needs a book, a rare one is taken regardless", function()
+T.test("pickups through the library: only a caster holding a book collects one", function()
 	local library = Spells.Library.New(Tf2)
 	local holder = {}
 	local taken, rolled = library:Pickup(holder, Tf2.TIER_COMMON, 0, Landing(FIRST))
 	T.eq(taken, false, "no book: a common pickup stays")
 	taken, rolled = library:Pickup(holder, Tf2.TIER_RARE, 0, Landing(FIRST))
-	T.eq(taken, true, "no book: a rare pickup is taken")
-	T.eq(rolled, false, "but rolls nothing")
+	T.eq(taken, false, "no book: a rare pickup stays too")
+	T.eq(rolled, false, "and rolls nothing")
 
 	library:Sync(true, { Candidate(holder, Teams.BLUE) })
 	taken, rolled = library:Pickup(holder, Tf2.TIER_COMMON, 0, Landing(FIRST))
@@ -186,6 +193,36 @@ T.test("pickups through the library: a common one needs a book, a rare one is ta
 	local done = library:Tick(Tf2.ROLL_TIME)
 	T.eq(#done, 1, "one book rolled")
 	T.eq(done[1], holder, "the holder's")
+end)
+
+T.test("an NPC caster holds a book, picks up, rolls and casts through the same port", function()
+	local npc = Fake.Target({
+		name = "soldier",
+		team = Teams.BLUE,
+		origin = V(0, 0, 0),
+		player = false,
+	})
+	local caster = NewCaster(npc, { shoot = V(0, 0, 50) })
+	local library = Spells.Library.New(Tf2)
+	library:Grant(npc)
+	local taken = library:Pickup(npc, Tf2.TIER_RARE, 0, Landing(FIRST))
+	T.eq(taken, true, "the NPC collects a pickup")
+	library:Tick(Tf2.ROLL_TIME)
+	local book = library:BookOf(npc)
+	T.eq(book:State().selected, Tf2.SPELL_LIGHTNING, "a rare spell")
+	T.eq(book:Cast(caster, Tf2.ROLL_TIME), true, "cast")
+	local launch = caster:Calls("LaunchProjectile")[1]
+	T.eq(launch.class, "tf_projectile_lightningorb", "the orb flies")
+	T.eq(launch.config.team, Teams.BLUE, "on the NPC's team")
+	T.eq(caster:Calls("Particle")[1].name, "spell_cast_wheel_blue", "BLU's cast wheel")
+
+	book:Select(Tf2.SPELL_ATHLETIC)
+	book:Cast(caster, 10)
+	T.eq(npc.conds[Tf2.COND.HALLOWEEN_SPEED_BOOST], 20, "a movement spell works on the NPC")
+	book:Select(Tf2.SPELL_OVERHEAL)
+	npc.health = 100
+	book:Cast(caster, 20)
+	T.eq(npc.health, 150, "and a heal")
 end)
 
 T.test("a spawn_boss spell with no room for the eyeball is given back", function()

@@ -2,6 +2,7 @@
 -- thrown 800 up and gains 25 health; enemy players within 100 in sight are
 -- flung 800 away, then a blast of 20 over 100 that spares the caster.
 local require = require
+local Spells = require("foundation.spells")
 local Tf2 = require("foundation.spells.tf2")
 local ipairs = ipairs
 module(...)
@@ -16,6 +17,14 @@ DAMAGE = 20
 DEBRIS = "bombinomicon_burningdebris"
 RING = "heavy_ring_of_fire"
 SMOKE = "rocketjump_smoke"
+
+USE = {
+	kind = Spells.USE_MOBILITY,
+	range = 0,
+	radius = RADIUS,
+	needsLineOfSight = false,
+	selfOnly = true,
+}
 
 function Cast(caster)
 	Tf2.CastWheel(caster)

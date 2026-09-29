@@ -31,6 +31,14 @@ local CORNERS = {
 	{ -1, 1 },
 }
 
+USE = {
+	kind = Spells.USE_SUMMON,
+	range = Tf2.THROW_RANGE,
+	radius = 0,
+	needsLineOfSight = true,
+	selfOnly = false,
+}
+
 function Cast(caster)
 	Tf2.CastWheel(caster)
 	return Tf2.Toss(caster, _M)

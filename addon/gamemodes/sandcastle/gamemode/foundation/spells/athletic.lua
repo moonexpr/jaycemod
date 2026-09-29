@@ -2,6 +2,7 @@
 -- fast. OnAddHalloweenSpeedBoost adds TF_COND_SPEED_BOOST, the speed bonus
 -- TeamFortress_CalculateMaxSpeed gives, so the spell adds it for as long.
 local require = require
+local Spells = require("foundation.spells")
 local Tf2 = require("foundation.spells.tf2")
 module(...)
 
@@ -9,6 +10,14 @@ INDEX = Tf2.SPELL_ATHLETIC
 
 HEAL = 100
 DURATION = 20
+
+USE = {
+	kind = Spells.USE_MOBILITY,
+	range = 0,
+	radius = 0,
+	needsLineOfSight = false,
+	selfOnly = true,
+}
 
 function Cast(caster)
 	Tf2.CastWheel(caster)

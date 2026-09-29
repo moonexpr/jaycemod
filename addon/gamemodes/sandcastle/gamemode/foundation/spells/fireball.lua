@@ -3,6 +3,7 @@
 -- centre, burns for 5 s and takes 100 burn damage; then a blast of 10.
 -- Meteors burst the same way (Burst).
 local require = require
+local Spells = require("foundation.spells")
 local Tf2 = require("foundation.spells.tf2")
 local ipairs = ipairs
 module(...)
@@ -19,6 +20,14 @@ NUDGE = 5 -- ApplyGenericPushbackImpulse( vecDir * 5 ), with vecDir.z = 0.1
 NUDGE_LIFT = 0.1
 PARTICLE = "bombinomicon_burningdebris"
 SOUND = "Halloween.spell_fireball_impact"
+
+USE = {
+	kind = Spells.USE_ATTACK,
+	range = Tf2.THROW_RANGE,
+	radius = RADIUS,
+	needsLineOfSight = true,
+	selfOnly = false,
+}
 
 function Cast(caster)
 	Tf2.CastWheel(caster)

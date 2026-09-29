@@ -34,6 +34,14 @@ TENDRILS = {
 	[Teams.BLUE] = "spell_fireball_tendril_parent_blue",
 }
 
+USE = {
+	kind = Spells.USE_ATTACK,
+	range = Tf2.THROW_RANGE,
+	radius = RANGE + Fireball.RADIUS,
+	needsLineOfSight = true,
+	selfOnly = false,
+}
+
 function Cast(caster)
 	Tf2.CastWheel(caster)
 	return Tf2.Toss(caster, _M)

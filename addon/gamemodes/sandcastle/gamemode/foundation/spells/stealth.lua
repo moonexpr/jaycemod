@@ -1,6 +1,7 @@
 -- Stealth (CTFSpellBook::CastSelfStealth): 40 health and 8 s unseen. The
 -- only spell CastSpell plays no cast wheel for.
 local require = require
+local Spells = require("foundation.spells")
 local Tf2 = require("foundation.spells.tf2")
 module(...)
 
@@ -8,6 +9,14 @@ INDEX = Tf2.SPELL_STEALTH
 
 HEAL = 40
 DURATION = 8
+
+USE = {
+	kind = Spells.USE_ESCAPE,
+	range = 0,
+	radius = 0,
+	needsLineOfSight = false,
+	selfOnly = true,
+}
 
 function Cast(caster)
 	Tf2.CastSound(caster, INDEX)

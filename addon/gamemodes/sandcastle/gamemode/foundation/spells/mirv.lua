@@ -4,6 +4,7 @@
 -- second. A bomblet leaves a spell pumpkin bomb of its team.
 local require = require
 local Teams = require("foundation.teams")
+local Spells = require("foundation.spells")
 local Tf2 = require("foundation.spells.tf2")
 local ipairs = ipairs
 module(...)
@@ -37,6 +38,14 @@ PUMPKIN_LIFETIME_SPREAD = 1
 GOOP = {
 	[Teams.RED] = "spell_pumpkin_mirv_goop_red",
 	[Teams.BLUE] = "spell_pumpkin_mirv_goop_blue",
+}
+
+USE = {
+	kind = Spells.USE_ATTACK,
+	range = Tf2.THROW_RANGE,
+	radius = PUMPKIN_RADIUS,
+	needsLineOfSight = true,
+	selfOnly = false,
 }
 
 function Cast(caster)
