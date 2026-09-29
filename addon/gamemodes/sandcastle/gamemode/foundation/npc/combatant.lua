@@ -9,6 +9,8 @@
 --   TeamOf(t) -> t's team (UNASSIGNED for an entity with none)
 --   CollectPlayers(team) -> the living players of team; nil means RED and BLU
 --   CollectNPCs(kind) -> the NPCs of that registry kind (foundation.npc KIND)
+--   CollectMembers(team) -> the living non-players fighting for team (the
+--     AI war's soldiers: WETSAND.SetTeamMember)
 --   InCond(t, cond), IsInvulnerable(t) (foundation.npc.targeting's rule),
 --   InRespawnRoom(t) (inside an active func_respawnroom)
 --   StunPlayer(t, duration, reduction, flags), AddCond(t, cond, duration)
@@ -25,6 +27,7 @@ METHODS = {
 	"TeamOf",
 	"CollectPlayers",
 	"CollectNPCs",
+	"CollectMembers",
 	-- conditions
 	"InCond",
 	"IsInvulnerable",

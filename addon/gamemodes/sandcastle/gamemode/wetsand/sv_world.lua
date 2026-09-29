@@ -154,6 +154,15 @@ local function MemberAlive(ent)
 	return IsValid(ent) and ent:Health() > 0
 end
 
+-- The living team members (not players) of a team.
+function WETSAND.TeamMembers(team)
+	local members = {}
+	for member, memberTeam in pairs(teamMembers) do
+		if memberTeam == team and MemberAlive(member) then members[#members + 1] = member end
+	end
+	return members
+end
+
 -- Living team members (not players) whose hull overlaps the entity's bounds.
 function WETSAND.MembersInside(ent)
 	local members = {}

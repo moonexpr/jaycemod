@@ -37,6 +37,7 @@ function FakeCombatant.World()
 	return setmetatable({
 		players = {},
 		npcs = {},
+		members = {},
 		roundWon = false,
 		holidays = {},
 		spawnPoints = {},
@@ -53,6 +54,16 @@ function World:AddPlayer(t)
 	ply.inRespawnRoom = t.inRespawnRoom == true
 	self.players[#self.players + 1] = ply
 	return ply
+end
+
+-- A team member that is not a player (an AI war soldier): a fake target
+-- with a team.
+function World:AddMember(t)
+	local member = Fake.Target(t)
+	member.team = t.team or Teams.UNASSIGNED
+	member.conds = {}
+	self.members[#self.members + 1] = member
+	return member
 end
 
 -- An NPC of a registry kind: a fake combatant, or a fake target with a team.
@@ -91,6 +102,14 @@ function Combatant:CollectPlayers(team)
 	for _, ply in ipairs(self.world.players) do
 		local wanted = team == nil and (ply.team == Teams.RED or ply.team == Teams.BLUE) or ply.team == team
 		if wanted and ply.alive then found[#found + 1] = ply end
+	end
+	return found
+end
+
+function Combatant:CollectMembers(team)
+	local found = {}
+	for _, member in ipairs(self.world.members) do
+		if member.team == team and member.alive ~= false then found[#found + 1] = member end
 	end
 	return found
 end

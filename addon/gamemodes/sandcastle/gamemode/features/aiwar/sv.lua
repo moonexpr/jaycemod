@@ -594,6 +594,49 @@ function Controller:GadgetDamage(target, dmg)
 	return info.team == self:TeamOf(target)
 end
 
+-- TF2's NPCs (Sandcastle's wetsand_nextbot variants: tf_zombie's skeletons
+-- and whatever joins them) take sides by their team: a RED or BLU one is
+-- a teammate or an enemy as a player of that team is; any other (the
+-- HALLOWEEN team's) is everyone's enemy. Soldiers and their gadgets are
+-- related to each one they have not been yet, every relationship pass.
+local function IsTFNpc(ent)
+	return IsValid(ent) and ent:IsNextBot() and ent.Variant ~= nil and ent.GetTeamNumber ~= nil
+end
+
+function Controller:NoteMonster(ent)
+	if not IsTFNpc(ent) then return end
+	self.monsters = self.monsters or {}
+	self.monsters[ent] = true
+end
+
+function Controller:MonsterDisposition(team, monster)
+	local monsterTeam = monster:GetTeamNumber()
+	if monsterTeam == RED or monsterTeam == BLUE then return self:Disposition(team, monsterTeam) end
+	return team == self.losers and D_FR or D_HT
+end
+
+function Controller:RelateMonsters()
+	if not self.monsters then return end
+	for monster in pairs(self.monsters) do
+		if not IsValid(monster) or monster:Health() <= 0 then
+			self.monsters[monster] = nil
+		else
+			for ent, entry in pairs(self.soldiers) do
+				local disposition = IsValid(ent) and self:MonsterDisposition(entry.soldier.team, monster)
+				if disposition and entry.soldier.relations[monster] ~= disposition then
+					entry.soldier.relations[monster] = disposition
+					ent:AddEntityRelationship(monster, disposition, RELATIONSHIP_PRIORITY)
+				end
+			end
+			for gadget, info in pairs(self.gadgets or {}) do
+				if IsValid(gadget) and gadget:IsNPC() then
+					gadget:AddEntityRelationship(monster, self:MonsterDisposition(info.team, monster), RELATIONSHIP_PRIORITY)
+				end
+			end
+		end
+	end
+end
+
 -- RED players fight beside the Combine, BLU beside the Resistance, and the
 -- rest (spectators, the unassigned) are left alone.
 function Controller:RelatePlayers()
@@ -972,15 +1015,77 @@ end
 local CART_MARGIN = Vector(24, 24, 64)
 
 function Controller:RefreshCartBounds()
-	local bounds = {}
+	local bounds, trains = {}, {}
 	for _, watcher in ipairs(ents.FindByClass("team_train_watcher")) do
 		local train = watcher:IsActive() and watcher:Train()
 		if IsValid(train) then
 			local mins, maxs = train:WorldSpaceAABB()
 			bounds[#bounds + 1] = { mins = mins - CART_MARGIN, maxs = maxs + CART_MARGIN }
+			trains[train] = { mins = mins, maxs = maxs }
 		end
 	end
-	self.cartBounds = bounds
+	self.cartBounds, self.trains = bounds, trains
+end
+
+-- A cart's reach for the orders (field.carts' radius): the half diagonal
+-- of its footprint and a soldier's hull, so spots around it stand clear of
+-- its body.
+local CART_CLEARANCE = 24
+
+local function CartRadius(train)
+	local mins, maxs = train:WorldSpaceAABB()
+	local size = maxs - mins
+	return math.sqrt(size.x * size.x + size.y * size.y) / 2 + CART_CLEARANCE
+end
+
+-- Carts' kill triggers: maps put a trigger_hurt inside the cart, parented
+-- to it, to kill players stuck in it. A soldier the cart drove over (a
+-- NextBot is not pushed as a player is) is not killed by it but set down
+-- beside the cart, on the nav mesh, on its own side first. Returns the
+-- train when the damage came from one of these triggers.
+local EJECT_TRIES = 8
+
+function Controller:CartTrigger(dmg)
+	for _, source in ipairs({ dmg:GetInflictor(), dmg:GetAttacker() }) do
+		if IsValid(source) and source:GetClass() == "trigger_hurt" then
+			local parent = source:GetParent()
+			for _ = 1, 4 do
+				if not IsValid(parent) then break end
+				if self.trains and self.trains[parent] then return parent end
+				parent = parent:GetParent()
+			end
+			local center = source:WorldSpaceCenter()
+			for train, box in pairs(self.trains or {}) do
+				if IsValid(train) and center:WithinAABox(box.mins, box.maxs) then return train end
+			end
+		end
+	end
+	return nil
+end
+
+function Controller:EjectFromCart(ent, entry, train)
+	local mins, maxs = train:WorldSpaceAABB()
+	local center = (mins + maxs) / 2
+	local out = ent:GetPos() - center
+	out.z = 0
+	if out:IsZero() then out = ent:GetForward() end
+	out:Normalize()
+	local radius = CartRadius(train) + 16
+	local base = math.atan2(out.y, out.x)
+	for i = 0, EJECT_TRIES - 1 do
+		-- 0, then alternately either side, round to the far side
+		local k = math.ceil(i / 2) * (i % 2 == 1 and 1 or -1)
+		local angle = base + k * (math.pi * 2 / EJECT_TRIES)
+		local candidate = Vector(center.x + math.cos(angle) * radius, center.y + math.sin(angle) * radius, ent:GetPos().z)
+		local area = navmesh.GetNearestNavArea(candidate, false, 128, false, true)
+		local spot = IsValid(area) and area:GetClosestPointOnArea(candidate) or candidate
+		if spot:Distance2D(center) >= radius - 8 and Clear(spot) then
+			ent:SetPos(spot + SPAWN_LIFT)
+			entry.soldier.cartRescues = (entry.soldier.cartRescues or 0) + 1
+			return true
+		end
+	end
+	return false
 end
 
 function Controller:UnderCart(area)
@@ -1330,6 +1435,7 @@ function Controller:Field(phase)
 		if watcher:IsActive() and IsValid(watcher:Train()) and #watcher:PathNodes() > 0 and not carts[team] then
 			self.cartEntities[team] = watcher:Train()
 			carts[team] = {
+				radius = CartRadius(watcher:Train()),
 				track = self:TrackOf(watcher),
 				distance = watcher:TrainDistanceAlongTrack(),
 				nextCheckpoint = watcher:NextCheckpointDistance(),
@@ -1389,6 +1495,7 @@ function Controller:Think(now)
 		self.nextRelations = now + RELATIONSHIP_INTERVAL
 		self:RelatePlayers()
 		self:SweepGadgets()
+		self:RelateMonsters()
 	end
 	if now >= (self.nextWatch or 0) then
 		self.nextWatch = now + WATCH_INTERVAL
@@ -1450,7 +1557,10 @@ function Controller:Start()
 	SetGlobal2Bool(ACTIVE_KEY, true)
 	self:OpenDoorsToSoldiers()
 	self:SetForcefieldsPassable(true)
-	for _, ent in ipairs(ents.GetAll()) do self:Consider(ent) end
+	for _, ent in ipairs(ents.GetAll()) do
+		self:Consider(ent)
+		self:NoteMonster(ent)
+	end
 	if IsValid(WETSAND.Rules) then WETSAND.Rules:RestartRound() end
 	return true
 end
@@ -1529,6 +1639,7 @@ function Controller:Describe(ent, entry)
 		lines[#lines + 1] = "Kit: " .. soldier.kit.name .. (state.gadget and ("; last used " .. state.gadget) or "")
 	end
 	if state.cleared then lines[#lines + 1] = "Raid: round the enemy's line" end
+	if soldier.cartRescues then lines[#lines + 1] = "Pulled out of a cart: " .. soldier.cartRescues .. " time(s)" end
 	if state.hops then lines[#lines + 1] = "Hops: " .. state.hops end
 	if state.passed then lines[#lines + 1] = "Let through: " .. state.passed .. " NPC-only blocker(s)" end
 	local blocked = self:BlockedBy(soldier)
@@ -1699,8 +1810,11 @@ hook.Add("Tick", "wetsand_aiwar_move", function()
 end)
 
 hook.Add("OnEntityCreated", "wetsand_aiwar", function(ent)
-	if not Controller.war or not AiWar.FactionTeam(ent:GetClass()) then return end
-	timer.Simple(0, function() Controller:Consider(ent) end)
+	if not Controller.war then return end
+	timer.Simple(0, function()
+		if not Controller.war or not IsValid(ent) then return end
+		if AiWar.FactionTeam(ent:GetClass()) then Controller:Consider(ent) else Controller:NoteMonster(ent) end
+	end)
 end)
 
 hook.Add("EntityRemoved", "wetsand_aiwar", function(ent)
@@ -1708,6 +1822,14 @@ hook.Add("EntityRemoved", "wetsand_aiwar", function(ent)
 end)
 
 hook.Add("EntityTakeDamage", "wetsand_aiwar", function(target, dmg)
+	local soldier = Controller.war and Controller.soldiers[target]
+	if soldier then
+		local train = Controller:CartTrigger(dmg)
+		if train then
+			Controller:EjectFromCart(target, soldier, train)
+			return true
+		end
+	end
 	if Controller.war and Controller:GadgetDamage(target, dmg) then return true end
 	local entry = Controller.war and Controller.soldiers[target]
 	if entry and dmg:GetDamage() > 0 then entry.soldier.hurtAt = CurTime() end

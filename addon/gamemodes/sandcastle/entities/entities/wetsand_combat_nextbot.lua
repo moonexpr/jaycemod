@@ -57,6 +57,7 @@ function ENT:CollectPlayers(team)
 end
 
 function ENT:CollectNPCs(kind) return self.npcs:All(kind) end
+function ENT:CollectMembers(team) return WETSAND.TeamMembers(team) end
 
 -- conditions: only players have them.
 function ENT:InCond(t, cond)

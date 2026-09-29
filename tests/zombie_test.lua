@@ -238,6 +238,26 @@ T.test("a RED skeleton fights a nearer BLU skeleton, keeping each victim for 3 s
 	T.eq(path.goal, enemy.origin, "then takes the nearer BLU skeleton")
 end)
 
+T.test("a skeleton chases the AI war's soldiers of an enemy team, not its own", function()
+	local world = FC.World()
+	world:AddPlayer({ team = Teams.BLUE, origin = V(600, 0, 0) })
+	world:AddMember({ team = Teams.RED, origin = V(50, 0, 0) })
+	local soldier = world:AddMember({ team = Teams.BLUE, origin = V(200, 0, 0) })
+	local me, npc = Skeleton({ world = world, team = Teams.RED })
+	Rise(me, npc)
+	npc:Update(TICK)
+	T.eq(me.paths[1].goal, soldier.origin, "the nearer BLU soldier, not the RED one")
+end)
+
+T.test("a Halloween skeleton chases soldiers of either team", function()
+	local world = FC.World()
+	local soldier = world:AddMember({ team = Teams.RED, origin = V(200, 0, 0) })
+	local me, npc = Skeleton({ world = world, team = Teams.HALLOWEEN })
+	Rise(me, npc)
+	npc:Update(TICK)
+	T.eq(me.paths[1].goal, soldier.origin, "a RED soldier")
+end)
+
 T.test("a team skeleton locks onto an enemy player it touches for 3 s", function()
 	local world = FC.World()
 	local teammate = world:AddPlayer({

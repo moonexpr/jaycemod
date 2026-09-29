@@ -24,7 +24,7 @@
 -- the goal is the tactical destination (flank point, bound spot, cover), with
 -- the tactic, the member's element ("moving" or "holding") and the cover spot
 -- it chose, if any (tactic, element, coverSpot).
-local abs, ceil, cos, floor, min, sin, sqrt = math.abs, math.ceil, math.cos, math.floor, math.min, math.sin, math.sqrt
+local abs, ceil, cos, floor, max, min, sin, sqrt = math.abs, math.ceil, math.cos, math.floor, math.max, math.min, math.sin, math.sqrt
 local pairs = pairs
 local N = require("foundation.npc")
 local AiWar = require("foundation.aiwar")
@@ -35,7 +35,11 @@ module(...)
 KIND = "aiwar"
 
 -- Goals
-PUSH_RING = 56 -- just outside a cart's body, inside its capture area
+-- Just outside a cart's body, inside its capture area: PUSH_RING, or the
+-- cart's own reach (field.carts' radius: its footprint's half diagonal and
+-- a soldier's hull) when larger. Inside the body a soldier is killed by the
+-- trigger_hurt maps put there for players stuck in the cart.
+PUSH_RING = 56
 PUSH_ARRIVE, PUSH_LEASH = 72, 110
 -- Blockers charge the enemy's cart and stand across its nose, in its way
 -- and inside its capture area: BLOCK_LEAD ahead of it, BLOCK_COLUMNS
@@ -163,6 +167,8 @@ local function GateSpot(field, member, row)
 end
 
 local function OwnCart(field, member) return field.carts[member.team] end
+
+local function Reach(cart) return max(PUSH_RING, cart.radius or 0) end
 local function EnemyCart(field, member) return field.carts[AiWar.EnemyOf(member.team)] end
 
 ROLES = {
@@ -173,7 +179,7 @@ ROLES = {
 		rushes = true,
 		Goal = function(field, member)
 			local cart = OwnCart(field, member)
-			return cart and Ring(cart.pos, member.slot, PUSH_RING)
+			return cart and Ring(cart.pos, member.slot, Reach(cart))
 		end,
 	},
 	-- A blocker (a shotgunner: the controller arms it) patrols behind the
@@ -192,7 +198,7 @@ ROLES = {
 			if not cart then return nil end
 			local column, row = member.slot % BLOCK_COLUMNS, floor(member.slot / BLOCK_COLUMNS)
 			local lateral = (column == 0 and 0) or (column % 2 == 1 and 1 or -1) * ceil(column / 2) * BLOCK_SPREAD
-			return cart.track:Offset(cart.distance + BLOCK_LEAD + row * BLOCK_DEPTH, lateral)
+			return cart.track:Offset(cart.distance + max(BLOCK_LEAD, Reach(cart)) + row * BLOCK_DEPTH, lateral)
 		end,
 	},
 	-- An escort follows its cart as HL2's rebels follow Gordon (the port's
@@ -282,8 +288,8 @@ ROLES[AiWar.RAID] = {
 	-- The line broken: attackers push their cart, defenders hit theirs.
 	Cleared = function(field, member)
 		local own, theirs = OwnCart(field, member), EnemyCart(field, member)
-		if own and not theirs then return Ring(own.pos, member.slot + 8, PUSH_RING) end
-		return theirs and Ring(theirs.pos, member.slot + 8, PUSH_RING * 3)
+		if own and not theirs then return Ring(own.pos, member.slot + 8, Reach(own)) end
+		return theirs and Ring(theirs.pos, member.slot + 8, Reach(theirs) * 3)
 	end,
 }
 

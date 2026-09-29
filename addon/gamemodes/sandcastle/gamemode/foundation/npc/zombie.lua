@@ -161,10 +161,15 @@ local function IsChaseable(me, t)
 		and not me:InRespawnRoom(t)
 end
 
+-- An enemy player, or an enemy team member that is not one (an AI war
+-- soldier: Sandcastle's, not TF2's).
 local function IsEnemyPlayer(me, team, other)
 	for _, enemyTeam in ipairs(Targeting.EnemyTeamsOf(team)) do
 		for _, ply in ipairs(me:CollectPlayers(enemyTeam)) do
 			if ply == other then return true end
+		end
+		for _, member in ipairs(me:CollectMembers(enemyTeam)) do
+			if member == other then return true end
 		end
 	end
 	return false
@@ -202,6 +207,12 @@ function SpecialAttack:Stomp(me)
 				me:DealDamage(ply, state.kind.attackDamage, DMG_SLASH, attacker)
 			end
 		end
+		-- Sandcastle's own: the AI war's soldiers are stomped as players are
+		for _, member in ipairs(me:CollectMembers(team)) do
+			if (me:TargetOrigin(member) - origin):Length() < STOMP_RANGE then
+				me:DealDamage(member, state.kind.attackDamage, DMG_SLASH, attacker)
+			end
+		end
 	end
 end
 
@@ -232,7 +243,8 @@ function Attack:OnStart(me)
 end
 
 -- CZombieAttack::SelectVictim: keep a chaseable victim while its focus
--- lasts; otherwise the nearest visible enemy player or enemy skeleton.
+-- lasts; otherwise the nearest visible enemy player or enemy skeleton (or,
+-- Sandcastle's own, enemy AI war soldier).
 function Attack:SelectVictim(me)
 	if self.target ~= nil and IsChaseable(me, self.target) and not self.focusTimer:IsElapsed() then return end
 	local team = self.state.team
@@ -245,6 +257,9 @@ function Attack:SelectVictim(me)
 		for _, ply in ipairs(me:CollectPlayers(enemyTeam)) do
 			local hidden = Targeting.IsHiddenFromNPC(function(cond) return me:InCond(ply, cond) end)
 			if IsChaseable(me, ply) and not hidden then Consider(ply) end
+		end
+		for _, member in ipairs(me:CollectMembers(enemyTeam)) do
+			if IsChaseable(me, member) then Consider(member) end
 		end
 	end
 	for _, zombie in ipairs(me:CollectNPCs(KIND)) do
