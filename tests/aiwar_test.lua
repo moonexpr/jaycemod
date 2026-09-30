@@ -396,6 +396,24 @@ T.test("the round state decides whether soldiers reinforce and take orders", fun
 	T.eq(sudden.orders and not sudden.reinforce, true, "no respawns in sudden death")
 end)
 
+T.test("a round won by a team is its humiliation of the losers; a stalemate is simply over", function()
+	local humiliation = AiWar.PhaseOf(true, STATE.TEAM_WIN, BLUE)
+	T.eq(humiliation, AiWar.PHASES.humiliation, "BLU won")
+	T.eq(AiWar.PhaseOf(true, STATE.TEAM_WIN, RED), AiWar.PHASES.humiliation, "RED won")
+	T.eq(humiliation.orders and humiliation.hunt and not humiliation.reinforce, true, "orders and the hunt, no reinforcements")
+	T.eq(AiWar.PhaseOf(true, STATE.TEAM_WIN, nil), AiWar.PHASES.over, "no winner")
+	T.eq(AiWar.PhaseOf(true, STATE.TEAM_WIN, Teams.UNASSIGNED), AiWar.PHASES.over, "a stalemate")
+	T.eq(AiWar.PhaseOf(true, STATE.RND_RUNNING, BLUE), AiWar.PHASES.running, "a winner outside TEAM_WIN changes nothing")
+	for name, phase in pairs(AiWar.PHASES) do T.eq(type(phase.hunt), "boolean", name .. " says whether winners hunt") end
+	for name, phase in pairs(AiWar.PHASES) do
+		if phase ~= AiWar.PHASES.humiliation then T.eq(phase.hunt, false, name .. " has no hunt") end
+	end
+end)
+
+T.test("a war keeps a board of the hunt's sightings", function()
+	T.eq(type(AiWar.War.New().hunt.Report), "function", "war.hunt")
+end)
+
 -- Track -------------------------------------------------------------------------
 
 local function P(x, y, z) return { x = x, y = y, z = z or 0 } end

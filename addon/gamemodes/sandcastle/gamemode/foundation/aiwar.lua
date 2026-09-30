@@ -12,6 +12,7 @@ local Teams = require("foundation.teams")
 local STATE = require("foundation.rounds.state")
 local Squad = require("foundation.aiwar.squad")
 local Lanes = require("foundation.aiwar.lanes")
+local Hunt = require("foundation.aiwar.hunt")
 module(...)
 
 local RED, BLUE = Teams.RED, Teams.BLUE
@@ -218,13 +219,47 @@ function PickRole(stance, counts)
 end
 
 -- Phases: what the round state allows. Pre-round freezes everyone as it
--- freezes players; sudden death has no respawns; a won round ends orders.
+-- freezes players; sudden death has no respawns; a round won by a team is
+-- its humiliation of the losers, when the winners hunt them down (hunt:
+-- foundation.aiwar.hunt, TF2's CTFBotTacticalMonitor "Get the losers!");
+-- a round over with no winner ends orders.
 PHASES = {
-	waiting = { name = "waiting", reinforce = false, orders = false },
-	frozen = { name = "frozen", reinforce = true, orders = false },
-	running = { name = "running", reinforce = true, orders = true },
-	suddenDeath = { name = "suddenDeath", reinforce = false, orders = true },
-	over = { name = "over", reinforce = false, orders = false },
+	waiting = {
+		name = "waiting",
+		reinforce = false,
+		orders = false,
+		hunt = false,
+	},
+	frozen = {
+		name = "frozen",
+		reinforce = true,
+		orders = false,
+		hunt = false,
+	},
+	running = {
+		name = "running",
+		reinforce = true,
+		orders = true,
+		hunt = false,
+	},
+	suddenDeath = {
+		name = "suddenDeath",
+		reinforce = false,
+		orders = true,
+		hunt = false,
+	},
+	humiliation = {
+		name = "humiliation",
+		reinforce = false,
+		orders = true,
+		hunt = true,
+	},
+	over = {
+		name = "over",
+		reinforce = false,
+		orders = false,
+		hunt = false,
+	},
 }
 
 local PHASE_OF_STATE = {
@@ -236,9 +271,10 @@ local PHASE_OF_STATE = {
 }
 
 -- active: the map runs TF2's rounds (tf_gamerules); without them the war
--- simply runs.
-function PhaseOf(active, state)
+-- simply runs. winner: the team that won the round (TEAM_WIN), or nil.
+function PhaseOf(active, state, winner)
 	if not active then return PHASES.running end
+	if state == STATE.TEAM_WIN and ENEMY[winner] then return PHASES.humiliation end
 	return PHASE_OF_STATE[state] or PHASES.over
 end
 
@@ -254,6 +290,7 @@ function War.New()
 		fireTeams = {}, -- every fire team: { team, role, index (per team and role), squad, members = place -> member }
 		enlisted = 0, -- members ever enlisted, for their order
 		claims = Squad.Claims.New(), -- spots soldiers hold (foundation.aiwar.squad)
+		hunt = Hunt.Board.New(), -- the winners' sightings of the losers (foundation.aiwar.hunt)
 		stances = {}, -- team -> stance
 		defense = {}, -- team -> its defense share (DefenseShare), or nil
 		drafts = { [RED] = 0, [BLUE] = 0 },
