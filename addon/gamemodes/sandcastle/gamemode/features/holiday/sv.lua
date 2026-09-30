@@ -52,6 +52,12 @@ function Controller:BindHoliday(ent, kv)
 end
 
 function Controller:HolidayActive(h) return self.holiday:Active(h) end
+
+-- tf_logic_on_holiday's Fire: the outputs for the holidays that are on. Its
+-- part loads with the first Fire.
+function Controller:OnHolidayOutputs()
+	return WETSAND.require("foundation.holiday.on_holiday").Outputs(self.holiday)
+end
 function Controller:Mode() return self.holiday:Mode() end
 function Controller:UsingSpells() return self.holiday:UsingSpells() end
 
