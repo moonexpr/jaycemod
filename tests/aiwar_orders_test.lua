@@ -23,6 +23,7 @@ local function Field(t)
 	return {
 		phase = t.phase or AiWar.PHASES.running,
 		carts = t.carts or { [BLUE] = Cart(1000) },
+		doctrine = Orders.PAYLOAD,
 	}
 end
 
@@ -1068,6 +1069,117 @@ T.test("the soldier's state shows its route and how its last trip ended, for the
 	local lost, lostNpc = Enlist({ role = AiWar.PUSH, route = function() return false end })
 	Tick(lost, lostNpc, 2)
 	T.eq(lostNpc:State().trip, "no route", "no route")
+end)
+
+-- Doctrines: the jobs of a scenario (foundation.aiwar.scenario) ----------------
+
+T.test("the payload doctrine is today's roles, and the shared goal helpers are public", function()
+	T.eq(Orders.PAYLOAD.NAME, "payload", "named")
+	T.eq(Orders.PAYLOAD.ROLES, Orders.ROLES, "today's roles")
+	for _, name in ipairs({ "WaitsForSetup", "ChaseAnchor", "PatrolMark", "PatrolHolds" }) do
+		T.eq(type(Orders.PAYLOAD[name]), "function", name)
+	end
+	for _, name in ipairs({ "Ring", "Lateral", "GateSpot", "Behind", "EntryPoint" }) do
+		T.eq(type(Orders[name]), "function", name)
+	end
+	T.eq(Orders.ROLES[AiWar.RAID].Line, Orders.EnemyLine, "a payload raider's line is the enemy's line")
+end)
+
+-- A doctrine with one job, CAPTURE: stand in a zone round ZONE_CENTER. No
+-- carts anywhere: nothing but the doctrine may read them.
+local ZONE_CENTER, ZONE_RADIUS = P(2000, 0), 200
+
+local function Stub(name)
+	return {
+		NAME = name,
+		ROLES = {
+			[AiWar.CAPTURE] = {
+				name = name .. "Occupy",
+				arrive = 48,
+				leash = 300,
+				rushes = false,
+				Goal = function(field, member) return field.noGoal ~= true and ZONE_CENTER or nil end,
+				Zone = function(field, member) return ZONE_CENTER, ZONE_RADIUS end,
+				Urgent = function(field, member) return field.urgent == true end,
+			},
+		},
+		WaitsForSetup = function(field, member) return false end,
+		ChaseAnchor = function(field, member) return nil end,
+		PatrolMark = function(field, member) return {} end,
+		PatrolHolds = function(mark, field, member) return true end,
+	}
+end
+
+local STUB = Stub("Stub")
+
+local function StubField(t)
+	return {
+		phase = AiWar.PHASES.running,
+		doctrine = t.doctrine or STUB,
+		urgent = t.urgent,
+		noGoal = t.noGoal,
+	}
+end
+
+T.test("a job with a zone travels into it, then shuffles between spots in it every ZONE_SHUFFLE", function()
+	local first, second = P(2100, 50), P(1900, -80)
+	local me, npc = Enlist({ role = AiWar.CAPTURE, field = StubField({}), pos = P(0, 0), patrolSpots = { first, second }, walkable = function() return true end })
+	Tick(me, npc, 2)
+	T.eq(Orders.JobOf(npc:Describe()), "Travel", "on its way")
+	T.eq(me.gait, Orders.RUN, "running")
+	me.pos = P(1850, 0)
+	Tick(me, npc, 2)
+	T.eq(npc:State().trip, "in its zone", "arrived on entering the zone")
+	Near(me.moving, first, "to a spot in the zone")
+	me.pos = first
+	Tick(me, npc)
+	T.eq(me.moving, nil, "resting there")
+	Tick(me, npc, Orders.ZONE_SHUFFLE / TICK + 1)
+	Near(me.moving, second, "then on to another")
+end)
+
+T.test("an urgent job rushes, does not stop at its leash for an enemy, and will not retreat", function()
+	local field = StubField({})
+	local me, npc, war = Enlist({ role = AiWar.CAPTURE, field = field, pos = P(0, 0), walkable = function() return true end })
+	Tick(me, npc, 2)
+	me.enemy = true
+	me.enemyPos = P(1800, 300)
+	me.pos = P(1750, 0)
+	Tick(me, npc, 2)
+	T.eq(me.moving, nil, "not urgent: stops within its leash to fight")
+	T.eq(npc:Query("ShouldRetreat"), N.ANSWER_UNDEFINED, "not urgent: may retreat")
+	war:SetField(StubField({ urgent = true }))
+	Tick(me, npc, 2)
+	T.eq(me.moving ~= nil, true, "urgent: on into the zone")
+	T.eq(me.gait, Orders.RUSH, "at a rush")
+	T.eq(npc:Query("ShouldRetreat"), N.ANSWER_NO, "no retreat")
+	T.eq(npc:Query("ShouldHurry"), N.ANSWER_YES, "hurrying")
+	me.enemyHandle, me.enemyHealth = "weak", 0.1
+	Tick(me, npc, 2)
+	T.eq(npc:State().chases, nil, "no chase while urgent")
+end)
+
+T.test("an urgent job hurt badly stays on its job", function()
+	local me, npc = Enlist({ role = AiWar.CAPTURE, field = StubField({ urgent = true }), pos = P(1900, 0), enemyPos = P(2400, 0) })
+	Tick(me, npc)
+	me.health = 20
+	Tick(me, npc, 2)
+	T.eq(Orders.JobOf(npc:Describe()) ~= nil, true, "no RetreatToCover")
+end)
+
+T.test("a new doctrine changes the job's action", function()
+	local me, npc, war = Enlist({ role = AiWar.CAPTURE, field = StubField({ noGoal = true }) })
+	Tick(me, npc)
+	T.eq(Orders.JobOf(npc:Describe()), "StubOccupy", "the stub's job")
+	war:SetField(StubField({ noGoal = true, doctrine = Stub("Other") }))
+	Tick(me, npc)
+	T.eq(Orders.JobOf(npc:Describe()), "OtherOccupy", "the other doctrine's")
+end)
+
+T.test("a job its doctrine lacks leaves the soldier idle", function()
+	local me, npc = Enlist({ role = AiWar.PUSH, field = StubField({}) })
+	Tick(me, npc, 2)
+	T.eq(Orders.JobOf(npc:Describe()), "Idle", "no push in the stub")
 end)
 
 T.finish()
