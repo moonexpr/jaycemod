@@ -1,0 +1,20 @@
+-- The payload mode (TF_GAMETYPE_ESCORT): a team_train_watcher chooses it,
+-- as CTFGameRules::Activate does, over control points and under KOTH. Its
+-- carts' points score with the chime to everyone, it plays no special cap
+-- lines, and on a race map (tf_logic_multiple_escort) each side hears its
+-- stage outcome when the round is won.
+local Rounds = require("foundation.rounds")
+local Race = require("foundation.payload.race")
+module(...)
+
+Mode = Rounds.Mode:Extend("payload")
+Mode.PRIORITY = 2
+Mode.HUD = Rounds.HUD_PAYLOAD
+-- CTFGameRules::HandleScoring plays Hud.EndRoundScored to everyone on escort maps.
+Mode.SCORE_CHIME_TO_ALL = true
+
+-- CTeamTrainWatcherMaster::FireGameEvent("teamplay_round_win"), on a race only.
+function Mode:RoundWinLines(winner, fullRound, race)
+	if not race then return {} end
+	return Race.OutcomeLines(winner, fullRound)
+end

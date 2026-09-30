@@ -2,9 +2,7 @@
 -- functions: how fast the cart goes, which speed arrows the HUD shows, when
 -- it recedes, how far it has come, and when the announcer and the capture
 -- alarm sound. The entity feeds them what it reads from the world.
-local ipairs, math, table = ipairs, math, table
-local Teams = require("foundation.teams")
-local RESTRICT_NEITHER = require("foundation.rounds").RESTRICT_NEITHER
+local ipairs, math = ipairs, math
 module(...)
 
 HILL_NONE, HILL_UP, HILL_DOWN = 0, 1, 2
@@ -73,6 +71,16 @@ end
 function OvertimeRecedeAt(recedeAt, now, overtimeLen)
 	if recedeAt - now > overtimeLen then return now + overtimeLen end
 	return recedeAt
+end
+
+-- CTeamTrainWatcher::TimerMayExpire, plus CTFGameRules::TimerMayExpire's
+-- hold while a point is being captured, for the cart's own area, so the
+-- round clock holds in overtime while the cart is pushed, blocked, or
+-- waiting to recede. q = { disabled, waitingToRecede, capBlocked, areaCapturing }.
+function TimerMayExpire(q)
+	if q.disabled then return true end
+	if q.waitingToRecede or q.capBlocked then return false end
+	return not q.areaCapturing
 end
 
 -- The path node the train is heading for, given the index of its current
@@ -206,53 +214,18 @@ function HillSegments(nodes, total)
 	return hills
 end
 
--- CTeamControlPointRound/Master::TeamOwnsAllPoints. points = { { group, owner } };
--- with overrideIndex, that point is taken as owned by newTeam. Returns the
--- team owning every point of some group, else nobody.
-function TeamOwnsAllPoints(points, overrideIndex, newTeam)
-	local winning, order = {}, {}
-	for i, point in ipairs(points) do
-		local owner = i == overrideIndex and newTeam or point.owner
-		local g = point.group
-		if winning[g] == nil then
-			winning[g] = owner
-			order[#order + 1] = g
-		elseif winning[g] ~= Teams.UNASSIGNED and winning[g] ~= owner then
-			winning[g] = Teams.UNASSIGNED
-		end
-	end
-	table.sort(order)
-	for _, g in ipairs(order) do
-		if winning[g] >= Teams.FIRST_GAME_TEAM then return winning[g] end
-	end
-	return Teams.UNASSIGNED
-end
-
--- CTeamControlPointRound::IsPlayable; invalidCapWinner is the round's
--- cpr_restrict_team_cap_win (RESTRICT_NEITHER: any team wins it by capping).
-function IsPlayable(points, invalidCapWinner)
-	if invalidCapWinner == RESTRICT_NEITHER then return true end
-	local winners = TeamOwnsAllPoints(points)
-	return not (winners >= Teams.FIRST_GAME_TEAM and winners ~= invalidCapWinner)
-end
-
--- WatcherThink's bFinalPointInMap: without mini-rounds, whether a team that
--- may capture point `index` would win by it; with mini-rounds, only in the
--- last playable round.
-function FinalPoint(miniRounds, playableRounds, points, index, cappingTeams)
-	if miniRounds and playableRounds ~= 1 then return false end
-	for _, team in ipairs(cappingTeams) do
-		if TeamOwnsAllPoints(points, index, team) == team then return true end
-	end
-	return false
-end
-
 -- Admin controls (the Game Rules editor) --------------------------------------------
 
 -- The cart's top speed scale an admin may set, and how much faster it runs
 -- while driven on to the next checkpoint.
 CART_SPEED_MIN, CART_SPEED_MAX = 0.1, 4
+CART_SPEED_DEFAULT = 1 -- the map's own speed
 ADVANCE_SPEED_SCALE = 4
+
+-- The scale an admin asked for, within the editor's range.
+function SpeedScale(scale)
+	return math.min(math.max(scale, CART_SPEED_MIN), CART_SPEED_MAX)
+end
 
 -- links: the watcher's checkpoints in path order, { distance, index }.
 -- The first one farther along the path than `distance`, or nil.
@@ -265,6 +238,5 @@ end
 
 -- The train's m_maxSpeed for the map's top speed `base`.
 function MaxSpeed(base, scale, advancing)
-	scale = math.min(math.max(scale, CART_SPEED_MIN), CART_SPEED_MAX)
-	return base * scale * (advancing and ADVANCE_SPEED_SCALE or 1)
+	return base * SpeedScale(scale) * (advancing and ADVANCE_SPEED_SCALE or 1)
 end

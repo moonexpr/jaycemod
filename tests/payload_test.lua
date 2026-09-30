@@ -1,6 +1,8 @@
 -- foundation.payload: the team_train_watcher's decisions (team_train_watcher.cpp).
 local T = dofile("tests/harness.lua")
 local P = T.require("foundation.payload")
+local Capture = T.require("foundation.capture")
+local Master = T.require("foundation.capture.master")
 local Teams = T.require("foundation.teams")
 local NEITHER = T.require("foundation.rounds").RESTRICT_NEITHER
 
@@ -258,44 +260,115 @@ T.test("an uphill straight into a downhill makes two hills", function()
 end)
 
 -- Final point in map (WatcherThink's bFinalPointInMap) --------------------------------
+-- These rules moved to the capture system (PointSet:TeamOwnsAll and the
+-- Master), which the watcher asks through the capture controller.
 
+local NO_FLAGS = 0
+local function first(n) return 1 end
+
+-- Points "p1".."pn" in index order; each owner a team, or { team, group }.
 local function Points(...)
 	local points = {}
-	for i, owner in ipairs({ ... }) do points[i] = { group = 0, owner = owner } end
-	return points
+	for i, o in ipairs({ ... }) do
+		local owner, group = o, 0
+		if type(o) == "table" then owner, group = o[1], o[2] end
+		points[i] = {
+			id = "p" .. i,
+			index = i,
+			defaultOwner = owner,
+			startLocked = false,
+			group = group,
+			warnOnCap = Capture.CP_WARN.NORMAL,
+			warnSound = "",
+			printName = "",
+			spawnflags = NO_FLAGS,
+			previous = {},
+			sounds = {},
+			capSounds = {},
+		}
+	end
+	return Capture.New({
+		caplinear = true,
+		points = points,
+	})
 end
 
+-- A master with mini-rounds { name, priority, restrict, points }.
+local function NewMaster(rounds)
+	return Master.New({
+		restrict = NOBODY,
+		switchTeams = false,
+		scoreStyle = Master.SCORE_PER_ROUND,
+		playAllRounds = false,
+		partialCapRate = 0,
+		capLayout = "",
+		disabled = false,
+		rounds = rounds or {},
+	})
+end
+
+local function Round(name, priority, restrict, points)
+	return {
+		name = name,
+		priority = priority,
+		restrict = restrict,
+		printName = "",
+		points = points,
+	}
+end
+
+local NO_HISTORY = {
+	previous = {},
+	first = nil,
+}
+
 T.test("TeamOwnsAllPoints: one owner of every point, else nobody", function()
-	T.eq(P.TeamOwnsAllPoints(Points(BLU, BLU, BLU)), BLU)
-	T.eq(P.TeamOwnsAllPoints(Points(BLU, RED, BLU)), NOBODY)
-	T.eq(P.TeamOwnsAllPoints(Points(NOBODY, NOBODY)), NOBODY)
+	local all = Points(BLU, BLU, BLU)
+	T.eq(all:TeamOwnsAll(all:Ids()), BLU)
+	local split = Points(BLU, RED, BLU)
+	T.eq(split:TeamOwnsAll(split:Ids()), NOBODY)
+	local neutral = Points(NOBODY, NOBODY)
+	T.eq(neutral:TeamOwnsAll(neutral:Ids()), NOBODY)
 end)
 
 T.test("TeamOwnsAllPoints with an override predicts a capture", function()
-	T.eq(P.TeamOwnsAllPoints(Points(BLU, BLU, RED), 3, BLU), BLU)
-	T.eq(P.TeamOwnsAllPoints(Points(BLU, RED, RED), 3, BLU), NOBODY)
+	local set = Points(BLU, BLU, RED)
+	T.eq(set:TeamOwnsAll(set:Ids(), "p3", BLU), BLU)
+	local behind = Points(BLU, RED, RED)
+	T.eq(behind:TeamOwnsAll(behind:Ids(), "p3", BLU), NOBODY)
 end)
 
 T.test("TeamOwnsAllPoints: any fully owned group wins", function()
-	local points = { { group = 0, owner = RED }, { group = 0, owner = BLU }, { group = 1, owner = BLU } }
-	T.eq(P.TeamOwnsAllPoints(points), BLU)
+	local set = Points({ RED, 0 }, { BLU, 0 }, { BLU, 1 })
+	T.eq(set:TeamOwnsAll(set:Ids()), BLU)
 end)
 
 T.test("a round is unplayable once a team that may win it owns every point", function()
-	T.eq(P.IsPlayable(Points(RED, RED), RED), true)
-	T.eq(P.IsPlayable(Points(BLU, BLU), RED), false)
-	T.eq(P.IsPlayable(Points(BLU, BLU), NEITHER), true)
-	T.eq(P.IsPlayable(Points(BLU, RED), NOBODY), true)
+	local function Playable(set, restrict)
+		return NewMaster({ Round("r", 0, restrict, set:Ids()) }):NumPlayable(set) == 1
+	end
+	T.eq(Playable(Points(RED, RED), RED), true)
+	T.eq(Playable(Points(BLU, BLU), RED), false)
+	T.eq(Playable(Points(BLU, BLU), NEITHER), true)
+	T.eq(Playable(Points(BLU, RED), NOBODY), true)
 end)
 
 T.test("final point without mini-rounds: capturing it would win", function()
-	T.eq(P.FinalPoint(false, 0, Points(BLU, BLU, RED), 3, { BLU }), true)
-	T.eq(P.FinalPoint(false, 0, Points(BLU, RED, RED), 2, { BLU }), false)
+	T.eq(NewMaster():FinalPoint(Points(BLU, BLU, RED), "p3", { BLU }), true)
+	T.eq(NewMaster():FinalPoint(Points(BLU, RED, RED), "p2", { BLU }), false)
 end)
 
 T.test("final point with mini-rounds: only in the last playable round", function()
-	T.eq(P.FinalPoint(true, 2, Points(BLU, RED), 2, { BLU }), false)
-	T.eq(P.FinalPoint(true, 1, Points(BLU, RED), 2, { BLU }), true)
+	local set = Points(BLU, RED, RED)
+	local master = NewMaster({
+		Round("a", 0, RED, { "p1" }),
+		Round("b", 2, RED, { "p2" }),
+		Round("c", 1, RED, { "p3" }),
+	})
+	T.eq(master:RoundActivate(set, NO_HISTORY, first), "b", "round b plays")
+	T.eq(master:FinalPoint(set, "p2", { BLU }), false, "round c is still playable")
+	set:SetOwner("p3", BLU, Capture.CAUSE_FORCE)
+	T.eq(master:FinalPoint(set, "p2", { BLU }), true, "the last playable round")
 end)
 
 -- Admin controls (the Game Rules editor) ---------------------------------------
