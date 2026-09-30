@@ -1,32 +1,64 @@
--- The Gameplay Settings: the admin commands that stop the game (non-gameplay
--- mode, played like Sandbox) and start a new one (features/gameplay), and
--- on clients the Utilities menu entry and a note on the HUD while stopped.
+-- The Gameplay Settings: the gamemode's Sandbox or Gameplay mode
+-- (foundation.gamemode, run by features/gamemode). sv_gameplay_enabled
+-- holds it, replicated for the menu and HUD; an admin setting it in the
+-- server console, or pressing Begin Game or Stop Game (mp_gameplay_begin,
+-- mp_gameplay_stop: clients cannot set a server setting), requests the
+-- change. sv_gameplay_disable_sandbox keeps anything from entering Sandbox
+-- mode. On a map with rounds the feature loads at map start and puts the map
+-- in the mode the setting holds. On clients: the Utilities menu entry and a
+-- note on the HUD in Sandbox mode.
+local Gamemode = WETSAND.require("foundation.gamemode")
+
+local ENABLED = CreateConVar("sv_gameplay_enabled", "0", { FCVAR_REPLICATED, FCVAR_NOTIFY },
+	"1: Gameplay mode, the rounds run; 0: Sandbox mode, no rounds and spawn doors open. "
+		.. "Setting it requests the change: 1 counts down to Gameplay mode.", 0, 1)
+
 if SERVER then
-	local function Command(name, method, help)
+	CreateConVar("sv_gameplay_disable_sandbox", "0", FCVAR_NOTIFY,
+		"1: nothing enters Sandbox mode (Stop Game, sv_gameplay_enabled 0)", 0, 1)
+
+	local function Command(name, want, help)
 		concommand.Add(name, function(ply)
 			if IsValid(ply) and not ply:IsAdmin() then
 				ply:ChatPrint("Gameplay: only admins may do that")
 				return
 			end
-			local gameplay = WETSAND.Feature("gameplay")
-			local ok, why = gameplay[method](gameplay)
-			if not ok then
-				local text = "Gameplay: " .. why
-				if IsValid(ply) then ply:ChatPrint(text) else print(text) end
-			end
+			WETSAND.Feature("gamemode"):Request(want, Gamemode.SOURCE_BUTTON, ply)
 		end, nil, help)
 	end
 
-	Command("wetsand_game_stop", "Stop", "Stop the game: no rounds or timer, spawn doors open, free play like Sandbox")
-	Command("wetsand_game_new", "StartNewGame",
-		"Start a new game: a 12 second countdown, then everyone spectates and chooses a team")
+	Command("mp_gameplay_begin", Gamemode.GAMEPLAY,
+		"Begin Gameplay mode: a countdown, then the rounds restart and everyone chooses a team")
+	Command("mp_gameplay_stop", Gamemode.SANDBOX, "Enter Sandbox mode: no rounds or timer, spawn doors open")
+
+	-- Who changed a server setting from a console: the listen server's host,
+	-- or nil for the server console (rcon, a dedicated server).
+	local function ConsoleRequester()
+		for _, ply in ipairs(player.GetHumans()) do
+			if ply:IsListenServerHost() then return ply end
+		end
+	end
+
+	-- Kept in WETSAND across a Lua refresh: whether the map has loaded.
+	hook.Add("InitPostEntity", "wetsand_gamemode", function()
+		WETSAND.gamemodeLoaded = true
+		if IsValid(WETSAND.Rules) then WETSAND.Feature("gamemode"):StartAtLoad() end
+	end)
+
+	-- Before the map has loaded (server.cfg) a change only sets the mode the map starts in.
+	cvars.AddChangeCallback(ENABLED:GetName(), function(_, _, value)
+		if not WETSAND.gamemodeLoaded then return end
+		WETSAND.Feature("gamemode"):SettingChanged(tobool(value), ConsoleRequester())
+	end, "wetsand_gamemode")
 	return
 end
 
-local HELP = "Stop Game ends the round system and pauses the timer: the map plays like Sandbox, "
-	.. "with spawn doors and forcefields open to everyone. Start New Game announces a new game, "
-	.. "counts down from 12, clears the scores, restarts the rounds and sends everyone to the team menu "
-	.. "as spectators until they choose a team."
+local HELP = "Sandcastle plays in Sandbox mode or Gameplay mode (sv_gameplay_enabled). "
+	.. "Sandbox mode has no rounds and pauses the timer: the map plays like Sandbox, "
+	.. "with spawn doors and forcefields open to everyone. Begin Game announces a new game, "
+	.. "counts down from " .. Gamemode.COUNTDOWN .. ", clears the scores, restarts the rounds and sends everyone "
+	.. "to the team menu as spectators until they choose a team. Stop Game returns to Sandbox mode, "
+	.. "unless sv_gameplay_disable_sandbox is 1."
 
 local function BuildPanel(panel)
 	panel:ClearControls()
@@ -35,16 +67,16 @@ local function BuildPanel(panel)
 	function status:Think()
 		local text
 		if not WETSAND.Active() then
-			text = "This map has no rounds (no tf_gamerules)."
-		elseif WETSAND.GameplayStopped() then
-			text = "Status: stopped (free play)"
+			text = "This map has no rounds (no tf_gamerules): Sandbox mode."
+		elseif ENABLED:GetBool() then
+			text = "Status: Gameplay mode"
 		else
-			text = "Status: running"
+			text = "Status: Sandbox mode"
 		end
 		if self:GetText() ~= text then self:SetText(text) end
 	end
-	panel:Button("Stop Game", "wetsand_game_stop")
-	panel:Button("Start New Game", "wetsand_game_new")
+	panel:Button("Begin Game", "mp_gameplay_begin")
+	panel:Button("Stop Game", "mp_gameplay_stop")
 end
 
 -- A new game's description in chat: the title in gold, the objectives in white.
@@ -69,7 +101,7 @@ hook.Add("PopulateToolMenu", "wetsand_gameplay", function()
 end)
 
 hook.Add("HUDPaint", "wetsand_gameplay", function()
-	if not WETSAND.GameplayStopped() then return end
-	draw.SimpleTextOutlined("Free play: the game is stopped", "DermaLarge", ScrW() / 2, 24, color_white,
+	if not WETSAND.Active() or ENABLED:GetBool() then return end
+	draw.SimpleTextOutlined("Sandbox mode", "DermaLarge", ScrW() / 2, 24, color_white,
 		TEXT_ALIGN_CENTER, TEXT_ALIGN_TOP, 1, color_black)
 end)

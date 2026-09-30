@@ -6,7 +6,7 @@ local AiWar = WETSAND.require("foundation.aiwar")
 
 local ACTIVE_KEY = "wetsand.aiwar"
 
-CreateConVar("wetsand_aiwar_team_size", tostring(AiWar.TEAM_SIZE_DEFAULT), { FCVAR_ARCHIVE, FCVAR_REPLICATED },
+CreateConVar("mp_aiwar_team_size", tostring(AiWar.TEAM_SIZE_DEFAULT), { FCVAR_ARCHIVE, FCVAR_REPLICATED },
 	"Soldiers each side of the AI war keeps in the field", 1, AiWar.TEAM_SIZE_MAX)
 
 function WETSAND.AiWarActive()
@@ -30,9 +30,10 @@ if SERVER then
 		end, nil, help)
 	end
 
-	Command("wetsand_aiwar_start", "Start",
-		"Restart the round with the Combine (RED) defending the cart against the Resistance (BLU)")
-	Command("wetsand_aiwar_end", "End", "End the AI war; its soldiers leave, NPCs players spawned stay")
+	Command("mp_aiwar_start", "Start",
+		"Start the war, the Combine (RED) defending the cart against the Resistance (BLU); in Sandbox mode, "
+			.. "Gameplay mode counts down and begins")
+	Command("mp_aiwar_end", "End", "End the AI war; its soldiers leave, NPCs players spawned stay")
 	return
 end
 
@@ -43,7 +44,8 @@ hook.Add("CreateClientsideRagdoll", "wetsand_aiwar_ragdoll_fade", function(owner
 	if IsValid(owner) and AiWar.FactionTeam(owner:GetClass()) then WETSAND.FadeRagdollLater(ragdoll) end
 end)
 
-local HELP = "Restarts the round: the Resistance spawn at BLU's spawn and push the cart, "
+local HELP = "In Sandbox mode, counts down to Gameplay mode and a new round. "
+	.. "The Resistance spawn at BLU's spawn and push the cart, "
 	.. "the Combine spawn at RED's and defend it. Sandcastle's Combine and Resistance soldiers you spawn join their side. "
 	.. "Payload maps only. Needs DrGBase (Steam Workshop) for its soldiers."
 
@@ -58,10 +60,10 @@ local function BuildPanel(panel)
 		self:SetText(on and "End AI War" or "Start AI War")
 	end
 	function button:DoClick()
-		RunConsoleCommand(WETSAND.AiWarActive() and "wetsand_aiwar_end" or "wetsand_aiwar_start")
+		RunConsoleCommand(WETSAND.AiWarActive() and "mp_aiwar_end" or "mp_aiwar_start")
 	end
-	panel:NumSlider("Soldiers per side", "wetsand_aiwar_team_size", 1, AiWar.TEAM_SIZE_MAX, 0)
-	panel:NumSlider("Ragdolls fade after (s, 0: never)", "wetsand_ragdoll_lifetime", 0, 120, 0)
+	panel:NumSlider("Soldiers per side", "mp_aiwar_team_size", 1, AiWar.TEAM_SIZE_MAX, 0)
+	panel:NumSlider("Ragdolls fade after (s, 0: never)", "cl_npc_ragdoll_lifetime", 0, 120, 0)
 	panel:NumSlider("Most ragdolls kept", "g_ragdoll_maxcount", 0, 64, 0)
 	panel:Help("Debugging (admins): draw each soldier's route and state, or print them all to the console.")
 	panel:Button("Toggle Soldier Overlay", "wetsand_aiwar_debug")

@@ -827,7 +827,7 @@ fired by the controller on the entity (`TriggerOutput`).
 ## 6. Views
 
 All views draw through `SandcastleHUDPaint(w, h)` and read only networked
-state. `wetsand_hud_timer_y` stays and positions the top row.
+state. `cl_hud_round_timer_y` stays and positions the top row.
 
 - **Rounds view.** Today's timer box and labels (PREPARE, SETUP, OVERTIME),
   hidden when `wetsand_round_hud_type == HUD_KOTH` (the KOTH panel replaces
