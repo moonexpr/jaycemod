@@ -1,173 +1,110 @@
--- Pure round logic, from TF2's own code (source-sdk-2013): mini-round
--- selection and win checks (team_control_point_master.cpp,
--- team_control_point_round.cpp), game limits and sudden death
--- (teamplayroundbased_gamerules.cpp), capture order (CTFGameRules::
--- TeamMayCapturePoint), the timer's outputs (teamplay_round_timer.cpp) and the
--- win panel (tf_hud_winpanel.cpp). No GMod globals; randomness is passed in.
-local ipairs, math, pairs, string, table = ipairs, math, pairs, string, table
+-- The rounds system: TF2's round-based gamerules as a stateful model. A
+-- Round is CTeamplayRoundBasedRules' state machine (teamplayroundbased_
+-- gamerules.cpp) with the parts of CTFGameRules (tf_gamerules.cpp) that drive
+-- it: wins, sudden death, the win, round and time limits, respawn waves,
+-- setup and overtime, TimerMayExpire and the played-round history.
+--
+-- The game's variations are Mode strategies (Mode:Extend(name) plus
+-- overrides), chosen by map entities: control points, koth and payload are
+-- parts of their own (foundation.rounds.control_points, .koth, .payload).
+--
+-- Nothing here touches the engine. Time comes in as `now`, the world as a
+-- snapshot, and every method that changes the game returns a list of
+-- effects, plain tables { kind = ..., ... }, for the rounds controller to
+-- carry out in order.
+local ipairs, math, pairs, setmetatable, tostring = ipairs, math, pairs, setmetatable, tostring
 local Teams = require("foundation.teams")
+local State = require("foundation.rounds.state")
 module(...)
 
 -- teamplayroundbased_gamerules.h
 WINREASON = {
-	NONE = 0, ALL_POINTS_CAPTURED = 1, OPPONENTS_DEAD = 2, FLAG_CAPTURE_LIMIT = 3,
-	DEFEND_UNTIL_TIME_LIMIT = 4, STALEMATE = 5, TIMELIMIT = 6, WINLIMIT = 7, WINDIFFLIMIT = 8,
+	NONE = 0,
+	ALL_POINTS_CAPTURED = 1,
+	OPPONENTS_DEAD = 2,
+	FLAG_CAPTURE_LIMIT = 3,
+	DEFEND_UNTIL_TIME_LIMIT = 4,
+	STALEMATE = 5,
+	TIMELIMIT = 6,
+	WINLIMIT = 7,
+	WINDIFFLIMIT = 8,
 }
-STALEMATE = { JOIN_MID = 0, TIMER = 1, SERVER_TIMELIMIT = 2 }
--- shareddefs.h: point_warn_on_cap
-CP_WARN = { NORMAL = 0, FINALCAP = 1, NO_ANNOUNCEMENTS = 2 }
+STALEMATE = {
+	JOIN_MID = 0,
+	TIMER = 1,
+	SERVER_TIMELIMIT = 2,
+}
 
 local UNASSIGNED, RED, BLUE = Teams.UNASSIGNED, Teams.RED, Teams.BLUE
-local FIRST_GAME_TEAM, TEAM_INVALID = Teams.FIRST_GAME_TEAM, Teams.INVALID
+local FIRST_GAME_TEAM = Teams.FIRST_GAME_TEAM
 local GAME_TEAMS = { RED, BLUE }
+
 -- restrict_team_cap_win's "Neither" (team_control_point_round.cpp): TEAM_SPECTATOR,
 -- which no playing team is, so every team may win the round.
 RESTRICT_NEITHER = Teams.SPECTATOR
--- A control point index or rank that names no point (the SDK's -1).
-NO_POINT = -1
 
--- Control points and rounds ---------------------------------------------------------
+-- What the client draws for the mode (wetsand_round_hud_type).
+HUD_NONE = 0
+HUD_CONTROL_POINTS = 1
+HUD_KOTH = 2
+HUD_PAYLOAD = 3
 
--- TeamOwnsAllPoints: points is a list of { owner, group }. Each group is won by
--- a team owning every point in it; the lowest-numbered won group reports.
-function TeamOwnsAllPoints(points)
-	local byGroup = {}
-	for _, p in ipairs(points) do
-		local g = byGroup[p.group]
-		if g == nil then
-			byGroup[p.group] = p.owner
-		elseif g ~= UNASSIGNED and p.owner ~= g then
-			byGroup[p.group] = UNASSIGNED
-		end
-	end
-	local groups = {}
-	for group in pairs(byGroup) do groups[#groups + 1] = group end
-	table.sort(groups)
-	for _, group in ipairs(groups) do
-		if byGroup[group] >= FIRST_GAME_TEAM then return byGroup[group] end
-	end
-	return UNASSIGNED
-end
+-- The round phases other features listen to, and the listener order, which
+-- reproduces TF2's RoundSpawn/RoundActivate order: timers, then the master
+-- and points, then logic entities.
+PHASE_SPAWN = "spawn"
+PHASE_ACTIVATE = "activate"
+PHASE_ROUND_END = "round_end"
+LISTEN_TIMERS = 10
+LISTEN_CAPTURE = 20
+LISTEN_LOGIC = 30
 
--- CTeamControlPointRound::CheckWinConditions (and the master's own check when
--- the map has no rounds): the winner, or nil.
-function RoundWinner(restrict, points)
-	local winner = TeamOwnsAllPoints(points)
-	if restrict ~= RESTRICT_NEITHER and winner >= FIRST_GAME_TEAM and winner ~= restrict then return winner end
-	return nil
-end
+-- The pre-round lasts this many seconds times mp_enableroundwaittime. TF2's
+-- State_Enter_PREROUND uses 5; Sandcastle uses 3.
+PREROUND_SECONDS = 3
+-- GetMinTimeWhenPlayerMaySpawn: 2 s death animation plus the freezecam's
+-- spec_freeze_traveltime (0.4) and spec_freeze_time (4).
+DEATH_ANIM_LENGTH = 2.0 + 0.4 + 4.0
+-- GetRespawnTimeScalar: teams this big wait the whole wave.
+OPTIMAL_TEAM_SIZE = 8
+local MIN_WAVE_SCALE, MAX_WAVE_SCALE = 0.25, 1.0
+-- CTFGameRules::GetRespawnWaveMaxLength: small teams never shorten a wave below this.
+MIN_SCALED_WAVE = 5
+-- m_TeamRespawnWaveTimes before a map input sets one.
+WAVE_TIME_UNSET = -1
+-- CTFGameRules::TimerMayExpire's m_flCapInProgressBuffer.
+CAP_IN_PROGRESS_BUFFER = 0.1
+-- State_Enter_TEAM_WIN: the bonus time is never shorter than this.
+MIN_BONUS_ROUND_TIME = 5
+-- CTeamplayRoundBasedRules::Think's once-a-second checks.
+PERIODIC_INTERVAL = 1
+-- A stopped game (Halt) has no waves: the dead come back after this long.
+HALT_RESPAWN = 3
+-- CheckTimeLimit: with a time limit over this, under this much left ends the map now.
+local SWITCH_MINUTES = 5
+local SECONDS_PER_MINUTE = 60
 
--- CTeamControlPointRound::IsPlayable
-function RoundPlayable(restrict, points)
-	if restrict == RESTRICT_NEITHER then return true end
-	return RoundWinner(restrict, points) == nil
-end
+-- The objective port the capture controller implements (the map's
+-- control point master). Methods are called with ':'.
+OBJECTIVE_METHODS = {
+	"PlayingMiniRounds",
+	"NumPlayable",
+	"PlayAllRounds",
+	"RoundsRemaining",
+	"ScorePerRound",
+	"SuddenDeathWin",
+}
 
-function PlayableCount(rounds)
-	local n = 0
-	for _, r in ipairs(rounds) do
-		if r.playable then n = n + 1 end
-	end
-	return n
-end
+-- A map without a master: no mini-rounds, scoring per round, and sudden
+-- death ending with SetWinningTeam (no SuddenDeathWin).
+NO_OBJECTIVE = {}
+function NO_OBJECTIVE:PlayingMiniRounds() return false end
+function NO_OBJECTIVE:NumPlayable() return 0 end
+function NO_OBJECTIVE:PlayAllRounds() return false end
+function NO_OBJECTIVE:RoundsRemaining(team) return 0 end
+function NO_OBJECTIVE:ScorePerRound() return true end
 
-local function ByPriority(rounds)
-	local order = {}
-	for i = 1, #rounds do order[i] = i end
-	table.sort(order, function(a, b)
-		if rounds[a].priority ~= rounds[b].priority then return rounds[a].priority > rounds[b].priority end
-		return a < b
-	end)
-	return order
-end
-
--- The 1-based stage of round i: its place in priority order (highest first),
--- which is the order multi-stage maps play their rounds in.
-function StageOf(rounds, i)
-	for stage, j in ipairs(ByPriority(rounds)) do
-		if j == i then return stage end
-	end
-end
-
-local function Contains(list, value)
-	for i, v in ipairs(list) do
-		if v == value then return i end
-	end
-end
-
--- CTeamControlPointMaster::GetControlPointRoundToPlay. rounds: { name,
--- priority, playable }; history: { previous = the last two played, most recent
--- first; first = the first round played after the last full restart;
--- firstAfterRestart }; random(n) returns 1..n. Returns the chosen index or nil.
-function ChooseRound(rounds, history, random)
-	local order = ByPriority(rounds)
-	local priority
-	for _, i in ipairs(order) do
-		if rounds[i].playable then priority = rounds[i].priority break end
-	end
-	if priority == nil then return nil end
-
-	local candidates = {}
-	for _, i in ipairs(order) do
-		if rounds[i].playable and rounds[i].priority == priority then candidates[#candidates + 1] = i end
-	end
-
-	local function Drop(name)
-		if #candidates < 2 or name == nil then return end
-		for k, i in ipairs(candidates) do
-			if rounds[i].name == name then table.remove(candidates, k) return end
-		end
-	end
-	Drop(history.previous[1])
-	if history.firstAfterRestart then Drop(history.first) end
-
-	local k = random(#candidates)
-	while #candidates > 1 and Contains(history.previous, rounds[candidates[k]].name) do
-		table.remove(candidates, k)
-		k = random(#candidates)
-	end
-	return candidates[k]
-end
-
--- CTeamplayRoundBasedRules::AddPlayedRound: remember the last two.
-function AddPlayedRound(previous, name)
-	local list = { name, previous[1] }
-	return list
-end
-
--- CTeamControlPointMaster::CalcNumRoundsRemaining: how many more mini-rounds a
--- team must win to own every point. rounds: { restrict, points = indices into
--- points }; points: { owner }. Unlike IsPlayable this ignores point groups.
--- It stops when no round makes progress (the SDK would loop forever there).
-function RoundsRemaining(team, rounds, points)
-	local owned, count = {}, 0
-	for i, p in ipairs(points) do
-		if p.owner == team then owned[i] = true count = count + 1 end
-	end
-	local remaining = 0
-	while count < #points do
-		local progressed = false
-		for _, r in ipairs(rounds) do
-			local roundOwner
-			for k, i in ipairs(r.points) do
-				local owner = owned[i] and team or points[i].owner
-				if k == 1 then roundOwner = owner elseif roundOwner ~= owner then roundOwner = TEAM_INVALID end
-			end
-			local playable = roundOwner == nil or roundOwner < FIRST_GAME_TEAM or r.restrict == RESTRICT_NEITHER or roundOwner == r.restrict
-			if playable then
-				for _, i in ipairs(r.points) do
-					if not owned[i] then owned[i] = true count = count + 1 progressed = true end
-				end
-				if progressed then break end
-			end
-		end
-		if not progressed then break end
-		remaining = remaining + 1
-	end
-	return remaining
-end
-
--- Sudden death and limits --------------------------------------------------------------
+-- Pure rules ------------------------------------------------------------------------
 
 -- State_Think_STALEMATE: teams[t] = { players, alive }. A team with no live
 -- player (or no players) is dead. Returns the surviving team when exactly
@@ -192,7 +129,7 @@ end
 
 -- CTeamplayRoundBasedRules::GetTimeLeft
 function TimeLeft(mapResetTime, timelimitMinutes, now)
-	return math.max(0, math.floor(mapResetTime + timelimitMinutes * 60 - now))
+	return math.max(0, math.floor(mapResetTime + timelimitMinutes * SECONDS_PER_MINUTE - now))
 end
 
 -- CheckWinLimit
@@ -217,7 +154,7 @@ end
 -- just after a new round.
 function TimeLimitReached(c)
 	if not ((c.timelimit > 0 and c.canChange) or c.afterStalemate) then return false end
-	local switchDueToTime = c.timelimit > 5 and c.timeLeft < 5 * 60
+	local switchDueToTime = c.timelimit > SWITCH_MINUTES and c.timeLeft < SWITCH_MINUTES * SECONDS_PER_MINUTE
 	return c.timeLeft <= 0 or c.afterStalemate == true or switchDueToTime
 end
 
@@ -233,264 +170,698 @@ function ShouldRewardTeam(forceMapReset, timelimit, timeLeft, dontAddScore)
 	return forceMapReset or (timelimit > 0 and timeLeft <= 0)
 end
 
--- Capture order (CTFGameRules::TeamMayCapturePoint) --------------------------------------
-
--- CTeamControlPointMaster::FindControlPoints renumbers the points 0..n-1 in
--- point_index order. Returns each input's rank.
-function Ranks(indices)
-	local order = {}
-	for i = 1, #indices do order[i] = i end
-	table.sort(order, function(a, b)
-		if indices[a] ~= indices[b] then return indices[a] < indices[b] end
-		return a < b
-	end)
-	local ranks = {}
-	for rank, i in ipairs(order) do ranks[i] = rank - 1 end
-	return ranks
+-- CTeamplayRoundBasedRules::AddPlayedRound: remember the last two.
+function AddPlayedRound(previous, name)
+	local list = { name, previous[1] }
+	return list
 end
 
--- CTeamControlPointMaster::GetBaseControlPoint. points: { index, defaultOwner }.
-function BaseControlPoint(team, points)
-	local low, high
-	for _, p in ipairs(points) do
-		if not low or p.index < low.index then low = p end
-		if not high or p.index > high.index then high = p end
-	end
-	if not low then return NO_POINT end
-	if high.defaultOwner == team then return high.index end
-	if low.defaultOwner == team then return low.index end
-	return NO_POINT
+-- A stopped game's dead come back HALT_RESPAWN seconds after dying.
+function HaltedRespawnDue(since, now)
+	return now - since >= HALT_RESPAWN
 end
 
--- CTFGameRules::GetFarthestOwnedControlPoint (without spawn points).
--- owners is indexed by rank 0..count-1.
-function FarthestOwnedControlPoint(team, owners, count, base)
-	if base == NO_POINT then return NO_POINT end
-	local walk, enemyEnd = 1, count - 1
-	if base ~= 0 then walk, enemyEnd = -1, 0 end
-	local farthest = base
-	local p = base
-	while p ~= enemyEnd do
-		if owners[p] ~= team then break end
-		farthest = p
-		p = p + walk
-	end
-	return farthest
+-- GetRespawnTimeScalar: a quarter of the wave for one player, all of it
+-- for OPTIMAL_TEAM_SIZE.
+local function RespawnTimeScalar(teamSize)
+	local n = math.min(math.max(teamSize, 1), OPTIMAL_TEAM_SIZE)
+	return MIN_WAVE_SCALE + (n - 1) / (OPTIMAL_TEAM_SIZE - 1) * (MAX_WAVE_SCALE - MIN_WAVE_SCALE)
 end
 
--- q = { caplinear, index, team, locked, previous = { three ranks, NO_POINT unused },
--- playingMiniRounds, owners (by rank), count, base (the team's base rank) }
-function TeamMayCapturePoint(q)
-	if not q.caplinear then return true end
-	local needed = q.previous[1]
-	if needed == q.index then return true end
-	if q.locked then return false end
-	if needed == NO_POINT then
-		if q.playingMiniRounds then return true end
-		local farthest = FarthestOwnedControlPoint(q.team, q.owners, q.count, q.base)
-		return math.abs(farthest - q.index) <= 1
-	end
-	for _, prev in ipairs(q.previous) do
-		if prev ~= NO_POINT and q.owners[prev] ~= q.team then return false end
-	end
+-- Mode: the strategy a game type fills in ---------------------------------------------
+
+Mode = {
+	NAME = "none",
+	PRIORITY = 0,
+	HUD = HUD_NONE,
+	CREATES_TIME_LIMIT_TIMER = true,
+	ANNOUNCES_TIME_ADDED = true,
+	-- Hud.EndRoundScored to everyone, else to the capping team.
+	SCORE_CHIME_TO_ALL = false,
+}
+Mode.__index = Mode
+
+-- A variant named `name`, inheriting every member it does not override.
+function Mode:Extend(name)
+	local mode = setmetatable({}, self)
+	mode.__index = mode
+	mode.NAME = name
+	return mode
+end
+
+-- Whether a team owning every point wins now. q = { clockRemaining = the
+-- team's clock or nil, timerMayExpire }.
+function Mode:MayWinByPoints(team, q) return true end
+
+-- CTFGameRules::PlaySpecialCapSounds: { { team, sound }... }.
+-- q = { wouldWinGame, scorePerRound }.
+function Mode:CapSounds(capTeam, q) return {} end
+
+-- Lines each team hears as the round ends, { [team] = sound }.
+function Mode:RoundWinLines(winner, fullRound, race) return {} end
+
+-- Round ------------------------------------------------------------------------------
+
+local Round = {}
+Round.__index = Round
+
+local function Add(effects, e)
+	effects[#effects + 1] = e
+	return effects
+end
+
+local function Output(name, value)
+	return {
+		kind = "output",
+		name = name,
+		value = value,
+	}
+end
+
+local function Hook(name, args)
+	return {
+		kind = "hook",
+		name = name,
+		args = args,
+	}
+end
+
+local function Kind(kind)
+	return { kind = kind }
+end
+
+local function PerTeam(value)
+	return {
+		[RED] = value,
+		[BLUE] = value,
+	}
+end
+
+-- settings = { respawnWaveTime, bonusRoundTime, enableRoundWaitTime,
+-- stalemateEnable, stalemateTimelimit, winlimit, maxrounds, timelimit,
+-- matchEndAtTimelimit, chattime, mapResetTime }, in TF2's units.
+function New(settings)
+	local round = setmetatable({
+		settings = {},
+		mode = Mode,
+		state = State.PREGAME,
+		transitionAt = nil,
+		halted = false,
+		forceMapReset = true,
+		mapFresh = true,
+		switchTeams = false,
+		winningTeam = UNASSIGNED,
+		roundsPlayed = 0,
+		previousRounds = {},
+		firstRound = nil,
+		allowStalemateAtTimelimit = false,
+		changelevelAfterStalemate = false,
+		intermissionEnd = nil,
+		nextPeriodic = 0,
+		teamCounts = PerTeam(0),
+		inSetup = false,
+		overtime = false,
+		capBuffer = 0,
+		waveTime = PerTeam(WAVE_TIME_UNSET),
+		originalWaveTime = PerTeam(WAVE_TIME_UNSET),
+		adminWaveTime = PerTeam(WAVE_TIME_UNSET),
+		nextWave = PerTeam(0),
+		respawnsDisabled = false,
+	}, Round)
+	round:Configure(settings)
+	return round
+end
+
+-- The controller refreshes the convars each think; given fields replace the old.
+function Round:Configure(settings)
+	for k, v in pairs(settings) do self.settings[k] = v end
+end
+
+-- Keeps the higher PRIORITY, as CTFGameRules::Activate settles the game type.
+function Round:SetMode(mode)
+	if mode.PRIORITY <= self.mode.PRIORITY then return false end
+	self.mode = mode
 	return true
 end
 
--- team_round_timer ------------------------------------------------------------------------
+function Round:Mode() return self.mode end
+function Round:State() return self.state end
+function Round:Halted() return self.halted end
+function Round:InSetup() return self.inSetup end
+function Round:InOvertime() return self.overtime end
+function Round:PreroundEnd() return self.transitionAt end
+function Round:Winner() return self.winningTeam end
+function Round:ForceMapReset() return self.forceMapReset end
 
-local MARKS = { 300, 240, 180, 120, 60, 30, 10, 5, 4, 3, 2, 1 }
-local SETUP_MARKS = { 60, 30, 10, 5, 4, 3, 2, 1 }
-local OUTPUT = {
-	[300] = "On5MinRemain", [240] = "On4MinRemain", [180] = "On3MinRemain", [120] = "On2MinRemain",
-	[60] = "On1MinRemain", [30] = "On30SecRemain", [10] = "On10SecRemain", [5] = "On5SecRemain",
-	[4] = "On4SecRemain", [3] = "On3SecRemain", [2] = "On2SecRemain", [1] = "On1SecRemain",
-}
-
-function TimerOutputName(mark)
-	return OUTPUT[mark]
+function Round:TimeLeft(now)
+	return TimeLeft(self.settings.mapResetTime, self.settings.timelimit, now)
 end
 
--- CalculateOutputMessages (server): each mark is armed while there is at least
--- that much time left.
-function ArmTimerOutputs(t)
-	local armed = { finished = t > 0 }
-	for _, m in ipairs(MARKS) do armed[m] = t >= m end
-	return armed
+-- State machine (State_Transition, State_Enter, State_Leave, State_Think) ---------
+
+local ENTER, LEAVE, THINK = {}, {}, {}
+
+-- State_Enter: world is the snapshot of the Think that brought it, if any.
+local function Enter(self, effects, state, now, world)
+	local from = self.state
+	self.state = state
+	self.transitionAt = nil
+	local change = {
+		kind = "state",
+		from = from,
+		to = state,
+	}
+	Add(effects, change)
+	if ENTER[state] then ENTER[state](self, effects, now, world, change) end
+	return effects
 end
 
--- RoundTimerThink / RoundTimerSetupThink: at most one output per think, in
--- this order. Returns "finished", a mark, or nil.
-function NextTimerOutput(armed, t, setup)
-	if t <= 0 and armed.finished then return "finished" end
-	for _, m in ipairs(setup and SETUP_MARKS or MARKS) do
-		if t <= m and armed[m] then return m end
+local function Transition(self, effects, state, now, world)
+	if LEAVE[self.state] then LEAVE[self.state](self, effects, now) end
+	return Enter(self, effects, state, now, world)
+end
+
+local function TransitionDue(self, now)
+	return self.transitionAt ~= nil and now >= self.transitionAt
+end
+
+-- GoToIntermission: everyone freezes for mp_chattime, then the level changes.
+local function GoToIntermission(self, effects, reason, now)
+	self.intermissionEnd = now + self.settings.chattime
+	Add(effects, {
+		kind = "intermission",
+		reason = reason,
+		["until"] = self.intermissionEnd,
+	})
+	return Enter(self, effects, State.GAME_OVER, now)
+end
+
+local function CheckWinLimit(self, effects, now, world)
+	if not WinLimitReached(self.settings.winlimit, world.scores) then return false end
+	GoToIntermission(self, effects, "Reached Win Limit", now)
+	return true
+end
+
+local function CheckMaxRounds(self, effects, now)
+	if not MaxRoundsReached(self.settings.maxrounds, self.roundsPlayed) then return false end
+	GoToIntermission(self, effects, "Reached Round Limit", now)
+	return true
+end
+
+local function CheckTimeLimit(self, effects, now, world)
+	local objective = world.objective
+	local mini = objective:PlayingMiniRounds()
+	local canChange = CanChangeLevelForTimeLimit(self.forceMapReset, mini,
+		mini and objective:PlayAllRounds(), mini and objective:NumPlayable() or 0)
+	local reached = TimeLimitReached({
+		timelimit = self.settings.timelimit,
+		timeLeft = self:TimeLeft(now),
+		canChange = canChange,
+		afterStalemate = self.changelevelAfterStalemate,
+	})
+	if not reached then return false end
+	GoToIntermission(self, effects, "Reached Time Limit", now)
+	return true
+end
+
+-- CTFGameRules::SetupOnRoundStart: overtime ends and every entity hears
+-- RoundSpawn, then RoundActivate.
+local function SetupOnRoundStart(self, effects)
+	if self:SetOvertime(false) then
+		Add(effects, {
+			kind = "overtime",
+			value = false,
+		})
 	end
-	return nil
+	Add(effects, Kind("round_spawn"))
+	Add(effects, Kind("round_activate"))
 end
 
--- The client's CalculateOutputMessages adds 2 s above ten seconds, covering
--- the time the update took to arrive.
-local WARNINGS = { 60, 30, 10, 5, 4, 3, 2, 1 }
-local WARN_AT = { [60] = 61, [30] = 31, [10] = 11, [5] = 6, [4] = 5, [3] = 4, [2] = 3, [1] = 2 }
-
-function ArmClientWarnings(t)
-	local padded = t > 10 and t + 2 or t
-	local armed = {}
-	for _, s in ipairs(WARNINGS) do armed[s] = padded >= s end
-	return armed
-end
-
--- CTeamRoundTimer::ClientThink: the countdown line to speak now, or nil.
-function NextClientWarning(armed, t)
-	for _, s in ipairs(WARNINGS) do
-		if t <= WARN_AT[s] and armed[s] then return s end
-	end
-	return nil
-end
-
--- CTeamRoundTimer::SetActiveTimer. timers: { enabled, show }; newly: the index
--- becoming active, or nil when the active one goes away. Returns the chosen
--- index (or nil) and the indices whose show_in_hud is turned off.
-function ChooseActiveTimer(timers, newly)
-	local chosen, hide = newly, {}
-	for i, t in ipairs(timers) do
-		if i ~= newly and t.enabled and t.show then
-			if chosen then hide[#hide + 1] = i else chosen = i end
+-- CTeamplayRoundBasedRules::RoundRespawn (with CTFGameRules's). A full reset
+-- cleans the map up (not the first round's fresh map), forgets the played
+-- rounds and fires every logic_auto's OnMultiNewRound, as TF2's logic_autos
+-- do when recreated in a round restart (CLogicAuto::Think, InRoundRestart);
+-- a mini-round keeps the map as it is.
+local function RoundRespawn(self, effects, now, world)
+	self.winningTeam = UNASSIGNED
+	local full = self.forceMapReset
+	if full then
+		if not self.mapFresh then Add(effects, Kind("cleanup")) end
+		self.mapFresh = false
+		self.previousRounds = {}
+		Add(effects, Kind("activate_timers"))
+		-- CTFGameRules::CreateTimeLimitTimer: only when the time limit ends the round.
+		local settings = self.settings
+		if settings.timelimit > 0 and self:TimeLeft(now) > 0 and not world.mapHasActiveTimer
+			and self.mode.CREATES_TIME_LIMIT_TIMER
+			and (self.allowStalemateAtTimelimit or settings.matchEndAtTimelimit) then
+			Add(effects, {
+				kind = "time_limit_timer",
+				seconds = self:TimeLeft(now),
+			})
 		end
 	end
-	return chosen, hide
-end
-
--- CTeamRoundTimer::InputRoundSpawn: the time to run after setup. Without
--- reset_time a timer already in normal time carries its time into the next
--- mini-round.
-function TimeAfterSetup(resetTime, inNormalState, remaining, initialLength)
-	if not resetTime and inNormalState then return remaining end
-	return initialLength
-end
-
--- AddTimerSeconds: the seconds actually added under max_length.
-function ClampAdd(remaining, seconds, maxLength)
-	if maxLength > 0 and remaining + seconds > maxLength then return maxLength - remaining end
-	return seconds
-end
-
--- Win panel (CTFWinPanel::FireGameEvent, English strings from tf_english.txt) -----------
-
-local TEAM_LABEL = { [RED] = "RED", [BLUE] = "BLU" }
-local REASON_TEXT = {
-	[WINREASON.ALL_POINTS_CAPTURED] = "%s captured all control points",
-	[WINREASON.OPPONENTS_DEAD] = "%s killed all opponents during sudden death",
-	[WINREASON.DEFEND_UNTIL_TIME_LIMIT] = "%s successfully defended until time ran out",
-	[WINREASON.STALEMATE] = "You're all losers",
-	[WINREASON.TIMELIMIT] = "%s had more points when the time limit was reached",
-	[WINREASON.WINLIMIT] = "%s had more points when the win limit was reached",
-	[WINREASON.WINDIFFLIMIT] = "%s was ahead by the required difference to win",
-}
-
--- info = { winner, reason, fullRound, remaining (areas left for the winner) }
-function WinPanel(info)
-	if info.winner < FIRST_GAME_TEAM then
-		return { title = "STALEMATE", reason = REASON_TEXT[WINREASON.STALEMATE] }
+	for _, t in ipairs(GAME_TEAMS) do
+		if self.originalWaveTime[t] >= 0 then self.waveTime[t] = self.originalWaveTime[t] end
 	end
-	local team = TEAM_LABEL[info.winner]
-	local areaDefense = info.reason == WINREASON.DEFEND_UNTIL_TIME_LIMIT and not info.fullRound
-	local title
-	if info.fullRound then
-		title = team .. " TEAM WINS!"
-	elseif areaDefense then
-		title = team .. " TEAM DEFENDS!"
+	SetupOnRoundStart(self, effects)
+	if full then Add(effects, Kind("new_round_outputs")) end
+	if self.switchTeams then
+		Add(effects, Kind("switch_teams"))
+		self.switchTeams = false
+	end
+	Add(effects, Kind("respawn_all"))
+end
+
+-- CheckRespawnWaves: each team's wave, when due, brings back its dead.
+local function CheckRespawnWaves(self, effects, now, world)
+	for _, t in ipairs(GAME_TEAMS) do
+		if self:WaveDue(t, now, world.teams[t].players) and not self.respawnsDisabled then
+			Add(effects, {
+				kind = "respawn_team",
+				team = t,
+			})
+		end
+	end
+end
+
+-- With SetStalemateOnTimelimit (or mp_match_end_at_timelimit) the time limit
+-- ends the round: the higher score wins, a tie goes to sudden death.
+local function CheckTimelimitStalemate(self, effects, now, world)
+	if self.settings.timelimit <= 0 or self:TimeLeft(now) > 0 then return end
+	if not (self.allowStalemateAtTimelimit or self.settings.matchEndAtTimelimit) then return end
+	local winner = TimelimitWinner(world.scores)
+	if winner == UNASSIGNED then
+		self.changelevelAfterStalemate = true
+		for _, e in ipairs(self:SetStalemate(now, STALEMATE.SERVER_TIMELIMIT, self.forceMapReset)) do Add(effects, e) end
 	else
-		title = team .. " TEAM SEIZES AREA"
+		for _, e in ipairs(self:SetWinningTeam(now, winner, WINREASON.TIMELIMIT, true, false, true, world.objective)) do
+			Add(effects, e)
+		end
 	end
-	local text = REASON_TEXT[info.reason]
-	local panel = { title = title, reason = text and string.format(text, team) or nil }
-	if not info.fullRound and info.reason ~= WINREASON.STALEMATE then
-		panel.details = info.remaining .. (info.remaining == 1 and " more area to win" or " more areas to win")
-	end
-	return panel
 end
 
--- CHudStalemate::SetupStalematePanel
-local STALEMATE_REASON = {
-	[STALEMATE.JOIN_MID] = "Sit back and relax while you wait for this petty conflict to end.",
-	[STALEMATE.TIMER] = "You've run out of time. Watch your back and finish 'em off. No more spawning.",
-	[STALEMATE.SERVER_TIMELIMIT] = "Map time limit reached. No more spawning, so make this count.",
+-- PREGAME
+
+THINK[State.PREGAME] = function(self, effects, now, world)
+	if world.havePlayers then Transition(self, effects, State.PREROUND, now, world) end
+end
+
+-- PREROUND: CTFGameRules::PreRound_Start fires the proxy's output, then every
+-- tf_logic_competitive's OnSpawnRoomDoorsShouldLock.
+
+ENTER[State.PREROUND] = function(self, effects, now, world, change)
+	Add(effects, Kind("balance_teams"))
+	RoundRespawn(self, effects, now, world)
+	self.transitionAt = now + PREROUND_SECONDS * self.settings.enableRoundWaitTime
+	change.preroundEnd = self.transitionAt
+	Add(effects, Output("OnStateEnterPreRound"))
+	Add(effects, Kind("doors_lock"))
+end
+
+THINK[State.PREROUND] = function(self, effects, now, world)
+	if TransitionDue(self, now) then
+		Transition(self, effects, State.RND_RUNNING, now, world)
+		return
+	end
+	CheckRespawnWaves(self, effects, now, world)
+end
+
+-- PreRound_End: the proxy's output, then the doors unlock.
+LEAVE[State.PREROUND] = function(self, effects)
+	Add(effects, Output("OnStateExitPreRound"))
+	Add(effects, Kind("doors_unlock"))
+end
+
+-- RND_RUNNING: State_Enter_RND_RUNNING and CTFGameRules::SetupOnRoundRunning.
+
+ENTER[State.RND_RUNNING] = function(self, effects)
+	self.nextWave = PerTeam(0)
+	Add(effects, Output("OnStateEnterRoundRunning"))
+	Add(effects, Hook("WetsandRoundActive", {}))
+end
+
+THINK[State.RND_RUNNING] = function(self, effects, now, world)
+	if not world.havePlayers then
+		self.forceMapReset = true
+		Transition(self, effects, State.PREGAME, now, world)
+		return
+	end
+	CheckRespawnWaves(self, effects, now, world)
+	CheckTimelimitStalemate(self, effects, now, world)
+end
+
+-- TEAM_WIN (the humiliation)
+
+ENTER[State.TEAM_WIN] = function(self, effects, now)
+	if self.forceMapReset then self.roundsPlayed = self.roundsPlayed + 1 end
+	self.transitionAt = now + math.max(MIN_BONUS_ROUND_TIME, self.settings.bonusRoundTime)
+	Add(effects, Hook("WetsandRoundWin", { self.winningTeam }))
+end
+
+THINK[State.TEAM_WIN] = function(self, effects, now, world)
+	if not TransitionDue(self, now) then return end
+	if CheckTimeLimit(self, effects, now, world) or CheckWinLimit(self, effects, now, world)
+		or CheckMaxRounds(self, effects, now) then
+		return
+	end
+	-- CTFGameRules::PreviousRoundEnd: the mini-round's OnEnd.
+	Add(effects, Kind("previous_round_end"))
+	Transition(self, effects, State.PREROUND, now, world)
+end
+
+-- STALEMATE (sudden death): State_Enter_STALEMATE and
+-- CTFGameRules::SetupOnStalemateStart: everyone respawns once, the map's
+-- timer hides, and a stalemate timer of mp_stalemate_timelimit seconds shows
+-- instead. Nobody respawns after that.
+
+ENTER[State.STALEMATE] = function(self, effects)
+	Add(effects, Kind("respawn_all"))
+	Add(effects, Kind("hide_timers"))
+	if self.settings.stalemateTimelimit > 0 then
+		Add(effects, {
+			kind = "stalemate_timer",
+			seconds = self.settings.stalemateTimelimit,
+		})
+	end
+end
+
+LEAVE[State.STALEMATE] = function(self, effects)
+	Add(effects, Kind("restore_timers"))
+end
+
+THINK[State.STALEMATE] = function(self, effects, now, world)
+	if not world.havePlayers then
+		self.forceMapReset = true
+		Transition(self, effects, State.PREGAME, now, world)
+		return
+	end
+	local winner, allDead = StalemateOutcome(world.teams)
+	if winner then
+		-- Without a full reset the survivors take the round's points.
+		Add(effects, {
+			kind = "stalemate_winner",
+			team = winner,
+			forceMapReset = self.forceMapReset,
+		})
+		return
+	end
+	local left = world.stalemateTimerLeft
+	local timerOut = left ~= nil and world.timerMayExpire and left <= 0
+	if allDead or timerOut then
+		local objective = world.objective
+		for _, e in ipairs(self:SetWinningTeam(now, UNASSIGNED, WINREASON.STALEMATE,
+			not objective:PlayingMiniRounds(), false, false, objective)) do
+			Add(effects, e)
+		end
+	end
+end
+
+-- BETWEEN_RNDS: CTFGameRules::BetweenRounds_Start.
+
+ENTER[State.BETWEEN_RNDS] = function(self, effects)
+	Add(effects, Output("OnStateEnterBetweenRounds"))
+	Add(effects, Kind("doors_unlock"))
+end
+
+-- GAME_OVER
+
+THINK[State.GAME_OVER] = function(self, effects, now)
+	if self.intermissionEnd and now >= self.intermissionEnd then
+		self.intermissionEnd = nil
+		Add(effects, Kind("changelevel"))
+	end
+end
+
+-- Team1PlayersChanged / Team2PlayersChanged (CTFGameRulesProxy::TeamPlayerCountChanged).
+local COUNT_OUTPUT = {
+	[RED] = "Team1PlayersChanged",
+	[BLUE] = "Team2PlayersChanged",
 }
 
-function StalematePanel(reason)
-	return { title = "SUDDEN DEATH!", reason = STALEMATE_REASON[reason] }
-end
-
--- Localization ---------------------------------------------------------------------------
-
-local TAB, NEWLINE, SPACE, QUOTE = 9, 10, 32, 34
-local BOM = 0xFEFF
-local HIGH_SURROGATE, LOW_SURROGATE = 0xD800, 0xDC00
-
-local function Utf16(s)
-	return (string.gsub(s, ".", function(c) return c .. "\0" end))
-end
-
-local function Utf8(code)
-	if code < 0x80 then return string.char(code) end
-	if code < 0x800 then
-		return string.char(0xC0 + math.floor(code / 0x40), 0x80 + code % 0x40)
+-- CTeamplayRoundBasedRules::Think's once-a-second checks.
+local function PeriodicThink(self, effects, now, world)
+	if self.state ~= State.TEAM_WIN and self.state ~= State.STALEMATE then
+		if CheckWinLimit(self, effects, now, world) or CheckMaxRounds(self, effects, now) then return end
 	end
-	if code < 0x10000 then
-		return string.char(0xE0 + math.floor(code / 0x1000), 0x80 + math.floor(code / 0x40) % 0x40, 0x80 + code % 0x40)
+	for _, t in ipairs(GAME_TEAMS) do
+		local n = world.teams[t].players
+		if self.teamCounts[t] ~= n then
+			self.teamCounts[t] = n
+			Add(effects, Output(COUNT_OUTPUT[t], tostring(n)))
+		end
 	end
-	return string.char(0xF0 + math.floor(code / 0x40000), 0x80 + math.floor(code / 0x1000) % 0x40,
-		0x80 + math.floor(code / 0x40) % 0x40, 0x80 + code % 0x40)
 end
 
-local function Unit(raw, i)
-	return string.byte(raw, i) + string.byte(raw, i + 1) * 256
+-- world = { havePlayers, teams = { [team] = { players, alive } }, scores,
+-- stalemateTimerLeft = n or nil, timerMayExpire, mapHasActiveTimer, objective }.
+function Round:Think(now, world)
+	local effects = {}
+	if self.halted then return effects end
+	if THINK[self.state] then THINK[self.state](self, effects, now, world) end
+	if self.state ~= State.GAME_OVER and now > self.nextPeriodic then
+		PeriodicThink(self, effects, now, world)
+		self.nextPeriodic = now + PERIODIC_INTERVAL
+	end
+	return effects
 end
 
--- Only indentation between the line's start (or the file's BOM) and unit i.
-local function StartsLine(raw, i)
-	i = i - 2
-	while i >= 1 do
-		local u = Unit(raw, i)
-		if u == NEWLINE or u == BOM then return true end
-		if u ~= TAB and u ~= SPACE then return false end
-		i = i - 2
+-- Round control --------------------------------------------------------------------
+
+-- CTeamplayRoundBasedRules::SetWinningTeam.
+function Round:SetWinningTeam(now, winner, reason, forceMapReset, switchTeams, dontAddScore, objective)
+	local effects = {}
+	if self.state == State.TEAM_WIN or self.state == State.GAME_OVER then return effects end
+	forceMapReset = forceMapReset ~= false
+	self.forceMapReset = forceMapReset
+	self.switchTeams = switchTeams == true
+	self.winningTeam = winner
+	local reward = ShouldRewardTeam(forceMapReset, self.settings.timelimit, self:TimeLeft(now), dontAddScore == true)
+	if reward and winner ~= UNASSIGNED and objective:ScorePerRound() then
+		Add(effects, {
+			kind = "score",
+			team = winner,
+			points = 1,
+		})
 	end
+	Add(effects, {
+		kind = "publish_win",
+		winner = winner,
+		reason = reason,
+		fullRound = forceMapReset,
+	})
+	Transition(self, effects, State.TEAM_WIN, now)
+	Add(effects, {
+		kind = "win_song",
+		winner = winner,
+		fullRound = forceMapReset,
+	})
+	if winner == RED then Add(effects, Output("OnWonByTeam1")) end
+	if winner == BLUE then Add(effects, Output("OnWonByTeam2")) end
+	return effects
+end
+
+-- CTeamplayRoundBasedRules::SetStalemate: sudden death when
+-- mp_stalemate_enable is on, otherwise a drawn round.
+function Round:SetStalemate(now, reason, forceMapReset, switchTeams)
+	if not self.settings.stalemateEnable then
+		return self:SetWinningTeam(now, UNASSIGNED, WINREASON.STALEMATE, forceMapReset, switchTeams, false, NO_OBJECTIVE)
+	end
+	local effects = {}
+	if self.state == State.STALEMATE then return effects end
+	self.forceMapReset = forceMapReset ~= false
+	self.winningTeam = UNASSIGNED
+	Add(effects, {
+		kind = "sudden_death",
+		reason = reason,
+	})
+	return Transition(self, effects, State.STALEMATE, now)
+end
+
+-- CTeamplayRoundWin::RoundWin (game_round_win): win = { team, reason,
+-- forceMapReset, switchTeams }. Team 0 is a stalemate; only a full-reset win
+-- switches teams.
+function Round:GameRoundWin(now, win, objective)
+	if win.team >= FIRST_GAME_TEAM then
+		return self:SetWinningTeam(now, win.team, win.reason, win.forceMapReset,
+			win.forceMapReset and win.switchTeams, false, objective)
+	end
+	return self:SetStalemate(now, STALEMATE.TIMER, win.forceMapReset, win.switchTeams)
+end
+
+-- Back to PREGAME with a full reset to come: the next pre-round cleans the
+-- map up and respawns everyone. Out of the intermission, everyone is let go.
+function Round:RestartRound(now)
+	local effects = {}
+	if self.state == State.GAME_OVER then
+		self.intermissionEnd = nil
+		Add(effects, Kind("unfreeze"))
+	end
+	self.forceMapReset = true
+	self.switchTeams = false
+	return Transition(self, effects, State.PREGAME, now)
+end
+
+-- Stopping the game (non-gameplay mode) is TF2's tournament ready-up: the
+-- rounds wait in BETWEEN_RNDS and the state machine thinks no more until
+-- Unhalt and RestartRound.
+function Round:Halt(now)
+	local effects = {}
+	if self.state == State.GAME_OVER then
+		self.intermissionEnd = nil
+		Add(effects, Kind("unfreeze"))
+	end
+	self.halted = true
+	if self.state ~= State.BETWEEN_RNDS then Transition(self, effects, State.BETWEEN_RNDS, now) end
+	return effects
+end
+
+function Round:Unhalt()
+	self.halted = false
+end
+
+function Round:SetStalemateOnTimelimit(on)
+	self.allowStalemateAtTimelimit = on
+end
+
+-- CTeamplayRoundBasedRules::PointsMayBeCaptured
+function Round:PointsMayBeCaptured()
+	return (self.state == State.RND_RUNNING or self.state == State.STALEMATE) and not self.inSetup
+end
+
+-- SetSetup / SetOvertime: each returns whether it changed.
+function Round:SetSetup(on)
+	if self.inSetup == on then return false end
+	self.inSetup = on
 	return true
 end
 
--- The English text of a "#Token" from a UTF-16LE localization file (as
--- tf/resource/tf_english.txt), matched case-insensitively. Text without a
--- leading "#" is returned as it is; an unknown token is nil.
-function Localize(raw, token)
-	if string.sub(token, 1, 1) ~= "#" then return token end
-	local key = Utf16('"' .. string.lower(string.sub(token, 2)) .. '"')
-	local lowered = string.lower(raw)
-	local init = 1
-	local i
-	-- A key starts its line (after any indent); the same text after a key is a value.
-	repeat
-		local s, e = string.find(lowered, key, init, true)
-		if not s then return nil end
-		if s % 2 == 1 and StartsLine(raw, s) then i = e + 1 end
-		init = e + 1
-	until i
-	while i < #raw and (Unit(raw, i) == TAB or Unit(raw, i) == SPACE) do i = i + 2 end
-	if Unit(raw, i) ~= QUOTE then return nil end
-	i = i + 2
-	local out = {}
-	while i < #raw do
-		local u = Unit(raw, i)
-		if u == QUOTE then return table.concat(out) end
-		if u >= HIGH_SURROGATE and u < LOW_SURROGATE then
-			local low = Unit(raw, i + 2)
-			out[#out + 1] = Utf8(0x10000 + (u - HIGH_SURROGATE) * 0x400 + (low - LOW_SURROGATE))
-			i = i + 4
-		else
-			out[#out + 1] = Utf8(u)
-			i = i + 2
-		end
+function Round:SetOvertime(on)
+	if self.overtime == on then return false end
+	self.overtime = on
+	return true
+end
+
+-- CTFGameRules::TimerMayExpire. holds = { capturing, other }: a capture in
+-- progress holds the clock and for CAP_IN_PROGRESS_BUFFER after ("an
+-- order-of-operations issue with caps that fire an AddTime output"); a cp
+-- timer or a train watcher holds it only while it does.
+function Round:TimerMayExpire(now, holds)
+	if holds.capturing then
+		self.capBuffer = now + CAP_IN_PROGRESS_BUFFER
+		return false
 	end
-	return nil
+	if self.capBuffer >= now then return false end
+	return not holds.other
+end
+
+function Round:MayWinByPoints(team, q)
+	return self.mode:MayWinByPoints(team, q)
+end
+
+-- Played rounds (the master's GetControlPointRoundToPlay reads them).
+
+function Round:AddPlayedRound(name)
+	self.previousRounds = AddPlayedRound(self.previousRounds, name)
+end
+
+function Round:History()
+	return {
+		previous = self.previousRounds,
+		first = self.firstRound,
+	}
+end
+
+function Round:SetFirstRoundPlayed(name)
+	self.firstRound = name
+end
+
+-- Respawn waves (CheckRespawnWaves / GetNextRespawnWave) -------------------------
+
+-- SetTeamRespawnWaveTime / AddTeamRespawnWaveTime: the first value a team
+-- receives is what each full round starts from again.
+function Round:SetTeamWaveTime(team, seconds)
+	seconds = math.max(0, seconds)
+	if self.originalWaveTime[team] < 0 then self.originalWaveTime[team] = seconds end
+	self.waveTime[team] = seconds
+end
+
+function Round:AddTeamWaveTime(team, seconds)
+	local current = self.waveTime[team]
+	if current < 0 then current = self.settings.respawnWaveTime end
+	if self.originalWaveTime[team] < 0 then self.originalWaveTime[team] = current end
+	self.waveTime[team] = math.max(0, current + seconds)
+end
+
+-- seconds >= 0 overrides the team's wave for the rest of the map; nil gives
+-- the map's back.
+function Round:SetAdminWaveTime(team, seconds)
+	self.adminWaveTime[team] = seconds or WAVE_TIME_UNSET
+end
+
+function Round:TeamWaveTime(team)
+	return WaveTime(self.adminWaveTime[team], self.waveTime[team], self.settings.respawnWaveTime)
+end
+
+-- CTFGameRules::GetRespawnWaveMaxLength
+function Round:WaveMaxLength(team, teamSize, scale)
+	if self.state ~= State.RND_RUNNING then return 0 end
+	local t = self:TeamWaveTime(team)
+	if scale and t > MIN_SCALED_WAVE then
+		t = math.max(MIN_SCALED_WAVE, t * RespawnTimeScalar(teamSize))
+	end
+	return t
+end
+
+-- CTFGameRules::GetMinTimeWhenPlayerMaySpawn: setup respawns quickly
+-- (ShouldRespawnQuickly), anything else waits a wave too.
+local function MinSpawnTime(self, team, deathTime)
+	local delay = DEATH_ANIM_LENGTH
+	if not self.inSetup then delay = delay + self:WaveMaxLength(team, 0, false) end
+	return deathTime + delay
+end
+
+function Round:MayRespawn(team, deathTime, now)
+	return now >= MinSpawnTime(self, team, deathTime)
+end
+
+-- GetNextRespawnWave
+function Round:NextRespawn(team, deathTime, teamSize)
+	local minTime = MinSpawnTime(self, team, deathTime)
+	if self.inSetup then return minTime end
+	local nextWave = self.nextWave[team]
+	local waveLength = self:WaveMaxLength(team, teamSize, true)
+	if waveLength <= 0 then return math.max(nextWave, minTime) end
+	while nextWave < minTime do
+		nextWave = nextWave + waveLength
+	end
+	return nextWave
+end
+
+-- The respawn time a dead player is shown: 0 in sudden death and while an
+-- admin has stopped respawns.
+function Round:RespawnAt(team, deathTime, teamSize)
+	if self.state == State.STALEMATE or self.respawnsDisabled then return 0 end
+	return self:NextRespawn(team, deathTime, teamSize)
+end
+
+-- Whether the team's wave comes now; if so the next is set a wave later.
+function Round:WaveDue(team, now, teamSize)
+	local nextWave = self.nextWave[team]
+	if nextWave ~= 0 and nextWave > now then return false end
+	local length = self:WaveMaxLength(team, teamSize, true)
+	self.nextWave[team] = length > 0 and now + length or 0
+	return true
+end
+
+-- Stopping respawns leaves the dead dead until the next full round; allowing
+-- them again returns true when the dead need new respawn times.
+function Round:SetRespawnsDisabled(disabled)
+	if self.respawnsDisabled == disabled then return false end
+	self.respawnsDisabled = disabled
+	return not disabled and self.state ~= State.STALEMATE
+end
+
+function Round:RespawnsDisabled()
+	return self.respawnsDisabled
 end
