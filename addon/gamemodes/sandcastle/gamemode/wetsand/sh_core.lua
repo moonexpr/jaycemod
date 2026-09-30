@@ -180,9 +180,9 @@ function WETSAND.InOvertime()
 	return GetGlobal2Bool("wetsand_round_overtime", false)
 end
 
--- Non-gameplay mode (the Gameplay Settings' Stop Game): the rounds and
--- timers stand still and the map plays like Sandbox, its spawn doors and
--- forcefields open to everyone, until a new game starts.
+-- The rounds halted, as in Sandbox mode (foundation.gamemode) and its
+-- countdown to Gameplay mode: the rounds and timers stand still and the map
+-- plays like Sandbox, its spawn doors and forcefields open to everyone.
 function WETSAND.GameplayStopped()
 	return GetGlobal2Bool("wetsand_gameplay_halted", false)
 end
