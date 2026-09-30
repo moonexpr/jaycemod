@@ -77,12 +77,22 @@ function Controller:AdvanceCarts()
 	return false, why
 end
 
+-- A map with a train watcher has the payload feature, which keeps the cart
+-- speed; elsewhere the editor shows the map's own speed and changes nothing.
+local MAP_CART_SPEED = 1
+
+local function Payload()
+	return ents.FindByClass("team_train_watcher")[1] and WETSAND.Feature("payload") or nil
+end
+
 function Controller:CartSpeed()
-	return WETSAND.CartSpeedScale()
+	local payload = Payload()
+	return payload and payload:CartSpeedScale() or MAP_CART_SPEED
 end
 
 function Controller:SetCartSpeed(scale)
-	WETSAND.SetCartSpeedScale(scale)
+	local payload = Payload()
+	if payload then payload:SetCartSpeedScale(scale) end
 end
 
 -- The round timer shown in the HUD --------------------------------------------------------

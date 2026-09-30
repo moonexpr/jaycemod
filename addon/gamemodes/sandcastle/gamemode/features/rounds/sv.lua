@@ -117,6 +117,7 @@ local Controller = {
 	},
 	holds = {},
 	objective = Rounds.NO_OBJECTIVE,
+	multipleTrains = false,
 	spawnDoors = nil,
 	nextDoorsOpen = 0,
 	suppressNewMap = false,
@@ -620,6 +621,16 @@ function Controller:SetObjective(port)
 	self.objective = port
 end
 
+-- CTFGameRules::SetMultipleTrains: a payload race (tf_logic_multiple_escort,
+-- through the payload feature), which the mode's win lines ask about.
+function Controller:SetMultipleTrains(on)
+	self.multipleTrains = on
+end
+
+function Controller:HasMultipleTrains()
+	return self.multipleTrains
+end
+
 -- Round state ----------------------------------------------------------------------
 
 function Controller:State() return self.round:State() end
@@ -779,7 +790,7 @@ local EFFECTS = {
 	end,
 	win_song = function(self, e)
 		PlayWinSong(e.winner)
-		for t, line in pairs(self.round:Mode():RoundWinLines(e.winner, e.fullRound, nil)) do
+		for t, line in pairs(self.round:Mode():RoundWinLines(e.winner, e.fullRound, self.multipleTrains)) do
 			WETSAND.BroadcastSound(t, line)
 		end
 	end,
