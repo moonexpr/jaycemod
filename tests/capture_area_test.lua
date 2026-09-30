@@ -257,10 +257,30 @@ end)
 
 local NO_FLAGS = 0
 
-local function Sounds(e, flags)
-	local s = C.PointSounds(e, flags or NO_FLAGS)
+-- The point's sounds as TF2 defaults them (CTeamControlPoint::Spawn).
+local DEFAULT_SOUNDS = {
+	start = Capture.SOUND_START,
+	stop = Capture.SOUND_END,
+	progress = Capture.SOUND_PROGRESS,
+	interrupted = Capture.SOUND_INTERRUPTED,
+}
+
+local function Sounds(e, flags, sounds)
+	local s = C.PointSounds(e, flags or NO_FLAGS, sounds or DEFAULT_SOUNDS)
 	return tostring(s.stopLoop) .. "|" .. tostring(s.play) .. "|" .. tostring(s.loop)
 end
+
+T.test("a map's point_capture_*_sound keyvalues replace the defaults", function()
+	local sounds = {
+		start = "Map.Start",
+		stop = "Map.Stop",
+		progress = "Map.Loop",
+		interrupted = "Map.Held",
+	}
+	T.eq(Sounds({ kind = "start", team = BLU }, NO_FLAGS, sounds), "true|Map.Start|Map.Loop")
+	T.eq(Sounds({ kind = "blocked", value = true }, NO_FLAGS, sounds), "true|nil|Map.Held")
+	T.eq(Sounds({ kind = "end", team = BLU }, NO_FLAGS, sounds), "true|Map.Stop|nil")
+end)
 
 T.test("a capture starting plays the start sound and loops the progress sound", function()
 	local s = C.New(RED)

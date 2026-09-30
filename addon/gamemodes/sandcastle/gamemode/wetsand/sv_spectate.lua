@@ -51,7 +51,7 @@ end
 local function AssociatedTeam(point)
 	local ent = point:AssociatedEntity()
 	if not IsValid(ent) or ent:GetClass() ~= "team_control_point" then return nil end
-	return WETSAND.CapTeam(ent)
+	return WETSAND.Feature("capture"):Owner(ent)
 end
 
 local function Describe(ent)

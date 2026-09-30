@@ -30,6 +30,8 @@ local function Points(owners)
 			printName = "",
 			spawnflags = NO_FLAGS,
 			previous = {},
+			sounds = {},
+			capSounds = {},
 		}
 	end
 	return Capture.New({
@@ -389,6 +391,37 @@ T.test("rounds remaining stops when no round can make progress", function()
 	local master = NewMaster({ rounds = { Round("a", 1, RED, { "p1" }) } })
 	T.eq(master:RoundsRemaining(BLU, set), 1)
 	T.eq(NewMaster():RoundsRemaining(BLU, set), 0, "no rounds")
+end)
+
+-- Seams: bindings forward, the controller has the methods others call ----------
+
+local ENTITIES = "addon/gamemodes/sandcastle/entities/entities/"
+local CONTROLLER = T.ROOT .. "features/capture/sv.lua"
+
+local function Read(path)
+	local f = assert(io.open(path, "rb"))
+	local text = f:read("*a")
+	f:close()
+	return text
+end
+
+T.test("the capture bindings require no foundation module", function()
+	for _, name in ipairs({ "trigger_capture_area", "team_control_point_master", "team_control_point_round" }) do
+		T.eq(Read(ENTITIES .. name .. ".lua"):find('require("foundation.', 1, true), nil, name)
+	end
+end)
+
+T.test("the capture controller defines every method other features call", function()
+	local text = Read(CONTROLLER)
+	local methods = {
+		"BindMaster", "BindRound", "BindArea", "AreaThink", "AreaInput", "MasterInput", "RoundInput",
+		"Owner", "Index", "Rank", "Points", "IsInRound", "TeamMayCapture", "IsCapturing", "CappingTeam",
+		"CurrentRound", "RoundPoints", "ForceOwner", "FinalPointInMap",
+		"SetHudHidden", "SetPointTimer", "SetPointLocked", "SetPointUnlockTime",
+	}
+	for _, name in ipairs(methods) do
+		T.eq(text:find("function Controller:" .. name .. "(", 1, true) ~= nil, true, name)
+	end
 end)
 
 T.finish()

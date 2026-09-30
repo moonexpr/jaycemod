@@ -8,16 +8,20 @@
 --
 -- New{ caplinear, points = { spec... } }. A spec is { id, index,
 -- defaultOwner, startLocked, group, warnOnCap, warnSound, printName,
--- spawnflags, previous = { [team] = { id, id, id } } } where id is any
--- key the caller picks (the controller uses the point entity) and previous
--- holds team_previouspoint_<team>_0..2, a slot nil when unset. A spec may
--- carry the point's current owner, locked and unlockAt, for a set rebuilt
--- while its points live on (a mini-round).
+-- spawnflags, previous = { [team] = { id, id, id } }, sounds = { start,
+-- stop, progress, interrupted }, capSounds = { [team] = name } } where id is
+-- any key the caller picks (the controller uses the point entity), previous
+-- holds team_previouspoint_<team>_0..2 (a slot nil when unset), sounds the
+-- point_capture_*_sound keyvalues and capSounds team_capsound_<team>; an
+-- unset or empty sound keeps TF2's default. A spec may carry the point's
+-- current owner and locked, for a set rebuilt while its points live on (a
+-- mini-round).
 --
 -- Methods that change a point return events, in order:
---   { kind = "owner", id, old, team, sounding, scoring }: sounding for a
---     capture by players (the cap sound, OnOwnerChangedToTeam, the notice),
---     scoring when HandleScoring runs;
+--   { kind = "owner", id, old, team, sounding, scoring, lines }: sounding
+--     for a capture by players (OnOwnerChangedToTeam, the notice), scoring
+--     when HandleScoring runs, lines the sounds it plays ({ hearer, team,
+--     sound }, HEAR_*);
 --   { kind = "unlocked", id } (OnUnlocked); { kind = "unlock_time", id, at };
 --   { kind = "round_start_owned", id, team } (OnRoundStartOwnedByTeam).
 local ipairs, pairs, setmetatable = ipairs, pairs, setmetatable
@@ -48,6 +52,23 @@ SOUND_START = "Hologram.Start"
 SOUND_END = "Hologram.Stop"
 SOUND_PROGRESS = "Hologram.Move"
 SOUND_INTERRUPTED = "Hologram.Interrupted"
+
+-- point_warn_sound's default (the FGD's), the contested lines
+-- (C_TFObjectiveResource::SetCappingTeam) and the scored chime
+-- (CTeamControlPoint::HandleScoring).
+WARN_SOUND_DEFAULT = "ControlPoint.CaptureWarn"
+CONTESTED = "Announcer.ControlPointContested"
+CONTESTED_NEUTRAL = "Announcer.ControlPointContested_Neutral"
+SCORED_CHIME = "Hud.EndRoundScored"
+-- The client's spam guard on the final-cap warning (C_BaseTeamObjectiveResource::ClientThink).
+WARN_INTERVAL = 5
+
+-- Who hears a line { hearer, team, sound }: everyone (a broadcast filter,
+-- played from the point), the team's players, or every player not on the
+-- team (each client's "not my team" test, spectators included).
+HEAR_EVERYONE = "everyone"
+HEAR_TEAM = "team"
+HEAR_OTHERS = "others"
 
 -- Why the owner changes: a capture area's capture, a SetOwner input sent by
 -- a player or by anything else, and ForceOwner (the game itself).
@@ -180,10 +201,24 @@ end
 local PointSet = {}
 PointSet.__index = PointSet
 
+local function Named(name, default)
+	if name == nil or name == "" then return default end
+	return name
+end
+
 local function NewPoint(spec, rank)
 	local locked = spec.locked
 	if locked == nil then locked = spec.startLocked end
+	local sounds = spec.sounds
 	return {
+		sounds = {
+			start = Named(sounds.start, SOUND_START),
+			stop = Named(sounds.stop, SOUND_END),
+			progress = Named(sounds.progress, SOUND_PROGRESS),
+			interrupted = Named(sounds.interrupted, SOUND_INTERRUPTED),
+		},
+		capSounds = spec.capSounds,
+		lastWarn = nil,
 		id = spec.id,
 		rank = rank,
 		index = spec.index,
@@ -195,7 +230,7 @@ local function NewPoint(spec, rank)
 		shownUnlockAt = spec.unlockAt,
 		group = spec.group,
 		warnOnCap = spec.warnOnCap,
-		warnSound = spec.warnSound,
+		warnSound = Named(spec.warnSound, WARN_SOUND_DEFAULT),
 		printName = spec.printName,
 		spawnflags = spec.spawnflags,
 		previous = spec.previous,
@@ -259,6 +294,45 @@ function PointSet:Warn(id)
 	return p.warnOnCap, p.warnSound
 end
 
+-- The capture sounds foundation.capture.area's PointSounds plays from the
+-- point: { start, stop, progress, interrupted }.
+function PointSet:Sounds(id)
+	return self.points[id].sounds
+end
+
+local function Line(hearer, team, sound)
+	return {
+		hearer = hearer,
+		team = team,
+		sound = sound,
+	}
+end
+
+-- A capture starting (CTeamControlPoint::CaptureStart), as each client
+-- hears it: with point_warn_on_cap 0 the players not capping hear the
+-- point is contested (neutral or owned); with 1 they hear its warn sound,
+-- at most every WARN_INTERVAL seconds.
+function PointSet:CaptureStarted(id, team, now)
+	local p = self.points[id]
+	if team == NOBODY then return {} end
+	if p.warnOnCap == CP_WARN.NORMAL then
+		return { Line(HEAR_OTHERS, team, p.owner ~= NOBODY and CONTESTED or CONTESTED_NEUTRAL) }
+	end
+	if p.warnOnCap == CP_WARN.FINALCAP and (p.lastWarn == nil or now > p.lastWarn + WARN_INTERVAL) then
+		p.lastWarn = now
+		return { Line(HEAR_OTHERS, team, p.warnSound) }
+	end
+	return {}
+end
+
+-- HandleScoring's chime (per-capture scoring only, not for a capture that
+-- wins the game): the capping team hears it, or everyone when the mode
+-- says so (payload). Returns a line or nil.
+function ScoredChime(scorePerCapture, wouldWin, chimeToAll, capTeam)
+	if not scorePerCapture or wouldWin then return nil end
+	return Line(chimeToAll and HEAR_EVERYONE or HEAR_TEAM, capTeam, SCORED_CHIME)
+end
+
 -- Owners -----------------------------------------------------------------------------
 
 -- CTeamControlPoint::SetOwner (a capture), InputSetOwner (from a player or
@@ -271,14 +345,20 @@ function PointSet:SetOwner(id, team, cause, pointsMayBeCaptured)
 	if cause ~= CAUSE_FORCE and not pointsMayBeCaptured then return {} end
 	local old = p.owner
 	p.owner = team
+	local sounding = cause == CAUSE_CAPTURE or cause == CAUSE_PLAYER_INPUT
+	-- InternalSetOwner: team_capsound_<team> to everyone, from the point
+	local lines = {}
+	local capSound = p.capSounds[team]
+	if sounding and capSound and capSound ~= "" then lines[1] = Line(HEAR_EVERYONE, team, capSound) end
 	return {
 		{
 			kind = "owner",
 			id = id,
 			old = old,
 			team = team,
-			sounding = cause == CAUSE_CAPTURE or cause == CAUSE_PLAYER_INPUT,
+			sounding = sounding,
 			scoring = cause ~= CAUSE_FORCE and team >= FIRST_GAME_TEAM,
+			lines = lines,
 		},
 	}
 end
@@ -359,10 +439,11 @@ function PointSet:Tick(now, roundRunning)
 	return events
 end
 
--- CTeamControlPoint::InputRoundActivate, each point in rank order.
-function PointSet:RoundActivate()
+-- CTeamControlPoint::InputRoundActivate for the given points (default:
+-- every point, in rank order, as the gamerules send it).
+function PointSet:RoundActivate(ids)
 	local events = {}
-	for _, id in ipairs(self.ids) do
+	for _, id in ipairs(ids or self.ids) do
 		local p = self.points[id]
 		if p.owner >= FIRST_GAME_TEAM then
 			events[#events + 1] = {

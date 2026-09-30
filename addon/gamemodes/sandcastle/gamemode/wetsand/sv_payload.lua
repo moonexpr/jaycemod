@@ -1,10 +1,10 @@
 -- Server side of payload: loads the pure libraries the payload entities use,
--- answers the round questions they ask (final point, capture in progress,
--- payload race), publishes every cart and timed capture for the HUD, and
--- plays the payload race stage-outcome lines.
+-- answers the round questions they ask (payload race), holds the round
+-- timers while a cart is pushed, publishes every cart for the HUD (hiding
+-- the carts' points from the point HUD), and plays the payload race
+-- stage-outcome lines. Point questions go to the capture feature.
 
 WETSAND.Payload = WETSAND.require("foundation.payload")
-WETSAND.PayloadCapture = WETSAND.require("foundation.capture.area")
 WETSAND.PayloadRace = WETSAND.require("foundation.payload.race")
 
 local P, R = WETSAND.Payload, WETSAND.PayloadRace
@@ -27,64 +27,24 @@ function WETSAND.HasMultipleTrains()
 	return #ents.FindByClass("tf_logic_multiple_escort") > 0
 end
 
--- CTFGameRules::TimerMayExpire: no timer runs out while a point is being captured.
-function WETSAND.CaptureInProgress()
-	for _, area in ipairs(ents.FindByClass("trigger_capture_area")) do
-		if area:IsCapturing() then return true end
-	end
-	return false
-end
+-- CTeamplayRoundBasedRules::TimerMayExpire asks every train watcher: a
+-- pushed cart holds the clock. Registered once, by the first watcher.
+local holdingTimers = false
 
-local function PointData(points)
-	local data = {}
-	for i, point in ipairs(points) do
-		data[i] = { group = tonumber(WETSAND.KeyValues(point).point_group) or 0, owner = WETSAND.CapTeam(point) }
-	end
-	return data
-end
-
-local function IndexOf(list, value)
-	for i, v in ipairs(list) do
-		if v == value then return i end
-	end
-end
-
-local function PlayableRounds(rounds)
-	local n = 0
-	for _, round in ipairs(rounds) do
-		if P.IsPlayable(PointData(round:Points()), round.restrictTeam) then n = n + 1 end
-	end
-	return n
-end
-
--- WatcherThink's bFinalPointInMap: would capturing `point` win the game for a
--- team that may capture it? With mini-rounds, only in the last playable round.
-function WETSAND.FinalPointInMap(point)
-	if #ents.FindByClass("team_control_point_master") == 0 then return false end
-	local rounds = ents.FindByClass("team_control_point_round")
-	local miniRounds = #rounds > 0
-	local points
-	if miniRounds then
-		local round = WETSAND.CurrentRound()
-		if not IsValid(round) then return false end
-		points = round:Points()
-	else
-		points = ents.FindByClass("team_control_point")
-	end
-	local index = IndexOf(points, point)
-	if not index then return false end
-	local teams = {}
-	for team = WETSAND.TEAM_RED, WETSAND.TEAM_BLUE do
-		if WETSAND.TeamCanCapPoint(point, team) then teams[#teams + 1] = team end
-	end
-	return P.FinalPoint(miniRounds, miniRounds and PlayableRounds(rounds) or 0, PointData(points), index, teams)
+function WETSAND.HoldTimersForWatchers()
+	if holdingTimers then return end
+	holdingTimers = true
+	WETSAND.Feature("rounds"):AddTimerHold("payload", function()
+		for _, watcher in ipairs(ents.FindByClass("team_train_watcher")) do
+			if not watcher:TimerMayExpire() then return true end
+		end
+		return false
+	end, false)
 end
 
 -- HUD publishing --------------------------------------------------------------------
 -- wetsand_cart_count, wetsand_cart_race, wetsand_cart_race_leader, and per cart i (1-based)
--- wetsand_cart_<i>_{team,progress,speed,cappers,recede_time,can_recede,alarm,cps,owners,hills};
--- wetsand_capture_count and per timed capture i
--- wetsand_capture_<i>_{index,owner,capping,progress,blocked,cappers}.
+-- wetsand_cart_<i>_{team,progress,speed,cappers,recede_time,can_recede,alarm,cps,owners,hills}.
 
 local function Joined(list, format)
 	local parts = {}
@@ -139,40 +99,16 @@ local function PublishCarts()
 	SetGlobal2Int("wetsand_cart_count", #watchers)
 	SetGlobal2Bool("wetsand_cart_race", race)
 	SetGlobal2Int("wetsand_cart_race_leader", race and R.Leader(distances) or 0)
-	return watchers
-end
-
--- An area is the cart's when a watcher heard from it or its train carries it.
-local function IsCartArea(area, watchers)
-	for _, watcher in ipairs(watchers) do
-		if watcher:UsesArea(area) then return true end
-	end
-	return false
-end
-
-local function PublishCaptures(watchers)
-	local n = 0
-	for _, area in ipairs(ents.FindByClass("trigger_capture_area")) do
-		local hud = area:HudState()
-		if hud and not IsCartArea(area, watchers) then
-			n = n + 1
-			local key = "wetsand_capture_" .. n .. "_"
-			SetGlobal2Int(key .. "index", hud.index)
-			SetGlobal2Int(key .. "owner", hud.owner)
-			SetGlobal2Int(key .. "capping", hud.capping)
-			SetGlobal2Float(key .. "progress", hud.progress)
-			SetGlobal2Bool(key .. "blocked", hud.blocked)
-			SetGlobal2Int(key .. "cappers", hud.cappers)
-		end
-	end
-	SetGlobal2Int("wetsand_capture_count", n)
+	-- The capture feature draws the points now; cl_hud's old capture boxes
+	-- stay empty until package R's cl_hud edit removes them (delete then).
+	SetGlobal2Int("wetsand_capture_count", 0)
 end
 
 local nextPublish = 0
 hook.Add("Think", "wetsand_payload_hud", function()
 	if not WETSAND.Active() or CurTime() < nextPublish then return end
 	nextPublish = CurTime() + 0.1
-	PublishCaptures(PublishCarts())
+	PublishCarts()
 end)
 
 -- CTeamTrainWatcherMaster::FireGameEvent("teamplay_round_win"): on a race map

@@ -22,6 +22,8 @@ local function Point(kv)
 		printName = kv.point_printname or "",
 		spawnflags = kv.spawnflags or NO_FLAGS,
 		previous = kv.previous or {},
+		sounds = kv.sounds or {},
+		capSounds = kv.capSounds or {},
 	}
 end
 
@@ -266,6 +268,7 @@ T.test("round activation: owners announced, never-locked points unlocked, locked
 	T.eq(events[1].team, BLU)
 	T.eq(events[3].team, RED)
 	T.eq(set:Locked("b"), true)
+	T.eq(Kinds(set:RoundActivate({ "c" })), "round_start_owned:c,unlocked:c", "a map's RoundActivate to one point")
 end)
 
 T.test("a rebuilt set carries the owners and locks its points had", function()
@@ -593,6 +596,68 @@ end)
 
 T.test("tf_caplinear 0 allows everything", function()
 	T.eq(Capture.TeamMayCapturePoint(Q({ caplinear = false, locked = true })), true)
+end)
+
+-- Who hears what ------------------------------------------------------------
+
+local function Heard(lines)
+	local out = {}
+	for _, l in ipairs(lines) do out[#out + 1] = l.hearer .. ":" .. l.team .. ":" .. l.sound end
+	return table.concat(out, ",")
+end
+
+T.test("a point's capture sounds default to the holograms; a map's keyvalues replace them", function()
+	local set = Set({
+		Point({ targetname = "plain", point_index = 0, point_default_owner = NOBODY }),
+		Point({ targetname = "custom", point_index = 1, point_default_owner = NOBODY, sounds = { start = "Map.Start", interrupted = "Map.Held" } }),
+	})
+	local plain = set:Sounds("plain")
+	T.eq(plain.start .. " " .. plain.stop .. " " .. plain.progress .. " " .. plain.interrupted,
+		Capture.SOUND_START .. " " .. Capture.SOUND_END .. " " .. Capture.SOUND_PROGRESS .. " " .. Capture.SOUND_INTERRUPTED)
+	local custom = set:Sounds("custom")
+	T.eq(custom.start, "Map.Start")
+	T.eq(custom.interrupted, "Map.Held")
+	T.eq(custom.stop, Capture.SOUND_END, "unset keys keep the default")
+end)
+
+T.test("a capture by players plays the new owner's team_capsound to everyone; a relay's does not", function()
+	local set = Set({ Point({ targetname = "a", point_index = 0, point_default_owner = RED, capSounds = { [BLU] = "Map.BluCapped" } }) })
+	local capture = set:SetOwner("a", BLU, Capture.CAUSE_CAPTURE, POINTS_MAY_BE_CAPTURED)
+	T.eq(Heard(capture[1].lines), Capture.HEAR_EVERYONE .. ":" .. BLU .. ":Map.BluCapped")
+	local relay = set:SetOwner("a", RED, Capture.CAUSE_INPUT, POINTS_MAY_BE_CAPTURED)
+	T.eq(Heard(relay[1].lines), "", "no sound for a relay")
+	local noSound = set:SetOwner("a", BLU, Capture.CAUSE_PLAYER_INPUT, POINTS_MAY_BE_CAPTURED)
+	T.eq(Heard(noSound[1].lines), Capture.HEAR_EVERYONE .. ":" .. BLU .. ":Map.BluCapped", "a player's input sounds")
+	set:SetOwner("a", RED, Capture.CAUSE_FORCE)
+	local redCap = set:SetOwner("a", RED, Capture.CAUSE_CAPTURE, POINTS_MAY_BE_CAPTURED)
+	T.eq(Heard(redCap[1].lines), "", "no team_capsound_2 set")
+end)
+
+T.test("a capture starting warns the other players that the point is contested", function()
+	local set = Set({
+		Point({ targetname = "owned", point_index = 0, point_default_owner = RED }),
+		Point({ targetname = "neutral", point_index = 1, point_default_owner = NOBODY }),
+		Point({ targetname = "quiet", point_index = 2, point_default_owner = RED, point_warn_on_cap = Capture.CP_WARN.NO_ANNOUNCEMENTS }),
+	})
+	T.eq(Heard(set:CaptureStarted("owned", BLU, 0)), Capture.HEAR_OTHERS .. ":" .. BLU .. ":" .. Capture.CONTESTED)
+	T.eq(Heard(set:CaptureStarted("neutral", RED, 0)), Capture.HEAR_OTHERS .. ":" .. RED .. ":" .. Capture.CONTESTED_NEUTRAL)
+	T.eq(Heard(set:CaptureStarted("quiet", BLU, 0)), "", "point_warn_on_cap 2")
+	T.eq(Heard(set:CaptureStarted("owned", NOBODY, 0)), "", "nobody capping")
+end)
+
+T.test("a final point's warning sounds at most every five seconds", function()
+	local set = Set({ Point({ targetname = "last", point_index = 0, point_default_owner = RED, point_warn_on_cap = Capture.CP_WARN.FINALCAP }) })
+	local warn = Capture.HEAR_OTHERS .. ":" .. BLU .. ":ControlPoint.CaptureWarn"
+	T.eq(Heard(set:CaptureStarted("last", BLU, 10)), warn)
+	T.eq(Heard(set:CaptureStarted("last", BLU, 14)), "", "four seconds later")
+	T.eq(Heard(set:CaptureStarted("last", BLU, 15.5)), warn, "after five")
+end)
+
+T.test("the scored chime: per-capture scoring, not a winning capture, to the team or everyone", function()
+	T.eq(Capture.ScoredChime(false, false, false, BLU), nil, "score per round")
+	T.eq(Capture.ScoredChime(true, true, false, BLU), nil, "the capture wins the game")
+	T.eq(Heard({ Capture.ScoredChime(true, false, false, BLU) }), Capture.HEAR_TEAM .. ":" .. BLU .. ":" .. Capture.SCORED_CHIME)
+	T.eq(Heard({ Capture.ScoredChime(true, false, true, BLU) }), Capture.HEAR_EVERYONE .. ":" .. BLU .. ":" .. Capture.SCORED_CHIME)
 end)
 
 T.test("only RED and BLU capture", function()

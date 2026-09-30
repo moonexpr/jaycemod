@@ -15,6 +15,10 @@ module(...)
 -- mp_blockstyle: whether a block ends the capture or pauses it.
 BLOCKSTYLE_BREAK, BLOCKSTYLE_PAUSE = 0, 1
 
+-- SetNumCappers: OnNumCappersChanged2 carries -1 while a block pauses the
+-- capture (the cart stands still on a hill).
+CAPPERS_BLOCKED = -1
+
 local NOBODY, RED, BLUE = Teams.UNASSIGNED, Teams.RED, Teams.BLUE
 local TEAMS = { RED, BLUE }
 
@@ -207,38 +211,42 @@ end
 -- UpdateBlocked and UpdateBlocked itself call CTeamControlPoint::
 -- CaptureInterrupted, EndCapture and BreakCapture call CaptureEnd. Each
 -- stops the looping sound first; spawnflag SF_NO_CAP_SOUNDS silences the rest.
+-- sounds = the point's { start, stop, progress, interrupted }
+-- (point_capture_*_sound, PointSet:Sounds). All play from the point.
 -- Returns { play = a sound or nil, loop = a looping sound or nil, stopLoop }.
-local function Interrupted(blocked)
+local function Interrupted(blocked, sounds)
 	if blocked then
 		return {
-			loop = Capture.SOUND_INTERRUPTED,
+			loop = sounds.interrupted,
 			stopLoop = true,
 		}
 	end
 	return {
-		play = Capture.SOUND_START,
-		loop = Capture.SOUND_PROGRESS,
+		play = sounds.start,
+		loop = sounds.progress,
 		stopLoop = true,
 	}
 end
 
-local CAPTURE_END = {
-	play = Capture.SOUND_END,
-	stopLoop = true,
-}
+local function CaptureEnd(sounds)
+	return {
+		play = sounds.stop,
+		stopLoop = true,
+	}
+end
 
 local SOUNDS = {
-	start = function() return Interrupted(false) end,
-	blocked = function(e) return Interrupted(e.value) end,
-	["end"] = function() return CAPTURE_END end,
-	["break"] = function() return CAPTURE_END end,
+	start = function(e, sounds) return Interrupted(false, sounds) end,
+	blocked = function(e, sounds) return Interrupted(e.value, sounds) end,
+	["end"] = function(e, sounds) return CaptureEnd(sounds) end,
+	["break"] = function(e, sounds) return CaptureEnd(sounds) end,
 }
 
-function PointSounds(e, spawnflags)
-	local sounds = SOUNDS[e.kind]
-	if not sounds then return { stopLoop = false } end
+function PointSounds(e, spawnflags, sounds)
+	local handler = SOUNDS[e.kind]
+	if not handler then return { stopLoop = false } end
 	if band(spawnflags, Capture.SF_NO_CAP_SOUNDS) ~= 0 then return { stopLoop = true } end
-	return sounds(e)
+	return handler(e, sounds)
 end
 
 -- HandleRespawnTimeAdjustments: undo the old owner's team_spawn_N, apply the new one's.
