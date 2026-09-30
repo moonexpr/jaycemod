@@ -21,6 +21,7 @@ local floor, max, min = math.floor, math.max, math.min
 local ipairs = ipairs
 local AiWar = require("foundation.aiwar")
 local Teams = require("foundation.teams")
+local Base = require("foundation.aiwar.scenario")
 local CP = require("foundation.aiwar.scenario.control_points")
 module(...)
 
@@ -41,6 +42,9 @@ local RAID, SUPPORT = AiWar.RAID, AiWar.SUPPORT
 
 Scenario = CP.Scenario:Extend(MODE)
 Scenario.GUARDS_ALL_ROUND = GUARDS_ALL_ROUND
+-- The team clocks exist only once a KOTH round has spawned (not in Sandbox
+-- mode): the war waits for them.
+Scenario.AWAITS = { Base.CLOCKS }
 
 -- The hill: the round's one point a team can fight over, or nil.
 local function Hill(field)

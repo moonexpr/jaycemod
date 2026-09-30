@@ -272,4 +272,67 @@ T.test("a team with a cart the enemy lacks comes out through setup gates, headin
 	T.eq(next(race), nil, "a race has no attacker")
 end)
 
+-- A whole field: the parts each variant's Brief reads ----------------------
+
+local ControlPoints = T.require("foundation.aiwar.scenario.control_points")
+local Koth = T.require("foundation.aiwar.scenario.koth")
+
+local function Parts(t)
+	local both = function(value)
+		return {
+			[RED] = value,
+			[BLUE] = value,
+		}
+	end
+	return {
+		points = t.points,
+		bases = t.bases ~= false and both(P(0, 0)) or {},
+		clocks = t.clocks and both({
+			left = 180,
+			running = false,
+		}) or nil,
+	}
+end
+
+local ONE_POINT = { { rank = 0 } }
+
+T.test("every scenario needs both teams' bases on the map", function()
+	for _, variant in ipairs({ Payload.Scenario, ControlPoints.Scenario, Koth.Scenario }) do
+		T.eq(variant:MapLacks(Parts({
+			bases = false,
+			points = ONE_POINT,
+		})), Scenario.BASES, variant.NAME)
+	end
+	local oneBase = Parts({ points = ONE_POINT })
+	oneBase.bases[BLUE] = nil
+	T.eq(ControlPoints.Scenario:MapLacks(oneBase), Scenario.BASES, "one team's base")
+end)
+
+T.test("payload needs no points or clocks", function()
+	T.eq(Payload.Scenario:MapLacks(Parts({})), nil, "may start")
+	T.eq(Payload.Scenario:Lacks(Parts({})), nil, "whole")
+end)
+
+T.test("the point scenarios need points on the map: at least one", function()
+	for _, variant in ipairs({ ControlPoints.Scenario, Koth.Scenario }) do
+		T.eq(variant:MapLacks(Parts({})), Scenario.POINTS, variant.NAME .. ": none")
+		T.eq(variant:MapLacks(Parts({ points = {} })), Scenario.POINTS, variant.NAME .. ": an empty list")
+		T.eq(variant:MapLacks(Parts({ points = ONE_POINT })), nil, variant.NAME .. ": may start")
+	end
+	T.eq(ControlPoints.Scenario:Lacks(Parts({ points = ONE_POINT })), nil, "a CP field is whole without clocks")
+end)
+
+T.test("KOTH may start without clocks, but its field is whole only with both teams'", function()
+	local sandbox = Parts({ points = ONE_POINT })
+	T.eq(Koth.Scenario:MapLacks(sandbox), nil, "may start")
+	T.eq(Koth.Scenario:Lacks(sandbox), Scenario.CLOCKS, "waits for the clocks")
+	local round = Parts({
+		points = ONE_POINT,
+		clocks = true,
+	})
+	T.eq(Koth.Scenario:Lacks(round), nil, "whole")
+	round.clocks[RED] = nil
+	T.eq(Koth.Scenario:Lacks(round), Scenario.CLOCKS, "one clock")
+end)
+
 T.finish()

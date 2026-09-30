@@ -21,6 +21,9 @@
 --   Front(field, team) -> pos or nil: where the team's lanes lead.
 --   SetupAttacks(field) -> team -> pos: the teams that come out through
 --     setup gates, and what each heads for.
+-- and declares the field's PARTS its Brief reads: NEEDS, which the map
+-- must have for the war to start (MapLacks), and AWAITS, which a round
+-- brings; the controller briefs only a field that Lacks none.
 local error, ipairs, require, setmetatable = error, ipairs, require, setmetatable
 local Teams = require("foundation.teams")
 module(...)
@@ -43,8 +46,51 @@ end
 
 local TEAMS = { Teams.RED, Teams.BLUE }
 
-Scenario = { NAME = "none" }
+local function BothTeams(byTeam)
+	for _, team in ipairs(TEAMS) do
+		if byTeam == nil or byTeam[team] == nil then return false end
+	end
+	return true
+end
+
+-- The parts of the controller's field a variant's Brief may read that a map
+-- or a moment can lack, each with what having it means: points, the capture
+-- HUD's (at least one); bases, both teams'; clocks, both teams' KOTH clocks.
+POINTS, BASES, CLOCKS = "points", "bases", "clocks"
+PARTS = {
+	[POINTS] = function(field) return field.points ~= nil and #field.points > 0 end,
+	[BASES] = function(field) return BothTeams(field.bases) end,
+	[CLOCKS] = function(field) return BothTeams(field.clocks) end,
+}
+
+-- NEEDS: the parts the map must have, or the war cannot start. AWAITS: the
+-- parts a round brings (none in Sandbox mode, none between rounds), which
+-- the war waits for: a field lacking any is never briefed.
+Scenario = {
+	NAME = "none",
+	NEEDS = { BASES },
+	AWAITS = {},
+}
 Scenario.__index = Scenario
+
+-- The first of parts the field lacks, or nil.
+local function FirstMissing(field, parts)
+	for _, part in ipairs(parts) do
+		if not PARTS[part](field) then return part end
+	end
+	return nil
+end
+
+-- The first part the map lacks for this variant, or nil: the war may start.
+function Scenario:MapLacks(field)
+	return FirstMissing(field, self.NEEDS)
+end
+
+-- The first part the field lacks for this variant, or nil: the field is
+-- whole, and Command may brief it.
+function Scenario:Lacks(field)
+	return FirstMissing(field, self.NEEDS) or FirstMissing(field, self.AWAITS)
+end
 
 -- A variant, inheriting what it does not override.
 function Scenario:Extend(name)

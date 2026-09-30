@@ -325,6 +325,8 @@ DOCTRINE = {
 
 Scenario = Base.Scenario:Extend(MODE)
 Scenario.GUARDS_ALL_ROUND = GUARDS_ALL_ROUND
+-- Its Brief reads the points and both teams' bases.
+Scenario.NEEDS = { Base.BASES, Base.POINTS }
 
 -- What the scenario remembers of the round: per point id when it was last
 -- contested and who owned it; per team when it last lost a point.
