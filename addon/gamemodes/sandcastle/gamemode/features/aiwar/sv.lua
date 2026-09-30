@@ -1,12 +1,15 @@
--- The aiwar feature's controller: a payload round fought by DrGBase
--- NextBot soldiers (wetsand_drg_combine, wetsand_drg_rebel; the war needs
--- DrGBase). It owns the foundation.aiwar War, spawns each side's soldiers at
--- its team's spawns in TF2's respawn waves, enlists any soldier that
--- appears while the war runs (a player's included), gives each a
--- foundation.aiwar.orders Behavior over the soldier port below, and sets who
--- is friend or foe. The rules live in the models; this file only feeds them
--- the round and the carts and turns their answers into the soldiers' goals.
+-- The aiwar feature's controller: a round (payload, control points or King
+-- of the Hill) fought by DrGBase NextBot soldiers (wetsand_drg_combine,
+-- wetsand_drg_rebel; the war needs DrGBase). It owns the foundation.aiwar
+-- War and the scenario (foundation.aiwar.scenario) the round's mode picks,
+-- spawns each side's soldiers at its team's spawns in TF2's respawn waves,
+-- enlists any soldier that appears while the war runs (a player's
+-- included), gives each a foundation.aiwar.orders Behavior over the soldier
+-- port below, and sets who is friend or foe. The rules live in the models;
+-- this file only feeds them the round, the carts and the points and turns
+-- their answers into the soldiers' goals.
 local AiWar = WETSAND.require("foundation.aiwar")
+local Scenario = WETSAND.require("foundation.aiwar.scenario")
 local Track = WETSAND.require("foundation.aiwar.track")
 local Orders = WETSAND.require("foundation.aiwar.orders")
 local NpcSystem = WETSAND.require("foundation.npc")
@@ -586,6 +589,22 @@ local function TeamSize()
 	return GetConVar("mp_aiwar_team_size"):GetInt()
 end
 
+-- Another feature's controller when it is already loaded, else nil: the war
+-- reads the round and the points only from features the map loaded itself.
+local function LoadedFeature(name)
+	for _, loaded in ipairs(WETSAND.FeatureLoader:Loaded()) do
+		if loaded == name then return WETSAND.Feature(name) end
+	end
+	return nil
+end
+
+-- The rounds mode's NAME (foundation.rounds), which picks the scenario; nil
+-- without rounds.
+local function RoundsModeName()
+	local rounds = LoadedFeature("rounds")
+	return rounds and rounds:Mode().NAME
+end
+
 function Controller:Active()
 	return self.war ~= nil
 end
@@ -781,6 +800,15 @@ function Controller:Humiliate(losers)
 	self:RelateEveryone()
 end
 
+-- A round won: winner is the team that won it, or none on a stalemate. The
+-- winners hunt through the humiliation phase (AiWar.PhaseOf) while the
+-- losers are humiliated; RespawnAll ends it with the next round.
+function Controller:RoundWon(winner)
+	local losers = AiWar.LosersOf(winner)
+	self.winner = losers and winner or nil
+	self:Humiliate(losers)
+end
+
 -- Teammates pass through each other ---------------------------------------------------
 -- An engine NPC's movement checks (CTraceFilterNav, ai_utils.cpp) skip any
 -- entity it is paired with in the engine's collision pair table, which
@@ -821,9 +849,10 @@ function Controller:JoinSquad(ent, member)
 	ent.wetsandSquad = member and member.fireTeam and member.fireTeam.squad or nil
 end
 
--- Kits (wetsand_drg_soldier's WetsandKit), by side and role: blockers
--- carry the shotgun, hit harder and charge faster; raiders carry the
--- crossbow (the Resistance) and throw grenades; the Combine's support are
+-- Kits (wetsand_drg_soldier's WetsandKit), by side and role: blockers and
+-- a point's holders carry the shotgun, hit harder and charge faster;
+-- raiders carry the crossbow (the Resistance) and throw grenades; the
+-- Combine's support are
 -- metrocops who deploy a turret and send manhacks, the Resistance's are its
 -- heroes, who hit hard; the rest leave those weapons to them. Soldier:UseGadget
 -- uses a kit's gadgets.
@@ -831,6 +860,7 @@ local BLOCKER_KIT = { name = "shotgunner", weapons = { "weapon_shotgun" }, damag
 local KITS = {
 	[RED] = {
 		[AiWar.BLOCK] = BLOCKER_KIT,
+		[AiWar.HOLD] = BLOCKER_KIT,
 		[AiWar.RAID] = { name = "grenadier", weapons = { "weapon_ar2" }, gadgets = { "grenade" } },
 		[AiWar.SUPPORT] = {
 			name = "metrocop", model = "models/player/police.mdl", weapons = { "weapon_smg1", "weapon_pistol" },
@@ -840,6 +870,7 @@ local KITS = {
 	},
 	[BLUE] = {
 		[AiWar.BLOCK] = BLOCKER_KIT,
+		[AiWar.HOLD] = BLOCKER_KIT,
 		[AiWar.RAID] = { name = "crossbow", weapons = { "weapon_crossbow" }, gadgets = { "grenade" } },
 		default = { avoid = { weapon_shotgun = true, weapon_crossbow = true, weapon_357 = true } },
 	},
@@ -1022,7 +1053,8 @@ end
 -- as TF2 respawns every player (RoundRespawn). The war's own soldiers are
 -- replaced by a fresh wave; the ones players spawned are healed, rearmed
 -- and moved to a spawn point (on a stage of a multi-stage map, the new
--- stage's), and their orders start over.
+-- stage's), and their orders start over. The round's winner, the bases and
+-- the posts are the last round's, and the scenario starts the round afresh.
 function Controller:RespawnAll()
 	self:SweepGadgets(nil, true)
 	self.lanePlans, self.laneSets = nil, nil
@@ -1030,7 +1062,10 @@ function Controller:RespawnAll()
 	self.shutDoors = nil
 	self.zones = nil
 	self.postCache = nil
+	self.baseCache = nil
 	self.losers = nil
+	self.winner = nil
+	self.scenario:Reset()
 	local entries = {}
 	for ent, entry in pairs(self.soldiers) do entries[#entries + 1] = { ent = ent, entry = entry } end
 	local spots, used = {}, {}
@@ -1086,7 +1121,7 @@ end
 -- Setup gates -------------------------------------------------------------------------
 -- In setup the defending side lines up past the gates the attackers must
 -- come through (foundation.aiwar.orders). A gate is the last door on the
--- attackers' route from their spawn to their cart's next checkpoint: the
+-- attackers' route from their spawn to what they head for: the
 -- setup gate beyond a spawn door, or the spawn exit on maps whose exits
 -- are the gates. Found once per round.
 
@@ -1120,34 +1155,34 @@ local function SpreadSpawns(team)
 	return first and { first:GetPos(), far:GetPos() } or {}
 end
 
+-- The attacking teams and what each heads for are the scenario's
+-- (SetupAttacks): on payload, a team with a cart the enemy lacks, toward
+-- its next checkpoint.
 function Controller:FindGates(field)
 	local gates = {}
 	self.gates = gates
 	local npcs = WETSAND.Feature("npc")
-	for team, cart in pairs(field.carts) do
-		-- an attacking team: the other side has no cart to push
-		if not field.carts[AiWar.EnemyOf(team)] then
-			local target = ToVector(cart.track:PointAt(cart.nextCheckpoint or cart.track:Length()))
-			for _, from in ipairs(SpreadSpawns(team)) do
-				npcs:RequestRoute({
-					from = from,
-					to = target,
-					ignoreBlockers = true, -- the route is looked for through the shut gates
-					strategy = HL2Path,
-					limits = HL2Path.LIMITS,
-					bot = { entIndex = 0, now = CurTime(), team = team, route = TFBot.FASTEST_ROUTE, miniBoss = false, roundWon = false, winningTeam = WETSAND.TEAM_UNASSIGNED },
-					onDone = function(areas, found)
-						if not areas or self.gates ~= gates then return end
-						local gate = self:GateAlong(npcs:RouteWaypoints(areas, target, found))
-						if not gate then return end
-						gates[team] = gates[team] or {}
-						for _, known in ipairs(gates[team]) do
-							if known.door == gate.door then return end
-						end
-						table.insert(gates[team], gate)
-					end,
-				})
-			end
+	for team, to in pairs(self.scenario:SetupAttacks(field)) do
+		local target = ToVector(to)
+		for _, from in ipairs(SpreadSpawns(team)) do
+			npcs:RequestRoute({
+				from = from,
+				to = target,
+				ignoreBlockers = true, -- the route is looked for through the shut gates
+				strategy = HL2Path,
+				limits = HL2Path.LIMITS,
+				bot = { entIndex = 0, now = CurTime(), team = team, route = TFBot.FASTEST_ROUTE, miniBoss = false, roundWon = false, winningTeam = WETSAND.TEAM_UNASSIGNED },
+				onDone = function(areas, found)
+					if not areas or self.gates ~= gates then return end
+					local gate = self:GateAlong(npcs:RouteWaypoints(areas, target, found))
+					if not gate then return end
+					gates[team] = gates[team] or {}
+					for _, known in ipairs(gates[team]) do
+						if known.door == gate.door then return end
+					end
+					table.insert(gates[team], gate)
+				end,
+			})
 		end
 	end
 end
@@ -1578,11 +1613,148 @@ function Controller:ForwardPosts(team, cart)
 	end)
 end
 
+-- Where a team's defenders guard the point its scenario has it guard
+-- (field.objectives[team].guard), found once per guard point: TF2's defense
+-- areas round a point (CSelectDefenseAreaForPoint), scored by
+-- Posts.ScoreGuard. past is how much farther from the team's base the spot
+-- is than the point, TF2's incursion distance's stand-in; anywhere lifts
+-- the limit on it (the scenario's GUARDS_ALL_ROUND, KOTH's hill). Payload's
+-- posts, when it wrote any, stand.
+function Controller:GuardPosts(field)
+	for team, objectives in pairs(field.objectives or {}) do
+		local guard, base = objectives.guard, field.bases[team]
+		if guard and guard.zone and base and not field.posts[team] then
+			field.posts[team] = self:CachedPosts("guard", team, guard.rank, function()
+				local point, home = ToVector(guard.zone.center), ToVector(base)
+				local toPointFromHome = home:Distance(point)
+				local candidates = {}
+				for _, spot in ipairs(CandidateSpots(point, Posts.MAX_GUARD_RANGE)) do
+					candidates[#candidates + 1] = {
+						pos = Point(spot.pos),
+						sees = Sees(spot.pos, point),
+						toPoint = spot.pos:Distance(point),
+						elevation = spot.pos.z - point.z,
+						cover = spot.cover,
+						sniper = spot.sniper,
+						past = home:Distance(spot.pos) - toPointFromHome,
+						anywhere = self.scenario.GUARDS_ALL_ROUND,
+					}
+				end
+				return Posts.Pick(candidates, AiWar.TEAM_SIZE_MAX, Posts.ScoreGuard)
+			end)
+		end
+	end
+end
+
 -- The field -----------------------------------------------------------------------------
 
+-- A point's zone: the union of its capture areas' boxes, its center on the
+-- ground and its radius ZONE_INSET of the smaller horizontal half extent,
+-- so spots taken in it stay inside odd shapes; nil without an area.
+local ZONE_INSET = 0.8
+
+local function ZoneOf(areas)
+	if #areas == 0 then return nil end
+	local mins, maxs = areas[1]:WorldSpaceAABB()
+	for i = 2, #areas do
+		local low, high = areas[i]:WorldSpaceAABB()
+		mins = Vector(math.min(mins.x, low.x), math.min(mins.y, low.y), math.min(mins.z, low.z))
+		maxs = Vector(math.max(maxs.x, high.x), math.max(maxs.y, high.y), math.max(maxs.z, high.z))
+	end
+	local x, y = (mins.x + maxs.x) / 2, (mins.y + maxs.y) / 2
+	-- down from the middle of the box: areas often reach below the floor
+	local tr = util.TraceLine({
+		start = Vector(x, y, (mins.z + maxs.z) / 2),
+		endpos = Vector(x, y, mins.z - GROUND_PROBE),
+		mask = MASK_NPCSOLID_BRUSHONLY,
+	})
+	local center = tr.Hit and tr.HitPos or Vector(x, y, mins.z)
+	return {
+		center = Point(center),
+		radius = ZONE_INSET * math.min(maxs.x - mins.x, maxs.y - mins.y) / 2,
+	}
+end
+
+-- The points as the capture HUD shows them, in rank order, with where each
+-- is (docs/aiwar-koth-cp.md §2.4); nil while the map has no capture feature.
+function Controller:PointsSnapshot()
+	local capture = LoadedFeature("capture")
+	if not capture then return nil end
+	local points = {}
+	for _, entry in ipairs(capture:HudPoints()) do
+		local hud = entry.hud
+		points[#points + 1] = {
+			id = entry.point,
+			rank = entry.rank,
+			pos = Point(GroundBelow(entry.point:GetPos())),
+			zone = ZoneOf(capture:AreaEntities(entry.point)),
+			owner = hud.owner,
+			locked = hud.locked,
+			unlockAt = hud.unlockTime > 0 and hud.unlockTime or nil,
+			capping = hud.capping,
+			progress = hud.progress,
+			blocked = hud.blocked,
+			mayCapture = {
+				[RED] = hud.redCanCap,
+				[BLUE] = hud.blueCanCap,
+			},
+			inRound = hud.inRound,
+			hidden = hud.hidden,
+		}
+	end
+	return points
+end
+
+-- Each team's KOTH clock, as its HUD shows it: { left, running }; nil on a
+-- map without team clocks.
+local function Clocks(rounds, now)
+	local clocks = nil
+	for _, team in ipairs({ RED, BLUE }) do
+		local clock = rounds:TeamClock(team)
+		if clock then
+			local timer = rounds:TimerOf(clock)
+			clocks = clocks or {}
+			clocks[team] = {
+				left = timer:TimeRemaining(now),
+				running = not timer:Paused(),
+			}
+		end
+	end
+	return clocks
+end
+
+-- The HUD timer's time left, or nil without one.
+local function TimeLeft(rounds, now)
+	local hud = rounds:HudTimer()
+	return hud and rounds:TimerOf(hud):TimeRemaining(now)
+end
+
+-- Each team's spawns on the ground, and its base: their centroid, on the
+-- ground (nil for a team without spawns). Kept until the next round.
+function Controller:Bases()
+	if self.baseCache then return self.baseCache end
+	local bases, spawns = {}, {}
+	for _, team in ipairs({ RED, BLUE }) do
+		local list, sum = {}, Vector(0, 0, 0)
+		for i, spot in ipairs(WETSAND.SpawnPoints(team)) do
+			local pos = GroundBelow(spot:GetPos())
+			list[i] = Point(pos)
+			sum = sum + pos
+		end
+		spawns[team] = list
+		if #list > 0 then bases[team] = Point(GroundBelow(sum / #list)) end
+	end
+	self.baseCache = {
+		bases = bases,
+		spawns = spawns,
+	}
+	return self.baseCache
+end
+
 -- Each team's first active cart: its path, how far along it is, where its
--- next checkpoint is, and the ground under it.
-function Controller:Field(phase)
+-- next checkpoint is, and the ground under it; the points, the clocks and
+-- the bases (docs/aiwar-koth-cp.md §2.4); the round's winner.
+function Controller:Field(phase, now)
 	local carts = {}
 	self.cartEntities = {}
 	for _, watcher in ipairs(ents.FindByClass("team_train_watcher")) do
@@ -1604,6 +1776,8 @@ function Controller:Field(phase)
 		if enemyCart then posts[team] = self:DefendersPosts(team, enemyCart) end
 		if ownCart then forwardPosts[team] = self:ForwardPosts(team, ownCart) end
 	end
+	local rounds = LoadedFeature("rounds")
+	local bases = self:Bases()
 	return {
 		phase = phase,
 		setup = WETSAND.Active() and WETSAND.InSetup(),
@@ -1612,6 +1786,13 @@ function Controller:Field(phase)
 		posts = posts,
 		forwardPosts = forwardPosts,
 		patients = self:Patients(),
+		points = self:PointsSnapshot(),
+		clocks = rounds and Clocks(rounds, now),
+		timeLeft = rounds and TimeLeft(rounds, now),
+		overtime = WETSAND.InOvertime(),
+		bases = bases.bases,
+		spawns = bases.spawns,
+		winner = self.winner,
 	}
 end
 
@@ -1635,7 +1816,8 @@ function Controller:Patients()
 end
 
 -- Lanes (foundation.aiwar.lanes): each team's ways from its spawn out to
--- its front (its own cart, else the enemy's), planned one after the other,
+-- its front (the scenario's Front: on payload its own cart, else the
+-- enemy's), planned one after the other,
 -- each costing more through the areas the ones before took. A team's lanes
 -- are planned again once its front has moved LANE_REPLAN from where they
 -- led, and tried again after LANE_RETRY when no route was found (a shut
@@ -1647,8 +1829,7 @@ function Controller:UpdateLanes(field, now)
 	self.laneSets = self.laneSets or {}
 	field.lanes = {}
 	for _, team in ipairs({ RED, BLUE }) do
-		local own, theirs = field.carts[team], field.carts[AiWar.EnemyOf(team)]
-		local front = (own and own.pos) or (theirs and theirs.pos)
+		local front = self.scenario:Front(field, team)
 		local plan = self.lanePlans[team]
 		if front and not (plan and plan.planning) and now >= (plan and plan.retryAt or 0)
 			and (not plan or Track.Distance(front, plan.to) > LANE_REPLAN) then
@@ -1708,32 +1889,27 @@ function Controller:PlanLanes(team, to, now)
 	Try()
 end
 
--- The teams with a cart, how far along its track each cart is, and whether
--- it is close to its next checkpoint (the end of its track after the
--- last): what each team's defense share and stance are made of
--- (foundation.aiwar's DefenseShare and Stance).
-function Controller:CartTeams(carts)
-	local teams, close = {}, {}
-	for team, cart in pairs(carts) do
-		local target = cart.nextCheckpoint or cart.track:Length()
-		close[team] = AiWar.CartClose(self.cartClose and self.cartClose[team], target - cart.distance)
-		teams[team] = { close = close[team], progress = cart.distance / math.max(cart.track:Length(), 1) }
-	end
-	self.cartClose = close
-	return teams
+-- The battlefield this think (docs/aiwar-koth-cp.md §2.2): the round's
+-- phase and the field, which the scenario briefs (its doctrine and
+-- objectives) and allocates each team's stance from; then the setup
+-- gates, the guard posts and the lanes it leads to.
+function Controller:Survey(now)
+	local phase = AiWar.PhaseOf(WETSAND.Active(), WETSAND.State(), self.winner)
+	local field = self:Field(phase, now)
+	self:RefreshCartBounds()
+	self.scenario:Command(self.war, field, now)
+	if field.setup and self.gates == nil then self:FindGates(field) end
+	self:GuardPosts(field)
+	self:UpdateLanes(field, now)
+	return field
 end
 
 function Controller:Think(now)
 	if now < self.nextThink then return end
 	self.nextThink = now + THINK_INTERVAL
-	local phase = AiWar.PhaseOf(WETSAND.Active(), WETSAND.State())
-	local field = self:Field(phase)
-	self:RefreshCartBounds()
-	if field.setup and self.gates == nil then self:FindGates(field) end
-	self.war:Assign(self:CartTeams(field.carts))
-	self:UpdateLanes(field, now)
+	local field = self:Survey(now)
 	self.war:SetField(field)
-	if phase.reinforce then self:Reinforce(now) end
+	if field.phase.reinforce then self:Reinforce(now) end
 	for ent, entry in pairs(self.soldiers) do
 		if IsValid(ent) then
 			local member = self.war:Member(ent)
@@ -1827,13 +2003,21 @@ local function Story()
 	}
 end
 
+local NO_OBJECTIVE = "this map has no objective the AI war can fight over (payload, control points or King of the Hill)"
+
 -- Starts the war at once and requests Gameplay mode, whose countdown
--- restarts the rounds. Returns true, or false and why not.
+-- restarts the rounds. The scenario is the rounds mode's (the map's own
+-- entities chose it), never the map's name. Returns true, or false and why
+-- not.
 function Controller:Start()
 	if self.war then return false, "the war is already on" end
 	if not DrGBase then return false, "the AI war needs DrGBase (Steam Workshop) for its soldiers" end
-	if #ents.FindByClass("team_train_watcher") == 0 then return false, "this map has no payload cart" end
+	local variant = Scenario.For(RoundsModeName())
+	if not variant then return false, NO_OBJECTIVE end
 	WETSAND.Feature("npc"):CheckNavMesh()
+	self.scenario = variant:New()
+	self.winner = nil
+	self.baseCache = nil
 	self.war = AiWar.War.New()
 	self.gates = nil
 	SetGlobal2Bool(ACTIVE_KEY, true)
@@ -1868,6 +2052,8 @@ function Controller:End()
 	self:CloseDoorsToSoldiers()
 	self:SetForcefieldsPassable(false)
 	self.war = nil
+	self.scenario = nil
+	self.winner = nil
 	SetGlobal2Bool(ACTIVE_KEY, false)
 	return true
 end
@@ -2000,12 +2186,25 @@ function Controller:BlockedBy(soldier)
 	return DescribeBlocker(blocker) .. (playersPass and "; a player would pass" or "; blocks players too")
 end
 
+-- The team's scenario, the key of the stance it applied (payload's
+-- allocation has none) and the ranks of its target, guard and staging
+-- points; "-" for none.
+local function RankOf(point) return point and tostring(point.rank) or "-" end
+
+function Controller:ScenarioLine(field, team)
+	local entry = self.scenario.current[team]
+	local objectives = field and field.objectives and field.objectives[team] or {}
+	return string.format("  %s %s: stance %s, target %s, guard %s, staging %s", TEAM_LABEL[team], self.scenario.NAME,
+		entry and entry.key or "-", RankOf(objectives.target), RankOf(objectives.guard), RankOf(objectives.staging))
+end
+
 function Controller:Report()
 	local lines = {}
 	local field = self.war:Field()
-	lines[1] = string.format("AI war on %s: phase %s, %d nav areas, %d spawn-door triggers open to NPCs, %d route searches running",
-		game.GetMap(), field and field.phase.name or "none", navmesh.GetNavAreaCount(), table.Count(self.doorFlags),
+	lines[1] = string.format("AI war, %s scenario: phase %s, %d nav areas, %d spawn-door triggers open to NPCs, %d route searches running",
+		self.scenario.NAME, field and field.phase.name or "none", navmesh.GetNavAreaCount(), table.Count(self.doorFlags),
 		WETSAND.Feature("npc"):SearchesRunning())
+	for _, team in ipairs({ RED, BLUE }) do lines[#lines + 1] = self:ScenarioLine(field, team) end
 	for team, cart in pairs(field and field.carts or {}) do
 		lines[#lines + 1] = string.format("  %s cart: %d of %d units along its track", TEAM_LABEL[team], Round(cart.distance), Round(cart.track:Length()))
 	end
@@ -2292,6 +2491,7 @@ hook.Add("PostCleanupMap", "wetsand_aiwar", function()
 	Controller.zones = nil
 	Controller.shutDoors = nil
 	Controller.postCache = nil
+	Controller.baseCache = nil
 	Controller.war:ResetWaves()
 end)
 
@@ -2304,7 +2504,7 @@ hook.Add("WetsandRoundActivate", "wetsand_aiwar", function()
 end)
 
 hook.Add("WetsandRoundWin", "wetsand_aiwar", function(winner)
-	if Controller.war then Controller:Humiliate(AiWar.LosersOf(winner)) end
+	if Controller.war then Controller:RoundWon(winner) end
 end)
 
 -- The round keeps running with no human on a team while the war is on.
