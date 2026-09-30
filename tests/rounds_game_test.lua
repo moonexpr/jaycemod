@@ -627,6 +627,104 @@ T.test("halted players respawn after a pause", function()
 	T.eq(Rounds.HaltedRespawnDue(T0, T0 + Rounds.HALT_RESPAWN), true, "due")
 end)
 
+-- An attack/defend round, as on cp_gorge: the Round and the map's timer
+-- (60 s setup, 270 s, max 600) driven together, as the rounds controller
+-- drives them. A capture in progress holds the timer at zero; when it
+-- breaks, OnFinished goes to a game_round_win for RED.
+T.test("an A/D round: setup, time added by a capture, overtime while capping, then the defenders win", function()
+	local Timer = T.require("foundation.rounds.timer")
+	local ControlPoints = T.require("foundation.rounds.control_points")
+	local objective = FakeObjective.Objective()
+	local round = Rounds.New(Settings())
+	round:SetMode(ControlPoints.Mode)
+	local timer = Timer.New({
+		length = 270,
+		maxLength = 600,
+		setupLength = 60,
+		startPaused = false,
+		showInHud = true,
+		autoCountdown = true,
+		resetTime = false,
+		startDisabled = false,
+		now = 0,
+	})
+	local outputs = {}
+	local capturing = false
+	local function Holds()
+		return {
+			capturing = capturing,
+			other = false,
+		}
+	end
+	local function Carry(events)
+		for _, e in ipairs(events) do
+			if e.kind == "setup" then round:SetSetup(e.value) end
+			if e.kind == "overtime" then round:SetOvertime(e.value) end
+			if e.kind == "output" then outputs[#outputs + 1] = e.name end
+		end
+	end
+	local function Tick(now)
+		Carry(timer:Think(now, {
+			mayExpire = round:TimerMayExpire(now, Holds()),
+			roundWon = round:State() == State.TEAM_WIN,
+			overtime = round:InOvertime(),
+			nagEnabled = false,
+			random = function() return 0 end,
+		}))
+	end
+
+	for _, e in ipairs(round:Think(T0, World())) do
+		if e.kind == "round_spawn" then Carry(timer:RoundSpawn(T0)) end
+	end
+	round:Think(T0 + Rounds.PREROUND_SECONDS, World())
+	T.eq(round:State(), State.RND_RUNNING, "running")
+	T.eq(round:InSetup(), true, "setup")
+	T.eq(round:PointsMayBeCaptured(), false, "no captures in setup")
+
+	Tick(T0 + 60)
+	T.eq(round:InSetup(), false, "setup over")
+	T.eq(round:PointsMayBeCaptured(), true, "points open")
+	T.eq(outputs[#outputs - 1], "OnSetupFinished", "the gates open")
+
+	local events, added = timer:AddSeconds(T0 + 100, 480, BLUE, {
+		roundRunningOrWon = round:State() == State.RND_RUNNING,
+		isHud = true,
+		roundWon = false,
+		inStalemate = false,
+		announces = round:Mode().ANNOUNCES_TIME_ADDED,
+	})
+	T.eq(added, 600 - 230, "a capture adds up to max_length")
+	T.eq(events[2].kind, "time_added", "announced")
+
+	-- 600 s left from T0 + 100; the marks do not fire at zero, the end comes first
+	local zero = T0 + 100 + 600
+	capturing = true
+	Tick(zero)
+	T.eq(round:InOvertime(), true, "overtime while BLU caps")
+	Tick(zero + 5)
+	T.eq(outputs[#outputs] ~= "OnFinished", true, "held")
+	capturing = false
+	Tick(zero + 5.05)
+	T.eq(outputs[#outputs] ~= "OnFinished", true, "the 0.1 s buffer")
+	Tick(zero + 5.2)
+	T.eq(outputs[#outputs], "OnFinished", "the timer runs out")
+	Expect(round:GameRoundWin(zero + 5.2, {
+		team = RED,
+		reason = W.DEFEND_UNTIL_TIME_LIMIT,
+		forceMapReset = true,
+		switchTeams = true,
+	}, objective), {
+		"score " .. RED .. " 1",
+		"publish_win " .. RED,
+		"state TEAM_WIN",
+		"hook WetsandRoundWin " .. RED,
+		"win_song " .. RED,
+		"output OnWonByTeam1",
+	}, "RED defended")
+	Tick(zero + 6)
+	T.eq(timer:Paused(), true, "the won round stops the clock")
+end)
+
 T.test("Configure takes new convar values", function()
 	local round = Running()
 	round:Configure({ bonusRoundTime = 5 })
