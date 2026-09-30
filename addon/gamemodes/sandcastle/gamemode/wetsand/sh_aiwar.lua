@@ -31,8 +31,8 @@ if SERVER then
 	end
 
 	Command("mp_aiwar_start", "Start",
-		"Start the war, the Combine (RED) defending the cart against the Resistance (BLU); in Sandbox mode, "
-			.. "Gameplay mode counts down and begins")
+		"Start the war, the Combine (RED) against the Resistance (BLU) on payload, control point and "
+			.. "King of the Hill maps; in Sandbox mode, Gameplay mode counts down and begins")
 	Command("mp_aiwar_end", "End", "End the AI war; its soldiers leave, NPCs players spawned stay")
 	return
 end
@@ -45,9 +45,10 @@ hook.Add("CreateClientsideRagdoll", "wetsand_aiwar_ragdoll_fade", function(owner
 end)
 
 local HELP = "In Sandbox mode, counts down to Gameplay mode and a new round. "
-	.. "The Resistance spawn at BLU's spawn and push the cart, "
-	.. "the Combine spawn at RED's and defend it. Sandcastle's Combine and Resistance soldiers you spawn join their side. "
-	.. "Payload maps only. Needs DrGBase (Steam Workshop) for its soldiers."
+	.. "The Resistance spawn at BLU's spawn and the Combine at RED's, and fight the map's round: "
+	.. "they push or stop the cart, take and hold the points, or fight for the hill. "
+	.. "Sandcastle's Combine and Resistance soldiers you spawn join their side. "
+	.. "Payload, control point and King of the Hill maps. Needs DrGBase (Steam Workshop) for its soldiers."
 
 local function BuildPanel(panel)
 	panel:ClearControls()
