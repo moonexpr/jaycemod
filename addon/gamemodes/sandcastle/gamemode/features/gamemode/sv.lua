@@ -138,8 +138,7 @@ local NOTICES = {
 	[Gamemode.NOTICE_REQUEST_CHAT] = function(_, story) Chat(story.title, story.lines) end,
 	[Gamemode.NOTICE_REQUEST_ANNOUNCEMENT] = function(_, story) WETSAND.Announce(story.announcement) end,
 	[Gamemode.NOTICE_CALLED_OFF] = function()
-		local title, _ = Gameplay.Describe(MapInfo())
-		Chat(title .. "called off. Carry on.", { })
+		Chat("Game called off. Carry on.", { })
 		PlayToAll(CALLED_OFF_SFX)	
 	end,
 	[Gamemode.NOTICE_SANDBOX] = function()
