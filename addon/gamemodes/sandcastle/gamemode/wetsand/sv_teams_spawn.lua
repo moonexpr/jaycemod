@@ -50,15 +50,21 @@ local function ControlPoint(name)
 	return NULL
 end
 
+-- Control points are asked only on maps with a master or mini-rounds, whose
+-- entities have loaded the capture feature.
+local function Capture()
+	return WETSAND.Feature("capture")
+end
+
 local function PointOwner(name)
 	local point = ControlPoint(name)
-	if IsValid(point) then return WETSAND.CapTeam(point) end
+	if IsValid(point) then return Capture():Owner(point) end
 	return nil
 end
 
 local function PointIndex(name)
 	local point = ControlPoint(name)
-	if IsValid(point) then return WETSAND.PointIndex(point) end
+	if IsValid(point) then return Capture():Index(point) end
 	return nil
 end
 
@@ -66,8 +72,8 @@ local function ControlPoints()
 	local points = {}
 	for _, ent in ipairs(ents.FindByClass("team_control_point")) do
 		points[#points + 1] = {
-			index = WETSAND.PointIndex(ent),
-			owner = WETSAND.CapTeam(ent),
+			index = Capture():Index(ent),
+			owner = Capture():Owner(ent),
 			defaultOwner = tonumber(WETSAND.KeyValues(ent).point_default_owner) or WETSAND.TEAM_UNASSIGNED,
 		}
 	end
@@ -121,7 +127,7 @@ end
 -- the round's hooks reach this module.
 local function EnsureRoundSetup()
 	if PlayingMiniRounds() then
-		local round = WETSAND.CurrentRound()
+		local round = Capture():CurrentRound()
 		if not IsValid(round) or round == applied.round then return end
 		SetupMiniRound(round)
 	else

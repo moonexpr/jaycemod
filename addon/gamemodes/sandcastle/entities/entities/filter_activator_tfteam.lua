@@ -39,7 +39,7 @@ end
 function ENT:RoundActivate()
 	if not self.pointName or self.pointName == "" then return end
 	local point = WETSAND.FindByName(self.pointName)
-	if IsValid(point) then self.team = WETSAND.CapTeam(point) end
+	if IsValid(point) then self.team = WETSAND.Feature("capture"):Owner(point) end
 end
 
 local INPUTS = {

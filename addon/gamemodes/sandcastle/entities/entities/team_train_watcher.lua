@@ -35,6 +35,8 @@ end
 
 function ENT:Initialize()
 	P = WETSAND.Payload
+	self.capture = WETSAND.Feature("capture")
+	WETSAND.HoldTimersForWatchers()
 	self.disabled = self:Key("startdisabled", "0") == "1"
 	self.team = tonumber(self:Key("teamnum", WETSAND.TEAM_BLUE)) or WETSAND.TEAM_BLUE
 	self.handleMovement = self:Key("handle_train_movement", "0") == "1"
@@ -110,6 +112,8 @@ function ENT:BuildLinks()
 		if IsValid(track) and IsValid(cp) then
 			local i = self.nodeIndex[track]
 			self.links[#self.links + 1] = { cp = cp, distance = i and self.distanceAt[i] or 0, index = i, alerted = false }
+			-- the cart's bar shows its points, so the point HUD leaves them out
+			self.capture:SetHudHidden(cp, true)
 		end
 	end
 end
@@ -331,7 +335,7 @@ end
 -- CTFGameRules::PlayTrainCaptureAlert: everyone hears it, while the round runs.
 function ENT:PlayCaptureAlert(cp)
 	if WETSAND.State() ~= WETSAND.STATE.RND_RUNNING then return end
-	local final = WETSAND.FinalPointInMap(cp)
+	local final = self.capture:FinalPointInMap(cp)
 	WETSAND.BroadcastSound(WETSAND.TEAM_UNASSIGNED, final and "Announcer.Cart.FinalWarning" or "Announcer.Cart.Warning")
 end
 
@@ -468,7 +472,7 @@ function ENT:HudState()
 	local cps, owners = {}, {}
 	for i, link in ipairs(self.links) do
 		cps[i] = link.distance / self.total
-		owners[i] = WETSAND.CapTeam(link.cp)
+		owners[i] = self.capture:Owner(link.cp)
 	end
 	return {
 		team = self.team,
