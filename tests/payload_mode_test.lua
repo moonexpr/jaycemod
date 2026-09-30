@@ -353,4 +353,47 @@ T.test("the admin's cart speed scale is clamped to the editor's range", function
 	T.eq(Payload.CART_SPEED_DEFAULT, 1, "the map's own speed")
 end)
 
+-- Seams --------------------------------------------------------------------------------
+
+local ENTITIES = "addon/gamemodes/sandcastle/entities/entities/"
+
+local function Read(path)
+	local f = assert(io.open(path, "rb"))
+	local text = f:read("*a")
+	f:close()
+	return text
+end
+
+local function Exists(path)
+	local f = io.open(path, "rb")
+	if f then f:close() end
+	return f ~= nil
+end
+
+T.test("the legacy payload files are gone", function()
+	for _, name in ipairs({ "sv_payload", "cl_payload", "cl_hud" }) do
+		T.eq(Exists(T.ROOT .. "wetsand/" .. name .. ".lua"), false, name)
+	end
+end)
+
+T.test("the payload controller defines every method other code calls", function()
+	local text = Read(T.ROOT .. "features/payload/sv.lua")
+	for _, name in ipairs({ "CartSpeedScale", "SetCartSpeedScale", "HasMultipleTrains", "BindWatcher", "BindEscort" }) do
+		T.eq(text:find("function Controller:" .. name .. "(", 1, true) ~= nil, true, name)
+	end
+end)
+
+T.test("the payload bindings reach the controller, not the old globals", function()
+	local watcher = Read(ENTITIES .. "team_train_watcher.lua")
+	for _, old in ipairs({ "WETSAND.Payload", "WETSAND.CartSpeedScale", "WETSAND.HoldTimersForWatchers" }) do
+		T.eq(watcher:find(old, 1, true), nil, old)
+	end
+	T.eq(watcher:find(":BindWatcher(self)", 1, true) ~= nil, true, "the watcher binds")
+	T.eq(Read(ENTITIES .. "tf_logic_multiple_escort.lua"):find(":BindEscort(self)", 1, true) ~= nil, true, "the escort binds")
+end)
+
+T.test("the payload view reads only networked state", function()
+	T.eq(Read(T.ROOT .. "features/payload/cl.lua"):find("ents.Find", 1, true), nil, "no ents.Find")
+end)
+
 T.finish()

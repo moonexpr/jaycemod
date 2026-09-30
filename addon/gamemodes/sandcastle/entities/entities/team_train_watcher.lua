@@ -5,7 +5,8 @@
 -- with handle_train_movement drives the train itself (speed by pushers,
 -- hills, receding). With handle_train_movement 0 the map moves the train
 -- from the capture area's outputs and the watcher only tracks it.
--- The decisions live in foundation/payload.lua (WETSAND.Payload).
+-- The decisions live in foundation/payload.lua; the payload feature's
+-- controller holds the watchers, the cart speed scale and the cart HUD.
 ENT.Type = "point"
 ENT.Base = "base_point"
 
@@ -34,9 +35,10 @@ local function Flag(value)
 end
 
 function ENT:Initialize()
-	P = WETSAND.Payload
+	P = WETSAND.require("foundation.payload")
 	self.capture = WETSAND.Feature("capture")
-	WETSAND.HoldTimersForWatchers()
+	self.payload = WETSAND.Feature("payload")
+	self.payload:BindWatcher(self)
 	self.disabled = self:Key("startdisabled", "0") == "1"
 	self.team = tonumber(self:Key("teamnum", WETSAND.TEAM_BLUE)) or WETSAND.TEAM_BLUE
 	self.handleMovement = self:Key("handle_train_movement", "0") == "1"
@@ -71,6 +73,7 @@ end
 
 function ENT:OnRemove()
 	self:StopCaptureAlarm()
+	self.payload:UnbindWatcher(self)
 end
 
 -- Path -----------------------------------------------------------------------------
@@ -303,7 +306,7 @@ end
 -- then asks for its current speed again so the change shows at once.
 function ENT:ApplyMaxSpeed()
 	if not IsValid(self.train) or not self.baseMaxSpeed then return end
-	local maxSpeed = P.MaxSpeed(self.baseMaxSpeed, WETSAND.CartSpeedScale(), self.advanceTo ~= nil)
+	local maxSpeed = P.MaxSpeed(self.baseMaxSpeed, self.payload:CartSpeedScale(), self.advanceTo ~= nil)
 	self.train:SetKeyValue("startspeed", tostring(maxSpeed))
 	if self.handleMovement and not self.disabled then self.train:Fire("SetSpeedDirAccel", tostring(self.currentSpeed)) end
 end
@@ -463,9 +466,12 @@ end
 -- hold while a point is being captured, for this cart's own area, so a
 -- timer asking only the watchers still runs overtime while the cart is pushed.
 function ENT:TimerMayExpire()
-	if self.disabled then return true end
-	if self.waitingToRecede or self.capBlocked then return false end
-	return not (IsValid(self.area) and self.area:IsCapturing())
+	return P.TimerMayExpire({
+		disabled = self.disabled,
+		waitingToRecede = self.waitingToRecede,
+		capBlocked = self.capBlocked,
+		areaCapturing = IsValid(self.area) and self.area:IsCapturing(),
+	})
 end
 
 function ENT:HudState()
