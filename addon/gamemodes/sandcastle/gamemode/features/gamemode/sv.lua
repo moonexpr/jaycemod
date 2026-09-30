@@ -21,10 +21,6 @@ local Gameplay = WETSAND.require("foundation.gameplay")
 local ENABLED = GetConVar("sv_gameplay_enabled")
 local SANDBOX_DISABLED = GetConVar("sv_gameplay_disable_sandbox")
 
-local CHAT_NET, STOP_SOUNDS_NET = "wetsand_gameplay_chat", "wetsand_gameplay_stop_sounds"
-util.AddNetworkString(CHAT_NET)
-util.AddNetworkString(STOP_SOUNDS_NET)
-
 local TRANSITION_TIMER = "wetsand_gamemode_transition"
 -- wetsand_gamemode_transition_end outside a transition.
 local NO_TRANSITION = 0
@@ -70,13 +66,13 @@ local function Tell(requester, text)
 	if IsValid(requester) then requester:ChatPrint(text) else print(text) end
 end
 
--- A title and lines in every player's chat (the client colours the title).
+-- A title and lines in every player's chat (the client colours the title;
+-- wetsand/sh_gameplay.lua).
 local function Chat(title, lines)
-	net.Start(CHAT_NET)
-	net.WriteString(title)
-	net.WriteUInt(#lines, 8)
-	for _, line in ipairs(lines) do net.WriteString(line) end
-	net.Broadcast()
+	WETSAND.Events.Fire("gameplay_chat", {
+		title = title,
+		lines = lines,
+	})
 end
 
 -- What the map plays, for foundation.gameplay.
@@ -119,10 +115,7 @@ end
 -- Calls off the transition, silencing what it played.
 function Controller:CancelTransition()
 	timer.Remove(TRANSITION_TIMER)
-	net.Start(STOP_SOUNDS_NET)
-	net.WriteUInt(#self.transitionSounds, 8)
-	for _, path in ipairs(self.transitionSounds) do net.WriteString(path) end
-	net.Broadcast()
+	WETSAND.Events.Fire("gameplay_transition_cancelled", { sounds = self.transitionSounds })
 	self.transitionSounds = {}
 end
 

@@ -13,6 +13,21 @@ local ENABLED = CreateConVar("sv_gameplay_enabled", "0", { FCVAR_REPLICATED, FCV
 	"1: Gameplay mode, the rounds run; 0: Sandbox mode, no rounds and spawn doors open. "
 		.. "Setting it requests the change: 1 counts down to Gameplay mode.", 0, 1)
 
+-- The gamemode feature's game events (features/gamemode/sv.lua fires
+-- them): a title and lines for every player's chat (a new game's
+-- description, a request's story), and the transition to Gameplay mode
+-- called off, with the sounds it had played for the clients to silence.
+local E = WETSAND.Events
+local COUNT_BITS = 8
+
+E.Define("gameplay_chat", {
+	title = E.String(),
+	lines = E.List(E.String(), COUNT_BITS),
+})
+E.Define("gameplay_transition_cancelled", {
+	sounds = E.List(E.String(), COUNT_BITS),
+})
+
 if SERVER then
 	CreateConVar("sv_gameplay_disable_sandbox", "0", FCVAR_NOTIFY,
 		"1: nothing enters Sandbox mode (Stop Game, sv_gameplay_enabled 0)", 0, 1)
@@ -82,18 +97,16 @@ end
 -- A new game's description in chat: the title in gold, the objectives in white.
 local TITLE_COLOR, LINE_COLOR = Color(255, 205, 80), Color(235, 235, 235)
 
-net.Receive("wetsand_gameplay_chat", function()
-	chat.AddText(TITLE_COLOR, net.ReadString())
-	for _ = 1, net.ReadUInt(8) do chat.AddText(LINE_COLOR, net.ReadString()) end
+E.Listen("gameplay_chat", "wetsand_gameplay", function(fields)
+	chat.AddText(TITLE_COLOR, fields.title)
+	for _, line in ipairs(fields.lines) do chat.AddText(LINE_COLOR, line) end
 end)
 
 -- A countdown called off: silence what it played.
-net.Receive("wetsand_gameplay_stop_sounds", function()
+E.Listen("gameplay_transition_cancelled", "wetsand_gameplay", function(fields)
 	local ply = LocalPlayer()
-	for _ = 1, net.ReadUInt(8) do
-		local path = net.ReadString()
-		if IsValid(ply) then ply:StopSound(path) end
-	end
+	if not IsValid(ply) then return end
+	for _, path in ipairs(fields.sounds) do ply:StopSound(path) end
 end)
 
 hook.Add("PopulateToolMenu", "wetsand_gameplay", function()
