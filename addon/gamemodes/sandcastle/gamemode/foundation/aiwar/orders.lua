@@ -58,6 +58,7 @@ local Track = require("foundation.aiwar.track")
 local Tactics = require("foundation.aiwar.tactics")
 local Squad = require("foundation.aiwar.squad")
 local Lanes = require("foundation.aiwar.lanes")
+local Hunt = require("foundation.aiwar.hunt")
 module(...)
 
 KIND = "aiwar"
@@ -1423,12 +1424,50 @@ local SquadMonitor = Monitor("SquadMonitor", function(state)
 	return SquadRoles[Squad.Kind(state.member)]:New(state)
 end)
 
--- Humiliated: its side lost the round. Orders are dropped (DrGBase keeps
--- away from what it fears), it holds its fire and hurries, until the next
--- round rearms it (TF2's losers retreat: CTFBotTacticalMonitor).
+-- Post-round carnage (foundation.aiwar's PHASES.humiliation,
+-- foundation.aiwar.hunt; TF2's CTFBotTacticalMonitor "Get the losers!").
+-- The winners SeekAndDestroy: at a loser in sight, reporting it on the
+-- war's hunt board and holding to fire once within HUNT_CLOSE; with none,
+-- on a trip to the nearest fresh sighting, else to the losers' spawns. The
+-- losers are Humiliated: they run from what they see and otherwise hide at
+-- their own spawn. Both end with the round.
+HUNT_CLOSE = 300
+
+-- The hunt's and the hiding's trips, travelled as a role's goal is.
+local HUNT = {
+	name = "Hunt",
+	arrive = Hunt.HUNT_ARRIVE,
+	leash = 0,
+	rushes = false,
+	giveUp = Hunt.HUNT_GIVE_UP,
+	gait = RUN,
+}
+local HIDE = {
+	name = "Hide",
+	arrive = Hunt.HIDE_ARRIVE,
+	leash = 0,
+	rushes = false,
+	giveUp = WANDER_GIVE_UP,
+	gait = RUN,
+}
+
+-- Whether the member's side won the round and hunts the losers now.
+function Hunting(field, member)
+	return field ~= nil and field.phase.hunt and field.winner == member.team
+end
+
+-- Humiliated: its side lost the round. Orders are dropped, it holds its
+-- fire and hurries, until the next round rearms it (TF2's losers retreat:
+-- CTFBotTacticalMonitor). From a winner in sight it flees to cover within
+-- FLEE_COVER away from it (else RETREAT_DISTANCE straight away), picking
+-- again once the winner has moved FLEE_REPICK or the spot is reached; with
+-- none in sight it runs to its nearest spawn and hides there.
 local Humiliated = N.Action:Extend("Humiliated")
 
-function Humiliated:Init(state) self.state = state end
+function Humiliated:Init(state)
+	self.state = state
+	self.retryAt = 0
+end
 
 function Humiliated:OnStart(me)
 	StopFollowing(self.state, me)
@@ -1437,13 +1476,98 @@ function Humiliated:OnStart(me)
 	return self:Continue()
 end
 
+local function KeepHiding(field, soldier)
+	if not soldier:IsDisarmed() then return false, "rearmed" end
+	if soldier:HasEnemy() then return false, "found" end
+	return true
+end
+
 function Humiliated:Update(me)
 	if not me:IsDisarmed() then return self:Done("rearmed") end
+	local state, now = self.state, me:Now()
+	local threat = me:HasEnemy() and me:EnemyPosition()
+	if threat then return self:Flee(me, threat) end
+	self.flee, self.fleeFrom = nil, nil
+	local field = state.war:Field()
+	local hideout = OrdersRun(field) and Hunt.Hideout(field, state.member, me:Position()) or nil
+	if not hideout or me:RangeTo(hideout) <= Hunt.HIDE_ARRIVE or now < self.retryAt then
+		state.tactic, state.goal = "hiding", hideout
+		me:Hold()
+		return self:Continue()
+	end
+	state.tactic, state.goal = "running to hide", hideout
+	return self:SuspendFor(Travel:New(state, HIDE, hideout, KeepHiding), "running to hide")
+end
+
+function Humiliated:Flee(me, threat)
+	local state = self.state
+	if not self.flee or Distance(threat, self.fleeFrom) > Hunt.FLEE_REPICK or me:RangeTo(self.flee) <= SPOT_ARRIVE then
+		self.flee = me:CoverSpot(me:Position(), Hunt.FLEE_COVER, threat) or Behind(me:Position(), threat, RETREAT_DISTANCE)
+		self.fleeFrom = threat
+	end
+	state.tactic, state.goal = "fleeing", self.flee
+	me:MoveTo(self.flee, RUN)
+	return self:Continue()
+end
+
+function Humiliated:OnResume(me, interrupting)
+	if interrupting.failed then self.retryAt = me:Now() + RETRY_WAIT end
 	return self:Continue()
 end
 
 function Humiliated:ShouldAttack(me, them) return N.ANSWER_NO end
 function Humiliated:ShouldHurry(me) return N.ANSWER_YES end
+
+-- SeekAndDestroy (CTFBotSeekAndDestroy): its side won the round.
+local SeekAndDestroy = N.Action:Extend("SeekAndDestroy")
+
+function SeekAndDestroy:Init(state)
+	self.state = state
+	self.retryAt = 0
+end
+
+function SeekAndDestroy:OnStart(me)
+	StopFollowing(self.state, me)
+	me:Stand()
+	return self:Continue()
+end
+
+-- A hunt trip goes on while the hunt does and no loser is in sight.
+local function KeepHunting(member)
+	return function(field, soldier)
+		if not Hunting(field, member) then return false, "the round is over" end
+		if soldier:HasEnemy() then return false, "a loser in sight" end
+		return true
+	end
+end
+
+function SeekAndDestroy:Update(me)
+	local state, now = self.state, me:Now()
+	local field, member, war = state.war:Field(), state.member, state.war
+	if not Hunting(field, member) then return self:Done("the round is over") end
+	local enemy = me:HasEnemy() and me:EnemyPosition()
+	if enemy then
+		war.hunt:Report(member.team, me:Enemy(), enemy, now)
+		state.tactic, state.goal = "chasing down the losers", enemy
+		if me:RangeTo(enemy) <= HUNT_CLOSE then me:Hold() else me:MoveTo(enemy, RUN) end
+		return self:Continue()
+	end
+	local goal = Hunt.HuntGoal(field, member, war.hunt:Sightings(member.team, now), me:Position())
+	state.tactic, state.goal = "seeking the losers", goal
+	if not goal or me:RangeTo(goal) <= Hunt.HUNT_ARRIVE or now < self.retryAt then
+		me:Hold()
+		return self:Continue()
+	end
+	return self:SuspendFor(Travel:New(state, HUNT, goal, KeepHunting(member)), "hunting")
+end
+
+function SeekAndDestroy:OnResume(me, interrupting)
+	if interrupting.failed then self.retryAt = me:Now() + RETRY_WAIT end
+	return self:Continue()
+end
+
+function SeekAndDestroy:ShouldRetreat(me) return N.ANSWER_NO end
+function SeekAndDestroy:ShouldHurry(me) return N.ANSWER_YES end
 
 -- TacticalMonitor: what keeps the soldier alive comes before its squad and
 -- its job.
@@ -1482,6 +1606,8 @@ end
 
 function RetreatToCover:Update(me)
 	local state, now = self.state, me:Now()
+	-- the round won or lost: the monitor above hunts or hides
+	if me:IsDisarmed() or Hunting(state.war:Field(), state.member) then return self:Done("the round is over") end
 	if HealthShare(me) >= RETREAT_RECOVER or now >= self.untilAt then
 		state.retreatReadyAt = now + RETREAT_COOLDOWN
 		state.hurtLog = {}
@@ -1496,8 +1622,8 @@ end
 function RetreatToCover:ShouldHurry(me) return N.ANSWER_YES end
 
 -- TacticalMonitor: what keeps the soldier alive comes before its squad and
--- its job: humiliation, then retreat, which what it runs may refuse
--- (ShouldRetreat NO).
+-- its job: humiliation, then the hunt of the losers, then retreat, which
+-- what it runs may refuse (ShouldRetreat NO).
 local TacticalMonitor = Monitor("TacticalMonitor", function(state) return SquadMonitor:New(state) end)
 
 -- The damage it took, kept for RETREAT_WINDOW (OnInjured, from DrGBase).
@@ -1523,6 +1649,7 @@ end
 function TacticalMonitor:Update(me)
 	local state, now = self.state, me:Now()
 	if me:IsDisarmed() then return self:SuspendFor(Humiliated:New(state), "humiliated") end
+	if Hunting(state.war:Field(), state.member) then return self:SuspendFor(SeekAndDestroy:New(state), "get the losers") end
 	if now >= (state.retreatReadyAt or 0) then
 		local badly = HealthShare(me) < RETREAT_HEALTH
 		local hard = RecentDamage(state, now) >= RETREAT_BURST * me:MaxHealth()
