@@ -49,6 +49,10 @@ RAID, SUPPORT = "raid", "support"
 -- ever one, as the vortigaunt, or its side's soldier given the job) and never
 -- rebalanced into another job.
 MEDIC = "medic"
+-- The point jobs (foundation.aiwar.scenario.control_points' doctrine):
+-- capture stands on the point to take it, assault fights its way to it in
+-- squads, and hold stands on its own point against a capture.
+CAPTURE, ASSAULT, HOLD = "capture", "assault", "hold"
 
 function MedicsFor(teamSize)
 	if (teamSize or 0) < 4 then return 0 end
@@ -416,6 +420,21 @@ function War:Rebalance(team, stance)
 	end
 end
 
+-- The team's roles given out again under its stance, from scratch, oldest
+-- first.
+function War:Reassign(team, stance)
+	self.stances[team] = stance
+	local list = {}
+	for _, member in ipairs(self:Members()) do
+		if member.team == team then
+			self:LeaveFireTeam(member)
+			member.role = nil
+			list[#list + 1] = member
+		end
+	end
+	for _, member in ipairs(list) do self:AssignRole(member) end
+end
+
 -- A team whose stance changes is reassigned: rebalanced when the new
 -- stance has the same roles (a cart nearing its checkpoint), otherwise (a
 -- cart appears or goes) from scratch, oldest first.
@@ -428,16 +447,29 @@ function War:Assign(carts)
 			self.stances[team] = stance
 			self:Rebalance(team, stance)
 		elseif stance ~= old then
-			self.stances[team] = stance
-			local list = {}
-			for _, member in ipairs(self:Members()) do
-				if member.team == team then
-					self:LeaveFireTeam(member)
-					member.role = nil
-					list[#list + 1] = member
-				end
+			self:Reassign(team, stance)
+		end
+	end
+end
+
+-- A scenario's allocation (foundation.aiwar.scenario): stances = team ->
+-- stance, defense = team -> its defense share. A team given a stance while
+-- it has one is rebalanced to it with the fewest moves, even when roles
+-- leave the stance (Rebalance moves their members to the roles short of
+-- their share); a team without one is assigned from scratch, oldest first.
+-- A team with no entry is left as it is.
+function War:AssignStances(stances, defense)
+	for _, team in ipairs({ RED, BLUE }) do
+		local stance = stances[team]
+		if stance then
+			self.defense[team] = defense[team]
+			local old = self.stances[team]
+			if old and stance ~= old then
+				self.stances[team] = stance
+				self:Rebalance(team, stance)
+			elseif not old then
+				self:Reassign(team, stance)
 			end
-			for _, member in ipairs(list) do self:AssignRole(member) end
 		end
 	end
 end
