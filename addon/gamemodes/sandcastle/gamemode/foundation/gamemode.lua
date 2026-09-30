@@ -56,9 +56,10 @@ ALREADY_GAMEPLAY = "already in Gameplay mode"
 ALREADY_SANDBOX = "already in Sandbox mode"
 SANDBOX_DISABLED = "Sandbox mode is disabled (sv_gameplay_disable_sandbox 1)"
 
--- The transition: a count on screen each second from COUNTDOWN down to 1,
--- the last SPOKEN_COUNT spoken (the announcer's lines exist for 5..1), and
--- at ADMIN_LINE_AT seconds the Administrator's line and Gameplay mode.
+-- The transition: a count each second from COUNTDOWN down to 1, the last
+-- SPOKEN_COUNT spoken (the announcer's lines exist for 5..1), and at
+-- ADMIN_LINE_AT seconds (TransitionEnd, which the round timer shows) the
+-- Administrator's line and Gameplay mode.
 COUNTDOWN = 12
 SPOKEN_COUNT = 5
 ADMIN_LINE_AT = 13
@@ -154,6 +155,13 @@ function Mode:Request(want, source, now, sandboxDisabled)
 	end
 	self.mode = NEXT_MODE[answer.action] or self.mode
 	return answer
+end
+
+-- When the transition ends and Gameplay mode begins (the time Advance
+-- returns CUE_BEGIN), or nil outside the transition.
+function Mode:TransitionEnd()
+	if self.mode ~= TRANSITION then return nil end
+	return self.startedAt + ADMIN_LINE_AT
 end
 
 -- The transition's cues due by time now since the last call, in order; the

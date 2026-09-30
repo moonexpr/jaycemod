@@ -75,6 +75,49 @@ function TimeAdded(seconds)
 	return string.format("%s%d:%02d", sign, math.floor(s / SECONDS_PER_MINUTE), s % SECONDS_PER_MINUTE)
 end
 
+-- The timer box ----------------------------------------------------------------------
+
+-- Which clock the timer box shows.
+DISPLAY_TRANSITION = "transition" -- the gamemode's countdown to Gameplay mode
+DISPLAY_ROUND = "round" -- the round's own timer
+
+-- The label under the clock. The transition's is the operator's word as
+-- written; the round's are TF2's, in capitals.
+LABEL_TRANSITION = "Prepare"
+LABEL_PREROUND = "PREPARE"
+LABEL_SETUP = "SETUP"
+LABEL_OVERTIME = "OVERTIME"
+
+local function RoundLabel(q)
+	if q.preround then return LABEL_PREROUND end
+	if q.setup then return LABEL_SETUP end
+	if q.overtime then return LABEL_OVERTIME end
+	return nil
+end
+
+-- What the timer box shows, or nil for nothing. q = { now, transitionEnd
+-- (the gamemode's wetsand_gamemode_transition_end, 0 outside a transition),
+-- shown (a HUD timer exists), halted (the rounds stand still: Sandbox mode
+-- or its transition), koth (the koth HUD draws its own clocks), preround,
+-- setup, overtime, left (the round timer's seconds) }. The countdown to
+-- Gameplay mode wins while it runs; the round's timer shows only while the
+-- rounds run. Returns { kind, left, label }.
+function TimerDisplay(q)
+	if q.transitionEnd > q.now then
+		return {
+			kind = DISPLAY_TRANSITION,
+			left = q.transitionEnd - q.now,
+			label = LABEL_TRANSITION,
+		}
+	end
+	if q.halted or not q.shown or q.koth then return nil end
+	return {
+		kind = DISPLAY_ROUND,
+		left = q.left,
+		label = RoundLabel(q),
+	}
+end
+
 -- Localization ---------------------------------------------------------------------
 
 local TAB, NEWLINE, SPACE, QUOTE = 9, 10, 32, 34

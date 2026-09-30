@@ -8,9 +8,10 @@
 -- the setting holds (StartAtLoad). The transition to Gameplay mode owns
 -- every cue, whoever asked: the map's description in the chat, the
 -- matchmaking start sting and the announcer's tournament-start line, the
--- countdown on screen (the announcer speaking the last numbers) and the
--- Administrator's line; then Begin: the scores cleared, the round system
--- restarted from scratch (RestartRound's full reset, as a map's first round)
+-- countdown (its end networked as wetsand_gamemode_transition_end for the
+-- round timer to show as "Prepare"; the announcer speaking the last
+-- numbers) and the Administrator's line; then Begin: the scores cleared,
+-- the round system restarted from scratch (RestartRound's full reset, as a map's first round)
 -- and everyone a spectator with the team menu open until they choose a team.
 local Gamemode = WETSAND.require("foundation.gamemode")
 local Gameplay = WETSAND.require("foundation.gameplay")
@@ -24,6 +25,8 @@ util.AddNetworkString(CHAT_NET)
 util.AddNetworkString(STOP_SOUNDS_NET)
 
 local TRANSITION_TIMER = "wetsand_gamemode_transition"
+-- wetsand_gamemode_transition_end outside a transition.
+local NO_TRANSITION = 0
 local TRANSITION_TICK = 0.1 -- seconds between feeding the model the time; it cues on whole seconds
 
 -- Sandbox mode begins with one of GMod's save/load chimes. The transition
@@ -75,10 +78,6 @@ local function Chat(title, lines)
 	net.Broadcast()
 end
 
-local function Center(text)
-	for _, ply in ipairs(player.GetAll()) do ply:PrintMessage(HUD_PRINTCENTER, text) end
-end
-
 -- What the map plays, for foundation.gameplay.
 local function MapInfo()
 	return {
@@ -92,9 +91,11 @@ local function MapInfo()
 end
 
 -- sv_gameplay_enabled follows a settled mode; the transition leaves it.
+-- The transition's end goes to the clients' round timer.
 function Controller:Publish()
 	local setting = Gamemode.SETTING[self.mode:Mode()]
 	if setting ~= nil and ENABLED:GetBool() ~= setting then ENABLED:SetBool(setting) end
+	SetGlobal2Float("wetsand_gamemode_transition_end", self.mode:TransitionEnd() or NO_TRANSITION)
 end
 
 -- A transition sound, remembered so Stop Game can silence it.
@@ -174,7 +175,6 @@ end
 
 local CUES = {
 	[Gamemode.CUE_COUNT] = function(self, cue)
-		Center("Gameplay mode in " .. cue.left)
 		if cue.spoken then self:TransitionSound("Announcer.RoundBegins" .. cue.left .. "Seconds") end
 	end,
 	[Gamemode.CUE_ADMIN_LINE] = function() PlayToAll(Pick(ADMIN_LINES)) end,

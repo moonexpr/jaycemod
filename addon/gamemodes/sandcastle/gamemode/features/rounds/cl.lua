@@ -2,7 +2,9 @@
 -- (the wetsand_round_* and wetsand_timer_* keys and its net messages):
 --   - the round timer with its PREPARE, SETUP and OVERTIME labels, and the
 --     "+m:ss" flash beside it when time is added (teamplay_timer_time_added);
---     the koth HUD replaces the timer;
+--     the koth HUD replaces the timer; during the gamemode's countdown to
+--     Gameplay mode (wetsand_gamemode_transition_end) the timer shows that
+--     countdown labelled "Prepare";
 --   - the pre-round and respawn countdowns and the announcement line;
 --   - a small panel with the stage of a multi-stage map, the team scores and
 --     the local team's goal (CTFGameRules::ShouldShowTeamGoal); TF2's win
@@ -146,27 +148,32 @@ end)
 
 -- The timer -----------------------------------------------------------------------
 
+-- foundation.rounds.text decides the clock: the gamemode's countdown to
+-- Gameplay mode ("Prepare"), else the round's timer while the rounds run.
+-- Sandbox mode otherwise shows no timer, as TF2's tournament pre-ready
+-- state; the koth HUD draws its own clocks.
 function View:DrawTimer(w, h)
-	-- Sandbox mode shows no timer, as TF2's tournament pre-ready state; the
-	-- koth HUD draws its own clocks.
-	if not GetGlobal2Bool("wetsand_timer_shown", false) or WETSAND.GameplayStopped() then return end
-	if GetGlobal2Int("wetsand_round_hud_type", Rounds.HUD_NONE) == Rounds.HUD_KOTH then return end
+	local display = Text.TimerDisplay({
+		now = CurTime(),
+		transitionEnd = GetGlobal2Float("wetsand_gamemode_transition_end", 0),
+		shown = GetGlobal2Bool("wetsand_timer_shown", false),
+		halted = WETSAND.GameplayStopped(),
+		koth = GetGlobal2Int("wetsand_round_hud_type", Rounds.HUD_NONE) == Rounds.HUD_KOTH,
+		preround = WETSAND.State() == S.PREROUND,
+		setup = GetGlobal2Bool("wetsand_timer_in_setup", false),
+		overtime = GetGlobal2Bool("wetsand_round_overtime", false),
+		left = TimerLeft(),
+	})
+	if not display then return end
 	local top = self:TimerTop(h)
-	local label
-	if WETSAND.State() == S.PREROUND then
-		label = "PREPARE"
-	elseif GetGlobal2Bool("wetsand_timer_in_setup", false) then
-		label = "SETUP"
-	elseif GetGlobal2Bool("wetsand_round_overtime", false) then
-		label = "OVERTIME"
-	end
+	local label = display.label
 	draw.RoundedBox(6, w / 2 - TIMER_WIDTH / 2, top, TIMER_WIDTH, label and TIMER_LABELLED_HEIGHT or TIMER_HEIGHT, PANEL_BG)
-	draw.SimpleText(Clock(TimerLeft()), "Sandcastle.Hud.Timer", w / 2, top + 4, color_white, TEXT_ALIGN_CENTER)
+	draw.SimpleText(Clock(display.left), "Sandcastle.Hud.Timer", w / 2, top + 4, color_white, TEXT_ALIGN_CENTER)
 	if label then
 		draw.SimpleText(label, "Sandcastle.Hud.Label", w / 2, top + 40, GOLD, TEXT_ALIGN_CENTER)
 	end
 	local added = self.timeAdded
-	if added and CurTime() < added.expires then
+	if display.kind == Text.DISPLAY_ROUND and added and CurTime() < added.expires then
 		draw.SimpleTextOutlined(added.text, "Sandcastle.Hud.Label", w / 2 + TIMER_WIDTH / 2 + 8, top + 12,
 			WETSAND.TeamColor[added.team] or color_white, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP, 1, color_black)
 	end
