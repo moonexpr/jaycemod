@@ -117,14 +117,20 @@ local function TimerLeft()
 	return GetGlobal2Float("wetsand_timer_end_time", 0) - CurTime()
 end
 
--- Net messages ---------------------------------------------------------------------
+-- Game events ---------------------------------------------------------------------
 
-net.Receive("wetsand_pa_announce_text", function()
-	View.announcement = {
-		text = net.ReadString(),
-		team = net.ReadUInt(TEAM_BITS),
+-- The announcement line (wetsand/sh_announcer.lua), from the server or
+-- another view.
+function View:Announce(text, team)
+	self.announcement = {
+		text = text,
+		team = team,
 		expires = CurTime() + ANNOUNCE_SECONDS,
 	}
+end
+
+WETSAND.Events.Listen("announcement", "wetsand_rounds_view", function(fields)
+	View:Announce(fields.text, fields.team)
 end)
 
 net.Receive("wetsand_timer_time_added", function()

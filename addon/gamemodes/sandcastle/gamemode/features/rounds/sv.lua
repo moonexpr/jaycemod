@@ -68,7 +68,6 @@ local THINK_HOOK = "wetsand_rounds"
 
 local NET_NOTICE = "wetsand_round_notice_show"
 local NET_TIME_ADDED = "wetsand_timer_time_added"
-local NET_SOUND = "wetsand_pa_sound_file"
 util.AddNetworkString(NET_NOTICE)
 util.AddNetworkString(NET_TIME_ADDED)
 
@@ -669,25 +668,6 @@ function Controller:CapSounds(capTeam, wouldWinGame, scorePerRound)
 		scorePerRound = scorePerRound,
 	})
 	for _, line in ipairs(lines) do WETSAND.BroadcastSound(line.team, line.sound) end
-end
-
--- Sounds to a chosen set of players, as TF2 plays them to each client's
--- local player.
-function Controller:SoundTo(players, name)
-	if #players == 0 then return end
-	net.Start(NET_SOUND)
-	net.WriteString(name)
-	net.Send(players)
-end
-
--- Every player not on the given team (spectators included), as the client's
--- "local player's team != capping team" test selects them.
-function Controller:PlayersNotOn(t)
-	local list = {}
-	for _, ply in ipairs(player.GetAll()) do
-		if ply:Team() ~= t then list[#list + 1] = ply end
-	end
-	return list
 end
 
 -- A round notice for the HUD (teamplay_capture_blocked and the like).

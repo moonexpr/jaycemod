@@ -186,4 +186,22 @@ T.test("no resupply in stalemate", function()
 	T.eq(L.RegenerateAllowed(RED, RED, STATE.STALEMATE, UNASSIGNED), false)
 end)
 
+-- teamplay_broadcast_audio: who hears a sound the server broadcast
+
+T.test("a sound for a team is heard by that team only; UNASSIGNED means everyone", function()
+	T.eq(L.HearsBroadcast(RED, false, RED), true, "RED hears RED's")
+	T.eq(L.HearsBroadcast(RED, false, BLU), false, "BLU does not")
+	T.eq(L.HearsBroadcast(RED, false, SPEC), false, "spectators do not")
+	T.eq(L.HearsBroadcast(RED, false, UNASSIGNED), false, "nor the unassigned")
+	T.eq(L.HearsBroadcast(UNASSIGNED, false, BLU), true, "everyone: BLU")
+	T.eq(L.HearsBroadcast(UNASSIGNED, false, SPEC), true, "everyone: spectators")
+end)
+
+T.test("a sound for the others is heard by everyone not on the team, spectators included", function()
+	T.eq(L.HearsBroadcast(RED, true, RED), false, "not RED")
+	T.eq(L.HearsBroadcast(RED, true, BLU), true, "BLU")
+	T.eq(L.HearsBroadcast(RED, true, SPEC), true, "spectators")
+	T.eq(L.HearsBroadcast(RED, true, UNASSIGNED), true, "the unassigned")
+end)
+
 T.finish()

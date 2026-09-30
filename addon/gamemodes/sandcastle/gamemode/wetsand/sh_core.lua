@@ -92,13 +92,6 @@ else
 	concommand.Add("wetsand_memory_cl", function()
 		print(MemoryReport())
 	end, nil, "Print this client's Lua memory and the features it loaded")
-
-	-- WETSAND.BroadcastSound's game sounds (announcer lines, win and lose
-	-- music), played as the local player's own on every map, rounds or not.
-	net.Receive("wetsand_pa_sound_file", function()
-		local ply = LocalPlayer()
-		if IsValid(ply) then ply:EmitSound(net.ReadString()) end
-	end)
 end
 
 -- Pure rule libraries (gamemode/foundation/), shared so client prediction and

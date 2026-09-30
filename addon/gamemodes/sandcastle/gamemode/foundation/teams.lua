@@ -150,6 +150,15 @@ function RegenerateAllowed(zoneTeam, playerTeam, state, winner)
 	return state ~= STATE.STALEMATE
 end
 
+-- teamplay_broadcast_audio (ClientModeShared::FireGameEvent): whether the
+-- local player, on localTeam, hears a sound broadcast to soundTeam. Ours
+-- broadcasts to everyone as UNASSIGNED (TF2 uses 255); others inverts it,
+-- for the lines every player not on the team hears as their own.
+function HearsBroadcast(soundTeam, others, localTeam)
+	if others then return localTeam ~= soundTeam end
+	return soundTeam == UNASSIGNED or soundTeam == localTeam
+end
+
 -- The team menu (CTFTeamMenu) --------------------------------------------------
 
 -- CTFTeamMenu::ShowPanel: nobody changes teams once the game is over, nor

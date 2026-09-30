@@ -1,19 +1,23 @@
 -- Server-side world helpers shared by the TF2 entities.
 
-util.AddNetworkString("wetsand_pa_announce_text")
-util.AddNetworkString("wetsand_pa_sound_file")
-
 -- CTeamplayRoundBasedRules::BroadcastSound: a game sound every player of a
--- team hears as their own (announcer lines, win/lose music). Team 0 is everyone.
+-- team hears as their own (announcer lines, win/lose music). Team 0 is
+-- everyone. Each client decides whether it hears it (wetsand/sh_announcer.lua).
 function WETSAND.BroadcastSound(team, name)
-	local recipients = {}
-	for _, ply in ipairs(player.GetAll()) do
-		if team == WETSAND.TEAM_UNASSIGNED or WETSAND.TeamOf(ply) == team then recipients[#recipients + 1] = ply end
-	end
-	if #recipients == 0 then return end
-	net.Start("wetsand_pa_sound_file")
-	net.WriteString(name)
-	net.Send(recipients)
+	WETSAND.Events.Fire("teamplay_broadcast_audio", {
+		team = team,
+		sound = name,
+	})
+end
+
+-- A game sound every player not on the team hears as their own
+-- (CLocalPlayerFilter lines: the capture's lines for the other team).
+function WETSAND.BroadcastSoundToOthers(team, name)
+	WETSAND.Events.Fire("teamplay_broadcast_audio", {
+		team = team,
+		sound = name,
+		others = true,
+	})
 end
 
 -- A game sound from an entity that only one player hears
@@ -108,11 +112,13 @@ function WETSAND.FireOutput(caller, name, activator)
 	end
 end
 
+-- The announcement line on every screen (the rounds view draws it), in the
+-- team's colour; no team for the plain one.
 function WETSAND.Announce(text, team)
-	net.Start("wetsand_pa_announce_text")
-	net.WriteString(text)
-	net.WriteUInt(team or WETSAND.TEAM_UNASSIGNED, 2)
-	net.Broadcast()
+	WETSAND.Events.Fire("announcement", {
+		text = text,
+		team = team,
+	})
 end
 
 function WETSAND.IsAliveInGame(ply)

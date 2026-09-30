@@ -327,7 +327,7 @@ local LINE_FILTER = {
 local function PlayLines(self, point, lines)
 	for _, line in ipairs(lines) do
 		if line.hearer == Capture.HEAR_OTHERS then
-			self.rounds:SoundTo(self.rounds:PlayersNotOn(line.team), line.sound)
+			WETSAND.BroadcastSoundToOthers(line.team, line.sound)
 		else
 			local filter = RecipientFilter()
 			LINE_FILTER[line.hearer](filter, line.team)
