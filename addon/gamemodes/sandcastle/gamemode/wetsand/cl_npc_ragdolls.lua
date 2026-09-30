@@ -5,10 +5,10 @@
 local NET = "wetsand_npc_ragdoll_create"
 local BYTE_BITS = 8
 
--- After wetsand_ragdoll_lifetime seconds (0 keeps them) the engine's own
+-- After cl_npc_ragdoll_lifetime seconds (0 keeps them) the engine's own
 -- fade (at g_ragdoll_fadespeed) removes an NPC's ragdoll; g_ragdoll_maxcount
 -- caps how many stay, as for any clientside ragdoll.
-local RAGDOLL_LIFETIME = CreateClientConVar("wetsand_ragdoll_lifetime", "20", true, false,
+local RAGDOLL_LIFETIME = CreateClientConVar("cl_npc_ragdoll_lifetime", "20", true, false,
 	"Seconds a dead NPC's ragdoll stays before fading away (0: until g_ragdoll_maxcount pushes it out)", 0, 600)
 
 function WETSAND.FadeRagdollLater(ragdoll)

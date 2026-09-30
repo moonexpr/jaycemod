@@ -583,7 +583,7 @@ local Controller = {
 }
 
 local function TeamSize()
-	return GetConVar("wetsand_aiwar_team_size"):GetInt()
+	return GetConVar("mp_aiwar_team_size"):GetInt()
 end
 
 function Controller:Active()

@@ -10,7 +10,7 @@ surface.CreateFont("Sandcastle.Hud.Announce", { font = "Roboto", size = 42, weig
 
 -- The top-centre of the screen can sit under a display notch (MacBook), so
 -- the timer is pushed down by a fraction of the screen height.
-local timer_y = CreateClientConVar("wetsand_hud_timer_y", "0.08", true, false, "Timer box top, as a fraction of screen height (clears display notches).")
+local timer_y = CreateClientConVar("cl_hud_round_timer_y", "0.08", true, false, "Timer box top, as a fraction of screen height (clears display notches).")
 
 local announcement
 
@@ -29,7 +29,7 @@ local function Clock(seconds)
 end
 
 local function DrawTimer(w, h)
-	-- free play shows no timer, as TF2's tournament pre-ready state
+	-- Sandbox mode shows no timer, as TF2's tournament pre-ready state
 	if not GetGlobal2Bool("wetsand_timer_shown", false) or WETSAND.GameplayStopped() then return end
 	local top = math.floor(h * timer_y:GetFloat())
 	local left
