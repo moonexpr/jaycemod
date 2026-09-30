@@ -8,13 +8,15 @@ local Teams = T.require("foundation.teams")
 local NOBODY, RED, BLU = Teams.UNASSIGNED, Teams.RED, Teams.BLUE
 local NO_FLAGS = 0
 
--- A point spec from a map's keyvalues, as the capture controller reads them.
+-- A point spec from a map's keyvalues, as the capture controller reads them:
+-- targetname, point_index, point_default_owner, then any other keys in kv.
 -- previous: { [team] = { names } }.
-local function Point(kv)
+local function Point(name, index, owner, kv)
+	kv = kv or {}
 	return {
-		id = kv.targetname,
-		index = kv.point_index,
-		defaultOwner = kv.point_default_owner,
+		id = name,
+		index = index,
+		defaultOwner = owner,
 		startLocked = kv.point_start_locked or false,
 		group = kv.point_group or 0,
 		warnOnCap = kv.point_warn_on_cap or Capture.CP_WARN.NORMAL,
@@ -47,11 +49,11 @@ local POINTS_MAY_BE_CAPTURED = true
 -- RED's two, no previous points, so capture is linear from each base.
 local function Granary(caplinear)
 	return Set({
-		Point({ targetname = "cap_blue_2", point_index = 2, point_default_owner = BLU, point_printname = "Granary_cap_blue_cp2" }),
-		Point({ targetname = "cap_red_1", point_index = 5, point_default_owner = RED, point_printname = "Granary_cap_red_cp1" }),
-		Point({ targetname = "cap_blue_1", point_index = 1, point_default_owner = BLU, point_printname = "Granary_cap_blue_cp1" }),
-		Point({ targetname = "cap_red_2", point_index = 4, point_default_owner = RED, point_printname = "Granary_cap_red_cp2" }),
-		Point({ targetname = "cap_middle", point_index = 3, point_default_owner = NOBODY, point_printname = "Granary_cap_cp3" }),
+		Point("cap_blue_2", 2, BLU, { point_printname = "Granary_cap_blue_cp2" }),
+		Point("cap_red_1", 5, RED, { point_printname = "Granary_cap_red_cp1" }),
+		Point("cap_blue_1", 1, BLU, { point_printname = "Granary_cap_blue_cp1" }),
+		Point("cap_red_2", 4, RED, { point_printname = "Granary_cap_red_cp2" }),
+		Point("cap_middle", 3, NOBODY, { point_printname = "Granary_cap_cp3" }),
 	}, caplinear)
 end
 
@@ -127,8 +129,8 @@ end)
 -- itself for BLU, the second needs the first.
 local function Dustbowl()
 	local function Stage(first, second, firstIndex)
-		return Point({ targetname = first, point_index = firstIndex, point_default_owner = RED, previous = { [BLU] = { first } } }),
-			Point({ targetname = second, point_index = firstIndex + 1, point_default_owner = RED, previous = { [BLU] = { first } } })
+		local previous = { [BLU] = { first } }
+		return Point(first, firstIndex, RED, { previous = previous }), Point(second, firstIndex + 1, RED, { previous = previous })
 	end
 	local a1, b1 = Stage("cap_red_1", "cap_red_2", 1)
 	local a2, b2 = Stage("cap_red_3", "cap_red_4", 3)
@@ -163,7 +165,11 @@ end)
 -- cp_steel: per-team previous points gate A -> B -> C -> D; E needs itself.
 local function Steel()
 	local function P(name, index, blu, red)
-		return Point({ targetname = name, point_index = index, point_default_owner = RED, previous = { [BLU] = { blu }, [RED] = { red } } })
+		local previous = {
+			[BLU] = { blu },
+			[RED] = { red },
+		}
+		return Point(name, index, RED, { previous = previous })
 	end
 	return Set({
 		P("cap_d_flag", 4, "cap_c_flag", "cap_d_flag"),
@@ -219,7 +225,7 @@ end)
 -- KOTH: the point locked at round start and unlocked after a delay
 -- (CKothLogic::InputRoundActivate, CTeamControlPoint::UnlockThink).
 local function Hill(startLocked)
-	return Set({ Point({ targetname = "cp_koth", point_index = 0, point_default_owner = NOBODY, point_start_locked = startLocked }) })
+	return Set({ Point("cp_koth", 0, NOBODY, { point_start_locked = startLocked }) })
 end
 
 local ROUND_RUNNING, NOT_RUNNING = true, false
@@ -259,9 +265,9 @@ end)
 
 T.test("round activation: owners announced, never-locked points unlocked, locked ones stay", function()
 	local set = Set({
-		Point({ targetname = "a", point_index = 0, point_default_owner = BLU }),
-		Point({ targetname = "b", point_index = 1, point_default_owner = NOBODY, point_start_locked = true }),
-		Point({ targetname = "c", point_index = 2, point_default_owner = RED }),
+		Point("a", 0, BLU),
+		Point("b", 1, NOBODY, { point_start_locked = true }),
+		Point("c", 2, RED),
 	})
 	local events = set:RoundActivate()
 	T.eq(Kinds(events), "round_start_owned:a,unlocked:a,round_start_owned:c,unlocked:c")
@@ -272,7 +278,7 @@ T.test("round activation: owners announced, never-locked points unlocked, locked
 end)
 
 T.test("a rebuilt set carries the owners and locks its points had", function()
-	local spec = Point({ targetname = "a", point_index = 0, point_default_owner = RED })
+	local spec = Point("a", 0, RED)
 	spec.owner = BLU
 	spec.locked = true
 	spec.unlockAt = 12
@@ -288,7 +294,7 @@ end)
 local function Grouped(owners)
 	local points = {}
 	for i, o in ipairs(owners) do
-		points[i] = Point({ targetname = "p" .. i, point_index = i, point_default_owner = o[1], point_group = o[2] })
+		points[i] = Point("p" .. i, i, o[1], { point_group = o[2] })
 	end
 	return Set(points)
 end
@@ -331,6 +337,21 @@ end)
 
 -- The capture panel (CControlPointProgressBar::UpdateBarText) ----------------
 
+-- Overrides as key, value pairs: With("capping", RED, "blocked", true).
+local function With(...)
+	local over, args = {}, { ... }
+	for i = 1, #args, 2 do over[args[i]] = args[i + 1] end
+	return over
+end
+
+-- A value for each team (an area's team_cancap, its players).
+local function ByTeam(red, blu)
+	return {
+		[RED] = red,
+		[BLU] = blu,
+	}
+end
+
 local function PanelQuery(over)
 	local q = {
 		pointsMayBeCaptured = true,
@@ -354,30 +375,30 @@ end
 -- b is neutral between BLU's a and RED's c.
 local function Line()
 	return Set({
-		Point({ targetname = "a", point_index = 0, point_default_owner = BLU }),
-		Point({ targetname = "b", point_index = 1, point_default_owner = NOBODY }),
-		Point({ targetname = "c", point_index = 2, point_default_owner = RED }),
+		Point("a", 0, BLU),
+		Point("b", 1, NOBODY),
+		Point("c", 2, RED),
 	})
 end
 
 T.test("the capture panel's reasons, in TF2's order", function()
 	local set = Line()
 	local R = function(id, team, over) return set:CannotCapReason(id, team, PanelQuery(over)) end
-	T.eq(R("b", BLU, { capping = BLU }), Capture.REASON_NONE, "capping: the bar, no text")
-	T.eq(R("b", BLU, { pointsMayBeCaptured = false }), Capture.REASON_NOT_NOW, "setup")
+	T.eq(R("b", BLU, With("capping", BLU)), Capture.REASON_NONE, "capping: the bar, no text")
+	T.eq(R("b", BLU, With("pointsMayBeCaptured", false)), Capture.REASON_NOT_NOW, "setup")
 	set:SetLocked("b", true)
 	T.eq(R("b", BLU), Capture.REASON_NOT_NOW, "locked")
 	set:SetLocked("b", false)
-	T.eq(R("b", BLU, { capping = RED, blocked = true }), Capture.REASON_BLOCKING, "BLU blocking RED")
-	T.eq(R("b", BLU, { capping = RED }), Capture.REASON_REVERTING, "RED taking the neutral point")
-	T.eq(R("b", BLU, { capping = RED, pauseOnBlock = false }), Capture.REASON_WAITING, "a block breaks: no blocking line")
+	T.eq(R("b", BLU, With("capping", RED, "blocked", true)), Capture.REASON_BLOCKING, "BLU blocking RED")
+	T.eq(R("b", BLU, With("capping", RED)), Capture.REASON_REVERTING, "RED taking the neutral point")
+	T.eq(R("b", BLU, With("capping", RED, "pauseOnBlock", false)), Capture.REASON_WAITING, "a block breaks: no blocking line")
 	T.eq(R("a", BLU), Capture.REASON_OWN_POINT, "BLU's own point")
-	T.eq(R("a", BLU, { canCap = { [RED] = false, [BLU] = true } }), Capture.REASON_OWNED, "RED can never take it")
+	T.eq(R("a", BLU, With("canCap", ByTeam(false, true))), Capture.REASON_OWNED, "RED can never take it")
 	T.eq(R("c", BLU), Capture.REASON_LINEAR, "RED's point past the neutral one")
-	T.eq(R("b", BLU, { capping = BLU, blocked = true }), Capture.REASON_BLOCKED, "BLU's capture blocked")
-	T.eq(R("b", BLU, { capping = BLU, blocked = true, cappers = 1, required = 2 }), Capture.REASON_WAITING, "blocked, and short of cappers")
-	T.eq(R("b", BLU, { canCap = { [RED] = true, [BLU] = false } }), Capture.REASON_CANNOT, "the area refuses BLU")
-	T.eq(R("b", BLU, { cappers = 1, required = 2 }), Capture.REASON_WAITING, "one of two")
+	T.eq(R("b", BLU, With("capping", BLU, "blocked", true)), Capture.REASON_BLOCKED, "BLU's capture blocked")
+	T.eq(R("b", BLU, With("capping", BLU, "blocked", true, "cappers", 1, "required", 2)), Capture.REASON_WAITING, "blocked, and short of cappers")
+	T.eq(R("b", BLU, With("canCap", ByTeam(true, false))), Capture.REASON_CANNOT, "the area refuses BLU")
+	T.eq(R("b", BLU, With("cappers", 1, "required", 2)), Capture.REASON_WAITING, "one of two")
 end)
 
 T.test("every reason has its localization token", function()
@@ -438,7 +459,7 @@ end
 
 T.test("the HUD shows the capping team's cappers against its required count", function()
 	local set = Line()
-	local hud = set:HudPoint("b", HudQuery(Area({ capping = BLU, teamInZone = BLU, touching = { [RED] = 0, [BLU] = 1 }, progress = 0.25 })))
+	local hud = set:HudPoint("b", HudQuery(Area(With("capping", BLU, "teamInZone", BLU, "touching", ByTeam(0, 1), "progress", 0.25))))
 	T.eq(hud.owner, NOBODY)
 	T.eq(hud.capping, BLU)
 	T.near(hud.progress, 0.25)
@@ -454,10 +475,10 @@ end)
 
 T.test("idle, the HUD counts the team in the zone; under mp_capstyle 1 none is required", function()
 	local set = Line()
-	local idle = set:HudPoint("b", HudQuery(Area({ teamInZone = RED, touching = { [RED] = 3, [BLU] = 0 } })))
+	local idle = set:HudPoint("b", HudQuery(Area(With("teamInZone", RED, "touching", ByTeam(3, 0)))))
 	T.eq(idle.cappers, 3)
 	T.eq(idle.required, 1, "RED's team_numcap")
-	local scaled = set:HudPoint("b", HudQuery(Area({ teamInZone = RED, touching = { [RED] = 3, [BLU] = 0 }, scales = true })))
+	local scaled = set:HudPoint("b", HudQuery(Area(With("teamInZone", RED, "touching", ByTeam(3, 0), "scales", true))))
 	T.eq(scaled.required, 0)
 	local empty = set:HudPoint("b", HudQuery(Area()))
 	T.eq(empty.cappers, 0)
@@ -466,10 +487,10 @@ end)
 
 T.test("the HUD's can-cap marks need the area's permission and the capture order", function()
 	local set = Line()
-	local hud = set:HudPoint("c", HudQuery(Area({ canCap = { [RED] = true, [BLU] = true } })))
+	local hud = set:HudPoint("c", HudQuery(Area(With("canCap", ByTeam(true, true)))))
 	T.eq(hud.blueCanCap, false, "past the neutral point")
 	T.eq(hud.redCanCap, false, "RED's own point")
-	hud = set:HudPoint("b", HudQuery(Area({ canCap = { [RED] = false, [BLU] = true } })))
+	hud = set:HudPoint("b", HudQuery(Area(With("canCap", ByTeam(false, true)))))
 	T.eq(hud.redCanCap, false, "the area refuses RED")
 	T.eq(hud.blueCanCap, true)
 	local noArea = set:HudPoint("b", HudQuery(nil))
@@ -536,8 +557,15 @@ T.test("the base point is the team's end of the chain", function()
 	}
 	T.eq(Capture.BaseControlPoint(BLU, points), 0)
 	T.eq(Capture.BaseControlPoint(RED, points), 2)
-	T.eq(Capture.BaseControlPoint(NOBODY, { { index = 0, defaultOwner = RED } }), Capture.NO_POINT)
-	T.eq(Capture.BaseControlPoint(RED, { { index = 0, defaultOwner = RED }, { index = 1, defaultOwner = RED } }), 1, "both ends: the highest")
+	T.eq(Capture.BaseControlPoint(NOBODY, { points[3] }), Capture.NO_POINT)
+	local redBoth = {
+		points[3],
+		{
+			index = 3,
+			defaultOwner = RED,
+		},
+	}
+	T.eq(Capture.BaseControlPoint(RED, redBoth), 3, "both ends: the highest")
 end)
 
 T.test("the farthest owned point walks from the base", function()
@@ -582,20 +610,20 @@ T.test("a locked point may not be capped", function()
 end)
 
 T.test("a point that requires itself is always cappable, locked or not", function()
-	T.eq(Capture.TeamMayCapturePoint(Q({ locked = true, previous = { 1, Capture.NO_POINT, Capture.NO_POINT } })), true)
+	T.eq(Capture.TeamMayCapturePoint(Q(With("locked", true, "previous", { 1, Capture.NO_POINT, Capture.NO_POINT }))), true)
 end)
 
 T.test("named previous points must all be owned", function()
-	T.eq(Capture.TeamMayCapturePoint(Q({ index = 2, previous = { 0, Capture.NO_POINT, Capture.NO_POINT } })), true)
-	T.eq(Capture.TeamMayCapturePoint(Q({ index = 2, previous = { 0, 1, Capture.NO_POINT } })), false)
+	T.eq(Capture.TeamMayCapturePoint(Q(With("index", 2, "previous", { 0, Capture.NO_POINT, Capture.NO_POINT }))), true)
+	T.eq(Capture.TeamMayCapturePoint(Q(With("index", 2, "previous", { 0, 1, Capture.NO_POINT }))), false)
 end)
 
 T.test("with mini-rounds and no previous points any point is cappable", function()
-	T.eq(Capture.TeamMayCapturePoint(Q({ index = 2, playingMiniRounds = true })), true)
+	T.eq(Capture.TeamMayCapturePoint(Q(With("index", 2, "playingMiniRounds", true))), true)
 end)
 
 T.test("tf_caplinear 0 allows everything", function()
-	T.eq(Capture.TeamMayCapturePoint(Q({ caplinear = false, locked = true })), true)
+	T.eq(Capture.TeamMayCapturePoint(Q(With("caplinear", false, "locked", true))), true)
 end)
 
 -- Who hears what ------------------------------------------------------------
@@ -608,8 +636,8 @@ end
 
 T.test("a point's capture sounds default to the holograms; a map's keyvalues replace them", function()
 	local set = Set({
-		Point({ targetname = "plain", point_index = 0, point_default_owner = NOBODY }),
-		Point({ targetname = "custom", point_index = 1, point_default_owner = NOBODY, sounds = { start = "Map.Start", interrupted = "Map.Held" } }),
+		Point("plain", 0, NOBODY),
+		Point("custom", 1, NOBODY, With("sounds", With("start", "Map.Start", "interrupted", "Map.Held"))),
 	})
 	local plain = set:Sounds("plain")
 	T.eq(plain.start .. " " .. plain.stop .. " " .. plain.progress .. " " .. plain.interrupted,
@@ -621,7 +649,7 @@ T.test("a point's capture sounds default to the holograms; a map's keyvalues rep
 end)
 
 T.test("a capture by players plays the new owner's team_capsound to everyone; a relay's does not", function()
-	local set = Set({ Point({ targetname = "a", point_index = 0, point_default_owner = RED, capSounds = { [BLU] = "Map.BluCapped" } }) })
+	local set = Set({ Point("a", 0, RED, { capSounds = { [BLU] = "Map.BluCapped" } }) })
 	local capture = set:SetOwner("a", BLU, Capture.CAUSE_CAPTURE, POINTS_MAY_BE_CAPTURED)
 	T.eq(Heard(capture[1].lines), Capture.HEAR_EVERYONE .. ":" .. BLU .. ":Map.BluCapped")
 	local relay = set:SetOwner("a", RED, Capture.CAUSE_INPUT, POINTS_MAY_BE_CAPTURED)
@@ -635,9 +663,9 @@ end)
 
 T.test("a capture starting warns the other players that the point is contested", function()
 	local set = Set({
-		Point({ targetname = "owned", point_index = 0, point_default_owner = RED }),
-		Point({ targetname = "neutral", point_index = 1, point_default_owner = NOBODY }),
-		Point({ targetname = "quiet", point_index = 2, point_default_owner = RED, point_warn_on_cap = Capture.CP_WARN.NO_ANNOUNCEMENTS }),
+		Point("owned", 0, RED),
+		Point("neutral", 1, NOBODY),
+		Point("quiet", 2, RED, { point_warn_on_cap = Capture.CP_WARN.NO_ANNOUNCEMENTS }),
 	})
 	T.eq(Heard(set:CaptureStarted("owned", BLU, 0)), Capture.HEAR_OTHERS .. ":" .. BLU .. ":" .. Capture.CONTESTED)
 	T.eq(Heard(set:CaptureStarted("neutral", RED, 0)), Capture.HEAR_OTHERS .. ":" .. RED .. ":" .. Capture.CONTESTED_NEUTRAL)
@@ -646,7 +674,7 @@ T.test("a capture starting warns the other players that the point is contested",
 end)
 
 T.test("a final point's warning sounds at most every five seconds", function()
-	local set = Set({ Point({ targetname = "last", point_index = 0, point_default_owner = RED, point_warn_on_cap = Capture.CP_WARN.FINALCAP }) })
+	local set = Set({ Point("last", 0, RED, { point_warn_on_cap = Capture.CP_WARN.FINALCAP }) })
 	local warn = Capture.HEAR_OTHERS .. ":" .. BLU .. ":ControlPoint.CaptureWarn"
 	T.eq(Heard(set:CaptureStarted("last", BLU, 10)), warn)
 	T.eq(Heard(set:CaptureStarted("last", BLU, 14)), "", "four seconds later")

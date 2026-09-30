@@ -265,6 +265,14 @@ local DEFAULT_SOUNDS = {
 	interrupted = Capture.SOUND_INTERRUPTED,
 }
 
+-- An area event: its kind and one field.
+local function Event(kind, field, value)
+	return {
+		kind = kind,
+		[field] = value,
+	}
+end
+
 local function Sounds(e, flags, sounds)
 	local s = C.PointSounds(e, flags or NO_FLAGS, sounds or DEFAULT_SOUNDS)
 	return tostring(s.stopLoop) .. "|" .. tostring(s.play) .. "|" .. tostring(s.loop)
@@ -277,9 +285,9 @@ T.test("a map's point_capture_*_sound keyvalues replace the defaults", function(
 		progress = "Map.Loop",
 		interrupted = "Map.Held",
 	}
-	T.eq(Sounds({ kind = "start", team = BLU }, NO_FLAGS, sounds), "true|Map.Start|Map.Loop")
-	T.eq(Sounds({ kind = "blocked", value = true }, NO_FLAGS, sounds), "true|nil|Map.Held")
-	T.eq(Sounds({ kind = "end", team = BLU }, NO_FLAGS, sounds), "true|Map.Stop|nil")
+	T.eq(Sounds(Event("start", "team", BLU), NO_FLAGS, sounds), "true|Map.Start|Map.Loop")
+	T.eq(Sounds(Event("blocked", "value", true), NO_FLAGS, sounds), "true|nil|Map.Held")
+	T.eq(Sounds(Event("end", "team", BLU), NO_FLAGS, sounds), "true|Map.Stop|nil")
 end)
 
 T.test("a capture starting plays the start sound and loops the progress sound", function()
@@ -290,30 +298,30 @@ T.test("a capture starting plays the start sound and loops the progress sound", 
 end)
 
 T.test("a block loops the interrupted sound, and its end restarts the progress loop", function()
-	T.eq(Sounds({ kind = "blocked", value = true }), "true|nil|" .. Capture.SOUND_INTERRUPTED)
-	T.eq(Sounds({ kind = "blocked", value = false }), "true|" .. Capture.SOUND_START .. "|" .. Capture.SOUND_PROGRESS)
+	T.eq(Sounds(Event("blocked", "value", true)), "true|nil|" .. Capture.SOUND_INTERRUPTED)
+	T.eq(Sounds(Event("blocked", "value", false)), "true|" .. Capture.SOUND_START .. "|" .. Capture.SOUND_PROGRESS)
 end)
 
 T.test("a finished capture stops the loop and plays the end sound", function()
-	T.eq(Sounds({ kind = "end", team = BLU }), "true|" .. Capture.SOUND_END .. "|nil")
+	T.eq(Sounds(Event("end", "team", BLU)), "true|" .. Capture.SOUND_END .. "|nil")
 end)
 
 -- BreakCapture calls CaptureEnd too (trigger_area_capture.cpp).
 T.test("a broken capture stops the loop and plays the end sound", function()
-	T.eq(Sounds({ kind = "break", team = BLU }), "true|" .. Capture.SOUND_END .. "|nil")
+	T.eq(Sounds(Event("break", "team", BLU)), "true|" .. Capture.SOUND_END .. "|nil")
 end)
 
 T.test("events without sounds change nothing", function()
-	T.eq(Sounds({ kind = "numcappers", n = 1 }), "false|nil|nil")
-	T.eq(Sounds({ kind = "capturestart", team = BLU }), "false|nil|nil")
+	T.eq(Sounds(Event("numcappers", "n", 1)), "false|nil|nil")
+	T.eq(Sounds(Event("capturestart", "team", BLU)), "false|nil|nil")
 end)
 
 T.test("a point with no cap sounds only stops its loop", function()
 	local flags = Capture.SF_NO_CAP_SOUNDS + Capture.SF_HIDE_MODEL
-	T.eq(Sounds({ kind = "start", team = BLU }, flags), "true|nil|nil")
-	T.eq(Sounds({ kind = "blocked", value = true }, flags), "true|nil|nil")
-	T.eq(Sounds({ kind = "end", team = BLU }, flags), "true|nil|nil")
-	T.eq(Sounds({ kind = "break", team = BLU }, flags), "true|nil|nil")
+	T.eq(Sounds(Event("start", "team", BLU), flags), "true|nil|nil")
+	T.eq(Sounds(Event("blocked", "value", true), flags), "true|nil|nil")
+	T.eq(Sounds(Event("end", "team", BLU), flags), "true|nil|nil")
+	T.eq(Sounds(Event("break", "team", BLU), flags), "true|nil|nil")
 end)
 
 T.finish()

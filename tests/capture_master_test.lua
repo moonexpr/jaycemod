@@ -121,7 +121,12 @@ end)
 -- cp_gorge: two RED points, restrict RED, no rounds.
 T.test("cp_gorge: RED owning everything never wins; BLU owning both does", function()
 	local set = Points(Owners(2, RED))
-	local master = NewMaster({ restrict = RED, switchTeams = true, scoreStyle = Master.SCORE_PER_CAPTURE, playAllRounds = true })
+	local master = NewMaster({
+		restrict = RED,
+		switchTeams = true,
+		scoreStyle = Master.SCORE_PER_CAPTURE,
+		playAllRounds = true,
+	})
 	T.eq(master:Winner(set), nil, "RED's defaults")
 	set:SetOwner("p1", BLU, Capture.CAUSE_CAPTURE, POINTS_MAY_BE_CAPTURED)
 	T.eq(master:WouldNewOwnerWin(set, "p2", BLU), true, "the last point would win")
