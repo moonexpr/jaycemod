@@ -9,6 +9,7 @@
 -- sight of it, the farther forward the better, so the line is pushed
 -- ahead of the cart. A candidate has ahead (how far ahead of the cart
 -- along the track) and sees (a clear line to the cart) instead.
+-- Guards (ScoreGuard): posts round a control point, below.
 local abs, ipairs, min, sort, sqrt = math.abs, ipairs, math.min, table.sort, math.sqrt
 module(...)
 
@@ -45,6 +46,24 @@ end
 function ScoreForward(c)
 	if not c.sees or c.ahead <= 0 or c.ahead > MAX_LEAD or c.toCart > MAX_COVER_RANGE then return nil end
 	return W_AHEAD * c.ahead / MAX_LEAD + Ground(c)
+end
+
+-- Guards (ScoreGuard): posts round a control point its team holds, from
+-- TF2's CSelectDefenseAreaForPoint (tf_bot_defend_point.cpp): within
+-- MAX_GUARD_RANGE of the point (tf_bot_max_point_defend_range) and seeing
+-- it, no more than PAST_POINT_LIMIT beyond it toward the enemy unless the
+-- scenario guards all round (anywhere: King of the Hill), and no more than
+-- GUARD_TOO_LOW below it. A candidate is { pos, sees (a clear line to the
+-- point), toPoint (distance), elevation (above the point), cover, sniper,
+-- past (how much farther from its team's base than the point), anywhere }.
+MAX_GUARD_RANGE = 1250
+PAST_POINT_LIMIT, GUARD_TOO_LOW = 250, 220
+
+-- A guard post's worth, or nil for no post at all.
+function ScoreGuard(c)
+	if not c.sees or c.toPoint > MAX_GUARD_RANGE or c.elevation < -GUARD_TOO_LOW then return nil end
+	if not c.anywhere and c.past > PAST_POINT_LIMIT then return nil end
+	return -W_RANGE * abs(c.toPoint - IDEAL_RANGE) / IDEAL_RANGE + Ground(c)
 end
 
 local function Apart(a, b)
