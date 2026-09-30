@@ -586,4 +586,34 @@ T.test("every running KOTH clock speaks Mission ends in...; a paused one or Sand
 	T.eq(Timer.StartsRound(false, false), false, "a clock with no setup never plays the siren")
 end)
 
+-- Seams, read as text ---------------------------------------------------------------------
+
+local function Source(path)
+	local f = assert(io.open(path, "r"))
+	local text = f:read("*a")
+	f:close()
+	return text
+end
+
+T.test("tf_logic_koth loads its feature on first use, never at file load, and holds no rule", function()
+	local text = Source("addon/gamemodes/sandcastle/entities/entities/tf_logic_koth.lua")
+	for line in text:gmatch("[^\n]+") do
+		if not line:match("^%s") and not line:match("^%-%-") then
+			T.eq(line:find("Feature") == nil and line:find("require") == nil, true, "top level: " .. line)
+		end
+	end
+	T.eq(text:find("require(\"foundation", 1, true) == nil, true, "no foundation module")
+	T.eq(text:find("if .*RED") == nil and text:find("if .*BLUE") == nil and text:find("if .*locked") == nil, true, "no rule")
+end)
+
+T.test("the koth controller has the methods the binding calls, and the view reads only networked state", function()
+	local sv = Source("addon/gamemodes/sandcastle/gamemode/features/koth/sv.lua")
+	for _, name in ipairs({ "BindLogic", "UnbindLogic", "LogicInput" }) do
+		T.eq(sv:find("function Controller:" .. name .. "(", 1, true) ~= nil, true, name)
+	end
+	T.eq(sv:find("CreateTimer(c.name", 1, true) ~= nil, true, "each clock made with its zz_ name")
+	local cl = Source("addon/gamemodes/sandcastle/gamemode/features/koth/cl.lua")
+	T.eq(cl:find("ents.Find", 1, true) == nil, true, "no ents.Find in the view")
+end)
+
 T.finish()
