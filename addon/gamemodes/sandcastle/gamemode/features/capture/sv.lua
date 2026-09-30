@@ -62,6 +62,7 @@ local Controller = {
 	areas = {},
 	hudHidden = {},
 	pointTimers = {},
+	cpTimers = {}, -- tf_logic_cp_timer entity -> { model, pointName, point }
 	loops = {},
 	nextUnlock = 0,
 	nextMasterThink = 0,
@@ -930,5 +931,96 @@ Controller.rounds:AddRoundListener(Rounds.PHASE_SPAWN, Rounds.LISTEN_CAPTURE, fu
 Controller.rounds:AddRoundListener(Rounds.PHASE_ACTIVATE, Rounds.LISTEN_CAPTURE, function() Controller:RoundActivate() end)
 Controller.rounds:AddRoundListener(Rounds.PHASE_ROUND_END, Rounds.LISTEN_CAPTURE, function() Controller:PreviousRoundEnd() end)
 Controller.rounds:AddTimerHold("capture", function() return AnyCapturing(Controller) end, true)
+
+-- tf_logic_cp_timer (CCPTimerLogic) -------------------------------------------------------
+-- Loaded with the first timer: its model, its round-spawn listener and its
+-- hold on the round timer.
+
+local POINT_TIMER_MODEL = "foundation.capture.point_timer"
+local POINT_TIMER_HOLD = "cp_timer"
+local POINT_TIMER_MISSING = "%s failed to find control point named '%s'"
+
+-- The model's events, by kind: the entity's output and the HUD's countdown
+-- (ObjectiveResource()->SetCPTimerTime).
+local function PointTimerEvents(PointTimer)
+	return {
+		[PointTimer.START] = function(self, ent, point, e)
+			ent:TriggerOutput("OnCountdownStart", ent)
+			self:SetPointTimer(point, e.endTime)
+		end,
+		[PointTimer.END] = function(self, ent, point)
+			ent:TriggerOutput("OnCountdownEnd", ent)
+			self:SetPointTimer(point, nil)
+		end,
+	}
+end
+
+-- CCPTimerLogic::InputRoundSpawn: the point again, since a map reset
+-- recreates the points.
+local function FindTimerPoint(ent, t)
+	if t.pointName == "" then return end
+	t.point = PointByName(t.pointName)
+	if not IsValid(t.point) then print(string.format(POINT_TIMER_MISSING, ent:GetClass(), t.pointName)) end
+end
+
+local function PointTimersRoundSpawn()
+	for ent, t in pairs(Controller.cpTimers) do
+		if IsValid(ent) then FindTimerPoint(ent, t) end
+	end
+end
+
+-- CTFGameRules::TimerMayExpire over m_CPTimerEnts.
+local function PointTimersHold()
+	for ent, t in pairs(Controller.cpTimers) do
+		if IsValid(ent) and IsValid(t.point) and not t.model:MayExpire(Controller:TeamMayCapture(t.point, t.model:Team())) then
+			return true
+		end
+	end
+	return false
+end
+
+-- kv = { controlpoint, timer_length, team_number }.
+function Controller:BindPointTimer(ent, kv)
+	local PointTimer = WETSAND.require(POINT_TIMER_MODEL)
+	self.pointTimerEvents = self.pointTimerEvents or PointTimerEvents(PointTimer)
+	self.pointTimerThinkTime = PointTimer.THINK_INTERVAL
+	self.cpTimers[ent] = {
+		model = PointTimer.New({
+			length = tonumber(kv.timer_length),
+			team = tonumber(kv.team_number),
+		}),
+		pointName = kv.controlpoint or "",
+		point = NULL,
+	}
+	self.rounds:AddRoundListener(Rounds.PHASE_SPAWN, Rounds.LISTEN_LOGIC, PointTimersRoundSpawn)
+	self.rounds:AddTimerHold(POINT_TIMER_HOLD, PointTimersHold)
+end
+
+function Controller:UnbindPointTimer(ent)
+	self.cpTimers[ent] = nil
+end
+
+-- CCPTimerLogic::Think, only while the timer has its point; returns when
+-- the entity thinks next.
+function Controller:PointTimerThink(ent)
+	local t = self.cpTimers[ent]
+	local now = CurTime()
+	if IsValid(t.point) then
+		local events = t.model:Think(now, {
+			teamMayCapture = self:TeamMayCapture(t.point, t.model:Team()),
+			capping = self:CappingTeam(t.point) ~= NOBODY,
+			roundWon = self.rounds:State() == WETSAND.STATE.TEAM_WIN,
+		})
+		for _, e in ipairs(events) do self.pointTimerEvents[e.kind](self, ent, t.point, e) end
+	end
+	return now + self.pointTimerThinkTime
+end
+
+-- The timer's inputs, lower-cased: only RoundSpawn.
+function Controller:PointTimerInput(ent, name)
+	if name ~= "roundspawn" then return false end
+	FindTimerPoint(ent, self.cpTimers[ent])
+	return true
+end
 
 return Controller

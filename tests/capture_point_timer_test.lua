@@ -126,4 +126,26 @@ T.test("the 15, 10 and 5 second marks fire nothing", function()
 	T.eq(pt:EndTime(), START + DEGROOT_LENGTH, "still counting")
 end)
 
+-- Seam checks, read as text.
+local ENTITIES = "addon/gamemodes/sandcastle/entities/entities/"
+local CONTROLLER = T.ROOT .. "features/capture/sv.lua"
+
+local function Read(path)
+	local f = assert(io.open(path, "rb"))
+	local text = f:read("*a")
+	f:close()
+	return text
+end
+
+T.test("the tf_logic_cp_timer binding requires no foundation module", function()
+	T.eq(Read(ENTITIES .. "tf_logic_cp_timer.lua"):find('require("foundation.', 1, true), nil, "tf_logic_cp_timer")
+end)
+
+T.test("the capture controller defines every method the binding calls", function()
+	local text = Read(CONTROLLER)
+	for _, name in ipairs({ "BindPointTimer", "UnbindPointTimer", "PointTimerThink", "PointTimerInput" }) do
+		T.eq(text:find("function Controller:" .. name .. "(", 1, true) ~= nil, true, name)
+	end
+end)
+
 T.finish()
