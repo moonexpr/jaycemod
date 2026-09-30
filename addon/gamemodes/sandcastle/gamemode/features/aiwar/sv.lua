@@ -1892,11 +1892,16 @@ end
 -- The battlefield this think (docs/aiwar-koth-cp.md §2.2): the round's
 -- phase and the field, which the scenario briefs (its doctrine and
 -- objectives) and allocates each team's stance from; then the setup
--- gates, the guard posts and the lanes it leads to.
+-- gates, the guard posts and the lanes it leads to. Only a whole field is
+-- briefed: nil while it lacks a part the scenario awaits (KOTH's clocks,
+-- which a KOTH round makes: none in Sandbox mode or between rounds), with
+-- the part in waitingFor.
 function Controller:Survey(now)
 	local phase = AiWar.PhaseOf(WETSAND.Active(), WETSAND.State(), self.winner)
 	local field = self:Field(phase, now)
 	self:RefreshCartBounds()
+	self.waitingFor = self.scenario:Lacks(field)
+	if self.waitingFor then return nil end
 	self.scenario:Command(self.war, field, now)
 	if field.setup and self.gates == nil then self:FindGates(field) end
 	self:GuardPosts(field)
@@ -1908,6 +1913,8 @@ function Controller:Think(now)
 	if now < self.nextThink then return end
 	self.nextThink = now + THINK_INTERVAL
 	local field = self:Survey(now)
+	-- the war waits: its soldiers act only on a whole field
+	if not field then return end
 	self.war:SetField(field)
 	if field.phase.reinforce then self:Reinforce(now) end
 	for ent, entry in pairs(self.soldiers) do
@@ -2004,6 +2011,11 @@ local function Story()
 end
 
 local NO_OBJECTIVE = "this map has no objective the AI war can fight over (payload, control points or King of the Hill)"
+-- Why a map lacking a part its scenario needs (Scenario:MapLacks) is refused.
+local MAP_LACKS = {
+	[Scenario.BASES] = "this map has no spawn points for both teams, where the AI war's soldiers join the fight",
+	[Scenario.POINTS] = "this map's round has no control points for the AI war to fight over",
+}
 
 -- Starts the war at once and requests Gameplay mode, whose countdown
 -- restarts the rounds. The scenario is the rounds mode's (the map's own
@@ -2014,10 +2026,16 @@ function Controller:Start()
 	if not DrGBase then return false, "the AI war needs DrGBase (Steam Workshop) for its soldiers" end
 	local variant = Scenario.For(RoundsModeName())
 	if not variant then return false, NO_OBJECTIVE end
+	self.baseCache = nil
+	local lacks = variant:MapLacks({
+		points = self:PointsSnapshot(),
+		bases = self:Bases().bases,
+	})
+	if lacks then return false, MAP_LACKS[lacks] end
 	WETSAND.Feature("npc"):CheckNavMesh()
 	self.scenario = variant:New()
 	self.winner = nil
-	self.baseCache = nil
+	self.waitingFor = nil
 	self.war = AiWar.War.New()
 	self.gates = nil
 	SetGlobal2Bool(ACTIVE_KEY, true)
@@ -2204,6 +2222,7 @@ function Controller:Report()
 	lines[1] = string.format("AI war, %s scenario: phase %s, %d nav areas, %d spawn-door triggers open to NPCs, %d route searches running",
 		self.scenario.NAME, field and field.phase.name or "none", navmesh.GetNavAreaCount(), table.Count(self.doorFlags),
 		WETSAND.Feature("npc"):SearchesRunning())
+	if self.waitingFor then lines[#lines + 1] = "  waiting for the field's " .. self.waitingFor .. ", which the round brings" end
 	for _, team in ipairs({ RED, BLUE }) do lines[#lines + 1] = self:ScenarioLine(field, team) end
 	for team, cart in pairs(field and field.carts or {}) do
 		lines[#lines + 1] = string.format("  %s cart: %d of %d units along its track", TEAM_LABEL[team], Round(cart.distance), Round(cart.track:Length()))

@@ -6,6 +6,7 @@
 -- nothing found, and the features it reads (rounds, capture, npc,
 -- gamemode) are fakes that record what they are asked.
 local T = dofile("tests/harness.lua")
+local FP = dofile("tests/fake_points.lua")
 local AiWar = T.require("foundation.aiwar")
 local Orders = T.require("foundation.aiwar.orders")
 local Base = T.require("foundation.aiwar.scenario")
@@ -20,10 +21,19 @@ local ControlPointsMode = T.require("foundation.rounds.control_points")
 local KothMode = T.require("foundation.rounds.koth")
 local STATE = T.require("foundation.rounds.state")
 local Teams = T.require("foundation.teams")
+-- the real scenarios; tests of the controller alone swap in fakes
+local REAL = {
+	[PayloadMode.Mode.NAME] = Payload,
+	[ControlPointsMode.Mode.NAME] = T.require("foundation.aiwar.scenario.control_points"),
+	[KothMode.Mode.NAME] = T.require("foundation.aiwar.scenario.koth"),
+}
 
 local RED, BLUE, NOBODY = Teams.RED, Teams.BLUE, Teams.UNASSIGNED
 local SOURCE = T.ROOT .. "features/aiwar/sv.lua"
 local NO_OBJECTIVE = "this map has no objective the AI war can fight over (payload, control points or King of the Hill)"
+local NO_SPAWNS = "this map has no spawn points for both teams, where the AI war's soldiers join the fight"
+local NO_POINTS = "this map's round has no control points for the AI war to fight over"
+local SOLDIERS = 8
 local ZONE_INSET = 0.8 -- the controller's, docs/aiwar-koth-cp.md §2.4
 local TEAM_SIZE = 8
 local NOW = 100
@@ -75,17 +85,18 @@ local function Timer(left, paused)
 	}
 end
 
--- timers: { hud = the HUD timer, [team] = the team's KOTH clock }, any of
--- them absent. A clock's entity is its team; the HUD timer's is HUD_TIMER.
+-- w.timers: { hud = the HUD timer, [team] = the team's KOTH clock }, any of
+-- them absent, or nil for none. A clock's entity is its team; the HUD
+-- timer's is HUD_TIMER.
 local HUD_TIMER = "hud timer"
 
-local function FakeRounds(mode, timers)
-	timers = timers or {}
+local function FakeRounds(mode, w)
+	local function Timers() return w.timers or {} end
 	return {
 		Mode = function() return mode end,
-		TeamClock = function(_, team) return timers[team] and team or nil end,
-		TimerOf = function(_, ent) return ent == HUD_TIMER and timers.hud or timers[ent] end,
-		HudTimer = function() return timers.hud and HUD_TIMER or nil end,
+		TeamClock = function(_, team) return Timers()[team] and team or nil end,
+		TimerOf = function(_, ent) return ent == HUD_TIMER and Timers().hud or Timers()[ent] end,
+		HudTimer = function() return Timers().hud and HUD_TIMER or nil end,
 	}
 end
 
@@ -141,11 +152,13 @@ local function World()
 		setup = false,
 		overtime = false,
 		now = NOW,
+		-- each side's spawn, as FP.BASES
 		spawns = {
-			[RED] = {},
-			[BLUE] = {},
+			[RED] = { Ent(Vector(FP.BASES[RED].x, FP.BASES[RED].y, 0)) },
+			[BLUE] = { Ent(Vector(FP.BASES[BLUE].x, FP.BASES[BLUE].y, 0)) },
 		},
 		navAreas = {},
+		teamSize = TEAM_SIZE,
 	}
 	function w:Load(name, feature)
 		self.features[name] = feature
@@ -200,7 +213,7 @@ local function Env(w)
 		Vector = Vector,
 		DrGBase = {},
 		CreateConVar = function() return {} end,
-		GetConVar = function() return { GetInt = function() return TEAM_SIZE end } end,
+		GetConVar = function() return { GetInt = function() return w.teamSize end } end,
 		FCVAR_ARCHIVE = 128,
 		D_HT = 1,
 		D_FR = 2,
@@ -271,9 +284,16 @@ local function FakeVariant(mode, parts)
 	return V
 end
 
+-- The mode's own scenario, package B's.
+local function RealVariant(mode)
+	package.loaded[Base.VARIANTS[mode.NAME]] = REAL[mode.NAME]
+	return REAL[mode.NAME].Scenario
+end
+
+-- parts: a fake variant's (FakeVariant); nil for the mode's own.
 local function Started(w, mode, parts)
-	if parts then FakeVariant(mode, parts) end
-	w:Load("rounds", FakeRounds(mode, w.timers))
+	if parts then FakeVariant(mode, parts) elseif REAL[mode.NAME] then RealVariant(mode) end
+	w:Load("rounds", FakeRounds(mode, w))
 	local controller = Load(w)
 	T.eq(select(2, controller:Start()), nil, "no refusal")
 	return controller
@@ -293,7 +313,7 @@ end)
 
 T.test("a rounds mode the war cannot fight over is refused", function()
 	local w = World()
-	w:Load("rounds", FakeRounds(Rounds.Mode))
+	w:Load("rounds", FakeRounds(Rounds.Mode, w))
 	local ok, why = Load(w):Start()
 	T.eq(ok, false, "refused")
 	T.eq(why, NO_OBJECTIVE, "why")
@@ -301,7 +321,7 @@ end)
 
 T.test("the war still needs DrGBase first", function()
 	local w = World()
-	w:Load("rounds", FakeRounds(PayloadMode.Mode))
+	w:Load("rounds", FakeRounds(PayloadMode.Mode, w))
 	local env = Env(w)
 	env.DrGBase = false
 	local chunk = assert(loadfile(SOURCE))
@@ -312,6 +332,8 @@ end)
 
 T.test("a payload map starts the payload scenario, asks for Gameplay mode, and loads no other scenario", function()
 	local w = World()
+	-- as on a fresh map: no point scenario loaded
+	for _, mode in ipairs({ ControlPointsMode.Mode, KothMode.Mode }) do package.loaded[Base.VARIANTS[mode.NAME]] = nil end
 	local controller = Started(w, PayloadMode.Mode)
 	T.eq(getmetatable(controller.scenario), Payload.Scenario, "the payload variant")
 	T.eq(#w.requests, 1, "one request")
@@ -323,11 +345,59 @@ T.test("a payload map starts the payload scenario, asks for Gameplay mode, and l
 	T.eq(select(2, controller:Start()), "the war is already on", "once")
 end)
 
+-- A capture feature with one point, neutral and capturable by both, its
+-- area FP.RADIUS / ZONE_INSET either side of the origin.
+local HALF = FP.RADIUS / ZONE_INSET
+
+local function OnePoint(w, fields)
+	fields = fields or {
+		redCanCap = true,
+		blueCanCap = true,
+	}
+	local point = {
+		ent = Ent(Vector(0, 0, 0)),
+		rank = 0,
+		hud = Hud(fields),
+		areas = { Ent(nil, Vector(-HALF, -HALF, 0), Vector(HALF, HALF, 128)) },
+	}
+	w:Load("capture", FakeCapture({ point }))
+	return point
+end
+
 T.test("control point and KOTH maps start their own scenario", function()
 	for _, mode in ipairs({ ControlPointsMode.Mode, KothMode.Mode }) do
-		local variant = FakeVariant(mode, {})
-		local controller = Started(World(), mode)
-		T.eq(getmetatable(controller.scenario), variant, mode.NAME)
+		local w = World()
+		OnePoint(w)
+		local controller = Started(w, mode)
+		T.eq(getmetatable(controller.scenario), REAL[mode.NAME].Scenario, mode.NAME)
+	end
+end)
+
+T.test("the point scenarios refuse a map whose round has no points", function()
+	for _, mode in ipairs({ ControlPointsMode.Mode, KothMode.Mode }) do
+		RealVariant(mode)
+		local w = World()
+		w:Load("rounds", FakeRounds(mode, w))
+		local ok, why = Load(w):Start()
+		T.eq(ok, false, mode.NAME .. ": no capture feature")
+		T.eq(why, NO_POINTS, mode.NAME)
+		w:Load("capture", FakeCapture({}))
+		T.eq(select(2, Load(w):Start()), NO_POINTS, mode.NAME .. ": no points")
+	end
+end)
+
+T.test("any scenario refuses a map without both teams' spawns", function()
+	for _, mode in ipairs({ PayloadMode.Mode, ControlPointsMode.Mode }) do
+		RealVariant(mode)
+		local w = World()
+		OnePoint(w)
+		w.spawns[BLUE] = {}
+		w:Load("rounds", FakeRounds(mode, w))
+		local controller = Load(w)
+		local ok, why = controller:Start()
+		T.eq(ok, false, mode.NAME .. ": refused")
+		T.eq(why, NO_SPAWNS, mode.NAME)
+		T.eq(controller.war, nil, mode.NAME .. ": no war")
 	end
 end)
 
@@ -455,12 +525,6 @@ T.test("each team's base is the centroid of its spawns, kept until the next roun
 	Same(controller:Survey(NOW).bases[BLUE], -500, 0, 0, "cached")
 	w.hooks.WetsandRoundActivate()
 	Same(controller:Survey(NOW).bases[BLUE], -900, 0, 0, "the next round's")
-end)
-
-T.test("a team without spawns has no base", function()
-	local field = Started(World(), ControlPointsMode.Mode, {}):Survey(NOW)
-	T.eq(field.bases[RED], nil, "no base")
-	T.eq(#field.spawns[RED], 0, "no spawns")
 end)
 
 -- The phase and the winner ----------------------------------------------------------
@@ -651,6 +715,122 @@ T.test("the report names each team's scenario, stance and objectives", function(
 	local name = ControlPointsMode.Mode.NAME
 	T.eq(text:find("RED " .. name .. ": stance lost:4, target 2, guard -, staging 3", 1, true) ~= nil, true, text)
 	T.eq(text:find("BLU " .. name .. ": stance -, target -, guard 2, staging -", 1, true) ~= nil, true, text)
+end)
+
+-- The seam: the controller's think with package B's scenarios --------------------
+-- A tests/fake_points.lua battle whose think is the controller's: the
+-- controller builds the field and commands, and hands the war the field
+-- the battle's fake soldiers act on.
+
+local function ControllerBattle(w, mode)
+	w.teamSize = 0 -- the battle's soldiers only
+	local controller = Started(w, mode)
+	local battle = FP.Battle(REAL[mode.NAME].Scenario)
+	battle.war, battle.scenario = controller.war, controller.scenario
+	function battle:Command()
+		w.now = self.now
+		controller.nextThink = 0
+		controller:Think(self.now)
+	end
+	battle:Enlist(RED, SOLDIERS)
+	battle:Enlist(BLUE, SOLDIERS)
+	return battle, controller
+end
+
+local function OnHill(battle, team)
+	local hill = battle.war:Field().points[1]
+	local capturers = battle:Of(team, AiWar.CAPTURE)
+	T.eq(#capturers > 0, true, team .. " has capturers")
+	for _, s in ipairs(capturers) do
+		T.eq(FP.InZone(s.me.pos, hill), true, s.member.handle .. " on the hill")
+	end
+end
+
+-- Whether the soldier's stack runs the action (a trip buries the action
+-- that took it, in Describe).
+local function Runs(npc, name)
+	local _, frames = npc:Stack()
+	for _, frame in ipairs(frames) do
+		if frame.name == name then return true end
+	end
+	return false
+end
+
+local function Hunting(battle, team)
+	for _, s in ipairs(battle.soldiers) do
+		if s.member.team == team then
+			T.eq(Runs(s.npc, "SeekAndDestroy"), true, s.member.handle .. ": " .. s.npc:Describe())
+		end
+	end
+end
+
+local TRIP_TICKS = 45 -- base to hill, FP.SPEED, and a few shuffles
+
+T.test("KOTH through the controller: Sandbox waits for the clocks, the round brings commands, a won round is a hunt", function()
+	local w = World()
+	w.active = false -- Sandbox mode: no KOTH round, so no clocks
+	OnePoint(w)
+	local battle, controller = ControllerBattle(w, KothMode.Mode)
+	local Koth = REAL[KothMode.Mode.NAME]
+	battle:Command()
+	T.eq(controller.waitingFor, Base.CLOCKS, "waiting for the clocks")
+	T.eq(battle.war:Field(), nil, "no field for the soldiers")
+	T.eq(next(battle.war.stances), nil, "no commands")
+	T.eq(next(controller.scenario.current), nil, "nothing allocated")
+	-- the countdown ends: the KOTH round spawns its clocks and runs
+	w.active, w.state = true, STATE.RND_RUNNING
+	w.timers = {
+		[RED] = Timer(Koth.KOTH_TURTLE_TIME * 6, true),
+		[BLUE] = Timer(Koth.KOTH_TURTLE_TIME * 6, true),
+	}
+	battle:Start()
+	T.eq(controller.waitingFor, nil, "a whole field")
+	T.eq(battle.war:Field().doctrine, REAL[ControlPointsMode.Mode.NAME].DOCTRINE, "the point doctrine")
+	T.eq(controller.scenario.current[RED].key, Koth.OPEN, "RED: an open hill")
+	T.eq(controller.scenario.current[BLUE].key, Koth.OPEN, "BLU: an open hill")
+	battle:Tick(nil, TRIP_TICKS)
+	OnHill(battle, RED)
+	OnHill(battle, BLUE)
+	-- BLU wins: its soldiers hunt RED's
+	w.state = STATE.TEAM_WIN
+	w.hooks.WetsandRoundWin(BLUE)
+	battle:Tick(nil, 2)
+	T.eq(battle.war:Field().phase, AiWar.PHASES.humiliation, "humiliation")
+	Hunting(battle, BLUE)
+	-- the next round: the hunt is over, and the clocks are made again
+	w.timers = nil
+	w.state = STATE.PREROUND
+	w.hooks.WetsandRoundActivate()
+	battle:Tick(nil, 2)
+	T.eq(controller.waitingFor, Base.CLOCKS, "between the clocks")
+	w.timers = {
+		[RED] = Timer(Koth.KOTH_TURTLE_TIME * 6, true),
+		[BLUE] = Timer(Koth.KOTH_TURTLE_TIME * 6, true),
+	}
+	battle:Tick(nil, 2)
+	T.eq(battle.war:Field().phase, AiWar.PHASES.frozen, "frozen")
+	T.eq(battle.war:Field().winner, nil, "no winner")
+	for _, s in ipairs(battle.soldiers) do
+		T.eq(Runs(s.npc, "SeekAndDestroy"), false, s.member.handle .. " stopped hunting")
+	end
+end)
+
+T.test("control points through the controller: commands from the first think, both sides take mid, a won round is a hunt", function()
+	local w = World()
+	w.active = false -- Sandbox mode: CP awaits nothing
+	OnePoint(w)
+	local battle, controller = ControllerBattle(w, ControlPointsMode.Mode)
+	battle:Start()
+	T.eq(controller.waitingFor, nil, "a whole field")
+	T.eq(battle.war:Field().objectives[RED].target.rank, 0, "RED's target: mid")
+	T.eq(battle.war:Field().objectives[BLUE].target.rank, 0, "BLU's target: mid")
+	battle:Tick(nil, TRIP_TICKS)
+	OnHill(battle, RED)
+	OnHill(battle, BLUE)
+	w.active, w.state = true, STATE.TEAM_WIN
+	w.hooks.WetsandRoundWin(RED)
+	battle:Tick(nil, 2)
+	Hunting(battle, RED)
 end)
 
 T.test("the controller never reads the map's name for its scenario", function()
