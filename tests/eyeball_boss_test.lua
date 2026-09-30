@@ -6,6 +6,7 @@ local Combat = T.require("foundation.combat")
 local Teams = T.require("foundation.teams")
 local NpcSystem = T.require("foundation.npc")
 local Eyeball = T.require("foundation.npc.eyeball_boss")
+local BossEvents = T.require("foundation.npc.boss_events")
 local HalloweenBoss = T.require("foundation.npc.halloween_boss")
 local Actor = T.require("foundation.npc.actor")
 local Players = T.require("foundation.players")
@@ -126,7 +127,7 @@ local function Eye(world, t)
 	function me:IsNearNavMesh(v, range) return self.navNear end
 	function me:SetHidden(hidden) self.hidden = hidden end
 	function me:TraceWorld(from, to) return self.traceHit end
-	function me:Announce(text) self:Record("Announce", text) end
+	function me:FireGameEvent(name, fields) self:Record("FireGameEvent", name, fields) end
 	function me:Break() self:Record("Break") end
 	-- SpawnEntity also records when, as a fourth value.
 	function me:SpawnEntity(class, config, pos)
@@ -174,6 +175,18 @@ local function SoundCount(me, name)
 		if args[1] == name then n = n + 1 end
 	end
 	return n
+end
+
+-- The game events it fired, as "name level[ time_remaining]".
+local function Fired(me)
+	local list = {}
+	for _, args in ipairs(me:Called("FireGameEvent")) do
+		local fields = args[2]
+		local text = args[1] .. " " .. fields.level
+		if fields.time_remaining then text = text .. " " .. fields.time_remaining end
+		list[#list + 1] = text
+	end
+	return table.concat(list, ",")
 end
 
 local function Particles(me)
@@ -265,6 +278,7 @@ T.test("a map's eyeball rises 150 over 3 s from 100 above its spawn, pushing pla
 	local me = s.me
 	T.eq(Played(me), "arrives", "arrives")
 	T.eq(Particles(me), "halloween_boss_summon", "summon")
+	T.eq(Fired(me), BossEvents.EYEBALL_BOSS_SUMMONED .. " 1", "tells everyone it rose, at level 1")
 	T.eq(SoundCount(me, "Halloween.HeadlessBossSpawnRumble"), 1, "rumble")
 	T.eq(me.origin, V(0, 0, 100 - 150), "sunk")
 	Tick(s, 1.5)
@@ -710,16 +724,15 @@ T.test("it warns at 60, 30 and 10 s left, and escapes at the next move once its 
 	local s = Scene({})
 	Arrived(s, V(0, 0, 100))
 	s.me.navNear = false
+	ClearLog(s.me)
 	Tick(s, 61)
-	local said = s.me:Called("Announce")
-	T.eq(#said, 1, "60 s warning")
-	T.eq(said[1][1], "MONOCULUS! is leaving in 60 seconds...", "60 s text")
+	local imminent = BossEvents.EYEBALL_BOSS_ESCAPE_IMMINENT
+	T.eq(Fired(s.me), imminent .. " 1 60", "60 s warning")
 	Tick(s, 30)
-	T.eq(s.me:Called("Announce")[2][1], "MONOCULUS! is leaving in 30 seconds...", "30 s")
+	T.eq(Fired(s.me), imminent .. " 1 60," .. imminent .. " 1 30", "30 s")
 	Tick(s, 20)
-	T.eq(s.me:Called("Announce")[3][1], "MONOCULUS! is leaving in 10 seconds!", "10 s")
 	Tick(s, 10)
-	T.eq(#s.me:Called("Announce"), 3, "three warnings")
+	T.eq(Fired(s.me), imminent .. " 1 60," .. imminent .. " 1 30," .. imminent .. " 1 10", "three warnings")
 	T.eq(s.npc:Describe(), "BossBehavior/Idle", "stays while it cannot move")
 	s.me.navNear = true
 	ClearLog(s.me)
@@ -727,9 +740,11 @@ T.test("it warns at 60, 30 and 10 s left, and escapes at the next move once its 
 	T.eq(s.npc:Describe(), "BossBehavior/Escape", "escaping")
 	T.eq(Played(s.me), "escape", "escape")
 	T.eq(SoundCount(s.me, "Halloween.EyeballBossLaugh"), 1, "laughs")
+	T.eq(Fired(s.me), "", "no word until it is gone")
 	s.me.shared.level = 3
 	s.me:FinishSequence()
 	Tick(s, TICK)
+	T.eq(Fired(s.me), BossEvents.EYEBALL_BOSS_ESCAPED .. " 3", "escaped, at the level every eyeball shares")
 	T.eq(Particles(s.me), "eyeboss_tp_escape", "escape particle")
 	T.eq(s.me:Called("SetBossHealth")[1][1], 0, "bar hidden")
 	T.eq(s.me.removed, true, "gone")
@@ -740,8 +755,9 @@ T.test("a levelled eyeball's warnings name its level", function()
 	local s = Scene({ shared = { level = 2 } })
 	Arrived(s, V(0, 0, 100))
 	s.me.navNear = false
+	ClearLog(s.me)
 	Tick(s, 61)
-	T.eq(s.me:Called("Announce")[1][1], "MONOCULUS! (LEVEL 2) is leaving in 60 seconds...", "levelled")
+	T.eq(Fired(s.me), BossEvents.EYEBALL_BOSS_ESCAPE_IMMINENT .. " 2 60", "levelled")
 end)
 
 -- CEyeballBossDead
@@ -777,8 +793,10 @@ T.test("killed it falls, then pops: jarates players within 750, leaves a loot vo
 	T.eq(SoundCount(s.me, "Halloween.EyeballBossStunned"), 1, "stunned sound")
 	Tick(s, 1)
 	T.eq(s.me.removed, false, "still falling")
+	T.eq(Fired(s.me), "", "no word while it falls")
 	s.me.origin = V(0, 0, 50)
 	Tick(s, TICK)
+	T.eq(Fired(s.me), BossEvents.EYEBALL_BOSS_KILLED .. " 1", "killed at level 1, before it levels up")
 	T.eq(Particles(s.me), "eyeboss_death", "death particle")
 	T.eq(SoundCount(s.me, "Cart.Explode"), 1, "boom")
 	T.eq(SoundCount(s.me, "Halloween.EyeballBossDie"), 1, "die")
@@ -814,6 +832,17 @@ T.test("a falling eyeball gives up after 10 s and pops anyway", function()
 	T.eq(s.me.removed, true, "popped")
 end)
 
+T.test("a spell's eyeball, killed, pops without eyeball_boss_killed", function()
+	local s = Scene({ team = Teams.RED })
+	Arrived(s, V(0, 0, 50))
+	s.me.alive = false
+	s.npc:Event("OnKilled", { amount = 1 })
+	Tick(s, TICK)
+	Tick(s, TICK)
+	T.eq(s.me.removed, true, "popped")
+	T.eq(Fired(s.me), "", "no boss events")
+end)
+
 -- A spell's eyeball (the MONOCULUS spell)
 T.test("a spell's eyeball is immune, always enraged, and escapes after 8 s", function()
 	local s = Scene({ team = Teams.BLUE })
@@ -841,6 +870,7 @@ T.test("a spell's eyeball is immune, always enraged, and escapes after 8 s", fun
 	Tick(s, TICK)
 	T.eq(SoundCount(s.me, "Halloween.spell_spawn_boss_disappear"), 1, "disappears")
 	T.eq(s.me.removed, true, "gone")
+	T.eq(Fired(s.me), "", "a spell's eyeball fires no boss events: no summon, warnings or escape")
 end)
 
 T.test("a spell's rockets are not crits and it does not circle", function()
