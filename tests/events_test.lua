@@ -479,4 +479,48 @@ T.test("no two event names defined anywhere in the addon share an id", function(
 	T.eq(count > 0, true, "found the definitions")
 end)
 
+-- A name fired, listened to or requested with a literal is defined
+-- somewhere (the registry would refuse it at run time, on some map).
+T.test("every event named in a Fire, Listen or Request is defined in the addon", function()
+	local defined, used = {}, {}
+	local files = io.popen("find addon -name '*.lua'")
+	for path in files:lines() do
+		local f = assert(io.open(path, "r"))
+		local text = f:read("*a")
+		f:close()
+		for name in text:gmatch("Define%(%s*\"([%w_]+)\"") do defined[name] = true end
+		for _, call in ipairs({ "Fire", "Listen", "Request" }) do
+			for name in text:gmatch("Events%." .. call .. "%(%s*\"([%w_]+)\"") do used[name] = path end
+			for name in text:gmatch("%f[%w]E%." .. call .. "%(%s*\"([%w_]+)\"") do used[name] = path end
+		end
+	end
+	files:close()
+	local count = 0
+	for name, path in pairs(used) do
+		T.eq(defined[name], true, name .. " (" .. path .. ")")
+		count = count + 1
+	end
+	T.eq(count > 0, true, "found the uses")
+end)
+
+-- The library's two net messages are the only ones, for good: a feature
+-- defines events instead of registering its own.
+T.test("only the event adapter registers, starts or receives net messages", function()
+	local ADAPTER = "addon/gamemodes/sandcastle/gamemode/wetsand/sh_events.lua"
+	local registered = 0
+	local files = io.popen("find addon -name '*.lua'")
+	for path in files:lines() do
+		local f = assert(io.open(path, "r"))
+		local text = f:read("*a")
+		f:close()
+		for _ in text:gmatch("util%.AddNetworkString%(") do
+			T.eq(path, ADAPTER, "registers a net message")
+			registered = registered + 1
+		end
+		if text:find("net%.Start%(") or text:find("net%.Receive%(") then T.eq(path, ADAPTER, "uses net directly") end
+	end
+	files:close()
+	T.eq(registered, 2, "the adapter's two: fire and request")
+end)
+
 T.finish()
