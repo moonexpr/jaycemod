@@ -366,9 +366,8 @@ end
 
 -- The overlay -------------------------------------------------------------------------------
 
-local DEBUG_NET = "wetsand_nodegraph_debug"
 local DEBUG_INTERVAL, DEBUG_RANGE, DEBUG_MAX_NODES = 1, 1500, 400
-util.AddNetworkString(DEBUG_NET)
+local DEBUG_MAX_LINKS = 2 ^ 16 - 1 -- nodegraph_debug's count (wetsand/sh_nodegraph.lua)
 
 function Controller:ToggleDebug(ply)
 	ply.wetsandNodegraphDebug = not ply.wetsandNodegraphDebug
@@ -396,22 +395,26 @@ function Controller:SendDebug(ply)
 	end
 	local links = {}
 	for _, link in ipairs(graph and graph.links or {}) do
-		if index[link.a] and index[link.b] then links[#links + 1] = link end
+		if index[link.a] and index[link.b] and #links < DEBUG_MAX_LINKS then
+			links[#links + 1] = {
+				a = index[link.a],
+				b = index[link.b],
+				human = (link.moves and link.moves[0] or 0) ~= 0,
+			}
+		end
 	end
-	net.Start(DEBUG_NET)
-	net.WriteString(self.graph and "generated" or (graph and "installed" or "none"))
-	net.WriteUInt(#sent, 16)
-	for _, node in ipairs(sent) do
-		net.WriteVector(ToVector(node.pos))
-		net.WriteUInt(node.zone or 0, 16)
+	local nodes = {}
+	for i, node in ipairs(sent) do
+		nodes[i] = {
+			pos = ToVector(node.pos),
+			zone = node.zone or 0,
+		}
 	end
-	net.WriteUInt(#links, 16)
-	for _, link in ipairs(links) do
-		net.WriteUInt(index[link.a], 16)
-		net.WriteUInt(index[link.b], 16)
-		net.WriteBool((link.moves and link.moves[0] or 0) ~= 0)
-	end
-	net.Send(ply)
+	WETSAND.Events.Fire("nodegraph_debug", {
+		source = self.graph and "generated" or (graph and "installed" or "none"),
+		nodes = nodes,
+		links = links,
+	}, ply)
 end
 
 local nextDebug = 0
