@@ -43,6 +43,7 @@ local TRANSITION_VOICES = {
 	"vo/announcer_tournament_started3.mp3",
 	"vo/announcer_tournament_started4.mp3",
 }
+local CALLED_OFF_SFX = "ui/vote_failure.wav"
 local ADMIN_LINE_COUNT = 13
 local ADMIN_LINES = {}
 for i = 1, ADMIN_LINE_COUNT do ADMIN_LINES[i] = string.format("vo/compmode/cm_admin_compbeginsstart_%02d.mp3", i) end
@@ -137,7 +138,9 @@ local NOTICES = {
 	[Gamemode.NOTICE_REQUEST_CHAT] = function(_, story) Chat(story.title, story.lines) end,
 	[Gamemode.NOTICE_REQUEST_ANNOUNCEMENT] = function(_, story) WETSAND.Announce(story.announcement) end,
 	[Gamemode.NOTICE_CALLED_OFF] = function()
-		Chat("Gameplay mode called off.", { "Sandbox mode goes on." })
+		local title, _ = Gameplay.Describe(MapInfo())
+		Chat(title .. "called off. Carry on.", { })
+		PlayToAll(CALLED_OFF_SFX)	
 	end,
 	[Gamemode.NOTICE_SANDBOX] = function()
 		PlayToAll(Pick(SANDBOX_SOUNDS))
