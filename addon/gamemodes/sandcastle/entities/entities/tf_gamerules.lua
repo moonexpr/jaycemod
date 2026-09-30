@@ -105,7 +105,10 @@ function ENT:StateEnter(state)
 	if enter then enter(self) end
 end
 
+-- Sandbox mode (halted) holds the rounds between rounds: no transition but
+-- Halt's own into BETWEEN_RNDS until Unhalt.
 function ENT:StateTransition(state)
+	if self.halted and state ~= S.BETWEEN_RNDS then return end
 	local leave = self["StateLeave_" .. StateName(self.state)]
 	if leave then leave(self) end
 	self:StateEnter(state)
@@ -632,7 +635,7 @@ end
 
 -- CTeamplayRoundBasedRules::SetWinningTeam
 function ENT:SetWinningTeam(winner, reason, forceMapReset, switchTeams, dontAddScore)
-	if self.state == S.TEAM_WIN or self.state == S.GAME_OVER then return end
+	if self.halted or self.state == S.TEAM_WIN or self.state == S.GAME_OVER then return end
 	forceMapReset = forceMapReset ~= false
 	self.forceMapReset = forceMapReset
 	self.switchTeams = switchTeams == true
@@ -652,6 +655,7 @@ end
 -- CTeamplayRoundBasedRules::SetStalemate: sudden death when
 -- mp_stalemate_enable is on, otherwise a drawn round.
 function ENT:SetStalemate(reason, forceMapReset, switchTeams)
+	if self.halted then return end
 	if not stalemateEnable:GetBool() then
 		self:SetWinningTeam(WETSAND.TEAM_UNASSIGNED, Lib().WINREASON.STALEMATE, forceMapReset, switchTeams)
 		return
