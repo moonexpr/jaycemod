@@ -201,6 +201,7 @@ function Controller:Begin()
 		WETSAND.SetPlayerTeam(ply, WETSAND.TEAM_SPECTATOR, true)
 		WETSAND.ShowTeamMenu(ply)
 	end
+	-- JC: Hidden because too much visual clutte
 	-- Center("Choose a team!")
 end
 
