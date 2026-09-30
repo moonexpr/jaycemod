@@ -87,32 +87,41 @@ end
 
 -- The round timer shown in the HUD --------------------------------------------------------
 
+-- A map with a round timer has the rounds feature, which knows the HUD timer.
+local function Rounds()
+	return ents.FindByClass("team_round_timer")[1] and WETSAND.Feature("rounds") or nil
+end
+
 local function Timer()
-	local timer = WETSAND.HudTimer
-	return IsValid(timer) and timer or nil
+	local rounds = Rounds()
+	return rounds and rounds:HudTimer() or nil
+end
+
+local function Remaining(timer)
+	return WETSAND.Feature("rounds"):TimerOf(timer):TimeRemaining(CurTime())
 end
 
 function Controller:TimeLeft()
 	local timer = Timer()
-	return timer and timer:TimeRemaining() or 0
+	return timer and Remaining(timer) or 0
 end
 
 function Controller:SetTimeLeft(seconds)
 	local timer = Timer()
 	if not timer then return false, NO_TIMER end
-	timer:SetTimeRemaining(math.max(0, seconds))
+	WETSAND.Feature("rounds"):TimerInput(timer, "settime", math.max(0, seconds))
 	return true
 end
 
 function Controller:Paused()
 	local timer = Timer()
-	return timer ~= nil and timer.paused
+	return timer ~= nil and WETSAND.Feature("rounds"):TimerOf(timer):Paused()
 end
 
 function Controller:SetPaused(paused)
 	local timer = Timer()
 	if not timer then return false, NO_TIMER end
-	if paused then timer:Pause() else timer:Resume() end
+	WETSAND.Feature("rounds"):TimerInput(timer, paused and "pause" or "resume")
 	return true
 end
 
@@ -124,7 +133,7 @@ function Controller:AddTeamTime(t, seconds)
 	if WETSAND.Active() and WETSAND.State() ~= WETSAND.STATE.RND_RUNNING then
 		return false, "time can only be added while the round is running"
 	end
-	timer:AddTimerSeconds(seconds, t)
+	WETSAND.Feature("rounds"):AddTimerSeconds(timer, seconds, t)
 	return true
 end
 
@@ -132,7 +141,7 @@ end
 function Controller:RemoveTime(seconds)
 	local timer = Timer()
 	if not timer then return false, NO_TIMER end
-	timer:SetTimeRemaining(math.max(0, timer:TimeRemaining() - seconds))
+	WETSAND.Feature("rounds"):TimerInput(timer, "settime", math.max(0, Remaining(timer) - seconds))
 	return true
 end
 

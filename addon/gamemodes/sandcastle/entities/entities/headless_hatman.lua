@@ -15,17 +15,18 @@ if CLIENT then return end
 -- The Horsemann's port (foundation.npc.headless_hatman.METHODS)
 
 -- The master's points in its order, for CHeadlessHatmanAttack's
--- RecomputeHomePosition. With no master there are none.
+-- RecomputeHomePosition. With no master there are none, and the capture
+-- feature is not loaded for the asking.
 function ENT:ControlPoints()
-	local master = WETSAND.Master()
 	local points = {}
-	if not IsValid(master) then return points end
-	for i, point in ipairs(WETSAND.ControlPoints()) do
+	if not IsValid(ents.FindByClass("team_control_point_master")[1]) then return points end
+	local capture = WETSAND.Feature("capture")
+	for i, point in ipairs(capture:Points()) do
 		points[i] = {
 			origin = point:GetPos(),
-			inRound = master:IsInRound(point),
-			owner = WETSAND.CapTeam(point),
-			blueMayCapture = WETSAND.TeamCanCapPoint(point, WETSAND.TEAM_BLUE),
+			inRound = capture:IsInRound(point),
+			owner = capture:Owner(point),
+			blueMayCapture = capture:TeamMayCapture(point, WETSAND.TEAM_BLUE),
 		}
 	end
 	return points

@@ -112,6 +112,13 @@ else
 	concommand.Add("wetsand_memory_cl", function()
 		print(MemoryReport())
 	end, nil, "Print this client's Lua memory and the features it loaded")
+
+	-- WETSAND.BroadcastSound's game sounds (announcer lines, win and lose
+	-- music), played as the local player's own on every map, rounds or not.
+	net.Receive("wetsand_pa_sound_file", function()
+		local ply = LocalPlayer()
+		if IsValid(ply) then ply:EmitSound(net.ReadString()) end
+	end)
 end
 
 -- Pure rule libraries (gamemode/foundation/), shared so client prediction and
@@ -161,6 +168,16 @@ end
 
 function WETSAND.State()
 	return GetGlobal2Int("wetsand_round_state", WETSAND.STATE.INIT)
+end
+
+-- Setup and overtime, as the rounds controller publishes them, so filters
+-- and the AI war read them on any map (false without rounds).
+function WETSAND.InSetup()
+	return GetGlobal2Bool("wetsand_round_in_setup", false)
+end
+
+function WETSAND.InOvertime()
+	return GetGlobal2Bool("wetsand_round_overtime", false)
 end
 
 -- The rounds halted, as in Sandbox mode (foundation.gamemode) and its

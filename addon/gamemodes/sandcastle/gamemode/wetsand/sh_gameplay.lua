@@ -39,17 +39,10 @@ if SERVER then
 		end
 	end
 
-	-- Kept in WETSAND across a Lua refresh: whether the map has loaded.
-	-- The mode is applied a tick after InitPostEntity: on koth_viaduct the
-	-- rules were not yet valid at InitPostEntity itself, and the map ran its
-	-- rounds in Sandbox mode. rulesAtLoad records what each moment saw.
+	-- Kept in WETSAND across a Lua refresh: whether the map has loaded. The
+	-- rounds controller applies the mode (StartAtLoad) once its rules exist.
 	hook.Add("InitPostEntity", "wetsand_gamemode", function()
 		WETSAND.gamemodeLoaded = true
-		WETSAND.rulesAtLoad = { initPostEntity = IsValid(WETSAND.Rules) }
-		timer.Simple(0, function()
-			WETSAND.rulesAtLoad.nextTick = IsValid(WETSAND.Rules)
-			if IsValid(WETSAND.Rules) then WETSAND.Feature("gamemode"):StartAtLoad() end
-		end)
 	end)
 
 	-- Before the map has loaded (server.cfg) a change only sets the mode the map starts in.
