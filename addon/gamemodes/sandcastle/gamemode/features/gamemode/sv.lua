@@ -201,7 +201,7 @@ function Controller:Begin()
 		WETSAND.SetPlayerTeam(ply, WETSAND.TEAM_SPECTATOR, true)
 		WETSAND.ShowTeamMenu(ply)
 	end
-	Center("Choose a team!")
+	-- Center("Choose a team!")
 end
 
 -- A map with rounds starts in the mode sv_gameplay_enabled holds, quietly:
