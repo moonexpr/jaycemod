@@ -62,14 +62,7 @@ local ROUND_THINK_INTERVAL = 0.1
 local TIMER_THINK_INTERVAL = 0.05 -- CTeamRoundTimer's context thinks
 local HALT_DOORS_INTERVAL = 2
 local ROLE_NONE = 0 -- TEAM_ROLE_NONE
-local TEAM_BITS = 2
-local SECONDS_BITS = 32
 local THINK_HOOK = "wetsand_rounds"
-
-local NET_NOTICE = "wetsand_round_notice_show"
-local NET_TIME_ADDED = "wetsand_timer_time_added"
-util.AddNetworkString(NET_NOTICE)
-util.AddNetworkString(NET_TIME_ADDED)
 
 -- CTeamRoundTimer::AddTimerSeconds' ROUND_TIMER_TIME_ADDED_* sounds.
 local TIME_ADDED_WINNER = "Announcer.TimeAwardedForTeam"
@@ -320,11 +313,13 @@ function Controller:SetOvertime(on)
 	if self.round:SetOvertime(on) then PublishOvertime(on) end
 end
 
+-- In whole seconds, as TF2's event carries them; a clamp to the timer's
+-- maximum length can leave a fraction.
 local function Notify(t, seconds)
-	net.Start(NET_TIME_ADDED)
-	net.WriteUInt(t, TEAM_BITS)
-	net.WriteInt(seconds, SECONDS_BITS)
-	net.Broadcast()
+	WETSAND.Events.Fire("teamplay_timer_time_added", {
+		team = t,
+		seconds_added = math.Round(seconds),
+	})
 end
 
 -- A timer model's events, carried out on its entity.
@@ -668,14 +663,6 @@ function Controller:CapSounds(capTeam, wouldWinGame, scorePerRound)
 		scorePerRound = scorePerRound,
 	})
 	for _, line in ipairs(lines) do WETSAND.BroadcastSound(line.team, line.sound) end
-end
-
--- A round notice for the HUD (teamplay_capture_blocked and the like).
-function Controller:Notice(text, t)
-	net.Start(NET_NOTICE)
-	net.WriteString(text)
-	net.WriteUInt(t, TEAM_BITS)
-	net.Broadcast()
 end
 
 -- logic_auto (CLogicAuto::Think) ----------------------------------------------------

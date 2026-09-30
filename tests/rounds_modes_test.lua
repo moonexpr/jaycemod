@@ -154,7 +154,7 @@ local CONTROLLER_METHODS = {
 	"SetTeamClock", "TeamClock", "ActivateTeamClock",
 	"State", "PointsMayBeCaptured", "InSetup", "InOvertime", "SetWinningTeam", "SetStalemate",
 	"AddPlayedRound", "History", "SetFirstRoundPlayed",
-	"CapSounds", "Notice",
+	"CapSounds",
 	"OnPlayerDeath", "Halt", "Unhalt", "Halted", "RestartRound", "RespawnsDisabled", "SetRespawnsDisabled",
 	"SetAdminRespawnWaveTime", "TeamRespawnWaveTime", "GetRespawnWaveMaxLength", "ProxyInput",
 }

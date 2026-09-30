@@ -263,4 +263,15 @@ hook.Add("Think", "wetsand_capture_unlock", function()
 	end
 end)
 
+-- The capture's game events (sh.lua), worded for the rounds HUD: a capture
+-- is the announcement line, a defence a notice (for a point with a name).
+WETSAND.Events.Listen("teamplay_point_captured", "wetsand_capture_view", function(fields)
+	WETSAND.Feature("rounds"):Announce(WETSAND.TeamName[fields.team] .. " captured point " .. fields.cp, fields.team)
+end)
+
+WETSAND.Events.Listen("teamplay_capture_blocked", "wetsand_capture_view", function(fields)
+	if fields.cpname == "" then return end
+	WETSAND.Feature("rounds"):Notice(WETSAND.TeamName[fields.team] .. " defended " .. fields.cpname, fields.team)
+end)
+
 return View
