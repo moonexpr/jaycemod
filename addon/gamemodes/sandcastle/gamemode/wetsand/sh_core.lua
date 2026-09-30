@@ -20,15 +20,21 @@ function WETSAND.require(name)
 end
 CHUNK_ENV.require = WETSAND.require
 
+-- The game event library (WETSAND.Events), which everything after this
+-- line may use; shared.lua skips it among the other sh_ files.
+include("sh_events.lua")
+
 -- Per-map features (foundation.features): an entity calls WETSAND.Feature on
 -- first use, never at file top level, so a map loads only the controllers
 -- and views its entities pull in. The server tells ready clients each new
--- feature with a client part, and a joining client, once ready, every one
--- loaded so far, in load order. Both directions use one net message: from a
--- client it means "ready", from the server a list of features to load.
+-- feature with a client part (feature_load), and a joining client, once
+-- ready (client_ready), every one loaded so far, in load order.
 local Features = WETSAND.require("foundation.features")
-local FEATURE_NET = "wetsand_feature_load"
 local FEATURE_COUNT_BITS = 16
+
+WETSAND.Events.Define("feature_load", {
+	names = WETSAND.Events.List(WETSAND.Events.String(), FEATURE_COUNT_BITS),
+})
 
 local FeatureFiles = {}
 
@@ -44,24 +50,9 @@ function FeatureFiles:Run(path)
 	return chunk()
 end
 
-local function ReadyPlayers()
-	local ready = {}
-	for _, ply in ipairs(player.GetAll()) do
-		if ply.wetsandFeaturesReady then ready[#ready + 1] = ply end
-	end
-	return ready
-end
-
-local function SendFeatures(names, recipients)
-	net.Start(FEATURE_NET)
-	net.WriteUInt(#names, FEATURE_COUNT_BITS)
-	for _, name in ipairs(names) do net.WriteString(name) end
-	net.Send(recipients)
-end
-
+-- To every ready client.
 function FeatureFiles:TellClients(name)
-	local ready = ReadyPlayers()
-	if #ready > 0 then SendFeatures({ name }, ready) end
+	WETSAND.Events.Fire("feature_load", { names = { name } })
 end
 
 -- Kept across a Lua refresh, since entities hold the controllers it returned.
@@ -82,11 +73,8 @@ local function MemoryReport()
 end
 
 if SERVER then
-	util.AddNetworkString(FEATURE_NET)
-
-	net.Receive(FEATURE_NET, function(_, ply)
-		ply.wetsandFeaturesReady = true
-		SendFeatures(WETSAND.FeatureLoader:ClientFeatures(), ply)
+	WETSAND.Events.Listen("client_ready", "wetsand_feature_load", function(_, ply)
+		WETSAND.Events.Fire("feature_load", { names = WETSAND.FeatureLoader:ClientFeatures() }, ply)
 	end)
 
 	-- A full collection stalls the server, so players need admin.
@@ -97,28 +85,13 @@ if SERVER then
 		if IsValid(ply) then ply:PrintMessage(HUD_PRINTCONSOLE, report) end
 	end, nil, "Print the server's Lua memory and the features this map loaded")
 else
-	net.Receive(FEATURE_NET, function()
-		local names = {}
-		for i = 1, net.ReadUInt(FEATURE_COUNT_BITS) do names[i] = net.ReadString() end
-		for _, name in ipairs(names) do WETSAND.Feature(name) end
-	end)
-
-	-- Net messages reach the client from InitPostEntity on.
-	hook.Add("InitPostEntity", "wetsand_feature_load", function()
-		net.Start(FEATURE_NET)
-		net.SendToServer()
+	WETSAND.Events.Listen("feature_load", "wetsand_feature_load", function(fields)
+		for _, name in ipairs(fields.names) do WETSAND.Feature(name) end
 	end)
 
 	concommand.Add("wetsand_memory_cl", function()
 		print(MemoryReport())
 	end, nil, "Print this client's Lua memory and the features it loaded")
-
-	-- WETSAND.BroadcastSound's game sounds (announcer lines, win and lose
-	-- music), played as the local player's own on every map, rounds or not.
-	net.Receive("wetsand_pa_sound_file", function()
-		local ply = LocalPlayer()
-		if IsValid(ply) then ply:EmitSound(net.ReadString()) end
-	end)
 end
 
 -- Pure rule libraries (gamemode/foundation/), shared so client prediction and

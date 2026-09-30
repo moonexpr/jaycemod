@@ -1874,10 +1874,8 @@ end
 
 -- Debugging: wetsand_aiwar_report and wetsand_aiwar_debug ------------------------------
 
-local DEBUG_NET = "wetsand_aiwar_debug"
 local DEBUG_INTERVAL = 0.5
 local DEBUG_MAX_POINTS = 24
-util.AddNetworkString(DEBUG_NET)
 
 local TEAM_LABEL = { [RED] = "RED", [BLUE] = "BLU" }
 
@@ -2053,67 +2051,74 @@ function Controller:SendDebug(now)
 			teamIndex[fireTeam] = #teams
 		end
 	end
-	net.Start(DEBUG_NET)
-	net.WriteUInt(#teams, 8)
-	for _, item in ipairs(teams) do
+	-- The aiwar_debug game event (features/nbdebug/sh.lua), for the nbdebug view.
+	local fireTeams = {}
+	for i, item in ipairs(teams) do
 		local fireTeam = item.fireTeam
-		net.WriteUInt(fireTeam.team, 3)
-		net.WriteString(string.format("%s %d", fireTeam.role, fireTeam.index))
-		net.WriteVector(ToVector(item.contact.pos))
-		net.WriteBool(fireTeam.flank ~= nil and not fireTeam.flankDone)
-		if fireTeam.flank and not fireTeam.flankDone then net.WriteVector(ToVector(fireTeam.flank)) end
+		fireTeams[i] = {
+			team = fireTeam.team,
+			name = string.format("%s %d", fireTeam.role, fireTeam.index),
+			contact = ToVector(item.contact.pos),
+			flank = fireTeam.flank and not fireTeam.flankDone and ToVector(fireTeam.flank) or nil,
+		}
 	end
 	-- the support sphere of each team with a cart
 	local spheres = {}
 	local field = self.war:Field()
 	for team, cart in pairs(field and field.carts or {}) do
 		local center, radius = Orders.SupportSphere(cart)
-		spheres[#spheres + 1] = { team = team, center = center, radius = radius, push = false }
-	end
-	net.WriteUInt(#spheres, 4)
-	for _, sphere in ipairs(spheres) do
-		net.WriteUInt(sphere.team, 3)
-		net.WriteVector(ToVector(sphere.center))
-		net.WriteFloat(sphere.radius)
-		net.WriteBool(sphere.push)
+		spheres[#spheres + 1] = {
+			team = team,
+			center = ToVector(center),
+			radius = radius,
+			push = false,
+		}
 	end
 	-- each team's lanes
 	local lanes = {}
 	for team, set in pairs(field and field.lanes or {}) do
-		for index, lane in ipairs(set) do lanes[#lanes + 1] = { team = team, index = index, points = lane.points } end
+		for index, lane in ipairs(set) do
+			if #lanes < 15 then
+				local points = {}
+				for j = 1, math.min(#lane.points, 63) do points[j] = ToVector(lane.points[j]) end
+				lanes[#lanes + 1] = {
+					team = team,
+					index = index,
+					points = points,
+				}
+			end
+		end
 	end
-	net.WriteUInt(math.min(#lanes, 15), 4)
-	for i = 1, math.min(#lanes, 15) do
-		local lane = lanes[i]
-		net.WriteUInt(lane.team, 3)
-		net.WriteUInt(lane.index, 3)
-		local count = math.min(#lane.points, 63)
-		net.WriteUInt(count, 6)
-		for j = 1, count do net.WriteVector(ToVector(lane.points[j])) end
-	end
-	net.WriteUInt(#list, 8)
-	for _, item in ipairs(list) do
+	local soldiers = {}
+	for i = 1, math.min(#list, 255) do
+		local item = list[i]
 		local state = item.entry.npc:State()
-		net.WriteEntity(item.ent)
-		net.WriteUInt(item.entry.soldier.team, 3)
-		local heading, details = self:Describe(item.ent, item.entry)
-		net.WriteString(heading)
-		net.WriteUInt(#details, 4)
-		for _, detail in ipairs(details) do net.WriteString(detail) end
-		net.WriteBool(state.goal ~= nil)
-		if state.goal then net.WriteVector(ToVector(state.goal)) end
+		local heading, all = self:Describe(item.ent, item.entry)
+		local details = {}
+		for j = 1, math.min(#all, 15) do details[j] = all[j] end
 		local route, first = state.route or {}, state.routeIndex or 1
-		local last = math.min(#route, first + DEBUG_MAX_POINTS - 1)
-		net.WriteUInt(math.max(0, last - first + 1), 8)
-		for i = first, last do net.WriteVector(ToVector(route[i])) end
+		local points = {}
+		for j = first, math.min(#route, first + DEBUG_MAX_POINTS - 1) do points[#points + 1] = ToVector(route[j]) end
 		-- its fight: fire team (1-based in the list above, 0 for none), element, cover
 		local fireTeam = state.fighting and state.member and state.member.fireTeam
-		net.WriteUInt(fireTeam and teamIndex[fireTeam] or 0, 8)
-		net.WriteBool(state.element == "moving")
-		net.WriteBool(state.coverSpot ~= nil)
-		if state.coverSpot then net.WriteVector(ToVector(state.coverSpot)) end
+		soldiers[i] = {
+			ent = item.ent,
+			team = item.entry.soldier.team,
+			heading = heading,
+			details = details,
+			goal = state.goal and ToVector(state.goal) or nil,
+			route = points,
+			fire_team = fireTeam and teamIndex[fireTeam] or 0,
+			moving = state.element == "moving",
+			cover = state.coverSpot and ToVector(state.coverSpot) or nil,
+		}
 	end
-	net.Send(viewers)
+	WETSAND.Events.Fire("aiwar_debug", {
+		fire_teams = fireTeams,
+		spheres = spheres,
+		lanes = lanes,
+		soldiers = soldiers,
+	}, viewers)
 end
 
 local function Tell(ply, lines)

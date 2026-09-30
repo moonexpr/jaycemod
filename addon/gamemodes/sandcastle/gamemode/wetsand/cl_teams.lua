@@ -316,23 +316,60 @@ local TEAM_MENU = {
 
 local menu
 
--- CTFTeamMenu::ShowPanel does nothing while the menu is already up.
+-- CTFTeamMenu::ShowPanel does nothing while the menu is already up. The
+-- menu remembers the team it opened on, for TeamMenuReaction.
 function WETSAND.OpenTeamMenu()
 	if IsValid(menu) then return end
 	menu = vgui.Create("WetsandTeamMenu")
+	menu.openedOn = LocalPlayer():Team()
 	menu:SetConfig(TEAM_MENU)
 	menu:MakePopup()
 end
 
-net.Receive("wetsand_team_menu_open", function()
-	WETSAND.OpenTeamMenu()
+-- The client opens and closes the menu itself, as its team says
+-- (WETSAND.TeamRules.TeamMenuReaction): unassigned on a map with rounds,
+-- once loaded, it opens, whether the player just joined or a new game
+-- unassigned everyone; a new team closes it. The server only sets teams.
+local REACT_INTERVAL = 0.25
+
+local REACTIONS = {
+	[L.MENU_STAY] = function() end,
+	[L.MENU_OPEN] = function() WETSAND.OpenTeamMenu() end,
+	[L.MENU_CLOSE] = function() menu:Remove() end,
+}
+
+timer.Create("wetsand_team_menu", REACT_INTERVAL, 0, function()
+	local ply = LocalPlayer()
+	if not IsValid(ply) then return end
+	local reaction = L.TeamMenuReaction({
+		rounds = WETSAND.Active(),
+		ready = WETSAND.LocalReady(),
+		team = ply:Team(),
+		openedOn = IsValid(menu) and menu.openedOn or nil,
+		state = WETSAND.State(),
+		winner = GetGlobal2Int("wetsand_round_winner", WETSAND.TEAM_UNASSIGNED),
+	})
+	REACTIONS[reaction]()
 end)
 
--- The server opens the menu for a player without a team once the client can
--- receive it.
-hook.Add("InitPostEntity", "wetsand_teams", function()
-	net.Start("wetsand_team_menu_request")
-	net.SendToServer()
+-- The team keys (F2's gm_showteam, TF2's changeteam) open the menu here, on
+-- a map with rounds; CTFTeamMenu::ShowPanel refuses during game over and
+-- to a losing player while the winners celebrate.
+local TEAM_BINDS = {
+	gm_showteam = true,
+	changeteam = true,
+}
+local REFUSED_SECONDS = 3
+
+hook.Add("PlayerBindPress", "wetsand_teams", function(ply, bind, pressed)
+	if not pressed or not TEAM_BINDS[bind] or not WETSAND.Active() then return end
+	local winner = GetGlobal2Int("wetsand_round_winner", WETSAND.TEAM_UNASSIGNED)
+	if L.TeamMenuAllowed(WETSAND.State(), ply:Team(), winner) then
+		WETSAND.OpenTeamMenu()
+	else
+		notification.AddLegacy("You can't change team at this time.", NOTIFY_ERROR, REFUSED_SECONDS)
+	end
+	return true
 end)
 
 hook.Add("OnScreenSizeChanged", "wetsand_teams", function()

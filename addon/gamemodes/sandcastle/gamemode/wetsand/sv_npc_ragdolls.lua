@@ -5,8 +5,8 @@
 -- a mode's content. Its client half is wetsand/cl_npc_ragdolls.lua, its
 -- rules foundation/npc/ragdoll.lua.
 --
--- One message, wetsand_npc_ragdoll_create, tells the clients that can see a
--- body to build its ragdoll, in one of two ways:
+-- One game event, npc_ragdoll_create (wetsand/sh_npc_ragdolls.lua), tells
+-- the clients that can see a body to build its ragdoll, in one of two ways:
 --  * a body the server still has (WETSAND.SendClientRagdoll: an AI war
 --    soldier, wetsand/sh_drg_soldier.lua): clients take the pose from their
 --    own copy of it and hide it; its owner removes it Ragdoll.HANDOFF later.
@@ -15,45 +15,41 @@
 --    removed at once.
 local Ragdoll = WETSAND.require("foundation.npc.ragdoll")
 
-local NET = "wetsand_npc_ragdoll_create"
-local BYTE_BITS = 8 -- skins, bodygroups, their values, physics objects: each under 256
-
-util.AddNetworkString(NET)
-
--- The body's looks, then the force to push it with, then where the pose is.
-local function Start(body, force, poseInMessage)
-	net.Start(NET)
-	net.WriteEntity(body)
-	net.WriteString(body:GetModel())
-	net.WriteUInt(body:GetSkin(), BYTE_BITS)
-	local groups = body:GetNumBodyGroups()
-	net.WriteUInt(groups, BYTE_BITS)
-	for id = 0, groups - 1 do net.WriteUInt(body:GetBodygroup(id), BYTE_BITS) end
-	net.WriteVector(force)
-	net.WriteBool(poseInMessage)
+-- The body's looks, the force to push it with, and the pose if the
+-- clients are to take it from the event, to the players whose PVS holds it.
+local function Fire(body, force, pose)
+	local groups = {}
+	for id = 0, body:GetNumBodyGroups() - 1 do groups[id + 1] = body:GetBodygroup(id) end
+	WETSAND.Events.Fire("npc_ragdoll_create", {
+		body = body,
+		model = body:GetModel(),
+		skin = body:GetSkin(),
+		bodygroups = groups,
+		force = force,
+		pose = pose,
+	}, body:GetPos())
 end
 
 -- A dead body the server keeps for now: clients ragdoll their copy of it,
 -- pushed by force (the killing blow's).
 function WETSAND.SendClientRagdoll(body, force)
-	Start(body, force, false)
-	net.SendPVS(body:GetPos())
+	Fire(body, force, nil)
 end
 
 -- A serverside ragdoll: its physics objects' poses and velocities (the
 -- killing blow already in them) go to clients, and it goes.
 local function HandOff(ragdoll)
 	ragdoll.wetsandHandedOff = true
-	local count = ragdoll:GetPhysicsObjectCount()
-	Start(ragdoll, vector_origin, true)
-	net.WriteUInt(count, BYTE_BITS)
-	for i = 0, count - 1 do
+	local pose = {}
+	for i = 0, ragdoll:GetPhysicsObjectCount() - 1 do
 		local phys = ragdoll:GetPhysicsObjectNum(i)
-		net.WriteVector(phys:GetPos())
-		net.WriteAngle(phys:GetAngles())
-		net.WriteVector(phys:GetVelocity())
+		pose[i + 1] = {
+			pos = phys:GetPos(),
+			ang = phys:GetAngles(),
+			vel = phys:GetVelocity(),
+		}
 	end
-	net.SendPVS(ragdoll:GetPos())
+	Fire(ragdoll, vector_origin, pose)
 	ragdoll:Remove()
 end
 

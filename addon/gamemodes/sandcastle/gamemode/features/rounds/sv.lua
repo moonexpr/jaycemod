@@ -62,15 +62,7 @@ local ROUND_THINK_INTERVAL = 0.1
 local TIMER_THINK_INTERVAL = 0.05 -- CTeamRoundTimer's context thinks
 local HALT_DOORS_INTERVAL = 2
 local ROLE_NONE = 0 -- TEAM_ROLE_NONE
-local TEAM_BITS = 2
-local SECONDS_BITS = 32
 local THINK_HOOK = "wetsand_rounds"
-
-local NET_NOTICE = "wetsand_round_notice_show"
-local NET_TIME_ADDED = "wetsand_timer_time_added"
-local NET_SOUND = "wetsand_pa_sound_file"
-util.AddNetworkString(NET_NOTICE)
-util.AddNetworkString(NET_TIME_ADDED)
 
 -- CTeamRoundTimer::AddTimerSeconds' ROUND_TIMER_TIME_ADDED_* sounds.
 local TIME_ADDED_WINNER = "Announcer.TimeAwardedForTeam"
@@ -140,10 +132,11 @@ local function TeamPlayers(t)
 	return players
 end
 
--- A player counts once their client has finished loading, so the pre-round
--- freeze is not spent on a loading screen. Bots have no client to report it.
+-- A player counts once their client has finished loading (client_ready,
+-- wetsand/sh_events.lua), so the pre-round freeze is not spent on a
+-- loading screen. Bots have no client to report it.
 local function Ready(ply)
-	return ply.wetsandReady or ply:IsBot()
+	return WETSAND.IsReady(ply) or ply:IsBot()
 end
 
 -- BHavePlayers: someone ready and on RED or BLU, or something else fighting
@@ -320,11 +313,13 @@ function Controller:SetOvertime(on)
 	if self.round:SetOvertime(on) then PublishOvertime(on) end
 end
 
+-- In whole seconds, as TF2's event carries them; a clamp to the timer's
+-- maximum length can leave a fraction.
 local function Notify(t, seconds)
-	net.Start(NET_TIME_ADDED)
-	net.WriteUInt(t, TEAM_BITS)
-	net.WriteInt(seconds, SECONDS_BITS)
-	net.Broadcast()
+	WETSAND.Events.Fire("teamplay_timer_time_added", {
+		team = t,
+		seconds_added = math.Round(seconds),
+	})
 end
 
 -- A timer model's events, carried out on its entity.
@@ -668,33 +663,6 @@ function Controller:CapSounds(capTeam, wouldWinGame, scorePerRound)
 		scorePerRound = scorePerRound,
 	})
 	for _, line in ipairs(lines) do WETSAND.BroadcastSound(line.team, line.sound) end
-end
-
--- Sounds to a chosen set of players, as TF2 plays them to each client's
--- local player.
-function Controller:SoundTo(players, name)
-	if #players == 0 then return end
-	net.Start(NET_SOUND)
-	net.WriteString(name)
-	net.Send(players)
-end
-
--- Every player not on the given team (spectators included), as the client's
--- "local player's team != capping team" test selects them.
-function Controller:PlayersNotOn(t)
-	local list = {}
-	for _, ply in ipairs(player.GetAll()) do
-		if ply:Team() ~= t then list[#list + 1] = ply end
-	end
-	return list
-end
-
--- A round notice for the HUD (teamplay_capture_blocked and the like).
-function Controller:Notice(text, t)
-	net.Start(NET_NOTICE)
-	net.WriteString(text)
-	net.WriteUInt(t, TEAM_BITS)
-	net.Broadcast()
 end
 
 -- logic_auto (CLogicAuto::Think) ----------------------------------------------------

@@ -13,31 +13,9 @@
 -- wetsand_aiwar_debug; its client part (cl.lua) is the one view for all of it.
 local Debug = WETSAND.require("foundation.npc.debug")
 
-local STATE_NET = "wetsand_nb_debug_state_send"
-local PATH_NET = "wetsand_nb_debug_path_send"
-local COST_NET = "wetsand_nb_debug_cost_send"
-local BEHAVIOR_NET = "wetsand_nb_debug_behavior_send"
-local NAV_NET = "wetsand_nb_debug_nav_send"
-local REMOVED_NET = "wetsand_nb_debug_npc_removed"
-for _, name in ipairs({ STATE_NET, PATH_NET, COST_NET, BEHAVIOR_NET, NAV_NET, REMOVED_NET }) do
-	util.AddNetworkString(name)
-end
-
--- Field widths on the wire; the client reads with the same.
-local INDEX_BITS = 16 -- entity indexes
-local LAYER_COUNT_BITS = 4
-local POINT_COUNT_BITS = 12
-local MOVE_BITS = 3
-local AREA_COUNT_BITS = 16
-local TOTAL_BITS = 32
-local AREA_ID_BITS = 32
-local NPC_COUNT_BITS = 8
-local LINE_COUNT_BITS = 6
-local ATTRIBUTE_COUNT_BITS = 4
-local MAX_POINTS = 2 ^ POINT_COUNT_BITS - 1
-local MAX_NPCS = 2 ^ NPC_COUNT_BITS - 1
-local MAX_LINES = 2 ^ LINE_COUNT_BITS - 1
-local NO_SELECTION = 0
+-- The game events it fires are sh.lua's.
+local MAX_POINTS, MAX_NPCS, MAX_LINES = Debug.MAX_POINTS, Debug.MAX_NPCS, Debug.MAX_LINES
+local NO_SELECTION = Debug.NO_SELECTION
 
 local TICK_INTERVAL = 0.25
 local NAV_INTERVAL = 0.5
@@ -159,44 +137,41 @@ local function Recipients(self, bot, layer)
 	return list
 end
 
-local function WriteCorners(area)
-	for corner = NW, SW do net.WriteVector(area:GetCorner(corner)) end
-end
-
-local function WriteOptionalFloat(value)
-	net.WriteBool(value ~= nil)
-	if value ~= nil then net.WriteFloat(value) end
+local function Corners(area)
+	local corners = {}
+	for corner = NW, SW do corners[#corners + 1] = area:GetCorner(corner) end
+	return corners
 end
 
 function Controller:SendState(ply, sub)
-	local names = Debug.LayerNames(sub.layers)
-	net.Start(STATE_NET)
-	net.WriteUInt(#names, LAYER_COUNT_BITS)
-	for _, name in ipairs(names) do net.WriteString(name) end
 	local selected = sub.selected
-	net.WriteUInt(IsValid(selected) and selected:EntIndex() or NO_SELECTION, INDEX_BITS)
-	net.Send(ply)
+	WETSAND.Events.Fire("nb_debug_state", {
+		layers = Debug.LayerNames(sub.layers),
+		selected = IsValid(selected) and selected:EntIndex() or NO_SELECTION,
+	}, ply)
 end
 
 function Controller:SendPath(recipients, bot, report)
 	if #recipients == 0 then return end
-	local count = math.min(#report.points, MAX_POINTS)
-	net.Start(PATH_NET)
-	net.WriteUInt(bot.index, INDEX_BITS)
-	net.WriteString(report.strategy)
-	net.WriteString(report.source)
-	net.WriteBool(report.found)
-	WriteOptionalFloat(report.totalCost)
-	net.WriteFloat(report.microseconds)
-	WriteOptionalFloat(report.nodesExpanded)
-	net.WriteFloat(report.computedAt)
-	net.WriteVector(report.goal)
-	net.WriteUInt(count, POINT_COUNT_BITS)
-	for i = 1, count do
-		net.WriteVector(report.points[i].pos)
-		net.WriteUInt(report.points[i].move, MOVE_BITS)
+	local points = {}
+	for i = 1, math.min(#report.points, MAX_POINTS) do
+		points[i] = {
+			pos = report.points[i].pos,
+			move = report.points[i].move,
+		}
 	end
-	net.Send(recipients)
+	WETSAND.Events.Fire("nb_debug_path", {
+		index = bot.index,
+		strategy = report.strategy,
+		source = report.source,
+		found = report.found,
+		total_cost = report.totalCost,
+		microseconds = report.microseconds,
+		nodes_expanded = report.nodesExpanded,
+		computed_at = report.computedAt,
+		goal = report.goal,
+		points = points,
+	}, recipients)
 end
 
 -- The explored areas, decimated to fit one message; none when this search's
@@ -209,22 +184,18 @@ function Controller:SendCost(recipients, bot, report)
 		local area = navmesh.GetNavAreaByID(explored.id)
 		if IsValid(area) then
 			areas[#areas + 1] = {
-				explored = explored,
-				area = area,
+				id = explored.id,
+				cost = explored.cost,
+				impassable = explored.impassable,
+				corners = Corners(area),
 			}
 		end
 	end
-	net.Start(COST_NET)
-	net.WriteUInt(bot.index, INDEX_BITS)
-	net.WriteUInt(#report.explored, TOTAL_BITS)
-	net.WriteUInt(#areas, AREA_COUNT_BITS)
-	for _, item in ipairs(areas) do
-		net.WriteUInt(item.explored.id, AREA_ID_BITS)
-		net.WriteFloat(item.explored.cost)
-		net.WriteBool(item.explored.impassable)
-		WriteCorners(item.area)
-	end
-	net.Send(recipients)
+	WETSAND.Events.Fire("nb_debug_cost", {
+		index = bot.index,
+		total = #report.explored,
+		areas = areas,
+	}, recipients)
 end
 
 -- What the server already knows, to a player whose view just changed.
@@ -243,21 +214,15 @@ function Controller:SendBehavior(ply, sub, now)
 		local log = self.logs[ent]
 		if log and sub:Wants(bot, Debug.BEHAVIOR) and #items < MAX_NPCS then
 			local name, frames = self.npcs[ent]:Stack()
+			local all, lines = Debug.BehaviorLines(name, frames, log:Entries(), now), {}
+			for i = 1, math.min(#all, MAX_LINES) do lines[i] = all[i] end
 			items[#items + 1] = {
 				index = bot.index,
-				lines = Debug.BehaviorLines(name, frames, log:Entries(), now),
+				lines = lines,
 			}
 		end
 	end
-	net.Start(BEHAVIOR_NET)
-	net.WriteUInt(#items, NPC_COUNT_BITS)
-	for _, item in ipairs(items) do
-		local count = math.min(#item.lines, MAX_LINES)
-		net.WriteUInt(item.index, INDEX_BITS)
-		net.WriteUInt(count, LINE_COUNT_BITS)
-		for i = 1, count do net.WriteString(item.lines[i]) end
-	end
-	net.Send(ply)
+	WETSAND.Events.Fire("nb_debug_behavior", { npcs = items }, ply)
 end
 
 function Controller:SendNav(ply, sub)
@@ -270,17 +235,15 @@ function Controller:SendNav(ply, sub)
 			distance = area:GetCenter():DistToSqr(pos),
 		}
 	end
-	local nearest = Debug.NearestFirst(items, Debug.MAX_NAV_AREAS)
-	net.Start(NAV_NET)
-	net.WriteUInt(#nearest, NPC_COUNT_BITS)
-	for _, item in ipairs(nearest) do
-		local attributes = self.navAttributes:Of(item.area)
-		net.WriteUInt(item.area:GetID(), AREA_ID_BITS)
-		WriteCorners(item.area)
-		net.WriteUInt(#attributes, ATTRIBUTE_COUNT_BITS)
-		for _, name in ipairs(attributes) do net.WriteString(name) end
+	local areas = {}
+	for i, item in ipairs(Debug.NearestFirst(items, Debug.MAX_NAV_AREAS)) do
+		areas[i] = {
+			id = item.area:GetID(),
+			corners = Corners(item.area),
+			attributes = self.navAttributes:Of(item.area),
+		}
 	end
-	net.Send(ply)
+	WETSAND.Events.Fire("nb_debug_nav", { areas = areas }, ply)
 end
 
 -------------------------------------------------------------------------------
@@ -321,9 +284,7 @@ function Controller:OnRemoved(ent)
 		if IsValid(ply) and sub:IsActive() then viewers[#viewers + 1] = ply end
 	end
 	if #viewers == 0 then return end
-	net.Start(REMOVED_NET)
-	net.WriteUInt(index, INDEX_BITS)
-	net.Send(viewers)
+	WETSAND.Events.Fire("nb_debug_npc_removed", { index = index }, viewers)
 end
 
 hook.Add("Think", "wetsand_nbdebug", function()

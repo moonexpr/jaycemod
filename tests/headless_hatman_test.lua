@@ -2,6 +2,7 @@ local T = dofile("tests/harness.lua")
 local FakeCombatant = dofile("tests/fake_combatant.lua")
 local NpcSystem = T.require("foundation.npc")
 local HHH = T.require("foundation.npc.headless_hatman")
+local BossEvents = T.require("foundation.npc.boss_events")
 local HalloweenBoss = T.require("foundation.npc.halloween_boss")
 local Tag = T.require("foundation.npc.tag")
 local Holiday = T.require("foundation.holiday")
@@ -56,6 +57,7 @@ local function Scene(t)
 	me.points = t.points or {}
 	function me:ControlPoints() return self.points end
 	function me:Break() self:Record("Break") end
+	function me:FireGameEvent(name, fields) self:Record("FireGameEvent", name, fields) end
 	local npc = NpcSystem.Npc.New(HHH, { convars = HHH.CONVARS }, me)
 	return {
 		world = world,
@@ -75,6 +77,13 @@ local function Tick(s, seconds)
 end
 
 local function Count(me, name) return #me:Called(name) end
+
+-- The game events it fired, by name.
+local function Fired(me)
+	local names = {}
+	for _, args in ipairs(me:Called("FireGameEvent")) do names[#names + 1] = args[1] end
+	return table.concat(names, ",")
+end
 
 local function Sounds(me)
 	local sounds = {}
@@ -156,6 +165,7 @@ T.test("it rises 200 over 3 s from 10 above its spawn, rumbling, facing the near
 	T.eq(me:Called("StartActivity")[1][1], "ACT_TRANSITION", "emerge activity")
 	T.eq(me:Called("DispatchParticleEffect")[1][1], "halloween_boss_summon", "summon particle")
 	T.eq(Sounds(me), "Halloween.HeadlessBossSpawnRumble", "rumble")
+	T.eq(Fired(me), BossEvents.PUMPKIN_LORD_SUMMONED, "tells everyone it rose (the clients play its music)")
 	T.eq(me.origin, V(0, 0, 10 - 200), "sunk")
 	T.near(me.yaw, 90, EPSILON, "faces RED, the nearer")
 	Tick(s, 1.5)
@@ -710,8 +720,10 @@ T.test("killed, nobody is IT; it dies, breaks into gibs and is removed", functio
 	T.eq(Sounds(s.me), "Halloween.HeadlessBossDying", "dying sound")
 	Tick(s, 1)
 	T.eq(s.me.removed, false, "until the activity ends")
+	T.eq(Fired(s.me), "", "no word while it dies")
 	s.me:FinishActivity()
 	Tick(s, TICK)
+	T.eq(Fired(s.me), BossEvents.PUMPKIN_LORD_KILLED, "tells everyone it was killed, once gone")
 	T.eq(Count(s.me, "Break"), 1, "gibs")
 	T.eq(s.me:Called("DispatchParticleEffect")[1][1], "halloween_boss_death", "death particle")
 	T.eq(s.me.removed, true, "removed")

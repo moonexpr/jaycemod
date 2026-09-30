@@ -2,11 +2,10 @@
 -- (CTFPlayer::ChangeTeam / ForceChangeTeam), the jointeam command
 -- (HandleCommand_JoinTeam), auto-assignment (GetAutoTeam), and automatic
 -- balancing (CTeamplayRoundBasedRules::BalanceTeams). The rules themselves
--- are in foundation/teams.lua.
+-- are in foundation/teams.lua. The server never opens the team menu: a
+-- client opens it itself while unassigned, or on the team keys
+-- (wetsand/cl_teams.lua).
 local L = WETSAND.TeamRules
-
-util.AddNetworkString("wetsand_team_menu_open")
-util.AddNetworkString("wetsand_team_menu_request")
 
 -- TF2's convar, as teamplayroundbased_gamerules.cpp defines it;
 -- mp_teams_unbalance_limit is shared (sh_core.lua) for the team menu.
@@ -44,9 +43,11 @@ end
 -- spawn hook of another addon that moves the player is undone (see
 -- WETSAND.RestoreTeam). CTFPlayer::ChangeTeam: a live player moving between RED
 -- and BLU dies, and comes back with the new team's respawn wave; joining
--- the spectators (or leaving players unassigned) puts the player into
--- observer mode. force follows ForceChangeTeam with a full team switch:
--- nobody dies (the round-end team swap, whose players are respawned anyway).
+-- the spectators puts the player into observer mode, and so does
+-- UNASSIGNED, the join state: an observer who is not spawned into the game
+-- (GM:PlayerSpawn keeps them observing) and whose client shows the team
+-- menu. force follows ForceChangeTeam with a full team switch: nobody dies
+-- (the round-end team swap, and a new game unassigning everyone).
 function WETSAND.SetPlayerTeam(ply, newTeam, force)
 	local old = ply:Team()
 	ply.wetsandTeam = newTeam
@@ -71,8 +72,8 @@ function WETSAND.SetPlayerTeam(ply, newTeam, force)
 end
 
 -- CTFPlayer::InitialSpawn (TF_STATE_WELCOME): a new player has no team.
--- GM:PlayerSpawn keeps them observing, and the team menu opens once their
--- client is ready for it ("wetsand_team_menu_request").
+-- GM:PlayerSpawn keeps them observing, and their client opens the team
+-- menu once it has loaded.
 function WETSAND.SetInitialTeam(ply)
 	ply.wetsandTeam = UNASSIGNED
 	ply:SetTeam(UNASSIGNED)
@@ -81,7 +82,7 @@ end
 -- Undo a team change made behind WETSAND.SetPlayerTeam (other addons put
 -- players on their own teams, such as 21 "Runner", in their spawn hooks).
 -- A player who never had a TF2 team keeps it if they are on one, and is
--- otherwise left without a team and shown the team menu.
+-- otherwise left without a team, for their client to show the team menu.
 function WETSAND.RestoreTeam(ply)
 	if not ply.wetsandTeam then
 		local current = ply:Team()
@@ -89,32 +90,15 @@ function WETSAND.RestoreTeam(ply)
 			ply.wetsandTeam = current
 		else
 			WETSAND.SetPlayerTeam(ply, UNASSIGNED, true)
-			WETSAND.ShowTeamMenu(ply)
 		end
 	elseif ply:Team() ~= ply.wetsandTeam then
 		ply:SetTeam(ply.wetsandTeam)
 	end
 end
 
--- CTFTeamMenu::ShowPanel refuses to open during game over, and for a
--- losing player while the winners celebrate.
-function WETSAND.ShowTeamMenu(ply)
-	if not L.TeamMenuAllowed(WETSAND.State(), ply:Team(), GetGlobal2Int("wetsand_round_winner", WETSAND.TEAM_UNASSIGNED)) then
-		ply:PrintMessage(HUD_PRINTCENTER, "You can't change team at this time.")
-		return
-	end
-	net.Start("wetsand_team_menu_open")
-	net.Send(ply)
-end
-
--- Net messages sent during PlayerInitialSpawn can arrive before the client
--- can take them, so the client says when it is ready for the menu.
-net.Receive("wetsand_team_menu_request", function(_, ply)
-	if WETSAND.Active() and ply.wetsandTeam == UNASSIGNED then WETSAND.ShowTeamMenu(ply) end
-end)
-
 -- CTFPlayer::HandleCommand_JoinTeam: "red", "blue", "auto" or "spectate".
--- A join that would unbalance the teams is refused and the menu shown again.
+-- A join that would unbalance the teams is refused; an unassigned player's
+-- client keeps the menu up.
 function WETSAND.JoinTeam(ply, name)
 	if WETSAND.State() == WETSAND.STATE.GAME_OVER then return end
 	local newTeam = L.ParseJoinTeam(name)
@@ -122,7 +106,6 @@ function WETSAND.JoinTeam(ply, name)
 	if newTeam < SPECTATOR or newTeam == ply:Team() then return end
 	if newTeam ~= SPECTATOR and L.WouldUnbalance(Counts(), newTeam, ply:Team(), unbalanceLimit:GetInt()) then
 		ply:PrintMessage(HUD_PRINTCENTER, "That team is full; join the other team or wait.")
-		WETSAND.ShowTeamMenu(ply)
 		return
 	end
 	WETSAND.SetPlayerTeam(ply, newTeam)

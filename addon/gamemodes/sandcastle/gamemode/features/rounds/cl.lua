@@ -59,8 +59,6 @@ surface.CreateFont("Sandcastle.Rounds.Small", {
 local timerY = CreateClientConVar("cl_hud_round_timer_y", "0.08", true, false,
 	"Round timer top, as a fraction of screen height (clears display notches).")
 
-local TEAM_BITS = 2
-local SECONDS_BITS = 32
 local ANNOUNCE_SECONDS = 4
 local TIME_ADDED_SECONDS = 2
 local STALEMATE_PANEL_SECONDS = 15
@@ -117,32 +115,39 @@ local function TimerLeft()
 	return GetGlobal2Float("wetsand_timer_end_time", 0) - CurTime()
 end
 
--- Net messages ---------------------------------------------------------------------
+-- Game events ---------------------------------------------------------------------
 
-net.Receive("wetsand_pa_announce_text", function()
-	View.announcement = {
-		text = net.ReadString(),
-		team = net.ReadUInt(TEAM_BITS),
+-- The announcement line (wetsand/sh_announcer.lua), from the server or
+-- another view.
+function View:Announce(text, team)
+	self.announcement = {
+		text = text,
+		team = team,
 		expires = CurTime() + ANNOUNCE_SECONDS,
 	}
+end
+
+WETSAND.Events.Listen("announcement", "wetsand_rounds_view", function(fields)
+	View:Announce(fields.text, fields.team)
 end)
 
-net.Receive("wetsand_timer_time_added", function()
-	local t = net.ReadUInt(TEAM_BITS)
-	local seconds = net.ReadInt(SECONDS_BITS)
-	if seconds == 0 then return end
-	View.timeAdded = {
-		text = Text.TimeAdded(seconds),
-		team = t,
-		expires = CurTime() + TIME_ADDED_SECONDS,
-	}
-end)
-
-net.Receive("wetsand_round_notice_show", function()
-	View.notices[#View.notices + 1] = {
-		text = net.ReadString(),
-		team = net.ReadUInt(TEAM_BITS),
+-- A round notice under the timer, in the team's colour (the capture view's
+-- "defended" notices).
+function View:Notice(text, team)
+	self.notices[#self.notices + 1] = {
+		text = text,
+		team = team,
 		expires = CurTime() + NOTICE_SECONDS,
+	}
+end
+
+-- The timer's "+time" beside the clock (sh.lua).
+WETSAND.Events.Listen("teamplay_timer_time_added", "wetsand_rounds_view", function(fields)
+	if fields.seconds_added == 0 then return end
+	View.timeAdded = {
+		text = Text.TimeAdded(fields.seconds_added),
+		team = fields.team,
+		expires = CurTime() + TIME_ADDED_SECONDS,
 	}
 end)
 

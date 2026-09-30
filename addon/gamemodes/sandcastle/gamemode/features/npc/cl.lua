@@ -28,4 +28,23 @@ hook.Add("HUDPaint", "wetsand_boss_health_bar", function()
 	View:DrawBossHealth(ScrW(), ScrH())
 end)
 
+-- The bosses' game events, as ClientModeTFNormal::FireGameEvent takes
+-- them: the cue's sound on the local player (the Horsemann's and
+-- MONOCULUS's music and lines), and its line in the chat.
+local BossEvents = WETSAND.require("foundation.npc.boss_events")
+
+function View:PlayBossCue(name, fields)
+	local cue = BossEvents.Cue(name, fields)
+	local ply = LocalPlayer()
+	if IsValid(ply) then ply:EmitSound(cue.sound) end
+	local color = cue.color and Color(cue.color.r, cue.color.g, cue.color.b) or color_white
+	chat.AddText(color, cue.text)
+end
+
+for _, name in ipairs(BossEvents.NAMES) do
+	WETSAND.Events.Listen(name, "wetsand_npc_view", function(fields)
+		View:PlayBossCue(name, fields)
+	end)
+end
+
 return View

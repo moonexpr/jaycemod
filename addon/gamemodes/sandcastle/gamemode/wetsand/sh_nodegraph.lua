@@ -2,6 +2,27 @@
 -- show and report the graph the nodegraph feature makes from the nav mesh
 -- (features/nodegraph), and on clients the Utilities menu entry and the
 -- overlay that draws it.
+
+-- The overlay's snapshot, which the nodegraph feature fires to an admin who
+-- turned it on: which graph (generated, installed or none), the nodes near
+-- them with their zone, and the links between those nodes (a, b: places in
+-- nodes), human if a soldier's hull can walk it.
+local E = WETSAND.Events
+local COUNT_BITS = 16
+
+E.Define("nodegraph_debug", {
+	source = E.String(),
+	nodes = E.List(E.Record({
+		pos = E.Vector(),
+		zone = E.UInt(COUNT_BITS),
+	}), COUNT_BITS),
+	links = E.List(E.Record({
+		a = E.UInt(COUNT_BITS),
+		b = E.UInt(COUNT_BITS),
+		human = E.Bool(),
+	}), COUNT_BITS),
+})
+
 if SERVER then
 	local function Command(name, method, help)
 		concommand.Add(name, function(ply)
@@ -47,17 +68,13 @@ end)
 
 -- The overlay: nodes as small boxes in their zone's colour, links a
 -- soldier (the human hull) can walk in green, others in red.
-local DEBUG_NET = "wetsand_nodegraph_debug"
 local DEBUG_STALE = 3
 local NODE_BOX = Vector(4, 4, 4)
 local WALKABLE, HULL_ONLY = Color(80, 230, 120), Color(230, 90, 80)
 local shown = { nodes = {}, links = {}, received = 0, source = "none" }
 
-net.Receive(DEBUG_NET, function()
-	local source, nodes, links = net.ReadString(), {}, {}
-	for i = 1, net.ReadUInt(16) do nodes[i] = { pos = net.ReadVector(), zone = net.ReadUInt(16) } end
-	for i = 1, net.ReadUInt(16) do links[i] = { a = net.ReadUInt(16), b = net.ReadUInt(16), human = net.ReadBool() } end
-	shown.source, shown.nodes, shown.links, shown.received = source, nodes, links, CurTime()
+E.Listen("nodegraph_debug", "wetsand_nodegraph", function(fields)
+	shown.source, shown.nodes, shown.links, shown.received = fields.source, fields.nodes, fields.links, CurTime()
 end)
 
 local function ZoneColor(zone)

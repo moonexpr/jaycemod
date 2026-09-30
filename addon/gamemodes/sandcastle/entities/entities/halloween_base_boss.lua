@@ -63,3 +63,9 @@ end
 function ENT:Break()
 	self:GibBreakClient(vector_origin)
 end
+
+-- A boss game event (foundation.npc.boss_events, defined by the npc
+-- feature) to every client, whose npc view plays its cue.
+function ENT:FireGameEvent(name, fields)
+	WETSAND.Events.Fire(name, fields)
+end

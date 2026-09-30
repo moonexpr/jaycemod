@@ -3,7 +3,8 @@
 -- foundation.npc.halloween_boss. It rises from the ground, makes the nearest
 -- player IT (foundation.npc.tag, through the tag controller) and chases
 -- them, cleaves whoever it targets with its axe, and every 20 s yells Boo,
--- stunning everyone nearby.
+-- stunning everyone nearby. It fires pumpkin_lord_summoned as it rises and
+-- pumpkin_lord_killed once gone, for the clients' music.
 --
 -- Its port adds METHODS to the boss port: ControlPoints() -> the control
 -- points of the master, in its order, as { origin, inRound, owner,
@@ -12,6 +13,7 @@
 local require = require
 local NpcSystem = require("foundation.npc")
 local HalloweenBoss = require("foundation.npc.halloween_boss")
+local BossEvents = require("foundation.npc.boss_events")
 local Actor = require("foundation.npc.actor")
 local Players = require("foundation.players")
 local Teams = require("foundation.teams")
@@ -158,6 +160,7 @@ function Emerge:OnStart(me, priorAction)
 	else
 		me:SetYaw(me:RandomFloat(0, FULL_TURN))
 	end
+	me:FireGameEvent(BossEvents.PUMPKIN_LORD_SUMMONED, {})
 	return self:Continue()
 end
 
@@ -487,6 +490,7 @@ function Dying:Update(me, interval)
 	me:Break()
 	me:DispatchParticleEffect(DEATH_PARTICLE, me:GetAbsOrigin())
 	me:Remove()
+	me:FireGameEvent(BossEvents.PUMPKIN_LORD_KILLED, {})
 	return self:Done()
 end
 

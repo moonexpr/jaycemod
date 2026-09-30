@@ -12,7 +12,10 @@
 --   SetDesiredAltitude(h) (the hover locomotion's), AimHeadTowards(v),
 --   GroundHeight(v) -> z | nil (the nav mesh's ground below v),
 --   IsNearNavMesh(v, range), SetHidden(hidden), TraceWorld(from, to) ->
---   the hit position | nil (brushes only), Announce(text) (to everyone).
+--   the hit position | nil (brushes only).
+-- A map's eyeball (not a spell's) fires foundation.npc.boss_events' game
+-- events where TF2 does: summoned as it rises, the escape warnings,
+-- escaped and killed; the clients play and print what they mean.
 --
 -- The teleport vortex it leaves is a model here too (Vortex), bound by the
 -- teleport_vortex entity through VORTEX_METHODS.
@@ -23,12 +26,13 @@
 local require = require
 local NpcSystem = require("foundation.npc")
 local HalloweenBoss = require("foundation.npc.halloween_boss")
+local BossEvents = require("foundation.npc.boss_events")
 local Targeting = require("foundation.npc.targeting")
 local Actor = require("foundation.npc.actor")
 local Players = require("foundation.players")
 local Teams = require("foundation.teams")
 local cos, floor, huge, max, pi, rad, sin = math.cos, math.floor, math.huge, math.max, math.pi, math.rad, math.sin
-local format, ipairs, setmetatable = string.format, ipairs, setmetatable
+local ipairs, setmetatable = ipairs, setmetatable
 module(...)
 
 BOSS_TYPE = HalloweenBoss.BOSS_MONOCULUS
@@ -60,7 +64,6 @@ METHODS = {
 	"IsNearNavMesh",
 	"SetHidden",
 	"TraceWorld",
-	"Announce",
 }
 
 MODEL = "models/props_halloween/halloween_demoeye.mdl"
@@ -86,7 +89,7 @@ PARTICLES = {
 SKIN_NORMAL, SKIN_RED, SKIN_TEAM_RED, SKIN_TEAM_BLUE = 0, 1, 2, 3
 ANGER_ENRAGED, ANGER_GRUMPY, ANGER_CALM = 1, 0.4, 0
 
-FIRST_LEVEL = 1 -- CEyeballBoss::m_level starts here
+FIRST_LEVEL = BossEvents.FIRST_LEVEL -- CEyeballBoss::m_level starts here
 ZOMBIE_KIND = "zombie" -- foundation.npc.zombie's registry kind
 
 -- Mood
@@ -117,25 +120,9 @@ TELEPORT_NAV_RANGE = 1.5 * MAX_TELEPORT_HEIGHT
 LOOK_AT_ATTACKER_MIN, LOOK_AT_ATTACKER_MAX = 0.5, 2
 LOOK_AROUND_MIN, LOOK_AROUND_MAX = 2, 4
 LOOK_AROUND_DISTANCE = 100
--- eyeball_boss_escape_imminent, as tf_english.txt words it; checked
+-- The seconds left at which eyeball_boss_escape_imminent fires, checked
 -- nearest first, as CEyeballBossIdle::Update does.
-ESCAPE_WARNINGS = {
-	{
-		seconds = 10,
-		text = "MONOCULUS! is leaving in 10 seconds!",
-		levelText = "MONOCULUS! (LEVEL %d) is leaving in 10 seconds!",
-	},
-	{
-		seconds = 30,
-		text = "MONOCULUS! is leaving in 30 seconds...",
-		levelText = "MONOCULUS! (LEVEL %d) is leaving in 30 seconds...",
-	},
-	{
-		seconds = 60,
-		text = "MONOCULUS! is leaving in 60 seconds...",
-		levelText = "MONOCULUS! (LEVEL %d) is leaving in 60 seconds...",
-	},
-}
+ESCAPE_WARNINGS = { 10, 30, 60 }
 
 -- Notice and ApproachTarget
 NOTICE_TIME = 0.25
@@ -286,6 +273,7 @@ function Emerge:OnStart(me, priorAction)
 	self.emergePos = me:GetAbsOrigin() + me:Vector(0, 0, EMERGE_OFFSET)
 	me:SetAbsOrigin(self.emergePos - me:Vector(0, 0, EMERGE_DEPTH))
 	me:EmitSound("Halloween.HeadlessBossSpawnRumble")
+	me:FireGameEvent(BossEvents.EYEBALL_BOSS_SUMMONED, { level = Level(me) })
 	self.killTimer:Start(KILL_TIME)
 	return self:Continue()
 end
@@ -340,12 +328,13 @@ end
 
 -- The escape warnings, each once as the time left falls past it.
 function Idle:WarnOfEscape(me)
-	local state = self.state
 	local remaining = self.lifeTimer:GetRemainingTime()
-	for _, warning in ipairs(ESCAPE_WARNINGS) do
-		if remaining < warning.seconds and self.lastWarnTime > warning.seconds then
-			local levelled = state.level > FIRST_LEVEL
-			me:Announce(levelled and format(warning.levelText, state.level) or warning.text)
+	for _, seconds in ipairs(ESCAPE_WARNINGS) do
+		if remaining < seconds and self.lastWarnTime > seconds then
+			me:FireGameEvent(BossEvents.EYEBALL_BOSS_ESCAPE_IMMINENT, {
+				level = Level(me),
+				time_remaining = seconds,
+			})
 			break
 		end
 	end
@@ -639,6 +628,7 @@ function Escape:Update(me, interval)
 	me:DispatchParticleEffect(ESCAPE_PARTICLE, me:GetAbsOrigin())
 	me:SetBossHealth(0)
 	me:Remove()
+	if not self.state.spell then me:FireGameEvent(BossEvents.EYEBALL_BOSS_ESCAPED, { level = Level(me) }) end
 	me:Shared().level = FIRST_LEVEL
 	return self:Done()
 end
@@ -679,6 +669,7 @@ function Dead:Update(me, interval)
 	me:ScreenShake(origin, POP_SHAKE_AMPLITUDE, POP_SHAKE_FREQUENCY, POP_SHAKE_DURATION, SHAKE_RADIUS)
 	me:Remove()
 	if not self.state.spell then
+		me:FireGameEvent(BossEvents.EYEBALL_BOSS_KILLED, { level = Level(me) })
 		local shared = me:Shared()
 		shared.level = shared.level + 1
 	end

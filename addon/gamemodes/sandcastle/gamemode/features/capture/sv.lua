@@ -327,7 +327,7 @@ local LINE_FILTER = {
 local function PlayLines(self, point, lines)
 	for _, line in ipairs(lines) do
 		if line.hearer == Capture.HEAR_OTHERS then
-			self.rounds:SoundTo(self.rounds:PlayersNotOn(line.team), line.sound)
+			WETSAND.BroadcastSoundToOthers(line.team, line.sound)
 		else
 			local filter = RecipientFilter()
 			LINE_FILTER[line.hearer](filter, line.team)
@@ -381,7 +381,11 @@ local POINT_EVENTS = {
 		end
 		if e.sounding and e.team ~= NOBODY then
 			WETSAND.FireOutput(point, "OnOwnerChangedTo" .. TEAM_OUTPUT[e.team], point)
-			WETSAND.Announce(WETSAND.TeamName[e.team] .. " captured point " .. self.set:Index(point), e.team)
+			WETSAND.Events.Fire("teamplay_point_captured", {
+				cp = self.set:Index(point),
+				cpname = self.set:PrintName(point),
+				team = e.team,
+			})
 		end
 		hook.Run("WetsandPointCaptured", point, e.team)
 		if e.scoring then HandleScoring(self, point, e.team) end
@@ -702,11 +706,14 @@ local function CaptureStarted(self, point, team)
 	hook.Run("WetsandPointCaptureStarted", point, team)
 end
 
--- CTeamControlPoint::CaptureBlocked: the HUD's "defended" notice, only for
--- points with a print name.
+-- CTeamControlPoint::CaptureBlocked: the clients show the HUD's "defended"
+-- notice (for points with a print name).
 local function CaptureBlocked(self, point, team)
-	local name = self.set:PrintName(point)
-	if name ~= "" then self.rounds:Notice(WETSAND.TeamName[team] .. " defended " .. name, team) end
+	WETSAND.Events.Fire("teamplay_capture_blocked", {
+		cp = self.set:Index(point),
+		cpname = self.set:PrintName(point),
+		team = team,
+	})
 	hook.Run("WetsandPointCaptureBlocked", point, team)
 end
 

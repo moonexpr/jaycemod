@@ -46,7 +46,6 @@ end
 function ENT:SetDesiredAltitude(h) self.hover:SetDesiredAltitude(h) end
 function ENT:AimHeadTowards(v) self.lookAt = v end
 function ENT:SetHidden(hidden) self:SetNoDraw(hidden) end
-function ENT:Announce(text) WETSAND.Announce(text) end
 
 -- TheNavMesh->GetSimpleGroundHeight
 function ENT:GroundHeight(v)

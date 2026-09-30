@@ -9,17 +9,23 @@ GM.Website = ""
 DeriveGamemode("sandbox")
 
 -- Modules in gamemode/wetsand/ load by prefix: sh_ on both realms, sv_ on the
--- server, cl_ on clients. sh_core defines the TF2 table and loads first;
--- the rest load in name order.
+-- server, cl_ on clients. sh_core defines the WETSAND table and loads first,
+-- including sh_events (the game event library) itself; the rest load in
+-- name order.
 function GM:WetsandModules(prefix)
 	local files = file.Find(self.FolderName .. "/gamemode/wetsand/" .. prefix .. "*.lua", "LUA")
 	table.sort(files)
 	return files
 end
 
+local LOADED_FIRST = {
+	["sh_core.lua"] = true,
+	["sh_events.lua"] = true,
+}
+
 include("wetsand/sh_core.lua")
 for _, f in ipairs(GM:WetsandModules("sh_")) do
-	if f ~= "sh_core.lua" then include("wetsand/" .. f) end
+	if not LOADED_FIRST[f] then include("wetsand/" .. f) end
 end
 
 -- TF2's team numbers (1 spectator, 2 RED, 3 BLU); GMod reserves only 0, 1001 and 1002.
