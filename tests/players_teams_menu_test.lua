@@ -140,4 +140,51 @@ T.test("nobody opens it once the game is over", function()
 	T.eq(L.TeamMenuAllowed(STATE.GAME_OVER, UNASSIGNED, UNASSIGNED), false)
 end)
 
+-- The client's own reaction to its team (TeamMenuReaction): an unassigned
+-- player on a map with rounds sees the menu, as a fresh join does.
+
+-- A loaded client on a map with rounds, its menu closed, mid-round.
+local function View(t)
+	local view = {
+		rounds = true,
+		ready = true,
+		team = UNASSIGNED,
+		openedOn = nil,
+		state = STATE.RND_RUNNING,
+		winner = UNASSIGNED,
+	}
+	for k, v in pairs(t or {}) do view[k] = v end
+	return view
+end
+
+T.test("a loaded, unassigned client on a map with rounds opens the menu", function()
+	T.eq(L.TeamMenuReaction(View()), L.MENU_OPEN, "open")
+end)
+
+T.test("the menu waits for the client to load and for a map with rounds", function()
+	T.eq(L.TeamMenuReaction(View({ ready = false })), L.MENU_STAY, "still loading")
+	T.eq(L.TeamMenuReaction(View({ rounds = false })), L.MENU_STAY, "a Sandbox map")
+end)
+
+T.test("a player on a team or spectating is left alone", function()
+	T.eq(L.TeamMenuReaction(View({ team = RED })), L.MENU_STAY, "on RED")
+	T.eq(L.TeamMenuReaction(View({ team = SPEC })), L.MENU_STAY, "spectating")
+end)
+
+T.test("an unassigned player does not get the menu once the game is over", function()
+	T.eq(L.TeamMenuReaction(View({ state = STATE.GAME_OVER })), L.MENU_STAY, "game over")
+end)
+
+T.test("the open menu closes when the player gets a team", function()
+	T.eq(L.TeamMenuReaction(View({ openedOn = UNASSIGNED, team = BLU })), L.MENU_CLOSE, "joined BLU")
+	T.eq(L.TeamMenuReaction(View({ openedOn = UNASSIGNED, team = SPEC })), L.MENU_CLOSE, "spectating")
+	T.eq(L.TeamMenuReaction(View({ openedOn = UNASSIGNED })), L.MENU_STAY, "still choosing")
+end)
+
+T.test("a menu opened on a team (F2) closes when the team changes, and stays when it becomes unassigned", function()
+	T.eq(L.TeamMenuReaction(View({ openedOn = RED, team = RED })), L.MENU_STAY, "same team")
+	T.eq(L.TeamMenuReaction(View({ openedOn = RED, team = BLU })), L.MENU_CLOSE, "balanced to BLU")
+	T.eq(L.TeamMenuReaction(View({ openedOn = RED, team = UNASSIGNED })), L.MENU_STAY, "a new game: now choosing")
+end)
+
 T.finish()

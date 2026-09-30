@@ -88,17 +88,16 @@ function GM:PostPlayerDeath(ply)
 	if IsValid(WETSAND.Rules) then WETSAND.Rules:OnPlayerDeath(ply) end
 end
 
--- The team key (F2, gm_showteam) opens TF2's team menu on TF2 maps.
+-- On maps with rounds the team keys (F2's gm_showteam, changeteam) open the
+-- team menu on the client (wetsand/cl_teams.lua), never through here:
+-- Sandbox's own team menu stays shut.
 function GM:ShowTeam(ply)
-	if WETSAND.Active() then
-		WETSAND.ShowTeamMenu(ply)
-		return
-	end
+	if WETSAND.Active() then return end
 	self.BaseClass.ShowTeam(self, ply)
 end
 
 -- Base's changeteam command goes through TF2's join rules on TF2 maps;
--- without a team index it opens the team menu, as TF2's changeteam does.
+-- without a team index it does nothing here (the client's bind opens the menu).
 local JOIN_NAME = {
 	[WETSAND.TEAM_SPECTATOR] = "spectate",
 	[WETSAND.TEAM_RED] = "red",
@@ -107,11 +106,7 @@ local JOIN_NAME = {
 
 function GM:PlayerRequestTeam(ply, teamIndex)
 	if WETSAND.Active() then
-		if teamIndex == nil then
-			WETSAND.ShowTeamMenu(ply)
-		elseif JOIN_NAME[teamIndex] then
-			WETSAND.JoinTeam(ply, JOIN_NAME[teamIndex])
-		end
+		if JOIN_NAME[teamIndex] then WETSAND.JoinTeam(ply, JOIN_NAME[teamIndex]) end
 		return
 	end
 	self.BaseClass.PlayerRequestTeam(self, ply, teamIndex)

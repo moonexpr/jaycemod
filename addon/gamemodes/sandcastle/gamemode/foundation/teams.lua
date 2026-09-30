@@ -159,6 +159,27 @@ function TeamMenuAllowed(state, currentTeam, winner)
 	return not (state == STATE.TEAM_WIN and currentTeam >= FIRST_GAME_TEAM and currentTeam ~= winner)
 end
 
+-- What the client does with its team menu, which it opens itself: TF2's
+-- fallback state is having no team, and an unassigned player sees the menu
+-- (as a fresh join does), whoever unassigned them.
+MENU_STAY, MENU_OPEN, MENU_CLOSE = 0, 1, 2
+
+-- view: rounds (the map has rounds), ready (the client has loaded), team
+-- (the local player's now), openedOn (its team when the open menu opened,
+-- nil while closed), state and winner (the round's). The open menu closes
+-- once the team changes to a real one; the closed menu opens for the
+-- unassigned while the menu is allowed.
+function TeamMenuReaction(view)
+	if view.openedOn ~= nil then
+		if view.team ~= view.openedOn and view.team ~= UNASSIGNED then return MENU_CLOSE end
+		return MENU_STAY
+	end
+	if view.rounds and view.ready and view.team == UNASSIGNED and TeamMenuAllowed(view.state, view.team, view.winner) then
+		return MENU_OPEN
+	end
+	return MENU_STAY
+end
+
 local TEAM_FULL = "Team is full"
 
 local function Choice(kind, spec, currentTeam)

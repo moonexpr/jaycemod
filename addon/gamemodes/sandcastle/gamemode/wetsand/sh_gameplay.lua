@@ -57,7 +57,7 @@ local HELP = "Sandcastle plays in Sandbox mode or Gameplay mode (sv_gameplay_ena
 	.. "Sandbox mode has no rounds and pauses the timer: the map plays like Sandbox, "
 	.. "with spawn doors and forcefields open to everyone. Begin Game announces a new game, "
 	.. "counts down from " .. Gamemode.COUNTDOWN .. ", clears the scores, restarts the rounds and sends everyone "
-	.. "to the team menu as spectators until they choose a team. Stop Game returns to Sandbox mode, "
+	.. "back to the team menu, without a team, until they choose one. Stop Game returns to Sandbox mode, "
 	.. "unless sv_gameplay_disable_sandbox is 1."
 
 local function BuildPanel(panel)

@@ -12,7 +12,8 @@
 -- round timer to show as "Prepare"; the announcer speaking the last
 -- numbers) and the Administrator's line; then Begin: the scores cleared,
 -- the round system restarted from scratch (RestartRound's full reset, as a map's first round)
--- and everyone a spectator with the team menu open until they choose a team.
+-- and everyone unassigned, as on joining, so each client opens its team
+-- menu until they choose a team.
 local Gamemode = WETSAND.require("foundation.gamemode")
 local Gameplay = WETSAND.require("foundation.gameplay")
 
@@ -190,7 +191,8 @@ function Controller:Tick()
 	self:Publish()
 end
 
--- Gameplay mode begins: a clean slate, everyone choosing a team.
+-- Gameplay mode begins: a clean slate, everyone unassigned, the fallback
+-- state of a fresh join; each client opens its team menu on seeing it.
 function Controller:Begin()
 	local rules = WETSAND.Rules
 	team.SetScore(WETSAND.TEAM_RED, 0)
@@ -198,8 +200,7 @@ function Controller:Begin()
 	rules:Unhalt()
 	rules:RestartRound()
 	for _, ply in ipairs(player.GetAll()) do
-		WETSAND.SetPlayerTeam(ply, WETSAND.TEAM_SPECTATOR, true)
-		WETSAND.ShowTeamMenu(ply)
+		WETSAND.SetPlayerTeam(ply, WETSAND.TEAM_UNASSIGNED, true)
 	end
 	-- JC: Hidden because too much visual clutte
 	-- Center("Choose a team!")
