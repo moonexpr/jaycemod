@@ -323,6 +323,24 @@ function CostRecorder:Explored()
 	return explored
 end
 
+-- The field widths of the nbdebug feature's game events
+-- (features/nbdebug/sh.lua), and the most a list of each width holds.
+INDEX_BITS = 16 -- entity indexes
+NO_SELECTION = 0 -- the selected index when nothing is
+LAYER_COUNT_BITS = 4
+POINT_COUNT_BITS = 12
+MOVE_BITS = 3
+AREA_COUNT_BITS = 16
+TOTAL_BITS = 32
+AREA_ID_BITS = 32
+NPC_COUNT_BITS = 8
+LINE_COUNT_BITS = 6
+ATTRIBUTE_COUNT_BITS = 4
+CORNER_COUNT_BITS = 3 -- a nav area's four corners
+MAX_POINTS = 2 ^ POINT_COUNT_BITS - 1
+MAX_NPCS = 2 ^ NPC_COUNT_BITS - 1
+MAX_LINES = 2 ^ LINE_COUNT_BITS - 1
+
 -- A snapshot must fit one net message (64 KB). An area on the wire: its id
 -- (4 bytes), cost (4), impassable flag, and four corners as net vectors
 -- (about 9 bytes each).

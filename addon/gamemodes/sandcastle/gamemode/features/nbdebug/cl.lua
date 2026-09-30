@@ -9,26 +9,9 @@
 local Debug = WETSAND.require("foundation.npc.debug")
 local Overlay = WETSAND.require("foundation.aiwar.overlay")
 
-local STATE_NET = "wetsand_nb_debug_state_send"
-local PATH_NET = "wetsand_nb_debug_path_send"
-local COST_NET = "wetsand_nb_debug_cost_send"
-local BEHAVIOR_NET = "wetsand_nb_debug_behavior_send"
-local NAV_NET = "wetsand_nb_debug_nav_send"
-local REMOVED_NET = "wetsand_nb_debug_npc_removed"
-local WAR_NET = "wetsand_aiwar_debug" -- the aiwar controller's (Controller:SendDebug)
-
--- The controller's field widths.
-local INDEX_BITS = 16
-local LAYER_COUNT_BITS = 4
-local POINT_COUNT_BITS = 12
-local MOVE_BITS = 3
-local AREA_COUNT_BITS = 16
-local TOTAL_BITS = 32
-local AREA_ID_BITS = 32
-local NPC_COUNT_BITS = 8
-local LINE_COUNT_BITS = 6
-local ATTRIBUTE_COUNT_BITS = 4
-local NO_SELECTION = 0
+-- The game events it listens to are sh.lua's; aiwar_debug is the aiwar
+-- controller's (Controller:SendDebug).
+local NO_SELECTION = Debug.NO_SELECTION
 local CORNERS = 4
 
 local STALE = 2 -- seconds a periodic snapshot stays drawn without a newer one
@@ -80,64 +63,53 @@ local function Live(received)
 	return CurTime() - received < STALE
 end
 
-local function ReadCorners(lift)
-	local corners = {}
-	for i = 1, CORNERS do corners[i] = net.ReadVector() + lift end
-	return corners
+local function Lifted(corners, lift)
+	local lifted = {}
+	for i = 1, CORNERS do lifted[i] = corners[i] + lift end
+	return lifted
 end
 
 local function Center(corners)
 	return (corners[1] + corners[2] + corners[3] + corners[4]) / CORNERS
 end
 
-local function ReadOptionalFloat()
-	if net.ReadBool() then return net.ReadFloat() end
-	return nil
-end
+local E = WETSAND.Events
 
-net.Receive(STATE_NET, function()
+E.Listen("nb_debug_state", "wetsand_nbdebug_view", function(fields)
 	local layers = {}
-	for _ = 1, net.ReadUInt(LAYER_COUNT_BITS) do layers[net.ReadString()] = true end
+	for _, name in ipairs(fields.layers) do layers[name] = true end
 	view.layers = layers
-	view.selected = net.ReadUInt(INDEX_BITS)
+	view.selected = fields.selected
 	-- the server resends what the new view needs
 	view.paths, view.cost, view.behavior, view.nav = {}, nil, {}, {}
 end)
 
-net.Receive(PATH_NET, function()
-	local index = net.ReadUInt(INDEX_BITS)
-	local path = {
-		strategy = net.ReadString(),
-		source = net.ReadString(),
-		found = net.ReadBool(),
-		totalCost = ReadOptionalFloat(),
-		microseconds = net.ReadFloat(),
-		nodesExpanded = ReadOptionalFloat(),
-		computedAt = net.ReadFloat(),
-		goal = net.ReadVector(),
-		points = {},
+E.Listen("nb_debug_path", "wetsand_nbdebug_view", function(fields)
+	view.paths[fields.index] = {
+		strategy = fields.strategy,
+		source = fields.source,
+		found = fields.found,
+		totalCost = fields.total_cost,
+		microseconds = fields.microseconds,
+		nodesExpanded = fields.nodes_expanded,
+		computedAt = fields.computed_at,
+		goal = fields.goal,
+		points = fields.points,
 	}
-	for i = 1, net.ReadUInt(POINT_COUNT_BITS) do
-		path.points[i] = {
-			pos = net.ReadVector(),
-			move = net.ReadUInt(MOVE_BITS),
-		}
-	end
-	view.paths[index] = path
 end)
 
-net.Receive(COST_NET, function()
+E.Listen("nb_debug_cost", "wetsand_nbdebug_view", function(fields)
 	local cost = {
-		index = net.ReadUInt(INDEX_BITS),
-		total = net.ReadUInt(TOTAL_BITS),
+		index = fields.index,
+		total = fields.total,
 		areas = {},
 	}
-	for i = 1, net.ReadUInt(AREA_COUNT_BITS) do
+	for i, sent in ipairs(fields.areas) do
 		local area = {
-			id = net.ReadUInt(AREA_ID_BITS),
-			cost = net.ReadFloat(),
-			impassable = net.ReadBool(),
-			corners = ReadCorners(COST_LIFT),
+			id = sent.id,
+			cost = sent.cost,
+			impassable = sent.impassable,
+			corners = Lifted(sent.corners, COST_LIFT),
 		}
 		area.center = Center(area.corners)
 		cost.areas[i] = area
@@ -152,33 +124,27 @@ net.Receive(COST_NET, function()
 	view.cost = cost
 end)
 
-net.Receive(BEHAVIOR_NET, function()
+E.Listen("nb_debug_behavior", "wetsand_nbdebug_view", function(fields)
 	local behavior = {}
-	for _ = 1, net.ReadUInt(NPC_COUNT_BITS) do
-		local index, lines = net.ReadUInt(INDEX_BITS), {}
-		for i = 1, net.ReadUInt(LINE_COUNT_BITS) do lines[i] = net.ReadString() end
-		behavior[index] = lines
-	end
+	for _, npc in ipairs(fields.npcs) do behavior[npc.index] = npc.lines end
 	view.behavior, view.behaviorReceived = behavior, CurTime()
 end)
 
-net.Receive(NAV_NET, function()
+E.Listen("nb_debug_nav", "wetsand_nbdebug_view", function(fields)
 	local nav = {}
-	for i = 1, net.ReadUInt(NPC_COUNT_BITS) do
-		local id, corners = net.ReadUInt(AREA_ID_BITS), ReadCorners(NAV_LIFT)
-		local attributes = {}
-		for j = 1, net.ReadUInt(ATTRIBUTE_COUNT_BITS) do attributes[j] = net.ReadString() end
+	for i, area in ipairs(fields.areas) do
+		local corners = Lifted(area.corners, NAV_LIFT)
 		nav[i] = {
 			corners = corners,
 			center = Center(corners),
-			label = Debug.NavLabel(id, attributes),
+			label = Debug.NavLabel(area.id, area.attributes),
 		}
 	end
 	view.nav, view.navReceived = nav, CurTime()
 end)
 
-net.Receive(REMOVED_NET, function()
-	local index = net.ReadUInt(INDEX_BITS)
+E.Listen("nb_debug_npc_removed", "wetsand_nbdebug_view", function(fields)
+	local index = fields.index
 	view.paths[index], view.behavior[index] = nil, nil
 	if view.cost and view.cost.index == index then view.cost = nil end
 	if view.selected == index then view.selected, view.nav = NO_SELECTION, {} end
@@ -193,36 +159,12 @@ local war = { soldiers = {}, teams = {}, spheres = {}, received = -math.huge }
 -- Brighter than the teams' HUD colours, to read over any map.
 local WAR_COLOR = { [WETSAND.TEAM_RED] = Color(255, 90, 90), [WETSAND.TEAM_BLUE] = Color(110, 175, 255) }
 
-net.Receive(WAR_NET, function()
-	local teams, soldiers = {}, {}
-	for i = 1, net.ReadUInt(8) do
-		local fireTeam = { team = net.ReadUInt(3), name = net.ReadString(), contact = net.ReadVector() }
-		if net.ReadBool() then fireTeam.flank = net.ReadVector() end
-		teams[i] = fireTeam
-	end
-	local spheres = {}
-	for i = 1, net.ReadUInt(4) do
-		spheres[i] = { team = net.ReadUInt(3), center = net.ReadVector(), radius = net.ReadFloat(), push = net.ReadBool() }
-	end
-	war.spheres = spheres
-	local lanes = {}
-	for i = 1, net.ReadUInt(4) do
-		local lane = { team = net.ReadUInt(3), index = net.ReadUInt(3), points = {} }
-		for j = 1, net.ReadUInt(6) do lane.points[j] = net.ReadVector() end
-		lanes[i] = lane
-	end
-	war.lanes = lanes
-	for i = 1, net.ReadUInt(8) do
-		local soldier = { ent = net.ReadEntity(), team = net.ReadUInt(3), heading = net.ReadString(), details = {}, route = {} }
-		for j = 1, net.ReadUInt(4) do soldier.details[j] = net.ReadString() end
-		if net.ReadBool() then soldier.goal = net.ReadVector() end
-		for j = 1, net.ReadUInt(8) do soldier.route[j] = net.ReadVector() end
-		soldier.fireTeam = teams[net.ReadUInt(8)]
-		soldier.moving = net.ReadBool()
-		if net.ReadBool() then soldier.cover = net.ReadVector() end
-		soldiers[i] = soldier
-	end
-	war.teams, war.soldiers, war.received = teams, soldiers, CurTime()
+E.Listen("aiwar_debug", "wetsand_nbdebug_view", function(fields)
+	local teams = fields.fire_teams
+	war.spheres = fields.spheres
+	war.lanes = fields.lanes
+	for _, soldier in ipairs(fields.soldiers) do soldier.fireTeam = teams[soldier.fire_team] end
+	war.teams, war.soldiers, war.received = teams, fields.soldiers, CurTime()
 end)
 
 -- The tactics markers: contacts in amber, cover spots in green, flank

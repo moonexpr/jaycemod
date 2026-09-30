@@ -1,5 +1,6 @@
 -- The nbdebug feature's two ends and its command file agree: the view
--- reads the net messages and field widths the controller writes, and every
+-- listens to the game events the controllers fire, the feature's shared
+-- part defines them (their fields and widths, for both realms), and every
 -- command the realm file registers has a handler.
 local T = dofile("tests/harness.lua")
 
@@ -15,39 +16,41 @@ local function ReadFile(path)
 	return text
 end
 
--- name -> value of each `local NAME = "..."` or `local NAME = <number>`
--- whose name ends in `suffix`.
-local function Constants(text, suffix)
+-- The game event names a text fires, listens to or defines, as a set.
+local function Names(text, call)
 	local found = {}
-	for name, value in text:gmatch("\nlocal ([%u_]+" .. suffix .. ") = ([^\n%-]+)") do
-		found[name] = value:gsub("%s+$", "")
-	end
+	for name in text:gmatch(call .. "%(\"([%w_]+)\"") do found[name] = true end
 	return found
 end
 
 local controller, view = ReadFile(CONTROLLER), ReadFile(VIEW)
+local shared = ReadFile(ROOT .. "features/nbdebug/sh.lua")
+local aiwar = ReadFile(ROOT .. "features/aiwar/sv.lua")
 
-T.test("the view reads every net message the controller sends, by the same name", function()
-	local sent, read = Constants(controller, "_NET"), Constants(view, "_NET")
-	local count = 0
-	for name, value in pairs(sent) do
+-- What the nbdebug controller fires, and the AI war's overlay.
+local function Fired()
+	local fired = Names(controller, "Events%.Fire")
+	fired.aiwar_debug = Names(aiwar, "Events%.Fire").aiwar_debug
+	return fired
+end
+
+T.test("the view listens to every game event the controllers fire", function()
+	local heard, count = Names(view, "Listen"), 0
+	for name in pairs(Fired()) do
 		count = count + 1
-		T.eq(read[name], value, name)
-		T.eq(view:find("net.Receive(" .. name .. ",", 1, true) ~= nil, true, "a receiver for " .. name)
+		T.eq(heard[name], true, "a listener for " .. name)
 	end
-	T.eq(count >= 6, true, "the messages were found")
+	T.eq(count >= 7, true, "the events were found")
 end)
 
-T.test("the net messages are named wetsand_nb_debug_<subject>_<event>", function()
-	for name, value in pairs(Constants(controller, "_NET")) do
-		T.eq(value:match('^"wetsand_nb_debug_[a-z]+_[a-z]+"$') ~= nil, true, name .. " = " .. value)
-	end
+T.test("every game event they fire is defined in the feature's shared part, for both realms", function()
+	local defined = Names(shared, "Define")
+	for name in pairs(Fired()) do T.eq(defined[name], true, name .. " defined in sh.lua") end
 end)
 
-T.test("both ends use the same field widths", function()
-	local written, read = Constants(controller, "_BITS"), Constants(view, "_BITS")
-	for name, value in pairs(written) do
-		T.eq(read[name], value, name)
+T.test("the controller's game events are named nb_debug_<subject>", function()
+	for name in pairs(Names(controller, "Events%.Fire")) do
+		T.eq(name:match("^nb_debug_[a-z_]+$") ~= nil, true, name)
 	end
 end)
 
