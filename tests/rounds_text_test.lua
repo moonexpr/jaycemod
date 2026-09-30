@@ -92,4 +92,85 @@ T.test("time added reads as the flash beside the timer shows it", function()
 	T.eq(Text.TimeAdded(-30), "-0:30", "taken away")
 end)
 
+-- The timer box: the gamemode's countdown to Gameplay mode, or the round's timer.
+local NOW = 500
+local NO_TRANSITION = 0
+local ROUND_LEFT = 42
+
+-- A round timer running in normal time, overridden by fields.
+local function Display(fields)
+	local q = {
+		now = NOW,
+		transitionEnd = NO_TRANSITION,
+		shown = true,
+		halted = false,
+		koth = false,
+		preround = false,
+		setup = false,
+		overtime = false,
+		left = ROUND_LEFT,
+	}
+	for k, v in pairs(fields) do q[k] = v end
+	return Text.TimerDisplay(q)
+end
+
+T.test("the countdown to Gameplay mode shows on the timer as Prepare while the rounds are halted", function()
+	local d = Display({
+		transitionEnd = NOW + 9,
+		halted = true,
+	})
+	T.eq(d.kind, Text.DISPLAY_TRANSITION, "the transition's clock")
+	T.eq(d.left, 9, "seconds until Gameplay mode")
+	T.eq(d.label, Text.LABEL_TRANSITION, "labelled")
+	T.eq(Text.LABEL_TRANSITION, "Prepare", "the operator's word")
+end)
+
+T.test("the countdown shows even without a HUD timer or on a koth map", function()
+	local plain = Display({
+		transitionEnd = NOW + 3,
+		halted = true,
+		shown = false,
+	})
+	T.eq(plain.kind, Text.DISPLAY_TRANSITION, "no team_round_timer")
+	local koth = Display({
+		transitionEnd = NOW + 3,
+		halted = true,
+		koth = true,
+	})
+	T.eq(koth.kind, Text.DISPLAY_TRANSITION, "koth")
+end)
+
+T.test("Sandbox mode outside a transition shows no timer", function()
+	T.eq(Display({ halted = true }), nil, "no transition")
+	T.eq(Display({
+		transitionEnd = NOW,
+		halted = true,
+	}), nil, "a countdown that has run out while the rounds are still halted")
+end)
+
+T.test("once the countdown has run out the round's own timer takes over", function()
+	local d = Display({
+		transitionEnd = NOW - 1,
+		preround = true,
+	})
+	T.eq(d.kind, Text.DISPLAY_ROUND, "the round's clock")
+	T.eq(d.left, ROUND_LEFT, "its time")
+	T.eq(d.label, Text.LABEL_PREROUND, "pre-round")
+end)
+
+T.test("the round's timer carries its phase's label", function()
+	T.eq(Display({}).label, nil, "normal time")
+	T.eq(Display({ setup = true }).label, Text.LABEL_SETUP, "setup")
+	T.eq(Display({ overtime = true }).label, Text.LABEL_OVERTIME, "overtime")
+	T.eq(Display({
+		preround = true,
+		setup = true,
+	}).label, Text.LABEL_PREROUND, "pre-round before setup")
+end)
+
+T.test("no round timer without a HUD timer or on a koth map", function()
+	T.eq(Display({ shown = false }), nil, "no team_round_timer")
+	T.eq(Display({ koth = true }), nil, "koth draws its own clocks")
+end)
+
 T.finish()

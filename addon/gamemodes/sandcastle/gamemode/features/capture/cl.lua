@@ -1,8 +1,11 @@
 -- The capture feature's view: TF2's control point HUD (CHudControlPointIcons)
 -- drawn from what the capture controller networks (wetsand_point_*). Each
--- point is an icon in the master's caplayout rows under the round timer:
--- its owner's colour and number, a padlock bar while locked and the unlock
--- countdown, the capture progress in the capping team's colour, the cappers
+-- point is an icon in the master's caplayout rows, centred at the bottom of
+-- the screen and scaled with its height as TF2 lays them out
+-- (foundation.capture.hud), except in payload rounds, whose cart HUD takes
+-- the bottom centre: its owner's colour and number, a padlock bar while
+-- locked and the unlock countdown in place of the number
+-- (CControlPointCountdown shares the icon's bounds), the capture progress in the capping team's colour, the cappers
 -- (xN, or N/required when a fixed count is needed) or BLOCKED, which teams
 -- may cap it, dimmed when out of the mini-round, and a tf_logic_cp_timer's
 -- countdown. The local player standing on a point sees why they may not
@@ -10,19 +13,20 @@
 -- then the capture-enabled line (CControlPointCountdown::OnTick).
 WETSAND.Feature("rounds")
 local Capture = WETSAND.require("foundation.capture")
+local Hud = WETSAND.require("foundation.capture.hud")
+local Rounds = WETSAND.require("foundation.rounds")
 local Text = WETSAND.require("foundation.rounds.text")
 
 local NOBODY, RED, BLUE = WETSAND.TEAM_UNASSIGNED, WETSAND.TEAM_RED, WETSAND.TEAM_BLUE
 local NO_POINT_STOOD_ON = 0
 
-local ICON_SIZE = 48
-local ICON_GAP = 8
-local ROW_GAP = 22 -- room for the cappers line under each row
-local BELOW_TIMER = 72 -- the round timer's box height and a margin
-local INSET = 4
-local BAR_HEIGHT = 7
-local TICK_SIZE = 7
-local LOCK_BAR_HEIGHT = 6
+-- An icon's parts, in TF2's HUD units (foundation.capture.hud).
+local ICON_INSET = 3
+local BAR_HEIGHT = 5
+local TICK_SIZE = 5
+local LOCK_BAR_HEIGHT = 4
+local NUMBER_FONT_SIZE = 18
+local INSET = 4 -- the capture panel's, in pixels
 local DIM_ALPHA = 70
 local FILL_ALPHA = 200
 local PANEL_ABOVE_CROSSHAIR = 70
@@ -39,19 +43,26 @@ local GOLD = Color(255, 210, 90)
 local FONT_NUMBER = "Sandcastle.Capture.Number"
 local FONT_LABEL = "Sandcastle.Capture.Label"
 
-surface.CreateFont(FONT_NUMBER, {
-	font = "Roboto",
-	size = 26,
-	weight = 800,
-})
-surface.CreateFont(FONT_LABEL, {
-	font = "Roboto",
-	size = 16,
-	weight = 700,
-})
+-- HUD units to pixels on a screen h pixels tall, at least one.
+local function Pixels(units, h)
+	return math.max(1, math.floor(units * h / Hud.UNITS_TALL))
+end
 
--- The rounds view's convar: where the timer's box starts.
-local timerY = GetConVar("cl_hud_round_timer_y")
+-- The icons' fonts, sized with the screen's height.
+local function CreateFonts()
+	surface.CreateFont(FONT_NUMBER, {
+		font = "Roboto",
+		size = Pixels(NUMBER_FONT_SIZE, ScrH()),
+		weight = 800,
+	})
+	surface.CreateFont(FONT_LABEL, {
+		font = "Roboto",
+		size = Pixels(Hud.LABEL, ScrH()),
+		weight = 700,
+	})
+end
+CreateFonts()
+hook.Add("OnScreenSizeChanged", "wetsand_capture_fonts", CreateFonts)
 
 local UNLOCK_WARNINGS = {
 	[5] = "Announcer.RoundBegins5Seconds",
@@ -120,41 +131,47 @@ local function CappersText(p)
 	return "x" .. p.cappers, color_white
 end
 
-local function DrawIcon(p, x, y)
+-- A point's icon, size pixels square at x, y on a screen h pixels tall.
+local function DrawIcon(p, x, y, size, h)
 	local owner = TeamColor(p.owner)
 	local alpha = p.inRound and FILL_ALPHA or DIM_ALPHA
-	local inner = ICON_SIZE - 2 * INSET
-	draw.RoundedBox(CORNER, x, y, ICON_SIZE, ICON_SIZE, BACK)
-	draw.RoundedBox(INSET, x + INSET, y + INSET, inner, inner, Color(owner.r, owner.g, owner.b, alpha))
-	draw.SimpleText(tostring(p.rank + 1), FONT_NUMBER, x + ICON_SIZE / 2, y + ICON_SIZE / 2, color_white, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+	local inset, tick = Pixels(ICON_INSET, h), Pixels(TICK_SIZE, h)
+	local barHeight = Pixels(BAR_HEIGHT, h)
+	local inner = size - 2 * inset
+	local centreX, centreY = x + size / 2, y + size / 2
+	draw.RoundedBox(CORNER, x, y, size, size, BACK)
+	draw.RoundedBox(inset, x + inset, y + inset, inner, inner, Color(owner.r, owner.g, owner.b, alpha))
+	local counting = p.locked and p.unlockTime > CurTime()
+	if counting then
+		draw.SimpleText(tostring(Seconds(p.unlockTime)), FONT_NUMBER, centreX, centreY, GOLD, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+	else
+		draw.SimpleText(tostring(p.rank + 1), FONT_NUMBER, centreX, centreY, color_white, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+	end
 	if p.locked then
 		surface.SetDrawColor(LOCK)
-		surface.DrawRect(x + INSET, y + INSET, inner, LOCK_BAR_HEIGHT)
-		if p.unlockTime > CurTime() then
-			draw.SimpleText(tostring(Seconds(p.unlockTime)), FONT_LABEL, x + ICON_SIZE / 2, y - 2, GOLD, TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM)
-		end
+		surface.DrawRect(x + inset, y + inset, inner, Pixels(LOCK_BAR_HEIGHT, h))
 	end
 	if p.capping ~= NOBODY then
 		local c = TeamColor(p.capping)
-		local barY = y + ICON_SIZE - INSET - BAR_HEIGHT
+		local barY = y + size - inset - barHeight
 		surface.SetDrawColor(BAR_BACK)
-		surface.DrawRect(x + INSET, barY, inner, BAR_HEIGHT)
+		surface.DrawRect(x + inset, barY, inner, barHeight)
 		surface.SetDrawColor(c.r, c.g, c.b, 255)
-		surface.DrawRect(x + INSET, barY, inner * p.progress, BAR_HEIGHT)
+		surface.DrawRect(x + inset, barY, inner * p.progress, barHeight)
 	end
 	if p.redCanCap then
 		local c = TeamColor(RED)
 		surface.SetDrawColor(c.r, c.g, c.b, 255)
-		surface.DrawRect(x, y + ICON_SIZE - TICK_SIZE, TICK_SIZE, TICK_SIZE)
+		surface.DrawRect(x, y + size - tick, tick, tick)
 	end
 	if p.blueCanCap then
 		local c = TeamColor(BLUE)
 		surface.SetDrawColor(c.r, c.g, c.b, 255)
-		surface.DrawRect(x + ICON_SIZE - TICK_SIZE, y + ICON_SIZE - TICK_SIZE, TICK_SIZE, TICK_SIZE)
+		surface.DrawRect(x + size - tick, y + size - tick, tick, tick)
 	end
 	local label, labelColor = CappersText(p)
 	if p.timerEnd > CurTime() then label, labelColor = string.format("%d:%02d", math.floor(Seconds(p.timerEnd) / 60), Seconds(p.timerEnd) % 60), GOLD end
-	if label then draw.SimpleText(label, FONT_LABEL, x + ICON_SIZE / 2, y + ICON_SIZE + 2, labelColor, TEXT_ALIGN_CENTER) end
+	if label then draw.SimpleText(label, FONT_LABEL, centreX, y + size, labelColor, TEXT_ALIGN_CENTER) end
 end
 
 -- The layout's rows of shown points.
@@ -172,11 +189,16 @@ local function Rows(count)
 end
 
 local function DrawIcons(w, h)
-	local y = math.floor(h * timerY:GetFloat()) + BELOW_TIMER
-	for _, row in ipairs(Rows(GetGlobal2Int("wetsand_point_count", 0))) do
-		local x = (w - (#row * ICON_SIZE + (#row - 1) * ICON_GAP)) / 2
-		for i, p in ipairs(row) do DrawIcon(p, x + (i - 1) * (ICON_SIZE + ICON_GAP), y) end
-		y = y + ICON_SIZE + ROW_GAP
+	if not Hud.Shown(GetGlobal2Int("wetsand_round_hud_type", Rounds.HUD_NONE)) then return end
+	local rows = Rows(GetGlobal2Int("wetsand_point_count", 0))
+	local sizes = {}
+	for i, row in ipairs(rows) do sizes[i] = #row end
+	local layout = Hud.Layout(sizes, w, h)
+	for line, row in ipairs(rows) do
+		for i, p in ipairs(row) do
+			local at = layout.rows[line][i]
+			DrawIcon(p, at.x, at.y, layout.size, h)
+		end
 	end
 end
 
