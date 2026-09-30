@@ -99,9 +99,6 @@ local function PublishCarts()
 	SetGlobal2Int("wetsand_cart_count", #watchers)
 	SetGlobal2Bool("wetsand_cart_race", race)
 	SetGlobal2Int("wetsand_cart_race_leader", race and R.Leader(distances) or 0)
-	-- The capture feature draws the points now; cl_hud's old capture boxes
-	-- stay empty until package R's cl_hud edit removes them (delete then).
-	SetGlobal2Int("wetsand_capture_count", 0)
 end
 
 local nextPublish = 0
@@ -115,7 +112,7 @@ end)
 -- each side hears its stage outcome; full_round is a win that resets the map.
 hook.Add("WetsandRoundWin", "wetsand_payload_race", function(winner)
 	if not WETSAND.HasMultipleTrains() then return end
-	for team, line in pairs(R.OutcomeLines(winner, WETSAND.Rules.forceMapReset)) do
+	for team, line in pairs(R.OutcomeLines(winner, GetGlobal2Bool("wetsand_round_full_round", true))) do
 		WETSAND.BroadcastSound(team, line)
 	end
 end)

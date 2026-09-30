@@ -776,8 +776,6 @@ local EFFECTS = {
 		SetGlobal2Int("wetsand_round_win_reason", e.reason)
 		SetGlobal2Bool("wetsand_round_full_round", e.fullRound)
 		SetGlobal2Int("wetsand_rounds_remaining", remaining)
-		-- sv_payload's race lines read it until the payload mode speaks them.
-		self.proxy.forceMapReset = e.fullRound
 	end,
 	win_song = function(self, e)
 		PlayWinSong(e.winner)
@@ -988,9 +986,9 @@ local PROXY_INPUTS = {
 	setcustomupgradesfile = Ignore,
 }
 
--- A tf_gamerules input, lower-cased; returns whether it is one.
+-- A tf_gamerules input, in any case; returns whether it is one.
 function Controller:ProxyInput(name, value)
-	local handler = PROXY_INPUTS[name]
+	local handler = PROXY_INPUTS[string.lower(name)]
 	if not handler then return false end
 	handler(self, value)
 	return true

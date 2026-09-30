@@ -51,7 +51,7 @@ surface.CreateFont(FONT_LABEL, {
 })
 
 -- The rounds view's convar: where the timer's box starts.
-local timerY = GetConVar("wetsand_hud_timer_y")
+local timerY = GetConVar("cl_hud_round_timer_y")
 
 local UNLOCK_WARNINGS = {
 	[5] = "Announcer.RoundBegins5Seconds",
