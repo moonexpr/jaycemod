@@ -101,4 +101,46 @@ T.test("attackers' posts are picked the same way, best first and spaced", functi
 	T.eq(picked[1].x .. "," .. picked[2].x, "0,400", "front first")
 end)
 
+-- Guards: posts round a control point its team holds (TF2's
+-- CSelectDefenseAreaForPoint).
+
+local function Guard(t)
+	return {
+		pos = t.pos or P(0, 0, t.elevation or 0),
+		sees = t.sees ~= false,
+		toPoint = t.toPoint or Posts.IDEAL_RANGE,
+		elevation = t.elevation or 0,
+		cover = t.cover or false,
+		sniper = t.sniper or 0,
+		past = t.past or 0,
+		anywhere = t.anywhere == true,
+	}
+end
+
+T.test("a guard post must see the point, within MAX_GUARD_RANGE, not far past it, and not far below it", function()
+	T.eq(Posts.ScoreGuard(Guard({ sees = false })), nil, "unseen")
+	T.eq(Posts.ScoreGuard(Guard({ toPoint = Posts.MAX_GUARD_RANGE + 1 })), nil, "too far")
+	T.eq(Posts.ScoreGuard(Guard({ toPoint = Posts.MAX_GUARD_RANGE })) ~= nil, true, "at the range")
+	T.eq(Posts.ScoreGuard(Guard({ past = Posts.PAST_POINT_LIMIT + 1 })), nil, "too far past the point, toward the enemy")
+	T.eq(Posts.ScoreGuard(Guard({ past = Posts.PAST_POINT_LIMIT })) ~= nil, true, "at the limit")
+	T.eq(Posts.ScoreGuard(Guard({ past = Posts.PAST_POINT_LIMIT + 1, anywhere = true })) ~= nil, true, "anywhere: King of the Hill")
+	T.eq(Posts.ScoreGuard(Guard({ elevation = -Posts.GUARD_TOO_LOW - 1 })), nil, "too far below")
+	T.eq(Posts.ScoreGuard(Guard({ elevation = -Posts.GUARD_TOO_LOW })) ~= nil, true, "at the depth limit")
+	T.eq(Posts.ScoreGuard(Guard({})) ~= nil, true, "a good one")
+end)
+
+T.test("the higher guard post with cover wins", function()
+	local plain = Posts.ScoreGuard(Guard({}))
+	local high = Posts.ScoreGuard(Guard({ elevation = 150 }))
+	local highCover = Posts.ScoreGuard(Guard({ elevation = 150, cover = true }))
+	T.eq(high > plain, true, "high ground")
+	T.eq(highCover > high, true, "with cover")
+	local picked = Posts.Pick({
+		Guard({ pos = P(0, 0) }),
+		Guard({ pos = P(400, 0, 150), elevation = 150, cover = true }),
+		Guard({ pos = P(800, 0, 150), elevation = 150 }),
+	}, 1, Posts.ScoreGuard)
+	T.eq(picked[1].x, 400, "the high covered spot")
+end)
+
 T.finish()

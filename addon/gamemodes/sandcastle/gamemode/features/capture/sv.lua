@@ -859,23 +859,46 @@ local function PublishPoint(rank, hud)
 	SetGlobal2Float(Key(rank, "timer_end"), hud.timerEnd)
 end
 
-local function PublishPoints(self)
+-- Every point with what the HUD shows of it, in rank order: { point, rank
+-- (0-based), hud (PointSet:HudPoint) }. What a player may know of the
+-- points, so the AI war reads its capture state here.
+function Controller:HudPoints()
 	local set = self:Set()
 	local q = OrderQuery(self, RED)
 	local bases = {
 		[RED] = q.base,
 		[BLUE] = OrderQuery(self, BLUE).base,
 	}
+	local list = {}
 	for _, point in ipairs(set:Ids()) do
-		PublishPoint(set:Rank(point) + 1, set:HudPoint(point, {
-			area = HudArea(self, point),
-			playingMiniRounds = q.playingMiniRounds,
-			inRound = q.inRound,
-			bases = bases,
-			hidden = self.hudHidden[point] == true,
-			timerEnd = self.pointTimers[point] or 0,
-		}))
+		list[#list + 1] = {
+			point = point,
+			rank = set:Rank(point),
+			hud = set:HudPoint(point, {
+				area = HudArea(self, point),
+				playingMiniRounds = q.playingMiniRounds,
+				inRound = q.inRound,
+				bases = bases,
+				hidden = self.hudHidden[point] == true,
+				timerEnd = self.pointTimers[point] or 0,
+			}),
+		}
 	end
+	return list
+end
+
+-- The point's enabled trigger_capture_area entities.
+function Controller:AreaEntities(point)
+	local list = {}
+	for ent, a in pairs(self.areas) do
+		if IsValid(ent) and a.enabled and PointByName(a.pointName) == point then list[#list + 1] = ent end
+	end
+	return list
+end
+
+local function PublishPoints(self)
+	local set = self:Set()
+	for _, entry in ipairs(self:HudPoints()) do PublishPoint(entry.rank + 1, entry.hud) end
 	SetGlobal2Int("wetsand_point_count", set:Count())
 	SetGlobal2String("wetsand_point_layout", self.master and self.master:CapLayout() or "")
 end

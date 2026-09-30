@@ -7,7 +7,21 @@
 -- Each role is a strategy: Goal(field, member) -> a position or nil, how
 -- close counts as there (arrive), how far from its goal it may fight
 -- (leash), and whether it ignores enemies on the way (rushes: cart pushers
--- and blockers, who must stand on the cart to count).
+-- and blockers, who must stand on the cart to count). Optional: Zone(field,
+-- member) -> center, radius or nil, an area to occupy (inside it the
+-- soldier has arrived, and walks to a new spot in it every ZONE_SHUFFLE);
+-- Urgent(field, member) -> bool, while true the soldier rushes, stops for
+-- no enemy at its leash, starts no chase and will not retreat (TF2's
+-- CTFBotCapturePoint); Line(field, member) -> line, from: a raider's enemy
+-- line; gait: the gait of a spot trip (WALK by default).
+--
+-- A scenario's jobs form a doctrine (field.doctrine; PAYLOAD here, the
+-- point doctrine in foundation.aiwar.scenario.control_points): { NAME,
+-- ROLES = job -> role, WaitsForSetup(field, member) -> bool: it wanders
+-- behind the gates in setup, ChaseAnchor(field, member) -> pos or nil:
+-- chases keep within CHASE_LEASH of it, PatrolMark(field, member) -> mark,
+-- taken when a patrol starts, PatrolHolds(mark, field, member) -> ok, why:
+-- the patrol goes on while true }. Nothing outside a doctrine reads carts.
 --
 -- The tree follows TF2's bots (docs/aiwar-command.md):
 --
@@ -44,6 +58,7 @@ local Track = require("foundation.aiwar.track")
 local Tactics = require("foundation.aiwar.tactics")
 local Squad = require("foundation.aiwar.squad")
 local Lanes = require("foundation.aiwar.lanes")
+local Hunt = require("foundation.aiwar.hunt")
 module(...)
 
 KIND = "aiwar"
@@ -149,13 +164,13 @@ RETRY_WAIT = 1 -- after a failed trip, before the next
 local Distance = Track.Distance
 
 -- Slot 0 on the line, then alternately left and right, out to LATERAL_STEPS.
-local function Lateral(k)
+function Lateral(k)
 	if k == 0 then return 0 end
 	local magnitude = min(ceil(k / 2), LATERAL_STEPS) * LATERAL
 	return k % 2 == 1 and magnitude or -magnitude
 end
 
-local function Ring(pos, slot, radius)
+function Ring(pos, slot, radius)
 	local angle = slot * GOLDEN_ANGLE
 	return { x = pos.x + cos(angle) * radius, y = pos.y + sin(angle) * radius, z = pos.z }
 end
@@ -170,7 +185,7 @@ end
 
 -- The member's spot in the setup line, or nil when there is no setup
 -- line to stand in (not in setup, or no gate found).
-local function GateSpot(field, member, row)
+function GateSpot(field, member, row)
 	local gates = field.setup and field.gates and field.gates[AiWar.EnemyOf(member.team)]
 	if not gates or #gates == 0 then return nil end
 	local gate = gates[member.slot % #gates + 1]
@@ -204,7 +219,7 @@ end
 
 -- Where to enter a sphere from p: SPHERE_ENTER of its radius from the
 -- centre, on p's side; p itself when p is already that far in.
-local function EntryPoint(center, radius, p)
+function EntryPoint(center, radius, p)
 	return Tactics.Toward(center, p, radius * SPHERE_ENTER)
 end
 local function EnemyCart(field, member) return field.carts[AiWar.EnemyOf(member.team)] end
@@ -336,7 +351,7 @@ function Across(from, to, offset)
 end
 
 -- A point `distance` from p, away from `from`.
-local function Behind(p, from, distance)
+function Behind(p, from, distance)
 	local dx, dy = p.x - from.x, p.y - from.y
 	local length = sqrt(dx * dx + dy * dy)
 	if length == 0 then return p end
@@ -351,6 +366,7 @@ ROLES[AiWar.RAID] = {
 	arrive = RAID_ARRIVE,
 	leash = RAID_LEASH,
 	rushes = false,
+	Line = EnemyLine,
 	Goal = function(field, member)
 		local spot = GateSpot(field, member, 0)
 		if spot then return spot end
@@ -429,9 +445,14 @@ ROLES[AiWar.MEDIC] = {
 	Goal = function(field, member) return ROLES[AiWar.SUPPORT].Goal(field, member) end,
 }
 
--- The member's goal on the field, or nil (no role, or no cart for it).
+-- The field's doctrine: the jobs of the war's scenario.
+function DoctrineOf(field)
+	return field.doctrine
+end
+
+-- The member's goal on the field, or nil (no role, or no goal for it now).
 function Goal(field, member)
-	local role = ROLES[member.role]
+	local role = DoctrineOf(field).ROLES[member.role]
 	return role and role.Goal(field, member)
 end
 
@@ -454,6 +475,38 @@ end
 -- An attacker (a team with a cart the other side lacks) in setup.
 local function WaitingForSetup(field, member)
 	return field.setup == true and field.carts[member.team] ~= nil and field.carts[AiWar.EnemyOf(member.team)] == nil
+end
+
+-- Payload's doctrine (foundation.aiwar.scenario.payload): ROLES, with the
+-- carts as what chases keep near (the enemy's, else its own) and what a
+-- defender's patrol watches (the enemy's cart standing still, CART_STILL,
+-- and heading for the same checkpoint).
+PAYLOAD = {
+	NAME = "payload",
+	ROLES = ROLES,
+	WaitsForSetup = WaitingForSetup,
+	ChaseAnchor = function(field, member)
+		local cart = EnemyCart(field, member) or OwnCart(field, member)
+		return cart and cart.pos
+	end,
+	PatrolMark = function(field, member)
+		local cart = EnemyCart(field, member)
+		return {
+			cartDistance = cart and cart.distance,
+			checkpoint = cart and cart.nextCheckpoint,
+		}
+	end,
+	PatrolHolds = function(mark, field, member)
+		local cart = EnemyCart(field, member)
+		if cart and mark.cartDistance and abs(cart.distance - mark.cartDistance) > CART_STILL then return false, "the cart moved" end
+		if cart and cart.nextCheckpoint ~= mark.checkpoint then return false, "the objective moved on" end
+		return true
+	end,
+}
+
+-- Whether the member's job is urgent now (its role's Urgent).
+local function IsUrgent(role, field, member)
+	return role.Urgent ~= nil and OrdersRun(field) and role.Urgent(field, member) == true
 end
 
 -------------------------------------------------------------------------------
@@ -670,14 +723,14 @@ function Travel:Goal(me, field)
 		if self.keep then
 			local keep, why = self.keep(field, me)
 			if not keep then return nil, why end
-		elseif not WaitingForSetup(field, state.member) then
+		elseif not DoctrineOf(field).WaitsForSetup(field, state.member) then
 			return nil, "setup ended"
 		end
 		if me:Now() >= self.giveUpAt then return nil, "gave up" end
 		return self.spot
 	end
-	if ROLES[state.member.role] ~= self.role then return nil, "orders changed" end
-	if WaitingForSetup(field, state.member) then return nil, "setup began" end
+	if DoctrineOf(field).ROLES[state.member.role] ~= self.role then return nil, "orders changed" end
+	if DoctrineOf(field).WaitsForSetup(field, state.member) then return nil, "setup began" end
 	local goal = self.role.Goal(field, state.member)
 	-- a raider round the line: its side's cart (Objective:RaidGoal)
 	if self.role.raids and state.cleared and not field.setup then goal = self.role.Cleared(field, state.member) or goal end
@@ -688,10 +741,11 @@ end
 function Travel:Update(me)
 	local state, role = self.state, self.role
 	local field = state.war:Field()
+	local urgent = not self.spot and IsUrgent(role, field, state.member)
 	if not self.spot and role.tactic and TeamContact(state, me) then return self:End("contact") end
-	if not self.spot and role.chases and ChaseWanted(role, me, field, state.member) then return self:End("a weakened enemy") end
+	if not self.spot and not urgent and role.chases and ChaseWanted(role, me, field, state.member) then return self:End("a weakened enemy") end
 	local goal, over = self:Goal(me, field)
-	self.gait = (self.spot and WALK) or (field and field.setup and PANIC) or (role.rushes and RUSH) or RUN
+	self.gait = (self.spot and (role.gait or WALK)) or (field and field.setup and PANIC) or ((role.rushes or urgent) and RUSH) or RUN
 	if goal == nil then
 		if over == "gave up" then return self:Fail(over) end
 		return self:End(over)
@@ -703,7 +757,11 @@ function Travel:Update(me)
 		local center, radius = role.Sphere(field, state.member)
 		if center and InSphere(me:Position(), center, radius) then return self:End("in its sphere") end
 	end
-	if not role.rushes and me:HasEnemy() and range <= role.leash then return self:End("engaging") end
+	if role.Zone and not self.spot then
+		local center, radius = role.Zone(field, state.member)
+		if center and InSphere(me:Position(), center, radius) then return self:End("in its zone") end
+	end
+	if not role.rushes and not urgent and me:HasEnemy() and range <= role.leash then return self:End("engaging") end
 	if self.detour then
 		if me:Now() < self.detourUntil and me:RangeTo(self.detour) > WAYPOINT_RADIUS then
 			me:MoveTo(self.detour, self.gait)
@@ -749,15 +807,11 @@ CHASES = {
 }
 CHASE_LOST, CHASE_COOLDOWN, CHASE_LEASH = 1.5, 3, 1500
 
--- The cart a chase keeps near: the enemy's, else its own; nil for none.
-local function ChaseCart(field, member)
-	if not field or not field.carts then return nil end
-	return EnemyCart(field, member) or OwnCart(field, member)
-end
-
+-- Whether p is within CHASE_LEASH of what the doctrine keeps chases near
+-- (ChaseAnchor: payload's carts, a point's zone); anywhere without one.
 local function Leashed(field, member, p)
-	local cart = ChaseCart(field, member)
-	return cart == nil or Distance(p, cart.pos) <= CHASE_LEASH
+	local anchor = field and DoctrineOf(field).ChaseAnchor(field, member)
+	return not anchor or Distance(p, anchor) <= CHASE_LEASH
 end
 
 -- The role's chase profile when its soldier should chase its enemy now.
@@ -813,14 +867,33 @@ function Chase:SelectMoreDangerousThreat(me, a, b)
 end
 
 -------------------------------------------------------------------------------
--- Objectives: one Action per role
+-- Objectives: one Action per role of each doctrine
 
 local Objective = N.Action:Extend("Objective")
-local OBJECTIVE_OF = {}
+local OBJECTIVE_OF = {} -- doctrine -> job -> its Objective class
+-- No role (or one its doctrine lacks): the engine's AI has the soldier.
+local Idle = N.Action:Extend("Idle")
+
+-- The member's job's class under the field's doctrine, made on first use.
+local function ObjectiveClass(state)
+	local job = state.member.role
+	local doctrine = DoctrineOf(state.war:Field())
+	local role = job and doctrine.ROLES[job]
+	if not role then return Idle end
+	local classes = OBJECTIVE_OF[doctrine] or {}
+	OBJECTIVE_OF[doctrine] = classes
+	if not classes[job] then
+		local class = Objective:Extend(role.name)
+		class.roleName = job
+		class.role = role
+		class.doctrine = doctrine
+		classes[job] = class
+	end
+	return classes[job]
+end
 
 local function ObjectiveFor(state)
-	local class = OBJECTIVE_OF[state.member.role] or OBJECTIVE_OF.idle
-	return class:New(state)
+	return ObjectiveClass(state):New(state)
 end
 
 function Objective:Init(state)
@@ -857,19 +930,21 @@ function Objective:Wander(me)
 	return self:SuspendFor(Travel:New(state, WANDER, spot), "wandering")
 end
 
--- The patrol's anchor: the post, and the cart and checkpoint it was taken
--- for.
+-- The patrol's anchor: the post, the doctrine and its mark of the
+-- objective the patrol was taken for (PatrolMark).
 local function Anchor(field, member, goal)
-	local cart = EnemyCart(field, member)
-	return { goal = goal, cartDistance = cart and cart.distance, checkpoint = cart and cart.nextCheckpoint }
+	local doctrine = DoctrineOf(field)
+	return {
+		goal = goal,
+		doctrine = doctrine,
+		mark = doctrine.PatrolMark(field, member),
+	}
 end
 
 local function AnchorHolds(anchor, field, member, goal)
 	if Distance(goal, anchor.goal) > PATROL_SHIFT then return false, "the post moved" end
-	local cart = EnemyCart(field, member)
-	if cart and anchor.cartDistance and abs(cart.distance - anchor.cartDistance) > CART_STILL then return false, "the cart moved" end
-	if cart and cart.nextCheckpoint ~= anchor.checkpoint then return false, "the objective moved on" end
-	return true
+	if DoctrineOf(field) ~= anchor.doctrine then return false, "orders changed" end
+	return anchor.doctrine.PatrolHolds(anchor.mark, field, member)
 end
 
 -- A round of the patrol: a rest, then a walk to another spot near the post.
@@ -898,9 +973,11 @@ end
 
 function Objective:Update(me)
 	local state = self.state
-	if state.member.role ~= self.roleName then return self:ChangeTo(ObjectiveFor(state), "new role") end
 	local field = state.war:Field()
-	if OrdersRun(field) and WaitingForSetup(field, state.member) then return self:Wander(me) end
+	if state.member.role ~= self.roleName then return self:ChangeTo(ObjectiveFor(state), "new role") end
+	if DoctrineOf(field) ~= self.doctrine then return self:ChangeTo(ObjectiveFor(state), "new doctrine") end
+	if OrdersRun(field) and self.doctrine.WaitsForSetup(field, state.member) then return self:Wander(me) end
+	local urgent = IsUrgent(self.role, field, state.member)
 	if state.wandering then
 		state.wandering = false
 		self.restUntil = nil
@@ -914,12 +991,12 @@ function Objective:Update(me)
 		if healing then return healing end
 	end
 	-- a weakened enemy in reach: after it (Chase)
-	if self.role.chases and OrdersRun(field) and not field.setup and me:Now() >= (self.chaseReadyAt or 0) then
+	if self.role.chases and not urgent and OrdersRun(field) and not field.setup and me:Now() >= (self.chaseReadyAt or 0) then
 		local profile = ChaseWanted(self.role, me, field, state.member)
 		if profile then return self:SuspendFor(Chase:New(state, me:Enemy(), profile), "finishing a weakened enemy") end
 	end
-	local cart = OrdersRun(field) and OwnCart(field, state.member)
-	if self.role.follows and cart and me:FollowCart() then
+	local cart = self.role.follows and OrdersRun(field) and OwnCart(field, state.member)
+	if cart and me:FollowCart() then
 		state.following = true
 		state.goal = cart.pos
 		me:Release()
@@ -947,7 +1024,14 @@ function Objective:Update(me)
 	if self.role.Sphere and not field.setup then
 		local center, radius = self.role.Sphere(field, state.member)
 		state.inSphere = center ~= nil and InSphere(me:Position(), center, radius)
-		if state.inSphere then return self:Roam(me, center, radius) end
+		if state.inSphere then return self:Roam(me, center, radius, ROAM_REST, RUN) end
+	end
+	-- inside its zone, it shuffles from spot to spot in it (TF2's capturers
+	-- re-path on the point every 0.5 to 1 s)
+	if self.role.Zone then
+		local center, radius = self.role.Zone(field, state.member)
+		state.inZone = center ~= nil and InSphere(me:Position(), center, radius)
+		if state.inZone then return self:Roam(me, center, radius, ZONE_SHUFFLE, urgent and RUSH or RUN) end
 	end
 	local patrols = self.role.patrols == true or (self.role.patrols == "setup" and field.setup)
 	if not patrols and self.anchor then
@@ -987,8 +1071,9 @@ function Objective:Update(me)
 		return self:Continue()
 	end
 	-- a raider squad's leader at its goal roams round it
-	if self.role.raids and not field.setup and range <= self.role.arrive then return self:Roam(me, goal, RAID_ROAM) end
-	local fighting = me:HasEnemy() and range <= self.role.leash
+	if self.role.raids and not field.setup and range <= self.role.arrive then return self:Roam(me, goal, RAID_ROAM, ROAM_REST, RUN) end
+	-- an urgent job stops for no one on its way
+	local fighting = not urgent and me:HasEnemy() and range <= self.role.leash
 	if range <= self.role.arrive or fighting or me:Now() < self.retryAt then
 		me:Release()
 		return self:Continue()
@@ -999,7 +1084,7 @@ end
 -- A raider's goal: round the enemy's line, then, once there, on to its
 -- side's cart (Cleared) until the enemy's line moves.
 function Objective:RaidGoal(me, field, goal)
-	local line = EnemyLine(field, self.state.member)
+	local line = self.role.Line(field, self.state.member)
 	if not self.raidLine or not line or Distance(line, self.raidLine) > RAID_SHIFT then
 		self.raidLine, self.cleared = line, false
 	end
@@ -1047,6 +1132,17 @@ function Objective:ShouldAttack(me, them)
 	return N.ANSWER_UNDEFINED
 end
 
+-- An urgent job (its role's Urgent) neither retreats nor dawdles.
+function Objective:ShouldRetreat(me)
+	if IsUrgent(self.role, self.state.war:Field(), self.state.member) then return N.ANSWER_NO end
+	return N.ANSWER_UNDEFINED
+end
+
+function Objective:ShouldHurry(me)
+	if IsUrgent(self.role, self.state.war:Field(), self.state.member) then return N.ANSWER_YES end
+	return N.ANSWER_UNDEFINED
+end
+
 -- A fight, by the role's tactic (foundation.aiwar.tactics).
 BOUND_RADIUS, COVER_RADIUS, SPOT_ARRIVE = 200, 320, 48
 FLANK_TIME, FLANK_ARRIVE = 15, 160
@@ -1070,9 +1166,12 @@ end
 -- leader FOLLOW_SPACING per place behind it, loosely (within FOLLOW_SLACK
 -- it is left to fight as it will); a leader at the objective takes a new
 -- spot in it (the port's PatrolSpot) each time it has rested ROAM_REST
--- at the last, or the objective moved away from it.
+-- at the last, or the objective moved away from it. A job occupying a zone
+-- (a role's Zone) rests only ZONE_SHUFFLE, as TF2's capturers re-path on
+-- the point every 0.5 to 1 s.
 FOLLOW_SPACING, FOLLOW_SLACK = 72, 96
 ROAM_REST, RAID_ROAM = 8, 350
+ZONE_SHUFFLE = 1
 
 function Objective:FollowLeader(me)
 	local state, member = self.state, self.state.member
@@ -1084,7 +1183,8 @@ function Objective:FollowLeader(me)
 	return self:Continue()
 end
 
-function Objective:Roam(me, center, radius)
+-- rest: how long at each spot; gait: how it walks between them.
+function Objective:Roam(me, center, radius, rest, gait)
 	local state, now = self.state, me:Now()
 	local spot = self.roamSpot
 	local rested = self.roamRestUntil and now >= self.roamRestUntil
@@ -1094,9 +1194,9 @@ function Objective:Roam(me, center, radius)
 	end
 	state.tactic, state.goal = "roaming the objective", spot
 	if me:RangeTo(spot) > SPOT_ARRIVE then
-		me:MoveTo(spot, RUN)
+		me:MoveTo(spot, gait)
 	else
-		self.roamRestUntil = self.roamRestUntil or now + ROAM_REST
+		self.roamRestUntil = self.roamRestUntil or now + rest
 		me:Release()
 	end
 	return self:Continue()
@@ -1146,7 +1246,7 @@ function Objective:Fight(me, goal, contact)
 	if regroup then return regroup end
 	if tactic == "attack" then return self:Attack(me, goal, contact, fireTeam, now) end
 	-- raiders always go round first, then bound onto the line itself
-	if tactic == "raid" then return self:Attack(me, EnemyLine(state.war:Field(), state.member) or goal, contact, fireTeam, now, true) end
+	if tactic == "raid" then return self:Attack(me, self.role.Line(state.war:Field(), state.member) or goal, contact, fireTeam, now, true) end
 	if tactic == "support" then return self:Defend(me, goal, contact, fireTeam, now, true) end
 	return self:Defend(me, goal, contact, fireTeam, now)
 end
@@ -1257,23 +1357,14 @@ function Objective:OnResume(me, interrupting)
 	return self:Continue()
 end
 
-for roleName, role in pairs(ROLES) do
-	local class = Objective:Extend(role.name)
-	class.roleName = roleName
-	class.role = role
-	OBJECTIVE_OF[roleName] = class
-end
-
--- No role: the engine's AI has the soldier until it is given one.
-local Idle = N.Action:Extend("Idle")
-OBJECTIVE_OF.idle = Idle
-
+-- Idle (no role, or one its doctrine lacks): the engine's AI has the
+-- soldier until it is given one.
 function Idle:Init(state)
 	self.state = state
 end
 
 function Idle:Update(me)
-	if self.state.member.role ~= nil then return self:ChangeTo(ObjectiveFor(self.state), "given a role") end
+	if ObjectiveClass(self.state) ~= Idle then return self:ChangeTo(ObjectiveFor(self.state), "given a role") end
 	StopFollowing(self.state, me)
 	me:Release()
 	return self:Continue()
@@ -1333,12 +1424,50 @@ local SquadMonitor = Monitor("SquadMonitor", function(state)
 	return SquadRoles[Squad.Kind(state.member)]:New(state)
 end)
 
--- Humiliated: its side lost the round. Orders are dropped (DrGBase keeps
--- away from what it fears), it holds its fire and hurries, until the next
--- round rearms it (TF2's losers retreat: CTFBotTacticalMonitor).
+-- Post-round carnage (foundation.aiwar's PHASES.humiliation,
+-- foundation.aiwar.hunt; TF2's CTFBotTacticalMonitor "Get the losers!").
+-- The winners SeekAndDestroy: at a loser in sight, reporting it on the
+-- war's hunt board and holding to fire once within HUNT_CLOSE; with none,
+-- on a trip to the nearest fresh sighting, else to the losers' spawns. The
+-- losers are Humiliated: they run from what they see and otherwise hide at
+-- their own spawn. Both end with the round.
+HUNT_CLOSE = 300
+
+-- The hunt's and the hiding's trips, travelled as a role's goal is.
+local HUNT = {
+	name = "Hunt",
+	arrive = Hunt.HUNT_ARRIVE,
+	leash = 0,
+	rushes = false,
+	giveUp = Hunt.HUNT_GIVE_UP,
+	gait = RUN,
+}
+local HIDE = {
+	name = "Hide",
+	arrive = Hunt.HIDE_ARRIVE,
+	leash = 0,
+	rushes = false,
+	giveUp = WANDER_GIVE_UP,
+	gait = RUN,
+}
+
+-- Whether the member's side won the round and hunts the losers now.
+function Hunting(field, member)
+	return field ~= nil and field.phase.hunt and field.winner == member.team
+end
+
+-- Humiliated: its side lost the round. Orders are dropped, it holds its
+-- fire and hurries, until the next round rearms it (TF2's losers retreat:
+-- CTFBotTacticalMonitor). From a winner in sight it flees to cover within
+-- FLEE_COVER away from it (else RETREAT_DISTANCE straight away), picking
+-- again once the winner has moved FLEE_REPICK or the spot is reached; with
+-- none in sight it runs to its nearest spawn and hides there.
 local Humiliated = N.Action:Extend("Humiliated")
 
-function Humiliated:Init(state) self.state = state end
+function Humiliated:Init(state)
+	self.state = state
+	self.retryAt = 0
+end
 
 function Humiliated:OnStart(me)
 	StopFollowing(self.state, me)
@@ -1347,13 +1476,98 @@ function Humiliated:OnStart(me)
 	return self:Continue()
 end
 
+local function KeepHiding(field, soldier)
+	if not soldier:IsDisarmed() then return false, "rearmed" end
+	if soldier:HasEnemy() then return false, "found" end
+	return true
+end
+
 function Humiliated:Update(me)
 	if not me:IsDisarmed() then return self:Done("rearmed") end
+	local state, now = self.state, me:Now()
+	local threat = me:HasEnemy() and me:EnemyPosition()
+	if threat then return self:Flee(me, threat) end
+	self.flee, self.fleeFrom = nil, nil
+	local field = state.war:Field()
+	local hideout = OrdersRun(field) and Hunt.Hideout(field, state.member, me:Position()) or nil
+	if not hideout or me:RangeTo(hideout) <= Hunt.HIDE_ARRIVE or now < self.retryAt then
+		state.tactic, state.goal = "hiding", hideout
+		me:Hold()
+		return self:Continue()
+	end
+	state.tactic, state.goal = "running to hide", hideout
+	return self:SuspendFor(Travel:New(state, HIDE, hideout, KeepHiding), "running to hide")
+end
+
+function Humiliated:Flee(me, threat)
+	local state = self.state
+	if not self.flee or Distance(threat, self.fleeFrom) > Hunt.FLEE_REPICK or me:RangeTo(self.flee) <= SPOT_ARRIVE then
+		self.flee = me:CoverSpot(me:Position(), Hunt.FLEE_COVER, threat) or Behind(me:Position(), threat, RETREAT_DISTANCE)
+		self.fleeFrom = threat
+	end
+	state.tactic, state.goal = "fleeing", self.flee
+	me:MoveTo(self.flee, RUN)
+	return self:Continue()
+end
+
+function Humiliated:OnResume(me, interrupting)
+	if interrupting.failed then self.retryAt = me:Now() + RETRY_WAIT end
 	return self:Continue()
 end
 
 function Humiliated:ShouldAttack(me, them) return N.ANSWER_NO end
 function Humiliated:ShouldHurry(me) return N.ANSWER_YES end
+
+-- SeekAndDestroy (CTFBotSeekAndDestroy): its side won the round.
+local SeekAndDestroy = N.Action:Extend("SeekAndDestroy")
+
+function SeekAndDestroy:Init(state)
+	self.state = state
+	self.retryAt = 0
+end
+
+function SeekAndDestroy:OnStart(me)
+	StopFollowing(self.state, me)
+	me:Stand()
+	return self:Continue()
+end
+
+-- A hunt trip goes on while the hunt does and no loser is in sight.
+local function KeepHunting(member)
+	return function(field, soldier)
+		if not Hunting(field, member) then return false, "the round is over" end
+		if soldier:HasEnemy() then return false, "a loser in sight" end
+		return true
+	end
+end
+
+function SeekAndDestroy:Update(me)
+	local state, now = self.state, me:Now()
+	local field, member, war = state.war:Field(), state.member, state.war
+	if not Hunting(field, member) then return self:Done("the round is over") end
+	local enemy = me:HasEnemy() and me:EnemyPosition()
+	if enemy then
+		war.hunt:Report(member.team, me:Enemy(), enemy, now)
+		state.tactic, state.goal = "chasing down the losers", enemy
+		if me:RangeTo(enemy) <= HUNT_CLOSE then me:Hold() else me:MoveTo(enemy, RUN) end
+		return self:Continue()
+	end
+	local goal = Hunt.HuntGoal(field, member, war.hunt:Sightings(member.team, now), me:Position())
+	state.tactic, state.goal = "seeking the losers", goal
+	if not goal or me:RangeTo(goal) <= Hunt.HUNT_ARRIVE or now < self.retryAt then
+		me:Hold()
+		return self:Continue()
+	end
+	return self:SuspendFor(Travel:New(state, HUNT, goal, KeepHunting(member)), "hunting")
+end
+
+function SeekAndDestroy:OnResume(me, interrupting)
+	if interrupting.failed then self.retryAt = me:Now() + RETRY_WAIT end
+	return self:Continue()
+end
+
+function SeekAndDestroy:ShouldRetreat(me) return N.ANSWER_NO end
+function SeekAndDestroy:ShouldHurry(me) return N.ANSWER_YES end
 
 -- TacticalMonitor: what keeps the soldier alive comes before its squad and
 -- its job.
@@ -1392,6 +1606,8 @@ end
 
 function RetreatToCover:Update(me)
 	local state, now = self.state, me:Now()
+	-- the round won or lost: the monitor above hunts or hides
+	if me:IsDisarmed() or Hunting(state.war:Field(), state.member) then return self:Done("the round is over") end
 	if HealthShare(me) >= RETREAT_RECOVER or now >= self.untilAt then
 		state.retreatReadyAt = now + RETREAT_COOLDOWN
 		state.hurtLog = {}
@@ -1406,8 +1622,8 @@ end
 function RetreatToCover:ShouldHurry(me) return N.ANSWER_YES end
 
 -- TacticalMonitor: what keeps the soldier alive comes before its squad and
--- its job: humiliation, then retreat, which what it runs may refuse
--- (ShouldRetreat NO).
+-- its job: humiliation, then the hunt of the losers, then retreat, which
+-- what it runs may refuse (ShouldRetreat NO).
 local TacticalMonitor = Monitor("TacticalMonitor", function(state) return SquadMonitor:New(state) end)
 
 -- The damage it took, kept for RETREAT_WINDOW (OnInjured, from DrGBase).
@@ -1433,6 +1649,7 @@ end
 function TacticalMonitor:Update(me)
 	local state, now = self.state, me:Now()
 	if me:IsDisarmed() then return self:SuspendFor(Humiliated:New(state), "humiliated") end
+	if Hunting(state.war:Field(), state.member) then return self:SuspendFor(SeekAndDestroy:New(state), "get the losers") end
 	if now >= (state.retreatReadyAt or 0) then
 		local badly = HealthShare(me) < RETREAT_HEALTH
 		local hard = RecentDamage(state, now) >= RETREAT_BURST * me:MaxHealth()

@@ -21,8 +21,13 @@ LANES_MAX, LANE_TRIES = 3, 5
 MAX_OVERLAP, MAX_DETOUR, LANE_PENALTY = 0.5, 1.6, 8
 WAYPOINT_SPACING, WAYPOINT_REACH, LOOKAHEAD = 300, 160, 2
 
--- The jobs whose squads take lanes.
-JOBS = { escort = true, raid = true }
+-- The jobs whose squads take lanes (foundation.aiwar's ESCORT, RAID and
+-- ASSAULT: the point scenarios' escort).
+JOBS = {
+	escort = true,
+	raid = true,
+	assault = true,
+}
 
 local function Distance(a, b)
 	local dx, dy, dz = a.x - b.x, a.y - b.y, (a.z or 0) - (b.z or 0)

@@ -234,6 +234,83 @@ T.test("a cart near its checkpoint throws more of the defenders at it, fewest ch
 	T.eq(Count(AiWar.BLOCK), 2, "back to two when it is pushed back")
 end)
 
+-- Stances a scenario hands the war (foundation.aiwar.scenario)
+
+local function Share(role, weight)
+	return {
+		role = role,
+		weight = weight,
+	}
+end
+
+local ATTACKING = {
+	Share(AiWar.CAPTURE, 4),
+	Share(AiWar.ASSAULT, 3),
+	Share(AiWar.RAID, 2),
+	Share(AiWar.SUPPORT, 1),
+}
+local DEFENDING = {
+	Share(AiWar.HOLD, 4),
+	Share(AiWar.DEFEND, 3),
+	Share(AiWar.RAID, 2),
+	Share(AiWar.SUPPORT, 1),
+}
+
+local function RolesOf(war, team)
+	local roles = {}
+	for _, member in ipairs(war:Members()) do
+		if member.team == team then roles[member.handle] = member.role end
+	end
+	return roles
+end
+
+T.test("the point jobs are named once", function()
+	T.eq(AiWar.CAPTURE, "capture", "capture")
+	T.eq(AiWar.ASSAULT, "assault", "assault")
+	T.eq(AiWar.HOLD, "hold", "hold")
+end)
+
+T.test("a team with no stance yet is assigned its scenario's stance from scratch, oldest first", function()
+	local war = AiWar.War.New()
+	for i = 1, 4 do war:Enlist("r" .. i, RED, true) end
+	war:AssignStances({ [RED] = ATTACKING }, { [RED] = 0 })
+	T.eq(Roles(war, RED), "capture0 assault0 raid0 capture1", "by the shares, in enlistment order")
+	T.eq(war.defense[RED], 0, "its defense share")
+	T.eq(war.stances[BLUE], nil, "BLU given nothing")
+end)
+
+T.test("a team moving to a stance whose roles differ keeps the members of the roles both share", function()
+	local war = AiWar.War.New()
+	for i = 1, 8 do war:Enlist("r" .. i, RED, true) end
+	war:AssignStances({ [RED] = ATTACKING }, { [RED] = 0 })
+	local before = RolesOf(war, RED)
+	war:AssignStances({ [RED] = DEFENDING }, { [RED] = 1 })
+	local after = RolesOf(war, RED)
+	local moved = 0
+	for handle, role in pairs(before) do
+		if role == AiWar.RAID or role == AiWar.SUPPORT then
+			T.eq(after[handle], role, handle .. " kept " .. role)
+		else
+			T.eq(after[handle] == AiWar.HOLD or after[handle] == AiWar.DEFEND, true, handle .. " from " .. role .. " to a defense job")
+			moved = moved + 1
+		end
+	end
+	T.eq(moved, 5, "only the capture and assault members moved")
+	T.eq(war.defense[RED], 1, "the new share")
+	for _, member in ipairs(war:Members()) do T.eq(member.fireTeam.role, member.role, "in a fire team of its new role") end
+end)
+
+T.test("a nil stance leaves the team as it is", function()
+	local war = AiWar.War.New()
+	for i = 1, 3 do war:Enlist("r" .. i, RED, true) end
+	war:AssignStances({ [RED] = ATTACKING }, { [RED] = 0 })
+	local before = Roles(war, RED)
+	war:AssignStances({}, {})
+	T.eq(Roles(war, RED), before, "unchanged")
+	T.eq(war.stances[RED], ATTACKING, "the stance kept")
+	T.eq(war.defense[RED], 0, "and its share")
+end)
+
 T.test("a cart is close within CLOSE_RANGE, and stays close a little past it", function()
 	T.eq(AiWar.CartClose(false, AiWar.CLOSE_RANGE), true, "at the range")
 	T.eq(AiWar.CartClose(false, AiWar.CLOSE_RANGE + 1), false, "past it")
@@ -317,6 +394,24 @@ T.test("the round state decides whether soldiers reinforce and take orders", fun
 	T.eq(running.reinforce and running.orders, true, "the running do both")
 	local sudden = AiWar.PhaseOf(true, STATE.STALEMATE)
 	T.eq(sudden.orders and not sudden.reinforce, true, "no respawns in sudden death")
+end)
+
+T.test("a round won by a team is its humiliation of the losers; a stalemate is simply over", function()
+	local humiliation = AiWar.PhaseOf(true, STATE.TEAM_WIN, BLUE)
+	T.eq(humiliation, AiWar.PHASES.humiliation, "BLU won")
+	T.eq(AiWar.PhaseOf(true, STATE.TEAM_WIN, RED), AiWar.PHASES.humiliation, "RED won")
+	T.eq(humiliation.orders and humiliation.hunt and not humiliation.reinforce, true, "orders and the hunt, no reinforcements")
+	T.eq(AiWar.PhaseOf(true, STATE.TEAM_WIN, nil), AiWar.PHASES.over, "no winner")
+	T.eq(AiWar.PhaseOf(true, STATE.TEAM_WIN, Teams.UNASSIGNED), AiWar.PHASES.over, "a stalemate")
+	T.eq(AiWar.PhaseOf(true, STATE.RND_RUNNING, BLUE), AiWar.PHASES.running, "a winner outside TEAM_WIN changes nothing")
+	for name, phase in pairs(AiWar.PHASES) do T.eq(type(phase.hunt), "boolean", name .. " says whether winners hunt") end
+	for name, phase in pairs(AiWar.PHASES) do
+		if phase ~= AiWar.PHASES.humiliation then T.eq(phase.hunt, false, name .. " has no hunt") end
+	end
+end)
+
+T.test("a war keeps a board of the hunt's sightings", function()
+	T.eq(type(AiWar.War.New().hunt.Report), "function", "war.hunt")
 end)
 
 -- Track -------------------------------------------------------------------------

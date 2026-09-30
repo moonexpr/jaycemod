@@ -44,6 +44,17 @@ T.test("lanes go to squads least taken first, raiders the longest, and stay whil
 	T.eq(raiders.lane, replanned[1], "a new plan: a new lane")
 end)
 
+T.test("assault squads take lanes as escorts do, the shortest first", function()
+	local lanes = { key = "k", Lane({ 1 }, 1000), Lane({ 2 }, 1500) }
+	local assault = {
+		team = 3,
+		role = "assault",
+	}
+	Lanes.Assign({ assault }, { [3] = lanes })
+	T.eq(Lanes.JOBS.assault, true, "a lane job")
+	T.eq(assault.laneIndex, 1, "the shortest")
+end)
+
 T.test("a walker makes for the next waypoint it has not reached, and leaves the lane once it no longer helps", function()
 	local lane = { points = { P(0, 0), P(300, 0), P(600, 0) } }
 	T.eq(Lanes.Next(lane, P(10, 0), 1), 2, "the first reached: the second")
@@ -64,3 +75,5 @@ T.test("planning a lane costs more through areas an earlier lane took", function
 	step.traversable = false
 	T.eq(Lanes.Strategy.Cost(step, limits, bot), Path.IMPASSABLE, "impassable stays so")
 end)
+
+T.finish()

@@ -351,3 +351,17 @@ Each phase ships on its own and keeps the suite green.
    and shows it as a chat bubble above its head for a few seconds (a
    client view of a networked "said" event). Chat lines are for admins with
    the soldier overlay on.
+
+## 11. Scenarios
+
+The war is no longer payload only. What it fights over is a Strategy,
+`foundation.aiwar.scenario`, picked from the rounds mode's `NAME`
+(`payload`, `control_points`, `koth`), never from the map. A map with no
+such mode refuses `mp_aiwar_start`. Each variant briefs the field (its
+doctrine of jobs and its objectives) and allocates each team's stance once
+per controller think: the first slice of the Commander in §2, with §2.2's
+damping for the point scenarios. A won round is the `humiliation` phase, in
+which the winners hunt the losers until the next round.
+
+The design, its TF2 sources, the field the controller builds and the work
+packages are in `docs/aiwar-koth-cp.md`.
