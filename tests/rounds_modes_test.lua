@@ -138,4 +138,48 @@ T.test("the round phases' listener order: timers, then capture, then logic", fun
 	T.eq(Rounds.PHASE_ROUND_END, "round_end", "round end")
 end)
 
+-- Seams, read as text: what other features call on the rounds controller
+-- (docs/pass4-koth-cp.md, section 2.4), and bindings that load nothing at top level.
+
+local function Read(path)
+	local f = assert(io.open(path, "rb"))
+	local text = f:read("*a")
+	f:close()
+	return text
+end
+
+local CONTROLLER_METHODS = {
+	"BindProxy", "Proxy", "BindTimer", "TimerOf", "HudTimer", "SetActiveTimer", "CreateTimer", "TimerInput",
+	"SetMode", "Mode", "AddRoundListener", "AddTimerHold", "TimerMayExpire", "MayWinByPoints", "SetObjective",
+	"SetTeamClock", "TeamClock", "ActivateTeamClock",
+	"State", "PointsMayBeCaptured", "InSetup", "InOvertime", "SetWinningTeam", "SetStalemate",
+	"AddPlayedRound", "History", "SetFirstRoundPlayed",
+	"CapSounds", "SoundTo", "PlayersNotOn", "Notice",
+	"OnPlayerDeath", "Halt", "Unhalt", "Halted", "RestartRound", "RespawnsDisabled", "SetRespawnsDisabled",
+	"SetAdminRespawnWaveTime", "TeamRespawnWaveTime", "GetRespawnWaveMaxLength", "ProxyInput",
+}
+
+T.test("the rounds controller defines every method other features call", function()
+	local source = Read(T.ROOT .. "features/rounds/sv.lua")
+	for _, name in ipairs(CONTROLLER_METHODS) do
+		T.eq(source:find("function Controller:" .. name .. "(", 1, true) ~= nil, true, name)
+	end
+end)
+
+T.test("the rounds bindings load the feature on first use, never at file top level", function()
+	local entities = "addon/gamemodes/sandcastle/entities/entities/"
+	for _, file in ipairs({ "tf_gamerules", "team_round_timer", "game_round_win", "tf_logic_competitive" }) do
+		local source = Read(entities .. file .. ".lua")
+		T.eq(source:find('require("foundation.', 1, true), nil, file .. " requires no model")
+		T.eq(source:find("\nlocal %w+ = WETSAND%.Feature"), nil, file .. " loads nothing at top level")
+	end
+end)
+
+T.test("the tf_gamerules binding keeps the gamerules surface as forwards", function()
+	local source = Read("addon/gamemodes/sandcastle/entities/entities/tf_gamerules.lua")
+	for _, name in ipairs({ "OnPlayerDeath", "Halt", "Unhalt", "Halted", "RestartRound", "SetWinningTeam", "SetStalemate" }) do
+		T.eq(source:find("function ENT:" .. name .. "(", 1, true) ~= nil, true, name)
+	end
+end)
+
 T.finish()

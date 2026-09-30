@@ -303,6 +303,45 @@ T.test("client warnings speak a second early, one per think", function()
 	T.eq(Timer.NextClientWarning(armed, 6), 30)
 end)
 
+-- Which cue a client plays when (SendTimeWarning, GetTimeWarningSound, OnDataChanged)
+
+local function Speaker(over)
+	local q = {
+		paused = false,
+		autoCountdown = true,
+		halted = false,
+		isHud = true,
+		koth = false,
+	}
+	for k, v in pairs(over or {}) do q[k] = v end
+	return q
+end
+
+T.test("only a running, counting-down HUD timer speaks, any timer in koth, never in Sandbox mode", function()
+	T.eq(Timer.Speaks(Speaker()), true, "the HUD timer")
+	T.eq(Timer.Speaks(Speaker({ paused = true })), false, "paused")
+	T.eq(Timer.Speaks(Speaker({ autoCountdown = false })), false, "auto_countdown 0")
+	T.eq(Timer.Speaks(Speaker({ halted = true })), false, "Sandbox mode")
+	T.eq(Timer.Speaks(Speaker({ isHud = false })), false, "another timer")
+	T.eq(Timer.Speaks(Speaker({
+		isHud = false,
+		koth = true,
+	})), true, "a koth clock")
+end)
+
+T.test("setup counts down 'mission begins', normal time 'mission ends', and setup's end rings the siren", function()
+	T.eq(Timer.WarningSound(60, true), "Announcer.RoundBegins60Seconds", "setup 60")
+	T.eq(Timer.WarningSound(5, true), "Announcer.RoundBegins5Seconds", "setup 5")
+	T.eq(Timer.WarningSound(1, true), "Announcer.RoundBegins1Seconds", "setup 1")
+	T.eq(Timer.WarningSound(60, false), "Announcer.RoundEnds60seconds", "normal 60")
+	T.eq(Timer.WarningSound(1, false), "Announcer.RoundEnds1seconds", "normal 1")
+	T.eq(Timer.WarningSound(Timer.WARNING_TIME_START, false), "Ambient.Siren", "the round starts")
+	T.eq(Timer.StartsRound(true, false), true, "setup gave way to normal time")
+	T.eq(Timer.StartsRound(false, false), false, "no setup: no siren (RT_WARNING_TIME_START needs a setup)")
+	T.eq(Timer.StartsRound(nil, false), false, "the first look")
+	T.eq(Timer.StartsRound(true, true), false, "still in setup")
+end)
+
 -- SetActiveTimer
 
 local function Timers(list)

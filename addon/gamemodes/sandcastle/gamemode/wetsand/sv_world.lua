@@ -39,11 +39,22 @@ local RECORDED = {
 	path_track = true,
 	info_player_teamspawn = true,
 	team_control_point = true,
+	-- the rounds feature fires its OnMultiNewRound, which GMod never does
+	logic_auto = true,
 }
+
+-- logic_auto's "Remove on fire" (SF_AUTO_FIREONCE). Its outputs fire once
+-- anyway (CLogicAuto::Think runs once), so the entity is kept for the rounds
+-- feature to fire OnMultiNewRound at the first round, which in TF2 follows
+-- the waiting-for-players restart that recreates it.
+local LOGIC_AUTO_FIRE_ONCE = 1
 
 -- Outputs are kept in map order in kv.outputs, since an output key may repeat.
 hook.Add("EntityKeyValue", "wetsand_record_keyvalues", function(ent, key, value)
 	if not RECORDED[ent:GetClass()] then return end
+	if ent:GetClass() == "logic_auto" and string.lower(key) == "spawnflags" then
+		return tostring(bit.band(tonumber(value) or 0, bit.bnot(LOGIC_AUTO_FIRE_ONCE)))
+	end
 	local kv = WETSAND.KV[ent]
 	if not kv then
 		kv = { outputs = {} }

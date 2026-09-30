@@ -380,6 +380,38 @@ T.test("Halt waits between rounds until a new game", function()
 	T.eq(Describe({ effects[1], effects[2], effects[3] }), "state PREROUND, balance_teams, cleanup", "a full reset")
 end)
 
+T.test("a halted round (Sandbox mode) stays between rounds whatever happens", function()
+	local objective = FakeObjective.Objective()
+	local round = Rounds.New(Settings({ stalemateEnable = true }))
+	local now = T0
+	Expect(round:Halt(now), {
+		"state BETWEEN_RNDS",
+		"output OnStateEnterBetweenRounds",
+		"doors_unlock",
+	}, "halted from PREGAME")
+	Expect(round:Think(now + 1, World()), {}, "players join: no pre-round")
+	Expect(round:SetWinningTeam(now + 2, RED, W.ALL_POINTS_CAPTURED, true, false, false, objective), {},
+		"capturing every point wins nothing")
+	Expect(round:GameRoundWin(now + 3, {
+		team = BLUE,
+		reason = W.DEFEND_UNTIL_TIME_LIMIT,
+		forceMapReset = true,
+		switchTeams = false,
+	}, objective), {}, "the timer's OnFinished to game_round_win wins nothing")
+	Expect(round:SetStalemate(now + 4, SM.TIMER, true, false), {}, "no sudden death")
+	Expect(round:RestartRound(now + 5), {}, "no restart until unhalted")
+	Expect(round:Think(now + 60, World({
+		scores = {
+			[RED] = 9,
+			[BLUE] = 9,
+		},
+	})), {}, "no game over")
+	T.eq(round:State(), State.BETWEEN_RNDS, "between rounds throughout")
+	T.eq(round:PointsMayBeCaptured(), false, "no captures")
+	round:Unhalt()
+	Expect(round:RestartRound(now + 61), { "state PREGAME" }, "Gameplay mode restarts the rounds")
+end)
+
 T.test("a halt during the intermission unfreezes everyone", function()
 	local round = Running({ maxrounds = 1 })
 	round:SetWinningTeam(T0 + 20, RED, W.ALL_POINTS_CAPTURED, true, false, false, FakeObjective.Objective())

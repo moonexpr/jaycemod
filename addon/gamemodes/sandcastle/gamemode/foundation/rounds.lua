@@ -631,7 +631,7 @@ end
 -- CTeamplayRoundBasedRules::SetWinningTeam.
 function Round:SetWinningTeam(now, winner, reason, forceMapReset, switchTeams, dontAddScore, objective)
 	local effects = {}
-	if self.state == State.TEAM_WIN or self.state == State.GAME_OVER then return effects end
+	if self.halted or self.state == State.TEAM_WIN or self.state == State.GAME_OVER then return effects end
 	forceMapReset = forceMapReset ~= false
 	self.forceMapReset = forceMapReset
 	self.switchTeams = switchTeams == true
@@ -664,6 +664,7 @@ end
 -- CTeamplayRoundBasedRules::SetStalemate: sudden death when
 -- mp_stalemate_enable is on, otherwise a drawn round.
 function Round:SetStalemate(now, reason, forceMapReset, switchTeams)
+	if self.halted then return {} end
 	if not self.settings.stalemateEnable then
 		return self:SetWinningTeam(now, UNASSIGNED, WINREASON.STALEMATE, forceMapReset, switchTeams, false, NO_OBJECTIVE)
 	end
@@ -693,6 +694,7 @@ end
 -- map up and respawns everyone. Out of the intermission, everyone is let go.
 function Round:RestartRound(now)
 	local effects = {}
+	if self.halted then return effects end
 	if self.state == State.GAME_OVER then
 		self.intermissionEnd = nil
 		Add(effects, Kind("unfreeze"))
@@ -702,9 +704,10 @@ function Round:RestartRound(now)
 	return Transition(self, effects, State.PREGAME, now)
 end
 
--- Stopping the game (non-gameplay mode) is TF2's tournament ready-up: the
--- rounds wait in BETWEEN_RNDS and the state machine thinks no more until
--- Unhalt and RestartRound.
+-- Stopping the game (Sandbox mode) is TF2's tournament ready-up: the rounds
+-- wait in BETWEEN_RNDS and make no transition at all (no pre-round, win,
+-- sudden death or game over, whatever the map or players do) until Unhalt,
+-- then RestartRound.
 function Round:Halt(now)
 	local effects = {}
 	if self.state == State.GAME_OVER then

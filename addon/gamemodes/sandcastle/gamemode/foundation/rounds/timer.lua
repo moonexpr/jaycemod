@@ -363,6 +363,53 @@ function NextClientWarning(armed, t)
 	return nil
 end
 
+-- RT_WARNING_TIME_START: the warning a timer sends as setup gives way to
+-- normal time (the countdown's warnings are their seconds).
+WARNING_TIME_START = 0
+
+-- GetTimeWarningSound: "mission begins" through setup, "mission ends"
+-- through normal time, and ROUND_START_BELL.
+local SETUP_SOUND = {
+	[60] = "Announcer.RoundBegins60Seconds",
+	[30] = "Announcer.RoundBegins30Seconds",
+	[10] = "Announcer.RoundBegins10Seconds",
+	[5] = "Announcer.RoundBegins5Seconds",
+	[4] = "Announcer.RoundBegins4Seconds",
+	[3] = "Announcer.RoundBegins3Seconds",
+	[2] = "Announcer.RoundBegins2Seconds",
+	[1] = "Announcer.RoundBegins1Seconds",
+}
+local ROUND_SOUND = {
+	[60] = "Announcer.RoundEnds60seconds",
+	[30] = "Announcer.RoundEnds30seconds",
+	[10] = "Announcer.RoundEnds10seconds",
+	[5] = "Announcer.RoundEnds5seconds",
+	[4] = "Announcer.RoundEnds4seconds",
+	[3] = "Announcer.RoundEnds3seconds",
+	[2] = "Announcer.RoundEnds2seconds",
+	[1] = "Announcer.RoundEnds1seconds",
+}
+local ROUND_START_BELL = "Ambient.Siren"
+
+function WarningSound(warning, setup)
+	if warning == WARNING_TIME_START then return ROUND_START_BELL end
+	return (setup and SETUP_SOUND or ROUND_SOUND)[warning]
+end
+
+-- OnDataChanged: only setup giving way to normal time sends
+-- RT_WARNING_TIME_START, so a round without setup starts without the siren.
+function StartsRound(wasSetup, setup)
+	return wasSetup == true and not setup
+end
+
+-- SendTimeWarning: q = { paused, autoCountdown, halted, isHud, koth }. The
+-- timer must run and count down aloud; it must be the HUD timer, or any
+-- timer in koth. A stopped game (Sandbox mode, TF2's waiting for players)
+-- says nothing.
+function Speaks(q)
+	return not q.paused and q.autoCountdown and not q.halted and (q.isHud or q.koth)
+end
+
 -- CTeamRoundTimer::SetActiveTimer. timers: { enabled, show }; newly: the index
 -- becoming active, or nil when the active one goes away. Returns the chosen
 -- index (or nil) and the indices whose show_in_hud is turned off.
