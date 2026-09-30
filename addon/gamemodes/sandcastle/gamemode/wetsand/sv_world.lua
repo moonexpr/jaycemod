@@ -1,7 +1,6 @@
 -- Server-side world helpers shared by the TF2 entities.
 
 util.AddNetworkString("wetsand_pa_announce_text")
-util.AddNetworkString("wetsand_client_loaded")
 util.AddNetworkString("wetsand_pa_sound_file")
 
 -- CTeamplayRoundBasedRules::BroadcastSound: a game sound every player of a
@@ -24,11 +23,6 @@ function WETSAND.PlaySoundTo(ply, ent, name)
 	filter:AddPlayer(ply)
 	ent:EmitSound(name, 75, 100, 1, CHAN_AUTO, 0, 0, filter)
 end
-
--- Sent by the client once it has finished loading (InitPostEntity).
-net.Receive("wetsand_client_loaded", function(_, ply)
-	ply.wetsandReady = true
-end)
 
 -- Keyvalues of engine entities we read but do not implement. GMod exposes no
 -- getter for a path_track's next node or a teamspawn's team, so they are

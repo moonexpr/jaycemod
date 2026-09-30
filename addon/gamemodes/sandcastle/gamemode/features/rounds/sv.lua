@@ -140,10 +140,11 @@ local function TeamPlayers(t)
 	return players
 end
 
--- A player counts once their client has finished loading, so the pre-round
--- freeze is not spent on a loading screen. Bots have no client to report it.
+-- A player counts once their client has finished loading (client_ready,
+-- wetsand/sh_events.lua), so the pre-round freeze is not spent on a
+-- loading screen. Bots have no client to report it.
 local function Ready(ply)
-	return ply.wetsandReady or ply:IsBot()
+	return WETSAND.IsReady(ply) or ply:IsBot()
 end
 
 -- BHavePlayers: someone ready and on RED or BLU, or something else fighting
