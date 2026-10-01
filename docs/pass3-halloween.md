@@ -64,7 +64,8 @@ from `.devtools/bin/bsp_entities.py "$TF2/tf/maps/<map>.bsp" --class C | --io`.
    - no IVision helper, because TF2's Halloween actions only call
      `IsLineOfSightClear`, which is a port method.
 9. **Left out, with reasons:**
-   - Merasmus and the minigames are accept-and-ignore stubs (section 9).
+   - The minigames are accept-and-ignore stubs (section 9). Merasmus is a
+     full boss (section 6) without his econ rewards or the Wheel of Fate.
    - Econ features: pumpkin-head immunity, soul packs, gift rewards, achievements.
    - Karts, and the eyeball's purgatory stun.
    - The eyeball's per-weapon damage multipliers: GMod has no sentries or
@@ -737,12 +738,55 @@ binding resolves the move with hull traces and reflects off surfaces.
   (`CTFBaseRocket`): straight flight; touch → DETONATE; `Explosion` radius
   `ROCKET_RADIUS=146`, damage ×`CRIT_MULTIPLIER` when crit.
 
+**`foundation.npc.merasmus`** (a boss variant; `merasmus.cpp`,
+`merasmus_behavior/*.cpp`, `merasmus_trick_or_treat_prop.cpp`). His convars
+keep TF2's names and defaults (`tf_merasmus_*`, `CONVARS`; health 33750 +
+2500 per player past 10, lifetime 120, speed 600, attack range 200, stun 2,
+bomb heads 15 s and 1 per team, props 150 health).
+
+- **Arrival:** `Halloween.MerasmusAppears` to everyone, `merasmus_summoned`,
+  the map's `boss_enter_relay` (he moves to it), `merasmus_spawn`; then the
+  reveal (`ACT_SHIELD_UP`): bar shown, players within 400 pushed by 500,
+  nearby bombs removed, faces the nearest player.
+- **Attack:** the nearest chaseable player within 2000 of home (the first
+  point BLU may take), kept 7 s. Staff every 1 s inside 200 (70 `DMG_CLUB`,
+  push 500, cone as the Horsemann's, reach 180); a bomb every 2-3 s
+  (`tf_projectile_pipe`: 50 damage, radius 300, 2 s fuse, `bomb_temp.mdl`);
+  a fire spell every 3-4 s (up to 6 + level-1 players within 600 + 50 per
+  level: burning 5 s, flung up 1000, 50 to 20 `DMG_BURN` by distance, plus 5
+  per level).
+- **Bomb heads:** at 10 s, then every 16 s, each team's longest-spared
+  living player in a `func_nav_prefer` area: loser-state stun and speed for
+  15 s, then a 100-damage blast at their head (theirs too) that throws
+  players within 150. Reaching him within 100 frees and buffs them (pumpkin
+  crits, speed, invulnerability 10 s), blows the bomb on him and stuns him
+  2 s; the third stun sends him home + 75 to rain rings or spokes of bombs
+  from the air over the first point (`AOEAttack`), otherwise to a free
+  preferred area.
+- **Hiding:** after losing 45% since his reveal he hides among up to 10
+  props on preferred areas 500 apart; 70-100% of them must be smashed, and
+  the last one brings him out where it stood and buffs its finder. Past the
+  first level he heals 0.1% of his max per second per level while hidden.
+- **Leaving:** `merasmus_escape_warning` at 60, 30 and 10 s; at 120 s (not
+  while stunned or aloft) `ACT_FLY`, `merasmus_escaped`, `boss_exit_relay`,
+  and the level resets to 1.
+- **Death:** `Halloween.MerasmusBanish`, the death music to everyone, then
+  gibs, `merasmus_killed`, `boss_dead_relay`, a loot vortex that sends each
+  team to `spawn_loot_red`/`spawn_loot_blue`, and the next one is a level up.
+- **Left out:** the hat levels, achievements, killers' line and stats; the
+  Wheel of Fate (no event map has a `wheel_of_fortress`); TF2's boss
+  respawn timer; per-weapon damage multipliers; the scripted bomb-rain scene
+  (its line plays as a sound). Prop separation and the area round the point
+  are measured straight, where TF2 walks the mesh.
+
 How the maps drive them:
 
 - pl_bloodwater's `eyeball_cap_N_template`s are `point_template`s sent
   `ForceSpawn` by relays.
 - millstone, fifthcurve, rumble and terror use the templates `horseman_spawn`
   and `eyeball_spawn`, plus `Kill` on `OnMapSpawn`/`OnMultiNewRound`.
+- fifthcurve and rumble spawn Merasmus from the template `merasmus_triggered`
+  (`relay_merasmus` sends `ForceSpawn`) and `Kill` him on `OnMultiNewRound`.
 - The maps supply the `spawn_boss_alt`, `spawn_loot` and `spawn_purgatory`
   info_targets.
 
@@ -913,7 +957,6 @@ alternating `Halloween.spelltick_a`/`_b`. When the spell is set, it plays
 
 | entity | binding / model | why not more |
 |---|---|---|
-| merasmus | stub: keyvalues and `Kill` accepted, one log line, removes itself on spawn | `merasmus.cpp` is 1600 lines, and it needs bomb heads, props, the Wheel of Fate and minigames |
 | tf_halloween_minigame, tf_logic_minigames | stub: every FGD keyvalue and input accepted, nothing fired | karts and minigame arenas (rumble only) |
 | halloween_fortune_teller | model `foundation.holiday.fortune`, bound to the holiday controller (CTFHalloweenFortuneTeller, `tf_logic_halloween_2014.cpp`); see below | the curses (econ, dances, ghosts) are left out |
 | tf_point_weapon_mimic | bound to combat. WeaponType 0 is a `tf_projectile_rocket`; 1 is a timed `foundation.projectile.grenade`. Honours SpeedMin/Max, SpreadAngle, Damage, SplashRadius, Crits, ModelScale/Override, FireSound, ParticleEffect; inputs FireOnce, FireMultiple(int). Arrows and stickies log once | terror uses types 0 and 1 |

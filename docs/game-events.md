@@ -187,6 +187,9 @@ Per feature (`features/<name>/sh.lua`):
 | `pumpkin_lord_summoned`, `pumpkin_lord_killed` | npc | none | the Horsemann as it rises and once gone; the npc view plays `Halloween.HeadlessBossSpawn` / `HeadlessBossDeath` and prints TF2's line |
 | `eyeball_boss_summoned`, `eyeball_boss_killed`, `eyeball_boss_escaped` | npc | `level` int16 | a map's MONOCULUS (never a spell's); `Halloween.MonoculusBossSpawn`, `MonoculusBossDeath`, `EyeballBossEscaped` and TF2's lines |
 | `eyeball_boss_escape_imminent` | npc | `level`, `time_remaining` uint8 | at 60, 30 and 10 s left; `Halloween.EyeballBossEscapeSoon`, or `EscapeImminent` at 10 s or less, and TF2's line |
+| `merasmus_summoned`, `merasmus_killed`, `merasmus_escaped` | npc | `level` int16 | Merasmus; `Halloween.MerasmusBossSpawn` (none when killed: his death music is broadcast as he falls), `EyeballBossEscaped`, and TF2's lines in his colour |
+| `merasmus_escape_warning` | npc | `level`, `time_remaining` uint8 | at 60, 30 and 10 s left; as MONOCULUS's warning, with his words |
+| `halloween_bomb_head` | npc | `player` entity, `duration` float (0: gone) | Merasmus's bomb heads; the npc view hangs the bomb on the player's head, and its carrier reads TF2's orders |
 | `nb_debug_state`, `nb_debug_path`, `nb_debug_cost`, `nb_debug_behavior`, `nb_debug_nav`, `nb_debug_npc_removed` | nbdebug | see `features/nbdebug/sh.lua` | the nbdebug controller to subscribed admins; the overlay |
 | `aiwar_debug` | nbdebug | `fire_teams`, `spheres`, `lanes`, `soldiers` | the aiwar controller to AIWAR-layer admins; the overlay |
 

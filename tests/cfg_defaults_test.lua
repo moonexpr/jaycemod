@@ -49,7 +49,7 @@ local function IndirectDefaults(defaults)
 	defaults.mp_aiwar_team_size = tostring(T.require("foundation.aiwar").TEAM_SIZE_DEFAULT)
 	defaults.wetsand_nodegraph_max_nodes = tostring(T.require("foundation.nodegraph").MAX_NODES)
 	defaults.tf_max_active_zombie = tostring(T.require("foundation.npc.zombie").MAX_ACTIVE_DEFAULT)
-	for _, boss in ipairs({ "foundation.npc.eyeball_boss", "foundation.npc.headless_hatman" }) do
+	for _, boss in ipairs({ "foundation.npc.eyeball_boss", "foundation.npc.headless_hatman", "foundation.npc.merasmus" }) do
 		for name, value in pairs(T.require(boss).CONVARS) do defaults[name] = tostring(value) end
 	end
 	local Overlay = T.require("foundation.ns.overlay")
