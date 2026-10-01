@@ -11,16 +11,20 @@ local SETUP_TIMEOUT = 100
 local MOVE_SAMPLE = 10 -- seconds of pushing before the first reading
 local MIN_DISTANCE = 50 -- units the cart must have moved
 local CHECKPOINT_TIMEOUT = 240
-local SIDE_INSET = 4 -- units inside the area's side the pushers stand
 
--- Pushers stand along the area's +y side, at its middle x, on the floor.
-local function SideSpots(area, count)
-	local mins, maxs = area:OBBMins(), area:OBBMaxs()
-	local middle = Tests.AreaMiddle(area)
+-- Pushers stand in a row beside the train, just clear of its own bounds
+-- (a player overlapping the train's brush blocks it, and the bots are put
+-- back every 0.2 s), and still within reach of the area riding it.
+local PLAYER_HALF_WIDTH = 16
+local CLEARANCE = 4
+
+local function SideSpots(train, count)
+	local mins, maxs = train:OBBMins(), train:OBBMaxs()
+	local middle = (mins + maxs) * 0.5
 	local spots = {}
 	for i = 1, count do
 		local x = mins.x + (maxs.x - mins.x) * i / (count + 1)
-		spots[i] = Tests.FloorUnder(area, Vector(x, maxs.y - SIDE_INSET, middle.z))
+		spots[i] = Tests.FloorUnder(train, Vector(x, maxs.y + PLAYER_HALF_WIDTH + CLEARANCE, middle.z))
 	end
 	return spots
 end
@@ -55,8 +59,25 @@ return function(t)
 		if ply:Team() == BLUE and #bots < (t.args.team_size or DEFAULT_TEAM_SIZE) then bots[#bots + 1] = ply end
 	end
 	local startPos, startProgress = train:GetPos(), GetGlobal2Float("wetsand_cart_1_progress", 0)
-	t:Station(bots, function() return SideSpots(area, #bots) end)
-	t:Wait(MOVE_SAMPLE)
+	t:Station(bots, function() return SideSpots(train, #bots) end)
+	-- What the cart did each second, to tell a stuck cart from a slow one.
+	local samples = {}
+	for second = 1, MOVE_SAMPLE do
+		t:Wait(1)
+		samples[#samples + 1] = string.format("%ds: moved %.0f, m_flSpeed %.1f, hud speed %d, hud cappers %d, inside %d",
+			second, train:GetPos():Distance(startPos), train:GetInternalVariable("m_flSpeed") or -1,
+			GetGlobal2Int("wetsand_cart_1_speed", 0), GetGlobal2Int("wetsand_cart_1_cappers", 0),
+			#WETSAND.PlayersInside(area))
+	end
+	t:Info("push_samples", samples)
+	local models = {}
+	for _, child in ipairs(train:GetChildren()) do
+		local model = child:GetModel()
+		if model and not string.StartWith(model, "*") then
+			models[#models + 1] = model .. (util.IsValidModel(model) and "" or " (missing on this server)")
+		end
+	end
+	t:Info("cart_models", models)
 	local pushers = #WETSAND.PlayersInside(area)
 	local moved = train:GetPos():Distance(startPos)
 	local progress = GetGlobal2Float("wetsand_cart_1_progress", 0)
