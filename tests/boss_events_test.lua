@@ -65,13 +65,68 @@ T.test("MONOCULUS's words are in its colour, the Horsemann's in the plain chat c
 	T.eq(Cue(BossEvents.PUMPKIN_LORD_KILLED).color, nil, "horsemann")
 end)
 
-T.test("every boss event has a cue", function()
+T.test("Merasmus's arrival plays his music; past the first level the text names the level", function()
+	local first = Cue(BossEvents.MERASMUS_SUMMONED, { level = BossEvents.FIRST_LEVEL })
+	T.eq(first.sound, "Halloween.MerasmusBossSpawn", "music")
+	T.eq(first.text, "MERASMUS! has appeared!", "level 1")
+	T.eq(first.color, BossEvents.MERASMUS_COLOR, "his colour")
+	T.eq(Cue(BossEvents.MERASMUS_SUMMONED, { level = 2 }).text, "MERASMUS! (LEVEL 2) has appeared!", "level 2")
+end)
+
+-- His death's music is broadcast as he starts dying (CMerasmusDying), so
+-- merasmus_killed itself plays nothing.
+T.test("Merasmus's defeat only says so", function()
+	local killed = Cue(BossEvents.MERASMUS_KILLED, { level = 1 })
+	T.eq(killed.sound, nil, "no sound")
+	T.eq(killed.text, "MERASMUS! has been defeated!", "killed")
+	T.eq(Cue(BossEvents.MERASMUS_KILLED, { level = 3 }).text, "MERASMUS! (LEVEL 3) has been defeated!", "levelled")
+end)
+
+T.test("Merasmus's warnings and departure use MONOCULUS's sounds and his own words", function()
+	local WARNING = BossEvents.MERASMUS_ESCAPE_WARNING
+	local sixty = Cue(WARNING, {
+		level = 1,
+		time_remaining = 60,
+	})
+	T.eq(sixty.sound, "Halloween.EyeballBossEscapeSoon", "soon")
+	T.eq(sixty.text, "MERASMUS! is leaving in 60 seconds...", "60")
+	local ten = Cue(WARNING, {
+		level = 2,
+		time_remaining = 10,
+	})
+	T.eq(ten.sound, "Halloween.EyeballBossEscapeImminent", "imminent")
+	T.eq(ten.text, "MERASMUS! (LEVEL 2) is leaving in 10 seconds!", "10, levelled")
+	local gone = Cue(BossEvents.MERASMUS_ESCAPED, { level = 1 })
+	T.eq(gone.sound, "Halloween.EyeballBossEscaped", "escaped")
+	T.eq(gone.text, "MERASMUS! has gone home!", "escaped text")
+	T.eq(Cue(BossEvents.MERASMUS_ESCAPED, { level = 5 }).text, "MERASMUS! (LEVEL 5) has gone home!", "levelled")
+	T.eq(BossEvents.MERASMUS_COLOR.r, 112, "colorMerasmusText")
+	T.eq(BossEvents.MERASMUS_COLOR.g, 176, "colorMerasmusText")
+	T.eq(BossEvents.MERASMUS_COLOR.b, 74, "colorMerasmusText")
+end)
+
+-- CTFPlayerShared's bomb stages (s_vecBombStages): the hat's skin by the
+-- seconds left.
+T.test("a bomb head's hat darkens through three stages as its time runs out", function()
+	T.eq(BossEvents.BombHeadStage(15), 0, "fresh")
+	T.eq(BossEvents.BombHeadStage(8), 0, "at 8")
+	T.eq(BossEvents.BombHeadStage(7.9), 1, "under 8")
+	T.eq(BossEvents.BombHeadStage(3), 1, "at 3")
+	T.eq(BossEvents.BombHeadStage(2.9), 2, "under 3")
+	T.eq(BossEvents.BombHeadStage(0), 2, "about to blow")
+	T.eq(BossEvents.BOMB_HEAD_TEXT, "Take your big bomb head back to Merasmus!", "TF_HALLOWEEN_MERASMUS_YOU_ARE_BOMB")
+end)
+
+T.test("every boss event has a cue with a line; its sound, when it has one, is a name", function()
 	for _, name in ipairs(BossEvents.NAMES) do
-		T.eq(type(BossEvents.Cue(name, {
+		local cue = BossEvents.Cue(name, {
 			level = 1,
 			time_remaining = 10,
-		}).sound), "string", name)
+		})
+		T.eq(type(cue.text), "string", name .. " text")
+		T.eq(cue.sound == nil or type(cue.sound) == "string", true, name .. " sound")
 	end
+	T.eq(type(BossEvents.Cue(BossEvents.PUMPKIN_LORD_SUMMONED, {}).sound), "string", "the Horsemann's music")
 end)
 
 T.finish()
