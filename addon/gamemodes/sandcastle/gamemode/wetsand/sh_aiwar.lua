@@ -8,6 +8,10 @@ local ACTIVE_KEY = "wetsand.aiwar"
 
 CreateConVar("mp_aiwar_team_size", tostring(AiWar.TEAM_SIZE_DEFAULT), { FCVAR_ARCHIVE, FCVAR_REPLICATED },
 	"Soldiers each side of the AI war keeps in the field", 1, AiWar.TEAM_SIZE_MAX)
+-- Replicated, so the Debug NextSoldier panel (wetsand/cl_ns_debug.lua)
+-- shows whether it is on.
+CreateConVar("wetsand_aiwar_debug_full", "0", { FCVAR_ARCHIVE, FCVAR_REPLICATED },
+	"Show each soldier's whole action stack (the monitors too) in the AI war overlay and report")
 
 function WETSAND.AiWarActive()
 	return GetGlobal2Bool(ACTIVE_KEY, false)
@@ -66,17 +70,8 @@ local function BuildPanel(panel)
 	panel:NumSlider("Soldiers per side", "mp_aiwar_team_size", 1, AiWar.TEAM_SIZE_MAX, 0)
 	panel:NumSlider("Ragdolls fade after (s, 0: never)", "cl_npc_ragdoll_lifetime", 0, 120, 0)
 	panel:NumSlider("Most ragdolls kept", "g_ragdoll_maxcount", 0, 64, 0)
-	panel:Help("Debugging (admins): draw each soldier's route and state, or print them all to the console.")
-	panel:Button("Toggle Soldier Overlay", "wetsand_aiwar_debug")
-	panel:Button("Print Soldier Report", "wetsand_aiwar_report")
-	panel:Help("Trace the soldier you aim at: every question DrGBase asks its orders and every event it tells them, in the server console. Aim at nothing to stop.")
-	panel:Button("Trace Soldier Aimed At", "wetsand_aiwar_trace")
-	panel:CheckBox("Overlay shows the whole action stack", "wetsand_aiwar_debug_full")
+	panel:Help("Debugging the soldiers (overlays, reports, tuning): Utilities > Sandcastle > Debug NextSoldier.")
 end
-
--- The soldier overlay (wetsand_aiwar_debug) is drawn by the nbdebug
--- feature's view (features/nbdebug/cl.lua), as its AIWAR layer, with the
--- other NPC debug layers.
 
 hook.Add("PopulateToolMenu", "wetsand_aiwar", function()
 	spawnmenu.AddToolMenuOption("Utilities", "Sandcastle", "wetsand_aiwar", "AI War", "", "", BuildPanel)

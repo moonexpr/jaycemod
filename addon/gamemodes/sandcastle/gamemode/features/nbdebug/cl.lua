@@ -8,6 +8,7 @@
 -- Nothing here needs developer mode, so it works on dedicated servers.
 local Debug = WETSAND.require("foundation.npc.debug")
 local Overlay = WETSAND.require("foundation.aiwar.overlay")
+local Parts = WETSAND.require("foundation.ns.overlay")
 
 -- The game events it listens to are sh.lua's; aiwar_debug is the aiwar
 -- controller's (Controller:SendDebug).
@@ -82,6 +83,8 @@ E.Listen("nb_debug_state", "wetsand_nbdebug_view", function(fields)
 	view.selected = fields.selected
 	-- the server resends what the new view needs
 	view.paths, view.cost, view.behavior, view.nav = {}, nil, {}, {}
+	-- the Debug NextSoldier panel's toggles show which layers are on
+	hook.Run("WetsandNbDebugState", layers)
 end)
 
 E.Listen("nb_debug_path", "wetsand_nbdebug_view", function(fields)
@@ -152,9 +155,15 @@ end)
 
 -------------------------------------------------------------------------------
 -- The AI war's soldier overlay (AIWAR): what its controller last sent,
--- drawn until it goes stale.
+-- drawn until it goes stale. Each part (foundation.ns.overlay's PARTS) is
+-- drawn while its client convar is on (the Debug NextSoldier panel's
+-- toggles, wetsand/cl_ns_debug.lua).
 
-local war = { soldiers = {}, teams = {}, spheres = {}, received = -math.huge }
+local war = { soldiers = {}, teams = {}, spheres = {}, lanes = {}, lines = {}, fronts = {}, received = -math.huge }
+
+local function Shows(part)
+	return GetConVar(Parts.ConVar(part)):GetBool()
+end
 
 -- Brighter than the teams' HUD colours, to read over any map.
 local WAR_COLOR = { [WETSAND.TEAM_RED] = Color(255, 90, 90), [WETSAND.TEAM_BLUE] = Color(110, 175, 255) }
@@ -163,6 +172,8 @@ E.Listen("aiwar_debug", "wetsand_nbdebug_view", function(fields)
 	local teams = fields.fire_teams
 	war.spheres = fields.spheres
 	war.lanes = fields.lanes
+	war.lines = fields.lines
+	war.fronts = fields.fronts
 	for _, soldier in ipairs(fields.soldiers) do soldier.fireTeam = teams[soldier.fire_team] end
 	war.teams, war.soldiers, war.received = teams, fields.soldiers, CurTime()
 end)
@@ -172,58 +183,117 @@ end)
 local CONTACT_COLOR, COVER_COLOR = Color(255, 190, 40), Color(90, 230, 120)
 local COVER_BOX, FLANK_BOX, FLANK_ANGLE = Vector(8, 8, 8), Vector(14, 14, 14), Angle(45, 45, 0)
 local LANE_MARK = Vector(4, 4, 4)
+-- Squads: a ring at the leader's feet, and a link from each member to it
+-- (bright while its element moves, dim while it holds).
+local LEADER_RING, LINK_LIFT = 28, Vector(0, 0, 16)
+-- Battle lines: a rail through the posts, a post at each; fronts: a pillar.
+local LINE_LIFT, LINE_RAIL_GAP, POST_HEIGHT = Vector(0, 0, 10), Vector(0, 0, 3), Vector(0, 0, 56)
+local FRONT_RING, FRONT_HEIGHT = 64, Vector(0, 0, 200)
+local GROUND_LIFT = Vector(0, 0, 6)
+local RING_SEGMENTS = 24
 
 local function Dim(color)
 	return Color(color.r * 0.45, color.g * 0.45, color.b * 0.45)
 end
 
+local function Ring(center, radius, segments, color)
+	local last
+	for i = 0, segments do
+		local angle = i / segments * math.pi * 2
+		local point = center + Vector(math.cos(angle) * radius, math.sin(angle) * radius, 0)
+		if last then render.DrawLine(last, point, color, false) end
+		last = point
+	end
+end
+
+local function DrawSoldier(soldier, color)
+	local from = soldier.ent:GetPos() + Vector(0, 0, 8)
+	for _, point in ipairs(soldier.route) do
+		render.DrawLine(from, point + Vector(0, 0, 8), color, false)
+		from = point + Vector(0, 0, 8)
+	end
+	if soldier.goal then render.DrawWireframeSphere(soldier.goal, 16, 8, 8, color, false) end
+end
+
+local function DrawBattleLine(line)
+	local color = WAR_COLOR[line.team] or color_white
+	if line.kind ~= "posts" then color = Dim(color) end
+	local points = line.points
+	for j = 1, #points do
+		local base = points[j] + LINE_LIFT
+		render.DrawLine(base, base + POST_HEIGHT, color, false)
+		local nextPoint = points[j + 1] or (line.closed and #points > 2 and points[1])
+		if nextPoint then
+			render.DrawLine(base, nextPoint + LINE_LIFT, color, false)
+			render.DrawLine(base + LINE_RAIL_GAP, nextPoint + LINE_LIFT + LINE_RAIL_GAP, color, false)
+		end
+	end
+end
+
 local function DrawWar()
+	local soldiers, squads, contacts = Shows(Parts.SOLDIERS), Shows(Parts.SQUADS), Shows(Parts.CONTACTS)
 	for _, soldier in ipairs(war.soldiers) do
 		if IsValid(soldier.ent) then
 			local color = WAR_COLOR[soldier.team] or color_white
-			local from = soldier.ent:GetPos() + Vector(0, 0, 8)
-			for _, point in ipairs(soldier.route) do
-				render.DrawLine(from, point + Vector(0, 0, 8), color, false)
-				from = point + Vector(0, 0, 8)
-			end
-			if soldier.goal then render.DrawWireframeSphere(soldier.goal, 16, 8, 8, color, false) end
-			if soldier.cover then render.DrawWireframeBox(soldier.cover, angle_zero, -COVER_BOX, COVER_BOX, COVER_COLOR, false) end
+			local fireTeam = soldier.fireTeam
+			if soldiers then DrawSoldier(soldier, color) end
+			if contacts and soldier.cover then render.DrawWireframeBox(soldier.cover, angle_zero, -COVER_BOX, COVER_BOX, COVER_COLOR, false) end
 			-- in a fight: a line to its team's contact, bright moving, dim holding
-			if soldier.fireTeam then
+			if contacts and soldier.fighting and fireTeam and fireTeam.contact then
 				local body = soldier.ent:GetPos() + Vector(0, 0, 40)
-				render.DrawLine(body, soldier.fireTeam.contact, soldier.moving and color or Dim(color), false)
+				render.DrawLine(body, fireTeam.contact, soldier.moving and color or Dim(color), false)
+			end
+			if squads and fireTeam and IsValid(fireTeam.leader) and fireTeam.leader ~= soldier.ent then
+				local link = (soldier.fighting and not soldier.moving) and Dim(color) or color
+				render.DrawLine(soldier.ent:GetPos() + LINK_LIFT, fireTeam.leader:GetPos() + LINK_LIFT, link, false)
 			end
 		end
 	end
-	-- the cart spheres: rings on the ground, the push sphere bright, the
-	-- support sphere dim
-	for _, sphere in ipairs(war.spheres) do
-		local color = WAR_COLOR[sphere.team] or color_white
-		if not sphere.push then color = Dim(color) end
-		local segments, lift = sphere.push and 24 or 48, Vector(0, 0, 6)
-		local last
-		for i = 0, segments do
-			local angle = i / segments * math.pi * 2
-			local point = sphere.center + Vector(math.cos(angle) * sphere.radius, math.sin(angle) * sphere.radius, 0) + lift
-			if last then render.DrawLine(last, point, color, false) end
-			last = point
+	if squads then
+		for _, fireTeam in ipairs(war.teams) do
+			if IsValid(fireTeam.leader) then
+				local color = WAR_COLOR[fireTeam.team] or color_white
+				Ring(fireTeam.leader:GetPos() + GROUND_LIFT, LEADER_RING, RING_SEGMENTS, color)
+				Ring(fireTeam.leader:GetPos() + GROUND_LIFT, LEADER_RING + 4, RING_SEGMENTS, color)
+			end
 		end
 	end
-	-- each team's lanes: a dim line along its waypoints, a mark at each
-	for _, lane in ipairs(war.lanes or {}) do
-		local color = Dim(WAR_COLOR[lane.team] or color_white)
-		local lift = Vector(0, 0, 12 + lane.index * 4)
-		for j = 2, #lane.points do render.DrawLine(lane.points[j - 1] + lift, lane.points[j] + lift, color, false) end
-		for _, point in ipairs(lane.points) do render.DrawWireframeBox(point + lift, angle_zero, -LANE_MARK, LANE_MARK, color, false) end
+	if Shows(Parts.BATTLELINES) then
+		-- the cart spheres: rings on the ground, the push sphere bright, the
+		-- support sphere dim
+		for _, sphere in ipairs(war.spheres) do
+			local color = WAR_COLOR[sphere.team] or color_white
+			if not sphere.push then color = Dim(color) end
+			Ring(sphere.center + GROUND_LIFT, sphere.radius, sphere.push and 24 or 48, color)
+		end
+		for _, line in ipairs(war.lines) do DrawBattleLine(line) end
+		for _, front in ipairs(war.fronts) do
+			local color = WAR_COLOR[front.team] or color_white
+			render.DrawLine(front.pos, front.pos + FRONT_HEIGHT, color, false)
+			Ring(front.pos + GROUND_LIFT, FRONT_RING, RING_SEGMENTS, color)
+		end
 	end
-	-- each fire team in contact: the enemy's last seen place, its flank point
-	for _, fireTeam in ipairs(war.teams) do
-		local color = WAR_COLOR[fireTeam.team] or color_white
-		render.DrawWireframeSphere(fireTeam.contact, 24, 6, 6, CONTACT_COLOR, false)
-		render.DrawLine(fireTeam.contact, fireTeam.contact + Vector(0, 0, 96), CONTACT_COLOR, false)
-		if fireTeam.flank then
-			render.DrawWireframeBox(fireTeam.flank, FLANK_ANGLE, -FLANK_BOX, FLANK_BOX, color, false)
-			render.DrawLine(fireTeam.contact, fireTeam.flank, Dim(color), false)
+	if Shows(Parts.LANES) then
+		-- each team's lanes: a dim line along its waypoints, a mark at each
+		for _, lane in ipairs(war.lanes) do
+			local color = Dim(WAR_COLOR[lane.team] or color_white)
+			local lift = Vector(0, 0, 12 + lane.index * 4)
+			for j = 2, #lane.points do render.DrawLine(lane.points[j - 1] + lift, lane.points[j] + lift, color, false) end
+			for _, point in ipairs(lane.points) do render.DrawWireframeBox(point + lift, angle_zero, -LANE_MARK, LANE_MARK, color, false) end
+		end
+	end
+	if contacts then
+		-- each fire team in contact: the enemy's last seen place, its flank point
+		for _, fireTeam in ipairs(war.teams) do
+			if fireTeam.contact then
+				local color = WAR_COLOR[fireTeam.team] or color_white
+				render.DrawWireframeSphere(fireTeam.contact, 24, 6, 6, CONTACT_COLOR, false)
+				render.DrawLine(fireTeam.contact, fireTeam.contact + Vector(0, 0, 96), CONTACT_COLOR, false)
+				if fireTeam.flank then
+					render.DrawWireframeBox(fireTeam.flank, FLANK_ANGLE, -FLANK_BOX, FLANK_BOX, color, false)
+					render.DrawLine(fireTeam.contact, fireTeam.flank, Dim(color), false)
+				end
+			end
 		end
 	end
 end
@@ -312,7 +382,7 @@ local function Boxes()
 		end
 		return box
 	end
-	if Live(war.received) then
+	if Live(war.received) and Shows(Parts.SOLDIERS) then
 		for _, soldier in ipairs(war.soldiers) do
 			if IsValid(soldier.ent) then
 				local box = BoxOf(soldier.ent)
@@ -400,20 +470,56 @@ local function DrawBoxes()
 	for i = #shown, 1, -1 do DrawBox(shown[i], rects[i]) end
 end
 
-local function Label(pos, text, color)
+-- align: TEXT_ALIGN_BOTTOM (above the point, the default) or TEXT_ALIGN_TOP.
+local function Label(pos, text, color, align)
 	local screen = pos:ToScreen()
 	if not screen.visible then return end
-	draw.SimpleTextOutlined(text, "WetsandNbDebugDetail", screen.x, screen.y, color, TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM, 1, color_black)
+	draw.SimpleTextOutlined(text, "WetsandNbDebugDetail", screen.x, screen.y, color, TEXT_ALIGN_CENTER, align or TEXT_ALIGN_BOTTOM, 1, color_black)
 end
 
-local function DrawLabels()
-	if Live(war.received) then
+local TEAM_LABEL = { [WETSAND.TEAM_RED] = "RED", [WETSAND.TEAM_BLUE] = "BLU" }
+
+local function Middle(points)
+	return points[math.floor((#points + 1) / 2)]
+end
+
+local function DrawWarLabels()
+	if Shows(Parts.CONTACTS) then
 		for _, fireTeam in ipairs(war.teams) do
 			local color = WAR_COLOR[fireTeam.team] or color_white
-			Label(fireTeam.contact + Vector(0, 0, 104), "contact: " .. fireTeam.name, color)
+			if fireTeam.contact then Label(fireTeam.contact + Vector(0, 0, 104), "contact: " .. fireTeam.name, color) end
 			if fireTeam.flank then Label(fireTeam.flank + Vector(0, 0, 24), "flank: " .. fireTeam.name, color) end
 		end
 	end
+	-- a squad's summary under its leader's feet
+	if Shows(Parts.SQUADS) then
+		for _, fireTeam in ipairs(war.teams) do
+			if IsValid(fireTeam.leader) then
+				Label(fireTeam.leader:GetPos(), fireTeam.summary, WAR_COLOR[fireTeam.team] or color_white, TEXT_ALIGN_TOP)
+			end
+		end
+	end
+	if Shows(Parts.LANES) then
+		for _, lane in ipairs(war.lanes) do
+			if #lane.points > 0 then
+				Label(Middle(lane.points) + Vector(0, 0, 24 + lane.index * 4), TEAM_LABEL[lane.team] .. " " .. lane.label, Dim(WAR_COLOR[lane.team] or color_white))
+			end
+		end
+	end
+	if Shows(Parts.BATTLELINES) then
+		for _, line in ipairs(war.lines) do
+			if #line.points > 0 then
+				Label(Middle(line.points) + LINE_LIFT + POST_HEIGHT, TEAM_LABEL[line.team] .. " " .. line.kind, WAR_COLOR[line.team] or color_white)
+			end
+		end
+		for _, front in ipairs(war.fronts) do
+			Label(front.pos + FRONT_HEIGHT, TEAM_LABEL[front.team] .. " front", WAR_COLOR[front.team] or color_white)
+		end
+	end
+end
+
+local function DrawLabels()
+	if Live(war.received) then DrawWarLabels() end
 	local eye = EyePos()
 	if view.layers[Debug.COST] and view.cost then
 		for _, area in ipairs(view.cost.areas) do

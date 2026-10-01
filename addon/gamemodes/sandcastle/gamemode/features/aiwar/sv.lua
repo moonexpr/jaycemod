@@ -20,6 +20,8 @@ local Zone = WETSAND.require("foundation.aiwar.zone")
 local Tactics = WETSAND.require("foundation.aiwar.tactics")
 local Squad = WETSAND.require("foundation.aiwar.squad")
 local Lanes = WETSAND.require("foundation.aiwar.lanes")
+local Inspect = WETSAND.require("foundation.ns.inspect")
+local Tuning = WETSAND.require("foundation.ns.tuning")
 local Gamemode = WETSAND.require("foundation.gamemode")
 
 local ACTIVE_KEY = "wetsand.aiwar" -- Global2: the Utilities menu reads it
@@ -2101,9 +2103,9 @@ local function SquadLine(member)
 end
 
 -- wetsand_aiwar_debug_full shows the whole action stack instead, one
--- level per step: SoldierAction > StrategyMonitor > ... > Travel.
-local DEBUG_FULL = CreateConVar("wetsand_aiwar_debug_full", "0", FCVAR_ARCHIVE,
-	"Show each soldier's whole action stack (the monitors too) in the AI war overlay and report")
+-- level per step: SoldierAction > StrategyMonitor > ... > Travel
+-- (created with the war's other convars, in wetsand/sh_aiwar.lua).
+local DEBUG_FULL = GetConVar("wetsand_aiwar_debug_full")
 
 local function ActionLine(fullName)
 	if DEBUG_FULL:GetBool() then return (fullName:gsub("/", " > ")) end
@@ -2246,6 +2248,116 @@ function Controller:Report()
 	return lines
 end
 
+-- Squads, lanes and battle lines: ns_squads_print, ns_lanes_print, ns_battlelines_print
+
+-- Each fire team with members, and its members in place order.
+function Controller:Squads()
+	local squads = {}
+	for _, fireTeam in ipairs(self.war.fireTeams) do
+		local members = self.war:FireTeamMembers(fireTeam)
+		if #members > 0 then
+			squads[#squads + 1] = {
+				fireTeam = fireTeam,
+				members = members,
+			}
+		end
+	end
+	return squads
+end
+
+-- A roster member's label ("#45") and what it is doing: its tactic in a
+-- fight, else its action.
+function Controller:DescribeMember(member)
+	local handle = member.handle
+	if not IsValid(handle) then return "#?", nil end
+	local entry = self.soldiers[handle]
+	local label = "#" .. handle:EntIndex()
+	if not entry then return label, nil end
+	local state = entry.npc:State()
+	if state.fighting and state.tactic then return label, state.tactic end
+	return label, ActionLine(entry.npc:Describe())
+end
+
+-- team: RED or BLUE, or nil for both.
+function Controller:SquadReport(team)
+	local lines, now = { "NextSoldier squads:" }, CurTime()
+	local function Describe(member) return self:DescribeMember(member) end
+	for _, squad in ipairs(self:Squads()) do
+		local fireTeam = squad.fireTeam
+		if team == nil or fireTeam.team == team then
+			local body = Inspect.SquadLines(fireTeam, squad.members, now, Describe)
+			lines[#lines + 1] = "  " .. TEAM_LABEL[fireTeam.team] .. " " .. body[1]
+			for i = 2, #body do lines[#lines + 1] = "    " .. body[i] end
+		end
+	end
+	if #lines == 1 then lines[2] = "  no squads" end
+	return lines
+end
+
+local function PosText(p)
+	return string.format("(%d, %d, %d)", Round(p.x), Round(p.y), Round(p.z or 0))
+end
+
+function Controller:LaneReport()
+	local lines, now = { "NextSoldier lanes:" }, CurTime()
+	local field = self.war:Field()
+	for _, team in ipairs({ RED, BLUE }) do
+		local front = field and self.scenario:Front(field, team)
+		lines[#lines + 1] = string.format("  %s, toward %s:", TEAM_LABEL[team], front and PosText(front) or "no front")
+		local lanes, plan = self.laneSets and self.laneSets[team], self.lanePlans and self.lanePlans[team]
+		for _, line in ipairs(Inspect.LaneLines(lanes, self.war.fireTeams, team, plan, now)) do
+			lines[#lines + 1] = "    " .. line
+		end
+	end
+	return lines
+end
+
+-- Plans every team's lanes again at the next think (ns_lanes_replan,
+-- or a lanes constant tuned); the lanes found stand until then.
+function Controller:ReplanLanes()
+	self.lanePlans = {}
+end
+
+-- The team's battle lines: its posts (a ring round a hill all may be
+-- attacked from, else facing out from its base) and its forward posts, as
+-- { kind, shape } (foundation.ns.inspect's Shape).
+function Controller:BattleLines(field, team)
+	local base = field.bases and field.bases[team]
+	local lines = {}
+	local function Add(kind, points, allRound)
+		if not points or #points == 0 then return end
+		local facing = (not allRound and base) and Inspect.FacingFrom(points, base) or nil
+		lines[#lines + 1] = {
+			kind = kind,
+			shape = Inspect.Shape(points, facing),
+		}
+	end
+	Add("posts", field.posts and field.posts[team], self.scenario.GUARDS_ALL_ROUND)
+	Add("forward posts", field.forwardPosts and field.forwardPosts[team], false)
+	return lines
+end
+
+function Controller:LineReport()
+	local field, now = self.war:Field(), CurTime()
+	if not field then return { "NextSoldier battle lines: no field yet" .. (self.waitingFor and (", waiting for its " .. self.waitingFor) or "") } end
+	local lines = { "NextSoldier battle lines:" }
+	local squads = self:Squads()
+	for _, team in ipairs({ RED, BLUE }) do
+		local front = self.scenario:Front(field, team)
+		lines[#lines + 1] = string.format("  %s, front %s:", TEAM_LABEL[team], front and PosText(front) or "none")
+		local battleLines = self:BattleLines(field, team)
+		for _, line in ipairs(battleLines) do lines[#lines + 1] = "    " .. Inspect.LineReport(line.kind, line.shape) end
+		if #battleLines == 0 then lines[#lines + 1] = "    no posts" end
+		for _, squad in ipairs(squads) do
+			local fireTeam = squad.fireTeam
+			if fireTeam.team == team and (fireTeam.fallback or Tactics.Contact(fireTeam, now)) then
+				lines[#lines + 1] = "    " .. Inspect.Summary(fireTeam, squad.members, now)
+			end
+		end
+	end
+	return lines
+end
+
 -- The overlay: each soldier's line, goal and remaining route, to the
 -- admins who asked for it.
 function Controller:SendDebug(now)
@@ -2260,25 +2372,25 @@ function Controller:SendDebug(now)
 	for ent, entry in pairs(self.soldiers) do
 		if IsValid(ent) then list[#list + 1] = { ent = ent, entry = entry } end
 	end
-	-- fire teams in contact: where they last saw the enemy, their flank point
-	local teams, teamIndex = {}, {}
-	for _, fireTeam in ipairs(self.war.fireTeams) do
-		local contact = Tactics.Contact(fireTeam, now)
-		if contact and #teams < 255 then
-			teams[#teams + 1] = { fireTeam = fireTeam, contact = contact }
-			teamIndex[fireTeam] = #teams
+	-- The aiwar_debug game event (features/nbdebug/sh.lua), for the nbdebug
+	-- view. Every squad with a leader: its summary, and in a fight where it
+	-- last saw the enemy and its flank point.
+	local fireTeams, teamIndex = {}, {}
+	for _, squad in ipairs(self:Squads()) do
+		local fireTeam = squad.fireTeam
+		local leader = Squad.Leader(fireTeam)
+		if leader and IsValid(leader.handle) and #fireTeams < 255 then
+			local contact = Tactics.Contact(fireTeam, now)
+			fireTeams[#fireTeams + 1] = {
+				team = fireTeam.team,
+				name = Inspect.Name(fireTeam),
+				summary = Inspect.Summary(fireTeam, squad.members, now),
+				leader = leader.handle,
+				contact = contact and ToVector(contact.pos) or nil,
+				flank = contact and fireTeam.flank and not fireTeam.flankDone and ToVector(fireTeam.flank) or nil,
+			}
+			teamIndex[fireTeam] = #fireTeams
 		end
-	end
-	-- The aiwar_debug game event (features/nbdebug/sh.lua), for the nbdebug view.
-	local fireTeams = {}
-	for i, item in ipairs(teams) do
-		local fireTeam = item.fireTeam
-		fireTeams[i] = {
-			team = fireTeam.team,
-			name = string.format("%s %d", fireTeam.role, fireTeam.index),
-			contact = ToVector(item.contact.pos),
-			flank = fireTeam.flank and not fireTeam.flankDone and ToVector(fireTeam.flank) or nil,
-		}
 	end
 	-- the support sphere of each team with a cart
 	local spheres = {}
@@ -2292,7 +2404,7 @@ function Controller:SendDebug(now)
 			push = false,
 		}
 	end
-	-- each team's lanes
+	-- each team's lanes, named with the squads holding them
 	local lanes = {}
 	for team, set in pairs(field and field.lanes or {}) do
 		for index, lane in ipairs(set) do
@@ -2302,9 +2414,31 @@ function Controller:SendDebug(now)
 				lanes[#lanes + 1] = {
 					team = team,
 					index = index,
+					label = Inspect.LaneLabel(set, index, self.war.fireTeams, team),
 					points = points,
 				}
 			end
+		end
+	end
+	-- each team's battle lines and front
+	local lines, fronts = {}, {}
+	for _, team in ipairs(field and { RED, BLUE } or {}) do
+		for _, line in ipairs(self:BattleLines(field, team)) do
+			local points = {}
+			for j = 1, math.min(#line.shape.points, 63) do points[j] = ToVector(line.shape.points[j]) end
+			lines[#lines + 1] = {
+				team = team,
+				kind = line.kind,
+				points = points,
+				closed = line.shape.closed,
+			}
+		end
+		local front = self.scenario:Front(field, team)
+		if front then
+			fronts[#fronts + 1] = {
+				team = team,
+				pos = ToVector(front),
+			}
 		end
 	end
 	local soldiers = {}
@@ -2317,8 +2451,9 @@ function Controller:SendDebug(now)
 		local route, first = state.route or {}, state.routeIndex or 1
 		local points = {}
 		for j = first, math.min(#route, first + DEBUG_MAX_POINTS - 1) do points[#points + 1] = ToVector(route[j]) end
-		-- its fight: fire team (1-based in the list above, 0 for none), element, cover
-		local fireTeam = state.fighting and state.member and state.member.fireTeam
+		-- its squad (1-based in the list above, 0 for none); in a fight, its
+		-- element and cover
+		local fireTeam = state.member and state.member.fireTeam
 		soldiers[i] = {
 			ent = item.ent,
 			team = item.entry.soldier.team,
@@ -2327,12 +2462,15 @@ function Controller:SendDebug(now)
 			goal = state.goal and ToVector(state.goal) or nil,
 			route = points,
 			fire_team = fireTeam and teamIndex[fireTeam] or 0,
+			fighting = state.fighting == true,
 			moving = state.element == "moving",
 			cover = state.coverSpot and ToVector(state.coverSpot) or nil,
 		}
 	end
 	WETSAND.Events.Fire("aiwar_debug", {
 		fire_teams = fireTeams,
+		lines = lines,
+		fronts = fronts,
 		spheres = spheres,
 		lanes = lanes,
 		soldiers = soldiers,
@@ -2355,6 +2493,87 @@ concommand.Add("wetsand_aiwar_report", function(ply)
 	Tell(ply, Controller:Report())
 	if IsValid(ply) then ply:ChatPrint("AI war: report printed to your console") end
 end, nil, "Print every AI war soldier's role, action, route and last trip to the console")
+
+-- NextSoldier's commands (docs/ns-debugging.md), for admins, printed to the
+-- caller's console (and the server's). Named ns_<subject>_<verb>.
+local function AdminCommand(name, run, help)
+	concommand.Add(name, function(ply, _, args)
+		if IsValid(ply) and not ply:IsAdmin() then return end
+		Tell(ply, run(args))
+	end, nil, help)
+end
+
+-- Those that read the soldiers run while the war is on.
+local function WarCommand(name, run, help)
+	AdminCommand(name, function(args)
+		if not Controller.war then return { name .. ": the AI war is not running" } end
+		return run(args)
+	end, help)
+end
+
+local TEAM_NAMED = {
+	RED = RED,
+	BLU = BLUE,
+	BLUE = BLUE,
+}
+
+WarCommand("ns_squads_print", function(args)
+	local team = args[1] and TEAM_NAMED[string.upper(args[1])]
+	if args[1] and not team then return { "ns_squads_print: RED, BLU, or nothing for both" } end
+	return Controller:SquadReport(team)
+end, "Print each NextSoldier squad: its leader, formation spread, bound, flank, fall back, lane and each member's place; RED or BLU for one side")
+
+WarCommand("ns_lanes_print", function()
+	return Controller:LaneReport()
+end, "Print each team's lanes: length against the shortest, overlap, and the squads holding them")
+
+WarCommand("ns_lanes_replan", function()
+	Controller:ReplanLanes()
+	return { "ns_lanes_replan: every team's lanes are planned again at the next think" }
+end, "Plan every team's lanes again; the lanes found stand until the new ones are ready")
+
+WarCommand("ns_battlelines_print", function()
+	return Controller:LineReport()
+end, "Print each team's battle lines: its front, its posts' width and depth, and the squads in contact or falling back")
+
+-- Tuning the tactics while they run (foundation.ns.tuning). A lanes
+-- constant plans the lanes again. Values last until the map changes.
+local function Tuner()
+	Controller.tuner = Controller.tuner or Tuning.Tuner.New({
+		tactics = Tactics,
+		orders = Orders,
+		lanes = Lanes,
+		squad = Squad,
+	})
+	return Controller.tuner
+end
+
+local function Replan(tunable)
+	if Controller.war and (tunable == nil or Tuning.Replans(tunable)) then Controller:ReplanLanes() end
+end
+
+AdminCommand("ns_tactics_list", function(args)
+	local lines = Tuner():Lines(args[1] or "")
+	table.insert(lines, 1, "NextSoldier tactics constants (ns_tactics_tune <name> <value|reset> changes one):")
+	if #lines == 1 then lines[2] = "  none named like '" .. args[1] .. "'" end
+	return lines
+end, "List NextSoldier's tactics constants, the changed ones first, with their defaults; a word lists those named like it")
+
+AdminCommand("ns_tactics_tune", function(args)
+	if #args < 2 then return { "ns_tactics_tune: <name> <value>, or <name> reset; ns_tactics_list lists the names" } end
+	local tuner = Tuner()
+	local ok, result
+	if args[2] == "reset" then ok, result = tuner:Reset(args[1]) else ok, result = tuner:Set(args[1], args[2]) end
+	if not ok then return { "ns_tactics_tune: " .. result } end
+	Replan(result)
+	return { "ns_tactics_tune: " .. tuner:Line(result) }
+end, "Set one of NextSoldier's tactics constants until the map changes (<name> <value>), or put it back (<name> reset)")
+
+AdminCommand("ns_tactics_reset", function()
+	Tuner():ResetAll()
+	Replan(nil)
+	return { "ns_tactics_reset: every tactics constant back to its default" }
+end, "Put every NextSoldier tactics constant back to its default")
 
 -- The overlay is the nbdebug feature's AIWAR layer (wetsand_nb_debug AIWAR),
 -- drawn with the other NPC debug layers; it sets ply.wetsandAiwarDebug.

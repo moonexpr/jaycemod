@@ -69,14 +69,33 @@ local WAR_LANE_COUNT_BITS = 4
 local WAR_LANE_INDEX_BITS = 8
 local WAR_LANE_POINT_COUNT_BITS = 6
 local WAR_DETAIL_COUNT_BITS = 4
+local WAR_LINE_COUNT_BITS = 3
+local WAR_LINE_POINT_COUNT_BITS = 6
+local WAR_FRONT_COUNT_BITS = 2
 
+-- fire_teams: every squad with a leader, its summary
+-- (foundation.ns.inspect), and while it fights its contact and flank.
+-- lines: each team's battle lines, their posts in order across the way
+-- they face (a ring when closed); fronts: where each team's lanes lead.
 E.Define("aiwar_debug", {
 	fire_teams = E.List(E.Record({
 		team = E.Team(),
 		name = E.String(),
-		contact = E.Vector(),
+		summary = E.String(),
+		leader = E.Entity(),
+		contact = E.Optional(E.Vector()),
 		flank = E.Optional(E.Vector()),
 	}), WAR_COUNT_BITS),
+	lines = E.List(E.Record({
+		team = E.Team(),
+		kind = E.String(),
+		points = E.List(E.Vector(), WAR_LINE_POINT_COUNT_BITS),
+		closed = E.Bool(),
+	}), WAR_LINE_COUNT_BITS),
+	fronts = E.List(E.Record({
+		team = E.Team(),
+		pos = E.Vector(),
+	}), WAR_FRONT_COUNT_BITS),
 	spheres = E.List(E.Record({
 		team = E.Team(),
 		center = E.Vector(),
@@ -86,9 +105,11 @@ E.Define("aiwar_debug", {
 	lanes = E.List(E.Record({
 		team = E.Team(),
 		index = E.UInt(WAR_LANE_INDEX_BITS),
+		label = E.String(),
 		points = E.List(E.Vector(), WAR_LANE_POINT_COUNT_BITS),
 	}), WAR_LANE_COUNT_BITS),
-	-- fire_team: its fire team's place in fire_teams, 0 for none.
+	-- fire_team: its fire team's place in fire_teams, 0 for none; fighting:
+	-- whether it fights with that fire team (then moving is its element's).
 	soldiers = E.List(E.Record({
 		ent = E.Entity(),
 		team = E.Team(),
@@ -97,6 +118,7 @@ E.Define("aiwar_debug", {
 		goal = E.Optional(E.Vector()),
 		route = E.List(E.Vector(), WAR_COUNT_BITS),
 		fire_team = E.UInt(WAR_COUNT_BITS),
+		fighting = E.Bool(),
 		moving = E.Bool(),
 		cover = E.Optional(E.Vector()),
 	}), WAR_COUNT_BITS),
