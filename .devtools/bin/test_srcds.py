@@ -1,3 +1,4 @@
+import dataclasses
 import socket
 import threading
 import unittest
@@ -20,6 +21,7 @@ from srcds import (
     BOTTLE,
     Launched,
     WrongBottle,
+    new_server,
     stop_targets,
 )
 
@@ -140,7 +142,7 @@ class Status(unittest.TestCase):
 
 PS = "\n".join([
     "    1     0 /sbin/launchd",
-    "  500     1 python3 srcds.py _supervise log -- wine ...",
+    "  500     1 python3 srcds.py _supervise log 27025 -- /Apps/wine --cx-app C:\\GarrysMod\\srcds_win64.exe -port 27025",
     "  501   500 /Apps/winewrapper.exe --workdir C:\\GarrysMod --run -- C:\\GarrysMod\\srcds_win64.exe -port 27025",
     "  502   501 C:\\GarrysMod\\srcds_win64.exe -console -game garrysmod -port 27025",
     "  503   501 /Apps/CrossOver/bin/wineserver",
@@ -175,9 +177,36 @@ class StopTargets(unittest.TestCase):
         self.assertEqual(stop_targets(LAUNCHED, ps), [])
 
 
+class WineReparentsTheServer(unittest.TestCase):
+    # Under CrossOver the Windows process is not the launcher's child: its
+    # parent is 1. It is found once, as the one server on our port that
+    # was not running before the launch, and stopped by that id only.
+    BEFORE = {1, 600, 700, 800}  # the launch made 500 to 505
+    PS = PS + "\n  900     1 C:\\GarrysMod\\srcds_win64.exe -console -game garrysmod -port 27025"
+
+    def test_the_new_server_on_our_port(self):
+        # The supervisor, the launcher and its child name the server in
+        # their command lines too; they are ours already, not the server.
+        self.assertEqual(new_server(LAUNCHED, self.BEFORE | {502}, self.PS), 900)
+
+    def test_not_one_that_ran_before_nor_one_on_another_port(self):
+        self.assertIsNone(new_server(LAUNCHED, self.BEFORE | {502, 900}, self.PS))
+        self.assertIsNone(new_server(dataclasses.replace(LAUNCHED, port=27015), self.BEFORE | {502}, self.PS))
+
+    def test_stop_targets_the_adopted_server(self):
+        launched = dataclasses.replace(LAUNCHED, server=900)
+        self.assertEqual(stop_targets(launched, self.PS), [500, 501, 502, 900])
+
+    def test_an_adopted_id_now_running_something_else_is_left_alone(self):
+        launched = dataclasses.replace(LAUNCHED, server=700)
+        self.assertNotIn(700, stop_targets(launched, PS))
+
+
 class LaunchedRecord(unittest.TestCase):
     def test_round_trips_through_its_file_text(self):
         self.assertEqual(Launched.parse(LAUNCHED.text()), LAUNCHED)
+        adopted = dataclasses.replace(LAUNCHED, server=900)
+        self.assertEqual(Launched.parse(adopted.text()), adopted)
 
     def test_alive_while_any_launched_process_runs(self):
         self.assertTrue(LAUNCHED.alive(PS))

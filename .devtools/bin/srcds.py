@@ -29,6 +29,7 @@ one this launch started), never by name or pattern, never wineboot.
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import json
 import os
 import pty
@@ -43,7 +44,7 @@ import time
 from collections import deque
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Deque, Dict, List, Optional, Tuple
+from typing import Deque, Dict, List, Optional, Set, Tuple
 
 __all__ = [
     "AUTH",
@@ -62,6 +63,7 @@ __all__ = [
     "decode_packets",
     "encode_packet",
     "map_from_status",
+    "new_server",
     "stop_targets",
     "WrongBottle",
 ]
@@ -297,14 +299,18 @@ class Launched:
     supervisor: int
     launcher: int
     port: int
+    server: Optional[int] = None  # the Windows process, once found (new_server)
 
     def text(self) -> str:
-        return json.dumps({"supervisor": self.supervisor, "launcher": self.launcher, "port": self.port})
+        return json.dumps({"supervisor": self.supervisor, "launcher": self.launcher, "port": self.port,
+                           "server": self.server})
 
     @classmethod
     def parse(cls, text: str) -> "Launched":
         data = json.loads(text)
-        return cls(int(data["supervisor"]), int(data["launcher"]), int(data["port"]))
+        server = data.get("server")
+        return cls(int(data["supervisor"]), int(data["launcher"]), int(data["port"]),
+                   int(server) if server is not None else None)
 
     def alive(self, processes: str) -> bool:
         return bool(stop_targets(self, processes))
@@ -319,23 +325,47 @@ def _process_table(processes: str) -> Dict[int, Tuple[int, str]]:
     return table
 
 
-def stop_targets(launched: Launched, processes: str) -> List[int]:
-    """The processes a stop may signal: the supervisor this tool launched
-    (still running as its supervisor, so a reused id is left alone) and its
-    descendants, the wine launcher and the server, except the bottle's
-    wineserver and wine's services, which are never stopped."""
-    table = _process_table(processes)
-    sup = table.get(launched.supervisor)
-    if sup is None or SUPERVISOR_MARK not in sup[1]:
-        return []
-    ours = {launched.supervisor}
+def _descendants(root: int, table: Dict[int, Tuple[int, str]]) -> Set[int]:
+    """root and every process below it."""
+    tree = {root}
     grew = True
     while grew:
         grew = False
         for pid, (ppid, _) in table.items():
-            if ppid in ours and pid not in ours:
-                ours.add(pid)
+            if ppid in tree and pid not in tree:
+                tree.add(pid)
                 grew = True
+    return tree
+
+
+def _serves(command: str, port: int) -> bool:
+    return SERVER_EXE in command and f"-port {port} " in command + " "
+
+
+def new_server(launched: Launched, before: Set[int], processes: str) -> Optional[int]:
+    """The server process this launch started: wine gives it parent 1, so it
+    is the one srcds on our port, outside the supervisor's own tree (whose
+    command lines name the server too), whose id was not running before."""
+    table = _process_table(processes)
+    tree = _descendants(launched.supervisor, table)
+    found = [pid for pid, (_, command) in table.items()
+             if pid not in before and pid not in tree and _serves(command, launched.port)]
+    return found[0] if len(found) == 1 else None
+
+
+def stop_targets(launched: Launched, processes: str) -> List[int]:
+    """The processes a stop may signal: the supervisor this tool launched
+    (still running as its supervisor, so a reused id is left alone) and its
+    descendants (the wine launcher), and the server process it adopted if
+    that id still runs our server; never the bottle's wineserver or wine's
+    services, whoever started them."""
+    table = _process_table(processes)
+    server = table.get(launched.server) if launched.server is not None else None
+    adopted = [launched.server] if server and _serves(server[1], launched.port) else []
+    sup = table.get(launched.supervisor)
+    if sup is None or SUPERVISOR_MARK not in sup[1]:
+        return adopted
+    ours = _descendants(launched.supervisor, table) | set(adopted)
     return sorted(pid for pid in ours if not any(name in table[pid][1] for name in NEVER_STOP))
 
 
@@ -344,6 +374,7 @@ def read_launched() -> Optional[Launched]:
 
 
 LAUNCH_RECORD_TIMEOUT = 10
+SERVER_PROCESS_TIMEOUT = 60
 
 
 @dataclass(frozen=True)
@@ -361,6 +392,7 @@ class Server:
             raise ServerDown(f"port {self.config.port} is taken")
         ARTIFACTS.mkdir(parents=True, exist_ok=True)
         PID_FILE.unlink(missing_ok=True)
+        before = set(_process_table(running_processes()))
         supervisor = [sys.executable, str(Path(__file__).resolve()), SUPERVISOR_MARK, str(PROCESS_LOG),
                       str(self.config.port), "--"]
         subprocess.Popen(supervisor + argv, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
@@ -370,6 +402,14 @@ class Server:
             if time.monotonic() > deadline:
                 raise ServerDown("the supervisor did not record its launch")
             time.sleep(0.2)
+        deadline = time.monotonic() + SERVER_PROCESS_TIMEOUT
+        while time.monotonic() < deadline:
+            server = new_server(read_launched(), before, running_processes())
+            if server is not None:
+                PID_FILE.write_text(dataclasses.replace(read_launched(), server=server).text())
+                return
+            time.sleep(0.5)
+        raise ServerDown("no new server process appeared on the port; see " + str(PROCESS_LOG))
 
     def rcon(self, text: str, timeout: float = 10) -> str:
         with RconClient.connect(self.host, self.config.port, self.config.rcon_password, timeout) as client:
