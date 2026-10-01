@@ -30,20 +30,22 @@
 --     player in them; AreasAround(pos, range) -> the centres of the areas
 --     around the one at pos; IsInPreferredArea(t);
 --   RemoveGrenades(origin, radius), EndStun(t), RemoveCond(t, cond),
---     RemoveEntity(t).
+--     RemoveEntity(t);
+--   StartBossTimer(seconds, variation) (TFGameRules()->
+--     StartHalloweenBossTimer: foundation.npc.boss_timer's Start).
 -- The binding forwards the props' events to the Behavior: OnPropKilled(prop,
 -- attacker) and OnPropTouched(prop, toucher), and calls Removed(state, me)
 -- when he is removed (CMerasmus::UpdateOnRemove).
 --
 -- Left out (econ, or not on the maps that spawn him): the hat levels and
 -- achievements his death awards, the killers' chat line, the stats he
--- reports, the Wheel of Fate (no map has a wheel_of_fortress), the boss
--- respawn timer (maps spawn him from templates), the per-weapon damage
--- multipliers and the critical flag on hits while stunned or raining bombs
--- (GMod has no TF2 weapons), the holiday ammo pack's health (the props drop
--- a plain medium pack), and the scripted scene of the bomb rain (its line
--- plays as a sound). The prop separation and the area around the control
--- point are measured straight, where TF2 walks the mesh.
+-- reports, the Wheel of Fate (no map has a wheel_of_fortress), the
+-- per-weapon damage multipliers and the critical flag on hits while stunned
+-- or raining bombs (GMod has no TF2 weapons), the holiday ammo pack's
+-- health (the props drop a plain medium pack), and the scripted scene of
+-- the bomb rain (its line plays as a sound). The prop separation and the
+-- area around the control point are measured straight, where TF2 walks the
+-- mesh. TF2's boss timer (foundation.npc.boss_timer) brings the next one.
 local require = require
 local NpcSystem = require("foundation.npc")
 local HalloweenBoss = require("foundation.npc.halloween_boss")
@@ -80,9 +82,9 @@ FLYING_MAX_YAW_RATE = 100
 -- no obstacle to him, on foot or aloft.
 PLAYERS_PASS_THROUGH = true
 
--- TF2's convars (merasmus.cpp, merasmus_trick_or_treat_prop.cpp), with
--- their defaults. tf_merasmus_speed_recovery_rate is never read, and the
--- spawn interval drives TF2's boss timer, which these maps do not use.
+-- TF2's convars (merasmus.cpp, merasmus_trick_or_treat_prop.cpp; the boss
+-- timer's from tf_gamerules.cpp and headless_hatman.cpp), with their
+-- defaults. tf_merasmus_speed_recovery_rate is never read.
 CONVARS = {
 	tf_merasmus_health_base = 33750,
 	tf_merasmus_health_per_player = 2500,
@@ -99,6 +101,9 @@ CONVARS = {
 	tf_merasmus_bomb_head_per_team = 1,
 	tf_merasmus_stun_duration = 2,
 	tf_merasmus_prop_health = 150,
+	tf_merasmus_spawn_interval = 180,
+	tf_merasmus_spawn_interval_variation = 30,
+	tf_halloween_bot_min_player_count = 10,
 }
 
 METHODS = {
@@ -125,6 +130,7 @@ METHODS = {
 	"EndStun",
 	"RemoveCond",
 	"RemoveEntity",
+	"StartBossTimer",
 }
 
 MODEL = "models/bots/merasmus/merasmus.mdl"
@@ -331,6 +337,13 @@ REVEAL_PUSH_RANGE = 400
 REVEAL_PUSH_FORCE = 500
 GRENADE_CLEAR_RANGE = 400
 
+-- The boss timer (foundation.npc.boss_timer): past the third level the next
+-- Merasmus comes a minute after the last; the spawn reverts the point he
+-- takes to neutral (SpawnHalloweenBoss, LAKESIDE).
+STEADY_RESPAWN_LEVEL = 3
+QUICK_RESPAWN_INTERVAL = 60
+NEUTRALIZES_POINT = true
+
 -- Leaving: the seconds left at which merasmus_escape_warning fires, checked
 -- nearest first, as CMerasmus::LeaveWarning does.
 ESCAPE_WARNINGS = { 10, 30, 60 }
@@ -386,11 +399,25 @@ local function RemapValClamped(value, a, b, c, d)
 	return c + (d - c) * t
 end
 
--- The level every Merasmus shares (CMerasmus::m_level).
-function Level(me)
-	local shared = me:Shared()
+-- The level every Merasmus shares (CMerasmus::m_level), from the variant's
+-- shared table.
+function SharedLevel(shared)
 	if shared.level == nil then shared.level = FIRST_LEVEL end
 	return shared.level
+end
+
+function Level(me) return SharedLevel(me:Shared()) end
+
+-- CMerasmus::StartRespawnTimer and SpawnHalloweenBoss's LAKESIDE intervals.
+function SpawnInterval(level, convars)
+	if level <= STEADY_RESPAWN_LEVEL then
+		return convars.tf_merasmus_spawn_interval, convars.tf_merasmus_spawn_interval_variation
+	end
+	return QUICK_RESPAWN_INTERVAL, 0
+end
+
+local function StartRespawnTimer(state, me)
+	me:StartBossTimer(SpawnInterval(Level(me), state.convars))
 end
 
 local function ShowHealth(me)
@@ -1408,6 +1435,7 @@ function Escape:Update(me, interval)
 	me:FireGameEvent(BossEvents.MERASMUS_ESCAPED, { level = Level(me) })
 	me:TriggerRelay(EXIT_RELAY)
 	me:Shared().level = FIRST_LEVEL
+	StartRespawnTimer(self.state, me)
 	me:Remove()
 	return self:Done()
 end
@@ -1436,6 +1464,7 @@ function Dying:Update(me, interval)
 		splitTeam = true,
 	}, me:WorldSpaceCenter())
 	shared.level = Level(me) + 1
+	StartRespawnTimer(self.state, me)
 	me:Remove()
 	return self:Done()
 end

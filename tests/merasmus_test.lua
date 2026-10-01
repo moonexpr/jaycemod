@@ -110,6 +110,7 @@ local function Port(t)
 		}
 	end
 	function me:EndStun(t) self:Record("EndStun", t) end
+	function me:StartBossTimer(seconds, variation) self:Record("StartBossTimer", seconds, variation) end
 	function me:RemoveCond(t, cond)
 		t.conds[cond] = nil
 		self:Record("RemoveCond", t, cond)
@@ -1170,6 +1171,10 @@ T.test("he warns at 60, 30 and 10 s, then goes home after 120 s", function()
 	T.eq(FiredNamed(s.me, BossEvents.MERASMUS_ESCAPED)[1].level, 3, "merasmus_escaped")
 	T.eq(Names(s.me, "TriggerRelay"), Merasmus.EXIT_RELAY, "boss_exit_relay")
 	T.eq(s.me:Shared().level, 1, "the next one starts at level 1")
+	local timer = s.me:Called("StartBossTimer")
+	T.eq(#timer, 1, "the boss timer starts (CMerasmus::StartRespawnTimer)")
+	T.eq(timer[1][1], Merasmus.CONVARS.tf_merasmus_spawn_interval, "at the first level's interval")
+	T.eq(timer[1][2], Merasmus.CONVARS.tf_merasmus_spawn_interval_variation, "and variation")
 	T.eq(s.me.removed, true, "gone")
 end)
 
@@ -1241,7 +1246,32 @@ T.test("killed, he is banished: his music plays, he bursts, and leaves a vortex 
 	T.eq(vortex.config.splitTeam, true, "each team to its own")
 	T.eq(vortex.pos, s.me:WorldSpaceCenter(), "where he stood")
 	T.eq(s.me:Shared().level, 2, "the next one is a level up")
+	local timer = s.me:Called("StartBossTimer")
+	T.eq(#timer, 1, "the boss timer starts (CMerasmus::StartRespawnTimer)")
+	T.eq(timer[1][1], Merasmus.CONVARS.tf_merasmus_spawn_interval, "at his interval")
 	T.eq(s.me.removed, true, "gone")
+end)
+
+T.test("killed past the third level, the next one is timed a minute away", function()
+	local s = Scene({
+		players = {
+			{
+				team = Teams.RED,
+				origin = V(FAR, 0, 0),
+			},
+		},
+		shared = { level = 3 },
+	})
+	Arrived(s)
+	s.me.alive = false
+	s.npc:Event("OnKilled", Damage(s.players[1], 100))
+	Tick(s, TICK)
+	s.me:FinishActivity()
+	Tick(s, TICK)
+	local timer = s.me:Called("StartBossTimer")
+	T.eq(s.me:Shared().level, 4, "the fourth level")
+	T.eq(timer[1][1], 60, "a minute")
+	T.eq(timer[1][2], 0, "exactly")
 end)
 
 -- CMerasmus::UpdateOnRemove

@@ -777,9 +777,21 @@ bomb heads 15 s and 1 per team, props 150 health).
 - **Death:** `Halloween.MerasmusBanish`, the death music to everyone, then
   gibs, `merasmus_killed`, `boss_dead_relay`, a loot vortex that sends each
   team to `spawn_loot_red`/`spawn_loot_blue`, and the next one is a level up.
+- **Boss timer** (`foundation.npc.boss_timer`, the `boss_timer` feature;
+  `CTFGameRules::SpawnHalloweenBoss`): his death or departure starts it at
+  `tf_merasmus_spawn_interval` ± `tf_merasmus_spawn_interval_variation`
+  (180 ± 30; a minute past level 3); any Halloween boss alive restarts it;
+  a new round forgets it and the next update starts it afresh. When it runs
+  out, during Halloween, outside setup and waiting for players, with
+  `tf_halloween_bot_min_player_count` (10) living humans, Merasmus spawns at
+  a `spawn_boss`, else on the point BLU must take next (it reverts to
+  neutral and KOTH clocks pause), else on a random nav area 100 a side
+  outside the spawn rooms. `tf_halloween_force_boss_spawn` and
+  `cc_spawn_merasmus_at_level N` (cheats) skip the wait. TF2 runs it only on
+  koth_lakeside_event; Sandcastle names no maps, so it runs on any map once
+  a Merasmus has appeared there.
 - **Left out:** the hat levels, achievements, killers' line and stats; the
-  Wheel of Fate (no event map has a `wheel_of_fortress`); TF2's boss
-  respawn timer; per-weapon damage multipliers; the scripted bomb-rain scene
+  Wheel of Fate (no event map has a `wheel_of_fortress`); per-weapon damage multipliers; the scripted bomb-rain scene
   (its line plays as a sound). Prop separation and the area round the point
   are measured straight, where TF2 walks the mesh.
 

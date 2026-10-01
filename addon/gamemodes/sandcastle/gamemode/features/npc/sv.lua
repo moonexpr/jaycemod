@@ -111,6 +111,17 @@ function Controller:Spawn(class, config, pos, ang)
 	return ent
 end
 
+-- A boss's convars (its variant's CONVARS: TF2's names and defaults), each
+-- created as a cheat the first time it is asked for, and their values now.
+function Controller:BossConvars(defaults)
+	local values = {}
+	for name, default in pairs(defaults) do
+		local convar = GetConVar(name) or CreateConVar(name, tostring(default), FCVAR_CHEAT)
+		values[name] = convar:GetFloat()
+	end
+	return values
+end
+
 function Controller:SetBossHealth(fraction)
 	SetGlobal2Float(BOSS_HEALTH, fraction)
 end
