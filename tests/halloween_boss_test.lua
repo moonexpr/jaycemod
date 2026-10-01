@@ -234,6 +234,67 @@ T.test("the template calls the variant's hooks in order, and dies into DyingActi
 	T.eq(s.npc:Describe(), "Dying", "dying replaces the behavior")
 end)
 
+-- CMerasmusBehavior: a variant may leave of its own accord (LeaveAction,
+-- asked each tick while alive) and break off when hurt (InterruptAction,
+-- asked on each injury).
+local function LeavingScene(leaveWhen, interruptWhen)
+	local s = Scene({})
+	local Gone = NpcSystem.Action:Extend("Gone")
+	local Hide = NpcSystem.Action:Extend("Hide")
+	function Hide:OnStart(me) s.log[#s.log + 1] = "Hide.OnStart" return self:Continue() end
+	function Hide:Update(me) return self:Done() end
+	function s.boss.LeaveAction(state, me)
+		s.log[#s.log + 1] = "LeaveAction"
+		if leaveWhen() then return Gone:New() end
+		return nil
+	end
+	function s.boss.InterruptAction(state, damageEvent, me)
+		s.log[#s.log + 1] = "InterruptAction"
+		if interruptWhen() then return Hide:New() end
+		return nil
+	end
+	return s
+end
+
+T.test("a variant's LeaveAction replaces the whole behavior", function()
+	local leave = false
+	local s = LeavingScene(function() return leave end, function() return false end)
+	s.npc:Update(0.1)
+	s.npc:Update(0.1)
+	T.eq(s.log[#s.log], "LeaveAction", "asked each tick, last")
+	T.eq(s.npc:Describe(), "BossBehavior/Emerge", "staying")
+	leave = true
+	s.npc:Update(0.1)
+	T.eq(s.npc:Describe(), "Gone", "gone, with nothing under it")
+end)
+
+T.test("a dead boss is not asked to leave", function()
+	local s = LeavingScene(function() return true end, function() return false end)
+	s.npc:Update(0.1)
+	s.me.alive = false
+	for i = #s.log, 1, -1 do s.log[i] = nil end
+	s.npc:Update(0.1)
+	T.eq(Joined(s.log), "Emerge.Update,OnUpdate", "no LeaveAction")
+end)
+
+T.test("a variant's InterruptAction is suspended for on injury, then the behavior resumes", function()
+	local interrupt = false
+	local s = LeavingScene(function() return false end, function() return interrupt end)
+	s.npc:Update(0.1)
+	s.npc:Event("OnInjured", Damage(s.red, 10))
+	s.npc:Update(0.1)
+	T.eq(s.npc:Describe(), "BossBehavior/Emerge", "not interrupted")
+	interrupt = true
+	for i = #s.log, 1, -1 do s.log[i] = nil end
+	s.npc:Event("OnInjured", Damage(s.red, 10))
+	T.eq(Joined(s.log), "OnInjured,InterruptAction", "the variant's injury first")
+	s.npc:Update(0.1)
+	T.eq(s.npc:Describe(), "Hide", "hiding on top")
+	T.eq(s.log[#s.log], "Hide.OnStart", "started")
+	s.npc:Update(0.1)
+	T.eq(s.npc:Describe(), "BossBehavior/Emerge", "resumed")
+end)
+
 -- The bindings (read as text): each defines its port's methods as
 -- function ENT:<Name>(, and loads nothing at file top level.
 local ENTITIES = "addon/gamemodes/sandcastle/entities/entities/"

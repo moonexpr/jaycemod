@@ -755,7 +755,10 @@ HalloweenBoss.Variant(_M)
 -- random open info_target: spawn_loot from a death vortex (which shows the
 -- book), spawn_purgatory otherwise.
 --
--- Vortex.New(death, port); vortex:Think() each tick; vortex:Touch(player).
+-- Vortex.New(death, port, splitTeam); vortex:Think() each tick;
+-- vortex:Touch(player). A split vortex (Merasmus's death vortex,
+-- SetupVortex( true, true )) sends each team to its own spots, the name
+-- with _red or _blue added.
 -- The port (VORTEX_METHODS), implemented by teleport_vortex:
 --   Now(), RandomInt(lo, hi), Vector(x, y, z), WorldSpaceCenter(), Remove(),
 --   EmitSound(name), CollectPlayers(team) (living; nil means RED and BLU),
@@ -792,6 +795,7 @@ VORTEX_LOOK_TOLERANCE = 0.9 -- BCC_DEFAULT_LOOK_TOWARDS_TOLERANCE
 VORTEX_RAMP_FRACTION = 10 -- vortex_fade_fraction_denom
 VORTEX_LOOT = "spawn_loot"
 VORTEX_PURGATORY = "spawn_purgatory"
+VORTEX_RED_SUFFIX, VORTEX_BLUE_SUFFIX = "_red", "_blue"
 VORTEX_BOOK_MODEL = "models/props_halloween/bombonomicon.mdl"
 SPAWN_OCCUPIED_RANGE = 25
 TELEFRAG_DAMAGE = 1000
@@ -802,12 +806,13 @@ local VortexModel = {}
 VortexModel.__index = VortexModel
 Vortex = {}
 
-function Vortex.New(death, port)
+function Vortex.New(death, port, splitTeam)
 	local lifeTimer = NpcSystem.CountdownTimer(port)
 	lifeTimer:Start(VORTEX_LIFETIME)
 	return setmetatable({
 		port = port,
 		death = death,
+		splitTeam = splitTeam == true,
 		where = death and VORTEX_LOOT or VORTEX_PURGATORY,
 		lifeTimer = lifeTimer,
 		book = BOOK_SILENT,
@@ -852,7 +857,11 @@ end
 -- free, a random spot, and the enemies on it are telefragged.
 function VortexModel:Touch(ply)
 	local port = self.port
-	local spots = port:SpawnPoints(self.where)
+	local where = self.where
+	if self.splitTeam then
+		where = where .. (port:TeamOf(ply) == Teams.RED and VORTEX_RED_SUFFIX or VORTEX_BLUE_SUFFIX)
+	end
+	local spots = port:SpawnPoints(where)
 	if #spots == 0 then return end
 	local enemies = {}
 	for _, team in ipairs(Targeting.EnemyTeamsOf(port:TeamOf(ply))) do

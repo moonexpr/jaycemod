@@ -130,4 +130,14 @@ T.test("damage scale follows the victim's and attacker's conditions", function()
 	T.eq(P.DamageScale(victim, attacker, false, 0), 0, "invulnerable")
 end)
 
+-- CTFPlayerShared::IsCritBoosted counts the pumpkin's crits, which
+-- Merasmus gives whoever finds or stuns him.
+T.test("the pumpkin crit boost triples damage too", function()
+	local victim, attacker = {}, {}
+	P.AddCond(attacker, P.COND.CRITBOOSTED_PUMPKIN, P.PERMANENT, 0)
+	T.eq(P.DamageScale(victim, attacker, false, 0), 3, "pumpkin crit")
+	T.eq(P.COND.CRITBOOSTED_PUMPKIN, 33, "TF2's number")
+	T.eq(P.COND.HALLOWEEN_BOMB_HEAD, 53, "TF2's number")
+end)
+
 T.finish()

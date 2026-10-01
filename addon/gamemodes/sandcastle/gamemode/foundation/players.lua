@@ -47,10 +47,12 @@ COND = {
 	BLEEDING = 25,
 	MAD_MILK = 27,
 	SPEED_BOOST = 32,
+	CRITBOOSTED_PUMPKIN = 33,
 	CRITBOOSTED_USER_BUFF = 34,
 	CANNOT_SWITCH_FROM_MELEE = 41,
 	INVULNERABLE_HIDE_UNLESS_DAMAGED = 51,
 	INVULNERABLE_USER_BUFF = 52,
+	HALLOWEEN_BOMB_HEAD = 53,
 	INVULNERABLE_CARD_EFFECT = 57,
 	STEALTHED_USER_BUFF = 64,
 	STEALTHED_USER_BUFF_FADING = 66,
@@ -151,13 +153,16 @@ end
 -- TF_DAMAGE_CRIT_MULTIPLIER
 local CRIT_MULTIPLIER = 3
 
+-- The crit boosts CTFPlayerShared::IsCritBoosted counts that Sandcastle has.
+local CRIT_BOOSTS = { C.CRITBOOSTED, C.CRITBOOSTED_PUMPKIN, C.CRITBOOSTED_USER_BUFF }
+
 -- Damage scale from conditions: an invulnerable victim, or a blast-immune
 -- one hit by a blast, takes nothing; a crit-boosted attacker deals triple.
 function DamageScale(victimConds, attackerConds, isBlast, now)
 	if InCond(victimConds, C.INVULNERABLE, now) then return 0 end
 	if isBlast and InCond(victimConds, C.BLAST_IMMUNE, now) then return 0 end
-	if InCond(attackerConds, C.CRITBOOSTED, now) or InCond(attackerConds, C.CRITBOOSTED_USER_BUFF, now) then
-		return CRIT_MULTIPLIER
+	for _, boost in ipairs(CRIT_BOOSTS) do
+		if InCond(attackerConds, boost, now) then return CRIT_MULTIPLIER end
 	end
 	return 1
 end
