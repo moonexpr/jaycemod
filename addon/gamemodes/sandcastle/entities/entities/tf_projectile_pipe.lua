@@ -5,9 +5,10 @@
 -- tf_point_weapon_mimic sets it).
 --
 -- Configure{ damage, crit, team, attacker, launcher, radius, velocity, spin
--- (an Angle), fuse, explodeOnTouch, model, skin, scale } before Spawn:
--- attacker is who the blast credits, launcher what fired it; model
--- defaults to the pipe's.
+-- (an Angle), fuse, explodeOnTouch, model, skin, scale, particle } before
+-- Spawn: attacker is who the blast credits, launcher what fired it; model
+-- defaults to the pipe's, particle (the blast's system, which its sender
+-- precaches: Merasmus's bombs) to the explosion's.
 AddCSLuaFile()
 
 ENT.Base = "wetsand_projectile"
@@ -42,7 +43,7 @@ function ENT:Detonate(trace)
 	if trace.Hit then origin = trace.HitPos + trace.HitNormal * PULL_OUT end
 	local blast = WETSAND.require(self.Variant).Blast(self.projectile.state, origin)
 	blast.inflictor = self
-	ParticleEffect(trace.Hit and EXPLOSION_WALL or EXPLOSION_MIDAIR, origin, angle_zero)
+	ParticleEffect(self:Config().particle or (trace.Hit and EXPLOSION_WALL or EXPLOSION_MIDAIR), origin, angle_zero)
 	self:EmitSound(EXPLOSION_SOUND)
 	WETSAND.Feature("combat"):Explode(blast)
 	self:Remove()

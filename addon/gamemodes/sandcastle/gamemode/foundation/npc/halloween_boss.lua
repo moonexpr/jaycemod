@@ -13,7 +13,13 @@
 --   EmergeAction(state) -> Action, DyingAction(state) -> Action
 -- and optionally:
 --   Level(me) -> n (default 0), Setup(state, config, me) at spawn,
---   OnInjured(state, damageEvent, me), OnUpdate(state, me) each tick.
+--   OnInjured(state, damageEvent, me), OnUpdate(state, me) each tick,
+--   LeaveAction(state, me) -> Action | nil, asked each tick while alive
+--     after OnUpdate: an action that replaces the whole behavior (Merasmus
+--     escaping, CMerasmusBehavior::Update),
+--   InterruptAction(state, damageEvent, me) -> Action | nil, asked on each
+--     injury after OnInjured: an action the behavior suspends for, at
+--     RESULT_IMPORTANT (Merasmus hiding, CMerasmusBehavior::OnInjured).
 -- It must not define KIND, NewState, InitialAction or FilterDamage, which
 -- Variant fills in.
 --
@@ -123,12 +129,23 @@ function BossBehavior:Update(me, interval)
 	UpdateDamagePerSecond(state, me:Now())
 	local onUpdate = state.boss.OnUpdate
 	if onUpdate then onUpdate(state, me) end
+	local leaveAction = state.boss.LeaveAction
+	if leaveAction and me:IsAlive() then
+		local leaving = leaveAction(state, me)
+		if leaving then return self:ChangeTo(leaving, "Leaving") end
+	end
 	return self:Continue()
 end
 
 function BossBehavior:OnInjured(me, damageEvent)
-	local onInjured = self.state.boss.OnInjured
-	if onInjured then onInjured(self.state, damageEvent, me) end
+	local state = self.state
+	local onInjured = state.boss.OnInjured
+	if onInjured then onInjured(state, damageEvent, me) end
+	local interruptAction = state.boss.InterruptAction
+	if interruptAction then
+		local interrupting = interruptAction(state, damageEvent, me)
+		if interrupting then return self:TrySuspendFor(interrupting, NpcSystem.RESULT_IMPORTANT, "Interrupted") end
+	end
 	return self:TryContinue()
 end
 

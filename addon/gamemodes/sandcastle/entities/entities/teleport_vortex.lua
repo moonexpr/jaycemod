@@ -3,8 +3,10 @@
 -- implements the vortex port (foundation.npc.eyeball_boss.VORTEX_METHODS;
 -- the engine's Remove, EmitSound and WorldSpaceCenter already fit it).
 --
--- Configure{ death } before Spawn: a death vortex shows the book and leads
--- to spawn_loot; otherwise it is hidden and leads to spawn_purgatory.
+-- Configure{ death, splitTeam } before Spawn: a death vortex shows the book
+-- and leads to spawn_loot; otherwise it is hidden and leads to
+-- spawn_purgatory. A split one (Merasmus's) sends each team to its own
+-- spots (spawn_loot_red, spawn_loot_blue).
 AddCSLuaFile()
 
 ENT.Type = "anim"
@@ -60,7 +62,7 @@ function ENT:Initialize()
 	local effect = OPEN_EFFECTS[death]
 	ParticleEffectAttach(effect.particle, PATTACH_ABSORIGIN_FOLLOW, self, 0)
 	self:EmitSound(effect.sound)
-	self.vortex = Eyeball.Vortex.New(death, self)
+	self.vortex = Eyeball.Vortex.New(death, self, self.configured.splitTeam)
 	self:NextThink(CurTime())
 end
 

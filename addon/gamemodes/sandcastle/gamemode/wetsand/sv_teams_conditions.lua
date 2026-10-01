@@ -3,7 +3,7 @@
 -- remove them. The effects GMod can show are applied here and in sh_core.lua
 -- (movement); the others are kept, so a later RemoveCond or a condition
 -- filter still sees them, but do nothing.
---   INVULNERABLE: no damage taken. CRITBOOSTED(_USER_BUFF): triple damage dealt.
+--   INVULNERABLE: no damage taken. CRITBOOSTED(_PUMPKIN, _USER_BUFF): triple damage dealt.
 --   BLAST_IMMUNE: no blast damage. SPEED_BOOST: +40% speed (max +105).
 --   HALLOWEEN_QUICK_HEAL: heals 30 health a second, up to max health.
 -- Movement and stun state reach clients as NW2 vars for prediction:
@@ -63,6 +63,14 @@ function WETSAND.StunPlayer(ply, duration, reduction, flags)
 	ply:SetNW2Float("wetsand_stun_end_time", stun.ends)
 	ply:SetNW2Float("wetsand_stun_speed_reduction", stun.reduction)
 	ply:SetNW2Int("wetsand_stun_flags", stun.flags)
+end
+
+-- RemoveCond( TF_COND_STUNNED ): the stun ends now (Merasmus frees a bomb
+-- head who reached him).
+function WETSAND.EndStun(ply)
+	ply.wetsandStun = nil
+	ply:SetNW2Float("wetsand_stun_end_time", 0)
+	ply:SetNW2Int("wetsand_stun_flags", 0)
 end
 
 -- A player starts each life with no conditions.
