@@ -1,6 +1,4 @@
-import shutil
 import socket
-import tempfile
 import threading
 import unittest
 from pathlib import Path
@@ -17,16 +15,17 @@ from srcds import (
     ServerConfig,
     command_line,
     decode_packets,
-    link_maps,
     encode_packet,
     map_from_status,
-    server_pids,
-    unlink_maps,
+    BOTTLE,
+    Launched,
+    WrongBottle,
+    stop_targets,
 )
 
 INSTALL = Install(
     wine=Path("/Apps/wine"),
-    bottle="Team Fortress 2",
+    bottle="Steam",
     gmod_windows=r"C:\Steam\steamapps\common\GarrysMod",
     gmod_dir=Path("/bottle/GarrysMod/garrysmod"),
 )
@@ -38,7 +37,7 @@ class CommandLine(unittest.TestCase):
         self.argv = command_line(INSTALL, self.config)
 
     def test_runs_the_dedicated_server_through_the_bottles_wine(self):
-        self.assertEqual(self.argv[:3], ["/Apps/wine", "--bottle", "Team Fortress 2"])
+        self.assertEqual(self.argv[:3], ["/Apps/wine", "--bottle", "Steam"])
         exe = self.argv[self.argv.index("--cx-app") + 1]
         self.assertEqual(exe, r"C:\Steam\steamapps\common\GarrysMod\srcds_win64.exe")
         self.assertEqual(self.argv[self.argv.index("--workdir") + 1], INSTALL.gmod_windows)
@@ -139,58 +138,64 @@ class Status(unittest.TestCase):
         self.assertIsNone(map_from_status("Unknown command"))
 
 
-class ServerPids(unittest.TestCase):
-    PS = "\n".join([
-        " 100 /Apps/winewrapper.exe --workdir C:\\GarrysMod --run -- C:\\GarrysMod\\srcds_win64.exe -console -port 27025 -insecure",
-        " 101 C:\\GarrysMod\\srcds_win64.exe -console -game garrysmod -port 27025 -insecure",
-        " 102 C:\\GarrysMod\\srcds_win64.exe -console -game garrysmod -port 27015 -insecure",
-        " 103 C:\\GarrysMod\\gmod_win64.exe -port 27025",
-        " 104 C:\\GarrysMod\\srcds_win64.exe -console -port 270250",
-    ])
+PS = "\n".join([
+    "    1     0 /sbin/launchd",
+    "  500     1 python3 srcds.py _supervise log -- wine ...",
+    "  501   500 /Apps/winewrapper.exe --workdir C:\\GarrysMod --run -- C:\\GarrysMod\\srcds_win64.exe -port 27025",
+    "  502   501 C:\\GarrysMod\\srcds_win64.exe -console -game garrysmod -port 27025",
+    "  503   501 /Apps/CrossOver/bin/wineserver",
+    "  504   501 C:\\windows\\system32\\winedevice.exe",
+    "  505   501 C:\\windows\\system32\\services.exe",
+    "  600     1 C:\\GarrysMod\\srcds_win64.exe -console -game garrysmod -port 27025",
+    "  700     1 C:\\Steam\\steamapps\\common\\Team Fortress 2\\tf_win64.exe -steam",
+    "  800     1 /Apps/CrossOver/bin/wineserver",
+])
+LAUNCHED = Launched(supervisor=500, launcher=501, port=27025)
 
-    def test_only_the_servers_on_our_port(self):
-        self.assertEqual(server_pids(27025, self.PS), [100, 101])
 
-    def test_a_port_at_the_end_of_the_line(self):
-        self.assertEqual(server_pids(270250, self.PS), [104])
+class StopTargets(unittest.TestCase):
+    def test_only_the_processes_it_launched(self):
+        self.assertEqual(stop_targets(LAUNCHED, PS), [500, 501, 502])
+
+    def test_never_a_wineserver_or_wine_service_even_one_it_started(self):
+        targets = stop_targets(LAUNCHED, PS)
+        for pid in (503, 504, 505, 800):
+            self.assertNotIn(pid, targets)
+
+    def test_never_another_server_on_the_same_port_nor_the_operators_game(self):
+        targets = stop_targets(LAUNCHED, PS)
+        self.assertNotIn(600, targets)
+        self.assertNotIn(700, targets)
+
+    def test_nothing_once_its_processes_are_gone(self):
+        self.assertEqual(stop_targets(LAUNCHED, "    1     0 /sbin/launchd"), [])
+
+    def test_a_reused_pid_running_something_else_is_left_alone(self):
+        ps = "  500     1 /usr/bin/vim\n  501   500 /bin/zsh"
+        self.assertEqual(stop_targets(LAUNCHED, ps), [])
 
 
-class MapLinks(unittest.TestCase):
-    def setUp(self):
-        self.tmp = Path(tempfile.mkdtemp())
-        self.tf_maps = self.tmp / "tf" / "maps"
-        self.tf_maps.mkdir(parents=True)
-        for name in ("pl_badwater.bsp", "pl_badwater.nav", "koth_viaduct.bsp"):
-            (self.tf_maps / name).write_text("x")
-        self.addon = self.tmp / "garrysmod" / "addons" / "wetsand_test_maps"
+class LaunchedRecord(unittest.TestCase):
+    def test_round_trips_through_its_file_text(self):
+        self.assertEqual(Launched.parse(LAUNCHED.text()), LAUNCHED)
 
-    def tearDown(self):
-        shutil.rmtree(self.tmp)
+    def test_alive_while_any_launched_process_runs(self):
+        self.assertTrue(LAUNCHED.alive(PS))
+        self.assertFalse(LAUNCHED.alive("    1     0 /sbin/launchd"))
 
-    def test_links_every_tf2_map_but_never_its_nav(self):
-        # A TF2 .nav in an addon would shadow the converted one in garrysmod/maps.
-        link_maps(self.tf_maps, self.addon)
-        names = sorted(p.name for p in (self.addon / "maps").iterdir())
-        self.assertEqual(names, ["koth_viaduct.bsp", "pl_badwater.bsp"])
-        self.assertEqual((self.addon / "maps" / "pl_badwater.bsp").resolve(), (self.tf_maps / "pl_badwater.bsp").resolve())
 
-    def test_linking_twice_is_harmless(self):
-        link_maps(self.tf_maps, self.addon)
-        link_maps(self.tf_maps, self.addon)
-        self.assertEqual(len(list((self.addon / "maps").iterdir())), 2)
+class Bottle(unittest.TestCase):
+    def test_only_the_steam_bottle(self):
+        self.assertEqual(BOTTLE, "Steam")
 
-    def test_unlinking_removes_the_addon_and_leaves_tf2_alone(self):
-        link_maps(self.tf_maps, self.addon)
-        unlink_maps(self.addon)
-        self.assertFalse(self.addon.exists())
-        self.assertTrue((self.tf_maps / "pl_badwater.bsp").exists())
+    def test_a_server_in_any_other_bottle_is_refused(self):
+        tf2 = Install(Path("/Apps/wine"), "Team Fortress 2", INSTALL.gmod_windows, INSTALL.gmod_dir)
+        with self.assertRaises(WrongBottle):
+            command_line(tf2, ServerConfig(map="gm_construct", port=27025, rcon_password="pw", maxplayers=24))
 
-    def test_unlinking_refuses_a_folder_holding_real_files(self):
-        (self.addon / "maps").mkdir(parents=True)
-        (self.addon / "maps" / "mine.bsp").write_text("x")
-        with self.assertRaises(ValueError):
-            unlink_maps(self.addon)
-        self.assertTrue((self.addon / "maps" / "mine.bsp").exists())
+    def test_the_launcher_does_not_update_the_bottle(self):
+        argv = command_line(INSTALL, ServerConfig(map="gm_construct", port=27025, rcon_password="pw", maxplayers=24))
+        self.assertIn("--no-update", argv[:argv.index("--cx-app")])
 
 
 class FakeRconServer:

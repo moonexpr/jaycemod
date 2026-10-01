@@ -7,8 +7,9 @@ GMod's dedicated server mounts only what cfg/mount.cfg lists, and the
 operator's lists only TF2's download folder; it ignores the TF2 VPKs that
 gameinfo.txt names (GMod builds its own search path). So on the server
 every TF2 model is missing: props have no physics, NPCs have no sequences,
-spell pickups do not animate. Rather than edit the operator's mount.cfg,
-srcds.py links this folder in as an addon of its own while it runs.
+spell pickups do not animate. The harness may write only under
+garrysmod/data/wetsand_tests/, so it cannot mount this folder itself; it is
+ready for whoever may add it as an addon or a mount.cfg path.
 
 Only what the server reads is extracted: .mdl, .phy, .ani and .vvd of the
 models named by the maps' entities, by the addon's Lua, and under the

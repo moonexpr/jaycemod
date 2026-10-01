@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
-"""Run Garry's Mod's dedicated server under CrossOver and drive it with RCON.
+r"""Run Garry's Mod's dedicated server under CrossOver and drive it with RCON.
 
   srcds.py start [--map gm_construct] [--port 27025]   start, wait for the map
   srcds.py rcon 'status'                               run a console command
   srcds.py stop                                        quit the server we started
 
-The server is GMod's Windows x86-64 srcds_win64.exe in the bottle "Team
-Fortress 2". It runs with -insecure -noworkshop -nosteam: without them it
+The server is GMod's Windows x86-64 srcds_win64.exe in the CrossOver bottle
+"Steam" and nowhere else: the operator plays in the bottle "Team Fortress 2",
+and a server there ended his game once. The Steam bottle's
+C:\Steam\steamapps\common\GarrysMod and ...\Team Fortress 2 are links to
+the TF2 bottle's, so the files are shared and only the processes separate;
+this tool writes nothing in the GMod install but the console log. It runs with -insecure -noworkshop -nosteam: without them it
 crashes in steamclient64.dll while it mounts the Workshop, so Workshop addons
 (DrGBase) never load on it. Its console must be a terminal: with a pipe or
 /dev/null for stdin its main loop blocks in the console's GetLine before the
@@ -15,13 +19,17 @@ pty and drains it into .devtools/artifacts/srcds.log. -condebug writes
 garrysmod/console.log, which holds what the console printed. +ip 127.0.0.1
 keeps RCON on this machine.
 
-The RCON password is kept in .devtools/artifacts/rcon_password, and the
-started process's id in .devtools/artifacts/srcds.pid, so `stop` only ever
-stops the server this tool started.
+The RCON password is kept in .devtools/artifacts/rcon_password. The
+supervisor records the processes it launched in .devtools/artifacts/srcds.pid
+(itself and the wine launcher; the server is the launcher's descendant).
+`stop` asks the server to quit over RCON, then signals only those launched
+processes still running: never a wineserver or wine's own services (even
+one this launch started), never by name or pattern, never wineboot.
 """
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import pty
 import re
@@ -35,7 +43,7 @@ import time
 from collections import deque
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Deque, List, Optional, Tuple
+from typing import Deque, Dict, List, Optional, Tuple
 
 __all__ = [
     "AUTH",
@@ -43,7 +51,9 @@ __all__ = [
     "EXECCOMMAND",
     "RESPONSE_VALUE",
     "AuthFailed",
+    "BOTTLE",
     "Install",
+    "Launched",
     "Packet",
     "RconClient",
     "Server",
@@ -52,6 +62,8 @@ __all__ = [
     "decode_packets",
     "encode_packet",
     "map_from_status",
+    "stop_targets",
+    "WrongBottle",
 ]
 
 # Source RCON packet types (developer.valvesoftware.com/wiki/Source_RCON_Protocol).
@@ -71,14 +83,17 @@ PASSWORD_FILE = ARTIFACTS / "rcon_password"
 PID_FILE = ARTIFACTS / "srcds.pid"
 PROCESS_LOG = ARTIFACTS / "srcds.log"
 
-BOTTLE = "Team Fortress 2"
+BOTTLE = "Steam"  # never "Team Fortress 2", where the operator plays
 BOTTLE_DIR = Path.home() / "Library/Application Support/CrossOver/Bottles" / BOTTLE
 GMOD_WINDOWS = r"C:\Steam\steamapps\common\GarrysMod"
 GMOD_DIR = BOTTLE_DIR / "drive_c/Steam/steamapps/common/GarrysMod/garrysmod"
 WINE_RELATIVE = "Contents/SharedSupport/CrossOver/bin/wine"
 CROSSOVER_APPS = (Path("/Applications/CrossOver GPTK4.app"), Path("/Applications/CrossOver.app"))
 SERVER_EXE = "srcds_win64.exe"
-MAPS_ADDON = "wetsand_test_maps"
+# Processes a stop never signals, whoever started them: the bottle's
+# wineserver and wine's services, which every program in the bottle shares.
+NEVER_STOP = ("wineserver", "winedevice.exe", "services.exe", "explorer.exe", "plugplay.exe",
+              "svchost.exe", "rpcss.exe", "winewrapper.exe --enable-alt-loader")
 MAP_NAME = re.compile(r"^[A-Za-z0-9_\-]+$")
 STATUS_MAP = re.compile(r"^map\s*:\s*(\S+)", re.MULTILINE)
 
@@ -91,6 +106,10 @@ class ServerDown(Exception):
     pass
 
 
+class WrongBottle(Exception):
+    pass
+
+
 @dataclass(frozen=True)
 class Install:
     wine: Path
@@ -99,27 +118,16 @@ class Install:
     gmod_dir: Path
 
     @classmethod
-    def discover(cls, running: str) -> "Install":
-        """The CrossOver whose wineserver is already running the bottle (its
-        Steam), since a second CrossOver's wine refuses a running wineserver
-        of another version; else the first installed."""
+    def discover(cls) -> "Install":
+        """The first CrossOver installed, on the Steam bottle."""
         installed = [app for app in CROSSOVER_APPS if (app / WINE_RELATIVE).exists()]
         if not installed:
             raise ServerDown("no CrossOver under /Applications")
-        app = next((a for a in installed if f"{a}/" in running and "wineserver" in running), installed[0])
-        return cls(app / WINE_RELATIVE, BOTTLE, GMOD_WINDOWS, GMOD_DIR)
+        return cls(installed[0] / WINE_RELATIVE, BOTTLE, GMOD_WINDOWS, GMOD_DIR)
 
     @property
     def console_log(self) -> Path:
         return self.gmod_dir / "console.log"
-
-    @property
-    def tf_maps(self) -> Path:
-        return self.gmod_dir.parent.parent / "Team Fortress 2" / "tf" / "maps"
-
-    @property
-    def maps_addon(self) -> Path:
-        return self.gmod_dir / "addons" / MAPS_ADDON
 
     @property
     def data_dir(self) -> Path:
@@ -145,6 +153,8 @@ class ServerConfig:
 
 
 def command_line(install: Install, config: ServerConfig) -> List[str]:
+    if install.bottle != BOTTLE:
+        raise WrongBottle(f"servers run only in the bottle {BOTTLE!r}, not {install.bottle!r}")
     convars = [
         ("ip", LOCALHOST),
         ("maxplayers", str(config.maxplayers)),
@@ -154,7 +164,7 @@ def command_line(install: Install, config: ServerConfig) -> List[str]:
         ("sv_hibernate_think", "1"),
     ] + list(config.convars)
     argv = [
-        str(install.wine), "--bottle", install.bottle, "--no-gui",
+        str(install.wine), "--bottle", install.bottle, "--no-gui", "--no-update",
         "--workdir", install.gmod_windows,
         "--cx-app", install.gmod_windows + "\\" + SERVER_EXE,
         "-console", "-game", "garrysmod", "-port", str(config.port),
@@ -268,41 +278,98 @@ def map_from_status(text: str) -> Optional[str]:
 
 
 def running_processes() -> str:
-    return subprocess.run(["ps", "-axo", "pid=,command="], capture_output=True, text=True).stdout
+    """`ps -axo pid=,ppid=,command=`: what stop_targets reads."""
+    return subprocess.run(["ps", "-axo", "pid=,ppid=,command="], capture_output=True, text=True).stdout
 
 
 def port_in_use(port: int) -> bool:
     with socket.socket() as s:
         s.settimeout(0.5)
-        return s.connect_ex(("127.0.0.1", port)) == 0
+        return s.connect_ex((LOCALHOST, port)) == 0
 
 
-def server_pids(port: int, processes: str) -> List[int]:
-    """The srcds processes serving this port (the Windows process and the
-    wine wrapper that started it), from `ps -axo pid=,command=`."""
-    pids = []
+SUPERVISOR_MARK = "_supervise"
+
+
+@dataclass(frozen=True)
+class Launched:
+    """What one start launched: the supervisor and the wine launcher it ran."""
+    supervisor: int
+    launcher: int
+    port: int
+
+    def text(self) -> str:
+        return json.dumps({"supervisor": self.supervisor, "launcher": self.launcher, "port": self.port})
+
+    @classmethod
+    def parse(cls, text: str) -> "Launched":
+        data = json.loads(text)
+        return cls(int(data["supervisor"]), int(data["launcher"]), int(data["port"]))
+
+    def alive(self, processes: str) -> bool:
+        return bool(stop_targets(self, processes))
+
+
+def _process_table(processes: str) -> Dict[int, Tuple[int, str]]:
+    table = {}
     for line in processes.splitlines():
-        pid, _, command = line.strip().partition(" ")
-        if SERVER_EXE in command and f"-port {port} " in command + " ":
-            pids.append(int(pid))
-    return pids
+        parts = line.split(None, 2)
+        if len(parts) == 3 and parts[0].isdigit() and parts[1].isdigit():
+            table[int(parts[0])] = (int(parts[1]), parts[2])
+    return table
+
+
+def stop_targets(launched: Launched, processes: str) -> List[int]:
+    """The processes a stop may signal: the supervisor this tool launched
+    (still running as its supervisor, so a reused id is left alone) and its
+    descendants, the wine launcher and the server, except the bottle's
+    wineserver and wine's services, which are never stopped."""
+    table = _process_table(processes)
+    sup = table.get(launched.supervisor)
+    if sup is None or SUPERVISOR_MARK not in sup[1]:
+        return []
+    ours = {launched.supervisor}
+    grew = True
+    while grew:
+        grew = False
+        for pid, (ppid, _) in table.items():
+            if ppid in ours and pid not in ours:
+                ours.add(pid)
+                grew = True
+    return sorted(pid for pid in ours if not any(name in table[pid][1] for name in NEVER_STOP))
+
+
+def read_launched() -> Optional[Launched]:
+    return Launched.parse(PID_FILE.read_text()) if PID_FILE.exists() else None
+
+
+LAUNCH_RECORD_TIMEOUT = 10
 
 
 @dataclass(frozen=True)
 class Server:
     install: Install
     config: ServerConfig
-    host: str = "127.0.0.1"
+    host: str = LOCALHOST
 
     def start(self) -> None:
-        if port_in_use(self.config.port) or server_pids(self.config.port, running_processes()):
-            raise ServerDown(f"port {self.config.port} is taken; is a server already running?")
+        argv = command_line(self.install, self.config)  # refuses any bottle but Steam
+        launched = read_launched()
+        if launched and launched.alive(running_processes()):
+            raise ServerDown(f"a server this tool started is still running on port {launched.port}; stop it first")
+        if port_in_use(self.config.port):
+            raise ServerDown(f"port {self.config.port} is taken")
         ARTIFACTS.mkdir(parents=True, exist_ok=True)
-        link_maps(self.install.tf_maps, self.install.maps_addon)
-        argv = [sys.executable, str(Path(__file__).resolve()), "_supervise", str(PROCESS_LOG), "--"]
-        proc = subprocess.Popen(argv + command_line(self.install, self.config), stdin=subprocess.DEVNULL,
-                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
-        PID_FILE.write_text(f"{proc.pid} {self.config.port}\n")
+        PID_FILE.unlink(missing_ok=True)
+        supervisor = [sys.executable, str(Path(__file__).resolve()), SUPERVISOR_MARK, str(PROCESS_LOG),
+                      str(self.config.port), "--"]
+        subprocess.Popen(supervisor + argv, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                         stderr=subprocess.DEVNULL, start_new_session=True)
+        deadline = time.monotonic() + LAUNCH_RECORD_TIMEOUT
+        while not PID_FILE.exists():
+            if time.monotonic() > deadline:
+                raise ServerDown("the supervisor did not record its launch")
+            time.sleep(0.2)
 
     def rcon(self, text: str, timeout: float = 10) -> str:
         with RconClient.connect(self.host, self.config.port, self.config.rcon_password, timeout) as client:
@@ -325,65 +392,35 @@ class Server:
         raise ServerDown(f"{name} was not up within {timeout:.0f} s")
 
     def alive(self) -> bool:
-        return bool(server_pids(self.config.port, running_processes()))
+        launched = read_launched()
+        return bool(launched and launched.alive(running_processes()))
 
     def stop(self, timeout: float = 30) -> None:
-        """Quit through RCON; if the process outlives that, signal only the
-        processes serving our port, and only if this tool started one."""
-        if not PID_FILE.exists():
+        """Quit through RCON; whatever this tool launched that outlives that
+        gets SIGTERM, by process id (stop_targets), and nothing else does."""
+        launched = read_launched()
+        if launched is None:
             return
         try:
             self.rcon("quit", timeout=5)
         except (OSError, ServerDown, AuthFailed):
             pass
         deadline = time.monotonic() + timeout
-        while time.monotonic() < deadline and self.alive():
+        while time.monotonic() < deadline and launched.alive(running_processes()):
             time.sleep(1)
-        for pid in server_pids(self.config.port, running_processes()):
+        for pid in stop_targets(launched, running_processes()):
             os.kill(pid, signal.SIGTERM)
-        unlink_maps(self.install.maps_addon)
         PID_FILE.unlink()
-
-
-# TF2's maps, for the server ------------------------------------------------------------
-# The client mounts TF2 through Steam; the dedicated server mounts only what
-# cfg/mount.cfg lists (TF2's download folder here), so it finds no TF2 map.
-# Rather than edit the operator's mount.cfg, the server gets an addon of its
-# own holding a link to each TF2 .bsp (addons are search paths), removed on
-# stop. TF2's models and materials already come from the VPKs gameinfo.txt
-# lists. TF2's .nav files are left out: an addon comes before garrysmod/ in
-# the search path, so one would shadow the converted mesh in garrysmod/maps.
-
-
-def link_maps(tf_maps: Path, addon: Path) -> None:
-    maps = addon / "maps"
-    maps.mkdir(parents=True, exist_ok=True)
-    for bsp in tf_maps.glob("*.bsp"):
-        link = maps / bsp.name
-        if not link.is_symlink():
-            link.symlink_to(bsp)
-
-
-def unlink_maps(addon: Path) -> None:
-    maps = addon / "maps"
-    if not addon.exists():
-        return
-    entries = list(maps.iterdir()) if maps.exists() else []
-    if any(not e.is_symlink() for e in entries) or any(p != maps for p in addon.iterdir()):
-        raise ValueError(f"{addon} holds more than map links; left alone")
-    for link in entries:
-        link.unlink()
-    maps.rmdir()
-    addon.rmdir()
 
 
 # The supervisor: owns the server's terminal ------------------------------------------
 
 
-def supervise(log_path: Path, argv: List[str]) -> int:
+def supervise(log_path: Path, port: int, argv: List[str]) -> int:
     master, slave = pty.openpty()
     proc = subprocess.Popen(argv, stdin=slave, stdout=slave, stderr=slave)
     os.close(slave)
+    PID_FILE.write_text(Launched(os.getpid(), proc.pid, port).text())
     with open(log_path, "wb") as log:
         while True:
             try:
@@ -405,9 +442,8 @@ def password() -> str:
 
 
 def started_port(default: int) -> int:
-    if PID_FILE.exists():
-        return int(PID_FILE.read_text().split()[1])
-    return default
+    launched = read_launched()
+    return launched.port if launched else default
 
 
 DEFAULT_PORT = 27025  # beside the client's 27015, so the operator's own game keeps its port
@@ -416,13 +452,13 @@ MAP_LOAD_TIMEOUT = 240
 
 
 def make_server(map_name: str, port: int) -> Server:
-    install = Install.discover(running_processes())
+    install = Install.discover()
     return Server(install, ServerConfig(map_name, port, password(), DEFAULT_MAXPLAYERS))
 
 
 def main() -> int:
-    if sys.argv[1:2] == ["_supervise"]:
-        return supervise(Path(sys.argv[2]), sys.argv[4:])
+    if sys.argv[1:2] == [SUPERVISOR_MARK]:
+        return supervise(Path(sys.argv[2]), int(sys.argv[3]), sys.argv[5:])
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="action", required=True)
     start = sub.add_parser("start")

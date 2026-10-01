@@ -452,7 +452,7 @@ def main() -> int:
         f"# In-game test report, {stamp}",
         "",
         f"Run {started:%Y-%m-%d %H:%M} by `.devtools/bin/ingame_tests.py` on GMod's dedicated server "
-        f"(srcds_win64.exe under CrossOver, port {args.port}, -insecure -noworkshop -nosteam).",
+        f"(srcds_win64.exe in the CrossOver bottle {srcds.BOTTLE!r}, port {args.port}, -insecure -noworkshop -nosteam).",
         f"Addon tested: {identity.describe()}.",
         f"Records and each map's console log: `{out_dir.relative_to(REPO)}/`.",
     ])
