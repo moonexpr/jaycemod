@@ -241,6 +241,13 @@ T.test("Merasmus keeps TF2's numbers as his convars' defaults", function()
 	T.eq(HalloweenBoss.CLASSES[HalloweenBoss.BOSS_MERASMUS], "merasmus", "his class")
 end)
 
+-- CMerasmusLocomotion::ShouldCollideWith, CMerasmusFlyingLocomotion's
+T.test("players pass through him, on foot and aloft", function()
+	T.eq(Merasmus.PLAYERS_PASS_THROUGH, true, "no collision with players")
+	T.eq(T.require("foundation.npc.headless_hatman").PLAYERS_PASS_THROUGH, nil, "the Horsemann collides with them")
+	T.eq(T.require("foundation.npc.eyeball_boss").PLAYERS_PASS_THROUGH, nil, "so does the eyeball")
+end)
+
 -- CMerasmus::Spawn
 T.test("health is 33750, plus 2500 for each RED or BLU player beyond 10", function()
 	local cv = Merasmus.CONVARS

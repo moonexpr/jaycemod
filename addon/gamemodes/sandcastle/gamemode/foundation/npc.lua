@@ -5,8 +5,10 @@
 -- An NPC variant is a part of this system (foundation.npc.<variant>) and
 -- provides KIND, LOCOMOTION or HOVER, PATH, NewState(config, actor),
 -- InitialAction(state), and optionally FilterDamage(state, damageEvent,
--- actor), Cull(liveStates) and PARTICLES (every particle system its NPCs
--- dispatch; see Particles). Actions receive the actor as `me`.
+-- actor), Cull(liveStates), PARTICLES (every particle system its NPCs
+-- dispatch; see Particles) and PLAYERS_PASS_THROUGH (true when players and
+-- the NPC never block each other: its locomotion's ShouldCollideWith
+-- refuses players). Actions receive the actor as `me`.
 local error, ipairs, setmetatable = error, ipairs, setmetatable
 local concat, remove = table.concat, table.remove
 module(...)

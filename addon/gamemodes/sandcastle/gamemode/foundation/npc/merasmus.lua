@@ -76,6 +76,9 @@ FLYING = {
 	verticalDamping = 1,
 }
 FLYING_MAX_YAW_RATE = 100
+-- CMerasmusLocomotion::ShouldCollideWith and the flying one's: players are
+-- no obstacle to him, on foot or aloft.
+PLAYERS_PASS_THROUGH = true
 
 -- TF2's convars (merasmus.cpp, merasmus_trick_or_treat_prop.cpp), with
 -- their defaults. tf_merasmus_speed_recovery_rate is never read, and the

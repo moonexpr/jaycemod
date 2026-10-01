@@ -29,6 +29,10 @@ local HOVER_MOVE_TRACES = 3 -- CEyeballBossLocomotion::Update's recursion limit
 local HOVER_CLOSE_ENOUGH_SQR = 1
 local STOPPED_SPEED = 0.01 -- CHeadlessHatmanBody::Update
 local PLAYBACK_RATE_MIN, PLAYBACK_RATE_MAX = -4, 12
+-- A variant's PLAYERS_PASS_THROUGH: the group players walk through (HL2's
+-- rules, which GMod keeps, treat player movement as COLLISION_GROUP_PLAYER)
+-- while bullets, melee traces, projectiles and other NPCs still hit.
+local PLAYERS_PASS_GROUP = COLLISION_GROUP_PASSABLE_DOOR
 
 function ENT:KeyValue(key, value)
 	if string.sub(key, 1, 2) == "On" then self:StoreOutput(key, value) end
@@ -156,6 +160,7 @@ function ENT:Initialize()
 		self.motion = GroundMotion
 		GroundMotion.Setup(self, variant.LOCOMOTION)
 	end
+	if variant.PLAYERS_PASS_THROUGH then self:SetCollisionGroup(PLAYERS_PASS_GROUP) end
 	if variant.PATH then
 		local bot = { entIndex = self:EntIndex(), now = 0 }
 		self.pathCost = self.npcs:EnginePathCost(self, WETSAND.require(variant.PATH), variant.LOCOMOTION, bot)

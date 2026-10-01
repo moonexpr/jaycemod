@@ -744,6 +744,10 @@ keep TF2's names and defaults (`tf_merasmus_*`, `CONVARS`; health 33750 +
 2500 per player past 10, lifetime 120, speed 600, attack range 200, stun 2,
 bomb heads 15 s and 1 per team, props 150 health).
 
+- **Collision:** players pass through him and he through them
+  (`CMerasmusLocomotion::ShouldCollideWith`); the variant's
+  `PLAYERS_PASS_THROUGH` puts the NextBot in `COLLISION_GROUP_PASSABLE_DOOR`,
+  which bullets, melee traces and projectiles still hit.
 - **Arrival:** `Halloween.MerasmusAppears` to everyone, `merasmus_summoned`,
   the map's `boss_enter_relay` (he moves to it), `merasmus_spawn`; then the
   reveal (`ACT_SHIELD_UP`): bar shown, players within 400 pushed by 500,
