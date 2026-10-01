@@ -53,7 +53,8 @@ Gone: `E.Define` and its schemas, the type constructors (`UInt`, `List`,
   site. Two sites would be two specs.
 - **Literal name, literal fields.** The name is a string literal. The fields
   are a table literal written at the call: its keys are the event's fields.
-  Values may be any expression.
+  Values may be any expression. The options (`to`, `unreliable`,
+  `critical`) belong to the site too.
 - **Comments are the documentation.** The comment block directly above the
   `Fire` call describes the event, with TF2's source where it mirrors one.
   The trailing comment on each field's line describes that field. TF2's
@@ -90,7 +91,9 @@ Events.Accept(name, rate)           -- server only: clients may fire this
 `options.to` picks who hears it, after the server's own listeners: `nil`
 for every ready player, a team number, a player, a list of players, or a
 `Vector` (the players whose PVS holds it). `options.unreliable = true` is
-for high-rate snapshots small enough for one datagram. A client is ready
+for high-rate snapshots small enough for one datagram. `options.critical =
+true` marks an event whose loss on a stale client must stop its whole
+feature (§4). A client is ready
 once its `client_ready` event arrives. Anything a joining client needs is
 fired to it then.
 
@@ -160,22 +163,36 @@ nothing stored:
   the client; and again for any file the server reloads (`OnReloaded`).
   The server sends its hashes with those events. The client compares and
   answers with the files that differ (an accepted event, `code_mismatch`).
-- **On a mismatch:** both sides report a network error naming the files:
-  `network error: features/capture/cl.lua differs from the server's; the
-  capture feature's events are stopped for this client until it reconnects
-  or the file matches`. It goes to the client's console and chat once, and
-  to the server's log. The server then fires none of that feature's events
-  to that client, and drops that feature's events from it. Other features
-  carry on. A mismatch in an always-loaded file stops every event for that
-  client.
-- **Which feature an event belongs to** is the feature whose file holds its
-  `Fire` site (§1), recorded when the site first runs.
+- **Which events a stale file touches:** those with a client listener in
+  that file (the library records each `Listen`'s file), and those whose
+  client `Fire` site is in it.
+- **On a mismatch, only those events stop.** The client does not dispatch
+  them to its listeners in the stale file, and does not send the server the
+  events fired from it. The server sends them no events it fires toward
+  those listeners. Everything else carries on: a client that missed one
+  update to a non-critical event loses only that event. Both sides report
+  it once as a network error naming the file and the events:
+  `network error: features/capture/cl.lua differs from the server's;
+  stopped for this client: teamplay_capture_blocked`. It goes to the
+  client's console and chat, and to the server's log.
+- **Critical events stop their feature.** A `Fire` site marks its event
+  critical with `options.critical = true` (in the one site, so it is part of
+  the event's spec). If a stale file touches a critical event, the client
+  stops every event of that event's feature until it reconnects or the file
+  matches. A stale always-loaded file touching a critical event stops every
+  event for that client.
+- **An event belongs to** the feature whose file holds its `Fire` site
+  (§1), recorded when the site first runs.
+
+Self-describing encoding is what makes this safe. An event a stale client
+still receives always decodes, and a listener reading a field the new site
+dropped gets `nil`, never another field's bytes.
 
 | Error | Meaning |
 |---|---|
 | `bad_fields` | a value the library cannot carry, a cycle, or a mixed table (raised at `Fire`) |
 | `too_large` | the encoded event exceeds a net message |
-| `stale_code` | a client's copy of a file differs from the server's (reported, never raised) |
+| `stale_code` | a client's copy of a file differs from the server's; the events it touches stop (reported, never raised) |
 
 ## 5. The events file
 
