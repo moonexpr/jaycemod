@@ -143,6 +143,11 @@ class HalloweenPlan(unittest.TestCase):
             "load", "halloween_entities", "gameplay_start", "payload", "skeletons", "spells", "gifts", "bosses"])
         self.assertIs(self.steps["payload"].args["checkpoint"], False)
 
+    def test_expects_the_holiday_the_maps_logic_names(self):
+        self.assertEqual(self.steps["halloween_entities"].args["holiday"], 2)
+        coal = halloween_run("pl_coal_event", [ent("tf_logic_holiday", holiday_type="3")])
+        self.assertEqual({s.check: s for s in coal.steps}["halloween_entities"].args["holiday"], 3)
+
     def test_a_map_with_only_its_holiday_logic(self):
         run = halloween_run("pl_coal_event", [ent("tf_logic_holiday"), ent("team_train_watcher")])
         self.assertEqual([s.check for s in run.steps], ["load", "halloween_entities", "gameplay_start", "payload"])

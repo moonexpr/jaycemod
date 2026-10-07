@@ -61,7 +61,19 @@ return function(t)
 		return WETSAND.State() == S.RND_RUNNING and rounds:PointsMayBeCaptured()
 	end)
 	t:Check("setup over, points may be captured", open ~= nil,
-		string.format("%s after %.1f s", Tests.StateName(WETSAND.State()), waited))
+		string.format("%s after %.1f s; in setup %s; HUD timer: in setup %s, paused %s, %.0f s left, ends in %.0f s",
+			Tests.StateName(WETSAND.State()), waited, tostring(WETSAND.InSetup()),
+			tostring(GetGlobal2Bool("wetsand_timer_in_setup", false)), tostring(GetGlobal2Bool("wetsand_timer_paused", false)),
+			GetGlobal2Float("wetsand_timer_time_left", -1), GetGlobal2Float("wetsand_timer_end_time", 0) - CurTime()))
+	if not open then
+		local timers = {}
+		for _, ent in ipairs(ents.FindByClass("team_round_timer")) do
+			local timer = rounds:TimerOf(ent)
+			timers[#timers + 1] = string.format("%s: in setup %s, paused %s, %.0f s left", ent:GetName(),
+				tostring(timer and timer:InSetup()), tostring(timer and timer:Paused()), timer and timer:TimeRemaining(CurTime()) or -1)
+		end
+		t:Info("round_timers", timers)
+	end
 	if not open then return end
 
 	local ownedBefore = {}

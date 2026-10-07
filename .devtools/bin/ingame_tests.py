@@ -173,6 +173,16 @@ def _template_targets(e: Dict[str, str]) -> List[str]:
     return [v for k, v in e.items() if k.lower().startswith("template") and v]
 
 
+HALLOWEEN = 2  # TF2's kHoliday_Halloween (foundation.holiday.HALLOWEEN)
+
+
+def _map_holiday(entities: Sequence[Dict[str, str]]) -> int:
+    """The holiday the map's tf_logic_holiday turns on (pl_coal_event's is
+    Christmas, 3)."""
+    logic = next((e for e in entities if e.get("classname") == "tf_logic_holiday"), {})
+    return int(logic.get("holiday_type") or HALLOWEEN)
+
+
 def halloween_run(map_name: str, entities: Sequence[Dict[str, str]]) -> MapRun:
     """A Halloween map's checks, from its BSP's entities (dicts of keyvalues)."""
     templated = {t for e in entities if e.get("classname") == "point_template" for t in _template_targets(e)}
@@ -188,6 +198,7 @@ def halloween_run(map_name: str, entities: Sequence[Dict[str, str]]) -> MapRun:
     steps = [
         load(True, has=["rounds", "capture", "payload", "holiday"], lacks=["koth"]),
         Step("halloween_entities", 30, {
+            "holiday": _map_holiday(entities),
             "classes": classes,
             "stubs": [c for c in STUB_CLASSES if c in classes],
             "engine": [c for c in ENGINE_CLASSES if c in classes],
@@ -506,7 +517,8 @@ def main() -> int:
             ap.error(f"not in the plan: {', '.join(sorted(unknown))}")
         plan = [r for r in plan if r.map in wanted]
 
-    stamp = datetime.date.today().isoformat()
+    # A run of some maps keeps the full run's report: its own name carries the time.
+    stamp = datetime.date.today().isoformat() + (datetime.datetime.now().strftime("-%H%M") if args.maps else "")
     out_dir = srcds.ARTIFACTS / f"ingame-{stamp}"
     out_dir.mkdir(parents=True, exist_ok=True)
     server = srcds.make_server(plan[0].map, args.port)

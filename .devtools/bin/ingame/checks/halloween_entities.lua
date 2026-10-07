@@ -6,7 +6,8 @@
 -- Gift spawn locations hand their origin to the holiday controller and
 -- remove themselves, so they are counted there; classes in args.engine are
 -- the engine's own (no Lua entity expected).
--- args: { classes = { [class] = count placed in the BSP }, stubs = { class... },
+-- args: { holiday = the map's holiday_type, classes = { [class] = count placed in the BSP },
+--         stubs = { class... },
 --         engine = { class... } }
 local STUB_BASE = "wetsand_stub_point"
 local GIFT_LOCATION = "tf_halloween_gift_spawn_location"
@@ -16,7 +17,9 @@ return function(t)
 	t:Check("the holiday feature is loaded", holiday ~= nil, table.concat(WETSAND.FeatureLoader:Loaded(), ", "))
 	if holiday then
 		local Holiday = WETSAND.require("foundation.holiday")
-		t:Check("Halloween is active", holiday:HolidayActive(Holiday.HALLOWEEN), "")
+		local wanted = t.args.holiday or Holiday.HALLOWEEN
+		t:Check("the holiday the map's tf_logic_holiday names (" .. wanted .. ") is active", holiday:HolidayActive(wanted), "")
+		t:Info("halloween_active", holiday:HolidayActive(Holiday.HALLOWEEN))
 		t:Info("holiday_mode", holiday.mode and holiday.mode.HOLIDAY or "none")
 		t:Info("spells_on", holiday.holiday:UsingSpells() and true or false)
 	end
