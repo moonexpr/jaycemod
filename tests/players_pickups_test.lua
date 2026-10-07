@@ -116,6 +116,13 @@ T.test("a stun slows by its reduction after the boost", function()
 	T.near(P.MaxSpeed(200, true, 0.5), 140, 1e-6, "boosted half")
 end)
 
+-- "major move speed bonus" scales the class speed before the boost.
+T.test("a move speed attribute scales the speed before the boost and the stun", function()
+	T.near(P.MaxSpeed(200, false, 0, 2), 400, 1e-6, "doubled")
+	T.near(P.MaxSpeed(200, true, 0, 2), 505, 1e-6, "then boosted, capped")
+	T.near(P.MaxSpeed(200, false, 0.5, 2), 200, 1e-6, "then slowed")
+end)
+
 -- Damage conditions: invulnerable, blast immune, crit boosted
 
 T.test("damage scale follows the victim's and attacker's conditions", function()
