@@ -34,11 +34,15 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple
 
+import bsp_entities
 import srcds
 
 __all__ = [
     "CHECKS_DIR",
+    "HALLOWEEN_MAPS",
     "PLAN",
+    "full_plan",
+    "halloween_run",
     "CheckLine",
     "LuaError",
     "MapResult",
@@ -57,6 +61,7 @@ HERE = Path(__file__).resolve().parent
 INGAME_DIR = HERE / "ingame"
 CHECKS_DIR = INGAME_DIR / "checks"
 REPO = HERE.parents[1]
+TF_MAPS = srcds.GMOD_DIR.parent.parent / "Team Fortress 2" / "tf" / "maps"
 DATA_NAME = "wetsand_tests"
 SCRIPT_EXT = ".txt"  # what the runner reads; GMod's data folder is for data files
 BOOT = f'lua_run RunString(file.Read("{DATA_NAME}/harness/runner{SCRIPT_EXT}", "DATA"), "{DATA_NAME}/runner")'
@@ -101,11 +106,17 @@ def load(rounds: bool, has: Sequence[str] = (), lacks: Sequence[str] = (), lacks
 
 GAMEPLAY_START = Step("gameplay_start", 80, {"red": 2, "blue": 3})
 
+# The payload, KOTH and CP maps of docs/pass4-koth-cp.md §9 and
+# docs/aiwar-koth-cp.md §6, after the Halloween maps.
 PLAN: Tuple[MapRun, ...] = (
-    MapRun("gm_construct", (
-        load(False, lacks=["rounds", "capture", "koth", "payload"]),
-        Step("cfg_defaults_set", 20),
-        Step("cfg_defaults", 20, before="exec sandcastle_defaults"),
+    MapRun("pl_badwater", (
+        load(True, has=["rounds", "capture", "payload"], lacks=["koth"] + HALLOWEEN_FEATURES,
+             lacks_modules=["foundation.rounds.koth"]),
+        Step("defaults_change", 20),
+        Step("defaults_apply", 20, before="wetsand_defaults_apply"),
+        Step("aiwar", 90),
+        GAMEPLAY_START,
+        Step("payload", 420),
     )),
     MapRun("koth_viaduct", (
         load(True, has=["rounds", "capture", "koth"], lacks=["payload"], lacks_modules=["foundation.payload"]),
@@ -123,24 +134,86 @@ PLAN: Tuple[MapRun, ...] = (
         GAMEPLAY_START,
         Step("cp_capture", 420, {"timeout": 400}),
     )),
-    MapRun("pl_badwater", (
-        load(True, has=["rounds", "capture", "payload"], lacks=["koth"] + HALLOWEEN_FEATURES,
-             lacks_modules=["foundation.rounds.koth"]),
-        Step("aiwar", 90),
-        GAMEPLAY_START,
-        Step("payload", 420),
-    )),
-    MapRun("pl_hasslecastle", (
-        load(True, has=["rounds", "capture", "payload", "npc", "combat", "holiday", "spells"],
-             lacks=["koth", "hazards", "tag"]),
-        GAMEPLAY_START,
-        Step("halloween", 90),
-    )),
-    MapRun("plr_hightower_event", (
-        load(True, has=["rounds", "capture", "payload", "spells"], lacks=["koth"]),
-        Step("spells", 30),
-    )),
 )
+
+# The Halloween payload maps of the live playtest, run first; each one's
+# checks follow from what its BSP places (halloween_run).
+HALLOWEEN_MAPS = (
+    "pl_fifthcurve_event",
+    "pl_rumble_event",
+    "pl_millstone_event",
+    "pl_bloodwater",
+    "pl_terror_event",
+    "pl_hasslecastle",
+    "pl_sludgepit_event",
+    "plr_hacksaw_event",
+    "plr_hightower_event",
+    "pl_precipice_event_final",
+    "pl_coal_event",
+)
+BOSS_CLASSES = ("headless_hatman", "eyeball_boss", "merasmus")
+HALLOWEEN_CLASSES = BOSS_CLASSES + (
+    "tf_logic_holiday",
+    "tf_zombie_spawner",
+    "tf_zombie",
+    "tf_spell_pickup",
+    "halloween_zapper",
+    "halloween_fortune_teller",
+    "tf_pumpkin_bomb",
+    "func_nav_prefer",
+    "tf_halloween_gift_spawn_location",
+    "tf_halloween_minigame",
+    "tf_logic_minigames",
+)
+STUB_CLASSES = ("tf_halloween_minigame", "tf_logic_minigames")  # accept their inputs and ignore them
+ENGINE_CLASSES = ("func_nav_prefer",)  # the engine's own entity, which Merasmus reads
+
+
+def _template_targets(e: Dict[str, str]) -> List[str]:
+    return [v for k, v in e.items() if k.lower().startswith("template") and v]
+
+
+def halloween_run(map_name: str, entities: Sequence[Dict[str, str]]) -> MapRun:
+    """A Halloween map's checks, from its BSP's entities (dicts of keyvalues)."""
+    templated = {t for e in entities if e.get("classname") == "point_template" for t in _template_targets(e)}
+    by_name = {e["targetname"]: e.get("classname") for e in entities if e.get("targetname")}
+    classes: Dict[str, int] = {}
+    for e in entities:
+        c = e.get("classname", "")
+        if c in HALLOWEEN_CLASSES and e.get("targetname") not in templated:
+            classes[c] = classes.get(c, 0) + 1
+    bosses = [{"template": e.get("targetname", ""), "class": by_name[target]}
+              for e in entities if e.get("classname") == "point_template"
+              for target in _template_targets(e) if by_name.get(target) in BOSS_CLASSES]
+    steps = [
+        load(True, has=["rounds", "capture", "payload", "holiday"], lacks=["koth"]),
+        Step("halloween_entities", 30, {
+            "classes": classes,
+            "stubs": [c for c in STUB_CLASSES if c in classes],
+            "engine": [c for c in ENGINE_CLASSES if c in classes],
+        }),
+        GAMEPLAY_START,
+        Step("payload", 200, {"checkpoint": False}),
+    ]
+    if "tf_zombie_spawner" in classes:
+        steps.append(Step("skeletons", 90))
+    if "tf_spell_pickup" in classes:
+        steps.append(Step("spells", 30))
+    if "tf_halloween_gift_spawn_location" in classes:
+        steps.append(Step("gifts", 30))
+    if bosses:
+        steps.append(Step("bosses", 150 * len(bosses), {"bosses": bosses}))
+    return MapRun(map_name, tuple(steps))
+
+
+def bsp_entities_of(map_name: str) -> List[Dict[str, str]]:
+    bsp = TF_MAPS / f"{map_name}.bsp"
+    parsed = bsp_entities.parse_entity_lump(bsp_entities.read_entity_lump(bsp.read_bytes()))
+    return [dict(e.pairs) for e in parsed]
+
+
+def full_plan() -> List[MapRun]:
+    return [halloween_run(m, bsp_entities_of(m)) for m in HALLOWEEN_MAPS] + list(PLAN)
 
 HUMAN_ONLY = [
     "Sound: announcer lines (KOTH unlock count, 'Mission ends in 60 seconds', time awarded, Overtime!), "
@@ -329,9 +402,10 @@ class Harness:
 
     def run_step(self, map_name: str, index: int, step: Step) -> StepResult:
         run_id = f"{map_name}_{index}_{step.check}"
-        (self.data_root / "harness" / "args" / f"{run_id}{SCRIPT_EXT}").write_text(json.dumps(step.args))
-        result_path = self.data_root / "results" / f"{run_id}.json"
         before = {step.before: self.server.rcon(step.before).strip()} if step.before else {}
+        args = dict(step.args, before_reply=before[step.before]) if step.before else step.args
+        (self.data_root / "harness" / "args" / f"{run_id}{SCRIPT_EXT}").write_text(json.dumps(args))
+        result_path = self.data_root / "results" / f"{run_id}.json"
         reply = self.server.rcon(f'lua_run WETSAND_TESTS.Run("{step.check}", "{run_id}")')
         if "[ERROR]" in reply:
             return StepResult(step.check, "error", (), {}, reply.strip(), 0)
@@ -424,13 +498,13 @@ def main() -> int:
     ap.add_argument("--maps", help="comma-separated maps from the plan (default: all)")
     ap.add_argument("--port", type=int, default=srcds.DEFAULT_PORT)
     args = ap.parse_args()
-    plan = list(PLAN)
+    plan = full_plan()
     if args.maps:
         wanted = args.maps.split(",")
-        unknown = set(wanted) - {r.map for r in PLAN}
+        unknown = set(wanted) - {r.map for r in plan}
         if unknown:
             ap.error(f"not in the plan: {', '.join(sorted(unknown))}")
-        plan = [r for r in PLAN if r.map in wanted]
+        plan = [r for r in plan if r.map in wanted]
 
     stamp = datetime.date.today().isoformat()
     out_dir = srcds.ARTIFACTS / f"ingame-{stamp}"

@@ -1,3 +1,4 @@
+import json
 import shutil
 import tempfile
 import unittest
@@ -14,6 +15,7 @@ from ingame_tests import (
     StepResult,
     console_notes,
     deploy,
+    halloween_run,
     lua_errors,
     render_report,
     result_from_json,
@@ -90,9 +92,65 @@ class Results(unittest.TestCase):
         self.assertEqual(result.checks, ())
 
 
+def ent(classname, **keys):
+    return {"classname": classname, **keys}
+
+
+FIFTHCURVE = [
+    ent("tf_logic_holiday", holiday_type="2"),
+    ent("merasmus", targetname="merasmus_spawn"),
+    ent("headless_hatman", targetname="hhhh_spawn"),
+    ent("point_template", targetname="horseman_spawn", Template01="hhhh_spawn"),
+    ent("point_template", targetname="merasmus_triggered", Template01="merasmus_spawn", Template02="fx"),
+    ent("tf_zombie_spawner"),
+    ent("tf_zombie_spawner"),
+    ent("tf_spell_pickup"),
+    ent("func_nav_prefer"),
+    ent("tf_halloween_minigame"),
+    ent("tf_halloween_gift_spawn_location"),
+    ent("team_train_watcher"),
+]
+
+
+class HalloweenPlan(unittest.TestCase):
+    def setUp(self):
+        self.run = halloween_run("pl_fifthcurve_event", FIFTHCURVE)
+        self.steps = {s.check: s for s in self.run.steps}
+
+    def test_bosses_come_from_their_templates(self):
+        self.assertEqual(self.steps["bosses"].args["bosses"], [
+            {"template": "horseman_spawn", "class": "headless_hatman"},
+            {"template": "merasmus_triggered", "class": "merasmus"},
+        ])
+
+    def test_counts_the_halloween_classes_placed_but_not_templated_bosses(self):
+        self.assertEqual(self.steps["halloween_entities"].args["classes"], {
+            "tf_logic_holiday": 1,
+            "tf_zombie_spawner": 2,
+            "tf_spell_pickup": 1,
+            "func_nav_prefer": 1,
+            "tf_halloween_minigame": 1,
+            "tf_halloween_gift_spawn_location": 1,
+        })
+
+    def test_stubs_and_engine_classes_only_where_placed(self):
+        args = self.steps["halloween_entities"].args
+        self.assertEqual(args["stubs"], ["tf_halloween_minigame"])
+        self.assertEqual(args["engine"], ["func_nav_prefer"])
+
+    def test_steps_follow_what_the_map_places(self):
+        self.assertEqual([s.check for s in self.run.steps], [
+            "load", "halloween_entities", "gameplay_start", "payload", "skeletons", "spells", "gifts", "bosses"])
+        self.assertIs(self.steps["payload"].args["checkpoint"], False)
+
+    def test_a_map_with_only_its_holiday_logic(self):
+        run = halloween_run("pl_coal_event", [ent("tf_logic_holiday"), ent("team_train_watcher")])
+        self.assertEqual([s.check for s in run.steps], ["load", "halloween_entities", "gameplay_start", "payload"])
+
+
 class Plan(unittest.TestCase):
     def test_every_step_has_a_check_script(self):
-        for run in PLAN:
+        for run in list(PLAN) + [halloween_run("pl_fifthcurve_event", FIFTHCURVE)]:
             for step in run.steps:
                 self.assertTrue((CHECKS_DIR / f"{step.check}.lua").exists(), step.check)
 
@@ -153,11 +211,16 @@ class RunStep(unittest.TestCase):
         shutil.rmtree(self.tmp)
 
     def test_sends_its_console_command_first_and_keeps_the_reply(self):
-        result = self.harness.run_step("gm_construct", 1, Step("cfg_defaults", 5, before="exec sandcastle_defaults"))
-        self.assertEqual(self.server.sent[0], "exec sandcastle_defaults")
-        self.assertTrue(self.server.sent[1].startswith("lua_run WETSAND_TESTS.Run(\"cfg_defaults\""))
+        result = self.harness.run_step("pl_badwater", 1, Step("defaults_apply", 5, before="wetsand_defaults_apply"))
+        self.assertEqual(self.server.sent[0], "wetsand_defaults_apply")
+        self.assertTrue(self.server.sent[1].startswith("lua_run WETSAND_TESTS.Run(\"defaults_apply\""))
         self.assertEqual(result.status, "pass")
-        self.assertEqual(result.info["rcon"], {"exec sandcastle_defaults": "Unknown command \"cl_x\""})
+        self.assertEqual(result.info["rcon"], {"wetsand_defaults_apply": "Unknown command \"cl_x\""})
+
+    def test_the_check_reads_the_commands_reply_from_its_arguments(self):
+        self.harness.run_step("pl_badwater", 1, Step("defaults_apply", 5, {"x": 1}, before="wetsand_defaults_apply"))
+        args = json.loads((self.tmp / "harness" / "args" / "pl_badwater_1_defaults_apply.txt").read_text())
+        self.assertEqual(args, {"x": 1, "before_reply": "Unknown command \"cl_x\""})
 
     def test_writes_the_arguments_for_the_runner(self):
         self.harness.run_step("koth_viaduct", 0, Step("load", 5, {"rounds": True}))

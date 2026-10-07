@@ -1,11 +1,10 @@
--- First half of the sandcastle_defaults check: move two convars that exist
--- on every map off their defaults. GMod refuses `exec` from Lua
--- (game.ConsoleCommand blocked!), so the harness then sends
--- `exec sandcastle_defaults` over RCON, as an admin would, and the
--- cfg_defaults check reads them back.
+-- First half of the wetsand_defaults_apply check: move two convars that
+-- cfg/sandcastle_defaults.cfg lists off their defaults. The harness then
+-- sends wetsand_defaults_apply over RCON, as an admin would, and the
+-- defaults_apply check reads them back.
 local CONVARS = {
+	mp_chattime = "30",
 	mp_autoteambalance = "0",
-	mp_teams_unbalance_limit = "3",
 }
 local SETTLE = 1 -- seconds for the console to run what it was given
 
