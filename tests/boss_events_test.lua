@@ -82,6 +82,28 @@ T.test("Merasmus's defeat only says so", function()
 	T.eq(Cue(BossEvents.MERASMUS_KILLED, { level = 3 }).text, "MERASMUS! (LEVEL 3) has been defeated!", "levelled")
 end)
 
+-- TF_Halloween_Merasmus_Killers and _LevelUp_Killers, said in the chat for
+-- each player who hit him in his last 5 s.
+T.test("each of his killers is named, with his level past the first", function()
+	local ply = { nick = "Soldier" }
+	local function NameOf(p) return p.nick end
+	local first = BossEvents.Cue(BossEvents.MERASMUS_KILLER, {
+		player = ply,
+		level = 1,
+	}, NameOf)
+	T.eq(first.text, "Soldier has defeated MERASMUS!", "named")
+	T.eq(first.sound, nil, "no sound")
+	T.eq(first.color, nil, "the chat's own colour")
+	T.eq(BossEvents.Cue(BossEvents.MERASMUS_KILLER, {
+		player = ply,
+		level = 4,
+	}, NameOf).text, "Soldier has defeated MERASMUS! (LEVEL 4)", "levelled")
+	T.eq(BossEvents.Cue(BossEvents.MERASMUS_KILLER, {
+		player = { nick = "100%d" },
+		level = 2,
+	}, NameOf).text, "100%d has defeated MERASMUS! (LEVEL 2)", "a % in a name is kept")
+end)
+
 T.test("Merasmus's warnings and departure use MONOCULUS's sounds and his own words", function()
 	local WARNING = BossEvents.MERASMUS_ESCAPE_WARNING
 	local sixty = Cue(WARNING, {
@@ -122,7 +144,8 @@ T.test("every boss event has a cue with a line; its sound, when it has one, is a
 		local cue = BossEvents.Cue(name, {
 			level = 1,
 			time_remaining = 10,
-		})
+			player = {},
+		}, function() return "Pyro" end)
 		T.eq(type(cue.text), "string", name .. " text")
 		T.eq(cue.sound == nil or type(cue.sound) == "string", true, name .. " sound")
 	end

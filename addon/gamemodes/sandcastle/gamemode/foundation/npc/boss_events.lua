@@ -25,6 +25,10 @@ MERASMUS_SUMMONED = "merasmus_summoned"
 MERASMUS_KILLED = "merasmus_killed"
 MERASMUS_ESCAPE_WARNING = "merasmus_escape_warning"
 MERASMUS_ESCAPED = "merasmus_escaped"
+-- Sandcastle's own, for the chat line TF2 sends for each of his killers
+-- (the players who hit him in his last 5 s; CMerasmusBehavior::Update's
+-- SayText2 of TF_Halloween_Merasmus_Killers): { player, level }.
+MERASMUS_KILLER = "merasmus_killer"
 
 NAMES = {
 	PUMPKIN_LORD_SUMMONED,
@@ -37,6 +41,7 @@ NAMES = {
 	MERASMUS_KILLED,
 	MERASMUS_ESCAPE_WARNING,
 	MERASMUS_ESCAPED,
+	MERASMUS_KILLER,
 }
 
 -- Merasmus's bomb heads (TF_COND_HALLOWEEN_BOMB_HEAD), which TF2 networks
@@ -176,10 +181,16 @@ local CUES = {
 			color = MERASMUS_COLOR,
 		}
 	end,
+	-- TF_Halloween_Merasmus_Killers, and _LevelUp_Killers past the first level
+	[MERASMUS_KILLER] = function(fields, nameOf)
+		-- the name is joined on, never formatted, so a % in it is just a %
+		return { text = nameOf(fields.player) .. Levelled(fields, " has defeated MERASMUS!", " has defeated MERASMUS! (LEVEL %d)") }
+	end,
 }
 
 -- { sound (nil: none), text, color (nil: the chat's own) } for the event's
--- fields.
-function Cue(name, fields)
-	return CUES[name](fields)
+-- fields; nameOf(player) gives a player's name, for the events that name
+-- one.
+function Cue(name, fields, nameOf)
+	return CUES[name](fields, nameOf)
 end

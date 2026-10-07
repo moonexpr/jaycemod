@@ -21,13 +21,15 @@ if CLIENT then return end
 local Base = baseclass.Get("wetsand_combat_nextbot")
 
 -- TF2's convars for this boss (its variant's CONVARS), created by the first
--- binding, and their values now (the npc controller's BossConvars).
+-- binding, and their values now (the npc controller's BossConvars); and
+-- whether sv_cheats is on as it spawns (m_wasSpawnedByCheats).
 function ENT:Config()
 	local configured = self.configured or {}
 	return {
 		team = configured.team,
 		owner = configured.owner,
 		convars = WETSAND.Feature("npc"):BossConvars(WETSAND.require(self.Variant).CONVARS),
+		cheats = GetConVar("sv_cheats"):GetBool(),
 	}
 end
 

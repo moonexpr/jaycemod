@@ -800,8 +800,14 @@ bomb heads 15 s and 1 per team, props 150 health).
   type stands for the minigun or sentry (x0.5) or the revolver, Soda
   Popper, Shortstop and Baby Face's Blaster. The NPC's `FilterDamage` now
   returns the amount taken, which the npc controller applies.
-- **Left out:** the hat levels, achievements, killers' line and stats; the
-  Wheel of Fate (no event map has a `wheel_of_fortress`); the critical flag
+- **His killers:** `merasmus_killed` keeps TF2's one field, `level`; each
+  player who hit him in his last 5 s gets `merasmus_killer { player, level }`
+  (Sandcastle's own, for TF2's SayText2), which clients show as "NAME has
+  defeated MERASMUS! (LEVEL n)", unless sv_cheats was on when he spawned.
+  The econ hat levels, Valve achievements and gamestats, soul packs and
+  `halloween_boss_killed` (which feeds only those) have no counterpart, and
+  TF2's scoreboard gives no points for him.
+- **Left out:** the Wheel of Fate (no event map has a `wheel_of_fortress`); the critical flag
   on hits while stunned or aloft (only TF2's hit numbers show it).
 - **Bomb-rain scene:** as TF2, one of `scenes/bot/merasmus/low/
   bomb_attack_001..009.vcd` through `PlayScene` (a NextBot is a CBaseFlex):

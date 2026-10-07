@@ -131,7 +131,10 @@ local function Scene(t)
 	for i, p in ipairs(t.players or {}) do players[i] = world:AddPlayer(p) end
 	t.world = world
 	local me = Port(t)
-	local npc = NpcSystem.Npc.New(Merasmus, { convars = Merasmus.CONVARS }, me)
+	local npc = NpcSystem.Npc.New(Merasmus, {
+		convars = Merasmus.CONVARS,
+		cheats = t.cheats,
+	}, me)
 	return {
 		world = world,
 		players = players,
@@ -1286,6 +1289,53 @@ T.test("killed, he is banished: his music plays, he bursts, and leaves a vortex 
 	T.eq(#timer, 1, "the boss timer starts (CMerasmus::StartRespawnTimer)")
 	T.eq(timer[1][1], Merasmus.CONVARS.tf_merasmus_spawn_interval, "at his interval")
 	T.eq(s.me.removed, true, "gone")
+end)
+
+-- CMerasmusBehavior::Update on his death: TF_Halloween_Merasmus_Killers.
+local function KillersScene(cheats)
+	local s = Scene({
+		players = {
+			{
+				team = Teams.RED,
+				origin = V(FAR, 0, 0),
+			},
+			{
+				team = Teams.BLUE,
+				origin = V(FAR, 100, 0),
+			},
+			{
+				team = Teams.BLUE,
+				origin = V(FAR, 200, 0),
+			},
+		},
+		shared = { level = 2 },
+		cheats = cheats,
+	})
+	local red, blue, early = s.players[1], s.players[2], s.players[3]
+	Arrived(s)
+	s.npc:FilterDamage(Damage(early, 10))
+	Tick(s, 6)
+	s.npc:FilterDamage(Damage(red, 10))
+	Tick(s, 4)
+	s.npc:FilterDamage(Damage(blue, 10))
+	s.me.alive = false
+	s.npc:Event("OnKilled", Damage(blue, 10))
+	Tick(s, TICK)
+	return s, red, blue
+end
+
+T.test("everyone who hit him in his last 5 s is named his killer, at his level", function()
+	local s, red, blue = KillersScene(false)
+	local killers = FiredNamed(s.me, BossEvents.MERASMUS_KILLER)
+	T.eq(#killers, 2, "the two late hitters, not the early one")
+	T.eq(killers[1].player, red, "red")
+	T.eq(killers[1].level, 2, "at his level")
+	T.eq(killers[2].player, blue, "blue")
+end)
+
+T.test("a Merasmus spawned with cheats on names no killers", function()
+	local s = KillersScene(true)
+	T.eq(#FiredNamed(s.me, BossEvents.MERASMUS_KILLER), 0, "nobody")
 end)
 
 T.test("killed past the third level, the next one is timed a minute away", function()

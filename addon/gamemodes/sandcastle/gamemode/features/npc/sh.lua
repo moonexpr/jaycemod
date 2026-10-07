@@ -38,6 +38,13 @@ E.Define("merasmus_escape_warning", {
 })
 E.Define("merasmus_escaped", { level = E.Int(LEVEL_BITS) })
 
+-- Sandcastle's own, for the chat line TF2 says for each of Merasmus's
+-- killers (TF_Halloween_Merasmus_Killers).
+E.Define("merasmus_killer", {
+	player = E.Entity(),
+	level = E.Int(LEVEL_BITS),
+})
+
 -- Sandcastle's own, for what TF2 networks as a player condition: a player
 -- became a bomb head for duration seconds (0: no longer one).
 E.Define("halloween_bomb_head", {

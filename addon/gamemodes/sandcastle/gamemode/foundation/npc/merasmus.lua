@@ -38,9 +38,18 @@
 -- attacker) and OnPropTouched(prop, toucher), and calls Removed(state, me)
 -- when he is removed (CMerasmus::UpdateOnRemove).
 --
--- Left out (econ, or not on the maps that spawn him): the hat levels and
--- achievements his death awards, the killers' chat line, the stats he
--- reports, the Wheel of Fate (no map has a wheel_of_fortress), the
+-- His death's rewards, as far as they show here: merasmus_killed carries
+-- his level (TF2's only field), and each player who hit him in his last 5 s
+-- is named in the chat (merasmus_killer, TF2's SayText2 of
+-- TF_Halloween_Merasmus_Killers), unless cheats spawned him. What else TF2
+-- does has no counterpart here: the Steam econ hat levels the GC awards
+-- (CMsgUpdateHalloweenMerasmusLootLevel), Valve's achievements
+-- (ACHIEVEMENT_TF_HALLOWEEN_MERASMUS_KILL), Valve's gamestats (the boss
+-- stats SW_ReportMerasmusStats uploads, CTF_GameStats' boss events), the
+-- soul packs and halloween_boss_killed, which only feed those; and TF2's
+-- scoreboard gives no points for him either.
+--
+-- Left out besides: the Wheel of Fate (no map has a wheel_of_fortress), the
 -- critical flag on hits while stunned or raining bombs (only TF2's hit
 -- numbers and sounds show it; ModifyDamage maps the per-weapon multipliers
 -- to damage types), and the holiday ammo pack's health (the props drop a
@@ -346,6 +355,9 @@ NEUTRALIZES_POINT = true
 -- nearest first, as CMerasmus::LeaveWarning does.
 ESCAPE_WARNINGS = { 10, 30, 60 }
 DEPART_RARE_ROLL_MAX = 10 -- rare at RandomInt( 0, 10 ) == 0
+
+-- Death: who hit him this recently is named his killer (deathTime).
+KILLER_WINDOW = 5
 
 -------------------------------------------------------------------------------
 -- His own rules
@@ -1441,7 +1453,23 @@ end
 -------------------------------------------------------------------------------
 -- Dying (CMerasmusDying)
 
+-- CMerasmusBehavior::Update as he dies: each player who hit him in his last
+-- KILLER_WINDOW seconds is named his killer, unless cheats spawned him.
+local function NameKillers(state, me)
+	if state.spawnedByCheats then return end
+	local now, level = me:Now(), Level(me)
+	for _, known in ipairs(state.attackers) do
+		if me:IsTargetValid(known.attacker) and now - known.at < KILLER_WINDOW then
+			me:FireGameEvent(BossEvents.MERASMUS_KILLER, {
+				player = known.attacker,
+				level = level,
+			})
+		end
+	end
+end
+
 function Dying:OnStart(me, priorAction)
+	NameKillers(self.state, me)
 	me:StartActivity(me:Activity("ACT_DIESIMPLE"))
 	me:PlayHighPrioritySound("Halloween.MerasmusBanish")
 	me:BroadcastGameSound("Halloween.Merasmus_Death")

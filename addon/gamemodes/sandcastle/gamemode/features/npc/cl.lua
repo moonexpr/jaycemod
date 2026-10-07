@@ -32,11 +32,17 @@ end)
 
 -- The bosses' game events, as ClientModeTFNormal::FireGameEvent takes
 -- them: the cue's sound on the local player (the Horsemann's and
--- MONOCULUS's music and lines), and its line in the chat.
+-- MONOCULUS's music and lines), and its line in the chat. A player the
+-- server named whom this client cannot see is "Someone".
 local BossEvents = WETSAND.require("foundation.npc.boss_events")
+local UNKNOWN_PLAYER = "Someone"
+
+local function NameOf(ply)
+	return IsValid(ply) and ply:Nick() or UNKNOWN_PLAYER
+end
 
 function View:PlayBossCue(name, fields)
-	local cue = BossEvents.Cue(name, fields)
+	local cue = BossEvents.Cue(name, fields, NameOf)
 	local ply = LocalPlayer()
 	if IsValid(ply) and cue.sound then ply:EmitSound(cue.sound) end
 	local color = cue.color and Color(cue.color.r, cue.color.g, cue.color.b) or color_white

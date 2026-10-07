@@ -163,6 +163,7 @@ local function NewState(boss, config, me)
 		team = team,
 		spell = IsSpell(team),
 		convars = config.convars,
+		spawnedByCheats = config.cheats == true, -- m_wasSpawnedByCheats: sv_cheats was on
 		level = boss.Level and boss.Level(me) or 0,
 		attackers = {},
 		samples = {},
