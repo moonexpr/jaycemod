@@ -30,20 +30,32 @@
 --     player in them; AreasAround(pos, range) -> the centres of the areas
 --     around the one at pos; IsInPreferredArea(t);
 --   RemoveGrenades(origin, radius), EndStun(t), RemoveCond(t, cond),
---     RemoveEntity(t).
+--     RemoveEntity(t);
+--   StartBossTimer(seconds, variation) (TFGameRules()->
+--     StartHalloweenBossTimer: foundation.npc.boss_timer's Start);
+--   PlayScriptedScene(name) (InstancedScriptedScene, multiplayer).
 -- The binding forwards the props' events to the Behavior: OnPropKilled(prop,
 -- attacker) and OnPropTouched(prop, toucher), and calls Removed(state, me)
 -- when he is removed (CMerasmus::UpdateOnRemove).
 --
--- Left out (econ, or not on the maps that spawn him): the hat levels and
--- achievements his death awards, the killers' chat line, the stats he
--- reports, the Wheel of Fate (no map has a wheel_of_fortress), the boss
--- respawn timer (maps spawn him from templates), the per-weapon damage
--- multipliers and the critical flag on hits while stunned or raining bombs
--- (GMod has no TF2 weapons), the holiday ammo pack's health (the props drop
--- a plain medium pack), and the scripted scene of the bomb rain (its line
--- plays as a sound). The prop separation and the area around the control
--- point are measured straight, where TF2 walks the mesh.
+-- His death's rewards, as far as they show here: merasmus_killed carries
+-- his level (TF2's only field), and each player who hit him in his last 5 s
+-- is named in the chat (merasmus_killer, TF2's SayText2 of
+-- TF_Halloween_Merasmus_Killers), unless cheats spawned him. What else TF2
+-- does has no counterpart here: the Steam econ hat levels the GC awards
+-- (CMsgUpdateHalloweenMerasmusLootLevel), Valve's achievements
+-- (ACHIEVEMENT_TF_HALLOWEEN_MERASMUS_KILL), Valve's gamestats (the boss
+-- stats SW_ReportMerasmusStats uploads, CTF_GameStats' boss events), the
+-- soul packs and halloween_boss_killed, which only feed those; and TF2's
+-- scoreboard gives no points for him either.
+--
+-- His Wheel of Fate is foundation.holiday.wheel (wheel_of_doom). Left out
+-- besides: the critical flag on hits while stunned or raining bombs (only
+-- TF2's hit numbers and sounds show it; ModifyDamage maps the per-weapon multipliers
+-- to damage types), and the holiday ammo pack's health (the props drop a
+-- plain medium pack). The prop separation and the area around the control
+-- point are measured straight, where TF2 walks the mesh. TF2's boss timer
+-- (foundation.npc.boss_timer) brings the next one.
 local require = require
 local NpcSystem = require("foundation.npc")
 local HalloweenBoss = require("foundation.npc.halloween_boss")
@@ -54,6 +66,8 @@ local Players = require("foundation.players")
 local Teams = require("foundation.teams")
 local atan2, cos, deg, floor, huge, max, min, rad, sin = math.atan2, math.cos, math.deg, math.floor, math.huge, math.max, math.min, math.rad, math.sin
 local ipairs = ipairs
+local band = bit.band
+local format = string.format
 module(...)
 
 BOSS_TYPE = HalloweenBoss.BOSS_MERASMUS
@@ -76,10 +90,13 @@ FLYING = {
 	verticalDamping = 1,
 }
 FLYING_MAX_YAW_RATE = 100
+-- CMerasmusLocomotion::ShouldCollideWith and the flying one's: players are
+-- no obstacle to him, on foot or aloft.
+PLAYERS_PASS_THROUGH = true
 
--- TF2's convars (merasmus.cpp, merasmus_trick_or_treat_prop.cpp), with
--- their defaults. tf_merasmus_speed_recovery_rate is never read, and the
--- spawn interval drives TF2's boss timer, which these maps do not use.
+-- TF2's convars (merasmus.cpp, merasmus_trick_or_treat_prop.cpp; the boss
+-- timer's from tf_gamerules.cpp and headless_hatman.cpp), with their
+-- defaults. tf_merasmus_speed_recovery_rate is never read.
 CONVARS = {
 	tf_merasmus_health_base = 33750,
 	tf_merasmus_health_per_player = 2500,
@@ -96,6 +113,9 @@ CONVARS = {
 	tf_merasmus_bomb_head_per_team = 1,
 	tf_merasmus_stun_duration = 2,
 	tf_merasmus_prop_health = 150,
+	tf_merasmus_spawn_interval = 180,
+	tf_merasmus_spawn_interval_variation = 30,
+	tf_halloween_bot_min_player_count = 10,
 }
 
 METHODS = {
@@ -122,6 +142,8 @@ METHODS = {
 	"EndStun",
 	"RemoveCond",
 	"RemoveEntity",
+	"StartBossTimer",
+	"PlayScriptedScene",
 }
 
 MODEL = "models/bots/merasmus/merasmus.mdl"
@@ -202,19 +224,13 @@ FLOAT_SOUND = "Halloween.Merasmus_Float"
 PROP_SOUND = "Halloween.Merasmus_Hiding_Explode"
 PROP_LOOT_MODEL_SCALE = 1.4
 
--- The bomb rain's lines: the sounds of scenes/bot/merasmus/low/
--- bomb_attack_001..009.vcd, which GMod cannot play on a NextBot.
-AOE_LINES = {
-	"vo/halloween_merasmus/sf12_bombinomicon01.mp3",
-	"vo/halloween_merasmus/sf12_bombinomicon03.mp3",
-	"vo/halloween_merasmus/sf12_bombinomicon05.mp3",
-	"vo/halloween_merasmus/sf12_bombinomicon09.mp3",
-	"vo/halloween_merasmus/sf12_bombinomicon10.mp3",
-	"vo/halloween_merasmus/sf12_bombinomicon11.mp3",
-	"vo/halloween_merasmus/sf12_bombinomicon13.mp3",
-	"vo/halloween_merasmus/sf12_bombinomicon14.mp3",
-	"vo/halloween_merasmus/sf12_bombinomicon15.mp3",
-}
+-- The bomb rain's scripted scene, one of nine (CMerasmusAOEAttack: only
+-- for its sound, as the animation does not work with the VCD). Each speaks
+-- Halloween.BombSuperMove<n>, then Halloween.BombinomiconBombs at 4.2 s and
+-- Halloween.MerasmusBombTaunt at 6 s (.devtools/bin/tf2_scene.py reads them
+-- from TF2's scenes.image).
+AOE_SCENE = "scenes/bot/merasmus/low/bomb_attack_00%d.vcd"
+AOE_SCENE_COUNT = 9
 
 STAFF_ATTACHMENT = "effect_staff"
 HAND_ATTACHMENT = "effect_hand_R"
@@ -328,10 +344,21 @@ REVEAL_PUSH_RANGE = 400
 REVEAL_PUSH_FORCE = 500
 GRENADE_CLEAR_RANGE = 400
 
+-- The boss timer (foundation.npc.boss_timer): past the third level the next
+-- Merasmus comes a minute after the last; the spawn reverts the point he
+-- takes to neutral (SpawnHalloweenBoss, LAKESIDE).
+STEADY_RESPAWN_LEVEL = 3
+QUICK_RESPAWN_INTERVAL = 60
+NEUTRALIZES_POINT = true
+WAITS_FOR_WHEEL = true -- nor does he come while a Wheel of Fate is busy
+
 -- Leaving: the seconds left at which merasmus_escape_warning fires, checked
 -- nearest first, as CMerasmus::LeaveWarning does.
 ESCAPE_WARNINGS = { 10, 30, 60 }
 DEPART_RARE_ROLL_MAX = 10 -- rare at RandomInt( 0, 10 ) == 0
+
+-- Death: who hit him this recently is named his killer (deathTime).
+KILLER_WINDOW = 5
 
 -------------------------------------------------------------------------------
 -- His own rules
@@ -383,11 +410,25 @@ local function RemapValClamped(value, a, b, c, d)
 	return c + (d - c) * t
 end
 
--- The level every Merasmus shares (CMerasmus::m_level).
-function Level(me)
-	local shared = me:Shared()
+-- The level every Merasmus shares (CMerasmus::m_level), from the variant's
+-- shared table.
+function SharedLevel(shared)
 	if shared.level == nil then shared.level = FIRST_LEVEL end
 	return shared.level
+end
+
+function Level(me) return SharedLevel(me:Shared()) end
+
+-- CMerasmus::StartRespawnTimer and SpawnHalloweenBoss's LAKESIDE intervals.
+function SpawnInterval(level, convars)
+	if level <= STEADY_RESPAWN_LEVEL then
+		return convars.tf_merasmus_spawn_interval, convars.tf_merasmus_spawn_interval_variation
+	end
+	return QUICK_RESPAWN_INTERVAL, 0
+end
+
+local function StartRespawnTimer(state, me)
+	me:StartBossTimer(SpawnInterval(Level(me), state.convars))
 end
 
 local function ShowHealth(me)
@@ -1208,7 +1249,7 @@ function AOEAttack:OnStart(me, priorAction)
 	self.areas = me:AreasAround(point.origin, AOE_RANGE)
 	if #self.areas == 0 then return self:Done("No nav areas near control point!") end
 	me:StartActivity(me:Activity("ACT_RANGE_ATTACK1"))
-	me:EmitSound(AOE_LINES[me:RandomInt(1, #AOE_LINES)])
+	me:PlayScriptedScene(format(AOE_SCENE, me:RandomInt(1, AOE_SCENE_COUNT)))
 	return self:Continue()
 end
 
@@ -1405,6 +1446,7 @@ function Escape:Update(me, interval)
 	me:FireGameEvent(BossEvents.MERASMUS_ESCAPED, { level = Level(me) })
 	me:TriggerRelay(EXIT_RELAY)
 	me:Shared().level = FIRST_LEVEL
+	StartRespawnTimer(self.state, me)
 	me:Remove()
 	return self:Done()
 end
@@ -1412,7 +1454,23 @@ end
 -------------------------------------------------------------------------------
 -- Dying (CMerasmusDying)
 
+-- CMerasmusBehavior::Update as he dies: each player who hit him in his last
+-- KILLER_WINDOW seconds is named his killer, unless cheats spawned him.
+local function NameKillers(state, me)
+	if state.spawnedByCheats then return end
+	local now, level = me:Now(), Level(me)
+	for _, known in ipairs(state.attackers) do
+		if me:IsTargetValid(known.attacker) and now - known.at < KILLER_WINDOW then
+			me:FireGameEvent(BossEvents.MERASMUS_KILLER, {
+				player = known.attacker,
+				level = level,
+			})
+		end
+	end
+end
+
 function Dying:OnStart(me, priorAction)
+	NameKillers(self.state, me)
 	me:StartActivity(me:Activity("ACT_DIESIMPLE"))
 	me:PlayHighPrioritySound("Halloween.MerasmusBanish")
 	me:BroadcastGameSound("Halloween.Merasmus_Death")
@@ -1433,6 +1491,7 @@ function Dying:Update(me, interval)
 		splitTeam = true,
 	}, me:WorldSpaceCenter())
 	shared.level = Level(me) + 1
+	StartRespawnTimer(self.state, me)
 	me:Remove()
 	return self:Done()
 end
@@ -1479,14 +1538,54 @@ function Setup(state, config, me)
 	me:DispatchParticleEffect(SPAWN_PARTICLE, me:GetAbsOrigin())
 end
 
+-- MerasmusModifyDamage: TF2 scales the hits of some of its weapons. A RED
+-- or BLU player's hit here is scaled as the TF2 weapon its damage type
+-- stands for: a sniper round (DMG_SNIPER) as the sniper rifle, a crossbow
+-- bolt (DMG_BULLET with DMG_NEVERGIB, HL2's) as the Huntsman and a blade
+-- (DMG_SLASH) as the knife, x3; buckshot (DMG_BUCKSHOT) as the scattergun,
+-- x2, the first that fits. Plain bullets, clubs, blasts (rockets, grenades,
+-- pumpkin bombs, bomb heads) and fire (the spells) are as dealt, as TF2's
+-- spellbook and bombs are; no damage type here stands for the minigun or
+-- the sentry (x0.5), nor the revolver, Soda Popper, Shortstop or Baby
+-- Face's Blaster, whose bullets are plain. What is not a player's weapon
+-- (a skeleton's claws, a hazard) is as dealt.
+WEAPON_SCALES = {
+	{
+		bits = Actor.DMG_SNIPER,
+		scale = 3,
+	},
+	{
+		bits = Actor.DMG_BULLET + Actor.DMG_NEVERGIB,
+		scale = 3,
+	},
+	{
+		bits = Actor.DMG_SLASH,
+		scale = 3,
+	},
+	{
+		bits = Actor.DMG_BUCKSHOT,
+		scale = 2,
+	},
+}
+
+function WeaponScale(dmgType)
+	for _, weapon in ipairs(WEAPON_SCALES) do
+		if band(dmgType, weapon.bits) == weapon.bits then return weapon.scale end
+	end
+	return 1
+end
+
 -- CMerasmus::OnTakeDamage_Alive: hidden, he takes nothing; otherwise he
--- bleeds (more while stunned) and his bar shows what the hit leaves.
+-- bleeds (more while stunned), takes the weapon's share, and his bar shows
+-- what the hit leaves.
 function ModifyDamage(state, damageEvent, me)
 	if not state.revealed then return 0 end
 	me:DispatchParticleEffect(state.stunned and BLOOD_PARTICLE or BLOOD_BITS_PARTICLE, damageEvent.position)
-	local left = max(0, me:GetHealth() - damageEvent.amount)
+	local amount = damageEvent.amount
+	if HalloweenBoss.IsPlayer(me, damageEvent.attacker) then amount = amount * WeaponScale(damageEvent.dmgType) end
+	local left = max(0, me:GetHealth() - amount)
 	me:SetBossHealth(left / me:GetMaxHealth())
-	return damageEvent.amount
+	return amount
 end
 
 

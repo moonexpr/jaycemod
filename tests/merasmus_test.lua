@@ -110,6 +110,8 @@ local function Port(t)
 		}
 	end
 	function me:EndStun(t) self:Record("EndStun", t) end
+	function me:StartBossTimer(seconds, variation) self:Record("StartBossTimer", seconds, variation) end
+	function me:PlayScriptedScene(name) self:Record("PlayScriptedScene", name) end
 	function me:RemoveCond(t, cond)
 		t.conds[cond] = nil
 		self:Record("RemoveCond", t, cond)
@@ -129,7 +131,10 @@ local function Scene(t)
 	for i, p in ipairs(t.players or {}) do players[i] = world:AddPlayer(p) end
 	t.world = world
 	local me = Port(t)
-	local npc = NpcSystem.Npc.New(Merasmus, { convars = Merasmus.CONVARS }, me)
+	local npc = NpcSystem.Npc.New(Merasmus, {
+		convars = Merasmus.CONVARS,
+		cheats = t.cheats,
+	}, me)
 	return {
 		world = world,
 		players = players,
@@ -239,6 +244,13 @@ T.test("Merasmus keeps TF2's numbers as his convars' defaults", function()
 	T.eq(Merasmus.FLYING.verticalDamping, 1, "damping")
 	T.eq(Merasmus.FLYING_MAX_YAW_RATE, 100, "flying yaw rate")
 	T.eq(HalloweenBoss.CLASSES[HalloweenBoss.BOSS_MERASMUS], "merasmus", "his class")
+end)
+
+-- CMerasmusLocomotion::ShouldCollideWith, CMerasmusFlyingLocomotion's
+T.test("players pass through him, on foot and aloft", function()
+	T.eq(Merasmus.PLAYERS_PASS_THROUGH, true, "no collision with players")
+	T.eq(T.require("foundation.npc.headless_hatman").PLAYERS_PASS_THROUGH, nil, "the Horsemann collides with them")
+	T.eq(T.require("foundation.npc.eyeball_boss").PLAYERS_PASS_THROUGH, nil, "so does the eyeball")
 end)
 
 -- CMerasmus::Spawn
@@ -839,8 +851,9 @@ T.test("the third hit sends him home to rain bombs from the air", function()
 	T.eq(around[1], V(2000, 0, 0), "around the first point")
 	T.eq(around[2], 400, "within 400")
 	T.eq(s.me:Called("StartActivity")[#s.me:Called("StartActivity")][1], "ACT_RANGE_ATTACK1", "the book")
-	local lines = s.me:Called("EmitSound")
-	T.eq(lines[#lines][1]:match("^vo/halloween_merasmus/sf12_bombinomicon%d+%.mp3$") ~= nil, true, "a bomb line")
+	local scenes = s.me:Called("PlayScriptedScene")
+	T.eq(#scenes, 1, "one scripted scene")
+	T.eq(scenes[1][1]:match("^scenes/bot/merasmus/low/bomb_attack_00[1-9]%.vcd$") ~= nil, true, "a bomb_attack scene: " .. scenes[1][1])
 	Tick(s, 3.9)
 	T.eq(s.state.aoe, false, "not firing for 4 s")
 	ClearLog(s.me)
@@ -925,6 +938,40 @@ T.test("only a revealed Merasmus is hurt; his bar shows what is left", function(
 	s.npc:FilterDamage(Damage(red, 10))
 	T.eq(s.me:Called("DispatchParticleEffect")[2][1], "merasmus_blood", "blood while stunned")
 	T.eq(s.npc:FilterDamage(Damage(s.me, 10)), false, "never himself")
+end)
+
+-- MerasmusModifyDamage, by the damage type that stands for TF2's weapon.
+T.test("a player's sniper rounds, crossbow bolts and blades hit him x3, buckshot x2", function()
+	local s = Scene({
+		players = {
+			{
+				team = Teams.RED,
+				origin = V(FAR, 0, 0),
+			},
+		},
+	})
+	local red = s.players[1]
+	Arrived(s)
+	local function Taken(attacker, dmgType)
+		local hit = Damage(attacker, 10)
+		hit.dmgType = dmgType
+		local _, amount = s.npc:FilterDamage(hit)
+		return amount
+	end
+	T.eq(Taken(red, Actor.DMG_BULLET + Actor.DMG_SNIPER), 30, "the sniper rifle's")
+	T.eq(Taken(red, Actor.DMG_BULLET + Actor.DMG_NEVERGIB), 30, "the bow's")
+	T.eq(Taken(red, Actor.DMG_SLASH), 30, "the knife's")
+	T.eq(Taken(red, Actor.DMG_BULLET + Actor.DMG_BUCKSHOT), 20, "the scattergun's")
+	T.eq(Taken(red, Actor.DMG_BULLET), 10, "a plain bullet")
+	T.eq(Taken(red, Actor.DMG_CLUB), 10, "a club")
+	T.eq(Taken(red, Actor.DMG_BLAST), 10, "a blast: rockets, grenades, pumpkin bombs, bomb heads")
+	T.eq(Taken(red, Actor.DMG_BURN), 10, "a spell's fire")
+	local skeleton = s.world:AddNPC("zombie", FakeCombatant.Target({ team = Teams.BLUE }))
+	T.eq(Taken(skeleton, Actor.DMG_SLASH), 10, "no weapon: a skeleton's claws")
+	local max = s.me:GetMaxHealth()
+	ClearLog(s.me)
+	Taken(red, Actor.DMG_SLASH)
+	T.eq(s.me:Called("SetBossHealth")[1][1], (max - 30) / max, "the bar shows what he took")
 end)
 
 -------------------------------------------------------------------------------
@@ -1163,6 +1210,10 @@ T.test("he warns at 60, 30 and 10 s, then goes home after 120 s", function()
 	T.eq(FiredNamed(s.me, BossEvents.MERASMUS_ESCAPED)[1].level, 3, "merasmus_escaped")
 	T.eq(Names(s.me, "TriggerRelay"), Merasmus.EXIT_RELAY, "boss_exit_relay")
 	T.eq(s.me:Shared().level, 1, "the next one starts at level 1")
+	local timer = s.me:Called("StartBossTimer")
+	T.eq(#timer, 1, "the boss timer starts (CMerasmus::StartRespawnTimer)")
+	T.eq(timer[1][1], Merasmus.CONVARS.tf_merasmus_spawn_interval, "at the first level's interval")
+	T.eq(timer[1][2], Merasmus.CONVARS.tf_merasmus_spawn_interval_variation, "and variation")
 	T.eq(s.me.removed, true, "gone")
 end)
 
@@ -1234,7 +1285,79 @@ T.test("killed, he is banished: his music plays, he bursts, and leaves a vortex 
 	T.eq(vortex.config.splitTeam, true, "each team to its own")
 	T.eq(vortex.pos, s.me:WorldSpaceCenter(), "where he stood")
 	T.eq(s.me:Shared().level, 2, "the next one is a level up")
+	local timer = s.me:Called("StartBossTimer")
+	T.eq(#timer, 1, "the boss timer starts (CMerasmus::StartRespawnTimer)")
+	T.eq(timer[1][1], Merasmus.CONVARS.tf_merasmus_spawn_interval, "at his interval")
 	T.eq(s.me.removed, true, "gone")
+end)
+
+-- CMerasmusBehavior::Update on his death: TF_Halloween_Merasmus_Killers.
+local function KillersScene(cheats)
+	local s = Scene({
+		players = {
+			{
+				team = Teams.RED,
+				origin = V(FAR, 0, 0),
+			},
+			{
+				team = Teams.BLUE,
+				origin = V(FAR, 100, 0),
+			},
+			{
+				team = Teams.BLUE,
+				origin = V(FAR, 200, 0),
+			},
+		},
+		shared = { level = 2 },
+		cheats = cheats,
+	})
+	local red, blue, early = s.players[1], s.players[2], s.players[3]
+	Arrived(s)
+	s.npc:FilterDamage(Damage(early, 10))
+	Tick(s, 6)
+	s.npc:FilterDamage(Damage(red, 10))
+	Tick(s, 4)
+	s.npc:FilterDamage(Damage(blue, 10))
+	s.me.alive = false
+	s.npc:Event("OnKilled", Damage(blue, 10))
+	Tick(s, TICK)
+	return s, red, blue
+end
+
+T.test("everyone who hit him in his last 5 s is named his killer, at his level", function()
+	local s, red, blue = KillersScene(false)
+	local killers = FiredNamed(s.me, BossEvents.MERASMUS_KILLER)
+	T.eq(#killers, 2, "the two late hitters, not the early one")
+	T.eq(killers[1].player, red, "red")
+	T.eq(killers[1].level, 2, "at his level")
+	T.eq(killers[2].player, blue, "blue")
+end)
+
+T.test("a Merasmus spawned with cheats on names no killers", function()
+	local s = KillersScene(true)
+	T.eq(#FiredNamed(s.me, BossEvents.MERASMUS_KILLER), 0, "nobody")
+end)
+
+T.test("killed past the third level, the next one is timed a minute away", function()
+	local s = Scene({
+		players = {
+			{
+				team = Teams.RED,
+				origin = V(FAR, 0, 0),
+			},
+		},
+		shared = { level = 3 },
+	})
+	Arrived(s)
+	s.me.alive = false
+	s.npc:Event("OnKilled", Damage(s.players[1], 100))
+	Tick(s, TICK)
+	s.me:FinishActivity()
+	Tick(s, TICK)
+	local timer = s.me:Called("StartBossTimer")
+	T.eq(s.me:Shared().level, 4, "the fourth level")
+	T.eq(timer[1][1], 60, "a minute")
+	T.eq(timer[1][2], 0, "exactly")
 end)
 
 -- CMerasmus::UpdateOnRemove

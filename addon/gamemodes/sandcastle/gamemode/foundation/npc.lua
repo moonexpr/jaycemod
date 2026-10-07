@@ -5,8 +5,10 @@
 -- An NPC variant is a part of this system (foundation.npc.<variant>) and
 -- provides KIND, LOCOMOTION or HOVER, PATH, NewState(config, actor),
 -- InitialAction(state), and optionally FilterDamage(state, damageEvent,
--- actor), Cull(liveStates) and PARTICLES (every particle system its NPCs
--- dispatch; see Particles). Actions receive the actor as `me`.
+-- actor) -> taken[, amount], Cull(liveStates), PARTICLES (every particle system its NPCs
+-- dispatch; see Particles) and PLAYERS_PASS_THROUGH (true when players and
+-- the NPC never block each other: its locomotion's ShouldCollideWith
+-- refuses players). Actions receive the actor as `me`.
 local error, ipairs, setmetatable = error, ipairs, setmetatable
 local concat, remove = table.concat, table.remove
 module(...)
@@ -531,10 +533,13 @@ function Npc:Watch(watcher) self.behavior:Watch(watcher) end
 function Npc:Stack() return self.behavior.name, self.behavior:Stack() end
 function Npc:Destroy() self.behavior:Destroy() end
 
--- FilterDamage is optional in a variant; without it all damage is taken.
+-- Whether the hit is taken, and the amount taken when the variant changes
+-- it (nil: as dealt). FilterDamage is optional in a variant; without it all
+-- damage is taken as dealt.
 function Npc:FilterDamage(damageEvent)
 	local filter = self.variant.FilterDamage
-	return filter == nil or filter(self.state, damageEvent, self.actor)
+	if filter == nil then return true end
+	return filter(self.state, damageEvent, self.actor)
 end
 
 -- After a new NPC binds, the variant's Cull picks which of the live NPCs of

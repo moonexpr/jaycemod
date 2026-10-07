@@ -744,6 +744,10 @@ keep TF2's names and defaults (`tf_merasmus_*`, `CONVARS`; health 33750 +
 2500 per player past 10, lifetime 120, speed 600, attack range 200, stun 2,
 bomb heads 15 s and 1 per team, props 150 health).
 
+- **Collision:** players pass through him and he through them
+  (`CMerasmusLocomotion::ShouldCollideWith`); the variant's
+  `PLAYERS_PASS_THROUGH` puts the NextBot in `COLLISION_GROUP_PASSABLE_DOOR`,
+  which bullets, melee traces and projectiles still hit.
 - **Arrival:** `Halloween.MerasmusAppears` to everyone, `merasmus_summoned`,
   the map's `boss_enter_relay` (he moves to it), `merasmus_spawn`; then the
   reveal (`ACT_SHIELD_UP`): bar shown, players within 400 pushed by 500,
@@ -773,10 +777,64 @@ bomb heads 15 s and 1 per team, props 150 health).
 - **Death:** `Halloween.MerasmusBanish`, the death music to everyone, then
   gibs, `merasmus_killed`, `boss_dead_relay`, a loot vortex that sends each
   team to `spawn_loot_red`/`spawn_loot_blue`, and the next one is a level up.
-- **Left out:** the hat levels, achievements, killers' line and stats; the
-  Wheel of Fate (no event map has a `wheel_of_fortress`); TF2's boss
-  respawn timer; per-weapon damage multipliers; the scripted bomb-rain scene
-  (its line plays as a sound). Prop separation and the area round the point
+- **Boss timer** (`foundation.npc.boss_timer`, the `boss_timer` feature;
+  `CTFGameRules::SpawnHalloweenBoss`): his death or departure starts it at
+  `tf_merasmus_spawn_interval` ± `tf_merasmus_spawn_interval_variation`
+  (180 ± 30; a minute past level 3); any Halloween boss alive restarts it;
+  a new round forgets it and the next update starts it afresh. When it runs
+  out, during Halloween, outside setup and waiting for players, with
+  `tf_halloween_bot_min_player_count` (10) living humans, Merasmus spawns at
+  a `spawn_boss`, else on the point BLU must take next (it reverts to
+  neutral and KOTH clocks pause), else on a random nav area 100 a side
+  outside the spawn rooms. `tf_halloween_force_boss_spawn` and
+  `cc_spawn_merasmus_at_level N` (cheats) skip the wait. TF2 runs it only on
+  koth_lakeside_event; Sandcastle names no maps, so it runs on any map once
+  a Merasmus has appeared there.
+- **Weapon multipliers** (`MerasmusModifyDamage`, `WEAPON_SCALES`): a
+  player's hit is scaled by the TF2 weapon its damage type stands for:
+  `DMG_SNIPER` (sniper rifle), `DMG_BULLET|DMG_NEVERGIB` (HL2's crossbow
+  bolt: the Huntsman) and `DMG_SLASH` (knife) x3, `DMG_BUCKSHOT`
+  (scattergun) x2. Plain bullets, clubs, blasts (rockets, grenades, pumpkin
+  bombs, bomb heads) and fire (spells) are as dealt, as TF2's spellbook and
+  bombs are; the zapper deals no damage; NPCs' hits are as dealt. No damage
+  type stands for the minigun or sentry (x0.5) or the revolver, Soda
+  Popper, Shortstop and Baby Face's Blaster. The NPC's `FilterDamage` now
+  returns the amount taken, which the npc controller applies.
+- **His killers:** `merasmus_killed` keeps TF2's one field, `level`; each
+  player who hit him in his last 5 s gets `merasmus_killer { player, level }`
+  (Sandcastle's own, for TF2's SayText2), which clients show as "NAME has
+  defeated MERASMUS! (LEVEL n)", unless sv_cheats was on when he spawned.
+  The econ hat levels, Valve achievements and gamestats, soul packs and
+  `halloween_boss_killed` (which feeds only those) have no counterpart, and
+  TF2's scoreboard gives no points for him.
+- **Wheel of Fate** (`wheel_of_doom`, TF2's class for it; `foundation.holiday.wheel`,
+  the `wheel` feature, `merasmus_dancer`): keyvalues `effect_duration`,
+  `has_spiral`; inputs `Spin`, `ClearAllEffects`; outputs `OnEffectApplied`,
+  `OnEffectExpired`. A spin plays `Halloween.WheelofFate`, flicks the
+  faces of every wheel for 5.75 s (0.1 s apart, slowing to 0.55), Merasmus
+  calls it at 1.6 s, and a second after the stop the effect lands on every
+  player, with its face, Merasmus's line and the HUD's icon (blinking in
+  its last 3 s). Uber (10 s at most), pumpkin crits, double speed, triple
+  jump with no fall damage, big or small heads (the head bone; GMod voice
+  chat cannot be pitched), quarter gravity, the Dance (everyone alive to
+  `dance_teleport_<red|blue><n>`, frozen, dancing every 3.5 s for 8 s, a
+  dancing Merasmus at either end of the floor by turns) and the Burn whammy
+  (10 s at most). A whammy comes one roll in buffs + 1. Respawning players
+  get the effects that reapply. The boss timer waits while the first wheel
+  spins or names its effect. **Not done:** the Jarate rain (needs
+  `tf_projectile_jar` and Jarate's effects) and the Ghosts (needs TF2's
+  haunting ghosts), so Burn takes every whammy roll; and the players'
+  magic voice responses (GMod players have no class voices). No payload
+  event map places a wheel.
+- **Left out:** the critical flag on hits while stunned or aloft (only
+  TF2's hit numbers show it).
+- **Bomb-rain scene:** as TF2, one of `scenes/bot/merasmus/low/
+  bomb_attack_001..009.vcd` through `PlayScene` (a NextBot is a CBaseFlex):
+  `Halloween.BombSuperMove<n>`, `Halloween.BombinomiconBombs` at 4.2 s and
+  `Halloween.MerasmusBombTaunt` at 6 s (`.devtools/bin/tf2_scene.py` reads
+  them from TF2's `scenes.image`, the only place TF2 ships them). The server
+  must load TF2's `scenes.image` (tf2_misc.vpk ahead of GMod's HL2 packs in
+  gameinfo.txt); a scene it lacks is reported once in the console. Prop separation and the area round the point
   are measured straight, where TF2 walks the mesh.
 
 How the maps drive them:

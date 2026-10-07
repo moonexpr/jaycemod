@@ -207,14 +207,16 @@ function WETSAND.RestrictStunned(ply, cmd)
 	end
 end
 
--- Speed boost and a stun's slow on the player's top speed, predicted on
+-- Speed boost, a stun's slow and the move speed attributes (the attributes
+-- controller's wetsand_speed_scale) on the player's top speed, predicted on
 -- both realms (TeamFortress_CalculateMaxSpeed, CTFGameMovement).
 hook.Add("SetupMove", "wetsand_conditions", function(ply, mv)
 	local boost = ply:GetNW2Bool("wetsand_speed_boosted", false)
+	local scale = ply:GetNW2Float("wetsand_speed_scale", 1)
 	local reduction = 0
 	if CurTime() < ply:GetNW2Float("wetsand_stun_end_time", 0) then reduction = ply:GetNW2Float("wetsand_stun_speed_reduction", 0) end
-	if not boost and reduction == 0 then return end
-	local speed = WETSAND.PlayerRules.MaxSpeed(mv:GetMaxClientSpeed(), boost, reduction)
+	if not boost and reduction == 0 and scale == 1 then return end
+	local speed = WETSAND.PlayerRules.MaxSpeed(mv:GetMaxClientSpeed(), boost, reduction, scale)
 	mv:SetMaxClientSpeed(speed)
 	mv:SetMaxSpeed(speed)
 end)

@@ -6,6 +6,7 @@
 --   INVULNERABLE: no damage taken. CRITBOOSTED(_PUMPKIN, _USER_BUFF): triple damage dealt.
 --   BLAST_IMMUNE: no blast damage. SPEED_BOOST: +40% speed (max +105).
 --   HALLOWEEN_QUICK_HEAL: heals 30 health a second, up to max health.
+--   HALLOWEEN_THRILLER: the forced dance holds the player still (frozen).
 -- Movement and stun state reach clients as NW2 vars for prediction:
 -- wetsand_speed_boosted, wetsand_stun_end_time, wetsand_stun_speed_reduction,
 -- wetsand_stun_flags.
@@ -28,12 +29,14 @@ end
 function WETSAND.AddCondition(ply, cond, duration)
 	P.AddCond(Conds(ply), cond, duration, CurTime())
 	if cond == C.BURNING then ply:Ignite(duration > 0 and duration or 10) end
+	if cond == C.HALLOWEEN_THRILLER then ply:Freeze(true) end
 	SyncMovement(ply)
 end
 
 function WETSAND.RemoveCondition(ply, cond)
 	P.RemoveCond(Conds(ply), cond)
 	if cond == C.BURNING then ply:Extinguish() end
+	if cond == C.HALLOWEEN_THRILLER then ply:Freeze(false) end
 	SyncMovement(ply)
 end
 
@@ -43,6 +46,7 @@ end
 
 -- CTFPlayerShared::RemoveAllCond: also ends a stun.
 function WETSAND.RemoveAllConditions(ply)
+	if P.InCond(Conds(ply), C.HALLOWEEN_THRILLER, CurTime()) then ply:Freeze(false) end
 	ply.wetsandConds = {}
 	ply.wetsandStun = nil
 	ply:SetNW2Float("wetsand_stun_end_time", 0)

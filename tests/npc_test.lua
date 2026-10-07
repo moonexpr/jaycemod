@@ -578,6 +578,16 @@ T.test("an Npc accepts all damage unless its variant filters it", function()
 	T.eq(picky:FilterDamage({ amount = 30 }), true, "passed")
 end)
 
+T.test("a variant's filter may change the amount taken", function()
+	local me = Setup()
+	local doubling = N.Npc.New(Variant({ FilterDamage = function(state, dmg, actor) return true, 2 * dmg.amount end }), { health = 50 }, me)
+	local taken, amount = doubling:FilterDamage({ amount = 10 })
+	T.eq(taken, true, "taken")
+	T.eq(amount, 20, "doubled")
+	local _, unchanged = N.Npc.New(Variant(), { health = 50 }, me):FilterDamage({ amount = 10 })
+	T.eq(unchanged, nil, "no filter changes nothing")
+end)
+
 T.test("culling marks the live states the variant picks", function()
 	local oldestFirst = function(states)
 		local picked = {}

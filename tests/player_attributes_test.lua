@@ -51,6 +51,30 @@ T.test("only the fire attribute is supported", function()
 	T.eq(Attributes.Supported(""), false, "none")
 end)
 
+-- The Wheel of Fate's attributes (CWheelOfDoom::ApplyAttributeToPlayer).
+T.test("speed, jump, fall damage and head scale take effect; voice pitch has no counterpart", function()
+	local attrs = {}
+	T.eq(Attributes.SpeedScale(attrs, NOW), 1, "plain speed")
+	T.eq(Attributes.JumpScale(attrs, NOW), 1, "plain jump")
+	T.eq(Attributes.FallDamageCancelled(attrs, NOW), false, "falls hurt")
+	T.eq(Attributes.HeadScale(attrs, NOW), 1, "plain head")
+	Attributes.Add(attrs, Attributes.MOVE_SPEED_BONUS, 2, UNTIL_REMOVED, NOW)
+	Attributes.Add(attrs, Attributes.JUMP_HEIGHT_BONUS, 3, UNTIL_REMOVED, NOW)
+	Attributes.Add(attrs, Attributes.CANCEL_FALL_DAMAGE, 1, UNTIL_REMOVED, NOW)
+	Attributes.Add(attrs, Attributes.HEAD_SCALE, 0.5, 5, NOW)
+	T.eq(Attributes.SpeedScale(attrs, NOW), 2, "twice the speed")
+	T.eq(Attributes.JumpScale(attrs, NOW), 3, "three times the jump")
+	T.eq(Attributes.FallDamageCancelled(attrs, NOW), true, "falls do not hurt")
+	T.eq(Attributes.HeadScale(attrs, NOW), 0.5, "half a head")
+	T.eq(Attributes.HeadScale(attrs, NOW + 6), 1, "until it runs out")
+	Attributes.Add(attrs, Attributes.CANCEL_FALL_DAMAGE, 0, UNTIL_REMOVED, NOW)
+	T.eq(Attributes.FallDamageCancelled(attrs, NOW), false, "a 0 cancels nothing")
+	for _, name in ipairs({ Attributes.MOVE_SPEED_BONUS, Attributes.JUMP_HEIGHT_BONUS, Attributes.CANCEL_FALL_DAMAGE, Attributes.HEAD_SCALE }) do
+		T.eq(Attributes.Supported(name), true, name)
+	end
+	T.eq(Attributes.Supported(Attributes.VOICE_PITCH_SCALE), false, "voice pitch")
+end)
+
 local function Trigger(fields)
 	return {
 		name = FIRE,

@@ -53,6 +53,7 @@ COND = {
 	INVULNERABLE_HIDE_UNLESS_DAMAGED = 51,
 	INVULNERABLE_USER_BUFF = 52,
 	HALLOWEEN_BOMB_HEAD = 53,
+	HALLOWEEN_THRILLER = 54,
 	INVULNERABLE_CARD_EFFECT = 57,
 	STEALTHED_USER_BUFF = 64,
 	STEALTHED_USER_BUFF_FADING = 66,
@@ -142,10 +143,11 @@ end
 -- tf_whip_speed_increase: the cap on a speed boost's bonus.
 local SPEED_BOOST_CAP = 105
 
--- TeamFortress_CalculateMaxSpeed adds the boost; CTFGameMovement then
+-- TeamFortress_CalculateMaxSpeed scales by the move speed attributes
+-- (attributeScale, default 1) and adds the boost; CTFGameMovement then
 -- scales by the stun's slow.
-function MaxSpeed(base, speedBoost, stunReduction)
-	local speed = base
+function MaxSpeed(base, speedBoost, stunReduction, attributeScale)
+	local speed = base * (attributeScale or 1)
 	if speedBoost and speed > 0 then speed = speed + math.min(speed * 0.4, SPEED_BOOST_CAP) end
 	return speed * (1 - stunReduction)
 end
