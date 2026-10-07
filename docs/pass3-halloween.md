@@ -802,8 +802,14 @@ bomb heads 15 s and 1 per team, props 150 health).
   returns the amount taken, which the npc controller applies.
 - **Left out:** the hat levels, achievements, killers' line and stats; the
   Wheel of Fate (no event map has a `wheel_of_fortress`); the critical flag
-  on hits while stunned or aloft (only TF2's hit numbers show it); the
-  scripted bomb-rain scene (its line plays as a sound). Prop separation and the area round the point
+  on hits while stunned or aloft (only TF2's hit numbers show it).
+- **Bomb-rain scene:** as TF2, one of `scenes/bot/merasmus/low/
+  bomb_attack_001..009.vcd` through `PlayScene` (a NextBot is a CBaseFlex):
+  `Halloween.BombSuperMove<n>`, `Halloween.BombinomiconBombs` at 4.2 s and
+  `Halloween.MerasmusBombTaunt` at 6 s (`.devtools/bin/tf2_scene.py` reads
+  them from TF2's `scenes.image`, the only place TF2 ships them). The server
+  must load TF2's `scenes.image` (tf2_misc.vpk ahead of GMod's HL2 packs in
+  gameinfo.txt); a scene it lacks is reported once in the console. Prop separation and the area round the point
   are measured straight, where TF2 walks the mesh.
 
 How the maps drive them:

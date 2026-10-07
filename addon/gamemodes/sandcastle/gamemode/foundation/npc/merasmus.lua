@@ -32,7 +32,8 @@
 --   RemoveGrenades(origin, radius), EndStun(t), RemoveCond(t, cond),
 --     RemoveEntity(t);
 --   StartBossTimer(seconds, variation) (TFGameRules()->
---     StartHalloweenBossTimer: foundation.npc.boss_timer's Start).
+--     StartHalloweenBossTimer: foundation.npc.boss_timer's Start);
+--   PlayScriptedScene(name) (InstancedScriptedScene, multiplayer).
 -- The binding forwards the props' events to the Behavior: OnPropKilled(prop,
 -- attacker) and OnPropTouched(prop, toucher), and calls Removed(state, me)
 -- when he is removed (CMerasmus::UpdateOnRemove).
@@ -42,11 +43,10 @@
 -- reports, the Wheel of Fate (no map has a wheel_of_fortress), the
 -- critical flag on hits while stunned or raining bombs (only TF2's hit
 -- numbers and sounds show it; ModifyDamage maps the per-weapon multipliers
--- to damage types), the holiday ammo pack's
--- health (the props drop a plain medium pack), and the scripted scene of
--- the bomb rain (its line plays as a sound). The prop separation and the
--- area around the control point are measured straight, where TF2 walks the
--- mesh. TF2's boss timer (foundation.npc.boss_timer) brings the next one.
+-- to damage types), and the holiday ammo pack's health (the props drop a
+-- plain medium pack). The prop separation and the area around the control
+-- point are measured straight, where TF2 walks the mesh. TF2's boss timer
+-- (foundation.npc.boss_timer) brings the next one.
 local require = require
 local NpcSystem = require("foundation.npc")
 local HalloweenBoss = require("foundation.npc.halloween_boss")
@@ -58,6 +58,7 @@ local Teams = require("foundation.teams")
 local atan2, cos, deg, floor, huge, max, min, rad, sin = math.atan2, math.cos, math.deg, math.floor, math.huge, math.max, math.min, math.rad, math.sin
 local ipairs = ipairs
 local band = bit.band
+local format = string.format
 module(...)
 
 BOSS_TYPE = HalloweenBoss.BOSS_MERASMUS
@@ -133,6 +134,7 @@ METHODS = {
 	"RemoveCond",
 	"RemoveEntity",
 	"StartBossTimer",
+	"PlayScriptedScene",
 }
 
 MODEL = "models/bots/merasmus/merasmus.mdl"
@@ -213,19 +215,13 @@ FLOAT_SOUND = "Halloween.Merasmus_Float"
 PROP_SOUND = "Halloween.Merasmus_Hiding_Explode"
 PROP_LOOT_MODEL_SCALE = 1.4
 
--- The bomb rain's lines: the sounds of scenes/bot/merasmus/low/
--- bomb_attack_001..009.vcd, which GMod cannot play on a NextBot.
-AOE_LINES = {
-	"vo/halloween_merasmus/sf12_bombinomicon01.mp3",
-	"vo/halloween_merasmus/sf12_bombinomicon03.mp3",
-	"vo/halloween_merasmus/sf12_bombinomicon05.mp3",
-	"vo/halloween_merasmus/sf12_bombinomicon09.mp3",
-	"vo/halloween_merasmus/sf12_bombinomicon10.mp3",
-	"vo/halloween_merasmus/sf12_bombinomicon11.mp3",
-	"vo/halloween_merasmus/sf12_bombinomicon13.mp3",
-	"vo/halloween_merasmus/sf12_bombinomicon14.mp3",
-	"vo/halloween_merasmus/sf12_bombinomicon15.mp3",
-}
+-- The bomb rain's scripted scene, one of nine (CMerasmusAOEAttack: only
+-- for its sound, as the animation does not work with the VCD). Each speaks
+-- Halloween.BombSuperMove<n>, then Halloween.BombinomiconBombs at 4.2 s and
+-- Halloween.MerasmusBombTaunt at 6 s (.devtools/bin/tf2_scene.py reads them
+-- from TF2's scenes.image).
+AOE_SCENE = "scenes/bot/merasmus/low/bomb_attack_00%d.vcd"
+AOE_SCENE_COUNT = 9
 
 STAFF_ATTACHMENT = "effect_staff"
 HAND_ATTACHMENT = "effect_hand_R"
@@ -1240,7 +1236,7 @@ function AOEAttack:OnStart(me, priorAction)
 	self.areas = me:AreasAround(point.origin, AOE_RANGE)
 	if #self.areas == 0 then return self:Done("No nav areas near control point!") end
 	me:StartActivity(me:Activity("ACT_RANGE_ATTACK1"))
-	me:EmitSound(AOE_LINES[me:RandomInt(1, #AOE_LINES)])
+	me:PlayScriptedScene(format(AOE_SCENE, me:RandomInt(1, AOE_SCENE_COUNT)))
 	return self:Continue()
 end
 

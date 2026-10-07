@@ -111,6 +111,7 @@ local function Port(t)
 	end
 	function me:EndStun(t) self:Record("EndStun", t) end
 	function me:StartBossTimer(seconds, variation) self:Record("StartBossTimer", seconds, variation) end
+	function me:PlayScriptedScene(name) self:Record("PlayScriptedScene", name) end
 	function me:RemoveCond(t, cond)
 		t.conds[cond] = nil
 		self:Record("RemoveCond", t, cond)
@@ -847,8 +848,9 @@ T.test("the third hit sends him home to rain bombs from the air", function()
 	T.eq(around[1], V(2000, 0, 0), "around the first point")
 	T.eq(around[2], 400, "within 400")
 	T.eq(s.me:Called("StartActivity")[#s.me:Called("StartActivity")][1], "ACT_RANGE_ATTACK1", "the book")
-	local lines = s.me:Called("EmitSound")
-	T.eq(lines[#lines][1]:match("^vo/halloween_merasmus/sf12_bombinomicon%d+%.mp3$") ~= nil, true, "a bomb line")
+	local scenes = s.me:Called("PlayScriptedScene")
+	T.eq(#scenes, 1, "one scripted scene")
+	T.eq(scenes[1][1]:match("^scenes/bot/merasmus/low/bomb_attack_00[1-9]%.vcd$") ~= nil, true, "a bomb_attack scene: " .. scenes[1][1])
 	Tick(s, 3.9)
 	T.eq(s.state.aoe, false, "not firing for 4 s")
 	ClearLog(s.me)

@@ -241,6 +241,21 @@ end
 
 function ENT:RemoveEntity(t) t:Remove() end
 
+-- InstancedScriptedScene: GMod's PlayScene plays it on a NextBot (a
+-- CBaseFlex), as its nb_example does. TF2 ships its scenes only inside its
+-- scenes/scenes.image, which GMod's scene cache must have loaded: our
+-- servers put TF2's tf2_misc.vpk ahead of GMod's HL2 packs in gameinfo.txt.
+-- A scene the server lacks plays nothing (no length), which is said once.
+local SCENE_MISSING = "merasmus: %s is not among the server's scenes (TF2's scenes.image): put TF2's tf2_misc.vpk ahead of GMod's HL2 packs in garrysmod/gameinfo.txt"
+local sceneMissingSaid = false
+
+function ENT:PlayScriptedScene(name)
+	local duration = self:PlayScene(name)
+	if (duration or 0) > 0 or sceneMissingSaid then return end
+	sceneMissingSaid = true
+	print(string.format(SCENE_MISSING, name))
+end
+
 -- TFGameRules()->StartHalloweenBossTimer
 function ENT:StartBossTimer(seconds, variation)
 	WETSAND.Feature("boss_timer"):Start(self.Variant, seconds, variation)
