@@ -935,6 +935,40 @@ T.test("only a revealed Merasmus is hurt; his bar shows what is left", function(
 	T.eq(s.npc:FilterDamage(Damage(s.me, 10)), false, "never himself")
 end)
 
+-- MerasmusModifyDamage, by the damage type that stands for TF2's weapon.
+T.test("a player's sniper rounds, crossbow bolts and blades hit him x3, buckshot x2", function()
+	local s = Scene({
+		players = {
+			{
+				team = Teams.RED,
+				origin = V(FAR, 0, 0),
+			},
+		},
+	})
+	local red = s.players[1]
+	Arrived(s)
+	local function Taken(attacker, dmgType)
+		local hit = Damage(attacker, 10)
+		hit.dmgType = dmgType
+		local _, amount = s.npc:FilterDamage(hit)
+		return amount
+	end
+	T.eq(Taken(red, Actor.DMG_BULLET + Actor.DMG_SNIPER), 30, "the sniper rifle's")
+	T.eq(Taken(red, Actor.DMG_BULLET + Actor.DMG_NEVERGIB), 30, "the bow's")
+	T.eq(Taken(red, Actor.DMG_SLASH), 30, "the knife's")
+	T.eq(Taken(red, Actor.DMG_BULLET + Actor.DMG_BUCKSHOT), 20, "the scattergun's")
+	T.eq(Taken(red, Actor.DMG_BULLET), 10, "a plain bullet")
+	T.eq(Taken(red, Actor.DMG_CLUB), 10, "a club")
+	T.eq(Taken(red, Actor.DMG_BLAST), 10, "a blast: rockets, grenades, pumpkin bombs, bomb heads")
+	T.eq(Taken(red, Actor.DMG_BURN), 10, "a spell's fire")
+	local skeleton = s.world:AddNPC("zombie", FakeCombatant.Target({ team = Teams.BLUE }))
+	T.eq(Taken(skeleton, Actor.DMG_SLASH), 10, "no weapon: a skeleton's claws")
+	local max = s.me:GetMaxHealth()
+	ClearLog(s.me)
+	Taken(red, Actor.DMG_SLASH)
+	T.eq(s.me:Called("SetBossHealth")[1][1], (max - 30) / max, "the bar shows what he took")
+end)
+
 -------------------------------------------------------------------------------
 -- Hiding (CMerasmusDisguise, CTFMerasmusTrickOrTreatProp)
 

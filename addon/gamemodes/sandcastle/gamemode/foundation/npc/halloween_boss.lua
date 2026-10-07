@@ -177,14 +177,14 @@ local function NewState(boss, config, me)
 end
 
 -- OnTakeDamage_Alive: my own team and a won round do nothing; otherwise the
--- variant decides the amount, and a player's hit is remembered.
+-- variant decides the amount taken, and a player's hit is remembered.
 local function FilterDamage(state, damageEvent, me)
 	local attacker = damageEvent.attacker
 	if me:TeamOf(attacker) == state.team or me:RoundHasBeenWon() then return false end
 	local amount = state.boss.ModifyDamage(state, damageEvent, me)
 	if amount <= 0 then return false end
 	if IsPlayer(me, attacker) then RememberAttacker(state, attacker, amount, me:Now()) end
-	return true
+	return true, amount
 end
 
 -- Fills the NPC variant's hooks into a boss part and returns it.

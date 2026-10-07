@@ -40,8 +40,9 @@
 -- Left out (econ, or not on the maps that spawn him): the hat levels and
 -- achievements his death awards, the killers' chat line, the stats he
 -- reports, the Wheel of Fate (no map has a wheel_of_fortress), the
--- per-weapon damage multipliers and the critical flag on hits while stunned
--- or raining bombs (GMod has no TF2 weapons), the holiday ammo pack's
+-- critical flag on hits while stunned or raining bombs (only TF2's hit
+-- numbers and sounds show it; ModifyDamage maps the per-weapon multipliers
+-- to damage types), the holiday ammo pack's
 -- health (the props drop a plain medium pack), and the scripted scene of
 -- the bomb rain (its line plays as a sound). The prop separation and the
 -- area around the control point are measured straight, where TF2 walks the
@@ -56,6 +57,7 @@ local Players = require("foundation.players")
 local Teams = require("foundation.teams")
 local atan2, cos, deg, floor, huge, max, min, rad, sin = math.atan2, math.cos, math.deg, math.floor, math.huge, math.max, math.min, math.rad, math.sin
 local ipairs = ipairs
+local band = bit.band
 module(...)
 
 BOSS_TYPE = HalloweenBoss.BOSS_MERASMUS
@@ -1511,14 +1513,54 @@ function Setup(state, config, me)
 	me:DispatchParticleEffect(SPAWN_PARTICLE, me:GetAbsOrigin())
 end
 
+-- MerasmusModifyDamage: TF2 scales the hits of some of its weapons. A RED
+-- or BLU player's hit here is scaled as the TF2 weapon its damage type
+-- stands for: a sniper round (DMG_SNIPER) as the sniper rifle, a crossbow
+-- bolt (DMG_BULLET with DMG_NEVERGIB, HL2's) as the Huntsman and a blade
+-- (DMG_SLASH) as the knife, x3; buckshot (DMG_BUCKSHOT) as the scattergun,
+-- x2, the first that fits. Plain bullets, clubs, blasts (rockets, grenades,
+-- pumpkin bombs, bomb heads) and fire (the spells) are as dealt, as TF2's
+-- spellbook and bombs are; no damage type here stands for the minigun or
+-- the sentry (x0.5), nor the revolver, Soda Popper, Shortstop or Baby
+-- Face's Blaster, whose bullets are plain. What is not a player's weapon
+-- (a skeleton's claws, a hazard) is as dealt.
+WEAPON_SCALES = {
+	{
+		bits = Actor.DMG_SNIPER,
+		scale = 3,
+	},
+	{
+		bits = Actor.DMG_BULLET + Actor.DMG_NEVERGIB,
+		scale = 3,
+	},
+	{
+		bits = Actor.DMG_SLASH,
+		scale = 3,
+	},
+	{
+		bits = Actor.DMG_BUCKSHOT,
+		scale = 2,
+	},
+}
+
+function WeaponScale(dmgType)
+	for _, weapon in ipairs(WEAPON_SCALES) do
+		if band(dmgType, weapon.bits) == weapon.bits then return weapon.scale end
+	end
+	return 1
+end
+
 -- CMerasmus::OnTakeDamage_Alive: hidden, he takes nothing; otherwise he
--- bleeds (more while stunned) and his bar shows what the hit leaves.
+-- bleeds (more while stunned), takes the weapon's share, and his bar shows
+-- what the hit leaves.
 function ModifyDamage(state, damageEvent, me)
 	if not state.revealed then return 0 end
 	me:DispatchParticleEffect(state.stunned and BLOOD_PARTICLE or BLOOD_BITS_PARTICLE, damageEvent.position)
-	local left = max(0, me:GetHealth() - damageEvent.amount)
+	local amount = damageEvent.amount
+	if HalloweenBoss.IsPlayer(me, damageEvent.attacker) then amount = amount * WeaponScale(damageEvent.dmgType) end
+	local left = max(0, me:GetHealth() - amount)
 	me:SetBossHealth(left / me:GetMaxHealth())
-	return damageEvent.amount
+	return amount
 end
 
 

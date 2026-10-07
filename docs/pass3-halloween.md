@@ -790,9 +790,20 @@ bomb heads 15 s and 1 per team, props 150 health).
   `cc_spawn_merasmus_at_level N` (cheats) skip the wait. TF2 runs it only on
   koth_lakeside_event; Sandcastle names no maps, so it runs on any map once
   a Merasmus has appeared there.
+- **Weapon multipliers** (`MerasmusModifyDamage`, `WEAPON_SCALES`): a
+  player's hit is scaled by the TF2 weapon its damage type stands for:
+  `DMG_SNIPER` (sniper rifle), `DMG_BULLET|DMG_NEVERGIB` (HL2's crossbow
+  bolt: the Huntsman) and `DMG_SLASH` (knife) x3, `DMG_BUCKSHOT`
+  (scattergun) x2. Plain bullets, clubs, blasts (rockets, grenades, pumpkin
+  bombs, bomb heads) and fire (spells) are as dealt, as TF2's spellbook and
+  bombs are; the zapper deals no damage; NPCs' hits are as dealt. No damage
+  type stands for the minigun or sentry (x0.5) or the revolver, Soda
+  Popper, Shortstop and Baby Face's Blaster. The NPC's `FilterDamage` now
+  returns the amount taken, which the npc controller applies.
 - **Left out:** the hat levels, achievements, killers' line and stats; the
-  Wheel of Fate (no event map has a `wheel_of_fortress`); per-weapon damage multipliers; the scripted bomb-rain scene
-  (its line plays as a sound). Prop separation and the area round the point
+  Wheel of Fate (no event map has a `wheel_of_fortress`); the critical flag
+  on hits while stunned or aloft (only TF2's hit numbers show it); the
+  scripted bomb-rain scene (its line plays as a sound). Prop separation and the area round the point
   are measured straight, where TF2 walks the mesh.
 
 How the maps drive them:

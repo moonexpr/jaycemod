@@ -165,6 +165,15 @@ T.test("damage from my own team and after the round is won is refused before Mod
 	T.eq(Joined(s.log), "ModifyDamage", "ModifyDamage only for the damage taken")
 end)
 
+T.test("the boss takes the amount ModifyDamage gives", function()
+	local s = Scene({})
+	local taken, amount = s.npc:FilterDamage(Damage(s.red, 10, { scale = 3 }))
+	T.eq(taken, true, "taken")
+	T.eq(amount, 30, "tripled")
+	T.eq(s.npc:State().attackers[1].attacker, s.red, "remembered")
+	T.eq(s.npc:State().samples[1].damage, 30, "at what it took")
+end)
+
 T.test("a hit ModifyDamage takes to nothing is refused", function()
 	local s = Scene({})
 	T.eq(s.npc:FilterDamage(Damage(s.red, 10, { scale = 0 })), false, "zeroed")

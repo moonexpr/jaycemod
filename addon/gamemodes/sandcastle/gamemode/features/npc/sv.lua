@@ -794,10 +794,13 @@ hook.Add("Think", "wetsand_npc_spawners", function()
 	Controller:ThinkSearches()
 end)
 
--- The model's FilterDamage decides what an NPC takes.
+-- The model's FilterDamage decides whether an NPC takes a hit, and how much.
 hook.Add("EntityTakeDamage", "wetsand_npc_filter_damage", function(ent, dmg)
 	local npc = Controller.npcs[ent]
-	if npc and not npc:FilterDamage(ent:DamageEvent(dmg)) then return true end
+	if not npc then return end
+	local taken, amount = npc:FilterDamage(ent:DamageEvent(dmg))
+	if not taken then return true end
+	if amount then dmg:SetDamage(amount) end
 end)
 
 return Controller
