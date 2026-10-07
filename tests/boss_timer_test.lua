@@ -40,6 +40,7 @@ local function World(t)
 	function world:LivingHumans() return self.humans end
 	function world:CustomSpawn() return self.customSpawn end
 	function world:ControlPoints() return self.points end
+	function world:WheelBusy() return self.wheelBusy == true end
 	function world:SpawnAreas(minSize)
 		self.areaSizes[#self.areaSizes + 1] = minSize
 		return self.areas
@@ -227,6 +228,23 @@ T.test("past the third level the next one comes a minute later", function()
 	local spawn = Elapsed(world)
 	spawn:Update(world)
 	T.near(spawn:Remaining(world), 60, 1e-9, "a minute")
+end)
+
+-- SpawnHalloweenBoss, LAKESIDE: "check if the wheel is still spinning".
+T.test("while the Wheel of Fate spins or names its effect, nothing happens, not even a restart", function()
+	local world = World({
+		points = Points(),
+		bossActive = true,
+	})
+	world.wheelBusy = true
+	local timer = Elapsed(world)
+	T.eq(timer:Update(world), nil, "no spawn")
+	T.eq(timer:Remaining(world) < 0, true, "not restarted for the boss about")
+	world.bossActive = false
+	T.eq(timer:Update(world), nil, "nor spawned")
+	world.wheelBusy = false
+	T.eq(timer:Update(world) ~= nil, true, "then he comes")
+	T.eq(Merasmus.WAITS_FOR_WHEEL, true, "Merasmus waits for the wheel")
 end)
 
 -------------------------------------------------------------------------------

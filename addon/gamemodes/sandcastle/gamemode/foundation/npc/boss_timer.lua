@@ -12,7 +12,8 @@
 -- New(boss) takes a foundation.npc.halloween_boss part that provides
 -- BOSS_TYPE, SpawnInterval(level, convars) -> seconds, variation (the
 -- scenario's intervals), and optionally NEUTRALIZES_POINT (VIADUCT and
--- LAKESIDE revert the point the boss takes). Its world port:
+-- LAKESIDE revert the point the boss takes) and WAITS_FOR_WHEEL (LAKESIDE
+-- does nothing while the first wheel_of_doom is busy). Its world port:
 --   Now(), RandomFloat(lo, hi), RandomInt(lo, hi), Vector(x, y, z);
 --   HalloweenActive(), BossActive() (any Halloween boss alive),
 --   Level() (the boss's shared level), Convars() (the boss's convars now,
@@ -22,7 +23,9 @@
 --   ControlPoints() -> the master's points in order, each { origin,
 --     inRound, owner, blueMayCapture } (as the Horsemann's);
 --   SpawnAreas(minSize) -> the centres of the nav areas outside the spawn
---     rooms at least minSize on each side.
+--     rooms at least minSize on each side;
+--   WheelBusy() -> whether the first wheel_of_doom is still spinning or
+--     naming its effect (not IsDoneBoardcastingEffectSound).
 local require = require
 local HalloweenBoss = require("foundation.npc.halloween_boss")
 local Teams = require("foundation.teams")
@@ -88,6 +91,7 @@ end
 -- point to revert, or nil) }, or nil.
 function Timer:Update(world)
 	if not world:HalloweenActive() then return nil end
+	if self.boss.WAITS_FOR_WHEEL and world:WheelBusy() then return nil end
 	if world:BossActive() then
 		Restart(self, world)
 		self.forcing = false

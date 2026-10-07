@@ -49,9 +49,9 @@
 -- soul packs and halloween_boss_killed, which only feed those; and TF2's
 -- scoreboard gives no points for him either.
 --
--- Left out besides: the Wheel of Fate (no map has a wheel_of_fortress), the
--- critical flag on hits while stunned or raining bombs (only TF2's hit
--- numbers and sounds show it; ModifyDamage maps the per-weapon multipliers
+-- His Wheel of Fate is foundation.holiday.wheel (wheel_of_doom). Left out
+-- besides: the critical flag on hits while stunned or raining bombs (only
+-- TF2's hit numbers and sounds show it; ModifyDamage maps the per-weapon multipliers
 -- to damage types), and the holiday ammo pack's health (the props drop a
 -- plain medium pack). The prop separation and the area around the control
 -- point are measured straight, where TF2 walks the mesh. TF2's boss timer
@@ -350,6 +350,7 @@ GRENADE_CLEAR_RANGE = 400
 STEADY_RESPAWN_LEVEL = 3
 QUICK_RESPAWN_INTERVAL = 60
 NEUTRALIZES_POINT = true
+WAITS_FOR_WHEEL = true -- nor does he come while a Wheel of Fate is busy
 
 -- Leaving: the seconds left at which merasmus_escape_warning fires, checked
 -- nearest first, as CMerasmus::LeaveWarning does.

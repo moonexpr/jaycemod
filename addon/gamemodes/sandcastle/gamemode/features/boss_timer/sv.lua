@@ -14,6 +14,7 @@ local HalloweenBoss = WETSAND.require("foundation.npc.halloween_boss")
 local THINK_HOOK = "wetsand_boss_timer"
 local CUSTOM_SPAWN_CLASS = "spawn_boss" -- SpawnHalloweenBoss looks it up by class
 local MASTER_CLASS = "team_control_point_master"
+local WHEEL_CLASS = "wheel_of_doom"
 local MERASMUS = "foundation.npc.merasmus"
 local GAME_TEAMS = { WETSAND.TEAM_RED, WETSAND.TEAM_BLUE }
 
@@ -83,6 +84,12 @@ local function World(npcs, variantName, variant)
 
 	function world:ControlPoints() return ControlPoints() end
 	function world:SpawnAreas(minSize) return SpawnAreas(npcs, minSize) end
+
+	-- The first wheel_of_doom, which loaded the wheel feature as it bound.
+	function world:WheelBusy()
+		local wheel = ents.FindByClass(WHEEL_CLASS)[1]
+		return IsValid(wheel) and WETSAND.Feature("wheel"):Busy(wheel)
+	end
 	return world
 end
 

@@ -807,8 +807,27 @@ bomb heads 15 s and 1 per team, props 150 health).
   The econ hat levels, Valve achievements and gamestats, soul packs and
   `halloween_boss_killed` (which feeds only those) have no counterpart, and
   TF2's scoreboard gives no points for him.
-- **Left out:** the Wheel of Fate (no event map has a `wheel_of_fortress`); the critical flag
-  on hits while stunned or aloft (only TF2's hit numbers show it).
+- **Wheel of Fate** (`wheel_of_doom`, TF2's class for it; `foundation.holiday.wheel`,
+  the `wheel` feature, `merasmus_dancer`): keyvalues `effect_duration`,
+  `has_spiral`; inputs `Spin`, `ClearAllEffects`; outputs `OnEffectApplied`,
+  `OnEffectExpired`. A spin plays `Halloween.WheelofFate`, flicks the
+  faces of every wheel for 5.75 s (0.1 s apart, slowing to 0.55), Merasmus
+  calls it at 1.6 s, and a second after the stop the effect lands on every
+  player, with its face, Merasmus's line and the HUD's icon (blinking in
+  its last 3 s). Uber (10 s at most), pumpkin crits, double speed, triple
+  jump with no fall damage, big or small heads (the head bone; GMod voice
+  chat cannot be pitched), quarter gravity, the Dance (everyone alive to
+  `dance_teleport_<red|blue><n>`, frozen, dancing every 3.5 s for 8 s, a
+  dancing Merasmus at either end of the floor by turns) and the Burn whammy
+  (10 s at most). A whammy comes one roll in buffs + 1. Respawning players
+  get the effects that reapply. The boss timer waits while the first wheel
+  spins or names its effect. **Not done:** the Jarate rain (needs
+  `tf_projectile_jar` and Jarate's effects) and the Ghosts (needs TF2's
+  haunting ghosts), so Burn takes every whammy roll; and the players'
+  magic voice responses (GMod players have no class voices). No payload
+  event map places a wheel.
+- **Left out:** the critical flag on hits while stunned or aloft (only
+  TF2's hit numbers show it).
 - **Bomb-rain scene:** as TF2, one of `scenes/bot/merasmus/low/
   bomb_attack_001..009.vcd` through `PlayScene` (a NextBot is a CBaseFlex):
   `Halloween.BombSuperMove<n>`, `Halloween.BombinomiconBombs` at 4.2 s and
