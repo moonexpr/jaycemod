@@ -380,6 +380,18 @@ T.test("Halt waits between rounds until a new game", function()
 	T.eq(Describe({ effects[1], effects[2], effects[3] }), "state PREROUND, balance_teams, cleanup", "a full reset")
 end)
 
+-- A map loaded in Sandbox mode has run: halting ended its setup and fired
+-- the timer's OnSetupFinished, which on a race map disables the timer
+-- itself (plr_hightower_event's plr_timer). The first game must reset it.
+T.test("the first game after a map loaded in Sandbox mode cleans the map up", function()
+	local round = Rounds.New(Settings())
+	round:Halt(T0)
+	round:Unhalt()
+	round:RestartRound(T0 + 1)
+	local effects = round:Think(T0 + 2, World())
+	T.eq(Describe({ effects[1], effects[2], effects[3] }), "state PREROUND, balance_teams, cleanup", "a full reset with a cleanup")
+end)
+
 T.test("a halted round (Sandbox mode) stays between rounds whatever happens", function()
 	local objective = FakeObjective.Objective()
 	local round = Rounds.New(Settings({ stalemateEnable = true }))

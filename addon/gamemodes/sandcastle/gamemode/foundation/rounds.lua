@@ -707,7 +707,9 @@ end
 -- Stopping the game (Sandbox mode) is TF2's tournament ready-up: the rounds
 -- wait in BETWEEN_RNDS and make no transition at all (no pre-round, win,
 -- sudden death or game over, whatever the map or players do) until Unhalt,
--- then RestartRound.
+-- then RestartRound. A halted map is no longer fresh: halting ends its setup
+-- and fires its outputs (a race map's OnSetupFinished disables its own
+-- timer), so the next full reset cleans it up even before the first game.
 function Round:Halt(now)
 	local effects = {}
 	if self.state == State.GAME_OVER then
@@ -715,6 +717,7 @@ function Round:Halt(now)
 		Add(effects, Kind("unfreeze"))
 	end
 	self.halted = true
+	self.mapFresh = false
 	if self.state ~= State.BETWEEN_RNDS then Transition(self, effects, State.BETWEEN_RNDS, now) end
 	return effects
 end
