@@ -3,6 +3,7 @@ import subprocess
 
 import pytest
 
+import gev2_marker
 from gev2_marker import Markers, Refused
 
 VIEW = b"-- the capture view\r\nlocal View = {}\r\nreturn View"  # CRLF and no final newline, kept exactly
@@ -97,7 +98,7 @@ def test_a_marker_keeps_a_file_that_ends_in_return_compiling(repo, markers):
     # Lua allows nothing after a chunk's final return, so the marker goes on
     # the first line, not the last.
     markers.set(view(repo), LINE)
-    assert view(repo).read_bytes().splitlines()[0] == LINE.encode()
+    assert view(repo).read_bytes().splitlines()[0].startswith(LINE.encode())
     assert subprocess.run(["luajit", "-b", str(view(repo)), "/dev/null"]).returncode == 0
 
 
@@ -126,3 +127,43 @@ def test_restore_leaves_a_file_changed_since_alone(repo, markers):
     assert problems and "changed since" in problems[0]
     assert view(repo).read_bytes() == b"-- rewritten by hand\n"
     assert markers.marked() == [str(view(repo))]  # still listed, to restore by hand
+
+
+def test_every_marker_line_carries_the_do_not_commit_tag(repo, markers):
+    assert gev2_marker.TAG == "-- GEV2_MARKER_DO_NOT_COMMIT"
+    spectate = repo / "addon" / "wetsand" / "cl_spectate.lua"
+    markers.set(spectate, 'WETSAND_T1_INCLUDE = "sent-1234"')
+    markers.set(view(repo), 'WETSAND_T2 = "save-1234" -- the save step')
+    for path in (spectate, view(repo)):
+        first = path.read_bytes().splitlines()[0].decode()
+        assert first.endswith(" " + gev2_marker.TAG), first
+        assert subprocess.run(["luajit", "-b", str(path), "/dev/null"]).returncode == 0
+    # The probes still read the marker's value from the tagged line.
+    assert 'WETSAND_T2 = "save-1234"' in view(repo).read_text().splitlines()[0]
+    assert markers.restore() == []
+    assert clean(repo)
+
+
+def test_refuses_a_file_that_is_not_lua(repo, markers):
+    cfg = repo / "addon" / "settings.cfg"
+    cfg.write_text("sv_cheats 0\n")
+    git(repo, "add", "-A")
+    git(repo, "commit", "-qm", "cfg")
+    with pytest.raises(Refused, match="Lua"):
+        markers.set(cfg, "sv_cheats 1")
+    assert cfg.read_text() == "sv_cheats 0\n"
+
+
+def test_git_runs_without_optional_locks(repo, markers, monkeypatch):
+    seen = []
+    real_run = subprocess.run
+
+    def run(argv, *args, **kwargs):
+        if argv[0] == "git":
+            seen.append(kwargs.get("env") or {})
+        return real_run(argv, *args, **kwargs)
+
+    monkeypatch.setattr(gev2_marker.subprocess, "run", run)
+    markers.set(view(repo), LINE)
+    assert seen and all(env.get("GIT_OPTIONAL_LOCKS") == "0" for env in seen)
+    assert not (repo / ".git" / "index.lock").exists()

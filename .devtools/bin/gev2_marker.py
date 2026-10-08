@@ -3,14 +3,16 @@
 tests (T1, T2, and phase E's stale-file check) put in an addon file the
 dedicated server reads through main.
 
-  gev2_marker.py set <file> <line>   put the line at the top of a clean, tracked file under addon/
+  gev2_marker.py set <file> <line>   put the line, tagged, at the top of a clean, tracked .lua file under addon/
   gev2_marker.py restore             put back every marked file's exact bytes
   gev2_marker.py status              list the marked files
 
 The marker goes on the file's first line, not its last: a feature part ends
-with `return View`, and Lua allows nothing after a chunk's final return. A
-.lua file must still compile with the marker (luajit -b), or nothing is
-written. `set` refuses a file with uncommitted changes, because the operator
+with `return View`, and Lua allows nothing after a chunk's final return.
+Every marker line ends with the Lua comment TAG (-- GEV2_MARKER_DO_NOT_COMMIT),
+so check_no_markers.py can refuse a commit that carries one; that is why
+only .lua files are marked. The file must still compile with the marker
+(luajit -b), or nothing is written. `set` refuses a file with uncommitted changes, because the operator
 may be working on main, and a file already marked: restore first. `restore`
 leaves alone a file that changed since it was marked, and says so.
 
@@ -18,6 +20,8 @@ The saved bytes are kept in .devtools/artifacts/gev2_marker.json until
 restored. Every run restores in a `finally` (Markers.marking), or, from a
 shell, with `trap 'python3 .devtools/bin/gev2_marker.py restore' EXIT`.
 Markers are never committed: `git status --short` must be unchanged after.
+Its git commands run with GIT_OPTIONAL_LOCKS=0, so they never take the
+index.lock of a main the operator is committing on.
 """
 from __future__ import annotations
 
@@ -32,11 +36,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Iterator, List
 
-__all__ = ["Markers", "Refused", "STATE_FILE"]
+__all__ = ["ADDON", "Markers", "Refused", "STATE_FILE", "TAG"]
 
 REPO = Path(__file__).resolve().parents[2]
 STATE_FILE = REPO / ".devtools" / "artifacts" / "gev2_marker.json"
 ADDON = "addon"
+TAG = "-- GEV2_MARKER_DO_NOT_COMMIT"  # ends every marker line; check_no_markers.py looks for it
+LUA_SUFFIX = ".lua"
+GIT_ENV = {**os.environ, "GIT_OPTIONAL_LOCKS": "0"}  # status never refreshes (and locks) the index
 
 
 class Refused(Exception):
@@ -44,7 +51,7 @@ class Refused(Exception):
 
 
 def _git(cwd: Path, *args: str) -> subprocess.CompletedProcess:
-    return subprocess.run(["git", "-C", str(cwd), *args], capture_output=True, text=True)
+    return subprocess.run(["git", "-C", str(cwd), *args], capture_output=True, text=True, env=GIT_ENV)
 
 
 def _lua_error(text: bytes) -> str:
@@ -77,6 +84,8 @@ class Markers:
             raise Refused(f"{path} is already marked; restore first")
         if not path.is_file():
             raise Refused(f"{path} is not a file")
+        if path.suffix != LUA_SUFFIX:
+            raise Refused(f"{path} is not a Lua file; a marker's tag is a Lua comment")
         top = _git(path.parent, "rev-parse", "--show-toplevel")
         if top.returncode != 0:
             raise Refused(f"{path} is not in a git work tree, so not under any addon/")
@@ -92,11 +101,10 @@ class Markers:
         if _git(root, "status", "--porcelain", "--", str(relative)).stdout.strip():
             raise Refused(f"{relative} has uncommitted changes; it may be the operator's work")
         original = path.read_bytes()
-        marked = line.encode("utf-8") + b"\n" + original
-        if path.suffix == ".lua":
-            error = _lua_error(marked)
-            if error:
-                raise Refused(f"{relative} would not compile with the marker: {error}")
+        marked = f"{line} {TAG}".encode("utf-8") + b"\n" + original
+        error = _lua_error(marked)
+        if error:
+            raise Refused(f"{relative} would not compile with the marker: {error}")
         state = self._state()
         state[str(path)] = {"original": _encode(original), "marked": _encode(marked)}
         self._save(state)
