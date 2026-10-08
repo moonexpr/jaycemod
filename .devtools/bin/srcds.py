@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 r"""Run Garry's Mod's dedicated server under CrossOver and drive it with RCON.
 
-  srcds.py start [--map gm_construct] [--port 27025]   start, wait for the map
+  srcds.py start [--map gm_construct] [--port 27025] [--no-lua-refresh]
+                                                       start, wait for the map
   srcds.py rcon 'status'                               run a console command
   srcds.py stop                                        quit the server we started
 
@@ -17,7 +18,8 @@ crashes in steamclient64.dll while it mounts the Workshop, so Workshop addons
 first frame, so a detached supervisor (this script's `_supervise`) gives it a
 pty and drains it into .devtools/artifacts/srcds.log. -condebug writes
 garrysmod/console.log, which holds what the console printed. +ip 127.0.0.1
-keeps RCON on this machine.
+keeps RCON on this machine. --no-lua-refresh adds -disableluarefresh, so edits
+on disk after start-up never reach the running server (game events v2's T1).
 
 The RCON password is kept in .devtools/artifacts/rcon_password. The
 supervisor records the processes it launched in .devtools/artifacts/srcds.pid
@@ -144,6 +146,7 @@ class ServerConfig:
     maxplayers: int
     gamemode: str = "sandcastle"
     convars: Tuple[Tuple[str, str], ...] = field(default_factory=tuple)
+    lua_refresh: bool = True  # False adds -disableluarefresh
 
     def __post_init__(self):
         if not MAP_NAME.match(self.map):
@@ -172,6 +175,8 @@ def command_line(install: Install, config: ServerConfig) -> List[str]:
         "-console", "-game", "garrysmod", "-port", str(config.port),
         "-insecure", "-noworkshop", "-nosteam", "-condebug", "-nohltv",
     ]
+    if not config.lua_refresh:
+        argv.append("-disableluarefresh")
     for name, value in convars:
         argv += ["+" + name, value]
     return argv + ["+map", config.map]
@@ -491,9 +496,9 @@ DEFAULT_MAXPLAYERS = 32
 MAP_LOAD_TIMEOUT = 240
 
 
-def make_server(map_name: str, port: int) -> Server:
+def make_server(map_name: str, port: int, lua_refresh: bool = True) -> Server:
     install = Install.discover()
-    return Server(install, ServerConfig(map_name, port, password(), DEFAULT_MAXPLAYERS))
+    return Server(install, ServerConfig(map_name, port, password(), DEFAULT_MAXPLAYERS, lua_refresh=lua_refresh))
 
 
 def main() -> int:
@@ -504,13 +509,15 @@ def main() -> int:
     start = sub.add_parser("start")
     start.add_argument("--map", default="gm_construct")
     start.add_argument("--port", type=int, default=DEFAULT_PORT)
+    start.add_argument("--no-lua-refresh", dest="lua_refresh", action="store_false",
+                       help="start with -disableluarefresh: edits on disk never reach the running server")
     rcon = sub.add_parser("rcon")
     rcon.add_argument("command")
     sub.add_parser("stop")
     args = ap.parse_args()
     try:
         if args.action == "start":
-            server = make_server(args.map, args.port)
+            server = make_server(args.map, args.port, args.lua_refresh)
             server.start()
             server.wait_for_map(args.map, MAP_LOAD_TIMEOUT)
             print(f"{args.map} is up on port {args.port}")
