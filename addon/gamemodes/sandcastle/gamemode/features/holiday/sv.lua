@@ -45,13 +45,46 @@ function Controller:ModeChanged()
 end
 
 -- tf_logic_holiday: kv = { holidayType, tauntInHell, allowHaunting }.
--- Hell's taunts and haunting are left out, so only the holiday is used.
+-- Hell's taunts are left out; allowHaunting lets the Wheel of Fate's
+-- ghosts haunt a map that is no boss's scenario (BeginHaunting).
 function Controller:BindHoliday(ent, kv)
 	self.holiday:SetMapHoliday(kv.holidayType)
+	self.allowHaunting = kv.allowHaunting
 	self:ModeChanged()
 end
 
+-- CTFGameRules::BeginHaunting's permission (foundation.npc.ghost).
+function Controller:HauntingAllowed()
+	local Ghost = WETSAND.require("foundation.npc.ghost")
+	return Ghost.HauntingAllowed(self:HolidayActive(Holiday.HALLOWEEN), self.bossScenario == true, self.allowHaunting == true)
+end
+
 function Controller:HolidayActive(h) return self.holiday:Active(h) end
+
+-- TF2's Halloween scenarios, read from what the map places once its
+-- entities are in (foundation.npc.boss_timer.Runs): a boss's scenario map
+-- runs the boss timer, which brings him. A templated entity is not among
+-- them until it spawns; the timer stops if the map's own boss does.
+function Controller:StartBossScenarios()
+	local BossTimer = WETSAND.require("foundation.npc.boss_timer")
+	local map = {
+		names = {},
+		classes = {},
+	}
+	for _, ent in ipairs(ents.GetAll()) do
+		local name = ent:GetName()
+		if name ~= "" then map.names[name] = true end
+		map.classes[ent:GetClass()] = true
+	end
+	for _, scenario in ipairs(BossTimer.SCENARIOS) do
+		if BossTimer.Runs(scenario, map) then
+			self.bossScenario = true
+			WETSAND.Feature("boss_timer"):Run(scenario.variant)
+		end
+	end
+end
+
+hook.Add("InitPostEntity", "wetsand_holiday_boss_scenarios", function() Controller:StartBossScenarios() end)
 
 -- tf_logic_on_holiday's Fire: the outputs for the holidays that are on. Its
 -- part loads with the first Fire.

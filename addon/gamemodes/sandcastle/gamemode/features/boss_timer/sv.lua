@@ -4,7 +4,9 @@
 -- spawns what the timer asks for, reverts the point the boss takes and
 -- pauses the KOTH clocks, and forgets the countdown when a round starts.
 --
--- Loaded by the first boss that brings the timer (merasmus). A boss variant
+-- Loaded by the holiday controller on a boss's scenario map
+-- (foundation.npc.boss_timer.Runs: lakeside, not the payload maps whose own
+-- logic spawns Merasmus). A boss variant
 -- run here provides what foundation.npc.boss_timer asks of it, plus
 -- SharedLevel(shared) -> its level from the npc controller's shared table.
 local BossTimer = WETSAND.require("foundation.npc.boss_timer")
@@ -93,7 +95,7 @@ local function World(npcs, variantName, variant)
 	return world
 end
 
--- A map's boss brings its timer; once is enough.
+-- A boss's scenario map runs his timer; once is enough.
 function Controller:Run(variantName)
 	if self.runs[variantName] then return end
 	local variant = WETSAND.require(variantName)
@@ -103,11 +105,16 @@ function Controller:Run(variantName)
 	}
 end
 
--- TFGameRules()->StartHalloweenBossTimer
+-- TFGameRules()->StartHalloweenBossTimer, for a boss whose timer runs here.
 function Controller:Start(variantName, seconds, variation)
-	self:Run(variantName)
 	local run = self.runs[variantName]
-	run.timer:Start(seconds, variation, run.world)
+	if run then run.timer:Start(seconds, variation, run.world) end
+end
+
+-- The map's own logic spawned the boss: no timer for him on this map.
+function Controller:MapSpawned(variantName)
+	local run = self.runs[variantName]
+	if run then run.timer:MapSpawned() end
 end
 
 -- The spawn: the boss, then the point it takes goes neutral and the KOTH

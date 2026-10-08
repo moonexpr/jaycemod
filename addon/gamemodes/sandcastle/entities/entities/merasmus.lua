@@ -43,11 +43,14 @@ local STEP_HEIGHT = 18 -- StepHeight, CollectSurroundingAreas' limits
 local PREFER_CLASS = "func_nav_prefer"
 local PLAYERS_ANY_TEAM = nil -- CollectPlayers: RED and BLU
 
--- He brings TF2's boss timer to the map (the boss_timer feature), which
--- spawns the next Merasmus.
+-- One the boss timer did not spawn is the map's own: where the timer runs
+-- (the boss_timer feature, loaded for his scenario), that stops it.
 function ENT:Initialize()
 	Base.Initialize(self)
-	WETSAND.Feature("boss_timer"):Run(self.Variant)
+	local configured = self.configured or {}
+	if not configured.timerSpawned and WETSAND.FeatureLoaded("boss_timer") then
+		WETSAND.Feature("boss_timer"):MapSpawned(self.Variant)
+	end
 	self.floatSound = CreateSound(self, WETSAND.require(self.Variant).FLOAT_SOUND)
 	self.floatSound:Play()
 end
@@ -256,8 +259,10 @@ function ENT:PlayScriptedScene(name)
 	print(string.format(SCENE_MISSING, name))
 end
 
--- TFGameRules()->StartHalloweenBossTimer
+-- TFGameRules()->StartHalloweenBossTimer: only his scenario's map runs the
+-- timer; elsewhere TF2 sets it and never reads it.
 function ENT:StartBossTimer(seconds, variation)
+	if not WETSAND.FeatureLoaded("boss_timer") then return end
 	WETSAND.Feature("boss_timer"):Start(self.Variant, seconds, variation)
 end
 

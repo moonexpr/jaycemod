@@ -152,19 +152,22 @@ function MaxSpeed(base, speedBoost, stunReduction, attributeScale)
 	return speed * (1 - stunReduction)
 end
 
--- TF_DAMAGE_CRIT_MULTIPLIER
+-- TF_DAMAGE_CRIT_MULTIPLIER, TF_DAMAGE_MINICRIT_MULTIPLIER
 local CRIT_MULTIPLIER = 3
+MINICRIT_MULTIPLIER = 1.35
 
 -- The crit boosts CTFPlayerShared::IsCritBoosted counts that Sandcastle has.
 local CRIT_BOOSTS = { C.CRITBOOSTED, C.CRITBOOSTED_PUMPKIN, C.CRITBOOSTED_USER_BUFF }
 
 -- Damage scale from conditions: an invulnerable victim, or a blast-immune
--- one hit by a blast, takes nothing; a crit-boosted attacker deals triple.
-function DamageScale(victimConds, attackerConds, isBlast, now)
+-- one hit by a blast, takes nothing; a crit-boosted attacker deals triple;
+-- a jarated victim takes mini-crits from anyone but themselves (selfHarm).
+function DamageScale(victimConds, attackerConds, isBlast, now, selfHarm)
 	if InCond(victimConds, C.INVULNERABLE, now) then return 0 end
 	if isBlast and InCond(victimConds, C.BLAST_IMMUNE, now) then return 0 end
 	for _, boost in ipairs(CRIT_BOOSTS) do
 		if InCond(attackerConds, boost, now) then return CRIT_MULTIPLIER end
 	end
+	if not selfHarm and InCond(victimConds, C.URINE, now) then return MINICRIT_MULTIPLIER end
 	return 1
 end

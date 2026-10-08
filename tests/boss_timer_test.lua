@@ -248,6 +248,53 @@ T.test("while the Wheel of Fate spins or names its effect, nothing happens, not 
 end)
 
 -------------------------------------------------------------------------------
+-- Where it runs: TF2's Lakeside scenario, from what the map places
+
+local MERASMUS_SCENARIO = BossTimer.SCENARIOS[1]
+
+-- What a map places: its entities' targetnames and classnames.
+local function Map(names, classes)
+	local map = {
+		names = {},
+		classes = {},
+	}
+	for _, n in ipairs(names) do map.names[n] = true end
+	for _, c in ipairs(classes) do map.classes[c] = true end
+	return map
+end
+
+T.test("Merasmus's scenario is a map with his arrival relay and no Merasmus of its own", function()
+	T.eq(MERASMUS_SCENARIO.variant, "foundation.npc.merasmus", "his")
+	T.eq(MERASMUS_SCENARIO.arrivalRelay, Merasmus.ENTER_RELAY, "boss_enter_relay")
+	T.eq(MERASMUS_SCENARIO.bossClass, HalloweenBoss.CLASSES[HalloweenBoss.BOSS_MERASMUS], "merasmus")
+	-- koth_lakeside_event: the relays, the wheel, no merasmus
+	T.eq(BossTimer.Runs(MERASMUS_SCENARIO, Map({ "boss_enter_relay", "boss_dead_relay", "wheel_of_fortress" }, { "wheel_of_doom", "logic_relay" })), true, "lakeside")
+	-- pl_fifthcurve_event, pl_rumble_event, koth_slasher: a templated merasmus, no relay
+	T.eq(BossTimer.Runs(MERASMUS_SCENARIO, Map({ "merasmus_spawn", "merasmus_triggered" }, { "merasmus", "point_template" })), false, "payload")
+	-- koth_moonshine_event: a wheel, no relay, no merasmus
+	T.eq(BossTimer.Runs(MERASMUS_SCENARIO, Map({ "wheel_of_fortress" }, { "wheel_of_doom" })), false, "moonshine")
+	T.eq(BossTimer.Runs(MERASMUS_SCENARIO, Map({ "boss_enter_relay" }, { "merasmus" })), false, "his relay, but the map's own Merasmus")
+	T.eq(BossTimer.Runs(MERASMUS_SCENARIO, Map({}, {})), false, "a plain map")
+end)
+
+T.test("a Merasmus the map's logic spawns stops the timer for good", function()
+	local world = World({ points = Points() })
+	local timer = Elapsed(world)
+	timer:MapSpawned()
+	T.eq(timer:Update(world), nil, "no spawn")
+	timer:Start(180, 0, world)
+	timer:Force()
+	Advance(world, 1000)
+	T.eq(timer:Update(world), nil, "never again, started or forced")
+	T.eq(timer:HasStarted(), false, "and never started")
+end)
+
+T.test("the timer's Merasmus says so, so he is not taken for the map's", function()
+	local world = World({ points = Points() })
+	T.eq(Elapsed(world):Update(world).config.timerSpawned, true, "spawned by the timer")
+end)
+
+-------------------------------------------------------------------------------
 -- tf_halloween_force_boss_spawn, and the round's start
 
 T.test("a forced spawn skips the countdown and the player checks, once", function()

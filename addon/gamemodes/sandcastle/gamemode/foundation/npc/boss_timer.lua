@@ -6,8 +6,14 @@
 -- (SetupOnRoundStart), and the first update after starts it afresh.
 --
 -- TF2 runs it on the map whose Halloween scenario names the boss (Merasmus:
--- koth_lakeside_event). Sandcastle names no maps: the boss timer controller
--- runs one for a boss once the map has brought that boss in.
+-- koth_lakeside_event, by its name). Sandcastle names no maps; it reads the
+-- scenario from what the map places (SCENARIOS, Runs): the relay the boss
+-- triggers as he arrives, with no boss of the map's own. A map built for
+-- the game to bring him (lakeside) has both; maps whose own logic spawns him
+-- (pl_fifthcurve_event, pl_rumble_event, koth_slasher) place him and no
+-- relay; koth_moonshine_event has his wheel but no relay, and TF2 brings
+-- no Merasmus there either. A boss the map's logic spawns anyway stops the
+-- timer for good (MapSpawned).
 --
 -- New(boss) takes a foundation.npc.halloween_boss part that provides
 -- BOSS_TYPE, SpawnInterval(level, convars) -> seconds, variation (the
@@ -35,6 +41,23 @@ module(...)
 SPAWN_AREA_SIZE = 100 -- SpawnHalloweenBoss's goodSize
 local UNSTARTED = -1
 
+-- The bosses' scenarios: the boss variant, the class a map would place him
+-- as, and the relay he triggers as he arrives (CMerasmus::Spawn's
+-- TriggerLogicRelay; only Merasmus triggers one).
+SCENARIOS = {
+	{
+		variant = "foundation.npc.merasmus",
+		bossClass = "merasmus",
+		arrivalRelay = "boss_enter_relay",
+	},
+}
+
+-- Whether the timer runs for the scenario on a map that places these:
+-- map = { names = set of targetnames, classes = set of classnames }.
+function Runs(scenario, map)
+	return map.names[scenario.arrivalRelay] == true and not map.classes[scenario.bossClass]
+end
+
 local Timer = {}
 Timer.__index = Timer
 
@@ -43,12 +66,21 @@ function New(boss)
 		boss = boss,
 		timestamp = UNSTARTED,
 		forcing = false,
+		mapSpawns = false,
 	}, Timer)
 end
 
 -- StartHalloweenBossTimer
 function Timer:Start(seconds, variation, world)
+	if self.mapSpawns then return end
 	self.timestamp = world:Now() + world:RandomFloat(seconds - variation, seconds + variation)
+end
+
+-- The map's own logic spawned the boss: the map is not his scenario.
+function Timer:MapSpawned()
+	self.mapSpawns = true
+	self.timestamp = UNSTARTED
+	self.forcing = false
 end
 
 function Timer:Invalidate() self.timestamp = UNSTARTED end
@@ -56,7 +88,9 @@ function Timer:HasStarted() return self.timestamp > 0 end
 function Timer:Remaining(world) return self.timestamp - world:Now() end
 
 -- tf_halloween_force_boss_spawn
-function Timer:Force() self.forcing = true end
+function Timer:Force()
+	if not self.mapSpawns then self.forcing = true end
+end
 
 local function IsElapsed(self, world) return world:Now() > self.timestamp end
 
@@ -88,9 +122,10 @@ local function SpawnPlace(self, world)
 end
 
 -- The spawn the countdown asks for, { class, config, pos, neutralize (the
--- point to revert, or nil) }, or nil.
+-- point to revert, or nil) }, or nil. The config says timerSpawned, so the
+-- boss is not taken for the map's own.
 function Timer:Update(world)
-	if not world:HalloweenActive() then return nil end
+	if self.mapSpawns or not world:HalloweenActive() then return nil end
 	if self.boss.WAITS_FOR_WHEEL and world:WheelBusy() then return nil end
 	if world:BossActive() then
 		Restart(self, world)
@@ -111,6 +146,7 @@ function Timer:Update(world)
 	local class, config, at = HalloweenBoss.SpawnAt(self.boss.BOSS_TYPE, pos, Teams.HALLOWEEN, nil, function(x, y, z)
 		return world:Vector(x, y, z)
 	end)
+	config.timerSpawned = true
 	Restart(self, world)
 	self.forcing = false
 	return {

@@ -30,6 +30,7 @@ local function World(t)
 	local function Record(name, ...) world.calls[#world.calls + 1] = { name, ... } end
 	function world:Now() return self.clock:Now() end
 	function world:RandomInt(lo, hi) return self.random:Int(lo, hi) end
+	function world:RandomFloat(lo, hi) return self.random:Float(lo, hi) end
 	function world:Vector(x, y, z) return V(x, y, z) end
 	function world:Players() return self.players end
 	function world:LivingPlayers()
@@ -91,6 +92,9 @@ local function World(t)
 	end
 	function world:DancerVanish(d) d.vanished = true end
 	function world:DancerBlastOff(d) d.blasted = true end
+	function world:CloudBoxes() return t.clouds or {} end
+	function world:DropJar(pos, spin) Record("DropJar", pos, spin) end
+	function world:BeginHaunting(count, minDuration, maxDuration) Record("BeginHaunting", count, minDuration, maxDuration) end
 	return world
 end
 
@@ -161,7 +165,7 @@ end
 T.test("the wheel keeps TF2's effects in TF2's order, with their skins, lines and flags", function()
 	local names = {}
 	for i, effect in ipairs(Wheel.EFFECTS) do names[i] = effect.name end
-	T.eq(table.concat(names, ","), "Uber,Crits,Super Speed,Super Jump,Big Head,Small Head,Low Gravity,Dance,Burn", "registered")
+	T.eq(table.concat(names, ","), "Uber,Crits,Super Speed,Super Jump,Big Head,Small Head,Low Gravity,Dance,Pee,Burn,Ghosts", "registered")
 	local burn = Wheel.EFFECTS[EffectNamed("Burn")]
 	T.eq(burn.whammy, true, "a whammy")
 	T.eq(burn.skin, Wheel.EFFECT_WHAMMY, "the whammy screen")
@@ -381,6 +385,71 @@ T.test("the wheel is busy until 10 s after it stops", function()
 	T.eq(wheel:IsDoneBroadcastingEffectSound(world:Now()), false, "announcing")
 	Run(wheel, world, 0.2)
 	T.eq(wheel:IsDoneBroadcastingEffectSound(world:Now()), true, "done")
+end)
+
+-------------------------------------------------------------------------------
+-- The whammies (WOD_Pee, WOD_Ghosts)
+
+T.test("the Jarate rain drops a jar from a random spot in a spawn_cloud every 0.2-0.5 s", function()
+	local world = World({
+		random = Choosing("Pee"),
+		players = { Player(Teams.RED) },
+		clouds = {
+			{
+				mins = V(0, 0, 500),
+				maxs = V(100, 200, 600),
+			},
+		},
+	})
+	local wheel = NewWheel()
+	local pee = Wheel.EFFECTS[EffectNamed("Pee")]
+	T.eq(pee.whammy, true, "a whammy")
+	T.eq(pee.reapplies, false, "not on respawn")
+	T.eq(pee.sound, "Halloween.MerasmusWheelJarate", "its line")
+	Landed(wheel, world)
+	T.eq(world.status.skin, Wheel.EFFECT_WHAMMY, "the whammy face")
+	T.near(world.status.duration, DURATION, EPSILON, "for the wheel's duration")
+	world.calls = {}
+	world.random = FakeActor.Random({ 0.5 })
+	Run(wheel, world, 0.2)
+	T.eq(#Called(world, "DropJar"), 0, "none in the first quarter second")
+	Run(wheel, world, 0.2)
+	local jars = Called(world, "DropJar")
+	T.eq(#jars, 1, "the first")
+	T.eq(jars[1][2], V(50, 100, 550), "inside the cloud")
+	T.eq(jars[1][3], V(0, 0, 0), "a spin within 300 each way")
+	Run(wheel, world, 1)
+	T.eq(#Called(world, "DropJar"), 3, "then every 0.35 s here")
+	Run(wheel, world, DURATION)
+	local count = #Called(world, "DropJar")
+	Run(wheel, world, 2)
+	T.eq(#Called(world, "DropJar"), count, "stops with the effect")
+end)
+
+T.test("without a spawn_cloud the rain drops nothing", function()
+	local world = World({ random = Choosing("Pee") })
+	local wheel = NewWheel()
+	Landed(wheel, world)
+	Run(wheel, world, 2)
+	T.eq(#Called(world, "DropJar"), 0, "nothing")
+end)
+
+T.test("the Ghosts haunt with four ghosts for half to all the wheel's time, and put out the burning", function()
+	local red = Player(Teams.RED)
+	red.conds[COND.BURNING] = 5
+	local world = World({
+		random = Choosing("Ghosts"),
+		players = { red },
+	})
+	local wheel = NewWheel()
+	Landed(wheel, world)
+	local haunt = Called(world, "BeginHaunting")[1]
+	T.eq(haunt[2], Wheel.GHOST_COUNT, "four")
+	T.eq(haunt[3], DURATION / 2, "at least half")
+	T.eq(haunt[4], DURATION, "at most all")
+	T.eq(world.status.skin, Wheel.EFFECT_WHAMMY, "the whammy face")
+	Run(wheel, world, DURATION + 0.2)
+	T.eq(red.conds[COND.BURNING], nil, "their end puts out the burning")
 end)
 
 -------------------------------------------------------------------------------

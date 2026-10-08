@@ -147,4 +147,15 @@ T.test("the pumpkin crit boost triples damage too", function()
 	T.eq(P.COND.HALLOWEEN_BOMB_HEAD, 53, "TF2's number")
 end)
 
+-- ApplyOnDamageModifyRules: Jarate makes every hit but your own a mini-crit.
+T.test("a jarated player takes mini-crits from anyone else; a crit stays a crit", function()
+	local victim, attacker = {}, {}
+	P.AddCond(victim, P.COND.URINE, 10, 0)
+	T.near(P.DamageScale(victim, attacker, false, 1), 1.35, 1e-9, "mini-crit")
+	T.eq(P.DamageScale(victim, attacker, false, 1, true), 1, "not their own")
+	T.eq(P.DamageScale(victim, attacker, false, 11), 1, "dry again")
+	P.AddCond(attacker, P.COND.CRITBOOSTED_PUMPKIN, P.PERMANENT, 0)
+	T.eq(P.DamageScale(victim, attacker, false, 1), 3, "a crit")
+end)
+
 T.finish()

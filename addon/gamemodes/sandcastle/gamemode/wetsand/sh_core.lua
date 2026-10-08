@@ -64,6 +64,11 @@ function WETSAND.Feature(name)
 	return WETSAND.FeatureLoader:Feature(name)
 end
 
+-- Whether this map has loaded the feature, without loading it.
+function WETSAND.FeatureLoaded(name)
+	return WETSAND.FeatureLoader:IsLoaded(name)
+end
+
 -- collectgarbage("count") before and after a full collection, and the loaded
 -- features, to compare maps' Lua RAM.
 local function MemoryReport()

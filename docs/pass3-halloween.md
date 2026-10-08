@@ -787,9 +787,15 @@ bomb heads 15 s and 1 per team, props 150 health).
   a `spawn_boss`, else on the point BLU must take next (it reverts to
   neutral and KOTH clocks pause), else on a random nav area 100 a side
   outside the spawn rooms. `tf_halloween_force_boss_spawn` and
-  `cc_spawn_merasmus_at_level N` (cheats) skip the wait. TF2 runs it only on
-  koth_lakeside_event; Sandcastle names no maps, so it runs on any map once
-  a Merasmus has appeared there.
+  `cc_spawn_merasmus_at_level N` (cheats) skip the wait. TF2 runs it only in
+  the Lakeside scenario, chosen by map name. Sandcastle reads the scenario
+  from what the map places (`BossTimer.Runs`, checked by the holiday
+  controller at `InitPostEntity`): Merasmus's arrival relay
+  (`boss_enter_relay`) and no `merasmus` entity. Of the event maps only
+  koth_lakeside_event qualifies; pl_fifthcurve_event, pl_rumble_event and
+  koth_slasher place a templated `merasmus` and no relay, and
+  koth_moonshine_event has the wheel but no relay (TF2 brings no Merasmus
+  there either). A Merasmus that the timer did not spawn stops it for good.
 - **Weapon multipliers** (`MerasmusModifyDamage`, `WEAPON_SCALES`): a
   player's hit is scaled by the TF2 weapon its damage type stands for:
   `DMG_SNIPER` (sniper rifle), `DMG_BULLET|DMG_NEVERGIB` (HL2's crossbow
@@ -818,14 +824,23 @@ bomb heads 15 s and 1 per team, props 150 health).
   jump with no fall damage, big or small heads (the head bone; GMod voice
   chat cannot be pitched), quarter gravity, the Dance (everyone alive to
   `dance_teleport_<red|blue><n>`, frozen, dancing every 3.5 s for 8 s, a
-  dancing Merasmus at either end of the floor by turns) and the Burn whammy
-  (10 s at most). A whammy comes one roll in buffs + 1. Respawning players
-  get the effects that reapply. The boss timer waits while the first wheel
-  spins or names its effect. **Not done:** the Jarate rain (needs
-  `tf_projectile_jar` and Jarate's effects) and the Ghosts (needs TF2's
-  haunting ghosts), so Burn takes every whammy roll; and the players'
-  magic voice responses (GMod players have no class voices). No payload
-  event map places a wheel.
+  dancing Merasmus at either end of the floor by turns), and three
+  whammies: the Jarate rain (a `tf_projectile_jar` from a random spot in a
+  `spawn_cloud` brush 0.25 s in, then every 0.2-0.5 s; each breaks on the
+  world or a player and soaks the living within 200 with no wall between,
+  unless ubered, phased or in water, for 10 s), the Burn (10 s at most) and
+  the Ghosts (`CTFGameRules::BeginHaunting(4, duration/2, duration)`: the
+  `ghost` NPC, `foundation.npc.ghost`, rises on nav areas 240 from any
+  player, drifts at 90 turning from walls, moans every 5-7 s, and each
+  second stuns the players within 192 in sight for 2 s; it vanishes when
+  its time is up or it is stuck a second; haunting needs Merasmus's
+  scenario or the `tf_logic_holiday`'s allowHaunting; their end puts out
+  the burning). Jarate (URINE) now makes a player take mini-crits (x1.35)
+  from anyone else, drips from them and yellows their screen. A whammy
+  comes one roll in buffs + 1. Respawning players get the effects that
+  reapply. The boss timer waits while the first wheel spins or names its
+  effect. Left out: the players' magic voice responses (GMod players have
+  no class voices). No payload event map places a wheel.
 - **Left out:** the critical flag on hits while stunned or aloft (only
   TF2's hit numbers show it).
 - **Bomb-rain scene:** as TF2, one of `scenes/bot/merasmus/low/
