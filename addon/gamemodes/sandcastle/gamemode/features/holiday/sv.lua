@@ -53,6 +53,28 @@ end
 
 function Controller:HolidayActive(h) return self.holiday:Active(h) end
 
+-- TF2's Halloween scenarios, read from what the map places once its
+-- entities are in (foundation.npc.boss_timer.Runs): a boss's scenario map
+-- runs the boss timer, which brings him. A templated entity is not among
+-- them until it spawns; the timer stops if the map's own boss does.
+function Controller:StartBossScenarios()
+	local BossTimer = WETSAND.require("foundation.npc.boss_timer")
+	local map = {
+		names = {},
+		classes = {},
+	}
+	for _, ent in ipairs(ents.GetAll()) do
+		local name = ent:GetName()
+		if name ~= "" then map.names[name] = true end
+		map.classes[ent:GetClass()] = true
+	end
+	for _, scenario in ipairs(BossTimer.SCENARIOS) do
+		if BossTimer.Runs(scenario, map) then WETSAND.Feature("boss_timer"):Run(scenario.variant) end
+	end
+end
+
+hook.Add("InitPostEntity", "wetsand_holiday_boss_scenarios", function() Controller:StartBossScenarios() end)
+
 -- tf_logic_on_holiday's Fire: the outputs for the holidays that are on. Its
 -- part loads with the first Fire.
 function Controller:OnHolidayOutputs()

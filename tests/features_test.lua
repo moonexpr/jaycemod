@@ -77,6 +77,15 @@ T.test("server: later calls return the same controller without loading again", f
 	T.eq(List(loader:Loaded()), "npc", "recorded once")
 end)
 
+T.test("whether a feature is loaded can be asked without loading it", function()
+	local port = FakePort({ [P("npc", SV)] = Returns({}) })
+	local loader = Features.New(SV, port)
+	T.eq(loader:IsLoaded("npc"), false, "not yet")
+	T.eq(#port.runs, 0, "and asking loads nothing")
+	loader:Feature("npc")
+	T.eq(loader:IsLoaded("npc"), true, "loaded")
+end)
+
 T.test("server: the shared part is optional", function()
 	local port = FakePort({ [P("combat", SV)] = Returns({}) })
 	Features.New(SV, port):Feature("combat")

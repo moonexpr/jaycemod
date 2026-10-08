@@ -102,6 +102,11 @@ function Loader:Feature(name)
 	return Load(self, name)
 end
 
+-- Whether the feature has loaded, without loading it.
+function Loader:IsLoaded(name)
+	return self.loaded[name] == true
+end
+
 -- Every loaded feature, in load order.
 function Loader:Loaded()
 	local list = {}

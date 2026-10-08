@@ -787,9 +787,15 @@ bomb heads 15 s and 1 per team, props 150 health).
   a `spawn_boss`, else on the point BLU must take next (it reverts to
   neutral and KOTH clocks pause), else on a random nav area 100 a side
   outside the spawn rooms. `tf_halloween_force_boss_spawn` and
-  `cc_spawn_merasmus_at_level N` (cheats) skip the wait. TF2 runs it only on
-  koth_lakeside_event; Sandcastle names no maps, so it runs on any map once
-  a Merasmus has appeared there.
+  `cc_spawn_merasmus_at_level N` (cheats) skip the wait. TF2 runs it only in
+  the Lakeside scenario, chosen by map name. Sandcastle reads the scenario
+  from what the map places (`BossTimer.Runs`, checked by the holiday
+  controller at `InitPostEntity`): Merasmus's arrival relay
+  (`boss_enter_relay`) and no `merasmus` entity. Of the event maps only
+  koth_lakeside_event qualifies; pl_fifthcurve_event, pl_rumble_event and
+  koth_slasher place a templated `merasmus` and no relay, and
+  koth_moonshine_event has the wheel but no relay (TF2 brings no Merasmus
+  there either). A Merasmus that the timer did not spawn stops it for good.
 - **Weapon multipliers** (`MerasmusModifyDamage`, `WEAPON_SCALES`): a
   player's hit is scaled by the TF2 weapon its damage type stands for:
   `DMG_SNIPER` (sniper rifle), `DMG_BULLET|DMG_NEVERGIB` (HL2's crossbow
