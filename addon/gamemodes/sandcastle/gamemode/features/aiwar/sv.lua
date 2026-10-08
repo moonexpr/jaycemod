@@ -836,7 +836,7 @@ function Controller:Enlist(ent, team, drafted, fixed)
 		npc = NpcSystem.Npc.New(Orders, { war = self.war, member = member }, soldier),
 	}
 	-- DrGBase's hooks ask and tell the orders (wetsand_drg_soldier's bridge)
-	ent.WetsandBrain = self.soldiers[ent].npc
+	ent.NSBrain = self.soldiers[ent].npc
 	WETSAND.SetTeamMember(ent, team)
 	self:RelateSoldiers(ent, team)
 	self:PassTeammates(ent, team)
@@ -975,7 +975,7 @@ function Controller:Discharge(ent)
 	if not entry then return end
 	entry.soldier:Stand()
 	self.soldiers[ent] = nil
-	if IsValid(ent) then ent.WetsandBrain = nil end
+	if IsValid(ent) then ent.NSBrain = nil end
 	self:TellKilled(ent, entry)
 	self:SweepGadgets(ent)
 	entry.soldier:Unpose()

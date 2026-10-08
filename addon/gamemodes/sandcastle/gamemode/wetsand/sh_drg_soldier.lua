@@ -2,7 +2,7 @@
 -- built on (drgbase_nextbot_human for the Combine and the Resistance's
 -- fighters, drgbase_nextbot for the vortigaunt): WETSAND.DrgSoldier(ENT,
 -- baseName) installs it. The controller (features/aiwar) sets WetsandTarget,
--- a position to go to, WetsandRun, whether to run there, and WetsandBrain,
+-- a position to go to, WetsandRun, whether to run there, and NSBrain,
 -- the orders it asks and tells (whether to attack, which enemy, what it saw
 -- and suffered). With a target, the soldier walks it whatever else it does,
 -- fighting on the way; without one it is left to DrGBase.
@@ -63,7 +63,7 @@ function WETSAND.DrgSoldier(ENT, baseName)
 	local Engine -- foundation.npc, required on first use
 
 	local function Brain(self)
-		local brain = self.WetsandBrain
+		local brain = self.NSBrain
 		if not brain then return nil end
 		Engine = Engine or WETSAND.require("foundation.npc")
 		return brain
