@@ -114,4 +114,38 @@ T.test("GMod's language codes pick TF2's file, English for those TF2 lacks", fun
 	T.eq(L.FileFor("en"), L.ENGLISH_FILE, "English")
 end)
 
+-- A reader that counts the files it was asked for, each with its own tokens.
+local function CountingReader()
+	local reads = {}
+	local function Read(path)
+		reads[path] = (reads[path] or 0) + 1
+		return { path = path }, { path = path }
+	end
+	return Read, reads
+end
+
+T.test("a language's tables are its own file's tokens over English's", function()
+	local Read = CountingReader()
+	local french = L.Tables("fr", Read)
+	T.eq(french.code, "fr", "the language")
+	T.eq(french.own.path, "resource/tf_french.txt", "its own tokens")
+	T.eq(french.ownNames.path, "resource/tf_french.txt", "its own names")
+	T.eq(french.english.path, L.ENGLISH_FILE, "English behind")
+	T.eq(french.englishNames.path, L.ENGLISH_FILE, "English names behind")
+	local english = L.Tables("en", Read)
+	T.eq(english.own, english.english, "English is its own")
+end)
+
+T.test("English is read once, however often the player changes language", function()
+	local Read, reads = CountingReader()
+	local tables = L.Tables("fr", Read)
+	tables = L.Tables("de", Read, tables)
+	tables = L.Tables("en", Read, tables)
+	tables = L.Tables("fr", Read, tables)
+	T.eq(reads[L.ENGLISH_FILE], 1, "English")
+	T.eq(reads["resource/tf_german.txt"], 1, "German")
+	T.eq(reads["resource/tf_french.txt"], 2, "French, each time it's chosen")
+	T.eq(tables.own.path, "resource/tf_french.txt", "the language now")
+end)
+
 T.finish()

@@ -3,7 +3,7 @@
 -- English behind it for tokens that language lacks. The text comes from the
 -- mounted TF2's own language files (resource/tf_<language>.txt, under the
 -- "tf" path), read by foundation.localization the first time a token is
--- needed, and again when the player changes language. Every token is also
+-- needed; a change of language reads only the new language's file. Every token is also
 -- handed to GMod's language.Add, so language.GetPhrase and VGUI labels that
 -- say "#Badwater_cap_1" show it too. The server never localizes: it sends
 -- tokens, and each client words them.
@@ -12,7 +12,7 @@ local L = WETSAND.require("foundation.localization")
 local MOUNT = "tf" -- the mounted TF2's path id
 local LANGUAGE_CONVAR = "gmod_language"
 
-local loaded -- { code, own, english } for the language last read
+local loaded -- L.Tables for the language last read
 
 -- A file's tokens, or empty ones when the mounted TF2 has no such file.
 local function Read(path)
@@ -29,16 +29,9 @@ end
 local function Load()
 	local code = GetConVar(LANGUAGE_CONVAR):GetString()
 	if loaded and loaded.code == code then return loaded end
-	local english, englishNames = Read(L.ENGLISH_FILE)
-	local own, ownNames = english, englishNames
-	if L.FileFor(code) ~= L.ENGLISH_FILE then own, ownNames = Read(L.FileFor(code)) end
-	Register(english, englishNames)
-	if own ~= english then Register(own, ownNames) end
-	loaded = {
-		code = code,
-		own = own,
-		english = english,
-	}
+	loaded = L.Tables(code, Read, loaded)
+	Register(loaded.english, loaded.englishNames)
+	if loaded.own ~= loaded.english then Register(loaded.own, loaded.ownNames) end
 	return loaded
 end
 
