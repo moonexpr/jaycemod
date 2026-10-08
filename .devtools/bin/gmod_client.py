@@ -22,14 +22,25 @@ game, so this tool's safeguards are its tested behaviour
   dedicated server writes console.log in the shared install) and +connect
   to the dedicated server srcds.py runs in the bottle "Steam". The bottle is
   a constant; there is no option for another.
-- The client is the one new process running gmod_win64.exe; its pid and
-  start time go to .devtools/artifacts/gmod_client.pid.
-- A detached watchdog checks every second and closes the client when the
-  operator's game starts or the time limit passes.
+- The client is the one new gmod_win64.exe without --type= whose command
+  line carries this tool's +con_logfile and +connect 127.0.0.1:<port>; its
+  pid and start time go to .devtools/artifacts/gmod_client.pid. GMod's CEF
+  browser helpers are gmod_win64.exe again, with --type=, and under Wine
+  they have parent 1: one started at or after the client is the client's
+  helper, never the operator's game, and never signalled.
+- The detached watchdog writes .devtools/artifacts/gmod_client.launch as
+  soon as it launches, and looks for the client until the run's time limit,
+  through process-table failures and while more than one candidate shows,
+  so a client that appears late is still recorded and watched. Until it is,
+  the state is "launched, not recorded": `start` says so, and `stop` asks
+  the watchdog to close the client as soon as it finds it.
+- The watchdog checks every second and closes the client when the
+  operator's game (or another GMod) starts or the time limit passes.
 - Closing signals only the recorded pid, and only while it still runs
   gmod_win64.exe with the recorded start time: SIGTERM, then SIGKILL 15 s
   later. Never the wine launcher, a wineserver, wine's services, Steam or
-  its web helper, and never anything found by name or pattern.
+  its web helper, the client's browser helpers, and never anything found by
+  name or pattern. A helper still running afterwards is logged.
 
 Everything found and done is appended to
 .devtools/artifacts/gev2-research/client/gmod_client.log; closing copies the
@@ -39,6 +50,7 @@ any garrysmod/cfg/*.cfg that changed during the run.
 from __future__ import annotations
 
 import argparse
+import calendar
 import hashlib
 import json
 import os
@@ -62,6 +74,7 @@ __all__ = [
     "BOTTLE",
     "CLIENT_EXE",
     "GmodClient",
+    "Launched",
     "Layout",
     "NoClient",
     "OsSystem",
@@ -72,6 +85,7 @@ __all__ = [
     "Recorded",
     "Refused",
     "System",
+    "PROCESS_TABLE_ERRORS",
     "build_parser",
     "command_line",
     "new_clients",
@@ -79,6 +93,7 @@ __all__ = [
     "parse_lsof",
     "players",
     "preflight",
+    "unrecorded",
 ]
 
 BOTTLE = "Team Fortress 2"  # the operator's bottle; the client's only one, and no option changes it
@@ -97,8 +112,9 @@ REFUSED_NAMES = OPERATOR_GAMES + GMOD_CLIENTS
 CLIENT_LOG = "data/wetsand_tests/client/console.log"  # +con_logfile, relative to garrysmod/
 LOCALHOST = "127.0.0.1"
 
-FIND_INTERVAL = 0.5  # s between looks for the new client after the launch
-FIND_TIMEOUT = 180  # s; wine makes the Windows process within seconds
+FIND_INTERVAL = 0.5  # s between looks for the new client after the launch, until the run's time limit
+RECORD_WAIT = 180  # s start waits for the record; wine makes the Windows process within seconds
+HELPER_WAIT = 5  # s for the client's browser helpers to follow it out
 WATCH_INTERVAL = 1  # s; so the operator's game closes the client within 2 s
 TERM_GRACE = 15  # s from SIGTERM to SIGKILL
 KILL_WAIT = 5  # s to see SIGKILL take
@@ -112,7 +128,9 @@ WATCH_MARK = "_watch"
 # `ps -axo pid=,ppid=,lstart=,command=` under LC_ALL=C: lstart is
 # "%a %b %e %H:%M:%S %Y", kept verbatim as the process's start time.
 PS_LINE = re.compile(r"^\s*(\d+)\s+(\d+)\s+(\w{3} \w{3} [ \d]\d \d\d:\d\d:\d\d \d{4})\s+(.*?)\s*$")
+LSTART = "%a %b %d %H:%M:%S %Y"
 WINDOWS_PROGRAM = re.compile(r"^[A-Za-z]:[\\/].*?\.exe(?=\s|$)", re.IGNORECASE)
+BROWSER_HELPER = re.compile(r"(?:^|\s)--type=(\S*)")  # CEF's subprocess switch
 STATUS_PLAYER = re.compile(r'^#\s*\d+\s+"(?P<name>.*)"\s+(?P<id>\S+)(?P<rest>.*)$')
 
 
@@ -125,10 +143,21 @@ class Refused(Exception):
 
 
 class NoClient(Exception):
-    """The launch made no single new client to record."""
+    """The launch made no single new client to record before the run's time
+    limit: launched, not recorded."""
+
+
+# What System.processes raises when ps cannot be read: a failed ps (check=True)
+# or one that could not start. The search for the client outlasts both.
+PROCESS_TABLE_ERRORS = (subprocess.CalledProcessError, OSError)
 
 
 # Values ----------------------------------------------------------------------------------
+
+
+def _lstart_seconds(lstart: str) -> int:
+    """ps's lstart in seconds (it is local time, read as UTC: only order matters)."""
+    return calendar.timegm(time.strptime(lstart, LSTART))
 
 
 @dataclass(frozen=True)
@@ -145,6 +174,24 @@ class Process:
         m = WINDOWS_PROGRAM.match(self.command)
         path = m.group(0) if m else (self.command.split(None, 1) or [""])[0]
         return re.split(r"[\\/]", path)[-1].lower()
+
+    @property
+    def started_at(self) -> int:
+        return _lstart_seconds(self.started)
+
+    @property
+    def browser_helper(self) -> Optional[str]:
+        """Its CEF --type= (renderer, gpu-process...), or None for a main process."""
+        m = BROWSER_HELPER.search(self.command)
+        return m.group(1) if m else None
+
+    def is_client_for(self, port: int) -> bool:
+        """Whether it is a client this tool launched for port: gmod_win64.exe,
+        not a browser helper, carrying our +con_logfile and our +connect."""
+        words = self.command.split()
+        pairs = set(zip(words, words[1:]))
+        return (self.program == CLIENT_EXE and self.browser_helper is None
+                and ("+con_logfile", CLIENT_LOG) in pairs and ("+connect", f"{LOCALHOST}:{port}") in pairs)
 
     def named(self, exes: Iterable[str]) -> Optional[str]:
         """The first of exes its command line names anywhere, as a path's last
@@ -190,7 +237,15 @@ class ProcessTable:
         """Whether the recorded pid still runs the client it launched: the
         same program, started at the same time, so a reused pid is not it."""
         p = self.get(recorded.pid)
-        return p is not None and p.started == recorded.started and p.program == CLIENT_EXE
+        return (p is not None and p.started == recorded.started and p.program == CLIENT_EXE
+                and p.browser_helper is None)
+
+    def helpers_of(self, recorded: "Recorded") -> List[Process]:
+        """The client's browser helpers: gmod_win64.exe with --type=, started
+        at or after the client (Wine gives them parent 1, so no tree shows it)."""
+        since = _lstart_seconds(recorded.started)
+        return [p for p in self.processes
+                if p.program == CLIENT_EXE and p.browser_helper is not None and p.started_at >= since]
 
 
 @dataclass(frozen=True)
@@ -252,6 +307,25 @@ class Recorded:
 
 
 @dataclass(frozen=True)
+class Launched:
+    """A launch whose client is not recorded yet, as gmod_client.launch keeps
+    it: written as soon as wine starts, removed once the client is recorded."""
+    launcher: int
+    launched_at: float  # epoch seconds
+    port: int
+    deadline: float  # epoch seconds; the watchdog looks for the client until then
+
+    def text(self) -> str:
+        return json.dumps({"launcher": self.launcher, "launched_at": self.launched_at, "port": self.port,
+                           "deadline": self.deadline})
+
+    @classmethod
+    def parse(cls, text: str) -> "Launched":
+        data = json.loads(text)
+        return cls(int(data["launcher"]), float(data["launched_at"]), int(data["port"]), float(data["deadline"]))
+
+
+@dataclass(frozen=True)
 class Preflight:
     findings: Tuple[str, ...]
     refusals: Tuple[str, ...]
@@ -281,6 +355,15 @@ class Layout:
     @property
     def bottle_dir(self) -> Path:
         return self.bottles / BOTTLE
+
+    @property
+    def launch_file(self) -> Path:
+        return self.pid_file.with_suffix(".launch")
+
+    @property
+    def stop_file(self) -> Path:
+        """stop's request to a watchdog still looking: close the client once found."""
+        return self.pid_file.with_suffix(".stop")
 
     @property
     def log_file(self) -> Path:
@@ -356,18 +439,19 @@ def command_line(wine: str, port: int) -> List[str]:
     ]
 
 
-def new_clients(table: ProcessTable, before: FrozenSet[int], launcher: int) -> List[Process]:
-    """The processes running gmod_win64.exe that did not run before the launch,
-    outside the launcher's own tree (wine gives the client parent 1)."""
+def new_clients(table: ProcessTable, before: FrozenSet[int], launcher: int, port: int) -> List[Process]:
+    """The clients this launch may have made: new since the launch, outside
+    the launcher's own tree (wine gives the client parent 1), and each
+    gmod_win64.exe without --type= carrying our log and our server."""
     ours = table.descendants(launcher)
-    return [p for p in table.processes if p.program == CLIENT_EXE and p.pid not in before and p.pid not in ours]
+    return [p for p in table.processes if p.is_client_for(port) and p.pid not in before and p.pid not in ours]
 
 
 def operator_game(table: ProcessTable, recorded: Recorded) -> Optional[Process]:
     """A process that means the operator's game (or another GMod) started:
     one running any refused name, or a new one naming it, other than our
-    client and its launcher's tree."""
-    ours = table.descendants(recorded.launcher) | {recorded.pid}
+    client, its browser helpers and its launcher's tree."""
+    ours = table.descendants(recorded.launcher) | {recorded.pid} | {p.pid for p in table.helpers_of(recorded)}
     for p in table.processes:
         if p.pid in ours:
             continue
@@ -394,7 +478,8 @@ class System(ABC):
 
     @abstractmethod
     def processes(self) -> str:
-        """`ps -axo pid=,ppid=,lstart=,command=`."""
+        """`ps -axo pid=,ppid=,lstart=,command=`; raises one of
+        PROCESS_TABLE_ERRORS when ps cannot be read."""
 
     @abstractmethod
     def lsof(self, pids: Sequence[int]) -> str:
@@ -468,6 +553,11 @@ class GmodClient:
         pid_file = self.layout.pid_file
         return Recorded.parse(pid_file.read_text()) if pid_file.exists() else None
 
+    def launched(self) -> Optional[Launched]:
+        """The launch whose client is not recorded yet, if any."""
+        launch_file = self.layout.launch_file
+        return Launched.parse(launch_file.read_text()) if launch_file.exists() else None
+
     def check(self) -> Preflight:
         table = self.table()
         steam = [p.pid for p in table.processes if p.program == STEAM_EXE]
@@ -475,8 +565,9 @@ class GmodClient:
         return preflight(table, opened, self.recorded(), self.layout.bottle_dir)
 
     def launch(self, port: int, minutes: float) -> Recorded:
-        """Preflight, launch, and record the one new client; raises Refused
-        (nothing launched) or NoClient (nothing recorded, nothing signalled)."""
+        """Preflight, launch, and record the one client; raises Refused
+        (nothing launched) or NoClient (launched, not recorded, nothing
+        signalled) once the run's time limit passes without one."""
         found = self.check()
         self.log("preflight: " + "; ".join(found.findings + found.refusals))
         if not found.allowed:
@@ -485,33 +576,49 @@ class GmodClient:
         cfg = self._cfg()
         self.layout.console_log.parent.mkdir(parents=True, exist_ok=True)
         self.layout.console_log.unlink(missing_ok=True)  # each run's log is its own
+        self.layout.stop_file.unlink(missing_ok=True)  # a stop request belongs to the launch after it
         before = self.table().pids()
         argv = command_line(found.wine, port)
         launched_at = self.system.now()
         launcher = self.system.launch(argv)
-        self.log(f"launched {shlex.join(argv)} (wine launcher pid {launcher})")
-        give_up = launched_at + FIND_TIMEOUT
-        while True:
-            table = self.table()
-            new = new_clients(table, before, launcher)
-            if len(new) == 1:
-                break
-            if len(new) > 1:
-                self.log(f"{len(new)} new {CLIENT_EXE} processes ({', '.join(str(p.pid) for p in new)}): "
-                         "cannot tell ours; recorded none, signalled none")
-                raise NoClient("more than one new client appeared")
-            if self.system.now() >= give_up:
-                self.log(f"no new {CLIENT_EXE} within {FIND_TIMEOUT} s; recorded none")
-                raise NoClient(f"no client appeared within {FIND_TIMEOUT} s")
-            self.system.sleep(FIND_INTERVAL)
-        client = new[0]
-        recorded = Recorded(client.pid, client.started, launcher, port, launched_at + minutes * 60,
-                            tuple(sorted(table.pids())), cfg)
+        launched = Launched(launcher, launched_at, port, launched_at + minutes * 60)
         self.layout.pid_file.parent.mkdir(parents=True, exist_ok=True)
+        self.layout.launch_file.write_text(launched.text())
+        self.log(f"launched {shlex.join(argv)} (wine launcher pid {launcher}); "
+                 f"looking for the client until {_utc(launched.deadline)}")
+        client, table = self._find(launched, before)
+        recorded = Recorded(client.pid, client.started, launcher, port, launched.deadline,
+                            tuple(sorted(table.pids())), cfg)
         self.layout.pid_file.write_text(recorded.text())
+        self.layout.launch_file.unlink(missing_ok=True)
         self.log(f"launched client pid {client.pid} (started {client.started}); "
                  f"the watchdog closes it by {_utc(recorded.deadline)}")
         return recorded
+
+    def _find(self, launched: Launched, before: FrozenSet[int]) -> Tuple[Process, ProcessTable]:
+        """The one client, looked for until launched.deadline: through
+        process-table failures, and while more than one candidate shows.
+        What it sees is logged when it changes."""
+        seen = ""
+        while True:
+            try:
+                table = self.table()
+            except PROCESS_TABLE_ERRORS as e:
+                table, now_seen = None, f"cannot read the process table ({e}); still looking"
+            else:
+                new = new_clients(table, before, launched.launcher, launched.port)
+                if len(new) == 1:
+                    return new[0], table
+                now_seen = (f"{len(new)} candidate clients ({', '.join(str(p.pid) for p in new)}): cannot tell "
+                            "ours; recorded none, signalled none; still looking" if new else "")
+            if now_seen != seen and now_seen:
+                self.log(now_seen)
+            seen = now_seen
+            if self.system.now() >= launched.deadline:
+                self.log(f"launched, not recorded: no single client by {_utc(launched.deadline)}; "
+                         f"signalled nothing; {self.layout.launch_file.name} keeps the launch")
+                raise NoClient(f"no single client by {_utc(launched.deadline)}")
+            self.system.sleep(FIND_INTERVAL)
 
     def watch(self, recorded: Recorded) -> None:
         """Until the client is gone: close it when the operator's game starts
@@ -519,6 +626,9 @@ class GmodClient:
         while True:
             if self.recorded() != recorded:
                 self.log(f"watchdog: client pid {recorded.pid} is no longer recorded; the watchdog ends")
+                return
+            if self.layout.stop_file.exists():
+                self.close("stop was asked before the client was recorded")
                 return
             table = self.table()
             if not table.runs(recorded):
@@ -537,7 +647,17 @@ class GmodClient:
         """Signal only the recorded client, then keep its log and report cfg changes."""
         recorded = self.recorded()
         if recorded is None:
-            self.log(f"close ({reason}): no client recorded; nothing to do")
+            self.layout.pid_file.parent.mkdir(parents=True, exist_ok=True)
+            self.layout.stop_file.touch()  # a watchdog still looking closes what it finds
+            recorded = self.recorded()  # it may have recorded the client meanwhile
+        if recorded is None:
+            launched = self.launched()
+            if launched is None:
+                self.log(f"close ({reason}): no client recorded; nothing to do")
+            else:
+                self.log(f"close ({reason}): launched, not recorded (wine launcher pid {launched.launcher} at "
+                         f"{_utc(launched.launched_at)}); signalled nothing; a watchdog still looking closes the "
+                         f"client as soon as it finds it, until {_utc(launched.deadline)}")
             return
         self.log(f"closing client pid {recorded.pid}: {reason}")
         if self._signal_if_ours(recorded, signal.SIGTERM):
@@ -546,10 +666,24 @@ class GmodClient:
                     self.log(f"pid {recorded.pid} still runs after SIGKILL")
             if not self.table().runs(recorded):
                 self.log(f"client pid {recorded.pid} has exited")
+        self._report_helpers(recorded)
         self._keep_console_log()
         self._report_cfg(recorded)
         self.layout.pid_file.unlink(missing_ok=True)
+        self.layout.stop_file.unlink(missing_ok=True)
         self.log("closed")
+
+    def _report_helpers(self, recorded: Recorded) -> None:
+        """Give the client's browser helpers HELPER_WAIT s to follow it out,
+        then name any still running; they are never signalled."""
+        give_up = self.system.now() + HELPER_WAIT
+        while True:
+            helpers = self.table().helpers_of(recorded)
+            if not helpers or self.system.now() >= give_up:
+                break
+            self.system.sleep(1)
+        for p in helpers:
+            self.log(f"browser helper pid {p.pid} (--type={p.browser_helper}) still runs after close; not signalled")
 
     def _signal_if_ours(self, recorded: Recorded, sig: int) -> bool:
         """Signal the recorded pid only while it still runs the client this
@@ -621,6 +755,27 @@ def _print_preflight(found: Preflight) -> None:
         print(f"refused: {line}")
 
 
+def unrecorded(client: GmodClient, watchdog_exit: Optional[int], since: float = 0.0) -> Tuple[int, str]:
+    """start's exit code and plain words when no client is recorded:
+    watchdog_exit is None while the watchdog still runs; a launch before
+    since belongs to an earlier start."""
+    log = client.layout.log_file
+    if watchdog_exit == EXIT_REFUSED:
+        return EXIT_REFUSED, f"refused at the launch's own preflight; launched nothing; see {log}"
+    launched = client.launched()
+    if launched is None or launched.launched_at < since:
+        return 1, f"launched nothing; see {log}"
+    if watchdog_exit is not None:
+        still = f"the watchdog ended (exit {watchdog_exit})"
+    elif client.system.now() < launched.deadline:
+        still = (f"the watchdog still looks for it until {_utc(launched.deadline)}, and `stop` has it closed "
+                 "once found")
+    else:
+        still = f"the watchdog stopped looking at {_utc(launched.deadline)}"
+    return 1, (f"launched, not recorded: wine launcher pid {launched.launcher} at {_utc(launched.launched_at)}; "
+               f"{still}; any {CLIENT_EXE} running now may be it, and nothing has signalled it; see {log}")
+
+
 def run_watchdog(client: GmodClient, port: int, minutes: float) -> int:
     try:
         recorded = client.launch(port, minutes)
@@ -631,6 +786,9 @@ def run_watchdog(client: GmodClient, port: int, minutes: float) -> int:
     except OSError as e:
         client.log(f"the launch failed: {e}")
         return 1
+    except Exception:
+        client.log("the launch failed:\n" + traceback.format_exc())
+        raise
     try:
         client.watch(recorded)
     except Exception:
@@ -656,11 +814,15 @@ def run_start(client: GmodClient, port: int, minutes: float) -> int:
     watchdog = subprocess.Popen([sys.executable, str(Path(__file__).resolve()), WATCH_MARK, str(port), str(minutes)],
                                 stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                                 start_new_session=True)
-    give_up = time.monotonic() + FIND_TIMEOUT + 30
+    since = time.time()
+    give_up = time.monotonic() + RECORD_WAIT
     while client.recorded() is None:
-        if watchdog.poll() is not None or time.monotonic() > give_up:
-            print(f"gmod_client: no client was launched; see {client.layout.log_file}", file=sys.stderr)
-            return 1
+        exited = watchdog.poll()
+        if exited is not None or time.monotonic() > give_up:
+            code, message = unrecorded(client, exited, since)
+            client.log(f"start: {message}")
+            print(f"gmod_client: {message}", file=sys.stderr)
+            return code
         time.sleep(1)
     print(f"client pid {client.recorded().pid} launched; waiting for it to join (up to {JOIN_TIMEOUT} s)")
     give_up = time.monotonic() + JOIN_TIMEOUT
@@ -693,6 +855,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return 0 if found.allowed else EXIT_REFUSED
     if args.action == "stop":
         client.close("stop")
+        if client.recorded() is None and client.launched() is not None:
+            _, message = unrecorded(client, None)
+            print(f"gmod_client: {message}", file=sys.stderr)
+            return 1
         return 0
     if args.action == WATCH_MARK:
         return run_watchdog(client, args.port, args.minutes)

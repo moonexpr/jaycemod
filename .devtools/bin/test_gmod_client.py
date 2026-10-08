@@ -3,11 +3,13 @@ lsof output, the launcher, the clock and the signal call are all injected,
 so no test starts or signals a real process."""
 import inspect
 import signal
+import subprocess
 from dataclasses import fields
 from pathlib import Path
 
 import pytest
 
+import gmod_client
 from gmod_client import (
     BOTTLE,
     CLIENT_EXE,
@@ -15,12 +17,15 @@ from gmod_client import (
     Layout,
     NoClient,
     Process,
+    ProcessTable,
     Recorded,
     Refused,
     System,
     build_parser,
     command_line,
+    new_clients,
     players,
+    run_watchdog,
 )
 
 BOTTLES = Path("/Users/op/Library/Application Support/CrossOver/Bottles")
@@ -32,7 +37,9 @@ WRAPPER = APP + "/Contents/SharedSupport/CrossOver/lib/wine/x86_64-windows/winew
 GMOD = "C:\\Steam\\steamapps\\common\\GarrysMod"
 T0 = "Thu Oct  8 09:00:00 2026"
 T1 = "Thu Oct  8 10:00:03 2026"
+T1_LATER = "Thu Oct  8 10:00:09 2026"
 T2 = "Thu Oct  8 11:30:00 2026"
+HELPER = GMOD + "\\gmod_win64.exe --type={kind} --no-sandbox --lang=en-US --log-file=" + GMOD + "\\debug.log"
 LAUNCHER, CLIENT, WATCHDOG = 950, 951, 940
 STEAM, WEBHELPER = 810, 811
 
@@ -54,8 +61,10 @@ def lsof_section(pid, cwd):
 
 class FakeSystem(System):
     """A process table that changes on a fake clock. launch() adds the wine
-    launcher at once and the Windows client a few seconds later; a signal is
-    recorded and, if the process obeys it, ends it."""
+    launcher at once and the Windows client a few seconds later, its command
+    line the Windows program and arguments the launch gave; a signal is
+    recorded and, if the process obeys it, ends it. ps can be made to fail
+    for the next few looks."""
 
     def __init__(self, processes=OPERATOR, cwd=None):
         self.t = 10_000.0
@@ -68,6 +77,8 @@ class FakeSystem(System):
         self.signal_times = []
         self.obeys = {signal.SIGTERM, signal.SIGKILL}
         self.clients_per_launch = 1
+        self.client_delay = 3
+        self.ps_failures = 0
 
     def at(self, delay, action):
         self.events.append((self.t + delay, action))
@@ -79,6 +90,9 @@ class FakeSystem(System):
         self.table.pop(pid, None)
 
     def processes(self):
+        if self.ps_failures:
+            self.ps_failures -= 1
+            raise subprocess.CalledProcessError(1, ["ps", "-axo", "pid=,ppid=,lstart=,command="])
         due = [e for e in self.events if e[0] <= self.t]
         self.events = [e for e in self.events if e[0] > self.t]
         for _, action in sorted(due, key=lambda e: e[0]):
@@ -90,10 +104,11 @@ class FakeSystem(System):
 
     def launch(self, argv):
         self.launches.append(list(argv))
-        self.add(Process(LAUNCHER, WATCHDOG, T1, WRAPPER + " --run -- " + GMOD + "\\gmod_win64.exe -novid"))
+        windows = " ".join(argv[argv.index("--cx-app") + 1:])
+        self.add(Process(LAUNCHER, WATCHDOG, T1, WRAPPER + " --run -- " + windows))
         for i in range(self.clients_per_launch):
-            client = Process(CLIENT + i, 1, T1, GMOD + "\\gmod_win64.exe -novid -nojoy +connect 127.0.0.1:27025")
-            self.at(3, lambda c=client: self.add(c))
+            client = Process(CLIENT + i, 1, T1, windows)
+            self.at(self.client_delay, lambda c=client: self.add(c))
         return LAUNCHER
 
     def signal(self, pid, sig):
@@ -239,6 +254,34 @@ def test_two_new_clients_record_none_and_signal_nothing(tmp_path):
     assert system.signals == []
 
 
+def helper(pid, kind="renderer", started=T1):
+    """One of the client's CEF browser helpers: gmod_win64.exe again, with
+    --type=, and under Wine parent 1, outside the launcher's tree."""
+    return Process(pid, 1, started, HELPER.format(kind=kind))
+
+
+def test_finds_the_client_among_its_browser_helpers(tmp_path):
+    system = FakeSystem()
+    for i, kind in enumerate(("gpu-process", "renderer", "utility")):
+        system.at(system.client_delay, lambda p=helper(960 + i, kind): system.add(p))
+    client = client_with(tmp_path, system)
+    recorded = client.launch(27025, 20)
+    assert (recorded.pid, recorded.started) == (CLIENT, T1)
+    assert system.signals == []
+    # The client is the one without --type= that carries our log and our
+    # server; a gmod_win64.exe joining another server, or logging elsewhere,
+    # is not ours.
+    argv = command_line(WINE, 27025)
+    ours = Process(CLIENT, 1, T1, " ".join(argv[argv.index("--cx-app") + 1:]))
+    others = [
+        helper(960),
+        Process(970, 1, T1, ours.command.replace("27025", "27015")),
+        Process(971, 1, T1, ours.command.replace("+con_logfile data/wetsand_tests/client/console.log", "")),
+    ]
+    table = ProcessTable((ours, *others))
+    assert [p.pid for p in new_clients(table, frozenset(), LAUNCHER, 27025)] == [CLIENT]
+
+
 def test_the_launch_logs_the_preflights_findings(tmp_path):
     client = client_with(tmp_path, FakeSystem())
     client.launch(27025, 20)
@@ -338,6 +381,108 @@ def test_the_watchdog_closes_the_client_at_its_time_limit(tmp_path):
     client.watch(recorded)
     assert system.signals == [(CLIENT, signal.SIGTERM)]
     assert recorded.deadline <= system.signal_times[0] <= recorded.deadline + 2
+
+
+def test_the_watchdog_keeps_the_client_while_its_browser_helpers_run(tmp_path):
+    system = FakeSystem()
+    client = client_with(tmp_path, system)
+    recorded = client.launch(27025, 1)
+    # The menu's browser starts a second or more after the client.
+    system.at(1, lambda: system.add(helper(960, "gpu-process")))
+    system.at(1, lambda: system.add(helper(961, "renderer", T1_LATER)))
+    client.watch(recorded)
+    assert system.signals == [(CLIENT, signal.SIGTERM)]  # never a helper
+    assert recorded.deadline <= system.signal_times[0] <= recorded.deadline + 2
+    log = log_of(client)
+    assert "its time limit passed" in log and "operator's game" not in log
+    # A helper still running once the client is closed is named, not signalled.
+    assert "browser helper pid 960" in log and "browser helper pid 961" in log
+
+
+def test_the_watchdog_still_closes_for_another_gmod_client(tmp_path):
+    for i, other in enumerate((
+        Process(980, 1, T2, GMOD + "\\gmod_win64.exe -steam"),  # the operator's own GMod
+        Process(980, 1, T2, GMOD + "\\gmod.exe -steam"),
+        Process(980, 1, T2, GMOD + "\\gmod_win64.exe -novid -nojoy +con_logfile "
+                            "data/wetsand_tests/client/console.log +connect 127.0.0.1:27025"),  # a second of ours
+        helper(980, "renderer", T0),  # a helper older than our client: another GMod's
+    )):
+        system = FakeSystem()
+        client = client_with(tmp_path / f"case{i}", system)
+        recorded = client.launch(27025, 20)
+        system.at(1, lambda: system.add(helper(960)))
+        appears = system.t + 10
+        system.at(10, lambda p=other: system.add(p))
+        client.watch(recorded)
+        assert system.signals == [(CLIENT, signal.SIGTERM)], other
+        assert appears <= system.signal_times[0] <= appears + 2, other
+        assert "the operator's game started: pid 980" in log_of(client)
+
+
+def test_a_client_that_appears_late_is_still_recorded_and_watched(tmp_path):
+    system = FakeSystem()
+    system.client_delay = 400  # past the 180 s the first search allowed
+    client = client_with(tmp_path, system)
+    assert run_watchdog(client, 27025, 20) == 0
+    log = log_of(client)
+    assert f"launched client pid {CLIENT}" in log
+    assert system.signals == [(CLIENT, signal.SIGTERM)]
+    assert "its time limit passed" in log
+
+
+def test_a_process_table_failure_after_the_launch_keeps_looking(tmp_path):
+    system = FakeSystem()
+    client = client_with(tmp_path, system)
+    real_launch = system.launch
+
+    def launch_then_fail(argv):
+        system.ps_failures = 5  # ps fails for the next five looks
+        return real_launch(argv)
+
+    system.launch = launch_then_fail
+    assert run_watchdog(client, 27025, 1) == 0
+    log = log_of(client)
+    assert "cannot read the process table" in log
+    assert f"launched client pid {CLIENT}" in log
+    assert system.signals == [(CLIENT, signal.SIGTERM)]
+
+
+def test_a_client_never_found_is_left_launched_not_recorded(tmp_path):
+    system = FakeSystem()
+    system.clients_per_launch = 0
+    client = client_with(tmp_path, system)
+    with pytest.raises(NoClient):
+        client.launch(27025, 1)
+    assert system.now() >= 10_000.0 + 60  # it looked until the run's deadline
+    assert not client.layout.pid_file.exists()
+    assert client.launched() is not None  # the state start and stop report
+    assert "launched, not recorded" in log_of(client)
+    assert system.signals == []
+
+
+def test_stop_before_the_client_is_recorded_closes_it_once_found(tmp_path):
+    system = FakeSystem()
+    system.client_delay = 30
+    client = client_with(tmp_path, system)
+    system.at(10, lambda: client.close("stop"))  # stop while the watchdog still looks
+    assert run_watchdog(client, 27025, 20) == 0
+    assert system.signals == [(CLIENT, signal.SIGTERM)]
+    assert system.signal_times[0] < 10_000.0 + 60
+    assert "launched, not recorded" in log_of(client)
+    assert not client.layout.pid_file.exists() and client.launched() is None
+
+
+def test_start_says_launched_not_recorded(tmp_path):
+    system = FakeSystem()
+    system.clients_per_launch = 0
+    client = client_with(tmp_path, system)
+    with pytest.raises(NoClient):
+        client.launch(27025, 1)
+    code, message = gmod_client.unrecorded(client, watchdog_exit=1)
+    assert code != 0 and message.startswith("launched, not recorded")
+    assert str(LAUNCHER) in message
+    code, message = gmod_client.unrecorded(client_with(tmp_path / "none", FakeSystem()), watchdog_exit=3)
+    assert code == 3 and "launched nothing" in message
 
 
 def test_the_watchdog_ends_quietly_once_stop_has_closed_the_client(tmp_path):
