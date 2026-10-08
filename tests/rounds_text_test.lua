@@ -56,36 +56,6 @@ T.test("sudden death explains why it started", function()
 	T.eq(Text.StalematePanel(R.STALEMATE.SERVER_TIMELIMIT).reason, "Map time limit reached. No more spawning, so make this count.")
 end)
 
-local function Utf16(s)
-	return (string.gsub(s, ".", function(c) return c .. "\0" end))
-end
-
-local FILE = "\255\254" .. Utf16('"lang"\r\n{\r\n"Tokens"\r\n{\r\n'
-	.. '"[english]Goldrush_blue_setup_goal"\t"old"\r\n'
-	.. '"Goldrush_blue_setup_goal"\t\t"Move the cart!"\r\n'
-	.. '"Other"\t"x"\r\n}\r\n}\r\n')
-
-T.test("a token's text is read from the UTF-16 file", function()
-	T.eq(Text.Localize(FILE, "#Goldrush_blue_setup_goal"), "Move the cart!")
-end)
-
-T.test("token lookup ignores case, as VGUI's does", function()
-	T.eq(Text.Localize(FILE, "#goldrush_BLUE_setup_goal"), "Move the cart!")
-end)
-
-T.test("an unknown token is not found", function()
-	T.eq(Text.Localize(FILE, "#Missing"), nil)
-end)
-
-T.test("plain text needs no lookup", function()
-	T.eq(Text.Localize(FILE, "Push the cart"), "Push the cart")
-end)
-
-T.test("non-ASCII characters decode to UTF-8", function()
-	local raw = "\255\254" .. Utf16('"K"\t"') .. "\233\0" .. Utf16('"\r\n')
-	T.eq(Text.Localize(raw, "#K"), "\195\169")
-end)
-
 T.test("time added reads as the flash beside the timer shows it", function()
 	T.eq(Text.TimeAdded(180), "+3:00", "three minutes")
 	T.eq(Text.TimeAdded(45), "+0:45", "seconds")

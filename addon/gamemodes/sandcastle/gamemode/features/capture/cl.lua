@@ -15,7 +15,6 @@ WETSAND.Feature("rounds")
 local Capture = WETSAND.require("foundation.capture")
 local Hud = WETSAND.require("foundation.capture.hud")
 local Rounds = WETSAND.require("foundation.rounds")
-local Text = WETSAND.require("foundation.rounds.text")
 
 local NOBODY, RED, BLUE = WETSAND.TEAM_UNASSIGNED, WETSAND.TEAM_RED, WETSAND.TEAM_BLUE
 local NO_POINT_STOOD_ON = 0
@@ -75,8 +74,6 @@ local UNLOCK_WARN_FROM = 5
 local CAP_ENABLED = "Announcer.AM_CapEnabledRandom"
 
 local View = {
-	localized = {},
-	english = nil,
 	unlockAt = 0,
 	unlockArmed = {},
 	zeroArmed = false,
@@ -108,12 +105,10 @@ local function Point(rank)
 	}
 end
 
+-- A TF2 token worded in the player's language (WETSAND.Localize), or the
+-- token itself when no language has it.
 function View:Localize(token)
-	if self.localized[token] == nil then
-		self.english = self.english or file.Read("resource/tf_english.txt", "tf") or ""
-		self.localized[token] = Text.Localize(self.english, token) or false
-	end
-	return self.localized[token] or token
+	return WETSAND.Localize(token) or token
 end
 
 local function TeamColor(team)
@@ -265,13 +260,15 @@ end)
 
 -- The capture's game events (sh.lua), worded for the rounds HUD: a capture
 -- is the announcement line, a defence a notice (for a point with a name).
+-- A point's name is the map's token ("#Badwater_cap_1"), worded here.
 WETSAND.Events.Listen("teamplay_point_captured", "wetsand_capture_view", function(fields)
-	WETSAND.Feature("rounds"):Announce(WETSAND.TeamName[fields.team] .. " captured point " .. fields.cp, fields.team)
+	local point = fields.cpname ~= "" and View:Localize(fields.cpname) or ("point " .. fields.cp)
+	WETSAND.Feature("rounds"):Announce(WETSAND.TeamName[fields.team] .. " captured " .. point, fields.team)
 end)
 
 WETSAND.Events.Listen("teamplay_capture_blocked", "wetsand_capture_view", function(fields)
 	if fields.cpname == "" then return end
-	WETSAND.Feature("rounds"):Notice(WETSAND.TeamName[fields.team] .. " defended " .. fields.cpname, fields.team)
+	WETSAND.Feature("rounds"):Notice(WETSAND.TeamName[fields.team] .. " defended " .. View:Localize(fields.cpname), fields.team)
 end)
 
 return View

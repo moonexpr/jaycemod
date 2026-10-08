@@ -73,8 +73,6 @@ local View = {
 	announcement = nil,
 	timeAdded = nil,
 	notices = {},
-	localized = {},
-	english = nil,
 	stalemateSince = 0,
 	lastState = nil,
 	serial = nil,
@@ -98,15 +96,11 @@ function View:TimerTop(h)
 	return math.floor(h * timerY:GetFloat())
 end
 
--- Goal strings arrive as TF2 tokens ("#Goldrush_blue_setup_goal"), whose text
--- is in the mounted TF2's resource/tf_english.txt. nil when unknown or empty.
+-- Goal strings arrive as TF2 tokens ("#Goldrush_blue_setup_goal"), worded in
+-- the player's language (WETSAND.Localize). nil when unknown or empty.
 function View:Localize(token)
 	if token == "" then return nil end
-	if self.localized[token] == nil then
-		self.english = self.english or file.Read("resource/tf_english.txt", "tf") or ""
-		self.localized[token] = Text.Localize(self.english, token) or false
-	end
-	return self.localized[token] or nil
+	return WETSAND.Localize(token)
 end
 
 -- The HUD timer's seconds left, paused or running.
