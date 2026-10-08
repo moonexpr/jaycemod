@@ -7,6 +7,7 @@
 --   BLAST_IMMUNE: no blast damage. SPEED_BOOST: +40% speed (max +105).
 --   HALLOWEEN_QUICK_HEAL: heals 30 health a second, up to max health.
 --   HALLOWEEN_THRILLER: the forced dance holds the player still (frozen).
+--   URINE (Jarate): mini-crits taken; drips and a yellow screen.
 -- Movement and stun state reach clients as NW2 vars for prediction:
 -- wetsand_speed_boosted, wetsand_stun_end_time, wetsand_stun_speed_reduction,
 -- wetsand_stun_flags.
@@ -22,22 +23,26 @@ local function Conds(ply)
 	return ply.wetsandConds
 end
 
-local function SyncMovement(ply)
-	ply:SetNW2Bool("wetsand_speed_boosted", P.InCond(Conds(ply), C.SPEED_BOOST, CurTime()))
+-- Jarate's end, 0 when dry: cl_conditions drips the player and yellows
+-- their own screen (CTFPlayerShared::OnAddUrine).
+local function SyncNetworked(ply)
+	local now = CurTime()
+	ply:SetNW2Bool("wetsand_speed_boosted", P.InCond(Conds(ply), C.SPEED_BOOST, now))
+	ply:SetNW2Float("wetsand_urine_end_time", P.InCond(Conds(ply), C.URINE, now) and Conds(ply)[C.URINE] or 0)
 end
 
 function WETSAND.AddCondition(ply, cond, duration)
 	P.AddCond(Conds(ply), cond, duration, CurTime())
 	if cond == C.BURNING then ply:Ignite(duration > 0 and duration or 10) end
 	if cond == C.HALLOWEEN_THRILLER then ply:Freeze(true) end
-	SyncMovement(ply)
+	SyncNetworked(ply)
 end
 
 function WETSAND.RemoveCondition(ply, cond)
 	P.RemoveCond(Conds(ply), cond)
 	if cond == C.BURNING then ply:Extinguish() end
 	if cond == C.HALLOWEEN_THRILLER then ply:Freeze(false) end
-	SyncMovement(ply)
+	SyncNetworked(ply)
 end
 
 function WETSAND.InCondition(ply, cond)
@@ -51,14 +56,14 @@ function WETSAND.RemoveAllConditions(ply)
 	ply.wetsandStun = nil
 	ply:SetNW2Float("wetsand_stun_end_time", 0)
 	ply:SetNW2Int("wetsand_stun_flags", 0)
-	SyncMovement(ply)
+	SyncNetworked(ply)
 end
 
 -- CTFPlayer::Regenerate's condition removals.
 function WETSAND.ClearConditionsOnRegenerate(ply)
 	P.ClearOnRegenerate(Conds(ply))
 	ply:Extinguish()
-	SyncMovement(ply)
+	SyncNetworked(ply)
 end
 
 function WETSAND.StunPlayer(ply, duration, reduction, flags)
@@ -85,7 +90,7 @@ hook.Add("EntityTakeDamage", "wetsand_conditions", function(target, dmg)
 	if not target:IsPlayer() then return end
 	local attacker = dmg:GetAttacker()
 	local attackerConds = IsValid(attacker) and attacker:IsPlayer() and Conds(attacker) or {}
-	local scale = P.DamageScale(Conds(target), attackerConds, dmg:IsDamageType(DMG_BLAST), CurTime())
+	local scale = P.DamageScale(Conds(target), attackerConds, dmg:IsDamageType(DMG_BLAST), CurTime(), attacker == target)
 	if scale ~= 1 then dmg:ScaleDamage(scale) end
 end)
 
@@ -94,7 +99,7 @@ timer.Create("wetsand_conditions", THINK_INTERVAL, 0, function()
 	for _, ply in ipairs(player.GetAll()) do
 		local conds = ply.wetsandConds
 		if conds and next(conds) then
-			if #P.ExpireConds(conds, now) > 0 then SyncMovement(ply) end
+			if #P.ExpireConds(conds, now) > 0 then SyncNetworked(ply) end
 			if P.InCond(conds, C.HALLOWEEN_QUICK_HEAL, now) and ply:Alive() and ply:Health() < ply:GetMaxHealth() then
 				ply:SetHealth(math.min(ply:GetMaxHealth(), ply:Health() + math.ceil(QUICK_HEAL_RATE * THINK_INTERVAL)))
 			end
