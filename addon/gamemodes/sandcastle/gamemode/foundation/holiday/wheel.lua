@@ -8,18 +8,15 @@
 -- A player who spawns meanwhile gets the effects that reapply.
 --
 -- The effects are Strategies, one per TF2 class, each with Init, Activate,
--- Update and Deactivate. Two whammies are left out: the Jarate rain (Pee:
--- tf_projectile_jar and Jarate's own effects, which Sandcastle lacks) and
--- the Ghosts (TF2's haunting ghosts, an NPC Sandcastle lacks). The chance
--- of a whammy is 1 in buffs + 1 whatever their number, so Burn now takes
--- every whammy roll. Nor does any player speak (the MP_CONCEPT_MAGIC_*
+-- Update and Deactivate: eight buffs and three whammies (the Jarate rain,
+-- the Burn and the Ghosts). No player speaks (the MP_CONCEPT_MAGIC_*
 -- responses: GMod players have no class voices).
 --
 -- New{ duration (effect_duration), hasSpiral (has_spiral) }; the wheel
 -- controller calls Spin(world), Think(world) every tick, PlayerSpawned(world,
 -- player), ClearAllEffects(world) and IsDoneBroadcastingEffectSound(now).
 -- Its world port:
---   Now(), RandomInt(lo, hi), Vector(x, y, z);
+--   Now(), RandomInt(lo, hi), RandomFloat(lo, hi), Vector(x, y, z);
 --   Players() (every player), LivingPlayers(), TeamOf(p), IsTargetValid(p);
 --   AddCond(p, cond, duration), RemoveCond(p, cond);
 --   SetAttribute(p, name, value), RemoveAttribute(p, name)
@@ -37,7 +34,11 @@
 --   DanceSpot(teamName, n) -> { pos, yaw } | nil (the dance_teleport_<team><n>
 --     entity), Teleport(p, pos, yaw), Taunt(p) (the dance);
 --   SpawnDancer(pos, yaw) -> dancer, DancerVanish(dancer),
---     DancerBlastOff(dancer) (merasmus_dancer).
+--     DancerBlastOff(dancer) (merasmus_dancer);
+--   CloudBoxes() -> { mins, maxs } of each spawn_cloud brush; DropJar(pos,
+--     spin) (a tf_projectile_jar with that angular impulse, nobody's);
+--   BeginHaunting(count, minDuration, maxDuration)
+--     (CTFGameRules::BeginHaunting: foundation.npc.ghost's Haunt).
 local require = require
 local Players = require("foundation.players")
 local Attributes = require("foundation.players.attributes")
@@ -50,6 +51,7 @@ module(...)
 METHODS = {
 	"Now",
 	"RandomInt",
+	"RandomFloat",
 	"Vector",
 	"Players",
 	"LivingPlayers",
@@ -77,6 +79,9 @@ METHODS = {
 	"SpawnDancer",
 	"DancerVanish",
 	"DancerBlastOff",
+	"CloudBoxes",
+	"DropJar",
+	"BeginHaunting",
 }
 
 MODEL = "models/props_lakeside_event/buff_plane.mdl"
@@ -122,6 +127,11 @@ DANCER_ENDS = 2 -- Merasmus dances at either end of the floor, by turns
 DANCER_YAW_LOW, DANCER_YAW_HIGH = 90, -90
 DANCE_TEAM_RED, DANCE_TEAM_BLUE = "red", "blue"
 DANCE_SPOT_FORMAT = "dance_teleport_%s%d"
+PEE_FIRST = 0.25
+PEE_INTERVAL_MIN, PEE_INTERVAL_MAX = 0.2, 0.5
+PEE_SPIN = 300 -- the jar's angular impulse, each axis
+CLOUD_NAME = "spawn_cloud" -- the brushes the Jarate rains from
+GHOST_COUNT = 4
 
 -- merasmus_dancer (CMerasmusDancer): Merasmus dancing taunt06, staff away,
 -- in a puff of smoke; he vanishes in another, or plays ACT_FLY and goes
@@ -383,6 +393,52 @@ function Dance:Deactivate(world, players)
 	self.dancer = nil
 end
 
+-- WOD_Pee: Jarate rains from the map's spawn_cloud brushes, a jar from a
+-- random spot in a random one a quarter second in and then every 0.2-0.5
+-- s, spinning.
+local Pee = Extend({
+	name = "Pee",
+	skin = EFFECT_WHAMMY,
+	sound = "Halloween.MerasmusWheelJarate",
+	whammy = true,
+	reapplies = false,
+})
+
+function Pee:Activate(world, wheel, players)
+	self.clouds = world:CloudBoxes()
+	self.nextPee = world:Now() + PEE_FIRST
+end
+
+function Pee:Update(world, players)
+	local now = world:Now()
+	if now < self.nextPee or #self.clouds == 0 then return end
+	self.nextPee = now + world:RandomFloat(PEE_INTERVAL_MIN, PEE_INTERVAL_MAX)
+	local cloud = self.clouds[world:RandomInt(1, #self.clouds)]
+	local lo, hi = cloud.mins, cloud.maxs
+	local pos = world:Vector(world:RandomFloat(lo.x, hi.x), world:RandomFloat(lo.y, hi.y), world:RandomFloat(lo.z, hi.z))
+	local spin = world:Vector(world:RandomFloat(-PEE_SPIN, PEE_SPIN), world:RandomFloat(-PEE_SPIN, PEE_SPIN),
+		world:RandomFloat(-PEE_SPIN, PEE_SPIN))
+	world:DropJar(pos, spin)
+end
+
+-- WOD_Ghosts: a haunting of four ghosts, each for half to all the wheel's
+-- duration; its end puts out whoever is burning.
+local Ghosts = Extend({
+	name = "Ghosts",
+	skin = EFFECT_WHAMMY,
+	sound = "Halloween.MerasmusWheelGhosts",
+	whammy = true,
+	reapplies = false,
+})
+
+function Ghosts:Activate(world, wheel, players)
+	world:BeginHaunting(GHOST_COUNT, wheel.duration / 2, wheel.duration)
+end
+
+function Ghosts:Deactivate(world, players)
+	for _, p in ipairs(players) do world:RemoveCond(p, Players.COND.BURNING) end
+end
+
 -- In CWheelOfDoom's order of registration.
 EFFECTS = {
 	Uber,
@@ -393,7 +449,9 @@ EFFECTS = {
 	SmallHead,
 	LowGravity,
 	Dance,
+	Pee,
 	Burn,
+	Ghosts,
 }
 
 -------------------------------------------------------------------------------

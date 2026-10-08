@@ -10,6 +10,7 @@ local Wheel = WETSAND.require("foundation.holiday.wheel")
 local WHEEL_CLASS = "wheel_of_doom"
 local DANCER_CLASS = "merasmus_dancer"
 local MERASMUS_CLASS = "merasmus"
+local JAR_CLASS = "tf_projectile_jar"
 local EFFECT = "wetsand_wheel_effect"
 local EFFECT_START = "wetsand_wheel_effect_start"
 local EFFECT_DURATION = "wetsand_wheel_effect_duration"
@@ -52,6 +53,7 @@ local function World(controller, ent)
 	local world = {}
 	function world:Now() return CurTime() end
 	function world:RandomInt(lo, hi) return math.random(lo, hi) end
+	function world:RandomFloat(lo, hi) return math.Rand(lo, hi) end
 	function world:Vector(x, y, z) return Vector(x, y, z) end
 	function world:Players() return player.GetAll() end
 
@@ -149,6 +151,37 @@ local function World(controller, ent)
 
 	function world:DancerBlastOff(d)
 		if IsValid(d) then d:BlastOff() end
+	end
+
+	-- The spawn_cloud brushes' world boxes (WorldAlignMins/Maxs about the
+	-- origin).
+	function world:CloudBoxes()
+		local boxes = {}
+		for _, cloud in ipairs(ents.FindByName(Wheel.CLOUD_NAME)) do
+			local mins, maxs = cloud:WorldSpaceAABB()
+			boxes[#boxes + 1] = {
+				mins = mins,
+				maxs = maxs,
+			}
+		end
+		return boxes
+	end
+
+	-- A jar dropped, nobody's, spinning (its angular impulse in degrees a
+	-- second about each axis).
+	function world:DropJar(pos, spin)
+		local jar = ents.Create(JAR_CLASS)
+		jar:Configure({
+			velocity = Vector(0, 0, 0),
+			spin = Angle(spin.x, spin.y, spin.z),
+			team = WETSAND.TEAM_UNASSIGNED,
+		})
+		jar:SetPos(pos)
+		jar:Spawn()
+	end
+
+	function world:BeginHaunting(count, minDuration, maxDuration)
+		WETSAND.Feature("haunting"):BeginHaunting(count, minDuration, maxDuration)
 	end
 
 	return world

@@ -824,14 +824,23 @@ bomb heads 15 s and 1 per team, props 150 health).
   jump with no fall damage, big or small heads (the head bone; GMod voice
   chat cannot be pitched), quarter gravity, the Dance (everyone alive to
   `dance_teleport_<red|blue><n>`, frozen, dancing every 3.5 s for 8 s, a
-  dancing Merasmus at either end of the floor by turns) and the Burn whammy
-  (10 s at most). A whammy comes one roll in buffs + 1. Respawning players
-  get the effects that reapply. The boss timer waits while the first wheel
-  spins or names its effect. **Not done:** the Jarate rain (needs
-  `tf_projectile_jar` and Jarate's effects) and the Ghosts (needs TF2's
-  haunting ghosts), so Burn takes every whammy roll; and the players'
-  magic voice responses (GMod players have no class voices). No payload
-  event map places a wheel.
+  dancing Merasmus at either end of the floor by turns), and three
+  whammies: the Jarate rain (a `tf_projectile_jar` from a random spot in a
+  `spawn_cloud` brush 0.25 s in, then every 0.2-0.5 s; each breaks on the
+  world or a player and soaks the living within 200 with no wall between,
+  unless ubered, phased or in water, for 10 s), the Burn (10 s at most) and
+  the Ghosts (`CTFGameRules::BeginHaunting(4, duration/2, duration)`: the
+  `ghost` NPC, `foundation.npc.ghost`, rises on nav areas 240 from any
+  player, drifts at 90 turning from walls, moans every 5-7 s, and each
+  second stuns the players within 192 in sight for 2 s; it vanishes when
+  its time is up or it is stuck a second; haunting needs Merasmus's
+  scenario or the `tf_logic_holiday`'s allowHaunting; their end puts out
+  the burning). Jarate (URINE) now makes a player take mini-crits (x1.35)
+  from anyone else, drips from them and yellows their screen. A whammy
+  comes one roll in buffs + 1. Respawning players get the effects that
+  reapply. The boss timer waits while the first wheel spins or names its
+  effect. Left out: the players' magic voice responses (GMod players have
+  no class voices). No payload event map places a wheel.
 - **Left out:** the critical flag on hits while stunned or aloft (only
   TF2's hit numbers show it).
 - **Bomb-rain scene:** as TF2, one of `scenes/bot/merasmus/low/
