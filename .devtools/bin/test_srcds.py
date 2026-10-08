@@ -80,6 +80,15 @@ class CommandLine(unittest.TestCase):
         self.assertLess(argv.index("+sv_gameplay_enabled"), argv.index("+map"))
         self.assertEqual(argv[argv.index("+sv_gameplay_enabled") + 1], "0")
 
+    def test_no_lua_refresh_adds_disableluarefresh(self):
+        # T1 starts the server so that edits on disk after start-up never
+        # reach it; by default Lua refresh stays on.
+        self.assertNotIn("-disableluarefresh", self.argv)
+        config = dataclasses.replace(self.config, lua_refresh=False)
+        argv = command_line(INSTALL, config)
+        self.assertIn("-disableluarefresh", argv[argv.index("--cx-app"):argv.index("+ip")])
+        self.assertEqual(argv[:3], ["/Apps/wine", "--bottle", "Steam"])
+
     def _convar(self, name):
         return self.argv[self.argv.index("+" + name) + 1]
 
