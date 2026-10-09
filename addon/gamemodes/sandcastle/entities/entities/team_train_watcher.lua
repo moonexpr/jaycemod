@@ -500,6 +500,13 @@ function ENT:PathNodes()
 	return self.nodes
 end
 
+-- Its checkpoints' control points, in order along the path.
+function ENT:Checkpoints()
+	local points = {}
+	for i, link in ipairs(self.links or {}) do points[i] = link.cp end
+	return points
+end
+
 -- How far along the path the next checkpoint ahead of the cart lies, or nil.
 function ENT:NextCheckpointDistance()
 	local link = P.NextCheckpoint(self.links or {}, self.distanceFromStart or 0)

@@ -1,9 +1,28 @@
--- A payload cart's own right-click entries, for admins: back to its last
--- checkpoint, or on to its next. A cart is the train, or a prop riding it,
--- that the payload feature marks with its watcher (wetsand_cart_watcher).
+-- A payload cart's right-click entries, for admins: back to its last
+-- checkpoint, or on to its next. They show on a proxy (wetsand_proxy) for
+-- the cart's watcher, which the payload feature puts on the cart and on
+-- each of its checkpoints, and on the cart's own train and props.
+local function ProxyWatcher(proxy)
+	if proxy:GetClass() ~= "wetsand_proxy" then return nil end
+	local target = proxy:GetTarget()
+	if IsValid(target) and target:GetClass() == "team_train_watcher" then return target end
+end
+
+-- The watcher of a proxy; else of the proxy ent names (the cart's body, a
+-- prop the map ties to the train); else of the cart proxy riding the train
+-- ent is or rides. GMod's right-click stops at the first solid thing, the
+-- cart itself, before it would reach the cart's proxy.
 local function Watcher(ent)
-	local watcher = ent:GetNW2Entity("wetsand_cart_watcher")
-	if IsValid(watcher) then return watcher end
+	local watcher = ProxyWatcher(ent)
+	if watcher then return watcher end
+	local named = ent:GetNW2Entity("wetsand_proxy")
+	if IsValid(named) then return ProxyWatcher(named) end
+	local root = ent
+	while IsValid(root:GetParent()) do root = root:GetParent() end
+	for _, child in ipairs(root:GetChildren()) do
+		watcher = ProxyWatcher(child)
+		if watcher then return watcher end
+	end
 end
 
 local function IsCart(ent) return Watcher(ent) ~= nil end

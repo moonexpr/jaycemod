@@ -84,14 +84,55 @@ local function PublishCart(i, hud)
 	SetGlobal2String(key .. "hills", Hud.EncodeHills(hud.hills))
 end
 
--- A cart's train and the props riding it name its watcher
--- (wetsand_cart_watcher), so a client knows a cart when an admin
--- right-clicks one (wetsand/sh_editors_cart.lua).
-local function MarkCart(watcher)
+-- Each cart and each of its checkpoints has a proxy (wetsand_proxy) for its
+-- watcher, the box an admin right-clicks for its entries
+-- (wetsand/sh_editors_cart.lua): one riding the train, one at each point,
+-- made again when a cleanup removes them. The cart's body, a prop the map
+-- ties to the train with a constraint (phys_constraint and the rest), names
+-- the cart's proxy (wetsand_proxy), as GMod's right-click hits it first.
+local CART_MINS, CART_MAXS = Vector(-40, -40, 0), Vector(40, 40, 80)
+local POINT_MINS, POINT_MAXS = Vector(-48, -48, -8), Vector(48, 48, 64)
+local proxies = setmetatable({}, { __mode = "k" }) -- target entity -> its proxy
+
+local function Proxy(watcher, at, mins, maxs)
+	if IsValid(proxies[at]) then return end
+	local proxy = ents.Create("wetsand_proxy")
+	proxy:SetPos(at:GetPos())
+	proxy:SetTarget(watcher)
+	proxy:SetMins(mins)
+	proxy:SetMaxs(maxs)
+	proxy:Spawn()
+	proxy:SetCollisionBounds(mins, maxs)
+	if at:GetClass() == "func_tracktrain" then proxy:SetParent(at) end
+	proxies[at] = proxy
+	return proxy
+end
+
+-- The entities a map's constraints (phys_*: attach1, attach2) tie to ent.
+local function TiedTo(ent)
+	local name, tied = ent:GetName(), {}
+	if name == "" then return tied end
+	for _, constraint in ipairs(ents.FindByClass("phys_*")) do
+		local keys = constraint:GetKeyValues()
+		local other = (keys.attach1 == name and keys.attach2) or (keys.attach2 == name and keys.attach1)
+		if other then
+			for _, body in ipairs(ents.FindByName(other)) do tied[#tied + 1] = body end
+		end
+	end
+	return tied
+end
+
+local function KeepProxies(watcher)
 	local train = watcher:Train()
-	if not IsValid(train) then return end
-	train:SetNW2Entity("wetsand_cart_watcher", watcher)
-	for _, child in ipairs(train:GetChildren()) do child:SetNW2Entity("wetsand_cart_watcher", watcher) end
+	if IsValid(train) then
+		local proxy = Proxy(watcher, train, CART_MINS, CART_MAXS)
+		if proxy then
+			for _, body in ipairs(TiedTo(train)) do body:SetNW2Entity("wetsand_proxy", proxy) end
+		end
+	end
+	for _, point in ipairs(watcher:Checkpoints()) do
+		if IsValid(point) then Proxy(watcher, point, POINT_MINS, POINT_MAXS) end
+	end
 end
 
 -- The enabled watchers' carts, BLU's first.
@@ -99,7 +140,7 @@ function Controller:PublishCarts()
 	local active = {}
 	for _, watcher in ipairs(self.watchers) do
 		if watcher:IsActive() then
-			MarkCart(watcher)
+			KeepProxies(watcher)
 			local hud = watcher:HudState()
 			active[#active + 1] = {
 				team = hud.team,
