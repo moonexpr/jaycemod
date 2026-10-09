@@ -8,7 +8,7 @@ if not DrGBase then return end
 
 ENT.Base = "drgbase_nextbot_human"
 ENT.Type = "nextbot"
-ENT.PrintName = "Sandcastle Soldier"
+ENT.PrintName = "Combatant"
 ENT.Category = "Sandcastle"
 ENT.Spawnable = false
 

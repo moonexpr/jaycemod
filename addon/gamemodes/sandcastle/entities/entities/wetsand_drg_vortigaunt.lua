@@ -7,7 +7,7 @@ if not DrGBase then return end
 
 ENT.Base = "drgbase_nextbot"
 ENT.Type = "nextbot"
-ENT.PrintName = "Vortigaunt Medic (Sandcastle)"
+ENT.PrintName = "Vortigaunt Medic"
 ENT.Category = "Sandcastle"
 ENT.Spawnable = true
 ENT.Models = { "models/vortigaunt.mdl" }

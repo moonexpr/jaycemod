@@ -5,7 +5,7 @@ if not DrGBase then return end
 
 ENT.Base = "wetsand_drg_soldier"
 ENT.Type = "nextbot"
-ENT.PrintName = "Combine Soldier (Sandcastle)"
+ENT.PrintName = "Combine Soldier"
 ENT.Category = "Sandcastle"
 ENT.Spawnable = true
 ENT.Models = {
