@@ -53,6 +53,11 @@ end
 Action = {}
 Action.__index = Action
 Action.name = "Action"
+-- What the debug layer's notations need of a class (foundation.npc.debug's
+-- Tdbn): a passthrough only contains the action that does the work, as a
+-- monitor does, and a short name, when set, stands for the name there.
+Action.passthrough = false
+Action.shortName = nil
 
 -- A subclass named for Describe(); its instances come from :New(...).
 function Action:Extend(name)
@@ -335,8 +340,10 @@ local function StackFrames(action, depth, frames)
 	while action do
 		frames[#frames + 1] = {
 			name = action.name,
+			short = action.shortName or action.name,
 			depth = depth,
 			suspended = action._suspended,
+			passthrough = action.passthrough,
 		}
 		if action._child then StackFrames(action._child, depth + 1, frames) end
 		action = action._buried
@@ -346,7 +353,7 @@ end
 
 -- The whole action stack in Action::DebugString's order: each action, then
 -- the actions it contains a level deeper, then the actions buried under it.
--- A list of { name, depth (1 outermost), suspended }.
+-- A list of { name, short, depth (1 outermost), suspended, passthrough }.
 function Behavior:Stack()
 	return StackFrames(self.action, 1, {})
 end

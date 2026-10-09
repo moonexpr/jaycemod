@@ -92,6 +92,25 @@ end)
 
 -- Selection (nb_select)
 
+T.test("a command's entity index: none without a token, NO_SELECTION for 0, the token back when it is no index", function()
+	T.eq(Debug.ParseIndex({}), nil, "none")
+	T.eq(Debug.ParseIndex({ "45" }), 45, "an index")
+	T.eq(Debug.ParseIndex({ "0" }), Debug.NO_SELECTION, "clear")
+	local index, invalid = Debug.ParseIndex({ "zombie" })
+	T.eq(tostring(index) .. " " .. invalid, "nil zombie", "a name")
+	T.eq(select(2, Debug.ParseIndex({ "-3" })), "-3", "negative")
+	T.eq(select(2, Debug.ParseIndex({ "4.5" })), "4.5", "fractional")
+end)
+
+T.test("a bot is found by its entity index among those collected", function()
+	local bots = {
+		zombie = ZOMBIE,
+		hatman = HATMAN,
+	}
+	T.eq(Debug.BotAt(bots, 46), HATMAN, "the hatman")
+	T.eq(Debug.BotAt(bots, 47), nil, "nobody")
+end)
+
 T.test("the NPC picked is the nearest live one within the crosshair's cone", function()
 	local eye, forward = V(0, 0, 0), V(1, 0, 0)
 	local far = { center = V(100, 0, 0), alive = true }
@@ -363,6 +382,117 @@ T.test("a suspended action is marked in the stack's lines", function()
 	}, {}, 0)
 	T.eq(lines[3], "  Chase (suspended)", "marked")
 	T.eq(#lines, 3, "no recent section without entries")
+end)
+
+-- The notations: TDBN (Terminal-Directed Behavior Notation) and OBN
+-- (Outermost Behavior Notation)
+
+-- A stack frame as Behavior:Stack gives it; opts: passthrough, short, suspended.
+local function F(name, depth, opts)
+	opts = opts or {}
+	return {
+		name = name,
+		depth = depth,
+		suspended = opts.suspended == true,
+		passthrough = opts.passthrough == true,
+		short = opts.short or name,
+	}
+end
+
+local PASS = { passthrough = true }
+
+-- NextSoldier's stack down to the squad role.
+local function SoldierTo(role)
+	return {
+		F("NextSoldier", 1, PASS),
+		F("StrategyMonitor", 2, PASS),
+		F("TacticalMonitor", 3, PASS),
+		F("SquadMonitor", 4, PASS),
+		F(role, 5),
+		F("ScenarioMonitor", 6, PASS),
+	}
+end
+
+local function Append(frames, more)
+	for _, frame in ipairs(more) do frames[#frames + 1] = frame end
+	return frames
+end
+
+T.test("TDBN puts the terminal first, drops the passthrough monitors, and names the root before the first action it runs", function()
+	local frames = Append(SoldierTo("SquadLeader"), {
+		F("ControlPointDefender", 7, { short = "CPDefender" }),
+		F("DefendPoint", 8),
+	})
+	T.eq(Debug.Tdbn(frames), "DefendPoint ( CPDefender ( NextSoldier::SquadLeader ) )", "TDBN")
+	T.eq(Debug.Obn(frames), "NextSoldier ( StrategyMonitor ( TacticalMonitor ( SquadMonitor ( SquadLeader"
+		.. " ( ScenarioMonitor ( ControlPointDefender ( DefendPoint ) ) ) ) ) ) )", "OBN: every level, full names")
+end)
+
+T.test("TDBN writes an action superseded by the one suspended over it as Superseded<Superseding>", function()
+	local frames = Append(SoldierTo("SquadLeader"), {
+		F("CPLeader", 7),
+		F("SquadRaid", 8),
+		F("DefendPoint", 8, { suspended = true }),
+		F("ControlPointDefender", 7, { short = "CPDefender", suspended = true }),
+		F("HoldPoint", 8, { suspended = true }),
+	})
+	T.eq(Debug.Tdbn(frames), "DefendPoint<SquadRaid> ( CPDefender<CPLeader> ( NextSoldier::SquadLeader ) )",
+		"the active line only: the superseded defender's own job is left out")
+	T.eq(Debug.Obn(frames), "NextSoldier ( StrategyMonitor ( TacticalMonitor ( SquadMonitor ( SquadLeader"
+		.. " ( ScenarioMonitor ( ControlPointDefender<CPLeader> ( DefendPoint<SquadRaid> ) ) ) ) ) ) )", "OBN")
+end)
+
+T.test("a chain of supersessions nests from the bottom of the level up", function()
+	local frames = { F("Flinch", 1), F("Chase", 1, { suspended = true }), F("Wander", 1, { suspended = true }) }
+	T.eq(Debug.Tdbn(frames), "Wander<Chase<Flinch>>", "TDBN")
+	T.eq(Debug.Obn(frames), "Wander<Chase<Flinch>>", "OBN")
+end)
+
+T.test("a superseded monitor is no longer a passthrough, and the terminal always shows", function()
+	local humiliated = {
+		F("NextSoldier", 1, PASS),
+		F("StrategyMonitor", 2, PASS),
+		F("Humiliated", 3),
+		F("TacticalMonitor", 3, { passthrough = true, suspended = true }),
+		F("SquadMonitor", 4, { passthrough = true, suspended = true }),
+	}
+	T.eq(Debug.Tdbn(humiliated), "NextSoldier::TacticalMonitor<Humiliated>", "superseded monitor")
+	T.eq(Debug.Tdbn({ F("NextSoldier", 1, PASS), F("StrategyMonitor", 2, PASS) }), "NextSoldier::StrategyMonitor",
+		"a passthrough terminal")
+	T.eq(Debug.Tdbn({ F("NextSoldier", 1, PASS) }), "NextSoldier", "the root alone")
+end)
+
+T.test("a root that runs behavior of its own is a level like any other", function()
+	local frames = { F("ZombieBehavior", 1), F("Attack", 2) }
+	T.eq(Debug.Tdbn(frames), "Attack ( ZombieBehavior )", "TDBN")
+	T.eq(Debug.Obn(frames), "ZombieBehavior ( Attack )", "OBN")
+end)
+
+T.test("an empty stack has no notation", function()
+	T.eq(Debug.Tdbn({}), Debug.EMPTY_STACK, "TDBN")
+	T.eq(Debug.Obn({}), Debug.EMPTY_STACK, "OBN")
+end)
+
+T.test("the behavior report gives the NPC, both notations, then the overlay's lines", function()
+	local frames = { F("ZombieBehavior", 1), F("Attack", 2) }
+	local entries = {
+		{
+			time = 4,
+			text = "Chase CHANGE_TO Attack: in range",
+		},
+	}
+	T.eq(table.concat(Debug.BehaviorReport("tf_zombie #45", "zombie", frames, entries, 5), "|"), table.concat({
+		"tf_zombie #45",
+		"TDBN: Attack ( ZombieBehavior )",
+		"OBN: ZombieBehavior ( Attack )",
+		"Behavior: zombie",
+		"  ZombieBehavior",
+		"    Attack",
+		"Recent:",
+		"  -1.0 s Chase CHANGE_TO Attack: in range",
+	}, "|"), "report")
+	local unwatched = Debug.BehaviorReport("tf_zombie #45", "zombie", frames, nil, 5)
+	T.eq(unwatched[#unwatched], Debug.UNWATCHED, "no log: says how to get one")
 end)
 
 -- NAV

@@ -7,6 +7,7 @@ local T = dofile("tests/harness.lua")
 local FS = dofile("tests/fake_soldier.lua")
 local FP = dofile("tests/fake_points.lua")
 local N = T.require("foundation.npc")
+local Debug = T.require("foundation.npc.debug")
 local AiWar = T.require("foundation.aiwar")
 local Orders = T.require("foundation.aiwar.orders")
 local Tactics = T.require("foundation.aiwar.tactics")
@@ -184,6 +185,16 @@ local function AttackDefend()
 		FP.Point({ rank = 2, at = P(-2000, 0), owner = RED, locked = true }),
 	}
 end
+
+T.test("TDBN names a control point defender's job, its side by short name, and its squad role, and no monitor", function()
+	local battle = FP.Battle(CP.Scenario)
+	battle:Enlist(RED, 1)
+	battle:Start(FP.Field({ points = AttackDefend() }))
+	local s = battle.soldiers[1]
+	local _, frames = s.npc:Stack()
+	local job, role = Orders.JobOf(s.npc:Describe())
+	T.eq(Debug.Tdbn(frames), job .. " ( CPDefender ( NextSoldier::" .. role .. " ) )", s.npc:Describe())
+end)
 
 T.test("A/D: attackers take only offense roles, defenders only defense roles", function()
 	local entries, defense = Stances({ points = AttackDefend() })

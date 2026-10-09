@@ -3,6 +3,7 @@
 local T = dofile("tests/harness.lua")
 local FS = dofile("tests/fake_soldier.lua")
 local N = T.require("foundation.npc")
+local Debug = T.require("foundation.npc.debug")
 local AiWar = T.require("foundation.aiwar")
 local Orders = T.require("foundation.aiwar.orders")
 local Soldier = T.require("foundation.aiwar.soldier")
@@ -179,6 +180,8 @@ T.test("DrGBase asks the orders whether to attack: the humiliated hold fire", fu
 	T.eq(npc:Query("ShouldAttack", "them"), N.ANSWER_NO, "humiliated: no")
 	T.eq(npc:Query("ShouldHurry"), N.ANSWER_YES, "and away")
 	T.eq(npc:Describe(), "NextSoldier/StrategyMonitor/Humiliated", "the tactical monitor and all under it buried")
+	local _, frames = npc:Stack()
+	T.eq(Debug.Tdbn(frames), "NextSoldier::TacticalMonitor<Humiliated>", "TDBN: humiliation supersedes the tactical monitor")
 	me.disarmed = false
 	Tick(me, npc, 2)
 	T.eq(npc:Query("ShouldAttack", "them"), N.ANSWER_UNDEFINED, "rearmed")

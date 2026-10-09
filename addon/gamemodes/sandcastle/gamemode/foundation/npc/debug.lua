@@ -152,6 +152,25 @@ end
 -------------------------------------------------------------------------------
 -- Selection (nb_select)
 
+-- The entity index a command's first token names (the context menu's
+-- commands name their NPC): nil without a token, NO_SELECTION for 0 (no
+-- NPC); for a token that is no index, nil and the token.
+function ParseIndex(tokens)
+	local token = tokens[1]
+	if token == nil then return nil end
+	local index = tonumber(token)
+	if index == nil or index < 0 or index ~= floor(index) then return nil, token end
+	return index
+end
+
+-- The bot (as the filter sees an NPC) with this entity index, or nil.
+function BotAt(bots, index)
+	for _, bot in pairs(bots) do
+		if bot.index == index then return bot end
+	end
+	return nil
+end
+
 -- CC_SelectBot's Selector: within this cosine of the crosshair.
 SELECT_MIN_DOT = 0.98
 
@@ -604,6 +623,96 @@ function BehaviorLines(name, frames, entries, now)
 	for _, entry in ipairs(entries) do
 		lines[#lines + 1] = format("%s%.1f s %s", INDENT, entry.time - now, entry.text)
 	end
+	return lines
+end
+
+-- The two notations of a stack, along its active line (each level's top
+-- action, then what that one contains):
+-- - OBN, Outermost Behavior Notation, Source's own order: every level,
+--   outermost first, in full names. NextSoldier ( StrategyMonitor ( ... ) ).
+-- - TDBN, Terminal-Directed Behavior Notation: the terminal first, then
+--   back out, without the levels that only pass through to the next one; a
+--   passthrough root prefixes the first level shown (NextSoldier::SquadLeader),
+--   and short names stand for full ones. DefendPoint ( CPDefender ( NextSoldier::SquadLeader ) ).
+-- In both, a level whose top action was suspended over others reads from
+-- its bottom up, each superseded action holding the one over it:
+-- DefendPoint<SquadRaid>. A superseded passthrough is shown in TDBN, as is
+-- the terminal, whatever it is.
+
+EMPTY_STACK = "(empty)"
+
+-- The active line's levels, outermost first: each a list of frames, top
+-- first, then those buried under it.
+local function ActiveLevels(frames)
+	local levels = {}
+	local first, last = 1, #frames
+	while first <= last do
+		local depth, level, contained = frames[first].depth, {}, last
+		for i = first, last do
+			if frames[i].depth == depth then
+				if #level == 1 then contained = i - 1 end
+				level[#level + 1] = frames[i]
+			end
+		end
+		levels[#levels + 1] = level
+		first, last = first + 1, contained
+	end
+	return levels
+end
+
+local function LevelToken(level, field)
+	local token = level[1][field]
+	for i = 2, #level do token = level[i][field] .. "<" .. token .. ">" end
+	return token
+end
+
+-- tokens, innermost (or outermost) first, as A ( B ( C ) ).
+local function Nest(tokens)
+	local text = tokens[#tokens]
+	for i = #tokens - 1, 1, -1 do text = tokens[i] .. " ( " .. text .. " )" end
+	return text
+end
+
+local function PassesThrough(level)
+	return #level == 1 and level[1].passthrough
+end
+
+function Obn(frames)
+	local levels = ActiveLevels(frames)
+	if #levels == 0 then return EMPTY_STACK end
+	local tokens = {}
+	for i, level in ipairs(levels) do tokens[i] = LevelToken(level, "name") end
+	return Nest(tokens)
+end
+
+function Tdbn(frames)
+	local levels = ActiveLevels(frames)
+	if #levels == 0 then return EMPTY_STACK end
+	local shown = {}
+	for i, level in ipairs(levels) do
+		if i == #levels or not PassesThrough(level) then shown[#shown + 1] = i end
+	end
+	local tokens = {}
+	for i = #shown, 1, -1 do tokens[#tokens + 1] = LevelToken(levels[shown[i]], "short") end
+	if shown[1] ~= 1 then
+		tokens[#tokens] = LevelToken(levels[1], "short") .. "::" .. tokens[#tokens]
+	end
+	return Nest(tokens)
+end
+
+-- Where the recent changes would be when nobody watches the Behavior.
+UNWATCHED = "Recent: not recorded; turn the BEHAVIOR layer on to keep them"
+
+-- wetsand_nb_behavior_print's lines: the NPC, both notations, then the
+-- BEHAVIOR layer's lines; entries is nil while nobody watches the Behavior.
+function BehaviorReport(title, name, frames, entries, now)
+	local lines = {
+		title,
+		"TDBN: " .. Tdbn(frames),
+		"OBN: " .. Obn(frames),
+	}
+	for _, line in ipairs(BehaviorLines(name, frames, entries or {}, now)) do lines[#lines + 1] = line end
+	if entries == nil then lines[#lines + 1] = UNWATCHED end
 	return lines
 end
 

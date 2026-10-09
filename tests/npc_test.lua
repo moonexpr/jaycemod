@@ -662,6 +662,21 @@ T.test("a Behavior's stack lists each action, then its children a level deeper, 
 	T.eq(frames[3].name .. frames[3].depth .. tostring(frames[3].suspended), "Child2true", "A's child, suspended with it")
 end)
 
+T.test("a stack's frames say which actions pass through and give each one's short name", function()
+	local me = Setup()
+	local Inner = Probe("ControlPointDefender")
+	Inner.shortName = "CPDefender"
+	local Outer = Probe("Monitor", { child = function() return Inner:New() end })
+	Outer.passthrough = true
+	local b = Behavior:New(Outer:New(), "Test")
+	b:Update(me, 0.1)
+	local frames = b:Stack()
+	T.eq(frames[1].passthrough, true, "a monitor passes through")
+	T.eq(frames[1].short, "Monitor", "named in full without a short name")
+	T.eq(frames[2].passthrough, false, "an action does not, unless it says so")
+	T.eq(frames[2].short, "CPDefender", "its short name")
+end)
+
 T.test("an empty Behavior has an empty stack", function()
 	T.eq(#Behavior:New(nil, "Test"):Stack(), 0, "no frames")
 end)

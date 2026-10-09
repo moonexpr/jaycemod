@@ -314,9 +314,8 @@ end
 
 local COMMANDS = {}
 
--- nb_select: the NPC under the crosshair, or none.
-COMMANDS.wetsand_nb_select = function(self, ply, sub)
-	self:Collect()
+-- The bot under the crosshair, or nil.
+function Controller:Aimed(ply)
 	local candidates = {}
 	for ent, bot in pairs(self.bots) do
 		candidates[#candidates + 1] = {
@@ -326,9 +325,34 @@ COMMANDS.wetsand_nb_select = function(self, ply, sub)
 		}
 	end
 	local pick = Debug.Pick(ply:EyePos(), ply:GetAimVector(), candidates)
-	sub:Select(pick and pick.bot.key)
-	if pick then
-		Tell(ply, string.format("wetsand_nb_select: %s #%d (%s)", pick.bot.class, pick.bot.index, pick.bot.variant))
+	return pick and pick.bot
+end
+
+-- The bot a command's entity index names (the context menu's), else the
+-- fallback's; ok is false, after telling the player why, when the index
+-- names no NPC the layer shows. NO_SELECTION names none.
+function Controller:Target(ply, command, args, Fallback)
+	self:Collect()
+	local index, invalid = Debug.ParseIndex(args)
+	if invalid then
+		Tell(ply, string.format("%s: '%s' is no entity index", command, invalid))
+		return nil, false
+	end
+	if index == nil then return Fallback(), true end
+	if index == NO_SELECTION then return nil, true end
+	local bot = Debug.BotAt(self.bots, index)
+	if bot == nil then Tell(ply, string.format("%s: #%d is no NPC the debug layer shows", command, index)) end
+	return bot, bot ~= nil
+end
+
+-- nb_select: the NPC with the given entity index (0: none), else the one
+-- under the crosshair, or none.
+COMMANDS.wetsand_nb_select = function(self, ply, sub, args)
+	local bot, ok = self:Target(ply, "wetsand_nb_select", args, function() return self:Aimed(ply) end)
+	if not ok then return end
+	sub:Select(bot and bot.key)
+	if bot then
+		Tell(ply, string.format("wetsand_nb_select: %s #%d (%s)", bot.class, bot.index, bot.variant))
 	else
 		Tell(ply, "wetsand_nb_select: selection cleared")
 	end
@@ -374,6 +398,27 @@ COMMANDS.wetsand_nb_dump = function(self, ply, sub)
 	file.CreateDir(Debug.DUMP_DIR)
 	file.Write(path, util.TableToJSON(doc, true))
 	Tell(ply, "wetsand_nb_dump: wrote garrysmod/data/" .. path .. (report.explored and "" or " (no costs: the search began before the selection)"))
+end
+
+-- An NPC's behavior (the one with the given entity index, else the
+-- selected one), as the BEHAVIOR layer draws it and in both notations
+-- (foundation.npc.debug's Tdbn and Obn), in the player's console.
+COMMANDS.wetsand_nb_behavior_print = function(self, ply, sub, args)
+	local bot, ok = self:Target(ply, "wetsand_nb_behavior_print", args, function() return self.bots[sub.selected] end)
+	if not ok then return end
+	if bot == nil then
+		Tell(ply, "wetsand_nb_behavior_print: select an NPC first (wetsand_nb_select), or give its entity index")
+		return
+	end
+	local ent = bot.key
+	local log = self.logs[ent]
+	local name, frames = self.npcs[ent]:Stack()
+	local title = string.format("%s #%d (%s)", bot.class, bot.index, bot.variant)
+	local now = CurTime()
+	for _, line in ipairs(Debug.BehaviorReport(title, name, frames, log and log:Entries(), now)) do
+		ply:PrintMessage(HUD_PRINTCONSOLE, line)
+	end
+	Tell(ply, "wetsand_nb_behavior_print: printed #" .. bot.index .. "'s behavior to your console")
 end
 
 function Controller:Command(name, ply, args)

@@ -61,7 +61,7 @@ T.test("every command the realm file registers has a handler in the controller",
 		count = count + 1
 		T.eq(controller:find("COMMANDS." .. name .. " = function", 1, true) ~= nil, true, name)
 	end
-	T.eq(count, 4, "four commands")
+	T.eq(count, 5, "five commands")
 end)
 
 T.finish()

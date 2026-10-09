@@ -309,6 +309,7 @@ DOCTRINE = {
 		return focus and Center(focus)
 	end,
 	SIDES = { attack = "ControlPointAttacker", defend = "ControlPointDefender" },
+	SHORT_SIDES = { attack = "CPAttacker", defend = "CPDefender" },
 	-- capturers and assaulters attack, holders and defenders defend; the
 	-- rest follow their focus (PointFocus)
 	Side = function(field, member)

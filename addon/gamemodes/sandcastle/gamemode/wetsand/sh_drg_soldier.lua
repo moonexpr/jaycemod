@@ -24,6 +24,7 @@ local function Show(value)
 end
 
 function WETSAND.DrgSoldier(ENT, baseName)
+	ENT.WetsandSoldier = true -- on both realms: the NPC context menu offers its trace
 	if CLIENT then return end
 	local Ragdoll = WETSAND.require("foundation.npc.ragdoll")
 	local Voices = WETSAND.require("foundation.npc.voices")

@@ -24,7 +24,8 @@
 -- the patrol goes on while true, Threat(field, member) -> pos or nil: where
 -- the enemy will come from, which a soldier standing idle watches,
 -- Side(field, member) -> "attack" or "defend": the member's side, and
--- SIDES = side -> the name of its side action }.
+-- SIDES = side -> the name of its side action, and optionally SHORT_SIDES =
+-- side -> the short name the debug layer's TDBN gives it }.
 -- Nothing outside a doctrine reads carts.
 --
 -- The tree follows TF2's bots (docs/aiwar-command.md):
@@ -1411,6 +1412,14 @@ local function Monitor(name, contained)
 	return class
 end
 
+-- A monitor that only passes through to what it contains, which the debug
+-- layer's TDBN leaves out (foundation.npc's Action.passthrough).
+local function PassthroughMonitor(name, contained)
+	local class = Monitor(name, contained)
+	class.passthrough = true
+	return class
+end
+
 -- The side actions (PayloadAttacker, PayloadDefender, ...): each runs the
 -- member's job, and changes itself when the member's side changes.
 local SIDE_OF = {} -- doctrine -> side -> its side action class
@@ -1424,6 +1433,7 @@ local function SideFor(state)
 	if not classes[side] then
 		local class = Monitor(doctrine.SIDES[side], ObjectiveFor)
 		class.side, class.doctrine = side, doctrine
+		class.shortName = doctrine.SHORT_SIDES and doctrine.SHORT_SIDES[side]
 		function class:Update(me)
 			local now = state.war:Field()
 			if DoctrineOf(now) ~= self.doctrine or self.doctrine.Side(now, self.state.member) ~= self.side then
@@ -1437,7 +1447,7 @@ local function SideFor(state)
 end
 
 -- ScenarioMonitor: runs the member's side.
-local ScenarioMonitor = Monitor("ScenarioMonitor", SideFor)
+local ScenarioMonitor = PassthroughMonitor("ScenarioMonitor", SideFor)
 
 -- The squad roles: each runs the job; which one runs follows the member's
 -- place in its squad (foundation.aiwar.squad's Kind), changing itself when
@@ -1475,7 +1485,7 @@ end
 SquadRole("solo", "Solo")
 
 -- SquadMonitor: leader, member or solo.
-local SquadMonitor = Monitor("SquadMonitor", function(state)
+local SquadMonitor = PassthroughMonitor("SquadMonitor", function(state)
 	return SquadRoles[Squad.Kind(state.member)]:New(state)
 end)
 
@@ -1681,7 +1691,7 @@ function RetreatToCover:ShouldHurry(me) return N.ANSWER_YES end
 -- TacticalMonitor: what keeps the soldier alive comes before its squad and
 -- its job: humiliation, then the hunt of the losers, then retreat, which
 -- what it runs may refuse (ShouldRetreat NO).
-local TacticalMonitor = Monitor("TacticalMonitor", function(state) return SquadMonitor:New(state) end)
+local TacticalMonitor = PassthroughMonitor("TacticalMonitor", function(state) return SquadMonitor:New(state) end)
 
 -- The damage it took, kept for RETREAT_WINDOW (OnInjured, from DrGBase).
 function TacticalMonitor:OnInjured(me, attacker, amount)
@@ -1741,7 +1751,7 @@ end
 -- StrategyMonitor: applies the war's allocation for this soldier. It
 -- decides nothing: the War (later the Commander) decides, and each job
 -- checks the member's job itself (ChangeTo on "new role").
-local StrategyMonitor = Monitor("StrategyMonitor", function(state) return TacticalMonitor:New(state) end)
+local StrategyMonitor = PassthroughMonitor("StrategyMonitor", function(state) return TacticalMonitor:New(state) end)
 
 -- It also keeps the member's record current with what its squad reads of
 -- it: where it is and the enemy it fights (foundation.aiwar.squad); and
@@ -1766,7 +1776,7 @@ end
 -------------------------------------------------------------------------------
 -- The variant
 
-local NextSoldier = Monitor("NextSoldier", function(state) return StrategyMonitor:New(state) end)
+local NextSoldier = PassthroughMonitor("NextSoldier", function(state) return StrategyMonitor:New(state) end)
 
 function NextSoldier:Update(me)
 	if not me:IsAlive() then return self:Done("dead") end

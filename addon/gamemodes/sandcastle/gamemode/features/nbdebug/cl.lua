@@ -90,8 +90,9 @@ E.Listen("nb_debug_state", "wetsand_nbdebug_view", function(fields)
 	view.selected = fields.selected
 	-- the server resends what the new view needs
 	view.paths, view.cost, view.behavior, view.nav = {}, nil, {}, {}
-	-- the Debug NextSoldier panel's toggles show which layers are on
-	hook.Run("WetsandNbDebugState", layers)
+	-- the NPC context menu (wetsand/cl_nb_menu.lua) checks the layers that
+	-- are on and the NPC selected
+	hook.Run("WetsandNbDebugState", layers, fields.selected)
 end)
 
 E.Listen("nb_debug_path", "wetsand_nbdebug_view", function(fields)
@@ -157,14 +158,17 @@ E.Listen("nb_debug_npc_removed", "wetsand_nbdebug_view", function(fields)
 	local index = fields.index
 	view.paths[index], view.behavior[index] = nil, nil
 	if view.cost and view.cost.index == index then view.cost = nil end
-	if view.selected == index then view.selected, view.nav = NO_SELECTION, {} end
+	if view.selected == index then
+		view.selected, view.nav = NO_SELECTION, {}
+		hook.Run("WetsandNbDebugState", view.layers, view.selected)
+	end
 end)
 
 -------------------------------------------------------------------------------
 -- The AI war's soldier overlay (AIWAR): what its controller last sent,
 -- drawn until it goes stale. Each part (foundation.ns.overlay's PARTS) is
--- drawn while its client convar is on (the Debug NextSoldier panel's
--- toggles, wetsand/cl_ns_debug.lua).
+-- drawn while its client convar is on (the NPC context menu's toggles,
+-- wetsand/cl_nb_menu.lua).
 
 local war = { soldiers = {}, teams = {}, spheres = {}, lanes = {}, lines = {}, fronts = {}, received = -math.huge }
 

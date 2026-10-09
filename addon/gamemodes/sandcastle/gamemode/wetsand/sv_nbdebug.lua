@@ -5,7 +5,7 @@
 local COMMANDS = {
 	{
 		name = "wetsand_nb_select",
-		help = "Select the Sandcastle NPC under your crosshair for wetsand_nb_debug; aim at nothing to clear",
+		help = "Select a Sandcastle NPC for wetsand_nb_debug: by entity index (0 clears), else the one under your crosshair; aim at nothing to clear",
 	},
 	{
 		name = "wetsand_nb_debug",
@@ -18,6 +18,10 @@ local COMMANDS = {
 	{
 		name = "wetsand_nb_dump",
 		help = "Write the selected NPC's last path search to garrysmod/data/wetsand_nb/ as JSON",
+	},
+	{
+		name = "wetsand_nb_behavior_print",
+		help = "Print an NPC's action stack to your console, in TDBN and OBN, with its recent changes: by entity index, else the selected one",
 	},
 }
 
