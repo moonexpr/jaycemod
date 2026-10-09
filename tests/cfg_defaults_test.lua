@@ -58,8 +58,10 @@ end
 
 -- The creating calls IndirectDefaults resolves: the bosses' table, the
 -- zombie cap, the node graph cap, the war's team size, the overlay's parts;
--- and the rounds' helper ConVarOrCreate, its definition and its CreateConVar.
-local INDIRECT_CALLS = 7
+-- the rounds' helper ConVarOrCreate, its definition and its CreateConVar;
+-- and sh_core's replicating CreateConVar and the client's copy of a server
+-- convar (server_convars), which create none of their own.
+local INDIRECT_CALLS = 9
 
 T.test("every convar the code creates is in the cfg at its default", function()
 	local defaults, indirect = CodeDefaults()

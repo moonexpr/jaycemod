@@ -24,6 +24,72 @@ CHUNK_ENV.require = WETSAND.require
 -- line may use; shared.lua skips it among the other sh_ files.
 include("sh_events.lua")
 
+-- The gamemode's convars are replicated and notify (foundation.replicated),
+-- so a client's console knows every one: from here on, a convar the
+-- gamemode's own files create gets FCVAR_REPLICATED and FCVAR_NOTIFY on
+-- both realms (other addons' are
+-- left as they are), and the server tells each ready client the ones only
+-- it has (server_convars), which the client creates too.
+do
+	local Replicated = WETSAND.require("foundation.replicated")
+	local E = WETSAND.Events
+	local FOLDER = GM.FolderName
+	local CONVAR_BITS = 12
+	local CreateEngineConVar = CreateConVar
+	local ADDED = Replicated.Added(FCVAR_REPLICATED, FCVAR_NOTIFY)
+	local created = {} -- server: the gamemode's convars, in creation order
+	local pending -- server: those created since the last tell
+
+	E.Define("server_convars", {
+		convars = E.List(E.Record({
+			name = E.String(),
+			value = E.String(),
+			help = E.String(),
+		}), CONVAR_BITS),
+	})
+
+	local function Records(names)
+		local records = {}
+		for i, name in ipairs(names) do
+			local cvar = GetConVar(name)
+			records[i] = { name = name, value = cvar:GetString(), help = cvar:GetHelpText() }
+		end
+		return records
+	end
+
+	function CreateConVar(name, default, flags, help, min, max)
+		if not Replicated.Ours(debug.getinfo(2, "S").source, FOLDER) then
+			return CreateEngineConVar(name, default, flags, help, min, max)
+		end
+		local cvar = CreateEngineConVar(name, default, Replicated.Flags(flags, ADDED), help, min, max)
+		if SERVER and cvar then
+			created[#created + 1] = name
+			-- a feature that loads later creates its convars in one go: one tell
+			if not pending then
+				pending = {}
+				timer.Simple(0, function()
+					E.Fire("server_convars", { convars = Records(pending) })
+					pending = nil
+				end)
+			end
+			pending[#pending + 1] = name
+		end
+		return cvar
+	end
+
+	if SERVER then
+		E.Listen("client_ready", "wetsand_server_convars", function(_, ply)
+			E.Fire("server_convars", { convars = Records(created) }, ply)
+		end)
+	else
+		E.Listen("server_convars", "wetsand_server_convars", function(fields)
+			for _, c in ipairs(fields.convars) do
+				if not ConVarExists(c.name) then CreateConVar(c.name, c.value, FCVAR_REPLICATED, c.help) end
+			end
+		end)
+	end
+end
+
 -- Per-map features (foundation.features): an entity calls WETSAND.Feature on
 -- first use, never at file top level, so a map loads only the controllers
 -- and views its entities pull in. The server tells ready clients each new
