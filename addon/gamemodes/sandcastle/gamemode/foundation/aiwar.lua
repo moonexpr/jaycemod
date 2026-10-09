@@ -319,6 +319,7 @@ function War.New()
 		stances = {}, -- team -> stance
 		defense = {}, -- team -> its defense share (DefenseShare), or nil
 		drafts = { [RED] = 0, [BLUE] = 0 },
+		sizes = { [RED] = 0, [BLUE] = 0 }, -- team -> its size, as Reinforcements was last given it
 		nextWave = { [RED] = 0, [BLUE] = 0 },
 		factions = { [RED] = FACTIONS[RED], [BLUE] = FACTIONS[BLUE] }, -- team -> the faction fighting for it
 		field = nil,
@@ -567,7 +568,7 @@ function War:Draft(team)
 	for _, member in pairs(self.members) do
 		if member.team == team and member.role == MEDIC then medics = medics + 1 end
 	end
-	if faction.medic and medics < MedicsFor(self.teamSize) then return { recruit = faction.medic, role = MEDIC } end
+	if faction.medic and medics < MedicsFor(self.sizes[team]) then return { recruit = faction.medic, role = MEDIC } end
 	local n = self.drafts[team] + 1
 	self.drafts[team] = n
 	local recruits = faction.recruits
@@ -583,16 +584,17 @@ function War:DraftedCount(team)
 end
 
 -- TF2's respawn waves for the war's own soldiers: when a team's wave is
--- due, it is topped back up to teamSize drafted soldiers, and the next wave
--- is waveLength(team) seconds away (0: every call). Returns team -> how
--- many to spawn now.
-function War:Reinforcements(now, teamSize, waveLength)
-	self.teamSize = teamSize
+-- due, it is topped back up to its size (sizes = team -> how many drafted
+-- soldiers it keeps: its faction's slots, foundation.aiwar.slots), and the
+-- next wave is waveLength(team) seconds away (0: every call). Returns team
+-- -> how many to spawn now.
+function War:Reinforcements(now, sizes, waveLength)
+	self.sizes = sizes
 	local wave = {}
 	for _, team in ipairs({ RED, BLUE }) do
 		if now >= self.nextWave[team] then
 			self.nextWave[team] = now + waveLength(team)
-			local missing = teamSize - self:DraftedCount(team)
+			local missing = sizes[team] - self:DraftedCount(team)
 			if missing > 0 then wave[team] = missing end
 		end
 	end
@@ -601,6 +603,11 @@ end
 
 function War:ResetWaves()
 	self.nextWave = { [RED] = 0, [BLUE] = 0 }
+end
+
+-- The team's next wave comes at the next Reinforcements (a slot was added).
+function War:CallWave(team)
+	self.nextWave[team] = 0
 end
 
 -- The battlefield the orders read: { phase, setup (the round is in

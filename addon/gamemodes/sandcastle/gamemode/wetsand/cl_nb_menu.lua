@@ -1,10 +1,12 @@
 -- The NPC context menu: hold the context menu key (C) and right-click an NPC
--- for "Debug NPC" (Sandbox's properties), for whoever may run the
--- wetsand_nb_* commands. Every entry runs a command naming the NPC by its
--- entity index, so nothing depends on where the crosshair is:
--- - select it (COST and NAV draw the selected NPC), print its behavior to
---   the console (TDBN, OBN and its recent changes), trace its bridge when it
---   is an AI war soldier;
+-- for "Select NPC for Debug" and "Debug NPC" (Sandbox's properties), for
+-- whoever may run the wetsand_nb_* commands. Every entry runs a command
+-- naming the NPC by its entity index, so nothing depends on where the
+-- crosshair is:
+-- - select it for inspection (COST and NAV draw the selected NPC; a check
+--   marks the one selected);
+-- - in Debug NPC: print its behavior to the console (TDBN, OBN and its
+--   recent changes), trace its bridge when it is an AI war soldier;
 -- - the NextBot layers and the NextSoldier overlay, which the server turns
 --   on and off (their state comes back through WetsandNbDebugState, run by
 --   features/nbdebug/cl.lua), and what the overlay draws (foundation.ns.overlay's
@@ -14,16 +16,8 @@
 local Overlay = WETSAND.require("foundation.ns.overlay")
 local Debug = WETSAND.require("foundation.npc.debug")
 
-local PART_LABELS = {
-	[Overlay.SOLDIERS] = "Soldiers: boxes, routes and goals",
-	[Overlay.SQUADS] = "Squads: leaders, formation links and orders",
-	[Overlay.CONTACTS] = "Contacts: enemy last seen, flanks and cover",
-	[Overlay.LANES] = "Lanes: each team's ways in, and who holds them",
-	[Overlay.BATTLELINES] = "Battle lines: posts, fronts and cart spheres",
-}
-
 for _, part in ipairs(Overlay.PARTS) do
-	CreateClientConVar(Overlay.ConVar(part), "1", true, false, "The NextSoldier overlay (wetsand_aiwar_debug) draws: " .. PART_LABELS[part])
+	CreateClientConVar(Overlay.ConVar(part), "1", true, false, "The NextSoldier overlay (wetsand_aiwar_debug) draws: " .. Overlay.LABELS[part])
 end
 
 local LAYER_LABELS = {
@@ -77,7 +71,7 @@ local function OverlayMenu(menu)
 	local parts = menu:AddSubMenu("Overlay parts")
 	for _, part in ipairs(Overlay.PARTS) do
 		local name = Overlay.ConVar(part)
-		Check(parts, PART_LABELS[part], GetConVar(name):GetBool(), function()
+		Check(parts, Overlay.LABELS[part], GetConVar(name):GetBool(), function()
 			RunConsoleCommand(name, GetConVar(name):GetBool() and "0" or "1")
 		end)
 	end
@@ -87,20 +81,34 @@ local function OverlayMenu(menu)
 	end)
 end
 
+local function Filter(self, ent, ply)
+	return IsValid(ent) and ent:IsNextBot() and Allowed(ply)
+end
+
+-- Beside Debug NPC: checked while this NPC is the one selected; clicking
+-- selects it, or clears the selection.
+properties.Add("wetsand_nb_select", {
+	MenuLabel = "Select NPC for Debug",
+	MenuIcon = "icon16/zoom.png",
+	Order = 8999,
+	Type = "toggle",
+	Filter = Filter,
+	Checked = function(self, ent) return selected == ent:EntIndex() end,
+	Action = function(self, ent)
+		local index = ent:EntIndex()
+		RunConsoleCommand("wetsand_nb_select", tostring(selected == index and Debug.NO_SELECTION or index))
+	end,
+})
+
 properties.Add("wetsand_nb_debug", {
 	MenuLabel = "Debug NPC",
 	MenuIcon = "icon16/bug.png",
 	Order = 9000,
-	Filter = function(self, ent, ply)
-		return IsValid(ent) and ent:IsNextBot() and Allowed(ply)
-	end,
+	Filter = Filter,
 	Action = function(self, ent) end,
 	MenuOpen = function(self, option, ent)
 		local index = ent:EntIndex()
 		local menu = option:AddSubMenu()
-		Check(menu, "Selected", selected == index, function()
-			RunConsoleCommand("wetsand_nb_select", tostring(selected == index and Debug.NO_SELECTION or index))
-		end)
 		menu:AddOption("Print behavior to console", function()
 			RunConsoleCommand("wetsand_nb_behavior_print", tostring(index))
 		end)

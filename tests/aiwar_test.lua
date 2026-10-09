@@ -343,6 +343,14 @@ T.test("a cart is close within CLOSE_RANGE, and stays close a little past it", f
 	T.eq(AiWar.CartClose(true, AiWar.CLOSE_RANGE + AiWar.CLOSE_HYSTERESIS + 1), false, "far again")
 end)
 
+-- Both teams' sizes, for Reinforcements.
+local function Sizes(red, blue)
+	return {
+		[RED] = red,
+		[BLUE] = blue or red,
+	}
+end
+
 T.test("medics: a few per side, drafted first while short, and never moved to another job", function()
 	T.eq(AiWar.MedicsFor(3), 0, "too few soldiers for one")
 	T.eq(AiWar.MedicsFor(8), 1, "one for eight")
@@ -352,7 +360,7 @@ T.test("medics: a few per side, drafted first while short, and never moved to an
 	T.eq(AiWar.FixedRole("wetsand_drg_rebel"), nil, "a rebel does any job")
 	local war = AiWar.War.New()
 	war:Assign({ [BLUE] = true })
-	war:Reinforcements(0, 8, function() return 0 end)
+	war:Reinforcements(0, Sizes(8), function() return 0 end)
 	local draft = war:Draft(BLUE)
 	T.eq(draft.role, AiWar.MEDIC, "a medic first")
 	T.eq(draft.recruit.class, "wetsand_drg_vortigaunt", "a vortigaunt")
@@ -373,35 +381,59 @@ end
 
 T.test("the first wave fills both teams at once", function()
 	local war = AiWar.War.New()
-	local wave = war:Reinforcements(0, 6, WaveOf(10))
+	local wave = war:Reinforcements(0, Sizes(6), WaveOf(10))
 	T.eq(wave[RED], 6, "RED")
 	T.eq(wave[BLUE], 6, "BLU")
 end)
 
 T.test("the dead come back only with the team's next wave", function()
 	local war = AiWar.War.New()
-	war:Reinforcements(0, 2, WaveOf(10))
+	war:Reinforcements(0, Sizes(2), WaveOf(10))
 	war:Enlist("r1", RED, true)
 	war:Enlist("r2", RED, true)
 	war:Discharge("r1")
-	T.eq(war:Reinforcements(5, 2, WaveOf(10))[RED], nil, "mid-wave")
-	T.eq(war:Reinforcements(10, 2, WaveOf(10))[RED], 1, "at the wave")
+	T.eq(war:Reinforcements(5, Sizes(2), WaveOf(10))[RED], nil, "mid-wave")
+	T.eq(war:Reinforcements(10, Sizes(2), WaveOf(10))[RED], 1, "at the wave")
 end)
 
 T.test("soldiers the player adds do not count against the team's size", function()
 	local war = AiWar.War.New()
 	war:Enlist("mine", RED, false)
-	T.eq(war:Reinforcements(0, 2, WaveOf(10))[RED], 2, "still two drafted")
+	T.eq(war:Reinforcements(0, Sizes(2), WaveOf(10))[RED], 2, "still two drafted")
 end)
 
 T.test("with no wave time the dead come back at once, and a reset starts the waves over", function()
 	local war = AiWar.War.New()
-	war:Reinforcements(0, 1, WaveOf(0))
-	T.eq(war:Reinforcements(0.1, 1, WaveOf(0))[RED], 1, "at once")
-	war:Reinforcements(1, 1, WaveOf(30))
-	T.eq(war:Reinforcements(2, 1, WaveOf(30))[RED], nil, "waiting")
+	war:Reinforcements(0, Sizes(1), WaveOf(0))
+	T.eq(war:Reinforcements(0.1, Sizes(1), WaveOf(0))[RED], 1, "at once")
+	war:Reinforcements(1, Sizes(1), WaveOf(30))
+	T.eq(war:Reinforcements(2, Sizes(1), WaveOf(30))[RED], nil, "waiting")
 	war:ResetWaves()
-	T.eq(war:Reinforcements(2, 1, WaveOf(30))[RED], 1, "reset")
+	T.eq(war:Reinforcements(2, Sizes(1), WaveOf(30))[RED], 1, "reset")
+end)
+
+T.test("each team is filled to its own size: one side alone, or none", function()
+	local war = AiWar.War.New()
+	local wave = war:Reinforcements(0, Sizes(3, 0), WaveOf(10))
+	T.eq(wave[RED], 3, "RED's three")
+	T.eq(wave[BLUE], nil, "BLU none")
+end)
+
+T.test("medics are counted against each team's own size", function()
+	local war = AiWar.War.New()
+	war:Assign({ [BLUE] = true })
+	war:Reinforcements(0, Sizes(3, 8), WaveOf(10))
+	T.eq(war:Draft(RED).role, nil, "three are too few for a medic")
+	T.eq(war:Draft(BLUE).role, AiWar.MEDIC, "eight have one")
+end)
+
+T.test("a team's wave can be called at once, leaving the other's waiting", function()
+	local war = AiWar.War.New()
+	war:Reinforcements(0, Sizes(1), WaveOf(30))
+	war:CallWave(RED)
+	local wave = war:Reinforcements(1, Sizes(2), WaveOf(30))
+	T.eq(wave[RED], 2, "RED now")
+	T.eq(wave[BLUE], nil, "BLU at its wave")
 end)
 
 -- Phases -------------------------------------------------------------------------

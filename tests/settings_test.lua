@@ -4,6 +4,7 @@
 local T = dofile("tests/harness.lua")
 local Settings = T.require("foundation.settings")
 local AiWar = T.require("foundation.aiwar")
+local Slots = T.require("foundation.aiwar.slots")
 
 T.test("a value in range is accepted as the convar's text", function()
 	T.eq(Settings.Parse("mp_aiwar_team_size", "6"), "6")
@@ -18,8 +19,13 @@ end)
 T.test("a value outside the menu's range is refused, naming the range", function()
 	local value, why = Settings.Parse("mp_aiwar_team_size", tostring(AiWar.TEAM_SIZE_MAX + 1))
 	T.eq(value, nil)
-	T.eq(why, "mp_aiwar_team_size takes 1 to " .. AiWar.TEAM_SIZE_MAX)
-	T.eq((Settings.Parse("mp_aiwar_team_size", "0")), nil)
+	T.eq(why, "mp_aiwar_team_size takes -1 to " .. AiWar.TEAM_SIZE_MAX)
+	T.eq((Settings.Parse("mp_aiwar_team_size", "-2")), nil)
+end)
+
+T.test("the team size may be the slot list's, -1, and the sides may be empty", function()
+	T.eq(Settings.Parse("mp_aiwar_team_size", tostring(Slots.CUSTOM_SIZE)), "-1", "the slot list's")
+	T.eq(Settings.Parse("mp_aiwar_team_size", "0"), "0", "nobody")
 end)
 
 T.test("text that is not a number is refused", function()
@@ -36,7 +42,7 @@ end)
 
 T.test("each setting's range is what its menu control offers", function()
 	local s = Settings.SETTINGS.mp_aiwar_team_size
-	T.eq(s.min, 1)
+	T.eq(s.min, Slots.CUSTOM_SIZE)
 	T.eq(s.max, AiWar.TEAM_SIZE_MAX)
 end)
 

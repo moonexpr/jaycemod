@@ -4,9 +4,11 @@
 -- A fire team is { team, role, index, members = place -> member, leader };
 -- a member is foundation.aiwar's roster entry, which a soldier's orders keep
 -- current with what its squad needs to know of it: pos (where it is), enemy
--- (the enemy it fights, an opaque handle) and hero (its kit is a hero's).
+-- (the enemy it fights, an opaque handle) and hero (its kit is a hero's);
+-- and the controller with its slot's pin (foundation.aiwar.slots).
 local ipairs, pairs, setmetatable = ipairs, pairs, setmetatable
 local floor, HUGE = math.floor, math.huge
+local Slots = require("foundation.aiwar.slots")
 module(...)
 
 -- Leaders -------------------------------------------------------------------------
@@ -16,22 +18,34 @@ local function Within(fireTeam, member)
 	return member ~= nil and member.fireTeam == fireTeam and fireTeam.members[member.place] == member
 end
 
--- The fire team's leader, elected when it has none or lost it: a hero
--- always leads (the settled question: heroes lead), then the member longest
--- in the war (the lowest seq). A leader stays until it leaves or a hero joins.
+-- Who may lead, best first: a member whose slot is pinned to lead, a hero
+-- (the settled question: heroes lead), any other member, and last a member
+-- whose slot is pinned to follow, who leads only a fire team of its own.
+local PINNED_LEADER_TIER, HERO_TIER, MEMBER_TIER, PINNED_MEMBER_TIER = 3, 2, 1, 0
+
+local function Tier(member)
+	if member.pin == Slots.LEADER then return PINNED_LEADER_TIER end
+	if member.pin == Slots.MEMBER then return PINNED_MEMBER_TIER end
+	if member.hero then return HERO_TIER end
+	return MEMBER_TIER
+end
+
 local function Better(a, b)
 	if b == nil then return true end
-	if (a.hero == true) ~= (b.hero == true) then return a.hero == true end
+	if Tier(a) ~= Tier(b) then return Tier(a) > Tier(b) end
 	return (a.seq or HUGE) < (b.seq or HUGE)
 end
 
+-- The fire team's leader, elected when it has none or lost it: the best by
+-- tier, then the member longest in the war (the lowest seq). A leader stays
+-- until it leaves or one of a better tier is in the fire team.
 function Leader(fireTeam)
 	local best
 	for _, member in pairs(fireTeam.members) do
 		if Better(member, best) then best = member end
 	end
 	local current = fireTeam.leader
-	if Within(fireTeam, current) and (current.hero or not (best and best.hero)) then return current end
+	if Within(fireTeam, current) and Tier(current) >= Tier(best) then return current end
 	fireTeam.leader = best
 	return best
 end

@@ -6,10 +6,11 @@
 -- integer.
 local floor, format, tonumber = math.floor, string.format, tonumber
 local AiWar = require("foundation.aiwar")
+local Slots = require("foundation.aiwar.slots")
 module(...)
 
 SETTINGS = {
-	mp_aiwar_team_size = { min = 1, max = AiWar.TEAM_SIZE_MAX },
+	mp_aiwar_team_size = { min = Slots.CUSTOM_SIZE, max = AiWar.TEAM_SIZE_MAX },
 	wetsand_aiwar_debug_full = { min = 0, max = 1 },
 	wetsand_nodegraph_max_nodes = { min = 64, max = 8192 },
 }

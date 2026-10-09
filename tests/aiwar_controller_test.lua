@@ -21,6 +21,7 @@ local ControlPointsMode = T.require("foundation.rounds.control_points")
 local KothMode = T.require("foundation.rounds.koth")
 local STATE = T.require("foundation.rounds.state")
 local Teams = T.require("foundation.teams")
+local Slots = T.require("foundation.aiwar.slots")
 -- the real scenarios; tests of the controller alone swap in fakes
 local REAL = {
 	[PayloadMode.Mode.NAME] = Payload,
@@ -221,7 +222,12 @@ local function Env(w)
 		Vector = Vector,
 		DrGBase = {},
 		CreateConVar = function() return {} end,
-		GetConVar = function() return { GetInt = function() return w.teamSize end } end,
+		GetConVar = function()
+			return {
+				GetInt = function() return w.teamSize end,
+				SetInt = function(_, value) w.teamSize = value end,
+			}
+		end,
 		FCVAR_ARCHIVE = 128,
 		FCVAR_NOTIFY = 256,
 		cvars = { AddChangeCallback = function(name, fn) w.convarCallbacks[name] = fn end },
@@ -267,10 +273,21 @@ local function Env(w)
 	})
 end
 
--- A fresh controller on the fake map.
+-- A slot store kept in memory, holding `saved` to begin with.
+local function MemoryStore(saved)
+	return {
+		saved = saved,
+		Read = function(self) return self.saved end,
+		Write = function(self, list) self.saved = list end,
+	}
+end
+
+-- A fresh controller on the fake map, its slot list kept in memory.
 local function Load(w)
 	local chunk = assert(loadfile(SOURCE))
-	return setfenv(chunk, Env(w))()
+	local controller = setfenv(chunk, Env(w))()
+	controller.slotStore = MemoryStore()
+	return controller
 end
 
 -- A scenario variant standing in for package B's, registered for a rounds
@@ -308,6 +325,69 @@ local function Started(w, mode, parts)
 	T.eq(select(2, controller:Start()), nil, "no refusal")
 	return controller
 end
+
+-- Slots: each faction's size, and mp_aiwar_slots_* ----------------------------------
+
+local function SlotIds(controller, team)
+	local ids = {}
+	for i, slot in ipairs(controller:SlotPlan():Slots(controller:FactionName(team))) do ids[i] = slot.id end
+	return ids
+end
+
+T.test("at a team size, every faction keeps that many slots, and the list is kept", function()
+	local w = World()
+	w.teamSize = 3
+	local controller = Load(w)
+	controller.slotStore = MemoryStore()
+	local sizes = controller:Sizes()
+	T.eq(sizes[RED] .. " " .. sizes[BLUE], "3 3", "three a side")
+	T.eq(#controller.slotStore.saved.Combine, 3, "kept")
+	w.teamSize = 1
+	sizes = controller:Sizes()
+	T.eq(sizes[RED] .. " " .. sizes[BLUE], "1 1", "follows the team size")
+end)
+
+T.test("adding or removing a slot sizes one side alone, and turns the team size to the slot list's", function()
+	local w = World()
+	w.teamSize = 2
+	local controller = Load(w)
+	controller.slotStore = MemoryStore()
+	controller:AddSlot(RED)
+	T.eq(w.teamSize, Slots.CUSTOM_SIZE, "the slot list rules")
+	local sizes = controller:Sizes()
+	T.eq(sizes[RED] .. " " .. sizes[BLUE], "3 2", "RED has one more")
+	controller:RemoveSlots(SlotIds(controller, BLUE))
+	sizes = controller:Sizes()
+	T.eq(sizes[RED] .. " " .. sizes[BLUE], "3 0", "RED alone")
+	T.eq(#controller.slotStore.saved.Resistance, 0, "kept empty")
+	T.eq(controller:RemoveSlots({ 99 })[1], "mp_aiwar_slots_remove: no slot 99", "an unknown slot is told")
+end)
+
+T.test("pins are kept with the slot list, and read back on the next map", function()
+	local w = World()
+	w.teamSize = 2
+	local controller = Load(w)
+	controller.slotStore = MemoryStore()
+	controller:Sizes()
+	local first = SlotIds(controller, RED)[1]
+	T.eq(controller:PinSlots("mp_aiwar_slots_leader", { first }, Slots.LEADER)[1], "mp_aiwar_slots_leader: slot " .. first .. " leader", "told")
+	local saved = controller.slotStore.saved
+	w.teamSize = Slots.CUSTOM_SIZE
+	local next = Load(w)
+	next.slotStore = MemoryStore(saved)
+	local sizes = next:Sizes()
+	T.eq(sizes[RED] .. " " .. sizes[BLUE], "2 2", "the same slots")
+	T.eq(next:SlotPlan():Slots("Combine")[1].pin, Slots.LEADER, "the same pin")
+end)
+
+T.test("a stored slot list that is none is replaced by a new one", function()
+	local w = World()
+	w.teamSize = Slots.CUSTOM_SIZE
+	local controller = Load(w)
+	controller.slotStore = MemoryStore({ Combine = { "captain" } })
+	local sizes = controller:Sizes()
+	T.eq(sizes[RED] .. " " .. sizes[BLUE], "0 0", "no slots")
+end)
 
 -- Riding the cart: wetsand_aiwar_sitting_enabled ------------------------------------
 

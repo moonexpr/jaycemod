@@ -1,8 +1,9 @@
 -- The Debug NextSoldier panel (Utilities > Sandcastle): showing and clearing
 -- every debug view at once, and the console reports that cover the whole
--- war. Each NPC's own debugging (selecting it, printing its behavior, tracing
--- it, and the layers and overlay parts one by one) is on its context menu:
--- hold C and right-click it (wetsand/cl_nb_menu.lua).
+-- war, and a checkbox for each part the overlay draws. Each NPC's own
+-- debugging (selecting it, printing its behavior, tracing it, and the
+-- layers one by one) is on its context menu: hold C and right-click it
+-- (wetsand/cl_nb_menu.lua).
 local Overlay = WETSAND.require("foundation.ns.overlay")
 
 -- Every NextBot layer and the overlay with all its parts.
@@ -26,6 +27,9 @@ local function BuildPanel(panel)
 		.. "hold C and right-click it: Debug NPC.")
 	panel:Button("Show All").DoClick = ShowAll
 	panel:Button("Clear All").DoClick = ClearAll
+
+	panel:Help("What the NextSoldier overlay draws")
+	for _, part in ipairs(Overlay.PARTS) do panel:CheckBox(Overlay.LABELS[part], Overlay.ConVar(part)) end
 
 	panel:Help("Console reports, while the war runs")
 	panel:Button("Print Soldiers", "wetsand_aiwar_report")

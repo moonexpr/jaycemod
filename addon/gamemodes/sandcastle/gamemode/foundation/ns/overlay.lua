@@ -1,5 +1,6 @@
 -- The NextSoldier overlay's parts, each shown or hidden by the viewer's own
--- client convar (the Debug NextSoldier panel's toggles): the soldiers'
+-- client convar (the Debug NextSoldier panel's checkboxes and the NPC
+-- context menu's toggles, both labelled from LABELS): the soldiers'
 -- boxes, routes and goals; each squad's formation round its leader;
 -- contacts, flank points and cover; each team's lanes; each team's battle
 -- lines (its posts and its front). The boxes' layout is still
@@ -8,6 +9,14 @@ module(...)
 
 SOLDIERS, SQUADS, CONTACTS, LANES, BATTLELINES = "soldiers", "squads", "contacts", "lanes", "battlelines"
 PARTS = { SOLDIERS, SQUADS, CONTACTS, LANES, BATTLELINES }
+
+LABELS = {
+	[SOLDIERS] = "Soldiers: boxes, routes and goals",
+	[SQUADS] = "Squads: leaders, formation links and orders",
+	[CONTACTS] = "Contacts: enemy last seen, flanks and cover",
+	[LANES] = "Lanes: each team's ways in, and who holds them",
+	[BATTLELINES] = "Battle lines: posts, fronts and cart spheres",
+}
 
 -- "ns_lanes_debug"
 function ConVar(part)
