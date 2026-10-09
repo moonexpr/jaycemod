@@ -26,7 +26,7 @@ ROOT = STEAMAPPS / "common" / "GarrysModServer"
 ROOT_WINDOWS = r"C:\Steam\steamapps\common\GarrysModServer"
 WORKSHOP = STEAMAPPS.parents[3] / "Team Fortress 2/drive_c/Steam/steamapps/workshop/content/4000"
 # Workshop addons the server mounts: name -> item id
-SERVER_WORKSHOP = {"drgbase": "1560118657"}
+SERVER_WORKSHOP = {"drgbase": "1560118657", "ulib": "557962238", "ulx": "557962280"}
 MOUNTS_LUA = Path(__file__).resolve().parent / "server_root" / "mounts.lua"
 # garrysmod/ entries the server owns: never links into the operator's game
 OWN = ("addons", "data", "cache", "console.log")

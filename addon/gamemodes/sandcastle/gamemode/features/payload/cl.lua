@@ -124,4 +124,8 @@ local function DrawCarts(w, h)
 	end
 end
 
-hook.Add("SandcastleHUDPaint", "wetsand_carts", DrawCarts)
+local View = { Draw = DrawCarts }
+
+hook.Add("SandcastleHUDPaint", "wetsand_carts", function(...) View.Draw(...) end)
+
+return View

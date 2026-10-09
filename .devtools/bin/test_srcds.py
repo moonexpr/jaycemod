@@ -285,3 +285,21 @@ class Client(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class BindAddress(unittest.TestCase):
+    def test_binds_127_0_0_1_by_default(self):
+        argv = command_line(INSTALL, ServerConfig(map="gm_construct", port=27025, rcon_password="pw", maxplayers=8))
+        self.assertEqual(argv[argv.index("+ip") + 1], "127.0.0.1")
+
+    def test_binds_the_address_given_for_a_client_in_the_other_bottle(self):
+        config = ServerConfig(map="gm_construct", port=27025, rcon_password="pw", maxplayers=8, ip="100.64.0.1")
+        argv = command_line(INSTALL, config)
+        self.assertEqual(argv[argv.index("+ip") + 1], "100.64.0.1")
+
+    def test_the_launch_record_keeps_the_address_for_rcon_and_stop(self):
+        launched = Launched(supervisor=1, launcher=2, port=27025, host="100.64.0.1")
+        self.assertEqual(Launched.parse(launched.text()).host, "100.64.0.1")
+
+    def test_a_record_from_before_the_address_was_kept_means_127_0_0_1(self):
+        self.assertEqual(Launched.parse('{"supervisor": 1, "launcher": 2, "port": 27025}').host, "127.0.0.1")

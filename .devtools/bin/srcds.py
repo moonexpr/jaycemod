@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 r"""Run Garry's Mod's dedicated server under CrossOver and drive it with RCON.
 
-  srcds.py start [--map gm_construct] [--port 27025] [--no-lua-refresh]
+  srcds.py start [--map gm_construct] [--port 27025] [--maxplayers 32] [--ip 127.0.0.1] [--no-lua-refresh]
                                                        start, wait for the map
   srcds.py rcon 'status'                               run a console command
   srcds.py stop                                        quit the server we started
@@ -152,6 +152,7 @@ class ServerConfig:
     gamemode: str = "sandcastle"
     convars: Tuple[Tuple[str, str], ...] = field(default_factory=tuple)
     lua_refresh: bool = True  # False adds -disableluarefresh
+    ip: str = LOCALHOST  # the address it binds, game and RCON alike
 
     def __post_init__(self):
         if not MAP_NAME.match(self.map):
@@ -166,7 +167,7 @@ def command_line(install: Install, config: ServerConfig) -> List[str]:
     if install.bottle != BOTTLE:
         raise WrongBottle(f"servers run only in the bottle {BOTTLE!r}, not {install.bottle!r}")
     convars = [
-        ("ip", LOCALHOST),
+        ("ip", config.ip),
         ("maxplayers", str(config.maxplayers)),
         ("gamemode", config.gamemode),
         ("rcon_password", config.rcon_password),
@@ -294,10 +295,10 @@ def running_processes() -> str:
     return subprocess.run(["ps", "-axo", "pid=,ppid=,command="], capture_output=True, text=True).stdout
 
 
-def port_in_use(port: int) -> bool:
+def port_in_use(host: str, port: int) -> bool:
     with socket.socket() as s:
         s.settimeout(0.5)
-        return s.connect_ex((LOCALHOST, port)) == 0
+        return s.connect_ex((host, port)) == 0
 
 
 SUPERVISOR_MARK = "_supervise"
@@ -310,17 +311,18 @@ class Launched:
     launcher: int
     port: int
     server: Optional[int] = None  # the Windows process, once found (new_server)
+    host: str = LOCALHOST  # the address it binds (+ip)
 
     def text(self) -> str:
         return json.dumps({"supervisor": self.supervisor, "launcher": self.launcher, "port": self.port,
-                           "server": self.server})
+                           "server": self.server, "host": self.host})
 
     @classmethod
     def parse(cls, text: str) -> "Launched":
         data = json.loads(text)
         server = data.get("server")
         return cls(int(data["supervisor"]), int(data["launcher"]), int(data["port"]),
-                   int(server) if server is not None else None)
+                   int(server) if server is not None else None, data.get("host", LOCALHOST))
 
     def alive(self, processes: str) -> bool:
         return bool(stop_targets(self, processes))
@@ -399,7 +401,7 @@ class Server:
         launched = read_launched()
         if launched and launched.alive(running_processes()):
             raise ServerDown(f"a server this tool started is still running on port {launched.port}; stop it first")
-        if port_in_use(self.config.port):
+        if port_in_use(self.config.ip, self.config.port):
             raise ServerDown(f"port {self.config.port} is taken")
         ARTIFACTS.mkdir(parents=True, exist_ok=True)
         PID_FILE.unlink(missing_ok=True)
@@ -471,7 +473,8 @@ def supervise(log_path: Path, port: int, argv: List[str]) -> int:
     master, slave = pty.openpty()
     proc = subprocess.Popen(argv, stdin=slave, stdout=slave, stderr=slave)
     os.close(slave)
-    PID_FILE.write_text(Launched(os.getpid(), proc.pid, port).text())
+    host = argv[argv.index("+ip") + 1]
+    PID_FILE.write_text(Launched(os.getpid(), proc.pid, port, host=host).text())
     with open(log_path, "wb") as log:
         while True:
             try:
@@ -492,6 +495,11 @@ def password() -> str:
     return PASSWORD_FILE.read_text().strip()
 
 
+def started_host() -> str:
+    launched = read_launched()
+    return launched.host if launched else LOCALHOST
+
+
 def started_port(default: int) -> int:
     launched = read_launched()
     return launched.port if launched else default
@@ -502,9 +510,12 @@ DEFAULT_MAXPLAYERS = 32
 MAP_LOAD_TIMEOUT = 240
 
 
-def make_server(map_name: str, port: int, lua_refresh: bool = True) -> Server:
+def make_server(map_name: str, port: int, lua_refresh: bool = True, maxplayers: int = DEFAULT_MAXPLAYERS,
+                ip: Optional[str] = None) -> Server:
+    """ip: the address to bind; by default the running server's (rcon, stop), else 127.0.0.1."""
     install = Install.discover()
-    return Server(install, ServerConfig(map_name, port, password(), DEFAULT_MAXPLAYERS, lua_refresh=lua_refresh))
+    ip = ip or started_host()
+    return Server(install, ServerConfig(map_name, port, password(), maxplayers, lua_refresh=lua_refresh, ip=ip), ip)
 
 
 def main() -> int:
@@ -515,6 +526,10 @@ def main() -> int:
     start = sub.add_parser("start")
     start.add_argument("--map", default="gm_construct")
     start.add_argument("--port", type=int, default=DEFAULT_PORT)
+    start.add_argument("--maxplayers", type=int, default=DEFAULT_MAXPLAYERS)
+    start.add_argument("--ip", default=LOCALHOST,
+                       help="the address to bind; a client in the other bottle cannot reach 127.0.0.1, so to play "
+                            "on it give this Mac's LAN or Tailscale address")
     start.add_argument("--no-lua-refresh", dest="lua_refresh", action="store_false",
                        help="start with -disableluarefresh: edits on disk never reach the running server")
     rcon = sub.add_parser("rcon")
@@ -523,7 +538,7 @@ def main() -> int:
     args = ap.parse_args()
     try:
         if args.action == "start":
-            server = make_server(args.map, args.port, args.lua_refresh)
+            server = make_server(args.map, args.port, args.lua_refresh, args.maxplayers, args.ip)
             server.start()
             server.wait_for_map(args.map, MAP_LOAD_TIMEOUT)
             print(f"{args.map} is up on port {args.port}")
