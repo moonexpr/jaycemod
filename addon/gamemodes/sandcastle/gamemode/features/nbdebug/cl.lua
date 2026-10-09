@@ -41,6 +41,13 @@ surface.CreateFont("WetsandNbDebugDetail", {
 	size = 13,
 	weight = 500,
 })
+-- The world's labels: bold, to read over bright maps.
+surface.CreateFont("WetsandNbDebugLabel", {
+	font = "Tahoma",
+	size = 15,
+	weight = 800,
+})
+local LABEL_OUTLINE = 2
 
 local function ToColor(rgb, alpha)
 	return Color(rgb[1], rgb[2], rgb[3], alpha)
@@ -165,8 +172,8 @@ local function Shows(part)
 	return GetConVar(Parts.ConVar(part)):GetBool()
 end
 
--- Brighter than the teams' HUD colours, to read over any map.
-local WAR_COLOR = { [WETSAND.TEAM_RED] = Color(255, 90, 90), [WETSAND.TEAM_BLUE] = Color(110, 175, 255) }
+-- Neon team colours, brighter than the HUD's, to read over any map.
+local WAR_COLOR = { [WETSAND.TEAM_RED] = Color(255, 70, 110), [WETSAND.TEAM_BLUE] = Color(60, 210, 255) }
 
 E.Listen("aiwar_debug", "wetsand_nbdebug_view", function(fields)
 	local teams = fields.fire_teams
@@ -196,12 +203,26 @@ local function Dim(color)
 	return Color(color.r * 0.45, color.g * 0.45, color.b * 0.45)
 end
 
+-- Neon lines, to read over bright maps: a solid core CORE_WIDTH units
+-- thick, lifted toward white, inside a wide additive glow in the colour.
+local GLOW = Material("sprites/physbeama")
+local GLOW_WIDTH, CORE_WIDTH = 10, 3
+local CORE_LIFT = 0.35 -- how far the core moves toward white
+
+local function NeonLine(from, to, color)
+	render.SetMaterial(GLOW)
+	render.DrawBeam(from, to, GLOW_WIDTH, 0, 1, color)
+	local r, g, b = color.r, color.g, color.b
+	render.SetColorMaterial()
+	render.DrawBeam(from, to, CORE_WIDTH, 0, 1, Color(r + (255 - r) * CORE_LIFT, g + (255 - g) * CORE_LIFT, b + (255 - b) * CORE_LIFT))
+end
+
 local function Ring(center, radius, segments, color)
 	local last
 	for i = 0, segments do
 		local angle = i / segments * math.pi * 2
 		local point = center + Vector(math.cos(angle) * radius, math.sin(angle) * radius, 0)
-		if last then render.DrawLine(last, point, color, false) end
+		if last then NeonLine(last, point, color) end
 		last = point
 	end
 end
@@ -209,23 +230,40 @@ end
 local function DrawSoldier(soldier, color)
 	local from = soldier.ent:GetPos() + Vector(0, 0, 8)
 	for _, point in ipairs(soldier.route) do
-		render.DrawLine(from, point + Vector(0, 0, 8), color, false)
+		NeonLine(from, point + Vector(0, 0, 8), color)
 		from = point + Vector(0, 0, 8)
 	end
 	if soldier.goal then render.DrawWireframeSphere(soldier.goal, 16, 8, 8, color, false) end
 end
 
+-- Battle lines are where a team holds, not a way anyone walks, so their
+-- rails cross walls: they are drawn thin, dashed and paler than the
+-- lanes' neon, so the two never read alike. Posts stay neon pillars.
+local DASH, DASH_GAP, RAIL_WIDTH = 24, 16, 1.5
+local RAIL_LIFT = 0.55 -- how far a rail's colour moves toward white
+
+local function DashedLine(from, to, color)
+	local length = from:Distance(to)
+	local step = (to - from):GetNormalized()
+	render.SetColorMaterial()
+	for d = 0, length, DASH + DASH_GAP do
+		render.DrawBeam(from + step * d, from + step * math.min(d + DASH, length), RAIL_WIDTH, 0, 1, color)
+	end
+end
+
 local function DrawBattleLine(line)
 	local color = WAR_COLOR[line.team] or color_white
 	if line.kind ~= "posts" then color = Dim(color) end
+	local r, g, b = color.r, color.g, color.b
+	local rail = Color(r + (255 - r) * RAIL_LIFT, g + (255 - g) * RAIL_LIFT, b + (255 - b) * RAIL_LIFT)
 	local points = line.points
 	for j = 1, #points do
 		local base = points[j] + LINE_LIFT
-		render.DrawLine(base, base + POST_HEIGHT, color, false)
+		NeonLine(base, base + POST_HEIGHT, color)
 		local nextPoint = points[j + 1] or (line.closed and #points > 2 and points[1])
 		if nextPoint then
-			render.DrawLine(base, nextPoint + LINE_LIFT, color, false)
-			render.DrawLine(base + LINE_RAIL_GAP, nextPoint + LINE_LIFT + LINE_RAIL_GAP, color, false)
+			DashedLine(base, nextPoint + LINE_LIFT, rail)
+			DashedLine(base + LINE_RAIL_GAP, nextPoint + LINE_LIFT + LINE_RAIL_GAP, rail)
 		end
 	end
 end
@@ -241,11 +279,11 @@ local function DrawWar()
 			-- in a fight: a line to its team's contact, bright moving, dim holding
 			if contacts and soldier.fighting and fireTeam and fireTeam.contact then
 				local body = soldier.ent:GetPos() + Vector(0, 0, 40)
-				render.DrawLine(body, fireTeam.contact, soldier.moving and color or Dim(color), false)
+				NeonLine(body, fireTeam.contact, soldier.moving and color or Dim(color))
 			end
 			if squads and fireTeam and IsValid(fireTeam.leader) and fireTeam.leader ~= soldier.ent then
 				local link = (soldier.fighting and not soldier.moving) and Dim(color) or color
-				render.DrawLine(soldier.ent:GetPos() + LINK_LIFT, fireTeam.leader:GetPos() + LINK_LIFT, link, false)
+				NeonLine(soldier.ent:GetPos() + LINK_LIFT, fireTeam.leader:GetPos() + LINK_LIFT, link)
 			end
 		end
 	end
@@ -269,7 +307,7 @@ local function DrawWar()
 		for _, line in ipairs(war.lines) do DrawBattleLine(line) end
 		for _, front in ipairs(war.fronts) do
 			local color = WAR_COLOR[front.team] or color_white
-			render.DrawLine(front.pos, front.pos + FRONT_HEIGHT, color, false)
+			NeonLine(front.pos, front.pos + FRONT_HEIGHT, color)
 			Ring(front.pos + GROUND_LIFT, FRONT_RING, RING_SEGMENTS, color)
 		end
 	end
@@ -278,7 +316,7 @@ local function DrawWar()
 		for _, lane in ipairs(war.lanes) do
 			local color = Dim(WAR_COLOR[lane.team] or color_white)
 			local lift = Vector(0, 0, 12 + lane.index * 4)
-			for j = 2, #lane.points do render.DrawLine(lane.points[j - 1] + lift, lane.points[j] + lift, color, false) end
+			for j = 2, #lane.points do NeonLine(lane.points[j - 1] + lift, lane.points[j] + lift, color) end
 			for _, point in ipairs(lane.points) do render.DrawWireframeBox(point + lift, angle_zero, -LANE_MARK, LANE_MARK, color, false) end
 		end
 	end
@@ -288,10 +326,10 @@ local function DrawWar()
 			if fireTeam.contact then
 				local color = WAR_COLOR[fireTeam.team] or color_white
 				render.DrawWireframeSphere(fireTeam.contact, 24, 6, 6, CONTACT_COLOR, false)
-				render.DrawLine(fireTeam.contact, fireTeam.contact + Vector(0, 0, 96), CONTACT_COLOR, false)
+				NeonLine(fireTeam.contact, fireTeam.contact + Vector(0, 0, 96), CONTACT_COLOR)
 				if fireTeam.flank then
 					render.DrawWireframeBox(fireTeam.flank, FLANK_ANGLE, -FLANK_BOX, FLANK_BOX, color, false)
-					render.DrawLine(fireTeam.contact, fireTeam.flank, Dim(color), false)
+					NeonLine(fireTeam.contact, fireTeam.flank, Dim(color))
 				end
 			end
 		end
@@ -474,7 +512,7 @@ end
 local function Label(pos, text, color, align)
 	local screen = pos:ToScreen()
 	if not screen.visible then return end
-	draw.SimpleTextOutlined(text, "WetsandNbDebugDetail", screen.x, screen.y, color, TEXT_ALIGN_CENTER, align or TEXT_ALIGN_BOTTOM, 1, color_black)
+	draw.SimpleTextOutlined(text, "WetsandNbDebugLabel", screen.x, screen.y, color, TEXT_ALIGN_CENTER, align or TEXT_ALIGN_BOTTOM, LABEL_OUTLINE, color_black)
 end
 
 local TEAM_LABEL = { [WETSAND.TEAM_RED] = "RED", [WETSAND.TEAM_BLUE] = "BLU" }
@@ -502,7 +540,7 @@ local function DrawWarLabels()
 	if Shows(Parts.LANES) then
 		for _, lane in ipairs(war.lanes) do
 			if #lane.points > 0 then
-				Label(Middle(lane.points) + Vector(0, 0, 24 + lane.index * 4), TEAM_LABEL[lane.team] .. " " .. lane.label, Dim(WAR_COLOR[lane.team] or color_white))
+				Label(Middle(lane.points) + Vector(0, 0, 24 + lane.index * 4), TEAM_LABEL[lane.team] .. " " .. lane.label, WAR_COLOR[lane.team] or color_white)
 			end
 		end
 	end
