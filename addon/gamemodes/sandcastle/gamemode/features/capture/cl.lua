@@ -34,6 +34,9 @@ local PANEL_HEIGHT = 34
 local CORNER = 6
 
 local BACK = Color(0, 0, 0, 170)
+-- The capture panel, TF2's target ID: a white rounded border round a dark fill.
+local PANEL_BORDER, PANEL_FILL, PANEL_EDGE = 2, Color(30, 28, 26, 235), color_white
+local ANCHOR_LIFT = 24 -- how far above the object's top the panel sits
 local BAR_BACK = Color(20, 20, 20, 255)
 local LOCK = Color(120, 120, 120, 255)
 local ALERT = Color(230, 60, 40)
@@ -207,7 +210,27 @@ end
 -- Why the player may not cap, in TF2's target ID font, outlined, one line
 -- per line of TF2's string (its "\n"), fading white -> red -> white; the
 -- box grows to hold it.
-local function DrawReason(text, w, bottom)
+-- A capture panel's box: TF2's white rounded border round a dark fill.
+local function PanelBox(x, y, boxW, boxH)
+	draw.RoundedBox(CORNER, x - PANEL_BORDER, y - PANEL_BORDER, boxW + 2 * PANEL_BORDER, boxH + 2 * PANEL_BORDER, PANEL_EDGE)
+	draw.RoundedBox(CORNER, x, y, boxW, boxH, PANEL_FILL)
+end
+
+-- Where a capture panel sits: centred above the object the player caps at
+-- (the point, or the cart its area rides), following it on screen as the
+-- camera turns; above the crosshair while that is behind the camera or not
+-- sent to this client. Returns the panel's centre x and its bottom.
+local function PanelPlace(ply, w, h)
+	local anchor = ply:GetNW2Entity("wetsand_capture_anchor")
+	if IsValid(anchor) then
+		local top = anchor:LocalToWorld(Vector(0, 0, anchor:OBBMaxs().z + ANCHOR_LIFT))
+		local screen = top:ToScreen()
+		if screen.visible then return screen.x, screen.y end
+	end
+	return w / 2, h / 2 - PANEL_ABOVE_CROSSHAIR
+end
+
+local function DrawReason(text, centre, bottom)
 	local lines = string.Explode("\n", text)
 	surface.SetFont(FONT_REASON)
 	local lineW, lineH = 0, select(2, surface.GetTextSize("M"))
@@ -215,12 +238,12 @@ local function DrawReason(text, w, bottom)
 	local boxW = math.max(PANEL_WIDTH, lineW + 4 * INSET)
 	local boxH = math.max(PANEL_HEIGHT, lineH * #lines + 2 * INSET)
 	local y = bottom - boxH
-	draw.RoundedBox(CORNER, (w - boxW) / 2, y, boxW, boxH, BACK)
+	PanelBox(centre - boxW / 2, y, boxW, boxH)
 	local red = Hud.ReasonRedness(CurTime())
 	local color = Color(Lerp(red, 255, ALERT.r), Lerp(red, 255, ALERT.g), Lerp(red, 255, ALERT.b))
 	local top = y + (boxH - lineH * #lines) / 2
 	for i, line in ipairs(lines) do
-		draw.SimpleText(line, FONT_REASON, w / 2, top + (i - 1) * lineH, color, TEXT_ALIGN_CENTER, TEXT_ALIGN_TOP)
+		draw.SimpleText(line, FONT_REASON, centre, top + (i - 1) * lineH, color, TEXT_ALIGN_CENTER, TEXT_ALIGN_TOP)
 	end
 end
 
@@ -230,11 +253,11 @@ local function DrawPanel(w, h)
 	local ply = LocalPlayer()
 	local rank = ply:GetNW2Int("wetsand_capture_point", NO_POINT_STOOD_ON)
 	if rank == NO_POINT_STOOD_ON or WETSAND.State() == WETSAND.STATE.TEAM_WIN then return end
-	local bottom = h / 2 - PANEL_ABOVE_CROSSHAIR
+	local centre, bottom = PanelPlace(ply, w, h)
 	local reason = ply:GetNW2Int("wetsand_capture_reason", Capture.REASON_NONE)
-	if reason ~= Capture.REASON_NONE then return DrawReason(View:Localize(Capture.REASON_TOKEN[reason]), w, bottom) end
-	local x, y = (w - PANEL_WIDTH) / 2, bottom - PANEL_HEIGHT
-	draw.RoundedBox(CORNER, x, y, PANEL_WIDTH, PANEL_HEIGHT, BACK)
+	if reason ~= Capture.REASON_NONE then return DrawReason(View:Localize(Capture.REASON_TOKEN[reason]), centre, bottom) end
+	local x, y = centre - PANEL_WIDTH / 2, bottom - PANEL_HEIGHT
+	PanelBox(x, y, PANEL_WIDTH, PANEL_HEIGHT)
 	local p = Point(rank - 1)
 	local c = TeamColor(p.capping)
 	surface.SetDrawColor(c.r, c.g, c.b, 255)

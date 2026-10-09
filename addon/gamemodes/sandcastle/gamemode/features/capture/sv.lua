@@ -924,6 +924,8 @@ local function PublishPanels(self)
 					standing[ply] = {
 						rank = self.set:Rank(point) + 1,
 						reason = self.set:CannotCapReason(point, team, q),
+						-- what the panel pins to: the cart an area rides, else the point
+						anchor = IsValid(ent:GetParent()) and ent:GetParent() or point,
 					}
 				end
 			end
@@ -933,6 +935,7 @@ local function PublishPanels(self)
 		local s = standing[ply]
 		ply:SetNW2Int("wetsand_capture_point", s and s.rank or NO_POINT_STOOD_ON)
 		ply:SetNW2Int("wetsand_capture_reason", s and s.reason or Capture.REASON_NONE)
+		ply:SetNW2Entity("wetsand_capture_anchor", s and s.anchor or NULL)
 	end
 end
 
