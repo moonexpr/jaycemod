@@ -8,7 +8,7 @@
 -- resolution. TF2 shows the icons for every round but payload's, whose
 -- escort HUD takes the same bottom centre (CTFHudObjectiveStatus::
 -- SetVisiblePanels).
-local floor, ipairs = math.floor, ipairs
+local cos, floor, ipairs, pi = math.cos, math.floor, ipairs, math.pi
 local Rounds = require("foundation.rounds")
 module(...)
 
@@ -18,6 +18,18 @@ GAP_X = 9 -- HudControlPointIcons separator_width
 GAP_Y = 7 -- HudControlPointIcons separator_height
 BOTTOM_OFFSET = 0 -- HudControlPointIcons height_offset [$WIN32]
 LABEL = 11 -- the cappers line under each row's icons (TF2 draws it inside the icon)
+-- The capture panel's reason text, in TF2's target ID font (targetid.res's
+-- HudFontSmall: TF2 Secondary, 14 units tall, weight 500), outlined black,
+-- fading white -> red -> white once every REASON_PULSE seconds.
+REASON_FONT = "TF2 Secondary"
+REASON_TALL = 14
+REASON_WEIGHT = 500
+REASON_PULSE = 3
+
+-- How red the reason text is at time now: 0 white, 1 red, smoothly between.
+function ReasonRedness(now)
+	return (1 - cos(2 * pi * now / REASON_PULSE)) / 2
+end
 
 -- Whether the icons show in a round with HUD type hudType (a Rounds.HUD_*).
 function Shown(hudType)

@@ -63,4 +63,17 @@ T.test("the icons give the bottom centre to payload's cart HUD, as TF2's escort 
 	T.eq(Hud.Shown(Rounds.HUD_NONE), true, "a round without a HUD type")
 end)
 
+-- The capture panel's reason text fades white -> red -> white, once every
+-- REASON_PULSE seconds: 0 is white, 1 red.
+T.test("the reason text starts white, is red half a pulse on, and white again after a whole one", function()
+	T.near(Hud.ReasonRedness(0), 0, 1e-9, "white")
+	T.near(Hud.ReasonRedness(Hud.REASON_PULSE / 2), 1, 1e-9, "red")
+	T.near(Hud.ReasonRedness(Hud.REASON_PULSE), 0, 1e-9, "white again")
+	T.near(Hud.ReasonRedness(Hud.REASON_PULSE / 4), 0.5, 1e-9, "halfway")
+end)
+
+T.test("the reason text fades slowly: a pulse takes seconds", function()
+	T.eq(Hud.REASON_PULSE >= 2, true, tostring(Hud.REASON_PULSE))
+end)
+
 T.finish()

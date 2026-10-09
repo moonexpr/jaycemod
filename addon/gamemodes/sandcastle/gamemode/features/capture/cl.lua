@@ -41,6 +41,7 @@ local GOLD = Color(255, 210, 90)
 
 local FONT_NUMBER = "Sandcastle.Capture.Number"
 local FONT_LABEL = "Sandcastle.Capture.Label"
+local FONT_REASON = "Sandcastle.Capture.Reason"
 
 -- HUD units to pixels on a screen h pixels tall, at least one.
 local function Pixels(units, h)
@@ -58,6 +59,12 @@ local function CreateFonts()
 		font = "Roboto",
 		size = Pixels(Hud.LABEL, ScrH()),
 		weight = 700,
+	})
+	surface.CreateFont(FONT_REASON, {
+		font = Hud.REASON_FONT,
+		size = Pixels(Hud.REASON_TALL, ScrH()),
+		weight = Hud.REASON_WEIGHT,
+		outline = true,
 	})
 end
 CreateFonts()
@@ -197,23 +204,41 @@ local function DrawIcons(w, h)
 	end
 end
 
+-- Why the player may not cap, in TF2's target ID font, outlined, one line
+-- per line of TF2's string (its "\n"), fading white -> red -> white; the
+-- box grows to hold it.
+local function DrawReason(text, w, bottom)
+	local lines = string.Explode("\n", text)
+	surface.SetFont(FONT_REASON)
+	local lineW, lineH = 0, select(2, surface.GetTextSize("M"))
+	for _, line in ipairs(lines) do lineW = math.max(lineW, (surface.GetTextSize(line))) end
+	local boxW = math.max(PANEL_WIDTH, lineW + 4 * INSET)
+	local boxH = math.max(PANEL_HEIGHT, lineH * #lines + 2 * INSET)
+	local y = bottom - boxH
+	draw.RoundedBox(CORNER, (w - boxW) / 2, y, boxW, boxH, BACK)
+	local red = Hud.ReasonRedness(CurTime())
+	local color = Color(Lerp(red, 255, ALERT.r), Lerp(red, 255, ALERT.g), Lerp(red, 255, ALERT.b))
+	local top = y + (boxH - lineH * #lines) / 2
+	for i, line in ipairs(lines) do
+		draw.SimpleText(line, FONT_REASON, w / 2, top + (i - 1) * lineH, color, TEXT_ALIGN_CENTER, TEXT_ALIGN_TOP)
+	end
+end
+
 -- The capture panel: the point's progress while the player's team caps it,
 -- else why it may not.
 local function DrawPanel(w, h)
 	local ply = LocalPlayer()
 	local rank = ply:GetNW2Int("wetsand_capture_point", NO_POINT_STOOD_ON)
 	if rank == NO_POINT_STOOD_ON or WETSAND.State() == WETSAND.STATE.TEAM_WIN then return end
-	local x, y = (w - PANEL_WIDTH) / 2, h / 2 - PANEL_ABOVE_CROSSHAIR - PANEL_HEIGHT
-	draw.RoundedBox(CORNER, x, y, PANEL_WIDTH, PANEL_HEIGHT, BACK)
+	local bottom = h / 2 - PANEL_ABOVE_CROSSHAIR
 	local reason = ply:GetNW2Int("wetsand_capture_reason", Capture.REASON_NONE)
-	if reason == Capture.REASON_NONE then
-		local p = Point(rank - 1)
-		local c = TeamColor(p.capping)
-		surface.SetDrawColor(c.r, c.g, c.b, 255)
-		surface.DrawRect(x + INSET, y + INSET, (PANEL_WIDTH - 2 * INSET) * p.progress, PANEL_HEIGHT - 2 * INSET)
-		return
-	end
-	draw.SimpleText(View:Localize(Capture.REASON_TOKEN[reason]), FONT_LABEL, w / 2, y + PANEL_HEIGHT / 2, color_white, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+	if reason ~= Capture.REASON_NONE then return DrawReason(View:Localize(Capture.REASON_TOKEN[reason]), w, bottom) end
+	local x, y = (w - PANEL_WIDTH) / 2, bottom - PANEL_HEIGHT
+	draw.RoundedBox(CORNER, x, y, PANEL_WIDTH, PANEL_HEIGHT, BACK)
+	local p = Point(rank - 1)
+	local c = TeamColor(p.capping)
+	surface.SetDrawColor(c.r, c.g, c.b, 255)
+	surface.DrawRect(x + INSET, y + INSET, (PANEL_WIDTH - 2 * INSET) * p.progress, PANEL_HEIGHT - 2 * INSET)
 end
 
 -- Every round mode that loads capture (control points, KOTH, payload)
