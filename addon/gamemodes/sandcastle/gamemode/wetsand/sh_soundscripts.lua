@@ -63,8 +63,21 @@ local function Entry(name, fields)
 	return entry
 end
 
+-- TF2's scripts by path. Where TF2 is mounted as a game (a client, a listen
+-- server) they are under "tf". A dedicated server mounts it through
+-- mount.cfg under "GAME", where GMod's own files of the same names hide the
+-- manifest and four of the scripts; those are read from the copy extracted
+-- into data/ (EXTRACTED: .devtools/bin/server_root.py writes it from TF2's
+-- tf2_misc_dir.vpk), the rest from "GAME".
+local EXTRACTED = "sandcastle/tf_scripts/"
+
+local function ReadTF(path)
+	if file.Exists("scripts/game_sounds_manifest.txt", "tf") then return file.Read(path, "tf") end
+	return file.Read(EXTRACTED .. path, "DATA") or file.Read(path, "GAME")
+end
+
 local function LoadFile(path)
-	local text = file.Read(path, "tf")
+	local text = ReadTF(path)
 	if not text then return 0 end
 	local root = util.KeyValuesToTablePreserveOrder('"soundscripts" {' .. text .. "}", false, true)
 	local added = 0
@@ -81,7 +94,7 @@ local function LoadFile(path)
 end
 
 function WETSAND.LoadSoundScripts()
-	local manifest = file.Read("scripts/game_sounds_manifest.txt", "tf")
+	local manifest = ReadTF("scripts/game_sounds_manifest.txt")
 	if not manifest then return 0 end
 	local files = util.KeyValuesToTablePreserveOrder(manifest, false, true)
 	local added = 0

@@ -5,7 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from server_root import SERVER_WORKSHOP, Layout, build
+from server_root import SERVER_WORKSHOP, TF_SCRIPTS, TF_SCRIPTS_DIR, Layout, build
+from test_vpk import DIR_ARCHIVE, entry, write_pak
 
 
 @pytest.fixture
@@ -22,7 +23,16 @@ def layout(tmp_path: Path) -> Layout:
         (workshop / item / "addon.gma").write_bytes(b"GMAD")
     mounts = tmp_path / "mounts.lua"
     mounts.write_text("-- mounts")
-    return Layout(shared, tmp_path / "GarrysModServer", workshop, mounts)
+    tf = tmp_path / "tf"
+    tf.mkdir()
+    inline, files = b"", []
+    for path in TF_SCRIPTS:
+        body = f"// TF2's {path}".encode()
+        folder, name = path.rsplit("/", 1)
+        files.append(("txt", folder, name.removesuffix(".txt"), entry(0, b"", DIR_ARCHIVE, len(inline), len(body))))
+        inline += body
+    write_pak(tf, "tf2_misc", files, inline_data=inline)
+    return Layout(shared, tmp_path / "GarrysModServer", workshop, mounts, tf)
 
 
 def test_every_shared_entry_is_a_link_and_the_servers_own_folders_are_real(layout):
@@ -44,10 +54,24 @@ def test_the_shared_addons_are_linked_and_the_workshop_archives_land_in_cache(la
         assert (cache / f"{name}.gma").resolve() == layout.workshop / item / "addon.gma"
 
 
-def test_nothing_is_copied(layout):
+def test_nothing_is_copied_but_tf2s_hidden_sound_scripts(layout):
     root = build(layout)
-    files = [p for p in root.rglob("*") if p.is_file() and not p.is_symlink()]
-    assert files == []
+    files = sorted(p.relative_to(root).as_posix() for p in root.rglob("*") if p.is_file() and not p.is_symlink())
+    assert files == sorted(f"garrysmod/data/{TF_SCRIPTS_DIR}/{path}" for path in TF_SCRIPTS)
+
+
+def test_tf2s_hidden_sound_scripts_are_extracted_into_the_servers_data(layout):
+    root = build(layout)
+    for path in TF_SCRIPTS:
+        assert (root / "garrysmod" / "data" / TF_SCRIPTS_DIR / path).read_text() == f"// TF2's {path}"
+
+
+def test_the_extracted_scripts_follow_tf2_on_every_build(layout):
+    root = build(layout)
+    stale = root / "garrysmod" / "data" / TF_SCRIPTS_DIR / TF_SCRIPTS[0]
+    stale.write_text("stale")
+    build(layout)
+    assert stale.read_text() == f"// TF2's {TF_SCRIPTS[0]}"
 
 
 def test_building_again_changes_nothing(layout):
@@ -58,7 +82,7 @@ def test_building_again_changes_nothing(layout):
 
 
 def test_a_workshop_item_not_downloaded_is_refused(layout, tmp_path):
-    missing = Layout(layout.shared, layout.root, tmp_path / "empty", layout.mounts_lua)
+    missing = Layout(layout.shared, layout.root, tmp_path / "empty", layout.mounts_lua, layout.tf)
     with pytest.raises(FileNotFoundError):
         build(missing)
 
