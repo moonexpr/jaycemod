@@ -309,6 +309,7 @@ function New(settings)
 		mapFresh = true,
 		switchTeams = false,
 		winningTeam = UNASSIGNED,
+		winReason = WINREASON.NONE,
 		roundsPlayed = 0,
 		scores = PerTeam(0), -- the latest the world gave (Think), for a win's outcome
 		previousRounds = {},
@@ -597,7 +598,7 @@ end
 ENTER[State.TEAM_WIN] = function(self, effects, now)
 	if self.forceMapReset then self.roundsPlayed = self.roundsPlayed + 1 end
 	self.transitionAt = now + math.max(MIN_BONUS_ROUND_TIME, self.settings.bonusRoundTime)
-	Add(effects, Hook("WetsandRoundWin", { self.winningTeam }))
+	Add(effects, Hook("WetsandRoundWin", { self.winningTeam, self.winReason }))
 end
 
 THINK[State.TEAM_WIN] = function(self, effects, now, world)
@@ -733,6 +734,7 @@ function Round:SetWinningTeam(now, winner, reason, forceMapReset, switchTeams, d
 	self.forceMapReset = forceMapReset
 	self.switchTeams = switchTeams == true
 	self.winningTeam = winner
+	self.winReason = reason
 	local reward = ShouldRewardTeam(forceMapReset, self.settings.timelimit, self:TimeLeft(now), dontAddScore == true)
 	-- the survivors of sudden death, and a team the Administrator hands the
 	-- round (mp_forcewin's WINREASON.NONE), take a point whatever the map

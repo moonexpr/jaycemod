@@ -583,6 +583,20 @@ T.test("a round won by a team is its humiliation, until the next round resets th
 	T.eq(controller.scenario.resets, 1, "the scenario reset")
 end)
 
+T.test("a defenders' win has the factions trade sides with the next round; an attackers' keeps them", function()
+	local w = World()
+	local controller = Started(w, ControlPointsMode.Mode, {})
+	w.state = STATE.TEAM_WIN
+	w.hooks.WetsandRoundWin(RED, Rounds.WINREASON.ALL_POINTS_CAPTURED)
+	w.hooks.WetsandRoundActivate()
+	T.eq(controller.war:Faction(RED).name, "Combine", "an attackers' win changes nothing")
+	w.hooks.WetsandRoundWin(RED, Rounds.WINREASON.DEFEND_UNTIL_TIME_LIMIT)
+	T.eq(controller.war:Faction(RED).name, "Combine", "the sides hold through the humiliation")
+	w.hooks.WetsandRoundActivate()
+	T.eq(controller.war:Faction(RED).name, "Resistance", "the Resistance on RED")
+	T.eq(controller.war:Faction(BLUE).name, "Combine", "the Combine attack as BLU")
+end)
+
 T.test("a stalemate has no winner, so the round is over and nobody hunts", function()
 	local w = World()
 	local controller = Started(w, ControlPointsMode.Mode, {})

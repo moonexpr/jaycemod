@@ -103,6 +103,16 @@ function FactionTeam(class)
 	return nil
 end
 
+-- Whether winner won the round as its defender: it held until the time
+-- limit (defendedTimeLimit: WINREASON.DEFEND_UNTIL_TIME_LIMIT), or, on
+-- payload, it had no cart and the losers had one. carts: team -> cart.
+function DefenderWon(winner, defendedTimeLimit, carts)
+	local loser = ENEMY[winner]
+	if not loser then return false end
+	if defendedTimeLimit then return true end
+	return carts[winner] == nil and carts[loser] ~= nil
+end
+
 -- Stances: how a team splits its soldiers between roles, as integer
 -- weights, first role first on a tie. No team is the attacker or the
 -- defender: each has a defense share (DefenseShare), the part of its cart
@@ -310,8 +320,29 @@ function War.New()
 		defense = {}, -- team -> its defense share (DefenseShare), or nil
 		drafts = { [RED] = 0, [BLUE] = 0 },
 		nextWave = { [RED] = 0, [BLUE] = 0 },
+		factions = { [RED] = FACTIONS[RED], [BLUE] = FACTIONS[BLUE] }, -- team -> the faction fighting for it
 		field = nil,
 	}, War)
+end
+
+-- The faction fighting for team: FACTIONS' to begin with, swapped when the
+-- defenders win (SwapFactions).
+function War:Faction(team)
+	return self.factions[team]
+end
+
+-- The team a class fights for in this war, or nil for a class in no faction.
+function War:FactionTeam(class)
+	for team, faction in pairs(self.factions) do
+		if faction.classes[class] then return team end
+	end
+	return nil
+end
+
+-- The defenders won (DefenderWon): the factions trade sides, so the side
+-- that defended attacks next.
+function War:SwapFactions()
+	self.factions[RED], self.factions[BLUE] = self.factions[BLUE], self.factions[RED]
 end
 
 -- Every member, oldest first.
@@ -531,7 +562,7 @@ end
 -- A medic comes first while the side has fewer than MedicsFor its size:
 -- { recruit, role = MEDIC }.
 function War:Draft(team)
-	local faction = FACTIONS[team]
+	local faction = self:Faction(team)
 	local medics = 0
 	for _, member in pairs(self.members) do
 		if member.team == team and member.role == MEDIC then medics = medics + 1 end

@@ -8,8 +8,8 @@
 --   - the pre-round and respawn countdowns and the announcement line;
 --   - a small panel with the stage of a multi-stage map, the team scores and
 --     the local team's goal (CTFGameRules::ShouldShowTeamGoal); TF2's win
---     panel (tf_hud_winpanel.cpp), the sudden death panel
---     (tf_hud_stalemate.cpp), the game-over reason, and round notices;
+--     panel (tf_hud_winpanel.cpp), the game-over reason, and round notices
+--     (sudden death and the next map come as notification cards);
 --   - the announcer as each TF2 client plays it: the timer's countdown
 --     (CTeamRoundTimer::ClientThink), "Mission begins in 60 seconds"... "1"
 --     through setup and "Mission ends in..." through normal time, the siren
@@ -63,7 +63,6 @@ local timerY = CreateClientConVar("cl_hud_round_timer_y", "0.08", true, false,
 
 local ANNOUNCE_SECONDS = 4
 local TIME_ADDED_SECONDS = 2
-local STALEMATE_PANEL_SECONDS = 15
 local NOTICE_SECONDS = 5
 local PANEL_BG = Color(0, 0, 0, 170)
 local GOLD = Color(255, 210, 90)
@@ -75,8 +74,6 @@ local View = {
 	announcement = nil,
 	timeAdded = nil,
 	notices = {},
-	stalemateSince = 0,
-	lastState = nil,
 	serial = nil,
 	wasSetup = nil,
 	wasOvertime = false,
@@ -332,12 +329,6 @@ function View:DrawWinPanel(w, h)
 	DrawCentrePanel(w, h, panel.title, WETSAND.TeamColor[winner] or color_white, rows)
 end
 
-function View:DrawStalematePanel(w, h)
-	if CurTime() - self.stalemateSince > STALEMATE_PANEL_SECONDS then return end
-	local panel = Text.StalematePanel(GetGlobal2Int("wetsand_stalemate_reason", Rounds.STALEMATE.TIMER))
-	DrawCentrePanel(w, h, panel.title, GOLD, { panel.reason })
-end
-
 -- The match's end: who won it (Rounds.MatchWinner; a tied match goes to
 -- sudden death instead), and why it ended.
 function View:DrawGameOver(w, h)
@@ -360,14 +351,11 @@ end
 
 local CENTRE_PANELS = {
 	[S.TEAM_WIN] = View.DrawWinPanel,
-	[S.STALEMATE] = View.DrawStalematePanel,
 	[S.GAME_OVER] = View.DrawGameOver,
 }
 
 function View:Paint(w, h)
 	local state = WETSAND.State()
-	if state == S.STALEMATE and self.lastState ~= S.STALEMATE then self.stalemateSince = CurTime() end
-	self.lastState = state
 	self:DrawTimer(w, h)
 	self:DrawPreround(w, h)
 	self:DrawAnnouncement(w, h)

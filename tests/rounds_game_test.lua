@@ -161,7 +161,9 @@ T.test("a full-round win scores, switches teams and resets the map after the bon
 	local round = Running()
 	local objective = FakeObjective.Objective()
 	local now = T0 + 20
-	Expect(round:SetWinningTeam(now, RED, W.DEFEND_UNTIL_TIME_LIMIT, true, true, false, objective), {
+	local win = round:SetWinningTeam(now, RED, W.DEFEND_UNTIL_TIME_LIMIT, true, true, false, objective)
+	T.eq(win[4].args[2], W.DEFEND_UNTIL_TIME_LIMIT, "the hook says why (the AI war swaps sides on a defense)")
+	Expect(win, {
 		"score " .. RED .. " 1",
 		"publish_win " .. RED,
 		"state TEAM_WIN",

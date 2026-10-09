@@ -13,6 +13,7 @@
 -- one, as CTFGameRules::CreateStandardEntities does, so the rounds run and
 -- outputs aimed at the name tf_gamerules reach it.
 local Rounds = WETSAND.require("foundation.rounds")
+local Text = WETSAND.require("foundation.rounds.text")
 local Timer = WETSAND.require("foundation.rounds.timer")
 local ControlPoints = WETSAND.require("foundation.rounds.control_points")
 
@@ -79,6 +80,10 @@ local SUDDEN_DEATH = "Game.SuddenDeath"
 local ROUND_RESTART = "Game.Stalemate"
 local SPECTATOR_WIN_MUSIC = "MatchMaking.RoundEndStalemateMusic"
 local STALEMATE_LINE = "Announcer.CompRoundStalemate" -- vo/compmode/cm_admin_stalemate.mp3
+-- The notification cards' icons (TF2's, as the admin notices'):
+-- no respawn clock for sudden death, a clock for the next map.
+local ICON_SUDDEN_DEATH = "hud/ico_time_none"
+local ICON_NEXT_MAP = "hud/ico_time_10"
 
 -- The match won (GoToIntermission; a tie goes to sudden death instead):
 -- each side its music on CHAN_AUTO (the spectators the winner's colour of
@@ -742,12 +747,12 @@ end
 -- Effects ---------------------------------------------------------------------------
 
 -- The model's round hooks, for other features: the round is running
--- (spawns, the AI war), and a round was won (winner).
+-- (spawns, the AI war), and a round was won (winner, its WINREASON).
 local ROUND_ACTIVE = "WetsandRoundActive"
 local ROUND_WIN = "WetsandRoundWin"
 local ROUND_HOOKS = {
 	[ROUND_ACTIVE] = function() hook.Run(ROUND_ACTIVE) end,
-	[ROUND_WIN] = function(args) hook.Run(ROUND_WIN, args[1]) end,
+	[ROUND_WIN] = function(args) hook.Run(ROUND_WIN, args[1], args[2]) end,
 }
 
 local function FireCompetitive(output)
@@ -760,6 +765,11 @@ local function RespawnTeam(self, t, now)
 			ply:Spawn()
 		end
 	end
+end
+
+-- The level the match's end changes to (Rounds.NextMap).
+local function NextMap()
+	return Rounds.NextMap(nextlevel:GetString(), game.GetMapNext(), game.GetMap(), MapInstalled)
 end
 
 local EFFECTS = {
@@ -840,8 +850,8 @@ local EFFECTS = {
 	-- nobody respawns, so the setup gates (the map's OnSetupFinished relays)
 	-- and every spawn door open: the last of each side have nowhere to hide
 	sudden_death = function(self, e, now)
-		SetGlobal2Int("wetsand_stalemate_reason", e.reason)
 		WETSAND.BroadcastPA(UNASSIGNED, SUDDEN_DEATH)
+		WETSAND.Announce(Text.SuddenDeathNote(e.reason), UNASSIGNED, UNASSIGNED, ICON_SUDDEN_DEATH)
 		self:FinishSetup(now)
 		self:OpenSpawnDoors(now)
 	end,
@@ -870,13 +880,14 @@ local EFFECTS = {
 		PlayMatchEnd(e.winner)
 	end,
 	changelevel = function()
-		RunConsoleCommand("changelevel", Rounds.NextMap(nextlevel:GetString(), game.GetMapNext(), game.GetMap(), MapInstalled))
+		RunConsoleCommand("changelevel", NextMap())
 	end,
 	-- mp_chattime at the match's end: everyone frozen, the AI war's soldiers
 	-- too (WetsandFreeze), until the level changes
 	freeze = function()
 		EachPlayer(function(ply) ply:Freeze(true) end)
 		hook.Run("WetsandFreeze", true)
+		WETSAND.Announce(Text.NextMapNote(NextMap()), UNASSIGNED, UNASSIGNED, ICON_NEXT_MAP)
 	end,
 	unfreeze = function()
 		EachPlayer(function(ply) ply:Freeze(false) end)

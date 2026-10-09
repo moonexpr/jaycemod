@@ -69,6 +69,12 @@ function StalematePanel(reason)
 	}
 end
 
+-- Sudden death's notification card: its panel's title and reason.
+function SuddenDeathNote(reason)
+	local panel = StalematePanel(reason)
+	return string.format("%s %s", panel.title, panel.reason)
+end
+
 -- The flash beside the timer when time is added (teamplay_timer_time_added).
 function TimeAdded(seconds)
 	local sign = seconds < 0 and "-" or "+"
@@ -77,6 +83,11 @@ function TimeAdded(seconds)
 end
 
 -- The timer box ----------------------------------------------------------------------
+
+-- The note everyone gets as mp_chattime begins: the map that comes next.
+function NextMapNote(map)
+	return string.format("Next map: %s", map)
+end
 
 -- Which clock the timer box shows.
 DISPLAY_TRANSITION = "transition" -- the gamemode's countdown to Gameplay mode

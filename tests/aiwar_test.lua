@@ -55,6 +55,31 @@ T.test("drafts cycle through the recruits", function()
 	T.eq(war:Draft(RED).recruit, recruits[1], "the cycle restarts")
 end)
 
+T.test("a war swaps its factions: the Combine fight for BLU, the Resistance for RED", function()
+	local war = AiWar.War.New()
+	T.eq(war:Faction(RED).name, "Combine", "the Combine start on RED")
+	T.eq(war:FactionTeam("wetsand_drg_combine"), RED)
+	war:SwapFactions()
+	T.eq(war:Faction(RED).name, "Resistance", "the Resistance on RED")
+	T.eq(war:Faction(BLUE).name, "Combine", "the Combine on BLU")
+	T.eq(war:FactionTeam("wetsand_drg_combine"), BLUE, "a Combine soldier joins BLU")
+	T.eq(war:FactionTeam("wetsand_drg_vortigaunt"), RED, "a vortigaunt joins RED")
+	T.eq(war:FactionTeam("npc_zombie"), nil, "no side")
+	T.eq(war:Draft(BLUE).recruit.class, "wetsand_drg_combine", "BLU drafts the Combine")
+	war:SwapFactions()
+	T.eq(war:Faction(RED).name, "Combine", "and back")
+end)
+
+T.test("a defender's win: held to the time limit, or won without a cart against one", function()
+	local CART = {}
+	T.eq(AiWar.DefenderWon(RED, true, {}), true, "held until the time limit")
+	T.eq(AiWar.DefenderWon(RED, false, { [BLUE] = CART }), true, "payload: the side without the cart")
+	T.eq(AiWar.DefenderWon(BLUE, false, { [BLUE] = CART }), false, "the attackers pushed it home")
+	T.eq(AiWar.DefenderWon(RED, false, { [RED] = CART, [BLUE] = CART }), false, "a race has no defenders")
+	T.eq(AiWar.DefenderWon(RED, false, {}), false, "a symmetric map")
+	T.eq(AiWar.DefenderWon(Teams.UNASSIGNED, true, {}), false, "a stalemate")
+end)
+
 -- Fire teams ---------------------------------------------------------------
 
 T.test("soldiers of a role form fire teams of FIRE_TEAM_SIZE, each its own squad", function()

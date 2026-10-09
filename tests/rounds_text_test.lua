@@ -87,6 +87,15 @@ local function Display(fields)
 	return Text.TimerDisplay(q)
 end
 
+T.test("mp_chattime's note names the next map", function()
+	T.eq(Text.NextMapNote("pl_upward"), "Next map: pl_upward")
+end)
+
+T.test("sudden death's card says why, as its panel did", function()
+	T.eq(Text.SuddenDeathNote(R.STALEMATE.ADMIN),
+		"SUDDEN DEATH! The Administrator has called sudden death. No more spawning.")
+end)
+
 T.test("the match won, the timer counts down to the map change as GAME OVER", function()
 	local d = Display({ gameOverEnd = NOW + 25, overtime = true })
 	T.eq(d.kind, Text.DISPLAY_GAME_OVER, "the match's clock")

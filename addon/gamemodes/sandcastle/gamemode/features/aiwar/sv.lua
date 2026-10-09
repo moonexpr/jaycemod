@@ -9,6 +9,7 @@
 -- this file only feeds them the round, the carts and the points and turns
 -- their answers into the soldiers' goals.
 local AiWar = WETSAND.require("foundation.aiwar")
+local Rounds = WETSAND.require("foundation.rounds")
 local Scenario = WETSAND.require("foundation.aiwar.scenario")
 local Track = WETSAND.require("foundation.aiwar.track")
 local Orders = WETSAND.require("foundation.aiwar.orders")
@@ -812,11 +813,15 @@ end
 
 -- A round won: winner is the team that won it, or none on a stalemate. The
 -- winners hunt through the humiliation phase (AiWar.PhaseOf) while the
--- losers are humiliated; RespawnAll ends it with the next round.
-function Controller:RoundWon(winner)
+-- losers are humiliated; RespawnAll ends it with the next round. A
+-- defenders' win (AiWar.DefenderWon) has the factions trade sides then.
+function Controller:RoundWon(winner, reason)
 	local losers = AiWar.LosersOf(winner)
 	self.winner = losers and winner or nil
 	self:Humiliate(losers)
+	local defended = reason == Rounds.WINREASON.DEFEND_UNTIL_TIME_LIMIT
+	local field = self.war:Field()
+	self.swapFactions = AiWar.DefenderWon(winner, defended, field and field.carts or {})
 end
 
 -- Teammates pass through each other ---------------------------------------------------
@@ -998,7 +1003,7 @@ end
 -- it) joins its side, once its spawn has finished.
 function Controller:Consider(ent)
 	if not self.war or self.soldiers[ent] or not IsValid(ent) or not (ent:IsNPC() or ent:IsNextBot()) then return end
-	local team = AiWar.FactionTeam(ent:GetClass())
+	local team = self.war:FactionTeam(ent:GetClass())
 	if team and ent:Health() > 0 then self:Enlist(ent, team, false) end
 end
 
@@ -1075,13 +1080,19 @@ function Controller:RespawnAll()
 	self.baseCache = nil
 	self.losers = nil
 	self.winner = nil
+	if self.swapFactions then
+		self.swapFactions = nil
+		self.war:SwapFactions()
+	end
 	self.scenario:Reset()
 	local entries = {}
 	for ent, entry in pairs(self.soldiers) do entries[#entries + 1] = { ent = ent, entry = entry } end
 	local spots, used = {}, {}
 	for _, e in ipairs(entries) do
-		local ent, team = e.ent, e.entry.soldier.team
+		local ent = e.ent
 		if IsValid(ent) then
+			-- a soldier a player spawned follows its faction to its side
+			local team = self.war:FactionTeam(ent:GetClass()) or e.entry.soldier.team
 			local drafted = self.war:Member(ent).drafted
 			e.entry.soldier:Release()
 			self:Discharge(ent)
@@ -2076,7 +2087,7 @@ end
 -- in the chat when it starts or joins the countdown to Gameplay mode, an
 -- announcement when it starts in Gameplay mode.
 local function Story()
-	local red, blue = AiWar.FACTIONS[WETSAND.TEAM_RED].name, AiWar.FACTIONS[WETSAND.TEAM_BLUE].name
+	local red, blue = Controller.war:Faction(WETSAND.TEAM_RED).name, Controller.war:Faction(WETSAND.TEAM_BLUE).name
 	local size = TeamSize()
 	return {
 		title = "AI war declared!",
@@ -2830,8 +2841,8 @@ hook.Add("WetsandRoundActivate", "wetsand_aiwar", function()
 	if Controller.war then Controller:RespawnAll() end
 end)
 
-hook.Add("WetsandRoundWin", "wetsand_aiwar", function(winner)
-	if Controller.war then Controller:RoundWon(winner) end
+hook.Add("WetsandRoundWin", "wetsand_aiwar", function(winner, reason)
+	if Controller.war then Controller:RoundWon(winner, reason) end
 end)
 
 -- Frozen (mp_chattime at the match's end): every soldier stands still and
