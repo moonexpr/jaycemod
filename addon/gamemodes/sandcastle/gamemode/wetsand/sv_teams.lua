@@ -65,7 +65,11 @@ function WETSAND.SetPlayerTeam(ply, newTeam, force)
 		-- player waits, dead, for the new team's respawn wave. The kill comes
 		-- after the team change so the wave is the new team's.
 		WETSAND.StopObserving(ply)
-		if ply:Alive() then ply:KillSilent() end
+		if ply:Alive() then
+			ply.wetsandChangingTeam = true
+			ply:KillSilent()
+			ply.wetsandChangingTeam = nil
+		end
 	elseif not force and Playing(old) and ply:Alive() then
 		Die(ply)
 	end

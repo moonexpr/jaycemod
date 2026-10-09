@@ -494,6 +494,22 @@ T.test("respawn waves scale with the team, and admins and maps set them", functi
 	T.eq(round:RespawnAt(RED, now + 21, 8), now + 60, "the respawn time shown")
 end)
 
+-- A player who switches teams dies at once and comes back with the new
+-- team's next wave, not a whole wave after: only the death animation must
+-- pass first (switched).
+T.test("a player who switched teams comes back with the new team's next wave", function()
+	local round = Running()
+	local now = T0 + 20
+	round:SetTeamWaveTime(RED, 20)
+	T.eq(round:WaveDue(RED, now, 8), true, "a wave now, the next at now + 20")
+	T.eq(round:NextRespawn(RED, now + 1, 8, true), now + 20, "switched at now + 1: the next wave")
+	T.eq(round:RespawnAt(RED, now + 1, 8, true), now + 20, "the respawn time shown")
+	T.eq(round:MayRespawn(RED, now + 1, now + 20, true), true, "spawns with it")
+	T.eq(round:MayRespawn(RED, now + 1, now + 7, true), false, "not before the death animation")
+	T.eq(round:NextRespawn(RED, now + 1, 8, false), now + 40, "killed instead: a whole wave after")
+	T.eq(round:NextRespawn(RED, now + 18, 8, true), now + 40, "switched as the wave comes: the one after the animation")
+end)
+
 T.test("setup respawns quickly, and sudden death or an admin stops respawns", function()
 	local round = Running()
 	local now = T0 + 20

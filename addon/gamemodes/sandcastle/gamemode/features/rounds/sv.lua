@@ -705,7 +705,9 @@ end
 
 local function RespawnTeam(self, t, now)
 	for _, ply in ipairs(TeamPlayers(t)) do
-		if not ply:Alive() and self.round:MayRespawn(t, ply.wetsandDeathTime or 0, now) then ply:Spawn() end
+		if not ply:Alive() and self.round:MayRespawn(t, ply.wetsandDeathTime or 0, now, ply.wetsandSwitchedTeam == true) then
+			ply:Spawn()
+		end
 	end
 end
 
@@ -799,9 +801,15 @@ end
 function Controller:OnPlayerDeath(ply)
 	local now = CurTime()
 	ply.wetsandDeathTime = now
+	-- a death that changed the player's team (WETSAND.SetPlayerTeam) waits only
+	-- for the new team's next wave
+	ply.wetsandSwitchedTeam = ply.wetsandChangingTeam == true
 	local t = WETSAND.TeamOf(ply)
 	local at = 0
-	if t ~= UNASSIGNED then at = self.round:RespawnAt(t, now, #TeamPlayers(t)) end
+	-- Sandbox mode: no waves, the player clicks to respawn (GM:PlayerDeathThink)
+	if t ~= UNASSIGNED and not WETSAND.GameplayStopped() then
+		at = self.round:RespawnAt(t, now, #TeamPlayers(t), ply.wetsandSwitchedTeam)
+	end
 	ply:SetNW2Float("wetsand_respawn_time", at)
 end
 
@@ -884,7 +892,8 @@ end
 -- A dead player's respawn time again, from their death.
 function Controller:OnPlayerDeathTime(ply)
 	local t = WETSAND.TeamOf(ply)
-	ply:SetNW2Float("wetsand_respawn_time", self.round:RespawnAt(t, ply.wetsandDeathTime or CurTime(), #TeamPlayers(t)))
+	ply:SetNW2Float("wetsand_respawn_time", self.round:RespawnAt(t, ply.wetsandDeathTime or CurTime(), #TeamPlayers(t),
+		ply.wetsandSwitchedTeam == true))
 end
 
 -- The Game Rules editor's override: seconds >= 0, or nil for the map's.

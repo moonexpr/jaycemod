@@ -71,9 +71,9 @@ function GM:PlayerSelectSpawn(ply, transition)
 end
 
 -- On TF2 maps, players come back with tf_gamerules' respawn waves rather than
--- when they click.
+-- when they click; in Sandbox mode, as in Sandbox, when they click.
 function GM:PlayerDeathThink(ply)
-	if WETSAND.Active() then return false end
+	if WETSAND.Active() and not WETSAND.GameplayStopped() then return false end
 	return self.BaseClass.PlayerDeathThink(self, ply)
 end
 

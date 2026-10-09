@@ -821,19 +821,23 @@ end
 
 -- CTFGameRules::GetMinTimeWhenPlayerMaySpawn: setup respawns quickly
 -- (ShouldRespawnQuickly), anything else waits a wave too.
-local function MinSpawnTime(self, team, deathTime)
+-- The earliest a player dead since deathTime may spawn: after the death
+-- animation and, out of setup, a whole wave; switched (a player who died
+-- changing teams) waits only the animation, so the new team's next wave
+-- brings them back.
+local function MinSpawnTime(self, team, deathTime, switched)
 	local delay = DEATH_ANIM_LENGTH
-	if not self.inSetup then delay = delay + self:WaveMaxLength(team, 0, false) end
+	if not self.inSetup and not switched then delay = delay + self:WaveMaxLength(team, 0, false) end
 	return deathTime + delay
 end
 
-function Round:MayRespawn(team, deathTime, now)
-	return now >= MinSpawnTime(self, team, deathTime)
+function Round:MayRespawn(team, deathTime, now, switched)
+	return now >= MinSpawnTime(self, team, deathTime, switched)
 end
 
 -- GetNextRespawnWave
-function Round:NextRespawn(team, deathTime, teamSize)
-	local minTime = MinSpawnTime(self, team, deathTime)
+function Round:NextRespawn(team, deathTime, teamSize, switched)
+	local minTime = MinSpawnTime(self, team, deathTime, switched)
 	if self.inSetup then return minTime end
 	local nextWave = self.nextWave[team]
 	local waveLength = self:WaveMaxLength(team, teamSize, true)
@@ -846,9 +850,9 @@ end
 
 -- The respawn time a dead player is shown: 0 in sudden death and while an
 -- admin has stopped respawns.
-function Round:RespawnAt(team, deathTime, teamSize)
+function Round:RespawnAt(team, deathTime, teamSize, switched)
 	if self.state == State.STALEMATE or self.respawnsDisabled then return 0 end
-	return self:NextRespawn(team, deathTime, teamSize)
+	return self:NextRespawn(team, deathTime, teamSize, switched)
 end
 
 -- Whether the team's wave comes now; if so the next is set a wave later.
