@@ -41,6 +41,24 @@ T.test("thinning keeps a waypoint where skipping it would cut through the world"
 	for i = 2, #kept do T.eq(Clear(kept[i - 1], kept[i]), true, "segment " .. i - 1 .. " is clear") end
 end)
 
+-- A lane's band: its areas and every area within LANE_SPREAD of them, the
+-- areas the next tries pay LANE_PENALTY for, so a later lane leaves the
+-- corridor instead of stepping one area aside.
+T.test("a lane's band holds its areas and the areas near them, so later lanes leave its corridor", function()
+	local route = { { id = 1 }, { id = 2 } }
+	local near = { [1] = { { id = 1 }, { id = 10 }, { id = 11 } }, [2] = { { id = 2 }, { id = 11 }, { id = 12 } } }
+	local asked
+	local band = Lanes.Band(route, function(area, radius)
+		asked = radius
+		return near[area.id]
+	end)
+	local ids = {}
+	for id in pairs(band) do ids[#ids + 1] = id end
+	table.sort(ids)
+	T.eq(table.concat(ids, ","), "1,2,10,11,12")
+	T.eq(asked, Lanes.LANE_SPREAD, "areas within LANE_SPREAD")
+end)
+
 T.test("lanes go to squads least taken first, raiders the longest, and stay while the plan does", function()
 	local lanes = { key = "k", Lane({ 1 }, 1000), Lane({ 2 }, 1500), Lane({ 3 }, 1200) }
 	local raiders = { team = 3, role = "raid" }

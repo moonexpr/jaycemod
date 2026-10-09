@@ -1848,6 +1848,22 @@ function Controller:UpdateLanes(field, now)
 	end
 end
 
+-- A route's band is found on its own floor: areas a step above or below.
+local BAND_STEP = 64
+
+-- Nav areas as Lanes.Band takes them.
+local function BandAreas(areas)
+	local list = {}
+	for i, area in ipairs(areas) do list[i] = { id = area:GetID(), center = area:GetCenter() } end
+	return list
+end
+
+local function NearAreas(area, radius)
+	local list = {}
+	for i, other in ipairs(navmesh.Find(area.center, radius, BAND_STEP, BAND_STEP)) do list[i] = { id = other:GetID() } end
+	return list
+end
+
 function Controller:PlanLanes(team, to, now)
 	local target = ToVector(to)
 	local from, best
@@ -1888,7 +1904,7 @@ function Controller:PlanLanes(team, to, now)
 					local route = { ids = ids, points = points, length = length }
 					plan.shortest = plan.shortest or length
 					if Lanes.Accept(plan.lanes, route, plan.shortest) then plan.lanes[#plan.lanes + 1] = route end
-					for _, id in ipairs(ids) do plan.penalized[id] = true end
+					for id in pairs(Lanes.Band(BandAreas(areas), NearAreas)) do plan.penalized[id] = true end
 				end
 				if areas and #plan.lanes < Lanes.LANES_MAX and plan.tries < Lanes.LANE_TRIES then Try() else Finish() end
 			end,

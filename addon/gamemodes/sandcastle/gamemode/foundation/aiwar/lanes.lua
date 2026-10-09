@@ -2,7 +2,9 @@
 -- take from their spawn out to their front, so they come on by several
 -- paths instead of all by the shortest. The aiwar controller plans a team's
 -- lanes one after the other over the nav mesh, each route costing more
--- (LANE_PENALTY) through the areas the lanes before it took (Strategy); it
+-- (LANE_PENALTY) through the band of the routes before it (Band: their
+-- areas and those within LANE_SPREAD, so a later route leaves the corridor
+-- instead of stepping one area aside; Strategy); it
 -- keeps a route as a lane when it shares less than MAX_OVERLAP of its areas
 -- with each lane kept and is at most MAX_DETOUR of the shortest. Each squad
 -- holds a lane (Assign); its leader walks the lane's waypoints (Next) until
@@ -19,6 +21,7 @@ module(...)
 
 LANES_MAX, LANE_TRIES = 3, 5
 MAX_OVERLAP, MAX_DETOUR, LANE_PENALTY = 0.5, 1.6, 8
+LANE_SPREAD = 300 -- how far either side of a route its band reaches
 WAYPOINT_SPACING, WAYPOINT_REACH, LOOKAHEAD = 300, 160, 2
 
 -- The jobs whose squads take lanes (foundation.aiwar's ESCORT, RAID and
@@ -45,6 +48,17 @@ Strategy = {
 		return from + (cost - from) * LANE_PENALTY
 	end,
 }
+
+-- A route's band: the ids of its areas and of every area within
+-- LANE_SPREAD of one, an id -> true set. route: nav areas ({ id }, or the
+-- controller's with GetID); near(area, radius): the areas within radius.
+function Band(route, near)
+	local band = {}
+	for _, area in ipairs(route) do
+		for _, other in ipairs(near(area, LANE_SPREAD)) do band[other.id] = true end
+	end
+	return band
+end
 
 -- The share of a's areas that b also takes.
 function Overlap(a, b)
