@@ -67,6 +67,16 @@ hook.Add("EntityKeyValue", "wetsand_record_keyvalues", function(ent, key, value)
 	end
 end)
 
+-- An ambient_generic naming a voice line TF2 has since made an .mp3
+-- (foundation.sound_paths) plays the .mp3.
+local SoundPaths = WETSAND.require("foundation.sound_paths")
+local function GameFileExists(path) return file.Exists(path, "GAME") end
+
+hook.Add("EntityKeyValue", "wetsand_sound_paths", function(ent, key, value)
+	if ent:GetClass() ~= "ambient_generic" or string.lower(key) ~= "message" then return end
+	return SoundPaths.Replacement(value, GameFileExists)
+end)
+
 function WETSAND.KeyValues(ent)
 	return WETSAND.KV[ent] or { outputs = {} }
 end
