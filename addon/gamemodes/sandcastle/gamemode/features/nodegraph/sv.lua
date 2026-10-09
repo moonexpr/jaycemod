@@ -26,8 +26,7 @@ local Controller = {
 }
 
 local DATA_DIR = "sandcastle/nodegraphs"
-local MAX_NODES = CreateConVar("wetsand_nodegraph_max_nodes", tostring(Graph.MAX_NODES), FCVAR_ARCHIVE,
-	"The most nodes a generated AI node graph may have (the engine's limit is 1500 in the 2013 SDK)", 64, 8192)
+local MAX_NODES = GetConVar("wetsand_nodegraph_max_nodes") -- wetsand/sh_nodegraph.lua
 
 local SPACING_START, SPACING_GROW = 96, 1.25
 local LINK_RANGE, LINKS_PER_NODE = 512, 16

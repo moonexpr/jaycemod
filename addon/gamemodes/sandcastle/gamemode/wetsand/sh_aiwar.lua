@@ -67,7 +67,7 @@ local function BuildPanel(panel)
 	function button:DoClick()
 		RunConsoleCommand(WETSAND.AiWarActive() and "mp_aiwar_end" or "mp_aiwar_start")
 	end
-	panel:NumSlider("Soldiers per side", "mp_aiwar_team_size", 1, AiWar.TEAM_SIZE_MAX, 0)
+	WETSAND.ServerSlider(panel, "Soldiers per side", "mp_aiwar_team_size")
 	panel:NumSlider("Ragdolls fade after (s, 0: never)", "cl_npc_ragdoll_lifetime", 0, 120, 0)
 	panel:NumSlider("Most ragdolls kept", "g_ragdoll_maxcount", 0, 64, 0)
 	panel:Help("Debugging the soldiers (overlays, reports, tuning): Utilities > Sandcastle > Debug NextSoldier.")

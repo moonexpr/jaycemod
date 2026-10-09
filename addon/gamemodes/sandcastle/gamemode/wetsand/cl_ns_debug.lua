@@ -75,7 +75,9 @@ local function BuildPanel(panel)
 	for _, part in ipairs(Overlay.PARTS) do ConVarToggle(panel, PART_LABELS[part], Overlay.ConVar(part)) end
 	panel:Button("Show every part").DoClick = function() ShowParts(true) end
 	panel:Button("Hide every part").DoClick = function() ShowParts(false) end
-	ConVarToggle(panel, "Soldier boxes show the whole action stack", "wetsand_aiwar_debug_full")
+	Toggle(panel, "Soldier boxes show the whole action stack",
+		function() return GetConVar("wetsand_aiwar_debug_full"):GetBool() end,
+		function() WETSAND.SetServerSetting("wetsand_aiwar_debug_full", GetConVar("wetsand_aiwar_debug_full"):GetBool() and 0 or 1) end)
 
 	panel:Help("NextBot layers (COST and NAV draw the selected NPC)")
 	for _, layer in ipairs(NEXTBOT_LAYERS) do

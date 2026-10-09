@@ -9,6 +9,14 @@
 -- nodes), human if a soldier's hull can walk it.
 local E = WETSAND.Events
 local COUNT_BITS = 16
+local Settings = WETSAND.require("foundation.settings")
+
+-- Shared, so the Utilities menu's slider shows the server's value.
+local MAX_NODES_RANGE = Settings.SETTINGS.wetsand_nodegraph_max_nodes
+CreateConVar("wetsand_nodegraph_max_nodes", tostring(WETSAND.require("foundation.nodegraph").MAX_NODES),
+	{ FCVAR_ARCHIVE, FCVAR_REPLICATED },
+	"The most nodes a generated AI node graph may have (the engine's limit is 1500 in the 2013 SDK)",
+	MAX_NODES_RANGE.min, MAX_NODES_RANGE.max)
 
 E.Define("nodegraph_debug", {
 	source = E.String(),
@@ -58,7 +66,7 @@ local function BuildPanel(panel)
 	panel:Button("Destroy Generated Graph", "wetsand_nodegraph_destroy")
 	panel:Button("Toggle Node Graph Overlay", "wetsand_nodegraph_debug")
 	panel:Button("Print Node Graph Status", "wetsand_nodegraph_status")
-	panel:NumSlider("Most nodes", "wetsand_nodegraph_max_nodes", 64, 8192, 0)
+	WETSAND.ServerSlider(panel, "Most nodes", "wetsand_nodegraph_max_nodes")
 	panel:Help("The engine's limit is 1500 nodes in the 2013 SDK; raise this only if your build allows more.")
 end
 
