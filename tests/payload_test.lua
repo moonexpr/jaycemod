@@ -380,6 +380,33 @@ T.test("the next checkpoint is the first one past the cart", function()
 	T.eq(P.NextCheckpoint(links, 2000), nil, "none past the last")
 end)
 
+-- The Game Rules editor's retract: a cart within RETRACT_NEAR past the
+-- last point it took gives the point back and goes to the checkpoint before
+-- it (or the start); farther on, it only goes back to that point.
+T.test("retracting just past a point gives it back and returns the cart to the checkpoint before", function()
+	local links = { { distance = 800, index = 6 }, { distance = 2000, index = 14 }, { distance = 3000, index = 20 } }
+	local plan = P.RetractPlan(links, 2000 + P.RETRACT_NEAR)
+	T.eq(plan.uncap, links[2], "the point just taken")
+	T.eq(plan.to, links[1], "the checkpoint before it")
+	plan = P.RetractPlan(links, 900)
+	T.eq(plan.uncap, links[1], "the first point")
+	T.eq(plan.to, nil, "back to the start")
+end)
+
+T.test("retracting farther past a point only returns the cart to it", function()
+	local links = { { distance = 800, index = 6 }, { distance = 2000, index = 14 } }
+	local plan = P.RetractPlan(links, 2000 + P.RETRACT_NEAR + 1)
+	T.eq(plan.uncap, nil, "nothing given back")
+	T.eq(plan.to, links[2], "back to the last point taken")
+end)
+
+T.test("a cart that has taken no point goes back to the start", function()
+	local plan = P.RetractPlan({ { distance = 800, index = 6 } }, 300)
+	T.eq(plan.uncap, nil)
+	T.eq(plan.to, nil)
+	T.eq(P.RETRACT_SLACK, 300, "the attackers get five minutes for a point given back")
+end)
+
 T.test("the cart's top speed is the map's times the admin's scale, faster while advancing", function()
 	T.eq(P.MaxSpeed(90, 1, false), 90, "the map's")
 	T.eq(P.MaxSpeed(90, 2, false), 180, "doubled")

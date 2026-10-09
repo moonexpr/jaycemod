@@ -12,6 +12,16 @@ local function Rules()
 	return IsValid(WETSAND.Rules) and WETSAND.Rules or nil
 end
 
+-- Everyone is told what the admin changed (foundation.admin_notices). A
+-- field sends a change at every step of its slider, so its notice waits
+-- until the admin has left the fields alone SETTLE seconds.
+local Notices = WETSAND.require("foundation.admin_notices")
+local SETTLE = 3
+
+local function Settled(key, notices)
+	timer.Create("wetsand_admin_notice_" .. key, SETTLE, 1, function() WETSAND.Notify(notices) end)
+end
+
 -- Scores ---------------------------------------------------------------------------
 
 function Controller:Score(t)
@@ -33,7 +43,14 @@ end
 function Controller:SetRespawnTime(t, seconds)
 	local rules = Rules()
 	if not rules then return false, NO_ROUNDS end
-	for _, each in ipairs(t and { t } or { RED, BLUE }) do rules:SetAdminRespawnWaveTime(each, math.max(0, seconds)) end
+	seconds = math.max(0, seconds)
+	local changed = false
+	for _, each in ipairs(t and { t } or { RED, BLUE }) do
+		changed = changed or rules:TeamRespawnWaveTime(each) ~= seconds
+		rules:SetAdminRespawnWaveTime(each, seconds)
+	end
+	-- RED's, BLU's or both: one notice once the respawn fields are left alone
+	if changed then Settled("respawn", Notices.RespawnTimesModified()) end
 	return true
 end
 
@@ -42,6 +59,7 @@ function Controller:UseMapRespawnTimes()
 	if not rules then return false, NO_ROUNDS end
 	rules:SetAdminRespawnWaveTime(RED, nil)
 	rules:SetAdminRespawnWaveTime(BLUE, nil)
+	WETSAND.Notify(Notices.MapRespawnWaves())
 	return true
 end
 
@@ -53,6 +71,7 @@ end
 function Controller:SetRespawnsDisabled(disabled)
 	local rules = Rules()
 	if not rules then return false, NO_ROUNDS end
+	if rules:RespawnsDisabled() ~= disabled then WETSAND.Notify(Notices.RespawnsDisabled(disabled)) end
 	rules:SetRespawnsDisabled(disabled)
 	return true
 end
@@ -66,11 +85,12 @@ function Controller:ResetRound()
 	return true
 end
 
--- Every active cart moves on to its next checkpoint (both on a race map).
+-- Every active cart goes back to its checkpoint (both on a race map), a
+-- point it has just taken given back (the watcher's RetractToCheckpoint).
 function Controller:RetractCarts()
 	local moved, why = false, "this map has no payload cart"
 	for _, watcher in ipairs(ents.FindByClass("team_train_watcher")) do
-		local ok, reason = watcher:AdvanceToPrevCheckpoint()
+		local ok, reason = watcher:RetractToCheckpoint()
 		if ok then moved = true else why = reason end
 	end
 	if moved then return true end
@@ -142,6 +162,7 @@ end
 function Controller:SetPaused(paused)
 	local timer = Timer()
 	if not timer then return false, NO_TIMER end
+	if self:Paused() ~= paused then WETSAND.Notify(Notices.TimerPaused(paused)) end
 	WETSAND.Feature("rounds"):TimerInput(timer, paused and "pause" or "resume")
 	return true
 end

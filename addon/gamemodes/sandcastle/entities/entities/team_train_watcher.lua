@@ -311,19 +311,51 @@ function ENT:ApplyMaxSpeed()
 	if self.handleMovement and not self.disabled then self.train:Fire("SetSpeedDirAccel", tostring(self.currentSpeed)) end
 end
 
--- Drive the cart at full (and boosted) speed until it passes the previous
--- checkpoint's path_track, so the map's own OnPass logic captures it.
--- Returns true, or false and why not.
-function ENT:AdvanceToPrevCheckpoint()
+-- The Game Rules editor's retract (foundation.payload RetractPlan): a cart
+-- just past the last point it took gives it back to its default owner, the
+-- attackers gain RETRACT_SLACK seconds on the HUD timer, and the cart is
+-- teleported to the checkpoint before it (or the start); farther on, the
+-- cart is only teleported back to that point. Returns true, or false and
+-- why not.
+function ENT:RetractToCheckpoint()
 	if not self:IsActive() or not IsValid(self.train) then return false, "the cart is not active" end
 	if not self.handleMovement then return false, "this map moves its cart itself" end
 	if WETSAND.State() ~= WETSAND.STATE.RND_RUNNING then return false, "the round is not running" end
-	local link = P.PrevCheckpoint(self.links, self.distanceFromStart or 0)
-	if not link or not link.index then return false, "no checkpoint behind" end
-	self.advanceTo = link
+	local plan = P.RetractPlan(self.links, self.distanceFromStart or 0)
+	if plan.uncap then
+		self.capture:ForceOwner(plan.uncap.cp, self.capture:Set():DefaultOwner(plan.uncap.cp))
+		local rounds = WETSAND.Feature("rounds")
+		local hud = rounds:HudTimer()
+		if hud then rounds:AddTimerSeconds(hud, P.RETRACT_SLACK, self.team) end
+	end
+	local index = plan.to and plan.to.index or 1
+	local node = self.nodes[index]
+	if node:GetName() == "" then node:SetName("wetsand_retract_track_" .. node:EntIndex()) end
+	self.advanceTo = nil
+	self.train:Fire("TeleportToPathTrack", node:GetName())
+	self.train:Fire("Stop")
+	self.pathIndex = index
+	for _, link in ipairs(self.links) do
+		if link.distance >= self.distanceAt[index] then link.alerted = false end
+	end
 	self:ApplyMaxSpeed()
-	self:HandleTrainMovement(true)
+	self:HandleTrainMovement()
+	self:AnnounceRetract()
 	return true
+end
+
+-- Each side told of the Game Rules editor's moves, as TF2 tells a
+-- scramble (foundation.admin_notices).
+local Notices
+
+function ENT:AnnounceRetract()
+	Notices = Notices or WETSAND.require("foundation.admin_notices")
+	WETSAND.Notify(Notices.CartRetracted(self.team, WETSAND.EnemyOf(self.team)))
+end
+
+function ENT:AnnounceAdvance()
+	Notices = Notices or WETSAND.require("foundation.admin_notices")
+	WETSAND.Notify(Notices.CartAdvanced(self.team, WETSAND.EnemyOf(self.team)))
 end
 
 -- Drive the cart at full (and boosted) speed until it passes the next
@@ -338,6 +370,7 @@ function ENT:AdvanceToNextCheckpoint()
 	self.advanceTo = link
 	self:ApplyMaxSpeed()
 	self:HandleTrainMovement()
+	self:AnnounceAdvance()
 	return true
 end
 

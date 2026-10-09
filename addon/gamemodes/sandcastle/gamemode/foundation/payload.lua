@@ -229,18 +229,31 @@ end
 
 -- links: the watcher's checkpoints in path order, { distance, index }.
 -- The first one farther along the path than `distance`, or nil.
-function PrevCheckpoint(links, distance)
-	for _, link in ipairs(links) do
-		if link.distance <= distance then return link end
-	end
-	return nil
-end
-
 function NextCheckpoint(links, distance)
 	for _, link in ipairs(links) do
 		if link.distance > distance then return link end
 	end
 	return nil
+end
+
+-- The Game Rules editor's retract. A cart at most RETRACT_NEAR past the last
+-- point it took gives that point back (uncap), the attackers gain
+-- RETRACT_SLACK seconds for it, and the cart goes to the checkpoint before
+-- (to; nil is the start of the track); farther on, it only goes back to the
+-- last point (to), giving nothing back. links in path order, as above.
+RETRACT_NEAR = 200
+RETRACT_SLACK = 300
+
+function RetractPlan(links, distance)
+	local last
+	for i, link in ipairs(links) do
+		if link.distance <= distance then last = i end
+	end
+	if not last then return { uncap = nil, to = nil } end
+	if distance - links[last].distance <= RETRACT_NEAR then
+		return { uncap = links[last], to = links[last - 1] }
+	end
+	return { uncap = nil, to = links[last] }
 end
 
 -- The train's m_maxSpeed for the map's top speed `base`.

@@ -69,7 +69,7 @@ WETSAND.EditorAction("wetsand_reset_round", {
 WETSAND.EditorAction("wetsand_retract_cart", {
 	class = CLASS, title = TITLE, label = "Retract Cart to Previous Checkpoint", icon = "icon16/arrow_left.png", order = 2101,
 	run = function(e) return e:RetractCarts() end,
-	done = "the cart is on its way to the previous checkpoint",
+	done = "the cart is back at its checkpoint (a point just taken is given back, with five more minutes)",
 })
 
 WETSAND.EditorAction("wetsand_advance_cart", {
