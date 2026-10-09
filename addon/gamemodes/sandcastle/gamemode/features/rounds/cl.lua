@@ -410,11 +410,11 @@ function View:CountdownThink()
 	local serial = GetGlobal2Int("wetsand_timer_serial", 0)
 	if serial ~= self.serial then
 		self.serial = serial
-		self.armed = Timer.ArmClientWarnings(left)
+		self.armed = Timer.ArmClientWarnings(left, setup)
 	end
 	if paused then return end
 
-	local warning = Timer.NextClientWarning(self.armed, left)
+	local warning = Timer.NextClientWarning(self.armed, left, setup)
 	if warning then
 		self.armed[warning] = false
 		if speaks then Play(Timer.WarningSound(warning, setup)) end

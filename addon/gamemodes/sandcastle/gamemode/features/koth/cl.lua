@@ -107,10 +107,10 @@ function View:CountdownThink(t)
 	if not c.shown then return end
 	if c.serial ~= state.serial then
 		state.serial = c.serial
-		state.armed = Timer.ArmClientWarnings(c.left)
+		state.armed = Timer.ArmClientWarnings(c.left, false) -- koth's clocks run no setup
 	end
 	if c.paused then return end
-	local warning = Timer.NextClientWarning(state.armed, c.left)
+	local warning = Timer.NextClientWarning(state.armed, c.left, false)
 	if not warning then return end
 	state.armed[warning] = false
 	local speaks = Timer.Speaks({

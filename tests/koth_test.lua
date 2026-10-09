@@ -580,8 +580,9 @@ T.test("every running KOTH clock speaks Mission ends in...; a paused one or Sand
 	T.eq(Speaks(false, false), true, "a running clock, not the HUD timer")
 	T.eq(Speaks(true, false), false, "a paused clock")
 	T.eq(Speaks(false, true), false, "Sandbox mode")
-	local armed = Timer.ArmClientWarnings(CLOCK)
-	T.eq(Timer.NextClientWarning(armed, 61), 60, "at 61 s")
+	local armed = Timer.ArmClientWarnings(CLOCK, false)
+	armed[120] = false -- "2 minutes" was spoken at 121 s
+	T.eq(Timer.NextClientWarning(armed, 61, false), 60, "at 61 s")
 	T.eq(Timer.WarningSound(60, false), "Announcer.RoundEnds60seconds", "mission ends in 60")
 	T.eq(Timer.StartsRound(false, false), false, "a clock with no setup never plays the siren")
 end)

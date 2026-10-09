@@ -282,25 +282,47 @@ end)
 -- Client countdown (CalculateOutputMessages with the client's 2 s allowance)
 
 T.test("the client arms with two seconds of slack above ten seconds", function()
-	local armed = Timer.ArmClientWarnings(59)
+	local armed = Timer.ArmClientWarnings(59, false)
 	T.eq(armed[60], true)
 	T.eq(armed[30], true)
-	armed = Timer.ArmClientWarnings(57)
+	armed = Timer.ArmClientWarnings(57, false)
 	T.eq(armed[60], false)
 end)
 
 T.test("the client does not pad short times", function()
-	local armed = Timer.ArmClientWarnings(9)
+	local armed = Timer.ArmClientWarnings(9, false)
 	T.eq(armed[10], false)
 	T.eq(armed[5], true)
 end)
 
 T.test("client warnings speak a second early, one per think", function()
-	local armed = Timer.ArmClientWarnings(120)
-	T.eq(Timer.NextClientWarning(armed, 61), 60)
+	local armed = Timer.ArmClientWarnings(100, false)
+	T.eq(Timer.NextClientWarning(armed, 61, false), 60)
 	armed[60] = false
-	T.eq(Timer.NextClientWarning(armed, 61), nil)
-	T.eq(Timer.NextClientWarning(armed, 6), 30)
+	T.eq(Timer.NextClientWarning(armed, 61, false), nil)
+	T.eq(Timer.NextClientWarning(armed, 6, false), 30)
+end)
+
+-- Every line the phase has is counted down, a second early: normal time's
+-- "mission ends in" 5 and 2 minutes, 20 s and every second from 9 to 1 too;
+-- setup only its own "mission begins in" lines.
+T.test("normal time counts down every line it has, each a second early", function()
+	local armed = Timer.ArmClientWarnings(400, false)
+	for _, s in ipairs({ 300, 120, 60, 30, 20, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 }) do
+		T.eq(armed[s], true, s .. " s armed")
+		T.eq(Timer.NextClientWarning(armed, s + 1, false), s, s .. " s spoken at " .. (s + 1))
+		armed[s] = false
+	end
+end)
+
+T.test("setup counts down only the lines it has", function()
+	local armed = Timer.ArmClientWarnings(400, true)
+	T.eq(armed[300], nil, "no 5 minutes in setup")
+	T.eq(armed[9], nil, "no 9 s in setup")
+	T.eq(armed[60], true)
+	armed[60], armed[30], armed[10] = false, false, false -- spoken already
+	T.eq(Timer.NextClientWarning(armed, 7, true), nil, "nothing between 10 and 5 in setup")
+	T.eq(Timer.NextClientWarning(armed, 6, true), 5, "then 5")
 end)
 
 -- Which cue a client plays when (SendTimeWarning, GetTimeWarningSound, OnDataChanged)

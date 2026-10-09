@@ -11,7 +11,7 @@
 --   { kind = "nag" }                 the overtime nag (tf_overtime_nag)
 --   { kind = "length_changed" }      CalculateOutputMessages: the serial bumped
 --   { kind = "time_added", team, seconds }  the announced AddTimerSeconds
-local ipairs, math, setmetatable = ipairs, math, setmetatable
+local ipairs, math, pairs, setmetatable, sort = ipairs, math, pairs, setmetatable, table.sort
 module(...)
 
 STATE_SETUP = "setup"   -- RT_STATE_SETUP
@@ -333,36 +333,6 @@ end
 
 -- Client countdown ------------------------------------------------------------------
 
--- The client's CalculateOutputMessages adds 2 s above ten seconds, covering
--- the time the update took to arrive.
-local WARNINGS = { 60, 30, 10, 5, 4, 3, 2, 1 }
-local WARN_AT = {
-	[60] = 61,
-	[30] = 31,
-	[10] = 11,
-	[5] = 6,
-	[4] = 5,
-	[3] = 4,
-	[2] = 3,
-	[1] = 2,
-}
-local CLIENT_PAD_ABOVE, CLIENT_PAD = 10, 2
-
-function ArmClientWarnings(t)
-	local padded = t > CLIENT_PAD_ABOVE and t + CLIENT_PAD or t
-	local armed = {}
-	for _, s in ipairs(WARNINGS) do armed[s] = padded >= s end
-	return armed
-end
-
--- CTeamRoundTimer::ClientThink: the countdown line to speak now, or nil.
-function NextClientWarning(armed, t)
-	for _, s in ipairs(WARNINGS) do
-		if t <= WARN_AT[s] and armed[s] then return s end
-	end
-	return nil
-end
-
 -- RT_WARNING_TIME_START: the warning a timer sends as setup gives way to
 -- normal time (the countdown's warnings are their seconds).
 WARNING_TIME_START = 0
@@ -380,8 +350,11 @@ local SETUP_SOUND = {
 	[1] = "Announcer.RoundBegins1Seconds",
 }
 local ROUND_SOUND = {
+	[300] = "Announcer.RoundEnds5minutes",
+	[120] = "Announcer.RoundEnds2minutes",
 	[60] = "Announcer.RoundEnds60seconds",
 	[30] = "Announcer.RoundEnds30seconds",
+	[20] = "Announcer.RoundEnds20seconds",
 	[10] = "Announcer.RoundEnds10seconds",
 	[9] = "Announcer.RoundEnds9seconds",
 	[8] = "Announcer.RoundEnds8seconds",
@@ -394,6 +367,42 @@ local ROUND_SOUND = {
 	[1] = "Announcer.RoundEnds1seconds",
 }
 local ROUND_START_BELL = "Ambient.Siren"
+
+-- The client's CalculateOutputMessages adds 2 s above ten seconds, covering
+-- the time the update took to arrive. The countdown has a line for every
+-- second its phase's table names (SETUP_SOUND, ROUND_SOUND), each spoken
+-- WARN_LEAD early.
+local WARN_LEAD = 1
+local CLIENT_PAD_ABOVE, CLIENT_PAD = 10, 2
+
+local function Seconds(sounds)
+	local list = {}
+	for s in pairs(sounds) do list[#list + 1] = s end
+	sort(list, function(a, b) return a > b end)
+	return list
+end
+
+local WARNINGS = {
+	[true] = Seconds(SETUP_SOUND),
+	[false] = Seconds(ROUND_SOUND),
+}
+
+-- setup: whether the timer is in setup (its lines are "mission begins").
+function ArmClientWarnings(t, setup)
+	local padded = t > CLIENT_PAD_ABOVE and t + CLIENT_PAD or t
+	local armed = {}
+	for _, s in ipairs(WARNINGS[setup]) do armed[s] = padded >= s end
+	return armed
+end
+
+-- CTeamRoundTimer::ClientThink: the countdown line to speak now, or nil.
+function NextClientWarning(armed, t, setup)
+	for _, s in ipairs(WARNINGS[setup]) do
+		if t <= s + WARN_LEAD and armed[s] then return s end
+	end
+	return nil
+end
+
 
 function WarningSound(warning, setup)
 	if warning == WARNING_TIME_START then return ROUND_START_BELL end
