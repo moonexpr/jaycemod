@@ -15,9 +15,11 @@ SOLDIERS = {
 	wetsand_drg_combine = Teams.RED,
 }
 
--- The team to show a notice's name in: a soldier's side for "#<class>",
--- else the notice's own team.
+-- The team to show a notice's name in: a soldier's side for its class
+-- ("<class>" as GMod's feed passes an entity, or "#<class>"), else the
+-- notice's own team, as for a death with no name (nil: a fall, a suicide).
 function Team(name, team)
-	if team ~= NPC_TEAM or sub(name, 1, 1) ~= "#" then return team end
-	return SOLDIERS[sub(name, 2)] or team
+	if team ~= NPC_TEAM or name == nil then return team end
+	local class = sub(name, 1, 1) == "#" and sub(name, 2) or name
+	return SOLDIERS[class] or team
 end

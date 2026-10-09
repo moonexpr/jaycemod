@@ -9,11 +9,19 @@ T.test("a soldier's notice takes its side's team", function()
 	T.eq(Feed.Team("#wetsand_drg_rebel", -1), BLUE)
 	T.eq(Feed.Team("#wetsand_drg_vortigaunt", -1), BLUE)
 	T.eq(Feed.Team("#wetsand_drg_combine", -1), RED)
+	T.eq(Feed.Team("wetsand_drg_rebel", -1), BLUE, "the class as GMod's feed passes it, without the #")
 end)
 
 T.test("players and other NPCs keep the team the notice has", function()
 	T.eq(Feed.Team("Some Player", RED), RED, "a player")
 	T.eq(Feed.Team("#npc_zombie", -1), -1, "another NPC")
+end)
+
+-- GMod's feed gives no attacker name for a death nobody caused (a fall, a
+-- suicide): it keeps the team it has.
+T.test("a notice without a name keeps its team", function()
+	T.eq(Feed.Team(nil, -1), -1)
+	T.eq(Feed.Team(nil, RED), RED)
 end)
 
 T.test("every soldier class has a team, so each gets a name", function()
