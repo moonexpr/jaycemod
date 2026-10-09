@@ -28,8 +28,18 @@ function Controller:Score(t)
 	return team.GetScore(t)
 end
 
+-- A score raised from the field is told once it has rested SETTLE seconds:
+-- the points awarded since the first change (none for a score lowered).
+local scoredFrom = {} -- team -> its score before the changes being settled
+
 function Controller:SetScore(t, score)
+	if scoredFrom[t] == nil then scoredFrom[t] = team.GetScore(t) end
 	team.SetScore(t, math.max(0, math.floor(score)))
+	timer.Create("wetsand_admin_notice_score_" .. t, SETTLE, 1, function()
+		local awarded = team.GetScore(t) - scoredFrom[t]
+		scoredFrom[t] = nil
+		if awarded > 0 then WETSAND.Notify(Notices.PointsAwarded(t, awarded, WETSAND.TeamName)) end
+	end)
 end
 
 -- Respawns -------------------------------------------------------------------------

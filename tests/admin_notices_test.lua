@@ -86,4 +86,19 @@ T.test("the AI war's start and end are neutral notices of visitors from another 
 	T.eq(type(Notices.ICON_VISITORS), "string")
 end)
 
+-- A point awarded from the Game Rules editor: everyone hears a bell and
+-- sees the card in the team's colour.
+T.test("points awarded to a team ring a bell and tell everyone, in the team's colour", function()
+	local names = { [RED] = "RED", [BLU] = "BLU" }
+	local one = Notices.PointsAwarded(RED, 1, names)
+	T.eq(#one, 1)
+	T.eq(one[1].text, "The Administrator has awarded RED a point!")
+	T.eq(one[1].audience, NOBODY, "everyone")
+	T.eq(one[1].team, RED)
+	T.eq(one[1].chime, Notices.BELL)
+	T.eq(one[1].sound, nil, "no announcer line")
+	T.eq(Notices.PointsAwarded(BLU, 3, names)[1].text, "The Administrator has awarded BLU 3 points!")
+	T.eq(Notices.BELL, "misc/halloween/strongman_bell_01.wav")
+end)
+
 T.finish()

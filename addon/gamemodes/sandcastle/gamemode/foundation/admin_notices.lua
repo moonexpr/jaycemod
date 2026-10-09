@@ -6,7 +6,7 @@
 -- other gives each its line; a neutral one (NEUTRAL_LINE and NEUTRAL_CHIME)
 -- goes to everyone. Each function returns the list of { audience, team,
 -- text, icon, sound, chime }.
-local ipairs = ipairs
+local format, ipairs = string.format, ipairs
 local Teams = require("foundation.teams")
 module(...)
 
@@ -22,6 +22,7 @@ local GOOD, BAD = "Announcer.TimeAwardedCongrats", "Announcer.TimeAddedForEnemy"
 NEUTRAL_LINE = "Announcer.SecurityAlert"
 NEUTRAL_CHIME = "ui/system_message_alert.wav"
 NEUTRAL_LINE_GAP = 30 * 60 -- the security alert speaks once in this long
+BELL = "misc/halloween/strongman_bell_01.wav" -- a point awarded
 
 local function Notice(audience, team, text, icon, sound, chime)
 	return { audience = audience, team = team, text = text, icon = icon, sound = sound, chime = chime }
@@ -60,6 +61,15 @@ end
 
 function MapRespawnWaves()
 	return Neutral("The Administrator has restored the map's respawn waves.", ICON_CLOCK)
+end
+
+-- Points awarded to team from the Game Rules editor (once the score field
+-- has rested): a bell, and the card in the team's colour, to everyone.
+-- names: team -> name.
+function PointsAwarded(team, points, names)
+	local text = points == 1 and format("The Administrator has awarded %s a point!", names[team])
+		or format("The Administrator has awarded %s %d points!", names[team], points)
+	return { Notice(EVERYONE, team, text, ICON_ADMIN, nil, BELL) }
 end
 
 -- The AI war, told as visitors from another universe arriving and leaving.
