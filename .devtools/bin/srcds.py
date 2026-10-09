@@ -8,12 +8,15 @@ r"""Run Garry's Mod's dedicated server under CrossOver and drive it with RCON.
 
 The server is GMod's Windows x86-64 srcds_win64.exe in the CrossOver bottle
 "Steam" and nowhere else: the operator plays in the bottle "Team Fortress 2",
-and a server there ended his game once. The Steam bottle's
+and a server there ended the operator's game once. The Steam bottle's
 C:\Steam\steamapps\common\GarrysMod and ...\Team Fortress 2 are links to
-the TF2 bottle's, so the files are shared and only the processes separate;
-this tool writes nothing in the GMod install but the console log. It runs with -insecure -noworkshop -nosteam: without them it
-crashes in steamclient64.dll while it mounts the Workshop, so Workshop addons
-(DrGBase) never load on it. Its console must be a terminal: with a pipe or
+the TF2 bottle's, so the files are shared and only the processes separate.
+The server runs from GarrysModServer beside it, which `start` builds out of
+symlinks (server_root.py): its addons/, data/, cache/ and console log are
+its own, so it writes nothing in the shared install. It runs with -insecure
+-noworkshop -nosteam: without them it crashes in steamclient64.dll while it
+mounts the Workshop; the Workshop addons it needs (DrGBase) are mounted from
+the operator's downloads by server_root's autorun instead. Its console must be a terminal: with a pipe or
 /dev/null for stdin its main loop blocks in the console's GetLine before the
 first frame, so a detached supervisor (this script's `_supervise`) gives it a
 pty and drains it into .devtools/artifacts/srcds.log. -condebug writes
@@ -47,6 +50,8 @@ from collections import deque
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Deque, Dict, List, Optional, Set, Tuple
+
+import server_root
 
 __all__ = [
     "AUTH",
@@ -89,8 +94,8 @@ PROCESS_LOG = ARTIFACTS / "srcds.log"
 
 BOTTLE = "Steam"  # never "Team Fortress 2", where the operator plays
 BOTTLE_DIR = Path.home() / "Library/Application Support/CrossOver/Bottles" / BOTTLE
-GMOD_WINDOWS = r"C:\Steam\steamapps\common\GarrysMod"
-GMOD_DIR = BOTTLE_DIR / "drive_c/Steam/steamapps/common/GarrysMod/garrysmod"
+GMOD_WINDOWS = server_root.ROOT_WINDOWS
+GMOD_DIR = server_root.ROOT / "garrysmod"
 WINE_RELATIVE = "Contents/SharedSupport/CrossOver/bin/wine"
 CROSSOVER_APPS = (Path("/Applications/CrossOver GPTK4.app"), Path("/Applications/CrossOver.app"))
 SERVER_EXE = "srcds_win64.exe"
@@ -389,6 +394,7 @@ class Server:
     host: str = LOCALHOST
 
     def start(self) -> None:
+        server_root.build()
         argv = command_line(self.install, self.config)  # refuses any bottle but Steam
         launched = read_launched()
         if launched and launched.alive(running_processes()):

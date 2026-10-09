@@ -146,8 +146,10 @@ These come from the operator's standing instructions; most are in
     loads main through that symlink, so merge before testing live.
   - Write only under `garrysmod/data/wetsand_tests/`. Stop your server
     when done.
-  - TF2 is mounted through `cfg/mount.cfg`. DrGBase doesn't load on the
-    dedicated server, so the AI war can't be checked there.
+  - TF2 is mounted through `cfg/mount.cfg`. The server runs from
+    `GarrysModServer`, a symlinked root (`server_root.py`) whose
+    `addons/`, `data/` and `cache/` are its own; it mounts DrGBase from the
+    operator's Workshop download, so the AI war can be checked there.
 - **Layout:** reusable scripts go in `.devtools/bin/`, reports in
   `.devtools/artifacts/`, docs in `docs/`. The scratchpad holds data only.
 - **Escalate only product questions** to the operator. Technical calls

@@ -13,9 +13,9 @@ garrysmod/console.log for Lua errors. It stops the server, removes what it
 put in the GMod install, and writes .devtools/artifacts/ingame-report-<date>.md
 with ingame-<date>/ (the records and each map's console log) beside it.
 
-The server runs the addon garrysmod/addons/sandcastle points to (the
+The server runs the gamemode garrysmod/gamemodes/sandcastle points to (the
 operator's main checkout); the report says which, and whether its files
-equal this checkout's addon/.
+equal this checkout's addon/gamemodes/sandcastle.
 """
 from __future__ import annotations
 
@@ -115,6 +115,7 @@ PLAN: Tuple[MapRun, ...] = (
         Step("defaults_change", 20),
         Step("defaults_apply", 20, before="wetsand_defaults_apply"),
         Step("aiwar", 90),
+        Step("aiwar_sitting", 300),
         GAMEPLAY_START,
         Step("payload", 420),
     )),
@@ -235,8 +236,8 @@ HUMAN_ONLY = [
     "payload HUD and race bars), the win panel text, goal strings, the 'Sandbox mode' note, particles, "
     "gibs, client ragdolls, the boss bar, the overlay and nbdebug views.",
     "Client prediction and input: the pre-round freeze, spellbook casting with H, the team menu.",
-    "The AI war's behaviour (staging, rushing, posts, lanes, carnage) and the ns_* commands: they need "
-    "DrGBase, a Workshop addon the dedicated server cannot mount here.",
+    "The AI war's behaviour (staging, rushing, posts, lanes, carnage): the checks start the war, run "
+    "the ns_* commands and ride the cart, but whether the soldiers fight well takes someone watching.",
 ]
 
 # Records ---------------------------------------------------------------------------------
@@ -365,15 +366,15 @@ class AddonIdentity:
 
     @classmethod
     def of(cls, install: srcds.Install) -> "AddonIdentity":
-        link = install.gmod_dir / "addons" / "sandcastle"
+        link = install.gmod_dir / "gamemodes" / "sandcastle"
         target = Path(os.path.realpath(link))
         commit = subprocess.run(["git", "-C", str(REPO), "rev-parse", "--short", "HEAD"],
                                 capture_output=True, text=True).stdout.strip()
-        return cls(target, tree_digest(target) == tree_digest(REPO / "addon"), commit)
+        return cls(target, tree_digest(target) == tree_digest(REPO / "addon" / "gamemodes" / "sandcastle"), commit)
 
     def describe(self) -> str:
         same = "identical to" if self.same_as_checkout else "DIFFERENT from"
-        return f"`{self.target}` (files {same} this checkout's addon/ at {self.commit})"
+        return f"`{self.target}` (files {same} this checkout's addon/gamemodes/sandcastle at {self.commit})"
 
 
 class ConsoleLog:
