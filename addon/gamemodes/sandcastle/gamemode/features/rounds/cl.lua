@@ -83,6 +83,11 @@ local View = {
 	armed = {},
 }
 
+local function PlayPA(name)
+	local ply = LocalPlayer()
+	if IsValid(ply) then ply:EmitSound(name, 100, 100, 1, CHAN_VOICE2) end
+end
+
 local function Play(name)
 	local ply = LocalPlayer()
 	if IsValid(ply) then ply:EmitSound(name) end
