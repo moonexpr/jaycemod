@@ -216,18 +216,11 @@ local function PanelBox(x, y, boxW, boxH)
 	draw.RoundedBox(CORNER, x, y, boxW, boxH, PANEL_FILL)
 end
 
--- Where a capture panel sits: centred above the object the player caps at
--- (the point, or the cart its area rides), following it on screen as the
--- camera turns; above the crosshair while that is behind the camera or not
--- sent to this client. Returns the panel's centre x and its bottom.
-local function PanelPlace(ply, w, h)
-	local anchor = ply:GetNW2Entity("wetsand_capture_anchor")
-	if IsValid(anchor) then
-		local top = anchor:LocalToWorld(Vector(0, 0, anchor:OBBMaxs().z + ANCHOR_LIFT))
-		local screen = top:ToScreen()
-		if screen.visible then return screen.x, screen.y end
-	end
-	return w / 2, h / 2 - PANEL_ABOVE_CROSSHAIR
+-- The object the player caps at, the panel's anchor in the world: the
+-- point, or the cart its area rides; NULL when the server names none or
+-- this client was not sent it (a hidden point).
+local function PanelAnchor(ply)
+	return ply:GetNW2Entity("wetsand_capture_anchor")
 end
 
 local function DrawReason(text, centre, bottom)
@@ -248,12 +241,16 @@ local function DrawReason(text, centre, bottom)
 end
 
 -- The capture panel: the point's progress while the player's team caps it,
--- else why it may not.
-local function DrawPanel(w, h)
-	local ply = LocalPlayer()
+-- else why it may not; nil when the player stands on no point.
+local function PanelRank(ply)
 	local rank = ply:GetNW2Int("wetsand_capture_point", NO_POINT_STOOD_ON)
-	if rank == NO_POINT_STOOD_ON or WETSAND.State() == WETSAND.STATE.TEAM_WIN then return end
-	local centre, bottom = PanelPlace(ply, w, h)
+	if rank == NO_POINT_STOOD_ON or WETSAND.State() == WETSAND.STATE.TEAM_WIN then return nil end
+	return rank
+end
+
+-- The panel, centred on centre with its bottom at bottom, in the 2D space
+-- being drawn (the screen, or the panel's plane in the world).
+local function DrawPanelAt(ply, rank, centre, bottom)
 	local reason = ply:GetNW2Int("wetsand_capture_reason", Capture.REASON_NONE)
 	if reason ~= Capture.REASON_NONE then return DrawReason(View:Localize(Capture.REASON_TOKEN[reason]), centre, bottom) end
 	local x, y = centre - PANEL_WIDTH / 2, bottom - PANEL_HEIGHT
@@ -265,10 +262,33 @@ local function DrawPanel(w, h)
 end
 
 -- Every round mode that loads capture (control points, KOTH, payload)
--- shows its points; payload's cart points come hidden.
+-- shows its points; payload's cart points come hidden. The panel is drawn
+-- here only without an anchor in the world: above the crosshair.
 hook.Add("SandcastleHUDPaint", "wetsand_capture", function(w, h)
 	DrawIcons(w, h)
-	DrawPanel(w, h)
+	local ply = LocalPlayer()
+	local rank = PanelRank(ply)
+	if rank and not IsValid(PanelAnchor(ply)) then DrawPanelAt(ply, rank, w / 2, h / 2 - PANEL_ABOVE_CROSSHAIR) end
+end)
+
+-- With an anchor, the panel stands in the world above it, as TF2's target
+-- ID does: fixed there, turned to face the camera, PANEL_SCALE world units
+-- a pixel, so it grows as the player comes near and walls hide it.
+local PANEL_SCALE = 0.2
+
+hook.Add("PostDrawTranslucentRenderables", "wetsand_capture_panel", function(_, skybox)
+	if skybox then return end
+	local ply = LocalPlayer()
+	local rank = PanelRank(ply)
+	local anchor = PanelAnchor(ply)
+	if not rank or not IsValid(anchor) then return end
+	local at = anchor:LocalToWorld(Vector(0, 0, anchor:OBBMaxs().z + ANCHOR_LIFT))
+	local facing = EyeAngles()
+	facing:RotateAroundAxis(facing:Forward(), 90)
+	facing:RotateAroundAxis(facing:Right(), 90)
+	cam.Start3D2D(at, facing, PANEL_SCALE)
+	DrawPanelAt(ply, rank, 0, 0)
+	cam.End3D2D()
 end)
 
 -- The first locked point's pending unlock.
