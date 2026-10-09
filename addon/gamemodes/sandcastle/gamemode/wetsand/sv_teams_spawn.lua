@@ -128,6 +128,9 @@ end
 local function EnsureRoundSetup()
 	if PlayingMiniRounds() then
 		local round = Capture():CurrentRound()
+		-- none chosen yet (Sandbox mode keeps the rounds from activating): the
+		-- round that comes first, so only its spawns are live
+		if not IsValid(round) then round = Capture():UpcomingRound() end
 		if not IsValid(round) or round == applied.round then return end
 		SetupMiniRound(round)
 	else

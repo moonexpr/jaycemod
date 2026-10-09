@@ -295,6 +295,19 @@ T.test("the highest-priority playable round is chosen (pl_goldrush stage 1)", fu
 	T.eq(master:ChooseRound(set, NO_HISTORY, first), "round_a")
 end)
 
+-- Before any round is chosen (Sandbox mode keeps the rounds from
+-- activating), the spawns are set up for the round that comes first; asking
+-- chooses nothing.
+T.test("the upcoming round is the first playable of the highest priority, and asking chooses none", function()
+	local master, set = Candidates({ { "round_c", 0, true }, { "round_a", 2, true }, { "round_b", 1, true } })
+	T.eq(master:Upcoming(set), "round_a", "stage 1")
+	T.eq(master:Current(), nil, "nothing chosen")
+	local won, wonSet = Candidates({ { "round_a", 2, false }, { "round_b", 1, true }, { "round_c", 0, true } })
+	T.eq(won:Upcoming(wonSet), "round_b", "stage 1 won: stage 2")
+	local done, doneSet = Candidates({ { "round_a", 2, false } })
+	T.eq(done:Upcoming(doneSet), nil, "none playable")
+end)
+
 T.test("a won round is skipped for the next priority (pl_goldrush stage 2)", function()
 	local master, set = Candidates({ { "round_a", 2, false }, { "round_b", 1, true }, { "round_c", 0, true } })
 	T.eq(master:ChooseRound(set, NO_HISTORY, first), "round_b")

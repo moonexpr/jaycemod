@@ -246,6 +246,16 @@ function MasterModel:ChooseRound(set, history, random)
 	return self.current, firstAfterRestart
 end
 
+-- The round that comes first while none is chosen (Sandbox mode keeps the
+-- rounds from activating): the first playable round of the highest
+-- priority, or nil. It chooses nothing; ChooseRound does, at RoundActivate.
+function MasterModel:Upcoming(set)
+	for _, i in ipairs(ByPriority(self.rounds)) do
+		if Playable(set, self.rounds[i]) then return self.rounds[i].name end
+	end
+	return nil
+end
+
 -- InputRoundActivate: with mini-rounds and none chosen, choose one.
 -- Returns ChooseRound's answer, or nil when nothing was chosen now.
 function MasterModel:RoundActivate(set, history, random)

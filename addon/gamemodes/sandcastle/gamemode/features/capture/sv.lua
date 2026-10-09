@@ -278,13 +278,23 @@ local function AnyCapturing(self)
 end
 
 -- The mini-round being played, or NULL.
-function Controller:CurrentRound()
-	if not self.master then return NULL end
-	local name = self.master:Current()
+local function RoundNamed(self, name)
 	for ent in pairs(self.roundEnts) do
 		if IsValid(ent) and RoundName(ent) == name then return ent end
 	end
 	return NULL
+end
+
+function Controller:CurrentRound()
+	if not self.master then return NULL end
+	return RoundNamed(self, self.master:Current())
+end
+
+-- The mini-round that comes first while none is chosen (Sandbox mode), or
+-- NULL: its spawns are the ones set up (wetsand/sv_teams_spawn.lua).
+function Controller:UpcomingRound()
+	if not self.master then return NULL end
+	return RoundNamed(self, self.master:Upcoming(self:Set()))
 end
 
 function Controller:RoundPoints(roundEnt)
