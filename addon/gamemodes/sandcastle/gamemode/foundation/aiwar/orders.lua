@@ -971,17 +971,6 @@ function Objective:Patrol(me, field, goal)
 	return self:SuspendFor(Travel:New(state, PATROL, spot, Keep), "patrolling")
 end
 
-local wetsand_aiwar_sitting_enabled = CreateConVar( "wetsand_aiwar_sitting_enabled", "1", FCVAR_ARCHIVE | FCVAR_NOTIFY, "Whether AI War bots can sit on carts." )
-
-cvars.AddChangeCallback( "wetsand_aiwar_sitting_enabled", 
-	function(cvar, old, new)
-		if new == "0" then
-			-- TODO(Claude): Implement a way to make bots get off the cart when this is disabled. For now, they will just stay on the cart until they are forced to get off.
-		end
-	end,
-	 "eject from cart"
-)
-
 function Objective:Update(me)
 	local state = self.state
 	local field = state.war:Field()
@@ -1069,14 +1058,12 @@ function Objective:Update(me)
 	state.goal = goal
 	-- a pusher at its cart sits on it, where a seat is free (the port's Sit),
 	-- and rides it until it must get off
-	if self.role.sits and wetsand_aiwar_sitting_enabled:GetBool() then 
+	if self.role.sits then
 		if me:IsSeated() then
 			state.tactic = "riding the cart"
 			return self:Continue()
 		end
-		if range <= self.role.arrive and me:Sit() then 
-			return self:Continue()
-		end
+		if range <= self.role.arrive and me:Sit() then return self:Continue() end
 	end
 	-- at the cart: keep to the spot as the cart carries it off
 	if self.role.rushes and range <= self.role.arrive then

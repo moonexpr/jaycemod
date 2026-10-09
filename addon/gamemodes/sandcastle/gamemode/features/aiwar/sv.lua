@@ -106,12 +106,17 @@ function Soldier:MaxHealth() return self.ent:GetMaxHealth() end
 -- either side of its middle, taken by a soldier within SEAT_REACH of the
 -- cart's edge. A seated soldier is carried along by the controller's tick
 -- (Controller:CarrySeated), sits (wetsand_drg_soldier's WetsandSeated pose)
--- and fights from there; it gets off beside the cart (EjectFromCart).
+-- and fights from there; it gets off beside the cart (EjectFromCart). With
+-- wetsand_aiwar_sitting_enabled 0 no seat is free, and turning it off
+-- stands every seated soldier (Controller:StandSeated).
 local SEATS_PER_CART, SEAT_SPREAD, SEAT_REACH = 2, 16, 72
+local SITTING = CreateConVar("wetsand_aiwar_sitting_enabled", "1", { FCVAR_ARCHIVE, FCVAR_NOTIFY },
+	"Whether the AI war's cart pushers sit on the cart; 0 gets every seated soldier off it")
 
 function Soldier:IsSeated() return self.seat ~= nil end
 
 function Soldier:Sit()
+	if not SITTING:GetBool() then return false end
 	if self.seat then return true end
 	local controller = self.controller
 	local train = controller.cartEntities and controller.cartEntities[self.team]
@@ -2661,6 +2666,16 @@ function Controller:ApplyHeal(ent, entry, dt)
 		target:SetHealth(math.min(most, target:Health() + whole))
 	end
 end
+
+-- Every seated soldier gets off beside its cart (Stand does nothing to one
+-- on foot).
+function Controller:StandSeated()
+	for _, entry in pairs(self.soldiers) do entry.soldier:Stand() end
+end
+
+cvars.AddChangeCallback("wetsand_aiwar_sitting_enabled", function(_, _, value)
+	if value == "0" then Controller:StandSeated() end
+end, "wetsand_aiwar")
 
 -- A seated soldier rides its seat: moved with the cart every tick, facing
 -- out over its side; a cart gone, it stands.

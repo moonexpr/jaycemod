@@ -147,6 +147,7 @@ local function World()
 		routes = {},
 		requests = {},
 		hooks = {},
+		convarCallbacks = {}, -- convar name -> the controller's change callback
 		active = true,
 		state = STATE.RND_RUNNING,
 		setup = false,
@@ -215,6 +216,8 @@ local function Env(w)
 		CreateConVar = function() return {} end,
 		GetConVar = function() return { GetInt = function() return w.teamSize end } end,
 		FCVAR_ARCHIVE = 128,
+		FCVAR_NOTIFY = 256,
+		cvars = { AddChangeCallback = function(name, fn) w.convarCallbacks[name] = fn end },
 		D_HT = 1,
 		D_FR = 2,
 		D_LI = 3,
@@ -298,6 +301,27 @@ local function Started(w, mode, parts)
 	T.eq(select(2, controller:Start()), nil, "no refusal")
 	return controller
 end
+
+-- Riding the cart: wetsand_aiwar_sitting_enabled ------------------------------------
+
+-- A soldier port that is seated or not; Stand gets it off, as the real one.
+local function SeatedPort(seated)
+	return { seat = seated and {} or nil, Stand = function(self) self.seat = nil end }
+end
+
+T.test("turning sitting off stands every seated soldier, and turning it on stands none", function()
+	local w = World()
+	local controller = Load(w)
+	local riding, walking = SeatedPort(true), SeatedPort(false)
+	controller.soldiers = { a = { soldier = riding }, b = { soldier = walking } }
+	local changed = w.convarCallbacks.wetsand_aiwar_sitting_enabled
+	T.eq(type(changed), "function", "the controller follows the convar")
+	changed("wetsand_aiwar_sitting_enabled", "0", "1")
+	T.eq(riding.seat ~= nil, true, "still riding after sitting was turned on")
+	changed("wetsand_aiwar_sitting_enabled", "1", "0")
+	T.eq(riding.seat, nil, "off the cart")
+	T.eq(walking.seat, nil, "the walker stays on foot")
+end)
 
 -- Starting: the scenario from the rounds mode ---------------------------------------
 

@@ -47,3 +47,5 @@ T.test("a claim holds a grid cell for its holder until it expires or is released
 	claims:ReleaseAll("b")
 	T.eq(claims:Holder(key, 22), nil, "b died: free")
 end)
+
+T.finish()
