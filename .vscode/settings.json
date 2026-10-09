@@ -1,4 +1,8 @@
 {
-    "editor.quickSuggestions": true,
+    "editor.quickSuggestions": {
+        "comments": "on",
+        "strings": "on",
+        "other": "on"
+    },
     "github.copilot.enable": {"*": false}
 }
