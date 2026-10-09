@@ -121,6 +121,14 @@ function FilterPasses(filterTeam, negated, entTeam, state, winner)
 	return impl
 end
 
+-- TF2's humiliation: while the winners celebrate a round (TEAM_WIN) or the
+-- match (GAME_OVER), a player or soldier of the other playing team cannot
+-- attack. winner: the round's or the match's, UNASSIGNED for none.
+function Humiliated(state, winner, team)
+	if state ~= STATE.TEAM_WIN and state ~= STATE.GAME_OVER then return false end
+	return winner >= FIRST_GAME_TEAM and team >= FIRST_GAME_TEAM and team ~= winner
+end
+
 -- CFuncRespawnRoomVisualizer::ShouldCollide: a RED door stops players whose
 -- movement mask holds CONTENTS_REDTEAM, which is BLU players, and the other
 -- way round; any other non-zero team stops every player.

@@ -403,11 +403,18 @@ T.test("a round won by a team is its humiliation of the losers; a stalemate is s
 	T.eq(humiliation.orders and humiliation.hunt and not humiliation.reinforce, true, "orders and the hunt, no reinforcements")
 	T.eq(AiWar.PhaseOf(true, STATE.TEAM_WIN, nil), AiWar.PHASES.over, "no winner")
 	T.eq(AiWar.PhaseOf(true, STATE.TEAM_WIN, Teams.UNASSIGNED), AiWar.PHASES.over, "a stalemate")
+	T.eq(AiWar.PhaseOf(true, STATE.GAME_OVER, RED), AiWar.PHASES.humiliation, "the match's winners hunt too")
+	T.eq(AiWar.PhaseOf(true, STATE.GAME_OVER, nil), AiWar.PHASES.over, "a match over with no winner")
 	T.eq(AiWar.PhaseOf(true, STATE.RND_RUNNING, BLUE), AiWar.PHASES.running, "a winner outside TEAM_WIN changes nothing")
 	for name, phase in pairs(AiWar.PHASES) do T.eq(type(phase.hunt), "boolean", name .. " says whether winners hunt") end
 	for name, phase in pairs(AiWar.PHASES) do
-		if phase ~= AiWar.PHASES.humiliation then T.eq(phase.hunt, false, name .. " has no hunt") end
+		if phase ~= AiWar.PHASES.humiliation and phase ~= AiWar.PHASES.suddenDeath then
+			T.eq(phase.hunt, false, name .. " has no hunt")
+		end
 	end
+	local sudden = AiWar.PHASES.suddenDeath
+	T.eq(sudden.hunt and sudden.everyoneHunts and sudden.sightAll, true, "sudden death: both sides hunt, seeing every enemy")
+	T.eq(humiliation.everyoneHunts or humiliation.sightAll, false, "a round won: the winners hunt what they see")
 end)
 
 T.test("a war keeps a board of the hunt's sightings", function()

@@ -1430,7 +1430,8 @@ end)
 -- war's hunt board and holding to fire once within HUNT_CLOSE; with none,
 -- on a trip to the nearest fresh sighting, else to the losers' spawns. The
 -- losers are Humiliated: they run from what they see and otherwise hide at
--- their own spawn. Both end with the round.
+-- their own spawn. Both end with the round. In sudden death both sides
+-- SeekAndDestroy, every live enemy on their boards (PHASES' sightAll).
 HUNT_CLOSE = 300
 
 -- The hunt's and the hiding's trips, travelled as a role's goal is.
@@ -1451,9 +1452,10 @@ local HIDE = {
 	gait = RUN,
 }
 
--- Whether the member's side won the round and hunts the losers now.
+-- Whether the member hunts its enemies now: its side won the round, or
+-- it is sudden death, when both sides do.
 function Hunting(field, member)
-	return field ~= nil and field.phase.hunt and field.winner == member.team
+	return field ~= nil and field.phase.hunt and (field.phase.everyoneHunts or field.winner == member.team)
 end
 
 -- Humiliated: its side lost the round. Orders are dropped, it holds its

@@ -219,46 +219,60 @@ function PickRole(stance, counts)
 end
 
 -- Phases: what the round state allows. Pre-round freezes everyone as it
--- freezes players; sudden death has no respawns; a round won by a team is
--- its humiliation of the losers, when the winners hunt them down (hunt:
--- foundation.aiwar.hunt, TF2's CTFBotTacticalMonitor "Get the losers!");
--- a round over with no winner ends orders.
+-- freezes players; sudden death has no respawns, and both sides hunt each
+-- other down (everyoneHunts), every live enemy on their boards (sightAll);
+-- a round won by a team is its humiliation of the losers, when the winners
+-- hunt them down knowing what they saw (hunt: foundation.aiwar.hunt, TF2's
+-- CTFBotTacticalMonitor "Get the losers!"); a round over with no winner
+-- ends orders.
 PHASES = {
 	waiting = {
 		name = "waiting",
 		reinforce = false,
 		orders = false,
 		hunt = false,
+		everyoneHunts = false,
+		sightAll = false,
 	},
 	frozen = {
 		name = "frozen",
 		reinforce = true,
 		orders = false,
 		hunt = false,
+		everyoneHunts = false,
+		sightAll = false,
 	},
 	running = {
 		name = "running",
 		reinforce = true,
 		orders = true,
 		hunt = false,
+		everyoneHunts = false,
+		sightAll = false,
 	},
 	suddenDeath = {
 		name = "suddenDeath",
 		reinforce = false,
 		orders = true,
-		hunt = false,
+		hunt = true,
+		everyoneHunts = true,
+		sightAll = true,
 	},
 	humiliation = {
 		name = "humiliation",
 		reinforce = false,
 		orders = true,
 		hunt = true,
+		everyoneHunts = false,
+		sightAll = false,
 	},
 	over = {
 		name = "over",
 		reinforce = false,
 		orders = false,
 		hunt = false,
+		everyoneHunts = false,
+		sightAll = false,
 	},
 }
 
@@ -271,10 +285,11 @@ local PHASE_OF_STATE = {
 }
 
 -- active: the map runs TF2's rounds (tf_gamerules); without them the war
--- simply runs. winner: the team that won the round (TEAM_WIN), or nil.
+-- simply runs. winner: the team that won the round (TEAM_WIN) or the match
+-- (GAME_OVER, whose winners hunt to its music), or nil.
 function PhaseOf(active, state, winner)
 	if not active then return PHASES.running end
-	if state == STATE.TEAM_WIN and ENEMY[winner] then return PHASES.humiliation end
+	if (state == STATE.TEAM_WIN or state == STATE.GAME_OVER) and ENEMY[winner] then return PHASES.humiliation end
 	return PHASE_OF_STATE[state] or PHASES.over
 end
 

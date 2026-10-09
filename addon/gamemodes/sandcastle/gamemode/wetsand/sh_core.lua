@@ -243,6 +243,12 @@ WETSAND.RestartFreeze = CreateConVar("tf_player_movement_restart_freeze", "1", F
 WETSAND.UnbalanceLimit = CreateConVar("mp_teams_unbalance_limit", "1", FCVAR_REPLICATED,
 	"Teams are unbalanced when one team has this many more players than the other team. (0 disables check)", 0, 30)
 
+-- Who won what the state celebrates: the match (GAME_OVER), else the round.
+function WETSAND.Winner(state)
+	if state == WETSAND.STATE.GAME_OVER then return GetGlobal2Int("wetsand_match_winner", WETSAND.TEAM_UNASSIGNED) end
+	return GetGlobal2Int("wetsand_round_winner", WETSAND.TEAM_UNASSIGNED)
+end
+
 -- The input restrictions of the round states: during pre-round players may
 -- look around and shoot but not move (CTFPlayer::CanPlayerMove); the losing
 -- team cannot attack while the winners celebrate (TF2's humiliation).
@@ -254,12 +260,9 @@ function WETSAND.RestrictCommand(ply, cmd)
 		cmd:ClearMovement()
 		cmd:RemoveKey(IN_JUMP)
 		cmd:RemoveKey(IN_DUCK)
-	elseif state == WETSAND.STATE.TEAM_WIN then
-		local winner = GetGlobal2Int("wetsand_round_winner", WETSAND.TEAM_UNASSIGNED)
-		if winner ~= WETSAND.TEAM_UNASSIGNED and WETSAND.TeamOf(ply) ~= winner then
-			cmd:RemoveKey(IN_ATTACK)
-			cmd:RemoveKey(IN_ATTACK2)
-		end
+	elseif WETSAND.TeamRules.Humiliated(state, WETSAND.Winner(state), WETSAND.TeamOf(ply)) then
+		cmd:RemoveKey(IN_ATTACK)
+		cmd:RemoveKey(IN_ATTACK2)
 	end
 end
 

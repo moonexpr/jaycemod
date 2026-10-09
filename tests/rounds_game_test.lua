@@ -241,8 +241,10 @@ T.test("sudden death: one team dead hands the round to the survivors", function(
 			[BLUE] = Team(2, 1),
 		},
 	}))
-	Expect(effects, { "stalemate_winner " .. BLUE }, "RED dead")
-	T.eq(effects[1].forceMapReset, false, "the stalemate's map reset")
+	-- sudden death over: the survivors rewarded and the dead back, to enjoy the
+	-- victory or the humiliation
+	Expect(effects, { "sudden_death_over", "stalemate_winner " .. BLUE }, "RED dead")
+	T.eq(effects[2].forceMapReset, false, "the stalemate's map reset")
 end)
 
 T.test("sudden death: everyone dead, or its timer out when it may expire, is a stalemate win", function()
@@ -253,6 +255,7 @@ T.test("sudden death: everyone dead, or its timer out when it may expire, is a s
 		timerMayExpire = false,
 	})), {}, "a capture holds the stalemate timer")
 	Expect(round:Think(T0 + 22, World({ stalemateTimerLeft = 0 })), {
+		"sudden_death_over",
 		"publish_win " .. NOBODY,
 		"restore_timers",
 		"state TEAM_WIN",
@@ -268,6 +271,7 @@ T.test("sudden death: everyone dead, or its timer out when it may expire, is a s
 			[BLUE] = Team(1, 0),
 		},
 	})), {
+		"sudden_death_over",
 		"publish_win " .. NOBODY,
 		"restore_timers",
 		"state TEAM_WIN",
@@ -290,23 +294,54 @@ T.test("the win limit ends the game in an intermission, then the level changes",
 		"intermission Reached Win Limit",
 		"state GAME_OVER",
 	}, "game over")
-	T.eq(effects[1]["until"], now + 15 + 10, "the intermission lasts mp_chattime")
+	-- MATCH_WIN_EXTRA of fighting to the match's music, then mp_chattime frozen
+	local won = now + 15
+	local frozen = won + Rounds.MATCH_WIN_EXTRA
+	local ends = frozen + 10
+	T.eq(effects[1]["until"], ends, "the intermission lasts the extra and mp_chattime")
+	T.eq(Rounds.MATCH_WIN_EXTRA, 60)
 	T.eq(effects[1].winner, RED, "RED won the match")
-	Expect(round:Think(now + 20, World()), {}, "the intermission")
-	Expect(round:Think(now + 25, World()), { "changelevel" }, "the level changes")
-	Expect(round:Think(now + 26, World()), {}, "once")
+	Expect(round:Think(frozen - 1, World()), {}, "the fight to the music")
+	Expect(round:Think(frozen, World()), { "freeze" }, "everyone frozen for mp_chattime")
+	Expect(round:Think(frozen + 1, World()), {}, "frozen once")
+	Expect(round:Think(ends, World()), { "changelevel" }, "the level changes")
+	Expect(round:Think(ends + 1, World()), {}, "once")
 end)
 
 -- RED leads, so the match has a winner (a tie goes to sudden death).
 local RED_LEADS = { [RED] = 1, [BLUE] = 0 }
 
-T.test("mp_maxrounds counts full rounds", function()
+local function Has(effects, text)
+	return Describe(effects):find(text, 1, true) ~= nil
+end
+
+T.test("mp_maxrounds counts full rounds: the round that reaches it ends the match", function()
 	local round = Running({ maxrounds = 1 })
-	round:SetWinningTeam(T0 + 20, RED, W.ALL_POINTS_CAPTURED, true, false, false, FakeObjective.Objective())
-	Expect(round:Think(T0 + 35, World({ scores = RED_LEADS })), {
-		"intermission Reached Round Limit",
-		"state GAME_OVER",
-	}, "game over")
+	local effects = round:SetWinningTeam(T0 + 20, RED, W.ALL_POINTS_CAPTURED, true, false, false, FakeObjective.Objective())
+	T.eq(Has(effects, "intermission Reached Round Limit"), true, Describe(effects))
+	T.eq(round:State(), State.GAME_OVER)
+end)
+
+-- The win that ends the match takes the round win's place: the point is
+-- scored, but no round win music or bonus round comes first.
+T.test("a round win that reaches the win limit is the match win at once", function()
+	local round = Running({ winlimit = 2 })
+	round:Think(T0 + 1, World({ scores = { [RED] = 1, [BLUE] = 0 } }))
+	local effects = round:SetWinningTeam(T0 + 20, RED, W.ALL_POINTS_CAPTURED, true, false, false, FakeObjective.Objective())
+	T.eq(Has(effects, "score"), true, "the point is scored: " .. Describe(effects))
+	T.eq(Has(effects, "intermission Reached Win Limit"), true, "the match is won")
+	T.eq(Has(effects, "win_song"), false, "no round win music")
+	T.eq(Has(effects, "state TEAM_WIN"), false, "no bonus round")
+	T.eq(effects[#effects].kind ~= nil, true)
+	T.eq(round:State(), State.GAME_OVER)
+end)
+
+T.test("a round win that would tie the match is a round win, and sudden death follows", function()
+	local round = Running({ maxrounds = 1 })
+	round:Think(T0 + 1, World({ scores = { [RED] = 0, [BLUE] = 1 } }))
+	local effects = round:SetWinningTeam(T0 + 20, RED, W.ALL_POINTS_CAPTURED, true, false, false, FakeObjective.Objective())
+	T.eq(Has(effects, "win_song"), true, Describe(effects))
+	T.eq(round:State(), State.TEAM_WIN)
 end)
 
 -- A match that ends tied is not over: it goes to sudden death (even with
@@ -316,6 +351,7 @@ local TIED = { scores = { [RED] = 1, [BLUE] = 1 } }
 
 T.test("a match that ends tied at a round's end plays the next round as sudden death", function()
 	local round = Running({ maxrounds = 1, stalemateEnable = false })
+	round:Think(T0 + 1, World({ scores = { [RED] = 0, [BLUE] = 1 } })) -- RED's point ties it
 	round:SetWinningTeam(T0 + 20, RED, W.ALL_POINTS_CAPTURED, true, false, false, FakeObjective.Objective())
 	local seen = {}
 	for t = 35, 80 do
@@ -812,6 +848,50 @@ T.test("Configure takes new convar values", function()
 	round:Configure({ bonusRoundTime = 5 })
 	round:SetWinningTeam(T0 + 20, RED, W.ALL_POINTS_CAPTURED, true, false, false, FakeObjective.Objective())
 	T.eq(round:Think(T0 + 25, World())[1].kind, "previous_round_end", "a 5 s bonus")
+end)
+
+-- mp_forcewin: a team wins the round, or the round goes to sudden death.
+T.test("mp_forcewin takes red, blue or sudden death, by name or number", function()
+	T.eq(Rounds.ForceWinTarget("red"), RED)
+	T.eq(Rounds.ForceWinTarget("2"), RED)
+	T.eq(Rounds.ForceWinTarget("BLUE"), BLUE)
+	T.eq(Rounds.ForceWinTarget("blu"), BLUE)
+	T.eq(Rounds.ForceWinTarget("3"), BLUE)
+	T.eq(Rounds.ForceWinTarget("sudden"), Rounds.FORCE_SUDDEN_DEATH)
+	T.eq(Rounds.ForceWinTarget("0"), Rounds.FORCE_SUDDEN_DEATH)
+	T.eq(Rounds.ForceWinTarget("green"), nil, "anything else is refused")
+	T.eq(Rounds.ForceWinTarget(""), nil)
+end)
+
+T.test("a forced sudden death starts whatever mp_stalemate_enable says, called by the Administrator", function()
+	local round = Running({ stalemateEnable = false })
+	local effects = round:SuddenDeath(T0 + 20, SM.ADMIN)
+	Expect({ effects[1] }, { "sudden_death " .. SM.ADMIN })
+	T.eq(round:State(), State.STALEMATE)
+end)
+
+T.test("sudden death's survivors are rewarded with TF2's full overheal", function()
+	T.eq(Rounds.SurvivorHealth(100, 40), 150, "half again its most")
+	T.eq(Rounds.SurvivorHealth(125, 200), 200, "never less than it has")
+	T.eq(Rounds.SurvivorHealth(175, 10), 262, "rounded down")
+end)
+
+T.test("mp_forcewin's win scores a point where points come from captures, and can win the match", function()
+	local round = Running({ winlimit = 1 })
+	local effects = round:SetWinningTeam(T0 + 20, BLUE, W.NONE, true, false, false,
+		FakeObjective.Objective({ scorePerRound = false }))
+	Expect({ effects[1] }, { "score " .. BLUE .. " 1" }, "the point")
+	T.eq(Has(effects, "intermission Reached Win Limit"), true, "the match won: " .. Describe(effects))
+end)
+
+T.test("the survivors of sudden death win a point, even where points come from captures", function()
+	local round = Running({ stalemateEnable = false })
+	round:SuddenDeath(T0 + 20, SM.ADMIN)
+	local effects = round:Think(T0 + 21, World({ teams = { [RED] = Team(2, 1), [BLUE] = Team(2, 0) } }))
+	Expect({ effects[2] }, { "stalemate_winner " .. RED }, "BLU dead")
+	local win = round:SetWinningTeam(T0 + 21, RED, W.OPPONENTS_DEAD, effects[2].forceMapReset, false, false,
+		FakeObjective.Objective({ scorePerRound = false }))
+	Expect({ win[1] }, { "score " .. RED .. " 1" })
 end)
 
 T.finish()

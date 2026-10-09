@@ -78,6 +78,7 @@ local SUDDEN_DEATH = "Game.SuddenDeath"
 
 local ROUND_RESTART = "Game.Stalemate"
 local SPECTATOR_WIN_MUSIC = "MatchMaking.RoundEndStalemateMusic"
+local STALEMATE_LINE = "Announcer.CompRoundStalemate" -- vo/compmode/cm_admin_stalemate.mp3
 
 -- The match won (GoToIntermission; a tie goes to sudden death instead):
 -- each side its music on CHAN_AUTO (the spectators the winner's colour of
@@ -147,6 +148,7 @@ local Controller = {
 	objective = Rounds.NO_OBJECTIVE,
 	multipleTrains = false,
 	spawnDoors = nil,
+	spawnTriggers = nil,
 	nextDoorsOpen = 0,
 	suppressNewMap = false,
 	nextRoundThink = 0,
@@ -191,6 +193,9 @@ local function Scores()
 	}
 end
 
+-- Each team's players, its live ones, and its live soldiers (the AI war
+-- says how many through WetsandTeamCombatants): sudden death ends only when
+-- a side's last soldier is down too.
 local function TeamLife()
 	local teams = {}
 	for _, t in ipairs(GAME_TEAMS) do
@@ -201,6 +206,7 @@ local function TeamLife()
 		teams[t] = {
 			players = #players,
 			alive = alive,
+			soldiers = hook.Run("WetsandTeamCombatants", t) or 0,
 		}
 	end
 	return teams
@@ -226,7 +232,9 @@ end
 -- (The teamless would hear Game.TeamWin2/3, which no soundscript defines.)
 local function PlayWinSong(winner)
 	if winner == UNASSIGNED then
+		-- a tie: the stalemate music, the announcer calling it over it
 		WETSAND.BroadcastPA(UNASSIGNED, "Game.Stalemate")
+		WETSAND.BroadcastPA(UNASSIGNED, STALEMATE_LINE)
 		return
 	end
 	WETSAND.BroadcastPA(winner, "Game.YourTeamWon")
@@ -758,6 +766,7 @@ local EFFECTS = {
 	state = function(self, e)
 		SetGlobal2Int("wetsand_round_state", e.to)
 		if e.to == S.PREROUND then
+			self:RestoreSpawnDoors()
 			SetGlobal2Float("wetsand_preround_end_time", e.preroundEnd)
 			SetGlobal2Int("wetsand_round_winner", UNASSIGNED)
 		end
@@ -788,18 +797,39 @@ local EFFECTS = {
 		end)
 	end,
 	respawn_team = function(self, e, now) RespawnTeam(self, e.team, now) end,
+	-- Sudden death over: its survivors, players and the AI war's soldiers
+	-- (WetsandSuddenDeathOver), overhealed (Rounds.SurvivorHealth), then
+	-- every dead player on a team back, to enjoy the victory or the
+	-- humiliation.
+	sudden_death_over = function()
+		EachPlayer(function(ply)
+			if ply:Alive() and WETSAND.TeamOf(ply) ~= UNASSIGNED then
+				ply:SetHealth(Rounds.SurvivorHealth(ply:GetMaxHealth(), ply:Health()))
+			end
+		end)
+		hook.Run("WetsandSuddenDeathOver", Rounds.SurvivorHealth)
+		EachPlayer(function(ply)
+			if not ply:Alive() and WETSAND.TeamOf(ply) ~= UNASSIGNED then ply:Spawn() end
+		end)
+	end,
 	doors_lock = function() FireCompetitive("OnSpawnRoomDoorsShouldLock") end,
 	doors_unlock = function() FireCompetitive("OnSpawnRoomDoorsShouldUnlock") end,
 	hook = function(self, e) ROUND_HOOKS[e.name](e.args) end,
 	score = function(self, e) team.AddScore(e.team, e.points) end,
 	-- What the win panel shows (SendWinPanelInfo).
-	publish_win = function(self, e)
+	publish_win = function(self, e, now)
 		local remaining = 0
 		if e.winner ~= UNASSIGNED then remaining = self.objective:RoundsRemaining(e.winner) end
 		SetGlobal2Int("wetsand_round_winner", e.winner)
 		SetGlobal2Int("wetsand_round_win_reason", e.reason)
 		SetGlobal2Bool("wetsand_round_full_round", e.fullRound)
 		SetGlobal2Int("wetsand_rounds_remaining", remaining)
+		-- a team's win opens the setup gates and every spawn door, so its
+		-- side can hunt the humiliated losers down
+		if e.winner ~= UNASSIGNED then
+			self:FinishSetup(now)
+			self:OpenSpawnDoors(now)
+		end
 	end,
 	win_song = function(self, e)
 		PlayWinSong(e.winner)
@@ -807,9 +837,13 @@ local EFFECTS = {
 			WETSAND.BroadcastPA(t, line)
 		end
 	end,
-	sudden_death = function(self, e)
+	-- nobody respawns, so the setup gates (the map's OnSetupFinished relays)
+	-- and every spawn door open: the last of each side have nowhere to hide
+	sudden_death = function(self, e, now)
 		SetGlobal2Int("wetsand_stalemate_reason", e.reason)
 		WETSAND.BroadcastPA(UNASSIGNED, SUDDEN_DEATH)
+		self:FinishSetup(now)
+		self:OpenSpawnDoors(now)
 	end,
 	hide_timers = function(self) self:HideActiveTimer() end,
 	restore_timers = function(self) self:RestoreActiveTimer() end,
@@ -823,17 +857,30 @@ local EFFECTS = {
 			self:SetWinningTeam(e.team, Rounds.WINREASON.OPPONENTS_DEAD, e.forceMapReset)
 		end
 	end,
-	intermission = function(self, e)
+	intermission = function(self, e, now)
 		SetGlobal2String("wetsand_game_over_reason", e.reason)
 		SetGlobal2Int("wetsand_match_winner", e.winner)
-		EachPlayer(function(ply) ply:Freeze(true) end)
+		SetGlobal2Float("wetsand_game_over_end", e["until"])
+		hook.Run("WetsandMatchWin", e.winner)
+		-- its winners hunt the humiliated losers to its music through the
+		-- setup gates and every spawn door (MATCH_WIN_EXTRA), then everyone
+		-- is frozen for mp_chattime
+		self:FinishSetup(now)
+		self:OpenSpawnDoors(now)
 		PlayMatchEnd(e.winner)
 	end,
 	changelevel = function()
 		RunConsoleCommand("changelevel", Rounds.NextMap(nextlevel:GetString(), game.GetMapNext(), game.GetMap(), MapInstalled))
 	end,
+	-- mp_chattime at the match's end: everyone frozen, the AI war's soldiers
+	-- too (WetsandFreeze), until the level changes
+	freeze = function()
+		EachPlayer(function(ply) ply:Freeze(true) end)
+		hook.Run("WetsandFreeze", true)
+	end,
 	unfreeze = function()
 		EachPlayer(function(ply) ply:Freeze(false) end)
+		hook.Run("WetsandFreeze", false)
 	end,
 	overtime = function(self, e) PublishOvertime(e.value) end,
 }
@@ -880,40 +927,76 @@ function Controller:Halt()
 	local now = CurTime()
 	self:Apply(self.round:Halt(now))
 	SetGlobal2Bool("wetsand_gameplay_halted", true)
+	self:FinishSetup(now)
+	for _, ent in ipairs(self.timerList) do
+		if IsValid(ent) then self.timers[ent]:Pause(now) end
+	end
+	self:OpenSpawnDoors(now)
+	self:PublishHudTimer(now)
+end
+
+-- Setup, if it is on, ends as its clock running out would (OnSetupFinished),
+-- so the map opens its own setup gates.
+function Controller:FinishSetup(now)
 	for _, ent in ipairs(self.timerList) do
 		local timer = self.timers[ent]
-		if IsValid(ent) then
-			if timer:InSetup() then self:ApplyTimerEvents(ent, timer:FinishSetup(now)) end
-			timer:Pause(now)
-		end
+		if IsValid(ent) and timer:InSetup() then self:ApplyTimerEvents(ent, timer:FinishSetup(now)) end
 	end
 	self:SetSetup(false)
-	local triggers
-	self.spawnDoors, triggers = SpawnDoors()
-	for trigger in pairs(triggers) do trigger:Fire("Disable") end
+end
+
+-- Every spawn door unlocked and open, its triggers off so none shuts it
+-- (KeepSpawnDoorsOpen holds them open), until RestoreSpawnDoors or the next
+-- map reset. The triggers that were on are remembered.
+function Controller:OpenSpawnDoors(now)
+	if not self.spawnDoors then
+		local doors, triggers = SpawnDoors()
+		self.spawnDoors, self.spawnTriggers = doors, {}
+		for trigger in pairs(triggers) do
+			if not trigger:GetInternalVariable("m_bDisabled") then
+				self.spawnTriggers[#self.spawnTriggers + 1] = trigger
+				trigger:Fire("Disable")
+			end
+		end
+	end
 	for _, door in ipairs(self.spawnDoors) do
-		door:Fire("Unlock")
-		door:Fire("Open")
+		if IsValid(door) then
+			door:Fire("Unlock")
+			door:Fire("Open")
+		end
 	end
 	self.nextDoorsOpen = now + HALT_DOORS_INTERVAL
-	self:PublishHudTimer(now)
+end
+
+-- The next round (a stage of a multi-stage map has no map reset): the
+-- triggers that were on, on again, and the doors closed for them to open.
+function Controller:RestoreSpawnDoors()
+	for _, trigger in ipairs(self.spawnTriggers or {}) do
+		if IsValid(trigger) then trigger:Fire("Enable") end
+	end
+	for _, door in ipairs(self.spawnDoors or {}) do
+		if IsValid(door) then door:Fire("Close") end
+	end
+	self.spawnDoors, self.spawnTriggers = nil, nil
+end
+
+function Controller:KeepSpawnDoorsOpen(now)
+	if now < self.nextDoorsOpen then return end
+	self.nextDoorsOpen = now + HALT_DOORS_INTERVAL
+	for _, door in ipairs(self.spawnDoors or {}) do
+		if IsValid(door) then door:Fire("Open") end
+	end
 end
 
 function Controller:Unhalt()
 	self.round:Unhalt()
-	self.spawnDoors = nil
 	SetGlobal2Bool("wetsand_gameplay_halted", false)
 end
 
 -- A stopped game: the doors stay open, and a dead player on a team is back
 -- after a pause, as no respawn wave comes.
 function Controller:HaltedThink(now)
-	if now >= self.nextDoorsOpen then
-		self.nextDoorsOpen = now + HALT_DOORS_INTERVAL
-		for _, door in ipairs(self.spawnDoors or {}) do
-			if IsValid(door) then door:Fire("Open") end
-		end
-	end
+	self:KeepSpawnDoorsOpen(now)
 	EachPlayer(function(ply)
 		if not ply:Alive() and WETSAND.TeamOf(ply) ~= UNASSIGNED and ply:Team() ~= SPECTATOR then
 			ply.wetsandHaltedDeath = ply.wetsandHaltedDeath or now
@@ -1080,6 +1163,8 @@ function Controller:ThinkRound(now)
 		self:HaltedThink(now)
 		return
 	end
+	local state = self.round:State()
+	if state == S.GAME_OVER or state == S.STALEMATE or (state == S.TEAM_WIN and self.round:Winner() ~= UNASSIGNED) then self:KeepSpawnDoorsOpen(now) end
 	self:Apply(self.round:Think(now, self:World(now)))
 end
 
@@ -1142,5 +1227,30 @@ Controller:AddRoundListener(Rounds.PHASE_SPAWN, Rounds.LISTEN_TIMERS, function()
 		if IsValid(ent) then Controller:ApplyTimerEvents(ent, Controller.timers[ent]:RoundSpawn(now)) end
 	end
 end)
+
+-- mp_forcewin red|blue|sudden (TF2's): a team wins the round as if it had
+-- (a win that ends the match is the match win), or the running round goes
+-- to sudden death, called by the Administrator. Admins only.
+local FORCE_WIN_OPTIONS = { "red", "blue", "sudden" }
+
+concommand.Add("mp_forcewin", function(ply, _, args)
+	local function Reply(text)
+		if IsValid(ply) then ply:ChatPrint(text) else print(text) end
+	end
+	if IsValid(ply) and not ply:IsAdmin() then return Reply("mp_forcewin: only admins may force a win") end
+	local target = Rounds.ForceWinTarget(args[1] or "")
+	if not target then return Reply("usage: mp_forcewin " .. table.concat(FORCE_WIN_OPTIONS, "|")) end
+	if not Active() then return Reply("mp_forcewin: this map has no rounds") end
+	if target == Rounds.FORCE_SUDDEN_DEATH then
+		if Controller.round:State() ~= S.RND_RUNNING then return Reply("mp_forcewin: no round is running") end
+		Controller:Apply(Controller.round:SuddenDeath(CurTime(), Rounds.STALEMATE.ADMIN))
+		return
+	end
+	Controller:SetWinningTeam(target, Rounds.WINREASON.NONE, true, false, false)
+end, function(cmd)
+	local options = {}
+	for i, option in ipairs(FORCE_WIN_OPTIONS) do options[i] = cmd .. " " .. option end
+	return options
+end, "Force the round's end: mp_forcewin red, blue or sudden (sudden death); admins only")
 
 return Controller

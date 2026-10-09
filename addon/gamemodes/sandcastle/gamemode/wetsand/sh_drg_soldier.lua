@@ -44,6 +44,8 @@ function WETSAND.DrgSoldier(ENT, baseName)
 	-- enemy so it can fight (a soldier holding its ground): true when it has
 	-- a target.
 	function ENT:NSSteer(enemy)
+		-- frozen (the match's end): it stands where it is
+		if self.NSFrozen then return true end
 		-- riding the cart: the controller carries it; it only turns to fight
 		if self.NSSeated then
 			if IsValid(enemy) then self:FaceTowards(enemy) end
@@ -114,12 +116,15 @@ function WETSAND.DrgSoldier(ENT, baseName)
 
 	local function Base() return baseclass.Get(baseName) end
 
-	-- ShouldAttack NO skips DrGBase's attack (the humiliated, a healing medic).
+	-- ShouldAttack NO skips DrGBase's attack (the humiliated, a healing
+	-- medic), as does a freeze.
 	function ENT:OnRangeAttack()
+		if self.NSFrozen then return true end
 		if Answered(Ask(self, "ShouldAttack", self:GetEnemy()), "ANSWER_NO") then return true end
 	end
 
 	function ENT:OnMeleeAttack()
+		if self.NSFrozen then return true end
 		if Answered(Ask(self, "ShouldAttack", self:GetEnemy()), "ANSWER_NO") then return true end
 	end
 

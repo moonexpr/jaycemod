@@ -7,6 +7,18 @@ local UNASSIGNED, SPEC, RED, BLU = L.UNASSIGNED, L.SPECTATOR, L.RED, L.BLUE
 
 -- jointeam (CTFPlayer::HandleCommand_JoinTeam)
 
+-- Humiliation: the losers hold their fire while the winners celebrate.
+
+T.test("the losers of a round or of the match cannot attack; nobody else is held", function()
+	T.eq(L.Humiliated(STATE.TEAM_WIN, RED, BLU), true, "a round's losers")
+	T.eq(L.Humiliated(STATE.TEAM_WIN, RED, RED), false, "its winners")
+	T.eq(L.Humiliated(STATE.GAME_OVER, BLU, RED), true, "the match's losers")
+	T.eq(L.Humiliated(STATE.GAME_OVER, BLU, BLU), false, "its winners")
+	T.eq(L.Humiliated(STATE.TEAM_WIN, UNASSIGNED, RED), false, "a stalemate humiliates nobody")
+	T.eq(L.Humiliated(STATE.TEAM_WIN, RED, UNASSIGNED), false, "nor anyone of no team")
+	T.eq(L.Humiliated(STATE.RND_RUNNING, RED, BLU), false, "a round running")
+end)
+
 T.test("jointeam names resolve case-insensitively", function()
 	T.eq(L.ParseJoinTeam("red"), RED, "red")
 	T.eq(L.ParseJoinTeam("BLUE"), BLU, "BLUE")

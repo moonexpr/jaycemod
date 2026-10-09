@@ -59,6 +59,7 @@ local STALEMATE_REASON = {
 	[STALEMATE.TIMER] = "You've run out of time. Watch your back and finish 'em off. No more spawning.",
 	[STALEMATE.SERVER_TIMELIMIT] = "Map time limit reached. No more spawning, so make this count.",
 	[STALEMATE.MATCH_TIED] = "The match is tied. No more spawning: the next team to win takes the match.",
+	[STALEMATE.ADMIN] = "The Administrator has called sudden death. No more spawning.",
 }
 
 function StalematePanel(reason)
@@ -80,6 +81,7 @@ end
 -- Which clock the timer box shows.
 DISPLAY_TRANSITION = "transition" -- the gamemode's countdown to Gameplay mode
 DISPLAY_ROUND = "round" -- the round's own timer
+DISPLAY_GAME_OVER = "game_over" -- the match won: the countdown to the next map
 
 -- The label under the clock. The transition's is the operator's word as
 -- written; the round's are TF2's, in capitals.
@@ -87,6 +89,7 @@ LABEL_TRANSITION = "Prepare"
 LABEL_PREROUND = "PREPARE"
 LABEL_SETUP = "SETUP"
 LABEL_OVERTIME = "OVERTIME"
+LABEL_GAME_OVER = "GAME OVER"
 
 local function RoundLabel(q)
 	if q.preround then return LABEL_PREROUND end
@@ -99,15 +102,24 @@ end
 -- (the gamemode's wetsand_gamemode_transition_end, 0 outside a transition),
 -- shown (a HUD timer exists), halted (the rounds stand still: Sandbox mode
 -- or its transition), koth (the koth HUD draws its own clocks), preround,
--- setup, overtime, left (the round timer's seconds) }. The countdown to
--- Gameplay mode wins while it runs; the round's timer shows only while the
--- rounds run. Returns { kind, left, label }.
+-- setup, overtime, gameOverEnd (wetsand_game_over_end: when the won
+-- match's map changes, 0 before), left (the round timer's seconds) }. The
+-- countdown to Gameplay mode wins while it runs, then the won match's to
+-- its map change, on any map; the round's timer shows only while the rounds
+-- run. Returns { kind, left, label }.
 function TimerDisplay(q)
 	if q.transitionEnd > q.now then
 		return {
 			kind = DISPLAY_TRANSITION,
 			left = q.transitionEnd - q.now,
 			label = LABEL_TRANSITION,
+		}
+	end
+	if q.gameOverEnd > q.now then
+		return {
+			kind = DISPLAY_GAME_OVER,
+			left = q.gameOverEnd - q.now,
+			label = LABEL_GAME_OVER,
 		}
 	end
 	if q.halted or not q.shown or q.koth then return nil end

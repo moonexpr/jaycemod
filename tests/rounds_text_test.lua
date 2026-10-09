@@ -55,6 +55,7 @@ T.test("sudden death explains why it started", function()
 	T.eq(p.reason, "You've run out of time. Watch your back and finish 'em off. No more spawning.")
 	T.eq(Text.StalematePanel(R.STALEMATE.SERVER_TIMELIMIT).reason, "Map time limit reached. No more spawning, so make this count.")
 	T.eq(Text.StalematePanel(R.STALEMATE.MATCH_TIED).reason, "The match is tied. No more spawning: the next team to win takes the match.")
+	T.eq(Text.StalematePanel(R.STALEMATE.ADMIN).reason, "The Administrator has called sudden death. No more spawning.")
 end)
 
 T.test("time added reads as the flash beside the timer shows it", function()
@@ -79,11 +80,22 @@ local function Display(fields)
 		preround = false,
 		setup = false,
 		overtime = false,
+		gameOverEnd = 0,
 		left = ROUND_LEFT,
 	}
 	for k, v in pairs(fields) do q[k] = v end
 	return Text.TimerDisplay(q)
 end
+
+T.test("the match won, the timer counts down to the map change as GAME OVER", function()
+	local d = Display({ gameOverEnd = NOW + 25, overtime = true })
+	T.eq(d.kind, Text.DISPLAY_GAME_OVER, "the match's clock")
+	T.eq(d.left, 25, "seconds until the next map")
+	T.eq(d.label, "GAME OVER")
+	T.eq(Display({ gameOverEnd = NOW + 25, shown = false, koth = true }).kind, Text.DISPLAY_GAME_OVER,
+		"with no round timer, or on a koth map")
+	T.eq(Display({ gameOverEnd = NOW }).kind, Text.DISPLAY_ROUND, "run out: the round's clock again")
+end)
 
 T.test("the countdown to Gameplay mode shows on the timer as Prepare while the rounds are halted", function()
 	local d = Display({

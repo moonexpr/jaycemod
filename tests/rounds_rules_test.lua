@@ -74,6 +74,16 @@ T.test("both teams alive goes on", function()
 	T.eq(draw, false)
 end)
 
+T.test("a team's live soldiers keep it in sudden death, its players dead or none", function()
+	local sides = Sides(2, 0, 0, 0)
+	sides[RED].soldiers, sides[BLU].soldiers = 1, 3
+	local winner, draw = R.StalemateOutcome(sides)
+	T.eq(winner, nil)
+	T.eq(draw, false)
+	sides[RED].soldiers = 0
+	T.eq(R.StalemateOutcome(sides), BLU, "RED's last soldier down")
+end)
+
 -- Limits -----------------------------------------------------------------------
 
 T.test("time left counts down from the map reset", function()

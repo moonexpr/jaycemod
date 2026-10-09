@@ -1039,11 +1039,11 @@ function Controller:Draft(team, pos, ang)
 end
 
 -- TF2's respawn wave for the team (0 during setup, when TF2 respawns at
--- once), or none without gamerules. With respawns stopped by an admin, the
--- first wave of a round is the last.
+-- once), or none without gamerules. With respawns stopped by an admin, or in
+-- sudden death, the last wave was the last.
 local function WaveLength(team)
 	if not IsValid(WETSAND.Rules) then return 0 end
-	if WETSAND.Rules:RespawnsDisabled() then return math.huge end
+	if WETSAND.Rules:RespawnsDisabled() or WETSAND.State() == WETSAND.STATE.STALEMATE then return math.huge end
 	if WETSAND.InSetup() then return 0 end
 	return WETSAND.Rules:GetRespawnWaveMaxLength(team, true)
 end
@@ -1977,6 +1977,7 @@ function Controller:Think(now)
 	if not field then return end
 	self.war:SetField(field)
 	if field.phase.reinforce then self:Reinforce(now) end
+	if field.phase.sightAll then self:SightAll(now) end
 	for ent, entry in pairs(self.soldiers) do
 		if IsValid(ent) then
 			local member = self.war:Member(ent)
@@ -1997,6 +1998,21 @@ function Controller:Think(now)
 			if IsValid(ent) then self:Watch(ent, entry, now) end
 		end
 		self:CloseOpenedDoors()
+	end
+end
+
+-- Sudden death: every live enemy, player or soldier, on each side's hunt
+-- board, wherever it hides.
+function Controller:SightAll(now)
+	local board = self.war.hunt
+	for _, ply in ipairs(player.GetAll()) do
+		local team = WETSAND.TeamOf(ply)
+		local enemy = WETSAND.EnemyOf(team)
+		if ply:Alive() and enemy ~= WETSAND.TEAM_UNASSIGNED then board:Report(enemy, ply, ply:GetPos(), now) end
+	end
+	for ent, entry in pairs(self.soldiers) do
+		local enemy = WETSAND.EnemyOf(entry.soldier.team)
+		if IsValid(ent) and ent:Health() > 0 and enemy ~= WETSAND.TEAM_UNASSIGNED then board:Report(enemy, ent, ent:GetPos(), now) end
 	end
 end
 
@@ -2816,6 +2832,38 @@ end)
 
 hook.Add("WetsandRoundWin", "wetsand_aiwar", function(winner)
 	if Controller.war then Controller:RoundWon(winner) end
+end)
+
+-- Frozen (mp_chattime at the match's end): every soldier stands still and
+-- holds its fire (the bridge's NSFrozen).
+hook.Add("WetsandFreeze", "wetsand_aiwar", function(on)
+	for ent in pairs(Controller.soldiers) do
+		if IsValid(ent) then ent.NSFrozen = on or nil end
+	end
+end)
+
+-- Sudden death over: its surviving soldiers overhealed as its players are
+-- (reward: max health, health -> the new health).
+hook.Add("WetsandSuddenDeathOver", "wetsand_aiwar", function(reward)
+	for ent in pairs(Controller.soldiers) do
+		if IsValid(ent) and ent:Health() > 0 then ent:SetHealth(reward(ent:GetMaxHealth(), ent:Health())) end
+	end
+end)
+
+-- The match won is a round won to its music: the winners hunt, the losers
+-- are humiliated.
+hook.Add("WetsandMatchWin", "wetsand_aiwar", function(winner)
+	if Controller.war then Controller:RoundWon(winner) end
+end)
+
+-- The team's live soldiers, who fight sudden death out with its players.
+hook.Add("WetsandTeamCombatants", "wetsand_aiwar", function(team)
+	if not Controller.war then return end
+	local count = 0
+	for ent, entry in pairs(Controller.soldiers) do
+		if entry.soldier.team == team and IsValid(ent) and ent:Health() > 0 then count = count + 1 end
+	end
+	return count
 end)
 
 -- The round keeps running with no human on a team while the war is on.

@@ -1,6 +1,6 @@
 -- The rounds feature's view, drawn from what the rounds controller networks
 -- (the wetsand_round_* and wetsand_timer_* keys and its net messages):
---   - the round timer with its PREPARE, SETUP and OVERTIME labels, and the
+--   - the round timer with its PREPARE, SETUP, OVERTIME and GAME OVER labels, and the
 --     "+m:ss" flash beside it when time is added (teamplay_timer_time_added);
 --     the koth HUD replaces the timer; during the gamemode's countdown to
 --     Gameplay mode (wetsand_gamemode_transition_end) the timer shows that
@@ -182,6 +182,7 @@ function View:DrawTimer(w, h)
 		preround = WETSAND.State() == S.PREROUND,
 		setup = GetGlobal2Bool("wetsand_timer_in_setup", false),
 		overtime = GetGlobal2Bool("wetsand_round_overtime", false),
+		gameOverEnd = GetGlobal2Float("wetsand_game_over_end", 0),
 		left = TimerLeft(),
 	})
 	if not display then return end
@@ -420,6 +421,32 @@ function View:CountdownThink()
 		if speaks then Play(Timer.WarningSound(warning, setup)) end
 	end
 end
+
+-- The match's end (mp_chattime): everyone sees their player from behind,
+-- the camera kept out of the walls, their weapon's first-person model hidden.
+local THIRD_PERSON_DISTANCE = 100
+local CAMERA_HULL = Vector(4, 4, 4)
+
+local function GameOverView(ply)
+	return WETSAND.State() == S.GAME_OVER and IsValid(ply) and ply:Alive()
+end
+
+hook.Add("CalcView", "wetsand_rounds_game_over", function(ply, origin, angles, fov)
+	if not GameOverView(ply) then return end
+	local tr = util.TraceHull({
+		start = origin,
+		endpos = origin - angles:Forward() * THIRD_PERSON_DISTANCE,
+		mins = -CAMERA_HULL,
+		maxs = CAMERA_HULL,
+		filter = ply,
+		mask = MASK_SOLID_BRUSHONLY,
+	})
+	return { origin = tr.HitPos, angles = angles, fov = fov, drawviewer = true }
+end)
+
+hook.Add("PreDrawViewModel", "wetsand_rounds_game_over", function()
+	if GameOverView(LocalPlayer()) then return true end
+end)
 
 hook.Add("SandcastleHUDPaint", "wetsand_rounds", function(w, h)
 	View:Paint(w, h)
