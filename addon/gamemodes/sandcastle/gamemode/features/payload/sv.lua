@@ -84,11 +84,22 @@ local function PublishCart(i, hud)
 	SetGlobal2String(key .. "hills", Hud.EncodeHills(hud.hills))
 end
 
+-- A cart's train and the props riding it name its watcher
+-- (wetsand_cart_watcher), so a client knows a cart when an admin
+-- right-clicks one (wetsand/sh_editors_cart.lua).
+local function MarkCart(watcher)
+	local train = watcher:Train()
+	if not IsValid(train) then return end
+	train:SetNW2Entity("wetsand_cart_watcher", watcher)
+	for _, child in ipairs(train:GetChildren()) do child:SetNW2Entity("wetsand_cart_watcher", watcher) end
+end
+
 -- The enabled watchers' carts, BLU's first.
 function Controller:PublishCarts()
 	local active = {}
 	for _, watcher in ipairs(self.watchers) do
 		if watcher:IsActive() then
+			MarkCart(watcher)
 			local hud = watcher:HudState()
 			active[#active + 1] = {
 				team = hud.team,

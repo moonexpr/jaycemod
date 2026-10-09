@@ -97,27 +97,14 @@ function Controller:ResetRound()
 	return true
 end
 
--- Every active cart goes back to its checkpoint (both on a race map), a
--- point it has just taken given back (the watcher's RetractToCheckpoint).
-function Controller:RetractCarts()
-	local moved, why = false, "this map has no payload cart"
-	for _, watcher in ipairs(ents.FindByClass("team_train_watcher")) do
-		local ok, reason = watcher:RetractToCheckpoint()
-		if ok then moved = true else why = reason end
-	end
-	if moved then return true end
-	return false, why
+-- A cart (its train watcher) goes back to its last checkpoint, or on to its
+-- next (wetsand/sh_editors_cart.lua, from the cart's right-click).
+function Controller:RetractCart(watcher)
+	return watcher:RetractToCheckpoint()
 end
 
--- Every active cart moves on to its next checkpoint (both on a race map).
-function Controller:AdvanceCarts()
-	local moved, why = false, "this map has no payload cart"
-	for _, watcher in ipairs(ents.FindByClass("team_train_watcher")) do
-		local ok, reason = watcher:AdvanceToNextCheckpoint()
-		if ok then moved = true else why = reason end
-	end
-	if moved then return true end
-	return false, why
+function Controller:AdvanceCart(watcher)
+	return watcher:AdvanceToNextCheckpoint()
 end
 
 -- A map with a train watcher has the payload feature, which keeps the cart

@@ -5,9 +5,14 @@
 -- mp_gameplay_stop: clients cannot set a server setting), requests the
 -- change. sv_gameplay_disable_sandbox keeps anything from entering Sandbox
 -- mode. On a map with rounds the feature loads at map start and puts the map
--- in the mode the setting holds. On clients: the Utilities menu entry and a
--- note on the HUD in Sandbox mode.
+-- in the mode the setting holds. The server keeps the map's Gameplay
+-- Settings entity (wetsand_gameplay_settings: the round timer, respawn
+-- times, win conditions and team scores). On clients: the Utilities menu's
+-- Admin > Gameplay Settings, the modes and those settings, and a note on the
+-- HUD in Sandbox mode.
 local Gamemode = WETSAND.require("foundation.gamemode")
+
+local SETTINGS = "wetsand_gameplay_settings"
 
 local ENABLED = CreateConVar("sv_gameplay_enabled", "0", { FCVAR_REPLICATED, FCVAR_NOTIFY },
 	"1: Gameplay mode, the rounds run; 0: Sandbox mode, no rounds and spawn doors open. "
@@ -60,6 +65,14 @@ if SERVER then
 		WETSAND.gamemodeLoaded = true
 	end)
 
+	-- One settings entity a map, made again when a cleanup removes it.
+	local function KeepSettings()
+		if IsValid(ents.FindByClass(SETTINGS)[1]) then return end
+		ents.Create(SETTINGS):Spawn()
+	end
+	hook.Add("InitPostEntity", "wetsand_gameplay_settings", KeepSettings)
+	hook.Add("PostCleanupMap", "wetsand_gameplay_settings", KeepSettings)
+
 	-- Before the map has loaded (server.cfg) a change only sets the mode the map starts in.
 	cvars.AddChangeCallback(ENABLED:GetName(), function(_, _, value)
 		if not WETSAND.gamemodeLoaded then return end
@@ -74,6 +87,8 @@ local HELP = "Sandcastle plays in Sandbox mode or Gameplay mode (sv_gameplay_ena
 	.. "counts down from " .. Gamemode.COUNTDOWN .. ", clears the scores, restarts the rounds and sends everyone "
 	.. "back to the team menu, without a team, until they choose one. Stop Game returns to Sandbox mode, "
 	.. "unless sv_gameplay_disable_sandbox is 1."
+
+local PROPERTIES_TALL = 420
 
 local function BuildPanel(panel)
 	panel:ClearControls()
@@ -92,6 +107,15 @@ local function BuildPanel(panel)
 	end
 	panel:Button("Begin Game", "mp_gameplay_begin")
 	panel:Button("Stop Game", "mp_gameplay_stop")
+	-- the settings entity's fields, admins' to edit; it arrives with the map,
+	-- and again after a cleanup
+	local settings = vgui.Create("DEntityProperties", panel)
+	settings:SetTall(PROPERTIES_TALL)
+	panel:AddItem(settings)
+	function settings:Think()
+		local ent = ents.FindByClass(SETTINGS)[1]
+		if IsValid(ent) then self:SetEntity(ent) end
+	end
 end
 
 -- A new game's description in chat: the title in gold, the objectives in white.
@@ -110,7 +134,7 @@ E.Listen("gameplay_transition_cancelled", "wetsand_gameplay", function(fields)
 end)
 
 hook.Add("PopulateToolMenu", "wetsand_gameplay", function()
-	spawnmenu.AddToolMenuOption("Utilities", "Sandcastle", "wetsand_gameplay", "Gameplay Settings", "", "", BuildPanel)
+	spawnmenu.AddToolMenuOption("Utilities", "Admin", "wetsand_gameplay", "Gameplay Settings", "", "", BuildPanel)
 end)
 
 hook.Add("HUDPaint", "wetsand_gameplay", function()

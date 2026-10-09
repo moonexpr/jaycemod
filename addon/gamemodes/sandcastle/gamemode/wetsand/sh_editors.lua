@@ -2,7 +2,8 @@
 -- properties), for admins only on both realms. The server runs the action
 -- through the editors feature and tells the admin how it went.
 --
--- def = { class (the editor's), title (for the chat line), label, icon,
+-- def = { class (the editor's), or match(ent) -> whether the entry shows on
+-- ent (a payload cart), title (for the chat line), label, icon,
 -- order, choices (optional: { label, value } list, shown as a submenu),
 -- run(editors, ent, value) -> true, or false and why, done (the chat line
 -- on success) }.
@@ -12,7 +13,9 @@ function WETSAND.EditorAction(name, def)
 		MenuIcon = def.icon,
 		Order = def.order,
 		Filter = function(self, ent, ply)
-			return IsValid(ent) and ent:GetClass() == def.class and IsValid(ply) and ply:IsAdmin()
+			if not (IsValid(ent) and IsValid(ply) and ply:IsAdmin()) then return false end
+			if def.match then return def.match(ent) == true end
+			return ent:GetClass() == def.class
 		end,
 		Action = function(self, ent)
 			if not def.choices then self:Send(ent, 0) end
