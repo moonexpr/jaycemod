@@ -1,31 +1,30 @@
 -- A payload cart's right-click entries, for admins: back to its last
--- checkpoint, or on to its next. They show on a proxy (wetsand_proxy) for
--- the cart's watcher, which the payload feature puts on the cart and on
--- each of its checkpoints, and on the cart's own train and props.
-local function ProxyWatcher(proxy)
-	if proxy:GetClass() ~= "wetsand_proxy" then return nil end
-	local target = proxy:GetTarget()
-	if IsValid(target) and target:GetClass() == "team_train_watcher" then return target end
+-- checkpoint, or on to its next. They show on a cart's proxy
+-- (wetsand_proxy, kind "cart"), which the payload feature puts on the cart
+-- and on each of its checkpoints, and on the cart's own train and props.
+-- A cart's proxy, by its kind: its target, the watcher, is never sent to
+-- clients, so a client knows the proxy by its kind alone, and the server
+-- acts on its target.
+local function IsCartProxy(ent)
+	return IsValid(ent) and ent:GetClass() == "wetsand_proxy" and ent:GetKind() == "cart"
 end
 
--- The watcher of a proxy; else of the proxy ent names (the cart's body, a
--- prop the map ties to the train); else of the cart proxy riding the train
--- ent is or rides. GMod's right-click stops at the first solid thing, the
--- cart itself, before it would reach the cart's proxy.
-local function Watcher(ent)
-	local watcher = ProxyWatcher(ent)
-	if watcher then return watcher end
+-- The cart's proxy ent is, or names (the cart's body, a prop the map ties
+-- to the train), or rides with on the train: GMod's right-click stops at
+-- the first solid thing, the cart itself, before it would reach the proxy.
+local function CartProxy(ent)
+	if IsCartProxy(ent) then return ent end
 	local named = ent:GetNW2Entity("wetsand_proxy")
-	if IsValid(named) then return ProxyWatcher(named) end
+	if IsCartProxy(named) then return named end
 	local root = ent
 	while IsValid(root:GetParent()) do root = root:GetParent() end
 	for _, child in ipairs(root:GetChildren()) do
-		watcher = ProxyWatcher(child)
-		if watcher then return watcher end
+		if IsCartProxy(child) then return child end
 	end
 end
 
-local function IsCart(ent) return Watcher(ent) ~= nil end
+local function IsCart(ent) return CartProxy(ent) ~= nil end
+local function Watcher(ent) return CartProxy(ent):GetTarget() end
 
 WETSAND.EditorAction("wetsand_retract_cart", {
 	match = IsCart, title = "Payload", label = "Retract Cart to Previous Checkpoint", icon = "icon16/arrow_left.png", order = 2100,

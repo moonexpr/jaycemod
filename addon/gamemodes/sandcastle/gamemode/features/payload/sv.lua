@@ -98,6 +98,7 @@ local function Proxy(watcher, at, mins, maxs)
 	if IsValid(proxies[at]) then return end
 	local proxy = ents.Create("wetsand_proxy")
 	proxy:SetPos(at:GetPos())
+	proxy:SetKind("cart")
 	proxy:SetTarget(watcher)
 	proxy:SetMins(mins)
 	proxy:SetMaxs(maxs)

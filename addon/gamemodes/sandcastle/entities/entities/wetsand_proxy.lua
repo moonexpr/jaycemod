@@ -15,7 +15,8 @@ ENT.PhysgunDisabled = true
 ENT.m_tblToolsAllowed = {}
 
 function ENT:SetupDataTables()
-	self:NetworkVar("Entity", 0, "Target")
+	self:NetworkVar("String", 0, "Kind") -- what it stands for ("cart", "point"), which clients see
+	self:NetworkVar("Entity", 0, "Target") -- the server's: a point entity is never sent to clients
 	self:NetworkVar("Vector", 0, "Mins")
 	self:NetworkVar("Vector", 1, "Maxs")
 end

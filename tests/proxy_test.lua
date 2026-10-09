@@ -59,24 +59,25 @@ local function LoadCart()
 	return added
 end
 
-local function Ent(class, target, parent, children, proxy)
+-- A proxy's kind and target as a client sees them: the kind, and no
+-- target (a train watcher is never sent to clients).
+local function Ent(class, kind, parent, children, proxy)
 	return {
 		GetClass = function() return class end,
-		GetTarget = function() return target end,
+		GetKind = function() return kind end,
+		GetTarget = function() return nil end,
 		GetParent = function() return parent end,
 		GetChildren = function() return children or {} end,
 		GetNW2Entity = function(_, name) return name == "wetsand_proxy" and proxy or nil end,
 	}
 end
 
-T.test("the cart's entries show on a proxy for a cart's watcher, and nowhere else", function()
+T.test("the cart's entries show on a cart's proxy, by its kind, and nowhere else", function()
 	local added = LoadCart()
-	local watcher = Ent("team_train_watcher")
 	for _, name in ipairs({ "wetsand_retract_cart", "wetsand_advance_cart" }) do
 		local match = added[name].match
-		T.eq(match(Ent("wetsand_proxy", watcher)), true, name)
-		T.eq(match(Ent("wetsand_proxy", Ent("team_control_point"))), false, name .. ": another target")
-		T.eq(match(Ent("wetsand_proxy", nil)), false, name .. ": no target")
+		T.eq(match(Ent("wetsand_proxy", "cart")), true, name)
+		T.eq(match(Ent("wetsand_proxy", "point")), false, name .. ": a point's proxy")
 		T.eq(match(Ent("func_tracktrain")), false, name .. ": not a proxy")
 	end
 end)
@@ -86,8 +87,7 @@ end)
 -- the train that carries the cart's proxy.
 T.test("the cart's entries also show on the train and the props riding it", function()
 	local added = LoadCart()
-	local watcher = Ent("team_train_watcher")
-	local proxy = Ent("wetsand_proxy", watcher)
+	local proxy = Ent("wetsand_proxy", "cart")
 	local train = Ent("func_tracktrain", nil, nil, { proxy })
 	local prop = Ent("prop_physics", nil, train)
 	local match = added.wetsand_advance_cart.match
@@ -101,7 +101,7 @@ end)
 -- payload feature has it name the cart's proxy.
 T.test("the cart's entries show on the body tied to the train, which names the cart's proxy", function()
 	local added = LoadCart()
-	local proxy = Ent("wetsand_proxy", Ent("team_train_watcher"))
+	local proxy = Ent("wetsand_proxy", "cart")
 	local match = added.wetsand_retract_cart.match
 	T.eq(match(Ent("prop_physics", nil, nil, nil, proxy)), true, "the cart's body")
 	T.eq(match(Ent("prop_physics")), false, "another prop")
