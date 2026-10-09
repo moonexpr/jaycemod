@@ -7,6 +7,22 @@ local CATEGORY = "LuaDev"
 
 local function who(ply, name) return luadev.GetPlayerIdentifier(ply, "cmd:" .. name) end
 
+-- ULib splits a chat command's arguments and drops their quotes (print"x"
+-- would run as print x). A monitor, before ULib's say commands, keeps the
+-- line each player last typed, and a command typed in chat runs its lua as
+-- typed; from the console it runs the line it was given.
+local said = setmetatable({}, { __mode = "k" })
+hook.Add("PlayerSay", "wetsand_ulx_luadev_said", function(ply, text) said[ply] = text end, HOOK_MONITOR_HIGH)
+
+-- What ply typed after !name, as typed, once; nil when that line was not it.
+local function Typed(ply, name)
+	local text = said[ply]
+	said[ply] = nil
+	local word, rest = (text or ""):match("^!(%S+)%s*(.-)%s*$")
+	if not word or word:lower() ~= name then return nil end
+	return rest
+end
+
 -- the keys of a table expression's value, sorted, that contain the search
 local function keys_script(expression, search)
 	return "local t={} for k in pairs(" .. expression .. ") do t[#t+1]=tostring(k) end table.sort(t) "
@@ -72,9 +88,10 @@ end
 
 for _, c in ipairs(COMMANDS) do
 	local name, help, runs = c[1], c[2], c[3]
-	local fn = function(ply, line) run(ply, name, runs(line)) end
+	local fn = function(ply, line) run(ply, name, runs(Typed(ply, name) or line)) end
 	if name == "lm" then
 		fn = function(ply, line)
+			line = Typed(ply, name) or line
 			if not ply:IsAdmin() and not sv_allowcslua:GetBool() then
 				return ULib.tsayError(ply, "sv_allowcslua is 0", true)
 			end
@@ -85,7 +102,8 @@ for _, c in ipairs(COMMANDS) do
 end
 
 add("lsc", "Runs lua on a specific player", function(ply, target, line)
-	run(ply, "lsc", { { target, line } })
+	local typed = Typed(ply, "lsc")
+	run(ply, "lsc", { { target, typed and typed:match("^%S+%s+(.+)$") or line } })
 end, { { type = ULib.cmds.PlayerArg }, LUA })
 
 local function add_keys(name, help, where)

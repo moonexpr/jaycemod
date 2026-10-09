@@ -82,7 +82,10 @@ local function ulx_module(t)
 			return t.fail == nil, t.fail
 		end
 	end
+	local hooks = {}
 	local env = setmetatable({
+		hook = { Add = function(name, _, fn, priority) hooks[name] = { fn = fn, priority = priority } end },
+		HOOK_MONITOR_HIGH = -2,
 		ulx = { command = command },
 		ULib = {
 			ACCESS_ALL = "user", ACCESS_SUPERADMIN = "superadmin",
@@ -101,7 +104,7 @@ local function ulx_module(t)
 		GetConVar = function() return convar(t.cslua) end,
 	}, { __index = _G })
 	setfenv(assert(loadfile(DIR .. "ulx_luadev.lua")), env)()
-	return commands, ran, errors
+	return commands, ran, errors, hooks
 end
 
 local AOWL = { "l", "ls", "lc", "lsc", "lm", "lb", "print", "table", "keys", "keysm", "printc", "printm", "printb" }
@@ -194,6 +197,47 @@ T.test("lm needs sv_allowcslua unless the caller is an admin", function()
 	local open, ran_open = ulx_module({ cslua = true })
 	open["ulx lm"].fn(player(), "x()")
 	T.eq(#ran_open, 1)
+end)
+
+-- ULib splits a chat command's arguments and drops their quotes, so the
+-- line typed is taken as typed: print"test" stays print"test".
+T.test("a command typed in chat runs the lua as it was typed, quotes and all", function()
+	local commands, ran, _, hooks = ulx_module()
+	local me = player()
+	T.eq(hooks.PlayerSay.priority, -2, "a monitor, before ULib's own say commands")
+	hooks.PlayerSay.fn(me, '!l print"test"')
+	commands["ulx l"].fn(me, "print test")
+	T.eq(ran[1].script, 'print"test"')
+end)
+
+T.test("typed in chat, lsc's lua is what follows its target, as typed", function()
+	local commands, ran, _, hooks = ulx_module()
+	local me, them = player(), player()
+	hooks.PlayerSay.fn(me, '!lsc moon print("a b")')
+	commands["ulx lsc"].fn(me, them, "print(a b)")
+	T.eq(ran[1].script, 'print("a b")')
+end)
+
+T.test("from the console, or after another chat line, the parsed line runs", function()
+	local commands, ran, _, hooks = ulx_module()
+	local me = player()
+	commands["ulx l"].fn(me, "print(1)")
+	T.eq(ran[1].script, "print(1)", "console")
+	hooks.PlayerSay.fn(me, "hello there")
+	commands["ulx l"].fn(me, "print(2)")
+	T.eq(ran[2].script, "print(2)", "another line said")
+	hooks.PlayerSay.fn(me, '!lc print"x"')
+	commands["ulx l"].fn(me, "print(3)")
+	T.eq(ran[3].script, "print(3)", "another command's line")
+end)
+
+T.test("a chat line is used once", function()
+	local commands, ran, _, hooks = ulx_module()
+	local me = player()
+	hooks.PlayerSay.fn(me, '!l print"once"')
+	commands["ulx l"].fn(me, "print once")
+	commands["ulx l"].fn(me, "print(again)")
+	T.eq(ran[2].script, "print(again)")
 end)
 
 T.finish()
