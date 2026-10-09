@@ -126,6 +126,7 @@ PLAN: Tuple[MapRun, ...] = (
     MapRun("cp_granary", (
         load(True, has=["rounds", "capture"], lacks=["koth", "payload"]),
         Step("sandbox_capture", 45),
+        Step("capture_cleanup", 20),
         GAMEPLAY_START,
         Step("cp_capture", 420, {"timeout": 400}),
     )),

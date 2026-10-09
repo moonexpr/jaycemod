@@ -50,13 +50,7 @@ end
 -- associated entity's; every installed map associates a team_control_point.
 local function AssociatedTeam(point)
 	local ent = point:AssociatedEntity()
-
-	-- 
-	if not IsValid(ent) or ent:GetClass() ~= "team_control_point" then
-		ErrorNoHalt("wetsand_spectate: info_observer_point " .. point:GetName()
-			.. " has no team_control_point associated entity\n")
-		return WETSAND.TEAM_UNASSIGNED
-	end
+	if not IsValid(ent) or ent:GetClass() ~= "team_control_point" then return nil end
 	return WETSAND.Feature("capture"):Owner(ent)
 end
 

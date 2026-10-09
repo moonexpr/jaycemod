@@ -962,6 +962,10 @@ Controller.rounds:AddRoundListener(Rounds.PHASE_ACTIVATE, Rounds.LISTEN_CAPTURE,
 Controller.rounds:AddRoundListener(Rounds.PHASE_ROUND_END, Rounds.LISTEN_CAPTURE, function() Controller:PreviousRoundEnd() end)
 Controller.rounds:AddTimerHold("capture", function() return AnyCapturing(Controller) end, true)
 
+-- A cleanup recreates every point, and not every cleanup is a round's (an
+-- admin's game.CleanUpMap has no RoundSpawn): the set follows the new ones.
+hook.Add("PostCleanupMap", "wetsand_capture", function() Controller:Rebuild() end)
+
 -- tf_logic_cp_timer (CCPTimerLogic) -------------------------------------------------------
 -- Loaded with the first timer: its model, its round-spawn listener and its
 -- hold on the round timer.

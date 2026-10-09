@@ -694,4 +694,13 @@ T.test("only RED and BLU capture", function()
 	T.eq(set:TeamMayCapture("b", Teams.SPECTATOR, Linear(set, BLU)), false)
 end)
 
+-- A point id the set never held (an entity recreated by a map cleanup the
+-- set missed) is our bug: the error names the point, not "index a nil".
+T.test("a point the set does not hold fails naming it", function()
+	local set = Granary(true)
+	local ok, err = pcall(set.Owner, set, "stale")
+	T.eq(ok, false)
+	T.eq(tostring(err):find("no control point stale in the set", 1, true) ~= nil, true, tostring(err))
+end)
+
 T.finish()

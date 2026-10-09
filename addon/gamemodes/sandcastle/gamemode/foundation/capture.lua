@@ -24,7 +24,7 @@
 --     sound }, HEAR_*);
 --   { kind = "unlocked", id } (OnUnlocked); { kind = "unlock_time", id, at };
 --   { kind = "round_start_owned", id, team } (OnRoundStartOwnedByTeam).
-local ipairs, pairs, setmetatable = ipairs, pairs, setmetatable
+local error, ipairs, pairs, setmetatable, tostring = error, ipairs, pairs, setmetatable, tostring
 local abs = math.abs
 local gmatch = string.gmatch
 local sort = table.sort
@@ -254,24 +254,12 @@ function New(config)
 	}, PointSet)
 end
 
-local _defaultControlPoint = NewPoint({
-	id = "default",
-	index = 0,
-	defaultOwner = WETSAND.TEAM_UNASSIGNED,
-	startLocked = true,
-	group = 0,
-	warnOnCap = CP_WARN.NORMAL,A
-	warnSound = WARN_SOUND_DEFAULT,
-	printName = "Default Control Point",
-	spawnflags = 0,
-	previous = {},
-	sounds = {},
-	capSounds = {},
-}, 0)
-
--- Parser function which either returns an actual point or mocked point if entity has not activated yet (E.g., on map load)
-function PointSet:GetPoint(id)
-	return self.points[id] or _defaultControlPoint
+-- The point an id names. An id the set does not hold is the caller's bug
+-- (an entity the set was never rebuilt for): fail naming it, at the caller.
+local function Point(self, id)
+	local p = self.points[id]
+	if p == nil then error("no control point " .. tostring(id) .. " in the set", 3) end
+	return p
 end
 
 -- tf_caplinear, read by the controller each time it changes.
@@ -294,30 +282,30 @@ function PointSet:Count()
 	return #self.ids
 end
 
-function PointSet:Rank(id) return self:GetPoint(id).rank end
-function PointSet:Index(id) return self:GetPoint(id).index end
-function PointSet:Owner(id) return self:GetPoint(id).owner end
-function PointSet:DefaultOwner(id) return self:GetPoint(id).defaultOwner end
-function PointSet:Group(id) return self:GetPoint(id).group end
-function PointSet:Locked(id) return self:GetPoint(id).locked end
-function PointSet:PrintName(id) return self:GetPoint(id).printName end
-function PointSet:Spawnflags(id) return self:GetPoint(id).spawnflags end
+function PointSet:Rank(id) return Point(self, id).rank end
+function PointSet:Index(id) return Point(self, id).index end
+function PointSet:Owner(id) return Point(self, id).owner end
+function PointSet:DefaultOwner(id) return Point(self, id).defaultOwner end
+function PointSet:Group(id) return Point(self, id).group end
+function PointSet:Locked(id) return Point(self, id).locked end
+function PointSet:PrintName(id) return Point(self, id).printName end
+function PointSet:Spawnflags(id) return Point(self, id).spawnflags end
 
 -- The unlock time the HUD counts down to, or nil.
 function PointSet:UnlockAt(id)
-	return self.points[id].shownUnlockAt
+	return Point(self, id).shownUnlockAt
 end
 
 -- point_warn_on_cap and point_warn_sound.
 function PointSet:Warn(id)
-	local p = self:GetPoint(id)
+	local p = Point(self, id)
 	return p.warnOnCap, p.warnSound
 end
 
 -- The capture sounds foundation.capture.area's PointSounds plays from the
 -- point: { start, stop, progress, interrupted }.
 function PointSet:Sounds(id)
-	return self:GetPoint(id).sounds
+	return Point(self, id).sounds
 end
 
 local function Line(hearer, team, sound)
@@ -333,7 +321,7 @@ end
 -- point is contested (neutral or owned); with 1 they hear its warn sound,
 -- at most every WARN_INTERVAL seconds.
 function PointSet:CaptureStarted(id, team, now)
-	local p = self:GetPoint(id)
+	local p = Point(self, id)
 	if team == NOBODY then return {} end
 	if p.warnOnCap == CP_WARN.NORMAL then
 		return { Line(HEAR_OTHERS, team, p.owner ~= NOBODY and CONTESTED or CONTESTED_NEUTRAL) }
@@ -359,7 +347,7 @@ end
 -- not) and ForceOwner. Only a forced owner ignores whether points may be
 -- captured now; an input naming the owner does nothing.
 function PointSet:SetOwner(id, team, cause, pointsMayBeCaptured)
-	local p = self:GetPoint(id)
+	local p = Point(self, id)
 	local input = cause == CAUSE_INPUT or cause == CAUSE_PLAYER_INPUT
 	if input and p.owner == team then return {} end
 	if cause ~= CAUSE_FORCE and not pointsMayBeCaptured then return {} end
@@ -389,7 +377,7 @@ end
 function PointSet:TeamOwnsAll(ids, overrideId, overrideTeam)
 	local byGroup = {}
 	for _, id in ipairs(ids) do
-		local p = self:GetPoint(id)
+		local p = Point(self, id)
 		local owner = p.owner
 		if id == overrideId then owner = overrideTeam end
 		local g = byGroup[p.group]
@@ -426,13 +414,13 @@ end
 
 function PointSet:SetLocked(id, locked)
 	local events = {}
-	InternalSetLocked(self:GetPoint(id), locked, events)
+	InternalSetLocked(Point(self, id), locked, events)
 	return events
 end
 
 -- InputSetUnlockTime: 0 or less unlocks now.
 function PointSet:SetUnlockTime(id, seconds, now)
-	local p = self:GetPoint(id)
+	local p = Point(self, id)
 	local events = {}
 	if seconds <= 0 then
 		InternalSetLocked(p, false, events)
@@ -453,7 +441,7 @@ function PointSet:Tick(now, roundRunning)
 	local events = {}
 	if not roundRunning then return events end
 	for _, id in ipairs(self.ids) do
-		local p = self:GetPoint(id)
+		local p = Point(self, id)
 		if p.unlockAt and p.unlockAt < now then InternalSetLocked(p, false, events) end
 	end
 	return events
@@ -464,7 +452,7 @@ end
 function PointSet:RoundActivate(ids)
 	local events = {}
 	for _, id in ipairs(ids or self.ids) do
-		local p = self:GetPoint(id)
+		local p = Point(self, id)
 		if p.owner >= FIRST_GAME_TEAM then
 			events[#events + 1] = {
 				kind = "round_start_owned",
@@ -491,7 +479,7 @@ end
 
 local function OwnersByRank(self)
 	local owners = {}
-	for rank, id in ipairs(self.ids) do owners[rank - 1] = self:GetPoint(id).owner end
+	for rank, id in ipairs(self.ids) do owners[rank - 1] = Point(self, id).owner end
 	return owners
 end
 
@@ -519,7 +507,7 @@ end
 -- playingMiniRounds, inRound = { [id] = true } or nil (every point), base =
 -- the team's base rank (the master's BaseControlPoint) }.
 function PointSet:TeamMayCapture(id, team, q)
-	local p = self:GetPoint(id)
+	local p = Point(self, id)
 	if not ENEMY[team] or p.owner == team or not InRound(q, id) then return false end
 	return MayCapturePoint(self, p, team, q)
 end
@@ -532,7 +520,7 @@ end
 -- area's team_cancap } }. The SDK's PlayerMayCapturePoint reasons (stealth,
 -- invulnerability, disguise) have no Sandcastle counterpart.
 function PointSet:CannotCapReason(id, team, q)
-	local p = self:GetPoint(id)
+	local p = Point(self, id)
 	if not q.blocked and q.capping ~= NOBODY and q.capping ~= p.owner and q.capping == team then
 		return REASON_NONE
 	end
@@ -567,7 +555,7 @@ end
 -- mp_capstyle 1 (no fixed count); a team may cap when its area lets it and
 -- TeamMayCapture holds.
 function PointSet:HudPoint(id, q)
-	local p = self:GetPoint(id)
+	local p = Point(self, id)
 	local area = q.area
 	local hud = {
 		owner = p.owner,
