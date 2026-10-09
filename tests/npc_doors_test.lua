@@ -47,4 +47,15 @@ T.test("a trigger opens a door only through an output that opens that door", fun
 	T.eq(Doors.Opens({ Out("door1_door", "Open") }, ""), false, "an unnamed door no output can name")
 end)
 
+-- Source names a target with a trailing * for every name it starts
+-- (pl_swiftwater's blue_spawn_doortrigger_1 opens blue_spawn_door_1*,
+-- both its doors); BLU stood at doors that never opened.
+T.test("an output naming a door with a trailing * opens every door its prefix names", function()
+	local function Out(target, input) return { name = "OnStartTouchAll", target = target, input = input } end
+	T.eq(Doors.Opens({ Out("blue_spawn_door_1*", "Open") }, "blue_spawn_door_1a"), true, "1a")
+	T.eq(Doors.Opens({ Out("blue_spawn_door_1*", "Open") }, "Blue_Spawn_Door_1B"), true, "1b, whatever the case")
+	T.eq(Doors.Opens({ Out("blue_spawn_door_1*", "Open") }, "blue_spawn_door_2a"), false, "not another door")
+	T.eq(Doors.Opens({ Out("blue_spawn_door_1*", "Close") }, "blue_spawn_door_1a"), false, "closing it")
+end)
+
 T.finish()
