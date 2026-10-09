@@ -50,7 +50,13 @@ end
 -- associated entity's; every installed map associates a team_control_point.
 local function AssociatedTeam(point)
 	local ent = point:AssociatedEntity()
-	if not IsValid(ent) or ent:GetClass() ~= "team_control_point" then return nil end
+
+	-- 
+	if not IsValid(ent) or ent:GetClass() ~= "team_control_point" then
+		ErrorNoHalt("wetsand_spectate: info_observer_point " .. point:GetName()
+			.. " has no team_control_point associated entity\n")
+		return WETSAND.TEAM_UNASSIGNED
+	end
 	return WETSAND.Feature("capture"):Owner(ent)
 end
 
@@ -58,11 +64,29 @@ local function Describe(ent)
 	local kind = Kind(ent)
 	if kind == "player" then
 		local st = observing[ent]
-		return { id = ent, kind = kind, team = ent:Team(), alive = WETSAND.IsAliveInGame(ent), deathTime = st and st.deathTime }
+		return { 
+			id = ent,
+			kind = kind,
+			team = ent:Team(),
+			alive = WETSAND.IsAliveInGame(ent),
+			deathTime = st and st.deathTime 
+		}
 	elseif kind == "point" then
-		return { id = ent, kind = kind, team = ent:TeamNum(), enabled = ent:IsEnabled(), associatedTeam = AssociatedTeam(ent), welcome = ent:IsDefaultWelcome() }
+		return { 
+			id = ent, 
+			kind = kind,
+			team = ent:TeamNum(),
+			enabled = ent:IsEnabled(),
+			associatedTeam = AssociatedTeam(ent),
+			welcome = ent:IsDefaultWelcome() 
+		}
 	end
-	return { id = ent, kind = kind, team = WETSAND.TEAM_UNASSIGNED, train = ent:GetClass() == "func_tracktrain" }
+	return { 
+		id = ent,
+		kind = kind,
+		team = WETSAND.TEAM_UNASSIGNED,
+		train = ent:GetClass() == "func_tracktrain"
+	}
 end
 
 local function Validator(ply)
@@ -177,7 +201,8 @@ local function Resolve(ply, st)
 		return false
 	end
 	local old = st.target
-	if IsValid(old) and old:GetClass() == "func_tracktrain" and WETSAND.State() == WETSAND.STATE.TEAM_WIN then
+	if IsValid(old) and old:GetClass() == "func_tracktrain" 
+		and WETSAND.State() == WETSAND.STATE.TEAM_WIN then
 		st.target = PointNearest(ply, old:GetPos())
 	else
 		st.target = nil
