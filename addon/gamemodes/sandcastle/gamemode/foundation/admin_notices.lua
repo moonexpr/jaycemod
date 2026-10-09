@@ -22,7 +22,7 @@ local GOOD, BAD = "Announcer.TimeAwardedCongrats", "Announcer.TimeAddedForEnemy"
 NEUTRAL_LINE = "Announcer.SecurityAlert"
 NEUTRAL_CHIME = "ui/system_message_alert.wav"
 NEUTRAL_LINE_GAP = 30 * 60 -- the security alert speaks once in this long
-BELL = "misc/halloween/strongman_bell_01.wav" -- a point awarded
+BELL = "Hud.EndRoundScored" -- a point awarded: TF2's chime as a team scores (ui/scored.wav)
 
 local function Notice(audience, team, text, icon, sound, chime)
 	return { audience = audience, team = team, text = text, icon = icon, sound = sound, chime = chime }

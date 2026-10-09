@@ -98,7 +98,7 @@ T.test("points awarded to a team ring a bell and tell everyone, in the team's co
 	T.eq(one[1].chime, Notices.BELL)
 	T.eq(one[1].sound, nil, "no announcer line")
 	T.eq(Notices.PointsAwarded(BLU, 3, names)[1].text, "The Administrator has awarded BLU 3 points!")
-	T.eq(Notices.BELL, "misc/halloween/strongman_bell_01.wav")
+	T.eq(Notices.BELL, "Hud.EndRoundScored", "TF2's chime as a team scores")
 end)
 
 T.finish()

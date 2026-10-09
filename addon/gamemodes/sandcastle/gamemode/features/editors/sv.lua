@@ -38,7 +38,9 @@ function Controller:SetScore(t, score)
 	timer.Create("wetsand_admin_notice_score_" .. t, SETTLE, 1, function()
 		local awarded = team.GetScore(t) - scoredFrom[t]
 		scoredFrom[t] = nil
-		if awarded > 0 then WETSAND.Notify(Notices.PointsAwarded(t, awarded, WETSAND.TeamName)) end
+		if awarded <= 0 then return end
+		WETSAND.Notify(Notices.PointsAwarded(t, awarded, WETSAND.TeamName))
+		WETSAND.Events.Fire("points_awarded", { team = t, points = awarded })
 	end)
 end
 

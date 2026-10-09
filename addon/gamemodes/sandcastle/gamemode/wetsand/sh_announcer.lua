@@ -33,6 +33,14 @@ E.Define("announcement", {
 	icon = E.Default(E.String(), ""),
 })
 
+-- Points an admin awarded a team (the Game Rules editor): the rounds view
+-- flashes "+points" beside the team's score, as "+time" beside the timer.
+local POINTS_BITS = 8
+E.Define("points_awarded", {
+	team = E.Team(),
+	points = E.UInt(POINTS_BITS),
+})
+
 if CLIENT then
 	E.Listen("teamplay_broadcast_audio", "wetsand_announcer", function(fields)
 		local ply = LocalPlayer()

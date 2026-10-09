@@ -132,6 +132,8 @@ end
 WETSAND.Events.Listen("announcement", "wetsand_rounds_view", function(fields)
 	if not WETSAND.TeamRules.HearsBroadcast(fields.audience, false, LocalPlayer():Team()) then return end
 	View:Announce(fields.text, fields.team, fields.icon)
+	-- a card (an admin's notice) is kept in the console too
+	if fields.icon ~= "" then MsgC(WETSAND.TeamColor[fields.team] or color_white, "[Sandcastle] " .. fields.text .. "\n") end
 end)
 
 -- A round notice under the timer, in the team's colour (the capture view's
@@ -143,6 +145,16 @@ function View:Notice(text, team)
 		expires = CurTime() + NOTICE_SECONDS,
 	}
 end
+
+-- "+points" beside a team's score when an admin awards it points
+-- (wetsand/sh_announcer.lua), as "+time" beside the timer.
+WETSAND.Events.Listen("points_awarded", "wetsand_rounds_view", function(fields)
+	View.pointsAwarded = {
+		text = "+" .. fields.points,
+		team = fields.team,
+		expires = CurTime() + TIME_ADDED_SECONDS,
+	}
+end)
 
 -- The timer's "+time" beside the clock (sh.lua).
 WETSAND.Events.Listen("teamplay_timer_time_added", "wetsand_rounds_view", function(fields)
@@ -268,6 +280,7 @@ function View:DrawRoundPanel(w, h)
 		Line(string.format("Stage %d of %d", GetGlobal2Int("wetsand_mini_round_stage", 0), stages), GOLD)
 	end
 	Line(string.format("RED %d  :  %d BLU", team.GetScore(WETSAND.TEAM_RED), team.GetScore(WETSAND.TEAM_BLUE)), color_white)
+	local scoreLine = #lines - 1
 	local myTeam = WETSAND.TeamOf(LocalPlayer())
 	if myTeam ~= UNASSIGNED and ShowGoal(WETSAND.State()) then
 		local goal = self:Localize(GetGlobal2String("wetsand_round_goal_" .. myTeam, ""))
@@ -280,6 +293,12 @@ function View:DrawRoundPanel(w, h)
 	draw.RoundedBox(6, x, y, width + 16, #lines * 20 + 8, PANEL_BG)
 	for i, line in ipairs(lines) do
 		draw.SimpleText(line.text, "Sandcastle.Rounds.Small", x + 8, y + 4 + (i - 1) * 20, line.color)
+	end
+	-- an admin's points, beside the scores
+	local awarded = self.pointsAwarded
+	if awarded and CurTime() < awarded.expires then
+		draw.SimpleTextOutlined(awarded.text, "Sandcastle.Hud.Label", x + width + 24, y + 4 + scoreLine * 20,
+			WETSAND.TeamColor[awarded.team] or color_white, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP, 1, color_black)
 	end
 end
 
