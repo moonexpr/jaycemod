@@ -25,6 +25,20 @@ end
 function WETSAND.DrgSoldier(ENT, baseName)
 	if CLIENT then return end
 	local Ragdoll = WETSAND.require("foundation.npc.ragdoll")
+	local Voices = WETSAND.require("foundation.npc.voices")
+	local SILENT = { pain = {}, death = {} }
+
+	-- Its pain and death sounds, which DrGBase plays, for the model it wears
+	-- now (foundation.npc.voices); none for a model without a voice.
+	function ENT:NSVoice()
+		local voice = Voices.For(self:GetModel()) or SILENT
+		self.OnDamageSounds, self.OnDeathSounds = voice.pain, voice.death
+	end
+
+	-- DrGBase's, once it has picked the soldier's model.
+	function ENT:CustomInitialize()
+		self:NSVoice()
+	end
 
 	-- Walks the controller's target, if it has one, or, there, faces the
 	-- enemy so it can fight (a soldier holding its ground): true when it has
@@ -151,7 +165,10 @@ function WETSAND.DrgSoldier(ENT, baseName)
 	function ENT:WetsandKit(kit)
 		self.WetsandOwnModel = self.WetsandOwnModel or self:GetModel()
 		local model = kit.model or self.WetsandOwnModel
-		if self:GetModel() ~= model then self:SetModel(model) end
+		if self:GetModel() ~= model then
+			self:SetModel(model)
+			self:NSVoice()
+		end
 		local held
 		for _, class in ipairs(kit.weapons or {}) do
 			if self:HasWeapon(class) then
