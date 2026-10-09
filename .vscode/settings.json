@@ -1,3 +1,4 @@
 {
     "editor.quickSuggestions": true,
+    "github.copilot.enable": {"*": false}
 }
