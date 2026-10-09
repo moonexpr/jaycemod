@@ -2,7 +2,8 @@
 -- built on (drgbase_nextbot_human for the Combine and the Resistance's
 -- fighters, drgbase_nextbot for the vortigaunt): WETSAND.DrgSoldier(ENT,
 -- baseName) installs it. The controller (features/aiwar) sets NSTarget,
--- a position to go to, WetsandRun, whether to run there, and NSBrain,
+-- a position to go to, WetsandRun, whether to run there, NSLook, where to
+-- face while it stands with no enemy (the threat it watches), and NSBrain,
 -- the orders it asks and tells (whether to attack, which enemy, what it saw
 -- and suffered). With a target, the soldier walks it whatever else it does,
 -- fighting on the way; without one it is left to DrGBase.
@@ -41,8 +42,8 @@ function WETSAND.DrgSoldier(ENT, baseName)
 	end
 
 	-- Walks the controller's target, if it has one, or, there, faces the
-	-- enemy so it can fight (a soldier holding its ground): true when it has
-	-- a target.
+	-- enemy so it can fight (a soldier holding its ground), else watches
+	-- NSLook: true when it has a target.
 	function ENT:NSSteer(enemy)
 		-- frozen (the match's end): it stands where it is
 		if self.NSFrozen then return true end
@@ -57,13 +58,16 @@ function WETSAND.DrgSoldier(ENT, baseName)
 			self.NSMoveResult = self:FollowPath(target, GOAL_TOLERANCE)
 		elseif IsValid(enemy) then
 			self:FaceTowards(enemy)
+		elseif self.NSLook then
+			self:FaceTowards(self.NSLook)
 		end
 		return true
 	end
 
-	-- No enemy: the target, else stand (DrGBase would wander off at random).
+	-- No enemy: the target, else stand watching NSLook (DrGBase would
+	-- wander off at random).
 	function ENT:OnIdle()
-		self:NSSteer()
+		if not self:NSSteer() and self.NSLook then self:FaceTowards(self.NSLook) end
 	end
 
 	-- An enemy: with a target the soldier keeps to it, and DrGBase still aims

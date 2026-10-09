@@ -107,6 +107,9 @@ function Soldier:PatrolSpot(center, radius)
 	return (self.patrolSpots or {})[self.patrolled]
 end
 
+-- watching: the point Watch was last given (nil: none).
+function Soldier:Watch(p) self.watching = p end
+
 -- plansRoutes: the engine finds its own way (default: no).
 function Soldier:PlansRoutes() return self.plansRoutes == true end
 

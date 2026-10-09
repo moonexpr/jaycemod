@@ -308,6 +308,20 @@ DOCTRINE = {
 		local focus = ObjectivesOf(field, member).focus
 		return focus and Center(focus)
 	end,
+	SIDES = { attack = "ControlPointAttacker", defend = "ControlPointDefender" },
+	-- capturers and assaulters attack, holders and defenders defend; the
+	-- rest follow their focus (PointFocus)
+	Side = function(field, member)
+		local job = member.role
+		if job == AiWar.CAPTURE or job == AiWar.ASSAULT then return "attack" end
+		if job == AiWar.HOLD or job == AiWar.DEFEND then return "defend" end
+		return PointFocus(field, member, ObjectivesOf(field, member)) == "offense" and "attack" or "defend"
+	end,
+	-- the point it fights for, as its chases' anchor
+	Threat = function(field, member)
+		local focus = ObjectivesOf(field, member).focus
+		return focus and Center(focus)
+	end,
 	PatrolMark = function(field, member)
 		local guard = ObjectivesOf(field, member).guard
 		return { guard = guard and guard.id }

@@ -21,7 +21,11 @@
 -- behind the gates in setup, ChaseAnchor(field, member) -> pos or nil:
 -- chases keep within CHASE_LEASH of it, PatrolMark(field, member) -> mark,
 -- taken when a patrol starts, PatrolHolds(mark, field, member) -> ok, why:
--- the patrol goes on while true }. Nothing outside a doctrine reads carts.
+-- the patrol goes on while true, Threat(field, member) -> pos or nil: where
+-- the enemy will come from, which a soldier standing idle watches,
+-- Side(field, member) -> "attack" or "defend": the member's side, and
+-- SIDES = side -> the name of its side action }.
+-- Nothing outside a doctrine reads carts.
 --
 -- The tree follows TF2's bots (docs/aiwar-command.md):
 --
@@ -33,7 +37,10 @@
 --           SquadLeader | SquadMember | Solo   a member takes its bound line
 --                          from its leader, regroups on it in a fight, and
 --                          fights the enemy its leader fights
---             ScenarioMonitor   runs the job (CTFBotScenarioMonitor)
+--             ScenarioMonitor   runs the side (CTFBotScenarioMonitor)
+--             PayloadAttacker | PayloadDefender   the member's side in the
+--                          scenario (the doctrine's Side and SIDES), which
+--                          runs its job and changes itself with the side
 --               Push/Escort/Block/Defend/Raid/Support/Idle   the job:
 --                          hold or fight near the goal (pushers and
 --                          blockers keep to their spot as the cart moves),
@@ -50,7 +57,7 @@
 -- the goal is the tactical destination (flank point, bound spot, cover), with
 -- the tactic, the member's element ("moving" or "holding") and the cover spot
 -- it chose, if any (tactic, element, coverSpot).
-local abs, ceil, cos, floor, max, min, sin, sqrt = math.abs, math.ceil, math.cos, math.floor, math.max, math.min, math.sin, math.sqrt
+local abs, ceil, cos, floor, max, min, pi, sin, sqrt = math.abs, math.ceil, math.cos, math.floor, math.max, math.min, math.pi, math.sin, math.sqrt
 local ipairs, pairs = ipairs, pairs
 local N = require("foundation.npc")
 local AiWar = require("foundation.aiwar")
@@ -143,14 +150,24 @@ DETOUR_TIME = 3
 WANDER_ARRIVE, WANDER_REST, WANDER_GIVE_UP = 48, 12, 30
 
 -- The defenders' patrol: a defender or blocker at its spot, while the
--- enemy's cart stands still (moved no more than CART_STILL) and the
--- checkpoint it heads for stays the same, walks its own rounds: spots
--- within PATROL_RADIUS of its post (the soldier port's PatrolSpot),
--- PATROL_REST at each. When the cart is pushed, the objective moves on or
--- the post shifts more than PATROL_SHIFT, it goes back to its post; an
--- enemy in sight ends a round, and the engine's AI fights.
+-- checkpoint the enemy's cart heads for stays the same, walks its own
+-- rounds: spots within PATROL_RADIUS of its post (the soldier port's
+-- PatrolSpot), PATROL_REST at each, whether or not the cart creeps on.
+-- When the objective moves on or the post shifts more than PATROL_SHIFT,
+-- it goes back to its post; an enemy in sight ends a round, and the
+-- engine's AI fights.
 PATROL_RADIUS, PATROL_REST, PATROL_GIVE_UP = 384, 6, 20
-PATROL_SHIFT, CART_STILL = 64, 8
+PATROL_SHIFT = 64
+
+-- Watching (TF2's CTFBot::UpdateLookingAroundForEnemies): a soldier with no
+-- enemy in sight faces the threat (the soldier port's Watch): its fire
+-- team's last contact, else gunfire it heard (OnHeard, foundation.aiwar.
+-- hearing) for HEARD_MEMORY, else its doctrine's Threat, glancing GLANCES degrees
+-- aside of it, one every GLANCE_TIME, in a cycle its slot offsets so that
+-- neighbours do not turn as one.
+GLANCE_TIME = 3
+GLANCES = { 0, 35, 0, -35 }
+HEARD_MEMORY = 5
 
 -- Gaits (the soldier port's MoveTo): a casual walk for setup's wanderers,
 -- a panicked run for the defenders racing to their line in setup, a run
@@ -479,8 +496,8 @@ end
 
 -- Payload's doctrine (foundation.aiwar.scenario.payload): ROLES, with the
 -- carts as what chases keep near (the enemy's, else its own) and what a
--- defender's patrol watches (the enemy's cart standing still, CART_STILL,
--- and heading for the same checkpoint).
+-- defender's patrol watches (the enemy's cart heading for the same
+-- checkpoint).
 PAYLOAD = {
 	NAME = "payload",
 	ROLES = ROLES,
@@ -489,16 +506,29 @@ PAYLOAD = {
 		local cart = EnemyCart(field, member) or OwnCart(field, member)
 		return cart and cart.pos
 	end,
+	SIDES = { attack = "PayloadAttacker", defend = "PayloadDefender" },
+	-- pushers and escorts attack, blockers and defenders defend; the rest
+	-- follow their focus (Focus, below)
+	Side = function(field, member)
+		local job = member.role
+		if job == AiWar.PUSH or job == AiWar.ESCORT then return "attack" end
+		if job == AiWar.BLOCK or job == AiWar.DEFEND then return "defend" end
+		return Focus(field, member) == "offense" and "attack" or "defend"
+	end,
 	PatrolMark = function(field, member)
 		local cart = EnemyCart(field, member)
-		return {
-			cartDistance = cart and cart.distance,
-			checkpoint = cart and cart.nextCheckpoint,
-		}
+		return { checkpoint = cart and cart.nextCheckpoint }
+	end,
+	-- the enemy's cart, which its attackers come with; else the track ahead
+	-- of its own, where the defenders wait
+	Threat = function(field, member)
+		local theirs = EnemyCart(field, member)
+		if theirs then return theirs.pos end
+		local own = OwnCart(field, member)
+		return own and own.track:Offset(own.distance + DEFEND_LEAD, 0)
 	end,
 	PatrolHolds = function(mark, field, member)
 		local cart = EnemyCart(field, member)
-		if cart and mark.cartDistance and abs(cart.distance - mark.cartDistance) > CART_STILL then return false, "the cart moved" end
 		if cart and cart.nextCheckpoint ~= mark.checkpoint then return false, "the objective moved on" end
 		return true
 	end,
@@ -1381,8 +1411,33 @@ local function Monitor(name, contained)
 	return class
 end
 
--- ScenarioMonitor: runs the member's job.
-local ScenarioMonitor = Monitor("ScenarioMonitor", ObjectiveFor)
+-- The side actions (PayloadAttacker, PayloadDefender, ...): each runs the
+-- member's job, and changes itself when the member's side changes.
+local SIDE_OF = {} -- doctrine -> side -> its side action class
+
+local function SideFor(state)
+	local field = state.war:Field()
+	local doctrine = DoctrineOf(field)
+	local side = doctrine.Side(field, state.member)
+	local classes = SIDE_OF[doctrine] or {}
+	SIDE_OF[doctrine] = classes
+	if not classes[side] then
+		local class = Monitor(doctrine.SIDES[side], ObjectiveFor)
+		class.side, class.doctrine = side, doctrine
+		function class:Update(me)
+			local now = state.war:Field()
+			if DoctrineOf(now) ~= self.doctrine or self.doctrine.Side(now, self.state.member) ~= self.side then
+				return self:ChangeTo(SideFor(self.state), "side changed")
+			end
+			return self:Continue()
+		end
+		classes[side] = class
+	end
+	return classes[side]:New(state)
+end
+
+-- ScenarioMonitor: runs the member's side.
+local ScenarioMonitor = Monitor("ScenarioMonitor", SideFor)
 
 -- The squad roles: each runs the job; which one runs follows the member's
 -- place in its squad (foundation.aiwar.squad's Kind), changing itself when
@@ -1662,13 +1717,35 @@ function TacticalMonitor:Update(me)
 	return self:Continue()
 end
 
+-- `to` turned `degrees` about `from`, level (left for a positive turn).
+local function Turn(from, to, degrees)
+	if degrees == 0 then return to end
+	local a = degrees * pi / 180
+	local dx, dy = to.x - from.x, to.y - from.y
+	return { x = from.x + dx * cos(a) - dy * sin(a), y = from.y + dx * sin(a) + dy * cos(a), z = to.z }
+end
+
+-- Where the member watches now (Watching, above), or nil with no threat known.
+function WatchPoint(state, me)
+	local member, now = state.member, me:Now()
+	local contact = member.fireTeam and Tactics.Contact(member.fireTeam, now)
+	if contact then return contact.pos end
+	local heard = state.heard
+	if heard and now - heard.time <= HEARD_MEMORY then return heard.pos end
+	local field = state.war:Field()
+	local threat = field and DoctrineOf(field).Threat(field, member)
+	if not threat then return nil end
+	return Turn(me:Position(), threat, GLANCES[(floor(now / GLANCE_TIME) + member.slot) % #GLANCES + 1])
+end
+
 -- StrategyMonitor: applies the war's allocation for this soldier. It
 -- decides nothing: the War (later the Commander) decides, and each job
 -- checks the member's job itself (ChangeTo on "new role").
 local StrategyMonitor = Monitor("StrategyMonitor", function(state) return TacticalMonitor:New(state) end)
 
 -- It also keeps the member's record current with what its squad reads of
--- it: where it is and the enemy it fights (foundation.aiwar.squad).
+-- it: where it is and the enemy it fights (foundation.aiwar.squad); and
+-- tells the soldier where to watch.
 function StrategyMonitor:Update(me)
 	local member = self.state.member
 	self.state.job = member.role
@@ -1676,7 +1753,14 @@ function StrategyMonitor:Update(me)
 	if member.role ~= AiWar.PUSH and me:IsSeated() then me:Stand() end
 	member.pos = me:Position()
 	member.enemy = me:HasEnemy() and me:Enemy() or nil
+	me:Watch(WatchPoint(self.state, me))
 	return self:Continue()
+end
+
+-- Gunfire heard at pos (the controller's hearing): watched for HEARD_MEMORY.
+function StrategyMonitor:OnHeard(me, pos)
+	self.state.heard = { pos = pos, time = me:Now() }
+	return self:TryContinue()
 end
 
 -------------------------------------------------------------------------------
@@ -1689,11 +1773,12 @@ function NextSoldier:Update(me)
 	return self:Continue()
 end
 
--- The job part of a full action name (what follows ScenarioMonitor/), and
--- the squad role it runs under; nil when it runs none (suspended above).
+-- The job part of a full action name (what follows ScenarioMonitor/ and
+-- the side), the squad role it runs under, and the side action; nil when it
+-- runs none (suspended above).
 function JobOf(fullName)
-	local role, job = fullName:match("^NextSoldier/StrategyMonitor/TacticalMonitor/SquadMonitor/(%a+)/ScenarioMonitor/(.+)$")
-	return job, role
+	local role, side, job = fullName:match("^NextSoldier/StrategyMonitor/TacticalMonitor/SquadMonitor/(%a+)/ScenarioMonitor/(%a+)/(.+)$")
+	return job, role, side
 end
 
 -- config = { war (foundation.aiwar War), member (its roster entry) }

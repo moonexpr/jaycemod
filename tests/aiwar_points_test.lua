@@ -451,6 +451,8 @@ T.test("the doctrine's setup wait, chase anchor and patrol mark", function()
 	T.eq(doctrine.WaitsForSetup(field, Member(BLUE, AiWar.CAPTURE)), false, "not after setup")
 	Near(doctrine.ChaseAnchor(field, Member(BLUE, AiWar.CAPTURE)), P(-500, 0), "BLU's focus: its target")
 	Near(doctrine.ChaseAnchor(field, Member(RED, AiWar.DEFEND)), P(-500, 0), "RED's: its guard")
+	Near(doctrine.Threat(field, Member(BLUE, AiWar.CAPTURE)), P(-500, 0), "BLU watches its target")
+	Near(doctrine.Threat(field, Member(RED, AiWar.DEFEND)), P(-500, 0), "RED watches its guard")
 	local mark = doctrine.PatrolMark(field, Member(RED, AiWar.DEFEND))
 	T.eq(doctrine.PatrolHolds(mark, field, Member(RED, AiWar.DEFEND)), true, "the same guard, unthreatened")
 	local points = AttackDefend()
@@ -461,6 +463,19 @@ T.test("the doctrine's setup wait, chase anchor and patrol mark", function()
 	points[1].mayCapture[BLUE], points[2].mayCapture[BLUE] = false, false
 	points[3].locked, points[3].mayCapture[BLUE] = false, true
 	T.eq(doctrine.PatrolHolds(mark, Goals({ points = points }), Member(RED, AiWar.DEFEND)), false, "another guard")
+end)
+
+T.test("the doctrine's sides: capturers and assaulters attack, holders and defenders defend", function()
+	local doctrine = CP.DOCTRINE
+	local field = Goals({ points = AttackDefend() })
+	T.eq(doctrine.SIDES.attack, "ControlPointAttacker")
+	T.eq(doctrine.SIDES.defend, "ControlPointDefender")
+	T.eq(doctrine.Side(field, Member(BLUE, AiWar.CAPTURE)), "attack", "capture")
+	T.eq(doctrine.Side(field, Member(BLUE, AiWar.ASSAULT)), "attack", "assault")
+	T.eq(doctrine.Side(field, Member(RED, AiWar.HOLD)), "defend", "hold")
+	T.eq(doctrine.Side(field, Member(RED, AiWar.DEFEND)), "defend", "defend")
+	T.eq(doctrine.Side(field, Member(BLUE, AiWar.RAID)), "attack", "BLU's raider attacks: it guards nothing")
+	T.eq(doctrine.Side(field, Member(RED, AiWar.RAID)), "defend", "RED's raider defends: it attacks nothing")
 end)
 
 T.test("the front is the focus; setup attackers come out toward their target", function()

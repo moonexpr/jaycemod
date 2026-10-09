@@ -21,6 +21,7 @@ local Zone = WETSAND.require("foundation.aiwar.zone")
 local Tactics = WETSAND.require("foundation.aiwar.tactics")
 local Squad = WETSAND.require("foundation.aiwar.squad")
 local Lanes = WETSAND.require("foundation.aiwar.lanes")
+local Hearing = WETSAND.require("foundation.aiwar.hearing")
 local Doors = WETSAND.require("foundation.npc.doors")
 local Notices = WETSAND.require("foundation.admin_notices")
 local Inspect = WETSAND.require("foundation.ns.inspect")
@@ -301,6 +302,10 @@ function Soldier:MoveTo(p, gait)
 	self.gait = gait or "run"
 	self.ent.NSTarget = OnFloor(ToVector(p))
 	self.ent.WetsandRun = self.gait ~= "walk"
+end
+
+function Soldier:Watch(p)
+	self.ent.NSLook = p and ToVector(p) or nil
 end
 
 function Soldier:Release()
@@ -700,6 +705,26 @@ function Controller:TeamOf(ent)
 	if entry then return entry.soldier.team end
 	local info = self.gadgets and self.gadgets[ent]
 	return info and info.team or nil
+end
+
+-- Gunfire (foundation.aiwar.hearing): each soldier in earshot of a shot is
+-- told where to look (OnHeard). A shooter is heard once every
+-- HEAR_INTERVAL, however fast it fires.
+local HEAR_INTERVAL = 0.5
+
+function Controller:HearShot(shooter, data)
+	if shooter:IsWeapon() then shooter = shooter:GetOwner() end
+	if not IsValid(shooter) then return end
+	local now = CurTime()
+	if (shooter.NSHeardUntil or 0) > now then return end
+	shooter.NSHeardUntil = now + HEAR_INTERVAL
+	local shot = { team = self:TeamOf(shooter), pos = Point(shooter:GetPos()), dir = Point(data.Dir:GetNormalized()) }
+	for ent, entry in pairs(self.soldiers) do
+		if ent ~= shooter and IsValid(ent) then
+			local look = Hearing.LookAt({ team = entry.soldier.team, pos = Point(ent:GetPos()) }, shot)
+			if look then entry.npc:Event("OnHeard", look) end
+		end
+	end
 end
 
 -- A gadget's damage: its owner's, and none to its own side. Returns true
@@ -2199,9 +2224,9 @@ local DEBUG_FULL = GetConVar("wetsand_aiwar_debug_full")
 
 local function ActionLine(fullName)
 	if DEBUG_FULL:GetBool() then return (fullName:gsub("/", " > ")) end
-	local job, role = Orders.JobOf(fullName)
+	local job, role, side = Orders.JobOf(fullName)
 	if not job then return fullName end
-	return role .. " …/" .. job
+	return role .. " …/" .. side .. "/" .. job
 end
 
 -- A soldier described: a heading that says who it is ("BLU npc_citizen
@@ -2237,7 +2262,7 @@ function Controller:Describe(ent, entry)
 		local fireTeam = member.fireTeam
 		lines[#lines + 1] = string.format("Fighting: %s (fire team %s %d)", state.tactic or "?", fireTeam and fireTeam.role or "-", fireTeam and fireTeam.index or 0)
 	end
-	if state.patrolling then lines[#lines + 1] = "Patrol: walking its rounds near its post until the cart moves" end
+	if state.patrolling then lines[#lines + 1] = "Patrol: walking its rounds near its post until it or the objective moves" end
 	if entry.disarmed then lines[#lines + 1] = "Humiliated: cannot attack, fears the winners" end
 	if soldier.failures then
 		lines[#lines + 1] = string.format("Engine runs failed: %d refused, %d stalled; last target %s over the node graph",
@@ -2812,6 +2837,10 @@ hook.Add("EntityTakeDamage", "wetsand_aiwar", function(target, dmg)
 	if Controller.war and Controller:GadgetDamage(target, dmg) then return true end
 	local entry = Controller.war and Controller.soldiers[target]
 	if entry and dmg:GetDamage() > 0 then entry.soldier.hurtAt = CurTime() end
+end)
+
+hook.Add("EntityFireBullets", "wetsand_aiwar", function(ent, data)
+	if Controller.war then Controller:HearShot(ent, data) end
 end)
 
 hook.Add("OnNPCKilled", "wetsand_aiwar", function(ent)

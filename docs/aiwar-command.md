@@ -35,8 +35,8 @@ files under LuaJIT; controllers feed them; entities bind; views draw.
    NextSoldier(
      StrategyMonitor << TacticalMonitor(
        SquadMonitor << SquadLeader | SquadMember | Solo (
-         ScenarioMonitor << PayloadPush | PayloadEscort | PayloadGuard
-                          | PayloadBlock | Raid | Support ) ) )
+         ScenarioMonitor << PayloadAttacker | PayloadDefender (
+           Push | Escort | Block | EstablishLine | Raid | Support ... ) ) ) )
    ```
 
    `A( B )` means A contains B for as long as A runs
@@ -73,7 +73,8 @@ files under LuaJIT; controllers feed them; entities bind; views draw.
 | `SquadMonitor` | squad branch of `CTFBotScenarioMonitor::InitialContainedAction` | leader, member or solo | squad roster | squad formed, disbanded, leader lost | — |
 | `SquadLeader` | — | the squad's intent: where it goes, bound or flank, target | squad blackboard, job | reports from members | `ShouldAttack` (squad's target first) |
 | `SquadMember` | `CTFBotEscortSquadLeader` | keeping formation or element on the leader's intent | leader's intent, claims | leader's orders | `ShouldRetreat` = NO while its element holds |
-| `ScenarioMonitor` | `CTFBotScenarioMonitor` | the job action | my job (from `StrategyMonitor`), field | — | — |
+| `ScenarioMonitor` | `CTFBotScenarioMonitor` | the side action | my side (the doctrine's `Side`), field | — | — |
+| Side actions | — (new) | `PayloadAttacker`, `PayloadDefender` (`ControlPointAttacker`, `ControlPointDefender` on points): runs my job, and changes itself when my side does | my job, field | — | — |
 | Job actions | `CTFBotPayloadPush`... | doing the job | field, squad intent | job-specific | `ShouldHurry` (rushers), `ShouldAttack` |
 
 Each level is a `foundation.npc` Action. Engine features are in §5.

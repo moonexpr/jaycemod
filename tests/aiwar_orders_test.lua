@@ -658,6 +658,88 @@ T.test("a patrolling defender goes back to its post when the cart is pushed", fu
 	Near(npc:State().goal, Orders.Goal(Field({ carts = { [BLUE] = Cart(1100) } }), member), "back to the post")
 end)
 
+T.test("a defender at a post found for it keeps walking its rounds while the cart creeps forward", function()
+	local post = P(1600, 300)
+	local function Creeping(distance)
+		local field = Field({ carts = { [BLUE] = Cart(distance) } })
+		field.posts = { [RED] = { post } }
+		return field
+	end
+	local spot = P(post.x + 100, post.y + 50)
+	local me, npc, war = Enlist({ team = RED, role = AiWar.DEFEND, field = Creeping(1000), pos = post, patrolSpots = { spot }, walkable = function() return true end })
+	-- the attackers push it a little every tick, more than CART_STILL in all
+	local distance, moved = 1000, false
+	for _ = 1, Orders.PATROL_REST / TICK + 4 do
+		distance = distance + 2
+		war:SetField(Creeping(distance))
+		Tick(me, npc)
+		if me.moving then moved = true break end
+	end
+	T.eq(moved, true, "off on its round after its rest")
+	Near(me.moving, spot, "to its patrol spot")
+end)
+
+-- Watching: a soldier standing with no enemy faces where the threat is.
+
+-- The bearing in degrees from p to q.
+local function Bearing(p, q) return math.deg(math.atan2(q.y - p.y, q.x - p.x)) end
+
+local function Turned(a, b)
+	local d = (a - b) % 360
+	return d > 180 and d - 360 or d
+end
+
+T.test("a defender watches the enemy's cart, glancing either side of it in turn", function()
+	local field = Field({})
+	local post = Orders.Goal(field, { team = RED, role = AiWar.DEFEND, slot = 0 })
+	local me, npc = Enlist({ team = RED, role = AiWar.DEFEND, field = field, pos = post, now = 0 })
+	Tick(me, npc)
+	local ahead = Bearing(post, field.carts[BLUE].pos)
+	Near(me.watching, field.carts[BLUE].pos, "straight at the cart first")
+	local seen = {}
+	for _ = 1, #Orders.GLANCES * Orders.GLANCE_TIME / TICK do
+		Tick(me, npc)
+		seen[math.floor(Turned(Bearing(post, me.watching), ahead) + 0.5)] = true
+	end
+	for _, glance in ipairs(Orders.GLANCES) do T.eq(seen[glance], true, "a glance of " .. glance .. " degrees") end
+end)
+
+T.test("an attacker watches the track ahead of its cart, where the defenders wait", function()
+	local field = Field({})
+	local cart = field.carts[BLUE]
+	local me, npc = Enlist({ team = BLUE, role = AiWar.PUSH, field = field, pos = cart.pos, now = 0 })
+	Tick(me, npc)
+	Near(me.watching, cart.track:Offset(cart.distance + Orders.DEFEND_LEAD, 0), "ahead along the track")
+end)
+
+T.test("a soldier whose fire team has a contact watches the contact", function()
+	local field = Field({})
+	local post = Orders.Goal(field, { team = RED, role = AiWar.DEFEND, slot = 0 })
+	local me, npc, _, member = Enlist({ team = RED, role = AiWar.DEFEND, field = field, pos = post, now = 0 })
+	local seen = P(post.x, post.y + 700)
+	Tactics.Report(member.fireTeam, seen, me:Now())
+	Tick(me, npc)
+	Near(me.watching, seen, "where the enemy was seen")
+end)
+
+T.test("a soldier that hears gunfire looks there, then back at the threat once it forgets", function()
+	local field = Field({})
+	local post = Orders.Goal(field, { team = RED, role = AiWar.DEFEND, slot = 0 })
+	local me, npc = Enlist({ team = RED, role = AiWar.DEFEND, field = field, pos = post, now = 0 })
+	local shot = P(post.x - 400, post.y + 900)
+	npc:Event("OnHeard", shot)
+	Tick(me, npc)
+	Near(me.watching, shot, "toward the shot")
+	Tick(me, npc, Orders.HEARD_MEMORY / TICK + 1)
+	T.eq(FS.Distance(me.watching, shot) > 1, true, "forgotten")
+end)
+
+T.test("with no threat known, a soldier watches nothing in particular", function()
+	local me, npc = Enlist({ team = RED, role = AiWar.DEFEND, field = Field({ carts = {} }) })
+	Tick(me, npc)
+	T.eq(me.watching, nil)
+end)
+
 -- Setup: the attackers wander near where they are until it ends.
 
 T.test("in setup an attacker wanders from spot to spot, resting at each, with no route searches for spots in sight", function()
@@ -1071,12 +1153,43 @@ T.test("the soldier's state shows its route and how its last trip ended, for the
 	T.eq(lostNpc:State().trip, "no route", "no route")
 end)
 
+-- Sides: the scenario's side action holds the job (ScenarioMonitor >
+-- PayloadDefender > EstablishLine > Travel).
+
+T.test("a defender's job runs under PayloadDefender, a pusher's under PayloadAttacker", function()
+	local _, defender = Enlist({ team = RED, role = AiWar.DEFEND, field = Field({}) })
+	local job, squadRole, side = Orders.JobOf(defender:Describe())
+	T.eq(side, "PayloadDefender", defender:Describe())
+	T.eq(job:match("^EstablishLine") ~= nil, true, "its job beneath: " .. job)
+	T.eq(squadRole ~= nil, true, "its squad role")
+	local _, pusher = Enlist({ team = BLUE, role = AiWar.PUSH, field = Field({}) })
+	T.eq(select(3, Orders.JobOf(pusher:Describe())), "PayloadAttacker", pusher:Describe())
+end)
+
+T.test("a raider's side follows its focus: the enemy's cart is defense, its own offense", function()
+	local both = Field({ carts = { [BLUE] = Cart(1000), [RED] = Cart(2000) } })
+	for slot = 0, 5 do
+		local _, npc = Enlist({ team = RED, role = AiWar.RAID, slot = slot, field = both })
+		local focus = Orders.Focus(both, { team = RED, role = AiWar.RAID, slot = slot })
+		T.eq(select(3, Orders.JobOf(npc:Describe())), focus == "defense" and "PayloadDefender" or "PayloadAttacker", "slot " .. slot)
+	end
+end)
+
+T.test("a member whose job moves it to the other side changes its side action", function()
+	local me, npc, _, member = Enlist({ team = RED, role = AiWar.DEFEND, field = Field({ carts = { [BLUE] = Cart(1000), [RED] = Cart(2000) } }) })
+	member.role = AiWar.PUSH
+	Tick(me, npc, 2)
+	local job, _, side = Orders.JobOf(npc:Describe())
+	T.eq(side, "PayloadAttacker", npc:Describe())
+	T.eq(job == "Push" or job == "Travel", true, "and runs its new job: " .. job)
+end)
+
 -- Doctrines: the jobs of a scenario (foundation.aiwar.scenario) ----------------
 
 T.test("the payload doctrine is today's roles, and the shared goal helpers are public", function()
 	T.eq(Orders.PAYLOAD.NAME, "payload", "named")
 	T.eq(Orders.PAYLOAD.ROLES, Orders.ROLES, "today's roles")
-	for _, name in ipairs({ "WaitsForSetup", "ChaseAnchor", "PatrolMark", "PatrolHolds" }) do
+	for _, name in ipairs({ "WaitsForSetup", "ChaseAnchor", "PatrolMark", "PatrolHolds", "Threat", "Side" }) do
 		T.eq(type(Orders.PAYLOAD[name]), "function", name)
 	end
 	for _, name in ipairs({ "Ring", "Lateral", "GateSpot", "Behind", "EntryPoint" }) do
@@ -1107,6 +1220,9 @@ local function Stub(name)
 		ChaseAnchor = function(field, member) return nil end,
 		PatrolMark = function(field, member) return {} end,
 		PatrolHolds = function(mark, field, member) return true end,
+		Threat = function(field, member) return nil end,
+		SIDES = { attack = name .. "Attacker", defend = name .. "Defender" },
+		Side = function(field, member) return "attack" end,
 	}
 end
 

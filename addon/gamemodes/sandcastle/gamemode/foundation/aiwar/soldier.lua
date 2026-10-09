@@ -64,6 +64,8 @@
 --     name, or nil
 --   RouteStale() -> whether the route I was given was planned before a
 --     door shut or a brush was switched on, and may lead into it
+--   Watch(p): while I stand with no enemy in sight, face p, where the
+--     threat is (nil: face as I will); moving or fighting comes first
 --   Hop(p) -> whether I will be carried to p: only where a player could
 --     walk from here to p, so never through a wall, door or gate; I am
 --     moved there over a moment, running, and MoveTo and Release wait
@@ -106,4 +108,5 @@ METHODS = {
 	"Hop",
 	"UseGadget",
 	"Heal",
+	"Watch",
 }
