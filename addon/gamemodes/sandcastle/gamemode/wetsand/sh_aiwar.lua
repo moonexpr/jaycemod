@@ -1,5 +1,6 @@
 -- The AI war's switch: the team-size convar, the commands that start and
--- end it, and on clients the Utilities menu entry, a button that reads
+-- end it, mp_aiwar_autostart, which starts it as each map loads, and on
+-- clients the Utilities menu entry, a button that reads
 -- "Start AI War" or "End AI War". The war itself is the aiwar feature
 -- (features/aiwar), loaded the first time it starts.
 local AiWar = WETSAND.require("foundation.aiwar")
@@ -38,6 +39,20 @@ if SERVER then
 		"Start the war, the Combine (RED) against the Resistance (BLU) on payload, control point and "
 			.. "King of the Hill maps; in Sandbox mode, Gameplay mode counts down and begins")
 	Command("mp_aiwar_end", "End", "End the AI war; its soldiers leave, NPCs players spawned stay")
+
+	-- A tick after the map loads, once the gamemode has put it in its mode
+	-- (its own InitPostEntity); a map the war cannot be fought on says why
+	-- in the server console.
+	local AUTOSTART = CreateConVar("mp_aiwar_autostart", "0", FCVAR_ARCHIVE,
+		"1: start the AI war on every map as it loads, as mp_aiwar_start does", 0, 1)
+	hook.Add("InitPostEntity", "wetsand_aiwar_autostart", function()
+		timer.Simple(0, function()
+			if not AUTOSTART:GetBool() or WETSAND.AiWarActive() then return end
+			local war = WETSAND.Feature("aiwar")
+			local ok, why = war:Start()
+			if not ok then print("AI war: not started on its own: " .. why) end
+		end)
+	end)
 	return
 end
 
