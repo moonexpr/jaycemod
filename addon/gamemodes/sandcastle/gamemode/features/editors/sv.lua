@@ -67,6 +67,17 @@ function Controller:ResetRound()
 end
 
 -- Every active cart moves on to its next checkpoint (both on a race map).
+function Controller:RetractCarts()
+	local moved, why = false, "this map has no payload cart"
+	for _, watcher in ipairs(ents.FindByClass("team_train_watcher")) do
+		local ok, reason = watcher:AdvanceToPrevCheckpoint()
+		if ok then moved = true else why = reason end
+	end
+	if moved then return true end
+	return false, why
+end
+
+-- Every active cart moves on to its next checkpoint (both on a race map).
 function Controller:AdvanceCarts()
 	local moved, why = false, "this map has no payload cart"
 	for _, watcher in ipairs(ents.FindByClass("team_train_watcher")) do

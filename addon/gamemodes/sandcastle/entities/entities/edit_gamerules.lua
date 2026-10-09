@@ -66,8 +66,14 @@ WETSAND.EditorAction("wetsand_reset_round", {
 	done = "the round restarts",
 })
 
+WETSAND.EditorAction("wetsand_retract_cart", {
+	class = CLASS, title = TITLE, label = "Retract Cart to Previous Checkpoint", icon = "icon16/arrow_left.png", order = 2101,
+	run = function(e) return e:RetractCarts() end,
+	done = "the cart is on its way to the previous checkpoint",
+})
+
 WETSAND.EditorAction("wetsand_advance_cart", {
-	class = CLASS, title = TITLE, label = "Move Cart to Next Checkpoint", icon = "icon16/arrow_right.png", order = 2101,
+	class = CLASS, title = TITLE, label = "Advance Cart to Next Checkpoint", icon = "icon16/arrow_right.png", order = 2101,
 	run = function(e) return e:AdvanceCarts() end,
 	done = "the cart is on its way to the next checkpoint",
 })

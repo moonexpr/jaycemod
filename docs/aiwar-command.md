@@ -32,7 +32,7 @@ files under LuaJIT; controllers feed them; entities bind; views draw.
 3. **The per-soldier tree:**
 
    ```
-   SoldierAction(
+   NextSoldier(
      StrategyMonitor << TacticalMonitor(
        SquadMonitor << SquadLeader | SquadMember | Solo (
          ScenarioMonitor << PayloadPush | PayloadEscort | PayloadGuard
@@ -67,7 +67,7 @@ files under LuaJIT; controllers feed them; entities bind; views draw.
 
 | Level | TF2 counterpart | Owns | Reads | Handles (events) | Answers (queries) |
 |---|---|---|---|---|---|
-| `SoldierAction` | `CTFBotMainAction` | life and death | port | — | — |
+| `NextSoldier` | `CTFBotMainAction` | life and death | port | — | — |
 | `StrategyMonitor` | — (new) | my job, my squad | Commander's allocation | `OnCommand*` from the Commander | — |
 | `TacticalMonitor` | `CTFBotTacticalMonitor` | survival: humiliation, retreat to cover | my health, threats, round state | `OnInjured`, `OnSight`, `OnOtherKilled` | `ShouldRetreat` (default rule) |
 | `SquadMonitor` | squad branch of `CTFBotScenarioMonitor::InitialContainedAction` | leader, member or solo | squad roster | squad formed, disbanded, leader lost | — |

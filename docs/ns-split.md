@@ -24,7 +24,7 @@ NS offers a mode four things, and a mode gives NS three:
 
 | NS offers | AIWar gives |
 |---|---|
-| the soldier tree (`SoldierAction` … `Travel`) and the soldier port | **jobs**: a doctrine of job strategies (`Goal`, `Zone`, `Urgent`, `Line`, `arrive`, `leash`, `rushes`), as `orders`' `ROLES` are today |
+| the soldier tree (`NextSoldier` … `Travel`) and the soldier port | **jobs**: a doctrine of job strategies (`Goal`, `Zone`, `Urgent`, `Line`, `arrive`, `leash`, `rushes`), as `orders`' `ROLES` are today |
 | squads (fire teams, leaders, claims) and their tactics (contact, bound, flank, fall back) | **allocation**: each soldier's job and side, pulled by `StrategyMonitor` |
 | lanes, posts and battle lines, planned over the nav mesh | **the field**: fronts, objectives and threats as positions, never carts or points |
 | the debugging tools (overlay, reports, tuning) | **round events**: won or lost, so the tactical monitor can humiliate or hunt |

@@ -99,10 +99,10 @@ local Track = T.require("foundation.aiwar.track")
 local STATE = T.require("foundation.rounds.state")
 
 local TICK = 0.25
-local SEEK = "SoldierAction/StrategyMonitor/SeekAndDestroy"
+local SEEK = "NextSoldier/StrategyMonitor/SeekAndDestroy"
 -- A trip buries the action that took it: the trip shows, a level up.
-local TRIP = "SoldierAction/StrategyMonitor/Travel"
-local HUMILIATED = "SoldierAction/StrategyMonitor/Humiliated"
+local TRIP = "NextSoldier/StrategyMonitor/Travel"
+local HUMILIATED = "NextSoldier/StrategyMonitor/Humiliated"
 local SPAWNS = {
 	[RED] = { P(3000, 0), P(3000, 800), P(-2000, 0) },
 	[BLUE] = { P(-3000, 0) },
@@ -278,10 +278,10 @@ T.test("a winner retreating to cover when the hunt begins leaves it within a tic
 	Tick(me, npc)
 	me.health = 20
 	Tick(me, npc)
-	T.eq(npc:Describe(), "SoldierAction/StrategyMonitor/RetreatToCover", "retreating")
+	T.eq(npc:Describe(), "NextSoldier/StrategyMonitor/RetreatToCover", "retreating")
 	war:SetField(CarnageField(nil, BLUE))
 	Tick(me, npc)
-	T.eq(npc:Describe() ~= "SoldierAction/StrategyMonitor/RetreatToCover", true, "left it")
+	T.eq(npc:Describe() ~= "NextSoldier/StrategyMonitor/RetreatToCover", true, "left it")
 	Tick(me, npc)
 	T.eq(Runs(npc, "SeekAndDestroy"), true, "hunting")
 end)

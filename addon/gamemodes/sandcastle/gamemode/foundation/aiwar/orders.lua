@@ -25,7 +25,7 @@
 --
 -- The tree follows TF2's bots (docs/aiwar-command.md):
 --
---   SoldierAction          ends when the soldier dies (CTFBotMainAction)
+--   NextSoldier          ends when the soldier dies (CTFBotMainAction)
 --     StrategyMonitor      applies the war's allocation: the member's job
 --       TacticalMonitor    self-preservation (CTFBotTacticalMonitor): the
 --                          humiliated SuspendFor Humiliated
@@ -1680,9 +1680,9 @@ end
 -------------------------------------------------------------------------------
 -- The variant
 
-local SoldierAction = Monitor("SoldierAction", function(state) return StrategyMonitor:New(state) end)
+local NextSoldier = Monitor("NextSoldier", function(state) return StrategyMonitor:New(state) end)
 
-function SoldierAction:Update(me)
+function NextSoldier:Update(me)
 	if not me:IsAlive() then return self:Done("dead") end
 	return self:Continue()
 end
@@ -1690,7 +1690,7 @@ end
 -- The job part of a full action name (what follows ScenarioMonitor/), and
 -- the squad role it runs under; nil when it runs none (suspended above).
 function JobOf(fullName)
-	local role, job = fullName:match("^SoldierAction/StrategyMonitor/TacticalMonitor/SquadMonitor/(%a+)/ScenarioMonitor/(.+)$")
+	local role, job = fullName:match("^NextSoldier/StrategyMonitor/TacticalMonitor/SquadMonitor/(%a+)/ScenarioMonitor/(.+)$")
 	return job, role
 end
 
@@ -1700,5 +1700,5 @@ function NewState(config, me)
 end
 
 function InitialAction(state)
-	return SoldierAction:New(state)
+	return NextSoldier:New(state)
 end

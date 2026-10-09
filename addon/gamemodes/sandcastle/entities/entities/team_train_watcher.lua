@@ -311,6 +311,21 @@ function ENT:ApplyMaxSpeed()
 	if self.handleMovement and not self.disabled then self.train:Fire("SetSpeedDirAccel", tostring(self.currentSpeed)) end
 end
 
+-- Drive the cart at full (and boosted) speed until it passes the previous
+-- checkpoint's path_track, so the map's own OnPass logic captures it.
+-- Returns true, or false and why not.
+function ENT:AdvanceToPrevCheckpoint()
+	if not self:IsActive() or not IsValid(self.train) then return false, "the cart is not active" end
+	if not self.handleMovement then return false, "this map moves its cart itself" end
+	if WETSAND.State() ~= WETSAND.STATE.RND_RUNNING then return false, "the round is not running" end
+	local link = P.PrevCheckpoint(self.links, self.distanceFromStart or 0)
+	if not link or not link.index then return false, "no checkpoint behind" end
+	self.advanceTo = link
+	self:ApplyMaxSpeed()
+	self:HandleTrainMovement(true)
+	return true
+end
+
 -- Drive the cart at full (and boosted) speed until it passes the next
 -- checkpoint's path_track, so the map's own OnPass logic captures it.
 -- Returns true, or false and why not.

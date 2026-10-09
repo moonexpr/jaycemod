@@ -229,6 +229,13 @@ end
 
 -- links: the watcher's checkpoints in path order, { distance, index }.
 -- The first one farther along the path than `distance`, or nil.
+function PrevCheckpoint(links, distance)
+	for _, link in ipairs(links) do
+		if link.distance <= distance then return link end
+	end
+	return nil
+end
+
 function NextCheckpoint(links, distance)
 	for _, link in ipairs(links) do
 		if link.distance > distance then return link end

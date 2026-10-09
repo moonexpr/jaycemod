@@ -65,7 +65,12 @@ local ROLE_NONE = 0 -- TEAM_ROLE_NONE
 local THINK_HOOK = "wetsand_rounds"
 
 -- CTeamRoundTimer::AddTimerSeconds' ROUND_TIMER_TIME_ADDED_* sounds.
-local TIME_ADDED_WINNER = "Announcer.TimeAwardedForTeam"
+local TIME_ADDED_WINNER = {
+	"Announcer.TimeAwardedForTeam",
+	"Announcer.TimeAwardedCongrats",
+	"Announcer.TimeAwardedSuccess",
+}
+
 local TIME_ADDED_LOSER = "Announcer.TimeAddedForEnemy"
 local TIME_ADDED = "Announcer.TimeAdded"
 local OVERTIME_NAG = "Game.Overtime"
@@ -416,6 +421,7 @@ function Controller:AddTimerSeconds(ent, seconds, t)
 		inStalemate = Active() and state == S.STALEMATE,
 		announces = self.round:Mode().ANNOUNCES_TIME_ADDED,
 	})
+	AnnounceTimeAdded(t)
 	self:ApplyTimerEvents(ent, events)
 end
 

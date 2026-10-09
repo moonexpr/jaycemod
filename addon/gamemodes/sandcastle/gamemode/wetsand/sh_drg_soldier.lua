@@ -10,11 +10,11 @@
 -- On clients, the heal beams of medics (their "WetsandHealing" target).
 local GOAL_TOLERANCE = 32
 
--- Tracing (wetsand_aiwar_trace): a soldier with WetsandTrace set prints
+-- Tracing (wetsand_aiwar_trace): a soldier with NSTrace set prints
 -- every query it asks its orders, with the answer, and every event it tells
 -- them.
 local function Trace(self, text)
-	if self.WetsandTrace then print(string.format("[aiwar #%d %.2f] %s", self:EntIndex(), CurTime(), text)) end
+	if self.NSTrace then print(string.format("[aiwar #%d %.2f] %s", self:EntIndex(), CurTime(), text)) end
 end
 
 local function Show(value)
@@ -43,7 +43,7 @@ function WETSAND.DrgSoldier(ENT, baseName)
 	-- Walks the controller's target, if it has one, or, there, faces the
 	-- enemy so it can fight (a soldier holding its ground): true when it has
 	-- a target.
-	function ENT:WetsandSteer(enemy)
+	function ENT:NSSteer(enemy)
 		-- riding the cart: the controller carries it; it only turns to fight
 		if self.NSSeated then
 			if IsValid(enemy) then self:FaceTowards(enemy) end
@@ -52,7 +52,7 @@ function WETSAND.DrgSoldier(ENT, baseName)
 		local target = self.NSTarget
 		if not target then return false end
 		if self:GetPos():DistToSqr(target) > GOAL_TOLERANCE * GOAL_TOLERANCE then
-			self.WetsandMoveResult = self:FollowPath(target, GOAL_TOLERANCE)
+			self.NSMoveResult = self:FollowPath(target, GOAL_TOLERANCE)
 		elseif IsValid(enemy) then
 			self:FaceTowards(enemy)
 		end
@@ -61,15 +61,15 @@ function WETSAND.DrgSoldier(ENT, baseName)
 
 	-- No enemy: the target, else stand (DrGBase would wander off at random).
 	function ENT:OnIdle()
-		self:WetsandSteer()
+		self:NSSteer()
 	end
 
 	-- An enemy: with a target the soldier keeps to it, and DrGBase still aims
 	-- and fires at the enemy in sight; without one, DrGBase's own chase,
 	-- retreat and facing.
-	function ENT:OnChaseEnemy(enemy) return self:WetsandSteer(enemy) end
-	function ENT:OnAvoidEnemy(enemy) return self:WetsandSteer(enemy) end
-	function ENT:OnIdleEnemy(enemy) return self:WetsandSteer(enemy) end
+	function ENT:OnChaseEnemy(enemy) return self:NSSteer(enemy) end
+	function ENT:OnAvoidEnemy(enemy) return self:NSSteer(enemy) end
+	function ENT:OnIdleEnemy(enemy) return self:NSSteer(enemy) end
 
 	-- The bridge to the war's orders (docs/aiwar-command.md §6): DrGBase's
 	-- hooks become queries and events. DrGBase's own hooks that do work
@@ -88,7 +88,7 @@ function WETSAND.DrgSoldier(ENT, baseName)
 		local brain = Brain(self)
 		if not brain then return nil end
 		local answer = brain:Query(name, ...)
-		if self.WetsandTrace then
+		if self.NSTrace then
 			local args = {}
 			for i = 1, select("#", ...) do args[i] = Show((select(i, ...))) end
 			local named = { [Engine.ANSWER_NO] = "NO", [Engine.ANSWER_YES] = "YES", [Engine.ANSWER_UNDEFINED] = "undefined" }
@@ -104,7 +104,7 @@ function WETSAND.DrgSoldier(ENT, baseName)
 	local function Tell(self, name, ...)
 		local brain = Brain(self)
 		if not brain then return end
-		if self.WetsandTrace then
+		if self.NSTrace then
 			local args = {}
 			for i = 1, select("#", ...) do args[i] = Show((select(i, ...))) end
 			Trace(self, string.format("tell %s(%s)", name, table.concat(args, ", ")))
@@ -154,7 +154,7 @@ function WETSAND.DrgSoldier(ENT, baseName)
 		local hurry = Ask(self, "ShouldHurry")
 		if Answered(hurry, "ANSWER_YES") then return true end
 		if Answered(hurry, "ANSWER_NO") then return false end
-		if self.WetsandRun ~= nil then return self.WetsandRun end
+		if self.NSRun ~= nil then return self.NSRun end
 		return self:HasEnemy()
 	end
 
@@ -162,9 +162,9 @@ function WETSAND.DrgSoldier(ENT, baseName)
 	-- hold, the first it carries), avoid (classes not to hold, as a set, when
 	-- it has another), model, health (its most), damage (its damage scale),
 	-- runSpeed }; nil fields take the soldier's own.
-	function ENT:WetsandKit(kit)
-		self.WetsandOwnModel = self.WetsandOwnModel or self:GetModel()
-		local model = kit.model or self.WetsandOwnModel
+	function ENT:NSKit(kit)
+		self.NSOwnModel = self.NSOwnModel or self:GetModel()
+		local model = kit.model or self.NSOwnModel
 		if self:GetModel() ~= model then
 			self:SetModel(model)
 			self:NSVoice()
@@ -189,7 +189,7 @@ function WETSAND.DrgSoldier(ENT, baseName)
 			self:SetHealth(math.max(1, math.floor(self:Health() * most / math.max(self:GetMaxHealth(), 1))))
 			self:SetMaxHealth(most)
 		end
-		self.WetsandDamageScale = kit.damage
+		self.NSDamageScale = kit.damage
 		self.RunSpeed = kit.runSpeed
 	end
 
@@ -200,7 +200,7 @@ function WETSAND.DrgSoldier(ENT, baseName)
 	end
 
 	function ENT:OnDealtDamage()
-		return self.WetsandDamageScale
+		return self.NSDamageScale
 	end
 
 	-- Dead: no ragdoll on the server at all (RagdollOnDeath is false, so
@@ -211,7 +211,7 @@ function WETSAND.DrgSoldier(ENT, baseName)
 	-- before DrGBase removes it. The method is ours: NextBot's BecomeRagdoll
 	-- belongs to the engine (and DrGBase), and an ENT method of that name is
 	-- never reached.
-	function ENT:WetsandClientRagdoll(dmg)
+	function ENT:NSClientRagdoll(dmg)
 		if not Ragdoll.LeavesBody(self:IsFlagSet(FL_DISSOLVING), dmg:IsDamageType(DMG_REMOVENORAGDOLL)) then return false end
 		self:SetNotSolid(true)
 		self.NSTarget = nil
@@ -220,7 +220,7 @@ function WETSAND.DrgSoldier(ENT, baseName)
 	end
 
 	function ENT:OnDeath(dmg)
-		if self:WetsandClientRagdoll(dmg) then self:PauseCoroutine(Ragdoll.HANDOFF) end
+		if self:NSClientRagdoll(dmg) then self:PauseCoroutine(Ragdoll.HANDOFF) end
 	end
 end
 

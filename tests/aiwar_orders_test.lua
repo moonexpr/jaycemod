@@ -178,7 +178,7 @@ T.test("DrGBase asks the orders whether to attack: the humiliated hold fire", fu
 	Tick(me, npc)
 	T.eq(npc:Query("ShouldAttack", "them"), N.ANSWER_NO, "humiliated: no")
 	T.eq(npc:Query("ShouldHurry"), N.ANSWER_YES, "and away")
-	T.eq(npc:Describe(), "SoldierAction/StrategyMonitor/Humiliated", "the tactical monitor and all under it buried")
+	T.eq(npc:Describe(), "NextSoldier/StrategyMonitor/Humiliated", "the tactical monitor and all under it buried")
 	me.disarmed = false
 	Tick(me, npc, 2)
 	T.eq(npc:Query("ShouldAttack", "them"), N.ANSWER_UNDEFINED, "rearmed")
@@ -392,7 +392,7 @@ T.test("a soldier badly hurt gets off the cart and retreats to cover, until heal
 	T.eq(me.seated, true, "riding")
 	me.health = 30
 	Tick(me, npc)
-	T.eq(npc:Describe(), "SoldierAction/StrategyMonitor/RetreatToCover", "retreating, its squad and job waiting")
+	T.eq(npc:Describe(), "NextSoldier/StrategyMonitor/RetreatToCover", "retreating, its squad and job waiting")
 	T.eq(me.seated, false, "off the cart")
 	Tick(me, npc)
 	Near(me.moving, cover, "to cover from the threat")
@@ -412,7 +412,7 @@ T.test("a soldier hurt hard in a moment retreats even with health left", functio
 	npc:Event("OnInjured", "attacker", 20)
 	me.health = 55
 	Tick(me, npc)
-	T.eq(npc:Describe(), "SoldierAction/StrategyMonitor/RetreatToCover", "45 of 100 in a moment")
+	T.eq(npc:Describe(), "NextSoldier/StrategyMonitor/RetreatToCover", "45 of 100 in a moment")
 end)
 
 -- Chasing
@@ -472,7 +472,7 @@ T.test("a soldier that needs to retreat does not start a chase", function()
 	me.health = 30
 	Tick(me, npc, 2)
 	T.eq(npc:State().chases, nil, "no chase")
-	T.eq(npc:Describe(), "SoldierAction/StrategyMonitor/RetreatToCover", "it retreats instead")
+	T.eq(npc:Describe(), "NextSoldier/StrategyMonitor/RetreatToCover", "it retreats instead")
 end)
 
 T.test("a chaser that gets hurt badly still retreats", function()
@@ -482,7 +482,7 @@ T.test("a chaser that gets hurt badly still retreats", function()
 	T.eq(Orders.JobOf(npc:Describe()), "Chase", "chasing")
 	me.health = 20
 	Tick(me, npc)
-	T.eq(npc:Describe(), "SoldierAction/StrategyMonitor/RetreatToCover", "retreat wins")
+	T.eq(npc:Describe(), "NextSoldier/StrategyMonitor/RetreatToCover", "retreat wins")
 end)
 
 -- Squads

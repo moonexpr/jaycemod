@@ -55,9 +55,11 @@ surface.CreateFont("Sandcastle.Rounds.Small", {
 })
 
 -- The top-centre of the screen can sit under a display notch (MacBook), so
--- the timer is pushed down by a fraction of the screen height.
+-- the timer is pushed down by a fraction of the screen height, at most
+-- TIMER_Y_MAX so the timer stays on screen (a saved 2 put it off it).
+local TIMER_Y_MAX = 0.9
 local timerY = CreateClientConVar("cl_hud_round_timer_y", "0.08", true, false,
-	"Round timer top, as a fraction of screen height (clears display notches).")
+	"Round timer top, as a fraction of screen height (clears display notches).", 0, TIMER_Y_MAX)
 
 local ANNOUNCE_SECONDS = 4
 local TIME_ADDED_SECONDS = 2

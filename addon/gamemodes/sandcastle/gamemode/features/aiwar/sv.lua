@@ -372,7 +372,7 @@ end
 function Soldier:RunState()
 	if self.moveTarget == nil then return nil end
 	if self:RangeTo(self.moveTarget) <= ARRIVED then return "at its target" end
-	if self.ent.WetsandMoveResult == "unreachable" then return "no nav mesh path to its target" end
+	if self.ent.NSMoveResult == "unreachable" then return "no nav mesh path to its target" end
 	return string.format("%s at %d u/s", self.gait or "run", math.floor(self.walkSpeed or 0))
 end
 
@@ -858,7 +858,7 @@ function Controller:JoinSquad(ent, member)
 	ent.wetsandSquad = member and member.fireTeam and member.fireTeam.squad or nil
 end
 
--- Kits (wetsand_drg_soldier's WetsandKit), by side and role: blockers and
+-- Kits (wetsand_drg_soldier's NSKit), by side and role: blockers and
 -- a point's holders carry the shotgun, hit harder and charge faster;
 -- raiders carry the crossbow (the Resistance) and throw grenades; the
 -- Combine's support are
@@ -947,7 +947,7 @@ end
 
 function Controller:Equip(ent, entry, member)
 	local role = member and member.role or false
-	if entry.equipped == role or not ent.WetsandKit then return end
+	if entry.equipped == role or not ent.NSKit then return end
 	entry.equipped = role
 	local team = entry.soldier.team
 	if self.heroes then
@@ -960,7 +960,7 @@ function Controller:Equip(ent, entry, member)
 	entry.soldier.kit = kit
 	-- a hero leads its squad (foundation.aiwar.squad)
 	if member then member.hero = kit.hero == true or nil end
-	ent:WetsandKit(kit)
+	ent:NSKit(kit)
 end
 
 -- A soldier died: OnOtherKilled(victim, its team) to every soldier within
@@ -2163,7 +2163,7 @@ local function SquadLine(member)
 end
 
 -- wetsand_aiwar_debug_full shows the whole action stack instead, one
--- level per step: SoldierAction > StrategyMonitor > ... > Travel
+-- level per step: NextSoldier > StrategyMonitor > ... > Travel
 -- (created with the war's other convars, in wetsand/sh_aiwar.lua).
 local DEBUG_FULL = GetConVar("wetsand_aiwar_debug_full")
 
@@ -2663,13 +2663,13 @@ concommand.Add("wetsand_aiwar_trace", function(ply, _, args)
 	end
 	if not (IsValid(ent) and Controller.soldiers[ent]) then
 		for other in pairs(Controller.soldiers) do
-			if IsValid(other) then other.WetsandTrace = nil end
+			if IsValid(other) then other.NSTrace = nil end
 		end
 		Say("AI war trace: off for every soldier")
 		return
 	end
-	ent.WetsandTrace = not ent.WetsandTrace or nil
-	Say(string.format("AI war trace: #%d %s (server console)", ent:EntIndex(), ent.WetsandTrace and "on" or "off"))
+	ent.NSTrace = not ent.NSTrace or nil
+	Say(string.format("AI war trace: #%d %s (server console)", ent:EntIndex(), ent.NSTrace and "on" or "off"))
 end, nil, "Trace the queries and events between an AI war soldier (aimed at, or by entity index) and its orders")
 
 -- Hooks ------------------------------------------------------------------------------
