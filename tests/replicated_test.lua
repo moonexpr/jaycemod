@@ -13,6 +13,17 @@ T.test("a convar created by the gamemode's own files is ours", function()
 	T.eq(Replicated.Ours("gamemodes/sandbox/gamemode/init.lua", "sandcastle"), false, "the base gamemode's")
 end)
 
+-- A client's own convars (the overlay's part toggles, made in cl_ files
+-- with CreateClientConVar) are not replicated: the client sets them, and a
+-- replicated one only the server may set.
+T.test("a convar from a client-only file is the client's own, never replicated", function()
+	T.eq(Replicated.ClientOnly("@gamemodes/sandcastle/gamemode/wetsand/cl_ns_debug.lua"), true, "a wetsand cl_ file")
+	T.eq(Replicated.ClientOnly("@gamemodes/sandcastle/gamemode/features/capture/cl.lua"), true, "a feature's client part")
+	T.eq(Replicated.ClientOnly("@gamemodes/sandcastle/gamemode/wetsand/sh_aiwar.lua"), false, "shared")
+	T.eq(Replicated.ClientOnly("@gamemodes/sandcastle/gamemode/features/aiwar/sv.lua"), false, "a server part")
+	T.eq(Replicated.ClientOnly("@gamemodes/sandcastle/gamemode/features/capture/sh.lua"), false, "a feature's shared part")
+end)
+
 T.test("the replicated flag joins whatever flags the convar has", function()
 	T.eq(Replicated.Flags(nil, FCVAR_REPLICATED), FCVAR_REPLICATED, "none")
 	T.eq(Replicated.Flags(FCVAR_ARCHIVE, FCVAR_REPLICATED), FCVAR_ARCHIVE + FCVAR_REPLICATED, "a number")

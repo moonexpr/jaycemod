@@ -58,7 +58,9 @@ do
 	end
 
 	function CreateConVar(name, default, flags, help, min, max)
-		if not Replicated.Ours(debug.getinfo(2, "S").source, FOLDER) then
+		-- CreateClientConVar's tail call leaves its caller as the source
+		local source = debug.getinfo(2, "S").source
+		if not Replicated.Ours(source, FOLDER) or (CLIENT and Replicated.ClientOnly(source)) then
 			return CreateEngineConVar(name, default, flags, help, min, max)
 		end
 		local cvar = CreateEngineConVar(name, default, Replicated.Flags(flags, ADDED), help, min, max)

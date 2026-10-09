@@ -2,7 +2,7 @@
 -- wraps CreateConVar for its own files), and a client is told the
 -- server-only ones, so its console knows every one: it completes their
 -- names and shows their server values, and a change is told in chat.
-local bor, gsub, ipairs, sub, type = bit.bor, string.gsub, ipairs, string.sub, type
+local bor, gsub, ipairs, match, sub, type = bit.bor, string.gsub, ipairs, string.match, string.sub, type
 module(...)
 
 -- Whether a chunk's source (debug.getinfo's source or short_src) is one of
@@ -11,6 +11,14 @@ function Ours(source, folder)
 	local path = gsub(source, "^@", "")
 	local prefix = "gamemodes/" .. folder .. "/"
 	return sub(path, 1, #prefix) == prefix
+end
+
+-- Whether a source is a client-only file (wetsand/cl_*.lua, a feature's
+-- cl.lua): its convars are the client's own, which the client sets, so
+-- they are never replicated (only the server may set a replicated one).
+function ClientOnly(source)
+	local file = match(source, "([^/]+)$")
+	return file == "cl.lua" or sub(file, 1, 3) == "cl_"
 end
 
 -- The flags every gamemode convar gets: FCVAR_REPLICATED and FCVAR_NOTIFY.
