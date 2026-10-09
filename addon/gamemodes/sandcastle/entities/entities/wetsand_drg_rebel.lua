@@ -1,5 +1,7 @@
 -- The Resistance's soldier for the AI war (BLU): wetsand_drg_soldier in the
 -- rebels' player models, with the Resistance's weapons.
+-- Spawned, it is in Team BLU's faction and HL2's rebels' (sh_factions.lua);
+-- the AI war moves it to the faction of the team it fights for.
 if not DrGBase then return end
 
 ENT.Base = "wetsand_drg_soldier"
@@ -15,7 +17,7 @@ ENT.Models = {
 	"models/player/group03/female_04.mdl", "models/player/group03/female_06.mdl",
 }
 ENT.Weapons = { "weapon_smg1", "weapon_ar2", "weapon_shotgun", "weapon_pistol", "weapon_crossbow", "weapon_357" }
-ENT.Factions = { FACTION_REBELS }
+ENT.Factions = { FACTION_TEAM_BLU, FACTION_REBELS }
 
 if SERVER then AddCSLuaFile() end
 

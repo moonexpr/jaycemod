@@ -188,11 +188,14 @@ end
 
 -- Entities other than players that fight for a team (the AI war's
 -- soldiers): they stand on capture areas as its members and pass its team
--- filters. entity -> team; SetTeamMember(ent, nil) lets one go.
+-- filters, and join its DrGBase faction (WETSAND.JoinTeamFaction).
+-- entity -> team; SetTeamMember(ent, nil) lets one go, in the faction it
+-- had.
 local teamMembers = setmetatable({}, { __mode = "k" })
 
 function WETSAND.SetTeamMember(ent, team)
 	teamMembers[ent] = team
+	if team then WETSAND.JoinTeamFaction(ent, team) end
 end
 
 -- A player's own team, else the team an entity fights for, else UNASSIGNED.

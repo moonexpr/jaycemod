@@ -22,6 +22,7 @@ local Tactics = WETSAND.require("foundation.aiwar.tactics")
 local Squad = WETSAND.require("foundation.aiwar.squad")
 local Lanes = WETSAND.require("foundation.aiwar.lanes")
 local Hearing = WETSAND.require("foundation.aiwar.hearing")
+local Factions = WETSAND.require("foundation.factions")
 local Doors = WETSAND.require("foundation.npc.doors")
 local Notices = WETSAND.require("foundation.admin_notices")
 local Inspect = WETSAND.require("foundation.ns.inspect")
@@ -633,12 +634,13 @@ function Controller:Disposition(team, otherTeam)
 	return DISPOSITION[AiWar.Relation(team, otherTeam, self.losers)]
 end
 
-function Controller:RelateSoldiers(ent, team)
-	for other, entry in pairs(self.soldiers) do
-		if other ~= ent and IsValid(other) then
-			ent:AddEntityRelationship(other, self:Disposition(team, entry.soldier.team), RELATIONSHIP_PRIORITY)
-			other:AddEntityRelationship(ent, self:Disposition(entry.soldier.team, team), RELATIONSHIP_PRIORITY)
-		end
+-- A soldier toward each team's DrGBase faction (foundation.factions; it is
+-- in its own team's, WETSAND.SetTeamMember): its team's its allies, the
+-- other its enemies, or feared once its side lost. DrGBase relates it so to
+-- every soldier and player in each, as they come and go.
+function Controller:RelateToFactions(ent, team)
+	for _, entry in ipairs(Factions.ALL) do
+		ent:SetFactionRelationship(entry.faction, self:Disposition(team, entry.team), RELATIONSHIP_PRIORITY)
 	end
 end
 
@@ -797,11 +799,11 @@ function Controller:RelatePlayers()
 	end
 end
 
--- Every soldier toward every other and every player, again (the losers changed).
+-- Every soldier toward each faction and every player, again (the losers changed).
 function Controller:RelateEveryone()
 	for ent, entry in pairs(self.soldiers) do
 		if IsValid(ent) then
-			self:RelateSoldiers(ent, entry.soldier.team)
+			self:RelateToFactions(ent, entry.soldier.team)
 			entry.soldier.relations = {}
 		end
 	end
@@ -876,7 +878,7 @@ function Controller:Enlist(ent, team, drafted, fixed)
 	-- DrGBase's hooks ask and tell the orders (wetsand_drg_soldier's bridge)
 	ent.NSBrain = self.soldiers[ent].npc
 	WETSAND.SetTeamMember(ent, team)
-	self:RelateSoldiers(ent, team)
+	self:RelateToFactions(ent, team)
 	self:PassTeammates(ent, team)
 	self:JoinSquad(ent, member)
 	if team == self.losers then self:Disarm(ent, self.soldiers[ent]) end

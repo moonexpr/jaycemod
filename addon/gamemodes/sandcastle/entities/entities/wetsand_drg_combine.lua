@@ -1,6 +1,8 @@
 -- The Combine's soldier for the AI war (RED): wetsand_drg_soldier in the
 -- Combine's player models, with the Combine's weapons (its support wear
 -- the metrocops' model: features/aiwar's kits).
+-- Spawned, it is in Team RED's faction and HL2's Combine (sh_factions.lua);
+-- the AI war moves it to the faction of the team it fights for.
 if not DrGBase then return end
 
 ENT.Base = "wetsand_drg_soldier"
@@ -13,7 +15,7 @@ ENT.Models = {
 	"models/player/combine_soldier_prisonguard.mdl",
 }
 ENT.Weapons = { "weapon_ar2", "weapon_smg1", "weapon_shotgun", "weapon_pistol" }
-ENT.Factions = { FACTION_COMBINE }
+ENT.Factions = { FACTION_TEAM_RED, FACTION_COMBINE }
 
 if SERVER then AddCSLuaFile() end
 

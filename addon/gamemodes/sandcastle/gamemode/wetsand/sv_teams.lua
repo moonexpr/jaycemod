@@ -47,11 +47,13 @@ end
 -- UNASSIGNED, the join state: an observer who is not spawned into the game
 -- (GM:PlayerSpawn keeps them observing) and whose client shows the team
 -- menu. force follows ForceChangeTeam with a full team switch: nobody dies
--- (the round-end team swap, and a new game unassigning everyone).
+-- (the round-end team swap, and a new game unassigning everyone). The
+-- player joins the new team's DrGBase faction (WETSAND.JoinTeamFaction).
 function WETSAND.SetPlayerTeam(ply, newTeam, force)
 	local old = ply:Team()
 	ply.wetsandTeam = newTeam
 	if newTeam == old then return end
+	WETSAND.JoinTeamFaction(ply, newTeam)
 	if Observes(newTeam) then
 		-- HandleCommand_JoinTeam: a live player dies before becoming a spectator.
 		if not force and Playing(old) and ply:Alive() then Die(ply) end
