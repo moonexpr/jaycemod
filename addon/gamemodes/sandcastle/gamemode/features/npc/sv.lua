@@ -11,7 +11,7 @@ local Portal = WETSAND.require("foundation.npc.portal")
 local Doors = WETSAND.require("foundation.npc.doors")
 local Brushes = WETSAND.require("foundation.npc.brushes")
 
-local NAV_MESSAGE = "wetsand_nextbot: %s has no usable navigation mesh; run .devtools/bin/nav_convert.py or nav_generate"
+local NAV_MESSAGE = "wetsand_nextbot: %s has no usable navigation mesh; run mp_nav_generate (or .devtools/bin/nav_convert.py for TF2's own)"
 local BOSS_HEALTH = "wetsand_boss_health" -- the boss bar's fraction; 0 hides it
 
 local Controller = {
@@ -247,6 +247,19 @@ function Controller:BrushAreas(brush)
 	return areas
 end
 
+-- A floor door's span (foundation.npc.doors): the box of areas on it where
+-- it lies closed (m_vecPosition1, a func_door's; a rotating door has none
+-- and is taken where it stands), inset FLOOR_INSET so the
+-- ground it bridges stays open, and up to a step above its top.
+local FLOOR_INSET = Vector(16, 16, 0)
+local FLOOR_STEP = Vector(0, 0, 18)
+
+local function FloorSpan(door, mins, maxs)
+	local closed = door:GetInternalVariable("m_vecPosition1")
+	local shift = isvector(closed) and closed - door:GetPos() or Vector(0, 0, 0)
+	return mins + shift + FLOOR_INSET, maxs + shift - FLOOR_INSET + FLOOR_STEP
+end
+
 function Controller:RefreshBlockers(now)
 	if now < self.nextBlockerRefresh then return end
 	self.nextBlockerRefresh = now + BLOCKER_REFRESH
@@ -263,9 +276,12 @@ function Controller:RefreshBlockers(now)
 	end
 	for _, door in ipairs(ents.FindByClass("func_door*")) do
 		local mins, maxs = door:WorldSpaceAABB()
+		local size = maxs - mins
 		local state = {
+			floor = Doors.IsFloor(size),
 			closed = Doors.IsClosed(door:GetInternalVariable("m_toggle_state")),
 			locked = door:GetInternalVariable("m_bLocked") == true,
+			touchOpens = Doors.TouchOpens(door:GetSpawnFlags()),
 			controlled = false,
 		}
 		-- a trigger controls the door when it opens it; an unnamed door, which
@@ -280,6 +296,7 @@ function Controller:RefreshBlockers(now)
 		states[door] = state
 		local team = Doors.BlockedTeam(state)
 		state.blocks = team
+		if state.floor then mins, maxs = FloorSpan(door, mins, maxs) end
 		for _, area in ipairs(navmesh.FindInBox(mins - DOOR_FLOOR, maxs)) do
 			doorAreas[area:GetID()] = true
 			if team then Block(blocked, area, team) end

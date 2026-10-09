@@ -214,7 +214,7 @@ function Soldier:RequestRoute(goal)
 		from = start,
 		to = goalPos,
 		strategy = HL2Path,
-		limits = HL2Path.LIMITS,
+		limits = HL2Path.SOLDIER_LIMITS,
 		bot = self:Bot(),
 		onDone = function(areas, found)
 			if self.ticket ~= ticket then return end
@@ -1216,7 +1216,7 @@ function Controller:FindGates(field)
 				to = target,
 				ignoreBlockers = true, -- the route is looked for through the shut gates
 				strategy = HL2Path,
-				limits = HL2Path.LIMITS,
+				limits = HL2Path.SOLDIER_LIMITS,
 				bot = { entIndex = 0, now = CurTime(), team = team, route = TFBot.FASTEST_ROUTE, miniBoss = false, roundWon = false, winningTeam = WETSAND.TEAM_UNASSIGNED },
 				onDone = function(areas, found)
 					if not areas or self.gates ~= gates then return end
@@ -1867,8 +1867,9 @@ end
 -- posts, else its front) on to the enemy's spawn, planned one after the
 -- other, each costing more through the bands of the ones before. A team's lanes
 -- are planned again once its front has moved LANE_REPLAN from where they
--- led, and tried again after LANE_RETRY when no route was found (a shut
--- gate in setup); the last lanes found stand until new ones are ready.
+-- led, or the doors' blockers changed (the npc feature's BlockerGeneration:
+-- a setup gate opened, a door shut), and tried again after LANE_RETRY when
+-- no route was found; the last lanes found stand until new ones are ready.
 local LANE_REPLAN, LANE_RETRY = 1024, 5
 
 function Controller:UpdateLanes(field, now)
@@ -1878,8 +1879,10 @@ function Controller:UpdateLanes(field, now)
 	for _, team in ipairs({ RED, BLUE }) do
 		local front = self.scenario:Front(field, team)
 		local plan = self.lanePlans[team]
-		if front and not (plan and plan.planning) and now >= (plan and plan.retryAt or 0)
-			and (not plan or Track.Distance(front, plan.to) > LANE_REPLAN) then
+		local blockers = WETSAND.Feature("npc"):BlockerGeneration()
+		local stale = plan and plan.blockers ~= blockers
+		if front and not (plan and plan.planning)
+			and (stale or (now >= (plan and plan.retryAt or 0) and (not plan or Track.Distance(front, plan.to) > LANE_REPLAN))) then
 			self:PlanLanes(team, front, field, now)
 		end
 		if not front then self.laneSets[team] = nil end
@@ -1930,6 +1933,7 @@ function Controller:PlanLanes(team, to, field, now)
 	local function EnemySpawnNear(p) return Point(Nearest(enemySpawns, p):GetPos()) end
 	local defenses = #enemySpawns > 0 and self:EnemyDefenses(field, team) or {}
 	local plan = { to = to, planning = true, tries = 0, penalized = {}, lanes = { key = team .. ":" .. now },
+		blockers = WETSAND.Feature("npc"):BlockerGeneration(),
 		specs = Lanes.Plans(from, to, defenses, EnemySpawnNear) }
 	self.lanePlans[team] = plan
 	local npcs = WETSAND.Feature("npc")
@@ -1952,7 +1956,7 @@ function Controller:PlanLanes(team, to, field, now)
 			from = start,
 			to = stop,
 			strategy = Lanes.Strategy,
-			limits = HL2Path.LIMITS,
+			limits = HL2Path.SOLDIER_LIMITS,
 			bot = { entIndex = 0, now = CurTime(), team = team, route = TFBot.FASTEST_ROUTE, miniBoss = false,
 				roundWon = false, winningTeam = WETSAND.TEAM_UNASSIGNED, penalized = plan.penalized },
 			onDone = function(legAreas, found)
@@ -2131,6 +2135,8 @@ local MAP_LACKS = {
 	[Scenario.BASES] = "this map has no spawn points for both teams, where the AI war's soldiers join the fight",
 	[Scenario.POINTS] = "this map's round has no control points for the AI war to fight over",
 }
+local NO_NAV_MESH = "this map has no navigation mesh for the soldiers to walk; "
+	.. "run mp_nav_generate in the console to make one (a few minutes), then start the war"
 
 -- Starts the war at once and requests Gameplay mode, whose countdown
 -- restarts the rounds. The scenario is the rounds mode's (the map's own
@@ -2147,7 +2153,7 @@ function Controller:Start()
 		bases = self:Bases().bases,
 	})
 	if lacks then return false, MAP_LACKS[lacks] end
-	WETSAND.Feature("npc"):CheckNavMesh()
+	if not WETSAND.NavMeshUsable() then return false, NO_NAV_MESH end
 	self.scenario = variant:New()
 	self.winner = nil
 	self.waitingFor = nil

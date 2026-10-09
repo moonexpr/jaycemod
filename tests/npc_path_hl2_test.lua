@@ -38,6 +38,18 @@ T.test("the limits are the engine NPC's: one step up or down, no more", function
 	T.eq(HL2.LIMITS.deathDropHeight, HL2.LIMITS.stepHeight, "no dropping past a step")
 end)
 
+-- The AI war's soldiers are DrGBase NextBots now (NextBotGroundLocomotion):
+-- an HL2 body that cannot crouch or jump, but drops as far as DrGBase's
+-- DeathDropHeight, as off cp_steel's BLU spawn ledge (192).
+T.test("the soldiers' limits: a step up, no jumping, but a drop of up to DrGBase's DeathDropHeight", function()
+	T.eq(HL2.SOLDIER_LIMITS.stepHeight, 18, "a step")
+	T.eq(HL2.SOLDIER_LIMITS.jumpHeight, HL2.SOLDIER_LIMITS.stepHeight, "no jumping")
+	T.eq(HL2.SOLDIER_LIMITS.deathDropHeight, 200, "DrGBase's DeathDropHeight")
+	T.eq(HL2.Cost(Step({ heightChange = -192 }), HL2.SOLDIER_LIMITS, BOT) ~= Path.IMPASSABLE, true, "off cp_steel's ledge")
+	T.eq(HL2.Cost(Step({ heightChange = -250 }), HL2.SOLDIER_LIMITS, BOT), Path.IMPASSABLE, "a deadly fall")
+	T.eq(HL2.Cost(Step({ heightChange = 40 }), HL2.SOLDIER_LIMITS, BOT), Path.IMPASSABLE, "no climbing")
+end)
+
 T.test("flat ground costs what it costs a TF2 bot", function()
 	T.eq(HL2.Cost(Step(), HL2.LIMITS, BOT), TFBot.Cost(Step(), HL2.LIMITS, BOT), "same")
 	T.eq(HL2.Cost(Step({ hasFrom = false, attributes = HL2.NAV_MESH_CROUCH }), HL2.LIMITS, BOT), 0, "the first area is free")

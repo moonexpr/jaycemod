@@ -170,6 +170,7 @@ local function World()
 		CheckNavMesh = function() end,
 		RequestRoute = function(_, request) w.routes[#w.routes + 1] = request end,
 		SearchesRunning = function() return 0 end,
+		BlockerGeneration = function() return w.blockerGeneration or 0 end,
 	})
 	w:Load("gamemode", {
 		Request = function(_, mode, source, _, story)
@@ -213,6 +214,7 @@ local function Env(w)
 		InSetup = function() return w.setup end,
 		InOvertime = function() return w.overtime end,
 		SpawnPoints = function(team) return w.spawns[team] end,
+		NavMeshUsable = function() return w.navUsable ~= false end,
 	}
 	local env = {
 		WETSAND = wetsand,
@@ -357,6 +359,15 @@ T.test("the war still needs DrGBase first", function()
 	local ok, why = setfenv(chunk, env)():Start()
 	T.eq(ok, false, "refused")
 	T.eq(why ~= NO_OBJECTIVE and why:find("DrGBase", 1, true) ~= nil, true, "why: " .. tostring(why))
+end)
+
+T.test("a map with no usable navigation mesh is refused, and the admin is told how to make one", function()
+	local w = World()
+	w:Load("rounds", FakeRounds(PayloadMode.Mode, w))
+	w.navUsable = false
+	local ok, why = Load(w):Start()
+	T.eq(ok, false, "refused")
+	T.eq(why:find("mp_nav_generate", 1, true) ~= nil, true, "why: " .. tostring(why))
 end)
 
 T.test("a payload map starts the payload scenario, asks for Gameplay mode, and loads no other scenario", function()
@@ -678,6 +689,27 @@ T.test("lanes lead to the scenario's front", function()
 	T.eq(w.routes[1].strategy, Lanes.Strategy, "a lane")
 	T.eq(w.routes[1].bot.team, RED, "RED's")
 	T.eq(w.routes[1].to.x, 1000, "to RED's front")
+end)
+
+-- A setup gate opening, or a door shutting, changes the doors' blockers:
+-- lanes planned around the old ones are planned again at once.
+T.test("lanes are planned again when the doors' blockers change", function()
+	local w = World()
+	w.spawns[RED] = { Ent(Vector(0, 0, 0)) }
+	w.spawns[BLUE] = { Ent(Vector(2000, 0, 0)) }
+	local controller = Started(w, ControlPointsMode.Mode, { fronts = { [RED] = { x = 1000, y = 0, z = 0 } } })
+	controller:Survey(NOW)
+	-- every lane's search finds no route (a shut gate), so the plan ends
+	local answered = 0
+	while w.routes[answered + 1] do
+		answered = answered + 1
+		w.routes[answered].onDone(nil)
+	end
+	controller:Survey(NOW)
+	T.eq(#w.routes, answered, "nothing changed: no new plan")
+	w.blockerGeneration = 1
+	controller:Survey(NOW)
+	T.eq(#w.routes, answered + 1, "the gate opened: planned again")
 end)
 
 -- Package B's guard scoring and range (docs/aiwar-koth-cp.md §3): the test

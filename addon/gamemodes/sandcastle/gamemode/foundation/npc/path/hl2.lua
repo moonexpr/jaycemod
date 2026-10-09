@@ -24,6 +24,12 @@ local UNCROSSABLE = NAV_MESH_CROUCH + NAV_MESH_JUMP
 local STEP_HEIGHT = 18
 LIMITS = { stepHeight = STEP_HEIGHT, jumpHeight = STEP_HEIGHT, deathDropHeight = STEP_HEIGHT }
 
+-- The AI war's soldiers, DrGBase NextBots now: the same body, but
+-- NextBotGroundLocomotion drops as far as DrGBase's DeathDropHeight
+-- (cp_steel's BLU spawn is a ledge 192 above the yard).
+DRGBASE_DEATH_DROP = 200
+SOLDIER_LIMITS = { stepHeight = STEP_HEIGHT, jumpHeight = STEP_HEIGHT, deathDropHeight = DRGBASE_DEATH_DROP }
+
 function Cost(step, limits, bot)
 	if step.hasFrom and band(step.attributes, UNCROSSABLE) ~= 0 then return Path.IMPASSABLE end
 	return TFBot.Cost(step, limits, bot)

@@ -12,11 +12,41 @@ T.test("a door is closed at the bottom of its travel or on its way there", funct
 	T.eq(Doors.IsClosed(Doors.TS_GOING_UP), false, "opening")
 end)
 
-T.test("only a door shut and locked blocks routes, to everyone", function()
+T.test("a door is a floor when it is flat and wide: a bridge, not a door, gate or handrail", function()
+	T.eq(Doors.IsFloor({ x = 82, y = 426, z = 10 }), true, "cp_steel's bridge")
+	T.eq(Doors.IsFloor({ x = 194, y = 6, z = 138 }), false, "a spawn door")
+	T.eq(Doors.IsFloor({ x = 6, y = 410, z = 6 }), false, "a handrail: thin both ways")
+	T.eq(Doors.IsFloor({ x = 189, y = 106, z = 90 }), false, "a gate")
+end)
+
+T.test("a floor blocks its span to everyone until it is laid out (closed), locked or not", function()
+	T.eq(Doors.BlockedTeam({ floor = true, closed = false }), Doors.ANY, "drawn back: no floor there")
+	T.eq(Doors.BlockedTeam({ floor = true, closed = true }), nil, "laid out")
+	T.eq(Doors.BlockedTeam({ floor = true, closed = true, locked = true }), nil, "laid out and locked: still a floor")
+end)
+
+T.test("a door shut and locked blocks routes, to everyone", function()
 	T.eq(Doors.BlockedTeam({ closed = true, locked = true }), Doors.ANY, "shut and locked")
-	T.eq(Doors.BlockedTeam({ closed = true, locked = false }), nil, "shut: it opens as a soldier reaches it")
+	T.eq(Doors.BlockedTeam({ closed = true, locked = false, touchOpens = true }), nil, "shut: it opens as a soldier reaches it")
 	T.eq(Doors.BlockedTeam({ closed = false, locked = true }), nil, "locked open")
 	T.eq(Doors.BlockedTeam({ closed = true, controlled = true, owner = 3 }), nil, "a team's own spawn door does not shut it in")
+end)
+
+-- TF2's rule (CTFNavMesh::ComputeBlockedAreas): a shut door that nothing a
+-- soldier does opens, only the map's logic (cp_steel's point_a_brushdoor,
+-- spawnflags Toggle alone), walls off its areas until it opens.
+T.test("a shut door neither touch, use nor a trigger opens blocks routes, to everyone", function()
+	T.eq(Doors.BlockedTeam({ closed = true }), Doors.ANY, "only the map's logic opens it")
+	T.eq(Doors.BlockedTeam({ closed = true, touchOpens = true }), nil, "touch or use opens it")
+	T.eq(Doors.BlockedTeam({ closed = true, controlled = true }), nil, "a trigger opens it")
+	T.eq(Doors.BlockedTeam({ closed = false }), nil, "open")
+end)
+
+T.test("a door's spawnflags say whether a soldier's touch or use opens it", function()
+	T.eq(Doors.TouchOpens(1024), true, "Touch Opens")
+	T.eq(Doors.TouchOpens(256), true, "Use Opens")
+	T.eq(Doors.TouchOpens(32), false, "Toggle alone: the map's logic")
+	T.eq(Doors.TouchOpens(1024 + 512), false, "Touch Opens, but NPCs can't")
 end)
 
 T.test("a shut door no trigger opens walls in setup's ground", function()
