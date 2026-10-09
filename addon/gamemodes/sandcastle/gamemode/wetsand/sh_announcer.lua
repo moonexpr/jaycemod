@@ -22,17 +22,24 @@ E.Define("teamplay_broadcast_audio", {
 	others = E.Default(E.Bool(), false),
 })
 
--- A line of text across the top of every screen, in the team's colour.
+-- A line of text across the top of every screen, in the team's colour; with
+-- an icon (a material), TF2's notification card instead (the scramble's:
+-- resource/ui/notifications/base_notification.res). audience: who sees it
+-- (HearsBroadcast's teams; UNASSIGNED is everyone).
 E.Define("announcement", {
 	text = E.String(),
 	team = E.Default(E.Team(), Teams.UNASSIGNED),
+	audience = E.Default(E.Team(), Teams.UNASSIGNED),
+	icon = E.Default(E.String(), ""),
 })
 
 if CLIENT then
 	E.Listen("teamplay_broadcast_audio", "wetsand_announcer", function(fields)
 		local ply = LocalPlayer()
 		if not IsValid(ply) then return end
-		if Teams.HearsBroadcast(fields.team, fields.others, WETSAND.TeamOf(ply)) then 
+		-- the player's own team, spectators' included: WETSAND.TeamOf counts
+		-- them unassigned, so a line to the spectators reached nobody
+		if Teams.HearsBroadcast(fields.team, fields.others, ply:Team()) then 
 			ply:EmitSound(fields.sound, SNDLVL_100dB, 100, 1, fields.channel) -- name, level, pitch, volume, channel
 		end
 	end)

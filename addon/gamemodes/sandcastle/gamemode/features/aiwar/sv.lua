@@ -21,6 +21,7 @@ local Tactics = WETSAND.require("foundation.aiwar.tactics")
 local Squad = WETSAND.require("foundation.aiwar.squad")
 local Lanes = WETSAND.require("foundation.aiwar.lanes")
 local Doors = WETSAND.require("foundation.npc.doors")
+local Notices = WETSAND.require("foundation.admin_notices")
 local Inspect = WETSAND.require("foundation.ns.inspect")
 local Tuning = WETSAND.require("foundation.ns.tuning")
 local Gamemode = WETSAND.require("foundation.gamemode")
@@ -2101,6 +2102,7 @@ function Controller:Start()
 	self.war = AiWar.War.New()
 	self.gates = nil
 	SetGlobal2Bool(ACTIVE_KEY, true)
+	WETSAND.Notify(Notices.WarStarted())
 	self:OpenDoorsToSoldiers()
 	self:SetForcefieldsPassable(true)
 	for _, ent in ipairs(ents.GetAll()) do
@@ -2135,6 +2137,7 @@ function Controller:End()
 	self.scenario = nil
 	self.winner = nil
 	SetGlobal2Bool(ACTIVE_KEY, false)
+	WETSAND.Notify(Notices.WarEnded())
 	return true
 end
 

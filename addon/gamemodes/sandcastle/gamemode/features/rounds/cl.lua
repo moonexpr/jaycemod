@@ -119,17 +119,19 @@ end
 -- Game events ---------------------------------------------------------------------
 
 -- The announcement line (wetsand/sh_announcer.lua), from the server or
--- another view.
-function View:Announce(text, team)
+-- another view; with an icon, drawn as TF2's notification card.
+function View:Announce(text, team, icon)
 	self.announcement = {
 		text = text,
 		team = team,
+		icon = icon ~= "" and icon or nil,
 		expires = CurTime() + ANNOUNCE_SECONDS,
 	}
 end
 
 WETSAND.Events.Listen("announcement", "wetsand_rounds_view", function(fields)
-	View:Announce(fields.text, fields.team)
+	if not WETSAND.TeamRules.HearsBroadcast(fields.audience, false, LocalPlayer():Team()) then return end
+	View:Announce(fields.text, fields.team, fields.icon)
 end)
 
 -- A round notice under the timer, in the team's colour (the capture view's
@@ -205,9 +207,43 @@ function View:DrawRespawn(w, h)
 		TEXT_ALIGN_CENTER, 1, color_black)
 end
 
+-- TF2's notification card (base_notification.res, hudlayout.res's
+-- NotificationPanel), in HUD units of a 480-tall screen: the team's score
+-- panel behind, the icon at the left, the text after it, the card as wide
+-- as its text, centred CARD_Y down the screen.
+local CARD_Y, CARD_TALL, CARD_ICON, CARD_ICON_X, CARD_ICON_Y, CARD_TEXT_X, CARD_PAD = 300, 44, 20, 7, 9, 30, 10
+local CARD_FONT, CARD_FONT_TALL = "Sandcastle.Hud.Card", 13
+local CARD_BACKGROUND = {
+	[WETSAND.TEAM_RED] = Material("hud/score_panel_red_bg"),
+	[WETSAND.TEAM_BLUE] = Material("hud/score_panel_blue_bg"),
+}
+local CARD_NEUTRAL = Material("hud/notification_black")
+local cardFontTall
+
+local function DrawCard(a, w, h)
+	local unit = h / 480
+	local tall = math.Round(CARD_FONT_TALL * unit)
+	if tall ~= cardFontTall then
+		surface.CreateFont(CARD_FONT, { font = "TF2 Secondary", size = tall, weight = 500 })
+		cardFontTall = tall
+	end
+	surface.SetFont(CARD_FONT)
+	local textW = surface.GetTextSize(a.text)
+	local cardW = CARD_TEXT_X * unit + textW + CARD_PAD * unit
+	local x, y = (w - cardW) / 2, CARD_Y * unit
+	surface.SetDrawColor(255, 255, 255, 255)
+	surface.SetMaterial(CARD_BACKGROUND[a.team] or CARD_NEUTRAL)
+	surface.DrawTexturedRect(x, y, cardW, CARD_TALL * unit)
+	surface.SetMaterial(Material(a.icon))
+	surface.DrawTexturedRect(x + CARD_ICON_X * unit, y + CARD_ICON_Y * unit, CARD_ICON * unit, CARD_ICON * unit)
+	draw.SimpleText(a.text, CARD_FONT, x + CARD_TEXT_X * unit, y + (CARD_ICON_Y + CARD_ICON / 2) * unit, color_white,
+		TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
+end
+
 function View:DrawAnnouncement(w, h)
 	local a = self.announcement
 	if not a or CurTime() > a.expires then return end
+	if a.icon then return DrawCard(a, w, h) end
 	draw.SimpleTextOutlined(a.text, "Sandcastle.Hud.Announce", w / 2, h * 0.25, WETSAND.TeamColor[a.team] or color_white,
 		TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER, 2, color_black)
 end

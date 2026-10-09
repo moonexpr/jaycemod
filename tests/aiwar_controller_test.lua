@@ -147,6 +147,7 @@ local function World()
 		routes = {},
 		requests = {},
 		hooks = {},
+		notified = {},
 		convarCallbacks = {}, -- convar name -> the controller's change callback
 		active = true,
 		state = STATE.RND_RUNNING,
@@ -203,6 +204,10 @@ local function Env(w)
 		-- the real loader would load a missing feature: the fake refuses, so
 		-- a query of a feature not loaded fails the test
 		Feature = function(name) return w.features[name] or error("loaded a feature to check it: " .. name) end,
+		-- the admin notices it sends (foundation.admin_notices), in order
+		Notify = function(notices)
+			for _, n in ipairs(notices) do w.notified[#w.notified + 1] = n.text end
+		end,
 		Active = function() return w.active end,
 		State = function() return w.state end,
 		InSetup = function() return w.setup end,
@@ -423,6 +428,14 @@ T.test("any scenario refuses a map without both teams' spawns", function()
 		T.eq(why, NO_SPAWNS, mode.NAME)
 		T.eq(controller.war, nil, mode.NAME .. ": no war")
 	end
+end)
+
+T.test("starting and ending the war tells everyone visitors arrived and left", function()
+	local w = World()
+	local controller = Started(w, PayloadMode.Mode)
+	T.eq(w.notified[#w.notified], "Visitors from another universe have arrived!")
+	controller:End()
+	T.eq(w.notified[#w.notified], "The visitors have returned to their own universe.")
 end)
 
 T.test("an ended war can start again, with a new scenario", function()

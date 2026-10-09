@@ -134,11 +134,31 @@ end
 
 -- The announcement line on every screen (the rounds view draws it), in the
 -- team's colour; no team for the plain one.
-function WETSAND.Announce(text, team)
+-- audience (who sees it, everyone when nil) and icon (TF2's card when
+-- given) are optional (wetsand/sh_announcer.lua).
+function WETSAND.Announce(text, team, audience, icon)
 	WETSAND.Events.Fire("announcement", {
 		text = text,
 		team = team,
+		audience = audience,
+		icon = icon,
 	})
+end
+
+-- foundation.admin_notices' notices: each one's chime on CHAN_AUTO and
+-- announcer line on CHAN_VOICE2 (the neutral alert once in a while:
+-- Spoken), then its card, to its audience. The alert's time is kept for
+-- the map: the first neutral notice on a new map speaks it.
+local AdminNotices = WETSAND.require("foundation.admin_notices")
+local neutralLineAt
+
+function WETSAND.Notify(notices)
+	notices, neutralLineAt = AdminNotices.Spoken(notices, neutralLineAt, SysTime())
+	for _, n in ipairs(notices) do
+		if n.chime then WETSAND.BroadcastSound(n.audience, n.chime) end
+		if n.sound then WETSAND.BroadcastPA(n.audience, n.sound) end
+		WETSAND.Announce(n.text, n.team, n.audience, n.icon)
+	end
 end
 
 function WETSAND.IsAliveInGame(ply)

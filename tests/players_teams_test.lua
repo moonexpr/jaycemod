@@ -192,6 +192,8 @@ T.test("a sound for a team is heard by that team only; UNASSIGNED means everyone
 	T.eq(L.HearsBroadcast(RED, false, RED), true, "RED hears RED's")
 	T.eq(L.HearsBroadcast(RED, false, BLU), false, "BLU does not")
 	T.eq(L.HearsBroadcast(RED, false, SPEC), false, "spectators do not")
+	T.eq(L.HearsBroadcast(SPEC, false, SPEC), true, "spectators hear the spectators' (which round won)")
+	T.eq(L.HearsBroadcast(SPEC, false, RED), false, "RED does not")
 	T.eq(L.HearsBroadcast(RED, false, UNASSIGNED), false, "nor the unassigned")
 	T.eq(L.HearsBroadcast(UNASSIGNED, false, BLU), true, "everyone: BLU")
 	T.eq(L.HearsBroadcast(UNASSIGNED, false, SPEC), true, "everyone: spectators")
