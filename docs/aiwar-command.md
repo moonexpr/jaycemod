@@ -260,7 +260,7 @@ with the arguments shown (`entities/drgbase_nextbot/ai.lua`, `awareness.lua`,
 | `OnRangeAttack` / `OnMeleeAttack` | query `ShouldAttack` (NO → return true to hold fire) | replaces the `WetsandDisarmed` special case |
 | `ShouldRun` | query `ShouldHurry` | replaces `WetsandRun` |
 
-Steering (`WetsandTarget` and `FollowPath`) stays as it is. Only where the
+Steering (`NSTarget` and `FollowPath`) stays as it is. Only where the
 target comes from changes.
 
 ## 7. From today's code

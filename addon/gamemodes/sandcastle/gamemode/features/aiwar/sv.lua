@@ -142,8 +142,8 @@ function Soldier:Sit()
 			seats[index] = self.ent
 			self.seat = { train = train, index = index, side = side, offset = train:WorldToLocal(seatPos) }
 			self.moveTarget = nil
-			self.ent.WetsandTarget = nil
-			self.ent.WetsandSeated = true
+			self.ent.NSTarget = nil
+			self.ent.NSSeated = true
 			self.seatGroup = self.ent:GetCollisionGroup()
 			self.ent:SetCollisionGroup(COLLISION_GROUP_DEBRIS)
 			return true
@@ -160,7 +160,7 @@ function Soldier:Stand()
 	local seats = controller.seats and controller.seats[seat.train]
 	if seats and seats[seat.index] == self.ent then seats[seat.index] = nil end
 	if not IsValid(self.ent) then return end
-	self.ent.WetsandSeated = nil
+	self.ent.NSSeated = nil
 	self.ent:SetCollisionGroup(self.seatGroup or COLLISION_GROUP_NPC)
 	local entry = controller.soldiers[self.ent]
 	if entry and IsValid(seat.train) then controller:EjectFromCart(self.ent, entry, seat.train, true) end
@@ -290,14 +290,14 @@ function Soldier:MoveTo(p, gait)
 	if self.seat then self:Stand() end
 	self.moveTarget = p
 	self.gait = gait or "run"
-	self.ent.WetsandTarget = OnFloor(ToVector(p))
+	self.ent.NSTarget = OnFloor(ToVector(p))
 	self.ent.WetsandRun = self.gait ~= "walk"
 end
 
 function Soldier:Release()
 	self.moveTarget = nil
 	self.walkSpeed = 0
-	self.ent.WetsandTarget = nil
+	self.ent.NSTarget = nil
 	self.ent.WetsandRun = nil
 end
 

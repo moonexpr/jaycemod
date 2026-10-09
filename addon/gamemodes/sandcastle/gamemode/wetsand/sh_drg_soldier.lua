@@ -1,7 +1,7 @@
 -- What every AI war soldier entity shares, whatever DrGBase base it is
 -- built on (drgbase_nextbot_human for the Combine and the Resistance's
 -- fighters, drgbase_nextbot for the vortigaunt): WETSAND.DrgSoldier(ENT,
--- baseName) installs it. The controller (features/aiwar) sets WetsandTarget,
+-- baseName) installs it. The controller (features/aiwar) sets NSTarget,
 -- a position to go to, WetsandRun, whether to run there, and NSBrain,
 -- the orders it asks and tells (whether to attack, which enemy, what it saw
 -- and suffered). With a target, the soldier walks it whatever else it does,
@@ -31,11 +31,11 @@ function WETSAND.DrgSoldier(ENT, baseName)
 	-- a target.
 	function ENT:WetsandSteer(enemy)
 		-- riding the cart: the controller carries it; it only turns to fight
-		if self.WetsandSeated then
+		if self.NSSeated then
 			if IsValid(enemy) then self:FaceTowards(enemy) end
 			return true
 		end
-		local target = self.WetsandTarget
+		local target = self.NSTarget
 		if not target then return false end
 		if self:GetPos():DistToSqr(target) > GOAL_TOLERANCE * GOAL_TOLERANCE then
 			self.WetsandMoveResult = self:FollowPath(target, GOAL_TOLERANCE)
@@ -178,7 +178,7 @@ function WETSAND.DrgSoldier(ENT, baseName)
 
 	-- Seated on the cart: the sitting pose, whatever DrGBase would play.
 	function ENT:OnUpdateAnimation()
-		if self.WetsandSeated then return ACT_HL2MP_SIT, 1 end
+		if self.NSSeated then return ACT_HL2MP_SIT, 1 end
 		return Base().OnUpdateAnimation(self)
 	end
 
@@ -197,7 +197,7 @@ function WETSAND.DrgSoldier(ENT, baseName)
 	function ENT:WetsandClientRagdoll(dmg)
 		if not Ragdoll.LeavesBody(self:IsFlagSet(FL_DISSOLVING), dmg:IsDamageType(DMG_REMOVENORAGDOLL)) then return false end
 		self:SetNotSolid(true)
-		self.WetsandTarget = nil
+		self.NSTarget = nil
 		WETSAND.SendClientRagdoll(self, dmg:GetDamageForce())
 		return true
 	end
