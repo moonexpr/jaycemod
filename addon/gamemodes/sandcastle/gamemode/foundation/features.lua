@@ -15,6 +15,10 @@ local floor = math.floor
 module(...)
 
 ROOT = "features/"
+-- Features switched off: their code stays, but nothing may load them.
+OFF = {
+	nodegraph = true, -- the AI node graph from the nav mesh; not needed now
+}
 SHARED, SERVER, CLIENT = "sh", "sv", "cl"
 
 -- The parts a client loads, in order.
@@ -96,6 +100,7 @@ end
 -- on the client), loading it on the first call.
 function Loader:Feature(name)
 	if self.loaded[name] then return self.values[name] end
+	if OFF[name] then error(format("feature %q is switched off (foundation.features OFF)", name), 0) end
 	if self.loading[name] then
 		error(format("feature %q is still loading: a cyclic dependency, or its load failed", name), 0)
 	end

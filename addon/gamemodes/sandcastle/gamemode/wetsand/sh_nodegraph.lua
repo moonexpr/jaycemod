@@ -3,6 +3,9 @@
 -- (features/nodegraph), and on clients the Utilities menu entry and the
 -- overlay that draws it.
 
+-- Switched off (foundation.features OFF): no commands, menu or overlay.
+if WETSAND.require("foundation.features").OFF.nodegraph then return end
+
 -- The overlay's snapshot, which the nodegraph feature fires to an admin who
 -- turned it on: which graph (generated, installed or none), the nodes near
 -- them with their zone, and the links between those nodes (a, b: places in

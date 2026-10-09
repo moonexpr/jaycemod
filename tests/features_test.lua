@@ -246,4 +246,15 @@ T.test("the memory report gives KB and the loaded features in order", function()
 	Has(Features.New(CL, FakePort({})):MemoryReport(1, 1), "none", "empty report")
 end)
 
+-- A feature on Features.OFF is switched off: asking for it refuses by name
+-- and runs none of its files.
+T.test("a feature that is off is refused and none of its files run", function()
+	local port = FakePort({ [Features.PartPath("nodegraph", SV)] = Returns({}) })
+	local loader = Features.New(SV, port)
+	T.eq(Features.OFF.nodegraph, true, "the node graph is off for now")
+	T.eq(ErrorOf(function() loader:Feature("nodegraph") end), 'feature "nodegraph" is switched off (foundation.features OFF)')
+	T.eq(#port.runs, 0, "nothing ran")
+	T.eq(loader:IsLoaded("nodegraph"), false)
+end)
+
 T.finish()
