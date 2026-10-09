@@ -74,11 +74,15 @@ CreateFonts()
 hook.Add("OnScreenSizeChanged", "wetsand_capture_fonts", CreateFonts)
 
 local UNLOCK_WARNINGS = {
-	[5] = "Announcer.RoundBegins5Seconds",
-	[4] = "Announcer.RoundBegins4Seconds",
-	[3] = "Announcer.RoundBegins3Seconds",
-	[2] = "Announcer.RoundBegins2Seconds",
-	[1] = "Announcer.RoundBegins1Seconds",
+	[60] = "Announcer.CompGame1Begins60Seconds",
+	[30] = "Announcer.CompGame1Begins30Seconds",
+	[10] = "Announcer.CompGame1Begins10Seconds",
+	[5] = "Announcer.CompGameBegins05Seconds",
+	[4] = "Announcer.CompGameBegins04Seconds",
+	[3] = "Announcer.CompGameBegins03Seconds",
+	[2] = "Announcer.CompGameBegins02Seconds",
+	[1] = "Announcer.CompGameBegins01Seconds",
+	[0] = "Announcer.CompGameBeginsFight"
 }
 local UNLOCK_WARN_FROM = 5
 local CAP_ENABLED = "Announcer.AM_CapEnabledRandom"
@@ -302,7 +306,10 @@ end
 
 local function Play(name)
 	local ply = LocalPlayer()
-	if IsValid(ply) then ply:EmitSound(name) end
+	if not IsValid(ply) then return end
+
+	-- CHAN_VOICE2 is important here so announcer doens't talk over herself.
+	ply:EmitSound(name, SNDLVL_100dB, 100, CHAN_VOICE2)
 end
 
 -- CControlPointCountdown::OnTick: armed for each second the unlock is

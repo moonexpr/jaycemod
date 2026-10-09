@@ -36,7 +36,7 @@ local SANDBOX_SOUNDS = {
 	"garrysmod/save_load3.wav",
 	"garrysmod/save_load4.wav",
 }
-local TRANSITION_MUSIC = "ui/mm_round_start_casual.wav"
+local TRANSITION_MUSIC = "MatchMaking.RoundStartCasual"
 local TRANSITION_VOICES = {
 	"vo/announcer_tournament_started1.mp3",
 	"vo/announcer_tournament_started2.mp3",
@@ -44,9 +44,20 @@ local TRANSITION_VOICES = {
 	"vo/announcer_tournament_started4.mp3",
 }
 local CALLED_OFF_SFX = "ui/vote_failure.wav"
-local ADMIN_LINE_COUNT = 13
-local ADMIN_LINES = {}
-for i = 1, ADMIN_LINE_COUNT do ADMIN_LINES[i] = string.format("vo/compmode/cm_admin_compbeginsstart_%02d.mp3", i) end
+-- The competitive announcer's countdown, by seconds left: the transition
+-- voices those it reaches (it lasts Gamemode.ADMIN_LINE_AT seconds), and
+-- [0] as Gameplay mode begins.
+local ADMIN_LINES = {
+	[60] = "Announcer.CompGame1Begins60Seconds",
+	[30] = "Announcer.CompGame1Begins30Seconds",
+	[10] = "Announcer.CompGame1Begins10Seconds",
+	[5] = "Announcer.CompGameBegins05Seconds",
+	[4] = "Announcer.CompGameBegins04Seconds",
+	[3] = "Announcer.CompGameBegins03Seconds",
+	[2] = "Announcer.CompGameBegins02Seconds",
+	[1] = "Announcer.CompGameBegins01Seconds",
+	[0] = "Announcer.CompGameBeginsFight"
+}
 
 local Controller = {
 	mode = Gamemode.New(IsValid(WETSAND.Rules), ENABLED:GetBool()),
@@ -54,7 +65,7 @@ local Controller = {
 }
 
 local function PlayToAll(path)
-	WETSAND.BroadcastSound(WETSAND.TEAM_UNASSIGNED, path)
+	WETSAND.BroadcastPA(WETSAND.TEAM_UNASSIGNED, path) -- the unassigned team: everyone, spectators too
 end
 
 local function Pick(list)
@@ -169,9 +180,9 @@ end
 
 local CUES = {
 	[Gamemode.CUE_COUNT] = function(self, cue)
-		if cue.spoken then self:TransitionSound("Announcer.RoundBegins" .. cue.left .. "Seconds") end
+		if ADMIN_LINES[cue.left] then self:TransitionSound(ADMIN_LINES[cue.left]) end
 	end,
-	[Gamemode.CUE_ADMIN_LINE] = function() PlayToAll(Pick(ADMIN_LINES)) end,
+	[Gamemode.CUE_ADMIN_LINE] = function() PlayToAll(ADMIN_LINES[0]) end,
 	[Gamemode.CUE_BEGIN] = function(self)
 		timer.Remove(TRANSITION_TIMER)
 		self.transitionSounds = {}

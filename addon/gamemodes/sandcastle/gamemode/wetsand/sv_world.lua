@@ -10,6 +10,14 @@ function WETSAND.BroadcastSound(team, name)
 	})
 end
 
+function WETSAND.BroadcastPA(team, name)
+	WETSAND.Events.Fire("teamplay_broadcast_audio", {
+		team = team,
+		sound = name,
+		channel = CHAN_VOICE2
+	})
+end
+
 -- A game sound every player not on the team hears as their own
 -- (CLocalPlayerFilter lines: the capture's lines for the other team).
 function WETSAND.BroadcastSoundToOthers(team, name)

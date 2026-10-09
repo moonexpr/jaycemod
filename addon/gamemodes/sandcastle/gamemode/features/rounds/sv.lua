@@ -76,6 +76,8 @@ local TIME_ADDED = "Announcer.TimeAdded"
 local OVERTIME_NAG = "Game.Overtime"
 local SUDDEN_DEATH = "Game.SuddenDeath"
 
+local ROUND_RESTART = "Game.Stalemate"
+
 local function Settings()
 	return {
 		respawnWaveTime = respawnwavetime:GetFloat(),
@@ -195,20 +197,22 @@ end
 -- (The teamless would hear Game.TeamWin2/3, which no soundscript defines.)
 local function PlayWinSong(winner)
 	if winner == UNASSIGNED then
-		WETSAND.BroadcastSound(UNASSIGNED, "Game.Stalemate")
+		WETSAND.BroadcastPA(UNASSIGNED, "Game.Stalemate")
 		return
 	end
-	WETSAND.BroadcastSound(winner, "Game.YourTeamWon")
-	WETSAND.BroadcastSound(WETSAND.EnemyOf(winner), "Game.YourTeamLost")
+	WETSAND.BroadcastPA(winner, "Game.YourTeamWon")
+	WETSAND.BroadcastPA(WETSAND.EnemyOf(winner), "Game.YourTeamLost")
+	WETSAND.BroadcastPA(SPECTATOR, winner == BLUE and "Announcer.CompRoundWinBlu" or "Announcer.CompRoundWinRed")
+
 end
 
 -- The announcer credits the team the time was added for (AddTeamTime).
 local function AnnounceTimeAdded(t)
 	if t == RED or t == BLUE then
-		WETSAND.BroadcastSound(t, TIME_ADDED_WINNER)
-		WETSAND.BroadcastSound(WETSAND.EnemyOf(t), TIME_ADDED_LOSER)
+		WETSAND.BroadcastPA(t, table.Random(TIME_ADDED_WINNER))
+		WETSAND.BroadcastPA(WETSAND.EnemyOf(t), TIME_ADDED_LOSER)
 	else
-		WETSAND.BroadcastSound(UNASSIGNED, TIME_ADDED)
+		WETSAND.BroadcastPA(UNASSIGNED, TIME_ADDED)
 	end
 end
 
@@ -332,7 +336,7 @@ local TIMER_EVENTS = {
 	output = function(self, ent, e) ent:TriggerOutput(e.name, ent) end,
 	setup = function(self, ent, e) self:SetSetup(e.value) end,
 	overtime = function(self, ent, e) self:SetOvertime(e.value) end,
-	nag = function() WETSAND.BroadcastSound(UNASSIGNED, OVERTIME_NAG) end,
+	nag = function() WETSAND.BroadcastPA(UNASSIGNED, OVERTIME_NAG) end,
 	length_changed = function() end,
 	time_added = function(self, ent, e)
 		AnnounceTimeAdded(e.team)
@@ -668,7 +672,7 @@ function Controller:CapSounds(capTeam, wouldWinGame, scorePerRound)
 		wouldWinGame = wouldWinGame,
 		scorePerRound = scorePerRound,
 	})
-	for _, line in ipairs(lines) do WETSAND.BroadcastSound(line.team, line.sound) end
+	for _, line in ipairs(lines) do WETSAND.BroadcastPA(line.team, line.sound) end
 end
 
 -- logic_auto (CLogicAuto::Think) ----------------------------------------------------
@@ -767,12 +771,12 @@ local EFFECTS = {
 	win_song = function(self, e)
 		PlayWinSong(e.winner)
 		for t, line in pairs(self.round:Mode():RoundWinLines(e.winner, e.fullRound, self.multipleTrains)) do
-			WETSAND.BroadcastSound(t, line)
+			WETSAND.BroadcastPA(t, line)
 		end
 	end,
 	sudden_death = function(self, e)
 		SetGlobal2Int("wetsand_stalemate_reason", e.reason)
-		WETSAND.BroadcastSound(UNASSIGNED, SUDDEN_DEATH)
+		WETSAND.BroadcastPA(UNASSIGNED, SUDDEN_DEATH)
 	end,
 	hide_timers = function(self) self:HideActiveTimer() end,
 	restore_timers = function(self) self:RestoreActiveTimer() end,
@@ -820,6 +824,7 @@ function Controller:OnPlayerDeath(ply)
 end
 
 function Controller:RestartRound()
+	WETSAND.BroadcastPA(UNASSIGNED, ROUND_RESTART)
 	self:Apply(self.round:RestartRound(CurTime()))
 end
 
@@ -939,7 +944,7 @@ local function ScoreAdder(t)
 end
 
 local function VoiceTo(t)
-	return function(self, v) WETSAND.BroadcastSound(t, tostring(v)) end
+	return function(self, v) WETSAND.BroadcastPA(t, tostring(v)) end
 end
 
 local function ClockActivator(t)
@@ -963,7 +968,7 @@ local PROXY_INPUTS = {
 	setstalemateontimelimit = function(self, v)
 		self.round:SetStalemateOnTimelimit(tonumber(v) == 1 or tostring(v) == "true")
 	end,
-	-- PlayVO is heard by everyone (BroadcastSound to 255), the others by one team.
+	-- PlayVO is heard by everyone (BroadcastPA to 255), the others by one team.
 	playvo = VoiceTo(UNASSIGNED),
 	playvored = VoiceTo(RED),
 	playvoblue = VoiceTo(BLUE),
