@@ -69,8 +69,10 @@ function Accept(lanes, route, shortest)
 end
 
 -- A route's points thinned to about WAYPOINT_SPACING apart (the last kept),
--- and its length.
-function Thin(points)
+-- and its length. clear(a, b): whether a soldier can walk straight from a
+-- to b (the controller's hull trace); a point is kept too where skipping it
+-- would make the line from the last kept point cut through the world.
+function Thin(points, clear)
 	local kept, length, since = {}, 0, 0
 	for i, p in ipairs(points) do
 		if i > 1 then
@@ -78,7 +80,8 @@ function Thin(points)
 			length = length + d
 			since = since + d
 		end
-		if i == 1 or since >= WAYPOINT_SPACING or i == #points then
+		local nextPoint = points[i + 1]
+		if i == 1 or not nextPoint or since >= WAYPOINT_SPACING or not clear(kept[#kept], nextPoint) then
 			kept[#kept + 1] = p
 			since = 0
 		end

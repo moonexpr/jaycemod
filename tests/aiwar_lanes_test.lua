@@ -18,10 +18,27 @@ end)
 T.test("a route's points thin to about WAYPOINT_SPACING apart, keeping both ends", function()
 	local points = {}
 	for i = 0, 10 do points[#points + 1] = P(i * 100, 0) end
-	local kept, length = Lanes.Thin(points)
+	local kept, length = Lanes.Thin(points, function() return true end)
 	T.eq(length, 1000, "its length")
 	T.eq(#kept, 5, "0, 300, 600, 900 and the end")
 	T.eq(kept[#kept].x, 1000, "the end")
+end)
+
+-- A route round a wall's corner: skipping the corner would cut through the
+-- wall, so it is kept though the spacing is not reached, and every kept
+-- segment is one a soldier can walk straight.
+T.test("thinning keeps a waypoint where skipping it would cut through the world", function()
+	local route = { P(0, 0), P(100, 0), P(200, 0), P(200, 100), P(200, 200) }
+	-- the wall fills the inside of the corner: a segment from the first leg
+	-- (x < 200) into the second (y > 0) crosses it
+	local function Clear(a, b)
+		return not ((a.x < 200 and b.y > 0) or (b.x < 200 and a.y > 0))
+	end
+	local kept, length = Lanes.Thin(route, Clear)
+	T.eq(length, 400, "its length")
+	T.eq(#kept, 3, "the start, the corner and the end")
+	T.eq(kept[2].x .. "," .. kept[2].y, "200,0", "the corner")
+	for i = 2, #kept do T.eq(Clear(kept[i - 1], kept[i]), true, "segment " .. i - 1 .. " is clear") end
 end)
 
 T.test("lanes go to squads least taken first, raiders the longest, and stay while the plan does", function()

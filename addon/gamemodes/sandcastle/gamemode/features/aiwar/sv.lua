@@ -253,19 +253,20 @@ function Soldier:CanWalkTo(p)
 	return not tr.Hit
 end
 
-function Soldier:CanWalkTo(p)
-	local from, to = self.ent:GetPos(), ToVector(p)
+-- Whether a soldier could walk straight from a to b past the world alone
+-- (no NPCs or players: a lane is planned once, for the round).
+local function WorldWalkClear(a, b)
+	local from, to = ToVector(a), ToVector(b)
 	if math.abs(to.z - from.z) > WALK_MAX_RISE then return false end
-	local tr = util.TraceHull({
+	return not util.TraceHull({
 		start = from + WALK_LIFT,
 		endpos = to + WALK_LIFT,
 		mins = WALK_MINS,
 		maxs = WALK_MAXS,
-		mask = MASK_NPCSOLID,
-		filter = self.ent,
-	})
-	return not tr.Hit
+		mask = MASK_NPCSOLID_BRUSHONLY,
+	}).Hit
 end
+
 
 -- A nav area over stairs is a ramp, while the steps under it are not, so
 -- a point taken from the mesh can lie inside a step. A point is dropped
@@ -1883,7 +1884,7 @@ function Controller:PlanLanes(team, to, now)
 					local ids, raw = {}, {}
 					for i, area in ipairs(areas) do ids[i] = area:GetID() end
 					for i, v in ipairs(npcs:RouteWaypoints(areas, target, found, from)) do raw[i] = Point(v) end
-					local points, length = Lanes.Thin(raw)
+					local points, length = Lanes.Thin(raw, WorldWalkClear)
 					local route = { ids = ids, points = points, length = length }
 					plan.shortest = plan.shortest or length
 					if Lanes.Accept(plan.lanes, route, plan.shortest) then plan.lanes[#plan.lanes + 1] = route end
