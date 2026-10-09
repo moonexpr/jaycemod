@@ -203,7 +203,12 @@ function MENU:Build()
 	local config = self.config
 	local teams = {}
 	for i, t in ipairs(config.teams) do teams[i] = Counted(t) end
-	local extras = { auto = config.auto, spectate = config.spectate and Counted(config.spectate) }
+	local extras = {
+		auto = config.auto,
+		spectate = config.spectate and Counted(config.spectate),
+		forceAuto = WETSAND.ForceAutoTeam:GetBool(),
+		noSpectators = not WETSAND.AllowSpectators:GetBool(),
+	}
 	return L.TeamMenu(teams, LocalPlayer():Team(), config.limit:GetInt(), extras)
 end
 

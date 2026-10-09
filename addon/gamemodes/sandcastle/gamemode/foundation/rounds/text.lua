@@ -84,6 +84,9 @@ end
 
 -- The timer box ----------------------------------------------------------------------
 
+-- mp_scrambleteams_auto's card, with the round won that made a scramble due.
+SCRAMBLE_NOTE = "Teams will be scrambled next round!"
+
 -- The note everyone gets as mp_chattime begins: the map that comes next.
 function NextMapNote(map)
 	return string.format("Next map: %s", map)

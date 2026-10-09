@@ -19,6 +19,41 @@ T.test("the losers of a round or of the match cannot attack; nobody else is held
 	T.eq(L.Humiliated(STATE.RND_RUNNING, RED, BLU), false, "a round running")
 end)
 
+-- mp_forceautoteam, mp_allowspectators (HandleCommand_JoinTeam)
+
+T.test("a join under mp_forceautoteam is auto-assigned; spectating needs mp_allowspectators", function()
+	T.eq(L.ResolveJoin(RED, false, true), RED, "a free choice")
+	T.eq(L.ResolveJoin(RED, true, true), L.AUTO, "forced to auto-assign")
+	T.eq(L.ResolveJoin(BLU, true, true), L.AUTO, "BLU too")
+	T.eq(L.ResolveJoin(L.AUTO, true, true), L.AUTO, "auto stays auto")
+	T.eq(L.ResolveJoin(SPEC, true, true), SPEC, "spectating is no team pick")
+	local refused, why = L.ResolveJoin(SPEC, false, false)
+	T.eq(refused, nil, "no spectating with mp_allowspectators 0")
+	T.eq(why, "Spectating is off on this server.", "and why")
+end)
+
+-- mp_scrambleteams_auto (CTFGameRules::ShouldScrambleTeams, HandleScrambleTeams)
+
+T.test("teams are due a scramble once one leads by mp_scrambleteams_auto_windifference", function()
+	T.eq(L.ScrambleDue({ [RED] = 3, [BLU] = 1 }, 2), true, "RED leads by 2")
+	T.eq(L.ScrambleDue({ [RED] = 1, [BLU] = 4 }, 2), true, "BLU leads by 3")
+	T.eq(L.ScrambleDue({ [RED] = 2, [BLU] = 1 }, 2), false, "a lead of 1")
+	T.eq(L.ScrambleDue({ [RED] = 5, [BLU] = 0 }, 0), false, "0 never scrambles")
+end)
+
+T.test("a scramble deals the players out by score, best first, alternating sides", function()
+	local teams = L.Scramble({
+		{ id = 1, score = 5 },
+		{ id = 2, score = 20 },
+		{ id = 3, score = 10 },
+		{ id = 4, score = 10 },
+	}, BLU)
+	T.eq(teams[2], BLU, "the best to the first side")
+	T.eq(teams[3], RED, "the next to the other")
+	T.eq(teams[4], BLU, "a tie goes by id")
+	T.eq(teams[1], RED, "the last")
+end)
+
 T.test("jointeam names resolve case-insensitively", function()
 	T.eq(L.ParseJoinTeam("red"), RED, "red")
 	T.eq(L.ParseJoinTeam("BLUE"), BLU, "BLUE")

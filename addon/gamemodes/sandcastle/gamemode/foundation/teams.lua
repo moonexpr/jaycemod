@@ -34,6 +34,42 @@ function ParseJoinTeam(name)
 	return team
 end
 
+-- HandleCommand_JoinTeam under mp_forceautoteam and mp_allowspectators:
+-- a pick of RED or BLU is auto-assigned while auto-assignment is forced;
+-- spectating is refused while spectators are not allowed. Returns the team
+-- (or AUTO) to join, or nil and why not.
+SPECTATORS_OFF = "Spectating is off on this server."
+
+function ResolveJoin(team, forceAuto, allowSpectators)
+	if team == SPECTATOR and not allowSpectators then return nil, SPECTATORS_OFF end
+	if forceAuto and (team == RED or team == BLUE) then return AUTO end
+	return team
+end
+
+-- CTFGameRules::ShouldScrambleTeams (mp_scrambleteams_auto): one team leads
+-- the other by windifference rounds won (scores: team -> rounds won); 0
+-- never scrambles.
+function ScrambleDue(scores, windifference)
+	if windifference <= 0 then return false end
+	return math.abs((scores[RED] or 0) - (scores[BLUE] or 0)) >= windifference
+end
+
+-- CTFGameRules::HandleScrambleTeams: the players ({ id, score }) dealt out
+-- best score first, alternating sides from first, ties by id. Returns
+-- id -> team.
+function Scramble(players, first)
+	local sorted = {}
+	for i, p in ipairs(players) do sorted[i] = p end
+	table.sort(sorted, function(a, b)
+		if a.score ~= b.score then return a.score > b.score end
+		return a.id < b.id
+	end)
+	local second = first == RED and BLUE or RED
+	local teams = {}
+	for i, p in ipairs(sorted) do teams[p.id] = i % 2 == 1 and first or second end
+	return teams
+end
+
 -- CTFPlayer::GetAutoTeam: the team with fewer players. On an even split TF2
 -- gives attackers the player on escort (payload) maps; Sandcastle does so on
 -- every map, so a lone player lands on BLU and can push the cart.
@@ -198,6 +234,8 @@ function TeamMenuReaction(view)
 end
 
 local TEAM_FULL = "Team is full"
+local AUTO_ONLY = "Teams are auto-assigned"
+local NO_SPECTATING = "Spectating is off"
 
 local function Choice(kind, spec, currentTeam)
 	return {
@@ -228,7 +266,9 @@ end
 -- { name, command } and extras.spectate { index, name, command, count } are
 -- offered when present. Hotkeys number auto, spectate, then the teams
 -- (Teammenu.res: &1 random, &2 spectate, &3 BLU, &4 RED). Cancel only once
--- the player has a team (CTFTeamMenu::Update).
+-- the player has a team (CTFTeamMenu::Update). extras.forceAuto
+-- (mp_forceautoteam) disables the teams, extras.noSpectators
+-- (mp_allowspectators 0) spectating.
 function TeamMenu(teams, currentTeam, limit, extras)
 	local counts = {}
 	for _, t in ipairs(teams) do counts[t.index] = t.count end
@@ -239,7 +279,14 @@ function TeamMenu(teams, currentTeam, limit, extras)
 		return c
 	end
 	if extras.auto then menu.auto = Add(Choice("auto", extras.auto, currentTeam)) end
-	if extras.spectate then menu.spectate = Add(Choice("spectate", extras.spectate, currentTeam)) end
-	for i, t in ipairs(teams) do menu.teams[i] = Add(TeamChoice(t, counts, currentTeam, limit)) end
+	if extras.spectate then
+		menu.spectate = Add(Choice("spectate", extras.spectate, currentTeam))
+		if extras.noSpectators then menu.spectate.enabled, menu.spectate.reason = false, NO_SPECTATING end
+	end
+	for i, t in ipairs(teams) do
+		local c = Add(TeamChoice(t, counts, currentTeam, limit))
+		if extras.forceAuto then c.enabled, c.reason = false, AUTO_ONLY end
+		menu.teams[i] = c
+	end
 	return menu
 end

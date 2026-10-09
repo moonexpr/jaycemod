@@ -34,6 +34,10 @@ local bonusroundtime = ConVarOrCreate("mp_bonusroundtime", "15", FCVAR_REPLICATE
 local enableroundwaittime = ConVarOrCreate("mp_enableroundwaittime", "1", FCVAR_REPLICATED, "Enable timers to wait between rounds.")
 local stalemateEnable = ConVarOrCreate("mp_stalemate_enable", "0", FCVAR_NOTIFY, "Enable/Disable stalemate mode.")
 local stalemateTimelimit = ConVarOrCreate("mp_stalemate_timelimit", "240", FCVAR_REPLICATED, "Timelimit (in seconds) of the stalemate round.")
+local scrambleAuto = ConVarOrCreate("mp_scrambleteams_auto", "1", FCVAR_NOTIFY,
+	"Server will automatically scramble the teams if criteria met.  Only works on dedicated servers.")
+local scrambleWinDifference = ConVarOrCreate("mp_scrambleteams_auto_windifference", "2", FCVAR_NOTIFY,
+	"Number of round wins a team must lead by in order to trigger an auto scramble.", 0)
 local winlimit = ConVarOrCreate("mp_winlimit", "0", { FCVAR_REPLICATED, FCVAR_NOTIFY }, "Max score one team can reach before server changes maps", 0)
 local maxrounds = ConVarOrCreate("mp_maxrounds", "0", { FCVAR_REPLICATED, FCVAR_NOTIFY }, "max number of rounds to play before server changes maps", 0)
 local timelimit = ConVarOrCreate("mp_timelimit", "0", { FCVAR_NOTIFY, FCVAR_REPLICATED }, "game time per map in minutes")
@@ -84,6 +88,8 @@ local STALEMATE_LINE = "Announcer.CompRoundStalemate" -- vo/compmode/cm_admin_st
 -- no respawn clock for sudden death, a clock for the next map.
 local ICON_SUDDEN_DEATH = "hud/ico_time_none"
 local ICON_NEXT_MAP = "hud/ico_time_10"
+local ICON_SCRAMBLE = "hud/ico_teamswitch"
+local SCRAMBLE_LINE = "Announcer.AM_TeamScrambleRandom"
 
 -- The match won (GoToIntermission; a tie goes to sudden death instead):
 -- each side its music on CHAN_AUTO (the spectators the winner's colour of
@@ -125,6 +131,8 @@ local function Settings()
 		timelimit = timelimit:GetInt(),
 		matchEndAtTimelimit = matchEndAtTimelimit:GetBool(),
 		chattime = chattime:GetInt(),
+		scrambleAuto = scrambleAuto:GetBool(),
+		scrambleWinDifference = scrambleWinDifference:GetInt(),
 	}
 end
 
@@ -231,6 +239,24 @@ local function SwitchTeams()
 	local red, blu = team.GetScore(RED), team.GetScore(BLUE)
 	team.SetScore(RED, blu)
 	team.SetScore(BLUE, red)
+end
+
+-- CTFGameRules::HandleScrambleTeams: the players dealt out by score
+-- (L.Scramble), the first side at random, and the teams' scores reset.
+local function ScrambleTeams()
+	local players, byId = {}, {}
+	EachPlayer(function(ply)
+		if WETSAND.TeamOf(ply) ~= UNASSIGNED then
+			players[#players + 1] = { id = ply:UserID(), score = ply:Frags() }
+			byId[ply:UserID()] = ply
+		end
+	end)
+	for id, t in pairs(WETSAND.TeamRules.Scramble(players, math.random(0, 1) == 0 and RED or BLUE)) do
+		WETSAND.SetPlayerTeam(byId[id], t, true)
+	end
+	team.SetScore(RED, 0)
+	team.SetScore(BLUE, 0)
+	PrintMessage(HUD_PRINTTALK, "The teams have been scrambled.")
 end
 
 -- CTeamplayRoundBasedRules::PlayWinSong: each side hears its own result.
@@ -801,6 +827,12 @@ local EFFECTS = {
 	activate_timers = function(self) self:ActivateTimers() end,
 	time_limit_timer = function(self, e) self:CreateTimer(TIMELIMIT_TIMER_NAME, e.seconds) end,
 	switch_teams = function() SwitchTeams() end,
+	-- mp_scrambleteams_auto: told with the win, done as the next round starts
+	scramble_due = function()
+		WETSAND.BroadcastPA(UNASSIGNED, SCRAMBLE_LINE)
+		WETSAND.Announce(Text.SCRAMBLE_NOTE, UNASSIGNED, UNASSIGNED, ICON_SCRAMBLE)
+	end,
+	scramble_teams = function() ScrambleTeams() end,
 	respawn_all = function()
 		EachPlayer(function(ply)
 			if ply:Team() ~= SPECTATOR then ply:Spawn() end

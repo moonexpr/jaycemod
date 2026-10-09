@@ -187,4 +187,25 @@ T.test("a menu opened on a team (F2) closes when the team changes, and stays whe
 	T.eq(L.TeamMenuReaction(View({ openedOn = RED, team = UNASSIGNED })), L.MENU_STAY, "a new game: now choosing")
 end)
 
+-- mp_forceautoteam and mp_allowspectators
+
+T.test("mp_forceautoteam leaves only auto-assign (and spectating) in the menu", function()
+	local extras = { auto = EXTRAS.auto, spectate = EXTRAS.spectate, forceAuto = true }
+	local menu = L.TeamMenu(Teams(0, 0), UNASSIGNED, 1, extras)
+	T.eq(menu.auto.enabled, true, "auto-assign")
+	T.eq(menu.spectate.enabled, true, "spectate")
+	for _, c in ipairs(menu.teams) do
+		T.eq(c.enabled, false, c.label .. " disabled")
+		T.eq(c.reason, "Teams are auto-assigned", c.label .. " says why")
+	end
+end)
+
+T.test("mp_allowspectators 0 disables spectating in the menu", function()
+	local extras = { auto = EXTRAS.auto, spectate = EXTRAS.spectate, noSpectators = true }
+	local menu = L.TeamMenu(Teams(0, 0), UNASSIGNED, 1, extras)
+	T.eq(menu.spectate.enabled, false, "spectate disabled")
+	T.eq(menu.spectate.reason, "Spectating is off", "and says why")
+	T.eq(menu.teams[1].enabled, true, "the teams stay open")
+end)
+
 T.finish()

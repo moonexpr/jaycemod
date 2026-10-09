@@ -240,6 +240,12 @@ WETSAND.RestartFreeze = CreateConVar("tf_player_movement_restart_freeze", "1", F
 
 -- TF2's convar (teamplayroundbased_gamerules.cpp), replicated as there, so the
 -- team menu disables the teams the server would refuse.
+-- TF2's join convars, replicated so the team menu offers what the server
+-- allows (CTFPlayer::HandleCommand_JoinTeam).
+WETSAND.ForceAutoTeam = CreateConVar("mp_forceautoteam", "0", { FCVAR_REPLICATED, FCVAR_NOTIFY },
+	"Automatically assign players to teams when joining.", 0, 1)
+WETSAND.AllowSpectators = CreateConVar("mp_allowspectators", "1", { FCVAR_REPLICATED, FCVAR_NOTIFY },
+	"toggles whether the server allows spectator mode or not", 0, 1)
 WETSAND.UnbalanceLimit = CreateConVar("mp_teams_unbalance_limit", "1", FCVAR_REPLICATED,
 	"Teams are unbalanced when one team has this many more players than the other team. (0 disables check)", 0, 30)
 

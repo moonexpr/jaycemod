@@ -878,6 +878,26 @@ T.test("sudden death's survivors are rewarded with TF2's full overheal", functio
 	T.eq(Rounds.SurvivorHealth(175, 10), 262, "rounded down")
 end)
 
+T.test("mp_scrambleteams_auto: a full round won to a lead of the win difference scrambles the next round's teams", function()
+	local round = Running({ scrambleAuto = true, scrambleWinDifference = 2 })
+	round:Think(T0 + 1, World({ scores = { [RED] = 1, [BLUE] = 0 } }))
+	local win = round:SetWinningTeam(T0 + 20, RED, W.ALL_POINTS_CAPTURED, true, true, false, FakeObjective.Objective())
+	T.eq(Has(win, "scramble_due"), true, "announced with the win: " .. Describe(win))
+	local restart = round:Think(T0 + 35, World({ scores = { [RED] = 2, [BLUE] = 0 } }))
+	T.eq(Has(restart, "scramble_teams"), true, "the next round scrambled: " .. Describe(restart))
+	T.eq(Has(restart, "switch_teams"), false, "in place of the switch")
+end)
+
+T.test("no scramble without mp_scrambleteams_auto, under the win difference, or on a mini-round", function()
+	local off = Running({ scrambleAuto = false, scrambleWinDifference = 2 })
+	off:Think(T0 + 1, World({ scores = { [RED] = 1, [BLUE] = 0 } }))
+	T.eq(Has(off:SetWinningTeam(T0 + 20, RED, W.ALL_POINTS_CAPTURED, true, false, false, FakeObjective.Objective()), "scramble_due"), false, "off")
+	local close = Running({ scrambleAuto = true, scrambleWinDifference = 2 })
+	T.eq(Has(close:SetWinningTeam(T0 + 20, RED, W.ALL_POINTS_CAPTURED, true, false, false, FakeObjective.Objective()), "scramble_due"), false, "a lead of 1")
+	local mini = Running({ scrambleAuto = true, scrambleWinDifference = 1 })
+	T.eq(Has(mini:SetWinningTeam(T0 + 20, RED, W.ALL_POINTS_CAPTURED, false, false, false, FakeObjective.Objective()), "scramble_due"), false, "a mini-round")
+end)
+
 T.test("mp_forcewin's win scores a point where points come from captures, and can win the match", function()
 	local round = Running({ winlimit = 1 })
 	local effects = round:SetWinningTeam(T0 + 20, BLUE, W.NONE, true, false, false,

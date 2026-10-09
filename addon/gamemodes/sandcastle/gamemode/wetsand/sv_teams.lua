@@ -101,11 +101,17 @@ function WETSAND.RestoreTeam(ply)
 end
 
 -- CTFPlayer::HandleCommand_JoinTeam: "red", "blue", "auto" or "spectate".
--- A join that would unbalance the teams is refused; an unassigned player's
--- client keeps the menu up.
+-- mp_forceautoteam auto-assigns a pick of RED or BLU, and spectating needs
+-- mp_allowspectators (L.ResolveJoin). A join that would unbalance the teams
+-- is refused; an unassigned player's client keeps the menu up.
 function WETSAND.JoinTeam(ply, name)
 	if WETSAND.State() == WETSAND.STATE.GAME_OVER then return end
-	local newTeam = L.ParseJoinTeam(name)
+	local newTeam, refused = L.ResolveJoin(L.ParseJoinTeam(name), WETSAND.ForceAutoTeam:GetBool(),
+		WETSAND.AllowSpectators:GetBool())
+	if not newTeam then
+		ply:PrintMessage(HUD_PRINTCENTER, refused)
+		return
+	end
 	if newTeam == L.AUTO then newTeam = WETSAND.AutoTeam() end
 	if newTeam < SPECTATOR or newTeam == ply:Team() then return end
 	if newTeam ~= SPECTATOR and L.WouldUnbalance(Counts(), newTeam, ply:Team(), unbalanceLimit:GetInt()) then

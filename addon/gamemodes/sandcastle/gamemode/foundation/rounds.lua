@@ -297,7 +297,8 @@ end
 
 -- settings = { respawnWaveTime, bonusRoundTime, enableRoundWaitTime,
 -- stalemateEnable, stalemateTimelimit, winlimit, maxrounds, timelimit,
--- matchEndAtTimelimit, chattime, mapResetTime }, in TF2's units.
+-- matchEndAtTimelimit, chattime, scrambleAuto, scrambleWinDifference,
+-- mapResetTime }, in TF2's units.
 function New(settings)
 	local round = setmetatable({
 		settings = {},
@@ -308,6 +309,7 @@ function New(settings)
 		forceMapReset = true,
 		mapFresh = true,
 		switchTeams = false,
+		scrambleTeams = false,
 		winningTeam = UNASSIGNED,
 		winReason = WINREASON.NONE,
 		roundsPlayed = 0,
@@ -503,10 +505,13 @@ local function RoundRespawn(self, effects, now, world)
 	end
 	SetupOnRoundStart(self, effects)
 	if full then Add(effects, Kind("new_round_outputs")) end
-	if self.switchTeams then
+	-- a scramble due (mp_scrambleteams_auto) takes the switch's place
+	if self.scrambleTeams then
+		Add(effects, Kind("scramble_teams"))
+	elseif self.switchTeams then
 		Add(effects, Kind("switch_teams"))
-		self.switchTeams = false
 	end
+	self.scrambleTeams, self.switchTeams = false, false
 	Add(effects, Kind("respawn_all"))
 end
 
@@ -762,6 +767,12 @@ function Round:SetWinningTeam(now, winner, reason, forceMapReset, switchTeams, d
 		GoToIntermission(self, effects, limit, now, { scores = scores })
 		return effects
 	end
+	-- mp_scrambleteams_auto: a full round won to a lead of the win
+	-- difference scrambles the next round's teams (scramble_due tells it now)
+	if forceMapReset and self.settings.scrambleAuto and Teams.ScrambleDue(scores, self.settings.scrambleWinDifference) then
+		self.scrambleTeams = true
+		Add(effects, Kind("scramble_due"))
+	end
 	Add(effects, {
 		kind = "publish_win",
 		winner = winner,
@@ -827,7 +838,7 @@ function Round:RestartRound(now)
 		Add(effects, Kind("unfreeze"))
 	end
 	self.forceMapReset = true
-	self.switchTeams = false
+	self.switchTeams, self.scrambleTeams = false, false
 	return Transition(self, effects, State.PREGAME, now)
 end
 
