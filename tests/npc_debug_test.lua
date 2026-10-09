@@ -405,4 +405,25 @@ T.test("a dump holds the request, the result, the explored areas and the timing 
 	T.eq(#bare.search.explored .. " " .. tostring(bare.search.costsRecorded), "0 false", "no costs recorded")
 end)
 
+-- GMod's type() names a Vector "Vector", not "userdata": a path report of
+-- real positions (an NPC selected under the overlay) erred, and the error
+-- stopped every route search, leaving the AI war's soldiers idle.
+T.test("a position is a vector whatever type GMod gives it, and a number is not", function()
+	local realType = type
+	local gmodVector = { x = 1, y = 2, z = 3 }
+	type = function(v)
+		if v == gmodVector then return "Vector" end
+		return realType(v)
+	end
+	package.loaded["foundation.npc.debug"] = nil
+	local ok, Fresh = pcall(T.require, "foundation.npc.debug")
+	type = realType
+	package.loaded["foundation.npc.debug"] = nil
+	T.eq(ok, true, tostring(Fresh))
+	T.eq(Fresh.IsVector(gmodVector), true, "a GMod Vector")
+	T.eq(Fresh.IsVector({ x = 1, y = 2, z = 3 }), true, "a position table")
+	T.eq(Fresh.IsVector(5), false, "a number")
+	T.eq(Fresh.IsVector(nil), false, "nothing")
+end)
+
 T.finish()

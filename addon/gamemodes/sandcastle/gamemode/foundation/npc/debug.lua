@@ -471,9 +471,11 @@ local REPORT_OPTIONAL = {
 	explored = "table", -- the cost recorder's, when costs were recorded
 }
 
-local function IsVector(v)
+-- Whether v is a position: a { x, y, z } table, or an engine vector, which
+-- GMod's type() names "Vector".
+function IsVector(v)
 	local kind = type(v)
-	return (kind == "table" or kind == "userdata") and type(v.x) == "number"
+	return (kind == "table" or kind == "userdata" or kind == "Vector") and type(v.x) == "number"
 end
 
 local function Checked(fields, name, kind, optional)
