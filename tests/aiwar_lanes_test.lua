@@ -7,12 +7,32 @@ local Path = T.require("foundation.npc.path")
 local function P(x, y) return { x = x, y = y, z = 0 } end
 local function Lane(ids, length) return { ids = ids, points = {}, length = length } end
 
-T.test("a route is a lane when it shares under half its areas with each lane and is no great detour", function()
-	local first = Lane({ 1, 2, 3, 4 }, 1000)
-	T.eq(Lanes.Overlap(Lane({ 1, 2, 5, 6 }, 1100), first), 0.5, "half shared")
-	T.eq(Lanes.Accept({ first }, Lane({ 1, 2, 5, 6 }, 1100), 1000), false, "half is too much")
-	T.eq(Lanes.Accept({ first }, Lane({ 1, 7, 8, 9 }, 1100), 1000), true, "a quarter will do")
-	T.eq(Lanes.Accept({ first }, Lane({ 7, 8, 9, 10 }, 1700), 1000), false, "past MAX_DETOUR of the shortest")
+-- What a team plans, in order: a direct lane to the objective, a flank to
+-- either side of it (left, right of the way in), and two tours through the
+-- enemy's defenses on to the enemy's spawn nearest each. Here the team comes
+-- in along +x to the objective at x 1000, so its left is +y.
+T.test("a team plans a direct lane, two flanks beside the objective and two tours through the enemy to its spawn", function()
+	local spawn, objective = P(0, 0), P(1000, 0)
+	local defenses = { P(1500, 400), P(1400, 0), P(1500, -300) }
+	local function EnemySpawnNear(p) return P(3000, p.y) end
+	local specs = Lanes.Plans(spawn, objective, defenses, EnemySpawnNear)
+	local kinds = {}
+	for i, spec in ipairs(specs) do kinds[i] = spec.kind end
+	T.eq(table.concat(kinds, ","), "direct,flank,flank,tour,tour")
+	T.eq(#specs[1].stops, 1, "direct: one stop")
+	T.eq(specs[1].stops[1], objective, "the objective")
+	T.near(specs[2].stops[1].x, 1000, 1e-9, "left flank: beside the objective")
+	T.near(specs[2].stops[1].y, Lanes.FLANK_RADIUS, 1e-9, "on the left")
+	T.near(specs[3].stops[1].y, -Lanes.FLANK_RADIUS, 1e-9, "on the right")
+	T.eq(specs[4].stops[1], defenses[1], "the first tour: through the leftmost defense")
+	T.eq(specs[4].stops[2].x .. "," .. specs[4].stops[2].y, "3000,400", "on to the enemy spawn nearest it")
+	T.eq(specs[5].stops[1], defenses[3], "the second: through the rightmost")
+	T.eq(specs[5].stops[2].x .. "," .. specs[5].stops[2].y, "3000,-300", "and its spawn")
+end)
+
+T.test("with no enemy defenses known the team plans no tours", function()
+	local specs = Lanes.Plans(P(0, 0), P(1000, 0), {}, function() error("no spawn asked for") end)
+	T.eq(#specs, 3, "direct and two flanks")
 end)
 
 T.test("a route's points thin to about WAYPOINT_SPACING apart, keeping both ends", function()
@@ -59,44 +79,49 @@ T.test("a lane's band holds its areas and the areas near them, so later lanes le
 	T.eq(asked, Lanes.LANE_SPREAD, "areas within LANE_SPREAD")
 end)
 
-T.test("lanes go to squads least taken first, raiders the longest, and stay while the plan does", function()
-	local lanes = { key = "k", Lane({ 1 }, 1000), Lane({ 2 }, 1500), Lane({ 3 }, 1200) }
-	local raiders = { team = 3, role = "raid" }
-	local escortsA = { team = 3, role = "escort" }
-	local escortsB = { team = 3, role = "escort" }
+local function Kind(kind, length) return { kind = kind, ids = {}, points = {}, length = length } end
+
+T.test("escorts take the direct lane and the flanks, least taken first, and stay while the plan does", function()
+	local lanes = { key = "k", Kind("direct", 1000), Kind("flank", 1200), Kind("flank", 1300), Kind("tour", 2000), Kind("tour", 2100) }
+	local a, b, c, d = { team = 3, role = "escort" }, { team = 3, role = "escort" }, { team = 3, role = "escort" }, { team = 3, role = "escort" }
 	local blockers = { team = 3, role = "block" }
-	local teams = { raiders, escortsA, escortsB, blockers }
+	local teams = { a, b, c, d, blockers }
 	Lanes.Assign(teams, { [3] = lanes })
-	T.eq(raiders.laneIndex, 2, "raiders: the longest")
-	T.eq(escortsA.laneIndex, 1, "escorts: the shortest")
-	T.eq(escortsB.laneIndex, 3, "the next escorts: the one left")
+	T.eq(a.laneIndex .. b.laneIndex .. c.laneIndex .. d.laneIndex, "1231", "direct, flank, flank, then the direct again")
 	T.eq(blockers.lane, nil, "blockers take no lane")
-	raiders.laneIndex = 2
 	Lanes.Assign(teams, { [3] = lanes })
-	T.eq(raiders.laneIndex, 2, "kept while the plan is the same")
-	local replanned = { key = "k2", Lane({ 4 }, 900) }
+	T.eq(b.laneIndex, 2, "kept while the plan is the same")
+	local replanned = { key = "k2", Kind("direct", 900) }
 	Lanes.Assign(teams, { [3] = replanned })
-	T.eq(raiders.lane, replanned[1], "a new plan: a new lane")
+	T.eq(b.lane, replanned[1], "a new plan: a new lane")
 end)
 
-T.test("assault squads take lanes as escorts do, the shortest first", function()
-	local lanes = { key = "k", Lane({ 1 }, 1000), Lane({ 2 }, 1500) }
-	local assault = {
-		team = 3,
-		role = "assault",
-	}
-	Lanes.Assign({ assault }, { [3] = lanes })
+T.test("raiders take the tours, and assault squads take lanes as escorts do", function()
+	local lanes = { key = "k", Kind("direct", 1000), Kind("flank", 1200), Kind("tour", 2000), Kind("tour", 2100) }
+	local r1, r2, r3 = { team = 3, role = "raid" }, { team = 3, role = "raid" }, { team = 3, role = "raid" }
+	local assault = { team = 3, role = "assault" }
+	Lanes.Assign({ r1, r2, r3, assault }, { [3] = lanes })
+	T.eq(r1.laneIndex .. r2.laneIndex .. r3.laneIndex, "343", "the tours, least taken first")
+	T.eq(assault.laneIndex, 1, "the direct lane")
 	T.eq(Lanes.JOBS.assault, true, "a lane job")
-	T.eq(assault.laneIndex, 1, "the shortest")
 end)
 
-T.test("a walker makes for the next waypoint it has not reached, and leaves the lane once it no longer helps", function()
+T.test("a squad whose kind of lane could not be planned takes any lane", function()
+	local lanes = { key = "k", Kind("direct", 1000), Kind("flank", 1200) }
+	local raiders = { team = 3, role = "raid" }
+	Lanes.Assign({ raiders }, { [3] = lanes })
+	T.eq(raiders.laneIndex, 1, "no tours: the least taken lane")
+end)
+
+-- A lane is walked to its own end (the objective, a flank point, the enemy
+-- spawn), whatever the walker's goal, so a tour runs on past the objective.
+T.test("a walker makes for the next waypoint it has not reached, and leaves the lane once it no longer brings it nearer the lane's end", function()
 	local lane = { points = { P(0, 0), P(300, 0), P(600, 0) } }
 	T.eq(Lanes.Next(lane, P(10, 0), 1), 2, "the first reached: the second")
 	T.eq(Lanes.Next(lane, P(590, 10), 1), 4, "all reached")
-	T.eq(Lanes.Target(lane, P(10, 0), 2, P(1000, 0)).x, 300, "on toward the goal")
-	T.eq(Lanes.Target(lane, P(10, 0), 2, P(-500, 0)), nil, "the lane leads away from the goal")
-	T.eq(Lanes.Target(lane, P(590, 0), 4, P(1000, 0)), nil, "walked")
+	T.eq(Lanes.Target(lane, P(10, 0), 2).x, 300, "on toward the lane's end")
+	T.eq(Lanes.Target(lane, P(450, 0), 2), nil, "past that waypoint: it no longer helps")
+	T.eq(Lanes.Target(lane, P(590, 0), 4), nil, "walked")
 end)
 
 T.test("planning a lane costs more through areas an earlier lane took", function()

@@ -118,10 +118,11 @@ end)
 
 -- Lanes ------------------------------------------------------------------------
 
-local function Lane(ids, length, count)
+local function Lane(ids, length, count, kind)
 	local points = {}
 	for i = 1, count or 2 do points[i] = P(i * 100, 0) end
 	return {
+		kind = kind or "direct",
 		ids = ids,
 		points = points,
 		length = length,
@@ -138,8 +139,8 @@ local function Holding(role, index, lanes, laneIndex, team)
 	}
 end
 
-T.test("a team's lanes are told by length against the shortest, overlap with the others and who holds them", function()
-	local lanes = { key = "3:10", Lane({ 1, 2, 3, 4 }, 1000, 5), Lane({ 1, 5, 6, 7 }, 1500, 7) }
+T.test("a team's lanes are told by kind, length and who holds them", function()
+	local lanes = { key = "3:10", Lane({ 1, 2, 3, 4 }, 1000, 5), Lane({ 1, 5, 6, 7 }, 1500, 7, "tour") }
 	local fireTeams = {
 		Holding("escort", 1, lanes, 1),
 		Holding("raid", 1, lanes, 2),
@@ -149,27 +150,26 @@ T.test("a team's lanes are told by length against the shortest, overlap with the
 	}
 	local lines = Inspect.LaneLines(lanes, fireTeams, BLUE, nil, 0)
 	T.eq(#lines, 2, "one line per lane")
-	Has(lines[1], "lane 1: 1000 u (the shortest), 5 waypoints")
-	Has(lines[1], "shares 25% with lane 2")
+	Has(lines[1], "lane 1 (direct): 1000 u, 5 waypoints")
 	Has(lines[1], "held by escort 1, escort 2")
-	Has(lines[2], "lane 2: 1500 u (1.50 times the shortest), 7 waypoints")
+	Has(lines[2], "lane 2 (tour): 1500 u, 7 waypoints")
 	Has(lines[2], "held by raid 1")
 	Lacks(lines[2], "escort 3", "the other team's squad")
 	Lacks(lines[2], "assault 4", "a squad holding the last plan's lane")
 end)
 
 T.test("a lane no squad holds says so, and its label names its holders", function()
-	local lanes = { key = "k", Lane({ 1 }, 800), Lane({ 2 }, 900) }
+	local lanes = { key = "k", Lane({ 1 }, 800), Lane({ 2 }, 900, 2, "tour") }
 	local fireTeams = { Holding("raid", 2, lanes, 2) }
 	Has(Inspect.LaneLines(lanes, fireTeams, BLUE, nil, 0)[1], "held by no squad")
-	T.eq(Inspect.LaneLabel(lanes, 2, fireTeams, BLUE), "lane 2: 900 u, raid 2")
-	T.eq(Inspect.LaneLabel(lanes, 1, fireTeams, BLUE), "lane 1: 800 u")
+	T.eq(Inspect.LaneLabel(lanes, 2, fireTeams, BLUE), "lane 2 (tour): 900 u, raid 2")
+	T.eq(Inspect.LaneLabel(lanes, 1, fireTeams, BLUE), "lane 1 (direct): 800 u")
 end)
 
 T.test("a team without lanes says why: planning, or waiting to try again", function()
-	local planning = Inspect.LaneLines(nil, {}, BLUE, { planning = true, tries = 2 }, 0)
+	local planning = Inspect.LaneLines(nil, {}, BLUE, { planning = true, tries = 2, specs = { {}, {}, {}, {}, {} } }, 0)
 	Has(planning[1], "no lanes")
-	Has(planning[2], "planning: route 2 of " .. T.require("foundation.aiwar.lanes").LANE_TRIES)
+	Has(planning[2], "planning: lane 2 of 5")
 	local waiting = Inspect.LaneLines(nil, {}, BLUE, { planning = false, tries = 1, retryAt = 14 }, 10)
 	Has(waiting[2], "no route found; trying again in 4 s")
 	T.eq(#Inspect.LaneLines(nil, {}, BLUE, nil, 0), 1, "never planned: only that it has none")

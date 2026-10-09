@@ -32,4 +32,19 @@ T.test("an area is blocked to a team by any of its doors that blocks that team o
 	T.eq(Doors.Blocks({ Doors.ANY }, BLUE), true, "a wall")
 end)
 
+-- A trigger opens a door when one of its outputs sends that door Open,
+-- Toggle or Unlock (a spawn door's OnStartTouchAll -> Open); a trigger
+-- beside a door that only closes it (pl_bloodwater's
+-- door1_door_close_trigger) does not, so the door it shut stays shut.
+T.test("a trigger opens a door only through an output that opens that door", function()
+	local function Out(target, input) return { name = "OnStartTouch", target = target, input = input } end
+	T.eq(Doors.Opens({ Out("door6_door", "Open") }, "door6_door"), true, "Open")
+	T.eq(Doors.Opens({ Out("Door6_Door", "toggle") }, "door6_door"), true, "Toggle, whatever the case")
+	T.eq(Doors.Opens({ Out("door6_door", "Unlock") }, "door6_door"), true, "Unlock")
+	T.eq(Doors.Opens({ Out("door1_door", "Close") }, "door1_door"), false, "a trigger that closes it")
+	T.eq(Doors.Opens({ Out("other_door", "Open") }, "door1_door"), false, "another door")
+	T.eq(Doors.Opens({}, "door1_door"), false, "no outputs")
+	T.eq(Doors.Opens({ Out("door1_door", "Open") }, ""), false, "an unnamed door no output can name")
+end)
+
 T.finish()

@@ -658,9 +658,9 @@ end
 -- Straight at the goal, wherever it has moved to. A run that goes nowhere
 -- hands over to routes for a while.
 -- The lane waypoint a squad leader of a lane job makes for, or nil (no
--- lane, not its leader, or the lane walked: then straight on to the goal,
--- and not back onto that lane).
-function Travel:LaneTarget(me, goal)
+-- lane, not its leader, or the lane walked to its end: then straight on to
+-- the goal, and not back onto that lane).
+function Travel:LaneTarget(me)
 	local state = self.state
 	local member = state.member
 	local fireTeam = member.fireTeam
@@ -672,7 +672,7 @@ function Travel:LaneTarget(me, goal)
 	if state.lane ~= lane then state.lane, state.laneIndex = lane, 1 end
 	local here = me:Position()
 	state.laneIndex = Lanes.Next(lane, here, state.laneIndex)
-	local target = Lanes.Target(lane, here, state.laneIndex, goal)
+	local target = Lanes.Target(lane, here, state.laneIndex)
 	if not target then state.laneDone = lane end
 	state.onLane = target ~= nil and fireTeam.laneIndex or nil
 	return target
@@ -778,7 +778,7 @@ function Travel:Update(me)
 		self.sidestep = nil
 	end
 	-- a squad leader on a lane walks it, waypoint by waypoint
-	local laneTarget = not self.spot and self:LaneTarget(me, goal)
+	local laneTarget = not self.spot and self:LaneTarget(me)
 	if laneTarget then return self:Chase(me, laneTarget) end
 	-- an engine that plans its own routes keeps the goal: changing its target
 	-- to our waypoints would only restart its runs

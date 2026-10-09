@@ -20,6 +20,7 @@ local Zone = WETSAND.require("foundation.aiwar.zone")
 local Tactics = WETSAND.require("foundation.aiwar.tactics")
 local Squad = WETSAND.require("foundation.aiwar.squad")
 local Lanes = WETSAND.require("foundation.aiwar.lanes")
+local Doors = WETSAND.require("foundation.npc.doors")
 local Inspect = WETSAND.require("foundation.ns.inspect")
 local Tuning = WETSAND.require("foundation.ns.tuning")
 local Gamemode = WETSAND.require("foundation.gamemode")
@@ -1823,10 +1824,11 @@ function Controller:Patients()
 	return patients
 end
 
--- Lanes (foundation.aiwar.lanes): each team's ways from its spawn out to
--- its front (the scenario's Front: on payload its own cart, else the
--- enemy's), planned one after the other,
--- each costing more through the areas the ones before took. A team's lanes
+-- Lanes (foundation.aiwar.lanes): each team's ways from its spawn: straight
+-- to its front (the scenario's Front: on payload its own cart, else the
+-- enemy's), to either side of it, and through the enemy's defenses (its
+-- posts, else its front) on to the enemy's spawn, planned one after the
+-- other, each costing more through the bands of the ones before. A team's lanes
 -- are planned again once its front has moved LANE_REPLAN from where they
 -- led, and tried again after LANE_RETRY when no route was found (a shut
 -- gate in setup); the last lanes found stand until new ones are ready.
@@ -1841,7 +1843,7 @@ function Controller:UpdateLanes(field, now)
 		local plan = self.lanePlans[team]
 		if front and not (plan and plan.planning) and now >= (plan and plan.retryAt or 0)
 			and (not plan or Track.Distance(front, plan.to) > LANE_REPLAN) then
-			self:PlanLanes(team, front, now)
+			self:PlanLanes(team, front, field, now)
 		end
 		if not front then self.laneSets[team] = nil end
 		field.lanes[team] = self.laneSets[team]
@@ -1864,15 +1866,34 @@ local function NearAreas(area, radius)
 	return list
 end
 
-function Controller:PlanLanes(team, to, now)
-	local target = ToVector(to)
-	local from, best
-	for _, spot in ipairs(WETSAND.SpawnPoints(team)) do
+-- The enemy's defense points for a team's tours: its posts, else its front.
+function Controller:EnemyDefenses(field, team)
+	local enemy = AiWar.EnemyOf(team)
+	local posts = field.posts and field.posts[enemy]
+	if posts and #posts > 0 then return posts end
+	local front = self.scenario:Front(field, enemy)
+	return front and { front } or {}
+end
+
+local function Nearest(spots, p)
+	local target = ToVector(p)
+	local best, bestDistance
+	for _, spot in ipairs(spots) do
 		local d = spot:GetPos():DistToSqr(target)
-		if not best or d < best then from, best = spot:GetPos(), d end
+		if not bestDistance or d < bestDistance then best, bestDistance = spot, d end
 	end
-	if not from then return end
-	local plan = { to = to, planning = true, tries = 0, penalized = {}, lanes = { key = team .. ":" .. now } }
+	return best
+end
+
+function Controller:PlanLanes(team, to, field, now)
+	local own = Nearest(WETSAND.SpawnPoints(team), to)
+	if not own then return end
+	local from = Point(own:GetPos())
+	local enemySpawns = WETSAND.SpawnPoints(AiWar.EnemyOf(team))
+	local function EnemySpawnNear(p) return Point(Nearest(enemySpawns, p):GetPos()) end
+	local defenses = #enemySpawns > 0 and self:EnemyDefenses(field, team) or {}
+	local plan = { to = to, planning = true, tries = 0, penalized = {}, lanes = { key = team .. ":" .. now },
+		specs = Lanes.Plans(from, to, defenses, EnemySpawnNear) }
 	self.lanePlans[team] = plan
 	local npcs = WETSAND.Feature("npc")
 	local function Finish()
@@ -1884,31 +1905,45 @@ function Controller:PlanLanes(team, to, now)
 			plan.to = { x = math.huge, y = 0, z = 0 } -- stale: plan again after the retry
 		end
 	end
-	local function Try()
-		plan.tries = plan.tries + 1
+	-- Routes leg `leg` of the spec, from `start`, adding to the route so far;
+	-- done(route) with the whole route, or with nil when a leg has none.
+	local function Leg(spec, leg, start, areas, raw, done)
+		local stop = ToVector(spec.stops[leg])
 		npcs:RequestRoute({
-			avoid = function(area) return self:UnderCart(area) end,
-			from = from,
-			to = target,
+			-- nor through a shut door nothing opens: a lane is kept for long
+			avoid = function(area) return self:UnderCart(area) or npcs:DoorWallIn(area) end,
+			from = start,
+			to = stop,
 			strategy = Lanes.Strategy,
 			limits = HL2Path.LIMITS,
 			bot = { entIndex = 0, now = CurTime(), team = team, route = TFBot.FASTEST_ROUTE, miniBoss = false,
 				roundWon = false, winningTeam = WETSAND.TEAM_UNASSIGNED, penalized = plan.penalized },
-			onDone = function(areas, found)
+			onDone = function(legAreas, found)
 				if self.lanePlans[team] ~= plan then return end
-				if areas then
-					local ids, raw = {}, {}
-					for i, area in ipairs(areas) do ids[i] = area:GetID() end
-					for i, v in ipairs(npcs:RouteWaypoints(areas, target, found, from)) do raw[i] = Point(v) end
-					local points, length = Lanes.Thin(raw, WorldWalkClear)
-					local route = { ids = ids, points = points, length = length }
-					plan.shortest = plan.shortest or length
-					if Lanes.Accept(plan.lanes, route, plan.shortest) then plan.lanes[#plan.lanes + 1] = route end
-					for id in pairs(Lanes.Band(BandAreas(areas), NearAreas)) do plan.penalized[id] = true end
+				if not legAreas then return done(nil) end
+				for _, area in ipairs(legAreas) do areas[#areas + 1] = area end
+				for i, v in ipairs(npcs:RouteWaypoints(legAreas, stop, found, start)) do
+					if i > 1 or #raw == 0 then raw[#raw + 1] = Point(v) end
 				end
-				if areas and #plan.lanes < Lanes.LANES_MAX and plan.tries < Lanes.LANE_TRIES then Try() else Finish() end
+				if spec.stops[leg + 1] then return Leg(spec, leg + 1, stop, areas, raw, done) end
+				done(areas, raw)
 			end,
 		})
+	end
+	local function Try()
+		plan.tries = plan.tries + 1
+		local spec = plan.specs[plan.tries]
+		if not spec then return Finish() end
+		Leg(spec, 1, ToVector(from), {}, {}, function(areas, raw)
+			if areas then
+				local ids = {}
+				for i, area in ipairs(areas) do ids[i] = area:GetID() end
+				local points, length = Lanes.Thin(raw, WorldWalkClear)
+				plan.lanes[#plan.lanes + 1] = { kind = spec.kind, ids = ids, points = points, length = length }
+				for id in pairs(Lanes.Band(BandAreas(areas), NearAreas)) do plan.penalized[id] = true end
+			end
+			Try()
+		end)
 	end
 	Try()
 end
@@ -1968,14 +2003,17 @@ end
 
 -- A team's spawn doors open through trigger_multiples filtered by
 -- filter_activator_tfteam, other doors through a trigger_multiple around
--- them (TF2's nav mesh counts a door so overlapped as one anyone opens,
--- foundation.npc.doors), and NPCs only touch triggers flagged for them.
-local function AroundADoor(trigger, doors)
+-- them that opens them (foundation.npc.doors Opens; an unnamed door, which
+-- no output names, by any around it), and NPCs only touch triggers flagged
+-- for them. A trigger beside a door that only closes it is left alone.
+local function OpensADoor(trigger, doors)
 	local mins, maxs = trigger:WorldSpaceAABB()
+	local outputs = WETSAND.KeyValues(trigger).outputs
 	for _, door in ipairs(doors) do
 		local doorMins, doorMaxs = door:WorldSpaceAABB()
+		local name = door:GetName()
 		if mins.x <= doorMaxs.x and doorMins.x <= maxs.x and mins.y <= doorMaxs.y and doorMins.y <= maxs.y
-			and mins.z <= doorMaxs.z and doorMins.z <= maxs.z then
+			and mins.z <= doorMaxs.z and doorMins.z <= maxs.z and (name == "" or Doors.Opens(outputs, name)) then
 			return true
 		end
 	end
@@ -1987,7 +2025,7 @@ function Controller:OpenDoorsToSoldiers()
 	for _, trigger in ipairs(ents.FindByClass("trigger_multiple")) do
 		local filter = trigger:GetInternalVariable("m_hFilter")
 		local teamDoor = IsValid(filter) and filter:GetClass() == "filter_activator_tfteam"
-		if self.doorFlags[trigger] == nil and (teamDoor or AroundADoor(trigger, doors)) then
+		if self.doorFlags[trigger] == nil and (teamDoor or OpensADoor(trigger, doors)) then
 			local flags = trigger:GetSpawnFlags()
 			self.doorFlags[trigger] = flags
 			trigger:SetKeyValue("spawnflags", tostring(bit.bor(flags, SF_TRIGGER_ALLOW_NPCS)))

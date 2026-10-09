@@ -1,26 +1,28 @@
--- Lanes: the different ways a team's offensive squads (escorts, raiders)
--- take from their spawn out to their front, so they come on by several
--- paths instead of all by the shortest. The aiwar controller plans a team's
--- lanes one after the other over the nav mesh, each route costing more
+-- Lanes: the ways a team's offensive squads (escorts, raiders) take from
+-- their spawn, so they come on by several paths instead of all by the
+-- shortest. A team plans (Plans) a direct lane to its objective, a flank
+-- to either side of it (FLANK_RADIUS beside the objective, left and right
+-- of the way in), and two tours through the enemy's defenses (its leftmost
+-- and rightmost) on to the enemy's spawn nearest each. The aiwar controller
+-- routes them one after the other over the nav mesh, each costing more
 -- (LANE_PENALTY) through the band of the routes before it (Band: their
 -- areas and those within LANE_SPREAD, so a later route leaves the corridor
--- instead of stepping one area aside; Strategy); it
--- keeps a route as a lane when it shares less than MAX_OVERLAP of its areas
--- with each lane kept and is at most MAX_DETOUR of the shortest. Each squad
--- holds a lane (Assign); its leader walks the lane's waypoints (Next) until
--- going on along it no longer brings it nearer its goal.
+-- instead of stepping one area aside; Strategy), and keeps each it can
+-- route. Each squad holds a lane of a kind its job takes (Assign); its
+-- leader walks the lane's waypoints (Next) until going on along it no
+-- longer brings it nearer the lane's end.
 --
--- A lane is { ids (its nav areas), points (its waypoints, WAYPOINT_SPACING
--- apart), length }; a team's lanes are { key, [1..n] = lane }. Positions
--- are { x, y, z } tables.
-local ipairs, pairs, sort = ipairs, pairs, table.sort
-local sqrt = math.sqrt
+-- A lane is { kind, ids (its nav areas), points (its waypoints, about
+-- WAYPOINT_SPACING apart), length }; a team's lanes are { key, [1..n] =
+-- lane }. Positions are { x, y, z } tables.
+local ipairs, pairs = ipairs, pairs
+local huge, sqrt = math.huge, math.sqrt
 local HL2Path = require("foundation.npc.path.hl2")
 local Path = require("foundation.npc.path")
 module(...)
 
-LANES_MAX, LANE_TRIES = 3, 5
-MAX_OVERLAP, MAX_DETOUR, LANE_PENALTY = 0.5, 1.6, 8
+LANE_PENALTY = 8
+FLANK_RADIUS = 600 -- how far beside the objective a flank lane ends
 LANE_SPREAD = 300 -- how far either side of a route its band reaches
 WAYPOINT_SPACING, WAYPOINT_REACH, LOOKAHEAD = 300, 160, 2
 
@@ -30,6 +32,15 @@ JOBS = {
 	escort = true,
 	raid = true,
 	assault = true,
+}
+
+DIRECT, FLANK, TOUR = "direct", "flank", "tour"
+-- The kinds of lane each job takes: escorts and assault squads come at the
+-- objective, raiders go round through the enemy.
+JOB_KINDS = {
+	escort = { [DIRECT] = true, [FLANK] = true },
+	assault = { [DIRECT] = true, [FLANK] = true },
+	raid = { [TOUR] = true },
 }
 
 local function Distance(a, b)
@@ -60,26 +71,31 @@ function Band(route, near)
 	return band
 end
 
--- The share of a's areas that b also takes.
-function Overlap(a, b)
-	if #a.ids == 0 then return 1 end
-	local inB = {}
-	for _, id in ipairs(b.ids) do inB[id] = true end
-	local shared = 0
-	for _, id in ipairs(a.ids) do
-		if inB[id] then shared = shared + 1 end
-	end
-	return shared / #a.ids
-end
+local function Point(x, y, z) return { x = x, y = y, z = z } end
 
--- Whether a route makes a lane beside the lanes kept, the shortest route's
--- length being `shortest`.
-function Accept(lanes, route, shortest)
-	if shortest and route.length > shortest * MAX_DETOUR then return false end
-	for _, lane in ipairs(lanes) do
-		if Overlap(route, lane) >= MAX_OVERLAP then return false end
+-- The lanes a team plans, in order: { kind, stops }, routed from spawn
+-- through each stop. objective: where the team is going (its front);
+-- defenses: the enemy's defense points (its posts, else its front), may be
+-- empty; enemySpawnNear(p): the enemy spawn nearest p.
+function Plans(spawn, objective, defenses, enemySpawnNear)
+	local dx, dy = objective.x - spawn.x, objective.y - spawn.y
+	local length = sqrt(dx * dx + dy * dy)
+	local lx, ly = -dy / length, dx / length -- the left of the way in
+	local plans = {
+		{ kind = DIRECT, stops = { objective } },
+		{ kind = FLANK, stops = { Point(objective.x + lx * FLANK_RADIUS, objective.y + ly * FLANK_RADIUS, objective.z) } },
+		{ kind = FLANK, stops = { Point(objective.x - lx * FLANK_RADIUS, objective.y - ly * FLANK_RADIUS, objective.z) } },
+	}
+	if #defenses == 0 then return plans end
+	local left, right, most, least = nil, nil, -huge, huge
+	for _, p in ipairs(defenses) do
+		local side = (p.x - spawn.x) * lx + (p.y - spawn.y) * ly
+		if side > most then left, most = p, side end
+		if side < least then right, least = p, side end
 	end
-	return true
+	plans[4] = { kind = TOUR, stops = { left, enemySpawnNear(left) } }
+	plans[5] = { kind = TOUR, stops = { right, enemySpawnNear(right) } }
+	return plans
 end
 
 -- A route's points thinned to about WAYPOINT_SPACING apart (the last kept),
@@ -103,10 +119,22 @@ function Thin(points, clear)
 	return kept, length
 end
 
+-- The lanes a squad of job `role` may take: those of its kinds
+-- (JOB_KINDS), or every lane when none of those could be planned.
+local function Choices(lanes, role)
+	local choices = {}
+	for i, lane in ipairs(lanes) do
+		if JOB_KINDS[role][lane.kind] then choices[#choices + 1] = i end
+	end
+	if #choices > 0 then return choices end
+	for i = 1, #lanes do choices[i] = i end
+	return choices
+end
+
 -- Gives each squad of a lane job a lane of its team, keeping the one it has
--- while its team's lanes are the same plan (lanes.key): the least taken
--- lane, raiders trying the longest first (the outer ways), escorts the
--- shortest. fireTeams: foundation.aiwar's; lanesByTeam: team -> lanes.
+-- while its team's lanes are the same plan (lanes.key): of the kinds its
+-- job takes, the least taken, the first planned on a tie. fireTeams:
+-- foundation.aiwar's; lanesByTeam: team -> lanes.
 function Assign(fireTeams, lanesByTeam)
 	local taken = {}
 	local waiting = {}
@@ -126,15 +154,8 @@ function Assign(fireTeams, lanesByTeam)
 	for _, fireTeam in ipairs(waiting) do
 		local lanes = lanesByTeam[fireTeam.team]
 		taken[lanes] = taken[lanes] or {}
-		local order = {}
-		for i = 1, #lanes do order[i] = i end
-		local longestFirst = fireTeam.role == "raid"
-		sort(order, function(a, b)
-			if longestFirst then return lanes[a].length > lanes[b].length end
-			return lanes[a].length < lanes[b].length
-		end)
 		local best
-		for _, i in ipairs(order) do
+		for _, i in ipairs(Choices(lanes, fireTeam.role)) do
 			if best == nil or (taken[lanes][i] or 0) < (taken[lanes][best] or 0) then best = i end
 		end
 		taken[lanes][best] = (taken[lanes][best] or 0) + 1
@@ -163,12 +184,14 @@ function Next(lane, pos, index)
 	return best
 end
 
--- Where a walker at pos, with index its next waypoint, goes to reach goal:
--- the waypoint, or nil once the lane is done (walked to its end, or the
--- waypoint no nearer the goal than the walker is).
-function Target(lane, pos, index, goal)
+-- Where a walker at pos, with index its next waypoint, goes along the
+-- lane: the waypoint, or nil once the lane is done (walked to its end, or
+-- the waypoint no nearer the lane's end than the walker is). A lane is
+-- walked to its own end, so a tour runs on past the objective.
+function Target(lane, pos, index)
 	local point = lane.points[index]
 	if not point then return nil end
+	local goal = lane.points[#lane.points]
 	if Distance(point, goal) >= Distance(pos, goal) then return nil end
 	return point
 end

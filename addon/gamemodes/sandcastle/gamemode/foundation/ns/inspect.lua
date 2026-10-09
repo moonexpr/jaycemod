@@ -13,7 +13,6 @@ local atan2, floor, max, min, sqrt, HUGE = math.atan2, math.floor, math.max, mat
 local format, concat = string.format, table.concat
 local Tactics = require("foundation.aiwar.tactics")
 local Squad = require("foundation.aiwar.squad")
-local Lanes = require("foundation.aiwar.lanes")
 local Orders = require("foundation.aiwar.orders")
 module(...)
 
@@ -26,7 +25,6 @@ local function Distance(a, b)
 	return sqrt(dx * dx + dy * dy + dz * dz)
 end
 
-local function Percent(share) return Round(share * 100) .. "%" end
 
 -- Squads ---------------------------------------------------------------------------
 
@@ -126,9 +124,9 @@ function Holders(lanes, index, fireTeams, team)
 	return names
 end
 
--- "lane 2: 900 u, raid 2" for the overlay.
+-- "lane 2 (flank): 900 u, raid 2" for the overlay.
 function LaneLabel(lanes, index, fireTeams, team)
-	local label = format("lane %d: %d u", index, Round(lanes[index].length))
+	local label = format("lane %d (%s): %d u", index, lanes[index].kind, Round(lanes[index].length))
 	local holders = Holders(lanes, index, fireTeams, team)
 	if #holders > 0 then label = label .. ", " .. concat(holders, ", ") end
 	return label
@@ -137,16 +135,15 @@ end
 -- Why a team has no new lanes yet, or nil.
 function PlanStatus(plan, now)
 	if not plan then return nil end
-	if plan.planning then return format("planning: route %d of %d", plan.tries, Lanes.LANE_TRIES) end
+	if plan.planning then return format("planning: lane %d of %d", plan.tries, #plan.specs) end
 	if plan.retryAt and now < plan.retryAt then
 		return format("no route found; trying again in %d s", Round(plan.retryAt - now))
 	end
 	return nil
 end
 
--- A line per lane: its length against the shortest, its waypoints, the
--- share of its areas each other lane takes too, and who holds it. With no
--- lanes, that and why. plan: the controller's lane plan for the team, or nil.
+-- A line per lane: its kind, length and waypoints, and who holds it. With
+-- no lanes, that and why. plan: the controller's lane plan for the team, or nil.
 function LaneLines(lanes, fireTeams, team, plan, now)
 	local lines = {}
 	local status = PlanStatus(plan, now)
@@ -155,17 +152,9 @@ function LaneLines(lanes, fireTeams, team, plan, now)
 		if status then lines[2] = status end
 		return lines
 	end
-	local shortest = HUGE
-	for _, lane in ipairs(lanes) do shortest = min(shortest, lane.length) end
 	for i, lane in ipairs(lanes) do
-		local ratio = lane.length == shortest and "the shortest" or format("%.2f times the shortest", lane.length / shortest)
-		local shares = {}
-		for j, other in ipairs(lanes) do
-			if j ~= i then shares[#shares + 1] = format("%s with lane %d", Percent(Lanes.Overlap(lane, other)), j) end
-		end
 		local holders = Holders(lanes, i, fireTeams, team)
-		lines[i] = format("lane %d: %d u (%s), %d waypoints%s; held by %s", i, Round(lane.length), ratio, #lane.points,
-			#shares > 0 and ("; shares " .. concat(shares, ", ")) or "",
+		lines[i] = format("lane %d (%s): %d u, %d waypoints; held by %s", i, lane.kind, Round(lane.length), #lane.points,
 			#holders > 0 and concat(holders, ", ") or "no squad")
 	end
 	if status then lines[#lines + 1] = status end

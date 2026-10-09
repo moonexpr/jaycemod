@@ -203,7 +203,7 @@ local function DoorTriggers()
 			local mins, maxs = trigger:WorldSpaceAABB()
 			local filter, owner = trigger:GetInternalVariable("m_hFilter"), nil
 			if IsValid(filter) and filter:GetClass() == "filter_activator_tfteam" and filter.team ~= UNASSIGNED then owner = filter.team end
-			triggers[#triggers + 1] = { mins = mins, maxs = maxs, owner = owner }
+			triggers[#triggers + 1] = { mins = mins, maxs = maxs, owner = owner, outputs = WETSAND.KeyValues(trigger).outputs }
 		end
 	end
 	return triggers
@@ -268,8 +268,11 @@ function Controller:RefreshBlockers(now)
 			locked = door:GetInternalVariable("m_bLocked") == true,
 			controlled = false,
 		}
+		-- a trigger controls the door when it opens it; an unnamed door, which
+		-- no output can name, when it overlaps it
+		local name = door:GetName()
 		for _, trigger in ipairs(triggers) do
-			if Overlapping(mins, maxs, trigger.mins, trigger.maxs) then
+			if Overlapping(mins, maxs, trigger.mins, trigger.maxs) and (name == "" or Doors.Opens(trigger.outputs, name)) then
 				state.controlled = true
 				state.owner = trigger.owner or state.owner
 			end

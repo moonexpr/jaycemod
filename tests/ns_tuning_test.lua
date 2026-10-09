@@ -41,12 +41,12 @@ end)
 
 T.test("names are found whatever their case", function()
 	local tuner = Tuning.Tuner.New(MODULES)
-	T.eq(tuner:Set("lanes.max_overlap", "0.25"), true, "lower case")
-	T.eq(Lanes.MAX_OVERLAP, 0.25, "set")
-	local first = { ids = { 1, 2, 3, 4 }, length = 100 }
-	T.eq(Lanes.Accept({ first }, { ids = { 1, 5, 6, 7 }, length = 100 }, 100), false, "a quarter shared is too much now")
+	T.eq(tuner:Set("lanes.flank_radius", "250"), true, "lower case")
+	T.eq(Lanes.FLANK_RADIUS, 250, "set")
+	local plans = Lanes.Plans({ x = 0, y = 0, z = 0 }, { x = 1000, y = 0, z = 0 }, {}, nil)
+	T.eq(plans[2].stops[1].y, 250, "a flank ends 250 beside the objective now")
 	tuner:ResetAll()
-	T.eq(Lanes.MAX_OVERLAP ~= 0.25, true, "every one reset")
+	T.eq(Lanes.FLANK_RADIUS ~= 250, true, "every one reset")
 end)
 
 T.test("a value is refused when the name is unknown, it is no number, out of range, or not whole where it must be", function()
