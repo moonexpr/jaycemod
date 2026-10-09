@@ -215,6 +215,7 @@ local function AnnounceTimeAdded(t)
 	if t == RED or t == BLUE then
 		WETSAND.BroadcastPA(t, table.Random(TIME_ADDED_WINNER))
 		WETSAND.BroadcastPA(WETSAND.EnemyOf(t), TIME_ADDED_LOSER)
+		WETSAND.BroadcastPA(SPECTATOR, TIME_ADDED)
 	else
 		WETSAND.BroadcastPA(UNASSIGNED, TIME_ADDED)
 	end
