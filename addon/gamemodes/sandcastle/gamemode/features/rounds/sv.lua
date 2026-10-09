@@ -77,6 +77,7 @@ local OVERTIME_NAG = "Game.Overtime"
 local SUDDEN_DEATH = "Game.SuddenDeath"
 
 local ROUND_RESTART = "Game.Stalemate"
+local SPECTATOR_WIN_MUSIC = "MatchMaking.RoundEndStalemateMusic"
 
 local function Settings()
 	return {
@@ -202,7 +203,10 @@ local function PlayWinSong(winner)
 	end
 	WETSAND.BroadcastPA(winner, "Game.YourTeamWon")
 	WETSAND.BroadcastPA(WETSAND.EnemyOf(winner), "Game.YourTeamLost")
+	-- spectators, of neither team, hear who won over the stalemate music
+	-- (CHAN_AUTO, under the announcer's CHAN_VOICE2)
 	WETSAND.BroadcastPA(SPECTATOR, winner == BLUE and "Announcer.CompRoundWinBlu" or "Announcer.CompRoundWinRed")
+	WETSAND.BroadcastSound(SPECTATOR, SPECTATOR_WIN_MUSIC)
 
 end
 
@@ -825,7 +829,9 @@ end
 
 function Controller:RestartRound()
 	WETSAND.BroadcastPA(UNASSIGNED, ROUND_RESTART)
-	self:Apply(self.round:RestartRound(CurTime()))
+	timer.Simple(5, function()
+		self:Apply(self.round:RestartRound(CurTime()))
+	end)
 end
 
 function Controller:Halted()
