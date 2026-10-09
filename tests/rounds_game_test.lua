@@ -291,18 +291,72 @@ T.test("the win limit ends the game in an intermission, then the level changes",
 		"state GAME_OVER",
 	}, "game over")
 	T.eq(effects[1]["until"], now + 15 + 10, "the intermission lasts mp_chattime")
+	T.eq(effects[1].winner, RED, "RED won the match")
 	Expect(round:Think(now + 20, World()), {}, "the intermission")
 	Expect(round:Think(now + 25, World()), { "changelevel" }, "the level changes")
 	Expect(round:Think(now + 26, World()), {}, "once")
 end)
 
+-- RED leads, so the match has a winner (a tie goes to sudden death).
+local RED_LEADS = { [RED] = 1, [BLUE] = 0 }
+
 T.test("mp_maxrounds counts full rounds", function()
 	local round = Running({ maxrounds = 1 })
 	round:SetWinningTeam(T0 + 20, RED, W.ALL_POINTS_CAPTURED, true, false, false, FakeObjective.Objective())
-	Expect(round:Think(T0 + 35, World()), {
+	Expect(round:Think(T0 + 35, World({ scores = RED_LEADS })), {
 		"intermission Reached Round Limit",
 		"state GAME_OVER",
 	}, "game over")
+end)
+
+-- A match that ends tied is not over: it goes to sudden death (even with
+-- mp_stalemate_enable off). Ended at a round's end, the next round is
+-- played as sudden death; ended mid-round, that round becomes one.
+local TIED = { scores = { [RED] = 1, [BLUE] = 1 } }
+
+T.test("a match that ends tied at a round's end plays the next round as sudden death", function()
+	local round = Running({ maxrounds = 1, stalemateEnable = false })
+	round:SetWinningTeam(T0 + 20, RED, W.ALL_POINTS_CAPTURED, true, false, false, FakeObjective.Objective())
+	local seen = {}
+	for t = 35, 80 do
+		local text = Describe(round:Think(T0 + t, World(TIED)))
+		if text ~= "" then seen[#seen + 1] = text end
+	end
+	local all = table.concat(seen, ", ")
+	T.eq(all:find("intermission", 1, true), nil, "no game over: " .. all)
+	T.eq(all:find("sudden_death " .. SM.MATCH_TIED, 1, true) ~= nil, true, "sudden death: " .. all)
+	T.eq(round:State(), State.STALEMATE, "in sudden death")
+end)
+
+T.test("a match tied mid-round turns that round into sudden death", function()
+	local round = Running({ winlimit = 2, stalemateEnable = false })
+	local text = ""
+	for t = 21, 25 do text = text .. Describe(round:Think(T0 + t, World({ scores = { [RED] = 2, [BLUE] = 2 } }))) end
+	T.eq(text:find("sudden_death " .. SM.MATCH_TIED, 1, true) ~= nil, true, text)
+	T.eq(text:find("intermission", 1, true), nil, "no game over")
+	T.eq(round:State(), State.STALEMATE)
+end)
+
+T.test("the match winner is the team with the higher score; a tie, nobody", function()
+	T.eq(Rounds.MatchWinner({ [RED] = 3, [BLUE] = 1 }), RED)
+	T.eq(Rounds.MatchWinner({ [RED] = 0, [BLUE] = 2 }), BLUE)
+	T.eq(Rounds.MatchWinner({ [RED] = 2, [BLUE] = 2 }), Rounds.NOBODY_WON)
+	T.eq(Rounds.MatchWinner({}), Rounds.NOBODY_WON, "no scores")
+end)
+
+-- The level after the match: TF2's nextlevel when set, else GMod's map
+-- cycle (game.GetMapNext), else the map again; never a map not installed.
+T.test("the next level is nextlevel, else the map cycle's next, else this map again", function()
+	local function Installed(list)
+		local set = {}
+		for _, m in ipairs(list) do set[m] = true end
+		return function(map) return set[map] == true end
+	end
+	local exists = Installed({ "pl_upward", "cp_steel", "pl_swiftwater_final1" })
+	T.eq(Rounds.NextMap("cp_steel", "pl_upward", "pl_swiftwater_final1", exists), "cp_steel", "nextlevel first")
+	T.eq(Rounds.NextMap("", "pl_upward", "pl_swiftwater_final1", exists), "pl_upward", "then the cycle")
+	T.eq(Rounds.NextMap("", "", "pl_swiftwater_final1", exists), "pl_swiftwater_final1", "then this map")
+	T.eq(Rounds.NextMap("koth_gone", "cp_gone", "pl_swiftwater_final1", exists), "pl_swiftwater_final1", "never a map not installed")
 end)
 
 T.test("the time limit waits for mini-rounds that must all be played", function()
@@ -314,13 +368,13 @@ T.test("the time limit waits for mini-rounds that must all be played", function(
 	})
 	local round = Running({ timelimit = TIMELIMIT_MINUTES })
 	round:SetWinningTeam(now, BLUE, W.ALL_POINTS_CAPTURED, false, false, false, objective)
-	local effects = round:Think(now + 15, World({ objective = objective }))
+	local effects = round:Think(now + 15, World({ objective = objective, scores = RED_LEADS }))
 	T.eq(effects[1].kind, "previous_round_end", "a mini-round left: the game goes on")
 
 	local last = Running({ timelimit = TIMELIMIT_MINUTES })
 	objective.numPlayable = 0
 	last:SetWinningTeam(now, BLUE, W.ALL_POINTS_CAPTURED, false, false, false, objective)
-	Expect(last:Think(now + 15, World({ objective = objective })), {
+	Expect(last:Think(now + 15, World({ objective = objective, scores = RED_LEADS })), {
 		"intermission Reached Time Limit",
 		"state GAME_OVER",
 	}, "none left")
@@ -427,7 +481,7 @@ end)
 T.test("a halt during the intermission unfreezes everyone", function()
 	local round = Running({ maxrounds = 1 })
 	round:SetWinningTeam(T0 + 20, RED, W.ALL_POINTS_CAPTURED, true, false, false, FakeObjective.Objective())
-	round:Think(T0 + 35, World())
+	round:Think(T0 + 35, World({ scores = RED_LEADS }))
 	Expect(round:Halt(T0 + 36), {
 		"unfreeze",
 		"state BETWEEN_RNDS",

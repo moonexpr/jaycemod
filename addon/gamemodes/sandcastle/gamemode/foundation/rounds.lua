@@ -33,6 +33,7 @@ STALEMATE = {
 	JOIN_MID = 0,
 	TIMER = 1,
 	SERVER_TIMELIMIT = 2,
+	MATCH_TIED = 3, -- a limit ended the match on a tied score
 }
 
 local UNASSIGNED, RED, BLUE = Teams.UNASSIGNED, Teams.RED, Teams.BLUE
@@ -130,6 +131,26 @@ end
 -- CTeamplayRoundBasedRules::GetTimeLeft
 function TimeLeft(mapResetTime, timelimitMinutes, now)
 	return math.max(0, math.floor(mapResetTime + timelimitMinutes * SECONDS_PER_MINUTE - now))
+end
+
+-- The match's winner as it ends: the team with the higher score, or
+-- NOBODY_WON on a tie (or no scores).
+NOBODY_WON = UNASSIGNED
+
+function MatchWinner(scores)
+	local red, blue = scores[RED] or 0, scores[BLUE] or 0
+	if red > blue then return RED end
+	if blue > red then return BLUE end
+	return NOBODY_WON
+end
+
+-- The level the match ends into: TF2's nextlevel when set, else the map
+-- cycle's next (GMod's game.GetMapNext), else the current map again; a map
+-- not installed (exists(map) false) is skipped.
+function NextMap(nextlevel, cycleNext, current, exists)
+	if nextlevel ~= "" and exists(nextlevel) then return nextlevel end
+	if cycleNext ~= "" and exists(cycleNext) then return cycleNext end
+	return current
 end
 
 -- CheckWinLimit
@@ -345,27 +366,56 @@ local function TransitionDue(self, now)
 	return self.transitionAt ~= nil and now >= self.transitionAt
 end
 
--- GoToIntermission: everyone freezes for mp_chattime, then the level changes.
-local function GoToIntermission(self, effects, reason, now)
+-- GoToIntermission: everyone freezes for mp_chattime, then the level
+-- changes; the match's winner (MatchWinner) is celebrated meanwhile.
+local function GoToIntermission(self, effects, reason, now, world)
 	self.intermissionEnd = now + self.settings.chattime
 	Add(effects, {
 		kind = "intermission",
 		reason = reason,
+		winner = MatchWinner(world.scores),
 		["until"] = self.intermissionEnd,
 	})
 	return Enter(self, effects, State.GAME_OVER, now)
 end
 
-local function CheckWinLimit(self, effects, now, world)
-	if not WinLimitReached(self.settings.winlimit, world.scores) then return false end
-	GoToIntermission(self, effects, "Reached Win Limit", now)
-	return true
+-- The tied match's sudden death, whatever mp_stalemate_enable says.
+local function MatchSuddenDeath(self, effects, now)
+	self.suddenDeathMatch = false
+	self.forceMapReset = true
+	self.winningTeam = UNASSIGNED
+	Add(effects, {
+		kind = "sudden_death",
+		reason = STALEMATE.MATCH_TIED,
+	})
+	return Transition(self, effects, State.STALEMATE, now)
 end
 
-local function CheckMaxRounds(self, effects, now)
+-- A limit ended the match: its intermission, or on a tied score sudden death
+-- (MATCH_TIED), now while a round runs, else in the next round
+-- (suddenDeathMatch, which RND_RUNNING's think takes up). True when the
+-- match ended or went to sudden death now; false lets the round go on.
+local function EndMatch(self, effects, reason, now, world)
+	if MatchWinner(world.scores) ~= NOBODY_WON then
+		GoToIntermission(self, effects, reason, now, world)
+		return true
+	end
+	if self.state == State.RND_RUNNING then
+		MatchSuddenDeath(self, effects, now)
+		return true
+	end
+	self.suddenDeathMatch = true
+	return false
+end
+
+local function CheckWinLimit(self, effects, now, world)
+	if not WinLimitReached(self.settings.winlimit, world.scores) then return false end
+	return EndMatch(self, effects, "Reached Win Limit", now, world)
+end
+
+local function CheckMaxRounds(self, effects, now, world)
 	if not MaxRoundsReached(self.settings.maxrounds, self.roundsPlayed) then return false end
-	GoToIntermission(self, effects, "Reached Round Limit", now)
-	return true
+	return EndMatch(self, effects, "Reached Round Limit", now, world)
 end
 
 local function CheckTimeLimit(self, effects, now, world)
@@ -380,8 +430,7 @@ local function CheckTimeLimit(self, effects, now, world)
 		afterStalemate = self.changelevelAfterStalemate,
 	})
 	if not reached then return false end
-	GoToIntermission(self, effects, "Reached Time Limit", now)
-	return true
+	return EndMatch(self, effects, "Reached Time Limit", now, world)
 end
 
 -- CTFGameRules::SetupOnRoundStart: overtime ends and every entity hears
@@ -507,6 +556,11 @@ THINK[State.RND_RUNNING] = function(self, effects, now, world)
 		Transition(self, effects, State.PREGAME, now, world)
 		return
 	end
+	-- the round after a tied match's end is played as sudden death
+	if self.suddenDeathMatch then
+		MatchSuddenDeath(self, effects, now)
+		return
+	end
 	CheckRespawnWaves(self, effects, now, world)
 	CheckTimelimitStalemate(self, effects, now, world)
 end
@@ -522,7 +576,7 @@ end
 THINK[State.TEAM_WIN] = function(self, effects, now, world)
 	if not TransitionDue(self, now) then return end
 	if CheckTimeLimit(self, effects, now, world) or CheckWinLimit(self, effects, now, world)
-		or CheckMaxRounds(self, effects, now) then
+		or CheckMaxRounds(self, effects, now, world) then
 		return
 	end
 	-- CTFGameRules::PreviousRoundEnd: the mini-round's OnEnd.
@@ -602,7 +656,7 @@ local COUNT_OUTPUT = {
 -- CTeamplayRoundBasedRules::Think's once-a-second checks.
 local function PeriodicThink(self, effects, now, world)
 	if self.state ~= State.TEAM_WIN and self.state ~= State.STALEMATE then
-		if CheckWinLimit(self, effects, now, world) or CheckMaxRounds(self, effects, now) then return end
+		if CheckWinLimit(self, effects, now, world) or CheckMaxRounds(self, effects, now, world) then return end
 	end
 	for _, t in ipairs(GAME_TEAMS) do
 		local n = world.teams[t].players

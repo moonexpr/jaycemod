@@ -337,8 +337,12 @@ function View:DrawStalematePanel(w, h)
 	DrawCentrePanel(w, h, panel.title, GOLD, { panel.reason })
 end
 
+-- The match's end: who won it (Rounds.MatchWinner; a tied match goes to
+-- sudden death instead), and why it ended.
 function View:DrawGameOver(w, h)
-	DrawCentrePanel(w, h, "GAME OVER", GOLD, { GetGlobal2String("wetsand_game_over_reason", "") })
+	local winner = GetGlobal2Int("wetsand_match_winner", Rounds.NOBODY_WON)
+	DrawCentrePanel(w, h, string.format("%s WINS THE MATCH!", WETSAND.TeamName[winner]), WETSAND.TeamColor[winner],
+		{ GetGlobal2String("wetsand_game_over_reason", "") })
 end
 
 function View:DrawNotices(w, h)

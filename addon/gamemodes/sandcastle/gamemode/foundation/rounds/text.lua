@@ -58,6 +58,7 @@ local STALEMATE_REASON = {
 	[STALEMATE.JOIN_MID] = "Sit back and relax while you wait for this petty conflict to end.",
 	[STALEMATE.TIMER] = "You've run out of time. Watch your back and finish 'em off. No more spawning.",
 	[STALEMATE.SERVER_TIMELIMIT] = "Map time limit reached. No more spawning, so make this count.",
+	[STALEMATE.MATCH_TIED] = "The match is tied. No more spawning: the next team to win takes the match.",
 }
 
 function StalematePanel(reason)

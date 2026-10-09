@@ -54,6 +54,7 @@ T.test("sudden death explains why it started", function()
 	T.eq(p.title, "SUDDEN DEATH!")
 	T.eq(p.reason, "You've run out of time. Watch your back and finish 'em off. No more spawning.")
 	T.eq(Text.StalematePanel(R.STALEMATE.SERVER_TIMELIMIT).reason, "Map time limit reached. No more spawning, so make this count.")
+	T.eq(Text.StalematePanel(R.STALEMATE.MATCH_TIED).reason, "The match is tied. No more spawning: the next team to win takes the match.")
 end)
 
 T.test("time added reads as the flash beside the timer shows it", function()

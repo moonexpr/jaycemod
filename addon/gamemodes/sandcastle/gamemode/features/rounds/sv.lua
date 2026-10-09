@@ -79,6 +79,34 @@ local SUDDEN_DEATH = "Game.SuddenDeath"
 local ROUND_RESTART = "Game.Stalemate"
 local SPECTATOR_WIN_MUSIC = "MatchMaking.RoundEndStalemateMusic"
 
+-- The match won (GoToIntermission; a tie goes to sudden death instead):
+-- each side its music on CHAN_AUTO (the spectators the winner's colour of
+-- it), and the announcer names the winner to everyone on CHAN_VOICE2.
+local MATCH_WIN_MUSIC, MATCH_LOSE_MUSIC = "MatchMaking.MatchEndWinMusicCasual", "MatchMaking.MatchEndLoseMusicCasual"
+local MATCH_SPECTATOR_MUSIC = {
+	[RED] = "MatchMaking.MatchEndRedWinMusic",
+	[BLUE] = "MatchMaking.MatchEndBlueWinMusic",
+}
+local MATCH_WIN_LINE = {
+	[RED] = "Announcer.CompMatchWinRed",
+	[BLUE] = "Announcer.CompMatchWinBlu",
+}
+
+local function PlayMatchEnd(winner)
+	WETSAND.BroadcastSound(winner, MATCH_WIN_MUSIC)
+	WETSAND.BroadcastSound(WETSAND.EnemyOf(winner), MATCH_LOSE_MUSIC)
+	WETSAND.BroadcastSound(SPECTATOR, MATCH_SPECTATOR_MUSIC[winner])
+	WETSAND.BroadcastPA(UNASSIGNED, MATCH_WIN_LINE[winner])
+end
+
+-- The level after the match (Rounds.NextMap): the engine's nextlevel, else
+-- the map cycle's next (mapcyclefile), else this map again.
+local nextlevel = GetConVar("nextlevel")
+
+local function MapInstalled(map)
+	return file.Exists("maps/" .. map .. ".bsp", "GAME")
+end
+
 local function Settings()
 	return {
 		respawnWaveTime = respawnwavetime:GetFloat(),
@@ -797,9 +825,13 @@ local EFFECTS = {
 	end,
 	intermission = function(self, e)
 		SetGlobal2String("wetsand_game_over_reason", e.reason)
+		SetGlobal2Int("wetsand_match_winner", e.winner)
 		EachPlayer(function(ply) ply:Freeze(true) end)
+		PlayMatchEnd(e.winner)
 	end,
-	changelevel = function() RunConsoleCommand("changelevel", game.GetMap()) end,
+	changelevel = function()
+		RunConsoleCommand("changelevel", Rounds.NextMap(nextlevel:GetString(), game.GetMapNext(), game.GetMap(), MapInstalled))
+	end,
 	unfreeze = function()
 		EachPlayer(function(ply) ply:Freeze(false) end)
 	end,
