@@ -14,7 +14,10 @@ shared addons, and server_mounts, whose lua/ links the server's own Lua in
 server_root/ (SERVER_LUA): an autorun (mounts.lua) that mounts each Workshop
 archive in SERVER_WORKSHOP, linked as cache/<name>.gma (GMod ignores a loose
 .gma in addons/), the gamemode's entities winning over a mounted addon's of
-the same name, luadev's access on a LAN server, and ULX's luadev commands.
+the same name, luadev's access on a LAN server, ULX's luadev commands, and
+luadev's socket for server_lua.py. lua/ is its own too, every entry a link
+but bin/, which adds SERVER_BINARIES (the server's LuaSocket) beside links to
+the shared binaries.
 A legacy Workshop item, downloaded as an LZMA-compressed .bin, is
 decompressed to its cache/<name>.gma, again only when the download is newer.
 Nothing else is copied but TF2's sound scripts that GMod's own files of the same name hide on a server
@@ -67,9 +70,21 @@ SERVER_LUA = {
     "autorun/server/hotswap.lua": "hotswap.lua",  # wetsand_hotswap_module, wetsand_hotswap_feature
     "autorun/gamemode_entities.lua": "gamemode_entities.lua",  # shared: the gamemode's entities win
     "ulx/modules/sh/luadev.lua": "ulx_luadev.lua",  # ULX includes every module it finds, on both sides
+    "autorun/server/luadev_socket.lua": "luadev_socket.lua",  # server_lua.py's listener on 127.0.0.1:27098
 }
+# binary modules only the server loads: name in its lua/bin -> file in the shared lua/bin.
+# GMod's server requires gmsv_<name>_win64.dll; luadev's socket build is plain
+# LuaSocket against lua_shared, the same on either side (luadev_socket.lua)
+SERVER_BINARIES = {"gmsv_luasocket_win64.dll": "gmcl_luasocket_win64.dll"}
 # garrysmod/ entries the server owns: never links into the operator's game
-OWN = ("addons", "data", "cache", "console.log")
+OWN = ("addons", "data", "cache", "lua", "console.log")
+
+
+def own_dir(path: Path) -> None:
+    """A real folder at `path`, replacing a link an older build left there."""
+    if path.is_symlink():
+        path.unlink()
+    path.mkdir(exist_ok=True)
 
 
 def link(path: Path, target: Path) -> None:
@@ -122,8 +137,16 @@ def build(layout: Layout = LAYOUT) -> Path:
     for entry in (layout.shared / "garrysmod").iterdir():
         if entry.name not in OWN:
             link(game / entry.name, entry)
-    for own in ("addons", "data", "cache"):
-        (game / own).mkdir(exist_ok=True)
+    for own in ("addons", "data", "cache", "lua", "lua/bin"):
+        own_dir(game / own)
+    shared_lua = layout.shared / "garrysmod" / "lua"
+    for entry in shared_lua.iterdir():
+        if entry.name != "bin":
+            link(game / "lua" / entry.name, entry)
+    for entry in (shared_lua / "bin").iterdir():
+        link(game / "lua" / "bin" / entry.name, entry)
+    for name, source in SERVER_BINARIES.items():
+        link(game / "lua" / "bin" / name, shared_lua / "bin" / source)
     addons = game / "addons"
     for entry in (layout.shared / "garrysmod" / "addons").iterdir():
         link(addons / entry.name, entry)

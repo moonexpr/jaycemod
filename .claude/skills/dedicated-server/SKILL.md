@@ -63,9 +63,10 @@ Read logs with `tail` or a filtering command, not whole: they grow long.
 
 ## Running Lua
 
-- On the dedicated server, through RCON:
-  `srcds.py rcon 'lua_run print(game.GetMap())'`. The output goes to the
-  logs above, not to RCON's reply.
+- On the dedicated server, use `server_lua.py` (see the `server-lua`
+  skill): `python3 .devtools/bin/server_lua.py 'print(game.GetMap())'`.
+  It runs the chunk through luadev and prints its output and return values.
+  Don't use `srcds.py rcon 'lua_run ...'`: its output only reaches the logs.
 - `gmod_lua.py` is **not** for the dedicated server. It runs Lua in the
   game the operator is playing, through luadev's socket on 127.0.0.1:27099,
   and reads its results from the shared install's `data/`. The server's

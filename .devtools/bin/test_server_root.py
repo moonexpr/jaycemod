@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from server_root import SERVER_LUA, SERVER_WORKSHOP, TF_SCRIPTS, TF_SCRIPTS_DIR, Layout, build
+from server_root import SERVER_BINARIES, SERVER_LUA, SERVER_WORKSHOP, TF_SCRIPTS, TF_SCRIPTS_DIR, Layout, build
 from test_vpk import DIR_ARCHIVE, entry, write_pak
 
 # a Workshop item from before .gma downloads: one LZMA-compressed .gma, as .bin
@@ -21,6 +21,10 @@ def layout(tmp_path: Path) -> Layout:
     (shared / "garrysmod" / "addons" / "luadev").mkdir(parents=True)
     (shared / "garrysmod" / "gamemodes").mkdir()
     (shared / "garrysmod" / "data").mkdir()
+    (shared / "garrysmod" / "lua" / "bin").mkdir(parents=True)
+    (shared / "garrysmod" / "lua" / "includes").mkdir()
+    for source in SERVER_BINARIES.values():
+        (shared / "garrysmod" / "lua" / "bin" / source).write_bytes(b"MZ")
     (shared / "garrysmod" / "console.log").write_text("the game's log")
     (shared / "srcds_win64.exe").write_text("exe")
     workshop = tmp_path / "4000"
@@ -65,6 +69,27 @@ def test_the_shared_addons_are_linked_and_the_workshop_archives_land_in_cache(la
     for name, item in SERVER_WORKSHOP.items():
         if item != LEGACY:
             assert (cache / f"{name}.gma").resolve() == layout.workshop / item / "addon.gma"
+
+
+def test_the_servers_lua_bin_is_its_own_and_links_the_server_binaries(layout):
+    root = build(layout)
+    lua, shared_lua = root / "garrysmod" / "lua", layout.shared / "garrysmod" / "lua"
+    assert lua.is_dir() and not lua.is_symlink()
+    assert (lua / "includes").resolve() == shared_lua / "includes"
+    assert (lua / "bin").is_dir() and not (lua / "bin").is_symlink()
+    for name, source in SERVER_BINARIES.items():
+        assert (lua / "bin" / name).resolve() == shared_lua / "bin" / source, name
+        assert (lua / "bin" / source).resolve() == shared_lua / "bin" / source, "the shared binaries stay"
+    assert sorted(p.name for p in (shared_lua / "bin").iterdir()) == sorted(SERVER_BINARIES.values()), \
+        "nothing is added to the operator's install"
+
+
+def test_a_server_root_whose_lua_was_a_link_gets_its_own(layout):
+    layout.root.mkdir()
+    (layout.root / "garrysmod").mkdir()
+    (layout.root / "garrysmod" / "lua").symlink_to(layout.shared / "garrysmod" / "lua")
+    lua = build(layout) / "garrysmod" / "lua"
+    assert lua.is_dir() and not lua.is_symlink()
 
 
 def legacy_name() -> str:
