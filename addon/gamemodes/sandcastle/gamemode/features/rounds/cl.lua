@@ -328,6 +328,7 @@ function View:DrawWinPanel(w, h)
 		reason = GetGlobal2Int("wetsand_round_win_reason", Rounds.WINREASON.NONE),
 		fullRound = GetGlobal2Bool("wetsand_round_full_round", true),
 		remaining = GetGlobal2Int("wetsand_rounds_remaining", 0),
+		arena = GetGlobal2Bool("wetsand_round_arena", false), -- the arena feature's
 	})
 	local rows = {}
 	if panel.reason then rows[#rows + 1] = panel.reason end

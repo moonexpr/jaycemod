@@ -24,8 +24,11 @@ local REASON_TEXT = {
 	[WINREASON.WINLIMIT] = "%s had more points when the win limit was reached",
 	[WINREASON.WINDIFFLIMIT] = "%s was ahead by the required difference to win",
 }
+-- Winreason_Arena: an arena round's elimination is no sudden death.
+local ARENA_ELIMINATION = "%s killed all opponents"
 
--- info = { winner, reason, fullRound, remaining (areas left for the winner) }
+-- info = { winner, reason, fullRound, remaining (areas left for the winner),
+-- arena (the round was arena's) }
 function WinPanel(info)
 	if info.winner < FIRST_GAME_TEAM then
 		return {
@@ -44,6 +47,7 @@ function WinPanel(info)
 		title = team .. " TEAM SEIZES AREA"
 	end
 	local text = REASON_TEXT[info.reason]
+	if info.arena and info.reason == WINREASON.OPPONENTS_DEAD then text = ARENA_ELIMINATION end
 	local panel = {
 		title = title,
 		reason = text and string.format(text, team) or nil,

@@ -49,6 +49,8 @@ local RECORDED = {
 	trigger_multiple = true,
 	-- the rounds feature fires its OnMultiNewRound, which GMod never does
 	logic_auto = true,
+	-- the arena feature fires its OnArenaRoundStart and OnCapEnabled
+	tf_logic_arena = true,
 }
 
 -- logic_auto's "Remove on fire" (SF_AUTO_FIREONCE). Its outputs fire once

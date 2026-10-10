@@ -71,6 +71,8 @@ HUD_PAYLOAD = 3
 PHASE_SPAWN = "spawn"
 PHASE_ACTIVATE = "activate"
 PHASE_ROUND_END = "round_end"
+-- The arena round starts (SetupOnStalemateStart's arena branch).
+PHASE_ARENA_START = "arena_start"
 LISTEN_TIMERS = 10
 LISTEN_CAPTURE = 20
 LISTEN_LOGIC = 30
@@ -236,6 +238,14 @@ Mode = {
 	ANNOUNCES_TIME_ADDED = true,
 	-- Hud.EndRoundScored to everyone, else to the capping team.
 	SCORE_CHIME_TO_ALL = false,
+	-- The state the pre-round ends in: the round is fought there.
+	ROUND_STATE = State.RND_RUNNING,
+	-- Whether STALEMATE is the round itself (arena) rather than sudden death:
+	-- entering it respawns nobody and hides no timer, and its end rewards no
+	-- survivors.
+	STALEMATE_IS_ROUND = false,
+	-- mp_scrambleteams_auto applies.
+	AUTO_SCRAMBLE = true,
 }
 Mode.__index = Mode
 
@@ -257,6 +267,16 @@ function Mode:CapSounds(capTeam, q) return {} end
 
 -- Lines each team hears as the round ends, { [team] = sound }.
 function Mode:RoundWinLines(winner, fullRound, race) return {} end
+
+-- State_Enter_PREROUND: the pre-round's length.
+function Mode:PreroundSeconds(settings)
+	return PREROUND_SECONDS * settings.enableRoundWaitTime
+end
+
+-- State_Enter_STALEMATE: its timer's length, none for 0 or less.
+function Mode:StalemateSeconds(settings)
+	return settings.stalemateTimelimit
+end
 
 -- Round ------------------------------------------------------------------------------
 
@@ -330,6 +350,7 @@ function New(settings)
 		adminWaveTime = PerTeam(WAVE_TIME_UNSET),
 		nextWave = PerTeam(0),
 		respawnsDisabled = false,
+		capEnableAt = nil, -- CTFGameRules's m_flCapturePointEnableTime (arena), or nil
 	}, Round)
 	round:Configure(settings)
 	return round
@@ -483,6 +504,7 @@ end
 -- a mini-round keeps the map as it is, less the last stage's gore.
 local function RoundRespawn(self, effects, now, world)
 	self.winningTeam = UNASSIGNED
+	self.capEnableAt = nil
 	local full = self.forceMapReset
 	if full then
 		if not self.mapFresh then Add(effects, Kind("cleanup")) end
@@ -558,7 +580,7 @@ end
 ENTER[State.PREROUND] = function(self, effects, now, world, change)
 	Add(effects, Kind("balance_teams"))
 	RoundRespawn(self, effects, now, world)
-	self.transitionAt = now + PREROUND_SECONDS * self.settings.enableRoundWaitTime
+	self.transitionAt = now + self.mode:PreroundSeconds(self.settings)
 	change.preroundEnd = self.transitionAt
 	Add(effects, Output("OnStateEnterPreRound"))
 	Add(effects, Kind("doors_lock"))
@@ -566,7 +588,7 @@ end
 
 THINK[State.PREROUND] = function(self, effects, now, world)
 	if TransitionDue(self, now) then
-		Transition(self, effects, State.RND_RUNNING, now, world)
+		Transition(self, effects, self.mode.ROUND_STATE, now, world)
 		return
 	end
 	CheckRespawnWaves(self, effects, now, world)
@@ -632,21 +654,29 @@ end
 -- STALEMATE (sudden death): State_Enter_STALEMATE and
 -- CTFGameRules::SetupOnStalemateStart: everyone respawns once, the map's
 -- timer hides, and a stalemate timer of mp_stalemate_timelimit seconds shows
--- instead. Nobody respawns after that.
+-- instead. Nobody respawns after that. Where STALEMATE is the round (arena)
+-- nobody respawns and the map's timers stay: the round starts
+-- (arena_round_start: OnArenaRoundStart and the cap-enable time) and runs.
 
 ENTER[State.STALEMATE] = function(self, effects)
-	Add(effects, Kind("respawn_all"))
-	Add(effects, Kind("hide_timers"))
-	if self.settings.stalemateTimelimit > 0 then
+	if self.mode.STALEMATE_IS_ROUND then
+		Add(effects, Kind("arena_round_start"))
+		Add(effects, Hook("WetsandRoundActive", {}))
+	else
+		Add(effects, Kind("respawn_all"))
+		Add(effects, Kind("hide_timers"))
+	end
+	local seconds = self.mode:StalemateSeconds(self.settings)
+	if seconds > 0 then
 		Add(effects, {
 			kind = "stalemate_timer",
-			seconds = self.settings.stalemateTimelimit,
+			seconds = seconds,
 		})
 	end
 end
 
 LEAVE[State.STALEMATE] = function(self, effects)
-	Add(effects, Kind("restore_timers"))
+	if not self.mode.STALEMATE_IS_ROUND then Add(effects, Kind("restore_timers")) end
 end
 
 THINK[State.STALEMATE] = function(self, effects, now, world)
@@ -656,9 +686,10 @@ THINK[State.STALEMATE] = function(self, effects, now, world)
 		return
 	end
 	local winner, allDead = StalemateOutcome(world.teams)
+	local suddenDeath = not self.mode.STALEMATE_IS_ROUND
 	if winner then
 		-- Without a full reset the survivors take the round's points.
-		Add(effects, Kind("sudden_death_over"))
+		if suddenDeath then Add(effects, Kind("sudden_death_over")) end
 		Add(effects, {
 			kind = "stalemate_winner",
 			team = winner,
@@ -669,7 +700,7 @@ THINK[State.STALEMATE] = function(self, effects, now, world)
 	local left = world.stalemateTimerLeft
 	local timerOut = left ~= nil and world.timerMayExpire and left <= 0
 	if allDead or timerOut then
-		Add(effects, Kind("sudden_death_over"))
+		if suddenDeath then Add(effects, Kind("sudden_death_over")) end
 		local objective = world.objective
 		for _, e in ipairs(self:SetWinningTeam(now, UNASSIGNED, WINREASON.STALEMATE,
 			not objective:PlayingMiniRounds(), false, false, objective)) do
@@ -772,7 +803,7 @@ function Round:SetWinningTeam(now, winner, reason, forceMapReset, switchTeams, d
 	end
 	-- mp_scrambleteams_auto: a full round won to a lead of the win
 	-- difference scrambles the next round's teams (scramble_due tells it now)
-	if forceMapReset and self.settings.scrambleAuto and Teams.ScrambleDue(scores, self.settings.scrambleWinDifference) then
+	if forceMapReset and self.mode.AUTO_SCRAMBLE and self.settings.scrambleAuto and Teams.ScrambleDue(scores, self.settings.scrambleWinDifference) then
 		self.scrambleTeams = true
 		Add(effects, Kind("scramble_due"))
 	end
@@ -871,9 +902,21 @@ function Round:SetStalemateOnTimelimit(on)
 	self.allowStalemateAtTimelimit = on
 end
 
--- CTeamplayRoundBasedRules::PointsMayBeCaptured
-function Round:PointsMayBeCaptured()
+-- CTeamplayRoundBasedRules::PointsMayBeCaptured, and in arena
+-- CTFGameRules::TeamMayCapturePoint's wait for the cap-enable time.
+function Round:PointsMayBeCaptured(now)
+	if self.capEnableAt and now < self.capEnableAt then return false end
 	return (self.state == State.RND_RUNNING or self.state == State.STALEMATE) and not self.inSetup
+end
+
+-- CTFGameRules::SetupOnStalemateStart's m_flCapturePointEnableTime: until
+-- `at` no point may be captured. A new round forgets it.
+function Round:SetCapEnableTime(at)
+	self.capEnableAt = at
+end
+
+function Round:CapEnableTime()
+	return self.capEnableAt
 end
 
 -- SetSetup / SetOvertime: each returns whether it changed.

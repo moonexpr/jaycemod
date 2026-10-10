@@ -157,6 +157,7 @@ local Controller = {
 		[Rounds.PHASE_SPAWN] = {},
 		[Rounds.PHASE_ACTIVATE] = {},
 		[Rounds.PHASE_ROUND_END] = {},
+		[Rounds.PHASE_ARENA_START] = {},
 	},
 	holds = {},
 	objective = Rounds.NO_OBJECTIVE,
@@ -714,7 +715,13 @@ end
 -- Round state ----------------------------------------------------------------------
 
 function Controller:State() return self.round:State() end
-function Controller:PointsMayBeCaptured() return self.round:PointsMayBeCaptured() end
+function Controller:PointsMayBeCaptured() return self.round:PointsMayBeCaptured(CurTime()) end
+-- The arena's cap-enable time (foundation.rounds' SetCapEnableTime).
+function Controller:SetCapEnableTime(at) self.round:SetCapEnableTime(at) end
+function Controller:CapEnableTime() return self.round:CapEnableTime() end
+-- Settings a mode's feature owns the convars of (the arena's), kept until
+-- the feature gives new ones.
+function Controller:ConfigureRound(settings) self.round:Configure(settings) end
 function Controller:InSetup() return self.round:InSetup() end
 function Controller:InOvertime() return self.round:InOvertime() end
 function Controller:AddPlayedRound(name) self.round:AddPlayedRound(name) end
@@ -831,6 +838,7 @@ local EFFECTS = {
 		hook.Run("WetsandRoundActivate")
 	end,
 	previous_round_end = function(self) self:RunListeners(Rounds.PHASE_ROUND_END) end,
+	arena_round_start = function(self) self:RunListeners(Rounds.PHASE_ARENA_START) end,
 	activate_timers = function(self) self:ActivateTimers() end,
 	time_limit_timer = function(self, e) self:CreateTimer(TIMELIMIT_TIMER_NAME, e.seconds) end,
 	switch_teams = function() SwitchTeams() end,
