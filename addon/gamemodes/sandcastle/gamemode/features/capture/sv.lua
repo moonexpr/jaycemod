@@ -180,6 +180,17 @@ local function ApplyPointModel(self, ent)
 	if bit.band(self.set:Spawnflags(ent), Capture.SF_HIDE_MODEL) ~= 0 then ent:SetNoDraw(true) end
 end
 
+-- Each point has a proxy (WETSAND.Proxy, kind "point"), the box an admin
+-- right-clicks for its entries (wetsand/sh_editors_point.lua), and the props
+-- of its base name it. A payload checkpoint's is its cart's instead
+-- (features/payload).
+local POINT_PROXY_MINS, POINT_PROXY_MAXS = Vector(-48, -48, -8), Vector(48, 48, 64)
+
+local function KeepPointProxy(point)
+	local proxy, made = WETSAND.Proxy(point, "point", point, POINT_PROXY_MINS, POINT_PROXY_MAXS)
+	if made then WETSAND.ProxyBodies(proxy, point:GetPos()) end
+end
+
 -- CTeamControlPointMaster::FindControlPoints and FindControlPointRounds,
 -- at load and on every RoundSpawn (a map reset recreates the points).
 function Controller:Rebuild()
@@ -191,7 +202,10 @@ function Controller:Rebuild()
 		points = specs,
 	})
 	if self.master then self.master:SetRounds(RoundSpecs(self)) end
-	for _, ent in ipairs(self.set:Ids()) do ApplyPointModel(self, ent) end
+	for _, ent in ipairs(self.set:Ids()) do
+		ApplyPointModel(self, ent)
+		KeepPointProxy(ent)
+	end
 end
 
 function Controller:Set()

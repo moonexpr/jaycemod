@@ -84,31 +84,15 @@ local function PublishCart(i, hud)
 	SetGlobal2String(key .. "hills", Hud.EncodeHills(hud.hills))
 end
 
--- Each cart and each of its checkpoints has a proxy (wetsand_proxy) for its
--- watcher, the box an admin right-clicks for its entries
+-- Each cart and each of its checkpoints has a proxy (WETSAND.Proxy, kind
+-- "cart") for its watcher, the box an admin right-clicks for its entries
 -- (wetsand/sh_editors_cart.lua): one riding the train, one at each point,
 -- made again when a cleanup removes them. The cart's body, a prop the map
 -- ties to the train with a constraint (phys_constraint and the rest), names
--- the cart's proxy (wetsand_proxy), as GMod's right-click hits it first.
+-- the cart's proxy (wetsand_proxy), as GMod's right-click hits it first,
+-- and so do the props of a checkpoint's base (WETSAND.ProxyBodies).
 local CART_MINS, CART_MAXS = Vector(-40, -40, 0), Vector(40, 40, 80)
 local POINT_MINS, POINT_MAXS = Vector(-48, -48, -8), Vector(48, 48, 64)
-local proxies = setmetatable({}, { __mode = "k" }) -- target entity -> its proxy
-
-local function Proxy(watcher, at, mins, maxs)
-	if IsValid(proxies[at]) then return end
-	local proxy = ents.Create("wetsand_proxy")
-	proxy:SetPos(at:GetPos())
-	proxy:SetKind("cart")
-	proxy:SetTarget(watcher)
-	proxy:SetMins(mins)
-	proxy:SetMaxs(maxs)
-	proxy:Spawn()
-	proxy:SetCollisionBounds(mins, maxs)
-	if at:GetClass() == "func_tracktrain" then proxy:SetParent(at) end
-	proxies[at] = proxy
-	return proxy
-end
-
 -- The entities a map's constraints (phys_*: attach1, attach2) tie to ent.
 local function TiedTo(ent)
 	local name, tied = ent:GetName(), {}
@@ -126,13 +110,16 @@ end
 local function KeepProxies(watcher)
 	local train = watcher:Train()
 	if IsValid(train) then
-		local proxy = Proxy(watcher, train, CART_MINS, CART_MAXS)
-		if proxy then
+		local proxy, made = WETSAND.Proxy(train, "cart", watcher, CART_MINS, CART_MAXS, train)
+		if made then
 			for _, body in ipairs(TiedTo(train)) do body:SetNW2Entity("wetsand_proxy", proxy) end
 		end
 	end
 	for _, point in ipairs(watcher:Checkpoints()) do
-		if IsValid(point) then Proxy(watcher, point, POINT_MINS, POINT_MAXS) end
+		if IsValid(point) then
+			local proxy, made = WETSAND.Proxy(point, "cart", watcher, POINT_MINS, POINT_MAXS)
+			if made then WETSAND.ProxyBodies(proxy, point:GetPos()) end
+		end
 	end
 end
 
