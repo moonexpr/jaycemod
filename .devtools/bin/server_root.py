@@ -23,11 +23,16 @@ decompressed to its cache/<name>.gma, again only when the download is newer.
 Nothing else is copied but TF2's sound scripts that GMod's own files of the same name hide on a server
 (mount.cfg puts TF2 under "GAME", where they shadow it, and there is no
 "tf" path): TF_SCRIPTS are extracted from TF2's pak into the server's own
-data/ on every build, where wetsand/sh_soundscripts.lua reads them.
+data/ on every build, where wetsand/sh_soundscripts.lua reads them, and
+SERVER_EXE: a copy marked a console program, rewritten when the shared one is
+newer. As the GUI program it ships as, -console makes it open a console of its
+own, which Wine draws as a window that prints ANSI colors raw; as a console
+program started from srcds.py's pty it writes to that pty, colors and all.
 """
 from __future__ import annotations
 
 import lzma
+import struct
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -76,6 +81,13 @@ SERVER_LUA = {
 # GMod's server requires gmsv_<name>_win64.dll; luadev's socket build is plain
 # LuaSocket against lua_shared, the same on either side (luadev_socket.lua)
 SERVER_BINARIES = {"gmsv_luasocket_win64.dll": "gmcl_luasocket_win64.dll"}
+SERVER_EXE = "srcds_win64.exe"
+# PE: e_lfanew at 0x3c names the "PE\\0\\0" signature; the optional header follows
+# the 20-byte file header, with the subsystem at +68 in PE32 and PE32+ alike
+PE_POINTER = 0x3c
+PE_SIGNATURE = b"PE\0\0"
+SUBSYSTEM_OFFSET = 4 + 20 + 68
+CONSOLE_SUBSYSTEM = 3  # IMAGE_SUBSYSTEM_WINDOWS_CUI
 # garrysmod/ entries the server owns: never links into the operator's game
 OWN = ("addons", "data", "cache", "lua", "console.log")
 
@@ -127,11 +139,33 @@ def place_archive(path: Path, archive: Path) -> None:
     path.write_bytes(lzma.decompress(archive.read_bytes(), format=lzma.FORMAT_ALONE))
 
 
+class NotAnExe(ValueError):
+    pass
+
+
+def console_exe(path: Path, source: Path) -> None:
+    """A copy of the PE image `source` at `path`, its subsystem the console's;
+    written again only when `source` is newer."""
+    if path.is_symlink():
+        path.unlink()
+    if path.exists() and path.stat().st_mtime >= source.stat().st_mtime:
+        return
+    image = bytearray(source.read_bytes())
+    if image[:2] != b"MZ" or len(image) < PE_POINTER + 4:
+        raise NotAnExe(f"{source} is not a PE image")
+    (pe,) = struct.unpack_from("<I", image, PE_POINTER)
+    if image[pe:pe + 4] != PE_SIGNATURE or len(image) < pe + SUBSYSTEM_OFFSET + 2:
+        raise NotAnExe(f"{source} is not a PE image")
+    struct.pack_into("<H", image, pe + SUBSYSTEM_OFFSET, CONSOLE_SUBSYSTEM)
+    path.write_bytes(image)
+
+
 def build(layout: Layout = LAYOUT) -> Path:
     layout.root.mkdir(exist_ok=True)
     for entry in layout.shared.iterdir():
-        if entry.name != "garrysmod":
+        if entry.name not in ("garrysmod", SERVER_EXE):
             link(layout.root / entry.name, entry)
+    console_exe(layout.root / SERVER_EXE, layout.shared / SERVER_EXE)
     game = layout.root / "garrysmod"
     game.mkdir(exist_ok=True)
     for entry in (layout.shared / "garrysmod").iterdir():

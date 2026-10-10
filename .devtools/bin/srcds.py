@@ -5,6 +5,7 @@ r"""Run Garry's Mod's dedicated server under CrossOver and drive it with RCON.
                                                        start, wait for the map
   srcds.py rcon 'status'                               run a console command
   srcds.py stop                                        quit the server we started
+  srcds.py console                                     follow its console in an iTerm window
 
 The server is GMod's Windows x86-64 srcds_win64.exe in the CrossOver bottle
 "Steam" and nowhere else: the operator plays in the bottle "Team Fortress 2",
@@ -19,7 +20,11 @@ mounts the Workshop; the Workshop addons it needs (DrGBase) are mounted from
 the operator's downloads by server_root's autorun instead. Its console must be a terminal: with a pipe or
 /dev/null for stdin its main loop blocks in the console's GetLine before the
 first frame, so a detached supervisor (this script's `_supervise`) gives it a
-pty and drains it into .devtools/artifacts/srcds.log. -condebug writes
+pty and drains it into .devtools/artifacts/srcds.log. The exe server_root
+places is marked a console program, so Wine hands it that pty instead of
+opening a console window: the log holds the console's ANSI colors, and
+`console` (or `start --console`) follows it in an iTerm window with the
+profile ITERM_PROFILE, a dark one, which suits GMod's truecolor text. -condebug writes
 garrysmod/console.log, which holds what the console printed. +ip 127.0.0.1
 keeps RCON on this machine. --no-lua-refresh adds -disableluarefresh, so edits
 on disk after start-up never reach the running server (game events v2's T1).
@@ -35,16 +40,19 @@ from __future__ import annotations
 
 import argparse
 import dataclasses
+import fcntl
 import json
 import os
 import pty
 import re
 import secrets
+import shlex
 import signal
 import socket
 import struct
 import subprocess
 import sys
+import termios
 import time
 from collections import deque
 from dataclasses import dataclass, field
@@ -59,6 +67,7 @@ __all__ = [
     "EXECCOMMAND",
     "RESPONSE_VALUE",
     "AuthFailed",
+    "CONSOLE_COLUMNS",
     "BOTTLE",
     "Install",
     "Launched",
@@ -98,7 +107,7 @@ GMOD_WINDOWS = server_root.ROOT_WINDOWS
 GMOD_DIR = server_root.ROOT / "garrysmod"
 WINE_RELATIVE = "Contents/SharedSupport/CrossOver/bin/wine"
 CROSSOVER_APPS = (Path("/Applications/CrossOver GPTK4.app"), Path("/Applications/CrossOver.app"))
-SERVER_EXE = "srcds_win64.exe"
+SERVER_EXE = server_root.SERVER_EXE
 # Processes a stop never signals, whoever started them: the bottle's
 # wineserver and wine's services, which every program in the bottle shares.
 NEVER_STOP = ("wineserver", "winedevice.exe", "services.exe", "explorer.exe", "plugplay.exe",
@@ -469,8 +478,21 @@ class Server:
 # The supervisor: owns the server's terminal ------------------------------------------
 
 
-def supervise(log_path: Path, port: int, argv: List[str]) -> int:
+# Wine's console wraps its lines at the pty's width, 80 when the pty has none;
+# this is wider than any line, so the terminal that shows the log wraps them
+CONSOLE_COLUMNS = 400
+CONSOLE_ROWS = 50
+
+
+def console_pty() -> Tuple[int, int]:
+    """A pty (master, slave) whose window is CONSOLE_COLUMNS wide."""
     master, slave = pty.openpty()
+    fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", CONSOLE_ROWS, CONSOLE_COLUMNS, 0, 0))
+    return master, slave
+
+
+def supervise(log_path: Path, port: int, argv: List[str]) -> int:
+    master, slave = console_pty()
     proc = subprocess.Popen(argv, stdin=slave, stdout=slave, stderr=slave)
     os.close(slave)
     host = argv[argv.index("+ip") + 1]
@@ -486,6 +508,29 @@ def supervise(log_path: Path, port: int, argv: List[str]) -> int:
             log.write(data)
             log.flush()
     return proc.wait()
+
+
+ITERM_PROFILE = "Dark"
+
+
+def console_command(log: Path) -> str:
+    """Follows the log from its first line, and across a restart that rewrites it."""
+    return "tail -n +1 -F " + shlex.quote(str(log))
+
+
+def applescript_string(text: str) -> str:
+    return '"' + text.replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+
+def iterm_script(command: str) -> str:
+    return (f'tell application "iTerm"\n'
+            f'  create window with profile {applescript_string(ITERM_PROFILE)} command {applescript_string(command)}\n'
+            f'  activate\n'
+            f'end tell\n')
+
+
+def open_console(log: Path) -> None:
+    subprocess.run(["osascript", "-e", iterm_script(console_command(log))], check=True, capture_output=True)
 
 
 def password() -> str:
@@ -505,7 +550,7 @@ def started_port(default: int) -> int:
     return launched.port if launched else default
 
 
-DEFAULT_PORT = 27025  # beside the client's 27015, so the operator's own game keeps its port
+DEFAULT_PORT = 27015  # beside the client's 27015, so the operator's own game keeps its port
 DEFAULT_MAXPLAYERS = 32
 MAP_LOAD_TIMEOUT = 240
 
@@ -532,21 +577,27 @@ def main() -> int:
                             "on it give this Mac's LAN or Tailscale address")
     start.add_argument("--no-lua-refresh", dest="lua_refresh", action="store_false",
                        help="start with -disableluarefresh: edits on disk never reach the running server")
+    start.add_argument("--console", action="store_true", help="follow the console in an iTerm window")
     rcon = sub.add_parser("rcon")
     rcon.add_argument("command")
     sub.add_parser("stop")
+    sub.add_parser("console")
     args = ap.parse_args()
     try:
         if args.action == "start":
             server = make_server(args.map, args.port, args.lua_refresh, args.maxplayers, args.ip)
             server.start()
+            if args.console:
+                open_console(PROCESS_LOG)
             server.wait_for_map(args.map, MAP_LOAD_TIMEOUT)
             print(f"{args.map} is up on port {args.port}")
         elif args.action == "rcon":
             print(make_server("gm_construct", started_port(DEFAULT_PORT)).rcon(args.command))
+        elif args.action == "console":
+            open_console(PROCESS_LOG)
         else:
             make_server("gm_construct", started_port(DEFAULT_PORT)).stop()
-    except (ServerDown, AuthFailed, OSError) as e:
+    except (ServerDown, AuthFailed, OSError, subprocess.CalledProcessError) as e:
         print(f"srcds: {e}", file=sys.stderr)
         return 1
     return 0

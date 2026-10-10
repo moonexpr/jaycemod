@@ -1,4 +1,8 @@
 import dataclasses
+import fcntl
+import os
+import struct
+import termios
 import socket
 import threading
 import unittest
@@ -21,6 +25,12 @@ from srcds import (
     BOTTLE,
     Launched,
     WrongBottle,
+    CONSOLE_COLUMNS,
+    ITERM_PROFILE,
+    applescript_string,
+    console_pty,
+    console_command,
+    iterm_script,
     new_server,
     stop_targets,
 )
@@ -303,3 +313,32 @@ class BindAddress(unittest.TestCase):
 
     def test_a_record_from_before_the_address_was_kept_means_127_0_0_1(self):
         self.assertEqual(Launched.parse('{"supervisor": 1, "launcher": 2, "port": 27025}').host, "127.0.0.1")
+
+
+class ConsoleWindow(unittest.TestCase):
+    def test_the_console_follows_the_log_from_its_start_across_restarts(self):
+        self.assertEqual(console_command(Path("/repo/srcds.log")), "tail -n +1 -F /repo/srcds.log")
+
+    def test_a_log_path_with_spaces_and_quotes_is_one_shell_word(self):
+        self.assertEqual(console_command(Path("/my repo/it's.log")), "tail -n +1 -F '/my repo/it'\"'\"'s.log'")
+
+    def test_an_applescript_string_escapes_backslashes_and_quotes(self):
+        self.assertEqual(applescript_string('a "b" \\ c'), '"a \\"b\\" \\\\ c"')
+
+    def test_iterm_opens_a_window_in_the_dark_profile_running_the_command(self):
+        self.assertEqual(ITERM_PROFILE, "Dark")
+        script = iterm_script("tail -F '/x y'")
+        self.assertIn('create window with profile "Dark" command "tail -F \'/x y\'"', script)
+        self.assertIn('tell application "iTerm"', script)
+
+    def test_the_consoles_pty_is_wide_so_wine_does_not_wrap_at_80_columns(self):
+        master, slave = console_pty()
+        try:
+            rows, columns, _, _ = struct.unpack("HHHH", fcntl.ioctl(slave, termios.TIOCGWINSZ, bytes(8)))
+            self.assertEqual(columns, CONSOLE_COLUMNS)
+            self.assertGreater(columns, 80)
+            self.assertGreater(rows, 0)
+        finally:
+            os.close(master)
+            os.close(slave)
+

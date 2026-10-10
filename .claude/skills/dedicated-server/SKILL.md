@@ -31,11 +31,13 @@ python3 .devtools/bin/srcds.py start --map pl_upward      # waits until the map 
 python3 .devtools/bin/srcds.py rcon 'status'              # any console command
 python3 .devtools/bin/srcds.py rcon 'changelevel koth_viaduct'
 python3 .devtools/bin/srcds.py stop
+python3 .devtools/bin/srcds.py console                    # follow the console, in color, in iTerm
 ```
 
 `start` takes `--map` (default `gm_construct`), `--port` (27025),
 `--maxplayers`, `--ip` (127.0.0.1, so RCON stays on this machine) and
-`--no-lua-refresh` (adds `-disableluarefresh`). It first builds the
+`--no-lua-refresh` (adds `-disableluarefresh`) and `--console` (opens the
+iTerm window, profile "Dark", that `console` opens). It first builds the
 server's own GMod root (`server_root.py`). The server runs the gamemode
 that the shared install's `garrysmod/gamemodes/sandcastle` points to, which
 is the main checkout, not a worktree. Workshop addons (DrGBase), luadev
@@ -117,5 +119,6 @@ it.
   which `srcds.py` always passes.
 - **`stop` leaves something running:** report it to the operator. Don't
   widen the kill.
-- **The console window shows raw ANSI codes:** this is known. Moving the
-  output to iTerm is planned, not done. Read the logs instead.
+- **A Wine console window opens (raw ANSI codes):** the server root's
+  `srcds_win64.exe` should be `server_root.py`'s console-program copy, not a
+  link. Run `server_root.py` and start again.
