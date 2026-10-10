@@ -20,7 +20,9 @@
 -- done GMod has saved maps/<map>.nav, the limits are put back, the map is
 -- reset (its doors and gates put back), and the admin who started it is
 -- told. Every client's progress box follows each stage
--- (WS.NavProgress, ws/sh_nav_progress.lua).
+-- (WS.NavProgress, ws/sh_nav_progress.lua). Meanwhile, and while
+-- the engine's own nav_generate runs, new players are turned away
+-- (WS.NavJoinRefusal, asked by GM:CheckPassword in init.lua).
 local Gamemode = WS.require("foundation.gamemode")
 local Doors = WS.require("foundation.npc.doors")
 local Progress = WS.require("foundation.nav_progress")
@@ -29,6 +31,7 @@ local SEEDS = { "info_player_teamspawn", "info_player_start", "team_control_poin
 local DOORS = { "func_door", "func_door_rotating", "prop_door_rotating" }
 local BARRIERS = { "func_respawnroomvisualizer" }
 local DOOR_WAIT = 60
+local JOIN_REFUSAL = "This server is generating its navigation mesh and is temporarily unavailable; please come back in a few minutes"
 local POLL = "ws_nav_generate"
 
 -- func_door's m_toggle_state while opening or closing; prop_door_rotating's
@@ -41,6 +44,11 @@ local underWay = false
 
 function WS.NavMeshUsable()
 	return navmesh.IsLoaded() and navmesh.GetNavAreaCount() > 0
+end
+
+-- Why a new player may not join now, or nil when they may.
+function WS.NavJoinRefusal()
+	if underWay or navmesh.IsGenerating() then return JOIN_REFUSAL end
 end
 
 local function Tell(ply, text)

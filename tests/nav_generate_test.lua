@@ -330,6 +330,25 @@ T.test("every client is told each stage: opening the doors, generating, done wit
 end)
 
 
+T.test("new players are refused, told to come back in a few minutes, from the start until it is done", function()
+	local s = load({ entities = SPAWNS })
+	T.eq(s.ws.NavJoinRefusal(), nil, "before")
+	s.commands.mp_nav_generate(nil)
+	local refusal = s.ws.NavJoinRefusal()
+	T.eq(refusal ~= nil and refusal:find("few minutes") ~= nil, true, "while the doors open: " .. tostring(refusal))
+	s.Poll()
+	T.eq(s.ws.NavJoinRefusal() ~= nil, true, "while it generates")
+	s.nav.generating, s.nav.areas = false, 2426
+	s.Poll()
+	T.eq(s.ws.NavJoinRefusal(), nil, "after")
+end)
+
+T.test("new players are refused while the engine's own nav_generate runs too", function()
+	local s = load({ entities = SPAWNS })
+	s.nav.generating = true
+	T.eq(s.ws.NavJoinRefusal() ~= nil, true)
+end)
+
 T.test("a mesh is usable once it has areas", function()
 	T.eq(load({ areas = 0 }).ws.NavMeshUsable(), false)
 	T.eq(load({ areas = 12 }).ws.NavMeshUsable(), true)

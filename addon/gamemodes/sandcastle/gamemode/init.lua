@@ -33,6 +33,14 @@ for _, f in ipairs(GM:WSModules("sh_")) do AddCSLuaFile("ws/" .. f) end
 for _, f in ipairs(GM:WSModules("cl_")) do AddCSLuaFile("ws/" .. f) end
 for _, f in ipairs(GM:WSModules("sv_")) do include("ws/" .. f) end
 
+-- No one joins while the nav mesh is being generated (ws/sv_nav.lua):
+-- the map is torn open and resets when it is done.
+function GM:CheckPassword(steamID64, ip, serverPassword, password, name)
+	local refusal = WS.NavJoinRefusal()
+	if refusal then return false, refusal end
+	return self.BaseClass.CheckPassword(self, steamID64, ip, serverPassword, password, name)
+end
+
 -- As in TF2, a new player joins no team: they watch until they pick one
 -- from the team menu (auto-assign is one click there).
 function GM:PlayerInitialSpawn(ply, transition)
