@@ -7,7 +7,8 @@ import threading
 
 import pytest
 
-from server_lua import BridgeDown, NoReply, Realm, Reply, address, chunk_source, frame, parse_reply, run
+from server_lua import (BridgeDown, NoReply, OpFailed, Realm, Reply, address, call_op, chunk_source, frame, op_frame,
+                        parse_reply, run)
 
 
 def test_a_frame_is_realm_label_and_byte_length_lines_then_the_code():
@@ -85,3 +86,24 @@ def test_the_chunk_comes_from_the_argument_the_file_or_stdin(tmp_path):
     assert chunk_source(None, script, stdin) == "return 2"
     assert chunk_source(None, None, stdin) == "return 3", "a heredoc needs no quoting"
     assert chunk_source("-", None, io.StringIO("return 4")) == "return 4"
+
+
+def test_an_op_frame_names_the_op_and_carries_its_arguments_as_json():
+    assert op_frame("bp_set", {"line": 4}) == b'op\nbp_set\n11\n{"line": 4}'
+
+
+def test_an_op_answers_what_it_returned():
+    address, got = answering(json.dumps({"output": [], "returns": [], "result": {"id": 1}}).encode())
+    assert call_op("bp_set", {"line": 4}, address, timeout=5) == {"id": 1}
+    assert got["request"] == op_frame("bp_set", {"line": 4})
+
+
+def test_an_op_that_raised_is_op_failed_with_its_message():
+    address, _ = answering(json.dumps({"output": [], "returns": [], "error": "no breakpoint 9"}).encode())
+    with pytest.raises(OpFailed, match="no breakpoint 9"):
+        call_op("bp_clear", {"id": 9}, address, timeout=5)
+
+
+def test_an_op_that_returned_nothing_answers_none():
+    address, _ = answering(json.dumps({"output": [], "returns": []}).encode())
+    assert call_op("bp_list", {}, address, timeout=5) is None

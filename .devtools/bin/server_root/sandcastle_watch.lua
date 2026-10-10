@@ -9,6 +9,14 @@
 --                                              ok, else "timeout" after timeout
 --                                              seconds, with the last report
 --   Watch.On(hookName, name, fn)               fn(...)'s answer as the hook runs
+--   Watch.Task(name, { every, timeout, progress, done })
+--                                              a long-running command, followed
+--                                              to its end: progress()'s text
+--                                              each time it changes, then "met"
+--                                              with done()'s report once done()
+--                                              is true, or "timeout"; what a
+--                                              listener (.devtools/bin/listeners/)
+--                                              calls
 --   Watch.Stop(name)
 -- A function that errors is reported (error) and its watch stops: silence
 -- is never a failure hiding.
@@ -73,6 +81,36 @@ function Watch.Until(name, seconds, timeout, check)
 		elseif CurTime() >= deadline then
 			Watch.Stop(name)
 			Line(name, "timeout", report)
+		end
+	end)
+end
+
+local TASK_EVERY = 1 -- seconds between a Task's looks
+local TASK_TIMEOUT = 600
+
+function Watch.Task(name, spec)
+	Watch.Stop(name)
+	local every, timeout = spec.every or TASK_EVERY, spec.timeout or TASK_TIMEOUT
+	local deadline = CurTime() + timeout
+	local last
+	timer.Create(TIMER_PREFIX .. name, every, 0, function()
+		if spec.progress then
+			local ok, text = Guarded(name, spec.progress)
+			if not ok then return end
+			text = tostring(text)
+			if text ~= last then
+				last = text
+				Line(name, "progress", text)
+			end
+		end
+		local ok, finished, report = Guarded(name, spec.done)
+		if not ok then return end
+		if finished then
+			Watch.Stop(name)
+			Line(name, "met", report)
+		elseif CurTime() >= deadline then
+			Watch.Stop(name)
+			Line(name, "timeout", last)
 		end
 	end)
 end

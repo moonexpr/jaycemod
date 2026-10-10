@@ -86,13 +86,25 @@ def parse_reply(data: bytes) -> Reply:
                  None if clients is None else int(clients))
 
 
-def run(realm: Realm, code: str, address: tuple[str, int] = ADDRESS, timeout: float = 10) -> Reply:
+class OpFailed(Exception):
+    """An op (op_frame) raised on the server; the message is its error."""
+
+
+def op_frame(name: str, args: dict) -> bytes:
+    """Realm "op": the label names one of the server's SANDCASTLE_OPS, the code is its JSON arguments."""
+    if "\n" in name:
+        raise ValueError(f"an op name is one line: {name!r}")
+    body = json.dumps(args).encode()
+    return f"op\n{name}\n{len(body)}\n".encode() + body
+
+
+def exchange(payload: bytes, address: tuple[str, int], timeout: float) -> bytes:
     try:
         conn = socket.create_connection(address, timeout=timeout)
     except OSError as e:
         raise BridgeDown(f"{address[0]}:{address[1]} not reachable ({e}); is the server up with a map loaded?") from e
     with conn:
-        conn.sendall(frame(realm, code, LABEL))
+        conn.sendall(payload)
         data = b""
         try:
             while chunk := conn.recv(65536):
@@ -101,7 +113,19 @@ def run(realm: Realm, code: str, address: tuple[str, int] = ADDRESS, timeout: fl
             raise NoReply(f"no reply within {timeout}s (did the chunk hang?)") from e
     if not data:
         raise NoReply("the server closed the connection without a reply (see the end of .devtools/artifacts/srcds.log)")
-    return parse_reply(data)
+    return data
+
+
+def run(realm: Realm, code: str, address: tuple[str, int] = ADDRESS, timeout: float = 10) -> Reply:
+    return parse_reply(exchange(frame(realm, code, LABEL), address, timeout))
+
+
+def call_op(name: str, args: dict, address: tuple[str, int] = ADDRESS, timeout: float = 10) -> object:
+    """What the op returned (None for nothing), or OpFailed with what it raised."""
+    reply = json.loads(exchange(op_frame(name, args), address, timeout))
+    if reply.get("error"):
+        raise OpFailed(reply["error"])
+    return reply.get("result")
 
 
 STDIN_CODE = "-"

@@ -109,4 +109,50 @@ T.test("a watch started again under its name replaces the old one", function()
 	T.eq(table.concat(s.lines, "|"), "1.00 x changed new")
 end)
 
+T.test("a Task reports its progress as it changes, then met with done's report, and stops", function()
+	local s = Load()
+	local stage, finished = "opening", false
+	s.Watch.Task("nav", {
+		every = 1,
+		timeout = 100,
+		progress = function() return stage end,
+		done = function() return finished, "412 areas" end,
+	})
+	s.Advance(3)
+	stage = "generating"
+	s.Advance(2)
+	finished = true
+	s.Advance(1)
+	T.eq(s.lines[1], "1.00 nav progress opening")
+	T.eq(s.lines[2], "4.00 nav progress generating")
+	T.eq(s.lines[3], "6.00 nav met 412 areas")
+	s.Advance(5)
+	T.eq(#s.lines, 3, "nothing after it ends")
+end)
+
+T.test("a Task times out with its last progress", function()
+	local s = Load()
+	s.Watch.Task("nav", { every = 1, timeout = 5, progress = function() return "generating" end, done = function() return false end })
+	s.Advance(10)
+	T.eq(s.lines[#s.lines], "5.00 nav timeout generating")
+	T.eq(#s.lines, 2)
+end)
+
+T.test("a Task whose function errors reports it and stops", function()
+	local s = Load()
+	s.Watch.Task("nav", { every = 1, timeout = 5, progress = function() error("no navmesh") end, done = function() return false end })
+	s.Advance(3)
+	T.eq(#s.lines, 1)
+	assert(s.lines[1]:find("^1.00 nav error .*no navmesh"), s.lines[1])
+end)
+
+T.test("a Task needs only done: progress and the timings have defaults", function()
+	local s = Load()
+	local finished = false
+	s.Watch.Task("quick", { done = function() return finished, "ok" end })
+	finished = true
+	s.Advance(1)
+	T.eq(s.lines[1], "1.00 quick met ok")
+end)
+
 T.finish()

@@ -78,6 +78,7 @@ SERVER_LUA = {
     "ulx/modules/sh/luadev.lua": "ulx_luadev.lua",  # ULX includes every module it finds, on both sides
     "autorun/server/luadev_socket.lua": "luadev_socket.lua",  # server_lua.py's listener on 127.0.0.1:27098
     "autorun/server/sandcastle_watch.lua": "sandcastle_watch.lua",  # Watch: events server_watch.py follows
+    "autorun/server/sandcastle_debug.lua": "sandcastle_debug.lua",  # breakpoints and Lua errors, for gmod_mcp.py
 }
 WATCH_LOG = "sandcastle_watch.txt"  # under the server's data/
 # binary modules only the server loads: name in its lua/bin -> file in the shared lua/bin.

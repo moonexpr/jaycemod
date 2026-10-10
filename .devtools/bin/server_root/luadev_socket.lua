@@ -9,7 +9,8 @@
 -- A request is three lines, realm (sv, cl or sh), label and the code's
 -- length in bytes, then the code. The answer is JSON: output (print and MsgN
 -- while the chunk ran, still echoed to the console), returns, error, and for
--- cl/sh the number of clients it was sent to.
+-- cl/sh the number of clients it was sent to. Realm "op" calls one of
+-- SANDCASTLE_OPS by name, the code its JSON arguments (run_op below).
 --
 -- LuaSocket is luadev's win64 build, lua/bin/gmsv_luasocket_win64.dll in the
 -- server's own lua/bin (server_root.py's SERVER_BINARIES); it defines the
@@ -64,7 +65,22 @@ local function run_on_clients(result, code, label)
 	result.clients = player.GetCount()
 end
 
+-- realm "op": the label names one of SANDCASTLE_OPS (sandcastle_debug.lua's,
+-- for gmod_mcp.py), the code is its JSON arguments, and the answer carries
+-- what it returned as result; an error it raises is the answer's error
+SANDCASTLE_OPS = SANDCASTLE_OPS or {}
+local function run_op(result, body, name)
+	local op = SANDCASTLE_OPS[name]
+	if not op then
+		result.error = "no op " .. name
+		return
+	end
+	local ok, value = pcall(op, util.JSONToTable(body ~= "" and body or "{}") or {})
+	if ok then result.result = value else result.error = tostring(value) end
+end
+
 local REALMS = {
+	op = run_op,
 	sv = run_on_server,
 	cl = run_on_clients,
 	sh = function(result, code, label)
@@ -91,11 +107,16 @@ local function answer(client)
 	client:send(util.TableToJSON(result))
 end
 
-hook.Add("Think", "SandcastleLuadevSocket", function()
-	local client = listener:accept()
-	if not client then return end
+local function serve(client)
 	client:settimeout(READ_TIMEOUT)
 	local ok, err = pcall(answer, client)
 	if not ok then ErrorNoHalt("[luadev_socket] " .. tostring(err) .. "\n") end
 	client:close()
+end
+-- sandcastle_debug.lua's pause loop serves the socket from inside its hook
+SANDCASTLE_SOCKET = { listener = listener, serve = serve }
+
+hook.Add("Think", "SandcastleLuadevSocket", function()
+	local client = listener:accept()
+	if client then serve(client) end
 end)

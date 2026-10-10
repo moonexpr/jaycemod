@@ -588,6 +588,12 @@ DEFAULT_MAXPLAYERS = 32
 MAP_LOAD_TIMEOUT = 240
 
 
+def rcon_command(instance: Instance, text: str, timeout: float = 10) -> str:
+    """A console command on the instance's running server, and its reply."""
+    port = started_port(InstanceFiles.of(instance).port, instance)
+    return make_server("gm_construct", port, instance=instance).rcon(text, timeout)
+
+
 def make_server(map_name: str, port: int, lua_refresh: bool = True, maxplayers: int = DEFAULT_MAXPLAYERS,
                 ip: Optional[str] = None, instance: Instance = MAIN) -> Server:
     """ip: the address to bind; by default the running server's (rcon, stop), else 127.0.0.1."""
@@ -631,7 +637,7 @@ def main() -> int:
             server.wait_for_map(args.map, MAP_LOAD_TIMEOUT)
             print(f"{args.map} is up on port {port}")
         elif args.action == "rcon":
-            print(make_server("gm_construct", started_port(files.port, instance), instance=instance).rcon(args.command))
+            print(rcon_command(instance, args.command))
         elif args.action == "console":
             open_console(files.log)
         else:

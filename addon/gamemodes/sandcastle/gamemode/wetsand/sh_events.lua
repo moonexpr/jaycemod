@@ -100,11 +100,13 @@ if SERVER then
 	end
 
 	-- The server's own listeners hear it first, then the ready clients among
-	-- the recipients.
+	-- the recipients. WSGameEventFired tells the dev server's debugger
+	-- (.devtools/bin/server_root/sandcastle_debug.lua), which keeps the newest.
 	function API.Fire(name, fields, recipients)
 		local event = Checked(registry.Build, registry, name, fields or {})
 		registry:Dispatch(event)
 		local players = Recipients(recipients)
+		hook.Run("WSGameEventFired", name, event.fields, #players)
 		if #players == 0 then return end
 		net.Start(FIRE_NET, event.definition.unreliable)
 		registry:Write(event, net)
