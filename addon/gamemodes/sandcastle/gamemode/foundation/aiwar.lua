@@ -312,7 +312,9 @@ War.__index = War
 function War.New()
 	return setmetatable({
 		members = {}, -- handle -> member
-		fireTeams = {}, -- every fire team: { team, role, index (per team and role), squad, members = place -> member }
+		fireTeams = {}, -- every fire team: { team, role, index (per team and role), squad, members = place -> member,
+		-- manual (formed or changed by hand: any size, the war leaves it be), chosen (the leader it was formed for) }
+		autoSquads = true, -- whether the war groups soldiers into fire teams itself (SetAutoSquads)
 		enlisted = 0, -- members ever enlisted, for their order
 		claims = Squad.Claims.New(), -- spots soldiers hold (foundation.aiwar.squad)
 		hunt = Hunt.Board.New(), -- the winners' sightings of the losers (foundation.aiwar.hunt)
@@ -396,44 +398,84 @@ function War:LeaveFireTeam(member)
 	end
 end
 
+-- The lowest free place; a fire team the war formed holds FIRE_TEAM_SIZE,
+-- one formed by hand any number.
 local function FreePlace(fireTeam)
-	for place = 0, FIRE_TEAM_SIZE - 1 do
-		if not fireTeam.members[place] then return place end
-	end
-	return nil
+	local place = 0
+	while fireTeam.members[place] do place = place + 1 end
+	if not fireTeam.manual and place >= FIRE_TEAM_SIZE then return nil end
+	return place
 end
 
--- Joins an open fire team of the member's team and role, the lowest
--- indexed first, or starts one at the lowest free index.
+-- The lowest index no fire team of the team and role has.
+local function FreeIndex(fireTeams, team, role, except)
+	local used = {}
+	for _, fireTeam in ipairs(fireTeams) do
+		if fireTeam ~= except and fireTeam.team == team and fireTeam.role == role then used[fireTeam.index] = true end
+	end
+	local index = 0
+	while used[index] do index = index + 1 end
+	return index
+end
+
+-- Names the fire team for its team, role and index (its squad).
+local function Index(fireTeams, fireTeam)
+	fireTeam.index = FreeIndex(fireTeams, fireTeam.team, fireTeam.role, fireTeam)
+	fireTeam.squad = "wetsand_aiwar_" .. fireTeam.team .. "_" .. fireTeam.role .. "_" .. fireTeam.index
+end
+
+local function NewFireTeam(war, team, role, manual)
+	local fireTeam = {
+		team = team,
+		role = role,
+		members = {},
+		manual = manual,
+	}
+	Index(war.fireTeams, fireTeam)
+	war.fireTeams[#war.fireTeams + 1] = fireTeam
+	return fireTeam
+end
+
+local function Seat(member, fireTeam)
+	member.place = FreePlace(fireTeam)
+	member.fireTeam = fireTeam
+	fireTeam.members[member.place] = member
+end
+
+-- Joins an open fire team the war formed of the member's team and role,
+-- the lowest indexed first, or starts one at the lowest free index.
 function War:JoinFireTeam(member)
-	local open, used = nil, {}
+	local open = nil
 	for _, fireTeam in ipairs(self.fireTeams) do
-		if fireTeam.team == member.team and fireTeam.role == member.role then
-			used[fireTeam.index] = true
-			if FreePlace(fireTeam) and (not open or fireTeam.index < open.index) then open = fireTeam end
+		if fireTeam.team == member.team and fireTeam.role == member.role and not fireTeam.manual
+			and FreePlace(fireTeam) and (not open or fireTeam.index < open.index) then
+			open = fireTeam
 		end
 	end
-	if not open then
-		local index = 0
-		while used[index] do index = index + 1 end
-		open = {
-			team = member.team, role = member.role, index = index, members = {},
-			squad = "wetsand_aiwar_" .. member.team .. "_" .. member.role .. "_" .. index,
-		}
-		self.fireTeams[#self.fireTeams + 1] = open
-	end
-	member.place = FreePlace(open)
-	member.fireTeam = open
-	open.members[member.place] = member
+	Seat(member, open or NewFireTeam(self, member.team, member.role, false))
+end
+
+local function ByPlace(a, b)
+	return a.place < b.place
 end
 
 -- The member's fire team's members in place order.
 function War:FireTeamMembers(fireTeam)
 	local list = {}
-	for place = 0, FIRE_TEAM_SIZE - 1 do
-		if fireTeam.members[place] then list[#list + 1] = fireTeam.members[place] end
-	end
+	for _, member in pairs(fireTeam.members) do list[#list + 1] = member end
+	sort(list, ByPlace)
 	return list
+end
+
+-- Whether the war leaves the member's job and squad be: given by hand, or
+-- in a squad formed or changed by hand.
+local function Held(member)
+	return member.roleByHand == true or (member.fireTeam ~= nil and member.fireTeam.manual == true)
+end
+
+-- In a fire team of the war's, when the war groups soldiers itself.
+local function Regroup(war, member)
+	if war.autoSquads and member.role and not member.fireTeam then war:JoinFireTeam(member) end
 end
 
 function War:AssignRole(member)
@@ -445,7 +487,7 @@ function War:AssignRole(member)
 		member.role = stance and PickRole(stance, RoleCounts(self.members, member.team, member)) or nil
 	end
 	member.slot = member.role and FreeSlot(self.members, member.team, member.role, member) or 0
-	if member.role then self:JoinFireTeam(member) end
+	Regroup(self, member)
 end
 
 -- drafted: spawned by the war (counted against the team's size), rather
@@ -472,7 +514,7 @@ function War:ChangeRole(member, role)
 	self:LeaveFireTeam(member)
 	member.role = role
 	member.slot = FreeSlot(self.members, member.team, role, member)
-	self:JoinFireTeam(member)
+	Regroup(self, member)
 end
 
 -- Rebalances a team to its stance's shares with as few role changes as
@@ -481,7 +523,7 @@ end
 function War:Rebalance(team, stance)
 	local list = {}
 	for _, member in ipairs(self:Members()) do
-		if member.team == team and member.role and not member.fixed then list[#list + 1] = member end
+		if member.team == team and member.role and not member.fixed and not Held(member) then list[#list + 1] = member end
 	end
 	local target = {}
 	for _ = 1, #list do
@@ -510,7 +552,7 @@ function War:Reassign(team, stance)
 	self.stances[team] = stance
 	local list = {}
 	for _, member in ipairs(self:Members()) do
-		if member.team == team then
+		if member.team == team and not Held(member) then
 			self:LeaveFireTeam(member)
 			member.role = nil
 			list[#list + 1] = member
@@ -556,6 +598,79 @@ function War:AssignStances(stances, defense)
 			end
 		end
 	end
+end
+
+-------------------------------------------------------------------------------
+-- Squads and jobs by hand (ns_squads_*, ns_soldiers_job)
+
+-- on: the war groups soldiers into fire teams itself, and groups those in
+-- none now; off: soldiers out of a squad stay out until put in one by hand.
+function War:SetAutoSquads(on)
+	self.autoSquads = on
+	for _, member in ipairs(self:Members()) do Regroup(self, member) end
+end
+
+-- Every soldier out of its squad; with automatic squads, grouped afresh.
+function War:DissolveSquads()
+	for _, member in pairs(self.members) do self:LeaveFireTeam(member) end
+	for _, member in ipairs(self:Members()) do Regroup(self, member) end
+end
+
+-- A squad by hand, led by `leader`, which leaves its own; returns it.
+function War:FormSquad(leader)
+	self:LeaveFireTeam(leader)
+	local fireTeam = NewFireTeam(self, leader.team, leader.role, true)
+	fireTeam.chosen = leader
+	Seat(leader, fireTeam)
+	return fireTeam
+end
+
+-- The member joins the squad and takes its job (a medic keeps healing);
+-- the squad is one by hand from now on. Returns true, or false and why.
+function War:JoinSquad(member, fireTeam)
+	if member.team ~= fireTeam.team then return false, member.handle .. " fights for the other side" end
+	fireTeam.manual = true
+	if member.fireTeam == fireTeam then return true end
+	self:LeaveFireTeam(member)
+	if not member.fixed then
+		member.role = fireTeam.role
+		member.slot = FreeSlot(self.members, member.team, fireTeam.role, member)
+	end
+	Seat(member, fireTeam)
+	return true
+end
+
+-- Out of its squad: solo, or in one of the war's with automatic squads.
+function War:LeaveSquad(member)
+	self:LeaveFireTeam(member)
+	Regroup(self, member)
+end
+
+-- The member's job, by hand; in a squad by hand, the whole squad's. The war
+-- leaves it be until ReleaseRole. Returns true, or false and why.
+function War:SetRole(member, role)
+	if member.fixed then return false, member.handle .. " only ever does " .. member.fixed end
+	local fireTeam = member.fireTeam
+	if fireTeam and fireTeam.manual then
+		fireTeam.role = role
+		Index(self.fireTeams, fireTeam)
+		for _, mate in pairs(fireTeam.members) do
+			if not mate.fixed then
+				mate.role = role
+				mate.slot = FreeSlot(self.members, mate.team, role, mate)
+			end
+		end
+		return true
+	end
+	member.roleByHand = true
+	self:ChangeRole(member, role)
+	return true
+end
+
+-- The member's job is the war's again: given now from the team's stance.
+function War:ReleaseRole(member)
+	member.roleByHand = nil
+	if not Held(member) then self:AssignRole(member) end
 end
 
 -- The next recruit to spawn for a team (its squad is its fire team's,

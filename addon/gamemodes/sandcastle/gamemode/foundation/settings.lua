@@ -12,6 +12,8 @@ module(...)
 SETTINGS = {
 	mp_aiwar_team_size = { min = Slots.CUSTOM_SIZE, max = AiWar.TEAM_SIZE_MAX },
 	wetsand_aiwar_debug_full = { min = 0, max = 1 },
+	ns_squads_auto_enabled = { min = 0, max = 1 },
+	ns_soldiers_paused = { min = 0, max = 1 },
 	wetsand_nodegraph_max_nodes = { min = 64, max = 8192 },
 }
 

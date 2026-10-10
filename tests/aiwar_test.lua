@@ -3,6 +3,7 @@
 -- foundation.aiwar.track, the cart's path as geometry.
 local T = dofile("tests/harness.lua")
 local AiWar = T.require("foundation.aiwar")
+local Squad = T.require("foundation.aiwar.squad")
 local Track = T.require("foundation.aiwar.track")
 local Teams = T.require("foundation.teams")
 local STATE = T.require("foundation.rounds.state")
@@ -140,6 +141,149 @@ T.test("a team emptied goes, and teams never cross sides", function()
 	local still = false
 	for _, other in ipairs(war.fireTeams) do still = still or other == fireTeam end
 	T.eq(still, false, "gone once empty")
+end)
+
+-- Squads by hand (ns_squads_*) -------------------------------------------------
+
+-- A war with n BLU soldiers enlisted, attacking a cart.
+local function Enlisted(n, war)
+	war = war or AiWar.War.New()
+	war:Assign({ [BLUE] = true })
+	local members = {}
+	for i = 1, n do members[i] = war:Enlist("b" .. i, BLUE, true) end
+	return war, members
+end
+
+local function InAnySquad(members)
+	for _, member in ipairs(members) do
+		if member.fireTeam then return true end
+	end
+	return false
+end
+
+T.test("with automatic squads off, soldiers stay out of squads, and turning them on groups them", function()
+	local war = AiWar.War.New()
+	war:SetAutoSquads(false)
+	local _, members = Enlisted(6, war)
+	T.eq(InAnySquad(members), false, "nobody grouped")
+	T.eq(members[1].role ~= nil, true, "still given jobs")
+	war:SetAutoSquads(true)
+	for _, member in ipairs(members) do T.eq(member.fireTeam ~= nil, true, member.handle .. " grouped") end
+end)
+
+T.test("dissolving puts everyone out of their squads; with automatic squads on they regroup at once", function()
+	local war, members = Enlisted(6)
+	war:SetAutoSquads(false)
+	war:DissolveSquads()
+	T.eq(InAnySquad(members), false, "all solo")
+	T.eq(#war.fireTeams, 0, "no fire teams left")
+	war:SetAutoSquads(true)
+	war:DissolveSquads()
+	T.eq(members[1].fireTeam ~= nil, true, "regrouped")
+end)
+
+T.test("a squad formed by hand is led by the soldier it was formed for, and grows past FIRE_TEAM_SIZE", function()
+	local war, members = Enlisted(10)
+	war:SetAutoSquads(false)
+	war:DissolveSquads()
+	local leader = members[10]
+	local squad = war:FormSquad(leader)
+	T.eq(squad.manual, true, "by hand")
+	T.eq(Squad.Leader(squad), leader, "led by its founder, the newest")
+	for i = 1, 9 do T.eq(war:JoinSquad(members[i], squad), true, "joined " .. i) end
+	T.eq(#war:FireTeamMembers(squad), 10, "ten in one squad")
+	T.eq(Squad.Leader(squad), leader, "still its founder, over the longest serving")
+	for i = 1, 9 do
+		T.eq(members[i].role, leader.role, "the leader's job")
+		T.eq(Squad.Kind(members[i]), "member", "follows")
+	end
+	local places = {}
+	for _, member in ipairs(war:FireTeamMembers(squad)) do places[#places + 1] = member.place end
+	T.eq(table.concat(places, " "), "0 1 2 3 4 5 6 7 8 9", "places in order")
+end)
+
+T.test("the war leaves a squad by hand alone: no rebalance or new stance moves its soldiers", function()
+	local war, members = Enlisted(8)
+	local leader = members[1]
+	local squad = war:FormSquad(leader)
+	for i = 2, 8 do war:JoinSquad(members[i], squad) end
+	local role = leader.role
+	war:Assign({ [BLUE] = { progress = 0.9 } })
+	war:Assign({})
+	for _, member in ipairs(members) do
+		T.eq(member.fireTeam, squad, member.handle .. " still in it")
+		T.eq(member.role, role, member.handle .. " still on its job")
+	end
+	local newcomer = war:Enlist("new", BLUE, true)
+	T.eq(newcomer.fireTeam ~= squad, true, "the war's own squads never fill it")
+end)
+
+T.test("joining an automatic squad makes it a squad by hand; one soldier can't join the other side's", function()
+	local war, members = Enlisted(3)
+	local red = war:Enlist("red", RED, true)
+	local squad = members[1].fireTeam
+	T.eq(war:JoinSquad(red, squad), false, "not across sides")
+	T.eq(war:JoinSquad(members[3], squad), true, "joined")
+	T.eq(squad.manual, true, "now by hand")
+end)
+
+T.test("leaving a squad by hand leaves its soldier solo, or regrouped with automatic squads on; an empty squad goes", function()
+	local war, members = Enlisted(2)
+	war:SetAutoSquads(false)
+	war:DissolveSquads()
+	local squad = war:FormSquad(members[1])
+	war:JoinSquad(members[2], squad)
+	war:LeaveSquad(members[2])
+	T.eq(members[2].fireTeam, nil, "solo")
+	war:SetAutoSquads(true)
+	war:LeaveSquad(members[1])
+	T.eq(members[1].fireTeam ~= nil and members[1].fireTeam ~= squad, true, "back in the war's squads")
+	local still = false
+	for _, other in ipairs(war.fireTeams) do still = still or other == squad end
+	T.eq(still, false, "the empty squad is gone")
+end)
+
+-- Jobs by hand (ns_soldiers_job) ----------------------------------------------------
+
+T.test("a soldier given a job by hand keeps it: no rebalance or new stance moves it", function()
+	local war, members = Enlisted(4)
+	local member = members[1]
+	war:SetRole(member, AiWar.RAID)
+	T.eq(member.role, AiWar.RAID, "raids")
+	T.eq(member.fireTeam.role, AiWar.RAID, "in a raiders' squad")
+	war:Assign({ [BLUE] = { progress = 0.9 } })
+	war:Assign({})
+	T.eq(member.role, AiWar.RAID, "kept")
+end)
+
+T.test("a job given to a soldier in a squad by hand is the whole squad's", function()
+	local war, members = Enlisted(3)
+	local squad = war:FormSquad(members[1])
+	war:JoinSquad(members[2], squad)
+	war:SetRole(members[2], AiWar.SUPPORT)
+	T.eq(members[1].role .. " " .. members[2].role .. " " .. squad.role, "support support support", "all of it")
+	T.eq(members[2].fireTeam, squad, "still together")
+end)
+
+T.test("a medic's job can't be changed; a job handed back is the war's to give again", function()
+	local war, members = Enlisted(2)
+	local medic = war:Enlist("vort", BLUE, true, AiWar.MEDIC)
+	local ok, why = war:SetRole(medic, AiWar.RAID)
+	T.eq(ok, false, "refused")
+	T.eq(why, "vort only ever does medic", "why")
+	war:SetRole(members[1], AiWar.RAID)
+	war:ReleaseRole(members[1])
+	T.eq(members[1].roleByHand, nil, "the war's again")
+	T.eq(members[1].role ~= nil, true, "given a job by the war")
+end)
+
+T.test("a medic joining a squad by hand keeps healing", function()
+	local war, members = Enlisted(1)
+	local medic = war:Enlist("vort", BLUE, true, AiWar.MEDIC)
+	local squad = war:FormSquad(members[1])
+	war:JoinSquad(medic, squad)
+	T.eq(medic.role, AiWar.MEDIC, "its fixed job")
+	T.eq(medic.fireTeam, squad, "in the squad")
 end)
 
 -- Roles --------------------------------------------------------------------

@@ -603,6 +603,7 @@ local Controller = {
 	nextRelations = 0,
 	slots = nil, -- the foundation.aiwar.slots Plan, read from slotStore when first needed
 	slotStore = nil, -- where the slot list is kept between maps (SlotFile, below)
+	paused = false, -- every soldier stands still (ns_soldiers_paused, SetPaused)
 	slotViewers = {}, -- admins whose AI War panel shows the slots -> true
 	slotSignature = nil, -- what the viewers were last sent, as text
 	nextSlotSync = 0,
@@ -878,6 +879,7 @@ function Controller:Enlist(ent, team, drafted, fixed)
 	local member = self.war:Enlist(ent, team, drafted, fixed or AiWar.FixedRole(ent:GetClass()))
 	-- a drafted soldier fills a slot of its faction, and leads or follows as it is pinned
 	if drafted then member.pin = self:SlotPlan():Fill(self:FactionName(team), ent).pin end
+	if self.paused then ent:SetAIDisabled(true) end
 	local soldier = Soldier.New(ent, self, team)
 	self.soldiers[ent] = {
 		soldier = soldier,
@@ -2021,7 +2023,7 @@ function Controller:Survey(now)
 end
 
 function Controller:Think(now)
-	if now < self.nextThink then return end
+	if self.paused or now < self.nextThink then return end
 	self.nextThink = now + THINK_INTERVAL
 	local field = self:Survey(now)
 	-- the war waits: its soldiers act only on a whole field
@@ -2197,21 +2199,20 @@ function Controller:SlotsChanged()
 	self:SyncSlots(true)
 end
 
--- Returns the lines to tell whoever asked.
-function Controller:AddSlot(team)
+-- The side's faction keeps `count` slots (the panel's slider); the
+-- soldiers of slots dropped leave, slots added are filled at once. Returns
+-- the lines to tell whoever asked.
+function Controller:SetSlotCount(team, count)
 	self:CustomSlots()
 	local faction = self:FactionName(team)
-	if self.slots:Size(faction) >= AiWar.TEAM_SIZE_MAX then
-		return { string.format("mp_aiwar_slots_add: the %s have %d slots, the most", faction, AiWar.TEAM_SIZE_MAX) }
-	end
-	local slot = self.slots:Add(faction, nil)
-	-- filled at once, not at the team's next wave
-	if self.war then self.war:CallWave(team) end
+	local before = self.slots:Size(faction)
+	for _, ent in ipairs(self.slots:Resize(faction, count)) do ent:Remove() end
+	if self.war and count > before then self.war:CallWave(team) end
 	self:SlotsChanged()
-	return { string.format("mp_aiwar_slots_add: slot %d for the %s (%s)", slot.id, faction, WETSAND.TeamName[team]) }
+	return { string.format("mp_aiwar_slots_size: the %s (%s) keep %d slots", faction, WETSAND.TeamName[team], count) }
 end
 
--- A removed slot's soldier leaves with it.
+-- The slots go, and their soldiers with them (the slot list's Remove).
 function Controller:RemoveSlots(ids)
 	self:CustomSlots()
 	local lines = {}
@@ -2265,6 +2266,8 @@ function Controller:SlotFields()
 				role = member and member.role or "",
 				squad = fireTeam and string.format("%s %d", fireTeam.role, fireTeam.index + 1) or "",
 				leads = fireTeam ~= nil and Squad.Leader(fireTeam) == member,
+				squad_by_hand = fireTeam ~= nil and fireTeam.manual == true,
+				job_by_hand = member ~= nil and member.roleByHand == true,
 			}
 		end
 		teams[#teams + 1] = {
@@ -2275,16 +2278,18 @@ function Controller:SlotFields()
 	end
 	return {
 		custom = TeamSize() == Slots.CUSTOM_SIZE,
+		jobs = self:Jobs(),
 		teams = teams,
 	}
 end
 
 local function Signature(fields)
-	local parts = { tostring(fields.custom) }
+	local parts = { tostring(fields.custom), table.concat(fields.jobs, ",") }
 	for _, entry in ipairs(fields.teams) do
 		parts[#parts + 1] = entry.faction
 		for _, row in ipairs(entry.slots) do
-			parts[#parts + 1] = table.concat({ row.id, row.pin, row.index, row.role, row.squad, tostring(row.leads) }, ",")
+			parts[#parts + 1] = table.concat({ row.id, row.pin, row.index, row.role, row.squad, tostring(row.leads),
+				tostring(row.squad_by_hand), tostring(row.job_by_hand) }, ",")
 		end
 	end
 	return table.concat(parts, "|")
@@ -2332,6 +2337,105 @@ function Controller:SlotReport()
 		end
 	end
 	return lines
+end
+
+-- Pausing, squads and jobs by hand (ns_soldiers_paused, ns_squads_*, ns_jobs_*) --------------
+
+-- Paused, every soldier stands where it is: its DrGBase AI is off (it
+-- neither moves nor shoots), its orders wait and no wave comes.
+function Controller:SetPaused(on)
+	self.paused = on
+	for ent in pairs(self.soldiers) do
+		if IsValid(ent) then ent:SetAIDisabled(on) end
+	end
+end
+
+-- The soldiers with these entity indexes, as the war's members; or nil and
+-- the line saying which index is none.
+function Controller:MembersAt(command, indexes)
+	local byIndex = {}
+	for ent in pairs(self.soldiers) do
+		if IsValid(ent) then byIndex[ent:EntIndex()] = ent end
+	end
+	local members = {}
+	for i, index in ipairs(indexes) do
+		local ent = byIndex[index]
+		if ent == nil then return nil, { string.format("%s: #%d is no soldier of the war", command, index) } end
+		members[i] = self.war:Member(ent)
+	end
+	return members
+end
+
+-- A squad by hand: the first soldier leads, the others join it.
+function Controller:FormSquadOf(indexes)
+	local members, told = self:MembersAt("ns_squads_form", indexes)
+	if members == nil then return told end
+	local squad = self.war:FormSquad(members[1])
+	local lines = { string.format("ns_squads_form: #%d leads a new squad", indexes[1]) }
+	for i = 2, #members do
+		local ok, why = self.war:JoinSquad(members[i], squad)
+		lines[#lines + 1] = ok and string.format("ns_squads_form: #%d joined it", indexes[i]) or ("ns_squads_form: " .. why)
+	end
+	return lines
+end
+
+-- The soldiers join the squad the soldier `leaderIndex` is in.
+function Controller:JoinSquadOf(leaderIndex, indexes)
+	local leaders, told = self:MembersAt("ns_squads_join", { leaderIndex })
+	if leaders == nil then return told end
+	local squad = leaders[1].fireTeam
+	if squad == nil then return { string.format("ns_squads_join: #%d is in no squad", leaderIndex) } end
+	local members, unknown = self:MembersAt("ns_squads_join", indexes)
+	if members == nil then return unknown end
+	local lines = {}
+	for i, member in ipairs(members) do
+		local ok, why = self.war:JoinSquad(member, squad)
+		lines[#lines + 1] = ok and string.format("ns_squads_join: #%d joined #%d's squad", indexes[i], leaderIndex) or ("ns_squads_join: " .. why)
+	end
+	return lines
+end
+
+function Controller:LeaveSquadOf(indexes)
+	local members, told = self:MembersAt("ns_squads_leave", indexes)
+	if members == nil then return told end
+	for _, member in ipairs(members) do self.war:LeaveSquad(member) end
+	return { string.format("ns_squads_leave: %d soldiers left their squads", #members) }
+end
+
+function Controller:DissolveSquads()
+	self.war:DissolveSquads()
+	return { "ns_squads_dissolve: every squad dissolved" .. (self.war.autoSquads and "; automatic squads regrouped them" or "") }
+end
+
+-- The jobs the scenario's doctrine has, sorted; none before the first field.
+function Controller:Jobs()
+	local field = self.war and self.war:Field()
+	local jobs = {}
+	for job in pairs(field and field.doctrine.ROLES or {}) do jobs[#jobs + 1] = job end
+	table.sort(jobs)
+	return jobs
+end
+
+function Controller:AssignJob(job, indexes)
+	local jobs = self:Jobs()
+	local known = false
+	for _, each in ipairs(jobs) do known = known or each == job end
+	if not known then return { string.format("ns_jobs_assign: %s is no job here (%s)", job, table.concat(jobs, ", ")) } end
+	local members, told = self:MembersAt("ns_jobs_assign", indexes)
+	if members == nil then return told end
+	local lines = {}
+	for i, member in ipairs(members) do
+		local ok, why = self.war:SetRole(member, job)
+		lines[#lines + 1] = ok and string.format("ns_jobs_assign: #%d does %s", indexes[i], job) or ("ns_jobs_assign: " .. why)
+	end
+	return lines
+end
+
+function Controller:ReleaseJob(indexes)
+	local members, told = self:MembersAt("ns_jobs_release", indexes)
+	if members == nil then return told end
+	for _, member in ipairs(members) do self.war:ReleaseRole(member) end
+	return { string.format("ns_jobs_release: %d soldiers' jobs are the war's again", #members) }
 end
 
 -- Starting and ending ------------------------------------------------------------------
@@ -2384,6 +2488,8 @@ function Controller:Start()
 	self.winner = nil
 	self.waitingFor = nil
 	self.war = AiWar.War.New()
+	self.war:SetAutoSquads(GetConVar("ns_squads_auto_enabled"):GetBool())
+	self.paused = GetConVar("ns_soldiers_paused"):GetBool()
 	self.gates = nil
 	SetGlobal2Bool(ACTIVE_KEY, true)
 	WETSAND.Notify(Notices.WarStarted())
@@ -2408,7 +2514,7 @@ function Controller:End()
 			local drafted = self.war:Member(e.ent).drafted
 			e.entry.soldier:Release()
 			self:Discharge(e.ent)
-			if drafted then e.ent:Remove() end
+			if drafted then e.ent:Remove() elseif self.paused then e.ent:SetAIDisabled(false) end
 		end
 	end
 	self.soldiers = {}
@@ -2879,6 +2985,50 @@ WarCommand("ns_lanes_replan", function()
 	return { "ns_lanes_replan: every team's lanes are planned again at the next think" }
 end, "Plan every team's lanes again; the lanes found stand until the new ones are ready")
 
+-- Squads and jobs by hand, for testing how squads work: soldiers named by
+-- entity index (the AI War panel's slot list sends them).
+local function Indexes(command, args, from)
+	local ids, bad = Slots.ParseIds({ unpack(args, from) })
+	if ids == nil then return nil, { string.format("%s: '%s' is no entity index", command, bad) } end
+	return ids
+end
+
+WarCommand("ns_squads_form", function(args)
+	local indexes, told = Indexes("ns_squads_form", args, 1)
+	if indexes == nil then return told end
+	return Controller:FormSquadOf(indexes)
+end, "Form a squad by hand of soldiers by entity index, the first leading; it may be any size, and keeps the leader's job")
+
+WarCommand("ns_squads_join", function(args)
+	local indexes, told = Indexes("ns_squads_join", args, 1)
+	if indexes == nil then return told end
+	if #indexes < 2 then return { "ns_squads_join: a soldier in the squad, then the soldiers to join it (entity indexes)" } end
+	return Controller:JoinSquadOf(indexes[1], { unpack(indexes, 2) })
+end, "Put soldiers (entity indexes after the first) in the squad of the first; it becomes a squad by hand")
+
+WarCommand("ns_squads_leave", function(args)
+	local indexes, told = Indexes("ns_squads_leave", args, 1)
+	if indexes == nil then return told end
+	return Controller:LeaveSquadOf(indexes)
+end, "Take soldiers by entity index out of their squads (solo, or regrouped with ns_squads_auto_enabled)")
+
+WarCommand("ns_squads_dissolve", function()
+	return Controller:DissolveSquads()
+end, "Dissolve every squad; with ns_squads_auto_enabled 0 every soldier stays solo until grouped by hand")
+
+WarCommand("ns_jobs_assign", function(args)
+	if args[1] == nil then return { "ns_jobs_assign: a job, then soldiers' entity indexes" } end
+	local indexes, told = Indexes("ns_jobs_assign", args, 2)
+	if indexes == nil then return told end
+	return Controller:AssignJob(string.lower(args[1]), indexes)
+end, "Give soldiers by entity index a job by hand (in a squad by hand, the whole squad's); the war leaves it be")
+
+WarCommand("ns_jobs_release", function(args)
+	local indexes, told = Indexes("ns_jobs_release", args, 1)
+	if indexes == nil then return told end
+	return Controller:ReleaseJob(indexes)
+end, "Hand soldiers' jobs by entity index back to the war")
+
 WarCommand("ns_battlelines_print", function()
 	return Controller:LineReport()
 end, "Print each team's battle lines: its front, its posts' width and depth, and the squads in contact or falling back")
@@ -3015,6 +3165,14 @@ end
 function Controller:StandSeated()
 	for _, entry in pairs(self.soldiers) do entry.soldier:Stand() end
 end
+
+cvars.AddChangeCallback("ns_soldiers_paused", function(_, _, value)
+	Controller:SetPaused(value ~= "0")
+end, "wetsand_aiwar")
+
+cvars.AddChangeCallback("ns_squads_auto_enabled", function(_, _, value)
+	if Controller.war then Controller.war:SetAutoSquads(value ~= "0") end
+end, "wetsand_aiwar")
 
 cvars.AddChangeCallback("wetsand_aiwar_sitting_enabled", function(_, _, value)
 	if value == "0" then Controller:StandSeated() end

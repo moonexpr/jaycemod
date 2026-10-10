@@ -26,6 +26,28 @@ function WETSAND.SetServerSetting(name, value)
 	RunConsoleCommand(COMMAND, name, tostring(value))
 end
 
+-- A checkbox over a server setting of 0 or 1, following the server's value
+-- (but for a moment after a click, while the server takes it).
+local FOLLOW_AFTER = 1
+
+function WETSAND.ServerCheckBox(panel, label, name)
+	local box = panel:CheckBox(label)
+	box:SetChecked(GetConVar(name):GetBool())
+	box.sentAt = -FOLLOW_AFTER
+	function box:OnChange(on)
+		self.sentAt = RealTime()
+		WETSAND.SetServerSetting(name, on and 1 or 0)
+	end
+	local think = box.Think
+	function box:Think()
+		if think then think(self) end
+		if RealTime() - self.sentAt < FOLLOW_AFTER then return end
+		local on = GetConVar(name):GetBool()
+		if self:GetChecked() ~= on then self:SetChecked(on) end
+	end
+	return box
+end
+
 -- A slider over a server setting, over its range, showing the server's
 -- value; it sends once the player stops dragging.
 function WETSAND.ServerSlider(panel, label, name)

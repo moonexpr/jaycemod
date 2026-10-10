@@ -52,7 +52,11 @@ T.test("every command the panels and the menu run is registered", function()
 		count = count + 1
 		T.eq(registered[name], true, name)
 	end
-	for name in panel:gmatch('SelectedButton%(%s*panel,%s*list,%s*"[^"]*",%s*"([%w_]+)"') do
+	for name in panel:gmatch('[^%w_]Run%(%s*"([%w_]+)"') do
+		count = count + 1
+		T.eq(registered[name], true, name)
+	end
+	for name in panel:gmatch('command = "([%w_]+)"') do
 		count = count + 1
 		T.eq(registered[name], true, name)
 	end
@@ -90,6 +94,14 @@ T.test("the menu toggles every debug layer, and the panel keeps only showing and
 	T.eq(panel:find('"Show All"', 1, true) ~= nil, true, "show all")
 	T.eq(panel:find('"Clear All"', 1, true) ~= nil, true, "clear all")
 	T.eq(panel:find("Toggle(", 1, true), nil, "no toggles left in the panel")
+end)
+
+T.test("the slot list debugs a soldier with the same menu its NPC's own context menu shows", function()
+	local menu, slots = ReadFile(MENU), ReadFile(SLOT_LIST)
+	local debug = menu:match('properties%.Add%("wetsand_nb_debug", (%b{})%)')
+	T.eq(debug:find("WETSAND.NpcDebugMenu(", 1, true) ~= nil, true, "the NPC's menu is the shared one")
+	T.eq(slots:find("WETSAND.NpcDebugMenu(", 1, true) ~= nil, true, "so is the slot list's")
+	T.eq(slots:find("WETSAND.NpcSelectOption(", 1, true) ~= nil, true, "and its selection toggle")
 end)
 
 T.finish()

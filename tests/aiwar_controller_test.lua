@@ -22,6 +22,7 @@ local KothMode = T.require("foundation.rounds.koth")
 local STATE = T.require("foundation.rounds.state")
 local Teams = T.require("foundation.teams")
 local Slots = T.require("foundation.aiwar.slots")
+local Squad = T.require("foundation.aiwar.squad")
 -- the real scenarios; tests of the controller alone swap in fakes
 local REAL = {
 	[PayloadMode.Mode.NAME] = Payload,
@@ -162,6 +163,7 @@ local function World()
 		},
 		navAreas = {},
 		teamSize = TEAM_SIZE,
+		bools = { ns_squads_auto_enabled = true },
 	}
 	function w:Load(name, feature)
 		self.features[name] = feature
@@ -222,7 +224,11 @@ local function Env(w)
 		Vector = Vector,
 		DrGBase = {},
 		CreateConVar = function() return {} end,
-		GetConVar = function()
+		-- the team size is w.teamSize, every other convar a bool in w.bools
+		GetConVar = function(name)
+			if name ~= "mp_aiwar_team_size" then
+				return { GetBool = function() return w.bools[name] == true end }
+			end
 			return {
 				GetInt = function() return w.teamSize end,
 				SetInt = function(_, value) w.teamSize = value end,
@@ -347,20 +353,34 @@ T.test("at a team size, every faction keeps that many slots, and the list is kep
 	T.eq(sizes[RED] .. " " .. sizes[BLUE], "1 1", "follows the team size")
 end)
 
-T.test("adding or removing a slot sizes one side alone, and turns the team size to the slot list's", function()
+T.test("setting a side's slot count sizes that side alone, and turns the team size to the slot list's", function()
 	local w = World()
 	w.teamSize = 2
 	local controller = Load(w)
-	controller.slotStore = MemoryStore()
-	controller:AddSlot(RED)
+	controller:SetSlotCount(RED, 5)
 	T.eq(w.teamSize, Slots.CUSTOM_SIZE, "the slot list rules")
 	local sizes = controller:Sizes()
-	T.eq(sizes[RED] .. " " .. sizes[BLUE], "3 2", "RED has one more")
-	controller:RemoveSlots(SlotIds(controller, BLUE))
+	T.eq(sizes[RED] .. " " .. sizes[BLUE], "5 2", "RED has five")
+	controller:SetSlotCount(BLUE, 0)
 	sizes = controller:Sizes()
-	T.eq(sizes[RED] .. " " .. sizes[BLUE], "3 0", "RED alone")
+	T.eq(sizes[RED] .. " " .. sizes[BLUE], "5 0", "RED alone")
 	T.eq(#controller.slotStore.saved.Resistance, 0, "kept empty")
-	T.eq(controller:RemoveSlots({ 99 })[1], "mp_aiwar_slots_remove: no slot 99", "an unknown slot is told")
+end)
+
+T.test("removing slots by id removes their soldiers, and sets that side's size", function()
+	local w = World()
+	w.teamSize = 3
+	local controller = Load(w)
+	controller:Sizes()
+	local removed = false
+	controller:SlotPlan():Fill("Combine", { Remove = function() removed = true end })
+	local ids = SlotIds(controller, RED)
+	local lines = controller:RemoveSlots({ ids[1], ids[2], 99 })
+	T.eq(removed, true, "the soldier in the first went with it")
+	T.eq(w.teamSize, Slots.CUSTOM_SIZE, "the slot list rules")
+	local sizes = controller:Sizes()
+	T.eq(sizes[RED] .. " " .. sizes[BLUE], "1 3", "RED has one left")
+	T.eq(lines[3], "mp_aiwar_slots_remove: no slot 99", "an unknown slot is told")
 end)
 
 T.test("pins are kept with the slot list, and read back on the next map", function()
@@ -378,6 +398,65 @@ T.test("pins are kept with the slot list, and read back on the next map", functi
 	local sizes = next:Sizes()
 	T.eq(sizes[RED] .. " " .. sizes[BLUE], "2 2", "the same slots")
 	T.eq(next:SlotPlan():Slots("Combine")[1].pin, Slots.LEADER, "the same pin")
+end)
+
+-- A soldier the controller holds, with entity index `index`, whose DrGBase
+-- AI can be turned off.
+local function FakeSoldier(index)
+	return {
+		EntIndex = function() return index end,
+		SetAIDisabled = function(self, off) self.aiOff = off end,
+	}
+end
+
+-- A controller over a war of n BLU soldiers (entity indexes 1 to n).
+local function Squadded(n)
+	local w = World()
+	local controller = Load(w)
+	controller.war = AiWar.War.New()
+	controller.war:Assign({ [BLUE] = true })
+	local ents = {}
+	for i = 1, n do
+		ents[i] = FakeSoldier(i)
+		controller.war:Enlist(ents[i], BLUE, false)
+		controller.soldiers[ents[i]] = {}
+	end
+	return controller, ents, w
+end
+
+T.test("pausing turns every soldier's AI off, and resuming on", function()
+	local controller, ents = Squadded(2)
+	controller:SetPaused(true)
+	T.eq(ents[1].aiOff and ents[2].aiOff, true, "off")
+	T.eq(controller.paused, true, "paused")
+	controller:SetPaused(false)
+	T.eq(ents[1].aiOff or ents[2].aiOff, false, "on again")
+end)
+
+T.test("a squad formed from soldiers by entity index is led by the first; others join it, and leave it", function()
+	local controller, ents = Squadded(6)
+	controller:FormSquadOf({ 3, 1, 2 })
+	local leader = controller.war:Member(ents[3])
+	T.eq(controller.war:Member(ents[1]).fireTeam, leader.fireTeam, "1 with 3")
+	T.eq(Squad.Leader(leader.fireTeam), leader, "3 leads")
+	controller:JoinSquadOf(3, { 4, 5 })
+	T.eq(#controller.war:FireTeamMembers(leader.fireTeam), 5, "five in it")
+	controller.war:SetAutoSquads(false)
+	controller:LeaveSquadOf({ 5 })
+	T.eq(controller.war:Member(ents[5]).fireTeam, nil, "5 solo")
+	T.eq(controller:FormSquadOf({ 9 })[1], "ns_squads_form: #9 is no soldier of the war", "an unknown soldier is told")
+	T.eq(controller:JoinSquadOf(6, { 1 })[1] ~= nil, true, "joining a soldier's squad when it is in one")
+end)
+
+T.test("jobs given by hand must be the scenario's, and are handed back to the war", function()
+	local controller, ents = Squadded(2)
+	controller.war:SetField({ doctrine = { ROLES = { [AiWar.RAID] = {}, [AiWar.DEFEND] = {} } } })
+	T.eq(table.concat(controller:Jobs(), " "), "defend raid", "the doctrine's jobs, sorted")
+	controller:AssignJob(AiWar.RAID, { 1 })
+	T.eq(controller.war:Member(ents[1]).role, AiWar.RAID, "raids")
+	T.eq(controller:AssignJob("dance", { 1 })[1], "ns_jobs_assign: dance is no job here (defend, raid)", "refused")
+	controller:ReleaseJob({ 1 })
+	T.eq(controller.war:Member(ents[1]).roleByHand, nil, "the war's again")
 end)
 
 T.test("a stored slot list that is none is replaced by a new one", function()

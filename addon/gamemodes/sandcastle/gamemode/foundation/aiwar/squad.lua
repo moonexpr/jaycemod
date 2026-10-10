@@ -40,6 +40,12 @@ end
 -- tier, then the member longest in the war (the lowest seq). A leader stays
 -- until it leaves or one of a better tier is in the fire team.
 function Leader(fireTeam)
+	-- a squad formed by hand is led by the soldier it was formed for
+	local chosen = fireTeam.chosen
+	if chosen and Within(fireTeam, chosen) then
+		fireTeam.leader = chosen
+		return chosen
+	end
 	local best
 	for _, member in pairs(fireTeam.members) do
 		if Better(member, best) then best = member end

@@ -21,6 +21,9 @@ LEADER, MEMBER = "leader", "member"
 -- mp_aiwar_team_size's value while the slots are edited one by one.
 CUSTOM_SIZE = -1
 
+-- The AI War panel's slider over each side's slots.
+SLIDER_MIN, SLIDER_MAX = 0, 16
+
 -- The aiwar_slots event's widths (wetsand/sh_aiwar.lua): slot ids, and the
 -- slots a faction may have (foundation.aiwar's TEAM_SIZE_MAX fits).
 ID_BITS = 16
@@ -219,6 +222,21 @@ function Tree(rows)
 		squads = squads,
 		loose = loose,
 	}
+end
+
+-- The soldiers' rows of a selection (one list of rows a node picked, in the
+-- order picked): each soldier once, the empty slots left out.
+function Picked(groups)
+	local picked, seen = {}, {}
+	for _, rows in ipairs(groups) do
+		for _, row in ipairs(rows) do
+			if row.index > 0 and not seen[row.id] then
+				seen[row.id] = true
+				picked[#picked + 1] = row
+			end
+		end
+	end
+	return picked
 end
 
 -------------------------------------------------------------------------------

@@ -14,6 +14,13 @@ local ACTIVE_KEY = "wetsand.aiwar"
 CreateConVar("mp_aiwar_team_size", tostring(AiWar.TEAM_SIZE_DEFAULT), { FCVAR_ARCHIVE, FCVAR_REPLICATED },
 	"Soldiers each side of the AI war keeps in the field; -1: each side's own slots, as the AI War panel's slot list "
 		.. "(mp_aiwar_slots_*) edits them", Slots.CUSTOM_SIZE, AiWar.TEAM_SIZE_MAX)
+-- The AI War panel's switches for testing squads (features/aiwar follows
+-- them): every soldier standing still, and whether the war groups soldiers
+-- into squads itself or leaves it to squads formed by hand (ns_squads_*).
+CreateConVar("ns_soldiers_paused", "0", { FCVAR_REPLICATED },
+	"1: every AI war soldier stands still, its AI off, and no wave comes; 0 resumes")
+CreateConVar("ns_squads_auto_enabled", "1", { FCVAR_ARCHIVE, FCVAR_REPLICATED },
+	"1: the AI war groups its soldiers into squads itself; 0: only squads formed by hand (ns_squads_form)")
 -- Replicated, so the Debug NextSoldier panel (wetsand/cl_ns_debug.lua)
 -- shows whether it is on.
 CreateConVar("wetsand_aiwar_debug_full", "0", { FCVAR_ARCHIVE, FCVAR_REPLICATED },
@@ -25,15 +32,18 @@ end
 
 local SLOT_TEAM_COUNT_BITS = 2
 local SLOT_INDEX_BITS = 16 -- entity indexes
+local SLOT_JOB_COUNT_BITS = 5
 
 -- The slot list, to the admins whose AI War panel asked for it (and again
 -- whenever it changes): whether it sets the sides' sizes (the team size is
--- Slots.CUSTOM_SIZE), and each team's faction and slots in order. A slot's
--- pin is leader, member or none; an empty slot's index is 0 and its texts
--- empty; squad names its soldier's fire team ("" for none), and leads says
--- whether it leads it.
+-- Slots.CUSTOM_SIZE), the jobs a soldier may be given (the scenario's), and
+-- each team's faction and slots in order. A slot's pin is leader, member or
+-- none; an empty slot's index is 0 and its texts empty; squad names its
+-- soldier's fire team ("" for none), leads says whether it leads it, and
+-- squad_by_hand and job_by_hand whether they were set by hand.
 E.Define("aiwar_slots", {
 	custom = E.Bool(),
+	jobs = E.List(E.String(), SLOT_JOB_COUNT_BITS),
 	teams = E.List(E.Record({
 		team = E.Team(),
 		faction = E.String(),
@@ -45,6 +55,8 @@ E.Define("aiwar_slots", {
 			role = E.String(),
 			squad = E.String(),
 			leads = E.Bool(),
+			squad_by_hand = E.Bool(),
+			job_by_hand = E.Bool(),
 		}), Slots.COUNT_BITS),
 	}), SLOT_TEAM_COUNT_BITS),
 })
@@ -101,11 +113,14 @@ if SERVER then
 		return ids
 	end
 
-	SlotCommand("mp_aiwar_slots_add", function(war, args)
+	SlotCommand("mp_aiwar_slots_size", function(war, args)
 		local team = args[1] and Slots.ParseTeam(args[1])
-		if team == nil then return { "mp_aiwar_slots_add: RED or BLU" } end
-		return war:AddSlot(team)
-	end, "Add a slot for RED's or BLU's faction (RED or BLU); the team size becomes -1, each side's own slots")
+		local count = tonumber(args[2] or "")
+		if team == nil or count == nil or count < 0 or count > AiWar.TEAM_SIZE_MAX or count ~= math.floor(count) then
+			return { string.format("mp_aiwar_slots_size: RED or BLU, then 0 to %d slots", AiWar.TEAM_SIZE_MAX) }
+		end
+		return war:SetSlotCount(team, count)
+	end, "Set how many slots RED's or BLU's faction keeps (RED or BLU, then a count); the team size becomes -1, each side's own slots")
 
 	SlotCommand("mp_aiwar_slots_remove", function(war, args)
 		local ids, told = Ids("mp_aiwar_slots_remove", args)
