@@ -202,9 +202,10 @@ function ENT:Sparks(on)
 	end
 end
 
--- HandleTrainMovement
+-- HandleTrainMovement; on a map that drives its own cart, only an admin's advance.
 function ENT:HandleTrainMovement(startReceding)
-	if self.disabled or not self.handleMovement or not IsValid(self.train) then return end
+	if self.disabled or not IsValid(self.train) then return end
+	if not P.WatcherDrives(self.handleMovement, self.advanceTo ~= nil) then return end
 	local speed, receding = P.TrainSpeed(self, startReceding)
 	-- driven on to a checkpoint by an admin, whoever is on it
 	if self.advanceTo then speed, receding = 1, false end
@@ -308,7 +309,29 @@ function ENT:ApplyMaxSpeed()
 	if not IsValid(self.train) or not self.baseMaxSpeed then return end
 	local maxSpeed = P.MaxSpeed(self.baseMaxSpeed, self.payload:CartSpeedScale(), self.advanceTo ~= nil)
 	self.train:SetKeyValue("startspeed", tostring(maxSpeed))
-	if self.handleMovement and not self.disabled then self.train:Fire("SetSpeedDirAccel", tostring(self.currentSpeed)) end
+	if P.WatcherDrives(self.handleMovement, self.advanceTo ~= nil) and not self.disabled then
+		self.train:Fire("SetSpeedDirAccel", tostring(self.currentSpeed))
+	end
+end
+
+-- The capture area riding the train, which reports its cappers.
+function ENT:CartArea()
+	if IsValid(self.area) then return self.area end
+	for _, area in ipairs(ents.FindByClass("trigger_capture_area")) do
+		if area:GetParent() == self.train then return area end
+	end
+	return NULL
+end
+
+-- After an admin's move the train runs as it otherwise would: at the
+-- watcher's speed, or at the map's, which the cart's capture area sets from
+-- its cappers (OnNumCappersChanged, replayed with the count it has now).
+function ENT:ResumeSpeed()
+	if self.handleMovement then return self:HandleTrainMovement() end
+	self.currentSpeed = 0
+	self.train:Fire("SetSpeedDirAccel", "0")
+	local area = self:CartArea()
+	if IsValid(area) then area:TriggerOutput("OnNumCappersChanged", area, tostring(math.max(self.numCappers, 0))) end
 end
 
 -- The Game Rules editor's retract (foundation.payload RetractPlan): a cart
@@ -319,7 +342,6 @@ end
 -- why not.
 function ENT:RetractToCheckpoint()
 	if not self:IsActive() or not IsValid(self.train) then return false, "the cart is not active" end
-	if not self.handleMovement then return false, "this map moves its cart itself" end
 	if WETSAND.State() ~= WETSAND.STATE.RND_RUNNING then return false, "the round is not running" end
 	local plan = P.RetractPlan(self.links, self.distanceFromStart or 0)
 	if plan.uncap then
@@ -334,12 +356,13 @@ function ENT:RetractToCheckpoint()
 	self.advanceTo = nil
 	self.train:Fire("TeleportToPathTrack", node:GetName())
 	self.train:Fire("Stop")
+	self.currentSpeed = 0
 	self.pathIndex = index
 	for _, link in ipairs(self.links) do
 		if link.distance >= self.distanceAt[index] then link.alerted = false end
 	end
 	self:ApplyMaxSpeed()
-	self:HandleTrainMovement()
+	self:ResumeSpeed()
 	self:AnnounceRetract()
 	return true
 end
@@ -363,7 +386,6 @@ end
 -- Returns true, or false and why not.
 function ENT:AdvanceToNextCheckpoint()
 	if not self:IsActive() or not IsValid(self.train) then return false, "the cart is not active" end
-	if not self.handleMovement then return false, "this map moves its cart itself" end
 	if WETSAND.State() ~= WETSAND.STATE.RND_RUNNING then return false, "the round is not running" end
 	local link = P.NextCheckpoint(self.links, self.distanceFromStart or 0)
 	if not link or not link.index then return false, "no checkpoint ahead" end
@@ -374,11 +396,19 @@ function ENT:AdvanceToNextCheckpoint()
 	return true
 end
 
+-- Past the checkpoint: the train runs as before, and an unpushed cart waits
+-- its full time again before receding.
 function ENT:CheckAdvance()
-	if not self.advanceTo or self.pathIndex < self.advanceTo.index then return end
+	if not self.advanceTo then return end
+	-- the map's own speed logic answers its cappers after we do: insist
+	if not self.handleMovement then self.train:Fire("SetSpeedDirAccel", "1") end
+	if self.pathIndex < self.advanceTo.index then return end
 	self.advanceTo = nil
+	if self.waitingToRecede then
+		self:StartRecedeCountdown(P.RecedeDelay(InOvertime(), self.trainRecedeTime, recede_time:GetFloat(), recede_time_overtime:GetFloat()))
+	end
 	self:ApplyMaxSpeed()
-	self:HandleTrainMovement()
+	self:ResumeSpeed()
 end
 
 -- Alerts and the capture alarm ---------------------------------------------------------
@@ -426,6 +456,7 @@ end
 
 function ENT:CheckRecede()
 	if not self.waitingToRecede or self.recedeAt >= CurTime() then return end
+	if not P.MayRecede(self.advanceTo ~= nil) then return end
 	self.waitingToRecede = false
 	-- the train does not recede in overtime
 	if InOvertime() then return end

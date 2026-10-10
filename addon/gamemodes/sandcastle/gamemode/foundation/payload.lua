@@ -256,6 +256,18 @@ function RetractPlan(links, distance)
 	return { uncap = nil, to = links[last] }
 end
 
+-- Whether the watcher sets the train's speed: with handle_train_movement
+-- always; on a map that drives its own cart (pl_goldrush's capture area ->
+-- logic_case), only while an admin advances it.
+function WatcherDrives(handleMovement, advancing)
+	return handleMovement or advancing
+end
+
+-- A cart an admin advances does not recede on the way (OnTrainStartRecede).
+function MayRecede(advancing)
+	return not advancing
+end
+
 -- The train's m_maxSpeed for the map's top speed `base`.
 function MaxSpeed(base, scale, advancing)
 	return base * SpeedScale(scale) * (advancing and ADVANCE_SPEED_SCALE or 1)

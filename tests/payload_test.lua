@@ -407,6 +407,19 @@ T.test("a cart that has taken no point goes back to the start", function()
 	T.eq(P.RETRACT_SLACK, 300, "the attackers get five minutes for a point given back")
 end)
 
+-- Bug: on pl_goldrush (handle_train_movement 0: the map drives its cart from
+-- the capture area's cappers) the editor's advance and retract refused.
+T.test("the watcher drives a map-driven cart only while an admin advances it", function()
+	T.eq(P.WatcherDrives(true, false), true, "handle_train_movement: always")
+	T.eq(P.WatcherDrives(false, true), true, "the map's cart, advancing")
+	T.eq(P.WatcherDrives(false, false), false, "the map's cart, otherwise")
+end)
+
+T.test("an advancing cart does not recede", function()
+	T.eq(P.MayRecede(false), true)
+	T.eq(P.MayRecede(true), false)
+end)
+
 T.test("the cart's top speed is the map's times the admin's scale, faster while advancing", function()
 	T.eq(P.MaxSpeed(90, 1, false), 90, "the map's")
 	T.eq(P.MaxSpeed(90, 2, false), 180, "doubled")
