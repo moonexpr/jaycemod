@@ -6,6 +6,11 @@ r"""Run Garry's Mod's dedicated server under CrossOver and drive it with RCON.
   srcds.py rcon 'status'                               run a console command
   srcds.py stop                                        quit the server we started
   srcds.py console                                     follow its console in an iTerm window
+  srcds.py --instance 2 start ...                      the same for a second server beside the first
+
+Each instance (server_root.Instance; 1, the default, is the main server) has
+its own root, launch record srcds[-n].pid, log srcds[-n].log and default port
+(DEFAULT_PORT, then INSTANCE_PORT_STEP apart), so two can run side by side.
 
 The server is GMod's Windows x86-64 srcds_win64.exe in the CrossOver bottle
 "Steam" and nowhere else: the operator plays in the bottle "Team Fortress 2",
@@ -60,6 +65,7 @@ from pathlib import Path
 from typing import Deque, Dict, List, Optional, Set, Tuple
 
 import server_root
+from server_root import MAIN_INSTANCE, Instance, Layout
 
 __all__ = [
     "AUTH",
@@ -70,6 +76,7 @@ __all__ = [
     "CONSOLE_COLUMNS",
     "BOTTLE",
     "Install",
+    "InstanceFiles",
     "Launched",
     "Packet",
     "RconClient",
@@ -103,8 +110,9 @@ PROCESS_LOG = ARTIFACTS / "srcds.log"
 
 BOTTLE = "Steam"  # never "Team Fortress 2", where the operator plays
 BOTTLE_DIR = Path.home() / "Library/Application Support/CrossOver/Bottles" / BOTTLE
-GMOD_WINDOWS = server_root.ROOT_WINDOWS
-GMOD_DIR = server_root.ROOT / "garrysmod"
+MAIN = Instance(MAIN_INSTANCE)
+GMOD_WINDOWS = MAIN.root_windows
+GMOD_DIR = MAIN.root / "garrysmod"
 WINE_RELATIVE = "Contents/SharedSupport/CrossOver/bin/wine"
 CROSSOVER_APPS = (Path("/Applications/CrossOver GPTK4.app"), Path("/Applications/CrossOver.app"))
 SERVER_EXE = server_root.SERVER_EXE
@@ -136,12 +144,17 @@ class Install:
     gmod_dir: Path
 
     @classmethod
-    def discover(cls) -> "Install":
+    def on(cls, wine: Path, instance: Instance) -> "Install":
+        """The instance's server, run by `wine` on the Steam bottle."""
+        return cls(wine, BOTTLE, instance.root_windows, instance.root / "garrysmod")
+
+    @classmethod
+    def discover(cls, instance: Instance = MAIN) -> "Install":
         """The first CrossOver installed, on the Steam bottle."""
         installed = [app for app in CROSSOVER_APPS if (app / WINE_RELATIVE).exists()]
         if not installed:
             raise ServerDown("no CrossOver under /Applications")
-        return cls(installed[0] / WINE_RELATIVE, BOTTLE, GMOD_WINDOWS, GMOD_DIR)
+        return cls.on(installed[0] / WINE_RELATIVE, instance)
 
     @property
     def console_log(self) -> Path:
@@ -390,8 +403,21 @@ def stop_targets(launched: Launched, processes: str) -> List[int]:
     return sorted(pid for pid in ours if not any(name in table[pid][1] for name in NEVER_STOP))
 
 
-def read_launched() -> Optional[Launched]:
-    return Launched.parse(PID_FILE.read_text()) if PID_FILE.exists() else None
+@dataclass(frozen=True)
+class InstanceFiles:
+    """An instance's launch record, process log and default port."""
+    pid: Path
+    log: Path
+    port: int
+
+    @classmethod
+    def of(cls, instance: Instance) -> "InstanceFiles":
+        return cls(ARTIFACTS / f"srcds{instance.suffix}.pid", ARTIFACTS / f"srcds{instance.suffix}.log",
+                   DEFAULT_PORT + INSTANCE_PORT_STEP * (instance.number - MAIN_INSTANCE))
+
+
+def read_launched(pid_file: Path = PID_FILE) -> Optional[Launched]:
+    return Launched.parse(pid_file.read_text()) if pid_file.exists() else None
 
 
 LAUNCH_RECORD_TIMEOUT = 10
@@ -403,35 +429,41 @@ class Server:
     install: Install
     config: ServerConfig
     host: str = LOCALHOST
+    instance: Instance = MAIN
+
+    @property
+    def files(self) -> InstanceFiles:
+        return InstanceFiles.of(self.instance)
 
     def start(self) -> None:
-        server_root.build()
+        server_root.build(Layout.of(self.instance))
         argv = command_line(self.install, self.config)  # refuses any bottle but Steam
-        launched = read_launched()
+        pid_file, log = self.files.pid, self.files.log
+        launched = read_launched(pid_file)
         if launched and launched.alive(running_processes()):
             raise ServerDown(f"a server this tool started is still running on port {launched.port}; stop it first")
         if port_in_use(self.config.ip, self.config.port):
             raise ServerDown(f"port {self.config.port} is taken")
         ARTIFACTS.mkdir(parents=True, exist_ok=True)
-        PID_FILE.unlink(missing_ok=True)
+        pid_file.unlink(missing_ok=True)
         before = set(_process_table(running_processes()))
-        supervisor = [sys.executable, str(Path(__file__).resolve()), SUPERVISOR_MARK, str(PROCESS_LOG),
+        supervisor = [sys.executable, str(Path(__file__).resolve()), SUPERVISOR_MARK, str(log), str(pid_file),
                       str(self.config.port), "--"]
         subprocess.Popen(supervisor + argv, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
                          stderr=subprocess.DEVNULL, start_new_session=True)
         deadline = time.monotonic() + LAUNCH_RECORD_TIMEOUT
-        while not PID_FILE.exists():
+        while not pid_file.exists():
             if time.monotonic() > deadline:
                 raise ServerDown("the supervisor did not record its launch")
             time.sleep(0.2)
         deadline = time.monotonic() + SERVER_PROCESS_TIMEOUT
         while time.monotonic() < deadline:
-            server = new_server(read_launched(), before, running_processes())
+            server = new_server(read_launched(pid_file), before, running_processes())
             if server is not None:
-                PID_FILE.write_text(dataclasses.replace(read_launched(), server=server).text())
+                pid_file.write_text(dataclasses.replace(read_launched(pid_file), server=server).text())
                 return
             time.sleep(0.5)
-        raise ServerDown("no new server process appeared on the port; see " + str(PROCESS_LOG))
+        raise ServerDown("no new server process appeared on the port; see " + str(log))
 
     def rcon(self, text: str, timeout: float = 10) -> str:
         with RconClient.connect(self.host, self.config.port, self.config.rcon_password, timeout) as client:
@@ -449,18 +481,18 @@ class Server:
             if self.current_map() == name:
                 return
             if not self.alive():
-                raise ServerDown(f"the server exited before {name} loaded; see {PROCESS_LOG}")
+                raise ServerDown(f"the server exited before {name} loaded; see {self.files.log}")
             time.sleep(1)
         raise ServerDown(f"{name} was not up within {timeout:.0f} s")
 
     def alive(self) -> bool:
-        launched = read_launched()
+        launched = read_launched(self.files.pid)
         return bool(launched and launched.alive(running_processes()))
 
     def stop(self, timeout: float = 30) -> None:
         """Quit through RCON; whatever this tool launched that outlives that
         gets SIGTERM, by process id (stop_targets), and nothing else does."""
-        launched = read_launched()
+        launched = read_launched(self.files.pid)
         if launched is None:
             return
         try:
@@ -472,7 +504,7 @@ class Server:
             time.sleep(1)
         for pid in stop_targets(launched, running_processes()):
             os.kill(pid, signal.SIGTERM)
-        PID_FILE.unlink()
+        self.files.pid.unlink()
 
 
 # The supervisor: owns the server's terminal ------------------------------------------
@@ -491,12 +523,12 @@ def console_pty() -> Tuple[int, int]:
     return master, slave
 
 
-def supervise(log_path: Path, port: int, argv: List[str]) -> int:
+def supervise(log_path: Path, pid_file: Path, port: int, argv: List[str]) -> int:
     master, slave = console_pty()
     proc = subprocess.Popen(argv, stdin=slave, stdout=slave, stderr=slave)
     os.close(slave)
     host = argv[argv.index("+ip") + 1]
-    PID_FILE.write_text(Launched(os.getpid(), proc.pid, port, host=host).text())
+    pid_file.write_text(Launched(os.getpid(), proc.pid, port, host=host).text())
     with open(log_path, "wb") as log:
         while True:
             try:
@@ -540,37 +572,41 @@ def password() -> str:
     return PASSWORD_FILE.read_text().strip()
 
 
-def started_host() -> str:
-    launched = read_launched()
+def started_host(instance: Instance = MAIN) -> str:
+    launched = read_launched(InstanceFiles.of(instance).pid)
     return launched.host if launched else LOCALHOST
 
 
-def started_port(default: int) -> int:
-    launched = read_launched()
+def started_port(default: int, instance: Instance = MAIN) -> int:
+    launched = read_launched(InstanceFiles.of(instance).pid)
     return launched.port if launched else default
 
 
 DEFAULT_PORT = 27015  # beside the client's 27015, so the operator's own game keeps its port
+INSTANCE_PORT_STEP = 10  # each further instance's default port, above the last
 DEFAULT_MAXPLAYERS = 32
 MAP_LOAD_TIMEOUT = 240
 
 
 def make_server(map_name: str, port: int, lua_refresh: bool = True, maxplayers: int = DEFAULT_MAXPLAYERS,
-                ip: Optional[str] = None) -> Server:
+                ip: Optional[str] = None, instance: Instance = MAIN) -> Server:
     """ip: the address to bind; by default the running server's (rcon, stop), else 127.0.0.1."""
-    install = Install.discover()
-    ip = ip or started_host()
-    return Server(install, ServerConfig(map_name, port, password(), maxplayers, lua_refresh=lua_refresh, ip=ip), ip)
+    install = Install.discover(instance)
+    ip = ip or started_host(instance)
+    config = ServerConfig(map_name, port, password(), maxplayers, lua_refresh=lua_refresh, ip=ip)
+    return Server(install, config, ip, instance)
 
 
 def main() -> int:
     if sys.argv[1:2] == [SUPERVISOR_MARK]:
-        return supervise(Path(sys.argv[2]), int(sys.argv[3]), sys.argv[5:])
+        return supervise(Path(sys.argv[2]), Path(sys.argv[3]), int(sys.argv[4]), sys.argv[6:])
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--instance", type=int, default=MAIN_INSTANCE,
+                    help="which server: 1, the main one, or another run beside it")
     sub = ap.add_subparsers(dest="action", required=True)
     start = sub.add_parser("start")
     start.add_argument("--map", default="gm_construct")
-    start.add_argument("--port", type=int, default=DEFAULT_PORT)
+    start.add_argument("--port", type=int, help="by default the instance's (DEFAULT_PORT for the main one)")
     start.add_argument("--maxplayers", type=int, default=DEFAULT_MAXPLAYERS)
     start.add_argument("--ip", default=LOCALHOST,
                        help="the address to bind; a client in the other bottle cannot reach 127.0.0.1, so to play "
@@ -584,20 +620,23 @@ def main() -> int:
     sub.add_parser("console")
     args = ap.parse_args()
     try:
+        instance = Instance(args.instance)
+        files = InstanceFiles.of(instance)
         if args.action == "start":
-            server = make_server(args.map, args.port, args.lua_refresh, args.maxplayers, args.ip)
+            port = args.port or files.port
+            server = make_server(args.map, port, args.lua_refresh, args.maxplayers, args.ip, instance)
             server.start()
             if args.console:
-                open_console(PROCESS_LOG)
+                open_console(files.log)
             server.wait_for_map(args.map, MAP_LOAD_TIMEOUT)
-            print(f"{args.map} is up on port {args.port}")
+            print(f"{args.map} is up on port {port}")
         elif args.action == "rcon":
-            print(make_server("gm_construct", started_port(DEFAULT_PORT)).rcon(args.command))
+            print(make_server("gm_construct", started_port(files.port, instance), instance=instance).rcon(args.command))
         elif args.action == "console":
-            open_console(PROCESS_LOG)
+            open_console(files.log)
         else:
-            make_server("gm_construct", started_port(DEFAULT_PORT)).stop()
-    except (ServerDown, AuthFailed, OSError, subprocess.CalledProcessError) as e:
+            make_server("gm_construct", started_port(files.port, instance), instance=instance).stop()
+    except (ServerDown, AuthFailed, OSError, subprocess.CalledProcessError, ValueError) as e:
         print(f"srcds: {e}", file=sys.stderr)
         return 1
     return 0

@@ -8,7 +8,11 @@ import threading
 import unittest
 from pathlib import Path
 
+from server_root import Instance
 from srcds import (
+    ARTIFACTS,
+    DEFAULT_PORT,
+    InstanceFiles,
     AUTH,
     AUTH_RESPONSE,
     EXECCOMMAND,
@@ -230,6 +234,24 @@ class LaunchedRecord(unittest.TestCase):
     def test_alive_while_any_launched_process_runs(self):
         self.assertTrue(LAUNCHED.alive(PS))
         self.assertFalse(LAUNCHED.alive("    1     0 /sbin/launchd"))
+
+
+class Instances(unittest.TestCase):
+    def test_the_main_instance_keeps_its_files_and_port(self):
+        files = InstanceFiles.of(Instance(1))
+        self.assertEqual((files.pid, files.log, files.port),
+                         (ARTIFACTS / "srcds.pid", ARTIFACTS / "srcds.log", DEFAULT_PORT))
+
+    def test_another_instance_has_its_own_files_and_port(self):
+        files = InstanceFiles.of(Instance(2))
+        self.assertEqual((files.pid, files.log, files.port),
+                         (ARTIFACTS / "srcds-2.pid", ARTIFACTS / "srcds-2.log", DEFAULT_PORT + 10))
+
+    def test_an_install_runs_from_its_instances_root(self):
+        second = Instance(2)
+        install = Install.on(Path("/Apps/wine"), second)
+        self.assertEqual(install.gmod_windows, second.root_windows)
+        self.assertEqual(install.gmod_dir, second.root / "garrysmod")
 
 
 class Bottle(unittest.TestCase):

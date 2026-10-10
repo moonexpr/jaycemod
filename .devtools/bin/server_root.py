@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Build the dedicated server's own Garry's Mod root out of symlinks.
 
-  server_root.py            build or refresh it, and print where it is
+  server_root.py [--instance N]   build or refresh it, and print where it is
 
 The Steam bottle's GarrysMod is the operator's install (a link into the
 "Team Fortress 2" bottle), shared with the game the operator plays. The server needs
@@ -34,6 +34,7 @@ from __future__ import annotations
 import lzma
 import struct
 import sys
+import argparse
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -76,7 +77,9 @@ SERVER_LUA = {
     "autorun/gamemode_entities.lua": "gamemode_entities.lua",  # shared: the gamemode's entities win
     "ulx/modules/sh/luadev.lua": "ulx_luadev.lua",  # ULX includes every module it finds, on both sides
     "autorun/server/luadev_socket.lua": "luadev_socket.lua",  # server_lua.py's listener on 127.0.0.1:27098
+    "autorun/server/sandcastle_watch.lua": "sandcastle_watch.lua",  # Watch: events server_watch.py follows
 }
+WATCH_LOG = "sandcastle_watch.txt"  # under the server's data/
 # binary modules only the server loads: name in its lua/bin -> file in the shared lua/bin.
 # GMod's server requires gmsv_<name>_win64.dll; luadev's socket build is plain
 # LuaSocket against lua_shared, the same on either side (luadev_socket.lua)
@@ -90,6 +93,42 @@ SUBSYSTEM_OFFSET = 4 + 20 + 68
 CONSOLE_SUBSYSTEM = 3  # IMAGE_SUBSYSTEM_WINDOWS_CUI
 # garrysmod/ entries the server owns: never links into the operator's game
 OWN = ("addons", "data", "cache", "lua", "console.log")
+# luadev's socket (luadev_socket.lua, server_lua.py): the main server's port,
+# the others' from LUADEV_PORT_STEP above it, so 27099, socketdev's in the
+# operator's game, stays clear; the build writes it to the root's data/
+LUADEV_PORT = 27098
+LUADEV_PORT_STEP = 2
+LUADEV_PORT_FILE = "sandcastle_luadev_port.txt"
+LOCALHOST = "127.0.0.1"
+MAIN_INSTANCE = 1
+
+
+@dataclass(frozen=True)
+class Instance:
+    """One of the dedicated servers that may run side by side: the first is
+    the main one, at ROOT; instance n runs from its own GarrysModServer-n,
+    with its own console.log, data/ and cache/."""
+    number: int
+
+    def __post_init__(self):
+        if self.number < MAIN_INSTANCE:
+            raise ValueError(f"instance {self.number}: instances count from {MAIN_INSTANCE}")
+
+    @property
+    def suffix(self) -> str:
+        return "" if self.number == MAIN_INSTANCE else f"-{self.number}"
+
+    @property
+    def root(self) -> Path:
+        return ROOT.with_name(ROOT.name + self.suffix)
+
+    @property
+    def root_windows(self) -> str:
+        return ROOT_WINDOWS + self.suffix
+
+    @property
+    def luadev_port(self) -> int:
+        return LUADEV_PORT + LUADEV_PORT_STEP * (self.number - MAIN_INSTANCE)
 
 
 def own_dir(path: Path) -> None:
@@ -114,9 +153,11 @@ class Layout:
     workshop: Path  # workshop/content/4000
     lua: Path  # SERVER_LUA's folder
     tf: Path  # TF2's tf/, which holds TF_PAK
+    luadev_port: int  # luadev_socket.lua's, written to LUADEV_PORT_FILE
 
-
-LAYOUT = Layout(SHARED, ROOT, WORKSHOP, SERVER_LUA_DIR, TF)
+    @classmethod
+    def of(cls, instance: Instance) -> "Layout":
+        return cls(SHARED, instance.root, WORKSHOP, SERVER_LUA_DIR, TF, instance.luadev_port)
 
 
 def workshop_archive(workshop: Path, item: str) -> Path:
@@ -160,7 +201,7 @@ def console_exe(path: Path, source: Path) -> None:
     path.write_bytes(image)
 
 
-def build(layout: Layout = LAYOUT) -> Path:
+def build(layout: Layout) -> Path:
     layout.root.mkdir(exist_ok=True)
     for entry in layout.shared.iterdir():
         if entry.name not in ("garrysmod", SERVER_EXE):
@@ -195,11 +236,14 @@ def build(layout: Layout = LAYOUT) -> Path:
         target = game / "data" / TF_SCRIPTS_DIR / path
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(pak.read(path))
+    (game / "data" / LUADEV_PORT_FILE).write_text(str(layout.luadev_port))
     return layout.root
 
 
 def main() -> int:
-    print(build())
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--instance", type=int, default=MAIN_INSTANCE)
+    print(build(Layout.of(Instance(ap.parse_args().instance))))
     return 0
 
 

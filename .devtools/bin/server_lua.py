@@ -3,9 +3,11 @@
 
   server_lua.py 'print(game.GetMap())'          run on the server
   server_lua.py -f script.lua                   run a file on the server
+  server_lua.py <<'LUA'                         run stdin (no code, or "-"): no quoting
   server_lua.py 'return #player.GetAll()'       return values print as "=> ..."
   server_lua.py --realm cl 'chat.AddText("hi")' send to every client (no reply)
   server_lua.py --realm sh 'return CLIENT'      both; the reply is the server's
+  server_lua.py --instance 2 '...'              a second server's (srcds.py --instance 2)
 
 Use this, not `srcds.py rcon 'lua_run ...'`: lua_run's output only reaches the
 logs, quoting through RCON mangles code, and a long chunk does not fit.
@@ -28,8 +30,18 @@ import sys
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
+from typing import Optional, TextIO
 
-ADDRESS = ("127.0.0.1", 27098)
+from server_root import LOCALHOST, Instance
+
+
+
+def address(instance: int) -> tuple[str, int]:
+    """The instance's luadev socket (server_root.Instance.luadev_port)."""
+    return (LOCALHOST, Instance(instance).luadev_port)
+
+
+ADDRESS = address(1)
 LABEL = "server_lua"
 
 
@@ -92,18 +104,29 @@ def run(realm: Realm, code: str, address: tuple[str, int] = ADDRESS, timeout: fl
     return parse_reply(data)
 
 
+STDIN_CODE = "-"
+
+
+def chunk_source(code: Optional[str], file: Optional[Path], stdin: TextIO) -> str:
+    """The chunk to run: the argument, else the file, else stdin (also for "-")."""
+    if file is not None:
+        return file.read_text()
+    if code is None or code == STDIN_CODE:
+        return stdin.read()
+    return code
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("code", nargs="?")
     ap.add_argument("-f", "--file", type=Path)
     ap.add_argument("--realm", choices=[r.value for r in Realm], default="sv")
     ap.add_argument("--timeout", type=float, default=10)
+    ap.add_argument("--instance", type=int, default=1, help="which server (srcds.py --instance)")
     args = ap.parse_args()
-    code = args.file.read_text() if args.file else args.code
-    if code is None:
-        ap.error("give code or --file")
+    code = chunk_source(args.code, args.file, sys.stdin)
     try:
-        reply = run(Realm(args.realm), code, timeout=args.timeout)
+        reply = run(Realm(args.realm), code, address(args.instance), timeout=args.timeout)
     except BridgeDown as e:
         print(f"bridge down: {e}", file=sys.stderr)
         return 2

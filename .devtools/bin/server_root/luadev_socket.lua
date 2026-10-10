@@ -1,8 +1,10 @@
 -- luadev's socket on the dedicated server (server_root.py), for
 -- server_lua.py. luadev's own socketdev.lua is client-only: it listens in
 -- the operator's game on 27099 and forwards to a server over net messages,
--- with no reply. This listens on the server itself, on 127.0.0.1:27098, runs
--- each chunk through luadev, and answers on the same connection.
+-- with no reply. This listens on the server itself, on 127.0.0.1:27098 (a
+-- second server beside it, srcds.py --instance, on the port server_root.py
+-- wrote to its data/), runs each chunk through luadev, and answers on the
+-- same connection.
 --
 -- A request is three lines, realm (sv, cl or sh), label and the code's
 -- length in bytes, then the code. The answer is JSON: output (print and MsgN
@@ -14,7 +16,8 @@
 -- global socket, the same API as danielga's gmod_luasocket.
 require("luasocket")
 
-local HOST, PORT = "127.0.0.1", 27098
+local HOST = "127.0.0.1"
+local PORT = tonumber(file.Read("sandcastle_luadev_port.txt", "DATA") or "") or 27098
 local READ_TIMEOUT = 2 -- seconds a connected client has to send its request
 local LISTEN_BACKLOG = 4
 

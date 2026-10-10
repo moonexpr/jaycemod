@@ -34,6 +34,22 @@ python3 .devtools/bin/srcds.py stop
 python3 .devtools/bin/srcds.py console                    # follow the console, in color, in iTerm
 ```
 
+**A second server beside the first** (when another agent is testing on
+it): `--instance 2` before the action, on every command for that server.
+
+```bash
+python3 .devtools/bin/srcds.py --instance 2 start --map pl_goldrush --port 27035
+python3 .devtools/bin/srcds.py --instance 2 rcon 'changelevel pl_upward'
+python3 .devtools/bin/server_lua.py --instance 2 'return game.GetMap()'
+python3 .devtools/bin/srcds.py --instance 2 stop
+```
+
+Instance *n* runs from its own root, `GarrysModServer-n` (its own
+`console.log`, `data/` and `cache/`), with its own launch record and log
+(`.devtools/artifacts/srcds-n.pid`, `srcds-n.log`) and its own luadev port.
+Its default game port is 27015 + 10·(n−1). Pick a free one with `--port`
+when that's taken. Never stop or change the map of another agent's instance.
+
 `start` takes `--map` (default `gm_construct`), `--port` (27025),
 `--maxplayers`, `--ip` (127.0.0.1, so RCON stays on this machine) and
 `--no-lua-refresh` (adds `-disableluarefresh`) and `--console` (opens the

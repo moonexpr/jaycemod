@@ -8,8 +8,8 @@ from pathlib import Path
 
 import pytest
 
-from server_root import SERVER_BINARIES, SERVER_LUA, SERVER_EXE, SERVER_WORKSHOP, TF_SCRIPTS, TF_SCRIPTS_DIR, Layout, NotAnExe,\
-    build, console_exe
+from server_root import LUADEV_PORT_FILE, ROOT, ROOT_WINDOWS, SERVER_BINARIES, SERVER_LUA, SERVER_EXE, SERVER_WORKSHOP, TF_SCRIPTS,\
+    TF_SCRIPTS_DIR, Instance, Layout, NotAnExe, build, console_exe
 from test_vpk import DIR_ARCHIVE, entry, write_pak
 
 # a Workshop item from before .gma downloads: one LZMA-compressed .gma, as .bin
@@ -66,7 +66,7 @@ def layout(tmp_path: Path) -> Layout:
         files.append(("txt", folder, name.removesuffix(".txt"), entry(0, b"", DIR_ARCHIVE, len(inline), len(body))))
         inline += body
     write_pak(tf, "tf2_misc", files, inline_data=inline)
-    return Layout(shared, tmp_path / "GarrysModServer", workshop, lua, tf)
+    return Layout(shared, tmp_path / "GarrysModServer", workshop, lua, tf, 27100)
 
 
 def test_every_shared_entry_is_a_link_and_the_servers_own_folders_are_real(layout):
@@ -133,12 +133,12 @@ def test_a_legacy_item_is_decompressed_again_only_when_its_download_is_newer(lay
     assert gma.read_bytes() == LEGACY_GMA
 
 
-def test_nothing_is_copied_but_tf2s_hidden_sound_scripts_and_legacy_archives(layout):
+def test_nothing_is_copied_but_tf2s_hidden_sound_scripts_legacy_archives_and_the_luadev_port(layout):
     root = build(layout)
     files = sorted(p.relative_to(root).as_posix() for p in root.rglob("*") if p.is_file() and not p.is_symlink())
     assert files == sorted(
         [f"garrysmod/data/{TF_SCRIPTS_DIR}/{path}" for path in TF_SCRIPTS]
-        + [f"garrysmod/cache/{legacy_name()}.gma", SERVER_EXE]
+        + [f"garrysmod/cache/{legacy_name()}.gma", SERVER_EXE, f"garrysmod/data/{LUADEV_PORT_FILE}"]
     )
 
 
@@ -201,6 +201,32 @@ def test_building_again_changes_nothing(layout):
 
 
 def test_a_workshop_item_not_downloaded_is_refused(layout, tmp_path):
-    missing = Layout(layout.shared, layout.root, tmp_path / "empty", layout.lua, layout.tf)
+    missing = Layout(layout.shared, layout.root, tmp_path / "empty", layout.lua, layout.tf, layout.luadev_port)
     with pytest.raises(FileNotFoundError):
         build(missing)
+
+
+
+# A second server beside the first (another agent's tests on one): each
+# instance has its own root, so its own console.log, data/ and cache/.
+def test_the_main_instance_keeps_the_servers_root_and_luadev_port():
+    main = Instance(1)
+    assert (main.root, main.root_windows, main.luadev_port) == (ROOT, ROOT_WINDOWS, 27098)
+
+
+def test_another_instance_has_its_own_root_and_a_luadev_port_clear_of_the_games():
+    second = Instance(2)
+    assert second.root == ROOT.with_name("GarrysModServer-2")
+    assert second.root_windows == ROOT_WINDOWS + "-2"
+    assert second.luadev_port == 27100  # 27099 is socketdev's, in the operator's game
+    assert Instance(3).luadev_port == 27102
+
+
+def test_an_instance_below_one_is_refused():
+    with pytest.raises(ValueError):
+        Instance(0)
+
+
+def test_the_build_tells_the_servers_lua_its_luadev_port(layout):
+    build(layout)
+    assert (layout.root / "garrysmod" / "data" / LUADEV_PORT_FILE).read_text() == "27100"

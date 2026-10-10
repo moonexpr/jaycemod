@@ -1,12 +1,13 @@
 """server_lua.py's framing and replies, against a listener on a free port that
 answers as server_root/luadev_socket.lua does."""
+import io
 import json
 import socket
 import threading
 
 import pytest
 
-from server_lua import BridgeDown, NoReply, Realm, Reply, frame, parse_reply, run
+from server_lua import BridgeDown, NoReply, Realm, Reply, address, chunk_source, frame, parse_reply, run
 
 
 def test_a_frame_is_realm_label_and_byte_length_lines_then_the_code():
@@ -69,3 +70,18 @@ def test_a_connection_closed_without_a_reply_is_no_reply():
     address, _ = answering(b"")
     with pytest.raises(NoReply):
         run(Realm.SERVER, "x", address, timeout=5)
+
+
+def test_each_server_instance_has_its_own_luadev_address():
+    assert address(1) == ("127.0.0.1", 27098)
+    assert address(2) == ("127.0.0.1", 27100)
+
+
+def test_the_chunk_comes_from_the_argument_the_file_or_stdin(tmp_path):
+    script = tmp_path / "chunk.lua"
+    script.write_text("return 2")
+    stdin = io.StringIO("return 3")
+    assert chunk_source("return 1", None, stdin) == "return 1"
+    assert chunk_source(None, script, stdin) == "return 2"
+    assert chunk_source(None, None, stdin) == "return 3", "a heredoc needs no quoting"
+    assert chunk_source("-", None, io.StringIO("return 4")) == "return 4"
