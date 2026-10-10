@@ -292,13 +292,13 @@ end
 -- Admin controls (the Game Rules editor) ----------------------------------------------
 
 -- The map's top speed for the train, read once per train entity (a full
--- reset makes a new one), before any scale is applied to it.
+-- reset makes a new one), before any scale is applied to it, and kept on
+-- the train: a multi-stage map's watchers share it (pl_goldrush's three),
+-- and a later one must not take another's scaled speed for the map's.
 function ENT:CaptureMaxSpeed()
 	if not IsValid(self.train) then return end
-	if self.speedTrain ~= self.train then
-		self.speedTrain = self.train
-		self.baseMaxSpeed = self.train:GetInternalVariable("m_maxSpeed")
-	end
+	self.train.wetsandBaseMaxSpeed = self.train.wetsandBaseMaxSpeed or self.train:GetInternalVariable("m_maxSpeed")
+	self.baseMaxSpeed = self.train.wetsandBaseMaxSpeed
 	self:ApplyMaxSpeed()
 end
 
@@ -307,7 +307,7 @@ end
 -- then asks for its current speed again so the change shows at once.
 function ENT:ApplyMaxSpeed()
 	if not IsValid(self.train) or not self.baseMaxSpeed then return end
-	local maxSpeed = P.MaxSpeed(self.baseMaxSpeed, self.payload:CartSpeedScale(), self.advanceTo ~= nil)
+	local maxSpeed = P.MaxSpeed(self.baseMaxSpeed, self.payload:CartSpeedScale())
 	self.train:SetKeyValue("startspeed", tostring(maxSpeed))
 	if P.WatcherDrives(self.handleMovement, self.advanceTo ~= nil) and not self.disabled then
 		self.train:Fire("SetSpeedDirAccel", tostring(self.currentSpeed))
@@ -321,6 +321,20 @@ function ENT:CartArea()
 		if area:GetParent() == self.train then return area end
 	end
 	return NULL
+end
+
+-- The train put on the path's node `index`, stopped, as the Game Rules
+-- editor's moves do; the checkpoints from there on may warn again.
+function ENT:TeleportTo(index)
+	local node = self.nodes[index]
+	if node:GetName() == "" then node:SetName("wetsand_editor_track_" .. node:EntIndex()) end
+	self.train:Fire("TeleportToPathTrack", node:GetName())
+	self.train:Fire("Stop")
+	self.currentSpeed = 0
+	self.pathIndex = index
+	for _, link in ipairs(self.links) do
+		if link.distance >= self.distanceAt[index] then link.alerted = false end
+	end
 end
 
 -- After an admin's move the train runs as it otherwise would: at the
@@ -350,18 +364,8 @@ function ENT:RetractToCheckpoint()
 		local hud = rounds:HudTimer()
 		if hud then rounds:AddTimerSeconds(hud, P.RETRACT_SLACK, self.team) end
 	end
-	local index = plan.to and plan.to.index or 1
-	local node = self.nodes[index]
-	if node:GetName() == "" then node:SetName("wetsand_retract_track_" .. node:EntIndex()) end
 	self.advanceTo = nil
-	self.train:Fire("TeleportToPathTrack", node:GetName())
-	self.train:Fire("Stop")
-	self.currentSpeed = 0
-	self.pathIndex = index
-	for _, link in ipairs(self.links) do
-		if link.distance >= self.distanceAt[index] then link.alerted = false end
-	end
-	self:ApplyMaxSpeed()
+	self:TeleportTo(plan.to and plan.to.index or 1)
 	self:ResumeSpeed()
 	self:AnnounceRetract()
 	return true
@@ -381,16 +385,23 @@ function ENT:AnnounceAdvance()
 	WETSAND.Notify(Notices.CartAdvanced(self.team, WETSAND.EnemyOf(self.team)))
 end
 
--- Drive the cart at full (and boosted) speed until it passes the next
--- checkpoint's path_track, so the map's own OnPass logic captures it.
--- Returns true, or false and why not.
+-- The Game Rules editor's advance: the cart is teleported, as a retract
+-- teleports it, to the node before the next checkpoint (foundation.payload
+-- AdvanceFrom), then driven forward at the map's speed until it passes the
+-- checkpoint's path_track, so the map's own OnPass logic (its stop, capture
+-- relay, a stage's lift) runs as for a pushed cart. Returns true, or false
+-- and why not.
 function ENT:AdvanceToNextCheckpoint()
 	if not self:IsActive() or not IsValid(self.train) then return false, "the cart is not active" end
 	if WETSAND.State() ~= WETSAND.STATE.RND_RUNNING then return false, "the round is not running" end
+	if not P.OnTrack(self.distanceFromStart or 0) then return false, "the cart has not reached this stage's track yet" end
 	local link = P.NextCheckpoint(self.links, self.distanceFromStart or 0)
 	if not link or not link.index then return false, "no checkpoint ahead" end
+	local from = P.AdvanceFrom(self.pathIndex, link.index)
+	if from then self:TeleportTo(from) end
 	self.advanceTo = link
-	self:ApplyMaxSpeed()
+	-- asked again, even at the speed it was given: the map may have stopped it since
+	self.currentSpeed = 0
 	self:HandleTrainMovement()
 	self:AnnounceAdvance()
 	return true
@@ -399,15 +410,11 @@ end
 -- Past the checkpoint: the train runs as before, and an unpushed cart waits
 -- its full time again before receding.
 function ENT:CheckAdvance()
-	if not self.advanceTo then return end
-	-- the map's own speed logic answers its cappers after we do: insist
-	if not self.handleMovement then self.train:Fire("SetSpeedDirAccel", "1") end
-	if self.pathIndex < self.advanceTo.index then return end
+	if not self.advanceTo or self.pathIndex < self.advanceTo.index then return end
 	self.advanceTo = nil
 	if self.waitingToRecede then
 		self:StartRecedeCountdown(P.RecedeDelay(InOvertime(), self.trainRecedeTime, recede_time:GetFloat(), recede_time_overtime:GetFloat()))
 	end
-	self:ApplyMaxSpeed()
 	self:ResumeSpeed()
 end
 
@@ -592,6 +599,9 @@ local INPUTS = {
 	end,
 	disable = function(self)
 		self:StopCaptureAlarm()
+		-- a stage's end disables its watcher as the cart passes the goal: an
+		-- advance there is over
+		self.advanceTo = nil
 		self.disabled = true
 		self.waitingToRecede = false
 		if self.handleMovement then

@@ -415,17 +415,35 @@ T.test("the watcher drives a map-driven cart only while an admin advances it", f
 	T.eq(P.WatcherDrives(false, false), false, "the map's cart, otherwise")
 end)
 
+-- Bug: on pl_goldrush an advance pressed as stage 2 began, the cart still
+-- riding stage 1's lift (-1973 from stage 2's start), wedged it in the lift.
+T.test("a cart is on its watcher's track from just before its start", function()
+	T.eq(P.OnTrack(-20), true, "at the start: a stage's cart stops a little short")
+	T.eq(P.OnTrack(4000), true)
+	T.eq(P.OnTrack(-1973), false, "still riding to it")
+end)
+
+-- Bug: driven at four times its speed to pl_goldrush's stage end, the cart
+-- overshot the map's Stop at a_50 and jammed in the lift. An advance now
+-- teleports it, as a retract does, to the node before the checkpoint, and
+-- it rolls the last stretch at the map's speed, through the checkpoint's
+-- OnPass (the map's stop, capture relay and lift).
+T.test("an advance teleports the cart to the node before the checkpoint", function()
+	T.eq(P.AdvanceFrom(1, 24), 23)
+	T.eq(P.AdvanceFrom(22, 24), 23)
+	T.eq(P.AdvanceFrom(23, 24), nil, "already on the last stretch: it only rolls on")
+end)
+
 T.test("an advancing cart does not recede", function()
 	T.eq(P.MayRecede(false), true)
 	T.eq(P.MayRecede(true), false)
 end)
 
-T.test("the cart's top speed is the map's times the admin's scale, faster while advancing", function()
-	T.eq(P.MaxSpeed(90, 1, false), 90, "the map's")
-	T.eq(P.MaxSpeed(90, 2, false), 180, "doubled")
-	T.eq(P.MaxSpeed(90, 1, true), 90 * P.ADVANCE_SPEED_SCALE, "advancing")
-	T.eq(P.MaxSpeed(90, P.CART_SPEED_MAX * 10, false), 90 * P.CART_SPEED_MAX, "scale clamped high")
-	T.eq(P.MaxSpeed(90, 0, false), 90 * P.CART_SPEED_MIN, "scale clamped low")
+T.test("the cart's top speed is the map's times the admin's scale", function()
+	T.eq(P.MaxSpeed(90, 1), 90, "the map's")
+	T.eq(P.MaxSpeed(90, 2), 180, "doubled")
+	T.eq(P.MaxSpeed(90, P.CART_SPEED_MAX * 10), 90 * P.CART_SPEED_MAX, "scale clamped high")
+	T.eq(P.MaxSpeed(90, 0), 90 * P.CART_SPEED_MIN, "scale clamped low")
 end)
 
 T.finish()

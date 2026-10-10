@@ -216,11 +216,9 @@ end
 
 -- Admin controls (the Game Rules editor) --------------------------------------------
 
--- The cart's top speed scale an admin may set, and how much faster it runs
--- while driven on to the next checkpoint.
+-- The cart's top speed scale an admin may set.
 CART_SPEED_MIN, CART_SPEED_MAX = 0.1, 4
 CART_SPEED_DEFAULT = 1 -- the map's own speed
-ADVANCE_SPEED_SCALE = 4
 
 -- The scale an admin asked for, within the editor's range.
 function SpeedScale(scale)
@@ -263,12 +261,34 @@ function WatcherDrives(handleMovement, advancing)
 	return handleMovement or advancing
 end
 
+-- Whether a cart `distance` along its watcher's track (negative: short of
+-- its start) is on it: a stage's cart stops a little short of the start;
+-- farther back it is still riding there (pl_goldrush's lift) and an admin's
+-- advance would drive it into the ride.
+ON_TRACK_SLACK = 64
+
+function OnTrack(distance)
+	return distance >= -ON_TRACK_SLACK
+end
+
+-- The Game Rules editor's advance: the node (an index into the path) to
+-- teleport the cart to, as a retract does: the one before the checkpoint, so
+-- the cart rolls the last stretch at the map's speed and passes the
+-- checkpoint (its OnPass is the map's stop, capture relay, a stage's lift).
+-- nil when the cart (on the node pathIndex, or past it) is already on that
+-- stretch.
+function AdvanceFrom(pathIndex, checkpointIndex)
+	local from = checkpointIndex - 1
+	if pathIndex >= from then return nil end
+	return from
+end
+
 -- A cart an admin advances does not recede on the way (OnTrainStartRecede).
 function MayRecede(advancing)
 	return not advancing
 end
 
 -- The train's m_maxSpeed for the map's top speed `base`.
-function MaxSpeed(base, scale, advancing)
-	return base * SpeedScale(scale) * (advancing and ADVANCE_SPEED_SCALE or 1)
+function MaxSpeed(base, scale)
+	return base * SpeedScale(scale)
 end
