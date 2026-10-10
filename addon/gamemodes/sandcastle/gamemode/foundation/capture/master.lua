@@ -23,6 +23,16 @@ local NOBODY, FIRST_GAME_TEAM = Teams.UNASSIGNED, Teams.FIRST_GAME_TEAM
 local TEAM_INVALID = Teams.INVALID
 local RESTRICT_NEITHER = Rounds.RESTRICT_NEITHER
 
+-- FireTeamWinOutput: the output the master and the won round fire.
+local WIN_OUTPUT = {
+	[Teams.RED] = "OnWonByTeam1",
+	[Teams.BLUE] = "OnWonByTeam2",
+}
+
+function WinOutput(team)
+	return WIN_OUTPUT[team]
+end
+
 local MasterModel = {}
 MasterModel.__index = MasterModel
 

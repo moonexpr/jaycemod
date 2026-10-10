@@ -10,3 +10,7 @@ E.Define("teamplay_timer_time_added", {
 	team = E.Team(),
 	seconds_added = E.Int(SECONDS_BITS),
 })
+
+-- A mini-round starts on the kept map: each client clears the last stage's
+-- ragdolls and decals, as a cleanup would.
+E.Define("round_gore_cleared", {})

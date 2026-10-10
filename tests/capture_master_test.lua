@@ -413,6 +413,13 @@ end)
 
 -- Seams: bindings forward, the controller has the methods others call ----------
 
+-- Bug: on cp_dustbowl round_1's OnWonByTeam2 (cap1: BLU's spawn-door
+-- triggers) never ran; the controller fired "OnWonByTeamTeam2".
+T.test("a win fires the master's and round's OnWonByTeam output", function()
+	T.eq(Master.WinOutput(RED), "OnWonByTeam1")
+	T.eq(Master.WinOutput(BLU), "OnWonByTeam2")
+end)
+
 local ENTITIES = "addon/gamemodes/sandcastle/entities/entities/"
 local CONTROLLER = T.ROOT .. "features/capture/sv.lua"
 

@@ -191,7 +191,8 @@ T.test("a full-round win scores, switches teams and resets the map after the bon
 	}, "the next round")
 end)
 
-T.test("a mini-round win keeps the map and scores nothing", function()
+-- Bug: on pl_goldrush stage 2 began among stage 1's corpses and blood.
+T.test("a mini-round win keeps the map, clears the last stage's gore and scores nothing", function()
 	local round = Running()
 	local now = T0 + 20
 	Expect(round:SetWinningTeam(now, BLUE, W.ALL_POINTS_CAPTURED, false, false, false, FakeObjective.Objective()), {
@@ -205,6 +206,7 @@ T.test("a mini-round win keeps the map and scores nothing", function()
 		"previous_round_end",
 		"state PREROUND",
 		"balance_teams",
+		"clear_gore",
 		"round_spawn",
 		"round_activate",
 		"respawn_all",

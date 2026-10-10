@@ -153,6 +153,12 @@ WETSAND.Events.Listen("points_awarded", "wetsand_rounds_view", function(fields)
 	}
 end)
 
+-- A new stage on the kept map (sh.lua): the last stage's bodies and blood go.
+WETSAND.Events.Listen("round_gore_cleared", "wetsand_rounds_view", function()
+	game.RemoveRagdolls()
+	RunConsoleCommand("r_cleardecals")
+end)
+
 -- The timer's "+time" beside the clock (sh.lua).
 WETSAND.Events.Listen("teamplay_timer_time_added", "wetsand_rounds_view", function(fields)
 	if fields.seconds_added == 0 then return end

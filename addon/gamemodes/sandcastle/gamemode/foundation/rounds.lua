@@ -480,7 +480,7 @@ end
 -- cleans the map up (not the first round's fresh map), forgets the played
 -- rounds and fires every logic_auto's OnMultiNewRound, as TF2's logic_autos
 -- do when recreated in a round restart (CLogicAuto::Think, InRoundRestart);
--- a mini-round keeps the map as it is.
+-- a mini-round keeps the map as it is, less the last stage's gore.
 local function RoundRespawn(self, effects, now, world)
 	self.winningTeam = UNASSIGNED
 	local full = self.forceMapReset
@@ -499,6 +499,9 @@ local function RoundRespawn(self, effects, now, world)
 				seconds = self:TimeLeft(now),
 			})
 		end
+	else
+		-- the kept map loses the last stage's bodies and blood, as a cleanup would
+		Add(effects, Kind("clear_gore"))
 	end
 	for _, t in ipairs(GAME_TEAMS) do
 		if self.originalWaveTime[t] >= 0 then self.waveTime[t] = self.originalWaveTime[t] end

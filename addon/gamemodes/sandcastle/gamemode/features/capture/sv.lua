@@ -376,10 +376,10 @@ end
 local function DeclareWinner(self, winner, roundName, forceMapReset, switchTeams)
 	if roundName then
 		local roundEnt = self:CurrentRound()
-		if IsValid(roundEnt) then FireTeamOutput(roundEnt, "OnWonByTeam", winner) end
+		if IsValid(roundEnt) then roundEnt:TriggerOutput(Master.WinOutput(winner), roundEnt) end
 	end
 	self.rounds:SetWinningTeam(winner, Rounds.WINREASON.ALL_POINTS_CAPTURED, forceMapReset, switchTeams)
-	if IsValid(self.masterEnt) then FireTeamOutput(self.masterEnt, "OnWonByTeam", winner) end
+	if IsValid(self.masterEnt) then self.masterEnt:TriggerOutput(Master.WinOutput(winner), self.masterEnt) end
 end
 
 -- CTeamControlPointMaster::CheckWinConditions, KOTH's clock gate included.

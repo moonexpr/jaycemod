@@ -16,6 +16,7 @@ local Rounds = WETSAND.require("foundation.rounds")
 local Text = WETSAND.require("foundation.rounds.text")
 local Timer = WETSAND.require("foundation.rounds.timer")
 local ControlPoints = WETSAND.require("foundation.rounds.control_points")
+local SpawnHold = WETSAND.require("foundation.rounds.spawn_doors")
 
 local S = WETSAND.STATE
 local UNASSIGNED, SPECTATOR = WETSAND.TEAM_UNASSIGNED, WETSAND.TEAM_SPECTATOR
@@ -161,7 +162,9 @@ local Controller = {
 	objective = Rounds.NO_OBJECTIVE,
 	multipleTrains = false,
 	spawnDoors = nil,
-	spawnTriggers = nil,
+	spawnTriggers = nil, -- the open doors' triggers: trigger -> true
+	spawnHold = nil, -- which of them come back on (foundation.rounds.spawn_doors)
+	switchingTriggers = false, -- our own Enable/Disable, not the map's
 	nextDoorsOpen = 0,
 	suppressNewMap = false,
 	nextRoundThink = 0,
@@ -812,6 +815,10 @@ local EFFECTS = {
 	end,
 	balance_teams = function() WETSAND.BalanceTeams(false) end,
 	cleanup = function(self) self:CleanUpMap() end,
+	clear_gore = function()
+		game.RemoveRagdolls()
+		WETSAND.Events.Fire("round_gore_cleared", {})
+	end,
 	new_round_outputs = function() timer.Simple(0, FireNewRoundOutputs) end,
 	round_spawn = function(self)
 		-- CTFGameRules::SetupOnRoundStart forgets the koth clocks.
@@ -990,17 +997,19 @@ end
 
 -- Every spawn door unlocked and open, its triggers off so none shuts it
 -- (KeepSpawnDoorsOpen holds them open), until RestoreSpawnDoors or the next
--- map reset. The triggers that were on are remembered.
+-- map reset. The triggers that were on are remembered, with what the map
+-- does to them meanwhile.
 function Controller:OpenSpawnDoors(now)
 	if not self.spawnDoors then
 		local doors, triggers = SpawnDoors()
-		self.spawnDoors, self.spawnTriggers = doors, {}
+		local on = {}
 		for trigger in pairs(triggers) do
-			if not trigger:GetInternalVariable("m_bDisabled") then
-				self.spawnTriggers[#self.spawnTriggers + 1] = trigger
-				trigger:Fire("Disable")
-			end
+			if not trigger:GetInternalVariable("m_bDisabled") then on[#on + 1] = trigger end
 		end
+		self.spawnDoors, self.spawnTriggers, self.spawnHold = doors, triggers, SpawnHold.New(on)
+		self.switchingTriggers = true
+		for _, trigger in ipairs(on) do trigger:Input("Disable") end
+		self.switchingTriggers = false
 	end
 	for _, door in ipairs(self.spawnDoors) do
 		if IsValid(door) then
@@ -1012,16 +1021,29 @@ function Controller:OpenSpawnDoors(now)
 end
 
 -- The next round (a stage of a multi-stage map has no map reset): the
--- triggers that were on, on again, and the doors closed for them to open.
+-- triggers that were on, on again unless the map has since turned them off,
+-- with those it turned on, and the doors closed for them to open.
 function Controller:RestoreSpawnDoors()
-	for _, trigger in ipairs(self.spawnTriggers or {}) do
-		if IsValid(trigger) then trigger:Fire("Enable") end
+	if self.spawnHold then
+		self.switchingTriggers = true
+		for _, trigger in ipairs(self.spawnHold:ToEnable()) do
+			if IsValid(trigger) then trigger:Input("Enable") end
+		end
+		self.switchingTriggers = false
 	end
 	for _, door in ipairs(self.spawnDoors or {}) do
 		if IsValid(door) then door:Fire("Close") end
 	end
-	self.spawnDoors, self.spawnTriggers = nil, nil
+	self.spawnDoors, self.spawnTriggers, self.spawnHold = nil, nil, nil
 end
+
+-- The map's own Enable and Disable of a held trigger: a stage's handover in
+-- the bonus time (pl_goldrush's cap_a_capture_relay) outlasts the hold.
+hook.Add("AcceptInput", "wetsand_rounds_spawn_doors", function(ent, input)
+	local self = Controller
+	if self.switchingTriggers or not (self.spawnTriggers and self.spawnTriggers[ent]) then return end
+	self.spawnHold:MapInput(ent, string.lower(input))
+end)
 
 function Controller:KeepSpawnDoorsOpen(now)
 	if now < self.nextDoorsOpen then return end
