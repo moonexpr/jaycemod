@@ -26,22 +26,26 @@ repo root with `python3`.
 
 ## Start, command, stop
 
+From anywhere in the repo, `dt` runs the server tools by short name (its
+project drawer is `.devtools/bin/dt/`; `dt list` shows them): `dt srcds`,
+`dt rcon`, `dt lua`, `dt watch` and `dt gmod` (one gmod MCP tool's text).
+
 ```bash
-python3 .devtools/bin/srcds.py start --map pl_upward      # waits until the map is up
-python3 .devtools/bin/srcds.py rcon 'status'              # any console command
-python3 .devtools/bin/srcds.py rcon 'changelevel koth_viaduct'
-python3 .devtools/bin/srcds.py stop
-python3 .devtools/bin/srcds.py console                    # follow the console, in color, in iTerm
+dt srcds start --map pl_upward      # waits until the map is up
+dt rcon 'status'              # any console command
+dt rcon 'changelevel koth_viaduct'
+dt srcds stop
+dt srcds console                    # follow the console, in color, in iTerm
 ```
 
 **A second server beside the first** (when another agent is testing on
 it): `--instance 2` before the action, on every command for that server.
 
 ```bash
-python3 .devtools/bin/srcds.py --instance 2 start --map pl_goldrush --port 27035
-python3 .devtools/bin/srcds.py --instance 2 rcon 'changelevel pl_upward'
-python3 .devtools/bin/server_lua.py --instance 2 'return game.GetMap()'
-python3 .devtools/bin/srcds.py --instance 2 stop
+dt srcds --instance 2 start --map pl_goldrush --port 27035
+dt rcon --instance 2 'changelevel pl_upward'
+dt lua --instance 2 'return game.GetMap()'
+dt srcds --instance 2 stop
 ```
 
 Instance *n* runs from its own root, `GarrysModServer-n` (its own
@@ -82,7 +86,7 @@ Read logs with `tail` or a filtering command, not whole: they grow long.
 ## Running Lua
 
 - On the dedicated server, use `server_lua.py` (see the `server-lua`
-  skill): `python3 .devtools/bin/server_lua.py 'print(game.GetMap())'`.
+  skill): `dt lua 'print(game.GetMap())'`.
   It runs the chunk through luadev and prints its output and return values.
   Don't use `srcds.py rcon 'lua_run ...'`: its output only reaches the logs.
 - `gmod_lua.py` is **not** for the dedicated server. It runs Lua in the

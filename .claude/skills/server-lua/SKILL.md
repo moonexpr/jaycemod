@@ -6,17 +6,17 @@ description: Run Lua on Sandcastle's dedicated server and read its output, retur
 # Running Lua on the dedicated server
 
 ```bash
-python3 .devtools/bin/server_lua.py 'return #player.GetAll(), engine.TickCount()'
-python3 .devtools/bin/server_lua.py --realm cl 'print("on every client")'
-python3 .devtools/bin/server_lua.py --realm sh 'return SERVER'
-python3 .devtools/bin/server_lua.py --instance 2 'return game.GetMap()'   # a second server (srcds.py --instance 2)
+dt lua 'return #player.GetAll(), engine.TickCount()'
+dt lua --realm cl 'print("on every client")'
+dt lua --realm sh 'return SERVER'
+dt lua --instance 2 'return game.GetMap()'   # a second server (srcds.py --instance 2)
 ```
 
 For anything past one line, send the chunk on stdin with a quoted heredoc:
 no shell quoting at all, and no file to write.
 
 ```bash
-python3 .devtools/bin/server_lua.py --instance 2 <<'LUA'
+dt lua --instance 2 <<'LUA'
 local train = easylua.FindEntity("minecart_tracktrain")
 return train:GetPos(), train:GetInternalVariable("m_flSpeed")
 LUA
@@ -78,7 +78,7 @@ never looks like a quiet wait. Each event is a line `<CurTime> <name> <kind>
 <text>` in the instance's `data/sandcastle_watch.txt`.
 
 ```bash
-python3 .devtools/bin/server_lua.py --instance 2 <<'LUA'
+dt lua --instance 2 <<'LUA'
 Watch.On("WSMiniRoundStart", "stage", function(round) return round:GetName() end)
 Watch.Until("stage3", 1, 360, function()
 	local round = WS.Feature("capture"):CurrentRound()
@@ -89,7 +89,7 @@ LUA
 
 Then follow them:
 
-- **Every event, under the Monitor tool:** `python3 .devtools/bin/server_watch.py --instance 2 --until stage3`.
+- **Every event, under the Monitor tool:** `dt watch --instance 2 --until stage3`.
   Each line is a notification, and the stream ends with the wait.
 - **One answer:** run the same command as a background Bash. It exits 0 when
   the wait is met and 1 on its timeout or error.
@@ -109,9 +109,9 @@ comes back:
 
 ```
 ctx_batch_execute(commands=[
-  {label: "gmod lua_errors",  command: "python3 .devtools/bin/gmod_mcp.py call lua_errors"},
-  {label: "gmod console_log", command: "python3 .devtools/bin/gmod_mcp.py call console_log lines=2000"},
-  {label: "gmod game_events", command: "python3 .devtools/bin/gmod_mcp.py call game_events name=round_win"}],
+  {label: "gmod lua_errors",  command: "dt gmod lua_errors"},
+  {label: "gmod console_log", command: "dt gmod console_log lines=2000"},
+  {label: "gmod game_events", command: "dt gmod game_events name=round_win"}],
   queries=["attempt to index nil", "round_win team"])
 ```
 
@@ -133,12 +133,12 @@ in `server_lua.py`'s docstring.
 
 ## When it says bridge down
 
-1. Is the server up? `python3 .devtools/bin/srcds.py rcon status`. If not,
+1. Is the server up? `dt rcon status`. If not,
    start it (see `dedicated-server`).
 2. Was the server started before this listener existed? A server that is
    already running loads it once, without a restart:
    `python3 .devtools/bin/server_root.py`, then
-   `python3 .devtools/bin/srcds.py rcon 'lua_openscript autorun/server/luadev_socket.lua'`.
+   `dt rcon 'lua_openscript autorun/server/luadev_socket.lua'`.
    Every map change after that loads it by itself.
 3. If it still fails, read the end of `.devtools/artifacts/srcds.log` for a
    `luadev_socket` error.
