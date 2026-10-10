@@ -73,8 +73,10 @@ local function load(t)
 	}
 	for name, value in pairs(t.limits or {}) do s.convars[name] = value end
 	s.requests, s.sent, s.created = {}, {}, {}
+	s.stages = {}
 	s.wetsand = {
 		require = T.require,
+		NavProgress = function(stage, started, areas) s.stages[#s.stages + 1] = { stage = stage, started = started, areas = areas } end,
 		Feature = function(name)
 			assert(name == "gamemode", name)
 			return {
@@ -96,7 +98,6 @@ local function load(t)
 			}
 		end,
 		cleanup = { GetTable = function() return t.cleanups or {} end },
-		resource = { AddSingleFile = function(path) s.sent[#s.sent + 1] = path end },
 		WETSAND = s.wetsand,
 		concommand = { Add = function(name, fn) s.commands[name] = fn end },
 		ents = {
@@ -313,9 +314,21 @@ T.test("every spawn limit is 0 while it generates, and put back after", function
 	T.eq(s.convars.sbox_maxnpcs, "10", "npcs put back")
 end)
 
-T.test("its progress box's layout is sent to every client", function()
-	T.eq(load({}).sent[1], "resource/ui/navprogress.res")
+T.test("every client is told each stage: opening the doors, generating, done with the areas made", function()
+	local Progress = T.require("foundation.nav_progress")
+	local s = load({ entities = SPAWNS })
+	s.commands.mp_nav_generate(nil)
+	s.Poll()
+	s.nav.generating, s.nav.areas = false, 2426
+	s.Poll()
+	T.eq(#s.stages, 3)
+	T.eq(s.stages[1].stage, Progress.OPENING)
+	T.eq(s.stages[2].stage, Progress.GENERATING)
+	T.eq(s.stages[3].stage, Progress.DONE)
+	T.eq(s.stages[3].areas, 2426)
+	T.eq(s.stages[3].started, s.stages[1].started, "timed from the start")
 end)
+
 
 T.test("a mesh is usable once it has areas", function()
 	T.eq(load({ areas = 0 }).wetsand.NavMeshUsable(), false)

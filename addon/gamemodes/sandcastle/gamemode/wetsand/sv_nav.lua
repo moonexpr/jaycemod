@@ -19,10 +19,11 @@
 -- one per cleanup kind) at 0 so nothing new stands in its way. When it is
 -- done GMod has saved maps/<map>.nav, the limits are put back, the map is
 -- reset (its doors and gates put back), and the admin who started it is
--- told. Its progress box is resource/ui/navprogress.res (the content
--- folder), sent to every client.
+-- told. Every client's progress box follows each stage
+-- (WETSAND.NavProgress, wetsand/sh_nav_progress.lua).
 local Gamemode = WETSAND.require("foundation.gamemode")
 local Doors = WETSAND.require("foundation.npc.doors")
+local Progress = WETSAND.require("foundation.nav_progress")
 
 local SEEDS = { "info_player_teamspawn", "info_player_start", "team_control_point" }
 local DOORS = { "func_door", "func_door_rotating", "prop_door_rotating" }
@@ -37,7 +38,6 @@ local PROP_DOOR_MOVING = { [1] = true, [3] = true }
 
 local underWay = false
 
-resource.AddSingleFile("resource/ui/navprogress.res")
 
 function WETSAND.NavMeshUsable()
 	return navmesh.IsLoaded() and navmesh.GetNavAreaCount() > 0
@@ -106,7 +106,9 @@ concommand.Add("mp_nav_generate", function(ply)
 	end)
 	Each(BARRIERS, function(barrier) barrier:SetNotSolid(true) end)
 	Tell(ply, "Navigation mesh: opening " .. game.GetMap() .. "'s doors, then generating from " .. seeds .. " seeds; this takes a few minutes")
-	local giveUp, began = CurTime() + DOOR_WAIT, false
+	local started = CurTime()
+	WETSAND.NavProgress(Progress.OPENING, started)
+	local giveUp, began = started + DOOR_WAIT, false
 	timer.Create(POLL, 1, 0, function()
 		if not began then
 			if AnyDoorMoving() and CurTime() < giveUp then return end
@@ -121,6 +123,7 @@ concommand.Add("mp_nav_generate", function(ply)
 				standIn:Spawn()
 			end)
 			navmesh.BeginGeneration()
+			WETSAND.NavProgress(Progress.GENERATING, started)
 			return
 		end
 		if navmesh.IsGenerating() then return end
@@ -128,6 +131,7 @@ concommand.Add("mp_nav_generate", function(ply)
 		underWay = false
 		for limit, value in pairs(limits) do limit:SetString(value) end
 		game.CleanUpMap()
+		WETSAND.NavProgress(Progress.DONE, started, navmesh.GetNavAreaCount())
 		Tell(ply, "Navigation mesh: done, " .. navmesh.GetNavAreaCount() .. " areas, saved as maps/" .. game.GetMap() .. ".nav; the map was reset")
 	end)
 end, nil, "Generate this map's navigation mesh from its spawn and control points, its doors open (admins); takes a few minutes and resets the map")
