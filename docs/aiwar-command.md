@@ -259,7 +259,7 @@ with the arguments shown (`entities/drgbase_nextbot/ai.lua`, `awareness.lua`,
 | `OnNavAreaChanged` | event | TF2 uses it in the tactical monitor |
 | `OnFetchEnemy(a, b)` → bool (a is preferred) | query `SelectMoreDangerousThreat` | squad focus fire; `nil` leaves DrGBase's priority-then-range order |
 | `OnRangeAttack` / `OnMeleeAttack` | query `ShouldAttack` (NO → return true to hold fire) | replaces the `WSDisarmed` special case |
-| `ShouldRun` | query `ShouldHurry` | replaces `WSRun` |
+| `ShouldRun` | query `ShouldHurry` | replaces `NSRun` |
 
 Steering (`NSTarget` and `FollowPath`) stays as it is. Only where the
 target comes from changes.

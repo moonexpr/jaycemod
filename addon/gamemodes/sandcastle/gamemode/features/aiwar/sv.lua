@@ -303,7 +303,7 @@ function Soldier:MoveTo(p, gait)
 	self.moveTarget = p
 	self.gait = gait or "run"
 	self.ent.NSTarget = OnFloor(ToVector(p))
-	self.ent.WSRun = self.gait ~= "walk"
+	self.ent.NSRun = self.gait ~= "walk"
 end
 
 function Soldier:Watch(p)
@@ -314,7 +314,7 @@ function Soldier:Release()
 	self.moveTarget = nil
 	self.walkSpeed = 0
 	self.ent.NSTarget = nil
-	self.ent.WSRun = nil
+	self.ent.NSRun = nil
 end
 
 -- A soldier-sized box swept between two points above step height under

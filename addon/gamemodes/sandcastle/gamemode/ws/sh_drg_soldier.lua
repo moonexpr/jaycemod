@@ -2,7 +2,7 @@
 -- built on (drgbase_nextbot_human for the Combine and the Resistance's
 -- fighters, drgbase_nextbot for the vortigaunt): WS.DrgSoldier(ENT,
 -- baseName) installs it. The controller (features/aiwar) sets NSTarget,
--- a position to go to, WSRun, whether to run there, NSLook, where to
+-- a position to go to, NSRun, whether to run there, NSLook, where to
 -- face while it stands with no enemy (the threat it watches), and NSBrain,
 -- the orders it asks and tells (whether to attack, which enemy, what it saw
 -- and suffered). With a target, the soldier walks it whatever else it does,
@@ -159,7 +159,7 @@ function WS.DrgSoldier(ENT, baseName)
 
 	function ENT:OnNavAreaChanged(old, new) Tell(self, "OnNavAreaChanged", old, new) end
 
-	-- ShouldHurry, else the controller's gait (WSRun), else run at an enemy.
+	-- ShouldHurry, else the controller's gait (NSRun), else run at an enemy.
 	function ENT:ShouldRun()
 		local hurry = Ask(self, "ShouldHurry")
 		if Answered(hurry, "ANSWER_YES") then return true end
