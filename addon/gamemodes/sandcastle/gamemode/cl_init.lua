@@ -1,5 +1,9 @@
 include("shared.lua")
-for _, f in ipairs(GM:WSModules("cl_")) do include("ws/" .. f) end
+-- cl_ui (WS.UI) loads first: other cl_ modules build their panels on it.
+include("ws/cl_ui.lua")
+for _, f in ipairs(GM:WSModules("cl_")) do
+	if f ~= "cl_ui.lua" then include("ws/" .. f) end
+end
 
 function GM:HUDPaint()
 	self.BaseClass.HUDPaint(self)
