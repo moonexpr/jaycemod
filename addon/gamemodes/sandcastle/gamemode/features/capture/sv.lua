@@ -431,6 +431,18 @@ function Controller:ForceOwner(point, team)
 	ApplyPointEvents(self, self:Set():SetOwner(point, team, Capture.CAUSE_FORCE))
 end
 
+-- A capture for team as a player's SetOwner input makes it (an admin's Set
+-- Team, wetsand/sh_editors_point.lua): its capture sound, the map's outputs
+-- (OnOwnerChangedTo..., OnCap...), scoring and the win check. Returns true,
+-- or false and why not.
+function Controller:CapturePoint(point, team)
+	if self:Owner(point) == team then return false, "the point is already " .. WETSAND.TeamName[team] .. "'s" end
+	local events = self:Set():SetOwner(point, team, Capture.CAUSE_PLAYER_INPUT, self.rounds:PointsMayBeCaptured())
+	if #events == 0 then return false, "points cannot be captured now" end
+	ApplyPointEvents(self, events)
+	return true
+end
+
 function Controller:SetPointLocked(point, locked)
 	ApplyPointEvents(self, self:Set():SetLocked(point, locked))
 end

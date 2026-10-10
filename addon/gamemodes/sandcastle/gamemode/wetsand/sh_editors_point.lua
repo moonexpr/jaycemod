@@ -1,6 +1,7 @@
--- A control point's right-click entries, for admins: who owns it, and
--- whether it is locked, through the capture feature (ForceOwner,
--- SetPointLocked). They show on a point's proxy (wetsand_proxy, kind
+-- A control point's right-click entries, for admins: who owns it, quietly
+-- (Set Owner: ForceOwner) or captured with the map's outputs (Set Team:
+-- CapturePoint), and whether it is locked (SetPointLocked), through the
+-- capture feature. They show on a point's proxy (wetsand_proxy, kind
 -- "point", which the capture feature puts on every point that is not a
 -- payload checkpoint) and on the props of its base, which name it: GMod's
 -- right-click stops at the first solid thing, the base, before it would
@@ -35,8 +36,18 @@ WETSAND.EditorAction("wetsand_point_owner", {
 	done = "the point changed hands",
 })
 
+WETSAND.EditorAction("wetsand_point_team", {
+	match = IsPoint, title = "Control Point", label = "Set Team", icon = "icon16/flag_red.png", order = 2101,
+	choices = {
+		{ label = WETSAND.TeamName[RED], value = RED },
+		{ label = WETSAND.TeamName[BLUE], value = BLUE },
+	},
+	run = function(_, ent, team) return WETSAND.Feature("capture"):CapturePoint(Point(ent), team) end,
+	done = "the point was captured, and the map told",
+})
+
 WETSAND.EditorAction("wetsand_point_lock", {
-	match = IsPoint, title = "Control Point", label = "Lock or Unlock", icon = "icon16/lock.png", order = 2101,
+	match = IsPoint, title = "Control Point", label = "Lock or Unlock", icon = "icon16/lock.png", order = 2102,
 	choices = { { label = "Lock", value = 1 }, { label = "Unlock", value = 0 } },
 	run = function(_, ent, value)
 		WETSAND.Feature("capture"):SetPointLocked(Point(ent), value == 1)

@@ -34,13 +34,17 @@ local function Capture()
 	local c = { calls = {} }
 	function c:ForceOwner(point, team) self.calls[#self.calls + 1] = { "owner", point, team } end
 	function c:SetPointLocked(point, locked) self.calls[#self.calls + 1] = { "locked", point, locked } end
+	function c:CapturePoint(point, team)
+		self.calls[#self.calls + 1] = { "capture", point, team }
+		return self.refuse == nil, self.refuse
+	end
 	return c
 end
 
 T.test("its entries show on a point's proxy and on the props of its base, nowhere else", function()
 	local added = Load(Capture())
 	local proxy = Ent("wetsand_proxy", "point")
-	for _, name in ipairs({ "wetsand_point_owner", "wetsand_point_lock" }) do
+	for _, name in ipairs({ "wetsand_point_owner", "wetsand_point_team", "wetsand_point_lock" }) do
 		local match = added[name].match
 		T.eq(match(proxy), true, name)
 		T.eq(match(Ent("prop_dynamic", nil, nil, proxy)), true, name .. ": its base")
@@ -73,6 +77,26 @@ T.test("Lock or Unlock, from the proxy or the base", function()
 	T.eq(capture.calls[1][3], true, "locked")
 	T.eq(capture.calls[2][2], point, "through its base")
 	T.eq(capture.calls[2][3], false, "unlocked")
+end)
+
+-- Set Team captures it for RED or BLU as a player's SetOwner input would:
+-- the map's outputs fire (OnOwnerChangedTo..., OnCap...), its capture sound
+-- plays and it scores; Set Owner forces it quietly.
+T.test("Set Team captures it for RED or BLU, with its outputs, and says why not when it cannot", function()
+	local capture = Capture()
+	local added = Load(capture)
+	local values = {}
+	for _, choice in ipairs(added.wetsand_point_team.choices) do values[#values + 1] = choice.value end
+	T.eq(table.concat(values, ","), RED .. "," .. BLUE)
+	local point = {}
+	T.eq(added.wetsand_point_team.run(nil, Ent("wetsand_proxy", "point", point), RED), true)
+	T.eq(capture.calls[1][1], "capture")
+	T.eq(capture.calls[1][2], point)
+	T.eq(capture.calls[1][3], RED)
+	capture.refuse = "points cannot be captured now"
+	local ok, why = added.wetsand_point_team.run(nil, Ent("wetsand_proxy", "point", point), BLUE)
+	T.eq(ok, false)
+	T.eq(why, "points cannot be captured now")
 end)
 
 T.finish()
