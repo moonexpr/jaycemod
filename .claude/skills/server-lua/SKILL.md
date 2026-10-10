@@ -99,6 +99,27 @@ start following just before the moment you're waiting for. To drive the
 game while you wait, a chunk's `timer.Create` loop can play the part of a
 player or an admin, as in a test.
 
+## Big results: through context-mode
+
+The gmod MCP tools answer straight into the conversation. For a result you
+will search rather than read (a long console log, every Lua error with its
+stack, the game event ring), run the same tool from the command line under
+`ctx_batch_execute`, so the text is indexed and only what your queries match
+comes back:
+
+```
+ctx_batch_execute(commands=[
+  {label: "gmod lua_errors",  command: "python3 .devtools/bin/gmod_mcp.py call lua_errors"},
+  {label: "gmod console_log", command: "python3 .devtools/bin/gmod_mcp.py call console_log lines=2000"},
+  {label: "gmod game_events", command: "python3 .devtools/bin/gmod_mcp.py call game_events name=round_win"}],
+  queries=["attempt to index nil", "round_win team"])
+```
+
+`call TOOL name=value ...` takes the tool's arguments (integers and booleans
+as JSON, the rest as text, so `code=return 1` needs quoting as one shell
+word) and prints its text, exiting 1 if it failed. Later questions go to
+`ctx_search(source: "gmod ...")`.
+
 ## How it works
 
 `server_root.py` adds `server_root/luadev_socket.lua` as a server autorun,

@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from gmod_mcp import TOOLS, Mcp, plain, show_errors, show_hits, show_stack, tail
+from gmod_mcp import TOOLS, Mcp, plain, run_call, show_errors, show_hits, show_stack, tail
 from server_lua import BridgeDown, OpFailed, Realm, Reply
 
 
@@ -224,3 +224,34 @@ def test_errors_show_their_change_number_for_since():
     text = show_errors([{"id": 4, "seq": 9, "time": 3.0, "last": 5.0, "error": "boom", "count": 2,
                          "realm": "server", "stack": {}}])
     assert text == "error 4 (seq 9) first 3.00, last 5.00 (x2, server): boom"
+
+
+def test_a_command_line_call_prints_the_tools_text_for_context_mode_to_index():
+    server = FakeServer(log_text="one\ntwo\nthree\n")
+    out = io.StringIO()
+    assert run_call(Mcp(server, Path("/listeners")), ["console_log", "lines=2", "grep=t"], out) == 0
+    assert out.getvalue() == "two\nthree\n"
+
+
+def test_command_line_values_read_as_json_when_they_can_and_as_text_otherwise():
+    server = FakeServer()
+    run_call(Mcp(server, Path("/listeners")), ["lua_run", "code=return {1, 2}", "instance=2"], io.StringIO())
+    assert server.calls == [("lua", Realm.SERVER, "return {1, 2}", 2)]
+
+
+def test_a_failed_command_line_call_still_prints_why_and_exits_1():
+    server = FakeServer({"bp_clear": OpFailed("no breakpoint 9")})
+    out = io.StringIO()
+    assert run_call(Mcp(server, Path("/listeners")), ["breakpoint_clear", "id=9"], out) == 1
+    assert out.getvalue() == "no breakpoint 9\n"
+
+
+def test_a_string_property_stays_text_even_when_it_reads_as_a_number():
+    server = FakeServer()
+    run_call(Mcp(server, Path("/listeners")), ["lua_run", "code=42"], io.StringIO())
+    assert server.calls == [("lua", Realm.SERVER, "42", 1)]
+
+
+def test_an_argument_without_a_value_is_refused():
+    with pytest.raises(SystemExit):
+        run_call(Mcp(FakeServer(), Path("/listeners")), ["console_log", "lines"], io.StringIO())

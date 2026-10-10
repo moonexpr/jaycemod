@@ -3,6 +3,9 @@
 stacks and events as tools, so Claude needs no Bash to reach them.
 
   gmod_mcp.py          serve MCP over stdio (the sandcastle-dev plugin starts it)
+  gmod_mcp.py call TOOL [name=value ...]
+                       one tool's text on stdout (exit 1 if it failed), for
+                       context-mode's ctx_batch_execute to index and search
 
 Each tool takes `instance` (1, the main server, by default; srcds.py
 --instance). Lua goes through luadev's socket (server_lua.py), breakpoints
@@ -342,8 +345,33 @@ class DedicatedServer:
         return read_end(log_path(Instance(instance)))
 
 
+def call_arguments(tool: Tool, pairs: list[str]) -> dict:
+    """name=value pairs as the tool's arguments: integers and booleans as JSON, the rest as text."""
+    properties = tool.schema()["inputSchema"]["properties"]
+    args = {}
+    for pair in pairs:
+        name, sep, value = pair.partition("=")
+        if not sep:
+            sys.exit(f"gmod_mcp: expected name=value, got {pair!r}")
+        kind = properties.get(name, {}).get("type")
+        args[name] = json.loads(value) if kind in ("integer", "number", "boolean") else value
+    return args
+
+
+def run_call(mcp: Mcp, argv: list[str], stdout: TextIO) -> int:
+    """One tool call from the command line: its text, and 1 if it failed."""
+    name, pairs = argv[0], argv[1:]
+    tool = BY_NAME.get(name)
+    result = mcp.call(name, call_arguments(tool, pairs) if tool else {})
+    stdout.write(result["content"][0]["text"] + "\n")
+    return 1 if result.get("isError") else 0
+
+
 def main() -> int:
-    Mcp(DedicatedServer(), LISTENERS).serve(sys.stdin, sys.stdout)
+    mcp = Mcp(DedicatedServer(), LISTENERS)
+    if sys.argv[1:2] == ["call"] and len(sys.argv) > 2:
+        return run_call(mcp, sys.argv[2:], sys.stdout)
+    mcp.serve(sys.stdin, sys.stdout)
     return 0
 
 
