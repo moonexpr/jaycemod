@@ -29,13 +29,13 @@ end
 -- CTFHellZap::Spawn finds the trigger once; every map entity exists by now.
 function ENT:Initialize()
 	local kv = self.kv or {}
-	self.hazards = WETSAND.Feature("hazards")
+	self.hazards = WS.Feature("hazards")
 	self.hazard = self.hazards:Bind(self, VARIANT, {
 		type = Int(kv.zappertype),
 		particle = kv.particleeffect,
 	})
 	if kv.particleeffect and kv.particleeffect ~= "" then PrecacheParticleSystem(kv.particleeffect) end
-	self.trigger = WETSAND.FindByName(kv.touch_trigger)
+	self.trigger = WS.FindByName(kv.touch_trigger)
 	self.inside = {}
 end
 
@@ -47,7 +47,7 @@ end
 function ENT:PlayersInTrigger()
 	local now = {}
 	if not (IsValid(self.trigger) and self.trigger:IsEnabled()) then return now end
-	for _, ply in ipairs(WETSAND.PlayersInside(self.trigger)) do now[ply] = true end
+	for _, ply in ipairs(WS.PlayersInside(self.trigger)) do now[ply] = true end
 	return now
 end
 

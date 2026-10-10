@@ -4,17 +4,17 @@
 -- answers into entities: dropped spell pickups and gifts. It also owns the
 -- fortune tellers' models, and carries out their outputs, sounds and
 -- teleports.
-local Holiday = WETSAND.require("foundation.holiday")
+local Holiday = WS.require("foundation.holiday")
 
 -- The holiday modes this gamemode registers, in order of preference.
 local MODES = {
-	WETSAND.require("foundation.holiday.halloween"),
+	WS.require("foundation.holiday.halloween"),
 }
 
 local SPELL_PICKUP = "tf_spell_pickup"
 local GIFT_PICKUP = "tf_halloween_gift_pickup"
 local GIFT_THINK_INTERVAL = 1
-local GIFT_TIMER = "wetsand_holiday_gifts"
+local GIFT_TIMER = "ws_holiday_gifts"
 local FORTUNE_MODEL = "foundation.holiday.fortune"
 
 -- TF2's convars (tf_gamerules.cpp), server-only here.
@@ -55,7 +55,7 @@ end
 
 -- CTFGameRules::BeginHaunting's permission (foundation.npc.ghost).
 function Controller:HauntingAllowed()
-	local Ghost = WETSAND.require("foundation.npc.ghost")
+	local Ghost = WS.require("foundation.npc.ghost")
 	return Ghost.HauntingAllowed(self:HolidayActive(Holiday.HALLOWEEN), self.bossScenario == true, self.allowHaunting == true)
 end
 
@@ -66,7 +66,7 @@ function Controller:HolidayActive(h) return self.holiday:Active(h) end
 -- runs the boss timer, which brings him. A templated entity is not among
 -- them until it spawns; the timer stops if the map's own boss does.
 function Controller:StartBossScenarios()
-	local BossTimer = WETSAND.require("foundation.npc.boss_timer")
+	local BossTimer = WS.require("foundation.npc.boss_timer")
 	local map = {
 		names = {},
 		classes = {},
@@ -79,24 +79,24 @@ function Controller:StartBossScenarios()
 	for _, scenario in ipairs(BossTimer.SCENARIOS) do
 		if BossTimer.Runs(scenario, map) then
 			self.bossScenario = true
-			WETSAND.Feature("boss_timer"):Run(scenario.variant)
+			WS.Feature("boss_timer"):Run(scenario.variant)
 		end
 	end
 end
 
-hook.Add("InitPostEntity", "wetsand_holiday_boss_scenarios", function() Controller:StartBossScenarios() end)
+hook.Add("InitPostEntity", "ws_holiday_boss_scenarios", function() Controller:StartBossScenarios() end)
 
 -- tf_logic_on_holiday's Fire: the outputs for the holidays that are on. Its
 -- part loads with the first Fire.
 function Controller:OnHolidayOutputs()
-	return WETSAND.require("foundation.holiday.on_holiday").Outputs(self.holiday)
+	return WS.require("foundation.holiday.on_holiday").Outputs(self.holiday)
 end
 function Controller:Mode() return self.holiday:Mode() end
 function Controller:UsingSpells() return self.holiday:UsingSpells() end
 
 -- Spells turning on load the spells feature, which hands out the books.
 function Controller:SpellsChanged(changed)
-	if changed and self.holiday:UsingSpells() then WETSAND.Feature("spells") end
+	if changed and self.holiday:UsingSpells() then WS.Feature("spells") end
 end
 
 function Controller:SetUsingSpells(on)
@@ -130,7 +130,7 @@ end
 
 -- tf_halloween_gift_pickup: config = { player, lifetime }.
 function Controller:BindGift(ent, config)
-	return WETSAND.require("foundation.holiday.gift").New(config, CurTime())
+	return WS.require("foundation.holiday.gift").New(config, CurTime())
 end
 
 function Controller:SpawnGift(gift)
@@ -154,7 +154,7 @@ end
 local function TeleportTeam(Fortune, teamNumber, target)
 	for _, move in ipairs(Fortune.Teleports(team.GetPlayers(teamNumber), ents.FindByName(target), math.random)) do
 		local ply, spot = move.player, move.spot
-		WETSAND.RemoveAllConditions(ply)
+		WS.RemoveAllConditions(ply)
 		if not ply:Alive() then ply:Spawn() end
 		ply:SetPos(spot:GetPos())
 		ply:SetEyeAngles(spot:GetAngles())
@@ -166,7 +166,7 @@ end
 local function FortuneEffects(Fortune)
 	return {
 		[Fortune.OUTPUT] = function(ent, e) ent:TriggerOutput(e.name, ent) end,
-		[Fortune.BROADCAST] = function(ent, e) WETSAND.BroadcastSound(WETSAND.TEAM_UNASSIGNED, e.sound) end,
+		[Fortune.BROADCAST] = function(ent, e) WS.BroadcastSound(WS.TEAM_UNASSIGNED, e.sound) end,
 		[Fortune.TELEPORT] = function(ent, e) TeleportTeam(Fortune, e.team, e.target) end,
 	}
 end
@@ -174,7 +174,7 @@ end
 -- halloween_fortune_teller: kv = { redTeleport, blueTeleport }. The first
 -- teller loads foundation.holiday.fortune.
 function Controller:BindFortuneTeller(ent, kv)
-	local Fortune = WETSAND.require(FORTUNE_MODEL)
+	local Fortune = WS.require(FORTUNE_MODEL)
 	self.fortuneEffects = self.fortuneEffects or FortuneEffects(Fortune)
 	local fortune = Fortune.New(kv, CurTime())
 	self.fortunes[ent] = fortune
@@ -207,7 +207,7 @@ end)
 -- tf_spells_enabled 1 loads the spells feature once this one has finished
 -- loading, since the spells controller may ask for this one.
 if Controller.holiday:UsingSpells() then
-	timer.Simple(0, function() WETSAND.Feature("spells") end)
+	timer.Simple(0, function() WS.Feature("spells") end)
 end
 
 return Controller

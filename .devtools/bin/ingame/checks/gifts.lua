@@ -4,7 +4,7 @@
 -- (the schedule's own nextAt, as a test clock would) and the controller
 -- then gives every player a tf_halloween_gift_pickup at one of the
 -- locations.
-local Halloween = WETSAND.require("foundation.holiday.halloween")
+local Halloween = WS.require("foundation.holiday.halloween")
 local SECONDS_PER_MINUTE = 60
 local SPAWN_TIMEOUT = 3
 local AT_LOCATION = 1 -- units

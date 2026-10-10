@@ -1,4 +1,4 @@
--- wetsand_proxy: an unseen box an admin right-clicks for an entity with no
+-- ws_proxy: an unseen box an admin right-clicks for an entity with no
 -- body of its own to click (a cart's watcher, from the cart or one of its
 -- checkpoints). Only GMod's right-click trace finds it (properties'
 -- GetHovered falls back to MASK_ALL); bullets, players and NPCs pass
@@ -19,7 +19,7 @@ local function Load()
 		SERVER = true,
 		CLIENT = false,
 	}, { __index = _G })
-	setfenv(assert(loadfile("addon/gamemodes/sandcastle/entities/entities/wetsand_proxy.lua")), env)()
+	setfenv(assert(loadfile("addon/gamemodes/sandcastle/entities/entities/ws_proxy.lua")), env)()
 	local proxy = setmetatable({
 		GetPos = function() return {} end,
 		GetAngles = function() return {} end,
@@ -47,15 +47,15 @@ T.test("it is no spawnable thing and takes no tools", function()
 	T.eq(next(ENT.m_tblToolsAllowed), nil, "no tool works on it")
 end)
 
--- The cart's right-click entries (wetsand/sh_editors_cart.lua) show on a
+-- The cart's right-click entries (ws/sh_editors_cart.lua) show on a
 -- proxy for a cart's watcher.
 local function LoadCart()
 	local added = {}
 	local env = setmetatable({
-		WETSAND = { EditorAction = function(name, def) added[name] = def end },
+		WS = { EditorAction = function(name, def) added[name] = def end },
 		IsValid = function(v) return v ~= nil end,
 	}, { __index = _G })
-	setfenv(assert(loadfile("addon/gamemodes/sandcastle/gamemode/wetsand/sh_editors_cart.lua")), env)()
+	setfenv(assert(loadfile("addon/gamemodes/sandcastle/gamemode/ws/sh_editors_cart.lua")), env)()
 	return added
 end
 
@@ -68,16 +68,16 @@ local function Ent(class, kind, parent, children, proxy)
 		GetTarget = function() return nil end,
 		GetParent = function() return parent end,
 		GetChildren = function() return children or {} end,
-		GetNW2Entity = function(_, name) return name == "wetsand_proxy" and proxy or nil end,
+		GetNW2Entity = function(_, name) return name == "ws_proxy" and proxy or nil end,
 	}
 end
 
 T.test("the cart's entries show on a cart's proxy, by its kind, and nowhere else", function()
 	local added = LoadCart()
-	for _, name in ipairs({ "wetsand_retract_cart", "wetsand_advance_cart" }) do
+	for _, name in ipairs({ "ws_retract_cart", "ws_advance_cart" }) do
 		local match = added[name].match
-		T.eq(match(Ent("wetsand_proxy", "cart")), true, name)
-		T.eq(match(Ent("wetsand_proxy", "point")), false, name .. ": a point's proxy")
+		T.eq(match(Ent("ws_proxy", "cart")), true, name)
+		T.eq(match(Ent("ws_proxy", "point")), false, name .. ": a point's proxy")
 		T.eq(match(Ent("func_tracktrain")), false, name .. ": not a proxy")
 	end
 end)
@@ -87,10 +87,10 @@ end)
 -- the train that carries the cart's proxy.
 T.test("the cart's entries also show on the train and the props riding it", function()
 	local added = LoadCart()
-	local proxy = Ent("wetsand_proxy", "cart")
+	local proxy = Ent("ws_proxy", "cart")
 	local train = Ent("func_tracktrain", nil, nil, { proxy })
 	local prop = Ent("prop_physics", nil, train)
-	local match = added.wetsand_advance_cart.match
+	local match = added.ws_advance_cart.match
 	T.eq(match(train), true, "the train")
 	T.eq(match(prop), true, "a prop riding it")
 	T.eq(match(Ent("prop_physics", nil, Ent("func_tracktrain"))), false, "a train with no cart proxy")
@@ -101,8 +101,8 @@ end)
 -- payload feature has it name the cart's proxy.
 T.test("the cart's entries show on the body tied to the train, which names the cart's proxy", function()
 	local added = LoadCart()
-	local proxy = Ent("wetsand_proxy", "cart")
-	local match = added.wetsand_retract_cart.match
+	local proxy = Ent("ws_proxy", "cart")
+	local match = added.ws_retract_cart.match
 	T.eq(match(Ent("prop_physics", nil, nil, nil, proxy)), true, "the cart's body")
 	T.eq(match(Ent("prop_physics")), false, "another prop")
 end)

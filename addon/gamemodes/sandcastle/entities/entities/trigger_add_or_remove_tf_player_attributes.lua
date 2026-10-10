@@ -8,7 +8,7 @@
 -- logs once per map and the trigger does nothing, as TF2 does with a name
 -- its schema lacks.
 ENT.Type = "brush"
-ENT.Base = "wetsand_trigger_volume"
+ENT.Base = "ws_trigger_volume"
 
 local UNSUPPORTED_MESSAGE = "trigger_add_or_remove_tf_player_attributes: attribute %q is not supported; ignored"
 local logged = {}
@@ -21,7 +21,7 @@ local function Float(value)
 end
 
 function ENT:TriggerInit()
-	self.attributes = WETSAND.Feature("attributes")
+	self.attributes = WS.Feature("attributes")
 	self.attribute = {
 		name = self:Key("attribute_name", ""),
 		value = Float(self:Key("value")),

@@ -17,7 +17,7 @@ function ENT:UpdateTransmitState()
 end
 
 function ENT:Initialize()
-	self.holiday = WETSAND.Feature("holiday")
+	self.holiday = WS.Feature("holiday")
 end
 
 function ENT:AcceptInput(name, activator, caller, value)

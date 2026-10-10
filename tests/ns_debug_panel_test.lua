@@ -1,15 +1,15 @@
--- The Debug NextSoldier panel (wetsand/cl_ns_debug.lua), the NPC context
--- menu (wetsand/cl_nb_menu.lua) and the AI War panel's slot list
--- (wetsand/sh_aiwar.lua, wetsand/cl_aiwar_slots.lua) run only commands and
+-- The Debug NextSoldier panel (ws/cl_ns_debug.lua), the NPC context
+-- menu (ws/cl_nb_menu.lua) and the AI War panel's slot list
+-- (ws/sh_aiwar.lua, ws/cl_aiwar_slots.lua) run only commands and
 -- convars the gamemode registers; the menu has a toggle for every debug
 -- layer and every part of the overlay, and the panel a checkbox per part.
 local T = dofile("tests/harness.lua")
 
 local ROOT = T.ROOT
-local PANEL = ROOT .. "wetsand/cl_ns_debug.lua"
-local MENU = ROOT .. "wetsand/cl_nb_menu.lua"
-local AIWAR_PANEL = ROOT .. "wetsand/sh_aiwar.lua"
-local SLOT_LIST = ROOT .. "wetsand/cl_aiwar_slots.lua"
+local PANEL = ROOT .. "ws/cl_ns_debug.lua"
+local MENU = ROOT .. "ws/cl_nb_menu.lua"
+local AIWAR_PANEL = ROOT .. "ws/sh_aiwar.lua"
+local SLOT_LIST = ROOT .. "ws/cl_aiwar_slots.lua"
 
 local function ReadFile(path)
 	local f = assert(io.open(path, "r"))
@@ -28,7 +28,7 @@ local function Registered()
 		for name in text:gmatch('CreateConVar%(%s*"([%w_]+)"') do names[name] = true end
 		for name in text:gmatch('CreateClientConVar%(%s*"([%w_]+)"') do names[name] = true end
 		-- the nbdebug commands, registered from a table of names
-		for name in text:gmatch('name = "(wetsand_nb_[%w_]+)"') do names[name] = true end
+		for name in text:gmatch('name = "(ws_nb_[%w_]+)"') do names[name] = true end
 		-- NextSoldier's commands, registered through AdminCommand and WarCommand
 		for name in text:gmatch('AdminCommand%(%s*"([%w_]+)"') do names[name] = true end
 		for name in text:gmatch('WarCommand%(%s*"([%w_]+)"') do names[name] = true end
@@ -78,11 +78,11 @@ end)
 
 T.test("selecting an NPC for debug is its own entry beside Debug NPC, checked for the one selected", function()
 	local menu = ReadFile(MENU)
-	local select = menu:match('properties%.Add%("wetsand_nb_select", (%b{})%)')
+	local select = menu:match('properties%.Add%("ws_nb_select", (%b{})%)')
 	T.eq(select ~= nil, true, "its own property")
 	T.eq(select:find('MenuLabel = "Select NPC for Debug"', 1, true) ~= nil, true, "named")
 	T.eq(select:find('Type = "toggle"', 1, true) ~= nil, true, "a toggle")
-	T.eq(menu:match('properties%.Add%("wetsand_nb_debug", (%b{})%)'):find("wetsand_nb_select", 1, true), nil, "no longer inside Debug NPC")
+	T.eq(menu:match('properties%.Add%("ws_nb_debug", (%b{})%)'):find("ws_nb_select", 1, true), nil, "no longer inside Debug NPC")
 end)
 
 T.test("the menu toggles every debug layer, and the panel keeps only showing and clearing them all", function()
@@ -98,10 +98,10 @@ end)
 
 T.test("the slot list debugs a soldier with the same menu its NPC's own context menu shows", function()
 	local menu, slots = ReadFile(MENU), ReadFile(SLOT_LIST)
-	local debug = menu:match('properties%.Add%("wetsand_nb_debug", (%b{})%)')
-	T.eq(debug:find("WETSAND.NpcDebugMenu(", 1, true) ~= nil, true, "the NPC's menu is the shared one")
-	T.eq(slots:find("WETSAND.NpcDebugMenu(", 1, true) ~= nil, true, "so is the slot list's")
-	T.eq(slots:find("WETSAND.NpcSelectOption(", 1, true) ~= nil, true, "and its selection toggle")
+	local debug = menu:match('properties%.Add%("ws_nb_debug", (%b{})%)')
+	T.eq(debug:find("WS.NpcDebugMenu(", 1, true) ~= nil, true, "the NPC's menu is the shared one")
+	T.eq(slots:find("WS.NpcDebugMenu(", 1, true) ~= nil, true, "so is the slot list's")
+	T.eq(slots:find("WS.NpcSelectOption(", 1, true) ~= nil, true, "and its selection toggle")
 end)
 
 T.finish()

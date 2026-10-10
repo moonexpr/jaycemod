@@ -8,7 +8,7 @@ operator's lists only TF2's download folder; it ignores the TF2 VPKs that
 gameinfo.txt names (GMod builds its own search path). So on the server
 every TF2 model is missing: props have no physics, NPCs have no sequences,
 spell pickups do not animate. The harness may write only under
-garrysmod/data/wetsand_tests/, so it cannot mount this folder itself; it is
+garrysmod/data/ws_tests/, so it cannot mount this folder itself; it is
 ready for whoever may add it as an addon or a mount.cfg path.
 
 Only what the server reads is extracted: .mdl, .phy, .ani and .vvd of the

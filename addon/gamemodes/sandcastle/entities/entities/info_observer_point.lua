@@ -6,20 +6,20 @@ ENT.Type = "point"
 ENT.Base = "base_point"
 
 function ENT:KeyValue(key, value)
-	self.wetsandKv = self.wetsandKv or {}
-	self.wetsandKv[string.lower(key)] = value
+	self.wsKv = self.wsKv or {}
+	self.wsKv[string.lower(key)] = value
 	if string.sub(key, 1, 2) == "On" then self:StoreOutput(key, value) end
 end
 
 function ENT:Key(name, default)
-	local v = (self.wetsandKv or {})[name]
+	local v = (self.wsKv or {})[name]
 	if v == nil or v == "" then return default end
 	return v
 end
 
 function ENT:Initialize()
 	self.enabled = self:Key("startdisabled", "0") ~= "1"
-	self.team = tonumber(self:Key("teamnum", WETSAND.TEAM_UNASSIGNED)) or WETSAND.TEAM_UNASSIGNED
+	self.team = tonumber(self:Key("teamnum", WS.TEAM_UNASSIGNED)) or WS.TEAM_UNASSIGNED
 	self.welcome = self:Key("defaultwelcome", "0") == "1"
 	self.fov = tonumber(self:Key("fov", 0)) or 0
 	-- CObserverPoint::Activate: the match summary camera stays off until the
@@ -52,14 +52,14 @@ end
 function ENT:AssociatedEntity()
 	local name = self:Key("associated_team_entity")
 	if not name then return NULL end
-	if not IsValid(self.associated) then self.associated = WETSAND.FindByName(name) end
+	if not IsValid(self.associated) then self.associated = WS.FindByName(name) end
 	return self.associated
 end
 
 local INPUTS = {
 	enable = function(self) self.enabled = true end,
 	disable = function(self) self.enabled = false end,
-	setteam = function(self, value) self.team = tonumber(value) or WETSAND.TEAM_UNASSIGNED end,
+	setteam = function(self, value) self.team = tonumber(value) or WS.TEAM_UNASSIGNED end,
 }
 
 -- Other inputs (SetParent, Kill, ...) fall through to the engine.

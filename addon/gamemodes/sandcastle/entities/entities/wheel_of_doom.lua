@@ -33,13 +33,13 @@ end
 
 function ENT:Initialize()
 	local kv = self.kv or {}
-	local Wheel = WETSAND.require(MODEL)
+	local Wheel = WS.require(MODEL)
 	self:SetModel(Wheel.MODEL)
 	self:SetSolid(SOLID_BBOX)
 	self:AddSolidFlags(FSOLID_NOT_SOLID)
 	self:SetMoveType(MOVETYPE_NONE)
 	self:SetNoDraw(true)
-	self.wheels = WETSAND.Feature("wheel")
+	self.wheels = WS.Feature("wheel")
 	self.wheel = self.wheels:Bind(self, {
 		duration = Number(kv.effect_duration),
 		hasSpiral = Number(kv.has_spiral) ~= 0,
@@ -84,7 +84,7 @@ function ENT:OnRemove()
 end
 
 function ENT:AcceptInput(name, activator, caller, value)
-	local Wheel = WETSAND.require(MODEL)
+	local Wheel = WS.require(MODEL)
 	local input = string.lower(name)
 	if input ~= Wheel.INPUT_SPIN and input ~= Wheel.INPUT_CLEAR then return false end
 	self.wheels:Input(self, input)

@@ -34,9 +34,9 @@ class FakeServer:
         self.commands.append(text)
         if text == "status":
             return self.status
-        m = re.search(r'RunString\(file\.Read\("wetsand_tests/gev2/(\w+)\.txt", "DATA"\)', text)
+        m = re.search(r'RunString\(file\.Read\("ws_tests/gev2/(\w+)\.txt", "DATA"\)', text)
         if m and self.answers:
-            out = self.install.data_dir / "wetsand_tests" / "gev2" / "client_out" / f"{m.group(1)}.txt"
+            out = self.install.data_dir / "ws_tests" / "gev2" / "client_out" / f"{m.group(1)}.txt"
             out.write_text(f"realm | client\nran {m.group(1)}\n")
         return ""
 
@@ -62,7 +62,7 @@ def test_client_mode_sends_the_loader_to_every_human_player(tmp_path, probes):
     assert ";" not in loaders[0]  # the console would split the line there
     sent = re.search(r"SendLua\(\[\[(.*)\]\]\)", loaders[0]).group(1)
     assert len(sent.encode()) < 255  # SendLua's limit
-    assert (tmp_path / "data" / "wetsand_tests" / "gev2" / "client_t4.txt").read_text() == "-- a probe\n"
+    assert (tmp_path / "data" / "ws_tests" / "gev2" / "client_t4.txt").read_text() == "-- a probe\n"
 
 
 def test_client_mode_copies_the_clients_result_to_the_client_artifacts(tmp_path, probes):
@@ -79,7 +79,7 @@ def test_client_mode_refuses_without_a_joined_client(tmp_path, probes):
 
 
 def test_client_mode_never_returns_an_old_result(tmp_path, probes):
-    old = tmp_path / "data" / "wetsand_tests" / "gev2" / "client_out" / "client_t4.txt"
+    old = tmp_path / "data" / "ws_tests" / "gev2" / "client_out" / "client_t4.txt"
     old.parent.mkdir(parents=True)
     old.write_text("an earlier run\n")
     with pytest.raises(ProbeFailed):

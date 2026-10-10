@@ -7,20 +7,20 @@
 -- RoundActivate it locks every point for unlock_point seconds through the
 -- capture controller. tf_gamerules' Set<Team>KothClockActive reaches the
 -- clocks through the rounds controller. It publishes the clocks for the view
--- (wetsand_koth_clock_<team>_*).
+-- (ws_koth_clock_<team>_*).
 --
 -- Loaded by tf_logic_koth. It loads rounds and capture.
-local Koth = WETSAND.require("foundation.rounds.koth")
-local Rounds = WETSAND.require("foundation.rounds")
+local Koth = WS.require("foundation.rounds.koth")
+local Rounds = WS.require("foundation.rounds")
 
-local RED, BLUE = WETSAND.TEAM_RED, WETSAND.TEAM_BLUE
+local RED, BLUE = WS.TEAM_RED, WS.TEAM_BLUE
 local GAME_TEAMS = { RED, BLUE }
 local PUBLISH_INTERVAL = 0.1 -- the HUD's 10 Hz, as the capture controller's
-local THINK_HOOK = "wetsand_koth"
+local THINK_HOOK = "ws_koth"
 
 local Controller = {
-	rounds = WETSAND.Feature("rounds"),
-	capture = WETSAND.Feature("capture"),
+	rounds = WS.Feature("rounds"),
+	capture = WS.Feature("capture"),
 	logicEnt = NULL,
 	koth = nil,
 	clocks = {},
@@ -96,7 +96,7 @@ end
 -- The view's keys ----------------------------------------------------------------------
 
 local function Key(t, field)
-	return "wetsand_koth_clock_" .. t .. "_" .. field
+	return "ws_koth_clock_" .. t .. "_" .. field
 end
 
 -- What the KOTH HUD (CTFHudKothTimeStatus) and each clock's countdown read.
@@ -121,7 +121,7 @@ end
 
 hook.Add("Think", THINK_HOOK, function()
 	local now = CurTime()
-	if now < Controller.nextPublish or not WETSAND.Active() then return end
+	if now < Controller.nextPublish or not WS.Active() then return end
 	Controller.nextPublish = now + PUBLISH_INTERVAL
 	Controller:Publish(now)
 end)

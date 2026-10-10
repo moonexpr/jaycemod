@@ -4,7 +4,7 @@
 -- fires these.
 --
 -- Config: the grenade's { fuse, explodeOnTouch } plus { damage, crit, team,
--- attacker, radius } and wetsand_projectile's { model, velocity, spin }.
+-- attacker, radius } and ws_projectile's { model, velocity, spin }.
 local require = require
 local Grenade = require("foundation.projectile.grenade")
 module(...)

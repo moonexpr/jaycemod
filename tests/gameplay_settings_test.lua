@@ -1,5 +1,5 @@
--- Admin > Gameplay Settings (wetsand_gameplay_settings, on the editor base
--- wetsand_editor): its fields in four sections, the round timer, respawn
+-- Admin > Gameplay Settings (ws_gameplay_settings, on the editor base
+-- ws_editor): its fields in four sections, the round timer, respawn
 -- times, win conditions and team scores, moved out of the Game Rules and
 -- Round Timer editors, which keep their cart speed, their step and their
 -- actions. The entity files run against a fake ENT and the editors
@@ -15,7 +15,7 @@ local function Load(file, convars)
 		ENT = ENT,
 		AddCSLuaFile = function() end,
 		DEFINE_BASECLASS = function() end,
-		WETSAND = { TEAM_RED = RED, TEAM_BLUE = BLUE, TeamName = {}, EditorAction = function() end },
+		WS = { TEAM_RED = RED, TEAM_BLUE = BLUE, TeamName = {}, EditorAction = function() end },
 		GetConVar = function(name)
 			return {
 				GetInt = function() return convars[name] end,
@@ -57,20 +57,20 @@ local function Editors()
 end
 
 T.test("its fields are in four sections: round timer, respawn times, win conditions, team scores", function()
-	local cats = Categories(Load("wetsand_gameplay_settings.lua", {}))
+	local cats = Categories(Load("ws_gameplay_settings.lua", {}))
 	T.eq(table.concat(cats, ", "), "Round timer, Respawn times, Win conditions, Team scores")
 end)
 
 T.test("it is the server's, never spawned from the menu, and only admins edit it", function()
-	local ENT = Load("wetsand_gameplay_settings.lua", {})
-	T.eq(ENT.Base, "wetsand_editor")
+	local ENT = Load("ws_gameplay_settings.lua", {})
+	T.eq(ENT.Base, "ws_editor")
 	T.eq(ENT.Spawnable, false)
 	T.eq(ENT.AdminOnly, true)
 end)
 
 T.test("the win conditions are the rounds' convars, read and written", function()
 	local convars = { mp_winlimit = 3, mp_maxrounds = 5, mp_timelimit = 30 }
-	local ENT = Load("wetsand_gameplay_settings.lua", convars)
+	local ENT = Load("ws_gameplay_settings.lua", convars)
 	for name, convar in pairs({ WinLimit = "mp_winlimit", MaxRounds = "mp_maxrounds", TimeLimit = "mp_timelimit" }) do
 		local field = Field(ENT, name)
 		T.eq(field.category, "Win conditions", name)
@@ -81,7 +81,7 @@ T.test("the win conditions are the rounds' convars, read and written", function(
 end)
 
 T.test("scores, respawns and the timer go through the editors feature as before", function()
-	local ENT = Load("wetsand_gameplay_settings.lua", {})
+	local ENT = Load("ws_gameplay_settings.lua", {})
 	local e = Editors()
 	Field(ENT, "RedScore").write(e, 4)
 	Field(ENT, "BluRespawn").write(e, 12)

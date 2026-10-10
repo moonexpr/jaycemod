@@ -66,23 +66,23 @@ TEAM_SIZE_MAX = 32
 -- each with one role, so teammates are soldiers fighting together.
 FIRE_TEAM_SIZE = 4
 
--- The sides' soldiers: DrGBase NextBots (the entities wetsand_drg_combine
--- and wetsand_drg_rebel), each drafting its own model and weapons.
+-- The sides' soldiers: DrGBase NextBots (the entities ws_drg_combine
+-- and ws_drg_rebel), each drafting its own model and weapons.
 FACTIONS = {
 	[RED] = {
 		name = "Combine",
 		team = RED,
-		classes = { wetsand_drg_combine = true },
-		recruits = { { class = "wetsand_drg_combine" } },
-		medic = { class = "wetsand_drg_combine" }, -- in a metrocop's kit
+		classes = { ws_drg_combine = true },
+		recruits = { { class = "ws_drg_combine" } },
+		medic = { class = "ws_drg_combine" }, -- in a metrocop's kit
 	},
 	[BLUE] = {
 		name = "Resistance",
 		team = BLUE,
 		-- a class whose value is a job only ever does that job
-		classes = { wetsand_drg_rebel = true, wetsand_drg_vortigaunt = MEDIC },
-		recruits = { { class = "wetsand_drg_rebel" } },
-		medic = { class = "wetsand_drg_vortigaunt" },
+		classes = { ws_drg_rebel = true, ws_drg_vortigaunt = MEDIC },
+		recruits = { { class = "ws_drg_rebel" } },
+		medic = { class = "ws_drg_vortigaunt" },
 	},
 }
 
@@ -421,7 +421,7 @@ end
 -- Names the fire team for its team, role and index (its squad).
 local function Index(fireTeams, fireTeam)
 	fireTeam.index = FreeIndex(fireTeams, fireTeam.team, fireTeam.role, fireTeam)
-	fireTeam.squad = "wetsand_aiwar_" .. fireTeam.team .. "_" .. fireTeam.role .. "_" .. fireTeam.index
+	fireTeam.squad = "ws_aiwar_" .. fireTeam.team .. "_" .. fireTeam.role .. "_" .. fireTeam.index
 end
 
 local function NewFireTeam(war, team, role, manual)

@@ -432,7 +432,7 @@ function Debugger:Errors(since)
 	return self.errors:Since(since, ChangedSince)
 end
 
--- From the game event library (wetsand/sh_events.lua's WSGameEventFired).
+-- From the game event library (ws/sh_events.lua's WSGameEventFired).
 function Debugger:GameEvent(name, fields, players)
 	local shown = {}
 	for k, v in pairs(fields) do shown[#shown + 1] = { name = Show(k), value = Describe(v) } end

@@ -5,7 +5,7 @@
 #   gev2_client_session.sh [--dry-run] t1     T1
 #   gev2_client_session.sh [--dry-run] t2t4   T2 and T4
 #
-# t1:   set the sent- markers in wetsand/cl_spectate.lua (include) and
+# t1:   set the sent- markers in ws/cl_spectate.lua (include) and
 #       features/capture/cl.lua (CompileFile); srcds.py start --map
 #       koth_viaduct --no-lua-refresh; the server half of client_t1; rewrite
 #       both markers to disk-; gmod_client.py start; the client half.
@@ -69,7 +69,7 @@ GONE_WAIT="${GEV2_SESSION_GONE_WAIT:-30}"  # s for gmod_win64.exe and its launch
 export GIT_OPTIONAL_LOCKS=0                # git status never takes main's index.lock
 
 readonly GAMEMODE="$MAIN/addon/gamemodes/sandcastle/gamemode"
-readonly SPECTATE="$GAMEMODE/wetsand/cl_spectate.lua"
+readonly SPECTATE="$GAMEMODE/ws/cl_spectate.lua"
 readonly CAPTURE="$GAMEMODE/features/capture/cl.lua"
 readonly CAPTURE_REFRESH="gamemodes/sandcastle/gamemode/features/capture/cl.lua"  # lua_refresh_file's form (research §3)
 readonly MAP="koth_viaduct"
@@ -150,7 +150,7 @@ t2_probe() {
   run tool gev2_probe.py run --client --label "$label" client_t2
   (( DRY_RUN )) && return 0
   if [[ -f "$result" ]]; then
-    grep -E 'WETSAND_T2|in cache' "$result" | sed "s/^/  $label: /" || true
+    grep -E 'WS_T2|in cache' "$result" | sed "s/^/  $label: /" || true
   fi
 }
 
@@ -216,13 +216,13 @@ cleanup() {
 
 session_t1() {
   local nonce=$1
-  run tool gev2_marker.py set "$SPECTATE" "WETSAND_T1_INCLUDE = \"sent-$nonce\""
-  run tool gev2_marker.py set "$CAPTURE" "WETSAND_T1_COMPILE = \"sent-$nonce\""
+  run tool gev2_marker.py set "$SPECTATE" "WS_T1_INCLUDE = \"sent-$nonce\""
+  run tool gev2_marker.py set "$CAPTURE" "WS_T1_COMPILE = \"sent-$nonce\""
   run tool srcds.py start --map "$MAP" --no-lua-refresh
   run tool gev2_probe.py run client_t1
   run tool gev2_marker.py restore
-  run tool gev2_marker.py set "$SPECTATE" "WETSAND_T1_INCLUDE = \"disk-$nonce\""
-  run tool gev2_marker.py set "$CAPTURE" "WETSAND_T1_COMPILE = \"disk-$nonce\""
+  run tool gev2_marker.py set "$SPECTATE" "WS_T1_INCLUDE = \"disk-$nonce\""
+  run tool gev2_marker.py set "$CAPTURE" "WS_T1_COMPILE = \"disk-$nonce\""
   client_start
   run tool gev2_probe.py run --client client_t1
   say "T1: the server sent sent-$nonce, the disk holds disk-$nonce; see $CLIENT_OUT/client_t1.txt"
@@ -236,7 +236,7 @@ session_t2t4() {
   run tool gev2_probe.py run --client client_t4
   t2_probe base
   # A plain save.
-  run tool gev2_marker.py set "$CAPTURE" "WETSAND_T2 = \"save-$nonce\""
+  run tool gev2_marker.py set "$CAPTURE" "WS_T2 = \"save-$nonce\""
   settle
   t2_probe save-connected
   client_stop
@@ -246,7 +246,7 @@ session_t2t4() {
   settle  # with refresh on, a restore is itself a save
   t2_probe restored
   # lua_refresh_file, after its own save.
-  run tool gev2_marker.py set "$CAPTURE" "WETSAND_T2 = \"refresh-$nonce\""
+  run tool gev2_marker.py set "$CAPTURE" "WS_T2 = \"refresh-$nonce\""
   settle
   t2_probe refresh-saved
   run tool srcds.py rcon "lua_refresh_file $CAPTURE_REFRESH"

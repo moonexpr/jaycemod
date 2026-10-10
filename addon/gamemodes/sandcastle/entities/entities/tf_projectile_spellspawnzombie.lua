@@ -1,6 +1,6 @@
 -- tf_projectile_spellspawnzombie (CreateSpellSpawnZombie and
 -- CTFProjectile_SpellSpawnZombie): a skull grenade that hatches a skeleton
--- where it lands. A wetsand_projectile on the timed grenade model; it never
+-- where it lands. A ws_projectile on the timed grenade model; it never
 -- detonates on touch. foundation.npc.zombie holds its throw and what it
 -- hatches.
 --
@@ -9,13 +9,13 @@
 AddCSLuaFile()
 
 ENT.Type = "anim"
-ENT.Base = "wetsand_projectile"
+ENT.Base = "ws_projectile"
 ENT.Spawnable = false
 ENT.Variant = "foundation.projectile.grenade"
 
 if CLIENT then return end
 
-local Base = baseclass.Get("wetsand_projectile")
+local Base = baseclass.Get("ws_projectile")
 
 -- InitialExplodeEffects pulls the skeleton this far out of the surface.
 local HATCH_LIFT = 2
@@ -39,7 +39,7 @@ function ENT:Configure(skull)
 end
 
 function ENT:Initialize()
-	self.zombie = WETSAND.require("foundation.npc.zombie")
+	self.zombie = WS.require("foundation.npc.zombie")
 	ReadyParticles(self.zombie)
 	local throw = self.zombie.SkullThrow(math.Rand, Vector)
 	self:SetPos(self:GetPos() + throw.offset)
@@ -65,7 +65,7 @@ function ENT:Detonate(trace)
 	local Zombie, skull = self.zombie, self.skull
 	local thrower = skull.thrower
 	local config = Zombie.HatchConfig(skull, IsValid(thrower) and thrower:IsPlayer())
-	WETSAND.Feature("npc"):Spawn(Zombie.ZOMBIE_CLASS, config, trace.HitPos + trace.HitNormal * HATCH_LIFT, angle_zero)
+	WS.Feature("npc"):Spawn(Zombie.ZOMBIE_CLASS, config, trace.HitPos + trace.HitNormal * HATCH_LIFT, angle_zero)
 	ParticleEffect(Zombie.GoopParticle(skull.team), self:GetPos(), angle_zero)
 	self:EmitSound(Zombie.SKULL_SOUND)
 	self:Remove()

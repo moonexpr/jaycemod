@@ -206,10 +206,10 @@ T.test("the fake combatant implements every actor and combatant method", functio
 	end
 end)
 
-T.test("wetsand_combat_nextbot defines every combatant method", function()
-	local text = ReadFile(ENTITIES .. "wetsand_combat_nextbot.lua")
+T.test("ws_combat_nextbot defines every combatant method", function()
+	local text = ReadFile(ENTITIES .. "ws_combat_nextbot.lua")
 	for _, name in ipairs(Combatant.METHODS) do
-		T.eq(text:find("function ENT:" .. name .. "(", 1, true) ~= nil, true, "wetsand_combat_nextbot " .. name)
+		T.eq(text:find("function ENT:" .. name .. "(", 1, true) ~= nil, true, "ws_combat_nextbot " .. name)
 	end
 end)
 
@@ -222,22 +222,22 @@ T.test("no combatant method shadows an actor or engine method", function()
 	end
 end)
 
--- An entity file loads nothing at top level: every WETSAND.require and
--- WETSAND.Feature call is inside a function, so indented or on a one-line
+-- An entity file loads nothing at top level: every WS.require and
+-- WS.Feature call is inside a function, so indented or on a one-line
 -- function.
 local function LoadsAtTopLevel(line)
 	if line:match("^%s") or line:match("^function ") then return false end
-	return line:find("WETSAND.require", 1, true) ~= nil or line:find("WETSAND.Feature", 1, true) ~= nil
+	return line:find("WS.require", 1, true) ~= nil or line:find("WS.Feature", 1, true) ~= nil
 end
 
 T.test("a top-level load is caught", function()
-	T.eq(LoadsAtTopLevel('local Combat = WETSAND.Feature("combat")'), true, "top level")
-	T.eq(LoadsAtTopLevel('\tself.combat = WETSAND.Feature("combat")'), false, "in a function")
-	T.eq(LoadsAtTopLevel('function ENT:Tag() return WETSAND.Feature("tag") end'), false, "one-line function")
+	T.eq(LoadsAtTopLevel('local Combat = WS.Feature("combat")'), true, "top level")
+	T.eq(LoadsAtTopLevel('\tself.combat = WS.Feature("combat")'), false, "in a function")
+	T.eq(LoadsAtTopLevel('function ENT:Tag() return WS.Feature("tag") end'), false, "one-line function")
 end)
 
 T.test("the combat and holiday bindings load nothing at top level", function()
-	for _, file in ipairs({ "wetsand_combat_nextbot.lua", "tf_logic_holiday.lua" }) do
+	for _, file in ipairs({ "ws_combat_nextbot.lua", "tf_logic_holiday.lua" }) do
 		for line in ReadFile(ENTITIES .. file):gmatch("[^\n]+") do
 			T.eq(LoadsAtTopLevel(line), false, file .. ": " .. line)
 		end

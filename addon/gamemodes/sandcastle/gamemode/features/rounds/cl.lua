@@ -1,9 +1,9 @@
 -- The rounds feature's view, drawn from what the rounds controller networks
--- (the wetsand_round_* and wetsand_timer_* keys and its net messages):
+-- (the ws_round_* and ws_timer_* keys and its net messages):
 --   - the round timer with its PREPARE, SETUP, OVERTIME and GAME OVER labels, and the
 --     "+m:ss" flash beside it when time is added (teamplay_timer_time_added);
 --     the koth HUD replaces the timer; during the gamemode's countdown to
---     Gameplay mode (wetsand_gamemode_transition_end) the timer shows that
+--     Gameplay mode (ws_gamemode_transition_end) the timer shows that
 --     countdown labelled "Prepare";
 --   - the pre-round and respawn countdowns and the announcement line;
 --   - a small panel with the stage of a multi-stage map, the team scores and
@@ -16,12 +16,12 @@
 --     when setup gives way to the round, and the overtime line
 --     (CTFGameRules::HandleOvertimeBegin). Only the timer shown in the HUD
 --     speaks, and only while it runs with auto_countdown on.
-local Rounds = WETSAND.require("foundation.rounds")
-local Timer = WETSAND.require("foundation.rounds.timer")
-local Text = WETSAND.require("foundation.rounds.text")
+local Rounds = WS.require("foundation.rounds")
+local Timer = WS.require("foundation.rounds.timer")
+local Text = WS.require("foundation.rounds.text")
 
-local S = WETSAND.STATE
-local UNASSIGNED = WETSAND.TEAM_UNASSIGNED
+local S = WS.STATE
+local UNASSIGNED = WS.TEAM_UNASSIGNED
 
 surface.CreateFont("Sandcastle.Hud.Timer", {
 	font = "Roboto",
@@ -101,21 +101,21 @@ function View:TimerTop(h)
 end
 
 -- Goal strings arrive as TF2 tokens ("#Goldrush_blue_setup_goal"), worded in
--- the player's language (WETSAND.Localize). nil when unknown or empty.
+-- the player's language (WS.Localize). nil when unknown or empty.
 function View:Localize(token)
 	if token == "" then return nil end
-	return WETSAND.Localize(token)
+	return WS.Localize(token)
 end
 
 -- The HUD timer's seconds left, paused or running.
 local function TimerLeft()
-	if GetGlobal2Bool("wetsand_timer_paused", true) then return GetGlobal2Float("wetsand_timer_time_left", 0) end
-	return GetGlobal2Float("wetsand_timer_end_time", 0) - CurTime()
+	if GetGlobal2Bool("ws_timer_paused", true) then return GetGlobal2Float("ws_timer_time_left", 0) end
+	return GetGlobal2Float("ws_timer_end_time", 0) - CurTime()
 end
 
 -- Game events ---------------------------------------------------------------------
 
--- The announcement line (wetsand/sh_announcer.lua), from the server or
+-- The announcement line (ws/sh_announcer.lua), from the server or
 -- another view; with an icon, drawn as TF2's notification card.
 function View:Announce(text, team, icon)
 	self.announcement = {
@@ -126,11 +126,11 @@ function View:Announce(text, team, icon)
 	}
 end
 
-WETSAND.Events.Listen("announcement", "wetsand_rounds_view", function(fields)
-	if not WETSAND.TeamRules.HearsBroadcast(fields.audience, false, LocalPlayer():Team()) then return end
+WS.Events.Listen("announcement", "ws_rounds_view", function(fields)
+	if not WS.TeamRules.HearsBroadcast(fields.audience, false, LocalPlayer():Team()) then return end
 	View:Announce(fields.text, fields.team, fields.icon)
 	-- a card (an admin's notice) is kept in the console too
-	if fields.icon ~= "" then MsgC(WETSAND.TeamColor[fields.team] or color_white, "[Sandcastle] " .. fields.text .. "\n") end
+	if fields.icon ~= "" then MsgC(WS.TeamColor[fields.team] or color_white, "[Sandcastle] " .. fields.text .. "\n") end
 end)
 
 -- A round notice under the timer, in the team's colour (the capture view's
@@ -144,8 +144,8 @@ function View:Notice(text, team)
 end
 
 -- "+points" beside a team's score when an admin awards it points
--- (wetsand/sh_announcer.lua), as "+time" beside the timer.
-WETSAND.Events.Listen("points_awarded", "wetsand_rounds_view", function(fields)
+-- (ws/sh_announcer.lua), as "+time" beside the timer.
+WS.Events.Listen("points_awarded", "ws_rounds_view", function(fields)
 	View.pointsAwarded = {
 		text = "+" .. fields.points,
 		team = fields.team,
@@ -154,13 +154,13 @@ WETSAND.Events.Listen("points_awarded", "wetsand_rounds_view", function(fields)
 end)
 
 -- A new stage on the kept map (sh.lua): the last stage's bodies and blood go.
-WETSAND.Events.Listen("round_gore_cleared", "wetsand_rounds_view", function()
+WS.Events.Listen("round_gore_cleared", "ws_rounds_view", function()
 	game.RemoveRagdolls()
 	RunConsoleCommand("r_cleardecals")
 end)
 
 -- The timer's "+time" beside the clock (sh.lua).
-WETSAND.Events.Listen("teamplay_timer_time_added", "wetsand_rounds_view", function(fields)
+WS.Events.Listen("teamplay_timer_time_added", "ws_rounds_view", function(fields)
 	if fields.seconds_added == 0 then return end
 	View.timeAdded = {
 		text = Text.TimeAdded(fields.seconds_added),
@@ -178,14 +178,14 @@ end)
 function View:DrawTimer(w, h)
 	local display = Text.TimerDisplay({
 		now = CurTime(),
-		transitionEnd = GetGlobal2Float("wetsand_gamemode_transition_end", 0),
-		shown = GetGlobal2Bool("wetsand_timer_shown", false),
-		halted = WETSAND.GameplayStopped(),
-		koth = GetGlobal2Int("wetsand_round_hud_type", Rounds.HUD_NONE) == Rounds.HUD_KOTH,
-		preround = WETSAND.State() == S.PREROUND,
-		setup = GetGlobal2Bool("wetsand_timer_in_setup", false),
-		overtime = GetGlobal2Bool("wetsand_round_overtime", false),
-		gameOverEnd = GetGlobal2Float("wetsand_game_over_end", 0),
+		transitionEnd = GetGlobal2Float("ws_gamemode_transition_end", 0),
+		shown = GetGlobal2Bool("ws_timer_shown", false),
+		halted = WS.GameplayStopped(),
+		koth = GetGlobal2Int("ws_round_hud_type", Rounds.HUD_NONE) == Rounds.HUD_KOTH,
+		preround = WS.State() == S.PREROUND,
+		setup = GetGlobal2Bool("ws_timer_in_setup", false),
+		overtime = GetGlobal2Bool("ws_round_overtime", false),
+		gameOverEnd = GetGlobal2Float("ws_game_over_end", 0),
 		left = TimerLeft(),
 	})
 	if not display then return end
@@ -199,15 +199,15 @@ function View:DrawTimer(w, h)
 	local added = self.timeAdded
 	if display.kind == Text.DISPLAY_ROUND and added and CurTime() < added.expires then
 		draw.SimpleTextOutlined(added.text, "Sandcastle.Hud.Label", w / 2 + TIMER_WIDTH / 2 + 8, top + 12,
-			WETSAND.TeamColor[added.team] or color_white, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP, 1, color_black)
+			WS.TeamColor[added.team] or color_white, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP, 1, color_black)
 	end
 end
 
 -- Countdowns and the announcement line -------------------------------------------------
 
 function View:DrawPreround(w, h)
-	if WETSAND.State() ~= S.PREROUND then return end
-	local left = math.max(1, math.ceil(GetGlobal2Float("wetsand_preround_end_time", 0) - CurTime()))
+	if WS.State() ~= S.PREROUND then return end
+	local left = math.max(1, math.ceil(GetGlobal2Float("ws_preround_end_time", 0) - CurTime()))
 	draw.SimpleTextOutlined("Round begins in " .. left, "Sandcastle.Hud.Announce", w / 2, h * 0.35, color_white,
 		TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER, 2, color_black)
 end
@@ -215,7 +215,7 @@ end
 function View:DrawRespawn(w, h)
 	local ply = LocalPlayer()
 	if not IsValid(ply) or ply:Alive() then return end
-	local at = ply:GetNW2Float("wetsand_respawn_time", 0)
+	local at = ply:GetNW2Float("ws_respawn_time", 0)
 	if at <= 0 then return end
 	local left = math.max(0, math.ceil(at - CurTime()))
 	local text = left > 0 and ("Respawn in " .. left .. "s") or "Prepare to respawn"
@@ -230,8 +230,8 @@ end
 local CARD_Y, CARD_TALL, CARD_ICON, CARD_ICON_X, CARD_ICON_Y, CARD_TEXT_X, CARD_PAD = 300, 44, 20, 7, 9, 30, 10
 local CARD_FONT, CARD_FONT_TALL = "Sandcastle.Hud.Card", 13
 local CARD_BACKGROUND = {
-	[WETSAND.TEAM_RED] = Material("hud/score_panel_red_bg"),
-	[WETSAND.TEAM_BLUE] = Material("hud/score_panel_blue_bg"),
+	[WS.TEAM_RED] = Material("hud/score_panel_red_bg"),
+	[WS.TEAM_BLUE] = Material("hud/score_panel_blue_bg"),
 }
 local CARD_NEUTRAL = Material("hud/notification_black")
 local cardFontTall
@@ -260,14 +260,14 @@ function View:DrawAnnouncement(w, h)
 	local a = self.announcement
 	if not a or CurTime() > a.expires then return end
 	if a.icon then return DrawCard(a, w, h) end
-	draw.SimpleTextOutlined(a.text, "Sandcastle.Hud.Announce", w / 2, h * 0.25, WETSAND.TeamColor[a.team] or color_white,
+	draw.SimpleTextOutlined(a.text, "Sandcastle.Hud.Announce", w / 2, h * 0.25, WS.TeamColor[a.team] or color_white,
 		TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER, 2, color_black)
 end
 
 -- The round panel ------------------------------------------------------------------
 
 local function ShowGoal(state)
-	return state == S.PREROUND or state == S.RND_RUNNING or GetGlobal2Bool("wetsand_round_in_setup", false)
+	return state == S.PREROUND or state == S.RND_RUNNING or GetGlobal2Bool("ws_round_in_setup", false)
 end
 
 function View:DrawRoundPanel(w, h)
@@ -279,16 +279,16 @@ function View:DrawRoundPanel(w, h)
 			color = color,
 		}
 	end
-	local stages = GetGlobal2Int("wetsand_mini_round_count", 0)
+	local stages = GetGlobal2Int("ws_mini_round_count", 0)
 	if stages > 1 then
-		Line(string.format("Stage %d of %d", GetGlobal2Int("wetsand_mini_round_stage", 0), stages), GOLD)
+		Line(string.format("Stage %d of %d", GetGlobal2Int("ws_mini_round_stage", 0), stages), GOLD)
 	end
-	Line(string.format("RED %d  :  %d BLU", team.GetScore(WETSAND.TEAM_RED), team.GetScore(WETSAND.TEAM_BLUE)), color_white)
+	Line(string.format("RED %d  :  %d BLU", team.GetScore(WS.TEAM_RED), team.GetScore(WS.TEAM_BLUE)), color_white)
 	local scoreLine = #lines - 1
-	local myTeam = WETSAND.TeamOf(LocalPlayer())
-	if myTeam ~= UNASSIGNED and ShowGoal(WETSAND.State()) then
-		local goal = self:Localize(GetGlobal2String("wetsand_round_goal_" .. myTeam, ""))
-		if goal then Line(goal, WETSAND.TeamColor[myTeam]) end
+	local myTeam = WS.TeamOf(LocalPlayer())
+	if myTeam ~= UNASSIGNED and ShowGoal(WS.State()) then
+		local goal = self:Localize(GetGlobal2String("ws_round_goal_" .. myTeam, ""))
+		if goal then Line(goal, WS.TeamColor[myTeam]) end
 	end
 
 	surface.SetFont("Sandcastle.Rounds.Small")
@@ -302,7 +302,7 @@ function View:DrawRoundPanel(w, h)
 	local awarded = self.pointsAwarded
 	if awarded and CurTime() < awarded.expires then
 		draw.SimpleTextOutlined(awarded.text, "Sandcastle.Hud.Label", x + width + 24, y + 4 + scoreLine * 20,
-			WETSAND.TeamColor[awarded.team] or color_white, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP, 1, color_black)
+			WS.TeamColor[awarded.team] or color_white, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP, 1, color_black)
 	end
 end
 
@@ -322,26 +322,26 @@ local function DrawCentrePanel(w, h, title, titleColor, rows)
 end
 
 function View:DrawWinPanel(w, h)
-	local winner = GetGlobal2Int("wetsand_round_winner", UNASSIGNED)
+	local winner = GetGlobal2Int("ws_round_winner", UNASSIGNED)
 	local panel = Text.WinPanel({
 		winner = winner,
-		reason = GetGlobal2Int("wetsand_round_win_reason", Rounds.WINREASON.NONE),
-		fullRound = GetGlobal2Bool("wetsand_round_full_round", true),
-		remaining = GetGlobal2Int("wetsand_rounds_remaining", 0),
-		arena = GetGlobal2Bool("wetsand_round_arena", false), -- the arena feature's
+		reason = GetGlobal2Int("ws_round_win_reason", Rounds.WINREASON.NONE),
+		fullRound = GetGlobal2Bool("ws_round_full_round", true),
+		remaining = GetGlobal2Int("ws_rounds_remaining", 0),
+		arena = GetGlobal2Bool("ws_round_arena", false), -- the arena feature's
 	})
 	local rows = {}
 	if panel.reason then rows[#rows + 1] = panel.reason end
 	if panel.details then rows[#rows + 1] = panel.details end
-	DrawCentrePanel(w, h, panel.title, WETSAND.TeamColor[winner] or color_white, rows)
+	DrawCentrePanel(w, h, panel.title, WS.TeamColor[winner] or color_white, rows)
 end
 
 -- The match's end: who won it (Rounds.MatchWinner; a tied match goes to
 -- sudden death instead), and why it ended.
 function View:DrawGameOver(w, h)
-	local winner = GetGlobal2Int("wetsand_match_winner", Rounds.NOBODY_WON)
-	DrawCentrePanel(w, h, string.format("%s WINS THE MATCH!", WETSAND.TeamName[winner]), WETSAND.TeamColor[winner],
-		{ GetGlobal2String("wetsand_game_over_reason", "") })
+	local winner = GetGlobal2Int("ws_match_winner", Rounds.NOBODY_WON)
+	DrawCentrePanel(w, h, string.format("%s WINS THE MATCH!", WS.TeamName[winner]), WS.TeamColor[winner],
+		{ GetGlobal2String("ws_game_over_reason", "") })
 end
 
 function View:DrawNotices(w, h)
@@ -352,7 +352,7 @@ function View:DrawNotices(w, h)
 	end
 	for i, n in ipairs(notices) do
 		draw.SimpleTextOutlined(n.text, "Sandcastle.Rounds.Small", w - 16, y + (i - 1) * 20,
-			WETSAND.TeamColor[n.team] or color_white, TEXT_ALIGN_RIGHT, TEXT_ALIGN_TOP, 1, color_black)
+			WS.TeamColor[n.team] or color_white, TEXT_ALIGN_RIGHT, TEXT_ALIGN_TOP, 1, color_black)
 	end
 end
 
@@ -362,7 +362,7 @@ local CENTRE_PANELS = {
 }
 
 function View:Paint(w, h)
-	local state = WETSAND.State()
+	local state = WS.State()
 	self:DrawTimer(w, h)
 	self:DrawPreround(w, h)
 	self:DrawAnnouncement(w, h)
@@ -377,23 +377,23 @@ end
 
 -- OnDataChanged: overtime beginning is announced once.
 function View:OvertimeThink()
-	local overtime = GetGlobal2Bool("wetsand_round_overtime", false)
-	if overtime and not self.wasOvertime and not WETSAND.GameplayStopped() then Play(OVERTIME) end
+	local overtime = GetGlobal2Bool("ws_round_overtime", false)
+	if overtime and not self.wasOvertime and not WS.GameplayStopped() then Play(OVERTIME) end
 	self.wasOvertime = overtime
 end
 
 -- The HUD timer's countdown and siren; foundation.rounds.timer says which
 -- cue plays when.
 function View:CountdownThink()
-	if not GetGlobal2Bool("wetsand_timer_shown", false) then return end
-	local setup = GetGlobal2Bool("wetsand_timer_in_setup", false)
-	local paused = GetGlobal2Bool("wetsand_timer_paused", true)
+	if not GetGlobal2Bool("ws_timer_shown", false) then return end
+	local setup = GetGlobal2Bool("ws_timer_in_setup", false)
+	local paused = GetGlobal2Bool("ws_timer_paused", true)
 	local speaks = Timer.Speaks({
 		paused = paused,
-		autoCountdown = GetGlobal2Bool("wetsand_timer_auto_countdown", true),
-		halted = WETSAND.GameplayStopped(),
+		autoCountdown = GetGlobal2Bool("ws_timer_auto_countdown", true),
+		halted = WS.GameplayStopped(),
 		isHud = true,
-		koth = GetGlobal2Int("wetsand_round_hud_type", Rounds.HUD_NONE) == Rounds.HUD_KOTH,
+		koth = GetGlobal2Int("ws_round_hud_type", Rounds.HUD_NONE) == Rounds.HUD_KOTH,
 	})
 	local left = TimerLeft()
 
@@ -403,7 +403,7 @@ function View:CountdownThink()
 	self.wasSetup = setup
 
 	-- The warnings are re-armed whenever the timer's length changes.
-	local serial = GetGlobal2Int("wetsand_timer_serial", 0)
+	local serial = GetGlobal2Int("ws_timer_serial", 0)
 	if serial ~= self.serial then
 		self.serial = serial
 		self.armed = Timer.ArmClientWarnings(left, setup)
@@ -423,10 +423,10 @@ local THIRD_PERSON_DISTANCE = 100
 local CAMERA_HULL = Vector(4, 4, 4)
 
 local function GameOverView(ply)
-	return WETSAND.State() == S.GAME_OVER and IsValid(ply) and ply:Alive()
+	return WS.State() == S.GAME_OVER and IsValid(ply) and ply:Alive()
 end
 
-hook.Add("CalcView", "wetsand_rounds_game_over", function(ply, origin, angles, fov)
+hook.Add("CalcView", "ws_rounds_game_over", function(ply, origin, angles, fov)
 	if not GameOverView(ply) then return end
 	local tr = util.TraceHull({
 		start = origin,
@@ -439,16 +439,16 @@ hook.Add("CalcView", "wetsand_rounds_game_over", function(ply, origin, angles, f
 	return { origin = tr.HitPos, angles = angles, fov = fov, drawviewer = true }
 end)
 
-hook.Add("PreDrawViewModel", "wetsand_rounds_game_over", function()
+hook.Add("PreDrawViewModel", "ws_rounds_game_over", function()
 	if GameOverView(LocalPlayer()) then return true end
 end)
 
-hook.Add("SandcastleHUDPaint", "wetsand_rounds", function(w, h)
+hook.Add("SandcastleHUDPaint", "ws_rounds", function(w, h)
 	View:Paint(w, h)
 end)
 
-hook.Add("Think", "wetsand_rounds_announcer", function()
-	if not WETSAND.Active() then return end
+hook.Add("Think", "ws_rounds_announcer", function()
+	if not WS.Active() then return end
 	View:OvertimeThink()
 	View:CountdownThink()
 end)

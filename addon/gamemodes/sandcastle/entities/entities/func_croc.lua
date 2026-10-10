@@ -6,7 +6,7 @@
 -- (SF_TRIGGER_ALLOW_CLIENTS). CFuncCroc's ShouldCollide, which only matters
 -- for a croc with a team, is left out: pl_terror_event's has none.
 ENT.Type = "brush"
-ENT.Base = "wetsand_trigger_volume"
+ENT.Base = "ws_trigger_volume"
 
 local VARIANT = "foundation.hazards.croc"
 local CONTENT_PATH = "GAME"
@@ -18,9 +18,9 @@ local function CrocModel(name, default)
 end
 
 function ENT:TriggerInit()
-	local model = CrocModel(self:Key("croc_model"), WETSAND.require(VARIANT).MODEL)
+	local model = CrocModel(self:Key("croc_model"), WS.require(VARIANT).MODEL)
 	util.PrecacheModel(model)
-	self.hazards = WETSAND.Feature("hazards")
+	self.hazards = WS.Feature("hazards")
 	self.hazards:Bind(self, VARIANT, {
 		team = self.team,
 		model = model,

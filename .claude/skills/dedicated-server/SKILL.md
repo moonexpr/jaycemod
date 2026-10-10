@@ -61,7 +61,7 @@ access on LAN and ULX's luadev commands come from `server_root/`'s autorun.
 
 Useful after a map loads:
 
-- `wetsand_defaults_apply` puts every loaded Sandcastle convar back to its
+- `ws_defaults_apply` puts every loaded Sandcastle convar back to its
   default (`addon/cfg/sandcastle_defaults.cfg`; `exec` can't read an
   addon's cfg).
 - `mp_aiwar_start` / `mp_aiwar_end` start and end the AI war. The war's

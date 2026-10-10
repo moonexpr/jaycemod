@@ -1,4 +1,4 @@
--- WETSAND.UI (wetsand/cl_ui.lua): Sandcastle's TF2-styled panels as derma
+-- WS.UI (ws/cl_ui.lua): Sandcastle's TF2-styled panels as derma
 -- prototypes. UI.Define(name, base, proto) registers "WS<name>" on base (a
 -- UI name, else a derma class); a panel derives from one and overrides only
 -- what differs. Run against a fake derma.
@@ -7,7 +7,7 @@ local T = dofile("tests/harness.lua")
 local function Load()
 	local defined = {}
 	local env = setmetatable({
-		WETSAND = {},
+		WS = {},
 		derma = { DefineControl = function(name, help, proto, base) defined[name] = { proto = proto, base = base } return proto end },
 		surface = { CreateFont = function() end, SetDrawColor = function() end, DrawRect = function() end, DrawOutlinedRect = function() end },
 		Color = function(r, g, b, a) return { r = r, g = g, b = b, a = a or 255 } end,
@@ -15,8 +15,8 @@ local function Load()
 		ScrH = function() return 1080 end,
 		vgui = { Register = function() end },
 	}, { __index = _G })
-	setfenv(assert(loadfile("addon/gamemodes/sandcastle/gamemode/wetsand/cl_ui.lua")), env)()
-	return env.WETSAND.UI, defined
+	setfenv(assert(loadfile("addon/gamemodes/sandcastle/gamemode/ws/cl_ui.lua")), env)()
+	return env.WS.UI, defined
 end
 
 T.test("the theme: a dark box, a white border, white text", function()

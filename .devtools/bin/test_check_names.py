@@ -40,23 +40,23 @@ class OldNames(unittest.TestCase):
 
 class Hooks(unittest.TestCase):
     def test_our_hook_added_but_never_run_is_broken(self):
-        f = findings(("a.lua", 'hook.Add("WetsandRoundWin", "x", fn)\n'))
-        self.assertEqual(f.hooks_never_run, ["WetsandRoundWin"])
+        f = findings(("a.lua", 'hook.Add("WSRoundWin", "x", fn)\n'))
+        self.assertEqual(f.hooks_never_run, ["WSRoundWin"])
 
     def test_a_run_in_another_file_is_the_other_end(self):
-        f = findings(("a.lua", 'hook.Add("WetsandRoundWin", "x", fn)\n'), ("b.lua", 'hook.Run("WetsandRoundWin", 2)\n'))
+        f = findings(("a.lua", 'hook.Add("WSRoundWin", "x", fn)\n'), ("b.lua", 'hook.Run("WSRoundWin", 2)\n'))
         self.assertEqual(f.hooks_never_run, [])
         self.assertEqual(f.hooks_without_listener, [])
 
     def test_a_run_nobody_listens_to_is_published_not_broken(self):
-        f = findings(("a.lua", 'hook.Call("WetsandRoundSpawn")\n'))
+        f = findings(("a.lua", 'hook.Call("WSRoundSpawn")\n'))
         self.assertEqual(f.hooks_never_run, [])
-        self.assertEqual(f.hooks_without_listener, ["WetsandRoundSpawn"])
+        self.assertEqual(f.hooks_without_listener, ["WSRoundSpawn"])
 
     def test_a_run_through_a_local_constant_is_a_run(self):
         f = findings(
-            ("a.lua", 'hook.Add("WetsandNbDebugNpcs", "x", fn)\n'),
-            ("b.lua", 'local NPCS_HOOK = "WetsandNbDebugNpcs"\nhook.Run(NPCS_HOOK, found)\n'),
+            ("a.lua", 'hook.Add("WSNbDebugNpcs", "x", fn)\n'),
+            ("b.lua", 'local NPCS_HOOK = "WSNbDebugNpcs"\nhook.Run(NPCS_HOOK, found)\n'),
         )
         self.assertEqual(f.hooks_never_run, [])
 
@@ -67,25 +67,25 @@ class Hooks(unittest.TestCase):
 
 class NetworkedVars(unittest.TestCase):
     def test_a_getter_with_no_setter_is_broken(self):
-        f = findings(("a.lua", 'GetGlobal2Int("wetsand_round_winner", 0)\n'))
-        self.assertEqual(f.vars_never_set, ["wetsand_round_winner"])
+        f = findings(("a.lua", 'GetGlobal2Int("ws_round_winner", 0)\n'))
+        self.assertEqual(f.vars_never_set, ["ws_round_winner"])
 
     def test_both_ends_across_realms_match(self):
         f = findings(
-            ("sv.lua", 'SetGlobal2Int("wetsand_round_winner", 2)\nply:SetNW2Float("wetsand_stun_end_time", 1)\n'),
-            ("cl.lua", 'GetGlobal2Int("wetsand_round_winner", 0)\nply:GetNW2Float("wetsand_stun_end_time", 0)\n'),
+            ("sv.lua", 'SetGlobal2Int("ws_round_winner", 2)\nply:SetNW2Float("ws_stun_end_time", 1)\n'),
+            ("cl.lua", 'GetGlobal2Int("ws_round_winner", 0)\nply:GetNW2Float("ws_stun_end_time", 0)\n'),
         )
         self.assertEqual(f.vars_never_set, [])
         self.assertEqual(f.vars_never_read, [])
 
     def test_a_setter_with_no_getter_is_reported(self):
-        f = findings(("a.lua", 'SetGlobal2Int("wetsand_round_role" .. team, 1)\n'))
-        self.assertEqual(f.vars_never_read, ["wetsand_round_role.."])
+        f = findings(("a.lua", 'SetGlobal2Int("ws_round_role" .. team, 1)\n'))
+        self.assertEqual(f.vars_never_read, ["ws_round_role.."])
 
     def test_a_prefix_matches_a_prefix(self):
         f = findings(
-            ("sv.lua", 'SetGlobal2String("wetsand_round_goal_" .. team, s)\n'),
-            ("cl.lua", 'GetGlobal2String("wetsand_round_goal_" .. myTeam, "")\n'),
+            ("sv.lua", 'SetGlobal2String("ws_round_goal_" .. team, s)\n'),
+            ("cl.lua", 'GetGlobal2String("ws_round_goal_" .. myTeam, "")\n'),
         )
         self.assertEqual(f.vars_never_set, [])
         self.assertEqual(f.vars_never_read, [])

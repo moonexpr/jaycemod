@@ -73,9 +73,9 @@ class Session:
         }
         self.main = tmp_path / "main"
         gamemode = self.main / "addon" / "gamemodes" / "sandcastle" / "gamemode"
-        (gamemode / "wetsand").mkdir(parents=True)
+        (gamemode / "ws").mkdir(parents=True)
         (gamemode / "features" / "capture").mkdir(parents=True)
-        (gamemode / "wetsand" / "cl_spectate.lua").write_text("local lastMode\n")
+        (gamemode / "ws" / "cl_spectate.lua").write_text("local lastMode\n")
         (gamemode / "features" / "capture" / "cl.lua").write_text("local View = {}\nreturn View\n")
         git(self.main, "init", "-q")
         git(self.main, "add", "-A")
@@ -175,10 +175,10 @@ def test_t1_runs_its_steps_in_order_then_cleans_up_in_order(session):
     ] + CLEANUP
     calls = session.calls()
     assert "--no-lua-refresh" in calls[4] and "koth_viaduct" in calls[4]
-    spectate = str(session.main / "addon/gamemodes/sandcastle/gamemode/wetsand/cl_spectate.lua")
+    spectate = str(session.main / "addon/gamemodes/sandcastle/gamemode/ws/cl_spectate.lua")
     capture = str(session.main / "addon/gamemodes/sandcastle/gamemode/features/capture/cl.lua")
-    assert calls[2].startswith(f"gev2_marker.py set {spectate} WETSAND_T1_INCLUDE = \"sent-")
-    assert calls[3].startswith(f"gev2_marker.py set {capture} WETSAND_T1_COMPILE = \"sent-")
+    assert calls[2].startswith(f"gev2_marker.py set {spectate} WS_T1_INCLUDE = \"sent-")
+    assert calls[3].startswith(f"gev2_marker.py set {capture} WS_T1_COMPILE = \"sent-")
     assert "\"disk-" in calls[7] and "\"disk-" in calls[8]
     assert calls[5] == "gev2_probe.py run client_t1"
     assert calls[10] == "gev2_probe.py run --client client_t1"
@@ -257,7 +257,7 @@ def test_new_commits_on_main_are_checked_for_marker_lines(session):
     commit = (f"git -c user.name=t -c user.email=t@example.com -c commit.gpgsign=false -C '{session.main}' "
               "commit -qam work")
     session.cfg["effects"]["srcds.py start"] = [
-        f"printf '%s\\n' 'WETSAND_T2 = \"x\" {TAG}' > '{capture}.new' && cat '{capture}' >> '{capture}.new' "
+        f"printf '%s\\n' 'WS_T2 = \"x\" {TAG}' > '{capture}.new' && cat '{capture}' >> '{capture}.new' "
         f"&& mv '{capture}.new' '{capture}' && {commit}"]
     code, out = session.run("t1")
     assert code == 4, out

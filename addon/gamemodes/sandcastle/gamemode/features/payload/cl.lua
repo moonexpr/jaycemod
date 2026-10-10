@@ -3,16 +3,16 @@
 -- the cart marker, flashing while the capture alarm sounds, and the status
 -- line of speed arrows, pushers, BLOCKED or the rollback countdown), both
 -- carts with the leader named in a payload race; drawn from what the
--- payload controller networks (wetsand_cart_*). It also registers the
+-- payload controller networks (ws_cart_*). It also registers the
 -- payload race announcer lines (Announcer.PLR_*), which TF2's soundscripts
--- no longer define, for WETSAND.BroadcastSound to play here; like TF2's
+-- no longer define, for WS.BroadcastSound to play here; like TF2's
 -- other announcer entries they use CHAN_VOICE2 and no attenuation.
-WETSAND.Feature("rounds")
-WETSAND.Feature("capture")
-local Hud = WETSAND.require("foundation.payload.hud")
-local Race = WETSAND.require("foundation.payload.race")
+WS.Feature("rounds")
+WS.Feature("capture")
+local Hud = WS.require("foundation.payload.hud")
+local Race = WS.require("foundation.payload.race")
 
-local NOBODY = WETSAND.TEAM_UNASSIGNED
+local NOBODY = WS.TEAM_UNASSIGNED
 local FONT_LABEL = "Sandcastle.Hud.CartLabel"
 
 local BAR_MAX_WIDTH = 600
@@ -55,7 +55,7 @@ for name, wave in pairs(Race.Sounds()) do
 end
 
 local function Cart(i)
-	local key = "wetsand_cart_" .. i .. "_"
+	local key = "ws_cart_" .. i .. "_"
 	return {
 		team = GetGlobal2Int(key .. "team", NOBODY),
 		progress = GetGlobal2Float(key .. "progress", 0),
@@ -71,7 +71,7 @@ local function Cart(i)
 end
 
 local function TeamColor(t)
-	return WETSAND.TeamColor[t] or WETSAND.TeamColor[NOBODY]
+	return WS.TeamColor[t] or WS.TeamColor[NOBODY]
 end
 
 local function DrawTrack(cart, x, y, barW)
@@ -103,9 +103,9 @@ local function DrawCartBar(cart, x, y, barW, race, leader)
 	DrawTrack(cart, x, y, barW)
 	DrawMarker(cart, x, y, barW)
 	if race then
-		local label = WETSAND.TeamName[cart.team] or ""
+		local label = WS.TeamName[cart.team] or ""
 		if leader == cart.team then label = label .. " LEADS" end
-		draw.SimpleText(label, FONT_LABEL, x - LABEL_GAP, y + BAR_HEIGHT / 2, WETSAND.TeamColor[cart.team] or color_white, TEXT_ALIGN_RIGHT, TEXT_ALIGN_CENTER)
+		draw.SimpleText(label, FONT_LABEL, x - LABEL_GAP, y + BAR_HEIGHT / 2, WS.TeamColor[cart.team] or color_white, TEXT_ALIGN_RIGHT, TEXT_ALIGN_CENTER)
 	end
 	local status = Hud.Status(cart, CurTime())
 	if status ~= "" then
@@ -114,9 +114,9 @@ local function DrawCartBar(cart, x, y, barW, race, leader)
 end
 
 local function DrawCarts(w, h)
-	local count = GetGlobal2Int("wetsand_cart_count", 0)
-	local race = GetGlobal2Bool("wetsand_cart_race", false)
-	local leader = GetGlobal2Int("wetsand_cart_race_leader", NOBODY)
+	local count = GetGlobal2Int("ws_cart_count", 0)
+	local race = GetGlobal2Bool("ws_cart_race", false)
+	local leader = GetGlobal2Int("ws_cart_race_leader", NOBODY)
 	local barW = math.min(BAR_MAX_WIDTH, w * BAR_SCREEN_FRACTION)
 	local x = (w - barW) / 2
 	for i = 1, count do
@@ -126,6 +126,6 @@ end
 
 local View = { Draw = DrawCarts }
 
-hook.Add("SandcastleHUDPaint", "wetsand_carts", function(...) View.Draw(...) end)
+hook.Add("SandcastleHUDPaint", "ws_carts", function(...) View.Draw(...) end)
 
 return View

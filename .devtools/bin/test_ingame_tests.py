@@ -172,16 +172,16 @@ class Deploy(unittest.TestCase):
         shutil.rmtree(self.tmp)
 
     def test_copies_the_runner_and_checks_as_text_files(self):
-        deploy(self.tmp / "wetsand_tests")
-        harness = self.tmp / "wetsand_tests" / "harness"
+        deploy(self.tmp / "ws_tests")
+        harness = self.tmp / "ws_tests" / "harness"
         self.assertTrue((harness / "runner.txt").exists())
         self.assertTrue((harness / "checks" / "load.txt").exists())
 
     def test_clears_results_of_an_earlier_run(self):
-        old = self.tmp / "wetsand_tests" / "results" / "old.json"
+        old = self.tmp / "ws_tests" / "results" / "old.json"
         old.parent.mkdir(parents=True)
         old.write_text("{}")
-        deploy(self.tmp / "wetsand_tests")
+        deploy(self.tmp / "ws_tests")
         self.assertFalse(old.exists())
 
 
@@ -195,7 +195,7 @@ class FakeServer:
 
     def rcon(self, text):
         self.sent.append(text)
-        if text.startswith("lua_run WETSAND_TESTS.Run("):
+        if text.startswith("lua_run WS_TESTS.Run("):
             run_id = text.split('"')[3]
             (self.results / f"{run_id}.json").write_text(
                 '{"status": "pass", "checks": [{"name": "x", "ok": true, "detail": ""}], "info": {}, "seconds": 1}')
@@ -216,14 +216,14 @@ class RunStep(unittest.TestCase):
         shutil.rmtree(self.tmp)
 
     def test_sends_its_console_command_first_and_keeps_the_reply(self):
-        result = self.harness.run_step("pl_badwater", 1, Step("defaults_apply", 5, before="wetsand_defaults_apply"))
-        self.assertEqual(self.server.sent[0], "wetsand_defaults_apply")
-        self.assertTrue(self.server.sent[1].startswith("lua_run WETSAND_TESTS.Run(\"defaults_apply\""))
+        result = self.harness.run_step("pl_badwater", 1, Step("defaults_apply", 5, before="ws_defaults_apply"))
+        self.assertEqual(self.server.sent[0], "ws_defaults_apply")
+        self.assertTrue(self.server.sent[1].startswith("lua_run WS_TESTS.Run(\"defaults_apply\""))
         self.assertEqual(result.status, "pass")
-        self.assertEqual(result.info["rcon"], {"wetsand_defaults_apply": "Unknown command \"cl_x\""})
+        self.assertEqual(result.info["rcon"], {"ws_defaults_apply": "Unknown command \"cl_x\""})
 
     def test_the_check_reads_the_commands_reply_from_its_arguments(self):
-        self.harness.run_step("pl_badwater", 1, Step("defaults_apply", 5, {"x": 1}, before="wetsand_defaults_apply"))
+        self.harness.run_step("pl_badwater", 1, Step("defaults_apply", 5, {"x": 1}, before="ws_defaults_apply"))
         args = json.loads((self.tmp / "harness" / "args" / "pl_badwater_1_defaults_apply.txt").read_text())
         self.assertEqual(args, {"x": 1, "before_reply": "Unknown command \"cl_x\""})
 

@@ -9,19 +9,19 @@
 -- logic spawns Merasmus). A boss variant
 -- run here provides what foundation.npc.boss_timer asks of it, plus
 -- SharedLevel(shared) -> its level from the npc controller's shared table.
-local BossTimer = WETSAND.require("foundation.npc.boss_timer")
-local Holiday = WETSAND.require("foundation.holiday")
-local HalloweenBoss = WETSAND.require("foundation.npc.halloween_boss")
+local BossTimer = WS.require("foundation.npc.boss_timer")
+local Holiday = WS.require("foundation.holiday")
+local HalloweenBoss = WS.require("foundation.npc.halloween_boss")
 
-local THINK_HOOK = "wetsand_boss_timer"
+local THINK_HOOK = "ws_boss_timer"
 local CUSTOM_SPAWN_CLASS = "spawn_boss" -- SpawnHalloweenBoss looks it up by class
 local MASTER_CLASS = "team_control_point_master"
 local WHEEL_CLASS = "wheel_of_doom"
 local MERASMUS = "foundation.npc.merasmus"
-local GAME_TEAMS = { WETSAND.TEAM_RED, WETSAND.TEAM_BLUE }
+local GAME_TEAMS = { WS.TEAM_RED, WS.TEAM_BLUE }
 
 local Controller = {
-	npcs = WETSAND.Feature("npc"),
+	npcs = WS.Feature("npc"),
 	runs = {}, -- variant name -> { timer, world }
 }
 
@@ -39,14 +39,14 @@ end
 local function ControlPoints()
 	local points = {}
 	if not IsValid(ents.FindByClass(MASTER_CLASS)[1]) then return points end
-	local capture = WETSAND.Feature("capture")
+	local capture = WS.Feature("capture")
 	for i, point in ipairs(capture:Points()) do
 		points[i] = {
 			entity = point,
 			origin = point:GetPos(),
 			inRound = capture:IsInRound(point),
 			owner = capture:Owner(point),
-			blueMayCapture = capture:TeamMayCapture(point, WETSAND.TEAM_BLUE),
+			blueMayCapture = capture:TeamMayCapture(point, WS.TEAM_BLUE),
 		}
 	end
 	return points
@@ -57,7 +57,7 @@ end
 local function SpawnAreas(npcs, minSize)
 	local centers = {}
 	for _, area in ipairs(navmesh.GetAllNavAreas()) do
-		if area:GetSizeX() >= minSize and area:GetSizeY() >= minSize and npcs:SpawnRoomTeam(area) == WETSAND.TEAM_UNASSIGNED then
+		if area:GetSizeX() >= minSize and area:GetSizeY() >= minSize and npcs:SpawnRoomTeam(area) == WS.TEAM_UNASSIGNED then
 			centers[#centers + 1] = area:GetCenter()
 		end
 	end
@@ -71,12 +71,12 @@ local function World(npcs, variantName, variant)
 	function world:RandomFloat(lo, hi) return math.Rand(lo, hi) end
 	function world:RandomInt(lo, hi) return math.random(lo, hi) end
 	function world:Vector(x, y, z) return Vector(x, y, z) end
-	function world:HalloweenActive() return WETSAND.Feature("holiday"):HolidayActive(Holiday.HALLOWEEN) end
+	function world:HalloweenActive() return WS.Feature("holiday"):HolidayActive(Holiday.HALLOWEEN) end
 	function world:BossActive() return #npcs:All(HalloweenBoss.KIND) > 0 end
 	function world:Level() return variant.SharedLevel(npcs:Shared(variantName)) end
 	function world:Convars() return npcs:BossConvars(variant.CONVARS) end
-	function world:InSetup() return WETSAND.InSetup() end
-	function world:WaitingForPlayers() return WETSAND.State() == WETSAND.STATE.PREGAME end
+	function world:InSetup() return WS.InSetup() end
+	function world:WaitingForPlayers() return WS.State() == WS.STATE.PREGAME end
 	function world:LivingHumans() return LivingHumans() end
 
 	function world:CustomSpawn()
@@ -90,7 +90,7 @@ local function World(npcs, variantName, variant)
 	-- The first wheel_of_doom, which loaded the wheel feature as it bound.
 	function world:WheelBusy()
 		local wheel = ents.FindByClass(WHEEL_CLASS)[1]
-		return IsValid(wheel) and WETSAND.Feature("wheel"):Busy(wheel)
+		return IsValid(wheel) and WS.Feature("wheel"):Busy(wheel)
 	end
 	return world
 end
@@ -98,7 +98,7 @@ end
 -- A boss's scenario map runs his timer; once is enough.
 function Controller:Run(variantName)
 	if self.runs[variantName] then return end
-	local variant = WETSAND.require(variantName)
+	local variant = WS.require(variantName)
 	self.runs[variantName] = {
 		timer = BossTimer.New(variant),
 		world = World(self.npcs, variantName, variant),
@@ -122,8 +122,8 @@ end
 function Controller:Apply(spawn)
 	self.npcs:Spawn(spawn.class, spawn.config, spawn.pos, angle_zero)
 	if not spawn.neutralize then return end
-	WETSAND.Feature("capture"):ForceOwner(spawn.neutralize.entity, WETSAND.TEAM_UNASSIGNED)
-	local rounds = WETSAND.Feature("rounds")
+	WS.Feature("capture"):ForceOwner(spawn.neutralize.entity, WS.TEAM_UNASSIGNED)
+	local rounds = WS.Feature("rounds")
 	for _, t in ipairs(GAME_TEAMS) do
 		local clock = rounds:TeamClock(t)
 		if clock then rounds:TimerInput(clock, "pause") end
@@ -140,7 +140,7 @@ end
 hook.Add("Think", THINK_HOOK, function() Controller:Think() end)
 
 -- CTFGameRules::SetupOnRoundStart
-hook.Add("WetsandRoundSpawn", THINK_HOOK, function()
+hook.Add("WSRoundSpawn", THINK_HOOK, function()
 	for _, run in pairs(Controller.runs) do run.timer:Invalidate() end
 end)
 

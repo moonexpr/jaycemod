@@ -1,5 +1,5 @@
 -- What the nav mesh progress box says while mp_nav_generate runs
--- (wetsand/sh_nav_progress.lua). GMod reports no progress, so it tells the
+-- (ws/sh_nav_progress.lua). GMod reports no progress, so it tells the
 -- stage and the time it has taken, the bar runs until it is done, and the
 -- areas made show at the end, LINGER seconds.
 local floor, format = math.floor, string.format

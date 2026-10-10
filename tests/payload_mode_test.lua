@@ -372,7 +372,7 @@ end
 
 T.test("the legacy payload files are gone", function()
 	for _, name in ipairs({ "sv_payload", "cl_payload", "cl_hud" }) do
-		T.eq(Exists(T.ROOT .. "wetsand/" .. name .. ".lua"), false, name)
+		T.eq(Exists(T.ROOT .. "ws/" .. name .. ".lua"), false, name)
 	end
 end)
 
@@ -385,7 +385,7 @@ end)
 
 T.test("the payload bindings reach the controller, not the old globals", function()
 	local watcher = Read(ENTITIES .. "team_train_watcher.lua")
-	for _, old in ipairs({ "WETSAND.Payload", "WETSAND.CartSpeedScale", "WETSAND.HoldTimersForWatchers" }) do
+	for _, old in ipairs({ "WS.Payload", "WS.CartSpeedScale", "WS.HoldTimersForWatchers" }) do
 		T.eq(watcher:find(old, 1, true), nil, old)
 	end
 	T.eq(watcher:find(":BindWatcher(self)", 1, true) ~= nil, true, "the watcher binds")

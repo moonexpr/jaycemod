@@ -1,14 +1,14 @@
 -- The nbdebug feature's view: the one NPC debug overlay. It draws what the
--- nbdebug controller sends for wetsand_nb_debug's layers (PATH, COST,
+-- nbdebug controller sends for ws_nb_debug's layers (PATH, COST,
 -- BEHAVIOR, NAV) and the AI war's soldier overlay (the AIWAR layer, which
--- the aiwar controller sends as wetsand_aiwar_debug) in one pass: lines and
+-- the aiwar controller sends as ws_aiwar_debug) in one pass: lines and
 -- areas in the world after the translucent renderables, then in HUDPaint one
 -- box per NPC above its head, holding every layer's lines for it (laid out
 -- by foundation.aiwar.overlay so none covers another), and the labels.
 -- Nothing here needs developer mode, so it works on dedicated servers.
-local Debug = WETSAND.require("foundation.npc.debug")
-local Overlay = WETSAND.require("foundation.aiwar.overlay")
-local Parts = WETSAND.require("foundation.ns.overlay")
+local Debug = WS.require("foundation.npc.debug")
+local Overlay = WS.require("foundation.aiwar.overlay")
+local Parts = WS.require("foundation.ns.overlay")
 
 -- The game events it listens to are sh.lua's; aiwar_debug is the aiwar
 -- controller's (Controller:SendDebug).
@@ -31,18 +31,18 @@ local NODE_TICK = Vector(0, 0, 8)
 local SELECT_RING_RADIUS, SELECT_RING_SEGMENTS = 25, 24 -- nb_select's circle
 local SELECT_RING_LIFT = Vector(0, 0, 5)
 
-surface.CreateFont("WetsandNbDebugHeading", {
+surface.CreateFont("WSNbDebugHeading", {
 	font = "Tahoma",
 	size = 15,
 	weight = 800,
 })
-surface.CreateFont("WetsandNbDebugDetail", {
+surface.CreateFont("WSNbDebugDetail", {
 	font = "Tahoma",
 	size = 13,
 	weight = 500,
 })
 -- The world's labels: bold, to read over bright maps.
-surface.CreateFont("WetsandNbDebugLabel", {
+surface.CreateFont("WSNbDebugLabel", {
 	font = "Tahoma",
 	size = 15,
 	weight = 800,
@@ -81,21 +81,21 @@ local function Center(corners)
 	return (corners[1] + corners[2] + corners[3] + corners[4]) / CORNERS
 end
 
-local E = WETSAND.Events
+local E = WS.Events
 
-E.Listen("nb_debug_state", "wetsand_nbdebug_view", function(fields)
+E.Listen("nb_debug_state", "ws_nbdebug_view", function(fields)
 	local layers = {}
 	for _, name in ipairs(fields.layers) do layers[name] = true end
 	view.layers = layers
 	view.selected = fields.selected
 	-- the server resends what the new view needs
 	view.paths, view.cost, view.behavior, view.nav = {}, nil, {}, {}
-	-- the NPC context menu (wetsand/cl_nb_menu.lua) checks the layers that
+	-- the NPC context menu (ws/cl_nb_menu.lua) checks the layers that
 	-- are on and the NPC selected
-	hook.Run("WetsandNbDebugState", layers, fields.selected)
+	hook.Run("WSNbDebugState", layers, fields.selected)
 end)
 
-E.Listen("nb_debug_path", "wetsand_nbdebug_view", function(fields)
+E.Listen("nb_debug_path", "ws_nbdebug_view", function(fields)
 	view.paths[fields.index] = {
 		strategy = fields.strategy,
 		source = fields.source,
@@ -109,7 +109,7 @@ E.Listen("nb_debug_path", "wetsand_nbdebug_view", function(fields)
 	}
 end)
 
-E.Listen("nb_debug_cost", "wetsand_nbdebug_view", function(fields)
+E.Listen("nb_debug_cost", "ws_nbdebug_view", function(fields)
 	local cost = {
 		index = fields.index,
 		total = fields.total,
@@ -135,13 +135,13 @@ E.Listen("nb_debug_cost", "wetsand_nbdebug_view", function(fields)
 	view.cost = cost
 end)
 
-E.Listen("nb_debug_behavior", "wetsand_nbdebug_view", function(fields)
+E.Listen("nb_debug_behavior", "ws_nbdebug_view", function(fields)
 	local behavior = {}
 	for _, npc in ipairs(fields.npcs) do behavior[npc.index] = npc.lines end
 	view.behavior, view.behaviorReceived = behavior, CurTime()
 end)
 
-E.Listen("nb_debug_nav", "wetsand_nbdebug_view", function(fields)
+E.Listen("nb_debug_nav", "ws_nbdebug_view", function(fields)
 	local nav = {}
 	for i, area in ipairs(fields.areas) do
 		local corners = Lifted(area.corners, NAV_LIFT)
@@ -154,13 +154,13 @@ E.Listen("nb_debug_nav", "wetsand_nbdebug_view", function(fields)
 	view.nav, view.navReceived = nav, CurTime()
 end)
 
-E.Listen("nb_debug_npc_removed", "wetsand_nbdebug_view", function(fields)
+E.Listen("nb_debug_npc_removed", "ws_nbdebug_view", function(fields)
 	local index = fields.index
 	view.paths[index], view.behavior[index] = nil, nil
 	if view.cost and view.cost.index == index then view.cost = nil end
 	if view.selected == index then
 		view.selected, view.nav = NO_SELECTION, {}
-		hook.Run("WetsandNbDebugState", view.layers, view.selected)
+		hook.Run("WSNbDebugState", view.layers, view.selected)
 	end
 end)
 
@@ -168,7 +168,7 @@ end)
 -- The AI war's soldier overlay (AIWAR): what its controller last sent,
 -- drawn until it goes stale. Each part (foundation.ns.overlay's PARTS) is
 -- drawn while its client convar is on (the NPC context menu's toggles,
--- wetsand/cl_nb_menu.lua).
+-- ws/cl_nb_menu.lua).
 
 local war = { soldiers = {}, teams = {}, spheres = {}, lanes = {}, lines = {}, fronts = {}, received = -math.huge }
 
@@ -177,9 +177,9 @@ local function Shows(part)
 end
 
 -- Neon team colours, brighter than the HUD's, to read over any map.
-local WAR_COLOR = { [WETSAND.TEAM_RED] = Color(255, 70, 110), [WETSAND.TEAM_BLUE] = Color(60, 210, 255) }
+local WAR_COLOR = { [WS.TEAM_RED] = Color(255, 70, 110), [WS.TEAM_BLUE] = Color(60, 210, 255) }
 
-E.Listen("aiwar_debug", "wetsand_nbdebug_view", function(fields)
+E.Listen("aiwar_debug", "ws_nbdebug_view", function(fields)
 	local teams = fields.fire_teams
 	war.spheres = fields.spheres
 	war.lanes = fields.lanes
@@ -388,7 +388,7 @@ local function DrawSelection(ent)
 	end
 end
 
-hook.Add("PostDrawTranslucentRenderables", "wetsand_nbdebug", function(depth, skybox)
+hook.Add("PostDrawTranslucentRenderables", "ws_nbdebug", function(depth, skybox)
 	if skybox then return end
 	if Live(war.received) then DrawWar() end
 	if view.layers[Debug.COST] and view.cost then DrawCost(view.cost) end
@@ -460,9 +460,9 @@ local function Boxes()
 end
 
 local function Measure(box)
-	surface.SetFont("WetsandNbDebugHeading")
+	surface.SetFont("WSNbDebugHeading")
 	local width, headingHeight = surface.GetTextSize(box.heading)
-	surface.SetFont("WetsandNbDebugDetail")
+	surface.SetFont("WSNbDebugDetail")
 	local _, lineHeight = surface.GetTextSize("Ag")
 	for _, detail in ipairs(box.details) do width = math.max(width, (surface.GetTextSize(detail))) end
 	local height = headingHeight + #box.details * (lineHeight + BOX_LINE_GAP)
@@ -480,10 +480,10 @@ local function DrawBox(box, rect)
 	draw.RoundedBox(4, rect.left - 1, rect.top - 1, rect.w + 2, rect.h + 2, color)
 	draw.RoundedBox(4, rect.left, rect.top, rect.w, rect.h, BOX_BACKGROUND)
 	local x, y = rect.left + BOX_PADDING, rect.top + BOX_PADDING
-	draw.SimpleText(box.heading, "WetsandNbDebugHeading", x, y, color)
+	draw.SimpleText(box.heading, "WSNbDebugHeading", x, y, color)
 	y = y + box.headingHeight
 	for _, detail in ipairs(box.details) do
-		draw.SimpleText(detail, "WetsandNbDebugDetail", x, y, color_white)
+		draw.SimpleText(detail, "WSNbDebugDetail", x, y, color_white)
 		y = y + box.lineHeight + BOX_LINE_GAP
 	end
 end
@@ -516,10 +516,10 @@ end
 local function Label(pos, text, color, align)
 	local screen = pos:ToScreen()
 	if not screen.visible then return end
-	draw.SimpleTextOutlined(text, "WetsandNbDebugLabel", screen.x, screen.y, color, TEXT_ALIGN_CENTER, align or TEXT_ALIGN_BOTTOM, LABEL_OUTLINE, color_black)
+	draw.SimpleTextOutlined(text, "WSNbDebugLabel", screen.x, screen.y, color, TEXT_ALIGN_CENTER, align or TEXT_ALIGN_BOTTOM, LABEL_OUTLINE, color_black)
 end
 
-local TEAM_LABEL = { [WETSAND.TEAM_RED] = "RED", [WETSAND.TEAM_BLUE] = "BLU" }
+local TEAM_LABEL = { [WS.TEAM_RED] = "RED", [WS.TEAM_BLUE] = "BLU" }
 
 local function Middle(points)
 	return points[math.floor((#points + 1) / 2)]
@@ -573,7 +573,7 @@ local function DrawLabels()
 	end
 end
 
-hook.Add("HUDPaint", "wetsand_nbdebug", function()
+hook.Add("HUDPaint", "ws_nbdebug", function()
 	DrawBoxes()
 	DrawLabels()
 end)

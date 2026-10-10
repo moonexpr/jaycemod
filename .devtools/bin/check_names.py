@@ -7,7 +7,7 @@
 Fails (exit 1) on:
   - an old name: an identifier in code, or a whole name-shaped string, containing tf2
     (comments and prose strings are skipped, since they may cite or describe TF2);
-  - one of our hooks (Wetsand*, Sandcastle*, TF2*) that is added but never run;
+  - one of our hooks (WS*, Sandcastle*, TF2*) that is added but never run;
   - a networked var (Global2, NW2, NW) that is read but never set.
 Notes, without failing: our hooks run with no listener (a published event) and
 vars set but never read. Keys built from a variable (key .. "team") are skipped.
@@ -17,7 +17,7 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-OUR_HOOK_PREFIXES = ("Wetsand", "Sandcastle", "TF2")
+OUR_HOOK_PREFIXES = ("WS", "Sandcastle", "TF2")
 OLD = re.compile(r"[Tt][Ff]2")
 IDENTIFIER = re.compile(r"[A-Za-z_]\w*(?:[.:][A-Za-z_]\w*)*")
 NAME_SHAPED = re.compile(r"[\w.:]+")

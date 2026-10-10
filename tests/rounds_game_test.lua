@@ -115,7 +115,7 @@ local TO_RUNNING = {
 	"doors_unlock",
 	"state RND_RUNNING",
 	"output OnStateEnterRoundRunning",
-	"hook WetsandRoundActive",
+	"hook WSRoundActive",
 }
 
 -- A round from PREGAME to RND_RUNNING at T0 + 1 + PREROUND_SECONDS.
@@ -167,7 +167,7 @@ T.test("a full-round win scores, switches teams and resets the map after the bon
 		"score " .. RED .. " 1",
 		"publish_win " .. RED,
 		"state TEAM_WIN",
-		"hook WetsandRoundWin " .. RED,
+		"hook WSRoundWin " .. RED,
 		"win_song " .. RED,
 		"output OnWonByTeam1",
 	}, "the win")
@@ -198,7 +198,7 @@ T.test("a mini-round win keeps the map, clears the last stage's gore and scores 
 	Expect(round:SetWinningTeam(now, BLUE, W.ALL_POINTS_CAPTURED, false, false, false, FakeObjective.Objective()), {
 		"publish_win " .. BLUE,
 		"state TEAM_WIN",
-		"hook WetsandRoundWin " .. BLUE,
+		"hook WSRoundWin " .. BLUE,
 		"win_song " .. BLUE,
 		"output OnWonByTeam2",
 	}, "the win")
@@ -220,7 +220,7 @@ T.test("a stalemate without mp_stalemate_enable is a drawn round", function()
 	Expect(round:SetStalemate(T0 + 20, SM.TIMER, true, false), {
 		"publish_win " .. NOBODY,
 		"state TEAM_WIN",
-		"hook WetsandRoundWin " .. NOBODY,
+		"hook WSRoundWin " .. NOBODY,
 		"win_song " .. NOBODY,
 	}, "a draw")
 end)
@@ -263,7 +263,7 @@ T.test("sudden death: everyone dead, or its timer out when it may expire, is a s
 		"publish_win " .. NOBODY,
 		"restore_timers",
 		"state TEAM_WIN",
-		"hook WetsandRoundWin " .. NOBODY,
+		"hook WSRoundWin " .. NOBODY,
 		"win_song " .. NOBODY,
 	}, "the timer runs out")
 
@@ -279,7 +279,7 @@ T.test("sudden death: everyone dead, or its timer out when it may expire, is a s
 		"publish_win " .. NOBODY,
 		"restore_timers",
 		"state TEAM_WIN",
-		"hook WetsandRoundWin " .. NOBODY,
+		"hook WSRoundWin " .. NOBODY,
 		"win_song " .. NOBODY,
 	}, "everyone dead")
 end)
@@ -450,7 +450,7 @@ T.test("with SetStalemateOnTimelimit the time limit ends the round: the leader w
 		"respawn_team " .. BLUE,
 		"publish_win " .. BLUE,
 		"state TEAM_WIN",
-		"hook WetsandRoundWin " .. BLUE,
+		"hook WSRoundWin " .. BLUE,
 		"win_song " .. BLUE,
 		"output OnWonByTeam2",
 	}, "BLU leads; the time limit win adds no score")
@@ -708,7 +708,7 @@ T.test("game_round_win: a team wins, team 0 is a stalemate, and only a full rese
 	}, objective), {
 		"publish_win " .. NOBODY,
 		"state TEAM_WIN",
-		"hook WetsandRoundWin " .. NOBODY,
+		"hook WSRoundWin " .. NOBODY,
 		"win_song " .. NOBODY,
 	}, "team 0 is a stalemate")
 end)
@@ -839,7 +839,7 @@ T.test("an A/D round: setup, time added by a capture, overtime while capping, th
 		"score " .. RED .. " 1",
 		"publish_win " .. RED,
 		"state TEAM_WIN",
-		"hook WetsandRoundWin " .. RED,
+		"hook WSRoundWin " .. RED,
 		"win_song " .. RED,
 		"output OnWonByTeam1",
 	}, "RED defended")

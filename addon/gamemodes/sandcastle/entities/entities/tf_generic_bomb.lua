@@ -36,7 +36,7 @@ end
 
 function ENT:Initialize()
 	local kv = self.kv or {}
-	self.hazards = WETSAND.Feature("hazards")
+	self.hazards = WS.Feature("hazards")
 	self.hazard = self.hazards:Bind(self, VARIANT, {
 		damage = Float(kv.damage),
 		radius = Float(kv.radius),

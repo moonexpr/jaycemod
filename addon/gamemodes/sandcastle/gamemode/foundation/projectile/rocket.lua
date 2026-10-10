@@ -2,7 +2,7 @@
 -- blows up on the first thing it touches (RocketTouch), hurting everything
 -- within TF_ROCKET_RADIUS by foundation.combat's rules.
 --
--- Config: { damage, crit, team, attacker, radius } plus wetsand_projectile's
+-- Config: { damage, crit, team, attacker, radius } plus ws_projectile's
 -- { model, velocity }. attacker is who the blast credits (TF2's scorer: the
 -- launcher's owner, or the launcher); radius is optional, for launchers
 -- with their own (tf_point_weapon_mimic's SplashRadius).

@@ -17,7 +17,7 @@
 -- each node's nearest within LINK_RANGE, kept for each hull whose box
 -- sweeps from one to the other above step height, over floor that never
 -- rises or falls more than a step between samples.
-local Graph = WETSAND.require("foundation.nodegraph")
+local Graph = WS.require("foundation.nodegraph")
 
 local Controller = {
 	job = nil, -- the generation coroutine while it runs
@@ -26,7 +26,7 @@ local Controller = {
 }
 
 local DATA_DIR = "sandcastle/nodegraphs"
-local MAX_NODES = GetConVar("wetsand_nodegraph_max_nodes") -- wetsand/sh_nodegraph.lua
+local MAX_NODES = GetConVar("ws_nodegraph_max_nodes") -- ws/sh_nodegraph.lua
 
 local SPACING_START, SPACING_GROW = 96, 1.25
 local LINK_RANGE, LINKS_PER_NODE = 512, 16
@@ -366,14 +366,14 @@ end
 -- The overlay -------------------------------------------------------------------------------
 
 local DEBUG_INTERVAL, DEBUG_RANGE, DEBUG_MAX_NODES = 1, 1500, 400
-local DEBUG_MAX_LINKS = 2 ^ 16 - 1 -- nodegraph_debug's count (wetsand/sh_nodegraph.lua)
+local DEBUG_MAX_LINKS = 2 ^ 16 - 1 -- nodegraph_debug's count (ws/sh_nodegraph.lua)
 
 function Controller:ToggleDebug(ply)
-	ply.wetsandNodegraphDebug = not ply.wetsandNodegraphDebug
-	if ply.wetsandNodegraphDebug and not self.graph and not self.installed then
+	ply.wsNodegraphDebug = not ply.wsNodegraphDebug
+	if ply.wsNodegraphDebug and not self.graph and not self.installed then
 		self.installed = self:Installed()
 	end
-	Tell(ply, "overlay " .. (ply.wetsandNodegraphDebug and "on" or "off"))
+	Tell(ply, "overlay " .. (ply.wsNodegraphDebug and "on" or "off"))
 	return true
 end
 
@@ -409,7 +409,7 @@ function Controller:SendDebug(ply)
 			zone = node.zone or 0,
 		}
 	end
-	WETSAND.Events.Fire("nodegraph_debug", {
+	WS.Events.Fire("nodegraph_debug", {
 		source = self.graph and "generated" or (graph and "installed" or "none"),
 		nodes = nodes,
 		links = links,
@@ -417,13 +417,13 @@ function Controller:SendDebug(ply)
 end
 
 local nextDebug = 0
-hook.Add("Think", "wetsand_nodegraph", function()
+hook.Add("Think", "ws_nodegraph", function()
 	Controller:Think()
 	local now = CurTime()
 	if now < nextDebug then return end
 	nextDebug = now + DEBUG_INTERVAL
 	for _, ply in ipairs(player.GetAll()) do
-		if ply.wetsandNodegraphDebug then Controller:SendDebug(ply) end
+		if ply.wsNodegraphDebug then Controller:SendDebug(ply) end
 	end
 end)
 

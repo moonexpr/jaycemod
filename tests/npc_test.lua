@@ -621,7 +621,7 @@ T.test("destroying an Npc ends its actions", function()
 	Expect({ "Idle:OnEnd" }, "ended")
 end)
 
--- Debugging (wetsand_nb_debug BEHAVIOR): the stack and the watcher
+-- Debugging (ws_nb_debug BEHAVIOR): the stack and the watcher
 
 -- A watcher that writes down what its Behavior tells it.
 local function Watcher()
@@ -776,18 +776,18 @@ T.test("a variant's fake actor dispatches only the particle systems its variant 
 	T.eq(#plain:Called("DispatchParticleEffect"), 1, "an actor with no variant checks nothing")
 end)
 
-T.test("wetsand_nextbot defines every actor method the engine does not already provide", function()
-	local text = ReadFile("addon/gamemodes/sandcastle/entities/entities/wetsand_nextbot.lua")
+T.test("ws_nextbot defines every actor method the engine does not already provide", function()
+	local text = ReadFile("addon/gamemodes/sandcastle/entities/entities/ws_nextbot.lua")
 	for _, name in ipairs(Actor.METHODS) do
 		local defined = text:find("function ENT:" .. name .. "(", 1, true) ~= nil
-		T.eq(defined or Actor.ENGINE[name] == true, true, "wetsand_nextbot " .. name)
+		T.eq(defined or Actor.ENGINE[name] == true, true, "ws_nextbot " .. name)
 		-- GMod looks up the engine's metatable before the entity's table, so
 		-- an ENT function of an engine method's name would never run.
 		T.eq(defined and Actor.ENGINE[name] == true, false, "no shadowed definition of " .. name)
 	end
 end)
 
--- wetsand_nextbot's binding run under LuaJIT: the file's ENT against a stub
+-- ws_nextbot's binding run under LuaJIT: the file's ENT against a stub
 -- of the GMod globals it touches, with an npc controller whose Bind fails.
 T.test("a nextbot whose binding fails reports it once from Initialize, then removes itself without erroring", function()
 	local bindError = "bind failed"
@@ -800,12 +800,12 @@ T.test("a nextbot whose binding fails reports it once from Initialize, then remo
 		ENT = ENT,
 		CLIENT = false,
 		AddCSLuaFile = function() end,
-		WETSAND = {
+		WS = {
 			Feature = function() return controller end,
 			require = function(name) return T.require(name) end,
 		},
 	}, { __index = _G })
-	local chunk = assert(loadfile("addon/gamemodes/sandcastle/entities/entities/wetsand_nextbot.lua"))
+	local chunk = assert(loadfile("addon/gamemodes/sandcastle/entities/entities/ws_nextbot.lua"))
 	setfenv(chunk, env)()
 
 	local ent = setmetatable({

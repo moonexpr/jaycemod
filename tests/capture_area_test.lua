@@ -227,7 +227,7 @@ T.test("CaptureCurrentCP ends a running capture and does nothing otherwise", fun
 	T.eq(s.owner, BLU)
 end)
 
--- An admin's Set Team (wetsand/sh_editors_point.lua): the area ends a
+-- An admin's Set Team (ws/sh_editors_point.lua): the area ends a
 -- capture for the team as a finished one would, so the map hears its
 -- OnCapTeam output (cp_steel's relays open the next point's doors).
 T.test("CaptureFor ends a capture for the team, as a finished one, whatever was running", function()

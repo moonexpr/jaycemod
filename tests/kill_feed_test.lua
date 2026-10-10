@@ -6,10 +6,10 @@ local Feed = T.require("foundation.kill_feed")
 local RED, BLUE = 2, 3
 
 T.test("a soldier's notice takes its side's team", function()
-	T.eq(Feed.Team("#wetsand_drg_rebel", -1), BLUE)
-	T.eq(Feed.Team("#wetsand_drg_vortigaunt", -1), BLUE)
-	T.eq(Feed.Team("#wetsand_drg_combine", -1), RED)
-	T.eq(Feed.Team("wetsand_drg_rebel", -1), BLUE, "the class as GMod's feed passes it, without the #")
+	T.eq(Feed.Team("#ws_drg_rebel", -1), BLUE)
+	T.eq(Feed.Team("#ws_drg_vortigaunt", -1), BLUE)
+	T.eq(Feed.Team("#ws_drg_combine", -1), RED)
+	T.eq(Feed.Team("ws_drg_rebel", -1), BLUE, "the class as GMod's feed passes it, without the #")
 end)
 
 T.test("players and other NPCs keep the team the notice has", function()

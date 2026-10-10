@@ -188,7 +188,7 @@ local function World()
 end
 
 local function Env(w)
-	local wetsand = {
+	local ws = {
 		require = T.require,
 		TEAM_RED = RED,
 		TEAM_BLUE = BLUE,
@@ -220,7 +220,7 @@ local function Env(w)
 		NavMeshUsable = function() return w.navUsable ~= false end,
 	}
 	local env = {
-		WETSAND = wetsand,
+		WS = ws,
 		Vector = Vector,
 		DrGBase = {},
 		CreateConVar = function() return {} end,
@@ -468,7 +468,7 @@ T.test("a stored slot list that is none is replaced by a new one", function()
 	T.eq(sizes[RED] .. " " .. sizes[BLUE], "0 0", "no slots")
 end)
 
--- Riding the cart: wetsand_aiwar_sitting_enabled ------------------------------------
+-- Riding the cart: ws_aiwar_sitting_enabled ------------------------------------
 
 -- A soldier port that is seated or not; Stand gets it off, as the real one.
 local function SeatedPort(seated)
@@ -480,11 +480,11 @@ T.test("turning sitting off stands every seated soldier, and turning it on stand
 	local controller = Load(w)
 	local riding, walking = SeatedPort(true), SeatedPort(false)
 	controller.soldiers = { a = { soldier = riding }, b = { soldier = walking } }
-	local changed = w.convarCallbacks.wetsand_aiwar_sitting_enabled
+	local changed = w.convarCallbacks.ws_aiwar_sitting_enabled
 	T.eq(type(changed), "function", "the controller follows the convar")
-	changed("wetsand_aiwar_sitting_enabled", "0", "1")
+	changed("ws_aiwar_sitting_enabled", "0", "1")
 	T.eq(riding.seat ~= nil, true, "still riding after sitting was turned on")
-	changed("wetsand_aiwar_sitting_enabled", "1", "0")
+	changed("ws_aiwar_sitting_enabled", "1", "0")
 	T.eq(riding.seat, nil, "off the cart")
 	T.eq(walking.seat, nil, "the walker stays on foot")
 end)
@@ -730,7 +730,7 @@ T.test("each team's base is the centroid of its spawns, kept until the next roun
 	Same(field.spawns[RED][2], 100, 200, 30, "a spawn")
 	w.spawns[BLUE] = { Ent(Vector(-900, 0, 0)) }
 	Same(controller:Survey(NOW).bases[BLUE], -500, 0, 0, "cached")
-	w.hooks.WetsandRoundActivate()
+	w.hooks.WSRoundActivate()
 	Same(controller:Survey(NOW).bases[BLUE], -900, 0, 0, "the next round's")
 end)
 
@@ -740,13 +740,13 @@ T.test("a round won by a team is its humiliation, until the next round resets th
 	local w = World()
 	local controller = Started(w, ControlPointsMode.Mode, {})
 	w.state = STATE.TEAM_WIN
-	w.hooks.WetsandRoundWin(BLUE)
+	w.hooks.WSRoundWin(BLUE)
 	local field = controller:Survey(NOW)
 	T.eq(field.phase, AiWar.PHASES.humiliation, "humiliation")
 	T.eq(field.winner, BLUE, "BLU won")
 	T.eq(controller.losers, RED, "RED humiliated")
 	w.state = STATE.PREROUND
-	w.hooks.WetsandRoundActivate()
+	w.hooks.WSRoundActivate()
 	field = controller:Survey(NOW)
 	T.eq(field.winner, nil, "no winner")
 	T.eq(field.phase, AiWar.PHASES.frozen, "frozen")
@@ -757,12 +757,12 @@ T.test("a defenders' win has the factions trade sides with the next round; an at
 	local w = World()
 	local controller = Started(w, ControlPointsMode.Mode, {})
 	w.state = STATE.TEAM_WIN
-	w.hooks.WetsandRoundWin(RED, Rounds.WINREASON.ALL_POINTS_CAPTURED)
-	w.hooks.WetsandRoundActivate()
+	w.hooks.WSRoundWin(RED, Rounds.WINREASON.ALL_POINTS_CAPTURED)
+	w.hooks.WSRoundActivate()
 	T.eq(controller.war:Faction(RED).name, "Combine", "an attackers' win changes nothing")
-	w.hooks.WetsandRoundWin(RED, Rounds.WINREASON.DEFEND_UNTIL_TIME_LIMIT)
+	w.hooks.WSRoundWin(RED, Rounds.WINREASON.DEFEND_UNTIL_TIME_LIMIT)
 	T.eq(controller.war:Faction(RED).name, "Combine", "the sides hold through the humiliation")
-	w.hooks.WetsandRoundActivate()
+	w.hooks.WSRoundActivate()
 	T.eq(controller.war:Faction(RED).name, "Resistance", "the Resistance on RED")
 	T.eq(controller.war:Faction(BLUE).name, "Combine", "the Combine attack as BLU")
 end)
@@ -771,7 +771,7 @@ T.test("a stalemate has no winner, so the round is over and nobody hunts", funct
 	local w = World()
 	local controller = Started(w, ControlPointsMode.Mode, {})
 	w.state = STATE.TEAM_WIN
-	w.hooks.WetsandRoundWin(NOBODY)
+	w.hooks.WSRoundWin(NOBODY)
 	local field = controller:Survey(NOW)
 	T.eq(field.winner, nil, "no winner")
 	T.eq(field.phase, AiWar.PHASES.over, "over")
@@ -1035,14 +1035,14 @@ T.test("KOTH through the controller: Sandbox waits for the clocks, the round bri
 	OnHill(battle, BLUE)
 	-- BLU wins: its soldiers hunt RED's
 	w.state = STATE.TEAM_WIN
-	w.hooks.WetsandRoundWin(BLUE)
+	w.hooks.WSRoundWin(BLUE)
 	battle:Tick(nil, 2)
 	T.eq(battle.war:Field().phase, AiWar.PHASES.humiliation, "humiliation")
 	Hunting(battle, BLUE)
 	-- the next round: the hunt is over, and the clocks are made again
 	w.timers = nil
 	w.state = STATE.PREROUND
-	w.hooks.WetsandRoundActivate()
+	w.hooks.WSRoundActivate()
 	battle:Tick(nil, 2)
 	T.eq(controller.waitingFor, Base.CLOCKS, "between the clocks")
 	w.timers = {
@@ -1070,7 +1070,7 @@ T.test("control points through the controller: commands from the first think, bo
 	OnHill(battle, RED)
 	OnHill(battle, BLUE)
 	w.active, w.state = true, STATE.TEAM_WIN
-	w.hooks.WetsandRoundWin(RED)
+	w.hooks.WSRoundWin(RED)
 	battle:Tick(nil, 2)
 	Hunting(battle, RED)
 end)

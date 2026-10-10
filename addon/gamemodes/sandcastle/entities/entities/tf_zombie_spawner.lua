@@ -20,8 +20,8 @@ function ENT:UpdateTransmitState()
 end
 
 function ENT:Initialize()
-	local Zombie = WETSAND.require("foundation.npc.zombie")
-	self.spawner = WETSAND.Feature("npc"):BindSpawner(self, Zombie.SpawnerConfig(self.kv or {}))
+	local Zombie = WS.require("foundation.npc.zombie")
+	self.spawner = WS.Feature("npc"):BindSpawner(self, Zombie.SpawnerConfig(self.kv or {}))
 end
 
 local INPUTS = {

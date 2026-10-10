@@ -5,9 +5,9 @@
 -- the first checkpoint.
 -- args: { team_size = n pushers (default 3), checkpoint = false to stop
 --         after the cart moves (default true) }
-local Tests = WETSAND_TESTS
-local S = WETSAND.STATE
-local BLUE, RED = WETSAND.TEAM_BLUE, WETSAND.TEAM_RED
+local Tests = WS_TESTS
+local S = WS.STATE
+local BLUE, RED = WS.TEAM_BLUE, WS.TEAM_RED
 local PUSHING_TEAMS = {
 	[RED] = true,
 	[BLUE] = true,
@@ -58,13 +58,13 @@ return function(t)
 	if not IsValid(area) then return end
 
 	local open, waited = t:WaitFor(SETUP_TIMEOUT, function()
-		return WETSAND.State() == S.RND_RUNNING and rounds:PointsMayBeCaptured()
+		return WS.State() == S.RND_RUNNING and rounds:PointsMayBeCaptured()
 	end)
 	t:Check("setup over, points may be captured", open ~= nil,
 		string.format("%s after %.1f s; in setup %s; HUD timer: in setup %s, paused %s, %.0f s left, ends in %.0f s",
-			Tests.StateName(WETSAND.State()), waited, tostring(WETSAND.InSetup()),
-			tostring(GetGlobal2Bool("wetsand_timer_in_setup", false)), tostring(GetGlobal2Bool("wetsand_timer_paused", false)),
-			GetGlobal2Float("wetsand_timer_time_left", -1), GetGlobal2Float("wetsand_timer_end_time", 0) - CurTime()))
+			Tests.StateName(WS.State()), waited, tostring(WS.InSetup()),
+			tostring(GetGlobal2Bool("ws_timer_in_setup", false)), tostring(GetGlobal2Bool("ws_timer_paused", false)),
+			GetGlobal2Float("ws_timer_time_left", -1), GetGlobal2Float("ws_timer_end_time", 0) - CurTime()))
 	if not open then
 		local timers = {}
 		for _, ent in ipairs(ents.FindByClass("team_round_timer")) do
@@ -84,7 +84,7 @@ return function(t)
 	for _, ply in ipairs(player.GetBots()) do
 		if ply:Team() == team and #bots < (t.args.team_size or DEFAULT_TEAM_SIZE) then bots[#bots + 1] = ply end
 	end
-	local startPos, startProgress = train:GetPos(), GetGlobal2Float("wetsand_cart_1_progress", 0)
+	local startPos, startProgress = train:GetPos(), GetGlobal2Float("ws_cart_1_progress", 0)
 	t:Station(bots, function() return SideSpots(train, #bots) end)
 	-- What the cart did each second, to tell a stuck cart from a slow one.
 	local samples = {}
@@ -92,8 +92,8 @@ return function(t)
 		t:Wait(1)
 		samples[#samples + 1] = string.format("%ds: moved %.0f, m_flSpeed %.1f, hud speed %d, hud cappers %d, inside %d",
 			second, train:GetPos():Distance(startPos), train:GetInternalVariable("m_flSpeed") or -1,
-			GetGlobal2Int("wetsand_cart_1_speed", 0), GetGlobal2Int("wetsand_cart_1_cappers", 0),
-			#WETSAND.PlayersInside(area))
+			GetGlobal2Int("ws_cart_1_speed", 0), GetGlobal2Int("ws_cart_1_cappers", 0),
+			#WS.PlayersInside(area))
 	end
 	t:Info("push_samples", samples)
 	local models = {}
@@ -104,9 +104,9 @@ return function(t)
 		end
 	end
 	t:Info("cart_models", models)
-	local pushers = #WETSAND.PlayersInside(area)
+	local pushers = #WS.PlayersInside(area)
 	local moved = train:GetPos():Distance(startPos)
-	local progress = GetGlobal2Float("wetsand_cart_1_progress", 0)
+	local progress = GetGlobal2Float("ws_cart_1_progress", 0)
 	t:Info("pushers_inside", pushers)
 	t:Check("bots stand in the cart's area", pushers > 0, pushers .. " of " .. #bots)
 	t:Check("the cart moves when pushed", moved > MIN_DISTANCE,
@@ -127,7 +127,7 @@ return function(t)
 	end)
 	t:Unstation()
 	t:Check("pushing captures the first checkpoint", taken ~= nil,
-		string.format("%s after %.0f s more, progress %.3f", tostring(taken), took, GetGlobal2Float("wetsand_cart_1_progress", 0)))
+		string.format("%s after %.0f s more, progress %.3f", tostring(taken), took, GetGlobal2Float("ws_cart_1_progress", 0)))
 	t:Info("points_at_end", Tests.DescribePoints(capture, team))
-	t:Info("state_at_end", Tests.StateName(WETSAND.State()))
+	t:Info("state_at_end", Tests.StateName(WS.State()))
 end

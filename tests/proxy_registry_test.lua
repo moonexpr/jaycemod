@@ -1,4 +1,4 @@
--- WETSAND.Proxy (wetsand/sv_proxy.lua): one proxy (wetsand_proxy) per
+-- WS.Proxy (ws/sv_proxy.lua): one proxy (ws_proxy) per
 -- entity it stands at, made when missing; a cart's (a payload checkpoint is
 -- a control point too) takes the place of a point's, never the other way.
 -- Run against fakes of ents.Create and IsValid.
@@ -7,7 +7,7 @@ local T = dofile("tests/harness.lua")
 local function Load()
 	local made = {}
 	local env = setmetatable({
-		WETSAND = {},
+		WS = {},
 		ents = {
 			Create = function(class)
 				local p = { class = class, removed = false }
@@ -31,8 +31,8 @@ local function Load()
 		end,
 		setmetatable = setmetatable,
 	}, { __index = _G })
-	setfenv(assert(loadfile("addon/gamemodes/sandcastle/gamemode/wetsand/sv_proxy.lua")), env)()
-	return env.WETSAND, made, env
+	setfenv(assert(loadfile("addon/gamemodes/sandcastle/gamemode/ws/sv_proxy.lua")), env)()
+	return env.WS, made, env
 end
 
 local function At(name) return { name = name, GetPos = function() return { x = 1 } end } end
@@ -42,7 +42,7 @@ T.test("a proxy is made once for what it stands at, with its kind, target and bo
 	local W, made = Load()
 	local point, watcher = At("cp"), At("watcher")
 	local p = W.Proxy(point, "point", point, MINS, MAXS)
-	T.eq(p.class, "wetsand_proxy")
+	T.eq(p.class, "ws_proxy")
 	T.eq(p.kind, "point")
 	T.eq(p.target, point)
 	T.eq(p.mins, MINS)
@@ -93,9 +93,9 @@ T.test("the props standing on its spot name the proxy; other things do not", fun
 	env.ents.FindInBox = function() return { base, wall, player } end
 	local proxy = {}
 	W.ProxyBodies(proxy, env.Vector(0, 0, 0))
-	T.eq(base.nw.wetsand_proxy, proxy, "the base")
-	T.eq(wall.nw.wetsand_proxy, proxy, "a prop on the spot")
-	T.eq(player.nw.wetsand_proxy, nil, "not a player")
+	T.eq(base.nw.ws_proxy, proxy, "the base")
+	T.eq(wall.nw.ws_proxy, proxy, "a prop on the spot")
+	T.eq(player.nw.ws_proxy, nil, "not a player")
 end)
 
 T.finish()

@@ -4,22 +4,22 @@
 -- returns true, or false and why not.
 local Controller = {}
 
-local RED, BLUE = WETSAND.TEAM_RED, WETSAND.TEAM_BLUE
+local RED, BLUE = WS.TEAM_RED, WS.TEAM_BLUE
 local NO_ROUNDS = "this map has no rounds (no tf_gamerules)"
 local NO_TIMER = "no round timer is showing"
 
 local function Rules()
-	return IsValid(WETSAND.Rules) and WETSAND.Rules or nil
+	return IsValid(WS.Rules) and WS.Rules or nil
 end
 
 -- Everyone is told what the admin changed (foundation.admin_notices). A
 -- field sends a change at every step of its slider, so its notice waits
 -- until the admin has left the fields alone SETTLE seconds.
-local Notices = WETSAND.require("foundation.admin_notices")
+local Notices = WS.require("foundation.admin_notices")
 local SETTLE = 3
 
 local function Settled(key, notices)
-	timer.Create("wetsand_admin_notice_" .. key, SETTLE, 1, function() WETSAND.Notify(notices) end)
+	timer.Create("ws_admin_notice_" .. key, SETTLE, 1, function() WS.Notify(notices) end)
 end
 
 -- Scores ---------------------------------------------------------------------------
@@ -35,12 +35,12 @@ local scoredFrom = {} -- team -> its score before the changes being settled
 function Controller:SetScore(t, score)
 	if scoredFrom[t] == nil then scoredFrom[t] = team.GetScore(t) end
 	team.SetScore(t, math.max(0, math.floor(score)))
-	timer.Create("wetsand_admin_notice_score_" .. t, SETTLE, 1, function()
+	timer.Create("ws_admin_notice_score_" .. t, SETTLE, 1, function()
 		local awarded = team.GetScore(t) - scoredFrom[t]
 		scoredFrom[t] = nil
 		if awarded <= 0 then return end
-		WETSAND.Notify(Notices.PointsAwarded(t, awarded, WETSAND.TeamName))
-		WETSAND.Events.Fire("points_awarded", { team = t, points = awarded })
+		WS.Notify(Notices.PointsAwarded(t, awarded, WS.TeamName))
+		WS.Events.Fire("points_awarded", { team = t, points = awarded })
 	end)
 end
 
@@ -71,7 +71,7 @@ function Controller:UseMapRespawnTimes()
 	if not rules then return false, NO_ROUNDS end
 	rules:SetAdminRespawnWaveTime(RED, nil)
 	rules:SetAdminRespawnWaveTime(BLUE, nil)
-	WETSAND.Notify(Notices.MapRespawnWaves())
+	WS.Notify(Notices.MapRespawnWaves())
 	return true
 end
 
@@ -83,7 +83,7 @@ end
 function Controller:SetRespawnsDisabled(disabled)
 	local rules = Rules()
 	if not rules then return false, NO_ROUNDS end
-	if rules:RespawnsDisabled() ~= disabled then WETSAND.Notify(Notices.RespawnsDisabled(disabled)) end
+	if rules:RespawnsDisabled() ~= disabled then WS.Notify(Notices.RespawnsDisabled(disabled)) end
 	rules:SetRespawnsDisabled(disabled)
 	return true
 end
@@ -98,7 +98,7 @@ function Controller:ResetRound()
 end
 
 -- A cart (its train watcher) goes back to its last checkpoint, or on to its
--- next (wetsand/sh_editors_cart.lua, from the cart's right-click).
+-- next (ws/sh_editors_cart.lua, from the cart's right-click).
 function Controller:RetractCart(watcher)
 	return watcher:RetractToCheckpoint()
 end
@@ -112,7 +112,7 @@ end
 local MAP_CART_SPEED = 1
 
 local function Payload()
-	return ents.FindByClass("team_train_watcher")[1] and WETSAND.Feature("payload") or nil
+	return ents.FindByClass("team_train_watcher")[1] and WS.Feature("payload") or nil
 end
 
 function Controller:CartSpeed()
@@ -129,7 +129,7 @@ end
 
 -- A map with a round timer has the rounds feature, which knows the HUD timer.
 local function Rounds()
-	return ents.FindByClass("team_round_timer")[1] and WETSAND.Feature("rounds") or nil
+	return ents.FindByClass("team_round_timer")[1] and WS.Feature("rounds") or nil
 end
 
 local function Timer()
@@ -138,7 +138,7 @@ local function Timer()
 end
 
 local function Remaining(timer)
-	return WETSAND.Feature("rounds"):TimerOf(timer):TimeRemaining(CurTime())
+	return WS.Feature("rounds"):TimerOf(timer):TimeRemaining(CurTime())
 end
 
 function Controller:TimeLeft()
@@ -149,20 +149,20 @@ end
 function Controller:SetTimeLeft(seconds)
 	local timer = Timer()
 	if not timer then return false, NO_TIMER end
-	WETSAND.Feature("rounds"):TimerInput(timer, "settime", math.max(0, seconds))
+	WS.Feature("rounds"):TimerInput(timer, "settime", math.max(0, seconds))
 	return true
 end
 
 function Controller:Paused()
 	local timer = Timer()
-	return timer ~= nil and WETSAND.Feature("rounds"):TimerOf(timer):Paused()
+	return timer ~= nil and WS.Feature("rounds"):TimerOf(timer):Paused()
 end
 
 function Controller:SetPaused(paused)
 	local timer = Timer()
 	if not timer then return false, NO_TIMER end
-	if self:Paused() ~= paused then WETSAND.Notify(Notices.TimerPaused(paused)) end
-	WETSAND.Feature("rounds"):TimerInput(timer, paused and "pause" or "resume")
+	if self:Paused() ~= paused then WS.Notify(Notices.TimerPaused(paused)) end
+	WS.Feature("rounds"):TimerInput(timer, paused and "pause" or "resume")
 	return true
 end
 
@@ -171,10 +171,10 @@ end
 function Controller:AddTeamTime(t, seconds)
 	local timer = Timer()
 	if not timer then return false, NO_TIMER end
-	if WETSAND.Active() and WETSAND.State() ~= WETSAND.STATE.RND_RUNNING then
+	if WS.Active() and WS.State() ~= WS.STATE.RND_RUNNING then
 		return false, "time can only be added while the round is running"
 	end
-	WETSAND.Feature("rounds"):AddTimerSeconds(timer, seconds, t)
+	WS.Feature("rounds"):AddTimerSeconds(timer, seconds, t)
 	return true
 end
 
@@ -182,7 +182,7 @@ end
 function Controller:RemoveTime(seconds)
 	local timer = Timer()
 	if not timer then return false, NO_TIMER end
-	WETSAND.Feature("rounds"):TimerInput(timer, "settime", math.max(0, Remaining(timer) - seconds))
+	WS.Feature("rounds"):TimerInput(timer, "settime", math.max(0, Remaining(timer) - seconds))
 	return true
 end
 

@@ -1,8 +1,8 @@
--- Follows mp_nav_generate (wetsand/sv_nav.lua) to its end: opening the
--- doors (its wetsand_nav_generate timer runs), generating (navmesh says so),
+-- Follows mp_nav_generate (ws/sv_nav.lua) to its end: opening the
+-- doors (its ws_nav_generate timer runs), generating (navmesh says so),
 -- then done, with the areas it made. Arm it before running the command:
 --   server_watch.py --listen nav_generate --run mp_nav_generate
-local POLL = "wetsand_nav_generate" -- sv_nav.lua's timer, from the command until it is done
+local POLL = "ws_nav_generate" -- sv_nav.lua's timer, from the command until it is done
 local began = false
 
 Watch.Task("nav_generate", {

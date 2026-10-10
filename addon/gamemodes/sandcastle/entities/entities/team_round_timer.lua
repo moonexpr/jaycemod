@@ -47,11 +47,11 @@ function ENT:KeyValue(key, value)
 end
 
 function ENT:Initialize()
-	WETSAND.Feature("rounds"):BindTimer(self, self.kv or Defaults())
+	WS.Feature("rounds"):BindTimer(self, self.kv or Defaults())
 end
 
 function ENT:OnRemove()
-	WETSAND.Feature("rounds"):UnbindTimer(self)
+	WS.Feature("rounds"):UnbindTimer(self)
 end
 
 function ENT:UpdateTransmitState()
@@ -59,10 +59,10 @@ function ENT:UpdateTransmitState()
 end
 
 function ENT:AcceptInput(name, activator, caller, value)
-	return WETSAND.Feature("rounds"):TimerInput(self, string.lower(name), value)
+	return WS.Feature("rounds"):TimerInput(self, string.lower(name), value)
 end
 
 -- The same inputs for Lua callers.
 function ENT:DoInput(name, value)
-	WETSAND.Feature("rounds"):TimerInput(self, string.lower(name), value)
+	WS.Feature("rounds"):TimerInput(self, string.lower(name), value)
 end

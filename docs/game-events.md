@@ -14,7 +14,7 @@ arrives.
 | Part | File | Job |
 |---|---|---|
 | Model | `gamemode/foundation/events.lua` (`foundation.events`) | Registry, field types, validation, wire format, listeners, request allowlist and rate limit. Pure; tested in `tests/events_test.lua`. |
-| Adapter | `gamemode/wetsand/sh_events.lua` (`WETSAND.Events`) | Carries the registry on GMod's `net` library. `sh_core.lua` includes it before anything else. |
+| Adapter | `gamemode/ws/sh_events.lua` (`WS.Events`) | Carries the registry on GMod's `net` library. `sh_core.lua` includes it before anything else. |
 
 ## The two net messages
 
@@ -24,13 +24,13 @@ Only these two network strings exist, and only the adapter registers them.
 
 | Name | Direction |
 |---|---|
-| `wetsand_game_event_fire` | server to clients |
-| `wetsand_game_event_request` | client to server |
+| `ws_game_event_fire` | server to clients |
+| `ws_game_event_request` | client to server |
 
 ## API
 
 ```lua
-local E = WETSAND.Events
+local E = WS.Events
 
 E.Define(name, fields, options)   -- both realms
 E.Listen(name, id, fn)            -- both realms; fn(fields) on clients, fn(fields, ply) for a request on the server
@@ -47,15 +47,15 @@ E.Request(name, fields)           -- client only; for client-sendable events
   - a list of players
   - a `Vector`: the players whose PVS holds that point
 - A client is ready once its `client_ready` request has arrived
-  (`WETSAND.IsReady(ply)`). A net message sent before that point is lost, so
+  (`WS.IsReady(ply)`). A net message sent before that point is lost, so
   bots and loading clients are skipped. Anything a joining client needs, the
   server sends when `client_ready` arrives. The feature loader does this with
   `feature_load`.
-- On the client, `WETSAND.LocalReady()` becomes true at `InitPostEntity`.
+- On the client, `WS.LocalReady()` becomes true at `InitPostEntity`.
 - A listener `id` works like `hook.Add`'s: listening again under the same id
   replaces that listener in its place. Listeners run in the order they were
   added.
-- The field types are on `WETSAND.Events` too: `String()`, `Bool()`,
+- The field types are on `WS.Events` too: `String()`, `Bool()`,
   `UInt(bits)`, `Int(bits)` (one of the bits is the sign), `Float()`,
   `Entity()`, `Vector()`, `Angle()`, `Team()` (a 10-bit uint),
   `List(type, countBits)`, `Record(fields)`, `Optional(type)` and
@@ -69,14 +69,14 @@ E.Request(name, fields)           -- client only; for client-sendable events
 
 Put the definition where the feature loads, in both realms. That is the
 feature's `sh.lua` (`features/<name>/sh.lua`, which loads before `sv.lua` and
-`cl.lua`), or, for events every map needs, an always-loaded `wetsand/sh_*.lua`.
+`cl.lua`), or, for events every map needs, an always-loaded `ws/sh_*.lua`.
 Name the event with a literal string. The id-collision test and the
 defined-before-use test both scan the source for `Define("name"`. Reuse TF2's
 event name and field names wherever TF2 has the event.
 
 ```lua
 -- features/capture/sh.lua
-local E = WETSAND.Events
+local E = WS.Events
 E.Define("teamplay_point_captured", {
 	cp = E.UInt(8),
 	cpname = E.String(),
@@ -85,15 +85,15 @@ E.Define("teamplay_point_captured", {
 })
 
 -- features/capture/sv.lua
-WETSAND.Events.Fire("teamplay_point_captured", {
+WS.Events.Fire("teamplay_point_captured", {
 	cp = index,
 	cpname = name,
 	team = team,
 })
 
 -- features/capture/cl.lua
-WETSAND.Events.Listen("teamplay_point_captured", "wetsand_capture_view", function(fields)
-	WETSAND.Feature("rounds"):Announce(WETSAND.TeamName[fields.team] .. " captured point " .. fields.cp, fields.team)
+WS.Events.Listen("teamplay_point_captured", "ws_capture_view", function(fields)
+	WS.Feature("rounds"):Announce(WS.TeamName[fields.team] .. " captured point " .. fields.cp, fields.team)
 end)
 ```
 
@@ -168,14 +168,14 @@ example, whether the player may do that now).
 
 ## The events
 
-Always loaded (`wetsand/`):
+Always loaded (`ws/`):
 
 | Event | Defined in | Fields | Fired by / heard by |
 |---|---|---|---|
 | `client_ready` (client-sendable, 2 per 10 s) | `sh_events.lua` | none | a client at `InitPostEntity`; the adapter marks the player ready, and the feature loader answers with `feature_load` |
 | `feature_load` | `sh_core.lua` | `names` list(string, 16) | the feature loader; clients load those features |
-| `teamplay_broadcast_audio` | `sh_announcer.lua` | `team`, `sound`, `others` (default false) | `WETSAND.BroadcastSound`, `BroadcastSoundToOthers`; the client plays the sound if `foundation.teams.HearsBroadcast` says its player hears it (`UNASSIGNED` means everyone) |
-| `announcement` | `sh_announcer.lua` | `text`, `team` (default `UNASSIGNED`) | `WETSAND.Announce`; the rounds view draws it |
+| `teamplay_broadcast_audio` | `sh_announcer.lua` | `team`, `sound`, `others` (default false) | `WS.BroadcastSound`, `BroadcastSoundToOthers`; the client plays the sound if `foundation.teams.HearsBroadcast` says its player hears it (`UNASSIGNED` means everyone) |
+| `announcement` | `sh_announcer.lua` | `text`, `team` (default `UNASSIGNED`) | `WS.Announce`; the rounds view draws it |
 | `gameplay_chat` | `sh_gameplay.lua` | `title`, `lines` list(string, 8) | the gamemode controller; chat |
 | `gameplay_transition_cancelled` | `sh_gameplay.lua` | `sounds` list(string, 8) | the gamemode controller; clients stop the sounds |
 | `nodegraph_debug` | `sh_nodegraph.lua` | `source`, `nodes` {pos, zone}, `links` {a, b, human} | the nodegraph feature; the admin overlay |

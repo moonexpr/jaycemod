@@ -23,14 +23,14 @@ function ENT:KeyValue(key, value)
 end
 
 function ENT:Initialize()
-	self.condition = self.condition or WETSAND.PlayerRules.COND.INVALID
+	self.condition = self.condition or WS.PlayerRules.COND.INVALID
 	self.negated = self.negated or false
 end
 
 -- CBaseFilter::PassesFilter over CFilterTFCondition::PassesFilterImpl.
 function ENT:PassesFilter(trigger, ent)
 	-- TestActivator may come with no activator.
-	local matches = IsValid(ent) and ent:IsPlayer() and WETSAND.InCondition(ent, self.condition)
+	local matches = IsValid(ent) and ent:IsPlayer() and WS.InCondition(ent, self.condition)
 	return matches ~= self.negated
 end
 

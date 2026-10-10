@@ -5,7 +5,7 @@ as in TF2, and turns the always-loaded round and control point code into
 lazily-loaded features with foundation models behind them. Payload keeps
 working at every merge. Everything in `docs/pass2-contract.md` and
 `docs/pass3-halloween.md` still holds (layout, conventions, commits, the
-Model / Controller / Entity / View layers, `WETSAND.Feature`).
+Model / Controller / Entity / View layers, `WS.Feature`).
 
 `sdk/` means `~/Repositories/source-sdk-2013/src/game/`. `$TF2` is
 `$HOME/Library/Application Support/CrossOver/Bottles/Team Fortress 2/drive_c/Steam/steamapps/common/Team Fortress 2`.
@@ -205,7 +205,7 @@ Needs:
 
 | # | gap | evidence |
 |---|---|---|
-| G1 | 14 maps have no `tf_gamerules`: cp_5gorge, cp_cloak, cp_dustbowl, cp_egypt_final, cp_fastlane, cp_freight_final1, cp_gorge, cp_gorge_event, cp_gravelpit, cp_junction_final, cp_manor_event, cp_mountainlab, cp_well, koth_sawmill | `WETSAND.Active()` is set only by `tf_gamerules:Initialize` |
+| G1 | 14 maps have no `tf_gamerules`: cp_5gorge, cp_cloak, cp_dustbowl, cp_egypt_final, cp_fastlane, cp_freight_final1, cp_gorge, cp_gorge_event, cp_gravelpit, cp_junction_final, cp_manor_event, cp_mountainlab, cp_well, koth_sawmill | `WS.Active()` is set only by `tf_gamerules:Initialize` |
 | G2 | `TimerMayExpire` = train watchers only; TF2 also refuses while any point has a capping team, 0.1 s after, and while a `tf_logic_cp_timer` holds | `sv_rounds.lua:63`, `CTFGameRules::TimerMayExpire` |
 | G3 | `logic_auto` fires `OnMultiNewRound` only when `g_pGameRules->InRoundRestart()` (`sdk/server/logicauto.cpp:111`), which nothing in Sandcastle can make GMod's gamerules report (integrator confirms with `developer 2` on cp_steel), so after `game.CleanUpMap` a `logic_auto` fires `OnMultiNewMap` again and never `OnMultiNewRound`; TF2 fires `OnMultiNewRound` after each full reset (its first round follows a reset too) | `CLogicAuto::Think`; 56 maps |
 | G4 | `tf_logic_competitive`: `OnSpawnRoomDoorsShouldLock` at pre-round start and `…Unlock` at its end (`CTFGameRules::PreRound_Start/End`) are never fired | 15 maps |
@@ -213,7 +213,7 @@ Needs:
 | G6 | capture sounds missing | `team_control_point.cpp:106–120, 505–560` |
 | G7 | the control point HUD lacks the TF2 objective resource's fields | `sdk/client/c_team_objectiveresource.cpp` |
 | G8 | `GetBaseControlPoint` with mini-rounds uses only in-round points; ours uses all | `team_control_point_master.cpp:1070` |
-| G9 | time added is a generic `WETSAND.Announce("+m:ss")`; TF2 flashes it by the timer | `team_round_timer.lua:243` |
+| G9 | time added is a generic `WS.Announce("+m:ss")`; TF2 flashes it by the timer | `team_round_timer.lua:243` |
 | G10 | `tf_gamerules`, `sv_rounds`, `sv_controlpoint`, `sv_payload` and the round HUD are always loaded, and rules live in entities | the lua skill's layering |
 
 ### 1.3 Logic entities in the census
@@ -295,13 +295,13 @@ The functions `foundation.rounds` exports today move:
 
 | feature | loaded by (entity `Initialize`) | controller owns | view (client) |
 |---|---|---|---|
-| `rounds` (R) | tf_gamerules, team_round_timer, game_round_win, tf_logic_competitive, and every other feature below (which requires it) | the `Round`; a `Timer` per `team_round_timer`; the HUD timer; the proxy; the mode; round listeners; timer holds; team clocks; the objective port; `logic_auto` round outputs; competitive doors; all `wetsand_round_*` and `wetsand_timer_*` keys | the timer (label, time-added flash), pre-round, respawn countdown, announcements, round panel (stage, scores, goal), win, sudden death and game-over panels, notices, announcer countdown, overtime line and bell. Replaces cl_announcer, cl_rounds, and cl_hud's timer, preround, respawn and announcement parts |
-| `capture` (C) | trigger_capture_area, team_control_point_master, team_control_point_round | the `PointSet`; an `Area` per trigger; the `Master`; the `team_control_point` input hook; point models; capture sounds; scoring; notices; `wetsand_point_*` keys | point icons (layout, owner, lock, unlock countdown and its announcer, progress, cappers, blocked, can-cap marks, cp timer countdown), the local player's capture panel |
-| `koth` (K) | tf_logic_koth | the KOTH logic model; the two clock entities; `wetsand_koth_*` keys | the two team clocks, and the clocks' countdown speech |
+| `rounds` (R) | tf_gamerules, team_round_timer, game_round_win, tf_logic_competitive, and every other feature below (which requires it) | the `Round`; a `Timer` per `team_round_timer`; the HUD timer; the proxy; the mode; round listeners; timer holds; team clocks; the objective port; `logic_auto` round outputs; competitive doors; all `ws_round_*` and `ws_timer_*` keys | the timer (label, time-added flash), pre-round, respawn countdown, announcements, round panel (stage, scores, goal), win, sudden death and game-over panels, notices, announcer countdown, overtime line and bell. Replaces cl_announcer, cl_rounds, and cl_hud's timer, preround, respawn and announcement parts |
+| `capture` (C) | trigger_capture_area, team_control_point_master, team_control_point_round | the `PointSet`; an `Area` per trigger; the `Master`; the `team_control_point` input hook; point models; capture sounds; scoring; notices; `ws_point_*` keys | point icons (layout, owner, lock, unlock countdown and its announcer, progress, cappers, blocked, can-cap marks, cp timer countdown), the local player's capture panel |
+| `koth` (K) | tf_logic_koth | the KOTH logic model; the two clock entities; `ws_koth_*` keys | the two team clocks, and the clocks' countdown speech |
 | `payload` (P) | team_train_watcher, tf_logic_multiple_escort | today's sv_payload (cart speed scale, race, final point, cart HUD keys) | cart bars (from cl_hud), race sounds (cl_payload) |
 
-`capture`, `koth` and `payload` call `WETSAND.Feature("rounds")` when they
-load; `koth` and `payload` also call `WETSAND.Feature("capture")`. No
+`capture`, `koth` and `payload` call `WS.Feature("rounds")` when they
+load; `koth` and `payload` also call `WS.Feature("capture")`. No
 `sh.lua` is needed.
 
 ### 2.3 Interfaces
@@ -395,12 +395,12 @@ order:
 
 | kind | fields | controller does |
 |---|---|---|
-| `state` | from, to | `SetGlobal2Int("wetsand_round_state")` |
+| `state` | from, to | `SetGlobal2Int("ws_round_state")` |
 | `output` | name, value | `proxy:TriggerOutput(name, proxy, value)` |
-| `balance_teams` | | `WETSAND.BalanceTeams(false)` |
+| `balance_teams` | | `WS.BalanceTeams(false)` |
 | `cleanup` | | `game.CleanUpMap(false, CLEANUP_KEEPS)`, with `OnMultiNewMap` suppressed (5.1) |
 | `new_round_outputs` | | fire `OnMultiNewRound` on every `logic_auto` |
-| `round_spawn` / `round_activate` | | run the `PHASE_SPAWN` / `PHASE_ACTIVATE` listeners in order, then `hook.Run("WetsandRoundSpawn")` / `("WetsandRoundActivate")` |
+| `round_spawn` / `round_activate` | | run the `PHASE_SPAWN` / `PHASE_ACTIVATE` listeners in order, then `hook.Run("WSRoundSpawn")` / `("WSRoundActivate")` |
 | `previous_round_end` | | run `PHASE_ROUND_END` listeners (the master's `OnEnd`) |
 | `activate_timers` | | `ActivateTimers()` |
 | `time_limit_timer` | seconds | only if `mode.CREATES_TIME_LIMIT_TIMER` (the model already checks) |
@@ -408,15 +408,15 @@ order:
 | `respawn_all` | | spawn everyone but spectators |
 | `respawn_team` | team | spawn that team's dead whose `MayRespawn` holds |
 | `doors_lock` / `doors_unlock` | | every `tf_logic_competitive`'s lock/unlock output |
-| `hook` | name, args | `hook.Run` (`WetsandRoundActive`, `WetsandRoundWin`) |
+| `hook` | name, args | `hook.Run` (`WSRoundActive`, `WSRoundWin`) |
 | `score` | team, points | `team.AddScore` |
 | `publish_win` | winner, reason, fullRound | the win keys, with `objective:RoundsRemaining(winner)` |
 | `win_song` | winner | `Game.YourTeamWon`/`Lost`/`Stalemate`, plus `mode.RoundWinLines` |
-| `sudden_death` | reason | `wetsand_stalemate_reason` and `Game.SuddenDeath` |
+| `sudden_death` | reason | `ws_stalemate_reason` and `Game.SuddenDeath` |
 | `hide_timers` / `restore_timers` | | as `HideActiveTimer`/`RestoreActiveTimer`; the restore also re-shows team clocks (`CTFGameRules::RestoreActiveTimer`) |
 | `stalemate_timer` | seconds | `CreateTimer(nil, seconds)`; removed on leaving `STALEMATE` |
 | `stalemate_winner` | team, forceMapReset | `objective.SuddenDeathWin(team)` when not `forceMapReset` and the port has one, else `SetWinningTeam(OPPONENTS_DEAD)` |
-| `intermission` | reason, until | freeze everyone, `wetsand_game_over_reason` |
+| `intermission` | reason, until | freeze everyone, `ws_game_over_reason` |
 | `changelevel` | | `RunConsoleCommand("changelevel", game.GetMap())` |
 | `unfreeze` | | unfreeze everyone |
 
@@ -693,62 +693,62 @@ pt:EndTime()                             -- nil when idle
 
 ### 2.5 Networked state
 
-Global2 keys, snake_case, `wetsand_` prefix, named for what they hold.
+Global2 keys, snake_case, `ws_` prefix, named for what they hold.
 
 - **rounds** keeps every key it has today:
-  - `wetsand_rounds_active`, `wetsand_round_state`, `wetsand_round_in_setup`,
-    `wetsand_round_overtime`
-  - `wetsand_round_winner`, `wetsand_round_win_reason`,
-    `wetsand_round_full_round`, `wetsand_rounds_remaining`
-  - `wetsand_preround_end_time`, `wetsand_stalemate_reason`,
-    `wetsand_game_over_reason`
-  - `wetsand_round_goal_<team>`, `wetsand_round_role_<team>`
-  - `wetsand_mini_round_{stage,count,name}` (published through the capture
+  - `ws_rounds_active`, `ws_round_state`, `ws_round_in_setup`,
+    `ws_round_overtime`
+  - `ws_round_winner`, `ws_round_win_reason`,
+    `ws_round_full_round`, `ws_rounds_remaining`
+  - `ws_preround_end_time`, `ws_stalemate_reason`,
+    `ws_game_over_reason`
+  - `ws_round_goal_<team>`, `ws_round_role_<team>`
+  - `ws_mini_round_{stage,count,name}` (published through the capture
     controller)
-  - `wetsand_gameplay_halted`
-  - `wetsand_timer_{shown,paused,time_left,end_time,in_setup,auto_countdown,serial}`
+  - `ws_gameplay_halted`
+  - `ws_timer_{shown,paused,time_left,end_time,in_setup,auto_countdown,serial}`
 
-  It adds `wetsand_round_hud_type` (`mode.HUD`).
+  It adds `ws_round_hud_type` (`mode.HUD`).
 - **Net messages:**
-  - `wetsand_pa_sound_file`, `wetsand_pa_announce_text` and
-    `wetsand_round_notice_show` keep their names and formats.
-  - New: `wetsand_timer_time_added` (UInt team, Int seconds) replaces the
+  - `ws_pa_sound_file`, `ws_pa_announce_text` and
+    `ws_round_notice_show` keep their names and formats.
+  - New: `ws_timer_time_added` (UInt team, Int seconds) replaces the
     `"+m:ss"` announcement (G9).
 - **capture** publishes:
-  - `wetsand_point_count`
-  - `wetsand_point_layout` (the master's `caplayout`)
-  - for each rank r (1-based), `wetsand_point_<r>_`:
+  - `ws_point_count`
+  - `ws_point_layout` (the master's `caplayout`)
+  - for each rank r (1-based), `ws_point_<r>_`:
     - `owner`, `locked`, `unlock_time`
     - `capping`, `progress`, `cappers`, `required`, `blocked`
     - `red_can_cap`, `blue_can_cap`, `in_round`, `hidden`
     - `name` (the print name), `timer_end`
 
-  It publishes at 10 Hz while `WETSAND.Active()`. Player NW2 values
-  `wetsand_capture_point` (the rank the player stands in; 0 for none) and
-  `wetsand_capture_reason` (`REASON_*`) drive the capture panel.
-  sv_payload's `wetsand_capture_*` keys and their drawer are removed (C).
-- **koth** publishes `wetsand_koth_clock_<team>_{time_left,end_time,paused}`
+  It publishes at 10 Hz while `WS.Active()`. Player NW2 values
+  `ws_capture_point` (the rank the player stands in; 0 for none) and
+  `ws_capture_reason` (`REASON_*`) drive the capture panel.
+  sv_payload's `ws_capture_*` keys and their drawer are removed (C).
+- **koth** publishes `ws_koth_clock_<team>_{time_left,end_time,paused}`
   for teams 2 and 3.
-- **payload** keeps `wetsand_cart_*` unchanged.
+- **payload** keeps `ws_cart_*` unchanged.
 
 ## 3. Migration of the legacy code (payload working at every merge)
 
 | legacy file | fate | package |
 |---|---|---|
-| `wetsand/sv_rounds.lua` | into the rounds controller (timer registry, setup and overtime, switch teams, notices, `SoundTo`); deleted | R |
-| `wetsand/cl_rounds.lua`, `wetsand/cl_announcer.lua` | into the rounds view; deleted | R |
-| `wetsand/cl_hud.lua` | R moves timer, preround, respawn and announcement to the rounds view, deletes `DrawCaptures`, and leaves only the carts behind a `SandcastleHUDPaint` hook. P moves the carts to the payload view and deletes the file | R, then P |
-| `cl_init.lua` | drops `WETSAND.DrawHUD()` and `WETSAND.AnnouncerThink()` (views hook `SandcastleHUDPaint` and `Think`) | R |
-| `wetsand/sh_core.lua` | gains `WETSAND.InSetup()` and `WETSAND.InOvertime()` readers of the Global2 keys, so aiwar and filters work on any map | R |
-| `wetsand/sv_controlpoint.lua` | into the capture model and controller; deleted | C |
-| `wetsand/sv_payload.lua` | C removes `PublishCaptures`, uses `capture:FinalPointInMap` / `TeamMayCapture` / `Owner` / `CurrentRound`, registers the watcher timer hold, and sets the payload-free parts it needs. P moves the rest to the payload controller and deletes it | C, then P |
-| `wetsand/cl_payload.lua` | into the payload view; deleted | P |
+| `ws/sv_rounds.lua` | into the rounds controller (timer registry, setup and overtime, switch teams, notices, `SoundTo`); deleted | R |
+| `ws/cl_rounds.lua`, `ws/cl_announcer.lua` | into the rounds view; deleted | R |
+| `ws/cl_hud.lua` | R moves timer, preround, respawn and announcement to the rounds view, deletes `DrawCaptures`, and leaves only the carts behind a `SandcastleHUDPaint` hook. P moves the carts to the payload view and deletes the file | R, then P |
+| `cl_init.lua` | drops `WS.DrawHUD()` and `WS.AnnouncerThink()` (views hook `SandcastleHUDPaint` and `Think`) | R |
+| `ws/sh_core.lua` | gains `WS.InSetup()` and `WS.InOvertime()` readers of the Global2 keys, so aiwar and filters work on any map | R |
+| `ws/sv_controlpoint.lua` | into the capture model and controller; deleted | C |
+| `ws/sv_payload.lua` | C removes `PublishCaptures`, uses `capture:FinalPointInMap` / `TeamMayCapture` / `Owner` / `CurrentRound`, registers the watcher timer hold, and sets the payload-free parts it needs. P moves the rest to the payload controller and deletes it | C, then P |
+| `ws/cl_payload.lua` | into the payload view; deleted | P |
 | `entities/tf_gamerules.lua` | thin binding (forwards) | R |
 | `entities/team_round_timer.lua`, `game_round_win.lua`, `tf_logic_competitive.lua` | thin bindings | R |
 | `entities/team_control_point_master.lua`, `team_control_point_round.lua`, `trigger_capture_area.lua` | thin bindings (round keeps `:Points()` and `:GetName()` for sv_teams_spawn's hook) | C |
-| `entities/team_train_watcher.lua` | `WETSAND.CapTeam`→`capture:Owner`, `FinalPointInMap`→`capture:FinalPointInMap` (C); `WETSAND.Payload`/`CartSpeedScale`→payload controller (P) | C, then P |
-| callers of `WETSAND.CapTeam/PointIndex/ControlPoints/Master/TeamCanCapPoint/CurrentRound`: `sv_teams_spawn.lua`, `sv_spectate.lua`, `filter_activator_tfteam.lua`, `headless_hatman.lua` | call `WETSAND.Feature("capture")`'s methods | C |
-| `features/editors/sv.lua` | `WETSAND.HudTimer`→`rounds:HudTimer()`, `timer.paused`→`timer:Paused()` (R); `WETSAND.CartSpeedScale`→payload controller (P) | R, then P |
+| `entities/team_train_watcher.lua` | `WS.CapTeam`→`capture:Owner`, `FinalPointInMap`→`capture:FinalPointInMap` (C); `WS.Payload`/`CartSpeedScale`→payload controller (P) | C, then P |
+| callers of `WS.CapTeam/PointIndex/ControlPoints/Master/TeamCanCapPoint/CurrentRound`: `sv_teams_spawn.lua`, `sv_spectate.lua`, `filter_activator_tfteam.lua`, `headless_hatman.lua` | call `WS.Feature("capture")`'s methods | C |
+| `features/editors/sv.lua` | `WS.HudTimer`→`rounds:HudTimer()`, `timer.paused`→`timer:Paused()` (R); `WS.CartSpeedScale`→payload controller (P) | R, then P |
 
 States:
 - **After R and C (merged back to back):** payload plays as today through
@@ -761,12 +761,12 @@ States:
 - **Proxy.** When the rounds controller loads, it hooks `InitPostEntity`,
   or runs at once if that has passed. With no `tf_gamerules`, it
   `ents.Create`s one, `SetName("tf_gamerules")`s it, and spawns it.
-  `WETSAND.Active()` becomes true when a proxy binds.
+  `WS.Active()` becomes true when a proxy binds.
 - **`logic_auto` (G3).** During the cleanup effect, an `EntityKeyValue`
   hook in the rounds controller returns `""` for `OnMultiNewMap` on
   `logic_auto`, so the engine's re-fire goes nowhere.
   `new_round_outputs` then fires each `logic_auto`'s recorded
-  `OnMultiNewRound` (`WETSAND.FireOutput(ent, "OnMultiNewRound", ent)`) on
+  `OnMultiNewRound` (`WS.FireOutput(ent, "OnMultiNewRound", ent)`) on
   the next tick, before an auto-removing one removes itself. This covers
   the first round too (no cleanup; `OnMultiNewMap` already fired at load,
   as in TF2).
@@ -804,7 +804,7 @@ States:
 ## 5. Bindings (entities: no rules)
 
 Every binding stores its keyvalues. In `Initialize` it calls
-`WETSAND.Feature(...)` and a `Bind*`. Its `AcceptInput` is an INPUTS table
+`WS.Feature(...)` and a `Bind*`. Its `AcceptInput` is an INPUTS table
 keyed by lowercased input name, forwarding to the controller. Outputs are
 fired by the controller on the entity (`TriggerOutput`).
 
@@ -813,16 +813,16 @@ fired by the controller on the entity (`TriggerOutput`).
 | tf_gamerules (R) | rounds | `On*` stored | today's INPUTS; `SetRed/BlueKothClockActive` → `ActivateTeamClock`; `SetCTFCaptureBonusTime`, `HandleMapEvent`, `SetMapForcedTruceDuringBossFight`, `SetCustomUpgradesFile` accepted and ignored | OnStateEnter*, OnStateExitPreRound, OnWonByTeam1/2, Team1/2PlayersChanged |
 | team_round_timer (R) | rounds | today's `INT_KEYS` | today's (`DoInput` kept for Lua callers) | the model's `output` events |
 | game_round_win, tf_logic_competitive (R) | rounds | as today | as today | OnRoundWin; OnSpawnRoomDoorsShouldLock/Unlock |
-| team_control_point (engine) (C) | capture | via `WETSAND.KeyValues` | SetOwner, SetLocked, SetUnlockTime, HideModel, ShowModel, RoundActivate (AcceptInput hook installed by the controller) | OnCapTeam1/2, OnCapReset, OnOwnerChangedToTeam1/2, OnRoundStartOwnedByTeam1/2, OnUnlocked (`WETSAND.FireOutput`) |
+| team_control_point (engine) (C) | capture | via `WS.KeyValues` | SetOwner, SetLocked, SetUnlockTime, HideModel, ShowModel, RoundActivate (AcceptInput hook installed by the controller) | OnCapTeam1/2, OnCapReset, OnOwnerChangedToTeam1/2, OnRoundStartOwnedByTeam1/2, OnUnlocked (`WS.FireOutput`) |
 | team_control_point_master (C) | capture | as today | Enable, Disable, SetWinner, SetWinnerAndForceCaps, RoundSpawn, RoundActivate, SetCapLayout, SetCapLayoutCustomPosition* | OnWonByTeam1/2 |
 | team_control_point_round (C) | capture | as today | Enable, Disable, RoundSpawn | OnStart, OnEnd, OnWonByTeam1/2 |
 | trigger_capture_area (C) | capture | as today | as today | as today |
 | tf_logic_koth (K) | koth | timer_length, unlock_point | RoundSpawn, RoundActivate, SetRed/BlueTimer, AddRed/BlueTimer | none (TF2 has none) |
 | tf_logic_cp_timer (M) | capture | controlpoint, timer_length, team_number | RoundSpawn (re-find point) | OnCountdownStart, OnCountdownEnd |
-| trigger_ignite (M) | none (a `wetsand_trigger_volume`) | burn_duration, damage_percent_per_second, ignite_particle_name, ignite_sound_name | Enable, Disable | none |
+| trigger_ignite (M) | none (a `ws_trigger_volume`) | burn_duration, damage_percent_per_second, ignite_particle_name, ignite_sound_name | Enable, Disable | none |
 | tf_logic_on_holiday (M) | holiday | none | Fire | IsHalloween, IsSmissmas, IsTFBirthday, IsFullMoon, IsAprilFools, IsValentines, IsNothing (from `holiday:HolidayActive`) |
 | filter_tf_condition (M, P2) | none | condition, Negated | as a filter | none |
-| tf_logic_medieval (M) | none (a `wetsand_stub_point`) | none | none | none |
+| tf_logic_medieval (M) | none (a `ws_stub_point`) | none | none | none |
 
 ## 6. Views
 
@@ -830,9 +830,9 @@ All views draw through `SandcastleHUDPaint(w, h)` and read only networked
 state. `cl_hud_round_timer_y` stays and positions the top row.
 
 - **Rounds view.** Today's timer box and labels (PREPARE, SETUP, OVERTIME),
-  hidden when `wetsand_round_hud_type == HUD_KOTH` (the KOTH panel replaces
+  hidden when `ws_round_hud_type == HUD_KOTH` (the KOTH panel replaces
   it); a "+m:ss" flash beside the timer for 2 s on
-  `wetsand_timer_time_added`; the pre-round and respawn countdowns; the
+  `ws_timer_time_added`; the pre-round and respawn countdowns; the
   announcement line; the round panel, win, sudden death and game-over
   panels, and notices (from cl_rounds); the announcer (from cl_announcer).
 - **Capture view.**
@@ -847,7 +847,7 @@ state. `cl_hud_round_timer_y` stays and positions the top row.
     - a dimmed icon when not `in_round`;
     - a `timer_end` countdown under it.
   - Hidden points are skipped.
-  - While `wetsand_capture_point > 0`, a capture panel above the crosshair
+  - While `ws_capture_point > 0`, a capture panel above the crosshair
     shows the localized `REASON_TOKEN` text, via the rounds text
     `Localize`.
   - The unlock announcer (`Announcer.RoundBegins5Seconds`..`1Seconds`, then
@@ -858,7 +858,7 @@ state. `cl_hud_round_timer_y` stays and positions the top row.
 - **KOTH view.**
   - BLU's clock left and RED's right, in team colours; the running one
     bright, the paused one dimmed.
-  - The OVERTIME label while `wetsand_round_overtime`.
+  - The OVERTIME label while `ws_round_overtime`.
   - Each running clock speaks "Mission ends in 60/30/10/5..1"
     (`ArmClientWarnings`/`NextClientWarning`), re-armed when its paused
     state or length changes.
@@ -872,10 +872,10 @@ It asks for other changes in its report.
 
 | pkg | owns | depends on |
 |---|---|---|
-| **R rounds** | foundation/rounds.lua (rewrite); foundation/rounds/{timer,text,control_points}.lua (new); features/rounds/{sv,cl}.lua (new); entities/{tf_gamerules,team_round_timer,game_round_win,tf_logic_competitive}.lua; wetsand/{cl_hud,sh_core}.lua (edits); deletes wetsand/{sv_rounds,cl_rounds,cl_announcer}.lua; cl_init.lua; features/editors/sv.lua (timer lines only); tests/{rounds_game,rounds_timer,rounds_text,rounds_rules,rounds_modes}_test.lua, tests/fake_objective.lua | lands first, together with C |
-| **C capture** | foundation/capture.lua (rewrite as PointSet); foundation/capture/{area,master}.lua (new; area = today's capture.lua); features/capture/{sv,cl}.lua (new); entities/{team_control_point_master,team_control_point_round,trigger_capture_area}.lua; deletes wetsand/sv_controlpoint.lua; call-site edits in wetsand/{sv_payload,sv_teams_spawn,sv_spectate}.lua, entities/{team_train_watcher,filter_activator_tfteam,headless_hatman}.lua; tests/{capture_area,capture_points,capture_master}_test.lua (capture_test.lua renamed to capture_area_test.lua; the capture-order and mini-round cases move here from rounds_rules_test) | R's interfaces (section 2.4); merges right after R |
+| **R rounds** | foundation/rounds.lua (rewrite); foundation/rounds/{timer,text,control_points}.lua (new); features/rounds/{sv,cl}.lua (new); entities/{tf_gamerules,team_round_timer,game_round_win,tf_logic_competitive}.lua; ws/{cl_hud,sh_core}.lua (edits); deletes ws/{sv_rounds,cl_rounds,cl_announcer}.lua; cl_init.lua; features/editors/sv.lua (timer lines only); tests/{rounds_game,rounds_timer,rounds_text,rounds_rules,rounds_modes}_test.lua, tests/fake_objective.lua | lands first, together with C |
+| **C capture** | foundation/capture.lua (rewrite as PointSet); foundation/capture/{area,master}.lua (new; area = today's capture.lua); features/capture/{sv,cl}.lua (new); entities/{team_control_point_master,team_control_point_round,trigger_capture_area}.lua; deletes ws/sv_controlpoint.lua; call-site edits in ws/{sv_payload,sv_teams_spawn,sv_spectate}.lua, entities/{team_train_watcher,filter_activator_tfteam,headless_hatman}.lua; tests/{capture_area,capture_points,capture_master}_test.lua (capture_test.lua renamed to capture_area_test.lua; the capture-order and mini-round cases move here from rounds_rules_test) | R's interfaces (section 2.4); merges right after R |
 | **K koth** | foundation/rounds/koth.lua; features/koth/{sv,cl}.lua; entities/tf_logic_koth.lua; tests/koth_test.lua | model and test: R's and C's models; controller and view: R+C merged |
-| **P payload** | foundation/rounds/payload.lua; features/payload/{sv,cl}.lua; deletes wetsand/{sv_payload,cl_payload,cl_hud}.lua; entities/{team_train_watcher,tf_logic_multiple_escort}.lua; foundation/payload.lua (callers of its duplicated point rules → master); features/editors/sv.lua (cart lines only); tests/payload_mode_test.lua (updates payload_test only where functions move) | R+C merged |
+| **P payload** | foundation/rounds/payload.lua; features/payload/{sv,cl}.lua; deletes ws/{sv_payload,cl_payload,cl_hud}.lua; entities/{team_train_watcher,tf_logic_multiple_escort}.lua; foundation/payload.lua (callers of its duplicated point rules → master); features/editors/sv.lua (cart lines only); tests/payload_mode_test.lua (updates payload_test only where functions move) | R+C merged |
 | **M logic** | foundation/capture/point_timer.lua; entities/{tf_logic_cp_timer,trigger_ignite,tf_logic_on_holiday,filter_tf_condition,tf_logic_medieval}.lua; tests/{capture_point_timer,trigger_ignite}_test.lua (and a pure `foundation.hazards.ignite` part if the burn needs a rule beyond the trigger volume) | R+C merged |
 | **T tools** (written with this plan, left uncommitted for the integrator) | .devtools/bin/{map_census,test_map_census}.py | none |
 
@@ -918,7 +918,7 @@ The tests run under LuaJIT with a fake clock and a scripted random source.
      and `output OnStateEnterPreRound`. There is no `cleanup` on the fresh
      map. After 3 s it goes to RND_RUNNING with `doors_unlock`,
      `output OnStateExitPreRound`, `output OnStateEnterRoundRunning` and
-     `hook WetsandRoundActive`.
+     `hook WSRoundActive`.
   2. `SetWinningTeam(RED, DEFEND_UNTIL_TIME_LIMIT, full reset, switch)`
      gives `score RED 1`, `publish_win`, TEAM_WIN, `win_song` and
      `output OnWonByTeam1`. After the bonus time it goes to PREROUND with
@@ -1053,7 +1053,7 @@ together, on a fake clock):
 - **`trigger_ignite_test`**, only if a rule part is needed: the burn
   cadence and damage percent against `CTriggerIgnite::BurnEntities`.
 
-### 7.3 Loading checks (integrator, `wetsand_memory` and `package.loaded`)
+### 7.3 Loading checks (integrator, `ws_memory` and `package.loaded`)
 
 | map | features loaded (besides any Halloween ones) |
 |---|---|
@@ -1081,7 +1081,7 @@ together, on a fake clock):
 
 ## 9. In-game checklist (integrator, after the merges named)
 
-Use a local server with bots (`bot`, then `wetsand` team commands) and
+Use a local server with bots (`bot`, then `ws` team commands) and
 `mp_stalemate_enable 1` where noted.
 
 ### 9.1 After R+C
@@ -1128,7 +1128,7 @@ is honoured with `mp_timelimit` set.
 - On pl_badwater and plr_hightower, carts move, roll back and alarm.
 - The race HUD and lines work, as does the final point.
 - Payload overtime holds on the pushed cart.
-- `wetsand_memory` shows no koth.
+- `ws_memory` shows no koth.
 
 **Spawns and filters:** respawn rooms and team filters follow point owners
 on dustbowl stage 2 (sv_teams_spawn, filter_activator_tfteam).
@@ -1169,7 +1169,7 @@ the added output fires at its mark.
   holiday forced).
 - **`game_text_tf`:** `ents.Create("game_text_tf"):IsValid()` is true in
   GMod; the `display` on cp_granary shows text.
-- **After P:** none of `wetsand/{sv_payload,cl_payload,cl_hud}.lua`
+- **After P:** none of `ws/{sv_payload,cl_payload,cl_hud}.lua`
   exists, and payload plays as in 9.1.
 
 ## 10. Judgment calls to revisit
@@ -1183,7 +1183,7 @@ the added output fires at its mark.
   entities call. Splitting them further would need a shim file with two
   owners.
 - **Creating the proxy on maps without one** makes every map with an
-  objective entity a TF2 map for `WETSAND.Active()`.
+  objective entity a TF2 map for `WS.Active()`.
 - **`OnMultiNewMap` is suppressed** by overriding the keyvalue during
   cleanup. `OnMultiNewRound` fires one tick after cleanup, not in the
   `logic_auto`'s own think, so its order against `OnMapSpawn` may differ

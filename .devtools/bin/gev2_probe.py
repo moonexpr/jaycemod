@@ -5,16 +5,16 @@ or on the clients that joined it.
   gev2_probe.py run <probe> [<probe> ...]                     on the server
   gev2_probe.py run --client [--label L] <probe> [<probe> ...]  on every joined client
 
-Each probe is copied to garrysmod/data/wetsand_tests/gev2/<probe>.txt.
+Each probe is copied to garrysmod/data/ws_tests/gev2/<probe>.txt.
 
 - On the server it runs with lua_run RunString(...), and writes its findings
-  to data/wetsand_tests/gev2/out/<probe>.txt, which this prints and copies to
+  to data/ws_tests/gev2/out/<probe>.txt, which this prints and copies to
   .devtools/artifacts/gev2-research/live/<probe>.txt.
 - With --client the server SendLua's every human player a one-line loader
   that RunString's the probe from the client's data folder (the client and
   the server share one garrysmod/, so the copy is already there; this works
   with sv_allowcslua 0). The client writes
-  data/wetsand_tests/gev2/client_out/<probe>.txt, which this prints and copies
+  data/ws_tests/gev2/client_out/<probe>.txt, which this prints and copies
   to .devtools/artifacts/gev2-research/client/<probe>.txt, or
   <probe>-<L>.txt with --label, so each step of a session keeps its own.
 
@@ -35,7 +35,7 @@ import gmod_client  # noqa: E402
 import srcds  # noqa: E402
 
 PROBES = Path(__file__).resolve().parent / "gev2"
-DATA_NAME = "wetsand_tests/gev2"
+DATA_NAME = "ws_tests/gev2"
 LIVE = srcds.ARTIFACTS / "gev2-research" / "live"
 CLIENT = srcds.ARTIFACTS / "gev2-research" / "client"
 CLIENT_OUT = "client_out"

@@ -3,15 +3,15 @@
 -- the engine's cannot: our Lua Behaviors, our path strategies' costs, and
 -- routes searched in Lua. The rules are foundation.npc.debug's; this file
 -- keeps one Subscription per admin, finds the NPCs through the hook
--- WetsandNbDebugNpcs (the npc and aiwar controllers answer it), asks the npc
+-- WSNbDebugNpcs (the npc and aiwar controllers answer it), asks the npc
 -- controller to watch the path searches of the NPCs someone draws, watches
 -- their Behaviors, and sends each admin only what they asked for. The AIWAR
 -- layer is the AI war's own soldier overlay: its controller sends it to the
--- players whose ply.wetsandAiwarDebug this file sets.
+-- players whose ply.wsAiwarDebug this file sets.
 --
--- Loaded by the first wetsand_nb_* command (wetsand/sv_nbdebug.lua) or
--- wetsand_aiwar_debug; its client part (cl.lua) is the one view for all of it.
-local Debug = WETSAND.require("foundation.npc.debug")
+-- Loaded by the first ws_nb_* command (ws/sv_nbdebug.lua) or
+-- ws_aiwar_debug; its client part (cl.lua) is the one view for all of it.
+local Debug = WS.require("foundation.npc.debug")
 
 -- The game events it fires are sh.lua's.
 local MAX_POINTS, MAX_NPCS, MAX_LINES = Debug.MAX_POINTS, Debug.MAX_NPCS, Debug.MAX_LINES
@@ -22,7 +22,7 @@ local NAV_INTERVAL = 0.5
 local NAV_STEP_DOWN, NAV_STEP_UP = 200, 200 -- navmesh.Find's reach below and above the NPC
 local NW, NE, SE, SW = 0, 1, 2, 3 -- CNavArea::GetCorner's NavCornerType
 
-local NPCS_HOOK = "WetsandNbDebugNpcs"
+local NPCS_HOOK = "WSNbDebugNpcs"
 
 -- Where the NAV layer takes an area's attribute names: :Of(area) -> list.
 -- GMod's nav mesh has no TF2 attributes (TF_NAV_*); they will come from a
@@ -94,7 +94,7 @@ end
 
 function Controller:SetPathWatch(ent, index, watch)
 	if SameWatch(self.pathWatches[ent], watch) then return end
-	WETSAND.Feature("npc"):WatchPaths(index, watch)
+	WS.Feature("npc"):WatchPaths(index, watch)
 	self.pathWatches[ent] = watch
 	if watch == nil then self.reports[ent] = nil end
 end
@@ -120,7 +120,7 @@ function Controller:ApplyWatches(subs)
 end
 
 function Controller:Forget(ent)
-	if self.pathWatches[ent] then WETSAND.Feature("npc"):WatchPaths(ent:EntIndex(), nil) end
+	if self.pathWatches[ent] then WS.Feature("npc"):WatchPaths(ent:EntIndex(), nil) end
 	self.pathWatches[ent], self.reports[ent], self.logs[ent] = nil, nil, nil
 	self.bots[ent], self.npcs[ent] = nil, nil
 	for _, sub in pairs(self.subscriptions) do sub:Forget(ent) end
@@ -145,7 +145,7 @@ end
 
 function Controller:SendState(ply, sub)
 	local selected = sub.selected
-	WETSAND.Events.Fire("nb_debug_state", {
+	WS.Events.Fire("nb_debug_state", {
 		layers = Debug.LayerNames(sub.layers),
 		selected = IsValid(selected) and selected:EntIndex() or NO_SELECTION,
 	}, ply)
@@ -160,7 +160,7 @@ function Controller:SendPath(recipients, bot, report)
 			move = report.points[i].move,
 		}
 	end
-	WETSAND.Events.Fire("nb_debug_path", {
+	WS.Events.Fire("nb_debug_path", {
 		index = bot.index,
 		strategy = report.strategy,
 		source = report.source,
@@ -191,7 +191,7 @@ function Controller:SendCost(recipients, bot, report)
 			}
 		end
 	end
-	WETSAND.Events.Fire("nb_debug_cost", {
+	WS.Events.Fire("nb_debug_cost", {
 		index = bot.index,
 		total = #report.explored,
 		areas = areas,
@@ -222,7 +222,7 @@ function Controller:SendBehavior(ply, sub, now)
 			}
 		end
 	end
-	WETSAND.Events.Fire("nb_debug_behavior", { npcs = items }, ply)
+	WS.Events.Fire("nb_debug_behavior", { npcs = items }, ply)
 end
 
 function Controller:SendNav(ply, sub)
@@ -243,7 +243,7 @@ function Controller:SendNav(ply, sub)
 			attributes = self.navAttributes:Of(item.area),
 		}
 	end
-	WETSAND.Events.Fire("nb_debug_nav", { areas = areas }, ply)
+	WS.Events.Fire("nb_debug_nav", { areas = areas }, ply)
 end
 
 -------------------------------------------------------------------------------
@@ -284,28 +284,28 @@ function Controller:OnRemoved(ent)
 		if IsValid(ply) and sub:IsActive() then viewers[#viewers + 1] = ply end
 	end
 	if #viewers == 0 then return end
-	WETSAND.Events.Fire("nb_debug_npc_removed", { index = index }, viewers)
+	WS.Events.Fire("nb_debug_npc_removed", { index = index }, viewers)
 end
 
-hook.Add("Think", "wetsand_nbdebug", function()
+hook.Add("Think", "ws_nbdebug", function()
 	Controller:Tick(CurTime())
 end)
 
-hook.Add("WetsandNpcPathComputed", "wetsand_nbdebug", function(ent, report)
+hook.Add("WSNpcPathComputed", "ws_nbdebug", function(ent, report)
 	Controller:OnPathComputed(ent, report)
 end)
 
-hook.Add("EntityRemoved", "wetsand_nbdebug", function(ent)
+hook.Add("EntityRemoved", "ws_nbdebug", function(ent)
 	Controller:OnRemoved(ent)
 end)
 
 -------------------------------------------------------------------------------
--- Commands (registered by wetsand/sv_nbdebug.lua, which checks who may run them)
+-- Commands (registered by ws/sv_nbdebug.lua, which checks who may run them)
 
 -- After a change to what a player sees: watch accordingly, tell their view,
 -- and send what is already known.
 function Controller:Changed(ply, sub)
-	ply.wetsandAiwarDebug = sub:Shows(Debug.AIWAR) or nil
+	ply.wsAiwarDebug = sub:Shows(Debug.AIWAR) or nil
 	self:Collect()
 	self:ApplyWatches(self:Subscriptions())
 	self:SendState(ply, sub)
@@ -347,44 +347,44 @@ end
 
 -- nb_select: the NPC with the given entity index (0: none), else the one
 -- under the crosshair, or none.
-COMMANDS.wetsand_nb_select = function(self, ply, sub, args)
-	local bot, ok = self:Target(ply, "wetsand_nb_select", args, function() return self:Aimed(ply) end)
+COMMANDS.ws_nb_select = function(self, ply, sub, args)
+	local bot, ok = self:Target(ply, "ws_nb_select", args, function() return self:Aimed(ply) end)
 	if not ok then return end
 	sub:Select(bot and bot.key)
 	if bot then
-		Tell(ply, string.format("wetsand_nb_select: %s #%d (%s)", bot.class, bot.index, bot.variant))
+		Tell(ply, string.format("ws_nb_select: %s #%d (%s)", bot.class, bot.index, bot.variant))
 	else
-		Tell(ply, "wetsand_nb_select: selection cleared")
+		Tell(ply, "ws_nb_select: selection cleared")
 	end
 	self:Changed(ply, sub)
 end
 
-COMMANDS.wetsand_nb_debug = function(self, ply, sub, args)
+COMMANDS.ws_nb_debug = function(self, ply, sub, args)
 	for _, token in ipairs(sub:SetLayers(args)) do
-		Tell(ply, string.format("wetsand_nb_debug: invalid layer '%s' (%s, ALL or OFF)", token, table.concat(Debug.LAYERS, ", ")))
+		Tell(ply, string.format("ws_nb_debug: invalid layer '%s' (%s, ALL or OFF)", token, table.concat(Debug.LAYERS, ", ")))
 	end
-	Tell(ply, "wetsand_nb_debug: " .. Debug.DescribeLayers(sub.layers))
+	Tell(ply, "ws_nb_debug: " .. Debug.DescribeLayers(sub.layers))
 	if (sub:Shows(Debug.COST) or sub:Shows(Debug.NAV)) and sub.selected == nil then
-		Tell(ply, "wetsand_nb_debug: COST and NAV draw the selected NPC only; aim at one and run wetsand_nb_select")
+		Tell(ply, "ws_nb_debug: COST and NAV draw the selected NPC only; aim at one and run ws_nb_select")
 	end
 	self:Changed(ply, sub)
 end
 
-COMMANDS.wetsand_nb_debug_filter = function(self, ply, sub, args)
+COMMANDS.ws_nb_debug_filter = function(self, ply, sub, args)
 	sub:SetFilter(args)
-	Tell(ply, "wetsand_nb_debug_filter: " .. Debug.DescribeFilter(sub.filter))
+	Tell(ply, "ws_nb_debug_filter: " .. Debug.DescribeFilter(sub.filter))
 	self:Changed(ply, sub)
 end
 
-COMMANDS.wetsand_nb_dump = function(self, ply, sub)
+COMMANDS.ws_nb_dump = function(self, ply, sub)
 	local ent = sub.selected
 	if not IsValid(ent) then
-		Tell(ply, "wetsand_nb_dump: select an NPC first (wetsand_nb_select)")
+		Tell(ply, "ws_nb_dump: select an NPC first (ws_nb_select)")
 		return
 	end
 	local report, bot = self.reports[ent], self.bots[ent]
 	if not report then
-		Tell(ply, string.format("wetsand_nb_dump: #%d has not searched for a path since it was selected; try again once it repaths", ent:EntIndex()))
+		Tell(ply, string.format("ws_nb_dump: #%d has not searched for a path since it was selected; try again once it repaths", ent:EntIndex()))
 		return
 	end
 	local map = game.GetMap()
@@ -397,17 +397,17 @@ COMMANDS.wetsand_nb_dump = function(self, ply, sub)
 	local path = Debug.DumpPath(map, bot.index, os.time())
 	file.CreateDir(Debug.DUMP_DIR)
 	file.Write(path, util.TableToJSON(doc, true))
-	Tell(ply, "wetsand_nb_dump: wrote garrysmod/data/" .. path .. (report.explored and "" or " (no costs: the search began before the selection)"))
+	Tell(ply, "ws_nb_dump: wrote garrysmod/data/" .. path .. (report.explored and "" or " (no costs: the search began before the selection)"))
 end
 
 -- An NPC's behavior (the one with the given entity index, else the
 -- selected one), as the BEHAVIOR layer draws it and in both notations
 -- (foundation.npc.debug's Tdbn and Obn), in the player's console.
-COMMANDS.wetsand_nb_behavior_print = function(self, ply, sub, args)
-	local bot, ok = self:Target(ply, "wetsand_nb_behavior_print", args, function() return self.bots[sub.selected] end)
+COMMANDS.ws_nb_behavior_print = function(self, ply, sub, args)
+	local bot, ok = self:Target(ply, "ws_nb_behavior_print", args, function() return self.bots[sub.selected] end)
 	if not ok then return end
 	if bot == nil then
-		Tell(ply, "wetsand_nb_behavior_print: select an NPC first (wetsand_nb_select), or give its entity index")
+		Tell(ply, "ws_nb_behavior_print: select an NPC first (ws_nb_select), or give its entity index")
 		return
 	end
 	local ent = bot.key
@@ -418,16 +418,16 @@ COMMANDS.wetsand_nb_behavior_print = function(self, ply, sub, args)
 	for _, line in ipairs(Debug.BehaviorReport(title, name, frames, log and log:Entries(), now)) do
 		ply:PrintMessage(HUD_PRINTCONSOLE, line)
 	end
-	Tell(ply, "wetsand_nb_behavior_print: printed #" .. bot.index .. "'s behavior to your console")
+	Tell(ply, "ws_nb_behavior_print: printed #" .. bot.index .. "'s behavior to your console")
 end
 
 function Controller:Command(name, ply, args)
 	COMMANDS[name](self, ply, self:SubscriptionOf(ply), args)
 end
 
--- Toggles one layer, as wetsand_nb_debug <layer> does (wetsand_aiwar_debug).
+-- Toggles one layer, as ws_nb_debug <layer> does (ws_aiwar_debug).
 function Controller:ToggleLayer(ply, layer)
-	self:Command("wetsand_nb_debug", ply, { layer })
+	self:Command("ws_nb_debug", ply, { layer })
 end
 
 return Controller

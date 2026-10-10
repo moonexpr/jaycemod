@@ -245,7 +245,7 @@ Reports are the only way enemy knowledge enters a blackboard (§0.6).
 
 ## 6. The DrGBase bridge
 
-`wetsand_drg_soldier` forwards DrGBase's hooks to the controller, which
+`ws_drg_soldier` forwards DrGBase's hooks to the controller, which
 forwards them to the soldier's stack. Each hook below is in DrGBase's source
 with the arguments shown (`entities/drgbase_nextbot/ai.lua`, `awareness.lua`,
 `hooks.lua`):
@@ -258,8 +258,8 @@ with the arguments shown (`entities/drgbase_nextbot/ai.lua`, `awareness.lua`,
 | `OnNewEnemy(ent)` / `OnLastEnemy(ent)` | events `OnContact` / `OnContactLost` | contact starts and ends |
 | `OnNavAreaChanged` | event | TF2 uses it in the tactical monitor |
 | `OnFetchEnemy(a, b)` → bool (a is preferred) | query `SelectMoreDangerousThreat` | squad focus fire; `nil` leaves DrGBase's priority-then-range order |
-| `OnRangeAttack` / `OnMeleeAttack` | query `ShouldAttack` (NO → return true to hold fire) | replaces the `WetsandDisarmed` special case |
-| `ShouldRun` | query `ShouldHurry` | replaces `WetsandRun` |
+| `OnRangeAttack` / `OnMeleeAttack` | query `ShouldAttack` (NO → return true to hold fire) | replaces the `WSDisarmed` special case |
+| `ShouldRun` | query `ShouldHurry` | replaces `WSRun` |
 
 Steering (`NSTarget` and `FollowPath`) stays as it is. Only where the
 target comes from changes.

@@ -1,5 +1,5 @@
 -- foundation.settings: the server convars an admin may set from the
--- Utilities menu on a dedicated server (wetsand_server_set), each held to
+-- Utilities menu on a dedicated server (ws_server_set), each held to
 -- the range its menu control offers.
 local T = dofile("tests/harness.lua")
 local Settings = T.require("foundation.settings")
@@ -8,8 +8,8 @@ local Slots = T.require("foundation.aiwar.slots")
 
 T.test("a value in range is accepted as the convar's text", function()
 	T.eq(Settings.Parse("mp_aiwar_team_size", "6"), "6")
-	T.eq(Settings.Parse("wetsand_aiwar_debug_full", "1"), "1")
-	T.eq(Settings.Parse("wetsand_nodegraph_max_nodes", "2048"), "2048")
+	T.eq(Settings.Parse("ws_aiwar_debug_full", "1"), "1")
+	T.eq(Settings.Parse("ws_nodegraph_max_nodes", "2048"), "2048")
 end)
 
 T.test("a slider's fractional value rounds to the whole number its convar holds", function()

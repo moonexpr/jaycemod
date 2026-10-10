@@ -1422,7 +1422,7 @@ T.test("the merasmus bindings load nothing at top level", function()
 	for _, file in ipairs({ "merasmus.lua", "tf_merasmus_trick_or_treat_prop.lua" }) do
 		for line in ReadFile(ENTITIES .. file):gmatch("[^\n]+") do
 			local top = not (line:match("^%s") or line:match("^function "))
-			local loads = line:find("WETSAND.require", 1, true) ~= nil or line:find("WETSAND.Feature", 1, true) ~= nil
+			local loads = line:find("WS.require", 1, true) ~= nil or line:find("WS.Feature", 1, true) ~= nil
 			T.eq(top and loads, false, file .. ": " .. line)
 		end
 	end

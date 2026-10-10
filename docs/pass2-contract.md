@@ -15,9 +15,9 @@ addon/gamemodes/sandcastle/
   gamemode/shared.lua            GM, DeriveGamemode("sandbox"), module loader, CreateTeams, StartCommand
   gamemode/init.lua              server GM overrides (spawn, death, team default); sends every foundation/ file to clients
   gamemode/cl_init.lua           client GM overrides (HUDPaint -> hook "SandcastleHUDPaint")
-  gamemode/wetsand/sh_*.lua      loaded on both realms (sh_core first, then name order)
-  gamemode/wetsand/sv_*.lua      loaded on the server, name order
-  gamemode/wetsand/cl_*.lua      loaded on clients, name order
+  gamemode/ws/sh_*.lua      loaded on both realms (sh_core first, then name order)
+  gamemode/ws/sv_*.lua      loaded on the server, name order
+  gamemode/ws/cl_*.lua      loaded on clients, name order
   gamemode/foundation/<system>.lua         a game system's pure logic (teams, spawn, players, rounds,
                                            payload, capture, spectate): module foundation.<system>
   gamemode/foundation/<system>/<part>.lua  a part of that system: module foundation.<system>.<part>,
@@ -28,12 +28,12 @@ addon/gamemodes/sandcastle/
                                  require("foundation.<name>"), captured as locals above the call), and
                                  game-specific values (TF2's team numbers) are data of the system
                                  that owns them. NOT auto-loaded: the module that uses it loads it
-                                 with WETSAND.require("foundation.<system>") (sh_core.lua)
+                                 with WS.require("foundation.<system>") (sh_core.lua)
   entities/entities/<class>.lua  one file per TF2 entity class
 tests/harness.lua, tests/*_test.lua   LuaJIT tests for foundation modules, loaded with T.require (.devtools/bin/run_lua_tests.sh)
 ```
 
-New modules need no wiring: drop a correctly prefixed file into gamemode/wetsand/, or a module(...) file into gamemode/foundation/.
+New modules need no wiring: drop a correctly prefixed file into gamemode/ws/, or a module(...) file into gamemode/foundation/.
 
 ## What the game gives you (facts established in pass 1)
 
@@ -41,9 +41,9 @@ New modules need no wiring: drop a correctly prefixed file into gamemode/wetsand
   `filter` plugs into engine triggers via `ENT:PassesFilter(trigger, ent)`.
 - GMod's engine already owns `team_control_point`, `info_player_teamspawn`,
   `path_track`, `func_tracktrain`: a Lua class of the same name never spawns. Their
-  keyvalues are recorded by the EntityKeyValue hook in sv_world.lua (`WETSAND.KeyValues(ent)`,
+  keyvalues are recorded by the EntityKeyValue hook in sv_world.lua (`WS.KeyValues(ent)`,
   outputs as an ordered list in `.outputs`), inputs are intercepted with the `AcceptInput`
-  hook, outputs fired with `WETSAND.FireOutput(ent, name, activator)`.
+  hook, outputs fired with `WS.FireOutput(ent, name, activator)`.
 - `team_control_point` state lives in sv_controlpoint.lua (owner, lock, model).
 - `func_tracktrain` accepts `SetSpeedDirAccel` and `SetSpeedForwardModifier`; its
   `m_flSpeed` is readable with `GetInternalVariable`. path_track `OnPass` can be
@@ -51,8 +51,8 @@ New modules need no wiring: drop a correctly prefixed file into gamemode/wetsand
 - A brush entity's `OBBMins/OBBMaxs` after `SetModel("*N")` are brush-space; test
   containment with `ent:WorldToLocal(pos)` (works when parented to the moving cart).
 - TF2's soundscripts are loaded (sh_soundscripts.lua), so `ply:EmitSound("Announcer.X")`,
-  `WETSAND.BroadcastSound(team, "Game.X")` and engine entities' named sounds all resolve.
-- Team numbers are TF2's: 0 unassigned, 1 spectator, 2 RED, 3 BLU. `WETSAND.TeamOf(ply)`
+  `WS.BroadcastSound(team, "Game.X")` and engine entities' named sounds all resolve.
+- Team numbers are TF2's: 0 unassigned, 1 spectator, 2 RED, 3 BLU. `WS.TeamOf(ply)`
   returns 2/3 or 0 for anything else (other addons use other teams, e.g. 21 "Runner").
 - Neither Sandbox nor base defines `GM:StartCommand` or server `GM:PostPlayerDeath`;
   do not call BaseClass for those.
@@ -63,7 +63,7 @@ New modules need no wiring: drop a correctly prefixed file into gamemode/wetsand
 |---|---|
 | **A payload** | entities: team_train_watcher, trigger_capture_area, mapobj_cart_dispenser, dispenser_touch_trigger, NEW tf_logic_multiple_escort; modules: cl_hud.lua, NEW sv_payload*/cl_payload*/foundation/payload*, foundation/capture |
 | **B rounds** | entities: tf_gamerules, team_round_timer, team_control_point_master, team_control_point_round, game_round_win, NEW game_forcerespawn, NEW tf_logic_holiday; modules: sv_controlpoint.lua, cl_announcer.lua, NEW sv_rounds*/cl_rounds*/foundation/rounds* |
-| **C players** | entities: func_regenerate, func_respawnroom, func_respawnroomvisualizer, func_nobuild, wetsand_brush_volume, wetsand_inert_point, wetsand_pickup_base, wetsand_trigger_volume, item_*, filter_activator_tfteam, NEW misc (trigger_stun, trigger_add/remove_tf_player_condition, trigger_catapult if GMod lacks it, func_nogrenades, bot_hint_*/func_nav_*/func_tfbot_hint no-ops, entity_spawn_point/manager, tf_ammo_pack); modules: sv_world.lua, sh_core.lua, gamemode/init.lua, NEW sv_teams*/cl_teams*/foundation/teams, foundation/spawn, foundation/players |
+| **C players** | entities: func_regenerate, func_respawnroom, func_respawnroomvisualizer, func_nobuild, ws_brush_volume, ws_inert_point, ws_pickup_base, ws_trigger_volume, item_*, filter_activator_tfteam, NEW misc (trigger_stun, trigger_add/remove_tf_player_condition, trigger_catapult if GMod lacks it, func_nogrenades, bot_hint_*/func_nav_*/func_tfbot_hint no-ops, entity_spawn_point/manager, tf_ammo_pack); modules: sv_world.lua, sh_core.lua, gamemode/init.lua, NEW sv_teams*/cl_teams*/foundation/teams, foundation/spawn, foundation/players |
 | **D spectator** | entities: info_observer_point; modules: NEW sv_spectate*/cl_spectate*/foundation/spectate* (hooks only; no GM overrides) |
 | integrator | gamemode/shared.lua, gamemode/cl_init.lua, sh_soundscripts.lua, docs/, .devtools/ |
 
@@ -71,41 +71,41 @@ New modules need no wiring: drop a correctly prefixed file into gamemode/wetsand
 
 Existing, keep signatures stable:
 
-- `WETSAND.TeamOf(ent)`, `WETSAND.EnemyOf(team)`, `WETSAND.Active()`, `WETSAND.State()`, `WETSAND.STATE.*`, `WETSAND.TeamName`, `WETSAND.TeamColor`
-- `WETSAND.Rules` (the tf_gamerules entity): `:StateGet()`, `:InSetup()`, `:PointsMayBeCaptured()`,
+- `WS.TeamOf(ent)`, `WS.EnemyOf(team)`, `WS.Active()`, `WS.State()`, `WS.STATE.*`, `WS.TeamName`, `WS.TeamColor`
+- `WS.Rules` (the tf_gamerules entity): `:StateGet()`, `:InSetup()`, `:PointsMayBeCaptured()`,
   `:SetWinningTeam(team, reason, forceMapReset, switchTeams)`, `:OnPlayerDeath(ply)`
-- `WETSAND.CapTeam(point)`, `WETSAND.SetPointOwner(point, team, activator)`, `WETSAND.PointLocked(point)`, `WETSAND.PointIndex(point)`, `WETSAND.ApplyPointModel(point)`
-- `WETSAND.KeyValues(ent)`, `WETSAND.FireOutput(ent, name, activator)`, `WETSAND.ParseOutput(name, value)`, `WETSAND.FindByName(name)`
-- `WETSAND.PlayersInside(ent)`, `WETSAND.IsAliveInGame(ply)`, `WETSAND.HealFraction(ply, f)`, `WETSAND.GiveAmmoFraction(ply, f)`
-- `WETSAND.SpawnPoints(team)`, `WETSAND.PickSpawn(team)`, `WETSAND.Announce(text, team)`, `WETSAND.BroadcastSound(team, name)` (team 0 = everyone)
-- hooks: `WetsandRoundActive()`, `WetsandRoundWin(winner)`, `WetsandPointCaptured(point, team)`, client `SandcastleHUDPaint(w, h)`
+- `WS.CapTeam(point)`, `WS.SetPointOwner(point, team, activator)`, `WS.PointLocked(point)`, `WS.PointIndex(point)`, `WS.ApplyPointModel(point)`
+- `WS.KeyValues(ent)`, `WS.FireOutput(ent, name, activator)`, `WS.ParseOutput(name, value)`, `WS.FindByName(name)`
+- `WS.PlayersInside(ent)`, `WS.IsAliveInGame(ply)`, `WS.HealFraction(ply, f)`, `WS.GiveAmmoFraction(ply, f)`
+- `WS.SpawnPoints(team)`, `WS.PickSpawn(team)`, `WS.Announce(text, team)`, `WS.BroadcastSound(team, name)` (team 0 = everyone)
+- hooks: `WSRoundActive()`, `WSRoundWin(winner)`, `WSPointCaptured(point, team)`, client `SandcastleHUDPaint(w, h)`
 
 New, each provided by its owner exactly as named (others may call them):
 
-- **B** `WETSAND.TeamCanCapPoint(point, team) -> bool`: not locked, team does not own it, previous points owned, point belongs to the current round (if rounds are in use). A's capture areas call it.
-- **B** `WETSAND.CurrentRound() -> team_control_point_round entity or NULL`; hook `WetsandMiniRoundStart(round)` after a mini-round begins (after its spawn changes apply).
-- **B** `WETSAND.SwitchTeams()`: swap every RED/BLU player (used by switch_teams on win). Implement via `WETSAND.SetPlayerTeam`.
-- **B** hook `WetsandOvertime(active)` when the timer enters/leaves overtime.
-- **C** `WETSAND.SetPlayerTeam(ply, team)`: the one way to change a player's TF2 team (TF2 semantics: a live player switching teams dies and respawns with the waves; spectator).
-- **C** `WETSAND.RoundSpawnFilter` is not an API; C decides spawn selection per round from `WETSAND.CurrentRound()`.
-- **D** `WETSAND.StartObserving(ply)` / `WETSAND.StopObserving(ply)`: put a player into / out of observer mode (dead players and the spectator team). C's `WETSAND.SetPlayerTeam` calls them for team 1.
-- **D** `WETSAND.SetRequiredObserverTarget(name)` (name, or "" to clear): B's tf_gamerules input SetRequiredObserverTarget calls it.
+- **B** `WS.TeamCanCapPoint(point, team) -> bool`: not locked, team does not own it, previous points owned, point belongs to the current round (if rounds are in use). A's capture areas call it.
+- **B** `WS.CurrentRound() -> team_control_point_round entity or NULL`; hook `WSMiniRoundStart(round)` after a mini-round begins (after its spawn changes apply).
+- **B** `WS.SwitchTeams()`: swap every RED/BLU player (used by switch_teams on win). Implement via `WS.SetPlayerTeam`.
+- **B** hook `WSOvertime(active)` when the timer enters/leaves overtime.
+- **C** `WS.SetPlayerTeam(ply, team)`: the one way to change a player's TF2 team (TF2 semantics: a live player switching teams dies and respawns with the waves; spectator).
+- **C** `WS.RoundSpawnFilter` is not an API; C decides spawn selection per round from `WS.CurrentRound()`.
+- **D** `WS.StartObserving(ply)` / `WS.StopObserving(ply)`: put a player into / out of observer mode (dead players and the spectator team). C's `WS.SetPlayerTeam` calls them for team 1.
+- **D** `WS.SetRequiredObserverTarget(name)` (name, or "" to clear): B's tf_gamerules input SetRequiredObserverTarget calls it.
 - **A** each watcher entity: `:TimerMayExpire()`, `:IsWatching(train)`, `:SetNumTrainCappers(num, area)` (existing).
 
 ## Networked keys (Global2 vars)
 
-Keys are snake_case with the `wetsand_` prefix, named for what they hold.
+Keys are snake_case with the `ws_` prefix, named for what they hold.
 
-- B owns and may add, not rename: `wetsand_rounds_active`, `wetsand_round_state`, `wetsand_round_in_setup`, `wetsand_round_winner`, `wetsand_preround_end_time`, `wetsand_round_overtime`, `wetsand_timer_{shown,paused,time_left,end_time,in_setup,auto_countdown,serial}`.
-- A owns `wetsand_cart_*` and `wetsand_capture_*` and may reshape them for several carts (A also owns cl_hud.lua, which reads them and the timer keys).
-- Anything else: prefix with your area after `wetsand_` (`wetsand_round_*` B, `wetsand_team_*` C, `wetsand_spectate_*` D).
+- B owns and may add, not rename: `ws_rounds_active`, `ws_round_state`, `ws_round_in_setup`, `ws_round_winner`, `ws_preround_end_time`, `ws_round_overtime`, `ws_timer_{shown,paused,time_left,end_time,in_setup,auto_countdown,serial}`.
+- A owns `ws_cart_*` and `ws_capture_*` and may reshape them for several carts (A also owns cl_hud.lua, which reads them and the timer keys).
+- Anything else: prefix with your area after `ws_` (`ws_round_*` B, `ws_team_*` C, `ws_spectate_*` D).
 
 ## Conventions
 
 - Behaviour comes from TF2's code: source-sdk-2013 at `~/Repositories/source-sdk-2013/src/game/` (server/, shared/, shared/tf/, server/tf/, client/tf/). Cite the C++ function a behaviour comes from in a short comment where the reason is not obvious. Keyvalues, inputs and outputs of every entity are in TF2's FGD: `$TF2/bin/tf.fgd` (also queryable via the tf2vscript MCP tool `entity_io`), where `$TF2="$HOME/Library/Application Support/CrossOver/Bottles/Team Fortress 2/drive_c/Steam/steamapps/common/Team Fortress 2"`.
 - Map data: `.devtools/bin/bsp_entities.py $TF2/tf/maps/<map>.bsp [--json | --class C | --io]` dumps any map's entities; use it to see how real maps use an entity before implementing it.
-- TF2's own convar names and defaults (from the SDK) for TF2 settings; `wetsand_*` for Sandcastle-only settings.
-- Code style (from the operator's rules): pure logic goes in `foundation/<system>.lua` or `foundation/<system>/<part>.lua` (a `module(...)` loaded with `WETSAND.require`) with a LuaJIT test written first and seen failing; no defensive fallbacks for states the code rules out; small functions with one job; comments only for constraints the code cannot show. Match the existing files: tabs, `local` helpers, INPUTS tables keyed by lowercased input name, `ENT:KeyValue` storing `On*` via `StoreOutput`.
+- TF2's own convar names and defaults (from the SDK) for TF2 settings; `ws_*` for Sandcastle-only settings.
+- Code style (from the operator's rules): pure logic goes in `foundation/<system>.lua` or `foundation/<system>/<part>.lua` (a `module(...)` loaded with `WS.require`) with a LuaJIT test written first and seen failing; no defensive fallbacks for states the code rules out; small functions with one job; comments only for constraints the code cannot show. Match the existing files: tabs, `local` helpers, INPUTS tables keyed by lowercased input name, `ENT:KeyValue` storing `On*` via `StoreOutput`.
 - Every Lua file must pass `luajit -b <file> /dev/null`; `.devtools/bin/run_lua_tests.sh` must pass.
 - Do not use the live game (`.devtools/bin/gmod_lua.py`) and do not launch or close Garry's Mod or Steam: the integrator tests in game after merging.
 - Commit in small units on your branch: `git -c gpg.program=gpg-loopback commit -m "..."`. Never add Co-Authored-By or any Claude attribution. Do not push. Messages explain what and why.

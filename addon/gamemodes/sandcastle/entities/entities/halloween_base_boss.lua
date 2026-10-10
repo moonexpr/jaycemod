@@ -1,5 +1,5 @@
 -- halloween_base_boss (CHalloweenBaseBoss): the base of the Halloween
--- bosses, a wetsand_combat_nextbot whose variant is a
+-- bosses, a ws_combat_nextbot whose variant is a
 -- foundation.npc.halloween_boss part. It implements the boss port
 -- (foundation.npc.halloween_boss.METHODS) and passes the boss's convars in
 -- its config. A subclass sets ENT.Variant. The npc feature adds the
@@ -10,7 +10,7 @@
 -- takes its team from TeamNum/teamnum, else UNASSIGNED.
 AddCSLuaFile()
 
-ENT.Base = "wetsand_combat_nextbot"
+ENT.Base = "ws_combat_nextbot"
 ENT.Type = "nextbot"
 ENT.Spawnable = false
 
@@ -18,7 +18,7 @@ if CLIENT then return end
 
 -- GMod looks up Entity and NextBot methods before the entity's own table,
 -- so no port method here shares an engine method's name.
-local Base = baseclass.Get("wetsand_combat_nextbot")
+local Base = baseclass.Get("ws_combat_nextbot")
 
 -- TF2's convars for this boss (its variant's CONVARS), created by the first
 -- binding, and their values now (the npc controller's BossConvars); and
@@ -28,14 +28,14 @@ function ENT:Config()
 	return {
 		team = configured.team,
 		owner = configured.owner,
-		convars = WETSAND.Feature("npc"):BossConvars(WETSAND.require(self.Variant).CONVARS),
+		convars = WS.Feature("npc"):BossConvars(WS.require(self.Variant).CONVARS),
 		cheats = GetConVar("sv_cheats"):GetBool(),
 	}
 end
 
 -- The model and owner come first: the variant's NewState reads both.
 function ENT:Initialize()
-	local variant = WETSAND.require(self.Variant)
+	local variant = WS.require(self.Variant)
 	self:SetModel(variant.MODEL)
 	local owner = self:Config().owner
 	if IsValid(owner) then self:SetOwner(owner) end
@@ -60,5 +60,5 @@ end
 -- A boss game event (foundation.npc.boss_events, defined by the npc
 -- feature) to every client, whose npc view plays its cue.
 function ENT:FireGameEvent(name, fields)
-	WETSAND.Events.Fire(name, fields)
+	WS.Events.Fire(name, fields)
 end

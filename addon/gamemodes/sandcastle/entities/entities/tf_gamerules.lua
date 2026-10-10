@@ -7,7 +7,7 @@ ENT.Type = "point"
 ENT.Base = "base_point"
 
 local function Rounds()
-	return WETSAND.Feature("rounds")
+	return WS.Feature("rounds")
 end
 
 function ENT:KeyValue(key, value)

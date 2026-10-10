@@ -18,7 +18,7 @@ game, so this tool's safeguards are its tested behaviour
 - The launch is one command: the bottle's own CrossOver wine (the one its
   Steam has mapped, so the bottle's wineserver sees its own version), with
   --bottle "Team Fortress 2" and --no-update, running gmod_win64.exe with
-  +con_logfile under data/wetsand_tests/client/ (never -condebug: the
+  +con_logfile under data/ws_tests/client/ (never -condebug: the
   dedicated server writes console.log in the shared install) and +connect
   to the dedicated server srcds.py runs in the bottle "Steam". The bottle is
   a constant; there is no option for another.
@@ -109,7 +109,7 @@ OPERATOR_GAMES = ("tf_win64.exe", "tf.exe", "hl2.exe")
 GMOD_CLIENTS = ("gmod.exe", "gmod_win64.exe")
 REFUSED_NAMES = OPERATOR_GAMES + GMOD_CLIENTS
 
-CLIENT_LOG = "data/wetsand_tests/client/console.log"  # +con_logfile, relative to garrysmod/
+CLIENT_LOG = "data/ws_tests/client/console.log"  # +con_logfile, relative to garrysmod/
 LOCALHOST = "127.0.0.1"
 
 FIND_INTERVAL = 0.5  # s between looks for the new client after the launch, until the run's time limit

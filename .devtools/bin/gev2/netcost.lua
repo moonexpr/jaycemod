@@ -1,9 +1,9 @@
 -- Game events v2 research, question 4: what each net.Write costs in bits
 -- (net.BytesWritten before and after), and what happens at the message size
 -- limit, on the server with no client connected. Writes
--- data/wetsand_tests/gev2/out/netcost.txt. Run by .devtools/bin/gev2_probe.py.
+-- data/ws_tests/gev2/out/netcost.txt. Run by .devtools/bin/gev2_probe.py.
 local NAME = "netcost"
-local MSG = "wetsand_tests_gev2_probe"
+local MSG = "ws_tests_gev2_probe"
 local out = {}
 
 local function Say(...)
@@ -72,6 +72,6 @@ end
 for _, n in ipairs({ 1200, 65533, 65534, 65536, 70000 }) do Fill(n, false) end
 for _, n in ipairs({ 1200, 4000, 65533 }) do Fill(n, true) end
 
-file.CreateDir("wetsand_tests/gev2/out")
-file.Write("wetsand_tests/gev2/out/" .. NAME .. ".txt", table.concat(out, "\n") .. "\n")
-print("wetsand_tests: gev2 " .. NAME .. " done")
+file.CreateDir("ws_tests/gev2/out")
+file.Write("ws_tests/gev2/out/" .. NAME .. ".txt", table.concat(out, "\n") .. "\n")
+print("ws_tests: gev2 " .. NAME .. " done")

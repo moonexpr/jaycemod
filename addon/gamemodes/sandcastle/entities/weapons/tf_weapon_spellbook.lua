@@ -37,12 +37,12 @@ end
 -- Server only. The holder is kept, since the owner is gone by OnDrop.
 function SWEP:Equip(owner)
 	self.bookHolder = owner
-	WETSAND.Feature("spells"):Arm(owner)
+	WS.Feature("spells"):Arm(owner)
 end
 
 function SWEP:LetGoOfBook()
 	if SERVER and self.bookHolder then
-		WETSAND.Feature("spells"):Disarm(self.bookHolder)
+		WS.Feature("spells"):Disarm(self.bookHolder)
 		self.bookHolder = nil
 	end
 end
@@ -57,7 +57,7 @@ end
 
 function SWEP:PrimaryAttack()
 	if CLIENT then return end
-	WETSAND.Feature("spells"):Cast(self:GetOwner())
+	WS.Feature("spells"):Cast(self:GetOwner())
 end
 
 function SWEP:SecondaryAttack()

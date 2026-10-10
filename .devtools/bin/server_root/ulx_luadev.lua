@@ -12,7 +12,7 @@ local function who(ply, name) return luadev.GetPlayerIdentifier(ply, "cmd:" .. n
 -- line each player last typed, and a command typed in chat runs its lua as
 -- typed; from the console it runs the line it was given.
 local said = setmetatable({}, { __mode = "k" })
-hook.Add("PlayerSay", "wetsand_ulx_luadev_said", function(ply, text) said[ply] = text end, HOOK_MONITOR_HIGH)
+hook.Add("PlayerSay", "ws_ulx_luadev_said", function(ply, text) said[ply] = text end, HOOK_MONITOR_HIGH)
 
 -- What ply typed after !name, as typed, once; nil when that line was not it.
 local function Typed(ply, name)

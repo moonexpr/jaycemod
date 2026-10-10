@@ -1,4 +1,4 @@
--- The NextBot debug layer's rules (the nbdebug feature, wetsand_nb_*): the
+-- The NextBot debug layer's rules (the nbdebug feature, ws_nb_*): the
 -- engine's nb_select, nb_debug and nb_debug_filter, redone for what the
 -- engine cannot see: our Lua Behaviors, the costs our path strategies give
 -- (foundation.npc.path), and the routes foundation.npc.route searches.
@@ -45,7 +45,7 @@ local function LayerOf(token)
 	return nil
 end
 
--- The layers after a wetsand_nb_debug command: no token turns every layer
+-- The layers after a ws_nb_debug command: no token turns every layer
 -- off; ALL (or *) turns every one on, OFF every one off; a layer's name, or
 -- any prefix of it, toggles it. Returns the new set (`current` is left
 -- alone) and the tokens that named no layer.
@@ -256,7 +256,7 @@ end
 
 -- What to record of a bot's path searches: nil when no subscription draws
 -- its PATH or COST or has it selected; otherwise { costs }, where costs
--- (the explored areas, for COST and wetsand_nb_dump) is true while some
+-- (the explored areas, for COST and ws_nb_dump) is true while some
 -- subscription has it selected.
 function PathWatch(subscriptions, bot)
 	local watched, costs = false, false
@@ -703,7 +703,7 @@ end
 -- Where the recent changes would be when nobody watches the Behavior.
 UNWATCHED = "Recent: not recorded; turn the BEHAVIOR layer on to keep them"
 
--- wetsand_nb_behavior_print's lines: the NPC, both notations, then the
+-- ws_nb_behavior_print's lines: the NPC, both notations, then the
 -- BEHAVIOR layer's lines; entries is nil while nobody watches the Behavior.
 function BehaviorReport(title, name, frames, entries, now)
 	local lines = {
@@ -740,10 +740,10 @@ function NavLabel(id, attributes)
 end
 
 -------------------------------------------------------------------------------
--- The dump (wetsand_nb_dump): the selected NPC's last search as JSON, under
+-- The dump (ws_nb_dump): the selected NPC's last search as JSON, under
 -- the data folder.
 
-DUMP_DIR = "wetsand_nb"
+DUMP_DIR = "ws_nb"
 
 function DumpPath(map, entIndex, stamp)
 	return format("%s/%s_%d_%d.json", DUMP_DIR, map, entIndex, stamp)

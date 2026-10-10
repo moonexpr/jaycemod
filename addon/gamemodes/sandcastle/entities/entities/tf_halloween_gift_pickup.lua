@@ -22,8 +22,8 @@ function ENT:Configure(config)
 end
 
 function ENT:Initialize()
-	self.system = WETSAND.require("foundation.holiday.gift")
-	self.gift = WETSAND.Feature("holiday"):BindGift(self, self.configured)
+	self.system = WS.require("foundation.holiday.gift")
+	self.gift = WS.Feature("holiday"):BindGift(self, self.configured)
 	self:SetModel(self.system.MODEL)
 	self:SetMoveType(MOVETYPE_NONE)
 	self:SetSolid(SOLID_BBOX)
@@ -46,7 +46,7 @@ end
 function ENT:Touch(other)
 	if not (other:IsPlayer() and self.gift:Touch(other)) then return end
 	ParticleEffect(self.system.TAKE_PARTICLE, self:GetPos(), angle_zero)
-	for _, sound in ipairs(self.system.TAKE_SOUNDS) do WETSAND.PlaySoundTo(other, self, sound) end
+	for _, sound in ipairs(self.system.TAKE_SOUNDS) do WS.PlaySoundTo(other, self, sound) end
 	self:Remove()
 end
 

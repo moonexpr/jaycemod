@@ -1,6 +1,6 @@
--- First half of the wetsand_defaults_apply check: move two convars that
+-- First half of the ws_defaults_apply check: move two convars that
 -- cfg/sandcastle_defaults.cfg lists off their defaults. The harness then
--- sends wetsand_defaults_apply over RCON, as an admin would, and the
+-- sends ws_defaults_apply over RCON, as an admin would, and the
 -- defaults_apply check reads them back.
 local CONVARS = {
 	mp_chattime = "30",

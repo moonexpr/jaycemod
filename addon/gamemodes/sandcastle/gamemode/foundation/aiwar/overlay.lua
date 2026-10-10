@@ -1,4 +1,4 @@
--- The soldier overlay's layout (wetsand_aiwar_debug): each soldier's box
+-- The soldier overlay's layout (ws_aiwar_debug): each soldier's box
 -- belongs centred above its head, and none may cover another. Boxes are
 -- placed in the order given (nearest soldier first, so the nearest stay
 -- put); one that would overlap a box already placed moves up above it,

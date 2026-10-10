@@ -1,5 +1,5 @@
 -- foundation.nav_progress: what the nav mesh progress box says while
--- mp_nav_generate runs (wetsand/sh_nav_progress.lua). GMod reports no
+-- mp_nav_generate runs (ws/sh_nav_progress.lua). GMod reports no
 -- progress, so it tells the stage and the time it has taken, and the areas
 -- made at the end.
 local T = dofile("tests/harness.lua")

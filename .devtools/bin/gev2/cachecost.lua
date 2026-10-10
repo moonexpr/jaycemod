@@ -4,7 +4,7 @@
 -- see .devtools/bin/gmod_lua_cache.py), measured on the server with the
 -- files it sends: computing the names, looking them up with file.Exists, and
 -- util.Decompress of each file's compressed text. Writes
--- data/wetsand_tests/gev2/out/cachecost.txt. Run by .devtools/bin/gev2_probe.py.
+-- data/ws_tests/gev2/out/cachecost.txt. Run by .devtools/bin/gev2_probe.py.
 local NAME = "cachecost"
 local ROOT = "sandcastle/"
 local ROUNDS = 5
@@ -30,7 +30,7 @@ local function IsSent(path, text)
 	if rel == "gamemode/shared.lua" or rel == "gamemode/cl_init.lua" then return true end
 	if rel:find("^gamemode/foundation/") then return true end
 	if rel:find("^gamemode/features/[^/]+/sh%.lua$") or rel:find("^gamemode/features/[^/]+/cl%.lua$") then return true end
-	if rel:find("^gamemode/wetsand/sh_") or rel:find("^gamemode/wetsand/cl_") then return true end
+	if rel:find("^gamemode/ws/sh_") or rel:find("^gamemode/ws/cl_") then return true end
 	if rel:find("^entities/") and text:find("AddCSLuaFile", 1, true) then return true end
 	return false
 end
@@ -71,6 +71,6 @@ Say("util.Decompress + util.SHA256 for all", Best(function()
 	for _, blob in ipairs(packed) do util.SHA256(util.Decompress(blob)) end
 end))
 
-file.CreateDir("wetsand_tests/gev2/out")
-file.Write("wetsand_tests/gev2/out/" .. NAME .. ".txt", table.concat(out, "\n") .. "\n")
-print("wetsand_tests: gev2 " .. NAME .. " done")
+file.CreateDir("ws_tests/gev2/out")
+file.Write("ws_tests/gev2/out/" .. NAME .. ".txt", table.concat(out, "\n") .. "\n")
+print("ws_tests: gev2 " .. NAME .. " done")

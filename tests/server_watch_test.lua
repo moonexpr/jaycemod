@@ -94,10 +94,10 @@ end)
 
 T.test("On reports a hook as it runs, and Stop ends any watch", function()
 	local s = Load()
-	s.Watch.On("WetsandRoundWin", "win", function(team) return "team " .. team end)
-	s.Fire("WetsandRoundWin", 3)
+	s.Watch.On("WSRoundWin", "win", function(team) return "team " .. team end)
+	s.Fire("WSRoundWin", 3)
 	s.Watch.Stop("win")
-	s.Fire("WetsandRoundWin", 2)
+	s.Fire("WSRoundWin", 2)
 	T.eq(table.concat(s.lines, "|"), "0.00 win event team 3")
 end)
 

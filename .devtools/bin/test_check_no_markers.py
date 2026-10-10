@@ -8,7 +8,7 @@ import pytest
 from gev2_marker import TAG
 
 GUARD = Path(__file__).resolve().parent / "check_no_markers.py"
-MARKER = f'WETSAND_T2 = "save-1234" {TAG}\n'
+MARKER = f'WS_T2 = "save-1234" {TAG}\n'
 
 
 def git(repo, *args):

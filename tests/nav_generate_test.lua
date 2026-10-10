@@ -1,4 +1,4 @@
--- mp_nav_generate (wetsand/sv_nav.lua): an admin, or the server console,
+-- mp_nav_generate (ws/sv_nav.lua): an admin, or the server console,
 -- builds the map's navigation mesh. GMod's generator walks out from seeds,
 -- and TF2 maps spawn players at info_player_teamspawn, which it does not
 -- seed from: every spawn point and control point is a seed. It walks only
@@ -74,7 +74,7 @@ local function load(t)
 	for name, value in pairs(t.limits or {}) do s.convars[name] = value end
 	s.requests, s.sent, s.created = {}, {}, {}
 	s.stages = {}
-	s.wetsand = {
+	s.ws = {
 		require = T.require,
 		NavProgress = function(stage, started, areas) s.stages[#s.stages + 1] = { stage = stage, started = started, areas = areas } end,
 		Feature = function(name)
@@ -98,7 +98,7 @@ local function load(t)
 			}
 		end,
 		cleanup = { GetTable = function() return t.cleanups or {} end },
-		WETSAND = s.wetsand,
+		WS = s.ws,
 		concommand = { Add = function(name, fn) s.commands[name] = fn end },
 		ents = {
 			Create = function(class)
@@ -131,7 +131,7 @@ local function load(t)
 		IsValid = function(p) return p ~= nil end,
 		print = function() end,
 	}, { __index = _G })
-	setfenv(assert(loadfile("addon/gamemodes/sandcastle/gamemode/wetsand/sv_nav.lua")), env)()
+	setfenv(assert(loadfile("addon/gamemodes/sandcastle/gamemode/ws/sv_nav.lua")), env)()
 	-- one poll of its timer, a second on, the doors moving meanwhile
 	function s.Poll()
 		s.now = s.now + 1
@@ -331,8 +331,8 @@ end)
 
 
 T.test("a mesh is usable once it has areas", function()
-	T.eq(load({ areas = 0 }).wetsand.NavMeshUsable(), false)
-	T.eq(load({ areas = 12 }).wetsand.NavMeshUsable(), true)
+	T.eq(load({ areas = 0 }).ws.NavMeshUsable(), false)
+	T.eq(load({ areas = 12 }).ws.NavMeshUsable(), true)
 end)
 
 T.finish()

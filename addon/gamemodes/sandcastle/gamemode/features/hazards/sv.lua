@@ -4,10 +4,10 @@
 -- attacker's team, inputs, touches, time) and carries out what the model
 -- answers: a blast through the combat controller, goop, gibs, outputs, a
 -- zap's beam, or a croc and its bite.
-local Hazards = WETSAND.require("foundation.hazards")
+local Hazards = WS.require("foundation.hazards")
 
 local TRIGGER_HURT = "trigger_hurt"
-local PROJECTILE_BASE = "wetsand_projectile"
+local PROJECTILE_BASE = "ws_projectile"
 local SCORCH_DECAL = "Scorch"
 
 -- CTFPumpkinBomb::Event_Killed's scorch trace: 8 above the origin to 24
@@ -20,7 +20,7 @@ local ANIMATED_PROP = "prop_dynamic"
 local NOT_SOLID = "0" -- prop_dynamic's solid keyvalue: SOLID_NONE
 
 local Controller = {
-	combat = WETSAND.Feature("combat"),
+	combat = WS.Feature("combat"),
 	hazards = {},
 }
 
@@ -44,7 +44,7 @@ end
 -- The model for a hazard entity; its variant is a foundation.hazards part.
 -- A hazard with a body gets its model, skin, scale and movement here.
 function Controller:Bind(ent, variantName, config)
-	local hazard = Hazards.New(WETSAND.require(variantName), config, CurTime())
+	local hazard = Hazards.New(WS.require(variantName), config, CurTime())
 	self.hazards[ent] = hazard
 	local body = hazard:Body()
 	if body then SetUpBody(ent, body) end
@@ -78,7 +78,7 @@ function Controller:Damaged(ent, dmg)
 end
 
 -- TF2 asks FL_GRENADE; GMod's own grenades set it, Sandcastle's
--- projectiles are wetsand_projectile.
+-- projectiles are ws_projectile.
 local function IsProjectile(other)
 	return other:IsFlagSet(FL_GRENADE) or scripted_ents.IsBasedOn(other:GetClass(), PROJECTILE_BASE)
 end

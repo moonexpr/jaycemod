@@ -1,4 +1,4 @@
--- tf_spell_pickup (CSpellPickup): a spellbook pickup on wetsand_pickup_base.
+-- tf_spell_pickup (CSpellPickup): a spellbook pickup on ws_pickup_base.
 -- Keyvalue tier (0 common, 1 rare) picks the skin and, for a rare one, the
 -- _major model. Any living caster of its team (TeamNum 0: any) that holds a
 -- spellbook collects it through the spells controller, which rolls a spell
@@ -13,13 +13,13 @@
 AddCSLuaFile()
 
 ENT.Type = "anim"
-ENT.Base = "wetsand_pickup_base"
+ENT.Base = "ws_pickup_base"
 ENT.Spawnable = false
 ENT.Model = "models/props_halloween/hwn_spellbook_upright.mdl"
 
 if CLIENT then return end
 
-local Base = baseclass.Get("wetsand_pickup_base")
+local Base = baseclass.Get("ws_pickup_base")
 
 local MAJOR_MODEL = "models/props_halloween/hwn_spellbook_upright_major.mdl"
 local SOUND = "Halloween.spell_pickup"
@@ -60,9 +60,9 @@ end
 -- m_nTier starts at 0. A pickup the map placed turns spells on
 -- (foundation.holiday); a thrown one does not.
 function ENT:Initialize()
-	self.set = WETSAND.require("foundation.spells.halloween")
-	if not self.dropped then WETSAND.Feature("holiday"):SpellPickupPlaced() end
-	self.spells = WETSAND.Feature("spells")
+	self.set = WS.require("foundation.spells.halloween")
+	if not self.dropped then WS.Feature("holiday"):SpellPickupPlaced() end
+	self.spells = WS.Feature("spells")
 	self.tier = self.tier or self.set.TIER_COMMON
 	Base.Initialize(self)
 	self:SetSkin(self.tier)
@@ -81,7 +81,7 @@ end
 -- whether it is alive and holds a book.
 function ENT:OpenTo(other)
 	if self.disabled or self.respawning then return false end
-	return self.team == WETSAND.TEAM_UNASSIGNED or WETSAND.Feature("combat"):TeamOf(other) == self.team
+	return self.team == WS.TEAM_UNASSIGNED or WS.Feature("combat"):TeamOf(other) == self.team
 end
 
 -- CSpellPickup::MyTouch: a rare pickup's sound is _rare.
@@ -94,7 +94,7 @@ function ENT:Touch(other)
 	if not self:OpenTo(other) then return end
 	local taken = self.spells:Pickup(other, self.tier)
 	if not taken then return end
-	if other:IsPlayer() then WETSAND.PlaySoundTo(other, self, self:PickupSound()) end
+	if other:IsPlayer() then WS.PlaySoundTo(other, self, self:PickupSound()) end
 	self:TriggerOutput(OUTPUT, other)
 	if self.dropped then
 		self:Remove()

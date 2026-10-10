@@ -23,7 +23,7 @@ decompressed to its cache/<name>.gma, again only when the download is newer.
 Nothing else is copied but TF2's sound scripts that GMod's own files of the same name hide on a server
 (mount.cfg puts TF2 under "GAME", where they shadow it, and there is no
 "tf" path): TF_SCRIPTS are extracted from TF2's pak into the server's own
-data/ on every build, where wetsand/sh_soundscripts.lua reads them, and
+data/ on every build, where ws/sh_soundscripts.lua reads them, and
 SERVER_EXE: a copy marked a console program, rewritten when the shared one is
 newer. As the GUI program it ships as, -console makes it open a console of its
 own, which Wine draws as a window that prints ANSI colors raw; as a console
@@ -73,7 +73,7 @@ SERVER_LUA_DIR = Path(__file__).resolve().parent / "server_root"
 SERVER_LUA = {
     "autorun/server/server_mounts.lua": "mounts.lua",
     "autorun/server/luadev_lan.lua": "luadev_lan.lua",
-    "autorun/server/hotswap.lua": "hotswap.lua",  # wetsand_hotswap_module, wetsand_hotswap_feature
+    "autorun/server/hotswap.lua": "hotswap.lua",  # ws_hotswap_module, ws_hotswap_feature
     "autorun/gamemode_entities.lua": "gamemode_entities.lua",  # shared: the gamemode's entities win
     "ulx/modules/sh/luadev.lua": "ulx_luadev.lua",  # ULX includes every module it finds, on both sides
     "autorun/server/luadev_socket.lua": "luadev_socket.lua",  # server_lua.py's listener on 127.0.0.1:27098

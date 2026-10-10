@@ -79,9 +79,9 @@ never looks like a quiet wait. Each event is a line `<CurTime> <name> <kind>
 
 ```bash
 python3 .devtools/bin/server_lua.py --instance 2 <<'LUA'
-Watch.On("WetsandMiniRoundStart", "stage", function(round) return round:GetName() end)
+Watch.On("WSMiniRoundStart", "stage", function(round) return round:GetName() end)
 Watch.Until("stage3", 1, 360, function()
-	local round = WETSAND.Feature("capture"):CurrentRound()
+	local round = WS.Feature("capture"):CurrentRound()
 	return IsValid(round) and round:GetName() == "round_c", tostring(round)
 end)
 LUA

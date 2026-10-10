@@ -8,7 +8,7 @@ local FCVAR_ARCHIVE, FCVAR_NOTIFY, FCVAR_REPLICATED = 128, 256, 8192
 
 T.test("a convar created by the gamemode's own files is ours", function()
 	T.eq(Replicated.Ours("gamemodes/sandcastle/gamemode/features/capture/sv.lua", "sandcastle"), true)
-	T.eq(Replicated.Ours("@gamemodes/sandcastle/gamemode/wetsand/sh_aiwar.lua", "sandcastle"), true, "with Lua's @")
+	T.eq(Replicated.Ours("@gamemodes/sandcastle/gamemode/ws/sh_aiwar.lua", "sandcastle"), true, "with Lua's @")
 	T.eq(Replicated.Ours("addons/ulx/lua/ulx/modules/sh/rcon.lua", "sandcastle"), false, "another addon's")
 	T.eq(Replicated.Ours("gamemodes/sandbox/gamemode/init.lua", "sandcastle"), false, "the base gamemode's")
 end)
@@ -17,9 +17,9 @@ end)
 -- with CreateClientConVar) are not replicated: the client sets them, and a
 -- replicated one only the server may set.
 T.test("a convar from a client-only file is the client's own, never replicated", function()
-	T.eq(Replicated.ClientOnly("@gamemodes/sandcastle/gamemode/wetsand/cl_ns_debug.lua"), true, "a wetsand cl_ file")
+	T.eq(Replicated.ClientOnly("@gamemodes/sandcastle/gamemode/ws/cl_ns_debug.lua"), true, "a ws cl_ file")
 	T.eq(Replicated.ClientOnly("@gamemodes/sandcastle/gamemode/features/capture/cl.lua"), true, "a feature's client part")
-	T.eq(Replicated.ClientOnly("@gamemodes/sandcastle/gamemode/wetsand/sh_aiwar.lua"), false, "shared")
+	T.eq(Replicated.ClientOnly("@gamemodes/sandcastle/gamemode/ws/sh_aiwar.lua"), false, "shared")
 	T.eq(Replicated.ClientOnly("@gamemodes/sandcastle/gamemode/features/aiwar/sv.lua"), false, "a server part")
 	T.eq(Replicated.ClientOnly("@gamemodes/sandcastle/gamemode/features/capture/sh.lua"), false, "a feature's shared part")
 end)

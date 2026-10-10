@@ -51,7 +51,7 @@ local function Advance(me, npc, dt)
 	npc:Update(TICK)
 end
 
--- The damage event wetsand_nextbot builds, from an attacker that is a
+-- The damage event ws_nextbot builds, from an attacker that is a
 -- player or NPC unless said otherwise.
 local function Kill(attacker, isCharacter)
 	return {
@@ -802,7 +802,7 @@ end
 
 local function LoadsAtTopLevel(line)
 	if line:match("^%s") or line:match("^function ") then return false end
-	return line:find("WETSAND.require", 1, true) ~= nil or line:find("WETSAND.Feature", 1, true) ~= nil
+	return line:find("WS.require", 1, true) ~= nil or line:find("WS.Feature", 1, true) ~= nil
 end
 
 T.test("the skeleton bindings load nothing at top level and shadow no engine method", function()

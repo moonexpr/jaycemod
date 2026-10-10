@@ -5,7 +5,7 @@ local T = { passed = 0, failed = 0 }
 
 T.ROOT = "addon/gamemodes/sandcastle/gamemode/"
 
--- Lua 5.1's require for a module(...) file under T.ROOT, as WETSAND.require
+-- Lua 5.1's require for a module(...) file under T.ROOT, as WS.require
 -- does in the game: once, calling the chunk with its dotted name. Above its
 -- module(...) call the chunk sees this require, to load its siblings.
 local CHUNK_ENV = setmetatable({}, { __index = _G })

@@ -16,7 +16,7 @@ local MODEL = "foundation.holiday.wheel"
 local STAFF_BODYGROUP = "staff"
 
 function ENT:Initialize()
-	local Wheel = WETSAND.require(MODEL)
+	local Wheel = WS.require(MODEL)
 	self:SetModel(Wheel.DANCER_MODEL)
 	self:SetSolid(SOLID_NONE)
 	self:SetMoveType(MOVETYPE_NONE)
@@ -29,11 +29,11 @@ function ENT:PlayDance(sequence)
 	self:ResetSequence(sequence)
 	self:SetCycle(0)
 	self:SetPlaybackRate(1)
-	self:SetBodygroup(self:FindBodygroupByName(STAFF_BODYGROUP), WETSAND.require(MODEL).DANCER_STAFF)
+	self:SetBodygroup(self:FindBodygroupByName(STAFF_BODYGROUP), WS.require(MODEL).DANCER_STAFF)
 end
 
 function ENT:Poof()
-	local Wheel = WETSAND.require(MODEL)
+	local Wheel = WS.require(MODEL)
 	ParticleEffect(Wheel.DANCER_POOF_PARTICLE, self:GetPos(), self:GetAngles())
 	self:EmitSound(Wheel.DANCER_POOF_SOUND)
 end
@@ -51,7 +51,7 @@ function ENT:Vanish() self:GoAfter(0) end
 
 function ENT:BlastOff()
 	self:PlayDance(self:SelectWeightedSequence(ACT_FLY))
-	self:GoAfter(WETSAND.require(MODEL).DANCER_BLAST_OFF_TIME)
+	self:GoAfter(WS.require(MODEL).DANCER_BLAST_OFF_TIME)
 end
 
 function ENT:Think()

@@ -149,7 +149,7 @@ local W8_BINDINGS = {
 	"merasmus.lua",
 	"tf_halloween_minigame.lua",
 	"tf_logic_minigames.lua",
-	"wetsand_stub_point.lua",
+	"ws_stub_point.lua",
 }
 
 local function ReadFile(path)
@@ -162,7 +162,7 @@ end
 -- A load inside a function is indented or on a one-line function.
 local function LoadsAtTopLevel(line)
 	if line:match("^%s") or line:match("^function ") then return false end
-	return line:find("WETSAND.require", 1, true) ~= nil or line:find("WETSAND.Feature", 1, true) ~= nil
+	return line:find("WS.require", 1, true) ~= nil or line:find("WS.Feature", 1, true) ~= nil
 end
 
 T.test("the W8 bindings load nothing at top level", function()

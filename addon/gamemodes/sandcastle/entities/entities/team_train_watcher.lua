@@ -19,13 +19,13 @@ local P
 
 function ENT:KeyValue(key, value)
 	local k = string.lower(key)
-	self.wetsandKv = self.wetsandKv or {}
-	self.wetsandKv[k] = value
+	self.wsKv = self.wsKv or {}
+	self.wsKv[k] = value
 	if string.sub(key, 1, 2) == "On" then self:StoreOutput(key, value) end
 end
 
 function ENT:Key(name, default)
-	local v = (self.wetsandKv or {})[name]
+	local v = (self.wsKv or {})[name]
 	if v == nil or v == "" then return default end
 	return v
 end
@@ -35,12 +35,12 @@ local function Flag(value)
 end
 
 function ENT:Initialize()
-	P = WETSAND.require("foundation.payload")
-	self.capture = WETSAND.Feature("capture")
-	self.payload = WETSAND.Feature("payload")
+	P = WS.require("foundation.payload")
+	self.capture = WS.Feature("capture")
+	self.payload = WS.Feature("payload")
 	self.payload:BindWatcher(self)
 	self.disabled = self:Key("startdisabled", "0") == "1"
-	self.team = tonumber(self:Key("teamnum", WETSAND.TEAM_BLUE)) or WETSAND.TEAM_BLUE
+	self.team = tonumber(self:Key("teamnum", WS.TEAM_BLUE)) or WS.TEAM_BLUE
 	self.handleMovement = self:Key("handle_train_movement", "0") == "1"
 	self.canRecede = Flag(self:Key("train_can_recede", "1"))
 	self.trainRecedeTime = tonumber(self:Key("train_recede_time", 0)) or 0
@@ -62,9 +62,9 @@ function ENT:Initialize()
 	self.activated = false
 	self.subscribed = {}
 	-- path_track OnPass reaches the watcher by name, so a nameless one gets one
-	if self:GetName() == "" then self:SetName("wetsand_train_watcher_" .. self:EntIndex()) end
-	hook.Add("WetsandRoundActive", self, self.RoundActivate)
-	hook.Add("WetsandOvertime", self, self.OnOvertime)
+	if self:GetName() == "" then self:SetName("ws_train_watcher_" .. self:EntIndex()) end
+	hook.Add("WSRoundActive", self, self.RoundActivate)
+	hook.Add("WSOvertime", self, self.OnOvertime)
 end
 
 function ENT:UpdateTransmitState()
@@ -79,22 +79,22 @@ end
 -- Path -----------------------------------------------------------------------------
 
 local function HillType(node)
-	local flags = tonumber(WETSAND.KeyValues(node).spawnflags) or 0
+	local flags = tonumber(WS.KeyValues(node).spawnflags) or 0
 	if bit.band(flags, SF_PATH_UPHILL) ~= 0 then return P.HILL_UP end
 	if bit.band(flags, SF_PATH_DOWNHILL) ~= 0 then return P.HILL_DOWN end
 	return P.HILL_NONE
 end
 
 local function NextNode(node)
-	return WETSAND.FindByName(WETSAND.KeyValues(node).target)
+	return WS.FindByName(WS.KeyValues(node).target)
 end
 
 -- The chain from start_node to goal_node (or its dead end), with the path
 -- length to each node.
 function ENT:BuildPath()
-	local goal = WETSAND.FindByName(self:Key("goal_node"))
+	local goal = WS.FindByName(self:Key("goal_node"))
 	self.nodes, self.nodeIndex, self.distanceAt = {}, {}, {}
-	local node, total = WETSAND.FindByName(self:Key("start_node")), 0
+	local node, total = WS.FindByName(self:Key("start_node")), 0
 	while IsValid(node) and not self.nodeIndex[node] do
 		local i = #self.nodes + 1
 		if i > 1 then total = total + node:GetPos():Distance(self.nodes[i - 1]:GetPos()) end
@@ -110,8 +110,8 @@ end
 function ENT:BuildLinks()
 	self.links = {}
 	for n = 1, MAX_LINKS do
-		local track = WETSAND.FindByName(self:Key("linked_pathtrack_" .. n))
-		local cp = WETSAND.FindByName(self:Key("linked_cp_" .. n))
+		local track = WS.FindByName(self:Key("linked_pathtrack_" .. n))
+		local cp = WS.FindByName(self:Key("linked_cp_" .. n))
 		if IsValid(track) and IsValid(cp) then
 			local i = self.nodeIndex[track]
 			self.links[#self.links + 1] = { cp = cp, distance = i and self.distanceAt[i] or 0, index = i, alerted = false }
@@ -148,7 +148,7 @@ function ENT:SubscribePath()
 	for _, node in ipairs(self.nodes) do
 		if not self.subscribed[node] then
 			self.subscribed[node] = true
-			node:Fire("AddOutput", "OnPass " .. self:GetName() .. ":WetsandPathPassed::0:-1")
+			node:Fire("AddOutput", "OnPass " .. self:GetName() .. ":WSPathPassed::0:-1")
 		end
 	end
 end
@@ -172,7 +172,7 @@ function ENT:WatcherActivate()
 	self.distanceFromStart = 0
 	self:StopCaptureAlarm()
 	self.alarm = P.NewAlarm()
-	self.train = WETSAND.FindByName(self:Key("train"))
+	self.train = WS.FindByName(self:Key("train"))
 	self.advanceTo = nil
 	self:BuildPath()
 	self:BuildLinks()
@@ -223,7 +223,7 @@ function ENT:InternalSetSpeedForwardModifier(modifier)
 end
 
 local function InOvertime()
-	return GetGlobal2Bool("wetsand_round_overtime", false)
+	return GetGlobal2Bool("ws_round_overtime", false)
 end
 
 function ENT:StartRecedeCountdown(delay)
@@ -256,7 +256,7 @@ function ENT:SetNumTrainCappers(num, area)
 	self:InternalSetNumTrainCappers(num, area)
 end
 
--- InputOnStartOvertime, raised by the round timer's WetsandOvertime hook.
+-- InputOnStartOvertime, raised by the round timer's WSOvertime hook.
 function ENT:OnOvertime(active)
 	if not active or not self.waitingToRecede then return end
 	self.recedeAt = P.OvertimeRecedeAt(self.recedeAt, CurTime(), recede_time_overtime:GetFloat())
@@ -273,7 +273,7 @@ function ENT:PathPassed(node, train)
 	-- here and will not pass it again going forward, so keep the hill state
 	if self.receding then
 		local prev = self.nodes[i - 1]
-		if IsValid(prev) and WETSAND.KeyValues(prev).wetsandDisabled then return end
+		if IsValid(prev) and WS.KeyValues(prev).wsDisabled then return end
 	end
 	local hill = HillType(node)
 	local update = hill ~= self.hill
@@ -297,8 +297,8 @@ end
 -- and a later one must not take another's scaled speed for the map's.
 function ENT:CaptureMaxSpeed()
 	if not IsValid(self.train) then return end
-	self.train.wetsandBaseMaxSpeed = self.train.wetsandBaseMaxSpeed or self.train:GetInternalVariable("m_maxSpeed")
-	self.baseMaxSpeed = self.train.wetsandBaseMaxSpeed
+	self.train.wsBaseMaxSpeed = self.train.wsBaseMaxSpeed or self.train:GetInternalVariable("m_maxSpeed")
+	self.baseMaxSpeed = self.train.wsBaseMaxSpeed
 	self:ApplyMaxSpeed()
 end
 
@@ -327,7 +327,7 @@ end
 -- editor's moves do; the checkpoints from there on may warn again.
 function ENT:TeleportTo(index)
 	local node = self.nodes[index]
-	if node:GetName() == "" then node:SetName("wetsand_editor_track_" .. node:EntIndex()) end
+	if node:GetName() == "" then node:SetName("ws_editor_track_" .. node:EntIndex()) end
 	self.train:Fire("TeleportToPathTrack", node:GetName())
 	self.train:Fire("Stop")
 	self.currentSpeed = 0
@@ -356,11 +356,11 @@ end
 -- why not.
 function ENT:RetractToCheckpoint()
 	if not self:IsActive() or not IsValid(self.train) then return false, "the cart is not active" end
-	if WETSAND.State() ~= WETSAND.STATE.RND_RUNNING then return false, "the round is not running" end
+	if WS.State() ~= WS.STATE.RND_RUNNING then return false, "the round is not running" end
 	local plan = P.RetractPlan(self.links, self.distanceFromStart or 0)
 	if plan.uncap then
 		self.capture:ForceOwner(plan.uncap.cp, self.capture:Set():DefaultOwner(plan.uncap.cp))
-		local rounds = WETSAND.Feature("rounds")
+		local rounds = WS.Feature("rounds")
 		local hud = rounds:HudTimer()
 		if hud then rounds:AddTimerSeconds(hud, P.RETRACT_SLACK, self.team) end
 	end
@@ -376,13 +376,13 @@ end
 local Notices
 
 function ENT:AnnounceRetract()
-	Notices = Notices or WETSAND.require("foundation.admin_notices")
-	WETSAND.Notify(Notices.CartRetracted(self.team, WETSAND.EnemyOf(self.team)))
+	Notices = Notices or WS.require("foundation.admin_notices")
+	WS.Notify(Notices.CartRetracted(self.team, WS.EnemyOf(self.team)))
 end
 
 function ENT:AnnounceAdvance()
-	Notices = Notices or WETSAND.require("foundation.admin_notices")
-	WETSAND.Notify(Notices.CartAdvanced(self.team, WETSAND.EnemyOf(self.team)))
+	Notices = Notices or WS.require("foundation.admin_notices")
+	WS.Notify(Notices.CartAdvanced(self.team, WS.EnemyOf(self.team)))
 end
 
 -- The Game Rules editor's advance: the cart is teleported, as a retract
@@ -393,7 +393,7 @@ end
 -- and why not.
 function ENT:AdvanceToNextCheckpoint()
 	if not self:IsActive() or not IsValid(self.train) then return false, "the cart is not active" end
-	if WETSAND.State() ~= WETSAND.STATE.RND_RUNNING then return false, "the round is not running" end
+	if WS.State() ~= WS.STATE.RND_RUNNING then return false, "the round is not running" end
 	if not P.OnTrack(self.distanceFromStart or 0) then return false, "the cart has not reached this stage's track yet" end
 	local link = P.NextCheckpoint(self.links, self.distanceFromStart or 0)
 	if not link or not link.index then return false, "no checkpoint ahead" end
@@ -422,9 +422,9 @@ end
 
 -- CTFGameRules::PlayTrainCaptureAlert: everyone hears it, while the round runs.
 function ENT:PlayCaptureAlert(cp)
-	if WETSAND.State() ~= WETSAND.STATE.RND_RUNNING then return end
+	if WS.State() ~= WS.STATE.RND_RUNNING then return end
 	local final = self.capture:FinalPointInMap(cp)
-	WETSAND.BroadcastSound(WETSAND.TEAM_UNASSIGNED, final and "Announcer.Cart.FinalWarning" or "Announcer.Cart.Warning")
+	WS.BroadcastSound(WS.TEAM_UNASSIGNED, final and "Announcer.Cart.FinalWarning" or "Announcer.Cart.Warning")
 end
 
 function ENT:FinalLinkedPoint()
@@ -489,7 +489,7 @@ end
 -- WatcherThink
 function ENT:WatcherThink()
 	self:CheckRecede()
-	local running = WETSAND.State() == WETSAND.STATE.RND_RUNNING
+	local running = WS.State() == WS.STATE.RND_RUNNING
 	if not running then self:StopCaptureAlarm() end
 	if not IsValid(self.train) or #self.nodes == 0 then return end
 	-- the train's current speed stands in for its desired speed, which
@@ -590,7 +590,7 @@ end
 -- Inputs ----------------------------------------------------------------------------------
 
 local INPUTS = {
-	wetsandpathpassed = function(self, value, activator, caller) self:PathPassed(caller, activator) end,
+	wspathpassed = function(self, value, activator, caller) self:PathPassed(caller, activator) end,
 	roundactivate = function(self) self:RoundActivate() end,
 	enable = function(self)
 		self:StopCaptureAlarm()

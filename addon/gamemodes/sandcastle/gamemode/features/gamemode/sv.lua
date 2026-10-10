@@ -8,21 +8,21 @@
 -- the setting holds (StartAtLoad). The transition to Gameplay mode owns
 -- every cue, whoever asked: the map's description in the chat, the
 -- matchmaking start sting and the announcer's tournament-start line, the
--- countdown (its end networked as wetsand_gamemode_transition_end for the
+-- countdown (its end networked as ws_gamemode_transition_end for the
 -- round timer to show as "Prepare"; the announcer speaking the last
 -- numbers) and the Administrator's line; then Begin: the scores cleared,
 -- the round system restarted from scratch (RestartRound's full reset, as a map's first round)
 -- and everyone unassigned, as on joining, so each client opens its team
 -- menu until they choose a team.
-local Gamemode = WETSAND.require("foundation.gamemode")
-local Gameplay = WETSAND.require("foundation.gameplay")
+local Gamemode = WS.require("foundation.gamemode")
+local Gameplay = WS.require("foundation.gameplay")
 
--- Both made in wetsand/sh_gameplay.lua.
+-- Both made in ws/sh_gameplay.lua.
 local ENABLED = GetConVar("sv_gameplay_enabled")
 local SANDBOX_DISABLED = GetConVar("sv_gameplay_disable_sandbox")
 
-local TRANSITION_TIMER = "wetsand_gamemode_transition"
--- wetsand_gamemode_transition_end outside a transition.
+local TRANSITION_TIMER = "ws_gamemode_transition"
+-- ws_gamemode_transition_end outside a transition.
 local NO_TRANSITION = 0
 local TRANSITION_TICK = 0.1 -- seconds between feeding the model the time; it cues on whole seconds
 
@@ -60,12 +60,12 @@ local ADMIN_LINES = {
 }
 
 local Controller = {
-	mode = Gamemode.New(IsValid(WETSAND.Rules), ENABLED:GetBool()),
+	mode = Gamemode.New(IsValid(WS.Rules), ENABLED:GetBool()),
 	transitionSounds = {}, -- what the transition has played, to silence if it is called off
 }
 
 local function PlayToAll(path)
-	WETSAND.BroadcastPA(WETSAND.TEAM_UNASSIGNED, path) -- the unassigned team: everyone, spectators too
+	WS.BroadcastPA(WS.TEAM_UNASSIGNED, path) -- the unassigned team: everyone, spectators too
 end
 
 local function Pick(list)
@@ -78,9 +78,9 @@ local function Tell(requester, text)
 end
 
 -- A title and lines in every player's chat (the client colours the title;
--- wetsand/sh_gameplay.lua).
+-- ws/sh_gameplay.lua).
 local function Chat(title, lines)
-	WETSAND.Events.Fire("gameplay_chat", {
+	WS.Events.Fire("gameplay_chat", {
 		title = title,
 		lines = lines,
 	})
@@ -103,7 +103,7 @@ end
 function Controller:Publish()
 	local setting = Gamemode.SETTING[self.mode:Mode()]
 	if setting ~= nil and ENABLED:GetBool() ~= setting then ENABLED:SetBool(setting) end
-	SetGlobal2Float("wetsand_gamemode_transition_end", self.mode:TransitionEnd() or NO_TRANSITION)
+	SetGlobal2Float("ws_gamemode_transition_end", self.mode:TransitionEnd() or NO_TRANSITION)
 end
 
 -- A transition sound, remembered so Stop Game can silence it.
@@ -126,7 +126,7 @@ end
 -- Calls off the transition, silencing what it played.
 function Controller:CancelTransition()
 	timer.Remove(TRANSITION_TIMER)
-	WETSAND.Events.Fire("gameplay_transition_cancelled", { sounds = self.transitionSounds })
+	WS.Events.Fire("gameplay_transition_cancelled", { sounds = self.transitionSounds })
 	self.transitionSounds = {}
 end
 
@@ -134,7 +134,7 @@ local ACTIONS = {
 	[Gamemode.STAY] = function() end,
 	[Gamemode.START_TRANSITION] = function(self) self:OpenTransition() end,
 	[Gamemode.CANCEL_TRANSITION] = function(self) self:CancelTransition() end,
-	[Gamemode.ENTER_SANDBOX] = function() WETSAND.Rules:Halt() end,
+	[Gamemode.ENTER_SANDBOX] = function() WS.Rules:Halt() end,
 }
 
 -- story: the requester's own notice, { title, lines } for the chat and
@@ -142,19 +142,19 @@ local ACTIONS = {
 local NOTICES = {
 	[Gamemode.NOTICE_NONE] = function() end,
 	[Gamemode.NOTICE_REQUEST_CHAT] = function(_, story) Chat(story.title, story.lines) end,
-	[Gamemode.NOTICE_REQUEST_ANNOUNCEMENT] = function(_, story) WETSAND.Announce(story.announcement) end,
+	[Gamemode.NOTICE_REQUEST_ANNOUNCEMENT] = function(_, story) WS.Announce(story.announcement) end,
 	[Gamemode.NOTICE_CALLED_OFF] = function()
 		Chat("Game called off. Carry on.", { })
 		PlayToAll(CALLED_OFF_SFX)	
 	end,
 	[Gamemode.NOTICE_SANDBOX] = function()
 		PlayToAll(Pick(SANDBOX_SOUNDS))
-		WETSAND.Announce("Gameplay mode has ended. Sandbox mode until a new game begins.")
+		WS.Announce("Gameplay mode has ended. Sandbox mode until a new game begins.")
 	end,
 	[Gamemode.NOTICE_REFUSED] = function(requester, _, refusal) Tell(requester, "Gameplay: " .. refusal) end,
 	[Gamemode.NOTICE_DENIED] = function(requester, _, refusal)
 		Tell(requester, "Gameplay: " .. refusal)
-		if IsValid(requester) then WETSAND.PlaySoundTo(requester, requester, Gamemode.DENY_SOUND) end
+		if IsValid(requester) then WS.PlaySoundTo(requester, requester, Gamemode.DENY_SOUND) end
 	end,
 }
 
@@ -198,13 +198,13 @@ end
 -- Gameplay mode begins: a clean slate, everyone unassigned, the fallback
 -- state of a fresh join; each client opens its team menu on seeing it.
 function Controller:Begin()
-	local rules = WETSAND.Rules
-	team.SetScore(WETSAND.TEAM_RED, 0)
-	team.SetScore(WETSAND.TEAM_BLUE, 0)
+	local rules = WS.Rules
+	team.SetScore(WS.TEAM_RED, 0)
+	team.SetScore(WS.TEAM_BLUE, 0)
 	rules:Unhalt()
 	rules:RestartRound()
 	for _, ply in ipairs(player.GetAll()) do
-		WETSAND.SetPlayerTeam(ply, WETSAND.TEAM_UNASSIGNED, true)
+		WS.SetPlayerTeam(ply, WS.TEAM_UNASSIGNED, true)
 	end
 	-- JC: Hidden because too much visual clutte
 	-- Center("Choose a team!")
@@ -213,7 +213,7 @@ end
 -- A map with rounds starts in the mode sv_gameplay_enabled holds, quietly:
 -- Sandbox mode halts the rounds, Gameplay mode leaves the map's own round start.
 function Controller:StartAtLoad()
-	if self.mode:Mode() == Gamemode.SANDBOX then WETSAND.Rules:Halt() end
+	if self.mode:Mode() == Gamemode.SANDBOX then WS.Rules:Halt() end
 end
 
 return Controller

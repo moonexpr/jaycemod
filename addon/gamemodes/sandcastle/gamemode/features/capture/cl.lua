@@ -1,5 +1,5 @@
 -- The capture feature's view: TF2's control point HUD (CHudControlPointIcons)
--- drawn from what the capture controller networks (wetsand_point_*). Each
+-- drawn from what the capture controller networks (ws_point_*). Each
 -- point is an icon in the master's caplayout rows, centred at the bottom of
 -- the screen and scaled with its height as TF2 lays them out
 -- (foundation.capture.hud), except in payload rounds, whose cart HUD takes
@@ -11,12 +11,12 @@
 -- countdown. The local player standing on a point sees why they may not
 -- capture it (CControlPointProgressBar). The unlock countdown speaks 5..1,
 -- then the capture-enabled line (CControlPointCountdown::OnTick).
-WETSAND.Feature("rounds")
-local Capture = WETSAND.require("foundation.capture")
-local Hud = WETSAND.require("foundation.capture.hud")
-local Rounds = WETSAND.require("foundation.rounds")
+WS.Feature("rounds")
+local Capture = WS.require("foundation.capture")
+local Hud = WS.require("foundation.capture.hud")
+local Rounds = WS.require("foundation.rounds")
 
-local NOBODY, RED, BLUE = WETSAND.TEAM_UNASSIGNED, WETSAND.TEAM_RED, WETSAND.TEAM_BLUE
+local NOBODY, RED, BLUE = WS.TEAM_UNASSIGNED, WS.TEAM_RED, WS.TEAM_BLUE
 local NO_POINT_STOOD_ON = 0
 
 -- An icon's parts, in TF2's HUD units (foundation.capture.hud).
@@ -71,7 +71,7 @@ local function CreateFonts()
 	})
 end
 CreateFonts()
-hook.Add("OnScreenSizeChanged", "wetsand_capture_fonts", CreateFonts)
+hook.Add("OnScreenSizeChanged", "ws_capture_fonts", CreateFonts)
 
 local UNLOCK_WARNINGS = {
 	[60] = "Announcer.CompGame1Begins60Seconds",
@@ -94,7 +94,7 @@ local View = {
 }
 
 local function Key(rank, field)
-	return "wetsand_point_" .. rank .. "_" .. field
+	return "ws_point_" .. rank .. "_" .. field
 end
 
 -- What the controller published for the point of rank (0-based).
@@ -119,14 +119,14 @@ local function Point(rank)
 	}
 end
 
--- A TF2 token worded in the player's language (WETSAND.Localize), or the
+-- A TF2 token worded in the player's language (WS.Localize), or the
 -- token itself when no language has it.
 function View:Localize(token)
-	return WETSAND.Localize(token) or token
+	return WS.Localize(token) or token
 end
 
 local function TeamColor(team)
-	return WETSAND.TeamColor[team] or WETSAND.TeamColor[NOBODY]
+	return WS.TeamColor[team] or WS.TeamColor[NOBODY]
 end
 
 local function Seconds(at)
@@ -186,7 +186,7 @@ end
 -- The layout's rows of shown points.
 local function Rows(count)
 	local rows = {}
-	for _, row in ipairs(Capture.Layout(GetGlobal2String("wetsand_point_layout", ""), count)) do
+	for _, row in ipairs(Capture.Layout(GetGlobal2String("ws_point_layout", ""), count)) do
 		local shown = {}
 		for _, rank in ipairs(row) do
 			local p = Point(rank)
@@ -198,8 +198,8 @@ local function Rows(count)
 end
 
 local function DrawIcons(w, h)
-	if not Hud.Shown(GetGlobal2Int("wetsand_round_hud_type", Rounds.HUD_NONE)) then return end
-	local rows = Rows(GetGlobal2Int("wetsand_point_count", 0))
+	if not Hud.Shown(GetGlobal2Int("ws_round_hud_type", Rounds.HUD_NONE)) then return end
+	local rows = Rows(GetGlobal2Int("ws_point_count", 0))
 	local sizes = {}
 	for i, row in ipairs(rows) do sizes[i] = #row end
 	local layout = Hud.Layout(sizes, w, h)
@@ -224,7 +224,7 @@ end
 -- point, or the cart its area rides; NULL when the server names none or
 -- this client was not sent it (a hidden point).
 local function PanelAnchor(ply)
-	return ply:GetNW2Entity("wetsand_capture_anchor")
+	return ply:GetNW2Entity("ws_capture_anchor")
 end
 
 local function DrawReason(text, centre, bottom)
@@ -247,15 +247,15 @@ end
 -- The capture panel: the point's progress while the player's team caps it,
 -- else why it may not; nil when the player stands on no point.
 local function PanelRank(ply)
-	local rank = ply:GetNW2Int("wetsand_capture_point", NO_POINT_STOOD_ON)
-	if rank == NO_POINT_STOOD_ON or WETSAND.State() == WETSAND.STATE.TEAM_WIN then return nil end
+	local rank = ply:GetNW2Int("ws_capture_point", NO_POINT_STOOD_ON)
+	if rank == NO_POINT_STOOD_ON or WS.State() == WS.STATE.TEAM_WIN then return nil end
 	return rank
 end
 
 -- The panel, centred on centre with its bottom at bottom, in the 2D space
 -- being drawn (the screen, or the panel's plane in the world).
 local function DrawPanelAt(ply, rank, centre, bottom)
-	local reason = ply:GetNW2Int("wetsand_capture_reason", Capture.REASON_NONE)
+	local reason = ply:GetNW2Int("ws_capture_reason", Capture.REASON_NONE)
 	if reason ~= Capture.REASON_NONE then return DrawReason(View:Localize(Capture.REASON_TOKEN[reason]), centre, bottom) end
 	local x, y = centre - PANEL_WIDTH / 2, bottom - PANEL_HEIGHT
 	PanelBox(x, y, PANEL_WIDTH, PANEL_HEIGHT)
@@ -268,7 +268,7 @@ end
 -- Every round mode that loads capture (control points, KOTH, payload)
 -- shows its points; payload's cart points come hidden. The panel is drawn
 -- here only without an anchor in the world: above the crosshair.
-hook.Add("SandcastleHUDPaint", "wetsand_capture", function(w, h)
+hook.Add("SandcastleHUDPaint", "ws_capture", function(w, h)
 	DrawIcons(w, h)
 	local ply = LocalPlayer()
 	local rank = PanelRank(ply)
@@ -280,7 +280,7 @@ end)
 -- a pixel, so it grows as the player comes near and walls hide it.
 local PANEL_SCALE = 0.2
 
-hook.Add("PostDrawTranslucentRenderables", "wetsand_capture_panel", function(_, skybox)
+hook.Add("PostDrawTranslucentRenderables", "ws_capture_panel", function(_, skybox)
 	if skybox then return end
 	local ply = LocalPlayer()
 	local rank = PanelRank(ply)
@@ -297,7 +297,7 @@ end)
 
 -- The first locked point's pending unlock.
 local function PendingUnlock()
-	for rank = 0, GetGlobal2Int("wetsand_point_count", 0) - 1 do
+	for rank = 0, GetGlobal2Int("ws_point_count", 0) - 1 do
 		local p = Point(rank)
 		if p.locked and p.unlockTime > 0 then return p.unlockTime end
 	end
@@ -314,14 +314,14 @@ end
 
 -- CControlPointCountdown::OnTick: armed for each second the unlock is
 -- still that far off; 5..1 while the round runs, then the capture line.
-hook.Add("Think", "wetsand_capture_unlock", function()
+hook.Add("Think", "ws_capture_unlock", function()
 	local pending = PendingUnlock()
 	if pending > 0 and pending ~= View.unlockAt then
 		View.unlockAt = pending
 		View.zeroArmed = true
 		for s in pairs(UNLOCK_WARNINGS) do View.unlockArmed[s] = pending - CurTime() >= s end
 	end
-	if View.unlockAt <= 0 or WETSAND.State() ~= WETSAND.STATE.RND_RUNNING then return end
+	if View.unlockAt <= 0 or WS.State() ~= WS.STATE.RND_RUNNING then return end
 	local left = math.floor(View.unlockAt - CurTime())
 	if left <= 0 then
 		if View.zeroArmed then Play(CAP_ENABLED) end
@@ -336,14 +336,14 @@ end)
 -- The capture's game events (sh.lua), worded for the rounds HUD: a capture
 -- is the announcement line, a defence a notice (for a point with a name).
 -- A point's name is the map's token ("#Badwater_cap_1"), worded here.
-WETSAND.Events.Listen("teamplay_point_captured", "wetsand_capture_view", function(fields)
+WS.Events.Listen("teamplay_point_captured", "ws_capture_view", function(fields)
 	local point = fields.cpname ~= "" and View:Localize(fields.cpname) or ("point " .. fields.cp)
-	WETSAND.Feature("rounds"):Announce(WETSAND.TeamName[fields.team] .. " captured " .. point, fields.team)
+	WS.Feature("rounds"):Announce(WS.TeamName[fields.team] .. " captured " .. point, fields.team)
 end)
 
-WETSAND.Events.Listen("teamplay_capture_blocked", "wetsand_capture_view", function(fields)
+WS.Events.Listen("teamplay_capture_blocked", "ws_capture_view", function(fields)
 	if fields.cpname == "" then return end
-	WETSAND.Feature("rounds"):Notice(WETSAND.TeamName[fields.team] .. " defended " .. View:Localize(fields.cpname), fields.team)
+	WS.Feature("rounds"):Notice(WS.TeamName[fields.team] .. " defended " .. View:Localize(fields.cpname), fields.team)
 end)
 
 return View

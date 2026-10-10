@@ -17,7 +17,7 @@ specifier>`: `ns_lanes_print`, `ns_lanes_replan`, `ns_lanes_debug`.
 
 ## Seeing: the overlay
 
-`wetsand_aiwar_debug` (admins) toggles the overlay, the nbdebug feature's
+`ws_aiwar_debug` (admins) toggles the overlay, the nbdebug feature's
 AIWAR layer. Each part of it is the viewer's own client convar, `1` by
 default, flipped by the panel's toggles:
 
@@ -29,8 +29,8 @@ default, flipped by the panel's toggles:
 | `ns_lanes_debug` | each team's lanes, labelled with length and the squads holding them |
 | `ns_battlelines_debug` | each team's battle lines (a rail through its posts, ordered across the way they face, or a ring round a KOTH hill), forward posts dimmer, its front (where its lanes lead) as a pillar, and the cart spheres |
 
-`wetsand_aiwar_debug_full 1` puts the whole action stack in each box. The
-NextBot layers (`wetsand_nb_debug PATH|COST|BEHAVIOR|NAV`, superadmins)
+`ws_aiwar_debug_full 1` puts the whole action stack in each box. The
+NextBot layers (`ws_nb_debug PATH|COST|BEHAVIOR|NAV`, superadmins)
 draw with it.
 
 ## Debugging: console reports
@@ -49,7 +49,7 @@ Admins, while the war runs; printed to your console and the server's.
   until the new ones are ready.
 - `ns_battlelines_print`: per team, its front, its posts' width and depth
   (or ring size), and every squad in contact or falling back.
-- `wetsand_aiwar_report`, `wetsand_aiwar_trace`: every soldier, and one
+- `ws_aiwar_report`, `ws_aiwar_trace`: every soldier, and one
   soldier's queries and events (unchanged).
 
 ## Refining: live tuning

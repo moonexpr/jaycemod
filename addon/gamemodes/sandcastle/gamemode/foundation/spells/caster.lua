@@ -1,5 +1,5 @@
 -- The caster port: everything a spell may ask of the world, for one caster,
--- a player or an NPC (wetsand_combat_nextbot, AI War soldiers). Owner() is
+-- a player or an NPC (ws_combat_nextbot, AI War soldiers). Owner() is
 -- the caster itself, credited with the damage its spells deal; its aim is
 -- ShootPosition() and EyeVectors(). No method needs a player: one with no
 -- meaning for an NPC (ScreenFade) does nothing for it. The spells

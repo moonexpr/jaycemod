@@ -1,12 +1,12 @@
 -- Game events v2, T4 (docs/game-events-v2-plan.md §3): the source path
 -- debug.getinfo(fn, "S") reports on this realm for a file the server sent
--- (included, compiled by WETSAND.require, and a feature part) and for an
+-- (included, compiled by WS.require, and a feature part) and for an
 -- entity and a weapon, with the key Paths.Key would take from it (the part
 -- from gamemode/ or entities/ on). Runs on either realm: `gev2_probe.py run
 -- client_t4` on the server, `run --client client_t4` on the client; compare
 -- the two.
 local NAME = "client_t4"
-local DIR = "wetsand_tests/gev2/"
+local DIR = "ws_tests/gev2/"
 local out = {}
 
 local function Say(...)
@@ -46,27 +46,27 @@ end
 
 Say("realm", SERVER and "server" or "client", "VERSION", VERSION, "BRANCH", BRANCH, "map", game.GetMap())
 
-Say("--- entry files and wetsand/ (include)")
+Say("--- entry files and ws/ (include)")
 if SERVER then
 	Source("init.lua GM:PlayerSpawn", GAMEMODE.PlayerSpawn)
 else
 	Source("cl_init.lua GM:HUDPaint", GAMEMODE.HUDPaint)
 end
-Source("shared.lua GM:WetsandModules", GAMEMODE.WetsandModules)
-Source("wetsand/sh_core.lua WETSAND.require", WETSAND.require)
-Source("wetsand/sh_events.lua Events.Fire", WETSAND.Events and WETSAND.Events.Fire)
+Source("shared.lua GM:WSModules", GAMEMODE.WSModules)
+Source("ws/sh_core.lua WS.require", WS.require)
+Source("ws/sh_events.lua Events.Fire", WS.Events and WS.Events.Fire)
 
-Say("--- foundation modules (WETSAND.require's CompileFile)")
+Say("--- foundation modules (WS.require's CompileFile)")
 for _, name in ipairs({ "foundation.features", "foundation.events", "foundation.teams" }) do
 	local key, fn = FirstFunction(package.loaded[name])
 	Source(name .. "." .. tostring(key), fn)
 end
 
 Say("--- features loaded on this realm (the feature loader's CompileFile)")
-local loaded = WETSAND.FeatureLoader and WETSAND.FeatureLoader:Loaded() or {}
+local loaded = WS.FeatureLoader and WS.FeatureLoader:Loaded() or {}
 Say("loaded features", table.concat(loaded, ","))
 for _, name in ipairs(loaded) do
-	local value = WETSAND.FeatureLoader.values[name]
+	local value = WS.FeatureLoader.values[name]
 	local key, fn = FirstFunction(value)
 	if not fn then
 		local mt = getmetatable(value or {})
@@ -91,4 +91,4 @@ Source("lua/includes hook.Add", hook.Add)
 local dir = DIR .. (SERVER and "out" or "client_out")
 file.CreateDir(dir)
 file.Write(dir .. "/" .. NAME .. ".txt", table.concat(out, "\n") .. "\n")
-print("wetsand_tests: gev2 " .. NAME .. " done")
+print("ws_tests: gev2 " .. NAME .. " done")

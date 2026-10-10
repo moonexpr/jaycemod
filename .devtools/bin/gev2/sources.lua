@@ -1,7 +1,7 @@
 -- Game events v2 research, questions 1, 2 and 5 (server side): the source
 -- paths debug.getinfo reports for each way the gamemode loads code, and what
 -- file.Read sees in the LUA and GAME paths. Writes
--- data/wetsand_tests/gev2/out/sources.txt. Run by .devtools/bin/gev2_probe.py.
+-- data/ws_tests/gev2/out/sources.txt. Run by .devtools/bin/gev2_probe.py.
 local NAME = "sources"
 local out = {}
 
@@ -35,30 +35,30 @@ Say("GM.FolderName", GAMEMODE.FolderName)
 Say("--- gamemode files (include)")
 Source("init.lua GM:PlayerSpawn", GAMEMODE.PlayerSpawn)
 Source("shared.lua GM:StartCommand", GAMEMODE.StartCommand)
-Source("shared.lua GM:WetsandModules", GAMEMODE.WetsandModules)
-Source("wetsand/sh_core.lua WETSAND.require", WETSAND.require)
-Source("wetsand/sh_events.lua Events.Fire", WETSAND.Events and WETSAND.Events.Fire)
+Source("shared.lua GM:WSModules", GAMEMODE.WSModules)
+Source("ws/sh_core.lua WS.require", WS.require)
+Source("ws/sh_events.lua Events.Fire", WS.Events and WS.Events.Fire)
 
-Say("--- foundation modules (CompileFile in WETSAND.require)")
+Say("--- foundation modules (CompileFile in WS.require)")
 for _, name in ipairs({ "foundation.features", "foundation.events", "foundation.teams" }) do
 	local key, fn = FirstFunction(package.loaded[name])
 	Source(name .. "." .. tostring(key), fn)
 end
 
 Say("--- features (CompileFile in FeatureFiles:Run), loaded on this map")
-local loaded = WETSAND.FeatureLoader and WETSAND.FeatureLoader:Loaded() or {}
+local loaded = WS.FeatureLoader and WS.FeatureLoader:Loaded() or {}
 Say("loaded features", table.concat(loaded, ","))
 for _, name in ipairs(loaded) do
-	local key, fn = FirstFunction(WETSAND.FeatureLoader.values[name])
+	local key, fn = FirstFunction(WS.FeatureLoader.values[name])
 	if not fn then
-		local mt = getmetatable(WETSAND.FeatureLoader.values[name] or {})
+		local mt = getmetatable(WS.FeatureLoader.values[name] or {})
 		key, fn = FirstFunction(mt and mt.__index)
 	end
 	Source("feature " .. name .. "." .. tostring(key), fn)
 end
 
 Say("--- scripted entities and weapons (GMod's own loader)")
-for _, class in ipairs({ "tf_gamerules", "merasmus", "team_round_timer", "wetsand_pickup_base" }) do
+for _, class in ipairs({ "tf_gamerules", "merasmus", "team_round_timer", "ws_pickup_base" }) do
 	local stored = scripted_ents.GetStored(class)
 	local key, fn = FirstFunction(stored and stored.t)
 	Source("ENT " .. class .. "." .. tostring(key), fn)
@@ -96,6 +96,6 @@ ReadReport("gamemodes/sandcastle/gamemode/shared.lua", "GAME")
 ReadReport("addons/sandcastle/gamemodes/sandcastle/gamemode/shared.lua", "GAME")
 ReadReport("addons/sandcastle/gamemodes/sandcastle/gamemode/shared.lua", "MOD")
 
-file.CreateDir("wetsand_tests/gev2/out")
-file.Write("wetsand_tests/gev2/out/" .. NAME .. ".txt", table.concat(out, "\n") .. "\n")
-print("wetsand_tests: gev2 " .. NAME .. " done")
+file.CreateDir("ws_tests/gev2/out")
+file.Write("ws_tests/gev2/out/" .. NAME .. ".txt", table.concat(out, "\n") .. "\n")
+print("ws_tests: gev2 " .. NAME .. " done")

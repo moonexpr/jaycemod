@@ -11,7 +11,7 @@ function ENT:Configure(config)
 end
 
 function ENT:Initialize()
-	self.spells = WETSAND.Feature("spells")
+	self.spells = WS.Feature("spells")
 	self.spells:BindSpellProjectile(self, self.configured.spell, self.configured)
 end
 

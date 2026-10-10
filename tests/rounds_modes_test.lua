@@ -171,7 +171,7 @@ T.test("the rounds bindings load the feature on first use, never at file top lev
 	for _, file in ipairs({ "tf_gamerules", "team_round_timer", "game_round_win", "tf_logic_competitive" }) do
 		local source = Read(entities .. file .. ".lua")
 		T.eq(source:find('require("foundation.', 1, true), nil, file .. " requires no model")
-		T.eq(source:find("\nlocal %w+ = WETSAND%.Feature"), nil, file .. " loads nothing at top level")
+		T.eq(source:find("\nlocal %w+ = WS%.Feature"), nil, file .. " loads nothing at top level")
 	end
 end)
 

@@ -35,7 +35,7 @@ design change itself; §1's scholar edits are still the writer's.
 | `tests/events_test.lua` | 27 tests | `luajit tests/events_test.lua` |
 | Files the server sends clients | 191 | research §2 |
 | `E.Define` calls | 30 lines in 10 files (29 events plus `client_ready`) | `grep -rn 'Define("' addon --include='*.lua'` |
-| `WETSAND.BroadcastSound(ToOthers)` calls | 19, plus 2 definitions and 2 uses through the Wheel's port (the handoff's 23) | §D |
+| `WS.BroadcastSound(ToOthers)` calls | 19, plus 2 definitions and 2 uses through the Wheel's port (the handoff's 23) | §D |
 | Boss forwarder `me:FireGameEvent(` calls | **13 in 3 files** (merasmus 7, eyeball_boss 4, headless_hatman 2) | `grep -rc 'me:FireGameEvent(' addon/gamemodes/sandcastle/gamemode/foundation` |
 
 The scholar counted 16 forwarder calls in 6 files. The other three hits it
@@ -224,7 +224,7 @@ frozen fixture gains or loses it.
 ### At the call site
 
 ```lua
-local Events = WETSAND.Events
+local Events = WS.Events
 
 -- features/capture/sv.lua
 -- CTeamControlPoint::InternalSetOwner: a team took the point (not a reset
@@ -236,7 +236,7 @@ Events.System.Fire("teamplay_point_captured", {
 })
 
 -- features/capture/cl.lua
-Events.System.Listen("teamplay_point_captured", "wetsand_capture_view", function(fields)
+Events.System.Listen("teamplay_point_captured", "ws_capture_view", function(fields)
 	...
 end)
 
@@ -245,8 +245,8 @@ Events.Game.Fire("nb_debug_state", {
 	...
 }, { to = ply })
 
--- wetsand/sh_core.lua, server: bring a client's loaded features up to date
-Events.Recovery.Listen("resync", "wetsand_feature_load", function(fields, ply)
+-- ws/sh_core.lua, server: bring a client's loaded features up to date
+Events.Recovery.Listen("resync", "ws_feature_load", function(fields, ply)
 	...
 end)
 ```
@@ -285,9 +285,9 @@ end)
 **Who depends on whom:**
 
 ```
-wetsand/sh_events.lua         the composition root: builds the ports and the Library once per
-  |                           Lua state, exposes WETSAND.Events, registers net and the hooks
-  +-- wetsand/sh_events_ports.lua   GMod's side of each port
+ws/sh_events.lua         the composition root: builds the ports and the Library once per
+  |                           Lua state, exposes WS.Events, registers net and the hooks
+  +-- ws/sh_events_ports.lua   GMod's side of each port
   +-- foundation/events.lua   Library: one realm's coordinator
         +-- Catalog ---------- Event <| GameEvent, SystemEvent, RecoveryEvent
         +-- Listeners
@@ -321,11 +321,11 @@ wetsand/sh_events.lua         the composition root: builds the ports and the Lib
 | `Failure`, with 8 parts | `events/failure.lua`, `events/failure/<state>.lua` | One failure state: its key, its report lines, the recovery it starts, which recovery event answers it, and its retry policy. | New |
 | `Recovery` | `events/recovery.lua` | The open failure states of a realm. It opens a state (reporting once and starting its recovery), closes it on an answer (reporting the recovery), retries what is due, and reports a give-up once. | New |
 | `Handshake` | `events/handshake.lua` | The client's side of joining: the joining, ready-sent and ready states; `client_ready` (with the client's major) and its retries; the events held while joining. | New; takes over the client's accepted list |
-| `Peers` | `events/peers.lua` | The server's record of each connected player: ready or not, its handshake epoch, and its touched events. Bots are never peers. | New; replaces `ply.wetsandReady` |
+| `Peers` | `events/peers.lua` | The server's record of each connected player: ready or not, its handshake epoch, and its touched events. Bots are never peers. | New; replaces `ply.wsReady` |
 | `Pacer` | `events/pacer.lua` | Each player's byte budget per tick. Sends over the budget wait, in order. | New; replaces `CountSent`'s logging |
 
 **The ports.** Each is an interface the `Library` is handed. The GMod
-classes in `wetsand/sh_events_ports.lua` implement them, and
+classes in `ws/sh_events_ports.lua` implement them, and
 `tests/fake_ports.lua` fakes them.
 
 | Port | Methods | GMod class | Realm |
@@ -341,13 +341,13 @@ classes in `wetsand/sh_events_ports.lua` implement them, and
 `SendWatcher` (in the ports file) is the `AddCSLuaFile` wrapper (A.4). It
 feeds `Sent` and `Drift` through the `Library`.
 
-**The composition root** is `wetsand/sh_events.lua`, and nothing else
+**The composition root** is `ws/sh_events.lua`, and nothing else
 constructs these classes.
 
 - It builds the ports, then the one `Library` per Lua state. The `Library`
-  is kept across a gamemode refresh in `WETSAND.EventLibrary`, as v1 kept its
+  is kept across a gamemode refresh in `WS.EventLibrary`, as v1 kept its
   registry, and a refresh only re-binds its ports and hooks.
-- It exposes `WETSAND.Events`: the `Game`, `System` and `Recovery` facades,
+- It exposes `WS.Events`: the `Game`, `System` and `Recovery` facades,
   plus the aliases until C.
 - It registers the two net messages and the hooks: `PlayerInitialSpawn`,
   `PlayerDisconnected`, `InitPostEntity` (start-up on the server, `Loaded` on
@@ -355,7 +355,7 @@ constructs these classes.
 - It installs `SendWatcher`.
 - It fires no event itself. Every recovery site is in `protocol.lua`.
 
-**The one view** is `wetsand/cl_network_notice.lua` (client). It listens to
+**The one view** is `ws/cl_network_notice.lua` (client). It listens to
 `network_notice` and presents it: the chat line and TF2's cue (P1). The
 models never print to chat or play a sound.
 
@@ -394,7 +394,7 @@ per realm and per peer.
   - A `stale_code` that only a reconnect can cure adds the chat hint
     `reconnect to update` (P2). The library never forces a reconnect.
   - **Clients present.** `Recovery` fires the client-local recovery event
-    `network_notice`. Its listener in `wetsand/cl_network_notice.lua` prints
+    `network_notice`. Its listener in `ws/cl_network_notice.lua` prints
     the chat line and plays the cue, from the named constants
     `NOTICE_SOUND_FAILURE` and `NOTICE_SOUND_RECOVERED`.
   - A disconnected client (`major_mismatch`) has no Lua left to run, so it
@@ -422,7 +422,7 @@ replayed (P1, the operator's answer).
 | `code_touched` | client to server | `events` | 4 per 10 s | The server's record of that player's touched events |
 | `code_current` | server to one client | `files` | | Closes `stale_code` |
 | `event_refused` | server to one client | `id`, `reason` | | Opens `refused` on the client |
-| `network_notice` | client, local only | `state`, `line`, `recovered`, `chat` | | Its listener in `wetsand/cl_network_notice.lua` presents a report: chat and the cue (P1) |
+| `network_notice` | client, local only | `state`, `line`, `recovered`, `chat` | | Its listener in `ws/cl_network_notice.lua` presents a report: chat and the cue (P1) |
 
 **The failure states.** Each test is in `tests/events_recovery_test.lua`
 unless the row names another file. Those tests run over
@@ -463,8 +463,8 @@ client only.
 | `READY_BURST_MAX_BYTES` | 131072 (the existing constant), now the backlog that is logged | `Pacer` |
 | `MAJOR` | 1 | `SystemEvent` |
 | `MAJOR_MISMATCH_MESSAGE` | `"Sandcastle was updated: this server runs system events major %d, your client has major %d. Update and reconnect; if this repeats, wait for the server's next map change."` | `failure/major_mismatch.lua` |
-| `NOTICE_SOUND_FAILURE` | `"ui/system_message_alert.wav"` (TF2's) | the view, `wetsand/cl_network_notice.lua` |
-| `NOTICE_SOUND_RECOVERED` | `"ui/message_update.wav"` (TF2's) | the view, `wetsand/cl_network_notice.lua` |
+| `NOTICE_SOUND_FAILURE` | `"ui/system_message_alert.wav"` (TF2's) | the view, `ws/cl_network_notice.lua` |
+| `NOTICE_SOUND_RECOVERED` | `"ui/message_update.wav"` (TF2's) | the view, `ws/cl_network_notice.lua` |
 
 ---
 
@@ -500,7 +500,7 @@ away.
 | 0c42776 | `stops.lua` | **Reshape** | It becomes the `Touch` class, with decision (b)'s system and recovery exemptions and the test `a stop lifts when its file matches again`. The 6 tests are kept. |
 | 3a7927d | `sent.lua` | **Keep** as built | |
 | 9d603ba, 36a9678 | the site scanner | **Keep**, and extend | The scanner learns `Events.Game.` and `Events.System.` sites with their kind, `Events.Recovery.Listen`, `RecoveryFire(` only in `protocol.lua`, a `Listen` or `Accept` of another kind, and the field capture C's freeze test needs. |
-| 04bc088 | the switch: the facade, the adapter, `events_test.lua`, the adapter test, the sites test, the ratchet, the converted options, and `init.lua`'s order | **Keep** the switch's outcomes. **Reshape** its two big files. | Kept: v1 is gone, `Request` is gone, the options are converted, `init.lua`'s order, the ratchet, and the sites test. In `foundation/events.lua`, `Library` gives registration and sites to `Catalog` and listeners to `Listeners`; its library events go to `Protocol`; `CountSent` becomes `Pacer`; the client's accepted list moves to `Handshake`. `ply.wetsandReady` becomes `Peers`. The adapter splits into the composition root and `sh_events_ports.lua`, and gains the facades. Two committed tests are reworded for recovery (A.5), so the count stays. |
+| 04bc088 | the switch: the facade, the adapter, `events_test.lua`, the adapter test, the sites test, the ratchet, the converted options, and `init.lua`'s order | **Keep** the switch's outcomes. **Reshape** its two big files. | Kept: v1 is gone, `Request` is gone, the options are converted, `init.lua`'s order, the ratchet, and the sites test. In `foundation/events.lua`, `Library` gives registration and sites to `Catalog` and listeners to `Listeners`; its library events go to `Protocol`; `CountSent` becomes `Pacer`; the client's accepted list moves to `Handshake`. `ply.wsReady` becomes `Peers`. The adapter splits into the composition root and `sh_events_ports.lua`, and gains the facades. Two committed tests are reworded for recovery (A.5), so the count stays. |
 | 3eca116 | `expected_sent_files.sh` | **Keep** | Its count grows with A's new `foundation/` files. A.6 item 9 diffs against the tree, so nothing needs changing. |
 | 5fcb196 | the probe modules line, and the `events_size` and `events_sent` probes | **Keep** | `events_size.lua` is re-pointed at `Codec.New(values)`. |
 | bddcfb0 | the codec asks the host for the kind of any engine value (found live; `events_size` now reads `mismatches 0` over 24 events) | **Keep** | A real fix, independent of the classes. |
@@ -542,7 +542,7 @@ Each answer below is already worked into the sections it names.
 
 | # | Question | Answer | Where it lands |
 |---|---|---|---|
-| P1 | What a player sees during recovery | Console for every report. Chat for `stale_code` and any give-up, **plus an audio cue**: TF2's `ui/system_message_alert.wav` for a failure and `ui/message_update.wav` for a recovery, played by a client recovery listener (the view `wetsand/cl_network_notice.lua`). Missed one-shot lines are still not replayed. | "Failure states and recovery", A.1, A.2, A.5, A.6 item 23, E.3 item 7 |
+| P1 | What a player sees during recovery | Console for every report. Chat for `stale_code` and any give-up, **plus an audio cue**: TF2's `ui/system_message_alert.wav` for a failure and `ui/message_update.wav` for a recovery, played by a client recovery listener (the view `ws/cl_network_notice.lua`). Missed one-shot lines are still not replayed. | "Failure states and recovery", A.1, A.2, A.5, A.6 item 23, E.3 item 7 |
 | P2 | May the library tell a client to reconnect? | **No.** A chat hint, `reconnect to update`, where only a reconnect cures a stale file. | "Failure states and recovery", A.5 |
 | P3 | A client on another major | **Disconnect it,** with a message telling it to update. This is a deliberate exception to report-only. Decision 3 still holds for stale code, and nothing else stops an event or disconnects anyone. | Decision (a), the `major_mismatch` row and its test, the guard test, A.6 item 21, E.1's recovery check |
 | P4 | Which events are system | `teamplay_capture_blocked`, `teamplay_alert` and `teamplay_teambalanced_player` are system. The 12 boss events, `npc_ragdoll_create` and the tag events (Halloween-specific under the rule) are game. The operator's rule decides the rest; game is the default, and the system set stays minimal. | Decision (d), B, C, D, the spec's §1 |
@@ -590,12 +590,12 @@ plan's defaults. Nothing in this plan waits on the operator any more.
 | 2 | A client for T1 to T5 (extended to T6 and T7 by P6, 2026-10-08) | **Yes, unattended.** The GMod client runs in the CrossOver bottle **"Team Fortress 2"**, because that bottle has the right Wine settings. The dedicated server still runs only in "Steam", through `srcds.py`. The exception covers only that GMod client, for T1 to T5; no server and no other process ever runs in that bottle (handoff §5 still holds for everything else). T1 to T5 are required phase-E criteria, and they confirm detection. | No (the default was no client) | "Live runs", §3, A.1, A.5, A.6 items 11, 13 to 15, E, §5 |
 | 3 | Stop events on a stale file, or report it? | **Report only,** in the client's console and chat (and the server's log). `critical` is built but unused. | Yes | §1, A.2, A.4, A.6 item 7, C.1, C.3 item 10, E.1 |
 | 4 | The events file | **Build** the generator, the pre-commit hook and the staleness test, in C. | Yes | C, as written |
-| 5 | Phase D's scope | **Also move** `WETSAND.Announce`'s server-built text (the `announcement` event) and `gameplay_chat` to client listeners. | No (the default was to leave them) | D.1, D.2, D.3 items 7 to 9 |
+| 5 | Phase D's scope | **Also move** `WS.Announce`'s server-built text (the `announcement` event) and `gameplay_chat` to client listeners. | No (the default was to leave them) | D.1, D.2, D.3 items 7 to 9 |
 
 **The architect's calls that follow from these** (technical; they are
 listed again under "Judgment calls" at the end):
 
-- **The convar `wetsand_events_check` is dropped.** With report only, its
+- **The convar `ws_events_check` is dropped.** With report only, its
   values 0 (off) and 2 (stop) have no use. The check is cheap (at most 1 ms
   a tick, plus one read of the sent files per map), and stopping isn't
   wanted. So the check always runs and only reports, and A adds no convar.
@@ -628,7 +628,7 @@ listed again under "Judgment calls" at the end):
   `-condebug`, whose `console.log` the server writes.
 - **D's counts were re-measured at main 29a6070** (D.3). `BroadcastSound`
   is unchanged (19 calls, of which 10 stay), and so are the text sites (23,
-  of which 17 stay). `WETSAND.Announce` has 2 callers, not the 3 that §4
+  of which 17 stay). `WS.Announce` has 2 callers, not the 3 that §4
   said.
 
 ---
@@ -642,7 +642,7 @@ then, this table is the spec.
 
 | # | Scholar's change | Verdict | Reason, and the spec edit |
 |---|---|---|---|
-| 1 | §4 "What is compared": the server keeps references and compares them with what it now serves | **Adopted, modified** | The server keeps two references per sent file: the text **sent** (hashed by the `AddCSLuaFile` wrapper at send) and, for files it runs, the text **run** (read with `file.Read` just before `CompileFile` in `WETSAND.require` and `FeatureFiles:Run`). It does not switch to `CompileString`, which would change every chunk name and error path. What "now serves" means is the constant `SERVED_TEXT`, which T2 settles (§3); the default is `SERVED_DISK`. Edit: replace §4's first bullet with the scholar's wording plus these two sentences. |
+| 1 | §4 "What is compared": the server keeps references and compares them with what it now serves | **Adopted, modified** | The server keeps two references per sent file: the text **sent** (hashed by the `AddCSLuaFile` wrapper at send) and, for files it runs, the text **run** (read with `file.Read` just before `CompileFile` in `WS.require` and `FeatureFiles:Run`). It does not switch to `CompileString`, which would change every chunk name and error path. What "now serves" means is the constant `SERVED_TEXT`, which T2 settles (§3); the default is `SERVED_DISK`. Edit: replace §4's first bullet with the scholar's wording plus these two sentences. |
 | 2 | §4 threat sentence: shadowing happens on the server; name `sv_allowcslua 1` | **Adopted** | The operator chose to ignore `sv_allowcslua 1` (decision 1): no report and no refusal. Edit: rewrite the paragraph under "## 4". Shadowing happens on the server. With `sv_allowcslua 1` a client may run a local copy the check can't see, and the library treats such a server like any other. |
 | 3 | §4 "When": the triggers are client ready, `feature_load` on a client, and a deduplicated gamemode refresh | **Adopted, modified** | A background scanner keeps the current hashes fresh within a per-tick budget, and the three triggers only *read* its results. That way no trigger reads files. An entity's refresh also takes a fresh reference for that entity, because its file reruns. Edit: replace the "When" bullet, and say `CompileFile`d files never rerun on refresh. |
 | 4 | §4 file set: 191 files from the wrapper, fixed at start-up, no late sends | **Adopted, modified** | The adapter installs the wrapper once, before `init.lua`'s first `AddCSLuaFile`. To make that possible, `init.lua` includes `shared.lua` before its two `AddCSLuaFile` lines. A late call for a path not already sent is our error, `late_send`, which is logged. A repeat call for a path already sent (a refresh) is allowed. Edit: name the set and the rule. |
@@ -732,7 +732,7 @@ commit. Phase A's switch commit is the one place this bites.
   which prints nothing. The models' I/O goes through a `host` table or
   injected functions.
 - **Controllers coordinate, entities are thin bindings, clients present.**
-  The adapter (`wetsand/sh_events.lua`) only wires `net`, players and hooks
+  The adapter (`ws/sh_events.lua`) only wires `net`, players and hooks
   to the models.
 - **Constants are named.** Multi-field tables have one field per line.
 - **No `TF2` or `tf2` in our identifiers** (`check_names.py`).
@@ -747,7 +747,7 @@ commit. Phase A's switch commit is the one place this bites.
   which must print `free`. It only reads files.
 - New convars are listed in `addon/cfg/sandcastle_defaults.cfg` at their
   default; `tests/cfg_defaults_test.lua` checks this.
-- Meta and debug names use `wetsand_`.
+- Meta and debug names use `ws_`.
 - New event names reuse TF2's event and field names where TF2 has the event.
   Read them from the mounted TF2's `tf/resource/modevents.res`, read-only.
 - Recovery events, the library's own (sited in `protocol.lua`), have plain
@@ -767,7 +767,7 @@ commit. Phase A's switch commit is the one place this bites.
 - The server loads main through the `sandcastle` symlink. A phase's live
   criteria therefore run on main after the director merges it. Phase A's
   probes are the exception: they may run earlier by copying the modules they
-  test into `garrysmod/data/wetsand_tests/`, as `gev2_probe.py` does.
+  test into `garrysmod/data/ws_tests/`, as `gev2_probe.py` does.
 - Stop the server when done (`python3 .devtools/bin/srcds.py stop`).
 
 ---
@@ -831,11 +831,11 @@ which is the second agent.
 | `foundation/events/paths.lua` | New. Source path to key, key to feature and kind, and `AddCSLuaFile` argument resolution. |
 | `foundation/events/drift.lua` | New. The sent and run references, observed hashes, the scanner's state, and the stale query. |
 | `foundation/events/stops.lua` | New. The stop rules. |
-| `gamemode/wetsand/sh_events.lua` | **Rewritten.** The adapter: `net`, recipients (`to`), readiness, the wrapper's install, the scanner's `Think`, reports, and the library events. It has no convar (decision 3). It keeps inert `Define` and type constructors until C. `Request` goes. |
-| `gamemode/wetsand/sh_core.lua` | On the server, `WETSAND.require` and `FeatureFiles:Run` read the text and record the run hash for sent files. Files compiled before the adapter exists are queued, and recorded when it starts. |
+| `gamemode/ws/sh_events.lua` | **Rewritten.** The adapter: `net`, recipients (`to`), readiness, the wrapper's install, the scanner's `Think`, reports, and the library events. It has no convar (decision 3). It keeps inert `Define` and type constructors until C. `Request` goes. |
+| `gamemode/ws/sh_core.lua` | On the server, `WS.require` and `FeatureFiles:Run` read the text and record the run hash for sent files. Files compiled before the adapter exists are queued, and recorded when it starts. |
 | `gamemode/init.lua` | `include("shared.lua")` moves above the two `AddCSLuaFile` lines, so the wrapper sees every send. |
 | Every `Fire` call with a third argument (`sh_core.lua:82`, `features/nbdebug/sv.lua` ×6 and any others the scan finds) | The argument becomes `{ to = ... }`. Behaviour is unchanged. |
-| The three sites whose event had a `Default` (`features/capture/sv.lua` `cappers`, `wetsand/sv_world.lua` `others` and `team`) | Each sends the value the default supplied, or the listener treats `nil` the same way. Behaviour is unchanged. |
+| The three sites whose event had a `Default` (`features/capture/sv.lua` `cappers`, `ws/sv_world.lua` `others` and `team`) | Each sends the value the default supplied, or the listener treats `nil` the same way. Behaviour is unchanged. |
 | `.devtools/bin/gmod_client.py`, `test_gmod_client.py` | New, A's second commit. It launches and closes the GMod client in the bottle "Team Fortress 2" for T1 to T5. §3's safeguards are its tested behaviour (A.5). |
 | `.devtools/bin/gev2_marker.py`, `test_gev2_marker.py` | New. It sets and restores the uncommitted marker lines that T1, T2 and E's client check put in an addon file (§3). |
 | `.devtools/bin/gev2_probe.py` | Gains `run --client NAME...`: the probe runs on every connected client (§3). Its output lands in `.devtools/artifacts/gev2-research/client/`. |
@@ -844,7 +844,7 @@ which is the second agent.
 | `.devtools/bin/events_scan.lua` | New. The Lua site scanner (tokenizer-aware: strings and comments are never calls), used by the tests now and the generator in C. |
 | `tests/events_unmigrated.lua` | New. The ratchet: `return { b1 = { ...paths }, b2 = { ...paths } }`, the files exempt from the site rules until B migrates them. The two blocks sit at least 5 lines apart, so B1's and B2's edits merge cleanly. |
 | `.devtools/bin/check_totals.sh BASE` | New, and A's first commit. For each commit in `BASE..HEAD`, it exports the tree (`git archive`) to a temp dir, runs its `check_lua.sh`, and prints `sha TOTAL subject`. It exits 1 if any commit's total is below its parent's. |
-| `.devtools/bin/expected_sent_files.sh` | New. Prints the sorted keys the server should send, from the tree: `gamemode/shared.lua`, `gamemode/cl_init.lua`, every `gamemode/foundation/**/*.lua`, `gamemode/features/*/{sh,cl}.lua`, `gamemode/wetsand/{sh_,cl_}*.lua`, and every `entities/{entities,weapons}/*.lua` with a line starting `AddCSLuaFile()`. |
+| `.devtools/bin/expected_sent_files.sh` | New. Prints the sorted keys the server should send, from the tree: `gamemode/shared.lua`, `gamemode/cl_init.lua`, every `gamemode/foundation/**/*.lua`, `gamemode/features/*/{sh,cl}.lua`, `gamemode/ws/{sh_,cl_}*.lua`, and every `entities/{entities,weapons}/*.lua` with a line starting `AddCSLuaFile()`. |
 | `.devtools/bin/gev2/events_size.lua`, `events_sent.lua`, `events_scan_cost.lua` | New probes, run by `gev2_probe.py` (A.6). |
 
 **The design change adds or reshapes these files.** It wins where a row
@@ -863,17 +863,17 @@ unless they start with `tests/` or `.devtools/`.
 | `foundation/events/handshake.lua`, `peers.lua`, `pacer.lua` | New. `Handshake` (client), `Peers` and `Pacer` (server). |
 | `foundation/events/codec.lua`, `errors.lua`, `paths.lua`, `stops.lua` | **Reshaped** into `Codec`, `Error`, `FileKey` and `Touch`. |
 | `foundation/events/drift.lua` | As above, plus `Loaded`, `Refreshed`, `StaleFor` and `Forget` (A.2). Stage 3. |
-| `wetsand/sh_events.lua` | **Reshaped:** the composition root. It builds the ports and the one `Library`, exposes the `Game`, `System` and `Recovery` facades plus the aliases until C, and registers net and the hooks. It has no `Fire` site. |
-| `wetsand/sh_events_ports.lua` | New. `NetTransport`, `GModRoster` (with `Disconnect`, by `ply:Kick`), `GModFiles`, `GModClock`, `GModLog` and `SendWatcher`. `sh_events.lua` includes it first. |
-| `wetsand/cl_network_notice.lua` | New. The view: `Events.Recovery.Listen("network_notice", ...)` prints the chat line and plays TF2's cue (P1). `init.lua`'s walk sends it as a `cl_` file. |
+| `ws/sh_events.lua` | **Reshaped:** the composition root. It builds the ports and the one `Library`, exposes the `Game`, `System` and `Recovery` facades plus the aliases until C, and registers net and the hooks. It has no `Fire` site. |
+| `ws/sh_events_ports.lua` | New. `NetTransport`, `GModRoster` (with `Disconnect`, by `ply:Kick`), `GModFiles`, `GModClock`, `GModLog` and `SendWatcher`. `sh_events.lua` includes it first. |
+| `ws/cl_network_notice.lua` | New. The view: `Events.Recovery.Listen("network_notice", ...)` prints the chat line and plays TF2's cue (P1). `init.lua`'s walk sends it as a `cl_` file. |
 | `gamemode/shared.lua` | `LOADED_FIRST` gains `sh_events_ports.lua`, so the `sh_` walk doesn't include it a second time. |
-| `wetsand/sh_core.lua` | Unchanged in A, apart from A.1's run hashes. Its `client_ready` listener keeps working through the alias, and B makes it a `resync` provider. |
+| `ws/sh_core.lua` | Unchanged in A, apart from A.1's run hashes. Its `client_ready` listener keeps working through the alias, and B makes it a `resync` provider. |
 | `tests/fake_ports.lua`, `tests/fake_link.lua` | New. The fake ports, and a server and its clients wired through `fake_net.lua` buffers, with a shared clock and taps to drop, corrupt or delay the next message. |
 | `tests/events_kinds_test.lua`, `events_listeners_test.lua`, `events_handshake_test.lua`, `events_pacer_test.lua`, `events_failures_test.lua`, `events_recovery_test.lua` | New (A.5). |
 
 ### A.2 Interfaces
 
-**Public API** (`WETSAND.Events`, both realms unless marked):
+**Public API** (`WS.Events`, both realms unless marked):
 
 ```lua
 Events.Game.Fire(name, fields, options)  -- options: nil or { to = nil|team|Player|{Player...}|Vector, unreliable = bool, critical = bool }
@@ -883,8 +883,8 @@ Events.Game.Accept(name, rate)           -- server only; rate = { count = whole 
 Events.System.Fire(name, fields, options) -- the same four, for system events; options: nil or { to, unreliable }
 Events.System.Listen / Ignore / Accept
 Events.Recovery.Listen(name, id, fn)     -- the library's events; on the server, features listen to "resync"
-WETSAND.IsReady(ply)                     -- server: that player's handshake is done
-WETSAND.LocalReady()                     -- client: this client's handshake is done
+WS.IsReady(ply)                     -- server: that player's handshake is done
+WS.LocalReady()                     -- client: this client's handshake is done
 -- until phase C only: Events.Fire, Listen, Ignore and Accept are Events.Game's,
 -- and Events.Define and the type constructors exist and do nothing
 ```
@@ -1222,7 +1222,7 @@ A string over 65,535 bytes is `too_large`.
 ### A.4 Detection and the stop protocol
 
 - **The wrapper.** The adapter's server block replaces the global
-  `AddCSLuaFile` once (kept in `WETSAND.SentFiles` across refreshes), always
+  `AddCSLuaFile` once (kept in `WS.SentFiles` across refreshes), always
   calling the previous function. Each call:
   1. resolves its argument with `FileKey.Resolve` against
      `debug.getinfo(2, "S").source`, skipping files that aren't ours;
@@ -1239,7 +1239,7 @@ A string over 65,535 bytes is `too_large`.
   If A.6 shows `file.Time` is cheap and changes on save, set
   `SCREEN_BY_TIME = true`. Otherwise every probe reads and hashes the file.
 - **Triggers.** Each one asks `Drift:StaleFor` about the player for its keys:
-  - a player's `client_ready`: the entry files, `wetsand/`, `foundation/` and
+  - a player's `client_ready`: the entry files, `ws/`, `foundation/` and
     the entities;
   - `feature_load` to a player: that feature's client parts;
   - a gamemode refresh: `OnReloaded`, deduplicated to one handling per tick.
@@ -1348,7 +1348,7 @@ core, with at least 27 tests):
 - `Sandbox's and GMod's own files are not ours`
 - `a key under features/<name>/ belongs to that feature; every other key of ours is always loaded`
 - `AddCSLuaFile resolves against the caller's folder, and no argument means the caller's own file`
-- `wetsand/ and the entry files are included, foundation/ and features/ compiled, entities/ entities`
+- `ws/ and the entry files are included, foundation/ and features/ compiled, entities/ entities`
 - `a source longer than short_src keeps resolves whole`
 
 `tests/events_drift_test.lua`:
@@ -1381,7 +1381,7 @@ core, with at least 27 tests):
 - `return Events.Fire( and return Events.Listen( are reported`
 - `a Listen with a non-literal name or a listener that is not a function literal is reported`
 - `options other than a table literal of to, unreliable and critical are reported`
-- `an alias of WETSAND.Events other than local Events is reported`
+- `an alias of WS.Events other than local Events is reported`
 - `a Fire site with no comment directly above it, or a field line with no trailing comment, is reported`
 - `an Accept with no Fire site is reported`
 - `two names with one id are reported`
@@ -1450,7 +1450,7 @@ calls faked as `tests/events_adapter_test.lua` fakes `net`):
 - `a stale file only a reconnect cures adds the hint reconnect to update`
 
 `tests/events_adapter_test.lua` adds:
-- `WETSAND.Events has Game and System facades with Fire, Listen, Ignore and Accept, and Recovery with Listen only`
+- `WS.Events has Game and System facades with Fire, Listen, Ignore and Accept, and Recovery with Listen only`
 - `until phase C, Events.Fire, Listen, Ignore and Accept are Events.Game's`
 - `the adapter fires no event itself: every recovery event comes from protocol.lua`
 - `a gamemode refresh keeps the Library and re-binds its ports`
@@ -1476,7 +1476,7 @@ starts or signals a real process:
 - `test_launches_only_the_gmod_client`: exactly one launch, of
   `gmod_win64.exe` through the bottle's wine with
   `--bottle "Team Fortress 2"`, `+connect 127.0.0.1:<port>` and
-  `+con_logfile` under `data/wetsand_tests/client/`, and never `-condebug`
+  `+con_logfile` under `data/ws_tests/client/`, and never `-condebug`
 - `test_records_the_one_new_client_pid`
 - `test_stop_signals_only_the_launched_client`: with a wineserver, wine's
   services, `steam.exe`, `steamwebhelper.exe`, a `tf_win64.exe`, the wine
@@ -1517,7 +1517,7 @@ starts or signals a real process:
    is line 1 or the first non-comment line, and comes above both
    `AddCSLuaFile` lines.
 7. No convar, and nothing stops (operator decision 3):
-   - `grep -rn 'wetsand_events_check' addon tests .devtools/bin` prints
+   - `grep -rn 'ws_events_check' addon tests .devtools/bin` prints
      nothing (0 at 29a6070);
    - `git diff --quiet main -- addon/cfg/sandcastle_defaults.cfg` exits 0,
      and `luajit tests/cfg_defaults_test.lua` passes, because A adds no
@@ -1586,7 +1586,7 @@ starts or signals a real process:
        directions;
     3. the client's log has 0 Lua errors (the command in E.3 item 4);
        `client_t3.txt` also has the line `handshake ready major 1` (the
-       probe reads `WETSAND.EventLibrary`);
+       probe reads `WS.EventLibrary`);
     4. `gmod_client.py stop`, then `srcds.py stop`.
 16. **The kinds and the failure states are classes and parts:**
     - `ls addon/gamemodes/sandcastle/gamemode/foundation/events/event/`
@@ -1598,13 +1598,13 @@ starts or signals a real process:
 17. **Only the protocol fires recovery events:**
     - `grep -rlE 'RecoveryFire\(' addon --include='*.lua'` prints only
       `foundation/events/protocol.lua`;
-    - `grep -cE 'Events\.(Game\.|System\.)?Fire\(' addon/gamemodes/sandcastle/gamemode/wetsand/sh_events.lua addon/gamemodes/sandcastle/gamemode/wetsand/sh_events_ports.lua`
+    - `grep -cE 'Events\.(Game\.|System\.)?Fire\(' addon/gamemodes/sandcastle/gamemode/ws/sh_events.lua addon/gamemodes/sandcastle/gamemode/ws/sh_events_ports.lua`
       prints `0` for both.
 18. **One composition root:**
     `grep -rn 'Events\.New(' addon --include='*.lua'` prints one line, in
-    `wetsand/sh_events.lua`.
+    `ws/sh_events.lua`.
 19. **`Peers` replaced the player field:**
-    `grep -rn 'wetsandReady' addon --include='*.lua'` prints nothing.
+    `grep -rn 'wsReady' addon --include='*.lua'` prints nothing.
 20. **Recovery works in the fakes:** `luajit tests/events_recovery_test.lua`
     passes, and its `T.test` names include every name A.5 lists for it. The
     two stage-3 names land with detection.
@@ -1619,7 +1619,7 @@ starts or signals a real process:
     passes with the four names this revision adds to it.
 23. **The notice view** (P1): `luajit tests/network_notice_test.lua` passes
     with its two names, and
-    `grep -c 'NOTICE_SOUND_' addon/gamemodes/sandcastle/gamemode/wetsand/cl_network_notice.lua`
+    `grep -c 'NOTICE_SOUND_' addon/gamemodes/sandcastle/gamemode/ws/cl_network_notice.lua`
     is at least 2.
 
 ---
@@ -1649,7 +1649,7 @@ the other, and the architect evaluates B once both are in.
   including the 12 boss events and `npc_ragdoll_create` (P4). Listeners and
   accepts move with their event.
 - **`sh_core.lua`'s `client_ready` listener becomes the first `resync`
-  provider** (`Events.Recovery.Listen("resync", "wetsand_feature_load", ...)`).
+  provider** (`Events.Recovery.Listen("resync", "ws_feature_load", ...)`).
   It fires `feature_load` to the player being brought up to date. Its
   `Fire` site, `FeatureFiles:TellClients`, is a system site.
 - **Criteria:** items 9 to 11 are new; items 1 to 8 are unchanged.
@@ -1660,12 +1660,12 @@ the other, and the architect evaluates B once both are in.
 
 | Files | Events | What changes |
 |---|---|---|
-| `wetsand/sh_core.lua` | `feature_load` | Its two sites (`:55`, `:82`) become one function holding the site, `FeatureFiles:TellClients(names, to)` |
-| `wetsand/sh_announcer.lua`, `wetsand/sv_world.lua` | `teamplay_broadcast_audio`, `announcement` | `BroadcastSound` and `BroadcastSoundToOthers` call one local function holding the single site; the two `Define`s go |
-| `wetsand/sh_gameplay.lua`, `features/gamemode/sv.lua` | `gameplay_chat`, `gameplay_transition_cancelled` | `Define`s go; sites documented |
+| `ws/sh_core.lua` | `feature_load` | Its two sites (`:55`, `:82`) become one function holding the site, `FeatureFiles:TellClients(names, to)` |
+| `ws/sh_announcer.lua`, `ws/sv_world.lua` | `teamplay_broadcast_audio`, `announcement` | `BroadcastSound` and `BroadcastSoundToOthers` call one local function holding the single site; the two `Define`s go |
+| `ws/sh_gameplay.lua`, `features/gamemode/sv.lua` | `gameplay_chat`, `gameplay_transition_cancelled` | `Define`s go; sites documented |
 | `features/capture/{sh,sv,cl}.lua` | `teamplay_point_captured`, `teamplay_capture_blocked` | same |
 | `features/rounds/{sh,sv,cl}.lua` | `teamplay_timer_time_added` | same |
-| `wetsand/{sh,sv,cl}_npc_ragdolls.lua` | `npc_ragdoll_create` | same |
+| `ws/{sh,sv,cl}_npc_ragdolls.lua` | `npc_ragdoll_create` | same |
 
 **B2: the npc feature and the debug overlays** (20 events).
 
@@ -1673,7 +1673,7 @@ the other, and the architect evaluates B once both are in.
 |---|---|---|
 | `foundation/npc/halloween_boss.lua` (`METHODS`), `foundation/npc/{merasmus,eyeball_boss,headless_hatman}.lua`, `entities/entities/halloween_base_boss.lua`, `features/npc/{sh,sv,cl}.lua`, `foundation/npc/boss_events.lua` | the 12 boss events | See "The boss port" below. |
 | `features/nbdebug/{sh,sv,cl}.lua`, `features/aiwar/sv.lua` (the `aiwar_debug` site only) | 6 `nb_debug_*`, `aiwar_debug` | `Define`s go; sites documented; `Optional` fields simply left out when absent |
-| `wetsand/sh_nodegraph.lua`, `features/nodegraph/sv.lua` | `nodegraph_debug` | same |
+| `ws/sh_nodegraph.lua`, `features/nodegraph/sv.lua` | `nodegraph_debug` | same |
 | `tests/{merasmus,eyeball_boss,headless_hatman,halloween_boss,boss_events,nbdebug_contract}_test.lua` and the fakes they use | | Updated to the new port, with per-file counts kept (B.3) |
 
 **The boss port (a technical call; see the end of this plan).**
@@ -1690,7 +1690,7 @@ the other, and the architect evaluates B once both are in.
   - `HalloweenBombHead(player, duration)`, which is called from both bomb
     head sites and so keeps one `Fire` site.
 - **The binding.** `halloween_base_boss.lua` implements each method by
-  calling the npc controller (`WETSAND.Feature("npc"):<Method>(...)`).
+  calling the npc controller (`WS.Feature("npc"):<Method>(...)`).
 - **The sites.** `features/npc/sv.lua` holds each literal `Fire` site, so
   the events belong to the `npc` feature, beside the view that hears them.
 - **The view.** `features/npc/cl.lua` drops the loop over `BossEvents.NAMES`
@@ -1721,7 +1721,7 @@ the other, and the architect evaluates B once both are in.
 ### B.3 Acceptance criteria
 
 1. The per-commit checks pass on every commit of B1 and of B2.
-2. `grep -rnE '\.Define\(' addon --include='*.lua' | grep -v 'wetsand/sh_events.lua'`
+2. `grep -rnE '\.Define\(' addon --include='*.lua' | grep -v 'ws/sh_events.lua'`
    prints nothing.
 3. `grep -rnE '[^:]:FireGameEvent\(|[.:]FireGameEvent *=|function [A-Za-z_.:]*FireGameEvent|"FireGameEvent"' addon tests`
    prints nothing. Only comments citing TF2's `::FireGameEvent` remain.
@@ -1745,7 +1745,7 @@ the other, and the architect evaluates B once both are in.
      `cd .devtools/bin && python3 -c "import ingame_tests as t; [print(r.map, [s.args for s in r.steps if s.check == 'bosses']) for r in t.full_plan()]"`
      (it reads the BSPs, read-only). The run exits 0 with 0 Lua errors.
 9. Every site names its kind:
-   `grep -rnE 'Events\.(Fire|Listen|Ignore|Accept)\(' addon --include='*.lua' | grep -v 'wetsand/sh_events.lua'`
+   `grep -rnE 'Events\.(Fire|Listen|Ignore|Accept)\(' addon --include='*.lua' | grep -v 'ws/sh_events.lua'`
    prints nothing.
 10. The system sites are decision (d)'s:
     `grep -rhoE 'Events\.System\.Fire\("[a-z_]+"' addon --include='*.lua' | sort`
@@ -1769,7 +1769,7 @@ describes.
   - its generator `.devtools/bin/gen_events_res.lua`;
   - the pre-commit hook `.devtools/bin/hooks/pre-commit`;
   - the staleness test;
-  - the `wetsand_events_print` / `wetsand_events_print_cl` commands.
+  - the `ws_events_print` / `ws_events_print_cl` commands.
 
 This reads the handoff's "(C) removing `Define`, the generator and
 pre-commit hook" with the spec: none of the three exists at 38eb752, and
@@ -1795,7 +1795,7 @@ the spec builds them. The operator confirmed it: build all three
 
 ### C.1 Scope
 
-- **`wetsand/sh_events.lua`:** remove `API.Define`, the constructor names,
+- **`ws/sh_events.lua`:** remove `API.Define`, the constructor names,
   and any v1 leftovers.
 - **`tests/events_unmigrated.lua`:** deleted. `tests/events_sites_test.lua`
   loses its exemption parameter. The ratchet test becomes
@@ -1828,14 +1828,14 @@ the spec builds them. The operator confirmed it: build all three
   - the tags observed per field on the wire;
   - the stale keys.
 - **The print commands (adapter part).** The adapter registers
-  `wetsand_events_print` (server; admins only, or the console) and
-  `wetsand_events_print_cl` (client). Both print, and never write the
+  `ws_events_print` (server; admins only, or the console) and
+  `ws_events_print_cl` (client). Both print, and never write the
   repository.
 - **`critical` stays, unused** (decision 3). The option is still
   validated and recorded in `Sites()`, and `Touch:Blocks` keeps its
   critical branches and their tests, but no `Fire` site passes it. Nothing
   is removed for report only: A built no stopping into the adapter.
-- **The aliases go** (the design change). `wetsand/sh_events.lua` loses
+- **The aliases go** (the design change). `ws/sh_events.lua` loses
   `Events.Fire`, `Listen`, `Ignore` and `Accept`, and
   `.devtools/bin/events_scan.lua` reports a bare call of any of them.
 - **The kinds in the events file.** Each entry gains a `"kind"` line, and
@@ -1874,7 +1874,7 @@ the spec builds them. The operator confirmed it: build all three
 ### C.3 Acceptance criteria
 
 1. The per-commit checks pass on every commit.
-2. `grep -rnE '\bDefine\b|\bUInt\b|\bOptional\b|\bRecord\b' addon/gamemodes/sandcastle/gamemode/wetsand/sh_events.lua`
+2. `grep -rnE '\bDefine\b|\bUInt\b|\bOptional\b|\bRecord\b' addon/gamemodes/sandcastle/gamemode/ws/sh_events.lua`
    prints nothing, and `grep -rn '\.Define(' addon --include='*.lua'`
    prints nothing.
 3. `test ! -e tests/events_unmigrated.lua && ! grep -rn 'unmigrated' tests .devtools/bin`
@@ -1893,11 +1893,11 @@ the spec builds them. The operator confirmed it: build all three
    2. `git add` the file;
    3. commit with `git -c gpg.program=gpg-loopback commit -m test`;
    4. `git show --stat HEAD` lists the `.res`.
-8. `.devtools/bin/check_engine_names.sh wetsand_events_print wetsand_events_print_cl`
+8. `.devtools/bin/check_engine_names.sh ws_events_print ws_events_print_cl`
    prints `free` for both.
 9. Post-merge smoke: `ingame_tests.py --maps koth_viaduct` exits 0. Then
    `srcds.py start --map koth_viaduct` and
-   `srcds.py rcon wetsand_events_print` prints `client_ready`,
+   `srcds.py rcon ws_events_print` prints `client_ready`,
    `events_accepted`, `feature_load` and `teamplay_point_captured` with
    their sites.
 10. `critical` is built but unused (decision 3):
@@ -1907,7 +1907,7 @@ the spec builds them. The operator confirmed it: build all three
 11. The aliases are gone:
     `grep -rnE 'Events\.(Fire|Listen|Ignore|Accept)\(' addon --include='*.lua'`
     prints nothing, and
-    `grep -nE 'Events\.(Fire|Listen|Ignore|Accept) *=' addon/gamemodes/sandcastle/gamemode/wetsand/sh_events.lua`
+    `grep -nE 'Events\.(Fire|Listen|Ignore|Accept) *=' addon/gamemodes/sandcastle/gamemode/ws/sh_events.lua`
     prints nothing.
 12. `luajit tests/events_system_test.lua` passes, and
     `tests/events_system_frozen.lua` lists major 1 with B's five system
@@ -1924,7 +1924,7 @@ the spec builds them. The operator confirmed it: build all three
     `grep -c '"kind"' addon/gamemodes/sandcastle/resource/sandcastle_events.res`
     equals the event count that `gen_events_res.lua --count` prints, and
     the file has the line `// system events: major 1`.
-15. After the post-merge smoke (item 9), `srcds.py rcon wetsand_events_print`
+15. After the post-merge smoke (item 9), `srcds.py rcon ws_events_print`
     also prints `failures open 0`; no player has joined.
 
 ---
@@ -1953,15 +1953,15 @@ and let the client listener pick and play.
 - D's other new events are game events: `gameplay_transition_started`,
   `gameplay_requested`, `gameplay_sandbox_entered`, and the tag events,
   which are Halloween-specific (the operator's answer). So is the team-full
-  notice (`wetsand/sv_teams.lua:108`), which goes to one player, not to
+  notice (`ws/sv_teams.lua:108`), which goes to one player, not to
   everyone.
 - **`teamplay_broadcast_audio` is split** (P4's rule, decision (d)). Its
   Halloween lines (the fortune teller's broadcast, the Wheel of Fate's
   lines, and Merasmus's) move to a new game event,
   `holiday_broadcast_audio { team, sound, others }`, with the same client
-  hearing rule. It has one site, `WETSAND.BroadcastHolidaySound(team, sound)`
-  in `wetsand/sv_world.lua`, and its listener sits beside the announcer's in
-  `wetsand/sh_announcer.lua`. `teamplay_broadcast_audio` keeps only the
+  hearing rule. It has one site, `WS.BroadcastHolidaySound(team, sound)`
+  in `ws/sv_world.lua`, and its listener sits beside the announcer's in
+  `ws/sh_announcer.lua`. `teamplay_broadcast_audio` keeps only the
   gamemode's announcer: the overtime nag, the map's `PlayVO*` inputs, the
   capture model's "others" line, the admin's transition line and the cart
   warning.
@@ -1991,9 +1991,9 @@ and let the client listener pick and play.
 
 | Site | Decision | Event |
 |---|---|---|
-| `wetsand/sv_teams.lua:137` | Move | `teamplay_alert` (TF2's `alert_type`) |
-| `wetsand/sv_teams.lua:155` | Move | `teamplay_teambalanced_player` (TF2's `player`, `team`) |
-| `wetsand/sv_teams.lua:108` | Move | TF2's event if `modevents.res` has one, else Sandcastle's own, `to = ply` |
+| `ws/sv_teams.lua:137` | Move | `teamplay_alert` (TF2's `alert_type`) |
+| `ws/sv_teams.lua:155` | Move | `teamplay_teambalanced_player` (TF2's `player`, `team`) |
+| `ws/sv_teams.lua:108` | Move | TF2's event if `modevents.res` has one, else Sandcastle's own, `to = ply` |
 | `features/tag/sv.lua:29,30,31` | Move | TF2's tag events where `modevents.res` has them, else Sandcastle's own. The notice text is built on the client from shared `foundation` constants. |
 
 The other 17 text sites stay: admin replies, console reports, the editor
@@ -2002,8 +2002,8 @@ tool, and `npc/cl.lua:84`, which is already client-side.
 **Announcements and gameplay chat (operator decision 5).** Today the
 server builds this text and fires it as text:
 
-- `announcement { text, team }`, through `WETSAND.Announce`
-  (`wetsand/sv_world.lua:117`);
+- `announcement { text, team }`, through `WS.Announce`
+  (`ws/sv_world.lua:117`);
 - `gameplay_chat { title, lines }`, from one site
   (`features/gamemode/sv.lua:72`).
 
@@ -2013,11 +2013,11 @@ lines are at 29a6070.
 
 | Site | Text today | After |
 |---|---|---|
-| `features/gamemode/sv.lua:109` (`OpenTransition`) | `gameplay_chat`: `Gameplay.Describe(MapInfo())`, plus "Gameplay mode begins in N seconds; then choose a team." | `gameplay_transition_started { map, trains, race, points, rounds, flags, seconds }`. The listener in `wetsand/sh_gameplay.lua`'s client block calls `Gameplay.Describe` and adds the line. |
-| `features/gamemode/sv.lua:133` (`NOTICE_REQUEST_CHAT`) and `:134` (`NOTICE_REQUEST_ANNOUNCEMENT`) | the AI war's `Story()` (`features/aiwar/sv.lua:2001`): a chat title and lines, or an announcement | `story` becomes facts (`{ size }`; the factions follow from the teams), and one site fires `gameplay_requested { source, notice, story }`. A pure function in `foundation/` (for example a new `foundation/aiwar/story.lua`) builds the text. It is called by the chat listener (`wetsand/sh_gameplay.lua`) and by the announcement listener (`features/rounds/cl.lua`, beside `View:Announce`). |
+| `features/gamemode/sv.lua:109` (`OpenTransition`) | `gameplay_chat`: `Gameplay.Describe(MapInfo())`, plus "Gameplay mode begins in N seconds; then choose a team." | `gameplay_transition_started { map, trains, race, points, rounds, flags, seconds }`. The listener in `ws/sh_gameplay.lua`'s client block calls `Gameplay.Describe` and adds the line. |
+| `features/gamemode/sv.lua:133` (`NOTICE_REQUEST_CHAT`) and `:134` (`NOTICE_REQUEST_ANNOUNCEMENT`) | the AI war's `Story()` (`features/aiwar/sv.lua:2001`): a chat title and lines, or an announcement | `story` becomes facts (`{ size }`; the factions follow from the teams), and one site fires `gameplay_requested { source, notice, story }`. A pure function in `foundation/` (for example a new `foundation/aiwar/story.lua`) builds the text. It is called by the chat listener (`ws/sh_gameplay.lua`) and by the announcement listener (`features/rounds/cl.lua`, beside `View:Announce`). |
 | `features/gamemode/sv.lua:136` (`NOTICE_CALLED_OFF`) | `gameplay_chat`: "Game called off. Carry on." | The existing `gameplay_transition_cancelled` listener adds the line. |
-| `features/gamemode/sv.lua:141` (`NOTICE_SANDBOX`) | `WETSAND.Announce("Gameplay mode has ended. Sandbox mode until a new game begins.")` | `gameplay_sandbox_entered {}`, announced by its listener in `features/rounds/cl.lua` |
-| `wetsand/sv_world.lua:117` (`WETSAND.Announce`), and `announcement` in `wetsand/sh_announcer.lua` and `features/rounds/cl.lua` | | Removed. The client's `View:Announce` stays, and `features/capture/cl.lua:266` keeps calling it. |
+| `features/gamemode/sv.lua:141` (`NOTICE_SANDBOX`) | `WS.Announce("Gameplay mode has ended. Sandbox mode until a new game begins.")` | `gameplay_sandbox_entered {}`, announced by its listener in `features/rounds/cl.lua` |
+| `ws/sv_world.lua:117` (`WS.Announce`), and `announcement` in `ws/sh_announcer.lua` and `features/rounds/cl.lua` | | Removed. The client's `View:Announce` stays, and `features/capture/cl.lua:266` keeps calling it. |
 
 - The admin replies (`Tell`, `NOTICE_REFUSED` and `NOTICE_DENIED`) stay
   server-side text, like every other admin reply.
@@ -2032,8 +2032,8 @@ lines are at 29a6070.
   `foundation/` function, which both the old server path and the new
   client listener can be tested against.
 - The listener lives in the feature's `cl.lua` (`features/rounds/cl.lua`,
-  `features/capture/cl.lua`), in `wetsand/cl_teams.lua` for team text, or
-  in `wetsand/sh_gameplay.lua`'s client block for gameplay chat.
+  `features/capture/cl.lua`), in `ws/cl_teams.lua` for team text, or
+  in `ws/sh_gameplay.lua`'s client block for gameplay chat.
 - New events get their one literal site with comments, and pass the site
   rules.
 - After a move, the server sends no `teamplay_broadcast_audio` for that
@@ -2064,14 +2064,14 @@ lines are at 29a6070.
 ### D.3 Acceptance criteria
 
 1. The per-commit checks pass on every commit.
-2. `grep -rnE 'WETSAND\.BroadcastSound(ToOthers)?\(' addon --include='*.lua' | grep -v 'function WETSAND' | wc -l`
+2. `grep -rnE 'WS\.BroadcastSound(ToOthers)?\(' addon --include='*.lua' | grep -v 'function WS' | wc -l`
    prints 5, and these are exactly the Stay rows above. The 5 Halloween
-   rows call `WETSAND.BroadcastHolidaySound(` instead:
-   `grep -rnE 'WETSAND\.BroadcastHolidaySound\(' addon --include='*.lua' | grep -v 'function WETSAND' | wc -l`
+   rows call `WS.BroadcastHolidaySound(` instead:
+   `grep -rnE 'WS\.BroadcastHolidaySound\(' addon --include='*.lua' | grep -v 'function WS' | wc -l`
    prints 5. And
-   `grep -nE 'WETSAND\.BroadcastSound' addon/gamemodes/sandcastle/gamemode/features/rounds/sv.lua`
+   `grep -nE 'WS\.BroadcastSound' addon/gamemodes/sandcastle/gamemode/features/rounds/sv.lua`
    shows only the nag and `VoiceTo` lines.
-3. `grep -nE 'PrintMessage\(|ChatPrint\(' addon/gamemodes/sandcastle/gamemode/wetsand/sv_teams.lua addon/gamemodes/sandcastle/gamemode/features/tag/sv.lua`
+3. `grep -nE 'PrintMessage\(|ChatPrint\(' addon/gamemodes/sandcastle/gamemode/ws/sv_teams.lua addon/gamemodes/sandcastle/gamemode/features/tag/sv.lua`
    prints nothing. The repo-wide count of `:ChatPrint(` plus `PrintMessage(`
    is 17.
 4. `luajit tests/events_sites_test.lua` passes. The new events appear in the
@@ -2086,8 +2086,8 @@ lines are at 29a6070.
      pytest passes.
 6. The harness's `HUMAN_ONLY` list still names the announcer lines. Hearing
    them is a playtest item for the operator, not an agent criterion.
-7. `WETSAND.Announce`, `announcement` and `gameplay_chat` are gone:
-   - `grep -rnE 'WETSAND\.Announce\b' addon --include='*.lua'` prints
+7. `WS.Announce`, `announcement` and `gameplay_chat` are gone:
+   - `grep -rnE 'WS\.Announce\b' addon --include='*.lua'` prints
      nothing. At 29a6070 it prints 3 lines: the definition and its 2
      callers.
    - `grep -rnE '"(announcement|gameplay_chat)"' addon --include='*.lua'`
@@ -2105,7 +2105,7 @@ lines are at 29a6070.
 11. `grep -rnE 'Events\.System\.Fire\("teamplay_(round_win|suddendeath_begin|alert|teambalanced_player)"' addon --include='*.lua'`
     prints 4 lines, and the tag events' sites are `Events.Game.Fire`.
 12. `grep -rnE 'Events\.Game\.Fire\("holiday_broadcast_audio"' addon --include='*.lua'`
-    prints 1 line, in `wetsand/sv_world.lua`. The scanner finds no
+    prints 1 line, in `ws/sv_world.lua`. The scanner finds no
     `holiday_broadcast_audio` in the frozen fixture.
 
 ---
@@ -2180,7 +2180,7 @@ writer finishing the docs.
   sender key with no client), touches no addon file, and asserts each line
   in the server log:
   1. **stale_code:** it swaps the drift record's references for
-     `gamemode/wetsand/sh_gameplay.lua` and has the fake peer load it, so
+     `gamemode/ws/sh_gameplay.lua` and has the fake peer load it, so
      `code_stale` is produced. Then it calls `Library:Refreshed` with that
      key, as a gamemode refresh would, and asserts `code_current` for the
      peer and one `network recovered:` line.
@@ -2288,13 +2288,13 @@ in "Steam".
 - **`addons/sandcastle`,** the symlink to this repo, is both the server's
   copy and the client's local copy. The two can only differ in time, which
   is how T1 is staged.
-- **`data/`:** the client reads its probes from `data/wetsand_tests/` and
+- **`data/`:** the client reads its probes from `data/ws_tests/` and
   writes its results there, as the server does.
 - **`cache/lua/`:** the dedicated server writes nothing there (research
   §1), so every entry is the client's.
 - **`console.log`** is the server's `-condebug` log. The client never uses
   `-condebug`. It logs with
-  `+con_logfile data/wetsand_tests/client/console.log` instead.
+  `+con_logfile data/ws_tests/client/console.log` instead.
 
 **`gmod_client.py`** (A.1; its tests are in A.5):
 
@@ -2318,7 +2318,7 @@ gmod_client.py stop                                   # close the client this to
   - its own PID file names a client that still runs.
 - **The launch is one command:** the bottle's `wine` with
   `--bottle "Team Fortress 2"`, running
-  `gmod_win64.exe -novid -nojoy +con_logfile data/wetsand_tests/client/console.log +connect 127.0.0.1:<port>`.
+  `gmod_win64.exe -novid -nojoy +con_logfile data/ws_tests/client/console.log +connect 127.0.0.1:<port>`.
   - The bottle is a constant, and the tool has no option for another one.
     `srcds.py` still refuses this bottle.
   - The tool records the client's PID and its start time in
@@ -2356,23 +2356,23 @@ addon file that the server reads through main.
 
 **Running a probe on the client.** `gev2_probe.py run --client NAME`:
 
-1. copies `.devtools/bin/gev2/NAME.lua` to `data/wetsand_tests/gev2/`;
+1. copies `.devtools/bin/gev2/NAME.lua` to `data/ws_tests/gev2/`;
 2. over RCON, has the server `SendLua` each connected player a one-line
    loader, which `RunString`s the probe from the client's `data/` (the
    shared folder). This works with `sv_allowcslua 0`, which every test
    keeps;
-3. waits for the client to write `data/wetsand_tests/gev2/client_out/NAME.txt`,
+3. waits for the client to write `data/ws_tests/gev2/client_out/NAME.txt`,
    and copies it to `.devtools/artifacts/gev2-research/client/`.
 
 | Test | When | What it settles | What each result changes |
 |---|---|---|---|
-| **T1** | early A; again in E | With `sv_allowcslua 0`, does the client run the copy the server sent rather than its local copy, for `include` and for `CompileFile` (`WETSAND.require`, the feature loader)? And after joining, do the client's `cache/lua` names match the server's `util.SHA256(text .. "\0"):sub(1, 40)` list for every sent file? **Staging** (the install is shared, so the copies can differ only in time): (1) set the marker `WETSAND_T1_INCLUDE = "sent-<nonce>"` in `wetsand/cl_spectate.lua` (`include`d) and `WETSAND_T1_COMPILE = "sent-<nonce>"` in `features/capture/cl.lua` (`CompileFile`d); (2) start the server with `--no-lua-refresh` on koth_viaduct, which loads `capture`; (3) rewrite both markers to `"disk-<nonce>"`; (4) launch the client; (5) the probe reports both globals, and the cache check runs. | **Pass:** both read `sent-`, and the cache holds the `sent-` texts. The engine guarantee holds, and the server-side check is complete. **`disk-`, with the cache holding the `disk-` text:** the server serves disk text even without a refresh. The guarantee still holds, and T2 should choose `SERVED_DISK`. **`disk-` with no matching cache entry, or a mix:** the premise of §4 is false. The architect re-plans A.4 with the operator before detection is built (A.6 item 11). The codec, rates and stop rules are unaffected. |
+| **T1** | early A; again in E | With `sv_allowcslua 0`, does the client run the copy the server sent rather than its local copy, for `include` and for `CompileFile` (`WS.require`, the feature loader)? And after joining, do the client's `cache/lua` names match the server's `util.SHA256(text .. "\0"):sub(1, 40)` list for every sent file? **Staging** (the install is shared, so the copies can differ only in time): (1) set the marker `WS_T1_INCLUDE = "sent-<nonce>"` in `ws/cl_spectate.lua` (`include`d) and `WS_T1_COMPILE = "sent-<nonce>"` in `features/capture/cl.lua` (`CompileFile`d); (2) start the server with `--no-lua-refresh` on koth_viaduct, which loads `capture`; (3) rewrite both markers to `"disk-<nonce>"`; (4) launch the client; (5) the probe reports both globals, and the cache check runs. | **Pass:** both read `sent-`, and the cache holds the `sent-` texts. The engine guarantee holds, and the server-side check is complete. **`disk-`, with the cache holding the `disk-` text:** the server serves disk text even without a refresh. The guarantee still holds, and T2 should choose `SERVED_DISK`. **`disk-` with no matching cache entry, or a mix:** the premise of §4 is false. The architect re-plans A.4 with the operator before detection is built (A.6 item 11). The codec, rates and stop rules are unaffected. |
 | **T2** | early A; again in E | After `lua_refresh_file` of `features/capture/cl.lua`, and after a plain save (in case autorefresh fires under CrossOver), each with a new marker: does the connected client gain the new cache entry, and does a client that joins next (a second launch) run the new text? | **New text for later joiners after a refresh, and after a plain save:** `SERVED_DISK` is exact. **After a refresh only:** keep `SERVED_DISK`, and the report says "differs on disk; stale for clients that load it after a refresh". **Never before a map change:** set `SERVED_SENT`, and drift can then come only from lazily compiled server modules. |
 | **T3** | after A merges; again in E | The wire through real `net`, in both directions, with A's codec: every tag of A.3, `""`, a NUL string, the caps, `WriteUInt` at 32 bits with values ≥ 2^31, and `ReadData` with NUL bytes | The fake buffer is the only other evidence for the read side. Any mismatch is a codec defect, fixed in A (or, in E, before E passes). |
 | **T4** | early A; again in E | `debug.getinfo(fn, "S").source` on the client, for a server-sent file, a feature view and an entity | If it is a fourth form, `FileKey.FromSource` gains it as a test case in A. Attribution on the client depends on it. |
 | **T5** | E | The largest unreliable message that reliably arrives: 200, 500, 1000, 1200, 2000 and 4000 bytes, 100 of each, idle and under load | Sets `UNRELIABLE_MAX_BYTES`. No event is unreliable yet, so nothing waits on it. |
 | **T6** | E | The paced resync with a real client. A probe-only `resync` provider fires 300 game events of 1 KB each to the client in one resync. The client probe counts what arrives, and in what order. | Sets `PACE_BYTES_PER_TICK`. If the client drops, or anything arrives out of order, lower the budget, or the `Pacer` is wrong and is fixed before E passes. |
-| **T7** | E | A stale included file recovers. Start with `--no-lua-refresh`, put a marker in `wetsand/sh_gameplay.lua` (an included file the server runs), and launch the client, which gets the new text while the server ran the old one. Then `lua_refresh_file` it, so both realms rerun it. | The client reports the file stale, then recovered (`code_current`). If T2 shows that `lua_refresh_file` doesn't reach a client under `-disableluarefresh`, the architect replaces the step before E. |
+| **T7** | E | A stale included file recovers. Start with `--no-lua-refresh`, put a marker in `ws/sh_gameplay.lua` (an included file the server runs), and launch the client, which gets the new text while the server ran the old one. Then `lua_refresh_file` it, so both realms rerun it. | The client reports the file stale, then recovered (`code_current`). If T2 shows that `lua_refresh_file` doesn't reach a client under `-disableluarefresh`, the architect replaces the step before E. |
 
 **Who runs what, and when.**
 
@@ -2480,7 +2480,7 @@ near the top. The researcher's two product questions were decisions 1 and
       lists any `cfg/*.cfg` that changed.
 12. **The shared install.** The client and the server share `garrysmod/`.
     - So the client logs with `con_logfile`, never `-condebug`.
-    - Its probes and results stay under `data/wetsand_tests/`.
+    - Its probes and results stay under `data/ws_tests/`.
     - T1 is staged in time, not with a second copy of the addon (§3).
 13. **Recovery code runs only when things go wrong.**
     - `tests/fake_link.lua` drives every failure state in the fakes, and E's
@@ -2522,7 +2522,7 @@ near the top. The researcher's two product questions were decisions 1 and
   which events a stale file would stop, feature-wide and all-event stops
   included, and its tests pin that down. No runtime code stops an event.
   Client-only events are never stopped, even in the model.
-- **No `wetsand_events_check` convar.** Report only leaves its off and stop
+- **No `ws_events_check` convar.** Report only leaves its off and stop
   values without a use, so the check always runs. `code_stale` has no
   `stop` field, and the client's answer is `code_touched`.
 - **The client sessions.** T1, T2 and T4 run early in A, as the gate for

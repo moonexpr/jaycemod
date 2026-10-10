@@ -4,8 +4,8 @@
 -- re-runs, in what order, and what a wrapper would see. reload_report.lua
 -- writes the log. Lives only in the test server's Lua state.
 local NAME = "reload_arm"
-WETSAND_GEV2 = WETSAND_GEV2 or { log = {} }
-local G = WETSAND_GEV2
+WS_GEV2 = WS_GEV2 or { log = {} }
+local G = WS_GEV2
 
 local function Log(...)
 	local parts = { string.format("%.3f", SysTime()) }
@@ -19,7 +19,7 @@ local function Caller(level)
 	return info and (info.source .. ":" .. tostring(info.currentline)) or "?"
 end
 
-hook.Add("OnReloaded", "wetsand_tests_gev2", function()
+hook.Add("OnReloaded", "ws_tests_gev2", function()
 	Log("hook OnReloaded", "GAMEMODE.FolderName=" .. tostring(GAMEMODE and GAMEMODE.FolderName))
 end)
 
@@ -37,6 +37,6 @@ Wrap("include")
 Wrap("CompileFile")
 
 Log("armed")
-file.CreateDir("wetsand_tests/gev2/out")
-file.Write("wetsand_tests/gev2/out/" .. NAME .. ".txt", "armed at " .. SysTime() .. "\n")
-print("wetsand_tests: gev2 " .. NAME .. " done")
+file.CreateDir("ws_tests/gev2/out")
+file.Write("ws_tests/gev2/out/" .. NAME .. ".txt", "armed at " .. SysTime() .. "\n")
+print("ws_tests: gev2 " .. NAME .. " done")

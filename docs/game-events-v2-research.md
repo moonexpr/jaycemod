@@ -39,7 +39,7 @@ or issues).
    themselves; GMod sends no entity files automatically.
 3. **A server refresh is not one thing.**
    - Refreshing a gamemode file reached through `include` (`shared.lua`,
-     `wetsand/*`) reruns the whole gamemode, including `init.lua`, Sandbox and
+     `ws/*`) reruns the whole gamemode, including `init.lua`, Sandbox and
      every `AddCSLuaFile`. `OnReloaded` fires twice.
    - Refreshing a file loaded with `CompileFile` (all of `foundation/` and
      every feature part) is an "Unhandled Lua Refresh": nothing reruns and
@@ -197,7 +197,7 @@ or issues).
 - Whether a client compiles every server-sent file into `cache/lua` when it
   runs, including when a local copy exists: check that each sent file's
   name is present after joining.
-- Whether `CompileFile` on a client (used by `WETSAND.require` and the
+- Whether `CompileFile` on a client (used by `WS.require` and the
   feature loader) follows the same server-copy rule as `include`.
 - Where a mounted Workshop `.gma` sits in the `LUA` path. Run `path` on a
   client or server that mounts the addon from the Workshop.
@@ -212,7 +212,7 @@ or issues).
 - **This gamemode's sent set has three sources, all calling the global
   `AddCSLuaFile`:**
   1. `init.lua`'s walks: `foundation/` recursively, each feature's `sh.lua`
-     and `cl.lua`, and `wetsand/`'s `sh_` and `cl_` files;
+     and `cl.lua`, and `ws/`'s `sh_` and `cl_` files;
   2. `shared.lua` and `cl_init.lua` by name;
   3. 49 entity and weapon files that call `AddCSLuaFile()` with no argument.
      The other 49 entity files never call it, and GMod does not send them:
@@ -220,7 +220,7 @@ or issues).
      `client/`), `vgui/`, `postprocess/`, `matproxy/` and `skins/`. This
      addon has no `lua/` folder, and no `effects/`.
 - **Total: 191 files, 966,822 bytes.** That is 2 entry files, 108 in
-  `foundation/`, 16 feature parts, 16 `wetsand/` modules and 49 entities.
+  `foundation/`, 16 feature parts, 16 `ws/` modules and 49 entities.
   The handoff's "about 360" does not match the tree at 38eb752.
 - **A wrapper sees every call.** Installed before the calls (on the server,
   in the live test), a wrapper around the global logged each of them with its
@@ -262,7 +262,7 @@ or issues).
 - [offline] Repo:
   - `addon/gamemodes/sandcastle/gamemode/init.lua`: lines 1-2 (entry
     files), 8-14 (the foundation walk), 19-30 (feature client parts), 32-33
-    (`wetsand/` `sh_` and `cl_`);
+    (`ws/` `sh_` and `cl_`);
   - `grep -L AddCSLuaFile` over `entities/`: 49 of 98 files lack it;
   - no entity uses a folder layout.
 - [live] `.devtools/artifacts/gev2-research/live/reload_report.txt`: 188
@@ -308,8 +308,8 @@ or issues).
 
 | Kind of file | What a refresh does | Hooks |
 |---|---|---|
-| A gamemode file reached by `include` (`shared.lua`, `wetsand/sh_events.lua`) | Reruns the whole gamemode from its root: `init.lua` (every `AddCSLuaFile` again), `DeriveGamemode` (all of Sandbox's `init.lua`), `shared.lua`, every `wetsand/` file, then `sv_` files | `GM:OnReloaded` fires **twice**: when Sandbox re-registers (the base-class branch of `gamemode.Register`), then when sandcastle does |
-| A file loaded with `CompileFile`: everything in `foundation/` (`WETSAND.require`) and every feature part (`FeatureFiles:Run`) | `Unhandled Lua Refresh: [NAME:addons/sandcastle/gamemodes/sandcastle/gamemode/foundation/teams.lua] [TYPE:!UNKNOWN]`. Nothing reruns, and the wrapped `CompileFile` logged no calls. A full gamemode refresh does not rerun these either: `WETSAND.require` keeps `package.loaded`, and `WETSAND.FeatureLoader` is kept on purpose (`sh_core.lua:58-60`) | None |
+| A gamemode file reached by `include` (`shared.lua`, `ws/sh_events.lua`) | Reruns the whole gamemode from its root: `init.lua` (every `AddCSLuaFile` again), `DeriveGamemode` (all of Sandbox's `init.lua`), `shared.lua`, every `ws/` file, then `sv_` files | `GM:OnReloaded` fires **twice**: when Sandbox re-registers (the base-class branch of `gamemode.Register`), then when sandcastle does |
+| A file loaded with `CompileFile`: everything in `foundation/` (`WS.require`) and every feature part (`FeatureFiles:Run`) | `Unhandled Lua Refresh: [NAME:addons/sandcastle/gamemodes/sandcastle/gamemode/foundation/teams.lua] [TYPE:!UNKNOWN]`. Nothing reruns, and the wrapped `CompileFile` logged no calls. A full gamemode refresh does not rerun these either: `WS.require` keeps `package.loaded`, and `WS.FeatureLoader` is kept on purpose (`sh_core.lua:58-60`) | None |
 | An entity file | Reruns that file alone | None in the `OnReloaded` hook. GMod's `scripted_ents.Register` calls `ENT:OnReloaded` on that class's live entities |
 
 `lua_refresh_file` paths: gamemode files need the `gamemodes/…` form. The
@@ -487,9 +487,9 @@ unreliable send beyond the 64 KB message limit.
 - `debug.getinfo(fn, "S").source` is `@` plus the path relative to
   `garrysmod/`, as the file is really mounted. That is **the same for every
   way this gamemode loads code**:
-  - `include`: `init.lua`, `shared.lua`, `wetsand/sh_core.lua`,
+  - `include`: `init.lua`, `shared.lua`, `ws/sh_core.lua`,
     `sh_events.lua`;
-  - `CompileFile`: `foundation/*` through `WETSAND.require`, features
+  - `CompileFile`: `foundation/*` through `WS.require`, features
     through `FeatureFiles:Run`, or a direct call;
   - GMod's entity and weapon loader.
 - The forms seen:
@@ -499,10 +499,10 @@ unreliable send beyond the 64 KB message limit.
   | This gamemode (legacy addon folder) | `@addons/sandcastle/gamemodes/sandcastle/gamemode/<rel>` and `@addons/sandcastle/gamemodes/sandcastle/entities/{entities,weapons}/<file>` |
   | Base gamemode | `@gamemodes/sandbox/gamemode/init.lua` |
   | GMod's Lua | `@lua/includes/modules/hook.lua` |
-  | `CompileString(code, name)` and `RunString(code, name)` | `@` + name (`@x/y.lua`, `@wetsand_tests/gev2/sources`) |
+  | `CompileString(code, name)` and `RunString(code, name)` | `@` + name (`@x/y.lua`, `@ws_tests/gev2/sources`) |
 
 - One way to find a call site's feature is to match a suffix after
-  `/gamemode/`: `features/<name>/…`, `foundation/…`, `wetsand/…`, or
+  `/gamemode/`: `features/<name>/…`, `foundation/…`, `ws/…`, or
   `/entities/`. That works whatever the prefix is (`addons/<folder>/gamemodes/`,
   `gamemodes/`, or a `.gma` mount, whose form was not observed).
 - `short_src` is cut at **127 characters**, with a `...` prefix that keeps
@@ -532,7 +532,7 @@ unreliable send beyond the 64 KB message limit.
   something else.
 - What a client reports when the addon is mounted from a Workshop `.gma`.
 - Test: with a client connected, run
-  `debug.getinfo(WETSAND.Events.Fire, "S").source` and the same for a
+  `debug.getinfo(WS.Events.Fire, "S").source` and the same for a
   feature view and an entity. Do it once with no local copy and once with
   one.
 
@@ -637,7 +637,7 @@ here.
      the file changes in between.
 5. **The size of the job.** The always-loaded set is 142 gamemode files plus
    49 entities that send themselves, not about 360. Entities are not in
-   §4's always-loaded list (`wetsand/`, `foundation/`), so §4 has no rule
+   §4's always-loaded list (`ws/`, `foundation/`), so §4 has no rule
    for them.
 
 **§3, encoding, against the net limits.**
@@ -812,7 +812,7 @@ one short session.**
 - **T1.** With `sv_allowcslua 0` and a local copy of the addon in the
   client's `addons/`, with a marker in one file:
   - which copy the client runs, for both `include` and `CompileFile`
-    (`WETSAND.require`, the feature loader);
+    (`WS.require`, the feature loader);
   - that the client's `cache/lua` names match the server's list after
     joining.
 
@@ -937,7 +937,7 @@ The changes:
 **Verdict: sound with changes.**
 
 - **The set.** It's 191 files, not about 360, and §4's "when" list names only
-  `wetsand/` and `foundation/`. The set must also include:
+  `ws/` and `foundation/`. The set must also include:
   - the two entry files;
   - the feature parts, which are sent at start-up whatever the map loads;
   - the 49 entity files that send themselves.
@@ -1047,7 +1047,7 @@ itself is unchanged.
    `feature_load` on a client, and a deduplicated gamemode refresh. State
    that `CompileFile`d files never rerun on refresh.
 4. **§4, the file set: name it.** The two entry files, `foundation/`,
-   `wetsand/` `sh_` and `cl_` files, every feature's client parts, and the
+   `ws/` `sh_` and `cl_` files, every feature's client parts, and the
    self-sending entity files: 191 today, listed by the `AddCSLuaFile`
    wrapper. The set is fixed at start-up, and no late `AddCSLuaFile` is
    allowed.

@@ -15,7 +15,7 @@ from `.devtools/bin/bsp_entities.py "$TF2/tf/maps/<map>.bsp" --class C | --io`.
    - **Models** are foundation systems: stateful `module(...)` files that hold
      every rule. They do I/O only through ports and are passed time and
      randomness, so a whole scenario runs under LuaJIT.
-   - **Controllers** are the server parts of `WETSAND.Feature(name)`. Each owns
+   - **Controllers** are the server parts of `WS.Feature(name)`. Each owns
      its system's model instances, feeds them engine events, and turns their
      results into engine effects.
    - **Entities** are thin bindings from keyvalues, inputs and outputs to
@@ -25,7 +25,7 @@ from `.devtools/bin/bsp_entities.py "$TF2/tf/maps/<map>.bsp" --class C | --io`.
 2. **Loading is lazy and per map.** No new realm module is always loaded, and
    the WIP `sv_halloween.lua` is deleted. An entity file requires nothing at
    top level, because GMod registers every entity file on every map. Its
-   `Initialize`, or its first input, calls `WETSAND.Feature("<system>")` and
+   `Initialize`, or its first input, calls `WS.Feature("<system>")` and
    keeps the controller that call returns. A map without Halloween entities
    loads no Halloween code.
 3. **Variation is a Strategy, never a branch.** A system declares an interface
@@ -94,14 +94,14 @@ from `.devtools/bin/bsp_entities.py "$TF2/tf/maps/<map>.bsp" --class C | --io`.
 
 **Engine-neutral** (grep-checked in section 11): `foundation.npc`, `.actor`,
 `.path*`, `.hover`, `.spawner`, and `foundation.projectile`. The entities
-`wetsand_nextbot` and `wetsand_projectile` are neutral too. The
+`ws_nextbot` and `ws_projectile` are neutral too. The
 `foundation.spells` flow is neutral except for its `.tf2` set and its spell
 strategies. TF2 content lives in parts and data: a TF2 variant or set, and the
 TF2 numbers inside a system's tables.
 
-### 1.2 Controllers and views (`WETSAND.Feature`, built by a separate package)
+### 1.2 Controllers and views (`WS.Feature`, built by a separate package)
 
-`WETSAND.Feature(name)`:
+`WS.Feature(name)`:
 - On the server, it requires the feature's server part, the controller, and
   returns it. It also tells clients to load the client part, the view.
 - On the client, it requires the view when told.
@@ -111,7 +111,7 @@ is proposed. Each controller below lists what it owns and its methods.
 
 | feature | controller owns | controller methods (server) | view (client) |
 |---|---|---|---|
-| `npc` | one `Npc` model per NPC entity; the `Spawner` models; a registry by kind; per-variant shared state; the nav check | `Bind(ent, variantName, config) -> npc` (then calls the variant's `Cull`), `Unbind(ent)`, `All(kind) -> list`, `Spawn(class, config, pos, ang) -> ent`, `BindSpawner(ent, config) -> spawner`, `Shared(variantName) -> table` (cross-instance state for a variant, e.g. the eyeball level), `SetBossHealth(fraction)` | boss health bar (reads Global2 `wetsand_boss_health`); registers `halloween, scary_ghost, eyeboss, cinefx` pcfs |
+| `npc` | one `Npc` model per NPC entity; the `Spawner` models; a registry by kind; per-variant shared state; the nav check | `Bind(ent, variantName, config) -> npc` (then calls the variant's `Cull`), `Unbind(ent)`, `All(kind) -> list`, `Spawn(class, config, pos, ang) -> ent`, `BindSpawner(ent, config) -> spawner`, `Shared(variantName) -> table` (cross-instance state for a variant, e.g. the eyeball level), `SetBossHealth(fraction)` | boss health bar (reads Global2 `ws_boss_health`); registers `halloween, scary_ghost, eyeboss, cinefx` pcfs |
 | `combat` | `Projectile` models per projectile entity | `BindProjectile(ent, variantName, config) -> projectile`, `Explode(explosionConfig)` (runs an `Explosion` against the world), `TeamOf(ent)`, `InRespawnRoom(ent)` | none |
 | `holiday` | the `Holiday` model; the Halloween mode's gift schedule; fortune teller models (P2) | `BindHoliday(ent, kv)`, `HolidayActive(h)`, `UsingSpells()`, `SetUsingSpells(b)`, `DropSpellPickup(pos, tier)`, `AddGiftLocation(pos)`, `BindFortuneTeller(ent, kv)` | none |
 | `spells` | one `SpellBook` per player; the caster port | `BookOf(ply) -> book`, `Grant(ply)`, `Revoke(ply)`, `Pickup(ply, tier) -> bool`, `Cast(ply) -> bool`, `BindSpellProjectile(ent, spellIndex, config)` | spell HUD (icon, charges, roll animation, key); registers `halloween, drg_cowmangler, class_fx, rocketjumptrail, cinefx, eyeboss` pcfs |
@@ -208,7 +208,7 @@ are `NONE`, `DETONATE`, `BOUNCE` and `EXPIRE`.
 
 ### 1.4 Ports (implemented by entities or controllers, faked in tests)
 
-`foundation.npc.actor.METHODS` is implemented by `wetsand_nextbot` and faked
+`foundation.npc.actor.METHODS` is implemented by `ws_nextbot` and faked
 by `tests/fake_actor.lua`. Method names are TF2's wherever TF2 has one:
 
 | group | methods |
@@ -229,7 +229,7 @@ by `tests/fake_actor.lua`. Method names are TF2's wherever TF2 has one:
   - OnContact gets `(other)`.
 
 `foundation.npc.combatant.METHODS` extends the actor for team combat. It is
-implemented by `wetsand_combat_nextbot` using `foundation.teams` and
+implemented by `ws_combat_nextbot` using `foundation.teams` and
 `foundation.players` data, and faked by `tests/fake_combatant.lua`:
 
 - `GetTeamNumber()`, `TeamOf(t)`, `CollectPlayers(team)` (living; nil means
@@ -304,15 +304,15 @@ when idle and 1.5–3 s after a spawn. A finite spawner spawns while
 `spawned < max`; an infinite one while `active < max`. `teamOf` is the
 variant's team strategy.
 
-**`wetsand_nextbot` entity** (`base_nextbot`, `ENT.Type = "nextbot"`; neutral).
+**`ws_nextbot` entity** (`base_nextbot`, `ENT.Type = "nextbot"`; neutral).
 A subclass sets `ENT.Variant = "foundation.npc.<variant>"`. It works as
 follows:
 
 - `Initialize`:
-  - `self.npc = WETSAND.Feature("npc"):Bind(self, self.Variant, self:Config())`;
+  - `self.npc = WS.Feature("npc"):Bind(self, self.Variant, self:Config())`;
   - applies the variant's `LOCOMOTION` to `self.loco`;
   - checks the nav mesh, printing one line per map:
-    `wetsand_nextbot: <map> has no usable navigation mesh; run .devtools/bin/nav_convert.py or nav_generate`.
+    `ws_nextbot: <map> has no usable navigation mesh; run .devtools/bin/nav_convert.py or nav_generate`.
 - `BehaveUpdate(interval)` calls `self.npc:Update(interval)`. There is no
   coroutine.
 - `BodyUpdate()` ports `CHeadlessHatmanBody::Update`: `move_x`/`move_y` from
@@ -333,14 +333,14 @@ follows:
   `function ENT:<Name>(`.
 - It knows no teams.
 
-**`wetsand_combat_nextbot`** derives from `wetsand_nextbot` and implements
+**`ws_combat_nextbot`** derives from `ws_nextbot` and implements
 `foundation.npc.combatant.METHODS` through the `combat`, `holiday` and `npc`
 controllers. Its team comes from the `TeamNum`/`teamnum` keyvalue or from
 config.
 
-**`wetsand_projectile`** is an `anim` entity, neutral. It sets
+**`ws_projectile`** is an `anim` entity, neutral. It sets
 `ENT.Variant = "foundation.projectile.<x>"` and on Initialize calls
-`WETSAND.Feature("combat"):BindProjectile(self, ...)`. Flight is straight or
+`WS.Feature("combat"):BindProjectile(self, ...)`. Flight is straight or
 ballistic (gravity scale). Touch and Think feed the model, and `DETONATE`
 calls `self:Detonate(trace)`, which subclasses override.
 
@@ -406,7 +406,7 @@ named in this plan exists in TF2's content, except `fatty_explode`
 - **`tf_logic_holiday`** (W3 takes ownership): a binding. Its keyvalues
   (`holiday_type`, `tauntInHell`, `allowHaunting`) go to `holiday:BindHoliday`.
   Input `HalloweenSetUsingSpells(int)` calls `SetUsingSpells(v ~= 0)`, which
-  on turning on calls `WETSAND.Feature("spells")`.
+  on turning on calls `WS.Feature("spells")`.
   `Halloween2013TeleportToHell` logs once and does nothing.
 
 ## 5. P0: skeletons (W4)
@@ -504,7 +504,7 @@ Rules (`zombie.cpp`, `zombie_behavior/*.cpp`):
 The model is a timed grenade: `{ fuse, explodeOnTouch=false }`. Tick gives
 `DETONATE` when the fuse runs out.
 
-`tf_projectile_spellspawnzombie` (a `wetsand_projectile`; the
+`tf_projectile_spellspawnzombie` (a `ws_projectile`; the
 `CreateSpellSpawnZombie` and `CTFProjectile_SpellSpawnZombie` pair):
 
 - `Configure{ thrower, team, skeletonType }`.
@@ -519,7 +519,7 @@ The model is a timed grenade: `{ fuse, explodeOnTouch=false }`. Tick gives
 
 ### Bindings
 
-- **tf_zombie** (`wetsand_combat_nextbot`, `Variant="foundation.npc.zombie"`):
+- **tf_zombie** (`ws_combat_nextbot`, `Variant="foundation.npc.zombie"`):
   - Keyvalues: `TeamNum`, `modelscale`. `health`/`max_health` are overwritten
     by NewState, as in TF2.
   - `Configure{ team, lifetime, owner, skeletonType }` before Spawn.
@@ -555,7 +555,7 @@ How the maps drive them:
   `ModifyDamage`.
 - `IsSpell = team ~= Teams.HALLOWEEN`.
 - At spawn: `SetHealth(Health(players, level))`.
-- Entity binding `halloween_base_boss` (a `wetsand_combat_nextbot`):
+- Entity binding `halloween_base_boss` (a `ws_combat_nextbot`):
   - `Configure{ team, owner }` (`SpawnBossAtPos`: the caller spawns at pos+10 z).
   - A map-spawned boss takes its team from `TeamNum`/`teamnum`, else
     UNASSIGNED; the maps' eyeballs set 5.
@@ -592,7 +592,7 @@ Other constants: `AXE_SWING_DELAY=0.58`, `ATTACK_INTERVAL=1`,
 - **Attack:**
   - Every 3 s, home becomes the first control point of the current round that
     BLU does not own and may capture. The binding feeds this from
-    `WETSAND.TeamCanCapPoint`.
+    `WS.TeamCanCapPoint`.
   - **Victim and IT:** a chaseable victim is alive, on the mesh, not in a
     respawn room, not invulnerable, and within 2000 of home.
     - With no IT, the nearest chaseable player within 1500 of home becomes IT
@@ -690,7 +690,7 @@ binding resolves the move with hull traces and reflects off surfaces.
     `...Rage` when enraged.
   - Move timer 10–15 s: when near the ground, SuspendFor Teleport, or Escape
     once the lifetime is over. A spell eyeball escapes at 8 s.
-  - Escape warnings at 60, 30 and 10 s via `WETSAND.Announce`.
+  - Escape warnings at 60, 30 and 10 s via `WS.Announce`.
   - Looks around with `lookaround1/2/3`. After anyone dies, laughs with
     `laugh` and `Halloween.EyeballBossLaugh`.
   - A visible victim triggers SuspendFor Notice.
@@ -725,7 +725,7 @@ binding resolves the move with hull traces and reflects off surfaces.
   the enemy team) who is not `IsHiddenFromNPC`, plus visible `zombie` NPCs of
   other teams, and `boss` NPCs when it is a spell.
 - **ModifyDamage:** a spell eyeball takes 0. `SetBossHealth(health/max)`
-  (the controller networks Global2 `wetsand_boss_health`; 0 hides the bar).
+  (the controller networks Global2 `ws_boss_health`; 0 hides the bar).
 - **teleport_vortex** (a model in the eyeball part, bound by an entity):
   - A ±50 trigger living 5 s.
   - It pulls airborne players who are looking at it and in LOS within 500
@@ -1007,7 +1007,7 @@ through the caster port:
 
 - `weapons/tf_weapon_spellbook.lua` is a thin SWEP in slot 5. PrimaryAttack
   calls `spells:Cast(owner)`.
-- `tf_spell_pickup` (rewritten on `wetsand_pickup_base`):
+- `tf_spell_pickup` (rewritten on `ws_pickup_base`):
   - keyvalue `tier`, with skin = tier; model `hwn_spellbook_upright.mdl`, or
     `_major` for tier 1;
   - ValidTouch calls `spells:Pickup(ply, tier)`;
@@ -1017,7 +1017,7 @@ through the caster port:
 - The ten spell projectile classes (`tf_projectile_spellfireball`, `…spellbats`,
   `…spellmirv`, `…spellpumpkin`, `…spelltransposeteleport`, `…lightningorb`,
   `…spellmeteorshower`, `tf_spell_meteorshowerspawner`, `…spellspawnboss`,
-  `…spellspawnhorde`) derive from `wetsand_projectile` and bind through
+  `…spellspawnhorde`) derive from `ws_projectile` and bind through
   `spells:BindSpellProjectile`.
 
 **View** (`CHudSpellMenu`): shows the icon, `xN` charges, and the key from
@@ -1075,15 +1075,15 @@ Bosses and the precipice skeletons appear through the engine's
 
 Every package works in its own worktree and edits only the files it owns;
 it asks for other changes in its report. The Feature package, which builds
-`WETSAND.Feature` and is outside this plan, must land before any controller
+`WS.Feature` and is outside this plan, must land before any controller
 is exercised in game. Until then, controllers are plain modules that the
 models' tests never need.
 
 | pkg | owns | depends on |
 |---|---|---|
-| **W1 npc framework** | foundation/npc.lua, foundation/npc/{actor,path,hover,spawner}.lua, foundation/npc/path/{ground,scatter}.lua, foundation/projectile.lua, foundation/projectile/grenade.lua; entities/{wetsand_nextbot,wetsand_projectile}.lua; features/npc (controller registry, spawner ticking, nav check; no view yet); tests/{npc,npc_path,npc_spawner,npc_hover,projectile}_test.lua, tests/fake_actor.lua | lands first |
+| **W1 npc framework** | foundation/npc.lua, foundation/npc/{actor,path,hover,spawner}.lua, foundation/npc/path/{ground,scatter}.lua, foundation/projectile.lua, foundation/projectile/grenade.lua; entities/{ws_nextbot,ws_projectile}.lua; features/npc (controller registry, spawner ticking, nav check; no view yet); tests/{npc,npc_path,npc_spawner,npc_hover,projectile}_test.lua, tests/fake_actor.lua | lands first |
 | **W2 tools** | .devtools/bin/{nav_convert,tf2_content}.py and their test_*.py | any time |
-| **W3 combat and holiday** | foundation/{combat,holiday}.lua, foundation/holiday/halloween.lua, foundation/npc/{combatant,targeting}.lua, additions to foundation/players.lua; entities/{wetsand_combat_nextbot,tf_logic_holiday}.lua; features/{combat,holiday}; tests/{combat,holiday,targeting}_test.lua, tests/fake_combatant.lua; deletes foundation/halloween.lua, wetsand/sv_halloween.lua, tests/halloween_entities_test.lua | W1 |
+| **W3 combat and holiday** | foundation/{combat,holiday}.lua, foundation/holiday/halloween.lua, foundation/npc/{combatant,targeting}.lua, additions to foundation/players.lua; entities/{ws_combat_nextbot,tf_logic_holiday}.lua; features/{combat,holiday}; tests/{combat,holiday,targeting}_test.lua, tests/fake_combatant.lua; deletes foundation/halloween.lua, ws/sv_halloween.lua, tests/halloween_entities_test.lua | W1 |
 | **W4 skeletons (P0)** | foundation/npc/zombie.lua; entities/{tf_zombie,tf_zombie_spawner,tf_projectile_spellspawnzombie}.lua; tests/zombie_test.lua | W1, W3 |
 | **W5 bosses** | foundation/npc/{halloween_boss,headless_hatman,eyeball_boss,tag}.lua, foundation/projectile/rocket.lua; entities/{halloween_base_boss,headless_hatman,eyeball_boss,teleport_vortex,tf_projectile_rocket}.lua; features/tag; the npc feature's view (boss bar); tests/{halloween_boss,headless_hatman,eyeball_boss,tag}_test.lua | W1, W3 |
 | **W6 hazards and gifts** | foundation/hazards.lua, foundation/hazards/{pumpkin_bomb,generic_bomb,zapper}.lua; entities/{tf_pumpkin_bomb,tf_generic_bomb,halloween_zapper,tf_halloween_gift_spawn_location,tf_halloween_gift_pickup}.lua; features/hazards; tests/hazards_test.lua | W3 |
@@ -1126,13 +1126,13 @@ clock and a scripted random source.
 - `npc_hover_test`: altitude clamped to ±acceleration, and damping.
 - `projectile_test`: fuse and touch rules.
 - A contract test finds every name in `foundation.npc.actor.METHODS` in
-  `tests/fake_actor.lua`, and `function ENT:<Name>(` in `wetsand_nextbot.lua`
+  `tests/fake_actor.lua`, and `function ENT:<Name>(` in `ws_nextbot.lua`
   (read as text).
 - Neutrality: this must print nothing:
-  `grep -nE 'Teams|TEAM_|[Hh]alloween|tf_|TF2|skeleton|spell|WETSAND\.(Team|Halloween|Rules|FireOutput|KeyValues|State)'`
+  `grep -nE 'Teams|TEAM_|[Hh]alloween|tf_|TF2|skeleton|spell|WS\.(Team|Halloween|Rules|FireOutput|KeyValues|State)'`
   over `foundation/npc.lua`, `foundation/npc/{actor,path,hover,spawner}.lua`,
   `foundation/npc/path/*.lua`, `foundation/projectile*.lua`, and
-  `entities/entities/wetsand_{nextbot,projectile}.lua`.
+  `entities/entities/ws_{nextbot,projectile}.lua`.
 
 **W2 tools**
 
@@ -1152,7 +1152,7 @@ clock and a scripted random source.
 - `targeting_test`: the four stealth exceptions, ghost mode, and EnemyTeamsOf
   for all teams.
 - A contract test: `fake_combatant` implements
-  `foundation.npc.combatant.METHODS`, and `wetsand_combat_nextbot.lua` defines
+  `foundation.npc.combatant.METHODS`, and `ws_combat_nextbot.lua` defines
   each one.
 
 **W4 skeletons: `zombie_test` scenarios on `fake_combatant`**
@@ -1275,12 +1275,12 @@ P1:
 A CS:S mode, or any later NPC, can reuse these unchanged:
 
 - `foundation.npc` (Behavior, actor port, path strategies, spawner, hover)
-  with `wetsand_nextbot` and the `npc` controller. A CS:S hostage is a new
+  with `ws_nextbot` and the `npc` controller. A CS:S hostage is a new
   NPC variant, `foundation.npc.hostage`, whose Behavior follows its rescuer,
   bound by a `hostage_entity` entity.
-- `wetsand_combat_nextbot` and `foundation.combat`, given CS:S team data in
+- `ws_combat_nextbot` and `foundation.combat`, given CS:S team data in
   `foundation.teams`.
-- `foundation.projectile` and `wetsand_projectile`, for grenades: HE, flash
+- `foundation.projectile` and `ws_projectile`, for grenades: HE, flash
   and smoke would be variants.
 - `foundation.spells` with a different set, for any charged one-button item.
 - `nav_convert.py`: CS:S meshes are sub-version 1 with no data added to each
@@ -1301,7 +1301,7 @@ These are TF2 content and stay TF2's:
   overrides once an entity loads the holiday controller. There is no calendar.
 - The spellbook is a real SWEP in slot 5, and casts with TF2's bind command.
 - Gifts give nothing.
-- The eyeball's escape warnings are `WETSAND.Announce` text, where TF2 uses
+- The eyeball's escape warnings are `WS.Announce` text, where TF2 uses
   game events.
 - Skeleton collision is GMod's default; TF2's zombies collide with nothing.
 - `IsOnNavMesh` uses `navmesh.GetNavArea(pos, 100)` and `GetClosestPointOnArea`.

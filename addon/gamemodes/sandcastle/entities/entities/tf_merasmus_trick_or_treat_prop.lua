@@ -26,7 +26,7 @@ end
 function ENT:Initialize()
 	local config = self.configured
 	self.boss = config.boss
-	self.rules = WETSAND.require("foundation.npc.merasmus")
+	self.rules = WS.require("foundation.npc.merasmus")
 	self:SetModel(config.model)
 	self:SetAngles(Angle(0, config.yaw, 0))
 	self:PhysicsInit(SOLID_VPHYSICS)

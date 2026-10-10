@@ -19,7 +19,7 @@ function ENT:Configure(config)
 end
 
 function ENT:Initialize()
-	self.hazards = WETSAND.Feature("hazards")
+	self.hazards = WS.Feature("hazards")
 	self.hazard = self.hazards:Bind(self, VARIANT, self.configured or {})
 end
 

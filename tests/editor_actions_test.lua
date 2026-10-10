@@ -1,4 +1,4 @@
--- WETSAND.EditorAction (wetsand/sh_editors.lua): a right-click entry for
+-- WS.EditorAction (ws/sh_editors.lua): a right-click entry for
 -- admins on an editor's class, or on whatever its match(ent) accepts (a
 -- payload cart). Run against a fake properties library.
 local T = dofile("tests/harness.lua")
@@ -6,12 +6,12 @@ local T = dofile("tests/harness.lua")
 local function Load()
 	local added = {}
 	local env = setmetatable({
-		WETSAND = {},
+		WS = {},
 		properties = { Add = function(name, def) added[name] = def end },
 		IsValid = function(v) return v ~= nil end,
 	}, { __index = _G })
-	setfenv(assert(loadfile("addon/gamemodes/sandcastle/gamemode/wetsand/sh_editors.lua")), env)()
-	return env.WETSAND, added
+	setfenv(assert(loadfile("addon/gamemodes/sandcastle/gamemode/ws/sh_editors.lua")), env)()
+	return env.WS, added
 end
 
 local function Ent(class, cart) return { GetClass = function() return class end, cart = cart } end
@@ -39,12 +39,12 @@ T.test("the Game Rules Editor no longer moves carts: right-click the cart", func
 		ENT = {},
 		AddCSLuaFile = function() end,
 		DEFINE_BASECLASS = function() end,
-		WETSAND = { TEAM_RED = 2, TEAM_BLUE = 3, EditorAction = function(name) actions[name] = true end },
+		WS = { TEAM_RED = 2, TEAM_BLUE = 3, EditorAction = function(name) actions[name] = true end },
 	}, { __index = _G })
 	setfenv(assert(loadfile("addon/gamemodes/sandcastle/entities/entities/edit_gamerules.lua")), env)()
-	T.eq(actions.wetsand_retract_cart, nil)
-	T.eq(actions.wetsand_advance_cart, nil)
-	T.eq(actions.wetsand_reset_round, true, "its other actions stay")
+	T.eq(actions.ws_retract_cart, nil)
+	T.eq(actions.ws_advance_cart, nil)
+	T.eq(actions.ws_reset_round, true, "its other actions stay")
 end)
 
 T.finish()

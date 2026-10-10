@@ -10,8 +10,8 @@ function ENT:UpdateTransmitState()
 end
 
 function ENT:Initialize()
-	local holiday = WETSAND.Feature("holiday")
-	local Gift = WETSAND.require("foundation.holiday.gift")
+	local holiday = WS.Feature("holiday")
+	local Gift = WS.require("foundation.holiday.gift")
 	-- The next tick: tf_logic_holiday may spawn after this entity.
 	timer.Simple(0, function()
 		if not IsValid(self) or not holiday:HolidayActive(Gift.HOLIDAY) then return end

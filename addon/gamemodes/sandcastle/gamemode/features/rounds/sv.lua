@@ -4,7 +4,7 @@
 -- (tf_gamerules), the mode, the round listeners, the timer holds, the team
 -- clocks and the objective port. It feeds the models engine time and a
 -- snapshot of the players, and carries out their effects: outputs, the map
--- cleanup, respawns, sounds and the wetsand_round_* and wetsand_timer_*
+-- cleanup, respawns, sounds and the ws_round_* and ws_timer_*
 -- keys. It decides nothing itself.
 --
 -- Loaded by tf_gamerules, team_round_timer, game_round_win and
@@ -12,15 +12,15 @@
 -- payload). On a map with an objective entity and no tf_gamerules it makes
 -- one, as CTFGameRules::CreateStandardEntities does, so the rounds run and
 -- outputs aimed at the name tf_gamerules reach it.
-local Rounds = WETSAND.require("foundation.rounds")
-local Text = WETSAND.require("foundation.rounds.text")
-local Timer = WETSAND.require("foundation.rounds.timer")
-local ControlPoints = WETSAND.require("foundation.rounds.control_points")
-local SpawnHold = WETSAND.require("foundation.rounds.spawn_doors")
+local Rounds = WS.require("foundation.rounds")
+local Text = WS.require("foundation.rounds.text")
+local Timer = WS.require("foundation.rounds.timer")
+local ControlPoints = WS.require("foundation.rounds.control_points")
+local SpawnHold = WS.require("foundation.rounds.spawn_doors")
 
-local S = WETSAND.STATE
-local UNASSIGNED, SPECTATOR = WETSAND.TEAM_UNASSIGNED, WETSAND.TEAM_SPECTATOR
-local RED, BLUE = WETSAND.TEAM_RED, WETSAND.TEAM_BLUE
+local S = WS.STATE
+local UNASSIGNED, SPECTATOR = WS.TEAM_UNASSIGNED, WS.TEAM_SPECTATOR
+local RED, BLUE = WS.TEAM_RED, WS.TEAM_BLUE
 local GAME_TEAMS = { RED, BLUE }
 
 -- TF2's own convars, as teamplayroundbased_gamerules.cpp and
@@ -68,7 +68,7 @@ local ROUND_THINK_INTERVAL = 0.1
 local TIMER_THINK_INTERVAL = 0.05 -- CTeamRoundTimer's context thinks
 local HALT_DOORS_INTERVAL = 2
 local ROLE_NONE = 0 -- TEAM_ROLE_NONE
-local THINK_HOOK = "wetsand_rounds"
+local THINK_HOOK = "ws_rounds"
 
 -- CTeamRoundTimer::AddTimerSeconds' ROUND_TIMER_TIME_ADDED_* sounds.
 local TIME_ADDED_WINNER = {
@@ -106,10 +106,10 @@ local MATCH_WIN_LINE = {
 }
 
 local function PlayMatchEnd(winner)
-	WETSAND.BroadcastSound(winner, MATCH_WIN_MUSIC)
-	WETSAND.BroadcastSound(WETSAND.EnemyOf(winner), MATCH_LOSE_MUSIC)
-	WETSAND.BroadcastSound(SPECTATOR, MATCH_SPECTATOR_MUSIC[winner])
-	WETSAND.BroadcastPA(UNASSIGNED, MATCH_WIN_LINE[winner])
+	WS.BroadcastSound(winner, MATCH_WIN_MUSIC)
+	WS.BroadcastSound(WS.EnemyOf(winner), MATCH_LOSE_MUSIC)
+	WS.BroadcastSound(SPECTATOR, MATCH_SPECTATOR_MUSIC[winner])
+	WS.BroadcastPA(UNASSIGNED, MATCH_WIN_LINE[winner])
 end
 
 -- The level after the match (Rounds.NextMap): the engine's nextlevel, else
@@ -182,25 +182,25 @@ end
 local function TeamPlayers(t)
 	local players = {}
 	for _, ply in ipairs(player.GetAll()) do
-		if WETSAND.TeamOf(ply) == t then players[#players + 1] = ply end
+		if WS.TeamOf(ply) == t then players[#players + 1] = ply end
 	end
 	return players
 end
 
 -- A player counts once their client has finished loading (client_ready,
--- wetsand/sh_events.lua), so the pre-round freeze is not spent on a
+-- ws/sh_events.lua), so the pre-round freeze is not spent on a
 -- loading screen. Bots have no client to report it.
 local function Ready(ply)
-	return WETSAND.IsReady(ply) or ply:IsBot()
+	return WS.IsReady(ply) or ply:IsBot()
 end
 
 -- BHavePlayers: someone ready and on RED or BLU, or something else fighting
--- for a team (the AI war says so through WetsandHaveCombatants).
+-- for a team (the AI war says so through WSHaveCombatants).
 local function HavePlayers()
 	for _, ply in ipairs(player.GetAll()) do
-		if Ready(ply) and WETSAND.TeamOf(ply) ~= UNASSIGNED then return true end
+		if Ready(ply) and WS.TeamOf(ply) ~= UNASSIGNED then return true end
 	end
-	return hook.Run("WetsandHaveCombatants") == true
+	return hook.Run("WSHaveCombatants") == true
 end
 
 local function Scores()
@@ -211,7 +211,7 @@ local function Scores()
 end
 
 -- Each team's players, its live ones, and its live soldiers (the AI war
--- says how many through WetsandTeamCombatants): sudden death ends only when
+-- says how many through WSTeamCombatants): sudden death ends only when
 -- a side's last soldier is down too.
 local function TeamLife()
 	local teams = {}
@@ -223,7 +223,7 @@ local function TeamLife()
 		teams[t] = {
 			players = #players,
 			alive = alive,
-			soldiers = hook.Run("WetsandTeamCombatants", t) or 0,
+			soldiers = hook.Run("WSTeamCombatants", t) or 0,
 		}
 	end
 	return teams
@@ -237,8 +237,8 @@ end
 -- (CTFGameRules::HandleSwitchTeams).
 local function SwitchTeams()
 	EachPlayer(function(ply)
-		local t = WETSAND.TeamOf(ply)
-		if t ~= UNASSIGNED then WETSAND.SetPlayerTeam(ply, WETSAND.EnemyOf(t), true) end
+		local t = WS.TeamOf(ply)
+		if t ~= UNASSIGNED then WS.SetPlayerTeam(ply, WS.EnemyOf(t), true) end
 	end)
 	local red, blu = team.GetScore(RED), team.GetScore(BLUE)
 	team.SetScore(RED, blu)
@@ -250,13 +250,13 @@ end
 local function ScrambleTeams()
 	local players, byId = {}, {}
 	EachPlayer(function(ply)
-		if WETSAND.TeamOf(ply) ~= UNASSIGNED then
+		if WS.TeamOf(ply) ~= UNASSIGNED then
 			players[#players + 1] = { id = ply:UserID(), score = ply:Frags() }
 			byId[ply:UserID()] = ply
 		end
 	end)
-	for id, t in pairs(WETSAND.TeamRules.Scramble(players, math.random(0, 1) == 0 and RED or BLUE)) do
-		WETSAND.SetPlayerTeam(byId[id], t, true)
+	for id, t in pairs(WS.TeamRules.Scramble(players, math.random(0, 1) == 0 and RED or BLUE)) do
+		WS.SetPlayerTeam(byId[id], t, true)
 	end
 	team.SetScore(RED, 0)
 	team.SetScore(BLUE, 0)
@@ -268,27 +268,27 @@ end
 local function PlayWinSong(winner)
 	if winner == UNASSIGNED then
 		-- a tie: the stalemate music, the announcer calling it over it
-		WETSAND.BroadcastPA(UNASSIGNED, "Game.Stalemate")
-		WETSAND.BroadcastPA(UNASSIGNED, STALEMATE_LINE)
+		WS.BroadcastPA(UNASSIGNED, "Game.Stalemate")
+		WS.BroadcastPA(UNASSIGNED, STALEMATE_LINE)
 		return
 	end
-	WETSAND.BroadcastPA(winner, "Game.YourTeamWon")
-	WETSAND.BroadcastPA(WETSAND.EnemyOf(winner), "Game.YourTeamLost")
+	WS.BroadcastPA(winner, "Game.YourTeamWon")
+	WS.BroadcastPA(WS.EnemyOf(winner), "Game.YourTeamLost")
 	-- spectators, of neither team, hear who won over the stalemate music
 	-- (CHAN_AUTO, under the announcer's CHAN_VOICE2)
-	WETSAND.BroadcastPA(SPECTATOR, winner == BLUE and "Announcer.CompRoundWinBlu" or "Announcer.CompRoundWinRed")
-	WETSAND.BroadcastSound(SPECTATOR, SPECTATOR_WIN_MUSIC)
+	WS.BroadcastPA(SPECTATOR, winner == BLUE and "Announcer.CompRoundWinBlu" or "Announcer.CompRoundWinRed")
+	WS.BroadcastSound(SPECTATOR, SPECTATOR_WIN_MUSIC)
 
 end
 
 -- The announcer credits the team the time was added for (AddTeamTime).
 local function AnnounceTimeAdded(t)
 	if t == RED or t == BLUE then
-		WETSAND.BroadcastPA(t, table.Random(TIME_ADDED_WINNER))
-		WETSAND.BroadcastPA(WETSAND.EnemyOf(t), TIME_ADDED_LOSER)
-		WETSAND.BroadcastPA(SPECTATOR, TIME_ADDED)
+		WS.BroadcastPA(t, table.Random(TIME_ADDED_WINNER))
+		WS.BroadcastPA(WS.EnemyOf(t), TIME_ADDED_LOSER)
+		WS.BroadcastPA(SPECTATOR, TIME_ADDED)
 	else
-		WETSAND.BroadcastPA(UNASSIGNED, TIME_ADDED)
+		WS.BroadcastPA(UNASSIGNED, TIME_ADDED)
 	end
 end
 
@@ -333,23 +333,23 @@ end
 
 local function PublishState()
 	local round = Controller.round
-	SetGlobal2Int("wetsand_round_state", round:State())
-	SetGlobal2Int("wetsand_round_hud_type", round:Mode().HUD)
+	SetGlobal2Int("ws_round_state", round:State())
+	SetGlobal2Int("ws_round_hud_type", round:Mode().HUD)
 end
 
 function Controller:BindProxy(ent)
 	if IsValid(self.proxy) then return end
 	self.proxy = ent
-	WETSAND.Rules = ent
-	SetGlobal2Bool("wetsand_rounds_active", true)
+	WS.Rules = ent
+	SetGlobal2Bool("ws_rounds_active", true)
 	PublishState()
 end
 
 function Controller:UnbindProxy(ent)
 	if ent ~= self.proxy then return end
 	self.proxy = NULL
-	WETSAND.Rules = nil
-	SetGlobal2Bool("wetsand_rounds_active", false)
+	WS.Rules = nil
+	SetGlobal2Bool("ws_rounds_active", false)
 end
 
 function Controller:Proxy()
@@ -358,7 +358,7 @@ end
 
 -- Timers ------------------------------------------------------------------------------
 
-local TIMER_KEYS_BOOL = { "wetsand_timer_shown", "wetsand_timer_paused", "wetsand_timer_in_setup" }
+local TIMER_KEYS_BOOL = { "ws_timer_shown", "ws_timer_paused", "ws_timer_in_setup" }
 
 local function ClearTimerKeys()
 	for _, key in ipairs(TIMER_KEYS_BOOL) do SetGlobal2Bool(key, false) end
@@ -371,27 +371,27 @@ function Controller:PublishHudTimer(now)
 	if not IsValid(ent) then return end
 	local timer = self.timers[ent]
 	local left = timer:TimeRemaining(now)
-	SetGlobal2Bool("wetsand_timer_shown", true)
-	SetGlobal2Bool("wetsand_timer_paused", timer:Paused())
+	SetGlobal2Bool("ws_timer_shown", true)
+	SetGlobal2Bool("ws_timer_paused", timer:Paused())
 	if timer:Paused() then
-		SetGlobal2Float("wetsand_timer_time_left", left)
+		SetGlobal2Float("ws_timer_time_left", left)
 	else
-		SetGlobal2Float("wetsand_timer_end_time", now + left)
+		SetGlobal2Float("ws_timer_end_time", now + left)
 	end
-	SetGlobal2Bool("wetsand_timer_in_setup", timer:InSetup())
-	SetGlobal2Bool("wetsand_timer_auto_countdown", timer:AutoCountdown())
-	SetGlobal2Int("wetsand_timer_serial", timer:Serial())
+	SetGlobal2Bool("ws_timer_in_setup", timer:InSetup())
+	SetGlobal2Bool("ws_timer_auto_countdown", timer:AutoCountdown())
+	SetGlobal2Int("ws_timer_serial", timer:Serial())
 end
 
 local function PublishOvertime(on)
-	SetGlobal2Bool("wetsand_round_overtime", on)
+	SetGlobal2Bool("ws_round_overtime", on)
 	-- Train watchers hear it (the SDK sends them OnStartOvertime).
-	hook.Run("WetsandOvertime", on)
+	hook.Run("WSOvertime", on)
 end
 
 -- CTeamplayRoundBasedRules::SetSetup, from every timer's SetState.
 function Controller:SetSetup(on)
-	if self.round:SetSetup(on) then SetGlobal2Bool("wetsand_round_in_setup", on) end
+	if self.round:SetSetup(on) then SetGlobal2Bool("ws_round_in_setup", on) end
 end
 
 function Controller:SetOvertime(on)
@@ -401,7 +401,7 @@ end
 -- In whole seconds, as TF2's event carries them; a clamp to the timer's
 -- maximum length can leave a fraction.
 local function Notify(t, seconds)
-	WETSAND.Events.Fire("teamplay_timer_time_added", {
+	WS.Events.Fire("teamplay_timer_time_added", {
 		team = t,
 		seconds_added = math.Round(seconds),
 	})
@@ -412,7 +412,7 @@ local TIMER_EVENTS = {
 	output = function(self, ent, e) ent:TriggerOutput(e.name, ent) end,
 	setup = function(self, ent, e) self:SetSetup(e.value) end,
 	overtime = function(self, ent, e) self:SetOvertime(e.value) end,
-	nag = function() WETSAND.BroadcastPA(UNASSIGNED, OVERTIME_NAG) end,
+	nag = function() WS.BroadcastPA(UNASSIGNED, OVERTIME_NAG) end,
 	length_changed = function() end,
 	time_added = function(self, ent, e)
 		AnnounceTimeAdded(e.team)
@@ -626,7 +626,7 @@ end
 -- CTFGameRulesProxy::InputSetRed/BlueKothClockActive: the enemy's clock
 -- pauses and the team's resumes. Without clocks nothing happens.
 function Controller:ActivateTeamClock(t)
-	local enemy = self:TeamClock(WETSAND.EnemyOf(t))
+	local enemy = self:TeamClock(WS.EnemyOf(t))
 	if enemy then self:TimerInput(enemy, "pause") end
 	local own = self:TeamClock(t)
 	if own then self:TimerInput(own, "resume") end
@@ -754,7 +754,7 @@ function Controller:CapSounds(capTeam, wouldWinGame, scorePerRound)
 		wouldWinGame = wouldWinGame,
 		scorePerRound = scorePerRound,
 	})
-	for _, line in ipairs(lines) do WETSAND.BroadcastPA(line.team, line.sound) end
+	for _, line in ipairs(lines) do WS.BroadcastPA(line.team, line.sound) end
 end
 
 -- logic_auto (CLogicAuto::Think) ----------------------------------------------------
@@ -762,7 +762,7 @@ end
 -- A cleanup recreates every logic_auto, which would fire OnMultiNewMap as at
 -- map load: GMod's gamerules never report InRoundRestart. Its keyvalue is
 -- emptied while the cleanup runs, and OnMultiNewRound fires instead.
-hook.Add("EntityKeyValue", "wetsand_rounds_new_map", function(ent, key)
+hook.Add("EntityKeyValue", "ws_rounds_new_map", function(ent, key)
 	if Controller.suppressNewMap and ent:GetClass() == LOGIC_AUTO_CLASS and string.lower(key) == "onmultinewmap" then
 		return ""
 	end
@@ -770,7 +770,7 @@ end)
 
 local function FireNewRoundOutputs()
 	for _, auto in ipairs(ents.FindByClass(LOGIC_AUTO_CLASS)) do
-		WETSAND.FireOutput(auto, "OnMultiNewRound", auto)
+		WS.FireOutput(auto, "OnMultiNewRound", auto)
 	end
 end
 
@@ -784,8 +784,8 @@ end
 
 -- The model's round hooks, for other features: the round is running
 -- (spawns, the AI war), and a round was won (winner, its WINREASON).
-local ROUND_ACTIVE = "WetsandRoundActive"
-local ROUND_WIN = "WetsandRoundWin"
+local ROUND_ACTIVE = "WSRoundActive"
+local ROUND_WIN = "WSRoundWin"
 local ROUND_HOOKS = {
 	[ROUND_ACTIVE] = function() hook.Run(ROUND_ACTIVE) end,
 	[ROUND_WIN] = function(args) hook.Run(ROUND_WIN, args[1], args[2]) end,
@@ -797,7 +797,7 @@ end
 
 local function RespawnTeam(self, t, now)
 	for _, ply in ipairs(TeamPlayers(t)) do
-		if not ply:Alive() and self.round:MayRespawn(t, ply.wetsandDeathTime or 0, now, ply.wetsandSwitchedTeam == true) then
+		if not ply:Alive() and self.round:MayRespawn(t, ply.wsDeathTime or 0, now, ply.wsSwitchedTeam == true) then
 			ply:Spawn()
 		end
 	end
@@ -810,32 +810,32 @@ end
 
 local EFFECTS = {
 	state = function(self, e)
-		SetGlobal2Int("wetsand_round_state", e.to)
+		SetGlobal2Int("ws_round_state", e.to)
 		if e.to == S.PREROUND then
 			self:RestoreSpawnDoors()
-			SetGlobal2Float("wetsand_preround_end_time", e.preroundEnd)
-			SetGlobal2Int("wetsand_round_winner", UNASSIGNED)
+			SetGlobal2Float("ws_preround_end_time", e.preroundEnd)
+			SetGlobal2Int("ws_round_winner", UNASSIGNED)
 		end
 	end,
 	output = function(self, e)
 		if IsValid(self.proxy) then self.proxy:TriggerOutput(e.name, self.proxy, e.value) end
 	end,
-	balance_teams = function() WETSAND.BalanceTeams(false) end,
+	balance_teams = function() WS.BalanceTeams(false) end,
 	cleanup = function(self) self:CleanUpMap() end,
 	clear_gore = function()
 		game.RemoveRagdolls()
-		WETSAND.Events.Fire("round_gore_cleared", {})
+		WS.Events.Fire("round_gore_cleared", {})
 	end,
 	new_round_outputs = function() timer.Simple(0, FireNewRoundOutputs) end,
 	round_spawn = function(self)
 		-- CTFGameRules::SetupOnRoundStart forgets the koth clocks.
 		self.teamClocks = {}
 		self:RunListeners(Rounds.PHASE_SPAWN)
-		hook.Run("WetsandRoundSpawn")
+		hook.Run("WSRoundSpawn")
 	end,
 	round_activate = function(self)
 		self:RunListeners(Rounds.PHASE_ACTIVATE)
-		hook.Run("WetsandRoundActivate")
+		hook.Run("WSRoundActivate")
 	end,
 	previous_round_end = function(self) self:RunListeners(Rounds.PHASE_ROUND_END) end,
 	arena_round_start = function(self) self:RunListeners(Rounds.PHASE_ARENA_START) end,
@@ -844,8 +844,8 @@ local EFFECTS = {
 	switch_teams = function() SwitchTeams() end,
 	-- mp_scrambleteams_auto: told with the win, done as the next round starts
 	scramble_due = function()
-		WETSAND.BroadcastPA(UNASSIGNED, SCRAMBLE_LINE)
-		WETSAND.Announce(Text.SCRAMBLE_NOTE, UNASSIGNED, UNASSIGNED, ICON_SCRAMBLE)
+		WS.BroadcastPA(UNASSIGNED, SCRAMBLE_LINE)
+		WS.Announce(Text.SCRAMBLE_NOTE, UNASSIGNED, UNASSIGNED, ICON_SCRAMBLE)
 	end,
 	scramble_teams = function() ScrambleTeams() end,
 	respawn_all = function()
@@ -855,18 +855,18 @@ local EFFECTS = {
 	end,
 	respawn_team = function(self, e, now) RespawnTeam(self, e.team, now) end,
 	-- Sudden death over: its survivors, players and the AI war's soldiers
-	-- (WetsandSuddenDeathOver), overhealed (Rounds.SurvivorHealth), then
+	-- (WSSuddenDeathOver), overhealed (Rounds.SurvivorHealth), then
 	-- every dead player on a team back, to enjoy the victory or the
 	-- humiliation.
 	sudden_death_over = function()
 		EachPlayer(function(ply)
-			if ply:Alive() and WETSAND.TeamOf(ply) ~= UNASSIGNED then
+			if ply:Alive() and WS.TeamOf(ply) ~= UNASSIGNED then
 				ply:SetHealth(Rounds.SurvivorHealth(ply:GetMaxHealth(), ply:Health()))
 			end
 		end)
-		hook.Run("WetsandSuddenDeathOver", Rounds.SurvivorHealth)
+		hook.Run("WSSuddenDeathOver", Rounds.SurvivorHealth)
 		EachPlayer(function(ply)
-			if not ply:Alive() and WETSAND.TeamOf(ply) ~= UNASSIGNED then ply:Spawn() end
+			if not ply:Alive() and WS.TeamOf(ply) ~= UNASSIGNED then ply:Spawn() end
 		end)
 	end,
 	doors_lock = function() FireCompetitive("OnSpawnRoomDoorsShouldLock") end,
@@ -877,10 +877,10 @@ local EFFECTS = {
 	publish_win = function(self, e, now)
 		local remaining = 0
 		if e.winner ~= UNASSIGNED then remaining = self.objective:RoundsRemaining(e.winner) end
-		SetGlobal2Int("wetsand_round_winner", e.winner)
-		SetGlobal2Int("wetsand_round_win_reason", e.reason)
-		SetGlobal2Bool("wetsand_round_full_round", e.fullRound)
-		SetGlobal2Int("wetsand_rounds_remaining", remaining)
+		SetGlobal2Int("ws_round_winner", e.winner)
+		SetGlobal2Int("ws_round_win_reason", e.reason)
+		SetGlobal2Bool("ws_round_full_round", e.fullRound)
+		SetGlobal2Int("ws_rounds_remaining", remaining)
 		-- a team's win opens the setup gates and every spawn door, so its
 		-- side can hunt the humiliated losers down
 		if e.winner ~= UNASSIGNED then
@@ -891,14 +891,14 @@ local EFFECTS = {
 	win_song = function(self, e)
 		PlayWinSong(e.winner)
 		for t, line in pairs(self.round:Mode():RoundWinLines(e.winner, e.fullRound, self.multipleTrains)) do
-			WETSAND.BroadcastPA(t, line)
+			WS.BroadcastPA(t, line)
 		end
 	end,
 	-- nobody respawns, so the setup gates (the map's OnSetupFinished relays)
 	-- and every spawn door open: the last of each side have nowhere to hide
 	sudden_death = function(self, e, now)
-		WETSAND.BroadcastPA(UNASSIGNED, SUDDEN_DEATH)
-		WETSAND.Announce(Text.SuddenDeathNote(e.reason), UNASSIGNED, UNASSIGNED, ICON_SUDDEN_DEATH)
+		WS.BroadcastPA(UNASSIGNED, SUDDEN_DEATH)
+		WS.Announce(Text.SuddenDeathNote(e.reason), UNASSIGNED, UNASSIGNED, ICON_SUDDEN_DEATH)
 		self:FinishSetup(now)
 		self:OpenSpawnDoors(now)
 	end,
@@ -915,10 +915,10 @@ local EFFECTS = {
 		end
 	end,
 	intermission = function(self, e, now)
-		SetGlobal2String("wetsand_game_over_reason", e.reason)
-		SetGlobal2Int("wetsand_match_winner", e.winner)
-		SetGlobal2Float("wetsand_game_over_end", e["until"])
-		hook.Run("WetsandMatchWin", e.winner)
+		SetGlobal2String("ws_game_over_reason", e.reason)
+		SetGlobal2Int("ws_match_winner", e.winner)
+		SetGlobal2Float("ws_game_over_end", e["until"])
+		hook.Run("WSMatchWin", e.winner)
 		-- its winners hunt the humiliated losers to its music through the
 		-- setup gates and every spawn door (MATCH_WIN_EXTRA), then everyone
 		-- is frozen for mp_chattime
@@ -930,15 +930,15 @@ local EFFECTS = {
 		RunConsoleCommand("changelevel", NextMap())
 	end,
 	-- mp_chattime at the match's end: everyone frozen, the AI war's soldiers
-	-- too (WetsandFreeze), until the level changes
+	-- too (WSFreeze), until the level changes
 	freeze = function()
 		EachPlayer(function(ply) ply:Freeze(true) end)
-		hook.Run("WetsandFreeze", true)
-		WETSAND.Announce(Text.NextMapNote(NextMap()), UNASSIGNED, UNASSIGNED, ICON_NEXT_MAP)
+		hook.Run("WSFreeze", true)
+		WS.Announce(Text.NextMapNote(NextMap()), UNASSIGNED, UNASSIGNED, ICON_NEXT_MAP)
 	end,
 	unfreeze = function()
 		EachPlayer(function(ply) ply:Freeze(false) end)
-		hook.Run("WetsandFreeze", false)
+		hook.Run("WSFreeze", false)
 	end,
 	overtime = function(self, e) PublishOvertime(e.value) end,
 }
@@ -952,21 +952,21 @@ end
 
 function Controller:OnPlayerDeath(ply)
 	local now = CurTime()
-	ply.wetsandDeathTime = now
-	-- a death that changed the player's team (WETSAND.SetPlayerTeam) waits only
+	ply.wsDeathTime = now
+	-- a death that changed the player's team (WS.SetPlayerTeam) waits only
 	-- for the new team's next wave
-	ply.wetsandSwitchedTeam = ply.wetsandChangingTeam == true
-	local t = WETSAND.TeamOf(ply)
+	ply.wsSwitchedTeam = ply.wsChangingTeam == true
+	local t = WS.TeamOf(ply)
 	local at = 0
 	-- Sandbox mode: no waves, the player clicks to respawn (GM:PlayerDeathThink)
-	if t ~= UNASSIGNED and not WETSAND.GameplayStopped() then
-		at = self.round:RespawnAt(t, now, #TeamPlayers(t), ply.wetsandSwitchedTeam)
+	if t ~= UNASSIGNED and not WS.GameplayStopped() then
+		at = self.round:RespawnAt(t, now, #TeamPlayers(t), ply.wsSwitchedTeam)
 	end
-	ply:SetNW2Float("wetsand_respawn_time", at)
+	ply:SetNW2Float("ws_respawn_time", at)
 end
 
 function Controller:RestartRound()
-	WETSAND.BroadcastPA(UNASSIGNED, ROUND_RESTART)
+	WS.BroadcastPA(UNASSIGNED, ROUND_RESTART)
 	timer.Simple(5, function()
 		self:Apply(self.round:RestartRound(CurTime()))
 	end)
@@ -984,7 +984,7 @@ end
 function Controller:Halt()
 	local now = CurTime()
 	self:Apply(self.round:Halt(now))
-	SetGlobal2Bool("wetsand_gameplay_halted", true)
+	SetGlobal2Bool("ws_gameplay_halted", true)
 	self:FinishSetup(now)
 	for _, ent in ipairs(self.timerList) do
 		if IsValid(ent) then self.timers[ent]:Pause(now) end
@@ -1047,7 +1047,7 @@ end
 
 -- The map's own Enable and Disable of a held trigger: a stage's handover in
 -- the bonus time (pl_goldrush's cap_a_capture_relay) outlasts the hold.
-hook.Add("AcceptInput", "wetsand_rounds_spawn_doors", function(ent, input)
+hook.Add("AcceptInput", "ws_rounds_spawn_doors", function(ent, input)
 	local self = Controller
 	if self.switchingTriggers or not (self.spawnTriggers and self.spawnTriggers[ent]) then return end
 	self.spawnHold:MapInput(ent, string.lower(input))
@@ -1063,7 +1063,7 @@ end
 
 function Controller:Unhalt()
 	self.round:Unhalt()
-	SetGlobal2Bool("wetsand_gameplay_halted", false)
+	SetGlobal2Bool("ws_gameplay_halted", false)
 end
 
 -- A stopped game: the doors stay open, and a dead player on a team is back
@@ -1071,14 +1071,14 @@ end
 function Controller:HaltedThink(now)
 	self:KeepSpawnDoorsOpen(now)
 	EachPlayer(function(ply)
-		if not ply:Alive() and WETSAND.TeamOf(ply) ~= UNASSIGNED and ply:Team() ~= SPECTATOR then
-			ply.wetsandHaltedDeath = ply.wetsandHaltedDeath or now
-			if Rounds.HaltedRespawnDue(ply.wetsandHaltedDeath, now) then
-				ply.wetsandHaltedDeath = nil
+		if not ply:Alive() and WS.TeamOf(ply) ~= UNASSIGNED and ply:Team() ~= SPECTATOR then
+			ply.wsHaltedDeath = ply.wsHaltedDeath or now
+			if Rounds.HaltedRespawnDue(ply.wsHaltedDeath, now) then
+				ply.wsHaltedDeath = nil
 				ply:Spawn()
 			end
 		else
-			ply.wetsandHaltedDeath = nil
+			ply.wsHaltedDeath = nil
 		end
 	end)
 end
@@ -1091,15 +1091,15 @@ end
 function Controller:SetRespawnsDisabled(disabled)
 	if not self.round:SetRespawnsDisabled(disabled) then return end
 	EachPlayer(function(ply)
-		if not ply:Alive() and WETSAND.TeamOf(ply) ~= UNASSIGNED then self:OnPlayerDeathTime(ply) end
+		if not ply:Alive() and WS.TeamOf(ply) ~= UNASSIGNED then self:OnPlayerDeathTime(ply) end
 	end)
 end
 
 -- A dead player's respawn time again, from their death.
 function Controller:OnPlayerDeathTime(ply)
-	local t = WETSAND.TeamOf(ply)
-	ply:SetNW2Float("wetsand_respawn_time", self.round:RespawnAt(t, ply.wetsandDeathTime or CurTime(), #TeamPlayers(t),
-		ply.wetsandSwitchedTeam == true))
+	local t = WS.TeamOf(ply)
+	ply:SetNW2Float("ws_respawn_time", self.round:RespawnAt(t, ply.wsDeathTime or CurTime(), #TeamPlayers(t),
+		ply.wsSwitchedTeam == true))
 end
 
 -- The Game Rules editor's override: seconds >= 0, or nil for the map's.
@@ -1127,11 +1127,11 @@ end
 
 -- Goal strings and roles, published for the HUD.
 local function GoalSetter(t)
-	return function(self, v) SetGlobal2String("wetsand_round_goal_" .. t, tostring(v or "")) end
+	return function(self, v) SetGlobal2String("ws_round_goal_" .. t, tostring(v or "")) end
 end
 
 local function RoleSetter(t)
-	return function(self, v) SetGlobal2Int("wetsand_round_role_" .. t, tonumber(v) or ROLE_NONE) end
+	return function(self, v) SetGlobal2Int("ws_round_role_" .. t, tonumber(v) or ROLE_NONE) end
 end
 
 local function ScoreAdder(t)
@@ -1139,7 +1139,7 @@ local function ScoreAdder(t)
 end
 
 local function VoiceTo(t)
-	return function(self, v) WETSAND.BroadcastPA(t, tostring(v)) end
+	return function(self, v) WS.BroadcastPA(t, tostring(v)) end
 end
 
 local function ClockActivator(t)
@@ -1159,7 +1159,7 @@ local PROXY_INPUTS = {
 	setblueteamrole = RoleSetter(BLUE),
 	addredteamscore = ScoreAdder(RED),
 	addblueteamscore = ScoreAdder(BLUE),
-	setrequiredobservertarget = function(self, v) WETSAND.SetRequiredObserverTarget(tostring(v or "")) end,
+	setrequiredobservertarget = function(self, v) WS.SetRequiredObserverTarget(tostring(v or "")) end,
 	setstalemateontimelimit = function(self, v)
 		self.round:SetStalemateOnTimelimit(tonumber(v) == 1 or tostring(v) == "true")
 	end,
@@ -1168,7 +1168,7 @@ local PROXY_INPUTS = {
 	playvored = VoiceTo(RED),
 	playvoblue = VoiceTo(BLUE),
 	setroundrespawnfreezeenabled = function(self, v)
-		WETSAND.RestartFreeze:SetBool(tonumber(v) ~= 0 and tostring(v) ~= "false")
+		WS.RestartFreeze:SetBool(tonumber(v) ~= 0 and tostring(v) ~= "false")
 	end,
 	setredkothclockactive = ClockActivator(RED),
 	setbluekothclockactive = ClockActivator(BLUE),
@@ -1279,7 +1279,7 @@ function Controller:SetUpMap()
 	-- The rules exist now: the gamemode puts the map in its Sandbox or
 	-- Gameplay mode (StartAtLoad is idempotent).
 	if Active() then
-		WETSAND.Feature("gamemode"):StartAtLoad()
+		WS.Feature("gamemode"):StartAtLoad()
 		return
 	end
 	local now = CurTime()

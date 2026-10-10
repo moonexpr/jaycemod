@@ -10,7 +10,7 @@ function ENT:KeyValue(key, value)
 end
 
 function ENT:Initialize()
-	self.arena = WETSAND.Feature("arena")
+	self.arena = WS.Feature("arena")
 	self.arena:BindLogic(self, { capEnableDelay = self.capEnableDelay })
 end
 

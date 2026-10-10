@@ -1,5 +1,5 @@
--- foundation.npc.profile: the path-search measurements wetsand_path_profile
--- and wetsand_path_bench collect, their summary, and what the numbers say.
+-- foundation.npc.profile: the path-search measurements ws_path_profile
+-- and ws_path_bench collect, their summary, and what the numbers say.
 local T = dofile("tests/harness.lua")
 local Profile = T.require("foundation.npc.profile")
 

@@ -7,14 +7,14 @@ ENT.Type = "point"
 ENT.Base = "base_point"
 
 function ENT:KeyValue(key, value)
-	self.wetsandKv = self.wetsandKv or {}
-	self.wetsandKv[string.lower(key)] = value
+	self.wsKv = self.wsKv or {}
+	self.wsKv[string.lower(key)] = value
 	if string.sub(key, 1, 2) == "On" then self:StoreOutput(key, value) end
 end
 
 function ENT:Initialize()
-	self.capture = WETSAND.Feature("capture")
-	self.capture:BindMaster(self, self.wetsandKv or {})
+	self.capture = WS.Feature("capture")
+	self.capture:BindMaster(self, self.wsKv or {})
 end
 
 function ENT:OnRemove()

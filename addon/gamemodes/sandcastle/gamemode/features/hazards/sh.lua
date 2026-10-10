@@ -4,7 +4,7 @@
 -- explode_particle, a zapper's ParticleEffect) come from these files too:
 -- ghost_appearation on plr_hacksaw_event, merasmus_zap and
 -- underworld_skull_zap on the zapper maps. The entities precache those.
-local Pumpkin = WETSAND.require("foundation.hazards.pumpkin_bomb")
+local Pumpkin = WS.require("foundation.hazards.pumpkin_bomb")
 
 local FILES = {
 	"particles/item_fx.pcf", -- pumpkin_explode

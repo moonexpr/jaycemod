@@ -2,7 +2,7 @@
 -- writes what reload_arm.lua logged since it was armed, then calls the real
 -- AddCSLuaFile once after start-up, to see whether a late call is refused.
 local NAME = "reload_report"
-local G = WETSAND_GEV2
+local G = WS_GEV2
 local lines = {}
 if not G then
 	lines[1] = "reload_arm.lua has not run"
@@ -12,6 +12,6 @@ else
 	lines[#lines + 1] = "late AddCSLuaFile ok=" .. tostring(ok) .. " err=" .. tostring(err)
 	G.log = {}
 end
-file.CreateDir("wetsand_tests/gev2/out")
-file.Write("wetsand_tests/gev2/out/" .. NAME .. ".txt", table.concat(lines, "\n") .. "\n")
-print("wetsand_tests: gev2 " .. NAME .. " done")
+file.CreateDir("ws_tests/gev2/out")
+file.Write("ws_tests/gev2/out/" .. NAME .. ".txt", table.concat(lines, "\n") .. "\n")
+print("ws_tests: gev2 " .. NAME .. " done")

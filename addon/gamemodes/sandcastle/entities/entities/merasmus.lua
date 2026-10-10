@@ -22,7 +22,7 @@ end
 
 if CLIENT then
 	function ENT:Think()
-		WETSAND.Feature("npc"):UpdateMerasmus(self, {
+		WS.Feature("npc"):UpdateMerasmus(self, {
 			revealed = self:GetRevealed(),
 			aoeAttack = self:GetAOEAttack(),
 			stunned = self:GetStunned(),
@@ -48,22 +48,22 @@ local PLAYERS_ANY_TEAM = nil -- CollectPlayers: RED and BLU
 function ENT:Initialize()
 	Base.Initialize(self)
 	local configured = self.configured or {}
-	if not configured.timerSpawned and WETSAND.FeatureLoaded("boss_timer") then
-		WETSAND.Feature("boss_timer"):MapSpawned(self.Variant)
+	if not configured.timerSpawned and WS.FeatureLoaded("boss_timer") then
+		WS.Feature("boss_timer"):MapSpawned(self.Variant)
 	end
-	self.floatSound = CreateSound(self, WETSAND.require(self.Variant).FLOAT_SOUND)
+	self.floatSound = CreateSound(self, WS.require(self.Variant).FLOAT_SOUND)
 	self.floatSound:Play()
 end
 
 -- UpdateOnRemove: the behavior ends, then the model hides his bar, blows
--- the bomb heads and takes his props. One whose bind failed (wetsand_nextbot)
+-- the bomb heads and takes his props. One whose bind failed (ws_nextbot)
 -- has neither model nor loop.
 function ENT:OnRemove()
 	if not self.npc then return Base.OnRemove(self) end
 	self.floatSound:Stop()
 	local state = self.npc:State()
 	Base.OnRemove(self)
-	WETSAND.require(self.Variant).Removed(state, self)
+	WS.require(self.Variant).Removed(state, self)
 end
 
 -------------------------------------------------------------------------------
@@ -137,14 +137,14 @@ end
 function ENT:ControlPoints() return baseclass.Get("headless_hatman").ControlPoints(self) end
 
 -- A line everyone hears, wherever they are (SNDLVL_NONE).
-function ENT:PlayHighPrioritySound(name) WETSAND.BroadcastSound(WETSAND.TEAM_UNASSIGNED, name) end
+function ENT:PlayHighPrioritySound(name) WS.BroadcastSound(WS.TEAM_UNASSIGNED, name) end
 
 -- A line those near hear, never over one he is already saying.
 function ENT:PlayLowPrioritySound(name)
 	self:EmitSound(name, LINE_LEVEL, PITCH_NORM, 1, CHAN_VOICE2, SND_DO_NOT_OVERWRITE_EXISTING_ON_CHANNEL)
 end
 
-function ENT:BroadcastGameSound(name) WETSAND.BroadcastSound(WETSAND.TEAM_UNASSIGNED, name) end
+function ENT:BroadcastGameSound(name) WS.BroadcastSound(WS.TEAM_UNASSIGNED, name) end
 
 function ENT:AddTimedGesture(act) return self:GetLayerDuration(self:AddGesture(act)) end
 function ENT:SetStaff(n) self:SetBodygroup(self:FindBodygroupByName(STAFF_BODYGROUP), n) end
@@ -168,10 +168,10 @@ function ENT:NetworkState(revealed, aoeAttack, stunned)
 end
 
 function ENT:StartFlying()
-	local Merasmus = WETSAND.require(self.Variant)
+	local Merasmus = WS.require(self.Variant)
 	self.groundMotion = self.motion
 	self.groundGravity = self.loco:GetGravity()
-	self.flight = WETSAND.require("foundation.npc.hover").New(Merasmus.FLYING, Vector)
+	self.flight = WS.require("foundation.npc.hover").New(Merasmus.FLYING, Vector)
 	self.flightYawRate = Merasmus.FLYING_MAX_YAW_RATE
 	self.loco:SetGravity(0)
 	self.motion = FlyingMotion
@@ -228,18 +228,18 @@ end
 
 -- RemoveAllGrenades: the bombs near him.
 function ENT:RemoveGrenades(origin, radius)
-	local class = WETSAND.require(self.Variant).GRENADE_CLASS
+	local class = WS.require(self.Variant).GRENADE_CLASS
 	for _, ent in ipairs(ents.FindInSphere(origin, radius)) do
 		if ent:GetClass() == class then ent:Remove() end
 	end
 end
 
 function ENT:EndStun(t)
-	if t:IsPlayer() then WETSAND.EndStun(t) end
+	if t:IsPlayer() then WS.EndStun(t) end
 end
 
 function ENT:RemoveCond(t, cond)
-	if t:IsPlayer() then WETSAND.RemoveCondition(t, cond) end
+	if t:IsPlayer() then WS.RemoveCondition(t, cond) end
 end
 
 function ENT:RemoveEntity(t) t:Remove() end
@@ -262,8 +262,8 @@ end
 -- TFGameRules()->StartHalloweenBossTimer: only his scenario's map runs the
 -- timer; elsewhere TF2 sets it and never reads it.
 function ENT:StartBossTimer(seconds, variation)
-	if not WETSAND.FeatureLoaded("boss_timer") then return end
-	WETSAND.Feature("boss_timer"):Start(self.Variant, seconds, variation)
+	if not WS.FeatureLoaded("boss_timer") then return end
+	WS.Feature("boss_timer"):Start(self.Variant, seconds, variation)
 end
 
 -------------------------------------------------------------------------------

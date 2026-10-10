@@ -4,6 +4,6 @@
 -- neither, so cp_degrootkeep and cp_burghausen play with whatever players
 -- carry. It has no keyvalues, inputs or outputs of its own.
 ENT.Type = "point"
-ENT.Base = "wetsand_stub_point"
+ENT.Base = "ws_stub_point"
 
 ENT.StubReason = "medieval mode's weapon rules are not supported; ignored"

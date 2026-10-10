@@ -27,7 +27,7 @@ VERDICT_COST = "cost"
 VERDICT_SEARCH = "search"
 
 local VERDICT_TEXT = {
-	[VERDICT_NONE] = "no path was computed in the window; spawn NextBots or run wetsand_path_bench",
+	[VERDICT_NONE] = "no path was computed in the window; spawn NextBots or run ws_path_bench",
 	[VERDICT_KEEP] = "below both thresholds: the engine's search with the Lua cost is cheap enough, keep it",
 	[VERDICT_COST] = "over a threshold, mostly in the Lua cost callback: make the cost cheaper (or tabled) before offloading the search",
 	[VERDICT_SEARCH] = "over a threshold, mostly in the engine's search: an off-thread search (a binary module) is the lever",
@@ -161,7 +161,7 @@ local function FormatBench(report, tickInterval)
 	if overhead then
 		lines[#lines + 1] = format("  the Lua cost adds %s per compute over the engine's own cost", Ms(overhead))
 	end
-	lines[#lines + 1] = "  a bench measures single computes; run wetsand_path_profile during play for their share of server time"
+	lines[#lines + 1] = "  a bench measures single computes; run ws_path_profile during play for their share of server time"
 	return lines
 end
 

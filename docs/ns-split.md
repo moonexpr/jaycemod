@@ -63,23 +63,23 @@ side of a doctrine.
   scenario. It asks the NS feature to take a soldier, gives it a job,
   and hands it the field.
 
-`wetsand/sh_drg_soldier.lua`'s bridge talks to NS, not the war.
+`ws/sh_drg_soldier.lua`'s bridge talks to NS, not the war.
 
 ## 4. Names
 
 Commands and convars the user types are `ns_<subject>_<verb or specifier>`
 (`ns_lanes_print`, `ns_lanes_debug`); internal names (hooks, net messages,
-networked keys) keep the addon's `wetsand_` prefix.
+networked keys) keep the addon's `ws_` prefix.
 
 
 | Today | Becomes |
 |---|---|
-| `wetsand_aiwar_debug` (toggles the overlay) | `ns_overlay_toggle` |
-| `wetsand_aiwar_report` | `ns_soldiers_print` |
-| `wetsand_aiwar_trace` | `ns_soldier_trace` |
-| `wetsand_aiwar_debug_full` | `ns_stack_debug` |
+| `ws_aiwar_debug` (toggles the overlay) | `ns_overlay_toggle` |
+| `ws_aiwar_report` | `ns_soldiers_print` |
+| `ws_aiwar_trace` | `ns_soldier_trace` |
+| `ws_aiwar_debug_full` | `ns_stack_debug` |
 | the nbdebug layer `AIWAR`, event `aiwar_debug` | layer `NS`, event `ns_debug` |
-| `WetsandNbDebugState` | unchanged (nbdebug's) |
+| `WSNbDebugState` | unchanged (nbdebug's) |
 | `mp_aiwar_start`, `_end`, `_team_size`, the AI War panel | unchanged (the mode) |
 | `docs/aiwar-command.md` §1, §3 to §6 | `docs/ns-*.md`; §2, §11 stay |
 
@@ -117,5 +117,5 @@ checked in game.
    does NS mean the DrGBase NextBot soldiers only?
 2. **Medics and gadgets.** Healing and gadgets (turrets, manhacks) are
    soldier kit. They go to NS in this plan. Say if they belong to the mode.
-3. **Aliases.** Keep the old `wetsand_aiwar_*` debug commands as aliases for
+3. **Aliases.** Keep the old `ws_aiwar_*` debug commands as aliases for
    a release, or rename outright?

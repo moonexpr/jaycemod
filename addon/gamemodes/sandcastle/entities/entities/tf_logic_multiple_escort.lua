@@ -6,7 +6,7 @@ ENT.Type = "point"
 ENT.Base = "base_point"
 
 function ENT:Initialize()
-	WETSAND.Feature("payload"):BindEscort(self)
+	WS.Feature("payload"):BindEscort(self)
 end
 
 function ENT:UpdateTransmitState()

@@ -32,7 +32,7 @@ Baseline on 9e75e34: `run_lua_tests.sh` passes 1048 tests with 0 failures,
 ## 0. Decisions the operator should know
 
 1. **The scenario comes from the Round's mode, never from the map.** The
-   aiwar controller reads `WETSAND.Feature("rounds"):Mode().NAME`, but only
+   aiwar controller reads `WS.Feature("rounds"):Mode().NAME`, but only
    when the `rounds` feature is already loaded. It never loads a feature just
    to check. It then picks the variant with `Scenario.For(name)`:
 
@@ -143,7 +143,7 @@ stances.
 | Model | `G/foundation/aiwar/posts.lua` | edit: `ScoreGuard` |
 | Controller | `G/features/aiwar/sv.lua` | edit: scenario selection, point snapshot, posts, gates and lanes through the scenario, the winner |
 | Controller | `G/features/capture/sv.lua` | edit: `HudPoints()`, `AreaEntities(point)` (read-only) |
-| Shared | `G/wetsand/sh_aiwar.lua` | edit: help text only |
+| Shared | `G/ws/sh_aiwar.lua` | edit: help text only |
 
 No entity changes. The soldier port (`soldier.lua`) gains no methods: every
 new behaviour uses `MoveTo`, `Hold`, `CoverSpot`, `PatrolSpot`,
@@ -152,7 +152,7 @@ new behaviour uses `MoveTo`, `Hold`, `CoverSpot`, `PatrolSpot`,
 ### 2.2 The controller's think, in order
 
 ```
-phase  = AiWar.PhaseOf(WETSAND.Active(), WETSAND.State(), self.winner)
+phase  = AiWar.PhaseOf(WS.Active(), WS.State(), self.winner)
 field  = self:Field(phase)                      -- snapshot: carts, points, clocks, bases, spawns, winner…
 self.scenario:Command(self.war, field, now)     -- Brief (objectives, doctrine) + Allocate (stances)
 if field.setup and self.gates == nil then self:FindGates(field) end   -- via scenario:SetupAttacks
@@ -235,10 +235,10 @@ C) on every map:
 | `points` | rank-ordered list of snapshots (below), or `nil` when `capture` is not loaded | `capture:HudPoints()`, `capture:AreaEntities(point)` |
 | `clocks` | `{ [team] = { left, running } }` or `nil` | `rounds:TeamClock(team)`, `rounds:TimerOf(clock):TimeRemaining(now)`, `:Paused()` |
 | `timeLeft` | seconds, or `nil` | `rounds:HudTimer()` → `TimerOf` → `TimeRemaining` |
-| `overtime` | bool | `WETSAND.InOvertime()` |
-| `bases` | `{ [team] = pos }`: the centroid of the team's spawn points, on the ground | `WETSAND.SpawnPoints(team)`, cached per round |
+| `overtime` | bool | `WS.InOvertime()` |
+| `bases` | `{ [team] = pos }`: the centroid of the team's spawn points, on the ground | `WS.SpawnPoints(team)`, cached per round |
 | `spawns` | `{ [team] = { pos… } }` | same |
-| `winner` | the round's winner (RED or BLU) during `TEAM_WIN`, else `nil` | the `WetsandRoundWin` hook; cleared in `RespawnAll` |
+| `winner` | the round's winner (RED or BLU) during `TEAM_WIN`, else `nil` | the `WSRoundWin` hook; cleared in `RespawnAll` |
 
 A point snapshot, which is what a player's HUD shows (`HudPoint`, pass 4
 §2.3), plus where the point is:
@@ -487,7 +487,7 @@ Hideout(field, member, here) -> pos or nil  -- the nearest of field.spawns[membe
 
 **Start** (replaces the `team_train_watcher` refusal):
 - `modeName` = `RoundsModeName()`: the rounds mode's `NAME` when `"rounds"`
-  is in `WETSAND.FeatureLoader:Loaded()`, else nil.
+  is in `WS.FeatureLoader:Loaded()`, else nil.
 - `variant = Scenario.For(modeName)`; refuse with §0.1's message when it is
   nil.
 - `self.scenario = variant:New()`.
@@ -519,14 +519,14 @@ variant.
   - it writes `field.posts[team]` only when payload wrote none.
 
 **Rounds:**
-- The `WetsandRoundWin` hook sets `self.winner` to the winner when it is RED
+- The `WSRoundWin` hook sets `self.winner` to the winner when it is RED
   or BLU, else nil, alongside today's `Humiliate`.
 - `RespawnAll` clears `self.winner`, the base cache and the guard-post
   cache, and calls `self.scenario:Reset()`.
 
 **Kits:** `KITS[team][AiWar.HOLD] = BLOCKER_KIT` for both sides.
 
-**Report:** `wetsand_aiwar_report` adds one line per team: the scenario
+**Report:** `ws_aiwar_report` adds one line per team: the scenario
 `NAME`, the stance key, and the ranks of target, guard and staging.
 
 **`features/capture/sv.lua`** gains two queries. Both are additive, and the
@@ -537,7 +537,7 @@ published keys are unchanged.
 - `Controller:AreaEntities(point)` returns the point's enabled
   `trigger_capture_area` entities.
 
-**`wetsand/sh_aiwar.lua`:** `HELP` and the `mp_aiwar_start` help say
+**`ws/sh_aiwar.lua`:** `HELP` and the `mp_aiwar_start` help say
 "Payload, control point and King of the Hill maps" and drop "defending the
 cart".
 
@@ -571,7 +571,7 @@ Packages run in waves; within a wave, file ownership is disjoint.
 |---|---|---|---|
 | **A: seam, orders, carnage** | 1 | none | +`G/foundation/aiwar/scenario.lua`, +`G/foundation/aiwar/scenario/payload.lua`, +`G/foundation/aiwar/hunt.lua`, ~`G/foundation/aiwar.lua`, ~`G/foundation/aiwar/orders.lua`, ~`G/foundation/aiwar/lanes.lua`, ~`tests/fake_soldier.lua` (only if needed), +`tests/aiwar_scenario_test.lua`, +`tests/aiwar_carnage_test.lua`, ~`tests/aiwar_orders_test.lua`, ~`tests/aiwar_test.lua`, ~`tests/aiwar_lanes_test.lua` |
 | **B: point scenarios** | 2 | A | +`G/foundation/aiwar/scenario/control_points.lua`, +`G/foundation/aiwar/scenario/koth.lua`, ~`G/foundation/aiwar/posts.lua`, +`tests/fake_points.lua`, +`tests/aiwar_points_test.lua`, +`tests/aiwar_koth_test.lua`, ~`tests/aiwar_posts_test.lua` |
-| **C: controller** | 2 | A | ~`G/features/aiwar/sv.lua`, ~`G/features/capture/sv.lua`, ~`G/wetsand/sh_aiwar.lua`, ~`docs/aiwar-command.md` (a short §11 "Scenarios" pointing here) |
+| **C: controller** | 2 | A | ~`G/features/aiwar/sv.lua`, ~`G/features/capture/sv.lua`, ~`G/ws/sh_aiwar.lua`, ~`docs/aiwar-command.md` (a short §11 "Scenarios" pointing here) |
 | **I: integration** | 3 | B, C | no files. It runs §6; each defect goes back to the package that owns the file |
 
 Every package:
@@ -662,8 +662,8 @@ After the three waves:
 Setup for every map:
 - DrGBase loaded;
 - `mp_aiwar_team_size 8`;
-- `wetsand_aiwar_debug` on;
-- `wetsand_aiwar_report` in the console for each check.
+- `ws_aiwar_debug` on;
+- `ws_aiwar_report` in the console for each check.
 
 To force a win, use `ent_fire team_control_point_master setwinner 3`, where
 3 is BLU.
@@ -722,7 +722,7 @@ To force a win, use `ent_fire team_control_point_master setwinner 3`, where
 13. A stalemate (`mp_timelimit` reached with sudden death off): nobody hunts.
 
 **Load**
-14. `wetsand_memory` on `cp_badlands` lists `aiwar` only after
+14. `ws_memory` on `cp_badlands` lists `aiwar` only after
     `mp_aiwar_start`. `package.loaded` holds
     `foundation.aiwar.scenario.control_points` but not
     `…scenario.payload` or `…koth`.

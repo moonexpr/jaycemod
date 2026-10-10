@@ -20,13 +20,13 @@ if CLIENT then return end
 function ENT:ControlPoints()
 	local points = {}
 	if not IsValid(ents.FindByClass("team_control_point_master")[1]) then return points end
-	local capture = WETSAND.Feature("capture")
+	local capture = WS.Feature("capture")
 	for i, point in ipairs(capture:Points()) do
 		points[i] = {
 			origin = point:GetPos(),
 			inRound = capture:IsInRound(point),
 			owner = capture:Owner(point),
-			blueMayCapture = capture:TeamMayCapture(point, WETSAND.TEAM_BLUE),
+			blueMayCapture = capture:TeamMayCapture(point, WS.TEAM_BLUE),
 		}
 	end
 	return points

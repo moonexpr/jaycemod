@@ -7,7 +7,7 @@ import gev2_marker
 from gev2_marker import Markers, Refused
 
 VIEW = b"-- the capture view\r\nlocal View = {}\r\nreturn View"  # CRLF and no final newline, kept exactly
-LINE = 'WETSAND_T1_COMPILE = "sent-1234"'
+LINE = 'WS_T1_COMPILE = "sent-1234"'
 
 
 def git(repo, *args):
@@ -22,8 +22,8 @@ def repo(tmp_path):
     root = tmp_path / "repo"
     (root / "addon" / "features" / "capture").mkdir(parents=True)
     (root / "addon" / "features" / "capture" / "cl.lua").write_bytes(VIEW)
-    (root / "addon" / "wetsand").mkdir()
-    (root / "addon" / "wetsand" / "cl_spectate.lua").write_text("local lastMode\n")
+    (root / "addon" / "ws").mkdir()
+    (root / "addon" / "ws" / "cl_spectate.lua").write_text("local lastMode\n")
     (root / "docs").mkdir()
     (root / "docs" / "notes.lua").write_text("x = 1\n")
     git(root, "init", "-q")
@@ -68,10 +68,10 @@ def test_refuses_a_second_set_before_restore(repo, markers):
     markers.set(view(repo), LINE)
     marked = view(repo).read_bytes()
     with pytest.raises(Refused, match="restore"):
-        markers.set(view(repo), 'WETSAND_T1_COMPILE = "disk-1234"')
+        markers.set(view(repo), 'WS_T1_COMPILE = "disk-1234"')
     assert view(repo).read_bytes() == marked
     markers.restore()
-    markers.set(view(repo), 'WETSAND_T1_COMPILE = "disk-1234"')  # a new marker after a restore is fine
+    markers.set(view(repo), 'WS_T1_COMPILE = "disk-1234"')  # a new marker after a restore is fine
     assert b'"disk-1234"' in view(repo).read_bytes()
 
 
@@ -112,8 +112,8 @@ def test_refuses_a_line_that_would_not_compile(repo, markers):
 
 
 def test_two_files_are_marked_and_restored_together(repo, markers):
-    spectate = repo / "addon" / "wetsand" / "cl_spectate.lua"
-    markers.set(spectate, 'WETSAND_T1_INCLUDE = "sent-1234"')
+    spectate = repo / "addon" / "ws" / "cl_spectate.lua"
+    markers.set(spectate, 'WS_T1_INCLUDE = "sent-1234"')
     markers.set(view(repo), LINE)
     assert sorted(markers.marked()) == sorted([str(spectate), str(view(repo))])
     assert markers.restore() == []
@@ -131,15 +131,15 @@ def test_restore_leaves_a_file_changed_since_alone(repo, markers):
 
 def test_every_marker_line_carries_the_do_not_commit_tag(repo, markers):
     assert gev2_marker.TAG == "-- GEV2_MARKER_DO_NOT_COMMIT"
-    spectate = repo / "addon" / "wetsand" / "cl_spectate.lua"
-    markers.set(spectate, 'WETSAND_T1_INCLUDE = "sent-1234"')
-    markers.set(view(repo), 'WETSAND_T2 = "save-1234" -- the save step')
+    spectate = repo / "addon" / "ws" / "cl_spectate.lua"
+    markers.set(spectate, 'WS_T1_INCLUDE = "sent-1234"')
+    markers.set(view(repo), 'WS_T2 = "save-1234" -- the save step')
     for path in (spectate, view(repo)):
         first = path.read_bytes().splitlines()[0].decode()
         assert first.endswith(" " + gev2_marker.TAG), first
         assert subprocess.run(["luajit", "-b", str(path), "/dev/null"]).returncode == 0
     # The probes still read the marker's value from the tagged line.
-    assert 'WETSAND_T2 = "save-1234"' in view(repo).read_text().splitlines()[0]
+    assert 'WS_T2 = "save-1234"' in view(repo).read_text().splitlines()[0]
     assert markers.restore() == []
     assert clean(repo)
 

@@ -8,25 +8,25 @@
 -- applies the conditions only spells give. The holiday controller loads
 -- this feature when spells turn on; the players' books follow its
 -- UsingSpells() from then on.
-local Spells = WETSAND.require("foundation.spells")
-local SpellSet = WETSAND.require("foundation.spells.halloween")
+local Spells = WS.require("foundation.spells")
+local SpellSet = WS.require("foundation.spells.halloween")
 
-local P = WETSAND.PlayerRules
+local P = WS.PlayerRules
 local C = P.COND
 
-local holiday = WETSAND.Feature("holiday")
-local combat = WETSAND.Feature("combat")
+local holiday = WS.Feature("holiday")
+local combat = WS.Feature("combat")
 
 local WEAPON = "tf_weapon_spellbook"
 local CAST_COMMAND = "+use_action_slot_item"
 local CAST_RELEASE = "-use_action_slot_item"
-local THINK_TIMER = "wetsand_spells_think"
+local THINK_TIMER = "ws_spells_think"
 local THINK_INTERVAL = 0.1
 
 -- What the weapon networks; the spells view reads the same names.
-local NW_SELECTED = "wetsand_spell_selected"
-local NW_CHARGES = "wetsand_spell_charges"
-local NW_ROLLING_UNTIL = "wetsand_spell_rolling_until"
+local NW_SELECTED = "ws_spell_selected"
+local NW_CHARGES = "ws_spell_charges"
+local NW_ROLLING_UNTIL = "ws_spell_rolling_until"
 local NOT_ROLLING = 0
 
 -- The conditions only spells give (CTFPlayerShared::OnAddHalloweenTiny's
@@ -65,7 +65,7 @@ local function NotCharacter(ent)
 end
 
 local function IsAlive(ent)
-	if ent:IsPlayer() then return WETSAND.IsAliveInGame(ent) end
+	if ent:IsPlayer() then return WS.IsAliveInGame(ent) end
 	return ent:Health() > 0
 end
 
@@ -94,12 +94,12 @@ function Caster:Center(t) return t:WorldSpaceCenter() end
 function Caster:EyePosition(t) return t:EyePos() end
 
 function Caster:InCond(t, cond)
-	return WETSAND.InCondition(t, cond)
+	return WS.InCondition(t, cond)
 end
 
 function Caster:IsInvulnerable(t)
 	for _, cond in ipairs(INVULNERABLE_CONDS) do
-		if WETSAND.InCondition(t, cond) then return true end
+		if WS.InCondition(t, cond) then return true end
 	end
 	return false
 end
@@ -187,11 +187,11 @@ function Caster:Heal(t, amount)
 end
 
 function Caster:AddCond(t, cond, duration)
-	WETSAND.AddCondition(t, cond, duration)
+	WS.AddCondition(t, cond, duration)
 end
 
 function Caster:Stun(t, duration, reduction)
-	WETSAND.StunPlayer(t, duration, reduction, P.STUN.MOVEMENT)
+	WS.StunPlayer(t, duration, reduction, P.STUN.MOVEMENT)
 end
 
 function Caster:GetVelocity(t)
@@ -254,7 +254,7 @@ function Caster:Spawn(class, config, pos)
 end
 
 function Caster:SpawnNPC(class, config, pos)
-	return WETSAND.Feature("npc"):Spawn(class, config, pos, angle_zero)
+	return WS.Feature("npc"):Spawn(class, config, pos, angle_zero)
 end
 
 function Caster:Teleport(t, pos) t:SetPos(pos) end
@@ -285,7 +285,7 @@ local function Candidate(ply)
 	return {
 		holder = ply,
 		team = ply:Team(),
-		alive = WETSAND.IsAliveInGame(ply),
+		alive = WS.IsAliveInGame(ply),
 	}
 end
 
@@ -372,7 +372,7 @@ function Controller:Cast(caster)
 		self:Publish(caster)
 		return true
 	end
-	if book:Deny(now) and caster:IsPlayer() then WETSAND.PlaySoundTo(caster, caster, SpellSet.DENY_SOUND) end
+	if book:Deny(now) and caster:IsPlayer() then WS.PlaySoundTo(caster, caster, SpellSet.DENY_SOUND) end
 	return false
 end
 
@@ -429,14 +429,14 @@ end
 -- The conditions only spells give, as GMod can show them: tiny casters are
 -- half size, stealthed ones are not drawn. Each is undone only by this.
 local function ShowConditions(ent)
-	local tiny = WETSAND.InCondition(ent, C.HALLOWEEN_TINY)
-	if tiny ~= (ent.wetsandSpellTiny == true) then
-		ent.wetsandSpellTiny = tiny
+	local tiny = WS.InCondition(ent, C.HALLOWEEN_TINY)
+	if tiny ~= (ent.wsSpellTiny == true) then
+		ent.wsSpellTiny = tiny
 		ent:SetModelScale(tiny and TINY_SCALE or NORMAL_SCALE, 0)
 	end
-	local hidden = WETSAND.InCondition(ent, C.STEALTHED_USER_BUFF)
-	if hidden ~= (ent.wetsandSpellHidden == true) then
-		ent.wetsandSpellHidden = hidden
+	local hidden = WS.InCondition(ent, C.STEALTHED_USER_BUFF)
+	if hidden ~= (ent.wsSpellHidden == true) then
+		ent.wsSpellHidden = hidden
 		ent:SetNoDraw(hidden)
 		-- Players and engine NPCs carry a weapon; a nextbot draws its own.
 		if ent:IsPlayer() or ent:IsNPC() then
@@ -455,18 +455,18 @@ function Controller:Think(now)
 	end
 end
 
-hook.Add("PlayerLoadout", "wetsand_spells_loadout", function(ply)
+hook.Add("PlayerLoadout", "ws_spells_loadout", function(ply)
 	Controller:Respawned(ply)
 end)
 
 -- A caster gone from the game (a player leaving, an NPC removed).
-hook.Add("EntityRemoved", "wetsand_spells_forget", function(ent)
+hook.Add("EntityRemoved", "ws_spells_forget", function(ent)
 	if Controller:BookOf(ent) then Controller.library:Forget(ent) end
 end)
 
 -- INVULNERABLE_USER_BUFF (the overheal's): no damage.
-hook.Add("EntityTakeDamage", "wetsand_spells_invulnerable", function(target)
-	if IsCharacter(target) and WETSAND.InCondition(target, C.INVULNERABLE_USER_BUFF) then return true end
+hook.Add("EntityTakeDamage", "ws_spells_invulnerable", function(target)
+	if IsCharacter(target) and WS.InCondition(target, C.INVULNERABLE_USER_BUFF) then return true end
 end)
 
 concommand.Add(CAST_COMMAND, function(ply)

@@ -4,24 +4,24 @@
 -- does (CTeamplayRoundBasedRules::TimerMayExpire asks every watcher); it
 -- marks a payload race for the rounds controller (tf_logic_multiple_escort,
 -- CTFGameRules::SetMultipleTrains); and it publishes every cart for the
--- payload view (wetsand_cart_*). The watchers' own decisions are
+-- payload view (ws_cart_*). The watchers' own decisions are
 -- foundation.payload's; the race's and the HUD's are its parts'.
 --
 -- Loaded by team_train_watcher and tf_logic_multiple_escort.
-local Payload = WETSAND.require("foundation.payload")
-local PayloadMode = WETSAND.require("foundation.rounds.payload")
-local Race = WETSAND.require("foundation.payload.race")
-local Hud = WETSAND.require("foundation.payload.hud")
+local Payload = WS.require("foundation.payload")
+local PayloadMode = WS.require("foundation.rounds.payload")
+local Race = WS.require("foundation.payload.race")
+local Hud = WS.require("foundation.payload.hud")
 
-local NOBODY = WETSAND.TEAM_UNASSIGNED
+local NOBODY = WS.TEAM_UNASSIGNED
 local PUBLISH_INTERVAL = 0.1 -- the HUD's 10 Hz
-local THINK_HOOK = "wetsand_payload"
+local THINK_HOOK = "ws_payload"
 local HOLD_NAME = "payload"
 local NOT_A_CAPTURE_HOLD = false -- a pushed cart holds only while pushed, with no 0.1 s buffer
 
 local Controller = {
-	rounds = WETSAND.Feature("rounds"),
-	capture = WETSAND.Feature("capture"),
+	rounds = WS.Feature("rounds"),
+	capture = WS.Feature("capture"),
 	cartSpeedScale = Payload.CART_SPEED_DEFAULT,
 	watchers = {}, -- the bound team_train_watchers, in the order they bound
 	nextPublish = 0,
@@ -66,12 +66,12 @@ function Controller:HoldsTimer()
 end
 
 -- The cart HUD -----------------------------------------------------------------------
--- wetsand_cart_count, wetsand_cart_race, wetsand_cart_race_leader, and per cart i
--- (1-based, Hud.Order) wetsand_cart_<i>_{team,progress,speed,cappers,recede_time,
+-- ws_cart_count, ws_cart_race, ws_cart_race_leader, and per cart i
+-- (1-based, Hud.Order) ws_cart_<i>_{team,progress,speed,cappers,recede_time,
 -- can_recede,alarm,cps,owners,hills}.
 
 local function PublishCart(i, hud)
-	local key = "wetsand_cart_" .. i .. "_"
+	local key = "ws_cart_" .. i .. "_"
 	SetGlobal2Int(key .. "team", hud.team)
 	SetGlobal2Float(key .. "progress", hud.progress)
 	SetGlobal2Int(key .. "speed", hud.speed)
@@ -84,13 +84,13 @@ local function PublishCart(i, hud)
 	SetGlobal2String(key .. "hills", Hud.EncodeHills(hud.hills))
 end
 
--- Each cart and each of its checkpoints has a proxy (WETSAND.Proxy, kind
+-- Each cart and each of its checkpoints has a proxy (WS.Proxy, kind
 -- "cart") for its watcher, the box an admin right-clicks for its entries
--- (wetsand/sh_editors_cart.lua): one riding the train, one at each point,
+-- (ws/sh_editors_cart.lua): one riding the train, one at each point,
 -- made again when a cleanup removes them. The cart's body, a prop the map
 -- ties to the train with a constraint (phys_constraint and the rest), names
--- the cart's proxy (wetsand_proxy), as GMod's right-click hits it first,
--- and so do the props of a checkpoint's base (WETSAND.ProxyBodies).
+-- the cart's proxy (ws_proxy), as GMod's right-click hits it first,
+-- and so do the props of a checkpoint's base (WS.ProxyBodies).
 local CART_MINS, CART_MAXS = Vector(-40, -40, 0), Vector(40, 40, 80)
 local POINT_MINS, POINT_MAXS = Vector(-48, -48, -8), Vector(48, 48, 64)
 -- The entities a map's constraints (phys_*: attach1, attach2) tie to ent.
@@ -110,15 +110,15 @@ end
 local function KeepProxies(watcher)
 	local train = watcher:Train()
 	if IsValid(train) then
-		local proxy, made = WETSAND.Proxy(train, "cart", watcher, CART_MINS, CART_MAXS, train)
+		local proxy, made = WS.Proxy(train, "cart", watcher, CART_MINS, CART_MAXS, train)
 		if made then
-			for _, body in ipairs(TiedTo(train)) do body:SetNW2Entity("wetsand_proxy", proxy) end
+			for _, body in ipairs(TiedTo(train)) do body:SetNW2Entity("ws_proxy", proxy) end
 		end
 	end
 	for _, point in ipairs(watcher:Checkpoints()) do
 		if IsValid(point) then
-			local proxy, made = WETSAND.Proxy(point, "cart", watcher, POINT_MINS, POINT_MAXS)
-			if made then WETSAND.ProxyBodies(proxy, point:GetPos()) end
+			local proxy, made = WS.Proxy(point, "cart", watcher, POINT_MINS, POINT_MAXS)
+			if made then WS.ProxyBodies(proxy, point:GetPos()) end
 		end
 	end
 end
@@ -145,14 +145,14 @@ function Controller:PublishCarts()
 		distances[cart.team] = cart.distance
 	end
 	local race = self:HasMultipleTrains()
-	SetGlobal2Int("wetsand_cart_count", #carts)
-	SetGlobal2Bool("wetsand_cart_race", race)
-	SetGlobal2Int("wetsand_cart_race_leader", race and Race.Leader(distances) or NOBODY)
+	SetGlobal2Int("ws_cart_count", #carts)
+	SetGlobal2Bool("ws_cart_race", race)
+	SetGlobal2Int("ws_cart_race_leader", race and Race.Leader(distances) or NOBODY)
 end
 
 hook.Add("Think", THINK_HOOK, function()
 	local now = CurTime()
-	if not WETSAND.Active() or now < Controller.nextPublish then return end
+	if not WS.Active() or now < Controller.nextPublish then return end
 	Controller.nextPublish = now + PUBLISH_INTERVAL
 	Controller:PublishCarts()
 end)

@@ -45,7 +45,7 @@ function ENT:Configure(config)
 end
 
 function ENT:Initialize()
-	local Eyeball = WETSAND.require("foundation.npc.eyeball_boss")
+	local Eyeball = WS.require("foundation.npc.eyeball_boss")
 	local death = self.configured.death
 	if death then
 		self:SetModel(Eyeball.VORTEX_BOOK_MODEL)
@@ -94,7 +94,7 @@ function ENT:CollectPlayers(team)
 		local playerTeam = ply:Team()
 		local wanted
 		if team == nil then
-			wanted = playerTeam == WETSAND.TEAM_RED or playerTeam == WETSAND.TEAM_BLUE
+			wanted = playerTeam == WS.TEAM_RED or playerTeam == WS.TEAM_BLUE
 		else
 			wanted = playerTeam == team
 		end

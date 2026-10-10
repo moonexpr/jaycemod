@@ -22,10 +22,10 @@ end
 
 function ENT:Initialize()
 	local kv = self.kv or {}
-	local Fortune = WETSAND.require(MODEL)
+	local Fortune = WS.require(MODEL)
 	self:SetModel(Fortune.MODEL)
 	self:ResetSequence(self:LookupSequence(Fortune.IDLE_SEQUENCE))
-	self.holiday = WETSAND.Feature("holiday")
+	self.holiday = WS.Feature("holiday")
 	self.fortune = self.holiday:BindFortuneTeller(self, {
 		redTeleport = kv.red_teleport,
 		blueTeleport = kv.blue_teleport,

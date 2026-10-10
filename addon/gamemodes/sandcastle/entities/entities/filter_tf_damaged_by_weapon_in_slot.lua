@@ -27,7 +27,7 @@ function ENT:KeyValue(key, value)
 end
 
 function ENT:Initialize()
-	self.rules = WETSAND.require(MODEL)
+	self.rules = WS.require(MODEL)
 	self.slot = self.slot or ATOI_FALLBACK
 	self.negated = self.negated or false
 	if not self.rules.Supported(self.slot) and not loggedUnsupported then

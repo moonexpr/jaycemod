@@ -3,13 +3,13 @@
 -- lives on and where new ones rise, and spawns them (the ghost entity).
 -- The holiday controller says whether the map may be haunted. Loaded by the
 -- first haunting (the Wheel of Fate's Ghosts).
-local Ghost = WETSAND.require("foundation.npc.ghost")
+local Ghost = WS.require("foundation.npc.ghost")
 
 local GHOST_CLASS = "ghost"
 
 local Controller = {
-	npcs = WETSAND.Feature("npc"),
-	holiday = WETSAND.Feature("holiday"),
+	npcs = WS.Feature("npc"),
+	holiday = WS.Feature("holiday"),
 	ghosts = {}, -- the ghost entities about, oldest first
 }
 
@@ -24,7 +24,7 @@ function World:LivingPlayerOrigins()
 	local origins = {}
 	for _, ply in ipairs(player.GetAll()) do
 		local t = ply:Team()
-		if ply:Alive() and (t == WETSAND.TEAM_RED or t == WETSAND.TEAM_BLUE) then origins[#origins + 1] = ply:GetPos() end
+		if ply:Alive() and (t == WS.TEAM_RED or t == WS.TEAM_BLUE) then origins[#origins + 1] = ply:GetPos() end
 	end
 	return origins
 end
@@ -32,7 +32,7 @@ end
 function World:SpawnAreaCenters()
 	local centers = {}
 	for _, area in ipairs(navmesh.GetAllNavAreas()) do
-		if Controller.npcs:SpawnRoomTeam(area) == WETSAND.TEAM_UNASSIGNED then centers[#centers + 1] = area:GetCenter() end
+		if Controller.npcs:SpawnRoomTeam(area) == WS.TEAM_UNASSIGNED then centers[#centers + 1] = area:GetCenter() end
 	end
 	return centers
 end

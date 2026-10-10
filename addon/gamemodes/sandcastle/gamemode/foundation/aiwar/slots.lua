@@ -24,7 +24,7 @@ CUSTOM_SIZE = -1
 -- The AI War panel's slider over each side's slots.
 SLIDER_MIN, SLIDER_MAX = 0, 16
 
--- The aiwar_slots event's widths (wetsand/sh_aiwar.lua): slot ids, and the
+-- The aiwar_slots event's widths (ws/sh_aiwar.lua): slot ids, and the
 -- slots a faction may have (foundation.aiwar's TEAM_SIZE_MAX fits).
 ID_BITS = 16
 COUNT_BITS = 6
@@ -188,7 +188,7 @@ function Load(saved)
 end
 
 -------------------------------------------------------------------------------
--- The slot list's tree (wetsand/cl_aiwar_slots.lua)
+-- The slot list's tree (ws/cl_aiwar_slots.lua)
 
 local function LeaderFirst(a, b)
 	if a.leads ~= b.leads then return a.leads end

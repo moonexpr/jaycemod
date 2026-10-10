@@ -7,7 +7,7 @@ local T = dofile("tests/harness.lua")
 local ROOT = T.ROOT
 local CONTROLLER = ROOT .. "features/nbdebug/sv.lua"
 local VIEW = ROOT .. "features/nbdebug/cl.lua"
-local COMMANDS = ROOT .. "wetsand/sv_nbdebug.lua"
+local COMMANDS = ROOT .. "ws/sv_nbdebug.lua"
 
 local function ReadFile(path)
 	local f = assert(io.open(path, "r"))
@@ -57,7 +57,7 @@ end)
 T.test("every command the realm file registers has a handler in the controller", function()
 	local commands = ReadFile(COMMANDS)
 	local count = 0
-	for name in commands:gmatch('name = "(wetsand_nb_[%a_]+)"') do
+	for name in commands:gmatch('name = "(ws_nb_[%a_]+)"') do
 		count = count + 1
 		T.eq(controller:find("COMMANDS." .. name .. " = function", 1, true) ~= nil, true, name)
 	end

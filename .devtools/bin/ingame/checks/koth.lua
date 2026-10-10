@@ -3,9 +3,9 @@
 -- their map names; BLU bots on the hill capture it and run BLU's clock
 -- while RED's stays paused; BLU's clock set to a few seconds runs out and
 -- BLU wins.
-local Tests = WETSAND_TESTS
-local S = WETSAND.STATE
-local RED, BLUE = WETSAND.TEAM_RED, WETSAND.TEAM_BLUE
+local Tests = WS_TESTS
+local S = WS.STATE
+local RED, BLUE = WS.TEAM_RED, WS.TEAM_BLUE
 local CLOCK_NAMES = {
 	[RED] = "zz_red_koth_timer",
 	[BLUE] = "zz_blue_koth_timer",
@@ -21,7 +21,7 @@ local WIN_TIMEOUT = 20
 return function(t)
 	local capture, rounds = t:Feature("capture"), t:Feature("rounds")
 	if not (capture and rounds and t:Loaded("koth")) then return t:Skip("koth, capture or rounds not loaded") end
-	t:Check("the round is running", WETSAND.State() == S.RND_RUNNING, Tests.StateName(WETSAND.State()))
+	t:Check("the round is running", WS.State() == S.RND_RUNNING, Tests.StateName(WS.State()))
 
 	local points = capture:Points()
 	t:Check("one point", #points == 1, #points .. " points")
@@ -63,9 +63,9 @@ return function(t)
 		string.format("%.1f -> %.1f s, paused %s", redBefore, redAfter, tostring(redTimer:Paused())))
 
 	clocks[BLUE]:Fire("SetTime", tostring(SHORT_CLOCK))
-	local won, wonAfter = t:WaitFor(WIN_TIMEOUT, function() return WETSAND.State() == S.TEAM_WIN end)
+	local won, wonAfter = t:WaitFor(WIN_TIMEOUT, function() return WS.State() == S.TEAM_WIN end)
 	t:Check("BLU's clock at 0 ends the round", won ~= nil,
-		string.format("%s after %.1f s", Tests.StateName(WETSAND.State()), wonAfter))
+		string.format("%s after %.1f s", Tests.StateName(WS.State()), wonAfter))
 	t:Check("BLU wins", Tests.Winner() == BLUE, "winner " .. Tests.Winner())
 	t:Unstation()
 end

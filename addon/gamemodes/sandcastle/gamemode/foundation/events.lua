@@ -4,7 +4,7 @@
 -- play. This is the pure core: the registry of definitions, their typed
 -- fields, validation, the wire format, listeners, and the rules for
 -- requests a client sends the server. The realm adapter
--- (wetsand/sh_events.lua) carries events on GMod's net library.
+-- (ws/sh_events.lua) carries events on GMod's net library.
 --
 -- An event is declared as data: a name, its fields and their types, and
 -- options. On the wire it is its id, the name's CRC32 cut to ID_BITS (the

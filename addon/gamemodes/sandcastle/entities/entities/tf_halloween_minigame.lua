@@ -8,7 +8,7 @@
 -- OnTeleportToMinigame, OnReturnFromMinigame, OnSuddenDeathStart), and
 -- fires none: no score is kept, so none can honestly be reached.
 ENT.Type = "point"
-ENT.Base = "wetsand_stub_point"
+ENT.Base = "ws_stub_point"
 
 ENT.StubReason = "kart minigames are not supported; inputs accepted and ignored"
 ENT.StubInputs = {

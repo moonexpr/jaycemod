@@ -98,6 +98,6 @@ end
 
 return function(t)
 	local npc = t:Feature("npc")
-	for _, spec in ipairs(t.args.bosses or {}) do RunBoss(t, npc or WETSAND.Feature("npc"), spec) end
+	for _, spec in ipairs(t.args.bosses or {}) do RunBoss(t, npc or WS.Feature("npc"), spec) end
 	t:Info("npc_feature_loaded_before", npc ~= nil)
 end

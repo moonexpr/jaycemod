@@ -9,14 +9,14 @@
 -- args: { holiday = the map's holiday_type, classes = { [class] = count placed in the BSP },
 --         stubs = { class... },
 --         engine = { class... } }
-local STUB_BASE = "wetsand_stub_point"
+local STUB_BASE = "ws_stub_point"
 local GIFT_LOCATION = "tf_halloween_gift_spawn_location"
 
 return function(t)
 	local holiday = t:Feature("holiday")
-	t:Check("the holiday feature is loaded", holiday ~= nil, table.concat(WETSAND.FeatureLoader:Loaded(), ", "))
+	t:Check("the holiday feature is loaded", holiday ~= nil, table.concat(WS.FeatureLoader:Loaded(), ", "))
 	if holiday then
-		local Holiday = WETSAND.require("foundation.holiday")
+		local Holiday = WS.require("foundation.holiday")
 		local wanted = t.args.holiday or Holiday.HALLOWEEN
 		t:Check("the holiday the map's tf_logic_holiday names (" .. wanted .. ") is active", holiday:HolidayActive(wanted), "")
 		t:Info("halloween_active", holiday:HolidayActive(Holiday.HALLOWEEN))

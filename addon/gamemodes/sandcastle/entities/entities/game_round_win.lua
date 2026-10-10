@@ -13,7 +13,7 @@ local DEFEND_UNTIL_TIME_LIMIT = 4
 function ENT:KeyValue(key, value)
 	local k = string.lower(key)
 	if k == "teamnum" then
-		self.team = tonumber(value) or WETSAND.TEAM_UNASSIGNED
+		self.team = tonumber(value) or WS.TEAM_UNASSIGNED
 	elseif k == "force_map_reset" then
 		self.forceMapReset = value ~= "0"
 	elseif k == "switch_teams" then
@@ -26,8 +26,8 @@ function ENT:KeyValue(key, value)
 end
 
 function ENT:Initialize()
-	Rounds = WETSAND.Feature("rounds")
-	self.team = self.team or WETSAND.TEAM_UNASSIGNED
+	Rounds = WS.Feature("rounds")
+	self.team = self.team or WS.TEAM_UNASSIGNED
 	if self.forceMapReset == nil then self.forceMapReset = true end
 	self.switchTeams = self.switchTeams or false
 	self.winReason = self.winReason or DEFEND_UNTIL_TIME_LIMIT
@@ -46,7 +46,7 @@ local INPUTS = {
 			switchTeams = self.switchTeams,
 		})
 	end,
-	setteam = function(self, value) self.team = tonumber(value) or WETSAND.TEAM_UNASSIGNED end,
+	setteam = function(self, value) self.team = tonumber(value) or WS.TEAM_UNASSIGNED end,
 }
 
 function ENT:AcceptInput(name, activator, caller, value)

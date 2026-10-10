@@ -9,18 +9,18 @@ which agent does what, the order of work, and the rules every agent keeps.
 
 - **Done before this:** the in-game test harness, Merasmus with the whole
   Wheel of Fate, the race-map setup fix (all 11 Halloween payload maps
-  pass), TF2's strings in the player's language (`WETSAND.Localize`), and
+  pass), TF2's strings in the player's language (`WS.Localize`), and
   the NextSoldier debugging tools. The suite is 1357 LuaJIT tests, all
   green, plus 65 Python tests for the harness.
 - **Events today** (`docs/game-events.md` describes them):
   - The model is `foundation/events.lua` (515 lines) and the adapter
-    `wetsand/sh_events.lua` (152 lines), tested by `tests/events_test.lua`.
+    `ws/sh_events.lua` (152 lines), tested by `tests/events_test.lua`.
   - 29 `E.Define` calls across 9 files, 20 `Fire` sites and 20 `Listen`
     sites.
   - One client request, `client_ready`.
   - Two net messages for the whole gamemode; only the adapter touches `net`.
 - **Still server-side presentation**, the spec's last phase: 23
-  `WETSAND.BroadcastSound` calls choose announcer lines on the server
+  `WS.BroadcastSound` calls choose announcer lines on the server
   (rounds, capture, payload, holiday, gamemode), and about 20
   `ChatPrint`/`PrintMessage` sites send text. Many of the text sites answer
   admin commands and should stay; the gameplay ones move.
@@ -118,11 +118,11 @@ These come from the operator's standing instructions; most are in
 - **Names:**
   - NextSoldier's commands and convars are `ns_<subject>_<verb or
     specifier>`.
-  - Meta and debug utilities use `wetsand_`, again with a verb
-    (`wetsand_events_print`).
+  - Meta and debug utilities use `ws_`, again with a verb
+    (`ws_events_print`).
   - Gameplay settings use Source's `mp_`, `sv_` and `cl_`; TF2's own names
     are kept where TF2 defines them.
-  - Internal ids (hooks, net messages, networked keys) keep `wetsand_`.
+  - Internal ids (hooks, net messages, networked keys) keep `ws_`.
   - Check every new console name with `.devtools/bin/check_engine_names.sh`.
   - Every new convar goes into `addon/cfg/sandcastle_defaults.cfg` at its
     default (`tests/cfg_defaults_test.lua` enforces it).
@@ -144,7 +144,7 @@ These come from the operator's standing instructions; most are in
   there, and a server in it once ended his game.
   - Never touch `garrysmod/addons/` or the `sandcastle` symlink. The server
     loads main through that symlink, so merge before testing live.
-  - Write only under `garrysmod/data/wetsand_tests/`. Stop your server
+  - Write only under `garrysmod/data/ws_tests/`. Stop your server
     when done.
   - TF2 is mounted through `cfg/mount.cfg`. The server runs from
     `GarrysModServer`, a symlinked root (`server_root.py`) whose

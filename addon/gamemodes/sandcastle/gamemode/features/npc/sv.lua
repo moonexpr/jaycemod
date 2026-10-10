@@ -3,16 +3,16 @@
 -- per-variant shared state, and checks the navigation mesh once per map.
 -- The rules live in the models; this file only feeds them engine events and
 -- turns their answers into entities.
-local NpcSystem = WETSAND.require("foundation.npc")
-local Spawner = WETSAND.require("foundation.npc.spawner")
-local Profile = WETSAND.require("foundation.npc.profile")
-local Route = WETSAND.require("foundation.npc.route")
-local Portal = WETSAND.require("foundation.npc.portal")
-local Doors = WETSAND.require("foundation.npc.doors")
-local Brushes = WETSAND.require("foundation.npc.brushes")
+local NpcSystem = WS.require("foundation.npc")
+local Spawner = WS.require("foundation.npc.spawner")
+local Profile = WS.require("foundation.npc.profile")
+local Route = WS.require("foundation.npc.route")
+local Portal = WS.require("foundation.npc.portal")
+local Doors = WS.require("foundation.npc.doors")
+local Brushes = WS.require("foundation.npc.brushes")
 
-local NAV_MESSAGE = "wetsand_nextbot: %s has no usable navigation mesh; run mp_nav_generate (or .devtools/bin/nav_convert.py for TF2's own)"
-local BOSS_HEALTH = "wetsand_boss_health" -- the boss bar's fraction; 0 hides it
+local NAV_MESSAGE = "ws_nextbot: %s has no usable navigation mesh; run mp_nav_generate (or .devtools/bin/nav_convert.py for TF2's own)"
+local BOSS_HEALTH = "ws_boss_health" -- the boss bar's fraction; 0 hides it
 
 local Controller = {
 	npcs = {}, -- entity -> Npc
@@ -23,7 +23,7 @@ local Controller = {
 	spawners = {}, -- spawner entity -> Spawner
 	spawnedBy = {}, -- NPC entity -> Spawner
 	navChecked = false,
-	pathProfile = nil, -- a foundation.npc.profile while wetsand_path_profile's window is open
+	pathProfile = nil, -- a foundation.npc.profile while ws_path_profile's window is open
 	pathWatch = {}, -- entity index -> { costs } while the nbdebug feature watches its path searches
 	spawnRoomTeams = {}, -- nav area id -> the team whose spawn room holds it, this round
 	searches = {}, -- the Lua route searches still running, oldest first
@@ -66,7 +66,7 @@ end
 
 function Controller:Bind(ent, variantName, config)
 	self:CheckNavMesh()
-	local variant = WETSAND.require(variantName)
+	local variant = WS.require(variantName)
 	self:PrecacheParticles(variantName, variant)
 	local npc = NpcSystem.Npc.New(variant, config, ent)
 	self.npcs[ent] = npc
@@ -155,7 +155,7 @@ end
 -- (Path:Compute on a NextBot) or the Lua one (foundation.npc.route, for
 -- NPCs that are not NextBots) asks.
 
-local NOBODY = WETSAND.TEAM_UNASSIGNED
+local NOBODY = WS.TEAM_UNASSIGNED
 
 -- TF_NAV_SPAWN_ROOM_RED/_BLUE, which GMod's nav areas do not carry: the
 -- team of the func_respawnroom holding the area's centre, found once per
@@ -187,7 +187,7 @@ end
 -- the floor it closes on count.
 local BLOCKER_REFRESH = 1
 local DOOR_FLOOR = Vector(0, 0, 32)
-local UNASSIGNED = WETSAND.TEAM_UNASSIGNED
+local UNASSIGNED = WS.TEAM_UNASSIGNED
 
 local function Overlapping(aMins, aMaxs, bMins, bMaxs)
 	return aMins.x <= bMaxs.x and bMins.x <= aMaxs.x and aMins.y <= bMaxs.y and bMins.y <= aMaxs.y
@@ -203,7 +203,7 @@ local function DoorTriggers()
 			local mins, maxs = trigger:WorldSpaceAABB()
 			local filter, owner = trigger:GetInternalVariable("m_hFilter"), nil
 			if IsValid(filter) and filter:GetClass() == "filter_activator_tfteam" and filter.team ~= UNASSIGNED then owner = filter.team end
-			triggers[#triggers + 1] = { mins = mins, maxs = maxs, owner = owner, outputs = WETSAND.KeyValues(trigger).outputs }
+			triggers[#triggers + 1] = { mins = mins, maxs = maxs, owner = owner, outputs = WS.KeyValues(trigger).outputs }
 		end
 	end
 	return triggers
@@ -354,9 +354,9 @@ end
 local function ForgetSpawnRooms()
 	Controller.spawnRoomTeams = {}
 end
-hook.Add("PostCleanupMap", "wetsand_npc_spawn_rooms", ForgetSpawnRooms)
-hook.Add("WetsandRoundActivate", "wetsand_npc_spawn_rooms", ForgetSpawnRooms)
-hook.Add("WetsandRoundActive", "wetsand_npc_spawn_rooms", ForgetSpawnRooms)
+hook.Add("PostCleanupMap", "ws_npc_spawn_rooms", ForgetSpawnRooms)
+hook.Add("WSRoundActivate", "ws_npc_spawn_rooms", ForgetSpawnRooms)
+hook.Add("WSRoundActive", "ws_npc_spawn_rooms", ForgetSpawnRooms)
 
 -- Fills `step` for the move from fromArea (nil for the first area) into
 -- area. traversable(area) is the mover's ILocomotion::IsAreaTraversable.
@@ -383,7 +383,7 @@ end
 function Controller:EnginePathCost(ent, strategy, limits, bot)
 	local step = {}
 	self:RefreshBlockers(CurTime())
-	local team = WETSAND.TeamNumber(ent)
+	local team = WS.TeamNumber(ent)
 	local function Traversable(area)
 		return ent.loco:IsAreaTraversable(area) and not Doors.Blocks(self.navBlocked[area:GetID()], team)
 	end
@@ -625,9 +625,9 @@ end
 -- Only the NPCs it asks for are watched; for them each search is timed and,
 -- with watch.costs, every cost it asked for is recorded, and when it is done
 -- a foundation.npc.debug path report goes out as the hook
--- WetsandNpcPathComputed(ent, report). Nothing else changes for them.
+-- WSNpcPathComputed(ent, report). Nothing else changes for them.
 
-local PATH_COMPUTED_HOOK = "WetsandNpcPathComputed"
+local PATH_COMPUTED_HOOK = "WSNpcPathComputed"
 local ENGINE_DEFAULT_COST = "the engine's default cost"
 local MICROSECONDS = 1e6
 
@@ -640,10 +640,10 @@ function Controller:PathWatch(ent)
 	return self.pathWatch[ent:EntIndex()]
 end
 
--- A watched NextBot's Path:Compute (wetsand_nextbot's FollowPath). An open
+-- A watched NextBot's Path:Compute (ws_nextbot's FollowPath). An open
 -- path profile records it too.
 function Controller:ObserveCompute(watch, bot, path, goal, compute)
-	local Debug = WETSAND.require("foundation.npc.debug")
+	local Debug = WS.require("foundation.npc.debug")
 	local recorder = watch.costs and bot.pathCost and Debug.NewCostRecorder() or nil
 	local start = bot:GetPos()
 	local found, seconds, probe = Probed(bot, recorder, compute)
@@ -659,7 +659,7 @@ function Controller:ObserveCompute(watch, bot, path, goal, compute)
 			areaIds[#areaIds + 1] = lastArea:GetID()
 		end
 	end
-	local variant = WETSAND.require(bot.Variant)
+	local variant = WS.require(bot.Variant)
 	hook.Run(PATH_COMPUTED_HOOK, bot, Debug.NewPathReport({
 		source = Debug.SOURCE_ENGINE,
 		strategy = bot.pathCost and variant.PATH or ENGINE_DEFAULT_COST,
@@ -688,7 +688,7 @@ end
 -- records every cost. Returns what ThinkSearches keeps of it.
 function Controller:ObserveRoute(graph, request, start, watch)
 	if watch.costs then
-		graph.recorder = WETSAND.require("foundation.npc.debug").NewCostRecorder()
+		graph.recorder = WS.require("foundation.npc.debug").NewCostRecorder()
 		graph.recorder:Record(start:GetID(), nil, 0)
 		graph.Cost = RecordedCost
 	end
@@ -703,7 +703,7 @@ end
 -- A watched route search is done: its report, with the waypoints the NPC
 -- will be given (RouteWaypoints), all on the ground.
 function Controller:PublishRoute(running, areas, found)
-	local Debug = WETSAND.require("foundation.npc.debug")
+	local Debug = WS.require("foundation.npc.debug")
 	local observed, search = running.observed, running.search
 	local ent, request = Entity(observed.index), observed.request
 	if not IsValid(ent) then return end
@@ -734,9 +734,9 @@ function Controller:PublishRoute(running, areas, found)
 end
 
 -- The nbdebug feature finds the NPCs it can show through the hook
--- WetsandNbDebugNpcs(found): each system adds its entities' foundation.npc
+-- WSNbDebugNpcs(found): each system adds its entities' foundation.npc
 -- Npcs to `found` (entity -> Npc).
-hook.Add("WetsandNbDebugNpcs", "wetsand_npc", function(found)
+hook.Add("WSNbDebugNpcs", "ws_npc", function(found)
 	for ent, npc in pairs(Controller.npcs) do
 		if IsValid(ent) then found[ent] = npc end
 	end
@@ -772,7 +772,7 @@ local function Admin(ply)
 	return not IsValid(ply) or ply:IsAdmin()
 end
 
-concommand.Add("wetsand_path_profile", function(ply, _, args)
+concommand.Add("ws_path_profile", function(ply, _, args)
 	if not Admin(ply) then return end
 	if Controller.pathProfile then
 		Tell(ply, { "path profile: a window is already open" })
@@ -789,7 +789,7 @@ concommand.Add("wetsand_path_profile", function(ply, _, args)
 end, nil, "Measure the NextBots' path computes during play for N seconds (default 30) and print whether offloading them would pay")
 
 -- The bench stalls the server for its whole run, on purpose.
-concommand.Add("wetsand_path_bench", function(ply, _, args)
+concommand.Add("ws_path_bench", function(ply, _, args)
 	if not Admin(ply) then return end
 	local bots, areas = PathingBots(), navmesh.GetAllNavAreas()
 	if #bots == 0 then
@@ -809,13 +809,13 @@ concommand.Add("wetsand_path_bench", function(ply, _, args)
 	Tell(ply, Profile.Format(profile:Report(SysTime()), engine.TickInterval()))
 end, nil, "Compute N paths (default 200) from the live NextBots to random nav areas, under the engine's cost and their Lua cost, and print the timings")
 
-hook.Add("Think", "wetsand_npc_spawners", function()
+hook.Add("Think", "ws_npc_spawners", function()
 	Controller:ThinkSpawners(CurTime())
 	Controller:ThinkSearches()
 end)
 
 -- The model's FilterDamage decides whether an NPC takes a hit, and how much.
-hook.Add("EntityTakeDamage", "wetsand_npc_filter_damage", function(ent, dmg)
+hook.Add("EntityTakeDamage", "ws_npc_filter_damage", function(ent, dmg)
 	local npc = Controller.npcs[ent]
 	if not npc then return end
 	local taken, amount = npc:FilterDamage(ent:DamageEvent(dmg))

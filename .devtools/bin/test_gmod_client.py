@@ -227,7 +227,7 @@ def test_launches_only_the_gmod_client(tmp_path):
     program = argv[argv.index("--cx-app") + 1]
     assert program == GMOD + "\\gmod_win64.exe"
     assert argv[argv.index("+connect") + 1] == "127.0.0.1:27025"
-    assert argv[argv.index("+con_logfile") + 1].startswith("data/wetsand_tests/client/")
+    assert argv[argv.index("+con_logfile") + 1].startswith("data/ws_tests/client/")
     assert "-condebug" not in argv
     assert "--no-update" in argv[:argv.index("--cx-app")]  # never updates the operator's bottle
     assert system.signals == []
@@ -276,7 +276,7 @@ def test_finds_the_client_among_its_browser_helpers(tmp_path):
     others = [
         helper(960),
         Process(970, 1, T1, ours.command.replace("27025", "27015")),
-        Process(971, 1, T1, ours.command.replace("+con_logfile data/wetsand_tests/client/console.log", "")),
+        Process(971, 1, T1, ours.command.replace("+con_logfile data/ws_tests/client/console.log", "")),
     ]
     table = ProcessTable((ours, *others))
     assert [p.pid for p in new_clients(table, frozenset(), LAUNCHER, 27025)] == [CLIENT]
@@ -404,7 +404,7 @@ def test_the_watchdog_still_closes_for_another_gmod_client(tmp_path):
         Process(980, 1, T2, GMOD + "\\gmod_win64.exe -steam"),  # the operator's own GMod
         Process(980, 1, T2, GMOD + "\\gmod.exe -steam"),
         Process(980, 1, T2, GMOD + "\\gmod_win64.exe -novid -nojoy +con_logfile "
-                            "data/wetsand_tests/client/console.log +connect 127.0.0.1:27025"),  # a second of ours
+                            "data/ws_tests/client/console.log +connect 127.0.0.1:27025"),  # a second of ours
         helper(980, "renderer", T0),  # a helper older than our client: another GMod's
     )):
         system = FakeSystem()

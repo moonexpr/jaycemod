@@ -12,18 +12,18 @@ return function(t)
 
 	if args.rounds then
 		local halted = t:WaitFor(SETTLE_TIMEOUT, function()
-			return WETSAND.Active() and WETSAND.State() == WETSAND.STATE.BETWEEN_RNDS
+			return WS.Active() and WS.State() == WS.STATE.BETWEEN_RNDS
 		end)
-		t:Check("rounds active (a tf_gamerules bound)", WETSAND.Active(), tostring(WETSAND.Active()))
+		t:Check("rounds active (a tf_gamerules bound)", WS.Active(), tostring(WS.Active()))
 		t:Check("starts in Sandbox mode: sv_gameplay_enabled 0", GetConVar("sv_gameplay_enabled"):GetInt() == 0,
 			GetConVar("sv_gameplay_enabled"):GetString())
-		t:Check("Sandbox mode halts the rounds", WETSAND.GameplayStopped(), tostring(WETSAND.GameplayStopped()))
-		t:Check("rounds wait in BETWEEN_RNDS", halted ~= nil, WETSAND_TESTS.StateName(WETSAND.State()))
+		t:Check("Sandbox mode halts the rounds", WS.GameplayStopped(), tostring(WS.GameplayStopped()))
+		t:Check("rounds wait in BETWEEN_RNDS", halted ~= nil, WS_TESTS.StateName(WS.State()))
 	else
-		t:Check("no rounds on this map", not WETSAND.Active(), tostring(WETSAND.Active()))
+		t:Check("no rounds on this map", not WS.Active(), tostring(WS.Active()))
 	end
 
-	local loaded = WETSAND.FeatureLoader:Loaded()
+	local loaded = WS.FeatureLoader:Loaded()
 	t:Info("features", loaded)
 	for _, name in ipairs(args.has or {}) do
 		t:Check("feature " .. name .. " loaded", t:Loaded(name), table.concat(loaded, ", "))
@@ -46,7 +46,7 @@ return function(t)
 	collectgarbage("collect")
 	t:Info("lua_memory_kb", math.floor(count))
 	t:Info("lua_memory_kb_after_collect", math.floor(collectgarbage("count")))
-	t:Info("wetsand_memory", WETSAND.FeatureLoader:MemoryReport(count, collectgarbage("count")))
+	t:Info("ws_memory", WS.FeatureLoader:MemoryReport(count, collectgarbage("count")))
 	t:Info("navmesh", navmesh.IsLoaded() and navmesh.GetNavAreaCount() or 0)
 	t:Info("drgbase", DrGBase ~= nil)
 end

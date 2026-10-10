@@ -17,7 +17,7 @@ for _, path in ipairs(FILES) do game.AddParticles(path) end
 -- The Halloween bosses' game events, with TF2's fields (modevents.res:
 -- level a short, time_remaining a byte). Names and cues:
 -- foundation.npc.boss_events.
-local E = WETSAND.Events
+local E = WS.Events
 local LEVEL_BITS = 16
 local SECONDS_BITS = 8
 

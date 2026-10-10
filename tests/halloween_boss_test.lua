@@ -319,11 +319,11 @@ local function Defines(file, name)
 	return ReadFile(ENTITIES .. file):find("function ENT:" .. name .. "(", 1, true) ~= nil
 end
 
--- An entity file loads nothing at top level: every WETSAND.require and
--- WETSAND.Feature call is inside a function.
+-- An entity file loads nothing at top level: every WS.require and
+-- WS.Feature call is inside a function.
 local function LoadsAtTopLevel(line)
 	if line:match("^%s") or line:match("^function ") then return false end
-	return line:find("WETSAND.require", 1, true) ~= nil or line:find("WETSAND.Feature", 1, true) ~= nil
+	return line:find("WS.require", 1, true) ~= nil or line:find("WS.Feature", 1, true) ~= nil
 end
 
 T.test("halloween_base_boss defines the boss port, and no boss method shadows another port's", function()

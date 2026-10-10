@@ -6,15 +6,15 @@
 -- (tf_arena_override_cap_enable_time above 0, else the map's CapEnableDelay)
 -- and plays the round-start line. Every 0.1 s it fires OnCapEnabled as that
 -- time passes (CArenaLogic::ArenaLogicThink). It publishes the time for the
--- view (wetsand_arena_cap_enable_time) and that the round is arena's
--- (wetsand_round_arena).
+-- view (ws_arena_cap_enable_time) and that the round is arena's
+-- (ws_round_arena).
 --
 -- Loaded by tf_logic_arena. It loads rounds.
-local Arena = WETSAND.require("foundation.rounds.arena")
-local Rounds = WETSAND.require("foundation.rounds")
+local Arena = WS.require("foundation.rounds.arena")
+local Rounds = WS.require("foundation.rounds")
 
 local THINK_INTERVAL = 0.1 -- ArenaLogicThink's
-local THINK_HOOK = "wetsand_arena"
+local THINK_HOOK = "ws_arena"
 
 -- TF2's own convars (teamplayroundbased_gamerules.cpp, tf_gamerules.cpp).
 local preroundTime = CreateConVar("tf_arena_preround_time", "10", { FCVAR_NOTIFY, FCVAR_REPLICATED },
@@ -24,7 +24,7 @@ local overrideCapEnableTime = CreateConVar("tf_arena_override_cap_enable_time", 
 	"Overrides the time (in seconds) it takes for the capture point to become enable, -1 uses the level designer specified time.")
 
 local Controller = {
-	rounds = WETSAND.Feature("rounds"),
+	rounds = WS.Feature("rounds"),
 	logicEnt = NULL,
 	logic = nil,
 	nextThink = 0,
@@ -32,7 +32,7 @@ local Controller = {
 
 -- CTFGameRules::Activate: a tf_logic_arena makes the game arena.
 Controller.rounds:SetMode(Arena.Mode)
-SetGlobal2Bool("wetsand_round_arena", true)
+SetGlobal2Bool("ws_round_arena", true)
 
 function Controller:Configure()
 	self.rounds:ConfigureRound({
@@ -64,21 +64,21 @@ function Controller:RoundStart()
 	if not self.logic then return end
 	local at = CurTime() + self.logic:CapEnableDelay(overrideCapEnableTime:GetFloat())
 	self.rounds:SetCapEnableTime(at)
-	SetGlobal2Float("wetsand_arena_cap_enable_time", at)
-	WETSAND.FireOutput(self.logicEnt, "OnArenaRoundStart", self.logicEnt)
-	WETSAND.BroadcastPA(WETSAND.TEAM_UNASSIGNED, Arena.ROUND_START_LINE)
+	SetGlobal2Float("ws_arena_cap_enable_time", at)
+	WS.FireOutput(self.logicEnt, "OnArenaRoundStart", self.logicEnt)
+	WS.BroadcastPA(WS.TEAM_UNASSIGNED, Arena.ROUND_START_LINE)
 end
 
 function Controller:Think(now)
 	self:Configure()
 	if self.logic and self.logic:Think(now, self.rounds:State(), self.rounds:CapEnableTime()) then
-		WETSAND.FireOutput(self.logicEnt, "OnCapEnabled", self.logicEnt)
+		WS.FireOutput(self.logicEnt, "OnCapEnabled", self.logicEnt)
 	end
 end
 
 hook.Add("Think", THINK_HOOK, function()
 	local now = CurTime()
-	if now < Controller.nextThink or not WETSAND.Active() then return end
+	if now < Controller.nextThink or not WS.Active() then return end
 	Controller.nextThink = now + THINK_INTERVAL
 	Controller:Think(now)
 end)

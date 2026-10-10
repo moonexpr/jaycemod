@@ -5,13 +5,13 @@
 -- it the players who pass the filter as they come and go, and carries out
 -- its events (the ignite particle and sound, BURNING, burn damage).
 ENT.Type = "brush"
-ENT.Base = "wetsand_trigger_volume"
+ENT.Base = "ws_trigger_volume"
 
 local IGNITE_MODEL = "foundation.hazards.ignite"
 
 -- The model's port on the players' conditions.
 local PLAYERS = {
-	InCond = function(_, ply, cond) return WETSAND.InCondition(ply, cond) end,
+	InCond = function(_, ply, cond) return WS.InCondition(ply, cond) end,
 	MaxHealth = function(_, ply) return ply:GetMaxHealth() end,
 }
 
@@ -21,7 +21,7 @@ local function Effects(Ignite)
 			local pos = e.target:GetPos()
 			if self.particle then ParticleEffect(self.particle, pos, angle_zero) end
 			if self.sound then EmitSound(self.sound, pos, self:EntIndex()) end
-			if e.duration then WETSAND.AddCondition(e.target, WETSAND.PlayerRules.COND.BURNING, e.duration) end
+			if e.duration then WS.AddCondition(e.target, WS.PlayerRules.COND.BURNING, e.duration) end
 		end,
 		[Ignite.DAMAGE] = function(self, e)
 			local info = DamageInfo()
@@ -39,7 +39,7 @@ local function Apply(self, events)
 end
 
 function ENT:TriggerInit()
-	local Ignite = WETSAND.require(IGNITE_MODEL)
+	local Ignite = WS.require(IGNITE_MODEL)
 	self.ignite = Ignite.New({
 		burnDuration = tonumber(self:Key("burn_duration")),
 		damagePercentPerSecond = tonumber(self:Key("damage_percent_per_second")),

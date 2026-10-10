@@ -1,27 +1,27 @@
 -- The in-game half of the harness (.devtools/bin/ingame_tests.py). Never
 -- part of the shipped addon: the harness copies this file and checks/*.lua
--- to garrysmod/data/wetsand_tests/harness/ as .txt and loads this one after
+-- to garrysmod/data/ws_tests/harness/ as .txt and loads this one after
 -- each map change with
---   lua_run RunString(file.Read("wetsand_tests/harness/runner.txt", "DATA"), "wetsand_tests/runner")
+--   lua_run RunString(file.Read("ws_tests/harness/runner.txt", "DATA"), "ws_tests/runner")
 -- then starts each check with
---   lua_run WETSAND_TESTS.Run("<check>", "<run id>")
+--   lua_run WS_TESTS.Run("<check>", "<run id>")
 -- A check is a chunk returning function(t): it runs as a coroutine, so it
 -- may wait (t:Wait, t:WaitFor) while the server keeps ticking. Its record
--- is written to wetsand_tests/results/<run id>.json, which the harness polls:
+-- is written to ws_tests/results/<run id>.json, which the harness polls:
 --   { map, check, status = "pass" | "fail" | "skip" | "error",
 --     checks = { { name, ok, detail } }, info = {}, error, seconds }
--- Arguments come from wetsand_tests/harness/args/<run id>.txt (JSON), so no
+-- Arguments come from ws_tests/harness/args/<run id>.txt (JSON), so no
 -- console command carries them (the console splits commands on ";").
-WETSAND_TESTS = WETSAND_TESTS or {}
-local Tests = WETSAND_TESTS
+WS_TESTS = WS_TESTS or {}
+local Tests = WS_TESTS
 
-local DATA = "wetsand_tests/"
+local DATA = "ws_tests/"
 local CHECKS = DATA .. "harness/checks/"
 local ARGS = DATA .. "harness/args/"
 local RESULTS = DATA .. "results/"
 local SCRIPT_EXT = ".txt"
-local THINK_HOOK = "wetsand_tests"
-local STATION_HOOK = "wetsand_tests_station"
+local THINK_HOOK = "ws_tests"
+local STATION_HOOK = "ws_tests_station"
 local POLL = 0.1 -- seconds between a WaitFor's tries
 local STATION_INTERVAL = 0.2 -- seconds between putting stationed bots back
 local BOT_JOIN_TIMEOUT = 10
@@ -36,7 +36,7 @@ local Context = {}
 Context.__index = Context
 
 local STATE_NAMES = {}
-for name, value in pairs(WETSAND.STATE) do
+for name, value in pairs(WS.STATE) do
 	if isnumber(value) then STATE_NAMES[value] = name end
 end
 
@@ -85,11 +85,11 @@ end
 -- Features, without loading one the map did not ----------------------------------
 
 function Context:Loaded(name)
-	return WETSAND.FeatureLoader.loaded[name] == true
+	return WS.FeatureLoader.loaded[name] == true
 end
 
 function Context:Feature(name)
-	if self:Loaded(name) then return WETSAND.Feature(name) end
+	if self:Loaded(name) then return WS.Feature(name) end
 end
 
 -- Bots -------------------------------------------------------------------------------
@@ -108,7 +108,7 @@ end
 -- it to life now rather than at its respawn wave.
 function Context:Join(bots, team)
 	for _, bot in ipairs(bots) do
-		WETSAND.SetPlayerTeam(bot, team)
+		WS.SetPlayerTeam(bot, team)
 	end
 	self:Wait(POLL)
 	for _, bot in ipairs(bots) do
@@ -116,7 +116,7 @@ function Context:Join(bots, team)
 	end
 	return self:WaitFor(BOT_JOIN_TIMEOUT, function()
 		for _, bot in ipairs(bots) do
-			if not WETSAND.IsAliveInGame(bot) then return false end
+			if not WS.IsAliveInGame(bot) then return false end
 		end
 		return true
 	end)
@@ -208,7 +208,7 @@ function Tests.DescribePoints(capture, team)
 end
 
 function Tests.Winner()
-	return GetGlobal2Int("wetsand_round_winner", WETSAND.TEAM_UNASSIGNED)
+	return GetGlobal2Int("ws_round_winner", WS.TEAM_UNASSIGNED)
 end
 
 -- Running ------------------------------------------------------------------------------
@@ -266,7 +266,7 @@ function Tests.Run(name, runId)
 		ctx = ctx,
 		wake = 0,
 	}
-	print("wetsand_tests: started " .. name .. " " .. runId)
+	print("ws_tests: started " .. name .. " " .. runId)
 end
 
 hook.Add("Think", THINK_HOOK, function()
@@ -289,7 +289,7 @@ end)
 
 -- Clears the bots between maps.
 function Tests.KickBots()
-	for _, bot in ipairs(player.GetBots()) do bot:Kick("wetsand_tests") end
+	for _, bot in ipairs(player.GetBots()) do bot:Kick("ws_tests") end
 end
 
-print("wetsand_tests: runner ready on " .. game.GetMap())
+print("ws_tests: runner ready on " .. game.GetMap())

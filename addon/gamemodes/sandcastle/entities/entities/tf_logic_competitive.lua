@@ -12,7 +12,7 @@ function ENT:KeyValue(key, value)
 end
 
 function ENT:Initialize()
-	WETSAND.Feature("rounds")
+	WS.Feature("rounds")
 end
 
 function ENT:UpdateTransmitState()

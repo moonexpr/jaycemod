@@ -1,5 +1,5 @@
 -- The cart HUD's model: the order the carts are drawn in, the wire format
--- of the lists the payload controller networks per cart (wetsand_cart_<i>_
+-- of the lists the payload controller networks per cart (ws_cart_<i>_
 -- cps, owners and hills, as strings), and the status line the payload view
 -- draws above each cart's bar. Both ends use it, so they agree.
 local ipairs, math, string, table, tonumber = ipairs, math, string, table, tonumber

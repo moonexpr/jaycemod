@@ -3,15 +3,15 @@
 -- takes them as map triggers and the Wheel of Fate say, scales the damage
 -- their owners take, and clears them when a player spawns or dies
 -- (CTFPlayer::Spawn and Event_Killed). It applies the rest to the player:
--- top speed (wetsand_speed_scale, which sh_core's movement reads on both
+-- top speed (ws_speed_scale, which sh_core's movement reads on both
 -- realms), jump power, fall damage and the head bone's scale. A
 -- trigger_add_or_remove_tf_player_attributes or a wheel_of_doom loads it,
 -- so other maps never run these hooks.
-local Attributes = WETSAND.require("foundation.players.attributes")
+local Attributes = WS.require("foundation.players.attributes")
 
 local HEAD_BONE = "ValveBiped.Bip01_Head1"
 local SYNC_INTERVAL = 0.1 -- timed attributes run out between changes
-local SYNC_TIMER = "wetsand_attributes_sync"
+local SYNC_TIMER = "ws_attributes_sync"
 
 local Controller = {
 	byPlayer = setmetatable({}, { __mode = "k" }), -- player -> attrs
@@ -36,7 +36,7 @@ end
 function Controller:Sync(ply)
 	if not IsValid(ply) then return end
 	local attrs, now = self.byPlayer[ply] or {}, CurTime()
-	ply:SetNW2Float("wetsand_speed_scale", Attributes.SpeedScale(attrs, now))
+	ply:SetNW2Float("ws_speed_scale", Attributes.SpeedScale(attrs, now))
 	local jump = Attributes.JumpScale(attrs, now)
 	if jump ~= 1 and self.jumpBase[ply] == nil then self.jumpBase[ply] = ply:GetJumpPower() end
 	if self.jumpBase[ply] then
@@ -83,7 +83,7 @@ function Controller:Clear(ply)
 	self:Sync(ply)
 end
 
-hook.Add("EntityTakeDamage", "wetsand_attributes_damage_taken", function(target, dmg)
+hook.Add("EntityTakeDamage", "ws_attributes_damage_taken", function(target, dmg)
 	local attrs = Controller.byPlayer[target]
 	if attrs == nil then return end
 	local scale = Attributes.DamageTakenScale(attrs, dmg:GetDamageType(), CurTime())
@@ -91,7 +91,7 @@ hook.Add("EntityTakeDamage", "wetsand_attributes_damage_taken", function(target,
 end)
 
 -- "cancel falling damage"
-hook.Add("GetFallDamage", "wetsand_attributes_fall_damage", function(ply)
+hook.Add("GetFallDamage", "ws_attributes_fall_damage", function(ply)
 	local attrs = Controller.byPlayer[ply]
 	if attrs and Attributes.FallDamageCancelled(attrs, CurTime()) then return 0 end
 end)
@@ -100,7 +100,7 @@ timer.Create(SYNC_TIMER, SYNC_INTERVAL, 0, function()
 	for ply in pairs(Controller.byPlayer) do Controller:Sync(ply) end
 end)
 
-hook.Add("PlayerSpawn", "wetsand_attributes_spawn_clear", function(ply) Controller:Clear(ply) end)
-hook.Add("PostPlayerDeath", "wetsand_attributes_death_clear", function(ply) Controller:Clear(ply) end)
+hook.Add("PlayerSpawn", "ws_attributes_spawn_clear", function(ply) Controller:Clear(ply) end)
+hook.Add("PostPlayerDeath", "ws_attributes_death_clear", function(ply) Controller:Clear(ply) end)
 
 return Controller

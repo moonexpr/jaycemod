@@ -4,7 +4,7 @@
 -- nothing running. The stub accepts TeleportToMinigame, SetAdvantageTeam,
 -- TeleportToRandomMinigame and ReturnFromMinigame and does nothing.
 ENT.Type = "point"
-ENT.Base = "wetsand_stub_point"
+ENT.Base = "ws_stub_point"
 
 ENT.StubReason = "minigames are not supported; inputs accepted and ignored"
 ENT.StubInputs = {

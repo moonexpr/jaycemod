@@ -2,25 +2,25 @@
 -- foundation.holiday.wheel model per wheel_of_doom entity, implements its
 -- world port, ticks it, reapplies its effects to players as they spawn
 -- (player_spawn, so after the spawn's own clearing), holds the gravity
--- multiplier, and networks the HUD's effect (wetsand_wheel_effect, _start
+-- multiplier, and networks the HUD's effect (ws_wheel_effect, _start
 -- and _duration; the view draws it). Attributes go through the attributes
 -- controller. Loaded by the first wheel_of_doom; it loads attributes.
-local Wheel = WETSAND.require("foundation.holiday.wheel")
+local Wheel = WS.require("foundation.holiday.wheel")
 
 local WHEEL_CLASS = "wheel_of_doom"
 local DANCER_CLASS = "merasmus_dancer"
 local MERASMUS_CLASS = "merasmus"
 local JAR_CLASS = "tf_projectile_jar"
-local EFFECT = "wetsand_wheel_effect"
-local EFFECT_START = "wetsand_wheel_effect_start"
-local EFFECT_DURATION = "wetsand_wheel_effect_duration"
+local EFFECT = "ws_wheel_effect"
+local EFFECT_START = "ws_wheel_effect_start"
+local EFFECT_DURATION = "ws_wheel_effect_duration"
 local NO_EFFECT = -1 -- ClearHalloweenEffectStatus
-local THINK_HOOK = "wetsand_wheel"
+local THINK_HOOK = "ws_wheel"
 
 PrecacheParticleSystem(Wheel.DANCER_POOF_PARTICLE)
 
 local Controller = {
-	attributes = WETSAND.Feature("attributes"),
+	attributes = WS.Feature("attributes"),
 	wheels = {}, -- wheel_of_doom entity -> { model, world }
 	gravity = 1, -- CTFGameRules::m_flGravityMultiplier
 }
@@ -67,8 +67,8 @@ local function World(controller, ent)
 
 	function world:TeamOf(p) return p:Team() end
 	function world:IsTargetValid(p) return IsValid(p) end
-	function world:AddCond(p, cond, duration) WETSAND.AddCondition(p, cond, duration) end
-	function world:RemoveCond(p, cond) WETSAND.RemoveCondition(p, cond) end
+	function world:AddCond(p, cond, duration) WS.AddCondition(p, cond, duration) end
+	function world:RemoveCond(p, cond) WS.RemoveCondition(p, cond) end
 	function world:SetAttribute(p, name, value) controller.attributes:Give(p, name, value) end
 	function world:RemoveAttribute(p, name) controller.attributes:Take(p, name) end
 	function world:SetGravityMultiplier(m) controller:SetGravity(m) end
@@ -103,7 +103,7 @@ local function World(controller, ent)
 		Wheels(others, function(w) w:ShrinkSpiral() end)
 	end
 
-	function world:BroadcastSound(name) WETSAND.BroadcastSound(WETSAND.TEAM_UNASSIGNED, name) end
+	function world:BroadcastSound(name) WS.BroadcastSound(WS.TEAM_UNASSIGNED, name) end
 
 	-- Merasmus says it if he is about; otherwise everyone hears it.
 	function world:Announce(name)
@@ -111,7 +111,7 @@ local function World(controller, ent)
 		if IsValid(merasmus) then
 			merasmus:PlayHighPrioritySound(name)
 		else
-			WETSAND.BroadcastSound(WETSAND.TEAM_UNASSIGNED, name)
+			WS.BroadcastSound(WS.TEAM_UNASSIGNED, name)
 		end
 	end
 
@@ -174,14 +174,14 @@ local function World(controller, ent)
 		jar:Configure({
 			velocity = Vector(0, 0, 0),
 			spin = Angle(spin.x, spin.y, spin.z),
-			team = WETSAND.TEAM_UNASSIGNED,
+			team = WS.TEAM_UNASSIGNED,
 		})
 		jar:SetPos(pos)
 		jar:Spawn()
 	end
 
 	function world:BeginHaunting(count, minDuration, maxDuration)
-		WETSAND.Feature("haunting"):BeginHaunting(count, minDuration, maxDuration)
+		WS.Feature("haunting"):BeginHaunting(count, minDuration, maxDuration)
 	end
 
 	return world

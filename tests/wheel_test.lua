@@ -563,7 +563,7 @@ T.test("the wheel's entities load nothing at top level", function()
 	for _, file in ipairs({ "wheel_of_doom.lua", "merasmus_dancer.lua" }) do
 		for line in ReadFile(ROOT .. "entities/entities/" .. file):gmatch("[^\n]+") do
 			local top = not (line:match("^%s") or line:match("^function "))
-			local loads = line:find("WETSAND.require", 1, true) ~= nil or line:find("WETSAND.Feature", 1, true) ~= nil
+			local loads = line:find("WS.require", 1, true) ~= nil or line:find("WS.Feature", 1, true) ~= nil
 			T.eq(top and loads, false, file .. ": " .. line)
 		end
 	end

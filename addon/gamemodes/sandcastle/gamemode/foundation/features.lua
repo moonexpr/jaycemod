@@ -1,4 +1,4 @@
--- Per-map lazy loading of controllers and views (WETSAND.Feature). A feature
+-- Per-map lazy loading of controllers and views (WS.Feature). A feature
 -- is a folder, features/<name>/, holding sv.lua (the controller), cl.lua (the
 -- view) and sh.lua (both realms, loaded first); cl and sh may be absent. The
 -- Lua VM restarts on map change, so each map loads only the features its

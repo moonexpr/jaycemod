@@ -1,0 +1,137 @@
+-- The map's navigation mesh, which every NextBot walks (the AI war's
+-- soldiers, the bosses). TF2 ships a mesh for few of its maps (its bots
+-- generate one), and GMod cannot load TF2's own (.devtools/bin/nav_convert.py
+-- converts those). mp_nav_generate, for admins and the server console,
+-- builds one: GMod's generator walks out from seeds, and TF2 maps spawn
+-- players at info_player_teamspawn, which it does not seed from, so every
+-- spawn point and control point is a seed. It walks only what stands in
+-- place, and a map's spawn doors, setup gates and bridges (cp_steel's slide
+-- out to its last point as the others fall) stand shut or drawn back: every
+-- door is unlocked, and opened, or closed when it is a floor (flat and
+-- wide: a bridge, laid out by closing it), spawn barriers are made
+-- passable, and it
+-- begins once no door moves (or after DOOR_WAIT). The generator walks
+-- through every door (Source's IsEntityWalkable), a laid bridge too, so each
+-- floor gets a stand-in it walks on: an always-solid func_brush of the
+-- floor's own brush where it lies, gone with the map reset. It runs in Sandbox mode
+-- (entered first; refused while sv_gameplay_disable_sandbox forbids it), so
+-- no round closes a door meanwhile, with every spawn limit (sbox_max<kind>,
+-- one per cleanup kind) at 0 so nothing new stands in its way. When it is
+-- done GMod has saved maps/<map>.nav, the limits are put back, the map is
+-- reset (its doors and gates put back), and the admin who started it is
+-- told. Every client's progress box follows each stage
+-- (WS.NavProgress, ws/sh_nav_progress.lua).
+local Gamemode = WS.require("foundation.gamemode")
+local Doors = WS.require("foundation.npc.doors")
+local Progress = WS.require("foundation.nav_progress")
+
+local SEEDS = { "info_player_teamspawn", "info_player_start", "team_control_point" }
+local DOORS = { "func_door", "func_door_rotating", "prop_door_rotating" }
+local BARRIERS = { "func_respawnroomvisualizer" }
+local DOOR_WAIT = 60
+local POLL = "ws_nav_generate"
+
+-- func_door's m_toggle_state while opening or closing; prop_door_rotating's
+-- m_eDoorState
+local TOGGLE_MOVING = { [2] = true, [3] = true }
+local PROP_DOOR_MOVING = { [1] = true, [3] = true }
+
+local underWay = false
+
+
+function WS.NavMeshUsable()
+	return navmesh.IsLoaded() and navmesh.GetNavAreaCount() > 0
+end
+
+local function Tell(ply, text)
+	if IsValid(ply) then ply:ChatPrint(text) else print(text) end
+end
+
+local function Each(classes, fn)
+	for _, class in ipairs(classes) do
+		for _, ent in ipairs(ents.FindByClass(class)) do fn(ent) end
+	end
+end
+
+local function IsFloor(door)
+	local mins, maxs = door:OBBMins(), door:OBBMaxs()
+	return Doors.IsFloor({ x = maxs.x - mins.x, y = maxs.y - mins.y, z = maxs.z - mins.z })
+end
+
+local function AnyDoorMoving()
+	local moving = false
+	Each(DOORS, function(door)
+		if door:GetClass() == "prop_door_rotating" then
+			moving = moving or PROP_DOOR_MOVING[door:GetInternalVariable("m_eDoorState")] == true
+		else
+			moving = moving or TOGGLE_MOVING[door:GetInternalVariable("m_toggle_state")] == true
+		end
+	end)
+	return moving
+end
+
+concommand.Add("mp_nav_generate", function(ply)
+	if IsValid(ply) and not ply:IsAdmin() then
+		Tell(ply, "Navigation mesh: only admins can generate it")
+		return
+	end
+	if underWay or navmesh.IsGenerating() then
+		Tell(ply, "Navigation mesh: already being generated")
+		return
+	end
+	if GetConVar("sv_gameplay_enabled"):GetBool() then
+		if GetConVar("sv_gameplay_disable_sandbox"):GetBool() then
+			Tell(ply, "Navigation mesh: it is generated in Sandbox mode, which sv_gameplay_disable_sandbox 1 forbids; set it to 0 first")
+			return
+		end
+		WS.Feature("gamemode"):Request(Gamemode.SANDBOX, Gamemode.SOURCE_BUTTON, ply)
+	end
+	underWay = true
+	local limits = {}
+	for _, kind in ipairs(cleanup.GetTable()) do
+		local limit = GetConVar("sbox_max" .. kind)
+		if limit then
+			limits[limit] = limit:GetString()
+			limit:SetString("0")
+		end
+	end
+	local up, seeds = Vector(0, 0, 1), 0
+	Each(SEEDS, function(ent)
+		navmesh.AddWalkableSeed(ent:GetPos(), up)
+		seeds = seeds + 1
+	end)
+	Each(DOORS, function(door)
+		door:Fire("Unlock")
+		door:Fire(IsFloor(door) and "Close" or "Open")
+	end)
+	Each(BARRIERS, function(barrier) barrier:SetNotSolid(true) end)
+	Tell(ply, "Navigation mesh: opening " .. game.GetMap() .. "'s doors, then generating from " .. seeds .. " seeds; this takes a few minutes")
+	local started = CurTime()
+	WS.NavProgress(Progress.OPENING, started)
+	local giveUp, began = started + DOOR_WAIT, false
+	timer.Create(POLL, 1, 0, function()
+		if not began then
+			if AnyDoorMoving() and CurTime() < giveUp then return end
+			began = true
+			Each(DOORS, function(door)
+				if not IsFloor(door) then return end
+				local standIn = ents.Create("func_brush")
+				standIn:SetModel(door:GetModel())
+				standIn:SetPos(door:GetPos())
+				standIn:SetAngles(door:GetAngles())
+				standIn:SetKeyValue("Solidity", "2")
+				standIn:Spawn()
+			end)
+			navmesh.BeginGeneration()
+			WS.NavProgress(Progress.GENERATING, started)
+			return
+		end
+		if navmesh.IsGenerating() then return end
+		timer.Remove(POLL)
+		underWay = false
+		for limit, value in pairs(limits) do limit:SetString(value) end
+		game.CleanUpMap()
+		WS.NavProgress(Progress.DONE, started, navmesh.GetNavAreaCount())
+		Tell(ply, "Navigation mesh: done, " .. navmesh.GetNavAreaCount() .. " areas, saved as maps/" .. game.GetMap() .. ".nav; the map was reset")
+	end)
+end, nil, "Generate this map's navigation mesh from its spawn and control points, its doors open (admins); takes a few minutes and resets the map")

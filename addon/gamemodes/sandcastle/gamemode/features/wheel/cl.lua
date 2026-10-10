@@ -1,11 +1,11 @@
 -- The wheel feature's view: the Wheel of Fate's effect on the HUD (TF2's
 -- PlayerStatus_WheelOfDoom), drawn from what the wheel controller networks:
 -- the effect's icon, by the player's health, blinking as it runs out.
-local Wheel = WETSAND.require("foundation.holiday.wheel")
+local Wheel = WS.require("foundation.holiday.wheel")
 
-local EFFECT = "wetsand_wheel_effect"
-local EFFECT_START = "wetsand_wheel_effect_start"
-local EFFECT_DURATION = "wetsand_wheel_effect_duration"
+local EFFECT = "ws_wheel_effect"
+local EFFECT_START = "ws_wheel_effect_start"
+local EFFECT_DURATION = "ws_wheel_effect_duration"
 local NO_EFFECT = -1
 
 local ICON_LEFT = 0.02 -- of the screen width
@@ -32,7 +32,7 @@ function View:DrawEffect(w, h)
 	surface.DrawTexturedRect(math.floor(w * ICON_LEFT), math.floor(h * ICON_TOP), ICON_SIZE, ICON_SIZE)
 end
 
-hook.Add("HUDPaint", "wetsand_wheel_effect", function()
+hook.Add("HUDPaint", "ws_wheel_effect", function()
 	View:DrawEffect(ScrW(), ScrH())
 end)
 

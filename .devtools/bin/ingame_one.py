@@ -23,7 +23,7 @@ def main(check: str) -> int:
     it.deploy(data_root)
     server.rcon(it.BOOT)
     run_id = f"one{int(time.time())}"
-    server.rcon(f'lua_run WETSAND_TESTS.Run("{check}", "{run_id}")')
+    server.rcon(f'lua_run WS_TESTS.Run("{check}", "{run_id}")')
     results = data_root / "results"
     deadline = time.time() + RESULT_TIMEOUT
     while time.time() < deadline:

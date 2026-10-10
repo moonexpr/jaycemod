@@ -1,4 +1,4 @@
--- The gamemode's convars are replicated and notify (wetsand/sh_core.lua
+-- The gamemode's convars are replicated and notify (ws/sh_core.lua
 -- wraps CreateConVar for its own files), and a client is told the
 -- server-only ones, so its console knows every one: it completes their
 -- names and shows their server values, and a change is told in chat.
@@ -13,7 +13,7 @@ function Ours(source, folder)
 	return sub(path, 1, #prefix) == prefix
 end
 
--- Whether a source is a client-only file (wetsand/cl_*.lua, a feature's
+-- Whether a source is a client-only file (ws/cl_*.lua, a feature's
 -- cl.lua): its convars are the client's own, which the client sets, so
 -- they are never replicated (only the server may set a replicated one).
 function ClientOnly(source)

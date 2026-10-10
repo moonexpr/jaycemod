@@ -1,5 +1,5 @@
--- Second half of the wetsand_defaults_apply check (defaults_change moved
--- the convars; the harness sent wetsand_defaults_apply over RCON just
+-- Second half of the ws_defaults_apply check (defaults_change moved
+-- the convars; the harness sent ws_defaults_apply over RCON just
 -- before this, and passes its reply as args.before_reply): the command read
 -- cfg/sandcastle_defaults.cfg from the GAME path, ran its lines, and the
 -- convars are back to the defaults it lists.
@@ -15,7 +15,7 @@ return function(t)
 	t:Check("the reply does not say not found", string.find(reply, "not found", 1, true) == nil, reply)
 	t:Wait(SETTLE)
 	for name, value in pairs(DEFAULTS) do
-		t:Check("wetsand_defaults_apply puts " .. name .. " back to " .. value,
+		t:Check("ws_defaults_apply puts " .. name .. " back to " .. value,
 			GetConVar(name):GetString() == value, GetConVar(name):GetString())
 	end
 end

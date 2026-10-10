@@ -2,4 +2,4 @@
 -- only keeps its state and answers Enable/Disable/Toggle. (func_nav_avoid,
 -- func_nav_prefer and func_nav_blocker are GMod's own engine entities.)
 ENT.Type = "brush"
-ENT.Base = "wetsand_brush_volume"
+ENT.Base = "ws_brush_volume"

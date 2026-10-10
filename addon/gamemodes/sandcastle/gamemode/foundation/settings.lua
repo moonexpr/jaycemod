@@ -1,7 +1,7 @@
 -- The server convars an admin may set from the Utilities menu. On a
 -- dedicated server a client cannot set a server's convar itself ("Can't
 -- change replicated ConVar ... from console of client"), so the menu sends
--- wetsand_server_set name value, and the server sets it after Parse holds
+-- ws_server_set name value, and the server sets it after Parse holds
 -- the value to the range the menu's control offers. Every setting is an
 -- integer.
 local floor, format, tonumber = math.floor, string.format, tonumber
@@ -11,10 +11,10 @@ module(...)
 
 SETTINGS = {
 	mp_aiwar_team_size = { min = Slots.CUSTOM_SIZE, max = AiWar.TEAM_SIZE_MAX },
-	wetsand_aiwar_debug_full = { min = 0, max = 1 },
+	ws_aiwar_debug_full = { min = 0, max = 1 },
 	ns_squads_auto_enabled = { min = 0, max = 1 },
 	ns_soldiers_paused = { min = 0, max = 1 },
-	wetsand_nodegraph_max_nodes = { min = 64, max = 8192 },
+	ws_nodegraph_max_nodes = { min = 64, max = 8192 },
 }
 
 -- The convar's text for the value text names, rounded to a whole number;

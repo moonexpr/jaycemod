@@ -117,10 +117,10 @@ local function RoundLabel(q)
 end
 
 -- What the timer box shows, or nil for nothing. q = { now, transitionEnd
--- (the gamemode's wetsand_gamemode_transition_end, 0 outside a transition),
+-- (the gamemode's ws_gamemode_transition_end, 0 outside a transition),
 -- shown (a HUD timer exists), halted (the rounds stand still: Sandbox mode
 -- or its transition), koth (the koth HUD draws its own clocks), preround,
--- setup, overtime, gameOverEnd (wetsand_game_over_end: when the won
+-- setup, overtime, gameOverEnd (ws_game_over_end: when the won
 -- match's map changes, 0 before), left (the round timer's seconds) }. The
 -- countdown to Gameplay mode wins while it runs, then the won match's to
 -- its map change, on any map; the round's timer shows only while the rounds

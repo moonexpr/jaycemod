@@ -1,6 +1,6 @@
 -- eyeball_boss (CEyeballBoss): MONOCULUS, a flying halloween_base_boss
 -- bound to foundation.npc.eyeball_boss. The variant's HOVER makes
--- wetsand_nextbot fly it with foundation.npc.hover. This file implements
+-- ws_nextbot fly it with foundation.npc.hover. This file implements
 -- the eyeball's port and turns its body towards where it looks
 -- (CEyeballBossBody). The maps spawn it from point_templates with teamnum 5;
 -- the MONOCULUS spell spawns it on the caster's team.
@@ -20,7 +20,7 @@ local LOOK_APPROACH_RATE = 3 -- CEyeballBossBody::Update's myApproachRate
 -- CEyeballBoss::Spawn: bounds of ±50 about its origin.
 function ENT:Initialize()
 	Base.Initialize(self)
-	local half = WETSAND.require(self.Variant).HULL_HALF_WIDTH
+	local half = WS.require(self.Variant).HULL_HALF_WIDTH
 	self:SetCollisionBounds(Vector(-half, -half, -half), Vector(half, half, half))
 end
 

@@ -158,7 +158,7 @@ function WelcomePoint(points, valid)
 	return chosen
 end
 
--- Watching an NPC (WETSAND.NpcCamera, wetsand/sh_spectate.lua): the
+-- Watching an NPC (WS.NpcCamera, ws/sh_spectate.lua): the
 -- engine's observer camera sits at a non-player's origin, at its feet; ours
 -- follows its model. First person looks out from just below the top of its
 -- bounds; third person over its right shoulder. Points and directions are

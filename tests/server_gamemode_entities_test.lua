@@ -54,7 +54,7 @@ T.test("a gamemode entity an addon also defines is registered again from the gam
 end)
 
 T.test("gamemode entities no addon defines are left alone", function()
-	local files = { [GM_DIR .. "wetsand_point.lua"] = true, ["entities/other.lua"] = true }
+	local files = { [GM_DIR .. "ws_point.lua"] = true, ["entities/other.lua"] = true }
 	local registered = load(files, {})
 	T.eq(next(registered), nil)
 end)

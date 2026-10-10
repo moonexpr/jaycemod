@@ -30,7 +30,7 @@ the two differ. Its §1 lists the scholar's edits still to be applied here.
 ## 1. The model
 
 ```lua
-local Events = WETSAND.Events
+local Events = WS.Events
 
 -- features/capture/sv.lua
 -- CTeamControlPoint::InternalSetOwner: a team took the point (not a reset
@@ -42,8 +42,8 @@ Events.System.Fire("teamplay_point_captured", {
 })
 
 -- features/capture/cl.lua
-Events.System.Listen("teamplay_point_captured", "wetsand_capture_view", function(fields)
-	WETSAND.Feature("rounds"):Announce(WETSAND.TeamName[fields.team] .. " captured " .. fields.cpname, fields.team)
+Events.System.Listen("teamplay_point_captured", "ws_capture_view", function(fields)
+	WS.Feature("rounds"):Announce(WS.TeamName[fields.team] .. " captured " .. fields.cpname, fields.team)
 end)
 ```
 
@@ -179,8 +179,8 @@ the fields say is the client's word.
 ## 3. Encoding (the library's business)
 
 Two net messages for the whole gamemode, registered only by the adapter:
-`wetsand_game_event_fire` (server to clients) and
-`wetsand_game_event_request` (client to server). All three kinds share them
+`ws_game_event_fire` (server to clients) and
+`ws_game_event_request` (client to server). All three kinds share them
 and this encoding; the kind is not on the wire. Each message is one event:
 
 1. **The id:** the CRC32 of the event's name, cut to 24 bits, computed by
@@ -218,7 +218,7 @@ nothing stored:
 - **What is compared:** each Lua file the server sends clients
   (`AddCSLuaFile`), by a hash of its contents. The server hashes its copy
   (`file.Read(path, "LUA")`); the client hashes the copy it actually loaded.
-- **When:** the always-loaded files (`wetsand/`, `foundation/`) when the
+- **When:** the always-loaded files (`ws/`, `foundation/`) when the
   client is ready; a feature's client files when `feature_load` loads it on
   the client; and again for any file the server reloads (`OnReloaded`).
   The server sends its hashes with those events. The client compares and
@@ -344,7 +344,7 @@ entry names its kind, and the system events are grouped first.
 - **`tests/events_sites_test.lua` also fails when the committed file differs
   from what the sites generate.** So a commit made without the hook cannot
   leave the documentation stale either.
-- **In game,** `wetsand_events_print` (server) and `wetsand_events_print_cl`
+- **In game,** `ws_events_print` (server) and `ws_events_print_cl`
   (client) list the events that realm has seen: listeners, accepts, fire
   counts, the field types observed on the wire, any files found stale, and
   the open failure states.
@@ -368,5 +368,5 @@ entry names its kind, and the system events are grouped first.
    in step 1. Step 2 moves each site to its kind, and step 3 removes the
    kind-less aliases and adds the freeze test. The plan has the details.
 5. Then move the remaining server-side presentation (announcer lines
-   through `WETSAND.BroadcastSound`, gameplay chat text) into client
+   through `WS.BroadcastSound`, gameplay chat text) into client
    listeners on TF2-named events.

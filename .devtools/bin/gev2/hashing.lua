@@ -2,7 +2,7 @@
 -- gamemode's Lua files with util.CRC, util.MD5, util.SHA1 and util.SHA256,
 -- on the server. Two sets: the 191 files init.lua and the entities send
 -- clients today, and every .lua file under the gamemode (269). Writes
--- data/wetsand_tests/gev2/out/hashing.txt. Run by .devtools/bin/gev2_probe.py.
+-- data/ws_tests/gev2/out/hashing.txt. Run by .devtools/bin/gev2_probe.py.
 local NAME = "hashing"
 local ROOT = "sandcastle/"
 local ROUNDS = 5
@@ -24,13 +24,13 @@ local function Walk(dir, list)
 end
 
 -- What init.lua sends (shared.lua, cl_init.lua, foundation/, features' sh/cl,
--- wetsand's sh_/cl_) and the entities that call AddCSLuaFile themselves.
+-- ws's sh_/cl_) and the entities that call AddCSLuaFile themselves.
 local function IsSent(path, text)
 	local rel = path:sub(#ROOT + 1)
 	if rel == "gamemode/shared.lua" or rel == "gamemode/cl_init.lua" then return true end
 	if rel:find("^gamemode/foundation/") then return true end
 	if rel:find("^gamemode/features/[^/]+/sh%.lua$") or rel:find("^gamemode/features/[^/]+/cl%.lua$") then return true end
-	if rel:find("^gamemode/wetsand/sh_") or rel:find("^gamemode/wetsand/cl_") then return true end
+	if rel:find("^gamemode/ws/sh_") or rel:find("^gamemode/ws/cl_") then return true end
 	if rel:find("^entities/") and text:find("AddCSLuaFile", 1, true) then return true end
 	return false
 end
@@ -89,6 +89,6 @@ Say("sample outputs", "CRC=" .. util.CRC("teamplay_point_captured"), "SHA256 len
 	"MD5 len=" .. #util.MD5("x"), "SHA1 len=" .. #util.SHA1("x"))
 Say("SysTime resolution probe", string.format("%.9f", SysTime() - SysTime()))
 
-file.CreateDir("wetsand_tests/gev2/out")
-file.Write("wetsand_tests/gev2/out/" .. NAME .. ".txt", table.concat(out, "\n") .. "\n")
-print("wetsand_tests: gev2 " .. NAME .. " done")
+file.CreateDir("ws_tests/gev2/out")
+file.Write("ws_tests/gev2/out/" .. NAME .. ".txt", table.concat(out, "\n") .. "\n")
+print("ws_tests: gev2 " .. NAME .. " done")

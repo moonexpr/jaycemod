@@ -1,7 +1,7 @@
 -- func_respawnroom (CFuncRespawnRoom): a team's spawn room. Its team and
 -- active state drive the func_respawnroomvisualizer forcefields that name it.
 ENT.Type = "brush"
-ENT.Base = "wetsand_brush_volume"
+ENT.Base = "ws_brush_volume"
 
 function ENT:VolumeInit()
 	self.originalTeam = self.team
@@ -39,11 +39,11 @@ end
 -- CFuncRespawnRoom::InputRoundActivate: a room placed with no team takes the
 -- team of an enabled spawn point inside it, as the round has set them up.
 function ENT:RoundActivate()
-	if self.originalTeam ~= WETSAND.TEAM_UNASSIGNED then return end
-	self:ChangeTeam(WETSAND.TEAM_UNASSIGNED)
+	if self.originalTeam ~= WS.TEAM_UNASSIGNED then return end
+	self:ChangeTeam(WS.TEAM_UNASSIGNED)
 	for _, spawn in ipairs(ents.FindByClass("info_player_teamspawn")) do
-		local s = WETSAND.SpawnState(spawn)
-		if not s.disabled and s.team > WETSAND.TEAM_SPECTATOR and self:PointIsWithin(spawn:GetPos()) then
+		local s = WS.SpawnState(spawn)
+		if not s.disabled and s.team > WS.TEAM_SPECTATOR and self:PointIsWithin(spawn:GetPos()) then
 			self:ChangeTeam(s.team)
 			return
 		end
@@ -55,5 +55,5 @@ ENT.Inputs = {
 	setinactive = function(self) self:SetActive(false) end,
 	toggleactive = function(self) self:SetActive(not self.active) end,
 	roundactivate = function(self) self:RoundActivate() end,
-	setteam = function(self, value) self:ChangeTeam(tonumber(value) or WETSAND.TEAM_UNASSIGNED) end,
+	setteam = function(self, value) self:ChangeTeam(tonumber(value) or WS.TEAM_UNASSIGNED) end,
 }

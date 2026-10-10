@@ -1,7 +1,7 @@
 -- The capture feature's game events, with TF2's names and fields
 -- (modevents.res; cp a byte, the point's index in the master's order). The
 -- controller fires them; the view words them for the rounds HUD.
-local E = WETSAND.Events
+local E = WS.Events
 local CP_BITS = 8
 
 -- CTeamControlPoint::InternalSetOwner: a team took the point (not a reset

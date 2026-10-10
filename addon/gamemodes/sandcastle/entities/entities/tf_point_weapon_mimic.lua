@@ -51,7 +51,7 @@ function ENT:Initialize()
 	if model == "" then model = nil end
 	if model then util.PrecacheModel(model) end
 	self.weaponType = Int(kv.weapontype)
-	self.combat = WETSAND.Feature("combat")
+	self.combat = WS.Feature("combat")
 	self.mimic = self.combat:BindWeaponMimic(self, {
 		weaponType = self.weaponType,
 		speedMin = Float(kv.speedmin),
@@ -67,7 +67,7 @@ end
 
 -- The team the combat controller sees.
 function ENT:GetTeamNumber()
-	return WETSAND.require(MODEL).TEAM
+	return WS.require(MODEL).TEAM
 end
 
 function ENT:FireShots(count)
@@ -85,7 +85,7 @@ local ONE_SHOT = 1
 local INPUTS = {
 	fireonce = function(self) self:FireShots(ONE_SHOT) end,
 	firemultiple = function(self, value)
-		self:FireShots(WETSAND.require(MODEL).FireCount(Int(value)))
+		self:FireShots(WS.require(MODEL).FireCount(Int(value)))
 	end,
 	detonatestickies = function() end,
 }

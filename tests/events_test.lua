@@ -506,7 +506,7 @@ end)
 -- The library's two net messages are the only ones, for good: a feature
 -- defines events instead of registering its own.
 T.test("only the event adapter registers, starts or receives net messages", function()
-	local ADAPTER = "addon/gamemodes/sandcastle/gamemode/wetsand/sh_events.lua"
+	local ADAPTER = "addon/gamemodes/sandcastle/gamemode/ws/sh_events.lua"
 	local registered = 0
 	local files = io.popen("find addon -name '*.lua'")
 	for path in files:lines() do

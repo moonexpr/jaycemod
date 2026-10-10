@@ -1,14 +1,14 @@
 -- The Game Rules Editor: the payload cart's speed as an editable field;
 -- resetting the round and going back to the map's respawn times, as
 -- right-click actions (a cart's own right-click moves it between
--- checkpoints: wetsand/sh_editors_cart.lua). Team scores and
--- respawn waves are in Admin > Gameplay Settings (wetsand_gameplay_settings).
--- See wetsand_editor.
+-- checkpoints: ws/sh_editors_cart.lua). Team scores and
+-- respawn waves are in Admin > Gameplay Settings (ws_gameplay_settings).
+-- See ws_editor.
 AddCSLuaFile()
-DEFINE_BASECLASS("wetsand_editor")
+DEFINE_BASECLASS("ws_editor")
 
 ENT.Type = "anim"
-ENT.Base = "wetsand_editor"
+ENT.Base = "ws_editor"
 
 ENT.Spawnable = true
 ENT.AdminOnly = true
@@ -28,13 +28,13 @@ ENT.Fields = {
 local CLASS = "edit_gamerules"
 local TITLE = "Game Rules"
 
-WETSAND.EditorAction("wetsand_reset_round", {
+WS.EditorAction("ws_reset_round", {
 	class = CLASS, title = TITLE, label = "Reset Round", icon = "icon16/arrow_refresh.png", order = 2100,
 	run = function(e) return e:ResetRound() end,
 	done = "the round restarts",
 })
 
-WETSAND.EditorAction("wetsand_map_respawn", {
+WS.EditorAction("ws_map_respawn", {
 	class = CLASS, title = TITLE, label = "Use Map Respawn Times", icon = "icon16/arrow_undo.png", order = 2102,
 	run = function(e) return e:UseMapRespawnTimes() end,
 	done = "respawn waves are the map's again",

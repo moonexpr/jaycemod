@@ -20,15 +20,15 @@ end
 
 -- GMod caches ShouldCollide answers per pair until CollisionRulesChanged is
 -- called, so the answer is computed from cached values that change only
--- together with that call (see the wetsand_visualizers Think hook below).
+-- together with that call (see the ws_visualizers Think hook below).
 local visualizers = setmetatable({}, { __mode = "k" })
 
 -- The team this forcefield stops the enemies of, or nobody.
 function ENT:CollisionTeam()
-	if not (self:GetEnabled() and self:GetFieldOn()) then return WETSAND.TEAM_UNASSIGNED end
-	if WETSAND.State() == WETSAND.STATE.TEAM_WIN then return WETSAND.TEAM_UNASSIGNED end
+	if not (self:GetEnabled() and self:GetFieldOn()) then return WS.TEAM_UNASSIGNED end
+	if WS.State() == WS.STATE.TEAM_WIN then return WS.TEAM_UNASSIGNED end
 	-- out of gameplay the spawn rooms are open to everyone
-	if WETSAND.GameplayStopped() then return WETSAND.TEAM_UNASSIGNED end
+	if WS.GameplayStopped() then return WS.TEAM_UNASSIGNED end
 	return self:GetRoomTeam()
 end
 
@@ -41,7 +41,7 @@ end
 
 function ENT:Blocks(ent)
 	if not ent:IsPlayer() then return false end
-	return WETSAND.TeamRules.VisualizerBlocks(self.collisionTeam, ent.wetsandCollisionTeam or ent:Team())
+	return WS.TeamRules.VisualizerBlocks(self.collisionTeam, ent.wsCollisionTeam or ent:Team())
 end
 
 function ENT:InitCollision()
@@ -50,21 +50,21 @@ function ENT:InitCollision()
 	self:SetCustomCollisionCheck(true)
 end
 
-hook.Add("ShouldCollide", "wetsand_respawn_room_visualizer", function(a, b)
+hook.Add("ShouldCollide", "ws_respawn_room_visualizer", function(a, b)
 	if visualizers[a] then return a:Blocks(b) end
 	if visualizers[b] then return b:Blocks(a) end
 end)
 
 -- Both realms, every tick: pick up round-state changes (team win opens the
 -- doors) and player team changes, and declare them to the physics engine.
-hook.Add("Think", "wetsand_visualizers", function()
+hook.Add("Think", "ws_visualizers", function()
 	for viz in pairs(visualizers) do
 		if IsValid(viz) then viz:RefreshCollision() end
 	end
 	for _, ply in ipairs(player.GetAll()) do
 		local team = ply:Team()
-		if ply.wetsandCollisionTeam ~= team then
-			ply.wetsandCollisionTeam = team
+		if ply.wsCollisionTeam ~= team then
+			ply.wsCollisionTeam = team
 			ply:CollisionRulesChanged()
 		end
 	end
@@ -77,8 +77,8 @@ if CLIENT then
 
 	function ENT:Draw()
 		-- shown as in team win, to nobody's enemies, out of gameplay
-		local teamWin = WETSAND.State() == WETSAND.STATE.TEAM_WIN or WETSAND.GameplayStopped()
-		if self:GetEnabled() and WETSAND.TeamRules.VisualizerVisible(self:GetRoomTeam(), self:GetRoomActive(), teamWin, LocalPlayer():Team()) then
+		local teamWin = WS.State() == WS.STATE.TEAM_WIN or WS.GameplayStopped()
+		if self:GetEnabled() and WS.TeamRules.VisualizerVisible(self:GetRoomTeam(), self:GetRoomActive(), teamWin, LocalPlayer():Team()) then
 			self:DrawModel()
 		end
 	end
@@ -97,7 +97,7 @@ function ENT:KeyValue(key, value)
 	elseif k == "startdisabled" then
 		self.startDisabled = value == "1"
 	elseif k == "teamnum" then
-		self.keyTeam = tonumber(value) or WETSAND.TEAM_UNASSIGNED
+		self.keyTeam = tonumber(value) or WS.TEAM_UNASSIGNED
 	elseif string.sub(key, 1, 2) == "On" then
 		self:StoreOutput(key, value)
 	end
@@ -109,7 +109,7 @@ function ENT:Initialize()
 	self:SetSolid(SOLID_BSP)
 	if self.solidToEnemies == nil then self.solidToEnemies = true end
 	self:SetEnabled(not self.startDisabled)
-	self:SetRoomTeam(self.keyTeam or WETSAND.TEAM_UNASSIGNED)
+	self:SetRoomTeam(self.keyTeam or WS.TEAM_UNASSIGNED)
 	self:SetRoomActive(true)
 	self:SetFieldOn(true)
 	self:InitCollision()
@@ -129,7 +129,7 @@ end
 
 -- CFuncRespawnRoomVisualizer::InputRoundActivate
 function ENT:RoundActivate()
-	local room = WETSAND.FindByName(self.roomName)
+	local room = WS.FindByName(self.roomName)
 	if IsValid(room) and room:GetClass() == "func_respawnroom" then
 		room:AddVisualizer(self)
 		self:SetRoomTeam(room.team)

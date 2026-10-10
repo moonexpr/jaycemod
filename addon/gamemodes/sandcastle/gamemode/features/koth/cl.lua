@@ -1,5 +1,5 @@
 -- The koth feature's view, drawn from what the koth controller networks
--- (wetsand_koth_clock_<team>_*):
+-- (ws_koth_clock_<team>_*):
 --   - the two team clocks at the top (CTFHudKothTimeStatus): BLU's left and
 --     RED's right in team colours, the running one bright and the paused one
 --     dimmed, with OVERTIME under them while the round is in overtime; they
@@ -10,10 +10,10 @@
 --     never play the siren.
 -- The point's unlock countdown and its lines are the capture view's; the
 -- overtime line is the rounds view's.
-WETSAND.Feature("rounds")
-local Timer = WETSAND.require("foundation.rounds.timer")
+WS.Feature("rounds")
+local Timer = WS.require("foundation.rounds.timer")
 
-local RED, BLUE = WETSAND.TEAM_RED, WETSAND.TEAM_BLUE
+local RED, BLUE = WS.TEAM_RED, WS.TEAM_BLUE
 local GAME_TEAMS = { RED, BLUE }
 
 local CLOCK_WIDTH, CLOCK_HEIGHT, CLOCK_GAP = 120, 46, 8
@@ -46,7 +46,7 @@ local View = {
 }
 
 local function Key(t, field)
-	return "wetsand_koth_clock_" .. t .. "_" .. field
+	return "ws_koth_clock_" .. t .. "_" .. field
 end
 
 -- A clock as published: shown, paused, seconds left, auto countdown, serial.
@@ -69,7 +69,7 @@ end
 
 local function DrawClock(t, c, w, top)
 	local x = w / 2 + (SIDE[t] > 0 and CLOCK_GAP / 2 or -CLOCK_GAP / 2 - CLOCK_WIDTH)
-	local team = WETSAND.TeamColor[t]
+	local team = WS.TeamColor[t]
 	local alpha = c.paused and DIM_ALPHA or BRIGHT_ALPHA
 	draw.RoundedBox(CORNER, x, top, CLOCK_WIDTH, CLOCK_HEIGHT, PANEL_BG)
 	draw.RoundedBox(CORNER, x + 2, top + 2, CLOCK_WIDTH - 4, CLOCK_HEIGHT - 4, Color(team.r, team.g, team.b, alpha / 2))
@@ -79,7 +79,7 @@ end
 
 -- Sandbox mode shows no clocks, as it shows no round timer.
 function View:Paint(w, h)
-	if WETSAND.GameplayStopped() then return end
+	if WS.GameplayStopped() then return end
 	local top = math.floor(h * timerY:GetFloat())
 	local any = false
 	for _, t in ipairs(GAME_TEAMS) do
@@ -89,7 +89,7 @@ function View:Paint(w, h)
 			any = true
 		end
 	end
-	if any and GetGlobal2Bool("wetsand_round_overtime", false) then
+	if any and GetGlobal2Bool("ws_round_overtime", false) then
 		draw.SimpleText("OVERTIME", "Sandcastle.Hud.Label", w / 2, top + LABEL_TOP, GOLD, TEXT_ALIGN_CENTER)
 	end
 end
@@ -116,19 +116,19 @@ function View:CountdownThink(t)
 	local speaks = Timer.Speaks({
 		paused = c.paused,
 		autoCountdown = c.autoCountdown,
-		halted = WETSAND.GameplayStopped(),
+		halted = WS.GameplayStopped(),
 		isHud = false,
 		koth = true,
 	})
 	if speaks then Play(Timer.WarningSound(warning, false)) end
 end
 
-hook.Add("SandcastleHUDPaint", "wetsand_koth", function(w, h)
+hook.Add("SandcastleHUDPaint", "ws_koth", function(w, h)
 	View:Paint(w, h)
 end)
 
-hook.Add("Think", "wetsand_koth_announcer", function()
-	if not WETSAND.Active() then return end
+hook.Add("Think", "ws_koth_announcer", function()
+	if not WS.Active() then return end
 	for _, t in ipairs(GAME_TEAMS) do View:CountdownThink(t) end
 end)
 

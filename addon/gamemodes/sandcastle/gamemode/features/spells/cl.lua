@@ -1,20 +1,20 @@
 -- The spells feature's view: TF2's spell HUD (CHudSpellMenu). It draws the
 -- local player's spellbook as its weapon networks it (the spells
--- controller's wetsand_spell_* NW2 values): the spell's icon, its charges
+-- controller's ws_spell_* NW2 values): the spell's icon, its charges
 -- and the key that casts it. While a spell rolls it cycles the icons, each
 -- tick a little slower, with alternating tick sounds; a new spell plays the
 -- set sound. Casting is TF2's +use_action_slot_item: with no key bound the
 -- HUD says "bind h +use_action_slot_item".
-local Spells = WETSAND.require("foundation.spells")
-local SpellSet = WETSAND.require("foundation.spells.halloween")
+local Spells = WS.require("foundation.spells")
+local SpellSet = WS.require("foundation.spells.halloween")
 
 local WEAPON = "tf_weapon_spellbook"
 local CAST_COMMAND = "+use_action_slot_item"
 local BIND_HINT = "bind h " .. CAST_COMMAND
 
 -- What the spells controller networks on the weapon.
-local NW_SELECTED = "wetsand_spell_selected"
-local NW_CHARGES = "wetsand_spell_charges"
+local NW_SELECTED = "ws_spell_selected"
+local NW_CHARGES = "ws_spell_charges"
 
 -- UpdateSpellText's roll: the first tick gap and how much each adds.
 local ROLL_FIRST_GAP = 0.01
@@ -118,7 +118,7 @@ end
 
 -- ShouldDraw: a living player holding a spellbook (only while spells are
 -- on does anyone hold one).
-hook.Add("HUDPaint", "wetsand_spell_hud", function()
+hook.Add("HUDPaint", "ws_spell_hud", function()
 	local ply = LocalPlayer()
 	if not (IsValid(ply) and ply:Alive()) then return end
 	local weapon = ply:GetWeapon(WEAPON)

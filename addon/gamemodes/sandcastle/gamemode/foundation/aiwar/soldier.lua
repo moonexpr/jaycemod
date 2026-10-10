@@ -1,6 +1,6 @@
 -- The soldier port: what foundation.aiwar.orders may ask of the
 -- soldier it drives. The features/aiwar controller implements it over a
--- DrGBase NextBot soldier (wetsand_drg_soldier) and tests/fake_soldier.lua
+-- DrGBase NextBot soldier (ws_drg_soldier) and tests/fake_soldier.lua
 -- fakes it.
 --
 -- Positions are plain { x, y, z } tables.

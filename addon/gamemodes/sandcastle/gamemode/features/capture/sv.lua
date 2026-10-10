@@ -4,19 +4,19 @@
 -- feeds them the players standing in the areas, the map's inputs and the
 -- round's phases; and carries out what they answer: outputs, point models,
 -- capture sounds, announcer lines, scoring, and round wins through the
--- rounds controller. It publishes the point HUD (wetsand_point_*) and each
--- player's capture panel (NW2 wetsand_capture_point/_reason), and is the
+-- rounds controller. It publishes the point HUD (ws_point_*) and each
+-- player's capture panel (NW2 ws_capture_point/_reason), and is the
 -- rounds controller's objective port.
 --
 -- team_control_point is GMod's own inert engine class, so its keyvalues are
 -- recorded by sv_world and its inputs taken here through AcceptInput.
-local Capture = WETSAND.require("foundation.capture")
-local Area = WETSAND.require("foundation.capture.area")
-local Master = WETSAND.require("foundation.capture.master")
-local Rounds = WETSAND.require("foundation.rounds")
+local Capture = WS.require("foundation.capture")
+local Area = WS.require("foundation.capture.area")
+local Master = WS.require("foundation.capture.master")
+local Rounds = WS.require("foundation.rounds")
 
 local POINT_CLASS = "team_control_point"
-local NOBODY, RED, BLUE = WETSAND.TEAM_UNASSIGNED, WETSAND.TEAM_RED, WETSAND.TEAM_BLUE
+local NOBODY, RED, BLUE = WS.TEAM_UNASSIGNED, WS.TEAM_RED, WS.TEAM_BLUE
 local GAME_TEAMS = { RED, BLUE }
 local TEAM_OUTPUT = {
 	[RED] = "Team1",
@@ -50,11 +50,11 @@ local POINT_SKIN = {
 -- EmitSound's volume, flags and DSP for a line (the soundscript sets the rest).
 local FULL_VOLUME, NO_SOUND_FLAGS, NO_DSP = 1, 0, 0
 
-local NO_POINT_STOOD_ON = 0 -- wetsand_capture_point: ranks are published 1-based
+local NO_POINT_STOOD_ON = 0 -- ws_capture_point: ranks are published 1-based
 
 local Controller = {
 	AREA_THINK_TIME = 0.1, -- AREA_THINK_TIME: each trigger_capture_area thinks this often
-	rounds = WETSAND.Feature("rounds"),
+	rounds = WS.Feature("rounds"),
 	set = nil,
 	masterEnt = NULL,
 	master = nil,
@@ -80,7 +80,7 @@ local function IsPoint(ent)
 end
 
 local function PointByName(name)
-	local ent = WETSAND.FindByName(name)
+	local ent = WS.FindByName(name)
 	if IsPoint(ent) then return ent end
 	return NULL
 end
@@ -102,7 +102,7 @@ end
 -- The spec of a point, keeping the state it has in the old set while the
 -- entity lives on (a mini-round without a map reset).
 local function PointSpec(ent, old)
-	local kv = WETSAND.KeyValues(ent)
+	local kv = WS.KeyValues(ent)
 	local spec = {
 		id = ent,
 		index = tonumber(kv.point_index) or 0,
@@ -146,7 +146,7 @@ end
 
 local function RoundName(ent)
 	local name = ent:GetName()
-	if name == "" then return "wetsand_round_" .. ent:EntIndex() end
+	if name == "" then return "ws_round_" .. ent:EntIndex() end
 	return name
 end
 
@@ -170,7 +170,7 @@ local function RoundSpecs(self)
 end
 
 local function ApplyPointModel(self, ent)
-	local kv = WETSAND.KeyValues(ent)
+	local kv = WS.KeyValues(ent)
 	local team = self.set:Owner(ent)
 	local model = kv["team_model_" .. team]
 	if not model or model == "" then model = DEFAULT_MODEL end
@@ -180,15 +180,15 @@ local function ApplyPointModel(self, ent)
 	if bit.band(self.set:Spawnflags(ent), Capture.SF_HIDE_MODEL) ~= 0 then ent:SetNoDraw(true) end
 end
 
--- Each point has a proxy (WETSAND.Proxy, kind "point"), the box an admin
--- right-clicks for its entries (wetsand/sh_editors_point.lua), and the props
+-- Each point has a proxy (WS.Proxy, kind "point"), the box an admin
+-- right-clicks for its entries (ws/sh_editors_point.lua), and the props
 -- of its base name it. A payload checkpoint's is its cart's instead
 -- (features/payload).
 local POINT_PROXY_MINS, POINT_PROXY_MAXS = Vector(-48, -48, -8), Vector(48, 48, 64)
 
 local function KeepPointProxy(point)
-	local proxy, made = WETSAND.Proxy(point, "point", point, POINT_PROXY_MINS, POINT_PROXY_MAXS)
-	if made then WETSAND.ProxyBodies(proxy, point:GetPos()) end
+	local proxy, made = WS.Proxy(point, "point", point, POINT_PROXY_MINS, POINT_PROXY_MAXS)
+	if made then WS.ProxyBodies(proxy, point:GetPos()) end
 end
 
 -- CTeamControlPointMaster::FindControlPoints and FindControlPointRounds,
@@ -215,7 +215,7 @@ end
 
 cvars.AddChangeCallback("tf_caplinear", function(_, _, value)
 	if Controller.set then Controller.set:SetCaplinear(value ~= "0") end
-end, "wetsand_capture")
+end, "ws_capture")
 
 -- What the capture order needs from the master: the round in play and the
 -- team's base point (GetBaseControlPoint).
@@ -305,7 +305,7 @@ function Controller:CurrentRound()
 end
 
 -- The mini-round that comes first while none is chosen (Sandbox mode), or
--- NULL: its spawns are the ones set up (wetsand/sv_teams_spawn.lua).
+-- NULL: its spawns are the ones set up (ws/sv_teams_spawn.lua).
 function Controller:UpcomingRound()
 	if not self.master then return NULL end
 	return RoundNamed(self, self.master:Upcoming(self:Set()))
@@ -330,9 +330,9 @@ end
 local function PublishStage(self)
 	local stage, count, name = 0, 0, ""
 	if self.master then stage, count, name = self.master:Stage(self:Set()) end
-	SetGlobal2Int("wetsand_mini_round_stage", stage)
-	SetGlobal2Int("wetsand_mini_round_count", count)
-	SetGlobal2String("wetsand_mini_round_name", name)
+	SetGlobal2Int("ws_mini_round_stage", stage)
+	SetGlobal2Int("ws_mini_round_count", count)
+	SetGlobal2String("ws_mini_round_name", name)
 end
 
 local function FireTeamOutput(ent, prefix, team)
@@ -351,7 +351,7 @@ local LINE_FILTER = {
 local function PlayLines(self, point, lines)
 	for _, line in ipairs(lines) do
 		if line.hearer == Capture.HEAR_OTHERS then
-			WETSAND.BroadcastSoundToOthers(line.team, line.sound)
+			WS.BroadcastSoundToOthers(line.team, line.sound)
 		else
 			local filter = RecipientFilter()
 			LINE_FILTER[line.hearer](filter, line.team)
@@ -399,26 +399,26 @@ local POINT_EVENTS = {
 		PlayLines(self, point, e.lines)
 		ApplyPointModel(self, point)
 		if e.team == NOBODY then
-			WETSAND.FireOutput(point, "OnCapReset", point)
+			WS.FireOutput(point, "OnCapReset", point)
 		else
-			WETSAND.FireOutput(point, "OnCap" .. TEAM_OUTPUT[e.team], point)
+			WS.FireOutput(point, "OnCap" .. TEAM_OUTPUT[e.team], point)
 		end
 		if e.sounding and e.team ~= NOBODY then
-			WETSAND.FireOutput(point, "OnOwnerChangedTo" .. TEAM_OUTPUT[e.team], point)
-			WETSAND.Events.Fire("teamplay_point_captured", {
+			WS.FireOutput(point, "OnOwnerChangedTo" .. TEAM_OUTPUT[e.team], point)
+			WS.Events.Fire("teamplay_point_captured", {
 				cp = self.set:Index(point),
 				cpname = self.set:PrintName(point),
 				team = e.team,
 			})
 		end
-		hook.Run("WetsandPointCaptured", point, e.team)
+		hook.Run("WSPointCaptured", point, e.team)
 		if e.scoring then HandleScoring(self, point, e.team) end
 		self:CheckWinConditions()
 	end,
-	unlocked = function(self, e) WETSAND.FireOutput(e.id, "OnUnlocked", e.id) end,
+	unlocked = function(self, e) WS.FireOutput(e.id, "OnUnlocked", e.id) end,
 	unlock_time = function() end,
 	round_start_owned = function(self, e)
-		WETSAND.FireOutput(e.id, "OnRoundStartOwnedBy" .. TEAM_OUTPUT[e.team], e.id)
+		WS.FireOutput(e.id, "OnRoundStartOwnedBy" .. TEAM_OUTPUT[e.team], e.id)
 	end,
 }
 
@@ -463,7 +463,7 @@ local POINT_INPUTS = {
 	roundactivate = function(self, point) ApplyPointEvents(self, self:Set():RoundActivate({ point })) end,
 }
 
-hook.Add("AcceptInput", "wetsand_capture_point", function(ent, input, activator, caller, value)
+hook.Add("AcceptInput", "ws_capture_point", function(ent, input, activator, caller, value)
 	if ent:GetClass() ~= POINT_CLASS then return end
 	local handler = POINT_INPUTS[string.lower(input)]
 	if not handler or not Controller:Set():Has(ent) then return end
@@ -491,7 +491,7 @@ function Controller:RoundActivate()
 			if firstAfterRestart then self.rounds:SetFirstRoundPlayed(name) end
 			local roundEnt = self:CurrentRound()
 			roundEnt:TriggerOutput("OnStart", roundEnt)
-			hook.Run("WetsandMiniRoundStart", roundEnt)
+			hook.Run("WSMiniRoundStart", roundEnt)
 		end
 	end
 	PublishStage(self)
@@ -686,8 +686,8 @@ local function Counts(self, a, point)
 	local function Add(team)
 		if counts[team] and TeamCounts(self, a, point, team) then counts[team] = counts[team] + 1 end
 	end
-	for _, ply in ipairs(WETSAND.PlayersInside(a.ent)) do Add(WETSAND.TeamOf(ply)) end
-	for _, member in ipairs(WETSAND.MembersInside(a.ent)) do Add(WETSAND.TeamNumber(member)) end
+	for _, ply in ipairs(WS.PlayersInside(a.ent)) do Add(WS.TeamOf(ply)) end
+	for _, member in ipairs(WS.MembersInside(a.ent)) do Add(WS.TeamNumber(member)) end
 	return counts
 end
 
@@ -727,18 +727,18 @@ end
 -- contested line, or the final-cap warning).
 local function CaptureStarted(self, point, team)
 	PlayLines(self, point, self.set:CaptureStarted(point, team, CurTime()))
-	hook.Run("WetsandPointCaptureStarted", point, team)
+	hook.Run("WSPointCaptureStarted", point, team)
 end
 
 -- CTeamControlPoint::CaptureBlocked: the clients show the HUD's "defended"
 -- notice (for points with a print name).
 local function CaptureBlocked(self, point, team)
-	WETSAND.Events.Fire("teamplay_capture_blocked", {
+	WS.Events.Fire("teamplay_capture_blocked", {
 		cp = self.set:Index(point),
 		cpname = self.set:PrintName(point),
 		team = team,
 	})
-	hook.Run("WetsandPointCaptureBlocked", point, team)
+	hook.Run("WSPointCaptureBlocked", point, team)
 end
 
 -- SetNumCappers: OnNumCappersChanged2 carries -1 for a blocked cart.
@@ -771,7 +771,7 @@ local AREA_EVENTS = {
 	numcappers = function(self, a, point, e) SetNumCappers(a, e.n, e.blocked) end,
 	-- UpdateBlocked: the point hears a block when it starts
 	blocked = function(self, a, point, e)
-		if e.value then CaptureBlocked(self, point, WETSAND.EnemyOf(e.capping)) end
+		if e.value then CaptureBlocked(self, point, WS.EnemyOf(e.capping)) end
 	end,
 	["break"] = function(self, a, point, e)
 		FireTeamOutput(a.ent, "OnBreak", e.team)
@@ -791,14 +791,14 @@ local function ApplyAreaEvents(self, a, point, events)
 	end
 end
 
--- An admin's capture for team (Set Team, wetsand/sh_editors_point.lua), as
+-- An admin's capture for team (Set Team, ws/sh_editors_point.lua), as
 -- a finished capture on its area: the area's OnCap and OnEndCap outputs,
 -- which the map's logic hangs on (cp_steel's relays open the next point's
 -- doors), the respawn adjustments, the capture sounds, the point's outputs,
 -- scoring and the win check. A point no area captures is set as a player's
 -- SetOwner input would. Returns true, or false and why not.
 function Controller:CapturePoint(point, team)
-	if self:Owner(point) == team then return false, "the point is already " .. WETSAND.TeamName[team] .. "'s" end
+	if self:Owner(point) == team then return false, "the point is already " .. WS.TeamName[team] .. "'s" end
 	if not self.rounds:PointsMayBeCaptured() then return false, "points cannot be captured now" end
 	local a = AreasOf(self, point)[1]
 	if a then
@@ -881,7 +881,7 @@ local function HudArea(self, point)
 end
 
 local function Key(rank, field)
-	return "wetsand_point_" .. rank .. "_" .. field
+	return "ws_point_" .. rank .. "_" .. field
 end
 
 local function PublishPoint(rank, hud)
@@ -941,8 +941,8 @@ end
 local function PublishPoints(self)
 	local set = self:Set()
 	for _, entry in ipairs(self:HudPoints()) do PublishPoint(entry.rank + 1, entry.hud) end
-	SetGlobal2Int("wetsand_point_count", set:Count())
-	SetGlobal2String("wetsand_point_layout", self.master and self.master:CapLayout() or "")
+	SetGlobal2Int("ws_point_count", set:Count())
+	SetGlobal2String("ws_point_layout", self.master and self.master:CapLayout() or "")
 end
 
 -- The capture panel of each player standing in an area (C_TFPlayer's
@@ -952,8 +952,8 @@ local function PublishPanels(self)
 	for ent, a in pairs(self.areas) do
 		local point = IsValid(ent) and a.enabled and AreaPoint(self, a) or NULL
 		if IsValid(point) then
-			for _, ply in ipairs(WETSAND.PlayersInside(ent)) do
-				local team = WETSAND.TeamOf(ply)
+			for _, ply in ipairs(WS.PlayersInside(ent)) do
+				local team = WS.TeamOf(ply)
 				if team ~= NOBODY then
 					local q = OrderQuery(self, team)
 					q.pointsMayBeCaptured = self.rounds:PointsMayBeCaptured()
@@ -975,25 +975,25 @@ local function PublishPanels(self)
 	end
 	for _, ply in ipairs(player.GetAll()) do
 		local s = standing[ply]
-		ply:SetNW2Int("wetsand_capture_point", s and s.rank or NO_POINT_STOOD_ON)
-		ply:SetNW2Int("wetsand_capture_reason", s and s.reason or Capture.REASON_NONE)
-		ply:SetNW2Entity("wetsand_capture_anchor", s and s.anchor or NULL)
+		ply:SetNW2Int("ws_capture_point", s and s.rank or NO_POINT_STOOD_ON)
+		ply:SetNW2Int("ws_capture_reason", s and s.reason or Capture.REASON_NONE)
+		ply:SetNW2Entity("ws_capture_anchor", s and s.anchor or NULL)
 	end
 end
 
 -- Timed unlocks, the master's think and the HUD, on one clock.
-hook.Add("Think", "wetsand_capture", function()
+hook.Add("Think", "ws_capture", function()
 	local self = Controller
 	local now = CurTime()
 	if now >= self.nextUnlock then
 		self.nextUnlock = now + UNLOCK_THINK_TIME
-		ApplyPointEvents(self, self:Set():Tick(now, self.rounds:State() == WETSAND.STATE.RND_RUNNING))
+		ApplyPointEvents(self, self:Set():Tick(now, self.rounds:State() == WS.STATE.RND_RUNNING))
 	end
 	if now >= self.nextMasterThink then
 		self.nextMasterThink = now + MASTER_THINK_TIME
 		if self.master and self.master:Active() and self.rounds:PointsMayBeCaptured() then self:CheckWinConditions() end
 	end
-	if now >= self.nextPublish and WETSAND.Active() then
+	if now >= self.nextPublish and WS.Active() then
 		self.nextPublish = now + PUBLISH_INTERVAL
 		PublishPoints(self)
 		PublishPanels(self)
@@ -1009,7 +1009,7 @@ Controller.rounds:AddTimerHold("capture", function() return AnyCapturing(Control
 
 -- A cleanup recreates every point, and not every cleanup is a round's (an
 -- admin's game.CleanUpMap has no RoundSpawn): the set follows the new ones.
-hook.Add("PostCleanupMap", "wetsand_capture", function() Controller:Rebuild() end)
+hook.Add("PostCleanupMap", "ws_capture", function() Controller:Rebuild() end)
 
 -- tf_logic_cp_timer (CCPTimerLogic) -------------------------------------------------------
 -- Loaded with the first timer: its model, its round-spawn listener and its
@@ -1060,7 +1060,7 @@ end
 
 -- kv = { controlpoint, timer_length, team_number }.
 function Controller:BindPointTimer(ent, kv)
-	local PointTimer = WETSAND.require(POINT_TIMER_MODEL)
+	local PointTimer = WS.require(POINT_TIMER_MODEL)
 	self.pointTimerEvents = self.pointTimerEvents or PointTimerEvents(PointTimer)
 	self.pointTimerThinkTime = PointTimer.THINK_INTERVAL
 	self.cpTimers[ent] = {
@@ -1088,7 +1088,7 @@ function Controller:PointTimerThink(ent)
 		local events = t.model:Think(now, {
 			teamMayCapture = self:TeamMayCapture(t.point, t.model:Team()),
 			capping = self:CappingTeam(t.point) ~= NOBODY,
-			roundWon = self.rounds:State() == WETSAND.STATE.TEAM_WIN,
+			roundWon = self.rounds:State() == WS.STATE.TEAM_WIN,
 		})
 		for _, e in ipairs(events) do self.pointTimerEvents[e.kind](self, ent, t.point, e) end
 	end

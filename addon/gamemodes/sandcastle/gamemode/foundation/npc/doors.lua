@@ -74,7 +74,7 @@ local OPENING = {
 }
 
 -- Whether a trigger with these outputs ({ name, target, input }, as
--- WETSAND.ParseOutput gives them) opens the door named doorName: one of
+-- WS.ParseOutput gives them) opens the door named doorName: one of
 -- them sends that door (by name or wildcard) Open, Toggle or Unlock. An
 -- unnamed door ("") is one no output names.
 -- Whether an output's target names the door: the same name, or a prefix of

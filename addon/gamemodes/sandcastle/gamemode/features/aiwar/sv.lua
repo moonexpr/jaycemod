@@ -1,6 +1,6 @@
 -- The aiwar feature's controller: a round (payload, control points or King
--- of the Hill) fought by DrGBase NextBot soldiers (wetsand_drg_combine,
--- wetsand_drg_rebel; the war needs DrGBase). It owns the foundation.aiwar
+-- of the Hill) fought by DrGBase NextBot soldiers (ws_drg_combine,
+-- ws_drg_rebel; the war needs DrGBase). It owns the foundation.aiwar
 -- War and the scenario (foundation.aiwar.scenario) the round's mode picks,
 -- spawns each side's soldiers at its team's spawns in TF2's respawn waves,
 -- enlists any soldier that appears while the war runs (a player's
@@ -8,29 +8,29 @@
 -- port below, and sets who is friend or foe. The rules live in the models;
 -- this file only feeds them the round, the carts and the points and turns
 -- their answers into the soldiers' goals.
-local AiWar = WETSAND.require("foundation.aiwar")
-local Rounds = WETSAND.require("foundation.rounds")
-local Scenario = WETSAND.require("foundation.aiwar.scenario")
-local Track = WETSAND.require("foundation.aiwar.track")
-local Orders = WETSAND.require("foundation.aiwar.orders")
-local NpcSystem = WETSAND.require("foundation.npc")
-local TFBot = WETSAND.require("foundation.npc.path.tfbot")
-local HL2Path = WETSAND.require("foundation.npc.path.hl2")
-local Posts = WETSAND.require("foundation.aiwar.posts")
-local Zone = WETSAND.require("foundation.aiwar.zone")
-local Tactics = WETSAND.require("foundation.aiwar.tactics")
-local Squad = WETSAND.require("foundation.aiwar.squad")
-local Slots = WETSAND.require("foundation.aiwar.slots")
-local Lanes = WETSAND.require("foundation.aiwar.lanes")
-local Hearing = WETSAND.require("foundation.aiwar.hearing")
-local Factions = WETSAND.require("foundation.factions")
-local Doors = WETSAND.require("foundation.npc.doors")
-local Notices = WETSAND.require("foundation.admin_notices")
-local Inspect = WETSAND.require("foundation.ns.inspect")
-local Tuning = WETSAND.require("foundation.ns.tuning")
-local Gamemode = WETSAND.require("foundation.gamemode")
+local AiWar = WS.require("foundation.aiwar")
+local Rounds = WS.require("foundation.rounds")
+local Scenario = WS.require("foundation.aiwar.scenario")
+local Track = WS.require("foundation.aiwar.track")
+local Orders = WS.require("foundation.aiwar.orders")
+local NpcSystem = WS.require("foundation.npc")
+local TFBot = WS.require("foundation.npc.path.tfbot")
+local HL2Path = WS.require("foundation.npc.path.hl2")
+local Posts = WS.require("foundation.aiwar.posts")
+local Zone = WS.require("foundation.aiwar.zone")
+local Tactics = WS.require("foundation.aiwar.tactics")
+local Squad = WS.require("foundation.aiwar.squad")
+local Slots = WS.require("foundation.aiwar.slots")
+local Lanes = WS.require("foundation.aiwar.lanes")
+local Hearing = WS.require("foundation.aiwar.hearing")
+local Factions = WS.require("foundation.factions")
+local Doors = WS.require("foundation.npc.doors")
+local Notices = WS.require("foundation.admin_notices")
+local Inspect = WS.require("foundation.ns.inspect")
+local Tuning = WS.require("foundation.ns.tuning")
+local Gamemode = WS.require("foundation.gamemode")
 
-local ACTIVE_KEY = "wetsand.aiwar" -- Global2: the Utilities menu reads it
+local ACTIVE_KEY = "ws.aiwar" -- Global2: the Utilities menu reads it
 local THINK_INTERVAL = 0.25
 local RELATIONSHIP_INTERVAL = 1
 local RELATIONSHIP_PRIORITY = 99
@@ -49,7 +49,7 @@ local SPAWN_SPREAD, SPAWN_TRIES = 48, 8
 local GROUND_PROBE = 256
 local SF_TRIGGER_ALLOW_CLIENTS, SF_TRIGGER_ALLOW_NPCS, SF_TRIGGER_ALLOW_ALL = 1, 2, 64 -- CBaseTrigger (triggers.h)
 
-local RED, BLUE = WETSAND.TEAM_RED, WETSAND.TEAM_BLUE
+local RED, BLUE = WS.TEAM_RED, WS.TEAM_BLUE
 
 local function Point(v) return { x = v.x, y = v.y, z = v.z } end
 local function ToVector(p) return Vector(p.x, p.y, p.z) end
@@ -79,7 +79,7 @@ end
 
 -------------------------------------------------------------------------------
 -- The soldier port (foundation.aiwar.soldier) over a DrGBase soldier
--- (wetsand_drg_soldier): orders set its target and gait; it walks there on
+-- (ws_drg_soldier): orders set its target and gait; it walks there on
 -- the nav mesh as a NextBot, fighting on the way as DrGBase's human AI.
 
 local Soldier = {}
@@ -111,12 +111,12 @@ function Soldier:MaxHealth() return self.ent:GetMaxHealth() end
 -- Riding the cart: SEATS_PER_CART seats on top of each cart, SEAT_SPREAD
 -- either side of its middle, taken by a soldier within SEAT_REACH of the
 -- cart's edge. A seated soldier is carried along by the controller's tick
--- (Controller:CarrySeated), sits (wetsand_drg_soldier's WetsandSeated pose)
+-- (Controller:CarrySeated), sits (ws_drg_soldier's WSSeated pose)
 -- and fights from there; it gets off beside the cart (EjectFromCart). With
--- wetsand_aiwar_sitting_enabled 0 no seat is free, and turning it off
+-- ws_aiwar_sitting_enabled 0 no seat is free, and turning it off
 -- stands every seated soldier (Controller:StandSeated).
 local SEATS_PER_CART, SEAT_SPREAD, SEAT_REACH = 2, 16, 72
-local SITTING = CreateConVar("wetsand_aiwar_sitting_enabled", "1", { FCVAR_ARCHIVE, FCVAR_NOTIFY },
+local SITTING = CreateConVar("ws_aiwar_sitting_enabled", "1", { FCVAR_ARCHIVE, FCVAR_NOTIFY },
 	"Whether the AI war's cart pushers sit on the cart; 0 gets every seated soldier off it")
 
 function Soldier:IsSeated() return self.seat ~= nil end
@@ -198,15 +198,15 @@ function Soldier:Bot()
 		team = self.team,
 		route = TFBot.FASTEST_ROUTE,
 		miniBoss = false,
-		roundWon = WETSAND.State() == WETSAND.STATE.TEAM_WIN,
-		winningTeam = GetGlobal2Int("wetsand_round_winner", WETSAND.TEAM_UNASSIGNED),
+		roundWon = WS.State() == WS.STATE.TEAM_WIN,
+		winningTeam = GetGlobal2Int("ws_round_winner", WS.TEAM_UNASSIGNED),
 	}
 end
 
 function Soldier:RequestRoute(goal)
 	self.ticket = self.ticket + 1
 	self.result = nil
-	local ticket, goalPos, npcs = self.ticket, ToVector(goal), WETSAND.Feature("npc")
+	local ticket, goalPos, npcs = self.ticket, ToVector(goal), WS.Feature("npc")
 	local start = self.ent:GetPos()
 	local controller = self.controller
 	local team = self.team
@@ -238,7 +238,7 @@ end
 -- What the route was planned under: the blockers' changes and the doors
 -- found shut.
 function Soldier:Generation()
-	return WETSAND.Feature("npc"):BlockerGeneration() .. ":" .. (self.controller.shutDoorGeneration or 0)
+	return WS.Feature("npc"):BlockerGeneration() .. ":" .. (self.controller.shutDoorGeneration or 0)
 end
 
 function Soldier:RouteStale()
@@ -303,7 +303,7 @@ function Soldier:MoveTo(p, gait)
 	self.moveTarget = p
 	self.gait = gait or "run"
 	self.ent.NSTarget = OnFloor(ToVector(p))
-	self.ent.WetsandRun = self.gait ~= "walk"
+	self.ent.WSRun = self.gait ~= "walk"
 end
 
 function Soldier:Watch(p)
@@ -314,7 +314,7 @@ function Soldier:Release()
 	self.moveTarget = nil
 	self.walkSpeed = 0
 	self.ent.NSTarget = nil
-	self.ent.WetsandRun = nil
+	self.ent.WSRun = nil
 end
 
 -- A soldier-sized box swept between two points above step height under
@@ -616,8 +616,8 @@ end
 -- Another feature's controller when it is already loaded, else nil: the war
 -- reads the round and the points only from features the map loaded itself.
 local function LoadedFeature(name)
-	for _, loaded in ipairs(WETSAND.FeatureLoader:Loaded()) do
-		if loaded == name then return WETSAND.Feature(name) end
+	for _, loaded in ipairs(WS.FeatureLoader:Loaded()) do
+		if loaded == name then return WS.Feature(name) end
 	end
 	return nil
 end
@@ -642,7 +642,7 @@ function Controller:Disposition(team, otherTeam)
 end
 
 -- A soldier toward each team's DrGBase faction (foundation.factions; it is
--- in its own team's, WETSAND.SetTeamMember): its team's its allies, the
+-- in its own team's, WS.SetTeamMember): its team's its allies, the
 -- other its enemies, or feared once its side lost. DrGBase relates it so to
 -- every soldier and player in each, as they come and go.
 function Controller:RelateToFactions(ent, team)
@@ -678,7 +678,7 @@ function Controller:RelateGadget(gadget)
 		end
 	end
 	for _, ply in ipairs(player.GetAll()) do
-		gadget:AddEntityRelationship(ply, self:Disposition(info.team, WETSAND.TeamOf(ply)), RELATIONSHIP_PRIORITY)
+		gadget:AddEntityRelationship(ply, self:Disposition(info.team, WS.TeamOf(ply)), RELATIONSHIP_PRIORITY)
 	end
 	for other, otherInfo in pairs(self.gadgets) do
 		if other ~= gadget and IsValid(other) and other:IsNPC() then
@@ -709,7 +709,7 @@ end
 
 -- The team a damaged entity fights for, or nil.
 function Controller:TeamOf(ent)
-	if ent:IsPlayer() then return WETSAND.TeamOf(ent) end
+	if ent:IsPlayer() then return WS.TeamOf(ent) end
 	local entry = self.soldiers[ent]
 	if entry then return entry.soldier.team end
 	local info = self.gadgets and self.gadgets[ent]
@@ -747,7 +747,7 @@ function Controller:GadgetDamage(target, dmg)
 	return info.team == self:TeamOf(target)
 end
 
--- TF2's NPCs (Sandcastle's wetsand_nextbot variants: tf_zombie's skeletons
+-- TF2's NPCs (Sandcastle's ws_nextbot variants: tf_zombie's skeletons
 -- and whatever joins them) take sides by their team: a RED or BLU one is
 -- a teammate or an enemy as a player of that team is; any other (the
 -- HALLOWEEN team's) is everyone's enemy. Soldiers and their gadgets are
@@ -796,7 +796,7 @@ function Controller:RelatePlayers()
 	for ent, entry in pairs(self.soldiers) do
 		if IsValid(ent) then
 			for _, ply in ipairs(player.GetAll()) do
-				local disposition = self:Disposition(entry.soldier.team, WETSAND.TeamOf(ply))
+				local disposition = self:Disposition(entry.soldier.team, WS.TeamOf(ply))
 				if entry.soldier.relations[ply] ~= disposition then
 					entry.soldier.relations[ply] = disposition
 					ent:AddEntityRelationship(ply, disposition, RELATIONSHIP_PRIORITY)
@@ -819,7 +819,7 @@ end
 
 -- Humiliation ------------------------------------------------------------------------
 -- TF2's losers cannot attack while the winners celebrate (for players,
--- WETSAND.RestrictCommand). A losing soldier stops firing (the port's
+-- WS.RestrictCommand). A losing soldier stops firing (the port's
 -- IsDisarmed, which its orders answer ShouldAttack with) and fears its
 -- enemies: DrGBase keeps away from what it fears. The winners hunt them.
 function Controller:Disarm(ent, entry)
@@ -885,9 +885,9 @@ function Controller:Enlist(ent, team, drafted, fixed)
 		soldier = soldier,
 		npc = NpcSystem.Npc.New(Orders, { war = self.war, member = member }, soldier),
 	}
-	-- DrGBase's hooks ask and tell the orders (wetsand_drg_soldier's bridge)
+	-- DrGBase's hooks ask and tell the orders (ws_drg_soldier's bridge)
 	ent.NSBrain = self.soldiers[ent].npc
-	WETSAND.SetTeamMember(ent, team)
+	WS.SetTeamMember(ent, team)
 	self:RelateToFactions(ent, team)
 	self:PassTeammates(ent, team)
 	self:JoinSquad(ent, member)
@@ -898,10 +898,10 @@ end
 -- The member's fire team, for the report; DrGBase has no squads of its
 -- own, so fire teams are the orders' alone.
 function Controller:JoinSquad(ent, member)
-	ent.wetsandSquad = member and member.fireTeam and member.fireTeam.squad or nil
+	ent.wsSquad = member and member.fireTeam and member.fireTeam.squad or nil
 end
 
--- Kits (wetsand_drg_soldier's NSKit), by side and role: blockers and
+-- Kits (ws_drg_soldier's NSKit), by side and role: blockers and
 -- a point's holders carry the shotgun, hit harder and charge faster;
 -- raiders carry the crossbow (the Resistance) and throw grenades; the
 -- Combine's support are
@@ -1034,7 +1034,7 @@ function Controller:Discharge(ent)
 	self.war:Discharge(ent)
 	self:SlotPlan():Vacate(ent)
 	entry.npc:Destroy()
-	WETSAND.SetTeamMember(ent, nil)
+	WS.SetTeamMember(ent, nil)
 end
 
 -- A Combine or Resistance NPC that appeared on its own (a player spawned
@@ -1085,15 +1085,15 @@ end
 -- once), or none without gamerules. With respawns stopped by an admin, or in
 -- sudden death, the last wave was the last.
 local function WaveLength(team)
-	if not IsValid(WETSAND.Rules) then return 0 end
-	if WETSAND.Rules:RespawnsDisabled() or WETSAND.State() == WETSAND.STATE.STALEMATE then return math.huge end
-	if WETSAND.InSetup() then return 0 end
-	return WETSAND.Rules:GetRespawnWaveMaxLength(team, true)
+	if not IsValid(WS.Rules) then return 0 end
+	if WS.Rules:RespawnsDisabled() or WS.State() == WS.STATE.STALEMATE then return math.huge end
+	if WS.InSetup() then return 0 end
+	return WS.Rules:GetRespawnWaveMaxLength(team, true)
 end
 
 function Controller:Reinforce(now)
 	for team, count in pairs(self.war:Reinforcements(now, self:Sizes(), WaveLength)) do
-		local spots = WETSAND.SpawnPoints(team)
+		local spots = WS.SpawnPoints(team)
 		for i = 1, #spots > 0 and count or 0 do
 			local spot = spots[(i - 1) % #spots + 1]
 			local pos = ClearSpotNear(spot:GetPos())
@@ -1137,7 +1137,7 @@ function Controller:RespawnAll()
 			if drafted then
 				ent:Remove()
 			else
-				spots[team] = spots[team] or WETSAND.SpawnPoints(team)
+				spots[team] = spots[team] or WS.SpawnPoints(team)
 				used[team] = (used[team] or 0) + 1
 				local spot = spots[team][(used[team] - 1) % math.max(#spots[team], 1) + 1]
 				local pos = spot and ClearSpotNear(spot:GetPos())
@@ -1205,7 +1205,7 @@ end
 
 -- A team's spawn points far apart: the first and the one farthest from it.
 local function SpreadSpawns(team)
-	local spawns = WETSAND.SpawnPoints(team)
+	local spawns = WS.SpawnPoints(team)
 	local first, far, farthest = spawns[1], nil, -1
 	for _, spawn in ipairs(spawns) do
 		local d = spawn:GetPos():DistToSqr(first:GetPos())
@@ -1220,7 +1220,7 @@ end
 function Controller:FindGates(field)
 	local gates = {}
 	self.gates = gates
-	local npcs = WETSAND.Feature("npc")
+	local npcs = WS.Feature("npc")
 	for team, to in pairs(self.scenario:SetupAttacks(field)) do
 		local target = ToVector(to)
 		for _, from in ipairs(SpreadSpawns(team)) do
@@ -1230,7 +1230,7 @@ function Controller:FindGates(field)
 				ignoreBlockers = true, -- the route is looked for through the shut gates
 				strategy = HL2Path,
 				limits = HL2Path.SOLDIER_LIMITS,
-				bot = { entIndex = 0, now = CurTime(), team = team, route = TFBot.FASTEST_ROUTE, miniBoss = false, roundWon = false, winningTeam = WETSAND.TEAM_UNASSIGNED },
+				bot = { entIndex = 0, now = CurTime(), team = team, route = TFBot.FASTEST_ROUTE, miniBoss = false, roundWon = false, winningTeam = WS.TEAM_UNASSIGNED },
 				onDone = function(areas, found)
 					if not areas or self.gates ~= gates then return end
 					local gate = self:GateAlong(npcs:RouteWaypoints(areas, target, found))
@@ -1363,14 +1363,14 @@ local function AreaAt(pos)
 end
 
 function Controller:FloodZone(team)
-	local npcs = WETSAND.Feature("npc")
+	local npcs = WS.Feature("npc")
 	local starts, outside = {}, {}
-	for _, spot in ipairs(WETSAND.SpawnPoints(team)) do
+	for _, spot in ipairs(WS.SpawnPoints(team)) do
 		local area = AreaAt(spot:GetPos())
 		if area then starts[#starts + 1] = area:GetID() end
 	end
 	if #starts == 0 then return nil end
-	for _, spot in ipairs(WETSAND.SpawnPoints(AiWar.EnemyOf(team))) do
+	for _, spot in ipairs(WS.SpawnPoints(AiWar.EnemyOf(team))) do
 		local area = AreaAt(spot:GetPos())
 		if area then outside[area:GetID()] = true end
 	end
@@ -1423,7 +1423,7 @@ local DOOR_OPEN_INTERVAL = 1
 local DOOR_CLOSE_RANGE = 192
 
 function Controller:OpenDoorFor(door, team)
-	local state = WETSAND.Feature("npc"):DoorState(door)
+	local state = WS.Feature("npc"):DoorState(door)
 	if not state or state.locked or not state.controlled then return end
 	if state.owner and state.owner ~= team then return end
 	self.doorOpened = self.doorOpened or setmetatable({}, { __mode = "k" })
@@ -1516,7 +1516,7 @@ local function OnMesh(pos)
 end
 
 function Controller:SpawnSpot(team)
-	local spots = WETSAND.SpawnPoints(team)
+	local spots = WS.SpawnPoints(team)
 	if #spots == 0 then return nil end
 	local spot = spots[math.random(#spots)]
 	return ClearSpotNear(spot:GetPos())
@@ -1795,7 +1795,7 @@ function Controller:Bases()
 	local bases, spawns = {}, {}
 	for _, team in ipairs({ RED, BLUE }) do
 		local list, sum = {}, Vector(0, 0, 0)
-		for i, spot in ipairs(WETSAND.SpawnPoints(team)) do
+		for i, spot in ipairs(WS.SpawnPoints(team)) do
 			local pos = GroundBelow(spot:GetPos())
 			list[i] = Point(pos)
 			sum = sum + pos
@@ -1839,7 +1839,7 @@ function Controller:Field(phase, now)
 	local bases = self:Bases()
 	return {
 		phase = phase,
-		setup = WETSAND.Active() and WETSAND.InSetup(),
+		setup = WS.Active() and WS.InSetup(),
 		carts = carts,
 		gates = self.gates or {},
 		posts = posts,
@@ -1848,7 +1848,7 @@ function Controller:Field(phase, now)
 		points = self:PointsSnapshot(),
 		clocks = rounds and Clocks(rounds, now),
 		timeLeft = rounds and TimeLeft(rounds, now),
-		overtime = WETSAND.InOvertime(),
+		overtime = WS.InOvertime(),
 		bases = bases.bases,
 		spawns = bases.spawns,
 		winner = self.winner,
@@ -1869,7 +1869,7 @@ function Controller:Patients()
 		if IsValid(ent) then Add(entry.soldier.team, ent, false) end
 	end
 	for _, ply in ipairs(player.GetAll()) do
-		if ply:Alive() then Add(WETSAND.TeamOf(ply), ply, true) end
+		if ply:Alive() then Add(WS.TeamOf(ply), ply, true) end
 	end
 	return patients
 end
@@ -1892,7 +1892,7 @@ function Controller:UpdateLanes(field, now)
 	for _, team in ipairs({ RED, BLUE }) do
 		local front = self.scenario:Front(field, team)
 		local plan = self.lanePlans[team]
-		local blockers = WETSAND.Feature("npc"):BlockerGeneration()
+		local blockers = WS.Feature("npc"):BlockerGeneration()
 		local stale = plan and plan.blockers ~= blockers
 		if front and not (plan and plan.planning)
 			and (stale or (now >= (plan and plan.retryAt or 0) and (not plan or Track.Distance(front, plan.to) > LANE_REPLAN))) then
@@ -1939,17 +1939,17 @@ local function Nearest(spots, p)
 end
 
 function Controller:PlanLanes(team, to, field, now)
-	local own = Nearest(WETSAND.SpawnPoints(team), to)
+	local own = Nearest(WS.SpawnPoints(team), to)
 	if not own then return end
 	local from = Point(own:GetPos())
-	local enemySpawns = WETSAND.SpawnPoints(AiWar.EnemyOf(team))
+	local enemySpawns = WS.SpawnPoints(AiWar.EnemyOf(team))
 	local function EnemySpawnNear(p) return Point(Nearest(enemySpawns, p):GetPos()) end
 	local defenses = #enemySpawns > 0 and self:EnemyDefenses(field, team) or {}
 	local plan = { to = to, planning = true, tries = 0, penalized = {}, lanes = { key = team .. ":" .. now },
-		blockers = WETSAND.Feature("npc"):BlockerGeneration(),
+		blockers = WS.Feature("npc"):BlockerGeneration(),
 		specs = Lanes.Plans(from, to, defenses, EnemySpawnNear) }
 	self.lanePlans[team] = plan
-	local npcs = WETSAND.Feature("npc")
+	local npcs = WS.Feature("npc")
 	local function Finish()
 		plan.planning = false
 		if #plan.lanes > 0 then
@@ -1971,7 +1971,7 @@ function Controller:PlanLanes(team, to, field, now)
 			strategy = Lanes.Strategy,
 			limits = HL2Path.SOLDIER_LIMITS,
 			bot = { entIndex = 0, now = CurTime(), team = team, route = TFBot.FASTEST_ROUTE, miniBoss = false,
-				roundWon = false, winningTeam = WETSAND.TEAM_UNASSIGNED, penalized = plan.penalized },
+				roundWon = false, winningTeam = WS.TEAM_UNASSIGNED, penalized = plan.penalized },
 			onDone = function(legAreas, found)
 				if self.lanePlans[team] ~= plan then return end
 				if not legAreas then return done(nil) end
@@ -2010,7 +2010,7 @@ end
 -- which a KOTH round makes: none in Sandbox mode or between rounds), with
 -- the part in waitingFor.
 function Controller:Survey(now)
-	local phase = AiWar.PhaseOf(WETSAND.Active(), WETSAND.State(), self.winner)
+	local phase = AiWar.PhaseOf(WS.Active(), WS.State(), self.winner)
 	local field = self:Field(phase, now)
 	self:RefreshCartBounds()
 	self.waitingFor = self.scenario:Lacks(field)
@@ -2059,13 +2059,13 @@ end
 function Controller:SightAll(now)
 	local board = self.war.hunt
 	for _, ply in ipairs(player.GetAll()) do
-		local team = WETSAND.TeamOf(ply)
-		local enemy = WETSAND.EnemyOf(team)
-		if ply:Alive() and enemy ~= WETSAND.TEAM_UNASSIGNED then board:Report(enemy, ply, ply:GetPos(), now) end
+		local team = WS.TeamOf(ply)
+		local enemy = WS.EnemyOf(team)
+		if ply:Alive() and enemy ~= WS.TEAM_UNASSIGNED then board:Report(enemy, ply, ply:GetPos(), now) end
 	end
 	for ent, entry in pairs(self.soldiers) do
-		local enemy = WETSAND.EnemyOf(entry.soldier.team)
-		if IsValid(ent) and ent:Health() > 0 and enemy ~= WETSAND.TEAM_UNASSIGNED then board:Report(enemy, ent, ent:GetPos(), now) end
+		local enemy = WS.EnemyOf(entry.soldier.team)
+		if IsValid(ent) and ent:Health() > 0 and enemy ~= WS.TEAM_UNASSIGNED then board:Report(enemy, ent, ent:GetPos(), now) end
 	end
 end
 
@@ -2078,7 +2078,7 @@ end
 -- for them. A trigger beside a door that only closes it is left alone.
 local function OpensADoor(trigger, doors)
 	local mins, maxs = trigger:WorldSpaceAABB()
-	local outputs = WETSAND.KeyValues(trigger).outputs
+	local outputs = WS.KeyValues(trigger).outputs
 	for _, door in ipairs(doors) do
 		local doorMins, doorMaxs = door:WorldSpaceAABB()
 		local name = door:GetName()
@@ -2126,10 +2126,10 @@ end
 -- Slots (foundation.aiwar.slots) -------------------------------------------------------
 -- Each faction's slots are its size; while mp_aiwar_team_size is a size,
 -- every faction is resized to it. The AI War panel's slot list edits them
--- (mp_aiwar_slots_*, wetsand/sh_aiwar.lua), which turns the team size to
+-- (mp_aiwar_slots_*, ws/sh_aiwar.lua), which turns the team size to
 -- Slots.CUSTOM_SIZE, and shows them to the admins who asked (aiwar_slots).
 
-local SLOTS_FILE = "wetsand_aiwar_slots.json" -- under garrysmod/data
+local SLOTS_FILE = "ws_aiwar_slots.json" -- under garrysmod/data
 local SLOT_SYNC_INTERVAL = 0.5
 
 local SlotFile = {}
@@ -2209,7 +2209,7 @@ function Controller:SetSlotCount(team, count)
 	for _, ent in ipairs(self.slots:Resize(faction, count)) do ent:Remove() end
 	if self.war and count > before then self.war:CallWave(team) end
 	self:SlotsChanged()
-	return { string.format("mp_aiwar_slots_size: the %s (%s) keep %d slots", faction, WETSAND.TeamName[team], count) }
+	return { string.format("mp_aiwar_slots_size: the %s (%s) keep %d slots", faction, WS.TeamName[team], count) }
 end
 
 -- The slots go, and their soldiers with them (the slot list's Remove).
@@ -2315,21 +2315,21 @@ function Controller:SyncSlots(now)
 	local signature = Signature(fields)
 	if not now and signature == self.slotSignature then return end
 	self.slotSignature = signature
-	WETSAND.Events.Fire("aiwar_slots", fields, viewers)
+	WS.Events.Fire("aiwar_slots", fields, viewers)
 end
 
 -- An admin's AI War panel asks for the slots: they are sent now and
 -- whenever they change.
 function Controller:WatchSlots(ply)
 	self.slotViewers[ply] = true
-	WETSAND.Events.Fire("aiwar_slots", self:SlotFields(), ply)
+	WS.Events.Fire("aiwar_slots", self:SlotFields(), ply)
 end
 
 -- The slot list in the console (mp_aiwar_slots_print).
 function Controller:SlotReport()
 	local lines = { "mp_aiwar_team_size " .. TeamSize() .. (TeamSize() == Slots.CUSTOM_SIZE and " (each side's own slots)" or "") }
 	for _, entry in ipairs(self:SlotFields().teams) do
-		lines[#lines + 1] = string.format("%s (%s): %d slots", WETSAND.TeamName[entry.team], entry.faction, #entry.slots)
+		lines[#lines + 1] = string.format("%s (%s): %d slots", WS.TeamName[entry.team], entry.faction, #entry.slots)
 		for _, row in ipairs(entry.slots) do
 			local soldier = row.index > 0 and string.format("%s #%d, %s, %s%s", row.class, row.index, row.role, row.squad,
 				row.leads and " (leads)" or "") or "empty"
@@ -2444,15 +2444,15 @@ end
 -- in the chat when it starts or joins the countdown to Gameplay mode, an
 -- announcement when it starts in Gameplay mode.
 local function Story()
-	local red, blue = Controller.war:Faction(WETSAND.TEAM_RED).name, Controller.war:Faction(WETSAND.TEAM_BLUE).name
+	local red, blue = Controller.war:Faction(WS.TEAM_RED).name, Controller.war:Faction(WS.TEAM_BLUE).name
 	local sizes = Controller:Sizes()
 	local strength = sizes[RED] == sizes[BLUE] and string.format("%d soldiers a side", sizes[RED])
 		or string.format("%d %s and %d %s soldiers", sizes[RED], red, sizes[BLUE], blue)
 	return {
 		title = "AI war declared!",
 		lines = {
-			string.format("The %s fight for %s, the %s for %s.", red, WETSAND.TeamName[WETSAND.TEAM_RED], blue,
-				WETSAND.TeamName[WETSAND.TEAM_BLUE]),
+			string.format("The %s fight for %s, the %s for %s.", red, WS.TeamName[WS.TEAM_RED], blue,
+				WS.TeamName[WS.TEAM_BLUE]),
 			strength .. ", reinforced in respawn waves; the soldiers you spawn join their side.",
 		},
 		announcement = string.format("AI war: the %s and the %s join the fight, %s", red, blue, strength),
@@ -2483,7 +2483,7 @@ function Controller:Start()
 		bases = self:Bases().bases,
 	})
 	if lacks then return false, MAP_LACKS[lacks] end
-	if not WETSAND.NavMeshUsable() then return false, NO_NAV_MESH end
+	if not WS.NavMeshUsable() then return false, NO_NAV_MESH end
 	self.scenario = variant:New()
 	self.winner = nil
 	self.waitingFor = nil
@@ -2492,14 +2492,14 @@ function Controller:Start()
 	self.paused = GetConVar("ns_soldiers_paused"):GetBool()
 	self.gates = nil
 	SetGlobal2Bool(ACTIVE_KEY, true)
-	WETSAND.Notify(Notices.WarStarted())
+	WS.Notify(Notices.WarStarted())
 	self:OpenDoorsToSoldiers()
 	self:SetForcefieldsPassable(true)
 	for _, ent in ipairs(ents.GetAll()) do
 		self:Consider(ent)
 		self:NoteMonster(ent)
 	end
-	WETSAND.Feature("gamemode"):Request(Gamemode.GAMEPLAY, Gamemode.SOURCE_AI_WAR, nil, Story())
+	WS.Feature("gamemode"):Request(Gamemode.GAMEPLAY, Gamemode.SOURCE_AI_WAR, nil, Story())
 	return true
 end
 
@@ -2527,11 +2527,11 @@ function Controller:End()
 	self.scenario = nil
 	self.winner = nil
 	SetGlobal2Bool(ACTIVE_KEY, false)
-	WETSAND.Notify(Notices.WarEnded())
+	WS.Notify(Notices.WarEnded())
 	return true
 end
 
--- Debugging: wetsand_aiwar_report and wetsand_aiwar_debug ------------------------------
+-- Debugging: ws_aiwar_report and ws_aiwar_debug ------------------------------
 
 local DEBUG_INTERVAL = 0.5
 local DEBUG_MAX_POINTS = 24
@@ -2555,10 +2555,10 @@ local function SquadLine(member)
 	return string.format("in %s, led by #%s", of, IsValid(handle) and handle:EntIndex() or "?")
 end
 
--- wetsand_aiwar_debug_full shows the whole action stack instead, one
+-- ws_aiwar_debug_full shows the whole action stack instead, one
 -- level per step: NextSoldier > StrategyMonitor > ... > Travel
--- (created with the war's other convars, in wetsand/sh_aiwar.lua).
-local DEBUG_FULL = GetConVar("wetsand_aiwar_debug_full")
+-- (created with the war's other convars, in ws/sh_aiwar.lua).
+local DEBUG_FULL = GetConVar("ws_aiwar_debug_full")
 
 local function ActionLine(fullName)
 	if DEBUG_FULL:GetBool() then return (fullName:gsub("/", " > ")) end
@@ -2635,7 +2635,7 @@ local function DescribeBlocker(blocker)
 			tostring(blocker:GetInternalVariable("m_iSolidity")), tostring(blocker:GetInternalVariable("m_iszExcludedClass")),
 			tostring(blocker:GetInternalVariable("m_bInvertExclusion")))
 	end
-	local door = IsDoor(blocker) and WETSAND.Feature("npc"):DoorState(blocker)
+	local door = IsDoor(blocker) and WS.Feature("npc"):DoorState(blocker)
 	if door then
 		local opener = door.controlled and ("a trigger" .. (door.owner and (" for " .. (TEAM_LABEL[door.owner] or door.owner)) or "")) or "none"
 		local routes = door.blocks == nil and "open" or door.blocks == "any" and "closed to everyone" or ("closed to " .. (TEAM_LABEL[door.blocks] or door.blocks))
@@ -2676,7 +2676,7 @@ function Controller:Report()
 	local field = self.war:Field()
 	lines[1] = string.format("AI war, %s scenario: phase %s, %d nav areas, %d spawn-door triggers open to NPCs, %d route searches running",
 		self.scenario.NAME, field and field.phase.name or "none", navmesh.GetNavAreaCount(), table.Count(self.doorFlags),
-		WETSAND.Feature("npc"):SearchesRunning())
+		WS.Feature("npc"):SearchesRunning())
 	if self.waitingFor then lines[#lines + 1] = "  waiting for the field's " .. self.waitingFor .. ", which the round brings" end
 	for _, team in ipairs({ RED, BLUE }) do lines[#lines + 1] = self:ScenarioLine(field, team) end
 	for team, cart in pairs(field and field.carts or {}) do
@@ -2818,7 +2818,7 @@ function Controller:SendDebug(now)
 	self.nextDebug = now + DEBUG_INTERVAL
 	local viewers = {}
 	for _, ply in ipairs(player.GetAll()) do
-		if ply.wetsandAiwarDebug then viewers[#viewers + 1] = ply end
+		if ply.wsAiwarDebug then viewers[#viewers + 1] = ply end
 	end
 	if #viewers == 0 then return end
 	local list = {}
@@ -2920,7 +2920,7 @@ function Controller:SendDebug(now)
 			cover = state.coverSpot and ToVector(state.coverSpot) or nil,
 		}
 	end
-	WETSAND.Events.Fire("aiwar_debug", {
+	WS.Events.Fire("aiwar_debug", {
 		fire_teams = fireTeams,
 		lines = lines,
 		fronts = fronts,
@@ -2937,7 +2937,7 @@ local function Tell(ply, lines)
 	end
 end
 
-concommand.Add("wetsand_aiwar_report", function(ply)
+concommand.Add("ws_aiwar_report", function(ply)
 	if IsValid(ply) and not ply:IsAdmin() then return end
 	if not Controller.war then
 		Tell(ply, { "AI war: not running" })
@@ -3072,16 +3072,16 @@ AdminCommand("ns_tactics_reset", function()
 	return { "ns_tactics_reset: every tactics constant back to its default" }
 end, "Put every NextSoldier tactics constant back to its default")
 
--- The overlay is the nbdebug feature's AIWAR layer (wetsand_nb_debug AIWAR),
--- drawn with the other NPC debug layers; it sets ply.wetsandAiwarDebug.
-concommand.Add("wetsand_aiwar_debug", function(ply)
+-- The overlay is the nbdebug feature's AIWAR layer (ws_nb_debug AIWAR),
+-- drawn with the other NPC debug layers; it sets ply.wsAiwarDebug.
+concommand.Add("ws_aiwar_debug", function(ply)
 	if not IsValid(ply) or not ply:IsAdmin() then return end
-	WETSAND.Feature("nbdebug"):ToggleLayer(ply, WETSAND.require("foundation.npc.debug").AIWAR)
-end, nil, "Toggle drawing each AI war soldier's route, goal and state (wetsand_nb_debug AIWAR)")
+	WS.Feature("nbdebug"):ToggleLayer(ply, WS.require("foundation.npc.debug").AIWAR)
+end, nil, "Toggle drawing each AI war soldier's route, goal and state (ws_nb_debug AIWAR)")
 
 -- The soldiers' Npcs, for the nbdebug feature's other layers (PATH, COST,
--- BEHAVIOR, NAV): see the npc controller's WetsandNbDebugNpcs.
-hook.Add("WetsandNbDebugNpcs", "wetsand_aiwar", function(found)
+-- BEHAVIOR, NAV): see the npc controller's WSNbDebugNpcs.
+hook.Add("WSNbDebugNpcs", "ws_aiwar", function(found)
 	for ent, entry in pairs(Controller.soldiers) do
 		if IsValid(ent) then found[ent] = entry.npc end
 	end
@@ -3091,7 +3091,7 @@ end)
 -- asks its orders, with the answer, and every event it tells them, printed
 -- to the server console. Aim at a soldier (or give its entity index) to
 -- toggle it; no soldier in sight turns all tracing off.
-concommand.Add("wetsand_aiwar_trace", function(ply, _, args)
+concommand.Add("ws_aiwar_trace", function(ply, _, args)
 	if IsValid(ply) and not ply:IsAdmin() then return end
 	local ent = args[1] and Entity(tonumber(args[1]) or -1) or (IsValid(ply) and ply:GetEyeTrace().Entity)
 	local function Say(text)
@@ -3111,7 +3111,7 @@ end, nil, "Trace the queries and events between an AI war soldier (aimed at, or 
 
 -- Hooks ------------------------------------------------------------------------------
 
-hook.Add("Think", "wetsand_aiwar", function()
+hook.Add("Think", "ws_aiwar", function()
 	if not Controller.war then return end
 	Controller:Think(CurTime())
 	Controller:SendDebug(CurTime())
@@ -3121,7 +3121,7 @@ end)
 -- Each tick, a moving soldier's pace and the door watchdog.
 -- A medic's beam: HEAL_RATE health a second (TF2's medigun) to its target
 -- while it is alive, in reach (HEAL_REACH) and in sight, up to its most.
--- The beam is shown while it heals ("WetsandHealing", drawn on clients),
+-- The beam is shown while it heals ("WSHealing", drawn on clients),
 -- and the medic speaks on taking a new patient, at most every HEAL_VOICE.
 local HEAL_RATE, HEAL_REACH, HEAL_VOICE = 24, 520, 10
 
@@ -3134,14 +3134,14 @@ function Controller:ApplyHeal(ent, entry, dt)
 		local tr = util.TraceLine({ start = ent:WorldSpaceCenter(), endpos = target:WorldSpaceCenter(), mask = MASK_SOLID_BRUSHONLY })
 		healing = not tr.Hit
 	end
-	local shown = ent:GetNW2Entity("WetsandHealing")
+	local shown = ent:GetNW2Entity("WSHealing")
 	if not healing then
-		if IsValid(shown) then ent:SetNW2Entity("WetsandHealing", NULL) end
+		if IsValid(shown) then ent:SetNW2Entity("WSHealing", NULL) end
 		soldier.healCarry = 0
 		return
 	end
 	if shown ~= target then
-		ent:SetNW2Entity("WetsandHealing", target)
+		ent:SetNW2Entity("WSHealing", target)
 		local kit = soldier.kit or {}
 		if kit.beamSound then ent:EmitSound(kit.beamSound, 70, 110) end
 		local lines = MedicLines(kit)
@@ -3168,15 +3168,15 @@ end
 
 cvars.AddChangeCallback("ns_soldiers_paused", function(_, _, value)
 	Controller:SetPaused(value ~= "0")
-end, "wetsand_aiwar")
+end, "ws_aiwar")
 
 cvars.AddChangeCallback("ns_squads_auto_enabled", function(_, _, value)
 	if Controller.war then Controller.war:SetAutoSquads(value ~= "0") end
-end, "wetsand_aiwar")
+end, "ws_aiwar")
 
-cvars.AddChangeCallback("wetsand_aiwar_sitting_enabled", function(_, _, value)
+cvars.AddChangeCallback("ws_aiwar_sitting_enabled", function(_, _, value)
 	if value == "0" then Controller:StandSeated() end
-end, "wetsand_aiwar")
+end, "ws_aiwar")
 
 -- A seated soldier rides its seat: moved with the cart every tick, facing
 -- out over its side; a cart gone, it stands.
@@ -3191,19 +3191,19 @@ function Controller:CarrySeated(ent, soldier)
 	if ent.loco then ent.loco:SetVelocity(vector_origin) end
 end
 
-hook.Add("Tick", "wetsand_aiwar_move", function()
+hook.Add("Tick", "ws_aiwar_move", function()
 	if not Controller.war then return end
 	local dt = engine.TickInterval()
 	for ent, entry in pairs(Controller.soldiers) do
 		if IsValid(ent) and entry.soldier.seat then Controller:CarrySeated(ent, entry.soldier) end
 		if IsValid(ent) then
 			if entry.soldier.moveTarget then entry.soldier:Move(dt) end
-			if entry.soldier.healTarget or IsValid(ent:GetNW2Entity("WetsandHealing")) then Controller:ApplyHeal(ent, entry, dt) end
+			if entry.soldier.healTarget or IsValid(ent:GetNW2Entity("WSHealing")) then Controller:ApplyHeal(ent, entry, dt) end
 		end
 	end
 end)
 
-hook.Add("OnEntityCreated", "wetsand_aiwar", function(ent)
+hook.Add("OnEntityCreated", "ws_aiwar", function(ent)
 	if not Controller.war then return end
 	timer.Simple(0, function()
 		if not Controller.war or not IsValid(ent) then return end
@@ -3211,11 +3211,11 @@ hook.Add("OnEntityCreated", "wetsand_aiwar", function(ent)
 	end)
 end)
 
-hook.Add("EntityRemoved", "wetsand_aiwar", function(ent)
+hook.Add("EntityRemoved", "ws_aiwar", function(ent)
 	if Controller.war then Controller:Discharge(ent) end
 end)
 
-hook.Add("EntityTakeDamage", "wetsand_aiwar", function(target, dmg)
+hook.Add("EntityTakeDamage", "ws_aiwar", function(target, dmg)
 	local soldier = Controller.war and Controller.soldiers[target]
 	if soldier then
 		local train = Controller:CartTrigger(dmg)
@@ -3230,17 +3230,17 @@ hook.Add("EntityTakeDamage", "wetsand_aiwar", function(target, dmg)
 	if entry and dmg:GetDamage() > 0 then entry.soldier.hurtAt = CurTime() end
 end)
 
-hook.Add("EntityFireBullets", "wetsand_aiwar", function(ent, data)
+hook.Add("EntityFireBullets", "ws_aiwar", function(ent, data)
 	if Controller.war then Controller:HearShot(ent, data) end
 end)
 
-hook.Add("OnNPCKilled", "wetsand_aiwar", function(ent)
+hook.Add("OnNPCKilled", "ws_aiwar", function(ent)
 	if Controller.war then Controller:Discharge(ent) end
 end)
 
 -- A cleanup (every full round reset) removes the soldiers and remakes the
 -- map's triggers: the doors are opened again and the first wave comes at once.
-hook.Add("PostCleanupMap", "wetsand_aiwar", function()
+hook.Add("PostCleanupMap", "ws_aiwar", function()
 	if not Controller.war then return end
 	Controller.doorFlags = {}
 	Controller:OpenDoorsToSoldiers()
@@ -3257,17 +3257,17 @@ end)
 -- pl_goldrush) starts with everyone back at spawn: a stage keeps the map
 -- as it is, so without this the soldiers would stay where the last stage
 -- left them.
-hook.Add("WetsandRoundActivate", "wetsand_aiwar", function()
+hook.Add("WSRoundActivate", "ws_aiwar", function()
 	if Controller.war then Controller:RespawnAll() end
 end)
 
-hook.Add("WetsandRoundWin", "wetsand_aiwar", function(winner, reason)
+hook.Add("WSRoundWin", "ws_aiwar", function(winner, reason)
 	if Controller.war then Controller:RoundWon(winner, reason) end
 end)
 
 -- Frozen (mp_chattime at the match's end): every soldier stands still and
 -- holds its fire (the bridge's NSFrozen).
-hook.Add("WetsandFreeze", "wetsand_aiwar", function(on)
+hook.Add("WSFreeze", "ws_aiwar", function(on)
 	for ent in pairs(Controller.soldiers) do
 		if IsValid(ent) then ent.NSFrozen = on or nil end
 	end
@@ -3275,7 +3275,7 @@ end)
 
 -- Sudden death over: its surviving soldiers overhealed as its players are
 -- (reward: max health, health -> the new health).
-hook.Add("WetsandSuddenDeathOver", "wetsand_aiwar", function(reward)
+hook.Add("WSSuddenDeathOver", "ws_aiwar", function(reward)
 	for ent in pairs(Controller.soldiers) do
 		if IsValid(ent) and ent:Health() > 0 then ent:SetHealth(reward(ent:GetMaxHealth(), ent:Health())) end
 	end
@@ -3283,12 +3283,12 @@ end)
 
 -- The match won is a round won to its music: the winners hunt, the losers
 -- are humiliated.
-hook.Add("WetsandMatchWin", "wetsand_aiwar", function(winner)
+hook.Add("WSMatchWin", "ws_aiwar", function(winner)
 	if Controller.war then Controller:RoundWon(winner) end
 end)
 
 -- The team's live soldiers, who fight sudden death out with its players.
-hook.Add("WetsandTeamCombatants", "wetsand_aiwar", function(team)
+hook.Add("WSTeamCombatants", "ws_aiwar", function(team)
 	if not Controller.war then return end
 	local count = 0
 	for ent, entry in pairs(Controller.soldiers) do
@@ -3298,7 +3298,7 @@ hook.Add("WetsandTeamCombatants", "wetsand_aiwar", function(team)
 end)
 
 -- The round keeps running with no human on a team while the war is on.
-hook.Add("WetsandHaveCombatants", "wetsand_aiwar", function()
+hook.Add("WSHaveCombatants", "ws_aiwar", function()
 	if Controller.war then return true end
 end)
 

@@ -1,5 +1,5 @@
 -- The DrGBase factions of TF2's two teams, "Team RED" and "Team BLU"
--- (wetsand/sh_factions.lua makes them FACTION_TEAM_RED and FACTION_TEAM_BLU,
+-- (ws/sh_factions.lua makes them FACTION_TEAM_RED and FACTION_TEAM_BLU,
 -- beside DrGBase's own FACTION_COMBINE and the rest). A DrGBase NextBot or
 -- player on a playing team is in its team's faction and no other, so its
 -- teammates are its allies (DrGBase's D_LI for a shared faction); the AI war

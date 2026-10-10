@@ -1,5 +1,5 @@
 -- The actor port: what an NPC model may ask of the entity it drives. The
--- entity wetsand_nextbot implements it and tests/fake_actor.lua fakes it.
+-- entity ws_nextbot implements it and tests/fake_actor.lua fakes it.
 -- Method names are NextBot's (INextBot, IBody, ILocomotion,
 -- CBaseCombatCharacter) wherever NextBot has one.
 --

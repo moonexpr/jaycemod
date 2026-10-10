@@ -1,9 +1,9 @@
 -- The npc feature's view: the boss health bar (TF2's monster resource
--- meter), drawn from the wetsand_boss_health Global2 the npc controller
+-- meter), drawn from the ws_boss_health Global2 the npc controller
 -- networks (0 hides it); the bosses' cues; the bomb heads' bombs; and
 -- Merasmus's body effects (C_Merasmus). The particle files are sh.lua's, in
 -- both realms.
-local BOSS_HEALTH = "wetsand_boss_health"
+local BOSS_HEALTH = "ws_boss_health"
 
 -- Under the round timer (cl_hud.lua), centred.
 local BAR_TOP = 0.17 -- of the screen height
@@ -26,7 +26,7 @@ function View:DrawBossHealth(w, h)
 	surface.DrawRect(x, y, math.floor(width * fraction), BAR_HEIGHT)
 end
 
-hook.Add("HUDPaint", "wetsand_boss_health_bar", function()
+hook.Add("HUDPaint", "ws_boss_health_bar", function()
 	View:DrawBossHealth(ScrW(), ScrH())
 end)
 
@@ -34,7 +34,7 @@ end)
 -- them: the cue's sound on the local player (the Horsemann's and
 -- MONOCULUS's music and lines), and its line in the chat. A player the
 -- server named whom this client cannot see is "Someone".
-local BossEvents = WETSAND.require("foundation.npc.boss_events")
+local BossEvents = WS.require("foundation.npc.boss_events")
 local UNKNOWN_PLAYER = "Someone"
 
 local function NameOf(ply)
@@ -50,7 +50,7 @@ function View:PlayBossCue(name, fields)
 end
 
 for _, name in ipairs(BossEvents.NAMES) do
-	WETSAND.Events.Listen(name, "wetsand_npc_view", function(fields)
+	WS.Events.Listen(name, "ws_npc_view", function(fields)
 		View:PlayBossCue(name, fields)
 	end)
 end
@@ -103,11 +103,11 @@ function View:DrawBombHead(ply)
 	bomb.hat:DrawModel()
 end
 
-WETSAND.Events.Listen(BossEvents.HALLOWEEN_BOMB_HEAD, "wetsand_npc_view", function(fields)
+WS.Events.Listen(BossEvents.HALLOWEEN_BOMB_HEAD, "ws_npc_view", function(fields)
 	View:SetBombHead(fields.player, fields.duration)
 end)
 
-hook.Add("PostPlayerDraw", "wetsand_bomb_heads", function(ply)
+hook.Add("PostPlayerDraw", "ws_bomb_heads", function(ply)
 	View:DrawBombHead(ply)
 end)
 
@@ -146,8 +146,8 @@ end
 -- state: { revealed, aoeAttack, stunned }. Each effect starts when its flag
 -- turns on and stops when it turns off.
 function View:UpdateMerasmus(ent, state)
-	ent.wetsandEffects = ent.wetsandEffects or {}
-	local running = ent.wetsandEffects
+	ent.wsEffects = ent.wsEffects or {}
+	local running = ent.wsEffects
 	for _, effect in ipairs(MERASMUS_EFFECTS) do
 		local on, particles = state[effect.key], running[effect.particle]
 		if on and not (particles and particles:IsValid()) then

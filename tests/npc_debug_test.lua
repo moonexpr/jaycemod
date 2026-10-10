@@ -1,4 +1,4 @@
--- foundation.npc.debug: the NextBot debug layer's rules (wetsand_nb_debug,
+-- foundation.npc.debug: the NextBot debug layer's rules (ws_nb_debug,
 -- after the engine's nb_ commands).
 local T = dofile("tests/harness.lua")
 local Debug = T.require("foundation.npc.debug")
@@ -508,9 +508,9 @@ T.test("a nav area's label is its id, then any attributes the sidecar gives", fu
 	T.eq(Debug.NavLabel(812, { "BLUE_SPAWN_ROOM", "NO_SPAWNING" }), "#812 BLUE_SPAWN_ROOM NO_SPAWNING", "with attributes")
 end)
 
--- The dump (wetsand_nb_dump)
+-- The dump (ws_nb_dump)
 
-T.test("a dump is named for the map, the NPC and the time, under the data folder's wetsand_nb", function()
+T.test("a dump is named for the map, the NPC and the time, under the data folder's ws_nb", function()
 	T.eq(Debug.DumpPath("plr_hightower", 45, 1700000000), Debug.DUMP_DIR .. "/plr_hightower_45_1700000000.json", "path")
 end)
 

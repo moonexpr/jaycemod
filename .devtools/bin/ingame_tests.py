@@ -8,7 +8,7 @@ write a report.
 It starts the server (srcds.py) on the first map, then for each map: loads
 the Lua runner (ingame/runner.lua) with lua_run, runs the map's checks
 (ingame/checks/<name>.lua) one at a time, reads each one's JSON record from
-garrysmod/data/wetsand_tests/results/, and scans the map's part of
+garrysmod/data/ws_tests/results/, and scans the map's part of
 garrysmod/console.log for Lua errors. It stops the server, removes what it
 put in the GMod install, and writes .devtools/artifacts/ingame-report-<date>.md
 with ingame-<date>/ (the records and each map's console log) beside it.
@@ -62,10 +62,10 @@ INGAME_DIR = HERE / "ingame"
 CHECKS_DIR = INGAME_DIR / "checks"
 REPO = HERE.parents[1]
 TF_MAPS = srcds.GMOD_DIR.parent.parent / "Team Fortress 2" / "tf" / "maps"
-DATA_NAME = "wetsand_tests"
+DATA_NAME = "ws_tests"
 SCRIPT_EXT = ".txt"  # what the runner reads; GMod's data folder is for data files
 BOOT = f'lua_run RunString(file.Read("{DATA_NAME}/harness/runner{SCRIPT_EXT}", "DATA"), "{DATA_NAME}/runner")'
-RUNNER_READY = "wetsand_tests: runner ready on "
+RUNNER_READY = "ws_tests: runner ready on "
 POLL_SECONDS = 1
 BOOT_TIMEOUT = 60
 MAP_LOAD_TIMEOUT = 300
@@ -113,7 +113,7 @@ PLAN: Tuple[MapRun, ...] = (
         load(True, has=["rounds", "capture", "payload"], lacks=["koth"] + HALLOWEEN_FEATURES,
              lacks_modules=["foundation.rounds.koth"]),
         Step("defaults_change", 20),
-        Step("defaults_apply", 20, before="wetsand_defaults_apply"),
+        Step("defaults_apply", 20, before="ws_defaults_apply"),
         Step("aiwar", 90),
         Step("aiwar_sitting", 300),
         GAMEPLAY_START,
@@ -419,7 +419,7 @@ class Harness:
         args = dict(step.args, before_reply=before[step.before]) if step.before else step.args
         (self.data_root / "harness" / "args" / f"{run_id}{SCRIPT_EXT}").write_text(json.dumps(args))
         result_path = self.data_root / "results" / f"{run_id}.json"
-        reply = self.server.rcon(f'lua_run WETSAND_TESTS.Run("{step.check}", "{run_id}")')
+        reply = self.server.rcon(f'lua_run WS_TESTS.Run("{step.check}", "{run_id}")')
         if "[ERROR]" in reply:
             return StepResult(step.check, "error", (), {}, reply.strip(), 0)
         deadline = time.monotonic() + step.timeout
@@ -439,7 +439,7 @@ class Harness:
         if first:
             self.server.start()
         else:
-            self.server.rcon("lua_run if WETSAND_TESTS then WETSAND_TESTS.KickBots() end")
+            self.server.rcon("lua_run if WS_TESTS then WS_TESTS.KickBots() end")
             self.server.rcon("sv_gameplay_enabled 0")
             self.server.rcon(f"changelevel {run.map}")
         self.server.wait_for_map(run.map, MAP_LOAD_TIMEOUT)

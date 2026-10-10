@@ -1,4 +1,4 @@
--- tf_projectile_rocket (CTFProjectile_Rocket): a rocket, a wetsand_projectile
+-- tf_projectile_rocket (CTFProjectile_Rocket): a rocket, a ws_projectile
 -- bound to foundation.projectile.rocket. It flies straight from where it is
 -- spawned and blows up on the first thing it touches, through the combat
 -- controller's Explode.
@@ -10,14 +10,14 @@
 -- fires these (eyeball_projectile.mdl, crit unless a spell's).
 AddCSLuaFile()
 
-ENT.Base = "wetsand_projectile"
+ENT.Base = "ws_projectile"
 ENT.Type = "anim"
 ENT.Spawnable = false
 ENT.Variant = "foundation.projectile.rocket"
 
 if CLIENT then return end
 
-local Base = baseclass.Get("wetsand_projectile")
+local Base = baseclass.Get("ws_projectile")
 
 local PARTICLE_FILES = {
 	"particles/rockettrail.pcf",
@@ -43,7 +43,7 @@ local function ReadyParticles(Rocket)
 end
 
 function ENT:Initialize()
-	local Rocket = WETSAND.require(self.Variant)
+	local Rocket = WS.require(self.Variant)
 	local config = self:Config()
 	config.model = config.model or Rocket.MODEL
 	ReadyParticles(Rocket)
@@ -58,7 +58,7 @@ end
 
 -- CTFBaseRocket::Explode: the thing it hit takes the full damage.
 function ENT:Detonate(trace)
-	local Rocket = WETSAND.require(self.Variant)
+	local Rocket = WS.require(self.Variant)
 	local origin = self:GetPos()
 	if trace.Hit then origin = trace.HitPos + trace.HitNormal * PULL_OUT end
 	local blast = Rocket.Blast(self.projectile.state, origin)
@@ -66,6 +66,6 @@ function ENT:Detonate(trace)
 	if IsValid(trace.Entity) then blast.enemy = trace.Entity end
 	ParticleEffect(trace.HitWorld and EXPLOSION_WALL or EXPLOSION_MIDAIR, origin, angle_zero)
 	self:EmitSound(EXPLOSION_SOUND)
-	WETSAND.Feature("combat"):Explode(blast)
+	WS.Feature("combat"):Explode(blast)
 	self:Remove()
 end

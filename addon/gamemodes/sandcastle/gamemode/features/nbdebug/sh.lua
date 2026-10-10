@@ -1,8 +1,8 @@
 -- The nbdebug feature's game events: what the controller (sv.lua) and the
 -- aiwar controller send an admin's overlay (cl.lua). Field widths are
 -- foundation.npc.debug's; the AI war's overlay keeps its own below.
-local Debug = WETSAND.require("foundation.npc.debug")
-local E = WETSAND.Events
+local Debug = WS.require("foundation.npc.debug")
+local E = WS.Events
 
 local INDEX = E.UInt(Debug.INDEX_BITS)
 local CORNERS = E.List(E.Vector(), Debug.CORNER_COUNT_BITS)

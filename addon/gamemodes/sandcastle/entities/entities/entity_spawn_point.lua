@@ -21,7 +21,7 @@ end
 
 function ENT:SetSpawned(ent, manager)
 	self.spawned = ent
-	ent:CallOnRemove("wetsand_spawn_point", function()
+	ent:CallOnRemove("ws_spawn_point", function()
 		if not IsValid(self) or not IsValid(manager) then return end
 		self.nodeFree = CurTime() + NODE_FREE_DELAY
 		self:RetryAfter(manager, manager.respawnTime)

@@ -1,4 +1,4 @@
--- tf_zombie (CZombie): TF2's skeleton, a wetsand_combat_nextbot bound to
+-- tf_zombie (CZombie): TF2's skeleton, a ws_combat_nextbot bound to
 -- foundation.npc.zombie, which holds every rule.
 --
 -- Config, given with Configure before Spawn by its spawner or skull
@@ -9,14 +9,14 @@
 -- else (precipice sends Enable) is refused.
 AddCSLuaFile()
 
-ENT.Base = "wetsand_combat_nextbot"
+ENT.Base = "ws_combat_nextbot"
 ENT.Type = "nextbot"
 ENT.Spawnable = false
 ENT.Variant = "foundation.npc.zombie"
 
 if CLIENT then return end
 
-local Base = baseclass.Get("wetsand_combat_nextbot")
+local Base = baseclass.Get("ws_combat_nextbot")
 
 local MAX_ACTIVE_NAME = "tf_max_active_zombie"
 local MAX_ACTIVE_HELP = "Skeletons over this many make the oldest (except kings) suicide"
@@ -37,7 +37,7 @@ end
 -- dresses the model and reads the owner; the team the model settles on
 -- (HALLOWEEN for any but RED or BLU) is then the entity's.
 function ENT:Initialize()
-	local Zombie = WETSAND.require(self.Variant)
+	local Zombie = WS.require(self.Variant)
 	local config = Zombie.BindingConfig(self.configured, self.kv or {}, MaxActive(Zombie))
 	self:Configure(config)
 	self:SetModel(Zombie.Model(config.skeletonType))

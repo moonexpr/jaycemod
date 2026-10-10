@@ -139,7 +139,7 @@ T.test("the pre-round ends in the arena round, fought in STALEMATE, as State_Thi
 		"doors_unlock",
 		"state " .. State.STALEMATE,
 		"arena_round_start",
-		"hook WetsandRoundActive",
+		"hook WSRoundActive",
 	}, ", "), "no sudden death, no respawn, the map's timers left alone")
 	T.eq(round:State(), State.STALEMATE, "STALEMATE")
 end)

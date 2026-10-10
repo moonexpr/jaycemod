@@ -12,14 +12,14 @@ local NUMBER_KEYS = {
 }
 
 function ENT:KeyValue(key, value)
-	self.wetsandKv = self.wetsandKv or {}
+	self.wsKv = self.wsKv or {}
 	local field = NUMBER_KEYS[string.lower(key)]
-	if field then self.wetsandKv[field] = tonumber(value) end
+	if field then self.wsKv[field] = tonumber(value) end
 end
 
 function ENT:Initialize()
-	self.koth = WETSAND.Feature("koth")
-	self.koth:BindLogic(self, self.wetsandKv or {})
+	self.koth = WS.Feature("koth")
+	self.koth:BindLogic(self, self.wsKv or {})
 end
 
 function ENT:OnRemove()

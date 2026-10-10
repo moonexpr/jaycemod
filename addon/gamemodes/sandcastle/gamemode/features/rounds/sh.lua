@@ -1,6 +1,6 @@
 -- The rounds feature's game events. The controller fires them; the view
 -- draws them.
-local E = WETSAND.Events
+local E = WS.Events
 local SECONDS_BITS = 32
 
 -- CTeamRoundTimer::AddTimerSeconds: seconds added to (or taken from) the

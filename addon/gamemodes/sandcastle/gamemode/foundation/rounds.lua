@@ -59,7 +59,7 @@ local GAME_TEAMS = { RED, BLUE }
 -- which no playing team is, so every team may win the round.
 RESTRICT_NEITHER = Teams.SPECTATOR
 
--- What the client draws for the mode (wetsand_round_hud_type).
+-- What the client draws for the mode (ws_round_hud_type).
 HUD_NONE = 0
 HUD_CONTROL_POINTS = 1
 HUD_KOTH = 2
@@ -605,7 +605,7 @@ end
 ENTER[State.RND_RUNNING] = function(self, effects)
 	self.nextWave = PerTeam(0)
 	Add(effects, Output("OnStateEnterRoundRunning"))
-	Add(effects, Hook("WetsandRoundActive", {}))
+	Add(effects, Hook("WSRoundActive", {}))
 end
 
 THINK[State.RND_RUNNING] = function(self, effects, now, world)
@@ -628,7 +628,7 @@ end
 ENTER[State.TEAM_WIN] = function(self, effects, now)
 	if self.forceMapReset then self.roundsPlayed = self.roundsPlayed + 1 end
 	self.transitionAt = now + math.max(MIN_BONUS_ROUND_TIME, self.settings.bonusRoundTime)
-	Add(effects, Hook("WetsandRoundWin", { self.winningTeam, self.winReason }))
+	Add(effects, Hook("WSRoundWin", { self.winningTeam, self.winReason }))
 end
 
 THINK[State.TEAM_WIN] = function(self, effects, now, world)
@@ -661,7 +661,7 @@ end
 ENTER[State.STALEMATE] = function(self, effects)
 	if self.mode.STALEMATE_IS_ROUND then
 		Add(effects, Kind("arena_round_start"))
-		Add(effects, Hook("WetsandRoundActive", {}))
+		Add(effects, Hook("WSRoundActive", {}))
 	else
 		Add(effects, Kind("respawn_all"))
 		Add(effects, Kind("hide_timers"))

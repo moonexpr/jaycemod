@@ -14,13 +14,13 @@ end
 -- CTFForceRespawn::ForceRespawn. With a team, only its dead players come back.
 function ENT:ForceRespawn(switchTeams, onlyTeam)
 	for _, ply in ipairs(player.GetAll()) do
-		local team = WETSAND.TeamOf(ply)
-		if team ~= WETSAND.TEAM_UNASSIGNED then
+		local team = WS.TeamOf(ply)
+		if team ~= WS.TEAM_UNASSIGNED then
 			if switchTeams then
-				WETSAND.SetPlayerTeam(ply, WETSAND.EnemyOf(team), true)
-				team = WETSAND.EnemyOf(team)
+				WS.SetPlayerTeam(ply, WS.EnemyOf(team), true)
+				team = WS.EnemyOf(team)
 			end
-			if onlyTeam == WETSAND.TEAM_UNASSIGNED or (team == onlyTeam and not ply:Alive()) then
+			if onlyTeam == WS.TEAM_UNASSIGNED or (team == onlyTeam and not ply:Alive()) then
 				ply:Spawn()
 			end
 		end
@@ -31,9 +31,9 @@ function ENT:ForceRespawn(switchTeams, onlyTeam)
 end
 
 local INPUTS = {
-	forcerespawn = function(self) self:ForceRespawn(false, WETSAND.TEAM_UNASSIGNED) end,
-	forcerespawnswitchteams = function(self) self:ForceRespawn(true, WETSAND.TEAM_UNASSIGNED) end,
-	forceteamrespawn = function(self, value) self:ForceRespawn(false, tonumber(value) or WETSAND.TEAM_UNASSIGNED) end,
+	forcerespawn = function(self) self:ForceRespawn(false, WS.TEAM_UNASSIGNED) end,
+	forcerespawnswitchteams = function(self) self:ForceRespawn(true, WS.TEAM_UNASSIGNED) end,
+	forceteamrespawn = function(self, value) self:ForceRespawn(false, tonumber(value) or WS.TEAM_UNASSIGNED) end,
 }
 
 function ENT:AcceptInput(name, activator, caller, value)

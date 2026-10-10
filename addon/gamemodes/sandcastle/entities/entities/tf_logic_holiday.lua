@@ -29,7 +29,7 @@ end
 -- CTFHolidayEntity's keyfields start at 0 (kHoliday_None).
 function ENT:Initialize()
 	local kv = self.kv or {}
-	self.holiday = WETSAND.Feature("holiday")
+	self.holiday = WS.Feature("holiday")
 	self.holiday:BindHoliday(self, {
 		holidayType = Int(kv.holiday_type),
 		tauntInHell = Int(kv.tauntinhell) > 0,

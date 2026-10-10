@@ -4,8 +4,8 @@
 -- the world, and answers the side questions the combatant port asks: an
 -- entity's team, and whether it stands in a respawn room. The rules live in
 -- the models; this file only finds entities, traces, and deals damage.
-local Combat = WETSAND.require("foundation.combat")
-local Projectile = WETSAND.require("foundation.projectile")
+local Combat = WS.require("foundation.combat")
+local Projectile = WS.require("foundation.projectile")
 
 -- MASK_RADIUS_DAMAGE (tf_gamerules.cpp): what stops a blast.
 local BLAST_MASK = bit.band(MASK_SHOT, bit.bnot(CONTENTS_HITBOX))
@@ -14,16 +14,16 @@ local WEAPON_MIMIC = "foundation.combat.weapon_mimic"
 
 local Controller = {}
 
--- The model for a wetsand_projectile entity; its variant is a
+-- The model for a ws_projectile entity; its variant is a
 -- foundation.projectile part.
 function Controller:BindProjectile(ent, variantName, config)
-	return Projectile.New(WETSAND.require(variantName), config, CurTime())
+	return Projectile.New(WS.require(variantName), config, CurTime())
 end
 
 -- tf_point_weapon_mimic: config from its keyvalues (see
 -- foundation.combat.weapon_mimic). The first mimic loads the model.
 function Controller:BindWeaponMimic(ent, config)
-	return WETSAND.require(WEAPON_MIMIC).New(config)
+	return WS.require(WEAPON_MIMIC).New(config)
 end
 
 -- CTFPointWeaponMimic::Fire, count times: each projectile leaves the
@@ -50,11 +50,11 @@ function Controller:FireWeaponMimic(ent, mimic, count)
 end
 
 -- A player's team; an entity that takes sides reports its own through
--- GetTeamNumber (wetsand_combat_nextbot does); anything else has none.
+-- GetTeamNumber (ws_combat_nextbot does); anything else has none.
 function Controller:TeamOf(ent)
 	if ent:IsPlayer() then return ent:Team() end
 	if ent.GetTeamNumber then return ent:GetTeamNumber() end
-	return WETSAND.TEAM_UNASSIGNED
+	return WS.TEAM_UNASSIGNED
 end
 
 -- Whether ent's centre is inside an active func_respawnroom of any team.
