@@ -194,6 +194,15 @@ function CaptureCurrent(s)
 	return ev
 end
 
+-- An admin's capture for team (Set Team): the area ends a capture for it as
+-- a finished one would, whatever was running.
+function CaptureFor(s, team)
+	local ev = {}
+	s.cappingTeam = team
+	End(s, ev)
+	return ev
+end
+
 -- InputSetControlPoint's BreakCapture
 function Break(s)
 	local ev = {}

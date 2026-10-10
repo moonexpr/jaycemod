@@ -431,18 +431,6 @@ function Controller:ForceOwner(point, team)
 	ApplyPointEvents(self, self:Set():SetOwner(point, team, Capture.CAUSE_FORCE))
 end
 
--- A capture for team as a player's SetOwner input makes it (an admin's Set
--- Team, wetsand/sh_editors_point.lua): its capture sound, the map's outputs
--- (OnOwnerChangedTo..., OnCap...), scoring and the win check. Returns true,
--- or false and why not.
-function Controller:CapturePoint(point, team)
-	if self:Owner(point) == team then return false, "the point is already " .. WETSAND.TeamName[team] .. "'s" end
-	local events = self:Set():SetOwner(point, team, Capture.CAUSE_PLAYER_INPUT, self.rounds:PointsMayBeCaptured())
-	if #events == 0 then return false, "points cannot be captured now" end
-	ApplyPointEvents(self, events)
-	return true
-end
-
 function Controller:SetPointLocked(point, locked)
 	ApplyPointEvents(self, self:Set():SetLocked(point, locked))
 end
@@ -801,6 +789,24 @@ local function ApplyAreaEvents(self, a, point, events)
 		PlayPointSounds(self, point, e)
 		AREA_EVENTS[e.kind](self, a, point, e)
 	end
+end
+
+-- An admin's capture for team (Set Team, wetsand/sh_editors_point.lua), as
+-- a finished capture on its area: the area's OnCap and OnEndCap outputs,
+-- which the map's logic hangs on (cp_steel's relays open the next point's
+-- doors), the respawn adjustments, the capture sounds, the point's outputs,
+-- scoring and the win check. A point no area captures is set as a player's
+-- SetOwner input would. Returns true, or false and why not.
+function Controller:CapturePoint(point, team)
+	if self:Owner(point) == team then return false, "the point is already " .. WETSAND.TeamName[team] .. "'s" end
+	if not self.rounds:PointsMayBeCaptured() then return false, "points cannot be captured now" end
+	local a = AreasOf(self, point)[1]
+	if a then
+		ApplyAreaEvents(self, a, point, Area.CaptureFor(a.state, team))
+	else
+		ApplyPointEvents(self, self:Set():SetOwner(point, team, Capture.CAUSE_PLAYER_INPUT, true))
+	end
+	return true
 end
 
 -- The area's point, when it is one of the set's.
