@@ -3,8 +3,9 @@
 --
 -- A player who dies watches their body (deathcam), then the killer (freezecam),
 -- then living teammates, until the respawn wave (tf_gamerules) spawns them.
--- Spectators (team 1) watch anyone, roam freely, or use the map's
--- info_observer_points. The model of each observer lives in `observing[ply]`;
+-- Spectators (team 1) watch anyone, NPCs too, roam freely, or use the map's
+-- info_observer_points. An admin may spectate an NPC from its right-click
+-- (wetsand_spectate_npc) while in play, and Reload brings them back. The model of each observer lives in `observing[ply]`;
 -- Apply() makes the engine's observer mode and target match it every tick.
 -- The rules themselves are in foundation/spectate.lua.
 local Spec = WETSAND.require("foundation.spectate")
@@ -29,6 +30,13 @@ local function IsSpectator(ply)
 	return ply:Team() == WETSAND.TEAM_SPECTATOR
 end
 
+-- A player in play watching an NPC (wetsand_spectate_npc) observes as a
+-- spectator does: anyone, in any mode.
+local function ObservesAsSpectator(ply)
+	local st = observing[ply]
+	return IsSpectator(ply) or (st ~= nil and st.watch ~= nil)
+end
+
 -- Descriptors for foundation.spectate -----------------------------------------
 
 local function Rules()
@@ -43,6 +51,7 @@ local function Kind(ent)
 	if not IsValid(ent) then return nil end
 	if ent:IsPlayer() then return "player" end
 	if ent:GetClass() == "info_observer_point" then return "point" end
+	if ent:IsNPC() or ent:IsNextBot() then return "npc" end
 	return "entity"
 end
 
@@ -65,6 +74,13 @@ local function Describe(ent)
 			alive = WETSAND.IsAliveInGame(ent),
 			deathTime = st and st.deathTime 
 		}
+	elseif kind == "npc" then
+		return {
+			id = ent,
+			kind = kind,
+			team = WETSAND.TeamNumber(ent),
+			alive = ent:Health() > 0,
+		}
 	elseif kind == "point" then
 		return { 
 			id = ent, 
@@ -84,7 +100,8 @@ local function Describe(ent)
 end
 
 local function Validator(ply)
-	local viewer, rules = { id = ply, team = ply:Team() }, Rules()
+	local team = ObservesAsSpectator(ply) and WETSAND.TEAM_SPECTATOR or ply:Team()
+	local viewer, rules = { id = ply, team = team }, Rules()
 	return function(desc) return Spec.IsValidTarget(viewer, desc, rules) end
 end
 
@@ -101,12 +118,23 @@ local function Watched(train)
 	return false
 end
 
--- Observer points, then players by index, then trains that a watcher follows.
+local function ByIndex(a, b)
+	return a:EntIndex() < b:EntIndex()
+end
+
+-- Observer points, then players by index, then NPCs by index, then trains
+-- that a watcher follows.
 local function Observables()
 	local list = ents.FindByClass("info_observer_point")
 	local players = player.GetAll()
-	table.sort(players, function(a, b) return a:EntIndex() < b:EntIndex() end)
+	table.sort(players, ByIndex)
 	for _, ply in ipairs(players) do list[#list + 1] = ply end
+	local npcs = {}
+	for _, ent in ents.Iterator() do
+		if ent:IsNPC() or ent:IsNextBot() then npcs[#npcs + 1] = ent end
+	end
+	table.sort(npcs, ByIndex)
+	for _, npc in ipairs(npcs) do list[#list + 1] = npc end
 	for _, train in ipairs(ents.FindByClass("func_tracktrain")) do
 		if Watched(train) then list[#list + 1] = train end
 	end
@@ -129,7 +157,7 @@ end
 local function NearestPlayer(ply)
 	local candidates = {}
 	for _, other in ipairs(player.GetAll()) do
-		if IsSpectator(ply) or other:Team() == ply:Team() then candidates[#candidates + 1] = other end
+		if ObservesAsSpectator(ply) or other:Team() == ply:Team() then candidates[#candidates + 1] = other end
 	end
 	local i = Spec.Nearest(Descriptors(candidates, ply:GetPos()), Validator(ply))
 	return candidates[i]
@@ -190,6 +218,15 @@ local function Resolve(ply, st)
 		return true
 	end
 	if IsValidTarget(ply, st.target) then return false end
+	-- the NPC watched died or went: roam on from where its camera was
+	local camera = st.npcCamera
+	if camera then
+		st.npcCamera = nil
+		st.mode, st.target = "roaming", nil
+		ply:SetPos(camera.origin - ply:GetViewOffset())
+		ply:SetEyeAngles(camera.angles)
+		return false
+	end
 	if st.mode == "roaming" then
 		st.target = nil
 		return false
@@ -216,11 +253,24 @@ local function View(ply, st)
 	local phase = Phase(st)
 	if phase == "deathcam" then return OBS_MODE_DEATHCAM, st.killer end
 	if phase == "freezecam" then return OBS_MODE_FREEZECAM, st.killer end
+	-- Resolve may turn an observer whose NPC died to roaming, so the mode is read after it
+	local pinned = Resolve(ply, st)
 	local mode = st.mode
 	-- TF2 re-targets a roaming observer to the required target every frame,
 	-- which pins them there; show it as the camera instead.
-	if Resolve(ply, st) and mode == "roaming" then mode = "chase" end
-	return OBS[Spec.ViewMode(mode, Kind(st.target))], st.target
+	if pinned and mode == "roaming" then mode = "chase" end
+	local view = Spec.ViewMode(mode, Kind(st.target))
+	-- where the camera on a watched NPC is (WETSAND.NpcCamera), to roam from if it dies
+	if Kind(st.target) == "npc" and (view == "in_eye" or view == "chase") then
+		local origin, angles = WETSAND.NpcCamera(st.target, view == "in_eye", ply:EyeAngles())
+		st.npcCamera = {
+			origin = origin,
+			angles = angles,
+		}
+	else
+		st.npcCamera = nil
+	end
+	return OBS[view], st.target
 end
 
 -- CTFPlayer::SetObserverTarget on an observer point: jump to it, take its
@@ -340,15 +390,82 @@ end
 -- CBasePlayer::SetObserverMode into roaming re-targets, which jumps behind
 -- the target (a point's camera is already where the player stands).
 local function CycleMode(ply, st)
-	st.mode = Spec.NextMode(st.mode, IsSpectator(ply))
+	st.mode = Spec.NextMode(st.mode, ObservesAsSpectator(ply))
 	if st.mode == "roaming" and IsValid(st.target) and Kind(st.target) ~= "point" then JumpBehind(ply, st.target) end
 end
 
+-- Spectating an NPC (wetsand_spectate_npc) ------------------------------------------
+
+-- Where a player in play stood, and what they carried, to come back to.
+local function Whereabouts(ply)
+	local weapons = {}
+	for i, weapon in ipairs(ply:GetWeapons()) do weapons[i] = weapon:GetClass() end
+	local active = ply:GetActiveWeapon()
+	return {
+		pos = ply:GetPos(),
+		ang = ply:EyeAngles(),
+		weapons = weapons,
+		active = IsValid(active) and active:GetClass() or nil,
+		health = ply:Health(),
+		armor = ply:Armor(),
+	}
+end
+
+-- An observer turns to the NPC; a player in play starts observing it.
+function WETSAND.SpectateNpc(ply, npc)
+	local st = observing[ply]
+	if st then
+		SetTarget(ply, st, npc)
+		Apply(ply, st)
+		return
+	end
+	local back = Whereabouts(ply)
+	ply:StripWeapons()
+	Begin(ply, {
+		aborted = false,
+		watch = back,
+		target = npc,
+	})
+	ply:ChatPrint("Spectating #" .. npc:EntIndex() .. ": attack and attack2 for the next or previous, jump for the view, "
+		.. "reload to come back")
+end
+
+-- Back where they stood, as they were (the engine needs a spawn to make them
+-- solid again: Player:UnSpectate).
+local function StopWatching(ply, st)
+	local back = st.watch
+	WETSAND.StopObserving(ply)
+	ply:Spawn()
+	ply:SetPos(back.pos)
+	ply:SetEyeAngles(back.ang)
+	ply:StripWeapons()
+	for _, class in ipairs(back.weapons) do ply:Give(class) end
+	if back.active then ply:SelectWeapon(back.active) end
+	ply:SetHealth(back.health)
+	ply:SetArmor(back.armor)
+end
+
+-- Each returns true when the player no longer observes.
 local KEYS = {
 	[IN_ATTACK] = function(ply, st) CycleTarget(ply, st, false) end,
 	[IN_ATTACK2] = function(ply, st) CycleTarget(ply, st, true) end,
 	[IN_JUMP] = CycleMode,
+	[IN_RELOAD] = function(ply, st)
+		if not st.watch then return false end
+		StopWatching(ply, st)
+		return true
+	end,
 }
+
+concommand.Add("wetsand_spectate_npc", function(ply, _, args)
+	if not IsValid(ply) or not ply:IsAdmin() then return end
+	local npc = Entity(tonumber(args[1] or "") or -1)
+	if not (IsValid(npc) and (npc:IsNPC() or npc:IsNextBot()) and npc:Health() > 0) then
+		ply:ChatPrint("wetsand_spectate_npc: no living NPC #" .. tostring(args[1]))
+		return
+	end
+	WETSAND.SpectateNpc(ply, npc)
+end, nil, "Spectate the NPC with this entity index (admins); in play, reload brings you back")
 
 hook.Add("KeyPress", "wetsand_spectate", function(ply, key)
 	local st = observing[ply]
@@ -359,8 +476,7 @@ hook.Add("KeyPress", "wetsand_spectate", function(ply, key)
 		-- CTFPlayer::AttemptToExitFreezeCam
 		if Spec.CanAbortFreezeCam(CurTime(), st.deathTime) then st.aborted = true end
 	elseif phase == "observer" then
-		handler(ply, st)
-		Apply(ply, st)
+		if not handler(ply, st) then Apply(ply, st) end
 	end
 end)
 

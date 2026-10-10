@@ -93,6 +93,12 @@ T.test("players keep the chosen mode", function()
 	T.eq(S.ViewMode("roaming", "player"), "roaming")
 end)
 
+T.test("NPCs keep the chosen mode, first person too", function()
+	T.eq(S.ViewMode("in_eye", "npc"), "in_eye")
+	T.eq(S.ViewMode("chase", "npc"), "chase")
+	T.eq(S.ViewMode("roaming", "npc"), "roaming")
+end)
+
 T.test("no target: roam if roaming, else hold a fixed view", function()
 	T.eq(S.ViewMode("roaming", nil), "roaming")
 	T.eq(S.ViewMode("chase", nil), "fixed")
@@ -150,6 +156,25 @@ end)
 
 T.test("observers (spectators, long-dead players) are not watchable", function()
 	T.eq(S.IsValidTarget(specViewer, player(SPEC, { alive = false }), rules()), false)
+end)
+
+local function npc(team, extra)
+	local n = { id = {}, kind = "npc", team = team, alive = true }
+	for k, v in pairs(extra or {}) do n[k] = v end
+	return n
+end
+
+T.test("a living NPC of a team is watched as a player of it is, under mp_forcecamera", function()
+	T.eq(S.IsValidTarget(redViewer, npc(RED), rules()), true, "own team")
+	T.eq(S.IsValidTarget(redViewer, npc(BLU), rules()), false, "the enemy's")
+	T.eq(S.IsValidTarget(redViewer, npc(BLU), rules({ forcecamera = S.FORCE_ALL })), true, "anyone's")
+	T.eq(S.IsValidTarget(specViewer, npc(BLU), rules({ forcecamera = S.FORCE_NONE })), true, "a spectator, any")
+end)
+
+T.test("an NPC of no team is open to all but mp_forcecamera 2; a dead NPC to nobody", function()
+	T.eq(S.IsValidTarget(redViewer, npc(NOBODY), rules()), true, "a monster")
+	T.eq(S.IsValidTarget(redViewer, npc(NOBODY), rules({ forcecamera = S.FORCE_NONE })), false, "forcecamera 2")
+	T.eq(S.IsValidTarget(specViewer, npc(RED, { alive = false }), rules()), false, "dead")
 end)
 
 T.test("disabled observer points are not usable", function()
@@ -256,6 +281,29 @@ end)
 
 T.test("no usable points gives nil", function()
 	T.eq(S.WelcomePoint({ { welcome = true } }, function() return false end), nil)
+end)
+
+-- Watching an NPC: the camera centres on its model, not its origin at its feet
+
+local function V(x, y, z) return { x = x, y = y, z = z } end
+local function Text(v) return string.format("%g %g %g", v.x, v.y, v.z) end
+
+T.test("a camera watching an NPC looks at the middle of its bounds", function()
+	T.eq(Text(S.NpcFocus(V(-16, -16, 0), V(16, 16, 72))), "0 0 36", "a soldier standing at the origin")
+	T.eq(Text(S.NpcFocus(V(84, -16, 10), V(116, 16, 82))), "100 0 46", "anywhere")
+end)
+
+T.test("first person on an NPC is just below the top of its bounds, over its middle", function()
+	T.eq(Text(S.NpcEye(V(-16, -16, 0), V(16, 16, 72))), "0 0 " .. (72 - S.NPC_EYE_BELOW_TOP), "eye height")
+end)
+
+T.test("third person on an NPC looks over its shoulder: pivoting at shoulder height, behind and to the right", function()
+	local mins, maxs = V(-16, -16, 0), V(16, 16, 72)
+	local pivot = S.ShoulderPivot(mins, maxs)
+	T.eq(Text(pivot), "0 0 " .. (72 - S.NPC_EYE_BELOW_TOP - S.SHOULDER_BELOW_EYE), "shoulder height, over its middle")
+	-- looking along +x, the right is -y
+	local origin = S.ShoulderOrigin(pivot, V(1, 0, 0), V(0, -1, 0))
+	T.eq(Text(origin), string.format("%g %g %g", -S.SHOULDER_DISTANCE, -S.SHOULDER_RIGHT, pivot.z), "back and right")
 end)
 
 T.finish()

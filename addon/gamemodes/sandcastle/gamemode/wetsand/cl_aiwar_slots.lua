@@ -233,9 +233,12 @@ local function OpenMenu(list, side, node)
 		Run("mp_aiwar_slots_remove", unpack(ids))
 		Pick(list, side, {})
 	end):SetIcon(ICONS.remove)
+	if #soldiers == 1 then
+		menu:AddSpacer()
+		menu:AddOption("Spectate NPC", function() Run("wetsand_spectate_npc", soldiers[1].index) end):SetIcon("icon16/eye.png")
+	end
 	-- one soldier: the debugging its NPC's own context menu offers
 	if #soldiers == 1 and WETSAND.NpcDebugAllowed(LocalPlayer()) then
-		menu:AddSpacer()
 		WETSAND.NpcSelectOption(menu, soldiers[1].index)
 		local debug, debugOption = menu:AddSubMenu("Debug NPC")
 		debugOption:SetIcon("icon16/bug.png")

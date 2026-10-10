@@ -1,6 +1,8 @@
 -- The observer's HUD: the killer during the death cameras, then who or what
 -- is being watched and how, with the keys that change it. Also plays TF2's
--- freezecam sound so it ends as the camera locks on the killer.
+-- freezecam sound so it ends as the camera locks on the killer. And the
+-- NPC context menu's "Spectate NPC", for admins (wetsand_spectate_npc,
+-- wetsand/sv_spectate.lua).
 local Spec = WETSAND.require("foundation.spectate")
 
 surface.CreateFont("Sandcastle.Spectate.Title", { font = "Roboto", size = 26, weight = 800 })
@@ -16,6 +18,11 @@ local MODE_NAMES = {
 local function Name(ent)
 	if ent:IsPlayer() then return ent:Nick() end
 	if ent:GetClass() == "func_tracktrain" then return "the payload" end
+	if ent:IsNPC() or ent:IsNextBot() then
+		local stored = scripted_ents.Get(ent:GetClass())
+		local name = stored and stored.PrintName or language.GetPhrase(ent:GetClass())
+		return name .. " #" .. ent:EntIndex()
+	end
 	return language.GetPhrase(ent:GetClass())
 end
 
@@ -73,3 +80,63 @@ hook.Add("Think", "wetsand_spectate", function()
 	end
 	lastMode = mode
 end)
+
+-- Watching an NPC: the engine's observer camera sits at a non-player's
+-- origin, its feet; ours follows its model (WETSAND.NpcCamera,
+-- wetsand/sh_spectate.lua): first person from its eyes, third person over
+-- its shoulder.
+local function WatchedNpc(ply)
+	local mode = ply:GetObserverMode()
+	if mode ~= OBS_MODE_IN_EYE and mode ~= OBS_MODE_CHASE then return nil, mode end
+	local target = ply:GetObserverTarget()
+	if IsValid(target) and (target:IsNPC() or target:IsNextBot()) then return target, mode end
+	return nil, mode
+end
+
+hook.Add("CalcView", "wetsand_spectate_npc", function(ply, origin, angles, fov)
+	local npc, mode = WatchedNpc(ply)
+	if npc == nil then return end
+	local camera, facing = WETSAND.NpcCamera(npc, mode == OBS_MODE_IN_EYE, angles)
+	return {
+		origin = camera,
+		angles = facing,
+		fov = fov,
+		drawviewer = false,
+	}
+end)
+
+-- In first person the watched NPC (and what it holds) is hidden, and shown
+-- again once the view moves on.
+local hidden = nil
+
+local function SetHidden(ent, hide)
+	ent:SetNoDraw(hide)
+	if ent.GetActiveWeapon then
+		local weapon = ent:GetActiveWeapon()
+		if IsValid(weapon) then weapon:SetNoDraw(hide) end
+	end
+end
+
+hook.Add("Think", "wetsand_spectate_npc", function()
+	local ply = LocalPlayer()
+	if not IsValid(ply) then return end
+	local npc, mode = WatchedNpc(ply)
+	local now = mode == OBS_MODE_IN_EYE and npc or nil
+	if now == hidden then return end
+	if IsValid(hidden) then SetHidden(hidden, false) end
+	if now then SetHidden(now, true) end
+	hidden = now
+end)
+
+-- Hold C and right-click a living NPC: watch it (in play, reload comes back).
+properties.Add("wetsand_spectate_npc", {
+	MenuLabel = "Spectate NPC",
+	MenuIcon = "icon16/eye.png",
+	Order = 8998,
+	Filter = function(self, ent, ply)
+		return IsValid(ent) and (ent:IsNPC() or ent:IsNextBot()) and ent:Health() > 0 and IsValid(ply) and ply:IsAdmin()
+	end,
+	Action = function(self, ent)
+		RunConsoleCommand("wetsand_spectate_npc", tostring(ent:EntIndex()))
+	end,
+})

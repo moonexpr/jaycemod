@@ -3,8 +3,10 @@
 -- turns entities into the plain descriptors used here.
 --
 -- Modes are named, not numbered: "fixed", "in_eye", "chase", "roaming".
--- Target descriptors: { id, kind = "player"|"point"|"entity", team,
---   alive, deathTime (players), enabled, associatedTeam (points), train (entities) }.
+-- Target descriptors: { id, kind = "player"|"npc"|"point"|"entity", team,
+--   alive (players, NPCs), deathTime (players), enabled, associatedTeam
+--   (points), train (entities) }. NPCs are Sandcastle's own: watched as a
+--   player of their team is, in any mode, while they live.
 -- Viewer: { id, team }. Rules: { forcecamera, teamWin, now }.
 local ipairs = ipairs
 local Teams = require("foundation.teams")
@@ -60,7 +62,8 @@ end
 -- The mode the camera shows for a target kind. Roaming stays roaming (it
 -- starts from the target). An observer point is a fixed camera
 -- (C_BasePlayer::CalcChaseCamView treats a model-less target so); only
--- players can be watched in-eye (CTFPlayer::ValidateCurrentObserverTarget);
+-- players and NPCs can be watched in-eye (CTFPlayer::ValidateCurrentObserverTarget
+-- allows players alone; Sandcastle's NPCs are watched as players are);
 -- without a target the view holds still (ValidateCurrentObserverTarget, TF_DLL).
 function ViewMode(mode, kind)
 	if mode == "roaming" then return "roaming" end
@@ -102,9 +105,19 @@ local function ValidPlayer(viewer, target, rules)
 	return ForceCameraAllows(viewer, target.team, rules)
 end
 
+-- A living NPC: a team's under mp_forcecamera as its players are, one of
+-- no team (a monster) as any other entity.
+local function ValidNpc(viewer, target, rules)
+	if not target.alive then return false end
+	if viewer.team == SPECTATOR then return true end
+	if target.team == NOBODY then return rules.forcecamera ~= FORCE_NONE end
+	return ForceCameraAllows(viewer, target.team, rules)
+end
+
 function IsValidTarget(viewer, target, rules)
 	if not target or target.id == viewer.id then return false end
 	if target.kind == "player" then return ValidPlayer(viewer, target, rules) end
+	if target.kind == "npc" then return ValidNpc(viewer, target, rules) end
 	return ValidEntity(viewer, target, rules)
 end
 
@@ -143,4 +156,45 @@ function WelcomePoint(points, valid)
 		if p.welcome then break end
 	end
 	return chosen
+end
+
+-- Watching an NPC (WETSAND.NpcCamera, wetsand/sh_spectate.lua): the
+-- engine's observer camera sits at a non-player's origin, at its feet; ours
+-- follows its model. First person looks out from just below the top of its
+-- bounds; third person over its right shoulder. Points and directions are
+-- { x, y, z }; mins and maxs are its world bounds.
+
+NPC_EYE_BELOW_TOP = 8 -- first person sits this far below the top of its bounds
+SHOULDER_BELOW_EYE = 6 -- the shoulder the third person camera pivots on
+SHOULDER_DISTANCE = 72 -- behind the shoulder, along the view
+SHOULDER_RIGHT = 24 -- to the right of it
+
+function NpcFocus(mins, maxs)
+	return {
+		x = (mins.x + maxs.x) / 2,
+		y = (mins.y + maxs.y) / 2,
+		z = (mins.z + maxs.z) / 2,
+	}
+end
+
+function NpcEye(mins, maxs)
+	local focus = NpcFocus(mins, maxs)
+	focus.z = maxs.z - NPC_EYE_BELOW_TOP
+	return focus
+end
+
+function ShoulderPivot(mins, maxs)
+	local eye = NpcEye(mins, maxs)
+	eye.z = eye.z - SHOULDER_BELOW_EYE
+	return eye
+end
+
+-- Where the camera would be, before walls pull it in: back along the
+-- view's forward and out along its right (unit vectors).
+function ShoulderOrigin(pivot, forward, right)
+	return {
+		x = pivot.x - forward.x * SHOULDER_DISTANCE + right.x * SHOULDER_RIGHT,
+		y = pivot.y - forward.y * SHOULDER_DISTANCE + right.y * SHOULDER_RIGHT,
+		z = pivot.z - forward.z * SHOULDER_DISTANCE + right.z * SHOULDER_RIGHT,
+	}
 end
