@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "gmod": {
+      "type": "stdio",
+      "command": "sh",
+      "args": [
+        "-c",
+        "exec python3 \"$(git rev-parse --show-toplevel)/.devtools/bin/gmod_mcp.py\""
+      ],
+      "env": {}
+    }
+  }
+}
