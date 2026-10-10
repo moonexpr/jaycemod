@@ -26,20 +26,23 @@ FLANK_RADIUS = 600 -- how far beside the objective a flank lane ends
 LANE_SPREAD = 300 -- how far either side of a route its band reaches
 WAYPOINT_SPACING, WAYPOINT_REACH, LOOKAHEAD = 300, 160, 2
 
--- The jobs whose squads take lanes (foundation.aiwar's ESCORT, RAID and
--- ASSAULT: the point scenarios' escort).
+-- The jobs whose squads take lanes (foundation.aiwar's ESCORT, RAID,
+-- ASSAULT: the point scenarios' escort, and EXPLORE: arena's explorers).
 JOBS = {
 	escort = true,
 	raid = true,
 	assault = true,
+	explore = true,
 }
 
 DIRECT, FLANK, TOUR = "direct", "flank", "tour"
 -- The kinds of lane each job takes: escorts and assault squads come at the
--- objective, raiders go round through the enemy.
+-- objective, raiders go round through the enemy, explorers search the
+-- ways to the objective.
 JOB_KINDS = {
 	escort = { [DIRECT] = true, [FLANK] = true },
 	assault = { [DIRECT] = true, [FLANK] = true },
+	explore = { [DIRECT] = true, [FLANK] = true },
 	raid = { [TOUR] = true },
 }
 

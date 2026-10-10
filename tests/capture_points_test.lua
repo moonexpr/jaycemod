@@ -26,6 +26,7 @@ local function Point(name, index, owner, kv)
 		previous = kv.previous or {},
 		sounds = kv.sounds or {},
 		capSounds = kv.capSounds or {},
+		icons = kv.icons or {},
 	}
 end
 
@@ -483,6 +484,19 @@ T.test("idle, the HUD counts the team in the zone; under mp_capstyle 1 none is r
 	local empty = set:HudPoint("b", HudQuery(Area()))
 	T.eq(empty.cappers, 0)
 	T.eq(empty.required, 0)
+end)
+
+-- team_control_point's team_icon_0/2/3: the HUD draws the owner's.
+T.test("the HUD shows the owner's icon: the map's team_icon, else TF2's", function()
+	local set = Set({
+		Point("a", 0, BLU, { icons = { [BLU] = "sprites/obj_icons/icon_obj_1_blu" } }),
+		Point("b", 1, NOBODY),
+		Point("c", 2, RED),
+	})
+	T.eq(set:HudPoint("a", HudQuery(nil)).icon, "sprites/obj_icons/icon_obj_1_blu", "the map's")
+	T.eq(set:HudPoint("b", HudQuery(nil)).icon, Capture.ICON_DEFAULT[NOBODY], "TF2's neutral")
+	T.eq(set:HudPoint("c", HudQuery(nil)).icon, Capture.ICON_DEFAULT[RED], "TF2's RED")
+	T.eq(Capture.ICON_DEFAULT[BLU], "sprites/obj_icons/icon_obj_blu", "the FGD's default")
 end)
 
 T.test("the HUD's can-cap marks need the area's permission and the capture order", function()

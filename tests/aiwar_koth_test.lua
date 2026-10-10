@@ -149,6 +149,7 @@ end)
 
 T.test("the allocated capturers rise with the enemy's clock falling; the last stand applies at once", function()
 	local war = AiWar.War.New()
+	war:SetOffRoles({}) -- the shares as the scenario makes them, every role on
 	for i = 1, 10 do war:Enlist("blue" .. i, BLUE, true) end
 	local scenario = Koth.Scenario:New()
 	local now, last = 0, 0
@@ -215,6 +216,7 @@ end)
 T.test("the enemy holds the hill with 20 s left: capturers rush it, will not retreat, and occupy it", function()
 	local hill = Hill({ owner = RED })
 	local battle = FP.Battle(Koth.Scenario)
+	battle.war:SetOffRoles({}) -- the shares as the scenario makes them, every role on
 	battle:Enlist(BLUE, SOLDIERS)
 	local field = Field(hill, FP.Clocks(20, 180))
 	battle:Start(field)

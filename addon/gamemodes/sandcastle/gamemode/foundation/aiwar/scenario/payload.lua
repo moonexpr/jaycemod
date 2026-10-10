@@ -16,6 +16,8 @@ MODE = "payload"
 Scenario = Base.Scenario:Extend(MODE)
 
 function Scenario:Brief(field, now)
+	-- explore is every doctrine's job: its board on the field
+	self:Explore(field)
 	field.doctrine = Orders.PAYLOAD
 end
 

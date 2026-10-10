@@ -5,7 +5,9 @@
 -- controller drives, not part of this model. The server setting
 -- sv_gameplay_enabled holds the settled mode across map changes (SETTING),
 -- so a map with rounds starts in it; a map without rounds stays in Sandbox
--- mode.
+-- mode until a game begins: a request for Gameplay mode there loads the
+-- rounds (loadRounds: untimed, to the round limits) and counts down as on a
+-- map with rounds, which it is from then on.
 --
 -- A request asks for a mode and carries its source: the Begin Game button,
 -- Stop Game and the console's sv_gameplay_enabled are SOURCE_BUTTON or
@@ -69,11 +71,12 @@ CUE_COUNT = "count" -- { kind, left, spoken }
 CUE_ADMIN_LINE = "admin_line"
 CUE_BEGIN = "begin" -- Gameplay mode begins: the rounds restart
 
-local function Answer(action, notice, refusal)
+local function Answer(action, notice, refusal, loadRounds)
 	return {
 		action = action,
 		notice = notice,
 		refusal = refusal,
+		loadRounds = loadRounds,
 	}
 end
 
@@ -104,7 +107,11 @@ local RULES = {
 	},
 }
 
-local WITHOUT_ROUNDS = BySource(Answer(STAY, NOTICE_REFUSED, NO_ROUNDS), Answer(STAY, NOTICE_NONE, NO_ROUNDS))
+-- Without rounds: Gameplay mode loads them; Sandbox mode is already so.
+local WITHOUT_ROUNDS = {
+	[GAMEPLAY] = BySource(Answer(START_TRANSITION, NOTICE_NONE, nil, true), Answer(START_TRANSITION, NOTICE_REQUEST_CHAT, nil, true)),
+	[SANDBOX] = BySource(Answer(STAY, NOTICE_REFUSED, NO_ROUNDS), Answer(STAY, NOTICE_NONE, NO_ROUNDS)),
+}
 local SANDBOX_OFF = BySource(Answer(STAY, NOTICE_DENIED, SANDBOX_DISABLED))
 
 local NEXT_MODE = {
@@ -139,7 +146,11 @@ function Mode:SettingWants(enabled)
 end
 
 local function Decide(self, want, source, sandboxDisabled)
-	if not self.hasRounds then return WITHOUT_ROUNDS[source] end
+	if not self.hasRounds then
+		local answer = WITHOUT_ROUNDS[want][source]
+		if answer.loadRounds then self.hasRounds = true end
+		return answer
+	end
 	if want == SANDBOX and sandboxDisabled and self.mode ~= SANDBOX then return SANDBOX_OFF[source] end
 	return RULES[want][self.mode][source]
 end

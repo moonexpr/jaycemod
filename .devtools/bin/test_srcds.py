@@ -8,6 +8,7 @@ import threading
 import unittest
 from pathlib import Path
 
+import srcds
 from server_root import Instance
 from srcds import (
     ARTIFACTS,
@@ -335,6 +336,27 @@ class BindAddress(unittest.TestCase):
 
     def test_a_record_from_before_the_address_was_kept_means_127_0_0_1(self):
         self.assertEqual(Launched.parse('{"supervisor": 1, "launcher": 2, "port": 27025}').host, "127.0.0.1")
+
+    # The operator plays from other machines on the tailnet: start binds this
+    # Mac's tailnet name by default, resolved to its address.
+    def test_start_binds_the_tailnet_name_by_default(self):
+        self.assertEqual(srcds.DEFAULT_BIND_HOST, "cosmicbook.tail")
+
+    def test_a_name_is_bound_by_its_address(self):
+        self.assertEqual(srcds.bind_address("cosmicbook.tail", lambda name: "100.126.111.105"), "100.126.111.105")
+
+    def test_an_address_is_bound_as_it_is(self):
+        def never(name):
+            raise AssertionError("an address needs no lookup")
+        self.assertEqual(srcds.bind_address("100.64.0.1", never), "100.64.0.1")
+
+    def test_a_name_that_does_not_resolve_is_refused_with_why(self):
+        def unknown(name):
+            raise socket.gaierror(8, "nodename nor servname provided")
+        with self.assertRaises(srcds.BindAddressUnknown) as caught:
+            srcds.bind_address("cosmicbook.tail", unknown)
+        self.assertIn("cosmicbook.tail", str(caught.exception))
+        self.assertIn("--ip", str(caught.exception))
 
 
 class ConsoleWindow(unittest.TestCase):

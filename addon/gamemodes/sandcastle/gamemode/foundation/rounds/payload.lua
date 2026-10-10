@@ -8,6 +8,8 @@ local Race = require("foundation.payload.race")
 module(...)
 
 Mode = Rounds.Mode:Extend("payload")
+-- The points (or the cart) decide its rounds: no round limits.
+Mode.OBJECTIVE = true
 Mode.PRIORITY = 2
 Mode.HUD = Rounds.HUD_PAYLOAD
 -- CTFGameRules::HandleScoring plays Hud.EndRoundScored to everyone on escort maps.

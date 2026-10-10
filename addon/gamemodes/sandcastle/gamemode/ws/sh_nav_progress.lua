@@ -2,8 +2,8 @@
 -- the server tells every client the stage (foundation.nav_progress), when
 -- it began and, done, the areas made; each client shows a WS.UI dialog
 -- in the middle of its screen (ws/cl_nav_progress.lua, a cl_ module so
--- it loads after cl_ui). The engine's own progress box (CNavProgress) still
--- opens beside it: GMod gives Lua no hold on it.
+-- it loads after cl_ui), which hides the engine's own progress box
+-- (CNavProgress) while it shows.
 local E = WS.Events
 
 local AREA_BITS = 16

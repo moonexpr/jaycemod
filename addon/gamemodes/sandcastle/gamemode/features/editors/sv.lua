@@ -88,6 +88,22 @@ function Controller:SetRespawnsDisabled(disabled)
 	return true
 end
 
+-- Win conditions -------------------------------------------------------------------
+
+-- TF2's match limits (mp_winlimit, mp_maxrounds, mp_timelimit): the rounds
+-- feature makes the convars the engine lacks, so a map without rounds has none.
+function Controller:WinCondition(convar)
+	local cv = GetConVar(convar)
+	return cv and cv:GetInt() or 0
+end
+
+function Controller:SetWinCondition(convar, value)
+	local cv = GetConVar(convar)
+	if not cv then return false, NO_ROUNDS end
+	cv:SetInt(value)
+	return true
+end
+
 -- Rounds and carts -------------------------------------------------------------------
 
 function Controller:ResetRound()
@@ -175,6 +191,17 @@ function Controller:AddTeamTime(t, seconds)
 		return false, "time can only be added while the round is running"
 	end
 	WS.Feature("rounds"):AddTimerSeconds(timer, seconds, t)
+	return true
+end
+
+-- A map without an objective plays untimed rounds; its round time, set
+-- here, gives each round a timer of that many seconds (0: untimed again).
+-- A map with an objective keeps the timers its objective set up.
+function Controller:SetRoundTime(seconds)
+	if not WS.Active() then return false, NO_ROUNDS end
+	local rounds = WS.Feature("rounds")
+	if rounds:Mode().OBJECTIVE then return false, "this map's objective times its rounds" end
+	rounds:SetRoundTime(math.max(0, math.floor(seconds)))
 	return true
 end
 

@@ -83,8 +83,17 @@ end)
 
 -- Fire teams ---------------------------------------------------------------
 
-T.test("soldiers of a role form fire teams of FIRE_TEAM_SIZE, each its own squad", function()
+-- The fire team mechanics, with as many squads as the soldiers fill
+-- (AiWar.SQUADS_MAX_DEFAULT and SQUADS_MIN_DEFAULT aside).
+local function UncappedWar()
 	local war = AiWar.War.New()
+	war:SetSquadsMax(math.huge)
+	war:SetSquadsMin(1)
+	return war
+end
+
+T.test("soldiers of a role form fire teams of FIRE_TEAM_SIZE, each its own squad", function()
+	local war = UncappedWar()
 	war:Assign({ [BLUE] = true })
 	local defenders = {}
 	for i = 1, 20 do
@@ -108,30 +117,134 @@ T.test("soldiers of a role form fire teams of FIRE_TEAM_SIZE, each its own squad
 	T.eq(squadCount, count, "one squad per team")
 end)
 
-T.test("members take places 0 up in their team, and a place freed is taken again", function()
+-- For now (operator, 2026-10-10) the war gives only the roles that work the
+-- objective, and exploring: no raiders, assault squads, support or escorts.
+T.test("the war gives only the objective's roles: no raid, assault, support or escort", function()
+	for role in pairs({ [AiWar.RAID] = true, [AiWar.ASSAULT] = true, [AiWar.SUPPORT] = true, [AiWar.ESCORT] = true }) do
+		T.eq(AiWar.OFF_ROLES[role], true, role .. " off")
+	end
+	for _, role in ipairs({ AiWar.CAPTURE, AiWar.HOLD, AiWar.DEFEND, AiWar.PUSH, AiWar.BLOCK, AiWar.EXPLORE }) do
+		T.eq(AiWar.OFF_ROLES[role], nil, role .. " on")
+	end
 	local war = AiWar.War.New()
+	local stance = {
+		{ role = AiWar.CAPTURE, weight = 4 },
+		{ role = AiWar.ASSAULT, weight = 3 },
+		{ role = AiWar.RAID, weight = 2 },
+		{ role = AiWar.SUPPORT, weight = 1 },
+	}
+	war:AssignStances({ [RED] = stance }, { [RED] = 0 })
+	for i = 1, 10 do
+		local member = war:Enlist("red" .. i, RED, true)
+		T.eq(member.role, AiWar.CAPTURE, member.handle .. " captures")
+	end
+	local applied = war.stances[RED]
+	war:AssignStances({ [RED] = stance }, { [RED] = 0 })
+	T.eq(war.stances[RED], applied, "the same stance again is the same table: no rebalance")
+end)
+
+-- ns_squads_max: fewer, bigger squads, so fewer soldiers wander off alone.
+T.test("a team forms at most its squads' max; past it a soldier joins its role's smallest squad, or goes solo", function()
+	T.eq(AiWar.SQUADS_MAX_DEFAULT, 3, "three by default")
+	local war = AiWar.War.New()
+	war:SetSquadsMin(1)
+	war:SetSquadsMax(2)
+	war:AssignStances({ [RED] = { { role = AiWar.CAPTURE, weight = 1 } } }, { [RED] = 0 })
+	for i = 1, 12 do war:Enlist("red" .. i, RED, true) end
+	local squads, sizes = {}, {}
+	for _, member in ipairs(war:Members()) do
+		T.eq(member.fireTeam ~= nil, true, member.handle .. " in a squad")
+		squads[member.fireTeam] = true
+	end
+	local count = 0
+	for fireTeam in pairs(squads) do
+		count = count + 1
+		local n = 0
+		for _ in pairs(fireTeam.members) do n = n + 1 end
+		sizes[#sizes + 1] = n
+	end
+	T.eq(count, 2, "two squads")
+	table.sort(sizes)
+	T.eq(sizes[1] + sizes[2], 12, "everyone in them")
+	T.eq(sizes[2] - sizes[1] <= 1, true, "the overflow spread evenly")
+	-- a role with no squad once the cap is reached fights solo
+	local blue = AiWar.War.New()
+	blue:SetSquadsMin(1)
+	blue:SetSquadsMax(1)
+	blue:AssignStances({ [BLUE] = { { role = AiWar.CAPTURE, weight = 1 }, { role = AiWar.DEFEND, weight = 1 } } }, { [BLUE] = 0 })
+	local first, second = blue:Enlist("b1", BLUE, true), blue:Enlist("b2", BLUE, true)
+	T.eq(first.fireTeam ~= nil, true, "the first squad")
+	T.eq(second.role ~= first.role, true, "another role")
+	T.eq(second.fireTeam, nil, "no squad left for it: solo")
+end)
+
+-- ns_squads_min: a team splits into at least that many squads, so its
+-- explorers come at the map from more than one place.
+T.test("a team forms at least its squads' min, and its soldiers join their role's smallest open squad", function()
+	T.eq(AiWar.SQUADS_MIN_DEFAULT, 3, "three by default")
+	local war = AiWar.War.New()
+	war:SetFireTeamSize(8)
+	war:SetSquadsMin(3)
+	war:SetSquadsMax(3)
+	war:AssignStances({ [BLUE] = { { role = AiWar.EXPLORE, weight = 1 } } }, { [BLUE] = 0 })
+	war:Enlist("medic", BLUE, true, AiWar.MEDIC)
+	for i = 1, 7 do war:Enlist("blue" .. i, BLUE, true) end
+	local sizes = {}
+	for _, fireTeam in ipairs(war.fireTeams) do
+		if fireTeam.role == AiWar.EXPLORE then
+			local n = 0
+			for _ in pairs(fireTeam.members) do n = n + 1 end
+			sizes[#sizes + 1] = n
+		end
+	end
+	T.eq(#war.fireTeams, 3, "three squads")
+	T.eq(#sizes, 2, "two of explorers, the medics' the third")
+	table.sort(sizes)
+	T.eq(sizes[1] .. "+" .. sizes[2], "3+4", "split evenly")
+end)
+
+-- The squad investigates a member's death: it goes for its killer, so it
+-- engages the enemy rather than walking on.
+T.test("a member that falls leaves its squad investigating: its killer's place, else where it fell", function()
+	local Tactics = T.require("foundation.aiwar.tactics")
+	local war = UncappedWar()
 	war:Assign({ [BLUE] = true })
-	local first = war:Enlist("a", BLUE, true)
+	for i = 1, 4 do war:Enlist("red" .. i, RED, true) end
+	local fallen = war:Member("red1")
+	local fireTeam = fallen.fireTeam
+	war:Fallen("red1", { x = 100, y = 0, z = 0 }, { x = 400, y = 50, z = 0 }, 20)
+	war:Discharge("red1")
+	T.eq(Tactics.Contact(fireTeam, 20).pos.x, 400, "its killer")
+	for i = 1, 4 do war:Enlist("blue" .. i, BLUE, true) end
+	local other = war:Member("blue1").fireTeam
+	war:Fallen("blue1", { x = -100, y = 0, z = 0 }, nil, 20)
+	T.eq(Tactics.Contact(other, 20).pos.x, -100, "no killer known: where it fell")
+	local alone = war:Enlist("solo", RED, true)
+	alone.fireTeam = nil
+	war:Fallen("solo", { x = 0, y = 0, z = 0 }, nil, 20)
+	T.eq(war:Member("solo") ~= nil, true, "a soldier without a squad tells nobody")
+end)
+
+T.test("members take places 0 up in their team, and a place freed is taken again", function()
+	local war = UncappedWar()
+	war:AssignStances({ [RED] = { { role = AiWar.DEFEND, weight = 1 } } }, { [RED] = 0 })
+	local first = war:Enlist("a", RED, true)
 	local fireTeam = first.fireTeam
 	local mates = {}
-	for i = 1, 20 do
-		local member = war:Enlist("b" .. i, BLUE, true)
-		if member.fireTeam == fireTeam then mates[#mates + 1] = member end
-	end
+	for i = 1, AiWar.FIRE_TEAM_SIZE - 1 do mates[i] = war:Enlist("b" .. i, RED, true) end
 	T.eq(first.place, 0, "the first place")
 	T.eq(#war:FireTeamMembers(fireTeam), AiWar.FIRE_TEAM_SIZE, "full")
 	local leaving = mates[1]
 	local place = leaving.place
 	war:Discharge(leaving.handle)
 	T.eq(fireTeam.members[place], nil, "the place is free")
-	local newcomer
-	repeat newcomer = war:Enlist("c" .. math.random(1e9), BLUE, true) until newcomer.role == fireTeam.role
+	local newcomer = war:Enlist("c", RED, true)
 	T.eq(newcomer.fireTeam, fireTeam, "joins the open team")
 	T.eq(newcomer.place, place, "in the freed place")
 end)
 
 T.test("a team emptied goes, and teams never cross sides", function()
-	local war = AiWar.War.New()
+	local war = UncappedWar()
 	war:Assign({ [BLUE] = true })
 	local red = war:Enlist("r", RED, true)
 	local blue = war:Enlist("b", BLUE, true)
@@ -162,7 +275,7 @@ local function InAnySquad(members)
 end
 
 T.test("with automatic squads off, soldiers stay out of squads, and turning them on groups them", function()
-	local war = AiWar.War.New()
+	local war = UncappedWar()
 	war:SetAutoSquads(false)
 	local _, members = Enlisted(6, war)
 	T.eq(InAnySquad(members), false, "nobody grouped")
@@ -289,14 +402,14 @@ end)
 -- Roles --------------------------------------------------------------------
 
 T.test("the pushing team splits between pushing, escorting, raiding and support", function()
-	local war = AiWar.War.New()
+	local war = UncappedWar()
 	war:Assign({ [BLUE] = true })
 	for i = 1, 6 do war:Enlist("b" .. i, BLUE, true) end
 	T.eq(Roles(war, BLUE), "push0 escort0 raid0 push1 escort1 support0", "4:3:2:1")
 end)
 
 T.test("the defending team mostly holds the track ahead and sends some to block the cart", function()
-	local war = AiWar.War.New()
+	local war = UncappedWar()
 	war:Assign({ [BLUE] = true })
 	for i = 1, 6 do war:Enlist("r" .. i, RED, true) end
 	T.eq(Roles(war, RED), "defend0 block0 raid0 defend1 defend2 support0", "5:2:2:1, ties to the first role")
@@ -358,7 +471,7 @@ T.test("without a cart nobody has a role", function()
 end)
 
 T.test("a freed slot is taken by the next soldier of that role", function()
-	local war = AiWar.War.New()
+	local war = UncappedWar()
 	war:Assign({ [BLUE] = true })
 	for i = 1, 4 do war:Enlist("b" .. i, BLUE, true) end
 	war:Discharge("b1")
@@ -367,7 +480,7 @@ T.test("a freed slot is taken by the next soldier of that role", function()
 end)
 
 T.test("a change of stance reassigns the team's roles, oldest first", function()
-	local war = AiWar.War.New()
+	local war = UncappedWar()
 	war:Assign({ [BLUE] = true })
 	for i = 1, 3 do war:Enlist("r" .. i, RED, true) end
 	war:Assign({ [BLUE] = true, [RED] = true })
@@ -377,7 +490,7 @@ T.test("a change of stance reassigns the team's roles, oldest first", function()
 end)
 
 T.test("a cart near its checkpoint throws more of the defenders at it, fewest changed", function()
-	local war = AiWar.War.New()
+	local war = UncappedWar()
 	war:Assign({ [BLUE] = true })
 	for i = 1, 10 do war:Enlist("r" .. i, RED, true) end
 	local function Count(role)
@@ -439,8 +552,15 @@ T.test("the point jobs are named once", function()
 	T.eq(AiWar.HOLD, "hold", "hold")
 end)
 
+-- The stance mechanics, with every role on (AiWar.OFF_ROLES aside).
+local function AllRolesWar()
+	local war = UncappedWar()
+	war:SetOffRoles({})
+	return war
+end
+
 T.test("a team with no stance yet is assigned its scenario's stance from scratch, oldest first", function()
-	local war = AiWar.War.New()
+	local war = AllRolesWar()
 	for i = 1, 4 do war:Enlist("r" .. i, RED, true) end
 	war:AssignStances({ [RED] = ATTACKING }, { [RED] = 0 })
 	T.eq(Roles(war, RED), "capture0 assault0 raid0 capture1", "by the shares, in enlistment order")
@@ -449,7 +569,7 @@ T.test("a team with no stance yet is assigned its scenario's stance from scratch
 end)
 
 T.test("a team moving to a stance whose roles differ keeps the members of the roles both share", function()
-	local war = AiWar.War.New()
+	local war = AllRolesWar()
 	for i = 1, 8 do war:Enlist("r" .. i, RED, true) end
 	war:AssignStances({ [RED] = ATTACKING }, { [RED] = 0 })
 	local before = RolesOf(war, RED)
@@ -470,7 +590,7 @@ T.test("a team moving to a stance whose roles differ keeps the members of the ro
 end)
 
 T.test("a nil stance leaves the team as it is", function()
-	local war = AiWar.War.New()
+	local war = AllRolesWar()
 	for i = 1, 3 do war:Enlist("r" .. i, RED, true) end
 	war:AssignStances({ [RED] = ATTACKING }, { [RED] = 0 })
 	local before = Roles(war, RED)
@@ -502,7 +622,7 @@ T.test("medics: a few per side, drafted first while short, and never moved to an
 	T.eq(AiWar.FixedRole("ws_drg_vortigaunt"), AiWar.MEDIC, "a vortigaunt only heals")
 	T.eq(AiWar.FactionTeam("ws_drg_vortigaunt"), BLUE, "for the Resistance")
 	T.eq(AiWar.FixedRole("ws_drg_rebel"), nil, "a rebel does any job")
-	local war = AiWar.War.New()
+	local war = UncappedWar()
 	war:Assign({ [BLUE] = true })
 	war:Reinforcements(0, Sizes(8), function() return 0 end)
 	local draft = war:Draft(BLUE)
@@ -564,7 +684,7 @@ T.test("each team is filled to its own size: one side alone, or none", function(
 end)
 
 T.test("medics are counted against each team's own size", function()
-	local war = AiWar.War.New()
+	local war = UncappedWar()
 	war:Assign({ [BLUE] = true })
 	war:Reinforcements(0, Sizes(3, 8), WaveOf(10))
 	T.eq(war:Draft(RED).role, nil, "three are too few for a medic")

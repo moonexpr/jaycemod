@@ -231,29 +231,34 @@ T.test("the deny sound is the locked button's", function()
 	T.eq(Gamemode.DENY_SOUND, "buttons/button10.wav", "HL2's deny")
 end)
 
-T.test("a map without rounds stays in Sandbox mode and says why, except to the AI war", function()
-	local mode = Gamemode.New(NO_ROUNDS, DISABLED)
-	for _, request in ipairs({
-		{
-			want = GAMEPLAY,
-			source = BUTTON,
-		},
-		{
-			want = GAMEPLAY,
-			source = CONSOLE,
-		},
-		{
-			want = SANDBOX,
-			source = BUTTON,
-		},
-	}) do
-		Expect(mode:Request(request.want, request.source, START, SANDBOX_ALLOWED), Gamemode.STAY, Gamemode.NOTICE_REFUSED,
-			Gamemode.NO_ROUNDS, request.source)
+-- A map without an objective has no rounds until a game begins: then they
+-- load (untimed, to the round limits) and it is a map with rounds.
+T.test("a game begun on a map without rounds loads them and counts down, from any source", function()
+	for _, source in ipairs({ BUTTON, CONSOLE, AI_WAR }) do
+		local mode = Gamemode.New(NO_ROUNDS, DISABLED)
+		local answer = mode:Request(GAMEPLAY, source, START, SANDBOX_ALLOWED)
+		T.eq(answer.action, Gamemode.START_TRANSITION, "the countdown")
+		T.eq(answer.loadRounds, true, "the rounds load")
+		T.eq(answer.refusal, nil, "granted")
+		T.eq(mode:Mode(), Gamemode.TRANSITION, "counting down")
+		local cues = mode:Advance(START + Gamemode.ADMIN_LINE_AT)
+		T.eq(cues[#cues].kind, Gamemode.CUE_BEGIN, "then Gameplay mode")
+		local again = mode:Request(GAMEPLAY, BUTTON, START, SANDBOX_ALLOWED)
+		T.eq(again.loadRounds, nil, "loaded once")
 	end
-	Expect(mode:Request(GAMEPLAY, AI_WAR, START, SANDBOX_ALLOWED), Gamemode.STAY, Gamemode.NOTICE_NONE, Gamemode.NO_ROUNDS,
-		"the war goes on without rounds")
+end)
+
+T.test("Stop Game on a map whose rounds never loaded says why", function()
+	local mode = Gamemode.New(NO_ROUNDS, DISABLED)
+	Expect(mode:Request(SANDBOX, BUTTON, START, SANDBOX_ALLOWED), Gamemode.STAY, Gamemode.NOTICE_REFUSED, Gamemode.NO_ROUNDS, "refused")
 	T.eq(mode:Mode(), SANDBOX, "Sandbox mode")
-	T.eq(#mode:Advance(START + Gamemode.ADMIN_LINE_AT), 0, "no countdown")
+end)
+
+T.test("once loaded, the rounds stay: Stop Game returns to Sandbox mode as on a map with rounds", function()
+	local mode = Gamemode.New(NO_ROUNDS, DISABLED)
+	mode:Request(GAMEPLAY, BUTTON, START, SANDBOX_ALLOWED)
+	mode:Advance(START + Gamemode.ADMIN_LINE_AT)
+	T.eq(mode:Request(SANDBOX, BUTTON, START + 30, SANDBOX_ALLOWED).action, Gamemode.ENTER_SANDBOX, "Sandbox mode")
 end)
 
 T.finish()

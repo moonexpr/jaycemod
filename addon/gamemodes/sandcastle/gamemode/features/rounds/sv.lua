@@ -17,6 +17,7 @@ local Text = WS.require("foundation.rounds.text")
 local Timer = WS.require("foundation.rounds.timer")
 local ControlPoints = WS.require("foundation.rounds.control_points")
 local SpawnHold = WS.require("foundation.rounds.spawn_doors")
+local Limits = WS.require("foundation.rounds.limits")
 
 local S = WS.STATE
 local UNASSIGNED, SPECTATOR = WS.TEAM_UNASSIGNED, WS.TEAM_SPECTATOR
@@ -46,6 +47,13 @@ local matchEndAtTimelimit = ConVarOrCreate("mp_match_end_at_timelimit", "0", FCV
 local chattime = ConVarOrCreate("mp_chattime", "10", FCVAR_REPLICATED, "amount of time players can chat after the game is over", 1, 120)
 -- teamplay_round_timer.cpp
 local overtimeNag = ConVarOrCreate("tf_overtime_nag", "0", FCVAR_NOTIFY, "Announcer overtime nag.")
+-- The round limits (foundation.rounds.limits): only a map without an
+-- objective plays to them. Both on by default, the frag limit the one
+-- reached first.
+local roundFraglimit = CreateConVar("mp_round_fraglimit", "30", { FCVAR_NOTIFY, FCVAR_REPLICATED },
+	"Frags a team needs in a round to win it, on a map without an objective; 0: no frag limit.", 0)
+local roundCashlimit = CreateConVar("mp_round_cashlimit", "10000", { FCVAR_NOTIFY, FCVAR_REPLICATED },
+	"Money a team must earn in a round to win it, on a map without an objective (frags decide first); 0: no cash limit.", 0)
 
 local PROXY_CLASS = "tf_gamerules"
 local TIMER_CLASS = "team_round_timer"
@@ -161,6 +169,9 @@ local Controller = {
 	},
 	holds = {},
 	objective = Rounds.NO_OBJECTIVE,
+	tally = Limits.Tally.New(), -- the round's frags and earnings, for its limits
+	roundTime = 0, -- an admin's round time on a map without an objective (0: untimed)
+	roundTimer = NULL, -- its timer this round
 	multipleTrains = false,
 	spawnDoors = nil,
 	spawnTriggers = nil, -- the open doors' triggers: trigger -> true
@@ -331,10 +342,36 @@ end
 
 -- The proxy -------------------------------------------------------------------------
 
+-- The match's win conditions, for the scoreboard (ws/cl_scoreboard.lua):
+-- the limits, the rounds played, and when the map's time runs out (0 with
+-- no time limit), so clients count it down themselves.
+local function PublishLimits()
+	local now = CurTime()
+	local limits = Controller.round:Limits(now)
+	SetGlobal2Int("ws_match_winlimit", limits.winlimit)
+	SetGlobal2Int("ws_match_maxrounds", limits.maxrounds)
+	SetGlobal2Int("ws_match_timelimit", limits.timelimit)
+	SetGlobal2Int("ws_match_rounds_played", limits.roundsPlayed)
+	SetGlobal2Float("ws_match_time_end", limits.timelimit > 0 and now + limits.timeLeft or 0)
+end
+
+-- TF2 reads the match's limits live: a change mid-match moves its end.
+for _, name in ipairs({ "mp_winlimit", "mp_maxrounds", "mp_timelimit" }) do
+	cvars.AddChangeCallback(name, function()
+		Controller.round:SetLimits({
+			winlimit = winlimit:GetInt(),
+			maxrounds = maxrounds:GetInt(),
+			timelimit = timelimit:GetInt(),
+		})
+		PublishLimits()
+	end, "ws_rounds_limits")
+end
+
 local function PublishState()
 	local round = Controller.round
 	SetGlobal2Int("ws_round_state", round:State())
 	SetGlobal2Int("ws_round_hud_type", round:Mode().HUD)
+	PublishLimits()
 end
 
 function Controller:BindProxy(ent)
@@ -409,7 +446,13 @@ end
 
 -- A timer model's events, carried out on its entity.
 local TIMER_EVENTS = {
-	output = function(self, ent, e) ent:TriggerOutput(e.name, ent) end,
+	output = function(self, ent, e)
+		ent:TriggerOutput(e.name, ent)
+		-- an admin's round time ran out: no win condition decides it, a stalemate
+		if ent == self.roundTimer and e.name == "OnFinished" then
+			self:Apply(self.round:SetStalemate(CurTime(), Rounds.STALEMATE.TIMER, true, false))
+		end
+	end,
 	setup = function(self, ent, e) self:SetSetup(e.value) end,
 	overtime = function(self, ent, e) self:SetOvertime(e.value) end,
 	nag = function() WS.BroadcastPA(UNASSIGNED, OVERTIME_NAG) end,
@@ -642,6 +685,10 @@ function Controller:Mode()
 	return self.round:Mode()
 end
 
+function Controller:InSuddenDeath()
+	return self.round:InSuddenDeath()
+end
+
 -- fn runs at the phase (Rounds.PHASE_*), in `order` (Rounds.LISTEN_*), each
 -- function once however often it is added.
 function Controller:AddRoundListener(phase, order, fn)
@@ -811,6 +858,7 @@ end
 local EFFECTS = {
 	state = function(self, e)
 		SetGlobal2Int("ws_round_state", e.to)
+		PublishLimits()
 		if e.to == S.PREROUND then
 			self:RestoreSpawnDoors()
 			SetGlobal2Float("ws_preround_end_time", e.preroundEnd)
@@ -830,6 +878,10 @@ local EFFECTS = {
 	round_spawn = function(self)
 		-- CTFGameRules::SetupOnRoundStart forgets the koth clocks.
 		self.teamClocks = {}
+		-- the round limits count from zero, and an admin's round time starts again
+		self.tally:Reset()
+		self:PublishRoundLimits()
+		self:StartRoundTimer()
 		self:RunListeners(Rounds.PHASE_SPAWN)
 		hook.Run("WSRoundSpawn")
 	end,
@@ -904,7 +956,11 @@ local EFFECTS = {
 	end,
 	hide_timers = function(self) self:HideActiveTimer() end,
 	restore_timers = function(self) self:RestoreActiveTimer() end,
-	stalemate_timer = function(self, e) self.stalemateTimer = self:CreateTimer(nil, e.seconds) end,
+	-- sudden death after the arena round, or after another, replaces its timer
+	stalemate_timer = function(self, e)
+		if IsValid(self.stalemateTimer) then self.stalemateTimer:Remove() end
+		self.stalemateTimer = self:CreateTimer(nil, e.seconds)
+	end,
 	-- Without a full reset the survivors take the round's points (the
 	-- master's SetWinnerAndForceCaps).
 	stalemate_winner = function(self, e)
@@ -921,10 +977,11 @@ local EFFECTS = {
 		hook.Run("WSMatchWin", e.winner)
 		-- its winners hunt the humiliated losers to its music through the
 		-- setup gates and every spawn door (MATCH_WIN_EXTRA), then everyone
-		-- is frozen for mp_chattime
+		-- is frozen for mp_chattime; a match ended drawn (a stalemate) is
+		-- bonus time for all to the stalemate music, frozen never
 		self:FinishSetup(now)
 		self:OpenSpawnDoors(now)
-		PlayMatchEnd(e.winner)
+		if e.winner == UNASSIGNED then PlayWinSong(UNASSIGNED) else PlayMatchEnd(e.winner) end
 	end,
 	changelevel = function()
 		RunConsoleCommand("changelevel", NextMap())
@@ -934,6 +991,10 @@ local EFFECTS = {
 	freeze = function()
 		EachPlayer(function(ply) ply:Freeze(true) end)
 		hook.Run("WSFreeze", true)
+		WS.Announce(Text.NextMapNote(NextMap()), UNASSIGNED, UNASSIGNED, ICON_NEXT_MAP)
+	end,
+	-- a match ended drawn: bonus time goes on, the next map named
+	next_map = function()
 		WS.Announce(Text.NextMapNote(NextMap()), UNASSIGNED, UNASSIGNED, ICON_NEXT_MAP)
 	end,
 	unfreeze = function()
@@ -1232,6 +1293,7 @@ end
 function Controller:ThinkRound(now)
 	if not Active() then return end
 	self.round:Configure(Settings())
+	self:PublishRoundLimits()
 	if self.round:Halted() then
 		self:HaltedThink(now)
 		return
@@ -1240,6 +1302,72 @@ function Controller:ThinkRound(now)
 	if state == S.GAME_OVER or state == S.STALEMATE or (state == S.TEAM_WIN and self.round:Winner() ~= UNASSIGNED) then self:KeepSpawnDoorsOpen(now) end
 	self:Apply(self.round:Think(now, self:World(now)))
 end
+
+-- Round limits (foundation.rounds.limits) ---------------------------------------------
+
+-- The announcer's cues: the arena's first blood, and Player Destruction's
+-- close to winning, to the team and to its enemy.
+local FIRST_BLOOD = "Announcer.AM_FirstBloodRandom"
+local CLOSE_OURS, CLOSE_THEIRS = "Announcer.OurTeamCloseToWinning", "Announcer.EnemyTeamCloseToWinning"
+
+function Controller:RoundLimits()
+	return Limits.Of(self.round:Mode(), roundFraglimit:GetInt(), roundCashlimit:GetInt())
+end
+
+-- For the HUD's Player Destruction panels: each limit (0: no panel) and each
+-- team's count toward it.
+function Controller:PublishRoundLimits()
+	local limits = self:RoundLimits()
+	SetGlobal2Int("ws_round_fraglimit", limits.frags)
+	SetGlobal2Int("ws_round_cashlimit", limits.cash)
+	for _, t in ipairs(GAME_TEAMS) do
+		SetGlobal2Int("ws_round_frags_" .. t, self.tally:Frags(t))
+		SetGlobal2Int("ws_round_earned_" .. t, self.tally:Earned(t))
+	end
+end
+
+-- A frag or an earning counted: the HUD's counts, the announcer's cues, and
+-- a limit reached decides the round.
+function Controller:Counted()
+	local limits = self:RoundLimits()
+	self:PublishRoundLimits()
+	for _, call in ipairs(self.tally:Calls(limits)) do
+		if call.kind == "first_blood" then
+			WS.BroadcastPA(UNASSIGNED, FIRST_BLOOD)
+		else
+			WS.BroadcastPA(call.team, CLOSE_OURS)
+			WS.BroadcastPA(WS.EnemyOf(call.team), CLOSE_THEIRS)
+		end
+	end
+	local outcome = Limits.Outcome(limits, self.tally)
+	if outcome then self:Apply(self.round:LimitReached(CurTime(), outcome, self.objective)) end
+end
+
+local function Counts()
+	return Active() and Controller.round:LimitsCount()
+end
+
+-- A frag toward the frag limit is Player Destruction's deposit: its score
+-- chime (CTFRobotDestructionLogic's points scored), bright to the team, dull
+-- to its enemy.
+local SCORE_OURS, SCORE_THEIRS = "RD.TeamScoreCore", "RD.EnemyScoreCore"
+
+hook.Add("WSTeamFrag", "ws_rounds_limits", function(team)
+	if not Counts() then return end
+	Controller.tally:Frag(team)
+	if Controller:RoundLimits().frags > 0 then
+		WS.BroadcastSound(team, SCORE_OURS)
+		WS.BroadcastSound(WS.EnemyOf(team), SCORE_THEIRS)
+	end
+	Controller:Counted()
+end)
+
+hook.Add("WSMoneyEarned", "ws_rounds_limits", function(ent, amount)
+	local team = WS.LastTeamNumber(ent)
+	if not (Counts() and (team == RED or team == BLUE)) then return end
+	Controller.tally:Earn(team, amount)
+	Controller:Counted()
+end)
 
 hook.Add("Think", THINK_HOOK, function()
 	local now = CurTime()
@@ -1266,15 +1394,17 @@ end
 -- features may raise). A map with an objective and no tf_gamerules gets
 -- one, named as TF2 names it, and the gamemode then starts in its mode.
 -- Without a proxy nothing sends RoundSpawn, so the timers run from map spawn.
+local function MakeProxy()
+	local proxy = ents.Create(PROXY_CLASS)
+	proxy:SetName(PROXY_CLASS)
+	proxy:Spawn()
+end
+
 function Controller:SetUpMap()
 	if self.mapSetUp then return end
 	self.mapSetUp = true
 	if ents.FindByClass(MASTER_CLASS)[1] then self:SetMode(ControlPoints.Mode) end
-	if not Active() and HasObjective() then
-		local proxy = ents.Create(PROXY_CLASS)
-		proxy:SetName(PROXY_CLASS)
-		proxy:Spawn()
-	end
+	if not Active() and HasObjective() then MakeProxy() end
 	self:ActivateTimers()
 	-- The rules exist now: the gamemode puts the map in its Sandbox or
 	-- Gameplay mode (StartAtLoad is idempotent).
@@ -1286,6 +1416,32 @@ function Controller:SetUpMap()
 	for _, ent in ipairs(self.timerList) do
 		if IsValid(ent) then self:ApplyTimerEvents(ent, self.timers[ent]:RoundSpawn(now)) end
 	end
+end
+
+-- An admin's round time (the Round Timer Editor's Set Round Time) on a map
+-- without an objective: each round gets a timer of that many seconds (0:
+-- none, untimed), started now and at every round's spawn; its end is a
+-- stalemate (TIMER_EVENTS).
+function Controller:SetRoundTime(seconds)
+	self.roundTime = seconds
+	self:StartRoundTimer()
+end
+
+function Controller:StartRoundTimer()
+	if IsValid(self.roundTimer) then self.roundTimer:Remove() end
+	self.roundTimer = NULL
+	if self.roundTime > 0 then self.roundTimer = self:CreateTimer(nil, self.roundTime) end
+end
+
+-- A game begun on a map without rounds (foundation.gamemode's loadRounds):
+-- its tf_gamerules, as a map with an objective gets one, and the base mode,
+-- untimed, played to the round limits. The gamemode keeps the rounds halted
+-- until the game begins (StartAtLoad, which SetUpMap calls when it runs
+-- after this; called now when it already ran).
+function Controller:EnsureRules()
+	if Active() then return end
+	MakeProxy()
+	if self.mapSetUp then WS.Feature("gamemode"):StartAtLoad() end
 end
 
 -- Loaded during the map's spawn this waits for InitPostEntity; loaded later,

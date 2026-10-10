@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 r"""Run Garry's Mod's dedicated server under CrossOver and drive it with RCON.
 
-  srcds.py start [--map gm_construct] [--port 27025] [--maxplayers 32] [--ip 127.0.0.1] [--no-lua-refresh]
+  srcds.py start [--map gm_construct] [--port 27025] [--maxplayers 32] [--ip cosmicbook.tail] [--no-lua-refresh]
                                                        start, wait for the map
   srcds.py rcon 'status'                               run a console command
   srcds.py stop                                        quit the server we started
@@ -30,8 +30,10 @@ places is marked a console program, so Wine hands it that pty instead of
 opening a console window: the log holds the console's ANSI colors, and
 `console` (or `start --console`) follows it in an iTerm window with the
 profile ITERM_PROFILE, a dark one, which suits GMod's truecolor text. -condebug writes
-garrysmod/console.log, which holds what the console printed. +ip 127.0.0.1
-keeps RCON on this machine. --no-lua-refresh adds -disableluarefresh, so edits
+garrysmod/console.log, which holds what the console printed. +ip binds this
+Mac's tailnet name, DEFAULT_BIND_HOST, resolved to its address (bind_address),
+so the operator can play from another machine on the tailnet; --ip 127.0.0.1
+keeps the server and its RCON on this machine. --no-lua-refresh adds -disableluarefresh, so edits
 on disk after start-up never reach the running server (game events v2's T1).
 
 The RCON password is kept in .devtools/artifacts/rcon_password. The
@@ -101,6 +103,9 @@ HEADER = struct.Struct("<iii")  # size, id, type
 SIZE_FIELD = 4
 MIN_SLOTS = 2  # the harness's bots need room
 LOCALHOST = "127.0.0.1"
+# start binds this Mac's tailnet name by default, so the operator can play
+# from other machines on the tailnet; --ip 127.0.0.1 keeps it to this one.
+DEFAULT_BIND_HOST = "cosmicbook.tail"
 
 REPO = Path(__file__).resolve().parents[2]
 ARTIFACTS = REPO / ".devtools" / "artifacts"
@@ -130,6 +135,26 @@ class AuthFailed(Exception):
 
 class ServerDown(Exception):
     pass
+
+
+class BindAddressUnknown(Exception):
+    """The host to bind has no address (Tailscale off, say)."""
+
+
+def bind_address(host: str, resolve=socket.gethostbyname) -> str:
+    """The address srcds's +ip takes for host: an address as it is, a name
+    resolved; one that does not resolve is refused, not bound elsewhere."""
+    try:
+        socket.inet_aton(host)
+        return host
+    except OSError:
+        pass
+    try:
+        return resolve(host)
+    except OSError as e:
+        raise BindAddressUnknown(
+            f"cannot bind {host}: it does not resolve ({e}); is Tailscale up? "
+            f"--ip 127.0.0.1 binds this Mac only") from e
 
 
 class WrongBottle(Exception):
@@ -614,9 +639,9 @@ def main() -> int:
     start.add_argument("--map", default="gm_construct")
     start.add_argument("--port", type=int, help="by default the instance's (DEFAULT_PORT for the main one)")
     start.add_argument("--maxplayers", type=int, default=DEFAULT_MAXPLAYERS)
-    start.add_argument("--ip", default=LOCALHOST,
-                       help="the address to bind; a client in the other bottle cannot reach 127.0.0.1, so to play "
-                            "on it give this Mac's LAN or Tailscale address")
+    start.add_argument("--ip", default=DEFAULT_BIND_HOST,
+                       help="the address or name to bind (default %(default)s, this Mac on the tailnet); "
+                            "127.0.0.1 keeps it to this Mac, which a client in the other bottle cannot reach")
     start.add_argument("--no-lua-refresh", dest="lua_refresh", action="store_false",
                        help="start with -disableluarefresh: edits on disk never reach the running server")
     start.add_argument("--console", action="store_true", help="follow the console in an iTerm window")
@@ -630,7 +655,7 @@ def main() -> int:
         files = InstanceFiles.of(instance)
         if args.action == "start":
             port = args.port or files.port
-            server = make_server(args.map, port, args.lua_refresh, args.maxplayers, args.ip, instance)
+            server = make_server(args.map, port, args.lua_refresh, args.maxplayers, bind_address(args.ip), instance)
             server.start()
             if args.console:
                 open_console(files.log)
@@ -642,7 +667,7 @@ def main() -> int:
             open_console(files.log)
         else:
             make_server("gm_construct", started_port(files.port, instance), instance=instance).stop()
-    except (ServerDown, AuthFailed, OSError, subprocess.CalledProcessError, ValueError) as e:
+    except (ServerDown, AuthFailed, BindAddressUnknown, OSError, subprocess.CalledProcessError, ValueError) as e:
         print(f"srcds: {e}", file=sys.stderr)
         return 1
     return 0

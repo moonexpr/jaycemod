@@ -296,6 +296,8 @@ local ROLES = {
 		rushes = false,
 		Goal = SupportSpot,
 	},
+	-- every scenario's job (foundation.aiwar.orders)
+	[AiWar.EXPLORE] = Orders.EXPLORE_ROLE,
 }
 
 DOCTRINE = {
@@ -438,6 +440,8 @@ function Scenario:Objectives(field, team, now)
 end
 
 function Scenario:Brief(field, now)
+	-- explore is every doctrine's job: its board on the field
+	self:Explore(field)
 	self:Remember(field.points, now)
 	local objectives = {}
 	for _, team in ipairs(TEAMS) do objectives[team] = self:Objectives(field, team, now) end

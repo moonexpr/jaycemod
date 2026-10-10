@@ -490,9 +490,11 @@ end)
 
 -- Squads
 
--- Two soldiers of one role in one squad of one war: a (older) and b.
+-- Two soldiers of one role in one squad of one war: a (older) and b (no
+-- squads min, so they fill one squad).
 local function Squadmates(t)
 	local war = AiWar.War.New()
+	war:SetSquadsMin(1)
 	war:Assign({ [BLUE] = true })
 	war:SetField(t.field or Field({}))
 	local a = war:Enlist("a", t.team or BLUE, true)

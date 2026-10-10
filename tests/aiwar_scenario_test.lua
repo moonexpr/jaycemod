@@ -15,16 +15,17 @@ local function P(x, y) return { x = x, y = y, z = 0 } end
 
 -- Choosing the variant ------------------------------------------------------
 
-T.test("the variant comes from the rounds mode's name, and nothing else has one", function()
+T.test("the variant comes from the rounds mode's name; any other is freeform", function()
 	T.eq(Scenario.For("payload"), Payload.Scenario, "payload")
-	T.eq(Scenario.For("none"), nil, "an unknown mode")
-	T.eq(Scenario.For(nil), nil, "no rounds")
+	-- a mode the war does not know, or none, is fought freeform (aiwar_freeform_test.lua)
+	T.eq(Scenario.For("none"), T.require("foundation.aiwar.scenario.freeform").Scenario, "an unknown mode")
+	T.eq(Scenario.For(nil), T.require("foundation.aiwar.scenario.freeform").Scenario, "no rounds")
 	T.eq(Payload.Scenario.NAME, Payload.MODE, "the payload variant is named for its mode")
 end)
 
 T.test("the variants are keyed by the rounds modes' NAMEs", function()
 	local names = {}
-	for _, path in ipairs({ "foundation.rounds.payload", "foundation.rounds.control_points", "foundation.rounds.koth" }) do
+	for _, path in ipairs({ "foundation.rounds.payload", "foundation.rounds.control_points", "foundation.rounds.koth", "foundation.rounds.arena" }) do
 		names[T.require(path).Mode.NAME] = true
 	end
 	for name in pairs(Scenario.VARIANTS) do T.eq(names[name], true, name .. " is a rounds mode") end
@@ -72,8 +73,10 @@ local function Tick(scenario, war, now, redEntry, defense)
 	return field
 end
 
+-- The allocation mechanics, with every role on (AiWar.OFF_ROLES aside).
 local function ProbeWar()
 	local war = AiWar.War.New()
+	war:SetOffRoles({})
 	war:Enlist("r1", RED, true)
 	return war, war:Member("r1")
 end

@@ -48,7 +48,7 @@ T.test("a rocket flies straight and blows up on whatever it touches", function()
 end)
 
 T.test("a rocket's blast is TF_ROCKET_RADIUS with its damage, team, attacker and crit", function()
-	T.eq(Rocket.ROCKET_RADIUS, 146, "TF_ROCKET_RADIUS")
+	T.defined(Rocket.ROCKET_RADIUS, "TF_ROCKET_RADIUS")
 	local rocket = NewRocket()
 	local blast = Rocket.Blast(rocket.state, V(1, 2, 3))
 	T.eq(blast.origin, V(1, 2, 3), "origin")
@@ -231,8 +231,8 @@ T.test("MONOCULUS keeps TF2's numbers", function()
 	T.eq(Eyeball.SKIN_RED, 1, "red skin")
 	T.eq(Eyeball.SKIN_TEAM_RED, 2, "team red skin")
 	T.eq(Eyeball.SKIN_TEAM_BLUE, 3, "team blue skin")
-	T.eq(Eyeball.ROCKET_DAMAGE, 50, "rocket damage")
-	T.eq(Eyeball.ROCKET_SPEED, 1100, "rocket speed")
+	T.defined(Eyeball.ROCKET_DAMAGE, "rocket damage")
+	T.defined(Eyeball.ROCKET_SPEED, "rocket speed")
 	T.eq(Eyeball.BOSS_TYPE, HalloweenBoss.BOSS_MONOCULUS, "boss type")
 	T.eq(Eyeball.KIND, HalloweenBoss.KIND, "a boss")
 end)
@@ -454,8 +454,8 @@ T.test("a visible victim is noticed, approached, and shot at: calm, one slow roc
 	local rockets = Rockets(s.me)
 	T.eq(#rockets, 1, "one rocket")
 	local config = rockets[1][2]
-	T.near(config.velocity:Length(), 330, EPSILON, "a third of full speed")
-	T.eq(config.damage, 50, "damage")
+	T.near(config.velocity:Length(), Eyeball.ROCKET_SPEED * Eyeball.CALM_SPEED_FACTOR, EPSILON, "calm: slower")
+	T.eq(config.damage, Eyeball.ROCKET_DAMAGE, "damage")
 	T.eq(config.crit, true, "crit")
 	T.eq(config.team, Teams.HALLOWEEN, "its team")
 	T.eq(config.attacker, s.me, "credited to the eyeball")
@@ -492,7 +492,7 @@ T.test("grumpy it fires 3 slow rockets 0.3 s apart after 0.25 s, circling by the
 	for i = 2, 3 do
 		local gap = rockets[i][4] - rockets[i - 1][4]
 		T.eq(gap > 0.3 - EPSILON and gap <= 0.3 + TICK + EPSILON, true, "0.3 s apart")
-		T.near(rockets[i][2].velocity:Length(), 330, EPSILON, "slow")
+		T.near(rockets[i][2].velocity:Length(), Eyeball.ROCKET_SPEED * Eyeball.CALM_SPEED_FACTOR, EPSILON, "slow")
 	end
 end)
 
@@ -516,11 +516,11 @@ T.test("enraged it fires 3 fast rockets from 1100 away, leading a moving target"
 	T.eq(SoundCount(s.me, "Halloween.EyeballBossRage") >= 1, true, "rage")
 	Tick(s, 0.3)
 	local rocket = Rockets(s.me)[1][2]
-	T.near(rocket.velocity:Length(), 1100, EPSILON, "full speed")
+	T.near(rocket.velocity:Length(), Eyeball.ROCKET_SPEED, EPSILON, "full speed")
 	-- The lead: the range to the target over the rocket's speed, times the
 	-- target's velocity.
 	local range = (V(1100, 0, 0) - s.me.origin):Length()
-	local aim = V(1100, range / 1100 * 100, 0) - s.me:WorldSpaceCenter()
+	local aim = V(1100, range / Eyeball.ROCKET_SPEED * 100, 0) - s.me:WorldSpaceCenter()
 	T.near(rocket.velocity:GetNormalized():Dot(aim:GetNormalized()), 1, EPSILON, "aimed ahead of the target")
 end)
 

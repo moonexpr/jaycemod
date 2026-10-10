@@ -1,9 +1,9 @@
 -- The arena feature's controller. It owns the tf_logic_arena model
 -- (foundation.rounds.arena), puts the round in the arena mode, and gives the
--- round the arena's convars: tf_arena_preround_time and tf_arena_round_time.
+-- round the arena's convars: mp_arena_preround_time and mp_arena_round_time.
 -- As the arena round starts it does what SetupOnStalemateStart's arena
 -- branch does: fires OnArenaRoundStart, sets the round's cap-enable time
--- (tf_arena_override_cap_enable_time above 0, else the map's CapEnableDelay)
+-- (mp_arena_override_cap_enable_time above 0, else the map's CapEnableDelay)
 -- and plays the round-start line. Every 0.1 s it fires OnCapEnabled as that
 -- time passes (CArenaLogic::ArenaLogicThink). It publishes the time for the
 -- view (ws_arena_cap_enable_time) and that the round is arena's
@@ -16,11 +16,13 @@ local Rounds = WS.require("foundation.rounds")
 local THINK_INTERVAL = 0.1 -- ArenaLogicThink's
 local THINK_HOOK = "ws_arena"
 
--- TF2's own convars (teamplayroundbased_gamerules.cpp, tf_gamerules.cpp).
-local preroundTime = CreateConVar("tf_arena_preround_time", "10", { FCVAR_NOTIFY, FCVAR_REPLICATED },
+-- TF2's tf_arena_* convars (teamplayroundbased_gamerules.cpp, tf_gamerules.cpp),
+-- named mp_arena_* here.
+local preroundTime = CreateConVar("mp_arena_preround_time", "10", { FCVAR_NOTIFY, FCVAR_REPLICATED },
 	"Length of the Pre-Round time", Arena.PREROUND_MIN, Arena.PREROUND_MAX)
-local roundTime = CreateConVar("tf_arena_round_time", "0", { FCVAR_NOTIFY, FCVAR_REPLICATED })
-local overrideCapEnableTime = CreateConVar("tf_arena_override_cap_enable_time", "-1", { FCVAR_REPLICATED, FCVAR_NOTIFY },
+local roundTime = CreateConVar("mp_arena_round_time", "0", { FCVAR_NOTIFY, FCVAR_REPLICATED },
+	"Length of the arena round in seconds, shown as its timer; when it runs out the round is a stalemate. 0: untimed.")
+local overrideCapEnableTime = CreateConVar("mp_arena_override_cap_enable_time", "-1", { FCVAR_REPLICATED, FCVAR_NOTIFY },
 	"Overrides the time (in seconds) it takes for the capture point to become enable, -1 uses the level designer specified time.")
 
 local Controller = {

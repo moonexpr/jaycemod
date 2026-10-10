@@ -330,20 +330,19 @@ local function Cart(over)
 	return cart
 end
 
-T.test("the cart's status line: arrows, pushers, blocked, or the rollback countdown", function()
+-- What TF2's escort HUD (CTFHudEscort) shows on the cart's icon.
+T.test("the cart's indicator: blocked, rolling back, its pushers, or the rollback countdown", function()
 	local NOW = 100
-	T.eq(Hud.Status(Cart({ cappers = Payload.CAPPERS_BLOCKED }), NOW), Hud.BLOCKED, "blocked")
-	T.eq(Hud.Status(Cart({
-		speed = 2,
-		cappers = 2,
-	}), NOW), ">>  x2", "two arrows, two pushers")
-	T.eq(Hud.Status(Cart({ speed = Payload.SPEED_LEVEL_BACKWARDS }), NOW), "<", "rolling back")
-	T.eq(Hud.Status(Cart({ recedeAt = NOW + 11.5 }), NOW), "Rolls back in 12", "the countdown, rounded up")
-	T.eq(Hud.Status(Cart({ recedeAt = NOW - 1 }), NOW), "Rolls back in 0", "never negative")
-	T.eq(Hud.Status(Cart({
-		recedeAt = NOW + 5,
-		canRecede = false,
-	}), NOW), "", "a cart that cannot recede shows no countdown")
+	T.eq(Hud.Indicator(Cart({ cappers = Payload.CAPPERS_BLOCKED }), NOW).blocked, true, "blocked")
+	local pushed = Hud.Indicator(Cart({ speed = 2, cappers = 2 }), NOW)
+	T.eq(pushed.cappers, 2, "two pushers")
+	T.eq(pushed.recede, nil, "no countdown while pushed")
+	T.eq(Hud.Indicator(Cart({ speed = Payload.SPEED_LEVEL_BACKWARDS }), NOW).backwards, true, "rolling back")
+	T.eq(Hud.Indicator(Cart({ recedeAt = NOW + 11.5 }), NOW).recede, 12, "the countdown, rounded up")
+	T.eq(Hud.Indicator(Cart({ recedeAt = NOW - 1 }), NOW).recede, 0, "never negative")
+	T.eq(Hud.Indicator(Cart({ recedeAt = NOW + 5, canRecede = false }), NOW).recede, nil, "a cart that cannot recede shows none")
+	local idle = Hud.Indicator(Cart({}), NOW)
+	T.eq(idle.blocked or idle.backwards or idle.cappers or idle.recede, nil, "an idle cart shows nothing")
 end)
 
 T.test("the admin's cart speed scale is clamped to the editor's range", function()

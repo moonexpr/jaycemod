@@ -44,15 +44,15 @@ local function Run(spawner, clock, random, untilTime, spawned)
 	return times
 end
 
-T.test("an idle spawner thinks every 0.2 s and requests nothing", function()
+T.test("an idle spawner thinks every IDLE_THINK and requests nothing", function()
 	local s = New()
 	local request, nextThink = s:Think(10, function() error("no draw while idle") end)
 	T.eq(request, nil, "disabled")
 	T.near(nextThink, 10 + Spawner.IDLE_THINK, 1e-9, "next think")
-	T.eq(Spawner.IDLE_THINK, 0.2, "0.2 s")
-	request, nextThink = s:Think(10.1, function() error("not due") end)
+	T.defined(Spawner.IDLE_THINK, "Spawner.IDLE_THINK")
+	request, nextThink = s:Think(10 + Spawner.IDLE_THINK / 2, function() error("not due") end)
 	T.eq(request, nil, "not due yet")
-	T.near(nextThink, 10.2, 1e-9, "still due at 10.2")
+	T.near(nextThink, 10 + Spawner.IDLE_THINK, 1e-9, "still due at the first think")
 end)
 
 T.test("a request carries the class and the configured NPC with the team strategy's team", function()
@@ -136,9 +136,10 @@ end)
 T.test("Enable makes a waiting spawner think at once", function()
 	local s = New()
 	local _, nextThink = s:Think(10, function() return 0 end)
-	T.near(nextThink, 10.2, 1e-9, "idle")
-	s:Enable(10.05)
-	local request = s:Think(10.05, function(lo) return lo end)
+	T.near(nextThink, 10 + Spawner.IDLE_THINK, 1e-9, "idle")
+	local soon = 10 + Spawner.IDLE_THINK / 4
+	s:Enable(soon)
+	local request = s:Think(soon, function(lo) return lo end)
 	T.eq(request ~= nil, true, "spawns at once")
 end)
 

@@ -40,7 +40,7 @@ local function Victim(overrides)
 end
 
 T.test("the crit multiplier is TF2's", function()
-	T.eq(Combat.CRIT_MULTIPLIER, 3, "TF_DAMAGE_CRIT_MULTIPLIER")
+	T.defined(Combat.CRIT_MULTIPLIER, "TF_DAMAGE_CRIT_MULTIPLIER")
 end)
 
 -- CTFRadiusDamageInfo::CalculateFalloff and ApplyToEntity

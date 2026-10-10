@@ -52,6 +52,7 @@ local function HillPoint()
 		previous = {},
 		sounds = {},
 		capSounds = {},
+		icons = {},
 	}
 end
 

@@ -6,6 +6,8 @@
 --     Gameplay mode (ws_gamemode_transition_end) the timer shows that
 --     countdown labelled "Prepare";
 --   - the pre-round and respawn countdowns and the announcement line;
+--   - the round limits' counters (foundation.rounds.limits), as TF2's Player
+--     Destruction panel (HudObjectivePlayerDestruction.res);
 --   - a small panel with the stage of a multi-stage map, the team scores and
 --     the local team's goal (CTFGameRules::ShouldShowTeamGoal); TF2's win
 --     panel (tf_hud_winpanel.cpp), the game-over reason, and round notices
@@ -19,6 +21,7 @@
 local Rounds = WS.require("foundation.rounds")
 local Timer = WS.require("foundation.rounds.timer")
 local Text = WS.require("foundation.rounds.text")
+local Limits = WS.require("foundation.rounds.limits")
 
 local S = WS.STATE
 local UNASSIGNED = WS.TEAM_UNASSIGNED
@@ -337,11 +340,95 @@ function View:DrawWinPanel(w, h)
 end
 
 -- The match's end: who won it (Rounds.MatchWinner; a tied match goes to
--- sudden death instead), and why it ended.
+-- sudden death instead), or a stalemate nobody won, and why it ended.
 function View:DrawGameOver(w, h)
 	local winner = GetGlobal2Int("ws_match_winner", Rounds.NOBODY_WON)
-	DrawCentrePanel(w, h, string.format("%s WINS THE MATCH!", WS.TeamName[winner]), WS.TeamColor[winner],
-		{ GetGlobal2String("ws_game_over_reason", "") })
+	local reason = { GetGlobal2String("ws_game_over_reason", "") }
+	if winner == Rounds.NOBODY_WON then return DrawCentrePanel(w, h, "STALEMATE", color_white, reason) end
+	DrawCentrePanel(w, h, string.format("%s WINS THE MATCH!", WS.TeamName[winner]), WS.TeamColor[winner], reason)
+end
+
+-- The round limits ---------------------------------------------------------------------
+
+-- TF2's Player Destruction panel (HudObjectivePlayerDestruction.res), in its
+-- 480-tall units: a 300 x 60 bar centred at the screen's foot, BLU's half
+-- filling from the middle out to the left and RED's to the right, each
+-- team's icon in its outer corner and count inside its end, the limit on
+-- the "Playing to" tab in the middle. A panel per limit, the next above.
+local LIMIT_BAR_W, LIMIT_BAR_H, LIMIT_BAR_BOTTOM, LIMIT_STEP = 300, 60, 12, 64
+local LIMIT_HALF, LIMIT_BLUE_INSET, LIMIT_RED_INSET = 150, 10, 9
+local LIMIT_ICON, LIMIT_ICON_Y, LIMIT_BLUE_ICON_X, LIMIT_RED_ICON_X = 14, 8, 15, 271
+local LIMIT_VALUE_X, LIMIT_VALUE_Y = 33, 40 -- from each end, from the top
+local LIMIT_TAB_W, LIMIT_TAB_H, LIMIT_TAB_Y, LIMIT_LABEL_Y = 140, 35, 21, 39
+local LIMIT_VALUE_FONT, LIMIT_LABEL_FONT = "Sandcastle.Hud.LimitValue", "Sandcastle.Hud.LimitLabel"
+local LIMIT_VALUE_TALL, LIMIT_LABEL_TALL = 22, 13
+local LIMIT_OUTLINE = Material("hud/objectives_corepanel_bg")
+local LIMIT_TAB = Material("hud/objectives_flagpanel_bg_playingto")
+local LIMIT_FILL = {
+	[WS.TEAM_BLUE] = { material = Material("hud/objectives_corepanel_meter_solid"), color = Color(84, 111, 127) },
+	[WS.TEAM_RED] = { material = Material("hud/objectives_corepanel_meter_solid_right"), color = Color(171, 59, 59) },
+}
+local LIMIT_ICONS = {
+	[Rounds.WINREASON.FRAGLIMIT] = Material("hud/hud_obj_status_kill_64"),
+	[Rounds.WINREASON.CASHLIMIT] = Material("hud/mvm_cash"),
+}
+local TAN_LIGHT = Color(235, 226, 202)
+local limitFontsFor
+
+local function LimitFonts(unit)
+	if limitFontsFor == unit then return end
+	surface.CreateFont(LIMIT_VALUE_FONT, { font = "TF2 Build", size = math.Round(LIMIT_VALUE_TALL * unit), weight = 500 })
+	surface.CreateFont(LIMIT_LABEL_FONT, { font = "TF2 Secondary", size = math.Round(LIMIT_LABEL_TALL * unit), weight = 500 })
+	limitFontsFor = unit
+end
+
+local function Shadowed(text, font, x, y, alignX)
+	draw.SimpleText(text, font, x + 1, y + 1, color_black, alignX, TEXT_ALIGN_CENTER)
+	draw.SimpleText(text, font, x, y, TAN_LIGHT, alignX, TEXT_ALIGN_CENTER)
+end
+
+local function DrawLimitPanel(panel, x, y, unit)
+	local blue, red = WS.TEAM_BLUE, WS.TEAM_RED
+	local half = LIMIT_HALF * unit
+	-- BLU's fill grows from the middle to the left, RED's from the middle to the right
+	local blueW = (LIMIT_HALF - LIMIT_BLUE_INSET) * panel.fills[blue]
+	local redW = (LIMIT_HALF - LIMIT_RED_INSET) * panel.fills[red]
+	surface.SetMaterial(LIMIT_FILL[blue].material)
+	surface.SetDrawColor(LIMIT_FILL[blue].color)
+	surface.DrawTexturedRectUV(x + half - blueW * unit, y, blueW * unit, LIMIT_BAR_H * unit, 1 - blueW / LIMIT_HALF, 0, 1, 1)
+	surface.SetMaterial(LIMIT_FILL[red].material)
+	surface.SetDrawColor(LIMIT_FILL[red].color)
+	surface.DrawTexturedRectUV(x + half, y, redW * unit, LIMIT_BAR_H * unit, 0, 0, redW / LIMIT_HALF, 1)
+	surface.SetDrawColor(255, 255, 255, 255)
+	surface.SetMaterial(LIMIT_OUTLINE)
+	surface.DrawTexturedRect(x, y, LIMIT_BAR_W * unit, LIMIT_BAR_H * unit)
+	surface.SetMaterial(LIMIT_ICONS[panel.reason])
+	surface.DrawTexturedRect(x + LIMIT_BLUE_ICON_X * unit, y + LIMIT_ICON_Y * unit, LIMIT_ICON * unit, LIMIT_ICON * unit)
+	surface.DrawTexturedRect(x + LIMIT_RED_ICON_X * unit, y + LIMIT_ICON_Y * unit, LIMIT_ICON * unit, LIMIT_ICON * unit)
+	Shadowed(panel.values[blue], LIMIT_VALUE_FONT, x + LIMIT_VALUE_X * unit, y + LIMIT_VALUE_Y * unit, TEXT_ALIGN_LEFT)
+	Shadowed(panel.values[red], LIMIT_VALUE_FONT, x + (LIMIT_BAR_W - LIMIT_VALUE_X) * unit, y + LIMIT_VALUE_Y * unit, TEXT_ALIGN_RIGHT)
+	surface.SetDrawColor(255, 255, 255, 255)
+	surface.SetMaterial(LIMIT_TAB)
+	surface.DrawTexturedRect(x + (LIMIT_BAR_W - LIMIT_TAB_W) / 2 * unit, y + LIMIT_TAB_Y * unit, LIMIT_TAB_W * unit, LIMIT_TAB_H * unit)
+	Shadowed(panel.label, LIMIT_LABEL_FONT, x + LIMIT_BAR_W / 2 * unit, y + LIMIT_LABEL_Y * unit, TEXT_ALIGN_CENTER)
+end
+
+function View:DrawLimits(w, h)
+	local function Counts(key)
+		return { [WS.TEAM_RED] = GetGlobal2Int(key .. WS.TEAM_RED, 0), [WS.TEAM_BLUE] = GetGlobal2Int(key .. WS.TEAM_BLUE, 0) }
+	end
+	-- for now the frags panel alone (operator, 2026-10-10): nothing earns money
+	-- yet, so the cash panel waits; the cash limit still decides a round
+	local panels = Limits.Panels({ frags = GetGlobal2Int("ws_round_fraglimit", 0), cash = 0 },
+		Counts("ws_round_frags_"), Counts("ws_round_earned_"))
+	if #panels == 0 then return end
+	local unit = h / 480
+	LimitFonts(unit)
+	local x = w / 2 - LIMIT_BAR_W / 2 * unit
+	for i, panel in ipairs(panels) do
+		local y = h - (LIMIT_BAR_BOTTOM + LIMIT_BAR_H + (i - 1) * LIMIT_STEP) * unit
+		DrawLimitPanel(panel, x, y, unit)
+	end
 end
 
 function View:DrawNotices(w, h)
@@ -368,6 +455,7 @@ function View:Paint(w, h)
 	self:DrawAnnouncement(w, h)
 	self:DrawRespawn(w, h)
 	self:DrawRoundPanel(w, h)
+	self:DrawLimits(w, h)
 	self:DrawNotices(w, h)
 	local panel = CENTRE_PANELS[state]
 	if panel then panel(self, w, h) end

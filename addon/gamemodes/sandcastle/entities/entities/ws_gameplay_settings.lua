@@ -25,8 +25,8 @@ local WIN_LIMIT_MAX, MAX_ROUNDS_MAX, TIME_LIMIT_MAX = 100, 100, 240
 local function WinCondition(name, convar, title, max)
 	return {
 		name = name, type = "Int", title = title, category = "Win conditions", min = 0, max = max,
-		read = function() return GetConVar(convar):GetInt() end,
-		write = function(_, v) GetConVar(convar):SetInt(v) end,
+		read = function(e) return e:WinCondition(convar) end,
+		write = function(e, v) e:SetWinCondition(convar, v) end,
 	}
 end
 

@@ -80,6 +80,8 @@ function FP.Field(t)
 		gates = t.gates,
 		posts = t.posts,
 		lanes = t.lanes,
+		-- the nav mesh's, which the controller's field always carries
+		waypoints = t.waypoints or {},
 	}
 end
 
@@ -92,11 +94,16 @@ end
 local Battle = {}
 Battle.__index = Battle
 
--- scenario: a variant's Scenario class.
+-- scenario: a variant's Scenario class. Its squads are of its size, as
+-- the controller makes them, and fill one by one (no squads min), so a
+-- battle's squadmates fight together.
 function FP.Battle(scenario)
+	local war = AiWar.War.New()
+	war:SetFireTeamSize(scenario.SQUAD_SIZE)
+	war:SetSquadsMin(1)
 	return setmetatable({
 		scenario = scenario:New(),
-		war = AiWar.War.New(),
+		war = war,
 		now = 0,
 		soldiers = {},
 	}, Battle)

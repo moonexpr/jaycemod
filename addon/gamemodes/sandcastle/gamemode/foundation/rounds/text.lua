@@ -23,6 +23,8 @@ local REASON_TEXT = {
 	[WINREASON.TIMELIMIT] = "%s had more points when the time limit was reached",
 	[WINREASON.WINLIMIT] = "%s had more points when the win limit was reached",
 	[WINREASON.WINDIFFLIMIT] = "%s was ahead by the required difference to win",
+	[WINREASON.FRAGLIMIT] = "%s reached the frag limit",
+	[WINREASON.CASHLIMIT] = "%s reached the cash limit",
 }
 -- Winreason_Arena: an arena round's elimination is no sudden death.
 local ARENA_ELIMINATION = "%s killed all opponents"
@@ -64,6 +66,8 @@ local STALEMATE_REASON = {
 	[STALEMATE.SERVER_TIMELIMIT] = "Map time limit reached. No more spawning, so make this count.",
 	[STALEMATE.MATCH_TIED] = "The match is tied. No more spawning: the next team to win takes the match.",
 	[STALEMATE.ADMIN] = "The Administrator has called sudden death. No more spawning.",
+	[STALEMATE.BOTH_DEAD] = "Both teams fell at once. Again: no more spawning, the last team standing wins.",
+	[STALEMATE.LIMIT_TIED] = "Both teams reached the limit together. No more spawning, the last team standing wins.",
 }
 
 function StalematePanel(reason)

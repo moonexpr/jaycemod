@@ -1,7 +1,7 @@
 -- The arena mode (foundation.rounds.arena): tf_logic_arena's round as TF2
 -- plays it (teamplayroundbased_gamerules.cpp's IsInArenaMode branches,
 -- CTFGameRules::SetupOnStalemateStart and CArenaLogic, tf_gamerules.cpp). The
--- pre-round lasts tf_arena_preround_time, then the round is fought in the
+-- pre-round lasts mp_arena_preround_time, then the round is fought in the
 -- STALEMATE state: nobody respawns, a team wins by killing the other or by
 -- capturing the point once the cap-enable time has passed.
 local T = dofile("tests/harness.lua")
@@ -18,7 +18,7 @@ local Teams = T.require("foundation.teams")
 local NOBODY, RED, BLUE = Teams.UNASSIGNED, Teams.RED, Teams.BLUE
 local W = Rounds.WINREASON
 local T0 = 100
-local PREROUND = 10 -- tf_arena_preround_time's default
+local PREROUND = 10 -- mp_arena_preround_time's default
 
 local function Settings(over)
 	local s = {
@@ -125,7 +125,7 @@ end)
 
 -- The round --------------------------------------------------------------------------
 
-T.test("the pre-round lasts tf_arena_preround_time, whatever mp_enableroundwaittime says", function()
+T.test("the pre-round lasts mp_arena_preround_time, whatever mp_enableroundwaittime says", function()
 	local round = Preround({ enableRoundWaitTime = 3 })
 	T.eq(round:PreroundEnd(), T0 + PREROUND, "State_Enter_PREROUND's arena branch")
 	T.eq(round:PointsMayBeCaptured(T0 + 1), false, "no captures in the pre-round")
@@ -144,12 +144,12 @@ T.test("the pre-round ends in the arena round, fought in STALEMATE, as State_Thi
 	T.eq(round:State(), State.STALEMATE, "STALEMATE")
 end)
 
-T.test("tf_arena_round_time, not mp_stalemate_timelimit, times the arena round", function()
+T.test("mp_arena_round_time, not mp_stalemate_timelimit, times the arena round", function()
 	local untimed = Preround({ stalemateTimelimit = 240 })
 	T.eq(Has(untimed:Think(T0 + PREROUND + 1, World()), "stalemate_timer"), nil, "0: no timer")
 	local timed = Preround({ arenaRoundTime = 300 })
 	local timer = Has(timed:Think(T0 + PREROUND + 1, World()), "stalemate_timer")
-	T.eq(timer and timer.seconds, 300, "tf_arena_round_time's seconds")
+	T.eq(timer and timer.seconds, 300, "mp_arena_round_time's seconds")
 end)
 
 T.test("nobody respawns in the arena round", function()
@@ -179,17 +179,48 @@ T.test("killing the other team wins the round, and the dead stay dead for the hu
 	T.eq(win and win.forceMapReset, true, "a full round")
 end)
 
-T.test("everyone dead, or the arena round's timer out, is a stalemate", function()
-	local round = Fighting()
-	local effects = round:Think(T0 + PREROUND + 5, World({
-		teams = {
-			[RED] = Team(2, 0),
-			[BLUE] = Team(2, 0),
-		},
-	}))
-	T.eq(Has(effects, "sudden_death_over"), nil, "no sudden death to end")
-	T.eq(Has(effects, "publish_win").winner, NOBODY, "nobody won")
-	T.eq(Has(effects, "publish_win").reason, W.STALEMATE, "a stalemate")
+-- Arena's stalemate (everyone dead at once, or the round's timer out) is
+-- the game's default end: without sudden death the match ends drawn; with
+-- it, a sudden-death round follows, timed by mp_stalemate_timelimit.
+local function BothDead()
+	return World({ teams = { [RED] = Team(2, 0), [BLUE] = Team(2, 0) } })
+end
+
+T.test("everyone dead, or the arena round's timer out, without sudden death ends the match drawn", function()
+	for _, world in ipairs({ BothDead(), World({ stalemateTimerLeft = 0 }) }) do
+		local round = Fighting()
+		local effects = round:Think(T0 + PREROUND + 5, world)
+		T.eq(Has(effects, "intermission").reason, Rounds.STALEMATE_GAME_OVER, "game over")
+		T.eq(Has(effects, "intermission").winner, Rounds.NOBODY_WON, "nobody won")
+		T.eq(Has(effects, "publish_win"), nil, "no round win, no humiliation")
+		T.eq(round:State(), State.GAME_OVER, "the game is over")
+	end
+end)
+
+T.test("with sudden death, everyone dead or the timer out starts a sudden-death round on mp_stalemate_timelimit", function()
+	for _, world in ipairs({ BothDead(), World({ stalemateTimerLeft = 0 }) }) do
+		local round = Fighting({ stalemateEnable = true, stalemateTimelimit = 60, arenaRoundTime = 300 })
+		local effects = round:Think(T0 + PREROUND + 5, world)
+		T.eq(Has(effects, "sudden_death") ~= nil, true, "sudden death: " .. Kinds(effects))
+		T.eq(Has(effects, "respawn_all") ~= nil, true, "everyone back for it")
+		T.eq(Has(effects, "stalemate_timer").seconds, 60, "mp_stalemate_timelimit, not the arena round's")
+		T.eq(round:InSuddenDeath(), true, "in sudden death")
+	end
+end)
+
+T.test("arena's sudden death is won by the survivors, rewarded, or tied at its timeout with a point each", function()
+	local round = Fighting({ stalemateEnable = true })
+	round:Think(T0 + PREROUND + 5, BothDead())
+	local effects = round:Think(T0 + PREROUND + 6, World({ teams = { [RED] = Team(2, 1), [BLUE] = Team(2, 0) } }))
+	T.eq(Has(effects, "sudden_death_over") ~= nil, true, "the survivors rewarded")
+	T.eq(Has(effects, "stalemate_winner").team, RED, "RED wins")
+	local tie = Fighting({ stalemateEnable = true })
+	tie:Think(T0 + PREROUND + 5, BothDead())
+	local scores = {}
+	for _, e in ipairs(tie:Think(T0 + PREROUND + 6, World({ stalemateTimerLeft = 0 }))) do
+		if e.kind == "score" then scores[e.team] = e.points end
+	end
+	T.eq(scores[RED] == 1 and scores[BLUE] == 1, true, "a point each")
 end)
 
 T.test("leaving the arena round restores no timers it never hid", function()
@@ -253,7 +284,7 @@ end)
 
 -- tf_logic_arena ---------------------------------------------------------------------
 
-T.test("the delay is tf_arena_override_cap_enable_time when above 0, else the map's CapEnableDelay", function()
+T.test("the delay is mp_arena_override_cap_enable_time when above 0, else the map's CapEnableDelay", function()
 	T.eq(Arena.CapEnableDelay(-1, 60), 60, "-1: the map's")
 	T.eq(Arena.CapEnableDelay(0, 60), 60, "0 is not above 0: the map's")
 	T.eq(Arena.CapEnableDelay(15, 60), 15, "15 overrides")
@@ -301,8 +332,8 @@ T.test("an arena win by elimination reads Winreason_Arena, without sudden death"
 	}).reason, "BLU killed all opponents during sudden death", "sudden death keeps its line")
 end)
 
-T.test("the AI war has no arena scenario yet, so it refuses an arena map", function()
-	T.eq(Scenario.For(Arena.Mode.NAME), nil, "no scenario")
+T.test("the AI war fights arena with its own scenario", function()
+	T.eq(Scenario.For(Arena.Mode.NAME), T.require("foundation.aiwar.scenario.arena").Scenario, "the arena scenario")
 end)
 
 T.finish()

@@ -194,9 +194,16 @@ end
 -- entity -> team; SetTeamMember(ent, nil) lets one go, in the faction it
 -- had.
 local teamMembers = setmetatable({}, { __mode = "k" })
+local lastTeams = setmetatable({}, { __mode = "k" }) -- entity -> the team it last fought for
 
 function WS.SetTeamMember(ent, team)
 	teamMembers[ent] = team
+	if team then
+		lastTeams[ent] = team
+		WS.OpenAccount(ent) -- ws/sv_economy.lua
+	end
+	-- for the scoreboard's columns (ws/cl_scoreboard.lua)
+	ent:SetNW2Int("ws_team", team or WS.TEAM_UNASSIGNED)
 	if team then WS.JoinTeamFaction(ent, team) end
 end
 
@@ -204,6 +211,13 @@ end
 function WS.TeamNumber(ent)
 	if ent:IsPlayer() then return ent:Team() end
 	return teamMembers[ent] or WS.TEAM_UNASSIGNED
+end
+
+-- The team an entity fights for, or last fought for: a soldier's war lets it
+-- go as it dies (OnNPCKilled), maybe before its killer is credited.
+function WS.LastTeamNumber(ent)
+	if ent:IsPlayer() then return ent:Team() end
+	return lastTeams[ent] or WS.TEAM_UNASSIGNED
 end
 
 local function MemberAlive(ent)

@@ -163,4 +163,22 @@ T.test("no valid spawn gives nil", function()
 	T.eq(S.Pick({ Spawn({ teamnum = KV(BLU) }) }, RED, nil, function() return true end), nil)
 end)
 
+-- A spawn room's team for routes: the team that spawns in it, or nearest
+-- it, whatever the room says (arena_well marks BLU's rooms RED, which shut
+-- BLU's soldiers in their own spawn as if it were the enemy's).
+
+T.test("a room is the team of the spawns inside it, whatever its own team", function()
+	T.eq(S.RoomTeam(RED, { BLU, BLU }, RED), BLU, "BLU spawns in a room marked RED")
+	T.eq(S.RoomTeam(RED, { RED }, RED), RED, "agreeing")
+end)
+
+T.test("a room with no spawns inside is the team of the spawn nearest it", function()
+	T.eq(S.RoomTeam(RED, {}, BLU), BLU, "BLU's vestibule, marked RED")
+	T.eq(S.RoomTeam(BLU, {}, nil), BLU, "no spawns at all: its own")
+end)
+
+T.test("a room with both teams' spawns inside keeps its own team", function()
+	T.eq(S.RoomTeam(RED, { RED, BLU }, BLU), RED, "both")
+end)
+
 T.finish()

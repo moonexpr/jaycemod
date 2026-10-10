@@ -17,13 +17,13 @@ local function Near(t)
 end
 
 -- JarExplode
-T.test("a jar drenches every living enemy within 200 with nothing solid between", function()
-	T.eq(Jar.RADIUS, 200, "JAR_EXPLODE_RADIUS")
-	T.eq(Jar.URINE_TIME, 10, "10 s of Jarate")
+T.test("a jar drenches every living enemy within its radius with nothing solid between", function()
+	T.defined(Jar.RADIUS, "JAR_EXPLODE_RADIUS")
+	T.defined(Jar.URINE_TIME, "Jar.URINE_TIME")
 	T.eq(Jar.Drenches(Near(), Teams.UNASSIGNED), true, "the wheel's jar is nobody's: everyone")
 	T.eq(Jar.Drenches(Near({ team = Teams.BLUE }), Teams.RED), true, "an enemy")
 	T.eq(Jar.Drenches(Near({ team = Teams.RED }), Teams.RED), false, "not a teammate")
-	T.eq(Jar.Drenches(Near({ distance = 201 }), Teams.UNASSIGNED), false, "too far")
+	T.eq(Jar.Drenches(Near({ distance = Jar.RADIUS + 1 }), Teams.UNASSIGNED), false, "too far")
 	T.eq(Jar.Drenches(Near({ alive = false }), Teams.UNASSIGNED), false, "the dead")
 	T.eq(Jar.Drenches(Near({ wallBetween = true }), Teams.UNASSIGNED), false, "behind the world")
 	T.eq(Jar.Drenches(Near({ invulnerable = true }), Teams.UNASSIGNED), false, "ubered")

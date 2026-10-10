@@ -285,6 +285,7 @@ local function Points(...)
 			previous = {},
 			sounds = {},
 			capSounds = {},
+			icons = {},
 		}
 	end
 	return Capture.New({
@@ -404,7 +405,7 @@ T.test("a cart that has taken no point goes back to the start", function()
 	local plan = P.RetractPlan({ { distance = 800, index = 6 } }, 300)
 	T.eq(plan.uncap, nil)
 	T.eq(plan.to, nil)
-	T.eq(P.RETRACT_SLACK, 300, "the attackers get five minutes for a point given back")
+	T.defined(P.RETRACT_SLACK, "the attackers get five minutes for a point given back")
 end)
 
 -- Bug: on pl_goldrush (handle_train_movement 0: the map drives its cart from

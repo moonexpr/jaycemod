@@ -1,45 +1,23 @@
--- The payload feature's view: each cart's bar along the bottom of the
--- screen (its track with hills and checkpoints in their owners' colours,
--- the cart marker, flashing while the capture alarm sounds, and the status
--- line of speed arrows, pushers, BLOCKED or the rollback countdown), both
--- carts with the leader named in a payload race; drawn from what the
--- payload controller networks (ws_cart_*). It also registers the
--- payload race announcer lines (Announcer.PLR_*), which TF2's soundscripts
--- no longer define, for WS.BroadcastSound to play here; like TF2's
--- other announcer entries they use CHAN_VOICE2 and no attenuation.
+-- The payload feature's view: TF2's escort HUD (ObjectiveStatusEscort.res,
+-- and ObjectiveStatusMultipleEscort.res for a race), in its materials: the
+-- cart's track at the foot of the screen with the home icon at its start,
+-- each checkpoint's icon in its owner's colour, the track filled in the
+-- pushing team's colour up to the cart, hills marked with the track's
+-- arrows, and the cart's icon riding it, with the capture alarm's flash and
+-- what Hud.Indicator says on it (blocked, rolling back, its pushers, or the
+-- seconds until it rolls back); drawn from what the payload controller
+-- networks (ws_cart_*). In a race BLU's cart rides above its track and
+-- RED's below its own. It also registers the payload race announcer lines
+-- (Announcer.PLR_*), which TF2's soundscripts no longer define, for
+-- WS.BroadcastSound to play here; like TF2's other announcer entries they
+-- use CHAN_VOICE2 and no attenuation.
 WS.Feature("rounds")
 WS.Feature("capture")
 local Hud = WS.require("foundation.payload.hud")
 local Race = WS.require("foundation.payload.race")
 
 local NOBODY = WS.TEAM_UNASSIGNED
-local FONT_LABEL = "Sandcastle.Hud.CartLabel"
-
-local BAR_MAX_WIDTH = 600
-local BAR_SCREEN_FRACTION = 0.5
-local BAR_HEIGHT = 14
-local BAR_PADDING = 6
-local BAR_ABOVE_BOTTOM = 90
-local BAR_SPACING = 52 -- between the carts' bars in a race
-local HILL_HEIGHT = 4
-local CHECKPOINT_WIDTH = 14
-local CHECKPOINT_OVERHANG = 4
-local MARKER_SIZE = 10
-local LABEL_GAP = 14
-local STATUS_ABOVE = 30
-local ALARM_FLASH_RATE = 10
-
-local TRACK = Color(60, 60, 60, 255)
-local BACKDROP = Color(0, 0, 0, 170)
-local HILL_UP = Color(150, 110, 60, 255)
-local HILL_DOWN = Color(110, 150, 90, 255)
-local ALARM = Color(230, 60, 40)
-
-surface.CreateFont(FONT_LABEL, {
-	font = "Roboto",
-	size = 18,
-	weight = 700,
-})
+local RED, BLUE = WS.TEAM_RED, WS.TEAM_BLUE
 
 for name, wave in pairs(Race.Sounds()) do
 	if not sound.GetProperties(name) then
@@ -70,57 +48,160 @@ local function Cart(i)
 	}
 end
 
-local function TeamColor(t)
-	return WS.TeamColor[t] or WS.TeamColor[NOBODY]
+-- Materials ----------------------------------------------------------------------------
+
+local MATERIALS = {}
+local function Mat(name)
+	MATERIALS[name] = MATERIALS[name] or Material(name)
+	return MATERIALS[name]
 end
 
-local function DrawTrack(cart, x, y, barW)
-	surface.SetDrawColor(TRACK.r, TRACK.g, TRACK.b, TRACK.a)
-	surface.DrawRect(x, y, barW, BAR_HEIGHT)
+local TEAM_SUFFIX = { [RED] = "red", [BLUE] = "blue" }
+local function Suffix(team) return TEAM_SUFFIX[team] or "neutral" end
+
+-- Layouts, in TF2's 480-tall units ------------------------------------------------------
+
+-- ObjectiveStatusEscort.res: one cart; with hills the track is the opaque
+-- one, thicker (if_single_with_hills).
+local SINGLE = {
+	panelW = 400, panelBottom = 150,
+	trackX = 73, trackW = 254, trackY = 123, trackH = 4,
+	hillTrackY = 116, hillTrackH = 18,
+	pointSize = 28, pointY = 111, homeX = 59,
+	cartSize = 40, cartY = 85, cartBelowY = nil,
+	alertX = -24, alertY = 46, alertW = 60, alertH = 30,
+	indicatorY = 90, indicatorSize = 10,
+}
+-- ObjectiveStatusMultipleEscort.res and the escort's if_multiple_trains: a
+-- race, each team's track, BLU's cart above it and RED's below.
+local RACE = {
+	panelW = 400, panelBottom = 200,
+	trackX = 79, trackW = 270, trackY = 114, trackH = 12,
+	pointSize = 12, pointY = 114, homeX = 59, homeSize = 14, homeY = 113,
+	cartSize = 30, cartY = 91, cartBelowY = 119,
+	alertX = -21, alertY = 79, alertW = 60, alertH = 30,
+	indicatorY = 94, indicatorBelowY = 131, indicatorSize = 8,
+}
+-- The second team's track sits this much below the first's in a race.
+local RACE_TRACK_GAP = 16
+
+local ALARM_FLASH_RATE = 10
+local TAN_LIGHT = Color(235, 226, 202)
+local CAPPERS_FONT = "Sandcastle.Hud.CartCappers"
+local CAPPERS_TALL = 9
+local cappersFontFor
+
+local function CappersFont(unit)
+	if cappersFontFor == unit then return end
+	surface.CreateFont(CAPPERS_FONT, { font = "TF2 Build", size = math.max(8, math.Round(CAPPERS_TALL * unit)), weight = 500 })
+	cappersFontFor = unit
+end
+
+local function Image(name, x, y, w, h)
+	surface.SetMaterial(Mat(name))
+	surface.DrawTexturedRect(x, y, w, h)
+end
+
+-- Drawing -------------------------------------------------------------------------------
+
+-- The track: the level bar, then the pushing team's fill up to the cart,
+-- then each hill's arrows (pointing back up a hill, on down one).
+local function DrawTrack(cart, L, ox, oy, u, opaque, trackY, trackH)
+	local x, y, w, h = ox + L.trackX * u, oy + trackY * u, L.trackW * u, trackH * u
+	surface.SetDrawColor(255, 255, 255, 255)
+	Image(opaque and "hud/cart_track_neutral_opaque" or "hud/cart_track", x, y, w, h)
+	local fill = cart.progress
+	if fill > 0 and TEAM_SUFFIX[cart.team] then
+		surface.SetMaterial(Mat("hud/cart_track_" .. Suffix(cart.team) .. (opaque and "_opaque" or "")))
+		surface.DrawTexturedRectUV(x, y, w * fill, h, 0, 0, fill, 1)
+	end
 	for _, hill in ipairs(cart.hills) do
-		local c = hill.down and HILL_DOWN or HILL_UP
-		surface.SetDrawColor(c.r, c.g, c.b, c.a)
-		surface.DrawRect(x + barW * hill.from, y + BAR_HEIGHT - HILL_HEIGHT, barW * math.max(hill.to - hill.from, 0), HILL_HEIGHT)
-	end
-	local tc = TeamColor(cart.team)
-	surface.SetDrawColor(tc.r, tc.g, tc.b, 255)
-	surface.DrawRect(x, y, barW * cart.progress, BAR_HEIGHT - HILL_HEIGHT)
-	for i, fraction in ipairs(cart.cps) do
-		draw.RoundedBox(4, x + barW * fraction - CHECKPOINT_WIDTH / 2, y - CHECKPOINT_OVERHANG,
-			CHECKPOINT_WIDTH, BAR_HEIGHT + 2 * CHECKPOINT_OVERHANG, TeamColor(cart.owners[i] or NOBODY))
+		local hx, hw = x + w * hill.from, w * math.max(hill.to - hill.from, 0)
+		local tiles = math.max(hw / h, 1)
+		surface.SetMaterial(Mat("hud/cart_track_arrow"))
+		if hill.down then
+			surface.DrawTexturedRectUV(hx, y, hw, h, 0, 0, tiles, 1)
+		else
+			surface.DrawTexturedRectUV(hx, y, hw, h, tiles, 0, 0, 1)
+		end
 	end
 end
 
--- The cart marker flashes red while the capture alarm sounds near the goal.
-local function DrawMarker(cart, x, y, barW)
-	local c = color_white
-	if cart.alarm and math.sin(CurTime() * ALARM_FLASH_RATE) > 0 then c = ALARM end
-	draw.RoundedBox(3, x + barW * cart.progress - MARKER_SIZE / 2, y - MARKER_SIZE, MARKER_SIZE, MARKER_SIZE, c)
-end
-
-local function DrawCartBar(cart, x, y, barW, race, leader)
-	draw.RoundedBox(4, x - BAR_PADDING, y - BAR_PADDING, barW + 2 * BAR_PADDING, BAR_HEIGHT + 2 * BAR_PADDING, BACKDROP)
-	DrawTrack(cart, x, y, barW)
-	DrawMarker(cart, x, y, barW)
+-- The home icon at the track's start and each checkpoint's in its owner's colour.
+local function DrawPoints(cart, L, ox, oy, u, race, opaque, dy)
+	-- the home icon is BLU's unless the cart is RED's (the .res's if_team_red)
+	local homeTeam = cart.team == RED and "red" or "blue"
+	local home
 	if race then
-		local label = WS.TeamName[cart.team] or ""
-		if leader == cart.team then label = label .. " LEADS" end
-		draw.SimpleText(label, FONT_LABEL, x - LABEL_GAP, y + BAR_HEIGHT / 2, WS.TeamColor[cart.team] or color_white, TEXT_ALIGN_RIGHT, TEXT_ALIGN_CENTER)
+		home = "hud/cart_home_" .. homeTeam .. "_square"
+	else
+		home = "hud/cart_home_" .. homeTeam .. (opaque and "_opaque" or "")
 	end
-	local status = Hud.Status(cart, CurTime())
-	if status ~= "" then
-		draw.SimpleText(status, FONT_LABEL, x + barW / 2, y - STATUS_ABOVE, cart.alarm and ALARM or color_white, TEXT_ALIGN_CENTER)
+	local homeSize = (L.homeSize or L.pointSize) * u
+	Image(home, ox + L.homeX * u, oy + (L.homeY or L.pointY) * u + dy, homeSize, homeSize)
+	local size = L.pointSize * u
+	for i, fraction in ipairs(cart.cps) do
+		local cx = ox + (L.trackX + L.trackW * fraction) * u
+		local name = "hud/cart_point_" .. Suffix(cart.owners[i] or NOBODY) .. ((opaque or race) and "_opaque" or "")
+		Image(name, cx - size / 2, oy + L.pointY * u + dy, size, size)
 	end
+end
+
+-- What Hud.Indicator says, centred at cx, cy: blocked, rolling back, the
+-- pushers (the capture icon and their count), or the rollback countdown.
+local function DrawIndicator(cart, cx, cy, size, u)
+	local shown = Hud.Indicator(cart, CurTime())
+	if shown.blocked then
+		Image("hud/cart_blocked", cx - size / 2, cy - size / 2, size, size)
+	elseif shown.backwards then
+		Image("hud/cart_arrow_left", cx - size / 2, cy - size / 2, size, size)
+	elseif shown.cappers then
+		Image("vgui/capture_icon_white", cx - size * 0.3, cy - size * 0.6, size * 0.6, size * 1.2)
+		draw.SimpleText("x" .. shown.cappers, CAPPERS_FONT, cx + size * 0.4, cy, TAN_LIGHT, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
+	elseif shown.recede then
+		draw.SimpleText(tostring(shown.recede), CAPPERS_FONT, cx, cy, TAN_LIGHT, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+	end
+end
+
+-- The cart's icon on the track at its progress, BLU's above and RED's below
+-- in a race, the alarm's flash over it while the capture alarm sounds.
+local function DrawCart(cart, L, ox, oy, u, race, dy)
+	local cx = ox + (L.trackX + L.trackW * cart.progress) * u
+	local below = race and cart.team == RED
+	local size = L.cartSize * u
+	local top = oy + (below and L.cartBelowY or L.cartY) * u + dy
+	surface.SetDrawColor(255, 255, 255, 255)
+	Image("hud/cart_" .. Suffix(cart.team) .. (below and "_bottom" or ""), cx - size / 2, top, size, size)
+	if cart.alarm and math.sin(CurTime() * ALARM_FLASH_RATE) > 0 then
+		Image("hud/cart_alert", cx + L.alertX * u, oy + L.alertY * u + dy, L.alertW * u, L.alertH * u)
+	end
+	local cy = oy + (below and L.indicatorBelowY or L.indicatorY) * u + dy
+	DrawIndicator(cart, cx, cy, L.indicatorSize * u, u)
+end
+
+-- offset: how far below its layout this track sits (the second in a race);
+-- with hills, a single cart's bar is the thicker opaque one, its icons where
+-- they were.
+local function DrawEscort(cart, L, ox, oy, u, race, offset)
+	local opaque = not race and #cart.hills > 0
+	local trackY = (opaque and L.hillTrackY or L.trackY) + offset
+	local trackH = opaque and L.hillTrackH or L.trackH
+	DrawTrack(cart, L, ox, oy, u, opaque or race, trackY, trackH)
+	DrawPoints(cart, L, ox, oy, u, race, opaque, offset * u)
+	DrawCart(cart, L, ox, oy, u, race, offset * u)
 end
 
 local function DrawCarts(w, h)
 	local count = GetGlobal2Int("ws_cart_count", 0)
+	if count == 0 then return end
 	local race = GetGlobal2Bool("ws_cart_race", false)
-	local leader = GetGlobal2Int("ws_cart_race_leader", NOBODY)
-	local barW = math.min(BAR_MAX_WIDTH, w * BAR_SCREEN_FRACTION)
-	local x = (w - barW) / 2
+	local L = race and RACE or SINGLE
+	local u = h / 480
+	CappersFont(u)
+	local ox, oy = w / 2 - L.panelW / 2 * u, h - L.panelBottom * u
 	for i = 1, count do
-		DrawCartBar(Cart(i), x, h - BAR_ABOVE_BOTTOM - (i - 1) * BAR_SPACING, barW, race, leader)
+		-- the controller orders BLU's cart first (Hud.Order): its track above RED's
+		DrawEscort(Cart(i), L, ox, oy, u, race, race and (i - 1) * RACE_TRACK_GAP or 0)
 	end
 end
 

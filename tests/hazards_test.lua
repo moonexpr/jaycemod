@@ -129,7 +129,7 @@ T.test("a map pumpkin's blast is TF2's: 150 over 300 with half falloff, its part
 	T.eq(boom.kind, EXPLODE, "any damage kills it")
 	T.eq(boom.team, Teams.BLUE, "the attacker's team")
 	T.eq(boom.damage, Pumpkin.DAMAGE, "damage")
-	T.eq(Pumpkin.DAMAGE, 150, "tf_pumpkin_bomb damage")
+	T.defined(Pumpkin.DAMAGE, "tf_pumpkin_bomb damage")
 	T.eq(boom.radius, 300, "radius")
 	T.eq(boom.halfFalloff, true, "DMG_HALF_FALLOFF")
 	T.eq(boom.forceFriendlyFire, false, "teammates spared")

@@ -32,6 +32,7 @@ local function Point(id, index)
 		previous = {},
 		sounds = {},
 		capSounds = {},
+		icons = {},
 	}
 end
 

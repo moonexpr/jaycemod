@@ -22,6 +22,8 @@ local Tactics = WS.require("foundation.aiwar.tactics")
 local Squad = WS.require("foundation.aiwar.squad")
 local Slots = WS.require("foundation.aiwar.slots")
 local Lanes = WS.require("foundation.aiwar.lanes")
+local Explore = WS.require("foundation.aiwar.explore")
+local Spawns = WS.require("foundation.aiwar.spawns")
 local Hearing = WS.require("foundation.aiwar.hearing")
 local Factions = WS.require("foundation.factions")
 local Doors = WS.require("foundation.npc.doors")
@@ -53,6 +55,60 @@ local RED, BLUE = WS.TEAM_RED, WS.TEAM_BLUE
 
 local function Point(v) return { x = v.x, y = v.y, z = v.z } end
 local function ToVector(p) return Vector(p.x, p.y, p.z) end
+
+-- The masks the soldiers move under on this map, and the walk traces take
+-- (on a players' map, the player's clips: ws/sv_nav.lua).
+local function Masks() return WS.ClipMasks() end
+
+-- Where a team's soldiers join the fight: its TF2 team spawns; on a map
+-- without any, its own HL2 deathmatch spawns, else its share of the nav
+-- mesh's hiding spots, else the map's shared player starts
+-- (foundation.aiwar.spawns). A hiding spot is a spot as a spawn entity is
+-- one: GetPos and GetAngles.
+local function Present(class) return #ents.FindByClass(class) > 0 end
+
+local HidingSpot = {}
+HidingSpot.__index = HidingSpot
+function HidingSpot:GetPos() return ToVector(self.pos) end
+function HidingSpot:GetAngles() return Angle(0, 0, 0) end
+
+-- team -> its hiding spots, split once the nav mesh has any
+local hidingSpots
+
+local function HidingSpotsOf(team)
+	if not hidingSpots then
+		local all = {}
+		for _, area in ipairs(navmesh.GetAllNavAreas()) do
+			for _, pos in ipairs(area:GetHidingSpots() or {}) do all[#all + 1] = Point(pos) end
+		end
+		if #all == 0 then return {} end
+		hidingSpots = {}
+		for _, t in ipairs({ RED, BLUE }) do
+			local list = {}
+			for i, pos in ipairs(Spawns.Split(all, t)) do list[i] = setmetatable({ pos = pos }, HidingSpot) end
+			hidingSpots[t] = list
+		end
+	end
+	return hidingSpots[team]
+end
+
+local function EntitiesOf(classes)
+	local spots = {}
+	for _, class in ipairs(classes) do
+		for _, ent in ipairs(ents.FindByClass(class)) do spots[#spots + 1] = ent end
+	end
+	return spots
+end
+
+local function SpawnSpots(team)
+	local teamSpawns = WS.SpawnPoints(team)
+	if #teamSpawns > 0 or Present("info_player_teamspawn") then return teamSpawns end
+	local own = Spawns.Classes(team, Present)
+	if #own > 0 then return EntitiesOf(own) end
+	local hiding = HidingSpotsOf(team)
+	if #hiding > 0 then return hiding end
+	return EntitiesOf(Spawns.Shared(Present))
+end
 
 local DOOR_CLASSES = { func_door = true, func_door_rotating = true, prop_door_rotating = true }
 
@@ -253,7 +309,7 @@ function Soldier:CanWalkTo(p)
 		endpos = to + WALK_LIFT,
 		mins = WALK_MINS,
 		maxs = WALK_MAXS,
-		mask = MASK_NPCSOLID,
+		mask = Masks().solid,
 		filter = self.ent,
 	})
 	return not tr.Hit
@@ -269,7 +325,7 @@ local function WorldWalkClear(a, b)
 		endpos = to + WALK_LIFT,
 		mins = WALK_MINS,
 		maxs = WALK_MAXS,
-		mask = MASK_NPCSOLID_BRUSHONLY,
+		mask = Masks().brushes,
 	}).Hit
 end
 
@@ -284,7 +340,7 @@ local function OnFloor(pos)
 	local tr = util.TraceLine({
 		start = pos + Vector(0, 0, FLOOR_ABOVE),
 		endpos = pos - Vector(0, 0, FLOOR_BELOW),
-		mask = MASK_NPCSOLID_BRUSHONLY,
+		mask = Masks().brushes,
 	})
 	if tr.StartSolid or not tr.Hit then return pos end
 	return tr.HitPos + Vector(0, 0, FLOOR_CLEARANCE)
@@ -393,7 +449,7 @@ function Soldier:Blocker(p)
 	local controller = self.controller
 	local from, to = self.ent:GetPos() + HOP_LIFT, ToVector(p) + HOP_LIFT
 	local function NotSoldier(hit) return controller.soldiers[hit] == nil end
-	local hit = util.TraceHull({ start = from, endpos = to, mins = HOP_MINS, maxs = HOP_MAXS - HOP_LIFT, mask = MASK_NPCSOLID, filter = NotSoldier })
+	local hit = util.TraceHull({ start = from, endpos = to, mins = HOP_MINS, maxs = HOP_MAXS - HOP_LIFT, mask = Masks().solid, filter = NotSoldier })
 	if not hit.Hit then return nil, false end
 	-- map geometry (func_detail is compiled into it) is the world
 	local blocker = hit.HitWorld and game.GetWorld() or hit.Entity
@@ -627,6 +683,13 @@ end
 local function RoundsModeName()
 	local rounds = LoadedFeature("rounds")
 	return rounds and rounds:Mode().NAME
+end
+
+-- Whether the rounds mode fights its round in STALEMATE (arena) and the
+-- round is that, not a sudden death after it (AiWar.PhaseOf).
+local function StalemateIsRound()
+	local rounds = LoadedFeature("rounds")
+	return rounds ~= nil and rounds:Mode().STALEMATE_IS_ROUND and not rounds:InSuddenDeath()
 end
 
 function Controller:Active()
@@ -880,6 +943,8 @@ function Controller:Enlist(ent, team, drafted, fixed)
 	-- a drafted soldier fills a slot of its faction, and leads or follows as it is pinned
 	if drafted then member.pin = self:SlotPlan():Fill(self:FactionName(team), ent).pin end
 	if self.paused then ent:SetAIDisabled(true) end
+	-- a NextBot's locomotion moves under its solid mask; an HL2 NPC's mask is the engine's
+	if ent:IsNextBot() then ent:SetSolidMask(Masks().solid) end
 	local soldier = Soldier.New(ent, self, team)
 	self.soldiers[ent] = {
 		soldier = soldier,
@@ -1053,7 +1118,7 @@ local function Clear(pos)
 		endpos = pos + SPAWN_LIFT,
 		mins = SPAWN_MINS,
 		maxs = SPAWN_MAXS,
-		mask = MASK_NPCSOLID,
+		mask = Masks().solid,
 	})
 	return not tr.Hit
 end
@@ -1093,7 +1158,7 @@ end
 
 function Controller:Reinforce(now)
 	for team, count in pairs(self.war:Reinforcements(now, self:Sizes(), WaveLength)) do
-		local spots = WS.SpawnPoints(team)
+		local spots = SpawnSpots(team)
 		for i = 1, #spots > 0 and count or 0 do
 			local spot = spots[(i - 1) % #spots + 1]
 			local pos = ClearSpotNear(spot:GetPos())
@@ -1137,7 +1202,7 @@ function Controller:RespawnAll()
 			if drafted then
 				ent:Remove()
 			else
-				spots[team] = spots[team] or WS.SpawnPoints(team)
+				spots[team] = spots[team] or SpawnSpots(team)
 				used[team] = (used[team] or 0) + 1
 				local spot = spots[team][(used[team] - 1) % math.max(#spots[team], 1) + 1]
 				local pos = spot and ClearSpotNear(spot:GetPos())
@@ -1160,7 +1225,7 @@ local function GroundBelow(pos)
 	local tr = util.TraceLine({
 		start = pos + Vector(0, 0, 16),
 		endpos = pos - Vector(0, 0, GROUND_PROBE),
-		mask = MASK_NPCSOLID_BRUSHONLY,
+		mask = Masks().brushes,
 	})
 	return tr.Hit and tr.HitPos or pos
 end
@@ -1205,7 +1270,7 @@ end
 
 -- A team's spawn points far apart: the first and the one farthest from it.
 local function SpreadSpawns(team)
-	local spawns = WS.SpawnPoints(team)
+	local spawns = SpawnSpots(team)
 	local first, far, farthest = spawns[1], nil, -1
 	for _, spawn in ipairs(spawns) do
 		local d = spawn:GetPos():DistToSqr(first:GetPos())
@@ -1365,12 +1430,12 @@ end
 function Controller:FloodZone(team)
 	local npcs = WS.Feature("npc")
 	local starts, outside = {}, {}
-	for _, spot in ipairs(WS.SpawnPoints(team)) do
+	for _, spot in ipairs(SpawnSpots(team)) do
 		local area = AreaAt(spot:GetPos())
 		if area then starts[#starts + 1] = area:GetID() end
 	end
 	if #starts == 0 then return nil end
-	for _, spot in ipairs(WS.SpawnPoints(AiWar.EnemyOf(team))) do
+	for _, spot in ipairs(SpawnSpots(AiWar.EnemyOf(team))) do
 		local area = AreaAt(spot:GetPos())
 		if area then outside[area:GetID()] = true end
 	end
@@ -1516,7 +1581,7 @@ local function OnMesh(pos)
 end
 
 function Controller:SpawnSpot(team)
-	local spots = WS.SpawnPoints(team)
+	local spots = SpawnSpots(team)
 	if #spots == 0 then return nil end
 	local spot = spots[math.random(#spots)]
 	return ClearSpotNear(spot:GetPos())
@@ -1725,7 +1790,7 @@ local function ZoneOf(areas)
 	local tr = util.TraceLine({
 		start = Vector(x, y, (mins.z + maxs.z) / 2),
 		endpos = Vector(x, y, mins.z - GROUND_PROBE),
-		mask = MASK_NPCSOLID_BRUSHONLY,
+		mask = Masks().brushes,
 	})
 	local center = tr.Hit and tr.HitPos or Vector(x, y, mins.z)
 	return {
@@ -1795,7 +1860,7 @@ function Controller:Bases()
 	local bases, spawns = {}, {}
 	for _, team in ipairs({ RED, BLUE }) do
 		local list, sum = {}, Vector(0, 0, 0)
-		for i, spot in ipairs(WS.SpawnPoints(team)) do
+		for i, spot in ipairs(SpawnSpots(team)) do
 			local pos = GroundBelow(spot:GetPos())
 			list[i] = Point(pos)
 			sum = sum + pos
@@ -1839,12 +1904,14 @@ function Controller:Field(phase, now)
 	local bases = self:Bases()
 	return {
 		phase = phase,
+		now = now,
 		setup = WS.Active() and WS.InSetup(),
 		carts = carts,
 		gates = self.gates or {},
 		posts = posts,
 		forwardPosts = forwardPosts,
 		patients = self:Patients(),
+		players = self:Players(),
 		points = self:PointsSnapshot(),
 		clocks = rounds and Clocks(rounds, now),
 		timeLeft = rounds and TimeLeft(rounds, now),
@@ -1852,7 +1919,33 @@ function Controller:Field(phase, now)
 		bases = bases.bases,
 		spawns = bases.spawns,
 		winner = self.winner,
+		-- arena's: when its point opens, and the waypoints its squads explore
+		capEnableAt = rounds and rounds:CapEnableTime(),
+		waypoints = self:Waypoints(),
 	}
+end
+
+-- The nav mesh's area centres, one per Explore.SPACING cell, for arena's
+-- squads to explore: sampled once a map, again while there are none (a
+-- nav mesh generated after).
+function Controller:Waypoints()
+	if not self.waypointCache or #self.waypointCache == 0 then
+		local centres = {}
+		for _, area in ipairs(navmesh.GetAllNavAreas()) do centres[#centres + 1] = Point(area:GetCenter()) end
+		self.waypointCache = Explore.Sample(centres, Explore.SPACING)
+	end
+	return self.waypointCache
+end
+
+-- Each side's living players, for the soldiers who follow them (freeform):
+-- { handle, pos }.
+function Controller:Players()
+	local players = { [RED] = {}, [BLUE] = {} }
+	for _, ply in ipairs(player.GetAll()) do
+		local list = players[WS.TeamOf(ply)]
+		if list and ply:Alive() then list[#list + 1] = { handle = ply, pos = Point(ply:GetPos()) } end
+	end
+	return players
 end
 
 -- Each side's soldiers and players, for its medics: { handle, pos, health
@@ -1939,10 +2032,10 @@ local function Nearest(spots, p)
 end
 
 function Controller:PlanLanes(team, to, field, now)
-	local own = Nearest(WS.SpawnPoints(team), to)
+	local own = Nearest(SpawnSpots(team), to)
 	if not own then return end
 	local from = Point(own:GetPos())
-	local enemySpawns = WS.SpawnPoints(AiWar.EnemyOf(team))
+	local enemySpawns = SpawnSpots(AiWar.EnemyOf(team))
 	local function EnemySpawnNear(p) return Point(Nearest(enemySpawns, p):GetPos()) end
 	local defenses = #enemySpawns > 0 and self:EnemyDefenses(field, team) or {}
 	local plan = { to = to, planning = true, tries = 0, penalized = {}, lanes = { key = team .. ":" .. now },
@@ -2010,7 +2103,7 @@ end
 -- which a KOTH round makes: none in Sandbox mode or between rounds), with
 -- the part in waitingFor.
 function Controller:Survey(now)
-	local phase = AiWar.PhaseOf(WS.Active(), WS.State(), self.winner)
+	local phase = AiWar.PhaseOf(WS.Active(), WS.State(), self.winner, StalemateIsRound())
 	local field = self:Field(phase, now)
 	self:RefreshCartBounds()
 	self.waitingFor = self.scenario:Lacks(field)
@@ -2459,7 +2552,6 @@ local function Story()
 	}
 end
 
-local NO_OBJECTIVE = "this map has no objective the AI war can fight over (payload, control points or King of the Hill)"
 -- Why a map lacking a part its scenario needs (Scenario:MapLacks) is refused.
 local MAP_LACKS = {
 	[Scenario.BASES] = "this map has no spawn points for both teams, where the AI war's soldiers join the fight",
@@ -2467,6 +2559,8 @@ local MAP_LACKS = {
 }
 local NO_NAV_MESH = "this map has no navigation mesh for the soldiers to walk; "
 	.. "run mp_nav_generate in the console to make one (a few minutes), then start the war"
+-- arena's squads explore the nav mesh's waypoints
+MAP_LACKS[Scenario.WAYPOINTS] = NO_NAV_MESH
 
 -- Starts the war at once and requests Gameplay mode, whose countdown
 -- restarts the rounds. The scenario is the rounds mode's (the map's own
@@ -2475,12 +2569,13 @@ local NO_NAV_MESH = "this map has no navigation mesh for the soldiers to walk; "
 function Controller:Start()
 	if self.war then return false, "the war is already on" end
 	if not DrGBase then return false, "the AI war needs DrGBase (Steam Workshop) for its soldiers" end
+	-- a map whose mode is none the war knows is fought freeform
 	local variant = Scenario.For(RoundsModeName())
-	if not variant then return false, NO_OBJECTIVE end
 	self.baseCache = nil
 	local lacks = variant:MapLacks({
 		points = self:PointsSnapshot(),
 		bases = self:Bases().bases,
+		waypoints = self:Waypoints(),
 	})
 	if lacks then return false, MAP_LACKS[lacks] end
 	if not WS.NavMeshUsable() then return false, NO_NAV_MESH end
@@ -2489,6 +2584,9 @@ function Controller:Start()
 	self.waitingFor = nil
 	self.war = AiWar.War.New()
 	self.war:SetAutoSquads(GetConVar("ns_squads_auto_enabled"):GetBool())
+	self.war:SetSquadsMax(GetConVar("ns_squads_max"):GetInt())
+	self.war:SetSquadsMin(GetConVar("ns_squads_min"):GetInt())
+	self.war:SetFireTeamSize(self.scenario.SQUAD_SIZE)
 	self.paused = GetConVar("ns_soldiers_paused"):GetBool()
 	self.gates = nil
 	SetGlobal2Bool(ACTIVE_KEY, true)
@@ -3174,6 +3272,15 @@ cvars.AddChangeCallback("ns_squads_auto_enabled", function(_, _, value)
 	if Controller.war then Controller.war:SetAutoSquads(value ~= "0") end
 end, "ws_aiwar")
 
+-- New bounds hold from the next squad formed; the squads already formed stay.
+cvars.AddChangeCallback("ns_squads_max", function()
+	if Controller.war then Controller.war:SetSquadsMax(GetConVar("ns_squads_max"):GetInt()) end
+end, "ws_aiwar")
+
+cvars.AddChangeCallback("ns_squads_min", function()
+	if Controller.war then Controller.war:SetSquadsMin(GetConVar("ns_squads_min"):GetInt()) end
+end, "ws_aiwar")
+
 cvars.AddChangeCallback("ws_aiwar_sitting_enabled", function(_, _, value)
 	if value == "0" then Controller:StandSeated() end
 end, "ws_aiwar")
@@ -3234,8 +3341,19 @@ hook.Add("EntityFireBullets", "ws_aiwar", function(ent, data)
 	if Controller.war then Controller:HearShot(ent, data) end
 end)
 
-hook.Add("OnNPCKilled", "ws_aiwar", function(ent)
-	if Controller.war then Controller:Discharge(ent) end
+-- A soldier's squad investigates its death (War:Fallen): its killer's
+-- place when an enemy killed it, else where it fell.
+function Controller:Fallen(ent, attacker)
+	local entry = self.soldiers[ent]
+	if not entry then return end
+	local killer = IsValid(attacker) and attacker ~= ent and WS.LastTeamNumber(attacker) == AiWar.EnemyOf(entry.soldier.team)
+	self.war:Fallen(ent, Point(ent:GetPos()), killer and Point(attacker:GetPos()) or nil, CurTime())
+end
+
+hook.Add("OnNPCKilled", "ws_aiwar", function(ent, attacker)
+	if not Controller.war then return end
+	Controller:Fallen(ent, attacker)
+	Controller:Discharge(ent)
 end)
 
 -- A cleanup (every full round reset) removes the soldiers and remakes the

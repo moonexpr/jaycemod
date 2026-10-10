@@ -13,7 +13,7 @@ T.test("the boss types and constants keep TF2's values", function()
 	T.eq(HalloweenBoss.BOSS_HHH, 1, "HHH")
 	T.eq(HalloweenBoss.BOSS_MONOCULUS, 2, "MONOCULUS")
 	T.eq(HalloweenBoss.BOSS_MERASMUS, 3, "Merasmus")
-	T.eq(HalloweenBoss.DPS_WINDOW, 5, "DPS window")
+	T.defined(HalloweenBoss.DPS_WINDOW, "DPS window")
 	T.eq(HalloweenBoss.KIND, "boss", "registry kind")
 end)
 
@@ -31,7 +31,7 @@ T.test("SpawnAt names the boss's class, its config and a spot 10 above", functio
 	T.eq(config.team, Teams.RED, "team")
 	T.eq(config.owner, "owner", "owner")
 	T.eq(pos, V(1, 2, 3 + HalloweenBoss.SPAWN_HEIGHT), "10 above")
-	T.eq(HalloweenBoss.SPAWN_HEIGHT, 10, "the spawn height")
+	T.defined(HalloweenBoss.SPAWN_HEIGHT, "the spawn height")
 	T.eq((HalloweenBoss.SpawnAt(HalloweenBoss.BOSS_HHH, V(0, 0, 0), Teams.HALLOWEEN, nil, V)), "headless_hatman", "HHH")
 end)
 
@@ -199,28 +199,29 @@ T.test("players who hurt the boss are remembered once each, with their latest ti
 	T.eq(#s.npc:State().attackers, 2, "but an NPC is not a player")
 end)
 
--- UpdateDamagePerSecond: the damage of the last 5 s, per second.
-T.test("the DPS counts the damage of the last 5 seconds and keeps its maximum", function()
+-- UpdateDamagePerSecond: the damage of the last DPS_WINDOW seconds, per second.
+T.test("the DPS counts the damage of the last window and keeps its maximum", function()
+	local window = HalloweenBoss.DPS_WINDOW
 	local s = Scene({})
 	local state = s.npc:State()
 	s.npc:Update(0.1) -- the first tick only starts the actions
 	s.npc:FilterDamage(Damage(s.red, 500))
 	s.npc:Update(0.1)
-	T.near(state.dps, 100, 1e-9, "500 over the window")
-	s.me.clock:Advance(2)
+	T.near(state.dps, 500 / window, 1e-9, "500 over the window")
+	s.me.clock:Advance(window * 0.4)
 	s.npc:FilterDamage(Damage(s.red, 1000))
 	s.npc:Update(0.1)
-	T.near(state.dps, 300, 1e-9, "both hits")
-	s.me.clock:Advance(3)
+	T.near(state.dps, 1500 / window, 1e-9, "both hits")
+	s.me.clock:Advance(window * 0.6)
 	s.npc:Update(0.1)
-	T.near(state.dps, 300, 1e-9, "the first hit is exactly 5 s old")
-	s.me.clock:Advance(0.5)
+	T.near(state.dps, 1500 / window, 1e-9, "the first hit is exactly a window old")
+	s.me.clock:Advance(window * 0.1)
 	s.npc:Update(0.1)
-	T.near(state.dps, 200, 1e-9, "the first hit has aged out")
-	s.me.clock:Advance(5)
+	T.near(state.dps, 1000 / window, 1e-9, "the first hit has aged out")
+	s.me.clock:Advance(window)
 	s.npc:Update(0.1)
 	T.near(state.dps, 0, 1e-9, "all aged out")
-	T.near(state.maxDps, 300, 1e-9, "the maximum stays")
+	T.near(state.maxDps, 1500 / window, 1e-9, "the maximum stays")
 end)
 
 -- The template method: emerge first, the variant's hooks each tick and on

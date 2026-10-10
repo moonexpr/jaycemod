@@ -32,6 +32,7 @@ local function Points(owners)
 			previous = {},
 			sounds = {},
 			capSounds = {},
+			icons = {},
 		}
 	end
 	return Capture.New({

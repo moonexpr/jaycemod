@@ -137,3 +137,17 @@ function Pick(spawns, team, last, isClear)
 	end
 	return fallback
 end
+
+-- A spawn room's team for routes (TF_NAV_SPAWN_ROOM_*): the one team whose
+-- spawns stand inside it (spawnTeams: theirs, a list), else, none inside,
+-- the team of the spawn nearest it (nearestTeam, nil without spawns), else
+-- the room's own team. A map can mark a room for the wrong team (arena_well
+-- marks BLU's RED); its spawns say whose it is.
+function RoomTeam(roomTeam, spawnTeams, nearestTeam)
+	local team = spawnTeams[1]
+	if team == nil then return nearestTeam or roomTeam end
+	for _, t in ipairs(spawnTeams) do
+		if t ~= team then return roomTeam end
+	end
+	return team
+end

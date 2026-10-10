@@ -123,11 +123,14 @@ local function KeepProxies(watcher)
 	end
 end
 
--- The enabled watchers' carts, BLU's first.
+-- The enabled watchers' carts, BLU's first; none on a map another mode won
+-- (TF2 shows the escort HUD for the payload game type only: pd_watergate's
+-- UFO rides a watcher on a Player Destruction map).
 function Controller:PublishCarts()
 	local active = {}
+	local payload = self.rounds:Mode() == PayloadMode.Mode
 	for _, watcher in ipairs(self.watchers) do
-		if watcher:IsActive() then
+		if payload and watcher:IsActive() then
 			KeepProxies(watcher)
 			local hud = watcher:HudState()
 			active[#active + 1] = {

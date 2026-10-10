@@ -125,6 +125,12 @@ local function PointSpec(ent, old)
 			[RED] = kv["team_capsound_" .. RED],
 			[BLUE] = kv["team_capsound_" .. BLUE],
 		},
+		-- the HUD's icon for each owner (Capture.ICON_DEFAULT when unset)
+		icons = {
+			[NOBODY] = kv["team_icon_" .. NOBODY],
+			[RED] = kv["team_icon_" .. RED],
+			[BLUE] = kv["team_icon_" .. BLUE],
+		},
 	}
 	if old and old:Has(ent) then
 		spec.owner = old:Owner(ent)
@@ -899,6 +905,7 @@ local function PublishPoint(rank, hud)
 	SetGlobal2Bool(Key(rank, "hidden"), hud.hidden)
 	SetGlobal2String(Key(rank, "name"), hud.name)
 	SetGlobal2Float(Key(rank, "timer_end"), hud.timerEnd)
+	SetGlobal2String(Key(rank, "icon"), hud.icon)
 end
 
 -- Every point with what the HUD shows of it, in rank order: { point, rank

@@ -13,6 +13,8 @@ FAILURE = "Announcer.Failure"
 local GAME_TEAMS = { Teams.RED, Teams.BLUE }
 
 Mode = Rounds.Mode:Extend("control_points")
+-- The points (or the cart) decide its rounds: no round limits.
+Mode.OBJECTIVE = true
 Mode.PRIORITY = 1
 Mode.HUD = Rounds.HUD_CONTROL_POINTS
 

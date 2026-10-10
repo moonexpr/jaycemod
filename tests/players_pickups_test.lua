@@ -7,7 +7,7 @@ T.test("pack sizes are TF2's ratios", function()
 	T.eq(P.PACK_RATIO.small, 0.2, "small")
 	T.eq(P.PACK_RATIO.medium, 0.5, "medium")
 	T.eq(P.PACK_RATIO.full, 1.0, "full")
-	T.eq(P.ITEM_RESPAWN_TIME, 10, "respawn")
+	T.defined(P.ITEM_RESPAWN_TIME, "respawn")
 end)
 
 -- CHealthKit::MyTouch

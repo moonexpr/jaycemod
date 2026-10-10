@@ -1,11 +1,11 @@
 -- Arena (tf_logic_arena; foundation.rounds.arena) from Sandbox mode, with
--- tf_arena_override_cap_enable_time at a few seconds: gameplay starts with
--- bots on both teams; the pre-round lasts tf_arena_preround_time and ends in
+-- mp_arena_override_cap_enable_time at a few seconds: gameplay starts with
+-- bots on both teams; the pre-round lasts mp_arena_preround_time and ends in
 -- the arena round (STALEMATE) with OnArenaRoundStart; BLU bots on the point
 -- cannot take it before the cap-enable time; OnCapEnabled fires once as it
 -- passes (arena_well's shows cap_flag) and BLU's capture wins. The next
 -- round, a dead RED bot stays dead and killing the last RED hands BLU the
--- round by elimination. The third, timed by tf_arena_round_time, ends in a
+-- round by elimination. The third, timed by mp_arena_round_time, ends in a
 -- stalemate with both teams alive.
 local Tests = WS_TESTS
 local Gamemode = WS.require("foundation.gamemode")
@@ -13,7 +13,7 @@ local Rounds = WS.require("foundation.rounds")
 local S = WS.STATE
 local RED, BLUE = WS.TEAM_RED, WS.TEAM_BLUE
 local TEAM_SIZE = 2
-local CAP_ENABLE = 15 -- tf_arena_override_cap_enable_time for the check
+local CAP_ENABLE = 15 -- mp_arena_override_cap_enable_time for the check
 local GAMEPLAY_TIMEOUT = Gamemode.COUNTDOWN + 5
 local ROUND_TIMEOUT = 40 -- from a win or Begin to the next arena round
 local TOLERANCE = 0.5
@@ -21,7 +21,7 @@ local SHUT_WATCH = 6 -- seconds the bots stand on the shut point
 local CAPTURE_TIMEOUT = 40
 local DEAD_WATCH = 12 -- longer than any respawn wave would be
 local WIN_TIMEOUT = 5
-local ROUND_TIME = 8 -- tf_arena_round_time for the tie
+local ROUND_TIME = 8 -- mp_arena_round_time for the tie
 local BONUS_TIME = 5 -- mp_bonusroundtime's least, to keep the check short
 
 -- Times the logic's output has fired: every line of an output fires
@@ -41,7 +41,7 @@ return function(t)
 	t:Check("the round is arena's", rounds:Mode().NAME == "arena", rounds:Mode().NAME)
 	t:Check("tf_logic_arena is bound", IsValid(arena.logicEnt), tostring(arena.logicEnt))
 	t:Info("cap_enable_delay", arena.logic and arena.logic.capEnableDelay)
-	RunConsoleCommand("tf_arena_override_cap_enable_time", tostring(CAP_ENABLE))
+	RunConsoleCommand("mp_arena_override_cap_enable_time", tostring(CAP_ENABLE))
 	local bonusBefore = GetConVar("mp_bonusroundtime"):GetString()
 	RunConsoleCommand("mp_bonusroundtime", tostring(BONUS_TIME))
 
@@ -59,8 +59,8 @@ return function(t)
 	t:Check("a pre-round", pre ~= nil, Tests.StateName(WS.State()))
 	local preEnd = GetGlobal2Float("ws_preround_end_time", 0)
 	local preLeft = preEnd - CurTime()
-	local preroundTime = GetConVar("tf_arena_preround_time"):GetInt()
-	t:Check("the pre-round lasts tf_arena_preround_time", preLeft <= preroundTime + TOLERANCE and preLeft > preroundTime - 3,
+	local preroundTime = GetConVar("mp_arena_preround_time"):GetInt()
+	t:Check("the pre-round lasts mp_arena_preround_time", preLeft <= preroundTime + TOLERANCE and preLeft > preroundTime - 3,
 		string.format("%.1f s left of %d", preLeft, preroundTime))
 
 	local fought = t:WaitFor(preroundTime + 5, function() return WS.State() == S.STALEMATE end)
@@ -112,8 +112,8 @@ return function(t)
 	t:Check("killing the last RED hands BLU the round", eliminated ~= nil and Tests.Winner() == BLUE and Reason() == Rounds.WINREASON.OPPONENTS_DEAD,
 		string.format("%s, winner %d, reason %d", Tests.StateName(WS.State()), Tests.Winner(), Reason()))
 
-	-- A tie: tf_arena_round_time runs out with both teams alive.
-	RunConsoleCommand("tf_arena_round_time", tostring(ROUND_TIME))
+	-- A tie: mp_arena_round_time runs out with both teams alive.
+	RunConsoleCommand("mp_arena_round_time", tostring(ROUND_TIME))
 	local timed = t:WaitFor(ROUND_TIMEOUT, function() return WS.State() == S.STALEMATE end)
 	t:Check("a timed arena round", timed ~= nil, Tests.StateName(WS.State()))
 	local tied = t:WaitFor(ROUND_TIME + 3, function() return WS.State() == S.TEAM_WIN end)
@@ -121,7 +121,7 @@ return function(t)
 		and Reason() == Rounds.WINREASON.STALEMATE,
 		string.format("%s, winner %d, reason %d", Tests.StateName(WS.State()), Tests.Winner(), Reason()))
 
-	RunConsoleCommand("tf_arena_round_time", "0")
-	RunConsoleCommand("tf_arena_override_cap_enable_time", "-1")
+	RunConsoleCommand("mp_arena_round_time", "0")
+	RunConsoleCommand("mp_arena_override_cap_enable_time", "-1")
 	RunConsoleCommand("mp_bonusroundtime", bonusBefore)
 end

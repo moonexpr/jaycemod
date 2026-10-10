@@ -64,8 +64,22 @@ local function Barrier()
 	return b
 end
 
+-- A vector with the arithmetic the seam sweep does.
+local Vec = {}
+Vec.__index = Vec
+local function V(x, y, z) return setmetatable({ x = x, y = y, z = z }, Vec) end
+Vec.__add = function(a, b) return V(a.x + b.x, a.y + b.y, a.z + b.z) end
+Vec.__sub = function(a, b) return V(a.x - b.x, a.y - b.y, a.z - b.z) end
+Vec.__div = function(a, n) return V(a.x / n, a.y / n, a.z / n) end
+
+local GENERATE_POLL = "ws_nav_generate"
+
 local function load(t)
-	local s = { commands = {}, seeds = {}, timers = {}, cleaned = 0, now = 0 }
+	local s = { commands = {}, seeds = {}, timers = {}, cleaned = 0, now = 0, hooks = {}, sweeps = {}, ran = {} }
+	-- the mesh's areas (NavArea fakes) and what a sweep across a seam hits:
+	-- trace(t) -> { Hit, StartSolid }
+	s.navAreas = t.navAreas or {}
+	s.trace = t.trace or function(tr) return { Hit = tr.endpos.z < tr.start.z, StartSolid = false } end
 	s.nav = { generating = false, areas = t.areas or 0, began = 0 }
 	s.convars = {
 		sv_gameplay_enabled = t.gameplay and "1" or "0",
@@ -111,6 +125,7 @@ local function load(t)
 				s.created[#s.created + 1] = e
 				return e
 			end,
+			GetAll = function() return t.entities or {} end,
 			FindByClass = function(class)
 				local found = {}
 				for _, e in ipairs(t.entities or {}) do if e.class == class then found[#found + 1] = e end end
@@ -123,11 +138,18 @@ local function load(t)
 			IsGenerating = function() return s.nav.generating end,
 			IsLoaded = function() return s.nav.areas > 0 end,
 			GetNavAreaCount = function() return s.nav.areas end,
+			GetAllNavAreas = function() return s.navAreas end,
 		},
+		hook = {
+			Add = function(event, name, fn) s.hooks[event] = fn end,
+			Run = function(event) s.ran[#s.ran + 1] = event end,
+		},
+		util = { TraceHull = function(tr) s.sweeps[#s.sweeps + 1] = tr return s.trace(tr) end },
+		MASK_PLAYERSOLID = 1, MASK_PLAYERSOLID_BRUSHONLY = 2, MASK_NPCSOLID = 3, MASK_NPCSOLID_BRUSHONLY = 4,
 		timer = { Create = function(name, delay, reps, fn) s.timers[name] = fn end, Remove = function(name) s.timers[name] = nil end },
 		game = { GetMap = function() return "cp_steel" end, CleanUpMap = function() s.cleaned = s.cleaned + 1 end },
 		CurTime = function() return s.now end,
-		Vector = function(x, y, z) return { x = x, y = y, z = z } end,
+		Vector = V,
 		IsValid = function(p) return p ~= nil end,
 		print = function() end,
 	}, { __index = _G })
@@ -136,7 +158,7 @@ local function load(t)
 	function s.Poll()
 		s.now = s.now + 1
 		for _, e in ipairs(t.entities or {}) do if e.Tick then e:Tick() end end
-		local poll = s.timers[next(s.timers)]
+		local poll = s.timers[GENERATE_POLL]
 		if poll then poll() end
 	end
 	return s
@@ -268,7 +290,7 @@ T.test("when it is done the map is reset and the admin told the areas it made", 
 	s.Poll()
 	T.eq(s.cleaned, 1, "the map's doors and gates put back")
 	T.eq(admin.said[said + 1]:find("2133") ~= nil, true, admin.said[said + 1])
-	T.eq(next(s.timers), nil, "and it stops watching")
+	T.eq(s.timers[GENERATE_POLL], nil, "and it stops watching")
 end)
 
 -- Sandbox mode: no rounds to close doors, no spawning while it generates.
@@ -352,6 +374,89 @@ end)
 T.test("a mesh is usable once it has areas", function()
 	T.eq(load({ areas = 0 }).ws.NavMeshUsable(), false)
 	T.eq(load({ areas = 12 }).ws.NavMeshUsable(), true)
+end)
+
+-- Seams (foundation.nav_gaps) -------------------------------------------------------
+
+-- A flat nav area over x0..x1, y0..y1 at height z.
+local function NavArea(id, x0, y0, x1, y1, z)
+	local a = { id = id, links = {} }
+	function a:GetID() return self.id end
+	function a:GetExtentInfo() return { lo = V(x0, y0, z or 0), hi = V(x1, y1, z or 0) } end
+	function a:GetZ() return z or 0 end
+	function a:IsConnected(other) return self.links[other] == true end
+	function a:ConnectTo(other) self.links[other] = true end
+	return a
+end
+
+-- Runs the seam sweep's timer until it is done.
+local function Sweep(s)
+	while s.timers.ws_nav_gaps do s.timers.ws_nav_gaps() end
+end
+
+local function TwoAcrossASeam()
+	return NavArea(1, 0, 0, 100, 100), NavArea(2, 125, 0, 225, 100)
+end
+
+T.test("once the map has loaded, a seam a walker crosses is linked both ways", function()
+	local a, b = TwoAcrossASeam()
+	local s = load({ areas = 2, navAreas = { a, b } })
+	s.hooks.InitPostEntity()
+	Sweep(s)
+	T.eq(a:IsConnected(b), true, "one way")
+	T.eq(b:IsConnected(a), true, "and back")
+	T.eq(table.concat(s.ran, ","), "WSNavLinked", "routes planned before are told the mesh changed")
+end)
+
+T.test("the mesh loads after the map's entities: the sweep waits for it", function()
+	local a, b = TwoAcrossASeam()
+	local s = load({ areas = 0, navAreas = { a, b } })
+	s.hooks.InitPostEntity()
+	s.timers.ws_nav_gaps()
+	T.eq(a:IsConnected(b), false, "no mesh yet")
+	s.nav.areas = 2
+	Sweep(s)
+	T.eq(a:IsConnected(b) and b:IsConnected(a), true, "linked once it loaded")
+end)
+
+T.test("a seam the walker cannot cross, or with no floor under it, stays open", function()
+	local a, b = TwoAcrossASeam()
+	-- a wall: every sweep hits
+	local s = load({ areas = 2, navAreas = { a, b }, trace = function() return { Hit = true } end })
+	s.hooks.InitPostEntity()
+	Sweep(s)
+	T.eq(a:IsConnected(b) or b:IsConnected(a), false, "a wall")
+	T.eq(#s.ran, 0, "nothing linked, nothing changed")
+	-- a drop: nothing is ever hit, not even a floor
+	a, b = TwoAcrossASeam()
+	s = load({ areas = 2, navAreas = { a, b }, trace = function() return { Hit = false } end })
+	s.hooks.InitPostEntity()
+	Sweep(s)
+	T.eq(a:IsConnected(b) or b:IsConnected(a), false, "no floor")
+end)
+
+T.test("on a players' map the walker is swept under the player's clips, else the NPC's", function()
+	local a, b = TwoAcrossASeam()
+	local s = load({ areas = 2, navAreas = { a, b }, entities = { Ent("tf_gamerules", 0, 0, 0) } })
+	s.hooks.InitPostEntity()
+	Sweep(s)
+	T.eq(s.sweeps[1].mask, 2, "MASK_PLAYERSOLID_BRUSHONLY")
+	a, b = TwoAcrossASeam()
+	s = load({ areas = 2, navAreas = { a, b }, entities = { Ent("info_player_start", 0, 0, 0) } })
+	s.hooks.InitPostEntity()
+	Sweep(s)
+	T.eq(s.sweeps[1].mask, 4, "MASK_NPCSOLID_BRUSHONLY")
+end)
+
+T.test("a mesh just generated has its seams linked too", function()
+	local a, b = TwoAcrossASeam()
+	local s = load({ entities = SPAWNS, navAreas = { a, b } })
+	s.commands.mp_nav_generate(Player(true))
+	s.Poll()
+	s.nav.generating, s.nav.areas = false, 2
+	s.Poll()
+	Sweep(s)
+	T.eq(a:IsConnected(b) and b:IsConnected(a), true, "linked")
 end)
 
 T.finish()

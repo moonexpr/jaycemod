@@ -136,6 +136,15 @@ PLAN: Tuple[MapRun, ...] = (
         GAMEPLAY_START,
         Step("cp_capture", 420, {"timeout": 400}),
     )),
+    # Arena (tf_logic_arena): the round with bots, then the AI war's tie,
+    # capture and elimination. arena_well's point stands still (nucleus's
+    # rides bridges its nav mesh does not follow); TF2 ships no mesh for it:
+    # make one with mp_nav_generate first.
+    MapRun("arena_well", (
+        load(True, has=["rounds", "capture", "arena"], lacks=["koth", "payload"]),
+        Step("arena", 150),
+        Step("aiwar_arena", 720),
+    )),
 )
 
 # The Halloween payload maps of the live playtest, run first; each one's

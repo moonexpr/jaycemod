@@ -35,8 +35,9 @@ local function RankOf(point) return point and point.rank end
 -- A field of these points, briefed at now by a new scenario (or the one given).
 local function Brief(t, now, scenario)
 	local field = FP.Field(t)
+	field.now = now or 0 -- as the controller's field carries it
 	scenario = scenario or CP.Scenario:New()
-	scenario:Brief(field, now or 0)
+	scenario:Brief(field, field.now)
 	return field, scenario
 end
 
@@ -272,6 +273,7 @@ end)
 
 local function Member(team, job, slot, pos)
 	return {
+		handle = "member", -- as every war member has
 		team = team,
 		role = job,
 		slot = slot or 1,
@@ -285,6 +287,8 @@ local function Goals(t)
 		FP.Point({ rank = 1, at = P(-1000, 0), owner = RED, mayCapture = { [BLUE] = true } }),
 		FP.Point({ rank = 2, at = P(0, 0), mayCapture = { [RED] = true, [BLUE] = true } }),
 	}
+	-- the nav mesh's, for explorers
+	t.waypoints = t.waypoints or { P(1500, 1500) }
 	return Brief(t)
 end
 
@@ -592,6 +596,7 @@ T.test("A/D setup: BLU wanders, RED lines up at the gates and holds A; after set
 	local a = FP.Point({ rank = 0, at = P(-500, 0), owner = RED, mayCapture = { [BLUE] = true } })
 	local b = FP.Point({ rank = 1, at = P(-1500, 0), owner = RED })
 	local battle = FP.Battle(CP.Scenario)
+	battle.war:SetOffRoles({}) -- assault squads on lanes: every role on
 	battle:Enlist(RED, SOLDIERS, function(i) return { pos = P(-1000, 0) } end)
 	battle:Enlist(BLUE, SOLDIERS, function(i) return { pos = P(2500, 0) } end)
 	local lane = {

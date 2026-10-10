@@ -206,6 +206,21 @@ local function Named(name, default)
 	return name
 end
 
+-- team_control_point's team_icon_0/2/3 defaults (the FGD's): the HUD's icon
+-- for each owner.
+ICON_DEFAULT = {
+	[NOBODY] = "sprites/obj_icons/icon_obj_neutral",
+	[RED] = "sprites/obj_icons/icon_obj_red",
+	[BLUE] = "sprites/obj_icons/icon_obj_blu",
+}
+
+-- spec.icons: owner -> the map's team_icon, nil or "" for the default.
+local function Icons(icons)
+	local list = {}
+	for team, default in pairs(ICON_DEFAULT) do list[team] = Named(icons[team], default) end
+	return list
+end
+
 local function NewPoint(spec, rank)
 	local locked = spec.locked
 	if locked == nil then locked = spec.startLocked end
@@ -234,6 +249,7 @@ local function NewPoint(spec, rank)
 		printName = spec.printName,
 		spawnflags = spec.spawnflags,
 		previous = spec.previous,
+		icons = Icons(spec.icons),
 	}
 end
 
@@ -572,6 +588,7 @@ function PointSet:HudPoint(id, q)
 		hidden = q.hidden,
 		name = p.printName,
 		timerEnd = q.timerEnd,
+		icon = p.icons[p.owner],
 	}
 	if not area then return hud end
 	hud.capping = area.capping

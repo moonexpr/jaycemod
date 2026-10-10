@@ -3,12 +3,13 @@
 -- point is an icon in the master's caplayout rows, centred at the bottom of
 -- the screen and scaled with its height as TF2 lays them out
 -- (foundation.capture.hud), except in payload rounds, whose cart HUD takes
--- the bottom centre: its owner's colour and number, a padlock bar while
--- locked and the unlock countdown in place of the number
--- (CControlPointCountdown shares the icon's bounds), the capture progress in the capping team's colour, the cappers
--- (xN, or N/required when a fixed count is needed) or BLOCKED, which teams
--- may cap it, dimmed when out of the mini-round, and a tf_logic_cp_timer's
--- countdown. The local player standing on a point sees why they may not
+-- the bottom centre, drawn in TF2's materials (ControlPointIcon.res): the
+-- map's icon for its owner (team_icon_N), its _locked version while locked
+-- with the unlock countdown over it (CControlPointCountdown), the capping
+-- team's icon_obj_cap fill rising with the capture, the capture icon and
+-- cappers (xN, or N/required when a fixed count is needed) or blocked,
+-- dimmed when out of the mini-round, and a tf_logic_cp_timer's clock on
+-- icon_obj_timer. The local player standing on a point sees why they may not
 -- capture it (CControlPointProgressBar). The unlock countdown speaks 5..1,
 -- then the capture-enabled line (CControlPointCountdown::OnTick).
 WS.Feature("rounds")
@@ -19,28 +20,20 @@ local Rounds = WS.require("foundation.rounds")
 local NOBODY, RED, BLUE = WS.TEAM_UNASSIGNED, WS.TEAM_RED, WS.TEAM_BLUE
 local NO_POINT_STOOD_ON = 0
 
--- An icon's parts, in TF2's HUD units (foundation.capture.hud).
-local ICON_INSET = 3
-local BAR_HEIGHT = 5
-local TICK_SIZE = 5
-local LOCK_BAR_HEIGHT = 4
+-- The icons' fonts, in TF2's HUD units (foundation.capture.hud): the
+-- unlock countdown's (ControlPointTimer) and the cappers' (CapPlayerFont).
 local NUMBER_FONT_SIZE = 18
 local INSET = 4 -- the capture panel's, in pixels
 local DIM_ALPHA = 70
-local FILL_ALPHA = 200
 local PANEL_ABOVE_CROSSHAIR = 70
 local PANEL_WIDTH = 260
 local PANEL_HEIGHT = 34
 local CORNER = 6
 
-local BACK = Color(0, 0, 0, 170)
 -- The capture panel, TF2's target ID: a white rounded border round a dark fill.
 local PANEL_BORDER, PANEL_FILL, PANEL_EDGE = 2, Color(30, 28, 26, 235), color_white
 local ANCHOR_LIFT = 24 -- how far above the object's top the panel sits
-local BAR_BACK = Color(20, 20, 20, 255)
-local LOCK = Color(120, 120, 120, 255)
 local ALERT = Color(230, 60, 40)
-local GOLD = Color(255, 210, 90)
 
 local FONT_NUMBER = "Sandcastle.Capture.Number"
 local FONT_LABEL = "Sandcastle.Capture.Label"
@@ -54,14 +47,14 @@ end
 -- The icons' fonts, sized with the screen's height.
 local function CreateFonts()
 	surface.CreateFont(FONT_NUMBER, {
-		font = "Roboto",
+		font = "TF2 Build",
 		size = Pixels(NUMBER_FONT_SIZE, ScrH()),
-		weight = 800,
+		weight = 500,
 	})
 	surface.CreateFont(FONT_LABEL, {
-		font = "Roboto",
+		font = "TF2 Build",
 		size = Pixels(Hud.LABEL, ScrH()),
-		weight = 700,
+		weight = 500,
 	})
 	surface.CreateFont(FONT_REASON, {
 		font = Hud.REASON_FONT,
@@ -116,6 +109,7 @@ local function Point(rank)
 		hidden = GetGlobal2Bool(Key(r, "hidden"), false),
 		name = GetGlobal2String(Key(r, "name"), ""),
 		timerEnd = GetGlobal2Float(Key(r, "timer_end"), 0),
+		icon = GetGlobal2String(Key(r, "icon"), Capture.ICON_DEFAULT[NOBODY]),
 	}
 end
 
@@ -133,54 +127,112 @@ local function Seconds(at)
 	return math.max(0, math.ceil(at - CurTime()))
 end
 
-local function CappersText(p)
-	if p.blocked then return "BLOCKED", ALERT end
-	if p.cappers <= 0 then return nil end
-	if p.required > 0 then return p.cappers .. "/" .. p.required, color_white end
-	return "x" .. p.cappers, color_white
+-- TF2's ControlPointIcon.res, in its 33-unit icon: the capture icon and
+-- the cappers' count (#ControlPointIconCappers), centred on it as its
+-- layout code places them, the unlock countdown (CControlPointCountdown)
+-- over all of it, and a
+-- tf_logic_cp_timer's clock on icon_obj_timer, twice as wide, behind it.
+local ICON_UNITS = 33
+local CAPPER_W, CAPPER_H = 10, 20
+local TIMER_BG_W = 66
+local TAN_LIGHT = Color(235, 226, 202)
+local CAP_FILL = { [RED] = "sprites/obj_icons/icon_obj_cap_red", [BLUE] = "sprites/obj_icons/icon_obj_cap_blu" }
+
+local MATERIALS = {}
+local function Mat(name)
+	MATERIALS[name] = MATERIALS[name] or Material(name)
+	return MATERIALS[name]
 end
 
--- A point's icon, size pixels square at x, y on a screen h pixels tall.
+-- A locked point's icon: the map icon's _locked version where one ships
+-- (the numbered icon_obj_N_*), else the icon itself, dimmed.
+local function LockedIcon(icon)
+	local locked = Mat(icon .. "_locked")
+	if not locked:IsError() then return locked, false end
+	return Mat(icon), true
+end
+
+local function Image(material, x, y, w, h)
+	surface.SetMaterial(material)
+	surface.DrawTexturedRect(x, y, w, h)
+end
+
+-- The cappers' count: N, or N/required when a fixed count is needed.
+local function CappersText(p)
+	if p.required > 0 then return p.cappers .. "/" .. p.required end
+	return "x" .. p.cappers
+end
+
+-- The capture sweep: icon_obj_cap_<team>, twice as wide as the icon, a fill
+-- ending in a chevron at its middle, slid across the icon so the chevron's
+-- tip stands at the capture's share, and masked to the icon's rounded square
+-- by its detail texture (capture_highlight, $separatedetailuvs), so each
+-- layer takes its own texture coordinates: a mesh quad, which surface's
+-- draws (one set) cannot give.
+local function DrawSweep(material, x, y, size, progress, alpha)
+	local w = size * progress
+	local u0 = 1 - progress / 2 -- the base's u at the icon's left edge
+	cam.Start2D()
+	render.SetMaterial(material)
+	mesh.Begin(MATERIAL_QUADS, 1)
+	local function Corner(px, py, u, v, mu, mv)
+		mesh.Position(Vector(px, py, 0))
+		mesh.TexCoord(0, u, v)
+		mesh.TexCoord(1, mu, mv)
+		mesh.Color(255, 255, 255, alpha)
+		mesh.AdvanceVertex()
+	end
+	Corner(x, y, u0, 0, 0, 0)
+	Corner(x + w, y, 1, 0, progress, 0)
+	Corner(x + w, y + size, 1, 1, progress, 1)
+	Corner(x, y + size, u0, 1, 0, 1)
+	mesh.End()
+	cam.End2D()
+end
+
+-- The cappers, centred on the icon as CControlPointIcon lays them out: the
+-- capture icon, then their count.
+local function DrawCappers(p, x, y, size, s)
+	local text = CappersText(p)
+	surface.SetFont(FONT_LABEL)
+	local textW = surface.GetTextSize(text)
+	local imageW, imageH = CAPPER_W * s, CAPPER_H * s
+	local left = x + (size - (imageW + textW)) / 2
+	surface.SetDrawColor(255, 255, 255, 255)
+	Image(Mat("vgui/capture_icon"), left, y + (size - imageH) / 2, imageW, imageH)
+	draw.SimpleTextOutlined(text, FONT_LABEL, left + imageW, y + size / 2, TAN_LIGHT, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER, 1, color_black)
+end
+
+-- A point's icon, size pixels square at x, y on a screen h pixels tall:
+-- its owner's icon from the map (team_icon_N), dimmed out of the mini-round,
+-- the capping team's sweep with the capture, blocked or, while it is being
+-- captured, its cappers, and the unlock countdown or the point's timer.
 local function DrawIcon(p, x, y, size, h)
-	local owner = TeamColor(p.owner)
-	local alpha = p.inRound and FILL_ALPHA or DIM_ALPHA
-	local inset, tick = Pixels(ICON_INSET, h), Pixels(TICK_SIZE, h)
-	local barHeight = Pixels(BAR_HEIGHT, h)
-	local inner = size - 2 * inset
-	local centreX, centreY = x + size / 2, y + size / 2
-	draw.RoundedBox(CORNER, x, y, size, size, BACK)
-	draw.RoundedBox(inset, x + inset, y + inset, inner, inner, Color(owner.r, owner.g, owner.b, alpha))
-	local counting = p.locked and p.unlockTime > CurTime()
-	if counting then
-		draw.SimpleText(tostring(Seconds(p.unlockTime)), FONT_NUMBER, centreX, centreY, GOLD, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
-	else
-		draw.SimpleText(tostring(p.rank + 1), FONT_NUMBER, centreX, centreY, color_white, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+	local s = size / ICON_UNITS
+	local alpha = p.inRound and 255 or DIM_ALPHA
+	local icon, dim = Mat(p.icon), false
+	if p.locked then icon, dim = LockedIcon(p.icon) end
+	if p.timerEnd > CurTime() then
+		surface.SetDrawColor(255, 255, 255, alpha)
+		Image(Mat("sprites/obj_icons/icon_obj_timer"), x, y, TIMER_BG_W * s, size)
+		local left = Seconds(p.timerEnd)
+		draw.SimpleText(string.format("%d:%02d", math.floor(left / 60), left % 60), FONT_LABEL,
+			x + (ICON_UNITS + (TIMER_BG_W - ICON_UNITS) / 2) * s, y + size / 2, TAN_LIGHT, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 	end
-	if p.locked then
-		surface.SetDrawColor(LOCK)
-		surface.DrawRect(x + inset, y + inset, inner, Pixels(LOCK_BAR_HEIGHT, h))
+	surface.SetDrawColor(255, 255, 255, dim and DIM_ALPHA or alpha)
+	Image(icon, x, y, size, size)
+	if CAP_FILL[p.capping] and p.progress > 0 then DrawSweep(Mat(CAP_FILL[p.capping]), x, y, size, p.progress, alpha) end
+	surface.SetDrawColor(255, 255, 255, alpha)
+	if p.blocked then
+		Image(Mat("hud/cart_blocked"), x + size / 4, y + size / 4, size / 2, size / 2)
+	elseif p.capping ~= NOBODY and p.cappers > 0 then
+		-- only a point in contest shows who is on it
+		DrawCappers(p, x, y, size, s)
 	end
-	if p.capping ~= NOBODY then
-		local c = TeamColor(p.capping)
-		local barY = y + size - inset - barHeight
-		surface.SetDrawColor(BAR_BACK)
-		surface.DrawRect(x + inset, barY, inner, barHeight)
-		surface.SetDrawColor(c.r, c.g, c.b, 255)
-		surface.DrawRect(x + inset, barY, inner * p.progress, barHeight)
+	if p.locked and p.unlockTime > CurTime() then
+		draw.SimpleTextOutlined(tostring(Seconds(p.unlockTime)), FONT_NUMBER, x + size / 2, y + size / 2, TAN_LIGHT,
+			TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER, 1, color_black)
 	end
-	if p.redCanCap then
-		local c = TeamColor(RED)
-		surface.SetDrawColor(c.r, c.g, c.b, 255)
-		surface.DrawRect(x, y + size - tick, tick, tick)
-	end
-	if p.blueCanCap then
-		local c = TeamColor(BLUE)
-		surface.SetDrawColor(c.r, c.g, c.b, 255)
-		surface.DrawRect(x + size - tick, y + size - tick, tick, tick)
-	end
-	local label, labelColor = CappersText(p)
-	if p.timerEnd > CurTime() then label, labelColor = string.format("%d:%02d", math.floor(Seconds(p.timerEnd) / 60), Seconds(p.timerEnd) % 60), GOLD end
-	if label then draw.SimpleText(label, FONT_LABEL, centreX, y + size, labelColor, TEXT_ALIGN_CENTER) end
 end
 
 -- The layout's rows of shown points.

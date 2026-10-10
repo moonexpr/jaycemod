@@ -86,9 +86,10 @@ local function Chat(title, lines)
 	})
 end
 
--- What the map plays, for foundation.gameplay.
+-- What the map plays, for foundation.gameplay: on a map without an
+-- objective, the round limits too.
 local function MapInfo()
-	return {
+	local info = {
 		map = game.GetMap(),
 		trains = #ents.FindByClass("team_train_watcher"),
 		race = #ents.FindByClass("tf_logic_multiple_escort") > 0,
@@ -96,6 +97,12 @@ local function MapInfo()
 		rounds = #ents.FindByClass("team_control_point_round"),
 		flags = #ents.FindByClass("item_teamflag"),
 	}
+	local rounds = WS.Active() and WS.Feature("rounds")
+	if rounds and not rounds:Mode().OBJECTIVE then
+		local limits = rounds:RoundLimits()
+		info.fraglimit, info.cashlimit = limits.frags, limits.cash
+	end
+	return info
 end
 
 -- sv_gameplay_enabled follows a settled mode; the transition leaves it.
@@ -164,6 +171,8 @@ local NOTICES = {
 -- been told, when the model says so).
 function Controller:Request(want, source, requester, story)
 	local answer = self.mode:Request(want, source, CurTime(), SANDBOX_DISABLED:GetBool())
+	-- a game begun on a map without rounds: they load, halted until it begins
+	if answer.loadRounds then WS.Feature("rounds"):EnsureRules() end
 	ACTIONS[answer.action](self)
 	NOTICES[answer.notice](requester, story, answer.refusal)
 	self:Publish()
@@ -211,9 +220,11 @@ function Controller:Begin()
 end
 
 -- A map with rounds starts in the mode sv_gameplay_enabled holds, quietly:
--- Sandbox mode halts the rounds, Gameplay mode leaves the map's own round start.
+-- Sandbox mode halts the rounds, Gameplay mode leaves the map's own round
+-- start. Rounds loaded for a game counting down (a map without them) stay
+-- halted until it begins.
 function Controller:StartAtLoad()
-	if self.mode:Mode() == Gamemode.SANDBOX then WS.Rules:Halt() end
+	if self.mode:Mode() ~= Gamemode.GAMEPLAY then WS.Rules:Halt() end
 end
 
 return Controller

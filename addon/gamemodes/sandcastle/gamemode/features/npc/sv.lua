@@ -27,7 +27,7 @@ local Controller = {
 	pathWatch = {}, -- entity index -> { costs } while the nbdebug feature watches its path searches
 	spawnRoomTeams = {}, -- nav area id -> the team whose spawn room holds it, this round
 	searches = {}, -- the Lua route searches still running, oldest first
-	neighbors = {}, -- nav area id -> its floor neighbours' ids (the mesh is fixed for the map)
+	neighbors = {}, -- nav area id -> its floor neighbours' ids (read again when seams are linked: WSNavLinked)
 	centers = {}, -- nav area id -> its centre
 	navBlocked = {}, -- nav area id -> the teams its doors and brushes block (foundation.npc.doors)
 	nextBlockerRefresh = 0,
@@ -157,10 +157,30 @@ end
 
 local NOBODY = WS.TEAM_UNASSIGNED
 
+-- foundation.spawn, required on first use: only maps with spawn rooms, which
+-- have rounds, need it.
+local Spawn
+
+-- The teams of the enabled spawn points inside a func_respawnroom, and the
+-- team of the spawn point nearest its centre (nil on a map without any).
+local function SpawnTeamsIn(room)
+	local teams, nearest, nearestDistance = {}, nil, nil
+	local center = room:WorldSpaceCenter()
+	for _, spawn in ipairs(ents.FindByClass("info_player_teamspawn")) do
+		local s = WS.SpawnState(spawn)
+		if not s.disabled and s.team > WS.TEAM_SPECTATOR then
+			if room:PointIsWithin(spawn:GetPos()) then teams[#teams + 1] = s.team end
+			local d = spawn:GetPos():DistToSqr(center)
+			if not nearestDistance or d < nearestDistance then nearest, nearestDistance = s.team, d end
+		end
+	end
+	return teams, nearest
+end
+
 -- TF_NAV_SPAWN_ROOM_RED/_BLUE, which GMod's nav areas do not carry: the
--- team of the func_respawnroom holding the area's centre, found once per
--- area per round (rooms take their teams at round start, some only once
--- the round is active).
+-- team of the func_respawnroom holding the area's centre, as its spawns
+-- say (foundation.spawn's RoomTeam), found once per area per round (rooms
+-- take their teams at round start, some only once the round is active).
 function Controller:SpawnRoomTeam(area)
 	local id = area:GetID()
 	local team = self.spawnRoomTeams[id]
@@ -169,7 +189,8 @@ function Controller:SpawnRoomTeam(area)
 	local center = area:GetCenter()
 	for _, room in ipairs(ents.FindByClass("func_respawnroom")) do
 		if room:PointIsWithin(center) then
-			team = room.team
+			Spawn = Spawn or WS.require("foundation.spawn")
+			team = Spawn.RoomTeam(room.team, SpawnTeamsIn(room))
 			break
 		end
 	end
@@ -314,8 +335,9 @@ function Controller:RefreshBlockers(now)
 end
 
 -- Counts the changes to what the blockers block (a door shutting on a
--- capture, a brush switched on): a route planned under an older count may
--- lead into one.
+-- capture, a brush switched on), and to the mesh's links (seams linked,
+-- ws/sv_nav.lua): a route planned under an older count may lead into a
+-- blocker, or miss a way.
 function Controller:BlockerGeneration()
 	self:RefreshBlockers(CurTime())
 	return self.blockerGeneration
@@ -350,6 +372,13 @@ function Controller:NavBlocks(area, team)
 	self:RefreshBlockers(CurTime())
 	return Doors.Blocks(self.navBlocked[area:GetID()], team)
 end
+
+-- The mesh's links changed: the neighbours read from it are read again, and
+-- routes planned before are stale.
+hook.Add("WSNavLinked", "ws_npc_blockers", function()
+	Controller.neighbors = {}
+	Controller.blockerGeneration = Controller.blockerGeneration + 1
+end)
 
 local function ForgetSpawnRooms()
 	Controller.spawnRoomTeams = {}

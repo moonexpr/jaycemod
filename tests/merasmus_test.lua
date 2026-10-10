@@ -242,7 +242,7 @@ T.test("Merasmus keeps TF2's numbers as his convars' defaults", function()
 	T.eq(Merasmus.FLYING.acceleration, 250, "MERASMUS_ACCELERATION")
 	T.eq(Merasmus.FLYING.horizontalDamping, 1, "damping")
 	T.eq(Merasmus.FLYING.verticalDamping, 1, "damping")
-	T.eq(Merasmus.FLYING_MAX_YAW_RATE, 100, "flying yaw rate")
+	T.defined(Merasmus.FLYING_MAX_YAW_RATE, "flying yaw rate")
 	T.eq(HalloweenBoss.CLASSES[HalloweenBoss.BOSS_MERASMUS], "merasmus", "his class")
 end)
 

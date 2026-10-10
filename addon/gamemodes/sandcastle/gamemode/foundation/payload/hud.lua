@@ -1,22 +1,19 @@
 -- The cart HUD's model: the order the carts are drawn in, the wire format
 -- of the lists the payload controller networks per cart (ws_cart_<i>_
--- cps, owners and hills, as strings), and the status line the payload view
--- draws above each cart's bar. Both ends use it, so they agree.
+-- cps, owners and hills, as strings), and what the payload view shows on
+-- each cart's icon. Both ends use it, so they agree.
 local ipairs, math, string, table, tonumber = ipairs, math, string, table, tonumber
 local Payload = require("foundation.payload")
 module(...)
 
 POSITION_FORMAT = "%.4f" -- a checkpoint's fraction of the track
 OWNER_FORMAT = "%d" -- a checkpoint owner's team
-BLOCKED = "BLOCKED"
 
 local LIST_SEPARATOR = ","
 local HILL_SEPARATOR = ";"
 local HILL_FORMAT = "%.4f:%.4f:%d"
 local HILL_PATTERN = "([^:]+):([^:]+):(%d)"
 local DOWNHILL, UPHILL = 1, 0
-local STATUS_SEPARATOR = "  "
-local ARROW_FORWARD, ARROW_BACK = ">", "<"
 
 -- carts = { { team, index }... } (index: the watcher's entity index). A new
 -- list: higher team numbers first, so BLU's cart (3) above RED's (2), then
@@ -67,17 +64,16 @@ function DecodeHills(text)
 	return hills
 end
 
--- The line above a cart's bar: the speed arrows (the watcher's speed level),
--- the pushers, and the rollback countdown; or BLOCKED while the enemy stands
--- on the cart. cart = { speed, cappers, recedeAt, canRecede }.
-function Status(cart, now)
-	if cart.cappers == Payload.CAPPERS_BLOCKED then return BLOCKED end
-	local parts = {}
-	if cart.speed > 0 then parts[#parts + 1] = string.rep(ARROW_FORWARD, cart.speed) end
-	if cart.speed < 0 then parts[#parts + 1] = ARROW_BACK end
-	if cart.cappers > 0 then parts[#parts + 1] = "x" .. cart.cappers end
-	if cart.recedeAt > 0 and cart.canRecede then
-		parts[#parts + 1] = "Rolls back in " .. math.max(0, math.ceil(cart.recedeAt - now))
-	end
-	return table.concat(parts, STATUS_SEPARATOR)
+-- What TF2's escort HUD (CTFHudEscort) shows on the cart's icon: blocked
+-- while the enemy stands on it, rolling back (the watcher's speed level
+-- below 0), its pushers (the capture icon and their count), or, idle, the
+-- seconds until it rolls back. cart = { speed, cappers, recedeAt,
+-- canRecede }. Returns { blocked, backwards, cappers, recede }, each nil
+-- when not shown.
+function Indicator(cart, now)
+	if cart.cappers == Payload.CAPPERS_BLOCKED then return { blocked = true } end
+	if cart.speed < 0 then return { backwards = true } end
+	if cart.cappers > 0 then return { cappers = cart.cappers } end
+	if cart.recedeAt > 0 and cart.canRecede then return { recede = math.max(0, math.ceil(cart.recedeAt - now)) } end
+	return {}
 end

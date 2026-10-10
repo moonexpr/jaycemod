@@ -13,6 +13,7 @@ local STATE = require("foundation.rounds.state")
 local Squad = require("foundation.aiwar.squad")
 local Lanes = require("foundation.aiwar.lanes")
 local Hunt = require("foundation.aiwar.hunt")
+local Tactics = require("foundation.aiwar.tactics")
 module(...)
 
 local RED, BLUE = Teams.RED, Teams.BLUE
@@ -54,6 +55,9 @@ MEDIC = "medic"
 -- capture stands on the point to take it, assault fights its way to it in
 -- squads, and hold stands on its own point against a capture.
 CAPTURE, ASSAULT, HOLD = "capture", "assault", "hold"
+-- Arena's job (foundation.aiwar.scenario.arena): a squad keeps together and
+-- explores the map, going for what its own soldiers saw.
+EXPLORE = "explore"
 
 function MedicsFor(teamSize)
 	if (teamSize or 0) < 4 then return 0 end
@@ -62,9 +66,14 @@ end
 
 TEAM_SIZE_DEFAULT = 8
 TEAM_SIZE_MAX = 32
--- Fire teams: a side's soldiers fight in teams of at most FIRE_TEAM_SIZE,
--- each with one role, so teammates are soldiers fighting together.
+-- Fire teams: a side's soldiers fight in teams of at most FIRE_TEAM_SIZE
+-- (unless the war is set another: SetFireTeamSize), each with one role, so
+-- teammates are soldiers fighting together.
 FIRE_TEAM_SIZE = 4
+-- The most and the fewest squads a team forms (ns_squads_max and
+-- ns_squads_min; War:SetSquadsMax and SetSquadsMin).
+SQUADS_MAX_DEFAULT = 3
+SQUADS_MIN_DEFAULT = 3
 
 -- The sides' soldiers: DrGBase NextBots (the entities ws_drg_combine
 -- and ws_drg_rebel), each drafting its own model and weapons.
@@ -284,6 +293,16 @@ PHASES = {
 		everyoneHunts = false,
 		sightAll = false,
 	},
+	-- the arena round (STALEMATE where it is the round): no respawns, but no
+	-- hunt and no sight of every enemy; the scenario's orders run
+	arena = {
+		name = "arena",
+		reinforce = false,
+		orders = true,
+		hunt = false,
+		everyoneHunts = false,
+		sightAll = false,
+	},
 }
 
 local PHASE_OF_STATE = {
@@ -296,10 +315,13 @@ local PHASE_OF_STATE = {
 
 -- active: the map runs TF2's rounds (tf_gamerules); without them the war
 -- simply runs. winner: the team that won the round (TEAM_WIN) or the match
--- (GAME_OVER, whose winners hunt to its music), or nil.
-function PhaseOf(active, state, winner)
+-- (GAME_OVER, whose winners hunt to its music), or nil. stalemateIsRound:
+-- the rounds mode fights its round in STALEMATE (arena), which is then no
+-- sudden death.
+function PhaseOf(active, state, winner, stalemateIsRound)
 	if not active then return PHASES.running end
 	if (state == STATE.TEAM_WIN or state == STATE.GAME_OVER) and ENEMY[winner] then return PHASES.humiliation end
+	if state == STATE.STALEMATE and stalemateIsRound then return PHASES.arena end
 	return PHASE_OF_STATE[state] or PHASES.over
 end
 
@@ -315,6 +337,9 @@ function War.New()
 		fireTeams = {}, -- every fire team: { team, role, index (per team and role), squad, members = place -> member,
 		-- manual (formed or changed by hand: any size, the war leaves it be), chosen (the leader it was formed for) }
 		autoSquads = true, -- whether the war groups soldiers into fire teams itself (SetAutoSquads)
+		fireTeamSize = FIRE_TEAM_SIZE, -- the most a fire team the war forms holds (SetFireTeamSize)
+		squadsMax = SQUADS_MAX_DEFAULT, -- the most squads a team forms (SetSquadsMax)
+		squadsMin = SQUADS_MIN_DEFAULT, -- the fewest (SetSquadsMin)
 		enlisted = 0, -- members ever enlisted, for their order
 		claims = Squad.Claims.New(), -- spots soldiers hold (foundation.aiwar.squad)
 		hunt = Hunt.Board.New(), -- the winners' sightings of the losers (foundation.aiwar.hunt)
@@ -325,6 +350,8 @@ function War.New()
 		nextWave = { [RED] = 0, [BLUE] = 0 },
 		factions = { [RED] = FACTIONS[RED], [BLUE] = FACTIONS[BLUE] }, -- team -> the faction fighting for it
 		field = nil,
+		offRoles = OFF_ROLES, -- roles no stance gives (SetOffRoles)
+		onStances = setmetatable({}, { __mode = "k" }), -- stance -> it without them
 	}, War)
 end
 
@@ -398,12 +425,13 @@ function War:LeaveFireTeam(member)
 	end
 end
 
--- The lowest free place; a fire team the war formed holds FIRE_TEAM_SIZE,
--- one formed by hand any number.
-local function FreePlace(fireTeam)
+-- The lowest free place; a fire team the war formed holds its size (the
+-- war's fire team size when it was formed), one formed by hand, or one
+-- taken past its size (over: the squads max reached), any number.
+local function FreePlace(fireTeam, over)
 	local place = 0
 	while fireTeam.members[place] do place = place + 1 end
-	if not fireTeam.manual and place >= FIRE_TEAM_SIZE then return nil end
+	if not (fireTeam.manual or over) and place >= fireTeam.size then return nil end
 	return place
 end
 
@@ -430,29 +458,60 @@ local function NewFireTeam(war, team, role, manual)
 		role = role,
 		members = {},
 		manual = manual,
+		size = war.fireTeamSize,
 	}
 	Index(war.fireTeams, fireTeam)
 	war.fireTeams[#war.fireTeams + 1] = fireTeam
 	return fireTeam
 end
 
-local function Seat(member, fireTeam)
-	member.place = FreePlace(fireTeam)
+local function Seat(member, fireTeam, over)
+	member.place = FreePlace(fireTeam, over)
 	member.fireTeam = fireTeam
 	fireTeam.members[member.place] = member
 end
 
 -- Joins an open fire team the war formed of the member's team and role,
 -- the lowest indexed first, or starts one at the lowest free index.
+local function Size(fireTeam)
+	local n = 0
+	for _ in pairs(fireTeam.members) do n = n + 1 end
+	return n
+end
+
+-- A team forms at least the war's squads min (SetSquadsMin), so it comes at
+-- the map from more than one place, and at most its squads max
+-- (SetSquadsMax), so fewer soldiers wander alone. Below the min a member
+-- starts a squad; else it joins the smallest open squad of its role the war
+-- formed (the first formed on a tie), so they stay even; with none open,
+-- it starts one below the max, else joins its role's smallest squad beyond
+-- its size, or, its role having none, fights solo.
 function War:JoinFireTeam(member)
-	local open = nil
+	local open, smallest, squads = nil, nil, 0
 	for _, fireTeam in ipairs(self.fireTeams) do
-		if fireTeam.team == member.team and fireTeam.role == member.role and not fireTeam.manual
-			and FreePlace(fireTeam) and (not open or fireTeam.index < open.index) then
-			open = fireTeam
+		if fireTeam.team == member.team then
+			squads = squads + 1
+			if fireTeam.role == member.role and not fireTeam.manual then
+				if FreePlace(fireTeam) and (not open or Size(fireTeam) < Size(open)
+					or (Size(fireTeam) == Size(open) and fireTeam.index < open.index)) then
+					open = fireTeam
+				end
+				if not smallest or Size(fireTeam) < Size(smallest) then smallest = fireTeam end
+			end
 		end
 	end
-	Seat(member, open or NewFireTeam(self, member.team, member.role, false))
+	if squads < self.squadsMin then return Seat(member, NewFireTeam(self, member.team, member.role, false)) end
+	if open then return Seat(member, open) end
+	if squads < self.squadsMax then return Seat(member, NewFireTeam(self, member.team, member.role, false)) end
+	if smallest then Seat(member, smallest, true) end
+end
+
+function War:SetSquadsMax(n)
+	self.squadsMax = n
+end
+
+function War:SetSquadsMin(n)
+	self.squadsMin = n
 end
 
 local function ByPlace(a, b)
@@ -498,6 +557,14 @@ function War:Enlist(handle, team, drafted, fixed)
 	self.members[handle] = member
 	self:AssignRole(member)
 	return member
+end
+
+-- The member fell at pos, by a killer at killerPos (nil when unknown): its
+-- squad investigates (Tactics.ReportDeath) the killer's place, else where
+-- it fell. The caller discharges it.
+function War:Fallen(handle, pos, killerPos, now)
+	local member = self.members[handle]
+	if member and member.fireTeam then Tactics.ReportDeath(member.fireTeam, killerPos or pos, now) end
 end
 
 function War:Discharge(handle)
@@ -584,9 +651,42 @@ end
 -- leave the stance (Rebalance moves their members to the roles short of
 -- their share); a team without one is assigned from scratch, oldest first.
 -- A team with no entry is left as it is.
+-- Roles switched off for now (operator, 2026-10-10): the war gives only
+-- the roles that work the objective (capture, hold, defend, push, block)
+-- and exploring; raiders, assault squads, support and escorts are dropped
+-- from every stance (OnRoles), whatever the scenario asks. A war may switch
+-- off others, or none (SetOffRoles).
+OFF_ROLES = {
+	[RAID] = true,
+	[ASSAULT] = true,
+	[SUPPORT] = true,
+	[ESCORT] = true,
+}
+
+function War:SetOffRoles(roles)
+	self.offRoles = roles
+	self.onStances = setmetatable({}, { __mode = "k" })
+end
+
+-- The stance without the off roles' shares, the same table for the same
+-- stance (AssignStances tells a new stance by identity).
+local function OnRoles(self, stance)
+	local on = self.onStances[stance]
+	if not on then
+		on = {}
+		for _, share in ipairs(stance) do
+			if not self.offRoles[share.role] then on[#on + 1] = share end
+		end
+		-- nothing off: the stance itself
+		if #on == #stance then on = stance end
+		self.onStances[stance] = on
+	end
+	return on
+end
+
 function War:AssignStances(stances, defense)
 	for _, team in ipairs({ RED, BLUE }) do
-		local stance = stances[team]
+		local stance = stances[team] and OnRoles(self, stances[team])
 		if stance then
 			self.defense[team] = defense[team]
 			local old = self.stances[team]
@@ -623,6 +723,11 @@ function War:FormSquad(leader)
 	fireTeam.chosen = leader
 	Seat(leader, fireTeam)
 	return fireTeam
+end
+
+-- The fire teams the war forms from now on hold at most n soldiers.
+function War:SetFireTeamSize(n)
+	self.fireTeamSize = n
 end
 
 -- The member joins the squad and takes its job (a medic keeps healing);

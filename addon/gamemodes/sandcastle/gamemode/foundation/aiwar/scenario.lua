@@ -25,23 +25,27 @@
 -- must have for the war to start (MapLacks), and AWAITS, which a round
 -- brings; the controller briefs only a field that Lacks none.
 local error, ipairs, require, setmetatable = error, ipairs, require, setmetatable
+local AiWar = require("foundation.aiwar")
+local Explore = require("foundation.aiwar.explore")
 local Teams = require("foundation.teams")
 module(...)
 
 ALLOCATION_HOLD = 3 -- docs/aiwar-command.md §2.2
 
--- foundation.rounds Mode NAMEs -> the variant's module.
+-- foundation.rounds Mode NAMEs -> the variant's module; any other mode, or
+-- none, is fought freeform (FREEFORM).
+FREEFORM = "foundation.aiwar.scenario.freeform"
 VARIANTS = {
 	payload = "foundation.aiwar.scenario.payload",
 	control_points = "foundation.aiwar.scenario.control_points",
 	koth = "foundation.aiwar.scenario.koth",
+	arena = "foundation.aiwar.scenario.arena",
 }
 
--- The variant's Scenario class for a rounds mode's NAME, or nil for a mode
--- the war cannot fight over (or no rounds at all).
+-- The variant's Scenario class for a rounds mode's NAME: freeform for a
+-- mode without a standard objective, or no rounds at all.
 function For(modeName)
-	local path = modeName and VARIANTS[modeName]
-	return path and require(path).Scenario or nil
+	return require(modeName and VARIANTS[modeName] or FREEFORM).Scenario
 end
 
 local TEAMS = { Teams.RED, Teams.BLUE }
@@ -55,21 +59,25 @@ end
 
 -- The parts of the controller's field a variant's Brief may read that a map
 -- or a moment can lack, each with what having it means: points, the capture
--- HUD's (at least one); bases, both teams'; clocks, both teams' KOTH clocks.
-POINTS, BASES, CLOCKS = "points", "bases", "clocks"
+-- HUD's (at least one); bases, both teams'; clocks, both teams' KOTH clocks;
+-- waypoints, the nav mesh's to explore (foundation.aiwar.explore).
+POINTS, BASES, CLOCKS, WAYPOINTS = "points", "bases", "clocks", "waypoints"
 PARTS = {
 	[POINTS] = function(field) return field.points ~= nil and #field.points > 0 end,
 	[BASES] = function(field) return BothTeams(field.bases) end,
 	[CLOCKS] = function(field) return BothTeams(field.clocks) end,
+	[WAYPOINTS] = function(field) return field.waypoints ~= nil and #field.waypoints > 0 end,
 }
 
 -- NEEDS: the parts the map must have, or the war cannot start. AWAITS: the
 -- parts a round brings (none in Sandbox mode, none between rounds), which
 -- the war waits for: a field lacking any is never briefed.
+-- SQUAD_SIZE: the most a squad the war forms holds.
 Scenario = {
 	NAME = "none",
 	NEEDS = { BASES },
 	AWAITS = {},
+	SQUAD_SIZE = AiWar.FIRE_TEAM_SIZE,
 }
 Scenario.__index = Scenario
 
@@ -110,16 +118,31 @@ function Scenario:New()
 	}, self)
 end
 
--- A new round: the stances are chosen afresh. A variant whose memory is of
--- the round clears it too.
+-- A new round: the stances are chosen afresh and exploring starts over. A
+-- variant whose memory is of the round clears it too.
 function Scenario:Reset()
 	self.pending = {}
 	self.current = {}
+	self.board = nil
 end
 
+-- Every scenario keeps the exploration board (foundation.aiwar.explore),
+-- explore being every doctrine's job: each squad's soldiers mark where they
+-- have been and how far along its lane, a squad in contact is engaged, and
+-- the field carries the board (field.explore). Then the variant briefs the
+-- field and the stances are allocated.
 function Scenario:Command(war, field, now)
+	self:Explore(field).explore:Survey(war:Members(), now)
 	self:Brief(field, now)
 	self:Allocate(war, field, now)
+end
+
+-- The field with the scenario's exploration board on it (field.explore),
+-- made on first use; a variant's Brief may call it too.
+function Scenario:Explore(field)
+	self.board = self.board or Explore.Board.New(field.waypoints)
+	field.explore = self.board
+	return field
 end
 
 local function NotImplemented(self, name)

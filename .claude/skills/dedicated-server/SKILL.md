@@ -55,7 +55,9 @@ Its default game port is 27015 + 10·(n−1). Pick a free one with `--port`
 when that's taken. Never stop or change the map of another agent's instance.
 
 `start` takes `--map` (default `gm_construct`), `--port` (27025),
-`--maxplayers`, `--ip` (127.0.0.1, so RCON stays on this machine) and
+`--maxplayers`, `--ip` (default `cosmicbook.tail`, this Mac's tailnet name,
+so the operator can join from another machine; `--ip 127.0.0.1` keeps it to
+this Mac, which a client in the other bottle cannot reach) and
 `--no-lua-refresh` (adds `-disableluarefresh`) and `--console` (opens the
 iTerm window, profile "Dark", that `console` opens). It first builds the
 server's own GMod root (`server_root.py`). The server runs the gamemode

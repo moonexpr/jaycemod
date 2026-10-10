@@ -26,6 +26,8 @@
 local Gamemode = WS.require("foundation.gamemode")
 local Doors = WS.require("foundation.npc.doors")
 local Progress = WS.require("foundation.nav_progress")
+local Clip = WS.require("foundation.npc.clip")
+local NavGaps = WS.require("foundation.nav_gaps")
 
 local SEEDS = { "info_player_teamspawn", "info_player_start", "team_control_point" }
 local DOORS = { "func_door", "func_door_rotating", "prop_door_rotating" }
@@ -50,6 +52,89 @@ end
 function WS.NavJoinRefusal()
 	if underWay or navmesh.IsGenerating() then return JOIN_REFUSAL end
 end
+
+-- The masks walkers move under on this map, and the traces that stand in
+-- for their walking take (foundation.npc.clip: on a players' map, the
+-- player's clips), read off the map's entities once.
+local CLIP_MASKS = {
+	[Clip.PLAYER] = { solid = MASK_PLAYERSOLID, brushes = MASK_PLAYERSOLID_BRUSHONLY },
+	[Clip.NPC] = { solid = MASK_NPCSOLID, brushes = MASK_NPCSOLID_BRUSHONLY },
+}
+local clipMasks
+
+function WS.ClipMasks()
+	if not clipMasks then
+		local classes = {}
+		for i, ent in ipairs(ents.GetAll()) do classes[i] = ent:GetClass() end
+		clipMasks = CLIP_MASKS[Clip.For(classes)]
+	end
+	return clipMasks
+end
+
+-- The mesh's seams (foundation.nav_gaps), linked both ways where a walker
+-- crosses: a soldier's hull above step height sweeps across clear under the
+-- clip masks, and finds floor (a clip brush counts) under the seam. Swept
+-- GAP_BATCH a tick, to keep the tick short; once the map's mesh has loaded
+-- and after mp_nav_generate, since the links live only in memory.
+local GAP_BATCH = 64
+local GAP_TIMER = "ws_nav_gaps"
+local CROSS_MINS, CROSS_MAXS = Vector(-12, -12, 0), Vector(12, 12, 72 - NavGaps.STEP_HEIGHT)
+local STEP = Vector(0, 0, NavGaps.STEP_HEIGHT)
+local FLOOR_MAXS = Vector(12, 12, 1)
+
+local function V(p) return Vector(p.x, p.y, p.z) end
+local function Point(v) return { x = v.x, y = v.y, z = v.z } end
+
+local function Crosses(from, to, mask)
+	local across = util.TraceHull({ start = from + STEP, endpos = to + STEP, mins = CROSS_MINS, maxs = CROSS_MAXS, mask = mask })
+	if across.Hit or across.StartSolid then return false end
+	local middle = (from + to) / 2
+	local below = util.TraceHull({ start = middle + STEP, endpos = middle - STEP, mins = CROSS_MINS, maxs = FLOOR_MAXS, mask = mask })
+	return below.Hit and not below.StartSolid
+end
+
+function WS.BridgeNavGaps()
+	timer.Remove(GAP_TIMER)
+	if not WS.NavMeshUsable() then return end
+	local byId, areas = {}, {}
+	for i, area in ipairs(navmesh.GetAllNavAreas()) do
+		local extent = area:GetExtentInfo()
+		byId[area:GetID()] = area
+		areas[i] = { id = area:GetID(), lo = Point(extent.lo), hi = Point(extent.hi) }
+	end
+	local candidates = NavGaps.Candidates(areas,
+		function(id, x, y) return byId[id]:GetZ(Vector(x, y, 0)) end,
+		function(from, to) return byId[from]:IsConnected(byId[to]) end)
+	local mask, next, linked = WS.ClipMasks().brushes, 1, 0
+	timer.Create(GAP_TIMER, 0, 0, function()
+		for i = next, math.min(next + GAP_BATCH - 1, #candidates) do
+			local c = candidates[i]
+			local a, b = byId[c.a], byId[c.b]
+			if IsValid(a) and IsValid(b) and Crosses(V(c.from), V(c.to), mask) then
+				if not a:IsConnected(b) then a:ConnectTo(b) end
+				if not b:IsConnected(a) then b:ConnectTo(a) end
+				linked = linked + 1
+			end
+		end
+		next = next + GAP_BATCH
+		if next > #candidates then
+			timer.Remove(GAP_TIMER)
+			print(string.format("Navigation mesh: linked %d of %d seams between areas", linked, #candidates))
+			-- routes planned before may lack the ways just linked
+			if linked > 0 then hook.Run("WSNavLinked") end
+		end
+	end)
+end
+
+-- GMod loads the mesh after the map's entities: the sweep waits for it, a
+-- second at a time, up to NAV_LOAD_WAIT (a map without one never has it).
+local NAV_LOAD_WAIT = 60
+
+hook.Add("InitPostEntity", "ws_nav_gaps", function()
+	timer.Create(GAP_TIMER, 1, NAV_LOAD_WAIT, function()
+		if WS.NavMeshUsable() then WS.BridgeNavGaps() end
+	end)
+end)
 
 local function Tell(ply, text)
 	if IsValid(ply) then ply:ChatPrint(text) else print(text) end
@@ -139,6 +224,7 @@ concommand.Add("mp_nav_generate", function(ply)
 		underWay = false
 		for limit, value in pairs(limits) do limit:SetString(value) end
 		game.CleanUpMap()
+		WS.BridgeNavGaps()
 		WS.NavProgress(Progress.DONE, started, navmesh.GetNavAreaCount())
 		Tell(ply, "Navigation mesh: done, " .. navmesh.GetNavAreaCount() .. " areas, saved as maps/" .. game.GetMap() .. ".nav; the map was reset")
 	end)

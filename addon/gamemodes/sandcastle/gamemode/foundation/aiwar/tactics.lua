@@ -1,7 +1,8 @@
 -- A fire team's tactics in a fight (foundation.aiwar.orders reads them).
 --
 -- Contact: what one member sees, its whole team knows: the last place an
--- enemy was seen, for CONTACT_MEMORY seconds.
+-- enemy was seen, for CONTACT_MEMORY seconds; and where a member fell, for
+-- INVESTIGATE_MEMORY, so the team goes to fight there.
 --
 -- Offensive, bounding overwatch: the team splits in two elements by place
 -- (even, odd). One moves BOUND_DISTANCE toward the objective, from cover to
@@ -22,6 +23,8 @@ local ipairs, math, sqrt = ipairs, math, math.sqrt
 module(...)
 
 CONTACT_MEMORY = 8
+-- A squadmate's death is investigated this long (ReportDeath).
+INVESTIGATE_MEMORY = 25
 BOUND_DISTANCE, BOUND_TIME = 320, 6
 FLANK_OFFSET = 480
 FALLBACK_STEP, FALLBACK_STEPS = 384, 3
@@ -44,14 +47,26 @@ end
 
 -- Contact --------------------------------------------------------------------
 
-function Report(fireTeam, pos, now)
-	fireTeam.contact = { pos = { x = pos.x, y = pos.y, z = pos.z }, time = now }
+local function Remember(fireTeam, pos, now, memory)
+	fireTeam.contact = { pos = { x = pos.x, y = pos.y, z = pos.z }, time = now, memory = memory }
 end
 
--- The team's contact, or nil once it is older than CONTACT_MEMORY.
+function Report(fireTeam, pos, now)
+	Remember(fireTeam, pos, now, CONTACT_MEMORY)
+end
+
+-- A member fell at pos (its killer's place, when known): its squadmates go
+-- and investigate, so they engage the enemy rather than walk on. The
+-- contact lasts INVESTIGATE_MEMORY, long enough to get there; an enemy seen
+-- meanwhile takes its place.
+function ReportDeath(fireTeam, pos, now)
+	Remember(fireTeam, pos, now, INVESTIGATE_MEMORY)
+end
+
+-- The team's contact, or nil once it is older than its memory.
 function Contact(fireTeam, now)
 	local contact = fireTeam.contact
-	if contact and now - contact.time <= CONTACT_MEMORY then return contact end
+	if contact and now - contact.time <= contact.memory then return contact end
 	return nil
 end
 

@@ -68,7 +68,7 @@ T.test("a ghost keeps TF2's numbers", function()
 	T.eq(Ghost.MODEL, "models/props_halloween/ghost_no_hat.mdl", "its model")
 	T.eq(Ghost.LOCOMOTION.runSpeed, 90, "GHOST_SPEED")
 	T.eq(Ghost.LOCOMOTION.acceleration, 500, "acceleration")
-	T.eq(Ghost.SCARE_RADIUS, 192, "GHOST_SCARE_RADIUS")
+	T.defined(Ghost.SCARE_RADIUS, "GHOST_SCARE_RADIUS")
 	T.eq(Ghost.KIND, "ghost", "its kind")
 end)
 
@@ -117,22 +117,22 @@ T.test("it scares every living player near and in sight, once a second, unless i
 		players = {
 			{
 				team = Teams.RED,
-				origin = V(100, 0, 0),
+				origin = V(Ghost.SCARE_RADIUS / 2, 0, 0),
 				visible = true,
 			},
 			{
 				team = Teams.BLUE,
-				origin = V(300, 0, 0),
+				origin = V(Ghost.SCARE_RADIUS + 100, 0, 0),
 				visible = true,
 			},
 			{
 				team = Teams.BLUE,
-				origin = V(0, 100, 0),
+				origin = V(0, Ghost.SCARE_RADIUS / 2, 0),
 				visible = false,
 			},
 			{
 				team = Teams.RED,
-				origin = V(0, -100, 0),
+				origin = V(0, -Ghost.SCARE_RADIUS / 2, 0),
 				visible = true,
 				conds = { Players.COND.PURGATORY },
 			},

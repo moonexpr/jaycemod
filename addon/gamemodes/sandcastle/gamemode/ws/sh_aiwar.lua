@@ -21,6 +21,10 @@ CreateConVar("ns_soldiers_paused", "0", { FCVAR_REPLICATED },
 	"1: every AI war soldier stands still, its AI off, and no wave comes; 0 resumes")
 CreateConVar("ns_squads_auto_enabled", "1", { FCVAR_ARCHIVE, FCVAR_REPLICATED },
 	"1: the AI war groups its soldiers into squads itself; 0: only squads formed by hand (ns_squads_form)")
+CreateConVar("ns_squads_max", "3", { FCVAR_ARCHIVE, FCVAR_REPLICATED },
+	"The most squads each team of the AI war forms; past it soldiers join their role's smallest squad, or fight solo", 1)
+CreateConVar("ns_squads_min", "3", { FCVAR_ARCHIVE, FCVAR_REPLICATED },
+	"The fewest squads each team of the AI war forms: its first soldiers each start one, then fill the smallest", 1)
 -- Replicated, so the Debug NextSoldier panel (ws/cl_ns_debug.lua)
 -- shows whether it is on.
 CreateConVar("ws_aiwar_debug_full", "0", { FCVAR_ARCHIVE, FCVAR_REPLICATED },

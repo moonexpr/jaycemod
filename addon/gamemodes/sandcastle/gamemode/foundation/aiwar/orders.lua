@@ -13,7 +13,9 @@
 -- Urgent(field, member) -> bool, while true the soldier rushes, stops for
 -- no enemy at its leash, starts no chase and will not retreat (TF2's
 -- CTFBotCapturePoint); Line(field, member) -> line, from: a raider's enemy
--- line; gait: the gait of a spot trip (WALK by default).
+-- line; gait: the gait of a spot trip (WALK by default); squads: its
+-- members follow their leader, as offensive squads' do; LeavesLane(field,
+-- member) -> bool: while true its squad's leader keeps off its lane.
 --
 -- A scenario's jobs form a doctrine (field.doctrine; PAYLOAD here, the
 -- point doctrine in foundation.aiwar.scenario.control_points): { NAME,
@@ -67,6 +69,7 @@ local Tactics = require("foundation.aiwar.tactics")
 local Squad = require("foundation.aiwar.squad")
 local Lanes = require("foundation.aiwar.lanes")
 local Hunt = require("foundation.aiwar.hunt")
+local Explore = require("foundation.aiwar.explore")
 module(...)
 
 KIND = "aiwar"
@@ -320,6 +323,24 @@ ROLES = {
 		end,
 	},
 }
+
+-- Exploring (foundation.aiwar.explore), every scenario's job: a squad goes
+-- for where it fights, else its lane's end, else its waypoint (field.explore:
+-- the scenario's board), fighting what it meets; engaged, it leaves its lane.
+-- Arena's explorers do it until the point opens; on any map an admin may
+-- send soldiers exploring by hand.
+EXPLORE_ROLE = {
+	name = "Explore",
+	chases = "opportunist",
+	tactic = "attack",
+	squads = true,
+	arrive = ESCORT_ARRIVE,
+	leash = ESCORT_LEASH,
+	rushes = false,
+	Goal = Explore.Goal,
+	LeavesLane = Explore.LeavesLane,
+}
+ROLES[AiWar.EXPLORE] = EXPLORE_ROLE
 
 -- The cart a raider or support soldier works, as no team is simply the
 -- attacker or the defender: "defense" (against the enemy's cart) or
@@ -689,14 +710,16 @@ end
 -- Straight at the goal, wherever it has moved to. A run that goes nowhere
 -- hands over to routes for a while.
 -- The lane waypoint a squad leader of a lane job makes for, or nil (no
--- lane, not its leader, or the lane walked to its end: then straight on to
--- the goal, and not back onto that lane).
+-- lane, not its leader, its role keeping it off the lane for now, or the
+-- lane walked to its end: then straight on to the goal, and not back onto
+-- that lane).
 function Travel:LaneTarget(me)
 	local state = self.state
 	local member = state.member
 	local fireTeam = member.fireTeam
 	local lane = fireTeam and fireTeam.lane
-	if not lane or not Lanes.JOBS[member.role] or Squad.Kind(member) ~= "leader" or state.laneDone == lane then
+	if not lane or not Lanes.JOBS[member.role] or Squad.Kind(member) ~= "leader" or state.laneDone == lane
+		or (self.role.LeavesLane and self.role.LeavesLane(state.war:Field(), member)) then
 		state.onLane = nil
 		return nil
 	end
@@ -1046,8 +1069,9 @@ function Objective:Update(me)
 		if contact then return self:Fight(me, goal, contact) end
 		self:EndFight()
 	end
-	-- an offensive squad moves as one: its members follow their leader
-	if Lanes.JOBS[state.member.role] and not field.setup then
+	-- an offensive squad, or a role's that keeps together (squads), moves as
+	-- one: its members follow their leader
+	if (Lanes.JOBS[state.member.role] or self.role.squads) and not field.setup then
 		local following = self:FollowLeader(me)
 		if following then return following end
 	end

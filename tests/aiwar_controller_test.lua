@@ -11,6 +11,7 @@ local AiWar = T.require("foundation.aiwar")
 local Orders = T.require("foundation.aiwar.orders")
 local Base = T.require("foundation.aiwar.scenario")
 local Payload = T.require("foundation.aiwar.scenario.payload")
+local Freeform = T.require("foundation.aiwar.scenario.freeform")
 local Posts = T.require("foundation.aiwar.posts")
 local Lanes = T.require("foundation.aiwar.lanes")
 local HL2Path = T.require("foundation.npc.path.hl2")
@@ -32,7 +33,6 @@ local REAL = {
 
 local RED, BLUE, NOBODY = Teams.RED, Teams.BLUE, Teams.UNASSIGNED
 local SOURCE = T.ROOT .. "features/aiwar/sv.lua"
-local NO_OBJECTIVE = "this map has no objective the AI war can fight over (payload, control points or King of the Hill)"
 local NO_SPAWNS = "this map has no spawn points for both teams, where the AI war's soldiers join the fight"
 local NO_POINTS = "this map's round has no control points for the AI war to fight over"
 local SOLDIERS = 8
@@ -96,6 +96,8 @@ local function FakeRounds(mode, w)
 	local function Timers() return w.timers or {} end
 	return {
 		Mode = function() return mode end,
+		InSuddenDeath = function() return w.suddenDeath == true end,
+		CapEnableTime = function() return w.capEnableAt end,
 		TeamClock = function(_, team) return Timers()[team] and team or nil end,
 		TimerOf = function(_, ent) return ent == HUD_TIMER and Timers().hud or Timers()[ent] end,
 		HudTimer = function() return Timers().hud and HUD_TIMER or nil end,
@@ -164,6 +166,7 @@ local function World()
 		navAreas = {},
 		teamSize = TEAM_SIZE,
 		bools = { ns_squads_auto_enabled = true },
+		ints = { ns_squads_max = 3, ns_squads_min = 3 }, -- the defaults
 	}
 	function w:Load(name, feature)
 		self.features[name] = feature
@@ -218,6 +221,8 @@ local function Env(w)
 		InOvertime = function() return w.overtime end,
 		SpawnPoints = function(team) return w.spawns[team] end,
 		NavMeshUsable = function() return w.navUsable ~= false end,
+		SetTeamMember = function() end,
+		ClipMasks = function() return { solid = 5, brushes = 6 } end,
 	}
 	local env = {
 		WS = ws,
@@ -226,6 +231,9 @@ local function Env(w)
 		CreateConVar = function() return {} end,
 		-- the team size is w.teamSize, every other convar a bool in w.bools
 		GetConVar = function(name)
+			if name == "ns_squads_max" or name == "ns_squads_min" then
+				return { GetInt = function() return w.ints[name] end }
+			end
 			if name ~= "mp_aiwar_team_size" then
 				return { GetBool = function() return w.bools[name] == true end }
 			end
@@ -246,6 +254,7 @@ local function Env(w)
 		MASK_NPCSOLID = 3,
 		MASK_NPCSOLID_BRUSHONLY = 4,
 		MASK_PLAYERSOLID = 5,
+		MASK_PLAYERSOLID_BRUSHONLY = 6,
 		NULL = false,
 		IsValid = function(v) return v ~= nil and v ~= false end,
 		CurTime = function() return w.now end,
@@ -257,10 +266,15 @@ local function Env(w)
 			GetAll = function() return {} end,
 		},
 		player = { GetAll = function() return {} end },
-		util = { TraceLine = function() return { Hit = false } end },
+		util = {
+			TraceLine = function() return { Hit = false } end,
+			-- what a hull sweep hits: w.trace(t), else nothing
+			TraceHull = function(t) return w.trace and w.trace(t) or { Hit = false } end,
+		},
 		navmesh = {
 			Find = function() return w.navAreas end,
 			GetNavAreaCount = function() return #w.navAreas end,
+			GetAllNavAreas = function() return w.navAreas end,
 		},
 		table = setmetatable({
 			Count = function(t)
@@ -409,6 +423,23 @@ local function FakeSoldier(index)
 	}
 end
 
+-- Bug: aiwar/sv.lua lost IsDoor in a refactor; every soldier held at one
+-- spot raised "attempt to call global 'IsDoor'" each tick.
+T.test("a soldier held up by a door in its way finds the door", function()
+	local w = World()
+	local controller = Started(w, PayloadMode.Mode)
+	local door = Ent(Vector(50, 0, 0))
+	door.GetClass = function() return "func_door" end
+	local soldier = FakeSoldier(1)
+	soldier.GetClass = function() return "ws_drg_rebel" end
+	soldier.GetPos = function() return Vector(0, 0, 0) end
+	soldier.IsNextBot = function() return false end
+	soldier.SetFactionRelationship = function() end
+	controller:Enlist(soldier, BLUE, false)
+	w.trace = function() return { Hit = true, HitWorld = false, Entity = door } end
+	T.eq(controller.soldiers[soldier].soldier:DoorAhead({ x = 100, y = 0, z = 0 }), door, "the door")
+end)
+
 -- A controller over a war of n BLU soldiers (entity indexes 1 to n).
 local function Squadded(n)
 	local w = World()
@@ -491,22 +522,33 @@ end)
 
 -- Starting: the scenario from the rounds mode ---------------------------------------
 
-T.test("a map without rounds loaded has nothing to fight over", function()
+-- One nav area at the origin: waypoints for freeform's explorers.
+local function OneNavArea(w)
+	w.navAreas = { { GetCenter = function() return Vector(0, 0, 0) end } }
+end
+
+T.test("a map without rounds loaded is fought freeform, in its bigger squads", function()
 	local w = World()
+	OneNavArea(w)
 	local controller = Load(w)
-	local ok, why = controller:Start()
-	T.eq(ok, false, "refused")
-	T.eq(why, NO_OBJECTIVE, "why")
-	T.eq(controller.war, nil, "no war")
-	T.eq(#w.requests, 0, "no Gameplay mode asked for")
+	T.eq(select(2, controller:Start()), nil, "no refusal")
+	T.eq(getmetatable(controller.scenario), Freeform.Scenario, "the freeform variant")
+	T.eq(controller.war.fireTeamSize, Freeform.Scenario.SQUAD_SIZE, "its squads")
+	T.eq(#w.requests, 1, "Gameplay mode asked for")
 end)
 
-T.test("a rounds mode the war cannot fight over is refused", function()
+T.test("a rounds mode without a standard objective is fought freeform; without a nav mesh it is refused", function()
 	local w = World()
+	OneNavArea(w)
 	w:Load("rounds", FakeRounds(Rounds.Mode, w))
-	local ok, why = Load(w):Start()
+	local controller = Load(w)
+	T.eq(select(2, controller:Start()), nil, "no refusal")
+	T.eq(getmetatable(controller.scenario), Freeform.Scenario, "the freeform variant")
+	local bare = World()
+	bare:Load("rounds", FakeRounds(Rounds.Mode, bare))
+	local ok, why = Load(bare):Start()
 	T.eq(ok, false, "refused")
-	T.eq(why, NO_OBJECTIVE, "why")
+	T.eq(why:find("mp_nav_generate", 1, true) ~= nil, true, "why: " .. tostring(why))
 end)
 
 T.test("the war still needs DrGBase first", function()
@@ -517,7 +559,7 @@ T.test("the war still needs DrGBase first", function()
 	local chunk = assert(loadfile(SOURCE))
 	local ok, why = setfenv(chunk, env)():Start()
 	T.eq(ok, false, "refused")
-	T.eq(why ~= NO_OBJECTIVE and why:find("DrGBase", 1, true) ~= nil, true, "why: " .. tostring(why))
+	T.eq(why:find("DrGBase", 1, true) ~= nil, true, "why: " .. tostring(why))
 end)
 
 T.test("a map with no usable navigation mesh is refused, and the admin is told how to make one", function()
@@ -765,6 +807,15 @@ T.test("a defenders' win has the factions trade sides with the next round; an at
 	w.hooks.WSRoundActivate()
 	T.eq(controller.war:Faction(RED).name, "Resistance", "the Resistance on RED")
 	T.eq(controller.war:Faction(BLUE).name, "Combine", "the Combine attack as BLU")
+end)
+
+T.test("arena's round is the arena phase; a sudden death after it is sudden death's", function()
+	local w = World()
+	local controller = Started(w, T.require("foundation.rounds.arena").Mode, {})
+	w.active, w.state = true, STATE.STALEMATE
+	T.eq(controller:Survey(NOW).phase, AiWar.PHASES.arena, "the arena round")
+	w.suddenDeath = true
+	T.eq(controller:Survey(NOW).phase, AiWar.PHASES.suddenDeath, "its sudden death")
 end)
 
 T.test("a stalemate has no winner, so the round is over and nobody hunts", function()

@@ -3,10 +3,10 @@
 -- tf_gamerules.cpp) and the tf_logic_arena logic (CArenaLogic). A
 -- tf_logic_arena chooses it.
 --
--- The pre-round lasts tf_arena_preround_time; then the round is fought in
--- STALEMATE, with no respawns, timed by tf_arena_round_time (0, untimed). It
+-- The pre-round lasts mp_arena_preround_time; then the round is fought in
+-- STALEMATE, with no respawns, timed by mp_arena_round_time (0, untimed). It
 -- starts with OnArenaRoundStart and sets the cap-enable time:
--- tf_arena_override_cap_enable_time when above 0, else the map's
+-- mp_arena_override_cap_enable_time when above 0, else the map's
 -- CapEnableDelay. Until then no point may be captured (TeamMayCapturePoint);
 -- the points' own locks are the map's. OnCapEnabled fires once as that time
 -- passes. A team wins by killing the other or by capturing the point.
@@ -18,7 +18,7 @@ module(...)
 -- The FGD's CapEnableDelay default.
 CAP_ENABLE_DELAY_DEFAULT = 0
 
--- tf_arena_preround_time's bounds (teamplayroundbased_gamerules.cpp).
+-- mp_arena_preround_time's bounds (teamplayroundbased_gamerules.cpp).
 PREROUND_MIN, PREROUND_MAX = 5, 15
 
 -- SetupOnStalemateStart's line as the arena round starts.
@@ -49,12 +49,12 @@ Mode.STALEMATE_IS_ROUND = true
 -- scrambles instead).
 Mode.AUTO_SCRAMBLE = false
 
--- settings.arenaPreroundTime: tf_arena_preround_time.
+-- settings.arenaPreroundTime: mp_arena_preround_time.
 function Mode:PreroundSeconds(settings)
 	return settings.arenaPreroundTime
 end
 
--- settings.arenaRoundTime: tf_arena_round_time.
+-- settings.arenaRoundTime: mp_arena_round_time.
 function Mode:StalemateSeconds(settings)
 	return settings.arenaRoundTime
 end
@@ -78,7 +78,7 @@ function New(kv)
 	}, Logic)
 end
 
--- The round's delay, given tf_arena_override_cap_enable_time.
+-- The round's delay, given mp_arena_override_cap_enable_time.
 function Logic:CapEnableDelay(override)
 	return CapEnableDelay(override, self.capEnableDelay)
 end

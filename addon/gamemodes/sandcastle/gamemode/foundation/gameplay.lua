@@ -3,11 +3,14 @@
 -- race, control points and their rounds) and its name's prefix (pl_, plr_,
 -- koth_, ctf_, cp_, arena_...).
 local format, lower, match = string.format, string.lower, string.match
+local Economy = require("foundation.economy")
 module(...)
 
 -- info = { map, trains (team_train_watchers), race (tf_logic_multiple_escort
 -- or plr_), points (team_control_points), rounds (team_control_point_rounds),
--- flags (item_teamflags) }. Returns the title and the objective lines.
+-- flags (item_teamflags), and on a map without an objective fraglimit and
+-- cashlimit (the round limits, foundation.rounds.limits) }. Returns the
+-- title and the objective lines.
 function Describe(info)
 	local prefix = lower(match(info.map or "", "^(%a+)_") or "")
 	local lines = {}
@@ -46,6 +49,18 @@ function Describe(info)
 		lines[#lines + 1] = "Stand on a point to capture it; more teammates capture faster, an enemy on it blocks you."
 		Stages()
 		return "Control Points gameplay activated!", lines
+	end
+	-- no objective: the round limits (fraglimit, cashlimit) decide, frags first
+	if info.fraglimit then
+		if info.fraglimit > 0 then
+			lines[#lines + 1] = format("No objective: the first team to %d frags wins the round.", info.fraglimit)
+		end
+		if info.cashlimit > 0 then
+			local first = #lines == 0 and "No objective: the first team" or "Or the first team"
+			lines[#lines + 1] = format("%s to earn %s in it.", first, Economy.Format(info.cashlimit))
+		end
+		if #lines == 0 then lines[1] = "No objective and no round limits: the round runs until an admin ends it." end
+		return "Deathmatch gameplay activated!", lines
 	end
 	lines[#lines + 1] = "Play the map's objectives; the round system is running."
 	return "Sandcastle gameplay activated!", lines

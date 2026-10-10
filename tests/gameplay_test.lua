@@ -23,4 +23,13 @@ T.test("other modes by what the map holds or its prefix", function()
 	T.eq((Gameplay.Describe({ map = "gm_construct" })), "Sandcastle gameplay activated!", "anything else")
 end)
 
+T.test("a map without an objective plays to the round limits, frags first", function()
+	local title, lines = Gameplay.Describe({ map = "gm_construct", fraglimit = 30, cashlimit = 10000 })
+	T.eq(title, "Deathmatch gameplay activated!", "the title")
+	T.eq(lines[1], "No objective: the first team to 30 frags wins the round.", "frags")
+	T.eq(lines[2], "Or the first team to earn $10,000 in it.", "then money")
+	local _, untimed = Gameplay.Describe({ map = "gm_flatgrass", fraglimit = 0, cashlimit = 0 })
+	T.eq(untimed[1], "No objective and no round limits: the round runs until an admin ends it.", "nothing ends it")
+end)
+
 T.finish()

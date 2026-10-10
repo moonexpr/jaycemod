@@ -35,6 +35,15 @@ function T.eq(actual, expected, what)
 	end
 end
 
+-- A tuning value (a timing, a radius, damage, money) the operator tweaks: a
+-- test checks it is still defined, never its number; behaviour is tested
+-- through the constant.
+function T.defined(value, what)
+	if type(value) ~= "number" then
+		error(string.format("%s: expected a number, got %s", what or "value", tostring(value)), 2)
+	end
+end
+
 function T.near(actual, expected, epsilon, what)
 	if math.abs(actual - expected) > (epsilon or 1e-6) then
 		error(string.format("%s: expected %s, got %s", what or "value", tostring(expected), tostring(actual)), 2)
