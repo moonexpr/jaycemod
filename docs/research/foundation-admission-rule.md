@@ -205,3 +205,20 @@ feature.
    round statechart still carries TF2 policy. Moving `teams` down a rank is
    the cheapest honest fix until the CS:S split separates team identity from
    TF2's team rules. The guard should say so where it places `teams`.
+
+## Amendment 3 (phase 3 gate review, after 232521f)
+
+1. **Reverse an inversion by moving the policy to its home. A port only hides
+   it.** If a foundation module requires a mode because it *contains* that
+   mode's policy, then injecting the policy (a function on the field, or a
+   copied constant) empties the guard's exception list while the specialty
+   stays inside foundation. That breaks clause (b) and only makes the guard
+   look satisfied. Injection is right only when the dependency is on *data* the
+   caller already owns, such as a snapshot value the controller can always
+   fill. Moving vocabulary is right when the concept belongs lower down, for
+   example a squad pin or a team's opponent.
+2. **Clause (c): "family" means the module's own files, not its layer.**
+   `ws/` glue modules count as dependents just as features do. A model that
+   is always on and has no map entity (such as `loadout`) has `ws/` modules as
+   its only consumers, and still qualifies when two or more distinct `ws/`
+   modules need its vocabulary.
