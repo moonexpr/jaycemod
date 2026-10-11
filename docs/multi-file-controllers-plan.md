@@ -446,7 +446,10 @@ That requires all three of the following:
   table true table`. The client launches in the operator's game bottle, so
   the operator must be present for this step.
 
-**Phase 5 is unblocked when M4 is committed** (phase 3a is already done,
+**Phase 5 is unblocked when M4 is committed and M1's client check has
+passed** (reviewer, M4 gate: `ws/sh_aiwar.lua`, `ws/cl_aiwar_slots.lua` and
+`ws/cl_kill_feed.lua` require models phase 5 moves under `features/aiwar/`,
+so clients must be shown to receive files from there) (phase 3a is already done,
 `f892e2c`). That requires all of the following:
 
 - **The split is in place:** `features/aiwar/sv.lua` is the root, of at most
@@ -483,7 +486,7 @@ assertions. Commit with `git -c gpg.program=gpg-loopback commit`.
 tables. OPEN: the client check (`ship true table true table` on a client after
 a changelevel) needs the operator present. Until it passes, foundation phase 4
 and any `cl_`/`sh_` part split (M5's `rounds/cl.lua`, `nbdebug/cl.lua`,
-`capture/cl.lua`) stay blocked. M2–M4 may proceed (reviewer, M1 gate).**
+`capture/cl.lua`) stay blocked, and so does phase 5 (it also needs M4). M2–M4 may proceed (reviewer, M1 gate).**
 The "prints nothing" grep is scoped to code: `git grep -n "SendFeatureClientParts\|SendFoundation" -- addon tests .devtools` (this doc quotes the names).
 
 **Tests first.**
