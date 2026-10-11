@@ -78,8 +78,8 @@ hook.Add("EntityKeyValue", "ws_record_keyvalues", function(ent, key, value)
 end)
 
 -- An ambient_generic naming a voice line TF2 has since made an .mp3
--- (foundation.sound_paths) plays the .mp3.
-local SoundPaths = WS.require("foundation.sound_paths")
+-- (ws.sound_paths) plays the .mp3.
+local SoundPaths = WS.require("ws.sound_paths")
 local function GameFileExists(path) return file.Exists(path, "GAME") end
 
 hook.Add("EntityKeyValue", "ws_sound_paths", function(ent, key, value)

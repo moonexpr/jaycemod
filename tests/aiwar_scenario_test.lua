@@ -25,7 +25,7 @@ end)
 
 T.test("the variants are keyed by the rounds modes' NAMEs", function()
 	local names = {}
-	for _, path in ipairs({ "foundation.rounds.payload", "foundation.rounds.control_points", "foundation.rounds.koth", "foundation.rounds.arena" }) do
+	for _, path in ipairs({ "foundation.rounds.payload", "foundation.rounds.control_points", "features.koth.model", "foundation.rounds.arena" }) do
 		names[T.require(path).Mode.NAME] = true
 	end
 	for name in pairs(Scenario.VARIANTS) do T.eq(names[name], true, name .. " is a rounds mode") end

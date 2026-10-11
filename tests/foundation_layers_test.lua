@@ -24,6 +24,12 @@ local CATEGORY = {
 
 	["rounds"] = "formalisms",
 	["rounds/state"] = "formalisms",
+	-- teams is a label here, not a classification. There is no file-level
+	-- cycle (rounds -> teams -> rounds/state); the categories are ranked
+	-- whole, and rounds reads team vocabulary and one TF2 team rule,
+	-- Teams.ScrambleDue, so teams sits a rank below gameplay types until the
+	-- CS:S split separates team identity from TF2's team rules
+	-- (docs/research/foundation-admission-rule.md, Amendment 2).
 	["teams"] = "formalisms",
 	["npc"] = "formalisms",
 	["npc/actor"] = "formalisms",
@@ -90,11 +96,9 @@ local PENDING = {
 	["payload/hud"] = "features/payload",
 	["payload/race"] = "features/payload",
 	["rounds/payload"] = "features/payload",
-	["rounds/koth"] = "features/koth",
 	["rounds/arena"] = "features/arena",
 	["rounds/control_points"] = "features/rounds",
 	["rounds/destruction"] = "features/rounds",
-	["rounds/spawn_doors"] = "features/rounds",
 	["rounds/text"] = "features/rounds",
 	["capture/hud"] = "features/capture",
 
@@ -130,8 +134,6 @@ local PENDING = {
 	["npc/zombie"] = "features/haunting",
 	["npc/hover"] = "features/haunting",
 
-	["npc/profile"] = "features/npc",
-	["npc/spawner"] = "features/npc",
 	["npc/boss_events"] = "features/npc",
 
 	["npc/debug"] = "features/nbdebug",
@@ -152,7 +154,6 @@ local PENDING = {
 
 	["nodegraph"] = "features/nodegraph",
 
-	["sound_paths"] = "ws/sound_paths",
 	["settings"] = "ws/settings",
 	["replicated"] = "ws/replicated",
 	["factions"] = "ws/factions",

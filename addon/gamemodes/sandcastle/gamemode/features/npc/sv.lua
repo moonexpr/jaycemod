@@ -1,11 +1,11 @@
 -- The npc feature's controller. It owns one foundation.npc Npc per NPC
--- entity, the foundation.npc.spawner models, a registry by kind and the
+-- entity, the features.npc.spawner models, a registry by kind and the
 -- per-variant shared state, and checks the navigation mesh once per map.
 -- The rules live in the models; this file only feeds them engine events and
 -- turns their answers into entities.
 local NpcSystem = WS.require("foundation.npc")
-local Spawner = WS.require("foundation.npc.spawner")
-local Profile = WS.require("foundation.npc.profile")
+local Spawner = WS.require("features.npc.spawner")
+local Profile = WS.require("features.npc.profile")
 local Route = WS.require("foundation.npc.route")
 local Portal = WS.require("foundation.npc.portal")
 local Doors = WS.require("foundation.npc.doors")
@@ -23,7 +23,7 @@ local Controller = {
 	spawners = {}, -- spawner entity -> Spawner
 	spawnedBy = {}, -- NPC entity -> Spawner
 	navChecked = false,
-	pathProfile = nil, -- a foundation.npc.profile while ws_path_profile's window is open
+	pathProfile = nil, -- a features.npc.profile while ws_path_profile's window is open
 	pathWatch = {}, -- entity index -> { costs } while the nbdebug feature watches its path searches
 	spawnRoomTeams = {}, -- nav area id -> the team whose spawn room holds it, this round
 	searches = {}, -- the Lua route searches still running, oldest first

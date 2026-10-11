@@ -111,7 +111,7 @@ GAMEPLAY_START = Step("gameplay_start", 80, {"red": 2, "blue": 3})
 PLAN: Tuple[MapRun, ...] = (
     MapRun("pl_badwater", (
         load(True, has=["rounds", "capture", "payload"], lacks=["koth"] + HALLOWEEN_FEATURES,
-             lacks_modules=["foundation.rounds.koth"]),
+             lacks_modules=["features.koth.model"]),
         Step("defaults_change", 20),
         Step("defaults_apply", 20, before="ws_defaults_apply"),
         Step("aiwar", 90),

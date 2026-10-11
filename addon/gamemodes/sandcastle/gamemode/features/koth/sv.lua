@@ -1,5 +1,5 @@
 -- The koth feature's controller. It owns the tf_logic_koth model
--- (foundation.rounds.koth), puts the round in the koth mode, and at the
+-- (features.koth.model), puts the round in the koth mode, and at the
 -- round's phases does what CKothLogic does: at RoundSpawn it has the rounds
 -- controller make the two team clocks (team_round_timer entities named
 -- zz_blue_koth_timer and zz_red_koth_timer, so maps' AddOutputs and inputs
@@ -10,7 +10,7 @@
 -- (ws_koth_clock_<team>_*).
 --
 -- Loaded by tf_logic_koth. It loads rounds and capture.
-local Koth = WS.require("foundation.rounds.koth")
+local Koth = WS.require("features.koth.model")
 local Rounds = WS.require("foundation.rounds")
 
 local RED, BLUE = WS.TEAM_RED, WS.TEAM_BLUE

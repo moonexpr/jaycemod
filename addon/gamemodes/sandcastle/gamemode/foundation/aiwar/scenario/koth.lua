@@ -1,6 +1,6 @@
 -- The King of the Hill scenario (foundation.aiwar.scenario): the control
 -- point scenario (foundation.aiwar.scenario.control_points) over one hill,
--- as foundation.rounds.koth's Mode extends control points'. It overrides:
+-- as features.koth.model's Mode extends control points'. It overrides:
 --   the hill is always a target to the team that does not own it, even
 --   while it is locked (TF2's special case in CollectCapturePoints), its
 --   owner defends it, and it is where both stage while it is locked;

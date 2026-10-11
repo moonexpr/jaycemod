@@ -16,7 +16,7 @@ local Rounds = WS.require("foundation.rounds")
 local Text = WS.require("foundation.rounds.text")
 local Timer = WS.require("foundation.rounds.timer")
 local ControlPoints = WS.require("foundation.rounds.control_points")
-local SpawnHold = WS.require("foundation.rounds.spawn_doors")
+local SpawnHold = WS.require("features.rounds.spawn_doors")
 local Limits = WS.require("foundation.rounds.limits")
 
 local S = WS.STATE
@@ -175,7 +175,7 @@ local Controller = {
 	multipleTrains = false,
 	spawnDoors = nil,
 	spawnTriggers = nil, -- the open doors' triggers: trigger -> true
-	spawnHold = nil, -- which of them come back on (foundation.rounds.spawn_doors)
+	spawnHold = nil, -- which of them come back on (features.rounds.spawn_doors)
 	switchingTriggers = false, -- our own Enable/Disable, not the map's
 	nextDoorsOpen = 0,
 	suppressNewMap = false,

@@ -1,6 +1,6 @@
 -- tf_logic_koth (CKothLogic, tf_gamerules.cpp): makes the map King of the
 -- Hill. A binding to the koth controller, which owns its model
--- (foundation.rounds.koth), makes the two team clocks at every RoundSpawn
+-- (features.koth.model), makes the two team clocks at every RoundSpawn
 -- and locks the points at RoundActivate. It has no outputs.
 ENT.Type = "point"
 ENT.Base = "base_point"

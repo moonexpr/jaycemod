@@ -1,7 +1,7 @@
--- foundation.rounds.spawn_doors: the spawn-room triggers held off while the
+-- features.rounds.spawn_doors: the spawn-room triggers held off while the
 -- doors stand open (a halt, a win's humiliation), and which come back on.
 local T = dofile("tests/harness.lua")
-local SpawnDoors = T.require("foundation.rounds.spawn_doors")
+local SpawnDoors = T.require("features.rounds.spawn_doors")
 
 local function Sorted(list)
 	table.sort(list)

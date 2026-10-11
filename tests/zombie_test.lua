@@ -6,7 +6,7 @@ local FC = dofile("tests/fake_combatant.lua")
 local N = T.require("foundation.npc")
 local Zombie = T.require("foundation.npc.zombie")
 local Actor = T.require("foundation.npc.actor")
-local Spawner = T.require("foundation.npc.spawner")
+local Spawner = T.require("features.npc.spawner")
 local Players = T.require("foundation.players")
 local Teams = T.require("foundation.teams")
 

@@ -1,8 +1,8 @@
--- foundation.sound_paths: TF2 turned its voice lines from .wav into .mp3,
+-- ws.sound_paths: TF2 turned its voice lines from .wav into .mp3,
 -- so a map's ambient_generic naming vo/<line>.wav plays nothing in GMod
 -- (pl_bloodwater: 18 of them); it plays the .mp3 that replaced it.
 local T = dofile("tests/harness.lua")
-local SoundPaths = T.require("foundation.sound_paths")
+local SoundPaths = T.require("ws.sound_paths")
 
 local function Files(list)
 	local set = {}

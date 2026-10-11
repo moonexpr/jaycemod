@@ -8,7 +8,7 @@ local T = dofile("tests/harness.lua")
 local Rounds = T.require("foundation.rounds")
 local Destruction = T.require("foundation.rounds.destruction")
 local Payload = T.require("foundation.rounds.payload")
-local Koth = T.require("foundation.rounds.koth")
+local Koth = T.require("features.koth.model")
 local Arena = T.require("foundation.rounds.arena")
 local Limits = T.require("foundation.rounds.limits")
 

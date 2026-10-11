@@ -1,7 +1,7 @@
--- foundation.npc.profile: the path-search measurements ws_path_profile
+-- features.npc.profile: the path-search measurements ws_path_profile
 -- and ws_path_bench collect, their summary, and what the numbers say.
 local T = dofile("tests/harness.lua")
-local Profile = T.require("foundation.npc.profile")
+local Profile = T.require("features.npc.profile")
 
 local TICK = 0.015 -- a 66-tick server
 

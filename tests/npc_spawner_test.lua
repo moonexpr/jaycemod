@@ -1,6 +1,6 @@
 local T = dofile("tests/harness.lua")
 local Fake = dofile("tests/fake_actor.lua")
-local Spawner = T.require("foundation.npc.spawner")
+local Spawner = T.require("features.npc.spawner")
 
 local SPAWNER_TEAM, NPC_TEAM = 0, 5 -- arbitrary team numbers: the model only passes them through
 

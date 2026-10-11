@@ -5,7 +5,7 @@
 --
 -- Also here, as the data and rules their bindings read:
 --   - tf_zombie_spawner's keyvalues (SpawnerConfig) and its team rule
---     (SpawnerTeam), for foundation.npc.spawner;
+--     (SpawnerTeam), for features.npc.spawner;
 --   - tf_zombie's config (BindingConfig);
 --   - the skull grenade tf_projectile_spellspawnzombie: its throw
 --     (SkullThrow, CreateSpellSpawnZombie) and what it hatches
@@ -545,7 +545,7 @@ local function IntKeyfield(kv, key, default)
 	return floor(Keyfield(kv, key, default))
 end
 
--- tf_zombie_spawner's keyvalues (lower-case keys) as a foundation.npc.spawner
+-- tf_zombie_spawner's keyvalues (lower-case keys) as a features.npc.spawner
 -- config, with CZombieSpawner's defaults. zombie_scale, set by some maps,
 -- is in neither the FGD nor the C++, and is ignored.
 function SpawnerConfig(kv)
