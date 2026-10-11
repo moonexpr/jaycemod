@@ -132,7 +132,8 @@ to that module (§3.3).
 **Adjustment (judgment call): `teams` is a formalism, not a gameplay type.**
 The round statechart needs to know who plays the round, and `teams` needs to
 know how a round ends. Both are verified in §1.3. With teams in category 3 the
-order has a cycle, and no ordering fixes it. Treating the team set as the
+order has a cycle (categories are ranked whole; see the admission rule's
+Amendment 2 for the real reason: `rounds` reads `Teams.ScrambleDue`). Treating the team set as the
 round's participants, inside the round formalism, removes the cycle with zero
 code change. The scholar's note on TF2 bias still applies: split team identity
 from TF2's team numbers when a CS:S mode becomes a real consumer.
@@ -173,7 +174,8 @@ unmapped or doubly mapped). The guard test in phase 1 encodes it.
   - `npc/targeting`: who may hurt and see whom. Bosses, Jarate and the combat
     NextBot all use it.
 - **4 NS types (22):**
-  - `aiwar/{soldier,orders,tactics,squad,lanes,hearing,explore,hunt,track,posts,zone}`
+  - `aiwar/{tactics,squad,lanes,hearing,explore,hunt,track,posts,zone}`
+    (`aiwar/{soldier,orders}` move with phase 5: the admission rule's Amendment 4)
   - `ns/tuning`
   - `npc/path`, `npc/path/{ground,hl2,scatter,tfbot}`
   - `npc/{doors,portal,brushes,clip}`, `nav_gaps`: the navigation that NS
@@ -532,9 +534,10 @@ Each phase keeps the totals. Test files change only their `require` paths
 |---|---|---|---|---|
 | **2** | none | Server-only moves into features whose `sv.lua` doesn't grow: `npc/{profile,spawner}` → `features/npc/`; `rounds/spawn_doors` → `features/rounds/`; `rounds/koth` → `features/koth/model.lua`; `sound_paths` → `ws/sound_paths.lua`. | The same grep for old names prints nothing. `tests/rounds_limits_test.lua:68` (a computed `"foundation.rounds." .. name`) gets a name → path table, so `koth` resolves to `features.koth.model`; all its assertions are unchanged. | 5 modules, 472 lines |
 | **3** | The squad fix (`aiwar.lua`, `aiwar/orders.lua` and its tests) and the spawn-menu loadout work are committed | 3a: P6 inversions. Guard test: `KNOWN_INVERSIONS` becomes `{}`. 3b: P3/P4/P5 on `economy` and `loadout`: `foundation/refusal.lua` (Structures), a plain ledger, and classes as keys. | 3a: `luajit tests/foundation_layers_test.lua` passes with an empty `KNOWN_INVERSIONS`. 3b: `tests/economy_test.lua:34` and `tests/loadout_test.lua:60,224` assert the refusal *kind*, not the metatable (the type disappears; the behaviour asserted is the same). A new test proves that a loadout made before a rerun of `foundation.loadout` still has its refusals recognised (§9.2). | 7 refusal metatables, `Bank` and both loadout classes |
+| **3c** | none | Done in its own commit: `aiwar/{orders,soldier}` leave the `ns` category for PENDING → `features/aiwar` (Amendment 4), so `KNOWN_INVERSIONS` is `{}`. A mode-neutral NextSoldier tree is architect design, gated on a second NS host. | The guard passes with `KNOWN_INVERSIONS = {}` and fails when an NS module is made to require `foundation.aiwar`. | — |
 | — | **The multi-file controllers task** (separate) | It must (1) ship non-`sh`/`cl` feature files that clients need (`init.lua:19-30` ships only `CLIENT_PARTS`), (2) settle the part-file naming (phase 1 uses `model.lua` or the old basename), and (3) ship unprefixed `ws/*.lua` files. | n/a | n/a |
 | **4** | Multi-file shipping exists | Client-needed models, smallest dependency first: `capture/hud`; `rounds/{control_points,destruction,text}`; `rounds/arena`; the `payload` system; `hazards`; `haunting` bosses (before spells: `spells/spawn_boss` and `spells/skeleton_horde` require them); `spells` with `projectile/orb`; `holiday`, then `wheel`; `npc/boss_events`; `nbdebug` (`npc/debug`, both overlays); `nodegraph`; §3.3 plumbing into `ws/`. | A client joins a map using each moved feature and `dt lua` on the client loads each moved model. `.devtools/bin/ingame/checks/load.lua:40` lists only `foundation*` names, so extend it to report `features.*` models too. | 57 modules |
-| **5** | Phase 3a done, and multi-file has split `features/aiwar/sv.lua` | `aiwar`, `aiwar/{slots,spawns,scenario,scenario/*}`, `ns/inspect`, `kill_feed` → `features/aiwar/`. | `tests/aiwar_controller_test.lua:535-613`, `aiwar_koth_test.lua:49` and `aiwar_arena_test.lua:125` still pass their `getmetatable(...) == X.Scenario` identity checks, now under the new names. | 11 modules |
+| **5** | Phase 3a done, and multi-file has split `features/aiwar/sv.lua` | `aiwar`, `aiwar/{slots,spawns,scenario,scenario/*,soldier,orders}`, `ns/inspect`, `kill_feed` → `features/aiwar/`. | `tests/aiwar_controller_test.lua:535-613`, `aiwar_koth_test.lua:49` and `aiwar_arena_test.lua:125` still pass their `getmetatable(...) == X.Scenario` identity checks, now under the new names. | 11 modules |
 | **6** | none | Rename `spectate`'s `train` descriptor field to a generic objective (the scholar's note). Split `localization`'s KeyValues reader into a structure. Remove `PENDING` from the guard. | `PENDING` is empty. `tests/spectate_test.lua` asserts the same behaviour under the new field name. | — |
 
 **Where moved code lands, and which features need splitting.** Every moved

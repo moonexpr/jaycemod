@@ -61,8 +61,6 @@ local CATEGORY = {
 	["rounds/limits"] = "gameplay",
 	["npc/targeting"] = "gameplay",
 
-	["aiwar/soldier"] = "ns",
-	["aiwar/orders"] = "ns",
 	["aiwar/tactics"] = "ns",
 	["aiwar/squad"] = "ns",
 	["aiwar/lanes"] = "ns",
@@ -151,6 +149,10 @@ local PENDING = {
 	["aiwar/scenario/koth"] = "features/aiwar",
 	["aiwar/scenario/payload"] = "features/aiwar",
 	["ns/inspect"] = "features/aiwar",
+	-- an AI war soldier's orders, with payload woven into its behaviour
+	-- tree: mode policy, not an NS type (admission rule, Amendment 4)
+	["aiwar/orders"] = "features/aiwar",
+	["aiwar/soldier"] = "features/aiwar",
 	["kill_feed"] = "features/aiwar",
 
 	["nodegraph"] = "features/nodegraph",
@@ -167,11 +169,9 @@ local PENDING = {
 }
 
 -- Edges that break the order today.
-local KNOWN_INVERSIONS = {
-	-- the payload doctrine (roles, PAYLOAD, the seat check at the end of the
-	-- tree) still lives in orders; extracted in the doctrine phase
-	["aiwar/orders"] = { ["aiwar"] = true },
-}
+-- None today (orders and soldier are pending to features/aiwar, Amendment
+-- 4); a future inversion needs an entry here, and a reason.
+local KNOWN_INVERSIONS = {}
 
 local function FoundationModules()
 	local list = assert(io.popen("find " .. FOUNDATION .. " -name '*.lua'"))

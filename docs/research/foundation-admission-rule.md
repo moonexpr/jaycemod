@@ -222,3 +222,21 @@ feature.
    is always on and has no map entity (such as `loadout`) has `ws/` modules as
    its only consumers, and still qualifies when two or more distinct `ws/`
    modules need its vocabulary.
+
+## Amendment 4 (after phase 3, fd2d3fb)
+
+1. **NS types are admitted by the operator's decision, not by clause (c).**
+   Today NextSoldier has one host, the AI war, so every NS module's dependents
+   are in the aiwar family and clause (c) would admit none of them. The
+   operator has decided that NS is a platform modes will host (TF2 and CS:S),
+   and that is a product decision, outside what the rule settles. Clause (b)
+   still applies with full force: an NS type names no mode.
+2. **`aiwar/orders` (and its port, `aiwar/soldier`) fails (b), so it is aiwar's
+   model, not an NS type.** Its header says it holds "the orders of an AI war
+   soldier". Payload runs through the tree itself, not only through the
+   doctrine table: the cart roles, `FollowCart`, `Sit`/`IsSeated`, and
+   "riding the cart". The phase 3 review's "doctrine step" would generalise
+   that tree for a second host that does not exist yet, which is promoting on
+   a guess (pitfall 4). I withdraw it. The right step is to file orders as
+   `PENDING → features/aiwar`. A mode-neutral NextSoldier tree becomes design
+   work for the architect when a second mode really hosts NS soldiers.
