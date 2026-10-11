@@ -741,6 +741,8 @@ function War:JoinSquad(member, fireTeam)
 		member.role = fireTeam.role
 		member.slot = FreeSlot(self.members, member.team, fireTeam.role, member)
 	end
+	-- the squad keeps its leader: a newcomer, a hero too, joins as a member
+	fireTeam.chosen = fireTeam.chosen or Squad.Leader(fireTeam)
 	Seat(member, fireTeam)
 	return true
 end

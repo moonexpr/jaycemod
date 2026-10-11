@@ -212,6 +212,27 @@ T.test("a locked hill: capturers stage outside it on their own side, then take i
 	end
 end)
 
+T.test("capturers and holders set out from base behind their squad's leader", function()
+	local hill = Hill({ owner = BLUE })
+	local battle = FP.Battle(Koth.Scenario)
+	battle:Enlist(RED, SOLDIERS)
+	battle:Enlist(BLUE, SOLDIERS)
+	local field = Field(hill, FP.Clocks(150, 150))
+	battle:Start(field)
+	battle:Tick(field, 2)
+	for _, job in ipairs({ { RED, AiWar.CAPTURE }, { BLUE, AiWar.HOLD } }) do
+		local followers = 0
+		for _, s in ipairs(battle:Of(job[1], job[2])) do
+			local _, squadRole = Orders.JobOf(s.npc:Describe())
+			if squadRole == "SquadMember" then
+				T.eq(s.npc:State().tactic, "following its leader", s.member.handle)
+				followers = followers + 1
+			end
+		end
+		T.eq(followers > 0, true, job[2] .. " has squad members")
+	end
+end)
+
 -- B12.
 T.test("the enemy holds the hill with 20 s left: capturers rush it, will not retreat, and occupy it", function()
 	local hill = Hill({ owner = RED })

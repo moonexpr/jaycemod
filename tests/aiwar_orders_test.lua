@@ -578,6 +578,62 @@ T.test("an offensive squad's member follows its leader, spaced by place", functi
 	Near(s.meB.moving, P(3000 + Orders.FOLLOW_SPACING * (s.b.place + 1), 0), "behind it")
 end)
 
+-- Capture and hold squads: tests/aiwar_koth_test.lua, on a hill.
+T.test("a pushing squad's member follows its leader to the cart", function()
+	local s = Squadmates({ role = AiWar.PUSH, a = { pos = P(3000, 0) }, b = { pos = P(3500, 0) } })
+	s.Tick(2)
+	T.eq(s.npcB:State().tactic, "following its leader", "following")
+end)
+
+T.test("a squad member stops following once its leader is at the objective, for its own place", function()
+	local s = Squadmates({ role = AiWar.PUSH, a = { pos = P(3000, 0) }, b = { pos = P(3500, 0) } })
+	s.Tick(2)
+	s.meA.pos = Orders.Goal(s.war.field, s.a)
+	s.Tick(2)
+	T.eq(s.npcB:State().tactic ~= "following its leader", true, "on to its own place")
+end)
+
+-- x in the war's own squad, y in one formed by hand; y is moved into x's.
+local function Reassigned(t)
+	local war = AiWar.War.New()
+	war:SetSquadsMin(1)
+	war:Assign({ [BLUE] = true })
+	war:SetField(Field({}))
+	local x = war:Enlist("x", BLUE, true)
+	local y = war:Enlist("y", BLUE, true)
+	war:FormSquad(y)
+	T.eq(x.fireTeam ~= nil and x.fireTeam ~= y.fireTeam and not x.fireTeam.manual, true, "x in the war's own squad")
+	y.hero = t.hero
+	local meX, meY = FS.Soldier({ pos = P(3000, 0) }), FS.Soldier({ pos = P(3500, 0) })
+	local npcX = N.Npc.New(Orders, { war = war, member = x }, meX)
+	local npcY = N.Npc.New(Orders, { war = war, member = y }, meY)
+	local function TickBoth(n)
+		for _ = 1, n or 1 do
+			meX:Advance(TICK)
+			npcX:Update(TICK)
+			meY:Advance(TICK)
+			npcY:Update(TICK)
+		end
+	end
+	TickBoth()
+	T.eq(war:JoinSquad(y, x.fireTeam), true, "joined")
+	TickBoth(2)
+	return { x = x, y = y, npcX = npcX, npcY = npcY }
+end
+
+T.test("a soldier moved into another squad by hand follows that squad's leader", function()
+	local s = Reassigned({})
+	T.eq(SquadRoleOf(s.npcX), "SquadLeader", "x still leads")
+	T.eq(s.npcY:State().tactic, "following its leader", "y follows x")
+end)
+
+T.test("a hero moved into a squad by hand follows its leader, never takes it over", function()
+	local s = Reassigned({ hero = true })
+	T.eq(SquadRoleOf(s.npcX), "SquadLeader", "x still leads")
+	T.eq(SquadRoleOf(s.npcY), "SquadMember", "the hero joined as a member")
+	T.eq(s.npcY:State().tactic, "following its leader", "and follows x")
+end)
+
 T.test("a squad leader walks its lane to its goal, then leaves it", function()
 	local field = Field({})
 	field.lanes = { [BLUE] = { key = "plan", { ids = { 1, 2, 3 }, points = { P(2500, 500), P(2000, 600), P(1500, 300) }, length = 1800 } } }

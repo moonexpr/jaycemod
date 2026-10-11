@@ -1025,6 +1025,9 @@ function Objective:Patrol(me, field, goal)
 	return self:SuspendFor(Travel:New(state, PATROL, spot, Keep), "patrolling")
 end
 
+-- A squad member's tactic while it follows its leader (Objective:FollowLeader).
+local FOLLOWING = "following its leader"
+
 function Objective:Update(me)
 	local state = self.state
 	local field = state.war:Field()
@@ -1069,10 +1072,13 @@ function Objective:Update(me)
 		if contact then return self:Fight(me, goal, contact) end
 		self:EndFight()
 	end
-	-- an offensive squad, or a role's that keeps together (squads), moves as
-	-- one: its members follow their leader
-	if (Lanes.JOBS[state.member.role] or self.role.squads) and not field.setup then
-		local following = self:FollowLeader(me)
+	-- a squad moves as one: its members follow their leader to the
+	-- objective; once either is there, or rushing it, each works it as its
+	-- job says, from its own place
+	-- (shown only while it follows: the debug overlay reads the tactic)
+	if state.tactic == FOLLOWING then state.tactic = nil end
+	if not field.setup and not urgent and not self.anchor then
+		local following = self:FollowLeader(me, field)
 		if following then return following end
 	end
 	-- inside its sphere, an escort squad's leader roams it
@@ -1216,8 +1222,8 @@ local function LeaderOf(member)
 	return leader
 end
 
--- Offensive squads (foundation.aiwar.lanes' JOBS) move as one, roaming
--- their objective and fighting there together: a member follows its
+-- Every squad moves as one, roaming its objective and fighting there
+-- together (docs/aiwar-command.md §3): a member follows its
 -- leader FOLLOW_SPACING per place behind it, loosely (within FOLLOW_SLACK
 -- it is left to fight as it will); a leader at the objective takes a new
 -- spot in it (the port's PatrolSpot) each time it has rested ROAM_REST
@@ -1228,12 +1234,28 @@ FOLLOW_SPACING, FOLLOW_SLACK = 72, 96
 ROAM_REST, RAID_ROAM = 8, 350
 ZONE_SHUFFLE = 1
 
-function Objective:FollowLeader(me)
+-- Whether a squadmate at pos is where its job is worked: at its goal, or
+-- inside its role's sphere or zone.
+function Objective:AtObjective(pos, member, field)
+	local goal = self.role.Goal(field, member)
+	if goal and Distance(pos, goal) <= self.role.arrive then return true end
+	local function Inside(Area)
+		if not Area then return false end
+		local center, radius = Area(field, member)
+		return center ~= nil and InSphere(pos, center, radius)
+	end
+	return Inside(self.role.Sphere) or Inside(self.role.Zone)
+end
+
+-- nil once there is no leader to follow, or either of them is at the
+-- objective: from there each works it from its own place.
+function Objective:FollowLeader(me, field)
 	local state, member = self.state, self.state.member
 	local leader = LeaderOf(member)
 	if not leader then return nil end
+	if self:AtObjective(me:Position(), member, field) or self:AtObjective(leader.pos, leader, field) then return nil end
 	local spot = Tactics.Toward(leader.pos, me:Position(), FOLLOW_SPACING * ((member.place or 0) + 1))
-	state.tactic, state.goal = "following its leader", spot
+	state.tactic, state.goal = FOLLOWING, spot
 	if me:RangeTo(spot) > FOLLOW_SLACK then me:MoveTo(spot, RUN) else me:Release() end
 	return self:Continue()
 end
