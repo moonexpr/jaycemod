@@ -1,0 +1,15 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../source-sdk-2013"
+		}
+	],
+	"settings": {
+		"github.copilot.enable": {
+			"*": false
+		}
+	}
+}
