@@ -182,3 +182,26 @@ feature.
   `src/game/server/team_control_point.cpp`. <https://github.com/ValveSoftware/source-sdk-2013>
 - This repo: `foundation/` listing and headers; `require` graph of `foundation/aiwar`;
   `tests/harness.lua`; `ws/sh_core.lua`; `init.lua`.
+
+---
+
+## Amendment (phase 2 gate review, after 49d7d65)
+
+1. **Clause (c), "shared", counts modules that require it, not modes served.**
+   §2 admitted `capture` because one controller serves several modes. By that
+   reasoning, any private helper of a controller that runs in every mode would
+   also qualify; `rounds/spawn_doors` under `features/rounds` is the example.
+   The tighter test: two or more modules outside the candidate's own family,
+   in features or foundation, require it today. `rounds/spawn_doors` fails this
+   test, so moving it to `features/rounds` is right. `capture` also fails it
+   today: only `features/capture` and capture's own files require it. Revisit
+   its place when a second dependent exists (for example the cp or aiwar
+   scenarios reading capture's types). Until then, it is a candidate for
+   `features/capture/`, not a settled gameplay type.
+2. **`teams` in Formalisms is accepted as a label, not as a classification.**
+   At file level there is no cycle: `rounds` → `teams` → `rounds/state`. The
+   cycle appears only when categories are ranked whole, because `rounds` reads
+   team vocabulary and one TF2 team rule (`Teams.ScrambleDue`). That means the
+   round statechart still carries TF2 policy. Moving `teams` down a rank is
+   the cheapest honest fix until the CS:S split separates team identity from
+   TF2's team rules. The guard should say so where it places `teams`.
