@@ -70,7 +70,7 @@ GUARDS_ALL_ROUND = false
 
 local RED, BLUE, NOBODY = Teams.RED, Teams.BLUE, Teams.UNASSIGNED
 local TEAMS = { RED, BLUE }
-local EnemyOf = AiWar.EnemyOf
+local EnemyOf = Teams.EnemyOf
 
 local function Center(point) return point.zone.center end
 

@@ -2,7 +2,6 @@
 -- put on spots.
 local T = dofile("tests/harness.lua")
 local Squad = T.require("foundation.aiwar.squad")
-local Slots = T.require("foundation.aiwar.slots")
 
 local function Team(...)
 	local fireTeam = { members = {} }
@@ -36,13 +35,13 @@ T.test("a hero always leads, and the oldest again once it goes", function()
 end)
 
 T.test("a soldier in a slot pinned to lead leads, over a hero and an older member", function()
-	local old, hero, pinned = { seq = 1 }, { seq = 2, hero = true }, { seq = 9, pin = Slots.LEADER }
+	local old, hero, pinned = { seq = 1 }, { seq = 2, hero = true }, { seq = 9, pin = Squad.LEADER }
 	local fireTeam = Team(old, hero, pinned)
 	T.eq(Squad.Leader(fireTeam), pinned, "the pinned leader")
 end)
 
 T.test("a soldier in a slot pinned to follow never leads while another is in its fire team", function()
-	local follower, young = { seq = 1, pin = Slots.MEMBER }, { seq = 9 }
+	local follower, young = { seq = 1, pin = Squad.MEMBER }, { seq = 9 }
 	local fireTeam = Team(follower, young)
 	T.eq(Squad.Leader(fireTeam), young, "the younger, unpinned")
 	fireTeam.members[young.place], young.fireTeam = nil, nil
@@ -53,10 +52,10 @@ T.test("pinning a slot moves the lead at once: a new leader takes over, and an u
 	local old, young = { seq = 1 }, { seq = 9 }
 	local fireTeam = Team(old, young)
 	T.eq(Squad.Leader(fireTeam), old, "the oldest")
-	young.pin = Slots.LEADER
+	young.pin = Squad.LEADER
 	T.eq(Squad.Leader(fireTeam), young, "pinned to lead")
 	young.pin = nil
-	old.pin = Slots.MEMBER
+	old.pin = Squad.MEMBER
 	T.eq(Squad.Leader(fireTeam), young, "the old one pinned to follow: the young one keeps the lead")
 end)
 

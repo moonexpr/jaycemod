@@ -17,11 +17,7 @@ local Tactics = require("foundation.aiwar.tactics")
 module(...)
 
 local RED, BLUE = Teams.RED, Teams.BLUE
-local ENEMY = { [RED] = BLUE, [BLUE] = RED }
-
-function EnemyOf(team)
-	return ENEMY[team]
-end
+local EnemyOf = Teams.EnemyOf
 
 -- How a soldier of `team` stands toward someone of `otherTeam`. `losers` is
 -- the team that lost the round, while the winners celebrate (TF2's
@@ -30,14 +26,14 @@ ALLY, ENEMY_OF, FEAR, NEUTRAL = "ally", "enemy", "fear", "neutral"
 
 function Relation(team, otherTeam, losers)
 	if team == otherTeam then return ALLY end
-	if ENEMY[team] ~= otherTeam then return NEUTRAL end
+	if EnemyOf(team) ~= otherTeam then return NEUTRAL end
 	if team == losers then return FEAR end
 	return ENEMY_OF
 end
 
 -- The team humiliated when `winner` wins: its enemy, or none on a stalemate.
 function LosersOf(winner)
-	return ENEMY[winner]
+	return EnemyOf(winner)
 end
 
 -- Roles: what a soldier is for. foundation.aiwar.orders gives each its goal.
@@ -116,7 +112,7 @@ end
 -- limit (defendedTimeLimit: WINREASON.DEFEND_UNTIL_TIME_LIMIT), or, on
 -- payload, it had no cart and the losers had one. carts: team -> cart.
 function DefenderWon(winner, defendedTimeLimit, carts)
-	local loser = ENEMY[winner]
+	local loser = EnemyOf(winner)
 	if not loser then return false end
 	if defendedTimeLimit then return true end
 	return carts[winner] == nil and carts[loser] ~= nil
@@ -148,7 +144,7 @@ local function Info(cart) return type(cart) == "table" and cart or {} end
 
 -- The team's defense share, in tenths (0 to 10), or nil with no cart at all.
 function DefenseTenths(team, carts)
-	local own, enemy = carts[team], carts[ENEMY[team]]
+	local own, enemy = carts[team], carts[EnemyOf(team)]
 	if not own and not enemy then return nil end
 	if not enemy then return 0 end
 	if not own then return 10 end
@@ -177,7 +173,7 @@ local stances = {} -- key -> stance: the same situation, the same table
 function Stance(team, carts)
 	local tenths = DefenseTenths(team, carts)
 	if not tenths then return nil end
-	local close = tenths > 0 and Info(carts[ENEMY[team]]).close == true
+	local close = tenths > 0 and Info(carts[EnemyOf(team)]).close == true
 	local key = tenths .. (close and "c" or "")
 	if stances[key] then return stances[key] end
 	local offense, defense = 10 - tenths, tenths
@@ -320,7 +316,7 @@ local PHASE_OF_STATE = {
 -- sudden death.
 function PhaseOf(active, state, winner, stalemateIsRound)
 	if not active then return PHASES.running end
-	if (state == STATE.TEAM_WIN or state == STATE.GAME_OVER) and ENEMY[winner] then return PHASES.humiliation end
+	if (state == STATE.TEAM_WIN or state == STATE.GAME_OVER) and EnemyOf(winner) then return PHASES.humiliation end
 	if state == STATE.STALEMATE and stalemateIsRound then return PHASES.arena end
 	return PHASE_OF_STATE[state] or PHASES.over
 end

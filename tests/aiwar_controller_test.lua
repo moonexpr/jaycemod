@@ -404,14 +404,14 @@ T.test("pins are kept with the slot list, and read back on the next map", functi
 	controller.slotStore = MemoryStore()
 	controller:Sizes()
 	local first = SlotIds(controller, RED)[1]
-	T.eq(controller:PinSlots("mp_aiwar_slots_leader", { first }, Slots.LEADER)[1], "mp_aiwar_slots_leader: slot " .. first .. " leader", "told")
+	T.eq(controller:PinSlots("mp_aiwar_slots_leader", { first }, Squad.LEADER)[1], "mp_aiwar_slots_leader: slot " .. first .. " leader", "told")
 	local saved = controller.slotStore.saved
 	w.teamSize = Slots.CUSTOM_SIZE
 	local next = Load(w)
 	next.slotStore = MemoryStore(saved)
 	local sizes = next:Sizes()
 	T.eq(sizes[RED] .. " " .. sizes[BLUE], "2 2", "the same slots")
-	T.eq(next:SlotPlan():Slots("Combine")[1].pin, Slots.LEADER, "the same pin")
+	T.eq(next:SlotPlan():Slots("Combine")[1].pin, Squad.LEADER, "the same pin")
 end)
 
 -- A soldier the controller holds, with entity index `index`, whose DrGBase

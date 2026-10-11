@@ -14,6 +14,7 @@
 -- The server sends the list (aiwar_slots) once the panel asks, and again
 -- whenever it changes.
 local Slots = WS.require("foundation.aiwar.slots")
+local Squad = WS.require("foundation.aiwar.squad")
 local E = WS.Events
 
 local RED, BLUE = WS.TEAM_RED, WS.TEAM_BLUE
@@ -37,8 +38,8 @@ local ICONS = {
 }
 
 local PIN_TAGS = {
-	[Slots.LEADER] = ", pinned to lead",
-	[Slots.MEMBER] = ", pinned to follow",
+	[Squad.LEADER] = ", pinned to lead",
+	[Squad.MEMBER] = ", pinned to follow",
 }
 
 -- The pins a slot may be given (its menu option is checked for a slot so pinned).
@@ -47,13 +48,13 @@ local PINS = {
 		label = "Pin to Lead",
 		command = "mp_aiwar_slots_leader",
 		icon = "icon16/star.png",
-		pin = Slots.LEADER,
+		pin = Squad.LEADER,
 	},
 	{
 		label = "Pin to Follow",
 		command = "mp_aiwar_slots_member",
 		icon = "icon16/user.png",
-		pin = Slots.MEMBER,
+		pin = Squad.MEMBER,
 	},
 	{
 		label = "Unpin",

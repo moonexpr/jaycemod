@@ -36,7 +36,7 @@ HELD, TURTLE, CAPPED = "held", "held:turtle", "held:capped"
 LOST, LAST_STAND = "lost:", "laststand"
 
 local TEAMS = { Teams.RED, Teams.BLUE }
-local EnemyOf = AiWar.EnemyOf
+local EnemyOf = Teams.EnemyOf
 local CAPTURE, ASSAULT, HOLD, DEFEND = AiWar.CAPTURE, AiWar.ASSAULT, AiWar.HOLD, AiWar.DEFEND
 local RAID, SUPPORT = AiWar.RAID, AiWar.SUPPORT
 

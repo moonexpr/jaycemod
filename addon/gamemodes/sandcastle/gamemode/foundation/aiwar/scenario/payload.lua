@@ -7,6 +7,7 @@
 -- it, pos, nextCheckpoint (distance along it, nil after the last) }.
 local max, pairs = math.max, pairs
 local AiWar = require("foundation.aiwar")
+local Teams = require("foundation.teams")
 local Orders = require("foundation.aiwar.orders")
 local Base = require("foundation.aiwar.scenario")
 module(...)
@@ -50,7 +51,7 @@ end
 
 -- The team's lanes lead to its own cart, else the enemy's.
 function Scenario:Front(field, team)
-	local cart = field.carts[team] or field.carts[AiWar.EnemyOf(team)]
+	local cart = field.carts[team] or field.carts[Teams.EnemyOf(team)]
 	return cart and cart.pos
 end
 
@@ -59,7 +60,7 @@ end
 function Scenario:SetupAttacks(field)
 	local attacks = {}
 	for team, cart in pairs(field.carts) do
-		if not field.carts[AiWar.EnemyOf(team)] then attacks[team] = cart.track:PointAt(Target(cart)) end
+		if not field.carts[Teams.EnemyOf(team)] then attacks[team] = cart.track:PointAt(Target(cart)) end
 	end
 	return attacks
 end

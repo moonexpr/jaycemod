@@ -24,7 +24,7 @@ SQUAD_SIZE = 8
 FRONT_MIN = Explore.SPACING
 
 local TEAMS = { Teams.RED, Teams.BLUE }
-local EnemyOf = AiWar.EnemyOf
+local EnemyOf = Teams.EnemyOf
 local EXPLORE = AiWar.EXPLORE
 
 -- The nearest of players ({ handle, pos }) to pos, or nil.

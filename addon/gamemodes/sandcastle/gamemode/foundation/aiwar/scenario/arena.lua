@@ -31,7 +31,7 @@ MODE = "arena"
 SHUT, OPEN, HELD, CAPPED, LOST = "shut", "open", "held", "capped", "lost"
 
 local TEAMS = { Teams.RED, Teams.BLUE }
-local EnemyOf = AiWar.EnemyOf
+local EnemyOf = Teams.EnemyOf
 local CAPTURE, ASSAULT, HOLD, DEFEND, EXPLORE = AiWar.CAPTURE, AiWar.ASSAULT, AiWar.HOLD, AiWar.DEFEND, AiWar.EXPLORE
 
 -- Whether the point may be captured now: the round has its cap-enable time

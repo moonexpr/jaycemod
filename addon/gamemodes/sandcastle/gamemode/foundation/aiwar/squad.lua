@@ -5,11 +5,15 @@
 -- a member is foundation.aiwar's roster entry, which a soldier's orders keep
 -- current with what its squad needs to know of it: pos (where it is), enemy
 -- (the enemy it fights, an opaque handle) and hero (its kit is a hero's);
--- and the controller with its slot's pin (foundation.aiwar.slots).
+-- and the controller with its slot's pin (LEADER, MEMBER or nil; the slots
+-- of foundation.aiwar.slots carry it).
 local ipairs, pairs, setmetatable = ipairs, pairs, setmetatable
 local floor, HUGE = math.floor, math.huge
-local Slots = require("foundation.aiwar.slots")
 module(...)
+
+-- A member's pin: it leads its fire team (LEADER), or never leads while
+-- another is in it (MEMBER).
+LEADER, MEMBER = "leader", "member"
 
 -- Leaders -------------------------------------------------------------------------
 
@@ -24,8 +28,8 @@ end
 local PINNED_LEADER_TIER, HERO_TIER, MEMBER_TIER, PINNED_MEMBER_TIER = 3, 2, 1, 0
 
 local function Tier(member)
-	if member.pin == Slots.LEADER then return PINNED_LEADER_TIER end
-	if member.pin == Slots.MEMBER then return PINNED_MEMBER_TIER end
+	if member.pin == LEADER then return PINNED_LEADER_TIER end
+	if member.pin == MEMBER then return PINNED_MEMBER_TIER end
 	if member.hero then return HERO_TIER end
 	return MEMBER_TIER
 end

@@ -437,6 +437,20 @@ T.test("a team's defense share: all offense or all defense with one cart, leanin
 	T.eq(Race({ progress = 1 }, { progress = 0 }), AiWar.DEFENSE_MIN, "nor all offense")
 end)
 
+T.test("the field a war is given carries each team's defense share, which the orders read as they are", function()
+	local war = AiWar.War.New()
+	local field = {}
+	war:SetField(field)
+	T.eq(type(field.defense), "table", "filled before any assignment")
+	local carts = {
+		[RED] = { progress = 0.3 },
+		[BLUE] = { progress = 0.5 },
+	}
+	war:Assign(carts)
+	T.eq(field.defense[RED], AiWar.DefenseShare(RED, carts), "RED's share")
+	T.eq(field.defense[BLUE], AiWar.DefenseShare(BLUE, carts), "BLU's share")
+end)
+
 T.test("a race turning moves as few soldiers as it can from one cart to the other", function()
 	local war = AiWar.War.New()
 	war:Assign({ [RED] = { progress = 0.3 }, [BLUE] = { progress = 0.3 } })

@@ -9,6 +9,7 @@
 -- this file only feeds them the round, the carts and the points and turns
 -- their answers into the soldiers' goals.
 local AiWar = WS.require("foundation.aiwar")
+local Teams = WS.require("foundation.teams")
 local Rounds = WS.require("foundation.rounds")
 local Scenario = WS.require("foundation.aiwar.scenario")
 local Track = WS.require("foundation.aiwar.track")
@@ -1435,7 +1436,7 @@ function Controller:FloodZone(team)
 		if area then starts[#starts + 1] = area:GetID() end
 	end
 	if #starts == 0 then return nil end
-	for _, spot in ipairs(SpawnSpots(AiWar.EnemyOf(team))) do
+	for _, spot in ipairs(SpawnSpots(Teams.EnemyOf(team))) do
 		local area = AreaAt(spot:GetPos())
 		if area then outside[area:GetID()] = true end
 	end
@@ -1896,7 +1897,7 @@ function Controller:Field(phase, now)
 	end
 	local posts, forwardPosts = {}, {}
 	for _, team in ipairs({ RED, BLUE }) do
-		local enemyCart, ownCart = carts[AiWar.EnemyOf(team)], carts[team]
+		local enemyCart, ownCart = carts[Teams.EnemyOf(team)], carts[team]
 		if enemyCart then posts[team] = self:DefendersPosts(team, enemyCart) end
 		if ownCart then forwardPosts[team] = self:ForwardPosts(team, ownCart) end
 	end
@@ -2014,7 +2015,7 @@ end
 
 -- The enemy's defense points for a team's tours: its posts, else its front.
 function Controller:EnemyDefenses(field, team)
-	local enemy = AiWar.EnemyOf(team)
+	local enemy = Teams.EnemyOf(team)
 	local posts = field.posts and field.posts[enemy]
 	if posts and #posts > 0 then return posts end
 	local front = self.scenario:Front(field, enemy)
@@ -2035,7 +2036,7 @@ function Controller:PlanLanes(team, to, field, now)
 	local own = Nearest(SpawnSpots(team), to)
 	if not own then return end
 	local from = Point(own:GetPos())
-	local enemySpawns = SpawnSpots(AiWar.EnemyOf(team))
+	local enemySpawns = SpawnSpots(Teams.EnemyOf(team))
 	local function EnemySpawnNear(p) return Point(Nearest(enemySpawns, p):GetPos()) end
 	local defenses = #enemySpawns > 0 and self:EnemyDefenses(field, team) or {}
 	local plan = { to = to, planning = true, tries = 0, penalized = {}, lanes = { key = team .. ":" .. now },
@@ -2322,7 +2323,7 @@ function Controller:RemoveSlots(ids)
 	return lines
 end
 
--- pin: Slots.LEADER, Slots.MEMBER or nil; a slot's soldier takes it at once.
+-- pin: Squad.LEADER, Squad.MEMBER or nil; a slot's soldier takes it at once.
 function Controller:PinSlots(command, ids, pin)
 	local lines = {}
 	for _, id in ipairs(ids) do
@@ -3346,7 +3347,7 @@ end)
 function Controller:Fallen(ent, attacker)
 	local entry = self.soldiers[ent]
 	if not entry then return end
-	local killer = IsValid(attacker) and attacker ~= ent and WS.LastTeamNumber(attacker) == AiWar.EnemyOf(entry.soldier.team)
+	local killer = IsValid(attacker) and attacker ~= ent and WS.LastTeamNumber(attacker) == Teams.EnemyOf(entry.soldier.team)
 	self.war:Fallen(ent, Point(ent:GetPos()), killer and Point(attacker:GetPos()) or nil, CurTime())
 end
 

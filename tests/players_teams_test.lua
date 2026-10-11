@@ -253,4 +253,14 @@ T.test("a sound for the others is heard by everyone not on the team, spectators 
 	T.eq(L.HearsBroadcast(RED, true, UNASSIGNED), true, "the unassigned")
 end)
 
+-- The two teams that play are each other's opponent; no other team has one.
+
+T.test("RED's opponent is BLU and BLU's is RED; a team that does not play has none", function()
+	T.eq(L.EnemyOf(RED), BLU, "RED fights BLU")
+	T.eq(L.EnemyOf(BLU), RED, "BLU fights RED")
+	T.eq(L.EnemyOf(UNASSIGNED), nil, "the unassigned")
+	T.eq(L.EnemyOf(SPEC), nil, "spectators")
+	T.eq(L.EnemyOf(L.HALLOWEEN), nil, "the Halloween team")
+end)
+
 T.finish()

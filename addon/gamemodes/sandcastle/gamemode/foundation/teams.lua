@@ -14,6 +14,17 @@ HALLOWEEN = 5 -- TF_TEAM_HALLOWEEN: the Halloween bosses and skeletons
 FIRST_GAME_TEAM = RED -- FIRST_GAME_TEAM: RED and BLU are the teams that play
 AUTO = "auto"
 
+-- The two teams that play are each other's opponent; any other team has
+-- none (nil).
+local OPPONENT = {
+	[RED] = BLUE,
+	[BLUE] = RED,
+}
+
+function EnemyOf(team)
+	return OPPONENT[team]
+end
+
 -- HandleCommand_JoinTeam: g_aTeamNames, compared case-insensitively. A name
 -- it does not know leaves the command's initial choice, RED. "blu" is
 -- Sandcastle's alias, since that is how TF2 spells the team everywhere else.

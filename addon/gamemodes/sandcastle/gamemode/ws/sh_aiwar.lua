@@ -7,6 +7,7 @@
 -- its slots are asked for.
 local AiWar = WS.require("foundation.aiwar")
 local Slots = WS.require("foundation.aiwar.slots")
+local Squad = WS.require("foundation.aiwar.squad")
 local E = WS.Events
 
 local ACTIVE_KEY = "ws.aiwar"
@@ -134,11 +135,11 @@ if SERVER then
 
 	local PINS = {
 		mp_aiwar_slots_leader = {
-			pin = Slots.LEADER,
+			pin = Squad.LEADER,
 			help = "Pin slots by id to lead: their soldiers lead their squads",
 		},
 		mp_aiwar_slots_member = {
-			pin = Slots.MEMBER,
+			pin = Squad.MEMBER,
 			help = "Pin slots by id to follow: their soldiers never lead while another is in their squad",
 		},
 		mp_aiwar_slots_unpin = {

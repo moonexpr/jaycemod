@@ -64,6 +64,7 @@ local abs, ceil, cos, floor, max, min, pi, sin, sqrt = math.abs, math.ceil, math
 local ipairs, pairs = ipairs, pairs
 local N = require("foundation.npc")
 local AiWar = require("foundation.aiwar")
+local Teams = require("foundation.teams")
 local Track = require("foundation.aiwar.track")
 local Tactics = require("foundation.aiwar.tactics")
 local Squad = require("foundation.aiwar.squad")
@@ -207,7 +208,7 @@ end
 -- The member's spot in the setup line, or nil when there is no setup
 -- line to stand in (not in setup, or no gate found).
 function GateSpot(field, member, row)
-	local gates = field.setup and field.gates and field.gates[AiWar.EnemyOf(member.team)]
+	local gates = field.setup and field.gates and field.gates[Teams.EnemyOf(member.team)]
 	if not gates or #gates == 0 then return nil end
 	local gate = gates[member.slot % #gates + 1]
 	local lateral = AlongLine(floor(member.slot / #gates))
@@ -243,7 +244,7 @@ end
 function EntryPoint(center, radius, p)
 	return Tactics.Toward(center, p, radius * SPHERE_ENTER)
 end
-local function EnemyCart(field, member) return field.carts[AiWar.EnemyOf(member.team)] end
+local function EnemyCart(field, member) return field.carts[Teams.EnemyOf(member.team)] end
 
 ROLES = {
 	[AiWar.PUSH] = {
@@ -354,8 +355,7 @@ function Focus(field, member)
 	local own, theirs = OwnCart(field, member), EnemyCart(field, member)
 	if not own then return theirs and "defense" or nil end
 	if not theirs then return "offense" end
-	local share = field.defense and field.defense[member.team] or AiWar.DefenseShare(member.team, field.carts)
-	return ((member.slot + 1) * GOLDEN) % 1 < share and "defense" or "offense"
+	return ((member.slot + 1) * GOLDEN) % 1 < field.defense[member.team] and "defense" or "offense"
 end
 
 -- The enemy's line a raider goes for, and the point its own side comes
@@ -363,7 +363,7 @@ end
 -- cart), coming from the checkpoint it heads for; for its own, the enemy
 -- defenders' posts (else the track ahead), coming from the cart.
 function EnemyLine(field, member)
-	local enemy = AiWar.EnemyOf(member.team)
+	local enemy = Teams.EnemyOf(member.team)
 	local theirs, own = EnemyCart(field, member), OwnCart(field, member)
 	local focus = Focus(field, member)
 	if focus == "defense" then
@@ -513,7 +513,7 @@ end
 
 -- An attacker (a team with a cart the other side lacks) in setup.
 local function WaitingForSetup(field, member)
-	return field.setup == true and field.carts[member.team] ~= nil and field.carts[AiWar.EnemyOf(member.team)] == nil
+	return field.setup == true and field.carts[member.team] ~= nil and field.carts[Teams.EnemyOf(member.team)] == nil
 end
 
 -- Payload's doctrine (foundation.aiwar.scenario.payload): ROLES, with the

@@ -165,10 +165,11 @@ local PENDING = {
 	["localization"] = "ws/localization",
 }
 
--- Edges that break the order today; phase 3 removes them and empties this.
+-- Edges that break the order today.
 local KNOWN_INVERSIONS = {
+	-- the payload doctrine (roles, PAYLOAD, the seat check at the end of the
+	-- tree) still lives in orders; extracted in the doctrine phase
 	["aiwar/orders"] = { ["aiwar"] = true },
-	["aiwar/squad"] = { ["aiwar/slots"] = true },
 }
 
 local function FoundationModules()
