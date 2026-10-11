@@ -4,8 +4,9 @@
 -- class ("DFrame"); a new panel derives from one and overrides only what
 -- differs (derma copies the base's methods under the proto's). The library's
 -- own: Panel (the box), Label (theme text), Progress (a bar, full to its
--- fraction, or a moving band while it has none) and Dialog (a Panel with a
--- title and a line, kept in the middle of the screen).
+-- fraction, or a moving band while it has none), Button, Title (a box's
+-- heading) and Dialog (a Panel with a title and a line, kept in the middle
+-- of the screen).
 local UI = {}
 WS.UI = UI
 
@@ -83,6 +84,43 @@ UI.Define("Progress", "DPanel", {
 			local from, to = math.max(at, 0), math.min(at + BAND, 1)
 			surface.DrawRect(b + inner * from, b, inner * (to - from), h - b * 2)
 		end
+	end,
+})
+
+-- A box's heading: title text, docked along its top.
+local TITLE_HEIGHT = 24
+
+function UI.Title(parent, text)
+	local label = vgui.Create(UI.Name("Label"), parent)
+	label:SetFont(THEME.titleFont)
+	label:SetContentAlignment(4)
+	label:SetText(text)
+	label:SetTall(TITLE_HEIGHT)
+	label:Dock(TOP)
+	return label
+end
+
+-- A button: the box, filled with the border's colour while hovered or
+-- selected (its text turns dark), dimmed while disabled.
+local DISABLED_ALPHA = 90
+
+UI.Define("Button", "DButton", {
+	Init = function(self)
+		self:SetFont(THEME.bodyFont)
+		self:SetTextColor(THEME.text)
+	end,
+	SetSelected = function(self, selected) self.selected = selected end,
+	Paint = function(self, w, h)
+		local lit = self:IsEnabled() and (self.selected or self:IsHovered())
+		surface.SetAlphaMultiplier(self:IsEnabled() and 1 or DISABLED_ALPHA / 255)
+		if lit then
+			surface.SetDrawColor(THEME.border)
+			surface.DrawRect(0, 0, w, h)
+		else
+			Box(w, h)
+		end
+		surface.SetAlphaMultiplier(1)
+		self:SetTextColor(lit and THEME.background or THEME.text)
 	end,
 })
 

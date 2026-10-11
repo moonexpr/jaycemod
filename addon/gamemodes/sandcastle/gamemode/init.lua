@@ -68,6 +68,17 @@ function GM:PlayerSpawn(ply, transition)
 	end)
 end
 
+-- On TF2 maps a player spawns with their loadout (ws/sv_loadout.lua, the
+-- Player tab) in place of Sandbox's Half-Life 2 set, keeping Sandbox's
+-- tools; in Sandbox mode, Sandbox's loadout.
+local SANDBOX_TOOLS = { "gmod_camera", "gmod_tool", "weapon_physgun" }
+
+function GM:PlayerLoadout(ply)
+	if not WS.Active() then return self.BaseClass.PlayerLoadout(self, ply) end
+	for _, class in ipairs(SANDBOX_TOOLS) do ply:Give(class) end
+	WS.GiveLoadout(ply)
+end
+
 -- Spawn at the team's next valid info_player_teamspawn for this round.
 function GM:PlayerSelectSpawn(ply, transition)
 	if WS.Active() then
