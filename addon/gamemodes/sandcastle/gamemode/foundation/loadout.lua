@@ -101,7 +101,10 @@ end
 -------------------------------------------------------------------------------
 -- Catalog
 
-local Catalog = {}
+-- The class tables live on the module, so a live reload refills them and
+-- catalogs and loadouts made before it run the new methods.
+CatalogClass = CatalogClass or {}
+local Catalog = CatalogClass
 Catalog.__index = Catalog
 
 local function Entry(e)
@@ -156,7 +159,8 @@ end
 -------------------------------------------------------------------------------
 -- Loadout
 
-local Loadout = {}
+LoadoutClass = LoadoutClass or {}
+local Loadout = LoadoutClass
 Loadout.__index = Loadout
 
 local function Copy(t)

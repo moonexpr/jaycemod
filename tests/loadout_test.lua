@@ -289,4 +289,16 @@ T.test("a loadout made before a rerun of the model still has its refusals recogn
 	T.eq(Rerun.Refused(unknown), true, "unknown weapon, from a catalog made before the rerun")
 end)
 
+-- A live reload (never a restart) reruns the model in its table: loadouts
+-- and catalogs made before it run the rerun's methods from then on.
+T.test("a loadout and a catalog made before a rerun of the model run its new methods", function()
+	local catalog = Catalog()
+	local before = Loadout.Starting(catalog)
+	package.loaded["foundation.loadout"] = nil
+	local Rerun = T.require("foundation.loadout")
+	local fresh = Rerun.Starting(Catalog())
+	T.eq(before.Buy, fresh.Buy, "the loadout's methods")
+	T.eq(catalog.Weapon, Rerun.NewCatalog({}).Weapon, "the catalog's methods")
+end)
+
 T.finish()

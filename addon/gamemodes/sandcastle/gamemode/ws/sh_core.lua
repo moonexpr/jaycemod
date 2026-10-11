@@ -202,10 +202,9 @@ function WS.TeamOf(ent)
 	return WS.TEAM_UNASSIGNED
 end
 
+-- Teams.EnemyOf, with TEAM_UNASSIGNED for a team that does not play.
 function WS.EnemyOf(team)
-	if team == WS.TEAM_RED then return WS.TEAM_BLUE end
-	if team == WS.TEAM_BLUE then return WS.TEAM_RED end
-	return WS.TEAM_UNASSIGNED
+	return WS.TeamRules.EnemyOf(team) or WS.TEAM_UNASSIGNED
 end
 
 function WS.Active()
