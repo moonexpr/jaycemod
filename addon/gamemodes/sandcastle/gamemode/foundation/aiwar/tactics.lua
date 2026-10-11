@@ -20,6 +20,7 @@
 --
 -- Positions are plain { x, y, z } tables.
 local ipairs, math, sqrt = ipairs, math, math.sqrt
+local Distance = require("foundation.geometry").Distance
 module(...)
 
 CONTACT_MEMORY = 8
@@ -29,11 +30,6 @@ BOUND_DISTANCE, BOUND_TIME = 320, 6
 FLANK_OFFSET = 480
 FALLBACK_STEP, FALLBACK_STEPS = 384, 3
 FALLBACK_MEMBERS, FALLBACK_RANGE, FALLBACK_INTERVAL = 1, 300, 10
-
-local function Distance(a, b)
-	local dx, dy, dz = a.x - b.x, a.y - b.y, (a.z or 0) - (b.z or 0)
-	return sqrt(dx * dx + dy * dy + dz * dz)
-end
 
 -- The point `distance` from `from` toward `to`, on the ground plane (z
 -- from `from`); `to` itself when nearer.

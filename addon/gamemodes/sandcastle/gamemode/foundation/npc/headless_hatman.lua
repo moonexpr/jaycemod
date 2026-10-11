@@ -1,7 +1,7 @@
 -- The Horseless Headless Horsemann (CHeadlessHatman, headless_hatman.cpp,
 -- and halloween_behavior/headless_hatman_*.cpp): a boss variant of
 -- foundation.npc.halloween_boss. It rises from the ground, makes the nearest
--- player IT (foundation.npc.tag, through the tag controller) and chases
+-- player IT (features.tag.model, through the tag controller) and chases
 -- them, cleaves whoever it targets with its axe, and every 20 s yells Boo,
 -- stunning everyone nearby. It fires pumpkin_lord_summoned as it rises and
 -- pumpkin_lord_killed once gone, for the clients' music.

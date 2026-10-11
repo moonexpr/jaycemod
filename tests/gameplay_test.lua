@@ -1,6 +1,6 @@
--- foundation.gameplay: the game mode and objectives told as a new game starts.
+-- features.gamemode.gameplay: the game mode and objectives told as a new game starts.
 local T = dofile("tests/harness.lua")
-local Gameplay = T.require("foundation.gameplay")
+local Gameplay = T.require("features.gamemode.gameplay")
 
 T.test("a map with a train is payload, and its checkpoints and stages are told", function()
 	local title, lines = Gameplay.Describe({ map = "pl_goldrush", trains = 1, points = 7, rounds = 3 })

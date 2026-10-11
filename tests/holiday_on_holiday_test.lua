@@ -1,9 +1,9 @@
--- foundation.holiday.on_holiday: tf_logic_on_holiday's Fire
+-- features.holiday.on_holiday: tf_logic_on_holiday's Fire
 -- (CLogicOnHoliday::InputFire, tf_logic_on_holiday.cpp), the outputs it
 -- fires for the holidays the holiday model says are on.
 local T = dofile("tests/harness.lua")
 local Holiday = T.require("foundation.holiday")
-local OnHoliday = T.require("foundation.holiday.on_holiday")
+local OnHoliday = T.require("features.holiday.on_holiday")
 
 local function Model(forced, mapHoliday)
 	return Holiday.New({

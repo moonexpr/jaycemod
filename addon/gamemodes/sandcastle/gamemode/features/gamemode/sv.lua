@@ -15,7 +15,7 @@
 -- and everyone unassigned, as on joining, so each client opens its team
 -- menu until they choose a team.
 local Gamemode = WS.require("foundation.gamemode")
-local Gameplay = WS.require("foundation.gameplay")
+local Gameplay = WS.require("features.gamemode.gameplay")
 
 -- Both made in ws/sh_gameplay.lua.
 local ENABLED = GetConVar("sv_gameplay_enabled")
@@ -86,7 +86,7 @@ local function Chat(title, lines)
 	})
 end
 
--- What the map plays, for foundation.gameplay: on a map without an
+-- What the map plays, for features.gamemode.gameplay: on a map without an
 -- objective, the round limits too.
 local function MapInfo()
 	local info = {

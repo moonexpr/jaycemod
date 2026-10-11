@@ -1,9 +1,9 @@
--- The tag feature's controller: TF2's IT. It owns the foundation.npc.tag
+-- The tag feature's controller: TF2's IT. It owns the features.tag.model
 -- model, feeds it players' melee hits and deaths, and delivers the sounds
 -- and messages it answers with. The Horsemann loads it (its combatant
 -- port's Tag()), so a map without one has no IT; and IT ends when the
 -- Horsemann dies or is removed, so these hooks do nothing without one.
-local Tag = WS.require("foundation.npc.tag")
+local Tag = WS.require("features.tag.model")
 
 local holiday = WS.Feature("holiday")
 

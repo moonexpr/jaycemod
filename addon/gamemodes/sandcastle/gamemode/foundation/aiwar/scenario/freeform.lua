@@ -7,12 +7,13 @@
 -- (Front; none where both teams start in the same place), then the
 -- waypoints. A squad in a fight fights first. The war's soldiers respawn at
 -- once without gamerules (the controller's WaveLength).
-local ipairs, sqrt = ipairs, math.sqrt
+local ipairs = ipairs
 local AiWar = require("foundation.aiwar")
 local Explore = require("foundation.aiwar.explore")
 local Orders = require("foundation.aiwar.orders")
 local Teams = require("foundation.teams")
 local Base = require("foundation.aiwar.scenario")
+local Distance = require("foundation.geometry").Distance
 module(...)
 
 MODE = "freeform"
@@ -25,11 +26,6 @@ FRONT_MIN = Explore.SPACING
 local TEAMS = { Teams.RED, Teams.BLUE }
 local EnemyOf = AiWar.EnemyOf
 local EXPLORE = AiWar.EXPLORE
-
-local function Distance(a, b)
-	local dx, dy, dz = a.x - b.x, a.y - b.y, (a.z or 0) - (b.z or 0)
-	return sqrt(dx * dx + dy * dy + dz * dz)
-end
 
 -- The nearest of players ({ handle, pos }) to pos, or nil.
 local function Nearest(players, pos)

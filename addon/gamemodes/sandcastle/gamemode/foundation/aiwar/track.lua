@@ -2,12 +2,10 @@
 -- follows, as points { x, y, z }, measured along its length the way the
 -- watcher measures the cart's progress. The orders pick their goals on it.
 local setmetatable, sqrt = setmetatable, math.sqrt
+local Geometry = require("foundation.geometry")
 module(...)
 
-function Distance(a, b)
-	local dx, dy, dz = a.x - b.x, a.y - b.y, a.z - b.z
-	return sqrt(dx * dx + dy * dy + dz * dz)
-end
+Distance = Geometry.Distance
 
 local Track = {}
 Track.__index = Track

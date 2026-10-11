@@ -8,8 +8,9 @@
 -- Humiliated).
 --
 -- Subjects are opaque enemy handles; positions are { x, y, z } tables.
-local ipairs, pairs, setmetatable, sort, sqrt = ipairs, pairs, setmetatable, table.sort, math.sqrt
+local ipairs, pairs, setmetatable, sort = ipairs, pairs, setmetatable, table.sort
 local Teams = require("foundation.teams")
+local Distance = require("foundation.geometry").Distance
 module(...)
 
 -- A sighting of a loser is followed this long.
@@ -25,11 +26,6 @@ local ENEMY = {
 	[Teams.RED] = Teams.BLUE,
 	[Teams.BLUE] = Teams.RED,
 }
-
-local function Distance(a, b)
-	local dx, dy, dz = a.x - b.x, a.y - b.y, (a.z or 0) - (b.z or 0)
-	return sqrt(dx * dx + dy * dy + dz * dz)
-end
 
 local function Nearest(points, here)
 	local best, bestDistance

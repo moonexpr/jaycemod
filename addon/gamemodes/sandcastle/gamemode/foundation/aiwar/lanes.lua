@@ -19,6 +19,7 @@ local ipairs, pairs = ipairs, pairs
 local huge, sqrt = math.huge, math.sqrt
 local HL2Path = require("foundation.npc.path.hl2")
 local Path = require("foundation.npc.path")
+local Distance = require("foundation.geometry").Distance
 module(...)
 
 LANE_PENALTY = 8
@@ -45,11 +46,6 @@ JOB_KINDS = {
 	explore = { [DIRECT] = true, [FLANK] = true },
 	raid = { [TOUR] = true },
 }
-
-local function Distance(a, b)
-	local dx, dy, dz = a.x - b.x, a.y - b.y, (a.z or 0) - (b.z or 0)
-	return sqrt(dx * dx + dy * dy + dz * dz)
-end
 
 -- The route cost for planning a lane: HL2's, but each step into an area an
 -- earlier lane took (bot.penalized: area id -> true) costs LANE_PENALTY

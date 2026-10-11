@@ -1,6 +1,6 @@
 local T = dofile("tests/harness.lua")
 local FakeActor = dofile("tests/fake_actor.lua")
-local BossTimer = T.require("foundation.npc.boss_timer")
+local BossTimer = T.require("features.boss_timer.model")
 local Merasmus = T.require("foundation.npc.merasmus")
 local HalloweenBoss = T.require("foundation.npc.halloween_boss")
 local Teams = T.require("foundation.teams")

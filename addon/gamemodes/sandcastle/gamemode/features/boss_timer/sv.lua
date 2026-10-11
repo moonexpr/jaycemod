@@ -1,15 +1,15 @@
 -- The boss_timer feature's controller: TF2's Halloween boss timer
--- (foundation.npc.boss_timer) for each boss the map has brought in. It
+-- (features.boss_timer.model) for each boss the map has brought in. It
 -- implements the timer's world port, runs SpawnHalloweenBoss every tick,
 -- spawns what the timer asks for, reverts the point the boss takes and
 -- pauses the KOTH clocks, and forgets the countdown when a round starts.
 --
 -- Loaded by the holiday controller on a boss's scenario map
--- (foundation.npc.boss_timer.Runs: lakeside, not the payload maps whose own
+-- (features.boss_timer.model.Runs: lakeside, not the payload maps whose own
 -- logic spawns Merasmus). A boss variant
--- run here provides what foundation.npc.boss_timer asks of it, plus
+-- run here provides what features.boss_timer.model asks of it, plus
 -- SharedLevel(shared) -> its level from the npc controller's shared table.
-local BossTimer = WS.require("foundation.npc.boss_timer")
+local BossTimer = WS.require("features.boss_timer.model")
 local Holiday = WS.require("foundation.holiday")
 local HalloweenBoss = WS.require("foundation.npc.halloween_boss")
 

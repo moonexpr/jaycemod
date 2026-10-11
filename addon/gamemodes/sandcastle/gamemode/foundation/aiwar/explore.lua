@@ -17,9 +17,10 @@
 --
 -- Positions are { x, y, z } tables; a squad is any key.
 local ipairs, pairs, setmetatable = ipairs, pairs, setmetatable
-local floor, sqrt = math.floor, math.sqrt
+local floor = math.floor
 local Squad = require("foundation.aiwar.squad")
 local Tactics = require("foundation.aiwar.tactics")
+local Distance = require("foundation.geometry").Distance
 module(...)
 
 -- A waypoint per cell this wide, a waypoint counts as visited by a soldier
@@ -29,11 +30,6 @@ VISIT_RADIUS = 256
 GIVE_UP = 30
 -- A squad stays engaged this long after it last saw the enemy.
 ENGAGED_FOR = 20
-
-local function Distance(a, b)
-	local dx, dy, dz = a.x - b.x, a.y - b.y, (a.z or 0) - (b.z or 0)
-	return sqrt(dx * dx + dy * dy + dz * dz)
-end
 
 -------------------------------------------------------------------------------
 -- An explorer's goal (field.explore: the scenario's Board, which keeps each

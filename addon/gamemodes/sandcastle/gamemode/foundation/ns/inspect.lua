@@ -14,17 +14,12 @@ local format, concat = string.format, table.concat
 local Tactics = require("foundation.aiwar.tactics")
 local Squad = require("foundation.aiwar.squad")
 local Orders = require("foundation.aiwar.orders")
+local Distance = require("foundation.geometry").Distance
 module(...)
 
 local LEFT = 1 -- Tactics.FlankSide's side to the left
 
 local function Round(n) return floor(n + 0.5) end
-
-local function Distance(a, b)
-	local dx, dy, dz = a.x - b.x, a.y - b.y, (a.z or 0) - (b.z or 0)
-	return sqrt(dx * dx + dy * dy + dz * dz)
-end
-
 
 -- Squads ---------------------------------------------------------------------------
 

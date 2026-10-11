@@ -29,13 +29,14 @@
 -- with the point doctrine (DOCTRINE) and each team's defense share.
 -- Stances follow the objectives: attack only, defend only, or a split by
 -- the points held and the threat, mirroring foundation.aiwar's Stance.
-local floor, max, min, sqrt = math.floor, math.max, math.min, math.sqrt
+local floor, max, min = math.floor, math.max, math.min
 local ipairs = ipairs
 local AiWar = require("foundation.aiwar")
 local Orders = require("foundation.aiwar.orders")
 local Tactics = require("foundation.aiwar.tactics")
 local Teams = require("foundation.teams")
 local Base = require("foundation.aiwar.scenario")
+local Distance = require("foundation.geometry").Distance
 module(...)
 
 MODE = "control_points"
@@ -70,11 +71,6 @@ GUARDS_ALL_ROUND = false
 local RED, BLUE, NOBODY = Teams.RED, Teams.BLUE, Teams.UNASSIGNED
 local TEAMS = { RED, BLUE }
 local EnemyOf = AiWar.EnemyOf
-
-local function Distance(a, b)
-	local dx, dy, dz = a.x - b.x, a.y - b.y, (a.z or 0) - (b.z or 0)
-	return sqrt(dx * dx + dy * dy + dz * dz)
-end
 
 local function Center(point) return point.zone.center end
 

@@ -32,7 +32,7 @@
 --   RemoveGrenades(origin, radius), EndStun(t), RemoveCond(t, cond),
 --     RemoveEntity(t);
 --   StartBossTimer(seconds, variation) (TFGameRules()->
---     StartHalloweenBossTimer: foundation.npc.boss_timer's Start);
+--     StartHalloweenBossTimer: features.boss_timer.model's Start);
 --   PlayScriptedScene(name) (InstancedScriptedScene, multiplayer).
 -- The binding forwards the props' events to the Behavior: OnPropKilled(prop,
 -- attacker) and OnPropTouched(prop, toucher), and calls Removed(state, me)
@@ -55,7 +55,7 @@
 -- to damage types), and the holiday ammo pack's health (the props drop a
 -- plain medium pack). The prop separation and the area around the control
 -- point are measured straight, where TF2 walks the mesh. TF2's boss timer
--- (foundation.npc.boss_timer) brings the next one.
+-- (features.boss_timer.model) brings the next one.
 local require = require
 local NpcSystem = require("foundation.npc")
 local HalloweenBoss = require("foundation.npc.halloween_boss")
@@ -344,7 +344,7 @@ REVEAL_PUSH_RANGE = 400
 REVEAL_PUSH_FORCE = 500
 GRENADE_CLEAR_RANGE = 400
 
--- The boss timer (foundation.npc.boss_timer): past the third level the next
+-- The boss timer (features.boss_timer.model): past the third level the next
 -- Merasmus comes a minute after the last; the spawn reverts the point he
 -- takes to neutral (SpawnHalloweenBoss, LAKESIDE).
 STEADY_RESPAWN_LEVEL = 3

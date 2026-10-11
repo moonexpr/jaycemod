@@ -62,11 +62,11 @@ end
 function Controller:HolidayActive(h) return self.holiday:Active(h) end
 
 -- TF2's Halloween scenarios, read from what the map places once its
--- entities are in (foundation.npc.boss_timer.Runs): a boss's scenario map
+-- entities are in (features.boss_timer.model.Runs): a boss's scenario map
 -- runs the boss timer, which brings him. A templated entity is not among
 -- them until it spawns; the timer stops if the map's own boss does.
 function Controller:StartBossScenarios()
-	local BossTimer = WS.require("foundation.npc.boss_timer")
+	local BossTimer = WS.require("features.boss_timer.model")
 	local map = {
 		names = {},
 		classes = {},
@@ -89,7 +89,7 @@ hook.Add("InitPostEntity", "ws_holiday_boss_scenarios", function() Controller:St
 -- tf_logic_on_holiday's Fire: the outputs for the holidays that are on. Its
 -- part loads with the first Fire.
 function Controller:OnHolidayOutputs()
-	return WS.require("foundation.holiday.on_holiday").Outputs(self.holiday)
+	return WS.require("features.holiday.on_holiday").Outputs(self.holiday)
 end
 function Controller:Mode() return self.holiday:Mode() end
 function Controller:UsingSpells() return self.holiday:UsingSpells() end
