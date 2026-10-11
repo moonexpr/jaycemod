@@ -9,8 +9,12 @@
 --   port:Exists(path) -> bool, port:Run(path) -> the file's return value,
 --   port:TellClients(name) (server only: a feature with a client part loaded).
 -- Paths are relative to the gamemode folder.
-local error, format, ipairs, setmetatable, type = error, string.format, ipairs, setmetatable, type
-local concat = table.concat
+--
+-- A file's name says its realm (docs/multi-file-controllers-plan.md §2.2):
+-- sv.lua and sv_*, cl.lua and cl_*, sh.lua and sh_*; any other name is a
+-- pure module. Clients are sent every file but the server's.
+local error, format, ipairs, match, setmetatable, type = error, string.format, ipairs, string.match, setmetatable, type
+local concat, sort = table.concat, table.sort
 local floor = math.floor
 module(...)
 
@@ -26,6 +30,44 @@ CLIENT_PARTS = { SHARED, CLIENT }
 
 function PartPath(name, part)
 	return ROOT .. name .. "/" .. part .. ".lua"
+end
+
+-- The folders, relative to the gamemode folder, whose files clients are sent.
+CLIENT_DIRS = { "foundation/", "features/", "ws/" }
+
+local REALM_OF = {
+	[SERVER] = SERVER,
+	[CLIENT] = CLIENT,
+	[SHARED] = SHARED,
+}
+
+-- A file's realm from its base name: SERVER, CLIENT or SHARED when it is
+-- exactly sv.lua, cl.lua or sh.lua or starts with sv_, cl_ or sh_; nil for a
+-- module.
+function Realm(fileName)
+	return REALM_OF[match(fileName, "^(%a%a)%.lua$") or match(fileName, "^(%a%a)_")]
+end
+
+-- Whether a file (a base name) is sent to clients: every one but the server's.
+function Ships(fileName)
+	return Realm(fileName) ~= SERVER
+end
+
+local function AddClientFiles(port, dir, paths)
+	local fileNames, dirNames = port:Find(dir)
+	for _, fileName in ipairs(fileNames) do
+		if match(fileName, "%.lua$") and Ships(fileName) then paths[#paths + 1] = dir .. fileName end
+	end
+	for _, dirName in ipairs(dirNames) do AddClientFiles(port, dir .. dirName .. "/", paths) end
+end
+
+-- Every .lua file under dirs, at any depth, that ships, sorted.
+--   port:Find(dir) -> fileNames, dirNames (dir ends in "/").
+function ClientFiles(port, dirs)
+	local paths = {}
+	for _, dir in ipairs(dirs) do AddClientFiles(port, dir, paths) end
+	sort(paths)
+	return paths
 end
 
 -- What differs between the realms: which file is the realm's own part, how a

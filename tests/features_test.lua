@@ -257,4 +257,88 @@ T.test("a feature that is off is refused and none of its files run", function()
 	T.eq(loader:IsLoaded("nodegraph"), false)
 end)
 
+-- Realms and shipping (docs/multi-file-controllers-plan.md §2.2) -----------
+
+T.test("a file's realm is its exact root name or its realm prefix", function()
+	T.eq(Features.Realm("sv.lua"), SV, "sv.lua")
+	T.eq(Features.Realm("sv_soldier.lua"), SV, "sv_soldier.lua")
+	T.eq(Features.Realm("sv_.lua"), SV, "a malformed sv_ name is still server")
+	T.eq(Features.Realm("cl.lua"), CL, "cl.lua")
+	T.eq(Features.Realm("cl_hud.lua"), CL, "cl_hud.lua")
+	T.eq(Features.Realm("sh.lua"), SH, "sh.lua")
+	T.eq(Features.Realm("sh_events.lua"), SH, "sh_events.lua")
+end)
+
+T.test("a file with no realm prefix is a module", function()
+	T.eq(Features.Realm("model.lua"), nil, "model.lua")
+	T.eq(Features.Realm("on_holiday.lua"), nil, "on_holiday.lua")
+	T.eq(Features.Realm("sound_paths.lua"), nil, "sound_paths.lua")
+	T.eq(Features.Realm("svc.lua"), nil, "svc.lua starts with sv but not sv_")
+end)
+
+T.test("every file ships except a server one", function()
+	T.eq(Features.Ships("sv.lua"), false, "sv.lua")
+	T.eq(Features.Ships("sv_soldier.lua"), false, "sv_soldier.lua")
+	T.eq(Features.Ships("cl.lua"), true, "cl.lua")
+	T.eq(Features.Ships("sh_events.lua"), true, "sh_events.lua")
+	T.eq(Features.Ships("model.lua"), true, "model.lua")
+end)
+
+-- A fake folder port: `tree` maps a folder ("features/a/") to its file names
+-- and its subfolder names, as file.Find returns them.
+local function TreePort(tree)
+	local port = {}
+	function port:Find(dir)
+		local entry = tree[dir] or {
+			files = {},
+			dirs = {},
+		}
+		return entry.files, entry.dirs
+	end
+	return port
+end
+
+T.test("client files: every shipping .lua file under the folders, recursively, sorted", function()
+	local port = TreePort({
+		["foundation/"] = {
+			files = { "teams.lua" },
+			dirs = {},
+		},
+		["features/"] = {
+			files = {},
+			dirs = { "b", "a" },
+		},
+		["features/a/"] = {
+			files = { "sv.lua", "sv_x.lua", "sh.lua", "cl.lua", "cl_x.lua", "model.lua", "notes.txt" },
+			dirs = { "scenario" },
+		},
+		["features/a/scenario/"] = {
+			files = { "koth.lua" },
+			dirs = {},
+		},
+		["features/b/"] = {
+			files = { "sv.lua" },
+			dirs = {},
+		},
+		["ws/"] = {
+			files = { "sv_world.lua", "sound_paths.lua", "sh_core.lua" },
+			dirs = {},
+		},
+	})
+	T.eq(List(Features.ClientFiles(port, { "ws/", "features/", "foundation/" })), List({
+		"features/a/cl.lua",
+		"features/a/cl_x.lua",
+		"features/a/model.lua",
+		"features/a/scenario/koth.lua",
+		"features/a/sh.lua",
+		"foundation/teams.lua",
+		"ws/sh_core.lua",
+		"ws/sound_paths.lua",
+	}))
+end)
+
+T.test("client files walk the gamemode's three folders", function()
+	T.eq(List(Features.CLIENT_DIRS), "foundation/,features/,ws/")
+end)
+
 T.finish()

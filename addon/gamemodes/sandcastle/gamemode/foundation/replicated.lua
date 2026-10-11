@@ -3,6 +3,7 @@
 -- server-only ones, so its console knows every one: it completes their
 -- names and shows their server values, and a change is told in chat.
 local bor, gsub, ipairs, match, sub, type = bit.bor, string.gsub, ipairs, string.match, string.sub, type
+local Features = require("foundation.features")
 module(...)
 
 -- Whether a chunk's source (debug.getinfo's source or short_src) is one of
@@ -14,11 +15,11 @@ function Ours(source, folder)
 end
 
 -- Whether a source is a client-only file (ws/cl_*.lua, a feature's
--- cl.lua): its convars are the client's own, which the client sets, so
--- they are never replicated (only the server may set a replicated one).
+-- cl.lua or cl_* part; foundation.features.Realm is the rule): its convars
+-- are the client's own, which the client sets, so they are never replicated
+-- (only the server may set a replicated one).
 function ClientOnly(source)
-	local file = match(source, "([^/]+)$")
-	return file == "cl.lua" or sub(file, 1, 3) == "cl_"
+	return Features.Realm(match(source, "([^/]+)$")) == Features.CLIENT
 end
 
 -- The flags every gamemode convar gets: FCVAR_REPLICATED and FCVAR_NOTIFY.

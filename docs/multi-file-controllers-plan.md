@@ -477,6 +477,14 @@ assertions. Commit with `git -c gpg.program=gpg-loopback commit`.
 
 ### M1. Sending files to clients (unblocks phase 4)
 
+**Status (2026-10-11): implemented and committed. The server check passed: after
+`changelevel pl_badwater` the server log has no Lua error, and server-side
+`WS.require("features.tag.model")` and `WS.require("ws.sound_paths")` return
+tables. OPEN: the client check (`ship true table true table` on a client after
+a changelevel) needs the operator present. Until it passes, foundation phase 4
+and any `cl_`/`sh_` part split (M5's `rounds/cl.lua`, `nbdebug/cl.lua`,
+`capture/cl.lua`) stay blocked. M2–M4 may proceed (reviewer, M1 gate).**
+
 **Tests first.**
 
 - `tests/features_test.lua`: `Realm` cases.

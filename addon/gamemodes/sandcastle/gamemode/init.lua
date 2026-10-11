@@ -3,34 +3,21 @@ AddCSLuaFile("cl_init.lua")
 
 include("shared.lua")
 
--- Foundation modules are pure logic, safe to send; clients load them with
--- WS.require. A system's parts sit in its folder (foundation/payload/).
-local function SendFoundation(dir)
-	local root = GM.FolderName .. "/gamemode/"
-	for _, f in ipairs(file.Find(root .. dir .. "*.lua", "LUA")) do AddCSLuaFile(dir .. f) end
-	local _, dirs = file.Find(root .. dir .. "*", "LUA")
-	for _, d in ipairs(dirs) do SendFoundation(dir .. d .. "/") end
-end
-SendFoundation("foundation/")
-
--- Every feature's client parts are sent as source; nothing runs until the
--- server loads the feature and tells clients (WS.Feature, sh_core.lua).
--- sv.lua stays on the server.
-local function SendFeatureClientParts()
+-- Clients are sent every file under foundation/, features/ and ws/ but the
+-- server's (sv.lua, sv_*), as source: foundation and feature modules, feature
+-- client and shared parts, and ws/ sh_, cl_ and unprefixed modules. Nothing
+-- runs until a client loads it (WS.require, or WS.Feature once the server
+-- loads the feature, sh_core.lua).
+do
 	local Features = WS.require("foundation.features")
 	local root = GM.FolderName .. "/gamemode/"
-	local _, names = file.Find(root .. Features.ROOT .. "*", "LUA")
-	for _, name in ipairs(names) do
-		for _, part in ipairs(Features.CLIENT_PARTS) do
-			local path = Features.PartPath(name, part)
-			if file.Exists(root .. path, "LUA") then AddCSLuaFile(path) end
-		end
+	local GamemodeFiles = {}
+	function GamemodeFiles:Find(dir)
+		return file.Find(root .. dir .. "*", "LUA")
 	end
+	for _, path in ipairs(Features.ClientFiles(GamemodeFiles, Features.CLIENT_DIRS)) do AddCSLuaFile(path) end
 end
-SendFeatureClientParts()
 
-for _, f in ipairs(GM:WSModules("sh_")) do AddCSLuaFile("ws/" .. f) end
-for _, f in ipairs(GM:WSModules("cl_")) do AddCSLuaFile("ws/" .. f) end
 for _, f in ipairs(GM:WSModules("sv_")) do include("ws/" .. f) end
 
 -- No one joins while the nav mesh is being generated (ws/sv_nav.lua):
