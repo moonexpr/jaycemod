@@ -660,6 +660,15 @@ gains a `FeatureParts` built on the fake `CompileFile`.
 
 ### M4. Split `features/aiwar/sv.lua` (unblocks phase 5)
 
+**Status (2026-10-11): committed (42272dd, 9bbbab1); live listing parity,
+swaps and port binding passed on pl_badwater. OWED: the live lazy-loading
+check (`WS.FeatureLoaded("aiwar")` false after a changelevel). The dev
+server's `server.cfg` sets `mp_aiwar_autostart 1`, so the operator runs it
+with `mp_aiwar_autostart 0` in the same session as M1's client check. The
+reviewer accepted a structural proof meanwhile: the split touched only
+`features/aiwar/*` and two tests, and the callers of `WS.Feature("aiwar")`
+are unchanged.**
+
 **The map of parts, measured from the code.** Section boundaries come from
 the file's own `-- Name ---` headers. Cross-part names come from a scan of
 every file-level `local` against the sections that use it.
