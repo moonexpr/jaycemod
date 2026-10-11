@@ -267,7 +267,6 @@ function Soldier:RequestRoute(goal)
 	local start = self.ent:GetPos()
 	local controller = self.controller
 	local team = self.team
-	self.routeGeneration = self:Generation()
 	npcs:RequestRoute({
 		avoid = function(area) return controller:UnderCart(area) or controller:ShutDoorIn(area, team) end,
 		from = start,
@@ -290,12 +289,6 @@ end
 
 function Soldier:RouteResult()
 	return self.result
-end
-
--- What the route was planned under: the blockers' changes and the doors
--- found shut.
-function Soldier:Generation()
-	return WS.Feature("npc"):BlockerGeneration() .. ":" .. (self.controller.shutDoorGeneration or 0)
 end
 
 function Soldier:CanWalkTo(p)
@@ -1539,7 +1532,6 @@ function Controller:NoteShutDoor(door, team)
 	end
 	if noted.teams[team] then return end
 	noted.teams[team] = true
-	self.shutDoorGeneration = (self.shutDoorGeneration or 0) + 1
 end
 
 function Controller:ShutDoorIn(area, team)
