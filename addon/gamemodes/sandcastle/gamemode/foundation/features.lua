@@ -10,8 +10,7 @@
 --   port:TellClients(name) (server only: a feature with a client part loaded).
 -- Paths are relative to the gamemode folder.
 --
--- A file's name says its realm (docs/multi-file-controllers-plan.md §2.2):
--- sv.lua and sv_*, cl.lua and cl_*, sh.lua and sh_*; any other name is a
+-- A file's name says its realm: sv.lua and sv_*, cl.lua and cl_*, sh.lua and sh_*; any other name is a
 -- pure module. Clients are sent every file but the server's.
 local error, format, ipairs, match, setfenv, setmetatable, type = error, string.format, ipairs, string.match, setfenv, setmetatable, type
 local concat, sort = table.concat, table.sort
@@ -71,8 +70,8 @@ function ClientFiles(port, dirs)
 end
 
 -- A realm root (sv.lua, cl.lua, sh.lua) is its feature's composition root: it
--- runs its parts, <realm>_<part>.lua beside it, in order
--- (docs/multi-file-controllers-plan.md §2.3-2.4).
+-- declares the state and runs its parts, <realm>_<part>.lua beside it, in
+-- order; a part may register its own wiring under ids unique to the feature.
 function PartFile(name, part)
 	if not REALM_OF[match(part, "^(%a%a)_[%w_]+$")] then error("not a feature part: " .. part, 0) end
 	return ROOT .. name .. "/" .. part .. ".lua"

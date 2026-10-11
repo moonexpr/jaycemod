@@ -2,8 +2,7 @@
 -- that returns no table ("returned nil, not its table"): every such part
 -- ends by returning it. Found by a client joining a payload map.
 --
--- A feature's realm root runs its parts (docs/multi-file-controllers-plan.md
--- §2.4, M2): the structural checks (a)-(g) below run over the real tree, and
+-- A feature's realm root runs its parts: the structural checks (a)-(g) below run over the real tree, and
 -- each is shown to bite on a fixture feature in a temp directory, never
 -- under the gamemode.
 local T = dofile("tests/harness.lua")
@@ -33,7 +32,7 @@ end)
 -- The tree on disk -------------------------------------------------------------
 
 local REALMS = { Features.SERVER, Features.CLIENT, Features.SHARED }
-local MAX_LINES = 600 -- operator decision 2 (plan §6)
+local MAX_LINES = 600 -- a realm file's longest; past it, split into parts
 -- Realm files still over MAX_LINES; a split that lands removes its entry.
 local PENDING_SPLIT = { "aiwar/sv.lua", "rounds/sv.lua", "capture/sv.lua", "npc/sv.lua" }
 
@@ -182,7 +181,7 @@ local function NestedParts(tree)
 end
 
 -- (c) Only a realm root calls WS.FeatureParts, as
--- WS.FeatureParts(getfenv(1), "<its own folder name>") (plan §2.3).
+-- WS.FeatureParts(getfenv(1), "<its own folder name>").
 local function PartsCallers(tree)
 	local problems = {}
 	for _, path in ipairs(tree:Scanned()) do
@@ -241,7 +240,7 @@ local function DuplicateMethods(tree)
 	return problems
 end
 
--- The literal wiring keys a file registers (plan §2.4 rule 4), in order.
+-- The literal wiring keys a file registers, in order.
 local function WiringKeys(text)
 	local code = Code(text)
 	local constants = {}

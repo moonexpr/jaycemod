@@ -66,8 +66,8 @@ do
 	T.RealmSource, T.FeatureParts = gamemode.RealmSource, gamemode.FeatureParts
 end
 
--- A recorder of a load's wiring (docs/multi-file-controllers-plan.md §2.4
--- rule 4): fake hook, concommand, cvars, timer and Events tables that record
+-- A recorder of a load's wiring, whose ids must be unique across a
+-- feature's files: fake hook, concommand, cvars, timer and Events tables that record
 -- each registration by the key GMod replaces it under, as "<kind> <key>".
 --   wiring:Registered() -> every key recorded, in order, repeats included
 --   wiring:Duplicates() -> the keys recorded more than once, in first order

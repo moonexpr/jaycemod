@@ -257,7 +257,7 @@ T.test("a feature that is off is refused and none of its files run", function()
 	T.eq(loader:IsLoaded("nodegraph"), false)
 end)
 
--- Realms and shipping (docs/multi-file-controllers-plan.md §2.2) -----------
+-- Realms and shipping --------------------------------------------------------
 
 T.test("a file's realm is its exact root name or its realm prefix", function()
 	T.eq(Features.Realm("sv.lua"), SV, "sv.lua")
@@ -341,7 +341,7 @@ T.test("client files walk the gamemode's three folders", function()
 	T.eq(List(Features.CLIENT_DIRS), "foundation/,features/,ws/")
 end)
 
--- Realm parts (docs/multi-file-controllers-plan.md §2.3) --------------------
+-- Realm parts ----------------------------------------------------------------
 
 T.test("a part's file sits beside its root", function()
 	T.eq(Features.PartFile("aiwar", "sv_map"), "features/aiwar/sv_map.lua")

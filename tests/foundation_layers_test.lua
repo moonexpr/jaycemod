@@ -1,4 +1,4 @@
--- foundation/'s layers (docs/foundation-simplification-plan.md §2, §3): every
+-- foundation/'s layers (docs/research/foundation-admission-rule.md): every
 -- module is in one of four categories, ranked bottom-up, or is pending a move
 -- out of foundation. A category may require only itself and the categories
 -- below it, and foundation never requires a feature or a ws/ file.
@@ -16,7 +16,7 @@ local RANK = {
 	ns = 4,
 }
 
--- §3.1: the modules that stay, by category.
+-- The modules that stay, by category.
 local CATEGORY = {
 	["npc/route"] = "structures",
 	["consolecfg"] = "structures",
@@ -83,7 +83,7 @@ local CATEGORY = {
 	["nav_gaps"] = "ns",
 }
 
--- §3.2 and §3.3: the modules still to move, and where each goes.
+-- The modules still to move, and where each goes.
 local PENDING = {
 	["holiday"] = "features/holiday",
 	["holiday/fortune"] = "features/holiday",

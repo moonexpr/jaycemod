@@ -1,5 +1,4 @@
--- What the server sends clients (docs/multi-file-controllers-plan.md §2.2,
--- M1): Features.ClientFiles over the real tree sends every file under
+-- What the server sends clients: Features.ClientFiles over the real tree sends every file under
 -- foundation/, features/ and ws/ except server ones (sv.lua, sv_*), and every
 -- module a shipped file requires is itself shipped.
 local T = dofile("tests/harness.lua")
@@ -88,7 +87,7 @@ T.test("no server file is sent", function()
 	T.eq(table.concat(server, ", "), "", "server files sent")
 end)
 
--- init.lua's rule before M1: all of foundation/, each feature's sh.lua and
+-- init.lua's former rule: all of foundation/, each feature's sh.lua and
 -- cl.lua, and ws/sh_* and ws/cl_*. The new rule adds only modules: the
 -- files under features/ and ws/ with no realm.
 T.test("the sent set is the old rule's set plus the feature and ws modules", function()

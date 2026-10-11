@@ -1141,7 +1141,7 @@ end)
 
 -- GMod replaces a hook, command, callback, timer or listener registered
 -- again under the same key, so one registration would silently drop
--- another (docs/multi-file-controllers-plan.md §2.4 rule 4, check f2).
+-- another.
 T.test("registers each wiring key once", function()
 	local w = World()
 	Load(w)
