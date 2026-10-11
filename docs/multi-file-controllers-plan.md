@@ -484,6 +484,7 @@ tables. OPEN: the client check (`ship true table true table` on a client after
 a changelevel) needs the operator present. Until it passes, foundation phase 4
 and any `cl_`/`sh_` part split (M5's `rounds/cl.lua`, `nbdebug/cl.lua`,
 `capture/cl.lua`) stay blocked. M2–M4 may proceed (reviewer, M1 gate).**
+The "prints nothing" grep is scoped to code: `git grep -n "SendFeatureClientParts\|SendFoundation" -- addon tests .devtools` (this doc quotes the names).
 
 **Tests first.**
 
