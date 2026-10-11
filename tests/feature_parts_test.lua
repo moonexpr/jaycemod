@@ -2,7 +2,7 @@
 -- that returns no table ("returned nil, not its table"): every such part
 -- ends by returning it. Found by a client joining a payload map.
 --
--- A feature's realm root runs its parts: the structural checks (a)-(g) below run over the real tree, and
+-- A feature's realm root runs its parts: the structural checks (a)-(h) below run over the real tree, and
 -- each is shown to bite on a fixture feature in a temp directory, never
 -- under the gamemode.
 local T = dofile("tests/harness.lua")
@@ -34,7 +34,7 @@ end)
 local REALMS = { Features.SERVER, Features.CLIENT, Features.SHARED }
 local MAX_LINES = 600 -- a realm file's longest; past it, split into parts
 -- Realm files still over MAX_LINES; a split that lands removes its entry.
-local PENDING_SPLIT = { "aiwar/sv.lua", "rounds/sv.lua", "capture/sv.lua", "npc/sv.lua" }
+local PENDING_SPLIT = { "rounds/sv.lua", "capture/sv.lua", "npc/sv.lua" }
 
 local function Lines(command)
 	local list = assert(io.popen(command))
@@ -305,6 +305,94 @@ local function OversizeFiles(tree, pending)
 	return problems
 end
 
+-- (h) In a split feature realm, every self.<lowercase> field a
+-- Controller method assigns, in the root or any part, is declared by the
+-- root's `local Controller = {` literal.
+
+-- The keys a root's Controller literal declares: those at its top level, and
+-- those listed on a `-- name = nil` comment line; nil when it has none.
+local function DeclaredFields(root)
+	local literal = root:match("local%s+Controller%s*=%s*(%b{})")
+	if not literal then return nil end
+	local declared, depth = {}, 0
+	for line in literal:sub(2, -2):gmatch("[^\n]+") do
+		if depth == 0 then
+			local key = Code(line):match("^%s*([%a_][%w_]*)%s*=%f[^=]") or line:match("^%s*%-%-%s*([%a_][%w_]*)%s*=%s*nil%f[^%w_]")
+			if key then declared[key] = true end
+		end
+		local _, opens = Code(line):gsub("{", "")
+		local _, closes = Code(line):gsub("}", "")
+		depth = depth + opens - closes
+	end
+	return declared
+end
+
+-- Each Controller method in a file's code, as { name, body }: its first line,
+-- then every line up to the `end` at column 0 that closes it; a method on
+-- one line is that line.
+local function ControllerMethods(code)
+	local methods, lines = {}, {}
+	for line in (code .. "\n"):gmatch("([^\n]*)\n") do lines[#lines + 1] = line end
+	for i, line in ipairs(lines) do
+		local name = line:match("^function%s+(Controller[:.][%w_]+)%s*%(")
+		if name then
+			local body = { line }
+			for j = i + 1, #lines do
+				local following = lines[j]
+				if following:match("^%S") then
+					if following:match("^end%f[^%w_]") then body[#body + 1] = following else body = { line } end
+					break
+				end
+				body[#body + 1] = following
+			end
+			methods[#methods + 1] = { name = name, body = table.concat(body, "\n") }
+		end
+	end
+	return methods
+end
+
+-- The self.<lowercase> fields code assigns, `self.a, self.b = ...` included.
+local function AssignedFields(code)
+	local fields = {}
+	for targets in code:gmatch("([%w_%.,%s]*)=%f[^=]") do
+		local rest = targets
+		while true do
+			local before, field = rest:match("^(.-)self%.(%l[%w_]*)%s*$")
+			if not field then break end
+			fields[#fields + 1] = field
+			rest = before:match("^(.-),%s*$")
+			if not rest then break end
+		end
+	end
+	return fields
+end
+
+local function UndeclaredFields(tree)
+	local problems, seen = {}, {}
+	EachRealm(tree, function(name, realm)
+		local r = RealmOf(tree, name, realm)
+		if not r.root or #r.parts == 0 then return end
+		local declared = DeclaredFields(r.root)
+		for _, file in ipairs(RealmFiles(tree, name, realm)) do
+			for _, method in ipairs(ControllerMethods(Code(file.text))) do
+				if not declared then
+					local problem = string.format("%s/%s.lua has parts with Controller methods but declares no local Controller = { table", name, realm)
+					if not seen[problem] then problems[#problems + 1] = problem end
+					seen[problem] = true
+				else
+					for _, field in ipairs(AssignedFields(method.body)) do
+						local problem = string.format("%s: %s assigns self.%s, which the root's Controller table does not declare", file.label, method.name, field)
+						if not declared[field] and not seen[problem] then problems[#problems + 1] = problem end
+						seen[problem] = true
+					end
+				end
+			end
+		end
+	end)
+	table.sort(problems)
+	return problems
+end
+
 -- Fixtures: features in a temp directory, never under the gamemode --------------
 
 local FIXTURE_PREFIX = "fixture_"
@@ -563,6 +651,52 @@ T.test("(g) a realm file over the limit fails, and so does a stale pending entry
 	})
 end)
 
+T.test("(h) a field a split controller's method assigns that its root does not declare fails", function()
+	local tree = FixtureTree({
+		["features/fixture_a/sv.lua"] = table.concat({
+			"local Controller = {",
+			"\twar = nil, -- running",
+			'\ttracks = setmetatable({}, { mode = "k" }),',
+			"\t-- slots = nil, -- read when first needed",
+			"}",
+			'local Part = WS.FeatureParts(getfenv(1), "fixture_a")',
+			'Part("sv_a", Controller)',
+			"function Controller:Stop()",
+			"\tself.war = nil",
+			"\tself.stopped = true",
+			"end",
+			"return Controller",
+		}, "\n"),
+		["features/fixture_a/sv_a.lua"] = table.concat({
+			"local Controller = ...",
+			"function Controller:Start()",
+			"\tself.war = {}",
+			"\tself.slots = {}",
+			"\tself.tracks[1] = true",
+			"\tif self.paused == true then return end",
+			'\tself.mode, self.extra = "k", 1',
+			"\tself.Soldier = {}",
+			"end",
+			"function Controller.Reset(self) self.cleared = true end",
+			"function Soldier:Move() self.moved = true end",
+			"-- function Controller:Old() self.old = true end",
+		}, "\n"),
+		-- unsplit: its root alone is not checked
+		["features/fixture_b/sv.lua"] = "local Controller = {}\nfunction Controller:Start() self.war = 1 end\nreturn Controller",
+		-- split, with no Controller table in its root
+		["features/fixture_c/sv.lua"] = 'local Part = WS.FeatureParts(getfenv(1), "fixture_c")\nPart("sv_x")\nreturn {}',
+		["features/fixture_c/sv_x.lua"] = "function Controller:Start() end",
+	})
+	local undeclared = "which the root's Controller table does not declare"
+	Same(UndeclaredFields(tree), {
+		"fixture_a/sv.lua: Controller:Stop assigns self.stopped, " .. undeclared,
+		"fixture_a/sv_a.lua: Controller.Reset assigns self.cleared, " .. undeclared,
+		"fixture_a/sv_a.lua: Controller:Start assigns self.extra, " .. undeclared,
+		"fixture_a/sv_a.lua: Controller:Start assigns self.mode, " .. undeclared,
+		"fixture_c/sv.lua has parts with Controller methods but declares no local Controller = { table",
+	})
+end)
+
 -- The checks over the gamemode -----------------------------------------------
 
 T.test("(a) every part is named by exactly one Part call in its realm's root", function()
@@ -591,6 +725,10 @@ end)
 
 T.test("(g) no realm file is over the limit but those pending a split, which still are", function()
 	Same(OversizeFiles(GAMEMODE, PENDING_SPLIT), {})
+end)
+
+T.test("(h) every field a split controller's method assigns is declared in its root", function()
+	Same(UndeclaredFields(GAMEMODE), {})
 end)
 
 -- Fixtures leave nothing behind --------------------------------------------------

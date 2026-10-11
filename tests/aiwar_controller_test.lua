@@ -196,6 +196,7 @@ local function Env(w)
 	w.wiring = wiring
 	local ws = {
 		require = T.require,
+		FeatureParts = T.FeatureParts,
 		TEAM_RED = RED,
 		TEAM_BLUE = BLUE,
 		TEAM_UNASSIGNED = NOBODY,

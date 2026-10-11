@@ -1,0 +1,482 @@
+-- Part of the AI war controller (sv.lua): the soldier port over a DrGBase soldier, and its gadgets.
+local Map = ...
+local TFBot = WS.require("foundation.npc.path.tfbot")
+local HL2Path = WS.require("foundation.npc.path.hl2")
+local Zone = WS.require("foundation.aiwar.zone")
+local WALK_MINS, WALK_MAXS, WALK_LIFT, WALK_MAX_RISE = Map.WALK_MINS, Map.WALK_MAXS, Map.WALK_LIFT, Map.WALK_MAX_RISE
+local Point, ToVector, Masks, IsDoor = Map.Point, Map.ToVector, Map.Masks, Map.IsDoor
+local OnFloor = Map.OnFloor
+
+-------------------------------------------------------------------------------
+-- The soldier port (foundation.aiwar.soldier) over a DrGBase soldier
+-- (ws_drg_soldier): orders set its target and gait; it walks there on
+-- the nav mesh as a NextBot, fighting on the way as DrGBase's human AI.
+
+local Soldier = {}
+Soldier.__index = Soldier
+
+function Soldier.New(ent, controller, team)
+	return setmetatable({
+		ent = ent,
+		controller = controller,
+		team = team,
+		ticket = 0,
+		result = nil,
+		moveTarget = nil,
+		relations = {}, -- player -> disposition last set
+	}, controller.Soldier)
+end
+
+function Soldier:Now() return CurTime() end
+
+-- Healing: the target the controller's tick heals (Controller:ApplyHeal).
+function Soldier:Heal(handle)
+	if handle ~= nil and not IsValid(handle) then handle = nil end
+	self.healTarget = handle
+end
+function Soldier:IsDisarmed() return self.disarmed == true end
+function Soldier:Health() return self.ent:Health() end
+function Soldier:MaxHealth() return self.ent:GetMaxHealth() end
+
+-- Riding the cart: SEATS_PER_CART seats on top of each cart, SEAT_SPREAD
+-- either side of its middle, taken by a soldier within SEAT_REACH of the
+-- cart's edge. A seated soldier is carried along by the controller's tick
+-- (Controller:CarrySeated), sits (ws_drg_soldier's WSSeated pose)
+-- and fights from there; it gets off beside the cart (EjectFromCart). With
+-- ws_aiwar_sitting_enabled 0 no seat is free, and turning it off
+-- stands every seated soldier (Controller:StandSeated).
+local SEATS_PER_CART, SEAT_SPREAD, SEAT_REACH = 2, 16, 72
+local SITTING = CreateConVar("ws_aiwar_sitting_enabled", "1", { FCVAR_ARCHIVE, FCVAR_NOTIFY },
+	"Whether the AI war's cart pushers sit on the cart; 0 gets every seated soldier off it")
+
+function Soldier:IsSeated() return self.seat ~= nil end
+
+function Soldier:Sit()
+	if not SITTING:GetBool() then return false end
+	if self.seat then return true end
+	local controller = self.controller
+	local train = controller.cartEntities and controller.cartEntities[self.team]
+	if not IsValid(train) then return false end
+	local mins, maxs = train:WorldSpaceAABB()
+	for _, child in ipairs(train:GetChildren()) do
+		-- the cart's model rides it too; its triggers (capture area, kill
+		-- trigger) are not what one sits on
+		if IsValid(child) and child:GetSolid() ~= SOLID_NONE and bit.band(child:GetSolidFlags(), FSOLID_TRIGGER) == 0 then
+			local _, cMaxs = child:WorldSpaceAABB()
+			maxs.z = math.max(maxs.z, cMaxs.z)
+		end
+	end
+	local center = (mins + maxs) / 2
+	local pos = self.ent:GetPos()
+	if math.abs(pos.x - center.x) > (maxs.x - mins.x) / 2 + SEAT_REACH
+		or math.abs(pos.y - center.y) > (maxs.y - mins.y) / 2 + SEAT_REACH then
+		return false
+	end
+	controller.seats = controller.seats or {}
+	local seats = controller.seats[train] or {}
+	controller.seats[train] = seats
+	for index = 1, SEATS_PER_CART do
+		local holder = seats[index]
+		if not (IsValid(holder) and controller.soldiers[holder] and controller.soldiers[holder].soldier.seat) then
+			local side = index % 2 == 1 and 1 or -1
+			local seatPos = Vector(center.x, center.y, maxs.z + 1) + train:GetRight() * (side * SEAT_SPREAD)
+			seats[index] = self.ent
+			self.seat = { train = train, index = index, side = side, offset = train:WorldToLocal(seatPos) }
+			self.moveTarget = nil
+			self.ent.NSTarget = nil
+			self.ent.NSSeated = true
+			self.seatGroup = self.ent:GetCollisionGroup()
+			self.ent:SetCollisionGroup(COLLISION_GROUP_DEBRIS)
+			return true
+		end
+	end
+	return false
+end
+
+function Soldier:Stand()
+	local seat = self.seat
+	if not seat then return end
+	self.seat = nil
+	local controller = self.controller
+	local seats = controller.seats and controller.seats[seat.train]
+	if seats and seats[seat.index] == self.ent then seats[seat.index] = nil end
+	if not IsValid(self.ent) then return end
+	self.ent.NSSeated = nil
+	self.ent:SetCollisionGroup(self.seatGroup or COLLISION_GROUP_NPC)
+	local entry = controller.soldiers[self.ent]
+	if entry and IsValid(seat.train) then controller:EjectFromCart(self.ent, entry, seat.train, true) end
+end
+function Soldier:IsAlive() return IsValid(self.ent) and self.ent:Health() > 0 end
+function Soldier:Position() return Point(self.ent:GetPos()) end
+function Soldier:RangeTo(p) return self.ent:GetPos():Distance(ToVector(p)) end
+
+function Soldier:HasEnemy()
+	local ent = self.ent
+	local enemy = ent:HasEnemy() and ent:GetEnemy() or nil
+	return IsValid(enemy) and ent:Visible(enemy)
+end
+
+-- Every soldier takes the fastest route. TF2's DEFAULT_ROUTE weighs each
+-- area by up to 101 times its length to spread bots over routes, which
+-- leaves the straight-line estimate almost no guidance: the search floods
+-- most of the mesh, and on a large map (plr_hightower_event) soldiers
+-- waited on searches that gave up and walked to where they had got to.
+function Soldier:Bot()
+	return {
+		entIndex = self.ent:EntIndex(),
+		now = CurTime(),
+		team = self.team,
+		route = TFBot.FASTEST_ROUTE,
+		miniBoss = false,
+		roundWon = WS.State() == WS.STATE.TEAM_WIN,
+		winningTeam = GetGlobal2Int("ws_round_winner", WS.TEAM_UNASSIGNED),
+	}
+end
+
+function Soldier:RequestRoute(goal)
+	self.ticket = self.ticket + 1
+	self.result = nil
+	local ticket, goalPos, npcs = self.ticket, ToVector(goal), WS.Feature("npc")
+	local start = self.ent:GetPos()
+	local controller = self.controller
+	local team = self.team
+	npcs:RequestRoute({
+		avoid = function(area) return controller:UnderCart(area) or controller:ShutDoorIn(area, team) end,
+		from = start,
+		to = goalPos,
+		strategy = HL2Path,
+		limits = HL2Path.SOLDIER_LIMITS,
+		bot = self:Bot(),
+		onDone = function(areas, found)
+			if self.ticket ~= ticket then return end
+			if not areas then
+				self.result = false
+				return
+			end
+			local points = {}
+			for i, v in ipairs(npcs:RouteWaypoints(areas, goalPos, found, start)) do points[i] = Point(v) end
+			self.result = points
+		end,
+	})
+end
+
+function Soldier:RouteResult()
+	return self.result
+end
+
+function Soldier:CanWalkTo(p)
+	local from, to = self.ent:GetPos(), ToVector(p)
+	if math.abs(to.z - from.z) > WALK_MAX_RISE then return false end
+	local tr = util.TraceHull({
+		start = from + WALK_LIFT,
+		endpos = to + WALK_LIFT,
+		mins = WALK_MINS,
+		maxs = WALK_MAXS,
+		mask = Masks().solid,
+		filter = self.ent,
+	})
+	return not tr.Hit
+end
+
+local HOP_MINS, HOP_MAXS = Vector(-13, -13, 0), Vector(13, 13, 72)
+local HOP_LIFT = Vector(0, 0, 18)
+local ARRIVED = 64
+
+-- DrGBase paths on the nav mesh itself: every goal is its own to plan.
+function Soldier:PlansRoutes() return true end
+function Soldier:RouteStale() return false end
+
+function Soldier:MoveTo(p, gait)
+	if self.seat then self:Stand() end
+	self.moveTarget = p
+	self.gait = gait or "run"
+	self.ent.NSTarget = OnFloor(ToVector(p))
+	self.ent.NSRun = self.gait ~= "walk"
+end
+
+function Soldier:Watch(p)
+	self.ent.NSLook = p and ToVector(p) or nil
+end
+
+function Soldier:Release()
+	self.moveTarget = nil
+	self.walkSpeed = 0
+	self.ent.NSTarget = nil
+	self.ent.NSRun = nil
+end
+
+-- A soldier-sized box swept between two points above step height under
+-- player movement's mask, teammates aside (the observer's recovery test).
+function Soldier:Sweep(from, to)
+	local controller, ent, team = self.controller, self.ent, self.team
+	return util.TraceHull({
+		start = from + HOP_LIFT,
+		endpos = to + HOP_LIFT,
+		mins = HOP_MINS,
+		maxs = HOP_MAXS - HOP_LIFT,
+		mask = MASK_PLAYERSOLID,
+		filter = function(hit)
+			if hit == ent then return false end
+			local entry = controller.soldiers[hit]
+			return not (entry and entry.soldier.team == team)
+		end,
+	})
+end
+
+-- Each tick of a move: the pace, from position (for the report), and the
+-- door watchdog for a soldier held up by a door on its way.
+local DOOR_HOLD_PROGRESS, DOOR_HOLD_TIME = 16, 1.5
+
+function Soldier:Move(dt)
+	local ent, now = self.ent, CurTime()
+	local pos = ent:GetPos()
+	self.walkSpeed = self.lastPos and pos:Distance(self.lastPos) / math.max(dt, 1e-3) or 0
+	self.lastPos = pos
+	local anchor = self.holdAnchor
+	if not anchor or pos:Distance(anchor.pos) > DOOR_HOLD_PROGRESS then
+		self.holdAnchor, self.heldBy = { pos = pos, since = now }, nil
+	elseif now - anchor.since >= DOOR_HOLD_TIME then
+		local door = self:DoorAhead(self.moveTarget)
+		if door then self:HeldByDoor(door) end
+	end
+end
+
+-- The door between me and p, if one stands in the way.
+function Soldier:DoorAhead(p)
+	local blocker = self:Blocker(p)
+	return IsValid(blocker) and IsDoor(blocker) and blocker or nil
+end
+
+-- Stopped by a door: open it if my team may, and after DOOR_STUCK_TIME
+-- held by it, label it blocked for my team (the door watchdog, with the
+-- controller's shut doors).
+local DOOR_STUCK_TIME = 3
+
+function Soldier:HeldByDoor(door)
+	local now, held = CurTime(), self.heldBy
+	if not held or held.door ~= door then
+		held = { door = door, since = now }
+		self.heldBy = held
+	end
+	self.controller:OpenDoorFor(door, self.team)
+	if now - held.since >= DOOR_STUCK_TIME then
+		self.controller:NoteShutDoor(door, self.team)
+		self.heldBy = nil
+	end
+end
+
+-- For the report: the gait and pace, or why the soldier is not moving.
+function Soldier:RunState()
+	if self.moveTarget == nil then return nil end
+	if self:RangeTo(self.moveTarget) <= ARRIVED then return "at its target" end
+	if self.ent.NSMoveResult == "unreachable" then return "no nav mesh path to its target" end
+	return string.format("%s at %d u/s", self.gait or "run", math.floor(self.walkSpeed or 0))
+end
+
+-- What stands between me and p for an NPC's movement (a soldier-sized box
+-- above step height, under the NPC's mask, teammates and the enemy aside),
+-- and whether a player would pass it (the same sweep under player
+-- movement's mask does not hit it).
+function Soldier:Blocker(p)
+	local controller = self.controller
+	local from, to = self.ent:GetPos() + HOP_LIFT, ToVector(p) + HOP_LIFT
+	local function NotSoldier(hit) return controller.soldiers[hit] == nil end
+	local hit = util.TraceHull({ start = from, endpos = to, mins = HOP_MINS, maxs = HOP_MAXS - HOP_LIFT, mask = Masks().solid, filter = NotSoldier })
+	if not hit.Hit then return nil, false end
+	-- map geometry (func_detail is compiled into it) is the world
+	local blocker = hit.HitWorld and game.GetWorld() or hit.Entity
+	local function OnlyBlocker(other) return other == blocker end
+	local asPlayer = util.TraceHull({ start = from, endpos = to, mins = HOP_MINS, maxs = HOP_MAXS - HOP_LIFT, mask = MASK_PLAYERSOLID, filter = OnlyBlocker })
+	if hit.HitWorld then return blocker, not asPlayer.HitWorld end
+	return blocker, asPlayer.Entity ~= blocker
+end
+
+-- NextBot movement steers round what it can; nothing is passed or hopped.
+function Soldier:PassBlocker() return false end
+function Soldier:Detour() return nil end
+function Soldier:Hop() return false end
+
+-- A random spot on the nav mesh within radius of center, on floor a
+-- soldier can walk (no crouch or jump areas).
+local PATROL_TRIES = 6
+
+function Soldier:PatrolSpot(center, radius)
+	local step = HL2Path.LIMITS.stepHeight
+	local areas = navmesh.Find(ToVector(center), radius, step * 4, step * 4)
+	if #areas == 0 then return nil end
+	for _ = 1, PATROL_TRIES do
+		local area = areas[math.random(#areas)]
+		if bit.band(area:GetAttributes(), HL2Path.NAV_MESH_CROUCH + HL2Path.NAV_MESH_JUMP) == 0 and not self.controller:UnderCart(area) then
+			return Point(area:GetRandomPoint())
+		end
+	end
+	return nil
+end
+
+-- A random spot on the ground behind the setup gates (the controller's
+-- SetupZone), by area size; else, with no zone to trust, one within
+-- WANDER_RADIUS that I can walk to in a straight line, or nil after a few
+-- tries.
+local WANDER_RADIUS, WANDER_TRIES = 300, 6
+
+local function AreaSize(area) return area:GetSizeX() * area:GetSizeY() end
+
+function Soldier:WanderSpot()
+	local zone = self.controller:SetupZone(self.team)
+	if zone then
+		for _ = 1, WANDER_TRIES do
+			local area = Zone.PickWeighted(zone, AreaSize, math.random())
+			if not self.controller:UnderCart(area) then return Point(area:GetRandomPoint()) end
+		end
+	end
+	local step = HL2Path.LIMITS.stepHeight
+	local areas = navmesh.Find(self.ent:GetPos(), WANDER_RADIUS, step, step)
+	if #areas == 0 then return nil end
+	for _ = 1, WANDER_TRIES do
+		local spot = Point(areas[math.random(#areas)]:GetRandomPoint())
+		if self:CanWalkTo(spot) then return spot end
+	end
+	return nil
+end
+
+function Soldier:Enemy()
+	local enemy = self.ent:GetEnemy()
+	return IsValid(enemy) and enemy or nil
+end
+
+function Soldier:EnemyHealth()
+	local enemy = self.ent:GetEnemy()
+	if not IsValid(enemy) or enemy:Health() <= 0 then return nil end
+	return enemy:Health() / math.max(enemy:GetMaxHealth(), 1)
+end
+
+function Soldier:EnemyPosition()
+	local enemy = self.ent:GetEnemy()
+	return IsValid(enemy) and Point(enemy:GetPos()) or nil
+end
+
+function Soldier:HurtSince(t)
+	return self.hurtAt ~= nil and self.hurtAt > (t or 0)
+end
+
+function Soldier:Hold()
+	self:MoveTo(self:Position(), self.gait)
+end
+
+-- Cover: the nav mesh's hiding spots in cover (CNavArea::GetHidingSpots)
+-- within radius of center, that the threat cannot see from eye height to
+-- a crouching soldier's chest, nearest center first, COVER_EXCLUDE clear of
+-- the spot to leave.
+local HIDING_IN_COVER_SPOT = 1
+local THREAT_EYE, COVER_CHEST = Vector(0, 0, 64), Vector(0, 0, 36)
+local COVER_EXCLUDE = 96
+
+function Soldier:CoverSpot(center, radius, threat, exclude, taken)
+	local c, t = ToVector(center), ToVector(threat)
+	local best, bestDistance
+	for _, area in ipairs(navmesh.Find(c, radius, 96, 96)) do
+		for _, spot in ipairs(area:GetHidingSpots(HIDING_IN_COVER_SPOT) or {}) do
+			local d = spot:Distance(c)
+			if d <= radius and (not bestDistance or d < bestDistance)
+				and not (exclude and spot:Distance(ToVector(exclude)) < COVER_EXCLUDE)
+				and not (taken and taken(Point(spot))) then
+				local tr = util.TraceLine({ start = t + THREAT_EYE, endpos = spot + COVER_CHEST, mask = MASK_SOLID_BRUSHONLY })
+				if tr.Hit then best, bestDistance = spot, d end
+			end
+		end
+	end
+	return best and Point(best) or nil
+end
+
+-- Poses and following the cart are not yet made for DrGBase soldiers.
+function Soldier:Pose() return nil end
+function Soldier:Unpose() end
+function Soldier:FollowCart() return false end
+function Soldier:Unfollow() end
+function Soldier:RemoveScript() end
+
+-- Gadgets: what a kit's soldier throws, deploys or sends (the kit's
+-- gadgets, first ready first): a frag grenade lobbed at p when nothing
+-- solid stands between (every time asked); a floor turret set down toward
+-- p (one per soldier, standing until it dies); a manhack sent from its hand
+-- (one per soldier at a time, gone after MANHACK_LIFE).
+local GRENADE_FUSE, GRENADE_SPEED, GRENADE_MIN, GRENADE_MAX = 2.5, 700, 256, 1000
+local TURRET_STEP, MANHACK_LIFE = 48, 45
+local GADGET_CHEST = Vector(0, 0, 32)
+
+local function ThrowAnimation(ent)
+	if ent.AddGesture then ent:AddGesture(ACT_GMOD_GESTURE_ITEM_THROW) end
+end
+
+local GADGETS = {}
+
+function GADGETS.grenade(soldier, target)
+	local ent = soldier.ent
+	local from = ent:EyePos()
+	local distance = from:Distance(target)
+	if distance < GRENADE_MIN or distance > GRENADE_MAX then return false end
+	local tr = util.TraceLine({ start = from, endpos = target + GADGET_CHEST, mask = MASK_SOLID_BRUSHONLY })
+	if tr.Hit then return false end
+	local grenade = ents.Create("npc_grenade_frag")
+	if not IsValid(grenade) then return false end
+	grenade:SetPos(from + ent:GetForward() * 16)
+	grenade:SetOwner(ent)
+	grenade:Spawn()
+	grenade:Activate()
+	grenade:Fire("SetTimer", tostring(GRENADE_FUSE))
+	-- a lob: across at GRENADE_SPEED, up enough to land on target
+	local t = distance / GRENADE_SPEED
+	local velocity = (target - from) / t
+	velocity.z = velocity.z + 0.5 * physenv.GetGravity():Length() * t
+	local phys = grenade:GetPhysicsObject()
+	if IsValid(phys) then phys:SetVelocity(velocity) end
+	ThrowAnimation(ent)
+	soldier.controller:AddGadget(grenade, soldier, "grenade", CurTime() + GRENADE_FUSE + 1)
+	return true
+end
+
+function GADGETS.turret(soldier, target)
+	if soldier.controller:GadgetsOf(soldier, "turret") > 0 then return false end
+	local ent = soldier.ent
+	local dir = target - ent:GetPos()
+	dir.z = 0
+	if dir:IsZero() then return false end
+	dir:Normalize()
+	local pos = ent:GetPos() + dir * TURRET_STEP
+	local tr = util.TraceHull({ start = pos + Vector(0, 0, 8), endpos = pos + Vector(0, 0, 8), mins = Vector(-16, -16, 0), maxs = Vector(16, 16, 64), mask = MASK_SOLID })
+	if tr.Hit then return false end
+	local turret = ents.Create("npc_turret_floor")
+	if not IsValid(turret) then return false end
+	turret:SetPos(pos)
+	turret:SetAngles(Angle(0, dir:Angle().y, 0))
+	turret:Spawn()
+	turret:Activate()
+	ThrowAnimation(ent)
+	soldier.controller:AddGadget(turret, soldier, "turret")
+	return true
+end
+
+function GADGETS.manhack(soldier)
+	if soldier.controller:GadgetsOf(soldier, "manhack") > 0 then return false end
+	local ent = soldier.ent
+	local manhack = ents.Create("npc_manhack")
+	if not IsValid(manhack) then return false end
+	manhack:SetPos(ent:EyePos() + ent:GetForward() * 32)
+	manhack:SetAngles(ent:GetAngles())
+	manhack:Spawn()
+	manhack:Activate()
+	ThrowAnimation(ent)
+	soldier.controller:AddGadget(manhack, soldier, "manhack", CurTime() + MANHACK_LIFE)
+	return true
+end
+
+function Soldier:UseGadget(p)
+	if not self.kit or not self.kit.gadgets or self.disarmed then return nil end
+	local target = ToVector(p)
+	for _, name in ipairs(self.kit.gadgets) do
+		if GADGETS[name](self, target) then return name end
+	end
+	return nil
+end
+
+return Soldier, ARRIVED
