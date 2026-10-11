@@ -422,7 +422,6 @@ T.test("a win fires the master's and round's OnWonByTeam output", function()
 end)
 
 local ENTITIES = "addon/gamemodes/sandcastle/entities/entities/"
-local CONTROLLER = T.ROOT .. "features/capture/sv.lua"
 
 local function Read(path)
 	local f = assert(io.open(path, "rb"))
@@ -438,7 +437,7 @@ T.test("the capture bindings require no foundation module", function()
 end)
 
 T.test("the capture controller defines every method other features call", function()
-	local text = Read(CONTROLLER)
+	local text = T.RealmSource("capture", "sv")
 	local methods = {
 		"BindMaster", "BindRound", "BindArea", "AreaThink", "AreaInput", "MasterInput", "RoundInput",
 		"Owner", "Index", "Rank", "Points", "IsInRound", "TeamMayCapture", "IsCapturing", "CappingTeam",

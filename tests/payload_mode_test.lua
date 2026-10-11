@@ -376,7 +376,7 @@ T.test("the legacy payload files are gone", function()
 end)
 
 T.test("the payload controller defines every method other code calls", function()
-	local text = Read(T.ROOT .. "features/payload/sv.lua")
+	local text = T.RealmSource("payload", "sv")
 	for _, name in ipairs({ "CartSpeedScale", "SetCartSpeedScale", "HasMultipleTrains", "BindWatcher", "BindEscort" }) do
 		T.eq(text:find("function Controller:" .. name .. "(", 1, true) ~= nil, true, name)
 	end
@@ -392,7 +392,7 @@ T.test("the payload bindings reach the controller, not the old globals", functio
 end)
 
 T.test("the payload view reads only networked state", function()
-	T.eq(Read(T.ROOT .. "features/payload/cl.lua"):find("ents.Find", 1, true), nil, "no ents.Find")
+	T.eq(T.RealmSource("payload", "cl"):find("ents.Find", 1, true), nil, "no ents.Find")
 end)
 
 T.finish()

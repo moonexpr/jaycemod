@@ -341,4 +341,62 @@ T.test("client files walk the gamemode's three folders", function()
 	T.eq(List(Features.CLIENT_DIRS), "foundation/,features/,ws/")
 end)
 
+-- Realm parts (docs/multi-file-controllers-plan.md §2.3) --------------------
+
+T.test("a part's file sits beside its root", function()
+	T.eq(Features.PartFile("aiwar", "sv_map"), "features/aiwar/sv_map.lua")
+	T.eq(Features.PartFile("boss_timer", "cl_hud_bar"), "features/boss_timer/cl_hud_bar.lua")
+	T.eq(Features.PartFile("rounds", "sh_events"), "features/rounds/sh_events.lua")
+end)
+
+T.test("a name that is not <realm>_<part> is refused as a part", function()
+	for _, part in ipairs({ "soldier", "../x", "sv_a.b", "sv_", "sv", "on_holiday", "sv_../x" }) do
+		T.eq(ErrorOf(function() Features.PartFile("aiwar", part) end), "not a feature part: " .. part, part)
+	end
+end)
+
+-- A fake compile port: `chunks` maps a path to its chunk; records each path
+-- compiled.
+local function CompilePort(chunks)
+	local port = { compiled = {} }
+	function port:Compile(path)
+		self.compiled[#self.compiled + 1] = path
+		return chunks[path]
+	end
+	return port
+end
+
+T.test("a part runs its file's chunk in the env it was given, with the arguments, and returns its values", function()
+	local seen = {}
+	local chunk = function(...)
+		seen.marker = MARKER -- a global: read from the chunk's env
+		seen.args = { ... }
+		return "map", "extra"
+	end
+	local port = CompilePort({ ["features/aiwar/sv_map.lua"] = chunk })
+	local env = { MARKER = "the root's env" }
+	local Part = Features.Parts(port, env, "aiwar")
+	local controller = {}
+	local a, b = Part("sv_map", controller, 7)
+	T.eq(List(port.compiled), "features/aiwar/sv_map.lua", "compiled exactly the part")
+	T.eq(seen.marker, "the root's env", "ran in the env")
+	T.eq(seen.args[1], controller, "first argument")
+	T.eq(seen.args[2], 7, "second argument")
+	T.eq(#seen.args, 2, "no other arguments")
+	T.eq(a, "map", "first value")
+	T.eq(b, "extra", "second value")
+end)
+
+T.test("a part whose file is missing or does not compile raises naming its path", function()
+	local Part = Features.Parts(CompilePort({}), {}, "aiwar")
+	T.eq(ErrorOf(function() Part("sv_map") end), "features/aiwar/sv_map.lua did not compile")
+end)
+
+T.test("a part name is checked before anything compiles", function()
+	local port = CompilePort({})
+	local Part = Features.Parts(port, {}, "aiwar")
+	T.eq(ErrorOf(function() Part("map") end), "not a feature part: map")
+	T.eq(#port.compiled, 0, "nothing compiled")
+end)
+
 T.finish()

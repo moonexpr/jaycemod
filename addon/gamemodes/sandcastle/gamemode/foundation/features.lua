@@ -13,7 +13,7 @@
 -- A file's name says its realm (docs/multi-file-controllers-plan.md §2.2):
 -- sv.lua and sv_*, cl.lua and cl_*, sh.lua and sh_*; any other name is a
 -- pure module. Clients are sent every file but the server's.
-local error, format, ipairs, match, setmetatable, type = error, string.format, ipairs, string.match, setmetatable, type
+local error, format, ipairs, match, setfenv, setmetatable, type = error, string.format, ipairs, string.match, setfenv, setmetatable, type
 local concat, sort = table.concat, table.sort
 local floor = math.floor
 module(...)
@@ -68,6 +68,27 @@ function ClientFiles(port, dirs)
 	for _, dir in ipairs(dirs) do AddClientFiles(port, dir, paths) end
 	sort(paths)
 	return paths
+end
+
+-- A realm root (sv.lua, cl.lua, sh.lua) is its feature's composition root: it
+-- runs its parts, <realm>_<part>.lua beside it, in order
+-- (docs/multi-file-controllers-plan.md §2.3-2.4).
+function PartFile(name, part)
+	if not REALM_OF[match(part, "^(%a%a)_[%w_]+$")] then error("not a feature part: " .. part, 0) end
+	return ROOT .. name .. "/" .. part .. ".lua"
+end
+
+-- The root's part runner: Part(part, ...) runs the part's chunk in env (the
+-- root's own, getfenv(1)) with the arguments and returns its values.
+--   port:Compile(path) -> the file's chunk, or nil when it is missing or
+--   does not compile.
+function Parts(port, env, name)
+	return function(part, ...)
+		local path = PartFile(name, part)
+		local chunk = port:Compile(path)
+		if not chunk then error(path .. " did not compile", 0) end
+		return setfenv(chunk, env)(...)
+	end
 end
 
 -- What differs between the realms: which file is the realm's own part, how a

@@ -111,10 +111,16 @@ function FeatureFiles:Exists(path)
 end
 
 -- CompileFile rather than include, so an error in the file reaches the
--- caller. CompileFile prints a syntax error itself and returns no function.
-function FeatureFiles:Run(path)
+-- caller. CompileFile prints a syntax error itself and returns no function:
+-- the file's chunk, or nil.
+function FeatureFiles:Compile(path)
 	local chunk = CompileFile(GAMEMODE_ROOT .. path)
-	if not isfunction(chunk) then error(path .. " did not compile", 0) end
+	if isfunction(chunk) then return chunk end
+end
+
+function FeatureFiles:Run(path)
+	local chunk = self:Compile(path)
+	if not chunk then error(path .. " did not compile", 0) end
 	return chunk()
 end
 
@@ -130,6 +136,14 @@ WS.FeatureLoader = WS.FeatureLoader
 -- The server's controller or the client's view for a feature, loaded once.
 function WS.Feature(name)
 	return WS.FeatureLoader:Feature(name)
+end
+
+-- A realm root's part runner (foundation.features Parts): the root calls
+-- local Part = WS.FeatureParts(getfenv(1), "<its feature>"), then
+-- Part("sv_<part>", ...) for each part in order. getfenv(1), not the
+-- helper's getfenv(2), so a tail call cannot lose hot swap's stubbed env.
+function WS.FeatureParts(env, name)
+	return Features.Parts(FeatureFiles, env, name)
 end
 
 -- Whether this map has loaded the feature, without loading it.

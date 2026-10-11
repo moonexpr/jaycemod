@@ -5,8 +5,6 @@
 local T = dofile("tests/harness.lua")
 
 local ROOT = T.ROOT
-local CONTROLLER = ROOT .. "features/nbdebug/sv.lua"
-local VIEW = ROOT .. "features/nbdebug/cl.lua"
 local COMMANDS = ROOT .. "ws/sv_nbdebug.lua"
 
 local function ReadFile(path)
@@ -23,9 +21,9 @@ local function Names(text, call)
 	return found
 end
 
-local controller, view = ReadFile(CONTROLLER), ReadFile(VIEW)
-local shared = ReadFile(ROOT .. "features/nbdebug/sh.lua")
-local aiwar = ReadFile(ROOT .. "features/aiwar/sv.lua")
+local controller, view = T.RealmSource("nbdebug", "sv"), T.RealmSource("nbdebug", "cl")
+local shared = T.RealmSource("nbdebug", "sh")
+local aiwar = T.RealmSource("aiwar", "sv")
 
 -- What the nbdebug controller fires, and the AI war's overlay.
 local function Fired()

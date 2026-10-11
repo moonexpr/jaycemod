@@ -1,4 +1,4 @@
--- The AI war controller (features/aiwar/sv.lua) and its soldier entities
+-- The AI war controller (features/aiwar's server realm) and its soldier entities
 -- (ws/sh_drg_soldier.lua) agree on the fields the controller sets on a
 -- soldier to steer it: each one the controller writes (self.ent.X = ...)
 -- the soldier reads (self.X). A field written under one name and read under
@@ -14,7 +14,7 @@ local function ReadFile(path)
 	return text
 end
 
-local controller = ReadFile(ROOT .. "features/aiwar/sv.lua")
+local controller = T.RealmSource("aiwar", "sv")
 local soldier = ReadFile(ROOT .. "ws/sh_drg_soldier.lua")
 
 T.test("the soldier reads every steering field the controller sets on it", function()

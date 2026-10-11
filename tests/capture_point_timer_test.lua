@@ -128,7 +128,6 @@ end)
 
 -- Seam checks, read as text.
 local ENTITIES = "addon/gamemodes/sandcastle/entities/entities/"
-local CONTROLLER = T.ROOT .. "features/capture/sv.lua"
 
 local function Read(path)
 	local f = assert(io.open(path, "rb"))
@@ -142,7 +141,7 @@ T.test("the tf_logic_cp_timer binding requires no foundation module", function()
 end)
 
 T.test("the capture controller defines every method the binding calls", function()
-	local text = Read(CONTROLLER)
+	local text = T.RealmSource("capture", "sv")
 	for _, name in ipairs({ "BindPointTimer", "UnbindPointTimer", "PointTimerThink", "PointTimerInput" }) do
 		T.eq(text:find("function Controller:" .. name .. "(", 1, true) ~= nil, true, name)
 	end

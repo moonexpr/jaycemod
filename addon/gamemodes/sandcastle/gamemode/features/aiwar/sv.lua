@@ -298,10 +298,6 @@ function Soldier:Generation()
 	return WS.Feature("npc"):BlockerGeneration() .. ":" .. (self.controller.shutDoorGeneration or 0)
 end
 
-function Soldier:RouteStale()
-	return type(self.result) == "table" and self.routeGeneration ~= self:Generation()
-end
-
 function Soldier:CanWalkTo(p)
 	local from, to = self.ent:GetPos(), ToVector(p)
 	if math.abs(to.z - from.z) > WALK_MAX_RISE then return false end

@@ -609,12 +609,12 @@ T.test("tf_logic_koth loads its feature on first use, never at file load, and ho
 end)
 
 T.test("the koth controller has the methods the binding calls, and the view reads only networked state", function()
-	local sv = Source("addon/gamemodes/sandcastle/gamemode/features/koth/sv.lua")
+	local sv = T.RealmSource("koth", "sv")
 	for _, name in ipairs({ "BindLogic", "UnbindLogic", "LogicInput" }) do
 		T.eq(sv:find("function Controller:" .. name .. "(", 1, true) ~= nil, true, name)
 	end
 	T.eq(sv:find("CreateTimer(c.name", 1, true) ~= nil, true, "each clock made with its zz_ name")
-	local cl = Source("addon/gamemodes/sandcastle/gamemode/features/koth/cl.lua")
+	local cl = T.RealmSource("koth", "cl")
 	T.eq(cl:find("ents.Find", 1, true) == nil, true, "no ents.Find in the view")
 end)
 

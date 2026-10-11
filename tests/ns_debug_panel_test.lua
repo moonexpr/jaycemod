@@ -65,7 +65,7 @@ end)
 
 T.test("the menu toggles and the panel checks every part of the overlay, and the overlay reads each part", function()
 	local menu, panel = ReadFile(MENU), ReadFile(PANEL)
-	local view = ReadFile(ROOT .. "features/nbdebug/cl.lua")
+	local view = T.RealmSource("nbdebug", "cl")
 	local Overlay = T.require("foundation.ns.overlay")
 	T.eq(menu:find("Check(parts, Overlay.LABELS[part]", 1, true) ~= nil, true, "a toggle per part")
 	T.eq(panel:find("for _, part in ipairs(Overlay.PARTS) do panel:CheckBox(Overlay.LABELS[part], Overlay.ConVar(part))", 1, true) ~= nil,

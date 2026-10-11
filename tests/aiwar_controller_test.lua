@@ -191,6 +191,9 @@ local function World()
 end
 
 local function Env(w)
+	-- each load's registrations, keyed as GMod keys them (T.Wiring)
+	local wiring = T.Wiring()
+	w.wiring = wiring
 	local ws = {
 		require = T.require,
 		TEAM_RED = RED,
@@ -244,7 +247,12 @@ local function Env(w)
 		end,
 		FCVAR_ARCHIVE = 128,
 		FCVAR_NOTIFY = 256,
-		cvars = { AddChangeCallback = function(name, fn) w.convarCallbacks[name] = fn end },
+		cvars = {
+			AddChangeCallback = function(name, fn, id)
+				wiring.cvars.AddChangeCallback(name, fn, id)
+				w.convarCallbacks[name] = fn
+			end,
+		},
 		D_HT = 1,
 		D_FR = 2,
 		D_LI = 3,
@@ -259,8 +267,13 @@ local function Env(w)
 		IsValid = function(v) return v ~= nil and v ~= false end,
 		CurTime = function() return w.now end,
 		SetGlobal2Bool = function() end,
-		concommand = { Add = function() end },
-		hook = { Add = function(event, _, fn) w.hooks[event] = fn end },
+		concommand = wiring.concommand,
+		hook = {
+			Add = function(event, id, fn)
+				wiring.hook.Add(event, id, fn)
+				w.hooks[event] = fn
+			end,
+		},
 		ents = {
 			FindByClass = function() return {} end,
 			GetAll = function() return {} end,
@@ -1126,10 +1139,18 @@ T.test("control points through the controller: commands from the first think, bo
 	Hunting(battle, RED)
 end)
 
+-- GMod replaces a hook, command, callback, timer or listener registered
+-- again under the same key, so one registration would silently drop
+-- another (docs/multi-file-controllers-plan.md §2.4 rule 4, check f2).
+T.test("registers each wiring key once", function()
+	local w = World()
+	Load(w)
+	T.eq(#w.wiring:Registered() > 20, true, "the registrations were recorded")
+	T.eq(table.concat(w.wiring:Duplicates(), ", "), "", "keys registered twice")
+end)
+
 T.test("the controller never reads the map's name for its scenario", function()
-	local f = assert(io.open(SOURCE, "rb"))
-	local text = f:read("*a")
-	f:close()
+	local text = T.RealmSource("aiwar", "sv")
 	T.eq(text:find("this map has no payload cart", 1, true), nil, "no cart refusal")
 	T.eq(text:find("function Controller:CartTeams", 1, true), nil, "CartTeams moved to the payload variant")
 	for _, name in ipairs({ "game.GetMap", '"koth_', '"cp_', '"pl_' }) do

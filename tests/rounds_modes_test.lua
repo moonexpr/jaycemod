@@ -160,7 +160,7 @@ local CONTROLLER_METHODS = {
 }
 
 T.test("the rounds controller defines every method other features call", function()
-	local source = Read(T.ROOT .. "features/rounds/sv.lua")
+	local source = T.RealmSource("rounds", "sv")
 	for _, name in ipairs(CONTROLLER_METHODS) do
 		T.eq(source:find("function Controller:" .. name .. "(", 1, true) ~= nil, true, name)
 	end

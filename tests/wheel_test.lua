@@ -552,7 +552,7 @@ end
 
 T.test("the fake and the wheel controller implement every world method", function()
 	local world = World()
-	local controller = ReadFile(ROOT .. "gamemode/features/wheel/sv.lua")
+	local controller = T.RealmSource("wheel", "sv")
 	for _, name in ipairs(Wheel.METHODS) do
 		T.eq(type(world[name]), "function", "fake " .. name)
 		T.eq(controller:find("function world:" .. name .. "(", 1, true) ~= nil, true, "controller " .. name)
