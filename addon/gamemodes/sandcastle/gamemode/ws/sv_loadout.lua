@@ -7,6 +7,7 @@
 -- equipped weapons are what a player spawns with (GM:PlayerLoadout, init.lua).
 local Economy = WS.require("foundation.economy")
 local Loadout = WS.require("foundation.loadout")
+local Refusal = WS.require("foundation.refusal")
 local E = WS.Events
 
 local CATALOG = WS.LoadoutCatalog
@@ -29,16 +30,17 @@ local function Publish(ply)
 	}, ply)
 end
 
--- The player's refusals go back to them; anything else is our bug.
-local function Refused(err)
-	return Loadout.Refused(err) or getmetatable(err) == Economy.InsufficientFunds
-end
+-- The refusals that are the player's mistake, the loadout's and the
+-- economy's; they go back to the player, and anything else, our bug, is
+-- rethrown (Refusal.Explain).
+local REFUSED = {}
+for kind in pairs(Loadout.PLAYER) do REFUSED[kind] = true end
+for kind in pairs(Economy.PLAYER) do REFUSED[kind] = true end
 
 local function Change(ply, change)
 	local ok, result = pcall(change, Of(ply))
 	if not ok then
-		if not Refused(result) then error(result, 0) end
-		E.Fire("loadout_refused", { reason = tostring(result) }, ply)
+		E.Fire("loadout_refused", { reason = Refusal.Explain(result, REFUSED) }, ply)
 		return
 	end
 	loadouts[ply] = result

@@ -2,6 +2,7 @@
 -- and the store's catalog the slots are filled from.
 local T = dofile("tests/harness.lua")
 local Loadout = T.require("foundation.loadout")
+local Refusals = T.require("foundation.refusal")
 
 local function Catalog()
 	return Loadout.NewCatalog({
@@ -57,7 +58,8 @@ end
 local function Refusal(fn, ...)
 	local ok, err = pcall(fn, ...)
 	T.eq(ok, false, "refused")
-	return getmetatable(err)
+	T.eq(type(err) == "table" and type(err.kind), "string", "a refusal has a kind")
+	return err.kind
 end
 
 T.test("the price is a tuning value", function()
@@ -79,19 +81,19 @@ T.test("the catalog finds weapons by class and lists them by kind, in order", fu
 	T.eq(#support, 3)
 	T.eq(support[1].class, "grenade")
 	T.eq(support[3].class, "rpg")
-	T.eq(Refusal(catalog.Weapon, catalog, "bfg"), Loadout.UnknownWeapon)
+	T.eq(Refusal(catalog.Weapon, catalog, "bfg"), Loadout.UNKNOWN_WEAPON)
 end)
 
 T.test("a catalog refuses a bad entry", function()
-	T.eq(Refusal(Loadout.NewCatalog, { { class = "x", name = "X", kind = 99, price = 1 } }), Loadout.BadCatalog, "unknown kind")
-	T.eq(Refusal(Loadout.NewCatalog, { { class = "x", name = "X", kind = Loadout.KIND_MELEE, price = -1 } }), Loadout.BadCatalog, "negative price")
+	T.eq(Refusal(Loadout.NewCatalog, { { class = "x", name = "X", kind = 99, price = 1 } }), Loadout.BAD_CATALOG, "unknown kind")
+	T.eq(Refusal(Loadout.NewCatalog, { { class = "x", name = "X", kind = Loadout.KIND_MELEE, price = -1 } }), Loadout.BAD_CATALOG, "negative price")
 	local twice = {
 		class = "x",
 		name = "X",
 		kind = Loadout.KIND_MELEE,
 		price = 1,
 	}
-	T.eq(Refusal(Loadout.NewCatalog, { twice, twice }), Loadout.BadCatalog, "a class twice")
+	T.eq(Refusal(Loadout.NewCatalog, { twice, twice }), Loadout.BAD_CATALOG, "a class twice")
 end)
 
 T.test("a new player owns the starters, each in a slot that takes it", function()
@@ -125,7 +127,7 @@ end)
 T.test("buying a weapon already owned is refused", function()
 	local catalog = Catalog()
 	local loadout = Loadout.Starting(catalog)
-	T.eq(Refusal(loadout.Buy, loadout, catalog:Weapon("smg")), Loadout.AlreadyOwned)
+	T.eq(Refusal(loadout.Buy, loadout, catalog:Weapon("smg")), Loadout.ALREADY_OWNED)
 end)
 
 T.test("equipping puts an owned weapon in a slot that takes it", function()
@@ -138,20 +140,20 @@ end)
 T.test("equipping a weapon not owned is refused", function()
 	local catalog = Catalog()
 	local loadout = Loadout.Starting(catalog)
-	T.eq(Refusal(loadout.Equip, loadout, Loadout.SLOT_PRIMARY, catalog:Weapon("shotgun")), Loadout.NotOwned)
+	T.eq(Refusal(loadout.Equip, loadout, Loadout.SLOT_PRIMARY, catalog:Weapon("shotgun")), Loadout.NOT_OWNED)
 end)
 
 T.test("equipping into a slot of another kind is refused", function()
 	local catalog = Catalog()
 	local loadout = Loadout.Starting(catalog)
-	T.eq(Refusal(loadout.Equip, loadout, Loadout.SLOT_MELEE, catalog:Weapon("pistol")), Loadout.WrongSlot)
+	T.eq(Refusal(loadout.Equip, loadout, Loadout.SLOT_MELEE, catalog:Weapon("pistol")), Loadout.WRONG_SLOT)
 end)
 
 T.test("a slot that does not exist is refused", function()
 	local catalog = Catalog()
 	local loadout = Loadout.Starting(catalog)
-	T.eq(Refusal(loadout.Equip, loadout, 6, catalog:Weapon("smg")), Loadout.UnknownSlot)
-	T.eq(Refusal(loadout.Clear, loadout, 0), Loadout.UnknownSlot)
+	T.eq(Refusal(loadout.Equip, loadout, 6, catalog:Weapon("smg")), Loadout.UNKNOWN_SLOT)
+	T.eq(Refusal(loadout.Clear, loadout, 0), Loadout.UNKNOWN_SLOT)
 end)
 
 T.test("a support weapon moves between the support slots, never held twice", function()
@@ -213,16 +215,78 @@ T.test("a state that breaks the rules is refused", function()
 		slot = Loadout.SLOT_PRIMARY,
 		weapon = "shotgun",
 	} }
-	T.eq(Refusal(Loadout.FromState, catalog, { "smg" }, equipped), Loadout.NotOwned)
-	T.eq(Refusal(Loadout.FromState, catalog, { "bfg" }, {}), Loadout.UnknownWeapon)
+	T.eq(Refusal(Loadout.FromState, catalog, { "smg" }, equipped), Loadout.NOT_OWNED)
+	T.eq(Refusal(Loadout.FromState, catalog, { "bfg" }, {}), Loadout.UNKNOWN_WEAPON)
 end)
 
 T.test("only the model's own refusals count as the player's mistake", function()
 	local catalog = Catalog()
 	local loadout = Loadout.Starting(catalog)
 	local _, refusal = pcall(loadout.Buy, loadout, catalog:Weapon("smg"))
+	T.eq(refusal.kind, Loadout.ALREADY_OWNED)
 	T.eq(Loadout.Refused(refusal), true)
 	T.eq(Loadout.Refused("attempt to index a nil value"), false)
+end)
+
+T.test("an events-style error, or any table without the refusal marker, is our bug", function()
+	T.eq(Loadout.Refused({
+		kind = Loadout.UNKNOWN_WEAPON,
+		message = "bfg",
+	}), false, "an events.lua error with a player's kind")
+	T.eq(Loadout.Refused({
+		kind = Loadout.UNKNOWN_WEAPON,
+		detail = "bfg",
+	}), false, "no marker")
+end)
+
+T.test("a bad catalog is the content's mistake, not the player's", function()
+	local _, err = pcall(Loadout.NewCatalog, { { class = "x", name = "X", kind = 99, price = 1 } })
+	T.eq(err.kind, Loadout.BAD_CATALOG)
+	T.eq(Loadout.Refused(err), false)
+end)
+
+T.test("a refusal reads as it did: its kind, then its detail", function()
+	local catalog = Catalog()
+	local _, err = pcall(catalog.Weapon, catalog, "bfg")
+	T.eq(Refusals.Message(err), "unknown weapon: bfg")
+	local loadout = Loadout.Starting(catalog)
+	_, err = pcall(loadout.Equip, loadout, Loadout.SLOT_MELEE, catalog:Weapon("pistol"))
+	T.eq(Refusals.Message(err), "wrong slot: pistol in slot 3")
+end)
+
+T.test("a slot holds a weapon by class", function()
+	local catalog = Catalog()
+	local loadout = Loadout.Starting(catalog)
+	T.eq(loadout:Holds(Loadout.SLOT_PRIMARY, catalog:Weapon("smg")), true)
+	T.eq(loadout:Holds(Loadout.SLOT_PRIMARY, Catalog():Weapon("smg")), true, "an entry of a rebuilt catalog")
+	T.eq(loadout:Holds(Loadout.SLOT_PRIMARY, catalog:Weapon("shotgun")), false)
+	T.eq(loadout:Holds(Loadout.SLOT_SUPPORT2, catalog:Weapon("grenade")), false, "an empty slot")
+	T.eq(loadout:Holds(Loadout.SLOT_SUPPORT2, nil), true, "nothing, in an empty slot")
+	T.eq(loadout:Holds(Loadout.SLOT_PRIMARY, nil), false, "nothing, in a filled slot")
+end)
+
+T.test("a catalog rebuilt from the same weapons still matches an old loadout by class", function()
+	local old = Loadout.Starting(Catalog())
+	local catalog = Catalog()
+	local grenade = catalog:Weapon("grenade")
+	T.eq(old:SlotFor(grenade), Loadout.SLOT_SUPPORT1, "the slot already holding it")
+	local moved = old:Equip(Loadout.SLOT_SUPPORT2, grenade)
+	T.eq(moved:Equipped(Loadout.SLOT_SUPPORT1), nil, "never held twice")
+	T.eq(moved:Equipped(Loadout.SLOT_SUPPORT2).class, "grenade")
+	T.eq(Refusals.Is(select(2, pcall(old.Buy, old, catalog:Weapon("smg"))), Loadout.PLAYER), true, "an old purchase refused")
+end)
+
+T.test("a loadout made before a rerun of the model still has its refusals recognised", function()
+	local catalog = Catalog()
+	local before = Loadout.Starting(catalog)
+	package.loaded["foundation.loadout"] = nil
+	local Rerun = T.require("foundation.loadout")
+	local _, owned = pcall(before.Buy, before, catalog:Weapon("smg"))
+	T.eq(Rerun.Refused(owned), true, "already owned")
+	local _, slot = pcall(before.Equip, before, 6, catalog:Weapon("smg"))
+	T.eq(Rerun.Refused(slot), true, "unknown slot")
+	local _, unknown = pcall(catalog.Weapon, catalog, "bfg")
+	T.eq(Rerun.Refused(unknown), true, "unknown weapon, from a catalog made before the rerun")
 end)
 
 T.finish()

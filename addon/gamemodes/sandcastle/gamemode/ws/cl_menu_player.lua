@@ -138,7 +138,7 @@ UI.Define("PlayerMenu", "DPanel", {
 			row:SetWeapon(caption, weapon)
 			row:Dock(TOP)
 			row:DockMargin(0, 0, 0, GAP / 2)
-			row:SetSelected(loadout:Equipped(slot) == weapon)
+			row:SetSelected(loadout:Holds(slot, weapon))
 			row.DoClick = function()
 				if weapon then
 					E.Request("loadout_equip", {

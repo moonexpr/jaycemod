@@ -21,6 +21,7 @@ local CATEGORY = {
 	["npc/route"] = "structures",
 	["consolecfg"] = "structures",
 	["geometry"] = "structures",
+	["refusal"] = "structures",
 
 	["rounds"] = "formalisms",
 	["rounds/state"] = "formalisms",

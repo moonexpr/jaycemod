@@ -3,10 +3,14 @@
 -- from. A catalog entry has a kind, and a slot takes only its own kind; the
 -- two support slots take the same kind, and a weapon sits in one slot at a
 -- time. A loadout is a value: Buy, Equip and Clear return a new one, or
--- raise a named refusal (Refused tells those from our own bugs). Paying for
--- a weapon is the controller's, through the economy.
-local error, floor, format, getmetatable, ipairs, pairs, setmetatable, tostring, type =
-	error, math.floor, string.format, getmetatable, ipairs, pairs, setmetatable, tostring, type
+-- raise a refusal of a named kind (foundation.refusal; Refused tells the
+-- player's from our own bugs). Paying for a weapon is the controller's,
+-- through the economy. Weapons are compared and kept by class, never by
+-- table identity, so a catalog rebuilt from the same list still matches a
+-- loadout made from the old one.
+local floor, format, ipairs, pairs, setmetatable, tostring, type =
+	math.floor, string.format, ipairs, pairs, setmetatable, tostring, type
+local Refusal = require("foundation.refusal")
 module(...)
 
 PRICE = 10
@@ -61,36 +65,28 @@ SLOTS = {
 	},
 }
 
--- Refusals. BadCatalog is the content's mistake; the rest are the player's.
-local function Refusal(what)
-	local mt = {}
-	mt.__index = mt
-	mt.__tostring = function(e) return format("%s: %s", what, e.detail) end
-	return mt
-end
+-- Refusal kinds, each read by the player as "<kind>: <detail>".
+-- BAD_CATALOG is the content's mistake; the rest are the player's.
+BAD_CATALOG = "bad catalog"
+UNKNOWN_WEAPON = "unknown weapon"
+UNKNOWN_SLOT = "unknown slot"
+ALREADY_OWNED = "already owned"
+NOT_OWNED = "not owned"
+WRONG_SLOT = "wrong slot"
 
-BadCatalog = Refusal("bad catalog")
-UnknownWeapon = Refusal("unknown weapon")
-UnknownSlot = Refusal("unknown slot")
-AlreadyOwned = Refusal("already owned")
-NotOwned = Refusal("not owned")
-WrongSlot = Refusal("wrong slot")
-
-local PLAYERS = {
-	[UnknownWeapon] = true,
-	[UnknownSlot] = true,
-	[AlreadyOwned] = true,
-	[NotOwned] = true,
-	[WrongSlot] = true,
+PLAYER = {
+	[UNKNOWN_WEAPON] = true,
+	[UNKNOWN_SLOT] = true,
+	[ALREADY_OWNED] = true,
+	[NOT_OWNED] = true,
+	[WRONG_SLOT] = true,
 }
 
-local function Raise(refusal, detail)
-	error(setmetatable({ detail = detail }, refusal), 0)
-end
+local Raise = Refusal.Raise
 
 -- Whether an error is one of the player's refusals.
 function Refused(err)
-	return type(err) == "table" and PLAYERS[getmetatable(err)] == true
+	return Refusal.Is(err, PLAYER)
 end
 
 local KNOWN_KIND = {}
@@ -98,7 +94,7 @@ for _, k in ipairs(KINDS) do KNOWN_KIND[k.kind] = true end
 
 local function SlotOf(slot)
 	local s = SLOTS[slot]
-	if s == nil then Raise(UnknownSlot, tostring(slot)) end
+	if s == nil then Raise(UNKNOWN_SLOT, tostring(slot)) end
 	return s
 end
 
@@ -109,11 +105,11 @@ local Catalog = {}
 Catalog.__index = Catalog
 
 local function Entry(e)
-	if type(e.class) ~= "string" or e.class == "" then Raise(BadCatalog, "an entry without a class") end
-	if type(e.name) ~= "string" then Raise(BadCatalog, e.class .. " has no name") end
-	if not KNOWN_KIND[e.kind] then Raise(BadCatalog, e.class .. " has no known kind") end
+	if type(e.class) ~= "string" or e.class == "" then Raise(BAD_CATALOG, "an entry without a class") end
+	if type(e.name) ~= "string" then Raise(BAD_CATALOG, e.class .. " has no name") end
+	if not KNOWN_KIND[e.kind] then Raise(BAD_CATALOG, e.class .. " has no known kind") end
 	if type(e.price) ~= "number" or e.price < 0 or e.price ~= floor(e.price) then
-		Raise(BadCatalog, e.class .. " has no whole, non-negative price")
+		Raise(BAD_CATALOG, e.class .. " has no whole, non-negative price")
 	end
 	return {
 		class = e.class,
@@ -132,7 +128,7 @@ function NewCatalog(entries)
 	}, Catalog)
 	for i, e in ipairs(entries) do
 		local weapon = Entry(e)
-		if catalog.byClass[weapon.class] then Raise(BadCatalog, weapon.class .. " is listed twice") end
+		if catalog.byClass[weapon.class] then Raise(BAD_CATALOG, weapon.class .. " is listed twice") end
 		catalog.list[i] = weapon
 		catalog.byClass[weapon.class] = weapon
 	end
@@ -141,7 +137,7 @@ end
 
 function Catalog:Weapon(class)
 	local weapon = self.byClass[class]
-	if weapon == nil then Raise(UnknownWeapon, tostring(class)) end
+	if weapon == nil then Raise(UNKNOWN_WEAPON, tostring(class)) end
 	return weapon
 end
 
@@ -185,9 +181,18 @@ function Loadout:Owns(weapon)
 	return self.owned[weapon.class] == true
 end
 
+-- The catalog entry in the slot, or nil.
 function Loadout:Equipped(slot)
 	SlotOf(slot)
-	return self.equipped[slot]
+	local class = self.equipped[slot]
+	return class and self.catalog:Weapon(class)
+end
+
+-- Whether the slot holds the weapon, matched by class; for nil, whether it
+-- is empty.
+function Loadout:Holds(slot, weapon)
+	SlotOf(slot)
+	return self.equipped[slot] == (weapon and weapon.class)
 end
 
 -- The weapons owned that the slot takes, in catalog order.
@@ -206,7 +211,7 @@ function Loadout:SlotFor(weapon)
 	local empty, first
 	for _, s in ipairs(SLOTS) do
 		if s.kind == weapon.kind then
-			if self.equipped[s.slot] == weapon then return s.slot end
+			if self.equipped[s.slot] == weapon.class then return s.slot end
 			if empty == nil and self.equipped[s.slot] == nil then empty = s.slot end
 			first = first or s.slot
 		end
@@ -215,13 +220,13 @@ function Loadout:SlotFor(weapon)
 end
 
 function Loadout:Equip(slot, weapon)
-	if not Fits(slot, weapon) then Raise(WrongSlot, format("%s in slot %d", weapon.class, slot)) end
-	if not self:Owns(weapon) then Raise(NotOwned, weapon.class) end
+	if not Fits(slot, weapon) then Raise(WRONG_SLOT, format("%s in slot %d", weapon.class, slot)) end
+	if not self:Owns(weapon) then Raise(NOT_OWNED, weapon.class) end
 	local equipped = Copy(self.equipped)
 	for s, held in pairs(equipped) do
-		if held == weapon then equipped[s] = nil end
+		if held == weapon.class then equipped[s] = nil end
 	end
-	equipped[slot] = weapon
+	equipped[slot] = weapon.class
 	return New(self.catalog, self.owned, equipped)
 end
 
@@ -234,7 +239,7 @@ end
 
 -- Owns the weapon, and puts it in the first empty slot that takes it.
 function Loadout:Buy(weapon)
-	if self:Owns(weapon) then Raise(AlreadyOwned, weapon.class) end
+	if self:Owns(weapon) then Raise(ALREADY_OWNED, weapon.class) end
 	local owned = Copy(self.owned)
 	owned[weapon.class] = true
 	local bought = New(self.catalog, owned, self.equipped)
@@ -261,11 +266,11 @@ function Loadout:State()
 		if self:Owns(weapon) then owned[#owned + 1] = weapon.class end
 	end
 	for _, s in ipairs(SLOTS) do
-		local weapon = self.equipped[s.slot]
-		if weapon then
+		local class = self.equipped[s.slot]
+		if class then
 			equipped[#equipped + 1] = {
 				slot = s.slot,
-				weapon = weapon.class,
+				weapon = class,
 			}
 		end
 	end

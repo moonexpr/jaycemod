@@ -1,27 +1,26 @@
 -- Money: every player and every NPC that fights for a team holds an
 -- account, opened at STARTING_MONEY. Earning adds to it; spending refuses
--- (InsufficientFunds) rather than overdraw it. Accounts are kept by whatever
+-- (INSUFFICIENT_FUNDS) rather than overdraw it. Accounts are kept by whatever
 -- key the controller gives (ws/sv_economy.lua keys them by entity) and
 -- last until closed, so a respawn or a team change keeps a player's money.
-local error, floor, format, reverse, setmetatable, tostring, type =
-	error, math.floor, string.format, string.reverse, setmetatable, tostring, type
+-- A ledger is plain data with no metatable, so a rerun of this module
+-- changes the behaviour of the live ledger too.
+local error, floor, format, reverse, tostring, type =
+	error, math.floor, string.format, string.reverse, tostring, type
 local gsub = string.gsub
+local Refusal = require("foundation.refusal")
 module(...)
 
 STARTING_MONEY = 2000
 
 -- The refusal Spend raises: the caller asked for more than the account holds.
-InsufficientFunds = {}
-InsufficientFunds.__index = InsufficientFunds
-InsufficientFunds.__tostring = function(e)
-	return format("insufficient funds: %d wanted, %d held", e.wanted, e.held)
-end
+INSUFFICIENT_FUNDS = "insufficient funds"
 
-local Bank = {}
-Bank.__index = Bank
+-- The refusals that are the player's mistake.
+PLAYER = { [INSUFFICIENT_FUNDS] = true }
 
 function New()
-	return setmetatable({ balances = {} }, Bank)
+	return { balances = {} }
 end
 
 local function Amount(amount)
@@ -31,46 +30,41 @@ local function Amount(amount)
 	return amount
 end
 
-local function Held(bank, key)
-	local held = bank.balances[key]
+local function Held(ledger, key)
+	local held = ledger.balances[key]
 	if held == nil then error("no account for " .. tostring(key), 3) end
 	return held
 end
 
 -- Opens an account at STARTING_MONEY; an open one keeps its money.
-function Bank:Open(key)
-	if self.balances[key] == nil then self.balances[key] = STARTING_MONEY end
+function Open(ledger, key)
+	if ledger.balances[key] == nil then ledger.balances[key] = STARTING_MONEY end
 end
 
-function Bank:Close(key)
-	self.balances[key] = nil
+function Close(ledger, key)
+	ledger.balances[key] = nil
 end
 
-function Bank:Has(key)
-	return self.balances[key] ~= nil
+function Has(ledger, key)
+	return ledger.balances[key] ~= nil
 end
 
-function Bank:Balance(key)
-	return Held(self, key)
+function Balance(ledger, key)
+	return Held(ledger, key)
 end
 
-function Bank:CanAfford(key, amount)
-	return Held(self, key) >= Amount(amount)
+function CanAfford(ledger, key, amount)
+	return Held(ledger, key) >= Amount(amount)
 end
 
-function Bank:Earn(key, amount)
-	self.balances[key] = Held(self, key) + Amount(amount)
+function Earn(ledger, key, amount)
+	ledger.balances[key] = Held(ledger, key) + Amount(amount)
 end
 
-function Bank:Spend(key, amount)
-	local held, wanted = Held(self, key), Amount(amount)
-	if wanted > held then
-		error(setmetatable({
-			wanted = wanted,
-			held = held,
-		}, InsufficientFunds), 2)
-	end
-	self.balances[key] = held - wanted
+function Spend(ledger, key, amount)
+	local held, wanted = Held(ledger, key), Amount(amount)
+	if wanted > held then Refusal.Raise(INSUFFICIENT_FUNDS, format("%d wanted, %d held", wanted, held)) end
+	ledger.balances[key] = held - wanted
 end
 
 -- $1,234,567
