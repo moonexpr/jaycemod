@@ -13,10 +13,10 @@ its own root, launch record srcds[-n].pid, log srcds[-n].log and default port
 (DEFAULT_PORT, then INSTANCE_PORT_STEP apart), so two can run side by side.
 
 The server is GMod's Windows x86-64 srcds_win64.exe in the CrossOver bottle
-"Steam" and nowhere else: the operator plays in the bottle "Team Fortress 2",
-and a server there ended the operator's game once. The Steam bottle's
+"GModServer" and nowhere else: the operator plays in the bottle "Steam",
+and a server there ended the operator's game once. The GModServer bottle's
 C:\Steam\steamapps\common\GarrysMod and ...\Team Fortress 2 are links to
-the TF2 bottle's, so the files are shared and only the processes separate.
+the Steam bottle's, so the files are shared and only the processes separate.
 The server runs from GarrysModServer beside it, which `start` builds out of
 symlinks (server_root.py): its addons/, data/, cache/ and console log are
 its own, so it writes nothing in the shared install. It runs with -insecure
@@ -105,7 +105,7 @@ MIN_SLOTS = 2  # the harness's bots need room
 LOCALHOST = "127.0.0.1"
 # start binds this Mac's tailnet name by default, so the operator can play
 # from other machines on the tailnet; --ip 127.0.0.1 keeps it to this one.
-DEFAULT_BIND_HOST = "cosmicbook.tail"
+DEFAULT_BIND_HOST = "100.126.111.105" # cosmicbook.tail
 
 REPO = Path(__file__).resolve().parents[2]
 ARTIFACTS = REPO / ".devtools" / "artifacts"
@@ -113,13 +113,13 @@ PASSWORD_FILE = ARTIFACTS / "rcon_password"
 PID_FILE = ARTIFACTS / "srcds.pid"
 PROCESS_LOG = ARTIFACTS / "srcds.log"
 
-BOTTLE = "Steam"  # never "Team Fortress 2", where the operator plays
+BOTTLE = "GModServer"  # never "Steam", where the operator plays
 BOTTLE_DIR = Path.home() / "Library/Application Support/CrossOver/Bottles" / BOTTLE
 MAIN = Instance(MAIN_INSTANCE)
 GMOD_WINDOWS = MAIN.root_windows
 GMOD_DIR = MAIN.root / "garrysmod"
 WINE_RELATIVE = "Contents/SharedSupport/CrossOver/bin/wine"
-CROSSOVER_APPS = (Path("/Applications/CrossOver GPTK4.app"), Path("/Applications/CrossOver.app"))
+CROSSOVER_APPS = (Path.home() / "Applications/CrossOver Preview.app",)
 SERVER_EXE = server_root.SERVER_EXE
 # Processes a stop never signals, whoever started them: the bottle's
 # wineserver and wine's services, which every program in the bottle shares.

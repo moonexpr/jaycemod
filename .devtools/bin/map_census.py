@@ -18,7 +18,7 @@ from bsp_entities import parse_entity_lump, read_entity_lump
 
 REPO = Path(__file__).resolve().parents[2]
 OURS_DIR = REPO / "addon/gamemodes/sandcastle/entities/entities"
-BOTTLE = Path.home() / "Library/Application Support/CrossOver/Bottles/Team Fortress 2/drive_c/Steam/steamapps/common"
+BOTTLE = Path.home() / "Library/Application Support/CrossOver/Bottles/Steam/drive_c/Steam/steamapps/common"
 TF2 = BOTTLE / "Team Fortress 2"
 GMOD_SERVER = BOTTLE / "GarrysMod/garrysmod/bin/win64/server.dll"
 FGD_CLASS = re.compile(r"@\w+Class[^=]*=\s*(\w+)")

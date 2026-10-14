@@ -40,7 +40,7 @@ __all__ = [
 REPO = Path(__file__).resolve().parents[2]
 OUT_DIR = REPO / ".devtools" / "artifacts" / "tf2-server-content"
 TF_DIR = Path.home() / (
-    "Library/Application Support/CrossOver/Bottles/Team Fortress 2/"
+    "Library/Application Support/CrossOver/Bottles/Steam/"
     "drive_c/Steam/steamapps/common/Team Fortress 2/tf"
 )
 MISC_VPK = "tf2_misc_dir.vpk"

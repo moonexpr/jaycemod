@@ -11,9 +11,9 @@ repo root with `python3`.
 
 ## Never
 
-- **Never run a server in the CrossOver bottle "Team Fortress 2".** The
+- **Never run a server in the CrossOver bottle "Steam".** The
   operator plays there, and a server in that bottle once killed their game.
-  Servers run only in the bottle "Steam" (`srcds.py`'s `BOTTLE`, which
+  Servers run only in the bottle "GModServer" (`srcds.py`'s `BOTTLE`, which
   refuses any other). Don't launch `srcds_win64.exe` or wine by hand.
 - **Never kill wine processes by name or pattern** (`pkill wine`,
   `killall`, `wineserver -k`, `wineboot`). `srcds.py stop` signals only the

@@ -25,7 +25,7 @@ from pathlib import Path
 from typing import Iterable, Iterator, List, Mapping, Tuple
 
 TF_DIR = Path.home() / (
-    "Library/Application Support/CrossOver/Bottles/Team Fortress 2/"
+    "Library/Application Support/CrossOver/Bottles/Steam/"
     "drive_c/Steam/steamapps/common/Team Fortress 2/tf"
 )
 VPK_SIGNATURE = 0x55AA1234

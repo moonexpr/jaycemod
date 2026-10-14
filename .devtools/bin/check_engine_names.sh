@@ -4,7 +4,7 @@
 # (garrysmod/lua, garrysmod/gamemodes) for each name given, whole-word.
 #   check_engine_names.sh NAME...   prints "NAME: free" or "NAME: taken (where)"
 # Nonzero if any name is taken. GMOD_DIR overrides the install path.
-GMOD_DIR=${GMOD_DIR:-"$HOME/Library/Application Support/CrossOver/Bottles/Team Fortress 2/drive_c/Steam/steamapps/common/GarrysMod"}
+GMOD_DIR=${GMOD_DIR:-"$HOME/Library/Application Support/CrossOver/Bottles/Steam/drive_c/Steam/steamapps/common/GarrysMod"}
 [ -d "$GMOD_DIR" ] || { echo "no GMod install at $GMOD_DIR" >&2; exit 2; }
 strings_file=$(mktemp)
 trap 'rm -f "$strings_file"' EXIT

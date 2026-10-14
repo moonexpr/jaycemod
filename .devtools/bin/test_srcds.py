@@ -42,7 +42,7 @@ from srcds import (
 
 INSTALL = Install(
     wine=Path("/Apps/wine"),
-    bottle="Steam",
+    bottle="GModServer",
     gmod_windows=r"C:\Steam\steamapps\common\GarrysMod",
     gmod_dir=Path("/bottle/GarrysMod/garrysmod"),
 )
@@ -54,7 +54,7 @@ class CommandLine(unittest.TestCase):
         self.argv = command_line(INSTALL, self.config)
 
     def test_runs_the_dedicated_server_through_the_bottles_wine(self):
-        self.assertEqual(self.argv[:3], ["/Apps/wine", "--bottle", "Steam"])
+        self.assertEqual(self.argv[:3], ["/Apps/wine", "--bottle", "GModServer"])
         exe = self.argv[self.argv.index("--cx-app") + 1]
         self.assertEqual(exe, r"C:\Steam\steamapps\common\GarrysMod\srcds_win64.exe")
         self.assertEqual(self.argv[self.argv.index("--workdir") + 1], INSTALL.gmod_windows)
@@ -102,7 +102,7 @@ class CommandLine(unittest.TestCase):
         config = dataclasses.replace(self.config, lua_refresh=False)
         argv = command_line(INSTALL, config)
         self.assertIn("-disableluarefresh", argv[argv.index("--cx-app"):argv.index("+ip")])
-        self.assertEqual(argv[:3], ["/Apps/wine", "--bottle", "Steam"])
+        self.assertEqual(argv[:3], ["/Apps/wine", "--bottle", "GModServer"])
 
     def _convar(self, name):
         return self.argv[self.argv.index("+" + name) + 1]
@@ -256,13 +256,13 @@ class Instances(unittest.TestCase):
 
 
 class Bottle(unittest.TestCase):
-    def test_only_the_steam_bottle(self):
-        self.assertEqual(BOTTLE, "Steam")
+    def test_only_the_server_bottle(self):
+        self.assertEqual(BOTTLE, "GModServer")
 
     def test_a_server_in_any_other_bottle_is_refused(self):
-        tf2 = Install(Path("/Apps/wine"), "Team Fortress 2", INSTALL.gmod_windows, INSTALL.gmod_dir)
+        play = Install(Path("/Apps/wine"), "Steam", INSTALL.gmod_windows, INSTALL.gmod_dir)
         with self.assertRaises(WrongBottle):
-            command_line(tf2, ServerConfig(map="gm_construct", port=27025, rcon_password="pw", maxplayers=24))
+            command_line(play, ServerConfig(map="gm_construct", port=27025, rcon_password="pw", maxplayers=24))
 
     def test_the_launcher_does_not_update_the_bottle(self):
         argv = command_line(INSTALL, ServerConfig(map="gm_construct", port=27025, rcon_password="pw", maxplayers=24))
@@ -338,9 +338,10 @@ class BindAddress(unittest.TestCase):
         self.assertEqual(Launched.parse('{"supervisor": 1, "launcher": 2, "port": 27025}').host, "127.0.0.1")
 
     # The operator plays from other machines on the tailnet: start binds this
-    # Mac's tailnet name by default, resolved to its address.
-    def test_start_binds_the_tailnet_name_by_default(self):
-        self.assertEqual(srcds.DEFAULT_BIND_HOST, "cosmicbook.tail")
+    # Mac's tailnet address by default.
+    def test_start_binds_the_tailnet_address_by_default(self):
+        # cosmicbook.tail's address on the tailnet
+        self.assertEqual(srcds.DEFAULT_BIND_HOST, "100.126.111.105")
 
     def test_a_name_is_bound_by_its_address(self):
         self.assertEqual(srcds.bind_address("cosmicbook.tail", lambda name: "100.126.111.105"), "100.126.111.105")

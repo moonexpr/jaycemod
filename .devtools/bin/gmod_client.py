@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 r"""Launch and close the Garry's Mod client for game events v2's client tests
-(T1 to T5), in the CrossOver bottle "Team Fortress 2" and nowhere else.
+(T1 to T5), in the CrossOver bottle "Steam" and nowhere else.
 
   gmod_client.py check                                 the preflight alone: exit 0 if a launch is allowed, 3 if not
   gmod_client.py start [--port 27025] [--minutes 20]   preflight, launch, wait until the server lists the player
@@ -17,10 +17,10 @@ game, so this tool's safeguards are its tested behaviour
   tool recorded still runs.
 - The launch is one command: the bottle's own CrossOver wine (the one its
   Steam has mapped, so the bottle's wineserver sees its own version), with
-  --bottle "Team Fortress 2" and --no-update, running gmod_win64.exe with
+  --bottle "Steam" and --no-update, running gmod_win64.exe with
   +con_logfile under data/ws_tests/client/ (never -condebug: the
   dedicated server writes console.log in the shared install) and +connect
-  to the dedicated server srcds.py runs in the bottle "Steam". The bottle is
+  to the dedicated server srcds.py runs in the bottle "GModServer". The bottle is
   a constant; there is no option for another.
 - The client is the one new gmod_win64.exe without --type= whose command
   line carries this tool's +con_logfile and +connect 127.0.0.1:<port>; its
@@ -96,7 +96,7 @@ __all__ = [
     "unrecorded",
 ]
 
-BOTTLE = "Team Fortress 2"  # the operator's bottle; the client's only one, and no option changes it
+BOTTLE = "Steam"  # the operator's bottle; the client's only one, and no option changes it
 BOTTLES = Path.home() / "Library/Application Support/CrossOver/Bottles"
 GMOD_WINDOWS = "C:\\Steam\\steamapps\\common\\GarrysMod"
 GMOD_RELATIVE = "drive_c/Steam/steamapps/common/GarrysMod/garrysmod"

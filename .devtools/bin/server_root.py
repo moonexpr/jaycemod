@@ -3,8 +3,8 @@
 
   server_root.py [--instance N]   build or refresh it, and print where it is
 
-The Steam bottle's GarrysMod is the operator's install (a link into the
-"Team Fortress 2" bottle), shared with the game the operator plays. The server needs
+The GModServer bottle's GarrysMod is the operator's install (a link into the
+"Steam" bottle), shared with the game the operator plays. The server needs
 addons the game must not load twice (DrGBase, which the server cannot take
 from the Workshop: it runs -noworkshop). So the server runs from
 GarrysModServer beside it: every entry a symlink to the shared install, but
@@ -40,12 +40,12 @@ from pathlib import Path
 
 from vpk import Vpk
 
-STEAMAPPS = Path.home() / "Library/Application Support/CrossOver/Bottles/Steam/drive_c/Steam/steamapps"
+STEAMAPPS = Path.home() / "Library/Application Support/CrossOver/Bottles/GModServer/drive_c/Steam/steamapps"
 SHARED = STEAMAPPS / "common" / "GarrysMod"
 ROOT = STEAMAPPS / "common" / "GarrysModServer"
 ROOT_WINDOWS = r"C:\Steam\steamapps\common\GarrysModServer"
-WORKSHOP = STEAMAPPS.parents[3] / "Team Fortress 2/drive_c/Steam/steamapps/workshop/content/4000"
-TF = STEAMAPPS.parents[3] / "Team Fortress 2/drive_c/Steam/steamapps/common/Team Fortress 2/tf"
+WORKSHOP = STEAMAPPS.parents[3] / "Steam/drive_c/Steam/steamapps/workshop/content/4000"
+TF = STEAMAPPS.parents[3] / "Steam/drive_c/Steam/steamapps/common/Team Fortress 2/tf"
 TF_PAK = "tf2_misc_dir.vpk"
 # TF2's sound scripts a server's "GAME" path finds as GMod's: the manifest
 # and the four it lists that GMod's content shadows (measured on pl_upward)

@@ -29,8 +29,8 @@ from gmod_client import (
 )
 
 BOTTLES = Path("/Users/op/Library/Application Support/CrossOver/Bottles")
-TF2_BOTTLE = BOTTLES / "Team Fortress 2"
-STEAM_BOTTLE = BOTTLES / "Steam"
+PLAY_BOTTLE = BOTTLES / "Steam"
+SERVER_BOTTLE = BOTTLES / "GModServer"
 APP = "/Apps/CrossOver.app"
 WINE = APP + "/Contents/SharedSupport/CrossOver/bin/wine"
 WRAPPER = APP + "/Contents/SharedSupport/CrossOver/lib/wine/x86_64-windows/winewrapper.exe"
@@ -69,7 +69,7 @@ class FakeSystem(System):
     def __init__(self, processes=OPERATOR, cwd=None):
         self.t = 10_000.0
         self.table = {p.pid: p for p in processes}
-        self.cwd = {STEAM: str(TF2_BOTTLE / "drive_c/Steam"), WEBHELPER: str(TF2_BOTTLE / "drive_c/Steam")}
+        self.cwd = {STEAM: str(PLAY_BOTTLE / "drive_c/Steam"), WEBHELPER: str(PLAY_BOTTLE / "drive_c/Steam")}
         self.cwd.update(cwd or {})
         self.events = []
         self.launches = []
@@ -175,14 +175,14 @@ def test_refuses_while_a_gmod_client_runs(tmp_path):
         assert_refused_and_launched_nothing(client_with(tmp_path / exe, system), system, exe)
 
 
-def test_refuses_without_steam_running_in_the_tf2_bottle(tmp_path):
+def test_refuses_without_steam_running_in_the_play_bottle(tmp_path):
     no_steam = FakeSystem([p for p in OPERATOR if p.pid != STEAM])
     assert_refused_and_launched_nothing(client_with(tmp_path / "none", no_steam), no_steam, "steam.exe")
     # Steam in the other bottle, and only Steam's web helper in this one.
-    elsewhere = FakeSystem(cwd={STEAM: str(STEAM_BOTTLE / "drive_c/Steam")})
+    elsewhere = FakeSystem(cwd={STEAM: str(SERVER_BOTTLE / "drive_c/Steam")})
     assert_refused_and_launched_nothing(client_with(tmp_path / "elsewhere", elsewhere), elsewhere, "steam.exe")
     # A bottle whose name only starts like this one's is another bottle.
-    lookalike = FakeSystem(cwd={STEAM: str(BOTTLES / "Team Fortress 2 (old)/drive_c/Steam")})
+    lookalike = FakeSystem(cwd={STEAM: str(BOTTLES / "Steam (old)/drive_c/Steam")})
     assert_refused_and_launched_nothing(client_with(tmp_path / "lookalike", lookalike), lookalike, "steam.exe")
     assert client_with(tmp_path / "allowed", FakeSystem()).check().allowed
 
@@ -203,16 +203,16 @@ def test_refuses_while_its_own_client_still_runs(tmp_path):
 
 
 def test_has_no_way_to_choose_another_bottle(tmp_path):
-    assert BOTTLE == "Team Fortress 2"
+    assert BOTTLE == "Steam"
     assert list(inspect.signature(command_line).parameters) == ["wine", "port"]
     argv = command_line(WINE, 27025)
     assert argv[argv.index("--bottle") + 1] == BOTTLE
     assert argv.count("--bottle") == 1
     assert not any("bottle" == f.name for f in fields(Layout))
-    assert layout(tmp_path).bottle_dir == TF2_BOTTLE
+    assert layout(tmp_path).bottle_dir == PLAY_BOTTLE
     for action in ("check", "start", "stop"):
         with pytest.raises(SystemExit):
-            build_parser().parse_args([action, "--bottle", "Steam"])
+            build_parser().parse_args([action, "--bottle", "GModServer"])
 
 
 # The launch ------------------------------------------------------------------------------
@@ -223,7 +223,7 @@ def test_launches_only_the_gmod_client(tmp_path):
     client_with(tmp_path, system).launch(27025, 20)
     assert len(system.launches) == 1
     argv = system.launches[0]
-    assert argv[:3] == [WINE, "--bottle", "Team Fortress 2"]
+    assert argv[:3] == [WINE, "--bottle", "Steam"]
     program = argv[argv.index("--cx-app") + 1]
     assert program == GMOD + "\\gmod_win64.exe"
     assert argv[argv.index("+connect") + 1] == "127.0.0.1:27025"
@@ -286,7 +286,7 @@ def test_the_launch_logs_the_preflights_findings(tmp_path):
     client = client_with(tmp_path, FakeSystem())
     client.launch(27025, 20)
     log = log_of(client)
-    assert f"steam.exe pid {STEAM} runs in Team Fortress 2" in log
+    assert f"steam.exe pid {STEAM} runs in Steam" in log
     assert "CrossOver " + APP in log
 
 

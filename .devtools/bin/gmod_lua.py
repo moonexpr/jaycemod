@@ -22,7 +22,7 @@ from enum import Enum
 from pathlib import Path
 
 GMOD = Path.home() / (
-    "Library/Application Support/CrossOver/Bottles/Team Fortress 2/"
+    "Library/Application Support/CrossOver/Bottles/Steam/"
     "drive_c/Steam/steamapps/common/GarrysMod/garrysmod"
 )
 RESULTS = GMOD / "data" / "gmod_lua"
