@@ -34,7 +34,7 @@ end)
 local REALMS = { Features.SERVER, Features.CLIENT, Features.SHARED }
 local MAX_LINES = 600 -- a realm file's longest; past it, split into parts
 -- Realm files still over MAX_LINES; a split that lands removes its entry.
-local PENDING_SPLIT = { "capture/sv.lua", "npc/sv.lua" }
+local PENDING_SPLIT = { "npc/sv.lua" }
 
 local function Lines(command)
 	local list = assert(io.popen(command))
