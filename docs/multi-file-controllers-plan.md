@@ -898,3 +898,28 @@ architect's calls and stand unless revisited.
      collide by name with `ws/sv_world.lua`.
    - `sv_enlist` takes medic healing and seats, and the hooks that drive
      them, because both act on enlisted soldiers' entries every tick.
+
+## Status (2026-10-14): server-side splits done; owed to an operator session
+
+Every server controller is split or under 600 lines (`PENDING_SPLIT = {}`):
+aiwar (9bbbab1), rounds (a01c050), capture (cd00a69), npc (b17f944), each
+with live listing and wiring parity. No further refactor work starts until
+these pass, each with the operator present:
+
+1. **The client check.** After a `changelevel`, on the operator's client
+   (`gmod_client.py start`): `dt lua --realm cl 'print("ship",
+   pcall(WS.require, "features.tag.model"), pcall(WS.require,
+   "ws.sound_paths"))'`; the client's log under `data/ws_tests/client/`
+   shows `ship true table true table`. It unblocks phase 4, phase 5 and the
+   `cl_` splits.
+2. **aiwar's lazy loading.** With `mp_aiwar_autostart 0` (the server's own
+   `server.cfg` sets 1), after `changelevel pl_badwater`,
+   `WS.FeatureLoaded("aiwar")` is false, and true after `mp_aiwar_start`; the
+   `load` in-game check lists `aiwar` under lacks before the war.
+3. **The in-game checks** (`ingame_tests.py`, which runs its own server):
+   aiwar (`aiwar`, `aiwar_sitting`); rounds (`koth`, `cp_capture`,
+   `payload`); capture (`cp_capture`, `capture_cleanup`, `sandbox_capture`);
+   npc (`bosses`, `skeletons`).
+
+If they pass, phase 4 and phase 5 become eligible, each with its own gate
+review; a failure is fixed where it belongs first.
