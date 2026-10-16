@@ -19,6 +19,7 @@
 -- The transition's timing lives here; the controller feeds it the time
 -- (Advance) and plays the cues it returns.
 local floor, ipairs, min, setmetatable = math.floor, ipairs, math.min, setmetatable
+local Cfsm = require("foundation.core.cfsm")
 module(...)
 
 -- Modes.
@@ -120,6 +121,18 @@ local NEXT_MODE = {
 	[ENTER_SANDBOX] = SANDBOX,
 }
 
+-- The modes and the only moves between them: the transition starts from
+-- Sandbox mode, and ends in Gameplay mode or, called off, back in Sandbox.
+local MODES = Cfsm.Define({
+	name = "gamemode",
+	states = { SANDBOX, TRANSITION, GAMEPLAY },
+	transitions = {
+		[SANDBOX] = { TRANSITION },
+		[TRANSITION] = { SANDBOX, GAMEPLAY },
+		[GAMEPLAY] = { SANDBOX },
+	},
+})
+
 local Mode = {}
 Mode.__index = Mode
 
@@ -128,20 +141,20 @@ Mode.__index = Mode
 function New(hasRounds, enabled)
 	return setmetatable({
 		hasRounds = hasRounds,
-		mode = (hasRounds and enabled) and GAMEPLAY or SANDBOX,
+		modes = MODES:New((hasRounds and enabled) and GAMEPLAY or SANDBOX),
 		startedAt = 0, -- when the transition started
 		counted = 0, -- the transition's seconds already cued
 	}, Mode)
 end
 
 function Mode:Mode()
-	return self.mode
+	return self.modes:State()
 end
 
 -- sv_gameplay_enabled was set to enabled: the mode that asks for, or nil
 -- when the settled mode already holds it (our own write, or no change).
 function Mode:SettingWants(enabled)
-	if SETTING[self.mode] == enabled then return nil end
+	if SETTING[self:Mode()] == enabled then return nil end
 	return enabled and GAMEPLAY or SANDBOX
 end
 
@@ -151,8 +164,9 @@ local function Decide(self, want, source, sandboxDisabled)
 		if answer.loadRounds then self.hasRounds = true end
 		return answer
 	end
-	if want == SANDBOX and sandboxDisabled and self.mode ~= SANDBOX then return SANDBOX_OFF[source] end
-	return RULES[want][self.mode][source]
+	local mode = self:Mode()
+	if want == SANDBOX and sandboxDisabled and mode ~= SANDBOX then return SANDBOX_OFF[source] end
+	return RULES[want][mode][source]
 end
 
 -- A request for mode want (SANDBOX or GAMEPLAY) from source at time now;
@@ -164,14 +178,15 @@ function Mode:Request(want, source, now, sandboxDisabled)
 		self.startedAt = now
 		self.counted = 0
 	end
-	self.mode = NEXT_MODE[answer.action] or self.mode
+	local nextMode = NEXT_MODE[answer.action]
+	if nextMode then self.modes:Enter(nextMode) end
 	return answer
 end
 
 -- When the transition ends and Gameplay mode begins (the time Advance
 -- returns CUE_BEGIN), or nil outside the transition.
 function Mode:TransitionEnd()
-	if self.mode ~= TRANSITION then return nil end
+	if not self.modes:Is(TRANSITION) then return nil end
 	return self.startedAt + ADMIN_LINE_AT
 end
 
@@ -180,7 +195,7 @@ end
 -- transition.
 function Mode:Advance(now)
 	local cues = {}
-	if self.mode ~= TRANSITION then return cues end
+	if not self.modes:Is(TRANSITION) then return cues end
 	local reached = min(floor(now - self.startedAt), ADMIN_LINE_AT)
 	for second = self.counted + 1, reached do
 		if second <= COUNTDOWN then
@@ -194,7 +209,7 @@ function Mode:Advance(now)
 		if second == ADMIN_LINE_AT then
 			cues[#cues + 1] = { kind = CUE_ADMIN_LINE }
 			cues[#cues + 1] = { kind = CUE_BEGIN }
-			self.mode = GAMEPLAY
+			self.modes:Enter(GAMEPLAY)
 		end
 	end
 	self.counted = reached

@@ -36,11 +36,33 @@ function WS.PlaySoundTo(ply, ent, name)
 	ent:EmitSound(name, 75, 100, 1, CHAN_AUTO, 0, 0, filter)
 end
 
+-- The map's entity I/O (foundation.core.map_io): cached lookups by name and
+-- class, recorded output connections, and observers of outputs and inputs.
+-- Its maps are rebuilt when the map's entities are all spawned or cleaned
+-- up; entities created after join them as they are created.
+local MapIO = WS.require("foundation.core.map_io")
+
+local World = {}
+function World:Entities() return ents.GetAll() end
+function World:NameOf(ent) return ent:GetName() end
+function World:ClassOf(ent) return ent:GetClass() end
+function World:IsValid(ent) return IsValid(ent) end
+function World:FirstPlayer() return player.GetAll()[1] end
+function World:Fire(target, input, param, delay, activator, caller)
+	target:Fire(input, param, delay, activator, caller)
+end
+
+WS.MapIO = WS.MapIO or MapIO.New(World)
+
+local function Recache() WS.MapIO:Recache() end
+hook.Add("InitPostEntity", "ws_map_io_recache", Recache)
+hook.Add("PostCleanupMap", "ws_map_io_recache", Recache)
+hook.Add("OnEntityCreated", "ws_map_io_track", function(ent) WS.MapIO:Track(ent) end)
+hook.Add("EntityRemoved", "ws_map_io_forget", function(ent) WS.MapIO:Forget(ent) end)
+
 -- Keyvalues of engine entities we read but do not implement. GMod exposes no
 -- getter for a path_track's next node or a teamspawn's team, so they are
 -- recorded as the map sets them.
-WS.KV = WS.KV or setmetatable({}, { __mode = "k" })
-
 local RECORDED = {
 	path_track = true,
 	info_player_teamspawn = true,
@@ -65,16 +87,7 @@ hook.Add("EntityKeyValue", "ws_record_keyvalues", function(ent, key, value)
 	if ent:GetClass() == "logic_auto" and string.lower(key) == "spawnflags" then
 		return tostring(bit.band(tonumber(value) or 0, bit.bnot(LOGIC_AUTO_FIRE_ONCE)))
 	end
-	local kv = WS.KV[ent]
-	if not kv then
-		kv = { outputs = {} }
-		WS.KV[ent] = kv
-	end
-	if string.sub(key, 1, 2) == "On" then
-		kv.outputs[#kv.outputs + 1] = WS.ParseOutput(key, value)
-	else
-		kv[string.lower(key)] = value
-	end
+	WS.MapIO:RecordKeyValue(ent, key, value)
 end)
 
 -- An ambient_generic naming a voice line TF2 has since made an .mp3
@@ -88,50 +101,23 @@ hook.Add("EntityKeyValue", "ws_sound_paths", function(ent, key, value)
 end)
 
 function WS.KeyValues(ent)
-	return WS.KV[ent] or { outputs = {} }
+	return WS.MapIO:KeyValues(ent)
 end
 
 function WS.FindByName(name)
-	if not name or name == "" then return NULL end
-	return ents.FindByName(name)[1] or NULL
+	if not name then return NULL end
+	return WS.MapIO:FirstByName(name) or NULL
 end
 
--- An output connection as Hammer writes it: target,input,param,delay,times
--- (newer compilers separate the fields with ESC instead of commas).
-function WS.ParseOutput(name, value)
-	local sep = string.find(value, "\27", 1, true) and "\27" or ","
-	local f = string.Explode(sep, value)
-	return {
-		name = name,
-		target = f[1] or "",
-		input = f[2] or "",
-		param = f[3] or "",
-		delay = tonumber(f[4]) or 0,
-		times = tonumber(f[5]) or -1,
-		fired = 0,
-	}
-end
+function WS.FindAllByName(name) return WS.MapIO:FindByName(name) end
+function WS.FindByClass(class) return WS.MapIO:FindByClass(class) end
 
-local function OutputTargets(o, caller, activator)
-	local t = string.lower(o.target)
-	if t == "!self" or t == "!caller" then return { caller } end
-	if t == "!activator" then return { activator } end
-	if t == "!player" then return { player.GetAll()[1] } end
-	return ents.FindByName(o.target)
-end
+-- An output connection as Hammer writes it (foundation.core.map_io).
+WS.ParseOutput = MapIO.ParseOutput
 
 -- Fire the named output of an engine entity whose outputs we recorded.
 function WS.FireOutput(caller, name, activator)
-	for _, o in ipairs(WS.KeyValues(caller).outputs) do
-		if o.name == name and (o.times < 0 or o.fired < o.times) then
-			o.fired = o.fired + 1
-			for _, target in ipairs(OutputTargets(o, caller, activator)) do
-				if IsValid(target) then
-					target:Fire(o.input, o.param, o.delay, activator, caller)
-				end
-			end
-		end
-	end
+	WS.MapIO:FireOutput(caller, name, activator)
 end
 
 -- The announcement line on every screen (the rounds view draws it), in the
@@ -274,18 +260,38 @@ function WS.HealFraction(ply, fraction)
 	return true
 end
 
--- path_track handles its own Enable/DisablePath; the train watcher only needs
--- to know which nodes are disabled, so note it and let the input through.
-hook.Add("AcceptInput", "ws_path_track", function(ent, input)
-	if ent:GetClass() ~= "path_track" then return end
-	local kv = WS.KV[ent]
-	if not kv then return end
-	input = string.lower(input)
-	if input == "disablepath" then
-		kv.wsDisabled = true
-	elseif input == "enablepath" then
-		kv.wsDisabled = nil
-	elseif input == "togglepath" then
-		kv.wsDisabled = not kv.wsDisabled or nil
+-- Every input the engine delivers reaches its map I/O observers; returning
+-- nothing lets it through. An AddOutput setting a targetname renames the
+-- entity, so it is filed again.
+hook.Add("AcceptInput", "ws_map_io_input", function(ent, input, activator, caller, value)
+	WS.MapIO:AcceptInput(ent, input, value, activator, caller)
+end)
+
+-- This file's observers, dropped and added again when it reloads, since
+-- WS.MapIO (and the keyvalues it recorded at map load) outlives a reload.
+for _, id in ipairs(WS.MapIOObservers or {}) do WS.MapIO:Unobserve(id) end
+WS.MapIOObservers = {}
+
+local function Observe(kind, name, fn)
+	WS.MapIOObservers[#WS.MapIOObservers + 1] = WS.MapIO:Observe(kind, name, fn)
+end
+
+Observe(MapIO.INPUT, "AddOutput", function(ent, _, value)
+	if string.lower(string.match(value or "", "^%s*(%S+)") or "") == "targetname" then
+		WS.MapIO:Reindex(ent)
 	end
 end)
+
+-- path_track handles its own Enable/DisablePath; the train watcher only needs
+-- to know which nodes are disabled, so note it and let the input through.
+local function PathTrackObserver(disabled)
+	return function(ent)
+		if ent:GetClass() ~= "path_track" then return end
+		local kv = WS.KeyValues(ent)
+		kv.wsDisabled = disabled(kv.wsDisabled)
+	end
+end
+
+Observe(MapIO.INPUT, "DisablePath", PathTrackObserver(function() return true end))
+Observe(MapIO.INPUT, "EnablePath", PathTrackObserver(function() return nil end))
+Observe(MapIO.INPUT, "TogglePath", PathTrackObserver(function(was) return not was or nil end))

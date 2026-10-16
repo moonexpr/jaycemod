@@ -12,6 +12,7 @@
 --   { kind = "length_changed" }      CalculateOutputMessages: the serial bumped
 --   { kind = "time_added", team, seconds }  the announced AddTimerSeconds
 local ipairs, math, pairs, setmetatable, sort = ipairs, math, pairs, setmetatable, table.sort
+local Cfsm = require("foundation.core.cfsm")
 module(...)
 
 STATE_SETUP = "setup"   -- RT_STATE_SETUP
@@ -80,6 +81,20 @@ end
 
 local LENGTH_CHANGED = { kind = "length_changed" }
 
+-- CTeamRoundTimer::SetState: every move, a state entered again included,
+-- tells the gamerules whether the timer is in setup, and may fire
+-- OnSetupStart or OnRoundStart.
+local TIMER_STATES = Cfsm.Define({
+	name = "round timer",
+	states = { STATE_SETUP, STATE_NORMAL },
+	changing = function(_, state, events, fireOutput)
+		events[#events + 1] = Flag("setup", state == STATE_SETUP)
+		if fireOutput then
+			events[#events + 1] = Output(state == STATE_SETUP and "OnSetupStart" or "OnRoundStart")
+		end
+	end,
+})
+
 local Timer = {}
 Timer.__index = Timer
 
@@ -100,7 +115,7 @@ function New(kv)
 		paused = true,
 		remaining = 0,
 		endTime = kv.now,
-		state = kv.setupLength > 0 and STATE_SETUP or STATE_NORMAL,
+		states = TIMER_STATES:New(kv.setupLength > 0 and STATE_SETUP or STATE_NORMAL),
 		timeAfterSetup = kv.length,
 		armed = {},
 		serial = 0,
@@ -118,7 +133,7 @@ end
 
 function Timer:Paused() return self.paused end
 function Timer:Disabled() return self.disabled end
-function Timer:InSetup() return self.state == STATE_SETUP end
+function Timer:InSetup() return self.states:Is(STATE_SETUP) end
 function Timer:ShowInHud() return self.showInHud end
 function Timer:AutoCountdown() return self.autoCountdown end
 function Timer:Serial() return self.serial end
@@ -180,7 +195,7 @@ end
 -- InputSetSetupTime
 function Timer:SetSetupLength(now, seconds)
 	if seconds >= 0 then self.setupLength = seconds end
-	if not self.disabled and self.state == STATE_SETUP then return self:SetTimeRemaining(now, self.setupLength) end
+	if not self.disabled and self.states:Is(STATE_SETUP) then return self:SetTimeRemaining(now, self.setupLength) end
 	return {}
 end
 
@@ -193,14 +208,9 @@ function Timer:SetAutoCountdown(on)
 	self.autoCountdown = on
 end
 
--- CTeamRoundTimer::SetState: every timer tells the gamerules whether it is
--- in setup, and may fire OnSetupStart or OnRoundStart.
+-- CTeamRoundTimer::SetState (TIMER_STATES).
 local function SetState(self, events, state, fireOutput)
-	self.state = state
-	events[#events + 1] = Flag("setup", state == STATE_SETUP)
-	if fireOutput then
-		events[#events + 1] = Output(state == STATE_SETUP and "OnSetupStart" or "OnRoundStart")
-	end
+	self.states:Enter(state, events, fireOutput)
 	return events
 end
 
@@ -211,18 +221,18 @@ end
 
 -- What Spawn's SetState says as the timer spawns.
 function Timer:SpawnEvents()
-	return SetState(self, {}, self.state, true)
+	return SetState(self, {}, self.states:State(), true)
 end
 
 -- The current state again, without its output (InputShowInHUD).
 function Timer:StateEvents()
-	return SetState(self, {}, self.state, false)
+	return SetState(self, {}, self.states:State(), false)
 end
 
 -- CTeamRoundTimer::InputRoundSpawn, at every round start (full or mini):
 -- without reset_time a timer in normal time carries its time on.
 function Timer:RoundSpawn(now)
-	if not self.resetTime and self.state == STATE_NORMAL then
+	if not self.resetTime and self.states:Is(STATE_NORMAL) then
 		self.timeAfterSetup = self:TimeRemaining(now)
 	else
 		self.timeAfterSetup = self.length
@@ -323,7 +333,7 @@ end
 function Timer:Think(now, q)
 	local events = {}
 	if self.disabled or self.paused then return events end
-	if self.state == STATE_SETUP then
+	if self.states:Is(STATE_SETUP) then
 		SetupThink(self, events, now, q)
 	else
 		NormalThink(self, events, now, q)

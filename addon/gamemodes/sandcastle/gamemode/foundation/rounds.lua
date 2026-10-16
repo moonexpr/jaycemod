@@ -15,6 +15,7 @@
 local ipairs, math, pairs, setmetatable, tostring = ipairs, math, pairs, setmetatable, tostring
 local Teams = require("foundation.teams")
 local State = require("foundation.rounds.state")
+local Cfsm = require("foundation.core.cfsm")
 module(...)
 
 -- teamplayroundbased_gamerules.h
@@ -327,11 +328,14 @@ end
 -- stalemateEnable, stalemateTimelimit, winlimit, maxrounds, timelimit,
 -- matchEndAtTimelimit, chattime, scrambleAuto, scrambleWinDifference,
 -- mapResetTime }, in TF2's units.
+-- The round states' machine, defined below its handlers.
+local ROUND_STATES
+
 function New(settings)
 	local round = setmetatable({
 		settings = {},
 		mode = Mode,
-		state = State.PREGAME,
+		states = ROUND_STATES:New(State.PREGAME),
 		transitionAt = nil,
 		halted = false,
 		forceMapReset = true,
@@ -377,7 +381,7 @@ function Round:SetMode(mode)
 end
 
 function Round:Mode() return self.mode end
-function Round:State() return self.state end
+function Round:State() return self.states:State() end
 function Round:Halted() return self.halted end
 function Round:InSetup() return self.inSetup end
 function Round:InOvertime() return self.overtime end
@@ -412,24 +416,32 @@ end
 
 local ENTER, LEAVE, THINK = {}, {}, {}
 
--- State_Enter: world is the snapshot of the Think that brought it, if any.
-local function Enter(self, effects, state, now, world)
-	local from = self.state
-	self.state = state
-	self.transitionAt = nil
-	local change = {
+-- The effect a move to state adds; an enter handler may annotate it.
+local function Change(self, state)
+	return {
 		kind = "state",
-		from = from,
+		from = self:State(),
 		to = state,
 	}
+end
+
+-- Every move's transition action: the pending transition is dropped and
+-- the change is told, before the new state's enter handler runs.
+local function Changing(_, _, self, effects, _, _, change)
+	self.transitionAt = nil
 	Add(effects, change)
-	if ENTER[state] then ENTER[state](self, effects, now, world, change) end
+end
+
+-- State_Enter: world is the snapshot of the Think that brought it, if any.
+-- Handlers are called (self, effects, now, world, change).
+local function Enter(self, effects, state, now, world)
+	self.states:Enter(state, self, effects, now, world, Change(self, state))
 	return effects
 end
 
 local function Transition(self, effects, state, now, world)
-	if LEAVE[self.state] then LEAVE[self.state](self, effects, now) end
-	return Enter(self, effects, state, now, world)
+	self.states:Transition(state, self, effects, now, world, Change(self, state))
+	return effects
 end
 
 local function TransitionDue(self, now)
@@ -525,7 +537,7 @@ local function EndMatch(self, effects, reason, now, world)
 		GoToIntermission(self, effects, reason, now, world)
 		return true
 	end
-	if self.state == State.RND_RUNNING then
+	if self:State() == State.RND_RUNNING then
 		MatchSuddenDeath(self, effects, now)
 		return true
 	end
@@ -815,7 +827,7 @@ local COUNT_OUTPUT = {
 
 -- CTeamplayRoundBasedRules::Think's once-a-second checks.
 local function PeriodicThink(self, effects, now, world)
-	if self.state ~= State.TEAM_WIN and self.state ~= State.STALEMATE then
+	if self:State() ~= State.TEAM_WIN and self:State() ~= State.STALEMATE then
 		if CheckWinLimit(self, effects, now, world) or CheckMaxRounds(self, effects, now, world) then return end
 	end
 	for _, t in ipairs(GAME_TEAMS) do
@@ -833,8 +845,8 @@ function Round:Think(now, world)
 	local effects = {}
 	self.scores = world.scores
 	if self.halted then return effects end
-	if THINK[self.state] then THINK[self.state](self, effects, now, world) end
-	if self.state ~= State.GAME_OVER and now > self.nextPeriodic then
+	self.states:Think(self, effects, now, world)
+	if self:State() ~= State.GAME_OVER and now > self.nextPeriodic then
 		PeriodicThink(self, effects, now, world)
 		self.nextPeriodic = now + PERIODIC_INTERVAL
 	end
@@ -904,7 +916,7 @@ local function EndRound(self, now, winner, reason, forceMapReset, switchTeams, s
 end
 
 local function Over(self)
-	return self.halted or self.state == State.TEAM_WIN or self.state == State.GAME_OVER
+	return self.halted or self:State() == State.TEAM_WIN or self:State() == State.GAME_OVER
 end
 
 -- CTeamplayRoundBasedRules::SetWinningTeam.
@@ -915,7 +927,7 @@ function Round:SetWinningTeam(now, winner, reason, forceMapReset, switchTeams, d
 	-- the survivors of sudden death, a team the Administrator hands the round
 	-- (mp_forcewin's WINREASON.NONE) and one at a round limit take a point
 	-- whatever the map scores by
-	local always = self.state == State.STALEMATE or reason == WINREASON.NONE
+	local always = self:State() == State.STALEMATE or reason == WINREASON.NONE
 		or reason == WINREASON.FRAGLIMIT or reason == WINREASON.CASHLIMIT
 	local scored = reward and winner ~= UNASSIGNED and (always or objective:ScorePerRound())
 	return EndRound(self, now, winner, reason, forceMapReset, switchTeams, scored and { winner } or {})
@@ -930,7 +942,7 @@ end
 -- Whether the round is being fought, so kills and earnings count toward its
 -- limits: running, or arena's round, out of setup and not halted.
 function Round:LimitsCount()
-	local fought = self.state == State.RND_RUNNING or (self.state == State.STALEMATE and not self.suddenDeath)
+	local fought = self:State() == State.RND_RUNNING or (self:State() == State.STALEMATE and not self.suddenDeath)
 	return fought and not self.inSetup and not self.halted
 end
 
@@ -945,14 +957,14 @@ end
 
 -- Whether the round is sudden death's bonus round now.
 function Round:InSuddenDeath()
-	return self.state == State.STALEMATE and self.suddenDeath == true
+	return self:State() == State.STALEMATE and self.suddenDeath == true
 end
 
 -- mp_forcewin's sudden death: the running round goes to sudden death for
 -- reason, whatever mp_stalemate_enable says; nothing outside a running round.
 function Round:SuddenDeath(now, reason)
 	local effects = {}
-	if self.halted or self.state ~= State.RND_RUNNING then return effects end
+	if self.halted or self:State() ~= State.RND_RUNNING then return effects end
 	ForcedSuddenDeath(self, effects, now, reason)
 	return effects
 end
@@ -984,7 +996,7 @@ end
 function Round:RestartRound(now)
 	local effects = {}
 	if self.halted then return effects end
-	if self.state == State.GAME_OVER then
+	if self:State() == State.GAME_OVER then
 		self.intermissionEnd, self.intermissionFreeze = nil, nil
 		Add(effects, Kind("unfreeze"))
 	end
@@ -997,7 +1009,7 @@ end
 -- An admin ends the match now, won by team (Utilities > Match Control).
 function Round:ForceMatchWin(now, team)
 	local effects = {}
-	if self.halted or self.state == State.GAME_OVER then return effects end
+	if self.halted or self:State() == State.GAME_OVER then return effects end
 	self.winningTeam = team
 	if team == RED then Add(effects, Output("OnWonByTeam1")) end
 	if team == BLUE then Add(effects, Output("OnWonByTeam2")) end
@@ -1034,13 +1046,13 @@ end
 -- timer), so the next full reset cleans it up even before the first game.
 function Round:Halt(now)
 	local effects = {}
-	if self.state == State.GAME_OVER then
+	if self:State() == State.GAME_OVER then
 		self.intermissionEnd, self.intermissionFreeze = nil, nil
 		Add(effects, Kind("unfreeze"))
 	end
 	self.halted = true
 	self.mapFresh = false
-	if self.state ~= State.BETWEEN_RNDS then Transition(self, effects, State.BETWEEN_RNDS, now) end
+	if self:State() ~= State.BETWEEN_RNDS then Transition(self, effects, State.BETWEEN_RNDS, now) end
 	return effects
 end
 
@@ -1056,7 +1068,7 @@ end
 -- CTFGameRules::TeamMayCapturePoint's wait for the cap-enable time.
 function Round:PointsMayBeCaptured(now)
 	if self.capEnableAt and now < self.capEnableAt then return false end
-	return (self.state == State.RND_RUNNING or self.state == State.STALEMATE) and not self.inSetup
+	return (self:State() == State.RND_RUNNING or self:State() == State.STALEMATE) and not self.inSetup
 end
 
 -- CTFGameRules::SetupOnStalemateStart's m_flCapturePointEnableTime: until
@@ -1148,7 +1160,7 @@ end
 
 -- CTFGameRules::GetRespawnWaveMaxLength
 function Round:WaveMaxLength(team, teamSize, scale)
-	if self.state ~= State.RND_RUNNING then return 0 end
+	if self:State() ~= State.RND_RUNNING then return 0 end
 	local t = self:TeamWaveTime(team)
 	if scale and t > MIN_SCALED_WAVE then
 		t = math.max(MIN_SCALED_WAVE, t * RespawnTimeScalar(teamSize))
@@ -1188,7 +1200,7 @@ end
 -- The respawn time a dead player is shown: 0 in sudden death and while an
 -- admin has stopped respawns.
 function Round:RespawnAt(team, deathTime, teamSize, switched)
-	if self.state == State.STALEMATE or self.respawnsDisabled then return 0 end
+	if self:State() == State.STALEMATE or self.respawnsDisabled then return 0 end
 	return self:NextRespawn(team, deathTime, teamSize, switched)
 end
 
@@ -1206,9 +1218,34 @@ end
 function Round:SetRespawnsDisabled(disabled)
 	if self.respawnsDisabled == disabled then return false end
 	self.respawnsDisabled = disabled
-	return not disabled and self.state ~= State.STALEMATE
+	return not disabled and self:State() ~= State.STALEMATE
 end
 
 function Round:RespawnsDisabled()
 	return self.respawnsDisabled
 end
+
+-- TF2's gamerules move between their states from wherever a round is
+-- decided (a win, a stalemate, a limit, an admin), so every declared state
+-- may follow any other; what the machine holds is the states themselves and
+-- one handler of each kind per state.
+ROUND_STATES = Cfsm.Define({
+	name = "round",
+	states = {
+		State.INIT,
+		State.PREGAME,
+		State.STARTGAME,
+		State.PREROUND,
+		State.RND_RUNNING,
+		State.TEAM_WIN,
+		State.RESTART,
+		State.STALEMATE,
+		State.GAME_OVER,
+		State.BONUS,
+		State.BETWEEN_RNDS,
+	},
+	changing = Changing,
+	enter = ENTER,
+	leave = LEAVE,
+	think = THINK,
+})
