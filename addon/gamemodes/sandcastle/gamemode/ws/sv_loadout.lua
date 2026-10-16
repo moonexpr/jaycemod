@@ -56,6 +56,15 @@ E.Listen("loadout_buy", "ws_loadout", function(fields, ply)
 	end)
 end)
 
+E.Listen("loadout_buy_into", "ws_loadout", function(fields, ply)
+	Change(ply, function(loadout)
+		local weapon = CATALOG:Weapon(fields.weapon)
+		local bought = loadout:BuyInto(fields.slot, weapon)
+		WS.SpendMoney(ply, weapon.price)
+		return bought
+	end)
+end)
+
 E.Listen("loadout_equip", "ws_loadout", function(fields, ply)
 	Change(ply, function(loadout) return loadout:Equip(fields.slot, CATALOG:Weapon(fields.weapon)) end)
 end)

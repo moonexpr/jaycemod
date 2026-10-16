@@ -254,6 +254,17 @@ function Loadout:Buy(weapon)
 	return bought
 end
 
+-- Owns the weapon and puts it in the slot named, whatever the slot held:
+-- the Loadout tab's buy on a picked slot. Refused whole, buying nothing,
+-- if the slot does not take it or it is already owned.
+function Loadout:BuyInto(slot, weapon)
+	if not Fits(slot, weapon) then Raise(WRONG_SLOT, format("%s in slot %d", weapon.class, slot)) end
+	if self:Owns(weapon) then Raise(ALREADY_OWNED, weapon.class) end
+	local owned = Copy(self.owned)
+	owned[weapon.class] = true
+	return New(self.catalog, owned, self.equipped):Equip(slot, weapon)
+end
+
 -- A new player's: the catalog's starters, owned and in their slots.
 function Starting(catalog)
 	local loadout = New(catalog, {}, {})

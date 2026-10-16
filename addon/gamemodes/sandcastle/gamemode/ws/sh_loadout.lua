@@ -182,6 +182,15 @@ E.Define("loadout_buy", { weapon = E.String() }, {
 	rate = REQUEST_RATE,
 })
 
+-- The Loadout tab's buy on a picked slot: owns the weapon and puts it there.
+E.Define("loadout_buy_into", {
+	slot = E.UInt(SLOT_BITS),
+	weapon = E.String(),
+}, {
+	clientSendable = true,
+	rate = REQUEST_RATE,
+})
+
 E.Define("loadout_equip", {
 	slot = E.UInt(SLOT_BITS),
 	weapon = E.String(),

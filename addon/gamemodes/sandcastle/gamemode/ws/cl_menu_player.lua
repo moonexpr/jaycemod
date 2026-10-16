@@ -2,12 +2,15 @@
 -- in two columns, each slot marked with its badge (WS.UI.SlotBadge).
 -- - Left: the player's model, with a box around it for each of their five
 --   slots showing what it holds. Click a slot to pick it, again to unpick.
--- - Right: the weapons they own; only those the picked slot takes while one
---   is picked. Click one to equip it, into the picked slot, or with none
---   picked, where the loadout puts it (Loadout:SlotFor).
--- Weapons are bought in the Store tab. The server owns the loadout:
--- the tab asks, and redraws when it hears back.
+-- - Right: the weapons they own; while a slot is picked, every weapon it
+--   takes, the ones not owned with their price. Click an owned one to equip
+--   it, into the picked slot, or with none picked, where the loadout puts
+--   it (Loadout:SlotFor); click one not owned to buy it into the picked slot
+--   (loadout_buy_into).
+-- The Store tab buys too. The server owns the loadout: the tab asks, and
+-- redraws when it hears back.
 local Loadout = WS.require("foundation.loadout")
+local Economy = WS.require("foundation.economy")
 local E = WS.Events
 local UI = WS.UI
 local THEME = UI.THEME
@@ -138,15 +141,22 @@ UI.Define("PlayerMenu", "DPanel", {
 	RefreshWeapons = function(self, loadout)
 		local picked = self.picked
 		self.weapons:Clear()
-		local function Row(caption, weapon, slot)
+		-- buy: the weapon is not owned; a click buys it into the slot.
+		local function Row(caption, weapon, slot, buy)
 			local row = self.weapons:Add(UI.Name("WeaponBox"))
 			row:SetTall(ROW_HEIGHT)
 			row:SetWeapon(caption, weapon, weapon and weapon.kind or Loadout.SLOTS[slot].kind)
 			row:Dock(TOP)
 			row:DockMargin(0, 0, 0, GAP / 2)
 			row:SetSelected(loadout:Holds(slot, weapon))
+			if buy then row:SetEnabled(LocalPlayer():GetNW2Int("ws_money", 0) >= weapon.price) end
 			row.DoClick = function()
-				if weapon then
+				if buy then
+					E.Request("loadout_buy_into", {
+						slot = slot,
+						weapon = weapon.class,
+					})
+				elseif weapon then
 					E.Request("loadout_equip", {
 						slot = slot,
 						weapon = weapon.class,
@@ -160,6 +170,9 @@ UI.Define("PlayerMenu", "DPanel", {
 			local s = Loadout.SLOTS[picked]
 			self.weaponsTitle:SetText(s.name .. " weapons")
 			for _, weapon in ipairs(loadout:Choices(picked)) do Row(s.name, weapon, picked) end
+			for _, weapon in ipairs(WS.LoadoutCatalog:OfKind(s.kind)) do
+				if not loadout:Owns(weapon) then Row("Buy: " .. Economy.Format(weapon.price), weapon, picked, true) end
+			end
 			Row(s.name, nil, picked)
 			return
 		end
