@@ -42,11 +42,15 @@ end
 -- up; entities created after join them as they are created.
 local MapIO = WS.require("foundation.core.map_io")
 
-local World = {}
+-- The port outlives a reload with WS.MapIO, so a reload redefines its
+-- methods in place.
+WS.MapIOWorld = WS.MapIOWorld or {}
+local World = WS.MapIOWorld
 function World:Entities() return ents.GetAll() end
 function World:NameOf(ent) return ent:GetName() end
 function World:ClassOf(ent) return ent:GetClass() end
-function World:IsValid(ent) return IsValid(ent) end
+-- GMod's IsValid is false for the world entity, which still exists.
+function World:IsValid(ent) return IsValid(ent) or (ent ~= nil and ent == game.GetWorld()) end
 function World:FirstPlayer() return player.GetAll()[1] end
 function World:Fire(target, input, param, delay, activator, caller)
 	target:Fire(input, param, delay, activator, caller)
