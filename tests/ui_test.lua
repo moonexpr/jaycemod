@@ -4,12 +4,23 @@
 -- what differs. Run against a fake derma.
 local T = dofile("tests/harness.lua")
 
-local function Load()
+local function Load(polys, texts)
 	local defined = {}
 	local env = setmetatable({
-		WS = {},
+		WS = { require = T.require },
 		derma = { DefineControl = function(name, help, proto, base) defined[name] = { proto = proto, base = base } return proto end },
-		surface = { CreateFont = function() end, SetDrawColor = function() end, DrawRect = function() end, DrawOutlinedRect = function() end },
+		surface = {
+			CreateFont = function() end,
+			SetDrawColor = function() end,
+			DrawRect = function() end,
+			DrawOutlinedRect = function() end,
+			DrawPoly = function(poly) if polys then polys[#polys + 1] = poly end end,
+		},
+		draw = {
+			NoTexture = function() end,
+			SimpleText = function(text) if texts then texts[#texts + 1] = text end end,
+		},
+		TEXT_ALIGN_CENTER = 1,
 		Color = function(r, g, b, a) return { r = r, g = g, b = b, a = a or 255 } end,
 		ScrW = function() return 1920 end,
 		ScrH = function() return 1080 end,
@@ -52,6 +63,37 @@ T.test("a dialog keeps itself in the middle of the screen", function()
 	UI.Center(dialog)
 	T.eq(dialog.x, (1920 - 400) / 2)
 	T.eq(dialog.y, (1080 - 100) / 2)
+end)
+
+-- surface.DrawPoly draws a convex polygon given clockwise on the screen
+-- (y down), and silently nothing otherwise.
+local function ClockwiseConvex(poly)
+	local n = #poly
+	if n < 3 then return false end
+	for i = 1, n do
+		local a, b, c = poly[i], poly[i % n + 1], poly[(i + 1) % n + 1]
+		local cross = (b.x - a.x) * (c.y - b.y) - (b.y - a.y) * (c.x - b.x)
+		if cross < 0 then return false end
+	end
+	return true
+end
+
+T.test("every slot kind's badge is drawn as clockwise convex polygons, with its glyph", function()
+	local Loadout = T.require("foundation.loadout")
+	local GLYPHS = {
+		[Loadout.KIND_PRIMARY] = "1",
+		[Loadout.KIND_SECONDARY] = "2",
+		[Loadout.KIND_MELEE] = "3",
+		[Loadout.KIND_SUPPORT] = "S",
+	}
+	for _, k in ipairs(Loadout.KINDS) do
+		local polys, texts = {}, {}
+		local UI = Load(polys, texts)
+		UI.SlotBadge(k.kind, 10, 20, 18, UI.THEME.border)
+		T.eq(#polys > 0, true, k.name .. " draws")
+		for i, poly in ipairs(polys) do T.eq(ClockwiseConvex(poly), true, k.name .. " polygon " .. i) end
+		T.eq(texts[1], GLYPHS[k.kind], k.name .. "'s glyph")
+	end
 end)
 
 T.finish()

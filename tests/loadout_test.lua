@@ -62,8 +62,9 @@ local function Refusal(fn, ...)
 	return err.kind
 end
 
-T.test("the price is a tuning value", function()
+T.test("the price and the reserve ammo are tuning values", function()
 	T.defined(Loadout.PRICE, "Loadout.PRICE")
+	T.defined(Loadout.RESERVE_CLIPS, "Loadout.RESERVE_CLIPS")
 end)
 
 T.test("there are five slots, in order, each taking one kind", function()

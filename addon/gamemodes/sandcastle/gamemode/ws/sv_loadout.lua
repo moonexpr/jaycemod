@@ -11,7 +11,7 @@ local Refusal = WS.require("foundation.refusal")
 local E = WS.Events
 
 local CATALOG = WS.LoadoutCatalog
-local RESERVE_CLIPS = 3 -- reserve ammo given with each weapon, in clips
+local RESERVE_CLIPS = Loadout.RESERVE_CLIPS
 
 -- Kept across a Lua refresh of this file.
 WS.Loadouts = WS.Loadouts or {}
@@ -64,7 +64,28 @@ E.Listen("loadout_clear", "ws_loadout", function(fields, ply)
 	Change(ply, function(loadout) return loadout:Clear(fields.slot) end)
 end)
 
-E.Listen("client_ready", "ws_loadout", function(_, ply) Publish(ply) end)
+-- Each weapon's damage on this server's skill, for the Store's tooltips; a
+-- weapon with no damage, or whose skill convars this server lacks, sends none.
+local function Stats()
+	local stats = {}
+	for class, details in SortedPairs(WS.WeaponDetails) do
+		local damage = details.damage and GetConVar(details.damage)
+		local pellets = details.pellets and GetConVar(details.pellets)
+		if damage and (pellets or not details.pellets) then
+			stats[#stats + 1] = {
+				class = class,
+				damage = damage:GetInt(),
+				pellets = pellets and pellets:GetInt() or 1, -- one pellet: a weapon without a pellet convar
+			}
+		end
+	end
+	return stats
+end
+
+E.Listen("client_ready", "ws_loadout", function(_, ply)
+	Publish(ply)
+	E.Fire("loadout_stats", { weapons = Stats() }, ply)
+end)
 
 -- The equipped weapons, slot by slot, with reserve ammo; the first is drawn.
 function WS.GiveLoadout(ply)

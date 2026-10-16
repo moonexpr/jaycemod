@@ -88,6 +88,67 @@ WS.LoadoutCatalog = Loadout.NewCatalog({
 	},
 })
 
+-- What the Store's tooltip says of each weapon: its description, the skill
+-- convar its damage comes from (read by the server, sent as loadout_stats),
+-- and its clip, Half-Life 2's own (scripts/weapon_*.txt clip_size; nil for
+-- a weapon carried one at a time). Shotgun damage is per pellet.
+WS.WeaponDetails = {
+	weapon_smg1 = {
+		description = "Fast-firing, with a grenade launcher.",
+		damage = "sk_plr_dmg_smg1",
+		clip = 45,
+	},
+	weapon_ar2 = {
+		description = "Accurate, with heavy rounds and an energy ball.",
+		damage = "sk_plr_dmg_ar2",
+		clip = 30,
+	},
+	weapon_shotgun = {
+		description = "Close range. Fire both barrels at once.",
+		damage = "sk_plr_dmg_buckshot",
+		pellets = "sk_plr_num_shotgun_pellets",
+		clip = 6,
+	},
+	weapon_crossbow = {
+		description = "Long-range bolts. Slow to reload.",
+		damage = "sk_plr_dmg_crossbow",
+		clip = 1,
+	},
+	weapon_pistol = {
+		description = "A light sidearm.",
+		damage = "sk_plr_dmg_pistol",
+		clip = 18,
+	},
+	weapon_357 = {
+		description = "A hard-hitting sidearm.",
+		damage = "sk_plr_dmg_357",
+		clip = 6,
+	},
+	weapon_crowbar = {
+		description = "Swings fast.",
+		damage = "sk_plr_dmg_crowbar",
+	},
+	weapon_stunstick = {
+		description = "An electrified baton.",
+		damage = "sk_plr_dmg_stunstick",
+	},
+	weapon_frag = {
+		description = "Throw it or roll it.",
+		damage = "sk_plr_dmg_fraggrenade",
+	},
+	weapon_slam = {
+		description = "A tripmine or a satchel charge.",
+		damage = "sk_plr_dmg_satchel",
+	},
+	weapon_rpg = {
+		description = "Laser-guided rockets.",
+		damage = "sk_plr_dmg_rpg_round",
+	},
+	weapon_bugbait = {
+		description = "Squeeze to call antlions; throw it to send them.",
+	},
+}
+
 local WEAPON_COUNT_BITS = 6
 local SLOT_BITS = 3
 local REQUEST_RATE = {
@@ -104,6 +165,17 @@ E.Define("loadout_state", {
 })
 
 E.Define("loadout_refused", { reason = E.String() })
+
+-- Each weapon's damage on this server's skill (WS.WeaponDetails), per hit
+-- and in pellets per shot (1 but for the shotgun). Sent as a player loads.
+local STAT_BITS = 12
+E.Define("loadout_stats", {
+	weapons = E.List(E.Record({
+		class = E.String(),
+		damage = E.UInt(STAT_BITS),
+		pellets = E.UInt(STAT_BITS),
+	}), WEAPON_COUNT_BITS),
+})
 
 E.Define("loadout_buy", { weapon = E.String() }, {
 	clientSendable = true,

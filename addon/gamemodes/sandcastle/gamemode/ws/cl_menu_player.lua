@@ -1,21 +1,23 @@
--- The spawn menu's Player tab: the local player's loadout (ws/cl_loadout.lua)
--- in two columns.
+-- The spawn menu's Loadout tab: the local player's loadout (ws/cl_loadout.lua)
+-- in two columns, each slot marked with its badge (WS.UI.SlotBadge).
 -- - Left: the player's model, with a box around it for each of their five
 --   slots showing what it holds. Click a slot to pick it, again to unpick.
 -- - Right: the weapons they own; only those the picked slot takes while one
 --   is picked. Click one to equip it, into the picked slot, or with none
 --   picked, where the loadout puts it (Loadout:SlotFor).
--- Weapons are bought in the Inventory tab. The server owns the loadout:
+-- Weapons are bought in the Store tab. The server owns the loadout:
 -- the tab asks, and redraws when it hears back.
 local Loadout = WS.require("foundation.loadout")
 local E = WS.Events
 local UI = WS.UI
 local THEME = UI.THEME
 
-local TAB_NAME = "Player"
-local TAB_ICON = "icon16/user.png"
-local TAB_ORDER = 300 -- after Sandbox's own tabs
-local NEXT_SPAWN = "Changes take effect at your next spawn on a TF2 map."
+local TAB_NAME = "Loadout"
+local TAB_ICON = "icon16/gun.png"
+local TAB_ORDER = -40 -- first, ahead of Sandbox's Spawnlists (-10)
+local NEXT_SPAWN = "Loadout changes will take effect on respawn."
+local BADGE = 18
+local BADGE_GAP = 6
 
 local GAP = 8
 local LEFT_SHARE = 0.6 -- of the tab's width, for the model and its slots
@@ -31,11 +33,13 @@ local MODEL_FOV = 36
 local MODEL_CAMERA = Vector(80, 0, 40)
 local MODEL_LOOK_AT = Vector(0, 0, 36)
 
--- A box holding a name small, a weapon's name large, and its icon.
+-- A box holding its slot's badge and name small, a weapon's name large, and
+-- its icon.
 UI.Define("WeaponBox", "Button", {
 	Init = function(self) self:SetText("") end,
-	SetWeapon = function(self, caption, weapon)
+	SetWeapon = function(self, caption, weapon, kind)
 		self.caption = caption
+		self.kind = kind
 		self.weaponName = weapon and weapon.name or "Empty"
 		if IsValid(self.icon) then self.icon:Remove() end
 		if weapon then self.icon = WS.WeaponIcon(self, weapon, self:GetTall() - THEME.padding) end
@@ -45,7 +49,9 @@ UI.Define("WeaponBox", "Button", {
 	end,
 	PaintOver = function(self, w, h)
 		local color = self:GetTextColor()
-		draw.SimpleText(self.caption, THEME.bodyFont, THEME.padding, h / 2, color, TEXT_ALIGN_LEFT, TEXT_ALIGN_BOTTOM)
+		local lit = color == THEME.background
+		UI.SlotBadge(self.kind, THEME.padding, h / 2 - BADGE, BADGE, color, lit and THEME.border or THEME.background)
+		draw.SimpleText(self.caption, THEME.bodyFont, THEME.padding + BADGE + BADGE_GAP, h / 2, color, TEXT_ALIGN_LEFT, TEXT_ALIGN_BOTTOM)
 		draw.SimpleText(self.weaponName, THEME.titleFont, THEME.padding, h / 2, color, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
 	end,
 })
@@ -123,7 +129,7 @@ UI.Define("PlayerMenu", "DPanel", {
 		local loadout = WS.LocalLoadout()
 		for _, s in ipairs(Loadout.SLOTS) do
 			local box = self.slotBoxes[s.slot]
-			box:SetWeapon(s.name, loadout:Equipped(s.slot))
+			box:SetWeapon(s.name, loadout:Equipped(s.slot), s.kind)
 			box:SetSelected(s.slot == self.picked)
 		end
 		self:RefreshWeapons(loadout)
@@ -135,7 +141,7 @@ UI.Define("PlayerMenu", "DPanel", {
 		local function Row(caption, weapon, slot)
 			local row = self.weapons:Add(UI.Name("WeaponBox"))
 			row:SetTall(ROW_HEIGHT)
-			row:SetWeapon(caption, weapon)
+			row:SetWeapon(caption, weapon, weapon and weapon.kind or Loadout.SLOTS[slot].kind)
 			row:Dock(TOP)
 			row:DockMargin(0, 0, 0, GAP / 2)
 			row:SetSelected(loadout:Holds(slot, weapon))

@@ -10,7 +10,7 @@ local E = WS.Events
 
 local TAB_NAME = "Server"
 local TAB_ICON = "icon16/group.png"
-local TAB_ORDER = 302 -- after Loadout and Store
+local TAB_ORDER = -20 -- after Loadout (-40) and Store (-30), ahead of Sandbox's Spawnlists (-10)
 
 local GAP = 8
 local TILE_H = 64

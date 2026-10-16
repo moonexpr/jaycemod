@@ -14,6 +14,7 @@ local Refusal = require("foundation.refusal")
 module(...)
 
 PRICE = 10
+RESERVE_CLIPS = 3 -- reserve ammo given with each weapon at spawn, in clips
 
 KIND_PRIMARY, KIND_SECONDARY, KIND_MELEE, KIND_SUPPORT = 1, 2, 3, 4
 SLOT_PRIMARY, SLOT_SECONDARY, SLOT_MELEE, SLOT_SUPPORT1, SLOT_SUPPORT2 = 1, 2, 3, 4, 5

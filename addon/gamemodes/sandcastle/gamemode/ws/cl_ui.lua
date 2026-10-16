@@ -138,3 +138,96 @@ UI.Define("Dialog", "Panel", {
 	SetBody = function(self, text) self.body:SetText(text) end,
 	PerformLayout = function(self) UI.Center(self) end,
 })
+
+-- Slot badges: a solid shape, its corners bevelled, with its glyph knocked
+-- out: Primary 1 in a triangle, Secondary 2 in a square, Melee 3 in a
+-- circle, Support S in a star. Drawn rather than loaded, so they stay sharp
+-- at any size. Shapes are in units of the badge's size, clockwise (as
+-- surface.DrawPoly needs) on the screen, y down.
+local Loadout = WS.require("foundation.loadout")
+
+local BEVEL = 0.16 -- of each edge, cut from each end of a corner
+local CIRCLE_SEGMENTS = 24
+local STAR_INNER = 0.45 -- the star's inner points, of its outer radius
+local BADGE_SMALL = 20 -- below this size, the small glyph font
+
+surface.CreateFont("WSBadge", { font = "Verdana", size = 15, weight = 900 })
+surface.CreateFont("WSBadgeSmall", { font = "Verdana", size = 10, weight = 900 })
+
+local function Lerp2(a, b, t)
+	return { x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t }
+end
+
+-- A convex polygon with every corner cut.
+local function Bevelled(corners)
+	local out = {}
+	for i, c in ipairs(corners) do
+		local prev = corners[(i - 2) % #corners + 1]
+		local nextCorner = corners[i % #corners + 1]
+		out[#out + 1] = Lerp2(c, prev, BEVEL)
+		out[#out + 1] = Lerp2(c, nextCorner, BEVEL)
+	end
+	return out
+end
+
+local function Ring(radius, count, startDeg)
+	local points = {}
+	for i = 0, count - 1 do
+		local a = math.rad(startDeg + i * 360 / count)
+		points[#points + 1] = { x = 0.5 + radius * math.cos(a), y = 0.5 + radius * math.sin(a) }
+	end
+	return points
+end
+
+-- The star as a fan of triangles from its centre: DrawPoly takes only convex shapes.
+local function StarFan()
+	local outer, inner = Ring(0.48, 5, -90), Ring(0.48 * STAR_INNER, 5, -54)
+	local rim = {}
+	for i = 1, 5 do
+		rim[#rim + 1] = outer[i]
+		rim[#rim + 1] = inner[i]
+	end
+	local fan, centre = {}, { x = 0.5, y = 0.53 }
+	for i = 1, #rim do fan[#fan + 1] = { centre, rim[i], rim[i % #rim + 1] } end
+	return fan
+end
+
+local BADGES = {
+	[Loadout.KIND_PRIMARY] = {
+		glyph = "1",
+		glyphY = 0.64,
+		polys = { Bevelled({ { x = 0.5, y = 0.04 }, { x = 0.98, y = 0.92 }, { x = 0.02, y = 0.92 } }) },
+	},
+	[Loadout.KIND_SECONDARY] = {
+		glyph = "2",
+		glyphY = 0.5,
+		polys = { Bevelled({ { x = 0.08, y = 0.08 }, { x = 0.92, y = 0.08 }, { x = 0.92, y = 0.92 }, { x = 0.08, y = 0.92 } }) },
+	},
+	[Loadout.KIND_MELEE] = {
+		glyph = "3",
+		glyphY = 0.5,
+		polys = { Ring(0.47, CIRCLE_SEGMENTS, -90) },
+	},
+	[Loadout.KIND_SUPPORT] = {
+		glyph = "S",
+		glyphY = 0.55,
+		small = true,
+		polys = StarFan(),
+	},
+}
+
+-- Draws kind's badge at x, y, size pixels square, in color, its glyph in
+-- behind (the colour under the badge; the theme's background if nil).
+function UI.SlotBadge(kind, x, y, size, color, behind)
+	local badge = BADGES[kind]
+	draw.NoTexture()
+	surface.SetDrawColor(color)
+	for _, poly in ipairs(badge.polys) do
+		local scaled = {}
+		for i, p in ipairs(poly) do scaled[i] = { x = x + p.x * size, y = y + p.y * size } end
+		surface.DrawPoly(scaled)
+	end
+	local font = (badge.small or size < BADGE_SMALL) and "WSBadgeSmall" or "WSBadge"
+	draw.SimpleText(badge.glyph, font, x + size / 2, y + size * badge.glyphY, behind or THEME.background,
+		TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+end

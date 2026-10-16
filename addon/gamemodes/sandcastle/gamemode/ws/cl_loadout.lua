@@ -30,6 +30,20 @@ E.Listen("loadout_state", "ws_loadout", function(fields)
 	hook.Run("WSLoadoutChanged", loadout)
 end)
 
+-- class -> { damage, pellets }, for the Store's tooltips.
+WS.WeaponStats = WS.WeaponStats or {}
+
+E.Listen("loadout_stats", "ws_loadout", function(fields)
+	WS.WeaponStats = {}
+	for _, s in ipairs(fields.weapons) do
+		WS.WeaponStats[s.class] = {
+			damage = s.damage,
+			pellets = s.pellets,
+		}
+	end
+	hook.Run("WSLoadoutChanged", loadout)
+end)
+
 E.Listen("loadout_refused", "ws_loadout", function(fields)
 	notification.AddLegacy(fields.reason, NOTIFY_ERROR, REFUSED_SECONDS)
 	surface.PlaySound(REFUSED_SOUND)
