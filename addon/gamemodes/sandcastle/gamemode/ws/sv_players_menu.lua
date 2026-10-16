@@ -88,13 +88,18 @@ local ADMIN = {
 	end,
 }
 
-E.Listen("admin_player", "ws_players_menu", function(fields, ply)
+-- An admin's kick, ban or grant, from the scoreboard or a C-click (ws/sh_admin_properties.lua).
+function WS.AdminPlayerAction(ply, target, action, value)
 	if not WS.Can(ply, Permissions.PLAYERS) then return Say(ply, "You may not do that.", true) end
-	local target = Target(ply, fields.target)
+	target = Target(ply, target)
 	if not target then return end
-	local act = ADMIN[fields.action]
+	local act = ADMIN[action]
 	if not act then return Say(ply, "That is not something the menu does.", true) end
-	if target == ply and fields.action ~= WS.ADMIN_GRANT then return Say(ply, "You cannot do that to yourself.", true) end
-	local done, why = act(ply, target, fields.value)
+	if target == ply and action ~= WS.ADMIN_GRANT then return Say(ply, "You cannot do that to yourself.", true) end
+	local done, why = act(ply, target, value)
 	Say(ply, done or why, done == nil)
+end
+
+E.Listen("admin_player", "ws_players_menu", function(fields, ply)
+	WS.AdminPlayerAction(ply, fields.target, fields.action, fields.value)
 end)
