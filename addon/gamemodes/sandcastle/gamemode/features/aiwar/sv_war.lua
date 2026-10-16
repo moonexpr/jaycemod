@@ -145,6 +145,7 @@ MAP_LACKS[Scenario.WAYPOINTS] = NO_NAV_MESH
 -- not.
 function Controller:Start()
 	if self.war then return false, "the war is already on" end
+	if not WS.SoldiersEnabled() then return false, "NextSoldier is switched off on this server (ns_soldiers_enabled 0)" end
 	if not DrGBase then return false, "the AI war needs DrGBase (Steam Workshop) for its soldiers" end
 	-- a map whose mode is none the war knows is fought freeform
 	local variant = Scenario.For(RoundsModeName())

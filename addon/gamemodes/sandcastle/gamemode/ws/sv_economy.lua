@@ -5,6 +5,7 @@
 -- and spends through WS.EarnMoney and WS.SpendMoney, which raise a
 -- refusal (Economy.INSUFFICIENT_FUNDS, foundation.refusal) rather than overdraw.
 local Economy = WS.require("foundation.economy")
+local Refusal = WS.require("foundation.refusal")
 
 local ledger = Economy.New()
 
@@ -26,21 +27,30 @@ function WS.CanAfford(ent, amount)
 end
 
 -- WSMoneyEarned(ent, amount) tells whoever counts earnings (the round's
--- cash limit, foundation.rounds.limits).
+-- cash limit, foundation.rounds.limits). With the economy off, money stops
+-- counting: nothing is earned.
 function WS.EarnMoney(ent, amount)
+	if not WS.EconomyEnabled() then return end
 	Economy.Earn(ledger, ent, amount)
 	Sync(ent)
 	hook.Run("WSMoneyEarned", ent, amount)
 end
 
+local function Open()
+	if not WS.EconomyEnabled() then Refusal.Raise(Economy.ECONOMY_OFF, "Money is switched off on this server.") end
+end
+
+-- A purchase: on credit where it is allowed (WS.CreditFloor).
 function WS.SpendMoney(ent, amount)
-	Economy.Spend(ledger, ent, amount)
+	Open()
+	Economy.SpendWithCredit(ledger, ent, amount, WS.CreditFloor())
 	Sync(ent)
 end
 
 -- A player giving money to another; it is not earned, so it never counts
--- toward a round's cash limit.
+-- toward a round's cash limit, and never on credit.
 function WS.TransferMoney(from, to, amount)
+	Open()
 	Economy.Transfer(ledger, from, to, amount)
 	Sync(from)
 	Sync(to)

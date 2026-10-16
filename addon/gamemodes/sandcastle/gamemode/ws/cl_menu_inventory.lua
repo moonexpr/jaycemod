@@ -319,7 +319,7 @@ UI.Define("StoreMenu", "DPanel", {
 		for _, item in ipairs(Sorted(Items())) do
 			local tile = self.grid:Add(UI.Name("StoreTile"))
 			local owned = item.weapon and loadout:Owns(item.weapon)
-			local affordable = item.weapon and self.money >= item.weapon.price
+			local affordable = item.weapon and WS.Affords(self.money, item.weapon.price)
 			tile:SetItem(item, owned, affordable, function()
 				ToggleFavorite(item.key)
 				self:Refresh()
@@ -340,3 +340,4 @@ UI.Define("StoreMenu", "DPanel", {
 spawnmenu.AddCreationTab(TAB_NAME, function()
 	return vgui.Create(UI.Name("StoreMenu"))
 end, TAB_ICON, TAB_ORDER)
+WS.EconomyTabs[TAB_NAME] = true

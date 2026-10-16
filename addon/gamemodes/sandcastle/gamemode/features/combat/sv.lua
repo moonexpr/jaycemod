@@ -16,8 +16,18 @@ local Controller = {}
 
 -- The model for a ws_projectile entity; its variant is a
 -- foundation.projectile part.
+-- With tf_weapon_criticals 0, config as it is but no crit (a copy, so the
+-- caller's table is left alone).
+local function CritsAllowed(config)
+	if not config.crit or WS.CritsEnabled() then return config end
+	local copy = {}
+	for k, v in pairs(config) do copy[k] = v end
+	copy.crit = false
+	return copy
+end
+
 function Controller:BindProjectile(ent, variantName, config)
-	return Projectile.New(WS.require(variantName), config, CurTime())
+	return Projectile.New(WS.require(variantName), CritsAllowed(config), CurTime())
 end
 
 -- tf_point_weapon_mimic: config from its keyvalues (see
@@ -97,6 +107,7 @@ end
 -- itself) and the enemy a projectile hit directly (taking full damage). An
 -- attacker that is gone, or none, is the world.
 function Controller:Explode(config)
+	config = CritsAllowed(config)
 	local explosion = Combat.Explosion.New(config)
 	local origin, radius = config.origin, config.radius
 	local attacker = IsValid(config.attacker) and config.attacker or game.GetWorld()

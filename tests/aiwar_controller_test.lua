@@ -225,6 +225,7 @@ local function Env(w)
 		InOvertime = function() return w.overtime end,
 		SpawnPoints = function(team) return w.spawns[team] end,
 		NavMeshUsable = function() return w.navUsable ~= false end,
+		SoldiersEnabled = function() return w.soldiersEnabled ~= false end,
 		SetTeamMember = function() end,
 		ClipMasks = function() return { solid = 5, brushes = 6 } end,
 	}
@@ -574,6 +575,16 @@ T.test("the war still needs DrGBase first", function()
 	local ok, why = setfenv(chunk, env)():Start()
 	T.eq(ok, false, "refused")
 	T.eq(why:find("DrGBase", 1, true) ~= nil, true, "why: " .. tostring(why))
+end)
+
+T.test("with NextSoldier switched off (ns_soldiers_enabled 0) the war is refused, and says why", function()
+	local w = World()
+	w.soldiersEnabled = false
+	w:Load("rounds", FakeRounds(PayloadMode.Mode, w))
+	local chunk = assert(loadfile(SOURCE))
+	local ok, why = setfenv(chunk, Env(w))():Start()
+	T.eq(ok, false, "refused")
+	T.eq(why:find("ns_soldiers_enabled", 1, true) ~= nil, true, "why: " .. tostring(why))
 end)
 
 T.test("a map with no usable navigation mesh is refused, and the admin is told how to make one", function()

@@ -96,11 +96,13 @@ E.Listen("client_ready", "ws_loadout", function(_, ply)
 	E.Fire("loadout_stats", { weapons = Stats() }, ply)
 end)
 
--- The equipped weapons, slot by slot, with reserve ammo; the first is drawn.
+-- The equipped weapons, slot by slot, with reserve ammo; the first is
+-- drawn. With the economy off, everyone gets the starter loadout.
 function WS.GiveLoadout(ply)
 	local first
+	local loadout = WS.EconomyEnabled() and Of(ply) or Loadout.Starting(CATALOG)
 	for _, s in ipairs(Loadout.SLOTS) do
-		local weapon = Of(ply):Equipped(s.slot)
+		local weapon = loadout:Equipped(s.slot)
 		if weapon then
 			local given = ply:Give(weapon.class)
 			if IsValid(given) and given:GetPrimaryAmmoType() >= 0 then

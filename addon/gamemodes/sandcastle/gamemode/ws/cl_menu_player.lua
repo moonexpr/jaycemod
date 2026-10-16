@@ -149,7 +149,7 @@ UI.Define("PlayerMenu", "DPanel", {
 			row:Dock(TOP)
 			row:DockMargin(0, 0, 0, GAP / 2)
 			row:SetSelected(loadout:Holds(slot, weapon))
-			if buy then row:SetEnabled(LocalPlayer():GetNW2Int("ws_money", 0) >= weapon.price) end
+			if buy then row:SetEnabled(WS.Affords(LocalPlayer():GetNW2Int("ws_money", 0), weapon.price)) end
 			row.DoClick = function()
 				if buy then
 					E.Request("loadout_buy_into", {
@@ -188,3 +188,4 @@ UI.Define("PlayerMenu", "DPanel", {
 spawnmenu.AddCreationTab(TAB_NAME, function()
 	return vgui.Create(UI.Name("PlayerMenu"))
 end, TAB_ICON, TAB_ORDER)
+WS.EconomyTabs[TAB_NAME] = true

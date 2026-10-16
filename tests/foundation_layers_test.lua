@@ -52,6 +52,7 @@ local CATEGORY = {
 	["combat"] = "gameplay",
 	["combat/weapon_mimic"] = "gameplay",
 	["combat/weapon_slot_filter"] = "gameplay",
+	["combat/fixed_spread"] = "gameplay",
 	["projectile"] = "gameplay",
 	["projectile/rocket"] = "gameplay",
 	["projectile/grenade"] = "gameplay",
