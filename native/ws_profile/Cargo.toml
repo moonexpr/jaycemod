@@ -1,0 +1,13 @@
+[package]
+name = "wsprofile"
+version = "0.1.0"
+edition = "2021"
+description = "LuaJIT's sampling profiler for Garry's Mod servers: VM states and stacks, counted natively"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[profile.release]
+panic = "abort"
+lto = true

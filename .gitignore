@@ -1,3 +1,6 @@
 .devtools/artifacts/
 __pycache__/
 .DS_Store
+
+# native modules build here (native/<crate>)
+native/*/target/

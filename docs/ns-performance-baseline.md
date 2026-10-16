@@ -109,6 +109,52 @@ Smaller items: `CarrySeated` at 26.5 ms/s; `Soldier:Blocker` at 9.6 ms/s over
 core). A vortigaunt's `OnDeath` (287 to 430 ms) is not a cost: it pauses its
 coroutine for the ragdoll handoff, and the profiler counts the pause.
 
+## Sampling profiler (wsprofile)
+
+`native/ws_profile` builds `gmsv_wsprofile_win64.dll`. It drives LuaJIT's
+sampling profiler (`luaJIT_profile_start`), which GMod's `lua_shared.dll`
+exports though no GMod Lua library exposes it, and counts samples natively by
+VM state and by stack. `foundation.core.analytics` (`SampleReport`,
+`FormatSamples`) turns the counts into a report, and `ws_analytics_sample
+<seconds>` runs a window and prints it. Nothing is wrapped, so tiny hot
+functions are measured without the wrappers' distortion.
+
+**How to read it.** The profiler samples wall-clock time on the server
+thread at a steady ~665 Hz: 39,620 samples in 60 s with the war running,
+9,970 in 15 s with the soldiers paused. A sample taken while the server is
+outside Lua (engine C++, physics, NextBot locomotion, Wine, idle between
+ticks) is charged to the next Lua entry point, the hook dispatcher
+(`lua/ulib/shared/hook.lua:98`). So that frame's own share is time outside
+Lua, and every other frame is Lua's share of the server thread, C calls it
+makes included.
+
+- **H16 (refuted):** the dispatcher's large own share is compiled listeners
+  inlined into its trace. With the JIT off it grew, from 22.9 % to 53.9 %.
+- **H17 (supported):** it is time outside Lua. Paused soldiers, prediction:
+  it rises. It rose from 22.9 % to 59.9 %, and the sample rate stayed fixed.
+
+| Condition | Lua's share of the server thread | VM states |
+|---|---|---|
+| 15v15, JIT on (defaults) | about 77 % | C 51.5, compiled 23.8, interpreted 18.1, JIT compiler 4.2, GC 2.4 |
+| 15v15, JIT off | about 46 % | C 85.0, interpreted 12.0, GC 2.9 |
+| soldiers paused, JIT on | about 40 % | C 87.7, interpreted 5.5, compiled 4.4, GC 1.7, compiler 0.8 |
+
+The JIT compiler itself took 4.2 % of the server thread during the war: the
+first direct sight of the JIT's own work, which experiments G to J only
+inferred.
+
+Where Lua's time goes (15v15, JIT on, share of the server thread):
+
+| Inclusive | Path |
+|---|---|
+| 22.7 % | Lua route search: `ThinkSearches` → `Step` → `Expand` (17.9) → `Relax` (13.5) → `Cost` (7.0) → `FillStep` (4.0); the heap's `Pop`/`Before` 3.2 |
+| 17.3 % | DrGBase entity think (`shared.lua:233`): aiming (`GetShootPos`), animation, `ShouldRun` → NS `Query` |
+| 10.0 % | AI war controller think (`sv_field.lua:Think`): behaviour trees 6.2, respawns (`Reinforce`/`Draft`) 4.1 |
+| 8.7 % | DrGBase behaviour coroutine → `OnIdle` → `NSSteer` → `FollowPath` (6.9) → the engine's path compute with our Lua cost (`path.lua:75`) |
+| 4.1 % | DrGBase `UpdateRelationshipWith` |
+| 4.0 % | DrGBase detection (`detection.lua:173`, `SpotEntity`) |
+| 2.3 % | cart riders (`CarrySeated` → `SetPos`) |
+
 ## Reproducing
 
 ```

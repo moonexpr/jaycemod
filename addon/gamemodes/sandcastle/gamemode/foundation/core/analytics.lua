@@ -17,7 +17,7 @@
 -- name's first sample, so a timer can wrap per-tick work.
 local error, ipairs, pairs, setmetatable, unpack = error, ipairs, pairs, setmetatable, unpack
 local ceil, huge, max, min = math.ceil, math.huge, math.max, math.min
-local format = string.format
+local format, gmatch = string.format, string.gmatch
 local sort = table.sort
 module(...)
 
@@ -221,5 +221,73 @@ function Format(report)
 	for _, name in ipairs(SortedKeys(report.counters)) do
 		lines[#lines + 1] = format("  %s: %d", name, report.counters[name])
 	end
+	return lines
+end
+
+-------------------------------------------------------------------------------
+-- Sampling: a report of what LuaJIT's sampling profiler counted (the
+-- server's wsprofile module): { samples, states = state -> n, stacks =
+-- "outer;...;leaf" -> n }.
+
+-- Frames in a stack, outermost first.
+local FRAME = "[^;]+"
+
+local function Rows(counts, total, n)
+	local rows = {}
+	for name, count in pairs(counts) do
+		rows[#rows + 1] = {
+			name = name,
+			count = count,
+			share = total > 0 and count / total or 0,
+		}
+	end
+	sort(rows, function(a, b)
+		if a.count ~= b.count then return a.count > b.count end
+		return a.name < b.name
+	end)
+	for i = #rows, n + 1, -1 do rows[i] = nil end
+	return rows
+end
+
+-- The report's lists, each { name, count, share } largest first, the top
+-- n of each: states (the VM's: compiled, interpreted, c, gc, compiler),
+-- self (the leaf frame: the function running), inclusive (every function
+-- on the stack, once per stack) and stacks (whole stacks).
+function SampleReport(sampled, n)
+	local total = sampled.samples
+	local leaves, inclusive = {}, {}
+	for stack, count in pairs(sampled.stacks) do
+		local seen, leaf = {}, nil
+		for frame in gmatch(stack, FRAME) do
+			if not seen[frame] then
+				seen[frame] = true
+				inclusive[frame] = (inclusive[frame] or 0) + count
+			end
+			leaf = frame
+		end
+		if leaf then leaves[leaf] = (leaves[leaf] or 0) + count end
+	end
+	return {
+		samples = total,
+		states = Rows(sampled.states, total, n),
+		self = Rows(leaves, total, n),
+		inclusive = Rows(inclusive, total, n),
+		stacks = Rows(sampled.stacks, total, n),
+	}
+end
+
+local function Section(lines, title, rows)
+	lines[#lines + 1] = title
+	for _, row in ipairs(rows) do
+		lines[#lines + 1] = format("%6.1f%% %7d  %s", row.share * PERCENT, row.count, row.name)
+	end
+end
+
+function FormatSamples(report)
+	local lines = { format("samples: %d", report.samples) }
+	Section(lines, "-- VM state", report.states)
+	Section(lines, "-- self (the function running)", report.self)
+	Section(lines, "-- inclusive (on the stack)", report.inclusive)
+	Section(lines, "-- stacks", report.stacks)
 	return lines
 end

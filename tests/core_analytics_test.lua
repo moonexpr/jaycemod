@@ -142,4 +142,81 @@ T.test("the format names every timer and counter, slowest first", function()
 	T.eq(text:find("spawns", 1, true) ~= nil, true, "counter listed")
 end)
 
+-- What wsprofile.Stop() returns: samples by VM state and by stack, frames
+-- outermost first, separated by ";".
+local function Sampled()
+	return {
+		samples = 10,
+		states = {
+			compiled = 2,
+			interpreted = 5,
+			gc = 1,
+			compiler = 2,
+		},
+		stacks = {
+			["Think;Update;Cost"] = 4,
+			["Think;Update"] = 3,
+			["Think;Search;Cost"] = 2,
+			["Tick"] = 1,
+		},
+	}
+end
+
+local function Find(rows, name)
+	for _, row in ipairs(rows) do
+		if row.name == name then return row end
+	end
+end
+
+T.test("a sample report gives each VM state's share, largest first", function()
+	local report = Analytics.SampleReport(Sampled(), 10)
+	T.eq(report.samples, 10, "samples")
+	T.eq(report.states[1].name, "interpreted", "largest first")
+	T.near(report.states[1].share, 0.5, 1e-9, "half interpreted")
+	T.near(Find(report.states, "compiler").share, 0.2, 1e-9, "compiler share")
+end)
+
+T.test("self time is the leaf frame's; inclusive time counts a frame once per stack", function()
+	local report = Analytics.SampleReport(Sampled(), 10)
+	T.eq(Find(report.self, "Cost").count, 6, "Cost is the leaf of 4 + 2")
+	T.eq(Find(report.self, "Update").count, 3, "Update's own")
+	T.eq(Find(report.self, "Think"), nil, "Think is never a leaf")
+	T.eq(Find(report.inclusive, "Think").count, 9, "Think is under 9 samples")
+	T.eq(Find(report.inclusive, "Update").count, 7, "Update under 4 + 3")
+	T.eq(report.self[1].name, "Cost", "hottest self first")
+end)
+
+T.test("a recursive frame counts once in a stack's inclusive time", function()
+	local report = Analytics.SampleReport({
+		samples = 2,
+		states = { interpreted = 2 },
+		stacks = { ["Walk;Walk;Walk"] = 2 },
+	}, 10)
+	T.eq(Find(report.inclusive, "Walk").count, 2, "once per stack")
+end)
+
+T.test("a sample report keeps the top n of each list", function()
+	local report = Analytics.SampleReport(Sampled(), 2)
+	T.eq(#report.stacks, 2, "stacks")
+	T.eq(report.stacks[1].name, "Think;Update;Cost", "hottest stack first")
+	T.eq(#report.self, 2, "self")
+end)
+
+T.test("an empty sample window reports nothing, not an error", function()
+	local report = Analytics.SampleReport({
+		samples = 0,
+		states = {},
+		stacks = {},
+	}, 10)
+	T.eq(report.samples, 0, "none")
+	T.eq(#report.states, 0, "no states")
+	T.eq(#Analytics.FormatSamples(report) > 0, true, "still formats")
+end)
+
+T.test("the sample format names the states and the hottest functions", function()
+	local text = table.concat(Analytics.FormatSamples(Analytics.SampleReport(Sampled(), 10)), "\n")
+	T.eq(text:find("interpreted", 1, true) ~= nil, true, "states")
+	T.eq(text:find("Cost", 1, true) ~= nil, true, "functions:\n" .. text)
+end)
+
 T.finish()

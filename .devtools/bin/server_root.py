@@ -85,6 +85,13 @@ WATCH_LOG = "sandcastle_watch.txt"  # under the server's data/
 # GMod's server requires gmsv_<name>_win64.dll; luadev's socket build is plain
 # LuaSocket against lua_shared, the same on either side (luadev_socket.lua)
 SERVER_BINARIES = {"gmsv_luasocket_win64.dll": "gmcl_luasocket_win64.dll"}
+# binary modules built from this repo, linked when built: name in the
+# server's lua/bin -> the build's output (native/<crate>, cargo xwin build
+# --release --target x86_64-pc-windows-msvc)
+REPO = Path(__file__).resolve().parents[2]
+NATIVE_BINARIES = {
+    "gmsv_wsprofile_win64.dll": REPO / "native/ws_profile/target/x86_64-pc-windows-msvc/release/wsprofile.dll",
+}
 SERVER_EXE = "srcds_win64.exe"
 # PE: e_lfanew at 0x3c names the "PE\\0\\0" signature; the optional header follows
 # the 20-byte file header, with the subsystem at +68 in PE32 and PE32+ alike
@@ -223,6 +230,9 @@ def build(layout: Layout) -> Path:
         link(game / "lua" / "bin" / entry.name, entry)
     for name, source in SERVER_BINARIES.items():
         link(game / "lua" / "bin" / name, shared_lua / "bin" / source)
+    for name, built in NATIVE_BINARIES.items():
+        if built.exists():
+            link(game / "lua" / "bin" / name, built)
     addons = game / "addons"
     for entry in (layout.shared / "garrysmod" / "addons").iterdir():
         link(addons / entry.name, entry)
