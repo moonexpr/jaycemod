@@ -77,9 +77,11 @@ end
 -- Moves amount from one account to another, all of it or none: a player
 -- giving money to a teammate.
 function Transfer(ledger, from, to, amount)
-	if from == to then Refusal.Raise(SELF_TRANSFER, "you cannot give money to yourself") end
-	if Amount(amount) == 0 then Refusal.Raise(NO_AMOUNT, "give at least $1") end
+	if from == to then Refusal.Raise(SELF_TRANSFER, "You cannot give money to yourself.") end
+	if Amount(amount) == 0 then Refusal.Raise(NO_AMOUNT, "Give at least $1.") end
 	Held(ledger, to)
+	local held = Held(ledger, from)
+	if amount > held then Refusal.Raise(INSUFFICIENT_FUNDS, "You have only " .. Format(held) .. ".") end
 	Spend(ledger, from, amount)
 	Earn(ledger, to, amount)
 end

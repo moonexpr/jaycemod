@@ -975,6 +975,20 @@ function Round:RestartRound(now)
 	return Transition(self, effects, State.PREGAME, now)
 end
 
+-- A passed scramble vote (TF_vote_passed_scramble_teams): the next round's
+-- teams are scrambled, as mp_scrambleteams_auto would, and told now.
+function Round:ScheduleScramble()
+	self.scrambleTeams = true
+	local effects = {}
+	Add(effects, Kind("scramble_due"))
+	return effects
+end
+
+-- Whether the next round's teams are already to be scrambled.
+function Round:ScramblePending()
+	return self.scrambleTeams == true
+end
+
 -- Stopping the game (Sandbox mode) is TF2's tournament ready-up: the rounds
 -- wait in BETWEEN_RNDS and make no transition at all (no pre-round, win,
 -- sudden death or game over, whatever the map or players do) until Unhalt,

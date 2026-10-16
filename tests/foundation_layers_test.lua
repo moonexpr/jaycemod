@@ -47,6 +47,7 @@ local CATEGORY = {
 	["spectate"] = "gameplay",
 	["economy"] = "gameplay",
 	["reports"] = "gameplay",
+	["vote"] = "gameplay",
 	["loadout"] = "gameplay",
 	["combat"] = "gameplay",
 	["combat/weapon_mimic"] = "gameplay",

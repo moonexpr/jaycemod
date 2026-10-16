@@ -67,7 +67,7 @@ end
 -- when this report reaches the count (and spends the reports), else nil.
 function File(book, reporter, target, reason, playerCount, configured)
 	if not KNOWN[reason] then error("reports: unknown reason " .. tostring(reason), 2) end
-	if reporter == target then Refusal.Raise(SELF_REPORT, "you cannot report yourself") end
+	if reporter == target then Refusal.Raise(SELF_REPORT, "You cannot report yourself.") end
 	local entry = book.against[target]
 	if entry == nil then
 		entry = {
@@ -76,7 +76,7 @@ function File(book, reporter, target, reason, playerCount, configured)
 		}
 		book.against[target] = entry
 	end
-	if entry.by[reporter] then Refusal.Raise(ALREADY_REPORTED, "you have already reported this player") end
+	if entry.by[reporter] then Refusal.Raise(ALREADY_REPORTED, "You have already reported this player.") end
 	entry.filed = entry.filed + 1
 	entry.by[reporter] = {
 		reason = reason,

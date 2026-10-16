@@ -935,6 +935,18 @@ T.test("no scramble without mp_scrambleteams_auto, under the win difference, or 
 	T.eq(Has(mini:SetWinningTeam(T0 + 20, RED, W.ALL_POINTS_CAPTURED, false, false, false, FakeObjective.Objective()), "scramble_due"), false, "a mini-round")
 end)
 
+T.test("a passed scramble vote scrambles the next round's teams, as TF2's does", function()
+	local round = Running({ scrambleAuto = false, scrambleWinDifference = 2 })
+	T.eq(round:ScramblePending(), false)
+	local now = round:ScheduleScramble()
+	T.eq(Has(now, "scramble_due"), true, "told at once: " .. Describe(now))
+	T.eq(round:ScramblePending(), true, "a second vote is refused while it waits")
+	round:SetWinningTeam(T0 + 20, RED, W.ALL_POINTS_CAPTURED, true, false, false, FakeObjective.Objective())
+	local restart = round:Think(T0 + 35, World({ scores = { [RED] = 1, [BLUE] = 0 } }))
+	T.eq(Has(restart, "scramble_teams"), true, "the next round scrambled: " .. Describe(restart))
+	T.eq(round:ScramblePending(), false, "done")
+end)
+
 T.test("mp_forcewin's win scores a point where points come from captures, and can win the match", function()
 	local round = Running({ winlimit = 1 })
 	local effects = round:SetWinningTeam(T0 + 20, BLUE, W.NONE, true, false, false,

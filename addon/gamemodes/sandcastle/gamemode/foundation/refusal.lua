@@ -29,3 +29,9 @@ function Explain(err, kinds)
 	if not Is(err, kinds) then error(err, 0) end
 	return Message(err)
 end
+
+-- The detail alone, for a refusal written as the words a player reads.
+function Detail(err, kinds)
+	if not Is(err, kinds) then error(err, 0) end
+	return err.detail
+end

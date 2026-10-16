@@ -59,6 +59,14 @@ T.test("explaining anything else rethrows it unchanged", function()
 	T.eq(Raised(Refusal.Explain, "boom", KINDS), "boom", "a runtime error, without a position added")
 end)
 
+T.test("Detail is the refusal's words for the player, and rethrows anything else", function()
+	local err = Raised(Refusal.Raise, KIND, "You cannot do that.")
+	T.eq(Refusal.Detail(err, KINDS), "You cannot do that.")
+	local other = Raised(Refusal.Raise, OTHER_KIND, "x")
+	T.eq(rawequal(Raised(Refusal.Detail, other, KINDS), other), true, "a refusal of another kind")
+	T.eq(Raised(Refusal.Detail, "boom", KINDS), "boom", "a runtime error")
+end)
+
 T.test("a refusal raised before a rerun of refusal.lua is recognised by the new code", function()
 	local err = Raised(Refusal.Raise, KIND, "bfg")
 	package.loaded["foundation.refusal"] = nil

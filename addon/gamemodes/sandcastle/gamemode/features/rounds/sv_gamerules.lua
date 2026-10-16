@@ -73,6 +73,15 @@ function Controller:RestartRound()
 	end)
 end
 
+-- A passed scramble vote: the next round's teams are scrambled.
+function Controller:ScheduleScramble()
+	self:Apply(self.round:ScheduleScramble())
+end
+
+function Controller:ScramblePending()
+	return self.round:ScramblePending()
+end
+
 function Controller:Halted()
 	return self.round:Halted()
 end

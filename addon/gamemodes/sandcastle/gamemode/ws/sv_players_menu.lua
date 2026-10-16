@@ -37,7 +37,7 @@ end
 -- else, our bug, is rethrown. Whether fn ran through.
 local function Try(ply, fn)
 	local ok, err = pcall(fn)
-	if not ok then Say(ply, Refusal.Explain(err, REFUSED), true) end
+	if not ok then Say(ply, Refusal.Detail(err, REFUSED), true) end
 	return ok
 end
 
