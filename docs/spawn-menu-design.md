@@ -1115,6 +1115,8 @@ Admin > Store & Economy (`mp_store_price_scale`, `mp_store_window`, `mp_economy_
 
 The mockups are on the design canvas (claude.ai artifact 1rFapf81dfSew33rz6NvR9). Where these differ from §1–§9, these win.
 
+**Status (2026-10-16): built on main, 29e5087..df05628, covered by the LuaJIT suite; not yet checked in game.** Not built: the Help Other Team and Soldier Difficulty votes (shown as coming soon; no handicap or difficulty system yet), the match winners' reward (a stub), Pause Cart, and the player menu on Sandbox's own scoreboard (Sandcastle's scoreboard shows only while teams play).
+
 **Tabs.** The left creation tabs are **Loadout**, **Store** and **Server**, ordered ahead of Sandbox's stock tabs. Player becomes Loadout; Inventory becomes Store; Server is new. No tab holds admin controls.
 
 - **Loadout:** a slot lists every weapon that fits it; an unowned one buys and equips in one click (`BuyInto`, §4.1).
