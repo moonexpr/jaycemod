@@ -134,7 +134,8 @@ properties.Add("ws_spectate_npc", {
 	MenuIcon = "icon16/eye.png",
 	Order = 8998,
 	Filter = function(self, ent, ply)
-		return IsValid(ent) and (ent:IsNPC() or ent:IsNextBot()) and ent:Health() > 0 and IsValid(ply) and ply:IsAdmin()
+		return IsValid(ent) and (ent:IsNPC() or ent:IsNextBot()) and ent:Health() > 0 and IsValid(ply)
+			and WS.Can(ply, WS.require("foundation.permissions").PLAYERS) == true
 	end,
 	Action = function(self, ent)
 		RunConsoleCommand("ws_spectate_npc", tostring(ent:EntIndex()))

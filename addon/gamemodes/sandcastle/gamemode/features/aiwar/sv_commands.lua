@@ -6,7 +6,9 @@ local Squad = WS.require("foundation.aiwar.squad")
 local Slots = WS.require("foundation.aiwar.slots")
 local Lanes = WS.require("foundation.aiwar.lanes")
 local Tuning = WS.require("foundation.ns.tuning")
+local Permissions = WS.require("foundation.permissions")
 local RED, BLUE = Map.RED, Map.BLUE
+local NEXTSOLDIER = Permissions.NEXTSOLDIER
 
 local function Tell(ply, lines)
 	for _, line in ipairs(lines) do
@@ -16,7 +18,7 @@ local function Tell(ply, lines)
 end
 
 concommand.Add("ws_aiwar_report", function(ply)
-	if IsValid(ply) and not ply:IsAdmin() then return end
+	if not WS.Can(ply, NEXTSOLDIER) then return end
 	if not Controller.war then
 		Tell(ply, { "AI war: not running" })
 		return
@@ -29,7 +31,7 @@ end, nil, "Print every AI war soldier's role, action, route and last trip to the
 -- caller's console (and the server's). Named ns_<subject>_<verb>.
 local function AdminCommand(name, run, help)
 	concommand.Add(name, function(ply, _, args)
-		if IsValid(ply) and not ply:IsAdmin() then return end
+		if not WS.Can(ply, NEXTSOLDIER) then return end
 		Tell(ply, run(args))
 	end, nil, help)
 end
@@ -153,7 +155,7 @@ end, "Put every NextSoldier tactics constant back to its default")
 -- The overlay is the nbdebug feature's AIWAR layer (ws_nb_debug AIWAR),
 -- drawn with the other NPC debug layers; it sets ply.wsAiwarDebug.
 concommand.Add("ws_aiwar_debug", function(ply)
-	if not IsValid(ply) or not ply:IsAdmin() then return end
+	if not IsValid(ply) or not WS.Can(ply, NEXTSOLDIER) then return end
 	WS.Feature("nbdebug"):ToggleLayer(ply, WS.require("foundation.npc.debug").AIWAR)
 end, nil, "Toggle drawing each AI war soldier's route, goal and state (ws_nb_debug AIWAR)")
 
@@ -170,7 +172,7 @@ end)
 -- to the server console. Aim at a soldier (or give its entity index) to
 -- toggle it; no soldier in sight turns all tracing off.
 concommand.Add("ws_aiwar_trace", function(ply, _, args)
-	if IsValid(ply) and not ply:IsAdmin() then return end
+	if not WS.Can(ply, NEXTSOLDIER) then return end
 	local ent = args[1] and Entity(tonumber(args[1]) or -1) or (IsValid(ply) and ply:GetEyeTrace().Entity)
 	local function Say(text)
 		print(text)

@@ -1,7 +1,8 @@
 -- The base of Sandcastle's editors (edit_gamerules, edit_roundtimer): a
 -- Sandbox editor like the Sun, Fog and Sky editors (base_edit), spawned from
 -- the Editors category, edited through its right-click "Edit Properties".
--- Only admins spawn or edit one, and a map has at most one of each. It
+-- Only admins spawn one, only holders of the tampering privilege edit one,
+-- and a map has at most one of each. It
 -- shows the game's current values, refreshed twice a second, and hands
 -- each edit to the editors feature; its actions are right-click entries
 -- (WS.EditorAction).
@@ -45,7 +46,7 @@ function ENT:SetupDataTables()
 end
 
 function ENT:CanEditVariables(ply)
-	return ply:IsAdmin()
+	return WS.Can(ply, WS.require("foundation.permissions").TAMPER) == true
 end
 
 if CLIENT then return end

@@ -26,7 +26,7 @@ local COMMANDS = {
 }
 
 local function Allowed(ply)
-	return IsValid(ply) and (ply:IsSuperAdmin() or ply:IsListenServerHost())
+	return IsValid(ply) and WS.Can(ply, WS.require("foundation.permissions").NPC_DEBUG) == true
 end
 
 for _, command in ipairs(COMMANDS) do

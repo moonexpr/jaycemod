@@ -457,7 +457,7 @@ concommand.Add("mp_forcewin", function(ply, _, args)
 	local function Reply(text)
 		if IsValid(ply) then ply:ChatPrint(text) else print(text) end
 	end
-	if IsValid(ply) and not ply:IsAdmin() then return Reply("mp_forcewin: only admins may force a win") end
+	if not WS.Can(ply, WS.require("foundation.permissions").MATCH) then return Reply("mp_forcewin: you may not force a win") end
 	local target = Rounds.ForceWinTarget(args[1] or "")
 	if not target then return Reply("usage: mp_forcewin " .. table.concat(FORCE_WIN_OPTIONS, "|")) end
 	if not Active() then return Reply("mp_forcewin: this map has no rounds") end

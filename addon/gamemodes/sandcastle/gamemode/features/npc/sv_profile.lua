@@ -190,7 +190,7 @@ local function Tell(ply, lines)
 end
 
 local function Admin(ply)
-	return not IsValid(ply) or ply:IsAdmin()
+	return WS.Can(ply, WS.require("foundation.permissions").NEXTSOLDIER) == true
 end
 
 concommand.Add("ws_path_profile", function(ply, _, args)

@@ -42,7 +42,7 @@ end)
 
 -- The ws_nb_* commands' gate (ws/sv_nbdebug.lua).
 function WS.NpcDebugAllowed(ply)
-	return IsValid(ply) and (ply:IsSuperAdmin() or ply:IsListenServerHost())
+	return IsValid(ply) and WS.Can(ply, WS.require("foundation.permissions").NPC_DEBUG) == true
 end
 
 local function Check(menu, label, on, run)

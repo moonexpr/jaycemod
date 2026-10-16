@@ -1,19 +1,24 @@
 -- The editors' actions: right-click entries on an editor (Sandbox's
--- properties), for admins only on both realms. The server runs the action
--- through the editors feature and tells the admin how it went.
+-- properties), for holders of the action's privilege on both realms. The
+-- server runs the action through the editors feature and tells the admin
+-- how it went.
 --
 -- def = { class (the editor's), or match(ent) -> whether the entry shows on
--- ent (a payload cart), title (for the chat line), label, icon,
+-- ent (a payload cart), privilege (a foundation.permissions name; tampering
+-- when left out), title (for the chat line), label, icon,
 -- order, choices (optional: { label, value } list, shown as a submenu),
 -- run(editors, ent, value) -> true, or false and why, done (the chat line
 -- on success) }.
+local Permissions = WS.require("foundation.permissions")
+
 function WS.EditorAction(name, def)
+	local privilege = def.privilege or Permissions.TAMPER
 	properties.Add(name, {
 		MenuLabel = def.label,
 		MenuIcon = def.icon,
 		Order = def.order,
 		Filter = function(self, ent, ply)
-			if not (IsValid(ent) and IsValid(ply) and ply:IsAdmin()) then return false end
+			if not (IsValid(ent) and IsValid(ply) and WS.Can(ply, privilege)) then return false end
 			if def.match then return def.match(ent) == true end
 			return ent:GetClass() == def.class
 		end,

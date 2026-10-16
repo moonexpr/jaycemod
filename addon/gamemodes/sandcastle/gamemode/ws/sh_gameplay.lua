@@ -11,6 +11,7 @@
 -- Admin > Gameplay Settings, the modes and those settings, and a note on the
 -- HUD in Sandbox mode.
 local Gamemode = WS.require("foundation.gamemode")
+local Permissions = WS.require("foundation.permissions")
 
 local SETTINGS = "ws_gameplay_settings"
 
@@ -39,8 +40,8 @@ if SERVER then
 
 	local function Command(name, want, help)
 		concommand.Add(name, function(ply)
-			if IsValid(ply) and not ply:IsAdmin() then
-				ply:ChatPrint("Gameplay: only admins may do that")
+			if not WS.Can(ply, Permissions.MATCH) then
+				ply:ChatPrint("Gameplay: you may not do that")
 				return
 			end
 			WS.Feature("gamemode"):Request(want, Gamemode.SOURCE_BUTTON, ply)

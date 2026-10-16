@@ -15,7 +15,7 @@ local function Load(file, convars)
 		ENT = ENT,
 		AddCSLuaFile = function() end,
 		DEFINE_BASECLASS = function() end,
-		WS = { TEAM_RED = RED, TEAM_BLUE = BLUE, TeamName = {}, EditorAction = function() end },
+		WS = { TEAM_RED = RED, TEAM_BLUE = BLUE, TeamName = {}, require = T.require, EditorAction = function() end },
 		GetConVar = function(name)
 			return {
 				GetInt = function() return convars[name] end,

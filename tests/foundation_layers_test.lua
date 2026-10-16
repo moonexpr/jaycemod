@@ -38,6 +38,8 @@ local CATEGORY = {
 	["events"] = "formalisms",
 	["features"] = "formalisms",
 	["gamemode"] = "formalisms",
+	["play_mode"] = "formalisms",
+	["permissions"] = "formalisms",
 
 	["players"] = "gameplay",
 	["players/attributes"] = "gameplay",

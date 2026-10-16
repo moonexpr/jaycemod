@@ -164,8 +164,8 @@ local function AnyDoorMoving()
 end
 
 concommand.Add("mp_nav_generate", function(ply)
-	if IsValid(ply) and not ply:IsAdmin() then
-		Tell(ply, "Navigation mesh: only admins can generate it")
+	if not WS.Can(ply, WS.require("foundation.permissions").RULES) then
+		Tell(ply, "Navigation mesh: you may not generate it")
 		return
 	end
 	if underWay or navmesh.IsGenerating() then

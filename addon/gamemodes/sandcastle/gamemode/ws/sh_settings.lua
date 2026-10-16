@@ -1,14 +1,16 @@
 -- The Utilities menu's server settings (foundation.settings): on a
 -- dedicated server a client cannot set a server's convar, so its controls
--- send ws_server_set, which the server runs for an admin.
+-- send ws_server_set, which the server runs for a holder of the rules
+-- privilege.
 local Settings = WS.require("foundation.settings")
+local Permissions = WS.require("foundation.permissions")
 local COMMAND = "ws_server_set"
 local SEND_AFTER = 0.3 -- seconds a slider rests before its value is sent
 
 if SERVER then
 	concommand.Add(COMMAND, function(ply, _, args)
-		if IsValid(ply) and not ply:IsAdmin() then
-			ply:ChatPrint("Settings: only admins may change the server's settings")
+		if not WS.Can(ply, Permissions.RULES) then
+			ply:ChatPrint("Settings: you may not change the server's settings")
 			return
 		end
 		local name = args[1] or ""

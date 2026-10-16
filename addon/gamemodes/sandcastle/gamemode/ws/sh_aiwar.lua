@@ -8,6 +8,7 @@
 local AiWar = WS.require("foundation.aiwar")
 local Slots = WS.require("foundation.aiwar.slots")
 local Squad = WS.require("foundation.aiwar.squad")
+local Permissions = WS.require("foundation.permissions")
 local E = WS.Events
 
 local ACTIVE_KEY = "ws.aiwar"
@@ -82,8 +83,8 @@ if SERVER then
 
 	local function Command(name, method, help)
 		concommand.Add(name, function(ply)
-			if IsValid(ply) and not ply:IsAdmin() then
-				Tell(ply, "AI war: only admins can start or end it")
+			if not WS.Can(ply, Permissions.NEXTSOLDIER) then
+				Tell(ply, "AI war: you may not start or end it")
 				return
 			end
 			local war = WS.Feature("aiwar")
@@ -101,8 +102,8 @@ if SERVER then
 	-- which says how it went, in the caller's console.
 	local function SlotCommand(name, run, help)
 		concommand.Add(name, function(ply, _, args)
-			if IsValid(ply) and not ply:IsAdmin() then
-				Tell(ply, "AI war: only admins can change the slots")
+			if not WS.Can(ply, Permissions.NEXTSOLDIER) then
+				Tell(ply, "AI war: you may not change the slots")
 				return
 			end
 			for _, line in ipairs(run(WS.Feature("aiwar"), args)) do
@@ -160,7 +161,7 @@ if SERVER then
 	end, "Print each side's slots: their ids, pins and soldiers")
 
 	E.Listen("aiwar_slots_request", "ws_aiwar", function(_, ply)
-		if ply:IsAdmin() then WS.Feature("aiwar"):WatchSlots(ply) end
+		if WS.Can(ply, Permissions.NEXTSOLDIER) then WS.Feature("aiwar"):WatchSlots(ply) end
 	end)
 
 	-- A tick after the map loads, once the gamemode has put it in its mode

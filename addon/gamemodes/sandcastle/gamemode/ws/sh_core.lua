@@ -164,9 +164,9 @@ if SERVER then
 		WS.Events.Fire("feature_load", { names = WS.FeatureLoader:ClientFeatures() }, ply)
 	end)
 
-	-- A full collection stalls the server, so players need admin.
+	-- A full collection stalls the server, so players need the rules privilege.
 	concommand.Add("ws_memory", function(ply)
-		if IsValid(ply) and not ply:IsAdmin() then return end
+		if not WS.Can(ply, WS.require("foundation.permissions").RULES) then return end
 		local report = MemoryReport()
 		print(report)
 		if IsValid(ply) then ply:PrintMessage(HUD_PRINTCONSOLE, report) end

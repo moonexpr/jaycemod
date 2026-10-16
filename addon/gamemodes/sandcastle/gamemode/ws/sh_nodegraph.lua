@@ -37,8 +37,8 @@ E.Define("nodegraph_debug", {
 if SERVER then
 	local function Command(name, method, help)
 		concommand.Add(name, function(ply)
-			if IsValid(ply) and not ply:IsAdmin() then
-				ply:ChatPrint("Node graph: only admins may do that")
+			if not WS.Can(ply, WS.require("foundation.permissions").NEXTSOLDIER) then
+				ply:ChatPrint("Node graph: you may not do that")
 				return
 			end
 			local graph = WS.Feature("nodegraph")

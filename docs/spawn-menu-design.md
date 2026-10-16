@@ -1110,3 +1110,29 @@ Admin > Store & Economy (`mp_store_price_scale`, `mp_store_window`, `mp_economy_
 - Player orders to AI war soldiers act on the fire team, as an input the Commander weighs, never as a direct override.
 - Refusals travel as kinds and are phrased on the client.
 - One wardrobe panel serves both the Inventory tab and the C-menu Wardrobe window, which replaces Sandbox's Player Model icon in both modes.
+
+## 10. Operator decisions, 2026-10-16 (Q menu and admin redesign)
+
+The mockups are on the design canvas (claude.ai artifact 1rFapf81dfSew33rz6NvR9). Where these differ from §1–§9, these win.
+
+**Tabs.** The left creation tabs are **Loadout**, **Store** and **Server**, ordered ahead of Sandbox's stock tabs. Player becomes Loadout; Inventory becomes Store; Server is new. No tab holds admin controls.
+
+- **Loadout:** a slot lists every weapon that fits it; an unowned one buys and equips in one click (`BuyInto`, §4.1).
+- **Store:** one grid of icon tiles (GMod spawn icons, `entities/<class>.png`), no rows or sections. Each tile carries a slot badge; a heart favorites it, and favorites sort first. Favorites are per player, stored on the client. Click buys. Hover shows a TF2-style item tooltip: name, slot and cost, stats (damage from `sk_plr_dmg_*`, ammo as clip + `RESERVE_CLIPS` clips, both read at run time), upside lines blue, downside red, description.
+- **Slot badges:** Primary `1` in a bevelled triangle, Secondary `2` in a square, Melee `3` in a circle, Support `S` in a star, the glyph knocked out of a solid shape. Shown before slot names everywhere.
+- **Server:** vote tiles (Soldier Difficulty, Next Map, Help Other Team, Restart Round, Scramble Teams); a vote with a choice is called by clicking the choice. Wording follows TF2's strings (§ Wording board).
+- **Three clicks at most** for any one task, counting the tab click.
+
+**No player-called kick votes.** The scoreboard's player menu (right-click) has Copy Steam3 ID, Report ▸ reason (TF2's four), Transfer Money ▸ amount and Mute; clicking the avatar opens the Steam profile. Reports from different players start a kick vote automatically: `mp_reports_kick_count` (default 3), and 2 when the server has exactly three players.
+
+**Admin controls are a baseline that admin mods extend.** Every control checks a named CAMI privilege with a default rank; ULX, SAM or ServerGuard may give it to any rank. CAMI is vendored as `ws/sh_cami.lua` (upstream glua/CAMI 4b0eb86, version 20211019), so the checks work with no admin mod installed. Rewards, ban lengths and extra settings are hooks or `[ADDED BY ADMIN MOD]` slots, not fixed by Sandcastle. Admin controls live in:
+
+- **Options › Admin › Gameplay Rules:** winning (`mp_winlimit`, `mp_maxrounds`, `mp_timelimit`, `mp_match_end_at_timelimit`), bonus rounds (`mp_stalemate_enable`, `mp_stalemate_timelimit`, `mp_round_fraglimit`, `mp_round_cashlimit`, `mp_bonusroundtime`), teams (`mp_autoteambalance`, `mp_teams_unbalance_limit`, `mp_scrambleteams_auto`, `mp_scrambleteams_auto_windifference`, `mp_allowspectators`), votes and reports (`mp_reports_kick_count`, `mp_vote_*_enabled`, `mp_vote_duration`, `mp_vote_cooldown`), respawns.
+- **Utilities › Admin › Match Control:** round (sudden death now, restart to Pregame, reward the round winner with money plus server-defined rewards), match (begin/stop, force a winner or decide by sudden death, reward the match winner: a stub), gameplay tampering (payload, round clock, respawns), NextSoldier (start/end, pause, soldiers per side, squad sizes).
+- **Scoreboard player menu, admin part:** Kick, Ban ▸ (lengths from the admin mod), Spectate, Give Money.
+- **C menu bar:** superadmin **Economy** (Allow Deficit Spending `mp_economy_credit_enabled`; Disable Economy `mp_economy_enabled 0`, which hides Loadout and Store) and **Gameplay** (Disable Gameplay Tampering `mp_tampering_enabled 0`; Disable NextSoldier `ns_soldiers_enabled 0`; Disable Weapon Criticals `tf_weapon_criticals 0`; Disable Random Spread `tf_use_fixed_weaponspreads 1`; Disable Sandbox Mode `sv_gameplay_disable_sandbox 1`; Force Gameplay Mode `sv_gameplay_enabled 1`). GMod's own **NPCs** and **Server** menus, host-only today, are proxied: each toggle goes to the server as an event, checked against a privilege.
+- **C-click:** player (Spectate, Bring, Go To, Respawn, Slay, Switch Team, Give Money, Kick, Ban), payload cart, control point, round timer and soldier options.
+
+**Privileges and default ranks.** `sandcastle.round`, `sandcastle.match`, `sandcastle.tamper`, `sandcastle.nextsoldier`, `sandcastle.rules`, `sandcastle.players`, `sandcastle.server_options`: admin. `sandcastle.economy`, `sandcastle.gameplay`, `sandcastle.npc_debug`: superadmin. While `mp_tampering_enabled` is 0, tampering also needs `sandcastle.gameplay` (superadmins keep it). These replace the ability constants of §3.1 one for one: `MATCH_CONTROL` is `sandcastle.match`, `SERVER_SETTINGS` is `sandcastle.rules`, `NPC_DEBUG` is `sandcastle.npc_debug`; `SANDBOX_SPAWN`, `GAME_BUILD` keep their §3.1 rules under `sandcastle.spawn` and `sandcastle.build` (admin). `VOTE_CALL` is everyone unless `mp_vote_admin_only`.
+
+Every new console name above printed `free` from `check_engine_names.sh` on 2026-10-16.

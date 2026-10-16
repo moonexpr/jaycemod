@@ -367,7 +367,7 @@ end
 function WS.AiWarSlotList(panel)
 	panel:Help("Testing squads: pause the soldiers, turn the war's own squads off, dissolve them, and form your own. "
 		.. "Click a slot to select it, Ctrl+click to add more (a squad selects all its soldiers); right-click for more.")
-	if not LocalPlayer():IsAdmin() then
+	if not WS.Can(LocalPlayer(), WS.require("foundation.permissions").NEXTSOLDIER) then
 		panel:Help("The slot list is for admins.")
 		return
 	end

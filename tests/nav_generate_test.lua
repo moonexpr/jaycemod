@@ -90,6 +90,8 @@ local function load(t)
 	s.stages = {}
 	s.ws = {
 		require = T.require,
+		-- The server console (nil) may; a player as their admin flag says.
+		Can = function(ply) return ply == nil or ply:IsAdmin() end,
 		NavProgress = function(stage, started, areas) s.stages[#s.stages + 1] = { stage = stage, started = started, areas = areas } end,
 		Feature = function(name)
 			assert(name == "gamemode", name)

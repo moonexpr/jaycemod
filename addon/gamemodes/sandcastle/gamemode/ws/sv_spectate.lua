@@ -458,7 +458,7 @@ local KEYS = {
 }
 
 concommand.Add("ws_spectate_npc", function(ply, _, args)
-	if not IsValid(ply) or not ply:IsAdmin() then return end
+	if not IsValid(ply) or not WS.Can(ply, WS.require("foundation.permissions").PLAYERS) then return end
 	local npc = Entity(tonumber(args[1] or "") or -1)
 	if not (IsValid(npc) and (npc:IsNPC() or npc:IsNextBot()) and npc:Health() > 0) then
 		ply:ChatPrint("ws_spectate_npc: no living NPC #" .. tostring(args[1]))

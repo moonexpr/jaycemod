@@ -30,6 +30,7 @@ local TITLE = "Game Rules"
 
 WS.EditorAction("ws_reset_round", {
 	class = CLASS, title = TITLE, label = "Reset Round", icon = "icon16/arrow_refresh.png", order = 2100,
+	privilege = WS.require("foundation.permissions").ROUND,
 	run = function(e) return e:ResetRound() end,
 	done = "the round restarts",
 })
