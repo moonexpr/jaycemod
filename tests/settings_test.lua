@@ -46,4 +46,38 @@ T.test("each setting's range is what its menu control offers", function()
 	T.eq(s.max, AiWar.TEAM_SIZE_MAX)
 end)
 
+T.test("every setting names the privilege that may change it", function()
+	local Permissions = T.require("foundation.permissions")
+	local known = {}
+	for _, p in ipairs(Permissions.PRIVILEGES) do known[p.name] = true end
+	for name, s in pairs(Settings.SETTINGS) do T.eq(known[s.privilege], true, name) end
+	T.eq(Settings.SETTINGS.mp_aiwar_team_size.privilege, Permissions.NEXTSOLDIER)
+	T.eq(Settings.SETTINGS.mp_winlimit.privilege, Permissions.RULES)
+	T.eq(Settings.SETTINGS.mp_economy_enabled.privilege, Permissions.ECONOMY, "a superadmin toggle")
+	T.eq(Settings.SETTINGS.tf_weapon_criticals.privilege, Permissions.GAMEPLAY, "a superadmin toggle")
+end)
+
+T.test("GMod's host-only NPCs and Server menu options are settings, behind server_options", function()
+	local Permissions = T.require("foundation.permissions")
+	for _, name in ipairs(Settings.PROXIED) do
+		T.eq(Settings.SETTINGS[name] ~= nil, true, name)
+		T.eq(Settings.SETTINGS[name].privilege, Permissions.SERVER_OPTIONS, name)
+		T.eq(Settings.SETTINGS[name].min, 0, name .. " is a switch")
+		T.eq(Settings.SETTINGS[name].max, 1, name .. " is a switch")
+	end
+	T.eq(#Settings.PROXIED, 11, "the NPCs menu's four and the Server menu's seven")
+end)
+
+T.test("Allowed says whether a holder of privileges may change a setting", function()
+	local Permissions = T.require("foundation.permissions")
+	local function Holds(...)
+		local held = {}
+		for _, n in ipairs({ ... }) do held[n] = true end
+		return function(n) return held[n] == true end
+	end
+	T.eq(Settings.Allowed("mp_economy_enabled", Holds(Permissions.ECONOMY)), true)
+	T.eq(Settings.Allowed("mp_economy_enabled", Holds(Permissions.RULES)), false)
+	T.eq(Settings.Allowed("rcon_password", Holds(Permissions.RULES)), false, "not a setting")
+end)
+
 T.finish()
