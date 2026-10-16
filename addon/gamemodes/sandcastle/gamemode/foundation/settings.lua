@@ -82,6 +82,9 @@ SETTINGS = {
 	mp_vote_cooldown = Range(0, 3600, RULES),
 	mp_respawnwavetime = Range(0, 60, RULES),
 
+	-- Round control.
+	mp_round_reward_money = Range(0, 100000, Permissions.ROUND),
+
 	-- The C menu's Economy menu, for superadmins.
 	mp_economy_enabled = Switch(Permissions.ECONOMY),
 	mp_economy_credit_enabled = Switch(Permissions.ECONOMY),

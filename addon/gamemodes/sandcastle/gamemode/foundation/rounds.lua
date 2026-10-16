@@ -441,18 +441,28 @@ end
 -- then everyone is frozen for mp_chattime, then the level changes.
 MATCH_WIN_EXTRA = 30
 
-local function GoToIntermission(self, effects, reason, now, world)
+-- The match is over, won by winner.
+local function Intermission(self, effects, reason, now, winner)
 	self.intermissionFreeze = now + MATCH_WIN_EXTRA
 	self.intermissionFreezes = true
 	self.intermissionEnd = self.intermissionFreeze + self.settings.chattime
+	self.decideMatch = false
 	Add(effects, {
 		kind = "intermission",
 		reason = reason,
-		winner = MatchWinner(world.scores),
+		winner = winner,
 		["until"] = self.intermissionEnd,
 	})
 	return Enter(self, effects, State.GAME_OVER, now)
 end
+
+local function GoToIntermission(self, effects, reason, now, world)
+	return Intermission(self, effects, reason, now, MatchWinner(world.scores))
+end
+
+-- Why an admin's match win ended the match (Round:ForceMatchWin, or a
+-- sudden death called to decide it).
+ADMIN_MATCH_WIN = "Decided by an Administrator"
 
 -- A stalemate is the game's default end. With no sudden death to break it,
 -- the match ends drawn (STALEMATE_GAME_OVER): nobody won, so nobody is
@@ -853,6 +863,14 @@ local function EndRound(self, now, winner, reason, forceMapReset, switchTeams, s
 	-- a win that ends the match is the match win at once, in the round win's
 	-- place: no round win music or bonus round first
 	local roundsPlayed = self.roundsPlayed + (forceMapReset and 1 or 0)
+	-- a sudden death an admin called to decide the match: its winner wins it
+	if self.decideMatch and winner ~= UNASSIGNED then
+		self.roundsPlayed = roundsPlayed
+		if winner == RED then Add(effects, Output("OnWonByTeam1")) end
+		if winner == BLUE then Add(effects, Output("OnWonByTeam2")) end
+		Intermission(self, effects, ADMIN_MATCH_WIN, now, winner)
+		return effects
+	end
 	local limit = (WinLimitReached(self.settings.winlimit, scores) and "Reached Win Limit")
 		or (MaxRoundsReached(self.settings.maxrounds, roundsPlayed) and "Reached Round Limit")
 	if limit and MatchWinner(scores) ~= NOBODY_WON then
@@ -972,7 +990,26 @@ function Round:RestartRound(now)
 	end
 	self.forceMapReset = true
 	self.switchTeams, self.scrambleTeams = false, false
+	self.decideMatch = false
 	return Transition(self, effects, State.PREGAME, now)
+end
+
+-- An admin ends the match now, won by team (Utilities > Match Control).
+function Round:ForceMatchWin(now, team)
+	local effects = {}
+	if self.halted or self.state == State.GAME_OVER then return effects end
+	self.winningTeam = team
+	if team == RED then Add(effects, Output("OnWonByTeam1")) end
+	if team == BLUE then Add(effects, Output("OnWonByTeam2")) end
+	Intermission(self, effects, ADMIN_MATCH_WIN, now, team)
+	return effects
+end
+
+-- An admin's sudden death whose winner wins the match, not only the round.
+function Round:SuddenDeathForMatch(now)
+	local effects = self:SuddenDeath(now, STALEMATE.ADMIN)
+	if #effects > 0 then self.decideMatch = true end
+	return effects
 end
 
 -- A passed scramble vote (TF_vote_passed_scramble_teams): the next round's

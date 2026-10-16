@@ -82,6 +82,23 @@ function Controller:ScramblePending()
 	return self.round:ScramblePending()
 end
 
+-- An admin's sudden death for the running round; forMatch: its winner wins
+-- the match. True, or false and why.
+function Controller:SuddenDeathNow(forMatch)
+	if self.round:State() ~= WS.STATE.RND_RUNNING then return false, "no round is running" end
+	local now = CurTime()
+	self:Apply(forMatch and self.round:SuddenDeathForMatch(now) or self.round:SuddenDeath(now, Rounds.STALEMATE.ADMIN))
+	return true
+end
+
+-- An admin ends the match now, won by team. True, or false and why.
+function Controller:ForceMatchWin(team)
+	local effects = self.round:ForceMatchWin(CurTime(), team)
+	if #effects == 0 then return false, "the match is already over" end
+	self:Apply(effects)
+	return true
+end
+
 function Controller:Halted()
 	return self.round:Halted()
 end

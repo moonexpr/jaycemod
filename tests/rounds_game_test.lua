@@ -947,6 +947,41 @@ T.test("a passed scramble vote scrambles the next round's teams, as TF2's does",
 	T.eq(round:ScramblePending(), false, "done")
 end)
 
+local function Intermission(effects)
+	for _, e in ipairs(effects) do
+		if e.kind == "intermission" then return e end
+	end
+end
+
+T.test("an admin forcing the match's winner ends the match won by that team, whatever the score", function()
+	local round = Running({ winlimit = 3 })
+	local effects = round:ForceMatchWin(T0 + 20, BLUE)
+	local over = Intermission(effects)
+	T.eq(over ~= nil, true, "the match is over: " .. Describe(effects))
+	T.eq(over.winner, BLUE)
+	T.eq(over.reason, Rounds.ADMIN_MATCH_WIN)
+	T.eq(#round:ForceMatchWin(T0 + 21, RED), 0, "an ended match is not ended again")
+end)
+
+T.test("a sudden death called to decide the match ends it, won by the round's winner", function()
+	local round = Running({ winlimit = 3 })
+	local called = round:SuddenDeathForMatch(T0 + 20)
+	T.eq(Has(called, "sudden_death"), true, "sudden death: " .. Describe(called))
+	local won = round:SetWinningTeam(T0 + 30, RED, W.OPPONENTS_DEAD, true, false, false, FakeObjective.Objective())
+	local over = Intermission(won)
+	T.eq(over ~= nil, true, "the match is over: " .. Describe(won))
+	T.eq(over.winner, RED)
+end)
+
+T.test("a plain sudden death, or a restart, leaves the match to its limits", function()
+	local round = Running({ winlimit = 3 })
+	round:SuddenDeathForMatch(T0 + 20)
+	round:RestartRound(T0 + 21)
+	local plain = Running({ winlimit = 3 })
+	plain:SuddenDeath(T0 + 20, Rounds.STALEMATE.ADMIN)
+	T.eq(Intermission(plain:SetWinningTeam(T0 + 30, RED, W.OPPONENTS_DEAD, true, false, false, FakeObjective.Objective())), nil)
+end)
+
 T.test("mp_forcewin's win scores a point where points come from captures, and can win the match", function()
 	local round = Running({ winlimit = 1 })
 	local effects = round:SetWinningTeam(T0 + 20, BLUE, W.NONE, true, false, false,
