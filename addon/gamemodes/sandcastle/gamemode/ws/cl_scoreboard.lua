@@ -205,6 +205,14 @@ function LINE:Setup(row)
 	else
 		self.Icon = self:Add("AvatarImage")
 		self.Icon:SetPlayer(row.ent, AVATAR)
+		-- The picture opens the player's Steam profile; AvatarImage takes no clicks itself.
+		local profile = self.Icon:Add("DButton")
+		profile:Dock(FILL)
+		profile:SetText("")
+		profile:SetTooltip("Steam profile")
+		profile.Paint = function() end
+		profile.DoClick = function() if IsValid(row.ent) then row.ent:ShowProfile() end end
+		profile.DoRightClick = function() self:OpenMenu() end
 		self.Mute.DoClick = function() row.ent:SetMuted(not row.ent:IsMuted()) end
 	end
 	self.Icon:SetSize(AVATAR, AVATAR)
@@ -234,6 +242,15 @@ function LINE:Update(row)
 		self.muted = muted
 		self.Mute:SetImage(muted and "icon32/muted.png" or "icon32/unmuted.png")
 	end
+end
+
+-- Right-click a player's row: the player menu (ws/cl_players_menu.lua).
+function LINE:OpenMenu()
+	if IsValid(self.ent) and self.ent:IsPlayer() then WS.OpenPlayerMenu(self.ent) end
+end
+
+function LINE:OnMousePressed(code)
+	if code == MOUSE_RIGHT then self:OpenMenu() end
 end
 
 function LINE:Paint(w, h)

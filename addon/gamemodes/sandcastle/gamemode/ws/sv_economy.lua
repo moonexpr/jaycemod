@@ -38,6 +38,20 @@ function WS.SpendMoney(ent, amount)
 	Sync(ent)
 end
 
+-- A player giving money to another; it is not earned, so it never counts
+-- toward a round's cash limit.
+function WS.TransferMoney(from, to, amount)
+	Economy.Transfer(ledger, from, to, amount)
+	Sync(from)
+	Sync(to)
+end
+
+-- Money an admin grants; not earned either.
+function WS.GrantMoney(ent, amount)
+	Economy.Earn(ledger, ent, amount)
+	Sync(ent)
+end
+
 hook.Add("PlayerInitialSpawn", "ws_economy", WS.OpenAccount)
 hook.Add("EntityRemoved", "ws_economy", function(ent) Economy.Close(ledger, ent) end)
 

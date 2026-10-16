@@ -15,9 +15,16 @@ STARTING_MONEY = 2000
 
 -- The refusal Spend raises: the caller asked for more than the account holds.
 INSUFFICIENT_FUNDS = "insufficient funds"
+-- The refusals Transfer adds: giving to yourself, or giving nothing.
+SELF_TRANSFER = "self transfer"
+NO_AMOUNT = "no amount"
 
 -- The refusals that are the player's mistake.
-PLAYER = { [INSUFFICIENT_FUNDS] = true }
+PLAYER = {
+	[INSUFFICIENT_FUNDS] = true,
+	[SELF_TRANSFER] = true,
+	[NO_AMOUNT] = true,
+}
 
 function New()
 	return { balances = {} }
@@ -65,6 +72,16 @@ function Spend(ledger, key, amount)
 	local held, wanted = Held(ledger, key), Amount(amount)
 	if wanted > held then Refusal.Raise(INSUFFICIENT_FUNDS, format("%d wanted, %d held", wanted, held)) end
 	ledger.balances[key] = held - wanted
+end
+
+-- Moves amount from one account to another, all of it or none: a player
+-- giving money to a teammate.
+function Transfer(ledger, from, to, amount)
+	if from == to then Refusal.Raise(SELF_TRANSFER, "you cannot give money to yourself") end
+	if Amount(amount) == 0 then Refusal.Raise(NO_AMOUNT, "give at least $1") end
+	Held(ledger, to)
+	Spend(ledger, from, amount)
+	Earn(ledger, to, amount)
 end
 
 -- $1,234,567

@@ -46,6 +46,7 @@ local CATEGORY = {
 	["spawn"] = "gameplay",
 	["spectate"] = "gameplay",
 	["economy"] = "gameplay",
+	["reports"] = "gameplay",
 	["loadout"] = "gameplay",
 	["combat"] = "gameplay",
 	["combat/weapon_mimic"] = "gameplay",
