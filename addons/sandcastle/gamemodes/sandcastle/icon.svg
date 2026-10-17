@@ -12,15 +12,13 @@
   shapes: at 16 units a narrow merlon is all outline.
 -->
 
-<!-- the beach: Building.svg's ground strip, in sand -->
-<path d="M0 15C0 14.4477 0.447715 14 1 14H15C15.5523 14 16 14.4477 16 15H0Z" fill="url(#beach)"/>
-
 <!-- the castle: a wall with a merlon at each end, and the keep between, taller -->
 <g filter="url(#glow)">
-<path d="M1 14V5H4V7H6V3H10V7H12V5H15V14H1Z" fill="url(#sand)"/>
+<path d="M1 15V5H4V7H6V3H10V7H12V5H15V15H1Z" fill="url(#sand)"/>
 </g>
-<!-- the same outline, half a unit wide just inside the edge; mitred, so the inner corners stay closed -->
-<path d="M1.25 13.75V5.25H3.75V7.25H6.25V3.25H9.75V7.25H12.25V5.25H14.75V13.75H1.25Z" stroke="url(#outline)" stroke-width="0.5" stroke-linejoin="miter"/>
+<!-- the same outline, half a unit wide just inside the edge; mitred, so the
+     inner corners stay closed; open at the foot, which the sand covers -->
+<path d="M1.25 14.5V5.25H3.75V7.25H6.25V3.25H9.75V7.25H12.25V5.25H14.75V14.5" stroke="url(#outline)" stroke-width="0.5" stroke-linejoin="miter"/>
 
 <!-- the gate's frame: a light sand trim round the arch, edged as the castle is -->
 <path d="M5.5 13.75V11.5C5.5 10.1193 6.61929 9 8 9C9.38071 9 10.5 10.1193 10.5 11.5V13.75H5.5Z" fill="#F3D39A" stroke="url(#outline)" stroke-width="0.5" stroke-linejoin="miter"/>
@@ -28,13 +26,32 @@
 <!-- the gate, arched -->
 <path d="M6.5 13.75V11.5C6.5 10.6716 7.17157 10 8 10C8.82843 10 9.5 10.6716 9.5 11.5V13.75H6.5Z" fill="#7A4C12" stroke="#784D15" stroke-width="0.5" stroke-linejoin="miter"/>
 
-<!-- the flag on the keep: Flag red.svg's pole and cloth -->
-<path d="M8 3.25V0.5" stroke="#A66F2B" stroke-width="0.5" stroke-linecap="round"/>
-<path d="M8.25 0.5H12.5L11.5 1.75L12.5 3H8.25V0.5Z" fill="url(#cloth)" stroke="url(#clothEdge)" stroke-width="0.5" stroke-linejoin="round"/>
+<!-- the castle's foot: a mound of sand over the walls' and the gate's foot, no
+     edge of its own, flecked with grains -->
+<path d="M0 16V15C0 14.2 0.8 13.6 2 13.4C4 13.1 5.5 13.6 8 13.6C10.5 13.6 12 13.1 14 13.4C15.2 13.6 16 14.2 16 15V16H0Z" fill="url(#beach)"/>
+<g id="grains">
+<circle cx="2.2" cy="14.3" r="0.22" fill="#C98E45"/>
+<circle cx="4.1" cy="14.9" r="0.2" fill="#FBE2B4"/>
+<circle cx="5.6" cy="14.2" r="0.18" fill="#C98E45"/>
+<circle cx="7.4" cy="15.1" r="0.2" fill="#C98E45"/>
+<circle cx="9.3" cy="14.4" r="0.2" fill="#FBE2B4"/>
+<circle cx="10.9" cy="15" r="0.22" fill="#C98E45"/>
+<circle cx="12.6" cy="14.1" r="0.18" fill="#FBE2B4"/>
+<circle cx="14.1" cy="14.8" r="0.2" fill="#C98E45"/>
+<circle cx="3.3" cy="12.4" r="0.18" fill="#B87A3A" opacity="0.6"/>
+<circle cx="12.8" cy="11.9" r="0.18" fill="#B87A3A" opacity="0.6"/>
+<circle cx="4.6" cy="10.2" r="0.15" fill="#B87A3A" opacity="0.5"/>
+<circle cx="11.6" cy="9.6" r="0.15" fill="#B87A3A" opacity="0.5"/>
+</g>
+
+<!-- the flag, raised on its pole above the keep: Flag red.svg's pole and
+     cloth, in royal blue and purple -->
+<path d="M8 3.25V0.25" stroke="#A66F2B" stroke-width="0.5" stroke-linecap="round"/>
+<path d="M8.25 0.25H11.25L10.5 1L11.25 1.75H8.25V0.25Z" fill="url(#cloth)" stroke="url(#clothEdge)" stroke-width="0.5" stroke-linejoin="round"/>
 
 <defs>
 <!-- Building.svg's inner glow, faint: a lighter inner edge just inside the outline -->
-<filter id="glow" x="1" y="3" width="14" height="11" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<filter id="glow" x="1" y="3" width="14" height="12" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
 <feFlood flood-opacity="0" result="BackgroundImageFix"/>
 <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
 <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
@@ -54,19 +71,21 @@
 <stop stop-color="#A66F2B"/>
 <stop offset="1" stop-color="#784D15"/>
 </linearGradient>
-<linearGradient id="beach" x1="8" y1="14" x2="8" y2="15" gradientUnits="userSpaceOnUse">
-<stop stop-color="#EBB865"/>
+<!-- the sand at the foot: clear at its top, so it fades into the walls with no edge -->
+<linearGradient id="beach" x1="8" y1="13.1" x2="8" y2="16" gradientUnits="userSpaceOnUse">
+<stop stop-color="#E2AE63" stop-opacity="0"/>
+<stop offset="0.3" stop-color="#E9B96E"/>
 <stop offset="1" stop-color="#D6A256"/>
 </linearGradient>
-<!-- Flag red.svg's cloth and edge -->
-<linearGradient id="cloth" x1="8.5" y1="1.25" x2="12.5" y2="2.25" gradientUnits="userSpaceOnUse">
-<stop offset="0.405582" stop-color="#FF5C51"/>
-<stop offset="0.62144" stop-color="#FFD0CD"/>
-<stop offset="0.759571" stop-color="#FFA09A"/>
+<!-- Flag red.svg's cloth and edge, in royal blue and purple: its light middle kept -->
+<linearGradient id="cloth" x1="8.25" y1="0.5" x2="11.25" y2="1.5" gradientUnits="userSpaceOnUse">
+<stop offset="0.3" stop-color="#4169E1"/>
+<stop offset="0.6" stop-color="#9DB2F2"/>
+<stop offset="0.85" stop-color="#7B3FBF"/>
 </linearGradient>
-<linearGradient id="clothEdge" x1="8.5" y1="1.75" x2="12.5" y2="1.75" gradientUnits="userSpaceOnUse">
-<stop stop-color="#F52A0A"/>
-<stop offset="1" stop-color="#F95B50"/>
+<linearGradient id="clothEdge" x1="8.25" y1="1" x2="11.25" y2="1" gradientUnits="userSpaceOnUse">
+<stop stop-color="#2A47B8"/>
+<stop offset="1" stop-color="#5B2A8E"/>
 </linearGradient>
 </defs>
 </svg>

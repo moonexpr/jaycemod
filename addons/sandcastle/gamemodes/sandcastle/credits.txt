@@ -11,4 +11,4 @@ and drawn in the style of:
 
 Changes: Building.svg's inner glow, outline and ground strip and Box.svg's
 colours were redrawn as a sandcastle; Flag red.svg's cloth and pole were
-redrawn smaller above it.
+redrawn smaller above it, in royal blue and purple.
