@@ -162,16 +162,16 @@ local function Last(ply, name)
 end
 
 local function CallVote(s, ply, kind, subject)
-	s.listeners.vote_call({ kind = Index(kind), subject = subject or "" }, ply)
+	s.listeners.game_vote_call({ kind = Index(kind), subject = subject or "" }, ply)
 end
 
 local function Cast(s, ply, yes)
-	s.listeners.vote_cast({ yes = yes, choice = 0 }, ply)
+	s.listeners.game_vote_cast({ yes = yes, choice = 0 }, ply)
 end
 
 -- An option of a vote of choices, by its number.
 local function Pick(s, ply, choice)
-	s.listeners.vote_cast({ yes = false, choice = choice }, ply)
+	s.listeners.game_vote_cast({ yes = false, choice = choice }, ply)
 end
 
 local function Five()
@@ -181,8 +181,8 @@ end
 T.test("a new player hears the map cycle's maps, comments and blanks left out", function()
 	local alice = Player("Alice")
 	local s = Load({ alice })
-	s.listeners.client_ready({}, alice)
-	local maps = Last(alice, "vote_maps").maps
+	s.listeners.system_client_ready({}, alice)
+	local maps = Last(alice, "game_vote_maps").maps
 	T.eq(table.concat(maps, ","), "cp_dustbowl,pl_badwater")
 end)
 
@@ -190,28 +190,28 @@ T.test("a call starts the vote for everyone, the caller's yes counted", function
 	local alice, bob, carol, dave, erin = Five()
 	local s = Load({ alice, bob, carol, dave, erin })
 	CallVote(s, alice, Vote.KIND_MAP, "cp_dustbowl")
-	local state = Last(bob, "vote_state")
+	local state = Last(bob, "game_vote_state")
 	T.eq(state.running, true)
 	T.eq(state.kind, Index(Vote.KIND_MAP))
 	T.eq(state.caller, "Alice")
 	T.eq(state.yes, 1)
 	T.eq(state.mine, true, "bob may vote")
-	T.eq(Last(alice, "vote_state").mine, false, "alice voted when she called it")
+	T.eq(Last(alice, "game_vote_state").mine, false, "alice voted when she called it")
 end)
 
 T.test("a map not in the cycle is refused", function()
 	local alice = Player("Alice")
 	local s = Load({ alice })
 	CallVote(s, alice, Vote.KIND_MAP, "gm_flatgrass")
-	T.eq(Last(alice, "vote_state"), nil)
-	T.eq(Last(alice, "vote_refused") ~= nil, true)
+	T.eq(Last(alice, "game_vote_state"), nil)
+	T.eq(Last(alice, "game_vote_refused") ~= nil, true)
 end)
 
 T.test("a kind not offered is refused with the server's reason", function()
 	local alice = Player("Alice")
 	local s = Load({ alice })
 	CallVote(s, alice, Vote.KIND_SUPPORT)
-	T.eq(Last(alice, "vote_refused").text, "Server has disabled that issue.")
+	T.eq(Last(alice, "game_vote_refused").text, "Server has disabled that issue.")
 end)
 
 T.test("a vote that passes when its time is up runs its effect: the next map", function()
@@ -221,9 +221,9 @@ T.test("a vote that passes when its time is up runs its effect: the next map", f
 	Cast(s, bob, true)
 	Cast(s, carol, true)
 	s.Advance(20)
-	T.eq(Last(dave, "vote_ended").passed, true)
+	T.eq(Last(dave, "game_vote_ended").passed, true)
 	T.eq(s.commands[1], "nextlevel pl_badwater")
-	T.eq(Last(dave, "vote_state").running, false, "the card goes away")
+	T.eq(Last(dave, "game_vote_state").running, false, "the card goes away")
 end)
 
 T.test("everyone voting ends it at once; restart and scramble run through the rounds", function()
@@ -243,7 +243,7 @@ T.test("a failed vote says why and changes nothing", function()
 	local s = Load({ alice, bob, carol, dave, erin })
 	CallVote(s, alice, Vote.KIND_MAP, "pl_badwater")
 	s.Advance(20)
-	local ended = Last(bob, "vote_ended")
+	local ended = Last(bob, "game_vote_ended")
 	T.eq(ended.passed, false)
 	T.eq(ended.text, Vote.FAILED_QUORUM)
 	T.eq(#s.commands, 0)
@@ -253,8 +253,8 @@ T.test("reports start a kick vote that kicks when it passes", function()
 	local alice, bob, carol, dave, erin = Five()
 	local s = Load({ alice, bob, carol, dave, erin })
 	s.hooks.WSReportsReached(bob, "cheating")
-	T.eq(Last(alice, "vote_state").kind, Index(Vote.KIND_KICK))
-	T.eq(Last(bob, "vote_state").mine, false, "the target does not vote")
+	T.eq(Last(alice, "game_vote_state").kind, Index(Vote.KIND_KICK))
+	T.eq(Last(bob, "game_vote_state").mine, false, "the target does not vote")
 	Cast(s, alice, true)
 	Cast(s, carol, true)
 	Cast(s, dave, true)
@@ -267,16 +267,16 @@ T.test("a kick reports start during another vote runs once it ends", function()
 	local s = Load({ alice, bob, carol, dave, erin })
 	CallVote(s, alice, Vote.KIND_MAP, "pl_badwater")
 	s.hooks.WSReportsReached(bob, "idle")
-	T.eq(Last(carol, "vote_state").kind, Index(Vote.KIND_MAP))
+	T.eq(Last(carol, "game_vote_state").kind, Index(Vote.KIND_MAP))
 	s.Advance(20)
-	T.eq(Last(carol, "vote_state").kind, Index(Vote.KIND_KICK), "the kick follows")
+	T.eq(Last(carol, "game_vote_state").kind, Index(Vote.KIND_KICK), "the kick follows")
 end)
 
 T.test("an admin reported enough is not put to a vote", function()
 	local alice, admin = Player("Alice"), Player("Admin", { [Permissions.PLAYERS] = true })
 	local s = Load({ alice, admin })
 	s.hooks.WSReportsReached(admin, "idle")
-	T.eq(Last(alice, "vote_state"), nil)
+	T.eq(Last(alice, "game_vote_state"), nil)
 end)
 
 T.test("a kick's target leaving ends the vote", function()
@@ -284,7 +284,7 @@ T.test("a kick's target leaving ends the vote", function()
 	local s = Load({ alice, bob, carol })
 	s.hooks.WSReportsReached(bob, "idle")
 	s.hooks.PlayerDisconnected(bob)
-	T.eq(Last(alice, "vote_state").running, false)
+	T.eq(Last(alice, "game_vote_state").running, false)
 	T.eq(#s.kicked, 0, "nobody left to kick")
 end)
 
@@ -292,7 +292,7 @@ T.test("a cast with no vote running is refused, not an error", function()
 	local alice = Player("Alice")
 	local s = Load({ alice })
 	Cast(s, alice, true)
-	T.eq(Last(alice, "vote_refused").text, "No vote is running.")
+	T.eq(Last(alice, "game_vote_refused").text, "No vote is running.")
 end)
 
 -- The next-map vote (mp_vote_nextmap_enabled): once the match is one round
@@ -300,7 +300,7 @@ end)
 -- maplist, two of this map's mode and one of another's; the most picked
 -- becomes nextlevel.
 local function NextMapVote(ply)
-	local state = Last(ply, "vote_state")
+	local state = Last(ply, "game_vote_state")
 	return state and state.running and state.kind == Index(Vote.KIND_NEXTMAP) and state or nil
 end
 
@@ -361,7 +361,7 @@ T.test("the most picked map becomes the next level", function()
 	T.eq(table.concat(NextMapVote(bob).counts, " "), "0 0 1", "the picks so far")
 	Pick(s, bob, 3)
 	s.Advance(20)
-	T.eq(Last(carol, "vote_ended").passed, true, "passed")
+	T.eq(Last(carol, "game_vote_ended").passed, true, "passed")
 	T.eq(s.convars.nextlevel, options[3], "the next level")
 end)
 
@@ -374,7 +374,7 @@ T.test("a vote still running when the level changes is counted first", function(
 	Pick(s, alice, 2)
 	s.hooks.WSChangeLevel()
 	T.eq(s.convars.nextlevel, options[2], "set before the change")
-	T.eq(Last(bob, "vote_state").running, false, "over")
+	T.eq(Last(bob, "game_vote_state").running, false, "over")
 end)
 
 T.test("a yes-or-no cast on a vote of choices is refused", function()
@@ -383,7 +383,7 @@ T.test("a yes-or-no cast on a vote of choices is refused", function()
 	s.match.over = true
 	s.Advance(1)
 	Cast(s, alice, true)
-	T.eq(Last(alice, "vote_refused").text, "That is not one of the choices.")
+	T.eq(Last(alice, "game_vote_refused").text, "That is not one of the choices.")
 end)
 
 T.finish()

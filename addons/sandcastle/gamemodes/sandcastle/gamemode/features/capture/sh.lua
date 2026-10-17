@@ -7,7 +7,7 @@ local CP_BITS = 8
 -- CTeamControlPoint::InternalSetOwner: a team took the point (not a reset
 -- to nobody, nor the owner a round starts with). cappers: TF2's list of
 -- capper indexes, which we do not track.
-E.Define("teamplay_point_captured", {
+E.Define("game_teamplay_point_captured", {
 	cp = E.UInt(CP_BITS),
 	cpname = E.String(),
 	team = E.Team(),
@@ -16,7 +16,7 @@ E.Define("teamplay_point_captured", {
 
 -- CTeamControlPoint::CaptureBlocked: team defended the point. TF2 names the
 -- blocker and victim players; ours names the defending team.
-E.Define("teamplay_capture_blocked", {
+E.Define("game_teamplay_capture_blocked", {
 	cp = E.UInt(CP_BITS),
 	cpname = E.String(),
 	team = E.Team(),

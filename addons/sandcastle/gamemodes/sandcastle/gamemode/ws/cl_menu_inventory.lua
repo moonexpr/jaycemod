@@ -3,7 +3,7 @@
 -- GMod's spawn icons show items. A tile carries its slot badge, its name,
 -- its price (or a check once owned) and a heart; hovering it shows a
 -- TF2-style item tooltip with its stats.
--- - Click a weapon to buy it (loadout_buy): it goes into the first empty
+-- - Click a weapon to buy it (game_loadout_buy): it goes into the first empty
 --   slot that takes it; the Loadout tab picks the slot.
 -- - Click a model to wear it from the next spawn (cl_playermodel).
 -- - Click a heart to favorite the tile: favorites come first, in the order
@@ -326,7 +326,7 @@ UI.Define("StoreMenu", "DPanel", {
 			end)
 			tile.DoClick = function()
 				if item.weapon then
-					if not owned then WS.LoadoutRequest("loadout_buy", { weapon = item.weapon.class }) end
+					if not owned then WS.LoadoutRequest("game_loadout_buy", { weapon = item.weapon.class }) end
 					return
 				end
 				RunConsoleCommand("cl_playermodel", item.model)

@@ -388,12 +388,12 @@ end)
 -- The capture's game events (sh.lua), worded for the rounds HUD: a capture
 -- is the announcement line, a defence a notice (for a point with a name).
 -- A point's name is the map's token ("#Badwater_cap_1"), worded here.
-WS.Events.Listen("teamplay_point_captured", "ws_capture_view", function(fields)
+WS.Events.Listen("game_teamplay_point_captured", "ws_capture_view", function(fields)
 	local point = fields.cpname ~= "" and View:Localize(fields.cpname) or ("point " .. fields.cp)
 	WS.Feature("rounds"):Announce(WS.TeamName[fields.team] .. " captured " .. point, fields.team)
 end)
 
-WS.Events.Listen("teamplay_capture_blocked", "ws_capture_view", function(fields)
+WS.Events.Listen("game_teamplay_capture_blocked", "ws_capture_view", function(fields)
 	if fields.cpname == "" then return end
 	WS.Feature("rounds"):Notice(WS.TeamName[fields.team] .. " defended " .. View:Localize(fields.cpname), fields.team)
 end)

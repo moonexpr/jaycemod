@@ -302,7 +302,7 @@ function Controller:SendDebug(now)
 	for ent, entry in pairs(self.soldiers) do
 		if IsValid(ent) then list[#list + 1] = { ent = ent, entry = entry } end
 	end
-	-- The aiwar_debug game event (features/nbdebug/sh.lua), for the nbdebug
+	-- The game_aiwar_debug game event (features/nbdebug/sh.lua), for the nbdebug
 	-- view. Every squad with a leader: its summary, and in a fight where it
 	-- last saw the enemy and its flank point.
 	local fireTeams, teamIndex = {}, {}
@@ -397,7 +397,7 @@ function Controller:SendDebug(now)
 			cover = state.coverSpot and ToVector(state.coverSpot) or nil,
 		}
 	end
-	WS.Events.Fire("aiwar_debug", {
+	WS.Events.Fire("game_aiwar_debug", {
 		fire_teams = fireTeams,
 		lines = lines,
 		fronts = fronts,

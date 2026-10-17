@@ -20,7 +20,7 @@
 --
 -- WS.Transactions is each realm's scheduler (foundation.core.scheduler) for
 -- transactions and other work spread over ticks, run TRANSACTION_SECONDS a
--- tick. A transaction's reply, transaction_settled, belongs to this library,
+-- tick. A transaction's reply, system_transaction_settled, belongs to this library,
 -- not to the game's events: like the recovery events it changes with the
 -- library (docs/game-events-v2.md).
 --
@@ -76,7 +76,7 @@ function API.Ignore(name, id)
 	registry:Ignore(name, id)
 end
 
--- Whether a player's client has loaded (its client_ready request): events
+-- Whether a player's client has loaded (its system_client_ready request): events
 -- go only to ready clients, since net messages sent earlier are lost.
 function WS.IsReady(ply)
 	return ply.wsReady == true
@@ -95,7 +95,7 @@ hook.Add("Think", TRANSACTION_HOOK, function() WS.Transactions:Run(TRANSACTION_S
 
 -- A transaction's outcome, to the client that asked: its state, and for a
 -- decline the refusal's kind and detail (never our error's).
-API.Define("transaction_settled", {
+API.Define("system_transaction_settled", {
 	[Events.TRANSACTION_FIELD] = Events.UInt(Transaction.ID_BITS),
 	state = Events.String(),
 	kind = Events.Optional(Events.String()),
@@ -104,7 +104,7 @@ API.Define("transaction_settled", {
 
 -- Sent by a client as it finishes loading (InitPostEntity); a fresh join and
 -- a returning player alike.
-API.Define("client_ready", {}, {
+API.Define("system_client_ready", {}, {
 	clientSendable = true,
 	rate = CLIENT_READY_RATE,
 })
@@ -162,7 +162,7 @@ if SERVER then
 		registry:Dispatch(event, ply)
 	end)
 
-	API.Listen("client_ready", "ws_events", function(_, ply)
+	API.Listen("system_client_ready", "ws_events", function(_, ply)
 		ply.wsReady = true
 	end)
 
@@ -181,7 +181,7 @@ if SERVER then
 				end
 				if not IsValid(ply) then return end
 				reply[Events.TRANSACTION_FIELD] = fields[Events.TRANSACTION_FIELD]
-				API.Fire("transaction_settled", reply, ply)
+				API.Fire("system_transaction_settled", reply, ply)
 			end)
 		end)
 	end
@@ -205,7 +205,7 @@ else
 		return tx
 	end
 
-	API.Listen("transaction_settled", "ws_events", function(fields)
+	API.Listen("system_transaction_settled", "ws_events", function(fields)
 		ledger:Settle(fields[Events.TRANSACTION_FIELD], fields)
 	end)
 
@@ -227,6 +227,6 @@ else
 
 	hook.Add("InitPostEntity", "ws_events", function()
 		WS.localReady = true
-		API.Request("client_ready")
+		API.Request("system_client_ready")
 	end)
 end

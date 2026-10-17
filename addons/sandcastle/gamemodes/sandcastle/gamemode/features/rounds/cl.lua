@@ -1,7 +1,7 @@
 -- The rounds feature's view, drawn from what the rounds controller networks
 -- (the ws_round_* and ws_timer_* keys and its net messages):
 --   - the round timer with its PREPARE, SETUP, OVERTIME and GAME OVER labels, and the
---     "+m:ss" flash beside it when time is added (teamplay_timer_time_added);
+--     "+m:ss" flash beside it when time is added (game_teamplay_timer_time_added);
 --     the koth HUD replaces the timer; during the gamemode's countdown to
 --     Gameplay mode (ws_gamemode_transition_end) the timer shows that
 --     countdown labelled "Prepare";
@@ -129,7 +129,7 @@ function View:Announce(text, team, icon)
 	}
 end
 
-WS.Events.Listen("announcement", "ws_rounds_view", function(fields)
+WS.Events.Listen("game_announcement", "ws_rounds_view", function(fields)
 	if not WS.TeamRules.HearsBroadcast(fields.audience, false, LocalPlayer():Team()) then return end
 	View:Announce(fields.text, fields.team, fields.icon)
 	-- a card (an admin's notice) is kept in the console too
@@ -148,7 +148,7 @@ end
 
 -- "+points" beside a team's score when an admin awards it points
 -- (ws/sh_announcer.lua), as "+time" beside the timer.
-WS.Events.Listen("points_awarded", "ws_rounds_view", function(fields)
+WS.Events.Listen("game_points_awarded", "ws_rounds_view", function(fields)
 	View.pointsAwarded = {
 		text = "+" .. fields.points,
 		team = fields.team,
@@ -157,13 +157,13 @@ WS.Events.Listen("points_awarded", "ws_rounds_view", function(fields)
 end)
 
 -- A new stage on the kept map (sh.lua): the last stage's bodies and blood go.
-WS.Events.Listen("round_gore_cleared", "ws_rounds_view", function()
+WS.Events.Listen("game_round_gore_cleared", "ws_rounds_view", function()
 	game.RemoveRagdolls()
 	RunConsoleCommand("r_cleardecals")
 end)
 
 -- The timer's "+time" beside the clock (sh.lua).
-WS.Events.Listen("teamplay_timer_time_added", "ws_rounds_view", function(fields)
+WS.Events.Listen("game_teamplay_timer_time_added", "ws_rounds_view", function(fields)
 	if fields.seconds_added == 0 then return end
 	View.timeAdded = {
 		text = Text.TimeAdded(fields.seconds_added),

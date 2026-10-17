@@ -29,7 +29,7 @@ include("sh_events.lua")
 -- gamemode's own files create gets FCVAR_REPLICATED and FCVAR_NOTIFY on
 -- both realms (other addons' are
 -- left as they are), and the server tells each ready client the ones only
--- it has (server_convars), which the client creates too.
+-- it has (system_server_convars), which the client creates too.
 do
 	local Replicated = WS.require("foundation.replicated")
 	local E = WS.Events
@@ -40,7 +40,7 @@ do
 	local created = {} -- server: the gamemode's convars, in creation order
 	local pending -- server: those created since the last tell
 
-	E.Define("server_convars", {
+	E.Define("system_server_convars", {
 		convars = E.List(E.Record({
 			name = E.String(),
 			value = E.String(),
@@ -70,7 +70,7 @@ do
 			if not pending then
 				pending = {}
 				timer.Simple(0, function()
-					E.Fire("server_convars", { convars = Records(pending) })
+					E.Fire("system_server_convars", { convars = Records(pending) })
 					pending = nil
 				end)
 			end
@@ -80,11 +80,11 @@ do
 	end
 
 	if SERVER then
-		E.Listen("client_ready", "ws_server_convars", function(_, ply)
-			E.Fire("server_convars", { convars = Records(created) }, ply)
+		E.Listen("system_client_ready", "ws_server_convars", function(_, ply)
+			E.Fire("system_server_convars", { convars = Records(created) }, ply)
 		end)
 	else
-		E.Listen("server_convars", "ws_server_convars", function(fields)
+		E.Listen("system_server_convars", "ws_server_convars", function(fields)
 			for _, c in ipairs(fields.convars) do
 				if not ConVarExists(c.name) then CreateConVar(c.name, c.value, FCVAR_REPLICATED, c.help) end
 			end
@@ -95,12 +95,12 @@ end
 -- Per-map features (foundation.features): an entity calls WS.Feature on
 -- first use, never at file top level, so a map loads only the controllers
 -- and views its entities pull in. The server tells ready clients each new
--- feature with a client part (feature_load), and a joining client, once
--- ready (client_ready), every one loaded so far, in load order.
+-- feature with a client part (system_feature_load), and a joining client, once
+-- ready (system_client_ready), every one loaded so far, in load order.
 local Features = WS.require("foundation.features")
 local FEATURE_COUNT_BITS = 16
 
-WS.Events.Define("feature_load", {
+WS.Events.Define("system_feature_load", {
 	names = WS.Events.List(WS.Events.String(), FEATURE_COUNT_BITS),
 })
 
@@ -126,7 +126,7 @@ end
 
 -- To every ready client.
 function FeatureFiles:TellClients(name)
-	WS.Events.Fire("feature_load", { names = { name } })
+	WS.Events.Fire("system_feature_load", { names = { name } })
 end
 
 -- Kept across a Lua refresh, since entities hold the controllers it returned.
@@ -160,8 +160,8 @@ local function MemoryReport()
 end
 
 if SERVER then
-	WS.Events.Listen("client_ready", "ws_feature_load", function(_, ply)
-		WS.Events.Fire("feature_load", { names = WS.FeatureLoader:ClientFeatures() }, ply)
+	WS.Events.Listen("system_client_ready", "ws_feature_load", function(_, ply)
+		WS.Events.Fire("system_feature_load", { names = WS.FeatureLoader:ClientFeatures() }, ply)
 	end)
 
 	-- A full collection stalls the server, so players need the rules privilege.
@@ -172,7 +172,7 @@ if SERVER then
 		if IsValid(ply) then ply:PrintMessage(HUD_PRINTCONSOLE, report) end
 	end, nil, "Print the server's Lua memory and the features this map loaded")
 else
-	WS.Events.Listen("feature_load", "ws_feature_load", function(fields)
+	WS.Events.Listen("system_feature_load", "ws_feature_load", function(fields)
 		for _, name in ipairs(fields.names) do WS.Feature(name) end
 	end)
 

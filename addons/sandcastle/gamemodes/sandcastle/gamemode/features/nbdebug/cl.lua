@@ -10,7 +10,7 @@ local Debug = WS.require("foundation.npc.debug")
 local Overlay = WS.require("foundation.aiwar.overlay")
 local Parts = WS.require("foundation.ns.overlay")
 
--- The game events it listens to are sh.lua's; aiwar_debug is the aiwar
+-- The game events it listens to are sh.lua's; game_aiwar_debug is the aiwar
 -- controller's (Controller:SendDebug).
 local NO_SELECTION = Debug.NO_SELECTION
 local CORNERS = 4
@@ -83,7 +83,7 @@ end
 
 local E = WS.Events
 
-E.Listen("nb_debug_state", "ws_nbdebug_view", function(fields)
+E.Listen("game_nb_debug_state", "ws_nbdebug_view", function(fields)
 	local layers = {}
 	for _, name in ipairs(fields.layers) do layers[name] = true end
 	view.layers = layers
@@ -95,7 +95,7 @@ E.Listen("nb_debug_state", "ws_nbdebug_view", function(fields)
 	hook.Run("WSNbDebugState", layers, fields.selected)
 end)
 
-E.Listen("nb_debug_path", "ws_nbdebug_view", function(fields)
+E.Listen("game_nb_debug_path", "ws_nbdebug_view", function(fields)
 	view.paths[fields.index] = {
 		strategy = fields.strategy,
 		source = fields.source,
@@ -109,7 +109,7 @@ E.Listen("nb_debug_path", "ws_nbdebug_view", function(fields)
 	}
 end)
 
-E.Listen("nb_debug_cost", "ws_nbdebug_view", function(fields)
+E.Listen("game_nb_debug_cost", "ws_nbdebug_view", function(fields)
 	local cost = {
 		index = fields.index,
 		total = fields.total,
@@ -135,13 +135,13 @@ E.Listen("nb_debug_cost", "ws_nbdebug_view", function(fields)
 	view.cost = cost
 end)
 
-E.Listen("nb_debug_behavior", "ws_nbdebug_view", function(fields)
+E.Listen("game_nb_debug_behavior", "ws_nbdebug_view", function(fields)
 	local behavior = {}
 	for _, npc in ipairs(fields.npcs) do behavior[npc.index] = npc.lines end
 	view.behavior, view.behaviorReceived = behavior, CurTime()
 end)
 
-E.Listen("nb_debug_nav", "ws_nbdebug_view", function(fields)
+E.Listen("game_nb_debug_nav", "ws_nbdebug_view", function(fields)
 	local nav = {}
 	for i, area in ipairs(fields.areas) do
 		local corners = Lifted(area.corners, NAV_LIFT)
@@ -154,7 +154,7 @@ E.Listen("nb_debug_nav", "ws_nbdebug_view", function(fields)
 	view.nav, view.navReceived = nav, CurTime()
 end)
 
-E.Listen("nb_debug_npc_removed", "ws_nbdebug_view", function(fields)
+E.Listen("game_nb_debug_npc_removed", "ws_nbdebug_view", function(fields)
 	local index = fields.index
 	view.paths[index], view.behavior[index] = nil, nil
 	if view.cost and view.cost.index == index then view.cost = nil end
@@ -179,7 +179,7 @@ end
 -- Neon team colours, brighter than the HUD's, to read over any map.
 local WAR_COLOR = { [WS.TEAM_RED] = Color(255, 70, 110), [WS.TEAM_BLUE] = Color(60, 210, 255) }
 
-E.Listen("aiwar_debug", "ws_nbdebug_view", function(fields)
+E.Listen("game_aiwar_debug", "ws_nbdebug_view", function(fields)
 	local teams = fields.fire_teams
 	war.spheres = fields.spheres
 	war.lanes = fields.lanes

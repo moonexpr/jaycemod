@@ -5,7 +5,7 @@
 -- a mode's content. Its client half is ws/cl_npc_ragdolls.lua, its
 -- rules foundation/npc/ragdoll.lua.
 --
--- One game event, npc_ragdoll_create (ws/sh_npc_ragdolls.lua), tells
+-- One game event, game_npc_ragdoll_create (ws/sh_npc_ragdolls.lua), tells
 -- the clients that can see a body to build its ragdoll, in one of two ways:
 --  * a body the server still has (WS.SendClientRagdoll: an AI war
 --    soldier, ws/sh_drg_soldier.lua): clients take the pose from their
@@ -20,7 +20,7 @@ local Ragdoll = WS.require("foundation.npc.ragdoll")
 local function Fire(body, force, pose)
 	local groups = {}
 	for id = 0, body:GetNumBodyGroups() - 1 do groups[id + 1] = body:GetBodygroup(id) end
-	WS.Events.Fire("npc_ragdoll_create", {
+	WS.Events.Fire("game_npc_ragdoll_create", {
 		body = body,
 		model = body:GetModel(),
 		skin = body:GetSkin(),

@@ -18,6 +18,12 @@ NextSoldier, the AI-war's NextBot soldiers. The gamemode lives at
 | `docs/` | Design notes; `docs/research/foundation-admission-rule.md` decides what belongs in foundation |
 | `.devtools/bin/` | Project tools; `.devtools/artifacts/` generated output |
 
+Game events (`WS.Events`, `foundation.events`) are namespaced by kind, and
+the registry refuses any other name: `system_` for the gamemode core's own
+(`system_client_ready`, `system_transaction_settled`, `system_feature_load`,
+`system_server_convars`), a contract within a major release, so kept as few
+as possible; `game_` for every other.
+
 Check everything with `.devtools/bin/check_lua.sh` (compiles every Lua file
 and runs every test).
 

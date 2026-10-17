@@ -8,13 +8,13 @@ local INDEX = E.UInt(Debug.INDEX_BITS)
 local CORNERS = E.List(E.Vector(), Debug.CORNER_COUNT_BITS)
 
 -- The admin's view changed: the layers shown and the selected NPC's index.
-E.Define("nb_debug_state", {
+E.Define("game_nb_debug_state", {
 	layers = E.List(E.String(), Debug.LAYER_COUNT_BITS),
 	selected = INDEX,
 })
 
 -- A watched NPC's search finished (PATH): its report and path points.
-E.Define("nb_debug_path", {
+E.Define("game_nb_debug_path", {
 	index = INDEX,
 	strategy = E.String(),
 	source = E.String(),
@@ -31,7 +31,7 @@ E.Define("nb_debug_path", {
 })
 
 -- The areas the selected NPC's search explored (COST), decimated.
-E.Define("nb_debug_cost", {
+E.Define("game_nb_debug_cost", {
 	index = INDEX,
 	total = E.UInt(Debug.TOTAL_BITS),
 	areas = E.List(E.Record({
@@ -43,7 +43,7 @@ E.Define("nb_debug_cost", {
 })
 
 -- Each watched NPC's behavior lines (BEHAVIOR), periodically.
-E.Define("nb_debug_behavior", {
+E.Define("game_nb_debug_behavior", {
 	npcs = E.List(E.Record({
 		index = INDEX,
 		lines = E.List(E.String(), Debug.LINE_COUNT_BITS),
@@ -51,7 +51,7 @@ E.Define("nb_debug_behavior", {
 })
 
 -- The nav areas near the selected NPC (NAV), periodically.
-E.Define("nb_debug_nav", {
+E.Define("game_nb_debug_nav", {
 	areas = E.List(E.Record({
 		id = E.UInt(Debug.AREA_ID_BITS),
 		corners = CORNERS,
@@ -60,7 +60,7 @@ E.Define("nb_debug_nav", {
 })
 
 -- A watched NPC is gone.
-E.Define("nb_debug_npc_removed", { index = INDEX })
+E.Define("game_nb_debug_npc_removed", { index = INDEX })
 
 -- The AI war's soldier overlay (AIWAR), sent by the aiwar controller.
 local WAR_COUNT_BITS = 8 -- fire teams, soldiers, route points
@@ -77,7 +77,7 @@ local WAR_FRONT_COUNT_BITS = 2
 -- (foundation.ns.inspect), and while it fights its contact and flank.
 -- lines: each team's battle lines, their posts in order across the way
 -- they face (a ring when closed); fronts: where each team's lanes lead.
-E.Define("aiwar_debug", {
+E.Define("game_aiwar_debug", {
 	fire_teams = E.List(E.Record({
 		team = E.Team(),
 		name = E.String(),

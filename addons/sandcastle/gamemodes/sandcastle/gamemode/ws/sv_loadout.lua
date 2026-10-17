@@ -2,7 +2,7 @@
 -- the catalog's starters as they join until they leave, so a respawn or a
 -- team change keeps it. A buy is paid through the economy
 -- (ws/sv_economy.lua) only once the loadout takes the weapon. The player
--- hears their loadout (loadout_state) as their client loads and after each
+-- hears their loadout (game_loadout_state) as their client loads and after each
 -- change; each request is a transaction (WS.Events.Serve) whose decline goes
 -- back with its refusal. On TF2 maps the
 -- equipped weapons are what a player spawns with (GM:PlayerLoadout, init.lua).
@@ -25,7 +25,7 @@ end
 
 local function Publish(ply)
 	local owned, equipped = Of(ply):State()
-	E.Fire("loadout_state", {
+	E.Fire("game_loadout_state", {
 		owned = owned,
 		equipped = equipped,
 	}, ply)
@@ -55,25 +55,25 @@ local function Pay(work, ply, weapon)
 	work:Undo(function() WS.RefundMoney(ply, weapon.price) end)
 end
 
-Serve("loadout_buy", function(work, loadout, fields, ply)
+Serve("game_loadout_buy", function(work, loadout, fields, ply)
 	local weapon = CATALOG:Weapon(fields.weapon)
 	local bought = loadout:Buy(weapon)
 	Pay(work, ply, weapon)
 	return bought
 end)
 
-Serve("loadout_buy_into", function(work, loadout, fields, ply)
+Serve("game_loadout_buy_into", function(work, loadout, fields, ply)
 	local weapon = CATALOG:Weapon(fields.weapon)
 	local bought = loadout:BuyInto(fields.slot, weapon)
 	Pay(work, ply, weapon)
 	return bought
 end)
 
-Serve("loadout_equip", function(work, loadout, fields)
+Serve("game_loadout_equip", function(work, loadout, fields)
 	return loadout:Equip(fields.slot, CATALOG:Weapon(fields.weapon))
 end)
 
-Serve("loadout_clear", function(work, loadout, fields)
+Serve("game_loadout_clear", function(work, loadout, fields)
 	return loadout:Clear(fields.slot)
 end)
 
@@ -95,9 +95,9 @@ local function Stats()
 	return stats
 end
 
-E.Listen("client_ready", "ws_loadout", function(_, ply)
+E.Listen("system_client_ready", "ws_loadout", function(_, ply)
 	Publish(ply)
-	E.Fire("loadout_stats", { weapons = Stats() }, ply)
+	E.Fire("game_loadout_stats", { weapons = Stats() }, ply)
 end)
 
 -- The equipped weapons, slot by slot, with reserve ammo; the first is

@@ -26,11 +26,11 @@ local ENABLED = CreateConVar("sv_gameplay_enabled", "0", { FCVAR_REPLICATED, FCV
 local E = WS.Events
 local COUNT_BITS = 8
 
-E.Define("gameplay_chat", {
+E.Define("game_gameplay_chat", {
 	title = E.String(),
 	lines = E.List(E.String(), COUNT_BITS),
 })
-E.Define("gameplay_transition_cancelled", {
+E.Define("game_gameplay_transition_cancelled", {
 	sounds = E.List(E.String(), COUNT_BITS),
 })
 
@@ -122,13 +122,13 @@ end
 -- A new game's description in chat: the title in gold, the objectives in white.
 local TITLE_COLOR, LINE_COLOR = Color(255, 205, 80), Color(235, 235, 235)
 
-E.Listen("gameplay_chat", "ws_gameplay", function(fields)
+E.Listen("game_gameplay_chat", "ws_gameplay", function(fields)
 	chat.AddText(TITLE_COLOR, fields.title)
 	for _, line in ipairs(fields.lines) do chat.AddText(LINE_COLOR, line) end
 end)
 
 -- A countdown called off: silence what it played.
-E.Listen("gameplay_transition_cancelled", "ws_gameplay", function(fields)
+E.Listen("game_gameplay_transition_cancelled", "ws_gameplay", function(fields)
 	local ply = LocalPlayer()
 	if not IsValid(ply) then return end
 	for _, path in ipairs(fields.sounds) do ply:StopSound(path) end

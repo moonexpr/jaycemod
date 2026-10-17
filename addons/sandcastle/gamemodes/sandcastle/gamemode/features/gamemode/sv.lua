@@ -80,7 +80,7 @@ end
 -- A title and lines in every player's chat (the client colours the title;
 -- ws/sh_gameplay.lua).
 local function Chat(title, lines)
-	WS.Events.Fire("gameplay_chat", {
+	WS.Events.Fire("game_gameplay_chat", {
 		title = title,
 		lines = lines,
 	})
@@ -133,7 +133,7 @@ end
 -- Calls off the transition, silencing what it played.
 function Controller:CancelTransition()
 	timer.Remove(TRANSITION_TIMER)
-	WS.Events.Fire("gameplay_transition_cancelled", { sounds = self.transitionSounds })
+	WS.Events.Fire("game_gameplay_transition_cancelled", { sounds = self.transitionSounds })
 	self.transitionSounds = {}
 end
 

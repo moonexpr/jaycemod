@@ -18,7 +18,7 @@ CreateConVar("mp_vote_difficulty_enabled", "1", FLAGS, "1: players may vote on t
 CreateConVar("mp_vote_nextmap_enabled", "1", FLAGS,
 	"1: once the match is one round from its end or over, everyone votes on the next map among three", 0, 1)
 
--- The kinds on the wire, by index (vote_call's kind, vote_state's).
+-- The kinds on the wire, by index (game_vote_call's kind, game_vote_state's).
 WS.VOTE_KINDS = {
 	Vote.KIND_KICK,
 	Vote.KIND_MAP,
@@ -99,7 +99,7 @@ local REQUEST_RATE = {
 }
 
 -- subject: the map for a map vote; empty for the rest.
-E.Define("vote_call", {
+E.Define("game_vote_call", {
 	kind = E.UInt(KIND_BITS),
 	subject = E.String(),
 }, {
@@ -108,7 +108,7 @@ E.Define("vote_call", {
 })
 
 -- choice: the option picked on a vote of choices (1..), else 0 and yes counts.
-E.Define("vote_cast", {
+E.Define("game_vote_cast", {
 	yes = E.Bool(),
 	choice = E.UInt(OPTION_BITS),
 }, {
@@ -119,7 +119,7 @@ E.Define("vote_cast", {
 -- The running vote as one player sees it; running false when none runs.
 -- mine: whether this player may still vote. A vote of choices has options
 -- and each one's count; a yes-or-no vote has none.
-E.Define("vote_state", {
+E.Define("game_vote_state", {
 	running = E.Bool(),
 	kind = E.UInt(KIND_BITS),
 	question = E.String(),
@@ -134,13 +134,13 @@ E.Define("vote_state", {
 })
 
 -- A vote is over: TF2's passed line, or why it failed.
-E.Define("vote_ended", {
+E.Define("game_vote_ended", {
 	passed = E.Bool(),
 	text = E.String(),
 })
 
 -- A request refused, for the player who made it.
-E.Define("vote_refused", { text = E.String() })
+E.Define("game_vote_refused", { text = E.String() })
 
 -- The maps a map vote may name: the server's map cycle.
-E.Define("vote_maps", { maps = E.List(E.String(), MAP_COUNT_BITS) })
+E.Define("game_vote_maps", { maps = E.List(E.String(), MAP_COUNT_BITS) })

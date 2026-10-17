@@ -4,7 +4,7 @@
 -- (nextlevel), a round restart or a scramble of the next round's teams
 -- (the rounds feature), or a kick. Reports reaching the count
 -- (WSReportsReached) start a kick vote, queued behind a running vote.
--- Every player hears the vote as vote_state; holders of the players
+-- Every player hears the vote as game_vote_state; holders of the players
 -- privilege (admins, by default) are never put to a kick vote.
 --
 -- The next-map vote (mp_vote_nextmap_enabled): once a map, as soon as the
@@ -94,7 +94,7 @@ end
 
 local function Broadcast()
 	local vote = Vote.Current(book)
-	for _, ply in ipairs(player.GetHumans()) do E.Fire("vote_state", StateFor(vote, ply), ply) end
+	for _, ply in ipairs(player.GetHumans()) do E.Fire("game_vote_state", StateFor(vote, ply), ply) end
 end
 
 local EFFECTS = {
@@ -122,7 +122,7 @@ local function Conclude(result, targetLeft)
 	if result.passed and not targetLeft then EFFECTS[vote.kind](vote) end
 	local text = result.passed and WS.VotePassed(vote.kind, subject) or result.why
 	print("[Sandcastle] vote " .. vote.kind .. " " .. subject .. ": " .. text)
-	E.Fire("vote_ended", {
+	E.Fire("game_vote_ended", {
 		passed = result.passed,
 		text = text,
 	})
@@ -137,16 +137,16 @@ function Started(vote)
 end
 
 local function Refuse(ply, err)
-	E.Fire("vote_refused", { text = Transaction.Detail(err, Vote.PLAYER) }, ply)
+	E.Fire("game_vote_refused", { text = Transaction.Detail(err, Vote.PLAYER) }, ply)
 end
 
-E.Listen("vote_call", "ws_votes", function(fields, ply)
+E.Listen("game_vote_call", "ws_votes", function(fields, ply)
 	local kind = WS.VOTE_KINDS[fields.kind + 1]
-	if not kind then return E.Fire("vote_refused", { text = "That is not a vote." }, ply) end
+	if not kind then return E.Fire("game_vote_refused", { text = "That is not a vote." }, ply) end
 	local subject = ""
 	if kind == Vote.KIND_MAP then
 		if not IN_CYCLE[fields.subject] then
-			return E.Fire("vote_refused", { text = "That map was not found in the server's map cycle." }, ply)
+			return E.Fire("game_vote_refused", { text = "That map was not found in the server's map cycle." }, ply)
 		end
 		subject = fields.subject
 	end
@@ -161,7 +161,7 @@ E.Listen("vote_call", "ws_votes", function(fields, ply)
 end)
 
 -- choice: an option's number on a vote of choices, else 0 and yes counts
-E.Listen("vote_cast", "ws_votes", function(fields, ply)
+E.Listen("game_vote_cast", "ws_votes", function(fields, ply)
 	local choice = fields.choice
 	if choice == 0 then choice = fields.yes end
 	local ok, err = pcall(Vote.Cast, book, ply, choice)
@@ -216,7 +216,7 @@ hook.Add("WSChangeLevel", "ws_votes", function()
 	if vote and vote.kind == Vote.KIND_NEXTMAP then Conclude(Vote.Finish(book, CurTime(), true)) end
 end)
 
-E.Listen("client_ready", "ws_votes", function(_, ply)
-	E.Fire("vote_maps", { maps = MAPS }, ply)
-	E.Fire("vote_state", StateFor(Vote.Current(book), ply), ply)
+E.Listen("system_client_ready", "ws_votes", function(_, ply)
+	E.Fire("game_vote_maps", { maps = MAPS }, ply)
+	E.Fire("game_vote_state", StateFor(Vote.Current(book), ply), ply)
 end)

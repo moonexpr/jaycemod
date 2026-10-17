@@ -21,33 +21,33 @@ local E = WS.Events
 local LEVEL_BITS = 16
 local SECONDS_BITS = 8
 
-E.Define("pumpkin_lord_summoned", {})
-E.Define("pumpkin_lord_killed", {})
-E.Define("eyeball_boss_summoned", { level = E.Int(LEVEL_BITS) })
-E.Define("eyeball_boss_killed", { level = E.Int(LEVEL_BITS) })
-E.Define("eyeball_boss_escape_imminent", {
+E.Define("game_pumpkin_lord_summoned", {})
+E.Define("game_pumpkin_lord_killed", {})
+E.Define("game_eyeball_boss_summoned", { level = E.Int(LEVEL_BITS) })
+E.Define("game_eyeball_boss_killed", { level = E.Int(LEVEL_BITS) })
+E.Define("game_eyeball_boss_escape_imminent", {
 	level = E.Int(LEVEL_BITS),
 	time_remaining = E.UInt(SECONDS_BITS),
 })
-E.Define("eyeball_boss_escaped", { level = E.Int(LEVEL_BITS) })
-E.Define("merasmus_summoned", { level = E.Int(LEVEL_BITS) })
-E.Define("merasmus_killed", { level = E.Int(LEVEL_BITS) })
-E.Define("merasmus_escape_warning", {
+E.Define("game_eyeball_boss_escaped", { level = E.Int(LEVEL_BITS) })
+E.Define("game_merasmus_summoned", { level = E.Int(LEVEL_BITS) })
+E.Define("game_merasmus_killed", { level = E.Int(LEVEL_BITS) })
+E.Define("game_merasmus_escape_warning", {
 	level = E.Int(LEVEL_BITS),
 	time_remaining = E.UInt(SECONDS_BITS),
 })
-E.Define("merasmus_escaped", { level = E.Int(LEVEL_BITS) })
+E.Define("game_merasmus_escaped", { level = E.Int(LEVEL_BITS) })
 
 -- Sandcastle's own, for the chat line TF2 says for each of Merasmus's
 -- killers (TF_Halloween_Merasmus_Killers).
-E.Define("merasmus_killer", {
+E.Define("game_merasmus_killer", {
 	player = E.Entity(),
 	level = E.Int(LEVEL_BITS),
 })
 
 -- Sandcastle's own, for what TF2 networks as a player condition: a player
 -- became a bomb head for duration seconds (0: no longer one).
-E.Define("halloween_bomb_head", {
+E.Define("game_halloween_bomb_head", {
 	player = E.Entity(),
 	duration = E.Float(),
 })

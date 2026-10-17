@@ -366,7 +366,7 @@ end
 -- The overlay -------------------------------------------------------------------------------
 
 local DEBUG_INTERVAL, DEBUG_RANGE, DEBUG_MAX_NODES = 1, 1500, 400
-local DEBUG_MAX_LINKS = 2 ^ 16 - 1 -- nodegraph_debug's count (ws/sh_nodegraph.lua)
+local DEBUG_MAX_LINKS = 2 ^ 16 - 1 -- game_nodegraph_debug's count (ws/sh_nodegraph.lua)
 
 function Controller:ToggleDebug(ply)
 	ply.wsNodegraphDebug = not ply.wsNodegraphDebug
@@ -409,7 +409,7 @@ function Controller:SendDebug(ply)
 			zone = node.zone or 0,
 		}
 	end
-	WS.Events.Fire("nodegraph_debug", {
+	WS.Events.Fire("game_nodegraph_debug", {
 		source = self.graph and "generated" or (graph and "installed" or "none"),
 		nodes = nodes,
 		links = links,

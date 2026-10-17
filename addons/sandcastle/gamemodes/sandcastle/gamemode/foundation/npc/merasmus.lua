@@ -38,9 +38,9 @@
 -- attacker) and OnPropTouched(prop, toucher), and calls Removed(state, me)
 -- when he is removed (CMerasmus::UpdateOnRemove).
 --
--- His death's rewards, as far as they show here: merasmus_killed carries
+-- His death's rewards, as far as they show here: game_merasmus_killed carries
 -- his level (TF2's only field), and each player who hit him in his last 5 s
--- is named in the chat (merasmus_killer, TF2's SayText2 of
+-- is named in the chat (game_merasmus_killer, TF2's SayText2 of
 -- TF_Halloween_Merasmus_Killers), unless cheats spawned him. What else TF2
 -- does has no counterpart here: the Steam econ hat levels the GC awards
 -- (CMsgUpdateHalloweenMerasmusLootLevel), Valve's achievements
@@ -352,7 +352,7 @@ QUICK_RESPAWN_INTERVAL = 60
 NEUTRALIZES_POINT = true
 WAITS_FOR_WHEEL = true -- nor does he come while a Wheel of Fate is busy
 
--- Leaving: the seconds left at which merasmus_escape_warning fires, checked
+-- Leaving: the seconds left at which game_merasmus_escape_warning fires, checked
 -- nearest first, as CMerasmus::LeaveWarning does.
 ESCAPE_WARNINGS = { 10, 30, 60 }
 DEPART_RARE_ROLL_MAX = 10 -- rare at RandomInt( 0, 10 ) == 0

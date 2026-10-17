@@ -30,12 +30,12 @@ local function Wire()
 end
 
 local function Define(registry)
-	registry:Define("buy", { item = Events.String() }, {
+	registry:Define("game_buy", { item = Events.String() }, {
 		clientSendable = true,
 		rate = RATE,
 		transaction = true,
 	})
-	registry:Define("transaction_settled", {
+	registry:Define("system_transaction_settled", {
 		[Events.TRANSACTION_FIELD] = Events.UInt(Transaction.ID_BITS),
 		state = Events.String(),
 		kind = Events.Optional(Events.String()),
@@ -43,7 +43,7 @@ local function Define(registry)
 	})
 end
 
--- A client and a server joined by wires; handler(work, fields) serves "buy".
+-- A client and a server joined by wires; handler(work, fields) serves "game_buy".
 local function Pair(handler)
 	local clock = { Now = function() return 0 end }
 	local pair = {
@@ -58,14 +58,14 @@ local function Pair(handler)
 		local id, tx = self.ledger:Open(0, 10)
 		fields[Events.TRANSACTION_FIELD] = id
 		local up = Wire()
-		self.client:Write(self.client:BuildRequest("buy", fields), up)
+		self.client:Write(self.client:BuildRequest("game_buy", fields), up)
 		local request = self.server:ReadRequest("ply", up, 0)
 		local served = Transaction.Spawn(self.scheduler, handler, request.fields)
 		served:OnSettle(function(settled)
 			local reply = Transaction.Reply(settled, PLAYER)
 			reply[Events.TRANSACTION_FIELD] = request.fields[Events.TRANSACTION_FIELD]
 			local down = Wire()
-			self.server:Write(self.server:Build("transaction_settled", reply), down)
+			self.server:Write(self.server:Build("system_transaction_settled", reply), down)
 			local fields = self.client:Read(down).fields
 			self.ledger:Settle(fields[Events.TRANSACTION_FIELD], fields)
 		end)

@@ -28,7 +28,7 @@ local aiwar = T.RealmSource("aiwar", "sv")
 -- What the nbdebug controller fires, and the AI war's overlay.
 local function Fired()
 	local fired = Names(controller, "Events%.Fire")
-	fired.aiwar_debug = Names(aiwar, "Events%.Fire").aiwar_debug
+	fired.game_aiwar_debug = Names(aiwar, "Events%.Fire").game_aiwar_debug
 	return fired
 end
 
@@ -46,9 +46,9 @@ T.test("every game event they fire is defined in the feature's shared part, for 
 	for name in pairs(Fired()) do T.eq(defined[name], true, name .. " defined in sh.lua") end
 end)
 
-T.test("the controller's game events are named nb_debug_<subject>", function()
+T.test("the controller's game events are named game_nb_debug_<subject>", function()
 	for name in pairs(Names(controller, "Events%.Fire")) do
-		T.eq(name:match("^nb_debug_[a-z_]+$") ~= nil, true, name)
+		T.eq(name:match("^game_nb_debug_[a-z_]+$") ~= nil, true, name)
 	end
 end)
 

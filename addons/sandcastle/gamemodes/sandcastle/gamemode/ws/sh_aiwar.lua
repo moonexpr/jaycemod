@@ -47,7 +47,7 @@ local SLOT_JOB_COUNT_BITS = 5
 -- none; an empty slot's index is 0 and its texts empty; squad names its
 -- soldier's fire team ("" for none), leads says whether it leads it, and
 -- squad_by_hand and job_by_hand whether they were set by hand.
-E.Define("aiwar_slots", {
+E.Define("game_aiwar_slots", {
 	custom = E.Bool(),
 	jobs = E.List(E.String(), SLOT_JOB_COUNT_BITS),
 	teams = E.List(E.Record({
@@ -68,7 +68,7 @@ E.Define("aiwar_slots", {
 })
 
 -- An admin's AI War panel asks for the slot list.
-E.Define("aiwar_slots_request", {}, {
+E.Define("game_aiwar_slots_request", {}, {
 	clientSendable = true,
 	rate = {
 		count = 4,
@@ -160,7 +160,7 @@ if SERVER then
 		return war:SlotReport()
 	end, "Print each side's slots: their ids, pins and soldiers")
 
-	E.Listen("aiwar_slots_request", "ws_aiwar", function(_, ply)
+	E.Listen("game_aiwar_slots_request", "ws_aiwar", function(_, ply)
 		if WS.Can(ply, Permissions.NEXTSOLDIER) then WS.Feature("aiwar"):WatchSlots(ply) end
 	end)
 

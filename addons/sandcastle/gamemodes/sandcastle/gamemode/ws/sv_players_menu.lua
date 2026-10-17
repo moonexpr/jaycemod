@@ -3,7 +3,7 @@
 -- WSReportsReached(target, reason), which starts the vote to kick them.
 -- Money a player gives moves through WS.TransferMoney. Kicks, bans and
 -- grants need the players privilege. Every answer goes back to the player
--- who asked as players_menu_said.
+-- who asked as game_players_menu_said.
 local Reports = WS.require("foundation.reports")
 local Economy = WS.require("foundation.economy")
 local Permissions = WS.require("foundation.permissions")
@@ -16,7 +16,7 @@ local book = Reports.New()
 local REFUSED = Sets.Union(Reports.PLAYER, Economy.PLAYER)
 
 local function Say(ply, text, refused)
-	E.Fire("players_menu_said", {
+	E.Fire("game_players_menu_said", {
 		text = text,
 		refused = refused,
 	}, ply)
@@ -40,7 +40,7 @@ local function Try(ply, fn)
 	return ok
 end
 
-E.Listen("player_report", "ws_players_menu", function(fields, ply)
+E.Listen("game_player_report", "ws_players_menu", function(fields, ply)
 	local target = Target(ply, fields.target)
 	if not target then return end
 	local reason = Reports.REASONS[fields.reason + 1]
@@ -58,7 +58,7 @@ end)
 
 hook.Add("PlayerDisconnected", "ws_players_menu", function(ply) Reports.Forget(book, ply) end)
 
-E.Listen("money_transfer", "ws_players_menu", function(fields, ply)
+E.Listen("game_money_transfer", "ws_players_menu", function(fields, ply)
 	local target = Target(ply, fields.target)
 	if not target then return end
 	if not Try(ply, function() WS.TransferMoney(ply, target, fields.amount) end) then return end
@@ -99,6 +99,6 @@ function WS.AdminPlayerAction(ply, target, action, value)
 	Say(ply, done or why, done == nil)
 end
 
-E.Listen("admin_player", "ws_players_menu", function(fields, ply)
+E.Listen("game_admin_player", "ws_players_menu", function(fields, ply)
 	WS.AdminPlayerAction(ply, fields.target, fields.action, fields.value)
 end)

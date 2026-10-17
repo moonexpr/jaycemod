@@ -69,7 +69,7 @@ end
 
 -- The capture as TF2's modevents.res declares it, and a request.
 local function DefineCapture(registry)
-	registry:Define("teamplay_point_captured", {
+	registry:Define("game_teamplay_point_captured", {
 		cp = Events.UInt(8),
 		cpname = Events.String(),
 		team = Events.Team(),
@@ -83,7 +83,7 @@ local RATE = {
 }
 
 local function DefineJoin(registry)
-	registry:Define("join_team", { team = Events.Team() }, {
+	registry:Define("game_join_team", { team = Events.Team() }, {
 		clientSendable = true,
 		rate = RATE,
 	})
@@ -97,27 +97,28 @@ T.test("an event's id is its name's CRC32 cut to ID_BITS, the same in any regist
 	DefineJoin(a)
 	DefineJoin(b)
 	DefineCapture(b)
-	local id = Encoding.Crc32("teamplay_point_captured") % 2 ^ Events.ID_BITS
-	T.eq(a:IdOf("teamplay_point_captured"), id, "derived from the name")
-	T.eq(b:IdOf("teamplay_point_captured"), id, "not from the order")
+	local id = Encoding.Crc32("game_teamplay_point_captured") % 2 ^ Events.ID_BITS
+	T.eq(a:IdOf("game_teamplay_point_captured"), id, "derived from the name")
+	T.eq(b:IdOf("game_teamplay_point_captured"), id, "not from the order")
 end)
 
 T.test("two names whose ids collide error loudly at declaration, naming both", function()
 	local registry = Registry()
-	-- CRC32s 0x8fd66e24 and 0xe0d66e24 share their low 24 bits.
-	registry:Define("event_188781", {})
-	local err = ErrorOf(function() registry:Define("event_326020", {}) end)
+	-- CRC32s 0x61065a4a and 0x0e065a4a share their low 24 bits (a shared prefix
+	-- keeps a CRC32 difference, so the bare names collide as well).
+	registry:Define("game_event_188781", {})
+	local err = ErrorOf(function() registry:Define("game_event_326020", {}) end)
 	T.eq(err.kind, Events.ID_COLLISION, "kind")
-	Has(err, "event_188781", "names the first")
-	Has(err, "event_326020", "names the second")
+	Has(err, "game_event_188781", "names the first")
+	Has(err, "game_event_326020", "names the second")
 end)
 
 T.test("defining a name again replaces its schema (a Lua refresh reruns the file)", function()
 	local registry = Registry()
-	registry:Define("x", { a = Events.Bool() })
-	registry:Define("x", { b = Events.Bool() })
+	registry:Define("game_x", { a = Events.Bool() })
+	registry:Define("game_x", { b = Events.Bool() })
 	local buffer = FakeBuffer()
-	registry:Write(registry:Build("x", { b = true }), buffer)
+	registry:Write(registry:Build("game_x", { b = true }), buffer)
 	T.eq(registry:Read(buffer).fields.b, true, "the new field")
 end)
 
@@ -127,7 +128,7 @@ T.test("a fired event crosses the wire as its id, then its fields in name order"
 	local registry = Registry()
 	DefineCapture(registry)
 	local buffer = FakeBuffer()
-	registry:Write(registry:Build("teamplay_point_captured", {
+	registry:Write(registry:Build("game_teamplay_point_captured", {
 		team = 2,
 		cpname = "the Hatch",
 		cp = 1,
@@ -137,7 +138,7 @@ T.test("a fired event crosses the wire as its id, then its fields in name order"
 	T.eq(#w, 5, "id and four fields")
 	T.eq(w[1].kind, "UInt", "id kind")
 	T.eq(w[1].bits, Events.ID_BITS, "id width")
-	T.eq(w[1].value, registry:IdOf("teamplay_point_captured"), "id")
+	T.eq(w[1].value, registry:IdOf("game_teamplay_point_captured"), "id")
 	T.eq(w[2].value, "ab", "cappers")
 	T.eq(w[3].value, 1, "cp")
 	T.eq(w[3].bits, 8, "cp width")
@@ -145,7 +146,7 @@ T.test("a fired event crosses the wire as its id, then its fields in name order"
 	T.eq(w[5].value, 2, "team")
 	T.eq(w[5].bits, Events.TEAM_BITS, "team width")
 	local event = registry:Read(buffer)
-	T.eq(event.name, "teamplay_point_captured", "name")
+	T.eq(event.name, "game_teamplay_point_captured", "game_name")
 	T.eq(event.fields.cp, 1, "cp back")
 	T.eq(event.fields.cpname, "the Hatch", "cpname back")
 	T.eq(event.fields.team, 2, "team back")
@@ -154,7 +155,7 @@ end)
 T.test("every field type round-trips", function()
 	local registry = Registry()
 	local body = Entity(7)
-	registry:Define("everything", {
+	registry:Define("game_everything", {
 		s = Events.String(),
 		b = Events.Bool(),
 		u = Events.UInt(3),
@@ -177,14 +178,14 @@ T.test("every field type round-trips", function()
 		t = 5,
 	}
 	local buffer = FakeBuffer()
-	registry:Write(registry:Build("everything", sent), buffer)
+	registry:Write(registry:Build("game_everything", sent), buffer)
 	local got = registry:Read(buffer).fields
 	for name, value in pairs(sent) do T.eq(got[name], value, name) end
 end)
 
 T.test("lists and lists of records round-trip, with a count of the declared width", function()
 	local registry = Registry()
-	registry:Define("npc_ragdoll_create", {
+	registry:Define("game_npc_ragdoll_create", {
 		groups = Events.List(Events.UInt(8), 8),
 		pose = Events.Optional(Events.List(Events.Record({
 			pos = Events.Vector(),
@@ -192,7 +193,7 @@ T.test("lists and lists of records round-trip, with a count of the declared widt
 		}), 8)),
 	})
 	local buffer = FakeBuffer()
-	registry:Write(registry:Build("npc_ragdoll_create", {
+	registry:Write(registry:Build("game_npc_ragdoll_create", {
 		groups = { 3, 0, 1 },
 		pose = {
 			{ pos = Vec(1, 1, 1) },
@@ -212,10 +213,10 @@ end)
 
 T.test("an optional field left out arrives as nil; given, it arrives", function()
 	local registry = Registry()
-	registry:Define("path", { total = Events.Optional(Events.Float()) })
+	registry:Define("game_path", { total = Events.Optional(Events.Float()) })
 	local buffer = FakeBuffer()
-	registry:Write(registry:Build("path", {}), buffer)
-	registry:Write(registry:Build("path", { total = 4.5 }), buffer)
+	registry:Write(registry:Build("game_path", {}), buffer)
+	registry:Write(registry:Build("game_path", { total = 4.5 }), buffer)
 	T.eq(registry:Read(buffer).fields.total, nil, "absent")
 	T.eq(registry:Read(buffer).fields.total, 4.5, "present")
 end)
@@ -223,7 +224,7 @@ end)
 T.test("a defaulted field left out gets its default, for local listeners and the receiver", function()
 	local registry = Registry()
 	DefineCapture(registry)
-	local event = registry:Build("teamplay_point_captured", {
+	local event = registry:Build("game_teamplay_point_captured", {
 		cp = 0,
 		cpname = "",
 		team = 3,
@@ -236,19 +237,19 @@ end)
 
 T.test("Build copies the fields: changing the caller's table later changes nothing", function()
 	local registry = Registry()
-	registry:Define("x", { list = Events.List(Events.UInt(4), 4) })
+	registry:Define("game_x", { list = Events.List(Events.UInt(4), 4) })
 	local mine = { list = { 1 } }
-	local event = registry:Build("x", mine)
+	local event = registry:Build("game_x", mine)
 	mine.list[1] = 2
 	T.eq(event.fields.list[1], 1, "copied")
 end)
 
 T.test("the unreliable option is the definition's", function()
 	local registry = Registry()
-	registry:Define("snapshot", {}, { unreliable = true })
+	registry:Define("game_snapshot", {}, { unreliable = true })
 	DefineCapture(registry)
-	T.eq(registry:Build("snapshot", {}).definition.unreliable, true, "unreliable")
-	T.eq(registry:Build("teamplay_point_captured", {
+	T.eq(registry:Build("game_snapshot", {}).definition.unreliable, true, "unreliable")
+	T.eq(registry:Build("game_teamplay_point_captured", {
 		cp = 0,
 		cpname = "",
 		team = 0,
@@ -267,7 +268,7 @@ T.test("a wrong field type, a missing field and an undeclared field are named er
 	local registry = Registry()
 	DefineCapture(registry)
 	local wrong = ErrorOf(function()
-		registry:Build("teamplay_point_captured", {
+		registry:Build("game_teamplay_point_captured", {
 			cp = "1",
 			cpname = "",
 			team = 2,
@@ -275,11 +276,11 @@ T.test("a wrong field type, a missing field and an undeclared field are named er
 	end)
 	T.eq(wrong.kind, Events.BAD_FIELDS, "wrong type")
 	Has(wrong, "cp", "names it")
-	local missing = ErrorOf(function() registry:Build("teamplay_point_captured", { cp = 1, team = 2 }) end)
+	local missing = ErrorOf(function() registry:Build("game_teamplay_point_captured", { cp = 1, team = 2 }) end)
 	T.eq(missing.kind, Events.BAD_FIELDS, "missing")
 	Has(missing, "cpname", "names it")
 	local extra = ErrorOf(function()
-		registry:Build("teamplay_point_captured", {
+		registry:Build("game_teamplay_point_captured", {
 			cp = 1,
 			cpname = "",
 			team = 2,
@@ -292,32 +293,42 @@ end)
 
 T.test("integers must fit their width and be whole", function()
 	local registry = Registry()
-	registry:Define("n", {
+	registry:Define("game_n", {
 		u = Events.Default(Events.UInt(3), 0),
 		i = Events.Default(Events.Int(4), 0),
 	})
-	local function Kind(fields) return ErrorOf(function() registry:Build("n", fields) end).kind end
+	local function Kind(fields) return ErrorOf(function() registry:Build("game_n", fields) end).kind end
 	T.eq(Kind({ u = 8 }), Events.BAD_FIELDS, "uint too big")
 	T.eq(Kind({ u = -1 }), Events.BAD_FIELDS, "uint negative")
 	T.eq(Kind({ u = 1.5 }), Events.BAD_FIELDS, "uint fraction")
 	T.eq(Kind({ i = 8 }), Events.BAD_FIELDS, "int too big")
 	T.eq(Kind({ i = -9 }), Events.BAD_FIELDS, "int too small")
-	T.eq(registry:Build("n", { i = -8 }).fields.i, -8, "int smallest")
+	T.eq(registry:Build("game_n", { i = -8 }).fields.i, -8, "int smallest")
 end)
 
 T.test("engine types are checked with the host's tests; a list too long for its count is refused", function()
 	local registry = Registry()
-	registry:Define("e", {
+	registry:Define("game_e", {
 		body = Events.Default(Events.Entity(), Entity(0)),
 		at = Events.Default(Events.Vector(), Vec(0, 0, 0)),
 		list = Events.Default(Events.List(Events.Bool(), 2), {}),
 	})
-	T.eq(ErrorOf(function() registry:Build("e", { body = Vec(1, 1, 1) }) end).kind, Events.BAD_FIELDS, "vector as entity")
-	T.eq(ErrorOf(function() registry:Build("e", { at = Ang(1, 1, 1) }) end).kind, Events.BAD_FIELDS, "angle as vector")
-	local long = ErrorOf(function() registry:Build("e", { list = { true, true, true, true } }) end)
+	T.eq(ErrorOf(function() registry:Build("game_e", { body = Vec(1, 1, 1) }) end).kind, Events.BAD_FIELDS, "vector as entity")
+	T.eq(ErrorOf(function() registry:Build("game_e", { at = Ang(1, 1, 1) }) end).kind, Events.BAD_FIELDS, "angle as vector")
+	local long = ErrorOf(function() registry:Build("game_e", { list = { true, true, true, true } }) end)
 	T.eq(long.kind, Events.BAD_FIELDS, "4 in a 2-bit count")
 	Has(long, "list", "names it")
-	T.eq(ErrorOf(function() registry:Build("e", { list = { true, 1 } }) end).kind, Events.BAD_FIELDS, "element type")
+	T.eq(ErrorOf(function() registry:Build("game_e", { list = { true, 1 } }) end).kind, Events.BAD_FIELDS, "element type")
+end)
+
+T.test("an event's name says its kind: system_ for the core's, game_ for the rest", function()
+	local registry = Registry()
+	registry:Define("system_ping", {})
+	registry:Define("game_pong", {})
+	T.eq(registry:Definition("system_ping").kind, Events.SYSTEM, "system")
+	T.eq(registry:Definition("game_pong").kind, Events.GAME, "game")
+	T.eq(ErrorOf(function() registry:Define("pong", {}) end).kind, Events.BAD_SCHEMA, "no namespace")
+	T.eq(ErrorOf(function() registry:Define("system_", {}) end).kind, Events.BAD_SCHEMA, "a namespace alone")
 end)
 
 T.test("a bad schema is refused at declaration", function()
@@ -328,16 +339,16 @@ T.test("a bad schema is refused at declaration", function()
 	T.eq(Kind(function() Events.Int(1) end), Events.BAD_SCHEMA, "a sign bit and nothing")
 	T.eq(Kind(function() Events.List(Events.Bool(), 0) end), Events.BAD_SCHEMA, "no count bits")
 	T.eq(Kind(function() Events.Default(Events.UInt(2), 9) end), Events.BAD_SCHEMA, "a default that does not fit")
-	T.eq(Kind(function() registry:Define("x", { a = "string" }) end), Events.BAD_SCHEMA, "not a field type")
-	T.eq(Kind(function() registry:Define("x", {}, { clientSendable = true }) end), Events.BAD_SCHEMA, "sendable without a rate")
-	T.eq(Kind(function() registry:Define("x", {}, { sendable = true }) end), Events.BAD_SCHEMA, "an unknown option")
+	T.eq(Kind(function() registry:Define("game_x", { a = "string" }) end), Events.BAD_SCHEMA, "not a field type")
+	T.eq(Kind(function() registry:Define("game_x", {}, { clientSendable = true }) end), Events.BAD_SCHEMA, "sendable without a rate")
+	T.eq(Kind(function() registry:Define("game_x", {}, { sendable = true }) end), Events.BAD_SCHEMA, "an unknown option")
 end)
 
 T.test("reading an id no definition has is a named error", function()
 	local sender, receiver = Registry(), Registry()
 	DefineCapture(sender)
 	local buffer = FakeBuffer()
-	sender:Write(sender:Build("teamplay_point_captured", {
+	sender:Write(sender:Build("game_teamplay_point_captured", {
 		cp = 0,
 		cpname = "",
 		team = 0,
@@ -351,9 +362,9 @@ T.test("listeners run in the order added with the fields and what the adapter ad
 	local registry = Registry()
 	DefineJoin(registry)
 	local heard = {}
-	registry:Listen("join_team", "first", function(fields, ply) heard[#heard + 1] = "first " .. fields.team .. " " .. ply end)
-	registry:Listen("join_team", "second", function(fields) heard[#heard + 1] = "second" end)
-	registry:Dispatch(registry:Build("join_team", { team = 2 }), "ply")
+	registry:Listen("game_join_team", "first", function(fields, ply) heard[#heard + 1] = "first " .. fields.team .. " " .. ply end)
+	registry:Listen("game_join_team", "second", function(fields) heard[#heard + 1] = "second" end)
+	registry:Dispatch(registry:Build("game_join_team", { team = 2 }), "ply")
 	T.eq(table.concat(heard, ","), "first 2 ply,second", "heard")
 end)
 
@@ -361,14 +372,14 @@ T.test("listening again under an id replaces that listener in its place; Ignore 
 	local registry = Registry()
 	DefineJoin(registry)
 	local heard = {}
-	registry:Listen("join_team", "a", function() heard[#heard + 1] = "a1" end)
-	registry:Listen("join_team", "b", function() heard[#heard + 1] = "b" end)
-	registry:Listen("join_team", "a", function() heard[#heard + 1] = "a2" end)
-	registry:Dispatch(registry:Build("join_team", { team = 2 }))
+	registry:Listen("game_join_team", "a", function() heard[#heard + 1] = "a1" end)
+	registry:Listen("game_join_team", "b", function() heard[#heard + 1] = "b" end)
+	registry:Listen("game_join_team", "a", function() heard[#heard + 1] = "a2" end)
+	registry:Dispatch(registry:Build("game_join_team", { team = 2 }))
 	T.eq(table.concat(heard, ","), "a2,b", "replaced in place")
-	registry:Ignore("join_team", "a")
+	registry:Ignore("game_join_team", "a")
 	heard = {}
-	registry:Dispatch(registry:Build("join_team", { team = 2 }))
+	registry:Dispatch(registry:Build("game_join_team", { team = 2 }))
 	T.eq(table.concat(heard, ","), "b", "ignored")
 end)
 
@@ -382,9 +393,9 @@ T.test("a client may build only a client-sendable event", function()
 	local registry = Registry()
 	DefineCapture(registry)
 	DefineJoin(registry)
-	T.eq(registry:BuildRequest("join_team", { team = 3 }).fields.team, 3, "sendable")
+	T.eq(registry:BuildRequest("game_join_team", { team = 3 }).fields.team, 3, "sendable")
 	local err = ErrorOf(function()
-		registry:BuildRequest("teamplay_point_captured", {
+		registry:BuildRequest("game_teamplay_point_captured", {
 			cp = 0,
 			cpname = "",
 			team = 0,
@@ -404,8 +415,8 @@ T.test("the server admits a client-sendable request and decodes it", function()
 	local server, client = Registry(), Registry()
 	DefineJoin(server)
 	DefineJoin(client)
-	local request = server:ReadRequest("ply", Send(client, "join_team", { team = 3 }), 0)
-	T.eq(request.name, "join_team", "name")
+	local request = server:ReadRequest("ply", Send(client, "game_join_team", { team = 3 }), 0)
+	T.eq(request.name, "game_join_team", "game_name")
 	T.eq(request.fields.team, 3, "fields")
 end)
 
@@ -414,18 +425,18 @@ T.test("the server refuses, without erroring, an unknown id or a server-only eve
 	DefineCapture(server)
 	-- A forged client that believes the capture is sendable.
 	local forged = Registry()
-	forged:Define("teamplay_point_captured", { cp = Events.UInt(8) }, {
+	forged:Define("game_teamplay_point_captured", { cp = Events.UInt(8) }, {
 		clientSendable = true,
 		rate = RATE,
 	})
-	forged:Define("made_up", {}, {
+	forged:Define("game_made_up", {}, {
 		clientSendable = true,
 		rate = RATE,
 	})
-	local request, refusal = server:ReadRequest("ply", Send(forged, "teamplay_point_captured", { cp = 1 }), 0)
+	local request, refusal = server:ReadRequest("ply", Send(forged, "game_teamplay_point_captured", { cp = 1 }), 0)
 	T.eq(request, nil, "no request")
 	T.eq(refusal.kind, Events.NOT_CLIENT_SENDABLE, "server-only")
-	request, refusal = server:ReadRequest("ply", Send(forged, "made_up", {}), 0)
+	request, refusal = server:ReadRequest("ply", Send(forged, "game_made_up", {}), 0)
 	T.eq(request, nil, "no request")
 	T.eq(refusal.kind, Events.UNKNOWN_EVENT, "unknown")
 end)
@@ -433,27 +444,27 @@ end)
 T.test("a transaction request carries its transaction id across the wire", function()
 	local server, client = Registry(), Registry()
 	for _, registry in ipairs({ server, client }) do
-		registry:Define("buy", { weapon = Events.String() }, {
+		registry:Define("game_buy", { weapon = Events.String() }, {
 			clientSendable = true,
 			rate = RATE,
 			transaction = true,
 		})
 	end
-	T.eq(server:Definition("buy").transaction, true, "a transaction")
-	local request = server:ReadRequest("ply", Send(client, "buy", {
+	T.eq(server:Definition("game_buy").transaction, true, "a transaction")
+	local request = server:ReadRequest("ply", Send(client, "game_buy", {
 		weapon = "shotgun",
 		[Events.TRANSACTION_FIELD] = 7,
 	}), 0)
 	T.eq(request.fields[Events.TRANSACTION_FIELD], 7, "its id")
 	T.eq(request.fields.weapon, "shotgun", "its own fields")
-	T.eq(ErrorOf(function() client:BuildRequest("buy", { weapon = "x" }) end).kind, Events.BAD_FIELDS, "the id is required")
+	T.eq(ErrorOf(function() client:BuildRequest("game_buy", { weapon = "game_x" }) end).kind, Events.BAD_FIELDS, "the id is required")
 end)
 
 T.test("a transaction must be client-sendable and may not name the id field itself", function()
 	local registry = Registry()
-	T.eq(ErrorOf(function() registry:Define("x", {}, { transaction = true }) end).kind, Events.BAD_SCHEMA, "server-only")
+	T.eq(ErrorOf(function() registry:Define("game_x", {}, { transaction = true }) end).kind, Events.BAD_SCHEMA, "server-only")
 	T.eq(ErrorOf(function()
-		registry:Define("y", { [Events.TRANSACTION_FIELD] = Events.UInt(8) }, {
+		registry:Define("game_y", { [Events.TRANSACTION_FIELD] = Events.UInt(8) }, {
 			clientSendable = true,
 			rate = RATE,
 			transaction = true,
@@ -466,7 +477,7 @@ T.test("each player's requests are rate limited per event; the allowance refills
 	DefineJoin(server)
 	DefineJoin(client)
 	local function Admitted(ply, now)
-		local request, refusal = server:ReadRequest(ply, Send(client, "join_team", { team = 2 }), now)
+		local request, refusal = server:ReadRequest(ply, Send(client, "game_join_team", { team = 2 }), now)
 		if request then return "yes" end
 		return refusal.kind
 	end
@@ -485,7 +496,7 @@ end)
 
 -- Lazy loading means no single map defines every event, so the collision
 -- check at declaration cannot see them all: check every name in the source.
--- Definitions name their event with a literal: Define("name", ...).
+-- Definitions name their event with a literal: Define("game_name", ...).
 T.test("no two event names defined anywhere in the addon share an id", function()
 	local names, byId = {}, {}
 	local files = io.popen("find addons/sandcastle -name '*.lua'")

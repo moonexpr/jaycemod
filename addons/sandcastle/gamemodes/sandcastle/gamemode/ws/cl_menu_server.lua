@@ -33,7 +33,7 @@ local RUNNING = "A vote is currently in progress."
 local NO_MAPS = "No maps available"
 
 local function Call(kind, subject)
-	E.Request("vote_call", {
+	E.Request("game_vote_call", {
 		kind = WS.VoteKindIndex(kind),
 		subject = subject or "",
 	})

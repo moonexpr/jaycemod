@@ -4,14 +4,14 @@
 -- team hears as their own (announcer lines, win/lose music). Team 0 is
 -- everyone. Each client decides whether it hears it (ws/sh_announcer.lua).
 function WS.BroadcastSound(team, name)
-	WS.Events.Fire("teamplay_broadcast_audio", {
+	WS.Events.Fire("game_teamplay_broadcast_audio", {
 		team = team,
 		sound = name,
 	})
 end
 
 function WS.BroadcastPA(team, name)
-	WS.Events.Fire("teamplay_broadcast_audio", {
+	WS.Events.Fire("game_teamplay_broadcast_audio", {
 		team = team,
 		sound = name,
 		channel = CHAN_VOICE2
@@ -21,7 +21,7 @@ end
 -- A game sound every player not on the team hears as their own
 -- (CLocalPlayerFilter lines: the capture's lines for the other team).
 function WS.BroadcastSoundToOthers(team, name)
-	WS.Events.Fire("teamplay_broadcast_audio", {
+	WS.Events.Fire("game_teamplay_broadcast_audio", {
 		team = team,
 		sound = name,
 		others = true,
@@ -129,7 +129,7 @@ end
 -- audience (who sees it, everyone when nil) and icon (TF2's card when
 -- given) are optional (ws/sh_announcer.lua).
 function WS.Announce(text, team, audience, icon)
-	WS.Events.Fire("announcement", {
+	WS.Events.Fire("game_announcement", {
 		text = text,
 		team = team,
 		audience = audience,

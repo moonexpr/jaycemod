@@ -10,25 +10,25 @@ local ipairs = ipairs
 module(...)
 
 -- CHeadlessHatmanEmerge::OnStart, CHeadlessHatmanDying::Update: no fields.
-PUMPKIN_LORD_SUMMONED = "pumpkin_lord_summoned"
-PUMPKIN_LORD_KILLED = "pumpkin_lord_killed"
+PUMPKIN_LORD_SUMMONED = "game_pumpkin_lord_summoned"
+PUMPKIN_LORD_KILLED = "game_pumpkin_lord_killed"
 -- CEyeballBossEmerge, CEyeballBossDead, CEyeballBossIdle, CEyeballBossEscape,
 -- for a map's eyeball only (not a spell's): { level }, and the warning's
 -- { time_remaining } in seconds.
-EYEBALL_BOSS_SUMMONED = "eyeball_boss_summoned"
-EYEBALL_BOSS_KILLED = "eyeball_boss_killed"
-EYEBALL_BOSS_ESCAPE_IMMINENT = "eyeball_boss_escape_imminent"
-EYEBALL_BOSS_ESCAPED = "eyeball_boss_escaped"
+EYEBALL_BOSS_SUMMONED = "game_eyeball_boss_summoned"
+EYEBALL_BOSS_KILLED = "game_eyeball_boss_killed"
+EYEBALL_BOSS_ESCAPE_IMMINENT = "game_eyeball_boss_escape_imminent"
+EYEBALL_BOSS_ESCAPED = "game_eyeball_boss_escaped"
 -- CMerasmus::Spawn, CMerasmusDying, CMerasmus::LeaveWarning, CMerasmusEscape:
 -- { level }, and the warning's { time_remaining }.
-MERASMUS_SUMMONED = "merasmus_summoned"
-MERASMUS_KILLED = "merasmus_killed"
-MERASMUS_ESCAPE_WARNING = "merasmus_escape_warning"
-MERASMUS_ESCAPED = "merasmus_escaped"
+MERASMUS_SUMMONED = "game_merasmus_summoned"
+MERASMUS_KILLED = "game_merasmus_killed"
+MERASMUS_ESCAPE_WARNING = "game_merasmus_escape_warning"
+MERASMUS_ESCAPED = "game_merasmus_escaped"
 -- Sandcastle's own, for the chat line TF2 sends for each of his killers
 -- (the players who hit him in his last 5 s; CMerasmusBehavior::Update's
 -- SayText2 of TF_Halloween_Merasmus_Killers): { player, level }.
-MERASMUS_KILLER = "merasmus_killer"
+MERASMUS_KILLER = "game_merasmus_killer"
 
 NAMES = {
 	PUMPKIN_LORD_SUMMONED,
@@ -50,7 +50,7 @@ NAMES = {
 -- head (C_TFPlayer::HalloweenBombHeadUpdate); the bomb head's own client
 -- reads its orders (ClientPrint, TF_HALLOWEEN_MERASMUS_YOU_ARE_BOMB) and
 -- hears the book spin (CreateBombonomiconHint).
-HALLOWEEN_BOMB_HEAD = "halloween_bomb_head"
+HALLOWEEN_BOMB_HEAD = "game_halloween_bomb_head"
 BOMB_HEAD_TEXT = "Take your big bomb head back to Merasmus!"
 BOMB_HEAD_SOUND = "Halloween.BombinomiconSpin"
 BOMB_HAT_MODEL = "models/props_lakeside_event/bomb_temp_hat.mdl"

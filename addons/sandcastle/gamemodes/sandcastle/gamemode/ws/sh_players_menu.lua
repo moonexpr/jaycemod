@@ -34,7 +34,7 @@ WS.PLAYERS_MENU_BANS = {
 	},
 }
 
--- What an admin does to a player (admin_player's action).
+-- What an admin does to a player (game_admin_player's action).
 WS.ADMIN_KICK, WS.ADMIN_BAN, WS.ADMIN_GRANT = 0, 1, 2
 
 -- TF2's wording for each reason, in the menu and the vote.
@@ -54,7 +54,7 @@ local REQUEST_RATE = {
 }
 
 -- reason: an index into Reports.REASONS.
-E.Define("player_report", {
+E.Define("game_player_report", {
 	target = E.Entity(),
 	reason = E.UInt(REASON_BITS),
 }, {
@@ -62,7 +62,7 @@ E.Define("player_report", {
 	rate = REQUEST_RATE,
 })
 
-E.Define("money_transfer", {
+E.Define("game_money_transfer", {
 	target = E.Entity(),
 	amount = E.UInt(AMOUNT_BITS),
 }, {
@@ -71,7 +71,7 @@ E.Define("money_transfer", {
 })
 
 -- value: the ban's index into WS.PLAYERS_MENU_BANS, or the amount granted.
-E.Define("admin_player", {
+E.Define("game_admin_player", {
 	target = E.Entity(),
 	action = E.UInt(ACTION_BITS),
 	value = E.UInt(AMOUNT_BITS),
@@ -81,7 +81,7 @@ E.Define("admin_player", {
 })
 
 -- How a request went, for the player who made it.
-E.Define("players_menu_said", {
+E.Define("game_players_menu_said", {
 	text = E.String(),
 	refused = E.Bool(),
 })

@@ -9,7 +9,7 @@ local BYTE_BITS = 8 -- skins, bodygroups, their values, physics objects: each un
 -- 0), the force to push it with, and the pose of each physics object when
 -- the server's ragdoll is gone (absent: the client takes it from its own
 -- copy of the body).
-E.Define("npc_ragdoll_create", {
+E.Define("game_npc_ragdoll_create", {
 	body = E.Entity(),
 	model = E.String(),
 	skin = E.UInt(BYTE_BITS),

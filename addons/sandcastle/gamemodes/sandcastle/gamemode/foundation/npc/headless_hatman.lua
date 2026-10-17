@@ -3,8 +3,8 @@
 -- foundation.npc.halloween_boss. It rises from the ground, makes the nearest
 -- player IT (features.tag.model, through the tag controller) and chases
 -- them, cleaves whoever it targets with its axe, and every 20 s yells Boo,
--- stunning everyone nearby. It fires pumpkin_lord_summoned as it rises and
--- pumpkin_lord_killed once gone, for the clients' music.
+-- stunning everyone nearby. It fires game_pumpkin_lord_summoned as it rises and
+-- game_pumpkin_lord_killed once gone, for the clients' music.
 --
 -- Its port adds METHODS to the boss port: ControlPoints() -> the control
 -- points of the master, in its order, as { origin, inRound, owner,

@@ -205,7 +205,7 @@ function RegenerateAllowed(zoneTeam, playerTeam, state, winner)
 	return state ~= STATE.STALEMATE
 end
 
--- teamplay_broadcast_audio (ClientModeShared::FireGameEvent): whether the
+-- game_teamplay_broadcast_audio (ClientModeShared::FireGameEvent): whether the
 -- local player, on localTeam, hears a sound broadcast to soundTeam. Ours
 -- broadcasts to everyone as UNASSIGNED (TF2 uses 255); others inverts it,
 -- for the lines every player not on the team hears as their own.

@@ -40,7 +40,7 @@ function Controller:SetScore(t, score)
 		scoredFrom[t] = nil
 		if awarded <= 0 then return end
 		WS.Notify(Notices.PointsAwarded(t, awarded, WS.TeamName))
-		WS.Events.Fire("points_awarded", { team = t, points = awarded })
+		WS.Events.Fire("game_points_awarded", { team = t, points = awarded })
 	end)
 end
 

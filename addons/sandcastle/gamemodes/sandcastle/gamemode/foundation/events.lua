@@ -7,7 +7,9 @@
 -- (ws/sh_events.lua) carries events on GMod's net library.
 --
 -- An event is declared as data: a name, its fields and their types, and
--- options. On the wire it is its id, the name's CRC32 cut to ID_BITS (the
+-- options. Its name carries its kind: system_ for the gamemode core's own
+-- events (the handshake, transactions, feature loading, replicated
+-- settings), a contract within a major release, and game_ for every other. On the wire it is its id, the name's CRC32 cut to ID_BITS (the
 -- same in every realm, whatever order lazy loading defines things in),
 -- then its fields in name order. A buffer is anything with net.*'s
 -- Write<Kind>(value[, bits]) and Read<Kind>([bits]) functions, called with a
@@ -72,6 +74,12 @@ local OPTIONS = Sets.Named("event option", {
 -- A transaction request (option transaction, foundation.core.transaction)
 -- carries its requester's transaction id in this field, added at Define.
 TRANSACTION_FIELD = "transaction_id"
+
+SYSTEM, GAME = "system", "game"
+local KIND_OF_PREFIX = {
+	{ "^system_[%w_]+$", SYSTEM },
+	{ "^game_[%w_]+$", GAME },
+}
 
 local ErrorMeta = {
 	__tostring = function(e) return e.kind .. ": " .. e.message end,
@@ -348,6 +356,11 @@ function Registry:Define(name, fields, options)
 	if type(name) ~= "string" or not match(name, "^[%w_]+$") then
 		Raise(BAD_SCHEMA, "an event name is letters, digits and underscores, not %s", tostring(name))
 	end
+	local kind
+	for _, rule in ipairs(KIND_OF_PREFIX) do
+		if match(name, rule[1]) then kind = rule[2] end
+	end
+	if not kind then Raise(BAD_SCHEMA, "%s: an event name starts system_ (the core's) or game_ (every other)", name) end
 	options = options or {}
 	for key in pairs(options) do
 		if not OPTIONS:Has(key) then Raise(BAD_SCHEMA, "%s: unknown option %s", name, tostring(key)) end
@@ -367,6 +380,7 @@ function Registry:Define(name, fields, options)
 	end
 	local definition = {
 		name = name,
+		kind = kind,
 		id = id,
 		fields = Compile(fields, name),
 		clientSendable = options.clientSendable == true,

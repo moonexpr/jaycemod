@@ -233,7 +233,7 @@ T.test("no resupply in stalemate", function()
 	T.eq(L.RegenerateAllowed(RED, RED, STATE.STALEMATE, UNASSIGNED), false)
 end)
 
--- teamplay_broadcast_audio: who hears a sound the server broadcast
+-- game_teamplay_broadcast_audio: who hears a sound the server broadcast
 
 T.test("a sound for a team is heard by that team only; UNASSIGNED means everyone", function()
 	T.eq(L.HearsBroadcast(RED, false, RED), true, "RED hears RED's")

@@ -34,7 +34,7 @@ end
 -- The AI War panel's slider over each side's slots.
 SLIDER_MIN, SLIDER_MAX = 0, 16
 
--- The aiwar_slots event's widths (ws/sh_aiwar.lua): slot ids, and the
+-- The game_aiwar_slots event's widths (ws/sh_aiwar.lua): slot ids, and the
 -- slots a faction may have (foundation.aiwar's TEAM_SIZE_MAX fits).
 ID_BITS = 16
 COUNT_BITS = 6
@@ -205,7 +205,7 @@ local function LeaderFirst(a, b)
 	return a.id < b.id
 end
 
--- A side's slots as the aiwar_slots event gives them ({ id, squad, leads,
+-- A side's slots as the game_aiwar_slots event gives them ({ id, squad, leads,
 -- ... }), as its tree shows them: { squads = { name, slots } in the order
 -- first met, each squad's slots leader first then by id, loose = the slots
 -- in no squad (empty, or a soldier in none) }.

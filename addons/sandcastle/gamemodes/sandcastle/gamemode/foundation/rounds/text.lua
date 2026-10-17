@@ -83,7 +83,7 @@ function SuddenDeathNote(reason)
 	return string.format("%s %s", panel.title, panel.reason)
 end
 
--- The flash beside the timer when time is added (teamplay_timer_time_added).
+-- The flash beside the timer when time is added (game_teamplay_timer_time_added).
 function TimeAdded(seconds)
 	local sign = seconds < 0 and "-" or "+"
 	local s = math.abs(seconds)

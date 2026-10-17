@@ -194,7 +194,7 @@ local EFFECTS = {
 	cleanup = function(self) self:CleanUpMap() end,
 	clear_gore = function()
 		game.RemoveRagdolls()
-		WS.Events.Fire("round_gore_cleared", {})
+		WS.Events.Fire("game_round_gore_cleared", {})
 	end,
 	new_round_outputs = function() timer.Simple(0, FireNewRoundOutputs) end,
 	round_spawn = function(self)

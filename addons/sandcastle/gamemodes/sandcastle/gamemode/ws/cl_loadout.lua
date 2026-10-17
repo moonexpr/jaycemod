@@ -1,5 +1,5 @@
 -- The local player's loadout (foundation.loadout) as the server last told
--- it (loadout_state, ws/sv_loadout.lua); the catalog's starters until then.
+-- it (game_loadout_state, ws/sv_loadout.lua); the catalog's starters until then.
 -- WSLoadoutChanged tells the spawn menu's Player and Inventory tabs to
 -- redraw. Requests are transactions (WS.LoadoutRequest); a declined or
 -- failed one shows as a notice.
@@ -28,7 +28,7 @@ function WS.LocalLoadout()
 	return loadout
 end
 
-E.Listen("loadout_state", "ws_loadout", function(fields)
+E.Listen("game_loadout_state", "ws_loadout", function(fields)
 	loadout = Loadout.FromState(WS.LoadoutCatalog, fields.owned, fields.equipped)
 	hook.Run("WSLoadoutChanged", loadout)
 end)
@@ -36,7 +36,7 @@ end)
 -- class -> { damage, pellets }, for the Store's tooltips.
 WS.WeaponStats = WS.WeaponStats or {}
 
-E.Listen("loadout_stats", "ws_loadout", function(fields)
+E.Listen("game_loadout_stats", "ws_loadout", function(fields)
 	WS.WeaponStats = {}
 	for _, s in ipairs(fields.weapons) do
 		WS.WeaponStats[s.class] = {
@@ -52,9 +52,9 @@ local function Notice(text)
 	surface.PlaySound(REFUSED_SOUND)
 end
 
--- A loadout request (loadout_buy, _buy_into, _equip, _clear) as a
+-- A loadout request (game_loadout_buy, _buy_into, _equip, _clear) as a
 -- transaction: a decline shows its refusal, a failure says it did not go
--- through; a commit shows itself, as loadout_state arrives.
+-- through; a commit shows itself, as game_loadout_state arrives.
 function WS.LoadoutRequest(name, fields)
 	E.Transact(name, fields):OnSettle(function(tx)
 		if tx:State() == Transaction.DECLINED then

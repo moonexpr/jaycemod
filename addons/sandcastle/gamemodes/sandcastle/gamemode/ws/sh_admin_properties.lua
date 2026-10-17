@@ -8,14 +8,14 @@
 -- privilege, filter(ent, ply) -> whether it shows on ent, choices (a list of
 -- { label, value }, or a function giving one; shown as a submenu),
 -- run(ply, ent, value) on the server }. Every choice goes to the server as
--- admin_property, which checks the filter and the privilege again.
+-- game_admin_property, which checks the filter and the privilege again.
 local Permissions = WS.require("foundation.permissions")
 local E = WS.Events
 
 local DEFS = {}
 local VALUE_BITS = 32
 
-E.Define("admin_property", {
+E.Define("game_admin_property", {
 	name = E.String(),
 	target = E.Entity(),
 	value = E.Int(VALUE_BITS),
@@ -32,7 +32,7 @@ local function Shows(def, ent, ply)
 end
 
 local function Send(name, ent, value)
-	E.Request("admin_property", {
+	E.Request("game_admin_property", {
 		name = name,
 		target = ent,
 		value = value,
@@ -60,7 +60,7 @@ function WS.AdminProperty(name, def)
 end
 
 if SERVER then
-	E.Listen("admin_property", "ws_admin_properties", function(fields, ply)
+	E.Listen("game_admin_property", "ws_admin_properties", function(fields, ply)
 		local def = DEFS[fields.name]
 		if not (def and Shows(def, fields.target, ply)) then return end
 		local said = def.run(ply, fields.target, fields.value)

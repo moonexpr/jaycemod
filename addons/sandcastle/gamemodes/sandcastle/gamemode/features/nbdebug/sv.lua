@@ -145,7 +145,7 @@ end
 
 function Controller:SendState(ply, sub)
 	local selected = sub.selected
-	WS.Events.Fire("nb_debug_state", {
+	WS.Events.Fire("game_nb_debug_state", {
 		layers = Debug.LayerNames(sub.layers),
 		selected = IsValid(selected) and selected:EntIndex() or NO_SELECTION,
 	}, ply)
@@ -160,7 +160,7 @@ function Controller:SendPath(recipients, bot, report)
 			move = report.points[i].move,
 		}
 	end
-	WS.Events.Fire("nb_debug_path", {
+	WS.Events.Fire("game_nb_debug_path", {
 		index = bot.index,
 		strategy = report.strategy,
 		source = report.source,
@@ -191,7 +191,7 @@ function Controller:SendCost(recipients, bot, report)
 			}
 		end
 	end
-	WS.Events.Fire("nb_debug_cost", {
+	WS.Events.Fire("game_nb_debug_cost", {
 		index = bot.index,
 		total = #report.explored,
 		areas = areas,
@@ -222,7 +222,7 @@ function Controller:SendBehavior(ply, sub, now)
 			}
 		end
 	end
-	WS.Events.Fire("nb_debug_behavior", { npcs = items }, ply)
+	WS.Events.Fire("game_nb_debug_behavior", { npcs = items }, ply)
 end
 
 function Controller:SendNav(ply, sub)
@@ -243,7 +243,7 @@ function Controller:SendNav(ply, sub)
 			attributes = self.navAttributes:Of(item.area),
 		}
 	end
-	WS.Events.Fire("nb_debug_nav", { areas = areas }, ply)
+	WS.Events.Fire("game_nb_debug_nav", { areas = areas }, ply)
 end
 
 -------------------------------------------------------------------------------
@@ -284,7 +284,7 @@ function Controller:OnRemoved(ent)
 		if IsValid(ply) and sub:IsActive() then viewers[#viewers + 1] = ply end
 	end
 	if #viewers == 0 then return end
-	WS.Events.Fire("nb_debug_npc_removed", { index = index }, viewers)
+	WS.Events.Fire("game_nb_debug_npc_removed", { index = index }, viewers)
 end
 
 hook.Add("Think", "ws_nbdebug", function()

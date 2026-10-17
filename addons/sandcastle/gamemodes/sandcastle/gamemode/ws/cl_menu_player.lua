@@ -6,7 +6,7 @@
 --   takes, the ones not owned with their price. Click an owned one to equip
 --   it, into the picked slot, or with none picked, where the loadout puts
 --   it (Loadout:SlotFor); click one not owned to buy it into the picked slot
---   (loadout_buy_into).
+--   (game_loadout_buy_into).
 -- The Store tab buys too. The server owns the loadout: the tab asks, and
 -- redraws when it hears back.
 local Loadout = WS.require("foundation.loadout")
@@ -152,17 +152,17 @@ UI.Define("PlayerMenu", "DPanel", {
 			if buy then row:SetEnabled(WS.Affords(LocalPlayer():GetNW2Int("ws_money", 0), weapon.price)) end
 			row.DoClick = function()
 				if buy then
-					WS.LoadoutRequest("loadout_buy_into", {
+					WS.LoadoutRequest("game_loadout_buy_into", {
 						slot = slot,
 						weapon = weapon.class,
 					})
 				elseif weapon then
-					WS.LoadoutRequest("loadout_equip", {
+					WS.LoadoutRequest("game_loadout_equip", {
 						slot = slot,
 						weapon = weapon.class,
 					})
 				else
-					WS.LoadoutRequest("loadout_clear", { slot = slot })
+					WS.LoadoutRequest("game_loadout_clear", { slot = slot })
 				end
 			end
 		end

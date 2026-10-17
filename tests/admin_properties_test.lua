@@ -53,7 +53,7 @@ local function Load()
 	}, { __index = _G })
 	setfenv(assert(loadfile("addons/sandcastle/gamemodes/sandcastle/gamemode/ws/sh_admin_properties.lua")), env)()
 	function s.Use(name, ply, target, value)
-		s.listeners.admin_property({ name = name, target = target, value = value or 0 }, ply)
+		s.listeners.game_admin_property({ name = name, target = target, value = value or 0 }, ply)
 	end
 	return s
 end

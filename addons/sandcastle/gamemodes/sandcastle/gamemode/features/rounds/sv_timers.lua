@@ -86,7 +86,7 @@ end
 -- In whole seconds, as TF2's event carries them; a clamp to the timer's
 -- maximum length can leave a fraction.
 local function Notify(t, seconds)
-	WS.Events.Fire("teamplay_timer_time_added", {
+	WS.Events.Fire("game_teamplay_timer_time_added", {
 		team = t,
 		seconds_added = math.Round(seconds),
 	})

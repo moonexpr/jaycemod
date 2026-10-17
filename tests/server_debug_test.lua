@@ -340,11 +340,11 @@ end)
 
 T.test("a game event is kept with its fields shown and its recipient count", function()
 	local dbg = Load()
-	dbg:GameEvent("nav_progress", { stage = 2, areas = 0 }, 3)
-	dbg:GameEvent("server_convars", { convars = { { name = "a" } } }, 1)
+	dbg:GameEvent("game_nav_progress", { stage = 2, areas = 0 }, 3)
+	dbg:GameEvent("system_server_convars", { convars = { { name = "a" } } }, 1)
 	local kept = dbg:GameEvents(0)
 	T.eq(#kept, 2)
-	T.eq(kept[1].name, "nav_progress")
+	T.eq(kept[1].name, "game_nav_progress")
 	T.eq(kept[1].players, 3)
 	T.eq(kept[1].time, 12.5)
 	local fields = {}
@@ -355,7 +355,7 @@ end)
 
 T.test("a nested table shows its inner values a level down, and deeper ones by their size", function()
 	local dbg = Load()
-	dbg:GameEvent("server_convars", { convars = { { name = "a", deep = { x = { y = 1 } } } } }, 1)
+	dbg:GameEvent("system_server_convars", { convars = { { name = "a", deep = { x = { y = 1 } } } } }, 1)
 	local value = dbg:GameEvents(0)[1].fields[1].value
 	assert(value:find("^table: [^{]*{1={"), value)
 	assert(value:find("name=a", 1, true), value)

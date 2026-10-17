@@ -120,7 +120,7 @@ TELEPORT_NAV_RANGE = 1.5 * MAX_TELEPORT_HEIGHT
 LOOK_AT_ATTACKER_MIN, LOOK_AT_ATTACKER_MAX = 0.5, 2
 LOOK_AROUND_MIN, LOOK_AROUND_MAX = 2, 4
 LOOK_AROUND_DISTANCE = 100
--- The seconds left at which eyeball_boss_escape_imminent fires, checked
+-- The seconds left at which game_eyeball_boss_escape_imminent fires, checked
 -- nearest first, as CEyeballBossIdle::Update does.
 ESCAPE_WARNINGS = { 10, 30, 60 }
 

@@ -13,7 +13,7 @@ local function TeamPlayers(t)
 	return players
 end
 
--- A player counts once their client has finished loading (client_ready,
+-- A player counts once their client has finished loading (system_client_ready,
 -- ws/sh_events.lua), so the pre-round freeze is not spent on a
 -- loading screen. Bots have no client to report it.
 local function Ready(ply)

@@ -21,7 +21,7 @@ CreateConVar("ws_nodegraph_max_nodes", tostring(WS.require("foundation.nodegraph
 	"The most nodes a generated AI node graph may have (the engine's limit is 1500 in the 2013 SDK)",
 	MAX_NODES_RANGE.min, MAX_NODES_RANGE.max)
 
-E.Define("nodegraph_debug", {
+E.Define("game_nodegraph_debug", {
 	source = E.String(),
 	nodes = E.List(E.Record({
 		pos = E.Vector(),
@@ -84,7 +84,7 @@ local NODE_BOX = Vector(4, 4, 4)
 local WALKABLE, HULL_ONLY = Color(80, 230, 120), Color(230, 90, 80)
 local shown = { nodes = {}, links = {}, received = 0, source = "none" }
 
-E.Listen("nodegraph_debug", "ws_nodegraph", function(fields)
+E.Listen("game_nodegraph_debug", "ws_nodegraph", function(fields)
 	shown.source, shown.nodes, shown.links, shown.received = fields.source, fields.nodes, fields.links, CurTime()
 end)
 

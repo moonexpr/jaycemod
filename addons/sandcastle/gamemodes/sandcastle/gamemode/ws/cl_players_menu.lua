@@ -2,7 +2,7 @@
 -- player's row. Everyone may copy a player's Steam3 ID, report them, give
 -- them money and mute them; holders of the players privilege may also kick,
 -- ban and grant money. The server answers each request with
--- players_menu_said, shown as a notice.
+-- game_players_menu_said, shown as a notice.
 local Reports = WS.require("foundation.reports")
 local Economy = WS.require("foundation.economy")
 local Permissions = WS.require("foundation.permissions")
@@ -10,7 +10,7 @@ local E = WS.Events
 
 local SAID_SECONDS = 4
 local REFUSED_SOUND = "buttons/button10.wav"
-local AMOUNT_MAX = 2 ^ 24 - 1 -- money_transfer's and admin_player's 24 bits
+local AMOUNT_MAX = 2 ^ 24 - 1 -- game_money_transfer's and game_admin_player's 24 bits
 
 -- [U:1:<account id>], Steam's third ID format.
 local function Steam3(ply)
@@ -44,7 +44,7 @@ end
 
 local function AdminPart(menu, target, me)
 	local function Act(action, value)
-		E.Request("admin_player", {
+		E.Request("game_admin_player", {
 			target = target,
 			action = action,
 			value = value,
@@ -75,7 +75,7 @@ function WS.OpenPlayerMenu(target)
 		local report = Submenu(menu, "Report", "icon16/flag_red.png")
 		for i, reason in ipairs(Reports.REASONS) do
 			report:AddOption(WS.REPORT_LABELS[reason], function()
-				E.Request("player_report", {
+				E.Request("game_player_report", {
 					target = target,
 					reason = i - 1,
 				})
@@ -83,7 +83,7 @@ function WS.OpenPlayerMenu(target)
 		end
 		Amounts(Submenu(menu, "Transfer Money", "icon16/coins.png"), WS.PLAYERS_MENU_GIFTS, "Transfer Money",
 			function(amount)
-				E.Request("money_transfer", {
+				E.Request("game_money_transfer", {
 					target = target,
 					amount = amount,
 				})
@@ -95,7 +95,7 @@ function WS.OpenPlayerMenu(target)
 	menu:Open()
 end
 
-E.Listen("players_menu_said", "ws_players_menu", function(fields)
+E.Listen("game_players_menu_said", "ws_players_menu", function(fields)
 	notification.AddLegacy(fields.text, fields.refused and NOTIFY_ERROR or NOTIFY_GENERIC, SAID_SECONDS)
 	if fields.refused then surface.PlaySound(REFUSED_SOUND) end
 end)

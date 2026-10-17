@@ -2,7 +2,7 @@
 -- every NPC's ragdoll is built here, from the pose the server sent or from
 -- this client's copy of the dead body, and fades by the player's own
 -- setting. Always loaded, on every map, as its server half is. The game
--- event, npc_ragdoll_create, is ws/sh_npc_ragdolls.lua's.
+-- event, game_npc_ragdoll_create, is ws/sh_npc_ragdolls.lua's.
 
 -- After cl_npc_ragdoll_lifetime seconds (0 keeps them) the engine's own
 -- fade (at g_ragdoll_fadespeed) removes an NPC's ragdoll; g_ragdoll_maxcount
@@ -52,7 +52,7 @@ local function Hide(body)
 	for _, child in ipairs(body:GetChildren()) do child:SetNoDraw(true) end
 end
 
-WS.Events.Listen("npc_ragdoll_create", "ws_npc_ragdolls", function(fields)
+WS.Events.Listen("game_npc_ragdoll_create", "ws_npc_ragdolls", function(fields)
 	local body, pose, force = fields.body, fields.pose, fields.force
 	-- the body never reached this client: nothing to take a pose from
 	if not pose and not IsValid(body) then return end

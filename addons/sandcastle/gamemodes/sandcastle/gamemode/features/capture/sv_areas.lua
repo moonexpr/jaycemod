@@ -135,7 +135,7 @@ end
 -- CTeamControlPoint::CaptureBlocked: the clients show the HUD's "defended"
 -- notice (for points with a print name).
 local function CaptureBlocked(self, point, team)
-	WS.Events.Fire("teamplay_capture_blocked", {
+	WS.Events.Fire("game_teamplay_capture_blocked", {
 		cp = self.set:Index(point),
 		cpname = self.set:PrintName(point),
 		team = team,

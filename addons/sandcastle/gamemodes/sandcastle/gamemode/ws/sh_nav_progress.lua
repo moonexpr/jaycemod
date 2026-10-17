@@ -8,7 +8,7 @@ local E = WS.Events
 
 local AREA_BITS = 16
 
-E.Define("nav_progress", {
+E.Define("game_nav_progress", {
 	stage = E.UInt(2),
 	started = E.Float(),
 	areas = E.UInt(AREA_BITS),
@@ -16,6 +16,6 @@ E.Define("nav_progress", {
 
 if SERVER then
 	function WS.NavProgress(stage, started, areas)
-		E.Fire("nav_progress", { stage = stage, started = started, areas = areas or 0 })
+		E.Fire("game_nav_progress", { stage = stage, started = started, areas = areas or 0 })
 	end
 end

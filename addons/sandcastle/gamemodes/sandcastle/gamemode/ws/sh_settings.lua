@@ -2,7 +2,7 @@
 -- client cannot set a server's convar, so a menu's control sends
 -- ws_server_set, which the server runs for a holder of that setting's
 -- privilege. Many of these convars are not replicated, so the server keeps
--- clients told of every setting's value (settings_state: all of them when a
+-- clients told of every setting's value (game_settings_state: all of them when a
 -- client asks, then each as it changes); a setting whose convar this map
 -- has not created (its feature not loaded) is left out and its control
 -- disabled.
@@ -13,14 +13,14 @@ local SEND_AFTER = 0.3 -- seconds a slider rests before its value is sent
 local VALUE_BITS = 32
 local COUNT_BITS = 8
 
-E.Define("settings_state", {
+E.Define("game_settings_state", {
 	values = E.List(E.Record({
 		name = E.String(),
 		value = E.Int(VALUE_BITS),
 	}), COUNT_BITS),
 })
 
-E.Define("settings_request", {}, {
+E.Define("game_settings_request", {}, {
 	clientSendable = true,
 	rate = {
 		count = 4,
@@ -59,7 +59,7 @@ if SERVER then
 				if not watched[name] then
 					watched[name] = true
 					cvars.AddChangeCallback(name, function(_, _, new)
-						E.Fire("settings_state", {
+						E.Fire("game_settings_state", {
 							values = {
 								{
 									name = name,
@@ -74,11 +74,11 @@ if SERVER then
 		return values
 	end
 
-	E.Listen("settings_request", "ws_settings", function(_, ply)
-		E.Fire("settings_state", { values = Snapshot() }, ply)
+	E.Listen("game_settings_request", "ws_settings", function(_, ply)
+		E.Fire("game_settings_state", { values = Snapshot() }, ply)
 	end)
-	E.Listen("client_ready", "ws_settings", function(_, ply)
-		E.Fire("settings_state", { values = Snapshot() }, ply)
+	E.Listen("system_client_ready", "ws_settings", function(_, ply)
+		E.Fire("game_settings_state", { values = Snapshot() }, ply)
 	end)
 	return
 end
@@ -86,7 +86,7 @@ end
 -- name -> the server's value, as last heard.
 WS.ServerSettings = WS.ServerSettings or {}
 
-E.Listen("settings_state", "ws_settings", function(fields)
+E.Listen("game_settings_state", "ws_settings", function(fields)
 	for _, v in ipairs(fields.values) do WS.ServerSettings[v.name] = v.value end
 	hook.Run("WSServerSettingsChanged")
 end)
@@ -94,7 +94,7 @@ end)
 -- Asks for every setting's value; a panel opening does, since a feature may
 -- have created convars since the client loaded.
 function WS.RequestServerSettings()
-	E.Request("settings_request", {})
+	E.Request("game_settings_request", {})
 end
 
 function WS.SetServerSetting(name, value)

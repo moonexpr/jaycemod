@@ -74,7 +74,7 @@ T.test("Merasmus's arrival plays his music; past the first level the text names 
 end)
 
 -- His death's music is broadcast as he starts dying (CMerasmusDying), so
--- merasmus_killed itself plays nothing.
+-- game_merasmus_killed itself plays nothing.
 T.test("Merasmus's defeat only says so", function()
 	local killed = Cue(BossEvents.MERASMUS_KILLED, { level = 1 })
 	T.eq(killed.sound, nil, "no sound")

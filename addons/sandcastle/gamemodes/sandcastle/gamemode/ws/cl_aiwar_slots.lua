@@ -11,7 +11,7 @@
 --   (ns_squads_*), give jobs by hand (ns_jobs_*), pin and remove slots
 --   (a squad's or the No squad folder's all at once), and debug a soldier
 --   as its own context menu does (ws/cl_nb_menu.lua).
--- The server sends the list (aiwar_slots) once the panel asks, and again
+-- The server sends the list (game_aiwar_slots) once the panel asks, and again
 -- whenever it changes.
 local Slots = WS.require("foundation.aiwar.slots")
 local Squad = WS.require("foundation.aiwar.squad")
@@ -316,7 +316,7 @@ local function Refresh(list)
 	end
 end
 
-E.Listen("aiwar_slots", "ws_aiwar_slots", function(fields)
+E.Listen("game_aiwar_slots", "ws_aiwar_slots", function(fields)
 	last = fields
 	for list in pairs(lists) do
 		if IsValid(list.container) then Refresh(list) end
@@ -398,5 +398,5 @@ function WS.AiWarSlotList(panel)
 	panel:Button("Dissolve All Squads", "ns_squads_dissolve")
 	lists[list] = true
 	Refresh(list)
-	E.Request("aiwar_slots_request", {})
+	E.Request("game_aiwar_slots_request", {})
 end

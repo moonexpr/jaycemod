@@ -364,7 +364,7 @@ local POINT_EVENTS = {
 		end
 		if e.sounding and e.team ~= NOBODY then
 			WS.FireOutput(point, "OnOwnerChangedTo" .. TEAM_OUTPUT[e.team], point)
-			WS.Events.Fire("teamplay_point_captured", {
+			WS.Events.Fire("game_teamplay_point_captured", {
 				cp = self.set:Index(point),
 				cpname = self.set:PrintName(point),
 				team = e.team,

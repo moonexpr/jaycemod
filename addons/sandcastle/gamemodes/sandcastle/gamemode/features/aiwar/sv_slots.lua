@@ -10,7 +10,7 @@ local TeamSize = Map.TeamSize
 -- Each faction's slots are its size; while mp_aiwar_team_size is a size,
 -- every faction is resized to it. The AI War panel's slot list edits them
 -- (mp_aiwar_slots_*, ws/sh_aiwar.lua), which turns the team size to
--- Slots.CUSTOM_SIZE, and shows them to the admins who asked (aiwar_slots).
+-- Slots.CUSTOM_SIZE, and shows them to the admins who asked (game_aiwar_slots).
 
 local SLOT_SYNC_INTERVAL = 0.5
 
@@ -114,7 +114,7 @@ function Controller:PinSlots(command, ids, pin)
 	return lines
 end
 
--- The slot list as the aiwar_slots event carries it: each team's faction
+-- The slot list as the game_aiwar_slots event carries it: each team's faction
 -- and its slots in order, with the soldier in each, its job and its fire
 -- team, and whether it leads it.
 function Controller:SlotFields()
@@ -184,14 +184,14 @@ function Controller:SyncSlots(now)
 	local signature = Signature(fields)
 	if not now and signature == self.slotSignature then return end
 	self.slotSignature = signature
-	WS.Events.Fire("aiwar_slots", fields, viewers)
+	WS.Events.Fire("game_aiwar_slots", fields, viewers)
 end
 
 -- An admin's AI War panel asks for the slots: they are sent now and
 -- whenever they change.
 function Controller:WatchSlots(ply)
 	self.slotViewers[ply] = true
-	WS.Events.Fire("aiwar_slots", self:SlotFields(), ply)
+	WS.Events.Fire("game_aiwar_slots", self:SlotFields(), ply)
 end
 
 -- The slot list in the console (mp_aiwar_slots_print).

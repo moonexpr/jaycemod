@@ -3,7 +3,7 @@
 -- Player and Inventory tabs, ws/cl_loadout.lua) and the server
 -- (ws/sv_loadout.lua). The server owns every loadout; a client asks to buy,
 -- equip or clear, each a transaction (WS.Events.Transact), and hears its
--- loadout back (loadout_state) or why its request was declined.
+-- loadout back (game_loadout_state) or why its request was declined.
 local Loadout = WS.require("foundation.loadout")
 local E = WS.Events
 
@@ -89,7 +89,7 @@ WS.LoadoutCatalog = Loadout.NewCatalog({
 })
 
 -- What the Store's tooltip says of each weapon: its description, the skill
--- convar its damage comes from (read by the server, sent as loadout_stats),
+-- convar its damage comes from (read by the server, sent as game_loadout_stats),
 -- and its clip, Half-Life 2's own (scripts/weapon_*.txt clip_size; nil for
 -- a weapon carried one at a time). Shotgun damage is per pellet.
 WS.WeaponDetails = {
@@ -156,7 +156,7 @@ local REQUEST_RATE = {
 	seconds = 5,
 }
 
-E.Define("loadout_state", {
+E.Define("game_loadout_state", {
 	owned = E.List(E.String(), WEAPON_COUNT_BITS),
 	equipped = E.List(E.Record({
 		slot = E.UInt(SLOT_BITS),
@@ -167,7 +167,7 @@ E.Define("loadout_state", {
 -- Each weapon's damage on this server's skill (WS.WeaponDetails), per hit
 -- and in pellets per shot (1 but for the shotgun). Sent as a player loads.
 local STAT_BITS = 12
-E.Define("loadout_stats", {
+E.Define("game_loadout_stats", {
 	weapons = E.List(E.Record({
 		class = E.String(),
 		damage = E.UInt(STAT_BITS),
@@ -175,14 +175,14 @@ E.Define("loadout_stats", {
 	}), WEAPON_COUNT_BITS),
 })
 
-E.Define("loadout_buy", { weapon = E.String() }, {
+E.Define("game_loadout_buy", { weapon = E.String() }, {
 	clientSendable = true,
 	rate = REQUEST_RATE,
 	transaction = true,
 })
 
 -- The Loadout tab's buy on a picked slot: owns the weapon and puts it there.
-E.Define("loadout_buy_into", {
+E.Define("game_loadout_buy_into", {
 	slot = E.UInt(SLOT_BITS),
 	weapon = E.String(),
 }, {
@@ -191,7 +191,7 @@ E.Define("loadout_buy_into", {
 	transaction = true,
 })
 
-E.Define("loadout_equip", {
+E.Define("game_loadout_equip", {
 	slot = E.UInt(SLOT_BITS),
 	weapon = E.String(),
 }, {
@@ -200,7 +200,7 @@ E.Define("loadout_equip", {
 	transaction = true,
 })
 
-E.Define("loadout_clear", { slot = E.UInt(SLOT_BITS) }, {
+E.Define("game_loadout_clear", { slot = E.UInt(SLOT_BITS) }, {
 	clientSendable = true,
 	rate = REQUEST_RATE,
 	transaction = true,

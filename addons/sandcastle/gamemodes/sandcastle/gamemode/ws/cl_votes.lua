@@ -18,17 +18,17 @@ WS.VoteState = WS.VoteState or { running = false }
 WS.VoteMaps = WS.VoteMaps or {}
 local result -- { passed, text, untilTime }
 
-E.Listen("vote_state", "ws_votes", function(fields)
+E.Listen("game_vote_state", "ws_votes", function(fields)
 	WS.VoteState = fields
 	hook.Run("WSVoteChanged")
 end)
 
-E.Listen("vote_maps", "ws_votes", function(fields)
+E.Listen("game_vote_maps", "ws_votes", function(fields)
 	WS.VoteMaps = fields.maps
 	hook.Run("WSVoteChanged")
 end)
 
-E.Listen("vote_ended", "ws_votes", function(fields)
+E.Listen("game_vote_ended", "ws_votes", function(fields)
 	result = {
 		passed = fields.passed,
 		text = fields.text,
@@ -36,7 +36,7 @@ E.Listen("vote_ended", "ws_votes", function(fields)
 	}
 end)
 
-E.Listen("vote_refused", "ws_votes", function(fields)
+E.Listen("game_vote_refused", "ws_votes", function(fields)
 	notification.AddLegacy(fields.text, NOTIFY_ERROR, REFUSED_SECONDS)
 	surface.PlaySound(REFUSED_SOUND)
 end)
@@ -62,12 +62,12 @@ hook.Add("PlayerBindPress", "ws_votes", function(_, bind, pressed)
 	if #state.options > 0 then
 		local choice = OPTION_BINDS[bind]
 		if choice == nil or choice > #state.options then return end
-		E.Request("vote_cast", { yes = false, choice = choice })
+		E.Request("game_vote_cast", { yes = false, choice = choice })
 		return true
 	end
 	local yes = CASTS[bind]
 	if yes == nil then return end
-	E.Request("vote_cast", { yes = yes, choice = 0 })
+	E.Request("game_vote_cast", { yes = yes, choice = 0 })
 	return true
 end)
 

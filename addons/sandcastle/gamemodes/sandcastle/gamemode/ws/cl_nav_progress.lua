@@ -87,7 +87,7 @@ WS.UI.Define("NavProgress", "DPanel", {
 
 local box
 
-E.Listen("nav_progress", "ws_nav_progress", function(fields)
+E.Listen("game_nav_progress", "ws_nav_progress", function(fields)
 	if not IsValid(box) then box = vgui.Create(WS.UI.Name("NavProgress")) end
 	box:Show(fields, CurTime())
 end)
