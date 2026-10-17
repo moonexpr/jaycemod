@@ -61,5 +61,13 @@
 			"type"		"CheckBox"
 			"default"	"1"
 		}
+		7
+		{
+			"name"		"mp_maplist_enabled"
+			"text"		"Rotate through installed maps"
+			"help"		"1: the next map is the next installed one this gamemode's maps match, not the map cycle's"
+			"type"		"CheckBox"
+			"default"	"0"
+		}
 	}
 }

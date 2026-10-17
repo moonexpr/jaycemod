@@ -47,11 +47,40 @@ local function PlayMatchEnd(winner)
 end
 
 -- The level after the match (Rounds.NextMap): the engine's nextlevel, else
--- the map cycle's next (mapcyclefile), else this map again.
+-- the rotation's next, else this map again. The rotation is the map cycle
+-- (mapcyclefile), or with mp_maplist_enabled the maplist: every installed
+-- map the gamemode's map filter (sandcastle.txt's "maps") matches, in name
+-- order.
 local nextlevel = GetConVar("nextlevel")
+local MAPLIST = CreateConVar("mp_maplist_enabled", "0", { FCVAR_ARCHIVE, FCVAR_NOTIFY },
+	"1: after a match the next map is the next installed one the gamemode's map filter matches (the maplist), "
+		.. "not the map cycle's (mapcyclefile); nextlevel still comes first", 0, 1)
 
 local function MapInstalled(map)
 	return file.Exists("maps/" .. map .. ".bsp", "GAME")
+end
+
+-- The gamemode's map filter, as GMod read it from its .txt.
+local function MapFilter()
+	local active = engine.ActiveGamemode()
+	for _, gamemode in ipairs(engine.GetGamemodes()) do
+		if gamemode.name == active then return gamemode.maps or "" end
+	end
+	return ""
+end
+
+local function InstalledMaps()
+	local maps = {}
+	for i, name in ipairs(file.Find("maps/*.bsp", "GAME")) do maps[i] = name:sub(1, -5) end
+	return maps
+end
+
+-- The rotation's next map: the maplist's, or the map cycle's.
+local function RotationNext()
+	if MAPLIST:GetBool() then
+		return Rounds.MaplistNext(Rounds.MapsMatching(InstalledMaps(), MapFilter()), game.GetMap())
+	end
+	return game.GetMapNext()
 end
 
 -- CTeamplayRoundBasedRules::PlayWinSong: each side hears its own result.
@@ -131,7 +160,7 @@ end
 
 -- The level the match's end changes to (Rounds.NextMap).
 local function NextMap()
-	return Rounds.NextMap(nextlevel:GetString(), game.GetMapNext(), game.GetMap(), MapInstalled)
+	return Rounds.NextMap(nextlevel:GetString(), RotationNext(), game.GetMap(), MapInstalled)
 end
 
 local EFFECTS = {

@@ -429,6 +429,27 @@ T.test("the next level is nextlevel, else the map cycle's next, else this map ag
 	T.eq(Rounds.NextMap("koth_gone", "cp_gone", "pl_swiftwater_final1", exists), "pl_swiftwater_final1", "never a map not installed")
 end)
 
+-- The maplist (mp_maplist_enabled): the installed maps the gamemode's map
+-- filter (sandcastle.txt's "maps", patterns joined by |) matches, in name
+-- order; the rotation goes to the one after this map, round to the first.
+T.test("the maplist is the installed maps the gamemode's filter matches, in order", function()
+	local installed = { "pl_upward", "gm_construct", "koth_viaduct", "cp_steel", "background01", "plr_hightower" }
+	local maps = Rounds.MapsMatching(installed, "^pl_|^plr_|^cp_|^koth_")
+	T.eq(table.concat(maps, " "), "cp_steel koth_viaduct pl_upward plr_hightower", "matched, sorted")
+	T.eq(#Rounds.MapsMatching(installed, ""), 0, "no filter, no maps")
+end)
+
+T.test("the maplist's next map follows this one, round to the first", function()
+	local maps = { "cp_steel", "koth_viaduct", "pl_upward" }
+	T.eq(Rounds.MaplistNext(maps, "cp_steel"), "koth_viaduct", "the one after")
+	T.eq(Rounds.MaplistNext(maps, "pl_upward"), "cp_steel", "round to the first")
+	-- a map off the list (gm_construct) goes on to the list's next in name order
+	T.eq(Rounds.MaplistNext(maps, "gm_construct"), "koth_viaduct", "where it would sit")
+	T.eq(Rounds.MaplistNext(maps, "zz_last"), "cp_steel", "past the end, the first")
+	T.eq(Rounds.MaplistNext({}, "cp_steel"), "", "an empty list: none")
+	T.eq(Rounds.MaplistNext({ "cp_steel" }, "cp_steel"), "cp_steel", "a list of one: itself")
+end)
+
 T.test("the time limit waits for mini-rounds that must all be played", function()
 	local now = TIMELIMIT_MINUTES * MINUTE + 1
 	local objective = FakeObjective.Objective({

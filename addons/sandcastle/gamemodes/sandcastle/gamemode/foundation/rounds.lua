@@ -13,6 +13,7 @@
 -- effects, plain tables { kind = ..., ... }, for the rounds controller to
 -- carry out in order.
 local ipairs, math, pairs, setmetatable, tostring = ipairs, math, pairs, setmetatable, tostring
+local find, gmatch, sort = string.find, string.gmatch, table.sort
 local Teams = require("foundation.teams")
 local State = require("foundation.rounds.state")
 local Cfsm = require("foundation.core.cfsm")
@@ -169,13 +170,43 @@ function MatchWinner(scores)
 	return NOBODY_WON
 end
 
--- The level the match ends into: TF2's nextlevel when set, else the map
--- cycle's next (GMod's game.GetMapNext), else the current map again; a map
--- not installed (exists(map) false) is skipped.
-function NextMap(nextlevel, cycleNext, current, exists)
+-- The level the match ends into: TF2's nextlevel when set, else the
+-- rotation's next (the map cycle's, GMod's game.GetMapNext, or with
+-- mp_maplist_enabled the maplist's, MaplistNext), else the current map
+-- again; a map not installed (exists(map) false) is skipped.
+function NextMap(nextlevel, rotationNext, current, exists)
 	if nextlevel ~= "" and exists(nextlevel) then return nextlevel end
-	if cycleNext ~= "" and exists(cycleNext) then return cycleNext end
+	if rotationNext ~= "" and exists(rotationNext) then return rotationNext end
 	return current
+end
+
+-- The maplist: of the installed maps, those the gamemode's map filter
+-- matches (its .txt's "maps": Lua patterns joined by |, as GMod's map
+-- picker reads them), in name order.
+function MapsMatching(installed, filter)
+	local patterns = {}
+	for pattern in gmatch(filter, "[^|]+") do patterns[#patterns + 1] = pattern end
+	local maps = {}
+	for _, map in ipairs(installed) do
+		for _, pattern in ipairs(patterns) do
+			if find(map, pattern) then
+				maps[#maps + 1] = map
+				break
+			end
+		end
+	end
+	sort(maps)
+	return maps
+end
+
+-- The maplist's map after current: the next in name order, round to the
+-- first ("" for an empty list). A map off the list goes on from where it
+-- would sit.
+function MaplistNext(maps, current)
+	for _, map in ipairs(maps) do
+		if map > current then return map end
+	end
+	return maps[1] or ""
 end
 
 -- CheckWinLimit
