@@ -450,6 +450,78 @@ T.test("the maplist's next map follows this one, round to the first", function()
 	T.eq(Rounds.MaplistNext({ "cp_steel" }, "cp_steel"), "cp_steel", "a list of one: itself")
 end)
 
+-- The next-map vote (mp_vote_nextmap_enabled), called once the match is one
+-- round from its end or over, whichever comes first: a team one win from
+-- mp_winlimit, one round left of mp_maxrounds, mp_timelimit's last
+-- MAP_VOTE_TIME_LEFT seconds (TF2's), or the game over.
+T.defined(Rounds.MAP_VOTE_TIME_LEFT, "MAP_VOTE_TIME_LEFT")
+
+local function Facts(overrides)
+	local facts = {
+		winlimit = 0,
+		maxrounds = 0,
+		timelimit = 0,
+		roundsPlayed = 0,
+		timeLeft = 0,
+		scores = { 0, 0 },
+		over = false,
+	}
+	for k, v in pairs(overrides or {}) do facts[k] = v end
+	return facts
+end
+
+T.test("the next-map vote is due one round from the match's end, or at it", function()
+	T.eq(Rounds.MapVoteDue(Facts()), false, "no limit, still playing")
+	T.eq(Rounds.MapVoteDue(Facts({ winlimit = 3, scores = { 1, 1 } })), false, "two wins short")
+	T.eq(Rounds.MapVoteDue(Facts({ winlimit = 3, scores = { 1, 2 } })), true, "a team one win short")
+	T.eq(Rounds.MapVoteDue(Facts({ maxrounds = 5, roundsPlayed = 3 })), false, "two rounds left")
+	T.eq(Rounds.MapVoteDue(Facts({ maxrounds = 5, roundsPlayed = 4 })), true, "the last round")
+	T.eq(Rounds.MapVoteDue(Facts({ timelimit = 30, timeLeft = Rounds.MAP_VOTE_TIME_LEFT + 1 })), false, "time to go")
+	T.eq(Rounds.MapVoteDue(Facts({ timelimit = 30, timeLeft = Rounds.MAP_VOTE_TIME_LEFT })), true, "the last minutes")
+	T.eq(Rounds.MapVoteDue(Facts({ timeLeft = 0 })), false, "no time limit: time left means nothing")
+	T.eq(Rounds.MapVoteDue(Facts({ over = true })), true, "the match is over")
+end)
+
+-- Its choices, from the maplist: MAP_VOTE_SAME of the current map's mode
+-- (the filter's pattern it matches) and MAP_VOTE_OTHER of another's, never
+-- the current map, each once; a short pool fills from what is left.
+T.defined(Rounds.MAP_VOTE_SAME, "MAP_VOTE_SAME")
+T.defined(Rounds.MAP_VOTE_OTHER, "MAP_VOTE_OTHER")
+
+local FILTER = "^pl_|^cp_|^koth_"
+local function First(n) return 1 end
+
+local function ModeCount(choices, prefix)
+	local n = 0
+	for _, map in ipairs(choices) do if map:sub(1, #prefix) == prefix then n = n + 1 end end
+	return n
+end
+
+T.test("the vote offers maps of this mode and of another", function()
+	local maps = { "cp_steel", "koth_viaduct", "pl_badwater", "pl_goldrush", "pl_upward" }
+	local choices = Rounds.MapVoteChoices(maps, "pl_upward", FILTER, First)
+	T.eq(#choices, Rounds.MAP_VOTE_SAME + Rounds.MAP_VOTE_OTHER, "how many")
+	T.eq(ModeCount(choices, "pl_"), Rounds.MAP_VOTE_SAME, "this mode's")
+	T.eq(#choices - ModeCount(choices, "pl_"), Rounds.MAP_VOTE_OTHER, "another's")
+	for _, map in ipairs(choices) do T.eq(map ~= "pl_upward", true, "not this map") end
+end)
+
+T.test("a mode with too few maps leaves the rest to the others", function()
+	local choices = Rounds.MapVoteChoices({ "cp_steel", "cp_gorge", "pl_upward", "pl_badwater" }, "pl_upward", FILTER, First)
+	T.eq(#choices, Rounds.MAP_VOTE_SAME + Rounds.MAP_VOTE_OTHER, "still a full vote")
+	T.eq(ModeCount(choices, "pl_"), 1, "the one other payload map")
+	local seen = {}
+	for _, map in ipairs(choices) do
+		T.eq(seen[map], nil, map .. " once")
+		seen[map] = true
+	end
+end)
+
+T.test("a map off the filter, or a pool of one, still gives what there is", function()
+	T.eq(#Rounds.MapVoteChoices({ "cp_steel", "pl_upward" }, "gm_construct", FILTER, First), 2, "both, from other modes")
+	T.eq(#Rounds.MapVoteChoices({ "pl_upward" }, "pl_upward", FILTER, First), 0, "nothing but this map")
+end)
+
 T.test("the time limit waits for mini-rounds that must all be played", function()
 	local now = TIMELIMIT_MINUTES * MINUTE + 1
 	local objective = FakeObjective.Objective({

@@ -75,10 +75,24 @@ local function InstalledMaps()
 	return maps
 end
 
+-- The maplist (Rounds.MapsMatching's), and the filter it was matched by.
+function Controller:Maplist()
+	local filter = MapFilter()
+	return Rounds.MapsMatching(InstalledMaps(), filter), filter
+end
+
+-- How near the match is to its end, for the next-map vote (Rounds.MapVoteDue).
+function Controller:MatchEndFacts(now)
+	local facts = self.round:Limits(now)
+	facts.scores = { team.GetScore(RED), team.GetScore(BLUE) }
+	facts.over = self:State() == S.GAME_OVER
+	return facts
+end
+
 -- The rotation's next map: the maplist's, or the map cycle's.
 local function RotationNext()
 	if MAPLIST:GetBool() then
-		return Rounds.MaplistNext(Rounds.MapsMatching(InstalledMaps(), MapFilter()), game.GetMap())
+		return Rounds.MaplistNext((Controller:Maplist()), game.GetMap())
 	end
 	return game.GetMapNext()
 end
@@ -292,6 +306,8 @@ local EFFECTS = {
 		if e.winner == UNASSIGNED then PlayWinSong(UNASSIGNED) else PlayMatchEnd(e.winner) end
 	end,
 	changelevel = function()
+		-- a next-map vote still running is counted first (ws/sv_votes.lua)
+		hook.Run("WSChangeLevel")
 		RunConsoleCommand("changelevel", NextMap())
 	end,
 	-- mp_chattime at the match's end: everyone frozen, the AI war's soldiers

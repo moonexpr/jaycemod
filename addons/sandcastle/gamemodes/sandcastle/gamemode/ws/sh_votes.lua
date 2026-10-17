@@ -15,6 +15,8 @@ CreateConVar("mp_vote_reset_enabled", "1", FLAGS, "1: players may vote to restar
 CreateConVar("mp_vote_scramble_enabled", "1", FLAGS, "1: players may vote to scramble the teams", 0, 1)
 CreateConVar("mp_vote_support_enabled", "1", FLAGS, "1: a team may vote to help the other team", 0, 1)
 CreateConVar("mp_vote_difficulty_enabled", "1", FLAGS, "1: players may vote on the soldiers' difficulty", 0, 1)
+CreateConVar("mp_vote_nextmap_enabled", "1", FLAGS,
+	"1: once the match is one round from its end or over, everyone votes on the next map among three", 0, 1)
 
 -- The kinds on the wire, by index (vote_call's kind, vote_state's).
 WS.VOTE_KINDS = {
@@ -24,6 +26,7 @@ WS.VOTE_KINDS = {
 	Vote.KIND_SCRAMBLE,
 	Vote.KIND_SUPPORT,
 	Vote.KIND_DIFFICULTY,
+	Vote.KIND_NEXTMAP,
 }
 
 function WS.VoteKindIndex(kind)
@@ -53,6 +56,7 @@ WS.VOTE_NAMES = {
 	[Vote.KIND_SCRAMBLE] = "Scramble Teams",
 	[Vote.KIND_SUPPORT] = "Help Other Team",
 	[Vote.KIND_DIFFICULTY] = "Soldier Difficulty",
+	[Vote.KIND_NEXTMAP] = "Next Map",
 }
 
 -- reason: a foundation.reports reason, for a kick.
@@ -69,13 +73,15 @@ function WS.VoteQuestion(kind, subject, reason)
 	if kind == Vote.KIND_RESET then return "Restart the round?" end
 	if kind == Vote.KIND_SCRAMBLE then return "Scramble the teams?" end
 	if kind == Vote.KIND_SUPPORT then return "Help " .. subject .. "?" end
+	-- TF_vote_nextlevel_choices
+	if kind == Vote.KIND_NEXTMAP then return "Vote for the next map!" end
 	return "Set soldier difficulty to " .. subject .. "?"
 end
 
 -- TF_vote_passed_*.
 function WS.VotePassed(kind, subject)
 	if kind == Vote.KIND_KICK then return "Kicking player: " .. subject .. "..." end
-	if kind == Vote.KIND_MAP then return "Next map set to " .. subject .. "..." end
+	if kind == Vote.KIND_MAP or kind == Vote.KIND_NEXTMAP then return "Next map set to " .. subject .. "..." end
 	if kind == Vote.KIND_RESET then return "Restarting the round..." end
 	if kind == Vote.KIND_SCRAMBLE then return "Teams will be scrambled." end
 	if kind == Vote.KIND_SUPPORT then return subject .. " will get help." end
@@ -85,6 +91,8 @@ end
 local KIND_BITS = 3
 local COUNT_BITS = 7
 local MAP_COUNT_BITS = 9
+-- a vote of choices' options (TF2's MAX_VOTE_OPTIONS is 5): 0 is none
+local OPTION_BITS = 3
 local REQUEST_RATE = {
 	count = 6,
 	seconds = 5,
@@ -99,13 +107,18 @@ E.Define("vote_call", {
 	rate = REQUEST_RATE,
 })
 
-E.Define("vote_cast", { yes = E.Bool() }, {
+-- choice: the option picked on a vote of choices (1..), else 0 and yes counts.
+E.Define("vote_cast", {
+	yes = E.Bool(),
+	choice = E.UInt(OPTION_BITS),
+}, {
 	clientSendable = true,
 	rate = REQUEST_RATE,
 })
 
 -- The running vote as one player sees it; running false when none runs.
--- mine: whether this player may still vote.
+-- mine: whether this player may still vote. A vote of choices has options
+-- and each one's count; a yes-or-no vote has none.
 E.Define("vote_state", {
 	running = E.Bool(),
 	kind = E.UInt(KIND_BITS),
@@ -116,6 +129,8 @@ E.Define("vote_state", {
 	no = E.UInt(COUNT_BITS),
 	quorum = E.UInt(COUNT_BITS),
 	mine = E.Bool(),
+	options = E.List(E.String(), OPTION_BITS),
+	counts = E.List(E.UInt(COUNT_BITS), OPTION_BITS),
 })
 
 -- A vote is over: TF2's passed line, or why it failed.

@@ -13,7 +13,7 @@
 -- effects, plain tables { kind = ..., ... }, for the rounds controller to
 -- carry out in order.
 local ipairs, math, pairs, setmetatable, tostring = ipairs, math, pairs, setmetatable, tostring
-local find, gmatch, sort = string.find, string.gmatch, table.sort
+local find, gmatch, sort, table_remove = string.find, string.gmatch, table.sort, table.remove
 local Teams = require("foundation.teams")
 local State = require("foundation.rounds.state")
 local Cfsm = require("foundation.core.cfsm")
@@ -207,6 +207,88 @@ function MaplistNext(maps, current)
 		if map > current then return map end
 	end
 	return maps[1] or ""
+end
+
+-- The next-map vote --------------------------------------------------------------
+
+-- CTFGameRules::ManageServerSideVoteCreation's time limit: the vote is
+-- called this many seconds before mp_timelimit runs out.
+MAP_VOTE_TIME_LEFT = 120
+-- Its choices: this many of the current map's mode, and of another mode.
+MAP_VOTE_SAME, MAP_VOTE_OTHER = 2, 1
+
+-- Whether the next-map vote is due: the match is one round from its end or
+-- over, whichever comes first. facts = { winlimit, maxrounds, timelimit
+-- (minutes), roundsPlayed, timeLeft (seconds), scores (each team's), over }.
+function MapVoteDue(facts)
+	if facts.over then return true end
+	if facts.winlimit > 0 then
+		for _, score in ipairs(facts.scores) do
+			if score >= facts.winlimit - 1 then return true end
+		end
+	end
+	if facts.maxrounds > 0 and facts.roundsPlayed >= facts.maxrounds - 1 then return true end
+	return facts.timelimit > 0 and facts.timeLeft <= MAP_VOTE_TIME_LEFT
+end
+
+-- The index of the filter's pattern a map matches (its mode), or nil.
+local function ModeOf(map, patterns)
+	for i, pattern in ipairs(patterns) do
+		if find(map, pattern) then return i end
+	end
+	return nil
+end
+
+-- Takes one of list at random (random(n): 1..n) out of it.
+local function Draw(list, random)
+	return table_remove(list, random(#list))
+end
+
+-- The vote's maps, from the maplist (MapsMatching's): MAP_VOTE_SAME of the
+-- current map's mode and MAP_VOTE_OTHER of one other mode, at random, never
+-- the current map; when a mode is short, the rest come from whatever maps
+-- are left.
+function MapVoteChoices(maps, current, filter, random)
+	local patterns = {}
+	for pattern in gmatch(filter, "[^|]+") do patterns[#patterns + 1] = pattern end
+	local mode = ModeOf(current, patterns)
+	local same, others, otherModes = {}, {}, {}
+	for _, map in ipairs(maps) do
+		if map ~= current then
+			local m = ModeOf(map, patterns)
+			if m ~= nil and m == mode then
+				same[#same + 1] = map
+			elseif m ~= nil then
+				if not others[m] then
+					others[m] = {}
+					otherModes[#otherModes + 1] = m
+				end
+				local list = others[m]
+				list[#list + 1] = map
+			end
+		end
+	end
+	local choices = {}
+	for _ = 1, MAP_VOTE_SAME do
+		if #same > 0 then choices[#choices + 1] = Draw(same, random) end
+	end
+	for _ = 1, MAP_VOTE_OTHER do
+		if #otherModes > 0 then
+			local list = others[Draw(otherModes, random)]
+			choices[#choices + 1] = Draw(list, random)
+		end
+	end
+	-- a short mode: fill from the maps left, of any mode
+	local left = {}
+	for _, map in ipairs(same) do left[#left + 1] = map end
+	for _, list in pairs(others) do
+		for _, map in ipairs(list) do left[#left + 1] = map end
+	end
+	sort(left)
+	while #choices < MAP_VOTE_SAME + MAP_VOTE_OTHER and #left > 0 do
+		choices[#choices + 1] = Draw(left, random)
+	end
+	return choices
 end
 
 -- CheckWinLimit

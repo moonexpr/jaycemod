@@ -6,7 +6,15 @@
 -- (WSReportsReached) start a kick vote, queued behind a running vote.
 -- Every player hears the vote as vote_state; holders of the players
 -- privilege (admins, by default) are never put to a kick vote.
+--
+-- The next-map vote (mp_vote_nextmap_enabled): once a map, as soon as the
+-- match is one round from its end or over (Rounds.MapVoteDue), the server
+-- calls a vote of choices among maplist maps (Rounds.MapVoteChoices: two of
+-- this map's mode, one of another's), unless nextlevel is already set; the
+-- most picked becomes nextlevel. Still running when the level changes
+-- (WSChangeLevel), it is counted then.
 local Vote = WS.require("foundation.vote")
+local Rounds = WS.require("foundation.rounds")
 local Permissions = WS.require("foundation.permissions")
 local Refusal = WS.require("foundation.refusal")
 local E = WS.Events
@@ -63,9 +71,12 @@ local function StateFor(vote, ply)
 			no = 0,
 			quorum = 0,
 			mine = false,
+			options = {},
+			counts = {},
 		}
 	end
-	local yes, no = Vote.Tally(vote)
+	local yes, no, counts = 0, 0, {}
+	if vote.options then counts = Vote.Counts(vote) else yes, no = Vote.Tally(vote) end
 	return {
 		running = true,
 		kind = WS.VoteKindIndex(vote.kind),
@@ -76,6 +87,8 @@ local function StateFor(vote, ply)
 		no = no,
 		quorum = Vote.Quorum(vote),
 		mine = vote.voters[ply] == true and vote.choices[ply] == nil,
+		options = vote.options or {},
+		counts = counts,
 	}
 end
 
@@ -91,6 +104,8 @@ local EFFECTS = {
 	[Vote.KIND_MAP] = function(vote) RunConsoleCommand("nextlevel", vote.subject) end,
 	[Vote.KIND_RESET] = function() WS.Feature("rounds"):RestartRound() end,
 	[Vote.KIND_SCRAMBLE] = function() WS.Feature("rounds"):ScheduleScramble() end,
+	-- set at once, not queued as a command: the level may be changing now
+	[Vote.KIND_NEXTMAP] = function(vote) GetConVar("nextlevel"):SetString(vote.subject) end,
 }
 
 local Started
@@ -101,6 +116,8 @@ local function Conclude(result, targetLeft)
 	if not result then return end
 	timer.Remove(TIMER)
 	local vote = result.vote
+	-- a vote of choices is about the option it chose
+	if result.choice then vote.subject = vote.options[result.choice] end
 	local subject = SubjectText(vote)
 	if result.passed and not targetLeft then EFFECTS[vote.kind](vote) end
 	local text = result.passed and WS.VotePassed(vote.kind, subject) or result.why
@@ -143,8 +160,11 @@ E.Listen("vote_call", "ws_votes", function(fields, ply)
 	Started(result)
 end)
 
+-- choice: an option's number on a vote of choices, else 0 and yes counts
 E.Listen("vote_cast", "ws_votes", function(fields, ply)
-	local ok, err = pcall(Vote.Cast, book, ply, fields.yes)
+	local choice = fields.choice
+	if choice == 0 then choice = fields.yes end
+	local ok, err = pcall(Vote.Cast, book, ply, choice)
 	if not ok then return Refuse(ply, err) end
 	local result = Vote.Finish(book, CurTime())
 	if result then return Conclude(result) end
@@ -164,6 +184,36 @@ hook.Add("PlayerDisconnected", "ws_votes", function(ply)
 	local result = Vote.Leave(book, ply)
 	if result then return Conclude(result, true) end
 	if Vote.Current(book) then Broadcast() end
+end)
+
+-- The next-map vote ---------------------------------------------------------------
+
+-- CTFGameRules::ManageServerSideVoteCreation's throttle, about.
+local NEXTMAP_CHECK_SECONDS = 1
+local NEXTMAP_TIMER = "ws_vote_nextmap"
+local nextMapCalled = false -- once a map: the Lua state starts over with the map
+
+local function CheckNextMapVote()
+	if nextMapCalled or not WS.Active() then return end
+	if not GetConVar("mp_vote_nextmap_enabled"):GetBool() or GetConVar("nextlevel"):GetString() ~= "" then return end
+	if #player.GetHumans() == 0 then return end
+	local rounds = WS.Feature("rounds")
+	if not Rounds.MapVoteDue(rounds:MatchEndFacts(CurTime())) then return end
+	nextMapCalled = true
+	local maps, filter = rounds:Maplist()
+	local options = Rounds.MapVoteChoices(maps, game.GetMap(), filter, math.random)
+	if #options == 0 then return end
+	local vote = Vote.StartChoices(book, Vote.KIND_NEXTMAP, options, CurTime(), Facts())
+	if vote then Started(vote) end
+end
+
+timer.Create(NEXTMAP_TIMER, NEXTMAP_CHECK_SECONDS, 0, CheckNextMapVote)
+
+-- The rounds feature is about to change level: a next-map vote still running
+-- is counted now, so its map is the one changed to.
+hook.Add("WSChangeLevel", "ws_votes", function()
+	local vote = Vote.Current(book)
+	if vote and vote.kind == Vote.KIND_NEXTMAP then Conclude(Vote.Finish(book, CurTime(), true)) end
 end)
 
 E.Listen("client_ready", "ws_votes", function(_, ply)

@@ -15,6 +15,7 @@ local KINDS = {
 	Vote.KIND_SCRAMBLE,
 	Vote.KIND_SUPPORT,
 	Vote.KIND_DIFFICULTY,
+	Vote.KIND_NEXTMAP,
 }
 
 local function Index(kind)
@@ -48,12 +49,28 @@ local function Load(players, opts)
 		scrambles = 0,
 		scramblePending = false,
 		cycle = opts.cycle or "cp_dustbowl\n// a comment\n\npl_badwater\n",
+		-- the rounds feature's match (MatchEndFacts) and maplist (Maplist)
+		match = {
+			winlimit = 0,
+			maxrounds = 0,
+			timelimit = 0,
+			roundsPlayed = 0,
+			timeLeft = 0,
+			scores = { 0, 0 },
+			over = false,
+		},
+		maplist = opts.maplist or { "cp_steel", "koth_viaduct", "pl_badwater", "pl_goldrush", "pl_upward" },
+		filter = "^pl_|^cp_|^koth_",
+		map = "pl_upward",
 	}
 	local convars = {
 		mp_vote_duration = 20,
 		mp_vote_cooldown = 120,
 		mapcyclefile = "mapcycle.txt",
+		mp_vote_nextmap_enabled = opts.nextmapEnabled == false and 0 or 1,
+		nextlevel = opts.nextlevel or "",
 	}
+	s.convars = convars
 	local function Got(ply, name, fields)
 		ply.got[#ply.got + 1] = {
 			name = name,
@@ -83,6 +100,8 @@ local function Load(players, opts)
 				RestartRound = function() s.restarts = s.restarts + 1 end,
 				ScheduleScramble = function() s.scrambles = s.scrambles + 1 end,
 				ScramblePending = function() return s.scramblePending end,
+				MatchEndFacts = function() return s.match end,
+				Maplist = function() return s.maplist, s.filter end,
 			}
 		end,
 	}
@@ -96,7 +115,10 @@ local function Load(players, opts)
 		player = { GetHumans = function() return players end },
 		hook = { Add = function(name, _, fn) s.hooks[name] = fn end },
 		timer = {
-			Create = function(name, delay, _, fn) s.timers[name] = { at = s.now + delay, fn = fn } end,
+			-- repetitions 0: it repeats every delay
+			Create = function(name, delay, repetitions, fn)
+				s.timers[name] = { at = s.now + delay, delay = delay, repeats = repetitions == 0, fn = fn }
+			end,
 			Remove = function(name) s.timers[name] = nil end,
 		},
 		GetConVar = function(name)
@@ -104,8 +126,12 @@ local function Load(players, opts)
 				GetInt = function() return convars[name] end,
 				GetFloat = function() return convars[name] end,
 				GetString = function() return convars[name] end,
+				GetBool = function() return convars[name] ~= 0 end,
+				SetString = function(_, value) convars[name] = value end,
 			}
 		end,
+		game = { GetMap = function() return s.map end },
+		math = setmetatable({ random = function(a, b) if b then return a end return 1 end }, { __index = math }),
 		file = { Read = function(path, where)
 			assert(path == "cfg/mapcycle.txt" and where == "GAME", path)
 			return s.cycle
@@ -121,7 +147,7 @@ local function Load(players, opts)
 		s.now = s.now + seconds
 		for name, t in pairs(s.timers) do
 			if t.at <= s.now then
-				s.timers[name] = nil
+				if t.repeats then t.at = s.now + t.delay else s.timers[name] = nil end
 				t.fn()
 			end
 		end
@@ -140,7 +166,12 @@ local function CallVote(s, ply, kind, subject)
 end
 
 local function Cast(s, ply, yes)
-	s.listeners.vote_cast({ yes = yes }, ply)
+	s.listeners.vote_cast({ yes = yes, choice = 0 }, ply)
+end
+
+-- An option of a vote of choices, by its number.
+local function Pick(s, ply, choice)
+	s.listeners.vote_cast({ yes = false, choice = choice }, ply)
 end
 
 local function Five()
@@ -262,6 +293,97 @@ T.test("a cast with no vote running is refused, not an error", function()
 	local s = Load({ alice })
 	Cast(s, alice, true)
 	T.eq(Last(alice, "vote_refused").text, "No vote is running.")
+end)
+
+-- The next-map vote (mp_vote_nextmap_enabled): once the match is one round
+-- from its end or over, the server calls a vote of three maps from the
+-- maplist, two of this map's mode and one of another's; the most picked
+-- becomes nextlevel.
+local function NextMapVote(ply)
+	local state = Last(ply, "vote_state")
+	return state and state.running and state.kind == Index(Vote.KIND_NEXTMAP) and state or nil
+end
+
+T.test("nothing is called while the match has rounds to go", function()
+	local alice = Player("Alice")
+	local s = Load({ alice })
+	s.Advance(5)
+	T.eq(NextMapVote(alice), nil, "no vote")
+end)
+
+T.test("one round from the match's end, the vote offers two maps of this mode and one of another", function()
+	local alice, bob = Player("Alice"), Player("Bob")
+	local s = Load({ alice, bob })
+	s.match.maxrounds, s.match.roundsPlayed = 3, 2
+	s.Advance(1)
+	local state = NextMapVote(alice)
+	T.eq(state ~= nil, true, "called")
+	T.eq(#state.options, 3, "three maps")
+	local payload = 0
+	for _, map in ipairs(state.options) do
+		T.eq(map ~= s.map, true, "not this map")
+		if map:sub(1, 3) == "pl_" then payload = payload + 1 end
+	end
+	T.eq(payload, 2, "two of this map's mode")
+	T.eq(state.mine, true, "everyone may pick")
+end)
+
+T.test("the match over calls it too, and only once a map", function()
+	local alice = Player("Alice")
+	local s = Load({ alice })
+	s.match.over = true
+	s.Advance(1)
+	T.eq(NextMapVote(alice) ~= nil, true, "called")
+	s.Advance(25)
+	T.eq(NextMapVote(alice), nil, "over, and not called again")
+end)
+
+T.test("no vote when it is off, or the next map is already set", function()
+	local alice = Player("Alice")
+	local off = Load({ alice }, { nextmapEnabled = false })
+	off.match.over = true
+	off.Advance(1)
+	T.eq(NextMapVote(alice), nil, "switched off")
+	local bob = Player("Bob")
+	local set = Load({ bob }, { nextlevel = "cp_dustbowl" })
+	set.match.over = true
+	set.Advance(1)
+	T.eq(NextMapVote(bob), nil, "a map vote already chose")
+end)
+
+T.test("the most picked map becomes the next level", function()
+	local alice, bob, carol = Player("Alice"), Player("Bob"), Player("Carol")
+	local s = Load({ alice, bob, carol })
+	s.match.over = true
+	s.Advance(1)
+	local options = NextMapVote(alice).options
+	Pick(s, alice, 3)
+	T.eq(table.concat(NextMapVote(bob).counts, " "), "0 0 1", "the picks so far")
+	Pick(s, bob, 3)
+	s.Advance(20)
+	T.eq(Last(carol, "vote_ended").passed, true, "passed")
+	T.eq(s.convars.nextlevel, options[3], "the next level")
+end)
+
+T.test("a vote still running when the level changes is counted first", function()
+	local alice, bob = Player("Alice"), Player("Bob")
+	local s = Load({ alice, bob })
+	s.match.over = true
+	s.Advance(1)
+	local options = NextMapVote(alice).options
+	Pick(s, alice, 2)
+	s.hooks.WSChangeLevel()
+	T.eq(s.convars.nextlevel, options[2], "set before the change")
+	T.eq(Last(bob, "vote_state").running, false, "over")
+end)
+
+T.test("a yes-or-no cast on a vote of choices is refused", function()
+	local alice = Player("Alice")
+	local s = Load({ alice })
+	s.match.over = true
+	s.Advance(1)
+	Cast(s, alice, true)
+	T.eq(Last(alice, "vote_refused").text, "That is not one of the choices.")
 end)
 
 T.finish()

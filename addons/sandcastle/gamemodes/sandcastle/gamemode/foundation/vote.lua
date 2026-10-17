@@ -5,13 +5,18 @@
 -- and a kick's target does not vote. A vote ends at its time, or once
 -- everyone has voted (Finish): it passes when at least QUORUM_SHARE of the
 -- electorate voted and at least PASS_SHARE of those votes are yes.
+--
+-- The server starts a vote of choices (StartChoices: the next-map vote, as
+-- TF2's nextlevel vote in its choices mode), which waits its turn as a kick
+-- does: each voter picks one option, and the most picked wins (the first
+-- listed of a tie) once CHOICE_QUORUM_SHARE of the electorate picked.
 -- Refusals carry TF2's wording (GameUI_vote_failed_*) as their detail.
 --
 -- A book is plain data keyed by whatever the controller gives (players), so
 -- a rerun of this module changes the behaviour of the live book too.
 local PlayMode = require("foundation.play_mode")
 local Refusal = require("foundation.refusal")
-local ceil, error, format, ipairs, pairs, remove, tostring = math.ceil, error, string.format, ipairs, pairs, table.remove, tostring
+local ceil, error, format, ipairs, pairs, remove, tostring, type = math.ceil, error, string.format, ipairs, pairs, table.remove, tostring, type
 module(...)
 
 KIND_KICK = "kick"
@@ -20,6 +25,8 @@ KIND_RESET = "reset"
 KIND_SCRAMBLE = "scramble"
 KIND_SUPPORT = "support"
 KIND_DIFFICULTY = "difficulty"
+-- the server's vote of choices on the next map (never a player's call)
+KIND_NEXTMAP = "nextmap"
 
 -- The kinds players call, in the Server tab's order.
 CALLABLE = { KIND_DIFFICULTY, KIND_MAP, KIND_SUPPORT, KIND_RESET, KIND_SCRAMBLE }
@@ -33,6 +40,9 @@ local NEEDS_ROUNDS = {
 
 QUORUM_SHARE = 0.5
 PASS_SHARE = 0.6
+-- CNextLevelIssue::GetQuorumRatio in choices mode: a few voters' preference
+-- is enough when nobody else minds.
+CHOICE_QUORUM_SHARE = 0.1
 
 IN_PROGRESS = "in progress"
 KICK_BY_REPORTS = "kick by reports"
@@ -44,6 +54,7 @@ IMMUNE = "immune"
 NOT_VOTER = "not a voter"
 ALREADY_VOTED = "already voted"
 NO_VOTE = "no vote"
+NOT_A_CHOICE = "not a choice"
 
 -- The refusals that are the player's mistake.
 PLAYER = {
@@ -57,6 +68,7 @@ PLAYER = {
 	[NOT_VOTER] = true,
 	[ALREADY_VOTED] = true,
 	[NO_VOTE] = true,
+	[NOT_A_CHOICE] = true,
 }
 
 -- Why a vote failed (GameUI_vote_failed_quorum and _yesno).
@@ -70,12 +82,13 @@ local KNOWN = {
 	[KIND_SCRAMBLE] = true,
 	[KIND_SUPPORT] = true,
 	[KIND_DIFFICULTY] = true,
+	[KIND_NEXTMAP] = true,
 }
 
 function New()
 	return {
 		current = nil,
-		queue = {}, -- kicks waiting: { target, reason }
+		queue = {}, -- votes waiting: a kick's { target, reason }, or choices' { kind, options }
 		calledAt = {}, -- caller -> when they last called
 	}
 end
@@ -143,11 +156,31 @@ function StartKick(book, target, reason, now, facts)
 	return vote
 end
 
--- The next queued kick, started, once no vote runs; else nil.
+local function StartOptions(book, kind, options, now, facts)
+	local vote = Start(book, kind, "", nil, now, facts, nil)
+	vote.options = options
+	return vote
+end
+
+-- The server's vote of choices among options (a list of what players read),
+-- now, or nil with it queued behind the running vote.
+function StartChoices(book, kind, options, now, facts)
+	if book.current then
+		book.queue[#book.queue + 1] = {
+			kind = kind,
+			options = options,
+		}
+		return nil
+	end
+	return StartOptions(book, kind, options, now, facts)
+end
+
+-- The next queued vote, started, once no vote runs; else nil.
 function Next(book, now, facts)
 	if book.current then return nil end
 	while #book.queue > 0 do
 		local waiting = remove(book.queue, 1)
+		if waiting.options then return StartOptions(book, waiting.kind, waiting.options, now, facts) end
 		if not facts.immune[waiting.target] then
 			local vote = Start(book, KIND_KICK, waiting.target, nil, now, facts, waiting.target)
 			vote.reason = waiting.reason
@@ -157,12 +190,28 @@ function Next(book, now, facts)
 	return nil
 end
 
-function Cast(book, voter, yes)
+-- A voter's vote: yes (true) or no on a yes-or-no vote, an option's number
+-- on a vote of choices.
+function Cast(book, voter, choice)
 	local vote = book.current
 	if not vote then Refusal.Raise(NO_VOTE, "No vote is running.") end
 	if not vote.voters[voter] then Refusal.Raise(NOT_VOTER, "You cannot vote in this vote.") end
 	if vote.choices[voter] ~= nil then Refusal.Raise(ALREADY_VOTED, "You have already voted.") end
-	vote.choices[voter] = yes == true
+	if vote.options then
+		if type(choice) ~= "number" or vote.options[choice] == nil then Refusal.Raise(NOT_A_CHOICE, "That is not one of the choices.") end
+		vote.choices[voter] = choice
+		return
+	end
+	if type(choice) ~= "boolean" then Refusal.Raise(NOT_A_CHOICE, "This vote is yes or no.") end
+	vote.choices[voter] = choice
+end
+
+-- A vote of choices' picks: each option's count, in the options' order.
+function Counts(vote)
+	local counts = {}
+	for i = 1, #vote.options do counts[i] = 0 end
+	for _, choice in pairs(vote.choices) do counts[choice] = counts[choice] + 1 end
+	return counts
 end
 
 function Tally(vote)
@@ -175,27 +224,43 @@ end
 
 -- The votes a vote needs cast to count.
 function Quorum(vote)
-	return ceil(QUORUM_SHARE * vote.electorateSize)
+	return ceil((vote.options and CHOICE_QUORUM_SHARE or QUORUM_SHARE) * vote.electorateSize)
 end
 
-local function Close(book, vote, passed, why)
+local function Close(book, vote, passed, why, choice)
 	book.current = nil
 	return {
 		vote = vote,
 		passed = passed,
 		why = why,
+		choice = choice,
 	}
 end
 
--- The running vote's result once it is over: { vote, passed, why }; else nil.
-function Finish(book, now)
+-- A vote of choices' winner: the most picked option, the first listed of a tie.
+local function Winner(vote)
+	local counts, best = Counts(vote), 1
+	for i, count in ipairs(counts) do
+		if count > counts[best] then best = i end
+	end
+	return best
+end
+
+-- The running vote's result once it is over (its time, everyone voted, or
+-- force: closed now, as the level changes): { vote, passed, why, choice (a
+-- vote of choices' winner) }; else nil.
+function Finish(book, now, force)
 	local vote = book.current
 	if not vote then return nil end
-	local yes, no = Tally(vote)
-	local everyone = yes + no >= vote.electorateSize
-	if now < vote.ends and not everyone then return nil end
-	if yes + no < Quorum(vote) then return Close(book, vote, false, FAILED_QUORUM) end
-	if yes < PASS_SHARE * (yes + no) then return Close(book, vote, false, FAILED_YES) end
+	local cast = 0
+	for _ in pairs(vote.choices) do cast = cast + 1 end
+	local everyone = cast >= vote.electorateSize
+	if now < vote.ends and not everyone and not force then return nil end
+	-- a vote of choices with nobody choosing has no winner
+	if cast < Quorum(vote) or (vote.options and cast == 0) then return Close(book, vote, false, FAILED_QUORUM) end
+	if vote.options then return Close(book, vote, true, nil, Winner(vote)) end
+	local yes = Tally(vote)
+	if yes < PASS_SHARE * cast then return Close(book, vote, false, FAILED_YES) end
 	return Close(book, vote, true, nil)
 end
 
