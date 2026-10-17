@@ -7,9 +7,9 @@
   CC BY 4.0), the vector remake of Mark James's Silk icons (CC BY 2.5), and
   built from its pieces: Building.svg's inner glow, outline-over-fill and
   ground strip, Box.svg's sand and outline colours, Flag red.svg's cloth,
-  edge and pole. A 16 unit grid; strokes 1 wide on half units, so the icon
-  is sharp at 16 and scales as a vector. Few, wide shapes: at 16 units a
-  merlon narrower than 3 is all outline.
+  edge and pole. A 16 unit grid, scaling as a vector; strokes half a unit
+  wide, lighter than Silk's 1, set just inside each shape's edge. Few, wide
+  shapes: at 16 units a narrow merlon is all outline.
 -->
 
 <!-- the beach: Building.svg's ground strip, in sand -->
@@ -19,15 +19,15 @@
 <g filter="url(#glow)">
 <path d="M1 14V5H4V7H6V3H10V7H12V5H15V14H1Z" fill="url(#sand)"/>
 </g>
-<!-- the same outline, 1 wide on half units; mitred, so the inner corners stay closed -->
-<path d="M1.5 13.5V5.5H3.5V7.5H6.5V3.5H9.5V7.5H12.5V5.5H14.5V13.5H1.5Z" stroke="url(#outline)" stroke-linejoin="miter"/>
+<!-- the same outline, half a unit wide just inside the edge; mitred, so the inner corners stay closed -->
+<path d="M1.25 13.75V5.25H3.75V7.25H6.25V3.25H9.75V7.25H12.25V5.25H14.75V13.75H1.25Z" stroke="url(#outline)" stroke-width="0.5" stroke-linejoin="miter"/>
 
 <!-- the gate, arched -->
-<path d="M6.5 13.5V11.5C6.5 10.6716 7.17157 10 8 10C8.82843 10 9.5 10.6716 9.5 11.5V13.5H6.5Z" fill="#7A4C12" stroke="#784D15" stroke-linejoin="miter"/>
+<path d="M6.5 13.75V11.5C6.5 10.6716 7.17157 10 8 10C8.82843 10 9.5 10.6716 9.5 11.5V13.75H6.5Z" fill="#7A4C12" stroke="#784D15" stroke-width="0.5" stroke-linejoin="miter"/>
 
 <!-- the flag on the keep: Flag red.svg's pole and cloth -->
-<path d="M8 3V0.5" stroke="#A66F2B" stroke-linecap="round"/>
-<path d="M8.5 0.5H12.5L11.5 1.75L12.5 3H8.5V0.5Z" fill="url(#cloth)" stroke="url(#clothEdge)" stroke-linejoin="round"/>
+<path d="M8 3.25V0.5" stroke="#A66F2B" stroke-width="0.5" stroke-linecap="round"/>
+<path d="M8.25 0.5H12.5L11.5 1.75L12.5 3H8.25V0.5Z" fill="url(#cloth)" stroke="url(#clothEdge)" stroke-width="0.5" stroke-linejoin="round"/>
 
 <defs>
 <!-- Building.svg's inner glow, faint: a lighter inner edge just inside the outline -->
@@ -35,7 +35,7 @@
 <feFlood flood-opacity="0" result="BackgroundImageFix"/>
 <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
 <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
-<feMorphology radius="2" operator="erode" in="SourceAlpha" result="effect1_innerShadow"/>
+<feMorphology radius="1" operator="erode" in="SourceAlpha" result="effect1_innerShadow"/>
 <feOffset/>
 <feComposite in2="hardAlpha" operator="arithmetic" k2="-1" k3="1"/>
 <feColorMatrix type="matrix" values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.3 0"/>
