@@ -18,6 +18,17 @@ T.test("a reader reads back what was written, in order", function()
 	T.eq(r:Consumed(), #data, "every byte")
 end)
 
+T.test("varints and strings read back", function()
+	local data = Encoding.Varint(0) .. Encoding.Varint(300) .. Encoding.Varint(2 ^ 40) .. Encoding.String("héllo") .. Encoding.String("")
+	local r = BinaryParser.Reader(data)
+	T.eq(r:Varint(), 0, "zero")
+	T.eq(r:Varint(), 300, "300")
+	T.eq(r:Varint(), 2 ^ 40, "past 32 bits")
+	T.eq(r:String(), "héllo", "a string")
+	T.eq(r:String(), "", "an empty one")
+	T.eq(r:Consumed(), #data, "every byte")
+end)
+
 T.test("a subnormal that rounds up becomes the least normal single", function()
 	local least = 2 ^ -126
 	local r = BinaryParser.Reader(Encoding.Float32(least - 2 ^ -151))

@@ -35,6 +35,7 @@ local CATEGORY = {
 	["core/parsers/utf16"] = "structures",
 	["core/parsers/keyvalues"] = "structures",
 	["core/parsers/binary"] = "structures",
+	["core/parsers/cursor"] = "structures",
 	["core/structs/polyline"] = "structures",
 	["core/structs/queue"] = "structures",
 	["core/structs/tree"] = "structures",

@@ -6,7 +6,13 @@
 --   Utf8(code): a Unicode code point as UTF-8
 --   Crc32(s): CRC32 (IEEE 802.3, as zlib and GMod's util.CRC compute it) of
 --     string s, a whole number below 2^32
+--   Varint(n): a whole number n >= 0 as ULEB128, seven bits a byte, low
+--     group first, the high bit set on every byte but the last
+--   String(s): its length as a Varint, then its bytes
+--   Writer() -> w: w:Byte, w:Int16, w:Int32, w:Float32, w:Varint, w:String
+--     append in order; w:Bytes() is all of it, w:Size() its length
 local bit, byte, char, floor, frexp, ldexp = bit, string.byte, string.char, math.floor, math.frexp, math.ldexp
+local concat, error, setmetatable, tostring, type = table.concat, error, setmetatable, tostring, type
 module(...)
 
 local TWO_16, TWO_32 = 65536, 4294967296
@@ -83,3 +89,44 @@ function Crc32(s)
 	end
 	return bit.bnot(crc) % 2 ^ 32
 end
+
+local VARINT_GROUP = 128
+
+function Varint(n)
+	if type(n) ~= "number" or n < 0 or floor(n) ~= n then error("a varint is a whole number >= 0, not " .. tostring(n), 2) end
+	local out = {}
+	repeat
+		local group = n % VARINT_GROUP
+		n = floor(n / VARINT_GROUP)
+		out[#out + 1] = char(n > 0 and group + VARINT_GROUP or group)
+	until n == 0
+	return concat(out)
+end
+
+function String(s)
+	return Varint(#s) .. s
+end
+
+local WriterClass = {}
+WriterClass.__index = WriterClass
+
+function Writer()
+	return setmetatable({
+		parts = {},
+		size = 0,
+	}, WriterClass)
+end
+
+local function Append(w, bytes)
+	w.parts[#w.parts + 1] = bytes
+	w.size = w.size + #bytes
+end
+
+function WriterClass:Byte(n) Append(self, Byte(n)) end
+function WriterClass:Int16(n) Append(self, Int16(n)) end
+function WriterClass:Int32(n) Append(self, Int32(n)) end
+function WriterClass:Float32(x) Append(self, Float32(x)) end
+function WriterClass:Varint(n) Append(self, Varint(n)) end
+function WriterClass:String(s) Append(self, String(s)) end
+function WriterClass:Bytes() return concat(self.parts) end
+function WriterClass:Size() return self.size end

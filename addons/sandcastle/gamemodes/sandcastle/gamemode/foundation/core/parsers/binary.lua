@@ -1,7 +1,8 @@
 -- Little-endian binary read back (foundation.core.encoding writes it):
 -- Reader(data) -> r: r:Byte(), r:Int16(), r:UInt16(), r:Int32(), r:Float32()
--- read the next value; r:Consumed() is how many bytes it has read.
-local byte, floor, huge, ldexp, setmetatable = string.byte, math.floor, math.huge, math.ldexp, setmetatable
+-- r:Varint(), r:String() read the next value; r:Consumed() is how many bytes
+-- it has read.
+local byte, floor, huge, ldexp, setmetatable, sub = string.byte, math.floor, math.huge, math.ldexp, setmetatable, string.sub
 module(...)
 
 local TWO_15, TWO_16, TWO_31, TWO_32 = 32768, 65536, 2147483648, 4294967296
@@ -60,4 +61,23 @@ end
 
 function ReaderClass:Consumed()
 	return self.at - 1
+end
+
+local VARINT_GROUP = 128
+
+function ReaderClass:Varint()
+	local n, scale = 0, 1
+	repeat
+		local b = self:Byte()
+		n = n + (b % VARINT_GROUP) * scale
+		scale = scale * VARINT_GROUP
+	until b < VARINT_GROUP
+	return n
+end
+
+function ReaderClass:String()
+	local length = self:Varint()
+	local s = sub(self.data, self.at, self.at + length - 1)
+	self.at = self.at + length
+	return s
 end
