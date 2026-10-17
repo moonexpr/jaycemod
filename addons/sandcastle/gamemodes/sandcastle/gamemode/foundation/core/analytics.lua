@@ -15,8 +15,10 @@
 -- reads CPU-side wall time at sub-millisecond resolution) and
 -- memory:Kilobytes() (collectgarbage("count")). Recording allocates only a
 -- name's first sample, so a timer can wrap per-tick work.
-local error, ipairs, pairs, setmetatable, unpack = error, ipairs, pairs, setmetatable, unpack
-local ceil, huge, max, min = math.ceil, math.huge, math.max, math.min
+local Ring = require("foundation.core.ring")
+local Stats = require("foundation.core.stats")
+local error, ipairs, pairs, setmetatable = error, ipairs, pairs, setmetatable
+local huge, max, min = math.huge, math.max, math.min
 local format, gmatch = string.format, string.gmatch
 local sort = table.sort
 module(...)
@@ -27,43 +29,6 @@ PERCENTILE = 0.95
 
 local MS_PER_SECOND = 1000
 local PERCENT = 100
-
--- A ring of the last WINDOW values.
-local function Ring()
-	return {
-		values = {},
-		next = 1,
-		size = 0,
-	}
-end
-
-local function Push(ring, value)
-	ring.values[ring.next] = value
-	ring.next = ring.next % WINDOW + 1
-	ring.size = min(ring.size + 1, WINDOW)
-end
-
--- The ring's values, oldest first.
-local function Ordered(ring)
-	local list = {}
-	local start = ring.size < WINDOW and 1 or ring.next
-	for i = 0, ring.size - 1 do list[#list + 1] = ring.values[(start + i - 1) % WINDOW + 1] end
-	return list
-end
-
-local function Mean(list)
-	if #list == 0 then return 0 end
-	local sum = 0
-	for _, v in ipairs(list) do sum = sum + v end
-	return sum / #list
-end
-
-local function Percentile(list, p)
-	if #list == 0 then return 0 end
-	local sorted = { unpack(list) }
-	sort(sorted)
-	return sorted[max(1, ceil(p * #sorted))]
-end
 
 local Analytics = {}
 Analytics.__index = Analytics
@@ -84,10 +49,10 @@ function Analytics:Reset()
 	self.frameSeconds = 0
 	self.frames = 0
 	self.overBudget = 0
-	self.pressure = Ring()
+	self.pressure = Ring.New(WINDOW)
 	self.pressurePeak = 0
-	self.memoryTimes = Ring()
-	self.memoryKb = Ring()
+	self.memoryTimes = Ring.New(WINDOW)
+	self.memoryKb = Ring.New(WINDOW)
 	self.memoryMin = huge
 	self.memoryPeak = 0
 end
@@ -110,7 +75,7 @@ function Analytics:Stop(name, started)
 			min = huge,
 			max = 0,
 			last = 0,
-			samples = Ring(),
+			samples = Ring.New(WINDOW),
 		}
 		self.timers[name] = timer
 	end
@@ -119,7 +84,7 @@ function Analytics:Stop(name, started)
 	timer.min = min(timer.min, seconds)
 	timer.max = max(timer.max, seconds)
 	timer.last = seconds
-	Push(timer.samples, seconds)
+	timer.samples:Push(seconds)
 end
 
 local function Finish(self, name, started, ...)
@@ -142,10 +107,10 @@ function Analytics:Frame(budget)
 	self.frames = self.frames + 1
 	if pressure > 1 then self.overBudget = self.overBudget + 1 end
 	self.pressurePeak = max(self.pressurePeak, pressure)
-	Push(self.pressure, pressure)
+	self.pressure:Push(pressure)
 	local kb = self.memory:Kilobytes()
-	Push(self.memoryTimes, self.clock:Now())
-	Push(self.memoryKb, kb)
+	self.memoryTimes:Push(self.clock:Now())
+	self.memoryKb:Push(kb)
 	self.memoryMin = min(self.memoryMin, kb)
 	self.memoryPeak = max(self.memoryPeak, kb)
 end
@@ -163,13 +128,13 @@ function Analytics:Report()
 			min = t.min,
 			max = t.max,
 			last = t.last,
-			p95 = Percentile(Ordered(t.samples), PERCENTILE),
+			p95 = Stats.Percentile(t.samples:Ordered(), PERCENTILE),
 		}
 	end
 	local counters = {}
 	for name, n in pairs(self.counters) do counters[name] = n end
-	local pressures = Ordered(self.pressure)
-	local times, kbs = Ordered(self.memoryTimes), Ordered(self.memoryKb)
+	local pressures = self.pressure:Ordered()
+	local times, kbs = self.memoryTimes:Ordered(), self.memoryKb:Ordered()
 	local memory = { growthPerSecond = 0 }
 	if #kbs > 0 then
 		memory.kb, memory.min, memory.peak = kbs[#kbs], self.memoryMin, self.memoryPeak
@@ -182,7 +147,7 @@ function Analytics:Report()
 		pressure = {
 			frames = self.frames,
 			last = pressures[#pressures] or 0,
-			mean = Mean(pressures),
+			mean = Stats.Mean(pressures),
 			peak = self.pressurePeak,
 			overBudget = self.overBudget,
 		},
