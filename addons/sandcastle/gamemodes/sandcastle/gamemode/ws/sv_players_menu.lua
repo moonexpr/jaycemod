@@ -7,7 +7,7 @@
 local Reports = WS.require("foundation.reports")
 local Economy = WS.require("foundation.economy")
 local Permissions = WS.require("foundation.permissions")
-local Refusal = WS.require("foundation.core.refusal")
+local Transaction = WS.require("foundation.core.transaction")
 local Sets = WS.require("foundation.core.structs.sets")
 local E = WS.Events
 
@@ -36,7 +36,7 @@ end
 -- else, our bug, is rethrown. Whether fn ran through.
 local function Try(ply, fn)
 	local ok, err = pcall(fn)
-	if not ok then Say(ply, Refusal.Detail(err, REFUSED), true) end
+	if not ok then Say(ply, Transaction.Detail(err, REFUSED), true) end
 	return ok
 end
 

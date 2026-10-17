@@ -2,7 +2,7 @@
 -- and the store's catalog the slots are filled from.
 local T = dofile("tests/harness.lua")
 local Loadout = T.require("foundation.loadout")
-local Refusals = T.require("foundation.core.refusal")
+local Transaction = T.require("foundation.core.transaction")
 
 local function Catalog()
 	return Loadout.NewCatalog({
@@ -272,10 +272,10 @@ end)
 T.test("a refusal reads as it did: its kind, then its detail", function()
 	local catalog = Catalog()
 	local _, err = pcall(catalog.Weapon, catalog, "bfg")
-	T.eq(Refusals.Message(err), "unknown weapon: bfg")
+	T.eq(Transaction.Message(err), "unknown weapon: bfg")
 	local loadout = Loadout.Starting(catalog)
 	_, err = pcall(loadout.Equip, loadout, Loadout.SLOT_MELEE, catalog:Weapon("pistol"))
-	T.eq(Refusals.Message(err), "wrong slot: pistol in slot 3")
+	T.eq(Transaction.Message(err), "wrong slot: pistol in slot 3")
 end)
 
 T.test("a slot holds a weapon by class", function()
@@ -297,7 +297,7 @@ T.test("a catalog rebuilt from the same weapons still matches an old loadout by 
 	local moved = old:Equip(Loadout.SLOT_SUPPORT2, grenade)
 	T.eq(moved:Equipped(Loadout.SLOT_SUPPORT1), nil, "never held twice")
 	T.eq(moved:Equipped(Loadout.SLOT_SUPPORT2).class, "grenade")
-	T.eq(Refusals.Is(select(2, pcall(old.Buy, old, catalog:Weapon("smg"))), Loadout.PLAYER), true, "an old purchase refused")
+	T.eq(Transaction.IsRefusal(select(2, pcall(old.Buy, old, catalog:Weapon("smg"))), Loadout.PLAYER), true, "an old purchase refused")
 end)
 
 T.test("a loadout made before a rerun of the model still has its refusals recognised", function()

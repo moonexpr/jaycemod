@@ -5,14 +5,14 @@
 -- everyone but the target.
 local T = dofile("tests/harness.lua")
 local Reports = T.require("foundation.reports")
-local Refusal = T.require("foundation.core.refusal")
+local Transaction = T.require("foundation.core.transaction")
 
 local CONFIGURED = 3 -- mp_reports_kick_count's default, as the server reads it
 
 local function Refused(kind, fn, ...)
 	local ok, err = pcall(fn, ...)
 	T.eq(ok, false, "refused")
-	T.eq(Refusal.Is(err, Reports.PLAYER), true, "the player's refusal, not our bug")
+	T.eq(Transaction.IsRefusal(err, Reports.PLAYER), true, "the player's refusal, not our bug")
 	T.eq(err.kind, kind)
 end
 
@@ -67,7 +67,7 @@ end)
 T.test("an unknown reason is our bug, not the player's", function()
 	local ok, err = pcall(Reports.File, Reports.New(), "alice", "bob", "rude", 6, CONFIGURED)
 	T.eq(ok, false)
-	T.eq(Refusal.Is(err, Reports.PLAYER), false)
+	T.eq(Transaction.IsRefusal(err, Reports.PLAYER), false)
 end)
 
 T.test("a player who leaves takes their reports, given and received, with them", function()

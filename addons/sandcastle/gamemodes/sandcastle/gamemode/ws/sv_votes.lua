@@ -16,7 +16,7 @@
 local Vote = WS.require("foundation.vote")
 local Rounds = WS.require("foundation.rounds")
 local Permissions = WS.require("foundation.permissions")
-local Refusal = WS.require("foundation.core.refusal")
+local Transaction = WS.require("foundation.core.transaction")
 local E = WS.Events
 
 local TIMER = "ws_vote"
@@ -137,7 +137,7 @@ function Started(vote)
 end
 
 local function Refuse(ply, err)
-	E.Fire("vote_refused", { text = Refusal.Detail(err, Vote.PLAYER) }, ply)
+	E.Fire("vote_refused", { text = Transaction.Detail(err, Vote.PLAYER) }, ply)
 end
 
 E.Listen("vote_call", "ws_votes", function(fields, ply)
@@ -174,7 +174,7 @@ end)
 hook.Add("WSReportsReached", "ws_votes", function(target, reason)
 	local ok, result = pcall(Vote.StartKick, book, target, reason, CurTime(), Facts())
 	if not ok then
-		print("[Sandcastle] reports against " .. target:Nick() .. ": " .. Refusal.Detail(result, Vote.PLAYER))
+		print("[Sandcastle] reports against " .. target:Nick() .. ": " .. Transaction.Detail(result, Vote.PLAYER))
 		return
 	end
 	if result then Started(result) end

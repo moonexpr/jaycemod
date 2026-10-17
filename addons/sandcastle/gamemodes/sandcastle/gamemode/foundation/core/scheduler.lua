@@ -11,6 +11,8 @@
 --                  error is raised here, the task removed first.
 --   CheckYield()   in a task: yields when the slice is spent; whether it did
 --   Yield()        in a task: gives up its turn now; false outside a task
+--   Wait(ready)    in a task: parks it until ready() is true; a run passes
+--                  parked tasks by, and ends once only parked ones are left
 --   Count()        the tasks not yet finished
 local coroutine, error, select, setmetatable, tostring, unpack = coroutine, error, select, setmetatable, tostring, unpack
 local traceback = debug.traceback
@@ -53,6 +55,13 @@ function Scheduler:Yield()
 	return true
 end
 
+function Scheduler:Wait(ready)
+	if not InTask(self) then error("only a running task can wait", 2) end
+	if ready() then return end
+	self.current.waiting = ready
+	coroutine.yield()
+end
+
 function Scheduler:CheckYield()
 	if not InTask(self) or self.clock:Now() < self.deadline then return false end
 	coroutine.yield()
@@ -69,14 +78,22 @@ function Scheduler:Run(seconds)
 	local tasks = self.tasks
 	if tasks:Size() == 0 then return end
 	self.deadline = self.clock:Now() + seconds
+	local parked = 0 -- parked tasks passed by since one last ran
 	repeat
 		local task = tasks:PopFront()
-		self.current = task
-		local ok, err = Resume(task)
-		self.current = nil
-		if not ok then error(traceback(task.co, tostring(err)), 0) end
-		if coroutine.status(task.co) ~= "dead" then tasks:PushBack(task) end
-	until tasks:Size() == 0 or self.clock:Now() >= self.deadline
+		if task.waiting and not task.waiting() then
+			tasks:PushBack(task)
+			parked = parked + 1
+		else
+			task.waiting = nil
+			parked = 0
+			self.current = task
+			local ok, err = Resume(task)
+			self.current = nil
+			if not ok then error(traceback(task.co, tostring(err)), 0) end
+			if coroutine.status(task.co) ~= "dead" then tasks:PushBack(task) end
+		end
+	until tasks:Size() == 0 or parked >= tasks:Size() or self.clock:Now() >= self.deadline
 end
 
 function Scheduler:Count()

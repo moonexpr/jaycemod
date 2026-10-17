@@ -6,7 +6,7 @@
 local T = dofile("tests/harness.lua")
 local Vote = T.require("foundation.vote")
 local PlayMode = T.require("foundation.play_mode")
-local Refusal = T.require("foundation.core.refusal")
+local Transaction = T.require("foundation.core.transaction")
 
 local DURATION, COOLDOWN = 20, 120 -- mp_vote_duration's and mp_vote_cooldown's defaults, as the server reads them
 
@@ -33,7 +33,7 @@ end
 local function Refused(kind, fn, ...)
 	local ok, err = pcall(fn, ...)
 	T.eq(ok, false, "refused")
-	T.eq(Refusal.Is(err, Vote.PLAYER), true, "the player's refusal: " .. tostring(err and err.kind or err))
+	T.eq(Transaction.IsRefusal(err, Vote.PLAYER), true, "the player's refusal: " .. tostring(err and err.kind or err))
 	T.eq(err.kind, kind)
 end
 

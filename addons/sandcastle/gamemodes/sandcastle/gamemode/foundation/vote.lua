@@ -15,7 +15,7 @@
 -- A book is plain data keyed by whatever the controller gives (players), so
 -- a rerun of this module changes the behaviour of the live book too.
 local PlayMode = require("foundation.play_mode")
-local Refusal = require("foundation.core.refusal")
+local Transaction = require("foundation.core.transaction")
 local Sets = require("foundation.core.structs.sets")
 local ceil, error, format, ipairs, pairs, remove, tostring, type = math.ceil, error, string.format, ipairs, pairs, table.remove, tostring, type
 module(...)
@@ -128,14 +128,14 @@ end
 function Call(book, req, now, facts)
 	local kind = req.kind
 	KIND:Check(kind)
-	if kind == KIND_KICK then Refusal.Raise(KICK_BY_REPORTS, "To remove a player, hold Tab, right-click them and report them.") end
-	if book.current then Refusal.Raise(IN_PROGRESS, "A vote is currently in progress.") end
-	if not facts.enabled[kind] then Refusal.Raise(DISABLED, "Server has disabled that issue.") end
-	if NEEDS_ROUNDS[kind] and PlayMode.IsSandbox(facts.mode) then Refusal.Raise(MODE, "This vote needs a game running.") end
-	if kind == KIND_SCRAMBLE and facts.scramblePending then Refusal.Raise(SCRAMBLE_PENDING, "Teams are already set to be scrambled.") end
+	if kind == KIND_KICK then Transaction.Refuse(KICK_BY_REPORTS, "To remove a player, hold Tab, right-click them and report them.") end
+	if book.current then Transaction.Refuse(IN_PROGRESS, "A vote is currently in progress.") end
+	if not facts.enabled[kind] then Transaction.Refuse(DISABLED, "Server has disabled that issue.") end
+	if NEEDS_ROUNDS[kind] and PlayMode.IsSandbox(facts.mode) then Transaction.Refuse(MODE, "This vote needs a game running.") end
+	if kind == KIND_SCRAMBLE and facts.scramblePending then Transaction.Refuse(SCRAMBLE_PENDING, "Teams are already set to be scrambled.") end
 	local last = book.calledAt[req.caller]
 	if last ~= nil and now - last < facts.cooldown then
-		Refusal.Raise(COOLDOWN, format("You cannot call a vote for %d seconds.", ceil(facts.cooldown - (now - last))))
+		Transaction.Refuse(COOLDOWN, format("You cannot call a vote for %d seconds.", ceil(facts.cooldown - (now - last))))
 	end
 	book.calledAt[req.caller] = now
 	return Start(book, kind, req.subject, req.caller, now, facts, nil)
@@ -144,7 +144,7 @@ end
 -- Reports reached the count against target: their kick vote now, or nil
 -- with it queued behind the running vote. facts adds immune (key -> true).
 function StartKick(book, target, reason, now, facts)
-	if facts.immune[target] then Refusal.Raise(IMMUNE, "You may not vote to kick the server admin.") end
+	if facts.immune[target] then Transaction.Refuse(IMMUNE, "You may not vote to kick the server admin.") end
 	if book.current then
 		book.queue[#book.queue + 1] = {
 			target = target,
@@ -195,15 +195,15 @@ end
 -- on a vote of choices.
 function Cast(book, voter, choice)
 	local vote = book.current
-	if not vote then Refusal.Raise(NO_VOTE, "No vote is running.") end
-	if not vote.voters[voter] then Refusal.Raise(NOT_VOTER, "You cannot vote in this vote.") end
-	if vote.choices[voter] ~= nil then Refusal.Raise(ALREADY_VOTED, "You have already voted.") end
+	if not vote then Transaction.Refuse(NO_VOTE, "No vote is running.") end
+	if not vote.voters[voter] then Transaction.Refuse(NOT_VOTER, "You cannot vote in this vote.") end
+	if vote.choices[voter] ~= nil then Transaction.Refuse(ALREADY_VOTED, "You have already voted.") end
 	if vote.options then
-		if type(choice) ~= "number" or vote.options[choice] == nil then Refusal.Raise(NOT_A_CHOICE, "That is not one of the choices.") end
+		if type(choice) ~= "number" or vote.options[choice] == nil then Transaction.Refuse(NOT_A_CHOICE, "That is not one of the choices.") end
 		vote.choices[voter] = choice
 		return
 	end
-	if type(choice) ~= "boolean" then Refusal.Raise(NOT_A_CHOICE, "This vote is yes or no.") end
+	if type(choice) ~= "boolean" then Transaction.Refuse(NOT_A_CHOICE, "This vote is yes or no.") end
 	vote.choices[voter] = choice
 end
 

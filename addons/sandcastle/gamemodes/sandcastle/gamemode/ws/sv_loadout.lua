@@ -7,7 +7,7 @@
 -- equipped weapons are what a player spawns with (GM:PlayerLoadout, init.lua).
 local Economy = WS.require("foundation.economy")
 local Loadout = WS.require("foundation.loadout")
-local Refusal = WS.require("foundation.core.refusal")
+local Transaction = WS.require("foundation.core.transaction")
 local Sets = WS.require("foundation.core.structs.sets")
 local E = WS.Events
 
@@ -33,13 +33,13 @@ end
 
 -- The refusals that are the player's mistake, the loadout's and the
 -- economy's; they go back to the player, and anything else, our bug, is
--- rethrown (Refusal.Explain).
+-- rethrown (Transaction.Explain).
 local REFUSED = Sets.Union(Loadout.PLAYER, Economy.PLAYER)
 
 local function Change(ply, change)
 	local ok, result = pcall(change, Of(ply))
 	if not ok then
-		E.Fire("loadout_refused", { reason = Refusal.Explain(result, REFUSED) }, ply)
+		E.Fire("loadout_refused", { reason = Transaction.Explain(result, REFUSED) }, ply)
 		return
 	end
 	loadouts[ply] = result

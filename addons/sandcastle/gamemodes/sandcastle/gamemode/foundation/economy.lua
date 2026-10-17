@@ -12,7 +12,7 @@
 local error, floor, format, reverse, tostring, type =
 	error, math.floor, string.format, string.reverse, tostring, type
 local gsub = string.gsub
-local Refusal = require("foundation.core.refusal")
+local Transaction = require("foundation.core.transaction")
 module(...)
 
 STARTING_MONEY = 2000
@@ -93,7 +93,7 @@ end
 
 function Spend(ledger, key, amount)
 	local held, wanted = Held(ledger, key), Amount(amount)
-	if wanted > held then Refusal.Raise(INSUFFICIENT_FUNDS, format("%d wanted, %d held", wanted, held)) end
+	if wanted > held then Transaction.Refuse(INSUFFICIENT_FUNDS, format("%d wanted, %d held", wanted, held)) end
 	ledger.balances[key] = held - wanted
 end
 
@@ -105,7 +105,7 @@ function SpendWithCredit(ledger, key, amount, floorAt)
 	end
 	local held, wanted = Held(ledger, key), Amount(amount)
 	if not Affords(held, wanted, floorAt) then
-		Refusal.Raise(INSUFFICIENT_FUNDS, "You have only " .. Format(held) .. ".")
+		Transaction.Refuse(INSUFFICIENT_FUNDS, "You have only " .. Format(held) .. ".")
 	end
 	ledger.balances[key] = held - wanted
 end
@@ -113,11 +113,11 @@ end
 -- Moves amount from one account to another, all of it or none: a player
 -- giving money to a teammate.
 function Transfer(ledger, from, to, amount)
-	if from == to then Refusal.Raise(SELF_TRANSFER, "You cannot give money to yourself.") end
-	if Amount(amount) == 0 then Refusal.Raise(NO_AMOUNT, "Give at least $1.") end
+	if from == to then Transaction.Refuse(SELF_TRANSFER, "You cannot give money to yourself.") end
+	if Amount(amount) == 0 then Transaction.Refuse(NO_AMOUNT, "Give at least $1.") end
 	Held(ledger, to)
 	local held = Held(ledger, from)
-	if amount > held then Refusal.Raise(INSUFFICIENT_FUNDS, "You have only " .. Format(held) .. ".") end
+	if amount > held then Transaction.Refuse(INSUFFICIENT_FUNDS, "You have only " .. Format(held) .. ".") end
 	Spend(ledger, from, amount)
 	Earn(ledger, to, amount)
 end

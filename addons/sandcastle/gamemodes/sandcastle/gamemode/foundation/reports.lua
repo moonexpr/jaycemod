@@ -8,7 +8,7 @@
 --
 -- A book is plain data keyed by whatever the controller gives (players), so
 -- a rerun of this module changes the behaviour of the live book too.
-local Refusal = require("foundation.core.refusal")
+local Transaction = require("foundation.core.transaction")
 local Sets = require("foundation.core.structs.sets")
 local min, pairs = math.min, pairs
 module(...)
@@ -67,7 +67,7 @@ end
 -- when this report reaches the count (and spends the reports), else nil.
 function File(book, reporter, target, reason, playerCount, configured)
 	REASON:Check(reason)
-	if reporter == target then Refusal.Raise(SELF_REPORT, "You cannot report yourself.") end
+	if reporter == target then Transaction.Refuse(SELF_REPORT, "You cannot report yourself.") end
 	local entry = book.against[target]
 	if entry == nil then
 		entry = {
@@ -76,7 +76,7 @@ function File(book, reporter, target, reason, playerCount, configured)
 		}
 		book.against[target] = entry
 	end
-	if entry.by[reporter] then Refusal.Raise(ALREADY_REPORTED, "You have already reported this player.") end
+	if entry.by[reporter] then Transaction.Refuse(ALREADY_REPORTED, "You have already reported this player.") end
 	entry.filed = entry.filed + 1
 	entry.by[reporter] = {
 		reason = reason,

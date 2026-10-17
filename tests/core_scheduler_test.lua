@@ -91,6 +91,42 @@ T.test("a task may give up its turn before the slice is spent", function()
 	T.eq(table.concat(order, " "), "a1 b a2", "b ran in a's gap, a finished in the same run")
 end)
 
+T.test("a waiting task is parked until its condition holds, without spinning the slice", function()
+	local clock = Clock(0)
+	local scheduler = Scheduler.New(clock)
+	local ready, log = false, {}
+	scheduler:Spawn(function()
+		scheduler:Wait(function() return ready end)
+		log[#log + 1] = "woke"
+	end)
+	local calls = 0
+	local counting = { Now = function() calls = calls + 1; return 0 end }
+	scheduler.clock = counting
+	scheduler:Run(1)
+	scheduler:Run(1)
+	T.eq(#log, 0, "still parked")
+	T.eq(calls < 10, true, "a run with only parked tasks returns at once")
+	ready = true
+	scheduler:Run(1)
+	T.eq(log[1], "woke", "woken once its condition held")
+	T.eq(scheduler:Count(), 0, "and done")
+end)
+
+T.test("a parked task does not keep the others from running", function()
+	local scheduler = Scheduler.New(Clock(0))
+	local log = {}
+	scheduler:Spawn(function() scheduler:Wait(function() return false end) end)
+	scheduler:Spawn(function() log[#log + 1] = "ran" end)
+	scheduler:Run(1)
+	T.eq(log[1], "ran", "the second ran")
+	T.eq(scheduler:Count(), 1, "the parked one waits on")
+end)
+
+T.test("waiting outside a task is our bug", function()
+	local scheduler = Scheduler.New(Clock(0))
+	T.eq(pcall(scheduler.Wait, scheduler, function() return true end), false, "refused")
+end)
+
 T.test("outside a task, checks and yields do nothing", function()
 	local scheduler = Scheduler.New(Clock(0))
 	T.eq(scheduler:CheckYield(), false, "check")

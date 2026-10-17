@@ -7,7 +7,7 @@ local T = dofile("tests/harness.lua")
 local Reports = T.require("foundation.reports")
 local Economy = T.require("foundation.economy")
 local Permissions = T.require("foundation.permissions")
-local Refusal = T.require("foundation.core.refusal")
+local Transaction = T.require("foundation.core.transaction")
 
 local function Player(name, held)
 	local p = {
@@ -41,7 +41,7 @@ local function Load(players, configured)
 		},
 		Can = function(ply, name) return ply.held[name] == true end,
 		TransferMoney = function(from, to, amount)
-			if amount > 100 then Refusal.Raise(Economy.INSUFFICIENT_FUNDS, "too much") end
+			if amount > 100 then Transaction.Refuse(Economy.INSUFFICIENT_FUNDS, "too much") end
 			s.moved[#s.moved + 1] = { from = from, to = to, amount = amount }
 		end,
 		GrantMoney = function(ent, amount) s.granted[#s.granted + 1] = { ent = ent, amount = amount } end,

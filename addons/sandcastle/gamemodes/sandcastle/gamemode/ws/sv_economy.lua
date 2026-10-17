@@ -3,9 +3,9 @@
 -- $2,000 and closed when its entity goes. Balances reach clients as the NW2
 -- int ws_money (the scoreboard's Money column). Everything else earns
 -- and spends through WS.EarnMoney and WS.SpendMoney, which raise a
--- refusal (Economy.INSUFFICIENT_FUNDS, foundation.core.refusal) rather than overdraw.
+-- refusal (Economy.INSUFFICIENT_FUNDS, foundation.core.transaction) rather than overdraw.
 local Economy = WS.require("foundation.economy")
-local Refusal = WS.require("foundation.core.refusal")
+local Transaction = WS.require("foundation.core.transaction")
 
 local ledger = Economy.New()
 
@@ -37,7 +37,7 @@ function WS.EarnMoney(ent, amount)
 end
 
 local function Open()
-	if not WS.EconomyEnabled() then Refusal.Raise(Economy.ECONOMY_OFF, "Money is switched off on this server.") end
+	if not WS.EconomyEnabled() then Transaction.Refuse(Economy.ECONOMY_OFF, "Money is switched off on this server.") end
 end
 
 -- A purchase: on credit where it is allowed (WS.CreditFloor).
