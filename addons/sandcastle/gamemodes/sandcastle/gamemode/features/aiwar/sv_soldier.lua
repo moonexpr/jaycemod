@@ -2,7 +2,7 @@
 local Map = ...
 local TFBot = WS.require("foundation.npc.path.tfbot")
 local HL2Path = WS.require("foundation.npc.path.hl2")
-local Zone = WS.require("foundation.aiwar.zone")
+local Random = WS.require("foundation.core.random")
 local WALK_MINS, WALK_MAXS, WALK_LIFT, WALK_MAX_RISE = Map.WALK_MINS, Map.WALK_MAXS, Map.WALK_LIFT, Map.WALK_MAX_RISE
 local Point, ToVector, Masks, IsDoor = Map.Point, Map.ToVector, Map.Masks, Map.IsDoor
 local OnFloor = Map.OnFloor
@@ -325,7 +325,7 @@ function Soldier:WanderSpot()
 	local zone = self.controller:SetupZone(self.team)
 	if zone then
 		for _ = 1, WANDER_TRIES do
-			local area = Zone.PickWeighted(zone, AreaSize, math.random())
+			local area = Random.PickWeighted(zone, AreaSize, math.random())
 			if not self.controller:UnderCart(area) then return Point(area:GetRandomPoint()) end
 		end
 	end

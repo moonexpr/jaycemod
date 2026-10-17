@@ -41,13 +41,4 @@ T.test("several spawns flood together, each area once", function()
 	T.eq(Sorted(zone), "1,2,3,4", "no repeats")
 end)
 
-T.test("areas are picked with odds by their size", function()
-	local items = { { id = 1, w = 1 }, { id = 2, w = 3 } }
-	local function W(item) return item.w end
-	T.eq(Zone.PickWeighted(items, W, 0).id, 1, "the start of the range")
-	T.eq(Zone.PickWeighted(items, W, 0.2).id, 1, "within the first quarter")
-	T.eq(Zone.PickWeighted(items, W, 0.3).id, 2, "past it")
-	T.eq(Zone.PickWeighted(items, W, 0.999).id, 2, "the end")
-end)
-
 T.finish()

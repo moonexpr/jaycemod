@@ -28,6 +28,7 @@ local CATEGORY = {
 	["core/lease"] = "structures",
 	["core/grid"] = "structures",
 	["core/graph"] = "structures",
+	["core/random"] = "structures",
 	["core/geometry"] = "structures",
 	["core/refusal"] = "structures",
 	["core/sets"] = "structures",
