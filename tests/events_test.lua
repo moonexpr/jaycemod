@@ -1,6 +1,6 @@
 local T = dofile("tests/harness.lua")
 local Events = T.require("foundation.events")
-local Crc32 = T.require("foundation.core.crc32")
+local Encoding = T.require("foundation.core.encoding")
 
 -- A fake net buffer with GMod's net.* write and read functions, called with
 -- a dot as the adapter calls net's. Writes queue up; reads take them in
@@ -97,7 +97,7 @@ T.test("an event's id is its name's CRC32 cut to ID_BITS, the same in any regist
 	DefineJoin(a)
 	DefineJoin(b)
 	DefineCapture(b)
-	local id = Crc32.Of("teamplay_point_captured") % 2 ^ Events.ID_BITS
+	local id = Encoding.Crc32("teamplay_point_captured") % 2 ^ Events.ID_BITS
 	T.eq(a:IdOf("teamplay_point_captured"), id, "derived from the name")
 	T.eq(b:IdOf("teamplay_point_captured"), id, "not from the order")
 end)
@@ -467,7 +467,7 @@ T.test("no two event names defined anywhere in the addon share an id", function(
 	files:close()
 	local count = 0
 	for name in pairs(names) do
-		local id = Crc32.Of(name) % 2 ^ Events.ID_BITS
+		local id = Encoding.Crc32(name) % 2 ^ Events.ID_BITS
 		if byId[id] then error(string.format("%s and %s share id %d", byId[id], name, id)) end
 		byId[id] = name
 		count = count + 1

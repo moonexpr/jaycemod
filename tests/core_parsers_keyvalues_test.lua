@@ -1,6 +1,6 @@
--- foundation.core.keyvalues: Valve's KeyValues text, read pair by pair.
+-- foundation.core.parsers.keyvalues: Valve's KeyValues text, read pair by pair.
 local T = dofile("tests/harness.lua")
-local KeyValues = T.require("foundation.core.keyvalues")
+local KeyValues = T.require("foundation.core.parsers.keyvalues")
 
 local function Pairs(text)
 	local out = {}

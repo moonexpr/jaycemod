@@ -9,8 +9,8 @@
 -- span lines. Parse reads one into a table, token name (lower case) to its
 -- UTF-8 text; Lookup finds a token in the player's language, then in
 -- English. FileFor maps GMod's language (gmod_language) to TF2's file.
-local KeyValues = require("foundation.core.keyvalues")
-local Utf16 = require("foundation.core.utf16")
+local KeyValues = require("foundation.core.parsers.keyvalues")
+local Utf16 = require("foundation.core.parsers.utf16")
 local lower, sub = string.lower, string.sub
 module(...)
 

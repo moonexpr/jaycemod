@@ -1,6 +1,6 @@
--- foundation.core.utf16: UTF-16LE text as UTF-8.
+-- foundation.core.parsers.utf16: UTF-16LE text as UTF-8.
 local T = dofile("tests/harness.lua")
-local Utf16 = T.require("foundation.core.utf16")
+local Utf16 = T.require("foundation.core.parsers.utf16")
 
 -- UTF-16LE bytes of the given code units.
 local function Le(...)

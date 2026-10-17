@@ -1,21 +1,12 @@
 -- UTF-16LE text, as Valve's resource files store it, decoded to UTF-8:
 -- Decode(raw) drops the byte-order mark, joins surrogate pairs, and ignores
 -- a trailing odd byte.
-local byte, char, concat, floor = string.byte, string.char, table.concat, math.floor
+local Encoding = require("foundation.core.encoding")
+local byte, char, concat = string.byte, string.char, table.concat
 module(...)
 
 local BOM = 0xFEFF
 local HIGH_SURROGATE, LOW_SURROGATE, SURROGATE_END = 0xD800, 0xDC00, 0xE000
-
-local function Utf8(code)
-	if code < 0x80 then return char(code) end
-	if code < 0x800 then return char(0xC0 + floor(code / 0x40), 0x80 + code % 0x40) end
-	if code < 0x10000 then
-		return char(0xE0 + floor(code / 0x1000), 0x80 + floor(code / 0x40) % 0x40, 0x80 + code % 0x40)
-	end
-	return char(0xF0 + floor(code / 0x40000), 0x80 + floor(code / 0x1000) % 0x40,
-		0x80 + floor(code / 0x40) % 0x40, 0x80 + code % 0x40)
-end
 
 -- The file's text as UTF-8, its byte-order mark dropped.
 function Decode(raw)
@@ -34,7 +25,7 @@ function Decode(raw)
 		end
 		if unit ~= BOM then
 			n = n + 1
-			out[n] = unit < 0x80 and char(unit) or Utf8(unit)
+			out[n] = unit < 0x80 and char(unit) or Encoding.Utf8(unit)
 		end
 	end
 	return concat(out)
