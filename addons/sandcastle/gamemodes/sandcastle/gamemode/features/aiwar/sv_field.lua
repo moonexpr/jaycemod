@@ -2,7 +2,8 @@
 local Controller, Map, WATCH_INTERVAL = ...
 local AiWar = WS.require("foundation.aiwar")
 local Teams = WS.require("foundation.teams")
-local Track = WS.require("foundation.aiwar.track")
+local Track = WS.require("foundation.core.polyline")
+local Geometry = WS.require("foundation.core.geometry")
 local TFBot = WS.require("foundation.npc.path.tfbot")
 local HL2Path = WS.require("foundation.npc.path.hl2")
 local Path = WS.require("foundation.npc.path")
@@ -269,7 +270,7 @@ function Controller:UpdateLanes(field, now)
 		local plan = self.lanePlans[team]
 		local stale = plan and not plan.planning and BlockersStale(plan, npcs, now)
 		if front and not (plan and plan.planning)
-			and (stale or (now >= (plan and plan.retryAt or 0) and (not plan or Track.Distance(front, plan.to) > LANE_REPLAN))) then
+			and (stale or (now >= (plan and plan.retryAt or 0) and (not plan or Geometry.Distance(front, plan.to) > LANE_REPLAN))) then
 			self:PlanLanes(team, front, field, now)
 		end
 		if not front then self.laneSets[team] = nil end

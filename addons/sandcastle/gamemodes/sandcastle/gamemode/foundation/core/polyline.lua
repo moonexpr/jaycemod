@@ -1,14 +1,13 @@
--- A cart's path as geometry: the path_track chain a team_train_watcher
--- follows, as points { x, y, z }, measured along its length the way the
--- watcher measures the cart's progress. The orders pick their goals on it.
+-- A polyline: a path of points { x, y, z }, measured along its length.
+--   New(points), line:Length(), line:Leg(d) -> the leg holding distance d
+--   and how far along it, line:PointAt(d), line:Offset(d, lateral),
+--   line:DistanceOf(p) -> how far along the point nearest p lies
 local setmetatable, sqrt = setmetatable, math.sqrt
-local Geometry = require("foundation.core.geometry")
+local Distance = require("foundation.core.geometry").Distance
 module(...)
 
-Distance = Geometry.Distance
-
-local Track = {}
-Track.__index = Track
+local Polyline = {}
+Polyline.__index = Polyline
 
 function New(points)
 	local at, total = { 0 }, 0
@@ -16,15 +15,15 @@ function New(points)
 		total = total + Distance(points[i - 1], points[i])
 		at[i] = total
 	end
-	return setmetatable({ points = points, at = at, total = total }, Track)
+	return setmetatable({ points = points, at = at, total = total }, Polyline)
 end
 
-function Track:Length()
+function Polyline:Length()
 	return self.total
 end
 
--- The leg holding distance d (clamped to the track), and how far along it.
-function Track:Leg(d)
+-- The leg holding distance d (clamped to the line), and how far along it.
+function Polyline:Leg(d)
 	local points, at = self.points, self.at
 	if d <= 0 or #points == 1 then return 1, 0 end
 	for i = 2, #points do
@@ -36,7 +35,7 @@ function Track:Leg(d)
 	return #points - 1, 1
 end
 
-function Track:PointAt(d)
+function Polyline:PointAt(d)
 	local i, t = self:Leg(d)
 	local a, b = self.points[i], self.points[i + 1] or self.points[i]
 	return { x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t, z = a.z + (b.z - a.z) * t }
@@ -44,7 +43,7 @@ end
 
 -- The point at d moved `lateral` units sideways, left of the direction of
 -- travel for a positive lateral.
-function Track:Offset(d, lateral)
+function Polyline:Offset(d, lateral)
 	local point = self:PointAt(d)
 	local i = self:Leg(d)
 	local a, b = self.points[i], self.points[i + 1] or self.points[i]
@@ -56,9 +55,9 @@ function Track:Offset(d, lateral)
 	return point
 end
 
--- How far along the track the point nearest p lies: p projected onto the
+-- How far along the line the point nearest p lies: p projected onto the
 -- nearest leg.
-function Track:DistanceOf(p)
+function Polyline:DistanceOf(p)
 	local points, at = self.points, self.at
 	if #points == 1 then return 0 end
 	local best, bestSq = 0, nil

@@ -65,7 +65,7 @@ local ipairs, pairs = ipairs, pairs
 local N = require("foundation.npc")
 local AiWar = require("foundation.aiwar")
 local Teams = require("foundation.teams")
-local Track = require("foundation.aiwar.track")
+local Track = require("foundation.core.polyline")
 local Tactics = require("foundation.wartactics")
 local Geometry = require("foundation.core.geometry")
 local Squad = require("foundation.aiwar.squad")
@@ -184,7 +184,7 @@ WALK, RUN, PANIC = "walk", "run", "panic"
 RUSH = "rush"
 RETRY_WAIT = 1 -- after a failed trip, before the next
 
-local Distance = Track.Distance
+local Distance = Geometry.Distance
 
 -- Slot 0 on the line, then alternately left and right, out to LATERAL_STEPS.
 function Lateral(k)
