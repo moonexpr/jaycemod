@@ -12,7 +12,12 @@
 --                      ignoring case, or nil
 --   set:Members()      the members in order, a fresh list
 --   set:Name()         what errors call it
+--
+-- Plain sets are value -> true tables. Of(list), Copy(set),
+-- Union(a, b, ...), Intersect(a, b) and Subtract(a, b) make new ones;
+-- Count(set) and Sorted(set) (members in sort order) read them.
 local error, ipairs, setmetatable, tostring, type = error, ipairs, setmetatable, tostring, type
+local pairs, select, sort = pairs, select, table.sort
 local sub, upper = string.sub, string.upper
 module(...)
 
@@ -68,4 +73,55 @@ end
 
 function NamedSet:Name()
 	return self.name
+end
+
+-- Plain sets -------------------------------------------------------------------
+
+function Of(list)
+	local set = {}
+	for _, value in ipairs(list) do set[value] = true end
+	return set
+end
+
+function Copy(set)
+	local copy = {}
+	for value in pairs(set) do copy[value] = true end
+	return copy
+end
+
+function Union(...)
+	local union = {}
+	for i = 1, select("#", ...) do
+		for value in pairs((select(i, ...))) do union[value] = true end
+	end
+	return union
+end
+
+function Intersect(a, b)
+	local both = {}
+	for value in pairs(a) do
+		if b[value] then both[value] = true end
+	end
+	return both
+end
+
+function Subtract(a, b)
+	local rest = {}
+	for value in pairs(a) do
+		if not b[value] then rest[value] = true end
+	end
+	return rest
+end
+
+function Count(set)
+	local n = 0
+	for _ in pairs(set) do n = n + 1 end
+	return n
+end
+
+function Sorted(set)
+	local list = {}
+	for value in pairs(set) do list[#list + 1] = value end
+	sort(list)
+	return list
 end

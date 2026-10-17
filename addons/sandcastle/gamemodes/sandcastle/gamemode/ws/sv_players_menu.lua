@@ -8,13 +8,12 @@ local Reports = WS.require("foundation.reports")
 local Economy = WS.require("foundation.economy")
 local Permissions = WS.require("foundation.permissions")
 local Refusal = WS.require("foundation.core.refusal")
+local Sets = WS.require("foundation.core.structs.sets")
 local E = WS.Events
 
 local book = Reports.New()
 
-local REFUSED = {}
-for kind in pairs(Reports.PLAYER) do REFUSED[kind] = true end
-for kind in pairs(Economy.PLAYER) do REFUSED[kind] = true end
+local REFUSED = Sets.Union(Reports.PLAYER, Economy.PLAYER)
 
 local function Say(ply, text, refused)
 	E.Fire("players_menu_said", {

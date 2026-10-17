@@ -55,4 +55,33 @@ T.test("a token names the first member it is a prefix of, ignoring case", functi
 	T.eq(layers:Match(""), nil, "an empty token names nothing")
 end)
 
+-- Plain sets: value -> true tables.
+
+local function Listed(set)
+	return table.concat(Sets.Sorted(set), " ")
+end
+
+T.test("a plain set from a list, each value once", function()
+	T.eq(Listed(Sets.Of({ "b", "a", "b" })), "a b", "a and b")
+	T.eq(Sets.Count(Sets.Of({ "b", "a", "b" })), 2, "two")
+	T.eq(Sets.Count({}), 0, "empty")
+end)
+
+T.test("union, intersection and difference make new sets", function()
+	local a, b = Sets.Of({ 1, 2, 3 }), Sets.Of({ 3, 4 })
+	T.eq(Listed(Sets.Union(a, b)), "1 2 3 4", "union")
+	T.eq(Listed(Sets.Union(a, b, Sets.Of({ 9 }))), "1 2 3 4 9", "union of three")
+	T.eq(Listed(Sets.Intersect(a, b)), "3", "intersection")
+	T.eq(Listed(Sets.Subtract(a, b)), "1 2", "difference")
+	T.eq(Listed(a), "1 2 3", "the operands are untouched")
+end)
+
+T.test("a copy is a new set with the same members", function()
+	local a = Sets.Of({ "x" })
+	local copy = Sets.Copy(a)
+	copy.y = true
+	T.eq(Listed(a), "x", "the original")
+	T.eq(Listed(copy), "x y", "the copy")
+end)
+
 T.finish()
