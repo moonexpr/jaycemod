@@ -2,7 +2,7 @@
 -- starting amount; earning adds to it and spending can never overdraw it.
 local T = dofile("tests/harness.lua")
 local Economy = T.require("foundation.economy")
-local Refusal = T.require("foundation.refusal")
+local Refusal = T.require("foundation.core.refusal")
 
 T.test("everyone starts with the starting money", function()
 	T.defined(Economy.STARTING_MONEY, "Economy.STARTING_MONEY")

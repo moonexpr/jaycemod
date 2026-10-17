@@ -7,7 +7,7 @@
 local Reports = WS.require("foundation.reports")
 local Economy = WS.require("foundation.economy")
 local Permissions = WS.require("foundation.permissions")
-local Refusal = WS.require("foundation.refusal")
+local Refusal = WS.require("foundation.core.refusal")
 local E = WS.Events
 
 local book = Reports.New()

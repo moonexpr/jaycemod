@@ -14,7 +14,7 @@ local format, concat = string.format, table.concat
 local Tactics = require("foundation.aiwar.tactics")
 local Squad = require("foundation.aiwar.squad")
 local Orders = require("foundation.aiwar.orders")
-local Distance = require("foundation.geometry").Distance
+local Distance = require("foundation.core.geometry").Distance
 module(...)
 
 local LEFT = 1 -- Tactics.FlankSide's side to the left

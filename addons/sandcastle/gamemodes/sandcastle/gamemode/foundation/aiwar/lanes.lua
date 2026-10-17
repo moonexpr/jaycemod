@@ -20,7 +20,7 @@ local huge, sqrt = math.huge, math.sqrt
 local sort = table.sort
 local HL2Path = require("foundation.npc.path.hl2")
 local Path = require("foundation.npc.path")
-local Distance = require("foundation.geometry").Distance
+local Distance = require("foundation.core.geometry").Distance
 module(...)
 
 LANE_PENALTY = 8

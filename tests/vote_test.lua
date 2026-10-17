@@ -6,7 +6,7 @@
 local T = dofile("tests/harness.lua")
 local Vote = T.require("foundation.vote")
 local PlayMode = T.require("foundation.play_mode")
-local Refusal = T.require("foundation.refusal")
+local Refusal = T.require("foundation.core.refusal")
 
 local DURATION, COOLDOWN = 20, 120 -- mp_vote_duration's and mp_vote_cooldown's defaults, as the server reads them
 

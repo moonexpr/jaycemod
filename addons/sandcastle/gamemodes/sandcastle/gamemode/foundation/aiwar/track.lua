@@ -2,7 +2,7 @@
 -- follows, as points { x, y, z }, measured along its length the way the
 -- watcher measures the cart's progress. The orders pick their goals on it.
 local setmetatable, sqrt = setmetatable, math.sqrt
-local Geometry = require("foundation.geometry")
+local Geometry = require("foundation.core.geometry")
 module(...)
 
 Distance = Geometry.Distance

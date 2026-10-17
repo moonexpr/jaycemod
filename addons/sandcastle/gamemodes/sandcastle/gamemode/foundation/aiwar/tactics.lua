@@ -20,7 +20,7 @@
 --
 -- Positions are plain { x, y, z } tables.
 local ipairs, math, sqrt = ipairs, math, math.sqrt
-local Distance = require("foundation.geometry").Distance
+local Distance = require("foundation.core.geometry").Distance
 module(...)
 
 CONTACT_MEMORY = 8

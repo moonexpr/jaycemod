@@ -18,11 +18,11 @@ local RANK = {
 
 -- The modules that stay, by category.
 local CATEGORY = {
-	["npc/route"] = "structures",
-	["consolecfg"] = "structures",
+	["core/pathfinder"] = "structures",
+	["core/consolecfg"] = "structures",
 	["core/analytics"] = "structures",
-	["geometry"] = "structures",
-	["refusal"] = "structures",
+	["core/geometry"] = "structures",
+	["core/refusal"] = "structures",
 
 	["core/cfsm"] = "formalisms",
 	["core/hfsm"] = "formalisms",

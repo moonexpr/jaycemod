@@ -5,7 +5,7 @@
 -- everyone but the target.
 local T = dofile("tests/harness.lua")
 local Reports = T.require("foundation.reports")
-local Refusal = T.require("foundation.refusal")
+local Refusal = T.require("foundation.core.refusal")
 
 local CONFIGURED = 3 -- mp_reports_kick_count's default, as the server reads it
 

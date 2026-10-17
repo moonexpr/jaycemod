@@ -13,7 +13,7 @@ local Explore = require("foundation.aiwar.explore")
 local Orders = require("foundation.aiwar.orders")
 local Teams = require("foundation.teams")
 local Base = require("foundation.aiwar.scenario")
-local Distance = require("foundation.geometry").Distance
+local Distance = require("foundation.core.geometry").Distance
 module(...)
 
 MODE = "freeform"

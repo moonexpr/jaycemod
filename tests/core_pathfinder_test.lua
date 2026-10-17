@@ -1,8 +1,8 @@
--- foundation.npc.route: NavAreaBuildPath (nav_pathfind.h) over any graph
+-- foundation.core.pathfinder: NavAreaBuildPath (nav_pathfind.h) over any graph
 -- the caller describes, run here on small grids whose costs the tests
 -- control, whole or a few expansions at a time.
 local T = dofile("tests/harness.lua")
-local Route = T.require("foundation.npc.route")
+local Route = T.require("foundation.core.pathfinder")
 local Path = T.require("foundation.npc.path")
 
 -- A graph of named nodes at 2D positions, with the given edges both ways.

@@ -8,7 +8,7 @@
 --
 -- A book is plain data keyed by whatever the controller gives (players), so
 -- a rerun of this module changes the behaviour of the live book too.
-local Refusal = require("foundation.refusal")
+local Refusal = require("foundation.core.refusal")
 local error, min, pairs, tostring = error, math.min, pairs, tostring
 module(...)
 

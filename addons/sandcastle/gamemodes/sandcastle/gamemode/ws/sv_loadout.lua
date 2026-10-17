@@ -7,7 +7,7 @@
 -- equipped weapons are what a player spawns with (GM:PlayerLoadout, init.lua).
 local Economy = WS.require("foundation.economy")
 local Loadout = WS.require("foundation.loadout")
-local Refusal = WS.require("foundation.refusal")
+local Refusal = WS.require("foundation.core.refusal")
 local E = WS.Events
 
 local CATALOG = WS.LoadoutCatalog

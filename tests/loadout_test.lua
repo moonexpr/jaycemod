@@ -2,7 +2,7 @@
 -- and the store's catalog the slots are filled from.
 local T = dofile("tests/harness.lua")
 local Loadout = T.require("foundation.loadout")
-local Refusals = T.require("foundation.refusal")
+local Refusals = T.require("foundation.core.refusal")
 
 local function Catalog()
 	return Loadout.NewCatalog({

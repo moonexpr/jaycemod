@@ -1,8 +1,8 @@
--- foundation.refusal: the one shape of a refusal, a request the domain
+-- foundation.core.refusal: the one shape of a refusal, a request the domain
 -- declines (the caller's mistake), told apart from our own bugs by a marker
 -- only refusal.lua sets, compared by value so it survives any reload.
 local T = dofile("tests/harness.lua")
-local Refusal = T.require("foundation.refusal")
+local Refusal = T.require("foundation.core.refusal")
 
 local KIND = "unknown weapon"
 local OTHER_KIND = "bad catalog"
@@ -69,8 +69,8 @@ end)
 
 T.test("a refusal raised before a rerun of refusal.lua is recognised by the new code", function()
 	local err = Raised(Refusal.Raise, KIND, "bfg")
-	package.loaded["foundation.refusal"] = nil
-	local Rerun = T.require("foundation.refusal")
+	package.loaded["foundation.core.refusal"] = nil
+	local Rerun = T.require("foundation.core.refusal")
 	T.eq(Rerun.Is(err, KINDS), true)
 end)
 

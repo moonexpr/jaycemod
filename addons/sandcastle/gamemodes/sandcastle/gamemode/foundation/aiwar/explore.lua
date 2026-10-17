@@ -20,7 +20,7 @@ local ipairs, pairs, setmetatable = ipairs, pairs, setmetatable
 local floor = math.floor
 local Squad = require("foundation.aiwar.squad")
 local Tactics = require("foundation.aiwar.tactics")
-local Distance = require("foundation.geometry").Distance
+local Distance = require("foundation.core.geometry").Distance
 module(...)
 
 -- A waypoint per cell this wide, a waypoint counts as visited by a soldier

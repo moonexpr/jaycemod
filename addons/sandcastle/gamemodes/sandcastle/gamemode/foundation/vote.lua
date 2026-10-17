@@ -15,7 +15,7 @@
 -- A book is plain data keyed by whatever the controller gives (players), so
 -- a rerun of this module changes the behaviour of the live book too.
 local PlayMode = require("foundation.play_mode")
-local Refusal = require("foundation.refusal")
+local Refusal = require("foundation.core.refusal")
 local ceil, error, format, ipairs, pairs, remove, tostring, type = math.ceil, error, string.format, ipairs, pairs, table.remove, tostring, type
 module(...)
 
