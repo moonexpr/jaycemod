@@ -7,6 +7,7 @@
 --
 -- Areas are ids; the caller answers for the nav mesh.
 local ipairs = ipairs
+local Graph = require("foundation.core.graph")
 module(...)
 
 -- starts: area ids to flood from; Neighbors(id) -> ids; Blocked(id) ->
@@ -14,28 +15,11 @@ module(...)
 -- only reached through a gate left open; limit: the most areas to take.
 -- Returns the ids reached and whether the flood leaked.
 function Flood(starts, Neighbors, Blocked, Outside, limit)
-	local seen, zone, head = {}, {}, 1
+	local open = {}
 	for _, id in ipairs(starts) do
-		if not seen[id] and not Blocked(id) then
-			seen[id] = true
-			zone[#zone + 1] = id
-		end
+		if not Blocked(id) then open[#open + 1] = id end
 	end
-	while head <= #zone do
-		local id = zone[head]
-		head = head + 1
-		if Outside(id) then return zone, true end
-		for _, next in ipairs(Neighbors(id)) do
-			if not seen[next] then
-				seen[next] = true
-				if not Blocked(next) then
-					if #zone >= limit then return zone, true end
-					zone[#zone + 1] = next
-				end
-			end
-		end
-	end
-	return zone, false
+	return Graph.Flood(open, Neighbors, function(id) return not Blocked(id) end, limit, Outside)
 end
 
 -- An item of the list picked with odds by weight: r in [0, 1).

@@ -11,6 +11,7 @@
 local floor, frexp, huge, ldexp = math.floor, math.frexp, math.huge, math.ldexp
 local byte, char, concat, sort, sqrt = string.byte, string.char, table.concat, table.sort, math.sqrt
 local ipairs, pairs = ipairs, pairs
+local Graph = require("foundation.core.graph")
 local Grid = require("foundation.core.grid")
 module(...)
 
@@ -164,27 +165,13 @@ function Zones(count, links)
 		a[#a + 1] = link.b
 		b[#b + 1] = link.a
 	end
-	local zones, zone = {}, FIRST_ZONE
+	local linked = {}
 	for i = 1, count do
-		if #neighbors[i] == 0 then zones[i] = ZONE_SOLO end
+		if #neighbors[i] > 0 then linked[#linked + 1] = i end
 	end
-	for i = 1, count do
-		if not zones[i] then
-			local stack = { i }
-			zones[i] = zone
-			while #stack > 0 do
-				local n = stack[#stack]
-				stack[#stack] = nil
-				for _, m in ipairs(neighbors[n]) do
-					if not zones[m] then
-						zones[m] = zone
-						stack[#stack + 1] = m
-					end
-				end
-			end
-			zone = zone + 1
-		end
-	end
+	local component = Graph.Components(linked, function(i) return neighbors[i] end)
+	local zones = {}
+	for i = 1, count do zones[i] = component[i] and FIRST_ZONE + component[i] - 1 or ZONE_SOLO end
 	return zones
 end
 

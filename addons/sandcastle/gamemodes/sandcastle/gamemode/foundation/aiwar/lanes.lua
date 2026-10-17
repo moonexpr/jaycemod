@@ -21,6 +21,7 @@ local sort = table.sort
 local HL2Path = require("foundation.npc.path.hl2")
 local Path = require("foundation.npc.path")
 local Distance = require("foundation.core.geometry").Distance
+local Graph = require("foundation.core.graph")
 module(...)
 
 LANE_PENALTY = 8
@@ -104,18 +105,8 @@ end
 -- it, so a route that may not enter the room cannot reach it. into(id): the
 -- areas with a way into id; open(id): id is outside the room.
 function Enclosed(start, into, open)
-	local seen, queue, i = { [start] = true }, { start }, 1
-	while queue[i] do
-		for _, id in ipairs(into(queue[i])) do
-			if not seen[id] and open(id) then
-				seen[id] = true
-				queue[#queue + 1] = id
-				if #queue >= POCKET_LIMIT then return false end
-			end
-		end
-		i = i + 1
-	end
-	return true
+	local _, cut = Graph.Flood({ start }, into, open, POCKET_LIMIT - 1)
+	return not cut
 end
 
 -- A tour's last stop: the enemy spawn's threshold, the centre of the area
