@@ -34,4 +34,28 @@ T.test("a model the war does not dress its soldiers in has no voice", function()
 	T.eq(Voices.For("models/player/kleiner.mdl"), nil)
 end)
 
+-- Each voice is named for the speech rules (foundation.aiwar.speech), and
+-- has grunts for a light hit and a cry for a fall that hurts.
+T.test("every voice has a name, grunts and a fall cry", function()
+	for _, model in ipairs({ "models/player/group03/male_04.mdl", "models/player/group03/female_02.mdl", "models/player/alyx.mdl",
+		"models/player/combine_soldier.mdl", "models/player/police.mdl", "models/vortigaunt.mdl" }) do
+		local voice = Voices.For(model)
+		T.eq(type(voice.name), "string", model .. ": a name")
+		T.eq(#voice.grunt > 0, true, model .. ": grunts")
+		T.eq(#voice.fall > 0, true, model .. ": a fall cry")
+	end
+	T.eq(Voices.For("models/player/group03/male_04.mdl").name ~= Voices.For("models/player/combine_soldier.mdl").name, true, "names differ")
+end)
+
+-- A hit of PAIN_SHARE of the soldier's health or more is a cry of pain; a
+-- lighter one, a grunt.
+T.defined(Voices.PAIN_SHARE, "PAIN_SHARE")
+T.defined(Voices.FEEDBACK_COOLDOWN, "FEEDBACK_COOLDOWN")
+
+T.test("a heavy hit is a cry of pain, a light one a grunt", function()
+	T.eq(Voices.Feedback(100 * Voices.PAIN_SHARE, 100), "pain", "heavy")
+	T.eq(Voices.Feedback(100 * Voices.PAIN_SHARE - 1, 100), "grunt", "light")
+	T.eq(Voices.Feedback(30, 300), Voices.Feedback(10, 100), "a share of its own health")
+end)
+
 T.finish()

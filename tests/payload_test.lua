@@ -447,4 +447,52 @@ T.test("the cart's top speed is the map's times the admin's scale", function()
 	T.eq(P.MaxSpeed(90, 0), 90 * P.CART_SPEED_MIN, "scale clamped low")
 end)
 
+-- WatcherThink's concepts, on a change of speed level: the cart stopping
+-- (everyone speaks TLK_CART_STOP) or starting back (TLK_CART_MOVING_BACKWARD),
+-- and, while it goes forward, its pushers' TLK_CART_MOVING_FORWARD at most
+-- every FORWARD_CONCEPT_INTERVAL; a stop or a start back lets the pushers
+-- speak again at once.
+T.defined(P.FORWARD_CONCEPT_INTERVAL, "FORWARD_CONCEPT_INTERVAL")
+
+local function Concepts(old, new, nextForward, now)
+	local said, next = P.SpeedConcepts(old, new, nextForward, now)
+	local names = {}
+	for i, c in ipairs(said) do names[i] = c.concept .. "/" .. c.audience end
+	return table.concat(names, " "), next
+end
+
+T.test("the cart stopping has everyone speak", function()
+	local said, next = Concepts(2, 0, 50, 10)
+	T.eq(said, P.CONCEPT_CART_STOP .. "/" .. P.AUDIENCE_ALL, "a stop")
+	T.eq(next, 0, "the pushers may speak at once when it goes again")
+end)
+
+T.test("the cart starting back has everyone speak", function()
+	local said, next = Concepts(0, P.SPEED_LEVEL_BACKWARDS, 50, 10)
+	T.eq(said, P.CONCEPT_CART_MOVING_BACKWARD .. "/" .. P.AUDIENCE_ALL, "backwards")
+	T.eq(next, 0, "reset")
+end)
+
+T.test("a cart going forward has its pushers speak, then not until the interval", function()
+	local said, next = Concepts(0, 1, 0, 10)
+	T.eq(said, P.CONCEPT_CART_MOVING_FORWARD .. "/" .. P.AUDIENCE_PUSHERS, "forward")
+	T.eq(next, 10 + P.FORWARD_CONCEPT_INTERVAL, "the next time")
+	T.eq((Concepts(1, 2, next, next - 0.1)), "", "faster, but too soon")
+	T.eq((Concepts(2, 2, next, next)), "", "at the time itself, not yet")
+	T.eq((Concepts(2, 2, next, next + 0.1)), P.CONCEPT_CART_MOVING_FORWARD .. "/" .. P.AUDIENCE_PUSHERS, "after it")
+end)
+
+T.test("a cart standing still, or rolling back on, says nothing new", function()
+	T.eq((Concepts(0, 0, 0, 10)), "", "still")
+	T.eq((Concepts(P.SPEED_LEVEL_BACKWARDS, P.SPEED_LEVEL_BACKWARDS, 0, 10)), "", "still going back")
+end)
+
+-- TF2 has a backwards cart that stops at a dead end say a stop, but a cart
+-- that goes from forward straight to backward says neither: only a change
+-- from standing still starts back.
+T.test("a cart going from forward straight to backward is a stop, not a start back", function()
+	T.eq((Concepts(1, P.SPEED_LEVEL_BACKWARDS, 0, 10)), "", "TF2 says nothing")
+	T.eq((Concepts(P.SPEED_LEVEL_BACKWARDS, 0, 0, 10)), P.CONCEPT_CART_STOP .. "/" .. P.AUDIENCE_ALL, "a dead end")
+end)
+
 T.finish()

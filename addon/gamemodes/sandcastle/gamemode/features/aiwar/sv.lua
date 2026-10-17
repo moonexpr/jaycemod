@@ -15,7 +15,7 @@
 
 local Controller = {
 	war = nil, -- a foundation.aiwar War while the war runs
-	soldiers = {}, -- NPC entity -> { soldier = port, npc = foundation.npc Npc }
+	soldiers = {}, -- NPC entity -> { soldier = port, npc = foundation.npc Npc, speaker (sv_speech) }
 	doorFlags = {}, -- trigger_multiple -> its spawnflags before the war
 	tracks = setmetatable({}, { __mode = "k" }), -- a watcher's path node list -> Track
 	nextThink = 0,
@@ -80,6 +80,7 @@ Controller.Soldier = Soldier
 Part("sv_relations", Controller, Map)
 Part("sv_enlist", Controller, Map)
 Part("sv_reserve", Controller)
+Part("sv_speech", Controller)
 Part("sv_obstacles", Controller, Map)
 local WATCH_INTERVAL = Part("sv_posts", Controller, Map)
 Part("sv_field", Controller, Map, WATCH_INTERVAL)

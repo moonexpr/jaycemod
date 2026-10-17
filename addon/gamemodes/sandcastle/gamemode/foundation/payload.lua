@@ -60,6 +60,38 @@ function SpeedLevel(desiredSpeed, currentSpeed, levels)
 	return 0
 end
 
+-- WatcherThink's concepts (TF2's response rules: scripts/talker): a cart
+-- that stops has everyone speak TLK_CART_STOP, one that starts back from
+-- standing TLK_CART_MOVING_BACKWARD (either lets the pushers speak again at
+-- once), and one going forward has the players on its capture area speak
+-- TLK_CART_MOVING_FORWARD, at most every FORWARD_CONCEPT_INTERVAL.
+CONCEPT_CART_STOP = "TLK_CART_STOP"
+CONCEPT_CART_MOVING_BACKWARD = "TLK_CART_MOVING_BACKWARD"
+CONCEPT_CART_MOVING_FORWARD = "TLK_CART_MOVING_FORWARD"
+AUDIENCE_ALL, AUDIENCE_PUSHERS = "all", "pushers"
+FORWARD_CONCEPT_INTERVAL = 3
+
+-- From the speed level before and now, and when the pushers may next speak
+-- (nextForward): the concepts to speak, each { concept, audience }, and the
+-- new nextForward.
+function SpeedConcepts(oldLevel, level, nextForward, now)
+	local said = {}
+	if level ~= oldLevel then
+		if level == 0 and oldLevel ~= 0 then
+			said[#said + 1] = { concept = CONCEPT_CART_STOP, audience = AUDIENCE_ALL }
+			nextForward = 0
+		elseif level < 0 and oldLevel == 0 then
+			said[#said + 1] = { concept = CONCEPT_CART_MOVING_BACKWARD, audience = AUDIENCE_ALL }
+			nextForward = 0
+		end
+	end
+	if level > 0 and nextForward < now then
+		said[#said + 1] = { concept = CONCEPT_CART_MOVING_FORWARD, audience = AUDIENCE_PUSHERS }
+		nextForward = now + FORWARD_CONCEPT_INTERVAL
+	end
+	return said, nextForward
+end
+
 -- InternalSetNumTrainCappers: seconds until an unpushed cart recedes.
 function RecedeDelay(overtime, trainRecedeTime, recedeTime, overtimeRecedeTime)
 	if overtime then return overtimeRecedeTime end

@@ -16,6 +16,9 @@ local LIFE_ALIVE = 0
 -- the way up and the landing, so the wall it stands against is not in the
 -- way; how long after a jump it found no way for it does not try another.
 local LEAP_INSET, LEAP_RETRY = 2, 1
+-- The sound level of its steps and landings (PlayStepSound's SNDLVL_NORM),
+-- and of its grunts and cries.
+local STEP_LEVEL, VOICE_LEVEL = 75, 75
 
 -- Tracing (ws_aiwar_trace): a soldier with NSTrace set prints
 -- every query it asks its orders, with the answer, and every event it tells
@@ -36,18 +39,101 @@ function WS.DrgSoldier(ENT, baseName)
 	local Voices = WS.require("foundation.npc.voices")
 	local HL2Path = WS.require("foundation.npc.path.hl2")
 	local Leap = WS.require("foundation.npc.leap")
-	local SILENT = { pain = {}, death = {} }
+	local Noise = WS.require("foundation.npc.noise")
+	local SILENT = { grunt = {}, pain = {}, death = {}, fall = {} }
+
+	local function Base() return baseclass.Get(baseName) end
+
+	-- One of a voice's lines, if it has any.
+	local function Say(self, lines)
+		if #lines > 0 then self:EmitSound(lines[math.random(#lines)], VOICE_LEVEL) end
+	end
 
 	-- It climbs a ledge as high as its route may (DrGBase's path to each
 	-- target then takes it) by jumping it (CustomClimbing).
 	ENT.ClimbLedges = true
 	ENT.ClimbLedgesMaxHeight = HL2Path.SOLDIER_LIMITS.jumpHeight
 
-	-- Its pain and death sounds, which DrGBase plays, for the model it wears
-	-- now (foundation.npc.voices); none for a model without a voice.
+	-- Its voice for the model it wears now (foundation.npc.voices; none for a
+	-- model without one): DrGBase plays its deaths, and it plays its hits'
+	-- grunts and cries itself (NSFeedback).
 	function ENT:NSVoice()
 		local voice = Voices.For(self:GetModel()) or SILENT
-		self.OnDamageSounds, self.OnDeathSounds = voice.pain, voice.death
+		self.NSVoiceLines = voice
+		self.OnDamageSounds, self.OnDeathSounds = {}, voice.death
+	end
+
+	-- A hit it lives through: a grunt, or for a heavy one a cry of pain
+	-- (Voices.Feedback), not again for Voices.FEEDBACK_COOLDOWN.
+	function ENT:NSFeedback(damage)
+		local now = CurTime()
+		if damage <= 0 or self:Health() - damage <= 0 or now < (self.NSNextFeedback or 0) then return end
+		self.NSNextFeedback = now + Voices.FEEDBACK_COOLDOWN
+		Say(self, self.NSVoiceLines[Voices.Feedback(damage, self:GetMaxHealth())])
+	end
+
+	-- Each think: its footsteps, timed by its speed as a player's are
+	-- (Noise.Step), and in the air, how fast it is falling (for its landing).
+	function ENT:CustomThink()
+		if self.NSDormant then return end
+		local velocity = self.loco:GetVelocity()
+		if not self:IsOnGround() then
+			self.NSFallSpeed = math.max(self.NSFallSpeed or 0, -velocity.z)
+			return
+		end
+		local now = CurTime()
+		local step = Noise.Step(velocity:Length2D(), self.IsCrouching ~= nil and self:IsCrouching())
+		if step and now >= (self.NSNextStep or 0) then
+			self:EmitStep(STEP_LEVEL, 100, step.volume)
+			self.NSNextStep = now + step.interval
+		end
+	end
+
+	-- Its steps are timed (CustomThink), not the walk animation's.
+	function ENT:OnAnimEvent(event, ...)
+		if event == "PlayerStep" then return end
+		return Base().OnAnimEvent(self, event, ...)
+	end
+
+	-- Landing: DrGBase's own handling (its ground state, fall damage), as its
+	-- mixin wraps the base's hook, then the impact: a step as loud as the fall
+	-- was fast (Noise.Landing; a jump onto a ledge, as a jump's), a brief
+	-- landing animation, a grunt for a hard landing or a cry for a hurtful
+	-- one, and the enemies in earshot notice it (NSNotice).
+	function ENT:OnLandOnGround(ground)
+		self:_HandleLandOnGround(ground)
+		local fall = self.NSFallSpeed or 0
+		local volume = self.NSLeapt and Noise.JUMP_LANDING_VOLUME or Noise.Landing(fall)
+		self.NSFallSpeed, self.NSLeapt = 0, nil
+		if volume <= 0 then return end
+		self:EmitStep(STEP_LEVEL, 100, volume)
+		local landing = self:SelectWeightedSequence(ACT_LAND)
+		if landing and landing > 0 then self:AddGestureSequence(landing, true) end
+		if fall > Noise.MAX_SAFE_FALL_SPEED then
+			Say(self, self.NSVoiceLines.fall)
+		elseif Noise.HardLanding(fall) then
+			Say(self, self.NSVoiceLines.grunt)
+		end
+		self:NSNotice(STEP_LEVEL, volume)
+	end
+
+	-- A noise of its body that the NextBots in earshot hear (Noise.Hears, as
+	-- DrGBase hears a player's: DrGBase hears no NextBot's), noticing it as
+	-- DrGBase's OnSound does.
+	function ENT:NSNotice(level, volume)
+		local pos = self:GetPos()
+		local sound = { Entity = self, Pos = pos, SoundLevel = level, Volume = volume }
+		local reach = Noise.HearingRange(level, volume)
+		for _, bot in ipairs(DrGBase.GetNextbots()) do
+			if bot ~= self and not bot:IsAIDisabled() and not bot:IsDeaf() then
+				local coefficient = bot:GetHearingCoefficient()
+				local distance = bot:GetRangeTo(pos)
+				-- the sight test only for one near enough to hear it seen
+				if distance <= reach * coefficient and Noise.Hears(level, volume, distance, bot:VisibleVec(pos), coefficient) then
+					bot:Timer(0, bot.OnSound, self, sound)
+				end
+			end
+		end
 	end
 
 	-- DrGBase's, once it has picked the soldier's model.
@@ -132,8 +218,6 @@ function WS.DrgSoldier(ENT, baseName)
 		brain:Event(name, ...)
 	end
 
-	local function Base() return baseclass.Get(baseName) end
-
 	-- ShouldAttack NO skips DrGBase's attack (the humiliated, a healing
 	-- medic), as does a freeze.
 	function ENT:OnRangeAttack()
@@ -158,6 +242,7 @@ function WS.DrgSoldier(ENT, baseName)
 	function ENT:OnTakeDamage(dmg, hitgroup)
 		local result = Base().OnTakeDamage(self, dmg, hitgroup)
 		Tell(self, "OnInjured", dmg:GetAttacker(), dmg:GetDamage())
+		self:NSFeedback(dmg:GetDamage())
 		return result
 	end
 
@@ -222,6 +307,7 @@ function WS.DrgSoldier(ENT, baseName)
 			if t >= 1 then break end
 			self:YieldCoroutine(false)
 		end
+		self.NSLeapt = true
 		self:SetNW2Bool("DrGBaseJumping", false)
 	end
 

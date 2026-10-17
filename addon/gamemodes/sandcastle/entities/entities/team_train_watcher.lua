@@ -51,6 +51,7 @@ function ENT:Initialize()
 		tonumber(self:Key("hud_min_speed_level_3", 90)) or 90,
 	}
 	self.numCappers = 0
+	self.nextForwardConcept = 0 -- when the pushers may next speak TLK_CART_MOVING_FORWARD
 	self.currentSpeed = 0
 	self.hill = P.HILL_NONE
 	self.receding = false
@@ -471,10 +472,19 @@ function ENT:CheckRecede()
 	self:HandleTrainMovement(true)
 end
 
+-- The speed level, and the concepts it has the players speak
+-- (P.SpeedConcepts): WSCartConcept(watcher, concept, audience, blocked) for
+-- whoever speaks them (the AI war's soldiers), blocked when the enemy holds
+-- the cart.
 function ENT:UpdateSpeedLevel(speed)
 	local old = self.speedLevel
 	self.speedLevel = P.SpeedLevel(speed, speed, self.levels)
 	if self.handleMovement and self.speedLevel == 0 and old ~= 0 then self:Sparks(false) end
+	local said
+	said, self.nextForwardConcept = P.SpeedConcepts(old, self.speedLevel, self.nextForwardConcept, CurTime())
+	for _, c in ipairs(said) do
+		hook.Run("WSCartConcept", self, c.concept, c.audience, self.numCappers == P.CAPPERS_BLOCKED)
+	end
 end
 
 -- Distance to the goal from the node the train heads for, along the path.
