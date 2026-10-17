@@ -83,10 +83,20 @@ end
 -- movement checks (CTraceFilterNav skips pairs in the engine's collision
 -- pair table, which logic_collision_pair fills, as Sandbox's No Collide
 -- does). The pair goes with either entity.
+--
+-- One pair for two soldiers, however often either is enlisted: a body the
+-- reserve revives is enlisted again but never removed, and its pairs go only
+-- with an entity's removal (DeleteOnRemove). Each keeps its pairs by
+-- partner (NSPasses).
 local function PassThrough(a, b)
+	local known = a.NSPasses and a.NSPasses[b]
+	if IsValid(known) then return end
 	local physA, physB = a:GetPhysicsObject(), b:GetPhysicsObject()
 	if not (IsValid(physA) and IsValid(physB)) then return end
 	local pair = ents.Create("logic_collision_pair")
+	a.NSPasses = a.NSPasses or setmetatable({}, { __mode = "k" })
+	b.NSPasses = b.NSPasses or setmetatable({}, { __mode = "k" })
+	a.NSPasses[b], b.NSPasses[a] = pair, pair
 	pair:SetKeyValue("startdisabled", "1")
 	pair:SetPhysConstraintObjects(physA, physB)
 	pair:Spawn()

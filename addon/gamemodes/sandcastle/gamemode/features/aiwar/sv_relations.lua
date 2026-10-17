@@ -21,10 +21,21 @@ end
 -- in its own team's, WS.SetTeamMember): its team's its allies, the
 -- other its enemies, or feared once its side lost. DrGBase relates it so to
 -- every soldier and player in each, as they come and go.
+--
+-- Each SetFactionRelationship has DrGBase update the soldier's relationship
+-- with every entity on the map (about 34 ms for all factions), so the
+-- dispositions it was last given are kept on it (NSRelations) and set again
+-- only when they differ: a new soldier, another team, or the losers changed.
+-- A body the reserve revives for its own team keeps its relationships.
 function Controller:RelateToFactions(ent, team)
-	for _, entry in ipairs(Factions.ALL) do
-		ent:SetFactionRelationship(entry.faction, self:Disposition(team, entry.team), RELATIONSHIP_PRIORITY)
+	local dispositions = {}
+	for i, entry in ipairs(Factions.ALL) do dispositions[i] = self:Disposition(team, entry.team) end
+	local signature = table.concat(dispositions, ",")
+	if ent.NSRelations == signature then return end
+	for i, entry in ipairs(Factions.ALL) do
+		ent:SetFactionRelationship(entry.faction, dispositions[i], RELATIONSHIP_PRIORITY)
 	end
+	ent.NSRelations = signature
 end
 
 -- Gadgets: the grenades, turrets and manhacks soldiers put in the field,

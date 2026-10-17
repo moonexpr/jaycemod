@@ -209,6 +209,100 @@ By condition (mean of its two blocks; drafts weighted by count):
   per condition settle only the large effects. Block 4 (AB, 232 long ticks)
   and block 6 (B, 123) are outliers the treatments don't explain.
 
+## Treatment A2: a revive that keeps what the body already has
+
+Question: can a respawn wave cost less by using the body as it is (moved,
+shown, NextSoldier's main action restarted) instead of setting it up again?
+
+**Step costs in one revive** (60 s, revives on, 4 drafted soldiers killed
+every 8 s; 35 drafts, every one a revive):
+
+| Step | Mean | Max |
+|---|---|---|
+| Draft (all of it) | 34.85 ms | 74.4 |
+| `Revive` (reserve, `NSRevive`: move, show, death flags, fresh behaviour coroutine) | 0.23 | 0.93 |
+| `Enlist` | 34.60 | 74.1 |
+| `RelateToFactions` | **33.67** | 72.9 |
+| `PassTeammates` | 0.81 | 1.3 |
+| `war:Enlist`, `slots:Fill`, `Soldier.New`, `Npc.New`, `WS.SetTeamMember`, `JoinSquad` | under 0.05 each | |
+| `Discharge` at death (all of it) | 0.08 | 0.23 |
+
+Moving the body, showing it and restarting NextSoldier's main action is
+already cheap; 97 % of a revive is `RelateToFactions`. DrGBase's
+`SetFactionRelationship` records the rule and then `UpdateRelationships`,
+which walks every entity on the map (`ents.GetAll`), once per faction. The
+rules live on the entity and don't change while it is dormant.
+
+**The leak this exposed.** `PassTeammates` makes a `logic_collision_pair`
+for the soldier and each living teammate, and the pairs go only when an
+entity is removed. A revived body is enlisted again but never removed, so
+every life added pairs: 2,706 of the map's 3,860 entities after a few
+minutes of treatment A, which made every `ents.GetAll` walk (the
+relationship pass included: 34 → 99 ms) dearer.
+
+**A2**:
+- `RelateToFactions` keeps on the soldier the dispositions it last gave it
+  (`NSRelations`) and calls DrGBase again only when they differ: a new
+  soldier, another team, or the losers changed.
+- `PassThrough` keeps one pair per two soldiers (`NSPasses`).
+
+Result (same load, 60 s):
+
+| | Control | A | A2 |
+|---|---|---|---|
+| Draft mean | 62 ms | 48 ms | **0.25 ms** (max 0.5) |
+| Revived | 0 | 64 of 64 | 37 of 37 |
+| Relationship passes | every enlist | every enlist | 37 skipped (0.008 ms), 0 full |
+| Collision pairs / entities | | 2,706 / 3,860 and growing | **210 / 1,365, stable** (2 × C(15, 2) = 210) |
+
+All 51 revived soldiers checked in an earlier run still hated a live enemy,
+were hated back, and liked a teammate. No Lua errors.
+
+## Treatment B, closer: which code the JIT slows
+
+`wsprofile` sampled four 60 s windows, JIT on, off, on, off (10 s warm-up
+each). Samples come at a fixed wall-clock rate, so a function's sample count
+is its time. Lua's share of the server thread replicated: 79.1 and 81.9 %
+on, 45.8 and 46.9 % off.
+
+Own time (self samples per 60 s window), JIT on against off:
+
+| Slower with the JIT | On | Off | × |
+|---|---|---|---|
+| `route.lua:Expand` | 1957 | 70 | 28 |
+| `route.lua:Relax` | 1978 | 229 | 8.6 |
+| `route.lua:Pop` / `Before` / `PopOpen` | 883 / 738 / 411 | 61 / 69 / 20 | 14 / 11 / 21 |
+| `sv_routes.lua:Cost` / `Center` | 1193 / 372 | 435 / 74 | 2.7 / 5 |
+| `hfsm.lua:Query` / `_InvokeUpdate` / `_IsOutOfScope` | 498 / 425 / 299 | 36 / 19 / 5 | 14 / 22 / 66 |
+| `orders.lua:_InvokeUpdate` | 367 | 18 | 21 |
+| `lanes.lua:Cost` | 329 | 80 | 4.1 |
+
+| Faster with the JIT | On | Off | × |
+|---|---|---|---|
+| `path.lua:75` (the engine's path compute calling our cost) | 1811 | 2665 | 0.7 |
+| DrGBase `awareness.lua:SpotEntity` | 396 | 1022 | 0.4 |
+| DrGBase `detection.lua:173` | 411 | 690 | 0.6 |
+| DrGBase `movements.lua:FollowPath` | 988 | 1160 | 0.9 |
+
+Inclusive: the Lua route search 10,956 on against 2,737 off (×4); the war's
+think 2,344 against 259 (×9).
+
+**H18 (selective JIT beats both):** the JIT on, but off (`jit.off(fn,
+true)`) for the 213 functions reachable from route, hfsm, orders, lanes, npc
+and the npc controller, local helpers included. Six 60 s windows, ABCCBA:
+
+| Mode | Lua share | Tick p95 | p99 | >50 ms ticks per min | Search | NS think | DrGBase think | DrGBase detection |
+|---|---|---|---|---|---|---|---|---|
+| on | 63.7 % | 34.7 | 47.2 | 22 | 4719 | 2869 | 6217 | 4112 |
+| selective | 42.4 % | 19.0 | 25.2 | 7 | 424 | 596 | 5056 | 4732 |
+| off | 40.8 % | 17.3 | 20.0 | 2 | 527 | 247 | 5137 | 5322 |
+
+Refuted, narrowly: the selective JIT takes about 94 % of the gain of turning
+it off, but off stays best on every tick measure. NextSoldier's think is
+still 2.4× its interpreted time under the selective JIT, so more of our code
+(the war controller, tactics) thrashes outside the modules picked. DrGBase
+nets about even: the JIT helps its detection but slows its think.
+
 ## Treatment C: what batching route searches could share
 
 Before building batched solvers, this measures how much requests could share.
@@ -241,9 +335,36 @@ groups are therefore the distinct (source, team, goal area) keys.
   the same soldier asked moments before, and lane legs spend a quarter of
   all expansions mostly failing.
 - **Limit:** the fighting had quietened by then (see the 2×2 caution).
-  Earlier windows saturated the search queue (3 to 4 ms per tick), so these
-  numbers should be measured again in a busy phase, such as a round start
-  or a fight over a point.
+
+### A busy phase: the 120 s after a round restart
+
+Captured from `mp_round_restart`, each soldier re-plan tagged by its
+`Travel:Plan` call site.
+
+| Measure | Result |
+|---|---|
+| Requests | 123 (1.0 per s): soldiers 60, lane legs 63 |
+| Expansions | soldiers 18,232 (10 not found); **lanes 106,423, 86 % of all (51 of 63 not found)** |
+| Why soldiers asked | **all 60 were stuck re-plans** (`Unstick`); none for a new trip, none for a moved goal |
+| Sharing | first 20 s (the respawn burst): 35 requests for 13 goal keys (2.7×); after: 1.10× per 1 s, 1.24× per 5 s |
+| Independent groups at once | up to 4 searches, never sharing a goal key |
+| Request to answer | median 0.18 s, p90 4.8 s, worst 6.2 s |
+
+- **Soldiers ask for a route only once stuck:** they walk straight at
+  their goal (`Chase`) and turn to a route when that fails. So soldier
+  demand follows how often they get stuck.
+- **H19 (lane legs fail behind the shut setup gates): refuted.** They kept
+  failing at a steady rate until t = 100 s, well after setup.
+- **H20 (the stops can't be reached under the lanes' own rules): supported
+  for most of them.** 43 of 51 failed legs (84 %) end inside the enemy's
+  spawn room, which TF2's bot cost makes impassable to the team, so each
+  search spends everything reachable (about 2,000 expansions) before failing.
+  Of the other 8, BLU kept aiming at two areas (5289 and 13944) for a reason
+  not yet found. None was off the mesh, in a door wall or under the cart.
+- **For sizing solvers:** 4 independent searches at most, even in the
+  respawn burst. Sharing by goal is worth up to 2.7× only in that burst. The
+  larger savings are not sending lane legs at stops that can't be reached,
+  and fewer stuck soldiers.
 
 ## Reproducing
 
