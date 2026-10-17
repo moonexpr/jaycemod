@@ -111,11 +111,11 @@ end
 -- from the start's to the goal's (found), or to the one that came closest
 -- when the goal is out of reach, and nil when either end is off the mesh.
 local NEAREST_AREA_RANGE = 200
--- Each tick the searches run in turn, SEARCH_CHUNK expansions at a time,
--- until SEARCH_SECONDS of the tick are spent. A search may cover the whole
--- mesh, as the engine's may: spread over ticks, that costs time, not a hitch.
+-- Each tick the searches run in turn as tasks (foundation.core.scheduler),
+-- checking the clock after every expansion, until SEARCH_SECONDS of the tick
+-- are spent. A search may cover the whole mesh, as the engine's may: spread
+-- over ticks, that costs time, not a hitch.
 local SEARCH_SECONDS = 0.002
-local SEARCH_CHUNK = 16
 
 local NEAREST_AREA_FAR = 600
 
@@ -152,11 +152,19 @@ function Controller:RequestRoute(request)
 	local watch = self.pathWatch[request.bot.entIndex]
 	local observed = watch and self:ObserveRoute(graph, request, start, watch) or nil
 	local search = AStar.New(graph, start:GetID(), goal:GetID(), navmesh.GetNavAreaCount())
-	self.searches[#self.searches + 1] = {
-		search = search,
-		onDone = request.onDone,
-		observed = observed,
-	}
+	local scheduler = self.searches
+	scheduler:Spawn(function()
+		local status = search.status
+		while status == Pathfinder.RUNNING do
+			local began = observed and SysTime()
+			status = search:Step(1)
+			if observed then observed.seconds = observed.seconds + SysTime() - began end
+			scheduler:CheckYield()
+		end
+		local areas, found = AreasOf(search:Route()), status == Pathfinder.FOUND
+		if observed then self:PublishRoute({ search = search, observed = observed }, areas, found) end
+		request.onDone(areas, found)
+	end)
 end
 
 local function AreasOf(ids)
@@ -168,25 +176,11 @@ end
 -- Runs the searches in turn within the tick's time; each that finishes
 -- reports its route.
 function Controller:ThinkSearches()
-	local deadline = SysTime() + SEARCH_SECONDS
-	while #self.searches > 0 and SysTime() < deadline do
-		local running = table.remove(self.searches, 1)
-		local observed = running.observed
-		local began = observed and SysTime()
-		local status = running.search:Step(SEARCH_CHUNK)
-		if observed then observed.seconds = observed.seconds + SysTime() - began end
-		if status == Pathfinder.RUNNING then
-			self.searches[#self.searches + 1] = running
-		else
-			local areas, found = AreasOf(running.search:Route()), running.search.status == Pathfinder.FOUND
-			if observed then self:PublishRoute(running, areas, found) end
-			running.onDone(areas, found)
-		end
-	end
+	self.searches:Run(SEARCH_SECONDS)
 end
 
 function Controller:SearchesRunning()
-	return #self.searches
+	return self.searches:Count()
 end
 
 -- Where to walk along a route of areas, as the engine's Path::Compute

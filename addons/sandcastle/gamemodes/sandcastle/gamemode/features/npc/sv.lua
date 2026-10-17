@@ -9,6 +9,7 @@
 -- the nav mesh), sv_routes (path costs, the nav graph, route searches and
 -- waypoints) and sv_profile (path profiling, watching and the bench).
 local NpcSystem = WS.require("foundation.npc")
+local Scheduler = WS.require("foundation.core.scheduler")
 local Spawner = WS.require("features.npc.spawner")
 
 local NAV_MESSAGE = "ws_nextbot: %s has no usable navigation mesh; run mp_nav_generate (or .devtools/bin/nav_convert.py for TF2's own)"
@@ -26,7 +27,7 @@ local Controller = {
 	pathProfile = nil, -- a features.npc.profile while ws_path_profile's window is open
 	pathWatch = {}, -- entity index -> { costs } while the nbdebug feature watches its path searches
 	spawnRoomTeams = {}, -- nav area id -> the team whose spawn room holds it, this round
-	searches = {}, -- the Lua route searches still running, oldest first
+	searches = Scheduler.New({ Now = function() return SysTime() end }), -- the Lua route searches still running, each a task
 	neighbors = {}, -- nav area id -> its floor neighbours' ids (read again when seams are linked: WSNavLinked)
 	centers = {}, -- nav area id -> its centre
 	navBlocked = {}, -- nav area id -> the teams its doors and brushes block (foundation.npc.doors)
