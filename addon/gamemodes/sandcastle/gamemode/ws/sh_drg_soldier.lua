@@ -12,6 +12,10 @@
 local GOAL_TOLERANCE = 32
 -- m_lifeState of a living entity (shareddefs.h); GMod names none.
 local LIFE_ALIVE = 0
+-- A ledge jump (CustomClimbing): how far in from its hull a soldier checks
+-- the way up and the landing, so the wall it stands against is not in the
+-- way; how long after a jump it found no way for it does not try another.
+local LEAP_INSET, LEAP_RETRY = 2, 1
 
 -- Tracing (ws_aiwar_trace): a soldier with NSTrace set prints
 -- every query it asks its orders, with the answer, and every event it tells
@@ -30,7 +34,14 @@ function WS.DrgSoldier(ENT, baseName)
 	if CLIENT then return end
 	local Ragdoll = WS.require("foundation.npc.ragdoll")
 	local Voices = WS.require("foundation.npc.voices")
+	local HL2Path = WS.require("foundation.npc.path.hl2")
+	local Leap = WS.require("foundation.npc.leap")
 	local SILENT = { pain = {}, death = {} }
+
+	-- It climbs a ledge as high as its route may (DrGBase's path to each
+	-- target then takes it) by jumping it (CustomClimbing).
+	ENT.ClimbLedges = true
+	ENT.ClimbLedgesMaxHeight = HL2Path.SOLDIER_LIMITS.jumpHeight
 
 	-- Its pain and death sounds, which DrGBase plays, for the model it wears
 	-- now (foundation.npc.voices); none for a model without a voice.
@@ -159,7 +170,60 @@ function WS.DrgSoldier(ENT, baseName)
 		Tell(self, "OnContactLost", ent)
 	end
 
-	function ENT:OnNavAreaChanged(old, new) Tell(self, "OnNavAreaChanged", old, new) end
+	-- In an area a TF2 player crouches through, the soldier crouches (the
+	-- vortigaunt's base has no crouch): its hull passes under the ceiling
+	-- either way, but not its model.
+	function ENT:OnNavAreaChanged(old, new)
+		if self.SetCrouching then self:SetCrouching(IsValid(new) and HL2Path.MustCrouch(new:GetAttributes())) end
+		Tell(self, "OnNavAreaChanged", old, new)
+	end
+
+	-- A ledge (not a ladder, which DrGBase climbs) it jumps: CustomClimbing;
+	-- not again for LEAP_RETRY after a jump with no way up.
+	function ENT:OnStartClimbing(ledge, height, down)
+		if isvector(ledge) and not down then
+			if CurTime() < (self.NSLeapRetry or 0) then return false end
+			return true
+		end
+		return Base().OnStartClimbing(self, ledge, height, down)
+	end
+
+	-- Jumps onto the ledge along foundation.npc.leap's arc, set a step each
+	-- tick of its behaviour, its own momentum stopped, as DrGBase's own climb
+	-- moves it: if the way straight up to the arc's top and across to its
+	-- landing is clear (the arc stays inside that, and clears the lip), else
+	-- it stays.
+	function ENT:CustomClimbing(ledge)
+		local from, began = self:GetPos(), CurTime()
+		local mins, maxs = self:GetCollisionBounds()
+		-- from step height up, as DrGBase's ledge trace: a sloped floor is no wall
+		local hull = {
+			mins = Vector(mins.x + LEAP_INSET, mins.y + LEAP_INSET, self.loco:GetStepHeight()),
+			maxs = maxs - Vector(LEAP_INSET, LEAP_INSET, LEAP_INSET),
+		}
+		local function Clear(a, b)
+			hull.start = a
+			return not self:TraceHull(b - a, hull).Hit
+		end
+		local land = Leap.Arc(from, ledge, 1)
+		land = Vector(land.x, land.y, land.z)
+		local top = Vector(from.x, from.y, land.z)
+		if not (Clear(from, top) and Clear(top, land)) then
+			self.NSLeapRetry = CurTime() + LEAP_RETRY
+			return
+		end
+		self:FaceTowards(ledge)
+		self:SetNW2Bool("DrGBaseJumping", true)
+		while true do
+			self.loco:SetVelocity(vector_origin)
+			local t = (CurTime() - began) / Leap.DURATION
+			local p = Leap.Arc(from, ledge, t)
+			self:SetPos(Vector(p.x, p.y, p.z))
+			if t >= 1 then break end
+			self:YieldCoroutine(false)
+		end
+		self:SetNW2Bool("DrGBaseJumping", false)
+	end
 
 	-- ShouldHurry, else the controller's gait (NSRun), else run at an enemy.
 	function ENT:ShouldRun()

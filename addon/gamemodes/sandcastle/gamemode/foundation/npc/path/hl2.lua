@@ -19,18 +19,38 @@ module(...)
 -- nav.h's NavAttributeType
 NAV_MESH_CROUCH = 0x00000001
 NAV_MESH_JUMP = 0x00000002
-local UNCROSSABLE = NAV_MESH_CROUCH + NAV_MESH_JUMP
 
 local STEP_HEIGHT = 18
 LIMITS = { stepHeight = STEP_HEIGHT, jumpHeight = STEP_HEIGHT, deathDropHeight = STEP_HEIGHT }
 
 -- The AI war's soldiers, DrGBase NextBots now: the same body, but
 -- NextBotGroundLocomotion drops as far as DrGBase's DeathDropHeight
--- (cp_steel's BLU spawn is a ledge 192 above the yard).
+-- (cp_steel's BLU spawn is a ledge 192 above the yard), and the soldier
+-- crouches and jumps (ws/sh_drg_soldier.lua). Its hull does not catch on a
+-- low ceiling, so a crouch area only needs it to crouch; it jumps a ledge
+-- lower than SOLDIER_JUMP_HEIGHT, an HL2 player's crouch jump.
 DRGBASE_DEATH_DROP = 200
-SOLDIER_LIMITS = { stepHeight = STEP_HEIGHT, jumpHeight = STEP_HEIGHT, deathDropHeight = DRGBASE_DEATH_DROP }
+SOLDIER_JUMP_HEIGHT = 56
+SOLDIER_LIMITS = {
+	stepHeight = STEP_HEIGHT,
+	jumpHeight = SOLDIER_JUMP_HEIGHT,
+	deathDropHeight = DRGBASE_DEATH_DROP,
+	crouches = true,
+}
+
+-- Whether a walker within limits cannot cross an area of these NAV_MESH_*
+-- attributes: a crouch area unless it crouches, a jump area unless it jumps.
+local function Uncrossable(attributes, limits)
+	if band(attributes, NAV_MESH_CROUCH) ~= 0 and not limits.crouches then return true end
+	return band(attributes, NAV_MESH_JUMP) ~= 0 and limits.jumpHeight <= limits.stepHeight
+end
+
+-- Whether a walker in an area of these attributes must crouch there.
+function MustCrouch(attributes)
+	return band(attributes, NAV_MESH_CROUCH) ~= 0
+end
 
 function Cost(step, limits, bot)
-	if step.hasFrom and band(step.attributes, UNCROSSABLE) ~= 0 then return Path.IMPASSABLE end
+	if step.hasFrom and Uncrossable(step.attributes, limits) then return Path.IMPASSABLE end
 	return TFBot.Cost(step, limits, bot)
 end

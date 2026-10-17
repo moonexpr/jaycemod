@@ -296,8 +296,8 @@ function Soldier:PassBlocker() return false end
 function Soldier:Detour() return nil end
 function Soldier:Hop() return false end
 
--- A random spot on the nav mesh within radius of center, on floor a
--- soldier can walk (no crouch or jump areas).
+-- A random spot on the nav mesh within radius of center, on open floor
+-- (no crouch or jump areas: a patrol keeps to where it walks upright).
 local PATROL_TRIES = 6
 
 function Soldier:PatrolSpot(center, radius)

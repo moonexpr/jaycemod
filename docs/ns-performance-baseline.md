@@ -484,6 +484,34 @@ about 4,400 expansions each (22,188, 24 %), likely another post that only a
 jump reaches; keeping legs whose ends are unchanged would save about 15 %;
 splicing direct and flank lanes onto the moved front at most about 8 %.
 
+## Soldiers jump and crouch
+
+Soldiers could only step 18 u, and every TF2 crouch or jump area was
+closed to them: pl_upward has 230 climbs of 18 to 72 u between nav areas,
+and 66 crouch areas, 41 of them too low for a standing soldier. Now
+(`foundation.npc.path.hl2`): a soldier's route climbs up to
+`SOLDIER_JUMP_HEIGHT` (56 u, an HL2 player's crouch jump) and crosses crouch
+and jump areas; DrGBase's own path to each waypoint climbs the same ledges
+(`ClimbLedges`), and the soldier jumps them along `foundation.npc.leap`'s
+arc. It crouches in a crouch area (`OnNavAreaChanged`).
+
+Found by experiment on the live server:
+- A NextBot's hull does not catch on a low ceiling, so a soldier only needs
+  to crouch for its model; its collision bounds stay as they are.
+- A physics jump (`loco:Jump`, then velocity set in the air) pushed at the
+  wall hits its face and falls back: 23 of 92 landed. The arc is set each
+  tick instead, as DrGBase moves its own climbs, after checking the way
+  straight up and across to the landing (a hull from step height, inset
+  2 u). Tracing every step from where gravity had pulled the body hit the
+  wall face; the hull's lowest corners dug into sloped floors.
+- With the checks: every jump taken landed (14 of 14, then 7 of 7); a
+  jump is declined when a wall or another soldier stands where it would
+  land (5 of 12), and not tried again for a second.
+
+Lanes after (300 s from `mp_round_restart`): 65,501 expansions (92,503 before
+jumping); tours' second legs never failed. Soldiers' stuck re-routes were
+93 (46 to 50 in the runs before), not yet explained.
+
 ## Tools considered: gmod_perfutils
 
 [wrefgtzweve/gmod_perfutils](https://github.com/wrefgtzweve/gmod_perfutils)

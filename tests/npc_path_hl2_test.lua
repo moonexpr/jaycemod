@@ -39,15 +39,33 @@ T.test("the limits are the engine NPC's: one step up or down, no more", function
 end)
 
 -- The AI war's soldiers are DrGBase NextBots now (NextBotGroundLocomotion):
--- an HL2 body that cannot crouch or jump, but drops as far as DrGBase's
--- DeathDropHeight, as off cp_steel's BLU spawn ledge (192).
-T.test("the soldiers' limits: a step up, no jumping, but a drop of up to DrGBase's DeathDropHeight", function()
-	T.eq(HL2.SOLDIER_LIMITS.stepHeight, 18, "a step")
-	T.eq(HL2.SOLDIER_LIMITS.jumpHeight, HL2.SOLDIER_LIMITS.stepHeight, "no jumping")
-	T.eq(HL2.SOLDIER_LIMITS.deathDropHeight, 200, "DrGBase's DeathDropHeight")
-	T.eq(HL2.Cost(Step({ heightChange = -192 }), HL2.SOLDIER_LIMITS, BOT) ~= Path.IMPASSABLE, true, "off cp_steel's ledge")
-	T.eq(HL2.Cost(Step({ heightChange = -250 }), HL2.SOLDIER_LIMITS, BOT), Path.IMPASSABLE, "a deadly fall")
-	T.eq(HL2.Cost(Step({ heightChange = 40 }), HL2.SOLDIER_LIMITS, BOT), Path.IMPASSABLE, "no climbing")
+-- an HL2 body that crouches and jumps (ws/sh_drg_soldier.lua) and drops as
+-- far as DrGBase's DeathDropHeight, as off cp_steel's BLU spawn ledge (192).
+T.defined(HL2.SOLDIER_JUMP_HEIGHT, "SOLDIER_JUMP_HEIGHT")
+
+T.test("the soldiers' limits: a step up, a jump, and a drop of up to DrGBase's DeathDropHeight", function()
+	local limits = HL2.SOLDIER_LIMITS
+	T.eq(limits.stepHeight, 18, "a step")
+	T.eq(limits.jumpHeight, HL2.SOLDIER_JUMP_HEIGHT, "a jump")
+	T.eq(limits.deathDropHeight, 200, "DrGBase's DeathDropHeight")
+	T.eq(HL2.Cost(Step({ heightChange = -192 }), limits, BOT) ~= Path.IMPASSABLE, true, "off cp_steel's ledge")
+	T.eq(HL2.Cost(Step({ heightChange = -250 }), limits, BOT), Path.IMPASSABLE, "a deadly fall")
+	T.eq(HL2.Cost(Step({ heightChange = limits.jumpHeight - 1 }), limits, BOT) ~= Path.IMPASSABLE, true, "a ledge it jumps")
+	T.eq(HL2.Cost(Step({ heightChange = limits.jumpHeight }), limits, BOT), Path.IMPASSABLE, "a ledge past its jump")
+end)
+
+T.test("a soldier crouches and jumps through the areas a TF2 player would", function()
+	local limits = HL2.SOLDIER_LIMITS
+	local flat = HL2.Cost(Step(), limits, BOT)
+	T.eq(HL2.Cost(Step({ attributes = HL2.NAV_MESH_CROUCH }), limits, BOT), flat, "crouch")
+	T.eq(HL2.Cost(Step({ attributes = HL2.NAV_MESH_JUMP }), limits, BOT), flat, "jump")
+end)
+
+T.test("a soldier must crouch in an area a TF2 player crouches through", function()
+	T.eq(HL2.MustCrouch(HL2.NAV_MESH_CROUCH), true, "crouch")
+	T.eq(HL2.MustCrouch(HL2.NAV_MESH_CROUCH + 0x1000), true, "crouch, on stairs")
+	T.eq(HL2.MustCrouch(HL2.NAV_MESH_JUMP), false, "jump")
+	T.eq(HL2.MustCrouch(0), false, "open ground")
 end)
 
 T.test("flat ground costs what it costs a TF2 bot", function()

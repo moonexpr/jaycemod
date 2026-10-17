@@ -83,6 +83,7 @@ local CATEGORY = {
 	["npc/path"] = "ns",
 	["npc/path/ground"] = "ns",
 	["npc/path/hl2"] = "ns",
+	["npc/leap"] = "ns",
 	["npc/path/scatter"] = "ns",
 	["npc/path/tfbot"] = "ns",
 	["npc/doors"] = "ns",
