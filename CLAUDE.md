@@ -42,12 +42,14 @@ Module names are `foundation.core.<path>`; tests are
 
 | Module | API |
 |---|---|
-| `structs.sets` | `Named(name, members)` → a named set, a closed vocabulary parsed once: `Has`, `Check` (an unknown member is our bug, blamed on the caller), `Match` (case-free prefix), `Members`, `Name` |
+| `structs.sets` | `Named(name, members)` → a named set, a closed vocabulary parsed once: `Has`, `Check` (an unknown member is our bug, blamed on the caller), `Match` (case-free prefix), `Members`, `Name`. Plain `value → true` sets: `Of`, `Copy`, `Union`, `Intersect`, `Subtract`, `Count`, `Sorted` |
 | `structs.heap` | `New(before)` → binary heap: `Push`, `Pop`, `Peek`, `Size`; ties are the rule's to break |
 | `structs.ring` | `New(capacity)` → the last values pushed: `Push`, `Size`, `Ordered` (oldest first) |
 | `structs.lease` | `New()` → keys held by one holder for a term: `Holder`, `FreeFor`, `Take`, `Release`, `ReleaseAll` |
 | `structs.grid` | `New(size)` → spatial hash on number keys: `Put`, `PutBox`, `Near` (3×3 cells), `Buckets`; `Thin(points, size)` keeps one point per cube |
 | `structs.polyline` | `New(points)` → a path measured along its length: `Length`, `Leg`, `PointAt`, `Offset`, `DistanceOf` |
+| `structs.queue` | `New()` → double-ended queue: `PushBack`, `PushFront`, `PopFront`, `PopBack`, `Front`, `Back`, `Size`, `Values` |
+| `structs.tree` | `New([less])` → ordered map on an AVL tree: `Insert`, `Get`, `Remove`, `Min`, `Max`, `Floor`, `Ceiling`, `Pairs` (in order), `Size`, `Height` |
 
 ### Algorithms
 
@@ -55,16 +57,24 @@ Module names are `foundation.core.<path>`; tests are
 |---|---|
 | `graph` | `Flood(starts, neighbors, admit, limit[, stop])` → reached, cut; `Components(nodes, neighbors)` → node → group number |
 | `pathfinder` | Abstract path search (template method): `Solver(name)` → a solver class filling `Begin`, `Next`, `Expand` (reporting with `Reach`, `Approach`); it gets `New`, `Find`, `Step(budget)`, `Route`. `RUNNING`, `FOUND`, `FAILED`, `MAX_EXPANDED` |
-| `geometry` | `Distance(a, b)`, `Toward(from, to, distance)` on `{ x, y, z }` |
-| `stats` | `Mean(list)`, `Percentile(list, p)` (nearest rank) |
-| `random` | `PickWeighted(items, weight, r)`, `r` drawn by the caller |
+
+### math
+
+| Module | API |
+|---|---|
+| `math.geometry` | On `{ x, y, z }` points (missing z is 0): `Distance`, `Toward`, `Add`, `Sub`, `Scale`, `Dot`, `Cross`, `Length`, `Normalize` (nil for the zero vector) |
+| `math.stats` | `Mean(list)`, `Percentile(list, p)` (nearest rank) |
+| `math.random` | `PickWeighted(items, weight, r)`, `r` drawn by the caller |
+| `math.polynomial` | Coefficients from the constant up: `Evaluate`, `Derivative`, `Roots` (real, ascending, up to a cubic) |
+| `math.matrix` | `New(rows)`, `Identity(n)` → `Rows`, `Cols`, `Get`, `Transpose`, `Multiply`, `Determinant`, `Inverse` (nil if singular), `Solve(b)` |
 
 ### encoding and parsers: binary formats and text formats
 
 | Module | API |
 |---|---|
-| `encoding` | Writers: `Byte`, `Int16`, `Int32`, `Float32` (little-endian, IEEE 754), `Utf8(code)`, `Crc32(s)` |
-| `parsers.binary` | `Reader(data)` → `Byte`, `Int16`, `UInt16`, `Int32`, `Float32`, `Consumed` |
+| `encoding` | Writers: `Byte`, `Int16`, `Int32`, `Float32` (little-endian, IEEE 754), `Varint` (ULEB128), `String` (varint length + bytes), `Utf8(code)`, `Crc32(s)`; `Writer()` gathers them: `Bytes`, `Size` |
+| `parsers.binary` | `Reader(data)` → `Byte`, `Int16`, `UInt16`, `Int32`, `Float32`, `Varint`, `String`, `Consumed` |
+| `parsers.cursor` | `New(text)` → a parser's position: `Literal(s[, ignoreCase])`, `Pattern`, `Peek`, `Whitespace`, `Save`/`Restore`/`Commit`, `Position`, `AtEnd`, `Rest` |
 | `parsers.utf16` | `Decode(raw)`: UTF-16LE → UTF-8 |
 | `parsers.keyvalues` | `Read(text, visit(path, key, value))`: Valve KeyValues |
 | `parsers.consolecfg` | `Commands(text)`: cfg text → console commands, chained `;` refused |
@@ -73,7 +83,7 @@ Module names are `foundation.core.<path>`; tests are
 
 | Module | API |
 |---|---|
-| `meta.class` | `Extend(parent, fields)`, `New(class, fields)`, `IsA(value, class)`, `Guard(class, check)` (refuses new keys on subclasses and their instances) |
+| `meta.class` | `Extend(parent, fields)`, `New(class, fields)`, `IsA(value, class)`, `Guard(class, check)` (refuses new keys on subclasses and their instances), `Construct(class, ...)` (each own `Init`, base first), `Destroy(instance, ...)` (each own `Destroy`, derived first) |
 | `meta.port` | `New(name, methods)` → an interface: `Check(value)`, `Facade(value)`, `Methods`, `Name`; `Is(value)` |
 
 ### Formalisms and runtime
@@ -84,7 +94,9 @@ Module names are `foundation.core.<path>`; tests are
 | `hfsm` | NextBot Action/Behavior engine: `Action`, `Chart{ name, port, events, queries, initial }` → `State(name)`, `Owns`, `New(actor, state)` → a machine: `Update`, `Event`, `Query`, `Describe` |
 | `map_io` | A map's entity lookups and output connections, through a world port |
 | `tactics` | The tactics engine interface: `ENGINE` (a port), `Check(engine)` |
+| `scheduler` | `New(clock)` → cooperative tasks in a time slice: `Spawn(fn, ...)`, `Run(seconds)`, `CheckYield` (in a task: yield once the slice is spent), `Yield`, `Count` |
 | `analytics` | Timers, counters, tick pressure, memory samples; clock and memory are ports |
+| `memory` | `Measure(roots)` → estimated bytes per named root (each object once); `Format(report, rows)`. `ws_analytics_memory` runs it over the loaded foundation modules |
 | `refusal` | `Raise(kind, detail)`, `Is`, `Message`, `Explain`, `Detail`: a request declined for the caller's mistake |
 
 ### Variants outside core
@@ -101,7 +113,8 @@ backing): `docs/foundation-core.md`.
 ## Adding to core
 
 A structure or algorithm goes in `foundation/core/` (a data structure in
-`structs/`, a format reader in `parsers/`, a metatable mechanism in `meta/`)
+`structs/`, a format reader in `parsers/`, maths in `math/`, a metatable
+mechanism in `meta/`)
 with its test written first and an entry in
 `tests/foundation_layers_test.lua`, and a line in the index above. Core names
 no mode, feature or game noun.
