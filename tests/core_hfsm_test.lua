@@ -3,6 +3,7 @@
 -- on it.
 local T = dofile("tests/harness.lua")
 local Hfsm = T.require("foundation.core.hfsm")
+local Port = T.require("foundation.core.port")
 
 -- A soldier the port is checked against: more methods than any chart needs.
 local function Soldier()
@@ -14,7 +15,7 @@ local function Soldier()
 	return soldier
 end
 
-local SOLDIER_PORT = Hfsm.Port("Soldier", { "Now", "IsAlive", "Shoot" })
+local SOLDIER_PORT = Port.New("Soldier", { "Now", "IsAlive", "Shoot" })
 
 -- Patrol until stuck, then Unstick, then back; an engagement asks to shoot.
 local function PatrolChart()
@@ -89,8 +90,8 @@ T.test("an actor missing a port method is refused, naming what it lacks", functi
 end)
 
 T.test("a port needs a name and at least one method", function()
-	Raises(Hfsm.Port, "Empty", {})
-	Raises(Hfsm.Port, nil, { "Now" })
+	Raises(Port.New, "Empty", {})
+	Raises(Port.New, nil, { "Now" })
 end)
 
 T.test("a chart needs a name, a port and an initial state", function()

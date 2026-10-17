@@ -1,7 +1,7 @@
 -- The NextBot debug layer's rules (the nbdebug feature, ws_nb_*): the
 -- engine's nb_select, nb_debug and nb_debug_filter, redone for what the
 -- engine cannot see: our Lua Behaviors, the costs our path strategies give
--- (foundation.npc.path), and the routes foundation.core.pathfinder searches.
+-- (foundation.npc.path), and the routes foundation.pathfinder.astar searches.
 --
 -- Layers: PATH (the computed path by move type, its cost and timing), COST
 -- (every area the search considered, by cost so far), BEHAVIOR (the action
@@ -432,7 +432,7 @@ end
 -- PATH: what a search computed, reported by whoever ran it
 
 -- Who searched: the engine's Path:Compute (with our cost function) for a
--- NextBot, or foundation.core.pathfinder for an NPC that cannot use it.
+-- NextBot, or foundation.pathfinder.astar for an NPC that cannot use it.
 SOURCE_ENGINE, SOURCE_ROUTE = "Path:Compute", "foundation.pathfinder.astar"
 
 -- Path::SegmentType (NextBotPath.h), as GMod's path segments carry it.

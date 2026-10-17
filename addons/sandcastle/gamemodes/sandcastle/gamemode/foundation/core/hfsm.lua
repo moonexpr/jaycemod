@@ -7,7 +7,7 @@
 --
 -- A Chart is the seam a new machine is built on. It declares, before any
 -- state exists, what its states may see and answer:
---   port     Port(name, methods): the only actor methods a state can call
+--   port     a foundation.core.port: the only actor methods a state can call
 --            (states get a facade, never the actor itself)
 --   events   the On<Event> names its states handle and Event accepts
 --   queries  the names Query accepts
@@ -17,6 +17,7 @@
 -- refuses an actor missing a port method. So each state does one job behind
 -- one contract, new states extend the chart without editing it, and states
 -- depend on the port the composition root fills, not on an entity.
+local Port = require("foundation.core.port")
 local error, getmetatable, ipairs, rawset, setmetatable, tostring, type =
 	error, getmetatable, ipairs, rawset, setmetatable, tostring, type
 local concat, find = table.concat, string.find
@@ -524,10 +525,7 @@ function Interval:IsLessThen(duration) return self.clock:Now() - self.timestamp 
 function Interval:IsGreaterThen(duration) return self.clock:Now() - self.timestamp > duration end
 
 -------------------------------------------------------------------------------
--- Port: the interface a chart's states reach their actor through
-
-local PortClass = {}
-PortClass.__index = PortClass
+-- Names a chart declares
 
 local function NameList(names, what)
 	if type(names) ~= "table" then error(what .. " must be a list of names", 3) end
@@ -546,39 +544,6 @@ end
 local function Name(value, what)
 	if type(value) ~= "string" or value == "" then error(what .. " needs a name", 3) end
 	return value
-end
-
--- Port(name, methods): an interface of at least one method.
-function Port(name, methods)
-	Name(name, "a port")
-	NameList(methods, "port " .. name)
-	if #methods == 0 then error("port " .. name .. " declares no methods", 2) end
-	return setmetatable({
-		name = name,
-		methods = methods,
-	}, PortClass)
-end
-
--- The actor when it has every method, else an error naming the missing ones.
-function PortClass:Check(actor)
-	local missing = {}
-	for _, method in ipairs(self.methods) do
-		if type(actor[method]) ~= "function" then missing[#missing + 1] = method end
-	end
-	if #missing > 0 then
-		error("actor is not a " .. self.name .. ": no " .. concat(missing, ", "), 3)
-	end
-	return actor
-end
-
--- What a state gets as `me`: the port's methods, each looked up on the
--- actor at call time so a reloaded actor class takes effect at once.
-function PortClass:Facade(actor)
-	local facade = {}
-	for _, method in ipairs(self.methods) do
-		facade[method] = function(_, ...) return actor[method](actor, ...) end
-	end
-	return facade
 end
 
 -------------------------------------------------------------------------------
@@ -611,7 +576,7 @@ end
 -- Chart{ name, port, events?, queries?, initial }.
 function Chart(spec)
 	local name = Name(spec.name, "a chart")
-	if getmetatable(spec.port) ~= PortClass then error("chart " .. name .. " needs a Port", 2) end
+	if not Port.Is(spec.port) then error("chart " .. name .. " needs a Port", 2) end
 	if type(spec.initial) ~= "function" then error("chart " .. name .. " needs initial(state)", 2) end
 	local events = NameList(spec.events or {}, "chart " .. name .. "'s events")
 	for _, event in ipairs(events) do

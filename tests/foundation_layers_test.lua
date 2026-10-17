@@ -26,6 +26,7 @@ local CATEGORY = {
 	["core/geometry"] = "structures",
 	["core/refusal"] = "structures",
 	["core/sets"] = "structures",
+	["core/port"] = "structures",
 
 	["core/cfsm"] = "formalisms",
 	["core/hfsm"] = "formalisms",

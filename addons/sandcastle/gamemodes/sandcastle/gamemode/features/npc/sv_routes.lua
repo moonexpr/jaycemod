@@ -61,7 +61,7 @@ function Controller:EnginePathCost(ent, strategy, limits, bot)
 	end
 end
 
--- The graph foundation.core.pathfinder searches: nav area ids, their floor
+-- The graph foundation.pathfinder.astar searches: nav area ids, their floor
 -- neighbours in GetAdjacentAreas' order (north, east, south, west; nav
 -- ladders are left out, as no engine NPC climbs them), the strategy's cost
 -- with ILocomotion's default traversal rule (not blocked for the mover's
