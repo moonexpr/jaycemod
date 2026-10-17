@@ -16,6 +16,7 @@
 -- a rerun of this module changes the behaviour of the live book too.
 local PlayMode = require("foundation.play_mode")
 local Refusal = require("foundation.core.refusal")
+local Sets = require("foundation.core.sets")
 local ceil, error, format, ipairs, pairs, remove, tostring, type = math.ceil, error, string.format, ipairs, pairs, table.remove, tostring, type
 module(...)
 
@@ -75,15 +76,15 @@ PLAYER = {
 FAILED_QUORUM = "Not enough players voted."
 FAILED_YES = "Not enough players voted \"Yes.\""
 
-local KNOWN = {
-	[KIND_KICK] = true,
-	[KIND_MAP] = true,
-	[KIND_RESET] = true,
-	[KIND_SCRAMBLE] = true,
-	[KIND_SUPPORT] = true,
-	[KIND_DIFFICULTY] = true,
-	[KIND_NEXTMAP] = true,
-}
+local KIND = Sets.Named("vote kind", {
+	KIND_KICK,
+	KIND_MAP,
+	KIND_RESET,
+	KIND_SCRAMBLE,
+	KIND_SUPPORT,
+	KIND_DIFFICULTY,
+	KIND_NEXTMAP,
+})
 
 function New()
 	return {
@@ -126,7 +127,7 @@ end
 -- refusal.
 function Call(book, req, now, facts)
 	local kind = req.kind
-	if not KNOWN[kind] then error("vote: unknown kind " .. tostring(kind), 2) end
+	KIND:Check(kind)
 	if kind == KIND_KICK then Refusal.Raise(KICK_BY_REPORTS, "To remove a player, hold Tab, right-click them and report them.") end
 	if book.current then Refusal.Raise(IN_PROGRESS, "A vote is currently in progress.") end
 	if not facts.enabled[kind] then Refusal.Raise(DISABLED, "Server has disabled that issue.") end

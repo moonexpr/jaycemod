@@ -16,6 +16,7 @@ local floor, huge, sqrt = math.floor, math.huge, math.sqrt
 local concat, sort = table.concat, table.sort
 local find, lower, rep, sub, upper = string.find, string.lower, string.rep, string.sub, string.upper
 local Npc = require("foundation.npc")
+local Sets = require("foundation.core.sets")
 module(...)
 
 -------------------------------------------------------------------------------
@@ -23,6 +24,7 @@ module(...)
 
 PATH, COST, BEHAVIOR, NAV, AIWAR = "PATH", "COST", "BEHAVIOR", "NAV", "AIWAR"
 LAYERS = { PATH, COST, BEHAVIOR, NAV, AIWAR }
+local LAYER = Sets.Named("ws_nb_debug layer", LAYERS)
 
 -- Tokens beside the layers' names: nb_debug's "*" means all.
 ALL_TOKEN, ALL_SHORTHAND, OFF_TOKEN = "ALL", "*", "OFF"
@@ -39,10 +41,7 @@ local function IsPrefix(token, name)
 end
 
 local function LayerOf(token)
-	for _, layer in ipairs(LAYERS) do
-		if IsPrefix(token, layer) then return layer end
-	end
-	return nil
+	return LAYER:Match(token)
 end
 
 -- The layers after a ws_nb_debug command: no token turns every layer

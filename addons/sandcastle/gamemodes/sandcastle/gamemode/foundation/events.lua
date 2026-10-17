@@ -18,6 +18,7 @@
 -- "kind: message". A client's request the server will not take (unknown,
 -- not client-sendable, over its rate) is refused instead: ReadRequest
 -- returns nil and the refusal, since a client's mistake is not ours.
+local Sets = require("foundation.core.sets")
 local bit, error, format, getmetatable, ipairs, pairs, pcall, setmetatable, sort, tostring, type =
 	bit, error, string.format, getmetatable, ipairs, pairs, pcall, setmetatable, table.sort, tostring, type
 local byte, match = string.byte, string.match
@@ -59,11 +60,11 @@ local ENGINE_KIND = {
 	[ANGLE] = true,
 }
 
-local OPTIONS = {
-	clientSendable = true,
-	rate = true,
-	unreliable = true,
-}
+local OPTIONS = Sets.Named("event option", {
+	"clientSendable",
+	"rate",
+	"unreliable",
+})
 
 local ErrorMeta = {
 	__tostring = function(e) return e.kind .. ": " .. e.message end,
@@ -367,7 +368,7 @@ function Registry:Define(name, fields, options)
 	end
 	options = options or {}
 	for key in pairs(options) do
-		if not OPTIONS[key] then Raise(BAD_SCHEMA, "%s: unknown option %s", name, tostring(key)) end
+		if not OPTIONS:Has(key) then Raise(BAD_SCHEMA, "%s: unknown option %s", name, tostring(key)) end
 	end
 	if options.clientSendable then CheckRate(options.rate, name) end
 	local id = IdOfName(name)

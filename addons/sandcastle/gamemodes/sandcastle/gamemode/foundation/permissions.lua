@@ -8,7 +8,8 @@
 -- - With gameplay tampering switched off (mp_tampering_enabled 0), tampering
 --   also needs the gameplay toggles, so only superadmins keep it by default.
 local PlayMode = require("foundation.play_mode")
-local error = error
+local Sets = require("foundation.core.sets")
+local ipairs = ipairs
 module(...)
 
 -- CAMI's MinAccess names for the three ranks it knows.
@@ -95,13 +96,14 @@ PRIVILEGES = {
 	},
 }
 
-local KNOWN = {}
-for i = 1, #PRIVILEGES do KNOWN[PRIVILEGES[i].name] = true end
+local NAMES = {}
+for i, privilege in ipairs(PRIVILEGES) do NAMES[i] = privilege.name end
+local PRIVILEGE = Sets.Named("permissions privilege", NAMES)
 
 -- Whether the privilege name is allowed: true, or false and a REASON_.
 -- holds(name) is the admin mod's answer; facts = { mode, tamperingEnabled }.
 function Allows(name, holds, facts)
-	if not KNOWN[name] then error("permissions: unknown privilege " .. tostring(name), 2) end
+	PRIVILEGE:Check(name)
 	if name == SPAWN and PlayMode.IsSandbox(facts.mode) then return true end
 	if not holds(name) then return false, REASON_RANK end
 	if name == TAMPER and not facts.tamperingEnabled and not holds(GAMEPLAY) then return false, REASON_TAMPERING_OFF end

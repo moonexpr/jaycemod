@@ -23,6 +23,7 @@ local CATEGORY = {
 	["core/analytics"] = "structures",
 	["core/geometry"] = "structures",
 	["core/refusal"] = "structures",
+	["core/sets"] = "structures",
 
 	["core/cfsm"] = "formalisms",
 	["core/hfsm"] = "formalisms",

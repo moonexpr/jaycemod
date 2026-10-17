@@ -9,7 +9,8 @@
 -- A book is plain data keyed by whatever the controller gives (players), so
 -- a rerun of this module changes the behaviour of the live book too.
 local Refusal = require("foundation.core.refusal")
-local error, min, pairs, tostring = error, math.min, pairs, tostring
+local Sets = require("foundation.core.sets")
+local min, pairs = math.min, pairs
 module(...)
 
 -- TF2's kick reasons (TF_VoteKickReason_*), in its order.
@@ -28,8 +29,7 @@ PLAYER = {
 	[ALREADY_REPORTED] = true,
 }
 
-local KNOWN = {}
-for i = 1, #REASONS do KNOWN[REASONS[i]] = true end
+local REASON = Sets.Named("reports reason", REASONS)
 
 function New()
 	return { against = {} } -- target -> { by = { reporter -> { reason, order } }, filed }
@@ -66,7 +66,7 @@ end
 -- Files reporter's report of target. Returns the reason for the kick vote
 -- when this report reaches the count (and spends the reports), else nil.
 function File(book, reporter, target, reason, playerCount, configured)
-	if not KNOWN[reason] then error("reports: unknown reason " .. tostring(reason), 2) end
+	REASON:Check(reason)
 	if reporter == target then Refusal.Raise(SELF_REPORT, "You cannot report yourself.") end
 	local entry = book.against[target]
 	if entry == nil then

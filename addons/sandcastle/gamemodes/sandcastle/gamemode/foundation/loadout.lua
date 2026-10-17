@@ -11,6 +11,7 @@
 local floor, format, ipairs, pairs, setmetatable, tostring, type =
 	math.floor, string.format, ipairs, pairs, setmetatable, tostring, type
 local Refusal = require("foundation.core.refusal")
+local Sets = require("foundation.core.sets")
 module(...)
 
 PRICE = 10
@@ -90,8 +91,9 @@ function Refused(err)
 	return Refusal.Is(err, PLAYER)
 end
 
-local KNOWN_KIND = {}
-for _, k in ipairs(KINDS) do KNOWN_KIND[k.kind] = true end
+local KIND_NUMBERS = {}
+for i, k in ipairs(KINDS) do KIND_NUMBERS[i] = k.kind end
+local KIND = Sets.Named("loadout kind", KIND_NUMBERS)
 
 local function SlotOf(slot)
 	local s = SLOTS[slot]
@@ -111,7 +113,7 @@ Catalog.__index = Catalog
 local function Entry(e)
 	if type(e.class) ~= "string" or e.class == "" then Raise(BAD_CATALOG, "an entry without a class") end
 	if type(e.name) ~= "string" then Raise(BAD_CATALOG, e.class .. " has no name") end
-	if not KNOWN_KIND[e.kind] then Raise(BAD_CATALOG, e.class .. " has no known kind") end
+	if not KIND:Has(e.kind) then Raise(BAD_CATALOG, e.class .. " has no known kind") end
 	if type(e.price) ~= "number" or e.price < 0 or e.price ~= floor(e.price) then
 		Raise(BAD_CATALOG, e.class .. " has no whole, non-negative price")
 	end

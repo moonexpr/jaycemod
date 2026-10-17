@@ -15,6 +15,7 @@
 -- Every state named anywhere must be declared, so a mistyped state is an
 -- error at load, not a machine stuck at run time. definition:New(initial)
 -- makes a machine; its handlers get whatever its caller passes along.
+local Sets = require("foundation.core.sets")
 local error, ipairs, pairs, setmetatable, tostring, type = error, ipairs, pairs, setmetatable, tostring, type
 module(...)
 
@@ -31,7 +32,7 @@ local function Refuse(name, why)
 end
 
 local function Declared(def, state, where)
-	if not def.declared[state] then Refuse(def.name, where .. " names undeclared state " .. tostring(state)) end
+	if not def.states:Has(state) then Refuse(def.name, where .. " names undeclared state " .. tostring(state)) end
 	return state
 end
 
@@ -62,12 +63,8 @@ function Define(spec)
 	if type(spec.states) ~= "table" or #spec.states == 0 then Refuse(name, "declares no states") end
 	local def = setmetatable({
 		name = name,
-		declared = {},
+		states = Sets.Named("state machine " .. name, spec.states),
 	}, Definition)
-	for _, state in ipairs(spec.states) do
-		if def.declared[state] then Refuse(name, "declares " .. tostring(state) .. " twice") end
-		def.declared[state] = true
-	end
 	def.edges = Edges(def, spec.transitions)
 	for _, kind in ipairs(HANDLER_KINDS) do def[kind] = Handlers(def, kind, spec[kind]) end
 	if spec.changing ~= nil and type(spec.changing) ~= "function" then Refuse(name, "changing is not a function") end
@@ -88,7 +85,7 @@ function Machine:Is(state) return self.current == state end
 -- Whether the machine may move from its state to state.
 function Machine:Can(state)
 	local def = self.def
-	if not def.declared[state] then return false end
+	if not def.states:Has(state) then return false end
 	return def.edges == nil or (def.edges[self.current] ~= nil and def.edges[self.current][state] == true)
 end
 
