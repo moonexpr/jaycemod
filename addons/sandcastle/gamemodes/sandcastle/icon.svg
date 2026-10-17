@@ -8,46 +8,46 @@
   built from its pieces: Building.svg's inner glow, outline-over-fill and
   ground strip, Box.svg's sand and outline colours, Flag red.svg's cloth,
   edge and pole. A 16 unit grid; strokes 1 wide on half units, so the icon
-  is sharp at 16 and scales as a vector.
+  is sharp at 16 and scales as a vector. Few, wide shapes: at 16 units a
+  merlon narrower than 3 is all outline.
 -->
 
 <!-- the beach: Building.svg's ground strip, in sand -->
 <path d="M0 15C0 14.4477 0.447715 14 1 14H15C15.5523 14 16 14.4477 16 15H0Z" fill="url(#beach)"/>
 
-<!-- the castle: two towers with their merlons, the wall between with its own -->
+<!-- the castle: a wall with a merlon at each end, and the keep between, taller -->
 <g filter="url(#glow)">
-<path d="M1 14V4H3V6H4V4H6V8H7V7H9V8H10V4H12V6H13V4H15V14H1Z" fill="url(#sand)"/>
+<path d="M1 14V5H4V7H6V3H10V7H12V5H15V14H1Z" fill="url(#sand)"/>
 </g>
-<path d="M1.5 13.5V4.5H2.5V6.5H4.5V4.5H5.5V8.5H7.5V7.5H8.5V8.5H10.5V4.5H11.5V6.5H13.5V4.5H14.5V13.5H1.5Z" stroke="url(#outline)" stroke-linejoin="round"/>
+<!-- the same outline, 1 wide on half units; mitred, so the inner corners stay closed -->
+<path d="M1.5 13.5V5.5H3.5V7.5H6.5V3.5H9.5V7.5H12.5V5.5H14.5V13.5H1.5Z" stroke="url(#outline)" stroke-linejoin="miter"/>
 
 <!-- the gate, arched -->
-<path d="M6.5 14V11.5C6.5 10.6716 7.17157 10 8 10C8.82843 10 9.5 10.6716 9.5 11.5V14" fill="#7A4C12" stroke="#784D15"/>
+<path d="M6.5 13.5V11.5C6.5 10.6716 7.17157 10 8 10C8.82843 10 9.5 10.6716 9.5 11.5V13.5H6.5Z" fill="#7A4C12" stroke="#784D15" stroke-linejoin="miter"/>
 
-<!-- the flag on the wall's merlon: Flag red.svg's pole and cloth -->
-<path d="M8 7.5V1" stroke="#87581D" stroke-width="2" stroke-linecap="round"/>
-<path d="M8 7.5V1" stroke="url(#pole)" stroke-linecap="round"/>
-<path d="M8.5 0.5H12.5L11.5 2L12.5 3.5H8.5V0.5Z" fill="url(#cloth)" stroke="url(#clothEdge)" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M9.5 1.5H10.6L10.3 2L10.6 2.5H9.5" stroke="white" stroke-opacity="0.5" stroke-linecap="round" stroke-linejoin="round"/>
+<!-- the flag on the keep: Flag red.svg's pole and cloth -->
+<path d="M8 3V0.5" stroke="#A66F2B" stroke-linecap="round"/>
+<path d="M8.5 0.5H12.5L11.5 1.75L12.5 3H8.5V0.5Z" fill="url(#cloth)" stroke="url(#clothEdge)" stroke-linejoin="round"/>
 
 <defs>
-<!-- Building.svg's inner glow: white, a unit in from the edge -->
-<filter id="glow" x="1" y="4" width="14" height="10" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<!-- Building.svg's inner glow, faint: a lighter inner edge just inside the outline -->
+<filter id="glow" x="1" y="3" width="14" height="11" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
 <feFlood flood-opacity="0" result="BackgroundImageFix"/>
 <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
 <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
-<feMorphology radius="1" operator="erode" in="SourceAlpha" result="effect1_innerShadow"/>
+<feMorphology radius="2" operator="erode" in="SourceAlpha" result="effect1_innerShadow"/>
 <feOffset/>
 <feComposite in2="hardAlpha" operator="arithmetic" k2="-1" k3="1"/>
-<feColorMatrix type="matrix" values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.66 0"/>
+<feColorMatrix type="matrix" values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.3 0"/>
 <feBlend mode="normal" in2="shape" result="effect1_innerShadow"/>
 </filter>
 <!-- Box.svg's sand, lit at the top left -->
-<linearGradient id="sand" x1="1" y1="4" x2="15" y2="14" gradientUnits="userSpaceOnUse">
+<linearGradient id="sand" x1="1" y1="3" x2="15" y2="14" gradientUnits="userSpaceOnUse">
 <stop stop-color="#EBB865"/>
 <stop offset="1" stop-color="#C86530"/>
 </linearGradient>
 <!-- Box.svg's outline -->
-<linearGradient id="outline" x1="1" y1="4" x2="15" y2="14" gradientUnits="userSpaceOnUse">
+<linearGradient id="outline" x1="1" y1="3" x2="15" y2="14" gradientUnits="userSpaceOnUse">
 <stop stop-color="#A66F2B"/>
 <stop offset="1" stop-color="#784D15"/>
 </linearGradient>
@@ -55,19 +55,15 @@
 <stop stop-color="#EBB865"/>
 <stop offset="1" stop-color="#D6A256"/>
 </linearGradient>
-<!-- Flag red.svg's cloth, edge and pole -->
-<linearGradient id="cloth" x1="8.5" y1="1.5" x2="12.5" y2="2.5" gradientUnits="userSpaceOnUse">
+<!-- Flag red.svg's cloth and edge -->
+<linearGradient id="cloth" x1="8.5" y1="1.25" x2="12.5" y2="2.25" gradientUnits="userSpaceOnUse">
 <stop offset="0.405582" stop-color="#FF5C51"/>
 <stop offset="0.62144" stop-color="#FFD0CD"/>
 <stop offset="0.759571" stop-color="#FFA09A"/>
 </linearGradient>
-<linearGradient id="clothEdge" x1="8.5" y1="2" x2="12.5" y2="2" gradientUnits="userSpaceOnUse">
+<linearGradient id="clothEdge" x1="8.5" y1="1.75" x2="12.5" y2="1.75" gradientUnits="userSpaceOnUse">
 <stop stop-color="#F52A0A"/>
 <stop offset="1" stop-color="#F95B50"/>
-</linearGradient>
-<linearGradient id="pole" x1="8" y1="1" x2="8" y2="7.5" gradientUnits="userSpaceOnUse">
-<stop stop-color="#E2BC86"/>
-<stop offset="1" stop-color="#D6A256"/>
 </linearGradient>
 </defs>
 </svg>
