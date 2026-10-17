@@ -2,7 +2,7 @@
 local Controller, Map, ARRIVED = ...
 local AiWar = WS.require("foundation.aiwar")
 local Orders = WS.require("foundation.aiwar.orders")
-local Tactics = WS.require("foundation.aiwar.tactics")
+local Tactics = WS.require("foundation.wartactics")
 local Squad = WS.require("foundation.aiwar.squad")
 local Inspect = WS.require("foundation.ns.inspect")
 local RED, BLUE = Map.RED, Map.BLUE

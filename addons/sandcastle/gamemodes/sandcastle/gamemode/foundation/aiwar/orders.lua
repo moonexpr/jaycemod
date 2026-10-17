@@ -66,7 +66,8 @@ local N = require("foundation.npc")
 local AiWar = require("foundation.aiwar")
 local Teams = require("foundation.teams")
 local Track = require("foundation.aiwar.track")
-local Tactics = require("foundation.aiwar.tactics")
+local Tactics = require("foundation.wartactics")
+local Geometry = require("foundation.core.geometry")
 local Squad = require("foundation.aiwar.squad")
 local Lanes = require("foundation.aiwar.lanes")
 local Hunt = require("foundation.aiwar.hunt")
@@ -242,7 +243,7 @@ end
 -- Where to enter a sphere from p: SPHERE_ENTER of its radius from the
 -- centre, on p's side; p itself when p is already that far in.
 function EntryPoint(center, radius, p)
-	return Tactics.Toward(center, p, radius * SPHERE_ENTER)
+	return Geometry.Toward(center, p, radius * SPHERE_ENTER)
 end
 local function EnemyCart(field, member) return field.carts[Teams.EnemyOf(member.team)] end
 
@@ -496,7 +497,7 @@ function Goal(field, member)
 end
 
 -- The member's fire team's contact, reporting the enemy the member sees:
--- what one sees, its team knows (foundation.aiwar.tactics).
+-- what one sees, its team knows (foundation.wartactics).
 function TeamContact(state, me)
 	local fireTeam = state.member.fireTeam
 	if not fireTeam then return nil end
@@ -1180,7 +1181,7 @@ function Objective:Heal(me, field)
 	end
 	state.healing = patient
 	local range = me:RangeTo(patient.pos)
-	local spot = Tactics.Toward(patient.pos, me:Position(), MEDIC_STANDOFF)
+	local spot = Geometry.Toward(patient.pos, me:Position(), MEDIC_STANDOFF)
 	state.goal, state.tactic = spot, "healing"
 	me:Heal(range <= HEAL_RANGE and patient.handle or nil)
 	if range > MEDIC_STANDOFF + SPOT_ARRIVE then me:MoveTo(spot, RUN) else me:Hold() end
@@ -1204,7 +1205,7 @@ function Objective:ShouldHurry(me)
 	return N.ANSWER_UNDEFINED
 end
 
--- A fight, by the role's tactic (foundation.aiwar.tactics).
+-- A fight, by the role's tactic (foundation.wartactics).
 BOUND_RADIUS, COVER_RADIUS, SPOT_ARRIVE = 200, 320, 48
 FLANK_TIME, FLANK_ARRIVE = 15, 160
 -- A squad member farther than REGROUP_RANGE from its leader in a fight runs
@@ -1254,7 +1255,7 @@ function Objective:FollowLeader(me, field)
 	local leader = LeaderOf(member)
 	if not leader then return nil end
 	if self:AtObjective(me:Position(), member, field) or self:AtObjective(leader.pos, leader, field) then return nil end
-	local spot = Tactics.Toward(leader.pos, me:Position(), FOLLOW_SPACING * ((member.place or 0) + 1))
+	local spot = Geometry.Toward(leader.pos, me:Position(), FOLLOW_SPACING * ((member.place or 0) + 1))
 	state.tactic, state.goal = FOLLOWING, spot
 	if me:RangeTo(spot) > FOLLOW_SLACK then me:MoveTo(spot, RUN) else me:Release() end
 	return self:Continue()
@@ -1303,7 +1304,7 @@ function Objective:Regroup(me)
 	local member = self.state.member
 	local leader = LeaderOf(member)
 	if not leader or me:RangeTo(leader.pos) <= REGROUP_RANGE then return nil end
-	local spot = Tactics.Toward(leader.pos, me:Position(), SQUAD_SPACING * (member.place or 1))
+	local spot = Geometry.Toward(leader.pos, me:Position(), SQUAD_SPACING * (member.place or 1))
 	local state = self.state
 	state.tactic, state.element = "regrouping on its leader", "moving"
 	state.goal, state.coverSpot = spot, nil
@@ -1358,7 +1359,7 @@ function Objective:Attack(me, goal, contact, fireTeam, now, flanks)
 		-- the squad bounds on one line: ahead of its leader, spread by place
 		local leader = LeaderOf(state.member)
 		local from = leader and leader.pos or me:Position()
-		local ahead = Tactics.Toward(from, goal, Tactics.BOUND_DISTANCE)
+		local ahead = Geometry.Toward(from, goal, Tactics.BOUND_DISTANCE)
 		if leader then ahead = Across(from, ahead, Lateral(state.member.place or 0) / LATERAL * SQUAD_SPACING) end
 		self.boundCover = self:ClaimCover(me, ahead, BOUND_RADIUS, contact.pos)
 		self.boundSpot = self.boundCover or ahead

@@ -11,7 +11,7 @@
 local ipairs, sort = ipairs, table.sort
 local atan2, floor, max, min, sqrt, HUGE = math.atan2, math.floor, math.max, math.min, math.sqrt, math.huge
 local format, concat = string.format, table.concat
-local Tactics = require("foundation.aiwar.tactics")
+local Tactics = require("foundation.wartactics")
 local Squad = require("foundation.aiwar.squad")
 local Orders = require("foundation.aiwar.orders")
 local Distance = require("foundation.core.geometry").Distance

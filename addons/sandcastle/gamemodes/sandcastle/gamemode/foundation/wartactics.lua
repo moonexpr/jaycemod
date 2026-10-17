@@ -1,4 +1,5 @@
--- A fire team's tactics in a fight (foundation.aiwar.orders reads them).
+-- The AI war's tactics engine (foundation.core.tactics): a fire team's
+-- tactics in a fight, as foundation.aiwar.orders reads them.
 --
 -- Contact: what one member sees, its whole team knows: the last place an
 -- enemy was seen, for CONTACT_MEMORY seconds; and where a member fell, for
@@ -20,7 +21,7 @@
 --
 -- Positions are plain { x, y, z } tables.
 local ipairs, math, sqrt = ipairs, math, math.sqrt
-local Distance = require("foundation.core.geometry").Distance
+local Tactics = require("foundation.core.tactics")
 module(...)
 
 CONTACT_MEMORY = 8
@@ -30,16 +31,6 @@ BOUND_DISTANCE, BOUND_TIME = 320, 6
 FLANK_OFFSET = 480
 FALLBACK_STEP, FALLBACK_STEPS = 384, 3
 FALLBACK_MEMBERS, FALLBACK_RANGE, FALLBACK_INTERVAL = 1, 300, 10
-
--- The point `distance` from `from` toward `to`, on the ground plane (z
--- from `from`); `to` itself when nearer.
-function Toward(from, to, distance)
-	local dx, dy = to.x - from.x, to.y - from.y
-	local length = sqrt(dx * dx + dy * dy)
-	if length <= distance or length == 0 then return { x = to.x, y = to.y, z = to.z } end
-	local t = distance / length
-	return { x = from.x + dx * t, y = from.y + dy * t, z = from.z }
-end
 
 -- Contact --------------------------------------------------------------------
 
@@ -163,3 +154,5 @@ function FallbackPoint(post, threat, steps)
 	local d = FALLBACK_STEP * steps / length
 	return { x = post.x + dx * d, y = post.y + dy * d, z = post.z }
 end
+
+Tactics.Check(_M)

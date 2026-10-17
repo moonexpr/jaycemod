@@ -33,10 +33,11 @@ local floor, max, min = math.floor, math.max, math.min
 local ipairs = ipairs
 local AiWar = require("foundation.aiwar")
 local Orders = require("foundation.aiwar.orders")
-local Tactics = require("foundation.aiwar.tactics")
+local Tactics = require("foundation.wartactics")
 local Teams = require("foundation.teams")
 local Base = require("foundation.aiwar.scenario")
-local Distance = require("foundation.core.geometry").Distance
+local Geometry = require("foundation.core.geometry")
+local Distance = Geometry.Distance
 module(...)
 
 MODE = "control_points"
@@ -111,7 +112,7 @@ local function CaptureSpot(field, team, o, slot)
 	if target and not target.locked then return Orders.Ring(Center(target), slot, target.zone.radius * CAPTURE_SPREAD) end
 	local stage = Offense(o)
 	if not stage then return nil end
-	local outside = Tactics.Toward(Center(stage), field.bases[team], stage.zone.radius + STAGE_DISTANCE)
+	local outside = Geometry.Toward(Center(stage), field.bases[team], stage.zone.radius + STAGE_DISTANCE)
 	return Orders.Ring(outside, slot, STAGE_SPREAD)
 end
 
@@ -127,7 +128,7 @@ end
 local function AssaultSphere(field, team, o)
 	local point = Offense(o)
 	if not point then return nil end
-	return Tactics.Toward(Center(point), field.bases[team], ASSAULT_STANDOFF), ASSAULT_SPHERE
+	return Geometry.Toward(Center(point), field.bases[team], ASSAULT_STANDOFF), ASSAULT_SPHERE
 end
 
 local function AssaultSpot(field, member, o)
@@ -143,7 +144,7 @@ local function DefendSpot(field, member, o)
 	if gate then return gate end
 	local posts = field.posts and field.posts[member.team]
 	if posts and posts[member.slot + 1] then return posts[member.slot + 1] end
-	local ahead = Tactics.Toward(Center(guard), field.bases[EnemyOf(member.team)], DEFEND_RING)
+	local ahead = Geometry.Toward(Center(guard), field.bases[EnemyOf(member.team)], DEFEND_RING)
 	return Orders.Ring(ahead, member.slot, DEFEND_SPREAD)
 end
 
@@ -174,7 +175,7 @@ local function SupportSpot(field, member)
 	local point = ObjectivesOf(field, member).focus
 	if not point then return nil end
 	local base = field.bases[member.team]
-	local behind = Tactics.Toward(Center(point), base, point.zone.radius + Orders.SUPPORT_BEHIND)
+	local behind = Geometry.Toward(Center(point), base, point.zone.radius + Orders.SUPPORT_BEHIND)
 	return Orders.Across(base, behind, Orders.Lateral(member.slot))
 end
 
@@ -272,7 +273,7 @@ local ROLES = {
 			local o = ObjectivesOf(field, member)
 			local focus = PointFocus(field, member, o)
 			if focus == "offense" then return CaptureSpot(field, member.team, o, member.slot + 8) end
-			if focus == "defense" then return Tactics.Toward(Center(o.guard), field.bases[EnemyOf(member.team)], RAID_INTERCEPT) end
+			if focus == "defense" then return Geometry.Toward(Center(o.guard), field.bases[EnemyOf(member.team)], RAID_INTERCEPT) end
 			return nil
 		end,
 	},

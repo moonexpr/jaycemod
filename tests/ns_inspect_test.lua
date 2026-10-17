@@ -2,7 +2,7 @@
 -- the debugging commands and the overlay tell them.
 local T = dofile("tests/harness.lua")
 local Inspect = T.require("foundation.ns.inspect")
-local Tactics = T.require("foundation.aiwar.tactics")
+local Tactics = T.require("foundation.wartactics")
 local Orders = T.require("foundation.aiwar.orders")
 
 local RED, BLUE = 2, 3

@@ -199,7 +199,7 @@ end)
 
 -- Tactics in a fight.
 
-local Tactics = T.require("foundation.aiwar.tactics")
+local Tactics = T.require("foundation.wartactics")
 
 local function Fighting(t)
 	local me, npc, war, member = Enlist(t)

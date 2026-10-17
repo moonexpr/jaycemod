@@ -1,4 +1,4 @@
--- foundation.core.geometry: straight-line distance between points { x, y, z },
+-- foundation.core.geometry: distances and points along the way between points { x, y, z },
 -- where a missing z counts as 0.
 local T = dofile("tests/harness.lua")
 local Geometry = T.require("foundation.core.geometry")
@@ -21,6 +21,13 @@ end)
 T.test("a point is no distance from itself", function()
 	local a = { x = 12.5, y = -3, z = 40 }
 	T.eq(Geometry.Distance(a, a), 0, "itself")
+end)
+
+T.test("toward stops at the target", function()
+	local p = Geometry.Toward({ x = 0, y = 0 }, { x = 100, y = 0 }, 300)
+	T.eq(p.x, 100, "not past it")
+	p = Geometry.Toward({ x = 0, y = 0 }, { x = 1000, y = 0 }, 300)
+	T.near(p.x, 300, 1e-6, "the distance along")
 end)
 
 T.finish()

@@ -31,7 +31,7 @@ end
 local function Real(module, key, min, max, help) Add(module, key, min, max, false, help) end
 local function Whole(module, key, min, max, help) Add(module, key, min, max, true, help) end
 
--- foundation.aiwar.tactics: contact, bounding overwatch, flanking, falling back
+-- foundation.wartactics: contact, bounding overwatch, flanking, falling back
 Real("tactics", "CONTACT_MEMORY", 0, 60, "seconds a fire team remembers where it last saw the enemy")
 Real("tactics", "BOUND_DISTANCE", 0, 4096, "how far a bounding element moves toward the objective")
 Real("tactics", "BOUND_TIME", 0.5, 60, "seconds before the elements swap, arrived or not")
@@ -82,7 +82,7 @@ end
 Tuner = {}
 Tuner.__index = Tuner
 
--- modules: short name -> the module table ("tactics" -> foundation.aiwar.tactics).
+-- modules: short name -> the module table ("tactics" -> foundation.wartactics).
 function Tuner.New(modules)
 	local defaults = {}
 	for _, tunable in ipairs(TUNABLES) do defaults[tunable.name] = modules[tunable.module][tunable.key] end

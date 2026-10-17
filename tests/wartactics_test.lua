@@ -1,7 +1,8 @@
--- foundation.aiwar.tactics: a fire team's shared contact, bounding
+-- foundation.wartactics: a fire team's shared contact, bounding
 -- overwatch, flanking and falling back.
 local T = dofile("tests/harness.lua")
-local Tactics = T.require("foundation.aiwar.tactics")
+local Tactics = T.require("foundation.wartactics")
+local CoreTactics = T.require("foundation.core.tactics")
 
 local function P(x, y, z) return { x = x, y = y, z = z or 0 } end
 local function Team(index, places)
@@ -74,11 +75,8 @@ T.test("a team falls back when down to its last or overrun, a step at a time", f
 	T.eq(team.fallback, nil, "back to the post")
 end)
 
-T.test("toward stops at the target", function()
-	local p = Tactics.Toward(P(0, 0), P(100, 0), 300)
-	T.eq(p.x, 100, "not past it")
-	p = Tactics.Toward(P(0, 0), P(1000, 0), 300)
-	T.near(p.x, 300, 1e-6, "the distance along")
+T.test("the war's tactics fill the tactics engine interface", function()
+	T.eq(CoreTactics.Check(Tactics), Tactics, "every function")
 end)
 
 T.finish()

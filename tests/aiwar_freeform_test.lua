@@ -14,7 +14,7 @@ local Scenario = T.require("foundation.aiwar.scenario")
 local Freeform = T.require("foundation.aiwar.scenario.freeform")
 local Spawns = T.require("foundation.aiwar.spawns")
 local Squad = T.require("foundation.aiwar.squad")
-local Tactics = T.require("foundation.aiwar.tactics")
+local Tactics = T.require("foundation.wartactics")
 local Teams = T.require("foundation.teams")
 
 local RED, BLUE = Teams.RED, Teams.BLUE

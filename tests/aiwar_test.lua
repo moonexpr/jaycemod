@@ -206,7 +206,7 @@ end)
 -- The squad investigates a member's death: it goes for its killer, so it
 -- engages the enemy rather than walking on.
 T.test("a member that falls leaves its squad investigating: its killer's place, else where it fell", function()
-	local Tactics = T.require("foundation.aiwar.tactics")
+	local Tactics = T.require("foundation.wartactics")
 	local war = UncappedWar()
 	war:Assign({ [BLUE] = true })
 	for i = 1, 4 do war:Enlist("red" .. i, RED, true) end

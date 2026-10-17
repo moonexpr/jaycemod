@@ -12,7 +12,7 @@ local Scenario = T.require("foundation.aiwar.scenario")
 local CP = T.require("foundation.aiwar.scenario.control_points")
 local Arena = T.require("foundation.aiwar.scenario.arena")
 local Squad = T.require("foundation.aiwar.squad")
-local Tactics = T.require("foundation.aiwar.tactics")
+local Tactics = T.require("foundation.wartactics")
 local State = T.require("foundation.rounds.state")
 local Teams = T.require("foundation.teams")
 

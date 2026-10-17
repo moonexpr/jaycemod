@@ -13,7 +13,7 @@ local STATE = require("foundation.rounds.state")
 local Squad = require("foundation.aiwar.squad")
 local Lanes = require("foundation.aiwar.lanes")
 local Hunt = require("foundation.aiwar.hunt")
-local Tactics = require("foundation.aiwar.tactics")
+local Tactics = require("foundation.wartactics")
 module(...)
 
 local RED, BLUE = Teams.RED, Teams.BLUE

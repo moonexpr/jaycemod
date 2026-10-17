@@ -2,7 +2,7 @@
 -- they run (ns_tactics_tune), within bounds, and putting them back.
 local T = dofile("tests/harness.lua")
 local Tuning = T.require("foundation.ns.tuning")
-local Tactics = T.require("foundation.aiwar.tactics")
+local Tactics = T.require("foundation.wartactics")
 local Lanes = T.require("foundation.aiwar.lanes")
 local Orders = T.require("foundation.aiwar.orders")
 local Squad = T.require("foundation.aiwar.squad")

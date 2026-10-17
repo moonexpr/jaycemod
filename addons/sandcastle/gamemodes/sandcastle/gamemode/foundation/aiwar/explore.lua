@@ -19,7 +19,7 @@
 local ipairs, pairs, setmetatable = ipairs, pairs, setmetatable
 local floor = math.floor
 local Squad = require("foundation.aiwar.squad")
-local Tactics = require("foundation.aiwar.tactics")
+local Tactics = require("foundation.wartactics")
 local Distance = require("foundation.core.geometry").Distance
 module(...)
 
@@ -91,7 +91,7 @@ end
 
 -- A squad's lane and fights (fireTeam: foundation.aiwar's) -------------------
 
--- The squad's contact (foundation.aiwar.tactics' { pos, time }) engages it.
+-- The squad's contact (foundation.wartactics' { pos, time }) engages it.
 function Board:Engage(fireTeam, contact)
 	self.engaged[fireTeam.squad] = {
 		pos = contact.pos,

@@ -27,6 +27,7 @@ local CATEGORY = {
 	["core/refusal"] = "structures",
 	["core/sets"] = "structures",
 	["core/port"] = "structures",
+	["core/tactics"] = "formalisms",
 
 	["core/cfsm"] = "formalisms",
 	["core/hfsm"] = "formalisms",
@@ -74,7 +75,7 @@ local CATEGORY = {
 	["rounds/limits"] = "gameplay",
 	["npc/targeting"] = "gameplay",
 
-	["aiwar/tactics"] = "ns",
+	["wartactics"] = "ns",
 	["aiwar/squad"] = "ns",
 	["aiwar/lanes"] = "ns",
 	["aiwar/speech"] = "ns",

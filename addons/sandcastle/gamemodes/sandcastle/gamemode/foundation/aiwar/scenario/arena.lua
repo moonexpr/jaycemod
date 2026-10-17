@@ -8,7 +8,7 @@
 -- walking its lane from the spawn to the point (Front; the enemy's base on
 -- a map without one), then making for the nearest waypoint the squad has
 -- not been near. A squad that sees the enemy (its fire team's contact,
--- foundation.aiwar.tactics) is engaged: it leaves its lane to fight, and
+-- foundation.wartactics) is engaged: it leaves its lane to fight, and
 -- hunts where the enemy was, before it goes on to the objective. Once
 -- open, the point is a target to the team without it and guarded by its
 -- owner, as in King of the Hill, and the stances split, a share still
