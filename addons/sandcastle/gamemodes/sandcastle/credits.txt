@@ -1,4 +1,14 @@
-Sandcastle's icon (icon.svg, icon24.png, logo.png) is drawn in the style of,
-and with the colours of, the Silk icon set by Mark James
-(http://www.famfamfam.com/lab/icons/silk/), licensed under the Creative
-Commons Attribution 2.5 License (http://creativecommons.org/licenses/by/2.5/).
+Sandcastle's icon (icon.svg, icon24.png, logo.png) is built from pieces of,
+and drawn in the style of:
+
+- FamFamFam Silk as SVG by Simandara
+  (https://github.com/Simandara/famfamfam-silk-svg), licensed under the
+  Creative Commons Attribution 4.0 International License
+  (https://creativecommons.org/licenses/by/4.0/);
+- the Silk icon set by Mark James, which it remakes
+  (http://www.famfamfam.com/lab/icons/silk/), licensed under the Creative
+  Commons Attribution 2.5 License (http://creativecommons.org/licenses/by/2.5/).
+
+Changes: Building.svg's inner glow, outline and ground strip and Box.svg's
+colours were redrawn as a sandcastle; Flag red.svg's cloth and pole were
+redrawn smaller above it.

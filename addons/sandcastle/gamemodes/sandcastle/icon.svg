@@ -1,90 +1,73 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
 <!--
   Sandcastle's icon: the master copy. icon24.png and logo.png are rendered
   from it by .devtools/bin/gamemode_art.py; edit this, then run that.
 
-  Drawn in the style of the Silk icon set by Mark James
-  (famfamfam.com/lab/icons/silk, CC BY 2.5): a 16x16 pixel grid, a 1px
-  outline darkening from the top left, a fill lit from the top left, and a
-  lighter inner left edge. Its colours are Silk's own: box.png's for the
-  sand, flag_red.png's for the flag and pole.
-
-  Every shape sits on whole pixels (crispEdges), as Silk's do.
+  In the style of FamFamFam Silk as SVG (github.com/Simandara/famfamfam-silk-svg,
+  CC BY 4.0), the vector remake of Mark James's Silk icons (CC BY 2.5), and
+  built from its pieces: Building.svg's inner glow, outline-over-fill and
+  ground strip, Box.svg's sand and outline colours, Flag red.svg's cloth,
+  edge and pole. A 16 unit grid; strokes 1 wide on half units, so the icon
+  is sharp at 16 and scales as a vector.
 -->
-<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" shape-rendering="crispEdges">
-  <defs>
-    <!-- box.png: its outline, #96621f at the top left to #784d15 at the bottom right -->
-    <linearGradient id="outline" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="16" y2="16">
-      <stop offset="0" stop-color="#a87a3f"/>
-      <stop offset="0.35" stop-color="#96621f"/>
-      <stop offset="1" stop-color="#784d15"/>
-    </linearGradient>
-    <!-- box.png: its fill, #f4cc8f lit at the top left to #c86530 at the bottom right -->
-    <linearGradient id="sand" gradientUnits="userSpaceOnUse" x1="0" y1="4" x2="16" y2="14">
-      <stop offset="0" stop-color="#f4cc8f"/>
-      <stop offset="0.4" stop-color="#e5a957"/>
-      <stop offset="1" stop-color="#c86530"/>
-    </linearGradient>
-    <!-- flag_red.png: its cloth -->
-    <linearGradient id="cloth" gradientUnits="userSpaceOnUse" x1="9" y1="0" x2="13" y2="3">
-      <stop offset="0" stop-color="#ffa29b"/>
-      <stop offset="0.5" stop-color="#ff5b50"/>
-      <stop offset="1" stop-color="#e91e0b"/>
-    </linearGradient>
-  </defs>
 
-  <!-- the beach: a strip of sand under the castle, as Silk's house stands on grass -->
-  <g id="beach">
-    <rect x="0" y="14" width="16" height="1" fill="#f0d29b"/>
-    <rect x="1" y="15" width="14" height="1" fill="#d9a55a"/>
-  </g>
+<!-- the beach: Building.svg's ground strip, in sand -->
+<path d="M0 15C0 14.4477 0.447715 14 1 14H15C15.5523 14 16 14.4477 16 15H0Z" fill="url(#beach)"/>
 
-  <!-- the castle's outline: the whole silhouette, which the fill covers but for its edge -->
-  <g id="outline-shape" fill="url(#outline)">
-    <!-- the left tower, its two merlons -->
-    <rect x="1" y="6" width="5" height="8"/>
-    <rect x="1" y="4" width="2" height="2"/>
-    <rect x="4" y="4" width="2" height="2"/>
-    <!-- the right tower, its two merlons -->
-    <rect x="10" y="6" width="5" height="8"/>
-    <rect x="10" y="4" width="2" height="2"/>
-    <rect x="13" y="4" width="2" height="2"/>
-    <!-- the wall between them, its merlon -->
-    <rect x="6" y="8" width="4" height="6"/>
-    <rect x="7" y="7" width="2" height="1"/>
-  </g>
+<!-- the castle: two towers with their merlons, the wall between with its own -->
+<g filter="url(#glow)">
+<path d="M1 14V4H3V6H4V4H6V8H7V7H9V8H10V4H12V6H13V4H15V14H1Z" fill="url(#sand)"/>
+</g>
+<path d="M1.5 13.5V4.5H2.5V6.5H4.5V4.5H5.5V8.5H7.5V7.5H8.5V8.5H10.5V4.5H11.5V6.5H13.5V4.5H14.5V13.5H1.5Z" stroke="url(#outline)" stroke-linejoin="round"/>
 
-  <!-- the castle's fill: the silhouette one pixel in -->
-  <g id="fill-shape" fill="url(#sand)">
-    <rect x="2" y="6" width="1" height="1"/>
-    <rect x="4" y="6" width="1" height="1"/>
-    <rect x="11" y="6" width="1" height="1"/>
-    <rect x="13" y="6" width="1" height="1"/>
-    <rect x="2" y="7" width="3" height="1"/>
-    <rect x="11" y="7" width="3" height="1"/>
-    <rect x="2" y="8" width="4" height="1"/>
-    <rect x="7" y="8" width="2" height="1"/>
-    <rect x="10" y="8" width="4" height="1"/>
-    <rect x="2" y="9" width="12" height="4"/>
-  </g>
+<!-- the gate, arched -->
+<path d="M6.5 14V11.5C6.5 10.6716 7.17157 10 8 10C8.82843 10 9.5 10.6716 9.5 11.5V14" fill="#7A4C12" stroke="#784D15"/>
 
-  <!-- box.png's lighter inner left edge -->
-  <g id="highlight" fill="#eecc8f">
-    <rect x="2" y="6" width="1" height="7"/>
-    <rect x="11" y="6" width="1" height="2"/>
-    <rect x="7" y="8" width="1" height="1"/>
-  </g>
+<!-- the flag on the wall's merlon: Flag red.svg's pole and cloth -->
+<path d="M8 7.5V1" stroke="#87581D" stroke-width="2" stroke-linecap="round"/>
+<path d="M8 7.5V1" stroke="url(#pole)" stroke-linecap="round"/>
+<path d="M8.5 0.5H12.5L11.5 2L12.5 3.5H8.5V0.5Z" fill="url(#cloth)" stroke="url(#clothEdge)" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M9.5 1.5H10.6L10.3 2L10.6 2.5H9.5" stroke="white" stroke-opacity="0.5" stroke-linecap="round" stroke-linejoin="round"/>
 
-  <!-- the gate, open through the wall -->
-  <g id="gate">
-    <rect x="7" y="10" width="2" height="4" fill="#7a4c12"/>
-    <rect x="7" y="10" width="1" height="1" fill="#5c3a0e"/>
-  </g>
-
-  <!-- the flag on the wall's merlon: flag_red.png's pole and cloth -->
-  <g id="flag">
-    <rect x="8" y="0" width="1" height="7" fill="#87581d"/>
-    <rect x="9" y="0" width="4" height="3" fill="#c43327"/>
-    <rect x="9" y="1" width="3" height="1" fill="url(#cloth)"/>
-  </g>
+<defs>
+<!-- Building.svg's inner glow: white, a unit in from the edge -->
+<filter id="glow" x="1" y="4" width="14" height="10" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+<feMorphology radius="1" operator="erode" in="SourceAlpha" result="effect1_innerShadow"/>
+<feOffset/>
+<feComposite in2="hardAlpha" operator="arithmetic" k2="-1" k3="1"/>
+<feColorMatrix type="matrix" values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.66 0"/>
+<feBlend mode="normal" in2="shape" result="effect1_innerShadow"/>
+</filter>
+<!-- Box.svg's sand, lit at the top left -->
+<linearGradient id="sand" x1="1" y1="4" x2="15" y2="14" gradientUnits="userSpaceOnUse">
+<stop stop-color="#EBB865"/>
+<stop offset="1" stop-color="#C86530"/>
+</linearGradient>
+<!-- Box.svg's outline -->
+<linearGradient id="outline" x1="1" y1="4" x2="15" y2="14" gradientUnits="userSpaceOnUse">
+<stop stop-color="#A66F2B"/>
+<stop offset="1" stop-color="#784D15"/>
+</linearGradient>
+<linearGradient id="beach" x1="8" y1="14" x2="8" y2="15" gradientUnits="userSpaceOnUse">
+<stop stop-color="#EBB865"/>
+<stop offset="1" stop-color="#D6A256"/>
+</linearGradient>
+<!-- Flag red.svg's cloth, edge and pole -->
+<linearGradient id="cloth" x1="8.5" y1="1.5" x2="12.5" y2="2.5" gradientUnits="userSpaceOnUse">
+<stop offset="0.405582" stop-color="#FF5C51"/>
+<stop offset="0.62144" stop-color="#FFD0CD"/>
+<stop offset="0.759571" stop-color="#FFA09A"/>
+</linearGradient>
+<linearGradient id="clothEdge" x1="8.5" y1="2" x2="12.5" y2="2" gradientUnits="userSpaceOnUse">
+<stop stop-color="#F52A0A"/>
+<stop offset="1" stop-color="#F95B50"/>
+</linearGradient>
+<linearGradient id="pole" x1="8" y1="1" x2="8" y2="7.5" gradientUnits="userSpaceOnUse">
+<stop stop-color="#E2BC86"/>
+<stop offset="1" stop-color="#D6A256"/>
+</linearGradient>
+</defs>
 </svg>
