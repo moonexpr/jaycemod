@@ -26,6 +26,7 @@ local CATEGORY = {
 	["core/ring"] = "structures",
 	["core/stats"] = "structures",
 	["core/lease"] = "structures",
+	["core/grid"] = "structures",
 	["core/geometry"] = "structures",
 	["core/refusal"] = "structures",
 	["core/sets"] = "structures",

@@ -10,8 +10,9 @@
 -- sweeps a walker across before it links them (ws/sv_nav.lua).
 --
 -- Areas are { id, lo, hi }, their extents, with lo and hi { x, y, z }.
-local floor, max, min, abs = math.floor, math.max, math.min, math.abs
-local ipairs, pairs = ipairs, pairs
+local max, min, abs = math.max, math.min, math.abs
+local ipairs = ipairs
+local Grid = require("foundation.core.grid")
 module(...)
 
 GAP_MAX = 50 -- two of the generator's 25-unit steps
@@ -20,14 +21,6 @@ STEP_HEIGHT = 18
 INSIDE = 8
 -- Areas are bucketed in cells this wide, so only neighbours are compared.
 CELL = 256
-
-local function Cells(area, fn)
-	local x0, x1 = floor((area.lo.x - GAP_MAX) / CELL), floor((area.hi.x + GAP_MAX) / CELL)
-	local y0, y1 = floor((area.lo.y - GAP_MAX) / CELL), floor((area.hi.y + GAP_MAX) / CELL)
-	for x = x0, x1 do
-		for y = y0, y1 do fn(x .. ":" .. y) end
-	end
-end
 
 -- Where to cross from a to b along `axis` ("x" or "y"), the seam's width
 -- `gap`, the other axis overlapping by `overlap`; nil, nil when they are
@@ -51,19 +44,12 @@ end
 -- cross from a to b) }. zAt(id, x, y): the height of area id there;
 -- linked(fromId, toId): whether the mesh already links them that way.
 function Candidates(areas, zAt, linked)
-	local cells = {}
+	local grid = Grid.New(CELL)
 	for _, area in ipairs(areas) do
-		Cells(area, function(key)
-			local list = cells[key]
-			if not list then
-				list = {}
-				cells[key] = list
-			end
-			list[#list + 1] = area
-		end)
+		grid:PutBox({ x = area.lo.x - GAP_MAX, y = area.lo.y - GAP_MAX }, { x = area.hi.x + GAP_MAX, y = area.hi.y + GAP_MAX }, area)
 	end
 	local seen, found = {}, {}
-	for _, list in pairs(cells) do
+	for _, list in grid:Buckets() do
 		for i = 1, #list do
 			for j = i + 1, #list do
 				local a, b = list[i], list[j]

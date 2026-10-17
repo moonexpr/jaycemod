@@ -17,8 +17,8 @@
 --
 -- Positions are { x, y, z } tables; a squad is any key.
 local ipairs, pairs, setmetatable = ipairs, pairs, setmetatable
-local floor = math.floor
 local Lease = require("foundation.core.lease")
+local Grid = require("foundation.core.grid")
 local Tactics = require("foundation.wartactics")
 local Distance = require("foundation.core.geometry").Distance
 module(...)
@@ -61,15 +61,7 @@ end
 
 -- The first of points in each spacing cube, in points' order.
 function Sample(points, spacing)
-	local taken, list = {}, {}
-	for _, p in ipairs(points) do
-		local cell = floor(p.x / spacing) .. ":" .. floor(p.y / spacing) .. ":" .. floor((p.z or 0) / spacing)
-		if not taken[cell] then
-			taken[cell] = true
-			list[#list + 1] = p
-		end
-	end
-	return list
+	return Grid.Thin(points, spacing)
 end
 
 -------------------------------------------------------------------------------

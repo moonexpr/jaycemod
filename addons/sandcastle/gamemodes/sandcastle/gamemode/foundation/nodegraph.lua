@@ -11,6 +11,7 @@
 local floor, frexp, huge, ldexp = math.floor, math.frexp, math.huge, math.ldexp
 local byte, char, concat, sort, sqrt = string.byte, string.char, table.concat, table.sort, math.sqrt
 local ipairs, pairs = ipairs, pairs
+local Grid = require("foundation.core.grid")
 module(...)
 
 VERSION = 37 -- AINET_VERSION_NUMBER
@@ -44,31 +45,6 @@ local function Distance(a, b)
 	return sqrt(dx * dx + dy * dy + dz * dz)
 end
 
--- A spatial hash of points by cell.
-local function Cell(p, size) return floor(p.x / size) .. "," .. floor(p.y / size) end
-
-local function Near(hash, p, size, visit)
-	local cx, cy = floor(p.x / size), floor(p.y / size)
-	for dx = -1, 1 do
-		for dy = -1, 1 do
-			for _, item in ipairs(hash[(cx + dx) .. "," .. (cy + dy)] or {}) do
-				if visit(item) then return true end
-			end
-		end
-	end
-	return false
-end
-
-local function Put(hash, p, size, item)
-	local key = Cell(p, size)
-	local list = hash[key]
-	if not list then
-		list = {}
-		hash[key] = list
-	end
-	list[#list + 1] = item
-end
-
 -- Nodes: the centres of the areas, largest areas first, none within
 -- `spacing` of another, at most `limit`. areas: { pos, size }. Returns the
 -- chosen areas in order.
@@ -76,13 +52,13 @@ function PickNodes(areas, spacing, limit)
 	local order = {}
 	for i, area in ipairs(areas) do order[i] = area end
 	sort(order, function(a, b) return a.size > b.size end)
-	local chosen, hash = {}, {}
+	local chosen, grid = {}, Grid.New(spacing)
 	for _, area in ipairs(order) do
 		if #chosen >= limit then break end
-		local crowded = Near(hash, area.pos, spacing, function(other) return Distance(other.pos, area.pos) < spacing end)
+		local crowded = grid:Near(area.pos, function(other) return Distance(other.pos, area.pos) < spacing end)
 		if not crowded then
 			chosen[#chosen + 1] = area
-			Put(hash, area.pos, spacing, area)
+			grid:Put(area.pos, area)
 		end
 	end
 	return chosen
@@ -107,12 +83,12 @@ end
 -- maxDistance, each pair once. positions: a list; returns { a, b, distance }
 -- with a < b, nearest first.
 function Candidates(positions, maxDistance, perNode)
-	local hash = {}
-	for i, p in ipairs(positions) do Put(hash, p, maxDistance, i) end
+	local grid = Grid.New(maxDistance)
+	for i, p in ipairs(positions) do grid:Put(p, i) end
 	local seen, pairsOut = {}, {}
 	for i, p in ipairs(positions) do
 		local near = {}
-		Near(hash, p, maxDistance, function(j)
+		grid:Near(p, function(j)
 			if j ~= i then
 				local d = Distance(p, positions[j])
 				if d <= maxDistance then near[#near + 1] = { j = j, d = d } end
@@ -138,12 +114,12 @@ end
 -- node's nearest few may all lie on its own side of a wall or doorway, so
 -- Candidates alone can leave rooms unjoined.
 function Bridges(positions, zones, maxDistance, perNode)
-	local hash = {}
-	for i, p in ipairs(positions) do Put(hash, p, maxDistance, i) end
+	local grid = Grid.New(maxDistance)
+	for i, p in ipairs(positions) do grid:Put(p, i) end
 	local seen, out = {}, {}
 	for i, p in ipairs(positions) do
 		local near = {}
-		Near(hash, p, maxDistance, function(j)
+		grid:Near(p, function(j)
 			if zones[j] ~= zones[i] then
 				local d = Distance(p, positions[j])
 				if d <= maxDistance then near[#near + 1] = { j = j, d = d } end
