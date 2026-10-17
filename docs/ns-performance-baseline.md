@@ -366,6 +366,27 @@ Captured from `mp_round_restart`, each soldier re-plan tagged by its
   larger savings are not sending lane legs at stops that can't be reached,
   and fewer stuck soldiers.
 
+## Tools considered: gmod_perfutils
+
+[wrefgtzweve/gmod_perfutils](https://github.com/wrefgtzweve/gmod_perfutils)
+(no license, so none of it can be copied into this repo; its ideas can be
+reimplemented). Three of its scripts were run on a live 15v15, 15 s each,
+from a copy in `.devtools/artifacts/perfutils/`.
+
+| Script | What it measures | Here | Verdict |
+|---|---|---|---|
+| `sh_hookperf`, `sh_sentperf`, `sh_physobjperf` | time per hook, entity method, physics method, by `SysTime` wrappers | what `profile_server.lua` already does (coarse mode) | not needed |
+| `sh_indexcounter` | entity `__index` calls by origin | top: `IsValid` 164,738 (its skip of `IsValid` doesn't catch these, so they're charged to `util.lua` itself), DrGBase `weapons.lua:35` 68,000, our per-tick move loop (`sv_enlist.lua:344`) 30,000, `ws_pickup_base` 30,000, `func_respawnroomvisualizer` 54,000 | new, but small: about 0.5 % of a core |
+| `sh_garbage` | `Vector`/`Angle`/`Color` created by origin | about 700 per s, mostly `sv_soldier`/`sv_map` | negligible next to GC's 2.4 % |
+| `sh_gcperf` | KB allocated per hook and entity method (`collectgarbage("count")` before and after) | hooks: route search 12.2 MB, the war's think 9.4 MB, the move tick 4.5 MB in 15 s (matches experiment E's 1.5 KB per expansion); entity methods: unusable (DrGBase's `YieldCoroutine` "2.94 GB", 3.2 GB in all against about 50 MB held) | the idea is worth keeping, its numbers are not: a yield puts others' garbage in the after reading, nested wrappers count it again, and calls during a collection are dropped |
+| `sh_netperf`, net logger, net dumper | net messages received: bytes, time | not run: these tests have no players | useful once clients join |
+
+**Verdict:** not as an addition. Most of it duplicates our tooling, and
+its garbage numbers are wrong exactly where our costs are (in coroutines).
+Two ideas are worth building in: allocation per top-level hook (outermost
+calls only, no coroutines, so the figures hold), and, once clients are in
+the tests, net message cost.
+
 ## Reproducing
 
 ```
