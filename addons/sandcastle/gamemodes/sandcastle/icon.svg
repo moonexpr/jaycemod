@@ -22,6 +22,9 @@
 <!-- the same outline, half a unit wide just inside the edge; mitred, so the inner corners stay closed -->
 <path d="M1.25 13.75V5.25H3.75V7.25H6.25V3.25H9.75V7.25H12.25V5.25H14.75V13.75H1.25Z" stroke="url(#outline)" stroke-width="0.5" stroke-linejoin="miter"/>
 
+<!-- the gate's frame: a light sand trim round the arch, edged as the castle is -->
+<path d="M5.5 13.75V11.5C5.5 10.1193 6.61929 9 8 9C9.38071 9 10.5 10.1193 10.5 11.5V13.75H5.5Z" fill="#F3D39A" stroke="url(#outline)" stroke-width="0.5" stroke-linejoin="miter"/>
+
 <!-- the gate, arched -->
 <path d="M6.5 13.75V11.5C6.5 10.6716 7.17157 10 8 10C8.82843 10 9.5 10.6716 9.5 11.5V13.75H6.5Z" fill="#7A4C12" stroke="#784D15" stroke-width="0.5" stroke-linejoin="miter"/>
 
