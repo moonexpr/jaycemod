@@ -748,7 +748,7 @@ end)
 
 -- The binding (read as text) defines the port as function ENT:<Name>(.
 T.test("the headless_hatman binding defines the Horsemann's port", function()
-	local f = assert(io.open("addon/gamemodes/sandcastle/entities/entities/headless_hatman.lua", "r"))
+	local f = assert(io.open("addons/sandcastle/gamemodes/sandcastle/entities/entities/headless_hatman.lua", "r"))
 	local text = f:read("*a")
 	f:close()
 	for _, name in ipairs(HHH.METHODS) do

@@ -47,7 +47,7 @@ T.test("a part loads under its system and nests in the system's table", function
 end)
 
 T.test("gamemode root is the gamemode folder", function()
-	T.eq(T.ROOT, "addon/gamemodes/sandcastle/gamemode/", "root")
+	T.eq(T.ROOT, "addons/sandcastle/gamemodes/sandcastle/gamemode/", "root")
 end)
 
 T.finish()

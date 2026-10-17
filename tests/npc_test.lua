@@ -777,7 +777,7 @@ T.test("a variant's fake actor dispatches only the particle systems its variant 
 end)
 
 T.test("ws_nextbot defines every actor method the engine does not already provide", function()
-	local text = ReadFile("addon/gamemodes/sandcastle/entities/entities/ws_nextbot.lua")
+	local text = ReadFile("addons/sandcastle/gamemodes/sandcastle/entities/entities/ws_nextbot.lua")
 	for _, name in ipairs(Actor.METHODS) do
 		local defined = text:find("function ENT:" .. name .. "(", 1, true) ~= nil
 		T.eq(defined or Actor.ENGINE[name] == true, true, "ws_nextbot " .. name)
@@ -805,7 +805,7 @@ T.test("a nextbot whose binding fails reports it once from Initialize, then remo
 			require = function(name) return T.require(name) end,
 		},
 	}, { __index = _G })
-	local chunk = assert(loadfile("addon/gamemodes/sandcastle/entities/entities/ws_nextbot.lua"))
+	local chunk = assert(loadfile("addons/sandcastle/gamemodes/sandcastle/entities/entities/ws_nextbot.lua"))
 	setfenv(chunk, env)()
 
 	local ent = setmetatable({

@@ -308,7 +308,7 @@ recovery, what "recovered" means, and the test that drives it.
 
 ## 5. The events file
 
-`addon/gamemodes/sandcastle/resource/sandcastle_events.res`, in the spirit
+`addons/sandcastle/gamemodes/sandcastle/resource/sandcastle_events.res`, in the spirit
 of TF2's `modevents.res`. It is derived documentation: the game never reads
 it, so even out of date it cannot affect the netcode.
 `.devtools/bin/gen_events_res.py` writes it from the `Fire` sites (§1),

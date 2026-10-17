@@ -10,7 +10,7 @@ work in parallel, each in its own git worktree and branch; the integrator
 ## Layout
 
 ```
-addon/gamemodes/sandcastle/
+addons/sandcastle/gamemodes/sandcastle/
   sandcastle.txt                 gamemode manifest (base: sandbox)
   gamemode/shared.lua            GM, DeriveGamemode("sandbox"), module loader, CreateTeams, StartCommand
   gamemode/init.lua              server GM overrides (spawn, death, team default); sends every foundation/ file to clients

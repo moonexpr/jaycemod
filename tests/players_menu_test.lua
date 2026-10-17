@@ -82,7 +82,7 @@ local function Load(players, configured)
 		end,
 		print = function() end,
 	}, { __index = _G })
-	setfenv(assert(loadfile("addon/gamemodes/sandcastle/gamemode/ws/sv_players_menu.lua")), env)()
+	setfenv(assert(loadfile("addons/sandcastle/gamemodes/sandcastle/gamemode/ws/sv_players_menu.lua")), env)()
 	return s
 end
 

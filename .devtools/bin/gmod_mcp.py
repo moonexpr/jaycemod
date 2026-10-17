@@ -216,7 +216,7 @@ TOOLS = (
          {"grep": {"type": "string"}, "since": {"type": "integer", "default": 0}}, (),
          op("console_messages", show_console, "grep", "since")),
     Tool("breakpoint_set", "Set a breakpoint at a file and line. `file` may be the repo path "
-         "(addon/gamemodes/sandcastle/gamemode/foundation/rounds.lua) or its tail (foundation/rounds.lua); "
+         "(addons/sandcastle/gamemodes/sandcastle/gamemode/foundation/rounds.lua) or its tail (foundation/rounds.lua); "
          "luadev chunks are 'server_lua'. mode snapshot (default) captures the stack with locals and upvalues "
          "and goes on, up to `hits` times (default 5): read them with breakpoint_hits. mode pause freezes the "
          "whole server at the line (clients time out after ~30 s) until debug_resume or `pause_limit` seconds "

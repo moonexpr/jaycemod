@@ -3,7 +3,7 @@
 tests (T1, T2, and phase E's stale-file check) put in an addon file the
 dedicated server reads through main.
 
-  gev2_marker.py set <file> <line>   put the line, tagged, at the top of a clean, tracked .lua file under addon/
+  gev2_marker.py set <file> <line>   put the line, tagged, at the top of a clean, tracked .lua file under addons/
   gev2_marker.py restore             put back every marked file's exact bytes
   gev2_marker.py status              list the marked files
 
@@ -40,7 +40,7 @@ __all__ = ["ADDON", "Markers", "Refused", "STATE_FILE", "TAG"]
 
 REPO = Path(__file__).resolve().parents[2]
 STATE_FILE = REPO / ".devtools" / "artifacts" / "gev2_marker.json"
-ADDON = "addon"
+ADDON = "addons"
 TAG = "-- GEV2_MARKER_DO_NOT_COMMIT"  # ends every marker line; check_no_markers.py looks for it
 LUA_SUFFIX = ".lua"
 GIT_ENV = {**os.environ, "GIT_OPTIONAL_LOCKS": "0"}  # status never refreshes (and locks) the index
@@ -88,7 +88,7 @@ class Markers:
             raise Refused(f"{path} is not a Lua file; a marker's tag is a Lua comment")
         top = _git(path.parent, "rev-parse", "--show-toplevel")
         if top.returncode != 0:
-            raise Refused(f"{path} is not in a git work tree, so not under any addon/")
+            raise Refused(f"{path} is not in a git work tree, so not under any addons/")
         root = Path(top.stdout.strip()).resolve()
         try:
             relative = path.resolve().relative_to(root)

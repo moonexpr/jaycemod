@@ -115,7 +115,7 @@ local function Load(players, opts)
 		HUD_PRINTTALK = 3,
 		print = function() end,
 	}, { __index = _G })
-	setfenv(assert(loadfile("addon/gamemodes/sandcastle/gamemode/ws/sv_votes.lua")), env)()
+	setfenv(assert(loadfile("addons/sandcastle/gamemodes/sandcastle/gamemode/ws/sv_votes.lua")), env)()
 	-- Runs the vote's timer when its time comes.
 	function s.Advance(seconds)
 		s.now = s.now + seconds

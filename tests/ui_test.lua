@@ -26,7 +26,7 @@ local function Load(polys, texts)
 		ScrH = function() return 1080 end,
 		vgui = { Register = function() end },
 	}, { __index = _G })
-	setfenv(assert(loadfile("addon/gamemodes/sandcastle/gamemode/ws/cl_ui.lua")), env)()
+	setfenv(assert(loadfile("addons/sandcastle/gamemodes/sandcastle/gamemode/ws/cl_ui.lua")), env)()
 	return env.WS.UI, defined
 end
 

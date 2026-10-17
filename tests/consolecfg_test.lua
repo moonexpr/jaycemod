@@ -32,7 +32,7 @@ T.test("a line chaining commands with ; is refused, so one line runs one command
 end)
 
 T.test("the defaults cfg the addon ships parses with nothing refused", function()
-	local f = assert(io.open("addon/cfg/sandcastle_defaults.cfg", "r"))
+	local f = assert(io.open("addons/sandcastle/cfg/sandcastle_defaults.cfg", "r"))
 	local commands, refused = Cfg.Commands(f:read("*a"))
 	f:close()
 	T.eq(#refused, 0, "nothing refused")

@@ -138,7 +138,7 @@ end)
 
 -- Package W8's bindings, all loaded lazily.
 
-local ENTITIES = "addon/gamemodes/sandcastle/entities/entities/"
+local ENTITIES = "addons/sandcastle/gamemodes/sandcastle/entities/entities/"
 local W8_BINDINGS = {
 	"func_croc.lua",
 	"halloween_fortune_teller.lua",

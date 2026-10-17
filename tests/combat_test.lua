@@ -187,7 +187,7 @@ end)
 
 -- The combatant port contract
 
-local ENTITIES = "addon/gamemodes/sandcastle/entities/entities/"
+local ENTITIES = "addons/sandcastle/gamemodes/sandcastle/entities/entities/"
 
 local function ReadFile(path)
 	local f = assert(io.open(path, "r"))

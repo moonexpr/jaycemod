@@ -72,7 +72,7 @@ class Session:
             },
         }
         self.main = tmp_path / "main"
-        gamemode = self.main / "addon" / "gamemodes" / "sandcastle" / "gamemode"
+        gamemode = self.main / "addons" / "sandcastle" / "gamemodes" / "sandcastle" / "gamemode"
         (gamemode / "ws").mkdir(parents=True)
         (gamemode / "features" / "capture").mkdir(parents=True)
         (gamemode / "ws" / "cl_spectate.lua").write_text("local lastMode\n")
@@ -129,7 +129,7 @@ def session(tmp_path):
 
 
 def test_refuses_to_start_while_a_marker_is_set(session):
-    session.cfg["stdout"] = {"gev2_marker.py status": "/x/addon/features/capture/cl.lua\n"}
+    session.cfg["stdout"] = {"gev2_marker.py status": "/x/addons/sandcastle/features/capture/cl.lua\n"}
     code, out = session.run("t1")
     assert code == 2, out
     assert not any(a in LAUNCHING for a in session.actions()), session.calls()
@@ -175,8 +175,8 @@ def test_t1_runs_its_steps_in_order_then_cleans_up_in_order(session):
     ] + CLEANUP
     calls = session.calls()
     assert "--no-lua-refresh" in calls[4] and "koth_viaduct" in calls[4]
-    spectate = str(session.main / "addon/gamemodes/sandcastle/gamemode/ws/cl_spectate.lua")
-    capture = str(session.main / "addon/gamemodes/sandcastle/gamemode/features/capture/cl.lua")
+    spectate = str(session.main / "addons/sandcastle/gamemodes/sandcastle/gamemode/ws/cl_spectate.lua")
+    capture = str(session.main / "addons/sandcastle/gamemodes/sandcastle/gamemode/features/capture/cl.lua")
     assert calls[2].startswith(f"gev2_marker.py set {spectate} WS_T1_INCLUDE = \"sent-")
     assert calls[3].startswith(f"gev2_marker.py set {capture} WS_T1_COMPILE = \"sent-")
     assert "\"disk-" in calls[7] and "\"disk-" in calls[8]
@@ -246,14 +246,14 @@ def test_a_signal_runs_cleanup_once(session):
 
 
 def test_a_changed_main_status_fails_the_session(session):
-    session.cfg["effects"]["srcds.py start"] = [f"touch '{session.main / 'addon' / 'stray.lua'}'"]
+    session.cfg["effects"]["srcds.py start"] = [f"touch '{session.main / 'addons' / 'sandcastle' / 'stray.lua'}'"]
     code, out = session.run("t1")
     assert code == 4, out
     assert "status changed" in out and "stray.lua" in out
 
 
 def test_new_commits_on_main_are_checked_for_marker_lines(session):
-    capture = session.main / "addon/gamemodes/sandcastle/gamemode/features/capture/cl.lua"
+    capture = session.main / "addons/sandcastle/gamemodes/sandcastle/gamemode/features/capture/cl.lua"
     commit = (f"git -c user.name=t -c user.email=t@example.com -c commit.gpgsign=false -C '{session.main}' "
               "commit -qam work")
     session.cfg["effects"]["srcds.py start"] = [
@@ -264,7 +264,7 @@ def test_new_commits_on_main_are_checked_for_marker_lines(session):
     assert "marker line" in out
     # A clean commit on main during the session is fine.
     session2 = Session(session.tools.parent / "clean")
-    notes = session2.main / "addon" / "notes.lua"
+    notes = session2.main / "addons" / "sandcastle" / "notes.lua"
     session2.cfg["effects"]["srcds.py start"] = [
         f"echo 'x = 1' > '{notes}' && git -C '{session2.main}' add -A && "
         f"git -c user.name=t -c user.email=t@example.com -c commit.gpgsign=false -C '{session2.main}' commit -qm notes"]

@@ -260,7 +260,7 @@ or issues).
 **Evidence.**
 
 - [offline] Repo:
-  - `addon/gamemodes/sandcastle/gamemode/init.lua`: lines 1-2 (entry
+  - `addons/sandcastle/gamemodes/sandcastle/gamemode/init.lua`: lines 1-2 (entry
     files), 8-14 (the foundation walk), 19-30 (feature client parts), 32-33
     (`ws/` `sh_` and `cl_`);
   - `grep -L AddCSLuaFile` over `entities/`: 49 of 98 files lack it;

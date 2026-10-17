@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """Stand in for GMod's Lua auto refresh, which never fires under CrossOver.
 
-  lua_watch.py            watch addon/ and refresh each edited file in every running game
+  lua_watch.py            watch addons/sandcastle/ and refresh each edited file in every running game
 
 GMod notices an edit through ReadDirectoryChangesW, which Wine builds on
 Linux's inotify; on macOS no change is ever reported, so auto refresh is
 dead whatever the folder layout (symlinked or not). lua_refresh_file <path>
 still works: it re-runs a file the game already loaded and sends it on to
-the clients. This scans addon/ for edited .lua files and sends that command
+the clients. This scans addons/sandcastle/ for edited .lua files and sends that command
 to the dedicated server srcds.py started (RCON) and to a game you are
 playing (luadev's socket, on its server realm). A new file is only
 reported: it loads on the next map change.
@@ -24,7 +24,7 @@ from pathlib import Path
 from typing import Callable, Dict, List
 
 HERE = Path(__file__).resolve().parent
-ADDON = HERE.parents[1] / "addon"
+ADDON = HERE.parents[1] / "addons" / "sandcastle"
 POLL_SECONDS = 0.5
 # what a path may hold inside the console command: no quote, separator or newline
 SAFE_PATH = re.compile(r"[\w./-]+")

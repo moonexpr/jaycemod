@@ -24,8 +24,8 @@ def guard(repo, *args):
 @pytest.fixture
 def repo(tmp_path):
     root = tmp_path / "repo"
-    (root / "addon" / "features" / "capture").mkdir(parents=True)
-    (root / "addon" / "features" / "capture" / "cl.lua").write_text("local View = {}\nreturn View\n")
+    (root / "addons" / "sandcastle" /"features" / "capture").mkdir(parents=True)
+    (root / "addons" / "sandcastle" /"features" / "capture" / "cl.lua").write_text("local View = {}\nreturn View\n")
     (root / "docs").mkdir()
     (root / "docs" / "notes.md").write_text("notes\n")
     git(root, "init", "-q")
@@ -35,7 +35,7 @@ def repo(tmp_path):
 
 
 def view(repo):
-    return repo / "addon" / "features" / "capture" / "cl.lua"
+    return repo / "addons" / "sandcastle" /"features" / "capture" / "cl.lua"
 
 
 def test_a_staged_marker_line_fails(repo):
@@ -45,7 +45,7 @@ def test_a_staged_marker_line_fails(repo):
     git(repo, "add", "-A")
     result = guard(repo, "staged")
     assert result.returncode == 1
-    assert "addon/features/capture/cl.lua" in result.stdout and TAG in result.stdout
+    assert "addons/sandcastle/features/capture/cl.lua" in result.stdout and TAG in result.stdout
 
 
 def test_a_commit_in_the_range_with_a_marker_line_fails(repo):
@@ -60,7 +60,7 @@ def test_a_commit_in_the_range_with_a_marker_line_fails(repo):
     git(repo, "commit", "-qam", "removed again: the range still carried it")
     result = guard(repo, "range", f"{start}..HEAD")
     assert result.returncode == 1
-    assert marked[:12] in result.stdout and "addon/features/capture/cl.lua" in result.stdout
+    assert marked[:12] in result.stdout and "addons/sandcastle/features/capture/cl.lua" in result.stdout
 
 
 def test_an_empty_range_passes(repo):
@@ -68,7 +68,7 @@ def test_an_empty_range_passes(repo):
 
 
 def test_the_tag_outside_addon_is_not_a_marker(repo):
-    # Markers go only under addon/ (gev2_marker refuses anything else), so the
+    # Markers go only under addons/ (gev2_marker refuses anything else), so the
     # tools and docs that name the tag never trip the guard.
     start = git(repo, "rev-parse", "HEAD")
     (repo / "docs" / "notes.md").write_text(f"the tag is {TAG}\n")

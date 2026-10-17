@@ -4,7 +4,7 @@
 -- the real file listing, with include recording the order.
 local T = dofile("tests/harness.lua")
 
-local ROOT = "addon/gamemodes/sandcastle/gamemode/"
+local ROOT = "addons/sandcastle/gamemodes/sandcastle/gamemode/"
 
 local function listing(prefix)
 	local found = {}

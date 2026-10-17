@@ -15,7 +15,7 @@ local function Load()
 		properties = { Add = function(name, def) added[name] = def end },
 		IsValid = function(v) return v ~= nil end,
 	}, { __index = _G })
-	setfenv(assert(loadfile("addon/gamemodes/sandcastle/gamemode/ws/sh_editors.lua")), env)()
+	setfenv(assert(loadfile("addons/sandcastle/gamemodes/sandcastle/gamemode/ws/sh_editors.lua")), env)()
 	return env.WS, added
 end
 
@@ -66,7 +66,7 @@ T.test("the Game Rules Editor no longer moves carts: right-click the cart", func
 		DEFINE_BASECLASS = function() end,
 		WS = { TEAM_RED = 2, TEAM_BLUE = 3, require = T.require, EditorAction = function(name) actions[name] = true end },
 	}, { __index = _G })
-	setfenv(assert(loadfile("addon/gamemodes/sandcastle/entities/entities/edit_gamerules.lua")), env)()
+	setfenv(assert(loadfile("addons/sandcastle/gamemodes/sandcastle/entities/entities/edit_gamerules.lua")), env)()
 	T.eq(actions.ws_retract_cart, nil)
 	T.eq(actions.ws_advance_cart, nil)
 	T.eq(actions.ws_reset_round, true, "its other actions stay")

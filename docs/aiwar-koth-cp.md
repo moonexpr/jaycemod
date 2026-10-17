@@ -17,7 +17,7 @@ a cart. This plan does four things:
 Payload keeps behaving exactly as it does today.
 
 `sdk/` means `~/Repositories/source-sdk-2013/src/game/`. `G/` means
-`addon/gamemodes/sandcastle/gamemode/`. Everything in `docs/aiwar-command.md`,
+`addons/sandcastle/gamemodes/sandcastle/gamemode/`. Everything in `docs/aiwar-command.md`,
 `docs/pass4-koth-cp.md` §0 and §2, and the `lua` skill still holds:
 
 - models are pure `module(...)` files, tested by scenario under LuaJIT;

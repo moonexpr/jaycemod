@@ -7,7 +7,7 @@ import pytest
 
 from lua_watch import Changes, Target, TargetDown, Watcher, gmod_path, scan_changes
 
-ADDON = Path("/repo/addon")
+ADDON = Path("/repo/addons/sandcastle")
 
 
 def test_a_gamemode_file_is_known_by_its_path_under_the_addon():

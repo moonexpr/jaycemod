@@ -167,7 +167,7 @@ T.test("the rounds controller defines every method other features call", functio
 end)
 
 T.test("the rounds bindings load the feature on first use, never at file top level", function()
-	local entities = "addon/gamemodes/sandcastle/entities/entities/"
+	local entities = "addons/sandcastle/gamemodes/sandcastle/entities/entities/"
 	for _, file in ipairs({ "tf_gamerules", "team_round_timer", "game_round_win", "tf_logic_competitive" }) do
 		local source = Read(entities .. file .. ".lua")
 		T.eq(source:find('require("foundation.', 1, true), nil, file .. " requires no model")
@@ -176,7 +176,7 @@ T.test("the rounds bindings load the feature on first use, never at file top lev
 end)
 
 T.test("the tf_gamerules binding keeps the gamerules surface as forwards", function()
-	local source = Read("addon/gamemodes/sandcastle/entities/entities/tf_gamerules.lua")
+	local source = Read("addons/sandcastle/gamemodes/sandcastle/entities/entities/tf_gamerules.lua")
 	for _, name in ipairs({ "OnPlayerDeath", "Halt", "Unhalt", "Halted", "RestartRound", "SetWinningTeam", "SetStalemate" }) do
 		T.eq(source:find("function ENT:" .. name .. "(", 1, true) ~= nil, true, name)
 	end

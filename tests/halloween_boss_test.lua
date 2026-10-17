@@ -307,7 +307,7 @@ end)
 
 -- The bindings (read as text): each defines its port's methods as
 -- function ENT:<Name>(, and loads nothing at file top level.
-local ENTITIES = "addon/gamemodes/sandcastle/entities/entities/"
+local ENTITIES = "addons/sandcastle/gamemodes/sandcastle/entities/entities/"
 
 local function ReadFile(path)
 	local f = assert(io.open(path, "r"))

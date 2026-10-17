@@ -541,7 +541,7 @@ end)
 -------------------------------------------------------------------------------
 -- The port and the bindings
 
-local ROOT = "addon/gamemodes/sandcastle/"
+local ROOT = "addons/sandcastle/gamemodes/sandcastle/"
 
 local function ReadFile(path)
 	local f = assert(io.open(path, "r"))

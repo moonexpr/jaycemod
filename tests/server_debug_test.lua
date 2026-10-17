@@ -64,7 +64,7 @@ end
 
 T.test("a snapshot breakpoint captures the stack with locals and upvalues, and the function goes on", function()
 	local dbg, g, events = Load()
-	local bp = dbg:Set({ file = "addon/gamemodes/sandcastle/gamemode/foundation/sample.lua", line = 4 })
+	local bp = dbg:Set({ file = "addons/sandcastle/gamemodes/sandcastle/gamemode/foundation/sample.lua", line = 4 })
 	local result
 	Armed(dbg, function() result = g.Outer(5) end)
 	T.eq(result, 22, "the function ran on")

@@ -421,7 +421,7 @@ T.test("a win fires the master's and round's OnWonByTeam output", function()
 	T.eq(Master.WinOutput(BLU), "OnWonByTeam2")
 end)
 
-local ENTITIES = "addon/gamemodes/sandcastle/entities/entities/"
+local ENTITIES = "addons/sandcastle/gamemodes/sandcastle/entities/entities/"
 
 local function Read(path)
 	local f = assert(io.open(path, "rb"))

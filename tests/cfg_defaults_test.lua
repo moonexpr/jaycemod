@@ -1,9 +1,10 @@
--- addon/cfg/sandcastle_defaults.cfg holds every convar the addon creates,
--- each at the default its code gives it (commented out where it needs
--- sv_cheats), and only those.
+-- addons/sandcastle/cfg/sandcastle_defaults.cfg holds every convar the
+-- addon creates, each at the default its code gives it (commented out where
+-- it needs sv_cheats), and only those.
 local T = dofile("tests/harness.lua")
 
-local CFG = "addon/cfg/sandcastle_defaults.cfg"
+local ADDON = "addons/sandcastle"
+local CFG = ADDON .. "/cfg/sandcastle_defaults.cfg"
 
 local function ReadFile(path)
 	local f = assert(io.open(path, "r"))
@@ -29,7 +30,7 @@ end
 -- And how many convars are created from anything else.
 local function CodeDefaults()
 	local defaults, indirect = {}, 0
-	local list = assert(io.popen("find addon -name '*.lua'"))
+	local list = assert(io.popen("find " .. ADDON .. " -name '*.lua'"))
 	for path in list:lines() do
 		local text = ReadFile(path)
 		for call in text:gmatch("[%w_]*ConVar%w*%b()") do

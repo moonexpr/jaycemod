@@ -3,7 +3,7 @@
 -- no GMod globals, so a test loads them with T.require.
 local T = { passed = 0, failed = 0 }
 
-T.ROOT = "addon/gamemodes/sandcastle/gamemode/"
+T.ROOT = "addons/sandcastle/gamemodes/sandcastle/gamemode/"
 
 -- Lua 5.1's require for a module(...) file under T.ROOT, as WS.require
 -- does in the game: once, calling the chunk with its dotted name. Above its

@@ -124,9 +124,9 @@ def test_an_unknown_tool_is_an_error_result():
 def test_breakpoint_set_passes_only_what_was_given():
     server = FakeServer({"bp_set": {"id": 3, "file": "foundation/x.lua", "line": 9, "mode": "pause",
                                     "state": "active", "hits": 0, "max": 5}})
-    text, _ = call(server, "breakpoint_set", file="addon/gamemodes/sandcastle/gamemode/foundation/x.lua",
+    text, _ = call(server, "breakpoint_set", file="addons/sandcastle/gamemodes/sandcastle/gamemode/foundation/x.lua",
                    line=9, mode="pause")
-    assert server.calls == [("op", "bp_set", {"file": "addon/gamemodes/sandcastle/gamemode/foundation/x.lua",
+    assert server.calls == [("op", "bp_set", {"file": "addons/sandcastle/gamemodes/sandcastle/gamemode/foundation/x.lua",
                                               "line": 9, "mode": "pause"}, 1)]
     assert text.startswith("bp3 foundation/x.lua:9 pause active 0/5")
 

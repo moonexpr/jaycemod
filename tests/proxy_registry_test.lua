@@ -31,7 +31,7 @@ local function Load()
 		end,
 		setmetatable = setmetatable,
 	}, { __index = _G })
-	setfenv(assert(loadfile("addon/gamemodes/sandcastle/gamemode/ws/sv_proxy.lua")), env)()
+	setfenv(assert(loadfile("addons/sandcastle/gamemodes/sandcastle/gamemode/ws/sv_proxy.lua")), env)()
 	return env.WS, made, env
 end
 

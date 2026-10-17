@@ -461,7 +461,7 @@ end)
 -- Definitions name their event with a literal: Define("name", ...).
 T.test("no two event names defined anywhere in the addon share an id", function()
 	local names, byId = {}, {}
-	local files = io.popen("find addon -name '*.lua'")
+	local files = io.popen("find addons/sandcastle -name '*.lua'")
 	for path in files:lines() do
 		local f = assert(io.open(path, "r"))
 		local text = f:read("*a")
@@ -483,7 +483,7 @@ end)
 -- somewhere (the registry would refuse it at run time, on some map).
 T.test("every event named in a Fire, Listen or Request is defined in the addon", function()
 	local defined, used = {}, {}
-	local files = io.popen("find addon -name '*.lua'")
+	local files = io.popen("find addons/sandcastle -name '*.lua'")
 	for path in files:lines() do
 		local f = assert(io.open(path, "r"))
 		local text = f:read("*a")
@@ -506,9 +506,9 @@ end)
 -- The library's two net messages are the only ones, for good: a feature
 -- defines events instead of registering its own.
 T.test("only the event adapter registers, starts or receives net messages", function()
-	local ADAPTER = "addon/gamemodes/sandcastle/gamemode/ws/sh_events.lua"
+	local ADAPTER = "addons/sandcastle/gamemodes/sandcastle/gamemode/ws/sh_events.lua"
 	local registered = 0
-	local files = io.popen("find addon -name '*.lua'")
+	local files = io.popen("find addons/sandcastle -name '*.lua'")
 	for path in files:lines() do
 		local f = assert(io.open(path, "r"))
 		local text = f:read("*a")

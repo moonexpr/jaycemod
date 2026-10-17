@@ -17,7 +17,7 @@ local function Load(capture)
 		},
 		IsValid = function(v) return v ~= nil end,
 	}, { __index = _G })
-	setfenv(assert(loadfile("addon/gamemodes/sandcastle/gamemode/ws/sh_editors_point.lua")), env)()
+	setfenv(assert(loadfile("addons/sandcastle/gamemodes/sandcastle/gamemode/ws/sh_editors_point.lua")), env)()
 	return added
 end
 

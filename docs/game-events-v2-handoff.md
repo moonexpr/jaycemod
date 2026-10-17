@@ -124,7 +124,7 @@ These come from the operator's standing instructions; most are in
     are kept where TF2 defines them.
   - Internal ids (hooks, net messages, networked keys) keep `ws_`.
   - Check every new console name with `.devtools/bin/check_engine_names.sh`.
-  - Every new convar goes into `addon/cfg/sandcastle_defaults.cfg` at its
+  - Every new convar goes into `addons/sandcastle/cfg/sandcastle_defaults.cfg` at its
     default (`tests/cfg_defaults_test.lua` enforces it).
 - **Commits:** small, signed with
   `git -c gpg.program=gpg-loopback commit -m "..."`. No Co-Authored-By, no

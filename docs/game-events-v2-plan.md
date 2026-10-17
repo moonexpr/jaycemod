@@ -36,7 +36,7 @@ design change itself; §1's scholar edits are still the writer's.
 | Files the server sends clients | 191 | research §2 |
 | `E.Define` calls | 30 lines in 10 files (29 events plus `client_ready`) | `grep -rn 'Define("' addon --include='*.lua'` |
 | `WS.BroadcastSound(ToOthers)` calls | 19, plus 2 definitions and 2 uses through the Wheel's port (the handoff's 23) | §D |
-| Boss forwarder `me:FireGameEvent(` calls | **13 in 3 files** (merasmus 7, eyeball_boss 4, headless_hatman 2) | `grep -rc 'me:FireGameEvent(' addon/gamemodes/sandcastle/gamemode/foundation` |
+| Boss forwarder `me:FireGameEvent(` calls | **13 in 3 files** (merasmus 7, eyeball_boss 4, headless_hatman 2) | `grep -rc 'me:FireGameEvent(' addons/sandcastle/gamemodes/sandcastle/gamemode/foundation` |
 
 The scholar counted 16 forwarder calls in 6 files. The other three hits it
 counted (`npc/halloween_boss.lua:28`, `payload/race.lua:21`,
@@ -302,7 +302,7 @@ ws/sh_events.lua         the composition root: builds the ports and the Library 
 ```
 
 **The model classes** (all pure, all under
-`addon/gamemodes/sandcastle/gamemode/foundation/`):
+`addons/sandcastle/gamemodes/sandcastle/gamemode/foundation/`):
 
 | Class | File | Its one job | On the A branch |
 |---|---|---|---|
@@ -745,7 +745,7 @@ commit. Phase A's switch commit is the one place this bites.
 
 - New console names go through `.devtools/bin/check_engine_names.sh NAME...`,
   which must print `free`. It only reads files.
-- New convars are listed in `addon/cfg/sandcastle_defaults.cfg` at their
+- New convars are listed in `addons/sandcastle/cfg/sandcastle_defaults.cfg` at their
   default; `tests/cfg_defaults_test.lua` checks this.
 - Meta and debug names use `ws_`.
 - New event names reuse TF2's event and field names where TF2 has the event.
@@ -825,7 +825,7 @@ which is the second agent.
 
 | File | Change |
 |---|---|
-| `addon/gamemodes/sandcastle/gamemode/foundation/events.lua` | **Replaced:** the v2 core facade (pure), composed of the modules below. The v1 `Registry`, types and schemas go. `Crc32` moves to `codec.lua`. |
+| `addons/sandcastle/gamemodes/sandcastle/gamemode/foundation/events.lua` | **Replaced:** the v2 core facade (pure), composed of the modules below. The v1 `Registry`, types and schemas go. `Crc32` moves to `codec.lua`. |
 | `foundation/events/codec.lua` | New. Validation, the key table, the exact bit-size model, encode, and bounded decode. |
 | `foundation/events/rates.lua` | New. The accepted names and the per-player, per-event token bucket (moved from v1's `Admit`). |
 | `foundation/events/paths.lua` | New. Source path to key, key to feature and kind, and `AddCSLuaFile` argument resolution. |
@@ -848,7 +848,7 @@ which is the second agent.
 | `.devtools/bin/gev2/events_size.lua`, `events_sent.lua`, `events_scan_cost.lua` | New probes, run by `gev2_probe.py` (A.6). |
 
 **The design change adds or reshapes these files.** It wins where a row
-above differs. Paths are under `addon/gamemodes/sandcastle/gamemode/`
+above differs. Paths are under `addons/sandcastle/gamemodes/sandcastle/gamemode/`
 unless they start with `tests/` or `.devtools/`.
 
 | File | Change |
@@ -1390,7 +1390,7 @@ core, with at least 27 tests):
 - `a RecoveryFire outside protocol.lua is reported`
 - `Events.Recovery.Listen is a listen of a recovery event; Events.Recovery.Fire is reported`
 
-`tests/events_sites_test.lua` (the whole of `addon/`, minus the ratchet's
+`tests/events_sites_test.lua` (the whole of `addons/sandcastle/`, minus the ratchet's
 files):
 - `every event has exactly one literal Fire site`
 - `every listener reads only fields its event's site sends`
@@ -1508,18 +1508,18 @@ starts or signals a real process:
    `foundation/events.lua`, `foundation/events/*.lua` and
    `foundation/events/*/*.lua`. Each starts with `module(...)` after its
    locals, and each is a class:
-   `grep -L '__index = ' addon/gamemodes/sandcastle/gamemode/foundation/events.lua addon/gamemodes/sandcastle/gamemode/foundation/events/*.lua addon/gamemodes/sandcastle/gamemode/foundation/events/*/*.lua`
+   `grep -L '__index = ' addons/sandcastle/gamemodes/sandcastle/gamemode/foundation/events.lua addons/sandcastle/gamemodes/sandcastle/gamemode/foundation/events/*.lua addons/sandcastle/gamemodes/sandcastle/gamemode/foundation/events/*/*.lua`
    prints nothing.
 4. `grep -rnE '\.Request\(' addon --include='*.lua'` prints nothing.
-5. `grep -c 'local Registry' addon/gamemodes/sandcastle/gamemode/foundation/events.lua`
+5. `grep -c 'local Registry' addons/sandcastle/gamemodes/sandcastle/gamemode/foundation/events.lua`
    prints 0: the v1 core is gone.
-6. `grep -n 'include("shared.lua")' addon/gamemodes/sandcastle/gamemode/init.lua`
+6. `grep -n 'include("shared.lua")' addons/sandcastle/gamemodes/sandcastle/gamemode/init.lua`
    is line 1 or the first non-comment line, and comes above both
    `AddCSLuaFile` lines.
 7. No convar, and nothing stops (operator decision 3):
    - `grep -rn 'ws_events_check' addon tests .devtools/bin` prints
      nothing (0 at 29a6070);
-   - `git diff --quiet main -- addon/cfg/sandcastle_defaults.cfg` exits 0,
+   - `git diff --quiet main -- addons/sandcastle/cfg/sandcastle_defaults.cfg` exits 0,
      and `luajit tests/cfg_defaults_test.lua` passes, because A adds no
      convar;
    - `grep -rn ':Blocks(' addon --include='*.lua' | grep -v 'foundation/events/stops.lua'`
@@ -1589,16 +1589,16 @@ starts or signals a real process:
        probe reads `WS.EventLibrary`);
     4. `gmod_client.py stop`, then `srcds.py stop`.
 16. **The kinds and the failure states are classes and parts:**
-    - `ls addon/gamemodes/sandcastle/gamemode/foundation/events/event/`
+    - `ls addons/sandcastle/gamemodes/sandcastle/gamemode/foundation/events/event/`
       prints `game.lua`, `recovery.lua` and `system.lua`;
-    - `ls addon/gamemodes/sandcastle/gamemode/foundation/events/failure/`
+    - `ls addons/sandcastle/gamemodes/sandcastle/gamemode/foundation/events/failure/`
       prints exactly the 8 states' files;
-    - `grep -n '^MAJOR = 1' addon/gamemodes/sandcastle/gamemode/foundation/events/event/system.lua`
+    - `grep -n '^MAJOR = 1' addons/sandcastle/gamemodes/sandcastle/gamemode/foundation/events/event/system.lua`
       prints one line.
 17. **Only the protocol fires recovery events:**
     - `grep -rlE 'RecoveryFire\(' addon --include='*.lua'` prints only
       `foundation/events/protocol.lua`;
-    - `grep -cE 'Events\.(Game\.|System\.)?Fire\(' addon/gamemodes/sandcastle/gamemode/ws/sh_events.lua addon/gamemodes/sandcastle/gamemode/ws/sh_events_ports.lua`
+    - `grep -cE 'Events\.(Game\.|System\.)?Fire\(' addons/sandcastle/gamemodes/sandcastle/gamemode/ws/sh_events.lua addons/sandcastle/gamemodes/sandcastle/gamemode/ws/sh_events_ports.lua`
       prints `0` for both.
 18. **One composition root:**
     `grep -rn 'Events\.New(' addon --include='*.lua'` prints one line, in
@@ -1613,13 +1613,13 @@ starts or signals a real process:
     `apart from major_mismatch's disconnect, nothing a failure state does stops an event or disconnects a client`
     passes, and so does item 7. `grep -rn ':Kick(' addon --include='*.lua'`
     prints one line, in `GModRoster:Disconnect`, and
-    `grep -rln 'Disconnect(' addon/gamemodes/sandcastle/gamemode/foundation`
+    `grep -rln 'Disconnect(' addons/sandcastle/gamemodes/sandcastle/gamemode/foundation`
     prints only `foundation/events/failure/major_mismatch.lua`.
 22. **The scanner knows the kinds:** `luajit tests/events_scan_test.lua`
     passes with the four names this revision adds to it.
 23. **The notice view** (P1): `luajit tests/network_notice_test.lua` passes
     with its two names, and
-    `grep -c 'NOTICE_SOUND_' addon/gamemodes/sandcastle/gamemode/ws/cl_network_notice.lua`
+    `grep -c 'NOTICE_SOUND_' addons/sandcastle/gamemodes/sandcastle/gamemode/ws/cl_network_notice.lua`
     is at least 2.
 
 ---
@@ -1806,7 +1806,7 @@ the spec builds them. The operator confirmed it: build all three
   - each field with its trailing comment;
   - its `Listen` sites.
 - **`.devtools/bin/gen_events_res.lua [--check]`:** writes
-  `addon/gamemodes/sandcastle/resource/sandcastle_events.res` in §5's format,
+  `addons/sandcastle/gamemodes/sandcastle/resource/sandcastle_events.res` in §5's format,
   with events sorted by name. `--check` exits 1 if the file differs.
 - **`.devtools/bin/hooks/pre-commit`:** when a staged `.lua` file contains
   `Events.Fire(`, `Events.Listen(` or `Events.Accept(`, it runs the
@@ -1874,7 +1874,7 @@ the spec builds them. The operator confirmed it: build all three
 ### C.3 Acceptance criteria
 
 1. The per-commit checks pass on every commit.
-2. `grep -rnE '\bDefine\b|\bUInt\b|\bOptional\b|\bRecord\b' addon/gamemodes/sandcastle/gamemode/ws/sh_events.lua`
+2. `grep -rnE '\bDefine\b|\bUInt\b|\bOptional\b|\bRecord\b' addons/sandcastle/gamemodes/sandcastle/gamemode/ws/sh_events.lua`
    prints nothing, and `grep -rn '\.Define(' addon --include='*.lua'`
    prints nothing.
 3. `test ! -e tests/events_unmigrated.lua && ! grep -rn 'unmigrated' tests .devtools/bin`
@@ -1907,7 +1907,7 @@ the spec builds them. The operator confirmed it: build all three
 11. The aliases are gone:
     `grep -rnE 'Events\.(Fire|Listen|Ignore|Accept)\(' addon --include='*.lua'`
     prints nothing, and
-    `grep -nE 'Events\.(Fire|Listen|Ignore|Accept) *=' addon/gamemodes/sandcastle/gamemode/ws/sh_events.lua`
+    `grep -nE 'Events\.(Fire|Listen|Ignore|Accept) *=' addons/sandcastle/gamemodes/sandcastle/gamemode/ws/sh_events.lua`
     prints nothing.
 12. `luajit tests/events_system_test.lua` passes, and
     `tests/events_system_frozen.lua` lists major 1 with B's five system
@@ -1921,7 +1921,7 @@ the spec builds them. The operator confirmed it: build all three
        refrozen at 2;
     4. restore both files, and it exits 0.
 14. The kinds are in the events file:
-    `grep -c '"kind"' addon/gamemodes/sandcastle/resource/sandcastle_events.res`
+    `grep -c '"kind"' addons/sandcastle/gamemodes/sandcastle/resource/sandcastle_events.res`
     equals the event count that `gen_events_res.lua --count` prints, and
     the file has the line `// system events: major 1`.
 15. After the post-merge smoke (item 9), `srcds.py rcon ws_events_print`
@@ -2069,9 +2069,9 @@ lines are at 29a6070.
    rows call `WS.BroadcastHolidaySound(` instead:
    `grep -rnE 'WS\.BroadcastHolidaySound\(' addon --include='*.lua' | grep -v 'function WS' | wc -l`
    prints 5. And
-   `grep -nE 'WS\.BroadcastSound' addon/gamemodes/sandcastle/gamemode/features/rounds/sv.lua`
+   `grep -nE 'WS\.BroadcastSound' addons/sandcastle/gamemodes/sandcastle/gamemode/features/rounds/sv.lua`
    shows only the nag and `VoiceTo` lines.
-3. `grep -nE 'PrintMessage\(|ChatPrint\(' addon/gamemodes/sandcastle/gamemode/ws/sv_teams.lua addon/gamemodes/sandcastle/gamemode/features/tag/sv.lua`
+3. `grep -nE 'PrintMessage\(|ChatPrint\(' addons/sandcastle/gamemodes/sandcastle/gamemode/ws/sv_teams.lua addons/sandcastle/gamemodes/sandcastle/gamemode/features/tag/sv.lua`
    prints nothing. The repo-wide count of `:ChatPrint(` plus `PrintMessage(`
    is 17.
 4. `luajit tests/events_sites_test.lua` passes. The new events appear in the

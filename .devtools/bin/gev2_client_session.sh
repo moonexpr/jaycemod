@@ -20,7 +20,7 @@
 #       so the disk-marker line tells which text was served.
 #
 # Run it from the worktree whose tools it should use; the markers go into
-# main's files (/Users/jc/Repositories/sandcastle/addon/...), because the
+# main's files (/Users/jc/Repositories/sandcastle/addons/sandcastle/...), because the
 # server loads main through the sandcastle symlink. In the background, e.g.:
 #
 #   cd /Users/jc/Repositories/sandcastle-gev2-a-tools
@@ -68,7 +68,7 @@ SETTLE="${GEV2_SESSION_SETTLE:-8}"         # s after each save, for autorefresh 
 GONE_WAIT="${GEV2_SESSION_GONE_WAIT:-30}"  # s for gmod_win64.exe and its launcher to go after stop
 export GIT_OPTIONAL_LOCKS=0                # git status never takes main's index.lock
 
-readonly GAMEMODE="$MAIN/addon/gamemodes/sandcastle/gamemode"
+readonly GAMEMODE="$MAIN/addons/sandcastle/gamemodes/sandcastle/gamemode"
 readonly SPECTATE="$GAMEMODE/ws/cl_spectate.lua"
 readonly CAPTURE="$GAMEMODE/features/capture/cl.lua"
 readonly CAPTURE_REFRESH="gamemodes/sandcastle/gamemode/features/capture/cl.lua"  # lua_refresh_file's form (research §3)

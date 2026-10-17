@@ -598,7 +598,7 @@ local function Source(path)
 end
 
 T.test("tf_logic_koth loads its feature on first use, never at file load, and holds no rule", function()
-	local text = Source("addon/gamemodes/sandcastle/entities/entities/tf_logic_koth.lua")
+	local text = Source("addons/sandcastle/gamemodes/sandcastle/entities/entities/tf_logic_koth.lua")
 	for line in text:gmatch("[^\n]+") do
 		if not line:match("^%s") and not line:match("^%-%-") then
 			T.eq(line:find("Feature") == nil and line:find("require") == nil, true, "top level: " .. line)

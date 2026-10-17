@@ -19,7 +19,7 @@ Baseline, measured 2026-10-11: `.devtools/bin/check_lua.sh` prints
 
 ### 1.1 How a feature loads
 
-All paths below are under `addon/gamemodes/sandcastle/gamemode/` unless they
+All paths below are under `addons/sandcastle/gamemodes/sandcastle/gamemode/` unless they
 start with `tests/` or `.devtools/`.
 
 - **A feature is a folder with up to three fixed files.** `foundation/features.lua:17`
@@ -436,7 +436,7 @@ That requires all three of the following:
   - `luajit tests/client_shipping_test.lua`;
   - `.devtools/bin/check_lua.sh` with `0 failed`.
 - **`init.lua` sends through `Features.ClientFiles`:** `git grep -n
-  ClientFiles addon/gamemodes/sandcastle/gamemode/init.lua` prints one line,
+  ClientFiles addons/sandcastle/gamemodes/sandcastle/gamemode/init.lua` prints one line,
   and `git grep -n "SendFeatureClientParts\|SendFoundation"` prints nothing.
 - **A client check, run with the operator present.** On the running server,
   do a `changelevel`, not a restart. Then, on a client started with
@@ -721,7 +721,7 @@ following:
   `luajit tests/aiwar_soldier_contract_test.lua` and
   `luajit tests/nbdebug_contract_test.lua` each print `0 failed`, with the
   same assertion count as before the split.
-- **The file sizes hold:** `wc -l addon/gamemodes/sandcastle/gamemode/features/aiwar/sv*.lua`
+- **The file sizes hold:** `wc -l addons/sandcastle/gamemodes/sandcastle/gamemode/features/aiwar/sv*.lua`
   shows the root at 300 lines or fewer and every part at 600 or fewer.
 - **Lazy loading still holds:** the `load` in-game check on `pl_badwater`
   still reports `aiwar` among `lacks` until `mp_aiwar_start`

@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Fail when a game events v2 marker line is staged or committed.
 
-  check_no_markers.py [--repo PATH] staged        the index adds no marker line under addon/
-  check_no_markers.py [--repo PATH] range A..B    no commit in A..B adds a marker line under addon/
+  check_no_markers.py [--repo PATH] staged        the index adds no marker line under addons/
+  check_no_markers.py [--repo PATH] range A..B    no commit in A..B adds a marker line under addons/
 
 A marker line is one gev2_marker.py wrote: it ends with gev2_marker.TAG
-(-- GEV2_MARKER_DO_NOT_COMMIT), and only files under addon/ are ever marked,
+(-- GEV2_MARKER_DO_NOT_COMMIT), and only files under addons/ are ever marked,
 so only added lines there count; the tools and docs that name the tag never
 do. Each finding prints as `<commit or "staged"> <file>: <line>`.
 

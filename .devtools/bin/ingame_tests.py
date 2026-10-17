@@ -15,7 +15,7 @@ with ingame-<date>/ (the records and each map's console log) beside it.
 
 The server runs the gamemode garrysmod/gamemodes/sandcastle points to (the
 operator's main checkout); the report says which, and whether its files
-equal this checkout's addon/gamemodes/sandcastle.
+equal this checkout's addons/sandcastle/gamemodes/sandcastle.
 """
 from __future__ import annotations
 
@@ -379,11 +379,11 @@ class AddonIdentity:
         target = Path(os.path.realpath(link))
         commit = subprocess.run(["git", "-C", str(REPO), "rev-parse", "--short", "HEAD"],
                                 capture_output=True, text=True).stdout.strip()
-        return cls(target, tree_digest(target) == tree_digest(REPO / "addon" / "gamemodes" / "sandcastle"), commit)
+        return cls(target, tree_digest(target) == tree_digest(REPO / "addons" / "sandcastle" / "gamemodes" / "sandcastle"), commit)
 
     def describe(self) -> str:
         same = "identical to" if self.same_as_checkout else "DIFFERENT from"
-        return f"`{self.target}` (files {same} this checkout's addon/gamemodes/sandcastle at {self.commit})"
+        return f"`{self.target}` (files {same} this checkout's addons/sandcastle/gamemodes/sandcastle at {self.commit})"
 
 
 class ConsoleLog:

@@ -390,7 +390,7 @@ the entry up when needed.
 
 **Gate: none.** It touches no file in the uncommitted set:
 
-- `addon/cfg/sandcastle_defaults.cfg`
+- `addons/sandcastle/cfg/sandcastle_defaults.cfg`
 - `foundation/aiwar.lua`, `foundation/aiwar/orders.lua`
 - `init.lua`, `ws/cl_ui.lua`
 - `tests/aiwar_koth_test.lua`, `tests/aiwar_orders_test.lua`
@@ -399,7 +399,7 @@ the entry up when needed.
 Stage files by explicit path only. Commit with
 `git -c gpg.program=gpg-loopback commit`.
 
-Paths below are relative to `addon/gamemodes/sandcastle/gamemode/` unless they
+Paths below are relative to `addons/sandcastle/gamemodes/sandcastle/gamemode/` unless they
 start with `tests/` or `.devtools/`.
 
 ### 7.1 Guard test, written first: `tests/foundation_layers_test.lua`
@@ -502,7 +502,7 @@ Cases:
      unchanged from the baseline run.
 3. `grep -rnE "foundation[./](gameplay|holiday[./]on_holiday|npc[./]tag|npc[./]boss_timer)\b" addon tests`
    prints nothing.
-4. `grep -rn "^local function Distance(a, b)" addon/gamemodes/sandcastle/gamemode/foundation`
+4. `grep -rn "^local function Distance(a, b)" addons/sandcastle/gamemodes/sandcastle/gamemode/foundation`
    prints only `nodegraph.lua`.
 5. The four old paths are gone and the four new paths exist (`test -e`).
 6. The guard-bites check in §7.1 was seen failing, then reverted.

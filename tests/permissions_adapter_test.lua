@@ -38,7 +38,7 @@ local function Load(state)
 		FCVAR_NOTIFY = 2,
 		FCVAR_ARCHIVE = 4,
 	}, { __index = _G })
-	setfenv(assert(loadfile("addon/gamemodes/sandcastle/gamemode/ws/sh_permissions.lua")), env)()
+	setfenv(assert(loadfile("addons/sandcastle/gamemodes/sandcastle/gamemode/ws/sh_permissions.lua")), env)()
 	return env.WS, registered, asked, convars
 end
 

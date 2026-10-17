@@ -20,10 +20,10 @@ def git(repo, *args):
 @pytest.fixture
 def repo(tmp_path):
     root = tmp_path / "repo"
-    (root / "addon" / "features" / "capture").mkdir(parents=True)
-    (root / "addon" / "features" / "capture" / "cl.lua").write_bytes(VIEW)
-    (root / "addon" / "ws").mkdir()
-    (root / "addon" / "ws" / "cl_spectate.lua").write_text("local lastMode\n")
+    (root / "addons" / "sandcastle" /"features" / "capture").mkdir(parents=True)
+    (root / "addons" / "sandcastle" /"features" / "capture" / "cl.lua").write_bytes(VIEW)
+    (root / "addons" / "sandcastle" /"ws").mkdir()
+    (root / "addons" / "sandcastle" /"ws" / "cl_spectate.lua").write_text("local lastMode\n")
     (root / "docs").mkdir()
     (root / "docs" / "notes.lua").write_text("x = 1\n")
     git(root, "init", "-q")
@@ -38,7 +38,7 @@ def markers(tmp_path):
 
 
 def view(repo):
-    return repo / "addon" / "features" / "capture" / "cl.lua"
+    return repo / "addons" / "sandcastle" /"features" / "capture" / "cl.lua"
 
 
 def clean(repo):
@@ -112,7 +112,7 @@ def test_refuses_a_line_that_would_not_compile(repo, markers):
 
 
 def test_two_files_are_marked_and_restored_together(repo, markers):
-    spectate = repo / "addon" / "ws" / "cl_spectate.lua"
+    spectate = repo / "addons" / "sandcastle" /"ws" / "cl_spectate.lua"
     markers.set(spectate, 'WS_T1_INCLUDE = "sent-1234"')
     markers.set(view(repo), LINE)
     assert sorted(markers.marked()) == sorted([str(spectate), str(view(repo))])
@@ -131,7 +131,7 @@ def test_restore_leaves_a_file_changed_since_alone(repo, markers):
 
 def test_every_marker_line_carries_the_do_not_commit_tag(repo, markers):
     assert gev2_marker.TAG == "-- GEV2_MARKER_DO_NOT_COMMIT"
-    spectate = repo / "addon" / "ws" / "cl_spectate.lua"
+    spectate = repo / "addons" / "sandcastle" /"ws" / "cl_spectate.lua"
     markers.set(spectate, 'WS_T1_INCLUDE = "sent-1234"')
     markers.set(view(repo), 'WS_T2 = "save-1234" -- the save step')
     for path in (spectate, view(repo)):
@@ -145,7 +145,7 @@ def test_every_marker_line_carries_the_do_not_commit_tag(repo, markers):
 
 
 def test_refuses_a_file_that_is_not_lua(repo, markers):
-    cfg = repo / "addon" / "settings.cfg"
+    cfg = repo / "addons" / "sandcastle" /"settings.cfg"
     cfg.write_text("sv_cheats 0\n")
     git(repo, "add", "-A")
     git(repo, "commit", "-qm", "cfg")

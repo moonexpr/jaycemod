@@ -115,7 +115,7 @@ def wanted_models(vpk: Vpk, maps: Iterable[str]) -> Set[str]:
         if bsp.exists():
             entities = bsp_entities.parse_entity_lump(bsp_entities.read_entity_lump(bsp.read_bytes()))
             models |= model_names_in_entities({k.lower(): v for k, v in e.pairs} for e in entities)
-    for lua in (REPO / "addon").rglob("*.lua"):
+    for lua in (REPO / "addons").rglob("*.lua"):
         for ref in references_in_lua(lua.read_text(errors="replace"), str(lua)):
             if ref.kind is Kind.MODEL:
                 name = ref.name.lower()

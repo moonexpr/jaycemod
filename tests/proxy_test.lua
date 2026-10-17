@@ -19,7 +19,7 @@ local function Load()
 		SERVER = true,
 		CLIENT = false,
 	}, { __index = _G })
-	setfenv(assert(loadfile("addon/gamemodes/sandcastle/entities/entities/ws_proxy.lua")), env)()
+	setfenv(assert(loadfile("addons/sandcastle/gamemodes/sandcastle/entities/entities/ws_proxy.lua")), env)()
 	local proxy = setmetatable({
 		GetPos = function() return {} end,
 		GetAngles = function() return {} end,
@@ -55,7 +55,7 @@ local function LoadCart()
 		WS = { EditorAction = function(name, def) added[name] = def end },
 		IsValid = function(v) return v ~= nil end,
 	}, { __index = _G })
-	setfenv(assert(loadfile("addon/gamemodes/sandcastle/gamemode/ws/sh_editors_cart.lua")), env)()
+	setfenv(assert(loadfile("addons/sandcastle/gamemodes/sandcastle/gamemode/ws/sh_editors_cart.lua")), env)()
 	return added
 end
 

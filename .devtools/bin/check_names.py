@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Check Sandcastle's own names in Lua: no TF2 in them, and every hook and networked var has both ends.
 
-  check_names.py                 check addon/ and tests/
+  check_names.py                 check addons/ and tests/
   check_names.py DIR_OR_FILE...  check these instead
 
 Fails (exit 1) on:
@@ -132,7 +132,7 @@ def lua_files(roots: list[Path]) -> list[Path]:
 
 def main(argv: list[str]) -> int:
     repo = Path(__file__).resolve().parents[2]
-    roots = [Path(a) for a in argv] or [repo / "addon", repo / "tests"]
+    roots = [Path(a) for a in argv] or [repo / "addons", repo / "tests"]
     sources = [LuaSource.parse(str(f), f.read_text(errors="replace")) for f in lua_files(roots)]
     f = check(sources)
     for path, line, name in f.old_names:

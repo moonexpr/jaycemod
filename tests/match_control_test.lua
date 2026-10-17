@@ -65,7 +65,7 @@ local function Load(players, opts)
 		IsValid = function(v) return v ~= nil end,
 		print = function() end,
 	}, { __index = _G })
-	setfenv(assert(loadfile("addon/gamemodes/sandcastle/gamemode/ws/sv_match_control.lua")), env)()
+	setfenv(assert(loadfile("addons/sandcastle/gamemodes/sandcastle/gamemode/ws/sv_match_control.lua")), env)()
 	function s.Run(name, ply, ...) s.commands[name](ply, name, { ... }) end
 	return s
 end

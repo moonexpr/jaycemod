@@ -25,8 +25,8 @@
 -- WSGameEventFired) and console lines (CONSOLE_KEPT, what print and
 -- the Msg family wrote).
 --
--- Paths are matched on their tail, after "addon/" and "@" come off, so the
--- repo's addon/gamemodes/sandcastle/gamemode/foundation/rounds.lua, the game's
+-- Paths are matched on their tail, after "addons/<addon>/" and "@" come off, so
+-- the repo's addons/sandcastle/gamemodes/sandcastle/gamemode/foundation/rounds.lua, the game's
 -- gamemodes/sandcastle/gamemode/foundation/rounds.lua and foundation/rounds.lua
 -- all name the same file.
 local MAX_FRAMES = 12
@@ -79,7 +79,7 @@ local Debugger = {}
 Debugger.__index = Debugger
 
 local function Normalize(path)
-	return (path:gsub("\\", "/"):gsub("^@", ""):gsub("^.*/addon/", ""):gsub("^addon/", ""):lower())
+	return (path:gsub("\\", "/"):gsub("^@", ""):gsub("^.*/addons/[^/]+/", ""):gsub("^addons/[^/]+/", ""):lower())
 end
 
 local function Show(value)

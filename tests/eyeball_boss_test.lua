@@ -1064,7 +1064,7 @@ end)
 
 -- The bindings (read as text) define their ports as function ENT:<Name>(.
 local function Defines(file, name)
-	local f = assert(io.open("addon/gamemodes/sandcastle/entities/entities/" .. file, "r"))
+	local f = assert(io.open("addons/sandcastle/gamemodes/sandcastle/entities/entities/" .. file, "r"))
 	local text = f:read("*a")
 	f:close()
 	return text:find("function ENT:" .. name .. "(", 1, true) ~= nil
