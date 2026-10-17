@@ -71,4 +71,35 @@ T.test("the fields a class is built with are set past its parent's guard", funct
 	T.eq(Named.name, "named", "set raw")
 end)
 
+T.test("constructing runs each class's own Init, base first, with the arguments", function()
+	local log = {}
+	local Base = Class.Extend(nil)
+	function Base:Init(name) log[#log + 1] = "base " .. name; self.name = name end
+	local Mid = Class.Extend(Base) -- no Init of its own: nothing runs twice
+	local Leaf = Class.Extend(Mid)
+	function Leaf:Init(name) log[#log + 1] = "leaf " .. self.name end
+	local leaf = Class.Construct(Leaf, "x")
+	T.eq(table.concat(log, ", "), "base x, leaf x", "in order, once each")
+	T.eq(Class.IsA(leaf, Base), true, "an instance")
+end)
+
+T.test("destroying runs each class's own Destroy, most derived first", function()
+	local log = {}
+	local Base = Class.Extend(nil)
+	function Base:Destroy() log[#log + 1] = "base" end
+	local Leaf = Class.Extend(Base)
+	function Leaf:Destroy() log[#log + 1] = "leaf" end
+	Class.Destroy(Class.Construct(Leaf))
+	T.eq(table.concat(log, ", "), "leaf, base", "reverse order")
+end)
+
+T.test("an Init replaced after classes are made takes effect at the next construct", function()
+	local Base = Class.Extend(nil)
+	function Base:Init() self.version = 1 end
+	local Leaf = Class.Extend(Base)
+	T.eq(Class.Construct(Leaf).version, 1, "first")
+	function Base:Init() self.version = 2 end
+	T.eq(Class.Construct(Leaf).version, 2, "reloaded")
+end)
+
 T.finish()

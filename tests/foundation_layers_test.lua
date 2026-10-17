@@ -23,6 +23,7 @@ local CATEGORY = {
 	["pathfinder/astar"] = "structures",
 	["core/parsers/consolecfg"] = "structures",
 	["core/analytics"] = "structures",
+	["core/memory"] = "structures",
 	["core/structs/ring"] = "structures",
 	["core/math/stats"] = "structures",
 	["core/structs/lease"] = "structures",

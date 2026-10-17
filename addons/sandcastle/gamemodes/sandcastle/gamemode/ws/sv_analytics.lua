@@ -3,8 +3,10 @@
 -- and count with :Count(name). While ws_analytics is on, each tick is
 -- closed as a frame against the tick interval and Lua memory is sampled;
 -- off, nothing runs per tick. ws_analytics_print and
--- ws_analytics_reset need the server options privilege.
+-- ws_analytics_reset need the server options privilege, as does
+-- ws_analytics_memory, the estimated memory each loaded foundation module holds.
 local Analytics = WS.require("foundation.core.analytics")
+local MemoryReport = WS.require("foundation.core.memory")
 local Permissions = WS.require("foundation.permissions")
 
 local Clock = {}
@@ -52,6 +54,21 @@ concommand.Add("ws_analytics_reset", function(ply)
 	WS.Analytics:Reset()
 	Tell(ply, { "analytics: reset" })
 end, nil, "Forget every measurement so far")
+
+local MEMORY_ROWS_DEFAULT = 25
+local FOUNDATION_PREFIX = "^foundation%."
+
+concommand.Add("ws_analytics_memory", function(ply, _, args)
+	if not Admin(ply) then return end
+	local names = {}
+	for name in pairs(package.loaded) do
+		if string.find(name, FOUNDATION_PREFIX) then names[#names + 1] = name end
+	end
+	table.sort(names)
+	local roots = {}
+	for i, name in ipairs(names) do roots[i] = { name, package.loaded[name] } end
+	Tell(ply, MemoryReport.Format(MemoryReport.Measure(roots), tonumber(args[1]) or MEMORY_ROWS_DEFAULT))
+end, nil, "Print the estimated Lua memory each loaded foundation module holds, largest first")
 
 -- LuaJIT's sampling profiler through the server's binary module wsprofile
 -- (native/ws_profile): every function's share of the Lua running, with no
