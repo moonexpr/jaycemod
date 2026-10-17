@@ -7,7 +7,7 @@
 --   server_lua.py 'return WSExperiment.Start()'               runs every block
 --   server_lua.py 'return WSExperiment.Report()'              the results, by condition
 --
--- The treatments: A, mp_aiwar_revive_enabled (respawn waves revive fallen
+-- The treatments: A, ns_use_regular_spawns 0 (respawn waves revive fallen
 -- soldiers); B, ws_jit_enabled 0 (LuaJIT's compiler off). Per block: the
 -- ticks' wall times, each AI war draft (revived or created) and wave, the
 -- deaths, and, when the wsprofile module is loaded, the Lua VM's share of
@@ -76,7 +76,7 @@ end
 
 local function Apply(condition)
 	local c = CONDITIONS[condition]
-	RunConsoleCommand("mp_aiwar_revive_enabled", c.revive)
+	RunConsoleCommand("ns_use_regular_spawns", c.revive == "1" and "0" or "1")
 	RunConsoleCommand("ws_jit_enabled", c.jit)
 end
 
