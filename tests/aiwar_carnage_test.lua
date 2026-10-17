@@ -95,7 +95,7 @@ end)
 local N = T.require("foundation.npc")
 local AiWar = T.require("foundation.aiwar")
 local Orders = T.require("foundation.aiwar.orders")
-local Track = T.require("foundation.core.polyline")
+local Track = T.require("foundation.core.structs.polyline")
 local STATE = T.require("foundation.rounds.state")
 
 local TICK = 0.25

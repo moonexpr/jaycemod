@@ -19,7 +19,7 @@
 -- not client-sendable, over its rate) is refused instead: ReadRequest
 -- returns nil and the refusal, since a client's mistake is not ours.
 local Crc32 = require("foundation.core.crc32")
-local Sets = require("foundation.core.sets")
+local Sets = require("foundation.core.structs.sets")
 local error, format, getmetatable, ipairs, pairs, pcall, setmetatable, sort, tostring, type =
 	error, string.format, getmetatable, ipairs, pairs, pcall, setmetatable, table.sort, tostring, type
 local match = string.match

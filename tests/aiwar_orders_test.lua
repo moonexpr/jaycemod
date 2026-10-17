@@ -7,7 +7,7 @@ local Debug = T.require("foundation.npc.debug")
 local AiWar = T.require("foundation.aiwar")
 local Orders = T.require("foundation.aiwar.orders")
 local Soldier = T.require("foundation.aiwar.soldier")
-local Track = T.require("foundation.core.polyline")
+local Track = T.require("foundation.core.structs.polyline")
 local Teams = T.require("foundation.teams")
 
 local RED, BLUE = Teams.RED, Teams.BLUE

@@ -2,7 +2,7 @@
 -- put on spots.
 local T = dofile("tests/harness.lua")
 local Squad = T.require("foundation.aiwar.squad")
-local Lease = T.require("foundation.core.lease")
+local Lease = T.require("foundation.core.structs.lease")
 
 local function Team(...)
 	local fireTeam = { members = {} }

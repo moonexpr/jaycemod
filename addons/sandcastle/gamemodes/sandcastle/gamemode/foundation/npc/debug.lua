@@ -16,7 +16,7 @@ local floor, huge, sqrt = math.floor, math.huge, math.sqrt
 local concat, sort = table.concat, table.sort
 local find, lower, rep, sub, upper = string.find, string.lower, string.rep, string.sub, string.upper
 local Npc = require("foundation.npc")
-local Sets = require("foundation.core.sets")
+local Sets = require("foundation.core.structs.sets")
 module(...)
 
 -------------------------------------------------------------------------------

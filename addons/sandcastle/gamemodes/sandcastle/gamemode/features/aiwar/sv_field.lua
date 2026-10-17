@@ -2,7 +2,7 @@
 local Controller, Map, WATCH_INTERVAL = ...
 local AiWar = WS.require("foundation.aiwar")
 local Teams = WS.require("foundation.teams")
-local Track = WS.require("foundation.core.polyline")
+local Track = WS.require("foundation.core.structs.polyline")
 local Geometry = WS.require("foundation.core.geometry")
 local TFBot = WS.require("foundation.npc.path.tfbot")
 local HL2Path = WS.require("foundation.npc.path.hl2")

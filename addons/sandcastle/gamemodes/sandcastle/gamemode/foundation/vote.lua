@@ -16,7 +16,7 @@
 -- a rerun of this module changes the behaviour of the live book too.
 local PlayMode = require("foundation.play_mode")
 local Refusal = require("foundation.core.refusal")
-local Sets = require("foundation.core.sets")
+local Sets = require("foundation.core.structs.sets")
 local ceil, error, format, ipairs, pairs, remove, tostring, type = math.ceil, error, string.format, ipairs, pairs, table.remove, tostring, type
 module(...)
 

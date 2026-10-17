@@ -13,7 +13,7 @@
 --   port:Methods()      the method names in order, a fresh list
 --   port:Name()         what errors call it
 -- Is(value) says whether value is a port.
-local Sets = require("foundation.core.sets")
+local Sets = require("foundation.core.structs.sets")
 local error, getmetatable, ipairs, setmetatable, tostring, type = error, getmetatable, ipairs, setmetatable, tostring, type
 local concat = table.concat
 module(...)

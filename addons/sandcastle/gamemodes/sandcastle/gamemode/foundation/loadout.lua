@@ -11,7 +11,7 @@
 local floor, format, ipairs, pairs, setmetatable, tostring, type =
 	math.floor, string.format, ipairs, pairs, setmetatable, tostring, type
 local Refusal = require("foundation.core.refusal")
-local Sets = require("foundation.core.sets")
+local Sets = require("foundation.core.structs.sets")
 module(...)
 
 PRICE = 10

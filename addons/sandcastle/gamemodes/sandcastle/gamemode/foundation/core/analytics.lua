@@ -15,7 +15,7 @@
 -- reads CPU-side wall time at sub-millisecond resolution) and
 -- memory:Kilobytes() (collectgarbage("count")). Recording allocates only a
 -- name's first sample, so a timer can wrap per-tick work.
-local Ring = require("foundation.core.ring")
+local Ring = require("foundation.core.structs.ring")
 local Stats = require("foundation.core.stats")
 local error, ipairs, pairs, setmetatable = error, ipairs, pairs, setmetatable
 local huge, max, min = math.huge, math.max, math.min

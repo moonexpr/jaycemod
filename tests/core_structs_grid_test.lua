@@ -1,7 +1,7 @@
--- foundation.core.grid: a spatial hash of items by square cells on the
+-- foundation.core.structs.grid: a spatial hash of items by square cells on the
 -- ground plane, and thinning points to one per cube.
 local T = dofile("tests/harness.lua")
-local Grid = T.require("foundation.core.grid")
+local Grid = T.require("foundation.core.structs.grid")
 
 local function P(x, y, z) return { x = x, y = y, z = z } end
 

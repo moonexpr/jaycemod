@@ -6,7 +6,7 @@ local AiWar = T.require("foundation.aiwar")
 local Orders = T.require("foundation.aiwar.orders")
 local Scenario = T.require("foundation.aiwar.scenario")
 local Payload = T.require("foundation.aiwar.scenario.payload")
-local Track = T.require("foundation.core.polyline")
+local Track = T.require("foundation.core.structs.polyline")
 local Teams = T.require("foundation.teams")
 
 local RED, BLUE = Teams.RED, Teams.BLUE

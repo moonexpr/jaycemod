@@ -1,6 +1,6 @@
--- foundation.core.sets: named sets, closed vocabularies parsed once.
+-- foundation.core.structs.sets: named sets, closed vocabularies parsed once.
 local T = dofile("tests/harness.lua")
-local Sets = T.require("foundation.core.sets")
+local Sets = T.require("foundation.core.structs.sets")
 
 local PATH, COST, NAV = "PATH", "COST", "NAV"
 
@@ -42,7 +42,7 @@ T.test("checking a value outside the set is the caller's bug, blamed on its call
 	local function Caller() File("rude") end
 	local err = Raises(Caller)
 	T.eq(err:find("reports: reason: unknown rude", 1, true) ~= nil, true, "named")
-	T.eq(err:find("core_sets_test.lua:", 1, true) ~= nil, true, "points into the caller's file")
+	T.eq(err:find("core_structs_sets_test.lua:", 1, true) ~= nil, true, "points into the caller's file")
 	local line = debug.getinfo(Caller, "S").linedefined
 	T.eq(err:find(":" .. line .. ":", 1, true) ~= nil, true, "at File's caller")
 end)

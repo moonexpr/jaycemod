@@ -1,6 +1,6 @@
--- foundation.core.ring: the last values pushed, up to a capacity.
+-- foundation.core.structs.ring: the last values pushed, up to a capacity.
 local T = dofile("tests/harness.lua")
-local Ring = T.require("foundation.core.ring")
+local Ring = T.require("foundation.core.structs.ring")
 
 local function Joined(list) return table.concat(list, " ") end
 

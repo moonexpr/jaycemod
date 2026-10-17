@@ -1,6 +1,6 @@
--- foundation.core.polyline: a path of points, measured along its length.
+-- foundation.core.structs.polyline: a path of points, measured along its length.
 local T = dofile("tests/harness.lua")
-local Polyline = T.require("foundation.core.polyline")
+local Polyline = T.require("foundation.core.structs.polyline")
 
 local function P(x, y, z) return { x = x, y = y, z = z or 0 } end
 

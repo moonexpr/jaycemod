@@ -8,7 +8,7 @@
 -- - With gameplay tampering switched off (mp_tampering_enabled 0), tampering
 --   also needs the gameplay toggles, so only superadmins keep it by default.
 local PlayMode = require("foundation.play_mode")
-local Sets = require("foundation.core.sets")
+local Sets = require("foundation.core.structs.sets")
 local ipairs = ipairs
 module(...)
 

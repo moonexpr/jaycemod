@@ -1,5 +1,5 @@
 -- Squads (docs/aiwar-command.md §3): a fire team of foundation.aiwar with a
--- leader, and the keys of the spots soldiers claim (on a foundation.core.lease)
+-- leader, and the keys of the spots soldiers claim (on a foundation.core.structs.lease)
 -- so no two take the same.
 --
 -- A fire team is { team, role, index, members = place -> member, leader };

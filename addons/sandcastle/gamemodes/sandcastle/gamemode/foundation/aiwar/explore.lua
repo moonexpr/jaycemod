@@ -17,8 +17,8 @@
 --
 -- Positions are { x, y, z } tables; a squad is any key.
 local ipairs, pairs, setmetatable = ipairs, pairs, setmetatable
-local Lease = require("foundation.core.lease")
-local Grid = require("foundation.core.grid")
+local Lease = require("foundation.core.structs.lease")
+local Grid = require("foundation.core.structs.grid")
 local Tactics = require("foundation.wartactics")
 local Distance = require("foundation.core.geometry").Distance
 module(...)
@@ -75,7 +75,7 @@ function Board.New(waypoints)
 		waypoints = waypoints,
 		visited = {}, -- squad -> waypoint index -> true
 		targets = {}, -- squad -> { index, since }
-		claims = {}, -- team -> leases (foundation.core.lease) of waypoint indexes
+		claims = {}, -- team -> leases (foundation.core.structs.lease) of waypoint indexes
 		walked = {}, -- squad -> the lane it walked to its end
 		engaged = {}, -- squad -> { pos, time }: where and when it last saw the enemy
 	}, Board)

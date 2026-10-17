@@ -12,7 +12,7 @@ local concat, sort, sqrt = table.concat, table.sort, math.sqrt
 local ipairs, pairs = ipairs, pairs
 local Binary = require("foundation.core.binary")
 local Graph = require("foundation.core.graph")
-local Grid = require("foundation.core.grid")
+local Grid = require("foundation.core.structs.grid")
 module(...)
 
 VERSION = 37 -- AINET_VERSION_NUMBER

@@ -1,6 +1,6 @@
--- foundation.core.heap: a binary heap ordered by the caller's rule.
+-- foundation.core.structs.heap: a binary heap ordered by the caller's rule.
 local T = dofile("tests/harness.lua")
-local Heap = T.require("foundation.core.heap")
+local Heap = T.require("foundation.core.structs.heap")
 
 local function Less(a, b) return a < b end
 
