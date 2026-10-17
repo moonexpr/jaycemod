@@ -36,7 +36,7 @@ against it as it loads.
 - hfsm's own `NameList` and `NameSet`: a chart may declare no events or
   queries, and a named set refuses an empty list.
 - `nodegraph.Candidates` and `Bridges` are one *k*-nearest-pairs search with
-  different filters; a `core.grid` query could serve both.
+  different filters; a `core.structs.grid` query could serve both.
 - `aiwar.squad.Key`: a spot's claim key, a kind and a grid cube.
 - `events`' typed wire schema: a formalism already, with its own registry.
 - wartactics keeps its state on the fire team table; an engine that owns
