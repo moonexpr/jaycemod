@@ -48,6 +48,10 @@
      cloth, in royal blue and purple -->
 <path d="M8 3.25V0.25" stroke="#A66F2B" stroke-width="0.5" stroke-linecap="round"/>
 <path d="M8.25 0.25H11.25L10.5 1L11.25 1.75H8.25V0.25Z" fill="url(#cloth)" stroke="url(#clothEdge)" stroke-width="0.5" stroke-linejoin="round"/>
+<!-- the sun on the cloth, from the top left as on the sand: a warm sheen fading
+     down, and a cool shade rising from its lower edge -->
+<path d="M8.25 0.25H11.25L10.5 1L11.25 1.75H8.25V0.25Z" fill="url(#clothLight)"/>
+<path d="M8.25 0.25H11.25L10.5 1L11.25 1.75H8.25V0.25Z" fill="url(#clothShade)"/>
 
 <defs>
 <!-- Building.svg's inner glow, faint: a lighter inner edge just inside the outline -->
@@ -77,15 +81,26 @@
 <stop offset="0.3" stop-color="#E9B96E"/>
 <stop offset="1" stop-color="#D6A256"/>
 </linearGradient>
-<!-- Flag red.svg's cloth and edge, in royal blue and purple: its light middle kept -->
-<linearGradient id="cloth" x1="8.25" y1="0.5" x2="11.25" y2="1.5" gradientUnits="userSpaceOnUse">
-<stop offset="0.3" stop-color="#4169E1"/>
-<stop offset="0.6" stop-color="#9DB2F2"/>
-<stop offset="0.85" stop-color="#7B3FBF"/>
+<!-- Flag red.svg's cloth and edge, in royal blue and purple graded to the sand:
+     each a tenth the sand's warm #E9B96E, lit at the top left as the castle is
+     (a warm highlight) and shaded at the bottom right -->
+<linearGradient id="cloth" x1="8.25" y1="0.25" x2="11.25" y2="1.75" gradientUnits="userSpaceOnUse">
+<stop stop-color="#A9B6EA"/>
+<stop offset="0.3" stop-color="#5271D6"/>
+<stop offset="0.7" stop-color="#864BB7"/>
+<stop offset="1" stop-color="#5D3480"/>
 </linearGradient>
-<linearGradient id="clothEdge" x1="8.25" y1="1" x2="11.25" y2="1" gradientUnits="userSpaceOnUse">
-<stop stop-color="#2A47B8"/>
-<stop offset="1" stop-color="#5B2A8E"/>
+<linearGradient id="clothEdge" x1="8.25" y1="0.25" x2="11.25" y2="1.75" gradientUnits="userSpaceOnUse">
+<stop stop-color="#3A4FA0"/>
+<stop offset="1" stop-color="#4A2C70"/>
+</linearGradient>
+<linearGradient id="clothLight" x1="9" y1="0.25" x2="9" y2="1.75" gradientUnits="userSpaceOnUse">
+<stop stop-color="#FFF1D6" stop-opacity="0.45"/>
+<stop offset="0.6" stop-color="#FFF1D6" stop-opacity="0"/>
+</linearGradient>
+<linearGradient id="clothShade" x1="9" y1="0.25" x2="9" y2="1.75" gradientUnits="userSpaceOnUse">
+<stop offset="0.45" stop-color="#2A1B4D" stop-opacity="0"/>
+<stop offset="1" stop-color="#2A1B4D" stop-opacity="0.4"/>
 </linearGradient>
 </defs>
 </svg>
