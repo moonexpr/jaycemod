@@ -43,6 +43,7 @@ local require = require
 local Players = require("foundation.players")
 local Attributes = require("foundation.players.attributes")
 local Teams = require("foundation.teams")
+local Class = require("foundation.core.meta.class")
 local ipairs, setmetatable = ipairs, setmetatable
 local floor, log, max, min = math.floor, math.log, math.max, math.min
 local format = string.format
@@ -188,11 +189,6 @@ Effect.__index = Effect
 Effect.whammy = false
 Effect.reapplies = true
 
-local function Extend(fields)
-	fields.__index = fields
-	return setmetatable(fields, Effect)
-end
-
 function Effect:Init(world, wheel, duration) self.expireTime = world:Now() + duration end
 function Effect:Activate(world, wheel, players) end
 function Effect:Update(world, players) end
@@ -200,7 +196,7 @@ function Effect:Deactivate(world, players) end
 function Effect:TimeLeft(world) return self.expireTime - world:Now() end
 
 local function CondEffect(fields, cond)
-	local effect = Extend(fields)
+	local effect = Class.Extend(Effect, fields)
 	function effect:Activate(world, wheel, players)
 		for _, p in ipairs(players) do world:AddCond(p, cond, self:TimeLeft(world)) end
 	end
@@ -209,7 +205,7 @@ end
 
 -- attrs: { name, value } pairs, given on activation and taken on the end.
 local function AttributeEffect(fields, attrs)
-	local effect = Extend(fields)
+	local effect = Class.Extend(Effect, fields)
 	function effect:Activate(world, wheel, players)
 		for _, p in ipairs(players) do
 			for _, attr in ipairs(attrs) do world:SetAttribute(p, attr.name, attr.value) end
@@ -277,7 +273,7 @@ local SmallHead = AttributeEffect({
 	Attr(Attributes.HEAD_SCALE, SMALL_HEAD),
 })
 
-local LowGravity = Extend({
+local LowGravity = Class.Extend(Effect, {
 	name = "Low Gravity",
 	skin = EFFECT_LOW_GRAVITY,
 	sound = "Halloween.MerasmusWheelGravity",
@@ -286,7 +282,7 @@ local LowGravity = Extend({
 function LowGravity:Activate(world, wheel, players) world:SetGravityMultiplier(LOW_GRAVITY) end
 function LowGravity:Deactivate(world, players) world:SetGravityMultiplier(NORMAL_GRAVITY) end
 
-local Burn = Extend({
+local Burn = Class.Extend(Effect, {
 	name = "Burn",
 	skin = EFFECT_WHAMMY,
 	sound = "Halloween.MerasmusWheelBurn",
@@ -305,7 +301,7 @@ end
 -- thriller; every 3.5 s they dance (put back on their spots just before)
 -- and a Merasmus pops up at one end of the floor, then the other. With no
 -- spots TF2 divides by zero for his place; here he does not come.
-local Dance = Extend({
+local Dance = Class.Extend(Effect, {
 	name = "Dance",
 	skin = EFFECT_DANCE,
 	sound = "Halloween.MerasmusWheelDance",
@@ -396,7 +392,7 @@ end
 -- WOD_Pee: Jarate rains from the map's spawn_cloud brushes, a jar from a
 -- random spot in a random one a quarter second in and then every 0.2-0.5
 -- s, spinning.
-local Pee = Extend({
+local Pee = Class.Extend(Effect, {
 	name = "Pee",
 	skin = EFFECT_WHAMMY,
 	sound = "Halloween.MerasmusWheelJarate",
@@ -423,7 +419,7 @@ end
 
 -- WOD_Ghosts: a haunting of four ghosts, each for half to all the wheel's
 -- duration; its end puts out whoever is burning.
-local Ghosts = Extend({
+local Ghosts = Class.Extend(Effect, {
 	name = "Ghosts",
 	skin = EFFECT_WHAMMY,
 	sound = "Halloween.MerasmusWheelGhosts",
@@ -462,7 +458,7 @@ Wheel.__index = Wheel
 
 function New(config)
 	local effects = {}
-	for i, class in ipairs(EFFECTS) do effects[i] = setmetatable({}, class) end
+	for i, class in ipairs(EFFECTS) do effects[i] = Class.New(class) end
 	return setmetatable({
 		duration = config.duration,
 		hasSpiral = config.hasSpiral,

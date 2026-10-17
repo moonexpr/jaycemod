@@ -28,6 +28,7 @@ local error, ipairs, require, setmetatable = error, ipairs, require, setmetatabl
 local AiWar = require("foundation.aiwar")
 local Explore = require("foundation.aiwar.explore")
 local Teams = require("foundation.teams")
+local Class = require("foundation.core.meta.class")
 module(...)
 
 ALLOCATION_HOLD = 3 -- docs/aiwar-command.md §2.2
@@ -102,10 +103,7 @@ end
 
 -- A variant, inheriting what it does not override.
 function Scenario:Extend(name)
-	local class = setmetatable({}, self)
-	class.__index = class
-	class.NAME = name
-	return class
+	return Class.Extend(self, { NAME = name })
 end
 
 -- memory: the variant's own, across ticks; pending: team -> the key waiting

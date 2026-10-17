@@ -3,7 +3,7 @@
 -- on it.
 local T = dofile("tests/harness.lua")
 local Hfsm = T.require("foundation.core.hfsm")
-local Port = T.require("foundation.core.port")
+local Port = T.require("foundation.core.meta.port")
 
 -- A soldier the port is checked against: more methods than any chart needs.
 local function Soldier()

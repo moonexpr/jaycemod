@@ -17,6 +17,7 @@ local find, gmatch, sort, table_remove = string.find, string.gmatch, table.sort,
 local Teams = require("foundation.teams")
 local State = require("foundation.rounds.state")
 local Cfsm = require("foundation.core.cfsm")
+local Class = require("foundation.core.meta.class")
 module(...)
 
 -- teamplayroundbased_gamerules.h
@@ -373,10 +374,7 @@ Mode.__index = Mode
 
 -- A variant named `name`, inheriting every member it does not override.
 function Mode:Extend(name)
-	local mode = setmetatable({}, self)
-	mode.__index = mode
-	mode.NAME = name
-	return mode
+	return Class.Extend(self, { NAME = name })
 end
 
 -- Whether a team owning every point wins now. q = { clockRemaining = the

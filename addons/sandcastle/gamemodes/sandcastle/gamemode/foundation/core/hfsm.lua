@@ -7,7 +7,7 @@
 --
 -- A Chart is the seam a new machine is built on. It declares, before any
 -- state exists, what its states may see and answer:
---   port     a foundation.core.port: the only actor methods a state can call
+--   port     a foundation.core.meta.port: the only actor methods a state can call
 --            (states get a facade, never the actor itself)
 --   events   the On<Event> names its states handle and Event accepts
 --   queries  the names Query accepts
@@ -17,9 +17,10 @@
 -- refuses an actor missing a port method. So each state does one job behind
 -- one contract, new states extend the chart without editing it, and states
 -- depend on the port the composition root fills, not on an entity.
-local Port = require("foundation.core.port")
-local error, getmetatable, ipairs, rawset, setmetatable, tostring, type =
-	error, getmetatable, ipairs, rawset, setmetatable, tostring, type
+local Class = require("foundation.core.meta.class")
+local Port = require("foundation.core.meta.port")
+local error, ipairs, setmetatable, tostring, type =
+	error, ipairs, setmetatable, tostring, type
 local concat, find = table.concat, string.find
 module(...)
 
@@ -71,14 +72,11 @@ Action.shortName = nil
 
 -- A subclass named for Describe(); its instances come from :New(...).
 function Action:Extend(name)
-	local class = setmetatable({}, self)
-	class.__index = class
-	class.name = name
-	return class
+	return Class.Extend(self, { name = name })
 end
 
 function Action:New(...)
-	local action = setmetatable({
+	local action = Class.New(self, {
 		_parent = nil,
 		_child = nil,
 		_buried = nil,
@@ -87,7 +85,7 @@ function Action:New(...)
 		_started = false,
 		_suspended = false,
 		_eventResult = NO_EVENT_RESULT,
-	}, self)
+	})
 	action:Init(...)
 	return action
 end
@@ -556,21 +554,14 @@ MachineClass.__index = MachineClass
 local LIFECYCLE = NameSet({ "OnStart", "OnEnd", "OnSuspend", "OnResume" })
 local EVENT_NAME = "^On%u"
 
--- The __newindex of a chart's state classes: an On* name must be a
--- lifecycle hook or one of the chart's events.
+-- The guard on a chart's state classes: an On* name must be a lifecycle
+-- hook or one of the chart's events.
 local function StateGuard(chart)
-	return function(target, key, value)
+	return function(key)
 		if type(key) == "string" and find(key, EVENT_NAME) and not LIFECYCLE[key] and not chart.events[key] then
-			error(chart.name .. ": " .. key .. " is not a lifecycle hook or an event of the chart", 2)
+			return chart.name .. ": " .. key .. " is not a lifecycle hook or an event of the chart"
 		end
-		rawset(target, key, value)
 	end
-end
-
-local function GuardedExtend(parent, name)
-	local class = Action.Extend(parent, name)
-	rawset(class, "__newindex", parent.__newindex)
-	return class
 end
 
 -- Chart{ name, port, events?, queries?, initial }.
@@ -589,10 +580,7 @@ function Chart(spec)
 		queries = NameSet(NameList(spec.queries or {}, "chart " .. name .. "'s queries")),
 		initial = spec.initial,
 	}, ChartClass)
-	local base = Action:Extend(name)
-	rawset(base, "__newindex", StateGuard(chart))
-	rawset(base, "Extend", GuardedExtend)
-	chart.base = base
+	chart.base = Class.Guard(Action:Extend(name), StateGuard(chart))
 	return chart
 end
 
@@ -602,12 +590,7 @@ function ChartClass:State(name)
 end
 
 function ChartClass:Owns(action)
-	local class = getmetatable(action)
-	while class do
-		if class == self.base then return true end
-		class = getmetatable(class)
-	end
-	return false
+	return Class.IsA(action, self.base)
 end
 
 -- A machine running this chart over the actor; state is what initial reads.

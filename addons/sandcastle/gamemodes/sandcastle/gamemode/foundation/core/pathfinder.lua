@@ -18,6 +18,7 @@
 --
 -- The graph is the solver's port; the search reads nothing of it. Nodes
 -- are any values usable as table keys.
+local Class = require("foundation.core.meta.class")
 local error, setmetatable, tostring, type = error, setmetatable, tostring, type
 module(...)
 
@@ -90,8 +91,7 @@ end
 
 function Solver(name)
 	if type(name) ~= "string" or name == "" then error("a path solver needs a name, not " .. tostring(name), 2) end
-	local class = setmetatable({ solverName = name }, Search)
-	class.__index = class
+	local class = Class.Extend(Search, { solverName = name })
 
 	function class.New(graph, start, goal, maxExpanded)
 		local search = setmetatable({
