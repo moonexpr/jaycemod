@@ -1,5 +1,6 @@
 -- Squads (docs/aiwar-command.md §3): a fire team of foundation.aiwar with a
--- leader, and the claims soldiers put on spots so no two take the same.
+-- leader, and the keys of the spots soldiers claim (on a foundation.core.lease)
+-- so no two take the same.
 --
 -- A fire team is { team, role, index, members = place -> member, leader };
 -- a member is foundation.aiwar's roster entry, which a soldier's orders keep
@@ -7,7 +8,7 @@
 -- (the enemy it fights, an opaque handle) and hero (its kit is a hero's);
 -- and the controller with its slot's pin (LEADER, MEMBER or nil; the slots
 -- of foundation.aiwar.slots carry it).
-local ipairs, pairs, setmetatable = ipairs, pairs, setmetatable
+local ipairs, pairs = ipairs, pairs
 local floor, HUGE = math.floor, math.huge
 module(...)
 
@@ -76,43 +77,4 @@ CLAIM_GRID = 48
 
 function Key(kind, p)
 	return kind .. ":" .. floor(p.x / CLAIM_GRID) .. ":" .. floor(p.y / CLAIM_GRID) .. ":" .. floor((p.z or 0) / CLAIM_GRID)
-end
-
-Claims = {}
-Claims.__index = Claims
-
-function Claims.New()
-	return setmetatable({ held = {} }, Claims) -- key -> { holder, expires }
-end
-
--- Who holds the claim at now, or nil.
-function Claims:Holder(key, now)
-	local claim = self.held[key]
-	if claim and now < claim.expires then return claim.holder end
-	return nil
-end
-
--- Whether the key is free for the holder (unclaimed, expired, or its own).
-function Claims:FreeFor(key, holder, now)
-	local other = self:Holder(key, now)
-	return other == nil or other == holder
-end
-
--- Takes (or renews) the claim for ttl seconds; false when another holds it.
-function Claims:Take(key, holder, now, ttl)
-	if not self:FreeFor(key, holder, now) then return false end
-	self.held[key] = { holder = holder, expires = now + ttl }
-	return true
-end
-
-function Claims:Release(key, holder)
-	local claim = self.held[key]
-	if claim and claim.holder == holder then self.held[key] = nil end
-end
-
--- Everything the holder held (it died, or left the war).
-function Claims:ReleaseAll(holder)
-	for key, claim in pairs(self.held) do
-		if claim.holder == holder then self.held[key] = nil end
-	end
 end

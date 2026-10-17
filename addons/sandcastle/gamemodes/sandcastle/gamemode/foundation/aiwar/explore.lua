@@ -18,7 +18,7 @@
 -- Positions are { x, y, z } tables; a squad is any key.
 local ipairs, pairs, setmetatable = ipairs, pairs, setmetatable
 local floor = math.floor
-local Squad = require("foundation.aiwar.squad")
+local Lease = require("foundation.core.lease")
 local Tactics = require("foundation.wartactics")
 local Distance = require("foundation.core.geometry").Distance
 module(...)
@@ -83,7 +83,7 @@ function Board.New(waypoints)
 		waypoints = waypoints,
 		visited = {}, -- squad -> waypoint index -> true
 		targets = {}, -- squad -> { index, since }
-		claims = {}, -- team -> foundation.aiwar.squad's Claims of waypoint indexes
+		claims = {}, -- team -> leases (foundation.core.lease) of waypoint indexes
 		walked = {}, -- squad -> the lane it walked to its end
 		engaged = {}, -- squad -> { pos, time }: where and when it last saw the enemy
 	}, Board)
@@ -131,7 +131,7 @@ end
 local function ClaimsOf(self, team)
 	local claims = self.claims[team]
 	if not claims then
-		claims = Squad.Claims.New()
+		claims = Lease.New()
 		self.claims[team] = claims
 	end
 	return claims

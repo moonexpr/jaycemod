@@ -2,6 +2,7 @@
 -- put on spots.
 local T = dofile("tests/harness.lua")
 local Squad = T.require("foundation.aiwar.squad")
+local Lease = T.require("foundation.core.lease")
 
 local function Team(...)
 	local fireTeam = { members = {} }
@@ -60,7 +61,7 @@ T.test("pinning a slot moves the lead at once: a new leader takes over, and an u
 end)
 
 T.test("a claim holds a grid cell for its holder until it expires or is released", function()
-	local claims = Squad.Claims.New()
+	local claims = Lease.New()
 	local key = Squad.Key("cover", { x = 10, y = 10, z = 0 })
 	T.eq(Squad.Key("cover", { x = 40, y = 20, z = 5 }), key, "a few units away: the same cell")
 	T.eq(claims:Take(key, "a", 0, 20), true, "a takes it")

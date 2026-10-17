@@ -11,6 +11,7 @@ local floor, max, min, ipairs, next, pairs, setmetatable, sort, table, type = ma
 local Teams = require("foundation.teams")
 local STATE = require("foundation.rounds.state")
 local Squad = require("foundation.aiwar.squad")
+local Lease = require("foundation.core.lease")
 local Lanes = require("foundation.aiwar.lanes")
 local Hunt = require("foundation.aiwar.hunt")
 local Tactics = require("foundation.wartactics")
@@ -337,7 +338,7 @@ function War.New()
 		squadsMax = SQUADS_MAX_DEFAULT, -- the most squads a team forms (SetSquadsMax)
 		squadsMin = SQUADS_MIN_DEFAULT, -- the fewest (SetSquadsMin)
 		enlisted = 0, -- members ever enlisted, for their order
-		claims = Squad.Claims.New(), -- spots soldiers hold (foundation.aiwar.squad)
+		claims = Lease.New(), -- spots soldiers hold, by foundation.aiwar.squad's Key
 		hunt = Hunt.Board.New(), -- the winners' sightings of the losers (foundation.aiwar.hunt)
 		stances = {}, -- team -> stance
 		defense = {}, -- team -> its defense share (DefenseShare), or nil
