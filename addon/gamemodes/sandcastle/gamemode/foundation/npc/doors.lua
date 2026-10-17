@@ -12,7 +12,7 @@
 -- A door that is a floor (IsFloor: flat and wide, cp_steel's bridges) is
 -- the other way round: closed is laid out, and open (drawn back) it blocks
 -- everyone from its span, the areas where it lies closed.
-local band, ipairs, lower, min, sub = bit.band, ipairs, string.lower, math.min, string.sub
+local band, ipairs, lower, min, pairs, sub = bit.band, ipairs, string.lower, math.min, pairs, string.sub
 module(...)
 
 -- CBaseToggle's m_toggle_state
@@ -64,6 +64,40 @@ function Blocks(blockedTeams, team)
 		if blocked == ANY or blocked == team then return true end
 	end
 	return false
+end
+
+-- Whether two lists of blocked teams close an area to the same teams, in
+-- any order; nil and an empty list both close it to no one.
+local function SameTeams(a, b)
+	a, b = a or {}, b or {}
+	for i = 1, #a do
+		local found = false
+		for j = 1, #b do
+			if b[j] == a[i] then found = true end
+		end
+		if not found then return false end
+	end
+	for j = 1, #b do
+		local found = false
+		for i = 1, #a do
+			if a[i] == b[j] then found = true end
+		end
+		if not found then return false end
+	end
+	return true
+end
+
+-- The areas whose blocking differs between two blocked maps (area id ->
+-- its blocked teams): id -> true.
+function Changed(before, after)
+	local changed = {}
+	for id, teams in pairs(before) do
+		if not SameTeams(teams, after[id]) then changed[id] = true end
+	end
+	for id, teams in pairs(after) do
+		if before[id] == nil and not SameTeams(nil, teams) then changed[id] = true end
+	end
+	return changed
 end
 
 -- The inputs that open a door.

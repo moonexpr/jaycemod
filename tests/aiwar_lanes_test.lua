@@ -136,4 +136,59 @@ T.test("planning a lane costs more through areas an earlier lane took", function
 	T.eq(Lanes.Strategy.Cost(step, limits, bot), Path.IMPASSABLE, "impassable stays so")
 end)
 
+-- Staleness: a team's lanes are planned again when an area they watch (their
+-- band, and the door walls they went round) has been blocked otherwise than
+-- when they were planned for CHANGE_SETTLE: a door that stays shut across a
+-- lane, a setup gate that stays open. A door that opens and shuts again
+-- before then, as spawn doors do, changes nothing.
+T.test("a change that lasts CHANGE_SETTLE makes the lanes stale", function()
+	T.defined(Lanes.CHANGE_SETTLE, "CHANGE_SETTLE")
+	local function Differs(id) return id == 40 end
+	local stale, pending = Lanes.Settled({ [40] = true }, Differs, {}, 100)
+	T.eq(stale, false, "just changed")
+	T.eq(pending[40], 100, "changed at 100")
+	stale = Lanes.Settled({}, Differs, pending, 100 + Lanes.CHANGE_SETTLE)
+	T.eq(stale, true, "still changed after the settle")
+end)
+
+T.test("a change undone before CHANGE_SETTLE changes nothing", function()
+	local _, pending = Lanes.Settled({ [40] = true }, function() return true end, {}, 100)
+	local stale, after = Lanes.Settled({ [40] = true }, function() return false end, pending, 101)
+	T.eq(stale, false, "undone")
+	T.eq(after[40], nil, "forgotten")
+	stale = Lanes.Settled({ [40] = true }, function() return true end, after, 100 + Lanes.CHANGE_SETTLE)
+	T.eq(stale, false, "changed again: the settle starts over")
+end)
+
+T.test("an area not changed and not pending is not looked at", function()
+	local looked = {}
+	local stale, pending = Lanes.Settled({}, function(id) looked[#looked + 1] = id return true end, {}, 100)
+	T.eq(stale, false, "nothing to look at")
+	T.eq(#looked, 0, "none looked at")
+	T.eq(next(pending), nil, "nothing pending")
+end)
+
+-- A tour's last stop: the enemy spawn's threshold, the nearest area to it
+-- outside the enemy's spawn room.
+local function Area(id, x, y, room) return { id = id, center = P(x, y), room = room } end
+
+T.test("a tour ends at the nearest area outside the enemy's spawn room", function()
+	local spawn = P(0, 0)
+	local areas = {
+		Area(1, 10, 0, 3), -- inside the spawn room
+		Area(2, 50, 0, 3),
+		Area(3, 300, 0, 0), -- the doorway
+		Area(4, 900, 0, 0),
+	}
+	local stop = Lanes.Threshold(spawn, areas, 3)
+	T.eq(stop.x, 300, "the doorway's x")
+	T.eq(stop.y, 0, "the doorway's y")
+end)
+
+T.test("with no area outside the room near, a tour still heads for the spawn", function()
+	local spawn = P(5, 5)
+	local stop = Lanes.Threshold(spawn, { Area(1, 10, 0, 3) }, 3)
+	T.eq(stop, spawn, "the spawn itself")
+end)
+
 T.finish()

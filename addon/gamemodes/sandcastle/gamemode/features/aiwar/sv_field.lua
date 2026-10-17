@@ -232,20 +232,41 @@ end
 -- posts, else its front) on to the enemy's spawn, planned one after the
 -- other, each costing more through the bands of the ones before. A team's lanes
 -- are planned again once its front has moved LANE_REPLAN from where they
--- led, or the doors' blockers changed (the npc feature's BlockerGeneration:
--- a setup gate opened, a door shut), and tried again after LANE_RETRY when
--- no route was found; the last lanes found stand until new ones are ready.
+-- led, or an area they watch (their band, and the door walls they went
+-- round: plan.snapshot, each area's blocking when they were planned) has
+-- been blocked otherwise for Lanes.CHANGE_SETTLE (Lanes.Settled over the npc
+-- feature's BlockerChangesSince: a door that stays shut across a lane, a
+-- setup gate that stays open, not a spawn door opening and shutting), and
+-- tried again after LANE_RETRY when no route was found; the last lanes found
+-- stand until new ones are ready. A change elsewhere only moves their
+-- generation on.
 local LANE_REPLAN, LANE_RETRY = 1024, 5
+
+local function BlockersStale(plan, npcs, now)
+	local snapshot, candidates = plan.snapshot, {}
+	local generation = npcs:BlockerGeneration()
+	if plan.blockers ~= generation then
+		local changes = npcs:BlockerChangesSince(plan.blockers)
+		plan.blockers = generation
+		for id in pairs(changes or snapshot) do
+			if snapshot[id] ~= nil then candidates[id] = true end
+		end
+	end
+	local stale
+	stale, plan.pending = Lanes.Settled(candidates, function(id) return npcs:AreaBlocked(id) ~= snapshot[id] end,
+		plan.pending or {}, now)
+	return stale
+end
 
 function Controller:UpdateLanes(field, now)
 	self.lanePlans = self.lanePlans or {}
 	self.laneSets = self.laneSets or {}
 	field.lanes = {}
+	local npcs = WS.Feature("npc")
 	for _, team in ipairs({ RED, BLUE }) do
 		local front = self.scenario:Front(field, team)
 		local plan = self.lanePlans[team]
-		local blockers = WS.Feature("npc"):BlockerGeneration()
-		local stale = plan and plan.blockers ~= blockers
+		local stale = plan and not plan.planning and BlockersStale(plan, npcs, now)
 		if front and not (plan and plan.planning)
 			and (stale or (now >= (plan and plan.retryAt or 0) and (not plan or Track.Distance(front, plan.to) > LANE_REPLAN))) then
 			self:PlanLanes(team, front, field, now)
@@ -290,16 +311,50 @@ local function Nearest(spots, p)
 	return best
 end
 
+-- A lane stop inside the enemy's spawn room moves to its threshold
+-- (Lanes.Threshold): the nearest area outside the room among those the nav
+-- mesh reaches from the stop (navmesh.Find floods out from it) within each of
+-- THRESHOLD_RADII in turn, a step or two above or below. The team's route
+-- cannot enter the room, so a stop inside it sent the search through every
+-- area it could reach first. Tours end at the enemy spawn, and on payload a
+-- defender's front is the enemy cart, which starts deep in the room. Each
+-- stop's area keeps its threshold for the round (roomExits).
+local THRESHOLD_RADII, THRESHOLD_STEP = { 1500, 3000, 6000 }, 256
+
+function Controller:OutsideRoom(stop, enemy, npcs)
+	local here = navmesh.GetNearestNavArea(ToVector(stop), false, THRESHOLD_STEP, false, true)
+	if not (IsValid(here) and npcs:SpawnRoomTeam(here) == enemy) then return stop end
+	self.roomExits = self.roomExits or {}
+	local known = self.roomExits[here:GetID()]
+	if known then return known end
+	local threshold = stop
+	for _, radius in ipairs(THRESHOLD_RADII) do
+		local areas = {}
+		for i, area in ipairs(navmesh.Find(ToVector(stop), radius, THRESHOLD_STEP, THRESHOLD_STEP)) do
+			areas[i] = { id = area:GetID(), center = Point(area:GetCenter()), room = npcs:SpawnRoomTeam(area) }
+		end
+		threshold = Lanes.Threshold(stop, areas, enemy)
+		if threshold ~= stop then break end
+	end
+	self.roomExits[here:GetID()] = threshold
+	return threshold
+end
+
 function Controller:PlanLanes(team, to, field, now)
 	local own = Nearest(SpawnSpots(team), to)
 	if not own then return end
 	local from = Point(own:GetPos())
-	local enemySpawns = SpawnSpots(Teams.EnemyOf(team))
+	local enemy = Teams.EnemyOf(team)
+	local enemySpawns = SpawnSpots(enemy)
 	local function EnemySpawnNear(p) return Point(Nearest(enemySpawns, p):GetPos()) end
 	local defenses = #enemySpawns > 0 and self:EnemyDefenses(field, team) or {}
+	local npcs = WS.Feature("npc")
+	local specs = Lanes.Plans(from, to, defenses, EnemySpawnNear)
+	for _, spec in ipairs(specs) do
+		for i, stop in ipairs(spec.stops) do spec.stops[i] = self:OutsideRoom(stop, enemy, npcs) end
+	end
 	local plan = { to = to, planning = true, tries = 0, penalized = {}, lanes = { key = team .. ":" .. now },
-		blockers = WS.Feature("npc"):BlockerGeneration(),
-		specs = Lanes.Plans(from, to, defenses, EnemySpawnNear) }
+		blockers = npcs:BlockerGeneration(), snapshot = npcs:DoorWalls(), specs = specs }
 	self.lanePlans[team] = plan
 	local npcs = WS.Feature("npc")
 	local function Finish()
@@ -325,7 +380,8 @@ function Controller:PlanLanes(team, to, field, now)
 			bot = { entIndex = 0, now = CurTime(), team = team, route = TFBot.FASTEST_ROUTE, miniBoss = false,
 				roundWon = false, winningTeam = WS.TEAM_UNASSIGNED, penalized = plan.penalized },
 			onDone = function(legAreas, found)
-				if self.lanePlans[team] ~= plan then return end
+				-- a new round may have dropped every plan while the search ran
+				if not self.lanePlans or self.lanePlans[team] ~= plan then return end
 				if not legAreas then return done(nil) end
 				for _, area in ipairs(legAreas) do areas[#areas + 1] = area end
 				for i, v in ipairs(npcs:RouteWaypoints(legAreas, stop, found, start)) do
@@ -346,7 +402,10 @@ function Controller:PlanLanes(team, to, field, now)
 				for i, area in ipairs(areas) do ids[i] = area:GetID() end
 				local points, length = Lanes.Thin(raw, WorldWalkClear)
 				plan.lanes[#plan.lanes + 1] = { kind = spec.kind, ids = ids, points = points, length = length }
-				for id in pairs(Lanes.Band(BandAreas(areas), NearAreas)) do plan.penalized[id] = true end
+				for id in pairs(Lanes.Band(BandAreas(areas), NearAreas)) do
+					plan.penalized[id] = true
+					if plan.snapshot[id] == nil then plan.snapshot[id] = npcs:AreaBlocked(id) end
+				end
 			end
 			Try()
 		end)

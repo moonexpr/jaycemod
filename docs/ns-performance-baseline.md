@@ -366,6 +366,80 @@ Captured from `mp_round_restart`, each soldier re-plan tagged by its
   larger savings are not sending lane legs at stops that can't be reached,
   and fewer stuck soldiers.
 
+## Lanes: planned once, kept until a change that lasts touches them
+
+Lanes have purposes and keep them: direct and flanks come at the objective,
+and tours go round through the enemy's defenses to its spawn, pushing the
+battle lines back and undoing the defenses. The cost was in planning them,
+not in their purposes.
+
+**What drove re-planning** (120 s mid-game, every `PlanLanes` with its
+trigger): all 21 plans were "blockers changed". The blocker generation rose
+from 7 to 47 in two minutes, once every 3 s, because the set of blocked nav
+areas changes whenever a door opens or shuts anywhere. Each time, both teams
+planned all five lanes again.
+
+**What made planning costly:** a stop the team's route cannot reach, inside
+the enemy's spawn room (TF2's bot cost makes it impassable), so the leg's
+search spends everything reachable before giving up. Not only tours: on
+payload a defender's front is the enemy cart, which starts deep inside the
+attackers' spawn room, so RED's direct lane and both flanks aimed there too.
+
+Attempts, each measured the same way (120 s from `mp_round_restart`,
+`.devtools/bin/capture_routes.lua`):
+
+| | Lane plans | Legs | Not found | Lane expansions | Stops in enemy room |
+|---|---|---|---|---|---|
+| baseline | (21 per 120 s mid-game, all from blocker churn) | 63 | 51 | 106,423 | 43 of the failures |
+| 1st: stale only on a change in the band or a wall; tours end at the spawn threshold | 23 (20 blockers) | 157 | 133 | 145,586 | 70 |
+| 2nd: walls count once open WALL_SETTLE; any stop in the room moves out | 16 (12 blockers) | 116 | 100 | 106,125 | 33 |
+| 3rd (kept): every watched area's change must last CHANGE_SETTLE; the threshold search widens | **7 (5 front moved, 2 first)** | **42** | 30 | **76,510** | **0** |
+
+Why the first two fell short, found by testing each guess:
+
+- **Band too wide for door flicker.** Lanes start at the team's own spawn,
+  and the attackers' spawn doors lie in the defenders' band (their lanes head
+  for the attackers' spawn exit). Every door cycle in a band counted as a
+  change. Fixed by snapshotting each watched area's blocking when the lanes
+  are planned and counting a difference only once it has lasted
+  `CHANGE_SETTLE` (5 s, `Lanes.Settled`): a door that stays shut across a
+  lane, or a setup gate that stays open, re-plans; a spawn door that opens
+  and shuts again does not.
+- **No threshold in reach.** `navmesh.Find` floods out from the stop over the
+  mesh; from the cart's start, all 114 areas within 1,500 units of travel
+  were in BLU's spawn room. The search now widens to 3,000, then 6,000
+  units, and each stop area keeps its threshold for the round
+  (`OutsideRoom`, `roomExits`).
+- Refuted along the way: that the thresholds were cached before the rooms
+  had their teams (H21, all three were outside their rooms); that the
+  remaining failures were BLU's behind its setup gates (H22: those were few).
+
+**Kept:** `foundation.aiwar.lanes` `Settled`, `CHANGE_SETTLE`, `Threshold`
+(tested); `foundation.npc.doors` `Changed` (tested); the npc controller's
+blocker change log (`NoteBlockerChange`, `BlockerChangesSince`, `DoorWalls`,
+`AreaBlocked`); the AI war's `BlockersStale`, `OutsideRoom`.
+
+**Still open:**
+- **A door judged a wall that isn't one.** `door_mid_exit1`, at RED's spawn,
+  is opened by map logic through something the door model does not follow
+  (no trigger it can see opens it), so while shut it is a wall. Lanes avoid
+  walls, so RED's lane searches then stay in RED's spawn: cheap (42
+  expansions each) but lane-less until the next plan. The fix belongs in the
+  door model: follow indirect openers, or judge a door a wall only once it
+  has stayed shut.
+- A few legs still search widely before failing (about 4,000 expansions),
+  among them BLU's to area 5289, the other unexplained stop.
+- A one-line race fixed on the way: a round restart dropped the lane plans
+  while a leg's search ran, and its callback indexed them (Lua error).
+
+**Item 3, short queries back onto the lane, not built.** A lane leader
+already walks its lane waypoint by waypoint, and when stuck re-plans to the
+next waypoint, about 300 units ahead (`Travel:LaneTarget`, `Unstick`), so
+the short query back onto the lane exists. Soldiers without a lane job ask
+for routes only when stuck (all 16 requests in the last capture), and they
+spent 4,228 expansions against the lanes' 76,510, so a change there would
+gain little now.
+
 ## Tools considered: gmod_perfutils
 
 [wrefgtzweve/gmod_perfutils](https://github.com/wrefgtzweve/gmod_perfutils)

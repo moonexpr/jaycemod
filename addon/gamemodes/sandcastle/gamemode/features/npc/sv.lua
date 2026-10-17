@@ -32,6 +32,7 @@ local Controller = {
 	navBlocked = {}, -- nav area id -> the teams its doors and brushes block (foundation.npc.doors)
 	nextBlockerRefresh = 0,
 	blockerGeneration = 0,
+	blockerLog = {}, -- the latest generations: { generation, changes = area id -> true, or nil when not known }
 	brushAreas = setmetatable({}, { __mode = "k" }), -- func_brush -> { pos, areas it stands in }
 	-- doorAreas = nil, -- nav area id -> true under a func_door, set by RefreshBlockers
 	-- doorStates = nil, -- func_door -> how the blockers see it, set by RefreshBlockers
@@ -166,7 +167,7 @@ end
 -- routes planned before are stale.
 hook.Add("WSNavLinked", "ws_npc_blockers", function()
 	Controller.neighbors = {}
-	Controller.blockerGeneration = Controller.blockerGeneration + 1
+	Controller:NoteBlockerChange(nil)
 end)
 
 -- The nbdebug feature finds the NPCs it can show through the hook

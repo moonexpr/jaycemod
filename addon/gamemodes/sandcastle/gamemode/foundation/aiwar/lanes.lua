@@ -72,6 +72,47 @@ end
 
 local function Point(x, y, z) return { x = x, y = y, z = z } end
 
+-- How long an area a team's lanes watch (their band, and the door walls they
+-- went round) must stay blocked otherwise than when they were planned before
+-- the lanes are planned again: a door that stays shut across a lane, a setup
+-- gate that stays open. A door that opens and shuts again sooner, as spawn
+-- doors do while soldiers come and go, changes nothing.
+CHANGE_SETTLE = 5
+
+-- Whether a watched area has differed from its planned blocking for
+-- CHANGE_SETTLE: candidates (area id -> true: the watched areas whose
+-- blocking changed since the last look), differs(id) whether it differs now
+-- from when the lanes were planned, pending (id -> since when it has
+-- differed), now. Only candidates and pending areas are looked at. Returns
+-- that and the new pending.
+function Settled(candidates, differs, pending, now)
+	local after, stale = {}, false
+	local function Look(id)
+		if after[id] ~= nil or not differs(id) then return end
+		after[id] = pending[id] or now
+		if now - after[id] >= CHANGE_SETTLE then stale = true end
+	end
+	for id in pairs(candidates) do Look(id) end
+	for id in pairs(pending) do Look(id) end
+	return stale, after
+end
+
+-- A tour's last stop: the enemy spawn's threshold, the centre of the area
+-- nearest spawn that is not in the enemy's spawn room, which its team's
+-- route cannot enter (areas: { id, center, room }, room the spawn room's
+-- team); the spawn itself when none is near.
+function Threshold(spawn, areas, enemy)
+	local best, bestDistance = nil, huge
+	for _, area in ipairs(areas) do
+		if area.room ~= enemy then
+			local d = Distance(area.center, spawn)
+			if d < bestDistance then best, bestDistance = area, d end
+		end
+	end
+	if not best then return spawn end
+	return Point(best.center.x, best.center.y, best.center.z)
+end
+
 -- The lanes a team plans, in order: { kind, stops }, routed from spawn
 -- through each stop. objective: where the team is going (its front);
 -- defenses: the enemy's defense points (its posts, else its front), may be

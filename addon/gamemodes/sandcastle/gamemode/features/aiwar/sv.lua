@@ -35,6 +35,7 @@ local Controller = {
 	-- reserve = nil, -- fallen drafted soldiers a wave revives (features.aiwar.reserve; Reserve)
 	-- lanePlans = nil, -- team -> its lane plan being made (UpdateLanes)
 	-- laneSets = nil, -- team -> its lanes found (UpdateLanes)
+	-- roomExits = nil, -- a nav area in an enemy spawn room -> where a lane stop there ends instead, this round (OutsideRoom)
 	-- gates = nil, -- the setup gates, found once per round (FindGates)
 	-- cartBounds = nil, -- the carts' widened bounds, refreshed every think (RefreshCartBounds)
 	-- trains = nil, -- cart -> its bounds (RefreshCartBounds)

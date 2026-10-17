@@ -88,4 +88,29 @@ T.test("an output naming a door with a trailing * opens every door its prefix na
 	T.eq(Doors.Opens({ Out("blue_spawn_door_1*", "Close") }, "blue_spawn_door_1a"), false, "closing it")
 end)
 
+-- Blocked maps: area id -> the teams a blocker closes it to.
+T.test("the areas whose blocking changed: shut, opened, or closed to other teams", function()
+	local before = {
+		[1] = { Doors.ANY },
+		[2] = { RED },
+		[3] = { BLUE, RED },
+	}
+	local after = {
+		[2] = { RED },
+		[3] = { RED, BLUE },
+		[4] = { Doors.ANY },
+		[5] = {},
+	}
+	local changed = Doors.Changed(before, after)
+	T.eq(changed[1], true, "opened")
+	T.eq(changed[4], true, "shut")
+	T.eq(changed[2], nil, "the same team")
+	T.eq(changed[3], nil, "the same teams, another order")
+	T.eq(changed[5], nil, "an empty list blocks no one, as no entry")
+end)
+
+T.test("nothing changed between two equal maps", function()
+	T.eq(next(Doors.Changed({ [7] = { Doors.ANY } }, { [7] = { Doors.ANY } })), nil, "none")
+end)
+
 T.finish()

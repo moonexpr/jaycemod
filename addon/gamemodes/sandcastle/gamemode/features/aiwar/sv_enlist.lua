@@ -233,6 +233,7 @@ function Controller:RespawnAll()
 	self:DisbandReserve()
 	self:SweepGadgets(nil, true)
 	self.lanePlans, self.laneSets = nil, nil
+	self.roomExits = nil
 	self.gates = nil
 	self.shutDoors = nil
 	self.zones = nil

@@ -177,6 +177,11 @@ local function World()
 		RequestRoute = function(_, request) w.routes[#w.routes + 1] = request end,
 		SearchesRunning = function() return 0 end,
 		BlockerGeneration = function() return w.blockerGeneration or 0 end,
+		-- the areas changed since a generation; nil (the default) when not known
+		BlockerChangesSince = function() return w.blockerChanges end,
+		DoorWalls = function() return w.doorWalls or {} end,
+		AreaBlocked = function(_, id) return (w.blockedAreas or {})[id] == true end,
+		SpawnRoomTeam = function(_, area) return area.room or 0 end,
 	})
 	w:Load("gamemode", {
 		Request = function(_, mode, source, _, story)
@@ -288,6 +293,8 @@ local function Env(w)
 		},
 		navmesh = {
 			Find = function() return w.navAreas end,
+			-- the area under a point: w.nearestArea(pos), else none
+			GetNearestNavArea = function(pos) return w.nearestArea and w.nearestArea(pos) or nil end,
 			GetNavAreaCount = function() return #w.navAreas end,
 			GetAllNavAreas = function() return w.navAreas end,
 		},
@@ -926,15 +933,18 @@ T.test("lanes lead to the scenario's front", function()
 	T.eq(w.routes[1].to.x, 1000, "to RED's front")
 end)
 
--- A setup gate opening, or a door shutting, changes the doors' blockers:
--- lanes planned around the old ones are planned again at once.
+-- A setup gate opening changes the doors' blockers: lanes planned around it
+-- are planned again once it has stayed open, even when what changed is not
+-- known (every area they watch is looked at).
 T.test("lanes are planned again when the doors' blockers change", function()
+	local Lanes = T.require("foundation.aiwar.lanes")
 	local w = World()
 	w.spawns[RED] = { Ent(Vector(0, 0, 0)) }
 	w.spawns[BLUE] = { Ent(Vector(2000, 0, 0)) }
+	w.doorWalls, w.blockedAreas = { [40] = true }, { [40] = true }
 	local controller = Started(w, ControlPointsMode.Mode, { fronts = { [RED] = { x = 1000, y = 0, z = 0 } } })
 	controller:Survey(NOW)
-	-- every lane's search finds no route (a shut gate), so the plan ends
+	-- every lane's search finds no route (the shut gate), so the plan ends
 	local answered = 0
 	while w.routes[answered + 1] do
 		answered = answered + 1
@@ -942,9 +952,55 @@ T.test("lanes are planned again when the doors' blockers change", function()
 	end
 	controller:Survey(NOW)
 	T.eq(#w.routes, answered, "nothing changed: no new plan")
-	w.blockerGeneration = 1
+	w.blockerGeneration, w.blockedAreas = 1, {}
 	controller:Survey(NOW)
-	T.eq(#w.routes, answered + 1, "the gate opened: planned again")
+	controller:Survey(NOW + Lanes.CHANGE_SETTLE)
+	T.eq(#w.routes, answered + 1, "the gate opened and stayed open: planned again")
+end)
+
+-- A lane stop inside the enemy's spawn room (a defender's front on payload:
+-- the enemy cart, which starts there) moves to the room's threshold, the
+-- nearest area outside it: the team's route cannot enter the room.
+T.test("a lane stop in the enemy's spawn room moves to its threshold", function()
+	local w = World()
+	w.spawns[RED] = { Ent(Vector(0, 0, 0)) }
+	w.spawns[BLUE] = { Ent(Vector(2400, 0, 0)) }
+	local function NavArea(id, x, room)
+		return { id = id, room = room, GetID = function() return id end, GetCenter = function() return Vector(x, 0, 0) end }
+	end
+	local inside, doorway = NavArea(1, 2000, BLUE), NavArea(2, 1700, 0)
+	w.navAreas = { inside, doorway }
+	w.nearestArea = function(pos) return pos.x >= 1900 and inside or doorway end
+	local controller = Started(w, ControlPointsMode.Mode, { fronts = { [RED] = { x = 2000, y = 0, z = 0 } } })
+	controller:Survey(NOW)
+	T.eq(w.routes[1] ~= nil, true, "a lane leg asked for")
+	T.eq(w.routes[1].to.x, 1700, "the direct lane ends at the doorway")
+end)
+
+-- A blocker that changes away from every lane leaves the lanes as they are;
+-- a door wall they went round plans them again once it has opened and
+-- stayed open (a setup gate), not while it only flickers open.
+T.test("lanes are planned again only when a blocker changes where it touches them", function()
+	local Lanes = T.require("foundation.aiwar.lanes")
+	local w = World()
+	w.spawns[RED] = { Ent(Vector(0, 0, 0)) }
+	w.spawns[BLUE] = { Ent(Vector(2000, 0, 0)) }
+	w.doorWalls, w.blockedAreas = { [40] = true }, { [40] = true }
+	local controller = Started(w, ControlPointsMode.Mode, { fronts = { [RED] = { x = 1000, y = 0, z = 0 } } })
+	controller:Survey(NOW)
+	local answered = 0
+	while w.routes[answered + 1] do
+		answered = answered + 1
+		w.routes[answered].onDone(nil)
+	end
+	w.blockerGeneration, w.blockerChanges = 1, { [99] = true }
+	controller:Survey(NOW)
+	T.eq(#w.routes, answered, "a door far from every lane: no new plan")
+	w.blockerGeneration, w.blockerChanges, w.blockedAreas = 2, { [40] = true }, {}
+	controller:Survey(NOW)
+	T.eq(#w.routes, answered, "the gate has just opened: not yet")
+	controller:Survey(NOW + Lanes.CHANGE_SETTLE)
+	T.eq(#w.routes, answered + 1, "the gate stayed open: planned again")
 end)
 
 -- Package B's guard scoring and range (docs/aiwar-koth-cp.md §3): the test

@@ -174,14 +174,64 @@ function Controller:RefreshBlockers(now)
 			if Doors.IsWall(state) then walls[area:GetID()] = true end
 		end
 	end
+	local before = self.navBlocked
 	self.navBlocked = blocked
 	local signature = {}
 	for id, teams in SortedPairs(blocked) do signature[#signature + 1] = id .. "=" .. table.concat(teams, "+") end
 	signature = table.concat(signature, ",")
 	if signature ~= self.blockerSignature then
 		self.blockerSignature = signature
-		self.blockerGeneration = self.blockerGeneration + 1
+		self:NoteBlockerChange(Doors.Changed(before, blocked))
 	end
+end
+
+-- The blocker generations kept, and which areas each changed.
+local BLOCKER_LOG = 64
+
+-- A new generation: changes (area id -> true), or nil when what changed is
+-- not known (the mesh's links: WSNavLinked).
+function Controller:NoteBlockerChange(changes)
+	self.blockerGeneration = self.blockerGeneration + 1
+	local log = self.blockerLog
+	log[#log + 1] = {
+		generation = self.blockerGeneration,
+		changes = changes,
+	}
+	if #log > BLOCKER_LOG then table.remove(log, 1) end
+end
+
+-- The areas whose blocking changed after generation: area id -> true, or
+-- nil when that is not known (a change of unknown extent, or older than the
+-- log keeps).
+function Controller:BlockerChangesSince(generation)
+	self:RefreshBlockers(CurTime())
+	local log = self.blockerLog
+	if generation >= self.blockerGeneration then return {} end
+	if #log == 0 or log[1].generation > generation + 1 then return nil end
+	local merged = {}
+	for _, entry in ipairs(log) do
+		if entry.generation > generation then
+			if entry.changes == nil then return nil end
+			for id in pairs(entry.changes) do merged[id] = true end
+		end
+	end
+	return merged
+end
+
+-- Whether a door or brush blocks the area to anyone.
+function Controller:AreaBlocked(id)
+	self:RefreshBlockers(CurTime())
+	local teams = self.navBlocked[id]
+	return teams ~= nil and #teams > 0
+end
+
+-- The areas a shut door no trigger opens stands in (a setup gate): a copy,
+-- area id -> true.
+function Controller:DoorWalls()
+	self:RefreshBlockers(CurTime())
+	local walls = {}
+	for id in pairs(self.doorWalls or {}) do walls[id] = true end
+	return walls
 end
 
 -- Counts the changes to what the blockers block (a door shutting on a
