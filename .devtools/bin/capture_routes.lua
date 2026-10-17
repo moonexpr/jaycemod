@@ -9,11 +9,20 @@
 -- asked and answered, its expansions, and whether it found the goal; a
 -- soldier's with why its Travel planned (a new trip, stuck, the goal moved,
 -- by the call site of Travel:Plan); every lane plan with what started it.
+-- A lane leg is also recorded with its plan's reason, its lane's kind, its
+-- lane and leg index, and whether it starts and ends where the same leg of
+-- the team's last plan did (within SAME_LEG): the legs a re-plan could keep.
 WSRouteCapture = WSRouteCapture or {}
 local C = WSRouteCapture
 
 -- Travel:Plan's call sites in foundation.aiwar.orders.
 local REASONS = { [750] = "new trip", [677] = "stuck", [763] = "goal moved" }
+
+-- How near a leg's ends must be to the last plan's to count as the same leg.
+local SAME_LEG = 64
+
+-- A lane plan's front must move this far to re-plan (sv_field.lua's LANE_REPLAN).
+local LANE_REPLAN = 1024
 
 local restore = {}
 
@@ -56,6 +65,9 @@ function C.Start(seconds, restart)
 	local HL2 = WS.require("foundation.npc.path.hl2")
 	local Lanes = WS.require("foundation.aiwar.lanes")
 	C.list, C.plans, C.started, C.running = {}, {}, CurTime(), true
+	-- team -> the last plan's legs (lane -> leg -> { from, to }); team -> the
+	-- plan being asked for and its legs so far; team -> why that plan ran
+	local lastLegs, current, planWhy = {}, {}, {}
 	local reason
 	local Travel = TravelClass(aw)
 	if Travel then
@@ -72,9 +84,11 @@ function C.Start(seconds, restart)
 		local plan = self.lanePlans and self.lanePlans[team]
 		local why = "first"
 		if plan then
-			why = npcs:BlockerGeneration() ~= plan.blockers and "blockers changed"
-				or (plan.to and plan.to.x == math.huge and "retry after failing") or "front moved"
+			why = (plan.to.x == math.huge and "retry after failing")
+				or (Vector(to.x, to.y, to.z):Distance(Vector(plan.to.x, plan.to.y, plan.to.z)) > LANE_REPLAN and "front moved")
+				or "blockers changed"
 		end
+		planWhy[team] = why
 		C.plans[#C.plans + 1] = { t = CurTime() - C.started, team = team, why = why }
 		return planLanes(self, team, to, field, now)
 	end)
@@ -90,6 +104,25 @@ function C.Start(seconds, restart)
 			toPos = req.to,
 			reason = source == "soldier" and reason or nil,
 		}
+		local plan = source == "lanes" and aw.lanePlans and aw.lanePlans[rec.team]
+		local spec = plan and plan.specs[plan.tries]
+		if spec then
+			local team = rec.team
+			if not current[team] or current[team].plan ~= plan then
+				lastLegs[team] = current[team] and current[team].legs or {}
+				current[team] = { plan = plan, legs = {} }
+			end
+			local lane, leg = plan.tries, 1
+			for i, stop in ipairs(spec.stops) do
+				if Vector(stop.x, stop.y, stop.z):DistToSqr(req.to) < 1 then leg = i end
+			end
+			local old = lastLegs[team][lane] and lastLegs[team][lane][leg]
+			rec.why, rec.kind, rec.lane, rec.leg = planWhy[team], spec.kind, lane, leg
+			rec.same = old ~= nil and old.from:Distance(req.from) < SAME_LEG and old.to:Distance(req.to) < SAME_LEG
+			local legs = current[team].legs
+			legs[lane] = legs[lane] or {}
+			legs[lane][leg] = { from = Vector(req.from), to = Vector(req.to) }
+		end
 		local n = #self.searches
 		local r = request(self, req)
 		local entry = self.searches[n + 1]
@@ -133,6 +166,25 @@ function C.Report()
 	local pw = {}
 	for k, n in pairs(plans) do pw[#pw + 1] = k .. " " .. n end
 	lines[#lines + 1] = string.format("lane plans: %d (%s)", #(C.plans or {}), table.concat(pw, ", "))
+	local legs, order = {}, {}
+	for _, r in ipairs(L) do
+		if r.kind then
+			local key = string.format("%-18s %-6s leg %d", r.why or "?", r.kind, r.leg)
+			if not legs[key] then legs[key] = { n = 0, expanded = 0, missed = 0, same = 0, sameExpanded = 0 }; order[#order + 1] = key end
+			local g = legs[key]
+			g.n, g.expanded = g.n + 1, g.expanded + (r.expanded or 0)
+			if r.found == false then g.missed = g.missed + 1 end
+			if r.same then g.same, g.sameExpanded = g.same + 1, g.sameExpanded + (r.expanded or 0) end
+		end
+	end
+	table.sort(order)
+	if #order > 0 then
+		lines[#lines + 1] = "lane legs by plan reason, kind, leg: count, expansions, not found; same ends as last plan: count, expansions"
+		for _, key in ipairs(order) do
+			local g = legs[key]
+			lines[#lines + 1] = string.format("  %s  %3d %7d %3d   same %3d %7d", key, g.n, g.expanded, g.missed, g.same, g.sameExpanded)
+		end
+	end
 	local latency = {}
 	for _, r in ipairs(L) do if r.done then latency[#latency + 1] = r.done - r.t end end
 	table.sort(latency)

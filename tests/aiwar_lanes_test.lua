@@ -171,6 +171,7 @@ end)
 -- A tour's last stop: the enemy spawn's threshold, the nearest area to it
 -- outside the enemy's spawn room.
 local function Area(id, x, y, room) return { id = id, center = P(x, y), room = room } end
+local function Open() return false end
 
 T.test("a tour ends at the nearest area outside the enemy's spawn room", function()
 	local spawn = P(0, 0)
@@ -180,14 +181,48 @@ T.test("a tour ends at the nearest area outside the enemy's spawn room", functio
 		Area(3, 300, 0, 0), -- the doorway
 		Area(4, 900, 0, 0),
 	}
-	local stop = Lanes.Threshold(spawn, areas, 3)
+	local stop = Lanes.Threshold(spawn, areas, 3, Open)
 	T.eq(stop.x, 300, "the doorway's x")
 	T.eq(stop.y, 0, "the doorway's y")
 end)
 
+T.test("a tour skips an area outside the room that is enclosed by it", function()
+	local spawn = P(0, 0)
+	local function Enclosed(id) return id == 2 end
+	local stop = Lanes.Threshold(spawn, { Area(1, 10, 0, 3), Area(2, 100, 0, 0), Area(3, 300, 0, 0) }, 3, Enclosed)
+	T.eq(stop.x, 300, "the open doorway, not the pocket")
+end)
+
+-- Whether an area outside the enemy's spawn room is reached only through
+-- the room: few areas outside it lead into it. into(id): the areas with a
+-- way into id; open(id): outside the room.
+T.defined(Lanes.POCKET_LIMIT, "POCKET_LIMIT")
+
+T.test("an area reached only through the enemy's room is enclosed", function()
+	-- 1 <- 2 (outside), and both are entered otherwise only from room areas 10, 11,
+	-- which the open field (20, 21, ...) leads into
+	local into = { [1] = { 2, 10 }, [2] = { 1, 11 }, [10] = { 11, 20 }, [11] = { 10, 21 } }
+	local open = function(id) return id < 10 or id >= 20 end
+	T.eq(Lanes.Enclosed(1, function(id) return into[id] or {} end, open), true, "a two-area pocket")
+end)
+
+T.test("an area the open field leads into is not enclosed", function()
+	-- a chain of open areas longer than the limit leads into 1
+	local into = {}
+	for id = 1, Lanes.POCKET_LIMIT + 1 do into[id] = { id + 1 } end
+	local open = function() return true end
+	T.eq(Lanes.Enclosed(1, function(id) return into[id] or {} end, open), false, "the field reaches it")
+end)
+
+T.test("a way in from the area itself or one already seen is counted once", function()
+	-- 1 and 2 lead into each other and nothing else does
+	local into = { [1] = { 1, 2 }, [2] = { 1, 2 } }
+	T.eq(Lanes.Enclosed(1, function(id) return into[id] or {} end, function() return true end), true, "two areas")
+end)
+
 T.test("with no area outside the room near, a tour still heads for the spawn", function()
 	local spawn = P(5, 5)
-	local stop = Lanes.Threshold(spawn, { Area(1, 10, 0, 3) }, 3)
+	local stop = Lanes.Threshold(spawn, { Area(1, 10, 0, 3) }, 3, Open)
 	T.eq(stop, spawn, "the spawn itself")
 end)
 

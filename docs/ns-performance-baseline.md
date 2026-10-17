@@ -157,7 +157,8 @@ Where Lua's time goes (15v15, JIT on, share of the server thread):
 
 ## Treatments A and B: a 2×2 experiment
 
-- **Treatment A**, `mp_aiwar_revive_enabled 1`
+- **Treatment A**, `mp_aiwar_revive_enabled 1` (now the default; the old
+  remove-and-respawn pattern is `ns_use_regular_spawns 1`)
   (`features/aiwar/reserve.lua`, `sv_reserve.lua`): a soldier the respawn
   system drafted that falls while waves run lies dormant (`NSRest`, hidden
   and not solid, its DrGBase death coroutine held before the removal), and
@@ -439,6 +440,49 @@ the short query back onto the lane exists. Soldiers without a lane job ask
 for routes only when stuck (all 16 requests in the last capture), and they
 spent 4,228 expansions against the lanes' 76,510, so a change there would
 gain little now.
+
+## Lanes: would small deltas pay? Which legs a re-plan repeats
+
+Question: a payload step moves the front a little, so could a re-plan add or
+remove waypoints instead of routing every lane again? `capture_routes.lua`
+now tags each lane leg with why its plan ran, its lane's kind, its leg, and
+whether it starts and ends within 64 u of the same leg of the team's last
+plan (the legs a re-plan could keep as they are).
+
+Mid-game, 300 s, no restart (8 plans, all front moved): 86,140 lane
+expansions. Tours' legs that failed: **55,852 (65 %)**; direct and flank legs
+found: 15,463 (18 %); legs with the same ends: 6 of 62. A small-delta
+re-plan would save little; the cost was legs that cannot succeed.
+
+**The failures were stops in pockets.** A tour's last stop is the enemy
+spawn's threshold (`OutsideRoom`). For BLU it was area 6376, outside RED's
+room but one of two areas that only the room leads into; later 6425, in a
+31-area region that BLU enters only by climbing 97 to 150 u (soldiers step
+18 u and do not jump). RED's 4972 and 415 were in a 28-area pocket of BLU's
+room. Each search spent everything reachable (about 4,000 expansions) before
+failing, at every re-plan. Found by testing, in turn, that the stop is in no
+room and under no door wall, that no route rule (lanes or plain HL2, nothing
+avoided) reaches it, that the bare graph does, and then which edges the
+height rule cuts.
+
+**Fix:** a threshold must be open to the field: `Lanes.Enclosed` floods back
+from a candidate through areas outside the room that a soldier can walk into
+it from (`Path.Walkable`, the climb and drop rule the cost functions now
+share) and calls it a pocket when fewer than `POCKET_LIMIT` (128) lead in.
+`Lanes.Threshold` asks it nearest first.
+
+After, 300 s from `mp_round_restart` (14 plans: 9 front moved, 3 blockers,
+2 first): lane expansions 92,503; tour leg 2 (post to spawn) on front moves
+12,712 (31,745 and 51,937 in the runs before), its failures 2 of 18, and
+RED's tours into BLU's spawn found every time. Legs with the same ends:
+front moved 12 of 63 (14,160 expansions, 15 %), blockers changed 14 of 21
+(20,343). Direct and flank legs never keep their ends (their stops move
+with the front).
+
+**What remains, by size:** BLU's tours to RED's post area 13944 fail at
+about 4,400 expansions each (22,188, 24 %), likely another post that only a
+jump reaches; keeping legs whose ends are unchanged would save about 15 %;
+splicing direct and flank lanes onto the moved front at most about 8 %.
 
 ## Tools considered: gmod_perfutils
 

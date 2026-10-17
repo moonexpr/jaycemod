@@ -17,6 +17,7 @@
 -- lane }. Positions are { x, y, z } tables.
 local ipairs, pairs = ipairs, pairs
 local huge, sqrt = math.huge, math.sqrt
+local sort = table.sort
 local HL2Path = require("foundation.npc.path.hl2")
 local Path = require("foundation.npc.path")
 local Distance = require("foundation.geometry").Distance
@@ -26,6 +27,7 @@ LANE_PENALTY = 8
 FLANK_RADIUS = 600 -- how far beside the objective a flank lane ends
 LANE_SPREAD = 300 -- how far either side of a route its band reaches
 WAYPOINT_SPACING, WAYPOINT_REACH, LOOKAHEAD = 300, 160, 2
+POCKET_LIMIT = 128 -- fewer areas outside a spawn room leading into an area: a pocket the room encloses
 
 -- The jobs whose squads take lanes (foundation.aiwar's ESCORT, RAID,
 -- ASSAULT: the point scenarios' escort, and EXPLORE: arena's explorers).
@@ -97,20 +99,41 @@ function Settled(candidates, differs, pending, now)
 	return stale, after
 end
 
+-- Whether the area start, outside the enemy's spawn room, is a pocket the
+-- room encloses: fewer than POCKET_LIMIT areas outside the room lead into
+-- it, so a route that may not enter the room cannot reach it. into(id): the
+-- areas with a way into id; open(id): id is outside the room.
+function Enclosed(start, into, open)
+	local seen, queue, i = { [start] = true }, { start }, 1
+	while queue[i] do
+		for _, id in ipairs(into(queue[i])) do
+			if not seen[id] and open(id) then
+				seen[id] = true
+				queue[#queue + 1] = id
+				if #queue >= POCKET_LIMIT then return false end
+			end
+		end
+		i = i + 1
+	end
+	return true
+end
+
 -- A tour's last stop: the enemy spawn's threshold, the centre of the area
 -- nearest spawn that is not in the enemy's spawn room, which its team's
--- route cannot enter (areas: { id, center, room }, room the spawn room's
--- team); the spawn itself when none is near.
-function Threshold(spawn, areas, enemy)
-	local best, bestDistance = nil, huge
+-- route cannot enter, nor enclosed by it (areas: { id, center, room }, room
+-- the spawn room's team; enclosed(id), asked nearest first, as Enclosed
+-- finds); the spawn itself when none is near.
+function Threshold(spawn, areas, enemy, enclosed)
+	local outside = {}
 	for _, area in ipairs(areas) do
-		if area.room ~= enemy then
-			local d = Distance(area.center, spawn)
-			if d < bestDistance then best, bestDistance = area, d end
-		end
+		if area.room ~= enemy then outside[#outside + 1] = { area = area, distance = Distance(area.center, spawn) } end
 	end
-	if not best then return spawn end
-	return Point(best.center.x, best.center.y, best.center.z)
+	sort(outside, function(a, b) return a.distance < b.distance end)
+	for _, candidate in ipairs(outside) do
+		local area = candidate.area
+		if not enclosed(area.id) then return Point(area.center.x, area.center.y, area.center.z) end
+	end
+	return spawn
 end
 
 -- The lanes a team plans, in order: { kind, stops }, routed from spawn

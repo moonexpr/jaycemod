@@ -18,6 +18,16 @@ local BOT = {
 	now = 12,
 }
 
+-- Whether a walker can make a move that changes its height by deltaZ: up
+-- less than its jump, down no further than its death drop.
+T.test("a walker climbs less than its jump and drops no further than its death drop", function()
+	T.eq(Path.Walkable(0, LIMITS), true, "flat")
+	T.eq(Path.Walkable(LIMITS.jumpHeight - 1, LIMITS), true, "just under the jump")
+	T.eq(Path.Walkable(LIMITS.jumpHeight, LIMITS), false, "the jump itself")
+	T.eq(Path.Walkable(-LIMITS.deathDropHeight, LIMITS), true, "the death drop itself")
+	T.eq(Path.Walkable(-LIMITS.deathDropHeight - 1, LIMITS), false, "past the death drop")
+end)
+
 -- A step from one area to the next, 100 units apart on flat ground.
 local function Step(overrides)
 	local step = {

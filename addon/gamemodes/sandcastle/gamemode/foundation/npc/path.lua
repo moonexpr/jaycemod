@@ -11,3 +11,9 @@ module(...)
 
 IMPASSABLE = -1
 JUMP_PENALTY = 5 -- jumping is slower than flat ground
+
+-- Whether a walker within limits can make a move that changes its height
+-- by deltaZ: up less than its jump, down no further than its death drop.
+function Walkable(deltaZ, limits)
+	return deltaZ < limits.jumpHeight and deltaZ >= -limits.deathDropHeight
+end

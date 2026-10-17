@@ -48,11 +48,7 @@ function Cost(step, limits, bot)
 	if not step.traversable or InEnemySpawnRoom(step, bot) then return IMPASSABLE end
 	local dist = Distance(step)
 	local deltaZ = step.heightChange
-	if deltaZ >= limits.stepHeight then
-		if deltaZ >= limits.jumpHeight then return IMPASSABLE end
-		dist = dist * JUMP_PENALTY
-	elseif deltaZ < -limits.deathDropHeight then
-		return IMPASSABLE
-	end
+	if not Path.Walkable(deltaZ, limits) then return IMPASSABLE end
+	if deltaZ >= limits.stepHeight then dist = dist * JUMP_PENALTY end
 	return dist * Preference(step, bot) + step.fromCostSoFar
 end

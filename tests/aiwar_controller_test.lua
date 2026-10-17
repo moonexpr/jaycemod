@@ -297,6 +297,9 @@ local function Env(w)
 			GetNearestNavArea = function(pos) return w.nearestArea and w.nearestArea(pos) or nil end,
 			GetNavAreaCount = function() return #w.navAreas end,
 			GetAllNavAreas = function() return w.navAreas end,
+			GetNavAreaByID = function(id)
+				for _, area in ipairs(w.navAreas or {}) do if area:GetID() == id then return area end end
+			end,
 		},
 		table = setmetatable({
 			Count = function(t)
@@ -958,6 +961,31 @@ T.test("lanes are planned again when the doors' blockers change", function()
 	T.eq(#w.routes, answered + 1, "the gate opened and stayed open: planned again")
 end)
 
+-- A nav area at x on the line y = 0, in the spawn room of room's team (0:
+-- none); ways: the areas with a way into it; rise: how far a move into it
+-- climbs.
+local function NavArea(id, x, room)
+	local area = { id = id, room = room, ways = {}, rise = 0 }
+	function area.GetID() return id end
+	function area.GetCenter() return Vector(x, 0, 0) end
+	function area.GetAdjacentAreas() return area.ways end
+	function area.IsConnected() return true end
+	function area.GetIncomingConnections() return {} end
+	function area.ComputeAdjacentConnectionHeightChange(_, other) return other.rise end
+	return area
+end
+
+-- Leads a field of open areas, more than a pocket holds, into area.
+local function OpenField(w, area)
+	local last = area
+	for i = 1, Lanes.POCKET_LIMIT do
+		local open = NavArea(1000 + i, 0, 0)
+		last.ways[#last.ways + 1] = open
+		w.navAreas[#w.navAreas + 1] = open
+		last = open
+	end
+end
+
 -- A lane stop inside the enemy's spawn room (a defender's front on payload:
 -- the enemy cart, which starts there) moves to the room's threshold, the
 -- nearest area outside it: the team's route cannot enter the room.
@@ -965,16 +993,49 @@ T.test("a lane stop in the enemy's spawn room moves to its threshold", function(
 	local w = World()
 	w.spawns[RED] = { Ent(Vector(0, 0, 0)) }
 	w.spawns[BLUE] = { Ent(Vector(2400, 0, 0)) }
-	local function NavArea(id, x, room)
-		return { id = id, room = room, GetID = function() return id end, GetCenter = function() return Vector(x, 0, 0) end }
-	end
 	local inside, doorway = NavArea(1, 2000, BLUE), NavArea(2, 1700, 0)
 	w.navAreas = { inside, doorway }
+	OpenField(w, doorway)
 	w.nearestArea = function(pos) return pos.x >= 1900 and inside or doorway end
 	local controller = Started(w, ControlPointsMode.Mode, { fronts = { [RED] = { x = 2000, y = 0, z = 0 } } })
 	controller:Survey(NOW)
 	T.eq(w.routes[1] ~= nil, true, "a lane leg asked for")
 	T.eq(w.routes[1].to.x, 1700, "the direct lane ends at the doorway")
+end)
+
+-- An area outside the room that only the room leads into (a pocket the room
+-- encloses) is no threshold: the team's route could not reach it.
+T.test("a lane stop's threshold is not a pocket the enemy's room encloses", function()
+	local w = World()
+	w.spawns[RED] = { Ent(Vector(0, 0, 0)) }
+	w.spawns[BLUE] = { Ent(Vector(2400, 0, 0)) }
+	local inside, pocket, doorway = NavArea(1, 2000, BLUE), NavArea(3, 1900, 0), NavArea(2, 1700, 0)
+	pocket.ways = { inside }
+	inside.ways = { pocket }
+	w.navAreas = { inside, pocket, doorway }
+	OpenField(w, doorway)
+	w.nearestArea = function(pos) return pos.x >= 1950 and inside or doorway end
+	local controller = Started(w, ControlPointsMode.Mode, { fronts = { [RED] = { x = 2000, y = 0, z = 0 } } })
+	controller:Survey(NOW)
+	T.eq(w.routes[1].to.x, 1700, "the open doorway, not the nearer pocket")
+end)
+
+-- An area outside the room that the field reaches only by a climb too high
+-- for a soldier (a ledge) is no threshold either.
+T.test("a lane stop's threshold is not a ledge the soldiers cannot climb", function()
+	local HL2Path = T.require("foundation.npc.path.hl2")
+	local w = World()
+	w.spawns[RED] = { Ent(Vector(0, 0, 0)) }
+	w.spawns[BLUE] = { Ent(Vector(2400, 0, 0)) }
+	local inside, ledge, doorway = NavArea(1, 2000, BLUE), NavArea(3, 1900, 0), NavArea(2, 1700, 0)
+	ledge.rise = HL2Path.SOLDIER_LIMITS.jumpHeight
+	w.navAreas = { inside, ledge, doorway }
+	OpenField(w, ledge)
+	OpenField(w, doorway)
+	w.nearestArea = function(pos) return pos.x >= 1950 and inside or doorway end
+	local controller = Started(w, ControlPointsMode.Mode, { fronts = { [RED] = { x = 2000, y = 0, z = 0 } } })
+	controller:Survey(NOW)
+	T.eq(w.routes[1].to.x, 1700, "the doorway on the ground, not the nearer ledge")
 end)
 
 -- A blocker that changes away from every lane leaves the lanes as they are;

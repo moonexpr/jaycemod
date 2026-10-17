@@ -5,6 +5,7 @@ local Teams = WS.require("foundation.teams")
 local Track = WS.require("foundation.aiwar.track")
 local TFBot = WS.require("foundation.npc.path.tfbot")
 local HL2Path = WS.require("foundation.npc.path.hl2")
+local Path = WS.require("foundation.npc.path")
 local Lanes = WS.require("foundation.aiwar.lanes")
 local Explore = WS.require("foundation.aiwar.explore")
 local GROUND_PROBE, RED, BLUE = Map.GROUND_PROBE, Map.RED, Map.BLUE
@@ -312,7 +313,9 @@ local function Nearest(spots, p)
 end
 
 -- A lane stop inside the enemy's spawn room moves to its threshold
--- (Lanes.Threshold): the nearest area outside the room among those the nav
+-- (Lanes.Threshold): the nearest area outside the room, and not a pocket
+-- that only the room, or a climb too high, leads into (Lanes.Enclosed),
+-- among those the nav
 -- mesh reaches from the stop (navmesh.Find floods out from it) within each of
 -- THRESHOLD_RADII in turn, a step or two above or below. The team's route
 -- cannot enter the room, so a stop inside it sent the search through every
@@ -321,6 +324,23 @@ end
 -- stop's area keeps its threshold for the round (roomExits).
 local THRESHOLD_RADII, THRESHOLD_STEP = { 1500, 3000, 6000 }, 256
 
+-- The areas a soldier can walk into the area id from: its two-way
+-- neighbours and its one-way incoming connections, but for a climb or a drop
+-- past the soldier's limits (Path.Walkable).
+local function AreasInto(id)
+	local area, list = navmesh.GetNavAreaByID(id), {}
+	local function Add(other)
+		if Path.Walkable(other:ComputeAdjacentConnectionHeightChange(area), HL2Path.SOLDIER_LIMITS) then
+			list[#list + 1] = other:GetID()
+		end
+	end
+	for _, other in ipairs(area:GetAdjacentAreas()) do
+		if other:IsConnected(area) then Add(other) end
+	end
+	for _, other in ipairs(area:GetIncomingConnections()) do Add(other) end
+	return list
+end
+
 function Controller:OutsideRoom(stop, enemy, npcs)
 	local here = navmesh.GetNearestNavArea(ToVector(stop), false, THRESHOLD_STEP, false, true)
 	if not (IsValid(here) and npcs:SpawnRoomTeam(here) == enemy) then return stop end
@@ -328,12 +348,14 @@ function Controller:OutsideRoom(stop, enemy, npcs)
 	local known = self.roomExits[here:GetID()]
 	if known then return known end
 	local threshold = stop
+	local function Open(id) return npcs:SpawnRoomTeam(navmesh.GetNavAreaByID(id)) ~= enemy end
+	local function Enclosed(id) return Lanes.Enclosed(id, AreasInto, Open) end
 	for _, radius in ipairs(THRESHOLD_RADII) do
 		local areas = {}
 		for i, area in ipairs(navmesh.Find(ToVector(stop), radius, THRESHOLD_STEP, THRESHOLD_STEP)) do
 			areas[i] = { id = area:GetID(), center = Point(area:GetCenter()), room = npcs:SpawnRoomTeam(area) }
 		end
-		threshold = Lanes.Threshold(stop, areas, enemy)
+		threshold = Lanes.Threshold(stop, areas, enemy, Enclosed)
 		if threshold ~= stop then break end
 	end
 	self.roomExits[here:GetID()] = threshold
