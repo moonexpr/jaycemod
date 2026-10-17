@@ -8,9 +8,9 @@
 --
 -- Positions are plain { x, y, z } tables. Node and link ids in the file are
 -- 0-based; here nodes are a 1-based list.
-local floor, frexp, huge, ldexp = math.floor, math.frexp, math.huge, math.ldexp
-local byte, char, concat, sort, sqrt = string.byte, string.char, table.concat, table.sort, math.sqrt
+local concat, sort, sqrt = table.concat, table.sort, math.sqrt
 local ipairs, pairs = ipairs, pairs
+local Binary = require("foundation.core.binary")
 local Graph = require("foundation.core.graph")
 local Grid = require("foundation.core.grid")
 module(...)
@@ -178,124 +178,52 @@ end
 -------------------------------------------------------------------------------
 -- The file: little-endian, as CUtlBuffer writes on x86.
 
-local function Int(n)
-	n = n % 4294967296
-	return char(n % 256, floor(n / 256) % 256, floor(n / 65536) % 256, floor(n / 16777216) % 256)
-end
-
-local function Short(n)
-	n = n % 65536
-	return char(n % 256, floor(n / 256) % 256)
-end
-
--- IEEE 754 single precision.
-local function Float(x)
-	if x == 0 then return char(0, 0, 0, 0) end
-	local sign = 0
-	if x < 0 then
-		sign = 128
-		x = -x
-	end
-	local mantissa, exponent = frexp(x) -- x = mantissa * 2^exponent, mantissa in [0.5, 1)
-	exponent = exponent + 126
-	if exponent <= 0 then
-		-- subnormal
-		mantissa = floor(ldexp(mantissa, 23 + exponent - 1) + 0.5)
-		exponent = 0
-	else
-		mantissa = floor((mantissa * 2 - 1) * 8388608 + 0.5)
-		if mantissa == 8388608 then
-			mantissa = 0
-			exponent = exponent + 1
-		end
-	end
-	return char(mantissa % 256, floor(mantissa / 256) % 256,
-		(exponent % 2) * 128 + floor(mantissa / 65536) % 128, sign + floor(exponent / 2))
-end
-
 -- graph = { mapVersion, nodes = { { pos, yaw, offsets[0..NUM_HULLS-1],
 -- type, info, zone, hammerId } }, links = { { a, b (1-based), moves[0..] } } }
 function Encode(graph)
-	local out = { Int(VERSION), Int(graph.mapVersion), Int(#graph.nodes) }
+	local out = { Binary.Int32(VERSION), Binary.Int32(graph.mapVersion), Binary.Int32(#graph.nodes) }
 	for _, node in ipairs(graph.nodes) do
-		out[#out + 1] = Float(node.pos.x) .. Float(node.pos.y) .. Float(node.pos.z) .. Float(node.yaw or 0)
-		for hull = 0, NUM_HULLS - 1 do out[#out + 1] = Float(node.offsets and node.offsets[hull] or 0) end
-		out[#out + 1] = char(node.type or NODE_GROUND) .. Short(node.info or 0) .. Short(node.zone or ZONE_SOLO)
+		out[#out + 1] = Binary.Float32(node.pos.x) .. Binary.Float32(node.pos.y) .. Binary.Float32(node.pos.z) .. Binary.Float32(node.yaw or 0)
+		for hull = 0, NUM_HULLS - 1 do out[#out + 1] = Binary.Float32(node.offsets and node.offsets[hull] or 0) end
+		out[#out + 1] = Binary.Byte(node.type or NODE_GROUND) .. Binary.Int16(node.info or 0) .. Binary.Int16(node.zone or ZONE_SOLO)
 	end
-	out[#out + 1] = Int(#graph.links)
+	out[#out + 1] = Binary.Int32(#graph.links)
 	for _, link in ipairs(graph.links) do
 		local moves = {}
-		for hull = 0, NUM_HULLS - 1 do moves[#moves + 1] = char(link.moves and link.moves[hull] or 0) end
-		out[#out + 1] = Short(link.a - 1) .. Short(link.b - 1) .. concat(moves)
+		for hull = 0, NUM_HULLS - 1 do moves[#moves + 1] = Binary.Byte(link.moves and link.moves[hull] or 0) end
+		out[#out + 1] = Binary.Int16(link.a - 1) .. Binary.Int16(link.b - 1) .. concat(moves)
 	end
-	for i, node in ipairs(graph.nodes) do out[#out + 1] = Int(node.hammerId or i) end
+	for i, node in ipairs(graph.nodes) do out[#out + 1] = Binary.Int32(node.hammerId or i) end
 	return concat(out)
 end
 
 -- Reading, for the debug overlay and tests.
-local function NewReader(data) return { data = data, at = 1 } end
-
-local function ReadByte(r)
-	local b = byte(r.data, r.at)
-	r.at = r.at + 1
-	return b
-end
-
-local function ReadInt(r)
-	local a, b, c, d = byte(r.data, r.at, r.at + 3)
-	r.at = r.at + 4
-	local n = a + b * 256 + c * 65536 + d * 16777216
-	if n >= 2147483648 then n = n - 4294967296 end
-	return n
-end
-
-local function ReadShort(r, unsigned)
-	local a, b = byte(r.data, r.at, r.at + 1)
-	r.at = r.at + 2
-	local n = a + b * 256
-	if not unsigned and n >= 32768 then n = n - 65536 end
-	return n
-end
-
-local function ReadFloat(r)
-	local a, b, c, d = byte(r.data, r.at, r.at + 3)
-	r.at = r.at + 4
-	local sign = d >= 128 and -1 or 1
-	local exponent = (d % 128) * 2 + floor(c / 128)
-	local mantissa = (c % 128) * 65536 + b * 256 + a
-	if exponent == 0 then
-		if mantissa == 0 then return 0 end
-		return sign * ldexp(mantissa, -149)
-	end
-	if exponent == 255 then return sign * huge end
-	return sign * ldexp(mantissa + 8388608, exponent - 150)
-end
 
 -- Returns the graph, or nil and why. With headerOnly, only { version,
 -- mapVersion, nodeCount }.
 function Decode(data, headerOnly)
 	if #data < 12 then return nil, "too short" end
-	local r = NewReader(data)
-	local graph = { version = ReadInt(r), mapVersion = ReadInt(r), nodes = {}, links = {} }
-	graph.nodeCount = ReadInt(r)
+	local r = Binary.Reader(data)
+	local graph = { version = r:Int32(), mapVersion = r:Int32(), nodes = {}, links = {} }
+	graph.nodeCount = r:Int32()
 	if headerOnly then return graph end
 	if graph.version ~= VERSION then return nil, "version " .. graph.version end
 	for i = 1, graph.nodeCount do
-		local node = { pos = { x = ReadFloat(r), y = ReadFloat(r), z = ReadFloat(r) }, offsets = {} }
-		node.yaw = ReadFloat(r)
-		for hull = 0, NUM_HULLS - 1 do node.offsets[hull] = ReadFloat(r) end
-		node.type = ReadByte(r)
-		node.info = ReadShort(r, true)
-		node.zone = ReadShort(r)
+		local node = { pos = { x = r:Float32(), y = r:Float32(), z = r:Float32() }, offsets = {} }
+		node.yaw = r:Float32()
+		for hull = 0, NUM_HULLS - 1 do node.offsets[hull] = r:Float32() end
+		node.type = r:Byte()
+		node.info = r:UInt16()
+		node.zone = r:Int16()
 		graph.nodes[i] = node
 	end
-	local linkCount = ReadInt(r)
+	local linkCount = r:Int32()
 	for i = 1, linkCount do
-		local link = { a = ReadShort(r) + 1, b = ReadShort(r) + 1, moves = {} }
-		for hull = 0, NUM_HULLS - 1 do link.moves[hull] = ReadByte(r) end
+		local link = { a = r:Int16() + 1, b = r:Int16() + 1, moves = {} }
+		for hull = 0, NUM_HULLS - 1 do link.moves[hull] = r:Byte() end
 		graph.links[i] = link
 	end
-	for i = 1, graph.nodeCount do graph.nodes[i].hammerId = ReadInt(r) end
-	if r.at - 1 ~= #data then return nil, "trailing or missing bytes" end
+	for i = 1, graph.nodeCount do graph.nodes[i].hammerId = r:Int32() end
+	if r:Consumed() ~= #data then return nil, "trailing or missing bytes" end
 	return graph
 end

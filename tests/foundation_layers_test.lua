@@ -32,6 +32,7 @@ local CATEGORY = {
 	["core/crc32"] = "structures",
 	["core/utf16"] = "structures",
 	["core/keyvalues"] = "structures",
+	["core/binary"] = "structures",
 	["core/geometry"] = "structures",
 	["core/refusal"] = "structures",
 	["core/sets"] = "structures",
