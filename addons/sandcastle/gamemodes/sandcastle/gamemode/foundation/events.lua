@@ -18,10 +18,11 @@
 -- "kind: message". A client's request the server will not take (unknown,
 -- not client-sendable, over its rate) is refused instead: ReadRequest
 -- returns nil and the refusal, since a client's mistake is not ours.
+local Crc32 = require("foundation.core.crc32")
 local Sets = require("foundation.core.sets")
-local bit, error, format, getmetatable, ipairs, pairs, pcall, setmetatable, sort, tostring, type =
-	bit, error, string.format, getmetatable, ipairs, pairs, pcall, setmetatable, table.sort, tostring, type
-local byte, match = string.byte, string.match
+local error, format, getmetatable, ipairs, pairs, pcall, setmetatable, sort, tostring, type =
+	error, string.format, getmetatable, ipairs, pairs, pcall, setmetatable, table.sort, tostring, type
+local match = string.match
 local floor, min = math.floor, math.min
 module(...)
 
@@ -81,33 +82,8 @@ local function Raise(kind, fmt, ...)
 	error(Named(kind, format(fmt, ...)), 0)
 end
 
--------------------------------------------------------------------------------
--- CRC32 (IEEE 802.3, as zlib and GMod's util.CRC compute it)
-
-local CRC_POLYNOMIAL = 0xEDB88320
-local CRC_TABLE = {}
-for i = 0, 255 do
-	local c = i
-	for _ = 1, 8 do
-		if bit.band(c, 1) == 1 then
-			c = bit.bxor(bit.rshift(c, 1), CRC_POLYNOMIAL)
-		else
-			c = bit.rshift(c, 1)
-		end
-	end
-	CRC_TABLE[i] = c
-end
-
-function Crc32(s)
-	local crc = bit.bnot(0)
-	for i = 1, #s do
-		crc = bit.bxor(bit.rshift(crc, 8), CRC_TABLE[bit.band(bit.bxor(crc, byte(s, i)), 0xFF)])
-	end
-	return bit.bnot(crc) % 2 ^ 32
-end
-
 local function IdOfName(name)
-	return Crc32(name) % 2 ^ ID_BITS
+	return Crc32.Of(name) % 2 ^ ID_BITS
 end
 
 -------------------------------------------------------------------------------

@@ -29,6 +29,7 @@ local CATEGORY = {
 	["core/grid"] = "structures",
 	["core/graph"] = "structures",
 	["core/random"] = "structures",
+	["core/crc32"] = "structures",
 	["core/geometry"] = "structures",
 	["core/refusal"] = "structures",
 	["core/sets"] = "structures",
