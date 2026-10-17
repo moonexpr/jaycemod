@@ -326,7 +326,7 @@ UI.Define("StoreMenu", "DPanel", {
 			end)
 			tile.DoClick = function()
 				if item.weapon then
-					if not owned then E.Request("loadout_buy", { weapon = item.weapon.class }) end
+					if not owned then WS.LoadoutRequest("loadout_buy", { weapon = item.weapon.class }) end
 					return
 				end
 				RunConsoleCommand("cl_playermodel", item.model)

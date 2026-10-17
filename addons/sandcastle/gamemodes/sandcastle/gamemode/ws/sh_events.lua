@@ -7,12 +7,30 @@
 --   Listen(name, id, fn), Ignore(name, id)   both realms; fn(fields[, ply])
 --   Fire(name, fields, recipients)  server: its listeners, then the clients
 --   Request(name, fields)           client: a client-sendable event to the server
+--   Transact(name, fields) -> tx    client: a transaction request (option
+--                                   transaction); tx (foundation.core.transaction)
+--                                   settles from the server's reply, or
+--                                   declines as timed out
+--   Serve(name, id, kinds, handler) server: handler(work, fields, ply) runs as
+--                                   a transaction on WS.Transactions; its
+--                                   outcome goes back to the sender. kinds
+--                                   are the refusals that are the player's
+--                                   mistake; a decline of any other kind is
+--                                   our bug, logged and answered as failed
+--
+-- WS.Transactions is each realm's scheduler (foundation.core.scheduler) for
+-- transactions and other work spread over ticks, run TRANSACTION_SECONDS a
+-- tick. A transaction's reply, transaction_settled, belongs to this library,
+-- not to the game's events: like the recovery events it changes with the
+-- library (docs/game-events-v2.md).
 --
 -- and the field types (String, Bool, UInt(bits), Int(bits), Float, Entity,
 -- Vector, Angle, Team, List(type, countBits), Record(fields), Optional(type),
 -- Default(type, value)). Included by sh_core.lua, before anything that
 -- defines an event.
 local Events = WS.require("foundation.events")
+local Scheduler = WS.require("foundation.core.scheduler")
+local Transaction = WS.require("foundation.core.transaction")
 
 local FIRE_NET = "ws_game_event_fire" -- server to clients
 local REQUEST_NET = "ws_game_event_request" -- client to server
@@ -63,6 +81,26 @@ end
 function WS.IsReady(ply)
 	return ply.wsReady == true
 end
+
+local TRANSACTION_SECONDS = 0.001
+local TRANSACTION_TIMEOUT = 10 -- seconds a client waits for a reply
+local TRANSACTION_HOOK = "ws_transactions"
+
+local Clock = {}
+function Clock:Now() return SysTime() end
+
+-- Kept across a Lua refresh: tasks in flight keep running.
+WS.Transactions = WS.Transactions or Scheduler.New(Clock)
+hook.Add("Think", TRANSACTION_HOOK, function() WS.Transactions:Run(TRANSACTION_SECONDS) end)
+
+-- A transaction's outcome, to the client that asked: its state, and for a
+-- decline the refusal's kind and detail (never our error's).
+API.Define("transaction_settled", {
+	[Events.TRANSACTION_FIELD] = Events.UInt(Transaction.ID_BITS),
+	state = Events.String(),
+	kind = Events.Optional(Events.String()),
+	detail = Events.Optional(Events.String()),
+})
 
 -- Sent by a client as it finishes loading (InitPostEntity); a fresh join and
 -- a returning player alike.
@@ -127,6 +165,26 @@ if SERVER then
 	API.Listen("client_ready", "ws_events", function(_, ply)
 		ply.wsReady = true
 	end)
+
+	-- Our failures are logged here, once, with the request that met them.
+	function API.Serve(name, id, kinds, handler)
+		local definition = Checked(registry.Definition, registry, name)
+		if not definition.transaction then error(name .. " is not a transaction (Define it with transaction = true)", 2) end
+		API.Listen(name, id, function(fields, ply)
+			local tx = Transaction.Spawn(WS.Transactions, handler, fields, ply)
+			tx:OnSettle(function(settled)
+				local reply = Transaction.Reply(settled, kinds)
+				if settled:State() == Transaction.DECLINED and reply.state == Transaction.FAILED then
+					ErrorNoHalt(string.format("transaction %s from %s refused with no player's refusal: %s\n", name, tostring(ply), Transaction.Message(settled:Refusal())))
+				elseif settled:State() == Transaction.FAILED then
+					ErrorNoHalt(string.format("transaction %s from %s failed: %s\n", name, tostring(ply), tostring(settled:Error())))
+				end
+				if not IsValid(ply) then return end
+				reply[Events.TRANSACTION_FIELD] = fields[Events.TRANSACTION_FIELD]
+				API.Fire("transaction_settled", reply, ply)
+			end)
+		end)
+	end
 else
 	function API.Request(name, fields)
 		local event = Checked(registry.BuildRequest, registry, name, fields or {})
@@ -134,6 +192,26 @@ else
 		registry:Write(event, net)
 		net.SendToServer()
 	end
+
+	-- Kept across a Lua refresh, so replies still find their transactions.
+	WS.TransactionLedger = WS.TransactionLedger or Transaction.Ledger()
+	local ledger = WS.TransactionLedger
+
+	function API.Transact(name, fields)
+		local id, tx = ledger:Open(SysTime(), TRANSACTION_TIMEOUT)
+		local request = { [Events.TRANSACTION_FIELD] = id }
+		for key, value in pairs(fields or {}) do request[key] = value end
+		API.Request(name, request)
+		return tx
+	end
+
+	API.Listen("transaction_settled", "ws_events", function(fields)
+		ledger:Settle(fields[Events.TRANSACTION_FIELD], fields)
+	end)
+
+	hook.Add("Think", "ws_transaction_ledger", function()
+		if ledger:Count() > 0 then ledger:Expire(SysTime()) end
+	end)
 
 	-- An event this client has no definition of means the realms disagree:
 	-- the error names its id.

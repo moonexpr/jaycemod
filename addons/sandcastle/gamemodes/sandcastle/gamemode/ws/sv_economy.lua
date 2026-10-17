@@ -56,6 +56,13 @@ function WS.TransferMoney(from, to, amount)
 	Sync(to)
 end
 
+-- A purchase undone (a transaction's compensation): the money comes back,
+-- and as it was never earned, it does not count toward a round's cash limit.
+function WS.RefundMoney(ent, amount)
+	Economy.Earn(ledger, ent, amount)
+	Sync(ent)
+end
+
 -- Money an admin grants; not earned either.
 function WS.GrantMoney(ent, amount)
 	Economy.Earn(ledger, ent, amount)

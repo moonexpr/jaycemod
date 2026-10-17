@@ -38,7 +38,9 @@
 -- Over the wire, a requester keeps a Ledger(): ledger:Open(now, timeout) ->
 -- id, tx; ledger:Settle(id, reply) -> whether it was open; ledger:Expire(now)
 -- declines what has no reply by its deadline (TIMED_OUT); ledger:Count().
--- The other side answers with Reply(tx) -> { state, kind, detail }. A
+-- The other side answers with Reply(tx[, kinds]) -> { state, kind, detail };
+-- given the kinds that are the caller's mistake, a decline of any other kind
+-- (our bug) is told as failed. A
 -- scheduler is handed to Await and Spawn, never required here.
 local error, ipairs, pairs, pcall, setmetatable, tostring, type = error, ipairs, pairs, pcall, setmetatable, tostring, type
 module(...)
@@ -215,8 +217,9 @@ end
 -------------------------------------------------------------------------------
 -- Over the wire
 
-function Reply(tx)
+function Reply(tx, kinds)
 	if tx.state == PENDING then error("a pending transaction has no reply yet", 2) end
+	if tx.state == DECLINED and kinds and not IsRefusal(tx.refusal, kinds) then return { state = FAILED } end
 	if tx.state == DECLINED then
 		return {
 			state = DECLINED,

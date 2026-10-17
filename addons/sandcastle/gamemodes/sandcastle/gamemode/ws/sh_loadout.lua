@@ -2,8 +2,8 @@
 -- weapons by slot kind, and the events between a player's spawn menu (the
 -- Player and Inventory tabs, ws/cl_loadout.lua) and the server
 -- (ws/sv_loadout.lua). The server owns every loadout; a client asks to buy,
--- equip or clear, and hears its loadout back (loadout_state) or why it was
--- refused (loadout_refused).
+-- equip or clear, each a transaction (WS.Events.Transact), and hears its
+-- loadout back (loadout_state) or why its request was declined.
 local Loadout = WS.require("foundation.loadout")
 local E = WS.Events
 
@@ -164,8 +164,6 @@ E.Define("loadout_state", {
 	}), SLOT_BITS),
 })
 
-E.Define("loadout_refused", { reason = E.String() })
-
 -- Each weapon's damage on this server's skill (WS.WeaponDetails), per hit
 -- and in pellets per shot (1 but for the shotgun). Sent as a player loads.
 local STAT_BITS = 12
@@ -180,6 +178,7 @@ E.Define("loadout_stats", {
 E.Define("loadout_buy", { weapon = E.String() }, {
 	clientSendable = true,
 	rate = REQUEST_RATE,
+	transaction = true,
 })
 
 -- The Loadout tab's buy on a picked slot: owns the weapon and puts it there.
@@ -189,6 +188,7 @@ E.Define("loadout_buy_into", {
 }, {
 	clientSendable = true,
 	rate = REQUEST_RATE,
+	transaction = true,
 })
 
 E.Define("loadout_equip", {
@@ -197,9 +197,11 @@ E.Define("loadout_equip", {
 }, {
 	clientSendable = true,
 	rate = REQUEST_RATE,
+	transaction = true,
 })
 
 E.Define("loadout_clear", { slot = E.UInt(SLOT_BITS) }, {
 	clientSendable = true,
 	rate = REQUEST_RATE,
+	transaction = true,
 })

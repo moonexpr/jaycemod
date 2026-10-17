@@ -152,17 +152,17 @@ UI.Define("PlayerMenu", "DPanel", {
 			if buy then row:SetEnabled(WS.Affords(LocalPlayer():GetNW2Int("ws_money", 0), weapon.price)) end
 			row.DoClick = function()
 				if buy then
-					E.Request("loadout_buy_into", {
+					WS.LoadoutRequest("loadout_buy_into", {
 						slot = slot,
 						weapon = weapon.class,
 					})
 				elseif weapon then
-					E.Request("loadout_equip", {
+					WS.LoadoutRequest("loadout_equip", {
 						slot = slot,
 						weapon = weapon.class,
 					})
 				else
-					E.Request("loadout_clear", { slot = slot })
+					WS.LoadoutRequest("loadout_clear", { slot = slot })
 				end
 			end
 		end

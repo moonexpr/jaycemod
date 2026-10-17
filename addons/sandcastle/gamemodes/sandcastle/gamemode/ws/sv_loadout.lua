@@ -3,11 +3,11 @@
 -- team change keeps it. A buy is paid through the economy
 -- (ws/sv_economy.lua) only once the loadout takes the weapon. The player
 -- hears their loadout (loadout_state) as their client loads and after each
--- change, or why a request was refused (loadout_refused). On TF2 maps the
+-- change; each request is a transaction (WS.Events.Serve) whose decline goes
+-- back with its refusal. On TF2 maps the
 -- equipped weapons are what a player spawns with (GM:PlayerLoadout, init.lua).
 local Economy = WS.require("foundation.economy")
 local Loadout = WS.require("foundation.loadout")
-local Transaction = WS.require("foundation.core.transaction")
 local Sets = WS.require("foundation.core.structs.sets")
 local E = WS.Events
 
@@ -32,44 +32,49 @@ local function Publish(ply)
 end
 
 -- The refusals that are the player's mistake, the loadout's and the
--- economy's; they go back to the player, and anything else, our bug, is
--- rethrown (Transaction.Explain).
+-- economy's; they go back to the player, and any other, our bug, is logged.
 local REFUSED = Sets.Union(Loadout.PLAYER, Economy.PLAYER)
 
-local function Change(ply, change)
-	local ok, result = pcall(change, Of(ply))
-	if not ok then
-		E.Fire("loadout_refused", { reason = Transaction.Explain(result, REFUSED) }, ply)
-		return
-	end
-	loadouts[ply] = result
-	Publish(ply)
+-- Serves a request as a transaction: change(work, loadout, fields, ply)
+-- gives the new loadout, which is kept and published; every step done is
+-- undone if a later one declines or fails.
+local function Serve(name, change)
+	E.Serve(name, "ws_loadout", REFUSED, function(work, fields, ply)
+		local changed = change(work, Of(ply), fields, ply)
+		local before = loadouts[ply]
+		loadouts[ply] = changed
+		work:Undo(function() loadouts[ply] = before end)
+		Publish(ply)
+	end)
 end
 
-E.Listen("loadout_buy", "ws_loadout", function(fields, ply)
-	Change(ply, function(loadout)
-		local weapon = CATALOG:Weapon(fields.weapon)
-		local bought = loadout:Buy(weapon)
-		WS.SpendMoney(ply, weapon.price)
-		return bought
-	end)
+-- A buy is paid only once the loadout takes the weapon, and refunded if
+-- anything after the payment fails.
+local function Pay(work, ply, weapon)
+	WS.SpendMoney(ply, weapon.price)
+	work:Undo(function() WS.RefundMoney(ply, weapon.price) end)
+end
+
+Serve("loadout_buy", function(work, loadout, fields, ply)
+	local weapon = CATALOG:Weapon(fields.weapon)
+	local bought = loadout:Buy(weapon)
+	Pay(work, ply, weapon)
+	return bought
 end)
 
-E.Listen("loadout_buy_into", "ws_loadout", function(fields, ply)
-	Change(ply, function(loadout)
-		local weapon = CATALOG:Weapon(fields.weapon)
-		local bought = loadout:BuyInto(fields.slot, weapon)
-		WS.SpendMoney(ply, weapon.price)
-		return bought
-	end)
+Serve("loadout_buy_into", function(work, loadout, fields, ply)
+	local weapon = CATALOG:Weapon(fields.weapon)
+	local bought = loadout:BuyInto(fields.slot, weapon)
+	Pay(work, ply, weapon)
+	return bought
 end)
 
-E.Listen("loadout_equip", "ws_loadout", function(fields, ply)
-	Change(ply, function(loadout) return loadout:Equip(fields.slot, CATALOG:Weapon(fields.weapon)) end)
+Serve("loadout_equip", function(work, loadout, fields)
+	return loadout:Equip(fields.slot, CATALOG:Weapon(fields.weapon))
 end)
 
-E.Listen("loadout_clear", "ws_loadout", function(fields, ply)
-	Change(ply, function(loadout) return loadout:Clear(fields.slot) end)
+Serve("loadout_clear", function(work, loadout, fields)
+	return loadout:Clear(fields.slot)
 end)
 
 -- Each weapon's damage on this server's skill, for the Store's tooltips; a

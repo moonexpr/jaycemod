@@ -20,6 +20,7 @@
 -- returns nil and the refusal, since a client's mistake is not ours.
 local Encoding = require("foundation.core.encoding")
 local Sets = require("foundation.core.structs.sets")
+local Transaction = require("foundation.core.transaction")
 local error, format, getmetatable, ipairs, pairs, pcall, setmetatable, sort, tostring, type =
 	error, string.format, getmetatable, ipairs, pairs, pcall, setmetatable, table.sort, tostring, type
 local match = string.match
@@ -65,7 +66,12 @@ local OPTIONS = Sets.Named("event option", {
 	"clientSendable",
 	"rate",
 	"unreliable",
+	"transaction",
 })
+
+-- A transaction request (option transaction, foundation.core.transaction)
+-- carries its requester's transaction id in this field, added at Define.
+TRANSACTION_FIELD = "transaction_id"
 
 local ErrorMeta = {
 	__tostring = function(e) return e.kind .. ": " .. e.message end,
@@ -347,6 +353,13 @@ function Registry:Define(name, fields, options)
 		if not OPTIONS:Has(key) then Raise(BAD_SCHEMA, "%s: unknown option %s", name, tostring(key)) end
 	end
 	if options.clientSendable then CheckRate(options.rate, name) end
+	if options.transaction then
+		if not options.clientSendable then Raise(BAD_SCHEMA, "%s: a transaction is a client's request; make it clientSendable", name) end
+		if fields[TRANSACTION_FIELD] ~= nil then Raise(BAD_SCHEMA, "%s: %s is the transaction's own field", name, TRANSACTION_FIELD) end
+		local withId = { [TRANSACTION_FIELD] = UInt(Transaction.ID_BITS) }
+		for key, t in pairs(fields) do withId[key] = t end
+		fields = withId
+	end
 	local id = IdOfName(name)
 	local other = self.byId[id]
 	if other and other.name ~= name then
@@ -359,6 +372,7 @@ function Registry:Define(name, fields, options)
 		clientSendable = options.clientSendable == true,
 		rate = options.rate,
 		unreliable = options.unreliable == true,
+		transaction = options.transaction == true,
 	}
 	self.byName[name] = definition
 	self.byId[id] = definition

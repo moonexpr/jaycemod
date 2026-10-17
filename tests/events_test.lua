@@ -430,6 +430,37 @@ T.test("the server refuses, without erroring, an unknown id or a server-only eve
 	T.eq(refusal.kind, Events.UNKNOWN_EVENT, "unknown")
 end)
 
+T.test("a transaction request carries its transaction id across the wire", function()
+	local server, client = Registry(), Registry()
+	for _, registry in ipairs({ server, client }) do
+		registry:Define("buy", { weapon = Events.String() }, {
+			clientSendable = true,
+			rate = RATE,
+			transaction = true,
+		})
+	end
+	T.eq(server:Definition("buy").transaction, true, "a transaction")
+	local request = server:ReadRequest("ply", Send(client, "buy", {
+		weapon = "shotgun",
+		[Events.TRANSACTION_FIELD] = 7,
+	}), 0)
+	T.eq(request.fields[Events.TRANSACTION_FIELD], 7, "its id")
+	T.eq(request.fields.weapon, "shotgun", "its own fields")
+	T.eq(ErrorOf(function() client:BuildRequest("buy", { weapon = "x" }) end).kind, Events.BAD_FIELDS, "the id is required")
+end)
+
+T.test("a transaction must be client-sendable and may not name the id field itself", function()
+	local registry = Registry()
+	T.eq(ErrorOf(function() registry:Define("x", {}, { transaction = true }) end).kind, Events.BAD_SCHEMA, "server-only")
+	T.eq(ErrorOf(function()
+		registry:Define("y", { [Events.TRANSACTION_FIELD] = Events.UInt(8) }, {
+			clientSendable = true,
+			rate = RATE,
+			transaction = true,
+		})
+	end).kind, Events.BAD_SCHEMA, "the id field taken")
+end)
+
 T.test("each player's requests are rate limited per event; the allowance refills with time", function()
 	local server, client = Registry(), Registry()
 	DefineJoin(server)
