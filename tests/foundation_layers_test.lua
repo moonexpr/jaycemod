@@ -19,6 +19,8 @@ local RANK = {
 -- The modules that stay, by category.
 local CATEGORY = {
 	["core/pathfinder"] = "structures",
+	["core/heap"] = "structures",
+	["pathfinder/astar"] = "structures",
 	["core/consolecfg"] = "structures",
 	["core/analytics"] = "structures",
 	["core/geometry"] = "structures",

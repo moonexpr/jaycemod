@@ -433,7 +433,7 @@ end
 
 -- Who searched: the engine's Path:Compute (with our cost function) for a
 -- NextBot, or foundation.core.pathfinder for an NPC that cannot use it.
-SOURCE_ENGINE, SOURCE_ROUTE = "Path:Compute", "foundation.core.pathfinder"
+SOURCE_ENGINE, SOURCE_ROUTE = "Path:Compute", "foundation.pathfinder.astar"
 
 -- Path::SegmentType (NextBotPath.h), as GMod's path segments carry it.
 SEGMENT_ON_GROUND, SEGMENT_DROP_DOWN, SEGMENT_CLIMB_UP, SEGMENT_JUMP_OVER_GAP, SEGMENT_LADDER_UP, SEGMENT_LADDER_DOWN = 0, 1, 2, 3, 4, 5

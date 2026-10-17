@@ -2,7 +2,8 @@
 -- route search walks, the route requests and searches, and the waypoints
 -- along a route. Its NavGraph goes to sv_profile, which records its costs.
 local Controller = ...
-local Route = WS.require("foundation.core.pathfinder")
+local Pathfinder = WS.require("foundation.core.pathfinder")
+local AStar = WS.require("foundation.pathfinder.astar")
 local Portal = WS.require("foundation.npc.portal")
 local Doors = WS.require("foundation.npc.doors")
 
@@ -11,7 +12,7 @@ local NOBODY = WS.TEAM_UNASSIGNED
 -------------------------------------------------------------------------------
 -- Path costs: one step builder for both searches. A path strategy
 -- (foundation.npc.path) reads the same step whether the engine's search
--- (Path:Compute on a NextBot) or the Lua one (foundation.core.pathfinder, for
+-- (Path:Compute on a NextBot) or the Lua one (foundation.pathfinder.astar, for
 -- NPCs that are not NextBots) asks.
 
 -- Fills `step` for the move from fromArea (nil for the first area) into
@@ -150,7 +151,7 @@ function Controller:RequestRoute(request)
 	}, NavGraph)
 	local watch = self.pathWatch[request.bot.entIndex]
 	local observed = watch and self:ObserveRoute(graph, request, start, watch) or nil
-	local search = Route.New(graph, start:GetID(), goal:GetID(), navmesh.GetNavAreaCount())
+	local search = AStar.New(graph, start:GetID(), goal:GetID(), navmesh.GetNavAreaCount())
 	self.searches[#self.searches + 1] = {
 		search = search,
 		onDone = request.onDone,
@@ -174,10 +175,10 @@ function Controller:ThinkSearches()
 		local began = observed and SysTime()
 		local status = running.search:Step(SEARCH_CHUNK)
 		if observed then observed.seconds = observed.seconds + SysTime() - began end
-		if status == Route.RUNNING then
+		if status == Pathfinder.RUNNING then
 			self.searches[#self.searches + 1] = running
 		else
-			local areas, found = AreasOf(running.search:Route()), running.search.status == Route.FOUND
+			local areas, found = AreasOf(running.search:Route()), running.search.status == Pathfinder.FOUND
 			if observed then self:PublishRoute(running, areas, found) end
 			running.onDone(areas, found)
 		end
