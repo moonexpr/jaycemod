@@ -4,6 +4,8 @@
 --   server_lua.py 'WSProfile.Start(60)'                     wrap, measure 60 s, unwrap
 --   server_lua.py 'WSProfile.Start(60, WSProfile.COARSE)'   hooks and entities only
 --   server_lua.py 'WSProfile.Start(60, WSProfile.ACTIONS)'  and NS actions, events, queries
+--   server_lua.py 'WSProfile.Start(20, WSProfile.COARSE, { alloc = true })'
+--                                                           and what each allocates
 --   server_lua.py 'return WSProfile.Report(40)'             the most demanding functions
 --
 -- It wraps, in place, every hook, the methods of every scripted entity class
@@ -20,6 +22,15 @@
 --
 -- A wrapped function that yields across ticks would count the time it was
 -- suspended; such entries stand out as a few calls with huge times.
+--
+-- With { alloc = true } the collector is stopped for the window (memory
+-- grows by what Lua allocates; it restarts when the window ends), so the
+-- change in collectgarbage("count") across a call is exactly what it
+-- allocated. Only outermost calls on the main thread are measured: a
+-- coroutine's call can yield, and other code's garbage would land in its
+-- reading, and a nested call's would be counted again by its caller. A
+-- NextBot's behaviour coroutine is measured whole, by the entity method that
+-- resumes it.
 WSProfile = WSProfile or {}
 local P = WSProfile
 
@@ -30,6 +41,8 @@ local SKIP_MODULES = { ["foundation.core.analytics"] = true }
 
 local stats, stacks, restore
 local topSeconds = 0
+local allocating = false
+local collectgarbage = collectgarbage
 
 local function Stat(name)
 	local s = stats[name]
@@ -48,9 +61,13 @@ end
 
 local MAIN = {}
 
-local function Finish(name, stack, depth, started, ...)
+local function Finish(name, stack, depth, started, kb, ...)
 	local spent = SysTime() - started
 	local s = Stat(name)
+	if kb then
+		s.kb = (s.kb or 0) + collectgarbage("count") - kb
+		s.measured = (s.measured or 0) + 1
+	end
 	s.calls = s.calls + 1
 	s.incl = s.incl + spent
 	if spent > s.max then s.max = spent end
@@ -76,7 +93,8 @@ local function Wrap(name, fn)
 		local depth = stack.n + 1
 		stack.n = depth
 		stack[depth] = 0
-		return Finish(name, stack, depth, SysTime(), fn(...))
+		local kb = allocating and depth == 1 and key == MAIN and collectgarbage("count")
+		return Finish(name, stack, depth, SysTime(), kb, fn(...))
 	end
 end
 
@@ -180,6 +198,10 @@ function P.Unwrap()
 	end
 	restore = {}
 	hook.Remove("Tick", FRAME_HOOK)
+	if allocating then
+		allocating = false
+		collectgarbage("restart")
+	end
 	P.running = false
 end
 
@@ -190,8 +212,9 @@ end
 -- still without the hot, tiny module functions.
 P.FINE, P.COARSE, P.ACTIONS = "fine", "coarse", "actions"
 
-function P.Start(seconds, scope)
+function P.Start(seconds, scope, options)
 	if P.running then P.Unwrap() end
+	options = options or {}
 	stats, stacks, restore = {}, setmetatable({}, { __mode = "k" }), {}
 	P.stats = stats
 	local seen = {}
@@ -216,6 +239,11 @@ function P.Start(seconds, scope)
 		memory[#memory + 1] = collectgarbage("count")
 	end)
 	P.running, P.startedAt, P.seconds, P.wrapped = true, SysTime(), seconds, #restore
+	P.alloc = options.alloc == true
+	if P.alloc then
+		collectgarbage("stop")
+		allocating = true
+	end
 	timer.Create("ws_profile_window", seconds, 1, P.Unwrap)
 	return string.format("profiling %d wrapped functions for %d s", #restore, seconds)
 end
@@ -242,6 +270,19 @@ function P.Report(n)
 	end
 	Section("-- by self time (ms of CPU per second of play)", "self")
 	Section("-- by inclusive time", "incl")
+	if P.alloc then
+		local allocated = {}
+		for _, row in ipairs(rows) do
+			if row.s.kb then allocated[#allocated + 1] = row end
+		end
+		table.sort(allocated, function(a, b) return a.s.kb > b.s.kb end)
+		lines[#lines + 1] = "-- allocation by outermost call on the main thread (GC stopped for the window)"
+		for i = 1, math.min(n, #allocated) do
+			local s = allocated[i].s
+			lines[#lines + 1] = string.format("%8.1f KB/s %8.2f KB/call %8d calls  %s",
+				s.kb / elapsed, s.kb / s.measured, s.measured, allocated[i].name)
+		end
+	end
 	table.sort(rows, function(a, b) return a.s.max > b.s.max end)
 	lines[#lines + 1] = "-- worst single calls (hitches)"
 	for i = 1, math.min(n, #rows) do
