@@ -1,6 +1,8 @@
 -- Part of the AI war controller (sv.lua): how the war reads the map: points, masks, spawn spots, hiding spots, doors
 -- and the ground. Its helpers go to the other parts as Map.
 local Spawns = WS.require("foundation.aiwar.spawns")
+local Slots = WS.require("foundation.aiwar.slots")
+local AiWar = WS.require("foundation.aiwar")
 
 -- CanWalkTo's sweep: a soldier's hull above its step height, so stairs and
 -- slopes pass and walls do not.
@@ -137,8 +139,9 @@ local function OnFloor(pos)
 	return tr.HitPos + Vector(0, 0, FLOOR_CLEARANCE)
 end
 
+-- Held to the war's limits: the main menu may create the convar without them.
 local function TeamSize()
-	return GetConVar("mp_aiwar_team_size"):GetInt()
+	return Slots.TeamSize(GetConVar("mp_aiwar_team_size"):GetInt(), AiWar.TEAM_SIZE_MAX)
 end
 
 -- Another feature's controller when it is already loaded, else nil: the war

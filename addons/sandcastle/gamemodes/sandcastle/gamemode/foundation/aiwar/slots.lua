@@ -22,6 +22,15 @@ local LEADER, MEMBER = Squad.LEADER, Squad.MEMBER
 -- mp_aiwar_team_size's value while the slots are edited one by one.
 CUSTOM_SIZE = -1
 
+-- mp_aiwar_team_size as the war reads it, held between CUSTOM_SIZE and max
+-- (foundation.aiwar's TEAM_SIZE_MAX): the main menu's settings
+-- (sandcastle.txt) create the convar without the limits CreateConVar gives.
+function TeamSize(value, max)
+	if value < CUSTOM_SIZE then return CUSTOM_SIZE end
+	if value > max then return max end
+	return value
+end
+
 -- The AI War panel's slider over each side's slots.
 SLIDER_MIN, SLIDER_MAX = 0, 16
 

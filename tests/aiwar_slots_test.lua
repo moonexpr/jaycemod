@@ -134,4 +134,16 @@ T.test("a selection's soldiers: in the order picked, each once, the empty slots 
 	T.eq(#Slots.Picked({ { empty } }), 0, "none")
 end)
 
+-- mp_aiwar_team_size as the war reads it: the main menu's settings create
+-- the convar without the limits the code's CreateConVar gives it, so the
+-- value is held to them here.
+T.test("a team size is held between the slot list's and the most a side may field", function()
+	local MAX = 32
+	T.eq(Slots.TeamSize(8, MAX), 8, "a size")
+	T.eq(Slots.TeamSize(Slots.CUSTOM_SIZE, MAX), Slots.CUSTOM_SIZE, "the slot list")
+	T.eq(Slots.TeamSize(0, MAX), 0, "none")
+	T.eq(Slots.TeamSize(MAX + 100, MAX), MAX, "too many")
+	T.eq(Slots.TeamSize(-5, MAX), Slots.CUSTOM_SIZE, "below the slot list's")
+end)
+
 T.finish()

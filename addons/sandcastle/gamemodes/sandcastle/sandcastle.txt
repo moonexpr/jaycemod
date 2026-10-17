@@ -5,4 +5,61 @@
 	"maps"		"^pl_|^plr_|^cp_|^koth_|^ctf_|^mvm_"
 	"category"	"pvp"
 	"menusystem"	"1"
+
+	// Offered in the main menu when a server is started (wiki: Gamemode_Creation).
+	// GMod creates these convars before the gamemode's Lua runs, so their
+	// defaults must be the code's (tests/gamemode_manifest_test.lua), and a
+	// limit the code's CreateConVar sets does not hold: the code clamps what
+	// it reads instead.
+	"settings"
+	{
+		1
+		{
+			"name"		"sv_gameplay_enabled"
+			"text"		"Gameplay mode"
+			"help"		"1: Gameplay mode, the rounds run; 0: Sandbox mode, no rounds and spawn doors open"
+			"type"		"CheckBox"
+			"default"	"0"
+		}
+		2
+		{
+			"name"		"mp_aiwar_autostart"
+			"text"		"Start the AI war"
+			"help"		"1: start the AI war on every map as it loads"
+			"type"		"CheckBox"
+			"default"	"0"
+		}
+		3
+		{
+			"name"		"mp_aiwar_team_size"
+			"text"		"AI war soldiers per side"
+			"help"		"Soldiers each side of the AI war keeps in the field; -1: each side's own slots"
+			"type"		"Numeric"
+			"default"	"8"
+		}
+		4
+		{
+			"name"		"mp_autoteambalance"
+			"text"		"Balance the teams"
+			"help"		"1: switch players to even the teams"
+			"type"		"CheckBox"
+			"default"	"1"
+		}
+		5
+		{
+			"name"		"tf_weapon_criticals"
+			"text"		"Critical hits"
+			"help"		"0: no critical hits from any blast or projectile"
+			"type"		"CheckBox"
+			"default"	"1"
+		}
+		6
+		{
+			"name"		"mp_economy_enabled"
+			"text"		"Economy"
+			"help"		"0: no money and no store; everyone spawns with the starter loadout"
+			"type"		"CheckBox"
+			"default"	"1"
+		}
+	}
 }
