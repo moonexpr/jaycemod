@@ -1,6 +1,6 @@
--- foundation.core.random: choices made with a random number passed in.
+-- foundation.core.math.random: choices made with a random number passed in.
 local T = dofile("tests/harness.lua")
-local Random = T.require("foundation.core.random")
+local Random = T.require("foundation.core.math.random")
 
 T.test("items are picked with odds by their weight", function()
 	local items = { { id = 1, w = 1 }, { id = 2, w = 3 } }

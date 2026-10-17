@@ -20,7 +20,7 @@ local ipairs, pairs, setmetatable = ipairs, pairs, setmetatable
 local Lease = require("foundation.core.structs.lease")
 local Grid = require("foundation.core.structs.grid")
 local Tactics = require("foundation.wartactics")
-local Distance = require("foundation.core.geometry").Distance
+local Distance = require("foundation.core.math.geometry").Distance
 module(...)
 
 -- A waypoint per cell this wide, a waypoint counts as visited by a soldier

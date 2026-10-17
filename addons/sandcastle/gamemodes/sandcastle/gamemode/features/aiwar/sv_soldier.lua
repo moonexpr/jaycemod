@@ -2,7 +2,7 @@
 local Map = ...
 local TFBot = WS.require("foundation.npc.path.tfbot")
 local HL2Path = WS.require("foundation.npc.path.hl2")
-local Random = WS.require("foundation.core.random")
+local Random = WS.require("foundation.core.math.random")
 local WALK_MINS, WALK_MAXS, WALK_LIFT, WALK_MAX_RISE = Map.WALK_MINS, Map.WALK_MAXS, Map.WALK_LIFT, Map.WALK_MAX_RISE
 local Point, ToVector, Masks, IsDoor = Map.Point, Map.ToVector, Map.Masks, Map.IsDoor
 local OnFloor = Map.OnFloor

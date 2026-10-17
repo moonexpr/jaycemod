@@ -10,7 +10,7 @@
 -- Subjects are opaque enemy handles; positions are { x, y, z } tables.
 local ipairs, pairs, setmetatable, sort = ipairs, pairs, setmetatable, table.sort
 local Teams = require("foundation.teams")
-local Distance = require("foundation.core.geometry").Distance
+local Distance = require("foundation.core.math.geometry").Distance
 module(...)
 
 -- A sighting of a loser is followed this long.

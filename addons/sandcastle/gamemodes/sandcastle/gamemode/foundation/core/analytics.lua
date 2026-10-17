@@ -16,7 +16,7 @@
 -- memory:Kilobytes() (collectgarbage("count")). Recording allocates only a
 -- name's first sample, so a timer can wrap per-tick work.
 local Ring = require("foundation.core.structs.ring")
-local Stats = require("foundation.core.stats")
+local Stats = require("foundation.core.math.stats")
 local error, ipairs, pairs, setmetatable = error, ipairs, pairs, setmetatable
 local huge, max, min = math.huge, math.max, math.min
 local format, gmatch = string.format, string.gmatch
