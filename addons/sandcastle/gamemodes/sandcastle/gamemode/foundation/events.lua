@@ -20,7 +20,7 @@
 -- "kind: message". A client's request the server will not take (unknown,
 -- not client-sendable, over its rate) is refused instead: ReadRequest
 -- returns nil and the refusal, since a client's mistake is not ours.
-local Encoding = require("foundation.core.encoding")
+local Buffer = require("foundation.core.buffer")
 local Sets = require("foundation.core.structs.sets")
 local Transaction = require("foundation.core.transaction")
 local error, format, getmetatable, ipairs, pairs, pcall, setmetatable, sort, tostring, type =
@@ -97,7 +97,7 @@ local function Raise(kind, fmt, ...)
 end
 
 local function IdOfName(name)
-	return Encoding.Crc32(name) % 2 ^ ID_BITS
+	return Buffer.Crc32(name) % 2 ^ ID_BITS
 end
 
 -------------------------------------------------------------------------------

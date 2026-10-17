@@ -14,7 +14,8 @@ fails on an upward dependency.
 
 The full index of core, with each module's API, is in the repository's
 `CLAUDE.md` ("foundation.core index"). Core is split into `structs/` (data
-structures), `parsers/` (format readers, beside `encoding`, the writers),
+structures), `parsers/` (text format readers; binary values are written and read in
+`buffer`),
 `math/` (geometry, statistics, polynomials, matrices), `meta/` (classes and
 interfaces), and algorithms and formalisms at its root.
 
@@ -61,7 +62,7 @@ ideas were taken and written afresh here, never its code. Taken: the
 cooperative scheduler (`core.scheduler`, now running the route searches),
 the double-ended queue, set algebra, a balanced tree, polynomial roots and
 matrices, the parser cursor, varints and length-prefixed strings with a
-writer, chained constructors, and memory accounting. Where ours does better,
+writer (all now in `core.buffer`), chained constructors, and memory accounting. Where ours does better,
 it stayed ours:
 
 - Enums: two reverse-name tables in the codebase; a plain table and a named

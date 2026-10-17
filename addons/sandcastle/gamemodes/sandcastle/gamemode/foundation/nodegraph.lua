@@ -10,8 +10,7 @@
 -- 0-based; here nodes are a 1-based list.
 local concat, sort, sqrt = table.concat, table.sort, math.sqrt
 local ipairs, pairs = ipairs, pairs
-local BinaryParser = require("foundation.core.parsers.binary")
-local Encoding = require("foundation.core.encoding")
+local Buffer = require("foundation.core.buffer")
 local Graph = require("foundation.core.graph")
 local Grid = require("foundation.core.structs.grid")
 module(...)
@@ -182,19 +181,19 @@ end
 -- graph = { mapVersion, nodes = { { pos, yaw, offsets[0..NUM_HULLS-1],
 -- type, info, zone, hammerId } }, links = { { a, b (1-based), moves[0..] } } }
 function Encode(graph)
-	local out = { Encoding.Int32(VERSION), Encoding.Int32(graph.mapVersion), Encoding.Int32(#graph.nodes) }
+	local out = { Buffer.Int32(VERSION), Buffer.Int32(graph.mapVersion), Buffer.Int32(#graph.nodes) }
 	for _, node in ipairs(graph.nodes) do
-		out[#out + 1] = Encoding.Float32(node.pos.x) .. Encoding.Float32(node.pos.y) .. Encoding.Float32(node.pos.z) .. Encoding.Float32(node.yaw or 0)
-		for hull = 0, NUM_HULLS - 1 do out[#out + 1] = Encoding.Float32(node.offsets and node.offsets[hull] or 0) end
-		out[#out + 1] = Encoding.Byte(node.type or NODE_GROUND) .. Encoding.Int16(node.info or 0) .. Encoding.Int16(node.zone or ZONE_SOLO)
+		out[#out + 1] = Buffer.Float32(node.pos.x) .. Buffer.Float32(node.pos.y) .. Buffer.Float32(node.pos.z) .. Buffer.Float32(node.yaw or 0)
+		for hull = 0, NUM_HULLS - 1 do out[#out + 1] = Buffer.Float32(node.offsets and node.offsets[hull] or 0) end
+		out[#out + 1] = Buffer.Byte(node.type or NODE_GROUND) .. Buffer.Int16(node.info or 0) .. Buffer.Int16(node.zone or ZONE_SOLO)
 	end
-	out[#out + 1] = Encoding.Int32(#graph.links)
+	out[#out + 1] = Buffer.Int32(#graph.links)
 	for _, link in ipairs(graph.links) do
 		local moves = {}
-		for hull = 0, NUM_HULLS - 1 do moves[#moves + 1] = Encoding.Byte(link.moves and link.moves[hull] or 0) end
-		out[#out + 1] = Encoding.Int16(link.a - 1) .. Encoding.Int16(link.b - 1) .. concat(moves)
+		for hull = 0, NUM_HULLS - 1 do moves[#moves + 1] = Buffer.Byte(link.moves and link.moves[hull] or 0) end
+		out[#out + 1] = Buffer.Int16(link.a - 1) .. Buffer.Int16(link.b - 1) .. concat(moves)
 	end
-	for i, node in ipairs(graph.nodes) do out[#out + 1] = Encoding.Int32(node.hammerId or i) end
+	for i, node in ipairs(graph.nodes) do out[#out + 1] = Buffer.Int32(node.hammerId or i) end
 	return concat(out)
 end
 
@@ -204,7 +203,7 @@ end
 -- mapVersion, nodeCount }.
 function Decode(data, headerOnly)
 	if #data < 12 then return nil, "too short" end
-	local r = BinaryParser.Reader(data)
+	local r = Buffer.Reader(data)
 	local graph = { version = r:Int32(), mapVersion = r:Int32(), nodes = {}, links = {} }
 	graph.nodeCount = r:Int32()
 	if headerOnly then return graph end
