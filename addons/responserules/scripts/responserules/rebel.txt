@@ -1,0 +1,315 @@
+// Rebel: the cart rules for the rebels' models: citizens, Alyx, the vortigaunts who fight with them.
+// A model answers by its affiliation first, whichever team it fights for:
+// each situation has a rule for the affiliation (placeholder lines, shown
+// with responserules_debug 1), and one for each voice with lines of its own,
+// which outscores it by its voice criterion. A new model of the Rebel
+// speaks by these rules as soon as foundation.npc.voices gives it its affiliation.
+// The criteria the cart's situations share are in response_rules.txt.
+
+criterion "IsRebel" "affiliation" "rebel" required
+criterion "IsMaleVoice" "voice" "male" required
+criterion "IsFemaleVoice" "voice" "female" required
+criterion "IsAlyxVoice" "voice" "alyx" required
+criterion "IsVortigauntVoice" "voice" "vortigaunt" required
+
+// CartMovingForwardOffense: the cart's moving: keep pushing
+response CartMovingForwardOffenseRebel
+{
+	print "Rebel: the cart's moving: keep pushing" defaultdelay
+}
+rule CartMovingForwardOffenseRebel
+{
+	criteria ConceptCartMovingForward IsOnOffense IsRebel NotSaidCartMovingForwardO 75PercentChance
+	ApplyContext "SaidCartMovingForwardO:1:20"
+	response CartMovingForwardOffenseRebel
+}
+response CartMovingForwardOffenseRebelMale
+{
+	speak "vo/npc/male01/letsgo01.wav" defaultdelay
+	speak "vo/npc/male01/letsgo02.wav" defaultdelay
+	speak "vo/npc/male01/okimready01.wav" defaultdelay
+}
+rule CartMovingForwardOffenseRebelMale
+{
+	criteria ConceptCartMovingForward IsOnOffense IsRebel NotSaidCartMovingForwardO 75PercentChance IsMaleVoice
+	ApplyContext "SaidCartMovingForwardO:1:20"
+	response CartMovingForwardOffenseRebelMale
+}
+response CartMovingForwardOffenseRebelFemale
+{
+	speak "vo/npc/female01/letsgo01.wav" defaultdelay
+	speak "vo/npc/female01/letsgo02.wav" defaultdelay
+}
+rule CartMovingForwardOffenseRebelFemale
+{
+	criteria ConceptCartMovingForward IsOnOffense IsRebel NotSaidCartMovingForwardO 75PercentChance IsFemaleVoice
+	ApplyContext "SaidCartMovingForwardO:1:20"
+	response CartMovingForwardOffenseRebelFemale
+}
+response CartMovingForwardOffenseRebelVortigaunt
+{
+	speak "vo/npc/vortigaunt/onward.wav" defaultdelay
+	speak "vo/npc/vortigaunt/forfreedom.wav" defaultdelay
+}
+rule CartMovingForwardOffenseRebelVortigaunt
+{
+	criteria ConceptCartMovingForward IsOnOffense IsRebel NotSaidCartMovingForwardO 75PercentChance IsVortigauntVoice
+	ApplyContext "SaidCartMovingForwardO:1:20"
+	response CartMovingForwardOffenseRebelVortigaunt
+}
+
+// CartMovingForwardDefense: they're moving the cart
+response CartMovingForwardDefenseRebel
+{
+	print "Rebel: they're moving the cart" defaultdelay
+}
+rule CartMovingForwardDefenseRebel
+{
+	criteria ConceptCartMovingForward IsOnDefense IsRebel NotSaidCartMovingForwardD 75PercentChance
+	ApplyContext "SaidCartMovingForwardD:1:20"
+	response CartMovingForwardDefenseRebel
+}
+response CartMovingForwardDefenseRebelMale
+{
+	speak "vo/npc/male01/uhoh.wav" defaultdelay
+	speak "vo/npc/male01/ohno.wav" defaultdelay
+}
+rule CartMovingForwardDefenseRebelMale
+{
+	criteria ConceptCartMovingForward IsOnDefense IsRebel NotSaidCartMovingForwardD 75PercentChance IsMaleVoice
+	ApplyContext "SaidCartMovingForwardD:1:20"
+	response CartMovingForwardDefenseRebelMale
+}
+response CartMovingForwardDefenseRebelFemale
+{
+	speak "vo/npc/female01/uhoh.wav" defaultdelay
+	speak "vo/npc/female01/ohno.wav" defaultdelay
+}
+rule CartMovingForwardDefenseRebelFemale
+{
+	criteria ConceptCartMovingForward IsOnDefense IsRebel NotSaidCartMovingForwardD 75PercentChance IsFemaleVoice
+	ApplyContext "SaidCartMovingForwardD:1:20"
+	response CartMovingForwardDefenseRebelFemale
+}
+response CartMovingForwardDefenseRebelAlyx
+{
+	speak "vo/npc/alyx/ohno_startle01.wav" defaultdelay
+}
+rule CartMovingForwardDefenseRebelAlyx
+{
+	criteria ConceptCartMovingForward IsOnDefense IsRebel NotSaidCartMovingForwardD 75PercentChance IsAlyxVoice
+	ApplyContext "SaidCartMovingForwardD:1:20"
+	response CartMovingForwardDefenseRebelAlyx
+}
+
+// CartMovingBackwardsOffense: the cart's rolling back
+response CartMovingBackwardsOffenseRebel
+{
+	print "Rebel: the cart's rolling back" defaultdelay
+}
+rule CartMovingBackwardsOffenseRebel
+{
+	criteria ConceptCartMovingBackward IsOnOffense IsRebel NotSaidCartMovingBackwardO 75PercentChance
+	ApplyContext "SaidCartMovingBackwardO:1:20"
+	response CartMovingBackwardsOffenseRebel
+}
+response CartMovingBackwardsOffenseRebelMale
+{
+	speak "vo/npc/male01/ohno.wav" defaultdelay
+	speak "vo/npc/male01/goodgod.wav" defaultdelay
+}
+rule CartMovingBackwardsOffenseRebelMale
+{
+	criteria ConceptCartMovingBackward IsOnOffense IsRebel NotSaidCartMovingBackwardO 75PercentChance IsMaleVoice
+	ApplyContext "SaidCartMovingBackwardO:1:20"
+	response CartMovingBackwardsOffenseRebelMale
+}
+response CartMovingBackwardsOffenseRebelFemale
+{
+	speak "vo/npc/female01/ohno.wav" defaultdelay
+}
+rule CartMovingBackwardsOffenseRebelFemale
+{
+	criteria ConceptCartMovingBackward IsOnOffense IsRebel NotSaidCartMovingBackwardO 75PercentChance IsFemaleVoice
+	ApplyContext "SaidCartMovingBackwardO:1:20"
+	response CartMovingBackwardsOffenseRebelFemale
+}
+response CartMovingBackwardsOffenseRebelAlyx
+{
+	speak "vo/npc/alyx/ohno_startle01.wav" defaultdelay
+}
+rule CartMovingBackwardsOffenseRebelAlyx
+{
+	criteria ConceptCartMovingBackward IsOnOffense IsRebel NotSaidCartMovingBackwardO 75PercentChance IsAlyxVoice
+	ApplyContext "SaidCartMovingBackwardO:1:20"
+	response CartMovingBackwardsOffenseRebelAlyx
+}
+
+// CartMovingBackwardsDefense: their cart's rolling back
+response CartMovingBackwardsDefenseRebel
+{
+	print "Rebel: their cart's rolling back" defaultdelay
+}
+rule CartMovingBackwardsDefenseRebel
+{
+	criteria ConceptCartMovingBackward IsOnDefense IsRebel NotSaidCartMovingBackwardD 75PercentChance
+	ApplyContext "SaidCartMovingBackwardD:1:20"
+	response CartMovingBackwardsDefenseRebel
+}
+response CartMovingBackwardsDefenseRebelMale
+{
+	speak "vo/npc/male01/nice.wav" defaultdelay
+	speak "vo/npc/male01/yeah02.wav" defaultdelay
+	speak "vo/npc/male01/finally.wav" defaultdelay
+}
+rule CartMovingBackwardsDefenseRebelMale
+{
+	criteria ConceptCartMovingBackward IsOnDefense IsRebel NotSaidCartMovingBackwardD 75PercentChance IsMaleVoice
+	ApplyContext "SaidCartMovingBackwardD:1:20"
+	response CartMovingBackwardsDefenseRebelMale
+}
+response CartMovingBackwardsDefenseRebelFemale
+{
+	speak "vo/npc/female01/nice01.wav" defaultdelay
+	speak "vo/npc/female01/yeah02.wav" defaultdelay
+	speak "vo/npc/female01/finally.wav" defaultdelay
+}
+rule CartMovingBackwardsDefenseRebelFemale
+{
+	criteria ConceptCartMovingBackward IsOnDefense IsRebel NotSaidCartMovingBackwardD 75PercentChance IsFemaleVoice
+	ApplyContext "SaidCartMovingBackwardD:1:20"
+	response CartMovingBackwardsDefenseRebelFemale
+}
+response CartMovingBackwardsDefenseRebelVortigaunt
+{
+	speak "vo/npc/vortigaunt/vortigese02.wav" defaultdelay
+}
+rule CartMovingBackwardsDefenseRebelVortigaunt
+{
+	criteria ConceptCartMovingBackward IsOnDefense IsRebel NotSaidCartMovingBackwardD 75PercentChance IsVortigauntVoice
+	ApplyContext "SaidCartMovingBackwardD:1:20"
+	response CartMovingBackwardsDefenseRebelVortigaunt
+}
+
+// CartMovingStoppedOffense: the cart's stopped: back on it
+response CartMovingStoppedOffenseRebel
+{
+	print "Rebel: the cart's stopped: back on it" defaultdelay
+}
+rule CartMovingStoppedOffenseRebel
+{
+	criteria ConceptCartMovingStopped IsOnOffense IsRebel NotSaidCartMovingStoppedO 75PercentChance
+	ApplyContext "SaidCartMovingStoppedO:1:20"
+	response CartMovingStoppedOffenseRebel
+}
+
+// CartMovingStoppedDefense: we've stopped the cart
+response CartMovingStoppedDefenseRebel
+{
+	print "Rebel: we've stopped the cart" defaultdelay
+}
+rule CartMovingStoppedDefenseRebel
+{
+	criteria ConceptCartMovingStopped IsOnDefense IsRebel NotSaidCartMovingStoppedD 75PercentChance
+	ApplyContext "SaidCartMovingStoppedD:1:20"
+	response CartMovingStoppedDefenseRebel
+}
+response CartMovingStoppedDefenseRebelMale
+{
+	speak "vo/npc/male01/nice.wav" defaultdelay
+}
+rule CartMovingStoppedDefenseRebelMale
+{
+	criteria ConceptCartMovingStopped IsOnDefense IsRebel NotSaidCartMovingStoppedD 75PercentChance IsMaleVoice
+	ApplyContext "SaidCartMovingStoppedD:1:20"
+	response CartMovingStoppedDefenseRebelMale
+}
+response CartMovingStoppedDefenseRebelFemale
+{
+	speak "vo/npc/female01/nice01.wav" defaultdelay
+}
+rule CartMovingStoppedDefenseRebelFemale
+{
+	criteria ConceptCartMovingStopped IsOnDefense IsRebel NotSaidCartMovingStoppedD 75PercentChance IsFemaleVoice
+	ApplyContext "SaidCartMovingStoppedD:1:20"
+	response CartMovingStoppedDefenseRebelFemale
+}
+
+// CartBlockedOffense: they've cut the cart off
+response CartBlockedOffenseRebel
+{
+	print "Rebel: they've cut the cart off" defaultdelay
+}
+rule CartBlockedOffenseRebel
+{
+	criteria ConceptCartMovingStopped IsOnOffense IsRebel NotSaidCartMovingStoppedO 75PercentChance CartBlocked
+	ApplyContext "SaidCartMovingStoppedO:1:20"
+	response CartBlockedOffenseRebel
+}
+response CartBlockedOffenseRebelMale
+{
+	speak "vo/npc/male01/combine01.wav" defaultdelay
+	speak "vo/npc/male01/headsup01.wav" defaultdelay
+	speak "vo/npc/male01/watchout.wav" defaultdelay
+}
+rule CartBlockedOffenseRebelMale
+{
+	criteria ConceptCartMovingStopped IsOnOffense IsRebel NotSaidCartMovingStoppedO 75PercentChance CartBlocked IsMaleVoice
+	ApplyContext "SaidCartMovingStoppedO:1:20"
+	response CartBlockedOffenseRebelMale
+}
+response CartBlockedOffenseRebelFemale
+{
+	speak "vo/npc/female01/combine01.wav" defaultdelay
+	speak "vo/npc/female01/headsup01.wav" defaultdelay
+	speak "vo/npc/female01/watchout.wav" defaultdelay
+}
+rule CartBlockedOffenseRebelFemale
+{
+	criteria ConceptCartMovingStopped IsOnOffense IsRebel NotSaidCartMovingStoppedO 75PercentChance CartBlocked IsFemaleVoice
+	ApplyContext "SaidCartMovingStoppedO:1:20"
+	response CartBlockedOffenseRebelFemale
+}
+response CartBlockedOffenseRebelAlyx
+{
+	speak "vo/npc/alyx/watchout01.wav" defaultdelay
+}
+rule CartBlockedOffenseRebelAlyx
+{
+	criteria ConceptCartMovingStopped IsOnOffense IsRebel NotSaidCartMovingStoppedO 75PercentChance CartBlocked IsAlyxVoice
+	ApplyContext "SaidCartMovingStoppedO:1:20"
+	response CartBlockedOffenseRebelAlyx
+}
+
+// CartBlockedDefense: we're holding their cart
+response CartBlockedDefenseRebel
+{
+	print "Rebel: we're holding their cart" defaultdelay
+}
+rule CartBlockedDefenseRebel
+{
+	criteria ConceptCartMovingStopped IsOnDefense IsRebel NotSaidCartMovingStoppedD 75PercentChance CartBlocked
+	ApplyContext "SaidCartMovingStoppedD:1:20"
+	response CartBlockedDefenseRebel
+}
+response CartBlockedDefenseRebelMale
+{
+	speak "vo/npc/male01/yeah02.wav" defaultdelay
+	speak "vo/npc/male01/gethellout.wav" defaultdelay
+}
+rule CartBlockedDefenseRebelMale
+{
+	criteria ConceptCartMovingStopped IsOnDefense IsRebel NotSaidCartMovingStoppedD 75PercentChance CartBlocked IsMaleVoice
+	ApplyContext "SaidCartMovingStoppedD:1:20"
+	response CartBlockedDefenseRebelMale
+}
+response CartBlockedDefenseRebelFemale
+{
+	speak "vo/npc/female01/yeah02.wav" defaultdelay
+}
+rule CartBlockedDefenseRebelFemale
+{
+	criteria ConceptCartMovingStopped IsOnDefense IsRebel NotSaidCartMovingStoppedD 75PercentChance CartBlocked IsFemaleVoice
+	ApplyContext "SaidCartMovingStoppedD:1:20"
+	response CartBlockedDefenseRebelFemale
+}

@@ -238,6 +238,11 @@ local function Env(w)
 		WS = ws,
 		Vector = Vector,
 		DrGBase = {},
+		-- the responserules addon's service; its own tests cover what is said
+		ResponseRules = {
+			Speaker = function() return {} end,
+			Speak = function() return nil end,
+		},
 		CreateConVar = function() return {} end,
 		-- the team size is w.teamSize, every other convar a bool in w.bools
 		GetConVar = function(name)

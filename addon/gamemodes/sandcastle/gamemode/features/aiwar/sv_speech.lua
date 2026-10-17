@@ -1,29 +1,25 @@
 -- Part of the AI war controller (sv.lua): its soldiers speak the concepts
 -- a cart's watcher raises (WSCartConcept: team_train_watcher, as TF2's has
--- its players speak them), by the response rules of foundation.aiwar.speech.
--- The cart's own team is on offense, its enemy on defense; a concept for
--- the pushers goes to the soldiers in the cart's capture area. A soldier
--- speaks one line at a time, and waits SPEECH_DELAY after it (TF2's
--- defaultdelay); every soldier shares the groups' repeats, as TF2's players
--- do. ns_speech_debug prints each line and the rule that chose it (print
--- lines are placeholders, heard only so).
+-- its players speak them), by the response rules of the responserules
+-- addon (addons/responserules: its ResponseRules service, and its rules by
+-- the speaker model's affiliation). The cart's own team is on offense, its
+-- enemy on defense; a concept for the pushers goes to the soldiers in the
+-- cart's capture area. A soldier speaks one line at a time and waits,
+-- after it, the delay its rule's group sets; the group sets how loud it is
+-- too.
 local Controller = ...
-local Response = WS.require("foundation.core.response")
 local Speech = WS.require("foundation.aiwar.speech")
 local Payload = WS.require("foundation.payload")
 
-local DEBUG = CreateConVar("ns_speech_debug", "0", { FCVAR_ARCHIVE },
-	"1: print each AI war soldier's line for a cart concept, and the rule that chose it", 0, 1)
-
-local SPEECH_DELAY = 3
-local SPEECH_LEVEL = 80 -- SNDLVL_TALKING
-
-local system = Speech.System()
-local memory = Response.Memory()
+-- The AI war needs the responserules addon, as it needs DrGBase.
+local Rules = ResponseRules or error("the AI war's speech needs the responserules addon (addons/responserules)")
 
 -- The soldier's speaker: its contexts, and when it may speak again.
 local function Speaker(entry)
-	entry.speaker = entry.speaker or { memory = memory, contexts = Response.Contexts(), busyUntil = 0 }
+	if not entry.speaker then
+		entry.speaker = Rules:Speaker()
+		entry.speaker.busyUntil = 0
+	end
 	return entry.speaker
 end
 
@@ -31,23 +27,20 @@ end
 -- it is not still speaking.
 function Controller:SpeakConcept(ent, concept, role, blocked, now)
 	local entry = self.soldiers[ent]
-	-- an enlisted NPC that is no DrGBase soldier has no voice
-	local voice = ent.NSVoiceLines and ent.NSVoiceLines.name
-	if not (voice and entry.soldier:IsAlive()) or ent.NSDormant then return end
+	-- an enlisted NPC that is no DrGBase soldier, or a model with no voice, says nothing
+	local voice = ent.NSVoiceLines
+	if not (voice and voice.name and entry.soldier:IsAlive()) or ent.NSDormant then return end
 	local speaker = Speaker(entry)
 	if now < speaker.busyUntil then return end
-	local said = system:Speak(speaker, concept, Speech.Criteria(role, voice, math.random(0, 100), blocked), math.random, now)
+	local criteria = Speech.Criteria(voice, role, math.random(0, 100), blocked)
+	local said = Rules:Speak(speaker, concept, criteria, now, string.format("#%d %s %s on %s", ent:EntIndex(), voice.affiliation, voice.name, role))
 	if not said then return end
 	local line, length = said.response, 0
 	if line.kind == "speak" then
-		ent:EmitSound(line.value, SPEECH_LEVEL)
+		ent:EmitSound(line.value, said.soundLevel)
 		length = SoundDuration(line.value)
 	end
-	speaker.busyUntil = now + length + SPEECH_DELAY
-	if DEBUG:GetBool() then
-		print(string.format("[ns speech] #%d %s on %s, %s%s: %s %s (%s)", ent:EntIndex(), voice, role, concept,
-			blocked and " (cut off)" or "", line.kind, line.value, said.rule))
-	end
+	speaker.busyUntil = now + length + said.delay
 end
 
 hook.Add("WSCartConcept", "ws_aiwar_speech", function(watcher, concept, audience, blocked)

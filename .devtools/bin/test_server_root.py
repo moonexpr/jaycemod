@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from server_root import LUADEV_PORT_FILE, ROOT, ROOT_WINDOWS, SERVER_BINARIES, SERVER_LUA, SERVER_EXE, SERVER_WORKSHOP, TF_SCRIPTS,\
+from server_root import LUADEV_PORT_FILE, REPO_ADDONS, ROOT, ROOT_WINDOWS, SERVER_BINARIES, SERVER_LUA, SERVER_EXE, SERVER_WORKSHOP, TF_SCRIPTS,\
     TF_SCRIPTS_DIR, Instance, Layout, NotAnExe, build, console_exe
 from test_vpk import DIR_ARCHIVE, entry, write_pak
 
@@ -88,6 +88,13 @@ def test_the_shared_addons_are_linked_and_the_workshop_archives_land_in_cache(la
     for name, item in SERVER_WORKSHOP.items():
         if item != LEGACY:
             assert (cache / f"{name}.gma").resolve() == layout.workshop / item / "addon.gma"
+
+
+def test_the_repos_own_addons_are_linked_into_the_servers_addons(layout):
+    addons = build(layout) / "garrysmod" / "addons"
+    assert REPO_ADDONS, "the repo has addons of its own"
+    for name, source in REPO_ADDONS.items():
+        assert (addons / name).resolve() == source, name
 
 
 def test_the_servers_lua_bin_is_its_own_and_links_the_server_binaries(layout):

@@ -10,7 +10,7 @@ from the Workshop: it runs -noworkshop). So the server runs from
 GarrysModServer beside it: every entry a symlink to the shared install, but
 garrysmod/ is a folder whose addons/, data/ and cache/ are its own (the
 server writes there, the game never reads them). addons/ links each of the
-shared addons, and server_mounts, whose lua/ links the server's own Lua in
+shared addons, the repo's own (REPO_ADDONS), and server_mounts, whose lua/ links the server's own Lua in
 server_root/ (SERVER_LUA): an autorun (mounts.lua) that mounts each Workshop
 archive in SERVER_WORKSHOP, linked as cache/<name>.gma (GMod ignores a loose
 .gma in addons/), the gamemode's entities winning over a mounted addon's of
@@ -91,6 +91,10 @@ SERVER_BINARIES = {"gmsv_luasocket_win64.dll": "gmcl_luasocket_win64.dll"}
 REPO = Path(__file__).resolve().parents[2]
 NATIVE_BINARIES = {
     "gmsv_wsprofile_win64.dll": REPO / "native/ws_profile/target/x86_64-pc-windows-msvc/release/wsprofile.dll",
+}
+# addons built in this repo, linked into the server's addons/: name -> folder
+REPO_ADDONS = {
+    "responserules": REPO / "addons" / "responserules",  # TF2's response rules; the AI war's soldiers speak by them
 }
 SERVER_EXE = "srcds_win64.exe"
 # PE: e_lfanew at 0x3c names the "PE\\0\\0" signature; the optional header follows
@@ -236,6 +240,8 @@ def build(layout: Layout) -> Path:
     addons = game / "addons"
     for entry in (layout.shared / "garrysmod" / "addons").iterdir():
         link(addons / entry.name, entry)
+    for name, source in REPO_ADDONS.items():
+        link(addons / name, source)
     for path, source in SERVER_LUA.items():
         target = addons / "server_mounts" / "lua" / path
         target.parent.mkdir(parents=True, exist_ok=True)

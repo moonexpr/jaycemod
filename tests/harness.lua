@@ -10,9 +10,27 @@ T.ROOT = "addon/gamemodes/sandcastle/gamemode/"
 -- module(...) call the chunk sees this require, to load its siblings.
 local CHUNK_ENV = setmetatable({}, { __index = _G })
 
+-- The repo's own addons' GMod modules (lua/includes/modules/<name>.lua,
+-- which GMod's require loads by a name without dots).
+T.MODULE_DIRS = { "addons/responserules/lua/includes/modules/" }
+
+local function Path(name)
+	if not name:find(".", 1, true) then
+		for _, dir in ipairs(T.MODULE_DIRS) do
+			local path = dir .. name .. ".lua"
+			local f = io.open(path, "r")
+			if f then
+				f:close()
+				return path
+			end
+		end
+	end
+	return T.ROOT .. name:gsub("%.", "/") .. ".lua"
+end
+
 function T.require(name)
 	if package.loaded[name] == nil then
-		local chunk = assert(loadfile(T.ROOT .. name:gsub("%.", "/") .. ".lua"))
+		local chunk = assert(loadfile(Path(name)))
 		setfenv(chunk, CHUNK_ENV)(name)
 	end
 	return package.loaded[name]

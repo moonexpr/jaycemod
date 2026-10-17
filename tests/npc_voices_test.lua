@@ -58,4 +58,17 @@ T.test("a heavy hit is a cry of pain, a light one a grunt", function()
 	T.eq(Voices.Feedback(30, 300), Voices.Feedback(10, 100), "a share of its own health")
 end)
 
+-- A voice's affiliation, which the speech rules answer by first
+-- (content/scripts/responserules/<affiliation>.txt): HL2's sides.
+T.test("each voice belongs to the Combine or the rebels", function()
+	T.eq(type(Voices.COMBINE) == "string" and type(Voices.REBEL) == "string" and Voices.COMBINE ~= Voices.REBEL, true, "two sides")
+	local function Of(model) return Voices.For(model).affiliation end
+	T.eq(Of("models/player/combine_soldier.mdl"), Voices.COMBINE, "a Combine soldier")
+	T.eq(Of("models/player/police.mdl"), Voices.COMBINE, "a metrocop")
+	T.eq(Of("models/player/group03/male_04.mdl"), Voices.REBEL, "a rebel")
+	T.eq(Of("models/player/group03/female_02.mdl"), Voices.REBEL, "a rebel woman")
+	T.eq(Of("models/player/alyx.mdl"), Voices.REBEL, "Alyx")
+	T.eq(Of("models/vortigaunt.mdl"), Voices.REBEL, "a vortigaunt fights with the rebels")
+end)
+
 T.finish()

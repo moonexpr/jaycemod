@@ -3,8 +3,9 @@
 -- metrocops' model), from HL2's own sounds, every one found in the game's
 -- files. DrGBase plays the deaths (its nextbots' OnDeathSounds); the soldier
 -- plays a hit's grunt or cry (Feedback) and a hurtful fall's cry itself
--- (ws/sh_drg_soldier.lua). A voice is { name (what the speech rules call
--- it: foundation.aiwar.speech), grunt, pain, death, fall = { path... } }.
+-- (ws/sh_drg_soldier.lua). A voice is { name, affiliation (what the speech
+-- rules call it and its side: foundation.aiwar.speech), grunt, pain, death,
+-- fall = { path... } }.
 local format, ipairs, lower, match = string.format, ipairs, string.lower, string.match
 module(...)
 
@@ -16,11 +17,17 @@ end
 
 -- A rebel's sharpest cries of pain stand for its death: HL2's citizens have
 -- no death lines of their own.
+-- HL2's sides, a voice's affiliation: the speech rules answer by it first
+-- (addons/responserules: scripts/responserules/<affiliation>.txt), so a
+-- model of either side fits whichever team it fights for.
+COMBINE, REBEL = "combine", "rebel"
+
 -- A human's fall that hurts is the HL2 player's.
 local FALL = { "player/pl_fallpain1.wav", "player/pl_fallpain3.wav" }
 
 local MALE = {
 	name = "male",
+	affiliation = REBEL,
 	grunt = Numbered("vo/npc/male01/pain0%d.wav", { 1, 2, 3 }),
 	pain = Numbered("vo/npc/male01/pain0%d.wav", { 1, 2, 3, 4, 5, 6 }),
 	death = Numbered("vo/npc/male01/pain0%d.wav", { 7, 8, 9 }),
@@ -28,6 +35,7 @@ local MALE = {
 }
 local FEMALE = {
 	name = "female",
+	affiliation = REBEL,
 	grunt = Numbered("vo/npc/female01/pain0%d.wav", { 1, 2, 3 }),
 	pain = Numbered("vo/npc/female01/pain0%d.wav", { 1, 2, 3, 4, 5, 6 }),
 	death = Numbered("vo/npc/female01/pain0%d.wav", { 7, 8, 9 }),
@@ -35,14 +43,16 @@ local FEMALE = {
 }
 local ALYX = {
 	name = "alyx",
+	affiliation = REBEL,
 	grunt = Numbered("vo/npc/alyx/hurt0%d.wav", { 4, 5 }),
 	pain = Numbered("vo/npc/alyx/hurt0%d.wav", { 4, 5, 6, 8 }),
 	death = { "vo/npc/alyx/uggh01.wav", "vo/npc/alyx/uggh02.wav", "vo/npc/alyx/gasp02.wav", "vo/npc/alyx/gasp03.wav" },
 	fall = FALL,
 }
 -- The Combine's and the metrocops' cries are all short: a grunt is any.
-local COMBINE = {
+local COMBINE_SOLDIER = {
 	name = "combine",
+	affiliation = COMBINE,
 	grunt = Numbered("npc/combine_soldier/pain%d.wav", { 1, 2, 3 }),
 	pain = Numbered("npc/combine_soldier/pain%d.wav", { 1, 2, 3 }),
 	death = Numbered("npc/combine_soldier/die%d.wav", { 1, 2, 3 }),
@@ -50,6 +60,7 @@ local COMBINE = {
 }
 local METROCOP = {
 	name = "metrocop",
+	affiliation = COMBINE,
 	grunt = Numbered("npc/metropolice/pain%d.wav", { 1, 2, 3, 4 }),
 	pain = Numbered("npc/metropolice/pain%d.wav", { 1, 2, 3, 4 }),
 	death = Numbered("npc/metropolice/die%d.wav", { 1, 2, 3, 4 }),
@@ -58,6 +69,7 @@ local METROCOP = {
 -- HL2's vortigaunt has one cry of pain, and no death line.
 local VORTIGAUNT = {
 	name = "vortigaunt",
+	affiliation = REBEL,
 	grunt = { "npc/vort/vort_pain3.wav" },
 	pain = { "npc/vort/vort_pain3.wav" },
 	death = { "npc/vort/vort_pain3.wav" },
@@ -69,7 +81,7 @@ local BY_MODEL = {
 	{ "^models/player/group0%d/male_", MALE },
 	{ "^models/player/group0%d/female_", FEMALE },
 	{ "^models/player/alyx%.mdl$", ALYX },
-	{ "^models/player/combine_", COMBINE },
+	{ "^models/player/combine_", COMBINE_SOLDIER },
 	{ "^models/player/police", METROCOP },
 	{ "^models/vortigaunt", VORTIGAUNT },
 }

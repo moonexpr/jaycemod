@@ -1,0 +1,54 @@
+// The response rules' root file, loaded by the addon's autorun
+// (lua/autorun/server/responserules.lua) from scripts/responserules/ on the
+// GAME path, in the grammar of TF2's scripts/talker/response_rules.txt,
+// which documents it. The criteria the rules share are here, as in TF2's;
+// the rules themselves are by the speaker model's affiliation (HL2's sides),
+// one file each, included below (paths relative to scripts/).
+//
+// Not played here, and refused when loaded: scene and sentence lines,
+// predelay, weapondelay, stop_on_nonidle, displayfirst, displaylast,
+// applyContextToWorld.
+//
+// A speaker's criteria set, as Sandcastle's AI war gives it
+// (features/aiwar/sv_speech.lua, foundation.aiwar.speech):
+//   affiliation  combine, rebel (foundation.npc.voices)
+//   voice        combine, metrocop, male, female, alyx, vortigaunt
+//   teamrole     offense (the cart's own team), defense
+//   randomnum    0..100
+//   cartblocked  1 while the enemy holds the cart
+// plus the contexts its rules applied.
+
+// Concepts ---------------------------------------------------------------
+
+// the payload cart (team_train_watcher, as TF2's raises them)
+criterion "ConceptCartMovingForward" "Concept" "TLK_CART_MOVING_FORWARD" required
+criterion "ConceptCartMovingStopped" "Concept" "TLK_CART_STOP" required
+criterion "ConceptCartMovingBackward" "Concept" "TLK_CART_MOVING_BACKWARD" required
+
+// Chances (randomnum, 0..100) ------------------------------------------------
+
+criterion "10PercentChance" "randomnum" ">90" required
+criterion "25PercentChance" "randomnum" ">75" required
+criterion "50PercentChance" "randomnum" ">50" required
+criterion "75PercentChance" "randomnum" ">25" required
+
+// The cart -------------------------------------------------------------------
+
+criterion "IsOnOffense" "teamrole" "offense" required
+criterion "IsOnDefense" "teamrole" "defense" required
+// TF2 says only "stop" when the enemy cuts the cart off; here that has rules
+// of its own, weighted past a voice's own plain stop
+criterion "CartBlocked" "cartblocked" "1" required weight 2
+
+// said in this role within 20 s (each rule's ApplyContext)
+criterion "NotSaidCartMovingForwardO" "SaidCartMovingForwardO" "!=1" required weight 0
+criterion "NotSaidCartMovingForwardD" "SaidCartMovingForwardD" "!=1" required weight 0
+criterion "NotSaidCartMovingBackwardO" "SaidCartMovingBackwardO" "!=1" required weight 0
+criterion "NotSaidCartMovingBackwardD" "SaidCartMovingBackwardD" "!=1" required weight 0
+criterion "NotSaidCartMovingStoppedO" "SaidCartMovingStoppedO" "!=1" required weight 0
+criterion "NotSaidCartMovingStoppedD" "SaidCartMovingStoppedD" "!=1" required weight 0
+
+// Speakers, by affiliation -------------------------------------------------------
+
+#include "responserules/combine.txt"
+#include "responserules/rebel.txt"

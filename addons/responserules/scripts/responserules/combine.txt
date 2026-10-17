@@ -1,0 +1,270 @@
+// Combine: the cart rules for the Combine's models: its soldiers, its metrocops.
+// A model answers by its affiliation first, whichever team it fights for:
+// each situation has a rule for the affiliation (placeholder lines, shown
+// with responserules_debug 1), and one for each voice with lines of its own,
+// which outscores it by its voice criterion. A new model of the Combine
+// speaks by these rules as soon as foundation.npc.voices gives it its affiliation.
+// The criteria the cart's situations share are in response_rules.txt.
+
+criterion "IsCombine" "affiliation" "combine" required
+criterion "IsSoldierVoice" "voice" "combine" required
+criterion "IsMetrocopVoice" "voice" "metrocop" required
+
+// CartMovingForwardOffense: the cart's moving: keep pushing
+response CartMovingForwardOffenseCombine
+{
+	print "Combine: the cart's moving: keep pushing" defaultdelay
+}
+rule CartMovingForwardOffenseCombine
+{
+	criteria ConceptCartMovingForward IsOnOffense IsCombine NotSaidCartMovingForwardO 75PercentChance
+	ApplyContext "SaidCartMovingForwardO:1:20"
+	response CartMovingForwardOffenseCombine
+}
+response CartMovingForwardOffenseCombineSoldier
+{
+	speak "npc/combine_soldier/vo/movein.wav" defaultdelay
+	speak "npc/combine_soldier/vo/sweepingin.wav" defaultdelay
+	speak "npc/combine_soldier/vo/closing.wav" defaultdelay
+}
+rule CartMovingForwardOffenseCombineSoldier
+{
+	criteria ConceptCartMovingForward IsOnOffense IsCombine NotSaidCartMovingForwardO 75PercentChance IsSoldierVoice
+	ApplyContext "SaidCartMovingForwardO:1:20"
+	response CartMovingForwardOffenseCombineSoldier
+}
+response CartMovingForwardOffenseCombineMetrocop
+{
+	speak "npc/metropolice/vo/moveit.wav" defaultdelay
+	speak "npc/metropolice/vo/allunitsmovein.wav" defaultdelay
+}
+rule CartMovingForwardOffenseCombineMetrocop
+{
+	criteria ConceptCartMovingForward IsOnOffense IsCombine NotSaidCartMovingForwardO 75PercentChance IsMetrocopVoice
+	ApplyContext "SaidCartMovingForwardO:1:20"
+	response CartMovingForwardOffenseCombineMetrocop
+}
+
+// CartMovingForwardDefense: they're moving the cart
+response CartMovingForwardDefenseCombine
+{
+	print "Combine: they're moving the cart" defaultdelay
+}
+rule CartMovingForwardDefenseCombine
+{
+	criteria ConceptCartMovingForward IsOnDefense IsCombine NotSaidCartMovingForwardD 75PercentChance
+	ApplyContext "SaidCartMovingForwardD:1:20"
+	response CartMovingForwardDefenseCombine
+}
+response CartMovingForwardDefenseCombineSoldier
+{
+	speak "npc/combine_soldier/vo/contact.wav" defaultdelay
+	speak "npc/combine_soldier/vo/engaging.wav" defaultdelay
+}
+rule CartMovingForwardDefenseCombineSoldier
+{
+	criteria ConceptCartMovingForward IsOnDefense IsCombine NotSaidCartMovingForwardD 75PercentChance IsSoldierVoice
+	ApplyContext "SaidCartMovingForwardD:1:20"
+	response CartMovingForwardDefenseCombineSoldier
+}
+response CartMovingForwardDefenseCombineMetrocop
+{
+	speak "npc/metropolice/vo/lookout.wav" defaultdelay
+	speak "npc/metropolice/vo/backup.wav" defaultdelay
+}
+rule CartMovingForwardDefenseCombineMetrocop
+{
+	criteria ConceptCartMovingForward IsOnDefense IsCombine NotSaidCartMovingForwardD 75PercentChance IsMetrocopVoice
+	ApplyContext "SaidCartMovingForwardD:1:20"
+	response CartMovingForwardDefenseCombineMetrocop
+}
+
+// CartMovingBackwardsOffense: the cart's rolling back
+response CartMovingBackwardsOffenseCombine
+{
+	print "Combine: the cart's rolling back" defaultdelay
+}
+rule CartMovingBackwardsOffenseCombine
+{
+	criteria ConceptCartMovingBackward IsOnOffense IsCombine NotSaidCartMovingBackwardO 75PercentChance
+	ApplyContext "SaidCartMovingBackwardO:1:20"
+	response CartMovingBackwardsOffenseCombine
+}
+response CartMovingBackwardsOffenseCombineSoldier
+{
+	speak "npc/combine_soldier/vo/heavyresistance.wav" defaultdelay
+	speak "npc/combine_soldier/vo/coverhurt.wav" defaultdelay
+}
+rule CartMovingBackwardsOffenseCombineSoldier
+{
+	criteria ConceptCartMovingBackward IsOnOffense IsCombine NotSaidCartMovingBackwardO 75PercentChance IsSoldierVoice
+	ApplyContext "SaidCartMovingBackwardO:1:20"
+	response CartMovingBackwardsOffenseCombineSoldier
+}
+response CartMovingBackwardsOffenseCombineMetrocop
+{
+	speak "npc/metropolice/vo/officerneedsassistance.wav" defaultdelay
+	speak "npc/metropolice/vo/takecover.wav" defaultdelay
+}
+rule CartMovingBackwardsOffenseCombineMetrocop
+{
+	criteria ConceptCartMovingBackward IsOnOffense IsCombine NotSaidCartMovingBackwardO 75PercentChance IsMetrocopVoice
+	ApplyContext "SaidCartMovingBackwardO:1:20"
+	response CartMovingBackwardsOffenseCombineMetrocop
+}
+
+// CartMovingBackwardsDefense: their cart's rolling back
+response CartMovingBackwardsDefenseCombine
+{
+	print "Combine: their cart's rolling back" defaultdelay
+}
+rule CartMovingBackwardsDefenseCombine
+{
+	criteria ConceptCartMovingBackward IsOnDefense IsCombine NotSaidCartMovingBackwardD 75PercentChance
+	ApplyContext "SaidCartMovingBackwardD:1:20"
+	response CartMovingBackwardsDefenseCombine
+}
+response CartMovingBackwardsDefenseCombineSoldier
+{
+	speak "npc/combine_soldier/vo/affirmative.wav" defaultdelay
+	speak "npc/combine_soldier/vo/containmentproceeding.wav" defaultdelay
+}
+rule CartMovingBackwardsDefenseCombineSoldier
+{
+	criteria ConceptCartMovingBackward IsOnDefense IsCombine NotSaidCartMovingBackwardD 75PercentChance IsSoldierVoice
+	ApplyContext "SaidCartMovingBackwardD:1:20"
+	response CartMovingBackwardsDefenseCombineSoldier
+}
+response CartMovingBackwardsDefenseCombineMetrocop
+{
+	speak "npc/metropolice/vo/affirmative.wav" defaultdelay
+	speak "npc/metropolice/vo/movealong.wav" defaultdelay
+}
+rule CartMovingBackwardsDefenseCombineMetrocop
+{
+	criteria ConceptCartMovingBackward IsOnDefense IsCombine NotSaidCartMovingBackwardD 75PercentChance IsMetrocopVoice
+	ApplyContext "SaidCartMovingBackwardD:1:20"
+	response CartMovingBackwardsDefenseCombineMetrocop
+}
+
+// CartMovingStoppedOffense: the cart's stopped: back on it
+response CartMovingStoppedOffenseCombine
+{
+	print "Combine: the cart's stopped: back on it" defaultdelay
+}
+rule CartMovingStoppedOffenseCombine
+{
+	criteria ConceptCartMovingStopped IsOnOffense IsCombine NotSaidCartMovingStoppedO 75PercentChance
+	ApplyContext "SaidCartMovingStoppedO:1:20"
+	response CartMovingStoppedOffenseCombine
+}
+response CartMovingStoppedOffenseCombineSoldier
+{
+	speak "npc/combine_soldier/vo/stayalert.wav" defaultdelay
+	speak "npc/combine_soldier/vo/gosharp.wav" defaultdelay
+}
+rule CartMovingStoppedOffenseCombineSoldier
+{
+	criteria ConceptCartMovingStopped IsOnOffense IsCombine NotSaidCartMovingStoppedO 75PercentChance IsSoldierVoice
+	ApplyContext "SaidCartMovingStoppedO:1:20"
+	response CartMovingStoppedOffenseCombineSoldier
+}
+
+// CartMovingStoppedDefense: we've stopped the cart
+response CartMovingStoppedDefenseCombine
+{
+	print "Combine: we've stopped the cart" defaultdelay
+}
+rule CartMovingStoppedDefenseCombine
+{
+	criteria ConceptCartMovingStopped IsOnDefense IsCombine NotSaidCartMovingStoppedD 75PercentChance
+	ApplyContext "SaidCartMovingStoppedD:1:20"
+	response CartMovingStoppedDefenseCombine
+}
+response CartMovingStoppedDefenseCombineSoldier
+{
+	speak "npc/combine_soldier/vo/copy.wav" defaultdelay
+}
+rule CartMovingStoppedDefenseCombineSoldier
+{
+	criteria ConceptCartMovingStopped IsOnDefense IsCombine NotSaidCartMovingStoppedD 75PercentChance IsSoldierVoice
+	ApplyContext "SaidCartMovingStoppedD:1:20"
+	response CartMovingStoppedDefenseCombineSoldier
+}
+response CartMovingStoppedDefenseCombineMetrocop
+{
+	speak "npc/metropolice/vo/holdit.wav" defaultdelay
+}
+rule CartMovingStoppedDefenseCombineMetrocop
+{
+	criteria ConceptCartMovingStopped IsOnDefense IsCombine NotSaidCartMovingStoppedD 75PercentChance IsMetrocopVoice
+	ApplyContext "SaidCartMovingStoppedD:1:20"
+	response CartMovingStoppedDefenseCombineMetrocop
+}
+
+// CartBlockedOffense: they've cut the cart off
+response CartBlockedOffenseCombine
+{
+	print "Combine: they've cut the cart off" defaultdelay
+}
+rule CartBlockedOffenseCombine
+{
+	criteria ConceptCartMovingStopped IsOnOffense IsCombine NotSaidCartMovingStoppedO 75PercentChance CartBlocked
+	ApplyContext "SaidCartMovingStoppedO:1:20"
+	response CartBlockedOffenseCombine
+}
+response CartBlockedOffenseCombineSoldier
+{
+	speak "npc/combine_soldier/vo/contact.wav" defaultdelay
+	speak "npc/combine_soldier/vo/suppressing.wav" defaultdelay
+	speak "npc/combine_soldier/vo/flush.wav" defaultdelay
+}
+rule CartBlockedOffenseCombineSoldier
+{
+	criteria ConceptCartMovingStopped IsOnOffense IsCombine NotSaidCartMovingStoppedO 75PercentChance CartBlocked IsSoldierVoice
+	ApplyContext "SaidCartMovingStoppedO:1:20"
+	response CartBlockedOffenseCombineSoldier
+}
+response CartBlockedOffenseCombineMetrocop
+{
+	speak "npc/metropolice/vo/getdown.wav" defaultdelay
+	speak "npc/metropolice/vo/backup.wav" defaultdelay
+}
+rule CartBlockedOffenseCombineMetrocop
+{
+	criteria ConceptCartMovingStopped IsOnOffense IsCombine NotSaidCartMovingStoppedO 75PercentChance CartBlocked IsMetrocopVoice
+	ApplyContext "SaidCartMovingStoppedO:1:20"
+	response CartBlockedOffenseCombineMetrocop
+}
+
+// CartBlockedDefense: we're holding their cart
+response CartBlockedDefenseCombine
+{
+	print "Combine: we're holding their cart" defaultdelay
+}
+rule CartBlockedDefenseCombine
+{
+	criteria ConceptCartMovingStopped IsOnDefense IsCombine NotSaidCartMovingStoppedD 75PercentChance CartBlocked
+	ApplyContext "SaidCartMovingStoppedD:1:20"
+	response CartBlockedDefenseCombine
+}
+response CartBlockedDefenseCombineSoldier
+{
+	speak "npc/combine_soldier/vo/containmentproceeding.wav" defaultdelay
+}
+rule CartBlockedDefenseCombineSoldier
+{
+	criteria ConceptCartMovingStopped IsOnDefense IsCombine NotSaidCartMovingStoppedD 75PercentChance CartBlocked IsSoldierVoice
+	ApplyContext "SaidCartMovingStoppedD:1:20"
+	response CartBlockedDefenseCombineSoldier
+}
+response CartBlockedDefenseCombineMetrocop
+{
+	speak "npc/metropolice/vo/holdit.wav" defaultdelay
+}
+rule CartBlockedDefenseCombineMetrocop
+{
+	criteria ConceptCartMovingStopped IsOnDefense IsCombine NotSaidCartMovingStoppedD 75PercentChance CartBlocked IsMetrocopVoice
+	ApplyContext "SaidCartMovingStoppedD:1:20"
+	response CartBlockedDefenseCombineMetrocop
+}

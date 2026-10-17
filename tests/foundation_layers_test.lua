@@ -27,7 +27,6 @@ local CATEGORY = {
 	["core/cfsm"] = "formalisms",
 	["core/hfsm"] = "formalisms",
 	["core/map_io"] = "formalisms",
-	["core/response"] = "formalisms",
 	["rounds"] = "formalisms",
 	["rounds/state"] = "formalisms",
 	-- teams is a label here, not a classification. There is no file-level
