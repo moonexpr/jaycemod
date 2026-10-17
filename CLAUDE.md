@@ -94,10 +94,10 @@ Module names are `foundation.core.<path>`; tests are
 | `hfsm` | NextBot Action/Behavior engine: `Action`, `Chart{ name, port, events, queries, initial }` → `State(name)`, `Owns`, `New(actor, state)` → a machine: `Update`, `Event`, `Query`, `Describe` |
 | `map_io` | A map's entity lookups and output connections, through a world port |
 | `tactics` | The tactics engine interface: `ENGINE` (a port), `Check(engine)` |
-| `scheduler` | `New(clock)` → cooperative tasks in a time slice: `Spawn(fn, ...)`, `Run(seconds)`, `CheckYield` (in a task: yield once the slice is spent), `Yield`, `Count` |
+| `scheduler` | `New(clock)` → cooperative tasks in a time slice: `Spawn(fn, ...)`, `Run(seconds)`, `CheckYield` (in a task: yield once the slice is spent), `Yield`, `Wait(ready)` (park until ready), `Count`. `WS.Transactions` is each realm's, run every tick |
 | `analytics` | Timers, counters, tick pressure, memory samples; clock and memory are ports |
 | `memory` | `Measure(roots)` → estimated bytes per named root (each object once); `Format(report, rows)`. `ws_analytics_memory` runs it over the loaded foundation modules |
-| `refusal` | `Raise(kind, detail)`, `Is`, `Message`, `Explain`, `Detail`: a request declined for the caller's mistake |
+| `transaction` | Exchanges between user and system or between modules, settling once as committed (value), declined (a refusal: the caller's mistake) or failed (our bug). Refusals: `Refuse(kind, detail)`, `IsRefusal(err, kinds)`, `Message`, `Explain`, `Detail`. `New()` → `Commit`/`Decline`/`Fail`, `State`, `Value`, `Refusal`, `Error`, `OnSettle`, `Await(scheduler)` (in a task); `Run(fn, ...)`, `Spawn(scheduler, fn, ...)` with `fn(work, ...)` and `work:Undo(fn)` compensations; `All(list)`. Wire: `Ledger()` (`Open`, `Settle`, `Expire`, `Count`), `Reply(tx[, kinds])`. Over the network: `WS.Events.Transact` (client) and `WS.Events.Serve` (server), events defined with `transaction = true` |
 
 ### Variants outside core
 
