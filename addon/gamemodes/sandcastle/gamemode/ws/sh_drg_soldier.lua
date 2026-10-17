@@ -10,6 +10,8 @@
 --
 -- On clients, the heal beams of medics (their "WSHealing" target).
 local GOAL_TOLERANCE = 32
+-- m_lifeState of a living entity (shareddefs.h); GMod names none.
+local LIFE_ALIVE = 0
 
 -- Tracing (ws_aiwar_trace): a soldier with NSTrace set prints
 -- every query it asks its orders, with the answer, and every event it tells
@@ -231,6 +233,39 @@ function WS.DrgSoldier(ENT, baseName)
 
 	function ENT:OnDeath(dmg)
 		if self:NSClientRagdoll(dmg) then self:PauseCoroutine(Ragdoll.HANDOFF) end
+		if self.NSDormant then self:NSRest() end
+	end
+
+	-- Kept for a respawn wave (the AI war's reserve sets NSDormant as the
+	-- soldier falls): after the clients' ragdoll handoff the body is hidden
+	-- and not solid, and DrGBase's death coroutine waits here instead of
+	-- going on to remove it, until NSRevive gives the soldier a new one.
+	local function SetShown(self, shown)
+		self:SetNoDraw(not shown)
+		for _, child in ipairs(self:GetChildren()) do child:SetNoDraw(not shown) end
+	end
+
+	function ENT:NSRest()
+		SetShown(self, false)
+		self:SetNotSolid(true)
+		while true do coroutine.yield() end
+	end
+
+	-- A wave revives a kept body where it spawns its soldiers: at full
+	-- health, seen and solid, alive to the engine and to DrGBase, with a fresh
+	-- behaviour coroutine in place of the death one.
+	function ENT:NSRevive(pos, ang)
+		self.NSDormant = nil
+		self:SetPos(pos)
+		self:SetAngles(ang)
+		self:SetNW2Bool("DrGBaseDying", false)
+		self:SetNW2Bool("DrGBaseDead", false)
+		self:SetSaveValue("m_lifeState", LIFE_ALIVE)
+		self:SetHealth(self:GetMaxHealth())
+		self:SetNotSolid(false)
+		SetShown(self, true)
+		self.BehaveThread = nil
+		self:BehaveStart()
 	end
 end
 

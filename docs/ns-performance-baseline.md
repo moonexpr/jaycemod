@@ -155,6 +155,96 @@ Where Lua's time goes (15v15, JIT on, share of the server thread):
 | 4.0 % | DrGBase detection (`detection.lua:173`, `SpotEntity`) |
 | 2.3 % | cart riders (`CarrySeated` → `SetPos`) |
 
+## Treatments A and B: a 2×2 experiment
+
+- **Treatment A**, `mp_aiwar_revive_enabled 1`
+  (`features/aiwar/reserve.lua`, `sv_reserve.lua`): a soldier the respawn
+  system drafted that falls while waves run lies dormant (`NSRest`, hidden
+  and not solid, its DrGBase death coroutine held before the removal), and
+  the next wave revives the same entity (`NSRevive`) instead of creating
+  one. Admins' and players' soldiers die as before.
+- **Treatment B**, `ws_jit_enabled 0` (`ws/sv_jit.lua`): LuaJIT's compiler
+  off for the whole server.
+
+Run with `.devtools/bin/experiment_2x2.lua`: 15v15 at mid-game on
+pl_upward, 60 s blocks in ABBA order (control, A, B, AB, AB, B, A, control),
+the first 10 s of each block left out, CPU sampled twice per block. Times in
+ms.
+
+| # | Cond. | Tick p95 | >50 ms ticks | Deaths | Drafts (revived) | Draft mean / max | Worst wave | Lua share | CPU |
+|---|---|---|---|---|---|---|---|---|---|
+| 1 | control | 54.4 | 284 | 32 | 29 (0) | 58.5 / 115 | 331 | 92.7 % | 100.7 / 89.2 |
+| 2 | A | 38.1 | 131 | 20 | 22 (22) | 44.6 / 77 | 163 | 84.8 % | 94.0 / 99.3 |
+| 3 | B | 17.3 | 19 | 15 | 15 (0) | 53.3 / 82 | 142 | 42.6 % | 45.8 / 48.2 |
+| 4 | AB | 50.8 | 232 | 18 | 17 (17) | 35.3 / 70 | 107 | 60.7 % | 47.2 / 68.6 |
+| 5 | AB | 17.4 | 24 | 13 | 14 (14) | 47.2 / 62 | 177 | 42.8 % | 45.8 / 46.3 |
+| 6 | B | 18.6 | 123 | 14 | 15 (0) | 58.0 / 113 | 143 | 50.4 % | 46.7 / 75.6 |
+| 7 | A | 37.2 | 46 | 12 | 11 (11) | 55.7 / 66 | 130 | 63.2 % | 70.7 / 52.3 |
+| 8 | control | 35.9 | 28 | 5 | 5 (0) | 83.0 / 92 | 93 | 66.6 % | 71.1 / 80.9 |
+
+By condition (mean of its two blocks; drafts weighted by count):
+
+| Cond. | Tick p95 | Lua share | CPU | Draft mean |
+|---|---|---|---|---|
+| control | 45.2 | 79.7 % | 85.5 | 62.1 |
+| A | 37.7 | 74.0 % | 79.1 | 48.3 |
+| B | 18.0 | 46.5 % | 54.1 | 55.7 |
+| AB | 34.1 | 51.8 % | 52.0 | 40.7 |
+
+- **B is the large effect**, as G to J found: Lua's share of the server
+  thread falls from about 80 % to about 47 %, CPU from about 85 % to about
+  54 %, and the tick p95 from 45 to 18 ms. With the JIT off the VM runs
+  interpreted (9 to 14 %), never compiled.
+- **A makes a respawn about a quarter cheaper**: a draft costs 48 ms
+  against 62 with the JIT on, and 41 against 56 with it off. Every draft in
+  the A and AB blocks was a revive (64 of 64). A revive still costs 35 to
+  56 ms, so most of a respawn's cost is not the entity's creation. It is
+  `Enlist` (relationships, slot, squad, orders), which experiment K measured
+  at 57 ms with `RelateToFactions` 28 of it. Waves still hitch for 100 to
+  180 ms.
+- **Interaction:** none clear. A's saving looks similar on both JIT
+  settings.
+- **Caution:** the fighting tapered off over the session (32 deaths in the
+  first block, 5 in the last). ABBA cancels steady drift, but two blocks
+  per condition settle only the large effects. Block 4 (AB, 232 long ticks)
+  and block 6 (B, 123) are outliers the treatments don't explain.
+
+## Treatment C: what batching route searches could share
+
+Before building batched solvers, this measures how much requests could share.
+Every Lua route request was captured for 180 s at the same mid-game, after
+the 2×2 experiment: its source, team, start and goal nav areas, when it was
+asked and answered, its expansions, and whether it found the goal.
+
+The soldiers' route cost (`npc.path.hl2` → `tfbot`) is additive per step and
+does not depend on the soldier: they ask for the fastest route, so the
+per-soldier scatter (`entIndex`, `now`) drops out, and `fromCostSoFar` is
+only the running total. It depends on the team (spawn rooms, a round won),
+the limits, and `avoid` (under the cart, doors shut to the team). So
+requests of one team to one goal area could share a single search back from
+the goal, which gives every start its exact best route. The independent
+groups are therefore the distinct (source, team, goal area) keys.
+
+| Measure | Result |
+|---|---|
+| Requests | 144 (0.8 per s): soldiers 121, lane legs 23, gates 0 |
+| Expansions | 113,230: soldiers 85,892 (about 710 each, 3 not found); lanes 27,338 (about 1,190 each, **19 of 23 not found**) |
+| Sharing, same goal key | 1 s windows: 1.5 requests for 1.4 keys (1.07×); 5 s: 4.2 for 3.1 (1.35×); 15 s: 12 for 5.7 (2.1×) |
+| Sharing, goals within 256 / 768 u | 3.1 / 2.6 clusters per 5 s window (against 4.2 requests) |
+| Independent groups at once | up to 4 searches running, never sharing a goal key: 4 solvers would cover the peak |
+| Re-plans | **41 of 121** soldier requests (34 %) were the same soldier asking for the same goal area again within 5 s |
+| Request to answer | median 0.15 s, p90 2.0 s, worst 5.1 s |
+
+- Grouping by shared goal saves little at this load: about 1.1× within a
+  second, about 1.35× within 5 s.
+- The larger savings are elsewhere: a third of soldier searches repeat one
+  the same soldier asked moments before, and lane legs spend a quarter of
+  all expansions mostly failing.
+- **Limit:** the fighting had quietened by then (see the 2×2 caution).
+  Earlier windows saturated the search queue (3 to 4 ms per tick), so these
+  numbers should be measured again in a busy phase, such as a round start
+  or a fight over a point.
+
 ## Reproducing
 
 ```

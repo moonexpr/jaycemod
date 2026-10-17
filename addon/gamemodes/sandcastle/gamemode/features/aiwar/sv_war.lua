@@ -183,6 +183,7 @@ end
 -- the engine's AI alone.
 function Controller:End()
 	if not self.war then return false, "no war is on" end
+	self:DisbandReserve()
 	local entries = {}
 	for ent, entry in pairs(self.soldiers) do entries[#entries + 1] = { ent = ent, entry = entry } end
 	for _, e in ipairs(entries) do

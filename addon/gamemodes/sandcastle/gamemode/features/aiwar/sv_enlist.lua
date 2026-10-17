@@ -185,15 +185,20 @@ end
 
 -- Spawning ------------------------------------------------------------------------
 
+-- A recruit: a body the reserve kept, revived (sv_reserve.lua), else a new
+-- entity.
 function Controller:Draft(team, pos, ang)
 	local draft = self.war:Draft(team)
 	local recruit = draft.recruit
-	local ent = ents.Create(recruit.class)
-	if not IsValid(ent) then return end
-	ent:SetPos(pos + SPAWN_LIFT)
-	ent:SetAngles(ang)
-	ent:Spawn()
-	ent:Activate()
+	local ent = self:Revive(team, recruit.class, pos + SPAWN_LIFT, ang)
+	if ent == nil then
+		ent = ents.Create(recruit.class)
+		if not IsValid(ent) then return end
+		ent:SetPos(pos + SPAWN_LIFT)
+		ent:SetAngles(ang)
+		ent:Spawn()
+		ent:Activate()
+	end
 	self:Enlist(ent, team, true, draft.role)
 end
 
@@ -225,6 +230,7 @@ end
 -- stage's), and their orders start over. The round's winner, the bases and
 -- the posts are the last round's, and the scenario starts the round afresh.
 function Controller:RespawnAll()
+	self:DisbandReserve()
 	self:SweepGadgets(nil, true)
 	self.lanePlans, self.laneSets = nil, nil
 	self.gates = nil
@@ -386,6 +392,8 @@ end
 hook.Add("OnNPCKilled", "ws_aiwar", function(ent, attacker)
 	if not Controller.war then return end
 	Controller:Fallen(ent, attacker)
+	local entry = Controller.soldiers[ent]
+	if entry then Controller:Retire(ent, WaveLength(entry.soldier.team)) end
 	Controller:Discharge(ent)
 end)
 
