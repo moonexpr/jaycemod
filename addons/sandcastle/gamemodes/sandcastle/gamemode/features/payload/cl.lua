@@ -70,7 +70,8 @@ local SINGLE = {
 	pointSize = 28, pointY = 111, homeX = 59,
 	cartSize = 40, cartY = 85, cartBelowY = nil,
 	alertX = -24, alertY = 46, alertW = 60, alertH = 30,
-	indicatorY = 90, indicatorSize = 10,
+	-- Blocked's and CapNumPlayers' middle: 10 below EscortItemImage's top
+	indicatorY = 95, indicatorSize = 10,
 }
 -- ObjectiveStatusMultipleEscort.res and the escort's if_multiple_trains: a
 -- race, each team's track, BLU's cart above it and RED's below.
@@ -80,7 +81,8 @@ local RACE = {
 	pointSize = 12, pointY = 114, homeX = 59, homeSize = 14, homeY = 113,
 	cartSize = 30, cartY = 91, cartBelowY = 119,
 	alertX = -21, alertY = 79, alertW = 60, alertH = 30,
-	indicatorY = 94, indicatorBelowY = 131, indicatorSize = 8,
+	-- if_multiple_trains: 7 below EscortItemImage's top
+	indicatorY = 98, indicatorBelowY = 131, indicatorSize = 8,
 }
 -- The second team's track sits this much below the first's in a race.
 local RACE_TRACK_GAP = 16
@@ -147,6 +149,12 @@ local function DrawPoints(cart, L, ox, oy, u, race, opaque, dy)
 	end
 end
 
+-- The pushers' icon and count, in indicator sizes from the cart's middle, as
+-- CapPlayerImage (7 left, 6 by 12, 1 above the middle) and CapNumPlayers
+-- (west-aligned from 1 left) sit in ObjectiveStatusEscort.res.
+local CAPPERS_ICON_X, CAPPERS_ICON_Y, CAPPERS_ICON_W, CAPPERS_ICON_H = -0.7, -0.7, 0.6, 1.2
+local CAPPERS_TEXT_X = -0.1
+
 -- What Hud.Indicator says, centred at cx, cy: blocked, rolling back, the
 -- pushers (the capture icon and their count), or the rollback countdown.
 local function DrawIndicator(cart, cx, cy, size, u)
@@ -156,8 +164,9 @@ local function DrawIndicator(cart, cx, cy, size, u)
 	elseif shown.backwards then
 		Image("hud/cart_arrow_left", cx - size / 2, cy - size / 2, size, size)
 	elseif shown.cappers then
-		Image("vgui/capture_icon_white", cx - size * 0.3, cy - size * 0.6, size * 0.6, size * 1.2)
-		draw.SimpleText("x" .. shown.cappers, CAPPERS_FONT, cx + size * 0.4, cy, TAN_LIGHT, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
+		Image("vgui/capture_icon_white", cx + size * CAPPERS_ICON_X, cy + size * CAPPERS_ICON_Y,
+			size * CAPPERS_ICON_W, size * CAPPERS_ICON_H)
+		draw.SimpleText("x" .. shown.cappers, CAPPERS_FONT, cx + size * CAPPERS_TEXT_X, cy, TAN_LIGHT, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
 	elseif shown.recede then
 		draw.SimpleText(tostring(shown.recede), CAPPERS_FONT, cx, cy, TAN_LIGHT, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 	end
