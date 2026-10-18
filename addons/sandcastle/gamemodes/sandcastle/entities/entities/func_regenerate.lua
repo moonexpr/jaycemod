@@ -1,8 +1,9 @@
 -- func_regenerate (CRegenerateZone): the resupply locker volume. A player it
 -- serves (its team, or during team win the winners at every locker, never
 -- in a stalemate) is resupplied at most once every 3 seconds
--- (CTFPlayer::Regenerate), hears Regenerate.Touch alone, and the locker prop
--- opens, then closes a second before the next use.
+-- (CTFPlayer::Regenerate), takes the loadout equipped now, hears
+-- Regenerate.Touch alone, and the locker prop opens, then closes a second
+-- before the next use.
 ENT.Type = "brush"
 ENT.Base = "ws_brush_volume"
 
@@ -25,8 +26,10 @@ function ENT:Think()
 	return true
 end
 
--- CRegenerateZone::Regenerate
+-- CRegenerateZone::Regenerate: the loadout equipped now (TF2's locker
+-- applies a loadout changed since spawning), then everything refilled.
 function ENT:Regenerate(ply)
+	WS.RestockLoadout(ply)
 	WS.RegeneratePlayer(ply)
 	ply.wsNextRegen = CurTime() + NEXT_USE_TIME
 	WS.PlaySoundTo(ply, ply, SOUND)

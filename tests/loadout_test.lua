@@ -325,4 +325,33 @@ T.test("a loadout and a catalog made before a rerun of the model run its new met
 	T.eq(catalog.Weapon, Rerun.NewCatalog({}).Weapon, "the catalog's methods")
 end)
 
+T.test("a resupply swaps the store weapons held for the ones equipped now", function()
+	local catalog = Catalog()
+	local shotgun = catalog:Weapon("shotgun")
+	local loadout = Loadout.Starting(catalog):Buy(shotgun):Equip(Loadout.SLOT_PRIMARY, shotgun)
+	local strip, give = loadout:Restock({ "smg", "pistol", "crowbar", "grenade", "weapon_physgun" })
+	T.eq(table.concat(strip, ","), "smg", "the primary no longer equipped")
+	T.eq(table.concat(give, ","), "shotgun", "the primary equipped since")
+end)
+
+T.test("a resupply leaves a loadout already held, and anything outside the store, alone", function()
+	local loadout = Loadout.Starting(Catalog())
+	local strip, give = loadout:Restock({ "gmod_tool", "smg", "pistol", "crowbar", "grenade", "weapon_frag" })
+	T.eq(#strip, 0, "nothing to strip")
+	T.eq(#give, 0, "nothing to give")
+end)
+
+T.test("a resupply gives back a weapon the player lost, in slot order", function()
+	local strip, give = Loadout.Starting(Catalog()):Restock({ "crowbar" })
+	T.eq(#strip, 0)
+	T.eq(table.concat(give, ","), "smg,pistol,grenade", "primary, secondary, support")
+end)
+
+T.test("a resupply strips a store weapon owned but cleared from its slot", function()
+	local loadout = Loadout.Starting(Catalog()):Clear(Loadout.SLOT_SUPPORT1)
+	local strip, give = loadout:Restock({ "smg", "pistol", "crowbar", "grenade" })
+	T.eq(table.concat(strip, ","), "grenade")
+	T.eq(#give, 0)
+end)
+
 T.finish()

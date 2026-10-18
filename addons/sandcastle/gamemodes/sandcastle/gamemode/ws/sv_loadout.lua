@@ -100,22 +100,52 @@ E.Listen("system_client_ready", "ws_loadout", function(_, ply)
 	E.Fire("game_loadout_stats", { weapons = Stats() }, ply)
 end)
 
--- The equipped weapons, slot by slot, with reserve ammo; the first is
--- drawn. With the economy off, everyone gets the starter loadout.
+-- With the economy off, everyone has the starter loadout.
+local function Carried(ply)
+	return WS.EconomyEnabled() and Of(ply) or Loadout.Starting(CATALOG)
+end
+
+-- A weapon with its reserve ammo.
+local function Give(ply, class)
+	local given = ply:Give(class)
+	if IsValid(given) and given:GetPrimaryAmmoType() >= 0 then
+		ply:GiveAmmo(math.max(given:GetMaxClip1(), 1) * RESERVE_CLIPS, given:GetPrimaryAmmoType(), true)
+	end
+end
+
+-- The equipped weapons, slot by slot; the first is drawn.
 function WS.GiveLoadout(ply)
 	local first
-	local loadout = WS.EconomyEnabled() and Of(ply) or Loadout.Starting(CATALOG)
+	local loadout = Carried(ply)
 	for _, s in ipairs(Loadout.SLOTS) do
 		local weapon = loadout:Equipped(s.slot)
 		if weapon then
-			local given = ply:Give(weapon.class)
-			if IsValid(given) and given:GetPrimaryAmmoType() >= 0 then
-				ply:GiveAmmo(math.max(given:GetMaxClip1(), 1) * RESERVE_CLIPS, given:GetPrimaryAmmoType(), true)
-			end
+			Give(ply, weapon.class)
 			first = first or weapon.class
 		end
 	end
 	if first then ply:SelectWeapon(first) end
+end
+
+-- A resupply locker's touch (func_regenerate): the store's weapons the
+-- player holds become the loadout equipped now (Loadout:Restock), so a
+-- change made since spawning takes effect without dying. The weapon in hand
+-- stays drawn if it is still equipped, else the first equipped is.
+function WS.RestockLoadout(ply)
+	local held = {}
+	for _, wep in ipairs(ply:GetWeapons()) do held[#held + 1] = wep:GetClass() end
+	local loadout = Carried(ply)
+	local strip, give = loadout:Restock(held)
+	if #strip == 0 and #give == 0 then return end
+	local active = ply:GetActiveWeapon()
+	local activeClass = IsValid(active) and active:GetClass() or nil
+	for _, class in ipairs(strip) do ply:StripWeapon(class) end
+	for _, class in ipairs(give) do Give(ply, class) end
+	if activeClass and ply:HasWeapon(activeClass) then return end
+	for _, s in ipairs(Loadout.SLOTS) do
+		local weapon = loadout:Equipped(s.slot)
+		if weapon then return ply:SelectWeapon(weapon.class) end
+	end
 end
 
 hook.Add("EntityRemoved", "ws_loadout", function(ent) loadouts[ent] = nil end)

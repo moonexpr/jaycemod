@@ -268,6 +268,28 @@ function Loadout:BuyInto(slot, weapon)
 end
 
 -- A new player's: the catalog's starters, owned and in their slots.
+-- A resupply (TF2's locker takes a loadout changed since spawning): held is
+-- the classes a player holds now. strip is the store's weapons among them
+-- that no slot holds any more; give is each equipped weapon not held, in
+-- slot order. A class the catalog does not list is never touched.
+function Loadout:Restock(held)
+	local holding, equipped = {}, {}
+	for _, class in ipairs(held) do holding[class] = true end
+	local give = {}
+	for _, s in ipairs(SLOTS) do
+		local class = self.equipped[s.slot]
+		if class then
+			equipped[class] = true
+			if not holding[class] then give[#give + 1] = class end
+		end
+	end
+	local strip = {}
+	for _, class in ipairs(held) do
+		if self.catalog.byClass[class] and not equipped[class] then strip[#strip + 1] = class end
+	end
+	return strip, give
+end
+
 function Starting(catalog)
 	local loadout = New(catalog, {}, {})
 	for _, weapon in ipairs(catalog:Weapons()) do
