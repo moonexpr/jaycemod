@@ -20,6 +20,10 @@ T.test("the variant comes from the rounds mode's name; any other is freeform", f
 	-- a mode the war does not know, or none, is fought freeform (aiwar_freeform_test.lua)
 	T.eq(Scenario.For("none"), T.require("foundation.aiwar.scenario.freeform").Scenario, "an unknown mode")
 	T.eq(Scenario.For(nil), T.require("foundation.aiwar.scenario.freeform").Scenario, "no rounds")
+	-- CTF and MvM have no doctrine of their own: their maps are explored and fought freeform
+	local Freeform = T.require("foundation.aiwar.scenario.freeform").Scenario
+	T.eq(Scenario.For(T.require("features.flag.model").Mode.NAME), Freeform, "CTF")
+	T.eq(Scenario.For(T.require("features.mvm.model").Mode.NAME), Freeform, "MvM")
 	T.eq(Payload.Scenario.NAME, Payload.MODE, "the payload variant is named for its mode")
 end)
 

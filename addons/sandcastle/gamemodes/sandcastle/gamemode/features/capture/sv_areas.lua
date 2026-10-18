@@ -46,7 +46,17 @@ function Controller:BindArea(ent, kv)
 		state = Area.New(NOBODY),
 		watcher = NULL,
 		lastInput = nil,
+		-- trigger_timer_door's door_name: the door the capture opens
+		doorName = kv.door_name or "",
 	}
+end
+
+-- CTriggerTimerDoor: a capture opens its door as it starts and closes it
+-- if it breaks (mvm_mannhattan's gates).
+local function DoorInput(a, input)
+	if a.doorName == "" then return end
+	local door = WS.FindByName(a.doorName)
+	if IsValid(door) then door:Fire(input) end
 end
 
 function Controller:UnbindArea(ent)
@@ -168,6 +178,7 @@ local AREA_EVENTS = {
 	start = function(self, a, point, e)
 		FireTeamOutput(a.ent, "OnStart", e.team)
 		a.ent:TriggerOutput("OnStartCap", a.ent)
+		DoorInput(a, "Open")
 	end,
 	capturestart = function(self, a, point, e) CaptureStarted(self, point, e.team) end,
 	numcappers = function(self, a, point, e) SetNumCappers(a, e.n, e.blocked) end,
@@ -178,6 +189,7 @@ local AREA_EVENTS = {
 	["break"] = function(self, a, point, e)
 		FireTeamOutput(a.ent, "OnBreak", e.team)
 		a.ent:TriggerOutput("OnBreakCap", a.ent)
+		DoorInput(a, "Close")
 	end,
 	["end"] = function(self, a, point, e)
 		FireTeamOutput(a.ent, "OnCap", e.team)

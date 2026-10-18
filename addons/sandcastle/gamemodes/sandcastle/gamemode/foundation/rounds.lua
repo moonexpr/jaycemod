@@ -370,6 +370,10 @@ Mode = {
 	-- The map has an objective that decides its rounds, so the round limits
 	-- (foundation.rounds.limits) are off: none here, the base mode's.
 	OBJECTIVE = false,
+	-- A flag captured scores for its team toward tf_flag_caplimit (CTF).
+	FLAG_CAPS_SCORE = false,
+	-- A flag is carried by its own team, not its enemies (MvM's bomb).
+	FLAG_OWNERS_CARRY = false,
 }
 Mode.__index = Mode
 
