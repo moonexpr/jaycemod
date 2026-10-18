@@ -1,10 +1,37 @@
 -- The Debug NextSoldier panel (Utilities > Sandcastle): showing and clearing
--- every debug view at once, and the console reports that cover the whole
--- war, and a checkbox for each part the overlay draws. Each NPC's own
--- debugging (selecting it, printing its behavior, tracing it, and the
--- layers one by one) is on its context menu: hold C and right-click it
--- (ws/cl_nb_menu.lua).
+-- every debug view at once, the console reports that cover the whole war,
+-- a checkbox for each layer drawn for every NPC (the overlay itself, paths,
+-- behavior: the server's layers, so each box follows what the server says
+-- through WSNbDebugState), and a checkbox for each part the overlay draws,
+-- in a section for each of its groups: NextSoldier's AI and the tactics
+-- engine's planning; ticking a part turns the overlay on, so it shows. Each
+-- NPC's own debugging (selecting it, printing its behavior, tracing it, the
+-- layers drawn for it alone) is on its context menu: hold C and
+-- right-click it (ws/cl_nb_menu.lua).
 local Overlay = WS.require("foundation.ns.overlay")
+local Debug = WS.require("foundation.npc.debug")
+
+-- The layers with a box here, in order: those drawn for every NPC.
+local LAYERS = { Debug.AIWAR, Debug.PATH, Debug.BEHAVIOR }
+local LAYER_LABELS = {
+	[Debug.AIWAR] = "Show the NextSoldier overlay",
+	[Debug.PATH] = "Paths: each NPC's last path search",
+	[Debug.BEHAVIOR] = "Behavior: each NPC's action stack",
+}
+
+-- What the server last said this player's view shows, and the panel's boxes.
+local shown, layerBoxes = {}, {}
+
+hook.Add("WSNbDebugState", "ws_ns_debug", function(layers)
+	shown = layers
+	for layer, box in pairs(layerBoxes) do
+		if IsValid(box) then box:SetChecked(shown[layer] == true) end
+	end
+end)
+
+local function ShowOverlayOnTick(_, checked)
+	if checked and not shown[Debug.AIWAR] then RunConsoleCommand("ws_nb_debug", Debug.AIWAR) end
+end
 
 -- Every NextBot layer and the overlay with all its parts.
 local function ShowAll()
@@ -28,8 +55,20 @@ local function BuildPanel(panel)
 	panel:Button("Show All").DoClick = ShowAll
 	panel:Button("Clear All").DoClick = ClearAll
 
-	panel:Help("What the NextSoldier overlay draws")
-	for _, part in ipairs(Overlay.PARTS) do panel:CheckBox(Overlay.LABELS[part], Overlay.ConVar(part)) end
+	-- not convars: ws_nb_debug toggles a layer, and the server's answer sets its box
+	for _, layer in ipairs(LAYERS) do
+		local box = panel:CheckBox(LAYER_LABELS[layer])
+		box:SetChecked(shown[layer] == true)
+		box.OnChange = function(_, checked)
+			if checked ~= (shown[layer] == true) then RunConsoleCommand("ws_nb_debug", layer) end
+		end
+		layerBoxes[layer] = box
+	end
+
+	for _, group in ipairs(Overlay.GROUPS) do
+		panel:Help(group.name .. ": what the overlay draws")
+		for _, part in ipairs(group.parts) do panel:CheckBox(Overlay.LABELS[part], Overlay.ConVar(part)).OnChange = ShowOverlayOnTick end
+	end
 
 	panel:Help("Console reports, while the war runs")
 	panel:Button("Print Soldiers", "ws_aiwar_report")

@@ -68,8 +68,9 @@ T.test("the menu toggles and the panel checks every part of the overlay, and the
 	local view = T.RealmSource("nbdebug", "cl")
 	local Overlay = T.require("foundation.ns.overlay")
 	T.eq(menu:find("Check(parts, Overlay.LABELS[part]", 1, true) ~= nil, true, "a toggle per part")
-	T.eq(panel:find("for _, part in ipairs(Overlay.PARTS) do panel:CheckBox(Overlay.LABELS[part], Overlay.ConVar(part))", 1, true) ~= nil,
-		true, "a checkbox per part")
+	T.eq(panel:find("for _, group in ipairs(Overlay.GROUPS) do", 1, true) ~= nil, true, "a section per group")
+	T.eq(panel:find("for _, part in ipairs(group.parts) do panel:CheckBox(Overlay.LABELS[part], Overlay.ConVar(part))", 1, true) ~= nil,
+		true, "a checkbox per part, in its group's section")
 	for _, part in ipairs(Overlay.PARTS) do
 		T.eq(type(Overlay.LABELS[part]), "string", "a label for " .. part)
 		T.eq(view:find("Shows(Parts." .. part:upper() .. ")", 1, true) ~= nil, true, "the overlay reads " .. part)
@@ -102,6 +103,22 @@ T.test("the slot list debugs a soldier with the same menu its NPC's own context 
 	T.eq(debug:find("WS.NpcDebugMenu(", 1, true) ~= nil, true, "the NPC's menu is the shared one")
 	T.eq(slots:find("WS.NpcDebugMenu(", 1, true) ~= nil, true, "so is the slot list's")
 	T.eq(slots:find("WS.NpcSelectOption(", 1, true) ~= nil, true, "and its selection toggle")
+end)
+
+T.test("the panel turns the overlay and the every-NPC layers on and off, its boxes kept to what the server says", function()
+	local panel = ReadFile(PANEL)
+	T.eq(panel:find('RunConsoleCommand("ws_nb_debug", layer)', 1, true) ~= nil, true, "toggles a layer")
+	for _, layer in ipairs({ "AIWAR", "PATH", "BEHAVIOR" }) do
+		T.eq(panel:find("[Debug." .. layer .. "]", 1, true) ~= nil, true, "a box for " .. layer)
+	end
+	T.eq(panel:find('hook.Add("WSNbDebugState", "ws_ns_debug"', 1, true) ~= nil, true, "hears the layers shown")
+end)
+
+T.test("ticking a part of the overlay turns the overlay on, so the part shows", function()
+	local panel = ReadFile(PANEL)
+	T.eq(panel:find("panel:CheckBox(Overlay.LABELS[part], Overlay.ConVar(part)).OnChange = ShowOverlayOnTick", 1, true) ~= nil,
+		true, "each part's box")
+	T.eq(panel:find("if checked and not shown[Debug.AIWAR] then", 1, true) ~= nil, true, "only when it is off")
 end)
 
 T.finish()

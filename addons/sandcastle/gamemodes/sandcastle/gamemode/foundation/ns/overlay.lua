@@ -18,6 +18,22 @@ LABELS = {
 	[BATTLELINES] = "Battle lines: posts, fronts and cart spheres",
 }
 
+-- The parts by whose thinking they show, each a section of the Debug
+-- NextSoldier panel: NextSoldier's AI (its soldiers, squads, and the lanes
+-- and battle lines it plans the field with) and the tactics engine's
+-- planning (foundation.wartactics: each fire team's contact, flank point
+-- and cover).
+GROUPS = {
+	{
+		name = "NextSoldier AI",
+		parts = { SOLDIERS, SQUADS, LANES, BATTLELINES },
+	},
+	{
+		name = "Tactics engine planning",
+		parts = { CONTACTS },
+	},
+}
+
 -- "ns_lanes_debug"
 function ConVar(part)
 	return "ns_" .. part .. "_debug"
