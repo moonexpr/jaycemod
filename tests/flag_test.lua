@@ -243,4 +243,30 @@ T.test("MvM's panel shows one bomb on the left, a carried one first", function()
 	T.eq(Flag.Slots({ Shown(BLUE, Flag.HOME, false), waiting }, true)[Flag.SLOT_BLUE], waiting, "an enabled bomb")
 end)
 
+-- CTF's time limit: the team with more captures wins, by them; even
+-- captures leave it to the scores (a tie of both: sudden death).
+T.test("at the time limit the team with more captures wins", function()
+	local W = Rounds.WINREASON
+	local winner, reason = Flag.Mode:TimelimitWin({
+		scores = { [Teams.RED] = 2, [Teams.BLUE] = 0 },
+		captures = { [Teams.RED] = 1, [Teams.BLUE] = 3 },
+	})
+	T.eq(winner, Teams.BLUE, "most captures")
+	T.eq(reason, W.MOST_CAPTURES, "won by them")
+	winner, reason = Flag.Mode:TimelimitWin({
+		scores = { [Teams.RED] = 2, [Teams.BLUE] = 0 },
+		captures = { [Teams.RED] = 1, [Teams.BLUE] = 1 },
+	})
+	T.eq(winner, Teams.RED, "even captures: the scores")
+	T.eq(reason, W.TIMELIMIT, "by points")
+end)
+
+-- CFuncRespawnRoom::RespawnRoomTouch: a carrier running into its own team's
+-- respawn room drops the flag; another team's room, or one of no team, no.
+T.test("a carrier in its own team's respawn room drops the flag", function()
+	T.eq(Flag.DropsIn(Teams.RED, Teams.RED), true, "its own")
+	T.eq(Flag.DropsIn(Teams.BLUE, Teams.RED), false, "the enemy's")
+	T.eq(Flag.DropsIn(Teams.UNASSIGNED, Teams.RED), false, "no team's")
+end)
+
 T.finish()

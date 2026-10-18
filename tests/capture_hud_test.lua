@@ -60,6 +60,7 @@ T.test("the icons give the bottom centre to payload's cart HUD, as TF2's escort 
 	T.eq(Hud.Shown(Rounds.HUD_PAYLOAD), false, "payload")
 	T.eq(Hud.Shown(Rounds.HUD_CONTROL_POINTS), true, "control points")
 	T.eq(Hud.Shown(Rounds.HUD_KOTH), true, "koth")
+	T.eq(Hud.Shown(Rounds.HUD_DEATHMATCH), false, "a deathmatch: frags alone")
 	T.eq(Hud.Shown(Rounds.HUD_NONE), true, "a round without a HUD type")
 end)
 

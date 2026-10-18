@@ -172,6 +172,15 @@ function Soldier:IsDisarmed() return self.disarmed == true end
 -- healing: the handle Heal was last given (nil: stopped).
 function Soldier:Heal(handle) self.healing = handle end
 
+-- kits: the health kits it may take ({ pos, handle }; default none);
+-- burning: on fire; medicCalls: the times it called for a medic.
+function Soldier:HealthKits() return self.kits or {} end
+function Soldier:Burning() return self.burning == true end
+function Soldier:CallMedic()
+	self.medicCalls = self.medicCalls or {}
+	self.medicCalls[#self.medicCalls + 1] = self.now
+end
+
 function Soldier:Hold()
 	self.holding = true
 	self.moving = self.pos

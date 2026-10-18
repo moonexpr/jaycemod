@@ -26,11 +26,19 @@ local REASON_TEXT = {
 	[WINREASON.FRAGLIMIT] = "%s reached the frag limit",
 	[WINREASON.CASHLIMIT] = "%s reached the cash limit",
 }
+-- Winreason_FlagCaptureLimit(_One): a CTF win, at the capture limit or by
+-- the most captures at the time limit, counts them.
+local CAPTURES_TEXT = "%s captured the enemy intelligence %d times"
+local CAPTURE_TEXT = "%s captured the enemy intelligence %d time"
+local BY_CAPTURES = {
+	[WINREASON.FLAG_CAPTURE_LIMIT] = true,
+	[WINREASON.MOST_CAPTURES] = true,
+}
 -- Winreason_Arena: an arena round's elimination is no sudden death.
 local ARENA_ELIMINATION = "%s killed all opponents"
 
 -- info = { winner, reason, fullRound, remaining (areas left for the winner),
--- arena (the round was arena's) }
+-- arena (the round was arena's), captures (the winner's, for a CTF win) }
 function WinPanel(info)
 	if info.winner < FIRST_GAME_TEAM then
 		return {
@@ -50,9 +58,13 @@ function WinPanel(info)
 	end
 	local text = REASON_TEXT[info.reason]
 	if info.arena and info.reason == WINREASON.OPPONENTS_DEAD then text = ARENA_ELIMINATION end
+	local reason = text and string.format(text, team) or nil
+	if BY_CAPTURES[info.reason] then
+		reason = string.format(info.captures == 1 and CAPTURE_TEXT or CAPTURES_TEXT, team, info.captures)
+	end
 	local panel = {
 		title = title,
-		reason = text and string.format(text, team) or nil,
+		reason = reason,
 	}
 	if not info.fullRound and info.reason ~= WINREASON.STALEMATE then
 		panel.details = info.remaining .. (info.remaining == 1 and " more area to win" or " more areas to win")
@@ -83,6 +95,12 @@ function SuddenDeathNote(reason)
 	return string.format("%s %s", panel.title, panel.reason)
 end
 
+-- Deathmatch's start (foundation.rounds' Deathmatch): the tied match's
+-- bonus round, won at fraglimit frags.
+function DeathmatchNote(fraglimit)
+	return string.format("DEATHMATCH! The match is tied: the first team to %d frags wins it.", fraglimit)
+end
+
 -- The flash beside the timer when time is added (game_teamplay_timer_time_added).
 function TimeAdded(seconds)
 	local sign = seconds < 0 and "-" or "+"
@@ -106,6 +124,7 @@ DISPLAY_ROUND = "round" -- the round's own timer
 DISPLAY_GAME_OVER = "game_over" -- the match won: the countdown to the next map
 DISPLAY_CAP_UNLOCK = "cap_unlock" -- arena: the countdown to the point unlocking
 DISPLAY_SETUP = "setup" -- arena: its setup's countdown (no team_round_timer has it)
+DISPLAY_MAP = "map" -- no round timer: the map's time left under mp_timelimit (CTFHudTimeStatus)
 
 -- The label under the clock. The transition's is the operator's word as
 -- written; the round's are TF2's, in capitals.
@@ -130,11 +149,13 @@ end
 -- setup, overtime, gameOverEnd (ws_game_over_end: when the won
 -- match's map changes, 0 before), setupEnd (arena: when its setup ends,
 -- else 0), capUnlockEnd (arena: when the point unlocks while the round waits
--- for it, else 0), left (the round timer's seconds) }. The countdown to
+-- for it, else 0), matchEnd (ws_match_time_end: when mp_timelimit runs out,
+-- 0 without one), left (the round timer's seconds) }. The countdown to
 -- Gameplay mode wins while it runs, then the won match's to its map
 -- change, on any map; then, while the rounds run, an arena's setup, then
 -- its countdown to the point unlocking (with or without a round timer of
--- its own), else the round's timer. Returns { kind, left, label }.
+-- its own), else the round's timer, else (a map without one, as ctf_2fort)
+-- the map's time left. Returns { kind, left, label }.
 function TimerDisplay(q)
 	if q.transitionEnd > q.now then
 		return {
@@ -165,7 +186,14 @@ function TimerDisplay(q)
 			label = LABEL_CAP_UNLOCK,
 		}
 	end
-	if not q.shown or q.koth then return nil end
+	if q.koth then return nil end
+	if not q.shown then
+		if q.matchEnd <= q.now then return nil end
+		return {
+			kind = DISPLAY_MAP,
+			left = q.matchEnd - q.now,
+		}
+	end
 	return {
 		kind = DISPLAY_ROUND,
 		left = q.left,

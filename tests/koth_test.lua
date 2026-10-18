@@ -345,7 +345,6 @@ T.test("the koth mode extends control points and outranks it and payload", funct
 	T.eq(mode.HUD, Rounds.HUD_KOTH, "the koth HUD")
 	T.eq(mode.CREATES_TIME_LIMIT_TIMER, false, "no time limit timer (CreateTimeLimitTimer)")
 	T.eq(mode.ANNOUNCES_TIME_ADDED, false, "AddTimerSeconds is silent in koth")
-	T.eq(mode.SCORE_CHIME_TO_ALL, false, "the chime to the team")
 	local round = Rounds.New(SETTINGS)
 	round:SetMode(ControlPoints.Mode)
 	T.eq(round:SetMode(Koth.Mode), true, "koth over control points")

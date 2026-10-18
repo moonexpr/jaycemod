@@ -54,4 +54,12 @@ T.test("a noise carries further the louder it is, and half as far unseen", funct
 	T.eq(Noise.Hears(75, 1, range, true, 0), false, "deaf")
 end)
 
+-- Steps and landings play louder than Source's own volumes, to be heard over
+-- the fighting: twice as loud, never past full.
+T.test("a step plays twice as loud as Source's, at most full volume", function()
+	T.eq(Noise.Played(0.2), 0.4, "a walk")
+	T.eq(Noise.Played(0.5), 1, "a run: full")
+	T.eq(Noise.Played(0.85), 1, "never past full")
+end)
+
 T.finish()

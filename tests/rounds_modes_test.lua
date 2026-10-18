@@ -74,7 +74,6 @@ T.test("the control points mode", function()
 	T.eq(CP.HUD, Rounds.HUD_CONTROL_POINTS, "the point HUD")
 	T.eq(CP.CREATES_TIME_LIMIT_TIMER, true, "a time limit timer")
 	T.eq(CP.ANNOUNCES_TIME_ADDED, true, "time added is announced")
-	T.eq(CP.SCORE_CHIME_TO_ALL, false, "the score chime goes to the cappers")
 	T.eq(CP:MayWinByPoints(RED, { timerMayExpire = false }), true, "owning every point wins at once")
 end)
 
@@ -85,7 +84,6 @@ T.test("the base mode's defaults", function()
 	T.eq(m.HUD, Rounds.HUD_NONE, "no HUD")
 	T.eq(m.CREATES_TIME_LIMIT_TIMER, true, "time limit timer")
 	T.eq(m.ANNOUNCES_TIME_ADDED, true, "announces time added")
-	T.eq(m.SCORE_CHIME_TO_ALL, false, "chime to the cappers")
 	T.eq(m:MayWinByPoints(RED, { timerMayExpire = true }), true, "may win")
 	T.eq(#m:CapSounds(RED, {
 		wouldWinGame = false,

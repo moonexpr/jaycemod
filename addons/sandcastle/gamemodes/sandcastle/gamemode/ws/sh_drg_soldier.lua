@@ -8,7 +8,8 @@
 -- and suffered). With a target, the soldier walks it whatever else it does,
 -- fighting on the way; without one it is left to DrGBase.
 --
--- On clients, the heal beams of medics (their "WSHealing" target).
+-- On clients, the heal beams of medics (their "WSHealing" target) are
+-- ws/cl_medic_effects.lua's.
 local GOAL_TOLERANCE = 32
 -- m_lifeState of a living entity (shareddefs.h); GMod names none.
 local LIFE_ALIVE = 0
@@ -19,13 +20,20 @@ local LEAP_INSET, LEAP_RETRY = 2, 1
 -- The sound level of its steps and landings (PlayStepSound's SNDLVL_NORM),
 -- as the soldiers in earshot hear them (NSNotice), and of its grunts and cries.
 local STEP_LEVEL, VOICE_LEVEL = 75, 75
--- How its steps and landings play to players: louder than a player's, to be
--- heard over the fighting, farther (the level) and harder (the gain, at
--- most full volume).
-local STEP_PLAY_LEVEL, STEP_PLAY_GAIN = 85, 2
+-- How its steps and landings play to players: farther than a player's (the
+-- level) and as loud as theirs (Noise.Played), the step sound of the surface
+-- under it, left foot then right, as a player's are (so TF2's own, through
+-- ws/sh_soundscripts.lua). STEP_REACH: how far down it looks for the surface.
+local STEP_PLAY_LEVEL, STEP_REACH = 85, 64
 
+-- volume: as it plays (Noise.Played).
 local function PlayStep(self, volume)
-	self:EmitStep(STEP_PLAY_LEVEL, 100, math.min(1, volume * STEP_PLAY_GAIN))
+	local pos = self:GetPos()
+	local tr = util.TraceLine({ start = pos, endpos = pos - Vector(0, 0, STEP_REACH), filter = self, mask = MASK_PLAYERSOLID })
+	local surface = util.GetSurfaceData(tr.SurfaceProps)
+	self.NSLeftFoot = not self.NSLeftFoot
+	local sound = self.NSLeftFoot and surface.stepLeftSound or surface.stepRightSound
+	self:EmitSound(sound, STEP_PLAY_LEVEL, 100, volume, CHAN_BODY)
 end
 
 -- Tracing (ws_aiwar_trace): a soldier with NSTrace set prints
@@ -48,6 +56,7 @@ function WS.DrgSoldier(ENT, baseName)
 	local HL2Path = WS.require("foundation.npc.path.hl2")
 	local Leap = WS.require("foundation.npc.leap")
 	local Noise = WS.require("foundation.npc.noise")
+	local Arms = WS.require("foundation.aiwar.arms")
 	local SILENT = { grunt = {}, pain = {}, death = {}, fall = {} }
 
 	local function Base() return baseclass.Get(baseName) end
@@ -80,21 +89,52 @@ function WS.DrgSoldier(ENT, baseName)
 		Say(self, self.NSVoiceLines[Voices.Feedback(damage, self:GetMaxHealth())])
 	end
 
-	-- Each think: its footsteps, timed by its speed as a player's are
-	-- (Noise.Step), and in the air, how fast it is falling (for its landing).
+	-- How often a soldier with an enemy checks it holds the weapon for the
+	-- enemy's distance (NSArm).
+	local ARM_INTERVAL = 0.25
+
+	-- Each think: the weapon for its enemy's distance, every ARM_INTERVAL;
+	-- its footsteps, timed by its speed as a player's are (Noise.Step), and
+	-- in the air, how fast it is falling (for its landing).
 	function ENT:CustomThink()
 		if self.NSDormant then return end
+		local now = CurTime()
+		if now >= (self.NSNextArm or 0) and self:HasEnemy() then
+			self.NSNextArm = now + ARM_INTERVAL
+			self:NSArm(self:GetEnemy())
+		end
 		local velocity = self.loco:GetVelocity()
 		if not self:IsOnGround() then
 			self.NSFallSpeed = math.max(self.NSFallSpeed or 0, -velocity.z)
 			return
 		end
-		local now = CurTime()
 		local step = Noise.Step(velocity:Length2D(), self.IsCrouching ~= nil and self:IsCrouching())
 		if step and now >= (self.NSNextStep or 0) then
-			PlayStep(self, step.volume)
+			PlayStep(self, Noise.Played(step.volume))
 			self.NSNextStep = now + step.interval
 		end
+	end
+
+	-- Holds its loadout's weapon for the enemy's distance (Arms.Choose).
+	function ENT:NSArm(enemy)
+		local loadout = self.NSLoadout
+		if not loadout or not IsValid(enemy) then return end
+		local class = Arms.Choose(loadout, self:GetPos():Distance(enemy:GetPos()))
+		local active = self:GetActiveWeapon()
+		if not (IsValid(active) and active:GetClass() == class) then self:SelectWeapon(class) end
+	end
+
+	-- A weapon in hand: its ranges are the arms' (a gun fires at any enemy in
+	-- sight), in place of DrGBase's for the hold type; a weapon the arms do
+	-- not know keeps DrGBase's.
+	function ENT:OnWeaponChange(old, new)
+		local ranges = IsValid(new) and Arms.Ranges(new:GetClass())
+		if not ranges then return end
+		self.RangeAttackRange = ranges.attack
+		self.MeleeAttackRange = ranges.melee
+		self.ReachEnemyRange = ranges.chase
+		self.AvoidEnemyRange = ranges.avoid
+		return true
 	end
 
 	-- Its steps are timed (CustomThink), not the walk animation's.
@@ -114,7 +154,7 @@ function WS.DrgSoldier(ENT, baseName)
 		local volume = self.NSLeapt and Noise.JUMP_LANDING_VOLUME or Noise.Landing(fall)
 		self.NSFallSpeed, self.NSLeapt = 0, nil
 		if volume <= 0 then return end
-		PlayStep(self, volume)
+		PlayStep(self, Noise.Played(volume))
 		local landing = self:SelectWeightedSequence(ACT_LAND)
 		if landing and landing > 0 then self:AddGestureSequence(landing, true) end
 		if fall > Noise.MAX_SAFE_FALL_SPEED then
@@ -227,15 +267,34 @@ function WS.DrgSoldier(ENT, baseName)
 	end
 
 	-- ShouldAttack NO skips DrGBase's attack (the humiliated, a healing
-	-- medic), as does a freeze.
+	-- medic), as do a freeze and the reaction time to a new enemy
+	-- (NSReactAt, tf_bot_difficulty's).
 	function ENT:OnRangeAttack()
-		if self.NSFrozen then return true end
+		if self.NSFrozen or CurTime() < (self.NSReactAt or 0) then return true end
 		if Answered(Ask(self, "ShouldAttack", self:GetEnemy()), "ANSWER_NO") then return true end
 	end
 
-	function ENT:OnMeleeAttack()
+	-- DrGBase's human AI holds a melee weapon but never strikes with it: the
+	-- soldier strikes the enemy in reach for the weapon's damage, at its
+	-- pace (foundation.aiwar.arms), playing the melee swing.
+	function ENT:OnMeleeAttack(enemy, weapon)
 		if self.NSFrozen then return true end
 		if Answered(Ask(self, "ShouldAttack", self:GetEnemy()), "ANSWER_NO") then return true end
+		local arm = IsValid(weapon) and Arms.WEAPONS[weapon:GetClass()]
+		local now = CurTime()
+		if not (arm and arm.melee) or now < (self.NSNextStrike or 0) or not IsValid(enemy) then return true end
+		self.NSNextStrike = now + arm.interval
+		self:FaceTowards(enemy)
+		self:AddGesture(ACT_HL2MP_GESTURE_RANGE_ATTACK_MELEE)
+		local dmg = DamageInfo()
+		dmg:SetDamage(arm.damage)
+		dmg:SetDamageType(DMG_CLUB)
+		dmg:SetAttacker(self)
+		dmg:SetInflictor(weapon)
+		dmg:SetDamageForce(self:GetForward() * arm.damage * 100)
+		dmg:SetDamagePosition(enemy:WorldSpaceCenter())
+		enemy:TakeDamageInfo(dmg)
+		return true
 	end
 
 	-- SelectMoreDangerousThreat: true when a is the one to fight; nil leaves
@@ -245,6 +304,13 @@ function WS.DrgSoldier(ENT, baseName)
 		if pick == a then return true end
 		if pick == b then return false end
 		return nil
+	end
+
+	-- a NextBot has no ScaleNPCDamage: its hit's group, for a headshot's
+	-- crit (ws/sv_hits.lua)
+	function ENT:OnTraceAttack(dmg, dir, tr)
+		WS.TraceHit(self, tr.HitGroup)
+		return Base().OnTraceAttack(self, dmg, dir, tr)
 	end
 
 	function ENT:OnTakeDamage(dmg, hitgroup)
@@ -259,6 +325,8 @@ function WS.DrgSoldier(ENT, baseName)
 	-- a new enemy: its orders hear of it, and the AI war may have it call it
 	-- out (WSSoldierContact: features/aiwar/sv_speech.lua)
 	function ENT:OnNewEnemy(ent)
+		-- the weapon for it at once: it fires as it calls them out
+		self:NSArm(ent)
 		Tell(self, "OnContact", ent)
 		hook.Run("WSSoldierContact", self, ent)
 	end
@@ -333,10 +401,11 @@ function WS.DrgSoldier(ENT, baseName)
 		return self:HasEnemy()
 	end
 
-	-- The controller's kit for the soldier's job: { weapons (classes to
-	-- hold, the first it carries), avoid (classes not to hold, as a set, when
-	-- it has another), model, health (its most), damage (its damage scale),
-	-- runSpeed }; nil fields take the soldier's own.
+	-- The controller's kit for the soldier's job: { primary (classes, one
+	-- drawn), secondary, melee (foundation.aiwar.arms' Loadout: it carries
+	-- these three and nothing else, the primary in hand; a kit without them,
+	-- the vortigaunt's, leaves its arms alone), model, health (its most),
+	-- damage (its damage scale), runSpeed }; nil fields take the soldier's own.
 	function ENT:NSKit(kit)
 		self.NSOwnModel = self.NSOwnModel or self:GetModel()
 		local model = kit.model or self.NSOwnModel
@@ -344,20 +413,18 @@ function WS.DrgSoldier(ENT, baseName)
 			self:SetModel(model)
 			self:NSVoice()
 		end
-		local held
-		for _, class in ipairs(kit.weapons or {}) do
-			if self:HasWeapon(class) then
-				held = self:SelectWeapon(class)
-				break
+		if kit.primary then
+			local loadout = Arms.Loadout(kit, math.random)
+			local carried = {}
+			for _, class in ipairs(Arms.Classes(loadout)) do
+				carried[class] = true
+				self:GiveWeapon(class)
 			end
-		end
-		local active = self:GetActiveWeapon()
-		if not held and kit.avoid and IsValid(active) and kit.avoid[active:GetClass()] then
-			local others = {}
-			for class, weapon in pairs(self:GetWeapons()) do
-				if not kit.avoid[class] and IsValid(weapon) then others[#others + 1] = class end
+			for class in pairs(self:GetWeapons()) do
+				if not carried[class] then self:RemoveWeapon(class) end
 			end
-			if #others > 0 then self:SelectWeapon(others[math.random(#others)]) end
+			self.NSLoadout = loadout
+			self:SelectWeapon(loadout.primary)
 		end
 		local most = kit.health or self.SpawnHealth
 		if self:GetMaxHealth() ~= most then
@@ -461,27 +528,4 @@ end
 
 if SERVER then return end
 
--- Heal beams: from a medic ("WSHealing", set by the controller while
--- it heals) to its patient, a band of light in its side's colour with a
--- glow where it lands.
-local BEAM = Material("sprites/physbeam")
-local GLOW = Material("sprites/light_glow02_add")
-local BEAM_COLOR = { ws_drg_vortigaunt = Color(150, 255, 120), default = Color(120, 190, 255) }
-local BEAM_LIFT = Vector(0, 0, 16)
-
-hook.Add("PostDrawTranslucentRenderables", "ws_heal_beams", function(depth, skybox)
-	if skybox then return end
-	for _, medic in ipairs(ents.FindByClass("ws_drg_*")) do
-		local patient = medic:GetNW2Entity("WSHealing")
-		if IsValid(patient) then
-			local from = medic:WorldSpaceCenter() + BEAM_LIFT
-			local to = patient:WorldSpaceCenter()
-			local color = BEAM_COLOR[medic:GetClass()] or BEAM_COLOR.default
-			local pulse = 10 + math.sin(CurTime() * 8) * 3
-			render.SetMaterial(BEAM)
-			render.DrawBeam(from, to, pulse, CurTime() * 2, CurTime() * 2 + 1, color)
-			render.SetMaterial(GLOW)
-			render.DrawSprite(to, 40 + pulse * 2, 40 + pulse * 2, color)
-		end
-	end
-end)
+-- Heal beams and medic calls are TF2's, drawn by ws/cl_medic_effects.lua.

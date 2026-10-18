@@ -93,10 +93,45 @@ end
 
 -- Carrying the flag -------------------------------------------------------------------
 
+-- TF2 straps the case to its players' "flag" attachment; HL2's skeletons
+-- have none, so it rides their upper spine (CARRY_BONE), upright on the
+-- carrier's back BACK_DEPTH behind the bone, its flat face outward, and
+-- moves with the body (CarryBone). A carrier without that bone carries it
+-- at CARRY_OFFSET from its origin.
+local CARRY_BONE, BACK_DEPTH = "ValveBiped.Bip01_Spine2", 10
+
+-- The carry bone of each model, looked up once (false: the model has none):
+-- a player's as it spawns, any other carrier's model the first time it
+-- carries.
+local carryBones = {}
+
+local function CarryBone(carrier)
+	local model = carrier:GetModel()
+	if carryBones[model] == nil then carryBones[model] = carrier:LookupBone(CARRY_BONE) or false end
+	return carryBones[model] or nil
+end
+
+hook.Add("PlayerSpawn", THINK_HOOK, function(ply)
+	timer.Simple(0, function() if IsValid(ply) then CarryBone(ply) end end) -- once its model is set
+end)
+
 local function Carry(ent, carrier)
-	ent:SetParent(carrier)
-	ent:SetLocalPos(CARRY_OFFSET)
-	ent:SetLocalAngles(angle_zero)
+	local bone = CarryBone(carrier)
+	if not bone then
+		ent:SetParent(carrier)
+		ent:SetLocalPos(CARRY_OFFSET)
+		ent:SetLocalAngles(angle_zero)
+		return
+	end
+	carrier:SetupBones()
+	local bonePos, boneAng = carrier:GetBonePosition(bone)
+	local forward = carrier:GetForward()
+	-- the case's long side up, its thin side facing back
+	local pos, ang = bonePos - forward * BACK_DEPTH, carrier:GetUp():AngleEx(-forward)
+	ent:FollowBone(carrier, bone)
+	local localPos, localAng = WorldToLocal(pos, ang, bonePos, boneAng)
+	ent:SetLocalPos(localPos)
+	ent:SetLocalAngles(localAng)
 end
 
 -- On the ground under where the carrier stood.
@@ -164,6 +199,9 @@ function Controller:BindFlag(ent, kv)
 	self.flags[ent] = Flag.New(kv)
 	PublishFlag(ent, self.flags[ent])
 end
+
+-- tf_flag_caplimit: the captures that win (0: none).
+function Controller:CapLimit() return caplimit:GetInt() end
 
 function Controller:UnbindFlag(ent)
 	self.flags[ent] = nil
@@ -254,11 +292,25 @@ local function ZoneFor(self, carrier, team)
 	return nil
 end
 
+-- Whether carrier stands in an active respawn room the flag drops in
+-- (Flag.DropsIn: its own team's, unless it is MvM's invaders').
+local function InOwnRespawnRoom(carrier, team, invaders)
+	local point = carrier:WorldSpaceCenter()
+	for _, room in ipairs(ents.FindByClass("func_respawnroom")) do
+		if room.active and Flag.DropsIn(room.team, team, invaders) and room:PointIsWithin(point) then return true end
+	end
+	return false
+end
+
 local function ThinkFlag(self, ent, flag, now, q)
 	local carrier = flag:Carrier()
 	if flag:State() == Flag.CARRIED then
 		if not Alive(carrier) or WS.TeamNumber(carrier) ~= flag:CarrierTeam() then
 			Apply(self, ent, flag:Drop(now), IsValid(carrier) and carrier or ent)
+			return
+		end
+		if InOwnRespawnRoom(carrier, flag:CarrierTeam(), q.invaders) then
+			Apply(self, ent, flag:Drop(now), carrier)
 			return
 		end
 		local zone = ZoneFor(self, carrier, flag:CarrierTeam())
@@ -280,12 +332,29 @@ local function ThinkFlag(self, ent, flag, now, q)
 	end
 end
 
-function Controller:Think(now)
+-- What the mode lets a carrier do now (Flag:PickUp's q), and whose spawn
+-- rooms keep the flag (MvM's invaders).
+function Controller:Rules()
 	local mode = Mode()
-	local q = {
+	return {
 		ownersCarry = mode.FLAG_OWNERS_CARRY,
-		mayBeCapped = Flag.MayBeCapped(self.rounds:State()),
+		mayBeCapped = Flag.MayBeCapped(self.rounds:State(), self.rounds:InSetup(), mode.FLAG_WAITS_FOR_WAVE),
+		invaders = mode.FLAG_INVADERS,
 	}
+end
+
+-- CCaptureFlag::PickUp from outside the touch (CTFBotFetchFlag giving a
+-- robot that just spawned the bomb): carrier takes the flag if the rules
+-- let it. Returns whether it did.
+function Controller:Give(ent, carrier)
+	local events = self.flags[ent]:PickUp(carrier, WS.TeamNumber(carrier), self:Rules())
+	if #events == 0 then return false end
+	Apply(self, ent, events, carrier)
+	return true
+end
+
+function Controller:Think(now)
+	local q = self:Rules()
 	for ent, flag in pairs(self.flags) do
 		if IsValid(ent) then ThinkFlag(self, ent, flag, now, q) end
 	end

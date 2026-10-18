@@ -1,9 +1,12 @@
--- Part of the AI war controller (sv.lua): relationships, humiliation, and teammates passing through each other.
+-- Part of the AI war controller (sv.lua): relationships, humiliation,
+-- teammates passing through each other, and how well soldiers shoot
+-- (tf_bot_difficulty).
 local Controller, Map = ...
 local AiWar = WS.require("foundation.aiwar")
 local Rounds = WS.require("foundation.rounds")
 local Hearing = WS.require("foundation.aiwar.hearing")
 local Factions = WS.require("foundation.factions")
+local Marksmanship = WS.require("foundation.aiwar.marksmanship")
 local RED, BLUE = Map.RED, Map.BLUE
 local Point, PassThrough = Map.Point, Map.PassThrough
 
@@ -258,8 +261,40 @@ function Controller:PassTeammates(ent, team)
 	end
 end
 
+-- Marksmanship -----------------------------------------------------------------
+
+local DIFFICULTY = CreateConVar("tf_bot_difficulty", tostring(Marksmanship.DEFAULT), { FCVAR_ARCHIVE, FCVAR_NOTIFY },
+	"How well the AI war's soldiers shoot, on both teams: 0 easy, 1 normal, 2 hard, 3 expert", Marksmanship.EASY,
+	Marksmanship.EXPERT)
+
+local function Skill() return Marksmanship.For(DIFFICULTY:GetInt()) end
+
+-- A soldier's shot (its gun's or its own): turned off its aim and its
+-- spread widened by the difficulty. Whether the shot changed.
+function Controller:Marksman(ent, data)
+	local shooter = ent:IsWeapon() and ent:GetOwner() or ent
+	if not self.soldiers[shooter] then return false end
+	local skill = Skill()
+	if skill.aimError <= 0 and skill.spreadScale == 1 then return false end
+	local dir = Marksmanship.Aim(data.Dir:GetNormalized(), skill.aimError, math.random(), math.random())
+	data.Dir = Vector(dir.x, dir.y, dir.z)
+	local spread = Marksmanship.Spread(data.Spread or vector_origin, skill.spreadScale)
+	data.Spread = Vector(spread.x, spread.y, spread.z)
+	return true
+end
+
+-- A new enemy: no shot at it for the difficulty's reaction time
+-- (ws/sh_drg_soldier.lua's OnRangeAttack reads NSReactAt).
+hook.Add("WSSoldierContact", "ws_aiwar_reaction", function(ent)
+	if not Controller.soldiers[ent] then return end
+	ent.NSReactAt = CurTime() + Skill().reaction
+end)
+
 hook.Add("EntityFireBullets", "ws_aiwar", function(ent, data)
-	if Controller.war then Controller:HearShot(ent, data) end
+	if not Controller.war then return end
+	local changed = Controller:Marksman(ent, data)
+	Controller:HearShot(ent, data)
+	if changed then return true end
 end)
 
 hook.Add("WSRoundWin", "ws_aiwar", function(winner, reason)

@@ -23,6 +23,11 @@
 -- (WS.NavProgress, ws/sh_nav_progress.lua). Meanwhile, and while
 -- the engine's own nav_generate runs, new players are turned away
 -- (WS.NavJoinRefusal, asked by GM:CheckPassword in init.lua).
+--
+-- An idle server builds its own: empty IDLE_AFTER seconds after the map
+-- started (or as soon as it empties after that), with no mesh, it runs as
+-- the console's would, and goes back to Gameplay mode when it left it to
+-- generate, so the rounds and the next-map vote carry on.
 local Gamemode = WS.require("foundation.gamemode")
 local Doors = WS.require("foundation.npc.doors")
 local Progress = WS.require("foundation.nav_progress")
@@ -163,21 +168,21 @@ local function AnyDoorMoving()
 	return moving
 end
 
-concommand.Add("mp_nav_generate", function(ply)
-	if not WS.Can(ply, WS.require("foundation.permissions").RULES) then
-		Tell(ply, "Navigation mesh: you may not generate it")
-		return
-	end
+-- Generates the mesh for ply (nil: the console); resume: back to Gameplay
+-- mode after, when it was left for this. Whether it started.
+local function Generate(ply, resume)
 	if underWay or navmesh.IsGenerating() then
 		Tell(ply, "Navigation mesh: already being generated")
-		return
+		return false
 	end
 	if GetConVar("sv_gameplay_enabled"):GetBool() then
 		if GetConVar("sv_gameplay_disable_sandbox"):GetBool() then
 			Tell(ply, "Navigation mesh: it is generated in Sandbox mode, which sv_gameplay_disable_sandbox 1 forbids; set it to 0 first")
-			return
+			return false
 		end
 		WS.Feature("gamemode"):Request(Gamemode.SANDBOX, Gamemode.SOURCE_BUTTON, ply)
+	else
+		resume = false
 	end
 	underWay = true
 	local limits = {}
@@ -227,5 +232,27 @@ concommand.Add("mp_nav_generate", function(ply)
 		WS.BridgeNavGaps()
 		WS.NavProgress(Progress.DONE, started, navmesh.GetNavAreaCount())
 		Tell(ply, "Navigation mesh: done, " .. navmesh.GetNavAreaCount() .. " areas, saved as maps/" .. game.GetMap() .. ".nav; the map was reset")
+		if resume then WS.Feature("gamemode"):Request(Gamemode.GAMEPLAY, Gamemode.SOURCE_CONSOLE, nil) end
 	end)
+	return true
+end
+
+concommand.Add("mp_nav_generate", function(ply)
+	if not WS.Can(ply, WS.require("foundation.permissions").RULES) then
+		Tell(ply, "Navigation mesh: you may not generate it")
+		return
+	end
+	Generate(ply, false)
 end, nil, "Generate this map's navigation mesh from its spawn and control points, its doors open (admins); takes a few minutes and resets the map")
+
+-- The idle server's own run: the map's Lua starts with it, so CurTime counts
+-- from the map's start.
+local IDLE_AFTER, IDLE_CHECK = 300, 60
+local IDLE = "ws_nav_idle"
+
+timer.Create(IDLE, IDLE_CHECK, 0, function()
+	if WS.NavMeshUsable() or underWay or navmesh.IsGenerating() then return timer.Remove(IDLE) end
+	if CurTime() < IDLE_AFTER or #player.GetHumans() > 0 then return end
+	timer.Remove(IDLE)
+	if Generate(nil, true) then print("Navigation mesh: the server is idle and " .. game.GetMap() .. " has none; generating one") end
+end)

@@ -1,16 +1,19 @@
 -- The rounds feature's view, drawn from what the rounds controller networks
 -- (the ws_round_* and ws_timer_* keys and its net messages):
---   - the round timer with its PREPARE, SETUP, OVERTIME and GAME OVER labels, and the
---     "+m:ss" flash beside it when time is added (game_teamplay_timer_time_added);
+--   - the team scores, centred above the round timer, and the timer as TF2's
+--     time panel (ws.tf_hud) with its PREPARE, SETUP, OVERTIME and GAME OVER
+--     labels on its strip, and the "+m:ss" flash beside it when time is
+--     added (game_teamplay_timer_time_added);
 --     the koth HUD replaces the timer; during the gamemode's countdown to
 --     Gameplay mode (ws_gamemode_transition_end) the timer shows that
 --     countdown labelled "Prepare";
 --   - the pre-round and respawn countdowns and the announcement line;
 --   - the round limits' counters (foundation.rounds.limits), as TF2's Player
 --     Destruction panel (HudObjectivePlayerDestruction.res);
---   - a small panel with the stage of a multi-stage map, the team scores and
---     the local team's goal (CTFGameRules::ShouldShowTeamGoal); TF2's win
---     panel (tf_hud_winpanel.cpp), the game-over reason, and round notices
+--   - a small panel with the stage of a multi-stage map and the local
+--     team's goal (CTFGameRules::ShouldShowTeamGoal); TF2's win panel
+--     (tf_hud_winpanel.cpp, ws.tf_hud) for a round's and the match's end,
+--     with the match's reason, and round notices
 --     (sudden death and the next map come as notification cards);
 --   - the announcer as each TF2 client plays it: the timer's countdown
 --     (CTeamRoundTimer::ClientThink), "Mission begins in 60 seconds"... "1"
@@ -22,15 +25,11 @@ local Rounds = WS.require("foundation.rounds")
 local Timer = WS.require("foundation.rounds.timer")
 local Text = WS.require("foundation.rounds.text")
 local Limits = WS.require("foundation.rounds.limits")
+local Hud = WS.require("ws.tf_hud")
 
 local S = WS.STATE
 local UNASSIGNED = WS.TEAM_UNASSIGNED
 
-surface.CreateFont("Sandcastle.Hud.Timer", {
-	font = "Roboto",
-	size = 34,
-	weight = 800,
-})
 surface.CreateFont("Sandcastle.Hud.Label", {
 	font = "Roboto",
 	size = 18,
@@ -40,16 +39,6 @@ surface.CreateFont("Sandcastle.Hud.Announce", {
 	font = "Roboto",
 	size = 42,
 	weight = 900,
-})
-surface.CreateFont("Sandcastle.Rounds.Title", {
-	font = "Roboto",
-	size = 34,
-	weight = 900,
-})
-surface.CreateFont("Sandcastle.Rounds.Text", {
-	font = "Roboto",
-	size = 18,
-	weight = 600,
 })
 surface.CreateFont("Sandcastle.Rounds.Small", {
 	font = "Roboto",
@@ -69,7 +58,6 @@ local TIME_ADDED_SECONDS = 2
 local NOTICE_SECONDS = 5
 local PANEL_BG = Color(0, 0, 0, 170)
 local GOLD = Color(255, 210, 90)
-local TIMER_WIDTH, TIMER_HEIGHT, TIMER_LABELLED_HEIGHT = 140, 46, 64
 
 local OVERTIME = "Game.Overtime"
 
@@ -98,10 +86,17 @@ local function Clock(seconds)
 	return string.format("%d:%02d", math.floor(seconds / 60), seconds % 60)
 end
 
--- The top of the timer row, which other views line up under.
-function View:TimerTop(h)
+-- The top of the team scores, the timer row under them.
+local function ScoresTop(h)
 	return math.floor(h * timerY:GetFloat())
 end
+
+-- The top of the timer row, which other views line up under.
+function View:TimerTop(h)
+	return Hud.TimerTop(ScoresTop(h), Hud.Unit(h))
+end
+
+local Font, DrawImage, DrawPanel, Shadowed = WS.TFHud.Font, WS.TFHud.DrawImage, WS.TFHud.DrawPanel, WS.TFHud.Shadowed
 
 -- Goal strings arrive as TF2 tokens ("#Goldrush_blue_setup_goal"), worded in
 -- the player's language (WS.Localize). nil when unknown or empty.
@@ -193,20 +188,44 @@ function View:DrawTimer(w, h)
 		-- the arena feature's: its round runs in STALEMATE while the point waits to unlock
 		capUnlockEnd = WS.State() == S.STALEMATE and GetGlobal2Float("ws_arena_cap_enable_time", 0) or 0,
 		setupEnd = GetGlobal2Float("ws_arena_setup_end", 0),
+		matchEnd = GetGlobal2Float("ws_match_time_end", 0),
 		left = TimerLeft(),
 	})
 	if not display then return end
-	local top = self:TimerTop(h)
+	local unit = Hud.Unit(h)
+	local panel = Hud.TimerPanel(w / 2, self:TimerTop(h), unit)
 	local label = display.label
-	draw.RoundedBox(6, w / 2 - TIMER_WIDTH / 2, top, TIMER_WIDTH, label and TIMER_LABELLED_HEIGHT or TIMER_HEIGHT, PANEL_BG)
-	draw.SimpleText(Clock(display.left), "Sandcastle.Hud.Timer", w / 2, top + 4, color_white, TEXT_ALIGN_CENTER)
+	-- the label's strip peeks out under the background
+	if label then DrawImage(Hud.TIMER_STRIP, panel.label.strip) end
+	DrawImage(Hud.TimerBackground(WS.TeamOf(LocalPlayer())), panel.bg)
+	Shadowed(Clock(display.left), Font(Hud.FONT_BUILD, Hud.TIMER_FONT_TALL, unit), panel.value.x, panel.value.y, TEXT_ALIGN_CENTER)
 	if label then
-		draw.SimpleText(label, "Sandcastle.Hud.Label", w / 2, top + 40, GOLD, TEXT_ALIGN_CENTER)
+		Shadowed(label, Font(Hud.FONT_SMALL, Hud.TIMER_LABEL_FONT_TALL, unit), panel.label.x, panel.label.y, TEXT_ALIGN_CENTER)
 	end
 	local added = self.timeAdded
 	if display.kind == Text.DISPLAY_ROUND and added and CurTime() < added.expires then
-		draw.SimpleTextOutlined(added.text, "Sandcastle.Hud.Label", w / 2 + TIMER_WIDTH / 2 + 8, top + 12,
-			WS.TeamColor[added.team] or color_white, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP, 1, color_black)
+		Shadowed(added.text, Font(Hud.FONT_BUILD, Hud.TIMER_FONT_TALL, unit), panel.bg.x + panel.bg.w + 4 * unit, panel.value.y,
+			TEXT_ALIGN_LEFT, WS.TeamColor[added.team])
+	end
+end
+
+-- The team scores: BLU's box left of the centre, RED's right, above the
+-- timer row, while the rounds run; an admin's "+points" beside its box.
+function View:DrawScores(w, h)
+	if not WS.Active() or WS.GameplayStopped() then return end
+	local unit = Hud.Unit(h)
+	local boxes = Hud.ScoreBoxes(w / 2, ScoresTop(h), unit)
+	local font = Font(Hud.FONT_BUILD, Hud.SCORE_FONT_TALL, unit)
+	for t, box in pairs(boxes) do
+		DrawPanel(Hud.ScoreImage(t), box, unit)
+		Shadowed(tostring(team.GetScore(t)), font, box.x + box.w / 2, box.y + box.h / 2, TEXT_ALIGN_CENTER)
+	end
+	local awarded = self.pointsAwarded
+	local box = awarded and boxes[awarded.team]
+	if box and CurTime() < awarded.expires then
+		local blue = awarded.team == WS.TEAM_BLUE
+		Shadowed(awarded.text, font, blue and box.x - 4 * unit or box.x + box.w + 4 * unit, box.y + box.h / 2,
+			blue and TEXT_ALIGN_RIGHT or TEXT_ALIGN_LEFT, WS.TeamColor[awarded.team])
 	end
 end
 
@@ -283,13 +302,12 @@ function View:DrawRoundPanel(w, h)
 	if stages > 1 then
 		Line(string.format("Stage %d of %d", GetGlobal2Int("ws_mini_round_stage", 0), stages), GOLD)
 	end
-	Line(string.format("RED %d  :  %d BLU", team.GetScore(WS.TEAM_RED), team.GetScore(WS.TEAM_BLUE)), color_white)
-	local scoreLine = #lines - 1
 	local myTeam = WS.TeamOf(LocalPlayer())
 	if myTeam ~= UNASSIGNED and ShowGoal(WS.State()) then
 		local goal = self:Localize(GetGlobal2String("ws_round_goal_" .. myTeam, ""))
 		if goal then Line(goal, WS.TeamColor[myTeam]) end
 	end
+	if #lines == 0 then return end
 
 	surface.SetFont("Sandcastle.Rounds.Small")
 	local width = 0
@@ -298,26 +316,30 @@ function View:DrawRoundPanel(w, h)
 	for i, line in ipairs(lines) do
 		draw.SimpleText(line.text, "Sandcastle.Rounds.Small", x + 8, y + 4 + (i - 1) * 20, line.color)
 	end
-	-- an admin's points, beside the scores
-	local awarded = self.pointsAwarded
-	if awarded and CurTime() < awarded.expires then
-		draw.SimpleTextOutlined(awarded.text, "Sandcastle.Hud.Label", x + width + 24, y + 4 + scoreLine * 20,
-			WS.TeamColor[awarded.team] or color_white, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP, 1, color_black)
-	end
 end
 
 -- Centre panels --------------------------------------------------------------------
 
-local function DrawCentrePanel(w, h, title, titleColor, rows)
-	local y = math.floor(h * 0.45)
-	surface.SetFont("Sandcastle.Rounds.Title")
-	local width = surface.GetTextSize(title)
-	surface.SetFont("Sandcastle.Rounds.Text")
-	for _, row in ipairs(rows) do width = math.max(width, (surface.GetTextSize(row))) end
-	draw.RoundedBox(8, w / 2 - width / 2 - 16, y, width + 32, 48 + #rows * 22, PANEL_BG)
-	draw.SimpleText(title, "Sandcastle.Rounds.Title", w / 2, y + 6, titleColor, TEXT_ALIGN_CENTER)
+-- TF2's win panel (winpanel.res): the teams' scores in their boxes, then
+-- the border in the winner's colour (brown for none) with the title and up
+-- to two rows, the reason and the details.
+local function DrawCentrePanel(w, h, title, winner, rows)
+	local unit = Hud.Unit(h)
+	local panel = Hud.WinPanel(w, h, unit)
+	local scoreFont, nameFont = Font(Hud.FONT_BUILD, Hud.WIN_SCORE_FONT_TALL, unit), Font(Hud.FONT_SECONDARY, Hud.WIN_NAME_FONT_TALL, unit)
+	for t, box in pairs(panel.boxes) do
+		DrawPanel(Hud.ScoreImage(t), box, unit)
+		local blue = t == WS.TEAM_BLUE
+		local score, name = panel.scores[t], panel.names[t]
+		Shadowed(tostring(team.GetScore(t)), scoreFont, score.x, score.y, blue and TEXT_ALIGN_RIGHT or TEXT_ALIGN_LEFT)
+		Shadowed(WS.TeamName[t], nameFont, name.x, name.y, blue and TEXT_ALIGN_LEFT or TEXT_ALIGN_RIGHT)
+	end
+	DrawPanel(Hud.PanelImage(winner), panel.border, unit)
+	Shadowed(title, nameFont, panel.title.x, panel.title.y, TEXT_ALIGN_CENTER)
+	local textFont = Font(Hud.FONT_SMALL, Hud.WIN_TEXT_FONT_TALL, unit)
+	local at = { panel.reason, panel.details }
 	for i, row in ipairs(rows) do
-		draw.SimpleText(row, "Sandcastle.Rounds.Text", w / 2, y + 44 + (i - 1) * 22, color_white, TEXT_ALIGN_CENTER)
+		if at[i] then Shadowed(row, textFont, at[i].x, at[i].y, TEXT_ALIGN_CENTER) end
 	end
 end
 
@@ -329,11 +351,12 @@ function View:DrawWinPanel(w, h)
 		fullRound = GetGlobal2Bool("ws_round_full_round", true),
 		remaining = GetGlobal2Int("ws_rounds_remaining", 0),
 		arena = GetGlobal2Bool("ws_round_arena", false), -- the arena feature's
+		captures = GetGlobal2Int("ws_flag_caps_" .. winner, 0), -- the flag feature's tally
 	})
 	local rows = {}
 	if panel.reason then rows[#rows + 1] = panel.reason end
 	if panel.details then rows[#rows + 1] = panel.details end
-	DrawCentrePanel(w, h, panel.title, WS.TeamColor[winner] or color_white, rows)
+	DrawCentrePanel(w, h, panel.title, winner, rows)
 end
 
 -- The match's end: who won it (Rounds.MatchWinner; a tied match goes to
@@ -341,8 +364,8 @@ end
 function View:DrawGameOver(w, h)
 	local winner = GetGlobal2Int("ws_match_winner", Rounds.NOBODY_WON)
 	local reason = { GetGlobal2String("ws_game_over_reason", "") }
-	if winner == Rounds.NOBODY_WON then return DrawCentrePanel(w, h, "STALEMATE", color_white, reason) end
-	DrawCentrePanel(w, h, string.format("%s WINS THE MATCH!", WS.TeamName[winner]), WS.TeamColor[winner], reason)
+	if winner == Rounds.NOBODY_WON then return DrawCentrePanel(w, h, "STALEMATE", UNASSIGNED, reason) end
+	DrawCentrePanel(w, h, string.format("%s WINS THE MATCH!", WS.TeamName[winner]), winner, reason)
 end
 
 -- The round limits ---------------------------------------------------------------------
@@ -369,7 +392,6 @@ local LIMIT_ICONS = {
 	[Rounds.WINREASON.FRAGLIMIT] = Material("hud/hud_obj_status_kill_64"),
 	[Rounds.WINREASON.CASHLIMIT] = Material("hud/mvm_cash"),
 }
-local TAN_LIGHT = Color(235, 226, 202)
 local limitFontsFor
 
 local function LimitFonts(unit)
@@ -377,11 +399,6 @@ local function LimitFonts(unit)
 	surface.CreateFont(LIMIT_VALUE_FONT, { font = "TF2 Build", size = math.Round(LIMIT_VALUE_TALL * unit), weight = 500 })
 	surface.CreateFont(LIMIT_LABEL_FONT, { font = "TF2 Secondary", size = math.Round(LIMIT_LABEL_TALL * unit), weight = 500 })
 	limitFontsFor = unit
-end
-
-local function Shadowed(text, font, x, y, alignX)
-	draw.SimpleText(text, font, x + 1, y + 1, color_black, alignX, TEXT_ALIGN_CENTER)
-	draw.SimpleText(text, font, x, y, TAN_LIGHT, alignX, TEXT_ALIGN_CENTER)
 end
 
 local function DrawLimitPanel(panel, x, y, unit)
@@ -447,6 +464,7 @@ local CENTRE_PANELS = {
 
 function View:Paint(w, h)
 	local state = WS.State()
+	self:DrawScores(w, h)
 	self:DrawTimer(w, h)
 	self:DrawAnnouncement(w, h)
 	self:DrawRespawn(w, h)

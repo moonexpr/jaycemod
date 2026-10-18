@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 from server_root import LUADEV_PORT_FILE, REPO_ADDONS, ROOT, ROOT_WINDOWS, SERVER_BINARIES, SERVER_LUA, SERVER_EXE, SERVER_WORKSHOP, TF_SCRIPTS,\
-    TF_SCRIPTS_DIR, Instance, Layout, NotAnExe, build, console_exe
+    TF_SCRIPTS_DIR, SERVER_MAPS, map_archive_name, Instance, Layout, NotAnExe, build, console_exe
 from test_vpk import DIR_ARCHIVE, entry, write_pak
 
 # a Workshop item from before .gma downloads: one LZMA-compressed .gma, as .bin
@@ -53,6 +53,10 @@ def layout(tmp_path: Path) -> Layout:
             (workshop / item / "123_legacy.bin").write_bytes(lzma.compress(LEGACY_GMA, format=lzma.FORMAT_ALONE))
         else:
             (workshop / item / "addon.gma").write_bytes(b"GMAD")
+    maps = tmp_path / "steamcmd" / "4000"
+    for name, item in SERVER_MAPS.items():
+        (maps / item).mkdir(parents=True)
+        (maps / item / f"{name}.gma").write_bytes(b"GMAD map")
     lua = tmp_path / "server_root"
     lua.mkdir()
     for source in SERVER_LUA.values():
@@ -66,7 +70,7 @@ def layout(tmp_path: Path) -> Layout:
         files.append(("txt", folder, name.removesuffix(".txt"), entry(0, b"", DIR_ARCHIVE, len(inline), len(body))))
         inline += body
     write_pak(tf, "tf2_misc", files, inline_data=inline)
-    return Layout(shared, tmp_path / "GarrysModServer", workshop, lua, tf, 27100)
+    return Layout(shared, tmp_path / "GarrysModServer", workshop, lua, tf, 27100, maps)
 
 
 def test_every_shared_entry_is_a_link_and_the_servers_own_folders_are_real(layout):
@@ -208,8 +212,25 @@ def test_building_again_changes_nothing(layout):
 
 
 def test_a_workshop_item_not_downloaded_is_refused(layout, tmp_path):
-    missing = Layout(layout.shared, layout.root, tmp_path / "empty", layout.lua, layout.tf, layout.luadev_port)
+    missing = Layout(layout.shared, layout.root, tmp_path / "empty", layout.lua, layout.tf, layout.luadev_port, layout.maps)
     with pytest.raises(FileNotFoundError):
+        build(missing)
+
+
+# The map pool's Workshop maps (SERVER_MAPS), downloaded by steamcmd, not
+# the operator's game: mounted from cache/ like the addons, each archive
+# named for its item so mounts.lua can send clients the current map's.
+def test_the_workshop_maps_land_in_cache_named_for_their_items(layout):
+    root = build(layout)
+    cache = root / "garrysmod" / "cache"
+    for name, item in SERVER_MAPS.items():
+        assert (cache / map_archive_name(item)).resolve() == layout.maps / item / f"{name}.gma", name
+    assert map_archive_name("266666023") == "workshop_map_266666023.gma"
+
+
+def test_a_workshop_map_not_downloaded_is_refused_with_how_to_fetch_it(layout, tmp_path):
+    missing = Layout(layout.shared, layout.root, layout.workshop, layout.lua, layout.tf, layout.luadev_port, tmp_path / "empty")
+    with pytest.raises(FileNotFoundError, match="steamcmd"):
         build(missing)
 
 

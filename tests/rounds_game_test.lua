@@ -76,6 +76,7 @@ local DESCRIBE = {
 	time_limit_timer = function(e) return "time_limit_timer " .. e.seconds end,
 	stalemate_timer = function(e) return "stalemate_timer " .. e.seconds end,
 	sudden_death = function(e) return "sudden_death " .. e.reason end,
+	deathmatch = function(e) return "deathmatch" end,
 	stalemate_winner = function(e) return "stalemate_winner " .. e.team end,
 	intermission = function(e) return "intermission " .. e.reason end,
 	overtime = function(e) return "overtime " .. tostring(e.value) end,
@@ -243,6 +244,7 @@ local SUDDEN_DEATH = {
 	"sudden_death " .. SM.TIMER,
 	"state STALEMATE",
 	"respawn_all",
+	"bonus_freeze",
 	"hide_timers",
 	"stalemate_timer 240",
 }
@@ -302,6 +304,7 @@ T.test("sudden death with everyone dead at once is no tie-breaker: another sudde
 		"restore_timers",
 		"state STALEMATE",
 		"respawn_all",
+		"bonus_freeze",
 		"hide_timers",
 		"stalemate_timer 240",
 	}, "everyone dead")
@@ -524,6 +527,20 @@ T.test("a map off the filter, or a pool of one, still gives what there is", func
 	T.eq(#Rounds.MapVoteChoices({ "pl_upward" }, "pl_upward", FILTER, First), 0, "nothing but this map")
 end)
 
+-- An empty server's next map: one without a nav mesh, so the idle server
+-- builds it one (ws/sv_nav.lua).
+T.test("an empty server's next map is one without a nav mesh, at random, never this one", function()
+	local maps = { "cp_steel", "koth_viaduct", "pl_badwater", "pl_goldrush", "pl_upward" }
+	local navs = { cp_steel = true, pl_badwater = true }
+	local function HasNav(map) return navs[map] == true end
+	local drawn
+	local map = Rounds.IdleNextMap(maps, "pl_goldrush", HasNav, function(n) drawn = n return 2 end)
+	T.eq(drawn, 2, "drawn from the maps without one, not this map")
+	T.eq(map, "pl_upward", "the one drawn")
+	T.eq(Rounds.IdleNextMap(maps, "pl_upward", function() return true end, First), nil, "every map has one: none")
+	T.eq(Rounds.IdleNextMap({ "pl_upward" }, "pl_upward", function() return false end, First), nil, "only this map: none")
+end)
+
 T.test("the time limit waits for mini-rounds that must all be played", function()
 	local now = TIMELIMIT_MINUTES * MINUTE + 1
 	local objective = FakeObjective.Objective({
@@ -559,6 +576,7 @@ T.test("with SetStalemateOnTimelimit the time limit ends the round: the leader w
 		"sudden_death " .. SM.SERVER_TIMELIMIT,
 		"state STALEMATE",
 		"respawn_all",
+		"bonus_freeze",
 		"hide_timers",
 		"stalemate_timer 240",
 	}, ", "), "a tie")
@@ -579,6 +597,131 @@ T.test("with SetStalemateOnTimelimit the time limit ends the round: the leader w
 		"win_song " .. BLUE,
 		"output OnWonByTeam2",
 	}, "BLU leads; the time limit win adds no score")
+end)
+
+-- The mode decides who wins at the time limit (CTF by captures,
+-- features/flag/model.lua); the base mode by the teams' scores.
+-- mp_match_end_at_timelimit: the time limit ends the round on any map; a
+-- tie with sudden death off is the stalemate's bonus time for all.
+T.test("at the time limit a tie with no sudden death is the stalemate's bonus time", function()
+	local round = Running({ timelimit = TIMELIMIT_MINUTES, matchEndAtTimelimit = true, stalemateEnable = false })
+	local effects = round:Think(TIMELIMIT_MINUTES * MINUTE, World())
+	local over
+	for _, e in ipairs(effects) do
+		if e.kind == "intermission" then over = e end
+	end
+	T.eq(over ~= nil, true, "the match is over")
+	T.eq(over.reason, Rounds.TIMELIMIT_GAME_OVER, "the game ran out of time")
+	T.eq(Rounds.TIMELIMIT_GAME_OVER, "Game ran out of time.", "the operator's words")
+	T.eq(round:State(), State.GAME_OVER, "bonus time, then the next map")
+end)
+
+-- Deathmatch (mp_deathmatch_enable) breaks a tied match: a round of frags
+-- alone (mp_round_fraglimit), with respawns and no objective, whose winner
+-- wins the match. Sudden death stays for a stalemated round.
+local function Effect(effects, kind)
+	for _, e in ipairs(effects) do
+		if e.kind == kind then return e end
+	end
+	return nil
+end
+
+T.test("a tie at the time limit is a deathmatch round whose winner wins the match", function()
+	local round = Running({ timelimit = TIMELIMIT_MINUTES, matchEndAtTimelimit = true, deathmatchEnable = true })
+	local over = TIMELIMIT_MINUTES * MINUTE
+	local effects = round:Think(over, World())
+	T.eq(Effect(effects, "deathmatch") ~= nil, true, "deathmatch")
+	T.eq(Effect(effects, "intermission"), nil, "the match goes on")
+	T.eq(round:InDeathmatch(), true, "in it")
+	T.eq(round:Mode().NAME, Rounds.DEATHMATCH, "frags alone decide it")
+	T.eq(round:Mode().OBJECTIVE, false, "no objective")
+	T.eq(round:Mode().HUD, Rounds.HUD_DEATHMATCH, "its own HUD: no objective panel")
+	round:Think(over + 1, World())
+	round:Think(over + Rounds.BONUS_FREEZE_SECONDS, World())
+	T.eq(round:State(), State.RND_RUNNING, "fought, with respawns")
+	T.eq(round:PointsMayBeCaptured(over + 2), false, "no point is captured in it")
+	T.eq(Effect(round:Think(over + 5, World()), "deathmatch"), nil, "the spent time limit starts no second one")
+	local won = round:LimitReached(over + 10, { team = BLUE, reason = W.FRAGLIMIT }, FakeObjective.Objective())
+	local intermission = Effect(won, "intermission")
+	T.eq(intermission ~= nil and intermission.winner, BLUE, "BLU wins the match")
+	T.eq(intermission.reason, Rounds.DEATHMATCH_MATCH_WIN, "by the deathmatch")
+end)
+
+T.test("a tied match at the win limit is a deathmatch round too; without deathmatch, sudden death", function()
+	local tied = { scores = { [RED] = 2, [BLUE] = 2 } }
+	local round = Running({ maxrounds = 4, deathmatchEnable = true })
+	round.roundsPlayed = 4
+	local effects = round:SetWinningTeam(T0 + 20, RED, W.ALL_POINTS_CAPTURED, true, false, true, FakeObjective.Objective())
+	-- the tie is taken up as the next round runs, as sudden death's is
+	local function Through(r)
+		local all = {}
+		for _, t in ipairs({ T0 + 40, T0 + 40 + Rounds.PREROUND_SECONDS, T0 + 42 }) do
+			for _, e in ipairs(r:Think(t, World(tied))) do all[#all + 1] = e end
+		end
+		return all
+	end
+	effects = Through(round)
+	T.eq(Effect(effects, "deathmatch") ~= nil, true, "deathmatch: " .. Describe(effects))
+	T.eq(round:InDeathmatch(), true, "in it")
+	local old = Running({ maxrounds = 4, deathmatchEnable = false })
+	old.roundsPlayed = 4
+	old:SetWinningTeam(T0 + 20, RED, W.ALL_POINTS_CAPTURED, true, false, true, FakeObjective.Objective())
+	local oldEffects = Through(old)
+	T.eq(Effect(oldEffects, "deathmatch"), nil, "no deathmatch without it")
+	T.eq(Effect(oldEffects, "sudden_death") ~= nil, true, "sudden death instead")
+end)
+
+-- The bonus rounds, deathmatch and sudden death, open with a freeze of
+-- BONUS_FREEZE_SECONDS in place of setup, so everyone reads the rules:
+-- deathmatch's pre-round lasts it and its map's setup ends at once.
+T.test("deathmatch has no setup: a pre-round of BONUS_FREEZE_SECONDS, everyone frozen", function()
+	T.eq(Rounds.BONUS_FREEZE_SECONDS, 3, "three seconds")
+	local round = Running({ timelimit = TIMELIMIT_MINUTES, matchEndAtTimelimit = true, deathmatchEnable = true })
+	local over = TIMELIMIT_MINUTES * MINUTE
+	local effects = round:Think(over, World())
+	local freeze = Effect(effects, "bonus_freeze")
+	T.eq(freeze ~= nil, true, "frozen: " .. Describe(effects))
+	T.eq(freeze.ends, over + Rounds.BONUS_FREEZE_SECONDS, "for the freeze")
+	local spawned, skipped
+	for i, e in ipairs(effects) do
+		if e.kind == "round_spawn" then spawned = i end
+		if e.kind == "skip_setup" then skipped = i end
+	end
+	T.eq(skipped ~= nil and spawned ~= nil and skipped > spawned, true, "the map's setup ends once its timers start it: " .. Describe(effects))
+	round:Think(over + Rounds.BONUS_FREEZE_SECONDS - 0.5, World())
+	T.eq(round:State(), State.PREROUND, "still frozen")
+	round:Think(over + Rounds.BONUS_FREEZE_SECONDS, World())
+	T.eq(round:State(), State.RND_RUNNING, "then fought")
+end)
+
+T.test("a round after the deathmatch has its own pre-round and setup again", function()
+	local round = Running()
+	local effects = round:Think(T0 + 1, World())
+	T.eq(Effect(effects, "bonus_freeze"), nil, "no freeze in a plain round")
+	T.eq(Effect(effects, "skip_setup"), nil, "nor its setup skipped")
+end)
+
+T.test("sudden death opens frozen for BONUS_FREEZE_SECONDS", function()
+	local round = Running({ winlimit = 3 })
+	local called = round:SuddenDeathForMatch(T0 + 20)
+	local freeze = Effect(called, "bonus_freeze")
+	T.eq(freeze ~= nil, true, "frozen: " .. Describe(called))
+	T.eq(freeze.ends, T0 + 20 + Rounds.BONUS_FREEZE_SECONDS, "for the freeze")
+end)
+
+T.test("the time limit's winner and reason are the mode's", function()
+	T.eq(select(2, Rounds.Mode:TimelimitWin({ scores = { [RED] = 1, [BLUE] = 3 } })), W.TIMELIMIT, "the base: most points")
+	local Decided = Rounds.Mode:Extend("decided")
+	Decided.PRIORITY = 10 -- over the base mode
+	function Decided:TimelimitWin() return RED, W.MOST_CAPTURES end
+	local round = Running({ timelimit = TIMELIMIT_MINUTES, stalemateEnable = true }, nil, Decided)
+	round:SetStalemateOnTimelimit(true)
+	local publish
+	for _, e in ipairs(round:Think(TIMELIMIT_MINUTES * MINUTE, World())) do
+		if e.kind == "publish_win" then publish = e end
+	end
+	T.eq(publish.winner, RED, "the mode's winner")
+	T.eq(publish.reason, W.MOST_CAPTURES, "the mode's reason")
 end)
 
 T.test("Halt waits between rounds until a new game", function()
@@ -736,12 +879,12 @@ T.test("a player who switched teams comes back with the new team's next wave", f
 	T.eq(round:NextRespawn(RED, now + 18, 8, true), now + 40, "switched as the wave comes: the one after the animation")
 end)
 
-T.test("setup respawns quickly, and sudden death or an admin stops respawns", function()
+T.test("setup respawns at once, and sudden death or an admin stops respawns", function()
 	local round = Running()
 	local now = T0 + 20
 	round:SetSetup(true)
-	T.eq(round:MayRespawn(RED, now, now + Rounds.DEATH_ANIM_LENGTH), true, "setup: just the death animation")
-	T.eq(round:NextRespawn(RED, now, 8), now + Rounds.DEATH_ANIM_LENGTH, "no wave in setup")
+	T.eq(round:MayRespawn(RED, now, now), true, "setup: no wait of their own")
+	T.eq(round:NextRespawn(RED, now, 8), now, "the first quick wave")
 	T.eq(round:PointsMayBeCaptured(), false, "setup")
 	round:SetSetup(false)
 	T.eq(round:SetRespawnsDisabled(true), false, "disabling reschedules nobody")
@@ -750,6 +893,25 @@ T.test("setup respawns quickly, and sudden death or an admin stops respawns", fu
 	Expect(round:Think(now + 1, World()), WAVES, "waves")
 	round:SetRespawnsDisabled(true)
 	Expect(round:Think(now + 40, World()), {}, "the waves come, but nobody respawns")
+end)
+
+-- Sandcastle's pre-round and setup bring the dead back with the next of
+-- their quick waves, a QUICK_WAVE apart, with no death animation to wait
+-- out, whatever the team's wave.
+T.test("the pre-round and setup respawn the dead with a wave every QUICK_WAVE", function()
+	local preround = Rounds.New(Settings({ respawnWaveTime = 20 }))
+	preround:Think(T0, World())
+	T.eq(preround:State(), State.PREROUND, "the pre-round")
+	T.eq(preround:MayRespawn(RED, T0 + 0.5, T0 + 0.5), true, "pre-round: no wait of their own")
+	Expect(preround:Think(T0 + 0.5, World()), WAVES, "a quick wave")
+	local round = Running({ respawnWaveTime = 20 })
+	local now = T0 + 20
+	round:SetSetup(true)
+	T.eq(round:MayRespawn(RED, now, now, true), true, "switched teams: no wait either")
+	Expect(round:Think(now, World()), WAVES, "a wave now")
+	Expect(round:Think(now + Rounds.QUICK_WAVE / 2, World()), {}, "none between")
+	T.eq(round:RespawnAt(RED, now + 0.1, 8), now + Rounds.QUICK_WAVE, "the respawn time shown: the next quick wave")
+	Expect(round:Think(now + Rounds.QUICK_WAVE, World()), WAVES, "the next")
 end)
 
 T.test("the map's wave times go back to the first value set at each round", function()

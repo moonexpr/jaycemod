@@ -79,6 +79,7 @@ Module names are `foundation.core.<path>`; tests are
 | Module | API |
 |---|---|
 | `buffer` | Values as bytes, written and read back. Writers: `Byte`, `Int16`, `Int32`, `Float32` (little-endian, IEEE 754), `Varint` (ULEB128), `String` (varint length + bytes), `Utf8(code)`, `Crc32(s)`; `Writer()` gathers them (`Bytes`, `Size`). `Reader(data)` → `Byte`, `Int16`, `UInt16`, `Int32`, `Float32`, `Varint`, `String`, `Consumed` |
+| `gma` | GMod's addon archive: `Write(name, files)` → bytes (`files`: `{ path, data }`s), `Read(bytes)` → `{ name, files }` |
 | `parsers.cursor` | `New(text)` → a parser's position: `Literal(s[, ignoreCase])`, `Pattern`, `Peek`, `Whitespace`, `Save`/`Restore`/`Commit`, `Position`, `AtEnd`, `Rest` |
 | `parsers.utf16` | `Decode(raw)`: UTF-16LE → UTF-8 |
 | `parsers.keyvalues` | `Read(text, visit(path, key, value))`: Valve KeyValues |

@@ -8,13 +8,11 @@
 local P = WS.require("foundation.nav_progress")
 local E = WS.Events
 
--- TF2's 480-tall units; its scheme's colours (TFDarkBrown, TanLight, TanDark).
+-- TF2's 480-tall units; its scheme's colours, WS.UI's theme.
 local WIDE, TALL, BAR_TALL, PAD, CORNER = 300, 74, 10, 10, 6
 local TITLE_TALL, BODY_TALL = 14, 10
-local DARK_BROWN = Color(42, 39, 37, 240)
-local TRACK = Color(25, 23, 22, 255)
-local TAN_LIGHT = Color(235, 226, 202)
-local TAN_DARK = Color(117, 107, 94)
+local THEME = WS.UI.THEME
+local DARK_BROWN, TRACK, TAN_LIGHT, TAN_DARK = THEME.background, THEME.track, THEME.text, THEME.edge
 local TITLE_FONT, BODY_FONT = "WS.NavProgress.Title", "WS.NavProgress.Body"
 local BAND, BAND_SPEED = 0.25, 0.6
 

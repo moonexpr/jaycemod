@@ -695,11 +695,16 @@ T.test("a final point's warning sounds at most every five seconds", function()
 	T.eq(Heard(set:CaptureStarted("last", BLU, 15.5)), warn, "after five")
 end)
 
-T.test("the scored chime: per-capture scoring, not a winning capture, to the team or everyone", function()
-	T.eq(Capture.ScoredChime(false, false, false, BLU), nil, "score per round")
-	T.eq(Capture.ScoredChime(true, true, false, BLU), nil, "the capture wins the game")
-	T.eq(Heard({ Capture.ScoredChime(true, false, false, BLU) }), Capture.HEAR_TEAM .. ":" .. BLU .. ":" .. Capture.SCORED_CHIME)
-	T.eq(Heard({ Capture.ScoredChime(true, false, true, BLU) }), Capture.HEAR_EVERYONE .. ":" .. BLU .. ":" .. Capture.SCORED_CHIME)
+-- The capture bell (TF2's scored chime, Hud.EndRoundScored): every point a
+-- team takes rings it for everyone, spectators too, whether players took
+-- it or a relay (a payload cart) did, the winning point included.
+T.test("every capture rings the bell for everyone; a forced owner or a reset does not", function()
+	local set = Steel()
+	T.eq(set:SetOwner("cap_a_flag", BLU, Capture.CAUSE_CAPTURE, POINTS_MAY_BE_CAPTURED)[1].bell, Capture.CAPTURE_BELL, "players' capture")
+	T.eq(set:SetOwner("cap_b_flag", BLU, Capture.CAUSE_INPUT, POINTS_MAY_BE_CAPTURED)[1].bell, Capture.CAPTURE_BELL, "a relay's (a cart's)")
+	T.eq(set:SetOwner("cap_c_flag", BLU, Capture.CAUSE_FORCE, false)[1].bell, nil, "forced")
+	T.eq(set:SetOwner("cap_c_flag", NOBODY, Capture.CAUSE_CAPTURE, POINTS_MAY_BE_CAPTURED)[1].bell, nil, "reset to nobody")
+	T.eq(Capture.CAPTURE_BELL, "Hud.EndRoundScored", "TF2's chime")
 end)
 
 T.test("only RED and BLU capture", function()

@@ -31,6 +31,8 @@ criterion "ConceptBattleStance" "Concept" "TLK_NS_BATTLE_STANCE" required
 // a teammate player passing the soldier, and an enemy it has just spotted
 criterion "ConceptPlayerPassing" "Concept" "TLK_NS_PLAYER_PASSING" required
 criterion "ConceptEnemySpotted" "Concept" "TLK_NS_ENEMY_SPOTTED" required
+// a hurt soldier calling for a medic
+criterion "ConceptCallMedic" "Concept" "TLK_NS_CALL_MEDIC" required
 
 // Chances (randomnum, 0..100) ------------------------------------------------
 
@@ -65,6 +67,8 @@ criterion "NotSaidBattleStance" "SaidBattleStance" "!=1" required weight 0
 // greeted a player within 45 s; called out a contact within 10 s
 criterion "NotSaidPlayerPassing" "SaidPlayerPassing" "!=1" required weight 0
 criterion "NotSaidEnemySpotted" "SaidEnemySpotted" "!=1" required weight 0
+// called for a medic within 10 s (the orders' CALL_MEDIC_COOLDOWN)
+criterion "NotSaidCallMedic" "SaidCallMedic" "!=1" required weight 0
 
 // Speakers, by affiliation -------------------------------------------------------
 

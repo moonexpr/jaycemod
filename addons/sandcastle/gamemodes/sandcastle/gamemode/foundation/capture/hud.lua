@@ -33,7 +33,7 @@ end
 
 -- Whether the icons show in a round with HUD type hudType (a Rounds.HUD_*).
 function Shown(hudType)
-	return hudType ~= Rounds.HUD_PAYLOAD
+	return hudType ~= Rounds.HUD_PAYLOAD and hudType ~= Rounds.HUD_DEATHMATCH
 end
 
 -- rowSizes: how many icons each caplayout row shows, top row first; w, h:

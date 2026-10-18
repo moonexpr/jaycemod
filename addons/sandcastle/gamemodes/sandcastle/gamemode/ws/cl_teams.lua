@@ -366,8 +366,13 @@ local TEAM_BINDS = {
 }
 local REFUSED_SECONDS = 3
 
+-- F2 is the vote's No while the player may vote (ws/cl_votes.lua).
+local function Voting()
+	return WS.VoteState ~= nil and WS.VoteState.running and WS.VoteState.mine
+end
+
 hook.Add("PlayerBindPress", "ws_teams", function(ply, bind, pressed)
-	if not pressed or not TEAM_BINDS[bind] or not WS.Active() then return end
+	if not pressed or not TEAM_BINDS[bind] or not WS.Active() or Voting() then return end
 	local winner = GetGlobal2Int("ws_round_winner", WS.TEAM_UNASSIGNED)
 	if L.TeamMenuAllowed(WS.State(), ply:Team(), winner) then
 		WS.OpenTeamMenu()

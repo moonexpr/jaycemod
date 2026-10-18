@@ -35,6 +35,36 @@ function Soldier:Heal(handle)
 	self.healTarget = handle
 end
 function Soldier:IsDisarmed() return self.disarmed == true end
+
+-- The health kits it may take now (ws_pickup_base's ValidTouch: shown,
+-- not respawning, of its team or none).
+local HEALTH_KITS = { "item_healthkit_small", "item_healthkit_medium", "item_healthkit_full" }
+
+function Soldier:HealthKits()
+	local kits = {}
+	for _, class in ipairs(HEALTH_KITS) do
+		for _, kit in ipairs(ents.FindByClass(class)) do
+			if kit:ValidTouch(self.ent) then kits[#kits + 1] = { pos = Point(kit:GetPos()), handle = kit } end
+		end
+	end
+	return kits
+end
+
+function Soldier:Burning() return WS.InCondition(self.ent, WS.PlayerRules.COND.BURNING) end
+
+-- MEDIC!: its side's medics answer it first for MEDIC_CALL_SHOWN seconds
+-- (the field's patients' calling), its teammates see TF2's bubble over it
+-- that long (ws_medic_call_end, ws/cl_medic_call.lua), and it calls out
+-- if its voice has a line (features/aiwar/sv_speech.lua).
+local MEDIC_CALL_SHOWN = 3
+
+function Soldier:CallMedic()
+	self.callingMedicUntil = CurTime() + MEDIC_CALL_SHOWN
+	self.ent:SetNW2Float("ws_medic_call_end", self.callingMedicUntil)
+	self.controller:CallMedicLine(self.ent)
+end
+
+function Soldier:CallingMedic() return CurTime() < (self.callingMedicUntil or 0) end
 function Soldier:Health() return self.ent:Health() end
 function Soldier:MaxHealth() return self.ent:GetMaxHealth() end
 
@@ -147,6 +177,14 @@ function Soldier:Bot()
 	}
 end
 
+-- Whether ent carries a flag (item_teamflag's published carrier).
+local function CarriesFlag(ent)
+	for _, flag in ipairs(ents.FindByClass("item_teamflag")) do
+		if flag:GetNW2Entity("ws_flag_carrier") == ent then return true end
+	end
+	return false
+end
+
 function Soldier:RequestRoute(goal)
 	self.ticket = self.ticket + 1
 	self.result = nil
@@ -154,8 +192,14 @@ function Soldier:RequestRoute(goal)
 	local start = self.ent:GetPos()
 	local controller = self.controller
 	local team = self.team
+	-- carrying the flag, its own spawn rooms too: the flag drops in them
+	-- (features/flag's respawn room rule)
+	local carrying = CarriesFlag(self.ent)
 	npcs:RequestRoute({
-		avoid = function(area) return controller:UnderCart(area) or controller:ShutDoorIn(area, team) end,
+		avoid = function(area)
+			return controller:UnderCart(area) or controller:ShutDoorIn(area, team)
+				or (carrying and npcs:SpawnRoomTeam(area) == team)
+		end,
 		from = start,
 		to = goalPos,
 		strategy = HL2Path,

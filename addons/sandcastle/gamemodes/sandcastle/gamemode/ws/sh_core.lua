@@ -269,10 +269,19 @@ function WS.Winner(state)
 end
 
 -- The input restrictions of the round states: during pre-round players may
--- look around and shoot but not move (CTFPlayer::CanPlayerMove); the losing
--- team cannot attack while the winners celebrate (TF2's humiliation).
+-- look around and shoot but not move (CTFPlayer::CanPlayerMove); a bonus
+-- round's opening freeze (ws_bonus_freeze_end) takes their attacks too; the
+-- losing team cannot attack while the winners celebrate (TF2's humiliation).
 function WS.RestrictCommand(ply, cmd)
 	WS.RestrictStunned(ply, cmd)
+	if CurTime() < GetGlobal2Float("ws_bonus_freeze_end", 0) then
+		cmd:ClearMovement()
+		cmd:RemoveKey(IN_JUMP)
+		cmd:RemoveKey(IN_DUCK)
+		cmd:RemoveKey(IN_ATTACK)
+		cmd:RemoveKey(IN_ATTACK2)
+		return
+	end
 	local state = WS.State()
 	if state == WS.STATE.PREROUND then
 		if not WS.RestartFreeze:GetBool() then return end

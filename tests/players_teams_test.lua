@@ -19,6 +19,26 @@ T.test("the losers of a round or of the match cannot attack; nobody else is held
 	T.eq(L.Humiliated(STATE.RND_RUNNING, RED, BLU), false, "a round running")
 end)
 
+-- TF_COND_CRITBOOSTED_BONUS_TIME: the winners crit the humiliated losers.
+T.test("the winners of a round or of the match are crit boosted; nobody else is", function()
+	T.eq(L.BonusCrits(STATE.TEAM_WIN, RED, RED), true, "a round's winners")
+	T.eq(L.BonusCrits(STATE.TEAM_WIN, RED, BLU), false, "its losers")
+	T.eq(L.BonusCrits(STATE.GAME_OVER, BLU, BLU), true, "the match's winners")
+	T.eq(L.BonusCrits(STATE.TEAM_WIN, UNASSIGNED, RED), false, "a stalemate crits nobody")
+	T.eq(L.BonusCrits(STATE.TEAM_WIN, RED, UNASSIGNED), false, "nor anyone of no team")
+	T.eq(L.BonusCrits(STATE.RND_RUNNING, RED, RED), false, "a round running")
+end)
+
+-- mp_friendlyfire (CTFGameRules::FPlayerCanTakeDamage): off, a teammate's
+-- hit hurts nobody but its attacker; those of no team are anyone's.
+T.test("without friendly fire teammates cannot hurt each other; anyone else can", function()
+	T.eq(L.FriendlySpared(false, RED, RED, false), true, "a teammate")
+	T.eq(L.FriendlySpared(false, RED, BLU, false), false, "an enemy")
+	T.eq(L.FriendlySpared(false, RED, RED, true), false, "oneself")
+	T.eq(L.FriendlySpared(false, UNASSIGNED, UNASSIGNED, false), false, "the world and the teamless")
+	T.eq(L.FriendlySpared(true, RED, RED, false), false, "friendly fire on")
+end)
+
 -- mp_forceautoteam, mp_allowspectators (HandleCommand_JoinTeam)
 
 T.test("a join under mp_forceautoteam is auto-assigned; spectating needs mp_allowspectators", function()

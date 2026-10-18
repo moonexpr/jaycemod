@@ -89,8 +89,10 @@ local RULES = {
 		privilege = Permissions.RULES,
 		build = function(f)
 			Check(f, "Sudden death after a stalemate", "mp_stalemate_enable", "No respawns; the last team standing wins.")
+			Check(f, "Deathmatch after a tied match", "mp_deathmatch_enable",
+				"A round of frags alone, with respawns: the first team to the frag limit wins the match.")
 			Slider(f, "Sudden death length (seconds)", "mp_stalemate_timelimit", "How long sudden death lasts before a draw.")
-			Slider(f, "Frags to win a round", "mp_round_fraglimit", "A team wins the round at this many kills. 0: off.")
+			Slider(f, "Frags to win a round", "mp_round_fraglimit", "A team wins the round, or the deathmatch, at this many kills. 0: off.")
 			Slider(f, "Money to win a round", "mp_round_cashlimit", "A team wins the round when it earns this much. 0: off.")
 			Slider(f, "Bonus time after a win (seconds)", "mp_bonusroundtime", "The winners hunt the losers before the next round.")
 		end,
@@ -104,6 +106,7 @@ local RULES = {
 			Check(f, "Scramble after a lopsided match", "mp_scrambleteams_auto", "Scrambles when one team wins by too much.")
 			Slider(f, "Win margin that triggers a scramble", "mp_scrambleteams_auto_windifference", "In rounds.")
 			Check(f, "Allow spectators", "mp_allowspectators", "Players may join Spectator.")
+			Check(f, "Friendly fire", "mp_friendlyfire", "Players and soldiers can hurt their teammates.")
 		end,
 	},
 	{

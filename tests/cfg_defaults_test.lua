@@ -51,6 +51,8 @@ local function IndirectDefaults(defaults)
 	defaults.ws_nodegraph_max_nodes = tostring(T.require("foundation.nodegraph").MAX_NODES)
 	defaults.tf_max_active_zombie = tostring(T.require("foundation.npc.zombie").MAX_ACTIVE_DEFAULT)
 	defaults.tf_flag_caplimit = tostring(T.require("features.flag.model").CAPLIMIT_DEFAULT)
+	defaults.ws_mvm_setup_time = tostring(T.require("features.mvm.model").SETUP_SECONDS)
+	defaults.tf_bot_difficulty = tostring(T.require("foundation.aiwar.marksmanship").DEFAULT)
 	for _, boss in ipairs({ "foundation.npc.eyeball_boss", "foundation.npc.headless_hatman", "foundation.npc.merasmus" }) do
 		for name, value in pairs(T.require(boss).CONVARS) do defaults[name] = tostring(value) end
 	end
@@ -59,12 +61,12 @@ local function IndirectDefaults(defaults)
 end
 
 -- The creating calls IndirectDefaults resolves: the bosses' table, the
--- zombie cap, the flag cap limit, the node graph cap, the war's team size,
+-- zombie cap, the flag cap limit, MvM's setup time, the soldiers' difficulty, the node graph cap, the war's team size,
 -- the overlay's parts;
 -- the rounds' helper ConVarOrCreate, its definition and its CreateConVar;
 -- and sh_core's replicating CreateConVar and the client's copy of a server
 -- convar (system_server_convars), which create none of their own.
-local INDIRECT_CALLS = 10
+local INDIRECT_CALLS = 12
 
 T.test("every convar the code creates is in the cfg at its default", function()
 	local defaults, indirect = CodeDefaults()

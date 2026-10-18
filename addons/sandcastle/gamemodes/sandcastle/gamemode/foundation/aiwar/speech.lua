@@ -16,6 +16,10 @@ CONCEPT_BATTLE_STANCE = "TLK_NS_BATTLE_STANCE"
 CONCEPT_PLAYER_PASSING = "TLK_NS_PLAYER_PASSING"
 CONCEPT_ENEMY_SPOTTED = "TLK_NS_ENEMY_SPOTTED"
 
+-- A hurt soldier calls for a medic (foundation.aiwar.orders' CallMedic),
+-- heard by all near.
+CONCEPT_CALL_MEDIC = "TLK_NS_CALL_MEDIC"
+
 -- A player passes a soldier within GREET_RANGE, moving at PASS_SPEED or
 -- faster (a walk; standing about beside it is not passing).
 GREET_RANGE, PASS_SPEED = 128, 90

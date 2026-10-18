@@ -54,6 +54,60 @@ local function Near(p, q, what)
 	T.eq(FS.Distance(p, q) < 1e-6, true, string.format("%s: (%g, %g) vs (%g, %g)", what, p.x, p.y, q.x, q.y))
 end
 
+-- A role with stages (Stage) runs as the action of its stage under its
+-- side's, so a CTF courier shows ScenarioMonitor/CaptureFlagCourier/
+-- RetrieveFlag, then ReturnHome once it has the flag.
+local STAGED = {
+	NAME = "staged",
+	ROLES = {
+		[AiWar.COURIER] = {
+			name = "Courier",
+			arrive = 48,
+			leash = 300,
+			rushes = false,
+			Goal = function() return P(500, 0) end,
+			Stage = function(field) return field.stage end,
+		},
+	},
+	WaitsForSetup = function() return false end,
+	ChaseAnchor = function() return nil end,
+	SIDES = { courier = "CaptureFlagCourier" },
+	Side = function() return "courier" end,
+	Threat = function() return nil end,
+	PatrolMark = function() return {} end,
+	PatrolHolds = function() return true end,
+}
+
+local function StagedField(stage)
+	return { phase = AiWar.PHASES.running, carts = {}, doctrine = STAGED, stage = stage }
+end
+
+T.test("a role's stage names its action under its side, and a new stage changes it", function()
+	local me, npc, war = Enlist({ role = AiWar.COURIER, field = StagedField("RetrieveFlag") })
+	local job, _, side = Orders.JobOf(npc:Describe())
+	T.eq(side, "CaptureFlagCourier", "the side: its job")
+	T.eq(job:match("^[^/]+"), "RetrieveFlag", "its stage: " .. job)
+	war:SetField(StagedField("ReturnHome"))
+	Tick(me, npc)
+	T.eq(Orders.JobOf(npc:Describe()):match("^[^/]+"), "ReturnHome", "the next stage")
+end)
+
+-- A stage may override its role's settings (STAGES): a defender that
+-- picks up the enemy flag delivers it as a courier would, close enough to
+-- step into the capture zone.
+T.test("a stage's own settings override its role's", function()
+	local role = STAGED.ROLES[AiWar.COURIER]
+	local asked = {}
+	local base = role.Goal
+	role.Goal = function() asked.role = true return P(500, 0) end
+	role.STAGES = { Deliver = { arrive = 8, Goal = function() asked.stage = true return P(900, 0) end } }
+	local me, npc = Enlist({ role = AiWar.COURIER, field = StagedField("Deliver") })
+	Tick(me, npc, 4)
+	T.eq(asked.stage, true, "the stage's goal")
+	T.eq(asked.role, nil, "not the role's")
+	role.Goal, role.STAGES = base, nil
+end)
+
 T.test("the fake soldier implements the whole port", function()
 	local me = FS.Soldier()
 	for _, name in ipairs(Soldier.METHODS) do
@@ -1404,6 +1458,60 @@ T.test("a job its doctrine lacks leaves the soldier idle", function()
 	local me, npc = Enlist({ role = AiWar.PUSH, field = StubField({}) })
 	Tick(me, npc, 2)
 	T.eq(Orders.JobOf(npc:Describe()), "Idle", "no push in the stub")
+end)
+
+-- FindHealth (CTFBotGetHealth): retreating, a soldier leaves cover for a
+-- kit once its urgency and its safety (foundation.aiwar.health) make 1.
+T.test("a soldier in cover leaves for a near kit once the enemy has drawn off", function()
+	local kit = { pos = P(300, 0), handle = "kit" }
+	local me, npc = Enlist({ role = AiWar.DEFEND, team = RED, covers = { P(200, 0) }, enemyPos = P(600, 0) })
+	me.kits = { kit }
+	me.health = 30
+	Tick(me, npc)
+	T.eq(npc:Describe(), "NextSoldier/StrategyMonitor/RetreatToCover", "retreating")
+	me.health = 60 -- urgency 0.4: it waits for safety 0.6
+	Tick(me, npc, 2)
+	T.eq(npc:Describe(), "NextSoldier/StrategyMonitor/RetreatToCover", "the enemy too near to go")
+	me.enemyPos = P(5000, 0)
+	Tick(me, npc, 2)
+	T.eq(npc:Describe(), "NextSoldier/StrategyMonitor/FindHealth", "it has drawn off: for the kit")
+	Near(me.moving, kit.pos, "to the kit")
+	me.kits = {}
+	Tick(me, npc, 2)
+	T.eq(Orders.JobOf(npc:Describe()) ~= nil, true, "the kit taken: back to its job")
+end)
+
+T.test("a soldier on fire goes for health whatever the danger; one with a medic on it does not", function()
+	local kit = { pos = P(300, 0), handle = "kit" }
+	local me, npc = Enlist({ role = AiWar.DEFEND, team = RED, covers = { P(200, 0) }, enemyPos = P(400, 0) })
+	me.kits = { kit }
+	me.health, me.burning = 30, true
+	Tick(me, npc, 3)
+	T.eq(npc:Describe(), "NextSoldier/StrategyMonitor/FindHealth", "burning: straight for it")
+	local them, theirs, _, member = Enlist({ role = AiWar.DEFEND, team = RED, covers = { P(200, 0) }, enemyPos = P(400, 0) })
+	them.kits = { kit }
+	them.health, them.burning = 30, true
+	member.medicAt = them.now + 10 -- a medic treats it
+	Tick(them, theirs, 3)
+	T.eq(theirs:Describe(), "NextSoldier/StrategyMonitor/RetreatToCover", "its medic heals it where it hides")
+end)
+
+-- CallMedic: under CALL_MEDIC_HEALTH a soldier calls for a medic, once a
+-- CALL_MEDIC_COOLDOWN, and goes on with what it was doing.
+T.test("a hurt soldier calls for a medic, then gets on with its job", function()
+	local me, npc = Enlist({ role = AiWar.DEFEND, team = RED })
+	me.health = Orders.CALL_MEDIC_HEALTH * 100 + 1
+	Tick(me, npc)
+	T.eq(#(me.medicCalls or {}), 0, "not hurt enough")
+	me.health = Orders.CALL_MEDIC_HEALTH * 100 - 5
+	Tick(me, npc, 2)
+	T.eq(#me.medicCalls, 1, "MEDIC!")
+	T.eq(Orders.JobOf(npc:Describe()) ~= nil, true, "back to its job")
+	Tick(me, npc, 4)
+	T.eq(#me.medicCalls, 1, "not again before the cooldown")
+	me:Advance(Orders.CALL_MEDIC_COOLDOWN)
+	Tick(me, npc)
+	T.eq(#me.medicCalls, 2, "again")
 end)
 
 T.finish()

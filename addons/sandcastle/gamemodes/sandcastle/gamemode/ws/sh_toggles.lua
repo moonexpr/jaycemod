@@ -13,6 +13,8 @@
 -- - tf_use_fixed_weaponspreads: 1 puts a multi-pellet shot's pellets in
 --   TF2's fixed pattern (foundation.combat.fixed_spread), here on both
 --   realms so prediction agrees.
+-- - mp_friendlyfire: 1 lets a player or soldier hurt its teammates, by
+--   any weapon or blast (ws/sv_hits.lua, features/combat).
 -- mp_tampering_enabled, sv_gameplay_disable_sandbox and sv_gameplay_enabled
 -- live with what they switch (ws/sh_permissions.lua, ws/sh_gameplay.lua).
 local Economy = WS.require("foundation.economy")
@@ -28,6 +30,8 @@ local SOLDIERS = CreateConVar("ns_soldiers_enabled", "1", FLAGS,
 	"0: no NextSoldier soldiers; the AI war cannot start, and one running ends", 0, 1)
 local CRITS = CreateConVar("tf_weapon_criticals", "1", FLAGS,
 	"0: no critical hits from any blast or projectile", 0, 1)
+local FRIENDLY_FIRE = CreateConVar("mp_friendlyfire", "0", FLAGS,
+	"1: players and soldiers can hurt their teammates", 0, 1)
 local FIXED = CreateConVar("tf_use_fixed_weaponspreads", "0", FLAGS,
 	"1: a multi-pellet shot's pellets land in a fixed pattern, not at random", 0, 1)
 
@@ -37,6 +41,10 @@ end
 
 function WS.SoldiersEnabled()
 	return SOLDIERS:GetBool()
+end
+
+function WS.FriendlyFire()
+	return FRIENDLY_FIRE:GetBool()
 end
 
 function WS.CritsEnabled()

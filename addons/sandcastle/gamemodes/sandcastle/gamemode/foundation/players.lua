@@ -39,6 +39,7 @@ COND = {
 	DISGUISED = 3,
 	STEALTHED = 4,
 	INVULNERABLE = 5,
+	INVULNERABLE_WEARINGOFF = 8,
 	STEALTHED_BLINK = 9,
 	CRITBOOSTED = 11,
 	PHASE = 14,
@@ -49,6 +50,7 @@ COND = {
 	SPEED_BOOST = 32,
 	CRITBOOSTED_PUMPKIN = 33,
 	CRITBOOSTED_USER_BUFF = 34,
+	CRITBOOSTED_BONUS_TIME = 38,
 	CANNOT_SWITCH_FROM_MELEE = 41,
 	INVULNERABLE_HIDE_UNLESS_DAMAGED = 51,
 	INVULNERABLE_USER_BUFF = 52,
@@ -65,6 +67,7 @@ COND = {
 	MELEE_ONLY = 85,
 	PURGATORY = 108,
 	GAS = 123,
+	IMMUNE_TO_PUSHBACK = 130,
 }
 local C = COND
 
@@ -157,17 +160,32 @@ local CRIT_MULTIPLIER = 3
 MINICRIT_MULTIPLIER = 1.35
 
 -- The crit boosts CTFPlayerShared::IsCritBoosted counts that Sandcastle has.
-local CRIT_BOOSTS = { C.CRITBOOSTED, C.CRITBOOSTED_PUMPKIN, C.CRITBOOSTED_USER_BUFF }
+CRIT_BOOSTS = { C.CRITBOOSTED, C.CRITBOOSTED_PUMPKIN, C.CRITBOOSTED_USER_BUFF, C.CRITBOOSTED_BONUS_TIME }
 
--- Damage scale from conditions: an invulnerable victim, or a blast-immune
--- one hit by a blast, takes nothing; a crit-boosted attacker deals triple;
--- a jarated victim takes mini-crits from anyone but themselves (selfHarm).
-function DamageScale(victimConds, attackerConds, isBlast, now, selfHarm)
-	if InCond(victimConds, C.INVULNERABLE, now) then return 0 end
-	if isBlast and InCond(victimConds, C.BLAST_IMMUNE, now) then return 0 end
+function CritBoosted(conds, now)
 	for _, boost in ipairs(CRIT_BOOSTS) do
-		if InCond(attackerConds, boost, now) then return CRIT_MULTIPLIER end
+		if InCond(conds, boost, now) then return true end
 	end
-	if not selfHarm and InCond(victimConds, C.URINE, now) then return MINICRIT_MULTIPLIER end
-	return 1
+	return false
+end
+
+-- What a hit is: its crit text and sounds follow it (ws/sv_hits.lua).
+HIT_NORMAL, HIT_MINICRIT, HIT_CRIT = 0, 1, 2
+
+-- CTFGameRules::ApplyOnDamageModifyRules, as Sandcastle has it: the scale of
+-- a hit's damage and what the hit is. facts: blast (a blast's damage),
+-- selfHarm (the attacker's own), headshot (any weapon's: Sandcastle crits
+-- them all), critical (DMG_CRITICAL: a crit already, its damage tripled
+-- where it was dealt). An invulnerable victim, or a blast-immune one hit by
+-- a blast, takes nothing; a crit-boosted attacker or a headshot deals
+-- triple, but never to the attacker itself; a jarated victim takes
+-- mini-crits from anyone but themselves.
+function Hit(victimConds, attackerConds, now, facts)
+	if InCond(victimConds, C.INVULNERABLE, now) then return 0, HIT_NORMAL end
+	if facts.blast and InCond(victimConds, C.BLAST_IMMUNE, now) then return 0, HIT_NORMAL end
+	if facts.critical then return 1, HIT_CRIT end
+	if facts.selfHarm then return 1, HIT_NORMAL end
+	if facts.headshot or CritBoosted(attackerConds, now) then return CRIT_MULTIPLIER, HIT_CRIT end
+	if InCond(victimConds, C.URINE, now) then return MINICRIT_MULTIPLIER, HIT_MINICRIT end
+	return 1, HIT_NORMAL
 end

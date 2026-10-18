@@ -7,8 +7,8 @@
 -- cart's capture area. A soldier speaks one line at a time and waits,
 -- after it, the delay its rule's group sets; the group sets how loud it is
 -- too. A soldier also says it is ready in its battle stance, calls out an
--- enemy it has just spotted, and greets a teammate player walking past,
--- heard by that player alone.
+-- enemy it has just spotted, calls for a medic when hurt, and greets a
+-- teammate player walking past, heard by that player alone.
 local Controller = ...
 local Speech = WS.require("foundation.aiwar.speech")
 local Payload = WS.require("foundation.payload")
@@ -62,6 +62,14 @@ function Controller:AnnounceStance(ent)
 	local entry = self.soldiers[ent]
 	if not entry then return end
 	self:SpeakConcept(ent, Speech.CONCEPT_BATTLE_STANCE, self:RoleOf(entry), false, CurTime())
+end
+
+-- A hurt soldier calling for a medic (the soldier port's CallMedic) says
+-- so, to all near.
+function Controller:CallMedicLine(ent)
+	local entry = self.soldiers[ent]
+	if not entry then return end
+	self:SpeakConcept(ent, Speech.CONCEPT_CALL_MEDIC, self:RoleOf(entry), false, CurTime())
 end
 
 -- A soldier that has just spotted a new enemy (ws_drg_soldier's

@@ -36,9 +36,18 @@ function MayCarry(flagTeam, carrierTeam, ownersCarry)
 	return flagTeam ~= carrierTeam
 end
 
--- CTFGameRules::FlagsMayBeCapped: not in the pre-round nor after a win.
-function MayBeCapped(state)
+-- CTFGameRules::FlagsMayBeCapped: not in the pre-round nor after a win;
+-- nor, in a mode whose flags wait for the wave (MvM's bomb), in setup.
+function MayBeCapped(state, inSetup, waitsForWave)
+	if waitsForWave and inSetup then return false end
 	return state ~= State.PREROUND and state ~= State.TEAM_WIN
+end
+
+-- CFuncRespawnRoom::RespawnRoomTouch: a carrier running into its own
+-- team's respawn room (roomTeam) drops the flag, unless the room is the
+-- invaders' (MvM's TF_TEAM_PVE_INVADERS; nil in other modes).
+function DropsIn(roomTeam, carrierTeam, invaders)
+	return roomTeam == carrierTeam and roomTeam ~= invaders
 end
 
 -- CCaptureZone::Touch: a zone caps for carriers of its team, or of any team
@@ -186,6 +195,14 @@ Mode = Rounds.Mode:Extend("ctf")
 Mode.OBJECTIVE = true
 Mode.PRIORITY = 1.5
 Mode.FLAG_CAPS_SCORE = true
+
+-- At the time limit the team with more captures this round wins
+-- (world.captures, the tally); even captures leave it to the scores.
+function Mode:TimelimitWin(world)
+	local red, blue = world.captures[RED], world.captures[BLUE]
+	if red ~= blue then return red > blue and RED or BLUE, Rounds.WINREASON.MOST_CAPTURES end
+	return Rounds.Mode.TimelimitWin(self, world)
+end
 
 -- The flag panel --------------------------------------------------------------------
 

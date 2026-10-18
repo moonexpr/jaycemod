@@ -1,5 +1,6 @@
 -- Common base for item_healthkit_* and item_ammopack_* (CTFPowerup, CItem).
--- A live player of its team (TeamNum 0: anyone) who can use it takes it:
+-- A live player or AI war soldier of its team (TeamNum 0: anyone) who can
+-- use it takes it:
 -- a health kit heals ceil(max * size) and puts out fire, an ammo pack refills
 -- each weapon by that share; the player alone hears the pickup sound, and
 -- OnPlayerTouch fires. It comes back 10 seconds later with Item.Materialize,
@@ -107,30 +108,38 @@ function ENT:Respawn()
 	end)
 end
 
--- CTFPowerup::ValidTouch
-function ENT:ValidTouch(ply)
-	if self.disabled or self.respawning or not WS.IsAliveInGame(ply) then return false end
-	return self.team == WS.TEAM_UNASSIGNED or ply:Team() == self.team
+-- A live player in the game, or a living team member (an AI war soldier).
+local function Taker(ent)
+	if not IsValid(ent) then return false end
+	if ent:IsPlayer() then return WS.IsAliveInGame(ent) end
+	return WS.TeamNumber(ent) ~= WS.TEAM_UNASSIGNED and ent:Health() > 0
 end
 
--- CHealthKit::MyTouch / CAmmoPack::MyTouch: whether the pickup was used.
-function ENT:MyTouch(ply)
+-- CTFPowerup::ValidTouch
+function ENT:ValidTouch(ent)
+	if self.disabled or self.respawning or not Taker(ent) then return false end
+	return self.team == WS.TEAM_UNASSIGNED or WS.TeamNumber(ent) == self.team
+end
+
+-- CHealthKit::MyTouch / CAmmoPack::MyTouch: whether the pickup was used. A
+-- soldier carries no ammo to refill.
+function ENT:MyTouch(ent)
 	local ratio = P.PACK_RATIO[self.Size]
-	if self.Kind == "ammo" then return WS.GiveAmmoFraction(ply, ratio) end
-	local given = P.HealthKitHeal(ply:Health(), ply:GetMaxHealth(), ratio)
-	local burning = ply:IsOnFire()
+	if self.Kind == "ammo" then return ent:IsPlayer() and WS.GiveAmmoFraction(ent, ratio) end
+	local given = P.HealthKitHeal(ent:Health(), ent:GetMaxHealth(), ratio)
+	local burning = WS.InCondition(ent, P.COND.BURNING)
 	if not P.HealthKitTaken(given, burning) then return false end
-	ply:SetHealth(ply:Health() + given)
-	WS.RemoveCondition(ply, P.COND.BURNING)
-	ply:Extinguish()
+	ent:SetHealth(ent:Health() + given)
+	WS.RemoveCondition(ent, P.COND.BURNING)
 	return true
 end
 
--- CItem::ItemTouch
-function ENT:Touch(ply)
-	if not self:ValidTouch(ply) or not self:MyTouch(ply) then return end
-	WS.PlaySoundTo(ply, self, SOUNDS[self.Kind])
-	self:TriggerOutput("OnPlayerTouch", ply)
+-- CItem::ItemTouch: a player alone hears it; a soldier's taking is heard
+-- round it.
+function ENT:Touch(ent)
+	if not self:ValidTouch(ent) or not self:MyTouch(ent) then return end
+	if ent:IsPlayer() then WS.PlaySoundTo(ent, self, SOUNDS[self.Kind]) else self:EmitSound(SOUNDS[self.Kind]) end
+	self:TriggerOutput("OnPlayerTouch", ent)
 	self:Respawn()
 end
 

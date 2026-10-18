@@ -66,6 +66,10 @@
 --     door shut or a brush was switched on, and may lead into it
 --   Watch(p): while I stand with no enemy in sight, face p, where the
 --     threat is (nil: face as I will); moving or fighting comes first
+--   HealthKits() -> the health kits I may take now: { pos, handle }
+--   Burning() -> whether I am on fire
+--   CallMedic(): call for a medic: my side's medics answer me first a
+--     while, and my teammates see that I called
 --   Hop(p) -> whether I will be carried to p: only where a player could
 --     walk from here to p, so never through a wall, door or gate; I am
 --     moved there over a moment, running, and MoveTo and Release wait
@@ -109,4 +113,7 @@ METHODS = {
 	"UseGadget",
 	"Heal",
 	"Watch",
+	"HealthKits",
+	"Burning",
+	"CallMedic",
 }

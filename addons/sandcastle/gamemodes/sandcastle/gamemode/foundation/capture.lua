@@ -54,12 +54,13 @@ SOUND_PROGRESS = "Hologram.Move"
 SOUND_INTERRUPTED = "Hologram.Interrupted"
 
 -- point_warn_sound's default (the FGD's), the contested lines
--- (C_TFObjectiveResource::SetCappingTeam) and the scored chime
--- (CTeamControlPoint::HandleScoring).
+-- (C_TFObjectiveResource::SetCappingTeam) and the capture bell (the scored
+-- chime of CTeamControlPoint::HandleScoring), which every capture rings for
+-- everyone, spectators too.
 WARN_SOUND_DEFAULT = "ControlPoint.CaptureWarn"
 CONTESTED = "Announcer.ControlPointContested"
 CONTESTED_NEUTRAL = "Announcer.ControlPointContested_Neutral"
-SCORED_CHIME = "Hud.EndRoundScored"
+CAPTURE_BELL = "Hud.EndRoundScored"
 -- The client's spam guard on the final-cap warning (C_BaseTeamObjectiveResource::ClientThink).
 WARN_INTERVAL = 5
 
@@ -349,14 +350,6 @@ function PointSet:CaptureStarted(id, team, now)
 	return {}
 end
 
--- HandleScoring's chime (per-capture scoring only, not for a capture that
--- wins the game): the capping team hears it, or everyone when the mode
--- says so (payload). Returns a line or nil.
-function ScoredChime(scorePerCapture, wouldWin, chimeToAll, capTeam)
-	if not scorePerCapture or wouldWin then return nil end
-	return Line(chimeToAll and HEAR_EVERYONE or HEAR_TEAM, capTeam, SCORED_CHIME)
-end
-
 -- Owners -----------------------------------------------------------------------------
 
 -- CTeamControlPoint::SetOwner (a capture), InputSetOwner (from a player or
@@ -370,6 +363,8 @@ function PointSet:SetOwner(id, team, cause, pointsMayBeCaptured)
 	local old = p.owner
 	p.owner = team
 	local sounding = cause == CAUSE_CAPTURE or cause == CAUSE_PLAYER_INPUT
+	-- a team took it, by players or a relay (a payload cart): not forced
+	local taken = cause ~= CAUSE_FORCE and team >= FIRST_GAME_TEAM
 	-- InternalSetOwner: team_capsound_<team> to everyone, from the point
 	local lines = {}
 	local capSound = p.capSounds[team]
@@ -381,7 +376,8 @@ function PointSet:SetOwner(id, team, cause, pointsMayBeCaptured)
 			old = old,
 			team = team,
 			sounding = sounding,
-			scoring = cause ~= CAUSE_FORCE and team >= FIRST_GAME_TEAM,
+			scoring = taken,
+			bell = taken and CAPTURE_BELL or nil,
 			lines = lines,
 		},
 	}

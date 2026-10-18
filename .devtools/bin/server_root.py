@@ -13,7 +13,8 @@ server writes there, the game never reads them). addons/ links each of the
 shared addons, the repo's own (REPO_ADDONS), and server_mounts, whose lua/ links the server's own Lua in
 server_root/ (SERVER_LUA): an autorun (mounts.lua) that mounts each Workshop
 archive in SERVER_WORKSHOP, linked as cache/<name>.gma (GMod ignores a loose
-.gma in addons/), the gamemode's entities winning over a mounted addon's of
+.gma in addons/), and each map pool map in SERVER_MAPS, from steamcmd's
+downloads, as cache/workshop_map_<item>.gma, the gamemode's entities winning over a mounted addon's of
 the same name, luadev's access on a LAN server, ULX's luadev commands, and
 luadev's socket for server_lua.py. lua/ is its own too, every entry a link
 but bin/, which adds SERVER_BINARIES (the server's LuaSocket) beside links to
@@ -57,6 +58,21 @@ TF_SCRIPTS = (
     "scripts/game_sounds_player.txt",
 )
 TF_SCRIPTS_DIR = "sandcastle/tf_scripts"  # under the server's data/
+# Where steamcmd downloads Workshop items (steamcmd +login anonymous
+# +workshop_download_item 4000 <id>): the map pool's maps come from here,
+# not the operator's game, which need not subscribe to them
+STEAMCMD_WORKSHOP = Path.home() / "Library/Application Support/Steam/steamapps/workshop/content/4000"
+# Workshop maps in the map pool (sandcastle.txt's "maps"): map -> item id.
+# Each is mounted from cache/ under map_archive_name, which mounts.lua reads
+# the item back from to send clients the current map's
+SERVER_MAPS = {
+    "gm_blackmesa_sigma": "104483047",
+    "gm_excess_construct_13_day": "3544366730",
+    "gm_genesis": "266666023",
+    "gm_shopstruct": "3654206412",
+    "gm_construct_build_conquer13": "2716888672",
+}
+MAP_ARCHIVE_PREFIX = "workshop_map_"
 # Workshop addons the server mounts: name -> item id
 SERVER_WORKSHOP = {
     "drgbase": "1560118657",
@@ -166,10 +182,16 @@ class Layout:
     lua: Path  # SERVER_LUA's folder
     tf: Path  # TF2's tf/, which holds TF_PAK
     luadev_port: int  # luadev_socket.lua's, written to LUADEV_PORT_FILE
+    maps: Path  # steamcmd's workshop/content/4000, which holds SERVER_MAPS
 
     @classmethod
     def of(cls, instance: Instance) -> "Layout":
-        return cls(SHARED, instance.root, WORKSHOP, SERVER_LUA_DIR, TF, instance.luadev_port)
+        return cls(SHARED, instance.root, WORKSHOP, SERVER_LUA_DIR, TF, instance.luadev_port, STEAMCMD_WORKSHOP)
+
+
+def map_archive_name(item: str) -> str:
+    """A Workshop map's archive in cache/, named for its item."""
+    return f"{MAP_ARCHIVE_PREFIX}{item}.gma"
 
 
 def workshop_archive(workshop: Path, item: str) -> Path:
@@ -248,6 +270,12 @@ def build(layout: Layout) -> Path:
         link(target, layout.lua / source)
     for name, item in SERVER_WORKSHOP.items():
         place_archive(game / "cache" / f"{name}.gma", workshop_archive(layout.workshop, item))
+    for name, item in SERVER_MAPS.items():
+        try:
+            archive = workshop_archive(layout.maps, item)
+        except FileNotFoundError as e:
+            raise FileNotFoundError(f"{name}: {e}; fetch it with: steamcmd +login anonymous +workshop_download_item 4000 {item} +quit") from e
+        place_archive(game / "cache" / map_archive_name(item), archive)
     pak = Vpk.open(layout.tf / TF_PAK)
     for path in TF_SCRIPTS:
         target = game / "data" / TF_SCRIPTS_DIR / path

@@ -389,3 +389,41 @@ rule EnemySpottedCombineMetrocop
 	ApplyContext "SaidEnemySpotted:1:10"
 	response EnemySpottedCombineMetrocop
 }
+
+// CallMedic: hurt: a call for a medic, to all near
+
+response CallMedicCombine
+{
+	print "Combine: medic!" defaultdelay
+}
+rule CallMedicCombine
+{
+	criteria ConceptCallMedic IsCombine NotSaidCallMedic
+	ApplyContext "SaidCallMedic:1:10"
+	response CallMedicCombine
+}
+
+response CallMedicCombineSoldier
+{
+	speak "npc/combine_soldier/vo/coverhurt.wav" defaultdelay
+	speak "npc/combine_soldier/vo/coverme.wav" defaultdelay
+}
+rule CallMedicCombineSoldier
+{
+	criteria ConceptCallMedic IsCombine NotSaidCallMedic IsSoldierVoice
+	ApplyContext "SaidCallMedic:1:10"
+	response CallMedicCombineSoldier
+}
+
+response CallMedicCombineMetrocop
+{
+	speak "npc/metropolice/vo/officerneedshelp.wav" defaultdelay
+	speak "npc/metropolice/vo/officerneedsassistance.wav" defaultdelay
+	speak "npc/metropolice/vo/help.wav" defaultdelay
+}
+rule CallMedicCombineMetrocop
+{
+	criteria ConceptCallMedic IsCombine NotSaidCallMedic IsMetrocopVoice
+	ApplyContext "SaidCallMedic:1:10"
+	response CallMedicCombineMetrocop
+}

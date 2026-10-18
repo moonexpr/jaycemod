@@ -34,6 +34,8 @@ WINREASON = {
 	-- foundation.rounds.limits': mp_round_fraglimit and mp_round_cashlimit
 	FRAGLIMIT = 9,
 	CASHLIMIT = 10,
+	-- CTF's time limit: the team with more captures wins (features/flag)
+	MOST_CAPTURES = 11,
 }
 STALEMATE = {
 	JOIN_MID = 0,
@@ -72,6 +74,7 @@ HUD_NONE = 0
 HUD_CONTROL_POINTS = 1
 HUD_KOTH = 2
 HUD_PAYLOAD = 3
+HUD_DEATHMATCH = 4 -- frags alone: no objective panel (the frag limit's own)
 
 -- The round phases other features listen to, and the listener order, which
 -- reproduces TF2's RoundSpawn/RoundActivate order: timers, then the master
@@ -89,6 +92,9 @@ LISTEN_LOGIC = 30
 -- State_Enter_PREROUND uses 5; Sandcastle holds everyone one second, long
 -- enough for the map's cleanup and a team scramble, and shows no countdown.
 PREROUND_SECONDS = 1
+-- The bonus rounds, deathmatch and sudden death, open frozen this long in
+-- place of setup, so everyone reads the rules (bonus_freeze).
+BONUS_FREEZE_SECONDS = 3
 -- GetMinTimeWhenPlayerMaySpawn: 2 s death animation plus the freezecam's
 -- spec_freeze_traveltime (0.4) and spec_freeze_time (4).
 DEATH_ANIM_LENGTH = 2.0 + 0.4 + 4.0
@@ -293,6 +299,18 @@ function MapVoteChoices(maps, current, filter, random)
 	return choices
 end
 
+-- An empty server's next map: one of the maplist's without a nav mesh
+-- (hasNav(map) false), at random (random(n): 1..n), never the current map,
+-- so the idle server builds it one (ws/sv_nav.lua); nil when there is none.
+function IdleNextMap(maps, current, hasNav, random)
+	local unmeshed = {}
+	for _, map in ipairs(maps) do
+		if map ~= current and not hasNav(map) then unmeshed[#unmeshed + 1] = map end
+	end
+	if #unmeshed == 0 then return nil end
+	return unmeshed[random(#unmeshed)]
+end
+
 -- CheckWinLimit
 function WinLimitReached(winlimit, scores)
 	if winlimit <= 0 then return false end
@@ -357,8 +375,6 @@ Mode = {
 	HUD = HUD_NONE,
 	CREATES_TIME_LIMIT_TIMER = true,
 	ANNOUNCES_TIME_ADDED = true,
-	-- Hud.EndRoundScored to everyone, else to the capping team.
-	SCORE_CHIME_TO_ALL = false,
 	-- The state the pre-round ends in: the round is fought there.
 	ROUND_STATE = State.RND_RUNNING,
 	-- Whether STALEMATE is the round itself (arena) rather than sudden death:
@@ -398,6 +414,12 @@ function Mode:PreroundSeconds(settings)
 	return PREROUND_SECONDS * settings.enableRoundWaitTime
 end
 
+-- Who wins at the time limit, and why: the team with the higher score
+-- (UNASSIGNED for a tie). world: the round's (scores; captures, in CTF).
+function Mode:TimelimitWin(world)
+	return TimelimitWinner(world.scores), WINREASON.TIMELIMIT
+end
+
 -- How long a round fought in STALEMATE (arena) is in setup first; none.
 function Mode:SetupSeconds(settings) return 0 end
 
@@ -405,6 +427,15 @@ function Mode:SetupSeconds(settings) return 0 end
 function Mode:StalemateSeconds(settings)
 	return settings.stalemateTimelimit
 end
+
+-- Deathmatch (mp_deathmatch_enable): the bonus round that breaks a tied
+-- match. Frags alone decide it (mp_round_fraglimit, foundation.rounds.limits),
+-- so its mode has no objective: no point wins it, no flag scores.
+DEATHMATCH = "deathmatch"
+DeathmatchMode = Mode:Extend(DEATHMATCH)
+DeathmatchMode.OBJECTIVE = false
+DeathmatchMode.HUD = HUD_DEATHMATCH
+function DeathmatchMode:MayWinByPoints() return false end
 
 -- Round ------------------------------------------------------------------------------
 
@@ -499,7 +530,9 @@ function Round:SetMode(mode)
 	return true
 end
 
-function Round:Mode() return self.mode end
+-- The round's mode: deathmatch's while it is fought (Round:InDeathmatch).
+function Round:Mode() return self.deathmatch and DeathmatchMode or self.mode end
+function Round:InDeathmatch() return self.deathmatch == true end
 function Round:State() return self.states:State() end
 function Round:Halted() return self.halted end
 function Round:InSetup() return self.inSetup end
@@ -594,6 +627,8 @@ end
 -- Why an admin's match win ended the match (Round:ForceMatchWin, or a
 -- sudden death called to decide it).
 ADMIN_MATCH_WIN = "Decided by an Administrator"
+-- Why a deathmatch's winner won the match.
+DEATHMATCH_MATCH_WIN = "Won the deathmatch"
 
 -- A stalemate is the game's default end. With no sudden death to break it,
 -- the match ends drawn (STALEMATE_GAME_OVER): nobody won, so nobody is
@@ -601,14 +636,16 @@ ADMIN_MATCH_WIN = "Decided by an Administrator"
 -- level changes after MATCH_WIN_EXTRA and mp_chattime, the next map named
 -- (next_map) when the extra is over.
 STALEMATE_GAME_OVER = "Stalemate"
+-- The draw at the time limit says so (mp_match_end_at_timelimit's tie).
+TIMELIMIT_GAME_OVER = "Game ran out of time."
 
-local function StalemateGameOver(self, effects, now)
+local function StalemateGameOver(self, effects, now, stalemate)
 	self.intermissionFreeze = now + MATCH_WIN_EXTRA
 	self.intermissionFreezes = false
 	self.intermissionEnd = self.intermissionFreeze + self.settings.chattime
 	Add(effects, {
 		kind = "intermission",
-		reason = STALEMATE_GAME_OVER,
+		reason = stalemate == STALEMATE.SERVER_TIMELIMIT and TIMELIMIT_GAME_OVER or STALEMATE_GAME_OVER,
 		winner = NOBODY_WON,
 		["until"] = self.intermissionEnd,
 	})
@@ -639,11 +676,33 @@ end
 -- on to another, forced or not), else the match ends drawn.
 local function Stalemate(self, effects, now, reason)
 	if self.suddenDeath or self.settings.stalemateEnable then return SuddenDeathRound(self, effects, now, reason) end
-	return StalemateGameOver(self, effects, now)
+	return StalemateGameOver(self, effects, now, reason)
+end
+
+-- A bonus round's opening freeze: nobody moves or attacks until it ends,
+-- which it returns.
+function BonusFreeze(effects, now)
+	local ends = now + BONUS_FREEZE_SECONDS
+	Add(effects, {
+		kind = "bonus_freeze",
+		ends = ends,
+	})
+	return ends
+end
+
+-- A tied match's bonus round: deathmatch, when on (mp_deathmatch_enable), a
+-- fresh round of frags alone whose winner wins the match; else sudden death.
+local function Deathmatch(self, effects, now)
+	self.deathmatch = true
+	self.decideMatch, self.decideReason = true, DEATHMATCH_MATCH_WIN
+	self.forceMapReset = true
+	Add(effects, Kind("deathmatch"))
+	return Transition(self, effects, State.PREROUND, now)
 end
 
 local function MatchSuddenDeath(self, effects, now)
 	self.suddenDeathMatch = false
+	if self.settings.deathmatchEnable then return Deathmatch(self, effects, now) end
 	return ForcedSuddenDeath(self, effects, now, STALEMATE.MATCH_TIED)
 end
 
@@ -760,14 +819,17 @@ end
 -- With SetStalemateOnTimelimit (or mp_match_end_at_timelimit) the time limit
 -- ends the round: the higher score wins, a tie goes to sudden death.
 local function CheckTimelimitStalemate(self, effects, now, world)
-	if self.settings.timelimit <= 0 or self:TimeLeft(now) > 0 then return end
+	-- a deathmatch is the tie at the time limit broken: it plays out
+	if self.deathmatch or self.settings.timelimit <= 0 or self:TimeLeft(now) > 0 then return end
 	if not (self.allowStalemateAtTimelimit or self.settings.matchEndAtTimelimit) then return end
-	local winner = TimelimitWinner(world.scores)
-	if winner == UNASSIGNED then
+	local winner, reason = self.mode:TimelimitWin(world)
+	if winner == UNASSIGNED and self.settings.deathmatchEnable then
+		Deathmatch(self, effects, now)
+	elseif winner == UNASSIGNED then
 		self.changelevelAfterStalemate = true
 		for _, e in ipairs(self:SetStalemate(now, STALEMATE.SERVER_TIMELIMIT, self.forceMapReset)) do Add(effects, e) end
 	else
-		for _, e in ipairs(self:SetWinningTeam(now, winner, WINREASON.TIMELIMIT, true, false, true, world.objective)) do
+		for _, e in ipairs(self:SetWinningTeam(now, winner, reason, true, false, true, world.objective)) do
 			Add(effects, e)
 		end
 	end
@@ -785,7 +847,13 @@ end
 ENTER[State.PREROUND] = function(self, effects, now, world, change)
 	Add(effects, Kind("balance_teams"))
 	RoundRespawn(self, effects, now, world)
-	self.transitionAt = now + self.mode:PreroundSeconds(self.settings)
+	if self.deathmatch then
+		-- the deathmatch's map has no setup: its timers' ends at once
+		Add(effects, Kind("skip_setup"))
+		self.transitionAt = BonusFreeze(effects, now)
+	else
+		self.transitionAt = now + self.mode:PreroundSeconds(self.settings)
+	end
 	change.preroundEnd = self.transitionAt
 	Add(effects, Output("OnStateEnterPreRound"))
 	Add(effects, Kind("doors_lock"))
@@ -888,6 +956,7 @@ ENTER[State.STALEMATE] = function(self, effects, now)
 	self.enteringSuddenDeath = nil
 	if self.suddenDeath then
 		Add(effects, Kind("respawn_all"))
+		BonusFreeze(effects, now)
 		Add(effects, Kind("hide_timers"))
 		StalemateTimer(effects, self.settings.stalemateTimelimit)
 		return
@@ -923,7 +992,10 @@ THINK[State.STALEMATE] = function(self, effects, now, world)
 		return
 	end
 	if self.setupEnd then
-		if now < self.setupEnd then return end
+		if now < self.setupEnd then
+			CheckRespawnWaves(self, effects, now, world)
+			return
+		end
 		self.inSetup, self.setupEnd = false, nil
 		Add(effects, Kind("arena_setup_end"))
 		StartArenaRound(self, effects)
@@ -1027,12 +1099,13 @@ local function EndRound(self, now, winner, reason, forceMapReset, switchTeams, s
 	-- a win that ends the match is the match win at once, in the round win's
 	-- place: no round win music or bonus round first
 	local roundsPlayed = self.roundsPlayed + (forceMapReset and 1 or 0)
-	-- a sudden death an admin called to decide the match: its winner wins it
+	-- a sudden death an admin called, or a deathmatch, to decide the match:
+	-- its winner wins it
 	if self.decideMatch and winner ~= UNASSIGNED then
 		self.roundsPlayed = roundsPlayed
 		if winner == RED then Add(effects, Output("OnWonByTeam1")) end
 		if winner == BLUE then Add(effects, Output("OnWonByTeam2")) end
-		Intermission(self, effects, ADMIN_MATCH_WIN, now, winner)
+		Intermission(self, effects, self.decideReason, now, winner)
 		return effects
 	end
 	local limit = (WinLimitReached(self.settings.winlimit, scores) and "Reached Win Limit")
@@ -1135,7 +1208,7 @@ end
 function Round:SetStalemate(now, reason, forceMapReset, switchTeams)
 	local effects = {}
 	if Over(self) or self:InSuddenDeath() then return effects end
-	if not self.settings.stalemateEnable then return StalemateGameOver(self, effects, now) end
+	if not self.settings.stalemateEnable then return StalemateGameOver(self, effects, now, reason) end
 	self.forceMapReset = forceMapReset ~= false
 	return SuddenDeathRound(self, effects, now, reason)
 end
@@ -1162,7 +1235,7 @@ function Round:RestartRound(now)
 	end
 	self.forceMapReset = true
 	self.switchTeams, self.scrambleTeams = false, false
-	self.decideMatch = false
+	self.decideMatch, self.deathmatch = false, false
 	return Transition(self, effects, State.PREGAME, now)
 end
 
@@ -1180,7 +1253,7 @@ end
 -- An admin's sudden death whose winner wins the match, not only the round.
 function Round:SuddenDeathForMatch(now)
 	local effects = self:SuddenDeath(now, STALEMATE.ADMIN)
-	if #effects > 0 then self.decideMatch = true end
+	if #effects > 0 then self.decideMatch, self.decideReason = true, ADMIN_MATCH_WIN end
 	return effects
 end
 
@@ -1224,9 +1297,11 @@ function Round:SetStalemateOnTimelimit(on)
 	self.allowStalemateAtTimelimit = on
 end
 
--- CTeamplayRoundBasedRules::PointsMayBeCaptured, and in arena
+-- CTeamplayRoundBasedRules::PointsMayBeCaptured (never in a deathmatch),
+-- and in arena
 -- CTFGameRules::TeamMayCapturePoint's wait for the cap-enable time.
 function Round:PointsMayBeCaptured(now)
+	if self.deathmatch then return false end
 	if self.capEnableAt and now < self.capEnableAt then return false end
 	return (self:State() == State.RND_RUNNING or self:State() == State.STALEMATE) and not self.inSetup
 end
@@ -1318,8 +1393,17 @@ function Round:TeamWaveTime(team)
 	return WaveTime(self.adminWaveTime[team], self.waveTime[team], default)
 end
 
+-- Sandcastle's pre-round and setup (the arena's too) bring the dead back
+-- with quick waves, QUICK_WAVE apart: no death animation, no team wave.
+QUICK_WAVE = 1
+
+function Round:RespawnsAtOnce()
+	return self:State() == State.PREROUND or self.inSetup
+end
+
 -- CTFGameRules::GetRespawnWaveMaxLength
 function Round:WaveMaxLength(team, teamSize, scale)
+	if self:RespawnsAtOnce() then return QUICK_WAVE end
 	if self:State() ~= State.RND_RUNNING then return 0 end
 	local t = self:TeamWaveTime(team)
 	if scale and t > MIN_SCALED_WAVE then
@@ -1328,15 +1412,15 @@ function Round:WaveMaxLength(team, teamSize, scale)
 	return t
 end
 
--- CTFGameRules::GetMinTimeWhenPlayerMaySpawn: setup respawns quickly
--- (ShouldRespawnQuickly), anything else waits a wave too.
--- The earliest a player dead since deathTime may spawn: after the death
--- animation and, out of setup, a whole wave; switched (a player who died
--- changing teams) waits only the animation, so the new team's next wave
--- brings them back.
+-- CTFGameRules::GetMinTimeWhenPlayerMaySpawn: the earliest a player dead
+-- since deathTime may spawn: with the next quick wave in the pre-round and
+-- setup (RespawnsAtOnce), else after the death animation and a whole wave;
+-- switched (a player who died changing teams) waits only the animation, so
+-- the new team's next wave brings them back.
 local function MinSpawnTime(self, team, deathTime, switched)
+	if self:RespawnsAtOnce() then return deathTime end -- the next quick wave
 	local delay = DEATH_ANIM_LENGTH
-	if not self.inSetup and not switched then delay = delay + self:WaveMaxLength(team, 0, false) end
+	if not switched then delay = delay + self:WaveMaxLength(team, 0, false) end
 	return deathTime + delay
 end
 
@@ -1347,7 +1431,7 @@ end
 -- GetNextRespawnWave
 function Round:NextRespawn(team, deathTime, teamSize, switched)
 	local minTime = MinSpawnTime(self, team, deathTime, switched)
-	if self.inSetup then return minTime end
+	if self:RespawnsAtOnce() then return math.max(self.nextWave[team], minTime) end
 	local nextWave = self.nextWave[team]
 	local waveLength = self:WaveMaxLength(team, teamSize, true)
 	if waveLength <= 0 then return math.max(nextWave, minTime) end
@@ -1357,10 +1441,10 @@ function Round:NextRespawn(team, deathTime, teamSize, switched)
 	return nextWave
 end
 
--- The respawn time a dead player is shown: 0 in sudden death and while an
--- admin has stopped respawns.
+-- The respawn time a dead player is shown: 0 in sudden death (the arena
+-- round, out of its setup) and while an admin has stopped respawns.
 function Round:RespawnAt(team, deathTime, teamSize, switched)
-	if self:State() == State.STALEMATE or self.respawnsDisabled then return 0 end
+	if (self:State() == State.STALEMATE and not self.inSetup) or self.respawnsDisabled then return 0 end
 	return self:NextRespawn(team, deathTime, teamSize, switched)
 end
 

@@ -39,39 +39,46 @@ function Controller:JoinSquad(ent, member)
 	ent.wsSquad = member and member.fireTeam and member.fireTeam.squad or nil
 end
 
--- Kits (ws_drg_soldier's NSKit), by side and role: blockers and
--- a point's holders carry the shotgun, hit harder and charge faster;
--- raiders carry the crossbow (the Resistance) and throw grenades; the
--- Combine's support are
--- metrocops who deploy a turret and send manhacks, the Resistance's are its
--- heroes, who hit hard; the rest leave those weapons to them. Soldier:UseGadget
--- uses a kit's gadgets.
-local BLOCKER_KIT = { name = "shotgunner", weapons = { "weapon_shotgun" }, damage = 1.5, runSpeed = 260 }
+-- Kits (ws_drg_soldier's NSKit), by side and role: every soldier carries
+-- a primary (one of those listed, at random), a secondary and a melee
+-- weapon (foundation.aiwar.arms), the Combine's the pistol and stunstick,
+-- the Resistance's the pistol and crowbar. Blockers and a point's holders
+-- carry the shotgun, hit harder and charge faster; raiders carry the
+-- crossbow (the Resistance) or the AR2 and throw grenades; the Combine's
+-- support are metrocops who deploy a turret and send manhacks, the
+-- Resistance's are its heroes, who hit hard. Soldier:UseGadget uses a kit's
+-- gadgets.
+local function Blocker(melee)
+	return { name = "shotgunner", primary = { "weapon_shotgun" }, secondary = "weapon_pistol", melee = melee, damage = 1.5, runSpeed = 260 }
+end
+local COMBINE_BLOCKER, RESISTANCE_BLOCKER = Blocker("weapon_stunstick"), Blocker("weapon_crowbar")
 local KITS = {
 	[RED] = {
-		[AiWar.BLOCK] = BLOCKER_KIT,
-		[AiWar.HOLD] = BLOCKER_KIT,
-		[AiWar.RAID] = { name = "grenadier", weapons = { "weapon_ar2" }, gadgets = { "grenade" } },
+		[AiWar.BLOCK] = COMBINE_BLOCKER,
+		[AiWar.HOLD] = COMBINE_BLOCKER,
+		[AiWar.RAID] = { name = "grenadier", primary = { "weapon_ar2" }, secondary = "weapon_pistol", melee = "weapon_stunstick", gadgets = { "grenade" } },
 		[AiWar.SUPPORT] = {
-			name = "metrocop", model = "models/player/police.mdl", weapons = { "weapon_smg1", "weapon_pistol" },
+			name = "metrocop", model = "models/player/police.mdl",
+			primary = { "weapon_smg1" }, secondary = "weapon_pistol", melee = "weapon_stunstick",
 			gadgets = { "turret", "manhack" },
 		},
-		default = { avoid = { weapon_shotgun = true, weapon_pistol = true } },
+		default = { primary = { "weapon_ar2", "weapon_smg1" }, secondary = "weapon_pistol", melee = "weapon_stunstick" },
 	},
 	[BLUE] = {
-		[AiWar.BLOCK] = BLOCKER_KIT,
-		[AiWar.HOLD] = BLOCKER_KIT,
-		[AiWar.RAID] = { name = "crossbow", weapons = { "weapon_crossbow" }, gadgets = { "grenade" } },
-		default = { avoid = { weapon_shotgun = true, weapon_crossbow = true, weapon_357 = true } },
+		[AiWar.BLOCK] = RESISTANCE_BLOCKER,
+		[AiWar.HOLD] = RESISTANCE_BLOCKER,
+		[AiWar.RAID] = { name = "crossbow", primary = { "weapon_crossbow" }, secondary = "weapon_pistol", melee = "weapon_crowbar", gadgets = { "grenade" } },
+		default = { primary = { "weapon_smg1", "weapon_ar2" }, secondary = "weapon_pistol", melee = "weapon_crowbar" },
 	},
 }
 -- Medics: the Combine's are metrocops, the Resistance's vortigaunts (their
--- own class, AiWar.FixedRole). They speak on taking a patient: HL2's lines,
+-- own class, AiWar.FixedRole, which carries no weapons). They speak on taking a patient: HL2's lines,
 -- those of the list the game has (MedicLines keeps only files that exist,
 -- so a missing episode costs lines, not errors).
 local MEDIC_KITS = {
 	[RED] = {
-		name = "metrocop medic", model = "models/player/police.mdl", weapons = { "weapon_pistol" },
+		name = "metrocop medic", model = "models/player/police.mdl",
+		primary = { "weapon_smg1" }, secondary = "weapon_pistol", melee = "weapon_stunstick",
 		voice = {
 			"npc/metropolice/vo/administer.wav", "npc/metropolice/vo/affirmative.wav",
 			"npc/metropolice/vo/affirmative2.wav", "npc/metropolice/vo/tenfour.wav",
@@ -109,10 +116,16 @@ end
 -- The Resistance's heroes, one of each alive at a time; support beyond them
 -- are veterans.
 local HEROES = {
-	{ name = "Alyx", hero = true, model = "models/player/alyx.mdl", weapons = { "weapon_357" }, health = 250, damage = 2 },
-	{ name = "Barney", hero = true, model = "models/player/barney.mdl", weapons = { "weapon_ar2" }, health = 300, damage = 1.75 },
+	{
+		name = "Alyx", hero = true, model = "models/player/alyx.mdl",
+		primary = { "weapon_357" }, secondary = "weapon_pistol", melee = "weapon_crowbar", health = 250, damage = 2,
+	},
+	{
+		name = "Barney", hero = true, model = "models/player/barney.mdl",
+		primary = { "weapon_ar2" }, secondary = "weapon_pistol", melee = "weapon_crowbar", health = 300, damage = 1.75,
+	},
 }
-local VETERAN = { name = "veteran", weapons = { "weapon_ar2" }, health = 200, damage = 1.5 }
+local VETERAN = { name = "veteran", primary = { "weapon_ar2" }, secondary = "weapon_pistol", melee = "weapon_crowbar", health = 200, damage = 1.5 }
 
 function Controller:HeroKit(ent)
 	self.heroes = self.heroes or {}

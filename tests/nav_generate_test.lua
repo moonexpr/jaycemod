@@ -75,7 +75,8 @@ Vec.__div = function(a, n) return V(a.x / n, a.y / n, a.z / n) end
 local GENERATE_POLL = "ws_nav_generate"
 
 local function load(t)
-	local s = { commands = {}, seeds = {}, timers = {}, cleaned = 0, now = 0, hooks = {}, sweeps = {}, ran = {} }
+	local s = { commands = {}, seeds = {}, timers = {}, delays = {}, cleaned = 0, now = 0, hooks = {}, sweeps = {}, ran = {} }
+	s.humans = t.humans or {}
 	-- the mesh's areas (NavArea fakes) and what a sweep across a seam hits:
 	-- trace(t) -> { Hit, StartSolid }
 	s.navAreas = t.navAreas or {}
@@ -98,7 +99,7 @@ local function load(t)
 			return {
 				Request = function(_, want, source, requester)
 					s.requests[#s.requests + 1] = want
-					s.convars.sv_gameplay_enabled = "0"
+					s.convars.sv_gameplay_enabled = want == Gamemode.GAMEPLAY and "1" or "0"
 					return true
 				end,
 			}
@@ -143,12 +144,24 @@ local function load(t)
 			GetAllNavAreas = function() return s.navAreas end,
 		},
 		hook = {
-			Add = function(event, name, fn) s.hooks[event] = fn end,
+			Add = function(event, name, fn)
+				local before = s.hooks[event]
+				s.hooks[event] = function(...)
+					if before then before(...) end
+					fn(...)
+				end
+			end,
 			Run = function(event) s.ran[#s.ran + 1] = event end,
 		},
 		util = { TraceHull = function(tr) s.sweeps[#s.sweeps + 1] = tr return s.trace(tr) end },
 		MASK_PLAYERSOLID = 1, MASK_PLAYERSOLID_BRUSHONLY = 2, MASK_NPCSOLID = 3, MASK_NPCSOLID_BRUSHONLY = 4,
-		timer = { Create = function(name, delay, reps, fn) s.timers[name] = fn end, Remove = function(name) s.timers[name] = nil end },
+		timer = {
+			Create = function(name, delay, reps, fn)
+				s.timers[name], s.delays[name] = fn, delay
+			end,
+			Remove = function(name) s.timers[name] = nil end,
+		},
+		player = { GetHumans = function() return s.humans end },
 		game = { GetMap = function() return "cp_steel" end, CleanUpMap = function() s.cleaned = s.cleaned + 1 end },
 		CurTime = function() return s.now end,
 		Vector = V,
@@ -459,6 +472,78 @@ T.test("a mesh just generated has its seams linked too", function()
 	s.Poll()
 	Sweep(s)
 	T.eq(a:IsConnected(b) and b:IsConnected(a), true, "linked")
+end)
+
+-- An idle server builds its own mesh: empty IDLE_AFTER seconds after the map
+-- started, with no mesh, it runs mp_nav_generate as the console would, and
+-- goes back to Gameplay mode after when it left it to generate.
+local IDLE = "ws_nav_idle"
+
+-- Runs the idle check's timer at time now.
+local function IdleAt(s, now)
+	s.now = now
+	if s.timers[IDLE] then s.timers[IDLE]() end
+end
+
+T.test("an empty server with no mesh generates one five minutes after the map starts", function()
+	local s = load({ entities = SPAWNS })
+	T.eq(s.timers[IDLE] ~= nil, true, "watching from the start")
+	IdleAt(s, 299)
+	T.eq(#s.seeds, 0, "not before five minutes")
+	IdleAt(s, 300)
+	T.eq(#s.seeds, 4, "seeded at five minutes")
+	s.Poll()
+	T.eq(s.nav.began, 1, "and generating")
+	T.eq(s.timers[IDLE], nil, "once a map")
+end)
+
+T.test("a map with a mesh is left alone", function()
+	local s = load({ entities = SPAWNS, areas = 12 })
+	IdleAt(s, 300)
+	T.eq(#s.seeds, 0, "not generated")
+	T.eq(s.timers[IDLE], nil, "and no longer watched")
+end)
+
+T.test("players on the server put it off until they have all left", function()
+	local s = load({ entities = SPAWNS, humans = { Player(false) } })
+	IdleAt(s, 300)
+	T.eq(#s.seeds, 0, "not with a player on")
+	T.eq(s.timers[IDLE] ~= nil, true, "still watching")
+	s.humans = {}
+	IdleAt(s, 360)
+	T.eq(#s.seeds, 4, "once the server is empty")
+end)
+
+T.test("an admin's run already under way is not doubled", function()
+	local s = load({ entities = SPAWNS })
+	s.commands.mp_nav_generate(Player(true))
+	IdleAt(s, 300)
+	T.eq(#s.seeds, 4, "seeded once")
+end)
+
+T.test("leaving Gameplay mode to generate, it goes back after", function()
+	local s = load({ entities = SPAWNS, gameplay = true })
+	IdleAt(s, 300)
+	T.eq(s.requests[1], Gamemode.SANDBOX, "into Sandbox mode")
+	s.Poll()
+	s.nav.generating, s.nav.areas = false, 2133
+	s.Poll()
+	T.eq(s.requests[2], Gamemode.GAMEPLAY, "back to Gameplay mode")
+	local sandbox = load({ entities = SPAWNS })
+	IdleAt(sandbox, 300)
+	sandbox.Poll()
+	sandbox.nav.generating, sandbox.nav.areas = false, 2133
+	sandbox.Poll()
+	T.eq(#sandbox.requests, 0, "in Sandbox mode already: stays there")
+end)
+
+T.test("with Sandbox mode disabled an idle server does not generate", function()
+	local s = load({ entities = SPAWNS, gameplay = true, noSandbox = true })
+	IdleAt(s, 300)
+	s.Poll()
+	T.eq(s.nav.began, 0, "not generated")
+	T.eq(#s.requests, 0, "the game left running")
+	T.eq(s.timers[IDLE], nil, "and not tried again")
 end)
 
 T.finish()

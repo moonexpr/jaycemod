@@ -161,9 +161,9 @@ T.test("the pre-round ends in the arena round, in STALEMATE, opening in setup fo
 	T.eq(round:PointsMayBeCaptured(SETUP_AT + 1), false, "no captures in setup")
 end)
 
-T.test("setup's end starts the arena round (arena_round_start), and nothing happens before it", function()
+T.test("setup's end starts the arena round (arena_round_start), and only respawns happen before it", function()
 	local round = InSetup()
-	T.eq(Kinds(round:Think(FIGHT_AT - 1, World())), "", "still setup")
+	T.eq(Kinds(round:Think(FIGHT_AT - 1, World())), "respawn_team, respawn_team", "still setup: the dead come back")
 	local effects = round:Think(FIGHT_AT, World())
 	T.eq(Kinds(effects), "arena_setup_end, arena_round_start", "setup over, the round started")
 	T.eq(round:InSetup(), false, "out of setup")
@@ -183,6 +183,13 @@ T.test("mp_arena_round_time, not mp_stalemate_timelimit, times the arena round, 
 	local timed = InSetup({ arenaRoundTime = 300 })
 	local timer = Has(timed:Think(FIGHT_AT, World()), "stalemate_timer")
 	T.eq(timer and timer.seconds, 300, "mp_arena_round_time's seconds")
+end)
+
+T.test("the arena's setup respawns the dead with quick waves", function()
+	local round = InSetup({ respawnWaveTime = 1 })
+	local effects = round:Think(SETUP_AT + 1, World())
+	T.eq(Has(effects, "respawn_team") ~= nil, true, "a wave in setup")
+	T.eq(round:RespawnAt(RED, SETUP_AT + 1, 3, false), SETUP_AT + 1 + Rounds.QUICK_WAVE, "the respawn time shown: the next quick wave")
 end)
 
 T.test("nobody respawns in the arena round", function()

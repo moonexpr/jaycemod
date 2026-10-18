@@ -55,6 +55,10 @@ CAPTURE, ASSAULT, HOLD = "capture", "assault", "hold"
 -- Arena's job (foundation.aiwar.scenario.arena): a squad keeps together and
 -- explores the map, going for what its own soldiers saw.
 EXPLORE = "explore"
+-- The flag jobs (foundation.aiwar.scenario.ctf): couriers fetch and carry
+-- the enemy's flag, defenders guard their own, and operatives hold a
+-- remote base on the enemy carrier's way home.
+COURIER, CTF_DEFEND, OPERATIVE = "courier", "ctf_defend", "operative"
 
 function MedicsFor(teamSize)
 	if (teamSize or 0) < 4 then return 0 end

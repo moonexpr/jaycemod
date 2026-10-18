@@ -2,7 +2,7 @@
 {
 	"base"		"sandbox"
 	"title"		"Sandcastle"
-	"maps"		"^pl_|^plr_|^cp_|^koth_|^ctf_|^mvm_"
+	"maps"		"^pl_|^plr_|^cp_|^koth_|^ctf_|^mvm_|^gm_"
 	"category"	"pvp"
 	"menusystem"	"1"
 

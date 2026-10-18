@@ -4,10 +4,11 @@ local AiWar = WS.require("foundation.aiwar")
 local Teams = WS.require("foundation.teams")
 local Track = WS.require("foundation.core.structs.polyline")
 local Explore = WS.require("foundation.aiwar.explore")
+local Scenario = WS.require("foundation.aiwar.scenario")
 local GROUND_PROBE, RED, BLUE = Map.GROUND_PROBE, Map.RED, Map.BLUE
 local Point, Masks, SpawnSpots = Map.Point, Map.Masks, Map.SpawnSpots
 local LoadedFeature, StalemateIsRound, GroundBelow = Map.LoadedFeature, Map.StalemateIsRound, Map.GroundBelow
-local CartRadius = Map.CartRadius
+local CartRadius, RoundsModeName = Map.CartRadius, Map.RoundsModeName
 
 local THINK_INTERVAL = 0.25
 local RELATIONSHIP_INTERVAL = 1
@@ -131,9 +132,45 @@ function Controller:Bases()
 	return self.baseCache
 end
 
+-- Each team's flag and where its carriers capture, as the flag feature
+-- holds them (foundation.aiwar.scenario.ctf's field.flags and field.zones):
+-- a flag where it is now (home, dropped on the ground, or with its
+-- carrier), a zone's centre on the ground; and its tally, each team's
+-- captures this round and the limit (field.captures, field.caplimit); all
+-- nil while the map has no flags.
+function Controller:FlagsSnapshot()
+	local feature = LoadedFeature("flag")
+	if not feature then return nil, nil, nil, nil end
+	local Flag = WS.require("features.flag.model")
+	local flags, zones = {}, {}
+	for ent, flag in pairs(feature.flags) do
+		local team, carrier = flag:Team(), flag:Carrier()
+		if IsValid(ent) and flag:Enabled() and (team == RED or team == BLUE) and not flags[team] then
+			flags[team] = {
+				team = team,
+				home = Point(GroundBelow(ent.wsHome)),
+				state = flag:State(),
+				pos = Point(IsValid(carrier) and carrier:GetPos() or GroundBelow(ent:GetPos())),
+				carrier = carrier,
+				carrierTeam = flag:CarrierTeam(),
+			}
+		end
+	end
+	for ent, zone in pairs(feature.zones) do
+		for _, team in ipairs({ RED, BLUE }) do
+			if IsValid(ent) and zone.enabled and not zones[team] and Flag.MayCapture(zone.team, team) then
+				zones[team] = Point(GroundBelow(ent:WorldSpaceCenter()))
+			end
+		end
+	end
+	local captures = { [RED] = feature.tally:Captures(RED), [BLUE] = feature.tally:Captures(BLUE) }
+	return flags, zones, captures, feature:CapLimit()
+end
+
 -- Each team's first active cart: its path, how far along it is, where its
 -- next checkpoint is, and the ground under it; the points, the clocks and
--- the bases (docs/aiwar-koth-cp.md §2.4); the round's winner.
+-- the bases (docs/aiwar-koth-cp.md §2.4); the flags and capture zones; the
+-- round's winner.
 function Controller:Field(phase, now)
 	local carts = {}
 	self.cartEntities = {}
@@ -158,6 +195,7 @@ function Controller:Field(phase, now)
 	end
 	local rounds = LoadedFeature("rounds")
 	local bases = self:Bases()
+	local flags, zones, captures, caplimit = self:FlagsSnapshot()
 	return {
 		phase = phase,
 		now = now,
@@ -169,6 +207,10 @@ function Controller:Field(phase, now)
 		patients = self:Patients(),
 		players = self:Players(),
 		points = self:PointsSnapshot(),
+		flags = flags,
+		zones = zones,
+		captures = captures,
+		caplimit = caplimit,
 		clocks = rounds and Clocks(rounds, now),
 		timeLeft = rounds and TimeLeft(rounds, now),
 		overtime = WS.InOvertime(),
@@ -205,20 +247,27 @@ function Controller:Players()
 end
 
 -- Each side's soldiers and players, for its medics: { handle, pos, health
--- (a share of their most), player }.
+-- (a share of their most), player, calling (a soldier that called for a
+-- medic) }.
 function Controller:Patients()
 	local patients = { [RED] = {}, [BLUE] = {} }
-	local function Add(team, ent, player)
+	local function Add(team, ent, player, calling)
 		local list = patients[team]
 		if list and ent:Health() > 0 then
-			list[#list + 1] = { handle = ent, pos = Point(ent:GetPos()), health = ent:Health() / math.max(ent:GetMaxHealth(), 1), player = player }
+			list[#list + 1] = {
+				handle = ent,
+				pos = Point(ent:GetPos()),
+				health = ent:Health() / math.max(ent:GetMaxHealth(), 1),
+				player = player,
+				calling = calling,
+			}
 		end
 	end
 	for ent, entry in pairs(self.soldiers) do
-		if IsValid(ent) then Add(entry.soldier.team, ent, false) end
+		if IsValid(ent) then Add(entry.soldier.team, ent, false, entry.soldier:CallingMedic()) end
 	end
 	for _, ply in ipairs(player.GetAll()) do
-		if ply:Alive() then Add(WS.TeamOf(ply), ply, true) end
+		if ply:Alive() then Add(WS.TeamOf(ply), ply, true, false) end
 	end
 	return patients
 end
@@ -235,6 +284,10 @@ function Controller:Survey(now)
 	local phase = AiWar.PhaseOf(WS.Active(), WS.State(), self.winner, StalemateIsRound())
 	local field = self:Field(phase, now)
 	self:RefreshCartBounds()
+	-- the rounds mode can change under the war (a tied match's deathmatch):
+	-- the scenario follows it
+	local variant = Scenario.For(RoundsModeName())
+	if getmetatable(self.scenario) ~= variant then self.scenario = variant:New() end
 	self.waitingFor = self.scenario:Lacks(field)
 	if self.waitingFor then return nil end
 	self.scenario:Command(self.war, field, now)

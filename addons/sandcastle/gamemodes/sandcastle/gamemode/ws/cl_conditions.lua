@@ -1,37 +1,151 @@
--- What players see of a condition the server networks: Jarate
--- (ws_urine_end_time, CTFPlayerShared::OnAddUrine and OnRemoveUrine)
--- drips from a jarated player and yellows their own screen.
-local URINE_DRIPS = "peejar_drips"
-local URINE_OVERLAY = "effects/jarate_overlay" -- TF_SCREEN_OVERLAY_MATERIAL_URINE
-local PARTICLE_FILE = "particles/item_fx.pcf"
+-- What players see of the conditions the server networks on players and
+-- the AI war's soldiers (ws_cond_<number>, ws/sv_teams_conditions.lua), as
+-- TF2's client shows them (foundation.players.condition_effects): a crit
+-- boost's glow on the weapon and its hum, the burning player's flames,
+-- Jarate's and Mad Milk's drips and the holder's screen overlay, the speed
+-- boost's trail, the uber's material.
+local Effects = WS.require("foundation.players.condition_effects")
 
-game.AddParticles(PARTICLE_FILE)
-
-local drips = setmetatable({}, { __mode = "k" }) -- player -> its drips
-
-local function Wet(ply)
-	return CurTime() < ply:GetNW2Float("ws_urine_end_time", 0)
+for _, path in ipairs(Effects.FILES) do game.AddParticles(path) end
+for _, effect in ipairs(Effects.EFFECTS) do
+	if effect.particle then
+		for _, name in pairs(effect.particle) do PrecacheParticleSystem(name) end
+	end
 end
 
-hook.Add("Think", "ws_condition_effects", function()
-	for _, ply in ipairs(player.GetAll()) do
-		local wet, effect = Wet(ply) and ply:Alive(), drips[ply]
-		if wet and not (effect and effect:IsValid()) then
-			drips[ply] = ply:CreateParticleEffect(URINE_DRIPS, {
-				{
-					entity = ply,
-					attachtype = PATTACH_ABSORIGIN_FOLLOW,
-				},
-			})
-		elseif not wet and effect then
-			if effect:IsValid() then effect:StopEmission() end
-			drips[ply] = nil
+local SCAN_INTERVAL = 0.1
+
+-- holder -> effect name -> what shows it: particle (and its owner), sound,
+-- material
+local showing = setmetatable({}, { __mode = "k" })
+-- holder -> the effects it showed when last scanned, for its corpse
+local lastShown = setmetatable({}, { __mode = "k" })
+
+local function EndsOf(ent)
+	return function(cond) return ent:GetNW2Float("ws_cond_" .. cond, 0) end
+end
+
+local function Holders()
+	local holders = player.GetAll()
+	for _, soldier in ipairs(ents.FindByClass("ws_drg_*")) do holders[#holders + 1] = soldier end
+	return holders
+end
+
+local function Showing(ent)
+	return ent:IsPlayer() and ent:Alive() or not ent:IsPlayer()
+end
+
+local function FirstPerson(ent)
+	return ent == LocalPlayer() and not ent:ShouldDrawLocalPlayer()
+end
+
+-- What an effect's particle plays on: a WEAPON effect's on the holder's view
+-- model in first person; none for a thirdPersonOnly one there.
+local function Owner(ent, effect)
+	if effect.thirdPersonOnly and FirstPerson(ent) then return NULL end
+	if effect.on == Effects.BODY then return ent end
+	if FirstPerson(ent) then return ent:GetViewModel() end
+	return ent.GetActiveWeapon and ent:GetActiveWeapon() or NULL
+end
+
+local function SetMaterial(ent, material)
+	ent:SetMaterial(material)
+	local weapon = ent.GetActiveWeapon and ent:GetActiveWeapon()
+	if IsValid(weapon) then weapon:SetMaterial(material) end
+end
+
+local function Stop(ent, shown)
+	if shown.particle and shown.particle:IsValid() then shown.particle:StopEmission() end
+	if shown.sound then shown.sound:Stop() end
+	if shown.material and IsValid(ent) then SetMaterial(ent, "") end
+end
+
+local function Show(ent, effect, shown)
+	-- a soldier's team is its ws_team (WS.SetTeamMember)
+	local team = ent:IsPlayer() and ent:Team() or ent:GetNW2Int("ws_team", WS.TEAM_UNASSIGNED)
+	local name = Effects.Particle(effect, team)
+	if name then
+		local owner = Owner(ent, effect)
+		if owner ~= shown.owner or not (shown.particle and shown.particle:IsValid()) then
+			if shown.particle and shown.particle:IsValid() then shown.particle:StopEmission() end
+			shown.owner = owner
+			shown.particle = IsValid(owner) and owner:CreateParticleEffect(name, {
+				{ entity = owner, attachtype = PATTACH_ABSORIGIN_FOLLOW },
+			}) or nil
 		end
+	end
+	if effect.loop and not shown.sound then
+		shown.sound = CreateSound(ent, effect.loop)
+		shown.sound:Play()
+	end
+	local material = Effects.Material(effect, team)
+	if material then
+		shown.material = material
+		SetMaterial(ent, material)
+	end
+end
+
+local nextScan = 0
+hook.Add("Think", "ws_condition_effects", function()
+	local now = CurTime()
+	if now < nextScan then return end
+	nextScan = now + SCAN_INTERVAL
+	for ent, effects in pairs(showing) do
+		if not IsValid(ent) then
+			for _, shown in pairs(effects) do Stop(ent, shown) end
+			showing[ent] = nil
+		end
+	end
+	for _, ent in ipairs(Holders()) do
+		local wanted = {}
+		if Showing(ent) then
+			for _, effect in ipairs(Effects.Shown(EndsOf(ent), now)) do wanted[effect.name] = effect end
+		end
+		if next(wanted) then lastShown[ent] = { at = now, effects = wanted } end
+		local effects = showing[ent] or {}
+		for name, shown in pairs(effects) do
+			if not wanted[name] then
+				Stop(ent, shown)
+				effects[name] = nil
+			end
+		end
+		for name, effect in pairs(wanted) do
+			effects[name] = effects[name] or {}
+			Show(ent, effect, effects[name])
+		end
+		showing[ent] = next(effects) and effects or nil
 	end
 end)
 
+-- One who dies holding an effect with a corpse particle (burning) leaves a
+-- ragdoll that burns on for CORPSE_SECONDS, as C_TFRagdoll's does; the
+-- holder was last scanned within CORPSE_GRACE of its death. Players' and
+-- engine ragdolls come through CreateClientsideRagdoll, the NPC ragdolls
+-- this gamemode builds through ws/cl_npc_ragdolls.lua.
+local CORPSE_SECONDS, CORPSE_GRACE = 10, 0.5
+
+function WS.CorpseEffects(body, ragdoll)
+	local last = lastShown[body]
+	if not (last and CurTime() - last.at <= CORPSE_GRACE) then return end
+	for _, effect in pairs(last.effects) do
+		if effect.corpse then
+			local particle = ragdoll:CreateParticleEffect(effect.corpse, {
+				{ entity = ragdoll, attachtype = PATTACH_ABSORIGIN_FOLLOW },
+			})
+			timer.Simple(CORPSE_SECONDS, function()
+				if particle:IsValid() then particle:StopEmission() end
+			end)
+		end
+	end
+end
+
+hook.Add("CreateClientsideRagdoll", "ws_condition_effects", WS.CorpseEffects)
+
+-- The holder's own screen: Jarate's yellow, Mad Milk's white, a fire's heat.
 hook.Add("RenderScreenspaceEffects", "ws_condition_effects", function()
 	local ply = LocalPlayer()
-	if not (IsValid(ply) and Wet(ply)) then return end
-	DrawMaterialOverlay(URINE_OVERLAY, 0)
+	if not (IsValid(ply) and ply:Alive()) then return end
+	for _, effect in ipairs(Effects.Shown(EndsOf(ply), CurTime())) do
+		if effect.overlay then DrawMaterialOverlay(effect.overlay, 0) end
+	end
 end)

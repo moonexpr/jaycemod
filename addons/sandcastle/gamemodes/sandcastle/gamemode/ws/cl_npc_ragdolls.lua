@@ -69,6 +69,9 @@ WS.Events.Listen("game_npc_ragdoll_create", "ws_npc_ragdolls", function(fields)
 		local phys = ragdoll:GetPhysicsObjectNum(i)
 		if IsValid(phys) then phys:ApplyForceCenter(force / count) end
 	end
-	if IsValid(body) then Hide(body) end
+	if IsValid(body) then
+		Hide(body)
+		WS.CorpseEffects(body, ragdoll) -- a body that died burning burns on (ws/cl_conditions.lua)
+	end
 	WS.FadeRagdollLater(ragdoll)
 end)

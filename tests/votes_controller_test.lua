@@ -63,6 +63,8 @@ local function Load(players, opts)
 		filter = "^pl_|^cp_|^koth_",
 		map = "pl_upward",
 	}
+	-- the maps with a nav mesh: every maplist map unless told
+	s.navs = opts.navs or { cp_steel = true, koth_viaduct = true, pl_badwater = true, pl_goldrush = true, pl_upward = true }
 	local convars = {
 		mp_vote_duration = 20,
 		mp_vote_cooldown = 120,
@@ -108,6 +110,7 @@ local function Load(players, opts)
 	for _, p in ipairs(players) do
 		function p:Kick(reason) s.kicked[#s.kicked + 1] = { ply = self, reason = reason } end
 	end
+	s.W = W
 	local env = setmetatable({
 		WS = W,
 		CurTime = function() return s.now end,
@@ -127,15 +130,23 @@ local function Load(players, opts)
 				GetFloat = function() return convars[name] end,
 				GetString = function() return convars[name] end,
 				GetBool = function() return convars[name] ~= 0 end,
-				SetString = function(_, value) convars[name] = value end,
+				-- GMod: "attempted to modify ConVar not created by Lua"
+				SetString = function() error("attempted to modify ConVar not created by Lua", 2) end,
 			}
 		end,
 		game = { GetMap = function() return s.map end },
 		math = setmetatable({ random = function(a, b) if b then return a end return 1 end }, { __index = math }),
-		file = { Read = function(path, where)
-			assert(path == "cfg/mapcycle.txt" and where == "GAME", path)
-			return s.cycle
-		end },
+		file = {
+			Read = function(path, where)
+				assert(path == "cfg/mapcycle.txt" and where == "GAME", path)
+				return s.cycle
+			end,
+			Exists = function(path, where)
+				assert(where == "GAME", where)
+				local map = assert(path:match("^maps/(.+)%.nav$"), path)
+				return s.navs[map] == true
+			end,
+		},
 		RunConsoleCommand = function(...) s.commands[#s.commands + 1] = table.concat({ ... }, " ") end,
 		PrintMessage = function() end,
 		HUD_PRINTTALK = 3,
@@ -379,7 +390,84 @@ T.test("the most picked map becomes the next level", function()
 	Pick(s, bob, 3)
 	s.Advance(20)
 	T.eq(Last(carol, "game_vote_ended").passed, true, "passed")
-	T.eq(s.convars.nextlevel, options[3], "the next level")
+	T.eq(s.commands[#s.commands], "nextlevel " .. options[3], "the next level")
+	T.eq(s.W.VotedNextLevel, options[3], "known at once")
+end)
+
+T.test("nobody picking, or nobody on the server, draws one of the maps", function()
+	local alice = Player("Alice")
+	local s = Load({ alice })
+	s.match.over = true
+	s.Advance(1)
+	local options = NextMapVote(alice).options
+	s.Advance(25)
+	T.eq(Last(alice, "game_vote_ended").passed, true, "a map all the same")
+	T.eq(s.W.VotedNextLevel, options[1], "the one drawn")
+	local empty = Load({})
+	empty.match.over = true
+	empty.Advance(1)
+	empty.Advance(25)
+	T.eq(empty.W.VotedNextLevel ~= nil and empty.W.VotedNextLevel ~= empty.map, true, "an empty server moves on")
+end)
+
+-- An empty server at the match's end goes to a map without a nav mesh, so
+-- it builds one while idle (ws/sv_nav.lua), unless players picked or an
+-- admin set the next map.
+local NO_NAV = { cp_steel = true, koth_viaduct = true, pl_badwater = true, pl_upward = true } -- pl_goldrush has none
+
+T.test("an empty server at the match's end goes to a map without a nav mesh", function()
+	local s = Load({}, { navs = NO_NAV })
+	s.match.over = true
+	s.Advance(1)
+	s.hooks.WSChangeLevel()
+	T.eq(s.W.VotedNextLevel, "pl_goldrush", "the map with none")
+	T.eq(s.commands[#s.commands], "nextlevel pl_goldrush", "set as nextlevel")
+end)
+
+T.test("players who drew a map by not voting, then left, still send an empty server to a map without one", function()
+	local alice = Player("Alice")
+	local players = { alice }
+	local s = Load(players, { navs = NO_NAV })
+	s.match.maxrounds, s.match.roundsPlayed = 3, 2
+	s.Advance(1)
+	s.Advance(25)
+	T.eq(s.W.VotedNextLevel ~= nil, true, "drawn while they were on")
+	table.remove(players)
+	s.hooks.WSChangeLevel()
+	T.eq(s.W.VotedNextLevel, "pl_goldrush", "the map with none once empty")
+end)
+
+T.test("a map players picked, or an admin's nextlevel, stands on an empty server", function()
+	local alice = Player("Alice")
+	local players = { alice }
+	local s = Load(players, { navs = NO_NAV })
+	s.match.over = true
+	s.Advance(1)
+	local options = NextMapVote(alice).options
+	Pick(s, alice, 2)
+	table.remove(players)
+	s.hooks.WSChangeLevel()
+	T.eq(s.W.VotedNextLevel, options[2], "their pick")
+	local set = Load({}, { navs = NO_NAV, nextlevel = "cp_steel" })
+	set.match.over = true
+	set.Advance(1)
+	set.hooks.WSChangeLevel()
+	T.eq(set.W.VotedNextLevel, nil, "the admin's nextlevel left alone")
+end)
+
+T.test("with players on, or every map meshed, the drawn map stands", function()
+	local alice = Player("Alice")
+	local s = Load({ alice }, { navs = NO_NAV })
+	s.match.over = true
+	s.Advance(1)
+	local options = NextMapVote(alice).options
+	s.hooks.WSChangeLevel()
+	T.eq(s.W.VotedNextLevel, options[1], "players on: the draw")
+	local meshed = Load({})
+	meshed.match.over = true
+	meshed.Advance(1)
+	meshed.hooks.WSChangeLevel()
+	T.eq(meshed.W.VotedNextLevel ~= nil and meshed.W.VotedNextLevel ~= meshed.map, true, "every map meshed: the draw")
 end)
 
 T.test("a vote still running when the level changes is counted first", function()
@@ -390,7 +478,7 @@ T.test("a vote still running when the level changes is counted first", function(
 	local options = NextMapVote(alice).options
 	Pick(s, alice, 2)
 	s.hooks.WSChangeLevel()
-	T.eq(s.convars.nextlevel, options[2], "set before the change")
+	T.eq(s.W.VotedNextLevel, options[2], "known before the change")
 	T.eq(Last(bob, "game_vote_state").running, false, "over")
 end)
 

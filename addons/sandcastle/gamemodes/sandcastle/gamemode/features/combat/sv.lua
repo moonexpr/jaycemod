@@ -108,6 +108,13 @@ end
 -- attacker that is gone, or none, is the world.
 function Controller:Explode(config)
 	config = CritsAllowed(config)
+	-- mp_friendlyfire 1: every blast hurts teammates too (RadiusDamage)
+	if WS.FriendlyFire() and not config.forceFriendlyFire then
+		local copy = {}
+		for k, v in pairs(config) do copy[k] = v end
+		copy.forceFriendlyFire = true
+		config = copy
+	end
 	local explosion = Combat.Explosion.New(config)
 	local origin, radius = config.origin, config.radius
 	local attacker = IsValid(config.attacker) and config.attacker or game.GetWorld()

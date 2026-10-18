@@ -319,16 +319,11 @@ local function PlayLines(self, point, lines)
 	end
 end
 
--- CTeamControlPoint::HandleScoring: with score_style 1 each capture scores,
--- with the scored chime unless it wins the game (to everyone on payload
--- maps, to the team elsewhere: the mode's SCORE_CHIME_TO_ALL).
+-- CTeamControlPoint::HandleScoring: with score_style 1 each capture scores.
 local function HandleScoring(self, point, capTeam)
 	local scorePerCapture = self.master ~= nil and self.master:ScorePerCapture()
 	if not scorePerCapture then return end
 	team.AddScore(capTeam, 1)
-	local wouldWin = self.master:WouldNewOwnerWin(self.set, point, capTeam)
-	local chime = Capture.ScoredChime(scorePerCapture, wouldWin, self.rounds:Mode().SCORE_CHIME_TO_ALL, capTeam)
-	if chime then PlayLines(self, point, { chime }) end
 end
 
 -- CTeamControlPointMaster::FireTeamWinOutput and the round's.
@@ -356,6 +351,8 @@ local POINT_EVENTS = {
 	owner = function(self, e)
 		local point = e.id
 		PlayLines(self, point, e.lines)
+		-- the capture bell, everyone's own sound wherever they are
+		if e.bell then WS.BroadcastSound(NOBODY, e.bell) end
 		ApplyPointModel(self, point)
 		if e.team == NOBODY then
 			WS.FireOutput(point, "OnCapReset", point)

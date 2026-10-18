@@ -6,7 +6,8 @@
 --
 -- WS.AdminProperty(name, def) adds one, def = { label, icon, order,
 -- privilege, filter(ent, ply) -> whether it shows on ent, choices (a list of
--- { label, value }, or a function giving one; shown as a submenu),
+-- { label, value[, checked] }, or a function of ent giving one; shown as a
+-- submenu, a choice with checked as a ticked or unticked entry),
 -- run(ply, ent, value) on the server }. Every choice goes to the server as
 -- game_admin_property, which checks the filter and the privilege again.
 local Permissions = WS.require("foundation.permissions")
@@ -51,9 +52,10 @@ function WS.AdminProperty(name, def)
 		end,
 		MenuOpen = def.choices and function(self, option, ent)
 			local submenu = option:AddSubMenu()
-			local choices = isfunction(def.choices) and def.choices() or def.choices
+			local choices = isfunction(def.choices) and def.choices(ent) or def.choices
 			for _, choice in ipairs(choices) do
-				submenu:AddOption(choice.label, function() Send(name, ent, choice.value) end)
+				local item = submenu:AddOption(choice.label, function() Send(name, ent, choice.value) end)
+				if choice.checked ~= nil then item:SetChecked(choice.checked) end
 			end
 		end or nil,
 	})

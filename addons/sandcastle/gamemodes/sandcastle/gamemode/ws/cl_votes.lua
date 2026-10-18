@@ -119,6 +119,11 @@ local OPTION_BINDS = {
 }
 local OPTION_KEYS = { "F1", "F2", "F3", "F4" }
 
+-- A ballot: yes or no, or the option chosen (1..) on a vote of choices.
+local function Cast(yes, choice)
+	E.Request("game_vote_cast", { yes = yes, choice = choice })
+end
+
 hook.Add("PlayerBindPress", "ws_votes", function(_, bind, pressed)
 	if not pressed then return end
 	local state = WS.VoteState
@@ -126,22 +131,60 @@ hook.Add("PlayerBindPress", "ws_votes", function(_, bind, pressed)
 	if #state.options > 0 then
 		local choice = OPTION_BINDS[bind]
 		if choice == nil or choice > #state.options then return end
-		E.Request("game_vote_cast", { yes = false, choice = choice })
+		Cast(false, choice)
 		return true
 	end
 	local yes = CASTS[bind]
 	if yes == nil then return end
-	E.Request("game_vote_cast", { yes = yes, choice = 0 })
+	Cast(yes, 0)
 	return true
+end)
+
+-- With C held (the context menu), the card's choices take a click: a
+-- panel over the card in the context menu sends the row under the cursor
+-- (the rows the card last drew, clickRows: { y, h, yes, choice } in screen
+-- space, within cardRect).
+local clickRows, cardRect = {}, nil
+
+UI.Define("VoteClicks", "DPanel", {
+	Init = function(self)
+		self:SetCursor("hand")
+	end,
+	Think = function(self)
+		local state = WS.VoteState
+		local open = state.running and state.mine and cardRect ~= nil
+		self:SetVisible(open)
+		if open then self:SetPos(cardRect.x, cardRect.y) self:SetSize(cardRect.w, cardRect.h) end
+	end,
+	Paint = function() end,
+	OnMousePressed = function(self, code)
+		if code ~= MOUSE_LEFT then return end
+		local _, my = gui.MousePos()
+		for _, row in ipairs(clickRows) do
+			if my >= row.y and my < row.y + row.h then
+				Cast(row.yes, row.choice)
+				return
+			end
+		end
+	end,
+})
+
+local clicks
+
+hook.Add("OnContextMenuOpen", "ws_votes", function()
+	if IsValid(clicks) or not IsValid(g_ContextMenu) then return end
+	clicks = vgui.Create(UI.Name("VoteClicks"), g_ContextMenu)
 end)
 
 -- lines: { text, font, color, right (a count, right-aligned), lit (the
 -- player's cast: filled with the border's colour, its text dark, as a
--- selected WS.UI button is) }.
+-- selected WS.UI button is), cast ({ yes, choice }: what clicking it with C
+-- held casts) }.
 local function Card(lines, x, y, w, unit)
 	local lineH, gap = LINE_TALL * unit, GAP * unit
 	local h = #lines * lineH + gap * 2
 	UI.Box(w, h, x, y)
+	clickRows, cardRect = {}, { x = x, y = y, w = w, h = h }
 	local b, pad = THEME.borderWidth, GAP * 2 * unit
 	for i, line in ipairs(lines) do
 		local ly = y + gap + (i - 1) * lineH
@@ -151,6 +194,7 @@ local function Card(lines, x, y, w, unit)
 			surface.DrawRect(x + b, ly, w - b * 2, lineH)
 			color = THEME.background
 		end
+		if line.cast then clickRows[#clickRows + 1] = { y = ly, h = lineH, yes = line.cast.yes, choice = line.cast.choice } end
 		draw.SimpleText(line.text, line.font or BODY_FONT, x + pad, ly + lineH / 2, color, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
 		if line.right then
 			draw.SimpleText(line.right, BODY_FONT, x + w - pad, ly + lineH / 2, line.lit and color or THEME.muted,
@@ -164,11 +208,11 @@ local function Footer(state)
 	local cast = state.cast
 	if #state.options > 0 then
 		if cast ~= Vote.BALLOT_NONE then return "You voted for " .. state.options[cast] .. "." end
-		return state.mine and "Press F1 to F" .. #state.options .. " to choose." or state.quorum .. " votes are needed."
+		return state.mine and "Press F1 to F" .. #state.options .. ", or hold C and click." or state.quorum .. " votes are needed."
 	end
 	if cast == Vote.BALLOT_YES then return "You voted YES." end
 	if cast == Vote.BALLOT_NO then return "You voted NO." end
-	return state.mine and "Press F1 to vote YES." or state.quorum .. " votes are needed."
+	return state.mine and "Press F1 or F2, or hold C and click." or state.quorum .. " votes are needed."
 end
 
 hook.Add("SandcastleHUDPaint", "ws_votes", function(_, h)
@@ -194,11 +238,14 @@ hook.Add("SandcastleHUDPaint", "ws_votes", function(_, h)
 				text = OPTION_KEYS[i] .. "   " .. option,
 				right = tostring(state.counts[i]),
 				lit = state.cast == i,
+				cast = { yes = false, choice = i },
 			}
 		end
 	else
-		lines[#lines + 1] = { text = "F1   Yes", right = tostring(state.yes), lit = state.cast == Vote.BALLOT_YES }
-		lines[#lines + 1] = { text = "F2   No", right = tostring(state.no), lit = state.cast == Vote.BALLOT_NO }
+		lines[#lines + 1] = { text = "F1   Yes", right = tostring(state.yes), lit = state.cast == Vote.BALLOT_YES,
+			cast = { yes = true, choice = 0 } }
+		lines[#lines + 1] = { text = "F2   No", right = tostring(state.no), lit = state.cast == Vote.BALLOT_NO,
+			cast = { yes = false, choice = 0 } }
 	end
 	lines[#lines + 1] = { text = Footer(state), color = THEME.muted }
 	Card(lines, CARD_X * unit, h * CARD_Y_SHARE, CARD_W * unit, unit)

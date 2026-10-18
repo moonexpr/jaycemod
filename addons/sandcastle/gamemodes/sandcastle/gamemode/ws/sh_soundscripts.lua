@@ -2,8 +2,11 @@
 -- ...) are soundscript entries GMod never loads, so engine entities that name
 -- them (func_tracktrain's StartSound, MoveSound, StopSound) play nothing.
 -- Read TF2's soundscript manifest from the mounted tf content and register
--- every entry GMod does not already define. This runs before map entities
--- spawn, so they precache the sounds by name as they would in TF2.
+-- every entry GMod does not already define, and TF2's own surface and door
+-- sounds in place of HL2's of the same name (ws.sound_paths' TF2Wins). This
+-- runs before map entities spawn, so they precache the sounds by name as
+-- they would in TF2.
+local SoundPaths = WS.require("ws.sound_paths")
 
 local NAMED = {
 	VOL_NORM = 1.0,
@@ -76,15 +79,44 @@ local function ReadTF(path)
 	return file.Read(EXTRACTED .. path, "DATA") or file.Read(path, "GAME")
 end
 
+-- A client plays TF2's sounds that win (TF2Wins) from TF2's own files: one
+-- HL2 hides under the same path (a footstep's) is played from its copy
+-- under SoundPaths.RELOCATED, which ws/cl_tf_content.lua packs from the tf
+-- mount (WS.HiddenTFSounds: those files). Copies of a size alike are taken
+-- for the same file.
+WS.HiddenTFSounds = {}
+
+-- file.Size answers 0 for a file not there.
+local function Hidden(name)
+	local path = "sound/" .. name
+	local own = file.Size(path, "tf")
+	return own > 0 and file.Size(path, "GAME") ~= own
+end
+
+local function Relocate(entry)
+	local function One(path)
+		local played = SoundPaths.Relocated(path, Hidden)
+		if played ~= path then WS.HiddenTFSounds[SoundPaths.File(path)] = true end
+		return played
+	end
+	if isstring(entry.sound) then
+		entry.sound = One(entry.sound)
+	else
+		for i, path in ipairs(entry.sound) do entry.sound[i] = One(path) end
+	end
+end
+
 local function LoadFile(path)
 	local text = ReadTF(path)
 	if not text then return 0 end
 	local root = util.KeyValuesToTablePreserveOrder('"soundscripts" {' .. text .. "}", false, true)
 	local added = 0
 	for _, kv in ipairs(root or {}) do
-		if istable(kv.Value) and not sound.GetProperties(kv.Key) then
+		local wins = SoundPaths.TF2Wins(kv.Key, path)
+		if istable(kv.Value) and (wins or not sound.GetProperties(kv.Key)) then
 			local entry = Entry(kv.Key, kv.Value)
 			if entry then
+				if wins and CLIENT then Relocate(entry) end
 				sound.Add(entry)
 				added = added + 1
 			end

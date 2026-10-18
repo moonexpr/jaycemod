@@ -41,6 +41,7 @@ local function ConVar(default)
 		GetInt = function() return math.floor(tonumber(default)) end,
 		GetBool = function() return tonumber(default) ~= 0 end,
 		GetString = function() return default end,
+		GetDefault = function() return default end,
 	}
 end
 

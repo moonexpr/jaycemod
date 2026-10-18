@@ -176,6 +176,21 @@ function Humiliated(state, winner, team)
 	return winner >= FIRST_GAME_TEAM and team >= FIRST_GAME_TEAM and team ~= winner
 end
 
+-- TF_COND_CRITBOOSTED_BONUS_TIME: while they celebrate, the winners of the
+-- round or the match crit the humiliated losers.
+function BonusCrits(state, winner, team)
+	if state ~= STATE.TEAM_WIN and state ~= STATE.GAME_OVER then return false end
+	return winner >= FIRST_GAME_TEAM and team == winner
+end
+
+-- mp_friendlyfire (CTFGameRules::FPlayerCanTakeDamage): with it off, a hit
+-- from a teammate is spared, but never one's own harm; a team that does not
+-- play (the world, a prop) has no teammates.
+function FriendlySpared(friendlyFire, attackerTeam, victimTeam, selfHarm)
+	if friendlyFire or selfHarm then return false end
+	return attackerTeam >= FIRST_GAME_TEAM and attackerTeam == victimTeam
+end
+
 -- CFuncRespawnRoomVisualizer::ShouldCollide: a RED door stops players whose
 -- movement mask holds CONTENTS_REDTEAM, which is BLU players, and the other
 -- way round; any other non-zero team stops every player.

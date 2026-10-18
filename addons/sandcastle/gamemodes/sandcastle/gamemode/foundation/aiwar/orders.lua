@@ -15,7 +15,11 @@
 -- CTFBotCapturePoint); Line(field, member) -> line, from: a raider's enemy
 -- line; gait: the gait of a spot trip (WALK by default); squads: its
 -- members follow their leader, as offensive squads' do; LeavesLane(field,
--- member) -> bool: while true its squad's leader keeps off its lane.
+-- member) -> bool: while true its squad's leader keeps off its lane;
+-- Stage(field, member) -> name or nil: the stage of the job it is at, its action
+-- named for it (a CTF courier's RetrieveFlag, then ReturnHome) and changed
+-- as it changes; STAGES = stage -> settings of the role's that stage
+-- overrides (a goal, arrive, leash, chases = false, ...).
 --
 -- A scenario's jobs form a doctrine (field.doctrine; PAYLOAD here, the
 -- point doctrine in foundation.aiwar.scenario.control_points): { NAME,
@@ -25,7 +29,8 @@
 -- taken when a patrol starts, PatrolHolds(mark, field, member) -> ok, why:
 -- the patrol goes on while true, Threat(field, member) -> pos or nil: where
 -- the enemy will come from, which a soldier standing idle watches,
--- Side(field, member) -> "attack" or "defend": the member's side, and
+-- Side(field, member) -> a key of SIDES ("attack" or "defend", or a
+-- scenario's own, as CTF's jobs): the member's side, and
 -- SIDES = side -> the name of its side action, and optionally SHORT_SIDES =
 -- side -> the short name the debug layer's TDBN gives it }.
 -- Nothing outside a doctrine reads carts.
@@ -71,6 +76,7 @@ local Geometry = require("foundation.core.math.geometry")
 local Squad = require("foundation.aiwar.squad")
 local Lanes = require("foundation.aiwar.lanes")
 local Hunt = require("foundation.aiwar.hunt")
+local Health = require("foundation.aiwar.health")
 local Explore = require("foundation.aiwar.explore")
 module(...)
 
@@ -450,12 +456,15 @@ ROLES[AiWar.SUPPORT] = {
 
 -- Medics (TF2's CTFBotMedicHeal, in HL2's faces): a medic picks, among its
 -- side's hurt soldiers and players (field.patients: team -> { handle, pos,
--- health (0 to 1), player }), the one that needs it most (players count
--- double, distance costs a little), keeps it until it is HEALED or lost
+-- health (0 to 1), player, calling (it called for a medic: CallMedic) }),
+-- the one that needs it most (players and callers count double, distance
+-- costs a little), keeps it until it is HEALED or lost
 -- (gone, or beyond MEDIC_LOSE), and heals it with its beam (the port's
 -- Heal) from MEDIC_STANDOFF away, holding fire while it does. With no one
 -- to heal it stands where its side's support does.
 HEAL_RANGE, MEDIC_STANDOFF, MEDIC_LOSE = 450, 160, 1500
+-- a patient its medic healed within MEDIC_TREATING seconds is being treated
+MEDIC_TREATING = 1
 PATIENT_HURT, HEALED = 0.95, 0.98
 
 function PickPatient(field, member, here, current)
@@ -468,7 +477,7 @@ function PickPatient(field, member, here, current)
 				return patient
 			end
 			if patient.health < PATIENT_HURT and range <= MEDIC_LOSE then
-				local score = (1 - patient.health) * (patient.player and 2 or 1) - range / 3000
+				local score = (1 - patient.health) * ((patient.player or patient.calling) and 2 or 1) - range / 3000
 				if not bestScore or score > bestScore then best, bestScore = patient, score end
 			end
 		end
@@ -929,22 +938,38 @@ local OBJECTIVE_OF = {} -- doctrine -> job -> its Objective class
 -- No role (or one its doctrine lacks): the engine's AI has the soldier.
 local Idle = N.Action:Extend("Idle")
 
--- The member's job's class under the field's doctrine, made on first use.
+-- A role at a stage: its own settings with the stage's (STAGES[stage])
+-- over them; false clears one (chases = false: it chases nobody).
+local function StageRole(role, stage)
+	local override = stage and role.STAGES and role.STAGES[stage]
+	if not override then return role end
+	local merged = {}
+	for k, v in pairs(role) do merged[k] = v end
+	for k, v in pairs(override) do merged[k] = v end
+	return merged
+end
+
+-- The member's job's class under the field's doctrine, made on first use:
+-- one per stage for a role with stages, named for it.
 local function ObjectiveClass(state)
 	local job = state.member.role
-	local doctrine = DoctrineOf(state.war:Field())
+	local field = state.war:Field()
+	local doctrine = DoctrineOf(field)
 	local role = job and doctrine.ROLES[job]
 	if not role then return Idle end
+	local stage = role.Stage and role.Stage(field, state.member)
+	local key = stage and (job .. "/" .. stage) or job
 	local classes = OBJECTIVE_OF[doctrine] or {}
 	OBJECTIVE_OF[doctrine] = classes
-	if not classes[job] then
-		local class = Objective:Extend(role.name)
+	if not classes[key] then
+		local class = Objective:Extend(stage or role.name)
 		class.roleName = job
-		class.role = role
+		class.role = StageRole(role, stage)
 		class.doctrine = doctrine
-		classes[job] = class
+		class.stage = stage
+		classes[key] = class
 	end
-	return classes[job]
+	return classes[key]
 end
 
 local function ObjectiveFor(state)
@@ -1038,6 +1063,10 @@ function Objective:Update(me)
 	local field = state.war:Field()
 	if state.member.role ~= self.roleName then return self:ChangeTo(ObjectiveFor(state), "new role") end
 	if DoctrineOf(field) ~= self.doctrine then return self:ChangeTo(ObjectiveFor(state), "new doctrine") end
+	if self.role.Stage then
+		local stage = self.role.Stage(field, state.member)
+		if stage ~= self.stage then return self:ChangeTo(ObjectiveFor(state), "now " .. (stage or self.role.name)) end
+	end
 	if OrdersRun(field) and self.doctrine.WaitsForSetup(field, state.member) then return self:Wander(me) end
 	local urgent = IsUrgent(self.role, field, state.member)
 	if state.wandering then
@@ -1185,6 +1214,8 @@ function Objective:Heal(me, field)
 		return nil
 	end
 	state.healing = patient
+	local treated = state.war:Member(patient.handle)
+	if treated then treated.medicAt = me:Now() end
 	local range = me:RangeTo(patient.pos)
 	local spot = Geometry.Toward(patient.pos, me:Position(), MEDIC_STANDOFF)
 	state.goal, state.tactic = spot, "healing"
@@ -1706,11 +1737,14 @@ local function HealthShare(me)
 end
 
 local RetreatToCover = N.Action:Extend("RetreatToCover")
+local FindHealth = N.Action:Extend("FindHealth")
+local CallMedic = N.Action:Extend("CallMedic")
 
 function RetreatToCover:Init(state) self.state = state end
 
 function RetreatToCover:OnStart(me)
 	local state, now = self.state, me:Now()
+	state.lastEnemyAt = now
 	me:Stand()
 	StopFollowing(state, me)
 	self.untilAt = now + RETREAT_TIME
@@ -1723,6 +1757,29 @@ function RetreatToCover:OnStart(me)
 	return self:Continue()
 end
 
+-- Where its threat is: the enemy it has, else its fire team's contact.
+local function ThreatPosition(state, me)
+	local contact = state.member.fireTeam and Tactics.Contact(state.member.fireTeam, me:Now())
+	return me:EnemyPosition() or (contact and contact.pos)
+end
+
+-- A medic treats it (Objective:Heal marks its patient's member).
+local function Treated(member, now)
+	return member.medicAt ~= nil and now - member.medicAt <= MEDIC_TREATING
+end
+
+-- FindHealth's kit, when it should leave cover for one now
+-- (foundation.aiwar.health): none while a medic treats it.
+local function KitWorthIt(state, me)
+	local now = me:Now()
+	if Treated(state.member, now) then return nil end
+	local urgency = Health.Urgency(HealthShare(me), me:Burning())
+	local threat = ThreatPosition(state, me)
+	local safety = Health.Safety(threat and me:RangeTo(threat), now - (state.lastEnemyAt or now))
+	if not Health.Leaves(urgency, safety) then return nil end
+	return Health.PickKit(me:HealthKits(), me:Position(), Health.SearchRange(urgency))
+end
+
 function RetreatToCover:Update(me)
 	local state, now = self.state, me:Now()
 	-- the round won or lost: the monitor above hunts or hides
@@ -1732,6 +1789,9 @@ function RetreatToCover:Update(me)
 		state.hurtLog = {}
 		return self:Done("recovered")
 	end
+	if me:HasEnemy() then state.lastEnemyAt = now end
+	local kit = KitWorthIt(state, me)
+	if kit then return self:ChangeTo(FindHealth:New(state, kit), "health nearby, safe enough to go") end
 	state.tactic = "retreating to cover"
 	state.goal = self.spot
 	if self.spot and me:RangeTo(self.spot) > SPOT_ARRIVE then me:MoveTo(self.spot, RUN) else me:Hold() end
@@ -1739,6 +1799,59 @@ function RetreatToCover:Update(me)
 end
 
 function RetreatToCover:ShouldHurry(me) return N.ANSWER_YES end
+
+-- FindHealth (CTFBotGetHealth): out of cover for the kit, running, until
+-- healed to Health.OK, the kit is gone (taken by someone, or respawning),
+-- or FIND_HEALTH_TIME passes; then back to its squad and job, no retreat
+-- for RETREAT_COOLDOWN.
+FIND_HEALTH_TIME = 15
+
+function FindHealth:Init(state, kit)
+	self.state, self.kit = state, kit
+end
+
+function FindHealth:OnStart(me)
+	self.untilAt = me:Now() + FIND_HEALTH_TIME
+	return self:Continue()
+end
+
+local function StillThere(kits, kit)
+	for _, k in ipairs(kits) do
+		if k.handle == kit.handle then return true end
+	end
+	return false
+end
+
+function FindHealth:Update(me)
+	local state, now = self.state, me:Now()
+	if me:IsDisarmed() or Hunting(state.war:Field(), state.member) then return self:Done("the round is over") end
+	local why = (HealthShare(me) >= Health.OK and "healed") or (not StillThere(me:HealthKits(), self.kit) and "the kit is gone")
+		or (now >= self.untilAt and "gave up")
+	if why then
+		state.retreatReadyAt = now + RETREAT_COOLDOWN
+		state.hurtLog = {}
+		return self:Done(why)
+	end
+	state.tactic, state.goal = "fetching health", self.kit.pos
+	me:MoveTo(self.kit.pos, RUN)
+	return self:Continue()
+end
+
+function FindHealth:ShouldHurry(me) return N.ANSWER_YES end
+
+-- CallMedic (TF2's "MEDIC!"): under CALL_MEDIC_HEALTH of its most it calls
+-- for a medic (the port's CallMedic: its side's medics answer callers
+-- first, its teammates see TF2's bubble over it), once a
+-- CALL_MEDIC_COOLDOWN, and goes on with what it was doing.
+CALL_MEDIC_HEALTH, CALL_MEDIC_COOLDOWN = 0.75, 10
+
+function CallMedic:Init(state) self.state = state end
+
+function CallMedic:OnStart(me)
+	me:CallMedic()
+	self.state.medicCallReadyAt = me:Now() + CALL_MEDIC_COOLDOWN
+	return self:Done("called for a medic")
+end
 
 -- TacticalMonitor: what keeps the soldier alive comes before its squad and
 -- its job: humiliation, then the hunt of the losers, then retreat, which
@@ -1775,6 +1888,9 @@ function TacticalMonitor:Update(me)
 		if (badly or hard) and self:QueryBelow(me, "ShouldRetreat") ~= N.ANSWER_NO then
 			return self:SuspendFor(RetreatToCover:New(state), badly and "badly hurt" or "hurt hard")
 		end
+	end
+	if HealthShare(me) < CALL_MEDIC_HEALTH and now >= (state.medicCallReadyAt or 0) and not Treated(state.member, now) then
+		return self:SuspendFor(CallMedic:New(state), "hurt: calling for a medic")
 	end
 	return self:Continue()
 end

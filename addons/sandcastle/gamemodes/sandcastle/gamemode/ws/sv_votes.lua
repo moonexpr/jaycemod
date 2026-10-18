@@ -11,7 +11,12 @@
 -- match is one round from its end or over (Rounds.MapVoteDue), the server
 -- calls a vote of choices among maplist maps (Rounds.MapVoteChoices: two of
 -- this map's mode, one of another's), unless nextlevel is already set; the
--- most picked becomes nextlevel. Still running when the level changes
+-- most picked becomes nextlevel, or one drawn at random when nobody picks,
+-- an empty server included, so an idle server moves on rather than
+-- reloading its map. An empty server at the level change goes to a map
+-- without a nav mesh instead (Rounds.IdleNextMap), so it builds one while
+-- idle (ws/sv_nav.lua), unless players picked the next map or an admin set
+-- nextlevel. Still running when the level changes
 -- (WSChangeLevel), it is counted then.
 local Vote = WS.require("foundation.vote")
 local Rounds = WS.require("foundation.rounds")
@@ -106,8 +111,13 @@ local EFFECTS = {
 	[Vote.KIND_MAP] = function(vote) RunConsoleCommand("nextlevel", vote.subject) end,
 	[Vote.KIND_RESET] = function() WS.Feature("rounds"):RestartRound() end,
 	[Vote.KIND_SCRAMBLE] = function() WS.Feature("rounds"):ScheduleScramble() end,
-	-- set at once, not queued as a command: the level may be changing now
-	[Vote.KIND_NEXTMAP] = function(vote) GetConVar("nextlevel"):SetString(vote.subject) end,
+	-- known at once (WS.VotedNextLevel, which the rounds feature changes level
+	-- to): the level may be changing now, before the queued nextlevel runs,
+	-- and Lua may not set the engine's convar itself
+	[Vote.KIND_NEXTMAP] = function(vote)
+		WS.VotedNextLevel = vote.subject
+		RunConsoleCommand("nextlevel", vote.subject)
+	end,
 }
 
 local Started
@@ -122,6 +132,7 @@ local function Conclude(result, targetLeft)
 	if result.choice then vote.subject = vote.options[result.choice] end
 	local subject = SubjectText(vote)
 	if result.passed and not targetLeft then EFFECTS[vote.kind](vote) end
+	if vote.kind == Vote.KIND_NEXTMAP and result.passed and not result.drawn then nextMapPicked = true end
 	local text = result.passed and WS.VotePassed(vote.kind, subject) or result.why
 	print("[Sandcastle] vote " .. vote.kind .. " " .. subject .. ": " .. text)
 	E.Fire("game_vote_ended", {
@@ -134,7 +145,7 @@ local function Conclude(result, targetLeft)
 end
 
 function Started(vote)
-	timer.Create(TIMER, vote.ends - CurTime(), 1, function() Conclude(Vote.Finish(book, CurTime())) end)
+	timer.Create(TIMER, vote.ends - CurTime(), 1, function() Conclude(Vote.Finish(book, CurTime(), false, math.random)) end)
 	Broadcast()
 end
 
@@ -168,7 +179,7 @@ E.Listen("game_vote_cast", "ws_votes", function(fields, ply)
 	if choice == 0 then choice = fields.yes end
 	local ok, err = pcall(Vote.Cast, book, ply, choice)
 	if not ok then return Refuse(ply, err) end
-	local result = Vote.Finish(book, CurTime())
+	local result = Vote.Finish(book, CurTime(), false, math.random)
 	if result then return Conclude(result) end
 	Broadcast()
 end)
@@ -194,11 +205,11 @@ end)
 local NEXTMAP_CHECK_SECONDS = 1
 local NEXTMAP_TIMER = "ws_vote_nextmap"
 local nextMapCalled = false -- once a map: the Lua state starts over with the map
+local nextMapPicked = false -- players picked the next map, rather than its being drawn
 
 local function CheckNextMapVote()
 	if nextMapCalled or not WS.Active() then return end
 	if not GetConVar("mp_vote_nextmap_enabled"):GetBool() or GetConVar("nextlevel"):GetString() ~= "" then return end
-	if #player.GetHumans() == 0 then return end
 	local rounds = WS.Feature("rounds")
 	if not Rounds.MapVoteDue(rounds:MatchEndFacts(CurTime())) then return end
 	nextMapCalled = true
@@ -211,11 +222,24 @@ end
 
 timer.Create(NEXTMAP_TIMER, NEXTMAP_CHECK_SECONDS, 0, CheckNextMapVote)
 
+-- Whether the map has a nav mesh to load.
+local function HasNav(map)
+	return file.Exists("maps/" .. map .. ".nav", "GAME")
+end
+
 -- The rounds feature is about to change level: a next-map vote still running
--- is counted now, so its map is the one changed to.
+-- is counted now, so its map is the one changed to; then an empty server
+-- whose next map nobody chose goes to one without a nav mesh.
 hook.Add("WSChangeLevel", "ws_votes", function()
 	local vote = Vote.Current(book)
-	if vote and vote.kind == Vote.KIND_NEXTMAP then Conclude(Vote.Finish(book, CurTime(), true)) end
+	if vote and vote.kind == Vote.KIND_NEXTMAP then Conclude(Vote.Finish(book, CurTime(), true, math.random)) end
+	if #player.GetHumans() > 0 or nextMapPicked then return end
+	-- an admin's nextlevel, set with no vote called
+	if not WS.VotedNextLevel and GetConVar("nextlevel"):GetString() ~= "" then return end
+	local idle = Rounds.IdleNextMap((WS.Feature("rounds"):Maplist()), game.GetMap(), HasNav, math.random)
+	if not idle then return end
+	WS.VotedNextLevel = idle
+	RunConsoleCommand("nextlevel", idle)
 end)
 
 E.Listen("system_client_ready", "ws_votes", function(_, ply)

@@ -30,11 +30,14 @@ local function Load(polys, texts)
 	return env.WS.UI, defined
 end
 
-T.test("the theme: a dark box, a white border, white text", function()
+-- TF2's scheme, as its nav mesh box draws it: TFDarkBrown, TanDark, TanLight.
+T.test("the theme: TF2's dark brown box, edged in dark tan, light tan text and fill", function()
 	local UI = Load()
-	T.eq(UI.THEME.background.r, 24)
-	T.eq(UI.THEME.border.r, 255)
-	T.eq(UI.THEME.text.r, 255)
+	local function RGB(c) return string.format("%d %d %d", c.r, c.g, c.b) end
+	T.eq(RGB(UI.THEME.background), "42 39 37", "TFDarkBrown")
+	T.eq(RGB(UI.THEME.edge), "117 107 94", "TanDark")
+	T.eq(RGB(UI.THEME.text), "235 226 202", "TanLight")
+	T.eq(RGB(UI.THEME.border), "235 226 202", "a selection's fill: TanLight")
 	T.eq(UI.THEME.borderWidth, 2)
 end)
 

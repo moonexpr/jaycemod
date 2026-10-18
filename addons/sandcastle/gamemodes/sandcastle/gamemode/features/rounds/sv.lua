@@ -38,6 +38,10 @@ local respawnwavetime = ConVarOrCreate("mp_respawnwavetime", "10.0", { FCVAR_NOT
 local bonusroundtime = ConVarOrCreate("mp_bonusroundtime", "15", FCVAR_REPLICATED, "Time after round win until round restarts", 5, 15)
 local enableroundwaittime = ConVarOrCreate("mp_enableroundwaittime", "1", FCVAR_REPLICATED, "Enable timers to wait between rounds.")
 local stalemateEnable = ConVarOrCreate("mp_stalemate_enable", "0", FCVAR_NOTIFY, "Enable/Disable stalemate mode.")
+-- Sandcastle's tie-breaker for a match (foundation.rounds' Deathmatch), as
+-- sudden death is for a stalemated round: a round of frags alone.
+local deathmatchEnable = ConVarOrCreate("mp_deathmatch_enable", "1", FCVAR_NOTIFY,
+	"1: a tied match goes to a deathmatch round, won by the first team to mp_round_fraglimit frags")
 local stalemateTimelimit = ConVarOrCreate("mp_stalemate_timelimit", "240", FCVAR_REPLICATED, "Timelimit (in seconds) of the stalemate round.")
 local scrambleAuto = ConVarOrCreate("mp_scrambleteams_auto", "1", FCVAR_NOTIFY,
 	"Server will automatically scramble the teams if criteria met.  Only works on dedicated servers.")
@@ -45,8 +49,18 @@ local scrambleWinDifference = ConVarOrCreate("mp_scrambleteams_auto_windifferenc
 	"Number of round wins a team must lead by in order to trigger an auto scramble.", 0)
 local winlimit = ConVarOrCreate("mp_winlimit", "0", { FCVAR_REPLICATED, FCVAR_NOTIFY }, "Max score one team can reach before server changes maps", 0)
 local maxrounds = ConVarOrCreate("mp_maxrounds", "0", { FCVAR_REPLICATED, FCVAR_NOTIFY }, "max number of rounds to play before server changes maps", 0)
-local timelimit = ConVarOrCreate("mp_timelimit", "0", { FCVAR_NOTIFY, FCVAR_REPLICATED }, "game time per map in minutes")
-local matchEndAtTimelimit = ConVarOrCreate("mp_match_end_at_timelimit", "0", FCVAR_NOTIFY, "Allow the match to end when mp_timelimit hits instead of waiting for the end of the current round.")
+local timelimit = ConVarOrCreate("mp_timelimit", "30", { FCVAR_NOTIFY, FCVAR_REPLICATED }, "game time per map in minutes")
+-- GMod defines mp_timelimit itself, at 0 (no limit); Sandcastle's default
+-- is DEFAULT_TIMELIMIT minutes, taken while the server leaves it at GMod's.
+local DEFAULT_TIMELIMIT = 30
+if timelimit:GetString() == timelimit:GetDefault() and timelimit:GetDefault() ~= tostring(DEFAULT_TIMELIMIT) then
+	RunConsoleCommand("mp_timelimit", tostring(DEFAULT_TIMELIMIT))
+end
+-- Sandcastle ends every map at mp_timelimit (TF2 waits for the round on its
+-- own maps, which call SetStalemateOnTimelimit when they want otherwise):
+-- the leader wins, a tie is sudden death or, with mp_stalemate_enable 0,
+-- the stalemate's bonus time, then the next map.
+local matchEndAtTimelimit = ConVarOrCreate("mp_match_end_at_timelimit", "1", FCVAR_NOTIFY, "Allow the match to end when mp_timelimit hits instead of waiting for the end of the current round.")
 local chattime = ConVarOrCreate("mp_chattime", "10", FCVAR_REPLICATED, "amount of time players can chat after the game is over", 1, 120)
 -- teamplay_round_timer.cpp
 local overtimeNag = ConVarOrCreate("tf_overtime_nag", "0", FCVAR_NOTIFY, "Announcer overtime nag.")
@@ -72,6 +86,7 @@ local function Settings()
 		bonusRoundTime = bonusroundtime:GetInt(),
 		enableRoundWaitTime = enableroundwaittime:GetFloat(),
 		stalemateEnable = stalemateEnable:GetBool(),
+		deathmatchEnable = deathmatchEnable:GetBool(),
 		stalemateTimelimit = stalemateTimelimit:GetInt(),
 		winlimit = winlimit:GetInt(),
 		maxrounds = maxrounds:GetInt(),
@@ -308,12 +323,22 @@ end
 
 -- Thinking ----------------------------------------------------------------------------
 
+-- This round's flag captures, as the flag feature publishes its tally
+-- (none on a map without flags).
+local function Captures()
+	return {
+		[RED] = GetGlobal2Int("ws_flag_caps_" .. RED, 0),
+		[BLUE] = GetGlobal2Int("ws_flag_caps_" .. BLUE, 0),
+	}
+end
+
 function Controller:World(now)
 	local stalemateTimer = self.stalemateTimer
 	return {
 		havePlayers = HavePlayers(),
 		teams = TeamLife(),
 		scores = Scores(),
+		captures = Captures(),
 		stalemateTimerLeft = IsValid(stalemateTimer) and self.timers[stalemateTimer]:TimeRemaining(now) or nil,
 		timerMayExpire = self:TimerMayExpire(),
 		mapHasActiveTimer = self:MapHasActiveTimer(),

@@ -41,6 +41,9 @@ VARIANTS = {
 	control_points = "foundation.aiwar.scenario.control_points",
 	koth = "foundation.aiwar.scenario.koth",
 	arena = "foundation.aiwar.scenario.arena",
+	ctf = "foundation.aiwar.scenario.ctf",
+	deathmatch = "foundation.aiwar.scenario.deathmatch",
+	mvm = "foundation.aiwar.scenario.mvm",
 }
 
 -- The variant's Scenario class for a rounds mode's NAME: freeform for a
@@ -61,13 +64,19 @@ end
 -- The parts of the controller's field a variant's Brief may read that a map
 -- or a moment can lack, each with what having it means: points, the capture
 -- HUD's (at least one); bases, both teams'; clocks, both teams' KOTH clocks;
--- waypoints, the nav mesh's to explore (foundation.aiwar.explore).
-POINTS, BASES, CLOCKS, WAYPOINTS = "points", "bases", "clocks", "waypoints"
+-- waypoints, the nav mesh's to explore (foundation.aiwar.explore); flags,
+-- both teams' (capture the flag); bomb, BLU's flag and the zone it is
+-- delivered to (Mann vs. Machine).
+POINTS, BASES, CLOCKS, WAYPOINTS, FLAGS, BOMB = "points", "bases", "clocks", "waypoints", "flags", "bomb"
 PARTS = {
 	[POINTS] = function(field) return field.points ~= nil and #field.points > 0 end,
 	[BASES] = function(field) return BothTeams(field.bases) end,
 	[CLOCKS] = function(field) return BothTeams(field.clocks) end,
 	[WAYPOINTS] = function(field) return field.waypoints ~= nil and #field.waypoints > 0 end,
+	[FLAGS] = function(field) return BothTeams(field.flags) end,
+	[BOMB] = function(field)
+		return field.flags ~= nil and field.flags[Teams.BLUE] ~= nil and field.zones ~= nil and field.zones[Teams.BLUE] ~= nil
+	end,
 }
 
 -- NEEDS: the parts the map must have, or the war cannot start. AWAITS: the

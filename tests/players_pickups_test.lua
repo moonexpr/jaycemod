@@ -125,25 +125,40 @@ end)
 
 -- Damage conditions: invulnerable, blast immune, crit boosted
 
-T.test("damage scale follows the victim's and attacker's conditions", function()
+-- What a hit is, and what it multiplies the damage by (CTFGameRules::
+-- ApplyOnDamageModifyRules): facts says whether it was a blast, the
+-- attacker's own harm, a headshot, or a crit already (DMG_CRITICAL, its
+-- damage already tripled).
+local function Hit(victim, attacker, now, facts) return P.Hit(victim, attacker, now, facts or {}) end
+
+local function Is(scale, kind, what, gotScale, gotKind)
+	T.eq(gotScale, scale, what .. " (scale)")
+	T.eq(gotKind, kind, what .. " (kind)")
+end
+
+T.test("a hit's scale follows the victim's and attacker's conditions", function()
 	local victim, attacker = {}, {}
-	T.eq(P.DamageScale(victim, attacker, false, 0), 1, "plain")
+	Is(1, P.HIT_NORMAL, "plain", Hit(victim, attacker, 0))
 	P.AddCond(attacker, P.COND.CRITBOOSTED, P.PERMANENT, 0)
-	T.eq(P.DamageScale(victim, attacker, false, 0), 3, "crit")
+	Is(3, P.HIT_CRIT, "crit boosted", Hit(victim, attacker, 0))
 	P.AddCond(victim, P.COND.BLAST_IMMUNE, P.PERMANENT, 0)
-	T.eq(P.DamageScale(victim, attacker, true, 0), 0, "blast immune")
-	T.eq(P.DamageScale(victim, attacker, false, 0), 3, "not blast")
+	Is(0, P.HIT_NORMAL, "blast immune", Hit(victim, attacker, 0, { blast = true }))
+	Is(3, P.HIT_CRIT, "not blast", Hit(victim, attacker, 0))
 	P.AddCond(victim, P.COND.INVULNERABLE, P.PERMANENT, 0)
-	T.eq(P.DamageScale(victim, attacker, false, 0), 0, "invulnerable")
+	Is(0, P.HIT_NORMAL, "invulnerable", Hit(victim, attacker, 0))
 end)
 
 -- CTFPlayerShared::IsCritBoosted counts the pumpkin's crits, which
--- Merasmus gives whoever finds or stuns him.
-T.test("the pumpkin crit boost triples damage too", function()
+-- Merasmus gives whoever finds or stuns him, and the winners' bonus time.
+T.test("the pumpkin and bonus-time crit boosts triple damage too", function()
 	local victim, attacker = {}, {}
 	P.AddCond(attacker, P.COND.CRITBOOSTED_PUMPKIN, P.PERMANENT, 0)
-	T.eq(P.DamageScale(victim, attacker, false, 0), 3, "pumpkin crit")
+	Is(3, P.HIT_CRIT, "pumpkin crit", Hit(victim, attacker, 0))
+	local winner = {}
+	P.AddCond(winner, P.COND.CRITBOOSTED_BONUS_TIME, P.PERMANENT, 0)
+	Is(3, P.HIT_CRIT, "bonus time", Hit(victim, winner, 0))
 	T.eq(P.COND.CRITBOOSTED_PUMPKIN, 33, "TF2's number")
+	T.eq(P.COND.CRITBOOSTED_BONUS_TIME, 38, "TF2's number")
 	T.eq(P.COND.HALLOWEEN_BOMB_HEAD, 53, "TF2's number")
 end)
 
@@ -151,11 +166,39 @@ end)
 T.test("a jarated player takes mini-crits from anyone else; a crit stays a crit", function()
 	local victim, attacker = {}, {}
 	P.AddCond(victim, P.COND.URINE, 10, 0)
-	T.near(P.DamageScale(victim, attacker, false, 1), 1.35, 1e-9, "mini-crit")
-	T.eq(P.DamageScale(victim, attacker, false, 1, true), 1, "not their own")
-	T.eq(P.DamageScale(victim, attacker, false, 11), 1, "dry again")
+	local scale, kind = Hit(victim, attacker, 1)
+	T.near(scale, 1.35, 1e-9, "mini-crit")
+	T.eq(kind, P.HIT_MINICRIT, "a mini-crit")
+	Is(1, P.HIT_NORMAL, "not their own", Hit(victim, attacker, 1, { selfHarm = true }))
+	Is(1, P.HIT_NORMAL, "dry again", Hit(victim, attacker, 11))
 	P.AddCond(attacker, P.COND.CRITBOOSTED_PUMPKIN, P.PERMANENT, 0)
-	T.eq(P.DamageScale(victim, attacker, false, 1), 3, "a crit")
+	Is(3, P.HIT_CRIT, "a crit", Hit(victim, attacker, 1))
+end)
+
+-- Sandcastle crits every weapon's headshot, not only the Sniper's.
+T.test("a headshot is a crit, from any weapon", function()
+	Is(3, P.HIT_CRIT, "a headshot", Hit({}, {}, 0, { headshot = true }))
+	local boosted = {}
+	P.AddCond(boosted, P.COND.CRITBOOSTED, P.PERMANENT, 0)
+	Is(3, P.HIT_CRIT, "a boosted headshot is one crit", Hit({}, boosted, 0, { headshot = true }))
+end)
+
+T.test("a hit already a crit keeps its damage, tripled where it was dealt", function()
+	local boosted = {}
+	P.AddCond(boosted, P.COND.CRITBOOSTED, P.PERMANENT, 0)
+	Is(1, P.HIT_CRIT, "a crit rocket", Hit({}, {}, 0, { critical = true }))
+	Is(1, P.HIT_CRIT, "not tripled twice", Hit({}, boosted, 0, { critical = true }))
+	local invulnerable = {}
+	P.AddCond(invulnerable, P.COND.INVULNERABLE, P.PERMANENT, 0)
+	Is(0, P.HIT_NORMAL, "nothing through an uber", Hit(invulnerable, {}, 0, { critical = true }))
+end)
+
+-- ApplyOnDamageModifyRules: a player's own damage is never a crit.
+T.test("an attacker's harm to itself is never crit boosted", function()
+	local boosted = {}
+	P.AddCond(boosted, P.COND.CRITBOOSTED, P.PERMANENT, 0)
+	Is(1, P.HIT_NORMAL, "a rocket jump", Hit(boosted, boosted, 0, { selfHarm = true }))
+	Is(1, P.HIT_NORMAL, "nor a headshot", Hit({}, {}, 0, { selfHarm = true, headshot = true }))
 end)
 
 T.finish()

@@ -172,10 +172,14 @@ local function RespawnTeam(self, t, now)
 	end
 end
 
--- The level the match's end changes to (Rounds.NextMap).
+-- The level the match's end changes to (Rounds.NextMap): the next-map
+-- vote's pick (WS.VotedNextLevel, ws/sv_votes.lua) is nextlevel's, before
+-- its queued command has run.
 local function NextMap()
-	return Rounds.NextMap(nextlevel:GetString(), RotationNext(), game.GetMap(), MapInstalled)
+	return Rounds.NextMap(WS.VotedNextLevel or nextlevel:GetString(), RotationNext(), game.GetMap(), MapInstalled)
 end
+
+local BONUS_FREEZE_TIMER = "ws_rounds_bonus_freeze"
 
 local EFFECTS = {
 	state = function(self, e)
@@ -289,6 +293,11 @@ local EFFECTS = {
 		self:FinishSetup(now)
 		self:OpenSpawnDoors(now)
 	end,
+	-- a tied match's deathmatch: frags alone, to mp_round_fraglimit
+	deathmatch = function()
+		WS.BroadcastPA(UNASSIGNED, SUDDEN_DEATH)
+		WS.Announce(Text.DeathmatchNote(GetConVar("mp_round_fraglimit"):GetInt()), UNASSIGNED, UNASSIGNED, ICON_SUDDEN_DEATH)
+	end,
 	hide_timers = function(self) self:HideActiveTimer() end,
 	restore_timers = function(self) self:RestoreActiveTimer() end,
 	-- sudden death after the arena round, or after another, replaces its timer
@@ -339,6 +348,17 @@ local EFFECTS = {
 		hook.Run("WSFreeze", false)
 	end,
 	overtime = function(self, e) PublishOvertime(e.value) end,
+	-- a bonus round's opening: nobody moves or attacks until it ends
+	-- (WS.RestrictCommand), the AI war's soldiers held still (WSFreeze)
+	bonus_freeze = function(self, e, now)
+		SetGlobal2Float("ws_bonus_freeze_end", e.ends)
+		hook.Run("WSFreeze", true)
+		timer.Create(BONUS_FREEZE_TIMER, e.ends - now, 1, function()
+			if WS.State() ~= S.GAME_OVER then hook.Run("WSFreeze", false) end
+		end)
+	end,
+	-- the deathmatch's map has no setup: its gates open as the round starts
+	skip_setup = function(self, e, now) self:FinishSetup(now) end,
 }
 
 function Controller:Apply(effects)

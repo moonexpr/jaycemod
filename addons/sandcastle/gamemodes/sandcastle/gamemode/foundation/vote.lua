@@ -9,7 +9,8 @@
 -- The server starts a vote of choices (StartChoices: the next-map vote, as
 -- TF2's nextlevel vote in its choices mode), which waits its turn as a kick
 -- does: each voter picks one option, and the most picked wins (the first
--- listed of a tie) once CHOICE_QUORUM_SHARE of the electorate picked.
+-- listed of a tie) once CHOICE_QUORUM_SHARE of the electorate picked; with
+-- nobody picking (an empty server too) one is drawn at random.
 -- Refusals carry TF2's wording (GameUI_vote_failed_*) as their detail.
 --
 -- A book is plain data keyed by whatever the controller gives (players), so
@@ -281,16 +282,22 @@ end
 
 -- The running vote's result once it is over (its time, everyone voted, or
 -- force: closed now, as the level changes): { vote, passed, why, choice (a
--- vote of choices' winner) }; else nil.
-function Finish(book, now, force)
+-- vote of choices' winner), drawn (true when nobody picked it) }; else nil.
+-- random(n) (1..n) draws a vote of choices' winner when nobody picked.
+function Finish(book, now, force, random)
 	local vote = book.current
 	if not vote then return nil end
 	local cast = 0
 	for _ in pairs(vote.choices) do cast = cast + 1 end
-	local everyone = cast >= vote.electorateSize
+	-- nobody to vote (an empty server) waits out the time
+	local everyone = vote.electorateSize > 0 and cast >= vote.electorateSize
 	if now < vote.ends and not everyone and not force then return nil end
-	-- a vote of choices with nobody choosing has no winner
-	if cast < Quorum(vote) or (vote.options and cast == 0) then return Close(book, vote, false, FAILED_QUORUM) end
+	if vote.options and cast == 0 then
+		local result = Close(book, vote, true, nil, random(#vote.options))
+		result.drawn = true
+		return result
+	end
+	if cast < Quorum(vote) then return Close(book, vote, false, FAILED_QUORUM) end
 	if vote.options then return Close(book, vote, true, nil, Winner(vote)) end
 	local yes = Tally(vote)
 	if yes < PASS_SHARE * cast then return Close(book, vote, false, FAILED_YES) end

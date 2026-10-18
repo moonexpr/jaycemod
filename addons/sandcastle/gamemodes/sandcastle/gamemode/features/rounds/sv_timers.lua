@@ -74,9 +74,12 @@ local function PublishOvertime(on)
 	hook.Run("WSOvertime", on)
 end
 
--- CTeamplayRoundBasedRules::SetSetup, from every timer's SetState.
+-- CTeamplayRoundBasedRules::SetSetup, from every timer's SetState. Its
+-- change is heard as WSSetup(on): MvM's wave starts as setup ends.
 function Controller:SetSetup(on)
-	if self.round:SetSetup(on) then SetGlobal2Bool("ws_round_in_setup", on) end
+	if not self.round:SetSetup(on) then return end
+	SetGlobal2Bool("ws_round_in_setup", on)
+	hook.Run("WSSetup", on)
 end
 
 function Controller:SetOvertime(on)

@@ -1,28 +1,36 @@
--- WS.UI: Sandcastle's TF2-styled panels, one look (THEME: a dark box,
--- a white border, white text) as derma prototypes. UI.Define(name, base,
--- proto) registers "WS<name>" on base, a UI name ("Dialog") or any derma
--- class ("DFrame"); a new panel derives from one and overrides only what
--- differs (derma copies the base's methods under the proto's). The library's
--- own: Box (drawing the box), Panel (the box), Label (theme text), Progress
--- (a bar, full to its fraction, or a moving band while it has none),
--- Button, Title (a box's heading) and Dialog (a Panel with a title and a
--- line, kept in the middle of the screen).
+-- WS.UI: Sandcastle's TF2-styled panels, one look (THEME: TF2's scheme, as
+-- its nav mesh box and its menus draw it: a dark brown rounded box edged in
+-- dark tan, light tan text in TF2 Build and TF2 Secondary, light tan
+-- filling what is selected and the bars, on a darker track) as derma
+-- prototypes. UI.Define(name, base, proto) registers "WS<name>" on base, a
+-- UI name ("Dialog") or any derma class ("DFrame"); a new panel derives
+-- from one and overrides only what differs (derma copies the base's methods
+-- under the proto's). The library's own: Box (drawing the box), Panel (the
+-- box), Label (theme text), Progress (a bar, full to its fraction, or a
+-- moving band while it has none), Button, Title (a box's heading) and
+-- Dialog (a Panel with a title and a line, kept in the middle of the
+-- screen).
 local UI = {}
 WS.UI = UI
 
+-- TF2's scheme: TFDarkBrown, TanDark, TanLight. border: what is selected or
+-- filled (a lit row's fill, a bar), its text then background's colour.
 UI.THEME = {
-	background = Color(24, 24, 28),
-	border = Color(255, 255, 255),
-	text = Color(255, 255, 255),
-	muted = Color(220, 220, 225),
+	background = Color(42, 39, 37, 240),
+	edge = Color(117, 107, 94),
+	border = Color(235, 226, 202),
+	text = Color(235, 226, 202),
+	muted = Color(190, 180, 160),
+	track = Color(25, 23, 22),
 	borderWidth = 2,
+	corner = 6,
 	padding = 12,
 	titleFont = "WSTitle",
 	bodyFont = "WSBody",
 }
 
-surface.CreateFont("WSTitle", { font = "Verdana", size = 18, weight = 800 })
-surface.CreateFont("WSBody", { font = "Verdana", size = 15, weight = 500 })
+surface.CreateFont("WSTitle", { font = "TF2 Build", size = 20, weight = 500 })
+surface.CreateFont("WSBody", { font = "TF2 Secondary", size = 16, weight = 500 })
 
 local PREFIX = "WS"
 
@@ -42,15 +50,13 @@ end
 
 local THEME = UI.THEME
 
--- The box: the theme's background, inside its border; at x, y for a HUD
--- drawing one itself (the vote card), else filling the panel.
+-- The box: the theme's background, rounded, inside its edge; at x, y for a
+-- HUD drawing one itself (the vote card), else filling the panel.
 local function Box(w, h, x, y)
 	x, y = x or 0, y or 0
-	surface.SetDrawColor(THEME.border)
-	surface.DrawRect(x, y, w, h)
-	local b = THEME.borderWidth
-	surface.SetDrawColor(THEME.background)
-	surface.DrawRect(x + b, y + b, w - b * 2, h - b * 2)
+	local b, corner = THEME.borderWidth, THEME.corner
+	draw.RoundedBox(corner, x, y, w, h, THEME.edge)
+	draw.RoundedBox(corner, x + b, y + b, w - b * 2, h - b * 2, THEME.background)
 end
 UI.Box = Box
 
@@ -76,9 +82,9 @@ local BAND, BAND_SPEED = 0.25, 0.6
 UI.Define("Progress", "DPanel", {
 	SetFraction = function(self, fraction) self.fraction = fraction end,
 	Paint = function(self, w, h)
-		Box(w, h)
-		local b = THEME.borderWidth * 2
-		local inner = w - b * 2
+		draw.RoundedBox(THEME.corner / 2, 0, 0, w, h, THEME.track)
+		local b = 0
+		local inner = w
 		surface.SetDrawColor(THEME.border)
 		if self.fraction then
 			surface.DrawRect(b, b, inner * self.fraction, h - b * 2)

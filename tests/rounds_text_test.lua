@@ -24,6 +24,16 @@ T.test("a full round win says the team wins", function()
 	T.eq(p.details, nil)
 end)
 
+-- Winreason_FlagCaptureLimit(_One), for the capture limit and for the most
+-- captures at the time limit.
+T.test("a CTF win says how many times the team captured the intelligence", function()
+	local function Ctf(reason, captures)
+		return Text.WinPanel({ winner = BLU, reason = reason, fullRound = true, remaining = 0, captures = captures }).reason
+	end
+	T.eq(Ctf(W.FLAG_CAPTURE_LIMIT, 3), "BLU captured the enemy intelligence 3 times", "the capture limit")
+	T.eq(Ctf(W.MOST_CAPTURES, 1), "BLU captured the enemy intelligence 1 time", "the most, one")
+end)
+
 T.test("a round won at a round limit says which", function()
 	T.eq(Panel(RED, W.FRAGLIMIT, true, 0).reason, "RED reached the frag limit")
 	T.eq(Panel(BLU, W.CASHLIMIT, true, 0).reason, "BLU reached the cash limit")
@@ -90,11 +100,24 @@ local function Display(fields)
 		gameOverEnd = 0,
 		capUnlockEnd = 0,
 		setupEnd = 0,
+		matchEnd = 0,
 		left = ROUND_LEFT,
 	}
 	for k, v in pairs(fields) do q[k] = v end
 	return Text.TimerDisplay(q)
 end
+
+-- CTFHudTimeStatus: a map with no round timer (ctf_2fort) shows the map's
+-- time left under mp_timelimit; with no time limit, nothing.
+T.test("with no round timer the box shows the map's time left", function()
+	local d = Display({ shown = false, matchEnd = NOW + 600 })
+	T.eq(d.kind, Text.DISPLAY_MAP, "the map's clock")
+	T.eq(d.left, 600, "its time left")
+	T.eq(d.label, nil, "no label")
+	T.eq(Display({ shown = false, matchEnd = 0 }), nil, "no time limit: nothing")
+	T.eq(Display({ shown = true, matchEnd = NOW + 600 }).kind, Text.DISPLAY_ROUND, "a round timer first")
+	T.eq(Display({ shown = false, matchEnd = NOW + 600, halted = true }), nil, "nothing while halted")
+end)
 
 T.test("mp_chattime's note names the next map", function()
 	T.eq(Text.NextMapNote("pl_upward"), "Next map: pl_upward")
@@ -206,6 +229,10 @@ end)
 T.test("the game-mode countdown and game over still come before the unlock countdown", function()
 	T.eq(Display({ capUnlockEnd = NOW + 16, transitionEnd = NOW + 5 }).kind, Text.DISPLAY_TRANSITION)
 	T.eq(Display({ capUnlockEnd = NOW + 16, gameOverEnd = NOW + 5 }).kind, Text.DISPLAY_GAME_OVER)
+end)
+
+T.test("a deathmatch says the match is tied and how many frags win it", function()
+	T.eq(Text.DeathmatchNote(30), "DEATHMATCH! The match is tied: the first team to 30 frags wins it.")
 end)
 
 T.finish()

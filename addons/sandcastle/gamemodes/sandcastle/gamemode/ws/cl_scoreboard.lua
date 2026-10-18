@@ -43,33 +43,36 @@ local STATS = {
 }
 local CORNER = 4
 
-local WHITE = Color(255, 255, 255)
-local ROW = Color(230, 230, 230) -- base's PLAYER_LINE colours
-local ROW_DEAD = Color(230, 200, 200)
-local ROW_ADMIN = Color(230, 255, 230)
-local ROW_TEXT = Color(93, 93, 93)
-local PANEL = Color(0, 0, 0, 160)
+-- WS.UI's theme, TF2's scheme: light tan text; rows a shade above its dark
+-- brown, a dead player's warmer, an admin's greener; panels its box.
+local THEME = WS.UI.THEME
+local WHITE = THEME.text
+local ROW = Color(62, 57, 53, 240)
+local ROW_DEAD = Color(84, 54, 48, 240)
+local ROW_ADMIN = Color(58, 68, 52, 240)
+local ROW_TEXT = THEME.text
+local PANEL = THEME.background
 local NEUTRAL = Color(120, 120, 120)
 local BOT_PING = "BOT"
 local NO_DEATHS = "-"
 
 surface.CreateFont("Sandcastle.Scoreboard.Row", {
-	font = "Helvetica",
+	font = "TF2 Secondary",
 	size = 22,
 	weight = 800,
 })
 surface.CreateFont("Sandcastle.Scoreboard.Title", {
-	font = "Helvetica",
+	font = "TF2 Build",
 	size = 32,
 	weight = 800,
 })
 surface.CreateFont("Sandcastle.Scoreboard.Score", {
-	font = "Helvetica",
+	font = "TF2 Build",
 	size = 44,
 	weight = 800,
 })
 surface.CreateFont("Sandcastle.Scoreboard.Small", {
-	font = "Helvetica",
+	font = "TF2 Secondary",
 	size = 16,
 	weight = 800,
 })
@@ -368,7 +371,7 @@ function BOARD:Init()
 	self.Footer:Dock(BOTTOM)
 	self.Footer:DockMargin(0, COLUMN_GAP, 0, 0)
 	self.Footer:DockPadding(8, FOOTER_PAD, 8, FOOTER_PAD)
-	self.Footer.Paint = function(_, w, h) draw.RoundedBox(CORNER, 0, 0, w, h, PANEL) end
+	self.Footer.Paint = function(_, w, h) WS.UI.Box(w, h) end
 	self.Left = Shadowed(self.Footer, "Sandcastle.Scoreboard.Small", LEFT, 7)
 	self.Left:SetWrap(true)
 	self.Right = Shadowed(self.Footer, "Sandcastle.Scoreboard.Small", FILL, 9)

@@ -20,18 +20,16 @@ T.test("the variant comes from the rounds mode's name; any other is freeform", f
 	-- a mode the war does not know, or none, is fought freeform (aiwar_freeform_test.lua)
 	T.eq(Scenario.For("none"), T.require("foundation.aiwar.scenario.freeform").Scenario, "an unknown mode")
 	T.eq(Scenario.For(nil), T.require("foundation.aiwar.scenario.freeform").Scenario, "no rounds")
-	-- CTF and MvM have no doctrine of their own: their maps are explored and fought freeform
-	local Freeform = T.require("foundation.aiwar.scenario.freeform").Scenario
-	T.eq(Scenario.For(T.require("features.flag.model").Mode.NAME), Freeform, "CTF")
-	T.eq(Scenario.For(T.require("features.mvm.model").Mode.NAME), Freeform, "MvM")
+	T.eq(Scenario.For(T.require("features.mvm.model").Mode.NAME), T.require("foundation.aiwar.scenario.mvm").Scenario, "MvM")
 	T.eq(Payload.Scenario.NAME, Payload.MODE, "the payload variant is named for its mode")
 end)
 
 T.test("the variants are keyed by the rounds modes' NAMEs", function()
 	local names = {}
-	for _, path in ipairs({ "foundation.rounds.payload", "foundation.rounds.control_points", "features.koth.model", "foundation.rounds.arena" }) do
+	for _, path in ipairs({ "foundation.rounds.payload", "foundation.rounds.control_points", "features.koth.model", "foundation.rounds.arena", "features.flag.model", "features.mvm.model" }) do
 		names[T.require(path).Mode.NAME] = true
 	end
+	names[T.require("foundation.rounds").DEATHMATCH] = true
 	for name in pairs(Scenario.VARIANTS) do T.eq(names[name], true, name .. " is a rounds mode") end
 	for name in pairs(names) do T.eq(Scenario.VARIANTS[name] ~= nil, true, name .. " has a variant") end
 end)
@@ -340,6 +338,25 @@ T.test("KOTH may start without clocks, but its field is whole only with both tea
 	T.eq(Koth.Scenario:Lacks(round), nil, "whole")
 	round.clocks[RED] = nil
 	T.eq(Koth.Scenario:Lacks(round), Scenario.CLOCKS, "one clock")
+end)
+
+-- A tied match's deathmatch is fought as arena's round before its point
+-- opens: every squad explores and hunts, whatever objective the map has.
+T.test("a deathmatch is fought as arena's shut round: all explore, with no point needed", function()
+	local Deathmatch = T.require("foundation.aiwar.scenario.deathmatch")
+	T.eq(Scenario.For(T.require("foundation.rounds").DEATHMATCH), Deathmatch.Scenario, "its own variant")
+	local field = {
+		bases = { [RED] = P(0, 0), [BLUE] = P(4000, 0) },
+		waypoints = { P(1000, 0), P(2000, 0) },
+		now = 0,
+	}
+	local scenario = Deathmatch.Scenario:New()
+	T.eq(scenario:MapLacks(field), nil, "bases and waypoints are enough")
+	scenario:Brief(field, 0)
+	local entries = scenario:Stances(field, 0)
+	T.eq(#entries[RED].stance, 1, "one job")
+	T.eq(entries[RED].stance[1].role, AiWar.EXPLORE, "explore")
+	T.eq(entries[BLUE].stance[1].role, AiWar.EXPLORE, "both sides")
 end)
 
 T.finish()

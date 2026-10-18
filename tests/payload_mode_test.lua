@@ -43,7 +43,6 @@ local LEVELS = { 30, 60, 90 } -- hud_min_speed_level_1..3
 T.test("the payload mode's members", function()
 	T.eq(MODE.NAME, "payload", "name")
 	T.eq(MODE.HUD, Rounds.HUD_PAYLOAD, "the cart HUD")
-	T.eq(MODE.SCORE_CHIME_TO_ALL, true, "the scored chime to everyone")
 	T.eq(MODE.CREATES_TIME_LIMIT_TIMER, true, "a time limit timer")
 	T.eq(MODE.ANNOUNCES_TIME_ADDED, true, "time added is announced")
 	T.eq(#MODE:CapSounds(BLU, {

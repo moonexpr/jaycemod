@@ -15,6 +15,17 @@ local WALK_INTERVAL, RUN_INTERVAL = 0.4, 0.3
 -- concrete's (the default surface's) volumes, and a crouched step's share
 local WALK_VOLUME, RUN_VOLUME, CROUCH_VOLUME = 0.2, 0.5, 0.65
 
+-- How loud a step or landing of volume plays to players: twice Source's,
+-- to be heard over the fighting, at most full (ws/sh_footsteps.lua, and the
+-- soldiers').
+local PLAYED_GAIN = 2
+
+function Played(volume)
+	local played = volume * PLAYED_GAIN
+	if played > 1 then return 1 end
+	return played
+end
+
 -- The next step of a walker on the ground at speed, { interval (seconds
 -- to the one after), volume }, or nil while it is too slow to make one.
 function Step(speed, crouched)

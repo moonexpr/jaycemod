@@ -28,4 +28,31 @@ T.test("the extension is matched whatever its case, and a leading ) or ^ (a soun
 	T.eq(SoundPaths.Replacement(")vo/line.wav", exists), ")vo/line.mp3")
 end)
 
+-- Sound names GMod's HL2 defines too: TF2's own sounds of surfaces and
+-- doors win; any other keeps GMod's (HL2's weapons and NPCs share names
+-- with TF2's).
+T.test("TF2's surface and door sounds take the place of HL2's of the same name", function()
+	T.eq(SoundPaths.TF2Wins("Water.StepLeft", "scripts/game_sounds_physics.txt"), true, "a surface's step")
+	T.eq(SoundPaths.TF2Wins("Flesh.ImpactHard", "scripts/game_sounds_physics.txt"), true, "an impact")
+	T.eq(SoundPaths.TF2Wins("DoorSound.DefaultMove", "scripts/game_sounds.txt"), true, "a door")
+	T.eq(SoundPaths.TF2Wins("RotDoorSound.DefaultArrive", "scripts/game_sounds.txt"), true, "a rotating door")
+	T.eq(SoundPaths.TF2Wins("NPC_CombineS.ElectrocuteScream", "scripts/game_sounds.txt"), false, "an NPC")
+	T.eq(SoundPaths.TF2Wins("Weapon_Shotgun.Single", "scripts/game_sounds_weapons.txt"), false, "HL2's shotgun")
+end)
+
+-- A TF2 sound whose file HL2 also has under the same path plays HL2's
+-- (GMod searches HL2's content first): its own copy goes under RELOCATED.
+T.test("a TF2 sound file HL2 hides plays from its relocated copy; any other stays", function()
+	local hidden = Files({ "player/footsteps/concrete1.wav" })
+	T.eq(SoundPaths.Relocated("player/footsteps/concrete1.wav", hidden), SoundPaths.RELOCATED .. "player/footsteps/concrete1.wav", "hidden")
+	T.eq(SoundPaths.Relocated(")player/footsteps/concrete1.wav", hidden), ")" .. SoundPaths.RELOCATED .. "player/footsteps/concrete1.wav", "its sound character kept")
+	T.eq(SoundPaths.Relocated("doors/door_metal_rusty_move1.wav", hidden), "doors/door_metal_rusty_move1.wav", "TF2's own file")
+end)
+
+T.test("a sound's file is its path past the sound characters", function()
+	T.eq(SoundPaths.File(")player/x.wav"), "player/x.wav", "spatial")
+	T.eq(SoundPaths.File("^#player/x.wav"), "player/x.wav", "two")
+	T.eq(SoundPaths.File("player/x.wav"), "player/x.wav", "none")
+end)
+
 T.finish()
