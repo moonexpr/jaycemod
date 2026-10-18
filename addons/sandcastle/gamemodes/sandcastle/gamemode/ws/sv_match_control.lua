@@ -5,7 +5,7 @@
 --   WSRoundRewards(winner) lets a server add its own rewards.
 -- - match: mp_match_forcewin red|blue|sudden (sudden: a sudden death whose
 --   winner wins the match). Begin and Stop Game are ws/sh_gameplay.lua's.
--- - tamper (refused to admins while mp_tampering_enabled is 0): the
+-- - tamper (refused to every player while mp_tampering_enabled is 0): the
 --   payload carts (mp_cart_advance, mp_cart_retract), the round clock
 --   (mp_round_timer_add, mp_round_timer_pause), and respawns
 --   (mp_respawn_all, mp_respawn_maptimes).

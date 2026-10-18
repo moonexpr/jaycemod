@@ -2,7 +2,7 @@
 -- default rank, registered with CAMI so an admin mod can hand it to any rank.
 -- Who holds a privilege is the admin mod's answer (the holds port); the
 -- model adds only the rules a rank cannot express: everyone spawns in
--- Sandbox mode, and switching tampering off leaves it to superadmins.
+-- Sandbox mode, and switching tampering off refuses it to every player.
 local T = dofile("tests/harness.lua")
 local Permissions = T.require("foundation.permissions")
 local PlayMode = T.require("foundation.play_mode")
@@ -74,13 +74,26 @@ T.test("building is held-only in every mode", function()
 	T.eq(Permissions.Allows(Permissions.BUILD, Holding(Permissions.BUILD), Facts({ mode = PlayMode.SANDBOX })), true)
 end)
 
-T.test("tampering switched off leaves it to holders of the gameplay toggles", function()
+T.test("only admins and superadmins tamper, even with tampering on", function()
+	local tamper
+	for _, p in ipairs(Permissions.PRIVILEGES) do
+		if p.name == Permissions.TAMPER then tamper = p end
+	end
+	T.eq(tamper.rank, Permissions.RANK_ADMIN, "admins and up hold it by default")
+	local ok, why = Permissions.Allows(Permissions.TAMPER, Holding(), Facts())
+	T.eq(ok, false, "a player")
+	T.eq(why, Permissions.REASON_RANK)
+end)
+
+T.test("tampering switched off refuses everyone, superadmins too", function()
 	local off = Facts({ tamperingEnabled = false })
 	T.eq(Permissions.Allows(Permissions.TAMPER, Holding(Permissions.TAMPER), Facts()), true, "on: the tamper privilege is enough")
 	local ok, why = Permissions.Allows(Permissions.TAMPER, Holding(Permissions.TAMPER), off)
 	T.eq(ok, false, "off: an admin with only the tamper privilege")
 	T.eq(why, Permissions.REASON_TAMPERING_OFF)
-	T.eq(Permissions.Allows(Permissions.TAMPER, Holding(Permissions.TAMPER, Permissions.GAMEPLAY), off), true, "off: a superadmin")
+	ok, why = Permissions.Allows(Permissions.TAMPER, Holding(Permissions.TAMPER, Permissions.GAMEPLAY), off)
+	T.eq(ok, false, "off: a superadmin, who may switch it back on")
+	T.eq(why, Permissions.REASON_TAMPERING_OFF)
 	local _, notHeld = Permissions.Allows(Permissions.TAMPER, Holding(Permissions.GAMEPLAY), off)
 	T.eq(notHeld, Permissions.REASON_RANK, "the gameplay toggles alone do not grant tampering")
 end)

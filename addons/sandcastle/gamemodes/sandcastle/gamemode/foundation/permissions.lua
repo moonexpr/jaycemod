@@ -5,8 +5,9 @@
 -- a privilege is therefore the admin mod's answer, passed in as holds(name).
 -- This model adds only what a rank cannot express:
 -- - Sandbox mode lets everyone spawn.
--- - With gameplay tampering switched off (mp_tampering_enabled 0), tampering
---   also needs the gameplay toggles, so only superadmins keep it by default.
+-- - With gameplay tampering switched off (mp_tampering_enabled 0), no player
+--   may tamper, superadmins included; a holder of the gameplay toggles may
+--   switch it back on.
 local PlayMode = require("foundation.play_mode")
 local Sets = require("foundation.core.structs.sets")
 local ipairs = ipairs
@@ -106,6 +107,6 @@ function Allows(name, holds, facts)
 	PRIVILEGE:Check(name)
 	if name == SPAWN and PlayMode.IsSandbox(facts.mode) then return true end
 	if not holds(name) then return false, REASON_RANK end
-	if name == TAMPER and not facts.tamperingEnabled and not holds(GAMEPLAY) then return false, REASON_TAMPERING_OFF end
+	if name == TAMPER and not facts.tamperingEnabled then return false, REASON_TAMPERING_OFF end
 	return true
 end

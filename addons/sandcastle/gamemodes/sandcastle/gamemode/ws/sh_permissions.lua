@@ -7,7 +7,7 @@ local Permissions = WS.require("foundation.permissions")
 local PlayMode = WS.require("foundation.play_mode")
 
 local TAMPERING = CreateConVar("mp_tampering_enabled", "1", { FCVAR_REPLICATED, FCVAR_NOTIFY, FCVAR_ARCHIVE },
-	"0: only superadmins may tamper with live gameplay (move the payload, change the clock, respawns)", 0, 1)
+	"0: no player may tamper with live gameplay (move the payload, change the clock, respawns), superadmins included", 0, 1)
 
 for _, p in ipairs(Permissions.PRIVILEGES) do
 	CAMI.RegisterPrivilege({
