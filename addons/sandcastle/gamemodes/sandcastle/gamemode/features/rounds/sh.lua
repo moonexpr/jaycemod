@@ -11,6 +11,6 @@ E.Define("game_teamplay_timer_time_added", {
 	seconds_added = E.Int(SECONDS_BITS),
 })
 
--- A mini-round starts on the kept map: each client clears the last stage's
--- ragdolls and decals, as a cleanup would.
+-- The pre-round cleaned up the map, or a mini-round starts on the kept map:
+-- each client clears the last round's or stage's ragdolls and decals.
 E.Define("game_round_gore_cleared", {})

@@ -156,7 +156,8 @@ WS.Events.Listen("game_points_awarded", "ws_rounds_view", function(fields)
 	}
 end)
 
--- A new stage on the kept map (sh.lua): the last stage's bodies and blood go.
+-- The map cleaned up, or a new stage on the kept map (sh.lua): the bodies
+-- and blood go.
 WS.Events.Listen("game_round_gore_cleared", "ws_rounds_view", function()
 	game.RemoveRagdolls()
 	RunConsoleCommand("r_cleardecals")
@@ -189,6 +190,9 @@ function View:DrawTimer(w, h)
 		setup = GetGlobal2Bool("ws_timer_in_setup", false),
 		overtime = GetGlobal2Bool("ws_round_overtime", false),
 		gameOverEnd = GetGlobal2Float("ws_game_over_end", 0),
+		-- the arena feature's: its round runs in STALEMATE while the point waits to unlock
+		capUnlockEnd = WS.State() == S.STALEMATE and GetGlobal2Float("ws_arena_cap_enable_time", 0) or 0,
+		setupEnd = GetGlobal2Float("ws_arena_setup_end", 0),
 		left = TimerLeft(),
 	})
 	if not display then return end
@@ -207,13 +211,6 @@ function View:DrawTimer(w, h)
 end
 
 -- Countdowns and the announcement line -------------------------------------------------
-
-function View:DrawPreround(w, h)
-	if WS.State() ~= S.PREROUND then return end
-	local left = math.max(1, math.ceil(GetGlobal2Float("ws_preround_end_time", 0) - CurTime()))
-	draw.SimpleTextOutlined("Round begins in " .. left, "Sandcastle.Hud.Announce", w / 2, h * 0.35, color_white,
-		TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER, 2, color_black)
-end
 
 function View:DrawRespawn(w, h)
 	local ply = LocalPlayer()
@@ -451,7 +448,6 @@ local CENTRE_PANELS = {
 function View:Paint(w, h)
 	local state = WS.State()
 	self:DrawTimer(w, h)
-	self:DrawPreround(w, h)
 	self:DrawAnnouncement(w, h)
 	self:DrawRespawn(w, h)
 	self:DrawRoundPanel(w, h)

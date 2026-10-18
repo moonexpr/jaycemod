@@ -94,11 +94,24 @@ local function Preround(settings)
 	return round
 end
 
--- An arena round fought from T0 + PREROUND + 1.
-local function Fighting(settings)
+-- The arena round opens in setup once the one-second pre-round is over.
+local SETUP_AT = T0 + Rounds.PREROUND_SECONDS
+-- An arena round in its setup, from SETUP_AT.
+local function InSetup(settings)
 	local round = Preround(settings)
-	round:Think(T0 + PREROUND + 1, World())
+	round:Think(SETUP_AT, World())
 	T.eq(round:State(), State.STALEMATE, "the arena round")
+	T.eq(round:InSetup(), true, "in setup")
+	return round
+end
+
+-- An arena round fought from SETUP_AT + PREROUND (mp_arena_preround_time of
+-- setup), which is T0 + PREROUND + 1.
+local FIGHT_AT = SETUP_AT + PREROUND
+local function Fighting(settings)
+	local round = InSetup(settings)
+	round:Think(FIGHT_AT, World())
+	T.eq(round:InSetup(), false, "setup over")
 	return round
 end
 
@@ -114,7 +127,7 @@ T.test("a tf_logic_arena makes the game arena over every other mode", function()
 	T.eq(Arena.Mode.HUD, Rounds.HUD_CONTROL_POINTS, "the point HUD")
 end)
 
-T.test("other modes keep their rounds: five seconds of pre-round, then RND_RUNNING", function()
+T.test("other modes keep their rounds: the pre-round's freeze, then RND_RUNNING", function()
 	local round = Rounds.New(Settings({ enableRoundWaitTime = 2 }))
 	round:SetMode(ControlPoints.Mode)
 	round:Think(T0, World())
@@ -125,30 +138,50 @@ end)
 
 -- The round --------------------------------------------------------------------------
 
-T.test("the pre-round lasts mp_arena_preround_time, whatever mp_enableroundwaittime says", function()
-	local round = Preround({ enableRoundWaitTime = 3 })
-	T.eq(round:PreroundEnd(), T0 + PREROUND, "State_Enter_PREROUND's arena branch")
-	T.eq(round:PointsMayBeCaptured(T0 + 1), false, "no captures in the pre-round")
+T.test("the pre-round is the one-second freeze every mode has, whatever mp_arena_preround_time says", function()
+	local round = Preround({ arenaPreroundTime = 30 })
+	T.eq(round:PreroundEnd(), T0 + Rounds.PREROUND_SECONDS, "PREROUND_SECONDS times mp_enableroundwaittime (1)")
+	T.eq(Rounds.PREROUND_SECONDS, 1, "a second: the map cleaned up and the teams scrambled, nothing more")
+	T.eq(round:PointsMayBeCaptured(T0), false, "no captures in the pre-round")
 end)
 
-T.test("the pre-round ends in the arena round, fought in STALEMATE, as State_Think_PREROUND does", function()
+T.test("the pre-round ends in the arena round, in STALEMATE, opening in setup for mp_arena_preround_time", function()
 	local round = Preround()
-	local effects = round:Think(T0 + PREROUND + 1, World())
+	local effects = round:Think(SETUP_AT, World())
 	T.eq(Kinds(effects), table.concat({
 		"output OnStateExitPreRound",
 		"doors_unlock",
 		"state " .. State.STALEMATE,
-		"arena_round_start",
+		"arena_setup",
 		"hook WSRoundActive",
-	}, ", "), "no sudden death, no respawn, the map's timers left alone")
+	}, ", "), "no sudden death, no respawn, the map's timers left alone, the round not started yet")
+	T.eq(Has(effects, "arena_setup").ends, SETUP_AT + PREROUND, "setup ends mp_arena_preround_time on")
 	T.eq(round:State(), State.STALEMATE, "STALEMATE")
+	T.eq(round:InSetup(), true, "in setup")
+	T.eq(round:PointsMayBeCaptured(SETUP_AT + 1), false, "no captures in setup")
 end)
 
-T.test("mp_arena_round_time, not mp_stalemate_timelimit, times the arena round", function()
-	local untimed = Preround({ stalemateTimelimit = 240 })
-	T.eq(Has(untimed:Think(T0 + PREROUND + 1, World()), "stalemate_timer"), nil, "0: no timer")
-	local timed = Preround({ arenaRoundTime = 300 })
-	local timer = Has(timed:Think(T0 + PREROUND + 1, World()), "stalemate_timer")
+T.test("setup's end starts the arena round (arena_round_start), and nothing happens before it", function()
+	local round = InSetup()
+	T.eq(Kinds(round:Think(FIGHT_AT - 1, World())), "", "still setup")
+	local effects = round:Think(FIGHT_AT, World())
+	T.eq(Kinds(effects), "arena_setup_end, arena_round_start", "setup over, the round started")
+	T.eq(round:InSetup(), false, "out of setup")
+end)
+
+T.test("with no mp_arena_preround_time the arena round starts as the pre-round ends", function()
+	local round = Preround({ arenaPreroundTime = 0 })
+	local effects = round:Think(SETUP_AT, World())
+	T.eq(Has(effects, "arena_setup"), nil, "no setup")
+	T.eq(Has(effects, "arena_round_start") ~= nil, true, "started")
+	T.eq(round:InSetup(), false)
+end)
+
+T.test("mp_arena_round_time, not mp_stalemate_timelimit, times the arena round, from setup's end", function()
+	local untimed = InSetup({ stalemateTimelimit = 240 })
+	T.eq(Has(untimed:Think(FIGHT_AT, World()), "stalemate_timer"), nil, "0: no timer")
+	local timed = InSetup({ arenaRoundTime = 300 })
+	local timer = Has(timed:Think(FIGHT_AT, World()), "stalemate_timer")
 	T.eq(timer and timer.seconds, 300, "mp_arena_round_time's seconds")
 end)
 
@@ -208,6 +241,29 @@ T.test("with sudden death, everyone dead or the timer out starts a sudden-death 
 	end
 end)
 
+-- An admin's sudden death (mp_round_suddendeath, mp_match_forcewin sudden):
+-- the arena round, fought in STALEMATE, is a round under way as RND_RUNNING is.
+T.test("an admin may send the arena round to sudden death, in setup or fought, for the round or the match", function()
+	for _, start in ipairs({ InSetup, Fighting }) do
+		local round = start({ stalemateTimelimit = 60 })
+		T.eq(round:Underway(), true, "a round under way")
+		local effects = round:SuddenDeath(FIGHT_AT + 1, Rounds.STALEMATE.ADMIN)
+		T.eq(Has(effects, "sudden_death") ~= nil, true, "sudden death: " .. Kinds(effects))
+		T.eq(round:InSuddenDeath(), true, "in sudden death")
+		T.eq(round:InSetup(), false, "setup over")
+		T.eq(round:Underway(), false, "not again while in it")
+		T.eq(#round:SuddenDeath(FIGHT_AT + 2, Rounds.STALEMATE.ADMIN), 0, "a second ask does nothing")
+	end
+	local forMatch = Fighting({ stalemateTimelimit = 60 })
+	T.eq(Has(forMatch:SuddenDeathForMatch(FIGHT_AT + 1), "sudden_death") ~= nil, true, "for the match")
+end)
+
+T.test("before the arena round, in the pre-round, there is no round to send to sudden death", function()
+	local round = Preround()
+	T.eq(round:Underway(), false)
+	T.eq(#round:SuddenDeath(T0, Rounds.STALEMATE.ADMIN), 0, "nothing")
+end)
+
 T.test("arena's sudden death is won by the survivors, rewarded, or tied at its timeout with a point each", function()
 	local round = Fighting({ stalemateEnable = true })
 	round:Think(T0 + PREROUND + 5, BothDead())
@@ -251,9 +307,13 @@ T.test("a second arena round plays the same way", function()
 	local now = T0 + 20 + 15
 	round:Think(now, World())
 	T.eq(round:State(), State.PREROUND, "the next pre-round")
-	T.eq(round:PreroundEnd(), now + PREROUND, "as long as the first")
-	round:Think(now + PREROUND + 1, World())
+	T.eq(round:PreroundEnd(), now + Rounds.PREROUND_SECONDS, "as long as the first")
+	local setupAt = now + Rounds.PREROUND_SECONDS
+	round:Think(setupAt, World())
 	T.eq(round:State(), State.STALEMATE, "the next arena round")
+	T.eq(round:InSetup(), true, "in its setup")
+	round:Think(setupAt + PREROUND, World())
+	T.eq(round:InSetup(), false, "then fought")
 end)
 
 -- The point: shut until the cap-enable time ---------------------------------------

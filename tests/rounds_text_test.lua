@@ -88,6 +88,8 @@ local function Display(fields)
 		setup = false,
 		overtime = false,
 		gameOverEnd = 0,
+		capUnlockEnd = 0,
+		setupEnd = 0,
 		left = ROUND_LEFT,
 	}
 	for k, v in pairs(fields) do q[k] = v end
@@ -170,6 +172,40 @@ end)
 T.test("no round timer without a HUD timer or on a koth map", function()
 	T.eq(Display({ shown = false }), nil, "no team_round_timer")
 	T.eq(Display({ koth = true }), nil, "koth draws its own clocks")
+end)
+
+-- Arena: the point unlocks a while into the round (ws_arena_cap_enable_time);
+-- until then the timer box counts down to it.
+T.test("in arena the timer counts down to the point unlocking, labelled so", function()
+	local display = Display({ capUnlockEnd = NOW + 16 })
+	T.eq(display.kind, Text.DISPLAY_CAP_UNLOCK)
+	T.eq(display.left, 16, "seconds to the unlock")
+	T.eq(display.label, Text.LABEL_CAP_UNLOCK)
+end)
+
+T.test("the unlock countdown shows on an arena map with no round timer of its own", function()
+	T.eq(Display({ capUnlockEnd = NOW + 16, shown = false }).kind, Text.DISPLAY_CAP_UNLOCK)
+end)
+
+T.test("once the point is unlocked the round's own timer is back, and nothing shows while gameplay is halted", function()
+	T.eq(Display({ capUnlockEnd = NOW - 1 }).kind, Text.DISPLAY_ROUND, "unlocked")
+	T.eq(Display({ capUnlockEnd = NOW + 16, halted = true }), nil, "halted")
+end)
+
+-- Arena's setup (mp_arena_preround_time) has no team_round_timer: the timer
+-- box counts it down as SETUP, then the point's unlock.
+T.test("an arena's setup counts down on the timer as SETUP, before the unlock countdown", function()
+	local display = Display({ setupEnd = NOW + 9, capUnlockEnd = NOW + 40, shown = false })
+	T.eq(display.kind, Text.DISPLAY_SETUP)
+	T.eq(display.left, 9, "seconds of setup left")
+	T.eq(display.label, Text.LABEL_SETUP, "SETUP, as a setup timer's")
+	T.eq(Display({ setupEnd = NOW - 1, capUnlockEnd = NOW + 40 }).kind, Text.DISPLAY_CAP_UNLOCK, "then the unlock")
+	T.eq(Display({ setupEnd = NOW + 9, halted = true }), nil, "nothing while halted")
+end)
+
+T.test("the game-mode countdown and game over still come before the unlock countdown", function()
+	T.eq(Display({ capUnlockEnd = NOW + 16, transitionEnd = NOW + 5 }).kind, Text.DISPLAY_TRANSITION)
+	T.eq(Display({ capUnlockEnd = NOW + 16, gameOverEnd = NOW + 5 }).kind, Text.DISPLAY_GAME_OVER)
 end)
 
 T.finish()

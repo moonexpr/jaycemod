@@ -86,8 +86,9 @@ LISTEN_CAPTURE = 20
 LISTEN_LOGIC = 30
 
 -- The pre-round lasts this many seconds times mp_enableroundwaittime. TF2's
--- State_Enter_PREROUND uses 5; Sandcastle uses 3.
-PREROUND_SECONDS = 3
+-- State_Enter_PREROUND uses 5; Sandcastle holds everyone one second, long
+-- enough for the map's cleanup and a team scramble, and shows no countdown.
+PREROUND_SECONDS = 1
 -- GetMinTimeWhenPlayerMaySpawn: 2 s death animation plus the freezecam's
 -- spec_freeze_traveltime (0.4) and spec_freeze_time (4).
 DEATH_ANIM_LENGTH = 2.0 + 0.4 + 4.0
@@ -392,6 +393,9 @@ function Mode:RoundWinLines(winner, fullRound, race) return {} end
 function Mode:PreroundSeconds(settings)
 	return PREROUND_SECONDS * settings.enableRoundWaitTime
 end
+
+-- How long a round fought in STALEMATE (arena) is in setup first; none.
+function Mode:SetupSeconds(settings) return 0 end
 
 -- State_Enter_STALEMATE: its timer's length, none for 0 or less.
 function Mode:StalemateSeconds(settings)
@@ -856,19 +860,7 @@ end
 -- the round starts (arena_round_start: OnArenaRoundStart and the
 -- cap-enable time) and runs, timed by the mode (StalemateSeconds).
 
-ENTER[State.STALEMATE] = function(self, effects)
-	self.suddenDeath = self.enteringSuddenDeath == true
-	self.enteringSuddenDeath = nil
-	local seconds
-	if self.suddenDeath then
-		Add(effects, Kind("respawn_all"))
-		Add(effects, Kind("hide_timers"))
-		seconds = self.settings.stalemateTimelimit
-	else
-		Add(effects, Kind("arena_round_start"))
-		Add(effects, Hook("WSRoundActive", {}))
-		seconds = self.mode:StalemateSeconds(self.settings)
-	end
+local function StalemateTimer(effects, seconds)
 	if seconds > 0 then
 		Add(effects, {
 			kind = "stalemate_timer",
@@ -877,15 +869,60 @@ ENTER[State.STALEMATE] = function(self, effects)
 	end
 end
 
+-- The arena round starts: arena_round_start (OnArenaRoundStart and the
+-- cap-enable time), timed by the mode.
+local function StartArenaRound(self, effects)
+	Add(effects, Kind("arena_round_start"))
+	StalemateTimer(effects, self.mode:StalemateSeconds(self.settings))
+end
+
+-- An arena round opens in setup for the mode's SetupSeconds
+-- (mp_arena_preround_time): everyone moves, no point may be captured, and
+-- the round starts as it ends (THINK's arena_setup_end).
+ENTER[State.STALEMATE] = function(self, effects, now)
+	self.suddenDeath = self.enteringSuddenDeath == true
+	self.enteringSuddenDeath = nil
+	if self.suddenDeath then
+		Add(effects, Kind("respawn_all"))
+		Add(effects, Kind("hide_timers"))
+		StalemateTimer(effects, self.settings.stalemateTimelimit)
+		return
+	end
+	local setup = self.mode:SetupSeconds(self.settings)
+	if setup > 0 then
+		self.inSetup = true
+		self.setupEnd = now + setup
+		Add(effects, {
+			kind = "arena_setup",
+			ends = self.setupEnd,
+		})
+		Add(effects, Hook("WSRoundActive", {}))
+		return
+	end
+	StartArenaRound(self, effects)
+	Add(effects, Hook("WSRoundActive", {}))
+end
+
 LEAVE[State.STALEMATE] = function(self, effects)
 	if self.suddenDeath then Add(effects, Kind("restore_timers")) end
 	self.suddenDeath = false
+	if self.setupEnd then
+		self.inSetup, self.setupEnd = false, nil
+		Add(effects, Kind("arena_setup_end"))
+	end
 end
 
 THINK[State.STALEMATE] = function(self, effects, now, world)
 	if not world.havePlayers then
 		self.forceMapReset = true
 		Transition(self, effects, State.PREGAME, now, world)
+		return
+	end
+	if self.setupEnd then
+		if now < self.setupEnd then return end
+		self.inSetup, self.setupEnd = false, nil
+		Add(effects, Kind("arena_setup_end"))
+		StartArenaRound(self, effects)
 		return
 	end
 	local winner, allDead = StalemateOutcome(world.teams)
@@ -1073,9 +1110,17 @@ end
 
 -- mp_forcewin's sudden death: the running round goes to sudden death for
 -- reason, whatever mp_stalemate_enable says; nothing outside a running round.
+-- Whether a round is under way, one an admin may send to sudden death: a
+-- running round, or arena's fought in STALEMATE (its setup too), not yet in
+-- sudden death, and not halted.
+function Round:Underway()
+	if self.halted then return false end
+	return self:State() == State.RND_RUNNING or (self:State() == State.STALEMATE and not self.suddenDeath)
+end
+
 function Round:SuddenDeath(now, reason)
 	local effects = {}
-	if self.halted or self:State() ~= State.RND_RUNNING then return effects end
+	if not self:Underway() then return effects end
 	ForcedSuddenDeath(self, effects, now, reason)
 	return effects
 end

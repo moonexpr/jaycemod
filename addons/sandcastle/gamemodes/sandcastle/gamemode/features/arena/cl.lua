@@ -1,15 +1,9 @@
 -- The arena feature's view (CHudArenaCapPointCountdown): while the arena
--- round waits for its cap-enable time (ws_arena_cap_enable_time), "POINT
--- UNLOCKS IN 0:42" under the round timer, the last five seconds spoken, then
--- the cap-enabled line.
+-- round waits for its cap-enable time (ws_arena_cap_enable_time), the last
+-- five seconds spoken, then the cap-enabled line. The countdown itself is
+-- on the round timer (the rounds view's, as POINT UNLOCKS).
 WS.Feature("rounds")
 local Arena = WS.require("foundation.rounds.arena")
-
-local GOLD = Color(255, 210, 90)
-local LABEL_TOP = 54 -- under the round timer's row
-
--- The rounds view's convar: where the timer row starts.
-local timerY = GetConVar("cl_hud_round_timer_y")
 
 local View = {
 	enableAt = 0, -- the cap-enable time the countdown is armed for
@@ -19,22 +13,6 @@ local View = {
 
 local function EnableAt()
 	return GetGlobal2Float("ws_arena_cap_enable_time", 0)
-end
-
-local function Waiting(now)
-	return WS.State() == WS.STATE.STALEMATE and EnableAt() > now
-end
-
-local function Format(seconds)
-	seconds = math.ceil(seconds)
-	return string.format("%d:%02d", math.floor(seconds / 60), seconds % 60)
-end
-
-function View:Paint(w, h)
-	local now = CurTime()
-	if WS.GameplayStopped() or not Waiting(now) then return end
-	local top = math.floor(h * timerY:GetFloat()) + LABEL_TOP
-	draw.SimpleText("POINT UNLOCKS IN " .. Format(EnableAt() - now), "Sandcastle.Hud.Label", w / 2, top, GOLD, TEXT_ALIGN_CENTER)
 end
 
 local function Play(name)
@@ -61,7 +39,6 @@ function View:CountdownThink()
 	end
 end
 
-hook.Add("SandcastleHUDPaint", "ws_arena", function(w, h) View:Paint(w, h) end)
 hook.Add("Think", "ws_arena_announcer", function() View:CountdownThink() end)
 
 return View

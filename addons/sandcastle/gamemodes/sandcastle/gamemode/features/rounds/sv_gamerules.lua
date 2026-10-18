@@ -85,7 +85,7 @@ end
 -- An admin's sudden death for the running round; forMatch: its winner wins
 -- the match. True, or false and why.
 function Controller:SuddenDeathNow(forMatch)
-	if self.round:State() ~= WS.STATE.RND_RUNNING then return false, "no round is running" end
+	if not self.round:Underway() then return false, "no round is running" end
 	local now = CurTime()
 	self:Apply(forMatch and self.round:SuddenDeathForMatch(now) or self.round:SuddenDeath(now, Rounds.STALEMATE.ADMIN))
 	return true

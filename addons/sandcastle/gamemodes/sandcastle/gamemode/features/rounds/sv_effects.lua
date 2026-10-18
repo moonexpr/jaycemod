@@ -191,7 +191,11 @@ local EFFECTS = {
 		if IsValid(self.proxy) then self.proxy:TriggerOutput(e.name, self.proxy, e.value) end
 	end,
 	balance_teams = function() WS.BalanceTeams(false) end,
-	cleanup = function(self) self:CleanUpMap() end,
+	-- the pre-round's cleanup: the map, and each client's ragdolls and decals
+	cleanup = function(self)
+		self:CleanUpMap()
+		WS.Events.Fire("game_round_gore_cleared", {})
+	end,
 	clear_gore = function()
 		game.RemoveRagdolls()
 		WS.Events.Fire("game_round_gore_cleared", {})
@@ -213,6 +217,15 @@ local EFFECTS = {
 	end,
 	previous_round_end = function(self) self:RunListeners(Rounds.PHASE_ROUND_END) end,
 	arena_round_start = function(self) self:RunListeners(Rounds.PHASE_ARENA_START) end,
+	-- the arena round's setup (the model sets its own setup), on the timer as SETUP
+	arena_setup = function(_, e)
+		SetGlobal2Bool("ws_round_in_setup", true)
+		SetGlobal2Float("ws_arena_setup_end", e.ends)
+	end,
+	arena_setup_end = function()
+		SetGlobal2Bool("ws_round_in_setup", false)
+		SetGlobal2Float("ws_arena_setup_end", 0)
+	end,
 	activate_timers = function(self) self:ActivateTimers() end,
 	time_limit_timer = function(self, e) self:CreateTimer(TIMELIMIT_TIMER_NAME, e.seconds) end,
 	switch_teams = function() SwitchTeams() end,

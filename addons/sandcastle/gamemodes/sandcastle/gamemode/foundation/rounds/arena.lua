@@ -49,8 +49,10 @@ Mode.STALEMATE_IS_ROUND = true
 -- scrambles instead).
 Mode.AUTO_SCRAMBLE = false
 
--- settings.arenaPreroundTime: mp_arena_preround_time.
-function Mode:PreroundSeconds(settings)
+-- settings.arenaPreroundTime: mp_arena_preround_time, spent as the arena
+-- round's setup (TF2 spends it frozen in the pre-round; here the pre-round
+-- is every mode's one-second hold).
+function Mode:SetupSeconds(settings)
 	return settings.arenaPreroundTime
 end
 

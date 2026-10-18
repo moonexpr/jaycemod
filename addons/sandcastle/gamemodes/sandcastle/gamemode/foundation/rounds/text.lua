@@ -104,6 +104,8 @@ end
 DISPLAY_TRANSITION = "transition" -- the gamemode's countdown to Gameplay mode
 DISPLAY_ROUND = "round" -- the round's own timer
 DISPLAY_GAME_OVER = "game_over" -- the match won: the countdown to the next map
+DISPLAY_CAP_UNLOCK = "cap_unlock" -- arena: the countdown to the point unlocking
+DISPLAY_SETUP = "setup" -- arena: its setup's countdown (no team_round_timer has it)
 
 -- The label under the clock. The transition's is the operator's word as
 -- written; the round's are TF2's, in capitals.
@@ -112,6 +114,7 @@ LABEL_PREROUND = "PREPARE"
 LABEL_SETUP = "SETUP"
 LABEL_OVERTIME = "OVERTIME"
 LABEL_GAME_OVER = "GAME OVER"
+LABEL_CAP_UNLOCK = "POINT UNLOCKS" -- CHudArenaCapPointCountdown's, on the timer
 
 local function RoundLabel(q)
 	if q.preround then return LABEL_PREROUND end
@@ -125,10 +128,13 @@ end
 -- shown (a HUD timer exists), halted (the rounds stand still: Sandbox mode
 -- or its transition), koth (the koth HUD draws its own clocks), preround,
 -- setup, overtime, gameOverEnd (ws_game_over_end: when the won
--- match's map changes, 0 before), left (the round timer's seconds) }. The
--- countdown to Gameplay mode wins while it runs, then the won match's to
--- its map change, on any map; the round's timer shows only while the rounds
--- run. Returns { kind, left, label }.
+-- match's map changes, 0 before), setupEnd (arena: when its setup ends,
+-- else 0), capUnlockEnd (arena: when the point unlocks while the round waits
+-- for it, else 0), left (the round timer's seconds) }. The countdown to
+-- Gameplay mode wins while it runs, then the won match's to its map
+-- change, on any map; then, while the rounds run, an arena's setup, then
+-- its countdown to the point unlocking (with or without a round timer of
+-- its own), else the round's timer. Returns { kind, left, label }.
 function TimerDisplay(q)
 	if q.transitionEnd > q.now then
 		return {
@@ -144,7 +150,22 @@ function TimerDisplay(q)
 			label = LABEL_GAME_OVER,
 		}
 	end
-	if q.halted or not q.shown or q.koth then return nil end
+	if q.halted then return nil end
+	if q.setupEnd > q.now then
+		return {
+			kind = DISPLAY_SETUP,
+			left = q.setupEnd - q.now,
+			label = LABEL_SETUP,
+		}
+	end
+	if q.capUnlockEnd > q.now then
+		return {
+			kind = DISPLAY_CAP_UNLOCK,
+			left = q.capUnlockEnd - q.now,
+			label = LABEL_CAP_UNLOCK,
+		}
+	end
+	if not q.shown or q.koth then return nil end
 	return {
 		kind = DISPLAY_ROUND,
 		left = q.left,

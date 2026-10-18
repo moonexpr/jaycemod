@@ -131,7 +131,9 @@ local function Running(settings, world, mode)
 end
 
 T.test("pregame waits for players, then a fresh map's first round sets up without a cleanup", function()
-	local round = Rounds.New(Settings())
+	-- a pre-round of 3 s (mp_enableroundwaittime 3), long enough to watch it
+	local wait = Rounds.PREROUND_SECONDS * 3
+	local round = Rounds.New(Settings({ enableRoundWaitTime = 3 }))
 	T.eq(round:State(), State.PREGAME, "a new round waits in PREGAME")
 	Expect(round:Think(T0, World({
 		havePlayers = false,
@@ -144,7 +146,7 @@ T.test("pregame waits for players, then a fresh map's first round sets up withou
 
 	Expect(round:Think(T0 + 0.5, World()), PREROUND_FULL_FRESH, "players arrive")
 	T.eq(round:State(), State.PREROUND, "pre-round")
-	T.eq(round:PreroundEnd(), T0 + 0.5 + Rounds.PREROUND_SECONDS, "the pre-round lasts 3 s")
+	T.eq(round:PreroundEnd(), T0 + 0.5 + wait, "the pre-round lasts PREROUND_SECONDS times mp_enableroundwaittime")
 
 	Expect(round:Think(T0 + 1.5, World()), {
 		"respawn_team " .. RED,
@@ -155,7 +157,7 @@ T.test("pregame waits for players, then a fresh map's first round sets up withou
 
 	local done = {}
 	for _, line in ipairs(TO_RUNNING) do done[#done + 1] = line end
-	Expect(round:Think(T0 + 0.5 + Rounds.PREROUND_SECONDS, World()), done, "the pre-round ends")
+	Expect(round:Think(T0 + 0.5 + wait, World()), done, "the pre-round ends")
 	T.eq(round:State(), State.RND_RUNNING, "running")
 	T.eq(round:PointsMayBeCaptured(), true, "points may be captured")
 end)
