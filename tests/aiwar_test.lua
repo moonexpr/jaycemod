@@ -331,6 +331,33 @@ T.test("the war leaves a squad by hand alone: no rebalance or new stance moves i
 	T.eq(newcomer.fireTeam ~= squad, true, "the war's own squads never fill it")
 end)
 
+-- Attach: a soldier the war seats in another's squad (MvM's medic with the
+-- bomb's carrier) keeps its own job, never leads it, and leaves the squad
+-- the war's own; Detach puts it back.
+T.test("an attached soldier joins its host's squad beside its job, never leads it, and goes back when detached", function()
+	local Squad = T.require("foundation.aiwar.squad")
+	local war, members = Enlisted(4)
+	local medic, host = members[1], members[4]
+	local job = medic.role
+	local squad = war:Attach(medic, host)
+	T.eq(squad, host.fireTeam, "the host's squad")
+	T.eq(medic.fireTeam, host.fireTeam, "seated in it")
+	T.eq(medic.role, job, "its own job kept")
+	T.eq(squad.manual ~= true, true, "still the war's")
+	T.eq(Squad.Leader(squad) ~= medic, true, "the oldest soldier, attached, does not lead")
+	T.eq(war:Attach(medic, host), squad, "attaching again changes nothing")
+	war:Detach(medic)
+	T.eq(medic.attached, nil, "detached")
+	T.eq(medic.fireTeam ~= nil, true, "regrouped with automatic squads on")
+	war:SetAutoSquads(false)
+	war:DissolveSquads()
+	local own = war:Attach(medic, host)
+	T.eq(own ~= nil and host.fireTeam == own and medic.fireTeam == own, true, "a solo host gets a squad of its own")
+	T.eq(Squad.Leader(own), host, "which it leads")
+	war:Detach(medic)
+	T.eq(medic.fireTeam, nil, "solo again with automatic squads off")
+end)
+
 T.test("joining an automatic squad makes it a squad by hand; one soldier can't join the other side's", function()
 	local war, members = Enlisted(3)
 	local red = war:Enlist("red", RED, true)

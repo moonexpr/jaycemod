@@ -457,8 +457,8 @@ ROLES[AiWar.SUPPORT] = {
 -- Medics (TF2's CTFBotMedicHeal, in HL2's faces): a medic picks, among its
 -- side's hurt soldiers and players (field.patients: team -> { handle, pos,
 -- health (0 to 1), player, calling (it called for a medic: CallMedic) }),
--- the one that needs it most (players and callers count double, distance
--- costs a little), keeps it until it is HEALED or lost
+-- the one that needs it most (players, callers and its own squadmates count
+-- double, distance costs a little), keeps it until it is HEALED or lost
 -- (gone, or beyond MEDIC_LOSE), and heals it with its beam (the port's
 -- Heal) from MEDIC_STANDOFF away, holding fire while it does. With no one
 -- to heal it stands where its side's support does.
@@ -466,6 +466,15 @@ HEAL_RANGE, MEDIC_STANDOFF, MEDIC_LOSE = 450, 160, 1500
 -- a patient its medic healed within MEDIC_TREATING seconds is being treated
 MEDIC_TREATING = 1
 PATIENT_HURT, HEALED = 0.95, 0.98
+
+local function Squadmate(member, handle)
+	local fireTeam = member.fireTeam
+	if not fireTeam then return false end
+	for _, mate in pairs(fireTeam.members) do
+		if mate.handle == handle then return true end
+	end
+	return false
+end
 
 function PickPatient(field, member, here, current)
 	local patients = field.patients and field.patients[member.team] or {}
@@ -477,7 +486,8 @@ function PickPatient(field, member, here, current)
 				return patient
 			end
 			if patient.health < PATIENT_HURT and range <= MEDIC_LOSE then
-				local score = (1 - patient.health) * ((patient.player or patient.calling) and 2 or 1) - range / 3000
+				local first = patient.player or patient.calling or Squadmate(member, patient.handle)
+				local score = (1 - patient.health) * (first and 2 or 1) - range / 3000
 				if not bestScore or score > bestScore then best, bestScore = patient, score end
 			end
 		end
@@ -1269,9 +1279,10 @@ FLANK_TIME, FLANK_ARRIVE = 15, 160
 REGROUP_RANGE, SQUAD_SPACING, COVER_CLAIM = 700, 96, 20
 
 -- The member's squad leader, other than itself, with a known position.
+-- One attached to another's squad (the war's Attach) goes with its host.
 local function LeaderOf(member)
 	local fireTeam = member.fireTeam
-	local leader = fireTeam and Squad.Leader(fireTeam)
+	local leader = member.host or (fireTeam and Squad.Leader(fireTeam))
 	if leader == nil or leader == member or leader.pos == nil then return nil end
 	return leader
 end
@@ -1787,6 +1798,13 @@ end
 
 -- FindHealth's kit, when it should leave cover for one now
 -- (foundation.aiwar.health): none while a medic treats it.
+-- Whether the member's job (at its stage) is urgent now: a retreat or a
+-- trip for health taken before it was (the bomb picked up) gives way to it.
+local function JobUrgent(state)
+	local role = ObjectiveClass(state).role
+	return role ~= nil and IsUrgent(role, state.war:Field(), state.member)
+end
+
 local function KitWorthIt(state, me)
 	local now = me:Now()
 	if Treated(state.member, now) then return nil end
@@ -1801,6 +1819,7 @@ function RetreatToCover:Update(me)
 	local state, now = self.state, me:Now()
 	-- the round won or lost: the monitor above hunts or hides
 	if me:IsDisarmed() or Hunting(state.war:Field(), state.member) then return self:Done("the round is over") end
+	if JobUrgent(state) then return self:Done("its job is urgent") end
 	if HealthShare(me) >= RETREAT_RECOVER or now >= self.untilAt then
 		state.retreatReadyAt = now + RETREAT_COOLDOWN
 		state.hurtLog = {}
@@ -1842,7 +1861,7 @@ end
 function FindHealth:Update(me)
 	local state, now = self.state, me:Now()
 	if me:IsDisarmed() or Hunting(state.war:Field(), state.member) then return self:Done("the round is over") end
-	local why = (HealthShare(me) >= Health.OK and "healed") or (not StillThere(me:HealthKits(), self.kit) and "the kit is gone")
+	local why = (JobUrgent(state) and "its job is urgent") or (HealthShare(me) >= Health.OK and "healed") or (not StillThere(me:HealthKits(), self.kit) and "the kit is gone")
 		or (now >= self.untilAt and "gave up")
 	if why then
 		state.retreatReadyAt = now + RETREAT_COOLDOWN

@@ -249,7 +249,44 @@ function Scenario:Command(war, field, now)
 	self:Explore(field).explore:Survey(war:Members(), now)
 	self:Brief(field, now)
 	self:ChooseEscorts(field, war:Members())
+	self:AttachMedic(war, field)
 	self:Allocate(war, field, now)
+end
+
+-- TF2's medic robots go with the bomb's carrier: while a robot carries it,
+-- BLU's medic nearest it joins its squad (the war's Attach), the same one
+-- while it lives (memory.medic), and goes back to its own once nobody
+-- carries the bomb.
+function Scenario:AttachMedic(war, field)
+	local o = field.objectives[INVADERS]
+	local medic = self.memory.medic and war:Member(self.memory.medic)
+	local carrier = o.carrying and war:Member(o.bomb.carrier)
+	if not carrier then
+		if medic then war:Detach(medic) end
+		self.memory.medic = nil
+		return
+	end
+	-- a medic that picked the bomb up itself carries it; another goes with it
+	if medic == carrier then
+		war:Detach(medic)
+		medic = nil
+	end
+	if not medic then
+		local nearest
+		for _, member in ipairs(war:Members()) do
+			if member ~= carrier and member.team == INVADERS and member.role == AiWar.MEDIC and member.pos and carrier.pos
+				and (not nearest or Distance(member.pos, carrier.pos) < Distance(nearest.pos, carrier.pos)) then
+				nearest = member
+			end
+		end
+		medic = nearest
+	end
+	if not medic then
+		self.memory.medic = nil
+		return
+	end
+	war:Attach(medic, carrier)
+	self.memory.medic = medic.handle
 end
 
 -- While a robot carries the bomb, BLU's escorts (objectives' escorts, handle

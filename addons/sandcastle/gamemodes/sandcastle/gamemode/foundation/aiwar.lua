@@ -415,7 +415,7 @@ function War:LeaveFireTeam(member)
 	if not fireTeam then return end
 	fireTeam.members[member.place] = nil
 	if fireTeam.leader == member then fireTeam.leader = nil end
-	member.fireTeam, member.place = nil, nil
+	member.fireTeam, member.place, member.attached, member.host = nil, nil, nil, nil
 	if next(fireTeam.members) == nil then
 		for i, other in ipairs(self.fireTeams) do
 			if other == fireTeam then
@@ -746,6 +746,29 @@ function War:JoinSquad(member, fireTeam)
 	fireTeam.chosen = fireTeam.chosen or Squad.Leader(fireTeam)
 	Seat(member, fireTeam)
 	return true
+end
+
+-- The member joins host's squad beside its own job, never leading it while
+-- another is in it (Squad's attached tier), and goes with host (member.host)
+-- rather than the squad's leader; a solo host gets a squad of the war's,
+-- which it leads. The squad stays the war's. Returns the squad.
+function War:Attach(member, host)
+	if member.attached and member.fireTeam ~= nil and member.fireTeam == host.fireTeam then return member.fireTeam end
+	self:LeaveFireTeam(member)
+	local fireTeam = host.fireTeam
+	if not fireTeam then
+		fireTeam = NewFireTeam(self, host.team, host.role, false)
+		Seat(host, fireTeam)
+	end
+	member.attached, member.host = true, host
+	Seat(member, fireTeam, true)
+	return fireTeam
+end
+
+-- An attached member back to a squad of its own job (LeaveSquad).
+function War:Detach(member)
+	if not member.attached then return end
+	self:LeaveSquad(member)
 end
 
 -- Out of its squad: solo, or in one of the war's with automatic squads.

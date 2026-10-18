@@ -437,6 +437,19 @@ T.test("a medic heals the teammate that needs it most, players first, and holds 
 	T.eq(npc:Query("ShouldAttack", "them"), N.ANSWER_UNDEFINED, "free to fight")
 end)
 
+-- A medic's own squad comes first, as players and callers do (MvM's medic
+-- in the bomb carrier's squad heals the carrier).
+T.test("a medic counts its squadmates double", function()
+	local field = { patients = { [BLUE] = {
+		{ handle = "carrier", pos = P(1100, 0), health = 0.8, player = false },
+		{ handle = "stranger", pos = P(1050, 0), health = 0.7, player = false },
+	} } }
+	local medic = { handle = "medic", team = BLUE }
+	T.eq(Orders.PickPatient(field, medic, P(1000, 0)).handle, "stranger", "outside a squad: the more hurt")
+	medic.fireTeam = { members = { [0] = medic, [1] = { handle = "carrier" } } }
+	T.eq(Orders.PickPatient(field, medic, P(1000, 0)).handle, "carrier", "its squadmate first")
+end)
+
 T.test("a medic out of reach closes in before its beam goes on", function()
 	local field = Field({})
 	field.patients = { [BLUE] = { { handle = "far", pos = P(2000, 0), health = 0.2, player = false } } }
@@ -648,6 +661,25 @@ T.test("an offensive squad's member follows its leader, spaced by place", functi
 	s.Tick(2)
 	T.eq(s.npcB:State().tactic, "following its leader", "following")
 	Near(s.meB.moving, P(3000 + Orders.FOLLOW_SPACING * (s.b.place + 1), 0), "behind it")
+end)
+
+-- A soldier attached to another's squad (MvM's medic with the bomb's
+-- carrier) follows the one it was attached to, not the squad's leader.
+T.test("an attached soldier follows its host, not the squad's leader", function()
+	local s = Squadmates({ role = AiWar.PUSH, a = { pos = P(4500, 0) }, b = { pos = P(3000, 0) } })
+	local medic = s.war:Enlist("medic", BLUE, true)
+	s.war:ChangeRole(medic, AiWar.PUSH)
+	local meC = FS.Soldier({ pos = P(3600, 0) })
+	local npcC = N.Npc.New(Orders, { war = s.war, member = medic }, meC)
+	s.war:Attach(medic, s.b)
+	T.eq(medic.fireTeam, s.a.fireTeam, "in the squad a leads")
+	for _ = 1, 2 do
+		s.Tick()
+		meC:Advance(TICK)
+		npcC:Update(TICK)
+	end
+	T.eq(npcC:State().tactic, "following its leader", "following")
+	T.eq(FS.Distance(meC.moving, P(3000, 0)) < FS.Distance(meC.moving, P(4500, 0)), true, "toward b, its host")
 end)
 
 -- Capture and hold squads: tests/aiwar_koth_test.lua, on a hill.
@@ -1477,6 +1509,30 @@ T.test("an urgent job rushes, does not stop at its leash for an enemy, and will 
 	me.enemyHandle, me.enemyHealth = "weak", 0.1
 	Tick(me, npc, 2)
 	T.eq(npc:State().chases, nil, "no chase while urgent")
+end)
+
+-- A soldier already off for cover or health when its job turns urgent (it
+-- picks up the bomb) drops that for the job: TF2's carrier never stops
+-- for health.
+T.test("a retreat or a trip for health ends as the soldier's job turns urgent", function()
+	local kit = { pos = P(300, 0), handle = "kit" }
+	local me, npc, war = Enlist({ role = AiWar.CAPTURE, field = StubField({}), pos = P(0, 0), covers = { P(200, 0) },
+		enemyPos = P(5000, 0), walkable = function() return true end })
+	me.kits = { kit }
+	me.health = 30
+	Tick(me, npc, 3)
+	T.eq(npc:Describe(), "NextSoldier/StrategyMonitor/FindHealth", "for the kit: " .. npc:Describe())
+	war:SetField(StubField({ urgent = true }))
+	Tick(me, npc, 2)
+	T.eq(Orders.JobOf(npc:Describe()) ~= nil, true, "urgent: back on its job: " .. npc:Describe())
+	local them, theirs, theirWar = Enlist({ role = AiWar.CAPTURE, field = StubField({}), pos = P(0, 0), covers = { P(200, 0) },
+		enemyPos = P(600, 0), walkable = function() return true end })
+	them.health = 30
+	Tick(them, theirs)
+	T.eq(theirs:Describe(), "NextSoldier/StrategyMonitor/RetreatToCover", "retreating")
+	theirWar:SetField(StubField({ urgent = true }))
+	Tick(them, theirs, 2)
+	T.eq(Orders.JobOf(theirs:Describe()) ~= nil, true, "urgent: the retreat ends too: " .. theirs:Describe())
 end)
 
 T.test("an urgent job hurt badly stays on its job", function()

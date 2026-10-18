@@ -25,12 +25,13 @@ end
 
 -- Who may lead, best first: a member whose slot is pinned to lead, a hero
 -- (the settled question: heroes lead), any other member, and last a member
--- whose slot is pinned to follow, who leads only a fire team of its own.
+-- whose slot is pinned to follow or one attached to another's squad (the
+-- war's Attach), who leads only a fire team of its own.
 local PINNED_LEADER_TIER, HERO_TIER, MEMBER_TIER, PINNED_MEMBER_TIER = 3, 2, 1, 0
 
 local function Tier(member)
 	if member.pin == LEADER then return PINNED_LEADER_TIER end
-	if member.pin == MEMBER then return PINNED_MEMBER_TIER end
+	if member.pin == MEMBER or member.attached then return PINNED_MEMBER_TIER end
 	if member.hero then return HERO_TIER end
 	return MEMBER_TIER
 end
