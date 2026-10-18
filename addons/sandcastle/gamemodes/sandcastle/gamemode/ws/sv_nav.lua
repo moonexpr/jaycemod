@@ -24,10 +24,10 @@
 -- the engine's own nav_generate runs, new players are turned away
 -- (WS.NavJoinRefusal, asked by GM:CheckPassword in init.lua).
 --
--- An idle server builds its own: empty IDLE_AFTER seconds after the map
--- started (or as soon as it empties after that), with no mesh, it runs as
--- the console's would, and goes back to Gameplay mode when it left it to
--- generate, so the rounds and the next-map vote carry on.
+-- An idle server builds its own: once it is idle (WSServerIdle,
+-- ws/sv_idle.lua) on a map with no mesh, it runs as the console's would, and
+-- goes back to Gameplay mode when it left it to generate, so the rounds and
+-- the next-map vote carry on.
 local Gamemode = WS.require("foundation.gamemode")
 local Doors = WS.require("foundation.npc.doors")
 local Progress = WS.require("foundation.nav_progress")
@@ -245,14 +245,8 @@ concommand.Add("mp_nav_generate", function(ply)
 	Generate(ply, false)
 end, nil, "Generate this map's navigation mesh from its spawn and control points, its doors open (admins); takes a few minutes and resets the map")
 
--- The idle server's own run: the map's Lua starts with it, so CurTime counts
--- from the map's start.
-local IDLE_AFTER, IDLE_CHECK = 300, 60
-local IDLE = "ws_nav_idle"
-
-timer.Create(IDLE, IDLE_CHECK, 0, function()
-	if WS.NavMeshUsable() or underWay or navmesh.IsGenerating() then return timer.Remove(IDLE) end
-	if CurTime() < IDLE_AFTER or #player.GetHumans() > 0 then return end
-	timer.Remove(IDLE)
+-- The idle server's own run (ws/sv_idle.lua).
+hook.Add("WSServerIdle", "ws_nav", function()
+	if WS.NavMeshUsable() or underWay or navmesh.IsGenerating() then return end
 	if Generate(nil, true) then print("Navigation mesh: the server is idle and " .. game.GetMap() .. " has none; generating one") end
 end)

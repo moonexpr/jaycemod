@@ -40,6 +40,7 @@ local CATEGORY = {
 	["core/structs/polyline"] = "structures",
 	["core/structs/queue"] = "structures",
 	["core/structs/tree"] = "structures",
+	["core/timers"] = "structures",
 	["core/scheduler"] = "formalisms",
 	["core/math/geometry"] = "structures",
 	["core/transaction"] = "structures",
@@ -66,6 +67,7 @@ local CATEGORY = {
 	["events"] = "formalisms",
 	["features"] = "formalisms",
 	["gamemode"] = "formalisms",
+	["idle"] = "formalisms",
 	["play_mode"] = "formalisms",
 	["permissions"] = "formalisms",
 

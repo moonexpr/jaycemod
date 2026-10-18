@@ -231,6 +231,7 @@ local function Env(w)
 		SpawnPoints = function(team) return w.spawns[team] end,
 		NavMeshUsable = function() return w.navUsable ~= false end,
 		SoldiersEnabled = function() return w.soldiersEnabled ~= false end,
+		ServerIdle = function() return w.idle == true end,
 		SetTeamMember = function() end,
 		ClipMasks = function() return { solid = 5, brushes = 6 } end,
 	}
@@ -492,6 +493,24 @@ T.test("pausing turns every soldier's AI off, and resuming on", function()
 	T.eq(controller.paused, true, "paused")
 	controller:SetPaused(false)
 	T.eq(ents[1].aiOff or ents[2].aiOff, false, "on again")
+end)
+
+T.test("an idle server pauses the war; a player joining resumes it, unless paused by hand", function()
+	local controller, ents, w = Squadded(2)
+	w.idle = true
+	w.hooks.WSServerIdle()
+	T.eq(controller.paused, true, "idle: paused")
+	T.eq(ents[1].aiOff and ents[2].aiOff, true, "every soldier's AI off")
+	w.idle = false
+	w.hooks.WSServerActive()
+	T.eq(controller.paused, false, "active: resumed")
+	T.eq(ents[1].aiOff or ents[2].aiOff, false, "on again")
+	w.bools.ns_soldiers_paused = true
+	w.idle = true
+	w.hooks.WSServerIdle()
+	w.idle = false
+	w.hooks.WSServerActive()
+	T.eq(controller.paused, true, "ns_soldiers_paused keeps it paused")
 end)
 
 T.test("a squad formed from soldiers by entity index is led by the first; others join it, and leave it", function()

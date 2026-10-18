@@ -474,63 +474,45 @@ T.test("a mesh just generated has its seams linked too", function()
 	T.eq(a:IsConnected(b) and b:IsConnected(a), true, "linked")
 end)
 
--- An idle server builds its own mesh: empty IDLE_AFTER seconds after the map
--- started, with no mesh, it runs mp_nav_generate as the console would, and
--- goes back to Gameplay mode after when it left it to generate.
-local IDLE = "ws_nav_idle"
-
--- Runs the idle check's timer at time now.
-local function IdleAt(s, now)
-	s.now = now
-	if s.timers[IDLE] then s.timers[IDLE]() end
+-- An idle server builds its own mesh: once it is idle (WSServerIdle,
+-- ws/sv_idle.lua), with no mesh, it runs mp_nav_generate as the console
+-- would, and goes back to Gameplay mode after when it left it to generate.
+local function Idle(s)
+	s.hooks.WSServerIdle()
 end
 
-T.test("an empty server with no mesh generates one five minutes after the map starts", function()
+T.test("an idle server with no mesh generates one", function()
 	local s = load({ entities = SPAWNS })
-	T.eq(s.timers[IDLE] ~= nil, true, "watching from the start")
-	IdleAt(s, 299)
-	T.eq(#s.seeds, 0, "not before five minutes")
-	IdleAt(s, 300)
-	T.eq(#s.seeds, 4, "seeded at five minutes")
+	T.eq(#s.seeds, 0, "nothing before it is idle")
+	Idle(s)
+	T.eq(#s.seeds, 4, "seeded once idle")
 	s.Poll()
 	T.eq(s.nav.began, 1, "and generating")
-	T.eq(s.timers[IDLE], nil, "once a map")
 end)
 
 T.test("a map with a mesh is left alone", function()
 	local s = load({ entities = SPAWNS, areas = 12 })
-	IdleAt(s, 300)
+	Idle(s)
 	T.eq(#s.seeds, 0, "not generated")
-	T.eq(s.timers[IDLE], nil, "and no longer watched")
-end)
-
-T.test("players on the server put it off until they have all left", function()
-	local s = load({ entities = SPAWNS, humans = { Player(false) } })
-	IdleAt(s, 300)
-	T.eq(#s.seeds, 0, "not with a player on")
-	T.eq(s.timers[IDLE] ~= nil, true, "still watching")
-	s.humans = {}
-	IdleAt(s, 360)
-	T.eq(#s.seeds, 4, "once the server is empty")
 end)
 
 T.test("an admin's run already under way is not doubled", function()
 	local s = load({ entities = SPAWNS })
 	s.commands.mp_nav_generate(Player(true))
-	IdleAt(s, 300)
+	Idle(s)
 	T.eq(#s.seeds, 4, "seeded once")
 end)
 
 T.test("leaving Gameplay mode to generate, it goes back after", function()
 	local s = load({ entities = SPAWNS, gameplay = true })
-	IdleAt(s, 300)
+	Idle(s)
 	T.eq(s.requests[1], Gamemode.SANDBOX, "into Sandbox mode")
 	s.Poll()
 	s.nav.generating, s.nav.areas = false, 2133
 	s.Poll()
 	T.eq(s.requests[2], Gamemode.GAMEPLAY, "back to Gameplay mode")
 	local sandbox = load({ entities = SPAWNS })
-	IdleAt(sandbox, 300)
+	Idle(sandbox)
 	sandbox.Poll()
 	sandbox.nav.generating, sandbox.nav.areas = false, 2133
 	sandbox.Poll()
@@ -539,11 +521,10 @@ end)
 
 T.test("with Sandbox mode disabled an idle server does not generate", function()
 	local s = load({ entities = SPAWNS, gameplay = true, noSandbox = true })
-	IdleAt(s, 300)
+	Idle(s)
 	s.Poll()
 	T.eq(s.nav.began, 0, "not generated")
 	T.eq(#s.requests, 0, "the game left running")
-	T.eq(s.timers[IDLE], nil, "and not tried again")
 end)
 
 T.finish()

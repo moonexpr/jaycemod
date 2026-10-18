@@ -12,7 +12,14 @@ local ACTIVE_KEY = "ws.aiwar" -- Global2: the Utilities menu reads it
 -- Pausing, squads and jobs by hand (ns_soldiers_paused, ns_squads_*, ns_jobs_*) --------------
 
 -- Paused, every soldier stands where it is: its DrGBase AI is off (it
--- neither moves nor shoots), its orders wait and no wave comes.
+-- neither moves nor shoots), its orders wait and no wave comes. The war is
+-- paused by hand (ns_soldiers_paused) or while the server is idle
+-- (WS.ServerIdle, ws/sv_idle.lua), when nobody is there to fight it; the
+-- rounds run on either way.
+function Controller:ShouldPause()
+	return GetConVar("ns_soldiers_paused"):GetBool() or WS.ServerIdle()
+end
+
 function Controller:SetPaused(on)
 	self.paused = on
 	for ent in pairs(self.soldiers) do
@@ -133,6 +140,7 @@ end
 local MAP_LACKS = {
 	[Scenario.BASES] = "this map has no spawn points for both teams, where the AI war's soldiers join the fight",
 	[Scenario.POINTS] = "this map's round has no control points for the AI war to fight over",
+	[Scenario.FLAGS] = "this map has no intelligence for both teams for the AI war to fight over",
 }
 local NO_NAV_MESH = "this map has no navigation mesh for the soldiers to walk; "
 	.. "run mp_nav_generate in the console to make one (a few minutes), then start the war"
@@ -150,7 +158,9 @@ function Controller:Start()
 	-- a map whose mode is none the war knows is fought freeform
 	local variant = Scenario.For(RoundsModeName())
 	self.baseCache = nil
+	local flags = self:FlagsSnapshot()
 	local lacks = variant:MapLacks({
+		flags = flags,
 		points = self:PointsSnapshot(),
 		bases = self:Bases().bases,
 		waypoints = self:Waypoints(),
@@ -165,7 +175,7 @@ function Controller:Start()
 	self.war:SetSquadsMax(GetConVar("ns_squads_max"):GetInt())
 	self.war:SetSquadsMin(GetConVar("ns_squads_min"):GetInt())
 	self.war:SetFireTeamSize(self.scenario.SQUAD_SIZE)
-	self.paused = GetConVar("ns_soldiers_paused"):GetBool()
+	self.paused = self:ShouldPause()
 	self.gates = nil
 	SetGlobal2Bool(ACTIVE_KEY, true)
 	WS.Notify(Notices.WarStarted())
@@ -208,9 +218,13 @@ function Controller:End()
 	return true
 end
 
-cvars.AddChangeCallback("ns_soldiers_paused", function(_, _, value)
-	Controller:SetPaused(value ~= "0")
-end, "ws_aiwar")
+local function Repause()
+	Controller:SetPaused(Controller:ShouldPause())
+end
+
+cvars.AddChangeCallback("ns_soldiers_paused", Repause, "ws_aiwar")
+hook.Add("WSServerIdle", "ws_aiwar", Repause)
+hook.Add("WSServerActive", "ws_aiwar", Repause)
 
 cvars.AddChangeCallback("ns_squads_auto_enabled", function(_, _, value)
 	if Controller.war then Controller.war:SetAutoSquads(value ~= "0") end

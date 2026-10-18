@@ -1,5 +1,6 @@
 -- A hierarchical state machine: a port of NextBot's Action/Behavior engine
--- (server/NextBot/NextBotBehavior.h) and its timers (shared/util_shared.h).
+-- (server/NextBot/NextBotBehavior.h), handing on its timers
+-- (foundation.core.timers) by the names actions use.
 -- An Action is a state (the State pattern) that may contain a child state
 -- and bury the states it suspends; the engine owns every transition and
 -- calls the state's hooks (a template method), so a state only answers
@@ -19,6 +20,7 @@
 -- depend on the port the composition root fills, not on an entity.
 local Class = require("foundation.core.meta.class")
 local Port = require("foundation.core.meta.port")
+local Timers = require("foundation.core.timers")
 local error, ipairs, setmetatable, tostring, type =
 	error, ipairs, setmetatable, tostring, type
 local concat, find = table.concat, string.find
@@ -36,10 +38,7 @@ RESULT_NONE, RESULT_TRY, RESULT_IMPORTANT, RESULT_CRITICAL = 0, 1, 2, 3
 ANSWER_NO, ANSWER_YES, ANSWER_UNDEFINED = 0, 1, 2
 
 -- IntervalTimer::GetElapsedTime when unstarted.
-INTERVAL_UNSTARTED = 99999.9
-
--- The timestamp an unstarted timer holds.
-local UNSTARTED = -1
+INTERVAL_UNSTARTED = Timers.INTERVAL_UNSTARTED
 
 local function Result(kind, action, reason, priority)
 	return {
@@ -467,60 +466,9 @@ function Behavior:_PurgeDeadActions()
 end
 
 -------------------------------------------------------------------------------
--- Timers. `clock:Now()` gives the time; the actor port is a clock.
+-- Timers: core's, by the names actions use.
 
-local Countdown = {}
-Countdown.__index = Countdown
-
-function CountdownTimer(clock)
-	return setmetatable({
-		clock = clock,
-		timestamp = UNSTARTED,
-		duration = 0,
-	}, Countdown)
-end
-
-function Countdown:Reset() self.timestamp = self.clock:Now() + self.duration end
-
-function Countdown:Start(duration)
-	self.timestamp = self.clock:Now() + duration
-	self.duration = duration
-end
-
-function Countdown:Invalidate() self.timestamp = UNSTARTED end
-function Countdown:HasStarted() return self.timestamp > 0 end
-function Countdown:IsElapsed() return self.clock:Now() > self.timestamp end
-function Countdown:GetElapsedTime() return self.clock:Now() - self.timestamp + self.duration end
-function Countdown:GetRemainingTime() return self.timestamp - self.clock:Now() end
-
-function Countdown:GetCountdownDuration()
-	if self.timestamp > 0 then return self.duration end
-	return 0
-end
-
-local Interval = {}
-Interval.__index = Interval
-
-function IntervalTimer(clock)
-	return setmetatable({
-		clock = clock,
-		timestamp = UNSTARTED,
-	}, Interval)
-end
-
-function Interval:Reset() self.timestamp = self.clock:Now() end
-function Interval:Start() self.timestamp = self.clock:Now() end
-function Interval:Invalidate() self.timestamp = UNSTARTED end
-function Interval:HasStarted() return self.timestamp > 0 end
-
-function Interval:GetElapsedTime()
-	if self:HasStarted() then return self.clock:Now() - self.timestamp end
-	return INTERVAL_UNSTARTED
-end
-
--- The names keep util_shared.h's "Then".
-function Interval:IsLessThen(duration) return self.clock:Now() - self.timestamp < duration end
-function Interval:IsGreaterThen(duration) return self.clock:Now() - self.timestamp > duration end
+CountdownTimer, IntervalTimer = Timers.CountdownTimer, Timers.IntervalTimer
 
 -------------------------------------------------------------------------------
 -- Names a chart declares

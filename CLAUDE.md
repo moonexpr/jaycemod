@@ -55,6 +55,7 @@ Module names are `foundation.core.<path>`; tests are
 | `structs.grid` | `New(size)` → spatial hash on number keys: `Put`, `PutBox`, `Near` (3×3 cells), `Buckets`; `Thin(points, size)` keeps one point per cube |
 | `structs.polyline` | `New(points)` → a path measured along its length: `Length`, `Leg`, `PointAt`, `Offset`, `DistanceOf` |
 | `structs.queue` | `New()` → double-ended queue: `PushBack`, `PushFront`, `PopFront`, `PopBack`, `Front`, `Back`, `Size`, `Values` |
+| `timers` | NextBot's timers on a clock port (`Now()`): `CountdownTimer(clock)` → `Start(duration)`, `Reset`, `Invalidate`, `HasStarted`, `IsElapsed` (an unstarted one has), `GetElapsedTime`, `GetRemainingTime`, `GetCountdownDuration`; `IntervalTimer(clock)` → `Start`, `Reset`, `Invalidate`, `HasStarted`, `GetElapsedTime`, `IsLessThen`, `IsGreaterThen`. `hfsm` hands them on |
 | `structs.tree` | `New([less])` → ordered map on an AVL tree: `Insert`, `Get`, `Remove`, `Min`, `Max`, `Floor`, `Ceiling`, `Pairs` (in order), `Size`, `Height` |
 
 ### Algorithms
