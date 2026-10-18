@@ -118,13 +118,15 @@ local function OperativeStage(field, member)
 end
 
 local INVADER_ROLES = {
-	-- CTFBotFetchFlag: fights on the way but chases nobody
+	-- CTFBotFetchFlag: fights on the way but chases nobody, hurries and
+	-- never retreats (urgent) until a teammate has the bomb
 	[AiWar.COURIER] = {
 		name = "MvMInvader",
 		tactic = "attack",
 		arrive = TOUCH,
 		leash = COURIER_LEASH,
 		rushes = false,
+		Urgent = function(field, member) return not ObjectivesOf(field, member).carrying end,
 		Goal = InvaderGoal,
 		Stage = InvaderStage,
 		STAGES = { DeliverFlag = DELIVER, EscortFlagCarrier = ESCORT, AttackFlagDefenders = ATTACK_DEFENDERS },

@@ -60,6 +60,20 @@
 --                          the soldier stops moving; getting unstuck is its
 --                          own, as moving actions handle OnStuck in TF2
 --
+-- What a soldier should do is asked of the actions it runs, as NextBot's
+-- contextual queries (the innermost answers first; ANSWER_UNDEFINED passes
+-- the question on), never read off another action's role:
+--   ShouldHurry(me)          the job: yes while Urgent (Travel stops for
+--                            no one, the fight is fought on the way)
+--   ShouldRetreat(me)        the job: no while Urgent (TacticalMonitor asks
+--                            before a retreat, RetreatToCover each think)
+--   ShouldPickUp(me, kit)    the job: no while Urgent (FindHealth asks)
+--   ShouldAttack(me, them), SelectMoreDangerousThreat(me, a, b)   DrGBase
+--                            asks: a healing medic holds fire, a squad
+--                            member fights its leader's enemy
+-- A detour (a trip, a retreat) asks the work it interrupted (AskInterrupted),
+-- which NextBot's queries reach only as far as the buried action itself.
+--
 -- For the war report, a soldier's state shows its goal, route and waypoint
 -- (goal, route, routeIndex) and how its last trip ended (trip); in a fight,
 -- the goal is the tactical destination (flank point, bound spot, cover), with
@@ -576,9 +590,26 @@ PAYLOAD = {
 	end,
 }
 
--- Whether the member's job is urgent now (its role's Urgent).
+-- Whether the member's job is urgent now (its role's Urgent). Only the job
+-- reads it, to answer the queries (ShouldHurry, ShouldRetreat, ShouldPickUp);
+-- every other action asks those.
 local function IsUrgent(role, field, member)
 	return role.Urgent ~= nil and OrdersRun(field) and role.Urgent(field, member) == true
+end
+
+-- A query asked of the work action interrupted (NextBot's queries reach a
+-- buried action but not what it contains): each action buried under it,
+-- what it runs first, innermost out. A trip asks its job; a retreat asks
+-- the monitor it suspended, which runs the job.
+local function AskInterrupted(action, me, name, ...)
+	local under = action:GetActionBuriedUnderMe()
+	while under do
+		local answer = under:QueryBelow(me, name, ...)
+		if answer == N.ANSWER_UNDEFINED and under[name] then answer = under[name](under, me, ...) end
+		if answer ~= nil and answer ~= N.ANSWER_UNDEFINED then return answer end
+		under = under:GetActionBuriedUnderMe()
+	end
+	return N.ANSWER_UNDEFINED
 end
 
 -------------------------------------------------------------------------------
@@ -826,7 +857,8 @@ end
 function Travel:Update(me)
 	local state, role = self.state, self.role
 	local field = state.war:Field()
-	local urgent = not self.spot and IsUrgent(role, field, state.member)
+	-- its job hurrying, the trip stops for no one (ShouldHurry)
+	local urgent = not self.spot and AskInterrupted(self, me, "ShouldHurry") == N.ANSWER_YES
 	if not self.spot and not urgent and role.tactic and TeamContact(state, me) then return self:End("contact") end
 	if not self.spot and not urgent and role.chases and ChaseWanted(role, me, field, state.member) then return self:End("a weakened enemy") end
 	local goal, over = self:Goal(me, field)
@@ -1092,7 +1124,7 @@ function Objective:Update(me)
 		if stage ~= self.stage then return self:ChangeTo(ObjectiveFor(state), "now " .. (stage or self.role.name)) end
 	end
 	if OrdersRun(field) and self.doctrine.WaitsForSetup(field, state.member) then return self:Wander(me) end
-	local urgent = IsUrgent(self.role, field, state.member)
+	local urgent = self:ShouldHurry(me) == N.ANSWER_YES
 	if state.wandering then
 		state.wandering = false
 		self.restUntil = nil
@@ -1265,6 +1297,12 @@ end
 
 function Objective:ShouldHurry(me)
 	if IsUrgent(self.role, self.state.war:Field(), self.state.member) then return N.ANSWER_YES end
+	return N.ANSWER_UNDEFINED
+end
+
+-- An urgent job goes for no health kit (TF2's bomb carrier never does).
+function Objective:ShouldPickUp(me, item)
+	if IsUrgent(self.role, self.state.war:Field(), self.state.member) then return N.ANSWER_NO end
 	return N.ANSWER_UNDEFINED
 end
 
@@ -1798,13 +1836,6 @@ end
 
 -- FindHealth's kit, when it should leave cover for one now
 -- (foundation.aiwar.health): none while a medic treats it.
--- Whether the member's job (at its stage) is urgent now: a retreat or a
--- trip for health taken before it was (the bomb picked up) gives way to it.
-local function JobUrgent(state)
-	local role = ObjectiveClass(state).role
-	return role ~= nil and IsUrgent(role, state.war:Field(), state.member)
-end
-
 local function KitWorthIt(state, me)
 	local now = me:Now()
 	if Treated(state.member, now) then return nil end
@@ -1819,7 +1850,8 @@ function RetreatToCover:Update(me)
 	local state, now = self.state, me:Now()
 	-- the round won or lost: the monitor above hunts or hides
 	if me:IsDisarmed() or Hunting(state.war:Field(), state.member) then return self:Done("the round is over") end
-	if JobUrgent(state) then return self:Done("its job is urgent") end
+	-- a retreat taken before its job would refuse one (the bomb picked up)
+	if AskInterrupted(self, me, "ShouldRetreat") == N.ANSWER_NO then return self:Done("its job will not retreat") end
 	if HealthShare(me) >= RETREAT_RECOVER or now >= self.untilAt then
 		state.retreatReadyAt = now + RETREAT_COOLDOWN
 		state.hurtLog = {}
@@ -1861,7 +1893,8 @@ end
 function FindHealth:Update(me)
 	local state, now = self.state, me:Now()
 	if me:IsDisarmed() or Hunting(state.war:Field(), state.member) then return self:Done("the round is over") end
-	local why = (JobUrgent(state) and "its job is urgent") or (HealthShare(me) >= Health.OK and "healed") or (not StillThere(me:HealthKits(), self.kit) and "the kit is gone")
+	local declined = AskInterrupted(self, me, "ShouldPickUp", self.kit) == N.ANSWER_NO
+	local why = (declined and "its job will not stop for health") or (HealthShare(me) >= Health.OK and "healed") or (not StillThere(me:HealthKits(), self.kit) and "the kit is gone")
 		or (now >= self.untilAt and "gave up")
 	if why then
 		state.retreatReadyAt = now + RETREAT_COOLDOWN

@@ -1500,11 +1500,13 @@ T.test("an urgent job rushes, does not stop at its leash for an enemy, and will 
 	Tick(me, npc, 2)
 	T.eq(me.moving, nil, "not urgent: stops within its leash to fight")
 	T.eq(npc:Query("ShouldRetreat"), N.ANSWER_UNDEFINED, "not urgent: may retreat")
+	T.eq(npc:Query("ShouldPickUp", { handle = "kit" }), N.ANSWER_UNDEFINED, "not urgent: may go for health")
 	war:SetField(StubField({ urgent = true }))
 	Tick(me, npc, 2)
 	T.eq(me.moving ~= nil, true, "urgent: on into the zone")
 	T.eq(me.gait, Orders.RUSH, "at a rush")
 	T.eq(npc:Query("ShouldRetreat"), N.ANSWER_NO, "no retreat")
+	T.eq(npc:Query("ShouldPickUp", { handle = "kit" }), N.ANSWER_NO, "no trip for health")
 	T.eq(npc:Query("ShouldHurry"), N.ANSWER_YES, "hurrying")
 	me.enemyHandle, me.enemyHealth = "weak", 0.1
 	Tick(me, npc, 2)

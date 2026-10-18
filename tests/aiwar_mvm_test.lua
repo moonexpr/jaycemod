@@ -66,6 +66,19 @@ T.test("BLU's robots fetch the bomb where it lies", function()
 	T.eq(Role(dropped, robot).arrive <= Mvm.TOUCH, true, "close enough to touch it")
 end)
 
+-- CTFBotFetchFlag hurries and never retreats (ShouldHurry yes, ShouldRetreat
+-- no): fetching is urgent; escorting a carrier and attacking defenders are not.
+T.test("fetching the bomb is urgent; escorting or attacking round a carrier is not", function()
+	local robot = Member(BLUE, AiWar.COURIER, 0, P(3000, 0))
+	local dropped = Briefed(Field(Bomb(Mvm.DROPPED, P(1500, 300))))
+	T.eq(Role(dropped, robot).Urgent(dropped, robot), true, "fetching a dropped bomb")
+	T.eq(Role(Briefed(Field()), robot).Urgent(Briefed(Field()), robot), true, "fetching it from home")
+	local carrier = Member(BLUE, AiWar.COURIER, 1, P(2000, 0))
+	local carried = Briefed(Field(Bomb(Mvm.CARRIED, P(2000, 0), carrier.handle)))
+	T.eq(Stage(carried, robot), "AttackFlagDefenders", "a teammate carries it")
+	T.eq(Role(carried, robot).Urgent(carried, robot), false, "attacking the defenders is not urgent")
+end)
+
 T.test("the bomb's carrier delivers it to the hatch, stopping for nothing", function()
 	local carrier = Member(BLUE, AiWar.COURIER, 0, P(3000, 0))
 	local field = Briefed(Field(Bomb(Mvm.CARRIED, P(3000, 0), carrier.handle)))
