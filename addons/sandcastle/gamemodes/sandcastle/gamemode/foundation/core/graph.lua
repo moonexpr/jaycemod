@@ -9,7 +9,11 @@
 --   answers true.
 -- Components(nodes, neighbors) -> node -> the number of its connected group,
 --   1 up, numbered in the order of nodes.
+-- Distances(starts, edges, limit) -> node -> the cheapest walk to it from
+--   the nearest start (Dijkstra), edges(node) -> a list of { node, cost }
+--   (costs not negative); nodes farther than limit are left out.
 local ipairs = ipairs
+local Heap = require("foundation.core.structs.heap")
 module(...)
 
 function Flood(starts, neighbors, admit, limit, stop)
@@ -57,4 +61,27 @@ function Components(nodes, neighbors)
 		end
 	end
 	return component
+end
+
+function Distances(starts, edges, limit)
+	local dist = {}
+	local queue = Heap.New(function(a, b) return a.cost < b.cost end)
+	for _, node in ipairs(starts) do
+		dist[node] = 0
+		queue:Push({ node = node, cost = 0 })
+	end
+	while queue:Size() > 0 do
+		local top = queue:Pop()
+		if top.cost == dist[top.node] then
+			for _, edge in ipairs(edges(top.node)) do
+				local cost = top.cost + edge.cost
+				local known = dist[edge.node]
+				if cost <= limit and (known == nil or cost < known) then
+					dist[edge.node] = cost
+					queue:Push({ node = edge.node, cost = cost })
+				end
+			end
+		end
+	end
+	return dist
 end

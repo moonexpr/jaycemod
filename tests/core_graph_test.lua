@@ -48,6 +48,39 @@ T.test("a flood is cut at the first node it reaches where stop answers true", fu
 	T.eq(Joined(reached), "1 2 3", "stopped on taking 3 up")
 end)
 
+-- Weighted edges: a -> b costs 1, b -> c 1, a -> c 5 (dearer than going
+-- round), c -> d 10, and e on its own.
+local EDGES = {
+	a = { { node = "b", cost = 1 }, { node = "c", cost = 5 } },
+	b = { { node = "c", cost = 1 } },
+	c = { { node = "d", cost = 10 } },
+	d = {},
+	e = {},
+}
+local function Weighted(node) return EDGES[node] end
+
+T.test("distances are the cheapest walk from the nearest start, round a dear shortcut", function()
+	local dist = Graph.Distances({ "a" }, Weighted, 100)
+	T.eq(dist.a, 0, "a start")
+	T.eq(dist.b, 1)
+	T.eq(dist.c, 2, "round by b, not the shortcut")
+	T.eq(dist.d, 12)
+	T.eq(dist.e, nil, "unreached")
+end)
+
+T.test("from several starts each node's distance is from the nearest", function()
+	local dist = Graph.Distances({ "a", "c" }, Weighted, 100)
+	T.eq(dist.c, 0, "a start itself")
+	T.eq(dist.d, 10, "from c")
+	T.eq(dist.b, 1, "from a")
+end)
+
+T.test("nodes farther than the limit are left out", function()
+	local dist = Graph.Distances({ "a" }, Weighted, 5)
+	T.eq(dist.c, 2)
+	T.eq(dist.d, nil, "12 is past 5")
+end)
+
 T.test("components number the nodes' connected groups in the nodes' order", function()
 	local component = Graph.Components({ 6, 1, 2, 3, 4, 5, 7 }, Neighbors)
 	T.eq(component[6], 1, "the first group")

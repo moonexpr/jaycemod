@@ -1,10 +1,11 @@
 -- Lanes: the ways a team's offensive squads (escorts, raiders) take from
 -- their spawn, so they come on by several paths instead of all by the
--- shortest. A team plans (Plans) a direct lane to its objective, a flank
--- to either side of it (FLANK_RADIUS beside the objective, left and right
--- of the way in), and two tours through the enemy's defenses (its leftmost
--- and rightmost) on to the enemy's spawn nearest each. The aiwar controller
--- routes them one after the other over the nav mesh, each costing more
+-- shortest. A team plans a direct lane to its objective first; then (Plans)
+-- two flanks, siblings out of its way and each other's by walking
+-- (Siblings), and two tours through the enemy's defenses farthest apart (or
+-- the flanks, with a single defense) on to the enemy's spawn nearest each.
+-- The aiwar controller routes them one after the other over the nav mesh,
+-- each costing more
 -- (LANE_PENALTY) through the band of the routes before it (Band: their
 -- areas and those within LANE_SPREAD, so a later route leaves the corridor
 -- instead of stepping one area aside; Strategy), and keeps each it can
@@ -16,7 +17,7 @@
 -- WAYPOINT_SPACING apart), length }; a team's lanes are { key, [1..n] =
 -- lane }. Positions are { x, y, z } tables.
 local ipairs, pairs = ipairs, pairs
-local huge, sqrt = math.huge, math.sqrt
+local huge, min, sqrt = math.huge, math.min, math.sqrt
 local sort = table.sort
 local HL2Path = require("foundation.npc.path.hl2")
 local Path = require("foundation.npc.path")
@@ -127,28 +128,85 @@ function Threshold(spawn, areas, enemy, enclosed)
 	return spawn
 end
 
--- The lanes a team plans, in order: { kind, stops }, routed from spawn
--- through each stop. objective: where the team is going (its front);
--- defenses: the enemy's defense points (its posts, else its front), may be
--- empty; enemySpawnNear(p): the enemy spawn nearest p.
-function Plans(spawn, objective, defenses, enemySpawnNear)
+-- Siblings: the flanks are a pair of equals, two ways that keep out of the
+-- direct lane's way and out of each other's, judged by walking, not by
+-- where they lie: the controller routes the direct lane first, then
+-- measures each place's separation, the shortest walk to it from that
+-- lane's band (foundation.core.graph's Distances), and the walk between two
+-- places. Of the ground FLANK_MIN to FLANK_MAX from the objective (flat),
+-- the flanks are the place farthest from the band and the place both far
+-- from the band and far from it (Siblings): a hill path that climbs away
+-- from the bottom corridor and stays apart from it counts for what it is,
+-- however near it looks, and a cluster of such places gives one flank, not
+-- two. With no such pair, the points FLANK_RADIUS either side of the
+-- objective (FixedFlanks).
+FLANK_MIN, FLANK_MAX = 400, 1200
+
+function InFlankRange(objective, p)
+	local dx, dy = p.x - objective.x, p.y - objective.y
+	local flat = sqrt(dx * dx + dy * dy)
+	return flat >= FLANK_MIN and flat <= FLANK_MAX
+end
+
+-- The flanks of candidates (keys): A, the farthest from the band
+-- (separation(key): its walk from it); then B, the one whose least of its
+-- separation and its walk from A (walkFrom(A)(key)) is greatest. Two walks
+-- searched, whatever the candidates. Nil when no two are off the band and
+-- apart.
+function Siblings(candidates, separation, walkFrom)
+	local a, farthest = nil, 0
+	for _, key in ipairs(candidates) do
+		if separation(key) > farthest then a, farthest = key, separation(key) end
+	end
+	if not a then return nil end
+	local fromA = walkFrom(a)
+	local b, best = nil, 0
+	for _, key in ipairs(candidates) do
+		if key ~= a then
+			local score = min(separation(key), fromA(key))
+			if score > best then b, best = key, score end
+		end
+	end
+	if not b then return nil end
+	return a, b
+end
+
+-- Of places (two or more), the two farthest apart by walk (between), in
+-- the places' order; nil for fewer than two, or none apart.
+function Farthest(places, between)
+	local bestA, bestB, bestWalk = nil, nil, 0
+	for i = 1, #places do
+		for j = i + 1, #places do
+			local walk = between(places[i], places[j])
+			if walk > bestWalk then bestA, bestB, bestWalk = places[i], places[j], walk end
+		end
+	end
+	return bestA, bestB
+end
+
+-- The flanks with no ground to choose from: FLANK_RADIUS left and right of
+-- the objective, across the way in from spawn.
+function FixedFlanks(spawn, objective)
 	local dx, dy = objective.x - spawn.x, objective.y - spawn.y
 	local length = sqrt(dx * dx + dy * dy)
 	local lx, ly = -dy / length, dx / length -- the left of the way in
+	return Point(objective.x + lx * FLANK_RADIUS, objective.y + ly * FLANK_RADIUS, objective.z),
+		Point(objective.x - lx * FLANK_RADIUS, objective.y - ly * FLANK_RADIUS, objective.z)
+end
+
+-- The lanes after the direct one, in order: { kind, stops }, routed from
+-- spawn through each stop. flanks: the two flank stops; tours: the two
+-- places the tours go through (the defenses farthest apart, else the
+-- flanks), or nil for no tours (no enemy defenses known); each tour goes on
+-- to the enemy spawn nearest it (enemySpawnNear).
+function Plans(flanks, tours, enemySpawnNear)
 	local plans = {
-		{ kind = DIRECT, stops = { objective } },
-		{ kind = FLANK, stops = { Point(objective.x + lx * FLANK_RADIUS, objective.y + ly * FLANK_RADIUS, objective.z) } },
-		{ kind = FLANK, stops = { Point(objective.x - lx * FLANK_RADIUS, objective.y - ly * FLANK_RADIUS, objective.z) } },
+		{ kind = FLANK, stops = { flanks[1] } },
+		{ kind = FLANK, stops = { flanks[2] } },
 	}
-	if #defenses == 0 then return plans end
-	local left, right, most, least = nil, nil, -huge, huge
-	for _, p in ipairs(defenses) do
-		local side = (p.x - spawn.x) * lx + (p.y - spawn.y) * ly
-		if side > most then left, most = p, side end
-		if side < least then right, least = p, side end
-	end
-	plans[4] = { kind = TOUR, stops = { left, enemySpawnNear(left) } }
-	plans[5] = { kind = TOUR, stops = { right, enemySpawnNear(right) } }
+	if not tours then return plans end
+	plans[3] = { kind = TOUR, stops = { tours[1], enemySpawnNear(tours[1]) } }
+	plans[4] = { kind = TOUR, stops = { tours[2], enemySpawnNear(tours[2]) } }
 	return plans
 end
 

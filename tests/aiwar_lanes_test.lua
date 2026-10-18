@@ -7,32 +7,95 @@ local Path = T.require("foundation.npc.path")
 local function P(x, y) return { x = x, y = y, z = 0 } end
 local function Lane(ids, length) return { ids = ids, points = {}, length = length } end
 
--- What a team plans, in order: a direct lane to the objective, a flank to
--- either side of it (left, right of the way in), and two tours through the
--- enemy's defenses on to the enemy's spawn nearest each. Here the team comes
--- in along +x to the objective at x 1000, so its left is +y.
-T.test("a team plans a direct lane, two flanks beside the objective and two tours through the enemy to its spawn", function()
-	local spawn, objective = P(0, 0), P(1000, 0)
-	local defenses = { P(1500, 400), P(1400, 0), P(1500, -300) }
-	local function EnemySpawnNear(p) return P(3000, p.y) end
-	local specs = Lanes.Plans(spawn, objective, defenses, EnemySpawnNear)
-	local kinds = {}
-	for i, spec in ipairs(specs) do kinds[i] = spec.kind end
-	T.eq(table.concat(kinds, ","), "direct,flank,flank,tour,tour")
-	T.eq(#specs[1].stops, 1, "direct: one stop")
-	T.eq(specs[1].stops[1], objective, "the objective")
-	T.near(specs[2].stops[1].x, 1000, 1e-9, "left flank: beside the objective")
-	T.near(specs[2].stops[1].y, Lanes.FLANK_RADIUS, 1e-9, "on the left")
-	T.near(specs[3].stops[1].y, -Lanes.FLANK_RADIUS, 1e-9, "on the right")
-	T.eq(specs[4].stops[1], defenses[1], "the first tour: through the leftmost defense")
-	T.eq(specs[4].stops[2].x .. "," .. specs[4].stops[2].y, "3000,400", "on to the enemy spawn nearest it")
-	T.eq(specs[5].stops[1], defenses[3], "the second: through the rightmost")
-	T.eq(specs[5].stops[2].x .. "," .. specs[5].stops[2].y, "3000,-300", "and its spawn")
+-- Siblings: after the direct lane is routed, each place round the objective
+-- has its separation, the shortest walk to it from that lane's band (at
+-- least as far as the search reached, for one beyond it). The first flank
+-- is the place farthest from the band; the second, the place whose least of
+-- its separation and its walk from the first is greatest: both out of the
+-- direct lane's way, and out of each other's. Places are keys here; the
+-- numbers stand for walks on the nav mesh.
+
+-- separation(key) and walkFrom(a) -> walk(b), from tables; Between(a, b) for
+-- the tours, the same walks both ways.
+local function Separation(t) return function(key) return t[key] end end
+local function Between(walks)
+	return function(a, b) return walks[a .. " " .. b] or walks[b .. " " .. a] end
+end
+local function WalksFrom(walks)
+	return function(a)
+		return function(b) return walks[a .. " " .. b] or walks[b .. " " .. a] end
+	end
+end
+
+T.test("a hill path that climbs away from the corridor pairs with the far side, not with the field below it", function()
+	-- the hill: a long climb off the corridor; the field below it, near the
+	-- hill as the crow flies but a short walk from the corridor
+	local separation = Separation({ hill = 1300, fieldLeft = 700, fieldRight = 690 })
+	local walks = WalksFrom({ ["hill fieldLeft"] = 1800, ["hill fieldRight"] = 300 })
+	local a, b = Lanes.Siblings({ "fieldRight", "hill", "fieldLeft" }, separation, walks)
+	T.eq(a, "hill", "the hill, farthest off the corridor")
+	T.eq(b, "fieldLeft", "with the far side")
 end)
 
-T.test("with no enemy defenses known the team plans no tours", function()
-	local specs = Lanes.Plans(P(0, 0), P(1000, 0), {}, function() error("no spawn asked for") end)
-	T.eq(#specs, 3, "direct and two flanks")
+T.test("a cluster far off the corridor gives one flank; the other comes from elsewhere", function()
+	local separation = Separation({ a = 1000, b = 990, c = 400 })
+	local walks = WalksFrom({ ["a b"] = 100, ["a c"] = 1500 })
+	local x, y = Lanes.Siblings({ "a", "b", "c" }, separation, walks)
+	T.eq(x .. "," .. y, "a,c", "the one far off, and the one far from it")
+end)
+
+T.test("places on the band are no flanks", function()
+	local separation = Separation({ a = 800, onBand = 0 })
+	local walks = WalksFrom({ ["a onBand"] = 900 })
+	T.eq(Lanes.Siblings({ "a", "onBand" }, separation, walks), nil, "a alone off the band: no pair")
+end)
+
+T.test("with fewer than two places there are no siblings", function()
+	local walks = WalksFrom({})
+	T.eq(Lanes.Siblings({ "a" }, Separation({ a = 500 }), walks), nil, "one place")
+	T.eq(Lanes.Siblings({}, Separation({}), walks), nil, "none")
+end)
+
+T.test("flank range is FLANK_MIN to FLANK_MAX from the objective, flat", function()
+	local objective = P(1000, 0)
+	T.eq(Lanes.InFlankRange(objective, P(1000 + Lanes.FLANK_MIN - 1, 0)), false, "too near")
+	T.eq(Lanes.InFlankRange(objective, { x = 1000, y = Lanes.FLANK_MIN + 1, z = 900 }), true, "high above counts flat")
+	T.eq(Lanes.InFlankRange(objective, P(1000, Lanes.FLANK_MAX + 1)), false, "too far")
+end)
+
+T.test("with no ground to choose from the flanks are FLANK_RADIUS left and right of the objective", function()
+	local left, right = Lanes.FixedFlanks(P(0, 0), P(1000, 0))
+	T.near(left.x, 1000, 1e-9)
+	T.near(left.y, Lanes.FLANK_RADIUS, 1e-9, "the left of the way in, +y")
+	T.near(right.y, -Lanes.FLANK_RADIUS, 1e-9, "the right")
+end)
+
+T.test("the tours go through the two defenses farthest apart by walk", function()
+	local walks = Between({ ["d1 d2"] = 300, ["d1 d3"] = 1200, ["d2 d3"] = 900 })
+	local a, b = Lanes.Farthest({ "d1", "d2", "d3" }, walks)
+	T.eq(a .. "," .. b, "d1,d3")
+	T.eq(Lanes.Farthest({ "d1" }, walks), nil, "a defense alone has no pair")
+end)
+
+-- After the direct lane: the flanks, then the tours, each on to the enemy
+-- spawn nearest its place.
+T.test("the lanes after the direct one: two flanks, then two tours on to the enemy spawn", function()
+	local flanks, tours = { P(1000, 600), P(1000, -600) }, { P(1500, 400), P(1500, -300) }
+	local function EnemySpawnNear(p) return P(3000, p.y) end
+	local specs = Lanes.Plans(flanks, tours, EnemySpawnNear)
+	local kinds = {}
+	for i, spec in ipairs(specs) do kinds[i] = spec.kind end
+	T.eq(table.concat(kinds, ","), "flank,flank,tour,tour")
+	T.eq(specs[1].stops[1], flanks[1])
+	T.eq(specs[2].stops[1], flanks[2])
+	T.eq(specs[3].stops[1], tours[1], "through the first place")
+	T.eq(specs[3].stops[2].x .. "," .. specs[3].stops[2].y, "3000,400", "on to the enemy spawn nearest it")
+	T.eq(specs[4].stops[2].x .. "," .. specs[4].stops[2].y, "3000,-300", "and its own")
+end)
+
+T.test("with no enemy defenses known there are no tours", function()
+	local specs = Lanes.Plans({ P(1000, 600), P(1000, -600) }, nil, function() error("no spawn asked for") end)
+	T.eq(#specs, 2, "two flanks")
 end)
 
 T.test("a route's points thin to about WAYPOINT_SPACING apart, keeping both ends", function()

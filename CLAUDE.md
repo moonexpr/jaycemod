@@ -61,7 +61,7 @@ Module names are `foundation.core.<path>`; tests are
 
 | Module | API |
 |---|---|
-| `graph` | `Flood(starts, neighbors, admit, limit[, stop])` → reached, cut; `Components(nodes, neighbors)` → node → group number |
+| `graph` | `Flood(starts, neighbors, admit, limit[, stop])` → reached, cut; `Components(nodes, neighbors)` → node → group number; `Distances(starts, edges, limit)` → node → cheapest walk from the nearest start (Dijkstra; `edges(node)` → `{ node, cost }`s) |
 | `pathfinder` | Abstract path search (template method): `Solver(name)` → a solver class filling `Begin`, `Next`, `Expand` (reporting with `Reach`, `Approach`); it gets `New`, `Find`, `Step(budget)`, `Route`. `RUNNING`, `FOUND`, `FAILED`, `MAX_EXPANDED` |
 
 ### math

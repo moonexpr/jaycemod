@@ -62,7 +62,9 @@ Real("orders", "RAID_SHIFT", 0, 4096, "how far the enemy's line moves before rai
 -- foundation.aiwar.lanes: planning lanes, and walking them
 Real("lanes", "LANE_PENALTY", 1, 100, "how much more an area in an earlier lane's band costs")
 Real("lanes", "LANE_SPREAD", 0, 4096, "how far either side of a lane its band reaches")
-Real("lanes", "FLANK_RADIUS", 0, 4096, "how far beside the objective a flank lane ends")
+Real("lanes", "FLANK_RADIUS", 0, 4096, "how far beside the objective a fixed flank ends, where the ground has no flank pair")
+Real("lanes", "FLANK_MIN", 0, 4096, "the nearest to the objective a flank's ground may be")
+Real("lanes", "FLANK_MAX", 0, 8192, "the farthest from the objective a flank's ground may be")
 Real("lanes", "WAYPOINT_SPACING", 16, 4096, "the gap between a lane's waypoints")
 Real("lanes", "WAYPOINT_REACH", 0, 2048, "how near a waypoint counts as reached")
 Whole("lanes", "LOOKAHEAD", 0, 8, "waypoints ahead a leader may skip to")
