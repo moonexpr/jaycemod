@@ -93,26 +93,12 @@ end
 -- and so do the props of a checkpoint's base (WS.ProxyBodies).
 local CART_MINS, CART_MAXS = Vector(-40, -40, 0), Vector(40, 40, 80)
 local POINT_MINS, POINT_MAXS = Vector(-48, -48, -8), Vector(48, 48, 64)
--- The entities a map's constraints (phys_*: attach1, attach2) tie to ent.
-local function TiedTo(ent)
-	local name, tied = ent:GetName(), {}
-	if name == "" then return tied end
-	for _, constraint in ipairs(ents.FindByClass("phys_*")) do
-		local keys = constraint:GetKeyValues()
-		local other = (keys.attach1 == name and keys.attach2) or (keys.attach2 == name and keys.attach1)
-		if other then
-			for _, body in ipairs(ents.FindByName(other)) do tied[#tied + 1] = body end
-		end
-	end
-	return tied
-end
-
 local function KeepProxies(watcher)
 	local train = watcher:Train()
 	if IsValid(train) then
 		local proxy, made = WS.Proxy(train, "cart", watcher, CART_MINS, CART_MAXS, train)
 		if made then
-			for _, body in ipairs(TiedTo(train)) do body:SetNW2Entity("ws_proxy", proxy) end
+			for _, body in ipairs(WS.TiedTo(train)) do body:SetNW2Entity("ws_proxy", proxy) end
 		end
 	end
 	for _, point in ipairs(watcher:Checkpoints()) do

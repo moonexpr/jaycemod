@@ -1003,11 +1003,13 @@ local function AnchorHolds(anchor, field, member, goal)
 end
 
 -- A round of the patrol: a rest, then a walk to another spot near the post.
+-- In setup the rest is in its battle stance (Pose), as a wanderer's is.
 function Objective:Patrol(me, field, goal)
 	local state, now = self.state, me:Now()
 	state.patrolling = true
 	if me:HasEnemy() or now < (self.restUntil or 0) then
 		me:Release()
+		if field.setup then state.pose = me:Pose() end
 		return self:Continue()
 	end
 	local spot = me:PatrolSpot(self.anchor.goal, PATROL_RADIUS)
@@ -1016,6 +1018,8 @@ function Objective:Patrol(me, field, goal)
 		me:Release()
 		return self:Continue()
 	end
+	me:Unpose()
+	state.pose = nil
 	local anchor, member = self.anchor, state.member
 	local function Keep(currentField, soldier)
 		if soldier:HasEnemy() then return false, "enemy in sight" end
@@ -1040,7 +1044,8 @@ function Objective:Update(me)
 		state.wandering = false
 		self.restUntil = nil
 	end
-	if state.pose then
+	-- stances are setup's: a patrol's rest keeps its own until it walks on
+	if state.pose and not field.setup then
 		me:Unpose()
 		state.pose = nil
 	end

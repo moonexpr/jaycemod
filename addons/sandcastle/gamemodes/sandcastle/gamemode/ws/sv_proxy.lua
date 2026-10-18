@@ -38,3 +38,18 @@ function WS.ProxyBodies(proxy, center)
 		if ent:GetClass():sub(1, 5) == "prop_" then ent:SetNW2Entity("ws_proxy", proxy) end
 	end
 end
+
+-- The entities a map's constraints (phys_*: attach1, attach2) tie to ent: a
+-- payload cart's body, a prop the map ties to its train rather than parents.
+function WS.TiedTo(ent)
+	local name, tied = ent:GetName(), {}
+	if name == "" then return tied end
+	for _, constraint in ipairs(ents.FindByClass("phys_*")) do
+		local keys = constraint:GetKeyValues()
+		local other = (keys.attach1 == name and keys.attach2) or (keys.attach2 == name and keys.attach1)
+		if other then
+			for _, body in ipairs(ents.FindByName(other)) do tied[#tied + 1] = body end
+		end
+	end
+	return tied
+end

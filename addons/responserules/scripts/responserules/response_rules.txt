@@ -25,6 +25,13 @@ criterion "ConceptCartMovingForward" "Concept" "TLK_CART_MOVING_FORWARD" require
 criterion "ConceptCartMovingStopped" "Concept" "TLK_CART_STOP" required
 criterion "ConceptCartMovingBackward" "Concept" "TLK_CART_MOVING_BACKWARD" required
 
+// a soldier settling into its battle stance where it rests in setup
+// (NextSoldier's own concept, foundation.aiwar.speech)
+criterion "ConceptBattleStance" "Concept" "TLK_NS_BATTLE_STANCE" required
+// a teammate player passing the soldier, and an enemy it has just spotted
+criterion "ConceptPlayerPassing" "Concept" "TLK_NS_PLAYER_PASSING" required
+criterion "ConceptEnemySpotted" "Concept" "TLK_NS_ENEMY_SPOTTED" required
+
 // Chances (randomnum, 0..100) ------------------------------------------------
 
 criterion "10PercentChance" "randomnum" ">90" required
@@ -47,6 +54,17 @@ criterion "NotSaidCartMovingBackwardO" "SaidCartMovingBackwardO" "!=1" required 
 criterion "NotSaidCartMovingBackwardD" "SaidCartMovingBackwardD" "!=1" required weight 0
 criterion "NotSaidCartMovingStoppedO" "SaidCartMovingStoppedO" "!=1" required weight 0
 criterion "NotSaidCartMovingStoppedD" "SaidCartMovingStoppedD" "!=1" required weight 0
+
+// Battle stances --------------------------------------------------------------
+
+// said on taking a stance within 30 s: a soldier rests often in setup
+criterion "NotSaidBattleStance" "SaidBattleStance" "!=1" required weight 0
+
+// Greetings and contacts -----------------------------------------------------
+
+// greeted a player within 45 s; called out a contact within 10 s
+criterion "NotSaidPlayerPassing" "SaidPlayerPassing" "!=1" required weight 0
+criterion "NotSaidEnemySpotted" "SaidEnemySpotted" "!=1" required weight 0
 
 // Speakers, by affiliation -------------------------------------------------------
 

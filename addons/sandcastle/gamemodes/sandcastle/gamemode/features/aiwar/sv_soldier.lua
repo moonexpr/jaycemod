@@ -5,7 +5,7 @@ local HL2Path = WS.require("foundation.npc.path.hl2")
 local Random = WS.require("foundation.core.math.random")
 local WALK_MINS, WALK_MAXS, WALK_LIFT, WALK_MAX_RISE = Map.WALK_MINS, Map.WALK_MAXS, Map.WALK_LIFT, Map.WALK_MAX_RISE
 local Point, ToVector, Masks, IsDoor = Map.Point, Map.ToVector, Map.Masks, Map.IsDoor
-local OnFloor = Map.OnFloor
+local OnFloor, PassThrough = Map.OnFloor, Map.PassThrough
 
 -------------------------------------------------------------------------------
 -- The soldier port (foundation.aiwar.soldier) over a DrGBase soldier
@@ -49,6 +49,22 @@ local SEATS_PER_CART, SEAT_SPREAD, SEAT_REACH = 2, 16, 72
 local SITTING = CreateConVar("ws_aiwar_sitting_enabled", "1", { FCVAR_ARCHIVE, FCVAR_NOTIFY },
 	"Whether the AI war's cart pushers sit on the cart; 0 gets every seated soldier off it")
 
+-- What a soldier sits on, beside the train's brush: the solid things riding
+-- it (the cart's model, where the map parents it), and its body, a prop the
+-- map ties to it by a constraint (WS.TiedTo). Its triggers (capture area,
+-- kill trigger) are not sat on, nor what nothing collides with (the debris
+-- group: Sandcastle's own right-click proxy, ws_proxy).
+local function CartParts(train)
+	local parts = WS.TiedTo(train)
+	for _, child in ipairs(train:GetChildren()) do
+		if IsValid(child) and child:GetSolid() ~= SOLID_NONE and bit.band(child:GetSolidFlags(), FSOLID_TRIGGER) == 0
+			and child:GetCollisionGroup() ~= COLLISION_GROUP_DEBRIS then
+			parts[#parts + 1] = child
+		end
+	end
+	return parts
+end
+
 function Soldier:IsSeated() return self.seat ~= nil end
 
 function Soldier:Sit()
@@ -58,13 +74,10 @@ function Soldier:Sit()
 	local train = controller.cartEntities and controller.cartEntities[self.team]
 	if not IsValid(train) then return false end
 	local mins, maxs = train:WorldSpaceAABB()
-	for _, child in ipairs(train:GetChildren()) do
-		-- the cart's model rides it too; its triggers (capture area, kill
-		-- trigger) are not what one sits on
-		if IsValid(child) and child:GetSolid() ~= SOLID_NONE and bit.band(child:GetSolidFlags(), FSOLID_TRIGGER) == 0 then
-			local _, cMaxs = child:WorldSpaceAABB()
-			maxs.z = math.max(maxs.z, cMaxs.z)
-		end
+	local cart = CartParts(train)
+	for _, part in ipairs(cart) do
+		local _, partMaxs = part:WorldSpaceAABB()
+		maxs.z = math.max(maxs.z, partMaxs.z)
 	end
 	local center = (mins + maxs) / 2
 	local pos = self.ent:GetPos()
@@ -85,8 +98,10 @@ function Soldier:Sit()
 			self.moveTarget = nil
 			self.ent.NSTarget = nil
 			self.ent.NSSeated = true
-			self.seatGroup = self.ent:GetCollisionGroup()
-			self.ent:SetCollisionGroup(COLLISION_GROUP_DEBRIS)
+			-- the cart carries it through itself, not into it; the rest of the
+			-- world, shots and sight still meet it where it sits
+			PassThrough(self.ent, train)
+			for _, part in ipairs(cart) do PassThrough(self.ent, part) end
 			return true
 		end
 	end
@@ -102,7 +117,6 @@ function Soldier:Stand()
 	if seats and seats[seat.index] == self.ent then seats[seat.index] = nil end
 	if not IsValid(self.ent) then return end
 	self.ent.NSSeated = nil
-	self.ent:SetCollisionGroup(self.seatGroup or COLLISION_GROUP_NPC)
 	local entry = controller.soldiers[self.ent]
 	if entry and IsValid(seat.train) then controller:EjectFromCart(self.ent, entry, seat.train, true) end
 end
@@ -188,6 +202,7 @@ function Soldier:RouteStale() return false end
 
 function Soldier:MoveTo(p, gait)
 	if self.seat then self:Stand() end
+	self:Unpose()
 	self.moveTarget = p
 	self.gait = gait or "run"
 	self.ent.NSTarget = OnFloor(ToVector(p))
@@ -388,9 +403,20 @@ function Soldier:CoverSpot(center, radius, threat, exclude, taken)
 	return best and Point(best) or nil
 end
 
--- Poses and following the cart are not yet made for DrGBase soldiers.
-function Soldier:Pose() return nil end
-function Soldier:Unpose() end
+-- A battle stance where it stands (ws_drg_soldier's NSTakeStance), held
+-- until Unpose or MoveTo; taking one, it may say it is ready (the
+-- controller's AnnounceStance). Asking again keeps the stance it has.
+function Soldier:Pose()
+	local ent = self.ent
+	if ent.NSStance then return ent.NSStance end
+	ent:NSTakeStance()
+	self.controller:AnnounceStance(ent)
+	return ent.NSStance
+end
+
+function Soldier:Unpose() self.ent.NSStance = nil end
+
+-- Following the cart is not yet made for DrGBase soldiers.
 function Soldier:FollowCart() return false end
 function Soldier:Unfollow() end
 function Soldier:RemoveScript() end

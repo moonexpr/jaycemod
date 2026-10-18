@@ -899,6 +899,53 @@ T.test("a wanderer drops its pose when setup ends", function()
 	T.eq(me.posing, nil, "up and off to the cart")
 end)
 
+-- Battle stances: in setup a soldier at rest takes its stance (Pose), the
+-- attackers at each wander rest, the defenders as they rest at their posts.
+
+local function DefenderAtPost(field)
+	local member = { team = RED, role = AiWar.DEFEND, slot = 0 }
+	local post = Orders.Goal(field, member)
+	local spot = P(post.x + 100, post.y + 50)
+	local me, npc, war = Enlist({ team = RED, role = AiWar.DEFEND, field = field, pos = post, patrolSpots = { spot }, walkable = function() return true end })
+	return me, npc, war, spot
+end
+
+T.test("in setup a defender resting at its post takes its stance, and keeps it while it rests", function()
+	local me, npc = DefenderAtPost(SetupField({}))
+	Tick(me, npc, 2)
+	T.eq(me.moving, nil, "resting")
+	T.eq(me.posing ~= nil, true, "in its stance")
+	T.eq(npc:State().pose, me.posing, "shown")
+	local unposes = me.unposes
+	Tick(me, npc, 5)
+	T.eq(me.posing ~= nil, true, "still in it")
+	T.eq(me.unposes, unposes, "never dropped and struck again")
+end)
+
+T.test("a defender gets up from its stance to walk its round", function()
+	local me, npc, _, spot = DefenderAtPost(SetupField({}))
+	TicksUntilMoving(me, npc, Orders.PATROL_REST / TICK + 4)
+	Near(me.moving, spot, "off on its round")
+	T.eq(me.posing, nil, "up")
+	T.eq(npc:State().pose, nil, "shown up")
+end)
+
+T.test("once the round runs, a resting defender takes no stance", function()
+	local me, npc = DefenderAtPost(Field({}))
+	Tick(me, npc, 2)
+	T.eq(me.moving, nil, "resting")
+	T.eq(me.posing, nil, "no stance")
+end)
+
+T.test("a defender drops its stance when setup ends", function()
+	local me, npc, war = DefenderAtPost(SetupField({}))
+	Tick(me, npc, 2)
+	T.eq(me.posing ~= nil, true, "in its stance")
+	war:SetField(Field({}))
+	Tick(me, npc, 2)
+	T.eq(me.posing, nil, "up")
+end)
+
 T.test("the defenders do not wander in setup", function()
 	local me, npc = Enlist({ team = RED, role = AiWar.DEFEND, field = SetupField({}), wanderSpots = { P(100, 0) } })
 	Tick(me, npc, 2)

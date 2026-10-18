@@ -27,9 +27,9 @@
 --     (at RUSH only once I am hit); a new p retargets the move
 --   Release(): end any move, handing me back to the engine's own AI,
 --     which fights, takes cover or idles
---   Pose() -> strike a pose where I stand (sitting, lying down, dancing),
---     keeping it until Unpose or MoveTo; the pose's name, or nil if I have
---     none to strike; asking again keeps the same pose
+--   Pose() -> take a battle stance where I stand (the orders ask in setup,
+--     at a rest), keeping it until Unpose or MoveTo; the stance's name, or
+--     nil if I have none to take; asking again keeps the same stance
 --   Unpose(): end any pose
 --   PassBlocker(p) -> whether something between me and p that only NPCs
 --     collide with (not players) was found and I may now pass through it

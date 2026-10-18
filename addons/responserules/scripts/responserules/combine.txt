@@ -268,3 +268,124 @@ rule CartBlockedDefenseCombineMetrocop
 	ApplyContext "SaidCartMovingStoppedD:1:20"
 	response CartBlockedDefenseCombineMetrocop
 }
+
+// BattleStance: settled into its stance where it rests in setup: ready
+response BattleStanceCombine
+{
+	print "Combine: in position, ready" defaultdelay
+}
+rule BattleStanceCombine
+{
+	criteria ConceptBattleStance IsCombine NotSaidBattleStance 50PercentChance
+	ApplyContext "SaidBattleStance:1:30"
+	response BattleStanceCombine
+}
+response BattleStanceCombineSoldier
+{
+	speak "npc/combine_soldier/vo/readyweapons.wav" defaultdelay
+	speak "npc/combine_soldier/vo/readyweaponshostilesinbound.wav" defaultdelay
+	speak "npc/combine_soldier/vo/hardenthatposition.wav" defaultdelay
+	speak "npc/combine_soldier/vo/stayalert.wav" defaultdelay
+	speak "npc/combine_soldier/vo/gosharp.wav" defaultdelay
+}
+rule BattleStanceCombineSoldier
+{
+	criteria ConceptBattleStance IsCombine NotSaidBattleStance 50PercentChance IsSoldierVoice
+	ApplyContext "SaidBattleStance:1:30"
+	response BattleStanceCombineSoldier
+}
+response BattleStanceCombineMetrocop
+{
+	speak "npc/metropolice/vo/inposition.wav" defaultdelay
+	speak "npc/metropolice/vo/isreadytogo.wav" defaultdelay
+	speak "npc/metropolice/vo/readytoprosecute.wav" defaultdelay
+	speak "npc/metropolice/vo/readytojudge.wav" defaultdelay
+	speak "npc/metropolice/vo/unitis10-8standingby.wav" defaultdelay
+}
+rule BattleStanceCombineMetrocop
+{
+	criteria ConceptBattleStance IsCombine NotSaidBattleStance 50PercentChance IsMetrocopVoice
+	ApplyContext "SaidBattleStance:1:30"
+	response BattleStanceCombineMetrocop
+}
+
+// PlayerPassing: a teammate player walks past: an acknowledgement, to that player
+
+response PlayerPassingCombine
+{
+	print "Combine: acknowledges a passing teammate" defaultdelay
+}
+rule PlayerPassingCombine
+{
+	criteria ConceptPlayerPassing IsCombine NotSaidPlayerPassing 50PercentChance
+	ApplyContext "SaidPlayerPassing:1:45"
+	response PlayerPassingCombine
+}
+
+response PlayerPassingCombineSoldier
+{
+	speak "npc/combine_soldier/vo/copy.wav" defaultdelay
+	speak "npc/combine_soldier/vo/copythat.wav" defaultdelay
+	speak "npc/combine_soldier/vo/affirmative.wav" defaultdelay
+	speak "npc/combine_soldier/vo/affirmative2.wav" defaultdelay
+}
+rule PlayerPassingCombineSoldier
+{
+	criteria ConceptPlayerPassing IsCombine NotSaidPlayerPassing 50PercentChance IsSoldierVoice
+	ApplyContext "SaidPlayerPassing:1:45"
+	response PlayerPassingCombineSoldier
+}
+
+response PlayerPassingCombineMetrocop
+{
+	speak "npc/metropolice/vo/rodgerthat.wav" defaultdelay
+	speak "npc/metropolice/vo/copy.wav" defaultdelay
+	speak "npc/metropolice/vo/affirmative2.wav" defaultdelay
+}
+rule PlayerPassingCombineMetrocop
+{
+	criteria ConceptPlayerPassing IsCombine NotSaidPlayerPassing 50PercentChance IsMetrocopVoice
+	ApplyContext "SaidPlayerPassing:1:45"
+	response PlayerPassingCombineMetrocop
+}
+
+// EnemySpotted: a new enemy in sight: a callout, to all near
+
+response EnemySpottedCombine
+{
+	print "Combine: contact" defaultdelay
+}
+rule EnemySpottedCombine
+{
+	criteria ConceptEnemySpotted IsCombine NotSaidEnemySpotted 75PercentChance
+	ApplyContext "SaidEnemySpotted:1:10"
+	response EnemySpottedCombine
+}
+
+response EnemySpottedCombineSoldier
+{
+	speak "npc/combine_soldier/vo/contact.wav" defaultdelay
+	speak "npc/combine_soldier/vo/contactconfim.wav" defaultdelay
+	speak "npc/combine_soldier/vo/target.wav" defaultdelay
+	speak "npc/combine_soldier/vo/targetmyradial.wav" defaultdelay
+	speak "npc/combine_soldier/vo/callcontacttarget1.wav" defaultdelay
+}
+rule EnemySpottedCombineSoldier
+{
+	criteria ConceptEnemySpotted IsCombine NotSaidEnemySpotted 75PercentChance IsSoldierVoice
+	ApplyContext "SaidEnemySpotted:1:10"
+	response EnemySpottedCombineSoldier
+}
+
+response EnemySpottedCombineMetrocop
+{
+	speak "npc/metropolice/vo/lookout.wav" defaultdelay
+	speak "npc/metropolice/vo/contactwithpriority2.wav" defaultdelay
+	speak "npc/metropolice/vo/holdit.wav" defaultdelay
+}
+rule EnemySpottedCombineMetrocop
+{
+	criteria ConceptEnemySpotted IsCombine NotSaidEnemySpotted 75PercentChance IsMetrocopVoice
+	ApplyContext "SaidEnemySpotted:1:10"
+	response EnemySpottedCombineMetrocop
+}

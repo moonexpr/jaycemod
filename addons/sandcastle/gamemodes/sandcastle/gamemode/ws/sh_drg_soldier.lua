@@ -17,8 +17,16 @@ local LIFE_ALIVE = 0
 -- way; how long after a jump it found no way for it does not try another.
 local LEAP_INSET, LEAP_RETRY = 2, 1
 -- The sound level of its steps and landings (PlayStepSound's SNDLVL_NORM),
--- and of its grunts and cries.
+-- as the soldiers in earshot hear them (NSNotice), and of its grunts and cries.
 local STEP_LEVEL, VOICE_LEVEL = 75, 75
+-- How its steps and landings play to players: louder than a player's, to be
+-- heard over the fighting, farther (the level) and harder (the gain, at
+-- most full volume).
+local STEP_PLAY_LEVEL, STEP_PLAY_GAIN = 85, 2
+
+local function PlayStep(self, volume)
+	self:EmitStep(STEP_PLAY_LEVEL, 100, math.min(1, volume * STEP_PLAY_GAIN))
+end
 
 -- Tracing (ws_aiwar_trace): a soldier with NSTrace set prints
 -- every query it asks its orders, with the answer, and every event it tells
@@ -84,7 +92,7 @@ function WS.DrgSoldier(ENT, baseName)
 		local now = CurTime()
 		local step = Noise.Step(velocity:Length2D(), self.IsCrouching ~= nil and self:IsCrouching())
 		if step and now >= (self.NSNextStep or 0) then
-			self:EmitStep(STEP_LEVEL, 100, step.volume)
+			PlayStep(self, step.volume)
 			self.NSNextStep = now + step.interval
 		end
 	end
@@ -106,7 +114,7 @@ function WS.DrgSoldier(ENT, baseName)
 		local volume = self.NSLeapt and Noise.JUMP_LANDING_VOLUME or Noise.Landing(fall)
 		self.NSFallSpeed, self.NSLeapt = 0, nil
 		if volume <= 0 then return end
-		self:EmitStep(STEP_LEVEL, 100, volume)
+		PlayStep(self, volume)
 		local landing = self:SelectWeightedSequence(ACT_LAND)
 		if landing and landing > 0 then self:AddGestureSequence(landing, true) end
 		if fall > Noise.MAX_SAFE_FALL_SPEED then
@@ -248,7 +256,12 @@ function WS.DrgSoldier(ENT, baseName)
 
 	function ENT:OnSpotted(ent) Tell(self, "OnSight", ent) end
 	function ENT:OnLost(ent) Tell(self, "OnLostSight", ent) end
-	function ENT:OnNewEnemy(ent) Tell(self, "OnContact", ent) end
+	-- a new enemy: its orders hear of it, and the AI war may have it call it
+	-- out (WSSoldierContact: features/aiwar/sv_speech.lua)
+	function ENT:OnNewEnemy(ent)
+		Tell(self, "OnContact", ent)
+		hook.Run("WSSoldierContact", self, ent)
+	end
 
 	function ENT:OnLastEnemy(ent)
 		Base().OnLastEnemy(self, ent)
@@ -355,9 +368,36 @@ function WS.DrgSoldier(ENT, baseName)
 		self.RunSpeed = kit.runSpeed
 	end
 
-	-- Seated on the cart: the sitting pose, whatever DrGBase would play.
+	-- A battle stance (the AI war's Pose, in setup): crouched ready with its
+	-- weapon, in the player model's crouch idle for the weapon's hold type,
+	-- checking it (the hold type's reload gesture) as it settles.
+	local STANCE_CROUCHED = "crouched"
+	local STANCE_HOLD_DEFAULT = "ar2"
+
+	local function HoldType(self)
+		local weapon = self:GetActiveWeapon()
+		return IsValid(weapon) and weapon:GetHoldType() or STANCE_HOLD_DEFAULT
+	end
+
+	-- The acts' names for hold types named otherwise (weapon_smg1's "smg").
+	local HOLD_ACT_NAMES = { smg = "SMG1" }
+
+	-- The act named prefix .. HOLD (ACT_HL2MP_IDLE_CROUCH_AR2), or the AR2's
+	-- for a hold type the player model has none for.
+	local function HoldAct(prefix, hold)
+		return _G[prefix .. (HOLD_ACT_NAMES[hold] or hold:upper())] or _G[prefix .. STANCE_HOLD_DEFAULT:upper()]
+	end
+
+	function ENT:NSTakeStance()
+		self.NSStance = STANCE_CROUCHED
+		self:AddGesture(HoldAct("ACT_HL2MP_GESTURE_RELOAD_", HoldType(self)))
+	end
+
+	-- Seated on the cart: the sitting pose, whatever DrGBase would play; in
+	-- a battle stance, its crouch.
 	function ENT:OnUpdateAnimation()
 		if self.NSSeated then return ACT_HL2MP_SIT, 1 end
+		if self.NSStance then return HoldAct("ACT_HL2MP_IDLE_CROUCH_", HoldType(self)), 1 end
 		return Base().OnUpdateAnimation(self)
 	end
 

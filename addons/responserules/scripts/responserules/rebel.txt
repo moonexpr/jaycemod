@@ -313,3 +313,159 @@ rule CartBlockedDefenseRebelFemale
 	ApplyContext "SaidCartMovingStoppedD:1:20"
 	response CartBlockedDefenseRebelFemale
 }
+
+// BattleStance: settled into its stance where it rests in setup: ready
+response BattleStanceRebel
+{
+	print "Rebel: ready when you are" defaultdelay
+}
+rule BattleStanceRebel
+{
+	criteria ConceptBattleStance IsRebel NotSaidBattleStance 50PercentChance
+	ApplyContext "SaidBattleStance:1:30"
+	response BattleStanceRebel
+}
+response BattleStanceRebelMale
+{
+	speak "vo/npc/male01/okimready01.wav" defaultdelay
+	speak "vo/npc/male01/okimready02.wav" defaultdelay
+	speak "vo/npc/male01/okimready03.wav" defaultdelay
+	speak "vo/npc/male01/readywhenyouare01.wav" defaultdelay
+	speak "vo/npc/male01/readywhenyouare02.wav" defaultdelay
+	speak "vo/npc/male01/letsgo01.wav" defaultdelay
+}
+rule BattleStanceRebelMale
+{
+	criteria ConceptBattleStance IsRebel NotSaidBattleStance 50PercentChance IsMaleVoice
+	ApplyContext "SaidBattleStance:1:30"
+	response BattleStanceRebelMale
+}
+response BattleStanceRebelFemale
+{
+	speak "vo/npc/female01/okimready01.wav" defaultdelay
+	speak "vo/npc/female01/okimready02.wav" defaultdelay
+	speak "vo/npc/female01/okimready03.wav" defaultdelay
+	speak "vo/npc/female01/readywhenyouare01.wav" defaultdelay
+	speak "vo/npc/female01/readywhenyouare02.wav" defaultdelay
+	speak "vo/npc/female01/letsgo01.wav" defaultdelay
+}
+rule BattleStanceRebelFemale
+{
+	criteria ConceptBattleStance IsRebel NotSaidBattleStance 50PercentChance IsFemaleVoice
+	ApplyContext "SaidBattleStance:1:30"
+	response BattleStanceRebelFemale
+}
+response BattleStanceRebelVortigaunt
+{
+	speak "vo/npc/vortigaunt/itishonor.wav" defaultdelay
+	speak "vo/npc/vortigaunt/ourhonor.wav" defaultdelay
+	speak "vo/npc/vortigaunt/wehonored.wav" defaultdelay
+}
+rule BattleStanceRebelVortigaunt
+{
+	criteria ConceptBattleStance IsRebel NotSaidBattleStance 50PercentChance IsVortigauntVoice
+	ApplyContext "SaidBattleStance:1:30"
+	response BattleStanceRebelVortigaunt
+}
+
+// PlayerPassing: a teammate player walks past: a greeting, to that player
+
+response PlayerPassingRebel
+{
+	print "Rebel: greets a passing teammate" defaultdelay
+}
+rule PlayerPassingRebel
+{
+	criteria ConceptPlayerPassing IsRebel NotSaidPlayerPassing 50PercentChance
+	ApplyContext "SaidPlayerPassing:1:45"
+	response PlayerPassingRebel
+}
+
+response PlayerPassingRebelMale
+{
+	speak "vo/npc/male01/hi01.wav" defaultdelay
+	speak "vo/npc/male01/hi02.wav" defaultdelay
+	speak "vo/npc/male01/squad_greet01.wav" defaultdelay
+	speak "vo/npc/male01/squad_greet02.wav" defaultdelay
+	speak "vo/npc/male01/squad_greet04.wav" defaultdelay
+}
+rule PlayerPassingRebelMale
+{
+	criteria ConceptPlayerPassing IsRebel NotSaidPlayerPassing 50PercentChance IsMaleVoice
+	ApplyContext "SaidPlayerPassing:1:45"
+	response PlayerPassingRebelMale
+}
+
+response PlayerPassingRebelFemale
+{
+	speak "vo/npc/female01/hi01.wav" defaultdelay
+	speak "vo/npc/female01/hi02.wav" defaultdelay
+	speak "vo/npc/female01/squad_greet01.wav" defaultdelay
+	speak "vo/npc/female01/squad_greet02.wav" defaultdelay
+	speak "vo/npc/female01/squad_greet04.wav" defaultdelay
+}
+rule PlayerPassingRebelFemale
+{
+	criteria ConceptPlayerPassing IsRebel NotSaidPlayerPassing 50PercentChance IsFemaleVoice
+	ApplyContext "SaidPlayerPassing:1:45"
+	response PlayerPassingRebelFemale
+}
+
+// EnemySpotted: a new enemy in sight: a callout, to all near
+
+response EnemySpottedRebel
+{
+	print "Rebel: heads up" defaultdelay
+}
+rule EnemySpottedRebel
+{
+	criteria ConceptEnemySpotted IsRebel NotSaidEnemySpotted 75PercentChance
+	ApplyContext "SaidEnemySpotted:1:10"
+	response EnemySpottedRebel
+}
+
+response EnemySpottedRebelMale
+{
+	speak "vo/npc/male01/headsup01.wav" defaultdelay
+	speak "vo/npc/male01/headsup02.wav" defaultdelay
+	speak "vo/npc/male01/incoming02.wav" defaultdelay
+	speak "vo/npc/male01/overthere01.wav" defaultdelay
+	speak "vo/npc/male01/overthere02.wav" defaultdelay
+	speak "vo/npc/male01/watchout.wav" defaultdelay
+}
+rule EnemySpottedRebelMale
+{
+	criteria ConceptEnemySpotted IsRebel NotSaidEnemySpotted 75PercentChance IsMaleVoice
+	ApplyContext "SaidEnemySpotted:1:10"
+	response EnemySpottedRebelMale
+}
+
+response EnemySpottedRebelFemale
+{
+	speak "vo/npc/female01/headsup01.wav" defaultdelay
+	speak "vo/npc/female01/headsup02.wav" defaultdelay
+	speak "vo/npc/female01/incoming02.wav" defaultdelay
+	speak "vo/npc/female01/overthere01.wav" defaultdelay
+	speak "vo/npc/female01/overthere02.wav" defaultdelay
+	speak "vo/npc/female01/watchout.wav" defaultdelay
+}
+rule EnemySpottedRebelFemale
+{
+	criteria ConceptEnemySpotted IsRebel NotSaidEnemySpotted 75PercentChance IsFemaleVoice
+	ApplyContext "SaidEnemySpotted:1:10"
+	response EnemySpottedRebelFemale
+}
+
+response EnemySpottedRebelAlyx
+{
+	speak "vo/npc/alyx/watchout01.wav" defaultdelay
+	speak "vo/npc/alyx/watchout02.wav" defaultdelay
+	speak "vo/npc/alyx/lookout01.wav" defaultdelay
+	speak "vo/npc/alyx/lookout03.wav" defaultdelay
+}
+rule EnemySpottedRebelAlyx
+{
+	criteria ConceptEnemySpotted IsRebel NotSaidEnemySpotted 75PercentChance IsAlyxVoice
+	ApplyContext "SaidEnemySpotted:1:10"
+	response EnemySpottedRebelAlyx
+}

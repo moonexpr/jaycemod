@@ -7,6 +7,23 @@ module(...)
 -- TF2's teamrole criterion: the cart's own team is on offense.
 OFFENSE, DEFENSE = "offense", "defense"
 
+-- A soldier settling into its battle stance where it rests in setup says it
+-- is ready (NextSoldier's own concept; TF2 has none for it).
+CONCEPT_BATTLE_STANCE = "TLK_NS_BATTLE_STANCE"
+
+-- A soldier greets a teammate player passing it (heard by that player
+-- alone), and calls out an enemy it has just spotted (heard by all near).
+CONCEPT_PLAYER_PASSING = "TLK_NS_PLAYER_PASSING"
+CONCEPT_ENEMY_SPOTTED = "TLK_NS_ENEMY_SPOTTED"
+
+-- A player passes a soldier within GREET_RANGE, moving at PASS_SPEED or
+-- faster (a walk; standing about beside it is not passing).
+GREET_RANGE, PASS_SPEED = 128, 90
+
+function Passes(distance, speed)
+	return distance <= GREET_RANGE and speed >= PASS_SPEED
+end
+
 -- A soldier's criteria set: its voice's affiliation and name
 -- (foundation.npc.voices), its team's role, a random draw 0..100 (TF2's
 -- randomnum), and whether the enemy holds the cart.

@@ -201,7 +201,10 @@ function Soldier:Pose()
 	return self.posing
 end
 
-function Soldier:Unpose() self.posing = nil end
+function Soldier:Unpose()
+	self.posing = nil
+	self.unposes = (self.unposes or 0) + 1
+end
 
 function Soldier:Release()
 	self.moving = nil
