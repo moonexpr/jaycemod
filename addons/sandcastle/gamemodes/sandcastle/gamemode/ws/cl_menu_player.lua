@@ -2,6 +2,9 @@
 -- in two columns, each slot marked with its badge (WS.UI.SlotBadge).
 -- - Left: the player's model, with a box around it for each of their five
 --   slots showing what it holds. Click a slot to pick it, again to unpick.
+--   Under it, a row of tiles, one per player model: click one to wear it
+--   from the next spawn (cl_playermodel, as the Store tab sets it); the model
+--   shows the pick at once and its tile is outlined.
 -- - Right: the weapons they own; while a slot is picked, every weapon it
 --   takes, the ones not owned with their price. Click an owned one to equip
 --   it, into the picked slot, or with none picked, where the loadout puts
@@ -18,7 +21,9 @@ local THEME = UI.THEME
 local TAB_NAME = "Loadout"
 local TAB_ICON = "icon16/gun.png"
 local TAB_ORDER = -40 -- first, ahead of Sandbox's Spawnlists (-10)
-local NEXT_SPAWN = "Loadout changes will take effect on respawn."
+local NEXT_SPAWN = "Loadout changes take effect at a resupply locker or on respawn; a new model, on respawn."
+local MODEL_CHANGED = "Your model changes at your next spawn."
+local NOTICE_SECONDS = 3
 local BADGE = 18
 local BADGE_GAP = 6
 
@@ -35,6 +40,38 @@ local RIGHT_SLOTS = { Loadout.SLOT_SUPPORT1, Loadout.SLOT_SUPPORT2 }
 local MODEL_FOV = 36
 local MODEL_CAMERA = Vector(80, 0, 40)
 local MODEL_LOOK_AT = Vector(0, 0, 36)
+
+-- The model tiles under the stage, scrolled sideways.
+local MODEL_TILE = 64
+local MODEL_STRIP = MODEL_TILE + GAP
+
+-- A player model's tile: its spawn icon in the box, outlined thick while
+-- it is the one worn (cl_playermodel).
+local WORN_BORDER = 3
+
+UI.Define("ModelTile", "DButton", {
+	Init = function(self)
+		self:SetText("")
+		self:SetSize(MODEL_TILE, MODEL_TILE)
+	end,
+	SetModelName = function(self, name, path)
+		self.modelName = name
+		self:SetTooltip(name)
+		self.icon = vgui.Create("SpawnIcon", self)
+		self.icon:SetModel(path)
+		self.icon:SetMouseInputEnabled(false)
+		local b = THEME.borderWidth
+		self.icon:SetPos(b, b)
+		self.icon:SetSize(MODEL_TILE - b * 2, MODEL_TILE - b * 2)
+	end,
+	Paint = function(self, w, h) UI.Box(w, h) end,
+	-- over the icon, which covers the box's inside
+	PaintOver = function(self, w, h)
+		if GetConVar("cl_playermodel"):GetString() ~= self.modelName then return end
+		surface.SetDrawColor(THEME.border)
+		surface.DrawOutlinedRect(0, 0, w, h, WORN_BORDER)
+	end,
+})
 
 -- A box holding its slot's badge and name small, a weapon's name large, and
 -- its icon.
@@ -63,6 +100,20 @@ UI.Define("PlayerMenu", "DPanel", {
 	Init = function(self)
 		self.loadoutBox = vgui.Create(UI.Name("Panel"), self)
 		UI.Title(self.loadoutBox, "Loadout")
+		self.models = vgui.Create("DHorizontalScroller", self.loadoutBox)
+		self.models:SetTall(MODEL_STRIP)
+		self.models:SetOverlap(-GAP / 2)
+		self.models:Dock(BOTTOM)
+		self.models:DockMargin(0, GAP, 0, 0)
+		for name, path in SortedPairs(player_manager.AllValidModels()) do
+			local tile = vgui.Create(UI.Name("ModelTile"), self.models)
+			tile:SetModelName(name, path)
+			tile.DoClick = function()
+				RunConsoleCommand("cl_playermodel", name)
+				notification.AddLegacy(MODEL_CHANGED, NOTIFY_GENERIC, NOTICE_SECONDS)
+			end
+			self.models:AddPanel(tile)
+		end
 		self.stage = vgui.Create("DPanel", self.loadoutBox)
 		self.stage:SetPaintBackground(false)
 		self.stage:Dock(FILL)
@@ -120,10 +171,14 @@ UI.Define("PlayerMenu", "DPanel", {
 		Column(RIGHT_SLOTS, w - SLOT_WIDTH)
 	end,
 
+	-- The model picked (cl_playermodel), which the player wears from their
+	-- next spawn, so the pick shows at once.
 	Think = function(self)
 		local ply = LocalPlayer()
-		if not IsValid(ply) or self.model:GetModel() == ply:GetModel() then return end
-		self.model:SetModel(ply:GetModel())
+		if not IsValid(ply) then return end
+		local picked = player_manager.TranslatePlayerModel(GetConVar("cl_playermodel"):GetString())
+		if self.model:GetModel() == picked then return end
+		self.model:SetModel(picked)
 		local ent = self.model:GetEntity()
 		if IsValid(ent) then ent.GetPlayerColor = function() return ply:GetPlayerColor() end end
 	end,
