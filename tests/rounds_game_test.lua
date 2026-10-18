@@ -647,6 +647,38 @@ T.test("a tie at the time limit is a deathmatch round whose winner wins the matc
 	T.eq(intermission.reason, Rounds.DEATHMATCH_MATCH_WIN, "by the deathmatch")
 end)
 
+-- The deathmatch is a bonus round timed as sudden death is: the map's
+-- timers hide and a stalemate timer of mp_stalemate_timelimit shows; run
+-- out with no team at the frag limit, the match ends a stalemate.
+T.test("a deathmatch runs on its stalemate timer; run out, the match is a stalemate", function()
+	local round = Running({ timelimit = TIMELIMIT_MINUTES, matchEndAtTimelimit = true, deathmatchEnable = true })
+	local over = TIMELIMIT_MINUTES * MINUTE
+	round:Think(over, World())
+	local fought = round:Think(over + Rounds.BONUS_FREEZE_SECONDS, World())
+	T.eq(round:State(), State.RND_RUNNING, "fought")
+	T.eq(Effect(fought, "hide_timers") ~= nil, true, "the map's timers hide: " .. Describe(fought))
+	local timer = Effect(fought, "stalemate_timer")
+	T.eq(timer ~= nil and timer.seconds, 240, "its own timer, mp_stalemate_timelimit long")
+	local left = over + Rounds.BONUS_FREEZE_SECONDS + 1
+	T.eq(Effect(round:Think(left, World({ stalemateTimerLeft = 10 })), "intermission"), nil, "time left: fought on")
+	local paused = round:Think(left + 1, World({ stalemateTimerLeft = 0, timerMayExpire = false }))
+	T.eq(Effect(paused, "intermission"), nil, "a timer that may not expire keeps it going")
+	local done = round:Think(left + 2, World({ stalemateTimerLeft = 0 }))
+	local intermission = Effect(done, "intermission")
+	T.eq(intermission ~= nil and intermission.winner, Rounds.NOBODY_WON, "nobody won: " .. Describe(done))
+	T.eq(intermission.reason, Rounds.STALEMATE_GAME_OVER, "a stalemate")
+	T.eq(round:State(), State.GAME_OVER, "the match is over")
+end)
+
+T.test("a round that is no deathmatch keeps the map's timers and has no stalemate timer", function()
+	local round = Rounds.New(Settings())
+	round:Think(T0, World())
+	local fought = round:Think(T0 + 1 + Rounds.PREROUND_SECONDS, World())
+	T.eq(Effect(fought, "stalemate_timer"), nil, "no stalemate timer")
+	T.eq(Effect(fought, "hide_timers"), nil, "the map's timers stay")
+	T.eq(Effect(round:Think(T0 + 10, World({ stalemateTimerLeft = 0 })), "intermission"), nil, "nothing ends it")
+end)
+
 T.test("a tied match at the win limit is a deathmatch round too; without deathmatch, sudden death", function()
 	local tied = { scores = { [RED] = 2, [BLUE] = 2 } }
 	local round = Running({ maxrounds = 4, deathmatchEnable = true })
@@ -945,6 +977,31 @@ T.test("a mode that makes no time limit timer suppresses it", function()
 	expected[#expected + 1] = "output Team1PlayersChanged 1"
 	expected[#expected + 1] = "output Team2PlayersChanged 1"
 	Expect(none:Think(T0, world), expected, "no time limit timer")
+end)
+
+-- CTFGameRules::HandleTimeLimitChange: a new mp_timelimit mid-match resets
+-- the time limit timer to the time left, or removes it when the limit no
+-- longer makes one.
+T.test("a changed time limit resets the time limit timer to the time left, or removes it", function()
+	local world = World({ mapHasActiveTimer = false })
+	local round = Running({ timelimit = 10, matchEndAtTimelimit = true }, world)
+	local now = T0 + 60
+	local function Limit(minutes)
+		round:SetLimits({ winlimit = 0, maxrounds = 0, timelimit = minutes })
+	end
+	Limit(TIMELIMIT_MINUTES)
+	local effects = round:TimeLimitTimer(now, world)
+	T.eq(Describe(effects), "time_limit_timer " .. (TIMELIMIT_MINUTES * MINUTE - now), "the new time left")
+	Limit(0)
+	T.eq(Describe(round:TimeLimitTimer(now, world)), "remove_time_limit_timer", "no limit: no timer")
+	Limit(1)
+	T.eq(Describe(round:TimeLimitTimer(now, world)), "remove_time_limit_timer", "a limit already spent: no timer")
+	Limit(TIMELIMIT_MINUTES)
+	T.eq(Describe(round:TimeLimitTimer(now, World({ mapHasActiveTimer = true }))), "remove_time_limit_timer",
+		"the map's own timer shows instead")
+	local kept = Running({ timelimit = 10 }, world)
+	kept:SetLimits({ winlimit = 0, maxrounds = 0, timelimit = TIMELIMIT_MINUTES })
+	T.eq(Describe(kept:TimeLimitTimer(now, world)), "remove_time_limit_timer", "a limit that ends no round makes none")
 end)
 
 T.test("setup and overtime report changes", function()

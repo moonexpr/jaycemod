@@ -690,8 +690,20 @@ function BonusFreeze(effects, now)
 	return ends
 end
 
+-- A bonus round's timer (sudden death's, a deathmatch's), of seconds; none
+-- for 0 or less.
+local function StalemateTimer(effects, seconds)
+	if seconds > 0 then
+		Add(effects, {
+			kind = "stalemate_timer",
+			seconds = seconds,
+		})
+	end
+end
+
 -- A tied match's bonus round: deathmatch, when on (mp_deathmatch_enable), a
 -- fresh round of frags alone whose winner wins the match; else sudden death.
+-- Fought, it is timed as sudden death is (RND_RUNNING's enter and think).
 local function Deathmatch(self, effects, now)
 	self.deathmatch = true
 	self.decideMatch, self.decideReason = true, DEATHMATCH_MATCH_WIN
@@ -748,6 +760,29 @@ local function CheckTimeLimit(self, effects, now, world)
 	return EndMatch(self, effects, "Reached Time Limit", now, world)
 end
 
+-- CTFGameRules::CreateTimeLimitTimer: a timer for the time left, only when
+-- the time limit ends the round and the map shows no timer of its own.
+local function TimeLimitTimerDue(self, now, world)
+	local settings = self.settings
+	return settings.timelimit > 0 and self:TimeLeft(now) > 0 and not world.mapHasActiveTimer
+		and self.mode.CREATES_TIME_LIMIT_TIMER
+		and (self.allowStalemateAtTimelimit or settings.matchEndAtTimelimit)
+end
+
+local function TimeLimitTimerEffect(self, now)
+	return {
+		kind = "time_limit_timer",
+		seconds = self:TimeLeft(now),
+	}
+end
+
+-- CTFGameRules::HandleTimeLimitChange, after SetLimits: the time limit
+-- timer set to the time left, or removed when none is due.
+function Round:TimeLimitTimer(now, world)
+	if TimeLimitTimerDue(self, now, world) then return { TimeLimitTimerEffect(self, now) } end
+	return { Kind("remove_time_limit_timer") }
+end
+
 -- CTFGameRules::SetupOnRoundStart: overtime ends and every entity hears
 -- RoundSpawn, then RoundActivate.
 local function SetupOnRoundStart(self, effects)
@@ -775,16 +810,7 @@ local function RoundRespawn(self, effects, now, world)
 		self.mapFresh = false
 		self.previousRounds = {}
 		Add(effects, Kind("activate_timers"))
-		-- CTFGameRules::CreateTimeLimitTimer: only when the time limit ends the round.
-		local settings = self.settings
-		if settings.timelimit > 0 and self:TimeLeft(now) > 0 and not world.mapHasActiveTimer
-			and self.mode.CREATES_TIME_LIMIT_TIMER
-			and (self.allowStalemateAtTimelimit or settings.matchEndAtTimelimit) then
-			Add(effects, {
-				kind = "time_limit_timer",
-				seconds = self:TimeLeft(now),
-			})
-		end
+		if TimeLimitTimerDue(self, now, world) then Add(effects, TimeLimitTimerEffect(self, now)) end
 	else
 		-- the kept map loses the last stage's bodies and blood, as a cleanup would
 		Add(effects, Kind("clear_gore"))
@@ -875,10 +901,27 @@ end
 
 -- RND_RUNNING: State_Enter_RND_RUNNING and CTFGameRules::SetupOnRoundRunning.
 
+-- A deathmatch's map timers hide behind its stalemate timer, as sudden
+-- death's do.
 ENTER[State.RND_RUNNING] = function(self, effects)
 	self.nextWave = PerTeam(0)
 	Add(effects, Output("OnStateEnterRoundRunning"))
 	Add(effects, Hook("WSRoundActive", {}))
+	if self.deathmatch then
+		Add(effects, Kind("hide_timers"))
+		StalemateTimer(effects, self.settings.stalemateTimelimit)
+	end
+end
+
+LEAVE[State.RND_RUNNING] = function(self, effects)
+	if self.deathmatch then Add(effects, Kind("restore_timers")) end
+end
+
+-- A deathmatch whose stalemate timer ran out with no team at the frag
+-- limit (which Round:LimitReached ends it at): the match ends a stalemate.
+local function DeathmatchTimedOut(self, world)
+	local left = world.stalemateTimerLeft
+	return self.deathmatch and left ~= nil and world.timerMayExpire and left <= 0
 end
 
 THINK[State.RND_RUNNING] = function(self, effects, now, world)
@@ -892,6 +935,7 @@ THINK[State.RND_RUNNING] = function(self, effects, now, world)
 		MatchSuddenDeath(self, effects, now)
 		return
 	end
+	if DeathmatchTimedOut(self, world) then return StalemateGameOver(self, effects, now, STALEMATE.TIMER) end
 	CheckRespawnWaves(self, effects, now, world)
 	CheckTimelimitStalemate(self, effects, now, world)
 end
@@ -931,15 +975,6 @@ end
 -- and the pre-round led to it, nobody respawns and the map's timers stay:
 -- the round starts (arena_round_start: OnArenaRoundStart and the
 -- cap-enable time) and runs, timed by the mode (StalemateSeconds).
-
-local function StalemateTimer(effects, seconds)
-	if seconds > 0 then
-		Add(effects, {
-			kind = "stalemate_timer",
-			seconds = seconds,
-		})
-	end
-end
 
 -- The arena round starts: arena_round_start (OnArenaRoundStart and the
 -- cap-enable time), timed by the mode.

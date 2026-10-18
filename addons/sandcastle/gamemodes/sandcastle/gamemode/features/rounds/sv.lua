@@ -113,6 +113,7 @@ local Controller = {
 	hudTimer = NULL,
 	previousActiveTimer = NULL,
 	stalemateTimer = NULL,
+	timeLimitTimer = NULL, -- mp_timelimit's own, on a map without a timer (CreateTimeLimitTimer)
 	teamClocks = {},
 	listeners = {
 		[Rounds.PHASE_SPAWN] = {},
@@ -156,7 +157,8 @@ local function PublishLimits()
 	SetGlobal2Float("ws_match_time_end", limits.timelimit > 0 and now + limits.timeLeft or 0)
 end
 
--- TF2 reads the match's limits live: a change mid-match moves its end.
+-- TF2 reads the match's limits live: a change mid-match moves its end, and
+-- the time limit timer with it (HandleTimeLimitChange).
 for _, name in ipairs({ "mp_winlimit", "mp_maxrounds", "mp_timelimit" }) do
 	cvars.AddChangeCallback(name, function()
 		Controller.round:SetLimits({
@@ -165,6 +167,10 @@ for _, name in ipairs({ "mp_winlimit", "mp_maxrounds", "mp_timelimit" }) do
 			timelimit = timelimit:GetInt(),
 		})
 		PublishLimits()
+		if name == "mp_timelimit" and Active() then
+			local now = CurTime()
+			Controller:Apply(Controller.round:TimeLimitTimer(now, Controller:World(now)))
+		end
 	end, "ws_rounds_limits")
 end
 

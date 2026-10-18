@@ -231,7 +231,18 @@ local EFFECTS = {
 		SetGlobal2Float("ws_arena_setup_end", 0)
 	end,
 	activate_timers = function(self) self:ActivateTimers() end,
-	time_limit_timer = function(self, e) self:CreateTimer(TIMELIMIT_TIMER_NAME, e.seconds) end,
+	-- CreateTimeLimitTimer: the one timer, made once and set to the time left
+	time_limit_timer = function(self, e)
+		if IsValid(self.timeLimitTimer) then
+			self:TimerInput(self.timeLimitTimer, "settime", e.seconds)
+		else
+			self.timeLimitTimer = self:CreateTimer(TIMELIMIT_TIMER_NAME, e.seconds)
+		end
+	end,
+	remove_time_limit_timer = function(self)
+		if IsValid(self.timeLimitTimer) then self.timeLimitTimer:Remove() end
+		self.timeLimitTimer = NULL
+	end,
 	switch_teams = function() SwitchTeams() end,
 	-- mp_scrambleteams_auto: told with the win, done as the next round starts
 	scramble_due = function()
