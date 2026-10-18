@@ -3,8 +3,22 @@
 -- flash. TF2's "#Token" strings are worded by foundation.localization.
 local math, string, table = math, string, table
 local Rounds = require("foundation.rounds")
+local State = require("foundation.rounds.state")
 local Teams = require("foundation.teams")
 module(...)
+
+-- The states whose centre panel shows the teams' scores itself (the win
+-- panel, the match's end), so the top scores and koth's team clocks go.
+local WIN_PANELS = {
+	[State.TEAM_WIN] = true,
+	[State.GAME_OVER] = true,
+}
+
+-- Whether the bar at the top (the team scores, koth's team clocks) shows in
+-- state.
+function ShowsTeamBar(state)
+	return not WIN_PANELS[state]
+end
 
 local RED, BLUE = Teams.RED, Teams.BLUE
 local FIRST_GAME_TEAM = Teams.FIRST_GAME_TEAM

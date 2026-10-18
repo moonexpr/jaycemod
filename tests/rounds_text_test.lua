@@ -235,4 +235,12 @@ T.test("a deathmatch says the match is tied and how many frags win it", function
 	T.eq(Text.DeathmatchNote(30), "DEATHMATCH! The match is tied: the first team to 30 frags wins it.")
 end)
 
+T.test("the top scores and koth's team clocks give way to the win panel", function()
+	local State = T.require("foundation.rounds.state")
+	T.eq(Text.ShowsTeamBar(State.RND_RUNNING), true, "while the round runs")
+	T.eq(Text.ShowsTeamBar(State.STALEMATE), true, "in sudden death")
+	T.eq(Text.ShowsTeamBar(State.TEAM_WIN), false, "under a round's win panel")
+	T.eq(Text.ShowsTeamBar(State.GAME_OVER), false, "under the match's")
+end)
+
 T.finish()

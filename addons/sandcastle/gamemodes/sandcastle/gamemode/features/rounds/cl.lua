@@ -210,9 +210,10 @@ function View:DrawTimer(w, h)
 end
 
 -- The team scores: BLU's box left of the centre, RED's right, above the
--- timer row, while the rounds run; an admin's "+points" beside its box.
+-- timer row, while the rounds run and no win panel shows them; an admin's
+-- "+points" beside its box.
 function View:DrawScores(w, h)
-	if not WS.Active() or WS.GameplayStopped() then return end
+	if not WS.Active() or WS.GameplayStopped() or not Text.ShowsTeamBar(WS.State()) then return end
 	local unit = Hud.Unit(h)
 	local boxes = Hud.ScoreBoxes(w / 2, ScoresTop(h), unit)
 	local font = Font(Hud.FONT_BUILD, Hud.SCORE_FONT_TALL, unit)

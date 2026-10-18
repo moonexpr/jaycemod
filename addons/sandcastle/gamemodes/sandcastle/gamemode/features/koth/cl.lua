@@ -12,6 +12,7 @@
 -- The point's unlock countdown and its lines are the capture view's; the
 -- overtime line is the rounds view's.
 WS.Feature("rounds")
+local Text = WS.require("foundation.rounds.text")
 local Timer = WS.require("foundation.rounds.timer")
 local Hud = WS.require("ws.tf_hud")
 local Font, DrawImage, Shadowed = WS.TFHud.Font, WS.TFHud.DrawImage, WS.TFHud.Shadowed
@@ -79,9 +80,10 @@ local function DrawClock(t, c, panel, unit)
 		Color(tan.r, tan.g, tan.b, alpha))
 end
 
--- Sandbox mode shows no clocks, as it shows no round timer.
+-- Sandbox mode shows no clocks, as it shows no round timer; nor does a win
+-- panel, which has the scores and the game over timer.
 function View:Paint(w, h)
-	if WS.GameplayStopped() then return end
+	if WS.GameplayStopped() or not Text.ShowsTeamBar(WS.State()) then return end
 	local unit = Hud.Unit(h)
 	local top = Hud.TimerTop(math.floor(h * timerY:GetFloat()), unit)
 	local shown = {}
