@@ -1,32 +1,27 @@
--- TF2's kill icons: the entries of its scripts/mod_textures.txt with a death
--- sheet (dfile: HUD/d_images and its _v2, _v3; dnegfile, the dark one for
+-- Kill icons: the entries of a scripts/mod_textures.txt with a death sheet
+-- (dfile: TF2's HUD/d_images and its _v2, _v3; dnegfile, the dark one for
 -- the light box of a kill the player took part in), each a rectangle on its
--- sheet; and which icon a kill shows by what made it (the inflictor's
--- class): TF2's own by name, an HL2 weapon by TF2's like one (HL2), any
--- other TF2's skull. ws/cl_kill_feed.lua draws them.
+-- sheet. TF2's are its own; Sandcastle's scripts/sandcastle_kill_icons.txt
+-- has HL2's weapons in TF2's look, by class (.devtools/bin/kill_icons_art.py
+-- draws them). Which icon a kill shows goes by what made it (the inflictor's
+-- class): its own, else its alias's (HL2), else TF2's skull.
+-- ws/cl_kill_feed.lua draws them.
 local Keyvalues = require("foundation.core.parsers.keyvalues")
-local lower, pairs, tonumber = string.lower, pairs, tonumber
+local lower, pairs, select, tonumber = string.lower, pairs, select, tonumber
 module(...)
 
 SKULL = "skull_tf"
 
--- HL2's weapons and what they throw, as TF2's like weapons.
+-- What HL2's weapons throw as their weapon, and what has no icon of its
+-- own as TF2's like one.
 HL2 = {
-	weapon_smg1 = "smg",
-	weapon_pistol = "pistol",
-	weapon_357 = "revolver",
-	weapon_shotgun = "shotgun_primary",
-	weapon_crossbow = "crusaders_crossbow",
-	crossbow_bolt = "crusaders_crossbow",
-	weapon_rpg = "tf_projectile_rocket",
-	rpg_missile = "tf_projectile_rocket",
-	weapon_frag = "tf_projectile_pipe",
-	npc_grenade_frag = "tf_projectile_pipe",
-	grenade_ar2 = "tf_projectile_pipe",
-	weapon_ar2 = "pomson", -- the pulse rifle: TF2's energy rifle
-	prop_combine_ball = "pomson",
-	weapon_crowbar = "wrench",
-	weapon_stunstick = "bat",
+	crossbow_bolt = "weapon_crossbow",
+	rpg_missile = "weapon_rpg",
+	npc_grenade_frag = "weapon_frag",
+	grenade_ar2 = "weapon_smg1",
+	prop_combine_ball = "weapon_ar2",
+	npc_satchel = "weapon_slam",
+	npc_tripmine = "weapon_slam",
 	npc_turret_floor = "obj_sentrygun",
 	entityflame = "flamethrower",
 	env_fire = "flamethrower",
@@ -50,6 +45,15 @@ function Parse(text)
 	end)
 	for name, entry in pairs(entries) do
 		if entry.file then icons[name] = entry end
+	end
+	return icons
+end
+
+-- Parsed sheets as one, a later sheet's icon over an earlier one's.
+function Over(...)
+	local icons = {}
+	for i = 1, select("#", ...) do
+		for name, icon in pairs((select(i, ...))) do icons[name] = icon end
 	end
 	return icons
 end

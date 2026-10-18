@@ -2,7 +2,8 @@
 -- notices: top right, newest at the bottom, each kill a box holding its
 -- killer and victim in their teams' colours (foundation.kill_feed: the AI
 -- war's soldiers in their sides') either side of TF2's kill icon for what
--- made it (foundation.kill_icons, from TF2's own scripts/mod_textures.txt).
+-- made it (foundation.kill_icons, from TF2's own scripts/mod_textures.txt and
+-- Sandcastle's HL2 weapons in its look, scripts/sandcastle_kill_icons.txt).
 -- A kill the player took part in is a light tan box with the dark icon, as
 -- TF2 marks its own; a death with no killer shows the victim and the icon
 -- alone. Each shows for LIFETIME seconds (hud_deathnotice_time).
@@ -19,7 +20,8 @@ hook.Add("InitPostEntity", "ws_kill_feed_names", function()
 	end
 end)
 
-local ICONS = Icons.Parse(file.Read("scripts/mod_textures.txt", "tf"))
+local ICONS = Icons.Over(Icons.Parse(file.Read("scripts/mod_textures.txt", "tf")),
+	Icons.Parse(file.Read("scripts/sandcastle_kill_icons.txt", "GAME")))
 
 local LIFETIME, MOST = 6, 6
 -- TF2's 480-tall units: a row, the gap under it, its icon, its padding and
@@ -42,7 +44,7 @@ end
 
 local function Sheet(path)
 	if not sheets[path] then
-		local material = Material(path)
+		local material = Material(path, "smooth") -- filters a PNG sheet; a VMT keeps its own
 		local texture = material:GetTexture("$basetexture")
 		sheets[path] = { material = material, w = texture:Width(), h = texture:Height() }
 	end
