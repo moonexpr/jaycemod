@@ -271,4 +271,46 @@ T.test("a vote may be closed before its time, counting what was cast", function(
 	T.eq(Vote.Current(book), nil, "over")
 end)
 
+T.test("a voter's ballot says what they cast, so their card can show it", function()
+	local book = Vote.New()
+	local vote = Call(book, "alice", Vote.KIND_RESET)
+	Vote.Cast(book, "bob", false)
+	T.eq(Vote.Ballot(vote, "alice"), Vote.BALLOT_YES, "the caller's yes")
+	T.eq(Vote.Ballot(vote, "bob"), Vote.BALLOT_NO, "a no")
+	T.eq(Vote.Ballot(vote, "carol"), Vote.BALLOT_NONE, "not cast yet")
+	book = Vote.New()
+	vote = Vote.StartChoices(book, Vote.KIND_NEXTMAP, MAPS, 0, Facts())
+	Vote.Cast(book, "alice", 3)
+	T.eq(Vote.Ballot(vote, "alice"), 3, "the option picked")
+	T.eq(Vote.Ballot(vote, "bob"), Vote.BALLOT_NONE, "not picked yet")
+end)
+
+-- The running vote as one player hears it (game_vote_state), for Heard.
+local function Heard(running, ends, cast)
+	return {
+		running = running,
+		question = "Restart the round?",
+		ends = ends or 20,
+		cast = cast or Vote.BALLOT_NONE,
+	}
+end
+
+T.test("a vote starting is heard, and so is a new vote after it", function()
+	T.eq(Vote.Heard(Heard(false), Heard(true)), Vote.HEARD_STARTED, "none ran before")
+	T.eq(Vote.Heard(Heard(true, 20), Heard(true, 45)), Vote.HEARD_STARTED, "another vote, at once")
+	T.eq(Vote.Heard(Heard(false), Heard(true, 20, Vote.BALLOT_YES)), Vote.HEARD_STARTED,
+		"the caller hears it start, not their own yes")
+end)
+
+T.test("a player's own cast is heard once, as it lands", function()
+	T.eq(Vote.Heard(Heard(true), Heard(true, 20, Vote.BALLOT_NO)), Vote.HEARD_CAST, "their no")
+	T.eq(Vote.Heard(Heard(true), Heard(true, 20, 3)), Vote.HEARD_CAST, "their pick")
+	T.eq(Vote.Heard(Heard(true, 20, Vote.BALLOT_NO), Heard(true, 20, Vote.BALLOT_NO)), nil, "someone else's cast")
+end)
+
+T.test("nothing to hear while no vote runs, or as one ends", function()
+	T.eq(Vote.Heard(Heard(false), Heard(false)), nil)
+	T.eq(Vote.Heard(Heard(true), Heard(false)), nil, "its result is heard instead")
+end)
+
 T.finish()

@@ -71,6 +71,7 @@ local function StateFor(vote, ply)
 			no = 0,
 			quorum = 0,
 			mine = false,
+			cast = Vote.BALLOT_NONE,
 			options = {},
 			counts = {},
 		}
@@ -87,6 +88,7 @@ local function StateFor(vote, ply)
 		no = no,
 		quorum = Vote.Quorum(vote),
 		mine = vote.voters[ply] == true and vote.choices[ply] == nil,
+		cast = Vote.Ballot(vote, ply),
 		options = vote.options or {},
 		counts = counts,
 	}

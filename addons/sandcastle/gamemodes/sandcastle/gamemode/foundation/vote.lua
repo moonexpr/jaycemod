@@ -207,6 +207,38 @@ function Cast(book, voter, choice)
 	vote.choices[voter] = choice
 end
 
+-- What a voter cast, as their card shows it: an option's number on a vote
+-- of choices, else BALLOT_YES or BALLOT_NO; BALLOT_NONE before they vote.
+BALLOT_NONE, BALLOT_YES, BALLOT_NO = 0, 1, 2
+
+function Ballot(vote, voter)
+	local choice = vote.choices[voter]
+	if choice == nil then return BALLOT_NONE end
+	if choice == true then return BALLOT_YES end
+	if choice == false then return BALLOT_NO end
+	return choice
+end
+
+-- What a player hears as the running vote changes, from the state they had
+-- (before) to the state they got (after; game_vote_state's running,
+-- question, ends and cast): a vote starting, as TF2 plays Vote.Created,
+-- their own cast landing (Vote.Cast.Yes or .No), else nil. The caller's yes
+-- comes with the vote, so they hear it start. A vote's end is heard from
+-- its result.
+HEARD_STARTED = "started"
+HEARD_CAST = "cast"
+
+local function SameVote(before, after)
+	return before.running and before.question == after.question and before.ends == after.ends
+end
+
+function Heard(before, after)
+	if not after.running then return nil end
+	if not SameVote(before, after) then return HEARD_STARTED end
+	if before.cast == BALLOT_NONE and after.cast ~= BALLOT_NONE then return HEARD_CAST end
+	return nil
+end
+
 -- A vote of choices' picks: each option's count, in the options' order.
 function Counts(vote)
 	local counts = {}

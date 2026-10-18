@@ -3,10 +3,10 @@
 -- proto) registers "WS<name>" on base, a UI name ("Dialog") or any derma
 -- class ("DFrame"); a new panel derives from one and overrides only what
 -- differs (derma copies the base's methods under the proto's). The library's
--- own: Panel (the box), Label (theme text), Progress (a bar, full to its
--- fraction, or a moving band while it has none), Button, Title (a box's
--- heading) and Dialog (a Panel with a title and a line, kept in the middle
--- of the screen).
+-- own: Box (drawing the box), Panel (the box), Label (theme text), Progress
+-- (a bar, full to its fraction, or a moving band while it has none),
+-- Button, Title (a box's heading) and Dialog (a Panel with a title and a
+-- line, kept in the middle of the screen).
 local UI = {}
 WS.UI = UI
 
@@ -42,14 +42,17 @@ end
 
 local THEME = UI.THEME
 
--- The box: the theme's background, inside its border.
-local function Box(w, h)
+-- The box: the theme's background, inside its border; at x, y for a HUD
+-- drawing one itself (the vote card), else filling the panel.
+local function Box(w, h, x, y)
+	x, y = x or 0, y or 0
 	surface.SetDrawColor(THEME.border)
-	surface.DrawRect(0, 0, w, h)
+	surface.DrawRect(x, y, w, h)
 	local b = THEME.borderWidth
 	surface.SetDrawColor(THEME.background)
-	surface.DrawRect(b, b, w - b * 2, h - b * 2)
+	surface.DrawRect(x + b, y + b, w - b * 2, h - b * 2)
 end
+UI.Box = Box
 
 UI.Define("Panel", "DPanel", {
 	Init = function(self)

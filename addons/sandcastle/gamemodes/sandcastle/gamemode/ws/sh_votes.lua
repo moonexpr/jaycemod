@@ -117,8 +117,9 @@ E.Define("game_vote_cast", {
 })
 
 -- The running vote as one player sees it; running false when none runs.
--- mine: whether this player may still vote. A vote of choices has options
--- and each one's count; a yes-or-no vote has none.
+-- mine: whether this player may still vote; cast: what they cast
+-- (Vote.Ballot). A vote of choices has options and each one's count; a
+-- yes-or-no vote has none.
 E.Define("game_vote_state", {
 	running = E.Bool(),
 	kind = E.UInt(KIND_BITS),
@@ -129,6 +130,7 @@ E.Define("game_vote_state", {
 	no = E.UInt(COUNT_BITS),
 	quorum = E.UInt(COUNT_BITS),
 	mine = E.Bool(),
+	cast = E.UInt(OPTION_BITS),
 	options = E.List(E.String(), OPTION_BITS),
 	counts = E.List(E.UInt(COUNT_BITS), OPTION_BITS),
 })
