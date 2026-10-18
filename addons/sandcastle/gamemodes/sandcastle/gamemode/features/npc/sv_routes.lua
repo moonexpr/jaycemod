@@ -75,6 +75,12 @@ local function Area(id)
 	return navmesh.GetNavAreaByID(id)
 end
 
+local function AreasOf(ids)
+	local areas = {}
+	for i, id in ipairs(ids) do areas[i] = Area(id) end
+	return areas
+end
+
 local function Center(id)
 	local center = Controller.centers[id]
 	if not center then
@@ -165,12 +171,6 @@ function Controller:RequestRoute(request)
 		if observed then self:PublishRoute({ search = search, observed = observed }, areas, found) end
 		request.onDone(areas, found)
 	end)
-end
-
-local function AreasOf(ids)
-	local areas = {}
-	for i, id in ipairs(ids) do areas[i] = Area(id) end
-	return areas
 end
 
 -- Runs the searches in turn within the tick's time; each that finishes
