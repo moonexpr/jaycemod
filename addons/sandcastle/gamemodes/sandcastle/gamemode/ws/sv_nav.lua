@@ -21,8 +21,9 @@
 -- reset (its doors and gates put back), and the admin who started it is
 -- told. Every client's progress box follows each stage
 -- (WS.NavProgress, ws/sh_nav_progress.lua). Meanwhile, and while
--- the engine's own nav_generate runs, new players are turned away
--- (WS.NavJoinRefusal, asked by GM:CheckPassword in init.lua).
+-- the engine's own nav_generate runs, players still join, but nobody picks
+-- a team or spawns: one who would spawn watches instead, and the dead stay
+-- down; when it is done, all of them spawn.
 --
 -- An idle server builds its own: once it is idle (WSServerIdle,
 -- ws/sv_idle.lua) on a map with no mesh, it runs as the console's would, and
@@ -38,7 +39,7 @@ local SEEDS = { "info_player_teamspawn", "info_player_start", "team_control_poin
 local DOORS = { "func_door", "func_door_rotating", "prop_door_rotating" }
 local BARRIERS = { "func_respawnroomvisualizer" }
 local DOOR_WAIT = 60
-local JOIN_REFUSAL = "This server is generating its navigation mesh and is temporarily unavailable; please come back in a few minutes"
+local HELD = "Calculating the navigation mesh: you spawn when it is done"
 local POLL = "ws_nav_generate"
 
 -- func_door's m_toggle_state while opening or closing; prop_door_rotating's
@@ -47,15 +48,49 @@ local TOGGLE_MOVING = { [2] = true, [3] = true }
 local PROP_DOOR_MOVING = { [1] = true, [3] = true }
 
 local underWay = false
+-- players made to watch while it runs, spawned when it is done
+local held = {}
 
 
 function WS.NavMeshUsable()
 	return navmesh.IsLoaded() and navmesh.GetNavAreaCount() > 0
 end
 
--- Why a new player may not join now, or nil when they may.
-function WS.NavJoinRefusal()
-	if underWay or navmesh.IsGenerating() then return JOIN_REFUSAL end
+-- Whether players are held back from teams and spawning now.
+local function Holding()
+	return underWay or navmesh.IsGenerating()
+end
+
+hook.Add("PlayerSpawn", "ws_nav_hold", function(ply)
+	if not Holding() then return end
+	held[ply] = true
+	WS.StartObserving(ply)
+	ply:PrintMessage(HUD_PRINTCENTER, HELD)
+	return true
+end)
+
+hook.Add("PlayerDeathThink", "ws_nav_hold", function()
+	if Holding() then return false end
+end)
+
+local function RefuseTeam(ply)
+	if not Holding() then return end
+	ply:PrintMessage(HUD_PRINTCENTER, HELD)
+	return true
+end
+
+hook.Add("PlayerRequestTeam", "ws_nav_hold", RefuseTeam)
+hook.Add("ShowTeam", "ws_nav_hold", RefuseTeam)
+
+-- Spawns everyone held back: those made to watch, and the dead.
+local function Release()
+	for _, ply in ipairs(player.GetHumans()) do
+		if held[ply] or not ply:Alive() then
+			WS.StopObserving(ply)
+			ply:Spawn()
+		end
+	end
+	held = {}
 end
 
 -- The masks walkers move under on this map, and the traces that stand in
@@ -205,7 +240,7 @@ local function Generate(ply, resume)
 	Each(BARRIERS, function(barrier) barrier:SetNotSolid(true) end)
 	Tell(ply, "Navigation mesh: opening " .. game.GetMap() .. "'s doors, then generating from " .. seeds .. " seeds; this takes a few minutes")
 	local started = CurTime()
-	WS.NavProgress(Progress.OPENING, started)
+	WS.NavProgress(Progress.OPENING)
 	local giveUp, began = started + DOOR_WAIT, false
 	timer.Create(POLL, 1, 0, function()
 		if not began then
@@ -221,7 +256,7 @@ local function Generate(ply, resume)
 				standIn:Spawn()
 			end)
 			navmesh.BeginGeneration()
-			WS.NavProgress(Progress.GENERATING, started)
+			WS.NavProgress(Progress.GENERATING)
 			return
 		end
 		if navmesh.IsGenerating() then return end
@@ -229,8 +264,9 @@ local function Generate(ply, resume)
 		underWay = false
 		for limit, value in pairs(limits) do limit:SetString(value) end
 		game.CleanUpMap()
+		Release()
 		WS.BridgeNavGaps()
-		WS.NavProgress(Progress.DONE, started, navmesh.GetNavAreaCount())
+		WS.NavProgress(Progress.DONE, navmesh.GetNavAreaCount())
 		Tell(ply, "Navigation mesh: done, " .. navmesh.GetNavAreaCount() .. " areas, saved as maps/" .. game.GetMap() .. ".nav; the map was reset")
 		if resume then WS.Feature("gamemode"):Request(Gamemode.GAMEPLAY, Gamemode.SOURCE_CONSOLE, nil) end
 	end)

@@ -89,11 +89,16 @@ local function load(t)
 	for name, value in pairs(t.limits or {}) do s.convars[name] = value end
 	s.requests, s.sent, s.created = {}, {}, {}
 	s.stages = {}
+	s.observing = {}
 	s.ws = {
 		require = T.require,
+		StartObserving = function(ply) s.observing[ply] = true end,
+		StopObserving = function(ply) s.observing[ply] = nil end,
 		-- The server console (nil) may; a player as their admin flag says.
 		Can = function(ply) return ply == nil or ply:IsAdmin() end,
-		NavProgress = function(stage, started, areas) s.stages[#s.stages + 1] = { stage = stage, started = started, areas = areas } end,
+		NavProgress = function(stage, areas, extra)
+			s.stages[#s.stages + 1] = { stage = stage, areas = areas, extra = extra }
+		end,
 		Feature = function(name)
 			assert(name == "gamemode", name)
 			return {
@@ -146,9 +151,11 @@ local function load(t)
 		hook = {
 			Add = function(event, name, fn)
 				local before = s.hooks[event]
+				-- as GMod's: the first hook to answer decides
 				s.hooks[event] = function(...)
-					if before then before(...) end
-					fn(...)
+					local answer = before and before(...)
+					if answer ~= nil then return answer end
+					return fn(...)
 				end
 			end,
 			Run = function(event) s.ran[#s.ran + 1] = event end,
@@ -166,6 +173,7 @@ local function load(t)
 		CurTime = function() return s.now end,
 		Vector = V,
 		IsValid = function(p) return p ~= nil end,
+		HUD_PRINTCENTER = 4,
 		print = function() end,
 	}, { __index = _G })
 	setfenv(assert(loadfile("addons/sandcastle/gamemodes/sandcastle/gamemode/ws/sv_nav.lua")), env)()
@@ -363,27 +371,65 @@ T.test("every client is told each stage: opening the doors, generating, done wit
 	T.eq(s.stages[2].stage, Progress.GENERATING)
 	T.eq(s.stages[3].stage, Progress.DONE)
 	T.eq(s.stages[3].areas, 2426)
-	T.eq(s.stages[3].started, s.stages[1].started, "timed from the start")
+	for _, told in ipairs(s.stages) do T.eq(told.extra, nil, "the progress alone: each client keeps its own time") end
 end)
 
 
-T.test("new players are refused, told to come back in a few minutes, from the start until it is done", function()
+-- A connected player: alive or not, spawned how many times, told what.
+local function Joiner(alive)
+	local p = Player(false)
+	p.alive, p.spawns, p.centre = alive, 0, {}
+	function p:Alive() return self.alive end
+	function p:Spawn() self.spawns, self.alive = self.spawns + 1, true end
+	function p:PrintMessage(kind, text) self.centre[#self.centre + 1] = text end
+	return p
+end
+
+T.test("while it generates, a player who spawns watches instead, and nobody respawns", function()
 	local s = load({ entities = SPAWNS })
-	T.eq(s.ws.NavJoinRefusal(), nil, "before")
+	local before = Joiner(false)
+	T.eq(s.hooks.PlayerSpawn(before), nil, "before: spawns as usual")
+	T.eq(s.hooks.PlayerDeathThink(before), nil, "before: respawns as usual")
 	s.commands.mp_nav_generate(nil)
-	local refusal = s.ws.NavJoinRefusal()
-	T.eq(refusal ~= nil and refusal:find("few minutes") ~= nil, true, "while the doors open: " .. tostring(refusal))
+	local joiner = Joiner(true)
+	T.eq(s.hooks.PlayerSpawn(joiner), true, "the doors opening: no spawn")
+	T.eq(s.observing[joiner], true, "watches")
+	T.eq(#joiner.centre, 1, "told why")
 	s.Poll()
-	T.eq(s.ws.NavJoinRefusal() ~= nil, true, "while it generates")
+	T.eq(s.hooks.PlayerDeathThink(Joiner(false)), false, "generating: no respawn")
+end)
+
+T.test("while it generates, nobody picks a team", function()
+	local s = load({ entities = SPAWNS })
+	local ply = Joiner(false)
+	T.eq(s.hooks.PlayerRequestTeam(ply, 2), nil, "before: as usual")
+	T.eq(s.hooks.ShowTeam(ply), nil, "before: as usual")
+	s.commands.mp_nav_generate(nil)
+	T.eq(s.hooks.PlayerRequestTeam(ply, 2), true, "refused")
+	T.eq(s.hooks.ShowTeam(ply), true, "no team menu")
+	T.eq(#ply.centre >= 1, true, "told why")
+end)
+
+T.test("when it is done, everyone held back spawns, and the living play on", function()
+	local watcher, dead, living = Joiner(true), Joiner(false), Joiner(true)
+	local s = load({ entities = SPAWNS, humans = { watcher, dead, living } })
+	s.commands.mp_nav_generate(nil)
+	s.hooks.PlayerSpawn(watcher)
+	s.Poll()
 	s.nav.generating, s.nav.areas = false, 2426
 	s.Poll()
-	T.eq(s.ws.NavJoinRefusal(), nil, "after")
+	T.eq(s.observing[watcher], nil, "no longer watching")
+	T.eq(watcher.spawns, 1, "the watcher spawned")
+	T.eq(dead.spawns, 1, "the dead spawned")
+	T.eq(living.spawns, 0, "the living left be")
+	T.eq(s.hooks.PlayerSpawn(Joiner(true)), nil, "after: spawns as usual")
 end)
 
-T.test("new players are refused while the engine's own nav_generate runs too", function()
+T.test("players are held back while the engine's own nav_generate runs too", function()
 	local s = load({ entities = SPAWNS })
 	s.nav.generating = true
-	T.eq(s.ws.NavJoinRefusal() ~= nil, true)
+	T.eq(s.hooks.PlayerSpawn(Joiner(true)), true)
+	T.eq(s.hooks.PlayerDeathThink(Joiner(false)), false)
 end)
 
 T.test("a mesh is usable once it has areas", function()
