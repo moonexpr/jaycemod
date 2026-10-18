@@ -106,13 +106,17 @@ function Flag:PickUp(carrier, carrierTeam, q)
 	return Event(PICKUP, carrierTeam)
 end
 
--- The carrier died, left or was made to drop it (ForceDrop).
-function Flag:Drop(now)
+-- The carrier died, left or was made to drop it (ForceDrop). Dropped in a
+-- func_respawnflag zone (inResetZone), it is reset at once
+-- (CCaptureFlag::Drop's PointInRespawnFlagZone): DROP, then RETURN.
+function Flag:Drop(now, inResetZone)
 	if self.state ~= CARRIED then return {} end
 	local team = self.carrierTeam
 	self.state, self.carrier, self.carrierTeam = DROPPED, nil, NOBODY
 	self.returnAt = now + self.returnTime
-	return Event(DROP, team)
+	local events = Event(DROP, team)
+	if inResetZone then events[2] = self:Reset(false)[1] end
+	return events
 end
 
 -- A dropped flag returns home once its ReturnTime has passed.
@@ -161,6 +165,21 @@ function Lines(e)
 		lines[#lines + 1] = {
 			team = team,
 			sound = "CaptureFlag." .. (team == e.team and "Team" or "Enemy") .. LINES[e.kind],
+		}
+	end
+	return lines
+end
+
+-- ResetMessage for MvM's bomb (TF_FLAGTYPE_ATTACK_DEFEND): a return is told
+-- to its own team (TF_AD_TEAM_RETURNED) and the defenders
+-- (TF_MVM_AD_ENEMY_RETURNED); the bomb's other events go unannounced.
+function InvadeLines(e)
+	if e.kind ~= RETURN then return {} end
+	local lines = {}
+	for _, team in ipairs(GAME_TEAMS) do
+		lines[#lines + 1] = {
+			team = team,
+			sound = team == e.team and "AttackDefend.TeamReturned" or "MVM.AttackDefend.EnemyReturned",
 		}
 	end
 	return lines

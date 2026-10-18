@@ -156,6 +156,11 @@ local function NotImplemented(self, name)
 	error(self.NAME .. " scenario: " .. name .. " not implemented", 3)
 end
 
+-- Each side's soldiers at a team size (mp_aiwar_team_size): as many a side.
+function Scenario:TeamSizes(size)
+	return { [Teams.RED] = size, [Teams.BLUE] = size }
+end
+
 function Scenario:Brief(field, now) NotImplemented(self, "Brief") end
 function Scenario:Stances(field, now) NotImplemented(self, "Stances") end
 function Scenario:Front(field, team) NotImplemented(self, "Front") end

@@ -150,6 +150,19 @@ T.test("a medic joins the carrier's squad while it carries the bomb, and leaves 
 	T.eq(far.attached == true and far.host == near, true, "the other medic goes with it")
 end)
 
+-- TF2's waves outnumber the defenders; the war keeps its total and gives
+-- the invaders INVADER_SHARE of it.
+T.test("MvM gives BLU INVADER_SHARE of both sides' soldiers; other scenarios split them evenly", function()
+	local sizes = Mvm.Scenario:TeamSizes(8)
+	T.eq(sizes[BLUE] + sizes[RED], 16, "the war's total kept")
+	T.eq(sizes[BLUE], math.floor(16 * Mvm.INVADER_SHARE + 0.5), "BLU's share")
+	T.eq(sizes[BLUE] > sizes[RED], true, "more robots than defenders")
+	local even = Scenario.Scenario:TeamSizes(8)
+	T.eq(even[RED] .. " " .. even[BLUE], "8 8", "elsewhere, even")
+	local none = Mvm.Scenario:TeamSizes(0)
+	T.eq(none[RED] .. " " .. none[BLUE], "0 0", "no soldiers, none either side")
+end)
+
 T.test("in setup the robots wait in their spawn; RED goes out", function()
 	local field = Briefed(Field(nil, true))
 	T.eq(field.doctrine.WaitsForSetup(field, Member(BLUE, AiWar.COURIER)), true, "BLU waits")

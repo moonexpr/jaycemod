@@ -3,6 +3,7 @@ local Controller, Map = ...
 local AiWar = WS.require("foundation.aiwar")
 local Squad = WS.require("foundation.aiwar.squad")
 local Slots = WS.require("foundation.aiwar.slots")
+local Scenario = WS.require("foundation.aiwar.scenario")
 local RED, BLUE = Map.RED, Map.BLUE
 local TeamSize = Map.TeamSize
 
@@ -31,14 +32,16 @@ function Controller:FactionName(team)
 	return (self.war and self.war:Faction(team) or AiWar.FACTIONS[team]).name
 end
 
--- At a team size every faction is resized to it, and the soldiers whose
--- slots go leave. Returns whether a faction's size changed.
+-- At a team size each faction is resized to its side's share of it (the
+-- scenario's TeamSizes: MvM's invaders outnumber the defenders), and the
+-- soldiers whose slots go leave. Returns whether a faction's size changed.
 function Controller:ResizeSlots(size)
 	local plan, changed = self:SlotPlan(), false
+	local sizes = (self.scenario or Scenario.Scenario):TeamSizes(size)
 	for _, team in ipairs({ RED, BLUE }) do
 		local faction = self:FactionName(team)
 		local before = plan:Size(faction)
-		for _, ent in ipairs(plan:Resize(faction, size)) do ent:Remove() end
+		for _, ent in ipairs(plan:Resize(faction, sizes[team])) do ent:Remove() end
 		changed = changed or plan:Size(faction) ~= before
 	end
 	return changed

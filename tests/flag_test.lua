@@ -130,6 +130,20 @@ T.test("MvM: BLU picks up its bomb and delivers it to its own zone", function()
 	T.eq(Kinds(bomb:Capture(BLUE)), Flag.CAPTURE, "delivered")
 end)
 
+-- CCaptureFlag::Drop: a flag dropped in a func_respawnflag zone (bigrock's
+-- death pit) is reset at once, as its OnReturn says (the map's relays).
+T.test("a flag dropped in a reset zone returns home at once", function()
+	local flag = Flag.New({ team = BLUE, returnTime = 60000 })
+	flag:PickUp(CARRIER, BLUE, MVM)
+	local events = flag:Drop(NOW, true)
+	T.eq(Kinds(events), Flag.DROP .. "," .. Flag.RETURN, "dropped, then returned")
+	T.eq(events[1].team, BLUE, "BLU dropped it")
+	T.eq(events[2].team, BLUE, "home to its team")
+	T.eq(flag:State(), Flag.HOME, "home")
+	flag:PickUp(CARRIER, BLUE, MVM)
+	T.eq(Kinds(flag:Drop(NOW, false)), Flag.DROP, "outside one it lies where it fell")
+end)
+
 T.test("ForceDrop drops a carried flag; ForceReset returns it, ForceResetSilent quietly", function()
 	local flag = Flag.New({ team = RED })
 	flag:PickUp(CARRIER, BLUE, CTF)
@@ -167,6 +181,18 @@ T.test("each team hears its Team line when it acts and the Enemy line otherwise"
 	for _, l in ipairs(Flag.Lines({ kind = Flag.RETURN, team = RED })) do heard[l.team] = l.sound end
 	T.eq(heard[RED], "CaptureFlag.TeamReturned", "the flag's team, on its return")
 	T.eq(heard[BLUE], "CaptureFlag.EnemyReturned", "the other")
+end)
+
+-- CCaptureFlag::ResetMessage for MvM's bomb (TF_FLAGTYPE_ATTACK_DEFEND):
+-- its own team hears AttackDefend.TeamReturned, the defenders MvM's
+-- EnemyReturned; nothing else of the bomb is announced.
+T.test("MvM's bomb going home is told to both teams; its other events are not", function()
+	local heard = {}
+	for _, l in ipairs(Flag.InvadeLines({ kind = Flag.RETURN, team = BLUE })) do heard[l.team] = l.sound end
+	T.eq(heard[BLUE], "AttackDefend.TeamReturned", "the robots")
+	T.eq(heard[RED], "MVM.AttackDefend.EnemyReturned", "the defenders")
+	T.eq(#Flag.InvadeLines({ kind = Flag.DROP, team = BLUE }), 0, "a drop: nothing")
+	T.eq(#Flag.InvadeLines({ kind = Flag.PICKUP, team = BLUE }), 0, "a pickup: nothing")
 end)
 
 -- The CTF tally ---------------------------------------------------------------------

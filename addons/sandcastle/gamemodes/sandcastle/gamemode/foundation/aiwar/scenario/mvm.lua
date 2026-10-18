@@ -13,7 +13,7 @@
 -- field.waypoints. Brief puts on the field, per team, its objectives: bomb,
 -- hatch, carrying (a BLU soldier has the bomb), moving (the bomb is away from
 -- home), escorts (BLU's) and outpost (RED's).
-local ipairs, min, pairs, sort = ipairs, math.min, pairs, table.sort
+local floor, ipairs, min, pairs, sort = math.floor, ipairs, math.min, pairs, table.sort
 local AiWar = require("foundation.aiwar")
 local Orders = require("foundation.aiwar.orders")
 local Teams = require("foundation.teams")
@@ -358,6 +358,15 @@ function Scenario:Stances(field, now)
 		[INVADERS] = { stance = STANCES.invade, key = "invade" },
 		[RED] = { stance = STANCES[key], key = key, critical = bomb.state == CARRIED },
 	}, {}
+end
+
+-- TF2's waves outnumber its defenders: the war keeps both sides' total and
+-- gives the invaders INVADER_SHARE of it.
+INVADER_SHARE = 2 / 3
+
+function Scenario:TeamSizes(size)
+	local invaders = floor(size * 2 * INVADER_SHARE + 0.5)
+	return { [INVADERS] = invaders, [RED] = size * 2 - invaders }
 end
 
 function Scenario:Front(field, team)

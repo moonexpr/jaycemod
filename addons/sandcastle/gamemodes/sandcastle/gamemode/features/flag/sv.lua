@@ -50,6 +50,8 @@ local Controller = {
 	rounds = WS.Feature("rounds"),
 	flags = {}, -- item_teamflag -> its model
 	zones = {}, -- func_capturezone -> { team, enabled }
+	resetZones = {}, -- func_respawnflag -> { enabled }
+	carriedAt = {}, -- item_teamflag -> its carrier's position at the last think
 	tally = Flag.NewTally(),
 	nextThink = 0,
 }
@@ -174,6 +176,8 @@ end
 local function Apply(self, ent, events, activator)
 	local flag = self.flags[ent]
 	local mode = Mode()
+	-- a new carrier, or none: its path through the reset zones starts afresh
+	self.carriedAt[ent] = nil
 	for _, e in ipairs(events) do
 		if e.kind == Flag.PICKUP then
 			Carry(ent, flag:Carrier())
@@ -186,6 +190,8 @@ local function Apply(self, ent, events, activator)
 		if mode.FLAG_CAPS_SCORE then
 			for _, line in ipairs(Flag.Lines(e)) do WS.BroadcastSound(line.team, line.sound) end
 			if e.kind == Flag.CAPTURE then Score(self, e.team) end
+		elseif mode.FLAG_INVADERS then
+			for _, line in ipairs(Flag.InvadeLines(e)) do WS.BroadcastSound(line.team, line.sound) end
 		end
 	end
 	PublishFlag(ent, flag)
@@ -219,12 +225,50 @@ function Controller:UnbindZone(ent)
 	self.zones[ent] = nil
 end
 
+-- func_respawnflag (CFuncRespawnFlagZone): a flag dropped in it, or whose
+-- carrier walks into it, goes home. kv = { disabled }.
+function Controller:BindResetZone(ent, kv)
+	self.resetZones[ent] = { enabled = not kv.disabled }
+end
+
+function Controller:UnbindResetZone(ent)
+	self.resetZones[ent] = nil
+end
+
+-- Enable, Disable.
+function Controller:ResetZoneInput(ent, name)
+	local zone = self.resetZones[ent]
+	if name == "enable" then zone.enabled = true return true end
+	if name == "disable" then zone.enabled = false return true end
+	return false
+end
+
+-- PointInRespawnFlagZone, swept: whether a move from `from` to `to` ends in
+-- or passes through an enabled func_respawnflag (the flag thinks every
+-- THINK_INTERVAL; a carrier falls further than a zone is deep in one).
+function Controller:InResetZone(from, to)
+	for ent, zone in pairs(self.resetZones) do
+		if zone.enabled and IsValid(ent) and ent:Crossed(from, to) then return true end
+	end
+	return false
+end
+
+-- The flag dropped where its carrier stands (CCaptureFlag::Drop), reset
+-- when the carrier passed through a func_respawnflag since the last think.
+function Controller:DropAt(ent, carrier, now)
+	local at = IsValid(carrier) and carrier or ent
+	local pos = at:GetPos()
+	local inZone = self:InResetZone(self.carriedAt[ent] or pos, pos)
+	self.carriedAt[ent] = nil
+	Apply(self, ent, self.flags[ent]:Drop(now, inZone), at)
+end
+
 -- Inputs ------------------------------------------------------------------------------
 
 local FLAG_INPUTS = {
 	enable = function(flag) return flag:SetEnabled(true) end,
 	disable = function(flag) return flag:SetEnabled(false) end,
-	forcedrop = function(flag) return flag:Drop(CurTime()) end,
+	forcedrop = function(flag, _, inResetZone) return flag:Drop(CurTime(), inResetZone) end,
 	forcereset = function(flag) return flag:Reset(false) end,
 	forceresetsilent = function(flag) return flag:Reset(true) end,
 	forceresetanddisablesilent = function(flag) return flag:SetEnabled(false) end,
@@ -244,7 +288,7 @@ function Controller:FlagInput(ent, name, value, activator)
 	if not handler then return false end
 	local flag = self.flags[ent]
 	local carrier = flag:Carrier()
-	local events = handler(flag, value)
+	local events = handler(flag, value, IsValid(carrier) and self:InResetZone(carrier:GetPos(), carrier:GetPos()))
 	Apply(self, ent, events, IsValid(carrier) and carrier or activator)
 	if name == "setteam" then ent:SetSkin(ent:WsSkin(flag:Team())) end
 	return true
@@ -306,13 +350,17 @@ local function ThinkFlag(self, ent, flag, now, q)
 	local carrier = flag:Carrier()
 	if flag:State() == Flag.CARRIED then
 		if not Alive(carrier) or WS.TeamNumber(carrier) ~= flag:CarrierTeam() then
-			Apply(self, ent, flag:Drop(now), IsValid(carrier) and carrier or ent)
+			self:DropAt(ent, carrier, now)
 			return
 		end
-		if InOwnRespawnRoom(carrier, flag:CarrierTeam(), q.invaders) then
-			Apply(self, ent, flag:Drop(now), carrier)
+		-- CFuncRespawnFlagZone::Touch: a carrier in it drops the flag, which
+		-- goes home (DropAt finds it in the zone)
+		local pos = carrier:GetPos()
+		if InOwnRespawnRoom(carrier, flag:CarrierTeam(), q.invaders) or self:InResetZone(self.carriedAt[ent] or pos, pos) then
+			self:DropAt(ent, carrier, now)
 			return
 		end
+		self.carriedAt[ent] = pos
 		local zone = ZoneFor(self, carrier, flag:CarrierTeam())
 		if not zone then return end
 		local events = flag:Capture(self.zones[zone].team)
@@ -373,7 +421,7 @@ end)
 -- flag before it would go with them.
 hook.Add("EntityRemoved", THINK_HOOK, function(ent)
 	for flagEnt, flag in pairs(Controller.flags) do
-		if flag:Carrier() == ent and IsValid(flagEnt) then Apply(Controller, flagEnt, flag:Drop(CurTime()), ent) end
+		if flag:Carrier() == ent and IsValid(flagEnt) then Controller:DropAt(flagEnt, ent, CurTime()) end
 	end
 end)
 

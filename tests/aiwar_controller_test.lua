@@ -684,6 +684,23 @@ T.test("an MvM map with its bomb and hatch starts the war; without the hatch it 
 	T.eq(type(reason), "string", "with a reason")
 end)
 
+T.test("an MvM war sizes its sides by the scenario's split, and keeps the slots that need", function()
+	local Mvm = T.require("foundation.aiwar.scenario.mvm")
+	local MvmMode = T.require("features.mvm.model").Mode
+	local w = World()
+	w.teamSize = 8
+	BombAndHatch(w)
+	w:Load("rounds", FakeRounds(MvmMode, w))
+	local controller = Load(w)
+	local before = controller:Sizes()
+	T.eq(before[RED] .. " " .. before[BLUE], "8 8", "before the war: even")
+	controller:Start()
+	local sizes = controller:Sizes()
+	local want = Mvm.Scenario:TeamSizes(8)
+	T.eq(sizes[RED] .. " " .. sizes[BLUE], want[RED] .. " " .. want[BLUE], "the MvM split")
+	T.eq(#controller:SlotPlan():Slots(controller:FactionName(BLUE)), want[BLUE], "BLU's faction has its slots")
+end)
+
 -- A capture feature with one point, neutral and capturable by both, its
 -- area FP.RADIUS / ZONE_INSET either side of the origin.
 local HALF = FP.RADIUS / ZONE_INSET
