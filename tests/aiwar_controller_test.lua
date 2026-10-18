@@ -645,6 +645,45 @@ T.test("a payload map starts the payload scenario, asks for Gameplay mode, and l
 	T.eq(select(2, controller:Start()), "the war is already on", "once")
 end)
 
+-- A flag feature with BLU's bomb at home and, unless noHatch, the hatch
+-- it is delivered to: an MvM map's (features/flag/sv.lua).
+local function BombAndHatch(w, noHatch)
+	local bombEnt = Ent(Vector(100, 0, 0))
+	bombEnt.wsHome = Vector(100, 0, 0)
+	local bomb = {
+		Team = function() return BLUE end,
+		Carrier = function() return nil end,
+		CarrierTeam = function() return NOBODY end,
+		Enabled = function() return true end,
+		State = function() return "home" end,
+	}
+	local hatch = Ent(Vector(-100, 0, 0))
+	hatch.WorldSpaceCenter = function() return Vector(-100, 0, 0) end
+	w:Load("flag", {
+		flags = { [bombEnt] = bomb },
+		zones = noHatch and {} or { [hatch] = { enabled = true, team = BLUE } },
+		tally = { Captures = function() return 0 end },
+		CapLimit = function() return 0 end,
+	})
+end
+
+T.test("an MvM map with its bomb and hatch starts the war; without the hatch it says why not", function()
+	local MvmMode = T.require("features.mvm.model").Mode
+	local w = World()
+	BombAndHatch(w)
+	w:Load("rounds", FakeRounds(MvmMode, w))
+	local controller = Load(w)
+	local ok, why = controller:Start()
+	T.eq(ok, true, "started: " .. tostring(why))
+	T.eq(controller.scenario.NAME, MvmMode.NAME, "the MvM scenario")
+	local bare = World()
+	BombAndHatch(bare, true)
+	bare:Load("rounds", FakeRounds(MvmMode, bare))
+	local refused, reason = Load(bare):Start()
+	T.eq(refused, false, "refused")
+	T.eq(type(reason), "string", "with a reason")
+end)
+
 -- A capture feature with one point, neutral and capturable by both, its
 -- area FP.RADIUS / ZONE_INSET either side of the origin.
 local HALF = FP.RADIUS / ZONE_INSET

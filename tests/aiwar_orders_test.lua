@@ -108,6 +108,24 @@ T.test("a stage's own settings override its role's", function()
 	role.Goal, role.STAGES = base, nil
 end)
 
+-- A stage with its own settings is still its job: its trip goes on under
+-- it (an MvM carrier's DeliverFlag travels to the hatch), and ends as the
+-- stage does.
+T.test("a stage with its own settings travels to its goal, until the stage changes", function()
+	local role = STAGED.ROLES[AiWar.COURIER]
+	role.STAGES = { Deliver = { arrive = 8, Goal = function() return P(3000, 0) end } }
+	local me, npc, war = Enlist({ role = AiWar.COURIER, field = StagedField("Deliver"), walkable = function() return true end })
+	Tick(me, npc, 4)
+	T.eq(Orders.JobOf(npc:Describe()), "Travel", "travelling: " .. npc:Describe())
+	T.eq(me.moving ~= nil, true, "moving")
+	Tick(me, npc, 8)
+	T.eq(Orders.JobOf(npc:Describe()), "Travel", "still travelling: " .. npc:Describe())
+	war:SetField(StagedField("RetrieveFlag"))
+	Tick(me, npc, 2)
+	T.eq(Orders.JobOf(npc:Describe()):match("^[^/]+"), "RetrieveFlag", "a new stage ends the trip: " .. npc:Describe())
+	role.STAGES = nil
+end)
+
 T.test("the fake soldier implements the whole port", function()
 	local me = FS.Soldier()
 	for _, name in ipairs(Soldier.METHODS) do
@@ -1414,6 +1432,30 @@ T.test("a job with a zone travels into it, then shuffles between spots in it eve
 	T.eq(me.moving, nil, "resting there")
 	Tick(me, npc, Orders.ZONE_SHUFFLE / TICK + 1)
 	Near(me.moving, second, "then on to another")
+end)
+
+-- An urgent job's fight (TF2's CTFBotDeliverFlag: the bomb carrier) is
+-- fought on the way: it neither regroups on its leader nor bounds or holds
+-- with its squad, but travels its route to its goal.
+T.test("an urgent job in a fight travels on to its goal instead of fighting as its squad", function()
+	local doctrine = Stub("Pressing")
+	doctrine.ROLES[AiWar.CAPTURE].tactic = "attack"
+	local function Pair(urgent)
+		return Squadmates({ role = AiWar.CAPTURE, field = StubField({ doctrine = doctrine, urgent = urgent }),
+			a = { pos = P(-1000, 0), walkable = function() return true end },
+			b = { pos = P(1000, 0), enemy = true, enemyPos = P(1300, 300), walkable = function() return true end } })
+	end
+	local s = Pair(true)
+	s.Tick(2)
+	T.eq(s.a.fireTeam ~= nil and s.a.fireTeam == s.b.fireTeam, true, "squadmates")
+	T.eq(SquadRoleOf(s.npcB), "SquadMember", "b follows a")
+	T.eq(Orders.JobOf(s.npcB:Describe()), "Travel", "travelling: " .. s.npcB:Describe())
+	T.eq(s.npcB:State().tactic, nil, "no squad tactic")
+	s.Tick(4)
+	T.eq(Orders.JobOf(s.npcB:Describe()), "Travel", "still travelling, its enemy in sight")
+	local calm = Pair(false)
+	calm.Tick(2)
+	T.eq(calm.npcB:State().tactic, "regrouping on its leader", "a job that is not urgent regroups first")
 end)
 
 T.test("an urgent job rushes, does not stop at its leash for an enemy, and will not retreat", function()

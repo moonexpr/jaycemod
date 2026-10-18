@@ -576,6 +576,17 @@ end
 
 local Travel = N.Action:Extend("Travel")
 
+-- Whether role (a job's, or one at a stage: StageRole) is what the doctrine
+-- gives member now: the same job's role, at the same stage when that stage
+-- has settings of its own.
+local function RunsUnder(role, field, member)
+	local base = role.base or role
+	if DoctrineOf(field).ROLES[member.role] ~= base then return false end
+	local stage = base.Stage and base.Stage(field, member)
+	local staged = stage and base.STAGES and base.STAGES[stage] and stage or nil
+	return staged == role.stage
+end
+
 -- A wander or patrol spot is travelled to as a role's goal is, with these
 -- terms.
 local WANDER = { name = "Wander", arrive = WANDER_ARRIVE, leash = 0, rushes = false, giveUp = WANDER_GIVE_UP }
@@ -793,7 +804,7 @@ function Travel:Goal(me, field)
 		if me:Now() >= self.giveUpAt then return nil, "gave up" end
 		return self.spot
 	end
-	if DoctrineOf(field).ROLES[state.member.role] ~= self.role then return nil, "orders changed" end
+	if not RunsUnder(self.role, field, state.member) then return nil, "orders changed" end
 	if DoctrineOf(field).WaitsForSetup(field, state.member) then return nil, "setup began" end
 	local goal = self.role.Goal(field, state.member)
 	-- a raider round the line: its side's cart (Objective:RaidGoal)
@@ -806,7 +817,7 @@ function Travel:Update(me)
 	local state, role = self.state, self.role
 	local field = state.war:Field()
 	local urgent = not self.spot and IsUrgent(role, field, state.member)
-	if not self.spot and role.tactic and TeamContact(state, me) then return self:End("contact") end
+	if not self.spot and not urgent and role.tactic and TeamContact(state, me) then return self:End("contact") end
 	if not self.spot and not urgent and role.chases and ChaseWanted(role, me, field, state.member) then return self:End("a weakened enemy") end
 	local goal, over = self:Goal(me, field)
 	self.gait = (self.spot and (role.gait or WALK)) or (field and field.setup and PANIC) or ((role.rushes or urgent) and RUSH) or RUN
@@ -939,13 +950,16 @@ local OBJECTIVE_OF = {} -- doctrine -> job -> its Objective class
 local Idle = N.Action:Extend("Idle")
 
 -- A role at a stage: its own settings with the stage's (STAGES[stage])
--- over them; false clears one (chases = false: it chases nobody).
+-- over them; false clears one (chases = false: it chases nobody). The
+-- merged role keeps the job's role (base) and its stage, which a trip
+-- checks it still runs under (RunsUnder).
 local function StageRole(role, stage)
 	local override = stage and role.STAGES and role.STAGES[stage]
 	if not override then return role end
 	local merged = {}
 	for k, v in pairs(role) do merged[k] = v end
 	for k, v in pairs(override) do merged[k] = v end
+	merged.base, merged.stage = role, stage
 	return merged
 end
 
@@ -1103,7 +1117,10 @@ function Objective:Update(me)
 	if self.role.raids and not field.setup then goal = self:RaidGoal(me, field, goal) end
 	local range = me:RangeTo(goal)
 	if self.role.tactic and not field.setup then
-		local contact = TeamContact(state, me)
+		-- an urgent job fights on the way (CTFBotDeliverFlag): no regrouping,
+		-- bounding or holding with its squad; it travels on, its engine AI
+		-- shooting as it goes
+		local contact = not urgent and TeamContact(state, me)
 		if contact then return self:Fight(me, goal, contact) end
 		self:EndFight()
 	end

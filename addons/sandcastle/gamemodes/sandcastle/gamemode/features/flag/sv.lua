@@ -123,7 +123,7 @@ local function Carry(ent, carrier)
 		ent:SetLocalAngles(angle_zero)
 		return
 	end
-	carrier:SetupBones()
+	-- the server sets the bones up as it is asked for one (SetupBones is the client's)
 	local bonePos, boneAng = carrier:GetBonePosition(bone)
 	local forward = carrier:GetForward()
 	-- the case's long side up, its thin side facing back
