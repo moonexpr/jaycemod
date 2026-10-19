@@ -510,13 +510,20 @@ function WS.DrgSoldier(ENT, baseName)
 
 	-- A wave revives a kept body where it spawns its soldiers: at full
 	-- health, seen and solid, alive to the engine and to DrGBase, with a fresh
-	-- behaviour coroutine in place of the death one.
+	-- behaviour coroutine in place of the death one. A soldier that died
+	-- mid-climb or mid-leap (CustomClimbing) never reached the end where
+	-- DrGBase clears those: they are cleared here, or it comes back walking
+	-- in its climb animation.
 	function ENT:NSRevive(pos, ang)
 		self.NSDormant = nil
 		self:SetPos(pos)
 		self:SetAngles(ang)
 		self:SetNW2Bool("DrGBaseDying", false)
 		self:SetNW2Bool("DrGBaseDead", false)
+		self:SetNW2Bool("DrGBaseClimbing", false)
+		self:SetNW2Bool("DrGBaseClimbingDown", false)
+		self:SetNW2Bool("DrGBaseJumping", false)
+		self._DrGBaseClimbLadder, self.NSLeapt, self.NSLeapRetry = nil, nil, nil
 		self:SetSaveValue("m_lifeState", LIFE_ALIVE)
 		self:SetHealth(self:GetMaxHealth())
 		self:SetNotSolid(false)
