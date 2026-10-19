@@ -12,15 +12,18 @@ cream and once in the dark of TF2's dneg_images (the light box of a kill the
 player took part in), and keeps each sheet's layered master in
 .devtools/artifacts/kill_icons/.
 
-Writes, under the gamemode's content/:
-  materials/sandcastle/kill_icons/hl2.png, hl2_neg.png    the sheets
-  scripts/sandcastle_kill_icons.txt                        their layout, in
-      TF2's scripts/mod_textures.txt format, which foundation.kill_icons reads
+Writes, under the gamemode:
+  content/materials/sandcastle/kill_icons/hl2_<hash>.png, hl2_<hash>_neg.png
+      the sheets, named for what they hold so a client downloads a changed
+      one again; the last ones are removed
+  gamemode/ws/kill_icons_sheet.lua    their layout, in TF2's
+      scripts/mod_textures.txt format, which foundation.kill_icons reads
 
 Needs photocraft-cli on PATH.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 import subprocess
@@ -34,10 +37,12 @@ ROOT = Path(__file__).resolve().parents[2]
 # not mounted where the server and the game run (server_root.py links the
 # gamemode alone)
 CONTENT = ROOT / "addons" / "sandcastle" / "gamemodes" / "sandcastle" / "content"
-MATERIAL = "sandcastle/kill_icons/hl2"
-SHEET = CONTENT / "materials" / f"{MATERIAL}.png"
-SHEET_NEG = CONTENT / "materials" / f"{MATERIAL}_neg.png"
-LAYOUT = CONTENT / "scripts" / "sandcastle_kill_icons.txt"
+# The sheets are named for what they hold: a client downloads a file it does
+# not have, never one it has that has changed (ws/sv_content.lua sends them).
+SHEETS = CONTENT / "materials" / "sandcastle" / "kill_icons"
+SHEET_PREFIX = "hl2_"
+# The layout ships as Lua, which clients are sent fresh every join.
+LAYOUT = ROOT / "addons" / "sandcastle" / "gamemodes" / "sandcastle" / "gamemode" / "ws" / "kill_icons_sheet.lua"
 MASTERS = ROOT / ".devtools" / "artifacts" / "kill_icons"
 
 UNIT_TALL = 32  # TF2's kill icon height, in the units the designs are drawn in
@@ -104,6 +109,10 @@ def circle(cx: float, cy: float, r: float, n: int = 20) -> Tuple[Point, ...]:
     return tuple((cx + r * math.cos(2 * math.pi * i / n), cy + r * math.sin(2 * math.pi * i / n)) for i in range(n))
 
 
+def ellipse(cx: float, cy: float, rx: float, ry: float, n: int = 24) -> Tuple[Point, ...]:
+    return tuple((cx + rx * math.cos(2 * math.pi * i / n), cy + ry * math.sin(2 * math.pi * i / n)) for i in range(n))
+
+
 def arc(cx: float, cy: float, r: float, start: float, end: float, step: float = 15) -> Tuple[Point, ...]:
     """Points on a circle from start to end degrees (y down, 0 at the right)."""
     count = max(1, round(abs(end - start) / step))
@@ -160,6 +169,19 @@ def cuts(*shapes: Tuple[Point, ...]) -> Tuple[Part, ...]:
 
 def solid(*shapes: Tuple[Point, ...]) -> Tuple[Part, ...]:
     return tuple(Part(s) for s in shapes)
+
+
+def pose(parts: Sequence[Part], about: Point, at: Point, scale: float = 1, degrees: float = 0,
+         flip: bool = False) -> Tuple[Part, ...]:
+    """A design moved from about to at: flipped upside down if asked, scaled, then
+    turned degrees counter-clockwise on screen (y down)."""
+    c, s = math.cos(math.radians(degrees)), math.sin(math.radians(degrees))
+
+    def place(p: Point) -> Point:
+        dx, dy = (p[0] - about[0]) * scale, (p[1] - about[1]) * scale * (-1 if flip else 1)
+        return (at[0] + dx * c + dy * s, at[1] - dx * s + dy * c)
+
+    return tuple(Part(tuple(place(k) for k in part.knots), part.op) for part in parts)
 
 
 # The icons, in units on TF2's 96 x 32 cell, muzzle right
@@ -262,30 +284,45 @@ CROSSBOW = Icon(
     + cuts(rect(32, 13.8, 6, 0.6), rect(42, 17.6, 8, 0.6)),
 )
 
+# Drawn level, then turned so its hook is at the top right and its claw at the
+# bottom left, rising toward the victim.
 CROWBAR = Icon(
     "weapon_crowbar",
-    solid(thick(((86, 11.5), (80, 15.5)) + arc(14, 10.5, 5, 90, 330), 3))
-    + cuts(rect(20, 15.2, 58, 0.5)),
-)
-
-STUNSTICK = Icon(
-    "weapon_stunstick",
-    solid(
-        rect(8, 13, 22, 6), rect(6, 13.5, 2, 5), rect(29, 11.5, 3, 9),
-        ((32, 14.5), (78, 15), (78, 17), (32, 17.5)),
-        ((78, 13.5), (84, 13.5), (86, 15), (86, 17), (84, 18.5), (78, 18.5)),
-    )
-    + cuts(*(rect(11 + i * 4, 13, 0.9, 6) for i in range(5)))
-    + cuts(rect(80, 13.5, 0.8, 5)),
-    solid(
-        thick(((86, 12), (89, 9), (88, 12), (92, 8)), 1),
-        thick(((87, 19.5), (90, 22.5), (89, 20), (93, 23.5)), 1),
-        thick(((88, 16), (91, 15), (90, 16.5), (94, 16)), 1),
+    pose(
+        solid(thick(((86, 11.5), (80, 15.5)) + arc(14, 10.5, 5, 90, 330), 3))
+        + cuts(rect(20, 15.2, 58, 0.5)),
+        about=(50, 13), at=(50, 15.6), degrees=192,
     ),
 )
 
-FRAG = Icon(
-    "weapon_frag",
+# Drawn level, then rising toward the victim as the crowbar does.
+STUNSTICK_MIDDLE = (50, 16)
+
+STUNSTICK = Icon(
+    "weapon_stunstick",
+    pose(
+        solid(
+            rect(8, 13, 22, 6), rect(6, 13.5, 2, 5), rect(29, 11.5, 3, 9),
+            ((32, 14.5), (78, 15), (78, 17), (32, 17.5)),
+            ((78, 13.5), (84, 13.5), (86, 15), (86, 17), (84, 18.5), (78, 18.5)),
+        )
+        + cuts(*(rect(11 + i * 4, 13, 0.9, 6) for i in range(5)))
+        + cuts(rect(80, 13.5, 0.8, 5)),
+        STUNSTICK_MIDDLE, at=(50, 18), degrees=12,
+    ),
+    pose(
+        solid(
+            thick(((86, 12), (89, 9), (88, 12), (92, 8)), 1),
+            thick(((87, 19.5), (90, 22.5), (89, 20), (93, 23.5)), 1),
+            thick(((88, 16), (91, 15), (90, 16.5), (94, 16)), 1),
+        ),
+        STUNSTICK_MIDDLE, at=(50, 18), degrees=12,
+    ),
+)
+
+# One grenade, about its middle; the icon throws three, large to small, each
+# tumbling its own way, as TF2's projectile kill icons show theirs.
+GRENADE = (
     solid(
         ((41, 10), (42, 8), (54, 8), (55, 10), (55, 28), (54, 29.5), (42, 29.5), (41, 28)),
         rect(43, 5, 10, 3),
@@ -294,8 +331,15 @@ FRAG = Icon(
     + cuts(*(rect(41, 12 + i * 4, 14, 0.8) for i in range(4)))
     + cuts(circle(48, 6.5, 1, 10))
     + solid(circle(39, 5, 2.6))
-    + cuts(circle(39, 5, 1.4, 12)),
-    solid(burst(68, 19, 9, 4, 9)),
+    + cuts(circle(39, 5, 1.4, 12))
+)
+GRENADE_MIDDLE = (48, 16)
+
+FRAG = Icon(
+    "weapon_frag",
+    pose(GRENADE, GRENADE_MIDDLE, at=(14, 16), scale=0.85, degrees=14)
+    + pose(GRENADE, GRENADE_MIDDLE, at=(34, 17.5), scale=0.62, degrees=-12)
+    + pose(GRENADE, GRENADE_MIDDLE, at=(50, 19), scale=0.45, degrees=24),
 )
 
 RPG = Icon(
@@ -311,8 +355,7 @@ RPG = Icon(
     solid(burst(88, 12, 6, 3, 7)),
 )
 
-GRAVITY_GUN = Icon(
-    "weapon_physcannon",
+PHYSCANNON = (
     solid(
         ((10, 10), (16, 6), (44, 6), (48, 9), (48, 22), (44, 25), (16, 25), (10, 21)),
         thick(((18, 6.5), (21, 2.5), (40, 2.5), (43, 6.5)), 2),
@@ -324,8 +367,23 @@ GRAVITY_GUN = Icon(
     )
     + cuts(circle(30, 15.5, 5.5))
     + solid(circle(30, 15.5, 4))
-    + cuts(circle(30, 15.5, 1.5, 12), rect(48, 15.2, 10, 0.6)),
+    + cuts(circle(30, 15.5, 1.5, 12), rect(48, 15.2, 10, 0.6))
+)
+
+GRAVITY_GUN = Icon(
+    "weapon_physcannon",
+    PHYSCANNON,
     solid(burst(88, 15.5, 6, 3, 8)),
+)
+
+# A prop's kill: the gravity gun, smaller, punting a crate toward the victim.
+CRATE = solid(rect(0, 0, 18, 18)) + cuts(rect(2.5, 2.5, 13, 13)) + solid(thick(((3, 15), (15, 3)), 2.4))
+
+PROP = Icon(
+    "prop_physics",
+    pose(PHYSCANNON, (46, 16), at=(34, 17), scale=0.7)
+    + pose(CRATE, (9, 9), at=(74, 15), degrees=10),
+    pose(solid(burst(88, 15.5, 6, 3, 8)), (88, 15.5), at=(62.5, 17), scale=0.8),
 )
 
 
@@ -355,7 +413,50 @@ SLAM = Icon(
     solid(rect(62, 18, 30, 0.8)),
 )
 
-ICONS = (PISTOL, MAGNUM, SMG, PULSE_RIFLE, SHOTGUN, CROSSBOW, CROWBAR, STUNSTICK, FRAG, RPG, GRAVITY_GUN, BUGBAIT, SLAM)
+# Halloween: a pumpkin bomb bursting, the Horsemann's head and his axe, and
+# MONOCULUS firing. A boss's kill shows the boss (foundation.kill_icons).
+
+# A jack-o'-lantern about (30, 19): three lobes, a stem, its face cut through.
+JACK = (
+    solid(ellipse(22, 19, 8, 10), ellipse(38, 19, 8, 10), ellipse(30, 19, 10, 11),
+          thick(((30, 9), (31, 5.5), (34, 3.5)), 2.4))
+    + cuts(
+        ((22.5, 16), (28, 16), (25.5, 11.5)), ((32, 16), (37.5, 16), (34.5, 11.5)),
+        ((29, 19.5), (31, 19.5), (30, 17.5)),
+        ((21, 21.5), (39, 21.5), (37, 26), (34.5, 24), (32, 27), (30, 24.5), (28, 27), (25.5, 24), (23, 26)),
+    )
+)
+
+PUMPKIN_BOMB = Icon(
+    "tf_pumpkin_bomb",
+    JACK,
+    solid(burst(56, 19, 11, 5, 10)),
+)
+
+HORSEMANN = Icon(
+    "headless_hatman",
+    pose(JACK, (30, 17), at=(16, 17), scale=0.85)
+    + solid(
+        rect(34, 15, 40, 2.8),  # the handle
+        ((70, 11), (76, 9), (82, 3.5), (86.5, 6), (89, 11), (90, 16.4), (89, 22), (86.5, 27), (82, 29.5),
+         (76, 23.5), (70, 21.5)),  # the blade, its edge curved toward the victim
+        ((70, 12), (63, 9.5), (66, 15)),  # its back spike
+    )
+    + cuts(thick(((81, 6), (84.5, 11), (85.5, 16.4), (84.5, 22), (81, 27)), 0.7), circle(76, 16.4, 1.8, 12)),
+)
+
+MONOCULUS = Icon(
+    "eyeball_boss",
+    solid(circle(26, 18, 12, 32),
+          ((17, 9), (14, 1.5), (21, 7)), ((35, 9), (38, 1.5), (31, 7)))  # its horns
+    + cuts(circle(30, 18, 7.5, 28))
+    + solid(circle(30, 18, 6, 24))
+    + cuts(circle(31, 18, 2.6, 16)),
+    solid(burst(50, 18, 9, 4, 9)),
+)
+
+
+ICONS = (PISTOL, MAGNUM, SMG, PULSE_RIFLE, SHOTGUN, CROSSBOW, CROWBAR, STUNSTICK, FRAG, RPG, GRAVITY_GUN, PROP, BUGBAIT, SLAM, PUMPKIN_BOMB, HORSEMANN, MONOCULUS)
 
 
 # The sheet
@@ -415,6 +516,27 @@ def commands(cells: Sequence[Cell], color: str) -> list:
     return args
 
 
+def fingerprint(cells: Sequence[Cell]) -> str:
+    """Eight hex digits that change with anything drawn on the sheets."""
+    drawn = json.dumps([SHEET_SIZE, commands(cells, CREAM), commands(cells, DARK)])
+    return hashlib.sha1(drawn.encode()).hexdigest()[:8]
+
+
+LUA_HEADER = """-- Sandcastle's kill icon sheets' layout, in TF2's scripts/mod_textures.txt
+-- format (foundation.kill_icons parses it; ws/cl_kill_feed.lua draws them).
+-- Written by .devtools/bin/kill_icons_art.py: edit the designs there.
+module(...)
+
+"""
+
+
+def lua_module(text: str) -> str:
+    """The layout as a ws module whose TEXT is the text, verbatim."""
+    if "]==]" in text:
+        raise ArtError("the layout holds the long string's closing bracket")
+    return LUA_HEADER + "TEXT = [==[\n" + text + "]==]\n"
+
+
 def draw(cells: Sequence[Cell], color: str, master: Path, sheet: Path) -> None:
     new = {"width": SHEET_SIZE, "height": SHEET_SIZE, "background": "transparent", "name": master.stem}
     subprocess.run(["photocraft-cli", "run", "--new", json.dumps(new), *commands(cells, color), "--out", str(master)],
@@ -424,12 +546,18 @@ def draw(cells: Sequence[Cell], color: str, master: Path, sheet: Path) -> None:
 
 def main() -> int:
     cells = layout(ICONS, SHEET_SIZE)
-    for path in (SHEET.parent, LAYOUT.parent, MASTERS):
+    for path in (SHEETS, MASTERS):
         path.mkdir(parents=True, exist_ok=True)
-    draw(cells, CREAM, MASTERS / "hl2.pcraft", SHEET)
-    draw(cells, DARK, MASTERS / "hl2_neg.pcraft", SHEET_NEG)
-    LAYOUT.write_text(mod_textures(cells, f"{MATERIAL}.png", f"{MATERIAL}_neg.png"))
-    for path in (SHEET, SHEET_NEG, LAYOUT):
+    name = SHEET_PREFIX + fingerprint(cells)
+    sheet, negative = SHEETS / f"{name}.png", SHEETS / f"{name}_neg.png"
+    for old in SHEETS.glob("*.png"):
+        if old not in (sheet, negative):
+            old.unlink()
+    draw(cells, CREAM, MASTERS / "hl2.pcraft", sheet)
+    draw(cells, DARK, MASTERS / "hl2_neg.pcraft", negative)
+    material = f"sandcastle/kill_icons/{name}"
+    LAYOUT.write_text(lua_module(mod_textures(cells, f"{material}.png", f"{material}_neg.png")))
+    for path in (sheet, negative, LAYOUT):
         print(path.relative_to(ROOT))
     return 0
 

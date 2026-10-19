@@ -1,10 +1,11 @@
 -- Kill icons: the entries of a scripts/mod_textures.txt with a death sheet
 -- (dfile: TF2's HUD/d_images and its _v2, _v3; dnegfile, the dark one for
 -- the light box of a kill the player took part in), each a rectangle on its
--- sheet. TF2's are its own; Sandcastle's scripts/sandcastle_kill_icons.txt
+-- sheet. TF2's are its own; Sandcastle's ws/kill_icons_sheet.lua
 -- has HL2's weapons in TF2's look, by class (.devtools/bin/kill_icons_art.py
 -- draws them). Which icon a kill shows goes by what made it (the inflictor's
--- class): its own, else its alias's (HL2), else TF2's skull.
+-- class): its own, else its alias's (HL2), else TF2's skull; but a boss's
+-- kill shows the boss, whatever it struck with.
 -- ws/cl_kill_feed.lua draws them.
 local Keyvalues = require("foundation.core.parsers.keyvalues")
 local lower, pairs, select, tonumber = string.lower, pairs, select, tonumber
@@ -26,6 +27,18 @@ HL2 = {
 	entityflame = "flamethrower",
 	env_fire = "flamethrower",
 	ws_drg_vortigaunt = "righteous_bison", -- its beam
+	prop_physics_multiplayer = "prop_physics", -- the gravity gun and its box
+	prop_physics_respawnable = "prop_physics",
+	prop_physics_override = "prop_physics",
+	func_physbox = "prop_physics",
+	prop_ragdoll = "prop_physics",
+	tf_projectile_spellpumpkin = "tf_pumpkin_bomb", -- it bursts into pumpkins
+}
+
+-- Killers whose every kill shows themselves: MONOCULUS fires TF2's own rockets.
+BOSSES = {
+	eyeball_boss = true,
+	headless_hatman = true,
 }
 
 local FIELDS = { x = "x", y = "y", width = "w", height = "h" }
@@ -58,7 +71,9 @@ function Over(...)
 	return icons
 end
 
--- The icon a kill by class shows.
-function For(icons, class)
+-- The icon a kill shows: by the class of what struck, or of its killer
+-- (nil if not known) when that is a boss.
+function For(icons, class, killer)
+	if BOSSES[killer or ""] and icons[killer] then return icons[killer] end
 	return icons[class] or icons[HL2[class] or ""] or icons[SKULL]
 end

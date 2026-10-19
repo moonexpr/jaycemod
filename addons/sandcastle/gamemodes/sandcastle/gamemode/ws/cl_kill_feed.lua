@@ -3,7 +3,7 @@
 -- killer and victim in their teams' colours (foundation.kill_feed: the AI
 -- war's soldiers in their sides') either side of TF2's kill icon for what
 -- made it (foundation.kill_icons, from TF2's own scripts/mod_textures.txt and
--- Sandcastle's HL2 weapons in its look, scripts/sandcastle_kill_icons.txt).
+-- Sandcastle's own in its look, ws/kill_icons_sheet.lua).
 -- A kill the player took part in is a light tan box with the dark icon, as
 -- TF2 marks its own; a death with no killer shows the victim and the icon
 -- alone. Each shows for LIFETIME seconds (hud_deathnotice_time).
@@ -21,7 +21,7 @@ hook.Add("InitPostEntity", "ws_kill_feed_names", function()
 end)
 
 local ICONS = Icons.Over(Icons.Parse(file.Read("scripts/mod_textures.txt", "tf")),
-	Icons.Parse(file.Read("scripts/sandcastle_kill_icons.txt", "GAME")))
+	Icons.Parse(WS.require("ws.kill_icons_sheet").TEXT))
 
 local LIFETIME, MOST = 6, 6
 -- TF2's 480-tall units: a row, the gap under it, its icon, its padding and
@@ -58,6 +58,12 @@ local function Name(name)
 	return name
 end
 
+-- A killer's class, from an NPC's "#<class>"; nil for a player's name.
+local function Class(name)
+	if name and string.sub(name, 1, 1) == "#" then return string.sub(name, 2) end
+	return nil
+end
+
 function GM:AddDeathNotice(attacker, attackerTeam, inflictor, victim, victimTeam)
 	local me = LocalPlayer():Nick()
 	local killer = Name(attacker)
@@ -68,7 +74,7 @@ function GM:AddDeathNotice(attacker, attackerTeam, inflictor, victim, victimTeam
 		killerTeam = Feed.Team(attacker, attackerTeam),
 		victim = Name(victim),
 		victimTeam = Feed.Team(victim, victimTeam),
-		icon = Icons.For(ICONS, inflictor),
+		icon = Icons.For(ICONS, inflictor, Class(attacker)),
 		mine = attacker == me or victim == me,
 	}
 	while #notices > MOST do table.remove(notices, 1) end
