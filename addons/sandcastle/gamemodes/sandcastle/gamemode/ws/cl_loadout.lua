@@ -13,12 +13,24 @@ local FAILED_TEXT = "That did not go through. Try again."
 
 local ICON_FALLBACK = "vgui/avatar_default"
 
+-- A melee weapon's icon leans counter-clockwise, as HL2's weapon selection
+-- draws the crowbar, shrunk so the leaning square's corners stay inside.
+local MELEE_LEAN = 30
+local MELEE_FIT = 1 / (math.cos(math.rad(MELEE_LEAN)) + math.sin(math.rad(MELEE_LEAN)))
+
+local function PaintLeaning(self, w, h)
+	surface.SetMaterial(self:GetMaterial())
+	surface.SetDrawColor(self:GetImageColor())
+	surface.DrawTexturedRectRotated(w / 2, h / 2, w * MELEE_FIT, h * MELEE_FIT, MELEE_LEAN)
+end
+
 -- A catalog weapon's spawn icon, size pixels square; clicks pass through it.
 function WS.WeaponIcon(parent, weapon, size)
 	local icon = vgui.Create("DImage", parent)
 	icon:SetImage("entities/" .. weapon.class .. ".png", ICON_FALLBACK)
 	icon:SetSize(size, size)
 	icon:SetMouseInputEnabled(false)
+	if weapon.kind == Loadout.KIND_MELEE then icon.Paint = PaintLeaning end
 	return icon
 end
 

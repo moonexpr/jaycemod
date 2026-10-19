@@ -28,7 +28,6 @@ local HEART = 16
 local PAD = 4
 local TIP_W = 280
 local TIP_OFFSET = 16
-local ICON_FALLBACK = "vgui/avatar_default"
 
 local NAME_COLOR = Color(255, 215, 0) -- TF2's unique quality
 local TIP_BACK = Color(43, 39, 36)
@@ -180,8 +179,7 @@ UI.Define("StoreTile", "DButton", {
 		self.item, self.owned, self.affordable = item, owned, affordable
 		if IsValid(self.icon) then self.icon:Remove() end
 		if item.weapon then
-			self.icon = vgui.Create("DImage", self)
-			self.icon:SetImage("entities/" .. item.weapon.class .. ".png", ICON_FALLBACK)
+			self.icon = WS.WeaponIcon(self, item.weapon, TILE)
 			self.icon:SetImageColor(owned and OWNED_DIM or (affordable and color_white or UNAFFORDABLE))
 		else
 			self.icon = vgui.Create("SpawnIcon", self)
