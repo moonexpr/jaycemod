@@ -13,8 +13,9 @@
 -- uncentred) is hidden wherever it is found, and its step (its TextLabel)
 -- and progress (its ProgressBar's width of its ProgressBarSizer's) are
 -- read from it. MvM's upgrade station music plays meanwhile at
--- foundation.nav_progress's volume, started again each time it ends (the file has no loop of its own), and
--- fades out once done.
+-- foundation.nav_progress's volume on a BASS channel looping it (the file
+-- has no loop of its own, and a sound patch restarted at its end did not
+-- play again in game), and fades out once done.
 local P = WS.require("foundation.nav_progress")
 local E = WS.Events
 
@@ -99,27 +100,32 @@ WS.UI.Define("NavProgress", "DPanel", {
 			self.engine = HideEngineBox(vgui.GetWorldPanel(), self) or self.engine
 		end
 		self.step, self.stepFraction = EngineStep(self.engine)
-		self:Music(P.MusicVolume(f.stage, now - self.shownAt), now)
+		self:Music(P.MusicVolume(f.stage, now - self.shownAt))
 	end,
-	-- Plays the music at volume, from the top again whenever it has ended
-	-- (now: RealTime, the clock the sound plays by); fades it out at none.
-	Music = function(self, volume, now)
-		if volume <= 0 then return self:StopMusic() end
-		if not self.music then
-			self.music = CreateSound(LocalPlayer(), P.MUSIC)
-			self.music:SetSoundLevel(0)
-			self.musicEnds = now
+	-- Plays the music looping at volume; at none, fades out what plays over
+	-- MUSIC_FADE_OUT and stops it. A BASS channel, which loops by itself.
+	Music = function(self, volume)
+		if volume <= 0 then
+			if not self.music then return end
+			local left = self.music:GetVolume() - FrameTime() / MUSIC_FADE_OUT
+			if left > 0 then return self.music:SetVolume(left) end
+			return self:StopMusic()
 		end
-		if now >= self.musicEnds then
-			self.music:Stop()
-			self.music:PlayEx(volume, 100)
-			self.musicEnds = now + SoundDuration(P.MUSIC)
-		end
-		self.music:ChangeVolume(volume)
+		if self.music then return self.music:SetVolume(volume) end
+		if self.musicLoading then return end
+		self.musicLoading = true
+		sound.PlayFile("sound/" .. P.MUSIC, "noplay", function(channel, code, err)
+			if not IsValid(channel) then error("nav progress music: " .. tostring(err)) end
+			if not IsValid(self) then return channel:Stop() end
+			channel:EnableLooping(true)
+			channel:SetVolume(0)
+			channel:Play()
+			self.music, self.musicLoading = channel, false
+		end)
 	end,
 	StopMusic = function(self)
 		if not self.music then return end
-		self.music:FadeOut(MUSIC_FADE_OUT)
+		self.music:Stop()
 		self.music = nil
 	end,
 	OnRemove = function(self) self:StopMusic() end,
