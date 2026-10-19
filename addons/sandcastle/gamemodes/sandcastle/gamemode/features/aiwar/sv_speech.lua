@@ -72,6 +72,14 @@ function Controller:CallMedicLine(ent)
 	self:SpeakConcept(ent, Speech.CONCEPT_CALL_MEDIC, self:RoleOf(entry), false, CurTime())
 end
 
+-- A soldier calling out what it is doing (the soldier port's Announce:
+-- falling back to cover, going for health) says so, to all near.
+function Controller:AnnounceLine(ent, concept)
+	local entry = self.soldiers[ent]
+	if not entry then return end
+	self:SpeakConcept(ent, concept, self:RoleOf(entry), false, CurTime())
+end
+
 -- A soldier that has just spotted a new enemy (ws_drg_soldier's
 -- OnNewEnemy) may call it out, to all near.
 hook.Add("WSSoldierContact", "ws_aiwar_speech", function(ent)

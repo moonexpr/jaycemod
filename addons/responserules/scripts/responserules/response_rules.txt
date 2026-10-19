@@ -33,6 +33,9 @@ criterion "ConceptPlayerPassing" "Concept" "TLK_NS_PLAYER_PASSING" required
 criterion "ConceptEnemySpotted" "Concept" "TLK_NS_ENEMY_SPOTTED" required
 // a hurt soldier calling for a medic
 criterion "ConceptCallMedic" "Concept" "TLK_NS_CALL_MEDIC" required
+// a hurt soldier falling back to cover, and leaving for a health kit
+criterion "ConceptRetreatToCover" "Concept" "TLK_NS_RETREAT_TO_COVER" required
+criterion "ConceptGetHealth" "Concept" "TLK_NS_GET_HEALTH" required
 
 // Chances (randomnum, 0..100) ------------------------------------------------
 
@@ -69,6 +72,9 @@ criterion "NotSaidPlayerPassing" "SaidPlayerPassing" "!=1" required weight 0
 criterion "NotSaidEnemySpotted" "SaidEnemySpotted" "!=1" required weight 0
 // called for a medic within 10 s (the orders' CALL_MEDIC_COOLDOWN)
 criterion "NotSaidCallMedic" "SaidCallMedic" "!=1" required weight 0
+// fell back, or went for health, within 10 s (past the orders' RETREAT_COOLDOWN)
+criterion "NotSaidRetreatToCover" "SaidRetreatToCover" "!=1" required weight 0
+criterion "NotSaidGetHealth" "SaidGetHealth" "!=1" required weight 0
 
 // Speakers, by affiliation -------------------------------------------------------
 

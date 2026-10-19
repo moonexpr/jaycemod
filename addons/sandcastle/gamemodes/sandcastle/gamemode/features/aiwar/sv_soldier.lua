@@ -64,6 +64,12 @@ function Soldier:CallMedic()
 	self.controller:CallMedicLine(self.ent)
 end
 
+-- Calls out what it is doing (falling back, going for health), if its voice
+-- has a line (features/aiwar/sv_speech.lua).
+function Soldier:Announce(concept)
+	self.controller:AnnounceLine(self.ent, concept)
+end
+
 function Soldier:CallingMedic() return CurTime() < (self.callingMedicUntil or 0) end
 function Soldier:Health() return self.ent:Health() end
 function Soldier:MaxHealth() return self.ent:GetMaxHealth() end

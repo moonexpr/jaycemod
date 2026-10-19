@@ -70,6 +70,8 @@
 --   Burning() -> whether I am on fire
 --   CallMedic(): call for a medic: my side's medics answer me first a
 --     while, and my teammates see that I called
+--   Announce(concept): call out what I am doing (a foundation.aiwar.speech
+--     concept), if my voice has a line for it
 --   Hop(p) -> whether I will be carried to p: only where a player could
 --     walk from here to p, so never through a wall, door or gate; I am
 --     moved there over a moment, running, and MoveTo and Release wait
@@ -116,4 +118,5 @@ METHODS = {
 	"HealthKits",
 	"Burning",
 	"CallMedic",
+	"Announce",
 }

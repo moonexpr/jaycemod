@@ -20,6 +20,12 @@ CONCEPT_ENEMY_SPOTTED = "TLK_NS_ENEMY_SPOTTED"
 -- heard by all near.
 CONCEPT_CALL_MEDIC = "TLK_NS_CALL_MEDIC"
 
+-- A hurt soldier calls out as it falls back to cover, and as it leaves
+-- cover (or its post) for a health kit (foundation.aiwar.orders'
+-- RetreatToCover and FindHealth), heard by all near.
+CONCEPT_RETREAT_TO_COVER = "TLK_NS_RETREAT_TO_COVER"
+CONCEPT_GET_HEALTH = "TLK_NS_GET_HEALTH"
+
 -- A player passes a soldier within GREET_RANGE, moving at PASS_SPEED or
 -- faster (a walk; standing about beside it is not passing).
 GREET_RANGE, PASS_SPEED = 128, 90

@@ -91,6 +91,7 @@ local Squad = require("foundation.aiwar.squad")
 local Lanes = require("foundation.aiwar.lanes")
 local Hunt = require("foundation.aiwar.hunt")
 local Health = require("foundation.aiwar.health")
+local Speech = require("foundation.aiwar.speech")
 local Explore = require("foundation.aiwar.explore")
 module(...)
 
@@ -1820,6 +1821,7 @@ function RetreatToCover:OnStart(me)
 		self.spot = me:CoverSpot(me:Position(), RETREAT_COVER, threat) or Behind(me:Position(), threat, RETREAT_DISTANCE)
 	end
 	state.retreats = (state.retreats or 0) + 1
+	me:Announce(Speech.CONCEPT_RETREAT_TO_COVER)
 	return self:Continue()
 end
 
@@ -1880,6 +1882,7 @@ end
 
 function FindHealth:OnStart(me)
 	self.untilAt = me:Now() + FIND_HEALTH_TIME
+	me:Announce(Speech.CONCEPT_GET_HEALTH)
 	return self:Continue()
 end
 

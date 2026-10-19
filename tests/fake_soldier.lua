@@ -181,6 +181,12 @@ function Soldier:CallMedic()
 	self.medicCalls[#self.medicCalls + 1] = self.now
 end
 
+-- announced: the concepts it has called out (Announce), in order.
+function Soldier:Announce(concept)
+	self.announced = self.announced or {}
+	self.announced[#self.announced + 1] = concept
+end
+
 function Soldier:Hold()
 	self.holding = true
 	self.moving = self.pos

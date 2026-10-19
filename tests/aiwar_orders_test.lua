@@ -9,6 +9,7 @@ local Orders = T.require("foundation.aiwar.orders")
 local Soldier = T.require("foundation.aiwar.soldier")
 local Track = T.require("foundation.core.structs.polyline")
 local Teams = T.require("foundation.teams")
+local Speech = T.require("foundation.aiwar.speech")
 
 local RED, BLUE = Teams.RED, Teams.BLUE
 local P = FS.Point
@@ -1579,6 +1580,23 @@ T.test("a soldier in cover leaves for a near kit once the enemy has drawn off", 
 	me.kits = {}
 	Tick(me, npc, 2)
 	T.eq(Orders.JobOf(npc:Describe()) ~= nil, true, "the kit taken: back to its job")
+end)
+
+T.test("a soldier calls out as it falls back to cover, and again as it leaves cover for a kit", function()
+	local kit = { pos = P(300, 0), handle = "kit" }
+	local me, npc = Enlist({ role = AiWar.DEFEND, team = RED, covers = { P(200, 0) }, enemyPos = P(600, 0) })
+	me.kits = { kit }
+	me.health = 30
+	Tick(me, npc)
+	T.eq(table.concat(me.announced or {}, " "), Speech.CONCEPT_RETREAT_TO_COVER, "falling back")
+	me.health = 60
+	Tick(me, npc, 2)
+	T.eq(#me.announced, 1, "once, while it stays in cover")
+	me.enemyPos = P(5000, 0)
+	Tick(me, npc, 2)
+	T.eq(npc:Describe(), "NextSoldier/StrategyMonitor/FindHealth")
+	T.eq(me.announced[2], Speech.CONCEPT_GET_HEALTH, "going for health")
+	T.eq(#me.announced, 2)
 end)
 
 T.test("a soldier on fire goes for health whatever the danger; one with a medic on it does not", function()

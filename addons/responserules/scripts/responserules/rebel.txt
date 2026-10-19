@@ -508,3 +508,81 @@ rule CallMedicRebelFemale
 	ApplyContext "SaidCallMedic:1:10"
 	response CallMedicRebelFemale
 }
+
+// RetreatToCover: hurt: falling back to cover, to all near
+
+response RetreatToCoverRebel
+{
+	print "Rebel: falling back" defaultdelay
+}
+rule RetreatToCoverRebel
+{
+	criteria ConceptRetreatToCover IsRebel NotSaidRetreatToCover
+	ApplyContext "SaidRetreatToCover:1:10"
+	response RetreatToCoverRebel
+}
+
+response RetreatToCoverRebelMale
+{
+	speak "vo/npc/male01/takecover02.wav" defaultdelay
+	speak "vo/npc/male01/gethellout.wav" defaultdelay
+	speak "vo/npc/male01/runforyourlife01.wav" defaultdelay
+}
+rule RetreatToCoverRebelMale
+{
+	criteria ConceptRetreatToCover IsRebel NotSaidRetreatToCover IsMaleVoice
+	ApplyContext "SaidRetreatToCover:1:10"
+	response RetreatToCoverRebelMale
+}
+
+response RetreatToCoverRebelFemale
+{
+	speak "vo/npc/female01/takecover02.wav" defaultdelay
+	speak "vo/npc/female01/gethellout.wav" defaultdelay
+	speak "vo/npc/female01/runforyourlife01.wav" defaultdelay
+}
+rule RetreatToCoverRebelFemale
+{
+	criteria ConceptRetreatToCover IsRebel NotSaidRetreatToCover IsFemaleVoice
+	ApplyContext "SaidRetreatToCover:1:10"
+	response RetreatToCoverRebelFemale
+}
+
+// GetHealth: hurt: leaving for a health kit, to all near
+
+response GetHealthRebel
+{
+	print "Rebel: need health" defaultdelay
+}
+rule GetHealthRebel
+{
+	criteria ConceptGetHealth IsRebel NotSaidGetHealth
+	ApplyContext "SaidGetHealth:1:10"
+	response GetHealthRebel
+}
+
+response GetHealthRebelMale
+{
+	speak "vo/npc/male01/myarm01.wav" defaultdelay
+	speak "vo/npc/male01/myleg01.wav" defaultdelay
+	speak "vo/npc/male01/hitingut01.wav" defaultdelay
+}
+rule GetHealthRebelMale
+{
+	criteria ConceptGetHealth IsRebel NotSaidGetHealth IsMaleVoice
+	ApplyContext "SaidGetHealth:1:10"
+	response GetHealthRebelMale
+}
+
+response GetHealthRebelFemale
+{
+	speak "vo/npc/female01/myarm01.wav" defaultdelay
+	speak "vo/npc/female01/myleg01.wav" defaultdelay
+	speak "vo/npc/female01/hitingut01.wav" defaultdelay
+}
+rule GetHealthRebelFemale
+{
+	criteria ConceptGetHealth IsRebel NotSaidGetHealth IsFemaleVoice
+	ApplyContext "SaidGetHealth:1:10"
+	response GetHealthRebelFemale
+}

@@ -427,3 +427,81 @@ rule CallMedicCombineMetrocop
 	ApplyContext "SaidCallMedic:1:10"
 	response CallMedicCombineMetrocop
 }
+
+// RetreatToCover: hurt: falling back to cover, to all near
+
+response RetreatToCoverCombine
+{
+	print "Combine: falling back" defaultdelay
+}
+rule RetreatToCoverCombine
+{
+	criteria ConceptRetreatToCover IsCombine NotSaidRetreatToCover
+	ApplyContext "SaidRetreatToCover:1:10"
+	response RetreatToCoverCombine
+}
+
+response RetreatToCoverCombineSoldier
+{
+	speak "npc/combine_soldier/vo/displace.wav" defaultdelay
+	speak "npc/combine_soldier/vo/displace2.wav" defaultdelay
+	speak "npc/combine_soldier/vo/cover.wav" defaultdelay
+	speak "npc/combine_soldier/vo/ripcordripcord.wav" defaultdelay
+}
+rule RetreatToCoverCombineSoldier
+{
+	criteria ConceptRetreatToCover IsCombine NotSaidRetreatToCover IsSoldierVoice
+	ApplyContext "SaidRetreatToCover:1:10"
+	response RetreatToCoverCombineSoldier
+}
+
+response RetreatToCoverCombineMetrocop
+{
+	speak "npc/metropolice/vo/movingtocover.wav" defaultdelay
+	speak "npc/metropolice/vo/officerunderfiretakingcover.wav" defaultdelay
+	speak "npc/metropolice/vo/takecover.wav" defaultdelay
+}
+rule RetreatToCoverCombineMetrocop
+{
+	criteria ConceptRetreatToCover IsCombine NotSaidRetreatToCover IsMetrocopVoice
+	ApplyContext "SaidRetreatToCover:1:10"
+	response RetreatToCoverCombineMetrocop
+}
+
+// GetHealth: hurt: leaving for a health kit, to all near
+
+response GetHealthCombine
+{
+	print "Combine: need a stim" defaultdelay
+}
+rule GetHealthCombine
+{
+	criteria ConceptGetHealth IsCombine NotSaidGetHealth
+	ApplyContext "SaidGetHealth:1:10"
+	response GetHealthCombine
+}
+
+response GetHealthCombineSoldier
+{
+	speak "npc/combine_soldier/vo/requestmedical.wav" defaultdelay
+	speak "npc/combine_soldier/vo/requeststimdose.wav" defaultdelay
+	speak "npc/combine_soldier/vo/ovewatchorders3ccstimboost.wav" defaultdelay
+}
+rule GetHealthCombineSoldier
+{
+	criteria ConceptGetHealth IsCombine NotSaidGetHealth IsSoldierVoice
+	ApplyContext "SaidGetHealth:1:10"
+	response GetHealthCombineSoldier
+}
+
+response GetHealthCombineMetrocop
+{
+	speak "npc/metropolice/vo/11-99officerneedsassistance.wav" defaultdelay
+	speak "npc/metropolice/vo/dispatchineed10-78.wav" defaultdelay
+}
+rule GetHealthCombineMetrocop
+{
+	criteria ConceptGetHealth IsCombine NotSaidGetHealth IsMetrocopVoice
+	ApplyContext "SaidGetHealth:1:10"
+	response GetHealthCombineMetrocop
+}

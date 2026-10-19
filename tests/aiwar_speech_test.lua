@@ -211,4 +211,26 @@ T.test("a soldier does not announce a stance again for 30 seconds", function()
 	T.eq(system:Speak(speaker, Speech.CONCEPT_BATTLE_STANCE, set, First, 30) ~= nil, true, "again")
 end)
 
+-- Falling back to cover and leaving it for a kit (foundation.aiwar.orders'
+-- RetreatToCover and FindHealth, through the soldier port's Announce).
+T.test("every voice calls out falling back to cover and going for health, each voice with lines its own", function()
+	local OWN = { combine = "CombineSoldier", metrocop = "CombineMetrocop", male = "RebelMale", female = "RebelFemale" }
+	for _, voice in ipairs(VOICES) do
+		for concept, name in pairs({ [Speech.CONCEPT_RETREAT_TO_COVER] = "RetreatToCover", [Speech.CONCEPT_GET_HEALTH] = "GetHealth" }) do
+			local said = Say(voice, Speech.DEFENSE, concept)
+			T.eq(said ~= nil, true, voice.name .. ": " .. concept)
+			if OWN[voice.name] then
+				T.eq(said.rule, name .. OWN[voice.name], voice.name .. "'s own")
+				T.eq(said.response.kind, "speak", "a sound")
+			end
+		end
+	end
+end)
+
+T.test("a soldier calls out falling back once in a while, not on every retreat", function()
+	local speaker, soldier = Speaker(), Voices.For("models/player/combine_soldier.mdl")
+	T.eq(Say(soldier, Speech.DEFENSE, Speech.CONCEPT_RETREAT_TO_COVER, false, speaker) ~= nil, true)
+	T.eq(Say(soldier, Speech.DEFENSE, Speech.CONCEPT_RETREAT_TO_COVER, false, speaker), nil, "said within 10 s")
+end)
+
 T.finish()
