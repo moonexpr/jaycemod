@@ -66,7 +66,7 @@ T.test("why a player is not spawning, in TF2's words", function()
 end)
 
 T.test("held, the lock says why", function()
-	T.eq(S.Message(S.HELD, 0, "nav"), "Calculating the navigation mesh: you spawn when it is done")
+	T.eq(S.Message(S.HELD, 0, "nav"), "No respawning allowed during map navigation processing")
 end)
 
 T.finish()

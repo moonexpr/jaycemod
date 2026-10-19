@@ -188,6 +188,7 @@ local EFFECTS = {
 	state = function(self, e)
 		SetGlobal2Int("ws_round_state", e.to)
 		PublishLimits()
+		self:RetellDead()
 		if e.to == S.PREROUND then
 			self:RestoreSpawnDoors()
 			SetGlobal2Float("ws_preround_end_time", e.preroundEnd)
@@ -229,9 +230,11 @@ local EFFECTS = {
 		SetGlobal2Bool("ws_round_in_setup", true)
 		SetGlobal2Float("ws_arena_setup_end", e.ends)
 	end,
-	arena_setup_end = function()
+	-- the arena round fought: the dead are told none respawn
+	arena_setup_end = function(self)
 		SetGlobal2Bool("ws_round_in_setup", false)
 		SetGlobal2Float("ws_arena_setup_end", 0)
+		self:RetellDead()
 	end,
 	activate_timers = function(self) self:ActivateTimers() end,
 	-- CreateTimeLimitTimer: the one timer, made once and set to the time left

@@ -215,6 +215,12 @@ end
 -- Allowing respawns again puts the dead back in the waves.
 function Controller:SetRespawnsDisabled(disabled)
 	if not self.round:SetRespawnsDisabled(disabled) then return end
+	self:RetellDead()
+end
+
+-- Every dead player's respawn status again, as the round now has it: a
+-- wave's countdown, or none to come (sudden death, the arena round).
+function Controller:RetellDead()
 	EachPlayer(function(ply)
 		if not ply:Alive() and WS.TeamOf(ply) ~= UNASSIGNED then self:OnPlayerDeathTime(ply) end
 	end)
@@ -223,6 +229,7 @@ end
 -- A dead player's respawn time again, from their death.
 function Controller:OnPlayerDeathTime(ply)
 	local t = WS.TeamOf(ply)
+	if WS.GameplayStopped() then return WS.SetSpawnStatus(ply, Spawns.NONE, 0) end
 	WS.SetSpawnStatus(ply, self.round:RespawnStatus(t, ply.wsDeathTime or CurTime(), #TeamPlayers(t),
 		ply.wsSwitchedTeam == true))
 end

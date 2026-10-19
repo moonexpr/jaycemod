@@ -1,8 +1,15 @@
--- Why this player is not spawning (WS.SpawnMessage, ws/sh_spawn_manager.lua),
--- as TF2's spectator panel says it ("Respawn in: 5 seconds", "No respawning
--- in Arena Mode"), low in the middle of the screen, on every map and in
--- every mode, so a lock shows in Sandbox mode too.
-local FONT, FONT_TALL, Y = "WS.SpawnMessage", 14, 0.7
+-- Why this player is not spawning (WS.SpawnMessage, ws/sh_spawn_manager.lua)
+-- as TF2's spectator panel shows it (resource/ui/spectator.res): its top
+-- bar, black and translucent across the screen (CSpectatorGUI's
+-- BLACK_BAR_COLOR), and on it the ReinforcementsLabel, centred, in
+-- HudFontMediumSmallSecondary (TF2 Secondary) and the scheme's label colour
+-- (TanLight). On every map and in every mode, so a lock shows in Sandbox
+-- mode too.
+-- TF2's 480-tall units.
+local BAR_TALL, LABEL_Y, LABEL_TALL, FONT_TALL = 84, 50, 18, 18
+local BAR_COLOR = Color(0, 0, 0, 196)
+local TAN_LIGHT = Color(235, 226, 202)
+local FONT = "WS.SpawnMessage"
 
 local fontFor
 
@@ -12,9 +19,12 @@ hook.Add("HUDPaint", "ws_spawn_manager", function()
 	local text = WS.SpawnMessage(ply, CurTime())
 	if not text then return end
 	local w, h = ScrW(), ScrH()
-	if fontFor ~= h then
-		surface.CreateFont(FONT, { font = "TF2 Secondary", size = math.Round(FONT_TALL * h / 480), weight = 500 })
-		fontFor = h
+	local unit = h / 480
+	if fontFor ~= unit then
+		surface.CreateFont(FONT, { font = "TF2 Secondary", size = math.Round(FONT_TALL * unit), weight = 500, antialias = true })
+		fontFor = unit
 	end
-	draw.SimpleTextOutlined(text, FONT, w / 2, h * Y, color_white, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER, 1, color_black)
+	surface.SetDrawColor(BAR_COLOR)
+	surface.DrawRect(0, 0, w, BAR_TALL * unit)
+	draw.SimpleText(text, FONT, w / 2, (LABEL_Y + LABEL_TALL / 2) * unit, TAN_LIGHT, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 end)
