@@ -102,13 +102,13 @@ T.test("a soldier speaks a concept three times in four", function()
 	T.eq(Draw(26) ~= nil, true, "this time")
 end)
 
-T.test("a soldier does not say a concept again in its role for 20 seconds", function()
+T.test("a soldier does not say a concept again in its role for 10 seconds", function()
 	local speaker = Speaker()
 	local set = Speech.Criteria(Voices.For("models/player/group03/female_02.mdl"), Speech.OFFENSE, SURE, false)
 	T.eq(system:Speak(speaker, Payload.CONCEPT_CART_MOVING_FORWARD, set, First, 0) ~= nil, true, "once")
-	T.eq(system:Speak(speaker, Payload.CONCEPT_CART_MOVING_FORWARD, set, First, 19), nil, "not yet")
+	T.eq(system:Speak(speaker, Payload.CONCEPT_CART_MOVING_FORWARD, set, First, 9), nil, "not yet")
 	T.eq(system:Speak(speaker, Payload.CONCEPT_CART_STOP, set, First, 1) ~= nil, true, "another concept still")
-	T.eq(system:Speak(speaker, Payload.CONCEPT_CART_MOVING_FORWARD, set, First, 20) ~= nil, true, "again")
+	T.eq(system:Speak(speaker, Payload.CONCEPT_CART_MOVING_FORWARD, set, First, 10) ~= nil, true, "again")
 end)
 
 T.test("a model of no side says nothing", function()
@@ -143,13 +143,13 @@ T.test("a voice's own ready lines outscore its side's, and a voice with none use
 	T.eq(alyx.rule, "BattleStanceRebel", "the rebels'")
 end)
 
-T.test("only one soldier in two announces its stance, so a squad is not a chorus", function()
+T.test("three soldiers in four announce their stance, so a squad is heard but not a chorus", function()
 	local male = Voices.For("models/player/group03/male_04.mdl")
 	local function Draw(n)
 		return system:Speak(Speaker(), Speech.CONCEPT_BATTLE_STANCE, Speech.Criteria(male, Speech.OFFENSE, n, false), First, 0)
 	end
-	T.eq(Draw(50), nil, "not this time")
-	T.eq(Draw(51) ~= nil, true, "this time")
+	T.eq(Draw(25), nil, "not this time")
+	T.eq(Draw(26) ~= nil, true, "this time")
 end)
 
 -- Greetings and contacts: a soldier greets a teammate player walking past
@@ -175,26 +175,25 @@ T.test("a voice's own greetings and contact lines outscore its side's; a voice w
 		"PlayerPassingRebel", "no greeting of her own: the rebels'")
 end)
 
-T.test("one soldier in two greets, three in four call out a contact", function()
+T.test("three soldiers in four greet; every one calls out a contact", function()
 	local male = Voices.For("models/player/group03/male_04.mdl")
 	local function Draw(concept, n)
 		return system:Speak(Speaker(), concept, Speech.Criteria(male, Speech.OFFENSE, n, false), First, 0)
 	end
-	T.eq(Draw(Speech.CONCEPT_PLAYER_PASSING, 50), nil, "no greeting this time")
-	T.eq(Draw(Speech.CONCEPT_PLAYER_PASSING, 51) ~= nil, true, "a greeting")
-	T.eq(Draw(Speech.CONCEPT_ENEMY_SPOTTED, 25), nil, "no callout this time")
-	T.eq(Draw(Speech.CONCEPT_ENEMY_SPOTTED, 26) ~= nil, true, "a callout")
+	T.eq(Draw(Speech.CONCEPT_PLAYER_PASSING, 25), nil, "no greeting this time")
+	T.eq(Draw(Speech.CONCEPT_PLAYER_PASSING, 26) ~= nil, true, "a greeting")
+	T.eq(Draw(Speech.CONCEPT_ENEMY_SPOTTED, 0) ~= nil, true, "a callout, whatever the draw")
 end)
 
-T.test("a soldier greets at most once in 45 seconds, and calls out contacts at most once in 10", function()
+T.test("a soldier greets at most once in 20 seconds, and calls out contacts at most once in 5", function()
 	local set = Speech.Criteria(Voices.For("models/player/combine_soldier.mdl"), Speech.OFFENSE, SURE, false)
 	local speaker = Speaker()
 	T.eq(system:Speak(speaker, Speech.CONCEPT_PLAYER_PASSING, set, First, 0) ~= nil, true, "a greeting")
-	T.eq(system:Speak(speaker, Speech.CONCEPT_PLAYER_PASSING, set, First, 44), nil, "not yet")
-	T.eq(system:Speak(speaker, Speech.CONCEPT_PLAYER_PASSING, set, First, 45) ~= nil, true, "again")
+	T.eq(system:Speak(speaker, Speech.CONCEPT_PLAYER_PASSING, set, First, 19), nil, "not yet")
+	T.eq(system:Speak(speaker, Speech.CONCEPT_PLAYER_PASSING, set, First, 20) ~= nil, true, "again")
 	T.eq(system:Speak(speaker, Speech.CONCEPT_ENEMY_SPOTTED, set, First, 0) ~= nil, true, "a callout")
-	T.eq(system:Speak(speaker, Speech.CONCEPT_ENEMY_SPOTTED, set, First, 9), nil, "not yet")
-	T.eq(system:Speak(speaker, Speech.CONCEPT_ENEMY_SPOTTED, set, First, 10) ~= nil, true, "again")
+	T.eq(system:Speak(speaker, Speech.CONCEPT_ENEMY_SPOTTED, set, First, 4), nil, "not yet")
+	T.eq(system:Speak(speaker, Speech.CONCEPT_ENEMY_SPOTTED, set, First, 5) ~= nil, true, "again")
 end)
 
 T.test("a player is passing a soldier when moving within GREET_RANGE of it", function()
@@ -203,12 +202,91 @@ T.test("a player is passing a soldier when moving within GREET_RANGE of it", fun
 	T.eq(Speech.Passes(Speech.GREET_RANGE / 2, Speech.PASS_SPEED - 1), false, "standing about, not passing")
 end)
 
-T.test("a soldier does not announce a stance again for 30 seconds", function()
+T.test("a soldier does not announce a stance again for 15 seconds", function()
 	local speaker = Speaker()
 	local set = Speech.Criteria(Voices.For("models/player/combine_soldier.mdl"), Speech.OFFENSE, SURE, false)
 	T.eq(system:Speak(speaker, Speech.CONCEPT_BATTLE_STANCE, set, First, 0) ~= nil, true, "once")
-	T.eq(system:Speak(speaker, Speech.CONCEPT_BATTLE_STANCE, set, First, 29), nil, "not at its next rest")
-	T.eq(system:Speak(speaker, Speech.CONCEPT_BATTLE_STANCE, set, First, 30) ~= nil, true, "again")
+	T.eq(system:Speak(speaker, Speech.CONCEPT_BATTLE_STANCE, set, First, 14), nil, "not at its next rest")
+	T.eq(system:Speak(speaker, Speech.CONCEPT_BATTLE_STANCE, set, First, 15) ~= nil, true, "again")
+end)
+
+-- Squad chatter: a soldier says so when it kills an enemy, when a teammate
+-- falls near it, and when an enemy it fought slips out of sight; between
+-- fights, one soldier of a squad at a time talks on the radio.
+local CHATTER = { Speech.CONCEPT_ENEMY_KILLED, Speech.CONCEPT_ALLY_DOWN, Speech.CONCEPT_CONTACT_LOST, Speech.CONCEPT_IDLE }
+
+T.test("every voice has something to say for each kind of squad chatter, in either role", function()
+	for _, voice in ipairs(VOICES) do
+		for _, role in ipairs({ Speech.OFFENSE, Speech.DEFENSE }) do
+			for _, concept in ipairs(CHATTER) do
+				T.eq(Say(voice, role, concept, false) ~= nil, true, voice.name .. " on " .. role .. ": " .. concept)
+			end
+		end
+	end
+end)
+
+T.test("a Combine soldier says every kind of chatter in its own voice, and so does a metrocop", function()
+	for _, concept in ipairs(CHATTER) do
+		local soldier = Say(Voices.For("models/player/combine_soldier.mdl"), Speech.OFFENSE, concept, false)
+		T.eq(soldier.rule:find("CombineSoldier$") ~= nil, true, concept .. ": the soldier's own (" .. soldier.rule .. ")")
+		T.eq(soldier.response.kind, "speak", concept .. ": a line")
+		local cop = Say(Voices.For("models/player/police.mdl"), Speech.OFFENSE, concept, false)
+		T.eq(cop.rule:find("CombineMetrocop$") ~= nil, true, concept .. ": the metrocop's own (" .. cop.rule .. ")")
+	end
+end)
+
+T.test("rebels kill, mourn and pass the time in their own voices", function()
+	for _, model in ipairs({ "models/player/group03/male_04.mdl", "models/player/group03/female_02.mdl", "models/vortigaunt.mdl" }) do
+		for _, concept in ipairs({ Speech.CONCEPT_ENEMY_KILLED, Speech.CONCEPT_ALLY_DOWN, Speech.CONCEPT_IDLE }) do
+			T.eq(Say(Voices.For(model), Speech.DEFENSE, concept, false).response.kind, "speak", model .. ": " .. concept)
+		end
+	end
+	T.eq(Say(Voices.For("models/player/alyx.mdl"), Speech.DEFENSE, Speech.CONCEPT_ALLY_DOWN, false).response.kind, "speak", "Alyx mourns")
+end)
+
+T.test("a teammate down is always said; a kill and a lost contact three times in four; idle talk one time in two", function()
+	local cop = Voices.For("models/player/police.mdl")
+	local function Draw(concept, n)
+		return system:Speak(Speaker(), concept, Speech.Criteria(cop, Speech.OFFENSE, n, false), First, 0)
+	end
+	T.eq(Draw(Speech.CONCEPT_ALLY_DOWN, 0) ~= nil, true, "a teammate down, whatever the draw")
+	T.eq(Draw(Speech.CONCEPT_ENEMY_KILLED, 25), nil, "no kill line this time")
+	T.eq(Draw(Speech.CONCEPT_ENEMY_KILLED, 26) ~= nil, true, "a kill line")
+	T.eq(Draw(Speech.CONCEPT_CONTACT_LOST, 25), nil, "no lost contact this time")
+	T.eq(Draw(Speech.CONCEPT_CONTACT_LOST, 26) ~= nil, true, "a lost contact")
+	T.eq(Draw(Speech.CONCEPT_IDLE, 50), nil, "no idle talk this time")
+	T.eq(Draw(Speech.CONCEPT_IDLE, 51) ~= nil, true, "idle talk")
+end)
+
+T.test("a soldier says a kill or a teammate down at most every 6 seconds, a lost contact every 15, idle talk every 30", function()
+	local set = Speech.Criteria(Voices.For("models/player/combine_soldier.mdl"), Speech.DEFENSE, SURE, false)
+	for concept, wait in pairs({ [Speech.CONCEPT_ENEMY_KILLED] = 6, [Speech.CONCEPT_ALLY_DOWN] = 6,
+		[Speech.CONCEPT_CONTACT_LOST] = 15, [Speech.CONCEPT_IDLE] = 30 }) do
+		local speaker = Speaker()
+		T.eq(system:Speak(speaker, concept, set, First, 0) ~= nil, true, concept .. ": once")
+		T.eq(system:Speak(speaker, concept, set, First, wait - 1), nil, concept .. ": not yet")
+		T.eq(system:Speak(speaker, concept, set, First, wait) ~= nil, true, concept .. ": again")
+	end
+end)
+
+T.test("a teammate's fall is heard by soldiers within ALLY_DOWN_RANGE of it", function()
+	T.eq(Speech.WitnessesFall(Speech.ALLY_DOWN_RANGE), true, "at the edge")
+	T.eq(Speech.WitnessesFall(Speech.ALLY_DOWN_RANGE + 1), false, "too far")
+end)
+
+-- The Combine soldiers speak Half-Life: Alyx's voice (the gamemode's
+-- content/sound/npc/combine_soldier): every line their rules speak is one
+-- of its recordings.
+T.test("every Combine soldier line the rules speak is in the gamemode's voice pack", function()
+	local text = Read("responserules/combine.txt")
+	local count = 0
+	for path in text:gmatch('"(npc/combine_soldier/[^"]+)"') do
+		count = count + 1
+		local f = io.open("addons/sandcastle/gamemodes/sandcastle/content/sound/" .. path, "rb")
+		T.eq(f ~= nil, true, path)
+		if f then f:close() end
+	end
+	T.eq(count >= 50, true, "the soldiers' lines were found: " .. count)
 end)
 
 -- Falling back to cover and leaving it for a kit (foundation.aiwar.orders'

@@ -12,3 +12,10 @@ and drawn in the style of:
 Changes: Building.svg's inner glow, outline and ground strip and Box.svg's
 colours were redrawn as a sandcastle; Flag red.svg's cloth and pole were
 redrawn smaller above it, in royal blue and purple.
+
+The Combine soldiers' and zombines' sounds (content/sound/npc/combine_soldier,
+content/sound/npc/zombine) are "Unused HLA Combine Soldier VO 2.2", a
+community pack of the unused Combine soldier voice recorded for Valve's
+Half-Life: Alyx; its README names no author. They shadow HL2's files of
+the same names. Changes: 13 files made mono 16-bit PCM WAV (8 were stereo,
+5 MP3 data named .wav) by .devtools/bin/sound_pack.py, which installs them.

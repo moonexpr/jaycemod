@@ -26,6 +26,22 @@ CONCEPT_CALL_MEDIC = "TLK_NS_CALL_MEDIC"
 CONCEPT_RETREAT_TO_COVER = "TLK_NS_RETREAT_TO_COVER"
 CONCEPT_GET_HEALTH = "TLK_NS_GET_HEALTH"
 
+-- Squad chatter, heard by all near: a soldier that killed an enemy says so;
+-- the nearest soldier to a teammate falling within ALLY_DOWN_RANGE of it
+-- calls the loss; a soldier whose last enemy slipped out of sight (still
+-- alive) says it lost contact; and between fights, every IDLE_INTERVAL,
+-- one soldier of each team not fighting talks on the radio.
+CONCEPT_ENEMY_KILLED = "TLK_NS_ENEMY_KILLED"
+CONCEPT_ALLY_DOWN = "TLK_NS_ALLY_DOWN"
+CONCEPT_CONTACT_LOST = "TLK_NS_CONTACT_LOST"
+CONCEPT_IDLE = "TLK_NS_IDLE"
+ALLY_DOWN_RANGE = 1500
+IDLE_INTERVAL = 5
+
+function WitnessesFall(distance)
+	return distance <= ALLY_DOWN_RANGE
+end
+
 -- A player passes a soldier within GREET_RANGE, moving at PASS_SPEED or
 -- faster (a walk; standing about beside it is not passing).
 GREET_RANGE, PASS_SPEED = 128, 90

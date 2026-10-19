@@ -36,6 +36,12 @@ criterion "ConceptCallMedic" "Concept" "TLK_NS_CALL_MEDIC" required
 // a hurt soldier falling back to cover, and leaving for a health kit
 criterion "ConceptRetreatToCover" "Concept" "TLK_NS_RETREAT_TO_COVER" required
 criterion "ConceptGetHealth" "Concept" "TLK_NS_GET_HEALTH" required
+// squad chatter: a kill, a teammate down near it, an enemy slipped out of
+// sight, and the radio between fights
+criterion "ConceptEnemyKilled" "Concept" "TLK_NS_ENEMY_KILLED" required
+criterion "ConceptAllyDown" "Concept" "TLK_NS_ALLY_DOWN" required
+criterion "ConceptContactLost" "Concept" "TLK_NS_CONTACT_LOST" required
+criterion "ConceptIdle" "Concept" "TLK_NS_IDLE" required
 
 // Chances (randomnum, 0..100) ------------------------------------------------
 
@@ -52,7 +58,7 @@ criterion "IsOnDefense" "teamrole" "defense" required
 // of its own, weighted past a voice's own plain stop
 criterion "CartBlocked" "cartblocked" "1" required weight 2
 
-// said in this role within 20 s (each rule's ApplyContext)
+// said in this role within 10 s (each rule's ApplyContext)
 criterion "NotSaidCartMovingForwardO" "SaidCartMovingForwardO" "!=1" required weight 0
 criterion "NotSaidCartMovingForwardD" "SaidCartMovingForwardD" "!=1" required weight 0
 criterion "NotSaidCartMovingBackwardO" "SaidCartMovingBackwardO" "!=1" required weight 0
@@ -62,12 +68,12 @@ criterion "NotSaidCartMovingStoppedD" "SaidCartMovingStoppedD" "!=1" required we
 
 // Battle stances --------------------------------------------------------------
 
-// said on taking a stance within 30 s: a soldier rests often in setup
+// said on taking a stance within 15 s: a soldier rests often in setup
 criterion "NotSaidBattleStance" "SaidBattleStance" "!=1" required weight 0
 
 // Greetings and contacts -----------------------------------------------------
 
-// greeted a player within 45 s; called out a contact within 10 s
+// greeted a player within 20 s; called out a contact within 5 s
 criterion "NotSaidPlayerPassing" "SaidPlayerPassing" "!=1" required weight 0
 criterion "NotSaidEnemySpotted" "SaidEnemySpotted" "!=1" required weight 0
 // called for a medic within 10 s (the orders' CALL_MEDIC_COOLDOWN)
@@ -75,6 +81,15 @@ criterion "NotSaidCallMedic" "SaidCallMedic" "!=1" required weight 0
 // fell back, or went for health, within 10 s (past the orders' RETREAT_COOLDOWN)
 criterion "NotSaidRetreatToCover" "SaidRetreatToCover" "!=1" required weight 0
 criterion "NotSaidGetHealth" "SaidGetHealth" "!=1" required weight 0
+
+// Squad chatter ------------------------------------------------------------
+
+// said a kill or a teammate down within 6 s, a lost contact within 15, and
+// talked on the radio within 30
+criterion "NotSaidEnemyKilled" "SaidEnemyKilled" "!=1" required weight 0
+criterion "NotSaidAllyDown" "SaidAllyDown" "!=1" required weight 0
+criterion "NotSaidContactLost" "SaidContactLost" "!=1" required weight 0
+criterion "NotSaidIdle" "SaidIdle" "!=1" required weight 0
 
 // Speakers, by affiliation -------------------------------------------------------
 

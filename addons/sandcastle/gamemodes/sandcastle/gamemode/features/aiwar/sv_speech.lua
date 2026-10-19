@@ -8,10 +8,13 @@
 -- after it, the delay its rule's group sets; the group sets how loud it is
 -- too. A soldier also says it is ready in its battle stance, calls out an
 -- enemy it has just spotted, calls for a medic when hurt, and greets a
--- teammate player walking past, heard by that player alone.
+-- teammate player walking past, heard by that player alone. And the squad
+-- chatters (Speech.CONCEPT_ENEMY_KILLED and the rest): a kill, a teammate
+-- down, an enemy slipped out of sight, the radio between fights.
 local Controller = ...
 local Speech = WS.require("foundation.aiwar.speech")
 local Payload = WS.require("foundation.payload")
+local Teams = WS.require("foundation.teams")
 
 -- The AI war needs the responserules addon, as it needs DrGBase.
 local Rules = ResponseRules or error("the AI war's speech needs the responserules addon (addons/responserules)")
@@ -126,5 +129,64 @@ hook.Add("WSCartConcept", "ws_aiwar_speech", function(watcher, concept, audience
 			local role = entry.soldier.team == watcher.team and Speech.OFFENSE or Speech.DEFENSE
 			Controller:SpeakConcept(ent, concept, role, blocked, now)
 		end
+	end
+end)
+
+local function Alive(ent)
+	if ent:IsPlayer() then return ent:Alive() end
+	return ent:Health() > 0
+end
+
+-- Someone of a team fell: a soldier that killed them (an enemy) says so, and
+-- the nearest living soldier of their team that saw it fall
+-- (Speech.WitnessesFall) calls the loss.
+local function Fell(victim, attacker)
+	if not Controller.war then return end
+	local team, now = WS.LastTeamNumber(victim), CurTime()
+	local killer = IsValid(attacker) and Controller.soldiers[attacker]
+	if killer and Teams.EnemyOf(killer.soldier.team) == team then
+		Controller:SpeakConcept(attacker, Speech.CONCEPT_ENEMY_KILLED, Controller:RoleOf(killer), false, now)
+	end
+	local pos, witness, nearest = victim:GetPos(), nil, math.huge
+	for ent, entry in pairs(Controller.soldiers) do
+		if ent ~= victim and IsValid(ent) and entry.soldier.team == team and entry.soldier:IsAlive() then
+			local distance = ent:GetPos():Distance(pos)
+			if distance < nearest and Speech.WitnessesFall(distance) then witness, nearest = ent, distance end
+		end
+	end
+	if witness then Controller:SpeakConcept(witness, Speech.CONCEPT_ALLY_DOWN, Controller:RoleOf(Controller.soldiers[witness]), false, now) end
+end
+
+hook.Add("OnNPCKilled", "ws_aiwar_speech", Fell)
+hook.Add("PlayerDeath", "ws_aiwar_speech", function(victim, _, attacker) Fell(victim, attacker) end)
+
+-- A soldier whose last enemy slipped out of sight still alive (not one it
+-- killed) may say it lost contact.
+hook.Add("WSSoldierContactLost", "ws_aiwar_speech", function(ent, enemy)
+	if not Controller.war or not (IsValid(enemy) and Alive(enemy)) then return end
+	local entry = Controller.soldiers[ent]
+	if not entry then return end
+	Controller:SpeakConcept(ent, Speech.CONCEPT_CONTACT_LOST, Controller:RoleOf(entry), false, CurTime())
+end)
+
+-- Every Speech.IDLE_INTERVAL, one soldier of each team out of a fight, drawn
+-- at random, may talk on the radio.
+local nextIdle = 0
+
+hook.Add("Think", "ws_aiwar_idle_chatter", function()
+	local now = CurTime()
+	if not Controller.war or now < nextIdle then return end
+	nextIdle = now + Speech.IDLE_INTERVAL
+	local calm = {}
+	for ent, entry in pairs(Controller.soldiers) do
+		if IsValid(ent) and not ent.NSDormant and entry.soldier:IsAlive() and not entry.soldier:HasEnemy() then
+			local team = entry.soldier.team
+			calm[team] = calm[team] or {}
+			calm[team][#calm[team] + 1] = ent
+		end
+	end
+	for _, soldiers in pairs(calm) do
+		local ent = soldiers[math.random(#soldiers)]
+		Controller:SpeakConcept(ent, Speech.CONCEPT_IDLE, Controller:RoleOf(Controller.soldiers[ent]), false, now)
 	end
 end)

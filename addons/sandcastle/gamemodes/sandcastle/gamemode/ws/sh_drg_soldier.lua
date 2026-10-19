@@ -26,14 +26,16 @@ local STEP_LEVEL, VOICE_LEVEL = 75, 75
 -- ws/sh_soundscripts.lua). STEP_REACH: how far down it looks for the surface.
 local STEP_PLAY_LEVEL, STEP_REACH = 85, 64
 
--- volume: as it plays (Noise.Played).
-local function PlayStep(self, volume)
+-- volume: as it plays (Noise.Played); gear: what its gear rattles with the
+-- step (Voices.Gear: a Combine soldier's, quietly), or nil.
+local function PlayStep(self, volume, gear)
 	local pos = self:GetPos()
 	local tr = util.TraceLine({ start = pos, endpos = pos - Vector(0, 0, STEP_REACH), filter = self, mask = MASK_PLAYERSOLID })
 	local surface = util.GetSurfaceData(tr.SurfaceProps)
 	self.NSLeftFoot = not self.NSLeftFoot
 	local sound = self.NSLeftFoot and surface.stepLeftSound or surface.stepRightSound
 	self:EmitSound(sound, STEP_PLAY_LEVEL, 100, volume, CHAN_BODY)
+	if gear then self:EmitSound(gear.sound, gear.level, gear.pitch, gear.volume, CHAN_AUTO) end
 end
 
 -- Tracing (ws_aiwar_trace): a soldier with NSTrace set prints
@@ -72,12 +74,13 @@ function WS.DrgSoldier(ENT, baseName)
 	ENT.ClimbLedgesMaxHeight = HL2Path.SOLDIER_LIMITS.jumpHeight
 
 	-- Its voice for the model it wears now (foundation.npc.voices; none for a
-	-- model without one): DrGBase plays its deaths, and it plays its hits'
-	-- grunts and cries itself (NSFeedback).
+	-- model without one): it plays its hits' grunts and cries (NSFeedback) and
+	-- its death (OnDeath: WS.PlayDeath, loud and confirmed) itself, not
+	-- DrGBase.
 	function ENT:NSVoice()
 		local voice = Voices.For(self:GetModel()) or SILENT
 		self.NSVoiceLines = voice
-		self.OnDamageSounds, self.OnDeathSounds = {}, voice.death
+		self.OnDamageSounds, self.OnDeathSounds = {}, {}
 	end
 
 	-- A hit it lives through: a grunt, or for a heavy one a cry of pain
@@ -110,9 +113,14 @@ function WS.DrgSoldier(ENT, baseName)
 		end
 		local step = Noise.Step(velocity:Length2D(), self.IsCrouching ~= nil and self:IsCrouching())
 		if step and now >= (self.NSNextStep or 0) then
-			PlayStep(self, Noise.Played(step.volume))
+			PlayStep(self, Noise.Played(step.volume), self:NSGear(step.running))
 			self.NSNextStep = now + step.interval
 		end
+	end
+
+	-- What its gear rattles with its next step (the foot after the last).
+	function ENT:NSGear(running)
+		return Voices.Gear(self.NSVoiceLines, self.NSLeftFoot and "right" or "left", running, math.random)
 	end
 
 	-- Holds its loadout's weapon for the enemy's distance (Arms.Choose).
@@ -154,7 +162,8 @@ function WS.DrgSoldier(ENT, baseName)
 		local volume = self.NSLeapt and Noise.JUMP_LANDING_VOLUME or Noise.Landing(fall)
 		self.NSFallSpeed, self.NSLeapt = 0, nil
 		if volume <= 0 then return end
-		PlayStep(self, Noise.Played(volume))
+		-- a landing jolts its gear as a run does
+		PlayStep(self, Noise.Played(volume), self:NSGear(true))
 		local landing = self:SelectWeightedSequence(ACT_LAND)
 		if landing and landing > 0 then self:AddGestureSequence(landing, true) end
 		if fall > Noise.MAX_SAFE_FALL_SPEED then
@@ -334,6 +343,7 @@ function WS.DrgSoldier(ENT, baseName)
 	function ENT:OnLastEnemy(ent)
 		Base().OnLastEnemy(self, ent)
 		Tell(self, "OnContactLost", ent)
+		hook.Run("WSSoldierContactLost", self, ent)
 	end
 
 	-- In an area a TF2 player crouches through, the soldier crouches (the
@@ -489,6 +499,7 @@ function WS.DrgSoldier(ENT, baseName)
 	end
 
 	function ENT:OnDeath(dmg)
+		WS.PlayDeath(self:GetPos(), self.NSVoiceLines)
 		if self:NSClientRagdoll(dmg) then self:PauseCoroutine(Ragdoll.HANDOFF) end
 		if self.NSDormant then self:NSRest() end
 	end

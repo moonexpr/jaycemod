@@ -18,7 +18,7 @@ response CartMovingForwardOffenseCombine
 rule CartMovingForwardOffenseCombine
 {
 	criteria ConceptCartMovingForward IsOnOffense IsCombine NotSaidCartMovingForwardO 75PercentChance
-	ApplyContext "SaidCartMovingForwardO:1:20"
+	ApplyContext "SaidCartMovingForwardO:1:10"
 	response CartMovingForwardOffenseCombine
 }
 response CartMovingForwardOffenseCombineSoldier
@@ -30,7 +30,7 @@ response CartMovingForwardOffenseCombineSoldier
 rule CartMovingForwardOffenseCombineSoldier
 {
 	criteria ConceptCartMovingForward IsOnOffense IsCombine NotSaidCartMovingForwardO 75PercentChance IsSoldierVoice
-	ApplyContext "SaidCartMovingForwardO:1:20"
+	ApplyContext "SaidCartMovingForwardO:1:10"
 	response CartMovingForwardOffenseCombineSoldier
 }
 response CartMovingForwardOffenseCombineMetrocop
@@ -41,7 +41,7 @@ response CartMovingForwardOffenseCombineMetrocop
 rule CartMovingForwardOffenseCombineMetrocop
 {
 	criteria ConceptCartMovingForward IsOnOffense IsCombine NotSaidCartMovingForwardO 75PercentChance IsMetrocopVoice
-	ApplyContext "SaidCartMovingForwardO:1:20"
+	ApplyContext "SaidCartMovingForwardO:1:10"
 	response CartMovingForwardOffenseCombineMetrocop
 }
 
@@ -53,7 +53,7 @@ response CartMovingForwardDefenseCombine
 rule CartMovingForwardDefenseCombine
 {
 	criteria ConceptCartMovingForward IsOnDefense IsCombine NotSaidCartMovingForwardD 75PercentChance
-	ApplyContext "SaidCartMovingForwardD:1:20"
+	ApplyContext "SaidCartMovingForwardD:1:10"
 	response CartMovingForwardDefenseCombine
 }
 response CartMovingForwardDefenseCombineSoldier
@@ -64,7 +64,7 @@ response CartMovingForwardDefenseCombineSoldier
 rule CartMovingForwardDefenseCombineSoldier
 {
 	criteria ConceptCartMovingForward IsOnDefense IsCombine NotSaidCartMovingForwardD 75PercentChance IsSoldierVoice
-	ApplyContext "SaidCartMovingForwardD:1:20"
+	ApplyContext "SaidCartMovingForwardD:1:10"
 	response CartMovingForwardDefenseCombineSoldier
 }
 response CartMovingForwardDefenseCombineMetrocop
@@ -75,7 +75,7 @@ response CartMovingForwardDefenseCombineMetrocop
 rule CartMovingForwardDefenseCombineMetrocop
 {
 	criteria ConceptCartMovingForward IsOnDefense IsCombine NotSaidCartMovingForwardD 75PercentChance IsMetrocopVoice
-	ApplyContext "SaidCartMovingForwardD:1:20"
+	ApplyContext "SaidCartMovingForwardD:1:10"
 	response CartMovingForwardDefenseCombineMetrocop
 }
 
@@ -87,7 +87,7 @@ response CartMovingBackwardsOffenseCombine
 rule CartMovingBackwardsOffenseCombine
 {
 	criteria ConceptCartMovingBackward IsOnOffense IsCombine NotSaidCartMovingBackwardO 75PercentChance
-	ApplyContext "SaidCartMovingBackwardO:1:20"
+	ApplyContext "SaidCartMovingBackwardO:1:10"
 	response CartMovingBackwardsOffenseCombine
 }
 response CartMovingBackwardsOffenseCombineSoldier
@@ -98,7 +98,7 @@ response CartMovingBackwardsOffenseCombineSoldier
 rule CartMovingBackwardsOffenseCombineSoldier
 {
 	criteria ConceptCartMovingBackward IsOnOffense IsCombine NotSaidCartMovingBackwardO 75PercentChance IsSoldierVoice
-	ApplyContext "SaidCartMovingBackwardO:1:20"
+	ApplyContext "SaidCartMovingBackwardO:1:10"
 	response CartMovingBackwardsOffenseCombineSoldier
 }
 response CartMovingBackwardsOffenseCombineMetrocop
@@ -109,7 +109,7 @@ response CartMovingBackwardsOffenseCombineMetrocop
 rule CartMovingBackwardsOffenseCombineMetrocop
 {
 	criteria ConceptCartMovingBackward IsOnOffense IsCombine NotSaidCartMovingBackwardO 75PercentChance IsMetrocopVoice
-	ApplyContext "SaidCartMovingBackwardO:1:20"
+	ApplyContext "SaidCartMovingBackwardO:1:10"
 	response CartMovingBackwardsOffenseCombineMetrocop
 }
 
@@ -121,7 +121,7 @@ response CartMovingBackwardsDefenseCombine
 rule CartMovingBackwardsDefenseCombine
 {
 	criteria ConceptCartMovingBackward IsOnDefense IsCombine NotSaidCartMovingBackwardD 75PercentChance
-	ApplyContext "SaidCartMovingBackwardD:1:20"
+	ApplyContext "SaidCartMovingBackwardD:1:10"
 	response CartMovingBackwardsDefenseCombine
 }
 response CartMovingBackwardsDefenseCombineSoldier
@@ -132,7 +132,7 @@ response CartMovingBackwardsDefenseCombineSoldier
 rule CartMovingBackwardsDefenseCombineSoldier
 {
 	criteria ConceptCartMovingBackward IsOnDefense IsCombine NotSaidCartMovingBackwardD 75PercentChance IsSoldierVoice
-	ApplyContext "SaidCartMovingBackwardD:1:20"
+	ApplyContext "SaidCartMovingBackwardD:1:10"
 	response CartMovingBackwardsDefenseCombineSoldier
 }
 response CartMovingBackwardsDefenseCombineMetrocop
@@ -143,7 +143,7 @@ response CartMovingBackwardsDefenseCombineMetrocop
 rule CartMovingBackwardsDefenseCombineMetrocop
 {
 	criteria ConceptCartMovingBackward IsOnDefense IsCombine NotSaidCartMovingBackwardD 75PercentChance IsMetrocopVoice
-	ApplyContext "SaidCartMovingBackwardD:1:20"
+	ApplyContext "SaidCartMovingBackwardD:1:10"
 	response CartMovingBackwardsDefenseCombineMetrocop
 }
 
@@ -155,7 +155,7 @@ response CartMovingStoppedOffenseCombine
 rule CartMovingStoppedOffenseCombine
 {
 	criteria ConceptCartMovingStopped IsOnOffense IsCombine NotSaidCartMovingStoppedO 75PercentChance
-	ApplyContext "SaidCartMovingStoppedO:1:20"
+	ApplyContext "SaidCartMovingStoppedO:1:10"
 	response CartMovingStoppedOffenseCombine
 }
 response CartMovingStoppedOffenseCombineSoldier
@@ -166,7 +166,7 @@ response CartMovingStoppedOffenseCombineSoldier
 rule CartMovingStoppedOffenseCombineSoldier
 {
 	criteria ConceptCartMovingStopped IsOnOffense IsCombine NotSaidCartMovingStoppedO 75PercentChance IsSoldierVoice
-	ApplyContext "SaidCartMovingStoppedO:1:20"
+	ApplyContext "SaidCartMovingStoppedO:1:10"
 	response CartMovingStoppedOffenseCombineSoldier
 }
 
@@ -178,7 +178,7 @@ response CartMovingStoppedDefenseCombine
 rule CartMovingStoppedDefenseCombine
 {
 	criteria ConceptCartMovingStopped IsOnDefense IsCombine NotSaidCartMovingStoppedD 75PercentChance
-	ApplyContext "SaidCartMovingStoppedD:1:20"
+	ApplyContext "SaidCartMovingStoppedD:1:10"
 	response CartMovingStoppedDefenseCombine
 }
 response CartMovingStoppedDefenseCombineSoldier
@@ -188,7 +188,7 @@ response CartMovingStoppedDefenseCombineSoldier
 rule CartMovingStoppedDefenseCombineSoldier
 {
 	criteria ConceptCartMovingStopped IsOnDefense IsCombine NotSaidCartMovingStoppedD 75PercentChance IsSoldierVoice
-	ApplyContext "SaidCartMovingStoppedD:1:20"
+	ApplyContext "SaidCartMovingStoppedD:1:10"
 	response CartMovingStoppedDefenseCombineSoldier
 }
 response CartMovingStoppedDefenseCombineMetrocop
@@ -198,7 +198,7 @@ response CartMovingStoppedDefenseCombineMetrocop
 rule CartMovingStoppedDefenseCombineMetrocop
 {
 	criteria ConceptCartMovingStopped IsOnDefense IsCombine NotSaidCartMovingStoppedD 75PercentChance IsMetrocopVoice
-	ApplyContext "SaidCartMovingStoppedD:1:20"
+	ApplyContext "SaidCartMovingStoppedD:1:10"
 	response CartMovingStoppedDefenseCombineMetrocop
 }
 
@@ -210,7 +210,7 @@ response CartBlockedOffenseCombine
 rule CartBlockedOffenseCombine
 {
 	criteria ConceptCartMovingStopped IsOnOffense IsCombine NotSaidCartMovingStoppedO 75PercentChance CartBlocked
-	ApplyContext "SaidCartMovingStoppedO:1:20"
+	ApplyContext "SaidCartMovingStoppedO:1:10"
 	response CartBlockedOffenseCombine
 }
 response CartBlockedOffenseCombineSoldier
@@ -222,7 +222,7 @@ response CartBlockedOffenseCombineSoldier
 rule CartBlockedOffenseCombineSoldier
 {
 	criteria ConceptCartMovingStopped IsOnOffense IsCombine NotSaidCartMovingStoppedO 75PercentChance CartBlocked IsSoldierVoice
-	ApplyContext "SaidCartMovingStoppedO:1:20"
+	ApplyContext "SaidCartMovingStoppedO:1:10"
 	response CartBlockedOffenseCombineSoldier
 }
 response CartBlockedOffenseCombineMetrocop
@@ -233,7 +233,7 @@ response CartBlockedOffenseCombineMetrocop
 rule CartBlockedOffenseCombineMetrocop
 {
 	criteria ConceptCartMovingStopped IsOnOffense IsCombine NotSaidCartMovingStoppedO 75PercentChance CartBlocked IsMetrocopVoice
-	ApplyContext "SaidCartMovingStoppedO:1:20"
+	ApplyContext "SaidCartMovingStoppedO:1:10"
 	response CartBlockedOffenseCombineMetrocop
 }
 
@@ -245,7 +245,7 @@ response CartBlockedDefenseCombine
 rule CartBlockedDefenseCombine
 {
 	criteria ConceptCartMovingStopped IsOnDefense IsCombine NotSaidCartMovingStoppedD 75PercentChance CartBlocked
-	ApplyContext "SaidCartMovingStoppedD:1:20"
+	ApplyContext "SaidCartMovingStoppedD:1:10"
 	response CartBlockedDefenseCombine
 }
 response CartBlockedDefenseCombineSoldier
@@ -255,7 +255,7 @@ response CartBlockedDefenseCombineSoldier
 rule CartBlockedDefenseCombineSoldier
 {
 	criteria ConceptCartMovingStopped IsOnDefense IsCombine NotSaidCartMovingStoppedD 75PercentChance CartBlocked IsSoldierVoice
-	ApplyContext "SaidCartMovingStoppedD:1:20"
+	ApplyContext "SaidCartMovingStoppedD:1:10"
 	response CartBlockedDefenseCombineSoldier
 }
 response CartBlockedDefenseCombineMetrocop
@@ -265,7 +265,7 @@ response CartBlockedDefenseCombineMetrocop
 rule CartBlockedDefenseCombineMetrocop
 {
 	criteria ConceptCartMovingStopped IsOnDefense IsCombine NotSaidCartMovingStoppedD 75PercentChance CartBlocked IsMetrocopVoice
-	ApplyContext "SaidCartMovingStoppedD:1:20"
+	ApplyContext "SaidCartMovingStoppedD:1:10"
 	response CartBlockedDefenseCombineMetrocop
 }
 
@@ -276,8 +276,8 @@ response BattleStanceCombine
 }
 rule BattleStanceCombine
 {
-	criteria ConceptBattleStance IsCombine NotSaidBattleStance 50PercentChance
-	ApplyContext "SaidBattleStance:1:30"
+	criteria ConceptBattleStance IsCombine NotSaidBattleStance 75PercentChance
+	ApplyContext "SaidBattleStance:1:15"
 	response BattleStanceCombine
 }
 response BattleStanceCombineSoldier
@@ -290,8 +290,8 @@ response BattleStanceCombineSoldier
 }
 rule BattleStanceCombineSoldier
 {
-	criteria ConceptBattleStance IsCombine NotSaidBattleStance 50PercentChance IsSoldierVoice
-	ApplyContext "SaidBattleStance:1:30"
+	criteria ConceptBattleStance IsCombine NotSaidBattleStance 75PercentChance IsSoldierVoice
+	ApplyContext "SaidBattleStance:1:15"
 	response BattleStanceCombineSoldier
 }
 response BattleStanceCombineMetrocop
@@ -304,8 +304,8 @@ response BattleStanceCombineMetrocop
 }
 rule BattleStanceCombineMetrocop
 {
-	criteria ConceptBattleStance IsCombine NotSaidBattleStance 50PercentChance IsMetrocopVoice
-	ApplyContext "SaidBattleStance:1:30"
+	criteria ConceptBattleStance IsCombine NotSaidBattleStance 75PercentChance IsMetrocopVoice
+	ApplyContext "SaidBattleStance:1:15"
 	response BattleStanceCombineMetrocop
 }
 
@@ -317,8 +317,8 @@ response PlayerPassingCombine
 }
 rule PlayerPassingCombine
 {
-	criteria ConceptPlayerPassing IsCombine NotSaidPlayerPassing 50PercentChance
-	ApplyContext "SaidPlayerPassing:1:45"
+	criteria ConceptPlayerPassing IsCombine NotSaidPlayerPassing 75PercentChance
+	ApplyContext "SaidPlayerPassing:1:20"
 	response PlayerPassingCombine
 }
 
@@ -331,8 +331,8 @@ response PlayerPassingCombineSoldier
 }
 rule PlayerPassingCombineSoldier
 {
-	criteria ConceptPlayerPassing IsCombine NotSaidPlayerPassing 50PercentChance IsSoldierVoice
-	ApplyContext "SaidPlayerPassing:1:45"
+	criteria ConceptPlayerPassing IsCombine NotSaidPlayerPassing 75PercentChance IsSoldierVoice
+	ApplyContext "SaidPlayerPassing:1:20"
 	response PlayerPassingCombineSoldier
 }
 
@@ -344,8 +344,8 @@ response PlayerPassingCombineMetrocop
 }
 rule PlayerPassingCombineMetrocop
 {
-	criteria ConceptPlayerPassing IsCombine NotSaidPlayerPassing 50PercentChance IsMetrocopVoice
-	ApplyContext "SaidPlayerPassing:1:45"
+	criteria ConceptPlayerPassing IsCombine NotSaidPlayerPassing 75PercentChance IsMetrocopVoice
+	ApplyContext "SaidPlayerPassing:1:20"
 	response PlayerPassingCombineMetrocop
 }
 
@@ -357,8 +357,8 @@ response EnemySpottedCombine
 }
 rule EnemySpottedCombine
 {
-	criteria ConceptEnemySpotted IsCombine NotSaidEnemySpotted 75PercentChance
-	ApplyContext "SaidEnemySpotted:1:10"
+	criteria ConceptEnemySpotted IsCombine NotSaidEnemySpotted
+	ApplyContext "SaidEnemySpotted:1:5"
 	response EnemySpottedCombine
 }
 
@@ -372,8 +372,8 @@ response EnemySpottedCombineSoldier
 }
 rule EnemySpottedCombineSoldier
 {
-	criteria ConceptEnemySpotted IsCombine NotSaidEnemySpotted 75PercentChance IsSoldierVoice
-	ApplyContext "SaidEnemySpotted:1:10"
+	criteria ConceptEnemySpotted IsCombine NotSaidEnemySpotted IsSoldierVoice
+	ApplyContext "SaidEnemySpotted:1:5"
 	response EnemySpottedCombineSoldier
 }
 
@@ -385,8 +385,8 @@ response EnemySpottedCombineMetrocop
 }
 rule EnemySpottedCombineMetrocop
 {
-	criteria ConceptEnemySpotted IsCombine NotSaidEnemySpotted 75PercentChance IsMetrocopVoice
-	ApplyContext "SaidEnemySpotted:1:10"
+	criteria ConceptEnemySpotted IsCombine NotSaidEnemySpotted IsMetrocopVoice
+	ApplyContext "SaidEnemySpotted:1:5"
 	response EnemySpottedCombineMetrocop
 }
 
@@ -504,4 +504,169 @@ rule GetHealthCombineMetrocop
 	criteria ConceptGetHealth IsCombine NotSaidGetHealth IsMetrocopVoice
 	ApplyContext "SaidGetHealth:1:10"
 	response GetHealthCombineMetrocop
+}
+
+// EnemyKilled: it killed an enemy: target down, to all near
+response EnemyKilledCombine
+{
+	print "Combine: target down" defaultdelay
+}
+rule EnemyKilledCombine
+{
+	criteria ConceptEnemyKilled IsCombine NotSaidEnemyKilled 75PercentChance
+	ApplyContext "SaidEnemyKilled:1:6"
+	response EnemyKilledCombine
+}
+response EnemyKilledCombineSoldier
+{
+	speak "npc/combine_soldier/vo/affirmativewegothimnow.wav" defaultdelay
+	speak "npc/combine_soldier/vo/cleaned.wav" defaultdelay
+	speak "npc/combine_soldier/vo/contained.wav" defaultdelay
+	speak "npc/combine_soldier/vo/overwatchtargetcontained.wav" defaultdelay
+	speak "npc/combine_soldier/vo/overwatchtarget1sterilized.wav" defaultdelay
+	speak "npc/combine_soldier/vo/thatsitwrapitup.wav" defaultdelay
+	speak "npc/combine_soldier/vo/delivered.wav" defaultdelay
+}
+rule EnemyKilledCombineSoldier
+{
+	criteria ConceptEnemyKilled IsCombine NotSaidEnemyKilled 75PercentChance IsSoldierVoice
+	ApplyContext "SaidEnemyKilled:1:6"
+	response EnemyKilledCombineSoldier
+}
+response EnemyKilledCombineMetrocop
+{
+	speak "npc/metropolice/vo/protectioncomplete.wav" defaultdelay
+	speak "npc/metropolice/vo/sentencedelivered.wav" defaultdelay
+	speak "npc/metropolice/vo/finalverdictadministered.wav" defaultdelay
+	speak "npc/metropolice/vo/chuckle.wav" defaultdelay
+}
+rule EnemyKilledCombineMetrocop
+{
+	criteria ConceptEnemyKilled IsCombine NotSaidEnemyKilled 75PercentChance IsMetrocopVoice
+	ApplyContext "SaidEnemyKilled:1:6"
+	response EnemyKilledCombineMetrocop
+}
+
+// AllyDown: a teammate fell near it: man down, to all near
+response AllyDownCombine
+{
+	print "Combine: man down" defaultdelay
+}
+rule AllyDownCombine
+{
+	criteria ConceptAllyDown IsCombine NotSaidAllyDown
+	ApplyContext "SaidAllyDown:1:6"
+	response AllyDownCombine
+}
+response AllyDownCombineSoldier
+{
+	speak "npc/combine_soldier/vo/onedown.wav" defaultdelay
+	speak "npc/combine_soldier/vo/onedutyvacated.wav" defaultdelay
+	speak "npc/combine_soldier/vo/overwatchrequestreinforcement.wav" defaultdelay
+	speak "npc/combine_soldier/vo/heavyresistance.wav" defaultdelay
+}
+rule AllyDownCombineSoldier
+{
+	criteria ConceptAllyDown IsCombine NotSaidAllyDown IsSoldierVoice
+	ApplyContext "SaidAllyDown:1:6"
+	response AllyDownCombineSoldier
+}
+response AllyDownCombineMetrocop
+{
+	speak "npc/metropolice/vo/isdown.wav" defaultdelay
+	speak "npc/metropolice/vo/officerdowniam10-99.wav" defaultdelay
+	speak "npc/metropolice/vo/officerdowncode3tomy10-20.wav" defaultdelay
+	speak "npc/metropolice/vo/reinforcementteamscode3.wav" defaultdelay
+}
+rule AllyDownCombineMetrocop
+{
+	criteria ConceptAllyDown IsCombine NotSaidAllyDown IsMetrocopVoice
+	ApplyContext "SaidAllyDown:1:6"
+	response AllyDownCombineMetrocop
+}
+
+// ContactLost: its enemy slipped out of sight: lost contact, to all near
+response ContactLostCombine
+{
+	print "Combine: lost contact" defaultdelay
+}
+rule ContactLostCombine
+{
+	criteria ConceptContactLost IsCombine NotSaidContactLost 75PercentChance
+	ApplyContext "SaidContactLost:1:15"
+	response ContactLostCombine
+}
+response ContactLostCombineSoldier
+{
+	speak "npc/combine_soldier/vo/lostcontact.wav" defaultdelay
+	speak "npc/combine_soldier/vo/motioncheckallradials.wav" defaultdelay
+	speak "npc/combine_soldier/vo/skyshieldreportslostcontact.wav" defaultdelay
+	speak "npc/combine_soldier/vo/stayalertreportsightlines.wav" defaultdelay
+}
+rule ContactLostCombineSoldier
+{
+	criteria ConceptContactLost IsCombine NotSaidContactLost 75PercentChance IsSoldierVoice
+	ApplyContext "SaidContactLost:1:15"
+	response ContactLostCombineSoldier
+}
+response ContactLostCombineMetrocop
+{
+	speak "npc/metropolice/vo/nocontact.wav" defaultdelay
+	speak "npc/metropolice/vo/suspectlocationunknown.wav" defaultdelay
+	speak "npc/metropolice/vo/hidinglastseenatrange.wav" defaultdelay
+	speak "npc/metropolice/vo/searchingforsuspect.wav" defaultdelay
+}
+rule ContactLostCombineMetrocop
+{
+	criteria ConceptContactLost IsCombine NotSaidContactLost 75PercentChance IsMetrocopVoice
+	ApplyContext "SaidContactLost:1:15"
+	response ContactLostCombineMetrocop
+}
+
+// Idle: between fights, on the radio: all clear, to all near
+response IdleCombine
+{
+	print "Combine: all clear, holding" defaultdelay
+}
+rule IdleCombine
+{
+	criteria ConceptIdle IsCombine NotSaidIdle 50PercentChance
+	ApplyContext "SaidIdle:1:30"
+	response IdleCombine
+}
+response IdleCombineSoldier
+{
+	speak "npc/combine_soldier/vo/reportallpositionsclear.wav" defaultdelay
+	speak "npc/combine_soldier/vo/reportallradialsfree.wav" defaultdelay
+	speak "npc/combine_soldier/vo/reportingclear.wav" defaultdelay
+	speak "npc/combine_soldier/vo/sightlineisclear.wav" defaultdelay
+	speak "npc/combine_soldier/vo/sectorissecurenovison.wav" defaultdelay
+	speak "npc/combine_soldier/vo/stabilizationteamholding.wav" defaultdelay
+	speak "npc/combine_soldier/vo/teamdeployedandscanning.wav" defaultdelay
+	speak "npc/combine_soldier/vo/isholdingatcode.wav" defaultdelay
+	speak "npc/combine_soldier/vo/secure.wav" defaultdelay
+	speak "npc/combine_soldier/vo/overwatchreportspossiblehostiles.wav" defaultdelay
+}
+rule IdleCombineSoldier
+{
+	criteria ConceptIdle IsCombine NotSaidIdle 50PercentChance IsSoldierVoice
+	ApplyContext "SaidIdle:1:30"
+	response IdleCombineSoldier
+}
+response IdleCombineMetrocop
+{
+	speak "npc/metropolice/vo/patrol.wav" defaultdelay
+	speak "npc/metropolice/vo/holdingon10-14duty.wav" defaultdelay
+	speak "npc/metropolice/vo/unitisonduty10-8.wav" defaultdelay
+	speak "npc/metropolice/vo/ten8standingby.wav" defaultdelay
+	speak "npc/metropolice/vo/localcptreportstatus.wav" defaultdelay
+	speak "npc/metropolice/vo/wearesociostablethislocation.wav" defaultdelay
+	speak "npc/metropolice/vo/blockisholdingcohesive.wav" defaultdelay
+	speak "npc/metropolice/vo/cprequestsallunitsreportin.wav" defaultdelay
+}
+rule IdleCombineMetrocop
+{
+	criteria ConceptIdle IsCombine NotSaidIdle 50PercentChance IsMetrocopVoice
+	ApplyContext "SaidIdle:1:30"
+	response IdleCombineMetrocop
 }

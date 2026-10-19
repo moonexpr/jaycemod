@@ -20,7 +20,7 @@ response CartMovingForwardOffenseRebel
 rule CartMovingForwardOffenseRebel
 {
 	criteria ConceptCartMovingForward IsOnOffense IsRebel NotSaidCartMovingForwardO 75PercentChance
-	ApplyContext "SaidCartMovingForwardO:1:20"
+	ApplyContext "SaidCartMovingForwardO:1:10"
 	response CartMovingForwardOffenseRebel
 }
 response CartMovingForwardOffenseRebelMale
@@ -32,7 +32,7 @@ response CartMovingForwardOffenseRebelMale
 rule CartMovingForwardOffenseRebelMale
 {
 	criteria ConceptCartMovingForward IsOnOffense IsRebel NotSaidCartMovingForwardO 75PercentChance IsMaleVoice
-	ApplyContext "SaidCartMovingForwardO:1:20"
+	ApplyContext "SaidCartMovingForwardO:1:10"
 	response CartMovingForwardOffenseRebelMale
 }
 response CartMovingForwardOffenseRebelFemale
@@ -43,7 +43,7 @@ response CartMovingForwardOffenseRebelFemale
 rule CartMovingForwardOffenseRebelFemale
 {
 	criteria ConceptCartMovingForward IsOnOffense IsRebel NotSaidCartMovingForwardO 75PercentChance IsFemaleVoice
-	ApplyContext "SaidCartMovingForwardO:1:20"
+	ApplyContext "SaidCartMovingForwardO:1:10"
 	response CartMovingForwardOffenseRebelFemale
 }
 response CartMovingForwardOffenseRebelVortigaunt
@@ -54,7 +54,7 @@ response CartMovingForwardOffenseRebelVortigaunt
 rule CartMovingForwardOffenseRebelVortigaunt
 {
 	criteria ConceptCartMovingForward IsOnOffense IsRebel NotSaidCartMovingForwardO 75PercentChance IsVortigauntVoice
-	ApplyContext "SaidCartMovingForwardO:1:20"
+	ApplyContext "SaidCartMovingForwardO:1:10"
 	response CartMovingForwardOffenseRebelVortigaunt
 }
 
@@ -66,7 +66,7 @@ response CartMovingForwardDefenseRebel
 rule CartMovingForwardDefenseRebel
 {
 	criteria ConceptCartMovingForward IsOnDefense IsRebel NotSaidCartMovingForwardD 75PercentChance
-	ApplyContext "SaidCartMovingForwardD:1:20"
+	ApplyContext "SaidCartMovingForwardD:1:10"
 	response CartMovingForwardDefenseRebel
 }
 response CartMovingForwardDefenseRebelMale
@@ -77,7 +77,7 @@ response CartMovingForwardDefenseRebelMale
 rule CartMovingForwardDefenseRebelMale
 {
 	criteria ConceptCartMovingForward IsOnDefense IsRebel NotSaidCartMovingForwardD 75PercentChance IsMaleVoice
-	ApplyContext "SaidCartMovingForwardD:1:20"
+	ApplyContext "SaidCartMovingForwardD:1:10"
 	response CartMovingForwardDefenseRebelMale
 }
 response CartMovingForwardDefenseRebelFemale
@@ -88,7 +88,7 @@ response CartMovingForwardDefenseRebelFemale
 rule CartMovingForwardDefenseRebelFemale
 {
 	criteria ConceptCartMovingForward IsOnDefense IsRebel NotSaidCartMovingForwardD 75PercentChance IsFemaleVoice
-	ApplyContext "SaidCartMovingForwardD:1:20"
+	ApplyContext "SaidCartMovingForwardD:1:10"
 	response CartMovingForwardDefenseRebelFemale
 }
 response CartMovingForwardDefenseRebelAlyx
@@ -98,7 +98,7 @@ response CartMovingForwardDefenseRebelAlyx
 rule CartMovingForwardDefenseRebelAlyx
 {
 	criteria ConceptCartMovingForward IsOnDefense IsRebel NotSaidCartMovingForwardD 75PercentChance IsAlyxVoice
-	ApplyContext "SaidCartMovingForwardD:1:20"
+	ApplyContext "SaidCartMovingForwardD:1:10"
 	response CartMovingForwardDefenseRebelAlyx
 }
 
@@ -110,7 +110,7 @@ response CartMovingBackwardsOffenseRebel
 rule CartMovingBackwardsOffenseRebel
 {
 	criteria ConceptCartMovingBackward IsOnOffense IsRebel NotSaidCartMovingBackwardO 75PercentChance
-	ApplyContext "SaidCartMovingBackwardO:1:20"
+	ApplyContext "SaidCartMovingBackwardO:1:10"
 	response CartMovingBackwardsOffenseRebel
 }
 response CartMovingBackwardsOffenseRebelMale
@@ -121,7 +121,7 @@ response CartMovingBackwardsOffenseRebelMale
 rule CartMovingBackwardsOffenseRebelMale
 {
 	criteria ConceptCartMovingBackward IsOnOffense IsRebel NotSaidCartMovingBackwardO 75PercentChance IsMaleVoice
-	ApplyContext "SaidCartMovingBackwardO:1:20"
+	ApplyContext "SaidCartMovingBackwardO:1:10"
 	response CartMovingBackwardsOffenseRebelMale
 }
 response CartMovingBackwardsOffenseRebelFemale
@@ -131,7 +131,7 @@ response CartMovingBackwardsOffenseRebelFemale
 rule CartMovingBackwardsOffenseRebelFemale
 {
 	criteria ConceptCartMovingBackward IsOnOffense IsRebel NotSaidCartMovingBackwardO 75PercentChance IsFemaleVoice
-	ApplyContext "SaidCartMovingBackwardO:1:20"
+	ApplyContext "SaidCartMovingBackwardO:1:10"
 	response CartMovingBackwardsOffenseRebelFemale
 }
 response CartMovingBackwardsOffenseRebelAlyx
@@ -141,7 +141,7 @@ response CartMovingBackwardsOffenseRebelAlyx
 rule CartMovingBackwardsOffenseRebelAlyx
 {
 	criteria ConceptCartMovingBackward IsOnOffense IsRebel NotSaidCartMovingBackwardO 75PercentChance IsAlyxVoice
-	ApplyContext "SaidCartMovingBackwardO:1:20"
+	ApplyContext "SaidCartMovingBackwardO:1:10"
 	response CartMovingBackwardsOffenseRebelAlyx
 }
 
@@ -153,7 +153,7 @@ response CartMovingBackwardsDefenseRebel
 rule CartMovingBackwardsDefenseRebel
 {
 	criteria ConceptCartMovingBackward IsOnDefense IsRebel NotSaidCartMovingBackwardD 75PercentChance
-	ApplyContext "SaidCartMovingBackwardD:1:20"
+	ApplyContext "SaidCartMovingBackwardD:1:10"
 	response CartMovingBackwardsDefenseRebel
 }
 response CartMovingBackwardsDefenseRebelMale
@@ -165,7 +165,7 @@ response CartMovingBackwardsDefenseRebelMale
 rule CartMovingBackwardsDefenseRebelMale
 {
 	criteria ConceptCartMovingBackward IsOnDefense IsRebel NotSaidCartMovingBackwardD 75PercentChance IsMaleVoice
-	ApplyContext "SaidCartMovingBackwardD:1:20"
+	ApplyContext "SaidCartMovingBackwardD:1:10"
 	response CartMovingBackwardsDefenseRebelMale
 }
 response CartMovingBackwardsDefenseRebelFemale
@@ -177,7 +177,7 @@ response CartMovingBackwardsDefenseRebelFemale
 rule CartMovingBackwardsDefenseRebelFemale
 {
 	criteria ConceptCartMovingBackward IsOnDefense IsRebel NotSaidCartMovingBackwardD 75PercentChance IsFemaleVoice
-	ApplyContext "SaidCartMovingBackwardD:1:20"
+	ApplyContext "SaidCartMovingBackwardD:1:10"
 	response CartMovingBackwardsDefenseRebelFemale
 }
 response CartMovingBackwardsDefenseRebelVortigaunt
@@ -187,7 +187,7 @@ response CartMovingBackwardsDefenseRebelVortigaunt
 rule CartMovingBackwardsDefenseRebelVortigaunt
 {
 	criteria ConceptCartMovingBackward IsOnDefense IsRebel NotSaidCartMovingBackwardD 75PercentChance IsVortigauntVoice
-	ApplyContext "SaidCartMovingBackwardD:1:20"
+	ApplyContext "SaidCartMovingBackwardD:1:10"
 	response CartMovingBackwardsDefenseRebelVortigaunt
 }
 
@@ -199,7 +199,7 @@ response CartMovingStoppedOffenseRebel
 rule CartMovingStoppedOffenseRebel
 {
 	criteria ConceptCartMovingStopped IsOnOffense IsRebel NotSaidCartMovingStoppedO 75PercentChance
-	ApplyContext "SaidCartMovingStoppedO:1:20"
+	ApplyContext "SaidCartMovingStoppedO:1:10"
 	response CartMovingStoppedOffenseRebel
 }
 
@@ -211,7 +211,7 @@ response CartMovingStoppedDefenseRebel
 rule CartMovingStoppedDefenseRebel
 {
 	criteria ConceptCartMovingStopped IsOnDefense IsRebel NotSaidCartMovingStoppedD 75PercentChance
-	ApplyContext "SaidCartMovingStoppedD:1:20"
+	ApplyContext "SaidCartMovingStoppedD:1:10"
 	response CartMovingStoppedDefenseRebel
 }
 response CartMovingStoppedDefenseRebelMale
@@ -221,7 +221,7 @@ response CartMovingStoppedDefenseRebelMale
 rule CartMovingStoppedDefenseRebelMale
 {
 	criteria ConceptCartMovingStopped IsOnDefense IsRebel NotSaidCartMovingStoppedD 75PercentChance IsMaleVoice
-	ApplyContext "SaidCartMovingStoppedD:1:20"
+	ApplyContext "SaidCartMovingStoppedD:1:10"
 	response CartMovingStoppedDefenseRebelMale
 }
 response CartMovingStoppedDefenseRebelFemale
@@ -231,7 +231,7 @@ response CartMovingStoppedDefenseRebelFemale
 rule CartMovingStoppedDefenseRebelFemale
 {
 	criteria ConceptCartMovingStopped IsOnDefense IsRebel NotSaidCartMovingStoppedD 75PercentChance IsFemaleVoice
-	ApplyContext "SaidCartMovingStoppedD:1:20"
+	ApplyContext "SaidCartMovingStoppedD:1:10"
 	response CartMovingStoppedDefenseRebelFemale
 }
 
@@ -243,7 +243,7 @@ response CartBlockedOffenseRebel
 rule CartBlockedOffenseRebel
 {
 	criteria ConceptCartMovingStopped IsOnOffense IsRebel NotSaidCartMovingStoppedO 75PercentChance CartBlocked
-	ApplyContext "SaidCartMovingStoppedO:1:20"
+	ApplyContext "SaidCartMovingStoppedO:1:10"
 	response CartBlockedOffenseRebel
 }
 response CartBlockedOffenseRebelMale
@@ -255,7 +255,7 @@ response CartBlockedOffenseRebelMale
 rule CartBlockedOffenseRebelMale
 {
 	criteria ConceptCartMovingStopped IsOnOffense IsRebel NotSaidCartMovingStoppedO 75PercentChance CartBlocked IsMaleVoice
-	ApplyContext "SaidCartMovingStoppedO:1:20"
+	ApplyContext "SaidCartMovingStoppedO:1:10"
 	response CartBlockedOffenseRebelMale
 }
 response CartBlockedOffenseRebelFemale
@@ -267,7 +267,7 @@ response CartBlockedOffenseRebelFemale
 rule CartBlockedOffenseRebelFemale
 {
 	criteria ConceptCartMovingStopped IsOnOffense IsRebel NotSaidCartMovingStoppedO 75PercentChance CartBlocked IsFemaleVoice
-	ApplyContext "SaidCartMovingStoppedO:1:20"
+	ApplyContext "SaidCartMovingStoppedO:1:10"
 	response CartBlockedOffenseRebelFemale
 }
 response CartBlockedOffenseRebelAlyx
@@ -277,7 +277,7 @@ response CartBlockedOffenseRebelAlyx
 rule CartBlockedOffenseRebelAlyx
 {
 	criteria ConceptCartMovingStopped IsOnOffense IsRebel NotSaidCartMovingStoppedO 75PercentChance CartBlocked IsAlyxVoice
-	ApplyContext "SaidCartMovingStoppedO:1:20"
+	ApplyContext "SaidCartMovingStoppedO:1:10"
 	response CartBlockedOffenseRebelAlyx
 }
 
@@ -289,7 +289,7 @@ response CartBlockedDefenseRebel
 rule CartBlockedDefenseRebel
 {
 	criteria ConceptCartMovingStopped IsOnDefense IsRebel NotSaidCartMovingStoppedD 75PercentChance CartBlocked
-	ApplyContext "SaidCartMovingStoppedD:1:20"
+	ApplyContext "SaidCartMovingStoppedD:1:10"
 	response CartBlockedDefenseRebel
 }
 response CartBlockedDefenseRebelMale
@@ -300,7 +300,7 @@ response CartBlockedDefenseRebelMale
 rule CartBlockedDefenseRebelMale
 {
 	criteria ConceptCartMovingStopped IsOnDefense IsRebel NotSaidCartMovingStoppedD 75PercentChance CartBlocked IsMaleVoice
-	ApplyContext "SaidCartMovingStoppedD:1:20"
+	ApplyContext "SaidCartMovingStoppedD:1:10"
 	response CartBlockedDefenseRebelMale
 }
 response CartBlockedDefenseRebelFemale
@@ -310,7 +310,7 @@ response CartBlockedDefenseRebelFemale
 rule CartBlockedDefenseRebelFemale
 {
 	criteria ConceptCartMovingStopped IsOnDefense IsRebel NotSaidCartMovingStoppedD 75PercentChance CartBlocked IsFemaleVoice
-	ApplyContext "SaidCartMovingStoppedD:1:20"
+	ApplyContext "SaidCartMovingStoppedD:1:10"
 	response CartBlockedDefenseRebelFemale
 }
 
@@ -321,8 +321,8 @@ response BattleStanceRebel
 }
 rule BattleStanceRebel
 {
-	criteria ConceptBattleStance IsRebel NotSaidBattleStance 50PercentChance
-	ApplyContext "SaidBattleStance:1:30"
+	criteria ConceptBattleStance IsRebel NotSaidBattleStance 75PercentChance
+	ApplyContext "SaidBattleStance:1:15"
 	response BattleStanceRebel
 }
 response BattleStanceRebelMale
@@ -336,8 +336,8 @@ response BattleStanceRebelMale
 }
 rule BattleStanceRebelMale
 {
-	criteria ConceptBattleStance IsRebel NotSaidBattleStance 50PercentChance IsMaleVoice
-	ApplyContext "SaidBattleStance:1:30"
+	criteria ConceptBattleStance IsRebel NotSaidBattleStance 75PercentChance IsMaleVoice
+	ApplyContext "SaidBattleStance:1:15"
 	response BattleStanceRebelMale
 }
 response BattleStanceRebelFemale
@@ -351,8 +351,8 @@ response BattleStanceRebelFemale
 }
 rule BattleStanceRebelFemale
 {
-	criteria ConceptBattleStance IsRebel NotSaidBattleStance 50PercentChance IsFemaleVoice
-	ApplyContext "SaidBattleStance:1:30"
+	criteria ConceptBattleStance IsRebel NotSaidBattleStance 75PercentChance IsFemaleVoice
+	ApplyContext "SaidBattleStance:1:15"
 	response BattleStanceRebelFemale
 }
 response BattleStanceRebelVortigaunt
@@ -363,8 +363,8 @@ response BattleStanceRebelVortigaunt
 }
 rule BattleStanceRebelVortigaunt
 {
-	criteria ConceptBattleStance IsRebel NotSaidBattleStance 50PercentChance IsVortigauntVoice
-	ApplyContext "SaidBattleStance:1:30"
+	criteria ConceptBattleStance IsRebel NotSaidBattleStance 75PercentChance IsVortigauntVoice
+	ApplyContext "SaidBattleStance:1:15"
 	response BattleStanceRebelVortigaunt
 }
 
@@ -376,8 +376,8 @@ response PlayerPassingRebel
 }
 rule PlayerPassingRebel
 {
-	criteria ConceptPlayerPassing IsRebel NotSaidPlayerPassing 50PercentChance
-	ApplyContext "SaidPlayerPassing:1:45"
+	criteria ConceptPlayerPassing IsRebel NotSaidPlayerPassing 75PercentChance
+	ApplyContext "SaidPlayerPassing:1:20"
 	response PlayerPassingRebel
 }
 
@@ -391,8 +391,8 @@ response PlayerPassingRebelMale
 }
 rule PlayerPassingRebelMale
 {
-	criteria ConceptPlayerPassing IsRebel NotSaidPlayerPassing 50PercentChance IsMaleVoice
-	ApplyContext "SaidPlayerPassing:1:45"
+	criteria ConceptPlayerPassing IsRebel NotSaidPlayerPassing 75PercentChance IsMaleVoice
+	ApplyContext "SaidPlayerPassing:1:20"
 	response PlayerPassingRebelMale
 }
 
@@ -406,8 +406,8 @@ response PlayerPassingRebelFemale
 }
 rule PlayerPassingRebelFemale
 {
-	criteria ConceptPlayerPassing IsRebel NotSaidPlayerPassing 50PercentChance IsFemaleVoice
-	ApplyContext "SaidPlayerPassing:1:45"
+	criteria ConceptPlayerPassing IsRebel NotSaidPlayerPassing 75PercentChance IsFemaleVoice
+	ApplyContext "SaidPlayerPassing:1:20"
 	response PlayerPassingRebelFemale
 }
 
@@ -419,8 +419,8 @@ response EnemySpottedRebel
 }
 rule EnemySpottedRebel
 {
-	criteria ConceptEnemySpotted IsRebel NotSaidEnemySpotted 75PercentChance
-	ApplyContext "SaidEnemySpotted:1:10"
+	criteria ConceptEnemySpotted IsRebel NotSaidEnemySpotted
+	ApplyContext "SaidEnemySpotted:1:5"
 	response EnemySpottedRebel
 }
 
@@ -435,8 +435,8 @@ response EnemySpottedRebelMale
 }
 rule EnemySpottedRebelMale
 {
-	criteria ConceptEnemySpotted IsRebel NotSaidEnemySpotted 75PercentChance IsMaleVoice
-	ApplyContext "SaidEnemySpotted:1:10"
+	criteria ConceptEnemySpotted IsRebel NotSaidEnemySpotted IsMaleVoice
+	ApplyContext "SaidEnemySpotted:1:5"
 	response EnemySpottedRebelMale
 }
 
@@ -451,8 +451,8 @@ response EnemySpottedRebelFemale
 }
 rule EnemySpottedRebelFemale
 {
-	criteria ConceptEnemySpotted IsRebel NotSaidEnemySpotted 75PercentChance IsFemaleVoice
-	ApplyContext "SaidEnemySpotted:1:10"
+	criteria ConceptEnemySpotted IsRebel NotSaidEnemySpotted IsFemaleVoice
+	ApplyContext "SaidEnemySpotted:1:5"
 	response EnemySpottedRebelFemale
 }
 
@@ -465,8 +465,8 @@ response EnemySpottedRebelAlyx
 }
 rule EnemySpottedRebelAlyx
 {
-	criteria ConceptEnemySpotted IsRebel NotSaidEnemySpotted 75PercentChance IsAlyxVoice
-	ApplyContext "SaidEnemySpotted:1:10"
+	criteria ConceptEnemySpotted IsRebel NotSaidEnemySpotted IsAlyxVoice
+	ApplyContext "SaidEnemySpotted:1:5"
 	response EnemySpottedRebelAlyx
 }
 
@@ -585,4 +585,234 @@ rule GetHealthRebelFemale
 	criteria ConceptGetHealth IsRebel NotSaidGetHealth IsFemaleVoice
 	ApplyContext "SaidGetHealth:1:10"
 	response GetHealthRebelFemale
+}
+
+// EnemyKilled: it killed an enemy: target down, to all near
+response EnemyKilledRebel
+{
+	print "Rebel: got one" defaultdelay
+}
+rule EnemyKilledRebel
+{
+	criteria ConceptEnemyKilled IsRebel NotSaidEnemyKilled 75PercentChance
+	ApplyContext "SaidEnemyKilled:1:6"
+	response EnemyKilledRebel
+}
+response EnemyKilledRebelMale
+{
+	speak "vo/npc/male01/gotone01.wav" defaultdelay
+	speak "vo/npc/male01/gotone02.wav" defaultdelay
+	speak "vo/npc/male01/likethat.wav" defaultdelay
+	speak "vo/npc/male01/nice.wav" defaultdelay
+}
+rule EnemyKilledRebelMale
+{
+	criteria ConceptEnemyKilled IsRebel NotSaidEnemyKilled 75PercentChance IsMaleVoice
+	ApplyContext "SaidEnemyKilled:1:6"
+	response EnemyKilledRebelMale
+}
+response EnemyKilledRebelFemale
+{
+	speak "vo/npc/female01/gotone01.wav" defaultdelay
+	speak "vo/npc/female01/gotone02.wav" defaultdelay
+	speak "vo/npc/female01/likethat.wav" defaultdelay
+	speak "vo/npc/female01/nice01.wav" defaultdelay
+	speak "vo/npc/female01/nice02.wav" defaultdelay
+}
+rule EnemyKilledRebelFemale
+{
+	criteria ConceptEnemyKilled IsRebel NotSaidEnemyKilled 75PercentChance IsFemaleVoice
+	ApplyContext "SaidEnemyKilled:1:6"
+	response EnemyKilledRebelFemale
+}
+response EnemyKilledRebelVortigaunt
+{
+	speak "vo/npc/vortigaunt/done.wav" defaultdelay
+	speak "vo/npc/vortigaunt/satisfaction.wav" defaultdelay
+	speak "vo/npc/vortigaunt/gloriousend.wav" defaultdelay
+}
+rule EnemyKilledRebelVortigaunt
+{
+	criteria ConceptEnemyKilled IsRebel NotSaidEnemyKilled 75PercentChance IsVortigauntVoice
+	ApplyContext "SaidEnemyKilled:1:6"
+	response EnemyKilledRebelVortigaunt
+}
+
+// AllyDown: a teammate fell near it: man down, to all near
+response AllyDownRebel
+{
+	print "Rebel: we lost one" defaultdelay
+}
+rule AllyDownRebel
+{
+	criteria ConceptAllyDown IsRebel NotSaidAllyDown
+	ApplyContext "SaidAllyDown:1:6"
+	response AllyDownRebel
+}
+response AllyDownRebelMale
+{
+	speak "vo/npc/male01/ohno.wav" defaultdelay
+	speak "vo/npc/male01/goodgod.wav" defaultdelay
+}
+rule AllyDownRebelMale
+{
+	criteria ConceptAllyDown IsRebel NotSaidAllyDown IsMaleVoice
+	ApplyContext "SaidAllyDown:1:6"
+	response AllyDownRebelMale
+}
+response AllyDownRebelFemale
+{
+	speak "vo/npc/female01/ohno.wav" defaultdelay
+	speak "vo/npc/female01/goodgod.wav" defaultdelay
+}
+rule AllyDownRebelFemale
+{
+	criteria ConceptAllyDown IsRebel NotSaidAllyDown IsFemaleVoice
+	ApplyContext "SaidAllyDown:1:6"
+	response AllyDownRebelFemale
+}
+response AllyDownRebelAlyx
+{
+	speak "vo/npc/alyx/ohgod01.wav" defaultdelay
+	speak "vo/npc/alyx/no02.wav" defaultdelay
+	speak "vo/npc/alyx/no03.wav" defaultdelay
+}
+rule AllyDownRebelAlyx
+{
+	criteria ConceptAllyDown IsRebel NotSaidAllyDown IsAlyxVoice
+	ApplyContext "SaidAllyDown:1:6"
+	response AllyDownRebelAlyx
+}
+response AllyDownRebelVortigaunt
+{
+	speak "vo/npc/vortigaunt/regrettable.wav" defaultdelay
+	speak "vo/npc/vortigaunt/tothevoid.wav" defaultdelay
+	speak "vo/npc/vortigaunt/returnvoid.wav" defaultdelay
+}
+rule AllyDownRebelVortigaunt
+{
+	criteria ConceptAllyDown IsRebel NotSaidAllyDown IsVortigauntVoice
+	ApplyContext "SaidAllyDown:1:6"
+	response AllyDownRebelVortigaunt
+}
+
+// ContactLost: its enemy slipped out of sight: lost contact, to all near
+response ContactLostRebel
+{
+	print "Rebel: where'd they go?" defaultdelay
+}
+rule ContactLostRebel
+{
+	criteria ConceptContactLost IsRebel NotSaidContactLost 75PercentChance
+	ApplyContext "SaidContactLost:1:15"
+	response ContactLostRebel
+}
+
+// Idle: between fights, on the radio: all clear, to all near
+response IdleRebel
+{
+	print "Rebel: small talk" defaultdelay
+}
+rule IdleRebel
+{
+	criteria ConceptIdle IsRebel NotSaidIdle 50PercentChance
+	ApplyContext "SaidIdle:1:30"
+	response IdleRebel
+}
+response IdleRebelMale
+{
+	speak "vo/npc/male01/question01.wav" defaultdelay
+	speak "vo/npc/male01/question02.wav" defaultdelay
+	speak "vo/npc/male01/question03.wav" defaultdelay
+	speak "vo/npc/male01/question04.wav" defaultdelay
+	speak "vo/npc/male01/question05.wav" defaultdelay
+	speak "vo/npc/male01/question06.wav" defaultdelay
+	speak "vo/npc/male01/question07.wav" defaultdelay
+	speak "vo/npc/male01/question08.wav" defaultdelay
+	speak "vo/npc/male01/question09.wav" defaultdelay
+	speak "vo/npc/male01/question10.wav" defaultdelay
+	speak "vo/npc/male01/question11.wav" defaultdelay
+	speak "vo/npc/male01/question12.wav" defaultdelay
+	speak "vo/npc/male01/question13.wav" defaultdelay
+	speak "vo/npc/male01/question14.wav" defaultdelay
+	speak "vo/npc/male01/question15.wav" defaultdelay
+	speak "vo/npc/male01/question16.wav" defaultdelay
+	speak "vo/npc/male01/question17.wav" defaultdelay
+	speak "vo/npc/male01/question18.wav" defaultdelay
+	speak "vo/npc/male01/question19.wav" defaultdelay
+	speak "vo/npc/male01/question20.wav" defaultdelay
+	speak "vo/npc/male01/question21.wav" defaultdelay
+	speak "vo/npc/male01/question22.wav" defaultdelay
+	speak "vo/npc/male01/question23.wav" defaultdelay
+	speak "vo/npc/male01/question25.wav" defaultdelay
+	speak "vo/npc/male01/question26.wav" defaultdelay
+	speak "vo/npc/male01/question27.wav" defaultdelay
+	speak "vo/npc/male01/question28.wav" defaultdelay
+	speak "vo/npc/male01/question29.wav" defaultdelay
+	speak "vo/npc/male01/question30.wav" defaultdelay
+	speak "vo/npc/male01/question31.wav" defaultdelay
+}
+rule IdleRebelMale
+{
+	criteria ConceptIdle IsRebel NotSaidIdle 50PercentChance IsMaleVoice
+	ApplyContext "SaidIdle:1:30"
+	response IdleRebelMale
+}
+response IdleRebelFemale
+{
+	speak "vo/npc/female01/question01.wav" defaultdelay
+	speak "vo/npc/female01/question02.wav" defaultdelay
+	speak "vo/npc/female01/question03.wav" defaultdelay
+	speak "vo/npc/female01/question04.wav" defaultdelay
+	speak "vo/npc/female01/question05.wav" defaultdelay
+	speak "vo/npc/female01/question06.wav" defaultdelay
+	speak "vo/npc/female01/question07.wav" defaultdelay
+	speak "vo/npc/female01/question08.wav" defaultdelay
+	speak "vo/npc/female01/question09.wav" defaultdelay
+	speak "vo/npc/female01/question10.wav" defaultdelay
+	speak "vo/npc/female01/question11.wav" defaultdelay
+	speak "vo/npc/female01/question12.wav" defaultdelay
+	speak "vo/npc/female01/question13.wav" defaultdelay
+	speak "vo/npc/female01/question14.wav" defaultdelay
+	speak "vo/npc/female01/question15.wav" defaultdelay
+	speak "vo/npc/female01/question16.wav" defaultdelay
+	speak "vo/npc/female01/question17.wav" defaultdelay
+	speak "vo/npc/female01/question18.wav" defaultdelay
+	speak "vo/npc/female01/question19.wav" defaultdelay
+	speak "vo/npc/female01/question20.wav" defaultdelay
+	speak "vo/npc/female01/question21.wav" defaultdelay
+	speak "vo/npc/female01/question22.wav" defaultdelay
+	speak "vo/npc/female01/question23.wav" defaultdelay
+	speak "vo/npc/female01/question25.wav" defaultdelay
+	speak "vo/npc/female01/question26.wav" defaultdelay
+	speak "vo/npc/female01/question27.wav" defaultdelay
+	speak "vo/npc/female01/question28.wav" defaultdelay
+	speak "vo/npc/female01/question29.wav" defaultdelay
+	speak "vo/npc/female01/question30.wav" defaultdelay
+	speak "vo/npc/female01/question31.wav" defaultdelay
+}
+rule IdleRebelFemale
+{
+	criteria ConceptIdle IsRebel NotSaidIdle 50PercentChance IsFemaleVoice
+	ApplyContext "SaidIdle:1:30"
+	response IdleRebelFemale
+}
+response IdleRebelVortigaunt
+{
+	speak "vo/npc/vortigaunt/vques01.wav" defaultdelay
+	speak "vo/npc/vortigaunt/vques02.wav" defaultdelay
+	speak "vo/npc/vortigaunt/vques03.wav" defaultdelay
+	speak "vo/npc/vortigaunt/vques04.wav" defaultdelay
+	speak "vo/npc/vortigaunt/vques05.wav" defaultdelay
+	speak "vo/npc/vortigaunt/vques06.wav" defaultdelay
+	speak "vo/npc/vortigaunt/vques07.wav" defaultdelay
+	speak "vo/npc/vortigaunt/vques08.wav" defaultdelay
+	speak "vo/npc/vortigaunt/vques09.wav" defaultdelay
+	speak "vo/npc/vortigaunt/vques10.wav" defaultdelay
+}
+rule IdleRebelVortigaunt
+{
+	criteria ConceptIdle IsRebel NotSaidIdle 50PercentChance IsVortigauntVoice
+	ApplyContext "SaidIdle:1:30"
+	response IdleRebelVortigaunt
 }

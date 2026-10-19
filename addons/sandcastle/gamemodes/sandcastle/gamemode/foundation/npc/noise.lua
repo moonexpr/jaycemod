@@ -27,7 +27,8 @@ function Played(volume)
 end
 
 -- The next step of a walker on the ground at speed, { interval (seconds
--- to the one after), volume }, or nil while it is too slow to make one.
+-- to the one after), volume, running }, or nil while it is too slow to make
+-- one.
 function Step(speed, crouched)
 	local walk, run = WALK_SPEED, RUN_SPEED
 	if crouched then walk, run = CROUCH_WALK_SPEED, CROUCH_RUN_SPEED end
@@ -35,7 +36,7 @@ function Step(speed, crouched)
 	local running = speed >= run
 	local volume = running and RUN_VOLUME or WALK_VOLUME
 	if crouched then volume = volume * CROUCH_VOLUME end
-	return { interval = running and RUN_INTERVAL or WALK_INTERVAL, volume = volume }
+	return { interval = running and RUN_INTERVAL or WALK_INTERVAL, volume = volume, running = running }
 end
 
 -- PLAYER_MIN_BOUNCE_SPEED, PLAYER_MAX_SAFE_FALL_SPEED and
