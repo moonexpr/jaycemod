@@ -68,6 +68,7 @@ local CATEGORY = {
 	["features"] = "formalisms",
 	["gamemode"] = "formalisms",
 	["idle"] = "formalisms",
+	["spawn_manager"] = "formalisms",
 	["play_mode"] = "formalisms",
 	["permissions"] = "formalisms",
 

@@ -110,9 +110,11 @@ Command("mp_round_timer_pause", Permissions.TAMPER, "Pause the round clock, or r
 end)
 
 Command("mp_respawn_all", Permissions.TAMPER, "Respawn every dead player now", function()
+	local due = {}
 	for _, ply in player.Iterator() do
-		if not ply:Alive() and WS.TeamOf(ply) ~= WS.TEAM_UNASSIGNED and WS.TeamOf(ply) ~= WS.TEAM_SPECTATOR then ply:Spawn() end
+		if not ply:Alive() and WS.TeamOf(ply) ~= WS.TEAM_UNASSIGNED and WS.TeamOf(ply) ~= WS.TEAM_SPECTATOR then due[#due + 1] = ply end
 	end
+	WS.Respawn(due)
 	return true
 end)
 

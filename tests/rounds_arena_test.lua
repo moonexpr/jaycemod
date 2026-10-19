@@ -14,6 +14,7 @@ local State = T.require("foundation.rounds.state")
 local Text = T.require("foundation.rounds.text")
 local Scenario = T.require("foundation.aiwar.scenario")
 local Teams = T.require("foundation.teams")
+local Spawns = T.require("foundation.spawn_manager")
 
 local NOBODY, RED, BLUE = Teams.UNASSIGNED, Teams.RED, Teams.BLUE
 local W = Rounds.WINREASON
@@ -190,6 +191,9 @@ T.test("the arena's setup respawns the dead with quick waves", function()
 	local effects = round:Think(SETUP_AT + 1, World())
 	T.eq(Has(effects, "respawn_team") ~= nil, true, "a wave in setup")
 	T.eq(round:RespawnAt(RED, SETUP_AT + 1, 3, false), SETUP_AT + 1 + Rounds.QUICK_WAVE, "the respawn time shown: the next quick wave")
+	local status, at = round:RespawnStatus(RED, SETUP_AT + 1, 3, false)
+	T.eq(status, Spawns.WAVE, "said: a wave")
+	T.eq(at, SETUP_AT + 1 + Rounds.QUICK_WAVE)
 end)
 
 T.test("nobody respawns in the arena round", function()
@@ -203,6 +207,7 @@ T.test("nobody respawns in the arena round", function()
 		})), "respawn_team"), nil, "no wave at +" .. t)
 	end
 	T.eq(round:RespawnAt(RED, T0 + PREROUND + 2, 3, false), 0, "no respawn time shown")
+	T.eq(round:RespawnStatus(RED, T0 + PREROUND + 2, 3, false), Spawns.ARENA, "said: no respawning in arena mode")
 end)
 
 T.test("killing the other team wins the round, and the dead stay dead for the humiliation", function()

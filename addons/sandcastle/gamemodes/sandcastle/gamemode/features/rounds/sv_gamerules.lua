@@ -2,6 +2,7 @@
 -- forwards, the spawn doors of a stopped game, and tf_gamerules' inputs.
 local Controller, Players = ...
 local Rounds = WS.require("foundation.rounds")
+local Spawns = WS.require("foundation.spawn_manager")
 local SpawnHold = WS.require("features.rounds.spawn_doors")
 local TeamPlayers, EachPlayer = Players.TeamPlayers, Players.EachPlayer
 
@@ -58,12 +59,9 @@ function Controller:OnPlayerDeath(ply)
 	-- for the new team's next wave
 	ply.wsSwitchedTeam = ply.wsChangingTeam == true
 	local t = WS.TeamOf(ply)
-	local at = 0
 	-- Sandbox mode: no waves, the player clicks to respawn (GM:PlayerDeathThink)
-	if t ~= UNASSIGNED and not WS.GameplayStopped() then
-		at = self.round:RespawnAt(t, now, #TeamPlayers(t), ply.wsSwitchedTeam)
-	end
-	ply:SetNW2Float("ws_respawn_time", at)
+	if t == UNASSIGNED or WS.GameplayStopped() then return WS.SetSpawnStatus(ply, Spawns.NONE, 0) end
+	WS.SetSpawnStatus(ply, self.round:RespawnStatus(t, now, #TeamPlayers(t), ply.wsSwitchedTeam))
 end
 
 function Controller:RestartRound()
@@ -202,7 +200,7 @@ function Controller:HaltedThink(now)
 			ply.wsHaltedDeath = ply.wsHaltedDeath or now
 			if Rounds.HaltedRespawnDue(ply.wsHaltedDeath, now) then
 				ply.wsHaltedDeath = nil
-				ply:Spawn()
+				WS.Respawn({ ply })
 			end
 		else
 			ply.wsHaltedDeath = nil
@@ -225,7 +223,7 @@ end
 -- A dead player's respawn time again, from their death.
 function Controller:OnPlayerDeathTime(ply)
 	local t = WS.TeamOf(ply)
-	ply:SetNW2Float("ws_respawn_time", self.round:RespawnAt(t, ply.wsDeathTime or CurTime(), #TeamPlayers(t),
+	WS.SetSpawnStatus(ply, self.round:RespawnStatus(t, ply.wsDeathTime or CurTime(), #TeamPlayers(t),
 		ply.wsSwitchedTeam == true))
 end
 

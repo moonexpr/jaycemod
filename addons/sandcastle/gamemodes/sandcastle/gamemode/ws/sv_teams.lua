@@ -107,7 +107,7 @@ end
 -- mp_allowspectators (L.ResolveJoin). A join that would unbalance the teams
 -- is refused; an unassigned player's client keeps the menu up.
 function WS.JoinTeam(ply, name)
-	if WS.State() == WS.STATE.GAME_OVER then return end
+	if WS.State() == WS.STATE.GAME_OVER or not WS.MayChooseTeam(ply) then return end
 	local newTeam, refused = L.ResolveJoin(L.ParseJoinTeam(name), WS.ForceAutoTeam:GetBool(),
 		WS.AllowSpectators:GetBool())
 	if not newTeam then

@@ -18,6 +18,7 @@ local Teams = require("foundation.teams")
 local State = require("foundation.rounds.state")
 local Cfsm = require("foundation.core.cfsm")
 local Class = require("foundation.core.meta.class")
+local Spawns = require("foundation.spawn_manager")
 module(...)
 
 -- teamplayroundbased_gamerules.h
@@ -1481,6 +1482,18 @@ end
 function Round:RespawnAt(team, deathTime, teamSize, switched)
 	if (self:State() == State.STALEMATE and not self.inSetup) or self.respawnsDisabled then return 0 end
 	return self:NextRespawn(team, deathTime, teamSize, switched)
+end
+
+-- Why a dead player is not spawning (foundation.spawn_manager's
+-- statuses) and, waiting for a wave, when it comes: none in an arena round
+-- (STALEMATE is the mode's round) or sudden death, out of setup; none
+-- until the next round while an admin has stopped respawns.
+function Round:RespawnStatus(team, deathTime, teamSize, switched)
+	if self:State() == State.STALEMATE and not self.inSetup then
+		return self:Mode().STALEMATE_IS_ROUND and Spawns.ARENA or Spawns.SUDDEN_DEATH, 0
+	end
+	if self.respawnsDisabled then return Spawns.NEXT_ROUND, 0 end
+	return Spawns.WAVE, self:NextRespawn(team, deathTime, teamSize, switched)
 end
 
 -- Whether the team's wave comes now; if so the next is set a wave later.

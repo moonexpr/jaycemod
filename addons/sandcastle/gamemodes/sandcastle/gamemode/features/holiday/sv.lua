@@ -155,7 +155,7 @@ local function TeleportTeam(Fortune, teamNumber, target)
 	for _, move in ipairs(Fortune.Teleports(team.GetPlayers(teamNumber), ents.FindByName(target), math.random)) do
 		local ply, spot = move.player, move.spot
 		WS.RemoveAllConditions(ply)
-		if not ply:Alive() then ply:Spawn() end
+		if not ply:Alive() then WS.Respawn({ ply }) end
 		ply:SetPos(spot:GetPos())
 		ply:SetEyeAngles(spot:GetAngles())
 		ply:SetLocalVelocity(vector_origin)

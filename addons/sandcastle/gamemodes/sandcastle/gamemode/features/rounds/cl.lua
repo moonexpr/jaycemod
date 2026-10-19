@@ -30,11 +30,6 @@ local Hud = WS.require("ws.tf_hud")
 local S = WS.STATE
 local UNASSIGNED = WS.TEAM_UNASSIGNED
 
-surface.CreateFont("Sandcastle.Hud.Label", {
-	font = "Roboto",
-	size = 18,
-	weight = 700,
-})
 surface.CreateFont("Sandcastle.Hud.Announce", {
 	font = "Roboto",
 	size = 42,
@@ -231,17 +226,6 @@ function View:DrawScores(w, h)
 end
 
 -- Countdowns and the announcement line -------------------------------------------------
-
-function View:DrawRespawn(w, h)
-	local ply = LocalPlayer()
-	if not IsValid(ply) or ply:Alive() then return end
-	local at = ply:GetNW2Float("ws_respawn_time", 0)
-	if at <= 0 then return end
-	local left = math.max(0, math.ceil(at - CurTime()))
-	local text = left > 0 and ("Respawn in " .. left .. "s") or "Prepare to respawn"
-	draw.SimpleTextOutlined(text, "Sandcastle.Hud.Label", w / 2, h * 0.7, color_white, TEXT_ALIGN_CENTER,
-		TEXT_ALIGN_CENTER, 1, color_black)
-end
 
 -- TF2's notification card (base_notification.res, hudlayout.res's
 -- NotificationPanel), in HUD units of a 480-tall screen: the team's score
@@ -468,7 +452,6 @@ function View:Paint(w, h)
 	self:DrawScores(w, h)
 	self:DrawTimer(w, h)
 	self:DrawAnnouncement(w, h)
-	self:DrawRespawn(w, h)
 	self:DrawRoundPanel(w, h)
 	self:DrawLimits(w, h)
 	self:DrawNotices(w, h)

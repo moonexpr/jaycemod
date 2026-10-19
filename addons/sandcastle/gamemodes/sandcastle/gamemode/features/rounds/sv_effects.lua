@@ -164,12 +164,15 @@ local function FireCompetitive(output)
 	for _, logic in ipairs(ents.FindByClass(COMPETITIVE_CLASS)) do logic:TriggerOutput(output, logic) end
 end
 
+-- The team's wave: its dead whose wait is over, through the spawn manager.
 local function RespawnTeam(self, t, now)
+	local due = {}
 	for _, ply in ipairs(TeamPlayers(t)) do
 		if not ply:Alive() and self.round:MayRespawn(t, ply.wsDeathTime or 0, now, ply.wsSwitchedTeam == true) then
-			ply:Spawn()
+			due[#due + 1] = ply
 		end
 	end
+	WS.Respawn(due)
 end
 
 -- The level the match's end changes to (Rounds.NextMap): the next-map
@@ -251,9 +254,11 @@ local EFFECTS = {
 	end,
 	scramble_teams = function() ScrambleTeams() end,
 	respawn_all = function()
+		local due = {}
 		EachPlayer(function(ply)
-			if ply:Team() ~= SPECTATOR then ply:Spawn() end
+			if ply:Team() ~= SPECTATOR then due[#due + 1] = ply end
 		end)
+		WS.Respawn(due)
 	end,
 	respawn_team = function(self, e, now) RespawnTeam(self, e.team, now) end,
 	-- Sudden death over: its survivors, players and the AI war's soldiers
@@ -267,9 +272,11 @@ local EFFECTS = {
 			end
 		end)
 		hook.Run("WSSuddenDeathOver", Rounds.SurvivorHealth)
+		local due = {}
 		EachPlayer(function(ply)
-			if not ply:Alive() and WS.TeamOf(ply) ~= UNASSIGNED then ply:Spawn() end
+			if not ply:Alive() and WS.TeamOf(ply) ~= UNASSIGNED then due[#due + 1] = ply end
 		end)
+		WS.Respawn(due)
 	end,
 	doors_lock = function() FireCompetitive("OnSpawnRoomDoorsShouldLock") end,
 	doors_unlock = function() FireCompetitive("OnSpawnRoomDoorsShouldUnlock") end,

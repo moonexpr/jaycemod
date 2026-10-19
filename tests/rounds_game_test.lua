@@ -7,6 +7,7 @@ local Rounds = T.require("foundation.rounds")
 local CPMode = T.require("foundation.rounds.control_points").Mode
 local State = T.require("foundation.rounds.state")
 local Teams = T.require("foundation.teams")
+local Spawns = T.require("foundation.spawn_manager")
 
 local NOBODY, RED, BLUE = Teams.UNASSIGNED, Teams.RED, Teams.BLUE
 local W, SM = Rounds.WINREASON, Rounds.STALEMATE
@@ -410,6 +411,7 @@ T.test("a match tied mid-round turns that round into sudden death", function()
 	T.eq(text:find("sudden_death " .. SM.MATCH_TIED, 1, true) ~= nil, true, text)
 	T.eq(text:find("intermission", 1, true), nil, "no game over")
 	T.eq(round:State(), State.STALEMATE)
+	T.eq(round:RespawnStatus(RED, T0 + 25, 8), Spawns.SUDDEN_DEATH, "said: no respawning in sudden death")
 end)
 
 T.test("the match winner is the team with the higher score; a tie, nobody", function()
@@ -921,7 +923,11 @@ T.test("setup respawns at once, and sudden death or an admin stops respawns", fu
 	round:SetSetup(false)
 	T.eq(round:SetRespawnsDisabled(true), false, "disabling reschedules nobody")
 	T.eq(round:RespawnAt(RED, now, 8), 0, "no respawn")
+	T.eq(round:RespawnStatus(RED, now, 8), Spawns.NEXT_ROUND, "said: wait for the next round")
 	T.eq(round:SetRespawnsDisabled(false), true, "the dead are rescheduled")
+	local status, at = round:RespawnStatus(RED, now, 8)
+	T.eq(status, Spawns.WAVE, "said: a wave")
+	T.eq(at, round:RespawnAt(RED, now, 8), "at the respawn time shown")
 	Expect(round:Think(now + 1, World()), WAVES, "waves")
 	round:SetRespawnsDisabled(true)
 	Expect(round:Think(now + 40, World()), {}, "the waves come, but nobody respawns")
