@@ -129,9 +129,17 @@ function Controller:BindTimer(ent, kv)
 	return timer
 end
 
+-- The timers the gamerules make, each made again when next due.
+local OWN_TIMERS = { "timeLimitTimer", "stalemateTimer", "roundTimer" }
+
+-- A timer removed (a map cleanup removes the gamerules' own too): it stays
+-- valid until the frame ends, so the controller lets go of it now.
 function Controller:UnbindTimer(ent)
 	self.timers[ent] = nil
 	self.notHudChoice[ent] = nil
+	for _, field in ipairs(OWN_TIMERS) do
+		if self[field] == ent then self[field] = NULL end
+	end
 	for i, other in ipairs(self.timerList) do
 		if other == ent then
 			table.remove(self.timerList, i)

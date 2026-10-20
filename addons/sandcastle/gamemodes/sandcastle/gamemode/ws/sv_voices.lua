@@ -18,8 +18,10 @@ local function PlayerVoice(ply)
 	local voice = Voices.For(ply:GetModel())
 	if voice then return voice end
 	local team = ply:Team()
+	-- no faction fights for a spectator or the unassigned
+	if STARTING[team] == nil then return nil end
 	if WS.AiWarActive() then return Voices.ForAffiliation(AFFILIATION[WS.Feature("aiwar"):FactionName(team)]) end
-	return STARTING[team] and Voices.ForAffiliation(STARTING[team])
+	return Voices.ForAffiliation(STARTING[team])
 end
 
 -- A hit's grunt or cry: a soldier's level (SNDLVL_NORM).

@@ -235,13 +235,14 @@ function Controller:Waypoints()
 	return self.waypointCache
 end
 
--- Each side's living players, for the soldiers who follow them (freeform):
+-- Each side's living players in play (not watching), for the soldiers who
+-- follow them (freeform):
 -- { handle, pos }.
 function Controller:Players()
 	local players = { [RED] = {}, [BLUE] = {} }
 	for _, ply in ipairs(player.GetAll()) do
 		local list = players[WS.TeamOf(ply)]
-		if list and ply:Alive() then list[#list + 1] = { handle = ply, pos = Point(ply:GetPos()) } end
+		if list and WS.IsAliveInGame(ply) then list[#list + 1] = { handle = ply, pos = Point(ply:GetPos()) } end
 	end
 	return players
 end
@@ -267,7 +268,7 @@ function Controller:Patients()
 		if IsValid(ent) then Add(entry.soldier.team, ent, false, entry.soldier:CallingMedic()) end
 	end
 	for _, ply in ipairs(player.GetAll()) do
-		if ply:Alive() then Add(WS.TeamOf(ply), ply, true, false) end
+		if WS.IsAliveInGame(ply) then Add(WS.TeamOf(ply), ply, true, false) end
 	end
 	return patients
 end
@@ -336,7 +337,7 @@ function Controller:SightAll(now)
 	for _, ply in ipairs(player.GetAll()) do
 		local team = WS.TeamOf(ply)
 		local enemy = WS.EnemyOf(team)
-		if ply:Alive() and enemy ~= WS.TEAM_UNASSIGNED then board:Report(enemy, ply, ply:GetPos(), now) end
+		if WS.IsAliveInGame(ply) and enemy ~= WS.TEAM_UNASSIGNED then board:Report(enemy, ply, ply:GetPos(), now) end
 	end
 	for ent, entry in pairs(self.soldiers) do
 		local enemy = WS.EnemyOf(entry.soldier.team)

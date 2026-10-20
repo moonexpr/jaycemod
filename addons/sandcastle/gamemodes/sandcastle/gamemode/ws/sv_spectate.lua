@@ -306,8 +306,14 @@ local function Apply(ply, st)
 	st.wasAtPoint = atPoint
 end
 
+-- An observer is no one's target (FL_NOTARGET, which DrGBase's soldiers and
+-- HL2's NPCs skip): a player watching is alive to the engine while held or
+-- spectating. The flag is lifted as they stop, unless it was theirs before.
 local function Begin(ply, st)
 	st.mode = "chase" -- StateEnterOBSERVER: every session starts in chase mode
+	local previous = observing[ply]
+	st.flaggedNoTarget = previous and previous.flaggedNoTarget or not ply:IsFlagSet(FL_NOTARGET)
+	ply:AddFlags(FL_NOTARGET)
 	observing[ply] = st
 	Apply(ply, st)
 end
@@ -330,6 +336,7 @@ function WS.StopObserving(ply)
 	local st = observing[ply]
 	observing[ply] = nil
 	if st and st.wasAtPoint then ply:SetFOV(0, 0) end
+	if st and st.flaggedNoTarget then ply:RemoveFlags(FL_NOTARGET) end
 	ply:UnSpectate()
 end
 
@@ -368,7 +375,11 @@ end)
 -- Spawning ends observing. A spectator is put straight back (tf_gamerules
 -- spawns everyone at round start), skipping Sandbox's loadout.
 hook.Add("PlayerSpawn", "ws_spectate", function(ply)
-	if not WS.Active() then return end
+	-- one who watched as the game stopped is a target again
+	if not WS.Active() then
+		if observing[ply] then WS.StopObserving(ply) end
+		return
+	end
 	if IsSpectator(ply) then
 		WS.StartObserving(ply)
 		return true

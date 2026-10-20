@@ -40,11 +40,7 @@ function GM:PlayerSpawn(ply, transition)
 		self.BaseClass.PlayerSpawn(self, ply, transition)
 		if ply:Team() == WS.TEAM_SPECTATOR then WS.StartObserving(ply) end
 	end
-	-- Other addons move players between teams in their own spawn hooks (one
-	-- puts everyone on a "Runner" team), so correct the team after them.
-	timer.Simple(0, function()
-		if IsValid(ply) and WS.Active() then WS.RestoreTeam(ply) end
-	end)
+	-- another addon's team change is undone by ws/sv_teams.lua's hooks
 end
 
 -- A player spawns with Sandbox's loadout (its Half-Life 2 set and tools)

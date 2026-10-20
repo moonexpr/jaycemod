@@ -100,4 +100,27 @@ T.test("the wiring keys are the baseline's", function()
 	T.eq(actual, expected, "the sorted wiring keys")
 end)
 
+-- A map cleanup removes the timers the gamerules made, and the model's next
+-- effect in the same batch may set the time limit timer's time: a removed
+-- entity stays valid until the frame ends, so the controller must have let
+-- go of it as it was unbound, and make a new one.
+T.test("a timer the gamerules made is forgotten as it is unbound", function()
+	for _, field in ipairs({ "timeLimitTimer", "stalemateTimer", "roundTimer" }) do
+		local ent = { name = field }
+		controller.timers[ent] = {}
+		controller[field] = ent
+		controller:UnbindTimer(ent)
+		T.eq(controller[field] == ent, false, field .. " let go")
+		T.eq(controller.timers[ent], nil, field .. " unbound")
+	end
+end)
+
+T.test("unbinding another timer keeps the gamerules' own", function()
+	local own, other = { name = "own" }, { name = "other" }
+	controller.timers[own], controller.timers[other] = {}, {}
+	controller.timeLimitTimer = own
+	controller:UnbindTimer(other)
+	T.eq(controller.timeLimitTimer, own, "kept")
+end)
+
 T.finish()

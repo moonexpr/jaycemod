@@ -102,6 +102,22 @@ function WS.RestoreTeam(ply)
 	end
 end
 
+-- Other addons put players on their own teams: ULX gives each the team of
+-- its user group (21 "Runner" on one server) as they spawn and as UCL
+-- authenticates them, which can come after their first spawn. In a game
+-- the team is Sandcastle's, so it is put back a tick after each; a player
+-- left on another team is in no respawn wave. These are hooks of their
+-- own, not the gamemode's PlayerSpawn, which never runs when another
+-- addon's PlayerSpawn hook answers.
+local function RestoreLater(ply)
+	timer.Simple(0, function()
+		if IsValid(ply) and WS.Active() then WS.RestoreTeam(ply) end
+	end)
+end
+
+hook.Add("PlayerSpawn", "ws_teams_restore", RestoreLater)
+hook.Add("UCLAuthed", "ws_teams_restore", RestoreLater)
+
 -- CTFPlayer::HandleCommand_JoinTeam: "red", "blue", "auto" or "spectate".
 -- mp_forceautoteam auto-assigns a pick of RED or BLU, and spectating needs
 -- mp_allowspectators (L.ResolveJoin). A join that would unbalance the teams
