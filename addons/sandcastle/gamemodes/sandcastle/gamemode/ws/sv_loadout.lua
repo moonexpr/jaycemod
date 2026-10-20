@@ -8,6 +8,7 @@
 -- equipped weapons are what a player spawns with (GM:PlayerLoadout, init.lua).
 local Economy = WS.require("foundation.economy")
 local Loadout = WS.require("foundation.loadout")
+local Balance = WS.require("foundation.combat.weapon_balance")
 local Sets = WS.require("foundation.core.structs.sets")
 local E = WS.Events
 
@@ -87,7 +88,7 @@ local function Stats()
 		if damage and (pellets or not details.pellets) then
 			stats[#stats + 1] = {
 				class = class,
-				damage = damage:GetInt(),
+				damage = math.Round(Balance.Damage(class, damage:GetInt())),
 				pellets = pellets and pellets:GetInt() or 1, -- one pellet: a weapon without a pellet convar
 			}
 		end

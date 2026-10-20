@@ -183,6 +183,15 @@ T.test("a headshot is a crit, from any weapon", function()
 	Is(3, P.HIT_CRIT, "a boosted headshot is one crit", Hit({}, boosted, 0, { headshot = true }))
 end)
 
+-- The shotgun's crit by distance (foundation.combat.weapon_balance).
+T.test("a crit the weapon rolled is tripled, as a headshot", function()
+	Is(3, P.HIT_CRIT, "a rolled crit", Hit({}, {}, 0, { rolled = true }))
+	local boosted = {}
+	P.AddCond(boosted, P.COND.CRITBOOSTED, P.PERMANENT, 0)
+	Is(3, P.HIT_CRIT, "a boosted rolled crit is one crit", Hit({}, boosted, 0, { rolled = true }))
+	Is(1, P.HIT_NORMAL, "never on itself", Hit({}, {}, 0, { selfHarm = true, rolled = true }))
+end)
+
 T.test("a hit already a crit keeps its damage, tripled where it was dealt", function()
 	local boosted = {}
 	P.AddCond(boosted, P.COND.CRITBOOSTED, P.PERMANENT, 0)

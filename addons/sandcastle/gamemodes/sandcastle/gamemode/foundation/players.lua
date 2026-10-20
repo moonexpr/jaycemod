@@ -175,17 +175,18 @@ HIT_NORMAL, HIT_MINICRIT, HIT_CRIT = 0, 1, 2
 -- CTFGameRules::ApplyOnDamageModifyRules, as Sandcastle has it: the scale of
 -- a hit's damage and what the hit is. facts: blast (a blast's damage),
 -- selfHarm (the attacker's own), headshot (any weapon's: Sandcastle crits
--- them all), critical (DMG_CRITICAL: a crit already, its damage tripled
--- where it was dealt). An invulnerable victim, or a blast-immune one hit by
--- a blast, takes nothing; a crit-boosted attacker or a headshot deals
--- triple, but never to the attacker itself; a jarated victim takes
+-- them all), rolled (a crit the weapon rolled: the shotgun's by distance),
+-- critical (DMG_CRITICAL: a crit already, its damage tripled where it was
+-- dealt). An invulnerable victim, or a blast-immune one hit by a blast,
+-- takes nothing; a crit-boosted attacker, a headshot or a rolled crit
+-- deals triple, but never to the attacker itself; a jarated victim takes
 -- mini-crits from anyone but themselves.
 function Hit(victimConds, attackerConds, now, facts)
 	if InCond(victimConds, C.INVULNERABLE, now) then return 0, HIT_NORMAL end
 	if facts.blast and InCond(victimConds, C.BLAST_IMMUNE, now) then return 0, HIT_NORMAL end
 	if facts.critical then return 1, HIT_CRIT end
 	if facts.selfHarm then return 1, HIT_NORMAL end
-	if facts.headshot or CritBoosted(attackerConds, now) then return CRIT_MULTIPLIER, HIT_CRIT end
+	if facts.headshot or facts.rolled or CritBoosted(attackerConds, now) then return CRIT_MULTIPLIER, HIT_CRIT end
 	if InCond(victimConds, C.URINE, now) then return MINICRIT_MULTIPLIER, HIT_MINICRIT end
 	return 1, HIT_NORMAL
 end

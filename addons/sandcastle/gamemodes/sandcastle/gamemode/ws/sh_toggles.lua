@@ -20,6 +20,7 @@
 local Economy = WS.require("foundation.economy")
 local PlayMode = WS.require("foundation.play_mode")
 local FixedSpread = WS.require("foundation.combat.fixed_spread")
+local BulletSteps = WS.require("foundation.combat.bullet_steps")
 
 local FLAGS = { FCVAR_ARCHIVE, FCVAR_REPLICATED, FCVAR_NOTIFY }
 local ECONOMY = CreateConVar("mp_economy_enabled", "1", FLAGS,
@@ -62,25 +63,22 @@ function WS.Affords(balance, price)
 end
 
 -- The pellets of a player's multi-pellet shot, fired one by one along the
--- fixed pattern; the original shot is suppressed. firing guards against the
--- pellets' own FireBullets coming back through this hook.
-local firing = false
-hook.Add("EntityFireBullets", "ws_fixed_spread", function(ent, data)
-	if firing or not FIXED:GetBool() or not ent:IsPlayer() or (data.Num or 1) <= 1 then return end
+-- fixed pattern, past the bullet steps (ws/sh_bullets.lua); the original
+-- shot is suppressed.
+WS.BulletSteps:Add("ws_fixed_spread", BulletSteps.PELLETS, function(ent, data)
+	if not FIXED:GetBool() or not ent:IsPlayer() or (data.Num or 1) <= 1 then return end
 	local spread = data.Spread or vector_origin
 	local ang = data.Dir:Angle()
 	local right, up = ang:Right(), ang:Up()
-	firing = true
 	for i = 1, data.Num do
 		local x, y = FixedSpread.Offset(i)
 		local pellet = table.Copy(data)
 		pellet.Num = 1
 		pellet.Spread = vector_origin
 		pellet.Dir = (data.Dir + right * (x * spread.x) + up * (y * spread.y)):GetNormalized()
-		ent:FireBullets(pellet)
+		WS.FireBulletsAgain(ent, pellet)
 	end
-	firing = false
-	return false
+	return BulletSteps.SUPPRESSED
 end)
 
 if SERVER then

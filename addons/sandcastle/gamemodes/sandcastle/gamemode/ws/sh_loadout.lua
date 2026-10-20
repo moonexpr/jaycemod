@@ -89,7 +89,8 @@ WS.LoadoutCatalog = Loadout.NewCatalog({
 })
 
 -- What the Store's tooltip says of each weapon: its description, the skill
--- convar its damage comes from (read by the server, sent as game_loadout_stats),
+-- convar its damage comes from unless the weapon balance sets its own (read
+-- by the server, sent as game_loadout_stats),
 -- and its clip, Half-Life 2's own (scripts/weapon_*.txt clip_size; nil for
 -- a weapon carried one at a time). Shotgun damage is per pellet.
 WS.WeaponDetails = {
@@ -104,23 +105,23 @@ WS.WeaponDetails = {
 		clip = 30,
 	},
 	weapon_shotgun = {
-		description = "Close range. Fire both barrels at once.",
+		description = "Crits more the closer you are. Fire both barrels at once.",
 		damage = "sk_plr_dmg_buckshot",
 		pellets = "sk_plr_num_shotgun_pellets",
 		clip = 6,
 	},
 	weapon_crossbow = {
-		description = "Long-range bolts. Slow to reload.",
+		description = "Bolts that hurl their target back. Slow to reload.",
 		damage = "sk_plr_dmg_crossbow",
 		clip = 1,
 	},
 	weapon_pistol = {
-		description = "A light sidearm.",
+		description = "Precise at any range. Fires no faster than a third of a second.",
 		damage = "sk_plr_dmg_pistol",
 		clip = 18,
 	},
 	weapon_357 = {
-		description = "A hard-hitting sidearm.",
+		description = "Exact and hard-hitting at any range. One shot a second.",
 		damage = "sk_plr_dmg_357",
 		clip = 6,
 	},

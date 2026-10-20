@@ -7,6 +7,7 @@ local Rounds = WS.require("foundation.rounds")
 local Hearing = WS.require("foundation.aiwar.hearing")
 local Factions = WS.require("foundation.factions")
 local Marksmanship = WS.require("foundation.aiwar.marksmanship")
+local BulletSteps = WS.require("foundation.combat.bullet_steps")
 local RED, BLUE = Map.RED, Map.BLUE
 local Point, PassThrough = Map.Point, Map.PassThrough
 
@@ -290,11 +291,11 @@ hook.Add("WSSoldierContact", "ws_aiwar_reaction", function(ent)
 	ent.NSReactAt = CurTime() + Skill().reaction
 end)
 
-hook.Add("EntityFireBullets", "ws_aiwar", function(ent, data)
+WS.BulletSteps:Add("ws_aiwar", BulletSteps.AIM, function(ent, data)
 	if not Controller.war then return end
 	local changed = Controller:Marksman(ent, data)
 	Controller:HearShot(ent, data)
-	if changed then return true end
+	if changed then return BulletSteps.CHANGED end
 end)
 
 hook.Add("WSRoundWin", "ws_aiwar", function(winner, reason)

@@ -202,6 +202,7 @@ local function Env(w)
 	local ws = {
 		require = T.require,
 		FeatureParts = T.FeatureParts,
+		BulletSteps = T.require("foundation.combat.bullet_steps").New(),
 		TEAM_RED = RED,
 		TEAM_BLUE = BLUE,
 		TEAM_UNASSIGNED = NOBODY,
