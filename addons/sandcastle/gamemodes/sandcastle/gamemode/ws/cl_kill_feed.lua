@@ -8,6 +8,7 @@
 -- TF2 marks its own; a death with no killer shows the victim and the icon
 -- alone. Each shows for LIFETIME seconds (hud_deathnotice_time).
 local Feed = WS.require("foundation.kill_feed")
+local AiWar = WS.require("foundation.aiwar")
 local Icons = WS.require("foundation.kill_icons")
 local THEME = WS.UI.THEME
 
@@ -68,12 +69,13 @@ function GM:AddDeathNotice(attacker, attackerTeam, inflictor, victim, victimTeam
 	local me = LocalPlayer():Nick()
 	local killer = Name(attacker)
 	if killer == Name(victim) then killer = nil end
+	local sides = AiWar.Sides(GetGlobal2Int(AiWar.SIDES_KEY, AiWar.FACTIONS[AiWar.COMBINE].home))
 	notices[#notices + 1] = {
 		at = CurTime(),
 		killer = killer,
-		killerTeam = Feed.Team(attacker, attackerTeam),
+		killerTeam = Feed.Team(attacker, attackerTeam, sides),
 		victim = Name(victim),
-		victimTeam = Feed.Team(victim, victimTeam),
+		victimTeam = Feed.Team(victim, victimTeam, sides),
 		icon = Icons.For(ICONS, inflictor, Class(attacker)),
 		mine = attacker == me or victim == me,
 	}

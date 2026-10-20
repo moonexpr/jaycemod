@@ -1,6 +1,7 @@
 -- Where the AI war's soldiers join the fight on a map without TF2's team
--- spawns (info_player_teamspawn): each team at its own HL2 deathmatch
--- spawns (TEAM_CLASSES: the Combine fight for RED, the rebels for BLU);
+-- spawns (info_player_teamspawn): each team at its faction's HL2
+-- deathmatch spawns (FACTION_CLASSES: the Combine's, the rebels'), whichever
+-- team the faction fights for;
 -- a team without them at the nav mesh's hiding spots, split between the
 -- teams (Split) so each has its own side of the map; and on a map without
 -- hiding spots, at its shared player starts (SHARED_CLASSES).
@@ -9,11 +10,12 @@
 local ipairs, sort = ipairs, table.sort
 local ceil = math.ceil
 local Teams = require("foundation.teams")
+local AiWar = require("foundation.aiwar")
 module(...)
 
-TEAM_CLASSES = {
-	[Teams.RED] = { "info_player_combine" },
-	[Teams.BLUE] = { "info_player_rebel" },
+FACTION_CLASSES = {
+	[AiWar.COMBINE] = { "info_player_combine" },
+	[AiWar.RESISTANCE] = { "info_player_rebel" },
 }
 SHARED_CLASSES = { "info_player_deathmatch", "info_player_start" }
 
@@ -25,10 +27,11 @@ local function Present(classes, present)
 	return list
 end
 
--- The team's own spawn classes the map has (present(class) -> bool); none
--- sends it to the hiding spots.
-function Classes(team, present)
-	return Present(TEAM_CLASSES[team], present)
+-- The spawn classes of faction (an id: foundation.aiwar's COMBINE,
+-- RESISTANCE) the map has (present(class) -> bool); none sends its team to
+-- the hiding spots.
+function Classes(faction, present)
+	return Present(FACTION_CLASSES[faction] or {}, present)
 end
 
 -- The shared player start classes the map has.

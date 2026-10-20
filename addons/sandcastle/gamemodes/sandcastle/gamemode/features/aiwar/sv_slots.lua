@@ -27,9 +27,13 @@ function Controller:SlotPlan()
 end
 
 -- The faction fighting for team: the war's, as factions trade sides; with
--- no war, the one that starts on it.
+-- no war, the one that starts on it (its home faction).
+function Controller:Faction(team)
+	return self.war and self.war:Faction(team) or AiWar.HomeFaction(team)
+end
+
 function Controller:FactionName(team)
-	return (self.war and self.war:Faction(team) or AiWar.FACTIONS[team]).name
+	return self:Faction(team).name
 end
 
 -- At a team size each faction is resized to its side's share of it (the

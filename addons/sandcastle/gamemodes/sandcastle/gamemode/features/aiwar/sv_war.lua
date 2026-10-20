@@ -180,6 +180,7 @@ function Controller:Start()
 	self.paused = self:ShouldPause()
 	self.gates = nil
 	SetGlobal2Bool(ACTIVE_KEY, true)
+	self:PublishSides()
 	WS.Notify(Notices.WarStarted())
 	self:OpenDoorsToSoldiers()
 	self:SetForcefieldsPassable(true)
@@ -216,8 +217,16 @@ function Controller:End()
 	self.scenario = nil
 	self.winner = nil
 	SetGlobal2Bool(ACTIVE_KEY, false)
+	self:PublishSides()
 	WS.Notify(Notices.WarEnded())
 	return true
+end
+
+-- The team the Combine fight for, for clients (the kill feed's colours:
+-- foundation.aiwar's SIDES_KEY); without a war, their home.
+function Controller:PublishSides()
+	local combine = self.war and self.war:TeamOf(AiWar.COMBINE) or AiWar.FACTIONS[AiWar.COMBINE].home
+	SetGlobal2Int(AiWar.SIDES_KEY, combine)
 end
 
 local function Repause()

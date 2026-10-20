@@ -94,7 +94,7 @@ if SERVER then
 	end
 
 	Command("mp_aiwar_start", "Start",
-		"Start the war, the Combine (RED) against the Resistance (BLU) on payload, control point and "
+		"Start the war, the Combine (BLU) against the Resistance (RED) on payload, control point and "
 			.. "King of the Hill maps; in Sandbox mode, Gameplay mode counts down and begins")
 	Command("mp_aiwar_end", "End", "End the AI war; its soldiers leave, NPCs players spawned stay")
 
@@ -188,7 +188,7 @@ hook.Add("CreateClientsideRagdoll", "ws_aiwar_ragdoll_fade", function(owner, rag
 end)
 
 local HELP = "In Sandbox mode, counts down to Gameplay mode and a new round. "
-	.. "The Resistance spawn at BLU's spawn and the Combine at RED's, and fight the map's round: "
+	.. "The Combine spawn at BLU's spawn and the Resistance at RED's (they trade sides when the defenders win), and fight the map's round: "
 	.. "they push or stop the cart, take and hold the points, or fight for the hill. "
 	.. "Sandcastle's Combine and Resistance soldiers you spawn join their side. "
 	.. "Payload, control point and King of the Hill maps. Needs DrGBase (Steam Workshop) for its soldiers."

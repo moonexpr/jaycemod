@@ -39,7 +39,7 @@ function Controller:JoinSquad(ent, member)
 	ent.wsSquad = member and member.fireTeam and member.fireTeam.squad or nil
 end
 
--- Kits (ws_drg_soldier's NSKit), by side and role: every soldier carries
+-- Kits (ws_drg_soldier's NSKit), by faction and role: every soldier carries
 -- a primary (one of those listed, at random), a secondary and a melee
 -- weapon (foundation.aiwar.arms), the Combine's the pistol and stunstick,
 -- the Resistance's the pistol and crowbar. Blockers and a point's holders
@@ -53,7 +53,7 @@ local function Blocker(melee)
 end
 local COMBINE_BLOCKER, RESISTANCE_BLOCKER = Blocker("weapon_stunstick"), Blocker("weapon_crowbar")
 local KITS = {
-	[RED] = {
+	[AiWar.COMBINE] = {
 		[AiWar.BLOCK] = COMBINE_BLOCKER,
 		[AiWar.HOLD] = COMBINE_BLOCKER,
 		[AiWar.RAID] = { name = "grenadier", primary = { "weapon_ar2" }, secondary = "weapon_pistol", melee = "weapon_stunstick", gadgets = { "grenade" } },
@@ -64,7 +64,7 @@ local KITS = {
 		},
 		default = { primary = { "weapon_ar2", "weapon_smg1" }, secondary = "weapon_pistol", melee = "weapon_stunstick" },
 	},
-	[BLUE] = {
+	[AiWar.RESISTANCE] = {
 		[AiWar.BLOCK] = RESISTANCE_BLOCKER,
 		[AiWar.HOLD] = RESISTANCE_BLOCKER,
 		[AiWar.RAID] = { name = "crossbow", primary = { "weapon_crossbow" }, secondary = "weapon_pistol", melee = "weapon_crowbar", gadgets = { "grenade" } },
@@ -76,7 +76,7 @@ local KITS = {
 -- those of the list the game has (MedicLines keeps only files that exist,
 -- so a missing episode costs lines, not errors).
 local MEDIC_KITS = {
-	[RED] = {
+	[AiWar.COMBINE] = {
 		name = "metrocop medic", model = "models/player/police.mdl",
 		primary = { "weapon_smg1" }, secondary = "weapon_pistol", melee = "weapon_stunstick",
 		voice = {
@@ -86,7 +86,7 @@ local MEDIC_KITS = {
 			"npc/metropolice/vo/rodgerthat.wav", "npc/metropolice/vo/officerneedshelp.wav",
 		},
 	},
-	[BLUE] = {
+	[AiWar.RESISTANCE] = {
 		name = "vortigaunt medic",
 		voice = {
 			"vo/npc/vortigaunt/vques01.wav", "vo/npc/vortigaunt/vques02.wav", "vo/npc/vortigaunt/vques03.wav",
@@ -149,8 +149,11 @@ function Controller:Equip(ent, entry, member)
 			if holder == ent then self.heroes[name] = nil end
 		end
 	end
-	local kits = KITS[team] or {}
-	local kit = (role == AiWar.MEDIC and MEDIC_KITS[team]) or kits[role] or (team == BLUE and role == AiWar.SUPPORT and self:HeroKit(ent)) or kits.default or {}
+	-- kits are the faction's, whichever team it fights for since the sides last traded
+	local faction = self:Faction(team).id
+	local kits = KITS[faction] or {}
+	local kit = (role == AiWar.MEDIC and MEDIC_KITS[faction]) or kits[role]
+		or (faction == AiWar.RESISTANCE and role == AiWar.SUPPORT and self:HeroKit(ent)) or kits.default or {}
 	entry.soldier.kit = kit
 	-- a hero leads its squad (foundation.aiwar.squad)
 	if member then member.hero = kit.hero == true or nil end
@@ -257,6 +260,7 @@ function Controller:RespawnAll()
 	if self.swapFactions then
 		self.swapFactions = nil
 		self.war:SwapFactions()
+		self:PublishSides()
 	end
 	self.scenario:Reset()
 	local entries = {}

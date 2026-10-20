@@ -20,9 +20,12 @@ end
 
 -- Factions ---------------------------------------------------------------
 
-T.test("the Combine fight for RED and the Resistance for BLU", function()
-	T.eq(AiWar.FactionTeam("ws_drg_combine"), RED, "Combine soldier")
-	T.eq(AiWar.FactionTeam("ws_drg_rebel"), BLUE, "Resistance fighter")
+T.test("the Combine's home is BLU and the Resistance's RED", function()
+	T.eq(AiWar.FactionTeam("ws_drg_combine"), BLUE, "Combine soldier")
+	T.eq(AiWar.FactionTeam("ws_drg_rebel"), RED, "Resistance fighter")
+	T.eq(AiWar.FactionOf("ws_drg_vortigaunt").id, AiWar.RESISTANCE, "a vortigaunt is the Resistance's")
+	T.eq(AiWar.HomeFaction(BLUE).id, AiWar.COMBINE, "BLU's home faction")
+	T.eq(AiWar.HomeFaction(Teams.UNASSIGNED), nil, "nobody's home")
 	T.eq(AiWar.FactionTeam("npc_combine_s"), nil, "HL2's own NPCs take no part")
 	T.eq(AiWar.FactionTeam("npc_zombie"), nil, "no side")
 end)
@@ -40,35 +43,43 @@ T.test("sides stand by their team and fight the other; the losers of a round fea
 end)
 
 T.test("each recruit of a faction is one of its members", function()
-	for team, faction in pairs(AiWar.FACTIONS) do
-		T.eq(faction.team, team, faction.name .. " team")
+	for id, faction in pairs(AiWar.FACTIONS) do
+		T.eq(faction.id, id, faction.name .. " id")
 		for i, recruit in ipairs(faction.recruits) do
-			T.eq(AiWar.FactionTeam(recruit.class), team, faction.name .. " recruit " .. i)
+			T.eq(AiWar.FactionTeam(recruit.class), faction.home, faction.name .. " recruit " .. i)
 		end
 	end
 end)
 
 T.test("drafts cycle through the recruits", function()
 	local war = AiWar.War.New()
-	local recruits = AiWar.FACTIONS[RED].recruits
+	local recruits = AiWar.HomeFaction(RED).recruits
 	T.eq(war:Draft(RED).recruit, recruits[1], "first recruit")
 	for _ = 2, #recruits do war:Draft(RED) end
 	T.eq(war:Draft(RED).recruit, recruits[1], "the cycle restarts")
 end)
 
-T.test("a war swaps its factions: the Combine fight for BLU, the Resistance for RED", function()
+T.test("a war starts each faction on its home and swaps them: the Combine fight for RED, the Resistance for BLU", function()
 	local war = AiWar.War.New()
-	T.eq(war:Faction(RED).name, "Combine", "the Combine start on RED")
-	T.eq(war:FactionTeam("ws_drg_combine"), RED)
+	T.eq(war:Faction(BLUE).name, "Combine", "the Combine start on BLU")
+	T.eq(war:FactionTeam("ws_drg_combine"), BLUE)
+	T.eq(war:TeamOf(AiWar.COMBINE), BLUE, "the Combine's team")
 	war:SwapFactions()
-	T.eq(war:Faction(RED).name, "Resistance", "the Resistance on RED")
-	T.eq(war:Faction(BLUE).name, "Combine", "the Combine on BLU")
-	T.eq(war:FactionTeam("ws_drg_combine"), BLUE, "a Combine soldier joins BLU")
-	T.eq(war:FactionTeam("ws_drg_vortigaunt"), RED, "a vortigaunt joins RED")
+	T.eq(war:Faction(BLUE).name, "Resistance", "the Resistance on BLU")
+	T.eq(war:Faction(RED).name, "Combine", "the Combine on RED")
+	T.eq(war:TeamOf(AiWar.COMBINE), RED, "the Combine's team now")
+	T.eq(war:FactionTeam("ws_drg_combine"), RED, "a Combine soldier joins RED")
+	T.eq(war:FactionTeam("ws_drg_vortigaunt"), BLUE, "a vortigaunt joins BLU")
 	T.eq(war:FactionTeam("npc_zombie"), nil, "no side")
-	T.eq(war:Draft(BLUE).recruit.class, "ws_drg_combine", "BLU drafts the Combine")
+	T.eq(war:Draft(RED).recruit.class, "ws_drg_combine", "RED drafts the Combine")
 	war:SwapFactions()
-	T.eq(war:Faction(RED).name, "Combine", "and back")
+	T.eq(war:Faction(BLUE).name, "Combine", "and back")
+end)
+
+T.test("clients read every faction's team from the Combine's", function()
+	local sides = AiWar.Sides(RED)
+	T.eq(sides[AiWar.COMBINE], RED, "the Combine")
+	T.eq(sides[AiWar.RESISTANCE], BLUE, "the Resistance, their enemy")
 end)
 
 T.test("a defender's win: held to the time limit, or won without a cart against one", function()
@@ -661,20 +672,20 @@ T.test("medics: a few per side, drafted first while short, and never moved to an
 	T.eq(AiWar.MedicsFor(8), 1, "one for eight")
 	T.eq(AiWar.MedicsFor(16), 2, "two for sixteen")
 	T.eq(AiWar.FixedRole("ws_drg_vortigaunt"), AiWar.MEDIC, "a vortigaunt only heals")
-	T.eq(AiWar.FactionTeam("ws_drg_vortigaunt"), BLUE, "for the Resistance")
+	T.eq(AiWar.FactionTeam("ws_drg_vortigaunt"), RED, "for the Resistance, at home on RED")
 	T.eq(AiWar.FixedRole("ws_drg_rebel"), nil, "a rebel does any job")
 	local war = UncappedWar()
-	war:Assign({ [BLUE] = true })
+	war:Assign({ [RED] = true })
 	war:Reinforcements(0, Sizes(8), function() return 0 end)
-	local draft = war:Draft(BLUE)
+	local draft = war:Draft(RED)
 	T.eq(draft.role, AiWar.MEDIC, "a medic first")
 	T.eq(draft.recruit.class, "ws_drg_vortigaunt", "a vortigaunt")
-	local medic = war:Enlist("vort", BLUE, true, draft.role)
+	local medic = war:Enlist("vort", RED, true, draft.role)
 	T.eq(medic.role, AiWar.MEDIC, "enlisted a medic")
-	T.eq(war:Draft(BLUE).role, nil, "then soldiers")
-	T.eq(war:Draft(RED).recruit.class, "ws_drg_combine", "the Combine's medic is a soldier in a medic's kit")
-	for i = 1, 6 do war:Enlist("b" .. i, BLUE, true) end
-	war:Assign({ [BLUE] = { progress = 0.2 }, [RED] = { progress = 0.9 } })
+	T.eq(war:Draft(RED).role, nil, "then soldiers")
+	T.eq(war:Draft(BLUE).recruit.class, "ws_drg_combine", "the Combine's medic is a soldier in a medic's kit")
+	for i = 1, 6 do war:Enlist("r" .. i, RED, true) end
+	war:Assign({ [RED] = { progress = 0.2 }, [BLUE] = { progress = 0.9 } })
 	T.eq(medic.role, AiWar.MEDIC, "a turning race does not move it")
 end)
 

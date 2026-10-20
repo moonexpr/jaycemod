@@ -181,8 +181,9 @@ function Controller:RelateMonsters()
 	end
 end
 
--- RED players fight beside the Combine, BLU beside the Resistance, and the
--- rest (spectators, the unassigned) are left alone.
+-- Players fight beside the faction on their team (the Combine on BLU and
+-- the Resistance on RED until the sides trade), and the rest (spectators,
+-- the unassigned) are left alone.
 function Controller:RelatePlayers()
 	for ent, entry in pairs(self.soldiers) do
 		if IsValid(ent) then

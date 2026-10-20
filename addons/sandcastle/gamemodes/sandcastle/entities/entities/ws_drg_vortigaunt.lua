@@ -1,9 +1,9 @@
--- The Resistance's medic for the AI war (BLU): a vortigaunt, a DrGBase
--- NextBot on its plain base (drgbase_nextbot: the vortigaunt model has
--- HL2's NPC activities, not a player's), steered by the war's orders as its
--- soldiers are (WS.DrgSoldier). It carries no weapon; it heals with a
--- beam (features/aiwar's medics).
--- Spawned, it is in Team BLU's faction and HL2's rebels' (sh_factions.lua);
+-- The Resistance's medic for the AI war (RED, its home team): a
+-- vortigaunt, a DrGBase NextBot on its plain base (drgbase_nextbot: the
+-- vortigaunt model has HL2's NPC activities, not a player's), steered by
+-- the war's orders as its soldiers are (WS.DrgSoldier). It carries no
+-- weapon; it heals with a beam (features/aiwar's medics).
+-- Spawned, it is in Team RED's faction and HL2's rebels' (sh_factions.lua);
 -- the AI war moves it to the faction of the team it fights for.
 if not DrGBase then return end
 
@@ -15,7 +15,7 @@ ENT.Spawnable = true
 ENT.Models = { "models/vortigaunt.mdl" }
 ENT.BloodColor = BLOOD_COLOR_GREEN
 ENT.CollisionBounds = Vector(13, 13, 72)
-ENT.Factions = { FACTION_TEAM_BLU, FACTION_REBELS }
+ENT.Factions = { FACTION_TEAM_RED, FACTION_REBELS }
 
 ENT.SpawnHealth = 150
 ENT.WalkSpeed = 80

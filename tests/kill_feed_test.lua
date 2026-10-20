@@ -3,13 +3,21 @@
 -- team's colour.
 local T = dofile("tests/harness.lua")
 local Feed = T.require("foundation.kill_feed")
+local AiWar = T.require("foundation.aiwar")
 local RED, BLUE = 2, 3
 
-T.test("a soldier's notice takes its side's team", function()
-	T.eq(Feed.Team("#ws_drg_rebel", -1), BLUE)
-	T.eq(Feed.Team("#ws_drg_vortigaunt", -1), BLUE)
-	T.eq(Feed.Team("#ws_drg_combine", -1), RED)
-	T.eq(Feed.Team("ws_drg_rebel", -1), BLUE, "the class as GMod's feed passes it, without the #")
+T.test("a soldier's notice takes the team its faction fights for: its home without a war", function()
+	T.eq(Feed.Team("#ws_drg_rebel", -1), RED)
+	T.eq(Feed.Team("#ws_drg_vortigaunt", -1), RED)
+	T.eq(Feed.Team("#ws_drg_combine", -1), BLUE)
+	T.eq(Feed.Team("ws_drg_rebel", -1), RED, "the class as GMod's feed passes it, without the #")
+end)
+
+T.test("once the sides trade, a soldier's notice follows its faction", function()
+	local sides = AiWar.Sides(RED) -- the Combine on RED
+	T.eq(Feed.Team("#ws_drg_combine", -1, sides), RED, "the Combine")
+	T.eq(Feed.Team("#ws_drg_vortigaunt", -1, sides), BLUE, "the Resistance")
+	T.eq(Feed.Team("Some Player", BLUE, sides), BLUE, "a player keeps the notice's")
 end)
 
 T.test("players and other NPCs keep the team the notice has", function()
@@ -24,11 +32,11 @@ T.test("a notice without a name keeps its team", function()
 	T.eq(Feed.Team(nil, RED), RED)
 end)
 
-T.test("every soldier class has a team, so each gets a name", function()
+T.test("every soldier class has a faction, so each gets a name", function()
 	local n = 0
-	for class, team in pairs(Feed.SOLDIERS) do
+	for class, faction in pairs(Feed.SOLDIERS) do
 		n = n + 1
-		T.eq(team == RED or team == BLUE, true, class)
+		T.eq(AiWar.FACTIONS[faction] ~= nil, true, class)
 	end
 	T.eq(n, 3)
 end)

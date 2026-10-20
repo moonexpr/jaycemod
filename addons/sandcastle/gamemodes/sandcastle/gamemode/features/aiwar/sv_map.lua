@@ -1,5 +1,6 @@
 -- Part of the AI war controller (sv.lua): how the war reads the map: points, masks, spawn spots, hiding spots, doors
 -- and the ground. Its helpers go to the other parts as Map.
+local Controller = ...
 local Spawns = WS.require("foundation.aiwar.spawns")
 local Slots = WS.require("foundation.aiwar.slots")
 local AiWar = WS.require("foundation.aiwar")
@@ -68,7 +69,7 @@ end
 local function SpawnSpots(team)
 	local teamSpawns = WS.SpawnPoints(team)
 	if #teamSpawns > 0 or Present("info_player_teamspawn") then return teamSpawns end
-	local own = Spawns.Classes(team, Present)
+	local own = Spawns.Classes(Controller:Faction(team).id, Present)
 	if #own > 0 then return EntitiesOf(own) end
 	local hiding = HidingSpotsOf(team)
 	if #hiding > 0 then return hiding end

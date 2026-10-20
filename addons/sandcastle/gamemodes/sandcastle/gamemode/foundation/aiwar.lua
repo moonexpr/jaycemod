@@ -1,5 +1,6 @@
 -- The AI war: a payload round fought by Half-Life 2's engine NPCs, the
--- Combine for RED and the Resistance for BLU. This model holds who fights
+-- Combine for BLU and the Resistance for RED to begin with (their home
+-- teams), trading sides when the defenders win. This model holds who fights
 -- for whom, what each soldier is for (its role), when each side's dead come
 -- back, and what the round state lets soldiers do. The soldiers' orders are
 -- foundation.aiwar.orders; the features/aiwar controller spawns, enlists
@@ -77,24 +78,48 @@ SQUADS_MAX_DEFAULT = 3
 SQUADS_MIN_DEFAULT = 3
 
 -- The sides' soldiers: DrGBase NextBots (the entities ws_drg_combine
--- and ws_drg_rebel), each drafting its own model and weapons.
+-- and ws_drg_rebel), each drafting its own model and weapons. Each faction
+-- starts a war on its home team, the one its look belongs to (the
+-- Combine's cold, industrial palette is BLU's, the Resistance's browns
+-- RED's: docs/team-theming-plan.md), and fights for either as the sides
+-- trade (War:SwapFactions).
+COMBINE, RESISTANCE = "combine", "resistance"
 FACTIONS = {
-	[RED] = {
+	[COMBINE] = {
+		id = COMBINE,
 		name = "Combine",
-		team = RED,
+		home = BLUE,
 		classes = { ws_drg_combine = true },
 		recruits = { { class = "ws_drg_combine" } },
 		medic = { class = "ws_drg_combine" }, -- in a metrocop's kit
 	},
-	[BLUE] = {
+	[RESISTANCE] = {
+		id = RESISTANCE,
 		name = "Resistance",
-		team = BLUE,
+		home = RED,
 		-- a class whose value is a job only ever does that job
 		classes = { ws_drg_rebel = true, ws_drg_vortigaunt = MEDIC },
 		recruits = { { class = "ws_drg_rebel" } },
 		medic = { class = "ws_drg_vortigaunt" },
 	},
 }
+
+-- Clients learn the sides from the team the Combine fight for now
+-- (Global2Int SIDES_KEY, set by features/aiwar); Sides(that team) gives
+-- each faction's: faction id -> team.
+SIDES_KEY = "ws.aiwar.combine"
+
+function Sides(combineTeam)
+	return { [COMBINE] = combineTeam, [RESISTANCE] = EnemyOf(combineTeam) }
+end
+
+-- The faction whose home is team.
+function HomeFaction(team)
+	for _, faction in pairs(FACTIONS) do
+		if faction.home == team then return faction end
+	end
+	return nil
+end
 
 -- The job a class only ever does (the vortigaunt heals), or nil.
 function FixedRole(class)
@@ -105,12 +130,19 @@ function FixedRole(class)
 	return nil
 end
 
--- The team an NPC class fights for, or nil for a class in no faction.
-function FactionTeam(class)
-	for team, faction in pairs(FACTIONS) do
-		if faction.classes[class] then return team end
+-- The faction an NPC class belongs to, or nil for a class in none.
+function FactionOf(class)
+	for _, faction in pairs(FACTIONS) do
+		if faction.classes[class] then return faction end
 	end
 	return nil
+end
+
+-- The home team of an NPC class's faction, or nil for a class in none
+-- (in a war, War:FactionTeam: the team it fights for now).
+function FactionTeam(class)
+	local faction = FactionOf(class)
+	return faction and faction.home or nil
 end
 
 -- Whether winner won the round as its defender: it held until the time
@@ -349,17 +381,25 @@ function War.New()
 		drafts = { [RED] = 0, [BLUE] = 0 },
 		sizes = { [RED] = 0, [BLUE] = 0 }, -- team -> its size, as Reinforcements was last given it
 		nextWave = { [RED] = 0, [BLUE] = 0 },
-		factions = { [RED] = FACTIONS[RED], [BLUE] = FACTIONS[BLUE] }, -- team -> the faction fighting for it
+		factions = { [RED] = HomeFaction(RED), [BLUE] = HomeFaction(BLUE) }, -- team -> the faction fighting for it
 		field = nil,
 		offRoles = OFF_ROLES, -- roles no stance gives (SetOffRoles)
 		onStances = setmetatable({}, { __mode = "k" }), -- stance -> it without them
 	}, War)
 end
 
--- The faction fighting for team: FACTIONS' to begin with, swapped when the
--- defenders win (SwapFactions).
+-- The faction fighting for team: its home faction to begin with, swapped
+-- when the defenders win (SwapFactions).
 function War:Faction(team)
 	return self.factions[team]
+end
+
+-- The team faction (an id: COMBINE, RESISTANCE) fights for now.
+function War:TeamOf(faction)
+	for team, f in pairs(self.factions) do
+		if f.id == faction then return team end
+	end
+	return nil
 end
 
 -- The team a class fights for in this war, or nil for a class in no faction.

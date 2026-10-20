@@ -74,7 +74,7 @@ end
 Controller.slotStore = SlotFile
 
 local Part = WS.FeatureParts(getfenv(1), "aiwar")
-local Map = Part("sv_map")
+local Map = Part("sv_map", Controller)
 local Soldier, ARRIVED = Part("sv_soldier", Map)
 Controller.Soldier = Soldier
 Part("sv_relations", Controller, Map)

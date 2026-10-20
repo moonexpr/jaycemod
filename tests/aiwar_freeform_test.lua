@@ -135,14 +135,15 @@ local function Present(classes)
 	return function(class) return set[class] == true end
 end
 
-T.test("without TF2's team spawns, each team joins at its HL2 deathmatch spawns", function()
+T.test("without TF2's team spawns, each faction joins at its HL2 deathmatch spawns, whichever its team", function()
 	local present = Present({ "info_player_combine", "info_player_rebel", "info_player_deathmatch" })
-	T.eq(table.concat(Spawns.Classes(RED, present), ","), "info_player_combine", "the Combine's for RED")
-	T.eq(table.concat(Spawns.Classes(BLUE, present), ","), "info_player_rebel", "the rebels' for BLU")
+	T.eq(table.concat(Spawns.Classes(AiWar.COMBINE, present), ","), "info_player_combine", "the Combine's")
+	T.eq(table.concat(Spawns.Classes(AiWar.RESISTANCE, present), ","), "info_player_rebel", "the rebels'")
+	T.eq(#Spawns.Classes(nil, present), 0, "no faction, none")
 end)
 
 T.test("a team without its own spawns joins at hiding spots; the shared starts are the last resort", function()
-	T.eq(#Spawns.Classes(BLUE, Present({ "info_player_combine", "info_player_start" })), 0, "no rebels' spawns: none of its own")
+	T.eq(#Spawns.Classes(AiWar.RESISTANCE, Present({ "info_player_combine", "info_player_start" })), 0, "no rebels' spawns: none of its own")
 	T.eq(table.concat(Spawns.Shared(Present({ "info_player_deathmatch", "info_player_start" })), ","),
 		"info_player_deathmatch,info_player_start", "every shared kind")
 	T.eq(#Spawns.Shared(Present({})), 0, "none at all")

@@ -152,6 +152,7 @@ local function World()
 		requests = {},
 		hooks = {},
 		notified = {},
+		globals = {}, -- Global2 vars the controller set
 		convarCallbacks = {}, -- convar name -> the controller's change callback
 		active = true,
 		state = STATE.RND_RUNNING,
@@ -281,6 +282,7 @@ local function Env(w)
 		IsValid = function(v) return v ~= nil and v ~= false end,
 		CurTime = function() return w.now end,
 		SetGlobal2Bool = function() end,
+		SetGlobal2Int = function(key, value) w.globals[key] = value end,
 		concommand = wiring.concommand,
 		hook = {
 			Add = function(event, id, fn)
@@ -410,7 +412,7 @@ T.test("setting a side's slot count sizes that side alone, and turns the team si
 	controller:SetSlotCount(BLUE, 0)
 	sizes = controller:Sizes()
 	T.eq(sizes[RED] .. " " .. sizes[BLUE], "5 0", "RED alone")
-	T.eq(#controller.slotStore.saved.Resistance, 0, "kept empty")
+	T.eq(#controller.slotStore.saved.Combine, 0, "kept empty: BLU's faction, the Combine")
 end)
 
 T.test("removing slots by id removes their soldiers, and sets that side's size", function()
@@ -419,7 +421,7 @@ T.test("removing slots by id removes their soldiers, and sets that side's size",
 	local controller = Load(w)
 	controller:Sizes()
 	local removed = false
-	controller:SlotPlan():Fill("Combine", { Remove = function() removed = true end })
+	controller:SlotPlan():Fill("Resistance", { Remove = function() removed = true end })
 	local ids = SlotIds(controller, RED)
 	local lines = controller:RemoveSlots({ ids[1], ids[2], 99 })
 	T.eq(removed, true, "the soldier in the first went with it")
@@ -443,7 +445,7 @@ T.test("pins are kept with the slot list, and read back on the next map", functi
 	next.slotStore = MemoryStore(saved)
 	local sizes = next:Sizes()
 	T.eq(sizes[RED] .. " " .. sizes[BLUE], "2 2", "the same slots")
-	T.eq(next:SlotPlan():Slots("Combine")[1].pin, Squad.LEADER, "the same pin")
+	T.eq(next:SlotPlan():Slots("Resistance")[1].pin, Squad.LEADER, "the same pin, on RED's faction")
 end)
 
 -- A soldier the controller holds, with entity index `index`, whose DrGBase
@@ -917,12 +919,36 @@ T.test("a defenders' win has the factions trade sides with the next round; an at
 	w.state = STATE.TEAM_WIN
 	w.hooks.WSRoundWin(RED, Rounds.WINREASON.ALL_POINTS_CAPTURED)
 	w.hooks.WSRoundActivate()
-	T.eq(controller.war:Faction(RED).name, "Combine", "an attackers' win changes nothing")
+	T.eq(controller.war:Faction(RED).name, "Resistance", "an attackers' win changes nothing: each faction on its home")
+	T.eq(w.globals[AiWar.SIDES_KEY], BLUE, "clients told the Combine fight for BLU")
 	w.hooks.WSRoundWin(RED, Rounds.WINREASON.DEFEND_UNTIL_TIME_LIMIT)
-	T.eq(controller.war:Faction(RED).name, "Combine", "the sides hold through the humiliation")
+	T.eq(controller.war:Faction(RED).name, "Resistance", "the sides hold through the humiliation")
 	w.hooks.WSRoundActivate()
-	T.eq(controller.war:Faction(RED).name, "Resistance", "the Resistance on RED")
-	T.eq(controller.war:Faction(BLUE).name, "Combine", "the Combine attack as BLU")
+	T.eq(controller.war:Faction(RED).name, "Combine", "the Combine on RED")
+	T.eq(controller.war:Faction(BLUE).name, "Resistance", "the Resistance attack as BLU")
+	T.eq(w.globals[AiWar.SIDES_KEY], RED, "clients told the Combine now fight for RED")
+end)
+
+-- Bug: kits were keyed by team, so once the sides traded the Combine on RED
+-- drew the Resistance's crossbows, crowbars and heroes, and its medics the
+-- vortigaunt's kit.
+T.test("a soldier's kit is its faction's, whichever team the faction fights for", function()
+	local w = World()
+	local controller = Started(w, ControlPointsMode.Mode, {})
+	local function Kit(team, role)
+		local ent = FakeSoldier(1)
+		ent.NSKit = function(self, kit) self.kit = kit end
+		controller:Equip(ent, { soldier = { team = team } }, { role = role })
+		return ent.kit
+	end
+	T.eq(Kit(BLUE, AiWar.RAID).name, "grenadier", "the Combine's raider, on BLU")
+	T.eq(Kit(RED, AiWar.RAID).name, "crossbow", "the Resistance's, on RED")
+	controller.war:SwapFactions()
+	T.eq(Kit(RED, AiWar.RAID).name, "grenadier", "the Combine's raider, on RED")
+	T.eq(Kit(RED, AiWar.MEDIC).name, "metrocop medic", "the Combine's medic, on RED")
+	T.eq(Kit(BLUE, AiWar.MEDIC).name, "vortigaunt medic", "the Resistance's medic, on BLU")
+	T.eq(Kit(RED, AiWar.SUPPORT).name, "metrocop", "the Combine have no heroes")
+	T.eq(Kit(BLUE, AiWar.SUPPORT).hero, true, "the Resistance's heroes, on BLU")
 end)
 
 T.test("arena's round is the arena phase; a sudden death after it is sudden death's", function()

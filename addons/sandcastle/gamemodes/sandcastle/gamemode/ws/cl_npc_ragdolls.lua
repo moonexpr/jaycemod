@@ -72,6 +72,8 @@ WS.Events.Listen("game_npc_ragdoll_create", "ws_npc_ragdolls", function(fields)
 	if IsValid(body) then
 		Hide(body)
 		WS.CorpseEffects(body, ragdoll) -- a body that died burning burns on (ws/cl_conditions.lua)
+		-- with Team Tint installed, it shows its body's team (ws/sh_teamtint.lua)
+		if TeamTint then TeamTint.CopyTo(body, ragdoll) end
 	end
 	WS.FadeRagdollLater(ragdoll)
 end)
