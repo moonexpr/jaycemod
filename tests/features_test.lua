@@ -179,6 +179,19 @@ T.test("a feature that requires itself while loading errors, naming it", functio
 	T.eq(#loader:Loaded(), 0, "neither recorded")
 end)
 
+T.test("a feature whose load failed names its own error on every later call, and runs no part again", function()
+	local port = FakePort({
+		[P("war", SV)] = function() error("the war needs the speech addon", 0) end,
+	})
+	local loader = Features.New(SV, port)
+	Has(ErrorOf(function() loader:Feature("war") end), "the war needs the speech addon", "the first call")
+	local later = ErrorOf(function() loader:Feature("war") end)
+	Has(later, "the war needs the speech addon", "a later call")
+	Has(later, '"war"', "naming the feature")
+	T.eq(#port.runs, 1, "its part ran once")
+	T.eq(loader:IsLoaded("war"), false, "not loaded")
+end)
+
 -- Client ------------------------------------------------------------------
 
 T.test("client: loads sh then cl once and returns the view", function()
@@ -337,8 +350,8 @@ T.test("client files: every shipping .lua file under the folders, recursively, s
 	}))
 end)
 
-T.test("client files walk the gamemode's three folders", function()
-	T.eq(List(Features.CLIENT_DIRS), "foundation/,features/,ws/")
+T.test("client files walk the gamemode's four folders", function()
+	T.eq(List(Features.CLIENT_DIRS), "foundation/,features/,ws/,vendor/")
 end)
 
 -- Realm parts ----------------------------------------------------------------

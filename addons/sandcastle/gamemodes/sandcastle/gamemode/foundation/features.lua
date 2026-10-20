@@ -12,7 +12,8 @@
 --
 -- A file's name says its realm: sv.lua and sv_*, cl.lua and cl_*, sh.lua and sh_*; any other name is a
 -- pure module. Clients are sent every file but the server's.
-local error, format, ipairs, match, setfenv, setmetatable, type = error, string.format, ipairs, string.match, setfenv, setmetatable, type
+local error, format, ipairs, match, pcall, setfenv, setmetatable, tostring, type =
+	error, string.format, ipairs, string.match, pcall, setfenv, setmetatable, tostring, type
 local concat, sort = table.concat, table.sort
 local floor = math.floor
 module(...)
@@ -32,7 +33,7 @@ function PartPath(name, part)
 end
 
 -- The folders, relative to the gamemode folder, whose files clients are sent.
-CLIENT_DIRS = { "foundation/", "features/", "ws/" }
+CLIENT_DIRS = { "foundation/", "features/", "ws/", "vendor/" }
 
 local REALM_OF = {
 	[SERVER] = SERVER,
@@ -123,6 +124,7 @@ function New(realm, port)
 		values = {},
 		loaded = {},
 		loading = {},
+		failed = {},
 		order = {},
 		hasClientPart = {},
 	}, Loader)
@@ -145,9 +147,16 @@ local function Load(self, name)
 	if missing then error(missing, 0) end
 
 	self.loading[name] = true
-	if hasShared then port:Run(sharedPath) end
-	local value = hasOwn and RunTable(port, ownPath) or nil
+	local ok, value = pcall(function()
+		if hasShared then port:Run(sharedPath) end
+		return hasOwn and RunTable(port, ownPath) or nil
+	end)
 	self.loading[name] = nil
+	if not ok then
+		-- its parts may have run in part, so it is never loaded again
+		self.failed[name] = value
+		error(value, 0)
+	end
 
 	local clientPart = hasShared or port:Exists(PartPath(name, CLIENT))
 	self.values[name] = value
@@ -163,8 +172,11 @@ end
 function Loader:Feature(name)
 	if self.loaded[name] then return self.values[name] end
 	if OFF[name] then error(format("feature %q is switched off (foundation.features OFF)", name), 0) end
+	if self.failed[name] ~= nil then
+		error(format("feature %q failed to load: %s", name, tostring(self.failed[name])), 0)
+	end
 	if self.loading[name] then
-		error(format("feature %q is still loading: a cyclic dependency, or its load failed", name), 0)
+		error(format("feature %q is still loading: a cyclic dependency", name), 0)
 	end
 	return Load(self, name)
 end

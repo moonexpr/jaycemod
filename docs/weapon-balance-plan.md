@@ -1,8 +1,9 @@
 # Weapon balance, jars, and soldiers' weapon use
 
 Three phases, in order; each lands and is checked in game before the next.
+Phase 1 has shipped; phases 2 and 3 are planned.
 
-## What is there now
+## What was there before
 
 - Damage comes from HL2's skill convars, at GMod's values (read live
   2026-10-20): crossbow 100, .357 40, pistol 5, SMG 4, AR2 8, buckshot 8 × 7
@@ -20,21 +21,37 @@ Three phases, in order; each lands and is checked in game before the next.
   `Choose` by distance) and kit gadgets (`grenade`, `turret`, `manhack`,
   `features/aiwar/sv_soldier.lua`). No kit carries the RPG, SLAM or a jar.
 
-## Phase 1: balance
+## Phase 1: balance (shipped, 3ff73f8)
 
-A new model, `foundation.combat.weapon_balance`: one table per weapon class
-and pure rules on it; the controller (`ws/sh_weapon_balance.lua`) applies it
-through `EntityFireBullets` (damage, spread), `StartCommand` (fire interval:
-strips `IN_ATTACK` until the weapon's gate opens, predicted on both realms),
-and `EntityTakeDamage` (knockback, shotgun crits). Skill convars carry the
-explosives' damage so the Store's tooltip stays right.
+`foundation.combat.weapon_balance` holds one table per weapon class and the
+pure rules on it, for players and soldiers alike. Its controllers apply it:
 
-| Weapon | Now | Proposed |
+- `ws/sv_hits.lua`, on every hit: the weapon is the inflictor's class (a
+  crossbow bolt, a rocket, a frag, a satchel or tripmine counts as its
+  weapon) or else the attacker's held weapon. A balanced weapon's bullet
+  hits for its own damage, an automatic's falls off, an explosive's blast is
+  scaled from HL2's damage (its falloff kept), and the shotgun rolls its crit
+  (one roll an attacker a tick, so a shot's pellets crit together). Then the
+  crit rule (`foundation.players` `Hit`, which now triples a rolled crit as
+  a headshot), and after the hit the crossbow's knockback.
+- `ws/sh_weapon_balance.lua`, on both realms so shots predict: the pistol's
+  and the magnum's cone, and their fire interval: a player's attack button
+  is held back until the weapon may fire again; a soldier's DrGBase gun
+  waits the longer of its own delay and the interval.
+- The Store's tooltip shows the balanced damage. No skill convar is changed.
+
+GMod's `EntityFireBullets` stops at the first hook that answers, so the
+soldiers' aim and the fixed pellet spread had starved each other. Every
+bullet now passes one hook (`ws/sh_bullets.lua`) and its ordered steps
+(`foundation.combat.bullet_steps`): the balance's spread, then the
+soldiers' aim, then the pellets.
+
+| Weapon | Before | Now |
 |---|---|---|
-| Crossbow | 100, headshot ×3 | 40; never crits on a headshot; knockback 700 u/s along the bolt (×1.5 on a headshot) and a 0.5 s stagger |
-| Pistol | 5, HL2 spread, ~10 shots/s clicking | 18; spread 0.5°; one shot per 0.3 s |
+| Crossbow | 100, headshot ×3 | 40; never crits on a headshot; knockback 700 u/s along the shot plus 30 % of that upward (×1.5 on a headshot); a hit player is slowed by half for 0.5 s |
+| Pistol | 5, HL2 spread, ~10 shots/s clicking | 18; cone 0.5°; one shot per 0.3 s |
 | .357 | 40 | 75; no spread; one shot per 1.0 s |
-| SMG, AR2 | 4, 8 | unchanged up close; falloff past 1024 u to 50 % at 2048 u |
+| SMG, AR2 | 4, 8 | unchanged up close; bullets fall off past 1024 u to 50 % at 2048 u |
 | Shotgun | 8 × 7 | unchanged per pellet; crit chance 0 % at 512 u rising to 40 % at 64 u, one roll per shot |
 | Crowbar, stunstick | 10, 10 | unchanged (headshot crits stay) |
 | Frag | 125 | 175 |
@@ -43,6 +60,10 @@ explosives' damage so the Store's tooltip stays right.
 
 Pistol and .357 keep their damage at any range, so past 1024 u they out-hit
 the automatics.
+
+Checked live: each weapon's damage on a bot. Not yet seen in game: the fire
+interval and its prediction, the pistol's cone, and how far the knockback
+throws (a soldier is made to jump and given the push; it is not staggered).
 
 ## Phase 2: Jarate and Mad Milk
 
