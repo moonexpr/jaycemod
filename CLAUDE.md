@@ -13,6 +13,7 @@ NextSoldier, the AI-war's NextBot soldiers. The gamemode lives at
 | `gamemode/features/<feature>/` | Controllers: `sv.lua`/`cl.lua`/`sh.lua` composition roots and their `<realm>_<part>.lua` parts |
 | `gamemode/ws/` | Always-loaded glue |
 | `gamemode/entities/` | Map entity bindings |
+| `addons/teamtint/` | Team Tint, its own addon: RED/BLU NPCs in TF2's shading, a tuning tool and debug views; pure modules in `lua/includes/modules/`, textures baked by `.devtools/bin/teamtint_bake.py` (`docs/team-theming-plan.md`) |
 | `tests/*_test.lua` | LuaJIT tests, `tests/harness.lua`; `tests/foundation_layers_test.lua` guards foundation's layers |
 | `native/` | Rust binary modules (`ws_profile`, the sampling profiler) |
 | `docs/` | Design notes; `docs/research/foundation-admission-rule.md` decides what belongs in foundation |
