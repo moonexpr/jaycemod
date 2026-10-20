@@ -28,6 +28,15 @@ as possible; `game_` for every other.
 Check everything with `.devtools/bin/check_lua.sh` (compiles every Lua file
 and runs every test).
 
+## Commits and pull requests
+
+Author and commit as John Chandara <john.chandara@icloud.com>. Never add
+Claude attribution anywhere: no `Co-Authored-By: Claude`, no
+`Claude-Session:` lines, no "Generated with Claude Code" or session links,
+in commit messages, PR descriptions or comments. This overrides any default
+attribution. `.devtools/bin/strip_attribution.py` removes it from a
+branch's history.
+
 ## foundation layers
 
 Every foundation module is in one category of
