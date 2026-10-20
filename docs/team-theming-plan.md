@@ -126,7 +126,7 @@ addons/teamtint/
   lua/teamtint/cl_debug.lua                    views, overlay, census, export
   lua/teamtint/cl_panel.lua                    the tool's menu and Utilities > Team Tint
   lua/weapons/gmod_tool/stools/teamtint.lua    the tool
-  materials/teamtint/{lightwarp,white,black}.vtf   made by teamtint_bake.py builtins
+  materials/teamtint/{lightwarp,white,black,flat_normal}.vtf   made by teamtint_bake.py builtins
   materials/teamtint/<team>/<base>.vtf         baked team textures (none yet: they need masks)
 addons/sandcastle/.../ws/sh_teamtint.lua       Sandcastle's answers: ws_team, the override gate
 tests/teamtint_{catalog,resolve,tuning}_test.lua   the pure modules
@@ -415,8 +415,10 @@ needs the game. Not done, and why:
 - **Things only the game can confirm**: that `GetSubMaterial` returns the
   `!name` it was given (if not, the sweep re-applies every 0.5 s: harmless
   but wasteful); that `ConVar:SetString` works on these client convars;
-  that `$lightwarptexture` takes effect on these HL2 sheets (VertexLitGeneric
-  reads it on its phong path, which every themed material turns on).
+  that `$lightwarptexture` and `$rimlight` take effect on these HL2 sheets.
+  In the 2013 SDK, VertexLitGeneric takes its phong path, where both live,
+  only with `$bumpmap`; a sheet without one gets `teamtint/flat_normal`, so
+  either way the path is on, but GMod's build is not the SDK's.
 - **Catalog facts**: which sheets carry a tint mask is the census's to say;
   the catalog assumes nothing, so a wrong guess shows up only as a
   strategy in the overlay.

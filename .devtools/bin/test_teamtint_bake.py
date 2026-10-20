@@ -130,7 +130,10 @@ def test_the_light_warp_is_cool_in_shadow_reddish_at_the_terminator_and_just_ove
 def test_the_builtins_are_written_where_the_addon_reads_them(tmp_path):
     written = bake.write_builtins(tmp_path)
     names = {p.relative_to(tmp_path).as_posix() for p in written}
-    assert names == {"materials/teamtint/lightwarp.vtf", "materials/teamtint/white.vtf", "materials/teamtint/black.vtf"}
+    assert names == {"materials/teamtint/lightwarp.vtf", "materials/teamtint/white.vtf", "materials/teamtint/black.vtf",
+                     "materials/teamtint/flat_normal.vtf"}
+    flat = bake.read_vtf((tmp_path / "materials/teamtint/flat_normal.vtf").read_bytes())
+    assert flat.getpixel((0, 0)) == (128, 128, 255, 255)
     white = bake.read_vtf((tmp_path / "materials/teamtint/white.vtf").read_bytes())
     assert white.getpixel((0, 0))[:3] == (255, 255, 255)
     assert bake.read_header((tmp_path / "materials/teamtint/lightwarp.vtf").read_bytes()).mips == 1, "a warp has no mips"

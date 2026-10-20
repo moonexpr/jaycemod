@@ -13,7 +13,7 @@ teamtint_catalog's BakedTexture looks: materials/teamtint/<team>/<base>.vtf.
   teamtint_bake.py bake SOURCE BASE MASK.png [--tuning tuning.json] [--addon DIR]
                        [--value-gain G] [--value-bias B] [--saturation S] [--teams red,blu]
                                                  the team textures of BASE (its $basetexture)
-  teamtint_bake.py builtins [--addon DIR]        the light warp, white and black
+  teamtint_bake.py builtins [--addon DIR]        the light warp, white, black and a flat normal map
 
 SOURCE is a .vtf file, or VPK:TEXTURE (a pak's _dir.vpk and a texture path
 in it, e.g. hl2_textures_dir.vpk:models/combine_soldier/combinesoldiersheet).
@@ -254,6 +254,9 @@ def write_builtins(addon: Path) -> List[Path]:
         "lightwarp.vtf": write_vtf(lightwarp(), BGR888, mips=False, flags=CLAMPS | CLAMPT),
         "white.vtf": write_vtf(Image.new("RGBA", (4, 4), (255, 255, 255, 255)), BGR888, mips=False),
         "black.vtf": write_vtf(Image.new("RGBA", (4, 4), (0, 0, 0, 255)), BGR888, mips=False),
+        # a normal map facing straight out, its alpha (the phong mask) full:
+        # VertexLitGeneric's phong path, where the warp and the rim live, wants one
+        "flat_normal.vtf": write_vtf(Image.new("RGBA", (4, 4), (128, 128, 255, 255)), BGRA8888, mips=False),
     }
     written = []
     for name, data in files.items():

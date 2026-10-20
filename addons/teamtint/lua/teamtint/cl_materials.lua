@@ -15,6 +15,10 @@ local cache = TeamTint.materials
 local TEXTURE_KEYS = { ["$basetexture"] = true, ["$lightwarptexture"] = true }
 local INT_KEYS = { ["$phong"] = true, ["$rimlight"] = true, ["$rimmask"] = true, ["$blendtintbybasealpha"] = true }
 
+-- VertexLitGeneric takes its phong path, where the warp and the rim live,
+-- only with a normal map: a source without one gets this flat one.
+local FLAT_NORMAL = "teamtint/flat_normal"
+
 local textureExists = {}
 local function TextureExists(name)
 	if textureExists[name] == nil then
@@ -57,6 +61,7 @@ local function SourceKeyValues(source)
 		end
 	end
 	kv["$model"] = "1"
+	if not kv["$bumpmap"] and TextureExists(FLAT_NORMAL) then kv["$bumpmap"] = FLAT_NORMAL end
 	return kv
 end
 

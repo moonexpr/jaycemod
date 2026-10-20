@@ -54,6 +54,7 @@ file = {
 	Exists = function(path)
 		return path:find("^materials/models/") ~= nil or path == "materials/teamtint/lightwarp.vtf"
 			or path == "materials/teamtint/white.vtf" or path == "materials/teamtint/black.vtf"
+			or path == "materials/teamtint/flat_normal.vtf"
 			or path == "materials/teamtint/red/models/combine_soldier/combinesoldiersheet.vtf"
 	end,
 }
@@ -168,6 +169,7 @@ T.test("a Combine NextBot on RED (the gamemode's answer) wears RED's copies", fu
 	Check(entry.material.params["$basetexture"] == "teamtint/red/models/combine_soldier/combinesoldiersheet", "it wears the baked base")
 	Check(entry.material.params["$lightwarptexture"] == "teamtint/lightwarp", "it has the warp")
 	Check(entry.material.kv["$model"] == "1", "it is a model material")
+	Check(entry.material.kv["$bumpmap"] == "teamtint/flat_normal", "a sheet without a normal map gets a flat one (the phong path needs one)")
 end)
 
 T.test("a rebel on BLU through the tint mask", function()
