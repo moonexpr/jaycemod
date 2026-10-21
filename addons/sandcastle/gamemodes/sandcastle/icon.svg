@@ -45,12 +45,13 @@
 </g>
 
 <!-- the flag, raised on its pole above the keep: Flag red.svg's pole and
-     cloth, in royal blue and purple -->
-<path d="M8 3.25V0.25" stroke="#A66F2B" stroke-width="0.5" stroke-linecap="round"/>
-<path d="M8.25 0.25H11.25L10.5 1L11.25 1.75H8.25V0.25Z" fill="url(#cloth)" stroke="url(#clothEdge)" stroke-width="0.5" stroke-linejoin="round"/>
+     cloth, in royal blue and purple; the pole left of the keep's middle, so
+     pole and cloth together sit over it and the icon reads as centred -->
+<path d="M6.75 3.25V0.25" stroke="#A66F2B" stroke-width="0.5" stroke-linecap="round"/>
+<path d="M7 0.25H10L9.25 1L10 1.75H7V0.25Z" fill="url(#cloth)" stroke="url(#clothEdge)" stroke-width="0.5" stroke-linejoin="round"/>
 <!-- the shade on the cloth, away from the sun at the top left: a cool shadow
      rising from its lower edge -->
-<path d="M8.25 0.25H11.25L10.5 1L11.25 1.75H8.25V0.25Z" fill="url(#clothShade)"/>
+<path d="M7 0.25H10L9.25 1L10 1.75H7V0.25Z" fill="url(#clothShade)"/>
 
 <defs>
 <!-- Building.svg's inner glow, in light sand, not white: a lighter inner edge just inside the outline -->
@@ -83,17 +84,17 @@
 <!-- Flag red.svg's cloth and edge, in royal blue and purple graded to the sand:
      each a tenth the sand's warm #E9B96E, lit at the top left as the castle is
      (a lighter blue, never white) and shaded at the bottom right -->
-<linearGradient id="cloth" x1="8.25" y1="0.25" x2="11.25" y2="1.75" gradientUnits="userSpaceOnUse">
+<linearGradient id="cloth" x1="7" y1="0.25" x2="10" y2="1.75" gradientUnits="userSpaceOnUse">
 <stop stop-color="#7590E4"/>
 <stop offset="0.3" stop-color="#5271D6"/>
 <stop offset="0.7" stop-color="#864BB7"/>
 <stop offset="1" stop-color="#5D3480"/>
 </linearGradient>
-<linearGradient id="clothEdge" x1="8.25" y1="0.25" x2="11.25" y2="1.75" gradientUnits="userSpaceOnUse">
+<linearGradient id="clothEdge" x1="7" y1="0.25" x2="10" y2="1.75" gradientUnits="userSpaceOnUse">
 <stop stop-color="#3A4FA0"/>
 <stop offset="1" stop-color="#4A2C70"/>
 </linearGradient>
-<linearGradient id="clothShade" x1="9" y1="0.25" x2="9" y2="1.75" gradientUnits="userSpaceOnUse">
+<linearGradient id="clothShade" x1="7.75" y1="0.25" x2="7.75" y2="1.75" gradientUnits="userSpaceOnUse">
 <stop offset="0.45" stop-color="#2A1B4D" stop-opacity="0"/>
 <stop offset="1" stop-color="#2A1B4D" stop-opacity="0.4"/>
 </linearGradient>
