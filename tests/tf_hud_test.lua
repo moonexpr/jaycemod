@@ -107,4 +107,27 @@ T.test("the win panel: the scores over its border, coloured for the winner", fun
 	T.eq(Hud.ScoreImage(BLUE), "hud/color_panel_blu_more_opaque", "a score box")
 end)
 
+-- CHudBossHealthMeter (HudBossHealth.res at hudlayout.res's HudBossHealth):
+-- a 200x50 surround centred at the top, 42 down while you play and 90 while
+-- you are dead or watching; inside it at 15,16 the 168x18 bar, cut (not
+-- squashed) to the boss's health, as SetWide clips its image.
+T.test("the boss meter is centred, 42 down while you play and 90 while you watch", function()
+	local playing = Hud.BossMeter(1280, 2, false, 1)
+	T.eq(playing.surround.x, 640 - 200, "centred: c-100")
+	T.eq(playing.surround.y, 84, "42 down")
+	T.eq(playing.surround.w .. "x" .. playing.surround.h, "400x100", "200x50")
+	T.eq(Hud.BossMeter(1280, 2, true, 1).surround.y, 180, "90 down while watching")
+end)
+
+T.test("the boss meter's bar is cut to the health left, its image with it", function()
+	local meter = Hud.BossMeter(1280, 2, false, 0.25)
+	T.eq(meter.bar.x, 640 - 200 + 30, "15 in")
+	T.eq(meter.bar.y, 84 + 32, "16 down")
+	T.eq(meter.bar.w, 168 * 2 * 0.25, "a quarter of 168")
+	T.eq(meter.bar.h, 36, "18 tall")
+	T.eq(meter.u, 0.25, "a quarter of the image")
+	T.eq(Hud.BOSS_SURROUND, "hud/halloween_bar_surround")
+	T.eq(Hud.BOSS_BAR, "hud/halloween_bar")
+end)
+
 T.finish()

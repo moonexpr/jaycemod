@@ -153,3 +153,24 @@ function WinPanel(screenW, screenH, unit)
 		details = { x = centre, y = top + WIN_DETAILS_Y * unit },
 	}
 end
+
+-- The boss meter (CHudBossHealthMeter, HudBossHealth.res at hudlayout.res's
+-- HudBossHealth): the surround, 200x50, centred (c-100) health_alive_pos_y
+-- (42) down while you play and health_dead_pos_y (90) while you are dead
+-- or watching; inside it at 15,16 the 168x18 bar, its panel's width the
+-- boss's health, which cuts the image (u: how much of it) rather than
+-- squashing it.
+BOSS_SURROUND, BOSS_BAR = "hud/halloween_bar_surround", "hud/halloween_bar"
+local BOSS_W, BOSS_H, BOSS_ALIVE_Y, BOSS_DEAD_Y = 200, 50, 42, 90
+local BOSS_BAR_X, BOSS_BAR_Y, BOSS_BAR_W, BOSS_BAR_H = 15, 16, 168, 18
+
+-- watching: dead or observing; fraction: the boss's health, 0 to 1.
+-- Returns { surround, bar, u }.
+function BossMeter(screenW, unit, watching, fraction)
+	local x, y = screenW / 2 - BOSS_W / 2 * unit, (watching and BOSS_DEAD_Y or BOSS_ALIVE_Y) * unit
+	return {
+		surround = Rect(x, y, BOSS_W * unit, BOSS_H * unit),
+		bar = Rect(x + BOSS_BAR_X * unit, y + BOSS_BAR_Y * unit, BOSS_BAR_W * unit * fraction, BOSS_BAR_H * unit),
+		u = fraction,
+	}
+end

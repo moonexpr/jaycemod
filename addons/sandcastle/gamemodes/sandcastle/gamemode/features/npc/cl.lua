@@ -1,29 +1,31 @@
--- The npc feature's view: the boss health bar (TF2's monster resource
--- meter), drawn from the ws_boss_health Global2 the npc controller
--- networks (0 hides it); the bosses' cues; the bomb heads' bombs; and
--- Merasmus's body effects (C_Merasmus). The particle files are sh.lua's, in
--- both realms.
+-- The npc feature's view: the boss health bar (TF2's boss meter,
+-- CHudBossHealthMeter, in its own images), drawn from the ws_boss_health
+-- Global2 the npc controller networks (0 hides it); the bosses' cues; the
+-- bomb heads' bombs; and Merasmus's body effects (C_Merasmus). The particle
+-- files are sh.lua's, in both realms.
 local BOSS_HEALTH = "ws_boss_health"
+local Hud = WS.require("ws.tf_hud")
 
--- Under the round timer (cl_hud.lua), centred.
-local BAR_TOP = 0.17 -- of the screen height
-local BAR_WIDTH = 0.3 -- of the screen width
-local BAR_HEIGHT = 16
-local BAR_PADDING = 4
-local BAR_CORNER = 4
-local BAR_BACK = Color(0, 0, 0, 170)
-local BAR_FILL = Color(118, 196, 52)
+-- TF2's boss meter (CHudBossHealthMeter; ws.tf_hud's BossMeter): its
+-- surround and its bar, cut to the boss's health.
+local SURROUND, BAR = Material(Hud.BOSS_SURROUND), Material(Hud.BOSS_BAR)
 
 local View = {}
 
+-- ShouldDraw: while a boss has health, never in the freeze cam; OnTick:
+-- lower while the player is dead or watching.
 function View:DrawBossHealth(w, h)
 	local fraction = GetGlobal2Float(BOSS_HEALTH, 0)
-	if fraction <= 0 then return end
-	local width = math.floor(w * BAR_WIDTH)
-	local x, y = math.floor((w - width) / 2), math.floor(h * BAR_TOP)
-	draw.RoundedBox(BAR_CORNER, x - BAR_PADDING, y - BAR_PADDING, width + 2 * BAR_PADDING, BAR_HEIGHT + 2 * BAR_PADDING, BAR_BACK)
-	surface.SetDrawColor(BAR_FILL)
-	surface.DrawRect(x, y, math.floor(width * fraction), BAR_HEIGHT)
+	local ply = LocalPlayer()
+	if fraction <= 0 or not IsValid(ply) or ply:GetObserverMode() == OBS_MODE_FREEZECAM then return end
+	local watching = not ply:Alive() or ply:GetObserverMode() ~= OBS_MODE_NONE
+	local meter = Hud.BossMeter(w, Hud.Unit(h), watching, math.min(fraction, 1))
+	local bar, surround = meter.bar, meter.surround
+	surface.SetDrawColor(255, 255, 255, 255)
+	surface.SetMaterial(BAR)
+	surface.DrawTexturedRectUV(bar.x, bar.y, bar.w, bar.h, 0, 0, meter.u, 1)
+	surface.SetMaterial(SURROUND)
+	surface.DrawTexturedRect(surround.x, surround.y, surround.w, surround.h)
 end
 
 WS.HUD:Add("game.notices.boss_health", WS.HUD_ORDER.NOTICES, function()
