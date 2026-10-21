@@ -95,6 +95,7 @@ Module names are `foundation.core.<path>`; tests are
 | `parsers.utf16` | `Decode(raw)`: UTF-16LE → UTF-8 |
 | `parsers.keyvalues` | `Read(text, visit(path, key, value))`: Valve KeyValues |
 | `parsers.consolecfg` | `Commands(text)`: cfg text → console commands, chained `;` refused |
+| `parsers.cvarfile` | `Write(names, values)` → cfg text, a `name "value"` a line; `Read(text, names)` → name → value for only those names. Client settings saved in data/ (`WS.PersistClientConVars`) |
 
 ### meta: classes, interfaces, table indexing
 

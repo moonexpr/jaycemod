@@ -86,6 +86,11 @@ WS.HUD:Add("player.hits", WS.HUD_ORDER.WORLD, function()
 	end
 end)
 
+-- Kept in the client's data folder, across games and servers.
+WS.PersistClientConVars("gameplay_effects", {
+	COMBAT_TEXT, BATCHING, BATCHING_WINDOW, DINGALING, EFFECT, VOLUME, PITCH_LOW, PITCH_HIGH, REPEAT_DELAY, WAV_OVERRIDE,
+})
+
 -- Options > Client > Gameplay Effects: TF2's Advanced Options for these.
 local PREVIEW_DAMAGE = 50
 

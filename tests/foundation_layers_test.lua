@@ -22,6 +22,7 @@ local CATEGORY = {
 	["core/structs/heap"] = "structures",
 	["pathfinder/astar"] = "structures",
 	["core/parsers/consolecfg"] = "structures",
+	["core/parsers/cvarfile"] = "structures",
 	["core/analytics"] = "structures",
 	["core/memory"] = "structures",
 	["core/structs/ring"] = "structures",
