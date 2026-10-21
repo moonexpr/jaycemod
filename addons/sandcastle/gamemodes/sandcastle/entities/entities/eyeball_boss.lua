@@ -24,9 +24,11 @@ function ENT:Initialize()
 	self:SetCollisionBounds(Vector(-half, -half, -half), Vector(half, half, half))
 end
 
--- UpdateOnRemove hides the boss bar, however the eyeball goes.
+-- UpdateOnRemove hides the boss bar, however the eyeball goes. One removed
+-- before it was bound (a cleanup sweeping it up first) never showed it, as
+-- the base's OnRemove allows.
 function ENT:OnRemove()
-	self:SetBossHealth(0)
+	if self.npc then self:SetBossHealth(0) end
 	Base.OnRemove(self)
 end
 
