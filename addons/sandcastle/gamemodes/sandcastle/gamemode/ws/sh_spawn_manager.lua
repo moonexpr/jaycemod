@@ -5,12 +5,24 @@
 -- ws_respawn_time). ws/cl_spawn_manager.lua shows it.
 local S = WS.require("foundation.spawn_manager")
 
--- The words for ply at now, or nil when there is nothing to say: under a
--- lock, the lock's to the dead and the watching; else, dead, their status.
+-- Why ply is held out of play (foundation.spawn_manager's Reason), NONE
+-- when nothing holds them: the server spawns a watcher held for nothing
+-- (ws/sv_spectate.lua), and the client says the reason (SpawnMessage).
+function WS.HoldReason(ply)
+	local team = ply:Team()
+	return S.Reason({
+		out = not ply:Alive() or ply:GetObserverMode() ~= OBS_MODE_NONE,
+		locked = GetGlobal2String("ws_spawn_lock", "") ~= "",
+		teamPlay = WS.TeamPlay(),
+		spectator = team == WS.TEAM_SPECTATOR,
+		playing = team == WS.TEAM_RED or team == WS.TEAM_BLUE,
+		alive = ply:Alive(),
+		status = ply:GetNW2Int("ws_spawn_status", S.NONE),
+	})
+end
+
+-- The words for ply at now, or nil when there is nothing to say.
 function WS.SpawnMessage(ply, now)
-	local lock = GetGlobal2String("ws_spawn_lock", "")
-	local out = not ply:Alive() or ply:GetObserverMode() ~= OBS_MODE_NONE
-	if lock ~= "" and out then return S.Message(S.HELD, 0, lock) end
-	if ply:Alive() then return nil end
-	return S.Message(ply:GetNW2Int("ws_spawn_status", S.NONE), ply:GetNW2Float("ws_respawn_time", 0) - now)
+	return S.Message(WS.HoldReason(ply), ply:GetNW2Float("ws_respawn_time", 0) - now,
+		GetGlobal2String("ws_spawn_lock", ""))
 end

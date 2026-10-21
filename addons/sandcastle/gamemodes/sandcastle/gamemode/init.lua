@@ -21,14 +21,15 @@ end
 for _, f in ipairs(GM:WSModules("sv_")) do include("ws/" .. f) end
 
 -- As in TF2, a new player joins no team: they watch until they pick one
--- from the team menu (auto-assign is one click there).
+-- from the team menu (auto-assign is one click there). Only in team play
+-- (WS.TeamPlay): otherwise, as in Sandbox, they spawn and play.
 function GM:PlayerInitialSpawn(ply, transition)
 	self.BaseClass.PlayerInitialSpawn(self, ply, transition)
-	if WS.Active() then WS.SetInitialTeam(ply) end
+	if WS.TeamPlay() then WS.SetInitialTeam(ply) end
 end
 
 function GM:PlayerSpawn(ply, transition)
-	if not WS.Active() then
+	if not WS.TeamPlay() then
 		self.BaseClass.PlayerSpawn(self, ply, transition)
 		return
 	end
@@ -58,7 +59,7 @@ end
 -- Spawn at the team's next valid info_player_teamspawn for this round.
 function GM:PlayerSelectSpawn(ply, transition)
 	if WS.Active() then
-		WS.RestoreTeam(ply)
+		if WS.TeamPlay() then WS.RestoreTeam(ply) end
 		local spot = WS.PickSpawn(WS.TeamOf(ply))
 		if spot then return spot end
 	end
@@ -91,8 +92,9 @@ function GM:ShowTeam(ply)
 	self.BaseClass.ShowTeam(self, ply)
 end
 
--- Base's changeteam command goes through TF2's join rules on TF2 maps;
--- without a team index it does nothing here (the client's bind opens the menu).
+-- Base's changeteam command goes through TF2's join rules on TF2 maps, in
+-- team play only; without a team index it does nothing here (the client's
+-- bind opens the menu).
 local JOIN_NAME = {
 	[WS.TEAM_SPECTATOR] = "spectate",
 	[WS.TEAM_RED] = "red",
@@ -101,7 +103,7 @@ local JOIN_NAME = {
 
 function GM:PlayerRequestTeam(ply, teamIndex)
 	if WS.Active() then
-		if JOIN_NAME[teamIndex] then WS.JoinTeam(ply, JOIN_NAME[teamIndex]) end
+		if WS.TeamPlay() and JOIN_NAME[teamIndex] then WS.JoinTeam(ply, JOIN_NAME[teamIndex]) end
 		return
 	end
 	self.BaseClass.PlayerRequestTeam(self, ply, teamIndex)

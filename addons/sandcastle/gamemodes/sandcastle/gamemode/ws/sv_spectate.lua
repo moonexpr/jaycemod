@@ -22,6 +22,7 @@ local OBS = {
 local forcecamera = GetConVar("mp_forcecamera")
 	or CreateConVar("mp_forcecamera", "1", FCVAR_REPLICATED, "Restricts spectator modes for dead players")
 
+local Spawns = WS.require("foundation.spawn_manager")
 local observing = setmetatable({}, { __mode = "k" })
 local killers = setmetatable({}, { __mode = "k" })
 local required = NULL
@@ -362,7 +363,7 @@ end)
 
 -- PostPlayerDeath follows every death, KillSilent included.
 hook.Add("PostPlayerDeath", "ws_spectate", function(ply)
-	if not WS.Active() then return end
+	if not WS.TeamPlay() then return end
 	local killer = killers[ply]
 	killers[ply] = nil
 	if IsSpectator(ply) then
@@ -375,8 +376,8 @@ end)
 -- Spawning ends observing. A spectator is put straight back (tf_gamerules
 -- spawns everyone at round start), skipping Sandbox's loadout.
 hook.Add("PlayerSpawn", "ws_spectate", function(ply)
-	-- one who watched as the game stopped is a target again
-	if not WS.Active() then
+	-- one who watched as team play ended is a target again
+	if not WS.TeamPlay() then
 		if observing[ply] then WS.StopObserving(ply) end
 		return
 	end
@@ -493,10 +494,23 @@ end)
 
 -- Every tick -------------------------------------------------------------------------
 
+-- A watcher is held only for a reason they are told (WS.HoldReason: a
+-- spawn lock, spectating, choosing a team, the round's wait); held for
+-- nothing, as when team play ends (Sandbox mode, or the map's tf_gamerules
+-- gone), they spawn, as in Sandbox outside team play.
+local function Release(ply)
+	WS.StopObserving(ply)
+	ply:Spawn()
+end
+
 hook.Add("Think", "ws_spectate", function()
+	local free = {}
 	for ply, st in pairs(observing) do
-		if IsValid(ply) then Apply(ply, st) end
+		if IsValid(ply) then
+			if WS.HoldReason(ply) == Spawns.NONE then free[#free + 1] = ply else Apply(ply, st) end
+		end
 	end
+	for _, ply in ipairs(free) do Release(ply) end
 end)
 
 -- The observer stands where it died (or roams); the watched entity's area

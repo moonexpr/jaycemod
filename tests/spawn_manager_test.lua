@@ -69,4 +69,47 @@ T.test("held, the lock says why", function()
 	T.eq(S.Message(S.HELD, 0, "nav"), "No respawning allowed during map navigation processing")
 end)
 
+-- Reason: a player out of play (dead, or watching) is held only for a
+-- reason they are told; with none, they are free to spawn.
+
+-- Out of play in team play, on a team, dead, waiting for a wave.
+local function Out(t)
+	local view = { out = true, locked = false, teamPlay = true, spectator = false, playing = true, alive = false, status = S.WAVE }
+	for k, v in pairs(t or {}) do view[k] = v end
+	return view
+end
+
+T.test("a player in play is held for nothing", function()
+	T.eq(S.Reason(Out({ out = false, alive = true, locked = true })), S.NONE)
+end)
+
+T.test("a lock holds everyone out of play, in or out of team play", function()
+	T.eq(S.Reason(Out({ locked = true })), S.HELD, "dead")
+	T.eq(S.Reason(Out({ locked = true, teamPlay = false, playing = false, alive = true })), S.HELD, "watching in Sandbox")
+end)
+
+T.test("outside team play nothing else holds anyone", function()
+	T.eq(S.Reason(Out({ teamPlay = false, spectator = true, playing = false, alive = true })), S.NONE, "a spectator")
+	T.eq(S.Reason(Out({ teamPlay = false, playing = false, alive = true })), S.NONE, "unassigned")
+	T.eq(S.Reason(Out({ teamPlay = false, status = S.ARENA })), S.NONE, "dead in a round gone")
+end)
+
+T.test("in team play, a spectator spectates and the teamless choose a team", function()
+	T.eq(S.Reason(Out({ spectator = true, playing = false, alive = true })), S.SPECTATING)
+	T.eq(S.Reason(Out({ playing = false, alive = true })), S.CHOOSE_TEAM)
+end)
+
+T.test("in team play, the dead wait as the round says, and a round with nothing to say holds none", function()
+	for _, status in ipairs({ S.WAVE, S.SUDDEN_DEATH, S.ARENA, S.NEXT_ROUND }) do
+		T.eq(S.Reason(Out({ status = status })), status, status)
+	end
+	T.eq(S.Reason(Out({ status = S.NONE })), S.NONE, "dead, nothing said")
+	T.eq(S.Reason(Out({ alive = true })), S.NONE, "watching alive on a team")
+end)
+
+T.test("every reason a player is held has words", function()
+	T.eq(S.Message(S.SPECTATING, 0), "Spectator mode")
+	T.eq(S.Message(S.CHOOSE_TEAM, 0), "Choose a team")
+end)
+
 T.finish()

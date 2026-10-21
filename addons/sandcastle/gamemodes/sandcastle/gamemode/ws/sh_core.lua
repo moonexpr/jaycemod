@@ -246,6 +246,12 @@ function WS.GameplayStopped()
 	return GetGlobal2Bool("ws_gameplay_halted", false)
 end
 
+-- Whether players watch as observers and pick teams now (foundation.teams'
+-- TeamPlay): rounds, in Gameplay mode, past INIT.
+function WS.TeamPlay()
+	return Teams.TeamPlay(WS.Active(), WS.GameplayStopped(), WS.State())
+end
+
 -- TF2's convar; the map's SetRoundRespawnFreezeEnabled input sets it.
 -- Replicated, so client prediction freezes too.
 WS.RestartFreeze = CreateConVar("tf_player_movement_restart_freeze", "1", FCVAR_REPLICATED,

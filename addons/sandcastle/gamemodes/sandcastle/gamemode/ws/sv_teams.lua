@@ -111,7 +111,7 @@ end
 -- addon's PlayerSpawn hook answers.
 local function RestoreLater(ply)
 	timer.Simple(0, function()
-		if IsValid(ply) and WS.Active() then WS.RestoreTeam(ply) end
+		if IsValid(ply) and WS.TeamPlay() then WS.RestoreTeam(ply) end
 	end)
 end
 
@@ -140,7 +140,7 @@ function WS.JoinTeam(ply, name)
 end
 
 concommand.Add("jointeam", function(ply, _, args)
-	if not IsValid(ply) or not WS.Active() or not args[1] then return end
+	if not IsValid(ply) or not WS.TeamPlay() or not args[1] then return end
 	WS.JoinTeam(ply, args[1])
 end, nil, "Join a team: red, blue, auto or spectate")
 
@@ -193,7 +193,7 @@ hook.Add("WSRoundActive", "ws_teams", function()
 end)
 
 timer.Create("ws_teams_balance", 1, 0, function()
-	if not WS.Active() or WS.State() ~= WS.STATE.RND_RUNNING then return end
+	if not WS.TeamPlay() or WS.State() ~= WS.STATE.RND_RUNNING then return end
 	if CurTime() < balanceFrom then return end
 	WS.BalanceTeams(true)
 end)

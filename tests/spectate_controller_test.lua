@@ -4,18 +4,26 @@
 local T = dofile("tests/harness.lua")
 local Teams = T.require("foundation.teams")
 local STATE = T.require("foundation.rounds.state")
+local Spawns = T.require("foundation.spawn_manager")
 
 local SOURCE = T.ROOT .. "ws/sv_spectate.lua"
 local FL_NOTARGET = 16384 -- GMod's
 local NOOP = function() end
 
+-- Why each player is held (WS.HoldReason); a new Load holds nobody.
+local holds = {}
+
 local function Load()
+	holds = {}
 	local hooks = {}
 	local ws = setmetatable({
 		require = T.require,
 		TEAM_SPECTATOR = Teams.SPECTATOR,
 		TEAM_UNASSIGNED = Teams.UNASSIGNED,
 		Active = function() return true end,
+		TeamPlay = function() return true end,
+		-- ws/sh_spawn_manager.lua's, held as each test says (holds[ply])
+		HoldReason = function(ply) return holds[ply] or Spawns.NONE end,
 		STATE = STATE,
 		State = function() return STATE.RND_RUNNING end,
 	}, { __index = function() return NOOP end })
@@ -102,9 +110,30 @@ T.test("a player watching as the game stops is a target again once they spawn", 
 	local ws, hooks = Load()
 	local ply = Player(Teams.BLUE)
 	hooks.PostPlayerDeath.ws_spectate(ply)
-	ws.Active = function() return false end
+	ws.TeamPlay = function() return false end
 	hooks.PlayerSpawn.ws_spectate(ply)
 	T.eq(ply:IsFlagSet(FL_NOTARGET), false, "spawned in Sandbox mode")
+end)
+
+-- A watcher is held only for a reason they are told (WS.HoldReason); once
+-- nothing holds them (team play over: Sandbox mode, or a map that lost its
+-- tf_gamerules), they spawn.
+T.test("a watcher spawns once nothing holds them, once, and nobody else does", function()
+	local ws, hooks = Load()
+	local ply, playing = Player(Teams.UNASSIGNED), Player(Teams.BLUE)
+	local spawns = 0
+	ply.Spawn = function() spawns = spawns + 1 end
+	playing.Spawn = function() error("a playing player respawned") end
+	ws.StartObserving(ply)
+	holds[ply] = Spawns.CHOOSE_TEAM
+	hooks.Think.ws_spectate()
+	T.eq(spawns, 0, "held to choose a team")
+	holds[ply] = nil
+	hooks.Think.ws_spectate()
+	T.eq(spawns, 1, "spawned, held for nothing")
+	hooks.Think.ws_spectate()
+	T.eq(spawns, 1, "only once")
+	T.eq(ply:IsFlagSet(FL_NOTARGET), false, "a target again")
 end)
 
 T.finish()

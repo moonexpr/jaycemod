@@ -141,12 +141,12 @@ T.test("nobody opens it once the game is over", function()
 end)
 
 -- The client's own reaction to its team (TeamMenuReaction): an unassigned
--- player on a map with rounds sees the menu, as a fresh join does.
+-- player in team play (L.TeamPlay) sees the menu, as a fresh join does.
 
--- A loaded client on a map with rounds, its menu closed, mid-round.
+-- A loaded client in team play, its menu closed, mid-round.
 local function View(t)
 	local view = {
-		rounds = true,
+		teamPlay = true,
 		ready = true,
 		team = UNASSIGNED,
 		openedOn = nil,
@@ -157,13 +157,13 @@ local function View(t)
 	return view
 end
 
-T.test("a loaded, unassigned client on a map with rounds opens the menu", function()
+T.test("a loaded, unassigned client in team play opens the menu", function()
 	T.eq(L.TeamMenuReaction(View()), L.MENU_OPEN, "open")
 end)
 
-T.test("the menu waits for the client to load and for a map with rounds", function()
+T.test("the menu waits for the client to load and for team play", function()
 	T.eq(L.TeamMenuReaction(View({ ready = false })), L.MENU_STAY, "still loading")
-	T.eq(L.TeamMenuReaction(View({ rounds = false })), L.MENU_STAY, "a Sandbox map")
+	T.eq(L.TeamMenuReaction(View({ teamPlay = false })), L.MENU_STAY, "no team play: Sandbox mode, or no rounds")
 end)
 
 T.test("a player on a team or spectating is left alone", function()

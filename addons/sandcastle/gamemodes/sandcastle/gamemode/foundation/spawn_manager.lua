@@ -18,15 +18,18 @@ local LOCK_MESSAGES = {
 	nav = "No respawning allowed during map navigation processing",
 }
 
--- Why a dead player is not spawning: waiting for a wave (at a time), in
--- sudden death or an arena round (never this round), respawns stopped
--- until the next round, or HELD by a lock.
-NONE, WAVE, SUDDEN_DEATH, ARENA, NEXT_ROUND, HELD = 0, 1, 2, 3, 4, 5
+-- Why a player is not spawning: dead, waiting for a wave (at a time), in
+-- sudden death or an arena round (never this round), or respawns stopped
+-- until the next round; HELD by a lock; or watching, SPECTATING by choice
+-- or yet to CHOOSE_TEAM.
+NONE, WAVE, SUDDEN_DEATH, ARENA, NEXT_ROUND, HELD, SPECTATING, CHOOSE_TEAM = 0, 1, 2, 3, 4, 5, 6, 7
 
 local WORDS = {
 	[SUDDEN_DEATH] = "No respawning in Sudden Death",
 	[ARENA] = "No respawning in Arena Mode",
 	[NEXT_ROUND] = "Respawn in: Wait for next round",
+	[SPECTATING] = "Spectator mode",
+	[CHOOSE_TEAM] = "Choose a team",
 }
 
 -- The words for status: left, the seconds to a WAVE; lock, what HELD it.
@@ -38,6 +41,22 @@ function Message(status, left, lock)
 	if seconds <= 0 then return "Prepare to respawn" end
 	if seconds == 1 then return "Respawn in: 1 second" end
 	return format("Respawn in: %d seconds", seconds)
+end
+
+-- Why a player is held out of play, as a status: a player is held only for
+-- a reason they are told (Message), and with none (NONE) is free to spawn.
+-- view: out (dead, or watching), locked (a lock holds spawning), teamPlay
+-- (foundation.teams' TeamPlay), spectator and playing (their team: the
+-- spectators, RED or BLU; neither is teamless), alive, and status (the
+-- round's, for the dead). Outside team play only a lock holds anyone.
+function Reason(view)
+	if not view.out then return NONE end
+	if view.locked then return HELD end
+	if not view.teamPlay then return NONE end
+	if view.spectator then return SPECTATING end
+	if not view.playing then return CHOOSE_TEAM end
+	if view.alive then return NONE end
+	return view.status
 end
 
 local Manager = {}

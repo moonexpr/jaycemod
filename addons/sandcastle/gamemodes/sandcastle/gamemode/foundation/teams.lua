@@ -238,12 +238,20 @@ function TeamMenuAllowed(state, currentTeam, winner)
 	return not (state == STATE.TEAM_WIN and currentTeam >= FIRST_GAME_TEAM and currentTeam ~= winner)
 end
 
+-- Team play: players watch as observers and pick teams only while the game
+-- is live: rounds (a tf_gamerules), Gameplay mode (not halted, as Sandbox
+-- mode halts them), and a round state past INIT (PREGAME on). Outside it
+-- they play as in Sandbox, never held watching.
+function TeamPlay(rounds, halted, state)
+	return rounds and not halted and state ~= STATE.INIT
+end
+
 -- What the client does with its team menu, which it opens itself: TF2's
 -- fallback state is having no team, and an unassigned player sees the menu
 -- (as a fresh join does), whoever unassigned them.
 MENU_STAY, MENU_OPEN, MENU_CLOSE = 0, 1, 2
 
--- view: rounds (the map has rounds), ready (the client has loaded), team
+-- view: teamPlay (TeamPlay), ready (the client has loaded), team
 -- (the local player's now), openedOn (its team when the open menu opened,
 -- nil while closed), state and winner (the round's). The open menu closes
 -- once the team changes to a real one; the closed menu opens for the
@@ -253,7 +261,7 @@ function TeamMenuReaction(view)
 		if view.team ~= view.openedOn and view.team ~= UNASSIGNED then return MENU_CLOSE end
 		return MENU_STAY
 	end
-	if view.rounds and view.ready and view.team == UNASSIGNED and TeamMenuAllowed(view.state, view.team, view.winner) then
+	if view.teamPlay and view.ready and view.team == UNASSIGNED and TeamMenuAllowed(view.state, view.team, view.winner) then
 		return MENU_OPEN
 	end
 	return MENU_STAY

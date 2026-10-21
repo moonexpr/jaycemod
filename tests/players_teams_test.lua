@@ -283,4 +283,17 @@ T.test("RED's opponent is BLU and BLU's is RED; a team that does not play has no
 	T.eq(L.EnemyOf(L.HALLOWEEN), nil, "the Halloween team")
 end)
 
+-- Team play: watching and picking a team happen only in a live game.
+
+T.test("teams are played in Gameplay mode once the rounds have left INIT, in any state after", function()
+	for name, state in pairs(STATE) do
+		T.eq(L.TeamPlay(true, false, state), state ~= STATE.INIT, name)
+	end
+end)
+
+T.test("there is no team play without rounds, or in Sandbox mode", function()
+	T.eq(L.TeamPlay(false, false, STATE.PREGAME), false, "no tf_gamerules")
+	T.eq(L.TeamPlay(true, true, STATE.RND_RUNNING), false, "Sandbox mode halts the rounds")
+end)
+
 T.finish()

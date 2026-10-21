@@ -7,7 +7,7 @@ local Teams = T.require("foundation.teams")
 local SOURCE = T.ROOT .. "ws/sv_teams.lua"
 local RUNNER = 21 -- ULX's team for a user group, as one server has it
 
--- active: whether a game is on (WS.Active).
+-- active: whether a game is on (WS.Active, and WS.TeamPlay: Gameplay mode).
 local function Load(active)
 	local hooks, deferred = {}, {}
 	local ws = {
@@ -18,6 +18,7 @@ local function Load(active)
 		TEAM_RED = Teams.RED,
 		TEAM_BLUE = Teams.BLUE,
 		Active = function() return active end,
+		TeamPlay = function() return active end,
 	}
 	local env = setmetatable({
 		WS = ws,

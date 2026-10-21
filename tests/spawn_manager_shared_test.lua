@@ -1,13 +1,17 @@
 -- ws/sh_spawn_manager.lua: why a player is not spawning, in TF2's words,
 -- from what the server shares: the lock (the global ws_spawn_lock) and
--- each player's status and respawn time (NW2). Run against fakes.
+-- each player's status and respawn time (NW2), their team and whether
+-- teams are played (WS.TeamPlay). Run against fakes.
 local T = dofile("tests/harness.lua")
 local S = T.require("foundation.spawn_manager")
+local Teams = T.require("foundation.teams")
 
 local OBS_MODE_NONE, OBS_MODE_ROAMING = 0, 6
 
-local function Player(alive, observing, status, at)
+-- A player on team (RED unless given).
+local function Player(alive, observing, status, at, team)
 	local p = {}
+	function p:Team() return team or Teams.RED end
 	function p:Alive() return alive end
 	function p:GetObserverMode() return observing and OBS_MODE_ROAMING or OBS_MODE_NONE end
 	function p:GetNW2Int(_, default) return status or default end
@@ -15,8 +19,14 @@ local function Player(alive, observing, status, at)
 	return p
 end
 
-local function load(lock)
-	local ws = { require = T.require }
+local function load(lock, teamPlay)
+	local ws = {
+		require = T.require,
+		TEAM_SPECTATOR = Teams.SPECTATOR,
+		TEAM_RED = Teams.RED,
+		TEAM_BLUE = Teams.BLUE,
+		TeamPlay = function() return teamPlay ~= false end,
+	}
 	local env = setmetatable({
 		WS = ws,
 		OBS_MODE_NONE = OBS_MODE_NONE,
@@ -43,6 +53,21 @@ T.test("locked, the dead and the watching are told the lock, over any wait", fun
 	T.eq(ws.SpawnMessage(Player(false, false, S.WAVE, 15), 10), held, "dead")
 	T.eq(ws.SpawnMessage(Player(true, true), 10), held, "watching")
 	T.eq(ws.SpawnMessage(Player(true, false), 10), nil, "playing on")
+end)
+
+T.test("in team play, a watching spectator is told so, and a teamless player to choose a team", function()
+	local ws = load()
+	T.eq(ws.SpawnMessage(Player(true, true, nil, nil, Teams.SPECTATOR), 10), "Spectator mode")
+	T.eq(ws.SpawnMessage(Player(true, true, nil, nil, Teams.UNASSIGNED), 10), "Choose a team")
+	T.eq(ws.HoldReason(Player(true, true, nil, nil, Teams.UNASSIGNED)), S.CHOOSE_TEAM)
+end)
+
+T.test("outside team play, nobody watching is held but by a lock", function()
+	local ws = load(nil, false)
+	T.eq(ws.HoldReason(Player(true, true, nil, nil, Teams.SPECTATOR)), S.NONE, "a spectator")
+	T.eq(ws.HoldReason(Player(true, true, nil, nil, Teams.UNASSIGNED)), S.NONE, "teamless")
+	T.eq(ws.SpawnMessage(Player(false, true, S.ARENA, 0), 10), nil, "dead in a round gone")
+	T.eq(load("nav", false).HoldReason(Player(true, true)), S.HELD, "locked")
 end)
 
 T.finish()
