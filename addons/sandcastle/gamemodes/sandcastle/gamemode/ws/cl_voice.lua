@@ -42,7 +42,7 @@ hook.Add("PlayerEndVoice", "ws_voice", function(ply)
 	return true
 end)
 
-hook.Add("SandcastleHUDPaint", "ws_voice", function(w, h)
+WS.HUD:Add("game.notices.voice", WS.HUD_ORDER.NOTICES, function(w, h)
 	for i = #talkers, 1, -1 do
 		if not IsValid(talkers[i]) then table.remove(talkers, i) end
 	end
@@ -64,4 +64,4 @@ hook.Add("SandcastleHUDPaint", "ws_voice", function(w, h)
 		surface.SetDrawColor(THEME.border)
 		surface.DrawRect(x + pad, y + bh - b - BAR_TALL * unit - unit, barW, BAR_TALL * unit)
 	end
-end)
+end, WS.Active)

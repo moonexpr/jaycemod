@@ -111,6 +111,7 @@ Module names are `foundation.core.<path>`; tests are
 | `hfsm` | NextBot Action/Behavior engine: `Action`, `Chart{ name, port, events, queries, initial }` → `State(name)`, `Owns`, `New(actor, state)` → a machine: `Update`, `Event`, `Query`, `Describe` |
 | `map_io` | A map's entity lookups and output connections, through a world port |
 | `tactics` | The tactics engine interface: `ENGINE` (a port), `Check(engine)` |
+| `drawlist` | `New()` → draw callbacks named by dotted paths, run in order (by order, a tie by path): `Add(path, order, draw[, when])` (a path again replaces it), `HideElements(path)`/`ShowElements(path)` (the code's: a path hides all under it), `SetHidden(paths)` (the player's, apart), `Draw(...)`, `Entries()`; `ParseNames(text)`. The HUD's (`WS.HUD`, `cl_hud_hidden`) |
 | `scheduler` | `New(clock)` → cooperative tasks in a time slice: `Spawn(fn, ...)`, `Run(seconds)`, `CheckYield` (in a task: yield once the slice is spent), `Yield`, `Wait(ready)` (park until ready), `Count`. `WS.Transactions` is each realm's, run every tick |
 | `analytics` | Timers, counters, tick pressure, memory samples; clock and memory are ports |
 | `memory` | `Measure(roots)` → estimated bytes per named root (each object once); `Format(report, rows)`. `ws_analytics_memory` runs it over the loaded foundation modules |

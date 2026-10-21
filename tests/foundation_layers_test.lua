@@ -42,6 +42,7 @@ local CATEGORY = {
 	["core/structs/tree"] = "structures",
 	["core/timers"] = "structures",
 	["core/scheduler"] = "formalisms",
+	["core/drawlist"] = "formalisms",
 	["core/math/geometry"] = "structures",
 	["core/transaction"] = "structures",
 	["core/structs/sets"] = "structures",

@@ -118,7 +118,7 @@ end
 
 -- ShouldDraw: a living player holding a spellbook (only while spells are
 -- on does anyone hold one).
-hook.Add("HUDPaint", "ws_spell_hud", function()
+WS.HUD:Add("player.spells", WS.HUD_ORDER.NOTICES, function()
 	local ply = LocalPlayer()
 	if not (IsValid(ply) and ply:Alive()) then return end
 	local weapon = ply:GetWeapon(WEAPON)

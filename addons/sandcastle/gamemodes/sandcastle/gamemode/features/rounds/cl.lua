@@ -206,24 +206,22 @@ function View:DrawTimer(w, h)
 	end
 end
 
--- The team scores: BLU's box left of the centre, RED's right, above the
--- timer row, while the rounds run and no win panel shows them; an admin's
--- "+points" beside its box.
-function View:DrawScores(w, h)
-	if not WS.Active() or WS.GameplayStopped() or not Text.ShowsTeamBar(WS.State()) then return end
+-- A team's score: BLU's box left of the centre, RED's right, above the
+-- timer row, while the rounds run; an admin's "+points" beside its box.
+-- The win screens hide them (game.match.team_scores), showing the scores
+-- themselves.
+function View:DrawScore(t, w, h)
+	if WS.GameplayStopped() then return end
 	local unit = Hud.Unit(h)
-	local boxes = Hud.ScoreBoxes(w / 2, ScoresTop(h), unit)
+	local box = Hud.ScoreBoxes(w / 2, ScoresTop(h), unit)[t]
 	local font = Font(Hud.FONT_BUILD, Hud.SCORE_FONT_TALL, unit)
-	for t, box in pairs(boxes) do
-		DrawPanel(Hud.ScoreImage(t), box, unit)
-		Shadowed(tostring(team.GetScore(t)), font, box.x + box.w / 2, box.y + box.h / 2, TEXT_ALIGN_CENTER)
-	end
+	DrawPanel(Hud.ScoreImage(t), box, unit)
+	Shadowed(tostring(team.GetScore(t)), font, box.x + box.w / 2, box.y + box.h / 2, TEXT_ALIGN_CENTER)
 	local awarded = self.pointsAwarded
-	local box = awarded and boxes[awarded.team]
-	if box and CurTime() < awarded.expires then
-		local blue = awarded.team == WS.TEAM_BLUE
+	if awarded and awarded.team == t and CurTime() < awarded.expires then
+		local blue = t == WS.TEAM_BLUE
 		Shadowed(awarded.text, font, blue and box.x - 4 * unit or box.x + box.w + 4 * unit, box.y + box.h / 2,
-			blue and TEXT_ALIGN_RIGHT or TEXT_ALIGN_LEFT, WS.TeamColor[awarded.team])
+			blue and TEXT_ALIGN_RIGHT or TEXT_ALIGN_LEFT, WS.TeamColor[t])
 	end
 end
 
@@ -444,21 +442,43 @@ function View:DrawNotices(w, h)
 	end
 end
 
-local CENTRE_PANELS = {
-	[S.TEAM_WIN] = View.DrawWinPanel,
-	[S.GAME_OVER] = View.DrawGameOver,
+-- The HUD's game.match elements (WS.HUD), drawn while the rounds run, in
+-- this order; each centre panel only in its state.
+local function InState(state, draw)
+	return function(w, h)
+		if WS.State() == state then draw(View, w, h) end
+	end
+end
+
+local MATCH = {
+	{ "game.match.team_scores.blue_score", function(w, h) View:DrawScore(WS.TEAM_BLUE, w, h) end },
+	{ "game.match.team_scores.red_score", function(w, h) View:DrawScore(WS.TEAM_RED, w, h) end },
+	{ "game.match.timer", function(w, h) View:DrawTimer(w, h) end },
+	{ "game.match.announcement", function(w, h) View:DrawAnnouncement(w, h) end },
+	{ "game.match.round_panel", function(w, h) View:DrawRoundPanel(w, h) end },
+	{ "game.match.limits", function(w, h) View:DrawLimits(w, h) end },
+	{ "game.match.notices", function(w, h) View:DrawNotices(w, h) end },
+	{ "game.match.win_panel", InState(S.TEAM_WIN, View.DrawWinPanel) },
+	{ "game.match.game_over", InState(S.GAME_OVER, View.DrawGameOver) },
 }
 
-function View:Paint(w, h)
-	local state = WS.State()
-	self:DrawScores(w, h)
-	self:DrawTimer(w, h)
-	self:DrawAnnouncement(w, h)
-	self:DrawRoundPanel(w, h)
-	self:DrawLimits(w, h)
-	self:DrawNotices(w, h)
-	local panel = CENTRE_PANELS[state]
-	if panel then panel(self, w, h) end
+for i, element in ipairs(MATCH) do
+	WS.HUD:Add(element[1], WS.HUD_ORDER.ROUND + i, element[2], WS.Active)
+end
+
+-- A win screen (the round's win panel, the match's end) shows the teams'
+-- scores itself: while one is up, the small scores and KOTH's clocks go
+-- (foundation.rounds.text's ShowsTeamBar).
+local TEAM_BAR = { "game.match.team_scores", "game.match.team_clocks" }
+local teamBarShown = true
+
+local function WinScreenThink()
+	local shown = Text.ShowsTeamBar(WS.State())
+	if shown == teamBarShown then return end
+	teamBarShown = shown
+	for _, path in ipairs(TEAM_BAR) do
+		if shown then WS.HUD:ShowElements(path) else WS.HUD:HideElements(path) end
+	end
 end
 
 -- The announcer ----------------------------------------------------------------------
@@ -531,12 +551,9 @@ hook.Add("PreDrawViewModel", "ws_rounds_game_over", function()
 	if GameOverView(LocalPlayer()) then return true end
 end)
 
-hook.Add("SandcastleHUDPaint", "ws_rounds", function(w, h)
-	View:Paint(w, h)
-end)
-
 hook.Add("Think", "ws_rounds_announcer", function()
 	if not WS.Active() then return end
+	WinScreenThink()
 	View:OvertimeThink()
 	View:CountdownThink()
 end)

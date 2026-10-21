@@ -215,7 +215,7 @@ local function Footer(state)
 	return state.mine and "Press F1 or F2, or hold C and click." or state.quorum .. " votes are needed."
 end
 
-hook.Add("SandcastleHUDPaint", "ws_votes", function(_, h)
+WS.HUD:Add("game.notices.votes", WS.HUD_ORDER.NOTICES, function(_, h)
 	local state = WS.VoteState
 	if not state.running then return end
 	local unit = h / 480
@@ -249,4 +249,4 @@ hook.Add("SandcastleHUDPaint", "ws_votes", function(_, h)
 	end
 	lines[#lines + 1] = { text = Footer(state), color = THEME.muted }
 	Card(lines, CARD_X * unit, h * CARD_Y_SHARE, CARD_W * unit, unit)
-end)
+end, WS.Active)

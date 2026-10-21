@@ -32,7 +32,7 @@ function View:DrawEffect(w, h)
 	surface.DrawTexturedRect(math.floor(w * ICON_LEFT), math.floor(h * ICON_TOP), ICON_SIZE, ICON_SIZE)
 end
 
-hook.Add("HUDPaint", "ws_wheel_effect", function()
+WS.HUD:Add("game.notices.wheel", WS.HUD_ORDER.NOTICES, function()
 	View:DrawEffect(ScrW(), ScrH())
 end)
 

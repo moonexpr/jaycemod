@@ -72,7 +72,7 @@ E.Listen("game_combat_text", "ws_hits", function(fields)
 	if crit then CreateParticleSystemNoEntity(crit, fields.pos, angle_zero) end
 end)
 
-hook.Add("HUDPaint", "ws_hits", function()
+WS.HUD:Add("player.hits", WS.HUD_ORDER.WORLD, function()
 	local shown = texts:Live(CurTime())
 	if #shown == 0 then return end
 	Font(ScrH() / 480)

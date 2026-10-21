@@ -97,6 +97,26 @@ end
 -- and views its entities pull in. The server tells ready clients each new
 -- feature with a client part (system_feature_load), and a joining client, once
 -- ready (system_client_ready), every one loaded so far, in load order.
+-- The HUD (client): every HUD element of the gamemode is a callback on
+-- WS.HUD (foundation.core.drawlist) named by its place in a tree (game.match.
+-- team_scores.blue_score; game.objective.*, game.notices.*, player.*,
+-- debug.*), drawn by GM:HUDPaint in its band of HUD_ORDER, bottom first.
+-- Code hides a branch with WS.HUD:HideElements(path) (a win screen hides
+-- game.match.team_scores) and shows it with ShowElements; the player with
+-- cl_hud_hidden, and cl_hud_print lists them (ws/cl_hud_hidden.lua). Made
+-- here, before any module can add to it.
+if CLIENT then
+	WS.HUD = WS.require("foundation.core.drawlist").New()
+	WS.HUD_ORDER = {
+		WORLD = 100, -- over the world: damage numbers
+		OBJECTIVES = 200, -- points, flags, carts, KOTH clocks
+		ROUND = 300, -- the round's timer, scores and panels
+		NOTICES = 400, -- votes, voices, the spectator's names, bosses, spells
+		OVERLAY = 500, -- over every other: why you are not spawning
+		DEBUG = 900, -- debug overlays
+	}
+end
+
 local Features = WS.require("foundation.features")
 local FEATURE_COUNT_BITS = 16
 

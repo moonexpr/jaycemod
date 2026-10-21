@@ -165,6 +165,6 @@ end
 
 local View = { Draw = Draw }
 
-hook.Add("SandcastleHUDPaint", "ws_flags", function(...) View.Draw(...) end)
+WS.HUD:Add("game.objective.flags", WS.HUD_ORDER.OBJECTIVES, function(...) View.Draw(...) end, WS.Active)
 
 return View

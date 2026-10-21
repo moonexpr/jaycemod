@@ -138,8 +138,5 @@ hook.Add("PopulateToolMenu", "ws_gameplay", function()
 	spawnmenu.AddToolMenuOption("Utilities", "Admin", "ws_gameplay", "Gameplay Settings", "", "", BuildPanel)
 end)
 
-hook.Add("HUDPaint", "ws_gameplay", function()
-	if not WS.Active() or ENABLED:GetBool() then return end
-	draw.SimpleTextOutlined("Sandbox mode", "DermaLarge", ScrW() / 2, 24, color_white,
-		TEXT_ALIGN_CENTER, TEXT_ALIGN_TOP, 1, color_black)
-end)
+-- Sandbox mode draws no label of its own on the HUD (WS.HUD): it is
+-- inferrable from there being no timer or team scores.

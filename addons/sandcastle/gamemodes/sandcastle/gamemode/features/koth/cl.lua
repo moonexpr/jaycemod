@@ -12,7 +12,6 @@
 -- The point's unlock countdown and its lines are the capture view's; the
 -- overtime line is the rounds view's.
 WS.Feature("rounds")
-local Text = WS.require("foundation.rounds.text")
 local Timer = WS.require("foundation.rounds.timer")
 local Hud = WS.require("ws.tf_hud")
 local Font, DrawImage, Shadowed = WS.TFHud.Font, WS.TFHud.DrawImage, WS.TFHud.Shadowed
@@ -83,7 +82,7 @@ end
 -- Sandbox mode shows no clocks, as it shows no round timer; nor does a win
 -- panel, which has the scores and the game over timer.
 function View:Paint(w, h)
-	if WS.GameplayStopped() or not Text.ShowsTeamBar(WS.State()) then return end
+	if WS.GameplayStopped() then return end
 	local unit = Hud.Unit(h)
 	local top = Hud.TimerTop(math.floor(h * timerY:GetFloat()), unit)
 	local shown = {}
@@ -135,9 +134,10 @@ function View:CountdownThink(t)
 	if speaks then Play(Timer.WarningSound(warning, false)) end
 end
 
-hook.Add("SandcastleHUDPaint", "ws_koth", function(w, h)
+-- game.match.team_clocks: the win screens hide them (features/rounds/cl.lua).
+WS.HUD:Add("game.match.team_clocks", WS.HUD_ORDER.OBJECTIVES, function(w, h)
 	View:Paint(w, h)
-end)
+end, WS.Active)
 
 hook.Add("Think", "ws_koth_announcer", function()
 	if not WS.Active() then return end

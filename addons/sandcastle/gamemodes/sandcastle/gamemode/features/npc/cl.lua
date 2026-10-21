@@ -26,7 +26,7 @@ function View:DrawBossHealth(w, h)
 	surface.DrawRect(x, y, math.floor(width * fraction), BAR_HEIGHT)
 end
 
-hook.Add("HUDPaint", "ws_boss_health_bar", function()
+WS.HUD:Add("game.notices.boss_health", WS.HUD_ORDER.NOTICES, function()
 	View:DrawBossHealth(ScrW(), ScrH())
 end)
 

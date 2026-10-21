@@ -216,6 +216,6 @@ end
 
 local View = { Draw = DrawCarts }
 
-hook.Add("SandcastleHUDPaint", "ws_carts", function(...) View.Draw(...) end)
+WS.HUD:Add("game.objective.carts", WS.HUD_ORDER.OBJECTIVES, function(...) View.Draw(...) end, WS.Active)
 
 return View

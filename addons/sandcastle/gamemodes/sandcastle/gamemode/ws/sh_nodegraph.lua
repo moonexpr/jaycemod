@@ -103,7 +103,7 @@ hook.Add("PostDrawTranslucentRenderables", "ws_nodegraph_debug", function(depth,
 	end
 end)
 
-hook.Add("HUDPaint", "ws_nodegraph_debug", function()
+WS.HUD:Add("debug.nodegraph", WS.HUD_ORDER.DEBUG, function()
 	if CurTime() - shown.received > DEBUG_STALE then return end
 	draw.SimpleTextOutlined(string.format("AI node graph (%s): %d nodes, %d links near you", shown.source, #shown.nodes, #shown.links),
 		"DermaDefaultBold", ScrW() / 2, 60, color_white, TEXT_ALIGN_CENTER, TEXT_ALIGN_TOP, 1, color_black)

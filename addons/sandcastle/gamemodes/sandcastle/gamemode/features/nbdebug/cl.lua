@@ -579,7 +579,7 @@ local function DrawLabels()
 	if view.layers[Debug.MARKS] then Marks.DrawLabels(Label) end
 end
 
-hook.Add("HUDPaint", "ws_nbdebug", function()
+WS.HUD:Add("debug.nbdebug", WS.HUD_ORDER.DEBUG, function()
 	DrawBoxes()
 	DrawLabels()
 end)

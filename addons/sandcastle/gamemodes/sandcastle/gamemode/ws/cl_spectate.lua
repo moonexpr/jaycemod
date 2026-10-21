@@ -63,7 +63,7 @@ local function Draw(w, h)
 	Line(hint, "Sandcastle.Spectate.Hint", HINT_COLOR, w, y + 26)
 end
 
-hook.Add("SandcastleHUDPaint", "ws_spectate", Draw)
+WS.HUD:Add("player.spectate", WS.HUD_ORDER.NOTICES, Draw, WS.Active)
 
 -- CTFPlayer::StateThinkDYING starts TFPlayer.FreezeCam so it ends at the
 -- lock-on; the client sees the freezecam begin and plays it for itself.

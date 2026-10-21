@@ -5,9 +5,8 @@ for _, f in ipairs(GM:WSModules("cl_")) do
 	if f ~= "cl_ui.lua" then include("ws/" .. f) end
 end
 
+-- Every HUD element of the gamemode, in order (WS.HUD, ws/sh_core.lua).
 function GM:HUDPaint()
 	self.BaseClass.HUDPaint(self)
-	if not WS.Active() then return end
-	-- Features' views draw their HUD elements here.
-	hook.Run("SandcastleHUDPaint", ScrW(), ScrH())
+	WS.HUD:Draw(ScrW(), ScrH())
 end
