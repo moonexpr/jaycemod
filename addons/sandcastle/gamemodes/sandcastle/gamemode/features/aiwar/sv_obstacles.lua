@@ -2,6 +2,7 @@
 -- and shut, and spawn doors.
 local Controller, Map = ...
 local Teams = WS.require("foundation.teams")
+local Debug = WS.require("foundation.npc.debug")
 local TFBot = WS.require("foundation.npc.path.tfbot")
 local HL2Path = WS.require("foundation.npc.path.hl2")
 local Zone = WS.require("foundation.aiwar.zone")
@@ -153,8 +154,11 @@ function Controller:EjectFromCart(ent, entry, train, quiet)
 		local area = navmesh.GetNearestNavArea(candidate, false, 128, false, true)
 		local spot = IsValid(area) and area:GetClosestPointOnArea(candidate) or candidate
 		if spot:Distance2D(center) >= radius - 8 and Clear(spot) then
+			if not quiet then
+				entry.soldier:Mark(Debug.MARK_CART, "the cart drove over it", spot + SPAWN_LIFT)
+				entry.soldier.cartRescues = (entry.soldier.cartRescues or 0) + 1
+			end
 			ent:SetPos(spot + SPAWN_LIFT)
-			if not quiet then entry.soldier.cartRescues = (entry.soldier.cartRescues or 0) + 1 end
 			return true
 		end
 	end

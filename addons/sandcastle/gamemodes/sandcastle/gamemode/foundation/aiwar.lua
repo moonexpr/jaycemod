@@ -914,3 +914,18 @@ end
 function War:Field()
 	return self.field
 end
+
+-- The observer's stranded watch (features/aiwar/sv_posts.lua): a soldier
+-- trying to move (travelling) that has not got anywhere (moved) since the
+-- watch began (since) is STRANDED once STRANDED_TIME has passed (now). The
+-- watch starts over (WATCH_AGAIN) for one that got somewhere, has nowhere
+-- to go, or is fighting (an enemy in sight): a soldier standing to shoot
+-- is held by the fight, not wedged.
+STRANDED_TIME = 15
+WATCH_AGAIN, WATCHING, STRANDED = "watch_again", "watching", "stranded"
+
+function StrandedWatch(q)
+	if q.moved or not q.travelling or q.fighting then return WATCH_AGAIN end
+	if q.now - q.since < STRANDED_TIME then return WATCHING end
+	return STRANDED
+end

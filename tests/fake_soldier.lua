@@ -49,6 +49,7 @@ function Fake.Soldier(t)
 		covers = t.covers,
 		wandered = 0,
 		hops = {},
+		marks = {},
 		requests = {},
 		pending = nil,
 		moves = {},
@@ -195,6 +196,11 @@ end
 function Soldier:WanderSpot()
 	self.wandered = self.wandered + 1
 	return self.wanderSpots[self.wandered]
+end
+
+-- marks: each Mark, { kind, detail, to }.
+function Soldier:Mark(kind, detail, to)
+	self.marks[#self.marks + 1] = { kind = kind, detail = detail, to = to }
 end
 
 function Soldier:Hop(p)

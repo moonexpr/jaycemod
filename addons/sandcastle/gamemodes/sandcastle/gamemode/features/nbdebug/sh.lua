@@ -61,6 +61,15 @@ E.Define("game_nb_debug_nav", {
 
 -- A watched NPC is gone.
 E.Define("game_nb_debug_npc_removed", { index = INDEX })
+-- The system stepped in on the selected NPC's movement (MARKS): what
+-- (a Debug.MARK_* kind and its detail), where it was, and where it was sent.
+E.Define("game_nb_debug_mark", {
+	index = INDEX,
+	kind = E.String(),
+	detail = E.String(),
+	from = E.Vector(),
+	to = E.Optional(E.Vector()),
+})
 
 -- The AI war's soldier overlay (AIWAR), sent by the aiwar controller.
 local WAR_COUNT_BITS = 8 -- fire teams, soldiers, route points

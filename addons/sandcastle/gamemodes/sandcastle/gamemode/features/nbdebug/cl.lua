@@ -65,7 +65,11 @@ local view = {
 	behaviorReceived = -math.huge,
 	nav = {},
 	navReceived = -math.huge,
+	marks = {}, -- the selected NPC's marks (cl_marks.lua)
 }
+
+local Part = WS.FeatureParts(getfenv(1), "nbdebug")
+local Marks = Part("cl_marks", view)
 
 local function Live(received)
 	return CurTime() - received < STALE
@@ -393,6 +397,7 @@ hook.Add("PostDrawTranslucentRenderables", "ws_nbdebug", function(depth, skybox)
 	if Live(war.received) then DrawWar() end
 	if view.layers[Debug.COST] and view.cost then DrawCost(view.cost) end
 	if view.layers[Debug.NAV] and Live(view.navReceived) then DrawNav(view.nav) end
+	if view.layers[Debug.MARKS] then Marks.Draw(CurTime()) end
 	if view.layers[Debug.PATH] then
 		for _, path in pairs(view.paths) do DrawPath(path) end
 	end
@@ -571,6 +576,7 @@ local function DrawLabels()
 	if view.layers[Debug.NAV] and Live(view.navReceived) then
 		for _, area in ipairs(view.nav) do Label(area.center, area.label, NAV_COLOR) end
 	end
+	if view.layers[Debug.MARKS] then Marks.DrawLabels(Label) end
 end
 
 hook.Add("HUDPaint", "ws_nbdebug", function()

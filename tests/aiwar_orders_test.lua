@@ -1255,6 +1255,13 @@ T.test("a soldier chasing a goal it keeps closing on is not stuck, however far t
 	T.eq(npc:State().trip, nil, "never gave up")
 end)
 
+-- The kinds of the marks a soldier made (the port's Mark), in order.
+local function Marked(me)
+	local kinds = {}
+	for i, mark in ipairs(me.marks) do kinds[i] = mark.kind end
+	return table.concat(kinds, " ")
+end
+
 T.test("a stuck soldier first steps aside, then goes on along its new route", function()
 	local route = { P(900, 0) }
 	local me, npc = Enlist({ role = AiWar.PUSH, route = function() return route end })
@@ -1262,6 +1269,8 @@ T.test("a stuck soldier first steps aside, then goes on along its new route", fu
 	Tick(me, npc, (Orders.STUCK_TIME + TICK) / TICK)
 	T.eq(#me.requests, 2, "a new route")
 	T.near(FS.Distance(me.moving, P(0, 0)), Orders.SIDESTEP_DISTANCE, 1e-6, "a step aside first")
+	T.eq(Marked(me), Debug.MARK_SIDESTEP, "marked")
+	Near(me.marks[1].to, me.moving, "marked where it steps to")
 	local aside = me.moving
 	Tick(me, npc, Orders.SIDESTEP_TIME / TICK + 1)
 	Near(me.moving, route[1], "then the route again")
@@ -1288,6 +1297,7 @@ T.test("a soldier stuck on something only NPCs collide with is let through it, a
 	T.eq(#me.requests, 1, "no new route needed")
 	Near(me.moving, P(900, 0), "running on")
 	T.eq(npc:State().passed, 1, "counted for the report")
+	T.eq(Marked(me), Debug.MARK_PASS, "marked")
 end)
 
 T.test("a soldier stuck against a solid entity walks round it, then goes on along its route", function()
@@ -1301,6 +1311,8 @@ T.test("a soldier stuck against a solid entity walks round it, then goes on alon
 	Tick(me, npc, 2)
 	Tick(me, npc, (Orders.STUCK_TIME + TICK) / TICK)
 	T.eq(#me.detours, 1, "a detour")
+	T.eq(Marked(me), Debug.MARK_DETOUR, "marked")
+	Near(me.marks[1].to, beside, "marked where it walks round to")
 	Near(me.moving, beside, "to the point beside it")
 	T.eq(#me.requests, 1, "no new route")
 	me.pos = P(beside.x, beside.y)
@@ -1318,6 +1330,7 @@ T.test("a soldier stuck while climbing hops at once, without stepping aside firs
 	Tick(me, npc, (Orders.STUCK_TIME + TICK) / TICK)
 	T.eq(#me.hops, 1, "hopped up")
 	T.eq(me.hops[1].z, 60, "onto the waypoint above")
+	T.eq(Marked(me), Debug.MARK_HOP, "marked")
 	T.eq(#me.requests, 1, "no step aside, no new route")
 end)
 
@@ -1333,6 +1346,8 @@ T.test("a soldier stuck through every step aside hops toward its waypoint when a
 	Near(me.hops[1], P(Orders.HOP_DISTANCE, 0), "a hop's length toward the waypoint")
 	T.eq(Orders.JobOf(npc:Describe()), "Travel", "still on its way")
 	T.eq(npc:State().hops, 1, "counted for the report")
+	T.eq(me.marks[#me.marks].kind, Debug.MARK_HOP, "the hop marked")
+	Near(me.marks[#me.marks].to, me.hops[1], "where it hopped to")
 end)
 
 T.test("a hop to somewhere a player could not walk is refused, and the trip ends", function()
@@ -1341,6 +1356,7 @@ T.test("a hop to somewhere a player could not walk is refused, and the trip ends
 	for _ = 1, Orders.MAX_REPATHS + 1 do Tick(me, npc, (Orders.STUCK_TIME + TICK) / TICK + 1) end
 	T.eq(#me.hops, 0, "no hop")
 	T.eq(npc:State().trip, "stuck", "gave up")
+	T.eq(me.marks[#me.marks].kind, Debug.MARK_GAVE_UP, "marked")
 end)
 
 T.test("a straight chase that goes nowhere falls back to a route", function()

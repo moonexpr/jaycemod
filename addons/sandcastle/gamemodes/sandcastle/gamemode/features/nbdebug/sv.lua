@@ -299,6 +299,24 @@ hook.Add("EntityRemoved", "ws_nbdebug", function(ent)
 	Controller:OnRemoved(ent)
 end)
 
+-- The system stepped in on an NPC's movement (WSNpcMark, the AI war's
+-- soldiers'): to whoever shows MARKS for it, drawn where it happened and
+-- worded in their console.
+function Controller:OnMark(ent, kind, detail, from, to)
+	local bot = self.bots[ent]
+	if not bot then return end
+	local recipients = Recipients(self, bot, Debug.MARKS)
+	if #recipients == 0 then return end
+	local mark = { index = bot.index, kind = kind, detail = detail, from = from, to = to }
+	WS.Events.Fire("game_nb_debug_mark", mark, recipients)
+	local line = string.format("[MARKS %.1f] %s", CurTime(), Debug.MarkLine(mark))
+	for _, ply in ipairs(recipients) do ply:PrintMessage(HUD_PRINTCONSOLE, line) end
+end
+
+hook.Add("WSNpcMark", "ws_nbdebug", function(ent, kind, detail, from, to)
+	Controller:OnMark(ent, kind, detail, from, to)
+end)
+
 -------------------------------------------------------------------------------
 -- Commands (registered by ws/sv_nbdebug.lua, which checks who may run them)
 

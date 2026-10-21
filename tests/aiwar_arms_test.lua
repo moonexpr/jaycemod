@@ -78,4 +78,18 @@ T.test("a melee weapon strikes for its damage, as fast as Half-Life's crowbar", 
 	T.eq(Arms.WEAPONS.weapon_stunstick.interval, 0.25, "the stunstick too")
 end)
 
+-- What a soldier's body draws (ws/sh_drg_soldier.lua's SetShown, as a
+-- kept body is hidden and revived): it carries its whole loadout, but only
+-- the weapon in hand shows.
+T.test("a shown body draws its weapon in hand and its other parts, never a holstered weapon", function()
+	T.eq(Arms.Drawn(true, true, true), true, "the weapon in hand")
+	T.eq(Arms.Drawn(true, true, false), false, "a holstered weapon")
+	T.eq(Arms.Drawn(true, false, false), true, "a part that is not a weapon")
+end)
+
+T.test("a hidden body draws nothing", function()
+	T.eq(Arms.Drawn(false, true, true), false, "the weapon in hand")
+	T.eq(Arms.Drawn(false, false, false), false, "another part")
+end)
+
 T.finish()

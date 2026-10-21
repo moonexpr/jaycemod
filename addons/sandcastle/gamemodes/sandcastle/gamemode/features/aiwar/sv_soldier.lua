@@ -3,6 +3,7 @@ local Map = ...
 local TFBot = WS.require("foundation.npc.path.tfbot")
 local HL2Path = WS.require("foundation.npc.path.hl2")
 local Random = WS.require("foundation.core.math.random")
+local Debug = WS.require("foundation.npc.debug")
 local WALK_MINS, WALK_MAXS, WALK_LIFT, WALK_MAX_RISE = Map.WALK_MINS, Map.WALK_MAXS, Map.WALK_LIFT, Map.WALK_MAX_RISE
 local Point, ToVector, Masks, IsDoor = Map.Point, Map.ToVector, Map.Masks, Map.IsDoor
 local OnFloor, PassThrough = Map.OnFloor, Map.PassThrough
@@ -325,6 +326,8 @@ function Soldier:HeldByDoor(door)
 	end
 	self.controller:OpenDoorFor(door, self.team)
 	if now - held.since >= DOOR_STUCK_TIME then
+		self:Mark(Debug.MARK_DOOR, string.format("%s #%d held it %d s: blocked for its team", door:GetClass(), door:EntIndex(),
+			DOOR_STUCK_TIME), nil)
 		self.controller:NoteShutDoor(door, self.team)
 		self.heldBy = nil
 	end
@@ -360,6 +363,13 @@ end
 function Soldier:PassBlocker() return false end
 function Soldier:Detour() return nil end
 function Soldier:Hop() return false end
+
+-- My orders stepped in on my movement (foundation.npc.debug's MARKS): told
+-- through WSNpcMark, which the nbdebug feature sends whoever has me
+-- selected. to: where I am sent, a point or a Vector, or nil.
+function Soldier:Mark(kind, detail, to)
+	hook.Run("WSNpcMark", self.ent, kind, detail, self.ent:GetPos(), to and ToVector(to))
+end
 
 -- A random spot on the nav mesh within radius of center, on open floor
 -- (no crouch or jump areas: a patrol keeps to where it walks upright).

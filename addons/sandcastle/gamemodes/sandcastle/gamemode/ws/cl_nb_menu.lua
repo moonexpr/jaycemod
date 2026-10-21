@@ -26,11 +26,12 @@ local LAYER_LABELS = {
 	[Debug.COST] = "Search cost: this NPC's explored areas",
 	[Debug.BEHAVIOR] = "Behavior: each NPC's action stack",
 	[Debug.NAV] = "Nav areas near this NPC",
+	[Debug.MARKS] = "Marks: when the system stepped in on this NPC (recovered, hopped, sent aside)",
 }
 local EVERY_NPC_LAYERS = { Debug.PATH, Debug.BEHAVIOR }
 -- The layers drawn for the selected NPC alone: turning one on from an NPC's
 -- menu selects that NPC.
-local SELECTED_LAYERS = { Debug.COST, Debug.NAV }
+local SELECTED_LAYERS = { Debug.COST, Debug.NAV, Debug.MARKS }
 
 local FULL_STACK = "ws_aiwar_debug_full"
 

@@ -2,6 +2,7 @@
 local Controller, Map = ...
 local AiWar = WS.require("foundation.aiwar")
 local Posts = WS.require("foundation.aiwar.posts")
+local Debug = WS.require("foundation.npc.debug")
 local SPAWN_LIFT = Map.SPAWN_LIFT
 local Point, ToVector, SpawnSpots, OnFloor = Map.Point, Map.ToVector, Map.SpawnSpots, Map.OnFloor
 local ClearSpotNear, GroundBelow = Map.ClearSpotNear, Map.GroundBelow
@@ -11,14 +12,15 @@ local ClearSpotNear, GroundBelow = Map.ClearSpotNear, Map.GroundBelow
 -- out, is put back: one outside the world, or off the nav mesh for
 -- OFF_MESH_TIME, where it last stood on the mesh (on its own side of any
 -- wall; the nearest nav area may be beyond one), else at its spawn; one
--- that has tried to move for STRANDED_TIME without getting
--- STRANDED_PROGRESS from where it was, onto the next waypoint of its route
--- when a player could walk there. A soldier recovered again within
+-- that has tried to move for AiWar.STRANDED_TIME without getting
+-- STRANDED_PROGRESS from where it was, and not for a fight
+-- (AiWar.StrandedWatch), onto the next waypoint of its route when a player
+-- could walk there. A soldier recovered again within
 -- RELAPSE_TIME goes back to spawn. The mesh leaves gaps along walls and
 -- round corners, which a soldier sliding along a wall walks into: it is
 -- off the mesh only with no nav area it can see within OFF_MESH_REACH.
 local WATCH_INTERVAL = 2
-local STRANDED_TIME, STRANDED_PROGRESS = 15, 48
+local STRANDED_PROGRESS = 48
 local OFF_MESH_BELOW, OFF_MESH_LIFT = 96, Vector(0, 0, 16)
 local OFF_MESH_REACH, OFF_MESH_TIME = 48, 5
 local RELAPSE_TIME = 60
@@ -48,9 +50,11 @@ function Controller:Recover(ent, entry, reason, pos)
 	soldier.watch = nil
 	if not pos then
 		-- nowhere to put it: the next wave replaces it
+		soldier:Mark(Debug.MARK_RECOVERED, reason .. ", but no spawn to put it at: killed for the next wave", nil)
 		ent:TakeDamage(ent:Health() + 1, game.GetWorld(), game.GetWorld())
 		return
 	end
+	soldier:Mark(Debug.MARK_RECOVERED, reason, pos + SPAWN_LIFT)
 	soldier:Release()
 	ent:SetPos(pos + SPAWN_LIFT)
 	if ent.loco then ent.loco:SetVelocity(vector_origin) end
@@ -72,11 +76,18 @@ function Controller:Watch(ent, entry, now)
 		end
 	end
 	local watch = soldier.watch
-	if not soldier.moveTarget or not watch or pos:Distance(watch.pos) > STRANDED_PROGRESS then
+	local verdict = watch and AiWar.StrandedWatch({
+		travelling = soldier.moveTarget ~= nil,
+		fighting = soldier:HasEnemy(),
+		moved = pos:Distance(watch.pos) > STRANDED_PROGRESS,
+		since = watch.since,
+		now = now,
+	}) or AiWar.WATCH_AGAIN
+	if verdict == AiWar.WATCH_AGAIN then
 		soldier.watch = { pos = pos, since = now }
 		return
 	end
-	if now - watch.since < STRANDED_TIME then return end
+	if verdict == AiWar.WATCHING then return end
 	local state = entry.npc:State()
 	local waypoint = state.route and state.route[math.min((state.routeIndex or 1) + 1, #state.route)]
 	local spot = waypoint and ClearSpotNear(OnFloor(ToVector(waypoint)))

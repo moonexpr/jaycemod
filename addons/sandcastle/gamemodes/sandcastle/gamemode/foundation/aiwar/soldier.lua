@@ -76,6 +76,9 @@
 --     walk from here to p, so never through a wall, door or gate; I am
 --     moved there over a moment, running, and MoveTo and Release wait
 --     until I arrive
+--   Mark(kind, detail, to): tell whoever debugs me that my orders stepped
+--     in on my movement (a foundation.npc.debug MARK_* kind), what happened,
+--     and where I am sent (nil: nowhere)
 module(...)
 
 METHODS = {
@@ -112,6 +115,7 @@ METHODS = {
 	"Unpose",
 	"RouteStale",
 	"Hop",
+	"Mark",
 	"UseGadget",
 	"Heal",
 	"Watch",

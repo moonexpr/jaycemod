@@ -510,7 +510,10 @@ function WS.DrgSoldier(ENT, baseName)
 	-- going on to remove it, until NSRevive gives the soldier a new one.
 	local function SetShown(self, shown)
 		self:SetNoDraw(not shown)
-		for _, child in ipairs(self:GetChildren()) do child:SetNoDraw(not shown) end
+		local active = self:GetActiveWeapon()
+		for _, child in ipairs(self:GetChildren()) do
+			child:SetNoDraw(not Arms.Drawn(shown, child:IsWeapon(), child == active))
+		end
 	end
 
 	function ENT:NSRest()

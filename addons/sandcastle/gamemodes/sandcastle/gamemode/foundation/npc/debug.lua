@@ -5,8 +5,10 @@
 --
 -- Layers: PATH (the computed path by move type, its cost and timing), COST
 -- (every area the search considered, by cost so far), BEHAVIOR (the action
--- stack and its recent changes), NAV (nav areas near the NPC) and AIWAR (the
--- AI war's soldier overlay: roles, squads, contacts). An admin's
+-- stack and its recent changes), NAV (nav areas near the NPC), AIWAR (the
+-- AI war's soldier overlay: roles, squads, contacts) and MARKS (each time
+-- the system stepped in on the NPC's movement: recovered, hopped, sent
+-- aside..., marked where it happened). An admin's
 -- Subscription holds the layers, a filter and a selection; the controller
 -- watches an NPC only while some subscription wants it (PathWatch,
 -- WatchesBehavior), so nothing is recorded for NPCs nobody is looking at.
@@ -22,8 +24,8 @@ module(...)
 -------------------------------------------------------------------------------
 -- Layers (nb_debug)
 
-PATH, COST, BEHAVIOR, NAV, AIWAR = "PATH", "COST", "BEHAVIOR", "NAV", "AIWAR"
-LAYERS = { PATH, COST, BEHAVIOR, NAV, AIWAR }
+PATH, COST, BEHAVIOR, NAV, AIWAR, MARKS = "PATH", "COST", "BEHAVIOR", "NAV", "AIWAR", "MARKS"
+LAYERS = { PATH, COST, BEHAVIOR, NAV, AIWAR, MARKS }
 local LAYER = Sets.Named("ws_nb_debug layer", LAYERS)
 
 -- Tokens beside the layers' names: nb_debug's "*" means all.
@@ -245,7 +247,55 @@ end
 local SELECTED_ONLY = {
 	[COST] = true,
 	[NAV] = true,
+	[MARKS] = true,
 }
+
+-------------------------------------------------------------------------------
+-- Marks (MARKS): the system stepping in on an NPC's movement, each told as
+-- it happens (the hook WSNpcMark) with what happened (detail), where it was
+-- (from) and, when moved, where it was put (to).
+
+MARK_RECOVERED = "recovered" -- the observer put it back (stranded, off the mesh...)
+MARK_HOP = "hop" -- carried over what stopped it, toward its waypoint
+MARK_SIDESTEP = "sidestep" -- stuck: a step aside and a new route
+MARK_PASS = "pass" -- let through something only NPCs collide with
+MARK_DETOUR = "detour" -- round a solid entity (a cart, a prop)
+MARK_GAVE_UP = "gave_up" -- stuck past every remedy: the trip ends
+MARK_DOOR = "door" -- held up by a door for too long
+MARK_CART = "cart" -- pulled out of a cart that drove over it
+MARK_KINDS = { MARK_RECOVERED, MARK_HOP, MARK_SIDESTEP, MARK_PASS, MARK_DETOUR, MARK_GAVE_UP, MARK_DOOR, MARK_CART }
+local MARK_KIND = Sets.Named("NPC mark", MARK_KINDS)
+
+local MARK_LABELS = {
+	[MARK_RECOVERED] = "RECOVERED",
+	[MARK_HOP] = "HOPPED",
+	[MARK_SIDESTEP] = "STUCK: STEPPED ASIDE",
+	[MARK_PASS] = "LET THROUGH",
+	[MARK_DETOUR] = "DETOUR",
+	[MARK_GAVE_UP] = "STUCK: GAVE UP",
+	[MARK_DOOR] = "DOOR",
+	[MARK_CART] = "PULLED OUT OF CART",
+}
+
+-- How long a mark stays drawn, fading out.
+MARK_SECONDS = 15
+
+function MarkLabel(kind)
+	return MARK_LABELS[MARK_KIND:Check(kind)]
+end
+
+-- mark = { index, kind, detail }: "#195 RECOVERED: stranded".
+function MarkLine(mark)
+	local line = "#" .. mark.index .. " " .. MarkLabel(mark.kind)
+	if mark.detail ~= "" then line = line .. ": " .. mark.detail end
+	return line
+end
+
+-- How opaque a mark age seconds old is drawn, from 1 down; nil once gone.
+function MarkAlpha(age)
+	if age >= MARK_SECONDS then return nil end
+	return 1 - age / MARK_SECONDS
+end
 
 function Subscription:Wants(bot, layer)
 	if not self:Shows(layer) then return false end

@@ -148,6 +148,39 @@ T.test("COST and NAV are drawn for the selected NPC only", function()
 	T.eq(sub:Wants(ZOMBIE, Debug.NAV), true, "selected: nav")
 end)
 
+-- MARKS: every time the system steps in on the selected NPC's movement
+-- (a recovery, a hop, a step aside...), marked where it happened.
+
+T.test("MARKS is drawn for the selected NPC only", function()
+	local sub = Debug.NewSubscription()
+	sub:SetLayers({ "MARKS" })
+	T.eq(sub:Wants(ZOMBIE, Debug.MARKS), false, "no selection")
+	sub:Select(ZOMBIE.key)
+	T.eq(sub:Wants(ZOMBIE, Debug.MARKS), true, "selected")
+	T.eq(sub:Wants(HATMAN, Debug.MARKS), false, "another NPC")
+end)
+
+T.test("a mark is worded with its NPC, its kind and what happened", function()
+	local line = Debug.MarkLine({ index = 195, kind = Debug.MARK_RECOVERED, detail = "stranded, again: back to spawn" })
+	T.eq(line, "#195 " .. Debug.MarkLabel(Debug.MARK_RECOVERED) .. ": stranded, again: back to spawn")
+	T.eq(Debug.MarkLine({ index = 7, kind = Debug.MARK_HOP, detail = "" }), "#7 " .. Debug.MarkLabel(Debug.MARK_HOP), "no detail")
+end)
+
+T.test("every kind of mark has a label, and a kind outside them is our bug", function()
+	for _, kind in ipairs(Debug.MARK_KINDS) do
+		T.eq(type(Debug.MarkLabel(kind)), "string", kind)
+	end
+	T.eq(pcall(Debug.MarkLabel, "teleported by magic"), false)
+end)
+
+T.test("a mark shows fully when made, fades, and is gone after MARK_SECONDS", function()
+	T.defined(Debug.MARK_SECONDS, "Debug.MARK_SECONDS")
+	T.eq(Debug.MarkAlpha(0), 1, "fresh")
+	local half = Debug.MarkAlpha(Debug.MARK_SECONDS * 0.9)
+	T.eq(half > 0 and half < 1, true, "fading")
+	T.eq(Debug.MarkAlpha(Debug.MARK_SECONDS), nil, "gone")
+end)
+
 T.test("a removed NPC is no longer selected", function()
 	local sub = Debug.NewSubscription()
 	sub:Select(ZOMBIE.key)

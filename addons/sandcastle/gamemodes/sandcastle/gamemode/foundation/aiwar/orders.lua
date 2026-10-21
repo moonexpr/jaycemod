@@ -81,7 +81,9 @@
 -- it chose, if any (tactic, element, coverSpot).
 local abs, ceil, cos, floor, max, min, pi, sin, sqrt = math.abs, math.ceil, math.cos, math.floor, math.max, math.min, math.pi, math.sin, math.sqrt
 local ipairs, pairs = ipairs, pairs
+local format = string.format
 local N = require("foundation.npc")
+local Debug = require("foundation.npc.debug")
 local AiWar = require("foundation.aiwar")
 local Teams = require("foundation.teams")
 local Track = require("foundation.core.structs.polyline")
@@ -699,7 +701,9 @@ function Travel:HopOn(me, goal)
 	local dx, dy, dz = target.x - here.x, target.y - here.y, target.z - here.z
 	local length = sqrt(dx * dx + dy * dy + dz * dz)
 	local t = length > HOP_DISTANCE and HOP_DISTANCE / length or 1
-	if not me:Hop({ x = here.x + dx * t, y = here.y + dy * t, z = here.z + dz * t }) then return false end
+	local to = { x = here.x + dx * t, y = here.y + dy * t, z = here.z + dz * t }
+	if not me:Hop(to) then return false end
+	me:Mark(Debug.MARK_HOP, format("%d units toward its waypoint", floor(length * t + 0.5)), to)
 	self.state.hops = (self.state.hops or 0) + 1
 	self.repaths = 0
 	self:ResetProgress(me)
@@ -719,12 +723,14 @@ end
 function Travel:Unstick(me, goal)
 	local target = self:StuckTarget(goal)
 	if me:PassBlocker(target) then
+		me:Mark(Debug.MARK_PASS, "something only NPCs collide with", nil)
 		self.state.passed = (self.state.passed or 0) + 1
 		self:ResetProgress(me)
 		return self:Continue()
 	end
 	local detour = me:Detour(target)
 	if detour then
+		me:Mark(Debug.MARK_DETOUR, "round a solid entity", detour)
 		self.detour, self.detourUntil = detour, me:Now() + DETOUR_TIME
 		self:ResetProgress(me)
 		me:MoveTo(detour, self.gait)
@@ -734,6 +740,7 @@ function Travel:Unstick(me, goal)
 	self.repaths = self.repaths + 1
 	if self.repaths > MAX_REPATHS then
 		if self:HopOn(me, goal) then return self:Continue() end
+		me:Mark(Debug.MARK_GAVE_UP, format("%d steps aside and no hop", MAX_REPATHS), nil)
 		return self:Fail("stuck")
 	end
 	self:ResetProgress(me)
@@ -742,6 +749,7 @@ function Travel:Unstick(me, goal)
 	local here = me:Position()
 	self.sidestep = { x = here.x + cos(angle) * SIDESTEP_DISTANCE, y = here.y + sin(angle) * SIDESTEP_DISTANCE, z = here.z }
 	self.sidestepUntil = me:Now() + SIDESTEP_TIME
+	me:Mark(Debug.MARK_SIDESTEP, format("try %d of %d, and a new route", self.repaths, MAX_REPATHS), self.sidestep)
 	me:MoveTo(self.sidestep, self.gait)
 	return self:Continue()
 end

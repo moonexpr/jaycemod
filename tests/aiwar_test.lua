@@ -831,4 +831,26 @@ T.test("a point projects onto the track as the distance along it of its nearest 
 	T.near(track:DistanceOf(P(100, 500)), 200, 1e-9, "past the end")
 end)
 
+-- The observer's stranded watch (features/aiwar/sv_posts.lua): a soldier
+-- trying to move that gets nowhere for STRANDED_TIME is put back. A
+-- soldier fighting stands still on purpose.
+
+local function Stranded(fields)
+	local q = { travelling = true, fighting = false, moved = false, since = 0, now = AiWar.STRANDED_TIME }
+	for k, v in pairs(fields or {}) do q[k] = v end
+	return AiWar.StrandedWatch(q)
+end
+
+T.test("a soldier trying to move that gets nowhere for long enough is stranded", function()
+	T.defined(AiWar.STRANDED_TIME, "AiWar.STRANDED_TIME")
+	T.eq(Stranded(), AiWar.STRANDED, "stranded")
+	T.eq(Stranded({ now = AiWar.STRANDED_TIME - 1 }), AiWar.WATCHING, "not yet")
+end)
+
+T.test("the watch starts over for a soldier that got somewhere, has nowhere to go, or is fighting", function()
+	T.eq(Stranded({ moved = true }), AiWar.WATCH_AGAIN, "it got somewhere")
+	T.eq(Stranded({ travelling = false }), AiWar.WATCH_AGAIN, "nowhere to go")
+	T.eq(Stranded({ fighting = true }), AiWar.WATCH_AGAIN, "standing to fight an enemy it sees")
+end)
+
 T.finish()
