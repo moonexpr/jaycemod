@@ -758,6 +758,40 @@ T.test("the time limit's winner and reason are the mode's", function()
 	T.eq(publish.reason, W.MOST_CAPTURES, "the mode's reason")
 end)
 
+-- mp_round_restart (and the reset vote, the editors, a new game): a round
+-- with players on its teams ends as a stalemate, an actual round end with
+-- its win panel and stalemate song, then a fresh round on a reset map; with
+-- nobody playing (a new game, everyone unassigned, or NPCs alone) it goes
+-- back to PREGAME, silently.
+local WITH_PLAYERS, NOBODY_PLAYING = true, false
+
+
+T.test("a restart of a round with players ends it as a stalemate, then a fresh round on a reset map", function()
+	local round = Running()
+	local now = T0 + 30
+	local ended = round:RestartRound(now, WITH_PLAYERS)
+	T.eq(round:State(), State.TEAM_WIN, "the round ended")
+	T.eq(Has(ended, "publish_win " .. Teams.UNASSIGNED), true, "the stalemate's win panel: " .. Describe(ended))
+	T.eq(Has(ended, "win_song " .. Teams.UNASSIGNED), true, "the stalemate song and line")
+	T.eq(Has(ended, "score"), false, "nobody scores")
+	local fresh = round:Think(now + Settings().bonusRoundTime + 1, World())
+	T.eq(round:State(), State.PREROUND, "a fresh round")
+	T.eq(Has(fresh, "cleanup"), true, "on a reset map: " .. Describe(fresh))
+end)
+
+T.test("a restart with nobody playing goes back to PREGAME, silently", function()
+	local round = Running()
+	Expect(round:RestartRound(T0 + 30, NOBODY_PLAYING), { "state PREGAME" }, "no round end, no sound")
+end)
+
+T.test("a restart outside a round in play is silent, players or not", function()
+	local round = Rounds.New(Settings())
+	Expect(round:RestartRound(T0, WITH_PLAYERS), { "state PREGAME" }, "from PREGAME")
+	local won = Running()
+	won:SetWinningTeam(T0 + 20, RED, W.ALL_POINTS_CAPTURED, true, false, false, FakeObjective.Objective())
+	Expect(won:RestartRound(T0 + 21, WITH_PLAYERS), { "state PREGAME" }, "while the winners celebrate")
+end)
+
 T.test("Halt waits between rounds until a new game", function()
 	local round = Running()
 	local now = T0 + 20
@@ -771,7 +805,7 @@ T.test("Halt waits between rounds until a new game", function()
 	Expect(round:Halt(now + 6), {}, "already between rounds")
 	round:Unhalt()
 	T.eq(round:Halted(), false, "unhalted")
-	Expect(round:RestartRound(now + 7), { "state PREGAME" }, "a restart")
+	Expect(round:RestartRound(now + 7, NOBODY_PLAYING), { "state PREGAME" }, "a restart")
 	local effects = round:Think(now + 8, World())
 	T.eq(Describe({ effects[1], effects[2], effects[3] }), "state PREROUND, balance_teams, cleanup", "a full reset")
 end)
@@ -783,7 +817,7 @@ T.test("the first game after a map loaded in Sandbox mode cleans the map up", fu
 	local round = Rounds.New(Settings())
 	round:Halt(T0)
 	round:Unhalt()
-	round:RestartRound(T0 + 1)
+	round:RestartRound(T0 + 1, NOBODY_PLAYING)
 	local effects = round:Think(T0 + 2, World())
 	T.eq(Describe({ effects[1], effects[2], effects[3] }), "state PREROUND, balance_teams, cleanup", "a full reset with a cleanup")
 end)
@@ -807,7 +841,7 @@ T.test("a halted round (Sandbox mode) stays between rounds whatever happens", fu
 		switchTeams = false,
 	}, objective), {}, "the timer's OnFinished to game_round_win wins nothing")
 	Expect(round:SetStalemate(now + 4, SM.TIMER, true, false), {}, "no sudden death")
-	Expect(round:RestartRound(now + 5), {}, "no restart until unhalted")
+	Expect(round:RestartRound(now + 5, NOBODY_PLAYING), {}, "no restart until unhalted")
 	Expect(round:Think(now + 60, World({
 		scores = {
 			[RED] = 9,
@@ -817,7 +851,7 @@ T.test("a halted round (Sandbox mode) stays between rounds whatever happens", fu
 	T.eq(round:State(), State.BETWEEN_RNDS, "between rounds throughout")
 	T.eq(round:PointsMayBeCaptured(), false, "no captures")
 	round:Unhalt()
-	Expect(round:RestartRound(now + 61), { "state PREGAME" }, "Gameplay mode restarts the rounds")
+	Expect(round:RestartRound(now + 61, NOBODY_PLAYING), { "state PREGAME" }, "Gameplay mode restarts the rounds")
 end)
 
 T.test("a halt during the intermission unfreezes everyone", function()
@@ -1296,7 +1330,7 @@ end)
 T.test("a plain sudden death, or a restart, leaves the match to its limits", function()
 	local round = Running({ winlimit = 3 })
 	round:SuddenDeathForMatch(T0 + 20)
-	round:RestartRound(T0 + 21)
+	round:RestartRound(T0 + 21, NOBODY_PLAYING)
 	local plain = Running({ winlimit = 3 })
 	plain:SuddenDeath(T0 + 20, Rounds.STALEMATE.ADMIN)
 	T.eq(Intermission(plain:SetWinningTeam(T0 + 30, RED, W.OPPONENTS_DEAD, true, false, false, FakeObjective.Objective())), nil)

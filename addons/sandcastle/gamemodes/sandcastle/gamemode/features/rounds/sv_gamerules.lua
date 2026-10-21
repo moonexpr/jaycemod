@@ -11,7 +11,6 @@ local RED, BLUE = WS.TEAM_RED, WS.TEAM_BLUE
 
 local HALT_DOORS_INTERVAL = 2
 local ROLE_NONE = 0 -- TEAM_ROLE_NONE
-local ROUND_RESTART = "Game.Stalemate"
 
 -- The spawn doors of a stopped game ---------------------------------------------------
 
@@ -64,11 +63,13 @@ function Controller:OnPlayerDeath(ply)
 	WS.SetSpawnStatus(ply, self.round:RespawnStatus(t, now, #TeamPlayers(t), ply.wsSwitchedTeam))
 end
 
+-- mp_round_restart, the reset vote, the editors and a new game: a round
+-- with players on RED or BLU (not NPCs alone) ends as a stalemate, with the
+-- round end's own panel and song; with none it restarts silently
+-- (foundation.rounds' RestartRound).
 function Controller:RestartRound()
-	WS.BroadcastPA(UNASSIGNED, ROUND_RESTART)
-	timer.Simple(5, function()
-		self:Apply(self.round:RestartRound(CurTime()))
-	end)
+	local withPlayers = #TeamPlayers(RED) + #TeamPlayers(BLUE) > 0
+	self:Apply(self.round:RestartRound(CurTime(), withPlayers))
 end
 
 -- A passed scramble vote: the next round's teams are scrambled.

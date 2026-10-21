@@ -1274,18 +1274,28 @@ function Round:GameRoundWin(now, win, objective)
 	return self:SetStalemate(now, STALEMATE.TIMER, win.forceMapReset, win.switchTeams)
 end
 
--- Back to PREGAME with a full reset to come: the next pre-round cleans the
--- map up and respawns everyone. Out of the intermission, everyone is let go.
-function Round:RestartRound(now)
+-- A restart (mp_round_restart, the reset vote, the editors, a new game).
+-- A round in play with players on its teams (withPlayers) ends as a
+-- stalemate, an actual round end: its win panel and stalemate song, nobody
+-- scoring, then a fresh round on a reset map. Otherwise, with nobody
+-- playing (a new game, everyone unassigned; NPCs alone) or no round in
+-- play, back to PREGAME silently, with a full reset to come: the next
+-- pre-round cleans the map up and respawns everyone. Out of the
+-- intermission, everyone is let go.
+function Round:RestartRound(now, withPlayers)
 	local effects = {}
 	if self.halted then return effects end
+	self.switchTeams, self.scrambleTeams = false, false
+	self.decideMatch, self.deathmatch = false, false
+	local inPlay = self:State() == State.PREROUND or self:State() == State.RND_RUNNING or self:State() == State.STALEMATE
+	if withPlayers and inPlay then
+		return EndRound(self, now, UNASSIGNED, WINREASON.STALEMATE, true, false, {})
+	end
 	if self:State() == State.GAME_OVER then
 		self.intermissionEnd, self.intermissionFreeze = nil, nil
 		Add(effects, Kind("unfreeze"))
 	end
 	self.forceMapReset = true
-	self.switchTeams, self.scrambleTeams = false, false
-	self.decideMatch, self.deathmatch = false, false
 	return Transition(self, effects, State.PREGAME, now)
 end
 

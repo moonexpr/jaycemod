@@ -1,6 +1,6 @@
 -- The commands behind Utilities > Admin > Match Control (ws/cl_match_control.lua),
 -- each checked against its privilege (foundation.permissions):
--- - round: mp_round_suddendeath, mp_round_restart (back to Pregame), and
+-- - round: mp_round_suddendeath, mp_round_restart (a stalemate, or back to Pregame), and
 --   mp_round_reward_money, paid to every player of the round's winners.
 --   WSRoundRewards(winner) lets a server add its own rewards.
 -- - match: mp_match_forcewin red|blue|sudden (sudden: a sudden death whose
@@ -44,7 +44,7 @@ Command("mp_round_suddendeath", Permissions.ROUND, "Send the running round to su
 	return rounds:SuddenDeathNow(false)
 end)
 
-Command("mp_round_restart", Permissions.ROUND, "Restart the round from Pregame; money and weapons are kept", function()
+Command("mp_round_restart", Permissions.ROUND, "Restart the round: one with players ends as a stalemate first, else back to Pregame silently; money and weapons are kept", function()
 	local rounds = RoundsFeature()
 	if not rounds then return false, NO_ROUNDS end
 	rounds:RestartRound()
