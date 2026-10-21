@@ -18,8 +18,22 @@ function ENT:Initialize()
 	Rounds():BindProxy(self)
 end
 
+-- The gamerules outlive every round; only a map change ends them. A map
+-- cleanup that did not keep them (another addon's) is expected: the rounds
+-- controller makes them again after it (AfterCleanup). Removed any other
+-- way (a map's Kill), the rounds stop: that is our bug, raised with who
+-- removed it and the last input.
+local shuttingDown, cleaningUp = false, false
+hook.Add("ShutDown", "ws_tf_gamerules", function() shuttingDown = true end)
+hook.Add("PreCleanupMap", "ws_tf_gamerules", function() cleaningUp = true end)
+hook.Add("PostCleanupMap", "ws_tf_gamerules", function() cleaningUp = false end)
+
 function ENT:OnRemove()
 	Rounds():UnbindProxy(self)
+	if not (shuttingDown or cleaningUp) then
+		ErrorNoHaltWithStack(string.format("tf_gamerules %s removed outside a map change; last input: %s\n",
+			tostring(self), self.wsLastInput or "none"))
+	end
 end
 
 function ENT:UpdateTransmitState()
@@ -27,6 +41,7 @@ function ENT:UpdateTransmitState()
 end
 
 function ENT:AcceptInput(name, activator, caller, value)
+	self.wsLastInput = string.format("%s(%s) from %s at %.2f", name, tostring(value), tostring(caller), CurTime())
 	return Rounds():ProxyInput(string.lower(name), value)
 end
 

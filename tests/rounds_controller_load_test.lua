@@ -24,6 +24,7 @@ local WIRING = {
 	"hook AcceptInput ws_rounds_spawn_doors",
 	"hook EntityKeyValue ws_rounds_new_map",
 	"hook InitPostEntity ws_rounds",
+	"hook PostCleanupMap ws_rounds_proxy",
 	"hook Think ws_rounds",
 	"hook WSMoneyEarned ws_rounds_limits",
 	"hook WSTeamFrag ws_rounds_limits",
@@ -45,7 +46,9 @@ local function ConVar(default)
 	}
 end
 
-local function Load()
+-- overrides: engine globals the test gives the file in place of the stub.
+local function Load(overrides)
+	overrides = overrides or {}
 	local wiring = T.Wiring()
 	local deferred = {} -- timer.Simple's functions, kept and never run
 	local ws = setmetatable({
@@ -73,6 +76,7 @@ local function Load()
 		CurTime = function() return 0 end,
 	}, {
 		__index = function(_, name)
+			if overrides[name] ~= nil then return overrides[name] end
 			local value = _G[name]
 			if value == nil then return Inert end
 			return value
@@ -121,6 +125,33 @@ T.test("unbinding another timer keeps the gamerules' own", function()
 	controller.timeLimitTimer = own
 	controller:UnbindTimer(other)
 	T.eq(controller.timeLimitTimer, own, "kept")
+end)
+
+-- Another addon's cleanup (TF2 Multi-Fix's game.CleanUpMap 5 s into every
+-- TF2 map) keeps no tf_gamerules: the map's own comes back with the map's
+-- entities, but one the controller made (a map without one) would be gone,
+-- and the rounds with it. The controller makes it again.
+local function Cleaned(own, active)
+	local created = {}
+	local fakeEnts = {
+		Create = function(class)
+			created[#created + 1] = class
+			return Inert
+		end,
+	}
+	local loaded = Load({ ents = fakeEnts, IsValid = function() return active end })
+	loaded.ownProxy = own
+	loaded:AfterCleanup()
+	return table.concat(created, " ")
+end
+
+T.test("after a cleanup the gamerules the controller made are made again", function()
+	T.eq(Cleaned(true, false), "tf_gamerules", "made again")
+end)
+
+T.test("after a cleanup the map's own gamerules are the map's to bring back, and bound ones stay", function()
+	T.eq(Cleaned(false, false), "", "the map's own")
+	T.eq(Cleaned(true, true), "", "still bound")
 end)
 
 T.finish()

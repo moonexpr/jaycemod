@@ -105,6 +105,7 @@ local function NewRound()
 end
 
 local Controller = {
+	ownProxy = false, -- the tf_gamerules is one MakeProxy made (the map has none)
 	round = NewRound(),
 	proxy = NULL,
 	timers = {}, -- team_round_timer entity -> its Timer
@@ -417,10 +418,22 @@ end
 -- one, named as TF2 names it, and the gamemode then starts in its mode.
 -- Without a proxy nothing sends RoundSpawn, so the timers run from map spawn.
 local function MakeProxy()
+	Controller.ownProxy = true
 	local proxy = ents.Create(PROXY_CLASS)
 	proxy:SetName(PROXY_CLASS)
 	proxy:Spawn()
 end
+
+-- The gamerules outlive any cleanup, as TF2's do. Another addon's
+-- game.CleanUpMap (TF2 Multi-Fix's, 5 s into every TF2 map) keeps no
+-- tf_gamerules: the map's own comes back with its entities, but one made
+-- here would be gone, and the rounds with it; it is made again, and binds
+-- to the rounds as they stand.
+function Controller:AfterCleanup()
+	if self.ownProxy and not Active() then MakeProxy() end
+end
+
+hook.Add("PostCleanupMap", "ws_rounds_proxy", function() Controller:AfterCleanup() end)
 
 function Controller:SetUpMap()
 	if self.mapSetUp then return end
