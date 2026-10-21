@@ -14,7 +14,6 @@ local recede_time = CreateConVar("tf_escort_recede_time", "30", 0, "Seconds with
 local recede_time_overtime = CreateConVar("tf_escort_recede_time_overtime", "5", 0, "Seconds without pushers before the cart recedes in overtime.", 0)
 
 local SF_PATH_UPHILL, SF_PATH_DOWNHILL = 0x20, 0x40
-local MAX_LINKS = 8
 local P
 
 function ENT:KeyValue(key, value)
@@ -39,6 +38,11 @@ function ENT:Initialize()
 	self.capture = WS.Feature("capture")
 	self.payload = WS.Feature("payload")
 	self.payload:BindWatcher(self)
+	-- a payload game only when this watcher is part of the payload's logic,
+	-- judged once every entity of the map has spawned and its names resolve
+	timer.Simple(0, function()
+		if IsValid(self) and self:IsObjective() then self.payload:ChooseMode() end
+	end)
 	self.disabled = self:Key("startdisabled", "0") == "1"
 	self.team = tonumber(self:Key("teamnum", WS.TEAM_BLUE)) or WS.TEAM_BLUE
 	self.handleMovement = self:Key("handle_train_movement", "0") == "1"
@@ -107,12 +111,23 @@ function ENT:BuildPath()
 	self.total = total > 0 and total or 1
 end
 
+local function IsControlPoint(name)
+	local ent = WS.FindByName(name)
+	return IsValid(ent) and ent:GetClass() == "team_control_point"
+end
+
+-- Whether this watcher is the payload's (foundation.payload's IsObjective):
+-- it links a path_track to a team_control_point.
+function ENT:IsObjective()
+	return P.IsObjective(P.Checkpoints(function(name) return self:Key(name) end), IsControlPoint)
+end
+
 -- Checkpoints: linked_pathtrack_N with linked_cp_N; a track off the path counts as the start.
 function ENT:BuildLinks()
 	self.links = {}
-	for n = 1, MAX_LINKS do
-		local track = WS.FindByName(self:Key("linked_pathtrack_" .. n))
-		local cp = WS.FindByName(self:Key("linked_cp_" .. n))
+	for _, link in ipairs(P.Checkpoints(function(name) return self:Key(name) end)) do
+		local track = WS.FindByName(link.track)
+		local cp = WS.FindByName(link.cp)
 		if IsValid(track) and IsValid(cp) then
 			local i = self.nodeIndex[track]
 			self.links[#self.links + 1] = { cp = cp, distance = i and self.distanceAt[i] or 0, index = i, alerted = false }

@@ -324,3 +324,30 @@ end
 function MaxSpeed(base, scale)
 	return base * SpeedScale(scale)
 end
+
+-- Whose watcher (VDC, Creating a Payload Map: Train Watcher): a watcher is
+-- part of the payload's logic when it links its path_tracks to control
+-- points, Linked PathTrack N with Linked CP N (team_train_watcher.cpp's
+-- MAX_CONTROL_POINTS pairs); one linking none watches a train that is
+-- scenery (ctf_turbine_winter's minecart) and makes no payload game.
+MAX_LINKS = 8
+
+-- key(name) -> the watcher's keyvalue, nil or "" for none. The whole pairs,
+-- in order: { track, cp }, names.
+function Checkpoints(key)
+	local links = {}
+	for n = 1, MAX_LINKS do
+		local track, cp = key("linked_pathtrack_" .. n), key("linked_cp_" .. n)
+		if track and track ~= "" and cp and cp ~= "" then links[#links + 1] = { track = track, cp = cp } end
+	end
+	return links
+end
+
+-- Whether checkpoints make the watcher the payload's: one links a name
+-- that isPoint(name) finds a team_control_point by.
+function IsObjective(checkpoints, isPoint)
+	for _, link in ipairs(checkpoints) do
+		if isPoint(link.cp) then return true end
+	end
+	return false
+end

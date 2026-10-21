@@ -495,4 +495,34 @@ T.test("a cart going from forward straight to backward is a stop, not a start ba
 	T.eq((Concepts(P.SPEED_LEVEL_BACKWARDS, 0, 0, 10)), P.CONCEPT_CART_STOP .. "/" .. P.AUDIENCE_ALL, "a dead end")
 end)
 
+-- Whose watcher: a team_train_watcher is the payload's only as part of its
+-- logic, linking a path_track to a team_control_point (the VDC's Linked
+-- PathTrack N / Linked CP N); one linking none watches scenery
+-- (ctf_turbine_winter's minecart) and makes no payload game.
+
+-- A watcher's keyvalues, read as the entity's Key does.
+local function Keys(kv) return function(name) return kv[name] end end
+local function IsPoint(name) return name == "CP_A_1" or name == "CP_A_2" end
+
+T.test("a watcher's checkpoints are its linked path_track and control point pairs, in order, each half needed", function()
+	local links = P.Checkpoints(Keys({
+		linked_pathtrack_1 = "Track_A_24", linked_cp_1 = "CP_A_1",
+		linked_pathtrack_2 = "Track_A_42", linked_cp_2 = "CP_A_2",
+		linked_pathtrack_3 = "Track_A_50",
+	}))
+	T.eq(#links, 2, "two whole pairs")
+	T.eq(links[1].track .. " " .. links[1].cp, "Track_A_24 CP_A_1", "first")
+	T.eq(links[2].track .. " " .. links[2].cp, "Track_A_42 CP_A_2", "second")
+	T.eq(#P.Checkpoints(Keys({ linked_pathtrack_1 = "", linked_cp_1 = "CP_A_1" })), 0, "an empty name is none")
+end)
+
+T.test("a watcher linking a control point is the payload's; one linking none, or only names that are no point, is scenery", function()
+	local payload = P.Checkpoints(Keys({ linked_pathtrack_1 = "Track_A_24", linked_cp_1 = "CP_A_1" }))
+	T.eq(P.IsObjective(payload, IsPoint), true, "linked to CP_A_1")
+	local minecart = P.Checkpoints(Keys({ train = "minecart_tracktrain", start_node = "tree_track19", goal_node = "tree_track48" }))
+	T.eq(P.IsObjective(minecart, IsPoint), false, "ctf_turbine_winter's minecart")
+	local dangling = P.Checkpoints(Keys({ linked_pathtrack_1 = "Track_A_24", linked_cp_1 = "no_such_point" }))
+	T.eq(P.IsObjective(dangling, IsPoint), false, "a name that is no control point")
+end)
+
 T.finish()

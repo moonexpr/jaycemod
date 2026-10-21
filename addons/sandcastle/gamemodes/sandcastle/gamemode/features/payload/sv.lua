@@ -1,6 +1,8 @@
 -- The payload feature's controller. It owns the map's train watchers and
--- the admin's cart speed scale. When a watcher binds it chooses the payload
--- mode (CTFGameRules::Activate); it holds the round clock while any cart
+-- the admin's cart speed scale. A watcher that is part of the payload's
+-- logic (linking a path_track to a control point: team_train_watcher's
+-- IsObjective) chooses the payload mode; one watching a train that is
+-- scenery (ctf_turbine_winter's minecart) does not. It holds the round clock while any cart
 -- does (CTeamplayRoundBasedRules::TimerMayExpire asks every watcher); it
 -- marks a payload race for the rounds controller (tf_logic_multiple_escort,
 -- CTFGameRules::SetMultipleTrains); and it publishes every cart for the
@@ -31,6 +33,10 @@ local Controller = {
 
 function Controller:BindWatcher(ent)
 	self.watchers[#self.watchers + 1] = ent
+end
+
+-- A watcher of the payload's logic makes the game payload (CTFGameRules::Activate's escort).
+function Controller:ChooseMode()
 	self.rounds:SetMode(PayloadMode.Mode)
 end
 
