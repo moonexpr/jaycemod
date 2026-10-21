@@ -16,6 +16,13 @@
 -- Each answer says what the controller does, which notice the requester
 -- gets, and, when nothing changes, why.
 --
+-- A game begins only once the round mode's player requirement is met
+-- (mp_waitingforplayers): each request says whether it is (ready). Until
+-- then the map waits (WAITING), played as Sandbox mode, and the countdown
+-- starts by itself once the controller reports the players there
+-- (Players); a map loading in Gameplay mode without them waits too (Wait).
+-- Once Gameplay mode has begun, players leaving change nothing.
+--
 -- The transition's timing lives here; the controller feeds it the time
 -- (Advance) and plays the cues it returns.
 local floor, ipairs, min, setmetatable = math.floor, ipairs, math.min, setmetatable
@@ -23,9 +30,10 @@ local Cfsm = require("foundation.core.cfsm")
 module(...)
 
 -- Modes.
-SANDBOX, TRANSITION, GAMEPLAY = 0, 1, 2
+SANDBOX, TRANSITION, GAMEPLAY, WAITING = 0, 1, 2, 3
 
--- sv_gameplay_enabled for each settled mode; the transition leaves it as it was.
+-- sv_gameplay_enabled for each settled mode; the transition and the wait
+-- leave it as it was.
 SETTING = {
 	[SANDBOX] = false,
 	[GAMEPLAY] = true,
@@ -39,6 +47,8 @@ STAY = "stay" -- nothing changes
 START_TRANSITION = "start_transition" -- the transition's opening cues, then its countdown
 CANCEL_TRANSITION = "cancel_transition" -- silence the countdown; the rounds stayed halted
 ENTER_SANDBOX = "enter_sandbox" -- halt the rounds
+WAIT = "wait" -- wait for players, the rounds halted
+STOP_WAITING = "stop_waiting" -- the wait called off; the rounds stayed halted
 
 -- Which notice the requester gets.
 NOTICE_NONE = "none"
@@ -48,6 +58,7 @@ NOTICE_CALLED_OFF = "called_off" -- the countdown was called off
 NOTICE_SANDBOX = "sandbox" -- Gameplay mode ended
 NOTICE_REFUSED = "refused" -- the requester is told why not
 NOTICE_DENIED = "denied" -- told why not, with DENY_SOUND
+NOTICE_WAITING = "waiting" -- everyone is told the game waits for players
 
 -- HL2's locked-button deny.
 DENY_SOUND = "buttons/button10.wav"
@@ -55,6 +66,7 @@ DENY_SOUND = "buttons/button10.wav"
 -- Why an answer changes nothing.
 NO_ROUNDS = "this map has no rounds (no tf_gamerules)"
 ALREADY_COUNTING = "Gameplay mode is already counting down"
+ALREADY_WAITING = "Gameplay mode is already waiting for players"
 ALREADY_GAMEPLAY = "already in Gameplay mode"
 ALREADY_SANDBOX = "already in Sandbox mode"
 SANDBOX_DISABLED = "Sandbox mode is disabled (sv_gameplay_disable_sandbox 1)"
@@ -100,11 +112,13 @@ local RULES = {
 		[SANDBOX] = BySource(Answer(START_TRANSITION, NOTICE_NONE), Answer(START_TRANSITION, NOTICE_REQUEST_CHAT)),
 		[TRANSITION] = BySource(Answer(STAY, NOTICE_REFUSED, ALREADY_COUNTING), Answer(STAY, NOTICE_REQUEST_CHAT)),
 		[GAMEPLAY] = BySource(Answer(STAY, NOTICE_REFUSED, ALREADY_GAMEPLAY), Answer(STAY, NOTICE_REQUEST_ANNOUNCEMENT)),
+		[WAITING] = BySource(Answer(STAY, NOTICE_REFUSED, ALREADY_WAITING), Answer(STAY, NOTICE_REQUEST_CHAT)),
 	},
 	[SANDBOX] = {
 		[SANDBOX] = BySource(Answer(STAY, NOTICE_REFUSED, ALREADY_SANDBOX), QUIET),
 		[TRANSITION] = BySource(Answer(CANCEL_TRANSITION, NOTICE_CALLED_OFF)),
 		[GAMEPLAY] = BySource(Answer(ENTER_SANDBOX, NOTICE_SANDBOX)),
+		[WAITING] = BySource(Answer(STOP_WAITING, NOTICE_CALLED_OFF)),
 	},
 }
 
@@ -119,17 +133,21 @@ local NEXT_MODE = {
 	[START_TRANSITION] = TRANSITION,
 	[CANCEL_TRANSITION] = SANDBOX,
 	[ENTER_SANDBOX] = SANDBOX,
+	[WAIT] = WAITING,
+	[STOP_WAITING] = SANDBOX,
 }
 
 -- The modes and the only moves between them: the transition starts from
--- Sandbox mode, and ends in Gameplay mode or, called off, back in Sandbox.
+-- Sandbox mode or the wait, and ends in Gameplay mode or, called off, back
+-- in Sandbox; the wait starts from Sandbox mode, or Gameplay mode at load.
 local MODES = Cfsm.Define({
 	name = "gamemode",
-	states = { SANDBOX, TRANSITION, GAMEPLAY },
+	states = { SANDBOX, TRANSITION, GAMEPLAY, WAITING },
 	transitions = {
-		[SANDBOX] = { TRANSITION },
+		[SANDBOX] = { TRANSITION, WAITING },
 		[TRANSITION] = { SANDBOX, GAMEPLAY },
-		[GAMEPLAY] = { SANDBOX },
+		[GAMEPLAY] = { SANDBOX, WAITING },
+		[WAITING] = { TRANSITION, SANDBOX },
 	},
 })
 
@@ -169,11 +187,7 @@ local function Decide(self, want, source, sandboxDisabled)
 	return RULES[want][mode][source]
 end
 
--- A request for mode want (SANDBOX or GAMEPLAY) from source at time now;
--- sandboxDisabled is sv_gameplay_disable_sandbox. Returns the answer:
--- { action, notice, refusal }, refusal nil when granted.
-function Mode:Request(want, source, now, sandboxDisabled)
-	local answer = Decide(self, want, source, sandboxDisabled)
+local function Apply(self, answer, now)
 	if answer.action == START_TRANSITION then
 		self.startedAt = now
 		self.counted = 0
@@ -181,6 +195,31 @@ function Mode:Request(want, source, now, sandboxDisabled)
 	local nextMode = NEXT_MODE[answer.action]
 	if nextMode then self.modes:Enter(nextMode) end
 	return answer
+end
+
+-- A request for mode want (SANDBOX or GAMEPLAY) from source at time now;
+-- sandboxDisabled is sv_gameplay_disable_sandbox, ready whether the round
+-- mode's player requirement is met. Returns the answer:
+-- { action, notice, refusal }, refusal nil when granted.
+function Mode:Request(want, source, now, sandboxDisabled, ready)
+	local answer = Decide(self, want, source, sandboxDisabled)
+	-- the rounds still load for a game that waits
+	if answer.action == START_TRANSITION and not ready then answer = Answer(WAIT, NOTICE_WAITING, nil, answer.loadRounds) end
+	return Apply(self, answer, now)
+end
+
+local START_ANSWER = Answer(START_TRANSITION, NOTICE_NONE)
+
+-- Whether the player requirement is met at time now: met while waiting,
+-- the countdown starts (START_TRANSITION); else nothing changes (STAY).
+function Mode:Players(ready, now)
+	if not (ready and self.modes:Is(WAITING)) then return QUIET end
+	return Apply(self, START_ANSWER, now)
+end
+
+-- A map that loaded in Gameplay mode without its players waits for them.
+function Mode:Wait()
+	self.modes:Enter(WAITING)
 end
 
 -- When the transition ends and Gameplay mode begins (the time Advance

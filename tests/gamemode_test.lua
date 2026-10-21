@@ -6,9 +6,10 @@ local Gamemode = T.require("foundation.gamemode")
 local ROUNDS, NO_ROUNDS = true, false
 local ENABLED, DISABLED = true, false -- sv_gameplay_enabled at map load
 local SANDBOX_ALLOWED, SANDBOX_OFF = false, true -- sv_gameplay_disable_sandbox
+local READY, MISSING = true, false -- the mode's player requirement met, or not
 local START = 100
 
-local SANDBOX, GAMEPLAY = Gamemode.SANDBOX, Gamemode.GAMEPLAY
+local SANDBOX, GAMEPLAY, WAITING = Gamemode.SANDBOX, Gamemode.GAMEPLAY, Gamemode.WAITING
 local BUTTON, CONSOLE, AI_WAR = Gamemode.SOURCE_BUTTON, Gamemode.SOURCE_CONSOLE, Gamemode.SOURCE_AI_WAR
 
 -- The cues from START until the transition ends, each with the second it falls on.
@@ -33,7 +34,7 @@ end
 
 local function InGameplay()
 	local mode = Gamemode.New(ROUNDS, DISABLED)
-	mode:Request(GAMEPLAY, BUTTON, START, SANDBOX_ALLOWED)
+	mode:Request(GAMEPLAY, BUTTON, START, SANDBOX_ALLOWED, READY)
 	RunCountdown(mode)
 	return mode
 end
@@ -61,7 +62,7 @@ T.test("a change to sv_gameplay_enabled the settled mode already holds asks noth
 	local mode = Gamemode.New(ROUNDS, DISABLED)
 	T.eq(mode:SettingWants(false), nil, "Sandbox mode, set to 0: our own write")
 	T.eq(mode:SettingWants(true), GAMEPLAY, "Sandbox mode, set to 1")
-	mode:Request(GAMEPLAY, BUTTON, START, SANDBOX_ALLOWED)
+	mode:Request(GAMEPLAY, BUTTON, START, SANDBOX_ALLOWED, READY)
 	T.eq(mode:SettingWants(true), GAMEPLAY, "during the transition, set to 1")
 	T.eq(mode:SettingWants(false), SANDBOX, "during the transition, set to 0")
 	RunCountdown(mode)
@@ -71,7 +72,7 @@ end)
 
 T.test("the button in Sandbox mode starts the transition, which counts down and begins Gameplay mode", function()
 	local mode = Gamemode.New(ROUNDS, DISABLED)
-	Expect(mode:Request(GAMEPLAY, BUTTON, START, SANDBOX_ALLOWED), Gamemode.START_TRANSITION, Gamemode.NOTICE_NONE, nil,
+	Expect(mode:Request(GAMEPLAY, BUTTON, START, SANDBOX_ALLOWED, READY), Gamemode.START_TRANSITION, Gamemode.NOTICE_NONE, nil,
 		"the transition's own cues tell it")
 	T.eq(mode:Mode(), Gamemode.TRANSITION, "counting down")
 	local cues = RunCountdown(mode)
@@ -95,7 +96,7 @@ end)
 
 T.test("the console's sv_gameplay_enabled 1 is a request like the button", function()
 	local mode = Gamemode.New(ROUNDS, DISABLED)
-	Expect(mode:Request(GAMEPLAY, CONSOLE, START, SANDBOX_ALLOWED), Gamemode.START_TRANSITION, Gamemode.NOTICE_NONE, nil,
+	Expect(mode:Request(GAMEPLAY, CONSOLE, START, SANDBOX_ALLOWED, READY), Gamemode.START_TRANSITION, Gamemode.NOTICE_NONE, nil,
 		"from Sandbox mode")
 	RunCountdown(mode)
 	T.eq(mode:Mode(), GAMEPLAY, "in Gameplay mode")
@@ -103,7 +104,7 @@ end)
 
 T.test("a late tick catches up on every cue it missed, in order", function()
 	local mode = Gamemode.New(ROUNDS, DISABLED)
-	mode:Request(GAMEPLAY, BUTTON, START, SANDBOX_ALLOWED)
+	mode:Request(GAMEPLAY, BUTTON, START, SANDBOX_ALLOWED, READY)
 	T.eq(#mode:Advance(START + 0.5), 0, "nothing before the first second")
 	local cues = mode:Advance(START + Gamemode.ADMIN_LINE_AT + 3)
 	T.eq(#Kinds(cues, Gamemode.CUE_COUNT), Gamemode.COUNTDOWN, "every count")
@@ -114,16 +115,16 @@ end)
 
 T.test("AI war in Sandbox mode starts the transition and leaves its details in the chat", function()
 	local mode = Gamemode.New(ROUNDS, DISABLED)
-	Expect(mode:Request(GAMEPLAY, AI_WAR, START, SANDBOX_ALLOWED), Gamemode.START_TRANSITION,
+	Expect(mode:Request(GAMEPLAY, AI_WAR, START, SANDBOX_ALLOWED, READY), Gamemode.START_TRANSITION,
 		Gamemode.NOTICE_REQUEST_CHAT, nil, "chat, no announcement")
 	T.eq(mode:Mode(), Gamemode.TRANSITION, "counting down")
 end)
 
 T.test("AI war during the transition joins it without restarting the countdown", function()
 	local mode = Gamemode.New(ROUNDS, DISABLED)
-	mode:Request(GAMEPLAY, BUTTON, START, SANDBOX_ALLOWED)
+	mode:Request(GAMEPLAY, BUTTON, START, SANDBOX_ALLOWED, READY)
 	mode:Advance(START + 4)
-	Expect(mode:Request(GAMEPLAY, AI_WAR, START + 4, SANDBOX_ALLOWED), Gamemode.STAY, Gamemode.NOTICE_REQUEST_CHAT, nil,
+	Expect(mode:Request(GAMEPLAY, AI_WAR, START + 4, SANDBOX_ALLOWED, READY), Gamemode.STAY, Gamemode.NOTICE_REQUEST_CHAT, nil,
 		"already under way")
 	local cues = mode:Advance(START + 5)
 	T.eq(cues[1].left, Gamemode.COUNTDOWN - 4, "the countdown goes on")
@@ -131,16 +132,16 @@ end)
 
 T.test("AI war in Gameplay mode is announced", function()
 	local mode = InGameplay()
-	Expect(mode:Request(GAMEPLAY, AI_WAR, START + 60, SANDBOX_ALLOWED), Gamemode.STAY,
+	Expect(mode:Request(GAMEPLAY, AI_WAR, START + 60, SANDBOX_ALLOWED, READY), Gamemode.STAY,
 		Gamemode.NOTICE_REQUEST_ANNOUNCEMENT, nil, "announcement")
 	T.eq(mode:Mode(), GAMEPLAY, "still in Gameplay mode")
 end)
 
 T.test("Stop during the transition calls it off and stays in Sandbox mode", function()
 	local mode = Gamemode.New(ROUNDS, DISABLED)
-	mode:Request(GAMEPLAY, BUTTON, START, SANDBOX_ALLOWED)
+	mode:Request(GAMEPLAY, BUTTON, START, SANDBOX_ALLOWED, READY)
 	mode:Advance(START + 3)
-	Expect(mode:Request(SANDBOX, BUTTON, START + 3, SANDBOX_ALLOWED), Gamemode.CANCEL_TRANSITION,
+	Expect(mode:Request(SANDBOX, BUTTON, START + 3, SANDBOX_ALLOWED, READY), Gamemode.CANCEL_TRANSITION,
 		Gamemode.NOTICE_CALLED_OFF, nil, "called off")
 	T.eq(mode:Mode(), SANDBOX, "Sandbox mode")
 	T.eq(#mode:Advance(START + Gamemode.ADMIN_LINE_AT + 1), 0, "no cues after it was called off")
@@ -150,7 +151,7 @@ end)
 T.test("the transition ends when Gameplay mode begins; outside it there is no end to show", function()
 	local mode = Gamemode.New(ROUNDS, DISABLED)
 	T.eq(mode:TransitionEnd(), nil, "Sandbox mode")
-	mode:Request(GAMEPLAY, BUTTON, START, SANDBOX_ALLOWED)
+	mode:Request(GAMEPLAY, BUTTON, START, SANDBOX_ALLOWED, READY)
 	T.eq(mode:TransitionEnd(), START + Gamemode.ADMIN_LINE_AT, "counting down")
 	mode:Advance(START + 4)
 	T.eq(mode:TransitionEnd(), START + Gamemode.ADMIN_LINE_AT, "unmoved by the ticks")
@@ -161,17 +162,17 @@ end)
 
 T.test("a called-off transition has no end to show", function()
 	local mode = Gamemode.New(ROUNDS, DISABLED)
-	mode:Request(GAMEPLAY, BUTTON, START, SANDBOX_ALLOWED)
-	mode:Request(SANDBOX, BUTTON, START + 3, SANDBOX_ALLOWED)
+	mode:Request(GAMEPLAY, BUTTON, START, SANDBOX_ALLOWED, READY)
+	mode:Request(SANDBOX, BUTTON, START + 3, SANDBOX_ALLOWED, READY)
 	T.eq(mode:TransitionEnd(), nil, "called off")
 	T.eq(Gamemode.New(ROUNDS, ENABLED):TransitionEnd(), nil, "Gameplay mode at load")
 end)
 
 T.test("a new transition after one was called off counts from its own start", function()
 	local mode = Gamemode.New(ROUNDS, DISABLED)
-	mode:Request(GAMEPLAY, BUTTON, START, SANDBOX_ALLOWED)
-	mode:Request(SANDBOX, BUTTON, START + 6, SANDBOX_ALLOWED)
-	mode:Request(GAMEPLAY, BUTTON, START + 20, SANDBOX_ALLOWED)
+	mode:Request(GAMEPLAY, BUTTON, START, SANDBOX_ALLOWED, READY)
+	mode:Request(SANDBOX, BUTTON, START + 6, SANDBOX_ALLOWED, READY)
+	mode:Request(GAMEPLAY, BUTTON, START + 20, SANDBOX_ALLOWED, READY)
 	local cues = mode:Advance(START + 21)
 	T.eq(#cues, 1, "one cue")
 	T.eq(cues[1].left, Gamemode.COUNTDOWN, "from the top")
@@ -180,7 +181,7 @@ end)
 T.test("Stop in Gameplay mode, or the console's sv_gameplay_enabled 0, enters Sandbox mode with its notice", function()
 	for _, source in ipairs({ BUTTON, CONSOLE }) do
 		local mode = InGameplay()
-		Expect(mode:Request(SANDBOX, source, START + 60, SANDBOX_ALLOWED), Gamemode.ENTER_SANDBOX, Gamemode.NOTICE_SANDBOX,
+		Expect(mode:Request(SANDBOX, source, START + 60, SANDBOX_ALLOWED, READY), Gamemode.ENTER_SANDBOX, Gamemode.NOTICE_SANDBOX,
 			nil, source)
 		T.eq(mode:Mode(), SANDBOX, "Sandbox mode, from " .. source)
 	end
@@ -188,31 +189,31 @@ end)
 
 T.test("the button in Gameplay mode or during the transition changes nothing and says why", function()
 	local mode = Gamemode.New(ROUNDS, DISABLED)
-	mode:Request(GAMEPLAY, BUTTON, START, SANDBOX_ALLOWED)
-	Expect(mode:Request(GAMEPLAY, BUTTON, START + 2, SANDBOX_ALLOWED), Gamemode.STAY, Gamemode.NOTICE_REFUSED,
+	mode:Request(GAMEPLAY, BUTTON, START, SANDBOX_ALLOWED, READY)
+	Expect(mode:Request(GAMEPLAY, BUTTON, START + 2, SANDBOX_ALLOWED, READY), Gamemode.STAY, Gamemode.NOTICE_REFUSED,
 		Gamemode.ALREADY_COUNTING, "during the transition")
 	RunCountdown(mode)
-	Expect(mode:Request(GAMEPLAY, BUTTON, START + 60, SANDBOX_ALLOWED), Gamemode.STAY, Gamemode.NOTICE_REFUSED,
+	Expect(mode:Request(GAMEPLAY, BUTTON, START + 60, SANDBOX_ALLOWED, READY), Gamemode.STAY, Gamemode.NOTICE_REFUSED,
 		Gamemode.ALREADY_GAMEPLAY, "in Gameplay mode")
 	T.eq(mode:Mode(), GAMEPLAY, "still in Gameplay mode")
 end)
 
 T.test("Stop in Sandbox mode changes nothing and says why", function()
 	local mode = Gamemode.New(ROUNDS, DISABLED)
-	Expect(mode:Request(SANDBOX, BUTTON, START, SANDBOX_ALLOWED), Gamemode.STAY, Gamemode.NOTICE_REFUSED,
+	Expect(mode:Request(SANDBOX, BUTTON, START, SANDBOX_ALLOWED, READY), Gamemode.STAY, Gamemode.NOTICE_REFUSED,
 		Gamemode.ALREADY_SANDBOX, "already")
 end)
 
 T.test("with sandbox disabled, no request enters Sandbox mode, and the requester is denied", function()
 	for _, source in ipairs({ BUTTON, CONSOLE }) do
 		local mode = InGameplay()
-		Expect(mode:Request(SANDBOX, source, START + 60, SANDBOX_OFF), Gamemode.STAY, Gamemode.NOTICE_DENIED,
+		Expect(mode:Request(SANDBOX, source, START + 60, SANDBOX_OFF, READY), Gamemode.STAY, Gamemode.NOTICE_DENIED,
 			Gamemode.SANDBOX_DISABLED, "from Gameplay mode, " .. source)
 		T.eq(mode:Mode(), GAMEPLAY, "still in Gameplay mode, " .. source)
 	end
 	local counting = Gamemode.New(ROUNDS, DISABLED)
-	counting:Request(GAMEPLAY, BUTTON, START, SANDBOX_OFF)
-	Expect(counting:Request(SANDBOX, BUTTON, START + 3, SANDBOX_OFF), Gamemode.STAY, Gamemode.NOTICE_DENIED,
+	counting:Request(GAMEPLAY, BUTTON, START, SANDBOX_OFF, READY)
+	Expect(counting:Request(SANDBOX, BUTTON, START + 3, SANDBOX_OFF, READY), Gamemode.STAY, Gamemode.NOTICE_DENIED,
 		Gamemode.SANDBOX_DISABLED, "during the transition")
 	T.eq(#Kinds(counting:Advance(START + Gamemode.ADMIN_LINE_AT), Gamemode.CUE_BEGIN), 1, "the countdown goes on")
 	T.eq(counting:Mode(), GAMEPLAY, "and begins")
@@ -221,9 +222,9 @@ end)
 T.test("with sandbox disabled, a map still starts as sv_gameplay_enabled says, and can leave Sandbox mode", function()
 	local mode = Gamemode.New(ROUNDS, DISABLED)
 	T.eq(mode:Mode(), SANDBOX, "Sandbox mode")
-	Expect(mode:Request(SANDBOX, BUTTON, START, SANDBOX_OFF), Gamemode.STAY, Gamemode.NOTICE_REFUSED,
+	Expect(mode:Request(SANDBOX, BUTTON, START, SANDBOX_OFF, READY), Gamemode.STAY, Gamemode.NOTICE_REFUSED,
 		Gamemode.ALREADY_SANDBOX, "already there, not denied")
-	Expect(mode:Request(GAMEPLAY, BUTTON, START, SANDBOX_OFF), Gamemode.START_TRANSITION, Gamemode.NOTICE_NONE, nil,
+	Expect(mode:Request(GAMEPLAY, BUTTON, START, SANDBOX_OFF, READY), Gamemode.START_TRANSITION, Gamemode.NOTICE_NONE, nil,
 		"out of Sandbox mode")
 end)
 
@@ -236,29 +237,98 @@ end)
 T.test("a game begun on a map without rounds loads them and counts down, from any source", function()
 	for _, source in ipairs({ BUTTON, CONSOLE, AI_WAR }) do
 		local mode = Gamemode.New(NO_ROUNDS, DISABLED)
-		local answer = mode:Request(GAMEPLAY, source, START, SANDBOX_ALLOWED)
+		local answer = mode:Request(GAMEPLAY, source, START, SANDBOX_ALLOWED, READY)
 		T.eq(answer.action, Gamemode.START_TRANSITION, "the countdown")
 		T.eq(answer.loadRounds, true, "the rounds load")
 		T.eq(answer.refusal, nil, "granted")
 		T.eq(mode:Mode(), Gamemode.TRANSITION, "counting down")
 		local cues = mode:Advance(START + Gamemode.ADMIN_LINE_AT)
 		T.eq(cues[#cues].kind, Gamemode.CUE_BEGIN, "then Gameplay mode")
-		local again = mode:Request(GAMEPLAY, BUTTON, START, SANDBOX_ALLOWED)
+		local again = mode:Request(GAMEPLAY, BUTTON, START, SANDBOX_ALLOWED, READY)
 		T.eq(again.loadRounds, nil, "loaded once")
 	end
 end)
 
 T.test("Stop Game on a map whose rounds never loaded says why", function()
 	local mode = Gamemode.New(NO_ROUNDS, DISABLED)
-	Expect(mode:Request(SANDBOX, BUTTON, START, SANDBOX_ALLOWED), Gamemode.STAY, Gamemode.NOTICE_REFUSED, Gamemode.NO_ROUNDS, "refused")
+	Expect(mode:Request(SANDBOX, BUTTON, START, SANDBOX_ALLOWED, READY), Gamemode.STAY, Gamemode.NOTICE_REFUSED, Gamemode.NO_ROUNDS, "refused")
 	T.eq(mode:Mode(), SANDBOX, "Sandbox mode")
 end)
 
 T.test("once loaded, the rounds stay: Stop Game returns to Sandbox mode as on a map with rounds", function()
 	local mode = Gamemode.New(NO_ROUNDS, DISABLED)
-	mode:Request(GAMEPLAY, BUTTON, START, SANDBOX_ALLOWED)
+	mode:Request(GAMEPLAY, BUTTON, START, SANDBOX_ALLOWED, READY)
 	mode:Advance(START + Gamemode.ADMIN_LINE_AT)
-	T.eq(mode:Request(SANDBOX, BUTTON, START + 30, SANDBOX_ALLOWED).action, Gamemode.ENTER_SANDBOX, "Sandbox mode")
+	T.eq(mode:Request(SANDBOX, BUTTON, START + 30, SANDBOX_ALLOWED, READY).action, Gamemode.ENTER_SANDBOX, "Sandbox mode")
+end)
+
+-- Waiting for players: a game begins only once the mode's player
+-- requirement is met (mp_waitingforplayers); until then the map waits in
+-- Sandbox mode, and the countdown starts by itself when the players come.
+
+T.test("asked for Gameplay mode without the players it needs, the map waits, then counts down once they come", function()
+	for _, source in ipairs({ BUTTON, CONSOLE, AI_WAR }) do
+		local mode = Gamemode.New(ROUNDS, DISABLED)
+		Expect(mode:Request(GAMEPLAY, source, START, SANDBOX_ALLOWED, MISSING), Gamemode.WAIT, Gamemode.NOTICE_WAITING, nil,
+			"waits, " .. source)
+		T.eq(mode:Mode(), WAITING, "waiting, " .. source)
+		T.eq(#mode:Advance(START + Gamemode.ADMIN_LINE_AT), 0, "no countdown while waiting, " .. source)
+		T.eq(mode:TransitionEnd(), nil, "no end to show, " .. source)
+		T.eq(mode:Players(MISSING, START + 20).action, Gamemode.STAY, "still missing, " .. source)
+		local came = START + 30
+		Expect(mode:Players(READY, came), Gamemode.START_TRANSITION, Gamemode.NOTICE_NONE, nil, "they came, " .. source)
+		T.eq(mode:TransitionEnd(), came + Gamemode.ADMIN_LINE_AT, "counting from their coming, " .. source)
+		local cues = mode:Advance(came + Gamemode.ADMIN_LINE_AT)
+		T.eq(cues[#cues].kind, Gamemode.CUE_BEGIN, "then Gameplay mode, " .. source)
+		T.eq(mode:Players(MISSING, came + 60).action, Gamemode.STAY, "once begun, players leaving change nothing, " .. source)
+		T.eq(mode:Mode(), GAMEPLAY, "still Gameplay mode, " .. source)
+	end
+end)
+
+T.test("players coming outside a wait change nothing", function()
+	local mode = Gamemode.New(ROUNDS, DISABLED)
+	T.eq(mode:Players(READY, START).action, Gamemode.STAY, "Sandbox mode")
+	T.eq(mode:Mode(), SANDBOX, "still Sandbox mode")
+end)
+
+T.test("waiting, asking again says so, the AI war joins the wait, and Stop calls it off", function()
+	local mode = Gamemode.New(ROUNDS, DISABLED)
+	mode:Request(GAMEPLAY, BUTTON, START, SANDBOX_ALLOWED, MISSING)
+	Expect(mode:Request(GAMEPLAY, BUTTON, START + 1, SANDBOX_ALLOWED, MISSING), Gamemode.STAY, Gamemode.NOTICE_REFUSED,
+		Gamemode.ALREADY_WAITING, "the button again")
+	Expect(mode:Request(GAMEPLAY, AI_WAR, START + 2, SANDBOX_ALLOWED, MISSING), Gamemode.STAY, Gamemode.NOTICE_REQUEST_CHAT, nil,
+		"the AI war")
+	Expect(mode:Request(SANDBOX, BUTTON, START + 3, SANDBOX_ALLOWED, MISSING), Gamemode.STOP_WAITING, Gamemode.NOTICE_CALLED_OFF,
+		nil, "Stop")
+	T.eq(mode:Mode(), SANDBOX, "back in Sandbox mode")
+	T.eq(mode:Players(READY, START + 4).action, Gamemode.STAY, "the wait is over")
+end)
+
+T.test("with sandbox disabled, a wait is not called off", function()
+	local mode = Gamemode.New(ROUNDS, DISABLED)
+	mode:Request(GAMEPLAY, BUTTON, START, SANDBOX_OFF, MISSING)
+	Expect(mode:Request(SANDBOX, BUTTON, START + 1, SANDBOX_OFF, MISSING), Gamemode.STAY, Gamemode.NOTICE_DENIED,
+		Gamemode.SANDBOX_DISABLED, "denied")
+	T.eq(mode:Mode(), WAITING, "still waiting")
+end)
+
+T.test("a game begun on a map without rounds loads them even while it waits", function()
+	local mode = Gamemode.New(NO_ROUNDS, DISABLED)
+	local answer = mode:Request(GAMEPLAY, BUTTON, START, SANDBOX_ALLOWED, MISSING)
+	T.eq(answer.action, Gamemode.WAIT, "waits")
+	T.eq(answer.loadRounds, true, "the rounds load")
+end)
+
+T.test("the wait leaves the setting as it was", function()
+	T.eq(Gamemode.SETTING[WAITING], nil)
+end)
+
+T.test("a map loading in Gameplay mode without its players waits for them", function()
+	local mode = Gamemode.New(ROUNDS, ENABLED)
+	mode:Wait()
+	T.eq(mode:Mode(), WAITING, "waiting")
+	T.eq(mode:Players(READY, START).action, Gamemode.START_TRANSITION, "they came")
+	T.eq(mode:Mode(), Gamemode.TRANSITION, "counting down")
 end)
 
 T.finish()

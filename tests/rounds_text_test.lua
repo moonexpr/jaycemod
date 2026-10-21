@@ -101,6 +101,8 @@ local function Display(fields)
 		capUnlockEnd = 0,
 		setupEnd = 0,
 		matchEnd = 0,
+		waitingHave = 0,
+		waitingNeed = 0,
 		left = ROUND_LEFT,
 	}
 	for k, v in pairs(fields) do q[k] = v end
@@ -162,6 +164,14 @@ T.test("the countdown shows even without a HUD timer or on a koth map", function
 		koth = true,
 	})
 	T.eq(koth.kind, Text.DISPLAY_TRANSITION, "koth")
+end)
+
+T.test("a game waiting for players shows how many are here of how many it needs, in place of a clock", function()
+	local d = Display({ halted = true, waitingHave = 1, waitingNeed = 2 })
+	T.eq(d.kind, Text.DISPLAY_WAITING, "the wait")
+	T.eq(d.text, "1/2", "here of needed")
+	T.eq(d.label, Text.LABEL_WAITING, "labelled")
+	T.eq(Display({ halted = true, waitingHave = 0, waitingNeed = 0 }), nil, "no wait")
 end)
 
 T.test("Sandbox mode outside a transition shows no timer", function()

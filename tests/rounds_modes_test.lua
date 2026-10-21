@@ -180,4 +180,25 @@ T.test("the tf_gamerules binding keeps the gamerules surface as forwards", funct
 	end
 end)
 
+-- A mode's player requirement (PLAYERS_NEEDED): a game begins once it is
+-- met (foundation.gamemode). counts: each team's players and NPCs, and the
+-- players on neither (teams are chosen once the game begins).
+
+local function Counts(r, b, free) return { [RED] = r, [BLUE] = b, free = free or 0 } end
+
+T.test("the base mode needs nobody", function()
+	local have, need = Rounds.PlayersNeeded(Rounds.Mode.PLAYERS_NEEDED, Counts(0, 0))
+	T.eq(have >= need, true, "met with nobody there")
+end)
+
+T.test("a requirement counts both teams together, or one team alone, and the teamless toward either", function()
+	local both, red = { count = 3 }, { team = RED, count = 3 }
+	local function Have(needed, counts) return (Rounds.PlayersNeeded(needed, counts)) end
+	T.eq(Have(both, Counts(1, 1)), 2, "both teams")
+	T.eq(Have(red, Counts(1, 5)), 1, "RED alone")
+	T.eq(Have(both, Counts(1, 1, 2)), 4, "the teamless, with both")
+	T.eq(Have(red, Counts(1, 5, 2)), 3, "the teamless, with RED")
+	T.eq(select(2, Rounds.PlayersNeeded(red, Counts(0, 0))), 3, "what it needs")
+end)
+
 T.finish()

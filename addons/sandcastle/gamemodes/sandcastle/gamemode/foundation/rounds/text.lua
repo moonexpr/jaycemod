@@ -139,10 +139,12 @@ DISPLAY_GAME_OVER = "game_over" -- the match won: the countdown to the next map
 DISPLAY_CAP_UNLOCK = "cap_unlock" -- arena: the countdown to the point unlocking
 DISPLAY_SETUP = "setup" -- arena: its setup's countdown (no team_round_timer has it)
 DISPLAY_MAP = "map" -- no round timer: the map's time left under mp_timelimit (CTFHudTimeStatus)
+DISPLAY_WAITING = "waiting" -- a game waiting for players: how many are here (text), no clock
 
 -- The label under the clock. The transition's is the operator's word as
 -- written; the round's are TF2's, in capitals.
 LABEL_TRANSITION = "Prepare"
+LABEL_WAITING = "Waiting for players"
 LABEL_PREROUND = "PREPARE"
 LABEL_SETUP = "SETUP"
 LABEL_OVERTIME = "OVERTIME"
@@ -164,13 +166,24 @@ end
 -- match's map changes, 0 before), setupEnd (arena: when its setup ends,
 -- else 0), capUnlockEnd (arena: when the point unlocks while the round waits
 -- for it, else 0), matchEnd (ws_match_time_end: when mp_timelimit runs out,
--- 0 without one), left (the round timer's seconds) }. The countdown to
+-- 0 without one), waitingHave and waitingNeed (the gamemode's wait for
+-- players: how many are here of how many it needs; need 0 outside it),
+-- left (the round timer's seconds) }. The wait for players, then the
+-- countdown to
 -- Gameplay mode wins while it runs, then the won match's to its map
 -- change, on any map; then, while the rounds run, an arena's setup, then
 -- its countdown to the point unlocking (with or without a round timer of
 -- its own), else the round's timer, else (a map without one, as ctf_2fort)
--- the map's time left. Returns { kind, left, label }.
+-- the map's time left. Returns { kind, left, label }, or for the wait
+-- { kind, text, label }.
 function TimerDisplay(q)
+	if q.waitingNeed > 0 then
+		return {
+			kind = DISPLAY_WAITING,
+			text = string.format("%d/%d", q.waitingHave, q.waitingNeed),
+			label = LABEL_WAITING,
+		}
+	end
 	if q.transitionEnd > q.now then
 		return {
 			kind = DISPLAY_TRANSITION,

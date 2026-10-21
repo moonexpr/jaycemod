@@ -391,8 +391,22 @@ Mode = {
 	FLAG_CAPS_SCORE = false,
 	-- A flag is carried by its own team, not its enemies (MvM's bomb).
 	FLAG_OWNERS_CARRY = false,
+	-- Who must be there before a game begins (foundation.gamemode's wait,
+	-- mp_waitingforplayers): count players and NPCs, on team, or on RED and
+	-- BLU together without one. The base mode needs nobody.
+	PLAYERS_NEEDED = { count = 0 },
 }
 Mode.__index = Mode
+
+-- needed: a mode's PLAYERS_NEEDED; counts: each team's players and NPCs
+-- ({ [RED], [BLUE] }), and free, the players on neither, who count toward
+-- any requirement (they choose a team once the game begins). Returns how
+-- many count toward it, and how many it needs: it is met once the first
+-- reaches the second.
+function PlayersNeeded(needed, counts)
+	local onTeams = needed.team and counts[needed.team] or counts[RED] + counts[BLUE]
+	return onTeams + counts.free, needed.count
+end
 
 -- A variant named `name`, inheriting every member it does not override.
 function Mode:Extend(name)

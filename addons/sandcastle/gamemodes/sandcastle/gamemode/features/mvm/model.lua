@@ -31,6 +31,11 @@ Mode.FLAG_WAITS_FOR_WAVE = true
 
 function Mode:MayWinByPoints(team, q) return false end
 
+-- An MvM game begins with at least MIN_DEFENDERS players and NPCs on RED;
+-- BLU's robots are the wave's.
+MIN_DEFENDERS = 6
+Mode.PLAYERS_NEEDED = { team = Teams.RED, count = MIN_DEFENDERS }
+
 -- ws_mvm_setup_time's default: the ready-up's stand-in.
 SETUP_SECONDS = 30
 

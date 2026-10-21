@@ -13,9 +13,13 @@
 -- numbers) and the Administrator's line; then Begin: the scores cleared,
 -- the round system restarted from scratch (RestartRound's full reset, as a map's first round)
 -- and everyone unassigned, as on joining, so each client opens its team
--- menu until they choose a team.
+-- menu until they choose a team. A game whose round mode's players are not
+-- there yet (PLAYERS_NEEDED, mp_waitingforplayers) waits in Sandbox mode,
+-- checked each WAIT_TICK, and counts down once they come; the count is
+-- networked as ws_gamemode_waiting_have and _need (need 0: no wait).
 local Gamemode = WS.require("foundation.gamemode")
 local Gameplay = WS.require("features.gamemode.gameplay")
+local Rounds = WS.require("foundation.rounds")
 
 -- Both made in ws/sh_gameplay.lua.
 local ENABLED = GetConVar("sv_gameplay_enabled")
@@ -25,6 +29,12 @@ local TRANSITION_TIMER = "ws_gamemode_transition"
 -- ws_gamemode_transition_end outside a transition.
 local NO_TRANSITION = 0
 local TRANSITION_TICK = 0.1 -- seconds between feeding the model the time; it cues on whole seconds
+
+local waitingForPlayers = CreateConVar("mp_waitingforplayers", "1", FCVAR_NOTIFY,
+	"1: a game begins only once its mode's players are there (arena, MvM), waiting in Sandbox mode until then", 0, 1)
+local WAIT_TIMER = "ws_gamemode_waiting"
+local WAIT_TICK = 1 -- seconds between counting the players a waiting game needs
+local GAME_TEAMS = { WS.TEAM_RED, WS.TEAM_BLUE }
 
 -- Sandbox mode begins with one of GMod's save/load chimes. The transition
 -- with the casual matchmaking start sting and one of the announcer's
@@ -105,12 +115,59 @@ local function MapInfo()
 	return info
 end
 
--- sv_gameplay_enabled follows a settled mode; the transition leaves it.
--- The transition's end goes to the clients' round timer.
+-- Each team's players and the NPCs on the map fighting for it (the AI
+-- war's soldiers, WSTeamCombatants), and the players on neither (free):
+-- outside team play nobody picks a team, so the players a game waits for
+-- choose theirs once it begins.
+local function TeamCounts()
+	local counts = { free = 0 }
+	for _, t in ipairs(GAME_TEAMS) do counts[t] = hook.Run("WSTeamCombatants", t) or 0 end
+	for _, ply in ipairs(player.GetAll()) do
+		local t = WS.TeamOf(ply)
+		if counts[t] then counts[t] = counts[t] + 1 else counts.free = counts.free + 1 end
+	end
+	return counts
+end
+
+-- How many count toward the round mode's player requirement, and how many
+-- it needs (0 with mp_waitingforplayers off, or no rounds loaded).
+local function PlayersNeeded()
+	if not waitingForPlayers:GetBool() then return 0, 0 end
+	local needed = WS.Active() and WS.Feature("rounds"):Mode().PLAYERS_NEEDED or Rounds.Mode.PLAYERS_NEEDED
+	return Rounds.PlayersNeeded(needed, TeamCounts())
+end
+
+local function PlayersReady()
+	local have, need = PlayersNeeded()
+	return have >= need
+end
+
+-- sv_gameplay_enabled follows a settled mode; the transition and the wait
+-- leave it. The transition's end and the wait's count go to the clients'
+-- round timer.
 function Controller:Publish()
 	local setting = Gamemode.SETTING[self.mode:Mode()]
 	if setting ~= nil and ENABLED:GetBool() ~= setting then ENABLED:SetBool(setting) end
 	SetGlobal2Float("ws_gamemode_transition_end", self.mode:TransitionEnd() or NO_TRANSITION)
+	local have, need = 0, 0
+	if self.mode:Mode() == Gamemode.WAITING then have, need = PlayersNeeded() end
+	SetGlobal2Int("ws_gamemode_waiting_have", have)
+	SetGlobal2Int("ws_gamemode_waiting_need", need)
+end
+
+-- The wait: the players counted each WAIT_TICK until they are there, then
+-- the transition.
+function Controller:OpenWait()
+	timer.Create(WAIT_TIMER, WAIT_TICK, 0, function() self:WaitTick() end)
+end
+
+function Controller:WaitTick()
+	local answer = self.mode:Players(PlayersReady(), CurTime())
+	if answer.action == Gamemode.START_TRANSITION then
+		timer.Remove(WAIT_TIMER)
+		self:OpenTransition()
+	end
+	self:Publish()
 end
 
 -- A transition sound, remembered so Stop Game can silence it.
@@ -142,6 +199,8 @@ local ACTIONS = {
 	[Gamemode.START_TRANSITION] = function(self) self:OpenTransition() end,
 	[Gamemode.CANCEL_TRANSITION] = function(self) self:CancelTransition() end,
 	[Gamemode.ENTER_SANDBOX] = function() WS.Rules:Halt() end,
+	[Gamemode.WAIT] = function(self) self:OpenWait() end,
+	[Gamemode.STOP_WAITING] = function() timer.Remove(WAIT_TIMER) end,
 }
 
 -- story: the requester's own notice, { title, lines } for the chat and
@@ -159,6 +218,10 @@ local NOTICES = {
 		WS.Announce("Gameplay mode has ended. Sandbox mode until a new game begins.")
 	end,
 	[Gamemode.NOTICE_REFUSED] = function(requester, _, refusal) Tell(requester, "Gameplay: " .. refusal) end,
+	[Gamemode.NOTICE_WAITING] = function()
+		local have, need = PlayersNeeded()
+		WS.Announce(string.format("Waiting for players (%d/%d): the game begins once they are here.", have, need))
+	end,
 	[Gamemode.NOTICE_DENIED] = function(requester, _, refusal)
 		Tell(requester, "Gameplay: " .. refusal)
 		if IsValid(requester) then WS.PlaySoundTo(requester, requester, Gamemode.DENY_SOUND) end
@@ -170,7 +233,7 @@ local NOTICES = {
 -- NOTICES takes it. Returns true, or false and why not (the requester has
 -- been told, when the model says so).
 function Controller:Request(want, source, requester, story)
-	local answer = self.mode:Request(want, source, CurTime(), SANDBOX_DISABLED:GetBool())
+	local answer = self.mode:Request(want, source, CurTime(), SANDBOX_DISABLED:GetBool(), PlayersReady())
 	-- a game begun on a map without rounds: they load, halted until it begins
 	if answer.loadRounds then WS.Feature("rounds"):EnsureRules() end
 	ACTIONS[answer.action](self)
@@ -224,7 +287,12 @@ end
 -- start. Rounds loaded for a game counting down (a map without them) stay
 -- halted until it begins.
 function Controller:StartAtLoad()
+	if self.mode:Mode() == Gamemode.GAMEPLAY and not PlayersReady() then
+		self.mode:Wait()
+		self:OpenWait()
+	end
 	if self.mode:Mode() ~= Gamemode.GAMEPLAY then WS.Rules:Halt() end
+	self:Publish()
 end
 
 return Controller

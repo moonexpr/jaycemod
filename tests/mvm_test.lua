@@ -104,4 +104,16 @@ T.test("setup, the ready-up's stand-in, lasts SETUP_SECONDS by default", functio
 	T.eq(Mvm.SETUP_SECONDS > 0, true, "some setup")
 end)
 
+T.test("an MvM game waits for its defenders on RED; BLU's robots do not count", function()
+	local Rounds = T.require("foundation.rounds")
+	T.defined(Mvm.MIN_DEFENDERS, "Mvm.MIN_DEFENDERS")
+	local n = Mvm.MIN_DEFENDERS
+	local function Met(r, b)
+		local have, need = Rounds.PlayersNeeded(Mvm.Mode.PLAYERS_NEEDED, { [RED] = r, [BLUE] = b, free = 0 })
+		return have >= need
+	end
+	T.eq(Met(n - 1, 100), false, "one defender short")
+	T.eq(Met(n, 0), true, "met")
+end)
+
 T.finish()

@@ -408,4 +408,17 @@ T.test("the AI war fights arena with its own scenario", function()
 	T.eq(Scenario.For(Arena.Mode.NAME), T.require("foundation.aiwar.scenario.arena").Scenario, "the arena scenario")
 end)
 
+T.test("an arena game waits for its players, on either team", function()
+	T.defined(Arena.MIN_PLAYERS, "Arena.MIN_PLAYERS")
+	local n = Arena.MIN_PLAYERS
+	local needed = Arena.Mode.PLAYERS_NEEDED
+	local function Met(r, b)
+		local have, need = Rounds.PlayersNeeded(needed, { [RED] = r, [BLUE] = b, free = 0 })
+		return have >= need
+	end
+	T.eq(Met(n - 1, 0), false, "one short")
+	T.eq(Met(n - 1, 1), true, "met across the teams")
+	T.eq(Met(0, n), true, "met on one team")
+end)
+
 T.finish()

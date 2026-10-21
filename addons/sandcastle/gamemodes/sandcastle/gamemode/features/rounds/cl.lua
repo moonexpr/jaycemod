@@ -184,6 +184,8 @@ function View:DrawTimer(w, h)
 		capUnlockEnd = WS.State() == S.STALEMATE and GetGlobal2Float("ws_arena_cap_enable_time", 0) or 0,
 		setupEnd = GetGlobal2Float("ws_arena_setup_end", 0),
 		matchEnd = GetGlobal2Float("ws_match_time_end", 0),
+		waitingHave = GetGlobal2Int("ws_gamemode_waiting_have", 0),
+		waitingNeed = GetGlobal2Int("ws_gamemode_waiting_need", 0),
 		left = TimerLeft(),
 	})
 	if not display then return end
@@ -193,7 +195,7 @@ function View:DrawTimer(w, h)
 	-- the label's strip peeks out under the background
 	if label then DrawImage(Hud.TIMER_STRIP, panel.label.strip) end
 	DrawImage(Hud.TimerBackground(WS.TeamOf(LocalPlayer())), panel.bg)
-	Shadowed(Clock(display.left), Font(Hud.FONT_BUILD, Hud.TIMER_FONT_TALL, unit), panel.value.x, panel.value.y, TEXT_ALIGN_CENTER)
+	Shadowed(display.text or Clock(display.left), Font(Hud.FONT_BUILD, Hud.TIMER_FONT_TALL, unit), panel.value.x, panel.value.y, TEXT_ALIGN_CENTER)
 	if label then
 		Shadowed(label, Font(Hud.FONT_SMALL, Hud.TIMER_LABEL_FONT_TALL, unit), panel.label.x, panel.label.y, TEXT_ALIGN_CENTER)
 	end
