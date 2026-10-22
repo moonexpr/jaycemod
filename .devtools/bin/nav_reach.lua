@@ -21,23 +21,24 @@ for _, a in ipairs(navmesh.GetAllNavAreas()) do
 	end
 end
 
+local Graph = WS.require("foundation.core.graph")
+local AREAS = #navmesh.GetAllNavAreas()
+
+-- The areas reached from starts (area -> true), over every link or over
+-- crossable links alone.
 local function Reach(starts, crossableOnly)
-	local seen, queue, head = {}, {}, 1
-	for _, a in ipairs(starts) do
-		seen[a] = true
-		queue[#queue + 1] = a
-	end
-	while queue[head] do
-		local a = queue[head]
-		head = head + 1
+	local function Neighbors(a)
+		if not crossableOnly then return a:GetAdjacentAreas() end
+		local list = {}
 		for _, b in ipairs(a:GetAdjacentAreas()) do
-			if not seen[b] and (not crossableOnly or WS.NavLinkCrossable(a, b)) then
-				seen[b] = true
-				queue[#queue + 1] = b
-			end
+			if WS.NavLinkCrossable(a, b) then list[#list + 1] = b end
 		end
+		return list
 	end
-	return seen
+	local reached = Graph.Flood(starts, Neighbors, function() return true end, AREAS)
+	local set = {}
+	for _, area in ipairs(reached) do set[area] = true end
+	return set
 end
 
 local out = { string.format("level links %d, refused %d; drops %d, refused %d", level, levelRefused, drops, dropsRefused) }

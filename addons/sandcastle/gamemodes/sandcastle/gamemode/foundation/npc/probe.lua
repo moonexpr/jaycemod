@@ -13,7 +13,8 @@
 -- area is under it (false: none), and answers with what to do:
 -- { kind = MOVE, to }, { kind = REPATH }, { kind = HOP, to },
 -- { kind = RECOVER, to } or { kind = DONE }.
-local abs, sqrt = math.abs, math.sqrt
+local Geometry = require("foundation.core.math.geometry")
+local abs = math.abs
 local setmetatable = setmetatable
 module(...)
 
@@ -43,10 +44,7 @@ function New(points, now)
 	}, Probe)
 end
 
-local function Across(a, b)
-	local dx, dy = a.x - b.x, a.y - b.y
-	return sqrt(dx * dx + dy * dy)
-end
+local Across = Geometry.Distance2D
 
 function Probe:Find(kind, at)
 	self.findings[#self.findings + 1] = { kind = kind, index = self.index, point = self.points[self.index], at = at }

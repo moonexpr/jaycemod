@@ -11,14 +11,19 @@ function Distance(a, b)
 	return sqrt(dx * dx + dy * dy + dz * dz)
 end
 
+-- The distance across the ground, height left out (a walker's reach).
+function Distance2D(a, b)
+	local dx, dy = a.x - b.x, a.y - b.y
+	return sqrt(dx * dx + dy * dy)
+end
+
 -- The point `distance` from `from` toward `to`, on the ground plane (z
 -- from `from`); `to` itself when nearer.
 function Toward(from, to, distance)
-	local dx, dy = to.x - from.x, to.y - from.y
-	local length = sqrt(dx * dx + dy * dy)
+	local length = Distance2D(from, to)
 	if length <= distance or length == 0 then return { x = to.x, y = to.y, z = to.z } end
 	local t = distance / length
-	return { x = from.x + dx * t, y = from.y + dy * t, z = from.z }
+	return { x = from.x + (to.x - from.x) * t, y = from.y + (to.y - from.y) * t, z = from.z }
 end
 
 function Add(a, b)

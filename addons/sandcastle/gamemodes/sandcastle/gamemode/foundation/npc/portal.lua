@@ -9,6 +9,7 @@
 -- Areas are axis-aligned rectangles { lo = { x, y }, hi = { x, y } } (the
 -- nav area's north-west and south-east corners); `to.edges[dir]` is true
 -- when `to` has no neighbour on that side (CNavArea::IsEdge).
+local Scalar = require("foundation.core.math.scalar")
 module(...)
 
 -- NavDirType: north is -y, east is +x.
@@ -16,11 +17,7 @@ NORTH, EAST, SOUTH, WEST = 0, 1, 2, 3
 
 MARGIN = 25 -- GenerationStepSize
 
-local function Limit(value, low, high)
-	if value < low then return low end
-	if value > high then return high end
-	return value
-end
+local Limit = Scalar.Clamp
 
 -- The opening's usable span [low, high] on one axis.
 local function Span(low, high, lowEdge, highEdge)
@@ -90,10 +87,11 @@ end
 -- middle on that axis when it is narrower than twice that.
 INSET = 16
 
+-- From edge, INSET toward middle (step 1: up the axis, -1: down), no
+-- farther than middle.
 local function Inward(edge, middle, step)
-	local inset = edge + step * INSET
-	if (inset - middle) * step > 0 then return middle end
-	return inset
+	if step > 0 then return Limit(edge + INSET, edge, middle) end
+	return Limit(edge - INSET, middle, edge)
 end
 
 -- (x, y) held INSET inside `area` (a lane's end at the area its route

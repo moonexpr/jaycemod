@@ -86,6 +86,7 @@ Module names are `foundation.core.<path>`; tests are
 | `structs.polyline` | `New(points)` → a path measured along its length: `Length`, `Leg`, `PointAt`, `Offset`, `DistanceOf` |
 | `structs.queue` | `New()` → double-ended queue: `PushBack`, `PushFront`, `PopFront`, `PopBack`, `Front`, `Back`, `Size`, `Values` |
 | `timers` | NextBot's timers on a clock port (`Now()`): `CountdownTimer(clock)` → `Start(duration)`, `Reset`, `Invalidate`, `HasStarted`, `IsElapsed` (an unstarted one has), `GetElapsedTime`, `GetRemainingTime`, `GetCountdownDuration`; `IntervalTimer(clock)` → `Start`, `Reset`, `Invalidate`, `HasStarted`, `GetElapsedTime`, `IsLessThen`, `IsGreaterThen`. `hfsm` hands them on |
+| `structs.pairmap` | `New()` → values by an ordered pair of whole numbers (0..`MAX_KEY`, a link's two area ids) under one number a pair, no key built: `Get(a, b)` (unchecked, for hot paths), `Set(a, b, value)` (nil removes; refuses a bad key), `Size`, `Clear` |
 | `structs.tree` | `New([less])` → ordered map on an AVL tree: `Insert`, `Get`, `Remove`, `Min`, `Max`, `Floor`, `Ceiling`, `Pairs` (in order), `Size`, `Height` |
 
 ### Algorithms
@@ -99,7 +100,8 @@ Module names are `foundation.core.<path>`; tests are
 
 | Module | API |
 |---|---|
-| `math.geometry` | On `{ x, y, z }` points (missing z is 0): `Distance`, `Toward`, `Add`, `Sub`, `Scale`, `Dot`, `Cross`, `Length`, `Normalize` (nil for the zero vector) |
+| `math.geometry` | On `{ x, y, z }` points (missing z is 0): `Distance`, `Distance2D` (across the ground), `Toward`, `Add`, `Sub`, `Scale`, `Dot`, `Cross`, `Length`, `Normalize` (nil for the zero vector) |
+| `math.scalar` | `Clamp(value, low, high)` (an empty range is the caller's mistake) |
 | `math.stats` | `Mean(list)`, `Percentile(list, p)` (nearest rank) |
 | `math.random` | `PickWeighted(items, weight, r)`, `r` drawn by the caller |
 | `math.polynomial` | Coefficients from the constant up: `Evaluate`, `Derivative`, `Roots` (real, ascending, up to a cubic) |

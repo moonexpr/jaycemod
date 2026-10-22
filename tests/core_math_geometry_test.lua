@@ -58,4 +58,9 @@ T.test("a vector's length, and its direction", function()
 	T.eq(Geometry.Normalize(V(0, 0, 0)), nil, "the zero vector has no direction")
 end)
 
+T.test("the distance across the ground leaves height out", function()
+	T.eq(Geometry.Distance2D(V(0, 0, 0), V(3, 4, 100)), 5, "a ledge above is as far across")
+	T.eq(Geometry.Distance2D({ x = 0, y = 0 }, { x = 6, y = 8 }), 10, "points without a z")
+end)
+
 T.finish()

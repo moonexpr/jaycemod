@@ -33,6 +33,7 @@ local Doors = WS.require("foundation.npc.doors")
 local Progress = WS.require("foundation.nav_progress")
 local Clip = WS.require("foundation.npc.clip")
 local NavGaps = WS.require("foundation.nav_gaps")
+local PairMap = WS.require("foundation.core.structs.pairmap")
 
 local SEEDS = { "info_player_teamspawn", "info_player_start", "team_control_point" }
 local DOORS = { "func_door", "func_door_rotating", "prop_door_rotating" }
@@ -111,11 +112,13 @@ local function StaticMap(ent)
 end
 -- How far down a drop's floor is looked for.
 local FLOOR_DEPTH = 1000
-local crossable = {}
+-- each link's answer, by its two areas' ids: asked for every link a path
+-- weighs, so looked up without building a key
+local crossable = PairMap.New()
 
 function WS.NavLinkCrossable(a, b)
-	local key = a:GetID() .. ":" .. b:GetID()
-	local known = crossable[key]
+	local aId, bId = a:GetID(), b:GetID()
+	local known = crossable:Get(aId, bId)
 	if known ~= nil then return known end
 	-- across the side the link leaves by (filed on none: the side toward b),
 	-- where b borders it
@@ -149,13 +152,13 @@ function WS.NavLinkCrossable(a, b)
 		local floor = util.TraceLine({ start = V(finish) + STEP, endpos = V(finish) - Vector(0, 0, FLOOR_DEPTH), mask = mask, filter = StaticMap })
 		clear = NavGaps.FallsAway(seamFrom, seamTo, floor.Hit and floor.HitPos.z or nil)
 	end
-	crossable[key] = clear
+	crossable:Set(aId, bId, clear)
 	return clear
 end
 
 function WS.BridgeNavGaps()
 	timer.Remove(GAP_TIMER)
-	crossable = {}
+	crossable:Clear()
 	if not WS.NavMeshUsable() then return end
 	local byId, areas = {}, {}
 	for i, area in ipairs(navmesh.GetAllNavAreas()) do

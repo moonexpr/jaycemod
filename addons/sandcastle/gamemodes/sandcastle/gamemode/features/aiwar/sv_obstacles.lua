@@ -7,6 +7,7 @@ local TFBot = WS.require("foundation.npc.path.tfbot")
 local HL2Path = WS.require("foundation.npc.path.hl2")
 local Zone = WS.require("foundation.aiwar.zone")
 local Doors = WS.require("foundation.npc.doors")
+local Geometry = WS.require("foundation.core.math.geometry")
 local WALK_MAX_RISE, SPAWN_LIFT = Map.WALK_MAX_RISE, Map.SPAWN_LIFT
 local Point, ToVector, SpawnSpots, IsDoor = Map.Point, Map.ToVector, Map.SpawnSpots, Map.IsDoor
 local Clear, CartRadius = Map.Clear, Map.CartRadius
@@ -107,7 +108,7 @@ function Controller:KitReachable(kit)
 	local reachable = false
 	if IsValid(area) then
 		local near = area:GetClosestPointOnArea(pos)
-		reachable = Vector(pos.x - near.x, pos.y - near.y, 0):Length() <= KIT_REACH and math.abs(pos.z - near.z) <= KIT_RISE
+		reachable = Geometry.Distance2D(pos, near) <= KIT_REACH and math.abs(pos.z - near.z) <= KIT_RISE
 	end
 	kitReach[kit] = reachable
 	return reachable
