@@ -12,10 +12,13 @@
 -- (game_combat_text, ws/cl_hits.lua). A crit bullet is seen as one: TF2's
 -- crit tracer in its shooter's team colour (foundation.combat.crit_effects).
 -- An enemy's hit is remembered, and the environment's lethal one credited
--- to it (ws/sv_kill_credit.lua).
+-- to it (ws/sv_kill_credit.lua). One a projectile throws into a wall or
+-- ceiling is hurt by the strike, dealt by its thrower, unless it threw
+-- itself or a teammate (foundation.combat.impact).
 local Balance = WS.require("foundation.combat.weapon_balance")
 local BulletSteps = WS.require("foundation.combat.bullet_steps")
 local Crit = WS.require("foundation.combat.crit_effects")
+local Impact = WS.require("foundation.combat.impact")
 local P = WS.PlayerRules
 local E = WS.Events
 
@@ -110,10 +113,14 @@ local function Judge(target, attacker, class, shot)
 	return damage, headshot, scale, kind
 end
 
+-- The victim of the strike being dealt now.
+local striking = nil
+
 hook.Add("EntityTakeDamage", "ws_hits", function(target, dmg)
 	local attacker = dmg:GetAttacker()
 	if Spared(target, attacker) then return true end
-	local class = Balance.Weapon(WeaponClass(dmg))
+	-- a strike is its own hit, of no weapon: it neither throws nor is balanced
+	local class = striking ~= target and Balance.Weapon(WeaponClass(dmg)) or nil
 	local damage, headshot, scale, kind = Judge(target, attacker, class, {
 		damage = dmg:GetDamage(),
 		bullet = dmg:IsBulletDamage(),
@@ -141,6 +148,73 @@ local function PushDirection(target, dmg)
 	return (target:WorldSpaceCenter() - attacker:WorldSpaceCenter()):GetNormalized()
 end
 
+-- The thrown, each until its window ends or it strikes: victim -> { by,
+-- ends, velocity (at the last tick) }.
+local thrown = setmetatable({}, { __mode = "k" })
+
+local function Velocity(ent)
+	return ent.loco and ent.loco:GetVelocity() or ent:GetVelocity()
+end
+
+-- victim thrown by attacker is watched for a strike, if it can be hurt by one.
+local function Throw(victim, attacker)
+	if not IsValid(attacker) then return end
+	if not Impact.Harms(WS.TeamNumber(attacker), WS.TeamNumber(victim), attacker == victim) then return end
+	thrown[victim] = { by = attacker, ends = CurTime() + Impact.WINDOW, velocity = Velocity(victim) }
+end
+
+-- The surface ahead of a victim moving at velocity, struck this tick: a
+-- trace of its bounds along where it was going.
+local function SurfaceAhead(victim, velocity)
+	local pos = victim:GetPos()
+	local reach = velocity:Length() * engine.TickInterval() * 2 + 2
+	return util.TraceHull({
+		start = pos,
+		endpos = pos + velocity:GetNormalized() * reach,
+		mins = victim:OBBMins(),
+		maxs = victim:OBBMaxs(),
+		filter = victim,
+		mask = MASK_PLAYERSOLID,
+	})
+end
+
+local function Strike(victim, throw, velocity)
+	local before = throw.velocity
+	if not Impact.Stopped(before:Length(), velocity:Length()) then return false end
+	local tr = SurfaceAhead(victim, before)
+	if not tr.Hit or not Impact.Struck(tr.HitNormal.z) then return false end
+	local damage = Impact.Damage(Impact.Into(before, tr.HitNormal))
+	if damage > 0 and IsValid(throw.by) then
+		local strike = DamageInfo()
+		strike:SetDamage(damage)
+		strike:SetAttacker(throw.by)
+		strike:SetInflictor(throw.by)
+		strike:SetDamageType(DMG_CRUSH)
+		strike:SetDamagePosition(tr.HitPos)
+		striking = victim
+		victim:TakeDamageInfo(strike)
+		striking = nil
+	end
+	return true
+end
+
+hook.Add("Tick", "ws_hits_impact", function()
+	if next(thrown) == nil then return end
+	local now = CurTime()
+	for victim, throw in pairs(thrown) do
+		if not IsValid(victim) or victim:Health() <= 0 or now > throw.ends then
+			thrown[victim] = nil
+		else
+			local velocity = Velocity(victim)
+			if Strike(victim, throw, velocity) then
+				thrown[victim] = nil
+			else
+				throw.velocity = velocity
+			end
+		end
+	end
+end)
+
 -- The crossbow's punch: the victim thrown along the shot and, a player,
 -- staggered by a weapon that staggers.
 local function KnockBack(target, dmg, hit)
@@ -156,6 +230,7 @@ local function KnockBack(target, dmg, hit)
 		target:SetVelocity(velocity)
 	end
 	if target:IsPlayer() and push.stagger then WS.StunPlayer(target, push.stagger, push.slow, bit.bor(P.STUN.MOVEMENT, P.STUN.NO_EFFECTS)) end
+	Throw(target, dmg:GetAttacker())
 end
 
 local HIT_SOUNDS = {
