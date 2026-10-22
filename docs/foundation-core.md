@@ -46,6 +46,9 @@ against it as it loads.
 
 ## To evaluate next
 
+`docs/foundation-core-survey.md` lists the structures and algorithms still
+written by hand outside core, each with the core module it would become.
+
 Now that the structures are formal types, decide which to back natively.
 `docs/ns-performance-baseline.md` names route search as the largest
 demand-driven cost (0.2 to 4.3 ms a tick, about 100 µs an expansion live).
@@ -65,8 +68,9 @@ matrices, the parser cursor, varints and length-prefixed strings with a
 writer (all now in `core.buffer`), chained constructors, and memory accounting. Where ours does better,
 it stayed ours:
 
-- Enums: two reverse-name tables in the codebase; a plain table and a named
-  set serve.
+- Enums: written afresh as `core.meta.enum`, a subclass of
+  `core.meta.constants` (a closed set of named constants that refuses a
+  misspelt read), not GLib's reverse-name tables.
 - The cleanup list (`Invoker`): fixed hook ids and the VM reset per map
   already tear features down.
 - Vectors as objects: our points are plain `{ x, y, z }` with functions.

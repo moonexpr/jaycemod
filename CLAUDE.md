@@ -81,6 +81,12 @@ Module names are `foundation.core.<path>`; tests are
 | `structs.sets` | `Named(name, members)` → a named set, a closed vocabulary parsed once: `Has`, `Check` (an unknown member is our bug, blamed on the caller), `Match` (case-free prefix), `Members`, `Name`. Plain `value → true` sets: `Of`, `Copy`, `Union`, `Intersect`, `Subtract`, `Count`, `Sorted` |
 | `structs.heap` | `New(before)` → binary heap: `Push`, `Pop`, `Peek`, `Size`; ties are the rule's to break |
 | `structs.ring` | `New(capacity)` → the last values pushed: `Push`, `Size`, `Ordered` (oldest first) |
+| `structs.slots` | `New()` → whole-number slots for arrays kept by slot: `pool()` (`Alloc`; a freed one first), `Free` (refuses one not in use), `InUse`, `Size` (`__len`), `High`, `Clear`, `tostring` |
+| `structs.chain` | `New()` → slots in an order, linked by two arrays: `PushFront`, `PushBack`, `Unlink`, `MoveFront`, `Front`, `Back`, `After`, `Before`, `Has`, `for slot in chain()` (`Ordered`), `Size` (`__len`), `Clear`, `tostring` |
+| `structs.cache` | Base class (`meta.class`) of the caches, on slots and a chain; alone, first in first out. `New{ capacity, release(key, value, reason) }` → `cache[key]` (`Get`; a key named like a method needs `Get`), `cache[key] = v` (`Put`; nil: `Remove`), `for key, value in cache()` (newest first; `Keys`), `tostring`, `Size` (`__len`), `Peek`, `Take` (ownership to the caller, unreleased), `Clear`; `Class.Destroy(cache)`. Each value leaving is released once: `EVICTED`, `EXPIRED`, `REPLACED`, `REMOVED`, `CLEARED`, `DESTROYED`. Subclasses fill `Touch`, `Rewrite`, `Admitting`, `Admitted`, `Stale`, `Dropped`, their fields in `State(cache)` |
+| `structs.lru` | `New{ capacity, release }` → a cache evicting the least recently used (reads and writes are uses, `Peek` is not) |
+| `structs.expiring` | `New{ clock, term, release }` → a cache whose entries last `term` seconds from their last write: `Prune`; reads and walks skip the expired |
+| `structs.memo` | `New{ [capacity], release }` → a cache of computed values: `Fetch(key, stamp, compute)` recomputes when the stamp changes |
 | `structs.lease` | `New()` → keys held by one holder for a term: `Holder`, `FreeFor`, `Take`, `Release`, `ReleaseAll` |
 | `structs.grid` | `New(size)` → spatial hash on number keys: `Put`, `PutBox`, `Near` (3×3 cells), `Buckets`; `Thin(points, size)` keeps one point per cube |
 | `structs.polyline` | `New(points)` → a path measured along its length: `Length`, `Leg`, `PointAt`, `Offset`, `DistanceOf` |
@@ -123,8 +129,10 @@ Module names are `foundation.core.<path>`; tests are
 
 | Module | API |
 |---|---|
-| `meta.class` | `Extend(parent, fields)`, `New(class, fields)`, `IsA(value, class)`, `Guard(class, check)` (refuses new keys on subclasses and their instances), `Construct(class, ...)` (each own `Init`, base first), `Destroy(instance, ...)` (each own `Destroy`, derived first) |
+| `meta.class` | `Extend(parent, fields)` (a subclass carries its parent's metamethods and `__index` function), `New(class, fields)`, `IsA(value, class)`, `Guard(class, check)` (refuses new keys on subclasses and their instances), `Construct(class, ...)` (each own `Init`, base first), `Destroy(instance, ...)` (each own `Destroy`, derived first) |
 | `meta.port` | `New(name, methods)` → an interface: `Check(value)`, `Facade(value)`, `Methods`, `Name`; `Is(value)` |
+| `meta.constants` | `New(name, constants)` → a `ConstantSet`: upper-case names read as fields at plain-table speed; an unknown name read, or a new one set, is refused naming the set; `set(token)` parses a name from outside (or nil; `Has`); `pairs` gives only the constants; `Names` (sorted), `tostring`/`Name`, `__len`. Values may repeat (layout sizes, colours) |
+| `meta.enum` | `New(name, first, names)` → an `Enum` (a `ConstantSet`) numbering names from `first`: `enum[value]` → its name (`NameOf`), `enum(token)` parses a value or a name (or nil; `Valid`), `Check`, `tostring` → "0 Default, 1 Electro" for a convar's help (`Describe`), `First`, `Last`, `Count` (`__len`), `Names` (value order) |
 
 ### Formalisms and runtime
 
@@ -159,3 +167,13 @@ mechanism in `meta/`)
 with its test written first and an entry in
 `tests/foundation_layers_test.lua`, and a line in the index above. Core names
 no mode, feature or game noun.
+
+A structure's behaviour goes in its metamethods first (indexing, assigning,
+calling to walk or parse, `tostring`), with named methods as proxies
+(`.claude/rules/lua-metamethods.md`); the structures are to become userdata
+handles in a binary module, which honour all of them. LuaJIT ignores
+`__len`, `__pairs` and `__gc` on plain tables, so define `__len` and keep
+`Size` working today. Build a structure from the smaller ones (`cache` on
+`slots` and `chain`), its entries in arrays by slot rather than a table
+each, and give every value it owns back exactly once (a `release` callback,
+`Class.Destroy`).
