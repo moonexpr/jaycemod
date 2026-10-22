@@ -158,6 +158,17 @@ T.test("the crossbow knocks back, harder on a headshot", function()
 	T.eq(Balance.Knockback("weapon_357", false), nil, "no other weapon")
 end)
 
+-- The explosives push along the blast, lifted by their own lift, without
+-- the crossbow's headshot bonus.
+T.test("a weapon without a headshot bonus knocks back the same on a headshot", function()
+	for _, class in ipairs({ "weapon_frag", "weapon_slam", "weapon_rpg" }) do
+		local push = Balance.Knockback(class, true)
+		T.eq(push.speed, W[class].knockback, class .. " its speed, headshot or not")
+		T.eq(push.lift, W[class].knockback * W[class].lift, class .. " its lift")
+		T.eq(push.stagger, W[class].stagger, class .. " its stagger")
+	end
+end)
+
 T.test("the pistol and magnum fire no faster than their interval", function()
 	T.eq(Balance.CanFire("weapon_pistol", nil, 0), true, "never fired")
 	T.eq(Balance.CanFire("weapon_pistol", 10, 10 + W.weapon_pistol.interval / 2), false, "too soon")

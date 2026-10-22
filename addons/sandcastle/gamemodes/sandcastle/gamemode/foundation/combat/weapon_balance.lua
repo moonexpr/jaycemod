@@ -16,8 +16,9 @@ module(...)
 -- one's never); closeCrits: it crits by
 -- distance (CLOSE_CRITS); headshotCrit false: a headshot is no crit;
 -- knockback: the speed a hit pushes its victim along the shot,
--- headshotKnockback times that on a headshot, lift: the fraction of it
--- added upward (a push along the ground is lost to friction), stagger: the
+-- headshotKnockback times that on a headshot (the same without), lift: the
+-- fraction of it added upward (a push along the ground is lost to friction),
+-- stagger: the
 -- seconds the victim is slowed and staggerSlow: by how much (none without);
 -- blast: an explosion's damage at its centre, in place of HL2_BLAST.
 RANGE_LONG, RANGE_MEDIUM, RANGE_SHORT = "long", "medium", "short"
@@ -60,14 +61,17 @@ WEAPONS = {
 	weapon_frag = { 
 		blast = 175,
 		knockback = 1400,
+		lift = 1
 	},
 	weapon_slam = { 
 		blast = 200,
 		knockback = 1400,
+		lift = 1
 	},
 	weapon_rpg = { 
 		blast = 75,
 		knockback = 1400,
+		lift = 1
 	},
 }
 
@@ -159,7 +163,7 @@ function Knockback(class, headshot)
 	local weapon = WEAPONS[class]
 	if not weapon or not weapon.knockback then return nil end
 	local speed = weapon.knockback
-	if headshot then speed = speed * weapon.headshotKnockback end
+	if headshot and weapon.headshotKnockback then speed = speed * weapon.headshotKnockback end
 	return {
 		speed = speed,
 		lift = speed * weapon.lift,
