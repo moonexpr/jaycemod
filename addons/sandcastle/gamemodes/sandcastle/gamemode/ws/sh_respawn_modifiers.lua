@@ -1,5 +1,5 @@
 -- Respawn modifiers' event, shared. What moved a dead player's respawn
--- (foundation.respawn_modifiers; ws/sv_respawn_modifiers.lua works it out),
+-- (games.gameplay.respawn_modifiers; ws/sv_respawn_modifiers.lua works it out),
 -- told to them as they die: each reason, the seconds the respawn moved in
 -- all, and whether a limit cut them. ws/cl_spawn_manager.lua shows them
 -- under the bar.

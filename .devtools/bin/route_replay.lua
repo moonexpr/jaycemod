@@ -1,25 +1,25 @@
 -- Replays recorded route searches (.devtools/bin/record_routes.lua) under
 -- plain LuaJIT, with the gamemode's own solver and cost strategies
--- (foundation.npc.route_record), and reports what they cost and whether
+-- (games.ns.route_record), and reports what they cost and whether
 -- each replay did exactly what the live search did.
 --
 --   luajit .devtools/bin/route_replay.lua RECORD.dat [--repeat N] [--reach TERM]
 --
 -- Run from the repo root. --repeat replays every search N times for steadier
 -- timings (default 1). --reach plays the searches in order through a reach
--- memo (foundation.npc.reach_memo) of that term: which would have been
+-- memo (games.ns.reach_memo) of that term: which would have been
 -- answered without a search, the expansions saved, whether each answer is
 -- the route the live search then found, and any it would have got wrong (a
 -- goal it called out of reach that the live search reached). Exits 1 when
 -- any finished search replays differently.
 local T = dofile("tests/harness.lua")
-local Record = T.require("foundation.npc.route_record")
+local Record = T.require("games.ns.route_record")
 local Pathfinder = T.require("foundation.graph.pathfinder")
-local ReachMemo = T.require("foundation.npc.reach_memo")
+local ReachMemo = T.require("games.ns.reach_memo")
 
 local STRATEGIES = {
-	hl2 = T.require("foundation.npc.path.hl2"),
-	lanes = T.require("foundation.aiwar.lanes").Strategy,
+	hl2 = T.require("games.ns.path.hl2"),
+	lanes = T.require("games.ns.lanes").Strategy,
 }
 
 local MICROSECONDS = 1e6

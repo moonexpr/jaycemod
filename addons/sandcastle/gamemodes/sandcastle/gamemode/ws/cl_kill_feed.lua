@@ -2,7 +2,7 @@
 -- notices: top right, newest at the bottom, each kill a box holding its
 -- killer and victim in their teams' colours (foundation.kill_feed: the AI
 -- war's soldiers in their sides') either side of TF2's kill icon for what
--- made it (foundation.kill_icons, from TF2's own scripts/mod_textures.txt and
+-- made it (games.gameplay.kill_icons, from TF2's own scripts/mod_textures.txt and
 -- Sandcastle's own in its look, ws/kill_icons_sheet.lua).
 -- A kill the player took part in is a light tan box with the dark icon, as
 -- TF2 marks its own; a death with no killer shows the victim and the icon
@@ -15,7 +15,7 @@
 -- seconds (hud_deathnotice_time).
 local Feed = WS.require("foundation.kill_feed")
 local AiWar = WS.require("foundation.aiwar")
-local Icons = WS.require("foundation.kill_icons")
+local Icons = WS.require("games.gameplay.kill_icons")
 local THEME = WS.UI.THEME
 local E = WS.Events
 

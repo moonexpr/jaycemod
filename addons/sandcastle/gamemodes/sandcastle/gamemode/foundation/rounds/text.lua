@@ -2,9 +2,9 @@
 -- sudden death panel (CHudStalemate::SetupStalematePanel), the time-added
 -- flash. TF2's "#Token" strings are worded by foundation.localization.
 local math, string, table = math, string, table
-local Rounds = require("foundation.rounds")
-local State = require("foundation.rounds.state")
-local Teams = require("foundation.teams")
+local Rounds = require("games.gameplay.rounds")
+local State = require("games.gameplay.rounds.state")
+local Teams = require("games.gameplay.teams")
 module(...)
 
 -- The states whose centre panel shows the teams' scores itself (the win
@@ -109,7 +109,7 @@ function SuddenDeathNote(reason)
 	return string.format("%s %s", panel.title, panel.reason)
 end
 
--- Deathmatch's start (foundation.rounds' Deathmatch): the tied match's
+-- Deathmatch's start (games.gameplay.rounds' Deathmatch): the tied match's
 -- bonus round, won at fraglimit frags.
 function DeathmatchNote(fraglimit)
 	return string.format("DEATHMATCH! The match is tied: the first team to %d frags wins it.", fraglimit)

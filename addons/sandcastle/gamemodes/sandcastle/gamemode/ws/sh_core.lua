@@ -1,5 +1,5 @@
 -- Shared definitions for the TF2 map entities. Team numbers and round states
--- keep TF2's values (foundation.teams, foundation.rounds.state) so map keyvalues
+-- keep TF2's values (games.gameplay.teams, games.gameplay.rounds.state) so map keyvalues
 -- (TeamNum) mean the same thing here.
 -- WS and WS.require, the gamemode's require, come from shared_loader.lua,
 -- which also loaded foundation's namespaces.
@@ -76,13 +76,13 @@ do
 	end
 end
 
--- Per-map features (foundation.features): an entity calls WS.Feature on
+-- Per-map features (games.system.features): an entity calls WS.Feature on
 -- first use, never at file top level, so a map loads only the controllers
 -- and views its entities pull in. The server tells ready clients each new
 -- feature with a client part (system_feature_load), and a joining client, once
 -- ready (system_client_ready), every one loaded so far, in load order.
 -- The HUD (client): every HUD element of the gamemode is a callback on
--- WS.HUD (game.list.drawlist) named by its place in a tree (game.match.
+-- WS.HUD (games.list.drawlist) named by its place in a tree (game.match.
 -- team_scores.blue_score; game.objective.*, game.notices.*, player.*,
 -- debug.*), drawn by GM:HUDPaint in its band of HUD_ORDER, bottom first.
 -- Code hides a branch with WS.HUD:HideElements(path) (a win screen hides
@@ -90,7 +90,7 @@ end
 -- cl_hud_hidden, and cl_hud_print lists them (ws/cl_hud_hidden.lua). Made
 -- here, before any module can add to it.
 if CLIENT then
-	WS.HUD = WS.require("game.list.drawlist").New()
+	WS.HUD = WS.require("games.list.drawlist").New()
 	WS.HUD_ORDER = {
 		WORLD = 100, -- over the world: damage numbers
 		OBJECTIVES = 200, -- points, flags, carts, KOTH clocks
@@ -101,7 +101,7 @@ if CLIENT then
 	}
 end
 
-local Features = WS.require("foundation.features")
+local Features = WS.require("games.system.features")
 local FEATURE_COUNT_BITS = 16
 
 WS.Events.Define("system_feature_load", {
@@ -142,7 +142,7 @@ function WS.Feature(name)
 	return WS.FeatureLoader:Feature(name)
 end
 
--- A realm root's part runner (foundation.features Parts): the root calls
+-- A realm root's part runner (games.system.features Parts): the root calls
 -- local Part = WS.FeatureParts(getfenv(1), "<its feature>"), then
 -- Part("sv_<part>", ...) for each part in order. getfenv(1), not the
 -- helper's getfenv(2), so a tail call cannot lose hot swap's stubbed env.
@@ -170,7 +170,7 @@ if SERVER then
 
 	-- A full collection stalls the server, so players need the rules privilege.
 	concommand.Add("ws_memory", function(ply)
-		if not WS.Can(ply, WS.require("foundation.permissions").RULES) then return end
+		if not WS.Can(ply, WS.require("games.system.permissions").RULES) then return end
 		local report = MemoryReport()
 		print(report)
 		if IsValid(ply) then ply:PrintMessage(HUD_PRINTCONSOLE, report) end
@@ -187,8 +187,8 @@ end
 
 -- Pure rule libraries (gamemode/foundation/), shared so client prediction and
 -- drawing follow the same rules as the server.
-WS.TeamRules = WS.require("foundation.teams")
-WS.PlayerRules = WS.require("foundation.players")
+WS.TeamRules = WS.require("games.gameplay.teams")
+WS.PlayerRules = WS.require("games.gameplay.players")
 
 -- TF2's team numbers and round states, as the rule libraries define them.
 local Teams = WS.TeamRules
@@ -197,7 +197,7 @@ WS.TEAM_SPECTATOR = Teams.SPECTATOR
 WS.TEAM_RED = Teams.RED
 WS.TEAM_BLUE = Teams.BLUE
 WS.TEAM_HALLOWEEN = Teams.HALLOWEEN
-WS.STATE = WS.require("foundation.rounds.state")
+WS.STATE = WS.require("games.gameplay.rounds.state")
 
 WS.TeamName = {
 	[Teams.UNASSIGNED] = "Nobody",
@@ -243,14 +243,14 @@ function WS.InOvertime()
 	return GetGlobal2Bool("ws_round_overtime", false)
 end
 
--- The rounds halted, as in Sandbox mode (foundation.gamemode) and its
+-- The rounds halted, as in Sandbox mode (games.system.gamemode) and its
 -- countdown to Gameplay mode: the rounds and timers stand still and the map
 -- plays like Sandbox, its spawn doors and forcefields open to everyone.
 function WS.GameplayStopped()
 	return GetGlobal2Bool("ws_gameplay_halted", false)
 end
 
--- Whether players watch as observers and pick teams now (foundation.teams'
+-- Whether players watch as observers and pick teams now (games.gameplay.teams'
 -- TeamPlay): rounds, in Gameplay mode, past INIT.
 function WS.TeamPlay()
 	return Teams.TeamPlay(WS.Active(), WS.GameplayStopped(), WS.State())

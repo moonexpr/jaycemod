@@ -1,10 +1,10 @@
--- Loadouts (foundation.loadout): the store's catalog, Half-Life 2's
+-- Loadouts (games.gameplay.loadout): the store's catalog, Half-Life 2's
 -- weapons by slot kind, and the events between a player's spawn menu (the
 -- Player and Inventory tabs, ws/cl_loadout.lua) and the server
 -- (ws/sv_loadout.lua). The server owns every loadout; a client asks to buy,
 -- equip or clear, each a transaction (WS.Events.Transact), and hears its
 -- loadout back (game_loadout_state) or why its request was declined.
-local Loadout = WS.require("foundation.loadout")
+local Loadout = WS.require("games.gameplay.loadout")
 local E = WS.Events
 
 local PRICE = Loadout.PRICE

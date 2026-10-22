@@ -7,7 +7,7 @@
 -- ws_analytics_memory, the estimated memory each loaded foundation module holds.
 local Analytics = WS.require("foundation.analysis.analytics")
 local MemoryReport = WS.require("foundation.analysis.memory")
-local Permissions = WS.require("foundation.permissions")
+local Permissions = WS.require("games.system.permissions")
 
 local Clock = {}
 function Clock:Now() return SysTime() end

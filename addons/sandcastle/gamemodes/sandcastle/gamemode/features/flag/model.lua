@@ -9,10 +9,10 @@
 -- capturing team, RETURN the flag's own. The flag controller turns them
 -- into outputs, game events and announcer lines.
 local ipairs, setmetatable = ipairs, setmetatable
-local Rounds = require("foundation.rounds")
-local State = require("foundation.rounds.state")
-local Teams = require("foundation.teams")
-local Snapshot = require("game.world.snapshot")
+local Rounds = require("games.gameplay.rounds")
+local State = require("games.gameplay.rounds.state")
+local Teams = require("games.gameplay.teams")
+local Snapshot = require("games.world.snapshot")
 module(...)
 
 local NOBODY, RED, BLUE = Teams.UNASSIGNED, Teams.RED, Teams.BLUE
@@ -75,7 +75,7 @@ function New(t)
 	}, Flag)
 end
 
--- The flag as plain data (game.world.snapshot): its carrier through
+-- The flag as plain data (games.world.snapshot): its carrier through
 -- refs, its return kept as seconds from now.
 local SNAPSHOT = Snapshot.Spec({
 	name = "flag",

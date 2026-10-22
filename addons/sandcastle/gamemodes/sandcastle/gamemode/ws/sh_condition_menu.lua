@@ -1,10 +1,10 @@
 -- The C menu's Conditions on a player or soldier (Sandbox's properties: hold
--- C, right-click): toggles each of foundation.players.condition_effects'
+-- C, right-click): toggles each of games.gameplay.players.condition_effects'
 -- TOGGLES on it, held until toggled off or, for a player, their death (a
 -- life starts with none: ws/sv_teams_conditions.lua). Tampering, so for
 -- holders of the tamper privilege while mp_tampering_enabled allows it.
-local Permissions = WS.require("foundation.permissions")
-local Effects = WS.require("foundation.players.condition_effects")
+local Permissions = WS.require("games.system.permissions")
+local Effects = WS.require("games.gameplay.players.condition_effects")
 local P = WS.PlayerRules
 
 local ORDER = 1600 -- after the players' admin options

@@ -8,7 +8,7 @@
 --     Gameplay mode (ws_gamemode_transition_end) the timer shows that
 --     countdown labelled "Prepare";
 --   - the pre-round and respawn countdowns and the announcement line;
---   - the round limits' counters (foundation.rounds.limits), as TF2's Player
+--   - the round limits' counters (games.gameplay.rounds.limits), as TF2's Player
 --     Destruction panel (HudObjectivePlayerDestruction.res);
 --   - a small panel with the stage of a multi-stage map and the local
 --     team's goal (CTFGameRules::ShouldShowTeamGoal); TF2's win panel
@@ -21,10 +21,10 @@
 --     when setup gives way to the round, and the overtime line
 --     (CTFGameRules::HandleOvertimeBegin). Only the timer shown in the HUD
 --     speaks, and only while it runs with auto_countdown on.
-local Rounds = WS.require("foundation.rounds")
-local Timer = WS.require("foundation.rounds.timer")
+local Rounds = WS.require("games.gameplay.rounds")
+local Timer = WS.require("games.gameplay.rounds.timer")
 local Text = WS.require("foundation.rounds.text")
-local Limits = WS.require("foundation.rounds.limits")
+local Limits = WS.require("games.gameplay.rounds.limits")
 local Hud = WS.require("ws.tf_hud")
 
 local S = WS.STATE
@@ -490,7 +490,7 @@ function View:OvertimeThink()
 	self.wasOvertime = overtime
 end
 
--- The HUD timer's countdown and siren; foundation.rounds.timer says which
+-- The HUD timer's countdown and siren; games.gameplay.rounds.timer says which
 -- cue plays when.
 function View:CountdownThink()
 	if not GetGlobal2Bool("ws_timer_shown", false) then return end

@@ -1,5 +1,5 @@
 -- An in-memory objective port for Round tests: what the capture controller
--- answers about the map's control point master (foundation.rounds'
+-- answers about the map's control point master (games.gameplay.rounds'
 -- OBJECTIVE_METHODS). rounds_modes_test checks it implements every method.
 local setmetatable = setmetatable
 

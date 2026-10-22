@@ -4,8 +4,8 @@
 -- train watchers and KOTH, arena last. So pd_watergate's UFO, which rides a
 -- team_train_watcher, makes no payload map and shows no cart HUD.
 -- Sandcastle plays no destruction scoring yet: a stand-in mode without an
--- objective, whose rounds the round limits decide (foundation.rounds.limits).
-local Rounds = require("foundation.rounds")
+-- objective, whose rounds the round limits decide (games.gameplay.rounds.limits).
+local Rounds = require("games.gameplay.rounds")
 module(...)
 
 Mode = Rounds.Mode:Extend("destruction")

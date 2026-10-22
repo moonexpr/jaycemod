@@ -3,7 +3,7 @@
 -- the server checks both again before running it. Run against fake
 -- properties, events and players.
 local T = dofile("tests/harness.lua")
-local Permissions = T.require("foundation.permissions")
+local Permissions = T.require("games.system.permissions")
 
 local function Player(name, held)
 	local p = {

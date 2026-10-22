@@ -9,7 +9,7 @@
 -- keyvalues. isSpell only picks TF2's kill icon, which GMod lacks.
 local require = require
 local Hazards = require("foundation.hazards")
-local Teams = require("foundation.teams")
+local Teams = require("games.gameplay.teams")
 module(...)
 
 MODEL = "models/props_halloween/pumpkin_explode.mdl"

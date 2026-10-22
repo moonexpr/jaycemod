@@ -8,8 +8,8 @@
 -- a death to the world credited to an enemy reads "finished off" (Credited).
 local concat, floor, ipairs, pairs, sub = table.concat, math.floor, ipairs, pairs, string.sub
 local AiWar = require("foundation.aiwar")
-local Icons = require("foundation.kill_icons")
-local Teams = require("foundation.teams")
+local Icons = require("games.gameplay.kill_icons")
+local Teams = require("games.gameplay.teams")
 module(...)
 
 NPC_TEAM = -1 -- the team a death notice gives an NPC
@@ -65,7 +65,7 @@ end
 
 -- A death notice's flag (GMod's byte, beside its DEATH_NOTICE_* bits):
 -- the victim died to the environment, credited to the enemy who had hurt
--- it (foundation.kill_credit, TF2's assisted suicide).
+-- it (games.gameplay.kill_credit, TF2's assisted suicide).
 FINISHED_OFF = 64
 
 -- CTFHudDeathNotice's assisted suicide: #DeathMsg_AssistedSuicide's words,

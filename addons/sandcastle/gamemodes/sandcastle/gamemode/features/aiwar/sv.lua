@@ -15,7 +15,7 @@
 
 local Controller = {
 	war = nil, -- a foundation.aiwar War while the war runs
-	soldiers = {}, -- NPC entity -> { soldier = port, npc = foundation.npc Npc, speaker (sv_speech) }
+	soldiers = {}, -- NPC entity -> { soldier = port, npc = games.npc.nextbot Npc, speaker (sv_speech) }
 	doorFlags = {}, -- trigger_multiple -> its spawnflags before the war
 	tracks = setmetatable({}, { __mode = "k" }), -- a watcher's path node list -> Track
 	nextThink = 0,

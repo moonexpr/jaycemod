@@ -10,7 +10,7 @@ include("shared.lua")
 -- runs until a client loads it (WS.require, or WS.Feature once the server
 -- loads the feature, sh_core.lua).
 do
-	local Features = WS.require("foundation.features")
+	local Features = WS.require("games.system.features")
 	local root = GM.FolderName .. "/gamemode/"
 	local GamemodeFiles = {}
 	function GamemodeFiles:Find(dir)

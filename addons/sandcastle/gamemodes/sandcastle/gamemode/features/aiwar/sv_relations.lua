@@ -3,11 +3,11 @@
 -- (tf_bot_difficulty).
 local Controller, Map = ...
 local AiWar = WS.require("foundation.aiwar")
-local Rounds = WS.require("foundation.rounds")
-local Hearing = WS.require("foundation.aiwar.hearing")
+local Rounds = WS.require("games.gameplay.rounds")
+local Hearing = WS.require("games.ns.hearing")
 local Factions = WS.require("foundation.factions")
 local Marksmanship = WS.require("foundation.aiwar.marksmanship")
-local BulletSteps = WS.require("foundation.combat.bullet_steps")
+local BulletSteps = WS.require("games.gameplay.combat.bullet_steps")
 local RED, BLUE = Map.RED, Map.BLUE
 local Point, PassThrough = Map.Point, Map.PassThrough
 
@@ -107,7 +107,7 @@ function Controller:TeamOf(ent)
 	return info and info.team or nil
 end
 
--- Gunfire (foundation.aiwar.hearing): each soldier in earshot of a shot is
+-- Gunfire (games.ns.hearing): each soldier in earshot of a shot is
 -- told where to look (OnHeard). A shooter is heard once every
 -- HEAR_INTERVAL, however fast it fires.
 local HEAR_INTERVAL = 0.5

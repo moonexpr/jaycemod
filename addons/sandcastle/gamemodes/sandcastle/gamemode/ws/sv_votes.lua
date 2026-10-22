@@ -1,4 +1,4 @@
--- Votes on the server (foundation.vote; ws/sh_votes.lua). A player's call
+-- Votes on the server (games.gameplay.vote; ws/sh_votes.lua). A player's call
 -- starts a vote and a timer for its end; every cast, the timer and a player
 -- leaving may end it. A passed vote runs its effect: the next map
 -- (nextlevel), a round restart or a scramble of the next round's teams
@@ -18,9 +18,9 @@
 -- idle (ws/sv_nav.lua), unless players picked the next map or an admin set
 -- nextlevel. Still running when the level changes
 -- (WSChangeLevel), it is counted then.
-local Vote = WS.require("foundation.vote")
-local Rounds = WS.require("foundation.rounds")
-local Permissions = WS.require("foundation.permissions")
+local Vote = WS.require("games.gameplay.vote")
+local Rounds = WS.require("games.gameplay.rounds")
+local Permissions = WS.require("games.system.permissions")
 local Transaction = WS.require("foundation.transaction")
 local E = WS.Events
 

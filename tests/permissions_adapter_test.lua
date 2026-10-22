@@ -1,10 +1,10 @@
 -- ws/sh_permissions.lua: registers every privilege with CAMI at its default
 -- rank, and answers WS.Can(ply, privilege) by asking CAMI synchronously and
--- applying foundation.permissions. Run against a fake CAMI and fake
+-- applying games.system.permissions. Run against a fake CAMI and fake
 -- replicated state.
 local T = dofile("tests/harness.lua")
-local Permissions = T.require("foundation.permissions")
-local PlayMode = T.require("foundation.play_mode")
+local Permissions = T.require("games.system.permissions")
+local PlayMode = T.require("games.system.play_mode")
 
 local function Load(state)
 	local registered, asked = {}, {}

@@ -13,7 +13,7 @@ end
 
 -- A kill of the other game team's player or NPC is its killer's team's frag:
 -- WSTeamFrag(team) tells whoever counts them (the round's frag limit,
--- foundation.rounds.limits).
+-- games.gameplay.rounds.limits).
 local GAME_TEAMS = { [WS.TEAM_RED] = true, [WS.TEAM_BLUE] = true }
 
 local function TeamFrag(attacker, victimTeam)

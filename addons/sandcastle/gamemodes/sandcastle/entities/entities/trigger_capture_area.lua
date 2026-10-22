@@ -1,6 +1,6 @@
 -- trigger_capture_area (CTriggerAreaCapture, trigger_area_capture.cpp): the
 -- volume players stand in to capture its control point. A binding to the
--- capture controller, which owns its capture (foundation.capture.area),
+-- capture controller, which owns its capture (games.gameplay.capture.area),
 -- steps it each think and fires its outputs. On payload maps it rides the
 -- cart and reports its cappers to the train watcher that claims it.
 ENT.Type = "brush"

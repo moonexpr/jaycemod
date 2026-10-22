@@ -1,10 +1,10 @@
 -- foundation.payload: the team_train_watcher's decisions (team_train_watcher.cpp).
 local T = dofile("tests/harness.lua")
 local P = T.require("foundation.payload")
-local Capture = T.require("foundation.capture")
-local Master = T.require("foundation.capture.master")
-local Teams = T.require("foundation.teams")
-local NEITHER = T.require("foundation.rounds").RESTRICT_NEITHER
+local Capture = T.require("games.gameplay.capture")
+local Master = T.require("games.gameplay.capture.master")
+local Teams = T.require("games.gameplay.teams")
+local NEITHER = T.require("games.gameplay.rounds").RESTRICT_NEITHER
 
 local NOBODY, RED, BLU = Teams.UNASSIGNED, Teams.RED, Teams.BLUE
 

@@ -3,7 +3,7 @@
 -- gains 30 health and moves to the newest spot its hull fits, trying first
 -- 50 off the surface it hit, then back along the trail.
 local require = require
-local Teams = require("foundation.teams")
+local Teams = require("games.gameplay.teams")
 local Spells = require("foundation.spells")
 local SpellSet = require("foundation.spells.halloween")
 local ipairs, remove = ipairs, table.remove

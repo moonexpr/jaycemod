@@ -2,8 +2,8 @@
 -- war drafts, which set its size, and the leadership pinned to them.
 local T = dofile("tests/harness.lua")
 local Slots = T.require("foundation.aiwar.slots")
-local Squad = T.require("foundation.aiwar.squad")
-local Teams = T.require("foundation.teams")
+local Squad = T.require("games.ns.squad")
+local Teams = T.require("games.gameplay.teams")
 
 local COMBINE, RESISTANCE = "Combine", "Resistance"
 

@@ -1,10 +1,10 @@
--- Votes (foundation.vote): the settings, the events, and TF2's wording for
+-- Votes (games.gameplay.vote): the settings, the events, and TF2's wording for
 -- each kind, shared by the server (ws/sv_votes.lua), the HUD card and the
 -- Server tab (ws/cl_votes.lua). Players call map, restart, scramble, team
 -- help and difficulty votes; kick votes start only from reports
 -- (ws/sv_players_menu.lua). Team help and soldier difficulty have no system
 -- behind them yet, so they are not offered (WS.VOTE_READY).
-local Vote = WS.require("foundation.vote")
+local Vote = WS.require("games.gameplay.vote")
 local E = WS.Events
 
 local FLAGS = { FCVAR_ARCHIVE, FCVAR_REPLICATED, FCVAR_NOTIFY }
@@ -59,7 +59,7 @@ WS.VOTE_NAMES = {
 	[Vote.KIND_NEXTMAP] = "Next Map",
 }
 
--- reason: a foundation.reports reason, for a kick.
+-- reason: a games.gameplay.reports reason, for a kick.
 local KICK_REASONS = {
 	none = "(no reason given)",
 	cheating = "(accused of cheating)",

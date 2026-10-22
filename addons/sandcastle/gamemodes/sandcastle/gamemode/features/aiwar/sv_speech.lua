@@ -12,9 +12,9 @@
 -- chatters (Speech.CONCEPT_ENEMY_KILLED and the rest): a kill, a teammate
 -- down, an enemy slipped out of sight, the radio between fights.
 local Controller = ...
-local Speech = WS.require("foundation.aiwar.speech")
+local Speech = WS.require("games.ns.speech")
 local Payload = WS.require("foundation.payload")
-local Teams = WS.require("foundation.teams")
+local Teams = WS.require("games.gameplay.teams")
 
 -- The AI war needs the responserules addon, as it needs DrGBase.
 local Rules = ResponseRules or error("the AI war's speech needs the responserules addon (addons/responserules)")

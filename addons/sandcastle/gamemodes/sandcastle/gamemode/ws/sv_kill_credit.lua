@@ -1,4 +1,4 @@
--- Kill credit (foundation.kill_credit), for players and soldiers alike:
+-- Kill credit (games.gameplay.kill_credit), for players and soldiers alike:
 -- every combatant remembers the enemies who hurt it, and a lethal hit from
 -- the environment (the world, a fall, a trigger: no player, NPC or
 -- NextBot) within the window of an enemy's is that enemy's. The hit's
@@ -11,7 +11,7 @@
 -- victim within ASSIST_WINDOW (CTFGameRules::GetAssister's damager rule):
 -- counted as ws_assists (the scoreboard's column and points) and named in
 -- the kill feed beside the killer (game_kill_assist).
-local Credit = WS.require("foundation.kill_credit")
+local Credit = WS.require("games.gameplay.kill_credit")
 local Feed = WS.require("foundation.kill_feed")
 local E = WS.Events
 

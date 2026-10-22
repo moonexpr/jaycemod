@@ -158,7 +158,7 @@ end
 -- The action engine, by action: what each Update costs with its children,
 -- each event and query by name.
 local function WrapActions(seen)
-	local Hfsm = package.loaded["game.generator.hfsm"]
+	local Hfsm = package.loaded["games.generator.hfsm"]
 	if not Hfsm then return end
 	local Action, Behavior = Hfsm.Action, Hfsm.Behavior
 	seen[Action], seen[Behavior] = true, true

@@ -13,14 +13,14 @@
 --   HALLOWEEN_QUICK_HEAL: heals 30 health a second, up to max health.
 --   HALLOWEEN_THRILLER: the forced dance holds the player still (frozen).
 --   URINE (Jarate): mini-crits taken.
--- What players see of them (foundation.players.condition_effects) is drawn by
+-- What players see of them (games.gameplay.players.condition_effects) is drawn by
 -- cl_conditions.lua from the end of each, networked as ws_cond_<number>.
 -- Movement and stun state reach clients as NW2 vars for prediction:
 -- ws_speed_boosted, ws_stun_end_time, ws_stun_speed_reduction,
 -- ws_stun_flags.
 local P = WS.PlayerRules
 local C = P.COND
-local Effects = WS.require("foundation.players.condition_effects")
+local Effects = WS.require("games.gameplay.players.condition_effects")
 
 -- HALLOWEEN_QUICK_HEAL: CTFPlayerShared::Heal(outer, 30, ...), per second.
 local QUICK_HEAL_RATE = 30

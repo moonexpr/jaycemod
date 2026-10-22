@@ -1,7 +1,8 @@
--- foundation/'s layers (docs/research/foundation-admission-rule.md): every
--- module is in one of four categories, ranked bottom-up, or is pending a move
--- out of foundation. A category may require only itself and the categories
--- below it, and foundation never requires a feature or a ws/ file.
+-- foundation/'s and games/'s layers (docs/research/foundation-admission-rule.md):
+-- every module is in one of four categories, ranked bottom-up, or is pending
+-- a move out of foundation. A category may require only itself and the
+-- categories below it, in either tree, and neither tree requires a feature
+-- or a ws/ file.
 local T = dofile("tests/harness.lua")
 
 local FOUNDATION = T.ROOT .. "foundation/"
@@ -60,90 +61,103 @@ local CATEGORY = {
 
 	["generator/state_machine"] = "formalisms",
 	["generator/state_chart"] = "formalisms",
-	["rounds"] = "formalisms",
-	["rounds/state"] = "formalisms",
+}
+
+-- games/'s modules, by the same categories (docs/foundation-game-split-plan.md).
+local GAMES = {
+	["timer/countdown"] = "structures",
+	["timer/interval"] = "structures",
+	["world/snapshot"] = "structures",
+	["npc/astar"] = "structures",
+
+	["list/drawlist"] = "formalisms",
+	["world/io"] = "formalisms",
+	["generator/hfsm"] = "formalisms",
+	["gameplay/tactics"] = "formalisms",
+	["gameplay/rounds"] = "formalisms",
+	["gameplay/rounds/state"] = "formalisms",
 	-- teams is a label here, not a classification. There is no file-level
 	-- cycle (rounds -> teams -> rounds/state); the categories are ranked
 	-- whole, and rounds reads team vocabulary and one TF2 team rule,
 	-- Teams.ScrambleDue, so teams sits a rank below gameplay types until the
 	-- CS:S split separates team identity from TF2's team rules
 	-- (docs/research/foundation-admission-rule.md, Amendment 2).
-	["teams"] = "formalisms",
-	["npc"] = "formalisms",
+	["gameplay/teams"] = "formalisms",
+	["npc/nextbot"] = "formalisms",
 	["npc/actor"] = "formalisms",
 	["npc/combatant"] = "formalisms",
-	["events"] = "formalisms",
-	["features"] = "formalisms",
-	["gamemode"] = "formalisms",
-	["idle"] = "formalisms",
-	["spawn_manager"] = "formalisms",
-	["play_mode"] = "formalisms",
-	["permissions"] = "formalisms",
+	["system/events"] = "formalisms",
+	["system/features"] = "formalisms",
+	["system/gamemode"] = "formalisms",
+	["system/idle"] = "formalisms",
+	["system/spawn_manager"] = "formalisms",
+	["system/play_mode"] = "formalisms",
+	["system/permissions"] = "formalisms",
 
-	["players"] = "gameplay",
-	["players/attributes"] = "gameplay",
-	["players/condition_effects"] = "gameplay",
-	["kill_icons"] = "gameplay",
-	["kill_credit"] = "gameplay",
-	["player_analytics"] = "gameplay",
-	["respawn_modifiers"] = "gameplay",
-	["spawn"] = "gameplay",
-	["spectate"] = "gameplay",
-	["economy"] = "gameplay",
-	["arrivals"] = "gameplay",
-	["reports"] = "gameplay",
-	["vote"] = "gameplay",
-	["loadout"] = "gameplay",
-	["combat"] = "gameplay",
-	["combat/weapon_mimic"] = "gameplay",
-	["combat/weapon_slot_filter"] = "gameplay",
-	["combat/fixed_spread"] = "gameplay",
-	["combat/combat_text"] = "gameplay",
-	["combat/hit_sound"] = "gameplay",
-	["combat/weapon_balance"] = "gameplay",
-	["combat/bullet_steps"] = "gameplay",
-	["combat/crit_effects"] = "gameplay",
-	["combat/impact"] = "gameplay",
-	["projectile"] = "gameplay",
-	["projectile/rocket"] = "gameplay",
-	["projectile/grenade"] = "gameplay",
-	["projectile/pipe"] = "gameplay",
-	["projectile/jar"] = "gameplay",
-	["capture"] = "gameplay",
-	["capture/area"] = "gameplay",
-	["capture/master"] = "gameplay",
-	["capture/point_timer"] = "gameplay",
-	["rounds/timer"] = "gameplay",
-	["rounds/limits"] = "gameplay",
+	["gameplay/players"] = "gameplay",
+	["gameplay/players/attributes"] = "gameplay",
+	["gameplay/players/condition_effects"] = "gameplay",
+	["gameplay/kill_icons"] = "gameplay",
+	["gameplay/kill_credit"] = "gameplay",
+	["gameplay/player_analytics"] = "gameplay",
+	["gameplay/respawn_modifiers"] = "gameplay",
+	["gameplay/spawn"] = "gameplay",
+	["gameplay/spectate"] = "gameplay",
+	["gameplay/economy"] = "gameplay",
+	["gameplay/arrivals"] = "gameplay",
+	["gameplay/reports"] = "gameplay",
+	["gameplay/vote"] = "gameplay",
+	["gameplay/loadout"] = "gameplay",
+	["gameplay/combat"] = "gameplay",
+	["gameplay/combat/weapon_mimic"] = "gameplay",
+	["gameplay/combat/weapon_slot_filter"] = "gameplay",
+	["gameplay/combat/fixed_spread"] = "gameplay",
+	["gameplay/combat/combat_text"] = "gameplay",
+	["gameplay/combat/hit_sound"] = "gameplay",
+	["gameplay/combat/weapon_balance"] = "gameplay",
+	["gameplay/combat/bullet_steps"] = "gameplay",
+	["gameplay/combat/crit_effects"] = "gameplay",
+	["gameplay/combat/impact"] = "gameplay",
+	["gameplay/projectile"] = "gameplay",
+	["gameplay/projectile/rocket"] = "gameplay",
+	["gameplay/projectile/grenade"] = "gameplay",
+	["gameplay/projectile/pipe"] = "gameplay",
+	["gameplay/projectile/jar"] = "gameplay",
+	["gameplay/capture"] = "gameplay",
+	["gameplay/capture/area"] = "gameplay",
+	["gameplay/capture/master"] = "gameplay",
+	["gameplay/capture/point_timer"] = "gameplay",
+	["gameplay/rounds/timer"] = "gameplay",
+	["gameplay/rounds/limits"] = "gameplay",
 	["npc/targeting"] = "gameplay",
 
-	["wartactics"] = "ns",
-	["aiwar/squad"] = "ns",
-	["aiwar/lanes"] = "ns",
-	["aiwar/speech"] = "ns",
-	["aiwar/hearing"] = "ns",
-	["aiwar/explore"] = "ns",
-	["aiwar/hunt"] = "ns",
-	["aiwar/posts"] = "ns",
-	["aiwar/zone"] = "ns",
+	["ns/tactics"] = "ns",
+	["ns/squad"] = "ns",
+	["ns/lanes"] = "ns",
+	["ns/speech"] = "ns",
+	["ns/hearing"] = "ns",
+	["ns/explore"] = "ns",
+	["ns/hunt"] = "ns",
+	["ns/posts"] = "ns",
+	["ns/zone"] = "ns",
 	["ns/tuning"] = "ns",
-	["npc/path"] = "ns",
-	["npc/path/ground"] = "ns",
-	["npc/path/hl2"] = "ns",
-	["npc/route_record"] = "ns",
-	["npc/reach_memo"] = "ns",
-	["npc/leap"] = "ns",
-	["npc/detour"] = "ns",
-	["npc/noise"] = "ns",
-	["npc/path/scatter"] = "ns",
-	["npc/path/tfbot"] = "ns",
-	["npc/doors"] = "ns",
-	["npc/portal"] = "ns",
-	["npc/probe"] = "ns",
-	["npc/rappel"] = "ns",
-	["npc/brushes"] = "ns",
-	["npc/clip"] = "ns",
-	["nav_gaps"] = "ns",
+	["ns/path"] = "ns",
+	["ns/path/ground"] = "ns",
+	["ns/path/hl2"] = "ns",
+	["ns/path/scatter"] = "ns",
+	["ns/path/tfbot"] = "ns",
+	["ns/route_record"] = "ns",
+	["ns/reach_memo"] = "ns",
+	["ns/leap"] = "ns",
+	["ns/detour"] = "ns",
+	["ns/noise"] = "ns",
+	["ns/doors"] = "ns",
+	["ns/portal"] = "ns",
+	["ns/probe"] = "ns",
+	["ns/rappel"] = "ns",
+	["ns/brushes"] = "ns",
+	["ns/clip"] = "ns",
+	["ns/nav_gaps"] = "ns",
 }
 
 -- The modules still to move, and where each goes.
@@ -246,24 +260,36 @@ local KNOWN_INVERSIONS = {}
 -- is not one (tests/foundation_index_test.lua).
 local INDEX = "_index%.lua$"
 
-local function FoundationModules()
-	local list = assert(io.popen("find " .. FOUNDATION .. " -name '*.lua'"))
+-- A games tree's init (sh_init.lua) publishes modules and is not one.
+local INIT = "_init%.lua$"
+
+-- The two trees: where each lives, the dotted prefix of its module names,
+-- and its categories.
+local TREES = {
+	{ dir = FOUNDATION, prefix = FOUNDATION_PREFIX, category = CATEGORY, pending = PENDING },
+	{ dir = T.ROOT .. "games/", prefix = "^games%.", category = GAMES, pending = {} },
+}
+
+local function Modules(tree)
+	local list = assert(io.popen("find " .. tree.dir .. " -name '*.lua'"))
 	local modules = {}
 	for path in list:lines() do
-		if not path:match(INDEX) then modules[path:sub(#FOUNDATION + 1, -#".lua" - 1)] = true end
+		if not path:match(INDEX) and not path:match(INIT) then
+			modules[path:sub(#tree.dir + 1, -#".lua" - 1)] = true
+		end
 	end
 	list:close()
 	return modules
 end
 
-local function Exists(module)
-	local file = io.open(FOUNDATION .. module .. ".lua")
+local function Exists(tree, module)
+	local file = io.open(tree.dir .. module .. ".lua")
 	if file then file:close() end
 	return file ~= nil
 end
 
-local function Requires(module)
-	local file = assert(io.open(FOUNDATION .. module .. ".lua"))
+local function Requires(tree, module)
+	local file = assert(io.open(tree.dir .. module .. ".lua"))
 	local text = file:read("*a")
 	file:close()
 	local names = {}
@@ -273,61 +299,56 @@ local function Requires(module)
 	return names
 end
 
-local function ModuleOf(name)
-	return (name:gsub(FOUNDATION_PREFIX, ""):gsub("%.", "/"))
-end
-
-T.test("game requires nothing from features or ws", function()
-	local list = assert(io.popen("find " .. T.ROOT .. "game -name '*.lua'"))
-	for path in list:lines() do
-		local file = assert(io.open(path))
-		local text = file:read("*a")
-		file:close()
-		for name in text:gmatch(REQUIRE) do
-			for _, prefix in ipairs(OUTSIDE_PREFIXES) do
-				T.eq(name:match(prefix), nil, path:sub(#T.ROOT + 1) .. " requires " .. name)
-			end
+-- A required name's tree and its module there, or nil for neither tree's.
+local function Place(name)
+	for _, tree in ipairs(TREES) do
+		if name:match(tree.prefix) then
+			return tree, (name:gsub(tree.prefix, ""):gsub("%.", "/"))
 		end
 	end
-	list:close()
+end
+
+T.test("every module is categorised or pending a move, and every entry exists", function()
+	for _, tree in ipairs(TREES) do
+		for module in pairs(Modules(tree)) do
+			local places = (tree.category[module] and 1 or 0) + (tree.pending[module] and 1 or 0)
+			T.eq(places, 1, tree.dir .. module .. " is in exactly one of its categories and PENDING")
+		end
+		for module, category in pairs(tree.category) do
+			T.eq(Exists(tree, module), true, tree.dir .. module .. " exists")
+			T.eq(RANK[category] ~= nil, true, module .. "'s category " .. category .. " is ranked")
+		end
+		for module in pairs(tree.pending) do
+			T.eq(Exists(tree, module), true, "PENDING entry " .. module .. " exists")
+		end
+	end
 end)
 
-T.test("every foundation file is categorised or pending a move, and every entry exists", function()
-	local modules = FoundationModules()
-	for module in pairs(modules) do
-		local places = (CATEGORY[module] and 1 or 0) + (PENDING[module] and 1 or 0)
-		T.eq(places, 1, module .. " is in exactly one of CATEGORY and PENDING")
-	end
-	for module, category in pairs(CATEGORY) do
-		T.eq(Exists(module), true, "CATEGORY entry " .. module .. " exists")
-		T.eq(RANK[category] ~= nil, true, module .. "'s category " .. category .. " is ranked")
-	end
-	for module in pairs(PENDING) do
-		T.eq(Exists(module), true, "PENDING entry " .. module .. " exists")
-	end
-end)
-
-T.test("foundation requires nothing from features or ws", function()
-	for module in pairs(FoundationModules()) do
-		for _, name in ipairs(Requires(module)) do
-			for _, prefix in ipairs(OUTSIDE_PREFIXES) do
-				T.eq(name:match(prefix), nil, module .. " requires " .. name)
+T.test("foundation and games require nothing from features or ws", function()
+	for _, tree in ipairs(TREES) do
+		for module in pairs(Modules(tree)) do
+			for _, name in ipairs(Requires(tree, module)) do
+				for _, prefix in ipairs(OUTSIDE_PREFIXES) do
+					T.eq(name:match(prefix), nil, tree.dir .. module .. " requires " .. name)
+				end
 			end
 		end
 	end
 end)
 
 T.test("a categorised module requires only categorised modules at its rank or below", function()
-	for module, category in pairs(CATEGORY) do
-		local allowed = KNOWN_INVERSIONS[module] or {}
-		for _, name in ipairs(Requires(module)) do
-			if name:match(FOUNDATION_PREFIX) then
-				local required = ModuleOf(name)
-				local rank = RANK[CATEGORY[required]]
-				local ordered = rank ~= nil and rank <= RANK[category]
-				T.eq(ordered or allowed[required] == true, true,
-					module .. " (" .. category .. ") requires " .. required
-						.. " (" .. tostring(CATEGORY[required] or PENDING[required]) .. ")")
+	for _, tree in ipairs(TREES) do
+		for module, category in pairs(tree.category) do
+			local allowed = KNOWN_INVERSIONS[module] or {}
+			for _, name in ipairs(Requires(tree, module)) do
+				local required, path = Place(name)
+				if required then
+					local rank = RANK[required.category[path]]
+					local ordered = rank ~= nil and rank <= RANK[category]
+					T.eq(ordered or allowed[path] == true, true,
+						module .. " (" .. category .. ") requires " .. name
+							.. " (" .. tostring(required.category[path] or required.pending[path]) .. ")")
+				end
 			end
 		end
 	end

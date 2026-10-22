@@ -1,9 +1,9 @@
--- The players expected from the previous map (foundation.arrivals): the
+-- The players expected from the previous map (games.gameplay.arrivals): the
 -- humans on the server as a map ends, written to data/ and read as the next
 -- loads, each counted in as their client loads (system_client_ready) or
 -- leaves. The gamemode cuts a map's load countdown short once they are all
 -- in (WS.ExpectedPlayersIn).
-local Arrivals = WS.require("foundation.arrivals")
+local Arrivals = WS.require("games.gameplay.arrivals")
 
 local FILE = "ws_arrivals.txt" -- under garrysmod/data
 

@@ -7,14 +7,14 @@ local T = dofile("tests/harness.lua")
 local FS = dofile("tests/fake_soldier.lua")
 local FP = dofile("tests/fake_points.lua")
 local AiWar = T.require("foundation.aiwar")
-local Explore = T.require("foundation.aiwar.explore")
+local Explore = T.require("games.ns.explore")
 local Scenario = T.require("foundation.aiwar.scenario")
 local CP = T.require("foundation.aiwar.scenario.control_points")
 local Arena = T.require("foundation.aiwar.scenario.arena")
-local Squad = T.require("foundation.aiwar.squad")
-local Tactics = T.require("foundation.wartactics")
-local State = T.require("foundation.rounds.state")
-local Teams = T.require("foundation.teams")
+local Squad = T.require("games.ns.squad")
+local Tactics = T.require("games.ns.tactics")
+local State = T.require("games.gameplay.rounds.state")
+local Teams = T.require("games.gameplay.teams")
 
 local RED, BLUE = Teams.RED, Teams.BLUE
 local P = FS.Point
@@ -244,7 +244,7 @@ end)
 
 -- Lanes ----------------------------------------------------------------------------
 
-local Lanes = T.require("foundation.aiwar.lanes")
+local Lanes = T.require("games.ns.lanes")
 local EXPLORE_ROLE = Arena.DOCTRINE.ROLES[AiWar.EXPLORE]
 
 T.test("lanes lead from each spawn to the point, shut or open; without one, to the enemy's base", function()

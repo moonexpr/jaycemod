@@ -1,10 +1,10 @@
 -- The camera on an NPC being watched, on both realms: the client shows it
 -- (ws/cl_spectate.lua's CalcView), and the server puts an observer
 -- there to roam when the NPC dies (ws/sv_spectate.lua). The geometry is
--- foundation.spectate's: first person just below the top of its bounds,
+-- games.gameplay.spectate's: first person just below the top of its bounds,
 -- looking where it faces; third person over its right shoulder, turned by
 -- the observer's view and pulled in short of walls.
-local Spec = WS.require("foundation.spectate")
+local Spec = WS.require("games.gameplay.spectate")
 
 local WALL_GAP = 4
 local CAMERA_HULL = Vector(4, 4, 4)

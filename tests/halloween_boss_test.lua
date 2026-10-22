@@ -1,8 +1,8 @@
 local T = dofile("tests/harness.lua")
 local FakeCombatant = dofile("tests/fake_combatant.lua")
-local NpcSystem = T.require("foundation.npc")
+local NpcSystem = T.require("games.npc.nextbot")
 local HalloweenBoss = T.require("foundation.npc.halloween_boss")
-local Teams = T.require("foundation.teams")
+local Teams = T.require("games.gameplay.teams")
 
 local V = FakeCombatant.Vector
 local MAX_HEALTH = 1000
@@ -328,8 +328,8 @@ local function LoadsAtTopLevel(line)
 end
 
 T.test("halloween_base_boss defines the boss port, and no boss method shadows another port's", function()
-	local Actor = T.require("foundation.npc.actor")
-	local Combatant = T.require("foundation.npc.combatant")
+	local Actor = T.require("games.npc.actor")
+	local Combatant = T.require("games.npc.combatant")
 	local taken = {}
 	for _, name in ipairs(Actor.METHODS) do taken[name] = true end
 	for name in pairs(Actor.ENGINE) do taken[name] = true end

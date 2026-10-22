@@ -34,7 +34,7 @@
 --     naming its effect (not IsDoneBoardcastingEffectSound).
 local require = require
 local HalloweenBoss = require("foundation.npc.halloween_boss")
-local Teams = require("foundation.teams")
+local Teams = require("games.gameplay.teams")
 local setmetatable, ipairs = setmetatable, ipairs
 module(...)
 

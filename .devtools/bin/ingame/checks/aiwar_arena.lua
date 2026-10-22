@@ -11,7 +11,7 @@
 -- (ws/sh_aiwar.lua); the check then uses it, and the next round.
 local Tests = WS_TESTS
 local AiWar = WS.require("foundation.aiwar")
-local Rounds = WS.require("foundation.rounds")
+local Rounds = WS.require("games.gameplay.rounds")
 local S = WS.STATE
 local NEVER = 9999 -- mp_arena_override_cap_enable_time: the point stays shut
 local CAP_ENABLE = 15
@@ -50,7 +50,7 @@ local function Leaders(aiwar)
 	for ent in pairs(aiwar.soldiers) do
 		local member = IsValid(ent) and aiwar.war:Member(ent)
 		if member and member.role == AiWar.EXPLORE and member.fireTeam
-			and WS.require("foundation.aiwar.squad").Leader(member.fireTeam) == member then
+			and WS.require("games.ns.squad").Leader(member.fireTeam) == member then
 			list[#list + 1] = ent
 		end
 	end

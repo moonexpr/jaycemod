@@ -3,7 +3,7 @@
 -- calls the vote (a map vote's maps, or Call Vote). Votes the server
 -- disabled, or that have no system behind them yet, stay on show but say
 -- so. Players are reported, never voted off, from the scoreboard.
-local Vote = WS.require("foundation.vote")
+local Vote = WS.require("games.gameplay.vote")
 local UI = WS.UI
 local THEME = UI.THEME
 local E = WS.Events

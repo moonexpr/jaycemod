@@ -26,8 +26,8 @@
 -- the Msg family wrote).
 --
 -- Paths are matched on their tail, after "addons/<addon>/" and "@" come off, so
--- the repo's addons/sandcastle/gamemodes/sandcastle/gamemode/foundation/rounds.lua, the game's
--- gamemodes/sandcastle/gamemode/foundation/rounds.lua and foundation/rounds.lua
+-- the repo's addons/sandcastle/gamemodes/sandcastle/gamemode/games/gameplay/rounds.lua, the game's
+-- gamemodes/sandcastle/gamemode/games/gameplay/rounds.lua and games/gameplay/rounds.lua
 -- all name the same file.
 local MAX_FRAMES = 12
 local SNAPSHOTS_KEPT = 20 -- per breakpoint, the newest

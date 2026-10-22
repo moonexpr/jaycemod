@@ -36,11 +36,11 @@ function WS.PlaySoundTo(ply, ent, name)
 	ent:EmitSound(name, 75, 100, 1, CHAN_AUTO, 0, 0, filter)
 end
 
--- The map's entity I/O (game.world.io): cached lookups by name and
+-- The map's entity I/O (games.world.io): cached lookups by name and
 -- class, recorded output connections, and observers of outputs and inputs.
 -- Its maps are rebuilt when the map's entities are all spawned or cleaned
 -- up; entities created after join them as they are created.
-local MapIO = WS.require("game.world.io")
+local MapIO = WS.require("games.world.io")
 
 -- The port outlives a reload with WS.MapIO, so a reload redefines its
 -- methods in place.
@@ -71,7 +71,7 @@ local RECORDED = {
 	path_track = true,
 	info_player_teamspawn = true,
 	team_control_point = true,
-	-- which doors a trigger opens (foundation.npc.doors Opens)
+	-- which doors a trigger opens (games.ns.doors Opens)
 	trigger_multiple = true,
 	-- the rounds feature fires its OnMultiNewRound, which GMod never does
 	logic_auto = true,
@@ -116,7 +116,7 @@ end
 function WS.FindAllByName(name) return WS.MapIO:FindByName(name) end
 function WS.FindByClass(class) return WS.MapIO:FindByClass(class) end
 
--- An output connection as Hammer writes it (game.world.io).
+-- An output connection as Hammer writes it (games.world.io).
 WS.ParseOutput = MapIO.ParseOutput
 
 -- Fire the named output of an engine entity whose outputs we recorded.

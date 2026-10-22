@@ -5,7 +5,7 @@
 -- CUSTOM_SIZE the slots are edited one by one, so the sides may differ (a
 -- side alone, for testing). A slot may be pinned: its soldier leads its fire
 -- team (LEADER), or never leads while another is in it (MEMBER): the pins
--- are foundation.aiwar.squad's, whose Leader honours them.
+-- are games.ns.squad's, whose Leader honours them.
 --
 -- A slot is { id, pin (LEADER, MEMBER or nil), holder (its soldier's
 -- handle, or nil) }; slots are kept by faction name, as factions trade
@@ -13,8 +13,8 @@
 local format, ipairs, pairs, remove, setmetatable, sort, tonumber, type, upper =
 	string.format, ipairs, pairs, table.remove, setmetatable, table.sort, tonumber, type, string.upper
 local floor = math.floor
-local Teams = require("foundation.teams")
-local Squad = require("foundation.aiwar.squad")
+local Teams = require("games.gameplay.teams")
+local Squad = require("games.ns.squad")
 module(...)
 
 local LEADER, MEMBER = Squad.LEADER, Squad.MEMBER

@@ -4,12 +4,12 @@
 -- and the AI War panel. A client cannot set a server's convar itself
 -- ("Can't change replicated ConVar ... from console of client"), so a menu
 -- sends ws_server_set name value, and the server sets it for a holder of the
--- setting's privilege (foundation.permissions), after Parse holds the value
+-- setting's privilege (games.system.permissions), after Parse holds the value
 -- to the range the menu's control offers. Every setting is an integer.
 local floor, format, tonumber = math.floor, string.format, tonumber
 local AiWar = require("foundation.aiwar")
 local Slots = require("foundation.aiwar.slots")
-local Permissions = require("foundation.permissions")
+local Permissions = require("games.system.permissions")
 module(...)
 
 local RULES = Permissions.RULES

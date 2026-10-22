@@ -1,6 +1,6 @@
 -- ws_projectile: the base of every thrown or fired projectile, a thin
--- binding to a foundation.projectile model. A subclass sets
--- ENT.Variant = "foundation.projectile.<variant>" and overrides
+-- binding to a games.gameplay.projectile model. A subclass sets
+-- ENT.Variant = "games.gameplay.projectile.<variant>" and overrides
 -- Detonate(trace), and IsEnemy(other) when it has sides. It knows no teams.
 --
 -- Config, given with Configure(config) before Spawn: { model, velocity,
@@ -28,7 +28,7 @@ end
 
 function ENT:Initialize()
 	local config = self:Config()
-	self.system = WS.require("foundation.projectile")
+	self.system = WS.require("games.gameplay.projectile")
 	self:SetModel(config.model)
 	self:SetSolid(SOLID_BBOX)
 	self:SetCollisionGroup(COLLISION_GROUP_PROJECTILE)

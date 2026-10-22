@@ -57,7 +57,7 @@ Source("ws/sh_core.lua WS.require", WS.require)
 Source("ws/sh_events.lua Events.Fire", WS.Events and WS.Events.Fire)
 
 Say("--- foundation modules (WS.require's CompileFile)")
-for _, name in ipairs({ "foundation.features", "foundation.events", "foundation.teams" }) do
+for _, name in ipairs({ "games.system.features", "games.system.events", "games.gameplay.teams" }) do
 	local key, fn = FirstFunction(package.loaded[name])
 	Source(name .. "." .. tostring(key), fn)
 end

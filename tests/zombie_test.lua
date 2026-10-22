@@ -3,12 +3,12 @@
 -- whole scenarios against tests/fake_combatant.lua.
 local T = dofile("tests/harness.lua")
 local FC = dofile("tests/fake_combatant.lua")
-local N = T.require("foundation.npc")
+local N = T.require("games.npc.nextbot")
 local Zombie = T.require("foundation.npc.zombie")
-local Actor = T.require("foundation.npc.actor")
+local Actor = T.require("games.npc.actor")
 local Spawner = T.require("features.npc.spawner")
-local Players = T.require("foundation.players")
-local Teams = T.require("foundation.teams")
+local Players = T.require("games.gameplay.players")
+local Teams = T.require("games.gameplay.teams")
 
 local V = FC.Vector
 local C = Players.COND

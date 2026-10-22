@@ -10,8 +10,8 @@ NextSoldier, the AI-war's NextBot soldiers. The gamemode lives at
 |---|---|
 | `gamemode/shared_loader.lua` | Runs first: the gamemode's `WS.require`, then foundation's namespace indexes, each named by hand |
 | `gamemode/foundation/<namespace>/` | The generic base: data structures, algorithms, codecs, maths, classes, loaded at start and published as globals (`list.queue`) by `sh_index.lua` (index below) |
-| `gamemode/game/<namespace>/` | The specialised code built on foundation (timers, the world's I/O, the NextBot engine, gameplay interfaces), published as globals by `sh_init.lua` and loaded on first read (index below) |
-| `gamemode/foundation/` | Also, until they move to `game/`: models, pure Lua systems, no GMod globals, I/O through ports, loaded per map with `WS.require("foundation.x")` (`docs/foundation-game-split-plan.md`) |
+| `gamemode/games/<namespace>/` | Models built on foundation: pure Lua systems, no GMod globals, I/O through ports (the gamemode core, gameplay, NPCs, NextSoldier, timers, the world's I/O), published as globals by `sh_init.lua` and loaded on first read (index below) |
+| `gamemode/foundation/` | Also, until they move to their features or `ws/` (`PENDING` in `tests/foundation_layers_test.lua`): mode-specific models, loaded per map with `WS.require("foundation.x")` (`docs/foundation-game-split-plan.md`) |
 | `gamemode/features/<feature>/` | Controllers: `sv.lua`/`cl.lua`/`sh.lua` composition roots and their `<realm>_<part>.lua` parts |
 | `gamemode/ws/` | Always-loaded glue |
 | `gamemode/entities/` | Map entity bindings |
@@ -183,16 +183,27 @@ table. Tests are `tests/<namespace>_<module>_test.lua`.
 | `analysis.memory` | `Measure(roots)` → estimated bytes per named root (each object once); `Format(report, rows)`. `ws_analytics_memory` runs it over the loaded foundation modules |
 | `transaction` | Exchanges between user and system or between modules, settling once as committed (value), declined (a refusal: the caller's mistake) or failed (our bug). Refusals: `Refuse(kind, detail)`, `IsRefusal(err, kinds)`, `Message`, `Explain`, `Detail`. `New()` → `Commit`/`Decline`/`Fail`, `State`, `Value`, `Refusal`, `Error`, `OnSettle`, `Await(scheduler)` (in a task); `Run(fn, ...)`, `Spawn(scheduler, fn, ...)` with `fn(work, ...)` and `work:Undo(fn)` compensations; `All(list)`. Wire: `Ledger()` (`Open`, `Settle`, `Expire`, `Count`), `Reply(tx[, kinds])`. Over the network: `WS.Events.Transact` (client) and `WS.Events.Serve` (server), events defined with `transaction = true` |
 
-## game index
+## games index
 
-`gamemode/game/<namespace>/<module>.lua`: the specialised code built on
-foundation. `shared_loader.lua` runs each namespace's `sh_init.lua`, which
-`Defer`s a module a line: module `game.<namespace>.<module>` is the global
+`gamemode/games/<namespace>/<module>.lua`: the specialised code built on
+foundation (named `games/`, not `game/`: GMod has a `game` library, and
+`module(...)` builds a module's dotted path in the globals).
+`shared_loader.lua` runs each namespace's `sh_init.lua`, which `Defer`s a
+module a line: module `games.<namespace>.<module>` is the global
 `<namespace>.<module>`, loaded the first time it is read, so a map pays only
-for what it uses. A namespace may be foundation's too (`list`,
-`generator`). game may require foundation, never features or ws; a
-published foundation module never requires game. Tests are
-`tests/game_<namespace>_<module>_test.lua`.
+for what it uses. A module's parts (`gameplay/rounds/state`) load through it
+and are not published. A namespace may be foundation's (`list`,
+`generator`) or GMod's (`timer`, `system`). games may require foundation,
+never features or ws; a published foundation module never requires games;
+`tests/foundation_layers_test.lua` ranks both trees. Tests are
+`tests/games_<namespace>_<module>_test.lua`.
+
+| Namespace | Modules |
+|---|---|
+| `system` | The gamemode core: `events` (the game event registry, `WS.Events`), `features` (per-map feature loading), `gamemode`, `permissions`, `play_mode`, `spawn_manager`, `idle` |
+| `gameplay` | `rounds` (+ `state`, `timer`, `limits`), `teams`, `players` (+ `attributes`, `condition_effects`), `spawn`, `spectate`, `respawn_modifiers`, `arrivals`, `loadout`, `economy`, `kill_credit`, `kill_icons`, `vote`, `reports`, `player_analytics`, `capture` (+ `area`, `master`, `point_timer`), `combat` (+ 9 parts), `projectile` (+ 4 parts), `tactics` |
+| `npc` | `nextbot` (the NextBot NPC system), `actor`, `combatant`, `targeting`, `astar` |
+| `ns` | NextSoldier: `tactics` (the AI war's fire-team doctrine, on `gameplay.tactics`), `tuning`, `squad`, `lanes`, `speech`, `hearing`, `explore`, `hunt`, `posts`, `zone`, `nav_gaps`; movement: `path` (+ `ground`, `hl2`, `scatter`, `tfbot`, the cost strategies a solver prices steps with), `brushes`, `clip`, `detour`, `doors`, `leap`, `noise`, `portal`, `probe`, `rappel`, `reach_memo`, `route_record` |
 
 | Module | API |
 |---|---|
@@ -204,13 +215,6 @@ published foundation module never requires game. Tests are
 | `gameplay.tactics` | The tactics engine interface: `ENGINE` (a port), `Check(engine)` |
 | `npc.astar` | `graph.pathfinder`'s solver for NavAreaBuildPath's A*, the routes of HL2 NPCs (`features/npc/sv_routes.lua`) |
 | `list.drawlist` | `New()` → draw callbacks named by dotted paths, run in order (by order, a tie by path): `Add(path, order, draw[, when])` (a path again replaces it), `HideElements(path)`/`ShowElements(path)` (the code's: a path hides all under it), `SetHidden(paths)` (the player's, apart), `Draw(...)`, `Entries()`; `ParseNames(text)`. The HUD's (`WS.HUD`, `cl_hud_hidden`) |
-
-### Variants elsewhere
-
-| Module | Base |
-|---|---|
-| `foundation.wartactics` | `gameplay.tactics`: the AI war's fire-team doctrine (contact, bounding overwatch, flanking, falling back) |
-| `foundation.npc.path.*` | the path cost strategies a solver's graph prices steps with |
 
 Rationale, what stays out of foundation's namespaces, and what to evaluate
 next (native backing): `docs/foundation-core.md`. The split into

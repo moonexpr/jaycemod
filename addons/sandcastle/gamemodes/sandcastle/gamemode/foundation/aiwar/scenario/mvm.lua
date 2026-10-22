@@ -16,7 +16,7 @@
 local floor, ipairs, min, pairs, sort = math.floor, ipairs, math.min, pairs, table.sort
 local AiWar = require("foundation.aiwar")
 local Orders = require("foundation.aiwar.orders")
-local Teams = require("foundation.teams")
+local Teams = require("games.gameplay.teams")
 local Base = require("foundation.aiwar.scenario")
 local Ctf = require("foundation.aiwar.scenario.ctf")
 local Geometry = require("foundation.math.geometry")

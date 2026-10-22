@@ -2,7 +2,7 @@
 -- server broadcasts (announcer lines, win and lose music) and the
 -- announcement line. The server fires them to everyone (ws/sv_world.lua:
 -- WS.BroadcastSound, BroadcastSoundToOthers, Announce); each client
--- decides whether its player hears a sound (foundation.teams
+-- decides whether its player hears a sound (games.gameplay.teams
 -- HearsBroadcast) and plays it as its own. The rounds view draws the
 -- announcement.
 local E = WS.Events

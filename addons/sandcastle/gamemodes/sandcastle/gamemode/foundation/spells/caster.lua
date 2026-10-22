@@ -23,7 +23,7 @@
 --                    Stun(t, d, reduction), GetVelocity(t), SetVelocity(t, v),
 --                    Push(t, v) (adds velocity, off the ground),
 --                    Damage(t, n, dmgType, inflictor), Explode(config)
---                    (a foundation.combat Explosion config, with attacker and
+--                    (a games.gameplay.combat Explosion config, with attacker and
 --                    inflictor), LaunchProjectile(class, config) -> handle,
 --                    SpawnNPC(class, config, pos) -> handle,
 --                    Spawn(class, config, pos) -> handle, Teleport(t, pos),

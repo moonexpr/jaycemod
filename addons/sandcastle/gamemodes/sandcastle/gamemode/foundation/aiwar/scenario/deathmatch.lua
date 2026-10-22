@@ -1,5 +1,5 @@
 -- The deathmatch scenario (foundation.aiwar.scenario): a tied match's
--- deathmatch (foundation.rounds' DeathmatchMode), frags alone deciding it,
+-- deathmatch (games.gameplay.rounds' DeathmatchMode), frags alone deciding it,
 -- fought as arena's round is before its point opens
 -- (foundation.aiwar.scenario.arena): every squad explores the map and hunts
 -- what it sees. The map's objective counts for nothing, so its points are

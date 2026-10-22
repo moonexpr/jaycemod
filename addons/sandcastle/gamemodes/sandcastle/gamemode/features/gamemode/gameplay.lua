@@ -3,13 +3,13 @@
 -- race, control points and their rounds) and its name's prefix (pl_, plr_,
 -- koth_, ctf_, cp_, arena_...).
 local format, lower, match = string.format, string.lower, string.match
-local Economy = require("foundation.economy")
+local Economy = require("games.gameplay.economy")
 module(...)
 
 -- info = { map, trains (team_train_watchers), race (tf_logic_multiple_escort
 -- or plr_), points (team_control_points), rounds (team_control_point_rounds),
 -- flags (item_teamflags), and on a map without an objective fraglimit and
--- cashlimit (the round limits, foundation.rounds.limits) }. Returns the
+-- cashlimit (the round limits, games.gameplay.rounds.limits) }. Returns the
 -- title and the objective lines.
 function Describe(info)
 	local prefix = lower(match(info.map or "", "^(%a+)_") or "")

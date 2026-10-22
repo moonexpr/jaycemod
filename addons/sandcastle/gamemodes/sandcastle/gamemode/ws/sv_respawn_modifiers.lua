@@ -1,11 +1,11 @@
--- Respawn modifiers (foundation.respawn_modifiers): what each player did
+-- Respawn modifiers (games.gameplay.respawn_modifiers): what each player did
 -- since their last spawn (enemies killed, players and soldiers; points
 -- captured standing on them and blocked as their named defender, from the
 -- capture areas; a death credited to an enemy, ws/sv_kill_credit.lua; a
 -- suicide) moves their respawn sooner or later. The rounds controller asks
 -- at each death (WS.RespawnAdjust), and the player is told every reason
 -- (game_respawn_modifiers, under the respawn bar).
-local M = WS.require("foundation.respawn_modifiers")
+local M = WS.require("games.gameplay.respawn_modifiers")
 
 local lives = setmetatable({}, { __mode = "k" }) -- player -> what they did since their last spawn
 

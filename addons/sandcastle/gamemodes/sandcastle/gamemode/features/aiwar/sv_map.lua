@@ -165,7 +165,7 @@ local function LoadedFeature(name)
 	return nil
 end
 
--- The rounds mode's NAME (foundation.rounds), which picks the scenario; nil
+-- The rounds mode's NAME (games.gameplay.rounds), which picks the scenario; nil
 -- without rounds.
 local function RoundsModeName()
 	local rounds = LoadedFeature("rounds")

@@ -2,9 +2,9 @@
 -- the changes to its points carried out. Its helpers go to the other parts
 -- as Points.
 local Controller, Team, GAME_TEAMS, caplinear = ...
-local Capture = WS.require("foundation.capture")
-local Master = WS.require("foundation.capture.master")
-local Rounds = WS.require("foundation.rounds")
+local Capture = WS.require("games.gameplay.capture")
+local Master = WS.require("games.gameplay.capture.master")
+local Rounds = WS.require("games.gameplay.rounds")
 
 local POINT_CLASS = "team_control_point"
 local NOBODY, RED, BLUE = WS.TEAM_UNASSIGNED, WS.TEAM_RED, WS.TEAM_BLUE

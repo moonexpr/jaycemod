@@ -12,7 +12,7 @@ local INDEX_CALL = "Index%(%s*\"([%w_/.]+)\"%s*%)"
 -- Each tree's index files, and how a module of it is published.
 local TREES = {
 	{ root = "foundation", file = "_index.lua", lazy = false },
-	{ root = "game", file = "_init.lua", lazy = true },
+	{ root = "games", file = "_init.lua", lazy = true },
 }
 
 -- Folders that still hold modules bound elsewhere: only what their index
@@ -151,7 +151,7 @@ T.test("running the indexes again, as a reload does, is not refused", function()
 	RunIndexes(globals)
 	RunIndexes(globals)
 	T.eq(globals.list.queue, T.require("foundation.list.queue"), "list.queue")
-	T.eq(globals.list.drawlist, T.require("game.list.drawlist"), "list.drawlist")
+	T.eq(globals.list.drawlist, T.require("games.list.drawlist"), "list.drawlist")
 end)
 
 T.test("a published foundation module requires nothing from game", function()

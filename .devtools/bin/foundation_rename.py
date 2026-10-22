@@ -37,8 +37,8 @@ class Move:
 
     def __post_init__(self) -> None:
         for path in (self.old, self.new):
-            if not re.fullmatch(r"(foundation|game)(/[a-z_][a-z0-9_]*)+", path):
-                raise ValueError(f"not a module path under foundation/ or game/: {path!r}")
+            if not re.fullmatch(r"(foundation|game|games)(/[a-z_][a-z0-9_]*)+", path):
+                raise ValueError(f"not a module path under foundation/ or games/: {path!r}")
 
     @property
     def files(self) -> tuple[Path, Path]:
@@ -62,7 +62,8 @@ class Move:
         test_old, test_new = (p.stem for p in self.tests)
         text = re.sub(rf"(?<![\w]){re.escape(test_old)}(?![\w])", test_new, text)
         dotted_old, dotted_new = (p.replace("/", ".") for p in (self.old, self.new))
-        text = re.sub(rf"(?<![\w.]){re.escape(dotted_old)}(?![\w])", dotted_new, text)
+        # not a module under this one (foundation.npc.actor is not foundation.npc's)
+        text = re.sub(rf"(?<![\w.]){re.escape(dotted_old)}(?![\w]|\.\w)", dotted_new, text)
         text = re.sub(rf"(?<![\w.]){re.escape(self.old)}(?![\w/])", self.new, text)
         if self.within_foundation:
             bare_old, bare_new = (p.removeprefix(FOUNDATION) for p in (self.old, self.new))
@@ -127,6 +128,96 @@ MOVES = tuple(
         ("foundation/core/tactics", "game/gameplay/tactics"),
         ("foundation/core/hfsm", "game/generator/hfsm"),
         ("foundation/pathfinder/astar", "game/npc/astar"),
+        # GMod has a game library, and module(...) builds a module's dotted
+        # path in the globals: the tree is games/.
+        ("game/list/drawlist", "games/list/drawlist"),
+        ("game/world/io", "games/world/io"),
+        ("game/world/snapshot", "games/world/snapshot"),
+        ("game/gameplay/tactics", "games/gameplay/tactics"),
+        ("game/generator/hfsm", "games/generator/hfsm"),
+        ("game/npc/astar", "games/npc/astar"),
+        ("game/timer/countdown", "games/timer/countdown"),
+        ("game/timer/interval", "games/timer/interval"),
+    )
+) + tuple(
+    Move(f"foundation/{old}", f"games/{new}")
+    for old, new in (
+        ("events", "system/events"),
+        ("features", "system/features"),
+        ("gamemode", "system/gamemode"),
+        ("permissions", "system/permissions"),
+        ("play_mode", "system/play_mode"),
+        ("spawn_manager", "system/spawn_manager"),
+        ("idle", "system/idle"),
+        ("rounds", "gameplay/rounds"),
+        ("rounds/state", "gameplay/rounds/state"),
+        ("rounds/timer", "gameplay/rounds/timer"),
+        ("rounds/limits", "gameplay/rounds/limits"),
+        ("teams", "gameplay/teams"),
+        ("spawn", "gameplay/spawn"),
+        ("spectate", "gameplay/spectate"),
+        ("respawn_modifiers", "gameplay/respawn_modifiers"),
+        ("arrivals", "gameplay/arrivals"),
+        ("loadout", "gameplay/loadout"),
+        ("economy", "gameplay/economy"),
+        ("kill_credit", "gameplay/kill_credit"),
+        ("kill_icons", "gameplay/kill_icons"),
+        ("vote", "gameplay/vote"),
+        ("reports", "gameplay/reports"),
+        ("player_analytics", "gameplay/player_analytics"),
+        ("players", "gameplay/players"),
+        ("players/attributes", "gameplay/players/attributes"),
+        ("players/condition_effects", "gameplay/players/condition_effects"),
+        ("capture", "gameplay/capture"),
+        ("capture/area", "gameplay/capture/area"),
+        ("capture/master", "gameplay/capture/master"),
+        ("capture/point_timer", "gameplay/capture/point_timer"),
+        ("combat", "gameplay/combat"),
+        ("combat/bullet_steps", "gameplay/combat/bullet_steps"),
+        ("combat/combat_text", "gameplay/combat/combat_text"),
+        ("combat/crit_effects", "gameplay/combat/crit_effects"),
+        ("combat/fixed_spread", "gameplay/combat/fixed_spread"),
+        ("combat/hit_sound", "gameplay/combat/hit_sound"),
+        ("combat/impact", "gameplay/combat/impact"),
+        ("combat/weapon_balance", "gameplay/combat/weapon_balance"),
+        ("combat/weapon_mimic", "gameplay/combat/weapon_mimic"),
+        ("combat/weapon_slot_filter", "gameplay/combat/weapon_slot_filter"),
+        ("projectile", "gameplay/projectile"),
+        ("projectile/grenade", "gameplay/projectile/grenade"),
+        ("projectile/jar", "gameplay/projectile/jar"),
+        ("projectile/pipe", "gameplay/projectile/pipe"),
+        ("projectile/rocket", "gameplay/projectile/rocket"),
+        ("npc", "npc/nextbot"),
+        ("npc/actor", "npc/actor"),
+        ("npc/combatant", "npc/combatant"),
+        ("npc/targeting", "npc/targeting"),
+        ("wartactics", "ns/tactics"),
+        ("aiwar/squad", "ns/squad"),
+        ("aiwar/lanes", "ns/lanes"),
+        ("aiwar/speech", "ns/speech"),
+        ("aiwar/hearing", "ns/hearing"),
+        ("aiwar/explore", "ns/explore"),
+        ("aiwar/hunt", "ns/hunt"),
+        ("aiwar/posts", "ns/posts"),
+        ("aiwar/zone", "ns/zone"),
+        ("ns/tuning", "ns/tuning"),
+        ("nav_gaps", "ns/nav_gaps"),
+        ("npc/path", "ns/path"),
+        ("npc/path/ground", "ns/path/ground"),
+        ("npc/path/hl2", "ns/path/hl2"),
+        ("npc/path/scatter", "ns/path/scatter"),
+        ("npc/path/tfbot", "ns/path/tfbot"),
+        ("npc/brushes", "ns/brushes"),
+        ("npc/clip", "ns/clip"),
+        ("npc/detour", "ns/detour"),
+        ("npc/doors", "ns/doors"),
+        ("npc/leap", "ns/leap"),
+        ("npc/noise", "ns/noise"),
+        ("npc/portal", "ns/portal"),
+        ("npc/probe", "ns/probe"),
+        ("npc/rappel", "ns/rappel"),
+        ("npc/reach_memo", "ns/reach_memo"),
+        ("npc/route_record", "ns/route_record"),
     )
 )
 
@@ -178,7 +269,9 @@ def rewrite_all(dry_run: bool) -> list[Path]:
 
 
 def remove_empty_dirs() -> None:
-    for root in (REPO / GAMEMODE / "foundation", REPO / GAMEMODE / "game"):
+    for root in (REPO / GAMEMODE / "foundation", REPO / GAMEMODE / "game", REPO / GAMEMODE / "games"):
+        if not root.exists():
+            continue
         for directory in sorted(root.rglob("*"), reverse=True):
             if directory.is_dir() and not any(directory.iterdir()):
                 directory.rmdir()

@@ -4,14 +4,14 @@
 -- overtime held by a pushed cart, and the cart HUD's wire format
 -- (foundation.payload.hud). Also the seams of the payload feature.
 local T = dofile("tests/harness.lua")
-local Rounds = T.require("foundation.rounds")
+local Rounds = T.require("games.gameplay.rounds")
 local ControlPoints = T.require("foundation.rounds.control_points")
 local PayloadMode = T.require("foundation.rounds.payload")
 local Payload = T.require("foundation.payload")
 local Race = T.require("foundation.payload.race")
 local Hud = T.require("foundation.payload.hud")
-local Timer = T.require("foundation.rounds.timer")
-local Teams = T.require("foundation.teams")
+local Timer = T.require("games.gameplay.rounds.timer")
+local Teams = T.require("games.gameplay.teams")
 
 local NOBODY, RED, BLU = Teams.UNASSIGNED, Teams.RED, Teams.BLUE
 local MODE = PayloadMode.Mode

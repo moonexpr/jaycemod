@@ -11,7 +11,7 @@ AddCSLuaFile()
 ENT.Type = "anim"
 ENT.Base = "ws_projectile"
 ENT.Spawnable = false
-ENT.Variant = "foundation.projectile.grenade"
+ENT.Variant = "games.gameplay.projectile.grenade"
 
 if CLIENT then return end
 

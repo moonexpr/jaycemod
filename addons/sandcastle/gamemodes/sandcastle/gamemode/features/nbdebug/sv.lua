@@ -36,7 +36,7 @@ function Clock:Now() return CurTime() end
 local Controller = {
 	subscriptions = {}, -- player -> foundation.npc.debug Subscription
 	bots = {}, -- entity -> bot, as foundation.npc.debug sees an NPC, from the last collection
-	npcs = {}, -- entity -> its foundation.npc Npc, from the last collection
+	npcs = {}, -- entity -> its games.npc.nextbot Npc, from the last collection
 	pathWatches = {}, -- entity -> { costs }, as last given to the npc controller
 	reports = {}, -- entity -> its last path report, while watched
 	logs = {}, -- entity -> its BehaviorLog, while watched

@@ -62,8 +62,8 @@ end
 function C.Start(seconds, restart)
 	if C.running then return "already running" end
 	local aw, npcs = WS.Feature("aiwar"), WS.Feature("npc")
-	local HL2 = WS.require("foundation.npc.path.hl2")
-	local Lanes = WS.require("foundation.aiwar.lanes")
+	local HL2 = WS.require("games.ns.path.hl2")
+	local Lanes = WS.require("games.ns.lanes")
 	C.list, C.plans, C.started, C.running = {}, {}, CurTime(), true
 	-- team -> the last plan's legs (lane -> leg -> { from, to }); team -> the
 	-- plan being asked for and its legs so far; team -> why that plan ran

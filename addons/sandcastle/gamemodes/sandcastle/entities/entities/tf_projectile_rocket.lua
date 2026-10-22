@@ -1,5 +1,5 @@
 -- tf_projectile_rocket (CTFProjectile_Rocket): a rocket, a ws_projectile
--- bound to foundation.projectile.rocket. It flies straight from where it is
+-- bound to games.gameplay.projectile.rocket. It flies straight from where it is
 -- spawned and blows up on the first thing it touches, through the combat
 -- controller's Explode.
 --
@@ -13,7 +13,7 @@ AddCSLuaFile()
 ENT.Base = "ws_projectile"
 ENT.Type = "anim"
 ENT.Spawnable = false
-ENT.Variant = "foundation.projectile.rocket"
+ENT.Variant = "games.gameplay.projectile.rocket"
 
 if CLIENT then return end
 

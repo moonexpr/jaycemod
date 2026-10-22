@@ -1,8 +1,8 @@
 -- Part of the capture controller (sv.lua): the capture areas, their
 -- captures and their inputs.
 local Controller, GAME_TEAMS, capstyle, blockstyle, capdeteriorate, Points = ...
-local Capture = WS.require("foundation.capture")
-local Area = WS.require("foundation.capture.area")
+local Capture = WS.require("games.gameplay.capture")
+local Area = WS.require("games.gameplay.capture.area")
 local PointByName, AreasOf = Points.PointByName, Points.AreasOf
 local PlayLines, FireTeamOutput, ApplyPointEvents = Points.PlayLines, Points.FireTeamOutput, Points.ApplyPointEvents
 
@@ -169,7 +169,7 @@ end
 
 -- CTeamControlPoint::CaptureBlocked: the clients put the first defender on
 -- the point in the kill feed, once a capture attempt while they stay on it
--- (foundation.capture.area's TellBlock). The AI war hears every block.
+-- (games.gameplay.capture.area's TellBlock). The AI war hears every block.
 local function CaptureBlocked(self, a, point, team)
 	local blocker = Occupants(a, team)[1]
 	local inside = {}

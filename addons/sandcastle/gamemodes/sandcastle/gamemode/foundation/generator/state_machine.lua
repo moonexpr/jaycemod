@@ -111,7 +111,7 @@ function Machine:Transition(state, ...)
 	self:Enter(state, ...)
 end
 
--- Back into a saved state (game.world.snapshot): set as it was, with no
+-- Back into a saved state (games.world.snapshot): set as it was, with no
 -- handler run and no edge required, as the state was reached once already.
 function Machine:Restore(state)
 	self.current = Declared(self.def, state, "a restored state")

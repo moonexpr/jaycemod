@@ -1,10 +1,10 @@
--- The Mode strategy foundation.rounds declares, the control points mode
+-- The Mode strategy games.gameplay.rounds declares, the control points mode
 -- (CTFGameRules's TF_GAMETYPE_CP rules), and the objective port's contract.
 local T = dofile("tests/harness.lua")
 local FakeObjective = dofile("tests/fake_objective.lua")
-local Rounds = T.require("foundation.rounds")
+local Rounds = T.require("games.gameplay.rounds")
 local ControlPoints = T.require("foundation.rounds.control_points")
-local Teams = T.require("foundation.teams")
+local Teams = T.require("games.gameplay.teams")
 
 local RED, BLUE = Teams.RED, Teams.BLUE
 local CP = ControlPoints.Mode
@@ -188,7 +188,7 @@ T.test("tf_gamerules derive the surface from ws_gamerules and run rounds", funct
 end)
 
 -- A mode's player requirement (PLAYERS_NEEDED): a game begins once it is
--- met (foundation.gamemode). counts: each team's players and NPCs, and the
+-- met (games.system.gamemode). counts: each team's players and NPCs, and the
 -- players on neither (teams are chosen once the game begins).
 
 local function Counts(r, b, free) return { [RED] = r, [BLUE] = b, free = free or 0 } end

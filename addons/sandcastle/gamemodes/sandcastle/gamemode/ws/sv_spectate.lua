@@ -7,8 +7,8 @@
 -- info_observer_points. An admin may spectate an NPC from its right-click
 -- (ws_spectate_npc) while in play, and Reload brings them back. The model of each observer lives in `observing[ply]`;
 -- Apply() makes the engine's observer mode and target match it every tick.
--- The rules themselves are in foundation/spectate.lua.
-local Spec = WS.require("foundation.spectate")
+-- The rules themselves are in games/gameplay/spectate.lua.
+local Spec = WS.require("games.gameplay.spectate")
 
 local OBS = {
 	fixed = OBS_MODE_FIXED,
@@ -22,7 +22,7 @@ local OBS = {
 local forcecamera = GetConVar("mp_forcecamera")
 	or CreateConVar("mp_forcecamera", "1", FCVAR_REPLICATED, "Restricts spectator modes for dead players")
 
-local Spawns = WS.require("foundation.spawn_manager")
+local Spawns = WS.require("games.system.spawn_manager")
 local observing = setmetatable({}, { __mode = "k" })
 local killers = setmetatable({}, { __mode = "k" })
 local required = NULL
@@ -38,7 +38,7 @@ local function ObservesAsSpectator(ply)
 	return IsSpectator(ply) or (st ~= nil and st.watch ~= nil)
 end
 
--- Descriptors for foundation.spectate -----------------------------------------
+-- Descriptors for games.gameplay.spectate -----------------------------------------
 
 local function Rules()
 	return {
@@ -470,7 +470,7 @@ local KEYS = {
 }
 
 concommand.Add("ws_spectate_npc", function(ply, _, args)
-	if not IsValid(ply) or not WS.Can(ply, WS.require("foundation.permissions").PLAYERS) then return end
+	if not IsValid(ply) or not WS.Can(ply, WS.require("games.system.permissions").PLAYERS) then return end
 	local npc = Entity(tonumber(args[1] or "") or -1)
 	if not (IsValid(npc) and (npc:IsNPC() or npc:IsNextBot()) and npc:Health() > 0) then
 		ply:ChatPrint("ws_spectate_npc: no living NPC #" .. tostring(args[1]))

@@ -1,11 +1,11 @@
--- Whether the server is idle (foundation.idle): once it has had no players
+-- Whether the server is idle (games.system.idle): once it has had no players
 -- for sv_idle_delay seconds, counted from the last one leaving or from an
 -- empty map's start, it is, and hook WSServerIdle says so; a player joining
 -- calls the countdown off, or makes an idle server active again
 -- (WSServerActive). WS.ServerIdle() asks. While it is idle, a map without a
 -- nav mesh has one generated (ws/sv_nav.lua) and the AI war stands still
 -- (features/aiwar/sv_war.lua); the rounds run on, so the maps rotate.
-local Idle = WS.require("foundation.idle")
+local Idle = WS.require("games.system.idle")
 
 local DELAY = CreateConVar("sv_idle_delay", "300", FCVAR_ARCHIVE,
 	"Seconds an empty server waits before it is idle (from the next map)", 0)

@@ -3,12 +3,12 @@
 -- shape) through the Round, the Master and the PointSet, with the master as
 -- the Round's objective port.
 local T = dofile("tests/harness.lua")
-local Rounds = T.require("foundation.rounds")
+local Rounds = T.require("games.gameplay.rounds")
 local ControlPoints = T.require("foundation.rounds.control_points")
-local Capture = T.require("foundation.capture")
-local Master = T.require("foundation.capture.master")
-local State = T.require("foundation.rounds.state")
-local Teams = T.require("foundation.teams")
+local Capture = T.require("games.gameplay.capture")
+local Master = T.require("games.gameplay.capture.master")
+local State = T.require("games.gameplay.rounds.state")
+local Teams = T.require("games.gameplay.teams")
 
 local NOBODY, RED, BLUE = Teams.UNASSIGNED, Teams.RED, Teams.BLUE
 local W = Rounds.WINREASON

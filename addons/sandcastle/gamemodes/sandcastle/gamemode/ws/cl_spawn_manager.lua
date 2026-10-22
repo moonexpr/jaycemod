@@ -6,11 +6,11 @@
 -- (TanLight). On every map and in every mode, so a lock shows in Sandbox
 -- mode too. Over the rest of the HUD (WS.HUD's OVERLAY band), as TF2's
 -- spectator panel is. Under the bar, while the player waits for a wave,
--- what moved their respawn (foundation.respawn_modifiers): a line for each
+-- what moved their respawn (games.gameplay.respawn_modifiers): a line for each
 -- reason, its seconds green when sooner and red when later, and whether a
 -- limit cut the total.
-local M = WS.require("foundation.respawn_modifiers")
-local S = WS.require("foundation.spawn_manager")
+local M = WS.require("games.gameplay.respawn_modifiers")
+local S = WS.require("games.system.spawn_manager")
 
 -- TF2's 480-tall units.
 local BAR_TALL, LABEL_Y, LABEL_TALL, FONT_TALL = 84, 50, 18, 18

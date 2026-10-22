@@ -1,4 +1,4 @@
--- The spawn manager's controller (foundation.spawn_manager): the gate every
+-- The spawn manager's controller (games.system.spawn_manager): the gate every
 -- player spawn goes through. Whatever spawns players (the rounds' waves and
 -- round starts, a stopped game's pauses, admins, the holiday's teleports)
 -- spawns them with WS.Respawn; GMod's own spawns, respawn clicks and team
@@ -8,7 +8,7 @@
 -- Every client is told the lock (the global ws_spawn_lock) and each player
 -- why they are not spawning (WS.SetSpawnStatus), for ws/sh_spawn_manager.lua
 -- to put in words.
-local S = WS.require("foundation.spawn_manager")
+local S = WS.require("games.system.spawn_manager")
 
 -- Kept across a Lua refresh: the locks and the players held stay.
 WS.SpawnManager = WS.SpawnManager or S.New()
@@ -53,7 +53,7 @@ function WS.MayChooseTeam(ply)
 	return false
 end
 
--- Why a dead player is not spawning (a foundation.spawn_manager status)
+-- Why a dead player is not spawning (a games.system.spawn_manager status)
 -- and, for a wave, when it comes.
 function WS.SetSpawnStatus(ply, status, at)
 	ply:SetNW2Int("ws_spawn_status", status)

@@ -3,7 +3,7 @@
 -- server-only ones, so its console knows every one: it completes their
 -- names and shows their server values, and a change is told in chat.
 local bor, gsub, ipairs, match, sub, type = bit.bor, string.gsub, ipairs, string.match, string.sub, type
-local Features = require("foundation.features")
+local Features = require("games.system.features")
 module(...)
 
 -- Whether a chunk's source (debug.getinfo's source or short_src) is one of

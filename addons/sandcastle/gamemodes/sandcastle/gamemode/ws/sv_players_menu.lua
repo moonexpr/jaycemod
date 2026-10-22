@@ -1,12 +1,12 @@
 -- The scoreboard player menu's requests (ws/sh_players_menu.lua). Reports
--- go to foundation.reports; the one that reaches the count runs
+-- go to games.gameplay.reports; the one that reaches the count runs
 -- WSReportsReached(target, reason), which starts the vote to kick them.
 -- Money a player gives moves through WS.TransferMoney. Kicks, bans and
 -- grants need the players privilege. Every answer goes back to the player
 -- who asked as game_players_menu_said.
-local Reports = WS.require("foundation.reports")
-local Economy = WS.require("foundation.economy")
-local Permissions = WS.require("foundation.permissions")
+local Reports = WS.require("games.gameplay.reports")
+local Economy = WS.require("games.gameplay.economy")
+local Permissions = WS.require("games.system.permissions")
 local Transaction = WS.require("foundation.transaction")
 local Sets = WS.require("foundation.map.sets")
 local E = WS.Events

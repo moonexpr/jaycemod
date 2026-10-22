@@ -5,14 +5,14 @@
 -- battle line, the posts a team holds, ordered across the way it faces.
 --
 -- Squads are fire teams, members roster entries (place, pos, hero), both
--- still foundation.aiwar's; lanes are foundation.aiwar.lanes' (they move to
+-- still foundation.aiwar's; lanes are games.ns.lanes' (they move to
 -- NextSoldier in docs/ns-split.md). Positions are
 -- { x, y, z } tables.
 local ipairs, sort = ipairs, table.sort
 local atan2, floor, max, min, sqrt, HUGE = math.atan2, math.floor, math.max, math.min, math.sqrt, math.huge
 local format, concat = string.format, table.concat
-local Tactics = require("foundation.wartactics")
-local Squad = require("foundation.aiwar.squad")
+local Tactics = require("games.ns.tactics")
+local Squad = require("games.ns.squad")
 local Orders = require("foundation.aiwar.orders")
 local Distance = require("foundation.math.geometry").Distance
 module(...)

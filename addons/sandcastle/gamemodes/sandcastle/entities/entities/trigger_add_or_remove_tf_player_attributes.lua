@@ -4,7 +4,7 @@
 -- add_or_remove, plus the trigger's StartDisabled and filtername. A player
 -- who enters gets the attribute (or loses it, with add_or_remove 1); with a
 -- duration of -1 it is taken back when they leave. Only the attributes
--- foundation.players.attributes supports have an effect; any other name
+-- games.gameplay.players.attributes supports have an effect; any other name
 -- logs once per map and the trigger does nothing, as TF2 does with a name
 -- its schema lacks.
 ENT.Type = "brush"

@@ -2,8 +2,8 @@
 -- and the match's win conditions as TF2's scoreboard words them.
 local T = dofile("tests/harness.lua")
 local Board = T.require("foundation.scoreboard")
-local Teams = T.require("foundation.teams")
-local Rounds = T.require("foundation.rounds")
+local Teams = T.require("games.gameplay.teams")
+local Rounds = T.require("games.gameplay.rounds")
 local RED, BLUE, SPECTATOR, UNASSIGNED = Teams.RED, Teams.BLUE, Teams.SPECTATOR, Teams.UNASSIGNED
 local SANDBOX_UNASSIGNED = 1001 -- GMod's TEAM_UNASSIGNED, a Sandbox map's players
 

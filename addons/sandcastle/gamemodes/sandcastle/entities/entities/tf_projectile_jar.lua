@@ -1,7 +1,7 @@
 -- tf_projectile_jar (CTFProjectile_Jar): a jar of Jarate, a
--- ws_projectile bound to foundation.projectile.jar. It breaks on the
+-- ws_projectile bound to games.gameplay.projectile.jar. It breaks on the
 -- world or a player (PipebombTouch), splashes (peejar_impact, Jar.Explode)
--- and soaks whoever foundation.projectile.jar's Drenches says, for 10 s
+-- and soaks whoever games.gameplay.projectile.jar's Drenches says, for 10 s
 -- (JarExplode). The Wheel of Fate's rain drops them, nobody's.
 --
 -- Configure{ velocity, spin (an Angle), team } before Spawn.
@@ -10,7 +10,7 @@ AddCSLuaFile()
 ENT.Base = "ws_projectile"
 ENT.Type = "anim"
 ENT.Spawnable = false
-ENT.Variant = "foundation.projectile.jar"
+ENT.Variant = "games.gameplay.projectile.jar"
 
 if CLIENT then return end
 
@@ -47,7 +47,7 @@ local function Near(ply, origin)
 		mask = SPLASH_MASK,
 		filter = function(ent) return not ent:IsPlayer() end,
 	})
-	local Targeting = WS.require("foundation.npc.targeting")
+	local Targeting = WS.require("games.npc.targeting")
 	return {
 		team = ply:Team(),
 		alive = ply:Alive(),

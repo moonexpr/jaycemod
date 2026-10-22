@@ -2,7 +2,7 @@
 -- as CTFGameRules::Activate does, over control points and under KOTH. It
 -- plays no special cap lines, and on a race map (tf_logic_multiple_escort) each side hears its
 -- stage outcome when the round is won.
-local Rounds = require("foundation.rounds")
+local Rounds = require("games.gameplay.rounds")
 local Race = require("foundation.payload.race")
 module(...)
 

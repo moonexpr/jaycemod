@@ -2,7 +2,7 @@
 -- (CTFPlayer::ChangeTeam / ForceChangeTeam), the jointeam command
 -- (HandleCommand_JoinTeam), auto-assignment (GetAutoTeam), and automatic
 -- balancing (CTeamplayRoundBasedRules::BalanceTeams). The rules themselves
--- are in foundation/teams.lua. The server never opens the team menu: a
+-- are in games/gameplay/teams.lua. The server never opens the team menu: a
 -- client opens it itself while unassigned, or on the team keys
 -- (ws/cl_teams.lua).
 local L = WS.TeamRules

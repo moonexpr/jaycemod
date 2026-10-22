@@ -21,7 +21,7 @@ LABELS = {
 -- The parts by whose thinking they show, each a section of the Debug
 -- NextSoldier panel: NextSoldier's AI (its soldiers, squads, and the lanes
 -- and battle lines it plans the field with) and the tactics engine's
--- planning (foundation.wartactics: each fire team's contact, flank point
+-- planning (games.ns.tactics: each fire team's contact, flank point
 -- and cover).
 GROUPS = {
 	{

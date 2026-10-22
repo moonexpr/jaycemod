@@ -8,9 +8,9 @@
 local T = dofile("tests/harness.lua")
 local Mvm = T.require("features.mvm.model")
 local Flag = T.require("features.flag.model")
-local Teams = T.require("foundation.teams")
-local Players = T.require("foundation.players")
-local State = T.require("foundation.rounds.state")
+local Teams = T.require("games.gameplay.teams")
+local Players = T.require("games.gameplay.players")
+local State = T.require("games.gameplay.rounds.state")
 
 local RED, BLUE = Teams.RED, Teams.BLUE
 local C = Players.COND
@@ -105,7 +105,7 @@ T.test("setup, the ready-up's stand-in, lasts SETUP_SECONDS by default", functio
 end)
 
 T.test("an MvM game waits for its defenders on RED; BLU's robots do not count", function()
-	local Rounds = T.require("foundation.rounds")
+	local Rounds = T.require("games.gameplay.rounds")
 	T.defined(Mvm.MIN_DEFENDERS, "Mvm.MIN_DEFENDERS")
 	local n = Mvm.MIN_DEFENDERS
 	local function Met(r, b)

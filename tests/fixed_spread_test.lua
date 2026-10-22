@@ -1,9 +1,9 @@
--- foundation.combat.fixed_spread: TF2's tf_use_fixed_weaponspreads, the
+-- games.gameplay.combat.fixed_spread: TF2's tf_use_fixed_weaponspreads, the
 -- pellets of a multi-pellet shot in a fixed pattern (g_vecFixedWpnSpreadPellets)
 -- instead of at random: the first and the tenth down the middle, the rest
 -- in a cross and a square around it, scaled by half the weapon's spread.
 local T = dofile("tests/harness.lua")
-local FixedSpread = T.require("foundation.combat.fixed_spread")
+local FixedSpread = T.require("games.gameplay.combat.fixed_spread")
 
 T.test("the first pellet goes down the middle", function()
 	local x, y = FixedSpread.Offset(1)

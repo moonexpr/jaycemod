@@ -1,6 +1,6 @@
--- TF2's skeletons as a foundation.npc variant: CZombie (halloween/zombie/
+-- TF2's skeletons as a games.npc.nextbot variant: CZombie (halloween/zombie/
 -- zombie.cpp) and its actions (zombie_behavior/*.cpp), run against the
--- combatant port (foundation.npc.combatant). The three skeleton types are
+-- combatant port (games.npc.combatant). The three skeleton types are
 -- data plus per-type strategies in TYPES, so no rule switches on the type.
 --
 -- Also here, as the data and rules their bindings read:
@@ -16,17 +16,17 @@
 local ipairs, pairs, tonumber = ipairs, pairs, tonumber
 local floor = math.floor
 local require = require
-local Npc = require("foundation.npc")
-local Actor = require("foundation.npc.actor")
-local Targeting = require("foundation.npc.targeting")
-local Teams = require("foundation.teams")
+local Npc = require("games.npc.nextbot")
+local Actor = require("games.npc.actor")
+local Targeting = require("games.npc.targeting")
+local Teams = require("games.gameplay.teams")
 module(...)
 
 -- CZombie::SkeletonType_t
 SKELETON_NORMAL, SKELETON_KING, SKELETON_MINI = 0, 1, 2
 
 KIND = "zombie"
-PATH = "foundation.npc.path.scatter"
+PATH = "games.ns.path.scatter"
 
 MAX_ACTIVE_DEFAULT = 30 -- tf_max_active_zombie
 CHASE_MIN_DURATION = 3 -- ZOMBIE_CHASE_MIN_DURATION
@@ -591,7 +591,7 @@ end
 -- CreateSpellSpawnZombie: the skull starts beside and above where it is
 -- thrown from, and flies up and out on a fuse. `random(lo, hi)` draws a
 -- float; `vector(x, y, z)` makes a vector. The result is a
--- foundation.projectile.grenade config plus the start offset and spin.
+-- games.gameplay.projectile.grenade config plus the start offset and spin.
 function SkullThrow(random, vector)
 	local offset = vector(random(-SKULL_SCATTER, SKULL_SCATTER), random(-SKULL_SCATTER, SKULL_SCATTER), SKULL_START_HEIGHT)
 	local direction = vector(random(-UNIT, UNIT), random(-UNIT, UNIT), random(-UNIT, UNIT)):GetNormalized()

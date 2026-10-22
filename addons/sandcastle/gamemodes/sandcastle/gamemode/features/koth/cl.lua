@@ -12,7 +12,7 @@
 -- The point's unlock countdown and its lines are the capture view's; the
 -- overtime line is the rounds view's.
 WS.Feature("rounds")
-local Timer = WS.require("foundation.rounds.timer")
+local Timer = WS.require("games.gameplay.rounds.timer")
 local Hud = WS.require("ws.tf_hud")
 local Font, DrawImage, Shadowed = WS.TFHud.Font, WS.TFHud.DrawImage, WS.TFHud.Shadowed
 

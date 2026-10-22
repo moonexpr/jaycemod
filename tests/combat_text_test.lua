@@ -1,6 +1,6 @@
 local T = dofile("tests/harness.lua")
-local P = T.require("foundation.players")
-local Text = T.require("foundation.combat.combat_text")
+local P = T.require("games.gameplay.players")
+local Text = T.require("games.gameplay.combat.combat_text")
 
 local VICTIM, OTHER = "victim", "other"
 local POS = { x = 0, y = 0, z = 64 }

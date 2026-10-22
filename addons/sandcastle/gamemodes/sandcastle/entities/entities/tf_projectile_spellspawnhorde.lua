@@ -6,7 +6,7 @@ AddCSLuaFile()
 ENT.Type = "anim"
 ENT.Base = "ws_spell_projectile"
 ENT.Spawnable = false
-ENT.Variant = "foundation.projectile.jar"
+ENT.Variant = "games.gameplay.projectile.jar"
 ENT.Model = "models/props_mvm/mvm_human_skull_collide.mdl"
 ENT.ModelScale = 1
 ENT.Trails = {

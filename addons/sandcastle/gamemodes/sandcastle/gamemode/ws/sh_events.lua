@@ -1,5 +1,5 @@
 -- The game event library's realm adapter (docs/game-events.md): the
--- foundation.events registry carried on GMod's net library, as
+-- games.system.events registry carried on GMod's net library, as
 -- WS.Events. Every message between server and clients is an event, on
 -- one of this file's two net messages; nothing else registers one.
 --
@@ -28,7 +28,7 @@
 -- Vector, Angle, Team, List(type, countBits), Record(fields), Optional(type),
 -- Default(type, value)). Included by sh_core.lua, before anything that
 -- defines an event.
-local Events = WS.require("foundation.events")
+local Events = WS.require("games.system.events")
 local Scheduler = WS.require("foundation.list.schedule")
 local Transaction = WS.require("foundation.transaction")
 

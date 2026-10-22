@@ -2,7 +2,7 @@
 -- foundation/, features/ and ws/ except server ones (sv.lua, sv_*), and every
 -- module a shipped file requires is itself shipped.
 local T = dofile("tests/harness.lua")
-local Features = T.require("foundation.features")
+local Features = T.require("games.system.features")
 
 local ENTITIES = T.ROOT .. "../entities/"
 local REQUIRE = "require%(%s*[\"']([%w_.]+)[\"']"
@@ -73,7 +73,7 @@ T.test("the files clients need are sent", function()
 		"features/tag/model.lua",
 		"ws/sound_paths.lua",
 		"features/capture/cl.lua",
-		"foundation/teams.lua",
+		"games/gameplay/teams.lua",
 	}) do
 		T.eq(ships[path], true, path)
 	end

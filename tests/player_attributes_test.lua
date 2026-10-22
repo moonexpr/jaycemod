@@ -1,6 +1,6 @@
 local T = dofile("tests/harness.lua")
-local Attributes = T.require("foundation.players.attributes")
-local Actor = T.require("foundation.npc.actor")
+local Attributes = T.require("games.gameplay.players.attributes")
+local Actor = T.require("games.npc.actor")
 
 local FIRE = Attributes.FIRE_DAMAGE_TAKEN
 local CRIT = "dmg taken from crit reduced"

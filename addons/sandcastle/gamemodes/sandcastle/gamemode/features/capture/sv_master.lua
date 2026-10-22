@@ -1,8 +1,8 @@
 -- Part of the capture controller (sv.lua): the master, its mini-rounds, the
 -- rounds controller's objective port, and tf_logic_cp_timer.
 local Controller, Team, Points = ...
-local Master = WS.require("foundation.capture.master")
-local Rounds = WS.require("foundation.rounds")
+local Master = WS.require("games.gameplay.capture.master")
+local Rounds = WS.require("games.gameplay.rounds")
 local PointByName, RoundSpecs, DeclareWinner = Points.PointByName, Points.RoundSpecs, Points.DeclareWinner
 
 local NOBODY = WS.TEAM_UNASSIGNED
@@ -116,7 +116,7 @@ end
 -- Loaded with the first timer: its model, its round-spawn listener and its
 -- hold on the round timer.
 
-local POINT_TIMER_MODEL = "foundation.capture.point_timer"
+local POINT_TIMER_MODEL = "games.gameplay.capture.point_timer"
 local POINT_TIMER_HOLD = "cp_timer"
 local POINT_TIMER_MISSING = "%s failed to find control point named '%s'"
 

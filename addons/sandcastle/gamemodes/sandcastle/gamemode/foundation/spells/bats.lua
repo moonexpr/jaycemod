@@ -3,7 +3,7 @@
 -- bleeds for 3 s and takes 40 burn damage (an NPC is flung 1000 instead);
 -- then a blast of 10.
 local require = require
-local Teams = require("foundation.teams")
+local Teams = require("games.gameplay.teams")
 local Spells = require("foundation.spells")
 local SpellSet = require("foundation.spells.halloween")
 module(...)

@@ -1,7 +1,7 @@
--- An in-memory foundation.npc.combatant for model tests: a fake actor
+-- An in-memory games.npc.combatant for model tests: a fake actor
 -- (tests/fake_actor.lua) that also takes sides, in a World of players and
 -- NPCs. It implements every name in foundation.npc.actor.METHODS and
--- foundation.npc.combatant.METHODS (combat_test checks that), and logs every
+-- foundation.npc.combatant.METHODS (games_gameplay_combat_test checks that), and logs every
 -- effect in the actor's call log (me:Called(name)).
 --
 --   local world = FakeCombatant.World()
@@ -9,8 +9,8 @@
 --   local me = FakeCombatant.Combatant({ world = world, team = Teams.HALLOWEEN })
 local Fake = dofile("tests/fake_actor.lua")
 local H = dofile("tests/harness.lua")
-local Teams = H.require("foundation.teams")
-local Targeting = H.require("foundation.npc.targeting")
+local Teams = H.require("games.gameplay.teams")
+local Targeting = H.require("games.npc.targeting")
 
 local FakeCombatant = {}
 

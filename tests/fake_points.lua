@@ -6,10 +6,10 @@
 -- told to move.
 local H = dofile("tests/harness.lua")
 local FS = dofile("tests/fake_soldier.lua")
-local N = H.require("foundation.npc")
+local N = H.require("games.npc.nextbot")
 local AiWar = H.require("foundation.aiwar")
 local Orders = H.require("foundation.aiwar.orders")
-local Teams = H.require("foundation.teams")
+local Teams = H.require("games.gameplay.teams")
 
 local FP = {}
 

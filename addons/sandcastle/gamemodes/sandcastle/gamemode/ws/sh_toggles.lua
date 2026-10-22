@@ -4,23 +4,23 @@
 --   tabs; everyone spawns with the starter loadout and money stops counting
 --   (ws/sv_economy.lua, ws/sv_loadout.lua, ws/cl_economy_tabs.lua).
 -- - mp_economy_credit_enabled: 1 lets purchases go below $0 in every mode,
---   as Sandbox mode always does (WS.Affords, foundation.economy's Floor).
+--   as Sandbox mode always does (WS.Affords, games.gameplay.economy's Floor).
 -- - ns_soldiers_enabled: 0 keeps the AI war from starting, and ends one
 --   that runs (features/aiwar).
 -- - tf_weapon_criticals: 0 takes the crit from every blast and projectile;
 --   Sandcastle has no random crits, so this removes the map-set and boss
 --   ones (features/combat).
 -- - tf_use_fixed_weaponspreads: 1 puts a multi-pellet shot's pellets in
---   TF2's fixed pattern (foundation.combat.fixed_spread), here on both
+--   TF2's fixed pattern (games.gameplay.combat.fixed_spread), here on both
 --   realms so prediction agrees.
 -- - mp_friendlyfire: 1 lets a player or soldier hurt its teammates, by
 --   any weapon or blast (ws/sv_hits.lua, features/combat).
 -- mp_tampering_enabled, sv_gameplay_disable_sandbox and sv_gameplay_enabled
 -- live with what they switch (ws/sh_permissions.lua, ws/sh_gameplay.lua).
-local Economy = WS.require("foundation.economy")
-local PlayMode = WS.require("foundation.play_mode")
-local FixedSpread = WS.require("foundation.combat.fixed_spread")
-local BulletSteps = WS.require("foundation.combat.bullet_steps")
+local Economy = WS.require("games.gameplay.economy")
+local PlayMode = WS.require("games.system.play_mode")
+local FixedSpread = WS.require("games.gameplay.combat.fixed_spread")
+local BulletSteps = WS.require("games.gameplay.combat.bullet_steps")
 
 local FLAGS = { FCVAR_ARCHIVE, FCVAR_REPLICATED, FCVAR_NOTIFY }
 local ECONOMY = CreateConVar("mp_economy_enabled", "0", FLAGS, -- off until the economy is done

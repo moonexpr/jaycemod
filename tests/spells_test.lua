@@ -5,7 +5,7 @@ local T = dofile("tests/harness.lua")
 local Fake = dofile("tests/fake_caster.lua")
 local Spells = T.require("foundation.spells")
 local SpellSet = T.require("foundation.spells.halloween")
-local Teams = T.require("foundation.teams")
+local Teams = T.require("games.gameplay.teams")
 
 local V = Fake.Vector
 
@@ -318,10 +318,10 @@ T.test("a spawn_boss spell with no room for the eyeball is given back", function
 end)
 
 -------------------------------------------------------------------------------
--- The flights spell projectiles bind to (foundation.projectile variants)
+-- The flights spell projectiles bind to (games.gameplay.projectile variants)
 
-local Projectile = T.require("foundation.projectile")
-local Jar = T.require("foundation.projectile.jar")
+local Projectile = T.require("games.gameplay.projectile")
+local Jar = T.require("games.gameplay.projectile.jar")
 local Orb = T.require("foundation.projectile.orb")
 
 local WORLD = {

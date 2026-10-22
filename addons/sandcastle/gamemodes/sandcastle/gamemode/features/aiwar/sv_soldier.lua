@@ -1,10 +1,10 @@
 -- Part of the AI war controller (sv.lua): the soldier port over a DrGBase soldier, and its gadgets.
 local Map = ...
-local TFBot = WS.require("foundation.npc.path.tfbot")
-local HL2Path = WS.require("foundation.npc.path.hl2")
+local TFBot = WS.require("games.ns.path.tfbot")
+local HL2Path = WS.require("games.ns.path.hl2")
 local Random = WS.require("foundation.math.weighted")
 local Debug = WS.require("foundation.npc.debug")
-local Detour = WS.require("foundation.npc.detour")
+local Detour = WS.require("games.ns.detour")
 local WALK_MINS, WALK_MAXS, WALK_LIFT, WALK_MAX_RISE = Map.WALK_MINS, Map.WALK_MAXS, Map.WALK_LIFT, Map.WALK_MAX_RISE
 local Point, ToVector, Masks, IsDoor = Map.Point, Map.ToVector, Map.Masks, Map.IsDoor
 local OnFloor, PassThrough = Map.OnFloor, Map.PassThrough
@@ -374,7 +374,7 @@ end
 
 -- Stuck against a solid entity the nav mesh does not know of (a crate
 -- across a lane; not map geometry, nor a door, which the door watchdog
--- opens): the first point beside it (foundation.npc.detour) I can walk to
+-- opens): the first point beside it (games.ns.detour) I can walk to
 -- and that is on the nav mesh, or nil.
 function Soldier:Detour(p)
 	local heading = self:Heading(p)

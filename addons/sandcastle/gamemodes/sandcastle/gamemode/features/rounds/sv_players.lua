@@ -1,7 +1,7 @@
 -- Part of the rounds controller (sv.lua): the players, their teams and their scores.
 local GAME_TEAMS = ...
 local UNASSIGNED = WS.TEAM_UNASSIGNED
-local Credit = WS.require("foundation.kill_credit")
+local Credit = WS.require("games.gameplay.kill_credit")
 local RED, BLUE = WS.TEAM_RED, WS.TEAM_BLUE
 
 -- Players -----------------------------------------------------------------------
@@ -73,7 +73,7 @@ local function SwitchTeams()
 end
 
 -- CTFGameRules::HandleScrambleTeams: the players dealt out by score (their
--- points: kills and assists, foundation.kill_credit; L.Scramble), the first
+-- points: kills and assists, games.gameplay.kill_credit; L.Scramble), the first
 -- side at random, and the teams' scores reset.
 local function ScrambleTeams()
 	local players, byId = {}, {}

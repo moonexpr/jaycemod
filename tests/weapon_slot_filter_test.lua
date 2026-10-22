@@ -1,6 +1,6 @@
 local T = dofile("tests/harness.lua")
-local Filter = T.require("foundation.combat.weapon_slot_filter")
-local Actor = T.require("foundation.npc.actor")
+local Filter = T.require("games.gameplay.combat.weapon_slot_filter")
+local Actor = T.require("games.npc.actor")
 
 local function Hit(byPlayer, dmgType)
 	return {

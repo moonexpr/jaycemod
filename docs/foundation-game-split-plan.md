@@ -29,15 +29,21 @@ gameplay). Both publish their modules as globals.
    (spells among them).
 7. **`list.schedule`'s greedy sorter** is a TODO in the code for now.
 8. **The abstract path search is `graph.pathfinder`**, not `npc.pathfinder`.
+9. **The tree is `games/`.** GMod has a `game` library, and `module(...)`
+   builds a module's dotted path in the globals, so `game.list.drawlist`
+   would add tables to GMod's `game`. Decided after the tables below were
+   written with `game/`; read `games/` for them.
 
 ## Status
 
 - Stage 1: done.
 - Stage 2: done. `foundation.generator.state_chart` is the statechart
-  without stacks; `game.generator.hfsm` extends it with NextBot's
-  suspend/resume stacks, its behaviour unchanged (its tests and
-  `npc_test.lua` pass as they were).
-- Stage 3: not started.
+  without stacks; `games.generator.hfsm` extends it with NextBot's
+  suspend/resume stacks, its behaviour unchanged (its tests and the NPC
+  system's pass as they were).
+- Stage 3: done, as the table below proposed. What is left in
+  `foundation/` outside its namespaces is PENDING, bound for its features
+  and `ws/`.
 
 ## The loader
 

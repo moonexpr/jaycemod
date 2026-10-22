@@ -4,14 +4,14 @@
 -- (koth_viaduct's shape: one neutral point, tf_logic_koth 180/30, a master
 -- scoring per round).
 local T = dofile("tests/harness.lua")
-local Rounds = T.require("foundation.rounds")
+local Rounds = T.require("games.gameplay.rounds")
 local ControlPoints = T.require("foundation.rounds.control_points")
 local Koth = T.require("features.koth.model")
-local Timer = T.require("foundation.rounds.timer")
-local Capture = T.require("foundation.capture")
-local Master = T.require("foundation.capture.master")
-local State = T.require("foundation.rounds.state")
-local Teams = T.require("foundation.teams")
+local Timer = T.require("games.gameplay.rounds.timer")
+local Capture = T.require("games.gameplay.capture")
+local Master = T.require("games.gameplay.capture.master")
+local State = T.require("games.gameplay.rounds.state")
+local Teams = T.require("games.gameplay.teams")
 
 local NOBODY, RED, BLUE = Teams.UNASSIGNED, Teams.RED, Teams.BLUE
 local HILL = "hill"

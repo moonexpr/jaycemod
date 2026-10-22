@@ -4,12 +4,12 @@
 -- how it went.
 --
 -- def = { class (the editor's), or match(ent) -> whether the entry shows on
--- ent (a payload cart), privilege (a foundation.permissions name; tampering
+-- ent (a payload cart), privilege (a games.system.permissions name; tampering
 -- when left out), title (for the chat line), label, icon,
 -- order, choices (optional: { label, value } list, shown as a submenu),
 -- run(editors, ent, value) -> true, or false and why, done (the chat line
 -- on success) }.
-local Permissions = WS.require("foundation.permissions")
+local Permissions = WS.require("games.system.permissions")
 
 function WS.EditorAction(name, def)
 	local privilege = def.privilege or Permissions.TAMPER

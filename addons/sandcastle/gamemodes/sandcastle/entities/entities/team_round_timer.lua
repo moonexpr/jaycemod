@@ -1,6 +1,6 @@
 -- team_round_timer: the round clock (CTeamRoundTimer,
 -- teamplay_round_timer.cpp), bound to the rounds feature, which holds its
--- foundation.rounds.timer model, thinks it, and fires its outputs here.
+-- games.gameplay.rounds.timer model, thinks it, and fires its outputs here.
 ENT.Type = "point"
 ENT.Base = "base_point"
 

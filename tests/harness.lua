@@ -46,7 +46,7 @@ CHUNK_ENV.require = T.require
 --   RealmSource(name, realm): the text of features/<name>/<realm>.lua, then
 --     of every <realm>_*.lua beside it in name order, joined by newlines, so
 --     a test reading a controller's text reads its parts too.
---   FeatureParts(env, name): foundation.features Parts over files loaded
+--   FeatureParts(env, name): games.system.features Parts over files loaded
 --     from root, as WS.FeatureParts in the game.
 function T.FeatureTree(root)
 	local tree = {}
@@ -59,7 +59,7 @@ function T.FeatureTree(root)
 	end
 
 	function tree.RealmSource(name, realm)
-		local Features = T.require("foundation.features")
+		local Features = T.require("games.system.features")
 		local rootPath = Features.PartPath(name, realm)
 		local texts = { Read(rootPath) or error("no " .. root .. rootPath, 2) }
 		local list = assert(io.popen("ls -1 '" .. root .. Features.ROOT .. name .. "'"))
@@ -78,7 +78,7 @@ function T.FeatureTree(root)
 		return (loadfile(root .. path))
 	end
 	function tree.FeatureParts(env, name)
-		return T.require("foundation.features").Parts(port, env, name)
+		return T.require("games.system.features").Parts(port, env, name)
 	end
 	return tree
 end

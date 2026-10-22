@@ -1,11 +1,11 @@
 -- The spawn manager, shared (ws/sv_spawn_manager.lua runs it): why a
--- player is not spawning, in TF2's words (foundation.spawn_manager), from
+-- player is not spawning, in TF2's words (games.system.spawn_manager), from
 -- what the server shares: the lock (the global ws_spawn_lock, "" for none)
 -- and each player's status and respawn time (NW2 ws_spawn_status,
 -- ws_respawn_time). ws/cl_spawn_manager.lua shows it.
-local S = WS.require("foundation.spawn_manager")
+local S = WS.require("games.system.spawn_manager")
 
--- Why ply is held out of play (foundation.spawn_manager's Reason), NONE
+-- Why ply is held out of play (games.system.spawn_manager's Reason), NONE
 -- when nothing holds them: the server spawns a watcher held for nothing
 -- (ws/sv_spectate.lua), and the client says the reason (SpawnMessage).
 function WS.HoldReason(ply)

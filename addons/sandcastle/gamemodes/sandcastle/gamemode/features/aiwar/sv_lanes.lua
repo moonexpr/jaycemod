@@ -1,16 +1,16 @@
--- Part of the AI war controller (sv.lua): lanes, each team's ways from its spawn (foundation.aiwar.lanes).
+-- Part of the AI war controller (sv.lua): lanes, each team's ways from its spawn (games.ns.lanes).
 local Controller, Map = ...
-local Teams = WS.require("foundation.teams")
+local Teams = WS.require("games.gameplay.teams")
 local Geometry = WS.require("foundation.math.geometry")
-local TFBot = WS.require("foundation.npc.path.tfbot")
-local HL2Path = WS.require("foundation.npc.path.hl2")
-local Path = WS.require("foundation.npc.path")
-local Lanes = WS.require("foundation.aiwar.lanes")
+local TFBot = WS.require("games.ns.path.tfbot")
+local HL2Path = WS.require("games.ns.path.hl2")
+local Path = WS.require("games.ns.path")
+local Lanes = WS.require("games.ns.lanes")
 local Graph = WS.require("foundation.graph.search")
 local RED, BLUE = Map.RED, Map.BLUE
 local Point, ToVector, SpawnSpots, WorldWalkClear = Map.Point, Map.ToVector, Map.SpawnSpots, Map.WorldWalkClear
 
--- Lanes (foundation.aiwar.lanes): each team's ways from its spawn: straight
+-- Lanes (games.ns.lanes): each team's ways from its spawn: straight
 -- to its front (the scenario's Front: on payload its own cart, else the
 -- enemy's), to either side of it, and through the enemy's defenses (its
 -- posts, else its front) on to the enemy's spawn, planned one after the

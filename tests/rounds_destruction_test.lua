@@ -5,12 +5,12 @@
 -- payload, so no cart HUD. Sandcastle plays no PD scoring yet, so the
 -- round limits decide its rounds (an objective-less mode).
 local T = dofile("tests/harness.lua")
-local Rounds = T.require("foundation.rounds")
+local Rounds = T.require("games.gameplay.rounds")
 local Destruction = T.require("foundation.rounds.destruction")
 local Payload = T.require("foundation.rounds.payload")
 local Koth = T.require("features.koth.model")
 local Arena = T.require("foundation.rounds.arena")
-local Limits = T.require("foundation.rounds.limits")
+local Limits = T.require("games.gameplay.rounds.limits")
 
 local function Settings()
 	return {

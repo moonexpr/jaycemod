@@ -1,7 +1,7 @@
 -- Exploring is every scenario's job, so an admin can send soldiers
 -- exploring by hand (the slots panel's Job menu, ns_jobs_assign) on any
 -- map: every doctrine has it, and every scenario keeps the exploration
--- board (foundation.aiwar.explore) its explorers go by.
+-- board (games.ns.explore) its explorers go by.
 local T = dofile("tests/harness.lua")
 local FS = dofile("tests/fake_soldier.lua")
 local FP = dofile("tests/fake_points.lua")
@@ -11,7 +11,7 @@ local CP = T.require("foundation.aiwar.scenario.control_points")
 local Koth = T.require("foundation.aiwar.scenario.koth")
 local Arena = T.require("foundation.aiwar.scenario.arena")
 local Freeform = T.require("foundation.aiwar.scenario.freeform")
-local Teams = T.require("foundation.teams")
+local Teams = T.require("games.gameplay.teams")
 
 local RED = Teams.RED
 local P = FS.Point

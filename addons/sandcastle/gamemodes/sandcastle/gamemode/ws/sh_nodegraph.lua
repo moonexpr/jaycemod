@@ -3,8 +3,8 @@
 -- (features/nodegraph), and on clients the Utilities menu entry and the
 -- overlay that draws it.
 
--- Switched off (foundation.features OFF): no commands, menu or overlay.
-if WS.require("foundation.features").OFF.nodegraph then return end
+-- Switched off (games.system.features OFF): no commands, menu or overlay.
+if WS.require("games.system.features").OFF.nodegraph then return end
 
 -- The overlay's snapshot, which the nodegraph feature fires to an admin who
 -- turned it on: which graph (generated, installed or none), the nodes near
@@ -37,7 +37,7 @@ E.Define("game_nodegraph_debug", {
 if SERVER then
 	local function Command(name, method, help)
 		concommand.Add(name, function(ply)
-			if not WS.Can(ply, WS.require("foundation.permissions").NEXTSOLDIER) then
+			if not WS.Can(ply, WS.require("games.system.permissions").NEXTSOLDIER) then
 				ply:ChatPrint("Node graph: you may not do that")
 				return
 			end

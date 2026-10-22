@@ -2,7 +2,7 @@
 -- the server runs, loaded without a restart, where lua_refresh_file cannot
 -- reach (it re-runs included files, and modules and features are compiled).
 -- From the server console (srcds.py rcon) or a superadmin:
---   ws_hotswap_module <foundation.capture.area>   runs the module's file
+--   ws_hotswap_module <games.gameplay.capture.area>   runs the module's file
 --     again; module(...) keeps its table, so the new functions are where
 --     every holder of the module has them, and its state stays
 --   ws_hotswap_feature <capture> <Method|Table.Method> [...]   runs the

@@ -1,9 +1,9 @@
 -- The scoreboard's player menu (ws/cl_players_menu.lua draws it, ws/sv_players_menu.lua
--- answers it): copy a player's Steam3 ID, report them (foundation.reports),
+-- answers it): copy a player's Steam3 ID, report them (games.gameplay.reports),
 -- give them money, mute them; and for holders of the players privilege,
 -- kick, ban and give money from nothing. Players never call a kick vote:
 -- mp_reports_kick_count reports of one player start one (WSReportsReached).
-local Reports = WS.require("foundation.reports")
+local Reports = WS.require("games.gameplay.reports")
 local E = WS.Events
 
 CreateConVar("mp_reports_kick_count", "3", { FCVAR_ARCHIVE, FCVAR_REPLICATED, FCVAR_NOTIFY },

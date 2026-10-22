@@ -1,5 +1,5 @@
 local T = dofile("tests/harness.lua")
-local Steps = T.require("foundation.combat.bullet_steps")
+local Steps = T.require("games.gameplay.combat.bullet_steps")
 
 local function Recorder(log, name, answer)
 	return function(shooter, data)

@@ -1,13 +1,13 @@
 -- What an attacking player sees and hears of its own hits
 -- (game_combat_text, ws/sv_hits.lua): TF2's damage numbers rising from the
--- victim (hud_combattext, foundation.combat.combat_text), its hit sound
--- (tf_dingalingaling, foundation.combat.hit_sound), and the crit text over
+-- victim (hud_combattext, games.gameplay.combat.combat_text), its hit sound
+-- (tf_dingalingaling, games.gameplay.combat.hit_sound), and the crit text over
 -- the victim (crit.pcf's crit_text, minicrit_text). TF2's console
 -- variables set them, from the spawn menu's Options > Client > Gameplay
 -- Effects.
 local P = WS.PlayerRules
-local CombatText = WS.require("foundation.combat.combat_text")
-local HitSound = WS.require("foundation.combat.hit_sound")
+local CombatText = WS.require("games.gameplay.combat.combat_text")
+local HitSound = WS.require("games.gameplay.combat.hit_sound")
 local E = WS.Events
 
 local COMBAT_TEXT = CreateClientConVar("hud_combattext", "1", true, false, "1: show the damage you deal as numbers over your victims", 0, 1)

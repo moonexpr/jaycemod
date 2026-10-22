@@ -7,7 +7,7 @@
 -- it, pos, nextCheckpoint (distance along it, nil after the last) }.
 local max, pairs = math.max, pairs
 local AiWar = require("foundation.aiwar")
-local Teams = require("foundation.teams")
+local Teams = require("games.gameplay.teams")
 local Orders = require("foundation.aiwar.orders")
 local Base = require("foundation.aiwar.scenario")
 module(...)

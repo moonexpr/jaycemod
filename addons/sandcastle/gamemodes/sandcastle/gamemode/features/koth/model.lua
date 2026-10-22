@@ -1,4 +1,4 @@
--- King of the Hill: the koth mode of foundation.rounds (CTFGameRules's
+-- King of the Hill: the koth mode of games.gameplay.rounds (CTFGameRules's
 -- IsInKothMode branches) and the tf_logic_koth logic (CKothLogic,
 -- tf_gamerules.cpp). A tf_logic_koth chooses it.
 --
@@ -9,9 +9,9 @@
 -- OnCapTeam -> tf_gamerules.Set<Team>KothClockActive). A team owning the
 -- hill wins when its clock reads zero and the timer may expire, so an
 -- enemy on the point holds it at zero in overtime.
-local Rounds = require("foundation.rounds")
+local Rounds = require("games.gameplay.rounds")
 local ControlPoints = require("foundation.rounds.control_points")
-local Teams = require("foundation.teams")
+local Teams = require("games.gameplay.teams")
 local ipairs, setmetatable = ipairs, setmetatable
 module(...)
 

@@ -11,9 +11,9 @@
 -- (CTFBotFetchFlag's "we just spawned - give us the flag"), and invaders in
 -- their spawn room cannot be hurt (CTFBotMainAction::Update).
 local ipairs = ipairs
-local Rounds = require("foundation.rounds")
-local Teams = require("foundation.teams")
-local Players = require("foundation.players")
+local Rounds = require("games.gameplay.rounds")
+local Teams = require("games.gameplay.teams")
+local Players = require("games.gameplay.players")
 local Geometry = require("foundation.math.geometry")
 module(...)
 

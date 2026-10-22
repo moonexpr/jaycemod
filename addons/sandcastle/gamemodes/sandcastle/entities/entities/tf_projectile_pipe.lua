@@ -1,5 +1,5 @@
 -- tf_projectile_pipe (CTFGrenadePipebombProjectile): a grenade launcher
--- pipe, a ws_projectile bound to foundation.projectile.pipe. It arcs,
+-- pipe, a ws_projectile bound to games.gameplay.projectile.pipe. It arcs,
 -- bounces, and blows up when its fuse ends, through the combat controller's
 -- Explode. It never collides with players (TFCOLLISION_GROUP_ROCKETS, as
 -- tf_point_weapon_mimic sets it).
@@ -14,7 +14,7 @@ AddCSLuaFile()
 ENT.Base = "ws_projectile"
 ENT.Type = "anim"
 ENT.Spawnable = false
-ENT.Variant = "foundation.projectile.pipe"
+ENT.Variant = "games.gameplay.projectile.pipe"
 
 if CLIENT then return end
 

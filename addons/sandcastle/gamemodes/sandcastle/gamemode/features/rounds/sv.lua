@@ -1,5 +1,5 @@
--- The rounds feature's controller. It owns the foundation.rounds Round (the
--- gamerules state machine), a foundation.rounds.timer Timer per
+-- The rounds feature's controller. It owns the games.gameplay.rounds Round (the
+-- gamerules state machine), a games.gameplay.rounds.timer Timer per
 -- team_round_timer, the timer shown in the HUD, the gamerules proxy
 -- (tf_gamerules or ws_gamerules: WS.Rules, which every map has from its
 -- load on) and whether the map runs rounds, the mode, the round
@@ -23,9 +23,9 @@
 -- CTFGameRules::CreateStandardEntities does, so the rounds run and outputs
 -- aimed at the name tf_gamerules reach it; on a map with neither, a
 -- ws_gamerules.
-local Rounds = WS.require("foundation.rounds")
+local Rounds = WS.require("games.gameplay.rounds")
 local ControlPoints = WS.require("foundation.rounds.control_points")
-local Limits = WS.require("foundation.rounds.limits")
+local Limits = WS.require("games.gameplay.rounds.limits")
 
 local S = WS.STATE
 local UNASSIGNED = WS.TEAM_UNASSIGNED
@@ -43,7 +43,7 @@ local respawnwavetime = ConVarOrCreate("mp_respawnwavetime", "10.0", { FCVAR_NOT
 local bonusroundtime = ConVarOrCreate("mp_bonusroundtime", "15", FCVAR_REPLICATED, "Time after round win until round restarts", 5, 15)
 local enableroundwaittime = ConVarOrCreate("mp_enableroundwaittime", "1", FCVAR_REPLICATED, "Enable timers to wait between rounds.")
 local stalemateEnable = ConVarOrCreate("mp_stalemate_enable", "0", FCVAR_NOTIFY, "Enable/Disable stalemate mode.")
--- Sandcastle's tie-breaker for a match (foundation.rounds' Deathmatch), as
+-- Sandcastle's tie-breaker for a match (games.gameplay.rounds' Deathmatch), as
 -- sudden death is for a stalemated round: a round of frags alone.
 local deathmatchEnable = ConVarOrCreate("mp_deathmatch_enable", "1", FCVAR_NOTIFY,
 	"1: a tied match goes to a deathmatch round, won by the first team to mp_round_fraglimit frags")
@@ -348,7 +348,7 @@ end
 
 function Controller:State() return self.round:State() end
 function Controller:PointsMayBeCaptured() return self.round:PointsMayBeCaptured(CurTime()) end
--- The arena's cap-enable time (foundation.rounds' SetCapEnableTime).
+-- The arena's cap-enable time (games.gameplay.rounds' SetCapEnableTime).
 function Controller:SetCapEnableTime(at) self.round:SetCapEnableTime(at) end
 function Controller:CapEnableTime() return self.round:CapEnableTime() end
 -- Settings a mode's feature owns the convars of (the arena's), kept until
@@ -507,7 +507,7 @@ function Controller:StartRoundTimer()
 	if self.roundTime > 0 then self.roundTimer = self:CreateTimer(nil, self.roundTime) end
 end
 
--- A game begun on a map without rounds (foundation.gamemode's loadRounds):
+-- A game begun on a map without rounds (games.system.gamemode's loadRounds):
 -- its gamerules run them, in the base mode, untimed, played to the round
 -- limits. The gamemode keeps the rounds halted until the game begins
 -- (StartAtLoad, which SetUpMap calls when it runs after this; called now
@@ -542,7 +542,7 @@ concommand.Add("mp_forcewin", function(ply, _, args)
 	local function Reply(text)
 		if IsValid(ply) then ply:ChatPrint(text) else print(text) end
 	end
-	if not WS.Can(ply, WS.require("foundation.permissions").MATCH) then return Reply("mp_forcewin: you may not force a win") end
+	if not WS.Can(ply, WS.require("games.system.permissions").MATCH) then return Reply("mp_forcewin: you may not force a win") end
 	local target = Rounds.ForceWinTarget(args[1] or "")
 	if not target then return Reply("usage: mp_forcewin " .. table.concat(FORCE_WIN_OPTIONS, "|")) end
 	if not Active() then return Reply("mp_forcewin: this map has no rounds") end

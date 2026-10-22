@@ -2,12 +2,12 @@
 -- blockers on the nav mesh (func_door and func_brush), as the path costs
 -- and route searches see them.
 local Controller = ...
-local Doors = WS.require("foundation.npc.doors")
-local Brushes = WS.require("foundation.npc.brushes")
+local Doors = WS.require("games.ns.doors")
+local Brushes = WS.require("games.ns.brushes")
 
 local NOBODY = WS.TEAM_UNASSIGNED
 
--- foundation.spawn, required on first use: only maps with spawn rooms, which
+-- games.gameplay.spawn, required on first use: only maps with spawn rooms, which
 -- have rounds, need it.
 local Spawn
 
@@ -29,7 +29,7 @@ end
 
 -- TF_NAV_SPAWN_ROOM_RED/_BLUE, which GMod's nav areas do not carry: the
 -- team of the func_respawnroom holding the area's centre, as its spawns
--- say (foundation.spawn's RoomTeam), found once per area per round (rooms
+-- say (games.gameplay.spawn's RoomTeam), found once per area per round (rooms
 -- take their teams at round start, some only once the round is active).
 function Controller:SpawnRoomTeam(area)
 	local id = area:GetID()
@@ -39,7 +39,7 @@ function Controller:SpawnRoomTeam(area)
 	local center = area:GetCenter()
 	for _, room in ipairs(ents.FindByClass("func_respawnroom")) do
 		if room:PointIsWithin(center) then
-			Spawn = Spawn or WS.require("foundation.spawn")
+			Spawn = Spawn or WS.require("games.gameplay.spawn")
 			team = Spawn.RoomTeam(room.team, SpawnTeamsIn(room))
 			break
 		end
@@ -50,8 +50,8 @@ end
 
 -- Blockers on the nav mesh, as TF2's nav mesh has them
 -- (CTFNavMesh::ComputeBlockedAreas): which areas each func_door blocks to
--- whom (foundation.npc.doors), and which a solid func_brush stands in
--- (foundation.npc.brushes), taken again every BLOCKER_REFRESH seconds a
+-- whom (games.ns.doors), and which a solid func_brush stands in
+-- (games.ns.brushes), taken again every BLOCKER_REFRESH seconds a
 -- route is asked for, as doors open and shut and brushes are toggled with
 -- the round (setup gates, doors opened by captures, walls map logic turns
 -- on). The box searched reaches DOOR_FLOOR below a door, so the areas on
@@ -118,7 +118,7 @@ function Controller:BrushAreas(brush)
 	return areas
 end
 
--- A floor door's span (foundation.npc.doors): the box of areas on it where
+-- A floor door's span (games.ns.doors): the box of areas on it where
 -- it lies closed (m_vecPosition1, a func_door's; a rotating door has none
 -- and is taken where it stands), inset FLOOR_INSET so the
 -- ground it bridges stays open, and up to a step above its top.
@@ -259,7 +259,7 @@ end
 -- The engine's own blocked flag (CNavArea::IsBlocked), without what it
 -- makes of doors: it marks an area blocked wherever its hull test finds a
 -- solid entity, a shut door among them, and TF2 maps put an area under
--- every door. Doors are judged by foundation.npc.doors instead; the
+-- every door. Doors are judged by games.ns.doors instead; the
 -- map's func_nav_blockers still count.
 function Controller:EngineBlocks(area, team)
 	if not area:IsBlocked(team) then return false end

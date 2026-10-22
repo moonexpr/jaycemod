@@ -9,7 +9,7 @@
 -- escort HUD takes the same bottom centre (CTFHudObjectiveStatus::
 -- SetVisiblePanels).
 local cos, floor, ipairs, pi = math.cos, math.floor, ipairs, math.pi
-local Rounds = require("foundation.rounds")
+local Rounds = require("games.gameplay.rounds")
 module(...)
 
 UNITS_TALL = 480 -- a proportional screen's height in HUD units
@@ -37,7 +37,7 @@ function Shown(hudType)
 end
 
 -- CHudControlPointIcons::InitIcons: whether point p ({ inRound, hidden },
--- as foundation.capture's HUD state gives it) has an icon: a point in the
+-- as games.gameplay.capture's HUD state gives it) has an icon: a point in the
 -- current mini-round (the master's team_control_point_round; every point
 -- without mini-rounds) that is not hidden. The layout skips the rest.
 function HasIcon(p)

@@ -9,7 +9,7 @@
 -- Positions are { x, y, z } tables.
 local ipairs, sort = ipairs, table.sort
 local ceil = math.ceil
-local Teams = require("foundation.teams")
+local Teams = require("games.gameplay.teams")
 local AiWar = require("foundation.aiwar")
 module(...)
 

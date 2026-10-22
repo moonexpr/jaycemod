@@ -1,10 +1,10 @@
 -- sv_gameplay_enabled 1, set as an admin would in the server console, runs
--- the transition (foundation.gamemode): the countdown, then Begin, which
+-- the transition (games.system.gamemode): the countdown, then Begin, which
 -- unassigns everyone and restarts the rounds; with bots on both teams the
 -- rounds go through the pre-round into a running round.
 -- args: { red = n, blue = n } bots per team (default 2 each).
 local Tests = WS_TESTS
-local Gamemode = WS.require("foundation.gamemode")
+local Gamemode = WS.require("games.system.gamemode")
 local S = WS.STATE
 local RED, BLUE = WS.TEAM_RED, WS.TEAM_BLUE
 local DEFAULT_TEAM_SIZE = 2

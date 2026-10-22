@@ -1,5 +1,5 @@
 local T = dofile("tests/harness.lua")
-local P = T.require("foundation.players")
+local P = T.require("games.gameplay.players")
 
 -- PackRatios (tf_powerup.cpp)
 
@@ -183,7 +183,7 @@ T.test("a headshot is a crit, from any weapon", function()
 	Is(3, P.HIT_CRIT, "a boosted headshot is one crit", Hit({}, boosted, 0, { headshot = true }))
 end)
 
--- The shotgun's crit by distance (foundation.combat.weapon_balance).
+-- The shotgun's crit by distance (games.gameplay.combat.weapon_balance).
 T.test("a crit the weapon rolled is tripled, as a headshot", function()
 	Is(3, P.HIT_CRIT, "a rolled crit", Hit({}, {}, 0, { rolled = true }))
 	local boosted = {}

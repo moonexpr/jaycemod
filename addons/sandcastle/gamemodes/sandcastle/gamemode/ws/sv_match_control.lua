@@ -1,5 +1,5 @@
 -- The commands behind Utilities > Admin > Match Control (ws/cl_match_control.lua),
--- each checked against its privilege (foundation.permissions):
+-- each checked against its privilege (games.system.permissions):
 -- - round: mp_round_suddendeath, mp_round_restart (a stalemate, or back to Pregame), and
 --   mp_round_reward_money, paid to every player of the round's winners.
 --   WSRoundRewards(winner) lets a server add its own rewards.
@@ -9,7 +9,7 @@
 --   payload carts (mp_cart_advance, mp_cart_retract), the round clock
 --   (mp_round_timer_add, mp_round_timer_pause), and respawns
 --   (mp_respawn_all, mp_respawn_maptimes).
-local Permissions = WS.require("foundation.permissions")
+local Permissions = WS.require("games.system.permissions")
 
 local REWARD = CreateConVar("mp_round_reward_money", "0", { FCVAR_ARCHIVE, FCVAR_NOTIFY },
 	"Money paid to every player on the team that wins a round", 0, 100000)

@@ -5,7 +5,7 @@
 -- fall's cry and its death (Death: loud, then confirmed) itself
 -- (ws/sh_drg_soldier.lua, ws/sv_voices.lua), as players wearing these
 -- models do. A voice is { name, affiliation (what the speech
--- rules call it and its side: foundation.aiwar.speech), grunt, pain, death,
+-- rules call it and its side: games.ns.speech), grunt, pain, death,
 -- fall = { path... }, confirm = { path... } (a death's signature after its
 -- cry, one of them; or nil), gear = { left, right = { path... } } (what
 -- rattles as its wearer runs; or nil) }.

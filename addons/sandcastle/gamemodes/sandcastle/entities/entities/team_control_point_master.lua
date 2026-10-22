@@ -1,7 +1,7 @@
 -- team_control_point_master (CTeamControlPointMaster,
 -- team_control_point_master.cpp): chooses the mini-round to play and
 -- declares a round won when one team owns every point in play. A binding to
--- the capture controller, which owns its model (foundation.capture.master)
+-- the capture controller, which owns its model (games.gameplay.capture.master)
 -- and fires OnWonByTeam1/2.
 ENT.Type = "point"
 ENT.Base = "base_point"

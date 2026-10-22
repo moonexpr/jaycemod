@@ -1,13 +1,13 @@
--- The Round model (foundation.rounds) driven through whole rounds, as the
+-- The Round model (games.gameplay.rounds) driven through whole rounds, as the
 -- gamerules state machine (teamplayroundbased_gamerules.cpp, tf_gamerules.cpp)
 -- plays them. Each scenario asserts the effect list in order.
 local T = dofile("tests/harness.lua")
 local FakeObjective = dofile("tests/fake_objective.lua")
-local Rounds = T.require("foundation.rounds")
+local Rounds = T.require("games.gameplay.rounds")
 local CPMode = T.require("foundation.rounds.control_points").Mode
-local State = T.require("foundation.rounds.state")
-local Teams = T.require("foundation.teams")
-local Spawns = T.require("foundation.spawn_manager")
+local State = T.require("games.gameplay.rounds.state")
+local Teams = T.require("games.gameplay.teams")
+local Spawns = T.require("games.system.spawn_manager")
 
 local NOBODY, RED, BLUE = Teams.UNASSIGNED, Teams.RED, Teams.BLUE
 local W, SM = Rounds.WINREASON, Rounds.STALEMATE
@@ -1213,7 +1213,7 @@ end)
 -- drives them. A capture in progress holds the timer at zero; when it
 -- breaks, OnFinished goes to a game_round_win for RED.
 T.test("an A/D round: setup, time added by a capture, overtime while capping, then the defenders win", function()
-	local Timer = T.require("foundation.rounds.timer")
+	local Timer = T.require("games.gameplay.rounds.timer")
 	local ControlPoints = T.require("foundation.rounds.control_points")
 	local objective = FakeObjective.Objective()
 	local round = Rounds.New(Settings())
@@ -1424,7 +1424,7 @@ T.test("the survivors of sudden death win a point, even where points come from c
 	Expect({ win[1] }, { "score " .. RED .. " 1" })
 end)
 
--- Round limits (foundation.rounds.limits): an outcome the controller found.
+-- Round limits (games.gameplay.rounds.limits): an outcome the controller found.
 
 T.test("a team at a round limit wins the round and its point, even where points come from captures", function()
 	local round = Running()

@@ -4,12 +4,12 @@
 -- another holds the same state, its times kept as time to go, and plays on
 -- as the original does.
 local T = dofile("tests/harness.lua")
-local Capture = T.require("foundation.capture")
-local Area = T.require("foundation.capture.area")
-local Master = T.require("foundation.capture.master")
-local PointTimer = T.require("foundation.capture.point_timer")
+local Capture = T.require("games.gameplay.capture")
+local Area = T.require("games.gameplay.capture.area")
+local Master = T.require("games.gameplay.capture.master")
+local PointTimer = T.require("games.gameplay.capture.point_timer")
 local Flag = T.require("features.flag.model")
-local Teams = T.require("foundation.teams")
+local Teams = T.require("games.gameplay.teams")
 
 local NOBODY, RED, BLU = Teams.UNASSIGNED, Teams.RED, Teams.BLUE
 local NO_FLAGS = 0

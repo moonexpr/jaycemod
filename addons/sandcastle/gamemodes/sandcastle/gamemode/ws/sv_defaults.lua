@@ -14,7 +14,7 @@ local function Tell(ply, text)
 end
 
 concommand.Add(COMMAND, function(ply)
-	if not WS.Can(ply, WS.require("foundation.permissions").RULES) then return end
+	if not WS.Can(ply, WS.require("games.system.permissions").RULES) then return end
 	local text = file.Read(DEFAULTS_CFG, "GAME")
 	if not text then
 		Tell(ply, COMMAND .. ": " .. DEFAULTS_CFG .. " not found on the GAME path; is the addon mounted?")

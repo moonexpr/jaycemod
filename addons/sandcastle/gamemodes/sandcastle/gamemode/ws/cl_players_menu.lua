@@ -3,9 +3,9 @@
 -- them money and mute them; holders of the players privilege may also kick,
 -- ban and grant money. The server answers each request with
 -- game_players_menu_said, shown as a notice.
-local Reports = WS.require("foundation.reports")
-local Economy = WS.require("foundation.economy")
-local Permissions = WS.require("foundation.permissions")
+local Reports = WS.require("games.gameplay.reports")
+local Economy = WS.require("games.gameplay.economy")
+local Permissions = WS.require("games.system.permissions")
 local E = WS.Events
 
 local SAID_SECONDS = 4

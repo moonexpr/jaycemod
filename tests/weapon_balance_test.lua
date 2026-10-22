@@ -1,5 +1,5 @@
 local T = dofile("tests/harness.lua")
-local Balance = T.require("foundation.combat.weapon_balance")
+local Balance = T.require("games.gameplay.combat.weapon_balance")
 
 local W = Balance.WEAPONS
 local FALLOFF = Balance.FALLOFF

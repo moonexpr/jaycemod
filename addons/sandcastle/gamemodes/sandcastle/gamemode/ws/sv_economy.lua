@@ -1,10 +1,10 @@
--- Money (foundation.economy): an account for every player as they join and
+-- Money (games.gameplay.economy): an account for every player as they join and
 -- every NPC as it joins a team (WS.SetTeamMember), each opened at
 -- $2,000 and closed when its entity goes. Balances reach clients as the NW2
 -- int ws_money (the scoreboard's Money column). Everything else earns
 -- and spends through WS.EarnMoney and WS.SpendMoney, which raise a
 -- refusal (Economy.INSUFFICIENT_FUNDS, foundation.transaction) rather than overdraw.
-local Economy = WS.require("foundation.economy")
+local Economy = WS.require("games.gameplay.economy")
 local Transaction = WS.require("foundation.transaction")
 
 local ledger = Economy.New()
@@ -27,7 +27,7 @@ function WS.CanAfford(ent, amount)
 end
 
 -- WSMoneyEarned(ent, amount) tells whoever counts earnings (the round's
--- cash limit, foundation.rounds.limits). With the economy off, money stops
+-- cash limit, games.gameplay.rounds.limits). With the economy off, money stops
 -- counting: nothing is earned.
 function WS.EarnMoney(ent, amount)
 	if not WS.EconomyEnabled() then return end

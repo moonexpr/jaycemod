@@ -1,7 +1,7 @@
 -- Part of the rounds controller (sv.lua): sounds and notices, logic_auto, and the
 -- effects of the round model carried out.
 local Controller, Players, PublishLimits, PublishOvertime, TIMELIMIT_TIMER_NAME, RULES_CLASSES = ...
-local Rounds = WS.require("foundation.rounds")
+local Rounds = WS.require("games.gameplay.rounds")
 local Text = WS.require("foundation.rounds.text")
 local TeamPlayers, EachPlayer = Players.TeamPlayers, Players.EachPlayer
 local SwitchTeams, ScrambleTeams = Players.SwitchTeams, Players.ScrambleTeams

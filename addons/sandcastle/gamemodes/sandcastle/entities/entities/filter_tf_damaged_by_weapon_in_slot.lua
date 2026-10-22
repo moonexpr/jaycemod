@@ -1,5 +1,5 @@
 -- filter_tf_damaged_by_weapon_in_slot (FilterDamagedByWeaponInSlot): a
--- damage filter, bound to foundation.combat.weapon_slot_filter. Keyvalues
+-- damage filter, bound to games.gameplay.combat.weapon_slot_filter. Keyvalues
 -- weaponSlot and Negated. Engine entities consult it through
 -- PassesDamageFilter (pl_corruption's filter_multi, set on players by
 -- SetDamageFilter) and PassesFilter. A slot other than melee logs once per
@@ -7,7 +7,7 @@
 ENT.Type = "filter"
 ENT.Base = "base_filter"
 
-local MODEL = "foundation.combat.weapon_slot_filter"
+local MODEL = "games.gameplay.combat.weapon_slot_filter"
 local UNSUPPORTED_MESSAGE = "filter_tf_damaged_by_weapon_in_slot: weaponSlot %d is not supported (only melee, 2); it passes no damage"
 local loggedUnsupported = false
 

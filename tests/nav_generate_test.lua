@@ -6,7 +6,7 @@
 -- spawn barriers made passable, and the map reset when it is done. Run
 -- against fakes of concommand, ents, navmesh, timer and game.
 local T = dofile("tests/harness.lua")
-local Gamemode = T.require("foundation.gamemode")
+local Gamemode = T.require("games.system.gamemode")
 
 local function Ent(class, x, y, z)
 	return { class = class, GetClass = function() return class end, GetPos = function() return { x = x, y = y, z = z } end }
@@ -391,7 +391,7 @@ T.test("a mesh is usable once it has areas", function()
 	T.eq(load({ areas = 12 }).ws.NavMeshUsable(), true)
 end)
 
--- Seams (foundation.nav_gaps) -------------------------------------------------------
+-- Seams (games.ns.nav_gaps) -------------------------------------------------------
 
 -- A flat nav area over x0..x1, y0..y1 at height z.
 local function NavArea(id, x0, y0, x1, y1, z)

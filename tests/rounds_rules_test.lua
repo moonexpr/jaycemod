@@ -1,10 +1,10 @@
--- foundation.rounds: sudden death, the game's limits, played-round history
+-- games.gameplay.rounds: sudden death, the game's limits, played-round history
 -- and respawn wave times, as CTeamplayRoundBasedRules computes them. The
 -- control point rules (TeamOwnsAllPoints, ChooseRound, TeamMayCapturePoint...)
--- are foundation.capture's, tested there.
+-- are games.gameplay.capture's, tested there.
 local T = dofile("tests/harness.lua")
-local R = T.require("foundation.rounds")
-local Teams = T.require("foundation.teams")
+local R = T.require("games.gameplay.rounds")
+local Teams = T.require("games.gameplay.teams")
 
 local NOBODY, RED, BLU = Teams.UNASSIGNED, Teams.RED, Teams.BLUE
 

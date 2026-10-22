@@ -24,13 +24,13 @@
 -- buff), the per-weapon damage multipliers, the purgatory Z check, and the
 -- leveled boss fizzling grenades at its portal.
 local require = require
-local NpcSystem = require("foundation.npc")
+local NpcSystem = require("games.npc.nextbot")
 local HalloweenBoss = require("foundation.npc.halloween_boss")
 local BossEvents = require("foundation.npc.boss_events")
-local Targeting = require("foundation.npc.targeting")
-local Actor = require("foundation.npc.actor")
-local Players = require("foundation.players")
-local Teams = require("foundation.teams")
+local Targeting = require("games.npc.targeting")
+local Actor = require("games.npc.actor")
+local Players = require("games.gameplay.players")
+local Teams = require("games.gameplay.teams")
 local cos, floor, huge, max, pi, rad, sin = math.cos, math.floor, math.huge, math.max, math.pi, math.rad, math.sin
 local ipairs, setmetatable = ipairs, setmetatable
 module(...)

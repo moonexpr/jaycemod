@@ -5,9 +5,9 @@
 -- template (CTFProjectile_SpellBats::Explode). Kart and Doomsday lists are
 -- left out: they hang on the map name.
 local require = require
-local Teams = require("foundation.teams")
+local Teams = require("games.gameplay.teams")
 local Caster = require("foundation.spells.caster")
-local Players = require("foundation.players")
+local Players = require("games.gameplay.players")
 local ipairs, pairs = ipairs, pairs
 module(...)
 

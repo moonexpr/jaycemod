@@ -57,13 +57,13 @@
 -- point are measured straight, where TF2 walks the mesh. TF2's boss timer
 -- (features.boss_timer.model) brings the next one.
 local require = require
-local NpcSystem = require("foundation.npc")
+local NpcSystem = require("games.npc.nextbot")
 local HalloweenBoss = require("foundation.npc.halloween_boss")
 local BossEvents = require("foundation.npc.boss_events")
-local Actor = require("foundation.npc.actor")
-local Combat = require("foundation.combat")
-local Players = require("foundation.players")
-local Teams = require("foundation.teams")
+local Actor = require("games.npc.actor")
+local Combat = require("games.gameplay.combat")
+local Players = require("games.gameplay.players")
+local Teams = require("games.gameplay.teams")
 local atan2, cos, deg, floor, huge, max, min, rad, sin = math.atan2, math.cos, math.deg, math.floor, math.huge, math.max, math.min, math.rad, math.sin
 local ipairs = ipairs
 local band = bit.band
@@ -71,7 +71,7 @@ local format = string.format
 module(...)
 
 BOSS_TYPE = HalloweenBoss.BOSS_MERASMUS
-PATH = "foundation.npc.path.ground"
+PATH = "games.ns.path.ground"
 -- CMerasmusLocomotion
 LOCOMOTION = {
 	runSpeed = 600, -- tf_merasmus_speed

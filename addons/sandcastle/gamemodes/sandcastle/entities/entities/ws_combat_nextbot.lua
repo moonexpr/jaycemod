@@ -1,5 +1,5 @@
 -- ws_combat_nextbot: an NPC that takes sides. It is a ws_nextbot
--- that also implements the combatant port (foundation.npc.combatant) through
+-- that also implements the combatant port (games.npc.combatant) through
 -- the combat, holiday and npc controllers and the gamemode's player
 -- conditions. A subclass sets ENT.Variant as for ws_nextbot.
 --
@@ -14,7 +14,7 @@ ENT.Spawnable = false
 if CLIENT then return end
 
 -- GMod looks up Entity and NextBot methods before the entity's own table,
--- so no port method here may share an engine method's name (combat_test
+-- so no port method here may share an engine method's name (games_gameplay_combat_test
 -- checks the port's names against foundation.npc.actor.ENGINE).
 local Base = baseclass.Get("ws_nextbot")
 
@@ -30,7 +30,7 @@ function ENT:Initialize()
 	self.team = (config and config.team) or self.teamKeyValue or WS.TEAM_UNASSIGNED
 	self.combat = WS.Feature("combat")
 	self.holiday = WS.Feature("holiday")
-	self.targeting = WS.require("foundation.npc.targeting")
+	self.targeting = WS.require("games.npc.targeting")
 	Base.Initialize(self)
 end
 

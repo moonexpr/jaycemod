@@ -1,4 +1,4 @@
--- Loadouts' controller: every player's loadout (foundation.loadout), from
+-- Loadouts' controller: every player's loadout (games.gameplay.loadout), from
 -- the catalog's starters as they join until they leave, so a respawn or a
 -- team change keeps it. A buy is paid through the economy
 -- (ws/sv_economy.lua) only once the loadout takes the weapon. The player
@@ -6,9 +6,9 @@
 -- change; each request is a transaction (WS.Events.Serve) whose decline goes
 -- back with its refusal. On TF2 maps the
 -- equipped weapons are what a player spawns with (GM:PlayerLoadout, init.lua).
-local Economy = WS.require("foundation.economy")
-local Loadout = WS.require("foundation.loadout")
-local Balance = WS.require("foundation.combat.weapon_balance")
+local Economy = WS.require("games.gameplay.economy")
+local Loadout = WS.require("games.gameplay.loadout")
+local Balance = WS.require("games.gameplay.combat.weapon_balance")
 local Sets = WS.require("foundation.map.sets")
 local E = WS.Events
 

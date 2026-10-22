@@ -1,7 +1,7 @@
 -- ws_gamerules: Sandcastle's gamerules, the rules of every map without TF2's
 -- (tf_gamerules derives from them). The rounds controller makes them
 -- (features/rounds/sv.lua's EnsureProxy) and runs the rounds through them
--- (features/rounds/sv.lua and foundation.rounds); they run none until a
+-- (features/rounds/sv.lua and games.gameplay.rounds); they run none until a
 -- game begins (EnsureRules). Bound, they are WS.Rules. They survive round
 -- cleanups, as the gamerules do in TF2. Their methods forward to the
 -- controller, for init.lua, the editors, the gameplay modes and the AI war;

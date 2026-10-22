@@ -1,4 +1,4 @@
--- Arena: the arena mode of foundation.rounds (TF_GAMETYPE_ARENA, the
+-- Arena: the arena mode of games.gameplay.rounds (TF_GAMETYPE_ARENA, the
 -- IsInArenaMode branches of teamplayroundbased_gamerules.cpp and
 -- tf_gamerules.cpp) and the tf_logic_arena logic (CArenaLogic). A
 -- tf_logic_arena chooses it.
@@ -12,7 +12,7 @@
 -- passes. A team wins by killing the other or by capturing the point.
 local setmetatable = setmetatable
 local ControlPoints = require("foundation.rounds.control_points")
-local State = require("foundation.rounds.state")
+local State = require("games.gameplay.rounds.state")
 module(...)
 
 -- The FGD's CapEnableDelay default.

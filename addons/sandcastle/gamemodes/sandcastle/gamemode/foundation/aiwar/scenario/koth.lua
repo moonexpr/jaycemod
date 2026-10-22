@@ -20,7 +20,7 @@
 local floor, max, min = math.floor, math.max, math.min
 local ipairs = ipairs
 local AiWar = require("foundation.aiwar")
-local Teams = require("foundation.teams")
+local Teams = require("games.gameplay.teams")
 local Base = require("foundation.aiwar.scenario")
 local CP = require("foundation.aiwar.scenario.control_points")
 module(...)

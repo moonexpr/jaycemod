@@ -2,7 +2,7 @@
 -- weapon's leans 30 degrees counter-clockwise, as HL2's weapon selection
 -- draws the crowbar; the rest stand upright. Run against a fake derma.
 local T = dofile("tests/harness.lua")
-local Loadout = T.require("foundation.loadout")
+local Loadout = T.require("games.gameplay.loadout")
 
 local CATALOG = Loadout.NewCatalog({
 	{ class = "smg", name = "SMG", kind = Loadout.KIND_PRIMARY, price = Loadout.PRICE, starter = true },

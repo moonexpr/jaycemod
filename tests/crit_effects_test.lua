@@ -1,6 +1,6 @@
 local T = dofile("tests/harness.lua")
-local Teams = T.require("foundation.teams")
-local Crit = T.require("foundation.combat.crit_effects")
+local Teams = T.require("games.gameplay.teams")
+local Crit = T.require("games.gameplay.combat.crit_effects")
 
 -- CTFWeaponBase::GetTracerType and FireBullet: the weapon's tracer, by
 -- team, with _crit for a crit; RED's for RED, BLU's for anyone else.

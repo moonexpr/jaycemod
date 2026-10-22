@@ -11,7 +11,7 @@
 --
 -- Loaded by tf_logic_arena. It loads rounds.
 local Arena = WS.require("foundation.rounds.arena")
-local Rounds = WS.require("foundation.rounds")
+local Rounds = WS.require("games.gameplay.rounds")
 
 local THINK_INTERVAL = 0.1 -- ArenaLogicThink's
 local THINK_HOOK = "ws_arena"

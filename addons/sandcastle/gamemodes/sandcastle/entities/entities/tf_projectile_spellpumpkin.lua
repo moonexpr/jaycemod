@@ -6,7 +6,7 @@ AddCSLuaFile()
 ENT.Type = "anim"
 ENT.Base = "ws_spell_projectile"
 ENT.Spawnable = false
-ENT.Variant = "foundation.projectile.jar"
+ENT.Variant = "games.gameplay.projectile.jar"
 ENT.Model = "models/weapons/w_models/w_cannonball.mdl"
 ENT.ModelScale = 0.75
 ENT.Trails = {

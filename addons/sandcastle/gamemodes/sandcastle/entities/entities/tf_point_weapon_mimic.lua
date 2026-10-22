@@ -1,5 +1,5 @@
 -- tf_point_weapon_mimic (CTFPointWeaponMimic): a binding to a
--- foundation.combat.weapon_mimic model through the combat controller.
+-- games.gameplay.combat.weapon_mimic model through the combat controller.
 -- Keyvalues WeaponType, SpeedMin, SpeedMax, SpreadAngle, Damage,
 -- SplashRadius, Crits, ModelScale, ModelOverride, FireSound and
 -- ParticleEffect (the last two stored and, as in TF2, never played); inputs
@@ -9,7 +9,7 @@
 ENT.Type = "point"
 ENT.Base = "base_point"
 
-local MODEL = "foundation.combat.weapon_mimic"
+local MODEL = "games.gameplay.combat.weapon_mimic"
 local UNSUPPORTED_MESSAGE = "tf_point_weapon_mimic: WeaponType %d (arrows, stickies) is not supported; not fired"
 local loggedUnsupported = false
 

@@ -4,11 +4,11 @@
 -- (field.capEnableAt, foundation.rounds.arena). The arena round is no
 -- sudden death for the soldiers (foundation.aiwar's PHASES.arena: no hunt,
 -- no sight of every enemy). Until the point opens every squad explores
--- (EXPLORE, foundation.aiwar.explore): it keeps together, its leader
+-- (EXPLORE, games.ns.explore): it keeps together, its leader
 -- walking its lane from the spawn to the point (Front; the enemy's base on
 -- a map without one), then making for the nearest waypoint the squad has
 -- not been near. A squad that sees the enemy (its fire team's contact,
--- foundation.wartactics) is engaged: it leaves its lane to fight, and
+-- games.ns.tactics) is engaged: it leaves its lane to fight, and
 -- hunts where the enemy was, before it goes on to the objective. Once
 -- open, the point is a target to the team without it and guarded by its
 -- owner, as in King of the Hill, and the stances split, a share still
@@ -21,7 +21,7 @@
 local ipairs, pairs, setmetatable = ipairs, pairs, setmetatable
 local AiWar = require("foundation.aiwar")
 local Orders = require("foundation.aiwar.orders")
-local Teams = require("foundation.teams")
+local Teams = require("games.gameplay.teams")
 local Base = require("foundation.aiwar.scenario")
 local CP = require("foundation.aiwar.scenario.control_points")
 module(...)

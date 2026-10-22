@@ -8,8 +8,8 @@
 -- - Click a model to wear it from the next spawn (cl_playermodel).
 -- - Click a heart to favorite the tile: favorites come first, in the order
 --   they were favorited, kept on this computer (cookie FAVORITES_COOKIE).
-local Economy = WS.require("foundation.economy")
-local Loadout = WS.require("foundation.loadout")
+local Economy = WS.require("games.gameplay.economy")
+local Loadout = WS.require("games.gameplay.loadout")
 local E = WS.Events
 local UI = WS.UI
 local THEME = UI.THEME

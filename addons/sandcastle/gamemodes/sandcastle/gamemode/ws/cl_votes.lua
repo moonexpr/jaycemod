@@ -7,7 +7,7 @@
 -- for RESULT_SECONDS. A refused request is a notice. The Server tab
 -- (ws/cl_menu_server.lua) reads WS.VoteState and WS.VoteMaps and hears
 -- WSVoteChanged.
-local Vote = WS.require("foundation.vote")
+local Vote = WS.require("games.gameplay.vote")
 local E = WS.Events
 local UI = WS.UI
 local THEME = UI.THEME

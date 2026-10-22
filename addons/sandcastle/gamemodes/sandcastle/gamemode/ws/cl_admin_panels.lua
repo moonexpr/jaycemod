@@ -9,7 +9,7 @@
 --   already had).
 -- An admin mod or server adds its own sections through the hooks
 -- WSGameplayRulesPanel(panel) and WSMatchControlPanel(panel).
-local Permissions = WS.require("foundation.permissions")
+local Permissions = WS.require("games.system.permissions")
 
 local NOT_ALLOWED = "Your rank may not change these. An admin mod can give it the privilege "
 

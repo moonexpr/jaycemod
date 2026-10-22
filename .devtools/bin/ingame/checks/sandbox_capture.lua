@@ -1,4 +1,4 @@
--- Sandbox mode (docs/pass4-koth-cp.md, foundation.rounds Round:Halt): the
+-- Sandbox mode (docs/pass4-koth-cp.md, games.gameplay.rounds Round:Halt): the
 -- rounds wait in BETWEEN_RNDS "whatever the map or players do". BLU bots on
 -- a point make no capture progress; a capture completed by the point's
 -- SetOwner input and the master's SetWinner leave the rounds in

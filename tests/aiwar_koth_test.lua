@@ -5,13 +5,13 @@
 local T = dofile("tests/harness.lua")
 local FS = dofile("tests/fake_soldier.lua")
 local FP = dofile("tests/fake_points.lua")
-local N = T.require("foundation.npc")
+local N = T.require("games.npc.nextbot")
 local AiWar = T.require("foundation.aiwar")
 local Orders = T.require("foundation.aiwar.orders")
 local Scenario = T.require("foundation.aiwar.scenario")
 local CP = T.require("foundation.aiwar.scenario.control_points")
 local Koth = T.require("foundation.aiwar.scenario.koth")
-local Teams = T.require("foundation.teams")
+local Teams = T.require("games.gameplay.teams")
 
 local RED, BLUE = Teams.RED, Teams.BLUE
 local P = FS.Point

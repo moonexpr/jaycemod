@@ -1,5 +1,5 @@
 -- The attributes feature's controller: TF2's custom player attributes. It
--- owns each player's attributes (foundation.players.attributes), gives and
+-- owns each player's attributes (games.gameplay.players.attributes), gives and
 -- takes them as map triggers and the Wheel of Fate say, scales the damage
 -- their owners take, and clears them when a player spawns or dies
 -- (CTFPlayer::Spawn and Event_Killed). It applies the rest to the player:
@@ -7,7 +7,7 @@
 -- realms), jump power, fall damage and the head bone's scale. A
 -- trigger_add_or_remove_tf_player_attributes or a wheel_of_doom loads it,
 -- so other maps never run these hooks.
-local Attributes = WS.require("foundation.players.attributes")
+local Attributes = WS.require("games.gameplay.players.attributes")
 
 local HEAD_BONE = "ValveBiped.Bip01_Head1"
 local SYNC_INTERVAL = 0.1 -- timed attributes run out between changes

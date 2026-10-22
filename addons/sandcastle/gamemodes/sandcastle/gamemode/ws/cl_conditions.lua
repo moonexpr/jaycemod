@@ -1,10 +1,10 @@
 -- What players see of the conditions the server networks on players and
 -- the AI war's soldiers (ws_cond_<number>, ws/sv_teams_conditions.lua), as
--- TF2's client shows them (foundation.players.condition_effects): a crit
+-- TF2's client shows them (games.gameplay.players.condition_effects): a crit
 -- boost's glow on the weapon and its hum, the burning player's flames,
 -- Jarate's and Mad Milk's drips and the holder's screen overlay, the speed
 -- boost's trail, the uber's material.
-local Effects = WS.require("foundation.players.condition_effects")
+local Effects = WS.require("games.gameplay.players.condition_effects")
 
 for _, path in ipairs(Effects.FILES) do game.AddParticles(path) end
 for _, effect in ipairs(Effects.EFFECTS) do

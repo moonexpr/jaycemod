@@ -1,5 +1,5 @@
 -- The Gameplay Settings: the gamemode's Sandbox or Gameplay mode
--- (foundation.gamemode, run by features/gamemode). sv_gameplay_enabled
+-- (games.system.gamemode, run by features/gamemode). sv_gameplay_enabled
 -- holds it, replicated for the menu and HUD; an admin setting it in the
 -- server console, or pressing Begin Game or Stop Game (mp_gameplay_begin,
 -- mp_gameplay_stop: clients cannot set a server setting), requests the
@@ -10,8 +10,8 @@
 -- times, win conditions and team scores). On clients: the Utilities menu's
 -- Admin > Gameplay Settings, the modes and those settings, and a note on the
 -- HUD in Sandbox mode.
-local Gamemode = WS.require("foundation.gamemode")
-local Permissions = WS.require("foundation.permissions")
+local Gamemode = WS.require("games.system.gamemode")
+local Permissions = WS.require("games.system.permissions")
 
 local SETTINGS = "ws_gameplay_settings"
 

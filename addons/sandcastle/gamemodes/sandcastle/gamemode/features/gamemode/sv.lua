@@ -1,4 +1,4 @@
--- The gamemode feature's controller: owns the foundation.gamemode model,
+-- The gamemode feature's controller: owns the games.system.gamemode model,
 -- the gamemode's Sandbox or Gameplay mode, and turns its answers into the
 -- rounds, sounds, notices and the sv_gameplay_enabled setting. The Gameplay
 -- Settings' Begin Game and Stop Game buttons, an admin setting
@@ -19,9 +19,9 @@
 -- there yet (PLAYERS_NEEDED, mp_waitingforplayers) waits in Sandbox mode,
 -- checked each WAIT_TICK, and counts down once they come; the count is
 -- networked as ws_gamemode_waiting_have and _need (need 0: no wait).
-local Gamemode = WS.require("foundation.gamemode")
+local Gamemode = WS.require("games.system.gamemode")
 local Gameplay = WS.require("features.gamemode.gameplay")
-local Rounds = WS.require("foundation.rounds")
+local Rounds = WS.require("games.gameplay.rounds")
 
 -- Both made in ws/sh_gameplay.lua.
 local ENABLED = GetConVar("sv_gameplay_enabled")
@@ -288,7 +288,7 @@ local CUES = {
 }
 
 -- A map's load countdown is cut short once the players expected from the
--- previous map are in (foundation.gamemode's Hurry; ws/sv_arrivals.lua).
+-- previous map are in (games.system.gamemode's Hurry; ws/sv_arrivals.lua).
 function Controller:Tick()
 	local now = CurTime()
 	if WS.ExpectedPlayersIn() then self.mode:Hurry(now) end
@@ -312,7 +312,7 @@ end
 
 -- A map with rounds starts in the mode sv_gameplay_enabled holds: Sandbox
 -- mode halts the rounds; Gameplay mode counts down while the players load
--- (foundation.gamemode's Load), or waits for the players its mode needs,
+-- (games.system.gamemode's Load), or waits for the players its mode needs,
 -- the rounds halted until it begins. Rounds loaded for a game counting
 -- down (a map without them) stay halted until it begins.
 function Controller:StartAtLoad()

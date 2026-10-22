@@ -1,6 +1,6 @@
 local T = dofile("tests/harness.lua")
-local Jar = T.require("foundation.projectile.jar")
-local Teams = T.require("foundation.teams")
+local Jar = T.require("games.gameplay.projectile.jar")
+local Teams = T.require("games.gameplay.teams")
 
 -- A player near the splash, as the jar's binding sees them.
 local function Near(t)

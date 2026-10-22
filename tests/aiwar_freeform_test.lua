@@ -9,13 +9,13 @@ local T = dofile("tests/harness.lua")
 local FS = dofile("tests/fake_soldier.lua")
 local FP = dofile("tests/fake_points.lua")
 local AiWar = T.require("foundation.aiwar")
-local Explore = T.require("foundation.aiwar.explore")
+local Explore = T.require("games.ns.explore")
 local Scenario = T.require("foundation.aiwar.scenario")
 local Freeform = T.require("foundation.aiwar.scenario.freeform")
 local Spawns = T.require("foundation.aiwar.spawns")
-local Squad = T.require("foundation.aiwar.squad")
-local Tactics = T.require("foundation.wartactics")
-local Teams = T.require("foundation.teams")
+local Squad = T.require("games.ns.squad")
+local Tactics = T.require("games.ns.tactics")
+local Teams = T.require("games.gameplay.teams")
 
 local RED, BLUE = Teams.RED, Teams.BLUE
 local P = FS.Point

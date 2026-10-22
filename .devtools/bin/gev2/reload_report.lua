@@ -8,7 +8,7 @@ if not G then
 	lines[1] = "reload_arm.lua has not run"
 else
 	for i, line in ipairs(G.log) do lines[i] = line end
-	local ok, err = pcall(G.orig_AddCSLuaFile, "sandcastle/gamemode/foundation/teams.lua")
+	local ok, err = pcall(G.orig_AddCSLuaFile, "sandcastle/gamemode/games/gameplay/teams.lua")
 	lines[#lines + 1] = "late AddCSLuaFile ok=" .. tostring(ok) .. " err=" .. tostring(err)
 	G.log = {}
 end

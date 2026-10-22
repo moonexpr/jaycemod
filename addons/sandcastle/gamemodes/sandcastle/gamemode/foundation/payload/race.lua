@@ -5,7 +5,7 @@
 -- as CTFGameRules does it (PlayTrainCaptureAlert, Helltower lines): by each
 -- watcher's distance along its track.
 local pairs, string = pairs, string
-local Teams = require("foundation.teams")
+local Teams = require("games.gameplay.teams")
 module(...)
 
 local NOBODY, RED, BLU = Teams.UNASSIGNED, Teams.RED, Teams.BLUE

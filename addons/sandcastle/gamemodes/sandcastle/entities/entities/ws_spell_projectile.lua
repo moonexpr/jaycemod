@@ -1,5 +1,5 @@
 -- ws_spell_projectile: the base of the spell projectiles, a
--- ws_projectile whose flight is a foundation.projectile variant and
+-- ws_projectile whose flight is a games.gameplay.projectile variant and
 -- whose spell is a Shot of the spells controller. The caster port launches
 -- one with SetOwner(caster) and Configure{ spell, position, velocity, team,
 -- ... } (its spell's FLIGHT fields and any it adds) before Spawn. While it

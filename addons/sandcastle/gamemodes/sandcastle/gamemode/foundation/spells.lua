@@ -20,7 +20,7 @@
 -- team (the shot's), projectile (its handle), config (its launch config),
 -- state (its shot state) }; where = { position, team, projectile }.
 local require = require
-local Teams = require("foundation.teams")
+local Teams = require("games.gameplay.teams")
 local ipairs, pairs, setmetatable = ipairs, pairs, setmetatable
 module(...)
 

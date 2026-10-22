@@ -1,4 +1,4 @@
--- The npc feature's controller. It owns one foundation.npc Npc per NPC
+-- The npc feature's controller. It owns one games.npc.nextbot Npc per NPC
 -- entity, the features.npc.spawner models, a registry by kind and the
 -- per-variant shared state, and checks the navigation mesh once per map.
 -- The rules live in the models; this file only feeds them engine events and
@@ -8,7 +8,7 @@
 -- spans parts; its parts are sv_blockers (spawn rooms and the blockers on
 -- the nav mesh), sv_routes (path costs, the nav graph, route searches and
 -- waypoints) and sv_profile (path profiling, watching and the bench).
-local NpcSystem = WS.require("foundation.npc")
+local NpcSystem = WS.require("games.npc.nextbot")
 local Scheduler = WS.require("foundation.list.schedule")
 local Spawner = WS.require("features.npc.spawner")
 
@@ -30,11 +30,11 @@ local Controller = {
 	searches = Scheduler.New({ Now = function() return SysTime() end }), -- the Lua route searches still running, each a task
 	neighbors = {}, -- nav area id -> its floor neighbours' ids (read again when seams are linked: WSNavLinked)
 	centers = {}, -- nav area id -> its centre
-	navBlocked = {}, -- nav area id -> the teams its doors and brushes block (foundation.npc.doors)
+	navBlocked = {}, -- nav area id -> the teams its doors and brushes block (games.ns.doors)
 	nextBlockerRefresh = 0,
 	blockerGeneration = 0,
 	blockerLog = {}, -- the latest generations: { generation, changes = area id -> true, or nil when not known }
-	-- reach = nil, -- the regions failed route searches walked (foundation.npc.reach_memo), set by sv_routes
+	-- reach = nil, -- the regions failed route searches walked (games.ns.reach_memo), set by sv_routes
 	reachStats = { answered = 0, retargeted = 0, learned = 0 }, -- requests answered from them, searches sent to a region's nearest area, regions learned
 	brushAreas = setmetatable({}, { __mode = "k" }), -- func_brush -> { pos, areas it stands in }
 	-- doorAreas = nil, -- nav area id -> true under a func_door, set by RefreshBlockers
@@ -174,7 +174,7 @@ hook.Add("WSNavLinked", "ws_npc_blockers", function()
 end)
 
 -- The nbdebug feature finds the NPCs it can show through the hook
--- WSNbDebugNpcs(found): each system adds its entities' foundation.npc
+-- WSNbDebugNpcs(found): each system adds its entities' games.npc.nextbot
 -- Npcs to `found` (entity -> Npc).
 hook.Add("WSNbDebugNpcs", "ws_npc", function(found)
 	for ent, npc in pairs(Controller.npcs) do

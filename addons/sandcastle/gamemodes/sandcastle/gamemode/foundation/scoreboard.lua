@@ -5,8 +5,8 @@
 -- conditions beneath. A team's NPCs (the AI war's soldiers) sit in its column
 -- beside its players.
 local floor, format, ipairs, sort = math.floor, string.format, ipairs, table.sort
-local Credit = require("foundation.kill_credit")
-local Teams = require("foundation.teams")
+local Credit = require("games.gameplay.kill_credit")
+local Teams = require("games.gameplay.teams")
 module(...)
 
 local RED, BLUE, SPECTATOR = Teams.RED, Teams.BLUE, Teams.SPECTATOR
@@ -15,7 +15,7 @@ COLUMN_TEAMS = { BLUE, RED }
 
 local SECONDS_PER_MINUTE, SECONDS_PER_HOUR = 60, 3600
 
--- Most points first (foundation.kill_credit's: kills, and assists), then
+-- Most points first (games.gameplay.kill_credit's: kills, and assists), then
 -- most kills, then fewest deaths; players before NPCs; then by name.
 local function Before(a, b)
 	local pointsA, pointsB = Credit.Points(a.kills, a.assists), Credit.Points(b.kills, b.assists)
@@ -67,7 +67,7 @@ local function Plural(n, word)
 end
 
 -- limits = { winlimit, maxrounds, roundsPlayed, timelimit (minutes),
--- timeLeft (seconds) }, as foundation.rounds' Round:Limits gives them. The
+-- timeLeft (seconds) }, as games.gameplay.rounds' Round:Limits gives them. The
 -- lines that say how the match ends: mp_winlimit, mp_maxrounds, then the
 -- map's clock (#Scoreboard_TimeLeft, #Scoreboard_ChangeOnRoundEnd,
 -- #Scoreboard_NoTimeLimit).

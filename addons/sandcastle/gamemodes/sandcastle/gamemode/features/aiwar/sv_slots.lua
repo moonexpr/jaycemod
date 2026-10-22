@@ -1,7 +1,7 @@
 -- Part of the AI war controller (sv.lua): the slot plan, sizes, pins, and syncing them to viewers.
 local Controller, Map = ...
 local AiWar = WS.require("foundation.aiwar")
-local Squad = WS.require("foundation.aiwar.squad")
+local Squad = WS.require("games.ns.squad")
 local Slots = WS.require("foundation.aiwar.slots")
 local Scenario = WS.require("foundation.aiwar.scenario")
 local RED, BLUE = Map.RED, Map.BLUE

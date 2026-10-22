@@ -1,10 +1,10 @@
 local T = dofile("tests/harness.lua")
 local Fake = dofile("tests/fake_actor.lua")
-local Mimic = T.require("foundation.combat.weapon_mimic")
-local Projectile = T.require("foundation.projectile")
-local Pipe = T.require("foundation.projectile.pipe")
-local Rocket = T.require("foundation.projectile.rocket")
-local Teams = T.require("foundation.teams")
+local Mimic = T.require("games.gameplay.combat.weapon_mimic")
+local Projectile = T.require("games.gameplay.projectile")
+local Pipe = T.require("games.gameplay.projectile.pipe")
+local Rocket = T.require("games.gameplay.projectile.rocket")
+local Teams = T.require("games.gameplay.teams")
 
 local V = Fake.Vector
 local EPSILON = 1e-9

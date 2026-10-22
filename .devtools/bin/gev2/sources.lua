@@ -40,7 +40,7 @@ Source("ws/sh_core.lua WS.require", WS.require)
 Source("ws/sh_events.lua Events.Fire", WS.Events and WS.Events.Fire)
 
 Say("--- foundation modules (CompileFile in WS.require)")
-for _, name in ipairs({ "foundation.features", "foundation.events", "foundation.teams" }) do
+for _, name in ipairs({ "games.system.features", "games.system.events", "games.gameplay.teams" }) do
 	local key, fn = FirstFunction(package.loaded[name])
 	Source(name .. "." .. tostring(key), fn)
 end
@@ -74,7 +74,7 @@ Source("lua/includes net.WriteEntity", net.WriteEntity)
 
 Say("--- chunk names given by the loader functions")
 Source("this probe (RunString name)", debug.getinfo(1, "f").func)
-Source("CompileFile('sandcastle/gamemode/foundation/teams.lua')", CompileFile("sandcastle/gamemode/foundation/teams.lua"))
+Source("CompileFile('sandcastle/gamemode/games/gameplay/teams.lua')", CompileFile("sandcastle/gamemode/games/gameplay/teams.lua"))
 Source("CompileString(code, 'x/y.lua')", CompileString("return function() end", "x/y.lua"))
 
 Say("--- file.Read on the server")

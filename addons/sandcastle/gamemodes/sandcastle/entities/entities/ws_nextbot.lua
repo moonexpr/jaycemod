@@ -1,10 +1,10 @@
 -- ws_nextbot: the base of every NPC, a thin binding from a GMod NextBot
--- to its foundation.npc model. It implements the actor port
--- (foundation.npc.actor) with GMod's NextBot machinery, forwards the engine's
+-- to its games.npc.nextbot model. It implements the actor port
+-- (games.npc.actor) with GMod's NextBot machinery, forwards the engine's
 -- events to the model, and ticks the model's Behavior from BehaveUpdate (no
 -- coroutine). It knows no teams.
 --
--- A subclass sets ENT.Variant = "foundation.npc.<variant>", sets its model
+-- A subclass sets ENT.Variant = "games.npc.nextbot.<variant>", sets its model
 -- before calling this Initialize, and gives its config either through
 -- Configure(config) before Spawn (the npc controller's Spawn does this) or
 -- by overriding Config().

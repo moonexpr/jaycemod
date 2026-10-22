@@ -1,0 +1,23 @@
+-- Gameplay: rounds, teams, players, combat and what a match keeps, each
+-- loaded the first time it is read. A module's parts (rounds/state) load
+-- through it. One line a module, never a loop:
+-- docs/foundation-game-split-plan.md.
+local gameplay = Namespace("gameplay")
+Defer(gameplay, "tactics", "games.gameplay.tactics")
+Defer(gameplay, "rounds", "games.gameplay.rounds")
+Defer(gameplay, "teams", "games.gameplay.teams")
+Defer(gameplay, "players", "games.gameplay.players")
+Defer(gameplay, "spawn", "games.gameplay.spawn")
+Defer(gameplay, "spectate", "games.gameplay.spectate")
+Defer(gameplay, "respawn_modifiers", "games.gameplay.respawn_modifiers")
+Defer(gameplay, "arrivals", "games.gameplay.arrivals")
+Defer(gameplay, "loadout", "games.gameplay.loadout")
+Defer(gameplay, "economy", "games.gameplay.economy")
+Defer(gameplay, "kill_credit", "games.gameplay.kill_credit")
+Defer(gameplay, "kill_icons", "games.gameplay.kill_icons")
+Defer(gameplay, "vote", "games.gameplay.vote")
+Defer(gameplay, "reports", "games.gameplay.reports")
+Defer(gameplay, "player_analytics", "games.gameplay.player_analytics")
+Defer(gameplay, "capture", "games.gameplay.capture")
+Defer(gameplay, "combat", "games.gameplay.combat")
+Defer(gameplay, "projectile", "games.gameplay.projectile")

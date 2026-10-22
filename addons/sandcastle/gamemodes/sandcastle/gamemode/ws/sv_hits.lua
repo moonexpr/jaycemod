@@ -1,7 +1,7 @@
 -- Every hit's friendly fire (mp_friendlyfire 0 spares teammates,
--- Teams.FriendlySpared), its weapon's balance (foundation.combat.weapon_balance:
+-- Teams.FriendlySpared), its weapon's balance (games.gameplay.combat.weapon_balance:
 -- its damage, whether its headshot counts, the shotgun's crit by distance,
--- the crossbow's knockback) and crits (foundation.players' Hit): a
+-- the crossbow's knockback) and crits (games.gameplay.players' Hit): a
 -- crit-boosted attacker, a headshot, a rolled crit or a jarated victim, for
 -- players and soldiers alike, by the conditions of both
 -- (ws/sv_teams_conditions.lua). A crit is
@@ -10,15 +10,15 @@
 -- sounds from its victim (TFPlayer.CritHit, CritHitMini; CritPain to a
 -- player hit), and the attacking player is told its damage
 -- (game_combat_text, ws/cl_hits.lua). A crit bullet is seen as one: TF2's
--- crit tracer in its shooter's team colour (foundation.combat.crit_effects).
+-- crit tracer in its shooter's team colour (games.gameplay.combat.crit_effects).
 -- An enemy's hit is remembered, and the environment's lethal one credited
 -- to it (ws/sv_kill_credit.lua). One a projectile throws into a wall or
 -- ceiling is hurt by the strike, dealt by its thrower, unless it threw
--- itself or a teammate (foundation.combat.impact).
-local Balance = WS.require("foundation.combat.weapon_balance")
-local BulletSteps = WS.require("foundation.combat.bullet_steps")
-local Crit = WS.require("foundation.combat.crit_effects")
-local Impact = WS.require("foundation.combat.impact")
+-- itself or a teammate (games.gameplay.combat.impact).
+local Balance = WS.require("games.gameplay.combat.weapon_balance")
+local BulletSteps = WS.require("games.gameplay.combat.bullet_steps")
+local Crit = WS.require("games.gameplay.combat.crit_effects")
+local Impact = WS.require("games.gameplay.combat.impact")
 local P = WS.PlayerRules
 local E = WS.Events
 
@@ -92,7 +92,7 @@ end
 
 -- What attacker's hit on target with class (balanced, or nil) does:
 -- its damage, whether its headshot counts, and its scale and kind
--- (foundation.players' Hit). shot: { damage, bullet, blast, headshot,
+-- (games.gameplay.players' Hit). shot: { damage, bullet, blast, headshot,
 -- critical (marked a crit already) }.
 local function Judge(target, attacker, class, shot)
 	local damage, headshot, rolled = Balance.Shot(class, {

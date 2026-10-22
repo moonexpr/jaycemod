@@ -3,8 +3,8 @@
 -- map's data (a master's restrict_team_cap_win, rounds, setup timers). A
 -- team_control_point_master chooses it. The koth mode extends it.
 local ipairs = ipairs
-local Rounds = require("foundation.rounds")
-local Teams = require("foundation.teams")
+local Rounds = require("games.gameplay.rounds")
+local Teams = require("games.gameplay.teams")
 module(...)
 
 SUCCESS = "Announcer.Success"

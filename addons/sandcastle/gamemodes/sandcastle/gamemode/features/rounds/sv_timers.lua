@@ -1,14 +1,14 @@
 -- Part of the rounds controller (sv.lua): the timers, the team clocks and the round limits.
 local Controller, Active, GAME_TEAMS = ...
-local Rounds = WS.require("foundation.rounds")
-local Timer = WS.require("foundation.rounds.timer")
-local Limits = WS.require("foundation.rounds.limits")
+local Rounds = WS.require("games.gameplay.rounds")
+local Timer = WS.require("games.gameplay.rounds.timer")
+local Limits = WS.require("games.gameplay.rounds.limits")
 
 local S = WS.STATE
 local UNASSIGNED, SPECTATOR = WS.TEAM_UNASSIGNED, WS.TEAM_SPECTATOR
 local RED, BLUE = WS.TEAM_RED, WS.TEAM_BLUE
 
--- The round limits (foundation.rounds.limits): only a map without an
+-- The round limits (games.gameplay.rounds.limits): only a map without an
 -- objective plays to them. Both on by default, the frag limit the one
 -- reached first.
 local roundFraglimit = CreateConVar("mp_round_fraglimit", "30", { FCVAR_NOTIFY, FCVAR_REPLICATED },
@@ -334,7 +334,7 @@ function Controller:ActivateTeamClock(t)
 	if own then self:TimerInput(own, "resume") end
 end
 
--- Round limits (foundation.rounds.limits) ---------------------------------------------
+-- Round limits (games.gameplay.rounds.limits) ---------------------------------------------
 
 -- The announcer's cues: the arena's first blood, and Player Destruction's
 -- close to winning, to the team and to its enemy.

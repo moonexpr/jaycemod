@@ -5,9 +5,9 @@
 -- (CTFFlagStatus, tf_hud_flagstatus.cpp).
 local T = dofile("tests/harness.lua")
 local Flag = T.require("features.flag.model")
-local Rounds = T.require("foundation.rounds")
-local State = T.require("foundation.rounds.state")
-local Teams = T.require("foundation.teams")
+local Rounds = T.require("games.gameplay.rounds")
+local State = T.require("games.gameplay.rounds.state")
+local Teams = T.require("games.gameplay.teams")
 
 local NOBODY, RED, BLUE = Teams.UNASSIGNED, Teams.RED, Teams.BLUE
 local CARRIER, OTHER = "carrier", "other"

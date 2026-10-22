@@ -6,7 +6,7 @@
 -- or nil); an area or timer whose key no longer resolves is reported
 -- missing, not restored.
 local Controller, Points = ...
-local Area = WS.require("foundation.capture.area")
+local Area = WS.require("games.gameplay.capture.area")
 
 local function Keyed(refs, map, value)
 	local out = {}

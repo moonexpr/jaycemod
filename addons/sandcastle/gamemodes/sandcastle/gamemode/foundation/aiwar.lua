@@ -9,13 +9,13 @@
 -- Members are opaque handles (the NPC entities). Carts are given as the set
 -- of teams with a cart moving on the map.
 local floor, max, min, ipairs, next, pairs, setmetatable, sort, table, type = math.floor, math.max, math.min, ipairs, next, pairs, setmetatable, table.sort, table, type
-local Teams = require("foundation.teams")
-local STATE = require("foundation.rounds.state")
-local Squad = require("foundation.aiwar.squad")
+local Teams = require("games.gameplay.teams")
+local STATE = require("games.gameplay.rounds.state")
+local Squad = require("games.ns.squad")
 local Lease = require("foundation.map.lease")
-local Lanes = require("foundation.aiwar.lanes")
-local Hunt = require("foundation.aiwar.hunt")
-local Tactics = require("foundation.wartactics")
+local Lanes = require("games.ns.lanes")
+local Hunt = require("games.ns.hunt")
+local Tactics = require("games.ns.tactics")
 module(...)
 
 local RED, BLUE = Teams.RED, Teams.BLUE
@@ -274,7 +274,7 @@ end
 -- freezes players; sudden death has no respawns, and both sides hunt each
 -- other down (everyoneHunts), every live enemy on their boards (sightAll);
 -- a round won by a team is its humiliation of the losers, when the winners
--- hunt them down knowing what they saw (hunt: foundation.aiwar.hunt, TF2's
+-- hunt them down knowing what they saw (hunt: games.ns.hunt, TF2's
 -- CTFBotTacticalMonitor "Get the losers!"); a round over with no winner
 -- ends orders.
 PHASES = {
@@ -374,8 +374,8 @@ function War.New()
 		squadsMax = SQUADS_MAX_DEFAULT, -- the most squads a team forms (SetSquadsMax)
 		squadsMin = SQUADS_MIN_DEFAULT, -- the fewest (SetSquadsMin)
 		enlisted = 0, -- members ever enlisted, for their order
-		claims = Lease.New(), -- spots soldiers hold, by foundation.aiwar.squad's Key
-		hunt = Hunt.Board.New(), -- the winners' sightings of the losers (foundation.aiwar.hunt)
+		claims = Lease.New(), -- spots soldiers hold, by games.ns.squad's Key
+		hunt = Hunt.Board.New(), -- the winners' sightings of the losers (games.ns.hunt)
 		stances = {}, -- team -> stance
 		defense = {}, -- team -> its defense share (DefenseShare), or nil
 		drafts = { [RED] = 0, [BLUE] = 0 },
@@ -902,7 +902,7 @@ end
 -- { pos, dir }: the doors that team must pass to reach the rest of the map,
 -- dir the way it passes them, posts = team -> points where its defenders
 -- establish their line, forwardPosts = team -> points ahead of its own
--- cart where its escorts do (foundation.aiwar.posts) }. The war adds
+-- cart where its escorts do (games.ns.posts) }. The war adds
 -- defense = team -> its defense share (DefenseShare).
 function War:SetField(field)
 	field.defense = self.defense

@@ -5,7 +5,7 @@
 -- fireball that bursts with tendrils; its damage of 50 is never read, as
 -- the fireball's burst deals its own.
 local require = require
-local Teams = require("foundation.teams")
+local Teams = require("games.gameplay.teams")
 local Spells = require("foundation.spells")
 local SpellSet = require("foundation.spells.halloween")
 local Fireball = require("foundation.spells.fireball")

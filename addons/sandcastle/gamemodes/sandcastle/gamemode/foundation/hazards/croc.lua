@@ -11,8 +11,8 @@
 -- and Toggle are the trigger's.
 local require = require
 local Hazards = require("foundation.hazards")
-local Teams = require("foundation.teams")
-local Actor = require("foundation.npc.actor")
+local Teams = require("games.gameplay.teams")
+local Actor = require("games.npc.actor")
 local ipairs = ipairs
 module(...)
 

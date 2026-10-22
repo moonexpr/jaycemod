@@ -1,11 +1,11 @@
 -- foundation.rounds.text: the win panel's wording (CTFWinPanel::FireGameEvent) and the
 -- lookup of TF2 localization tokens in tf_english.txt (UTF-16LE).
 local T = dofile("tests/harness.lua")
-local R = T.require("foundation.rounds")
+local R = T.require("games.gameplay.rounds")
 local Text = T.require("foundation.rounds.text")
 
 local W = R.WINREASON
-local Teams = T.require("foundation.teams")
+local Teams = T.require("games.gameplay.teams")
 local NOBODY, RED, BLU = Teams.UNASSIGNED, Teams.RED, Teams.BLUE
 
 local function Panel(winner, reason, fullRound, remaining)
@@ -246,7 +246,7 @@ T.test("a deathmatch says the match is tied and how many frags win it", function
 end)
 
 T.test("the top scores and koth's team clocks give way to the win panel", function()
-	local State = T.require("foundation.rounds.state")
+	local State = T.require("games.gameplay.rounds.state")
 	T.eq(Text.ShowsTeamBar(State.RND_RUNNING), true, "while the round runs")
 	T.eq(Text.ShowsTeamBar(State.STALEMATE), true, "in sudden death")
 	T.eq(Text.ShowsTeamBar(State.TEAM_WIN), false, "under a round's win panel")

@@ -10,8 +10,8 @@
 -- and any call of which returns it, so the top level runs and nothing it
 -- defers (timer.Simple) ever does.
 local T = dofile("tests/harness.lua")
-local Teams = T.require("foundation.teams")
-local STATE = T.require("foundation.rounds.state")
+local Teams = T.require("games.gameplay.teams")
+local STATE = T.require("games.gameplay.rounds.state")
 
 local SOURCE = T.ROOT .. "features/rounds/sv.lua"
 
@@ -111,7 +111,7 @@ end)
 -- entity stays valid until the frame ends, so the controller must have let
 -- go of it as it was unbound, and make a new one.
 T.test("a listener added again from the same place replaces the old, as a file run again does", function()
-	local Rounds = T.require("foundation.rounds")
+	local Rounds = T.require("games.gameplay.rounds")
 	local phase = Rounds.PHASE_ARENA_START
 	local before = #controller.listeners[phase]
 	local ran = {}
@@ -257,7 +257,7 @@ T.test("gamerules removed outside a cleanup are replaced at once under their nam
 	T.eq(map.published.ws_rounds_active, true, "the rounds go on")
 end)
 
--- A game begun on a map without rounds (foundation.gamemode's loadRounds)
+-- A game begun on a map without rounds (games.system.gamemode's loadRounds)
 -- runs them on the map's gamerules; begun before the map was set up (the
 -- AI war's autostart), it makes them first.
 T.test("a game begun on a map without rounds runs them on its gamerules", function()

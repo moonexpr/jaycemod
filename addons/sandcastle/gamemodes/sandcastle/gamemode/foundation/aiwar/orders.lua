@@ -1,4 +1,4 @@
--- The orders of an AI war soldier: an NPC variant (foundation.npc) whose
+-- The orders of an AI war soldier: an NPC variant (games.npc.nextbot) whose
 -- Actions run over the soldier port (foundation.aiwar.soldier). The engine's
 -- own AI does the fighting; the orders decide where a soldier should be and
 -- walk it there over the nav mesh, since TF2 maps have no AI node graph for
@@ -41,7 +41,7 @@
 --     StrategyMonitor      applies the war's allocation: the member's job
 --       TacticalMonitor    self-preservation (CTFBotTacticalMonitor): the
 --                          humiliated SuspendFor Humiliated
---         SquadMonitor     leader, member or solo (foundation.aiwar.squad)
+--         SquadMonitor     leader, member or solo (games.ns.squad)
 --           SquadLeader | SquadMember | Solo   a member takes its bound line
 --                          from its leader, regroups on it in a fight, and
 --                          fights the enemy its leader fights
@@ -82,19 +82,19 @@
 local abs, ceil, cos, floor, max, min, pi, sin, sqrt = math.abs, math.ceil, math.cos, math.floor, math.max, math.min, math.pi, math.sin, math.sqrt
 local ipairs, pairs = ipairs, pairs
 local format = string.format
-local N = require("foundation.npc")
+local N = require("games.npc.nextbot")
 local Debug = require("foundation.npc.debug")
 local AiWar = require("foundation.aiwar")
-local Teams = require("foundation.teams")
+local Teams = require("games.gameplay.teams")
 local Track = require("foundation.math.polyline")
-local Tactics = require("foundation.wartactics")
+local Tactics = require("games.ns.tactics")
 local Geometry = require("foundation.math.geometry")
-local Squad = require("foundation.aiwar.squad")
-local Lanes = require("foundation.aiwar.lanes")
-local Hunt = require("foundation.aiwar.hunt")
+local Squad = require("games.ns.squad")
+local Lanes = require("games.ns.lanes")
+local Hunt = require("games.ns.hunt")
 local Health = require("foundation.aiwar.health")
-local Speech = require("foundation.aiwar.speech")
-local Explore = require("foundation.aiwar.explore")
+local Speech = require("games.ns.speech")
+local Explore = require("games.ns.explore")
 module(...)
 
 KIND = "aiwar"
@@ -323,7 +323,7 @@ ROLES = {
 		end,
 	},
 	-- EstablishLine: a post found for the defenders (field.posts, from
-	-- foundation.aiwar.posts: high or low ground, hiding spots, watching
+	-- games.ns.posts: high or low ground, hiding spots, watching
 	-- the checkpoint the attackers head for), where it waits for them.
 	[AiWar.DEFEND] = {
 		name = "EstablishLine",
@@ -346,7 +346,7 @@ ROLES = {
 	},
 }
 
--- Exploring (foundation.aiwar.explore), every scenario's job: a squad goes
+-- Exploring (games.ns.explore), every scenario's job: a squad goes
 -- for where it fights, else its lane's end, else its waypoint (field.explore:
 -- the scenario's board), fighting what it meets; engaged, it leaves its lane.
 -- Arena's explorers do it until the point opens; on any map an admin may
@@ -530,7 +530,7 @@ function Goal(field, member)
 end
 
 -- The member's fire team's contact, reporting the enemy the member sees:
--- what one sees, its team knows (foundation.wartactics).
+-- what one sees, its team knows (games.ns.tactics).
 function TeamContact(state, me)
 	local fireTeam = state.member.fireTeam
 	if not fireTeam then return nil end
@@ -1323,7 +1323,7 @@ function Objective:ShouldPickUp(me, item)
 	return N.ANSWER_UNDEFINED
 end
 
--- A fight, by the role's tactic (foundation.wartactics).
+-- A fight, by the role's tactic (games.ns.tactics).
 BOUND_RADIUS, COVER_RADIUS, SPOT_ARRIVE = 200, 320, 48
 FLANK_TIME, FLANK_ARRIVE = 15, 160
 -- A squad member farther than REGROUP_RANGE from its leader in a fight runs
@@ -1579,7 +1579,7 @@ local function Monitor(name, contained)
 end
 
 -- A monitor that only passes through to what it contains, which the debug
--- layer's TDBN leaves out (foundation.npc's Action.passthrough).
+-- layer's TDBN leaves out (games.npc.nextbot's Action.passthrough).
 local function PassthroughMonitor(name, contained)
 	local class = Monitor(name, contained)
 	class.passthrough = true
@@ -1616,7 +1616,7 @@ end
 local ScenarioMonitor = PassthroughMonitor("ScenarioMonitor", SideFor)
 
 -- The squad roles: each runs the job; which one runs follows the member's
--- place in its squad (foundation.aiwar.squad's Kind), changing itself when
+-- place in its squad (games.ns.squad's Kind), changing itself when
 -- that changes (a leader died, a hero joined, a new job's squad).
 local SquadRoles = {}
 
@@ -1656,7 +1656,7 @@ local SquadMonitor = PassthroughMonitor("SquadMonitor", function(state)
 end)
 
 -- Post-round carnage (foundation.aiwar's PHASES.humiliation,
--- foundation.aiwar.hunt; TF2's CTFBotTacticalMonitor "Get the losers!").
+-- games.ns.hunt; TF2's CTFBotTacticalMonitor "Get the losers!").
 -- The winners SeekAndDestroy: at a loser in sight, reporting it on the
 -- war's hunt board and holding to fire once within HUNT_CLOSE; with none,
 -- on a trip to the nearest fresh sighting, else to the losers' spawns. The
@@ -2010,7 +2010,7 @@ end
 local StrategyMonitor = PassthroughMonitor("StrategyMonitor", function(state) return TacticalMonitor:New(state) end)
 
 -- It also keeps the member's record current with what its squad reads of
--- it: where it is and the enemy it fights (foundation.aiwar.squad); and
+-- it: where it is and the enemy it fights (games.ns.squad); and
 -- tells the soldier where to watch.
 function StrategyMonitor:Update(me)
 	local member = self.state.member

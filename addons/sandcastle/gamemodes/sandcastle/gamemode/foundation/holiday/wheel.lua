@@ -20,7 +20,7 @@
 --   Players() (every player), LivingPlayers(), TeamOf(p), IsTargetValid(p);
 --   AddCond(p, cond, duration), RemoveCond(p, cond);
 --   SetAttribute(p, name, value), RemoveAttribute(p, name)
---     (foundation.players.attributes' names);
+--     (games.gameplay.players.attributes' names);
 --   SetGravityMultiplier(m) (CTFGameRules::SetGravityMultiplier);
 --   OtherWheels() -> the other wheel_of_doom entities (opaque);
 --   SetSkin(others, n), SetScale(others, s): on this wheel and the others;
@@ -40,9 +40,9 @@
 --   BeginHaunting(count, minDuration, maxDuration)
 --     (CTFGameRules::BeginHaunting: foundation.npc.ghost's Haunt).
 local require = require
-local Players = require("foundation.players")
-local Attributes = require("foundation.players.attributes")
-local Teams = require("foundation.teams")
+local Players = require("games.gameplay.players")
+local Attributes = require("games.gameplay.players.attributes")
+local Teams = require("games.gameplay.teams")
 local Class = require("foundation.core.class")
 local ipairs, setmetatable = ipairs, setmetatable
 local floor, log, max, min = math.floor, math.log, math.max, math.min

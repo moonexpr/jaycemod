@@ -12,18 +12,18 @@ local Orders = T.require("foundation.aiwar.orders")
 local Base = T.require("foundation.aiwar.scenario")
 local Payload = T.require("foundation.aiwar.scenario.payload")
 local Freeform = T.require("foundation.aiwar.scenario.freeform")
-local Posts = T.require("foundation.aiwar.posts")
-local Lanes = T.require("foundation.aiwar.lanes")
-local HL2Path = T.require("foundation.npc.path.hl2")
-local Gamemode = T.require("foundation.gamemode")
-local Rounds = T.require("foundation.rounds")
+local Posts = T.require("games.ns.posts")
+local Lanes = T.require("games.ns.lanes")
+local HL2Path = T.require("games.ns.path.hl2")
+local Gamemode = T.require("games.system.gamemode")
+local Rounds = T.require("games.gameplay.rounds")
 local PayloadMode = T.require("foundation.rounds.payload")
 local ControlPointsMode = T.require("foundation.rounds.control_points")
 local KothMode = T.require("features.koth.model")
-local STATE = T.require("foundation.rounds.state")
-local Teams = T.require("foundation.teams")
+local STATE = T.require("games.gameplay.rounds.state")
+local Teams = T.require("games.gameplay.teams")
 local Slots = T.require("foundation.aiwar.slots")
-local Squad = T.require("foundation.aiwar.squad")
+local Squad = T.require("games.ns.squad")
 -- the real scenarios; tests of the controller alone swap in fakes
 local REAL = {
 	[PayloadMode.Mode.NAME] = Payload,
@@ -203,7 +203,7 @@ local function Env(w)
 	local ws = {
 		require = T.require,
 		FeatureParts = T.FeatureParts,
-		BulletSteps = T.require("foundation.combat.bullet_steps").New(),
+		BulletSteps = T.require("games.gameplay.combat.bullet_steps").New(),
 		TEAM_RED = RED,
 		TEAM_BLUE = BLUE,
 		TEAM_UNASSIGNED = NOBODY,
@@ -1052,7 +1052,7 @@ end)
 -- are planned again once it has stayed open, even when what changed is not
 -- known (every area they watch is looked at).
 T.test("lanes are planned again when the doors' blockers change", function()
-	local Lanes = T.require("foundation.aiwar.lanes")
+	local Lanes = T.require("games.ns.lanes")
 	local w = World()
 	w.spawns[RED] = { Ent(Vector(0, 0, 0)) }
 	w.spawns[BLUE] = { Ent(Vector(2000, 0, 0)) }
@@ -1135,7 +1135,7 @@ end)
 -- An area outside the room that the field reaches only by a climb too high
 -- for a soldier (a ledge) is no threshold either.
 T.test("a lane stop's threshold is not a ledge the soldiers cannot climb", function()
-	local HL2Path = T.require("foundation.npc.path.hl2")
+	local HL2Path = T.require("games.ns.path.hl2")
 	local w = World()
 	w.spawns[RED] = { Ent(Vector(0, 0, 0)) }
 	w.spawns[BLUE] = { Ent(Vector(2400, 0, 0)) }
@@ -1154,7 +1154,7 @@ end)
 -- a door wall they went round plans them again once it has opened and
 -- stayed open (a setup gate), not while it only flickers open.
 T.test("lanes are planned again only when a blocker changes where it touches them", function()
-	local Lanes = T.require("foundation.aiwar.lanes")
+	local Lanes = T.require("games.ns.lanes")
 	local w = World()
 	w.spawns[RED] = { Ent(Vector(0, 0, 0)) }
 	w.spawns[BLUE] = { Ent(Vector(2000, 0, 0)) }

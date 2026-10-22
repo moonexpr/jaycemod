@@ -1,5 +1,5 @@
 local T = dofile("tests/harness.lua")
-local HitSound = T.require("foundation.combat.hit_sound")
+local HitSound = T.require("games.gameplay.combat.hit_sound")
 
 -- tf_dingalingaling_effect's list, in TF2's order (cfg/user.scr).
 T.test("each hit sound effect is TF2's sound for it", function()

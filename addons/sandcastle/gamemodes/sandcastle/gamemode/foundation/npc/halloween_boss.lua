@@ -1,6 +1,6 @@
 -- TF2's Halloween bosses' shared rules (CHalloweenBaseBoss,
 -- halloween_base_boss.cpp) as a template method. Variant(boss) turns a boss
--- part into a foundation.npc variant: the template owns spawn health, the
+-- part into a games.npc.nextbot variant: the template owns spawn health, the
 -- damage filter, attacker memory and the damage-per-second window, and the
 -- top action BossBehavior, which contains the boss's emerge action and
 -- changes to its dying action on death.
@@ -28,8 +28,8 @@
 -- FireGameEvent(name, fields) fires one of foundation.npc.boss_events'
 -- game events to everyone, as TF2's gameeventmanager->FireEvent does.
 local require = require
-local NpcSystem = require("foundation.npc")
-local Teams = require("foundation.teams")
+local NpcSystem = require("games.npc.nextbot")
+local Teams = require("games.gameplay.teams")
 local ipairs = ipairs
 module(...)
 

@@ -1,12 +1,12 @@
 -- ws/sv_players_menu.lua: the scoreboard player menu's requests. Reports go
--- to foundation.reports and, at the count, start a kick vote
+-- to games.gameplay.reports and, at the count, start a kick vote
 -- (WSReportsReached); money moves through WS.TransferMoney; kicks, bans and
 -- grants need the players privilege. Run against fake events, players and
 -- economy.
 local T = dofile("tests/harness.lua")
-local Reports = T.require("foundation.reports")
-local Economy = T.require("foundation.economy")
-local Permissions = T.require("foundation.permissions")
+local Reports = T.require("games.gameplay.reports")
+local Economy = T.require("games.gameplay.economy")
+local Permissions = T.require("games.system.permissions")
 local Transaction = T.require("foundation.transaction")
 
 local function Player(name, held)

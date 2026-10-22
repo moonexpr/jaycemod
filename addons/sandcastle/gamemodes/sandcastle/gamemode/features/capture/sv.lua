@@ -16,7 +16,7 @@
 -- sv_master (the master, its rounds and tf_logic_cp_timer), sv_areas (the
 -- capture areas), sv_hud (what the HUD and the capture panel show) and
 -- sv_snapshot (the controller's state as plain data and back).
-local Rounds = WS.require("foundation.rounds")
+local Rounds = WS.require("games.gameplay.rounds")
 
 local NOBODY, RED, BLUE = WS.TEAM_UNASSIGNED, WS.TEAM_RED, WS.TEAM_BLUE
 local GAME_TEAMS = { RED, BLUE }

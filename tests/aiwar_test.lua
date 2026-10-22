@@ -3,10 +3,10 @@
 -- foundation.aiwar.track, the cart's path as geometry.
 local T = dofile("tests/harness.lua")
 local AiWar = T.require("foundation.aiwar")
-local Squad = T.require("foundation.aiwar.squad")
+local Squad = T.require("games.ns.squad")
 local Track = T.require("foundation.math.polyline")
-local Teams = T.require("foundation.teams")
-local STATE = T.require("foundation.rounds.state")
+local Teams = T.require("games.gameplay.teams")
+local STATE = T.require("games.gameplay.rounds.state")
 
 local RED, BLUE = Teams.RED, Teams.BLUE
 
@@ -217,7 +217,7 @@ end)
 -- The squad investigates a member's death: it goes for its killer, so it
 -- engages the enemy rather than walking on.
 T.test("a member that falls leaves its squad investigating: its killer's place, else where it fell", function()
-	local Tactics = T.require("foundation.wartactics")
+	local Tactics = T.require("games.ns.tactics")
 	local war = UncappedWar()
 	war:Assign({ [BLUE] = true })
 	for i = 1, 4 do war:Enlist("red" .. i, RED, true) end
@@ -346,7 +346,7 @@ end)
 -- bomb's carrier) keeps its own job, never leads it, and leaves the squad
 -- the war's own; Detach puts it back.
 T.test("an attached soldier joins its host's squad beside its job, never leads it, and goes back when detached", function()
-	local Squad = T.require("foundation.aiwar.squad")
+	local Squad = T.require("games.ns.squad")
 	local war, members = Enlisted(4)
 	local medic, host = members[1], members[4]
 	local job = medic.role

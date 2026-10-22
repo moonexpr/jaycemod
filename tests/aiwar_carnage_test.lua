@@ -1,10 +1,10 @@
--- Post-round carnage: foundation.aiwar.hunt (the winners' board of
+-- Post-round carnage: games.ns.hunt (the winners' board of
 -- sightings, where they hunt and where the losers hide), and the orders'
 -- humiliation phase, driven as scenarios against tests/fake_soldier.lua.
 local T = dofile("tests/harness.lua")
 local FS = dofile("tests/fake_soldier.lua")
-local Hunt = T.require("foundation.aiwar.hunt")
-local Teams = T.require("foundation.teams")
+local Hunt = T.require("games.ns.hunt")
+local Teams = T.require("games.gameplay.teams")
 
 local RED, BLUE = Teams.RED, Teams.BLUE
 local P = FS.Point
@@ -92,11 +92,11 @@ end)
 
 -- The humiliation phase in the soldiers' orders ------------------------------
 
-local N = T.require("foundation.npc")
+local N = T.require("games.npc.nextbot")
 local AiWar = T.require("foundation.aiwar")
 local Orders = T.require("foundation.aiwar.orders")
 local Track = T.require("foundation.math.polyline")
-local STATE = T.require("foundation.rounds.state")
+local STATE = T.require("games.gameplay.rounds.state")
 
 local TICK = 0.25
 local SEEK = "NextSoldier/StrategyMonitor/SeekAndDestroy"

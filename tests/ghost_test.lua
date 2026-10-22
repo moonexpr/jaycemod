@@ -1,10 +1,10 @@
 local T = dofile("tests/harness.lua")
 local FakeActor = dofile("tests/fake_actor.lua")
 local FakeCombatant = dofile("tests/fake_combatant.lua")
-local NpcSystem = T.require("foundation.npc")
+local NpcSystem = T.require("games.npc.nextbot")
 local Ghost = T.require("foundation.npc.ghost")
-local Players = T.require("foundation.players")
-local Teams = T.require("foundation.teams")
+local Players = T.require("games.gameplay.players")
+local Teams = T.require("games.gameplay.teams")
 
 local V = FakeCombatant.Vector
 local TICK = 0.1

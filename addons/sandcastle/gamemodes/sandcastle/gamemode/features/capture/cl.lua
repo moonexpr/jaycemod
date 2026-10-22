@@ -13,10 +13,10 @@
 -- capture it (CControlPointProgressBar). The unlock countdown speaks 5..1,
 -- then the capture-enabled line (CControlPointCountdown::OnTick).
 WS.Feature("rounds")
-local Capture = WS.require("foundation.capture")
+local Capture = WS.require("games.gameplay.capture")
 local Hud = WS.require("foundation.capture.hud")
 local Feed = WS.require("foundation.kill_feed")
-local Rounds = WS.require("foundation.rounds")
+local Rounds = WS.require("games.gameplay.rounds")
 
 local NOBODY, RED, BLUE = WS.TEAM_UNASSIGNED, WS.TEAM_RED, WS.TEAM_BLUE
 local NO_POINT_STOOD_ON = 0

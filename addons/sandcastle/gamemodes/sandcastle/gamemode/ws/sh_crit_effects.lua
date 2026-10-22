@@ -1,9 +1,9 @@
--- How crits look as they fly (foundation.combat.crit_effects): its
+-- How crits look as they fly (games.gameplay.combat.crit_effects): its
 -- particles precached on both realms, since the server names them to
 -- clients (a crit bullet's tracer, ws/sv_hits.lua), and a crit-boosted
 -- shooter's rocket, bolt or grenade trailing TF2's crit trail, seen by
 -- everyone, as C_TFProjectile_Rocket::CreateTrails shows a crit rocket.
-local Crit = WS.require("foundation.combat.crit_effects")
+local Crit = WS.require("games.gameplay.combat.crit_effects")
 local P = WS.PlayerRules
 
 for _, path in ipairs(Crit.FILES) do game.AddParticles(path) end

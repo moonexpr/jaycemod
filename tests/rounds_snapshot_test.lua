@@ -2,10 +2,10 @@
 -- into a fresh round at another plays on exactly as the original does.
 local T = dofile("tests/harness.lua")
 local FakeObjective = dofile("tests/fake_objective.lua")
-local Rounds = T.require("foundation.rounds")
+local Rounds = T.require("games.gameplay.rounds")
 local CPMode = T.require("foundation.rounds.control_points").Mode
-local State = T.require("foundation.rounds.state")
-local Teams = T.require("foundation.teams")
+local State = T.require("games.gameplay.rounds.state")
+local Teams = T.require("games.gameplay.teams")
 
 local RED, BLUE = Teams.RED, Teams.BLUE
 local W = Rounds.WINREASON
@@ -143,8 +143,8 @@ T.test("a snapshot of another mode is refused, naming both", function()
 	T.eq(tostring(err):find("control_points", 1, true) ~= nil and tostring(err):find("none", 1, true) ~= nil, true, "names both modes: " .. tostring(err))
 end)
 
--- The round timer's (foundation.rounds.timer) Snapshot and Restore.
-local Timer = T.require("foundation.rounds.timer")
+-- The round timer's (games.gameplay.rounds.timer) Snapshot and Restore.
+local Timer = T.require("games.gameplay.rounds.timer")
 
 local function NewTimer(now, setupLength)
 	return Timer.New({

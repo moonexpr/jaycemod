@@ -1,4 +1,4 @@
--- foundation.features runs a feature's sv.lua or cl.lua and refuses one
+-- games.system.features runs a feature's sv.lua or cl.lua and refuses one
 -- that returns no table ("returned nil, not its table"): every such part
 -- ends by returning it. Found by a client joining a payload map.
 --
@@ -6,7 +6,7 @@
 -- each is shown to bite on a fixture feature in a temp directory, never
 -- under the gamemode.
 local T = dofile("tests/harness.lua")
-local Features = T.require("foundation.features")
+local Features = T.require("games.system.features")
 
 local FEATURES = "addons/sandcastle/gamemodes/sandcastle/gamemode/features"
 

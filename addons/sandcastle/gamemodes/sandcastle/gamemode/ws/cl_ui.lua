@@ -153,7 +153,7 @@ UI.Define("Dialog", "Panel", {
 -- circle, Support S in a star. Drawn rather than loaded, so they stay sharp
 -- at any size. Shapes are in units of the badge's size, clockwise (as
 -- surface.DrawPoly needs) on the screen, y down.
-local Loadout = WS.require("foundation.loadout")
+local Loadout = WS.require("games.gameplay.loadout")
 
 local BEVEL = 0.16 -- of each edge, cut from each end of a corner
 local CIRCLE_SEGMENTS = 24

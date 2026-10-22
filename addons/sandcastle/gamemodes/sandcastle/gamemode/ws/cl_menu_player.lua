@@ -12,8 +12,8 @@
 --   (game_loadout_buy_into).
 -- The Store tab buys too. The server owns the loadout: the tab asks, and
 -- redraws when it hears back.
-local Loadout = WS.require("foundation.loadout")
-local Economy = WS.require("foundation.economy")
+local Loadout = WS.require("games.gameplay.loadout")
+local Economy = WS.require("games.gameplay.economy")
 local E = WS.Events
 local UI = WS.UI
 local THEME = UI.THEME

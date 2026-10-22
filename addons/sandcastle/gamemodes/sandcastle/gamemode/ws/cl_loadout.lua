@@ -1,9 +1,9 @@
--- The local player's loadout (foundation.loadout) as the server last told
+-- The local player's loadout (games.gameplay.loadout) as the server last told
 -- it (game_loadout_state, ws/sv_loadout.lua); the catalog's starters until then.
 -- WSLoadoutChanged tells the spawn menu's Player and Inventory tabs to
 -- redraw. Requests are transactions (WS.LoadoutRequest); a declined or
 -- failed one shows as a notice.
-local Loadout = WS.require("foundation.loadout")
+local Loadout = WS.require("games.gameplay.loadout")
 local Transaction = WS.require("foundation.transaction")
 local E = WS.Events
 

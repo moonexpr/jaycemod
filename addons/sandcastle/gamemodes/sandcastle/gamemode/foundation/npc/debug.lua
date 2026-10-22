@@ -1,7 +1,7 @@
 -- The NextBot debug layer's rules (the nbdebug feature, ws_nb_*): the
 -- engine's nb_select, nb_debug and nb_debug_filter, redone for what the
 -- engine cannot see: our Lua Behaviors, the costs our path strategies give
--- (foundation.npc.path), and the routes game.npc.astar searches.
+-- (games.ns.path), and the routes games.npc.astar searches.
 --
 -- Layers: PATH (the computed path by move type, its cost and timing), COST
 -- (every area the search considered, by cost so far), BEHAVIOR (the action
@@ -17,7 +17,7 @@ local error, format, ipairs, pairs, setmetatable, tonumber, tostring, type =
 local floor, huge, sqrt = math.floor, math.huge, math.sqrt
 local concat, sort = table.concat, table.sort
 local find, lower, rep, sub, upper = string.find, string.lower, string.rep, string.sub, string.upper
-local Npc = require("foundation.npc")
+local Npc = require("games.npc.nextbot")
 local Sets = require("foundation.map.sets")
 module(...)
 
@@ -484,8 +484,8 @@ end
 -- PATH: what a search computed, reported by whoever ran it
 
 -- Who searched: the engine's Path:Compute (with our cost function) for a
--- NextBot, or game.npc.astar for an NPC that cannot use it.
-SOURCE_ENGINE, SOURCE_ROUTE = "Path:Compute", "game.npc.astar"
+-- NextBot, or games.npc.astar for an NPC that cannot use it.
+SOURCE_ENGINE, SOURCE_ROUTE = "Path:Compute", "games.npc.astar"
 
 -- Path::SegmentType (NextBotPath.h), as GMod's path segments carry it.
 SEGMENT_ON_GROUND, SEGMENT_DROP_DOWN, SEGMENT_CLIMB_UP, SEGMENT_JUMP_OVER_GAP, SEGMENT_LADDER_UP, SEGMENT_LADDER_DOWN = 0, 1, 2, 3, 4, 5
@@ -585,7 +585,7 @@ function PathLines(report, now)
 end
 
 -------------------------------------------------------------------------------
--- BEHAVIOR: a Behavior's watcher (foundation.npc Behavior:Watch) that keeps
+-- BEHAVIOR: a Behavior's watcher (games.npc.nextbot Behavior:Watch) that keeps
 -- the last few changes and events, worded as nb_debug BEHAVIOR prints them.
 
 BEHAVIOR_LOG_SIZE = 6

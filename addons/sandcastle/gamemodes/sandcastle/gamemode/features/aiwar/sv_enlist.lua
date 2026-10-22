@@ -1,9 +1,9 @@
 -- Part of the AI war controller (sv.lua): enlisting, kits, medics, discharge, spawning, waves and seats.
 local Controller, Map = ...
 local AiWar = WS.require("foundation.aiwar")
-local Teams = WS.require("foundation.teams")
+local Teams = WS.require("games.gameplay.teams")
 local Orders = WS.require("foundation.aiwar.orders")
-local NpcSystem = WS.require("foundation.npc")
+local NpcSystem = WS.require("games.npc.nextbot")
 local SPAWN_LIFT, RED, BLUE = Map.SPAWN_LIFT, Map.RED, Map.BLUE
 local Point, Masks, SpawnSpots, ClearSpotNear = Map.Point, Map.Masks, Map.SpawnSpots, Map.ClearSpotNear
 
@@ -158,7 +158,7 @@ function Controller:Equip(ent, entry, member)
 	local kit = (role == AiWar.MEDIC and MEDIC_KITS[faction]) or kits[role]
 		or (faction == AiWar.RESISTANCE and role == AiWar.SUPPORT and self:HeroKit(ent)) or kits.default or {}
 	entry.soldier.kit = kit
-	-- a hero leads its squad (foundation.aiwar.squad)
+	-- a hero leads its squad (games.ns.squad)
 	if member then member.hero = kit.hero == true or nil end
 	ent:NSKit(kit)
 end

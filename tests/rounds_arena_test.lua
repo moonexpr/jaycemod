@@ -6,15 +6,15 @@
 -- capturing the point once the cap-enable time has passed.
 local T = dofile("tests/harness.lua")
 local FakeObjective = dofile("tests/fake_objective.lua")
-local Rounds = T.require("foundation.rounds")
+local Rounds = T.require("games.gameplay.rounds")
 local Arena = T.require("foundation.rounds.arena")
 local ControlPoints = T.require("foundation.rounds.control_points")
 local Koth = T.require("features.koth.model")
-local State = T.require("foundation.rounds.state")
+local State = T.require("games.gameplay.rounds.state")
 local Text = T.require("foundation.rounds.text")
 local Scenario = T.require("foundation.aiwar.scenario")
-local Teams = T.require("foundation.teams")
-local Spawns = T.require("foundation.spawn_manager")
+local Teams = T.require("games.gameplay.teams")
+local Spawns = T.require("games.system.spawn_manager")
 
 local NOBODY, RED, BLUE = Teams.UNASSIGNED, Teams.RED, Teams.BLUE
 local W = Rounds.WINREASON

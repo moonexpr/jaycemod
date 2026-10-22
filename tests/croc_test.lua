@@ -1,8 +1,8 @@
 local T = dofile("tests/harness.lua")
 local Hazards = T.require("foundation.hazards")
 local Croc = T.require("foundation.hazards.croc")
-local Teams = T.require("foundation.teams")
-local Actor = T.require("foundation.npc.actor")
+local Teams = T.require("games.gameplay.teams")
+local Actor = T.require("games.npc.actor")
 
 local NONE, ANIMATE, HURT = Hazards.NONE, Hazards.ANIMATE, Hazards.HURT
 

@@ -1,12 +1,12 @@
--- The weapon balance's shots (foundation.combat.weapon_balance), on both
+-- The weapon balance's shots (games.gameplay.combat.weapon_balance), on both
 -- realms so a player's own shots predict: a balanced weapon's cone is its
 -- own, and it fires no faster than its interval. A player's attack button
 -- is held back until the weapon may fire again (HL2's pistol refires on
 -- every click, whatever its next attack time says); a soldier's DrGBase
 -- gun waits as long as its own delay or the interval, whichever is longer.
 -- Its hits are ws/sv_hits.lua's.
-local Balance = WS.require("foundation.combat.weapon_balance")
-local BulletSteps = WS.require("foundation.combat.bullet_steps")
+local Balance = WS.require("games.gameplay.combat.weapon_balance")
+local BulletSteps = WS.require("games.gameplay.combat.bullet_steps")
 
 local function Held(shooter)
 	if not shooter.GetActiveWeapon then return nil end

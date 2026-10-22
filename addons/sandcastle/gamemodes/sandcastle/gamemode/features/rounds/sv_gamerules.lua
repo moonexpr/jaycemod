@@ -2,8 +2,8 @@
 -- (tf_gamerules, ws_gamerules) forward, the spawn doors of a stopped game,
 -- and their inputs, tf_gamerules'.
 local Controller, Players, Active = ...
-local Rounds = WS.require("foundation.rounds")
-local Spawns = WS.require("foundation.spawn_manager")
+local Rounds = WS.require("games.gameplay.rounds")
+local Spawns = WS.require("games.system.spawn_manager")
 local SpawnHold = WS.require("features.rounds.spawn_doors")
 local TeamPlayers, EachPlayer = Players.TeamPlayers, Players.EachPlayer
 
@@ -72,7 +72,7 @@ end
 -- mp_round_restart, the reset vote and the editors: a round
 -- with players on RED or BLU (not NPCs alone) ends as a stalemate, with the
 -- round end's own panel and song; with none it restarts silently
--- (foundation.rounds' RestartRound).
+-- (games.gameplay.rounds' RestartRound).
 function Controller:RestartRound()
 	local withPlayers = #TeamPlayers(RED) + #TeamPlayers(BLUE) > 0
 	self:Apply(self.round:RestartRound(CurTime(), withPlayers))
@@ -193,7 +193,7 @@ function Controller:KeepSpawnDoorsOpen(now)
 	end
 end
 
--- A new game readies in two steps (foundation.rounds' CleanUp and
+-- A new game readies in two steps (games.gameplay.rounds' CleanUp and
 -- BeginGame): the halted map cleaned up, then the first pre-round, held
 -- until preroundEnd.
 function Controller:CleanUp()

@@ -1,5 +1,5 @@
 -- Records the server's Lua route searches so they replay offline
--- (foundation.npc.route_record; .devtools/bin/route_replay.lua), through
+-- (games.ns.route_record; .devtools/bin/route_replay.lua), through
 -- server_lua.py:
 --
 --   server_lua.py -f .devtools/bin/record_routes.lua          defines WSRouteRecord
@@ -8,7 +8,7 @@
 --   server_lua.py 'return WSRouteRecord.Save("pl_upward_war")'  data/ws_routes/<name>.dat
 --
 -- Each search's graph (features/npc/sv_routes.lua's NavGraph) is wrapped as
--- game.npc.astar makes the search: every area the search found
+-- games.npc.astar makes the search: every area the search found
 -- untraversable, every link its crossable refused, every spawn room it read
 -- and every estimate it took is written down, with the request and, once the
 -- search is done, what it found. Save adds the nav mesh: each area's centre,
@@ -16,11 +16,11 @@
 WSRouteRecord = WSRouteRecord or {}
 local R = WSRouteRecord
 
-local Record = WS.require("foundation.npc.route_record")
-local AStar = WS.require("game.npc.astar")
+local Record = WS.require("games.ns.route_record")
+local AStar = WS.require("games.npc.astar")
 local Pathfinder = WS.require("foundation.graph.pathfinder")
-local HL2 = WS.require("foundation.npc.path.hl2")
-local Lanes = WS.require("foundation.aiwar.lanes")
+local HL2 = WS.require("games.ns.path.hl2")
+local Lanes = WS.require("games.ns.lanes")
 
 local DIR = "ws_routes"
 

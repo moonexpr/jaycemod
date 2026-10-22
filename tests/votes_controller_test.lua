@@ -1,12 +1,12 @@
--- ws/sv_votes.lua: runs foundation.vote on the server. A player's call
+-- ws/sv_votes.lua: runs games.gameplay.vote on the server. A player's call
 -- starts a vote and its timer; casts and the timer end it; a passed vote
 -- runs its effect; reports reaching the count (WSReportsReached) start a
 -- kick vote, or queue it behind the running one. Run against fake events,
 -- players, timers, convars and the rounds feature.
 local T = dofile("tests/harness.lua")
-local Vote = T.require("foundation.vote")
-local Permissions = T.require("foundation.permissions")
-local PlayMode = T.require("foundation.play_mode")
+local Vote = T.require("games.gameplay.vote")
+local Permissions = T.require("games.system.permissions")
+local PlayMode = T.require("games.system.play_mode")
 
 local KINDS = {
 	Vote.KIND_KICK,

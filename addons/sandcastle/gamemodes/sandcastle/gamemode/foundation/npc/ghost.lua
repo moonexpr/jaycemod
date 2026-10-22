@@ -14,8 +14,8 @@
 --     (MASK_PLAYERSOLID, through NPCs and players), or nil when clear.
 -- config = { lifetime }.
 local require = require
-local NpcSystem = require("foundation.npc")
-local Players = require("foundation.players")
+local NpcSystem = require("games.npc.nextbot")
+local Players = require("games.gameplay.players")
 local ipairs = ipairs
 local cos, rad, sin = math.cos, math.rad, math.sin
 module(...)

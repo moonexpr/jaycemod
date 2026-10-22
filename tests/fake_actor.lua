@@ -1,7 +1,7 @@
--- An in-memory foundation.npc.actor for model tests: a fake clock, a
+-- An in-memory games.npc.actor for model tests: a fake clock, a
 -- scripted random source, fake targets, and a log of every effect the model
 -- asked for. It implements every name in foundation.npc.actor.METHODS
--- (npc_test checks that).
+-- (games_npc_nextbot_test checks that).
 --
 -- Given its variant (Fake.Actor{ variant = Zombie }), the actor refuses a
 -- particle system the variant does not list in PARTICLES: the npc
