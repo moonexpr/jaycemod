@@ -103,6 +103,31 @@ local function Counts(self, a, point)
 	return counts
 end
 
+-- Who of team stands in the area, players first (the AI war's soldiers
+-- after), in the order the trigger touches them.
+local function Occupants(a, team)
+	local list = {}
+	for _, ply in ipairs(WS.PlayersInside(a.ent)) do
+		if WS.TeamOf(ply) == team then list[#list + 1] = ply end
+	end
+	for _, member in ipairs(WS.MembersInside(a.ent)) do
+		if WS.TeamNumber(member) == team then list[#list + 1] = member end
+	end
+	return list
+end
+
+-- A name as GMod's death notices give it (features/capture/sh.lua).
+local function Name(ent)
+	if ent:IsPlayer() then return ent:Nick() end
+	return "#" .. ent:GetClass()
+end
+
+local function Names(ents)
+	local names = {}
+	for i, ent in ipairs(ents) do names[i] = Name(ent) end
+	return names
+end
+
 local function StepInput(self, a, point)
 	return {
 		now = CurTime(),
@@ -142,14 +167,22 @@ local function CaptureStarted(self, point, team)
 	hook.Run("WSPointCaptureStarted", point, team)
 end
 
--- CTeamControlPoint::CaptureBlocked: the clients show the HUD's "defended"
--- notice (for points with a print name).
-local function CaptureBlocked(self, point, team)
-	WS.Events.Fire("game_teamplay_capture_blocked", {
-		cp = self.set:Index(point),
-		cpname = self.set:PrintName(point),
-		team = team,
-	})
+-- CTeamControlPoint::CaptureBlocked: the clients put the first defender on
+-- the point in the kill feed, once a capture attempt while they stay on it
+-- (foundation.capture.area's TellBlock). The AI war hears every block.
+local function CaptureBlocked(self, a, point, team)
+	local blocker = Occupants(a, team)[1]
+	local inside = {}
+	for _, ent in ipairs(WS.PlayersInside(a.ent)) do inside[ent] = true end
+	for _, ent in ipairs(WS.MembersInside(a.ent)) do inside[ent] = true end
+	if Area.TellBlock(a.state, blocker, function(b) return inside[b] == true end) then
+		WS.Events.Fire("game_teamplay_capture_blocked", {
+			cp = self.set:Index(point),
+			cpname = self.set:PrintName(point),
+			team = team,
+			blocker = Name(blocker),
+		})
+	end
 	hook.Run("WSPointCaptureBlocked", point, team)
 end
 
@@ -171,7 +204,8 @@ local function CaptureEnded(self, a, point, e)
 	local wouldWin = self.master ~= nil and self.master:WouldNewOwnerWin(set, point, e.team)
 	local scorePerRound = not (self.master and self.master:ScorePerCapture())
 	self.rounds:CapSounds(e.team, wouldWin, scorePerRound)
-	ApplyPointEvents(self, set:SetOwner(point, e.team, Capture.CAUSE_CAPTURE, self.rounds:PointsMayBeCaptured()))
+	local cappers = Names(Occupants(a, e.team))
+	ApplyPointEvents(self, set:SetOwner(point, e.team, Capture.CAUSE_CAPTURE, self.rounds:PointsMayBeCaptured(), cappers))
 end
 
 local AREA_EVENTS = {
@@ -184,7 +218,7 @@ local AREA_EVENTS = {
 	numcappers = function(self, a, point, e) SetNumCappers(a, e.n, e.blocked) end,
 	-- UpdateBlocked: the point hears a block when it starts
 	blocked = function(self, a, point, e)
-		if e.value then CaptureBlocked(self, point, WS.EnemyOf(e.capping)) end
+		if e.value then CaptureBlocked(self, a, point, WS.EnemyOf(e.capping)) end
 	end,
 	["break"] = function(self, a, point, e)
 		FireTeamOutput(a.ent, "OnBreak", e.team)

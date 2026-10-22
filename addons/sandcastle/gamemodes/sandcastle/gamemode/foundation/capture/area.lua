@@ -7,7 +7,7 @@
 -- { kind = "numcappers", n, blocked } (SetNumCappers), { kind = "blocked", value,
 -- capping } (UpdateBlocked), { kind = "owner", old, team } (the area's new owner).
 local band = bit.band
-local ipairs = ipairs
+local ipairs, pairs = ipairs, pairs
 local Capture = require("foundation.capture")
 local Teams = require("foundation.teams")
 module(...)
@@ -32,6 +32,7 @@ function New(owner)
 		lastReduction = 0,
 		touching = { [RED] = 0, [BLUE] = 0 },
 		teamInZone = NOBODY,
+		blockers = {}, -- the defenders told of this capture attempt (TellBlock)
 	}
 end
 
@@ -58,6 +59,7 @@ local function Start(s, ev, team, i)
 	NumPlayers(s, ev, false)
 	s.timeRemaining = Total(s, i)
 	s.capturing, s.blocked = true, false
+	s.blockers = {} -- a new capture attempt (m_iCapAttemptNumber)
 	s.lastReduction = i.now
 	ev[#ev + 1] = { kind = "capturestart", team = team }
 end
@@ -83,6 +85,18 @@ local function SetBlocked(s, ev, value)
 	if s.blocked == value then return end
 	s.blocked = value
 	ev[#ev + 1] = { kind = "blocked", value = value, capping = s.cappingTeam }
+end
+
+-- CaptureThink's m_Blockers: a block is told with its first defender, once
+-- a capture attempt while they stay on the point (onPoint(blocker)); one
+-- who stepped off and back is told again. Returns whether this one is told.
+function TellBlock(s, blocker, onPoint)
+	for b in pairs(s.blockers) do
+		if not onPoint(b) then s.blockers[b] = nil end
+	end
+	if s.blockers[blocker] then return false end
+	s.blockers[blocker] = true
+	return true
 end
 
 -- Record the counts; returns teams in the zone and whether any count changed.

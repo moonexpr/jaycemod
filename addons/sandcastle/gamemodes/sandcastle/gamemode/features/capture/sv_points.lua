@@ -365,6 +365,7 @@ local POINT_EVENTS = {
 				cp = self.set:Index(point),
 				cpname = self.set:PrintName(point),
 				team = e.team,
+				cappers = e.cappers,
 			})
 		end
 		hook.Run("WSPointCaptured", point, e.team)

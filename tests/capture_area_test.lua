@@ -338,4 +338,33 @@ T.test("a point with no cap sounds only stops its loop", function()
 	T.eq(Sounds(Event("break", "team", BLU), flags), "true|nil|nil")
 end)
 
+-- CaptureThink's m_Blockers: a block is told with its first defender,
+-- once a capture attempt while they stay on the point; one who stepped off
+-- and back, or a new attempt, is told again.
+T.test("a defender is told of once a capture attempt while they stay on the point", function()
+	local s = C.New(NOBODY)
+	C.Step(s, Input(0, 1, 0))
+	local on = { alice = true }
+	local function OnPoint(b) return on[b] == true end
+	T.eq(C.TellBlock(s, "alice", OnPoint), true, "the first block")
+	T.eq(C.TellBlock(s, "alice", OnPoint), false, "again, still on the point")
+	T.eq(C.TellBlock(s, "bob", OnPoint), true, "another defender")
+	on.alice = false
+	C.TellBlock(s, "bob", OnPoint)
+	on.alice = true
+	T.eq(C.TellBlock(s, "alice", OnPoint), true, "stepped off and back")
+end)
+
+T.test("a new capture attempt tells every defender again", function()
+	local s = C.New(NOBODY)
+	C.Step(s, Input(0, 1, 0))
+	local function OnPoint() return true end
+	C.TellBlock(s, "alice", OnPoint)
+	C.Step(s, Input(1, 0, 0))
+	C.Step(s, Input(30, 0, 0))
+	C.Step(s, Input(31, 1, 0))
+	T.eq(s.capturing, true, "a new attempt")
+	T.eq(C.TellBlock(s, "alice", OnPoint), true, "told again")
+end)
+
 T.finish()

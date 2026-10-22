@@ -6,7 +6,10 @@
 -- Sandcastle's own in its look, ws/kill_icons_sheet.lua).
 -- A kill the player took part in is a light tan box with the dark icon, as
 -- TF2 marks its own; a death with no killer shows the victim and the icon
--- alone. Each shows for LIFETIME seconds (hud_deathnotice_time).
+-- alone. A control point's capture or defense is a row of its own, as in
+-- TF2: who did it, the team's icon, "captured" or "defended" and the point
+-- (WS.KillFeedObjective, from the capture view). Each shows for LIFETIME
+-- seconds (hud_deathnotice_time).
 local Feed = WS.require("foundation.kill_feed")
 local AiWar = WS.require("foundation.aiwar")
 local Icons = WS.require("foundation.kill_icons")
@@ -67,22 +70,40 @@ end
 
 -- Notices come as soon as the client can read them, before its own player
 -- exists (LocalPlayer is NULL while it loads).
-function GM:AddDeathNotice(attacker, attackerTeam, inflictor, victim, victimTeam)
+local function Me()
 	local ply = LocalPlayer()
-	local me = IsValid(ply) and ply:Nick() or nil
+	return IsValid(ply) and ply:Nick() or nil
+end
+
+local function Push(notice)
+	notice.at = CurTime()
+	notices[#notices + 1] = notice
+	while #notices > MOST do table.remove(notices, 1) end
+end
+
+function GM:AddDeathNotice(attacker, attackerTeam, inflictor, victim, victimTeam)
+	local me = Me()
 	local killer = Name(attacker)
 	if killer == Name(victim) then killer = nil end
 	local sides = AiWar.Sides(GetGlobal2Int(AiWar.SIDES_KEY, AiWar.FACTIONS[AiWar.COMBINE].home))
-	notices[#notices + 1] = {
-		at = CurTime(),
+	Push({
 		killer = killer,
 		killerTeam = Feed.Team(attacker, attackerTeam, sides),
 		victim = Name(victim),
 		victimTeam = Feed.Team(victim, victimTeam, sides),
 		icon = Icons.For(ICONS, inflictor, Class(attacker)),
 		mine = Feed.Mine(me, attacker, victim),
-	}
-	while #notices > MOST do table.remove(notices, 1) end
+	})
+end
+
+-- A point captured or defended (foundation.kill_feed's Objective): kind,
+-- the team, names who did it as death notices name them, point its name.
+function WS.KillFeedObjective(kind, team, names, point)
+	local shown = {}
+	for i, name in ipairs(names) do shown[i] = Name(name) end
+	local row = Feed.Objective(kind, team, shown, WS.TeamName[team], point, Me())
+	row.icon = Icons.For(ICONS, row.icon)
+	Push(row)
 end
 
 local function NameColor(t, mine)
@@ -106,8 +127,9 @@ function GM:DrawDeathNotice()
 		local iconW = iconH * n.icon.w / n.icon.h
 		surface.SetFont(NAME_FONT)
 		local killerW = n.killer and surface.GetTextSize(n.killer) + pad or 0
+		local infoW = n.info and surface.GetTextSize(n.info) + pad or 0
 		local victimW = surface.GetTextSize(n.victim or "")
-		local w = pad + killerW + iconW + pad + victimW + pad
+		local w = pad + killerW + iconW + pad + infoW + victimW + pad
 		local x = right - w
 		draw.RoundedBox(THEME.corner, x, y, w, rowH, n.mine and THEME.text or THEME.background)
 		local mid, cx = y + rowH / 2, x + pad
@@ -121,6 +143,10 @@ function GM:DrawDeathNotice()
 		surface.DrawTexturedRectUV(cx, mid - iconH / 2, iconW, iconH, icon.x / sheet.w, icon.y / sheet.h,
 			(icon.x + icon.w) / sheet.w, (icon.y + icon.h) / sheet.h)
 		cx = cx + iconW + pad
+		if n.info then
+			draw.SimpleText(n.info, NAME_FONT, cx, mid, NameColor(nil, n.mine), TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
+			cx = cx + infoW
+		end
 		draw.SimpleText(n.victim or "", NAME_FONT, cx, mid, NameColor(n.victimTeam, n.mine), TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
 		y = y + rowH + ROW_GAP * unit
 	end

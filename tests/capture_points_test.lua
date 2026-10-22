@@ -722,4 +722,16 @@ T.test("a point the set does not hold fails naming it", function()
 	T.eq(tostring(err):find("no control point stale in the set", 1, true) ~= nil, true, tostring(err))
 end)
 
+-- The kill feed names who took a point (TF2's cappers): a capture's owner
+-- event carries their names, any other change of owner none.
+T.test("a capture's owner event names its cappers; any other change of owner none", function()
+	local set = Granary()
+	local capture = set:SetOwner("cap_middle", RED, Capture.CAUSE_CAPTURE, POINTS_MAY_BE_CAPTURED, { "Alice", "#npc_combine_s" })
+	T.eq(table.concat(capture[1].cappers, ","), "Alice,#npc_combine_s", "the cappers")
+	local unnamed = set:SetOwner("cap_middle", BLU, Capture.CAUSE_CAPTURE, POINTS_MAY_BE_CAPTURED)
+	T.eq(#unnamed[1].cappers, 0, "a capture no one is named for")
+	local forced = set:SetOwner("cap_middle", RED, Capture.CAUSE_FORCE)
+	T.eq(#forced[1].cappers, 0, "forced")
+end)
+
 T.finish()

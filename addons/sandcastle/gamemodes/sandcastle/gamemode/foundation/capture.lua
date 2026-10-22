@@ -18,8 +18,10 @@
 -- mini-round).
 --
 -- Methods that change a point return events, in order:
---   { kind = "owner", id, old, team, sounding, scoring, lines }: sounding
---     for a capture by players (OnOwnerChangedToTeam, the notice), scoring
+--   { kind = "owner", id, old, team, sounding, scoring, lines, cappers }:
+--     sounding for a capture by players (OnOwnerChangedToTeam, the notice),
+--     cappers the names of those who took it (a capture's, when they are
+--     known; none otherwise), scoring
 --     when HandleScoring runs, lines the sounds it plays ({ hearer, team,
 --     sound }, HEAR_*);
 --   { kind = "unlocked", id } (OnUnlocked); { kind = "unlock_time", id, at };
@@ -34,6 +36,8 @@ module(...)
 
 -- A control point index or rank that names no point (the SDK's -1).
 NO_POINT = -1
+-- The cappers of a change of owner no one is named for.
+NO_CAPPERS = {}
 MAX_PREVIOUS_POINTS = 3 -- team_control_point.h
 
 -- shareddefs.h: point_warn_on_cap
@@ -354,8 +358,9 @@ end
 
 -- CTeamControlPoint::SetOwner (a capture), InputSetOwner (from a player or
 -- not) and ForceOwner. Only a forced owner ignores whether points may be
--- captured now; an input naming the owner does nothing.
-function PointSet:SetOwner(id, team, cause, pointsMayBeCaptured)
+-- captured now; an input naming the owner does nothing. cappers: a
+-- capture's takers, by name (TF2's cappers), when they are known.
+function PointSet:SetOwner(id, team, cause, pointsMayBeCaptured, cappers)
 	local p = Point(self, id)
 	local input = cause == CAUSE_INPUT or cause == CAUSE_PLAYER_INPUT
 	if input and p.owner == team then return {} end
@@ -379,6 +384,7 @@ function PointSet:SetOwner(id, team, cause, pointsMayBeCaptured)
 			scoring = taken,
 			bell = taken and CAPTURE_BELL or nil,
 			lines = lines,
+			cappers = cause == CAUSE_CAPTURE and cappers or NO_CAPPERS,
 		},
 	}
 end

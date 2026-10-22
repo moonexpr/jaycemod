@@ -46,6 +46,33 @@ T.test("before my player exists no kill is mine", function()
 	T.eq(Feed.Mine(nil, nil, "Bob"), false, "a death with no killer")
 end)
 
+-- TF2's capture and defense rows (CTFHudDeathNotice): who did it in their
+-- team's colour, the team's capture or defend icon, the word, the point.
+T.test("a capture names its cappers, joined, with the team's capture icon", function()
+	local row = Feed.Objective(Feed.CAPTURED, RED, { "Alice", "Combine Soldier" }, "RED", "the Granary", "Carol")
+	T.eq(row.killer, "Alice, Combine Soldier", "the cappers")
+	T.eq(row.killerTeam, RED, "in their team's colour")
+	T.eq(row.icon, "redcapture", "RED's capture icon")
+	T.eq(row.info, "captured", "the word")
+	T.eq(row.victim, "the Granary", "the point")
+	T.eq(row.mine, false, "not mine")
+end)
+
+T.test("a defense names its defender, with the team's defend icon", function()
+	local row = Feed.Objective(Feed.DEFENDED, BLUE, { "Bob" }, "BLU", "the Granary", "Bob")
+	T.eq(row.killer, "Bob", "the defender")
+	T.eq(row.icon, "bluedefend", "BLU's defend icon")
+	T.eq(row.info, "defended", "the word")
+	T.eq(row.mine, true, "mine: I defended it")
+end)
+
+T.test("a capture no one is named for is the team's; before my player exists it is not mine", function()
+	local row = Feed.Objective(Feed.CAPTURED, BLUE, {}, "BLU", "the Granary", nil)
+	T.eq(row.killer, "BLU", "the team's name")
+	T.eq(row.mine, false, "not mine")
+	T.eq(Feed.Objective(Feed.CAPTURED, RED, { "Alice" }, "RED", "A", "Alice").mine, true, "I capped it")
+end)
+
 T.test("every soldier class has a faction, so each gets a name", function()
 	local n = 0
 	for class, faction in pairs(Feed.SOLDIERS) do

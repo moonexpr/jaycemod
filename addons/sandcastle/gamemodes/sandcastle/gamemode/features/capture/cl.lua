@@ -15,6 +15,7 @@
 WS.Feature("rounds")
 local Capture = WS.require("foundation.capture")
 local Hud = WS.require("foundation.capture.hud")
+local Feed = WS.require("foundation.kill_feed")
 local Rounds = WS.require("foundation.rounds")
 
 local NOBODY, RED, BLUE = WS.TEAM_UNASSIGNED, WS.TEAM_RED, WS.TEAM_BLUE
@@ -385,17 +386,19 @@ hook.Add("Think", "ws_capture_unlock", function()
 	end
 end)
 
--- The capture's game events (sh.lua), worded for the rounds HUD: a capture
--- is the announcement line, a defence a notice (for a point with a name).
--- A point's name is the map's token ("#Badwater_cap_1"), worded here.
+-- The capture's game events (sh.lua), in the kill feed as TF2 shows them
+-- (ws/cl_kill_feed.lua). A point's name is the map's token
+-- ("#Badwater_cap_1"), worded here.
+local function PointName(fields)
+	return fields.cpname ~= "" and View:Localize(fields.cpname) or ("point " .. fields.cp)
+end
+
 WS.Events.Listen("game_teamplay_point_captured", "ws_capture_view", function(fields)
-	local point = fields.cpname ~= "" and View:Localize(fields.cpname) or ("point " .. fields.cp)
-	WS.Feature("rounds"):Announce(WS.TeamName[fields.team] .. " captured " .. point, fields.team)
+	WS.KillFeedObjective(Feed.CAPTURED, fields.team, fields.cappers, PointName(fields))
 end)
 
 WS.Events.Listen("game_teamplay_capture_blocked", "ws_capture_view", function(fields)
-	if fields.cpname == "" then return end
-	WS.Feature("rounds"):Notice(WS.TeamName[fields.team] .. " defended " .. View:Localize(fields.cpname), fields.team)
+	WS.KillFeedObjective(Feed.DEFENDED, fields.team, { fields.blocker }, PointName(fields))
 end)
 
 return View
