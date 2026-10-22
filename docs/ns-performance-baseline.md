@@ -533,6 +533,67 @@ Two ideas are worth building in: allocation per top-level hook (outermost
 calls only, no coroutines, so the figures hold), and, once clients are in
 the tests, net message cost.
 
+## Treatment D: route searches replayed offline, and what failed searches teach
+
+Measuring a route-search change no longer needs a live war.
+`.devtools/bin/record_routes.lua` (through `server_lua.py`) records each Lua
+route search with what its graph answered (areas untraversable, links
+uncrossable, spawn rooms, estimates, as engine floats) and saves the mesh;
+`.devtools/bin/route_replay.lua` replays the recording under plain LuaJIT
+with the gamemode's own A* and cost strategies (`foundation.npc.route_record`).
+
+**Parity.** pl_upward, 120 s from a round restart, 47 searches: 47 replay
+exactly (status, expansions, route). Offline an expansion costs 4 µs, against
+about 100 µs live with the JIT on.
+
+**What the searches were** (same recording): 28,783 expansions, 25,575 of them
+(89 %) in failed searches, none at the cap: each ran out of areas, walking
+the whole region its start reaches (42, 243 and 4,413 areas). 35 of 42 lane
+legs failed, and so did all 3 soldier searches. 35 of the failed searches
+share 14 start and goal pairs.
+
+**Demand has moved.** Soldiers now chase with DrGBase's own path planning
+(`orders.lua`: a soldier port that `PlansRoutes` chases), so the Lua search
+serves mostly lane planning, which runs once per team and again only when a
+lasting change touches the lanes (above). A 180 s mid-game recording held no
+Lua route search at all; treatment C's 41 of 121 repeated soldier requests
+are gone. A memo of found routes, keyed by request and checked step by step
+before reuse, was built and replayed against both recordings: no hit, at a
+5 s or a 30 s term, so it was not kept.
+
+**The reach memo** (`foundation.npc.reach_memo`, in `sv_routes.lua`'s
+`RequestRoute`, `ns_routes_reach`): a failed search that ran out of areas
+has walked exactly the region its start leads to. A later request from
+inside it to a goal beyond is answered from the region's area nearest the
+goal (where the search would have come closest): by the failed search's
+own way there when the start is the same, else by a search to that area. A
+region is used only while every refusal at its edge (an area closed to the
+asker, a link it cannot cross) still holds for the new asker. It survives
+blocker changes, which only open or close areas and so show in that check,
+but not a change to the mesh's links (`BlockerChangesSince` returns nil).
+Keying regions on the blockers' generation instead threw away the same
+243-area region four times in the first 15 s, as setup's doors moved.
+
+Replayed against the restart recording (`route_replay.lua --reach 30`): of
+42 lane legs, 22 answered without a search (14 with exactly the route the
+search found) and 6 sent to a nearer goal, **none wrong** (no goal called out
+of reach that the live search reached); 3,186 of the 28,783 expansions saved
+(11 %). The 4,413-area failures are the largest: sent to the region's nearest
+area, a search costs 1,208 and 2,239 expansions instead of 4,413. Live, an
+earlier build answered 24 requests and sent 18 to a nearer goal in about 20
+minutes. A live A/B against the restart was attempted and gave nothing:
+after the first plans, restarts asked for no lane legs, and later the war
+stopped drafting soldiers at all (not traced; the route search is not on
+the drafting path).
+
+**Where route cost sits now.** The soldiers' per-link hook (`OnComputePath`
+in `ws/sh_drg_soldier.lua`, inside DrGBase's path compute, the profile's
+`path.lua:75`) asks `WS.NavLinkCrossable` (already cached by link) and
+`NSAreaClosed`, which walks every shut door the war noted, with an
+`IsValid` each, for every link a path weighs. A per-team cache of closed
+areas, renewed with the blockers' generation and the shut doors, is the next
+candidate; its cost was not measured yet.
+
 ## Reproducing
 
 ```
@@ -540,6 +601,17 @@ python3 .devtools/bin/server_lua.py -f .devtools/bin/profile_server.lua
 python3 .devtools/bin/server_lua.py 'return WSProfile.Start(60, WSProfile.ACTIONS)'
 python3 .devtools/bin/server_lua.py 'return WSProfile.Report(30)'
 ```
+
+Route searches (treatment D), on the server, then offline:
+
+```bash
+python3 .devtools/bin/server_lua.py -f .devtools/bin/record_routes.lua
+python3 .devtools/bin/server_lua.py 'return WSRouteRecord.Start(120, true)'
+python3 .devtools/bin/server_lua.py 'return WSRouteRecord.Save("pl_upward_restart")'
+luajit .devtools/bin/route_replay.lua RECORD.dat --reach 30
+```
+
+The recording lands in the server root's `garrysmod/data/ws_routes/`.
 
 Experiments B to L were one-off probes run through `server_lua.py`; each
 restored what it patched.
