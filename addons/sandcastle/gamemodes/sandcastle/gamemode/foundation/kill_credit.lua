@@ -5,7 +5,7 @@
 -- suicide, "finished off"). The victim of such a death respawns sooner
 -- (CREDITED_RESPAWN). The controller (ws/sv_kill_credit.lua) records the
 -- hits and rewrites the lethal one's attacker.
-local ipairs, setmetatable = ipairs, setmetatable
+local floor, ipairs, setmetatable = math.floor, ipairs, setmetatable
 module(...)
 
 HISTORY = 4 -- MAX_ACHIEVEMENT_HISTORY_SLOTS
@@ -15,6 +15,15 @@ ASSIST_WINDOW = 3 -- TF_TIME_ASSIST_KILL
 -- Seconds added to the respawn time of one whose environmental death was
 -- credited to another: they come back sooner.
 CREDITED_RESPAWN = -3
+
+-- TF_SCORE_KILL_ASSISTS_PER_POINT: the assists a point is worth.
+ASSISTS_PER_POINT = 2
+
+-- A player's (or soldier's) points, as CTFGameRules::CalcPlayerScore counts
+-- them: a point a kill, and one for every ASSISTS_PER_POINT assists.
+function Points(kills, assists)
+	return kills + floor(assists / ASSISTS_PER_POINT)
+end
 
 -- Whether a hit is remembered: only an enemy's (CTFPlayer::OnTakeDamage
 -- ignores its own team's, so a rocket jump or a teammate's splash never

@@ -7,12 +7,20 @@
 -- player so killed respawns sooner (WS.RespawnCountsFrom, the rounds'
 -- respawn waves), and its death notice reads "finished off"
 -- (foundation.kill_feed's FINISHED_OFF). The hit path (ws/sv_hits.lua)
--- calls both.
+-- calls both. A kill's assister is the latest other enemy who hurt the
+-- victim within ASSIST_WINDOW (CTFGameRules::GetAssister's damager rule):
+-- counted as ws_assists (the scoreboard's column and points) and named in
+-- the kill feed beside the killer (game_kill_assist).
 local Credit = WS.require("foundation.kill_credit")
 local Feed = WS.require("foundation.kill_feed")
+local E = WS.Events
+
+local ASSISTS = "ws_assists" -- the NW2 int a player's or soldier's assists are counted in
 
 local damagers = setmetatable({}, { __mode = "k" }) -- victim -> Credit.Damagers()
 local creditedAt = setmetatable({}, { __mode = "k" }) -- victim -> when its lethal hit was credited
+local assistedAt = setmetatable({}, { __mode = "k" }) -- victim -> when its death was assisted
+local assistedBy = setmetatable({}, { __mode = "k" }) -- victim -> its assister
 
 -- A hit that landed on victim, remembered when an enemy dealt it.
 function WS.RecordDamager(victim, attacker)
@@ -44,20 +52,57 @@ function WS.RespawnCountsFrom(ply, deathTime)
 	return deathTime
 end
 
--- Whether the death a notice tells, of victim (a player, or the name
--- GetDeathNoticeEntityName gives an NPC), was credited this moment.
-local function FinishedOff(gm, victim)
+-- The enemy who helped scorer kill victim: the latest other who hurt it
+-- within ASSIST_WINDOW, or nil. A death no combatant scored (a suicide, the
+-- world's uncredited) has none.
+local function Assister(victim, scorer)
+	if damagers[victim] == nil or scorer == victim or not (IsValid(scorer) and WS.Combatant(scorer)) then return nil end
+	local assister = damagers[victim]:Recent(CurTime(), Credit.ASSIST_WINDOW, scorer)
+	return IsValid(assister) and assister or nil
+end
+
+local function Assisted(victim, scorer)
+	local assister = Assister(victim, scorer)
+	if assister == nil then return end
+	assister:SetNW2Int(ASSISTS, assister:GetNW2Int(ASSISTS, 0) + 1)
+	assistedAt[victim], assistedBy[victim] = CurTime(), assister
+end
+
+-- These run before the gamemode's own PlayerDeath and OnNPCKilled, which
+-- send the death notice.
+hook.Add("PlayerDeath", "ws_kill_credit", function(victim, _, attacker) Assisted(victim, attacker) end)
+hook.Add("OnNPCKilled", "ws_kill_credit", function(npc, attacker) Assisted(npc, attacker) end)
+
+-- Of the victims marked in times (victim -> when) this moment, the one a
+-- death notice tells of (victim: a player, or the name
+-- GetDeathNoticeEntityName gives an NPC), or nil.
+local function Told(gm, victim, times)
 	local now = CurTime()
-	if not isstring(victim) then return creditedAt[victim] == now end
-	for ent, at in pairs(creditedAt) do
-		if at == now and IsValid(ent) and gm:GetDeathNoticeEntityName(ent) == victim then return true end
+	if not isstring(victim) then return times[victim] == now and victim or nil end
+	for ent, at in pairs(times) do
+		if at == now and IsValid(ent) and gm:GetDeathNoticeEntityName(ent) == victim then return ent end
 	end
-	return false
+	return nil
+end
+
+-- A player's name, or an NPC's as death notices give it.
+local function NoticeName(gm, ent)
+	if ent:IsPlayer() then return ent:Nick() end
+	return gm:GetDeathNoticeEntityName(ent)
 end
 
 function GM:SendDeathNotice(attacker, inflictor, victim, flags)
-	if FinishedOff(self, victim) then flags = bit.bor(flags, Feed.FINISHED_OFF) end
+	if Told(self, victim, creditedAt) then flags = bit.bor(flags, Feed.FINISHED_OFF) end
 	self.BaseClass.SendDeathNotice(self, attacker, inflictor, victim, flags)
+	local dead = Told(self, victim, assistedAt)
+	if dead == nil then return end
+	local assister = assistedBy[dead]
+	if not IsValid(assister) then return end
+	E.Fire("game_kill_assist", {
+		victim = isstring(victim) and victim or NoticeName(self, victim),
+		assister = NoticeName(self, assister),
+		team = assister:IsPlayer() and assister:Team() or Feed.NPC_TEAM,
+	})
 end
 
 -- A life's damagers are forgotten with it.

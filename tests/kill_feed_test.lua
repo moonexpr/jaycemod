@@ -104,4 +104,19 @@ T.test("the flag is one GMod's notices leave free, within their byte", function(
 	end
 end)
 
+-- CTFHudDeathNotice: an assisted kill names "killer + assister".
+T.test("an assister joins the killer's side of the row, in their own team", function()
+	local row = { killer = "Scout", killerTeam = RED, victim = "Heavy", victimTeam = BLUE, mine = false }
+	Feed.WithAssister(row, "Medic", RED, nil)
+	T.eq(row.assister, "Medic", "named")
+	T.eq(row.assisterTeam, RED, "coloured")
+	T.eq(row.mine, false, "not mine")
+end)
+
+T.test("a kill I assisted is mine too", function()
+	local row = { killer = "Scout", killerTeam = RED, victim = "Heavy", victimTeam = BLUE, mine = false }
+	Feed.WithAssister(row, "Medic", RED, "Medic")
+	T.eq(row.mine, true, "mine")
+end)
+
 T.finish()

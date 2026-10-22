@@ -22,7 +22,7 @@ local ROW_H = AVATAR + ROW_PAD * 2
 local UNASSIGNED_ROWS_SHOWN = 3
 local MONEY_W = 80
 
--- The stat columns, right to left as they dock: Name | Money | Kills | Deaths | Ping.
+-- The stat columns, right to left as they dock: Name | Money | Kills | Assists | Deaths | Ping.
 local STATS = {
 	{
 		key = "Ping",
@@ -30,6 +30,10 @@ local STATS = {
 	},
 	{
 		key = "Deaths",
+		width = STAT_W,
+	},
+	{
+		key = "Assists",
 		width = STAT_W,
 	},
 	{
@@ -98,6 +102,7 @@ local function Rows()
 			name = ply:Nick(),
 			team = ply:Team(),
 			kills = ply:Frags(),
+			assists = ply:GetNW2Int("ws_assists", 0),
 			deaths = ply:Deaths(),
 			money = ply:GetNW2Int("ws_money", 0),
 			npc = false,
@@ -111,6 +116,7 @@ local function Rows()
 				name = NpcName(ent),
 				team = t,
 				kills = ent:GetNW2Int("ws_kills", 0),
+				assists = ent:GetNW2Int("ws_assists", 0),
 				deaths = 0,
 				money = ent:GetNW2Int("ws_money", 0),
 				npc = true,
@@ -232,6 +238,7 @@ function LINE:Update(row)
 	self.row = row
 	Text(self.Name, row.name)
 	Text(self.Kills, row.kills)
+	Text(self.Assists, row.assists)
 	Text(self.Money, Economy.Format(row.money))
 	if row.npc then
 		Text(self.Deaths, NO_DEATHS)

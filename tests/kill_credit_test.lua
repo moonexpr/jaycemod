@@ -61,4 +61,13 @@ T.test("only the latest HISTORY damagers are held", function()
 	T.eq(held[#held], 2, "the oldest dropped")
 end)
 
+-- CTFGameRules::CalcPlayerScore: TF_SCORE_KILL_ASSISTS_PER_POINT, whole
+-- points only.
+T.test("a player's points are their kills and a point for every two assists", function()
+	T.eq(Credit.Points(3, 0), 3, "kills alone")
+	T.eq(Credit.Points(3, 1), 3, "half a point is none")
+	T.eq(Credit.Points(3, 2), 4, "two assists")
+	T.eq(Credit.Points(0, 5), 2, "assists alone")
+end)
+
 T.finish()

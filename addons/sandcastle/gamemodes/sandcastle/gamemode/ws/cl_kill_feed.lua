@@ -10,12 +10,14 @@
 -- TF2: who did it, the team's icon, "captured" or "defended" and the point
 -- (WS.KillFeedObjective, from the capture view). A death to the world
 -- credited to an enemy reads "finished off" under the skull, as TF2's
--- assisted suicide. Each shows for LIFETIME
+-- assisted suicide. An assisted kill names its assister beside the killer,
+-- "killer + assister" (game_kill_assist). Each shows for LIFETIME
 -- seconds (hud_deathnotice_time).
 local Feed = WS.require("foundation.kill_feed")
 local AiWar = WS.require("foundation.aiwar")
 local Icons = WS.require("foundation.kill_icons")
 local THEME = WS.UI.THEME
+local E = WS.Events
 
 -- The soldiers' entities register after the gamemode, so their names are
 -- read once every entity has.
@@ -36,6 +38,7 @@ local ROW_TALL, ROW_GAP, ICON_TALL, PAD, EDGE = 16, 2, 12, 5, 8
 local NAME_FONT = "WS.KillFeed.Name"
 local NAME_TALL = 9
 local NEUTRAL = Color(200, 190, 170)
+local ASSIST_JOIN = " + " -- CTFHudDeathNotice's "%s + %s"
 
 local notices = {}
 local sheets = {} -- sheet path -> { material, w, h }
@@ -101,6 +104,15 @@ function GM:AddDeathNotice(attacker, attackerTeam, inflictor, victim, victimTeam
 	})
 end
 
+-- The assister of the kill just told: it follows its death notice, so it
+-- joins the newest row when that row is its victim's.
+E.Listen("game_kill_assist", "ws_kill_feed", function(fields)
+	local row = notices[#notices]
+	if row == nil or row.victim ~= Name(fields.victim) then return end
+	local sides = AiWar.Sides(GetGlobal2Int(AiWar.SIDES_KEY, AiWar.FACTIONS[AiWar.COMBINE].home))
+	Feed.WithAssister(row, Name(fields.assister), Feed.Team(fields.assister, fields.team, sides), Me())
+end)
+
 -- A point captured or defended (foundation.kill_feed's Objective): kind,
 -- the team, names who did it as death notices name them, point its name.
 function WS.KillFeedObjective(kind, team, names, point)
@@ -132,15 +144,25 @@ function GM:DrawDeathNotice()
 		local iconW = iconH * n.icon.w / n.icon.h
 		surface.SetFont(NAME_FONT)
 		local killerW = n.killer and surface.GetTextSize(n.killer) + pad or 0
+		local joinW = n.assister and surface.GetTextSize(ASSIST_JOIN) or 0
+		local assisterW = n.assister and surface.GetTextSize(n.assister) or 0
 		local infoW = n.info and surface.GetTextSize(n.info) + pad or 0
 		local victimW = surface.GetTextSize(n.victim or "")
-		local w = pad + killerW + iconW + pad + infoW + victimW + pad
+		local w = pad + killerW + joinW + assisterW + iconW + pad + infoW + victimW + pad
 		local x = right - w
 		draw.RoundedBox(THEME.corner, x, y, w, rowH, n.mine and THEME.text or THEME.background)
 		local mid, cx = y + rowH / 2, x + pad
 		if n.killer then
 			draw.SimpleText(n.killer, NAME_FONT, cx, mid, NameColor(n.killerTeam, n.mine), TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
 			cx = cx + killerW
+		end
+		if n.assister then
+			-- the killer's padding falls after the assister
+			cx = cx - pad
+			draw.SimpleText(ASSIST_JOIN, NAME_FONT, cx, mid, NameColor(nil, n.mine), TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
+			cx = cx + joinW
+			draw.SimpleText(n.assister, NAME_FONT, cx, mid, NameColor(n.assisterTeam, n.mine), TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
+			cx = cx + assisterW + pad
 		end
 		local icon = n.icon
 		surface.SetMaterial(sheet.material)

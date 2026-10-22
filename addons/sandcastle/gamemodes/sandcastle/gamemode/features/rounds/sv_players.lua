@@ -1,6 +1,7 @@
 -- Part of the rounds controller (sv.lua): the players, their teams and their scores.
 local GAME_TEAMS = ...
 local UNASSIGNED = WS.TEAM_UNASSIGNED
+local Credit = WS.require("foundation.kill_credit")
 local RED, BLUE = WS.TEAM_RED, WS.TEAM_BLUE
 
 -- Players -----------------------------------------------------------------------
@@ -71,13 +72,14 @@ local function SwitchTeams()
 	team.SetScore(BLUE, red)
 end
 
--- CTFGameRules::HandleScrambleTeams: the players dealt out by score
--- (L.Scramble), the first side at random, and the teams' scores reset.
+-- CTFGameRules::HandleScrambleTeams: the players dealt out by score (their
+-- points: kills and assists, foundation.kill_credit; L.Scramble), the first
+-- side at random, and the teams' scores reset.
 local function ScrambleTeams()
 	local players, byId = {}, {}
 	EachPlayer(function(ply)
 		if WS.TeamOf(ply) ~= UNASSIGNED then
-			players[#players + 1] = { id = ply:UserID(), score = ply:Frags() }
+			players[#players + 1] = { id = ply:UserID(), score = Credit.Points(ply:Frags(), ply:GetNW2Int("ws_assists", 0)) }
 			byId[ply:UserID()] = ply
 		end
 	end)

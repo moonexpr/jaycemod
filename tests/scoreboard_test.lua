@@ -7,13 +7,14 @@ local Rounds = T.require("foundation.rounds")
 local RED, BLUE, SPECTATOR, UNASSIGNED = Teams.RED, Teams.BLUE, Teams.SPECTATOR, Teams.UNASSIGNED
 local SANDBOX_UNASSIGNED = 1001 -- GMod's TEAM_UNASSIGNED, a Sandbox map's players
 
-local function Row(name, team, kills, deaths, npc)
+local function Row(name, team, kills, deaths, npc, assists)
 	return {
 		name = name,
 		team = team,
 		kills = kills or 0,
 		deaths = deaths or 0,
 		npc = npc or false,
+		assists = assists or 0,
 	}
 end
 
@@ -22,6 +23,16 @@ local function Names(rows)
 	for i, row in ipairs(rows) do names[i] = row.name end
 	return table.concat(names, ",")
 end
+
+-- CTFGameRules::CalcPlayerScore: two assists are worth a kill.
+T.test("a column ranks by points, two assists worth a kill", function()
+	local b = Board.Build({
+		Row("Killer", RED, 2, 0),
+		Row("Helper", RED, 1, 0, false, 4),
+		Row("Half", RED, 2, 0, false, 1),
+	})
+	T.eq(Names(b.teams[RED]), "Helper,Half,Killer", "3 points, then 2 with an assist over 2 without")
+end)
 
 T.test("BLU's column is on the left and RED's on the right, as in TF2", function()
 	T.eq(Board.COLUMN_TEAMS[1], BLUE)

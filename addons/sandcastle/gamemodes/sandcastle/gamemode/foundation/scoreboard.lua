@@ -1,10 +1,11 @@
 -- The team scoreboard (ws/cl_scoreboard.lua): Sandbox's rows of name,
--- kills, deaths and ping, set out as TF2's (CTFClientScoreBoardDialog) are:
+-- kills, assists, deaths and ping, set out as TF2's (CTFClientScoreBoardDialog) are:
 -- BLU's column on the left and RED's on the right, each under its team's
 -- name and points, the spectators as a line of names, and the match's win
 -- conditions beneath. A team's NPCs (the AI war's soldiers) sit in its column
 -- beside its players.
 local floor, format, ipairs, sort = math.floor, string.format, ipairs, table.sort
+local Credit = require("foundation.kill_credit")
 local Teams = require("foundation.teams")
 module(...)
 
@@ -14,15 +15,18 @@ COLUMN_TEAMS = { BLUE, RED }
 
 local SECONDS_PER_MINUTE, SECONDS_PER_HOUR = 60, 3600
 
--- Most kills first, then fewest deaths; players before NPCs; then by name.
+-- Most points first (foundation.kill_credit's: kills, and assists), then
+-- most kills, then fewest deaths; players before NPCs; then by name.
 local function Before(a, b)
+	local pointsA, pointsB = Credit.Points(a.kills, a.assists), Credit.Points(b.kills, b.assists)
+	if pointsA ~= pointsB then return pointsA > pointsB end
 	if a.kills ~= b.kills then return a.kills > b.kills end
 	if a.deaths ~= b.deaths then return a.deaths < b.deaths end
 	if a.npc ~= b.npc then return not a.npc end
 	return a.name < b.name
 end
 
--- rows = { { name, team, kills, deaths, npc }, ... }: players and NPCs alike.
+-- rows = { { name, team, kills, assists, deaths, npc }, ... }: players and NPCs alike.
 -- Returns { teams = { [RED] = rows, [BLUE] = rows }, spectators = names,
 -- unassigned = rows (anyone on neither team nor spectating) }.
 function Build(rows)

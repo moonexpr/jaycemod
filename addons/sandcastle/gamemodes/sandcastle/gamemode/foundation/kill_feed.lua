@@ -79,6 +79,15 @@ function Credited(flags)
 	return nil
 end
 
+-- CTFHudDeathNotice's assisted kill: assister (a name, in assisterTeam's
+-- colour) joins the killer, "killer + assister"; the row is mine too when
+-- I (me, nil while my client loads) assisted. Sets row's fields.
+function WithAssister(row, assister, assisterTeam, me)
+	row.assister = assister
+	row.assisterTeam = assisterTeam
+	row.mine = row.mine or (me ~= nil and assister == me)
+end
+
 -- Whether a notice is the player's own (me: their name, or nil while their
 -- client is still loading and they have none): they killed or died.
 function Mine(me, killer, victim)
