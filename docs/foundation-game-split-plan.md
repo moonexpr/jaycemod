@@ -25,6 +25,18 @@ gameplay). Both publish their modules as globals.
    or the loader that loops or scans.
 5. **Plan, then stage 1 in a worktree** (`foundation-split`), away from
    uncommitted work on main.
+6. **A module `PENDING` lists for `features/` goes there**, not to `game/`
+   (spells among them).
+7. **`list.schedule`'s greedy sorter** is a TODO in the code for now.
+8. **The abstract path search is `graph.pathfinder`**, not `npc.pathfinder`.
+
+## Status
+
+- Stage 1: done.
+- Stage 2: done but for the hfsm split. `hfsm` moved whole to
+  `game/generator/hfsm`; drawing `generator.state_chart` out of it into
+  foundation is its own step.
+- Stage 3: not started.
 
 ## The loader
 
@@ -119,7 +131,7 @@ table, for code that wants it.
 | `buffer` | `file/buffer` | `file.buffer` |
 | `analytics` | `analysis/analytics` | `analysis.analytics` |
 | `memory` | `analysis/memory` | `analysis.memory` |
-| `pathfinder` | `npc/pathfinder` | `npc.pathfinder` |
+| `pathfinder` | `graph/pathfinder` | `graph.pathfinder` |
 | `transaction` | `transaction` | `transaction` |
 
 Names that would read `x.x` are renamed (`cache.base`, `graph.search`,
@@ -156,17 +168,14 @@ adds members to the table foundation made.
 About 90 gameplay and NS modules (rounds, teams, players, npc, aiwar,
 combat, ...). `tests/foundation_layers_test.lua` already sends most of the
 mode-specific ones to `features/` and `ws/` (`PENDING`), spells among
-them. The layout puts `spells/` under `game/gameplay/`. **Open: which wins
-for a module PENDING lists?** Until decided, stage 3 moves only the
-categorised ones (formalisms, gameplay, ns) and leaves PENDING as is.
+them. Those go where PENDING says (decision 6). Stage 3 moves the
+categorised ones (formalisms, gameplay, ns) into `game/`.
 
-### Stage 4: open items
+### Later
 
 - `list/schedule`'s greedy sorter: new behaviour (the order tasks run in,
-  chosen by a function the caller hands in), written test first after the
-  move.
-- `npc/pathfinder` names a game noun in foundation; `graph/pathfinder`
-  would not. Kept as the layout says unless changed.
+  chosen by a function the caller hands in), written test first. A TODO
+  in the module marks it.
 
 ## Tests and checks
 

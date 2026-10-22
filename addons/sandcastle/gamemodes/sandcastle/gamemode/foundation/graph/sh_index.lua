@@ -2,3 +2,4 @@
 -- docs/foundation-game-split-plan.md.
 local graph = Namespace("graph")
 Export(graph, "search", require("foundation.graph.search"))
+Export(graph, "pathfinder", require("foundation.graph.pathfinder"))

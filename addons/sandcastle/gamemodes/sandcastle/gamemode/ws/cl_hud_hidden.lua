@@ -3,7 +3,7 @@
 -- everything under it (game.match.team_scores; player), saved between
 -- sessions; cl_hud_print lists every element in drawing order and whether
 -- it is hidden, by the player or the code.
-local DrawList = WS.require("foundation.core.drawlist")
+local DrawList = WS.require("game.list.drawlist")
 
 local hidden = CreateClientConVar("cl_hud_hidden", "", true, false,
 	"HUD elements not to draw, by path, each with everything under it (spaces between; cl_hud_print lists them)")

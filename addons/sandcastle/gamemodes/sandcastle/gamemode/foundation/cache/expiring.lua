@@ -1,6 +1,6 @@
 -- An expiring cache: a foundation.cache.base whose entries last a
 -- term from when they were last written, on a clock port (`clock:Now()`,
--- as foundation.core.timers takes). Reading does not renew an entry. Since
+-- as game.timer.countdown takes). Reading does not renew an entry. Since
 -- every write brings its entry to the front, the back is always the oldest,
 -- so pruning stops at the first entry still in its term.
 --   New(options): options as the cache's, and clock and term (seconds,

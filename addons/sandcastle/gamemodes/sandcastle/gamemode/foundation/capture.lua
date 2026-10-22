@@ -32,7 +32,7 @@ local gmatch = string.gmatch
 local sort = table.sort
 local tonumber = tonumber
 local Teams = require("foundation.teams")
-local Snapshot = require("foundation.core.snapshot")
+local Snapshot = require("game.world.snapshot")
 module(...)
 
 -- A control point index or rank that names no point (the SDK's -1).
@@ -276,7 +276,7 @@ function New(config)
 	}, PointSet)
 end
 
--- The set's points as plain data (foundation.core.snapshot), keyed by
+-- The set's points as plain data (game.world.snapshot), keyed by
 -- their ids through refs, unlock and warn times kept as seconds from now.
 -- The point order and caplinear are the map's and the convar's.
 local SNAPSHOT = Snapshot.Spec({

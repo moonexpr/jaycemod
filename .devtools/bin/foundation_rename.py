@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
-"""Move foundation.core's generic modules into foundation's namespaces.
+"""Move modules between foundation's namespaces and game/.
 
-docs/foundation-game-split-plan.md, stage 1: each module (and its test) moves
-with `git mv`, and every Lua file under addons/, tests/ and .devtools/bin/ has
-the old name rewritten, dotted (foundation.core.structs.heap) and slashed
-(core/structs/heap). A second run finds nothing to move and nothing to
-rewrite, so it can run again over files merged in later.
+docs/foundation-game-split-plan.md: each module (and its test) moves with
+`git mv`, and every Lua file under addons/, tests/ and .devtools/bin/ has the
+old name rewritten, dotted (foundation.core.structs.heap) and slashed
+(foundation/core/structs/heap, and core/structs/heap for a move within
+foundation, as the layers test names modules). Moves run in order, so a name
+moved twice (core/pathfinder, then npc/pathfinder) reaches its last place. A
+second run finds nothing to move and nothing to rewrite, so it can run again
+over files merged in later.
 
     foundation_rename.py [--dry-run]
 """
@@ -19,52 +22,60 @@ from dataclasses import dataclass
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
-FOUNDATION = Path("addons/sandcastle/gamemodes/sandcastle/gamemode/foundation")
+GAMEMODE = Path("addons/sandcastle/gamemodes/sandcastle/gamemode")
+FOUNDATION = "foundation/"
 TESTS = Path("tests")
 SEARCHED = ("addons", "tests", ".devtools/bin")
 
 
 @dataclass(frozen=True)
 class Move:
-    """A module's path under foundation/, before and after, without .lua."""
+    """A module's path under gamemode/, before and after, without .lua."""
 
     old: str
     new: str
 
     def __post_init__(self) -> None:
         for path in (self.old, self.new):
-            if not re.fullmatch(r"[a-z_][a-z0-9_]*(/[a-z_][a-z0-9_]*)*", path):
-                raise ValueError(f"not a module path: {path!r}")
+            if not re.fullmatch(r"(foundation|game)(/[a-z_][a-z0-9_]*)+", path):
+                raise ValueError(f"not a module path under foundation/ or game/: {path!r}")
 
     @property
     def files(self) -> tuple[Path, Path]:
-        return FOUNDATION / f"{self.old}.lua", FOUNDATION / f"{self.new}.lua"
+        return GAMEMODE / f"{self.old}.lua", GAMEMODE / f"{self.new}.lua"
 
     @property
     def tests(self) -> tuple[Path, Path]:
+        """foundation/<path> is tested in <path>_test.lua, game/<path> in game_<path>_test.lua."""
+
         def test(path: str) -> Path:
-            return TESTS / f"{path.replace('/', '_')}_test.lua"
+            name = path.removeprefix(FOUNDATION)
+            return TESTS / f"{name.replace('/', '_')}_test.lua"
 
         return test(self.old), test(self.new)
 
+    @property
+    def within_foundation(self) -> bool:
+        return self.old.startswith(FOUNDATION) and self.new.startswith(FOUNDATION)
+
     def rewrite(self, text: str) -> str:
-        dotted_old, dotted_new = (p.replace("/", ".") for p in (self.old, self.new))
         test_old, test_new = (p.stem for p in self.tests)
         text = re.sub(rf"(?<![\w]){re.escape(test_old)}(?![\w])", test_new, text)
-        text = re.sub(
-            rf"\bfoundation\.{re.escape(dotted_old)}(?![\w])",
-            f"foundation.{dotted_new}",
-            text,
-        )
-        return re.sub(
-            rf"(?<![\w.])(foundation/)?{re.escape(self.old)}(?![\w/])",
-            lambda m: (m.group(1) or "") + self.new,
-            text,
-        )
+        dotted_old, dotted_new = (p.replace("/", ".") for p in (self.old, self.new))
+        text = re.sub(rf"(?<![\w.]){re.escape(dotted_old)}(?![\w])", dotted_new, text)
+        text = re.sub(rf"(?<![\w.]){re.escape(self.old)}(?![\w/])", self.new, text)
+        if self.within_foundation:
+            bare_old, bare_new = (p.removeprefix(FOUNDATION) for p in (self.old, self.new))
+            text = re.sub(rf"(?<![\w./]){re.escape(bare_old)}(?![\w/])", bare_new, text)
+        return text
+
+
+def within_foundation(old: str, new: str) -> Move:
+    return Move(FOUNDATION + old, FOUNDATION + new)
 
 
 MOVES = tuple(
-    Move(old, new)
+    within_foundation(old, new)
     for old, new in (
         ("core/meta/class", "core/class"),
         ("core/meta/port", "core/port"),
@@ -104,25 +115,46 @@ MOVES = tuple(
         ("core/analytics", "analysis/analytics"),
         ("core/memory", "analysis/memory"),
         ("core/pathfinder", "npc/pathfinder"),
+        ("npc/pathfinder", "graph/pathfinder"),
         ("core/transaction", "transaction"),
+    )
+) + tuple(
+    Move(old, new)
+    for old, new in (
+        ("foundation/core/drawlist", "game/list/drawlist"),
+        ("foundation/core/map_io", "game/world/io"),
+        ("foundation/core/snapshot", "game/world/snapshot"),
+        ("foundation/core/tactics", "game/gameplay/tactics"),
+        ("foundation/core/hfsm", "game/generator/hfsm"),
+        ("foundation/pathfinder/astar", "game/npc/astar"),
     )
 )
 
 
 class Conflict(Exception):
-    """A move whose destination is taken, or whose source is gone with no destination."""
+    """A move whose destination is taken, or whose module is nowhere."""
 
 
 def planned_moves() -> list[tuple[Path, Path]]:
+    """The git moves to make, in order, each seeing the moves before it."""
+    moved_in: set[Path] = set()
+    moved_out: set[Path] = set()
+
+    def exists(path: Path) -> bool:
+        return path in moved_in or ((REPO / path).exists() and path not in moved_out)
+
     pairs = []
     for move in MOVES:
-        for old, new in (move.files, move.tests):
-            source, target = REPO / old, REPO / new
-            if source.exists() and target.exists():
+        for (old, new), is_module in ((move.files, True), (move.tests, False)):
+            if exists(old) and exists(new):
                 raise Conflict(f"{new} exists; {old} cannot move there")
-            if source.exists():
+            if exists(old):
                 pairs.append((old, new))
-            elif not target.exists() and old.suffix == ".lua" and old.parent != TESTS:
+                moved_out.add(old)
+                moved_in.add(new)
+            elif is_module and not exists(new) and not any(
+                later.old == move.new for later in MOVES
+            ):
                 raise Conflict(f"neither {old} nor {new} exists")
     return pairs
 
@@ -145,6 +177,13 @@ def rewrite_all(dry_run: bool) -> list[Path]:
     return changed
 
 
+def remove_empty_dirs() -> None:
+    for root in (REPO / GAMEMODE / "foundation", REPO / GAMEMODE / "game"):
+        for directory in sorted(root.rglob("*"), reverse=True):
+            if directory.is_dir() and not any(directory.iterdir()):
+                directory.rmdir()
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--dry-run", action="store_true")
@@ -163,9 +202,7 @@ def main() -> int:
     for path in changed:
         print(f"rewrite {path}")
     if not args.dry_run:
-        for directory in sorted((REPO / FOUNDATION / "core").rglob("*"), reverse=True):
-            if directory.is_dir() and not any(directory.iterdir()):
-                directory.rmdir()
+        remove_empty_dirs()
     print(f"{len(moves)} moved, {len(changed)} rewritten")
     return 0
 

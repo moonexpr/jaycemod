@@ -8,7 +8,7 @@
 --   server_lua.py 'return WSRouteRecord.Save("pl_upward_war")'  data/ws_routes/<name>.dat
 --
 -- Each search's graph (features/npc/sv_routes.lua's NavGraph) is wrapped as
--- foundation.pathfinder.astar makes the search: every area the search found
+-- game.npc.astar makes the search: every area the search found
 -- untraversable, every link its crossable refused, every spawn room it read
 -- and every estimate it took is written down, with the request and, once the
 -- search is done, what it found. Save adds the nav mesh: each area's centre,
@@ -17,8 +17,8 @@ WSRouteRecord = WSRouteRecord or {}
 local R = WSRouteRecord
 
 local Record = WS.require("foundation.npc.route_record")
-local AStar = WS.require("foundation.pathfinder.astar")
-local Pathfinder = WS.require("foundation.npc.pathfinder")
+local AStar = WS.require("game.npc.astar")
+local Pathfinder = WS.require("foundation.graph.pathfinder")
 local HL2 = WS.require("foundation.npc.path.hl2")
 local Lanes = WS.require("foundation.aiwar.lanes")
 

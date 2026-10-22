@@ -18,9 +18,8 @@ local RANK = {
 
 -- The modules that stay, by category.
 local CATEGORY = {
-	["npc/pathfinder"] = "structures",
+	["graph/pathfinder"] = "structures",
 	["tree/heap"] = "structures",
-	["pathfinder/astar"] = "structures",
 	["encoding/consolecfg"] = "structures",
 	["encoding/cvarfile"] = "structures",
 	["analysis/analytics"] = "structures",
@@ -34,7 +33,6 @@ local CATEGORY = {
 	["math/polynomial"] = "structures",
 	["math/matrix"] = "structures",
 	["file/buffer"] = "structures",
-	["core/snapshot"] = "structures",
 	["encoding/gma"] = "structures",
 	["encoding/utf16"] = "structures",
 	["encoding/keyvalues"] = "structures",
@@ -44,9 +42,7 @@ local CATEGORY = {
 	["tree/avl"] = "structures",
 	["map/pairmap"] = "structures",
 	["math/scalar"] = "structures",
-	["core/timers"] = "structures",
 	["list/schedule"] = "formalisms",
-	["core/drawlist"] = "formalisms",
 	["math/geometry"] = "structures",
 	["transaction"] = "structures",
 	["map/sets"] = "structures",
@@ -61,11 +57,8 @@ local CATEGORY = {
 	["cache/lru"] = "structures",
 	["cache/expiring"] = "structures",
 	["cache/memo"] = "structures",
-	["core/tactics"] = "formalisms",
 
 	["generator/state_machine"] = "formalisms",
-	["core/hfsm"] = "formalisms",
-	["core/map_io"] = "formalisms",
 	["rounds"] = "formalisms",
 	["rounds/state"] = "formalisms",
 	-- teams is a label here, not a classification. There is no file-level
@@ -281,6 +274,21 @@ end
 local function ModuleOf(name)
 	return (name:gsub(FOUNDATION_PREFIX, ""):gsub("%.", "/"))
 end
+
+T.test("game requires nothing from features or ws", function()
+	local list = assert(io.popen("find " .. T.ROOT .. "game -name '*.lua'"))
+	for path in list:lines() do
+		local file = assert(io.open(path))
+		local text = file:read("*a")
+		file:close()
+		for name in text:gmatch(REQUIRE) do
+			for _, prefix in ipairs(OUTSIDE_PREFIXES) do
+				T.eq(name:match(prefix), nil, path:sub(#T.ROOT + 1) .. " requires " .. name)
+			end
+		end
+	end
+	list:close()
+end)
 
 T.test("every foundation file is categorised or pending a move, and every entry exists", function()
 	local modules = FoundationModules()

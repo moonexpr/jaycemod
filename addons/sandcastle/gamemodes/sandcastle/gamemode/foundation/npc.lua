@@ -1,6 +1,6 @@
 -- The NPC system: the Npc model that runs one variant's Behavior against an
 -- actor port. The Action/Behavior engine and its timers are
--- foundation.core.hfsm's; this module hands on their NextBot names so a
+-- game.generator.hfsm's; this module hands on their NextBot names so a
 -- variant reads Npc.Action, Npc.CHANGE_TO, Npc.CountdownTimer.
 --
 -- An NPC variant is a part of this system (foundation.npc.<variant>) and
@@ -12,7 +12,7 @@
 -- refuses players). Actions receive the actor as `me`.
 local ipairs, setmetatable = ipairs, setmetatable
 local remove = table.remove
-local Hfsm = require("foundation.core.hfsm")
+local Hfsm = require("game.generator.hfsm")
 module(...)
 
 CONTINUE, CHANGE_TO, SUSPEND_FOR, DONE, SUSTAIN =

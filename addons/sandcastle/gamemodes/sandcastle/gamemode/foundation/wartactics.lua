@@ -1,4 +1,4 @@
--- The AI war's tactics engine (foundation.core.tactics): a fire team's
+-- The AI war's tactics engine (game.gameplay.tactics): a fire team's
 -- tactics in a fight, as foundation.aiwar.orders reads them.
 --
 -- Contact: what one member sees, its whole team knows: the last place an
@@ -21,7 +21,7 @@
 --
 -- Positions are plain { x, y, z } tables.
 local ipairs, math, sqrt = ipairs, math, math.sqrt
-local Tactics = require("foundation.core.tactics")
+local Tactics = require("game.gameplay.tactics")
 module(...)
 
 CONTACT_MEMORY = 8

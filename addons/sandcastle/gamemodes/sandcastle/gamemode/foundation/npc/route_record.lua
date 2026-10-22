@@ -1,5 +1,5 @@
 -- Route searches as the server ran them, recorded so they replay offline
--- (under plain LuaJIT) with the same solver (foundation.pathfinder.astar)
+-- (under plain LuaJIT) with the same solver (game.npc.astar)
 -- and cost strategy (foundation.npc.path.*): what the npc controller's
 -- NavGraph (features/npc/sv_routes.lua) answered is written down, so a
 -- replay asks the same questions of the record instead of the engine.
@@ -29,8 +29,8 @@
 --   Matches(result, replayed) -> whether both searches did the same
 local Buffer = require("foundation.file.buffer")
 local Geometry = require("foundation.math.geometry")
-local Pathfinder = require("foundation.npc.pathfinder")
-local AStar = require("foundation.pathfinder.astar")
+local Pathfinder = require("foundation.graph.pathfinder")
+local AStar = require("game.npc.astar")
 local Path = require("foundation.npc.path")
 local error, format, ipairs, pairs, pcall, setmetatable, tonumber, tostring = error, string.format, ipairs, pairs, pcall, setmetatable, tonumber, tostring
 module(...)

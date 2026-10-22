@@ -17,7 +17,7 @@ local find, gmatch, sort, table_remove = string.find, string.gmatch, table.sort,
 local Teams = require("foundation.teams")
 local State = require("foundation.rounds.state")
 local Cfsm = require("foundation.generator.state_machine")
-local Snapshot = require("foundation.core.snapshot")
+local Snapshot = require("game.world.snapshot")
 local Class = require("foundation.core.class")
 local Spawns = require("foundation.spawn_manager")
 module(...)
@@ -562,7 +562,7 @@ function Round:TimeLeft(now)
 	return TimeLeft(self.settings.mapResetTime, self.settings.timelimit, now)
 end
 
--- The round as plain data (foundation.core.snapshot), every time in it kept
+-- The round as plain data (game.world.snapshot), every time in it kept
 -- as seconds from now; Restore puts it back in place from the new now. The
 -- mode is the map's choice, so a snapshot only restores into the same one.
 local SNAPSHOT = Snapshot.Spec({

@@ -1,27 +1,24 @@
--- foundation's namespace indexes and shared_loader.lua, which runs them:
--- every index is named in the loader by hand, runs under LuaJIT, publishes
--- every module of its folder, and neither loops nor scans
+-- foundation's namespace indexes, game's inits, and shared_loader.lua, which
+-- runs them: every index and init is named in the loader by hand, runs under
+-- LuaJIT, publishes every module of its folder (foundation's at once,
+-- game's on first read), and neither loops nor scans
 -- (docs/foundation-game-split-plan.md). The test scans; the loader never does.
 local T = dofile("tests/harness.lua")
 local Namespace = T.require("foundation.core.namespace")
 
-local FOUNDATION = T.ROOT .. "foundation/"
 local LOADER = T.ROOT .. "shared_loader.lua"
 local INDEX_CALL = "Index%(%s*\"([%w_/.]+)\"%s*%)"
 
--- Folders that still hold modules bound elsewhere: only what their index
--- lists is published, until those move (the plan's stages 2 and 3).
-local PARTLY = {
-	[""] = true,
-	["npc/"] = true,
+-- Each tree's index files, and how a module of it is published.
+local TREES = {
+	{ root = "foundation", file = "_index.lua", lazy = false },
+	{ root = "game", file = "_init.lua", lazy = true },
 }
-local STAYING_IN_CORE = {
-	drawlist = true,
-	hfsm = true,
-	map_io = true,
-	snapshot = true,
-	tactics = true,
-	timers = true,
+
+-- Folders that still hold modules bound elsewhere: only what their index
+-- lists is published, until those move (the plan's stage 3).
+local PARTLY = {
+	["foundation/"] = true,
 }
 
 local function Read(path)
@@ -39,11 +36,18 @@ local function Lines(command)
 	return lines
 end
 
--- The index files on disk, as paths under the gamemode, sorted.
-local function IndexFiles()
+-- A tree's index files on disk, as paths under the gamemode, sorted.
+local function IndexFiles(tree)
 	local paths = {}
-	for _, path in ipairs(Lines("find " .. FOUNDATION .. " -name '*_index.lua' | sort")) do
-		paths[#paths + 1] = path:sub(#T.ROOT + 1)
+	local command = "find " .. T.ROOT .. tree.root .. " -name '*" .. tree.file .. "' | sort"
+	for _, path in ipairs(Lines(command)) do paths[#paths + 1] = path:sub(#T.ROOT + 1) end
+	return paths
+end
+
+local function AllIndexFiles()
+	local paths = {}
+	for _, tree in ipairs(TREES) do
+		for _, path in ipairs(IndexFiles(tree)) do paths[#paths + 1] = path end
 	end
 	return paths
 end
@@ -77,13 +81,23 @@ local function RunIndexes(globals)
 	end
 end
 
+-- folder (under the gamemode, ending in "/") -> the module keys in it
+local function ModulesIn(folder)
+	local keys = {}
+	for _, file in ipairs(Lines("ls " .. T.ROOT .. folder .. " | grep '%.lua$'")) do
+		local key = file:sub(1, -#".lua" - 1)
+		if not key:match("_index$") and not key:match("_init$") then keys[#keys + 1] = key end
+	end
+	return keys
+end
+
 local function WithoutComments(text)
 	return (text:gsub("%-%-%[%[.-%]%]", ""):gsub("%-%-[^\n]*", ""))
 end
 
 T.test("the loader names every index on disk, and only those", function()
 	local onDisk = {}
-	for _, path in ipairs(IndexFiles()) do onDisk[path] = true end
+	for _, path in ipairs(AllIndexFiles()) do onDisk[path] = true end
 	local named = {}
 	for _, path in ipairs(LoaderIndexes()) do
 		T.eq(onDisk[path], true, path .. " is on disk")
@@ -93,23 +107,34 @@ T.test("the loader names every index on disk, and only those", function()
 	for path in pairs(onDisk) do T.eq(named[path], true, path .. " is named in shared_loader.lua") end
 end)
 
-T.test("every index runs, publishing each module of its folder under the module's name", function()
+T.test("foundation's indexes publish each module of their folder at once", function()
 	local globals = Globals()
 	RunIndexes(globals)
-	for _, path in ipairs(IndexFiles()) do
-		local folder = path:match("^foundation/(.-)[%a]+_index%.lua$")
+	for _, path in ipairs(IndexFiles(TREES[1])) do
+		local folder = path:match("^(.-)[%a]+_index%.lua$")
 		if not PARTLY[folder] then
-			local ns = globals[folder:sub(1, -2)]
-			for _, file in ipairs(Lines("ls " .. FOUNDATION .. folder .. " | grep '%.lua$'")) do
-				local key = file:sub(1, -#".lua" - 1)
-				if not key:match("_index$") and not (folder == "core/" and STAYING_IN_CORE[key]) then
-					local name = "foundation." .. folder:gsub("/", ".") .. key
-					T.eq(ns[key], T.require(name), folder .. key .. " is published")
-				end
+			local ns = globals[folder:match("([%w_]+)/$")]
+			for _, key in ipairs(ModulesIn(folder)) do
+				local name = folder:gsub("/", ".") .. key
+				T.eq(rawget(ns, key), T.require(name), folder .. key .. " is published")
 			end
 		end
 	end
 	T.eq(globals.transaction, T.require("foundation.transaction"), "a root module is a plain global")
+end)
+
+T.test("game's inits publish each module of their folder, loaded on first read", function()
+	local globals = Globals()
+	RunIndexes(globals)
+	for _, path in ipairs(IndexFiles(TREES[2])) do
+		local folder = path:match("^(.-)[%a]+_init%.lua$")
+		local ns = globals[folder:match("([%w_]+)/$")]
+		for _, key in ipairs(ModulesIn(folder)) do
+			T.eq(rawget(ns, key), nil, folder .. key .. " is not loaded before it is read")
+			local name = folder:gsub("/", ".") .. key
+			T.eq(ns[key], T.require(name), folder .. key .. " is published")
+		end
+	end
 end)
 
 T.test("the defaults the indexes extend are kept", function()
@@ -118,6 +143,7 @@ T.test("the defaults the indexes extend are kept", function()
 	T.eq(globals.math.random, math.random, "Lua's math.random")
 	T.eq(type(globals.list.Get), "function", "GMod's list.Get")
 	T.eq(type(globals.file.Read), "function", "GMod's file.Read")
+	T.eq(type(globals.timer.Simple), "function", "GMod's timer.Simple")
 end)
 
 T.test("running the indexes again, as a reload does, is not refused", function()
@@ -125,10 +151,23 @@ T.test("running the indexes again, as a reload does, is not refused", function()
 	RunIndexes(globals)
 	RunIndexes(globals)
 	T.eq(globals.list.queue, T.require("foundation.list.queue"), "list.queue")
+	T.eq(globals.list.drawlist, T.require("game.list.drawlist"), "list.drawlist")
+end)
+
+T.test("a published foundation module requires nothing from game", function()
+	for _, path in ipairs(IndexFiles(TREES[1])) do
+		local folder = path:match("^(.-)[%a]+_index%.lua$")
+		if not PARTLY[folder] then
+			for _, key in ipairs(ModulesIn(folder)) do
+				local code = Read(T.ROOT .. folder .. key .. ".lua")
+				T.eq(code:find("require%(%s*[\"']game%."), nil, folder .. key .. " requires game")
+			end
+		end
+	end
 end)
 
 T.test("neither the loader nor an index loops or scans", function()
-	local paths = IndexFiles()
+	local paths = AllIndexFiles()
 	paths[#paths + 1] = "shared_loader.lua"
 	for _, path in ipairs(paths) do
 		local code = WithoutComments(Read(T.ROOT .. path))

@@ -4,7 +4,7 @@
 -- an idle server, makes it ACTIVE again. ws/sv_idle.lua runs it and says
 -- each change (WSServerIdle, WSServerActive).
 local setmetatable = setmetatable
-local Timers = require("foundation.core.timers")
+local Countdown = require("game.timer.countdown")
 module(...)
 
 IDLE = "idle"
@@ -16,7 +16,7 @@ Watch.__index = Watch
 -- clock: Now(); delay: the seconds an empty server waits before idling.
 function New(clock, delay)
 	return setmetatable({
-		countdown = Timers.CountdownTimer(clock),
+		countdown = Countdown.New(clock),
 		delay = delay,
 		idle = false,
 	}, Watch)

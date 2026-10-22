@@ -9,13 +9,18 @@
 --   holds: the GMod or Lua default stays unless replaced on purpose
 -- Replace(ns, key, value)  the same over a key that is taken: the declared
 --   replacement of a default. Refuses a key nothing holds
+-- Defer(ns, key, load)     ns[key] is load() the first time it is read, then
+--   kept: a module loaded on demand. Refuses a key something else holds, and
+--   a namespace table that has a metatable of its own
 -- Environment(globals, require) -> the environment an index runs in:
---   Namespace (on globals), Export, Replace, require, and the globals
+--   Namespace (on globals), Export, Replace, Defer (by module name), require,
+--   and the globals
 --
--- A key once exported or replaced is the namespace's own: setting it again
--- (a live reload runs the index again) is not refused. Which keys those are
--- is kept on this module's table, which module(...) keeps across a reload.
-local error, rawget, setmetatable, tostring, type = error, rawget, setmetatable, tostring, type
+-- A key once exported, replaced or deferred is the namespace's own: setting
+-- it again (a live reload runs the index again) is not refused. Which keys
+-- those are is kept on this module's table, which module(...) keeps across
+-- a reload.
+local error, getmetatable, rawget, rawset, setmetatable, tostring, type = error, getmetatable, rawget, rawset, setmetatable, tostring, type
 local match = string.match
 module(...)
 
@@ -26,6 +31,20 @@ local CALLER = 3
 Names = Names or setmetatable({}, { __mode = "k" })
 -- namespace table -> { key = true } for each key set by Export or Replace
 Owned = Owned or setmetatable({}, { __mode = "k" })
+-- namespace table -> { key = load } for each deferred key not yet read
+Deferred = Deferred or setmetatable({}, { __mode = "k" })
+
+-- The metatable of a namespace with deferred keys: a read of one loads it.
+Lazy = Lazy or {}
+function Lazy.__index(ns, key)
+	local loads = Deferred[ns]
+	local load = loads and loads[key]
+	if load == nil then return nil end
+	local value = load()
+	loads[key] = nil
+	rawset(ns, key, value)
+	return value
+end
 
 local function NameOf(ns, key)
 	return (Names[ns] or tostring(ns)) .. "." .. tostring(key)
@@ -80,12 +99,34 @@ function Replace(ns, key, value)
 	Set(ns, key, value)
 end
 
+function Defer(ns, key, load)
+	CheckSet(ns, key, load)
+	if type(load) ~= "function" then error(NameOf(ns, key) .. " is deferred to a " .. type(load) .. ", not a loader", 2) end
+	if rawget(ns, key) ~= nil and not Owns(ns, key) then
+		error(NameOf(ns, key) .. " is taken; a deferred key needs a free one", 2)
+	end
+	local meta = getmetatable(ns)
+	if meta == nil then
+		setmetatable(ns, Lazy)
+	elseif meta ~= Lazy then
+		error(NameOf(ns, key) .. ": " .. (Names[ns] or tostring(ns)) .. " has a metatable of its own", 2)
+	end
+	local loads = Deferred[ns]
+	if loads == nil then
+		loads = {}
+		Deferred[ns] = loads
+	end
+	loads[key] = load
+	Set(ns, key, nil)
+end
+
 function Environment(globals, require)
 	Names[globals] = "_G"
 	return setmetatable({
 		Namespace = function(name) return Namespace(globals, name) end,
 		Export = Export,
 		Replace = Replace,
+		Defer = function(ns, key, name) return Defer(ns, key, function() return require(name) end) end,
 		require = require,
 	}, { __index = globals })
 end

@@ -14,7 +14,7 @@
 -- any finished search replays differently.
 local T = dofile("tests/harness.lua")
 local Record = T.require("foundation.npc.route_record")
-local Pathfinder = T.require("foundation.npc.pathfinder")
+local Pathfinder = T.require("foundation.graph.pathfinder")
 local ReachMemo = T.require("foundation.npc.reach_memo")
 
 local STRATEGIES = {

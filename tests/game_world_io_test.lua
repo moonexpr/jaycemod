@@ -1,7 +1,7 @@
--- foundation.core.map_io: entity lookups over cached name and class maps,
+-- game.world.io: entity lookups over cached name and class maps,
 -- recorded output connections, and observers of outputs and inputs.
 local T = dofile("tests/harness.lua")
-local MapIO = T.require("foundation.core.map_io")
+local MapIO = T.require("game.world.io")
 
 -- A world of plain entity tables: { name, class, valid }. It counts full
 -- scans, so a test can see a lookup served from the cache, and logs fires.

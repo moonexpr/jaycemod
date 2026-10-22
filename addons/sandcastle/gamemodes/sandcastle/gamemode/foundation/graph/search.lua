@@ -1,6 +1,6 @@
 -- Searches over a graph the caller describes as neighbors(node) -> a list of
 -- nodes; nodes are any values usable as table keys. Route finding is
--- foundation.npc.pathfinder's; these answer what is reachable.
+-- foundation.graph.pathfinder's; these answer what is reachable.
 --
 -- Flood(starts, neighbors, admit, limit[, stop]) -> the nodes reached,
 --   breadth first from starts (taken as given, each once), through nodes

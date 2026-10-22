@@ -2,7 +2,7 @@
 -- overwatch, flanking and falling back.
 local T = dofile("tests/harness.lua")
 local Tactics = T.require("foundation.wartactics")
-local CoreTactics = T.require("foundation.core.tactics")
+local CoreTactics = T.require("game.gameplay.tactics")
 
 local function P(x, y, z) return { x = x, y = y, z = z or 0 } end
 local function Team(index, places)

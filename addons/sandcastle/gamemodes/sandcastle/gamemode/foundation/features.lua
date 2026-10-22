@@ -33,7 +33,7 @@ function PartPath(name, part)
 end
 
 -- The folders, relative to the gamemode folder, whose files clients are sent.
-CLIENT_DIRS = { "foundation/", "features/", "ws/", "vendor/" }
+CLIENT_DIRS = { "foundation/", "game/", "features/", "ws/", "vendor/" }
 
 local REALM_OF = {
 	[SERVER] = SERVER,

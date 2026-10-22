@@ -2,8 +2,8 @@
 -- route search walks, the route requests and searches, and the waypoints
 -- along a route. Its NavGraph goes to sv_profile, which records its costs.
 local Controller = ...
-local Pathfinder = WS.require("foundation.npc.pathfinder")
-local AStar = WS.require("foundation.pathfinder.astar")
+local Pathfinder = WS.require("foundation.graph.pathfinder")
+local AStar = WS.require("game.npc.astar")
 local Portal = WS.require("foundation.npc.portal")
 local Doors = WS.require("foundation.npc.doors")
 local Path = WS.require("foundation.npc.path")
@@ -14,7 +14,7 @@ local NOBODY = WS.TEAM_UNASSIGNED
 -------------------------------------------------------------------------------
 -- Path costs: one step builder for both searches. A path strategy
 -- (foundation.npc.path) reads the same step whether the engine's search
--- (Path:Compute on a NextBot) or the Lua one (foundation.pathfinder.astar, for
+-- (Path:Compute on a NextBot) or the Lua one (game.npc.astar, for
 -- NPCs that are not NextBots) asks.
 
 -- Fills `step` for the move from fromArea (nil for the first area) into
@@ -66,7 +66,7 @@ function Controller:EnginePathCost(ent, strategy, limits, bot)
 	end
 end
 
--- The graph foundation.pathfinder.astar searches: nav area ids, their floor
+-- The graph game.npc.astar searches: nav area ids, their floor
 -- neighbours in GetAdjacentAreas' order (north, east, south, west; nav
 -- ladders are left out, as no engine NPC climbs them), the strategy's cost
 -- with ILocomotion's default traversal rule (not blocked for the mover's

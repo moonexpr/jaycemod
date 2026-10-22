@@ -1,8 +1,8 @@
--- foundation.core.drawlist: draw callbacks named by dotted paths
+-- game.list.drawlist: draw callbacks named by dotted paths
 -- (game.match.team_scores.blue_score), run in a fixed order, any of them
 -- hidden by its path or an ancestor's, or held back by its own condition.
 local T = dofile("tests/harness.lua")
-local DrawList = T.require("foundation.core.drawlist")
+local DrawList = T.require("game.list.drawlist")
 
 -- A list whose callbacks log their names, and the log.
 local function Logged()

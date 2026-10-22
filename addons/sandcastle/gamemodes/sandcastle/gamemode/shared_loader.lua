@@ -41,5 +41,13 @@ Index("foundation/generator/sh_index.lua")
 Index("foundation/encoding/sh_index.lua")
 Index("foundation/file/sh_index.lua")
 Index("foundation/analysis/sh_index.lua")
-Index("foundation/npc/sh_index.lua")
 Index("foundation/sh_index.lua")
+
+-- game: published at once, each module loaded the first time it is read,
+-- so a map pays only for the gameplay it uses.
+Index("game/list/sh_init.lua")
+Index("game/timer/sh_init.lua")
+Index("game/world/sh_init.lua")
+Index("game/generator/sh_init.lua")
+Index("game/gameplay/sh_init.lua")
+Index("game/npc/sh_init.lua")

@@ -1,12 +1,12 @@
--- foundation.core.timers: NextBot's CountdownTimer and IntervalTimer
--- (util_shared.h), on a clock port.
+-- game.timer.countdown: NextBot's CountdownTimer (util_shared.h), on a clock
+-- port.
 local T = dofile("tests/harness.lua")
 local Fake = dofile("tests/fake_actor.lua")
-local Timers = T.require("foundation.core.timers")
+local Countdown = T.require("game.timer.countdown")
 
 T.test("an unstarted countdown has elapsed; a started one elapses after its duration", function()
 	local clock = Fake.Clock(10)
-	local t = Timers.CountdownTimer(clock)
+	local t = Countdown.New(clock)
 	T.eq(t:HasStarted(), false, "unstarted")
 	T.eq(t:IsElapsed(), true, "unstarted is elapsed")
 	T.eq(t:GetCountdownDuration(), 0, "no duration")
@@ -25,24 +25,6 @@ T.test("an unstarted countdown has elapsed; a started one elapses after its dura
 	t:Invalidate()
 	T.eq(t:HasStarted(), false, "invalidated")
 	T.eq(t:IsElapsed(), true, "invalidated is elapsed")
-end)
-
-T.test("an unstarted interval is very old; a started one measures from its start", function()
-	local clock = Fake.Clock(10)
-	local t = Timers.IntervalTimer(clock)
-	T.eq(t:HasStarted(), false, "unstarted")
-	T.eq(t:GetElapsedTime(), Timers.INTERVAL_UNSTARTED, "unstarted elapsed")
-	t:Start()
-	clock:Advance(2)
-	T.eq(t:HasStarted(), true, "started")
-	T.near(t:GetElapsedTime(), 2, 1e-9, "elapsed")
-	T.eq(t:IsLessThen(3), true, "less than 3")
-	T.eq(t:IsGreaterThen(1), true, "greater than 1")
-	T.eq(t:IsGreaterThen(2), false, "not greater than 2")
-	t:Reset()
-	T.near(t:GetElapsedTime(), 0, 1e-9, "reset")
-	t:Invalidate()
-	T.eq(t:GetElapsedTime(), Timers.INTERVAL_UNSTARTED, "invalidated")
 end)
 
 T.finish()

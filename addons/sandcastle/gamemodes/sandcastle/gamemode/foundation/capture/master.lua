@@ -14,7 +14,7 @@ local sort, remove = table.sort, table.remove
 local Capture = require("foundation.capture")
 local Rounds = require("foundation.rounds")
 local Teams = require("foundation.teams")
-local Snapshot = require("foundation.core.snapshot")
+local Snapshot = require("game.world.snapshot")
 module(...)
 
 -- score_style: a team scores per round won, or per point captured.
@@ -76,7 +76,7 @@ local function CurrentRound(self)
 end
 
 -- The mini-round being played, by name, or nil.
--- The master as plain data (foundation.core.snapshot): its chosen
+-- The master as plain data (game.world.snapshot): its chosen
 -- mini-round and switches. Its rounds are the map's list, kept as they are.
 local SNAPSHOT = Snapshot.Spec({
 	name = "master",

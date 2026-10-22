@@ -10,6 +10,7 @@ NextSoldier, the AI-war's NextBot soldiers. The gamemode lives at
 |---|---|
 | `gamemode/shared_loader.lua` | Runs first: the gamemode's `WS.require`, then foundation's namespace indexes, each named by hand |
 | `gamemode/foundation/<namespace>/` | The generic base: data structures, algorithms, codecs, maths, classes, loaded at start and published as globals (`list.queue`) by `sh_index.lua` (index below) |
+| `gamemode/game/<namespace>/` | The specialised code built on foundation (timers, the world's I/O, the NextBot engine, gameplay interfaces), published as globals by `sh_init.lua` and loaded on first read (index below) |
 | `gamemode/foundation/` | Also, until they move to `game/`: models, pure Lua systems, no GMod globals, I/O through ports, loaded per map with `WS.require("foundation.x")` (`docs/foundation-game-split-plan.md`) |
 | `gamemode/features/<feature>/` | Controllers: `sv.lua`/`cl.lua`/`sh.lua` composition roots and their `<realm>_<part>.lua` parts |
 | `gamemode/ws/` | Always-loaded glue |
@@ -146,12 +147,7 @@ table. Tests are `tests/<namespace>_<module>_test.lua`.
 | Module | API |
 |---|---|
 | `graph.search` | `Flood(starts, neighbors, admit, limit[, stop])` → reached, cut; `Components(nodes, neighbors)` → node → group number; `Distances(starts, edges, limit)` → node → cheapest walk from the nearest start (Dijkstra; `edges(node)` → `{ node, cost }`s) |
-
-### npc
-
-| Module | API |
-|---|---|
-| `npc.pathfinder` | Abstract path search (template method): `Solver(name)` → a solver class filling `Begin`, `Next`, `Expand` (reporting with `Reach`, `Approach`); it gets `New`, `Find`, `Step(budget)`, `Route`. `RUNNING`, `FOUND`, `FAILED`, `MAX_EXPANDED` |
+| `graph.pathfinder` | Abstract path search (template method): `Solver(name)` → a solver class filling `Begin`, `Next`, `Expand` (reporting with `Reach`, `Approach`); it gets `New`, `Find`, `Step(budget)`, `Route`. `RUNNING`, `FOUND`, `FAILED`, `MAX_EXPANDED` |
 
 ### math, in Lua's math table
 
@@ -186,25 +182,33 @@ table. Tests are `tests/<namespace>_<module>_test.lua`.
 | `analysis.memory` | `Measure(roots)` → estimated bytes per named root (each object once); `Format(report, rows)`. `ws_analytics_memory` runs it over the loaded foundation modules |
 | `transaction` | Exchanges between user and system or between modules, settling once as committed (value), declined (a refusal: the caller's mistake) or failed (our bug). Refusals: `Refuse(kind, detail)`, `IsRefusal(err, kinds)`, `Message`, `Explain`, `Detail`. `New()` → `Commit`/`Decline`/`Fail`, `State`, `Value`, `Refusal`, `Error`, `OnSettle`, `Await(scheduler)` (in a task); `Run(fn, ...)`, `Spawn(scheduler, fn, ...)` with `fn(work, ...)` and `work:Undo(fn)` compensations; `All(list)`. Wire: `Ledger()` (`Open`, `Settle`, `Expire`, `Count`), `Reply(tx[, kinds])`. Over the network: `WS.Events.Transact` (client) and `WS.Events.Serve` (server), events defined with `transaction = true` |
 
-### Still in foundation/core, bound for game/
+## game index
 
-Not yet published as globals; `require("foundation.core.<name>")`.
+`gamemode/game/<namespace>/<module>.lua`: the specialised code built on
+foundation. `shared_loader.lua` runs each namespace's `sh_init.lua`, which
+`Defer`s a module a line: module `game.<namespace>.<module>` is the global
+`<namespace>.<module>`, loaded the first time it is read, so a map pays only
+for what it uses. A namespace may be foundation's too (`list`,
+`generator`). game may require foundation, never features or ws; a
+published foundation module never requires game. Tests are
+`tests/game_<namespace>_<module>_test.lua`.
 
 | Module | API |
 |---|---|
-| `timers` | NextBot's timers on a clock port (`Now()`): `CountdownTimer(clock)` → `Start(duration)`, `Reset`, `Invalidate`, `HasStarted`, `IsElapsed` (an unstarted one has), `GetElapsedTime`, `GetRemainingTime`, `GetCountdownDuration`; `IntervalTimer(clock)` → `Start`, `Reset`, `Invalidate`, `HasStarted`, `GetElapsedTime`, `IsLessThen`, `IsGreaterThen`. `hfsm` hands them on |
-| `snapshot` | A model's state as plain data and back: `Spec{ name, skip, times, machines }`, `Take(model, spec, now[, refs])`, `Apply(model, snapshot, spec, now[, refs])`. Times kept as seconds from now, cfsm machines as their state (`Machine:Restore`), entities and other non-data through `refs` (`Encode`, `Decode`), weak tables as data; Apply writes raw and clears what the snapshot lacks. The models' `Snapshot`/`Restore` (the dev workbench's capture) |
-| `hfsm` | NextBot Action/Behavior engine: `Action`, `Chart{ name, port, events, queries, initial }` → `State(name)`, `Owns`, `New(actor, state)` → a machine: `Update`, `Event`, `Query`, `Describe` |
-| `map_io` | A map's entity lookups and output connections, through a world port |
-| `tactics` | The tactics engine interface: `ENGINE` (a port), `Check(engine)` |
-| `drawlist` | `New()` → draw callbacks named by dotted paths, run in order (by order, a tie by path): `Add(path, order, draw[, when])` (a path again replaces it), `HideElements(path)`/`ShowElements(path)` (the code's: a path hides all under it), `SetHidden(paths)` (the player's, apart), `Draw(...)`, `Entries()`; `ParseNames(text)`. The HUD's (`WS.HUD`, `cl_hud_hidden`) |
+| `timer.countdown` | NextBot's CountdownTimer on a clock port (`Now()`): `New(clock)` → `Start(duration)`, `Reset`, `Invalidate`, `HasStarted`, `IsElapsed` (an unstarted one has), `GetElapsedTime`, `GetRemainingTime`, `GetCountdownDuration`. `hfsm` hands it on as `CountdownTimer` |
+| `timer.interval` | NextBot's IntervalTimer: `New(clock)` → `Start`, `Reset`, `Invalidate`, `HasStarted`, `GetElapsedTime` (`INTERVAL_UNSTARTED` when unstarted), `IsLessThen`, `IsGreaterThen`. `hfsm` hands it on as `IntervalTimer` |
+| `world.snapshot` | A model's state as plain data and back: `Spec{ name, skip, times, machines }`, `Take(model, spec, now[, refs])`, `Apply(model, snapshot, spec, now[, refs])`. Times kept as seconds from now, cfsm machines as their state (`Machine:Restore`), entities and other non-data through `refs` (`Encode`, `Decode`), weak tables as data; Apply writes raw and clears what the snapshot lacks. The models' `Snapshot`/`Restore` (the dev workbench's capture) |
+| `generator.hfsm` | NextBot Action/Behavior engine: `Action`, `Chart{ name, port, events, queries, initial }` → `State(name)`, `Owns`, `New(actor, state)` → a machine: `Update`, `Event`, `Query`, `Describe` |
+| `world.io` | A map's entity lookups and output connections, through a world port |
+| `gameplay.tactics` | The tactics engine interface: `ENGINE` (a port), `Check(engine)` |
+| `npc.astar` | `graph.pathfinder`'s solver for NavAreaBuildPath's A*, the routes of HL2 NPCs (`features/npc/sv_routes.lua`) |
+| `list.drawlist` | `New()` → draw callbacks named by dotted paths, run in order (by order, a tie by path): `Add(path, order, draw[, when])` (a path again replaces it), `HideElements(path)`/`ShowElements(path)` (the code's: a path hides all under it), `SetHidden(paths)` (the player's, apart), `Draw(...)`, `Entries()`; `ParseNames(text)`. The HUD's (`WS.HUD`, `cl_hud_hidden`) |
 
-### Variants outside foundation's namespaces
+### Variants elsewhere
 
 | Module | Base |
 |---|---|
-| `foundation.pathfinder.astar` | `npc.pathfinder`: NavAreaBuildPath's A*, the routes of HL2 NPCs (`features/npc/sv_routes.lua`) |
-| `foundation.wartactics` | `foundation.core.tactics`: the AI war's fire-team doctrine (contact, bounding overwatch, flanking, falling back) |
+| `foundation.wartactics` | `gameplay.tactics`: the AI war's fire-team doctrine (contact, bounding overwatch, flanking, falling back) |
 | `foundation.npc.path.*` | the path cost strategies a solver's graph prices steps with |
 
 Rationale, what stays out of foundation's namespaces, and what to evaluate

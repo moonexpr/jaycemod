@@ -74,6 +74,39 @@ T.test("replace refuses a key nothing holds: there is no default to replace", fu
 	Has(Raises(Namespace.Replace, math, "Clamp", function() end), "math.Clamp", "names the key")
 end)
 
+T.test("a deferred key loads its module the first time it is read, and only then", function()
+	local loads = 0
+	local drawlist = { New = function() end }
+	local function Load()
+		loads = loads + 1
+		return drawlist
+	end
+	local list = Namespace.Namespace({}, "list")
+	Namespace.Defer(list, "drawlist", Load)
+	T.eq(loads, 0, "nothing loaded yet")
+	T.eq(list.drawlist, drawlist, "loaded on read")
+	T.eq(list.drawlist, drawlist, "and kept")
+	T.eq(loads, 1, "once")
+	T.eq(list.missing, nil, "an undeclared key is still absent")
+end)
+
+T.test("defer refuses a key something else holds, and a table another metatable rules", function()
+	local list = Namespace.Namespace({ list = { Get = function() end } }, "list")
+	Has(Raises(Namespace.Defer, list, "Get", function() end), "list.Get", "names the key")
+	local ruled = Namespace.Namespace({ timer = setmetatable({}, {}) }, "timer")
+	Has(Raises(Namespace.Defer, ruled, "countdown", function() end), "timer", "names the namespace")
+end)
+
+T.test("deferring a key again, as a reload does, is not refused, and an export may follow a defer", function()
+	local list = Namespace.Namespace({}, "list")
+	Namespace.Defer(list, "drawlist", function() return 1 end)
+	Namespace.Defer(list, "drawlist", function() return 2 end)
+	T.eq(list.drawlist, 2, "the reloaded loader")
+	Namespace.Defer(list, "queue", function() return 3 end)
+	Namespace.Export(list, "queue", 4)
+	T.eq(list.queue, 4, "exported over its own deferral")
+end)
+
 T.test("an index runs in an environment of the calls, require and the globals", function()
 	local globals = { print = print }
 	globals._G = globals

@@ -14,6 +14,9 @@
 --   Wait(ready)    in a task: parks it until ready() is true; a run passes
 --                  parked tasks by, and ends once only parked ones are left
 --   Count()        the tasks not yet finished
+--
+-- TODO: accept a greedy sorter, a function the caller hands to New that
+-- picks which ready task runs next, in place of first in first out.
 local coroutine, error, select, setmetatable, tostring, unpack = coroutine, error, select, setmetatable, tostring, unpack
 local traceback = debug.traceback
 local Queue = require("foundation.list.queue")

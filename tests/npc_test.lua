@@ -487,11 +487,12 @@ T.test("a group passes an event to each member once, in the order they joined", 
 	T.eq(table.concat(seen, " "), "b:OnCommandPause:y", "a left")
 end)
 
-T.test("the NPC system hands on core's timers by their NextBot names", function()
-	local Timers = T.require("foundation.core.timers")
-	T.eq(N.CountdownTimer, Timers.CountdownTimer, "CountdownTimer")
-	T.eq(N.IntervalTimer, Timers.IntervalTimer, "IntervalTimer")
-	T.eq(N.INTERVAL_UNSTARTED, Timers.INTERVAL_UNSTARTED, "INTERVAL_UNSTARTED")
+T.test("the NPC system hands on game's timers by their NextBot names", function()
+	local Countdown = T.require("game.timer.countdown")
+	local Interval = T.require("game.timer.interval")
+	T.eq(N.CountdownTimer, Countdown.New, "CountdownTimer")
+	T.eq(N.IntervalTimer, Interval.New, "IntervalTimer")
+	T.eq(N.INTERVAL_UNSTARTED, Interval.INTERVAL_UNSTARTED, "INTERVAL_UNSTARTED")
 end)
 
 -- The Npc model: a variant, its state and its Behavior

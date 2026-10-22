@@ -2,8 +2,8 @@
 -- back and replayed offline with the same solver and cost strategy.
 local T = dofile("tests/harness.lua")
 local Record = T.require("foundation.npc.route_record")
-local AStar = T.require("foundation.pathfinder.astar")
-local Pathfinder = T.require("foundation.npc.pathfinder")
+local AStar = T.require("game.npc.astar")
+local Pathfinder = T.require("foundation.graph.pathfinder")
 local HL2 = T.require("foundation.npc.path.hl2")
 local TFBot = T.require("foundation.npc.path.tfbot")
 

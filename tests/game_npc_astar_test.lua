@@ -1,9 +1,9 @@
--- foundation.pathfinder.astar: NavAreaBuildPath (nav_pathfind.h) over any graph
+-- game.npc.astar: NavAreaBuildPath (nav_pathfind.h) over any graph
 -- the caller describes, run here on small grids whose costs the tests
 -- control, whole or a few expansions at a time.
 local T = dofile("tests/harness.lua")
-local Pathfinder = T.require("foundation.npc.pathfinder")
-local AStar = T.require("foundation.pathfinder.astar")
+local Pathfinder = T.require("foundation.graph.pathfinder")
+local AStar = T.require("game.npc.astar")
 local Path = T.require("foundation.npc.path")
 
 -- A graph of named nodes at 2D positions, with the given edges both ways.

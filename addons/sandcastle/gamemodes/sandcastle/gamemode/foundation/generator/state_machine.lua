@@ -2,7 +2,7 @@
 -- gamerules' round states (State_Transition, State_Enter, State_Leave,
 -- State_Think in teamplayroundbased_gamerules.cpp) and the Sandbox/Gameplay
 -- mode run. For states that nest or suspend each other, use
--- foundation.core.hfsm.
+-- game.generator.hfsm.
 --
 -- Define(spec) parses a machine's definition once and keeps its own copy:
 --   name         what errors call it
@@ -112,7 +112,7 @@ function Machine:Transition(state, ...)
 	self:Enter(state, ...)
 end
 
--- Back into a saved state (foundation.core.snapshot): set as it was, with no
+-- Back into a saved state (game.world.snapshot): set as it was, with no
 -- handler run and no edge required, as the state was reached once already.
 function Machine:Restore(state)
 	self.current = Declared(self.def, state, "a restored state")

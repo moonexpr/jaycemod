@@ -1,6 +1,6 @@
 -- A hierarchical state machine: a port of NextBot's Action/Behavior engine
 -- (server/NextBot/NextBotBehavior.h), handing on its timers
--- (foundation.core.timers) by the names actions use.
+-- (game.timer.countdown, game.timer.interval) by the names actions use.
 -- An Action is a state (the State pattern) that may contain a child state
 -- and bury the states it suspends; the engine owns every transition and
 -- calls the state's hooks (a template method), so a state only answers
@@ -20,7 +20,8 @@
 -- depend on the port the composition root fills, not on an entity.
 local Class = require("foundation.core.class")
 local Port = require("foundation.core.port")
-local Timers = require("foundation.core.timers")
+local Countdown = require("game.timer.countdown")
+local Interval = require("game.timer.interval")
 local error, ipairs, setmetatable, tostring, type =
 	error, ipairs, setmetatable, tostring, type
 local concat, find = table.concat, string.find
@@ -38,7 +39,7 @@ RESULT_NONE, RESULT_TRY, RESULT_IMPORTANT, RESULT_CRITICAL = 0, 1, 2, 3
 ANSWER_NO, ANSWER_YES, ANSWER_UNDEFINED = 0, 1, 2
 
 -- IntervalTimer::GetElapsedTime when unstarted.
-INTERVAL_UNSTARTED = Timers.INTERVAL_UNSTARTED
+INTERVAL_UNSTARTED = Interval.INTERVAL_UNSTARTED
 
 local function Result(kind, action, reason, priority)
 	return {
@@ -466,9 +467,9 @@ function Behavior:_PurgeDeadActions()
 end
 
 -------------------------------------------------------------------------------
--- Timers: core's, by the names actions use.
+-- Timers: game's, by the names actions use.
 
-CountdownTimer, IntervalTimer = Timers.CountdownTimer, Timers.IntervalTimer
+CountdownTimer, IntervalTimer = Countdown.New, Interval.New
 
 -------------------------------------------------------------------------------
 -- Names a chart declares

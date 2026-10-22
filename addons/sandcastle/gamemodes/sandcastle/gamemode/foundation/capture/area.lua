@@ -10,7 +10,7 @@ local band = bit.band
 local ipairs, pairs = ipairs, pairs
 local Capture = require("foundation.capture")
 local Teams = require("foundation.teams")
-local Snapshots = require("foundation.core.snapshot")
+local Snapshots = require("game.world.snapshot")
 module(...)
 
 -- mp_blockstyle: whether a block ends the capture or pauses it.
@@ -38,7 +38,7 @@ function New(owner)
 end
 
 -- Under mp_capstyle 1 more players cap faster, from a longer base time.
--- An area's capture as plain data (foundation.core.snapshot): who caps, how
+-- An area's capture as plain data (game.world.snapshot): who caps, how
 -- far, blocked. Who stands in it (touching, teamInZone, blockers) follows the
 -- players' own touches, so Restore keeps the area's live count.
 local SNAPSHOT = Snapshots.Spec({

@@ -1,8 +1,8 @@
--- foundation.core.hfsm: the Chart seam over the Action/Behavior engine. The
+-- game.generator.hfsm: the Chart seam over the Action/Behavior engine. The
 -- engine itself is tested through foundation.npc (npc_test.lua), which runs
 -- on it.
 local T = dofile("tests/harness.lua")
-local Hfsm = T.require("foundation.core.hfsm")
+local Hfsm = T.require("game.generator.hfsm")
 local Port = T.require("foundation.core.port")
 
 -- A soldier the port is checked against: more methods than any chart needs.
