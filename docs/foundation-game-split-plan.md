@@ -33,9 +33,10 @@ gameplay). Both publish their modules as globals.
 ## Status
 
 - Stage 1: done.
-- Stage 2: done but for the hfsm split. `hfsm` moved whole to
-  `game/generator/hfsm`; drawing `generator.state_chart` out of it into
-  foundation is its own step.
+- Stage 2: done. `foundation.generator.state_chart` is the statechart
+  without stacks; `game.generator.hfsm` extends it with NextBot's
+  suspend/resume stacks, its behaviour unchanged (its tests and
+  `npc_test.lua` pass as they were).
 - Stage 3: not started.
 
 ## The loader

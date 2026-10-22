@@ -59,6 +59,7 @@ local CATEGORY = {
 	["cache/memo"] = "structures",
 
 	["generator/state_machine"] = "formalisms",
+	["generator/state_chart"] = "formalisms",
 	["rounds"] = "formalisms",
 	["rounds/state"] = "formalisms",
 	-- teams is a label here, not a classification. There is no file-level

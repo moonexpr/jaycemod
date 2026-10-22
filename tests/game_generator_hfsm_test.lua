@@ -154,4 +154,18 @@ T.test("a destroyed machine ends its states", function()
 	T.eq(machine:IsEmpty(), true, "empty")
 end)
 
+T.test("a change to no action is refused, naming the state and its reason", function()
+	local chart = Hfsm.Chart({
+		name = "Lost",
+		port = SOLDIER_PORT,
+		initial = function(state) return state.Lost:New() end,
+	})
+	local Lost = chart:State("Lost")
+	function Lost:Update() return self:ChangeTo(nil, "forgot where") end
+	local machine = chart:New(Soldier(), { Lost = Lost })
+	machine:Update(0.1)
+	local err = Raises(machine.Update, machine, 0.1)
+	T.eq(err:find("Lost: ChangeTo needs an action (forgot where)", 1, true) ~= nil, true, "named: " .. err)
+end)
+
 T.finish()

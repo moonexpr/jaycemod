@@ -1,8 +1,7 @@
 -- A classical finite state machine: one flat state at a time, as the
 -- gamerules' round states (State_Transition, State_Enter, State_Leave,
 -- State_Think in teamplayroundbased_gamerules.cpp) and the Sandbox/Gameplay
--- mode run. For states that nest or suspend each other, use
--- game.generator.hfsm.
+-- mode run. For states that nest, use foundation.generator.state_chart.
 --
 -- Define(spec) parses a machine's definition once and keeps its own copy:
 --   name         what errors call it
