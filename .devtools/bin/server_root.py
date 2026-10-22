@@ -5,8 +5,8 @@
 
 The GModServer bottle's GarrysMod is the operator's install (a link into the
 "Steam" bottle), shared with the game the operator plays. The server needs
-addons the game must not load twice (DrGBase, which the server cannot take
-from the Workshop: it runs -noworkshop). So the server runs from
+addons the game must not load twice (DrGBase, mounted from the operator's
+Workshop downloads by the server's own autorun). So the server runs from
 GarrysModServer beside it: every entry a symlink to the shared install, but
 garrysmod/ is a folder whose addons/, data/ and cache/ are its own (the
 server writes there, the game never reads them). addons/ links each of the

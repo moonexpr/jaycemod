@@ -63,14 +63,16 @@ class CommandLine(unittest.TestCase):
         self.assertLess(self.argv.index("--workdir"), self.argv.index("--cx-app"))
         self.assertLess(self.argv.index("--no-gui"), self.argv.index("--cx-app"))
 
-    def test_avoids_the_steam_workshop_crash(self):
-        # srcds_win64 under CrossOver dies in steamclient64 while it mounts the
-        # Workshop unless the server is insecure and skips the Workshop.
+    def test_runs_secure_with_steam_and_the_workshop(self):
         for flag in ("-insecure", "-noworkshop", "-nosteam"):
-            self.assertIn(flag, self.argv)
+            self.assertNotIn(flag, self.argv)
 
-    def test_logs_the_console_and_keeps_thinking_while_empty(self):
-        self.assertIn("-condebug", self.argv)
+    def test_writes_no_console_log_and_runs_no_sourcetv(self):
+        # the supervisor's pty log (srcds.log) is the console's record
+        self.assertNotIn("-condebug", self.argv)
+        self.assertIn("-nohltv", self.argv)
+
+    def test_keeps_thinking_while_empty(self):
         self.assertEqual(self._convar("sv_hibernate_think"), "1")
 
     def test_sets_the_server_up_as_configured(self):
@@ -78,7 +80,8 @@ class CommandLine(unittest.TestCase):
         self.assertEqual(self._convar("maxplayers"), "24")
         self.assertEqual(self._convar("gamemode"), "sandcastle")
         self.assertEqual(self._convar("rcon_password"), "pw")
-        self.assertEqual(self._convar("sv_lan"), "1")
+        # an internet server, which Steam authenticates and VAC secures; sv_lan 1 is never secure
+        self.assertEqual(self._convar("sv_lan"), "0")
 
     def test_listens_only_on_this_machine(self):
         # Without +ip the RCON socket binds the first interface's address
@@ -104,9 +107,8 @@ class CommandLine(unittest.TestCase):
         self.assertIn("-disableluarefresh", argv[argv.index("--cx-app"):argv.index("+ip")])
         self.assertEqual(argv[:3], ["/Apps/wine", "--bottle", "GModServer"])
 
-    # Steam friends join a -p2p server through Steam's relays, from outside
-    # the LAN, which sv_lan 1 turns away; by default it stays a LAN server.
-    def test_p2p_adds_p2p_and_lets_players_from_outside_the_lan_in(self):
+    # Steam friends join a -p2p server through Steam's relays.
+    def test_p2p_adds_p2p(self):
         self.assertNotIn("-p2p", self.argv)
         argv = command_line(INSTALL, dataclasses.replace(self.config, p2p=True))
         self.assertIn("-p2p", argv[argv.index("--cx-app"):argv.index("+ip")])

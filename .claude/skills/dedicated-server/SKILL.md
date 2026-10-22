@@ -83,7 +83,6 @@ Useful after a map loads:
 | What | Where |
 |------|-------|
 | Everything the console printed, as the supervisor read it | `.devtools/artifacts/srcds.log` |
-| The server's `-condebug` log | `garrysmod/console.log` in the server root (`server_root.py` prints where it is) |
 | The RCON password | `.devtools/artifacts/rcon_password` |
 | The processes `start` launched | `.devtools/artifacts/srcds.pid` |
 
@@ -145,9 +144,10 @@ it.
 ## When it goes wrong
 
 - **`start` times out:** read the end of `srcds.log`. The server needs a
-  terminal for stdin (the supervisor gives it a pty), and it crashes while
-  mounting the Workshop unless it runs `-insecure -noworkshop -nosteam`,
-  which `srcds.py` always passes.
+  terminal for stdin (the supervisor gives it a pty). It runs secure, on
+  Steam, with the Workshop; it once crashed in `steamclient64.dll` mounting
+  the Workshop, which `-insecure -noworkshop -nosteam` avoided: if that is
+  back, those flags are the way round it.
 - **`stop` leaves something running:** report it to the operator. Don't
   widen the kill.
 - **A Wine console window opens (raw ANSI codes):** the server root's

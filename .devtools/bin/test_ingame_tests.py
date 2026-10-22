@@ -8,6 +8,7 @@ from ingame_tests import (
     CHECKS_DIR,
     PLAN,
     CheckLine,
+    ConsoleLog,
     Harness,
     Step,
     LuaError,
@@ -58,6 +59,17 @@ class LuaErrors(unittest.TestCase):
 
     def test_none(self):
         self.assertEqual(lua_errors("all fine\n"), [])
+
+
+class ConsoleLogs(unittest.TestCase):
+    def test_reads_the_supervisors_log_without_its_terminal_codes(self):
+        # srcds.log holds the console as the pty gave it: colored, with \r
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "srcds.log"
+            path.write_bytes(b"old\n\x1b[38;2;255;0;0m[ERROR] lua_run:1: boom\x1b[0m\r\n  1. unknown - lua_run:1\r\n")
+            log = ConsoleLog(path)
+            text = log.read_from(len(b"old\n"))
+            self.assertEqual(lua_errors(text), [LuaError("lua_run:1: boom", ("1. unknown - lua_run:1",), 1)])
 
 
 class Notes(unittest.TestCase):

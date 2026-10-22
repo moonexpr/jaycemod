@@ -19,18 +19,20 @@ C:\Steam\steamapps\common\GarrysMod and ...\Team Fortress 2 are links to
 the Steam bottle's, so the files are shared and only the processes separate.
 The server runs from GarrysModServer beside it, which `start` builds out of
 symlinks (server_root.py): its addons/, data/, cache/ and console log are
-its own, so it writes nothing in the shared install. It runs with -insecure
--noworkshop -nosteam: without them it crashes in steamclient64.dll while it
-mounts the Workshop; the Workshop addons it needs (DrGBase) are mounted from
-the operator's downloads by server_root's autorun instead. Its console must be a terminal: with a pipe or
+its own, so it writes nothing in the shared install. It runs secure (VAC),
+on Steam (sv_lan 0: a LAN server is never secure), with the Workshop, and
+without SourceTV (-nohltv). (It once ran
+-insecure -noworkshop -nosteam, from a crash in steamclient64.dll while it
+mounted the Workshop; the Workshop addons it needs, DrGBase among them, are
+still mounted from the operator's downloads by server_root's autorun.) Its console must be a terminal: with a pipe or
 /dev/null for stdin its main loop blocks in the console's GetLine before the
 first frame, so a detached supervisor (this script's `_supervise`) gives it a
 pty and drains it into .devtools/artifacts/srcds.log. The exe server_root
 places is marked a console program, so Wine hands it that pty instead of
 opening a console window: the log holds the console's ANSI colors, and
 `console` (or `start --console`) follows it in an iTerm window with the
-profile ITERM_PROFILE, a dark one, which suits GMod's truecolor text. -condebug writes
-garrysmod/console.log, which holds what the console printed. +ip binds every
+profile ITERM_PROFILE, a dark one, which suits GMod's truecolor text. No
+-condebug: srcds.log is the console's only record (no garrysmod/console.log). +ip binds every
 interface, DEFAULT_BIND_HOST, so the operator can play from another machine on
 the tailnet and the server logs on to Steam (bound to the tailnet address
 alone, it cannot reach Steam); --ip takes an address or a name (bind_address),
@@ -191,10 +193,6 @@ class Install:
         return cls.on(installed[0] / WINE_RELATIVE, instance)
 
     @property
-    def console_log(self) -> Path:
-        return self.gmod_dir / "console.log"
-
-    @property
     def data_dir(self) -> Path:
         return self.gmod_dir / "data"
 
@@ -209,7 +207,7 @@ class ServerConfig:
     convars: Tuple[Tuple[str, str], ...] = field(default_factory=tuple)
     lua_refresh: bool = True  # False adds -disableluarefresh
     ip: str = LOCALHOST  # the address it binds, game and RCON alike
-    p2p: bool = False  # True adds -p2p and sv_lan 0, so Steam friends can join
+    p2p: bool = False  # True adds -p2p, so Steam friends can join
 
     def __post_init__(self):
         if not MAP_NAME.match(self.map):
@@ -228,7 +226,7 @@ def command_line(install: Install, config: ServerConfig) -> List[str]:
         ("maxplayers", str(config.maxplayers)),
         ("gamemode", config.gamemode),
         ("rcon_password", config.rcon_password),
-        ("sv_lan", "0" if config.p2p else "1"),
+        ("sv_lan", "0"),  # an internet server: Steam authenticates, VAC secures (a LAN one never is)
         ("sv_hibernate_think", "1"),
     ] + list(config.convars)
     argv = [
@@ -236,7 +234,7 @@ def command_line(install: Install, config: ServerConfig) -> List[str]:
         "--workdir", install.gmod_windows,
         "--cx-app", install.gmod_windows + "\\" + SERVER_EXE,
         "-console", "-game", "garrysmod", "-port", str(config.port),
-        "-insecure", "-noworkshop", "-nosteam", "-condebug", "-nohltv",
+        "-nohltv",
     ]
     if not config.lua_refresh:
         argv.append("-disableluarefresh")
@@ -658,7 +656,7 @@ def main() -> int:
                        help="start with -disableluarefresh: edits on disk never reach the running server")
     start.add_argument("--console", action="store_true", help="follow the console in an iTerm window")
     start.add_argument("--p2p", action="store_true",
-                       help="add -p2p and sv_lan 0, so Steam friends can join through Steam's relays")
+                       help="add -p2p, so Steam friends can join through Steam's relays")
     rcon = sub.add_parser("rcon")
     rcon.add_argument("command")
     sub.add_parser("stop")

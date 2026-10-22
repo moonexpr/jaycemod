@@ -8,8 +8,8 @@ write a report.
 It starts the server (srcds.py) on the first map, then for each map: loads
 the Lua runner (ingame/runner.lua) with lua_run, runs the map's checks
 (ingame/checks/<name>.lua) one at a time, reads each one's JSON record from
-garrysmod/data/ws_tests/results/, and scans the map's part of
-garrysmod/console.log for Lua errors. It stops the server, removes what it
+garrysmod/data/ws_tests/results/, and scans the map's part of the
+console (srcds.log, srcds.py's record of it) for Lua errors. It stops the server, removes what it
 put in the GMod install, and writes .devtools/artifacts/ingame-report-<date>.md
 with ingame-<date>/ (the records and each map's console log) beside it.
 
@@ -386,9 +386,14 @@ class AddonIdentity:
         return f"`{self.target}` (files {same} this checkout's addons/sandcastle/gamemodes/sandcastle at {self.commit})"
 
 
+TERMINAL_CODES = re.compile(r"\x1b\[[0-9;?]*[A-Za-z]|\x1b\][^\x07]*\x07")
+
+
 class ConsoleLog:
-    """garrysmod/console.log, read from an offset so earlier sessions'
-    lines are left out (the file is the operator's and is never truncated)."""
+    """The server's console as srcds.py's supervisor records it (srcds.log;
+    the server writes no console.log of its own), read from an offset so
+    earlier lines are left out, its terminal codes removed. A start begins
+    the file again."""
 
     def __init__(self, path: Path):
         self.path = path
@@ -399,7 +404,7 @@ class ConsoleLog:
     def read_from(self, offset: int) -> str:
         with open(self.path, "rb") as f:
             f.seek(offset)
-            return f.read().decode("utf-8", errors="replace")
+            return TERMINAL_CODES.sub("", f.read().decode("utf-8", errors="replace"))
 
 
 # Running ---------------------------------------------------------------------------------
@@ -410,7 +415,7 @@ class Harness:
         self.server = server
         self.data_root = data_root
         self.out_dir = out_dir
-        self.console = ConsoleLog(server.install.console_log)
+        self.console = ConsoleLog(server.files.log)
 
     def boot(self) -> None:
         deadline = time.monotonic() + BOOT_TIMEOUT
@@ -447,6 +452,7 @@ class Harness:
         offset = self.console.size()
         if first:
             self.server.start()
+            offset = 0  # the start began the log again
         else:
             self.server.rcon("lua_run if WS_TESTS then WS_TESTS.KickBots() end")
             self.server.rcon("sv_gameplay_enabled 0")
@@ -549,7 +555,7 @@ def main() -> int:
         f"# In-game test report, {stamp}",
         "",
         f"Run {started:%Y-%m-%d %H:%M} by `.devtools/bin/ingame_tests.py` on GMod's dedicated server "
-        f"(srcds_win64.exe in the CrossOver bottle {srcds.BOTTLE!r}, port {args.port}, -insecure -noworkshop -nosteam).",
+        f"(srcds_win64.exe in the CrossOver bottle {srcds.BOTTLE!r}, port {args.port}).",
         f"Addon tested: {identity.describe()}.",
         f"Records and each map's console log: `{out_dir.relative_to(REPO)}/`.",
     ])
