@@ -177,7 +177,7 @@ local function WalkEdges(id)
 	local area, list = navmesh.GetNavAreaByID(id), {}
 	local center = area:GetCenter()
 	for _, other in ipairs(area:GetAdjacentAreas()) do
-		if Path.Walkable(area:ComputeAdjacentConnectionHeightChange(other), HL2Path.SOLDIER_LIMITS) then
+		if Path.Walkable(area:ComputeAdjacentConnectionHeightChange(other), HL2Path.SOLDIER_LIMITS) and WS.NavLinkCrossable(area, other) then
 			list[#list + 1] = { node = other:GetID(), cost = center:Distance(other:GetCenter()) }
 		end
 	end
@@ -259,6 +259,8 @@ function Controller:PlanLanes(team, to, field, now)
 		npcs:RequestRoute({
 			-- nor through a shut door nothing opens: a lane is kept for long
 			avoid = function(area) return self:UnderCart(area) or npcs:DoorWallIn(area) end,
+			-- nor over a link a soldier cannot cross: a players' map's clip along a rail
+			crossable = WS.NavLinkCrossable,
 			from = start,
 			to = stop,
 			strategy = Lanes.Strategy,
@@ -270,10 +272,12 @@ function Controller:PlanLanes(team, to, field, now)
 				if not self.lanePlans or self.lanePlans[team] ~= plan then return end
 				if not legAreas then return done(nil) end
 				for _, area in ipairs(legAreas) do areas[#areas + 1] = area end
-				for i, v in ipairs(npcs:RouteWaypoints(legAreas, stop, found, start)) do
+				-- each crossing in the middle of its opening (a doorway's centre)
+				for i, v in ipairs(npcs:RouteWaypoints(legAreas, stop, found, start, true)) do
 					if i > 1 or #raw == 0 then raw[#raw + 1] = Point(v) end
 				end
-				if spec.stops[leg + 1] then return Leg(spec, leg + 1, stop, areas, raw, done) end
+				-- a stop out of reach (past a rail): on from as near as the leg came
+				if spec.stops[leg + 1] then return Leg(spec, leg + 1, found and stop or ToVector(raw[#raw]), areas, raw, done) end
 				done(areas, raw)
 			end,
 		})

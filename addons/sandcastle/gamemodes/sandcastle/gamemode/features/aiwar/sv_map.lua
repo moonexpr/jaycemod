@@ -110,17 +110,26 @@ local function PassThrough(a, b)
 end
 
 -- Whether a soldier could walk straight from a to b past the world alone
--- (no NPCs or players: a lane is planned once, for the round).
+-- (no NPCs or players: a lane is planned once, for the round): its body
+-- clears the way (a hull above step height), and floor is under it every
+-- FLOOR_SAMPLE, no farther down than a step (not over a drop, nor round a
+-- ledge's corner).
+local FLOOR_SAMPLE, FLOOR_STEP = 32, 18
+
 local function WorldWalkClear(a, b)
 	local from, to = ToVector(a), ToVector(b)
 	if math.abs(to.z - from.z) > WALK_MAX_RISE then return false end
-	return not util.TraceHull({
-		start = from + WALK_LIFT,
-		endpos = to + WALK_LIFT,
-		mins = WALK_MINS,
-		maxs = WALK_MAXS,
-		mask = Masks().brushes,
-	}).Hit
+	local mask = Masks().brushes
+	if util.TraceHull({ start = from + WALK_LIFT, endpos = to + WALK_LIFT, mins = WALK_MINS, maxs = WALK_MAXS, mask = mask }).Hit then
+		return false
+	end
+	local samples = math.floor(from:Distance(to) / FLOOR_SAMPLE)
+	for i = 1, samples do
+		local p = LerpVector(i / (samples + 1), from, to)
+		local floor = util.TraceLine({ start = p + WALK_LIFT, endpos = p - Vector(0, 0, FLOOR_STEP), mask = mask })
+		if not floor.Hit then return false end
+	end
+	return true
 end
 
 

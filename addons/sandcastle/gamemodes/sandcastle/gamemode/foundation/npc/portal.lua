@@ -52,3 +52,33 @@ function ClosestPointInPortal(from, to, dir, fromPos)
 		edges[NORTH], edges[SOUTH])
 	return x, Limit(fromPos.y, low, high)
 end
+
+-- The middle of the opening from `from` into `to` (in direction dir of it):
+-- its usable span's centre on the shared edge, wherever a path came from.
+-- A lane's waypoints stand there (a doorway's centre), so the many who walk
+-- it keep off the jambs. Returns x, y.
+function MiddleOfPortal(from, to, dir)
+	local x, y = ClosestPointInPortal(from, to, dir, from.lo)
+	local edges = to.edges
+	if dir == NORTH or dir == SOUTH then
+		local low, high = Span(
+			from.lo.x > to.lo.x and from.lo.x or to.lo.x,
+			from.hi.x < to.hi.x and from.hi.x or to.hi.x,
+			edges[WEST], edges[EAST])
+		return (low + high) / 2, y
+	end
+	local low, high = Span(
+		from.lo.y > to.lo.y and from.lo.y or to.lo.y,
+		from.hi.y < to.hi.y and from.hi.y or to.hi.y,
+		edges[NORTH], edges[SOUTH])
+	return x, (low + high) / 2
+end
+
+-- Off a drop the walker steps past the edge and falls: the point `out` past
+-- the crossing (x, y) the way the opening dir faces. Returns x, y.
+local PAST = { [NORTH] = { 0, -1 }, [EAST] = { 1, 0 }, [SOUTH] = { 0, 1 }, [WEST] = { -1, 0 } }
+
+function Past(x, y, dir, out)
+	local d = PAST[dir]
+	return x + d[1] * out, y + d[2] * out
+end

@@ -521,6 +521,15 @@ function WS.DrgSoldier(ENT, baseName)
 		if IsValid(path) then path:Invalidate() end
 	end
 
+	-- DrGBase's cost of each link its path may take (GetPathGenerator, every
+	-- link but a ladder's): none it cannot cross (WS.NavLinkCrossable: a
+	-- players' map's clip along a rail, which the nav mesh links a drop past,
+	-- so it would ram the rail for good).
+	function ENT:OnComputePath(from, to)
+		if not WS.NavLinkCrossable(from, to) then return -1 end
+		return 0
+	end
+
 	-- Its path held up by an obstacle it cannot stand on (a railing, where
 	-- its route drops to the floor beyond, as a player jumps it), it vaults
 	-- it toward its path's next goal (NSVaultPlan). Not again for LEAP_RETRY

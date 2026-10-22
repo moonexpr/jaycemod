@@ -71,4 +71,68 @@ T.test("each pair is found once, among many areas", function()
 	T.eq(#Gaps.Candidates(areas, Flat(areas), Never), 9, "nine seams between ten areas in a row")
 end)
 
+-- A link a walker crosses (a lane over it): the line it walks along,
+-- across the side of the area it leaves that the link is on, where the
+-- other area borders that side (the middle of their overlap: a doorway,
+-- not the wall beside it), from INSIDE within the edge to INSIDE past it,
+-- at height z. Sides as GMod numbers them: 0 north (-y), 1 east (+x), 2
+-- south (+y), 3 west (-x).
+local function Pt(x, y, z) return { x = x, y = y, z = z or 0 } end
+
+T.test("a crossing runs across the link's side, at the middle of where the other area borders it", function()
+	-- a 200-wide room; a doorway area only 50 wide on its north side
+	local start, finish = Gaps.CrossingLine(Pt(-750, -2125), Pt(-550, -1925), 2, Pt(-750, -1925), Pt(-700, -1800), -196)
+	T.eq(start.x, -725, "the doorway's middle, not the room's")
+	T.eq(finish.x, -725, "straight across")
+	T.eq(start.y, -1925 - Gaps.DEEP, "DEEP inside the room, past a rail a lip in from its edge")
+	T.eq(finish.y, -1925 + Gaps.INSIDE, "past its edge")
+	T.eq(start.z, -196, "at the height given")
+end)
+
+T.test("each side crosses its own way", function()
+	local lo, hi, other = Pt(0, 0), Pt(50, 50), { Pt(-100, -100), Pt(150, 150) }
+	local s0, f0 = Gaps.CrossingLine(lo, hi, 0, other[1], other[2], 0)
+	T.eq(s0.y, 25, "north: from inside, no farther in than the centre")
+	T.eq(f0.y, -Gaps.INSIDE, "north: out the low y")
+	local s1, f1 = Gaps.CrossingLine(lo, hi, 1, other[1], other[2], 0)
+	T.eq(f1.x, 50 + Gaps.INSIDE, "east: out the high x")
+	T.eq(s1.y, 25, "the middle of the overlap")
+	local _, f3 = Gaps.CrossingLine(lo, hi, 3, other[1], other[2], 0)
+	T.eq(f3.x, -Gaps.INSIDE, "west: out the low x")
+end)
+
+T.test("an area bordering the side nowhere is crossed nearest it", function()
+	local start = Gaps.CrossingLine(Pt(0, 0), Pt(50, 50), 1, Pt(60, 80), Pt(100, 120), 0)
+	T.eq(start.y, 50, "the side's end nearest the other area")
+end)
+
+-- A link down more than a step is a drop off the edge: it crosses only
+-- where the floor past the edge falls away (else the floor goes on at the
+-- upper level, and the way down is over a rail).
+T.test("a drop crosses where the floor past the edge falls away", function()
+	T.eq(Gaps.FallsAway(160, -32, -32), true, "the floor below")
+	T.eq(Gaps.FallsAway(160, -32, 160), false, "walkway past the edge: no way down there")
+	T.eq(Gaps.FallsAway(160, 160 - Gaps.STEP_HEIGHT, 150), true, "no drop at all: a step")
+	T.eq(Gaps.FallsAway(160, -32, nil), true, "nothing under it: the walker falls")
+end)
+
+-- The side a link leaves by, from where the other area lies: GMod files
+-- some links on no side.
+T.test("the side toward an area is the way it mostly lies", function()
+	T.eq(Gaps.SideToward(Pt(0, 0), Pt(100, 20)), 1, "east")
+	T.eq(Gaps.SideToward(Pt(0, 0), Pt(-100, 20)), 3, "west")
+	T.eq(Gaps.SideToward(Pt(0, 0), Pt(20, 100)), 2, "south (+y)")
+	T.eq(Gaps.SideToward(Pt(0, 0), Pt(20, -100)), 0, "north (-y)")
+end)
+
+-- An area the generator laid over a rail (a player clip it did not see)
+-- and the lip beyond: the line starts DEEP inside, so the rail between the
+-- walkway and the edge is crossed.
+T.test("a crossing starts DEEP inside a wide area, at most its centre", function()
+	local start = Gaps.CrossingLine(Pt(0, 0), Pt(400, 400), 1, Pt(400, 0), Pt(800, 400), 0)
+	T.eq(start.x, 400 - Gaps.DEEP, "DEEP in")
+	local narrow = Gaps.CrossingLine(Pt(0, 0), Pt(20, 400), 1, Pt(20, 0), Pt(800, 400), 0)
+	T.eq(narrow.x, 10, "a narrow area: its centre")
+end)
+
 T.finish()

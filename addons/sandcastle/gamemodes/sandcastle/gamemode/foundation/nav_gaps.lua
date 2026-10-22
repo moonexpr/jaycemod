@@ -19,6 +19,10 @@ GAP_MAX = 50 -- two of the generator's 25-unit steps
 OVERLAP_MIN = 24 -- room for a walker to pass
 STEP_HEIGHT = 18
 INSIDE = 8
+-- A crossing starts this far inside the area it leaves (at most its
+-- centre): the generator lays an area over a rail it does not see (a player
+-- clip) and the lip beyond, so the rail stands a little in from its edge.
+DEEP = 64
 -- Areas are bucketed in cells this wide, so only neighbours are compared.
 CELL = 256
 
@@ -70,4 +74,54 @@ function Candidates(areas, zAt, linked)
 		end
 	end
 	return found
+end
+
+-- A link a walker crosses (a lane over it, ws/sv_nav.lua's
+-- NavLinkCrossable): the line it walks along across the side of the area
+-- it leaves (lo, hi: its extent) that the link is on (0 north, -y; 1 east,
+-- +x; 2 south, +y; 3 west, -x: GMod's sides), where the area it enters
+-- (otherLo, otherHi) borders that side, at the middle of their overlap (a
+-- doorway, not the wall beside it; nowhere, the side's end nearest it),
+-- from DEEP within the edge (at most the area's centre) to INSIDE past it,
+-- at height z. Returns start, finish.
+local SIDES = {
+	[0] = { axis = "y", other = "x", sign = -1 },
+	[1] = { axis = "x", other = "y", sign = 1 },
+	[2] = { axis = "y", other = "x", sign = 1 },
+	[3] = { axis = "x", other = "y", sign = -1 },
+}
+
+-- The side of an area (centred at from) the way to `to` mostly lies, for
+-- a link GMod files on no side.
+function SideToward(from, to)
+	local dx, dy = to.x - from.x, to.y - from.y
+	if abs(dx) > abs(dy) then return dx > 0 and 1 or 3 end
+	return dy > 0 and 2 or 0
+end
+
+function CrossingLine(lo, hi, side, otherLo, otherHi, z)
+	local s = SIDES[side]
+	local a, b = max(lo[s.other], otherLo[s.other]), min(hi[s.other], otherHi[s.other])
+	local along
+	if a <= b then
+		along = (a + b) / 2
+	else
+		along = otherHi[s.other] < lo[s.other] and lo[s.other] or hi[s.other]
+	end
+	local edge = s.sign > 0 and hi[s.axis] or lo[s.axis]
+	local start, finish = { z = z }, { z = z }
+	start[s.other], finish[s.other] = along, along
+	local depth = min(DEEP, (hi[s.axis] - lo[s.axis]) / 2)
+	start[s.axis], finish[s.axis] = edge - s.sign * depth, edge + s.sign * INSIDE
+	return start, finish
+end
+
+-- A link from a floor at fromZ down to one at toZ, more than STEP_HEIGHT
+-- below, is a drop off the edge: it crosses only where the floor past the
+-- edge (floorZ, nil for none: the walker falls) falls away more than a
+-- step; else the floor goes on at the upper level, and the way down is
+-- over a rail. A link no more than a step down crosses as it is.
+function FallsAway(fromZ, toZ, floorZ)
+	if fromZ - toZ <= STEP_HEIGHT then return true end
+	return floorZ == nil or fromZ - floorZ > STEP_HEIGHT
 end

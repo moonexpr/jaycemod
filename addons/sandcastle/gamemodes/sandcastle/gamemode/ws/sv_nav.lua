@@ -92,8 +92,54 @@ local function Crosses(from, to, mask)
 	return below.Hit and not below.StartSolid
 end
 
+-- Whether a walker crosses the link from area a into area b (a lane over
+-- it): its line (foundation.nav_gaps' CrossingLine) clear at a step's,
+-- a waist's and a chest's height under the clip masks' brushes (the map
+-- alone, not who stands there), so a players' map's clip along a rail (a
+-- bullet passes it, a player does not) refuses the drop past it the nav
+-- mesh links. Kept for the mesh (cleared as the gaps are bridged anew:
+-- after it loads and is generated).
+local CROSS_HEIGHTS = { NavGaps.STEP_HEIGHT + 2, 36, 60 }
+-- How far down a drop's floor is looked for.
+local FLOOR_DEPTH = 1000
+local crossable = {}
+
+function WS.NavLinkCrossable(a, b)
+	local key = a:GetID() .. ":" .. b:GetID()
+	local known = crossable[key]
+	if known ~= nil then return known end
+	-- across the side the link leaves by (filed on none: the side toward b),
+	-- where b borders it
+	local center = a:GetCenter()
+	local side = NavGaps.SideToward(Point(center), Point(b:GetCenter()))
+	for dir = 0, 3 do
+		if table.HasValue(a:GetAdjacentAreasAtSide(dir), b) then side = dir break end
+	end
+	local clear = true
+	do
+		local extent, other = a:GetExtentInfo(), b:GetExtentInfo()
+		local z = math.max(center.z, b:GetCenter().z)
+		local start, finish = NavGaps.CrossingLine(Point(extent.lo), Point(extent.hi), side, Point(other.lo), Point(other.hi), z)
+		local mask = WS.ClipMasks().brushes
+		for _, h in ipairs(CROSS_HEIGHTS) do
+			local up = Vector(0, 0, h)
+			if util.TraceLine({ start = V(start) + up, endpos = V(finish) + up, mask = mask }).Hit then
+				clear = false
+				break
+			end
+		end
+		if clear then
+			local floor = util.TraceLine({ start = V(finish) + STEP, endpos = V(finish) - Vector(0, 0, FLOOR_DEPTH), mask = mask })
+			clear = NavGaps.FallsAway(center.z, b:GetCenter().z, floor.Hit and floor.HitPos.z or nil)
+		end
+	end
+	crossable[key] = clear
+	return clear
+end
+
 function WS.BridgeNavGaps()
 	timer.Remove(GAP_TIMER)
+	crossable = {}
 	if not WS.NavMeshUsable() then return end
 	local byId, areas = {}, {}
 	for i, area in ipairs(navmesh.GetAllNavAreas()) do

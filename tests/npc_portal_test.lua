@@ -44,4 +44,38 @@ T.test("east, south and west crossings use the matching edge and axis", function
 	T.eq(x .. "," .. y, "0,70", "west edge")
 end)
 
+-- A lane's waypoints stand in the middle of each opening (a doorway's
+-- centre), wherever the path came from: lanes are walked by many, and a
+-- point at a jamb puts them between walls.
+T.test("the middle of an opening is its usable span's centre on the shared edge", function()
+	local to = Rect(50, -200, 150, 0)
+	local x, y = Portal.MiddleOfPortal(FROM, to, N)
+	T.eq(x, 100, "the doorway's centre")
+	T.eq(y, 0, "on the north edge")
+	local east = Rect(200, 120, 400, 180)
+	x, y = Portal.MiddleOfPortal(FROM, east, E)
+	T.eq(x, 200, "on the east edge")
+	T.eq(y, 150, "the opening's centre")
+end)
+
+T.test("the middle keeps off a jamb with a wall beyond it", function()
+	local to = Rect(50, -200, 150, 0, { [W] = true })
+	T.eq((Portal.MiddleOfPortal(FROM, to, N)), (50 + Portal.MARGIN + 150) / 2, "between the margin and the open end")
+end)
+
+-- Off a drop the walker steps past the edge and falls: its landing is `out`
+-- past the crossing, the way the opening faces.
+T.test("a drop lands out past the crossing, the way the opening faces", function()
+	local x, y = Portal.Past(100, 0, N, 24)
+	T.eq(x, 100, "north: straight out")
+	T.eq(y, -24, "north is -y")
+	x, y = Portal.Past(200, 150, E, 24)
+	T.eq(x, 224, "east is +x")
+	T.eq(y, 150, "straight out")
+	x = Portal.Past(0, 150, W, 24)
+	T.eq(x, -24, "west is -x")
+	local _, ys = Portal.Past(100, 200, S, 24)
+	T.eq(ys, 224, "south is +y")
+end)
+
 T.finish()

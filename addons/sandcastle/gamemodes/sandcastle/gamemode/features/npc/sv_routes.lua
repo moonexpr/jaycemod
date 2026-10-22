@@ -6,6 +6,7 @@ local Pathfinder = WS.require("foundation.core.pathfinder")
 local AStar = WS.require("foundation.pathfinder.astar")
 local Portal = WS.require("foundation.npc.portal")
 local Doors = WS.require("foundation.npc.doors")
+local Path = WS.require("foundation.npc.path")
 
 local NOBODY = WS.TEAM_UNASSIGNED
 
@@ -34,7 +35,9 @@ end
 
 -- The cost callback Path:Compute takes (IPathCost), for a NextBot. bot is
 -- the strategy's bot table; its `now` is kept current. Areas a door or a
--- brush closes to the bot's team are not traversable. While a path profile
+-- brush closes to the bot's team are not traversable, nor links its body
+-- cannot cross (WS.NavLinkCrossable: a players' map's clip along a rail,
+-- which the nav mesh links a drop past). While a path profile
 -- measures a compute, or the nbdebug feature watches it, ent.pathProbe
 -- counts the calls and their time, and its recorder (if any) each cost.
 function Controller:EnginePathCost(ent, strategy, limits, bot)
@@ -45,6 +48,7 @@ function Controller:EnginePathCost(ent, strategy, limits, bot)
 		return ent.loco:IsAreaTraversable(area) and not Doors.Blocks(self.navBlocked[area:GetID()], team)
 	end
 	local function Cost(area, fromArea, ladder, elevator, length)
+		if IsValid(fromArea) and not WS.NavLinkCrossable(fromArea, area) then return Path.IMPASSABLE end
 		self:FillStep(step, area, fromArea, ladder, length, IsValid(fromArea) and fromArea:GetCostSoFar() or 0, Traversable)
 		bot.now = CurTime()
 		return strategy.Cost(step, limits, bot)
@@ -101,6 +105,7 @@ function NavGraph:Neighbors(id)
 end
 
 function NavGraph:Cost(fromId, toId, costSoFar)
+	if self.crossable and not self.crossable(Area(fromId), Area(toId)) then return Path.IMPASSABLE end
 	self.controller:FillStep(self.step, Area(toId), Area(fromId), nil, Center(toId):Distance(Center(fromId)), costSoFar, self.traversable)
 	self.bot.now = CurTime()
 	return self.strategy.Cost(self.step, self.limits, self.bot)
@@ -112,7 +117,8 @@ end
 
 -- request = { from, to (positions), strategy, limits, bot (the strategy's,
 -- with team), avoid(area) -> bool (optional: areas to route around, as
--- if blocked; the goal's area is never avoided), ignoreBlockers (optional:
+-- if blocked; the goal's area is never avoided), crossable(fromArea,
+-- area) -> bool (optional: links to route around), ignoreBlockers (optional:
 -- route through doors shut to the team and solid brushes), onDone(route, found) } where route is the list of nav areas
 -- from the start's to the goal's (found), or to the one that came closest
 -- when the goal is out of reach, and nil when either end is off the mesh.
@@ -149,6 +155,7 @@ function Controller:RequestRoute(request)
 		limits = request.limits,
 		bot = request.bot,
 		goalPos = request.to,
+		crossable = request.crossable,
 		traversable = function(area)
 			if avoid and area:GetID() ~= goalId and avoid(area) then return false end
 			if not ignoreBlockers and Doors.Blocks(self.navBlocked[area:GetID()], team) then return false end
@@ -202,24 +209,49 @@ local function SideOf(from, to)
 	return nil
 end
 
-local function Crossing(from, to, pos)
+local function Crossing(from, to, pos, middle)
 	local dir = SideOf(from, to)
 	if not dir then return to:GetClosestPointOnArea(from:GetCenter()) end
 	local toRect = Rect(to)
 	for side = Portal.NORTH, Portal.WEST do toRect.edges[side] = to:GetAdjacentCountAtSide(side) == 0 end
-	local x, y = Portal.ClosestPointInPortal(Rect(from), toRect, dir, pos)
+	local x, y
+	if middle then x, y = Portal.MiddleOfPortal(Rect(from), toRect, dir) else x, y = Portal.ClosestPointInPortal(Rect(from), toRect, dir, pos) end
 	local crossing = Vector(x, y, 0)
 	-- walk out of `from` at a height it can reach
 	crossing.z = from:GetZ(crossing)
-	return crossing
+	return crossing, dir
 end
 
-function Controller:RouteWaypoints(areas, goal, found, start)
+-- A drop (into an area more than a step below): the walker steps LANDING_OUT
+-- past the edge and lands on the floor under that, maybe in the open beside
+-- a room the lower area reaches into under the upper floor.
+local DROP_STEP, LANDING_OUT, LANDING_DEPTH = 18, 24, 1000
+
+local function Landing(crossing, dir)
+	local x, y = Portal.Past(crossing.x, crossing.y, dir, LANDING_OUT)
+	local above = Vector(x, y, crossing.z + DROP_STEP)
+	local floor = util.TraceLine({ start = above, endpos = above - Vector(0, 0, LANDING_DEPTH), mask = WS.ClipMasks().brushes })
+	return floor.Hit and floor.HitPos or nil
+end
+
+-- The points along a route: each crossing into the next area, then the
+-- goal (or the nearest the route came). For a lane (middles): each crossing
+-- in the middle of its opening, and after each drop its landing, so a
+-- lane's line goes out over the edge and down, not through the floor.
+function Controller:RouteWaypoints(areas, goal, found, start, middles)
 	local points = {}
 	local pos = start or areas[1]:GetCenter()
 	for i = 2, #areas do
-		pos = Crossing(areas[i - 1], areas[i], pos)
+		local dir
+		pos, dir = Crossing(areas[i - 1], areas[i], pos, middles)
 		points[#points + 1] = pos
+		if middles and dir and areas[i]:GetCenter().z < pos.z - DROP_STEP then
+			local landing = Landing(pos, dir)
+			if landing then
+				points[#points + 1] = landing
+				pos = landing
+			end
+		end
 	end
 	points[#points + 1] = found and goal or areas[#areas]:GetClosestPointOnArea(goal)
 	return points
