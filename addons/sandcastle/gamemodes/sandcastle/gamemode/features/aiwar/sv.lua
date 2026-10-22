@@ -52,6 +52,8 @@ local Controller = {
 	-- nextWatch = nil, -- when the observer next watches the soldiers (Think)
 	-- nextDebug = nil, -- when the debug overlay is next sent (SendDebug)
 	-- tuner = nil, -- the tactics tuner of ns_tactics_*, made when first used
+	-- probes = nil, -- path probes walking the lanes, with their findings (ProbeLanes)
+	-- probeReport = nil, -- the last probe run's report, as lines (StepProbes)
 }
 
 function Controller:Active()
@@ -84,6 +86,7 @@ Part("sv_speech", Controller)
 Part("sv_obstacles", Controller, Map)
 local WATCH_INTERVAL = Part("sv_posts", Controller, Map)
 Part("sv_lanes", Controller, Map)
+Part("sv_probe", Controller, Map)
 Part("sv_field", Controller, Map, WATCH_INTERVAL)
 Part("sv_slots", Controller, Map)
 Part("sv_war", Controller, Map)

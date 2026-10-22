@@ -130,6 +130,7 @@ local CATEGORY = {
 	["npc/path/tfbot"] = "ns",
 	["npc/doors"] = "ns",
 	["npc/portal"] = "ns",
+	["npc/probe"] = "ns",
 	["npc/brushes"] = "ns",
 	["npc/clip"] = "ns",
 	["nav_gaps"] = "ns",

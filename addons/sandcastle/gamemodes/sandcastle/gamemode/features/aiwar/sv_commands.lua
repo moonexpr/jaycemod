@@ -60,6 +60,10 @@ WarCommand("ns_lanes_print", function()
 	return Controller:LaneReport()
 end, "Print each team's lanes: length against the shortest, overlap, and the squads holding them")
 
+WarCommand("ns_lanes_probe", function()
+	return Controller:ProbeLanes()
+end, "Send a path probe (a soldier's movement, no fighting) along each lane; prints where each stalled when the last is done")
+
 WarCommand("ns_lanes_replan", function()
 	Controller:ReplanLanes()
 	return { "ns_lanes_replan: every team's lanes are planned again at the next think" }
