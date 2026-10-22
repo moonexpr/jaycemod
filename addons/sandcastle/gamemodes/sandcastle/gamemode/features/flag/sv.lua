@@ -187,6 +187,8 @@ local function Apply(self, ent, events, activator)
 			GoHome(ent)
 		end
 		FireOutputs(ent, e, activator)
+		-- the carrier, as the capture is made (player analytics, ws/sv_player_analytics.lua)
+		if e.kind == Flag.CAPTURE then hook.Run("WSFlagCaptured", ent, e.team, activator) end
 		if mode.FLAG_CAPS_SCORE then
 			for _, line in ipairs(Flag.Lines(e)) do WS.BroadcastSound(line.team, line.sound) end
 			if e.kind == Flag.CAPTURE then Score(self, e.team) end
