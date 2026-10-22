@@ -59,9 +59,11 @@ when that's taken. Never stop or change the map of another agent's instance.
 can join from another machine on the tailnet and the server can log on to
 Steam, which it cannot when bound to the tailnet address alone; `--ip 127.0.0.1` keeps it to
 this Mac, which a client in the other bottle cannot reach) and
-`--no-lua-refresh` (adds `-disableluarefresh`), `--p2p` (adds `-p2p` and
-`sv_lan 0`, so Steam friends can join with `connect p2p:<steamid64>`, the
-`address` `status` shows; an anonymous login's Steam ID changes each start)
+`--no-lua-refresh` (adds `-disableluarefresh`), `--no-p2p` (leaves out
+`-p2p`: by default the server is public, anyone can join with
+`connect p2p:<steamid64>`, the `address` `status` shows, through Steam's
+relays with no port forwarded; the main server's ID is its game server
+token's and stays, an anonymous login's changes each start)
 and `--console` (opens the
 iTerm window, profile "Dark", that `console` opens). It first builds the
 server's own GMod root (`server_root.py`). The server runs the gamemode

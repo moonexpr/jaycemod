@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 r"""Run Garry's Mod's dedicated server under CrossOver and drive it with RCON.
 
-  srcds.py start [--map gm_construct] [--port 27025] [--maxplayers 32] [--ip 0.0.0.0] [--no-lua-refresh] [--p2p]
+  srcds.py start [--map gm_construct] [--port 27025] [--maxplayers 32] [--ip 0.0.0.0] [--no-lua-refresh] [--no-p2p]
                                                        start, wait for the map
   srcds.py rcon 'status'                               run a console command
   srcds.py stop                                        quit the server we started
@@ -212,7 +212,7 @@ class ServerConfig:
     convars: Tuple[Tuple[str, str], ...] = field(default_factory=tuple)
     lua_refresh: bool = True  # False adds -disableluarefresh
     ip: str = LOCALHOST  # the address it binds, game and RCON alike
-    p2p: bool = False  # True adds -p2p, so Steam friends can join
+    p2p: bool = True  # -p2p: public, anyone joins through Steam's relays (connect p2p:<steamid64>)
     steam_account: str = ""  # a game server login token; empty logs on anonymously
 
     def __post_init__(self):
@@ -646,7 +646,7 @@ def rcon_command(instance: Instance, text: str, timeout: float = 10) -> str:
 
 
 def make_server(map_name: str, port: int, lua_refresh: bool = True, maxplayers: int = DEFAULT_MAXPLAYERS,
-                ip: Optional[str] = None, instance: Instance = MAIN, p2p: bool = False) -> Server:
+                ip: Optional[str] = None, instance: Instance = MAIN, p2p: bool = True) -> Server:
     """ip: the address to bind; by default the running server's (rcon, stop), else 127.0.0.1."""
     install = Install.discover(instance)
     ip = ip or started_host(instance)
@@ -672,8 +672,8 @@ def main() -> int:
     start.add_argument("--no-lua-refresh", dest="lua_refresh", action="store_false",
                        help="start with -disableluarefresh: edits on disk never reach the running server")
     start.add_argument("--console", action="store_true", help="follow the console in an iTerm window")
-    start.add_argument("--p2p", action="store_true",
-                       help="add -p2p, so Steam friends can join through Steam's relays")
+    start.add_argument("--no-p2p", dest="p2p", action="store_false",
+                       help="leave out -p2p: no joining through Steam's relays, only at the address")
     rcon = sub.add_parser("rcon")
     rcon.add_argument("command")
     sub.add_parser("stop")
