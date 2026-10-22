@@ -1,12 +1,12 @@
 -- Part of the AI war controller (sv.lua): lanes, each team's ways from its spawn (foundation.aiwar.lanes).
 local Controller, Map = ...
 local Teams = WS.require("foundation.teams")
-local Geometry = WS.require("foundation.core.math.geometry")
+local Geometry = WS.require("foundation.math.geometry")
 local TFBot = WS.require("foundation.npc.path.tfbot")
 local HL2Path = WS.require("foundation.npc.path.hl2")
 local Path = WS.require("foundation.npc.path")
 local Lanes = WS.require("foundation.aiwar.lanes")
-local Graph = WS.require("foundation.core.graph")
+local Graph = WS.require("foundation.graph.search")
 local RED, BLUE = Map.RED, Map.BLUE
 local Point, ToVector, SpawnSpots, WorldWalkClear = Map.Point, Map.ToVector, Map.SpawnSpots, Map.WorldWalkClear
 

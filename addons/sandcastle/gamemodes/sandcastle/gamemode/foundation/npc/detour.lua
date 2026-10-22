@@ -3,7 +3,7 @@
 -- to the way, far enough out for the walker to pass. The AI war's soldiers
 -- walk to one when stuck against it (foundation.aiwar.orders' Unstick,
 -- through the soldier port's Detour).
-local Geometry = require("foundation.core.math.geometry")
+local Geometry = require("foundation.math.geometry")
 module(...)
 
 MARGIN = 8 -- room past the blocker and the walker's own width

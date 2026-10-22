@@ -9,7 +9,7 @@
 -- the nav mesh), sv_routes (path costs, the nav graph, route searches and
 -- waypoints) and sv_profile (path profiling, watching and the bench).
 local NpcSystem = WS.require("foundation.npc")
-local Scheduler = WS.require("foundation.core.scheduler")
+local Scheduler = WS.require("foundation.list.schedule")
 local Spawner = WS.require("features.npc.spawner")
 
 local NAV_MESSAGE = "ws_nextbot: %s has no usable navigation mesh; run mp_nav_generate (or .devtools/bin/nav_convert.py for TF2's own)"

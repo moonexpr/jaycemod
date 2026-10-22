@@ -4,7 +4,7 @@
 local T = dofile("tests/harness.lua")
 local AiWar = T.require("foundation.aiwar")
 local Squad = T.require("foundation.aiwar.squad")
-local Track = T.require("foundation.core.structs.polyline")
+local Track = T.require("foundation.math.polyline")
 local Teams = T.require("foundation.teams")
 local STATE = T.require("foundation.rounds.state")
 

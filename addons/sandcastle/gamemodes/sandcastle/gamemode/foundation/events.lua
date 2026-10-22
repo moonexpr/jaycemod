@@ -20,9 +20,9 @@
 -- "kind: message". A client's request the server will not take (unknown,
 -- not client-sendable, over its rate) is refused instead: ReadRequest
 -- returns nil and the refusal, since a client's mistake is not ours.
-local Buffer = require("foundation.core.buffer")
-local Sets = require("foundation.core.structs.sets")
-local Transaction = require("foundation.core.transaction")
+local Buffer = require("foundation.file.buffer")
+local Sets = require("foundation.map.sets")
+local Transaction = require("foundation.transaction")
 local error, format, getmetatable, ipairs, pairs, pcall, setmetatable, sort, tostring, type =
 	error, string.format, getmetatable, ipairs, pairs, pcall, setmetatable, table.sort, tostring, type
 local match = string.match
@@ -71,7 +71,7 @@ local OPTIONS = Sets.Named("event option", {
 	"transaction",
 })
 
--- A transaction request (option transaction, foundation.core.transaction)
+-- A transaction request (option transaction, foundation.transaction)
 -- carries its requester's transaction id in this field, added at Define.
 TRANSACTION_FIELD = "transaction_id"
 

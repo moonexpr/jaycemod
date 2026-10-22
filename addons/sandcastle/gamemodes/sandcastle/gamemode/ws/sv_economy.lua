@@ -3,9 +3,9 @@
 -- $2,000 and closed when its entity goes. Balances reach clients as the NW2
 -- int ws_money (the scoreboard's Money column). Everything else earns
 -- and spends through WS.EarnMoney and WS.SpendMoney, which raise a
--- refusal (Economy.INSUFFICIENT_FUNDS, foundation.core.transaction) rather than overdraw.
+-- refusal (Economy.INSUFFICIENT_FUNDS, foundation.transaction) rather than overdraw.
 local Economy = WS.require("foundation.economy")
-local Transaction = WS.require("foundation.core.transaction")
+local Transaction = WS.require("foundation.transaction")
 
 local ledger = Economy.New()
 

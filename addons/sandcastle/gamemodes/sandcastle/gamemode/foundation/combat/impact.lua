@@ -4,7 +4,7 @@
 -- its speed into the surface, dealt by whoever threw it. Floors are left to
 -- fall damage. Nobody is hurt by throwing themselves or a teammate. The
 -- controller (ws/sv_hits.lua) watches the thrown and traces what they hit.
-local Geometry = require("foundation.core.math.geometry")
+local Geometry = require("foundation.math.geometry")
 local math = math
 module(...)
 

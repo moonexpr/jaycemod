@@ -28,7 +28,7 @@ local error, ipairs, require, setmetatable = error, ipairs, require, setmetatabl
 local AiWar = require("foundation.aiwar")
 local Explore = require("foundation.aiwar.explore")
 local Teams = require("foundation.teams")
-local Class = require("foundation.core.meta.class")
+local Class = require("foundation.core.class")
 module(...)
 
 ALLOCATION_HOLD = 3 -- docs/aiwar-command.md §2.2

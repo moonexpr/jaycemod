@@ -14,7 +14,7 @@ local ipairs = ipairs
 local Rounds = require("foundation.rounds")
 local Teams = require("foundation.teams")
 local Players = require("foundation.players")
-local Geometry = require("foundation.core.math.geometry")
+local Geometry = require("foundation.math.geometry")
 module(...)
 
 local C = Players.COND

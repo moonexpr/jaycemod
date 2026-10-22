@@ -8,8 +8,8 @@
 --
 -- A book is plain data keyed by whatever the controller gives (players), so
 -- a rerun of this module changes the behaviour of the live book too.
-local Transaction = require("foundation.core.transaction")
-local Sets = require("foundation.core.structs.sets")
+local Transaction = require("foundation.transaction")
+local Sets = require("foundation.map.sets")
 local min, pairs = math.min, pairs
 module(...)
 

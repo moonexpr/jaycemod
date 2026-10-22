@@ -8,7 +8,7 @@
 --   Fire(name, fields, recipients)  server: its listeners, then the clients
 --   Request(name, fields)           client: a client-sendable event to the server
 --   Transact(name, fields) -> tx    client: a transaction request (option
---                                   transaction); tx (foundation.core.transaction)
+--                                   transaction); tx (foundation.transaction)
 --                                   settles from the server's reply, or
 --                                   declines as timed out
 --   Serve(name, id, kinds, handler) server: handler(work, fields, ply) runs as
@@ -18,7 +18,7 @@
 --                                   mistake; a decline of any other kind is
 --                                   our bug, logged and answered as failed
 --
--- WS.Transactions is each realm's scheduler (foundation.core.scheduler) for
+-- WS.Transactions is each realm's scheduler (foundation.list.schedule) for
 -- transactions and other work spread over ticks, run TRANSACTION_SECONDS a
 -- tick. A transaction's reply, system_transaction_settled, belongs to this library,
 -- not to the game's events: like the recovery events it changes with the
@@ -29,8 +29,8 @@
 -- Default(type, value)). Included by sh_core.lua, before anything that
 -- defines an event.
 local Events = WS.require("foundation.events")
-local Scheduler = WS.require("foundation.core.scheduler")
-local Transaction = WS.require("foundation.core.transaction")
+local Scheduler = WS.require("foundation.list.schedule")
+local Transaction = WS.require("foundation.transaction")
 
 local FIRE_NET = "ws_game_event_fire" -- server to clients
 local REQUEST_NET = "ws_game_event_request" -- client to server

@@ -37,7 +37,7 @@ local P = WSProfile
 local SysTime, coroutine_running, pairs, type = SysTime, coroutine.running, pairs, type
 local MODULE_PREFIXES = { "^foundation%.", "^features%." }
 -- Never wrap the profiler's own clock and bookkeeping paths.
-local SKIP_MODULES = { ["foundation.core.analytics"] = true }
+local SKIP_MODULES = { ["foundation.analysis.analytics"] = true }
 
 local stats, stacks, restore
 local topSeconds = 0

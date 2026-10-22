@@ -8,7 +8,7 @@ local AiWar = T.require("foundation.aiwar")
 local Scenario = T.require("foundation.aiwar.scenario")
 local Mvm = T.require("foundation.aiwar.scenario.mvm")
 local Teams = T.require("foundation.teams")
-local Geometry = T.require("foundation.core.math.geometry")
+local Geometry = T.require("foundation.math.geometry")
 
 local RED, BLUE = Teams.RED, Teams.BLUE
 local Distance = Geometry.Distance

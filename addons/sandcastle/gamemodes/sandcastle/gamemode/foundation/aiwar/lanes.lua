@@ -21,8 +21,8 @@ local huge, min, sqrt = math.huge, math.min, math.sqrt
 local sort = table.sort
 local HL2Path = require("foundation.npc.path.hl2")
 local Path = require("foundation.npc.path")
-local Distance = require("foundation.core.math.geometry").Distance
-local Graph = require("foundation.core.graph")
+local Distance = require("foundation.math.geometry").Distance
+local Graph = require("foundation.graph.search")
 module(...)
 
 LANE_PENALTY = 8
@@ -132,7 +132,7 @@ end
 -- direct lane's way and out of each other's, judged by walking, not by
 -- where they lie: the controller routes the direct lane first, then
 -- measures each place's separation, the shortest walk to it from that
--- lane's band (foundation.core.graph's Distances), and the walk between two
+-- lane's band (foundation.graph.search's Distances), and the walk between two
 -- places. Of the ground FLANK_MIN to FLANK_MAX from the objective (flat),
 -- the flanks are the place farthest from the band and the place both far
 -- from the band and far from it (Siblings): a hill path that climbs away

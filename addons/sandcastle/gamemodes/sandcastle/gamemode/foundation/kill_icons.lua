@@ -7,7 +7,7 @@
 -- class): its own, else its alias's (HL2), else TF2's skull; but a boss's
 -- kill shows the boss, whatever it struck with.
 -- ws/cl_kill_feed.lua draws them.
-local Keyvalues = require("foundation.core.parsers.keyvalues")
+local Keyvalues = require("foundation.encoding.keyvalues")
 local lower, pairs, select, tonumber = string.lower, pairs, select, tonumber
 module(...)
 

@@ -9,7 +9,7 @@
 local Economy = WS.require("foundation.economy")
 local Loadout = WS.require("foundation.loadout")
 local Balance = WS.require("foundation.combat.weapon_balance")
-local Sets = WS.require("foundation.core.structs.sets")
+local Sets = WS.require("foundation.map.sets")
 local E = WS.Events
 
 local CATALOG = WS.LoadoutCatalog

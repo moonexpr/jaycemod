@@ -21,7 +21,7 @@
 local Vote = WS.require("foundation.vote")
 local Rounds = WS.require("foundation.rounds")
 local Permissions = WS.require("foundation.permissions")
-local Transaction = WS.require("foundation.core.transaction")
+local Transaction = WS.require("foundation.transaction")
 local E = WS.Events
 
 local TIMER = "ws_vote"

@@ -10,9 +10,9 @@
 -- 0-based; here nodes are a 1-based list.
 local concat, sort, sqrt = table.concat, table.sort, math.sqrt
 local ipairs, pairs = ipairs, pairs
-local Buffer = require("foundation.core.buffer")
-local Graph = require("foundation.core.graph")
-local Grid = require("foundation.core.structs.grid")
+local Buffer = require("foundation.file.buffer")
+local Graph = require("foundation.graph.search")
+local Grid = require("foundation.map.grid")
 module(...)
 
 VERSION = 37 -- AINET_VERSION_NUMBER

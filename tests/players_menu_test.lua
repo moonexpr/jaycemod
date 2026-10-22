@@ -7,7 +7,7 @@ local T = dofile("tests/harness.lua")
 local Reports = T.require("foundation.reports")
 local Economy = T.require("foundation.economy")
 local Permissions = T.require("foundation.permissions")
-local Transaction = T.require("foundation.core.transaction")
+local Transaction = T.require("foundation.transaction")
 
 local function Player(name, held)
 	local p = {

@@ -13,7 +13,7 @@
 -- area is under it (false: none), and answers with what to do:
 -- { kind = MOVE, to }, { kind = REPATH }, { kind = HOP, to },
 -- { kind = RECOVER, to } or { kind = DONE }.
-local Geometry = require("foundation.core.math.geometry")
+local Geometry = require("foundation.math.geometry")
 local abs = math.abs
 local setmetatable = setmetatable
 module(...)

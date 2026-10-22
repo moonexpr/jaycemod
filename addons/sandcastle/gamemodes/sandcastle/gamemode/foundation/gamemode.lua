@@ -37,7 +37,7 @@
 -- The transition's timing lives here; the controller feeds it the time
 -- (Advance) and plays the cues it returns.
 local ceil, ipairs, max, min, setmetatable = math.ceil, ipairs, math.max, math.min, setmetatable
-local Cfsm = require("foundation.core.cfsm")
+local Cfsm = require("foundation.generator.state_machine")
 module(...)
 
 -- Modes.

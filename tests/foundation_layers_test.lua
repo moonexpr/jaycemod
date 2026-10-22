@@ -18,51 +18,52 @@ local RANK = {
 
 -- The modules that stay, by category.
 local CATEGORY = {
-	["core/pathfinder"] = "structures",
-	["core/structs/heap"] = "structures",
+	["npc/pathfinder"] = "structures",
+	["tree/heap"] = "structures",
 	["pathfinder/astar"] = "structures",
-	["core/parsers/consolecfg"] = "structures",
-	["core/parsers/cvarfile"] = "structures",
-	["core/analytics"] = "structures",
-	["core/memory"] = "structures",
-	["core/structs/ring"] = "structures",
-	["core/math/stats"] = "structures",
-	["core/structs/lease"] = "structures",
-	["core/structs/grid"] = "structures",
-	["core/graph"] = "structures",
-	["core/math/random"] = "structures",
-	["core/math/polynomial"] = "structures",
-	["core/math/matrix"] = "structures",
-	["core/buffer"] = "structures",
+	["encoding/consolecfg"] = "structures",
+	["encoding/cvarfile"] = "structures",
+	["analysis/analytics"] = "structures",
+	["analysis/memory"] = "structures",
+	["list/ring"] = "structures",
+	["math/stats"] = "structures",
+	["map/lease"] = "structures",
+	["map/grid"] = "structures",
+	["graph/search"] = "structures",
+	["math/weighted"] = "structures",
+	["math/polynomial"] = "structures",
+	["math/matrix"] = "structures",
+	["file/buffer"] = "structures",
 	["core/snapshot"] = "structures",
-	["core/gma"] = "structures",
-	["core/parsers/utf16"] = "structures",
-	["core/parsers/keyvalues"] = "structures",
-	["core/parsers/cursor"] = "structures",
-	["core/structs/polyline"] = "structures",
-	["core/structs/queue"] = "structures",
-	["core/structs/tree"] = "structures",
-	["core/structs/pairmap"] = "structures",
-	["core/math/scalar"] = "structures",
+	["encoding/gma"] = "structures",
+	["encoding/utf16"] = "structures",
+	["encoding/keyvalues"] = "structures",
+	["encoding/cursor"] = "structures",
+	["math/polyline"] = "structures",
+	["list/queue"] = "structures",
+	["tree/avl"] = "structures",
+	["map/pairmap"] = "structures",
+	["math/scalar"] = "structures",
 	["core/timers"] = "structures",
-	["core/scheduler"] = "formalisms",
+	["list/schedule"] = "formalisms",
 	["core/drawlist"] = "formalisms",
-	["core/math/geometry"] = "structures",
-	["core/transaction"] = "structures",
-	["core/structs/sets"] = "structures",
-	["core/meta/port"] = "structures",
-	["core/meta/class"] = "structures",
-	["core/meta/constants"] = "structures",
-	["core/meta/enum"] = "structures",
-	["core/structs/slots"] = "structures",
-	["core/structs/chain"] = "structures",
-	["core/structs/cache"] = "structures",
-	["core/structs/lru"] = "structures",
-	["core/structs/expiring"] = "structures",
-	["core/structs/memo"] = "structures",
+	["math/geometry"] = "structures",
+	["transaction"] = "structures",
+	["map/sets"] = "structures",
+	["core/port"] = "structures",
+	["core/namespace"] = "structures",
+	["core/class"] = "structures",
+	["core/constants"] = "structures",
+	["core/enum"] = "structures",
+	["list/slots"] = "structures",
+	["list/chain"] = "structures",
+	["cache/base"] = "structures",
+	["cache/lru"] = "structures",
+	["cache/expiring"] = "structures",
+	["cache/memo"] = "structures",
 	["core/tactics"] = "formalisms",
 
-	["core/cfsm"] = "formalisms",
+	["generator/state_machine"] = "formalisms",
 	["core/hfsm"] = "formalisms",
 	["core/map_io"] = "formalisms",
 	["rounds"] = "formalisms",
@@ -246,11 +247,15 @@ local PENDING = {
 -- 4); a future inversion needs an entry here, and a reason.
 local KNOWN_INVERSIONS = {}
 
+-- A namespace's index (sh_index.lua and its realm's) publishes modules and
+-- is not one (tests/foundation_index_test.lua).
+local INDEX = "_index%.lua$"
+
 local function FoundationModules()
 	local list = assert(io.popen("find " .. FOUNDATION .. " -name '*.lua'"))
 	local modules = {}
 	for path in list:lines() do
-		modules[path:sub(#FOUNDATION + 1, -#".lua" - 1)] = true
+		if not path:match(INDEX) then modules[path:sub(#FOUNDATION + 1, -#".lua" - 1)] = true end
 	end
 	list:close()
 	return modules

@@ -7,7 +7,7 @@
 --
 -- Areas are ids; the caller answers for the nav mesh.
 local ipairs = ipairs
-local Graph = require("foundation.core.graph")
+local Graph = require("foundation.graph.search")
 module(...)
 
 -- starts: area ids to flood from; Neighbors(id) -> ids; Blocked(id) ->

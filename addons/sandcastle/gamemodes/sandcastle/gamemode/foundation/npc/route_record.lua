@@ -27,9 +27,9 @@
 --     search (the solver's, done) }, strategies: name -> strategy
 --     (Cost(step, limits, bot))
 --   Matches(result, replayed) -> whether both searches did the same
-local Buffer = require("foundation.core.buffer")
-local Geometry = require("foundation.core.math.geometry")
-local Pathfinder = require("foundation.core.pathfinder")
+local Buffer = require("foundation.file.buffer")
+local Geometry = require("foundation.math.geometry")
+local Pathfinder = require("foundation.npc.pathfinder")
 local AStar = require("foundation.pathfinder.astar")
 local Path = require("foundation.npc.path")
 local error, format, ipairs, pairs, pcall, setmetatable, tonumber, tostring = error, string.format, ipairs, pairs, pcall, setmetatable, tonumber, tostring

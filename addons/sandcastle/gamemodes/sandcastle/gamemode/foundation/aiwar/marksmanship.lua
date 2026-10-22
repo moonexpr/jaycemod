@@ -6,7 +6,7 @@
 -- scaled by spreadScale (Spread), and a soldier waits reaction seconds
 -- before its first shot at a new enemy (TF2's IVision recognize time).
 local abs, cos, floor, max, min, pi, rad, sin, sqrt = math.abs, math.cos, math.floor, math.max, math.min, math.pi, math.rad, math.sin, math.sqrt
-local Geometry = require("foundation.core.math.geometry")
+local Geometry = require("foundation.math.geometry")
 module(...)
 
 EASY, NORMAL, HARD, EXPERT = 0, 1, 2, 3

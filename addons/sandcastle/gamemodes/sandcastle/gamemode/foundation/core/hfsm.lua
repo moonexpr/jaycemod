@@ -8,7 +8,7 @@
 --
 -- A Chart is the seam a new machine is built on. It declares, before any
 -- state exists, what its states may see and answer:
---   port     a foundation.core.meta.port: the only actor methods a state can call
+--   port     a foundation.core.port: the only actor methods a state can call
 --            (states get a facade, never the actor itself)
 --   events   the On<Event> names its states handle and Event accepts
 --   queries  the names Query accepts
@@ -18,8 +18,8 @@
 -- refuses an actor missing a port method. So each state does one job behind
 -- one contract, new states extend the chart without editing it, and states
 -- depend on the port the composition root fills, not on an entity.
-local Class = require("foundation.core.meta.class")
-local Port = require("foundation.core.meta.port")
+local Class = require("foundation.core.class")
+local Port = require("foundation.core.port")
 local Timers = require("foundation.core.timers")
 local error, ipairs, setmetatable, tostring, type =
 	error, ipairs, setmetatable, tostring, type

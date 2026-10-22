@@ -1,5 +1,5 @@
 -- NavAreaBuildPath (nav_pathfind.h) as a path solver
--- (foundation.core.pathfinder), for NPCs that cannot use the engine's
+-- (foundation.npc.pathfinder), for NPCs that cannot use the engine's
 -- search: HL2's engine NPCs, which path over AI nodes that TF2 maps do not
 -- have. It is the engine's A* rule for rule, so a path strategy
 -- (foundation.npc.path) gives the same route here as through Path:Compute.
@@ -11,8 +11,8 @@
 --   graph:Estimate(node, goal) -> the straight-line distance left
 -- Nodes are nav area ids, or any values usable as table keys. A blocked
 -- area is the cost's to refuse (IsAreaTraversable), not the search's.
-local Heap = require("foundation.core.structs.heap")
-local Pathfinder = require("foundation.core.pathfinder")
+local Heap = require("foundation.tree.heap")
+local Pathfinder = require("foundation.npc.pathfinder")
 local ipairs = ipairs
 module(...)
 

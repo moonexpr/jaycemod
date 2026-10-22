@@ -8,7 +8,7 @@
 -- under a lock) and its words, TF2's own (tf_english.txt's
 -- game_respawntime_*, TF_Arena_NoRespawning).
 local ceil, format, ipairs, setmetatable = math.ceil, string.format, ipairs, setmetatable
-local Sets = require("foundation.core.structs.sets")
+local Sets = require("foundation.map.sets")
 module(...)
 
 -- What holds spawning back.

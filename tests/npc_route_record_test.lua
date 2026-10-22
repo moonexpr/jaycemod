@@ -3,7 +3,7 @@
 local T = dofile("tests/harness.lua")
 local Record = T.require("foundation.npc.route_record")
 local AStar = T.require("foundation.pathfinder.astar")
-local Pathfinder = T.require("foundation.core.pathfinder")
+local Pathfinder = T.require("foundation.npc.pathfinder")
 local HL2 = T.require("foundation.npc.path.hl2")
 local TFBot = T.require("foundation.npc.path.tfbot")
 

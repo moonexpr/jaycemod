@@ -33,7 +33,7 @@ local Doors = WS.require("foundation.npc.doors")
 local Progress = WS.require("foundation.nav_progress")
 local Clip = WS.require("foundation.npc.clip")
 local NavGaps = WS.require("foundation.nav_gaps")
-local PairMap = WS.require("foundation.core.structs.pairmap")
+local PairMap = WS.require("foundation.map.pairmap")
 
 local SEEDS = { "info_player_teamspawn", "info_player_start", "team_control_point" }
 local DOORS = { "func_door", "func_door_rotating", "prop_door_rotating" }

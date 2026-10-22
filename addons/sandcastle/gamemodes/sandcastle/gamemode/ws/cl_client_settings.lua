@@ -4,7 +4,7 @@
 -- client convars is set from the file as it loads, and the file is written
 -- whenever one of them changes. Only the group's convars are read from it.
 -- Loaded before the other cl_ modules (cl_init.lua), which keep theirs here.
-local CvarFile = WS.require("foundation.core.parsers.cvarfile")
+local CvarFile = WS.require("foundation.encoding.cvarfile")
 
 local DIR = "sandcastle"
 

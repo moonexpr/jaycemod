@@ -2,7 +2,7 @@
 -- route search walks, the route requests and searches, and the waypoints
 -- along a route. Its NavGraph goes to sv_profile, which records its costs.
 local Controller = ...
-local Pathfinder = WS.require("foundation.core.pathfinder")
+local Pathfinder = WS.require("foundation.npc.pathfinder")
 local AStar = WS.require("foundation.pathfinder.astar")
 local Portal = WS.require("foundation.npc.portal")
 local Doors = WS.require("foundation.npc.doors")
@@ -124,7 +124,7 @@ end
 -- from the start's to the goal's (found), or to the one that came closest
 -- when the goal is out of reach, and nil when either end is off the mesh.
 local NEAREST_AREA_RANGE = 200
--- Each tick the searches run in turn as tasks (foundation.core.scheduler),
+-- Each tick the searches run in turn as tasks (foundation.list.schedule),
 -- checking the clock after every expansion, until SEARCH_SECONDS of the tick
 -- are spent. A search may cover the whole mesh, as the engine's may: spread
 -- over ticks, that costs time, not a hitch.

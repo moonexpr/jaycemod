@@ -1,7 +1,7 @@
 -- foundation.core.snapshot: a model's state as plain data and back.
 local T = dofile("tests/harness.lua")
 local Snapshot = T.require("foundation.core.snapshot")
-local Cfsm = T.require("foundation.core.cfsm")
+local Cfsm = T.require("foundation.generator.state_machine")
 
 local IDLE, BUSY = "idle", "busy"
 local LIGHT = Cfsm.Define({

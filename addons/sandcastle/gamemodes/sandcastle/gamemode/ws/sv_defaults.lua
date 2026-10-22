@@ -2,8 +2,8 @@
 -- running addon/cfg/sandcastle_defaults.cfg. GMod's exec reads only
 -- garrysmod/cfg/, but the addon's own folders are on the GAME search path,
 -- so the server reads the file from there and runs its lines itself
--- (foundation.core.parsers.consolecfg). For admins, or the server console.
-local Cfg = WS.require("foundation.core.parsers.consolecfg")
+-- (foundation.encoding.consolecfg). For admins, or the server console.
+local Cfg = WS.require("foundation.encoding.consolecfg")
 
 local DEFAULTS_CFG = "cfg/sandcastle_defaults.cfg"
 local COMMAND = "ws_defaults_apply"

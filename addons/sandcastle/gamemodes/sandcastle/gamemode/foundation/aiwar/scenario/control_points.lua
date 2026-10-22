@@ -36,7 +36,7 @@ local Orders = require("foundation.aiwar.orders")
 local Tactics = require("foundation.wartactics")
 local Teams = require("foundation.teams")
 local Base = require("foundation.aiwar.scenario")
-local Geometry = require("foundation.core.math.geometry")
+local Geometry = require("foundation.math.geometry")
 local Distance = Geometry.Distance
 module(...)
 

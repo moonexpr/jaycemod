@@ -8,8 +8,9 @@ NextSoldier, the AI-war's NextBot soldiers. The gamemode lives at
 
 | Path | What |
 |---|---|
-| `gamemode/foundation/` | Models: pure Lua systems, no GMod globals, I/O through ports, loaded per map with `WS.require("foundation.x")` |
-| `gamemode/foundation/core/` | Data structures, algorithms, codecs and abstract bases (index below) |
+| `gamemode/shared_loader.lua` | Runs first: the gamemode's `WS.require`, then foundation's namespace indexes, each named by hand |
+| `gamemode/foundation/<namespace>/` | The generic base: data structures, algorithms, codecs, maths, classes, loaded at start and published as globals (`list.queue`) by `sh_index.lua` (index below) |
+| `gamemode/foundation/` | Also, until they move to `game/`: models, pure Lua systems, no GMod globals, I/O through ports, loaded per map with `WS.require("foundation.x")` (`docs/foundation-game-split-plan.md`) |
 | `gamemode/features/<feature>/` | Controllers: `sv.lua`/`cl.lua`/`sh.lua` composition roots and their `<realm>_<part>.lua` parts |
 | `gamemode/ws/` | Always-loaded glue |
 | `gamemode/entities/` | Map entity bindings |
@@ -81,107 +82,146 @@ out of foundation are listed there with their destination.
 An abstract base lives in core; its concrete variants live beside the system
 that owns them, outside core.
 
-## foundation.core index
+## foundation index
 
-Module names are `foundation.core.<path>`; tests are
-`tests/core_<path with _>_test.lua`.
+foundation is the stable base the rest of the gamemode stands on, and may
+come to replace GMod's own defaults. `shared_loader.lua` runs each
+namespace's `sh_index.lua`, which publishes a module per line: module
+`foundation.<namespace>.<module>` is the global `<namespace>.<module>`,
+in a table of our own (`tree`, `map`, `cache`) or one extended in place
+(Lua's `math`, GMod's `list`, `file`). `Export` refuses a key already
+taken; taking over a GMod or Lua default is a `Replace` line
+(`foundation.core.namespace`). Modules and indexes are listed by hand,
+never by a loop or a folder scan (`tests/foundation_index_test.lua`).
+Code may `require` a module by name or read its global: they are the same
+table. Tests are `tests/<namespace>_<module>_test.lua`.
 
-### structs: data structures
-
-| Module | API |
-|---|---|
-| `structs.sets` | `Named(name, members)` → a named set, a closed vocabulary parsed once: `Has`, `Check` (an unknown member is our bug, blamed on the caller), `Match` (case-free prefix), `Members`, `Name`. Plain `value → true` sets: `Of`, `Copy`, `Union`, `Intersect`, `Subtract`, `Count`, `Sorted` |
-| `structs.heap` | `New(before)` → binary heap: `Push`, `Pop`, `Peek`, `Size`; ties are the rule's to break |
-| `structs.ring` | `New(capacity)` → the last values pushed: `Push`, `Size`, `Ordered` (oldest first) |
-| `structs.slots` | `New()` → whole-number slots for arrays kept by slot: `pool()` (`Alloc`; a freed one first), `Free` (refuses one not in use), `InUse`, `Size` (`__len`), `High`, `Clear`, `tostring` |
-| `structs.chain` | `New()` → slots in an order, linked by two arrays: `PushFront`, `PushBack`, `Unlink`, `MoveFront`, `Front`, `Back`, `After`, `Before`, `Has`, `for slot in chain()` (`Ordered`), `Size` (`__len`), `Clear`, `tostring` |
-| `structs.cache` | Base class (`meta.class`) of the caches, on slots and a chain; alone, first in first out. `New{ capacity, release(key, value, reason) }` → `cache[key]` (`Get`; a key named like a method needs `Get`), `cache[key] = v` (`Put`; nil: `Remove`), `for key, value in cache()` (newest first; `Keys`), `tostring`, `Size` (`__len`), `Peek`, `Take` (ownership to the caller, unreleased), `Clear`; `Class.Destroy(cache)`. Each value leaving is released once: `EVICTED`, `EXPIRED`, `REPLACED`, `REMOVED`, `CLEARED`, `DESTROYED`. Subclasses fill `Touch`, `Rewrite`, `Admitting`, `Admitted`, `Stale`, `Dropped`, their fields in `State(cache)` |
-| `structs.lru` | `New{ capacity, release }` → a cache evicting the least recently used (reads and writes are uses, `Peek` is not) |
-| `structs.expiring` | `New{ clock, term, release }` → a cache whose entries last `term` seconds from their last write: `Prune`; reads and walks skip the expired |
-| `structs.memo` | `New{ [capacity], release }` → a cache of computed values: `Fetch(key, stamp, compute)` recomputes when the stamp changes |
-| `structs.lease` | `New()` → keys held by one holder for a term: `Holder`, `FreeFor`, `Take`, `Release`, `ReleaseAll` |
-| `structs.grid` | `New(size)` → spatial hash on number keys: `Put`, `PutBox`, `Near` (3×3 cells), `Buckets`; `Thin(points, size)` keeps one point per cube |
-| `structs.polyline` | `New(points)` → a path measured along its length: `Length`, `Leg`, `PointAt`, `Offset`, `DistanceOf` |
-| `structs.queue` | `New()` → double-ended queue: `PushBack`, `PushFront`, `PopFront`, `PopBack`, `Front`, `Back`, `Size`, `Values` |
-| `timers` | NextBot's timers on a clock port (`Now()`): `CountdownTimer(clock)` → `Start(duration)`, `Reset`, `Invalidate`, `HasStarted`, `IsElapsed` (an unstarted one has), `GetElapsedTime`, `GetRemainingTime`, `GetCountdownDuration`; `IntervalTimer(clock)` → `Start`, `Reset`, `Invalidate`, `HasStarted`, `GetElapsedTime`, `IsLessThen`, `IsGreaterThen`. `hfsm` hands them on |
-| `structs.pairmap` | `New()` → values by an ordered pair of whole numbers (0..`MAX_KEY`, a link's two area ids) under one number a pair, no key built: `Get(a, b)` (unchecked, for hot paths), `Set(a, b, value)` (nil removes; refuses a bad key), `Size`, `Clear` |
-| `structs.tree` | `New([less])` → ordered map on an AVL tree: `Insert`, `Get`, `Remove`, `Min`, `Max`, `Floor`, `Ceiling`, `Pairs` (in order), `Size`, `Height` |
-
-### Algorithms
+### core: classes, interfaces, namespaces
 
 | Module | API |
 |---|---|
-| `graph` | `Flood(starts, neighbors, admit, limit[, stop])` → reached, cut; `Components(nodes, neighbors)` → node → group number; `Distances(starts, edges, limit)` → node → cheapest walk from the nearest start (Dijkstra; `edges(node)` → `{ node, cost }`s) |
-| `pathfinder` | Abstract path search (template method): `Solver(name)` → a solver class filling `Begin`, `Next`, `Expand` (reporting with `Reach`, `Approach`); it gets `New`, `Find`, `Step(budget)`, `Route`. `RUNNING`, `FOUND`, `FAILED`, `MAX_EXPANDED` |
+| `core.class` | `Extend(parent, fields)` (a subclass carries its parent's metamethods and `__index` function), `New(class, fields)`, `IsA(value, class)`, `Guard(class, check)` (refuses new keys on subclasses and their instances), `Construct(class, ...)` (each own `Init`, base first), `Destroy(instance, ...)` (each own `Destroy`, derived first) |
+| `core.port` | `New(name, methods)` → an interface: `Check(value)`, `Facade(value)`, `Methods`, `Name`; `Is(value)` |
+| `core.constants` | `New(name, constants)` → a `ConstantSet`: upper-case names read as fields at plain-table speed; an unknown name read, or a new one set, is refused naming the set; `set(token)` parses a name from outside (or nil; `Has`); `pairs` gives only the constants; `Names` (sorted), `tostring`/`Name`, `__len`. Values may repeat (layout sizes, colours) |
+| `core.enum` | `New(name, first, names)` → an `Enum` (a `ConstantSet`) numbering names from `first`: `enum[value]` → its name (`NameOf`), `enum(token)` parses a value or a name (or nil; `Valid`), `Check`, `tostring` → "0 Default, 1 Electro" for a convar's help (`Describe`), `First`, `Last`, `Count` (`__len`), `Names` (value order) |
+| `core.namespace` | What an index runs: `Namespace(globals, name)` (the global table, made if absent), `Export(ns, key, value)` (refuses a key something else holds), `Replace(ns, key, value)` (takes a default over on purpose), `Environment(globals, require)`. A key once set is the namespace's own, so a reload sets it again |
 
-### math
+### list: lists, queues, slots
+
+| Module | API |
+|---|---|
+| `list.queue` | `New()` → double-ended queue: `PushBack`, `PushFront`, `PopFront`, `PopBack`, `Front`, `Back`, `Size`, `Values` |
+| `list.ring` | `New(capacity)` → the last values pushed: `Push`, `Size`, `Ordered` (oldest first) |
+| `list.slots` | `New()` → whole-number slots for arrays kept by slot: `pool()` (`Alloc`; a freed one first), `Free` (refuses one not in use), `InUse`, `Size` (`__len`), `High`, `Clear`, `tostring` |
+| `list.chain` | `New()` → slots in an order, linked by two arrays: `PushFront`, `PushBack`, `Unlink`, `MoveFront`, `Front`, `Back`, `After`, `Before`, `Has`, `for slot in chain()` (`Ordered`), `Size` (`__len`), `Clear`, `tostring` |
+| `list.schedule` | `New(clock)` → cooperative tasks in a time slice: `Spawn(fn, ...)`, `Run(seconds)`, `CheckYield` (in a task: yield once the slice is spent), `Yield`, `Wait(ready)` (park until ready), `Count`. `WS.Transactions` is each realm's, run every tick |
+
+### tree
+
+| Module | API |
+|---|---|
+| `tree.heap` | `New(before)` → binary heap: `Push`, `Pop`, `Peek`, `Size`; ties are the rule's to break |
+| `tree.avl` | `New([less])` → ordered map on an AVL tree: `Insert`, `Get`, `Remove`, `Min`, `Max`, `Floor`, `Ceiling`, `Pairs` (in order), `Size`, `Height` |
+
+### map: lookups
+
+| Module | API |
+|---|---|
+| `map.pairmap` | `New()` → values by an ordered pair of whole numbers (0..`MAX_KEY`, a link's two area ids) under one number a pair, no key built: `Get(a, b)` (unchecked, for hot paths), `Set(a, b, value)` (nil removes; refuses a bad key), `Size`, `Clear` |
+| `map.lease` | `New()` → keys held by one holder for a term: `Holder`, `FreeFor`, `Take`, `Release`, `ReleaseAll` |
+| `map.grid` | `New(size)` → spatial hash on number keys: `Put`, `PutBox`, `Near` (3×3 cells), `Buckets`; `Thin(points, size)` keeps one point per cube |
+| `map.sets` | `Named(name, members)` → a named set, a closed vocabulary parsed once: `Has`, `Check` (an unknown member is our bug, blamed on the caller), `Match` (case-free prefix), `Members`, `Name`. Plain `value → true` sets: `Of`, `Copy`, `Union`, `Intersect`, `Subtract`, `Count`, `Sorted` |
+
+### cache
+
+| Module | API |
+|---|---|
+| `cache.base` | Base class (`core.class`) of the caches, on slots and a chain; alone, first in first out. `New{ capacity, release(key, value, reason) }` → `cache[key]` (`Get`; a key named like a method needs `Get`), `cache[key] = v` (`Put`; nil: `Remove`), `for key, value in cache()` (newest first; `Keys`), `tostring`, `Size` (`__len`), `Peek`, `Take` (ownership to the caller, unreleased), `Clear`; `Class.Destroy(cache)`. Each value leaving is released once: `EVICTED`, `EXPIRED`, `REPLACED`, `REMOVED`, `CLEARED`, `DESTROYED`. Subclasses fill `Touch`, `Rewrite`, `Admitting`, `Admitted`, `Stale`, `Dropped`, their fields in `State(cache)` |
+| `cache.lru` | `New{ capacity, release }` → a cache evicting the least recently used (reads and writes are uses, `Peek` is not) |
+| `cache.expiring` | `New{ clock, term, release }` → a cache whose entries last `term` seconds from their last write: `Prune`; reads and walks skip the expired |
+| `cache.memo` | `New{ [capacity], release }` → a cache of computed values: `Fetch(key, stamp, compute)` recomputes when the stamp changes |
+
+### graph
+
+| Module | API |
+|---|---|
+| `graph.search` | `Flood(starts, neighbors, admit, limit[, stop])` → reached, cut; `Components(nodes, neighbors)` → node → group number; `Distances(starts, edges, limit)` → node → cheapest walk from the nearest start (Dijkstra; `edges(node)` → `{ node, cost }`s) |
+
+### npc
+
+| Module | API |
+|---|---|
+| `npc.pathfinder` | Abstract path search (template method): `Solver(name)` → a solver class filling `Begin`, `Next`, `Expand` (reporting with `Reach`, `Approach`); it gets `New`, `Find`, `Step(budget)`, `Route`. `RUNNING`, `FOUND`, `FAILED`, `MAX_EXPANDED` |
+
+### math, in Lua's math table
 
 | Module | API |
 |---|---|
 | `math.geometry` | On `{ x, y, z }` points (missing z is 0): `Distance`, `Distance2D` (across the ground), `Toward`, `Add`, `Sub`, `Scale`, `Dot`, `Cross`, `Length`, `Normalize` (nil for the zero vector) |
 | `math.scalar` | `Clamp(value, low, high)` (an empty range is the caller's mistake) |
 | `math.stats` | `Mean(list)`, `Percentile(list, p)` (nearest rank) |
-| `math.random` | `PickWeighted(items, weight, r)`, `r` drawn by the caller |
+| `math.weighted` | `PickWeighted(items, weight, r)`, `r` drawn by the caller |
 | `math.polynomial` | Coefficients from the constant up: `Evaluate`, `Derivative`, `Roots` (real, ascending, up to a cubic) |
 | `math.matrix` | `New(rows)`, `Identity(n)` → `Rows`, `Cols`, `Get`, `Transpose`, `Multiply`, `Determinant`, `Inverse` (nil if singular), `Solve(b)` |
+| `math.polyline` | `New(points)` → a path measured along its length: `Length`, `Leg`, `PointAt`, `Offset`, `DistanceOf` |
 
-### buffer and parsers: binary values and text formats
+### file and encoding: binary values and text formats
 
 | Module | API |
 |---|---|
-| `buffer` | Values as bytes, written and read back. Writers: `Byte`, `Int16`, `Int32`, `Float32` (little-endian, IEEE 754), `Varint` (ULEB128), `String` (varint length + bytes), `Utf8(code)`, `Crc32(s)`; `Writer()` gathers them (`Bytes`, `Size`). `Reader(data)` → `Byte`, `Int16`, `UInt16`, `Int32`, `Float32`, `Varint`, `String`, `Consumed` |
-| `gma` | GMod's addon archive: `Write(name, files)` → bytes (`files`: `{ path, data }`s), `Read(bytes)` → `{ name, files }` |
-| `parsers.cursor` | `New(text)` → a parser's position: `Literal(s[, ignoreCase])`, `Pattern`, `Peek`, `Whitespace`, `Save`/`Restore`/`Commit`, `Position`, `AtEnd`, `Rest` |
-| `parsers.utf16` | `Decode(raw)`: UTF-16LE → UTF-8 |
-| `parsers.keyvalues` | `Read(text, visit(path, key, value))`: Valve KeyValues |
-| `parsers.consolecfg` | `Commands(text)`: cfg text → console commands, chained `;` refused |
-| `parsers.cvarfile` | `Write(names, values)` → cfg text, a `name "value"` a line; `Read(text, names)` → name → value for only those names. Client settings saved in data/ (`WS.PersistClientConVars`) |
+| `file.buffer` | Values as bytes, written and read back. Writers: `Byte`, `Int16`, `Int32`, `Float32` (little-endian, IEEE 754), `Varint` (ULEB128), `String` (varint length + bytes), `Utf8(code)`, `Crc32(s)`; `Writer()` gathers them (`Bytes`, `Size`). `Reader(data)` → `Byte`, `Int16`, `UInt16`, `Int32`, `Float32`, `Varint`, `String`, `Consumed` |
+| `encoding.gma` | GMod's addon archive: `Write(name, files)` → bytes (`files`: `{ path, data }`s), `Read(bytes)` → `{ name, files }` |
+| `encoding.cursor` | `New(text)` → a parser's position: `Literal(s[, ignoreCase])`, `Pattern`, `Peek`, `Whitespace`, `Save`/`Restore`/`Commit`, `Position`, `AtEnd`, `Rest` |
+| `encoding.utf16` | `Decode(raw)`: UTF-16LE → UTF-8 |
+| `encoding.keyvalues` | `Read(text, visit(path, key, value))`: Valve KeyValues |
+| `encoding.consolecfg` | `Commands(text)`: cfg text → console commands, chained `;` refused |
+| `encoding.cvarfile` | `Write(names, values)` → cfg text, a `name "value"` a line; `Read(text, names)` → name → value for only those names. Client settings saved in data/ (`WS.PersistClientConVars`) |
+
+### generator, analysis, and the root
+
+| Module | API |
+|---|---|
+| `generator.state_machine` | Flat state machine: `Define(spec)` → `New(initial)`: `Transition`, `Enter`, `Think`, `Can`, `State`, `Is` |
+| `analysis.analytics` | Timers, counters, tick pressure, memory samples; clock and memory are ports |
+| `analysis.memory` | `Measure(roots)` → estimated bytes per named root (each object once); `Format(report, rows)`. `ws_analytics_memory` runs it over the loaded foundation modules |
+| `transaction` | Exchanges between user and system or between modules, settling once as committed (value), declined (a refusal: the caller's mistake) or failed (our bug). Refusals: `Refuse(kind, detail)`, `IsRefusal(err, kinds)`, `Message`, `Explain`, `Detail`. `New()` → `Commit`/`Decline`/`Fail`, `State`, `Value`, `Refusal`, `Error`, `OnSettle`, `Await(scheduler)` (in a task); `Run(fn, ...)`, `Spawn(scheduler, fn, ...)` with `fn(work, ...)` and `work:Undo(fn)` compensations; `All(list)`. Wire: `Ledger()` (`Open`, `Settle`, `Expire`, `Count`), `Reply(tx[, kinds])`. Over the network: `WS.Events.Transact` (client) and `WS.Events.Serve` (server), events defined with `transaction = true` |
+
+### Still in foundation/core, bound for game/
+
+Not yet published as globals; `require("foundation.core.<name>")`.
+
+| Module | API |
+|---|---|
+| `timers` | NextBot's timers on a clock port (`Now()`): `CountdownTimer(clock)` → `Start(duration)`, `Reset`, `Invalidate`, `HasStarted`, `IsElapsed` (an unstarted one has), `GetElapsedTime`, `GetRemainingTime`, `GetCountdownDuration`; `IntervalTimer(clock)` → `Start`, `Reset`, `Invalidate`, `HasStarted`, `GetElapsedTime`, `IsLessThen`, `IsGreaterThen`. `hfsm` hands them on |
 | `snapshot` | A model's state as plain data and back: `Spec{ name, skip, times, machines }`, `Take(model, spec, now[, refs])`, `Apply(model, snapshot, spec, now[, refs])`. Times kept as seconds from now, cfsm machines as their state (`Machine:Restore`), entities and other non-data through `refs` (`Encode`, `Decode`), weak tables as data; Apply writes raw and clears what the snapshot lacks. The models' `Snapshot`/`Restore` (the dev workbench's capture) |
-
-### meta: classes, interfaces, table indexing
-
-| Module | API |
-|---|---|
-| `meta.class` | `Extend(parent, fields)` (a subclass carries its parent's metamethods and `__index` function), `New(class, fields)`, `IsA(value, class)`, `Guard(class, check)` (refuses new keys on subclasses and their instances), `Construct(class, ...)` (each own `Init`, base first), `Destroy(instance, ...)` (each own `Destroy`, derived first) |
-| `meta.port` | `New(name, methods)` → an interface: `Check(value)`, `Facade(value)`, `Methods`, `Name`; `Is(value)` |
-| `meta.constants` | `New(name, constants)` → a `ConstantSet`: upper-case names read as fields at plain-table speed; an unknown name read, or a new one set, is refused naming the set; `set(token)` parses a name from outside (or nil; `Has`); `pairs` gives only the constants; `Names` (sorted), `tostring`/`Name`, `__len`. Values may repeat (layout sizes, colours) |
-| `meta.enum` | `New(name, first, names)` → an `Enum` (a `ConstantSet`) numbering names from `first`: `enum[value]` → its name (`NameOf`), `enum(token)` parses a value or a name (or nil; `Valid`), `Check`, `tostring` → "0 Default, 1 Electro" for a convar's help (`Describe`), `First`, `Last`, `Count` (`__len`), `Names` (value order) |
-
-### Formalisms and runtime
-
-| Module | API |
-|---|---|
-| `cfsm` | Flat state machine: `Define(spec)` → `New(initial)`: `Transition`, `Enter`, `Think`, `Can`, `State`, `Is` |
 | `hfsm` | NextBot Action/Behavior engine: `Action`, `Chart{ name, port, events, queries, initial }` → `State(name)`, `Owns`, `New(actor, state)` → a machine: `Update`, `Event`, `Query`, `Describe` |
 | `map_io` | A map's entity lookups and output connections, through a world port |
 | `tactics` | The tactics engine interface: `ENGINE` (a port), `Check(engine)` |
 | `drawlist` | `New()` → draw callbacks named by dotted paths, run in order (by order, a tie by path): `Add(path, order, draw[, when])` (a path again replaces it), `HideElements(path)`/`ShowElements(path)` (the code's: a path hides all under it), `SetHidden(paths)` (the player's, apart), `Draw(...)`, `Entries()`; `ParseNames(text)`. The HUD's (`WS.HUD`, `cl_hud_hidden`) |
-| `scheduler` | `New(clock)` → cooperative tasks in a time slice: `Spawn(fn, ...)`, `Run(seconds)`, `CheckYield` (in a task: yield once the slice is spent), `Yield`, `Wait(ready)` (park until ready), `Count`. `WS.Transactions` is each realm's, run every tick |
-| `analytics` | Timers, counters, tick pressure, memory samples; clock and memory are ports |
-| `memory` | `Measure(roots)` → estimated bytes per named root (each object once); `Format(report, rows)`. `ws_analytics_memory` runs it over the loaded foundation modules |
-| `transaction` | Exchanges between user and system or between modules, settling once as committed (value), declined (a refusal: the caller's mistake) or failed (our bug). Refusals: `Refuse(kind, detail)`, `IsRefusal(err, kinds)`, `Message`, `Explain`, `Detail`. `New()` → `Commit`/`Decline`/`Fail`, `State`, `Value`, `Refusal`, `Error`, `OnSettle`, `Await(scheduler)` (in a task); `Run(fn, ...)`, `Spawn(scheduler, fn, ...)` with `fn(work, ...)` and `work:Undo(fn)` compensations; `All(list)`. Wire: `Ledger()` (`Open`, `Settle`, `Expire`, `Count`), `Reply(tx[, kinds])`. Over the network: `WS.Events.Transact` (client) and `WS.Events.Serve` (server), events defined with `transaction = true` |
 
-### Variants outside core
+### Variants outside foundation's namespaces
 
 | Module | Base |
 |---|---|
-| `foundation.pathfinder.astar` | `core.pathfinder`: NavAreaBuildPath's A*, the routes of HL2 NPCs (`features/npc/sv_routes.lua`) |
-| `foundation.wartactics` | `core.tactics`: the AI war's fire-team doctrine (contact, bounding overwatch, flanking, falling back) |
+| `foundation.pathfinder.astar` | `npc.pathfinder`: NavAreaBuildPath's A*, the routes of HL2 NPCs (`features/npc/sv_routes.lua`) |
+| `foundation.wartactics` | `foundation.core.tactics`: the AI war's fire-team doctrine (contact, bounding overwatch, flanking, falling back) |
 | `foundation.npc.path.*` | the path cost strategies a solver's graph prices steps with |
 
-Rationale, what stays out of core, and what to evaluate next (native
-backing): `docs/foundation-core.md`.
+Rationale, what stays out of foundation's namespaces, and what to evaluate
+next (native backing): `docs/foundation-core.md`. The split into
+foundation and game: `docs/foundation-game-split-plan.md`.
 
-## Adding to core
+## Adding to foundation
 
-A structure or algorithm goes in `foundation/core/` (a data structure in
-`structs/`, a format reader in `parsers/`, maths in `math/`, a metatable
-mechanism in `meta/`)
-with its test written first and an entry in
-`tests/foundation_layers_test.lua`, and a line in the index above. Core names
-no mode, feature or game noun.
+A structure or algorithm goes in the namespace that fits it
+(`foundation/<namespace>/<module>.lua`: a list in `list/`, a format reader
+in `encoding/`, maths in `math/`, a metatable mechanism in `core/`), with
+its test written first, an entry in `tests/foundation_layers_test.lua`, a
+line in its namespace's `sh_index.lua`, and a line in the index above. A
+new namespace is a line in `shared_loader.lua`. foundation names no mode,
+feature or game noun.
 
-New data structures and algorithms use or extend core (to become a binary module), unless that would cost the use case
+New data structures and algorithms use or extend foundation (to become a binary module), unless that would cost the use case
 its performance: such exceptions are reviewed case by case and leave a "Core-rule exception" comment saying why.
 
 A structure's behaviour goes in its metamethods first (indexing, assigning,

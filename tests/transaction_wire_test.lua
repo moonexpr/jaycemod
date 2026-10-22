@@ -4,8 +4,8 @@
 -- transaction. The pieces ws/sh_events.lua's Transact and Serve join.
 local T = dofile("tests/harness.lua")
 local Events = T.require("foundation.events")
-local Scheduler = T.require("foundation.core.scheduler")
-local Transaction = T.require("foundation.core.transaction")
+local Scheduler = T.require("foundation.list.schedule")
+local Transaction = T.require("foundation.transaction")
 
 local RATE = {
 	count = 10,

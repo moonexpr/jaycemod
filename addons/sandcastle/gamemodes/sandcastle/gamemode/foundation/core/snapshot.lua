@@ -8,7 +8,7 @@
 --   times     optional: paths of absolute times ("dueAt", "waves.*" for
 --             every value of waves), kept as seconds from the snapshot's now
 --             and put back from the new now
---   machines  optional: fields holding a foundation.core.cfsm machine, kept
+--   machines  optional: fields holding a foundation.generator.state_machine machine, kept
 --             as its state and put back with Machine:Restore
 -- Take(model, spec, now[, refs]) -> the snapshot: every other field of the
 -- model, copied deep. Apply(model, snapshot, spec, now[, refs]) writes it

@@ -2,7 +2,7 @@
 local Controller, Map, WATCH_INTERVAL = ...
 local AiWar = WS.require("foundation.aiwar")
 local Teams = WS.require("foundation.teams")
-local Track = WS.require("foundation.core.structs.polyline")
+local Track = WS.require("foundation.math.polyline")
 local Explore = WS.require("foundation.aiwar.explore")
 local Scenario = WS.require("foundation.aiwar.scenario")
 local GROUND_PROBE, RED, BLUE = Map.GROUND_PROBE, Map.RED, Map.BLUE

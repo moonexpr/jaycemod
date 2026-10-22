@@ -7,8 +7,8 @@
 local Reports = WS.require("foundation.reports")
 local Economy = WS.require("foundation.economy")
 local Permissions = WS.require("foundation.permissions")
-local Transaction = WS.require("foundation.core.transaction")
-local Sets = WS.require("foundation.core.structs.sets")
+local Transaction = WS.require("foundation.transaction")
+local Sets = WS.require("foundation.map.sets")
 local E = WS.Events
 
 local book = Reports.New()

@@ -1,12 +1,12 @@
--- The server's analytics (foundation.core.analytics): any code may time its
+-- The server's analytics (foundation.analysis.analytics): any code may time its
 -- work with WS.Analytics:Start()/Stop(name, started) or :Time(name, fn, ...),
 -- and count with :Count(name). While ws_analytics is on, each tick is
 -- closed as a frame against the tick interval and Lua memory is sampled;
 -- off, nothing runs per tick. ws_analytics_print and
 -- ws_analytics_reset need the server options privilege, as does
 -- ws_analytics_memory, the estimated memory each loaded foundation module holds.
-local Analytics = WS.require("foundation.core.analytics")
-local MemoryReport = WS.require("foundation.core.memory")
+local Analytics = WS.require("foundation.analysis.analytics")
+local MemoryReport = WS.require("foundation.analysis.memory")
 local Permissions = WS.require("foundation.permissions")
 
 local Clock = {}

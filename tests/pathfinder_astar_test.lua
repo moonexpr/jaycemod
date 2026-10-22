@@ -2,7 +2,7 @@
 -- the caller describes, run here on small grids whose costs the tests
 -- control, whole or a few expansions at a time.
 local T = dofile("tests/harness.lua")
-local Pathfinder = T.require("foundation.core.pathfinder")
+local Pathfinder = T.require("foundation.npc.pathfinder")
 local AStar = T.require("foundation.pathfinder.astar")
 local Path = T.require("foundation.npc.path")
 

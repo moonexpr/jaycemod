@@ -12,7 +12,7 @@
 -- Areas are { id, lo, hi }, their extents, with lo and hi { x, y, z }.
 local max, min, abs, ceil = math.max, math.min, math.abs, math.ceil
 local ipairs = ipairs
-local Grid = require("foundation.core.structs.grid")
+local Grid = require("foundation.map.grid")
 module(...)
 
 GAP_MAX = 50 -- two of the generator's 25-unit steps

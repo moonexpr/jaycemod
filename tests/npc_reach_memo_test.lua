@@ -3,8 +3,8 @@
 -- search.
 local T = dofile("tests/harness.lua")
 local ReachMemo = T.require("foundation.npc.reach_memo")
-local Expiring = T.require("foundation.core.structs.expiring")
-local Class = T.require("foundation.core.meta.class")
+local Expiring = T.require("foundation.cache.expiring")
+local Class = T.require("foundation.core.class")
 local HL2 = T.require("foundation.npc.path.hl2")
 local TFBot = T.require("foundation.npc.path.tfbot")
 

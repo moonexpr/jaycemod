@@ -9,7 +9,7 @@
 -- Areas are axis-aligned rectangles { lo = { x, y }, hi = { x, y } } (the
 -- nav area's north-west and south-east corners); `to.edges[dir]` is true
 -- when `to` has no neighbour on that side (CNavArea::IsEdge).
-local Scalar = require("foundation.core.math.scalar")
+local Scalar = require("foundation.math.scalar")
 module(...)
 
 -- NavDirType: north is -y, east is +x.

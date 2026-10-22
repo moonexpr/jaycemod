@@ -3,15 +3,15 @@
 -- from. A catalog entry has a kind, and a slot takes only its own kind; the
 -- two support slots take the same kind, and a weapon sits in one slot at a
 -- time. A loadout is a value: Buy, Equip and Clear return a new one, or
--- raise a refusal of a named kind (foundation.core.transaction; Refused tells the
+-- raise a refusal of a named kind (foundation.transaction; Refused tells the
 -- player's from our own bugs). Paying for a weapon is the controller's,
 -- through the economy. Weapons are compared and kept by class, never by
 -- table identity, so a catalog rebuilt from the same list still matches a
 -- loadout made from the old one.
 local floor, format, ipairs, pairs, setmetatable, tostring, type =
 	math.floor, string.format, ipairs, pairs, setmetatable, tostring, type
-local Transaction = require("foundation.core.transaction")
-local Sets = require("foundation.core.structs.sets")
+local Transaction = require("foundation.transaction")
+local Sets = require("foundation.map.sets")
 module(...)
 
 PRICE = 10

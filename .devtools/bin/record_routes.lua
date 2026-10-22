@@ -18,7 +18,7 @@ local R = WSRouteRecord
 
 local Record = WS.require("foundation.npc.route_record")
 local AStar = WS.require("foundation.pathfinder.astar")
-local Pathfinder = WS.require("foundation.core.pathfinder")
+local Pathfinder = WS.require("foundation.npc.pathfinder")
 local HL2 = WS.require("foundation.npc.path.hl2")
 local Lanes = WS.require("foundation.aiwar.lanes")
 

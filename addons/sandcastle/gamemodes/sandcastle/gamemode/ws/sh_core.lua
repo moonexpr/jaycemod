@@ -1,24 +1,8 @@
 -- Shared definitions for the TF2 map entities. Team numbers and round states
 -- keep TF2's values (foundation.teams, foundation.rounds.state) so map keyvalues
 -- (TeamNum) mean the same thing here.
-WS = WS or {}
-
--- Lua 5.1's require for the gamemode's module(...) files (gamemode/foundation/):
--- GMod's include passes no name to the chunk, so load it here, once, calling
--- it with the dotted name. Above its module(...) call the chunk sees this
--- require (GMod's own looks only in includes/modules/), to load its siblings.
--- GM exists only while the gamemode loads.
-local GAMEMODE_ROOT = GM.FolderName .. "/gamemode/"
-local CHUNK_ENV = setmetatable({}, { __index = _G })
-
-function WS.require(name)
-	if package.loaded[name] == nil then
-		local chunk = CompileFile(GAMEMODE_ROOT .. name:gsub("%.", "/") .. ".lua")
-		setfenv(chunk, CHUNK_ENV)(name)
-	end
-	return package.loaded[name]
-end
-CHUNK_ENV.require = WS.require
+-- WS and WS.require, the gamemode's require, come from shared_loader.lua,
+-- which also loaded foundation's namespaces.
 
 -- The game event library (WS.Events), which everything after this
 -- line may use; shared.lua skips it among the other sh_ files.

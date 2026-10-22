@@ -4,7 +4,7 @@
 -- redraw. Requests are transactions (WS.LoadoutRequest); a declined or
 -- failed one shows as a notice.
 local Loadout = WS.require("foundation.loadout")
-local Transaction = WS.require("foundation.core.transaction")
+local Transaction = WS.require("foundation.transaction")
 local E = WS.Events
 
 local REFUSED_SECONDS = 4

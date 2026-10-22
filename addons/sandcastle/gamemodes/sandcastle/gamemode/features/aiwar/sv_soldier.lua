@@ -2,7 +2,7 @@
 local Map = ...
 local TFBot = WS.require("foundation.npc.path.tfbot")
 local HL2Path = WS.require("foundation.npc.path.hl2")
-local Random = WS.require("foundation.core.math.random")
+local Random = WS.require("foundation.math.weighted")
 local Debug = WS.require("foundation.npc.debug")
 local Detour = WS.require("foundation.npc.detour")
 local WALK_MINS, WALK_MAXS, WALK_LIFT, WALK_MAX_RISE = Map.WALK_MINS, Map.WALK_MAXS, Map.WALK_LIFT, Map.WALK_MAX_RISE

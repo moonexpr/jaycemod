@@ -16,9 +16,9 @@ local error, ipairs, math, pairs, setmetatable, tostring = error, ipairs, math, 
 local find, gmatch, sort, table_remove = string.find, string.gmatch, table.sort, table.remove
 local Teams = require("foundation.teams")
 local State = require("foundation.rounds.state")
-local Cfsm = require("foundation.core.cfsm")
+local Cfsm = require("foundation.generator.state_machine")
 local Snapshot = require("foundation.core.snapshot")
-local Class = require("foundation.core.meta.class")
+local Class = require("foundation.core.class")
 local Spawns = require("foundation.spawn_manager")
 module(...)
 

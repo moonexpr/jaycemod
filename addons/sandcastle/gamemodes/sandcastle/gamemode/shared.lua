@@ -9,6 +9,9 @@ GM.Website = ""
 
 DeriveGamemode("sandbox")
 
+-- The gamemode's require, and foundation's namespaces, before anything else.
+include("shared_loader.lua")
+
 -- Modules in gamemode/ws/ load by prefix: sh_ on both realms, sv_ on the
 -- server, cl_ on clients. sh_core defines the WS table and loads first,
 -- including sh_events (the game event library) itself; the rest load in

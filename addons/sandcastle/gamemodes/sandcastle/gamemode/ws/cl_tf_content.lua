@@ -1,6 +1,6 @@
 -- TF2's own copies of the files HL2 hides under the same paths (GMod
 -- searches HL2's content first), read from this client's own tf mount,
--- packed into an addon archive (foundation.core.gma) under data/ and
+-- packed into an addon archive (foundation.encoding.gma) under data/ and
 -- mounted, so what names them plays or draws TF2's from under
 -- ws.sound_paths' RELOCATED. Nothing comes from the server. An archive is
 -- named by its files' paths and sizes, so a client writes each once.
@@ -11,7 +11,7 @@
 --     shader flags and drawing values, any texture HL2 hides comes from its
 --     copy. A map's patched materials
 --     (its cubemaps') take those of the material they include.
-local Gma = WS.require("foundation.core.gma")
+local Gma = WS.require("foundation.encoding.gma")
 local SoundPaths = WS.require("ws.sound_paths")
 local Materials = WS.require("ws.tf_materials")
 
