@@ -176,6 +176,7 @@ local function CaptureBlocked(self, a, point, team)
 	for _, ent in ipairs(WS.PlayersInside(a.ent)) do inside[ent] = true end
 	for _, ent in ipairs(WS.MembersInside(a.ent)) do inside[ent] = true end
 	if Area.TellBlock(a.state, blocker, function(b) return inside[b] == true end) then
+		hook.Run("WSPointBlocker", point, team, blocker)
 		WS.Events.Fire("game_teamplay_capture_blocked", {
 			cp = self.set:Index(point),
 			cpname = self.set:PrintName(point),
@@ -204,7 +205,9 @@ local function CaptureEnded(self, a, point, e)
 	local wouldWin = self.master ~= nil and self.master:WouldNewOwnerWin(set, point, e.team)
 	local scorePerRound = not (self.master and self.master:ScorePerCapture())
 	self.rounds:CapSounds(e.team, wouldWin, scorePerRound)
-	local cappers = Names(Occupants(a, e.team))
+	local occupants = Occupants(a, e.team)
+	hook.Run("WSPointCappers", point, e.team, occupants)
+	local cappers = Names(occupants)
 	ApplyPointEvents(self, set:SetOwner(point, e.team, Capture.CAUSE_CAPTURE, self.rounds:PointsMayBeCaptured(), cappers))
 end
 

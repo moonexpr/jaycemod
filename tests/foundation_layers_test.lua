@@ -79,6 +79,7 @@ local CATEGORY = {
 	["players/condition_effects"] = "gameplay",
 	["kill_icons"] = "gameplay",
 	["kill_credit"] = "gameplay",
+	["respawn_modifiers"] = "gameplay",
 	["spawn"] = "gameplay",
 	["spectate"] = "gameplay",
 	["economy"] = "gameplay",

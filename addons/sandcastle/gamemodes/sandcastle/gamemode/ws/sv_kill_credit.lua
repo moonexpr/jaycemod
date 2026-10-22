@@ -4,8 +4,8 @@
 -- NextBot) within the window of an enemy's is that enemy's. The hit's
 -- attacker is rewritten before it lands, so the scores, the kill feed and
 -- the killer cam all credit them, as TF2's Event_Killed rewrites it. A
--- player so killed respawns sooner (WS.RespawnCountsFrom, the rounds'
--- respawn waves), and its death notice reads "finished off"
+-- player so killed respawns sooner (WS.DeathCredited, a respawn modifier:
+-- ws/sv_respawn_modifiers.lua), and its death notice reads "finished off"
 -- (foundation.kill_feed's FINISHED_OFF). The hit path (ws/sv_hits.lua)
 -- calls both. A kill's assister is the latest other enemy who hurt the
 -- victim within ASSIST_WINDOW (CTFGameRules::GetAssister's damager rule):
@@ -45,11 +45,9 @@ function WS.CreditEnvironmentalHit(victim, dmg)
 	return true
 end
 
--- The time a player dead since deathTime counts their respawn from: their
--- death, CREDITED_RESPAWN sooner when another was credited with it.
-function WS.RespawnCountsFrom(ply, deathTime)
-	if creditedAt[ply] == deathTime then return deathTime + Credit.CREDITED_RESPAWN end
-	return deathTime
+-- Whether the death of ply at deathTime was credited to another.
+function WS.DeathCredited(ply, deathTime)
+	return creditedAt[ply] == deathTime
 end
 
 -- The enemy who helped scorer kill victim: the latest other who hurt it

@@ -64,7 +64,9 @@ function Controller:OnPlayerDeath(ply)
 	local t = WS.TeamOf(ply)
 	-- Sandbox mode: no waves, the player clicks to respawn (GM:PlayerDeathThink)
 	if t == UNASSIGNED or WS.GameplayStopped() then return WS.SetSpawnStatus(ply, Spawns.NONE, 0) end
-	WS.SetSpawnStatus(ply, self.round:RespawnStatus(t, WS.RespawnCountsFrom(ply, now), #TeamPlayers(t), ply.wsSwitchedTeam))
+	-- what the player did moves their wait, at most a wave sooner (ws/sv_respawn_modifiers.lua)
+	local countsFrom = now + WS.RespawnAdjust(ply, now, self.round:WaveMaxLength(t, 0, false))
+	WS.SetSpawnStatus(ply, self.round:RespawnStatus(t, countsFrom, #TeamPlayers(t), ply.wsSwitchedTeam))
 end
 
 -- mp_round_restart, the reset vote, the editors and a new game: a round
