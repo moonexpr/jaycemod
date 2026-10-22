@@ -4,11 +4,15 @@
 -- STUCK_TIME), it tries the soldier's remedies in turn, a fresh path, then
 -- a hop toward the point, each found; still stalled, the point is found
 -- STUCK and it goes on to the next. A leg that keeps moving but takes
--- LEG_TIME is found SLOW and skipped the same way.
+-- LEG_TIME is found SLOW and skipped the same way. Off the nav mesh for
+-- OFF_MESH_TIME (fallen into a hole, onto a roof, into a plate), it is
+-- found OFFMESH and put back where it last stood on the mesh, as the war's
+-- observer puts back a soldier.
 --
--- Step(pos, now) is told where the probe stands and answers with what to
--- do: { kind = MOVE, to }, { kind = REPATH }, { kind = HOP, to } or
--- { kind = DONE }.
+-- Step(pos, now, onMesh) is told where the probe stands and whether a nav
+-- area is under it (false: none), and answers with what to do:
+-- { kind = MOVE, to }, { kind = REPATH }, { kind = HOP, to },
+-- { kind = RECOVER, to } or { kind = DONE }.
 local abs, sqrt = math.abs, math.sqrt
 local setmetatable = setmetatable
 module(...)
@@ -18,9 +22,10 @@ HEIGHT = 36 -- up or down: a stair's or a slope's difference from the lane's poi
 PROGRESS = 24
 STUCK_TIME = 3
 LEG_TIME = 30
+OFF_MESH_TIME = 5
 
-MOVE, REPATH, HOP, DONE = "move", "repath", "hop", "done"
-STUCK, SLOW = "stuck", "slow"
+MOVE, REPATH, HOP, RECOVER, DONE = "move", "repath", "hop", "recover", "done"
+STUCK, SLOW, OFFMESH = "stuck", "slow", "offmesh"
 
 -- The remedies, in the order a stall gets them.
 local REMEDIES = { REPATH, HOP }
@@ -54,7 +59,18 @@ function Probe:Next(pos, now)
 	self.anchor, self.anchorAt, self.stage = pos, now, 0
 end
 
-function Probe:Step(pos, now)
+function Probe:Step(pos, now, onMesh)
+	if onMesh == false then
+		self.offSince = self.offSince or now
+		if self.lastOnMesh and now - self.offSince >= OFF_MESH_TIME then
+			self:Find(OFFMESH, pos)
+			self.offSince = nil
+			self.anchor, self.anchorAt, self.stage = self.lastOnMesh, now, 0
+			return { kind = RECOVER, to = self.lastOnMesh }
+		end
+	else
+		self.offSince, self.lastOnMesh = nil, pos
+	end
 	local point = self.points[self.index]
 	while point and Across(pos, point) <= ARRIVE and abs(pos.z - point.z) <= HEIGHT do
 		self.reached = self.reached + 1
@@ -90,7 +106,7 @@ function Probe:Reached()
 	return self.reached
 end
 
--- What it found, in order: { kind (REPATH, HOP, STUCK, SLOW), index, point, at }.
+-- What it found, in order: { kind (REPATH, HOP, STUCK, SLOW, OFFMESH), index, point, at }.
 function Probe:Findings()
 	return self.findings
 end

@@ -42,12 +42,15 @@ function Controller:StepProbes()
 			if not IsValid(run.ent) then
 				run.took, run.lost = now - run.started, true
 			else
-				local command = run.probe:Step(run.ent:GetPos(), now)
+				local pos = run.ent:GetPos()
+				local command = run.probe:Step(pos, now, self:OnMesh(pos))
 				if command.kind == Probe.DONE then
 					run.took = now - run.started
 					run.ent:Remove()
 				elseif command.kind == Probe.REPATH then
 					run.ent:NSRepath()
+				elseif command.kind == Probe.RECOVER then
+					run.ent:SetPos(command.to + SPAWN_LIFT)
 				elseif command.kind == Probe.HOP then
 					run.ent:NSHop(OnFloor(ToVector(command.to)))
 				elseif run.to ~= command.to then
@@ -75,17 +78,17 @@ function Controller:ProbeReport()
 			counts[found.kind] = (counts[found.kind] or 0) + 1
 			totals[found.kind] = (totals[found.kind] or 0) + 1
 		end
-		lines[#lines + 1] = string.format("team %d lane %d (%s): %d/%d points in %.0f s%s; fresh paths %d, hops %d, stuck %d, slow %d",
+		lines[#lines + 1] = string.format("team %d lane %d (%s): %d/%d points in %.0f s%s; fresh paths %d, hops %d, stuck %d, slow %d, off the mesh %d",
 			run.team, run.lane, run.kind, run.probe:Reached(), run.count, run.took or 0, run.lost and ", probe lost" or "",
-			counts[Probe.REPATH] or 0, counts[Probe.HOP] or 0, counts[Probe.STUCK] or 0, counts[Probe.SLOW] or 0)
+			counts[Probe.REPATH] or 0, counts[Probe.HOP] or 0, counts[Probe.STUCK] or 0, counts[Probe.SLOW] or 0, counts[Probe.OFFMESH] or 0)
 		for _, found in ipairs(run.probe:Findings()) do
-			if found.kind == Probe.STUCK or found.kind == Probe.SLOW then
+			if found.kind == Probe.STUCK or found.kind == Probe.SLOW or found.kind == Probe.OFFMESH then
 				lines[#lines + 1] = string.format("  %s at point %d %s, standing at %s", found.kind, found.index, At(found.point), At(found.at))
 			end
 		end
 	end
-	lines[#lines + 1] = string.format("ns_lanes_probe: fresh paths %d, hops %d, stuck %d, slow %d",
-		totals[Probe.REPATH] or 0, totals[Probe.HOP] or 0, totals[Probe.STUCK] or 0, totals[Probe.SLOW] or 0)
+	lines[#lines + 1] = string.format("ns_lanes_probe: fresh paths %d, hops %d, stuck %d, slow %d, off the mesh %d",
+		totals[Probe.REPATH] or 0, totals[Probe.HOP] or 0, totals[Probe.STUCK] or 0, totals[Probe.SLOW] or 0, totals[Probe.OFFMESH] or 0)
 	return lines
 end
 

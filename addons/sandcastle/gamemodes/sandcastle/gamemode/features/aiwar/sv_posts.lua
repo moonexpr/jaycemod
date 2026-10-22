@@ -25,7 +25,7 @@ local OFF_MESH_BELOW, OFF_MESH_LIFT = 96, Vector(0, 0, 16)
 local OFF_MESH_REACH, OFF_MESH_TIME = 48, 5
 local RELAPSE_TIME = 60
 
-local function OnMesh(pos)
+function Controller:OnMesh(pos)
 	if IsValid(navmesh.GetNavArea(pos + OFF_MESH_LIFT, OFF_MESH_BELOW)) then return true end
 	return IsValid(navmesh.GetNearestNavArea(pos + OFF_MESH_LIFT, false, OFF_MESH_REACH, true, true))
 end
@@ -64,7 +64,7 @@ function Controller:Watch(ent, entry, now)
 	local soldier = entry.soldier
 	local pos = ent:GetPos()
 	local inWorld = util.IsInWorld(pos + OFF_MESH_LIFT)
-	if inWorld and OnMesh(pos) then
+	if inWorld and self:OnMesh(pos) then
 		soldier.lastOnMesh = pos
 		soldier.offMeshSince = nil
 	else

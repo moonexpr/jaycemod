@@ -417,13 +417,10 @@ function WS.DrgSoldier(ENT, baseName)
 			hull.start = a
 			return not self:TraceHull(b - a, hull).Hit
 		end
-		-- and its whole body fits where it lands: a ledge that is a thin plate's
-		-- edge (a stage over open space) would leave it set inside the plate
-		local body = { mins = Vector(mins.x, mins.y, mins.z + 1), maxs = maxs }
-		local function Fits(p)
-			body.start = p
-			return not self:TraceHull(vector_origin, body).Hit
-		end
+		-- and its body fits where it lands, from step height up as the rest (a
+		-- slope under it is no wall): a ledge that is a thin plate's edge (a
+		-- stage over open space) would leave it set inside the plate
+		local function Fits(p) return Clear(p, p) end
 		local land = Leap.Arc(from, ledge, 1)
 		land = Vector(land.x, land.y, land.z)
 		local top = Vector(from.x, from.y, land.z)
