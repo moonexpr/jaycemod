@@ -39,7 +39,10 @@ alone, it cannot reach Steam); --ip takes an address or a name (bind_address),
 and --ip 127.0.0.1 keeps the server and its RCON on this machine. --no-lua-refresh adds -disableluarefresh, so edits
 on disk after start-up never reach the running server (game events v2's T1).
 
-The RCON password is kept in .devtools/artifacts/rcon_password. The
+The main server logs on to Steam with the token in
+.devtools/artifacts/steam_account_token (+sv_setsteamaccount), when there is
+one; other instances log on anonymously. The RCON password is kept in
+.devtools/artifacts/rcon_password. The
 supervisor records the processes it launched in .devtools/artifacts/srcds.pid
 (itself and the wine launcher; the server is the launcher's descendant).
 `stop` asks the server to quit over RCON, then signals only those launched
@@ -116,6 +119,8 @@ DEFAULT_BIND_HOST = ALL_INTERFACES
 REPO = Path(__file__).resolve().parents[2]
 ARTIFACTS = REPO / ".devtools" / "artifacts"
 PASSWORD_FILE = ARTIFACTS / "rcon_password"
+# the main server's Steam game server login token (GSLT), the operator's; gitignored
+STEAM_ACCOUNT_FILE = ARTIFACTS / "steam_account_token"
 PID_FILE = ARTIFACTS / "srcds.pid"
 PROCESS_LOG = ARTIFACTS / "srcds.log"
 
@@ -208,6 +213,7 @@ class ServerConfig:
     lua_refresh: bool = True  # False adds -disableluarefresh
     ip: str = LOCALHOST  # the address it binds, game and RCON alike
     p2p: bool = False  # True adds -p2p, so Steam friends can join
+    steam_account: str = ""  # a game server login token; empty logs on anonymously
 
     def __post_init__(self):
         if not MAP_NAME.match(self.map):
@@ -229,6 +235,8 @@ def command_line(install: Install, config: ServerConfig) -> List[str]:
         ("sv_lan", "0"),  # an internet server: Steam authenticates, VAC secures (a LAN one never is)
         ("sv_hibernate_think", "1"),
     ] + list(config.convars)
+    if config.steam_account:
+        convars.append(("sv_setsteamaccount", config.steam_account))
     argv = [
         str(install.wine), "--bottle", install.bottle, "--no-gui", "--no-update",
         "--workdir", install.gmod_windows,
@@ -607,6 +615,14 @@ def password() -> str:
     return PASSWORD_FILE.read_text().strip()
 
 
+def steam_account(instance: Instance, path: Path = STEAM_ACCOUNT_FILE) -> str:
+    """The main server's game server token, or "" (anonymous): a token logs on
+    one server at a time, so a second instance would knock the main one off."""
+    if instance != MAIN or not path.exists():
+        return ""
+    return path.read_text().strip()
+
+
 def started_host(instance: Instance = MAIN) -> str:
     launched = read_launched(InstanceFiles.of(instance).pid)
     return launched.host if launched else LOCALHOST
@@ -634,7 +650,8 @@ def make_server(map_name: str, port: int, lua_refresh: bool = True, maxplayers: 
     """ip: the address to bind; by default the running server's (rcon, stop), else 127.0.0.1."""
     install = Install.discover(instance)
     ip = ip or started_host(instance)
-    config = ServerConfig(map_name, port, password(), maxplayers, lua_refresh=lua_refresh, ip=ip, p2p=p2p)
+    config = ServerConfig(map_name, port, password(), maxplayers, lua_refresh=lua_refresh, ip=ip, p2p=p2p,
+                          steam_account=steam_account(instance))
     return Server(install, config, reach_address(ip), instance)
 
 

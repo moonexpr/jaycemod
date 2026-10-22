@@ -2,6 +2,7 @@ import dataclasses
 import fcntl
 import os
 import struct
+import tempfile
 import termios
 import socket
 import threading
@@ -71,6 +72,20 @@ class CommandLine(unittest.TestCase):
         # the supervisor's pty log (srcds.log) is the console's record
         self.assertNotIn("-condebug", self.argv)
         self.assertIn("-nohltv", self.argv)
+
+    def test_logs_on_with_the_game_server_token_when_it_has_one(self):
+        self.assertNotIn("+sv_setsteamaccount", self.argv)
+        argv = command_line(INSTALL, dataclasses.replace(self.config, steam_account="ABC123"))
+        self.assertEqual(argv[argv.index("+sv_setsteamaccount") + 1], "ABC123")
+
+    def test_only_the_main_instance_takes_the_token(self):
+        # a token logs on one server at a time: a second would knock the first off Steam
+        with tempfile.TemporaryDirectory() as tmp:
+            token = Path(tmp) / "steam_account_token"
+            self.assertEqual(srcds.steam_account(Instance(1), token), "")
+            token.write_text("ABC123\n")
+            self.assertEqual(srcds.steam_account(Instance(1), token), "ABC123")
+            self.assertEqual(srcds.steam_account(Instance(2), token), "")
 
     def test_keeps_thinking_while_empty(self):
         self.assertEqual(self._convar("sv_hibernate_think"), "1")

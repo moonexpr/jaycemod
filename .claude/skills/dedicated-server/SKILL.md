@@ -84,6 +84,7 @@ Useful after a map loads:
 |------|-------|
 | Everything the console printed, as the supervisor read it | `.devtools/artifacts/srcds.log` |
 | The RCON password | `.devtools/artifacts/rcon_password` |
+| The main server's Steam game server token (`+sv_setsteamaccount`; other instances log on anonymously) | `.devtools/artifacts/steam_account_token` |
 | The processes `start` launched | `.devtools/artifacts/srcds.pid` |
 
 Read logs with `tail` or a filtering command, not whole: they grow long.
