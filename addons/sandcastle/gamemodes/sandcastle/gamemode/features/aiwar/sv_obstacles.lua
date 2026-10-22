@@ -91,6 +91,28 @@ function Controller:SetForcefieldsPassable(passable)
 	for _, visualizer in ipairs(ents.FindByClass("func_respawnroomvisualizer")) do visualizer:SetNotSolid(passable) end
 end
 
+-- Health kits a soldier can reach -----------------------------------------------------------
+-- A kit on furniture (a shelf in a shack, cp_altitude's B) stands where no
+-- nav area comes near it, and a soldier sent for it never gets there: a kit
+-- counts only with a nav area within KIT_REACH of it across the ground and
+-- KIT_RISE up or down. Kits do not move: each is judged once.
+local KIT_REACH, KIT_RISE, KIT_SEARCH = 32, 32, 256
+local kitReach = setmetatable({}, { __mode = "k" })
+
+function Controller:KitReachable(kit)
+	local known = kitReach[kit]
+	if known ~= nil then return known end
+	local pos = kit:GetPos()
+	local area = navmesh.GetNearestNavArea(pos, false, KIT_SEARCH, false, true)
+	local reachable = false
+	if IsValid(area) then
+		local near = area:GetClosestPointOnArea(pos)
+		reachable = Vector(pos.x - near.x, pos.y - near.y, 0):Length() <= KIT_REACH and math.abs(pos.z - near.z) <= KIT_RISE
+	end
+	kitReach[kit] = reachable
+	return reachable
+end
+
 -- Carts in the way of routes -------------------------------------------------------------
 -- The nav mesh does not know where the carts are, so routes led through
 -- them. An area whose centre is under a cart (its bounds widened by

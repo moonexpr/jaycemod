@@ -39,14 +39,14 @@ end
 function Soldier:IsDisarmed() return self.disarmed == true end
 
 -- The health kits it may take now (ws_pickup_base's ValidTouch: shown,
--- not respawning, of its team or none).
+-- not respawning, of its team or none) and can reach (KitReachable).
 local HEALTH_KITS = { "item_healthkit_small", "item_healthkit_medium", "item_healthkit_full" }
 
 function Soldier:HealthKits()
 	local kits = {}
 	for _, class in ipairs(HEALTH_KITS) do
 		for _, kit in ipairs(ents.FindByClass(class)) do
-			if kit:ValidTouch(self.ent) then kits[#kits + 1] = { pos = Point(kit:GetPos()), handle = kit } end
+			if kit:ValidTouch(self.ent) and self.controller:KitReachable(kit) then kits[#kits + 1] = { pos = Point(kit:GetPos()), handle = kit } end
 		end
 	end
 	return kits
