@@ -1,51 +1,74 @@
 -- Sandcastle's balance of Half-Life 2's weapons, for players and soldiers
--- alike. The crossbow punches rather than kills: less damage, no headshot
--- crit, a hard knockback and a stagger. The pistol and the .357 are the
--- long-range guns: more damage, a tight cone, a slower rate of fire, and no
--- falloff, where the SMG's and AR2's bullets fall off past medium range.
--- The shotgun crits more the nearer its target. Melee is left as it is;
+-- alike. Each gun has a range: the pistol and the .357 are the long-range
+-- guns, with more damage, a tight cone, a slower rate of fire, and no
+-- falloff; the SMG's, AR2's and crossbow's bullets fall off past medium
+-- range, the shotgun's past short range. The crossbow punches rather than
+-- kills: no headshot crit and a hard knockback. The shotgun crits more the
+-- nearer its target. Melee is left as it is;
 -- the frag, the SLAM and the RPG hit harder. The controller
 -- (ws/sv_hits.lua, ws/sh_weapon_balance.lua) applies it to each hit and shot.
 local math = math
 module(...)
 
 -- damage: a hit's damage, in place of HL2's; cone: the full spread in
--- degrees; interval: the least seconds between two shots; falloff: its
--- bullets fall off with distance (FALLOFF); closeCrits: it crits by
+-- degrees; interval: the least seconds between two shots; range: how far
+-- its bullets carry (a RANGE_*: they fall off past its FALLOFF, a long
+-- one's never); closeCrits: it crits by
 -- distance (CLOSE_CRITS); headshotCrit false: a headshot is no crit;
 -- knockback: the speed a hit pushes its victim along the shot,
 -- headshotKnockback times that on a headshot, lift: the fraction of it
 -- added upward (a push along the ground is lost to friction), stagger: the
--- seconds the victim is slowed and staggerSlow: by how much; blast: an explosion's damage at its centre, in place of
--- HL2_BLAST.
+-- seconds the victim is slowed and staggerSlow: by how much (none without);
+-- blast: an explosion's damage at its centre, in place of HL2_BLAST.
+RANGE_LONG, RANGE_MEDIUM, RANGE_SHORT = "long", "medium", "short"
+
 WEAPONS = {
 	weapon_crossbow = {
-		damage = 40,
+		damage = 50,
+		range = RANGE_MEDIUM,
 		headshotCrit = false,
-		knockback = 700,
+		knockback = 1400,
 		headshotKnockback = 1.5,
 		lift = 0.3,
-		stagger = 0.5,
-		staggerSlow = 0.5,
 	},
 	weapon_pistol = {
 		damage = 18,
+		range = RANGE_LONG,
 		cone = 0.5,
 		interval = 0.3,
 	},
 	weapon_357 = {
 		damage = 75,
+		range = RANGE_LONG,
 		cone = 0,
 		interval = 1.0,
 	},
-	weapon_smg1 = { falloff = true },
-	weapon_ar2 = { falloff = true },
-	weapon_shotgun = { closeCrits = true },
-	weapon_crowbar = {},
-	weapon_stunstick = {},
-	weapon_frag = { blast = 175 },
-	weapon_slam = { blast = 200 },
-	weapon_rpg = { blast = 150 },
+	weapon_smg1 = { range = RANGE_MEDIUM },
+	weapon_ar2 = { range = RANGE_MEDIUM },
+	weapon_shotgun = {
+		range = RANGE_SHORT,
+		closeCrits = true,
+	},
+	weapon_crowbar = {
+		damage = 20,
+		interval = 2.0,
+	},
+	weapon_stunstick = {
+		damage = 20,
+		interval = 2.0,
+	},
+	weapon_frag = { 
+		blast = 175,
+		knockback = 1400,
+	},
+	weapon_slam = { 
+		blast = 200,
+		knockback = 1400,
+	},
+	weapon_rpg = { 
+		blast = 75,
+		knockback = 1400,
+	},
 }
 
 -- The damage of HL2's explosives at their centre (GMod's skill convars:
@@ -66,11 +89,19 @@ INFLICTORS = {
 	rpg_missile = "weapon_rpg",
 }
 
--- Full damage to start units, falling to floor of it at finish and beyond.
+-- By range: full damage to start units, falling to floor of it at finish
+-- and beyond. A long range has none.
 FALLOFF = {
-	start = 1024,
-	finish = 2048,
-	floor = 0.5,
+	[RANGE_MEDIUM] = {
+		start = 1024,
+		finish = 2048,
+		floor = 0.5,
+	},
+	[RANGE_SHORT] = {
+		start = 512,
+		finish = 1024,
+		floor = 0.5,
+	},
 }
 
 -- No crit at far units or beyond, rising to chance at near and nearer.
@@ -91,8 +122,12 @@ local function Progress(value, from, to)
 	return math.min(math.max((value - from) / (to - from), 0), 1)
 end
 
-local function Falloff(distance)
-	return 1 + (FALLOFF.floor - 1) * Progress(distance, FALLOFF.start, FALLOFF.finish)
+-- The fraction of its damage a bullet keeps at distance; all of it for a
+-- long range.
+local function Falloff(range, distance)
+	local curve = FALLOFF[range]
+	if not curve then return 1 end
+	return 1 + (curve.floor - 1) * Progress(distance, curve.start, curve.finish)
 end
 
 local function CritChance(distance)
@@ -111,7 +146,7 @@ function Shot(class, hit)
 	local crit = false
 	if hit.bullet then
 		damage = weapon.damage or damage
-		if weapon.falloff then damage = damage * Falloff(hit.distance) end
+		damage = damage * Falloff(weapon.range, hit.distance)
 		crit = weapon.closeCrits == true and hit.roll < CritChance(hit.distance)
 	end
 	return damage, hit.headshot and weapon.headshotCrit ~= false, crit

@@ -111,7 +111,7 @@ local function PushDirection(target, dmg)
 end
 
 -- The crossbow's punch: the victim thrown along the shot and, a player,
--- staggered.
+-- staggered by a weapon that staggers.
 local function KnockBack(target, dmg, hit)
 	local push = Balance.Knockback(hit.class, hit.headshot)
 	if push == nil or target:Health() <= 0 then return end
@@ -124,7 +124,7 @@ local function KnockBack(target, dmg, hit)
 	else
 		target:SetVelocity(velocity)
 	end
-	if target:IsPlayer() then WS.StunPlayer(target, push.stagger, push.slow, bit.bor(P.STUN.MOVEMENT, P.STUN.NO_EFFECTS)) end
+	if target:IsPlayer() and push.stagger then WS.StunPlayer(target, push.stagger, push.slow, bit.bor(P.STUN.MOVEMENT, P.STUN.NO_EFFECTS)) end
 end
 
 local HIT_SOUNDS = {

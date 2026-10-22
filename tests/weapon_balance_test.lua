@@ -3,6 +3,7 @@ local Balance = T.require("foundation.combat.weapon_balance")
 
 local W = Balance.WEAPONS
 local FALLOFF = Balance.FALLOFF
+local MEDIUM, SHORT = FALLOFF[Balance.RANGE_MEDIUM], FALLOFF[Balance.RANGE_SHORT]
 local CLOSE = Balance.CLOSE_CRITS
 
 local function Bullet(fields)
@@ -23,16 +24,16 @@ T.test("the tuning is defined", function()
 	T.defined(W.weapon_crossbow.knockback, "crossbow knockback")
 	T.defined(W.weapon_crossbow.headshotKnockback, "crossbow headshot knockback")
 	T.defined(W.weapon_crossbow.lift, "crossbow lift")
-	T.defined(W.weapon_crossbow.stagger, "crossbow stagger")
-	T.defined(W.weapon_crossbow.staggerSlow, "crossbow stagger slow")
 	T.defined(W.weapon_pistol.damage, "pistol damage")
 	T.defined(W.weapon_pistol.cone, "pistol cone")
 	T.defined(W.weapon_pistol.interval, "pistol interval")
 	T.defined(W.weapon_357.damage, "magnum damage")
 	T.defined(W.weapon_357.interval, "magnum interval")
-	T.defined(FALLOFF.start, "falloff start")
-	T.defined(FALLOFF.finish, "falloff finish")
-	T.defined(FALLOFF.floor, "falloff floor")
+	for _, range in ipairs({ Balance.RANGE_MEDIUM, Balance.RANGE_SHORT }) do
+		T.defined(FALLOFF[range].start, range .. " falloff start")
+		T.defined(FALLOFF[range].finish, range .. " falloff finish")
+		T.defined(FALLOFF[range].floor, range .. " falloff floor")
+	end
 	T.defined(CLOSE.far, "close crits far")
 	T.defined(CLOSE.near, "close crits near")
 	T.defined(CLOSE.chance, "close crits chance")
@@ -64,24 +65,49 @@ T.test("other weapons keep their headshot", function()
 	T.eq(unknown, true, "a weapon the balance does not know")
 end)
 
-T.test("the pistol and magnum hit for their own damage at any range", function()
+-- A weapon's range: the long-range guns never fall off; the medium- and
+-- short-range ones fall off past their range's FALLOFF.
+T.test("the pistol and magnum are long-range and hit for their own damage at any range", function()
+	T.eq(W.weapon_pistol.range, Balance.RANGE_LONG, "pistol")
+	T.eq(W.weapon_357.range, Balance.RANGE_LONG, "magnum")
+	T.eq(FALLOFF[Balance.RANGE_LONG], nil, "no falloff")
 	T.eq(Balance.Shot("weapon_pistol", Bullet({ damage = 5 })), W.weapon_pistol.damage, "pistol up close")
-	T.eq(Balance.Shot("weapon_pistol", Bullet({ damage = 5, distance = FALLOFF.finish * 2 })), W.weapon_pistol.damage, "pistol far")
-	T.eq(Balance.Shot("weapon_357", Bullet({ damage = 40, distance = FALLOFF.finish * 2 })), W.weapon_357.damage, "magnum far")
+	T.eq(Balance.Shot("weapon_pistol", Bullet({ damage = 5, distance = MEDIUM.finish * 2 })), W.weapon_pistol.damage, "pistol far")
+	T.eq(Balance.Shot("weapon_357", Bullet({ damage = 40, distance = MEDIUM.finish * 2 })), W.weapon_357.damage, "magnum far")
 end)
 
-T.test("the automatics fall off past medium range", function()
-	for _, class in ipairs({ "weapon_smg1", "weapon_ar2" }) do
-		T.eq(Balance.Shot(class, Bullet({ distance = FALLOFF.start })), 10, class .. " at the start")
-		T.near(Balance.Shot(class, Bullet({ distance = FALLOFF.finish })), 10 * FALLOFF.floor, 1e-9, class .. " at the finish")
-		T.near(Balance.Shot(class, Bullet({ distance = FALLOFF.finish * 3 })), 10 * FALLOFF.floor, 1e-9, class .. " beyond")
-		local middle = (FALLOFF.start + FALLOFF.finish) / 2
-		T.near(Balance.Shot(class, Bullet({ distance = middle })), 10 * (1 + FALLOFF.floor) / 2, 1e-9, class .. " halfway")
+-- Full damage to the curve's start, its floor at its finish and beyond,
+-- halfway between them halfway down; base: the weapon's own damage, or the
+-- hit's.
+local function FallsOff(class, curve)
+	local base = W[class].damage or 10
+	T.eq(Balance.Shot(class, Bullet({ distance = curve.start })), base, class .. " at the start")
+	T.near(Balance.Shot(class, Bullet({ distance = curve.finish })), base * curve.floor, 1e-9, class .. " at the finish")
+	T.near(Balance.Shot(class, Bullet({ distance = curve.finish * 3 })), base * curve.floor, 1e-9, class .. " beyond")
+	local middle = (curve.start + curve.finish) / 2
+	T.near(Balance.Shot(class, Bullet({ distance = middle })), base * (1 + curve.floor) / 2, 1e-9, class .. " halfway")
+end
+
+T.test("the automatics and the crossbow are medium-range and fall off past it", function()
+	for _, class in ipairs({ "weapon_smg1", "weapon_ar2", "weapon_crossbow" }) do
+		T.eq(W[class].range, Balance.RANGE_MEDIUM, class)
+		FallsOff(class, MEDIUM)
+	end
+end)
+
+T.test("the shotgun is short-range and falls off past it", function()
+	T.eq(W.weapon_shotgun.range, Balance.RANGE_SHORT, "shotgun")
+	FallsOff("weapon_shotgun", SHORT)
+end)
+
+T.test("every weapon that fires bullets has a range", function()
+	for _, class in ipairs({ "weapon_pistol", "weapon_357", "weapon_smg1", "weapon_ar2", "weapon_crossbow", "weapon_shotgun" }) do
+		T.eq(FALLOFF[W[class].range] ~= nil or W[class].range == Balance.RANGE_LONG, true, class)
 	end
 end)
 
 T.test("an automatic's grenade or ball is not a bullet and does not fall off", function()
-	T.eq(Balance.Shot("weapon_smg1", Bullet({ damage = 100, bullet = false, distance = FALLOFF.finish })), 100, "smg grenade")
+	T.eq(Balance.Shot("weapon_smg1", Bullet({ damage = 100, bullet = false, distance = MEDIUM.finish })), 100, "smg grenade")
 end)
 
 T.test("the shotgun crits more the closer it is", function()
