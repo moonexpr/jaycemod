@@ -74,39 +74,65 @@ local function Encode(value, path, refs)
 	return { [REF] = refs:Encode(value, path) }
 end
 
-local function CopyTable(value, path, refs, open)
-	if open[value] then Refuse(path, "is a cycle") end
-	open[value] = true
+-- Whether the key path from the model's root is one of the time paths.
+local function IsTime(times, keys)
+	for _, segments in ipairs(times) do
+		if #segments == #keys then
+			local match = true
+			for i, segment in ipairs(segments) do
+				if segment ~= WILDCARD and segment ~= tostring(keys[i]) then
+					match = false
+					break
+				end
+			end
+			if match then return true end
+		end
+	end
+	return false
+end
+
+-- Copies one level down: keys is the path so far, as the model's own keys.
+local function Child(item, path, key, keys, ctx)
+	keys[#keys + 1] = key
+	local copy = Copy(item, Join(path, key), keys, ctx)
+	keys[#keys] = nil
+	return copy
+end
+
+local function CopyTable(value, path, keys, ctx)
+	if ctx.open[value] then Refuse(path, "is a cycle") end
+	ctx.open[value] = true
 	local copy, plainKeys = {}, true
 	for key in pairs(value) do
 		if not IsPlainKey(key) then plainKeys = false end
 		if type(key) == "string" and key:sub(1, 1) == "$" then Refuse(Join(path, key), "a key starting with $ is the snapshot's own") end
 	end
 	if plainKeys then
-		for key, item in pairs(value) do copy[key] = Copy(item, Join(path, key), refs, open) end
+		for key, item in pairs(value) do copy[key] = Child(item, path, key, keys, ctx) end
 	else
 		local pairsList = {}
 		for key, item in pairs(value) do
-			local keyPath = Join(path, key)
-			local data = IsPlainKey(key) and key or Encode(key, keyPath, refs)
-			pairsList[#pairsList + 1] = { data, Copy(item, keyPath, refs, open) }
+			local data = IsPlainKey(key) and key or Encode(key, Join(path, key), ctx.refs)
+			pairsList[#pairsList + 1] = { data, Child(item, path, key, keys, ctx) }
 		end
 		copy = { [MAP] = pairsList }
 	end
-	open[value] = nil
+	ctx.open[value] = nil
 	return copy
 end
 
-function Copy(value, path, refs, open)
+-- ctx = { refs, open (the tables being copied), times, delta (added to each time) }
+function Copy(value, path, keys, ctx)
 	local kind = type(value)
 	if kind == "number" then
 		if value == huge then return { [NUM] = INFINITE } end
 		if value == -huge then return { [NUM] = NEGATIVE_INFINITE } end
+		if IsTime(ctx.times, keys) then return value + ctx.delta end
 		return value
 	end
 	if kind == "string" or kind == "boolean" or kind == "nil" then return value end
-	if kind == "table" and getmetatable(value) == nil then return CopyTable(value, path, refs, open) end
-	return Encode(value, path, refs)
+	if kind == "table" and getmetatable(value) == nil then return CopyTable(value, path, keys, ctx) end
+	return Encode(value, path, ctx.refs)
 end
 
 local Restore
@@ -168,18 +194,22 @@ local function Shift(snapshot, spec, delta)
 end
 
 function Take(model, spec, now, refs)
+	local ctx = {
+		refs = refs,
+		open = {},
+		times = spec.times,
+		delta = -now,
+	}
 	local snapshot = {}
 	for key, value in pairs(model) do
 		if not spec.skip[key] then
-			local path = Join(spec.name, key)
 			if spec.machines[key] then
 				snapshot[key] = value:State()
 			else
-				snapshot[key] = Copy(value, path, refs, {})
+				snapshot[key] = Child(value, spec.name, key, {}, ctx)
 			end
 		end
 	end
-	Shift(snapshot, spec, -now)
 	return snapshot
 end
 

@@ -17,6 +17,7 @@
 -- (m_hControlPoint).
 local setmetatable = setmetatable
 local Teams = require("foundation.teams")
+local Snapshot = require("foundation.core.snapshot")
 module(...)
 
 -- The CCPTimerLogic constructor.
@@ -37,6 +38,16 @@ function New(config)
 		endTime = nil,
 	}, PointTimerModel)
 end
+
+-- The timer as plain data (foundation.core.snapshot), its end kept as
+-- seconds from now (none while it waits).
+local SNAPSHOT = Snapshot.Spec({
+	name = "point_timer",
+	times = { "endTime" },
+})
+
+function PointTimerModel:Snapshot(now) return Snapshot.Take(self, SNAPSHOT, now) end
+function PointTimerModel:Restore(snapshot, now) Snapshot.Apply(self, snapshot, SNAPSHOT, now) end
 
 function PointTimerModel:Team() return self.team end
 function PointTimerModel:EndTime() return self.endTime end

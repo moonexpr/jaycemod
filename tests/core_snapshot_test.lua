@@ -134,6 +134,24 @@ T.test("refs encode and decode values and keys that are not plain data", functio
 	T.eq(other.touching[b], 3, "another key decoded")
 end)
 
+T.test("a time path reaches through a table keyed by refs", function()
+	local a = setmetatable({ id = "a" }, {})
+	local refs = {
+		Encode = function(_, value) return { id = value.id } end,
+		Decode = function() return a end,
+	}
+	local spec = Snapshot.Spec({
+		name = "points",
+		times = { "byEnt.*.unlockAt" },
+	})
+	local model = { byEnt = { [a] = { unlockAt = 130 } } }
+	local snap = Snapshot.Take(model, spec, 100, refs)
+	local other = { byEnt = {} }
+	Snapshot.Apply(other, snap, spec, 1000, refs)
+	T.eq(other.byEnt[a].unlockAt, 1030, "30 s to go, from the new now")
+	T.eq(model.byEnt[a].unlockAt, 130, "the model taken is untouched")
+end)
+
 T.test("a ref that no longer resolves is refused with its path", function()
 	local gone = setmetatable({ id = "x" }, {})
 	local refs = {

@@ -12,6 +12,7 @@ local ipairs, setmetatable = ipairs, setmetatable
 local Rounds = require("foundation.rounds")
 local State = require("foundation.rounds.state")
 local Teams = require("foundation.teams")
+local Snapshot = require("foundation.core.snapshot")
 module(...)
 
 local NOBODY, RED, BLUE = Teams.UNASSIGNED, Teams.RED, Teams.BLUE
@@ -73,6 +74,16 @@ function New(t)
 		returnAt = 0,
 	}, Flag)
 end
+
+-- The flag as plain data (foundation.core.snapshot): its carrier through
+-- refs, its return kept as seconds from now.
+local SNAPSHOT = Snapshot.Spec({
+	name = "flag",
+	times = { "returnAt" },
+})
+
+function Flag:Snapshot(now, refs) return Snapshot.Take(self, SNAPSHOT, now, refs) end
+function Flag:Restore(snapshot, now, refs) Snapshot.Apply(self, snapshot, SNAPSHOT, now, refs) end
 
 function Flag:State() return self.state end
 function Flag:Team() return self.team end
@@ -193,6 +204,11 @@ Tally.__index = Tally
 function NewTally()
 	return setmetatable({ caps = { [RED] = 0, [BLUE] = 0 } }, Tally)
 end
+
+local TALLY_SNAPSHOT = Snapshot.Spec({ name = "tally" })
+
+function Tally:Snapshot() return Snapshot.Take(self, TALLY_SNAPSHOT, 0) end
+function Tally:Restore(snapshot) Snapshot.Apply(self, snapshot, TALLY_SNAPSHOT, 0) end
 
 function Tally:Captures(team) return self.caps[team] end
 

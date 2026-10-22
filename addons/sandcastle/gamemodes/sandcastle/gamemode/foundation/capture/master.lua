@@ -14,6 +14,7 @@ local sort, remove = table.sort, table.remove
 local Capture = require("foundation.capture")
 local Rounds = require("foundation.rounds")
 local Teams = require("foundation.teams")
+local Snapshot = require("foundation.core.snapshot")
 module(...)
 
 -- score_style: a team scores per round won, or per point captured.
@@ -75,6 +76,16 @@ local function CurrentRound(self)
 end
 
 -- The mini-round being played, by name, or nil.
+-- The master as plain data (foundation.core.snapshot): its chosen
+-- mini-round and switches. Its rounds are the map's list, kept as they are.
+local SNAPSHOT = Snapshot.Spec({
+	name = "master",
+	skip = { "rounds" },
+})
+
+function MasterModel:Snapshot(now, refs) return Snapshot.Take(self, SNAPSHOT, now, refs) end
+function MasterModel:Restore(snapshot, now, refs) Snapshot.Apply(self, snapshot, SNAPSHOT, now, refs) end
+
 function MasterModel:Current()
 	return self.current
 end

@@ -32,6 +32,7 @@ local gmatch = string.gmatch
 local sort = table.sort
 local tonumber = tonumber
 local Teams = require("foundation.teams")
+local Snapshot = require("foundation.core.snapshot")
 module(...)
 
 -- A control point index or rank that names no point (the SDK's -1).
@@ -274,6 +275,18 @@ function New(config)
 		ids = ids,
 	}, PointSet)
 end
+
+-- The set's points as plain data (foundation.core.snapshot), keyed by
+-- their ids through refs, unlock and warn times kept as seconds from now.
+-- The point order and caplinear are the map's and the convar's.
+local SNAPSHOT = Snapshot.Spec({
+	name = "capture",
+	skip = { "ids", "caplinear" },
+	times = { "points.*.unlockAt", "points.*.shownUnlockAt", "points.*.lastWarn" },
+})
+
+function PointSet:Snapshot(now, refs) return Snapshot.Take(self, SNAPSHOT, now, refs) end
+function PointSet:Restore(snapshot, now, refs) Snapshot.Apply(self, snapshot, SNAPSHOT, now, refs) end
 
 -- The point an id names. An id the set does not hold is the caller's bug
 -- (an entity the set was never rebuilt for): fail naming it, at the caller.
