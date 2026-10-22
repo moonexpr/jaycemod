@@ -361,6 +361,11 @@ end, function(data, _, report)
 	if data.active and not A:Active() then A:Start() end
 	if not data.active and A:Active() then A:End() end
 	if A.paused ~= data.paused then A:SetPaused(data.paused) end
+	if next(data.soldiers) and not A.war then
+		report:Note("aiwar: no war to enlist soldiers in (started: " .. tostring(A:Active()) .. "; the gamemode may not be in Gameplay yet); "
+			.. table.Count(data.soldiers) .. " soldiers not restored, load again once it is")
+		return { restored = false }
+	end
 	local kept, made, removed = 0, 0, 0
 	local wanted = {}
 	for key, s in pairs(data.soldiers) do

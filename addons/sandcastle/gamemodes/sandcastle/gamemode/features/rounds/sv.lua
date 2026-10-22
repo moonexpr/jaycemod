@@ -260,12 +260,25 @@ function Controller:InSuddenDeath()
 	return self.round:InSuddenDeath()
 end
 
+-- Where a function was written: a file run again (a live reload) makes new
+-- closures at the same place, which are the same listener.
+local function DefinedAt(fn)
+	local info = debug.getinfo(fn, "S")
+	return info.short_src .. ":" .. info.linedefined
+end
+
 -- fn runs at the phase (Rounds.PHASE_*), in `order` (Rounds.LISTEN_*), each
--- function once however often it is added.
+-- function once however often it is added; one written where an earlier
+-- one was replaces it.
 function Controller:AddRoundListener(phase, order, fn)
 	local list = self.listeners[phase]
+	local where = DefinedAt(fn)
 	for _, l in ipairs(list) do
 		if l.fn == fn then return end
+		if l.where == where then
+			l.fn = fn
+			return
+		end
 	end
 	local at = #list + 1
 	for i, l in ipairs(list) do
@@ -277,6 +290,7 @@ function Controller:AddRoundListener(phase, order, fn)
 	table.insert(list, at, {
 		order = order,
 		fn = fn,
+		where = where,
 	})
 end
 

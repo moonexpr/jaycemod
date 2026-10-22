@@ -110,6 +110,21 @@ end)
 -- effect in the same batch may set the time limit timer's time: a removed
 -- entity stays valid until the frame ends, so the controller must have let
 -- go of it as it was unbound, and make a new one.
+T.test("a listener added again from the same place replaces the old, as a file run again does", function()
+	local Rounds = T.require("foundation.rounds")
+	local phase = Rounds.PHASE_ARENA_START
+	local before = #controller.listeners[phase]
+	local ran = {}
+	for run = 1, 2 do
+		controller:AddRoundListener(phase, Rounds.LISTEN_LOGIC, function() ran[#ran + 1] = run end)
+	end
+	T.eq(#controller.listeners[phase], before + 1, "one listener")
+	controller:RunListeners(phase)
+	T.eq(table.concat(ran, ","), "2", "the newer one runs")
+	controller:AddRoundListener(phase, Rounds.LISTEN_LOGIC, function() end)
+	T.eq(#controller.listeners[phase], before + 2, "one from elsewhere is another")
+end)
+
 T.test("a timer the gamerules made is forgotten as it is unbound", function()
 	for _, field in ipairs({ "timeLimitTimer", "stalemateTimer", "roundTimer" }) do
 		local ent = { name = field }
