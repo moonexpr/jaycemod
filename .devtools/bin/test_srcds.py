@@ -122,11 +122,12 @@ class CommandLine(unittest.TestCase):
         self.assertIn("-disableluarefresh", argv[argv.index("--cx-app"):argv.index("+ip")])
         self.assertEqual(argv[:3], ["/Apps/wine", "--bottle", "GModServer"])
 
-    # Steam friends join a -p2p server through Steam's relays.
-    def test_p2p_adds_p2p(self):
-        self.assertNotIn("-p2p", self.argv)
-        argv = command_line(INSTALL, dataclasses.replace(self.config, p2p=True))
-        self.assertIn("-p2p", argv[argv.index("--cx-app"):argv.index("+ip")])
+    # Public by default: anyone joins a -p2p server through Steam's relays
+    # (connect p2p:<steamid64>), with no port forwarded.
+    def test_runs_p2p_unless_told_not_to(self):
+        self.assertIn("-p2p", self.argv[self.argv.index("--cx-app"):self.argv.index("+ip")])
+        argv = command_line(INSTALL, dataclasses.replace(self.config, p2p=False))
+        self.assertNotIn("-p2p", argv)
         self.assertEqual(argv[argv.index("+sv_lan") + 1], "0")
 
     def _convar(self, name):
