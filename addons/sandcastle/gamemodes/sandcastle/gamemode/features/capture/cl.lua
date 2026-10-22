@@ -205,12 +205,11 @@ local function DrawCappers(p, x, y, size, s)
 end
 
 -- A point's icon, size pixels square at x, y on a screen h pixels tall:
--- its owner's icon from the map (team_icon_N), dimmed out of the mini-round,
--- the capping team's sweep with the capture, blocked or, while it is being
+-- its owner's icon from the map (team_icon_N), the capping team's sweep with the capture, blocked or, while it is being
 -- captured, its cappers, and the unlock countdown or the point's timer.
 local function DrawIcon(p, x, y, size, h)
 	local s = size / ICON_UNITS
-	local alpha = p.inRound and 255 or DIM_ALPHA
+	local alpha = 255
 	local icon, dim = Mat(p.icon), false
 	if p.locked then icon, dim = LockedIcon(p.icon) end
 	if p.timerEnd > CurTime() then
@@ -236,14 +235,15 @@ local function DrawIcon(p, x, y, size, h)
 	end
 end
 
--- The layout's rows of shown points.
+-- The layout's rows of the points with icons: the current round's
+-- (foundation.capture.hud's HasIcon).
 local function Rows(count)
 	local rows = {}
 	for _, row in ipairs(Capture.Layout(GetGlobal2String("ws_point_layout", ""), count)) do
 		local shown = {}
 		for _, rank in ipairs(row) do
 			local p = Point(rank)
-			if not p.hidden then shown[#shown + 1] = p end
+			if Hud.HasIcon(p) then shown[#shown + 1] = p end
 		end
 		if #shown > 0 then rows[#rows + 1] = shown end
 	end

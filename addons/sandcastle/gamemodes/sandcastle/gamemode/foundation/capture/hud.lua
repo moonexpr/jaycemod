@@ -36,6 +36,14 @@ function Shown(hudType)
 	return hudType ~= Rounds.HUD_PAYLOAD and hudType ~= Rounds.HUD_DEATHMATCH
 end
 
+-- CHudControlPointIcons::InitIcons: whether point p ({ inRound, hidden },
+-- as foundation.capture's HUD state gives it) has an icon: a point in the
+-- current mini-round (the master's team_control_point_round; every point
+-- without mini-rounds) that is not hidden. The layout skips the rest.
+function HasIcon(p)
+	return p.inRound and not p.hidden
+end
+
 -- rowSizes: how many icons each caplayout row shows, top row first; w, h:
 -- the screen in pixels. Returns { size, label, top, rows }: the icon's and
 -- the cappers line's height, the panel's top, and each row's icons' { x, y }

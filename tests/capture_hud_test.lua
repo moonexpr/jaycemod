@@ -77,4 +77,13 @@ T.test("the reason text fades slowly: a pulse takes seconds", function()
 	T.eq(Hud.REASON_PULSE >= 2, true, tostring(Hud.REASON_PULSE))
 end)
 
+-- CHudControlPointIcons::InitIcons: an icon for each point in the current
+-- mini-round (every point outside mini-rounds) that is not hidden; the
+-- layout skips the rest (cp_dustbowl shows its stage's two, not all six).
+T.test("only the current round's points that are not hidden have icons", function()
+	T.eq(Hud.HasIcon({ inRound = true, hidden = false }), true, "in the round")
+	T.eq(Hud.HasIcon({ inRound = false, hidden = false }), false, "another stage's")
+	T.eq(Hud.HasIcon({ inRound = true, hidden = true }), false, "hidden")
+end)
+
 T.finish()
