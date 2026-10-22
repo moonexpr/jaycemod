@@ -223,37 +223,69 @@ local function Crossing(from, to, pos, middle)
 end
 
 -- A drop (into an area more than a step below): the walker steps LANDING_OUT
--- past the edge and lands on the floor under that, maybe in the open beside
--- a room the lower area reaches into under the upper floor.
-local DROP_STEP, LANDING_OUT, LANDING_DEPTH = 18, 24, 1000
+-- past the edge and lands in the lower area under that (or the nearest of
+-- it, held inside it): on the mesh, never on a prop or rail top beside it.
+local DROP_STEP, LANDING_OUT = 18, 24
 
-local function Landing(crossing, dir)
+local function Landing(crossing, dir, to)
 	local x, y = Portal.Past(crossing.x, crossing.y, dir, LANDING_OUT)
-	local above = Vector(x, y, crossing.z + DROP_STEP)
-	local floor = util.TraceLine({ start = above, endpos = above - Vector(0, 0, LANDING_DEPTH), mask = WS.ClipMasks().brushes })
-	return floor.Hit and floor.HitPos or nil
+	x, y = Portal.Inside(Rect(to), x, y)
+	local landing = Vector(x, y, 0)
+	landing.z = to:GetZ(landing)
+	return landing
+end
+
+-- A lane's points through the opening from `from` into `to` at crossing
+-- (in direction dir): from inside `from` (Portal.Exit), then inside `to`
+-- (Portal.Entry), so each leg lies within one area or squarely through an
+-- opening; off a drop, out to the edge and down to its landing instead.
+local function LanePoints(points, from, to, crossing, dir)
+	local x, y = Portal.Exit(Rect(from), crossing.x, crossing.y, dir)
+	local exit = Vector(x, y, 0)
+	exit.z = from:GetZ(exit)
+	points[#points + 1] = exit
+	if to:GetCenter().z < crossing.z - DROP_STEP then
+		points[#points + 1] = crossing
+		points[#points + 1] = Landing(crossing, dir, to)
+		return
+	end
+	x, y = Portal.Entry(Rect(to), crossing.x, crossing.y, dir)
+	local entry = Vector(x, y, 0)
+	entry.z = to:GetZ(entry)
+	points[#points + 1] = entry
 end
 
 -- The points along a route: each crossing into the next area, then the
--- goal (or the nearest the route came). For a lane (middles): each crossing
--- in the middle of its opening, and after each drop its landing, so a
--- lane's line goes out over the edge and down, not through the floor.
+-- goal (or the nearest the route came). For a lane (middles): each
+-- opening crossed at its middle, from inside the area left to inside the
+-- area entered, and each drop out over the edge and down to its landing,
+-- so a lane's line goes through doorways, never through a wall or floor.
 function Controller:RouteWaypoints(areas, goal, found, start, middles)
 	local points = {}
 	local pos = start or areas[1]:GetCenter()
 	for i = 2, #areas do
 		local dir
 		pos, dir = Crossing(areas[i - 1], areas[i], pos, middles)
-		points[#points + 1] = pos
-		if middles and dir and areas[i]:GetCenter().z < pos.z - DROP_STEP then
-			local landing = Landing(pos, dir)
-			if landing then
-				points[#points + 1] = landing
-				pos = landing
-			end
+		if middles and dir then
+			LanePoints(points, areas[i - 1], areas[i], pos, dir)
+			pos = points[#points]
+		else
+			points[#points + 1] = pos
 		end
 	end
-	points[#points + 1] = found and goal or areas[#areas]:GetClosestPointOnArea(goal)
+	if found then
+		points[#points + 1] = goal
+		return points
+	end
+	local last = areas[#areas]
+	local nearest = last:GetClosestPointOnArea(goal)
+	-- a lane's end off the area's edge, where a wall or prop may stand
+	if middles then
+		local x, y = Portal.Inside(Rect(last), nearest.x, nearest.y)
+		nearest = Vector(x, y, 0)
+		nearest.z = last:GetZ(nearest)
+	end
+	points[#points + 1] = nearest
 	return points
 end
 

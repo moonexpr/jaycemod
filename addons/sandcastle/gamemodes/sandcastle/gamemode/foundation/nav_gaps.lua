@@ -10,7 +10,7 @@
 -- sweeps a walker across before it links them (ws/sv_nav.lua).
 --
 -- Areas are { id, lo, hi }, their extents, with lo and hi { x, y, z }.
-local max, min, abs = math.max, math.min, math.abs
+local max, min, abs, ceil = math.max, math.min, math.abs, math.ceil
 local ipairs = ipairs
 local Grid = require("foundation.core.structs.grid")
 module(...)
@@ -83,7 +83,9 @@ end
 -- (otherLo, otherHi) borders that side, at the middle of their overlap (a
 -- doorway, not the wall beside it; nowhere, the side's end nearest it),
 -- from DEEP within the edge (at most the area's centre) to INSIDE past it,
--- at height z. Returns start, finish.
+-- or INSIDE into the area entered across a strip the mesh left between
+-- them (a pillar may stand in it), at height z; along: where on the
+-- opening instead of its middle. Returns start, finish.
 local SIDES = {
 	[0] = { axis = "y", other = "x", sign = -1 },
 	[1] = { axis = "x", other = "y", sign = 1 },
@@ -99,11 +101,12 @@ function SideToward(from, to)
 	return dy > 0 and 2 or 0
 end
 
-function CrossingLine(lo, hi, side, otherLo, otherHi, z)
+function CrossingLine(lo, hi, side, otherLo, otherHi, z, along)
 	local s = SIDES[side]
 	local a, b = max(lo[s.other], otherLo[s.other]), min(hi[s.other], otherHi[s.other])
-	local along
-	if a <= b then
+	if along then
+		-- as given
+	elseif a <= b then
 		along = (a + b) / 2
 	else
 		along = otherHi[s.other] < lo[s.other] and lo[s.other] or hi[s.other]
@@ -112,8 +115,36 @@ function CrossingLine(lo, hi, side, otherLo, otherHi, z)
 	local start, finish = { z = z }, { z = z }
 	start[s.other], finish[s.other] = along, along
 	local depth = min(DEEP, (hi[s.axis] - lo[s.axis]) / 2)
-	start[s.axis], finish[s.axis] = edge - s.sign * depth, edge + s.sign * INSIDE
+	-- on into the other area across any strip the mesh left between them
+	local near = s.sign > 0 and otherLo[s.axis] or otherHi[s.axis]
+	local beyond = s.sign > 0 and max(edge, near) or min(edge, near)
+	start[s.axis], finish[s.axis] = edge - s.sign * depth, beyond + s.sign * INSIDE
 	return start, finish
+end
+
+-- A path crosses anywhere along the opening (the engine's Path::Compute
+-- crosses nearest where it comes from), so a link is crossable only where
+-- every crossing is: its lines (CrossingLine's, each { start, finish })
+-- CLEARANCE in from each end of the overlap and at most SPAN_STEP apart, or
+-- its middle alone when the overlap is narrower than twice CLEARANCE. A
+-- link the mesh draws past a wall's end (two areas either side of a
+-- doorway's strip, overlapping wider than the doorway) is not.
+CLEARANCE = 16 -- a walker's half width
+SPAN_STEP = 32
+
+function CrossingLines(lo, hi, side, otherLo, otherHi, z)
+	local s = SIDES[side]
+	local a, b = max(lo[s.other], otherLo[s.other]), min(hi[s.other], otherHi[s.other])
+	local function Line(along)
+		local start, finish = CrossingLine(lo, hi, side, otherLo, otherHi, z, along)
+		return { start = start, finish = finish }
+	end
+	if b - a < 2 * CLEARANCE then return { Line(nil) } end
+	local low, high = a + CLEARANCE, b - CLEARANCE
+	local steps = ceil((high - low) / SPAN_STEP)
+	local lines = {}
+	for i = 0, steps do lines[#lines + 1] = Line(low + (high - low) * i / steps) end
+	return lines
 end
 
 -- A link from a floor at fromZ down to one at toZ, more than STEP_HEIGHT

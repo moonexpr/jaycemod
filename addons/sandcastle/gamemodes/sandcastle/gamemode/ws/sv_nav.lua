@@ -93,13 +93,22 @@ local function Crosses(from, to, mask)
 end
 
 -- Whether a walker crosses the link from area a into area b (a lane over
--- it): its line (foundation.nav_gaps' CrossingLine) clear at a step's,
--- a waist's and a chest's height under the clip masks' brushes (the map
--- alone, not who stands there), so a players' map's clip along a rail (a
--- bullet passes it, a player does not) refuses the drop past it the nav
--- mesh links. Kept for the mesh (cleared as the gaps are bridged anew:
--- after it loads and is generated).
+-- it): its lines across the opening (foundation.nav_gaps' CrossingLines,
+-- as a path may cross anywhere along it) clear at a step's, a waist's and a
+-- chest's height under the clip masks' brushes (the map alone, not who
+-- stands there), so a players' map's clip along a rail (a bullet passes it,
+-- a player does not) refuses the drop past it the nav mesh links, and a
+-- wall's end refuses the link the mesh draws past it beside a doorway.
+-- Kept for the mesh (cleared as the gaps are bridged anew: after it loads
+-- and is generated).
 local CROSS_HEIGHTS = { NavGaps.STEP_HEIGHT + 2, 36, 60 }
+-- The map as it stands for good: the world and the brushes that never move
+-- (a window, a wall). Not a door, which opens, nor a spawn room's
+-- visualizer, solid to the other team alone: the answer is kept.
+local STATIC_BRUSHES = { func_brush = true, func_wall = true }
+local function StaticMap(ent)
+	return ent:IsWorld() or STATIC_BRUSHES[ent:GetClass()] == true
+end
 -- How far down a drop's floor is looked for.
 local FLOOR_DEPTH = 1000
 local crossable = {}
@@ -115,23 +124,30 @@ function WS.NavLinkCrossable(a, b)
 	for dir = 0, 3 do
 		if table.HasValue(a:GetAdjacentAreasAtSide(dir), b) then side = dir break end
 	end
+	local extent, other = a:GetExtentInfo(), b:GetExtentInfo()
+	local lo, hi, otherLo, otherHi = Point(extent.lo), Point(extent.hi), Point(other.lo), Point(other.hi)
+	-- heights where the areas meet, not at their centres: a ramp's centre
+	-- stands well above or below its edge, which meets the next area flush
+	local middleStart, middleFinish = NavGaps.CrossingLine(lo, hi, side, otherLo, otherHi, 0)
+	local seamFrom, seamTo = a:GetZ(V(middleFinish)), b:GetZ(V(middleFinish))
+	-- the lines run above the floor all along them
+	local z = math.max(a:GetZ(V(middleStart)), seamFrom, seamTo)
+	local mask = WS.ClipMasks().brushes
 	local clear = true
-	do
-		local extent, other = a:GetExtentInfo(), b:GetExtentInfo()
-		local z = math.max(center.z, b:GetCenter().z)
-		local start, finish = NavGaps.CrossingLine(Point(extent.lo), Point(extent.hi), side, Point(other.lo), Point(other.hi), z)
-		local mask = WS.ClipMasks().brushes
+	for _, line in ipairs(NavGaps.CrossingLines(lo, hi, side, otherLo, otherHi, z)) do
 		for _, h in ipairs(CROSS_HEIGHTS) do
 			local up = Vector(0, 0, h)
-			if util.TraceLine({ start = V(start) + up, endpos = V(finish) + up, mask = mask }).Hit then
+			if util.TraceLine({ start = V(line.start) + up, endpos = V(line.finish) + up, mask = mask, filter = StaticMap }).Hit then
 				clear = false
 				break
 			end
 		end
-		if clear then
-			local floor = util.TraceLine({ start = V(finish) + STEP, endpos = V(finish) - Vector(0, 0, FLOOR_DEPTH), mask = mask })
-			clear = NavGaps.FallsAway(center.z, b:GetCenter().z, floor.Hit and floor.HitPos.z or nil)
-		end
+		if not clear then break end
+	end
+	if clear then
+		local _, finish = NavGaps.CrossingLine(lo, hi, side, otherLo, otherHi, z)
+		local floor = util.TraceLine({ start = V(finish) + STEP, endpos = V(finish) - Vector(0, 0, FLOOR_DEPTH), mask = mask, filter = StaticMap })
+		clear = NavGaps.FallsAway(seamFrom, seamTo, floor.Hit and floor.HitPos.z or nil)
 	end
 	crossable[key] = clear
 	return clear

@@ -135,4 +135,37 @@ T.test("a crossing starts DEEP inside a wide area, at most its centre", function
 	T.eq(narrow.x, 10, "a narrow area: its centre")
 end)
 
+T.test("a crossing is traced across the whole opening: CLEARANCE in from each end, SPAN_STEP apart", function()
+	-- a doorway-wide strip of the wall: the engine's path may cross anywhere in the overlap
+	local lines = Gaps.CrossingLines(Pt(0, 0), Pt(200, 200), 1, Pt(225, 40), Pt(400, 200), 0)
+	T.eq(lines[1].start.y, 40 + Gaps.CLEARANCE, "first: off the overlap's low end")
+	T.eq(lines[#lines].start.y, 200 - Gaps.CLEARANCE, "last: off its high end")
+	for i = 2, #lines do
+		T.eq(lines[i].start.y - lines[i - 1].start.y <= Gaps.SPAN_STEP, true, "no wider apart than SPAN_STEP")
+		T.eq(lines[i].start.y > lines[i - 1].start.y, true, "in order along the opening")
+	end
+	local middle = Gaps.CrossingLine(Pt(0, 0), Pt(200, 200), 1, Pt(225, 40), Pt(400, 200), 0)
+	for _, line in ipairs(lines) do
+		T.eq(line.start.x, middle.x, "each starts as deep as the middle's")
+	end
+end)
+
+T.test("an opening narrower than twice CLEARANCE is traced once, at its middle", function()
+	local lines = Gaps.CrossingLines(Pt(0, 0), Pt(200, 200), 1, Pt(200, 100), Pt(400, 120), 0)
+	T.eq(#lines, 1, "one line")
+	T.eq(lines[1].start.y, 110, "the middle")
+end)
+
+T.test("across a strip between the areas, a crossing runs on INSIDE into the area entered", function()
+	-- east: from ends at x 200, to starts at x 250
+	local _, finish = Gaps.CrossingLine(Pt(0, 0), Pt(200, 200), 1, Pt(250, 0), Pt(400, 200), 0)
+	T.eq(finish.x, 250 + Gaps.INSIDE, "into to, past the strip")
+	-- west: from starts at x 0, to ends at x -50
+	_, finish = Gaps.CrossingLine(Pt(0, 0), Pt(200, 200), 3, Pt(-200, 0), Pt(-50, 200), 0)
+	T.eq(finish.x, -50 - Gaps.INSIDE, "into to, west")
+	-- touching: as before, INSIDE past the shared edge
+	_, finish = Gaps.CrossingLine(Pt(0, 0), Pt(200, 200), 1, Pt(200, 0), Pt(400, 200), 0)
+	T.eq(finish.x, 200 + Gaps.INSIDE, "past the shared edge")
+end)
+
 T.finish()

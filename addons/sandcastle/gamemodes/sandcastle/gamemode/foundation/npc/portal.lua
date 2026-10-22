@@ -82,3 +82,44 @@ function Past(x, y, dir, out)
 	local d = PAST[dir]
 	return x + d[1] * out, y + d[2] * out
 end
+
+-- A lane walks through each opening square to it, from a point inside the
+-- area it leaves to one inside the area it enters: two areas linked across
+-- a strip the mesh left out (a wall's end may stand in it) are each walked
+-- inside, never along the strip. INSET in from the edge, or the area's
+-- middle on that axis when it is narrower than twice that.
+INSET = 16
+
+local function Inward(edge, middle, step)
+	local inset = edge + step * INSET
+	if (inset - middle) * step > 0 then return middle end
+	return inset
+end
+
+-- (x, y) held INSET inside `area` (a lane's end at the area its route
+-- reached). Returns x, y.
+function Inside(area, x, y)
+	local function Axis(v, lo, hi)
+		local low, high = Inward(lo, (lo + hi) / 2, 1), Inward(hi, (lo + hi) / 2, -1)
+		return Limit(v, low, high)
+	end
+	return Axis(x, area.lo.x, area.hi.x), Axis(y, area.lo.y, area.hi.y)
+end
+
+-- The crossing (x, y) on `from`'s side dir, left from inside `from`.
+-- Returns x, y.
+function Exit(from, x, y, dir)
+	if dir == NORTH then return x, Inward(from.lo.y, (from.lo.y + from.hi.y) / 2, 1) end
+	if dir == SOUTH then return x, Inward(from.hi.y, (from.lo.y + from.hi.y) / 2, -1) end
+	if dir == WEST then return Inward(from.lo.x, (from.lo.x + from.hi.x) / 2, 1), y end
+	return Inward(from.hi.x, (from.lo.x + from.hi.x) / 2, -1), y
+end
+
+-- The crossing (x, y) into `to`, which lies in direction dir, entered at
+-- `to`'s near edge. Returns x, y.
+function Entry(to, x, y, dir)
+	if dir == NORTH then return x, Inward(to.hi.y, (to.lo.y + to.hi.y) / 2, -1) end
+	if dir == SOUTH then return x, Inward(to.lo.y, (to.lo.y + to.hi.y) / 2, 1) end
+	if dir == WEST then return Inward(to.hi.x, (to.lo.x + to.hi.x) / 2, -1), y end
+	return Inward(to.lo.x, (to.lo.x + to.hi.x) / 2, 1), y
+end
