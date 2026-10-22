@@ -3,7 +3,9 @@
 --
 -- Extend(parent, fields) -> a class made of fields (or a new table), set
 --   past any guard, inheriting from parent (nil for a root class) and
---   carrying parent's guard
+--   carrying parent's metamethods (its guard among them) and an __index
+--   function of its own, unless fields give their own; such a function
+--   must find methods along the instance's line, not on its own class
 -- New(class, fields) -> an instance: fields (or a new table) of class
 -- Construct(class, ...) -> a new instance, each class in its line that
 --   defines an Init of its own running it, base first, with (instance, ...)
@@ -19,11 +21,37 @@ module(...)
 -- A guard's refusal blames the assignment.
 local ASSIGNER = 2
 
+-- Lua reads an instance's metamethods from its class alone, never through
+-- __index, so a subclass takes a copy of each of its parent's.
+local INHERITED = {
+	__newindex = true,
+	__call = true,
+	__tostring = true,
+	__len = true,
+	__eq = true,
+	__lt = true,
+	__le = true,
+	__concat = true,
+	__unm = true,
+	__add = true,
+	__sub = true,
+	__mul = true,
+	__div = true,
+	__mod = true,
+	__pow = true,
+}
+
 function Extend(parent, fields)
 	local class = {}
+	if parent then
+		for key, value in pairs(parent) do
+			if INHERITED[key] then class[key] = value end
+		end
+		local index = rawget(parent, "__index")
+		if index ~= parent then class.__index = index end
+	end
 	for key, value in pairs(fields or {}) do class[key] = value end
-	class.__index = class
-	if parent then class.__newindex = rawget(parent, "__newindex") end
+	if rawget(class, "__index") == nil then class.__index = class end
 	return setmetatable(class, parent)
 end
 

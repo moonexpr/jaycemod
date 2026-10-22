@@ -24,6 +24,33 @@ T.test("a subclass overrides what it defines and inherits the rest", function()
 	T.eq(Class.New(Base):Describe(), "... on 4 legs", "the base is untouched")
 end)
 
+T.test("a subclass's instances keep the metamethods of its ancestors", function()
+	local Base = Animal()
+	Base.__tostring = function(self) return "an animal on " .. self.legs .. " legs" end
+	Base.__call = function(self, word) return self:Speak() .. " " .. word end
+	local Bird = Class.Extend(Base, { legs = 2 })
+	local Robin = Class.Extend(Bird, {
+		__call = function(_, word) return "chirp " .. word end,
+	})
+	T.eq(tostring(Class.New(Bird)), "an animal on 2 legs", "__tostring, a level down")
+	T.eq(Class.New(Bird)("hello"), "... hello", "__call, a level down")
+	T.eq(tostring(Class.New(Robin)), "an animal on 2 legs", "two levels down")
+	T.eq(Class.New(Robin)("hello"), "chirp hello", "unless the subclass defines its own")
+end)
+
+T.test("a class's own __index function is its subclasses' too", function()
+	local Base = Class.Extend(nil, { Name = function() return "method" end })
+	Base.__index = function(_, key)
+		local method = rawget(Base, key)
+		if method ~= nil then return method end
+		return "looked up " .. key
+	end
+	local Sub = Class.Extend(Base)
+	local sub = Class.New(Sub)
+	T.eq(sub.anything, "looked up anything", "the lookup reaches the subclass's instances")
+	T.eq(sub:Name(), "method", "and still finds the methods")
+end)
+
 T.test("an instance starts from the fields it is given", function()
 	local Base = Animal()
 	local pet = Class.New(Base, { legs = 3, name = "Tripod" })
