@@ -114,6 +114,11 @@ to a game the operator is playing). A **new** file only loads on the next
 map change: `srcds.py rcon 'changelevel <map>'`. Remember, too, that each
 map loads only the systems its entities pull in.
 
+The watcher's refresh does nothing for `foundation/` modules and feature
+parts (they are compiled, not included). For those, and to keep the game
+where it is, use the dev workbench's `dev.reload` (the `dev-workbench`
+skill).
+
 ## In-game checks
 
 ```bash

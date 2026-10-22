@@ -28,6 +28,18 @@ as possible; `game_` for every other.
 Check everything with `.devtools/bin/check_lua.sh` (compiles every Lua file
 and runs every test).
 
+## Dev workbench
+
+To try a Lua change on the dev server, reload it and keep the game where it
+is: `dev.reload({ files = { ... } })` (about 20 ms), with the situation saved
+once as a scenario (`dev.scenario.save`, `quicksave`) and loaded back as
+needed. Reach for it before `changelevel`, and change map only when it
+refuses a file. The workbench (`addons/sandcastle_dev`, dev server only)
+also captures and restores state (`dev.capture`, `dev.apply`,
+`dev.check_roundtrip`), freezes and steps gameplay, and traces the map's
+gamerules I/O (`dev_gamerules_harness 1`). Commands, scenario format and
+limits: the `dev-workbench` skill (`.claude/skills/dev-workbench/SKILL.md`).
+
 ## History search
 
 The commit messages and `docs/` hold why the code is the way it is. Before
@@ -124,6 +136,7 @@ Module names are `foundation.core.<path>`; tests are
 | `parsers.keyvalues` | `Read(text, visit(path, key, value))`: Valve KeyValues |
 | `parsers.consolecfg` | `Commands(text)`: cfg text → console commands, chained `;` refused |
 | `parsers.cvarfile` | `Write(names, values)` → cfg text, a `name "value"` a line; `Read(text, names)` → name → value for only those names. Client settings saved in data/ (`WS.PersistClientConVars`) |
+| `snapshot` | A model's state as plain data and back: `Spec{ name, skip, times, machines }`, `Take(model, spec, now[, refs])`, `Apply(model, snapshot, spec, now[, refs])`. Times kept as seconds from now, cfsm machines as their state (`Machine:Restore`), entities and other non-data through `refs` (`Encode`, `Decode`), weak tables as data; Apply writes raw and clears what the snapshot lacks. The models' `Snapshot`/`Restore` (the dev workbench's capture) |
 
 ### meta: classes, interfaces, table indexing
 
