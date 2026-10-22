@@ -4,3 +4,6 @@ __pycache__/
 
 # native modules build here (native/<crate>)
 native/*/target/
+
+# the dev workbench's quicksave slots (named scenarios are kept)
+.devtools/scenarios/*/quick_*.json

@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from server_root import LUADEV_PORT_FILE, REPO_ADDONS, ROOT, ROOT_WINDOWS, SERVER_BINARIES, SERVER_LUA, SERVER_EXE, SERVER_WORKSHOP, TF_SCRIPTS,\
+from server_root import LUADEV_PORT_FILE, REPO_ADDONS, REPO_DATA, ROOT, ROOT_WINDOWS, SERVER_BINARIES, SERVER_LUA, SERVER_EXE, SERVER_WORKSHOP, TF_SCRIPTS,\
     TF_SCRIPTS_DIR, SERVER_MAPS, map_archive_name, Instance, Layout, NotAnExe, build, console_exe
 from test_vpk import DIR_ARCHIVE, entry, write_pak
 
@@ -109,6 +109,13 @@ def test_the_repos_own_addons_are_linked_into_the_servers_addons(layout):
     assert REPO_ADDONS, "the repo has addons of its own"
     for name, source in REPO_ADDONS.items():
         assert (addons / name).resolve() == source, name
+
+
+def test_the_repos_data_folders_are_linked_into_the_servers_data(layout):
+    data = build(layout) / "garrysmod" / "data"
+    assert REPO_DATA, "the repo keeps data the server writes"
+    for path, source in REPO_DATA.items():
+        assert (data / path).resolve() == source.resolve(), path
 
 
 def test_the_servers_lua_bin_is_its_own_and_links_the_server_binaries(layout):

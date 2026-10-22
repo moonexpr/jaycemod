@@ -114,6 +114,10 @@ REPO_ADDONS = {
     "responserules": REPO / "addons" / "responserules",  # TF2's response rules; the AI war's soldiers speak by them
     "sandcastle_dev": REPO / "addons" / "sandcastle_dev",  # the dev workbench, run by sandcastle_dev.lua; never released
 }
+# data the server writes that the repo keeps: path under the server's data/ -> folder
+REPO_DATA = {
+    "sandcastle_dev/scenarios": REPO / ".devtools" / "scenarios",  # the dev workbench's saved scenarios
+}
 SERVER_EXE = "srcds_win64.exe"
 # PE: e_lfanew at 0x3c names the "PE\\0\\0" signature; the optional header follows
 # the 20-byte file header, with the subsystem at +68 in PE32 and PE32+ alike
@@ -270,6 +274,10 @@ def build(layout: Layout) -> Path:
         target = addons / "server_mounts" / "lua" / path
         target.parent.mkdir(parents=True, exist_ok=True)
         link(target, layout.lua / source)
+    for path, source in REPO_DATA.items():
+        target = game / "data" / path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        link(target, source)
     for name, item in SERVER_WORKSHOP.items():
         place_archive(game / "cache" / f"{name}.gma", workshop_archive(layout.workshop, item))
     for name, item in SERVER_MAPS.items():

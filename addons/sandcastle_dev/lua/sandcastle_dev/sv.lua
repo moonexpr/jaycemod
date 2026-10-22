@@ -16,6 +16,7 @@ local PARTS = {
 	"sv_util",
 	"sv_harness",
 	"sv_state",
+	"sv_scenarios",
 }
 
 for _, part in ipairs(PARTS) do dev.load("sandcastle_dev/" .. part .. ".lua") end
