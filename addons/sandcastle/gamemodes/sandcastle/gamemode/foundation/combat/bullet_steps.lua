@@ -11,8 +11,9 @@ module(...)
 CHANGED, SUPPRESSED = true, false
 
 -- Each step's place: the weapon's own spread first, then how well its
--- shooter aims it, then the pellets it splits into.
-BALANCE, AIM, PELLETS = 10, 20, 30
+-- shooter aims it, then how each bullet is seen (a crit's tracer, carried
+-- by every pellet), then the pellets it splits into.
+BALANCE, AIM, TRACERS, PELLETS = 10, 20, 25, 30
 
 local Steps = {}
 Steps.__index = Steps

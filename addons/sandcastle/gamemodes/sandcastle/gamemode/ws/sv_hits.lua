@@ -9,8 +9,11 @@
 -- after knows it. Then the hit is heard and told: a crit or mini-crit
 -- sounds from its victim (TFPlayer.CritHit, CritHitMini; CritPain to a
 -- player hit), and the attacking player is told its damage
--- (game_combat_text, ws/cl_hits.lua).
+-- (game_combat_text, ws/cl_hits.lua). A crit bullet is seen as one: TF2's
+-- crit tracer in its shooter's team colour (foundation.combat.crit_effects).
 local Balance = WS.require("foundation.combat.weapon_balance")
+local BulletSteps = WS.require("foundation.combat.bullet_steps")
+local Crit = WS.require("foundation.combat.crit_effects")
 local P = WS.PlayerRules
 local E = WS.Events
 
@@ -67,31 +70,47 @@ local function Roll(attacker)
 	return rolled.roll
 end
 
-hook.Add("EntityTakeDamage", "ws_hits", function(target, dmg)
-	local attacker = dmg:GetAttacker()
+local function Spared(target, attacker)
 	-- the world, or an attacker gone, is of no team
 	local attackerTeam = IsValid(attacker) and WS.TeamNumber(attacker) or WS.TEAM_UNASSIGNED
-	if WS.TeamRules.FriendlySpared(WS.FriendlyFire(), attackerTeam, WS.TeamNumber(target), attacker == target) then
-		return true
-	end
-	local blast = dmg:IsDamageType(DMG_BLAST)
-	local class = Balance.Weapon(WeaponClass(dmg))
+	return WS.TeamRules.FriendlySpared(WS.FriendlyFire(), attackerTeam, WS.TeamNumber(target), attacker == target)
+end
+
+-- What attacker's hit on target with class (balanced, or nil) does:
+-- its damage, whether its headshot counts, and its scale and kind
+-- (foundation.players' Hit). shot: { damage, bullet, blast, headshot,
+-- critical (marked a crit already) }.
+local function Judge(target, attacker, class, shot)
 	local damage, headshot, rolled = Balance.Shot(class, {
-		damage = dmg:GetDamage(),
-		bullet = dmg:IsBulletDamage(),
-		blast = blast,
+		damage = shot.damage,
+		bullet = shot.bullet,
+		blast = shot.blast,
 		distance = Distance(attacker, target),
-		headshot = Headshot(target),
+		headshot = shot.headshot,
 		roll = Roll(attacker),
 	})
-	dmg:SetDamage(damage)
 	local scale, kind = P.Hit(WS.ConditionsOf(target), WS.ConditionsOf(attacker), CurTime(), {
-		blast = blast,
+		blast = shot.blast,
 		selfHarm = attacker == target,
 		headshot = headshot,
 		rolled = rolled,
+		critical = shot.critical,
+	})
+	return damage, headshot, scale, kind
+end
+
+hook.Add("EntityTakeDamage", "ws_hits", function(target, dmg)
+	local attacker = dmg:GetAttacker()
+	if Spared(target, attacker) then return true end
+	local class = Balance.Weapon(WeaponClass(dmg))
+	local damage, headshot, scale, kind = Judge(target, attacker, class, {
+		damage = dmg:GetDamage(),
+		bullet = dmg:IsBulletDamage(),
+		blast = dmg:IsDamageType(DMG_BLAST),
+		headshot = Headshot(target),
 		critical = dmg:IsDamageType(DMG_ACID),
 	})
+	dmg:SetDamage(damage)
 	if scale ~= 1 then dmg:ScaleDamage(scale) end
 	if kind == P.HIT_CRIT then dmg:SetDamageType(bit.bor(dmg:GetDamageType(), DMG_ACID)) end
 	taking[target] = {
@@ -170,4 +189,44 @@ hook.Add("PostEntityTakeDamage", "ws_hits", function(target, dmg, took)
 			pos = Top(target),
 		}, attacker)
 	end
+end)
+
+-- Whether a bullet that traced tr is a crit to see: every bullet of a
+-- crit-boosted shooter, hit or miss, and any the hit rules make a crit (a
+-- headshot, the shotgun's close crit by the roll its hit takes this tick).
+local function CritBullet(attacker, tr, dmginfo)
+	if P.CritBoosted(WS.ConditionsOf(attacker), CurTime()) then return true end
+	local target = tr.Entity
+	if not (IsValid(target) and Combatant(target)) or target == attacker or Spared(target, attacker) then return false end
+	local _, _, _, kind = Judge(target, attacker, Balance.Weapon(WeaponClass(dmginfo)), {
+		damage = dmginfo:GetDamage(),
+		bullet = true,
+		blast = false,
+		headshot = tr.HitGroup == HITGROUP_HEAD,
+		critical = dmginfo:IsDamageType(DMG_ACID),
+	})
+	return kind == P.HIT_CRIT
+end
+
+-- The crit's tracer from the weapon's muzzle (its view model's, to its
+-- holder in first person), seen by everyone. A player's shot is predicted,
+-- and the server's effects while it runs reach everyone but the shooter
+-- (SuppressHostEvents), who would never see its own crits.
+local function CritTracer(weapon, attacker, tr)
+	local muzzle = IsValid(weapon) and weapon:LookupAttachment("muzzle") or 0
+	local host = GetPredictionPlayer()
+	if IsValid(host) then SuppressHostEvents(NULL) end
+	util.ParticleTracerEx(Crit.Tracer(WS.TeamNumber(attacker)), tr.StartPos, tr.HitPos, true,
+		IsValid(weapon) and weapon:EntIndex() or 0, muzzle > 0 and muzzle or -1)
+	if IsValid(host) then SuppressHostEvents(host) end
+end
+
+WS.BulletSteps:Add("ws_crit_tracers", BulletSteps.TRACERS, function(ent, data)
+	local weapon = ent:IsWeapon() and ent or (ent.GetActiveWeapon and ent:GetActiveWeapon()) or NULL
+	local callback = data.Callback
+	data.Callback = function(attacker, tr, dmginfo)
+		if IsValid(attacker) and CritBullet(attacker, tr, dmginfo) then CritTracer(weapon, attacker, tr) end
+		if callback then return callback(attacker, tr, dmginfo) end
+	end
+	return BulletSteps.CHANGED
 end)

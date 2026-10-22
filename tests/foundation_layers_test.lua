@@ -93,6 +93,7 @@ local CATEGORY = {
 	["combat/hit_sound"] = "gameplay",
 	["combat/weapon_balance"] = "gameplay",
 	["combat/bullet_steps"] = "gameplay",
+	["combat/crit_effects"] = "gameplay",
 	["projectile"] = "gameplay",
 	["projectile/rocket"] = "gameplay",
 	["projectile/grenade"] = "gameplay",
