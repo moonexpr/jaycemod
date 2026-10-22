@@ -1,6 +1,6 @@
 -- Client settings kept in the client's own data folder
--- (garrysmod/data/sandcastle/settings_<name>.txt, foundation.core.parsers.
--- cvarfile), shared by every server and game the client joins: a group of
+-- (garrysmod/data/sandcastle/settings_<name>.txt, encoding.cvarfile),
+-- shared by every server and game the client joins: a group of
 -- client convars is set from the file as it loads, and the file is written
 -- whenever one of them changes. Only the group's convars are read from it.
 -- Loaded before the other cl_ modules (cl_init.lua), which keep theirs here.
