@@ -169,7 +169,7 @@ end
 local function RespawnTeam(self, t, now)
 	local due = {}
 	for _, ply in ipairs(TeamPlayers(t)) do
-		if not ply:Alive() and self.round:MayRespawn(t, ply.wsDeathTime or 0, now, ply.wsSwitchedTeam == true) then
+		if not ply:Alive() and self.round:MayRespawn(t, WS.RespawnCountsFrom(ply, ply.wsDeathTime or 0), now, ply.wsSwitchedTeam == true) then
 			due[#due + 1] = ply
 		end
 	end

@@ -4,9 +4,11 @@
 -- factions: the Combine and the Resistance, each on its home team until
 -- the sides trade), so it is drawn in that team's colour, and each class
 -- is given its display name (ws/cl_kill_feed.lua). Control points'
--- captures and defenses have rows of their own, as in TF2 (Objective).
-local concat, ipairs, pairs, sub = table.concat, ipairs, pairs, string.sub
+-- captures and defenses have rows of their own, as in TF2 (Objective), and
+-- a death to the world credited to an enemy reads "finished off" (Credited).
+local concat, floor, ipairs, pairs, sub = table.concat, math.floor, ipairs, pairs, string.sub
 local AiWar = require("foundation.aiwar")
+local Icons = require("foundation.kill_icons")
 local Teams = require("foundation.teams")
 module(...)
 
@@ -59,6 +61,22 @@ function Objective(kind, team, names, teamName, point, me)
 		victimTeam = Teams.UNASSIGNED,
 		mine = mine,
 	}
+end
+
+-- A death notice's flag (GMod's byte, beside its DEATH_NOTICE_* bits):
+-- the victim died to the environment, credited to the enemy who had hurt
+-- it (foundation.kill_credit, TF2's assisted suicide).
+FINISHED_OFF = 64
+
+-- CTFHudDeathNotice's assisted suicide: #DeathMsg_AssistedSuicide's words,
+-- under TF2's skull, since it has no icon for the world.
+local CREDITED = { info = "finished off", icon = Icons.SKULL }
+
+-- What a notice with flags shows of a credited death, { info, icon }, or
+-- nil for any other.
+function Credited(flags)
+	if floor(flags / FINISHED_OFF) % 2 == 1 then return CREDITED end
+	return nil
 end
 
 -- Whether a notice is the player's own (me: their name, or nil while their

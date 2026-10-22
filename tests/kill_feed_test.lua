@@ -82,4 +82,26 @@ T.test("every soldier class has a faction, so each gets a name", function()
 	T.eq(n, 3)
 end)
 
+-- CTFHudDeathNotice: an assisted suicide (a death to the world credited to
+-- the enemy who hurt the victim) reads "finished off", with TF2's skull,
+-- since TF2 has no icon for the world.
+T.test("a death credited to its killer is finished off, under the skull", function()
+	local credited = Feed.Credited(Feed.FINISHED_OFF)
+	T.eq(credited.info, "finished off", "TF2's words")
+	T.eq(credited.icon, "skull_tf", "the skull")
+end)
+
+T.test("a notice without the flag is no credited death, whatever else it carries", function()
+	T.eq(Feed.Credited(0), nil, "none")
+	T.eq(Feed.Credited(1 + 2), nil, "GMod's friendly flags")
+	T.eq(Feed.Credited(Feed.FINISHED_OFF + 2) ~= nil, true, "with another flag")
+end)
+
+T.test("the flag is one GMod's notices leave free, within their byte", function()
+	T.eq(Feed.FINISHED_OFF < 256, true, "a byte")
+	for _, gmod in ipairs({ 1, 2, 4, 8 }) do -- DEATH_NOTICE_FRIENDLY_*, and the HEADSHOT and PENETRATION it reserves
+		T.eq(Feed.FINISHED_OFF ~= gmod, true, "not " .. gmod)
+	end
+end)
+
 T.finish()

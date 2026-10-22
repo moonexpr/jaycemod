@@ -64,7 +64,7 @@ function Controller:OnPlayerDeath(ply)
 	local t = WS.TeamOf(ply)
 	-- Sandbox mode: no waves, the player clicks to respawn (GM:PlayerDeathThink)
 	if t == UNASSIGNED or WS.GameplayStopped() then return WS.SetSpawnStatus(ply, Spawns.NONE, 0) end
-	WS.SetSpawnStatus(ply, self.round:RespawnStatus(t, now, #TeamPlayers(t), ply.wsSwitchedTeam))
+	WS.SetSpawnStatus(ply, self.round:RespawnStatus(t, WS.RespawnCountsFrom(ply, now), #TeamPlayers(t), ply.wsSwitchedTeam))
 end
 
 -- mp_round_restart, the reset vote, the editors and a new game: a round
@@ -235,7 +235,7 @@ end
 function Controller:OnPlayerDeathTime(ply)
 	local t = WS.TeamOf(ply)
 	if WS.GameplayStopped() then return WS.SetSpawnStatus(ply, Spawns.NONE, 0) end
-	WS.SetSpawnStatus(ply, self.round:RespawnStatus(t, ply.wsDeathTime or CurTime(), #TeamPlayers(t),
+	WS.SetSpawnStatus(ply, self.round:RespawnStatus(t, WS.RespawnCountsFrom(ply, ply.wsDeathTime or CurTime()), #TeamPlayers(t),
 		ply.wsSwitchedTeam == true))
 end
 

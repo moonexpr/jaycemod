@@ -8,7 +8,9 @@
 -- TF2 marks its own; a death with no killer shows the victim and the icon
 -- alone. A control point's capture or defense is a row of its own, as in
 -- TF2: who did it, the team's icon, "captured" or "defended" and the point
--- (WS.KillFeedObjective, from the capture view). Each shows for LIFETIME
+-- (WS.KillFeedObjective, from the capture view). A death to the world
+-- credited to an enemy reads "finished off" under the skull, as TF2's
+-- assisted suicide. Each shows for LIFETIME
 -- seconds (hud_deathnotice_time).
 local Feed = WS.require("foundation.kill_feed")
 local AiWar = WS.require("foundation.aiwar")
@@ -81,17 +83,20 @@ local function Push(notice)
 	while #notices > MOST do table.remove(notices, 1) end
 end
 
-function GM:AddDeathNotice(attacker, attackerTeam, inflictor, victim, victimTeam)
+function GM:AddDeathNotice(attacker, attackerTeam, inflictor, victim, victimTeam, flags)
 	local me = Me()
 	local killer = Name(attacker)
 	if killer == Name(victim) then killer = nil end
 	local sides = AiWar.Sides(GetGlobal2Int(AiWar.SIDES_KEY, AiWar.FACTIONS[AiWar.COMBINE].home))
+	-- a death to the world credited to an enemy (ws/sv_kill_credit.lua)
+	local credited = Feed.Credited(flags or 0)
 	Push({
 		killer = killer,
 		killerTeam = Feed.Team(attacker, attackerTeam, sides),
 		victim = Name(victim),
 		victimTeam = Feed.Team(victim, victimTeam, sides),
-		icon = Icons.For(ICONS, inflictor, Class(attacker)),
+		icon = credited and Icons.For(ICONS, credited.icon) or Icons.For(ICONS, inflictor, Class(attacker)),
+		info = credited and credited.info or nil,
 		mine = Feed.Mine(me, attacker, victim),
 	})
 end

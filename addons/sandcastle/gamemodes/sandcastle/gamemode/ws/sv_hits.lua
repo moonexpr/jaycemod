@@ -11,6 +11,8 @@
 -- player hit), and the attacking player is told its damage
 -- (game_combat_text, ws/cl_hits.lua). A crit bullet is seen as one: TF2's
 -- crit tracer in its shooter's team colour (foundation.combat.crit_effects).
+-- An enemy's hit is remembered, and the environment's lethal one credited
+-- to it (ws/sv_kill_credit.lua).
 local Balance = WS.require("foundation.combat.weapon_balance")
 local BulletSteps = WS.require("foundation.combat.bullet_steps")
 local Crit = WS.require("foundation.combat.crit_effects")
@@ -38,8 +40,17 @@ local function Headshot(ent)
 	return trace ~= nil and trace.tick == engine.TickCount() and trace.hitgroup == HITGROUP_HEAD
 end
 
+-- What a hit is told for: players, NPCs and NextBots, as TF2 tells hits on
+-- players (and buildings), never on props; and what can be credited with
+-- a kill (ws/sv_kill_credit.lua).
+function WS.Combatant(ent)
+	return ent:IsPlayer() or ent:IsNPC() or ent:IsNextBot()
+end
+local Combatant = WS.Combatant
+
 -- The hit each victim is taking, from EntityTakeDamage to
--- PostEntityTakeDamage: { kind, class, headshot }.
+-- PostEntityTakeDamage: { kind, class, headshot, credited (the
+-- environment's lethal hit, credited to an enemy) }.
 local taking = setmetatable({}, { __mode = "k" })
 
 -- The class of what dealt the hit: the projectile or weapon that did, or,
@@ -117,6 +128,7 @@ hook.Add("EntityTakeDamage", "ws_hits", function(target, dmg)
 		kind = kind,
 		class = class,
 		headshot = headshot,
+		credited = Combatant(target) and WS.CreditEnvironmentalHit(target, dmg),
 	}
 end)
 
@@ -156,16 +168,13 @@ local function Top(ent)
 	return ent:GetPos() + Vector(0, 0, ent:OBBMaxs().z)
 end
 
--- What a hit is told for: players, NPCs and NextBots, as TF2 tells hits on
--- players (and buildings), never on props.
-local function Combatant(ent)
-	return ent:IsPlayer() or ent:IsNPC() or ent:IsNextBot()
-end
-
 hook.Add("PostEntityTakeDamage", "ws_hits", function(target, dmg, took)
 	local hit = taking[target]
 	taking[target] = nil
 	if not took or hit == nil or not Combatant(target) then return end
+	-- the environment's hit, though credited, is no one's to be told of
+	if hit.credited then return end
+	WS.RecordDamager(target, dmg:GetAttacker())
 	local kind = hit.kind
 	KnockBack(target, dmg, hit)
 	local sound = HIT_SOUNDS[kind]

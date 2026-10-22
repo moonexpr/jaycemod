@@ -78,6 +78,7 @@ local CATEGORY = {
 	["players/attributes"] = "gameplay",
 	["players/condition_effects"] = "gameplay",
 	["kill_icons"] = "gameplay",
+	["kill_credit"] = "gameplay",
 	["spawn"] = "gameplay",
 	["spectate"] = "gameplay",
 	["economy"] = "gameplay",
