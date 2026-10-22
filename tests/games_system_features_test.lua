@@ -314,7 +314,7 @@ end
 T.test("client files: every shipping .lua file under the folders, recursively, sorted", function()
 	local port = TreePort({
 		["foundation/"] = {
-			files = { "teams.lua" },
+			files = { "sample.lua" },
 			dirs = {},
 		},
 		["features/"] = {
@@ -344,7 +344,7 @@ T.test("client files: every shipping .lua file under the folders, recursively, s
 		"features/a/model.lua",
 		"features/a/scenario/koth.lua",
 		"features/a/sh.lua",
-		"games/gameplay/teams.lua",
+		"foundation/sample.lua",
 		"ws/sh_core.lua",
 		"ws/sound_paths.lua",
 	}))
