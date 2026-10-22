@@ -120,7 +120,7 @@ PE_SIGNATURE = b"PE\0\0"
 SUBSYSTEM_OFFSET = 4 + 20 + 68
 CONSOLE_SUBSYSTEM = 3  # IMAGE_SUBSYSTEM_WINDOWS_CUI
 # garrysmod/ entries the server owns: never links into the operator's game
-OWN = ("addons", "data", "cache", "lua", "console.log")
+OWN = ("addons", "data", "cache", "lua", "console.log", "clientside_errors.txt")
 # luadev's socket (luadev_socket.lua, server_lua.py): the main server's port,
 # the others' from LUADEV_PORT_STEP above it, so 27099, socketdev's in the
 # operator's game, stays clear; the build writes it to the root's data/

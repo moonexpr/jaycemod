@@ -83,6 +83,16 @@ def test_every_shared_entry_is_a_link_and_the_servers_own_folders_are_real(layou
     assert not (root / "garrysmod" / "console.log").exists(), "the server writes its own log"
 
 
+# The game and the server each write clients' Lua errors to their own
+# clientside_errors.txt; the game's may appear after the server wrote its own.
+def test_the_servers_clientside_errors_log_is_its_own_whenever_the_games_appears(layout):
+    root = build(layout)
+    (root / "garrysmod" / "clientside_errors.txt").write_text("the server's errors")
+    (layout.shared / "garrysmod" / "clientside_errors.txt").write_text("the game's errors")
+    build(layout)
+    assert (root / "garrysmod" / "clientside_errors.txt").read_text() == "the server's errors"
+
+
 def test_the_shared_addons_are_linked_and_the_workshop_archives_land_in_cache(layout):
     root = build(layout)
     addons, cache = root / "garrysmod" / "addons", root / "garrysmod" / "cache"
