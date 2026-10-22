@@ -168,6 +168,9 @@ with its test written first and an entry in
 `tests/foundation_layers_test.lua`, and a line in the index above. Core names
 no mode, feature or game noun.
 
+New data structures and algorithms use or extend core (to become a binary module), unless that would cost the use case
+its performance: such exceptions are reviewed case by case and leave a "Core-rule exception" comment saying why.
+
 A structure's behaviour goes in its metamethods first (indexing, assigning,
 calling to walk or parse, `tostring`), with named methods as proxies
 (`.claude/rules/lua-metamethods.md`); the structures are to become userdata

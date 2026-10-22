@@ -44,6 +44,8 @@ end
 
 local function NoFloor(a, b)
 	if math.abs(a.z - b.z) > STEP then return false end
+	-- Core-rule exception: LerpVector, not structs.polyline, as sv_map.lua's
+	-- WorldWalkClear: a two-point polyline per leg costs more than the lerp.
 	local n = math.floor(a:Distance(b) / FLOOR_SAMPLE)
 	for i = 1, n do
 		local p = LerpVector(i / (n + 1), a, b)

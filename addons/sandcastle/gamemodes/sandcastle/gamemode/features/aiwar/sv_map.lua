@@ -123,6 +123,8 @@ local function WorldWalkClear(a, b)
 	if util.TraceHull({ start = from + WALK_LIFT, endpos = to + WALK_LIFT, mins = WALK_MINS, maxs = WALK_MAXS, mask = mask }).Hit then
 		return false
 	end
+	-- Core-rule exception: LerpVector, not structs.polyline; a two-point
+	-- polyline built per leg thinned would cost more than the lerp.
 	local samples = math.floor(from:Distance(to) / FLOOR_SAMPLE)
 	for i = 1, samples do
 		local p = LerpVector(i / (samples + 1), from, to)
