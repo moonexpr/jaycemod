@@ -8,13 +8,14 @@
 -- the setting holds (StartAtLoad), Gameplay mode after a countdown while
 -- the players load. The transition to Gameplay mode owns
 -- every cue, whoever asked: the map's description in the chat, the
--- matchmaking start sting and the announcer's tournament-start line, the
 -- countdown (its end networked as ws_gamemode_transition_end for the
 -- round timer to show as "Prepare"; the announcer speaking the last
--- numbers) and the Administrator's line; then Begin: the scores cleared,
--- the round system restarted from scratch (RestartRound's full reset, as a map's first round)
--- and everyone unassigned, as on joining, so each client opens its team
--- menu until they choose a team. A game whose round mode's players are not
+-- numbers), and its stages: the halted map cleaned up, the matchmaking
+-- start sting and the announcer's tournament-start line, then Begin: the
+-- scores cleared, everyone kept on their team or assigned one, and the
+-- rounds' first pre-round (a full reset) respawning and holding them until
+-- the countdown ends with the Administrator's line, when the round runs.
+-- A game whose round mode's players are not
 -- there yet (PLAYERS_NEEDED, mp_waitingforplayers) waits in Sandbox mode,
 -- checked each WAIT_TICK, and counts down once they come; the count is
 -- networked as ws_gamemode_waiting_have and _need (need 0: no wait).
@@ -179,15 +180,13 @@ function Controller:TransitionSound(path)
 	PlayToAll(path)
 end
 
--- The transition's opening cues: the map's description in the chat, with
--- the seconds left, the matchmaking sting and the announcer.
+-- The transition's opening cue: the map's description in the chat, with
+-- the seconds left.
 function Controller:Opening()
 	local title, lines = Gameplay.Describe(MapInfo())
 	local left = math.ceil(self.mode:TransitionEnd() - CurTime())
-	lines[#lines + 1] = string.format("Gameplay mode begins in %d seconds; then choose a team.", left)
+	lines[#lines + 1] = string.format("Gameplay mode begins in %d seconds.", left)
 	Chat(title, lines)
-	self:TransitionSound(TRANSITION_MUSIC)
-	self:TransitionSound(Pick(TRANSITION_VOICES))
 end
 
 -- The transition's clock, fed to the model each TRANSITION_TICK.
@@ -202,9 +201,11 @@ function Controller:OpenTransition()
 	self:Opening()
 end
 
--- Calls off the transition, silencing what it played.
+-- Calls off the transition, silencing what it played; a pre-round it
+-- began is halted with the rest of the rounds.
 function Controller:CancelTransition()
 	timer.Remove(TRANSITION_TIMER)
+	WS.Rules:Halt()
 	WS.Events.Fire("game_gameplay_transition_cancelled", { sounds = self.transitionSounds })
 	self.transitionSounds = {}
 end
@@ -269,17 +270,20 @@ end
 
 local CUES = {
 	[Gamemode.CUE_OPENING] = function(self) self:Opening() end,
+	[Gamemode.CUE_CLEANUP] = function() WS.Rules:CleanUp() end,
+	[Gamemode.CUE_ANNOUNCE] = function(self)
+		self:TransitionSound(TRANSITION_MUSIC)
+		self:TransitionSound(Pick(TRANSITION_VOICES))
+	end,
+	[Gamemode.CUE_PREROUND] = function(self) self:Begin() end,
 	[Gamemode.CUE_COUNT] = function(self, cue)
 		if ADMIN_LINES[cue.left] then self:TransitionSound(ADMIN_LINES[cue.left]) end
 	end,
+	-- the pre-round ends as the countdown does: the round runs to "Fight!"
 	[Gamemode.CUE_ADMIN_LINE] = function() PlayToAll(ADMIN_LINES[0]) end,
 	[Gamemode.CUE_BEGIN] = function(self)
 		timer.Remove(TRANSITION_TIMER)
 		self.transitionSounds = {}
-		-- a second on, so the announcer's "Fight!" is heard before the round restarts
-		timer.Simple(1, function()
-			self:Begin()
-		end)
 	end,
 }
 
@@ -292,19 +296,18 @@ function Controller:Tick()
 	self:Publish()
 end
 
--- Gameplay mode begins: a clean slate, everyone unassigned, the fallback
--- state of a fresh join; each client opens its team menu on seeing it.
+-- The first pre-round: the scores cleared, everyone on a team (a player on
+-- RED or BLU keeps it, the rest but spectators are assigned one), then the
+-- rounds respawn and hold them until the countdown ends.
 function Controller:Begin()
-	local rules = WS.Rules
 	team.SetScore(WS.TEAM_RED, 0)
 	team.SetScore(WS.TEAM_BLUE, 0)
-	rules:Unhalt()
-	rules:RestartRound()
 	for _, ply in ipairs(player.GetAll()) do
-		WS.SetPlayerTeam(ply, WS.TEAM_UNASSIGNED, true)
+		if WS.TeamOf(ply) == WS.TEAM_UNASSIGNED and ply:Team() ~= WS.TEAM_SPECTATOR then
+			WS.SetPlayerTeam(ply, WS.AutoTeam(), true)
+		end
 	end
-	-- JC: Hidden because too much visual clutte
-	-- Center("Choose a team!")
+	WS.Rules:BeginGame(self.mode:TransitionEnd())
 end
 
 -- A map with rounds starts in the mode sv_gameplay_enabled holds: Sandbox

@@ -53,7 +53,8 @@ end
 
 function ENT:OnPlayerDeath(ply) Rounds():OnPlayerDeath(ply) end
 function ENT:Halt() Rounds():Halt() end
-function ENT:Unhalt() Rounds():Unhalt() end
+function ENT:CleanUp() Rounds():CleanUp() end
+function ENT:BeginGame(preroundEnd) Rounds():BeginGame(preroundEnd) end
 function ENT:Halted() return Rounds():Halted() end
 function ENT:RestartRound() Rounds():RestartRound() end
 function ENT:StateGet() return Rounds():State() end

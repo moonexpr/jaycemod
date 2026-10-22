@@ -28,6 +28,12 @@
 -- cuts it short once those expected from the previous map are in (Hurry:
 -- HURRIED_COUNTDOWN). A requested countdown keeps its length.
 --
+-- Every countdown readies the game in stages, each cued once as the time
+-- left reaches it (a request's first two as it starts): the map cleaned up
+-- CLEANUP_AT seconds before its end, the match announced at ANNOUNCE_AT,
+-- then the first pre-round PREROUND_AT seconds before it, everyone on a
+-- team, respawned and held, so the round runs as the countdown ends.
+--
 -- The transition's timing lives here; the controller feeds it the time
 -- (Advance) and plays the cues it returns.
 local ceil, ipairs, max, min, setmetatable = math.ceil, ipairs, math.max, math.min, setmetatable
@@ -51,7 +57,7 @@ SOURCE_BUTTON, SOURCE_CONSOLE, SOURCE_AI_WAR = "button", "console", "ai_war"
 STAY = "stay" -- nothing changes
 START_TRANSITION = "start_transition" -- the transition's opening cues, then its countdown
 START_LOAD_COUNTDOWN = "start_load_countdown" -- the load's countdown, its opening cued later (CUE_OPENING)
-CANCEL_TRANSITION = "cancel_transition" -- silence the countdown; the rounds stayed halted
+CANCEL_TRANSITION = "cancel_transition" -- silence the countdown; halt the rounds, a pre-round it began too
 ENTER_SANDBOX = "enter_sandbox" -- halt the rounds
 WAIT = "wait" -- wait for players, the rounds halted
 STOP_WAITING = "stop_waiting" -- the wait called off; the rounds stayed halted
@@ -88,12 +94,25 @@ SPOKEN_COUNT = 5
 ADMIN_LINE_AT = 13
 LOAD_COUNTDOWN = 180
 HURRIED_COUNTDOWN = 30
+CLEANUP_AT = ADMIN_LINE_AT + 1
+ANNOUNCE_AT = ADMIN_LINE_AT
+PREROUND_AT = 10
 
 -- Cues Advance returns, in order.
 CUE_OPENING = "opening" -- the load countdown's opening cues, as a request's (START_TRANSITION)
+CUE_CLEANUP = "cleanup" -- the map cleaned up, the rounds still halted
+CUE_ANNOUNCE = "announce" -- the match announced: the matchmaking sting and the announcer
+CUE_PREROUND = "preround" -- everyone on a team: the first pre-round, held until CUE_BEGIN
 CUE_COUNT = "count" -- { kind, left, spoken }
 CUE_ADMIN_LINE = "admin_line"
-CUE_BEGIN = "begin" -- Gameplay mode begins: the rounds restart
+CUE_BEGIN = "begin" -- Gameplay mode begins: the pre-round's round runs
+
+-- The countdown's stages, by the seconds left they come at, latest last.
+local STAGES = {
+	{ kind = CUE_CLEANUP, at = CLEANUP_AT },
+	{ kind = CUE_ANNOUNCE, at = ANNOUNCE_AT },
+	{ kind = CUE_PREROUND, at = PREROUND_AT },
+}
 
 local function Answer(action, notice, refusal, loadRounds)
 	return {
@@ -177,6 +196,7 @@ function New(hasRounds, enabled)
 		cued = 0, -- the lowest count already cued (the transition's length before any)
 		atLoad = false, -- the transition is the map's load's, which Hurry may cut short
 		opened = false, -- its opening cues have played
+		stage = 1, -- the next of STAGES to cue
 	}, Mode)
 end
 
@@ -209,6 +229,7 @@ local function Start(self, now, length, atLoad)
 	self.cued = length
 	self.atLoad = atLoad
 	self.opened = not atLoad
+	self.stage = 1
 end
 
 local function Apply(self, answer, now)
@@ -279,11 +300,19 @@ function Mode:TransitionEnd()
 	return self.endsAt
 end
 
+-- The stages due with left seconds left, each once, before that second's count.
+local function Stages(self, cues, left)
+	while STAGES[self.stage] and left <= STAGES[self.stage].at do
+		cues[#cues + 1] = { kind = STAGES[self.stage].kind }
+		self.stage = self.stage + 1
+	end
+end
+
 -- The transition's cues due by time now since the last call, in order: the
 -- load countdown's opening once its players are in (Hurry) or
 -- HURRIED_COUNTDOWN seconds before its end; a count for each whole second
--- left passed; at its end the last, CUE_BEGIN, puts the model in Gameplay
--- mode. None outside the transition.
+-- left passed, a stage before the count it comes at; at its end the last,
+-- CUE_BEGIN, puts the model in Gameplay mode. None outside the transition.
 function Mode:Advance(now)
 	local cues = {}
 	if not self.modes:Is(TRANSITION) then return cues end
@@ -293,12 +322,14 @@ function Mode:Advance(now)
 	end
 	local left = max(ceil(self.endsAt - now), 0)
 	for count = self.cued - 1, max(left, 1), -1 do
+		Stages(self, cues, count)
 		cues[#cues + 1] = {
 			kind = CUE_COUNT,
 			left = count,
 			spoken = count <= SPOKEN_COUNT,
 		}
 	end
+	Stages(self, cues, left)
 	self.cued = min(self.cued, max(left, 1))
 	if left == 0 then
 		cues[#cues + 1] = { kind = CUE_ADMIN_LINE }

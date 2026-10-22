@@ -69,7 +69,7 @@ function Controller:OnPlayerDeath(ply)
 	WS.SetSpawnStatus(ply, self.round:RespawnStatus(t, countsFrom, #TeamPlayers(t), ply.wsSwitchedTeam))
 end
 
--- mp_round_restart, the reset vote, the editors and a new game: a round
+-- mp_round_restart, the reset vote and the editors: a round
 -- with players on RED or BLU (not NPCs alone) ends as a stalemate, with the
 -- round end's own panel and song; with none it restarts silently
 -- (foundation.rounds' RestartRound).
@@ -193,9 +193,17 @@ function Controller:KeepSpawnDoorsOpen(now)
 	end
 end
 
-function Controller:Unhalt()
-	self.round:Unhalt()
+-- A new game readies in two steps (foundation.rounds' CleanUp and
+-- BeginGame): the halted map cleaned up, then the first pre-round, held
+-- until preroundEnd.
+function Controller:CleanUp()
+	self:Apply(self.round:CleanUp())
+end
+
+function Controller:BeginGame(preroundEnd)
 	SetGlobal2Bool("ws_gameplay_halted", false)
+	local now = CurTime()
+	self:Apply(self.round:BeginGame(now, preroundEnd, self:World(now)))
 end
 
 -- A stopped game: the doors stay open, and a dead player on a team is back

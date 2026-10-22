@@ -810,6 +810,45 @@ T.test("Halt waits between rounds until a new game", function()
 	T.eq(Describe({ effects[1], effects[2], effects[3] }), "state PREROUND, balance_teams, cleanup", "a full reset")
 end)
 
+-- A new game readies in two steps the gamemode's countdown times: the
+-- halted map cleaned up, then the first pre-round, held to its end.
+T.test("a new game cleans the halted map up, then holds its pre-round until the countdown ends", function()
+	local round = Running()
+	local now = T0 + 20
+	round:Halt(now)
+	Expect(round:CleanUp(), { "cleanup" }, "the map cleaned up")
+	T.eq(round:Halted(), true, "still halted")
+	local finish = now + 13
+	local effects = round:BeginGame(now + 3, finish, World())
+	T.eq(round:Halted(), false, "unhalted")
+	Expect(effects, PREROUND_FULL_FRESH, "a full reset, not cleaned up again")
+	T.eq(effects[1].preroundEnd, finish, "held until the countdown ends")
+	round:Think(finish - 0.1, World())
+	T.eq(round:State(), State.PREROUND, "held")
+	round:Think(finish, World())
+	T.eq(round:State(), State.RND_RUNNING, "the round runs as it ends")
+end)
+
+T.test("a new game begun without a cleanup cleans up in its pre-round", function()
+	local round = Running()
+	round:Halt(T0 + 20)
+	local effects = round:BeginGame(T0 + 21, T0 + 30, World())
+	T.eq(Describe({ effects[1], effects[2], effects[3] }), "state PREROUND, balance_teams, cleanup", "a full reset with a cleanup")
+end)
+
+T.test("a new game's pre-round is the next one's usual length", function()
+	local round = Running()
+	round:Halt(T0 + 20)
+	round:BeginGame(T0 + 21, T0 + 30, World())
+	round:Think(T0 + 30, World())
+	round:SetWinningTeam(T0 + 31, RED, W.ALL_POINTS_CAPTURED, true, false, false, FakeObjective.Objective())
+	local next = T0 + 31 + Settings().bonusRoundTime
+	round:Think(next, World())
+	T.eq(round:State(), State.PREROUND, "the next pre-round")
+	round:Think(next + Rounds.PREROUND_SECONDS, World())
+	T.eq(round:State(), State.RND_RUNNING, "lasts PREROUND_SECONDS")
+end)
+
 -- A map loaded in Sandbox mode has run: halting ended its setup and fired
 -- the timer's OnSetupFinished, which on a race map disables the timer
 -- itself (plr_hightower_event's plr_timer). The first game must reset it.

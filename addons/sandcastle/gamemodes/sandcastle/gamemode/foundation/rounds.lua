@@ -517,6 +517,7 @@ function New(settings)
 		changelevelAfterStalemate = false,
 		intermissionEnd = nil,
 		intermissionFreeze = nil,
+		preroundEnd = nil, -- a new game's first pre-round's end (BeginGame)
 		nextPeriodic = 0,
 		teamCounts = PerTeam(0),
 		inSetup = false,
@@ -893,7 +894,8 @@ ENTER[State.PREROUND] = function(self, effects, now, world, change)
 		Add(effects, Kind("skip_setup"))
 		self.transitionAt = BonusFreeze(effects, now)
 	else
-		self.transitionAt = now + self.mode:PreroundSeconds(self.settings)
+		self.transitionAt = self.preroundEnd or now + self.mode:PreroundSeconds(self.settings)
+		self.preroundEnd = nil
 	end
 	change.preroundEnd = self.transitionAt
 	Add(effects, Output("OnStateEnterPreRound"))
@@ -1278,7 +1280,7 @@ end
 -- A round in play with players on its teams (withPlayers) ends as a
 -- stalemate, an actual round end: its win panel and stalemate song, nobody
 -- scoring, then a fresh round on a reset map. Otherwise, with nobody
--- playing (a new game, everyone unassigned; NPCs alone) or no round in
+-- playing (NPCs alone) or no round in
 -- play, back to PREGAME silently, with a full reset to come: the next
 -- pre-round cleans the map up and respawns everyone. Out of the
 -- intermission, everyone is let go.
@@ -1351,6 +1353,28 @@ end
 
 function Round:Unhalt()
 	self.halted = false
+end
+
+-- A new game readies in two steps the gamemode's countdown times
+-- (foundation.gamemode's CUE_CLEANUP and CUE_PREROUND). CleanUp: the halted
+-- map cleaned up, so the first pre-round's full reset need not again.
+function Round:CleanUp()
+	local effects = {}
+	self.mapFresh = true
+	Add(effects, Kind("cleanup"))
+	return effects
+end
+
+-- BeginGame: the halted rounds go to the first pre-round, its full reset
+-- respawning everyone, held until preroundEnd (the countdown's end), when
+-- the round runs; world is the snapshot of now.
+function Round:BeginGame(now, preroundEnd, world)
+	self.halted = false
+	self.switchTeams, self.scrambleTeams = false, false
+	self.decideMatch, self.deathmatch = false, false
+	self.forceMapReset = true
+	self.preroundEnd = preroundEnd
+	return Transition(self, {}, State.PREROUND, now, world)
 end
 
 function Round:SetStalemateOnTimelimit(on)

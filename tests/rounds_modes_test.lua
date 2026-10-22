@@ -153,7 +153,7 @@ local CONTROLLER_METHODS = {
 	"State", "PointsMayBeCaptured", "InSetup", "InOvertime", "SetWinningTeam", "SetStalemate",
 	"AddPlayedRound", "History", "SetFirstRoundPlayed",
 	"CapSounds",
-	"OnPlayerDeath", "Halt", "Unhalt", "Halted", "RestartRound", "RespawnsDisabled", "SetRespawnsDisabled",
+	"OnPlayerDeath", "Halt", "CleanUp", "BeginGame", "Halted", "RestartRound", "RespawnsDisabled", "SetRespawnsDisabled",
 	"SetAdminRespawnWaveTime", "TeamRespawnWaveTime", "GetRespawnWaveMaxLength", "ProxyInput",
 }
 
@@ -175,7 +175,7 @@ end)
 
 T.test("the ws_gamerules binding keeps the gamerules surface as forwards", function()
 	local source = Read("addons/sandcastle/gamemodes/sandcastle/entities/entities/ws_gamerules.lua")
-	for _, name in ipairs({ "OnPlayerDeath", "Halt", "Unhalt", "Halted", "RestartRound", "SetWinningTeam", "SetStalemate" }) do
+	for _, name in ipairs({ "OnPlayerDeath", "Halt", "CleanUp", "BeginGame", "Halted", "RestartRound", "SetWinningTeam", "SetStalemate" }) do
 		T.eq(source:find("function ENT:" .. name .. "(", 1, true) ~= nil, true, name)
 	end
 end)

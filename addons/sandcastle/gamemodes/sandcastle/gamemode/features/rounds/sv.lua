@@ -443,9 +443,13 @@ end)
 -- The gamerules outlive any cleanup, as TF2's do. Another addon's
 -- game.CleanUpMap (TF2 Multi-Fix's, 5 s into every TF2 map) keeps none:
 -- the map's own come back with its entities, but those made here would be
--- gone; they are made again, and bind to the rounds as they stand.
+-- gone; they are made again, and bind to the rounds as they stand. The
+-- spawn doors come back shut, their triggers on: halted, a new game's
+-- cleanup among them, they are held open again.
 function Controller:AfterCleanup()
 	self:EnsureProxy()
+	self.spawnDoors, self.spawnTriggers, self.spawnHold = nil, nil, nil
+	if Active() and self.round:Halted() then self:OpenSpawnDoors(CurTime()) end
 end
 
 hook.Add("PostCleanupMap", "ws_rounds_proxy", function() Controller:AfterCleanup() end)
