@@ -14,6 +14,10 @@ ENT.Models = {
 	"models/player/combine_soldier.mdl",
 	"models/player/combine_soldier_prisonguard.mdl",
 }
+-- Loaded with the map, in both realms, so the first to spawn does not hang
+-- the game: its models and its support's and medics' (features/aiwar/sv_enlist.lua's kits).
+for _, model in ipairs(ENT.Models) do util.PrecacheModel(model) end
+util.PrecacheModel("models/player/police.mdl")
 ENT.Weapons = { "weapon_ar2", "weapon_smg1", "weapon_shotgun", "weapon_pistol" }
 ENT.Factions = { FACTION_TEAM_BLU, FACTION_COMBINE }
 

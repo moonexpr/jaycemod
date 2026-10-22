@@ -13,6 +13,8 @@ ENT.PrintName = "Vortigaunt Medic"
 ENT.Category = "Sandcastle"
 ENT.Spawnable = true
 ENT.Models = { "models/vortigaunt.mdl" }
+-- loaded with the map, in both realms, so the first to spawn does not hang the game
+for _, model in ipairs(ENT.Models) do util.PrecacheModel(model) end
 ENT.BloodColor = BLOOD_COLOR_GREEN
 ENT.CollisionBounds = Vector(13, 13, 72)
 ENT.Factions = { FACTION_TEAM_RED, FACTION_REBELS }
