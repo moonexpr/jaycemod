@@ -182,6 +182,40 @@ T.test("a time that is infinite stays infinite", function()
 	T.eq(other.dueAt, math.huge, "forever")
 end)
 
+T.test("Apply writes raw, so a model guarded against new keys takes its own fields back", function()
+	local Guarded = { __index = {} }
+	Guarded.__newindex = function(_, key) error("no new key " .. tostring(key)) end
+	local spec = Snapshot.Spec({
+		name = "guarded",
+		times = { "dueAt" },
+	})
+	local model = setmetatable({}, Guarded)
+	rawset(model, "dueAt", 130)
+	local snap = Snapshot.Take(model, spec, 100)
+	rawset(model, "dueAt", nil)
+	Snapshot.Apply(model, snap, spec, 200)
+	T.eq(rawget(model, "dueAt"), 230, "restored past the guard")
+end)
+
+T.test("a weak table is data: its contents are copied and its mode comes back", function()
+	local spec = Snapshot.Spec({ name = "weak" })
+	local model = { seen = setmetatable({ a = 1 }, { __mode = "k" }) }
+	local snap = Snapshot.Take(model, spec, 0)
+	local other = {}
+	Snapshot.Apply(other, snap, spec, 0)
+	T.eq(other.seen.a, 1, "contents")
+	T.eq(getmetatable(other.seen).__mode, "k", "mode")
+	T.eq(other.seen ~= model.seen, true, "a copy")
+end)
+
+T.test("a table whose metatable holds more than a mode is not data", function()
+	local spec = Snapshot.Spec({ name = "classy" })
+	local model = { obj = setmetatable({}, { __mode = "k", __index = {} }) }
+	local ok, err = pcall(Snapshot.Take, model, spec, 0)
+	T.eq(ok, false, "refused without refs")
+	T.eq(tostring(err):find("classy.obj", 1, true) ~= nil, true, "names the path: " .. tostring(err))
+end)
+
 T.test("a cycle is refused with its path", function()
 	local thing = NewThing(0)
 	thing.nested.back = thing.nested

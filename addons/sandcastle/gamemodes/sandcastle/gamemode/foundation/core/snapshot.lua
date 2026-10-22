@@ -17,12 +17,16 @@
 -- metatable, a function, userdata) go through refs:Encode(value, path) to
 -- plain data and refs:Decode(data, path) back, nil when it no longer
 -- resolves; without refs, or unresolved, they are refused with their path.
+-- A weak table (a metatable of __mode alone) is data, its mode kept. Pairs
+-- keyed by refs are sorted, so two snapshots of one state are equal. Apply
+-- writes raw: a __newindex guard does not see the model's own fields.
 -- Infinite numbers are kept as data a JSON encoder can write.
-local error, getmetatable, ipairs, pairs, tostring, type = error, getmetatable, ipairs, pairs, tostring, type
+local error, getmetatable, ipairs, pairs, rawset, setmetatable, tostring, type = error, getmetatable, ipairs, pairs, rawset, setmetatable, tostring, type
 local huge = math.huge
+local sort = table.sort
 module(...)
 
-local REF, NUM, MAP = "$ref", "$num", "$map"
+local REF, NUM, MAP, MODE = "$ref", "$num", "$map", "$mode"
 local INFINITE, NEGATIVE_INFINITE = "inf", "-inf"
 local WILDCARD = "*"
 
@@ -99,6 +103,22 @@ local function Child(item, path, key, keys, ctx)
 	return copy
 end
 
+-- A key of a $map pair as text to sort by: a ref by what refs encoded.
+local function KeyText(data)
+	if type(data) == "table" then return "r" .. tostring(data[REF]) end
+	return type(data):sub(1, 1) .. tostring(data)
+end
+
+-- A weak table's metatable holds only its __mode: the table is still data.
+local function WeakMode(value)
+	local meta = getmetatable(value)
+	if type(meta) ~= "table" or type(meta.__mode) ~= "string" then return nil end
+	for key in pairs(meta) do
+		if key ~= "__mode" then return nil end
+	end
+	return meta.__mode
+end
+
 local function CopyTable(value, path, keys, ctx)
 	if ctx.open[value] then Refuse(path, "is a cycle") end
 	ctx.open[value] = true
@@ -115,8 +135,11 @@ local function CopyTable(value, path, keys, ctx)
 			local data = IsPlainKey(key) and key or Encode(key, Join(path, key), ctx.refs)
 			pairsList[#pairsList + 1] = { data, Child(item, path, key, keys, ctx) }
 		end
+		-- pairs' order is the hash's: sorted by key, two snapshots of one state are equal
+		sort(pairsList, function(a, b) return KeyText(a[1]) < KeyText(b[1]) end)
 		copy = { [MAP] = pairsList }
 	end
+	copy[MODE] = WeakMode(value)
 	ctx.open[value] = nil
 	return copy
 end
@@ -131,7 +154,7 @@ function Copy(value, path, keys, ctx)
 		return value
 	end
 	if kind == "string" or kind == "boolean" or kind == "nil" then return value end
-	if kind == "table" and getmetatable(value) == nil then return CopyTable(value, path, keys, ctx) end
+	if kind == "table" and (getmetatable(value) == nil or WeakMode(value)) then return CopyTable(value, path, keys, ctx) end
 	return Encode(value, path, ctx.refs)
 end
 
@@ -156,9 +179,12 @@ function Restore(data, path, refs)
 			local keyPath = Join(path, key)
 			value[key] = Restore(pair[2], keyPath, refs)
 		end
-		return value
+	else
+		for key, item in pairs(data) do
+			if key ~= MODE then value[key] = Restore(item, Join(path, key), refs) end
+		end
 	end
-	for key, item in pairs(data) do value[key] = Restore(item, Join(path, key), refs) end
+	if data[MODE] ~= nil then setmetatable(value, { __mode = data[MODE] }) end
 	return value
 end
 
@@ -222,9 +248,11 @@ function Apply(model, snapshot, spec, now, refs)
 		if snapshot[key] == nil then Refuse(Join(spec.name, key), "the snapshot has no state for this machine") end
 	end
 	Shift(values, spec, now)
+	-- raw: the snapshot holds the model's own fields, which a guard against
+	-- new keys (meta.class's Guard) must not refuse
 	for key in pairs(model) do
-		if not spec.skip[key] and not spec.machines[key] and snapshot[key] == nil then model[key] = nil end
+		if not spec.skip[key] and not spec.machines[key] and snapshot[key] == nil then rawset(model, key, nil) end
 	end
-	for key, value in pairs(values) do model[key] = value end
+	for key, value in pairs(values) do rawset(model, key, value) end
 	for key in pairs(spec.machines) do model[key]:Restore(snapshot[key]) end
 end
