@@ -59,7 +59,7 @@
 			"text"		"Economy"
 			"help"		"0: no money and no store; everyone spawns with the starter loadout"
 			"type"		"CheckBox"
-			"default"	"1"
+			"default"	"0"
 		}
 		7
 		{

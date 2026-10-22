@@ -23,7 +23,7 @@ local FixedSpread = WS.require("foundation.combat.fixed_spread")
 local BulletSteps = WS.require("foundation.combat.bullet_steps")
 
 local FLAGS = { FCVAR_ARCHIVE, FCVAR_REPLICATED, FCVAR_NOTIFY }
-local ECONOMY = CreateConVar("mp_economy_enabled", "1", FLAGS,
+local ECONOMY = CreateConVar("mp_economy_enabled", "0", FLAGS, -- off until the economy is done
 	"0: no money and no store; everyone spawns with the starter loadout", 0, 1)
 local CREDIT = CreateConVar("mp_economy_credit_enabled", "0", FLAGS,
 	"1: purchases may go below $0 in every mode, as they always may in Sandbox mode", 0, 1)
