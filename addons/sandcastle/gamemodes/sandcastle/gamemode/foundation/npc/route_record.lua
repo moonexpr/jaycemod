@@ -23,8 +23,9 @@
 --
 --   Write(record) -> bytes, Read(bytes) -> record (refuses another format)
 --   Graph(record, request, strategy) -> the solver's graph port over it
---   Replay(record, request, strategies) -> { status, expanded, route },
---     strategies: name -> strategy (Cost(step, limits, bot))
+--   Replay(record, request, strategies) -> { status, expanded, route,
+--     search (the solver's, done) }, strategies: name -> strategy
+--     (Cost(step, limits, bot))
 --   Matches(result, replayed) -> whether both searches did the same
 local Buffer = require("foundation.core.buffer")
 local Geometry = require("foundation.core.math.geometry")
@@ -328,6 +329,7 @@ function Replay(record, request, strategies)
 		status = search.status,
 		expanded = search.expanded,
 		route = search:Route(),
+		search = search,
 	}
 end
 

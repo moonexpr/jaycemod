@@ -34,6 +34,8 @@ local Controller = {
 	nextBlockerRefresh = 0,
 	blockerGeneration = 0,
 	blockerLog = {}, -- the latest generations: { generation, changes = area id -> true, or nil when not known }
+	-- reach = nil, -- the regions failed route searches walked (foundation.npc.reach_memo), set by sv_routes
+	reachStats = { answered = 0, retargeted = 0, learned = 0 }, -- requests answered from them, searches sent to a region's nearest area, regions learned
 	brushAreas = setmetatable({}, { __mode = "k" }), -- func_brush -> { pos, areas it stands in }
 	-- doorAreas = nil, -- nav area id -> true under a func_door, set by RefreshBlockers
 	-- doorStates = nil, -- func_door -> how the blockers see it, set by RefreshBlockers

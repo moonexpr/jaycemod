@@ -7,6 +7,7 @@ local AStar = WS.require("foundation.pathfinder.astar")
 local Portal = WS.require("foundation.npc.portal")
 local Doors = WS.require("foundation.npc.doors")
 local Path = WS.require("foundation.npc.path")
+local ReachMemo = WS.require("foundation.npc.reach_memo")
 
 local NOBODY = WS.TEAM_UNASSIGNED
 
@@ -139,6 +140,56 @@ local function NearestArea(pos)
 	return navmesh.GetNearestNavArea(pos, true, NEAREST_AREA_FAR, false, false)
 end
 
+-- Goals out of reach (foundation.npc.reach_memo): a search that runs out of
+-- areas has walked all its start leads to, so a later request from inside
+-- that region to a goal beyond it is answered without a search, from the
+-- region's area nearest the goal, as the search would have come closest:
+-- the failed search's own way there when it starts where that one did,
+-- else a search to that area. Regions last REACH_TERM seconds and a round,
+-- and through blocker changes (their edges are checked again) but not a
+-- change to the mesh's links (BlockerChangesSince cannot say what changed).
+local REACH = CreateConVar("ns_routes_reach", "1", FCVAR_ARCHIVE,
+	"1: a route search knows a goal out of reach from the regions failed searches walked", 0, 1)
+local REACH_TERM = 30
+local REACH_KEYS = 32
+
+Controller.reach = Controller.reach or ReachMemo.New({
+	clock = { Now = function() return CurTime() end },
+	term = REACH_TERM,
+	capacity = REACH_KEYS,
+})
+
+local function ForgetRegions()
+	Controller.reach:Clear()
+end
+hook.Add("PostCleanupMap", "ws_npc_reach", ForgetRegions)
+hook.Add("WSRoundActivate", "ws_npc_reach", ForgetRegions)
+hook.Add("WSRoundActive", "ws_npc_reach", ForgetRegions)
+
+-- The graph's traversable and crossable, writing down each refusal: the
+-- edge of the region a failed search walks.
+local function Refusals(graph)
+	local refused, uncrossable = {}, {}
+	local traversable, crossable = graph.traversable, graph.crossable
+	graph.traversable = function(area)
+		local open = traversable(area)
+		if not open then refused[area:GetID()] = true end
+		return open
+	end
+	if crossable then
+		graph.crossable = function(from, to)
+			local ok = crossable(from, to)
+			if not ok then
+				local id = from:GetID()
+				uncrossable[id] = uncrossable[id] or {}
+				uncrossable[id][to:GetID()] = true
+			end
+			return ok
+		end
+	end
+	return refused, uncrossable
+end
+
 function Controller:RequestRoute(request)
 	local start, goal = NearestArea(request.from), NearestArea(request.to)
 	if not (IsValid(start) and IsValid(goal)) then
@@ -162,9 +213,27 @@ function Controller:RequestRoute(request)
 			return not self:EngineBlocks(area, team)
 		end,
 	}, NavGraph)
+	local startId, searchGoal, generation = start:GetID(), goalId, self.blockerGeneration
+	local key = REACH:GetBool() and self.reach:Key(request) or nil
+	local region = key and self.reach:Unreachable(key, startId, goalId,
+		function(id) return graph.traversable(Area(id)) end,
+		function(from, to) return not graph.crossable or graph.crossable(Area(from), Area(to)) end,
+		generation, function(since) return self:BlockerChangesSince(since) ~= nil end)
+	if region then
+		local nearest = region:Nearest(request.to, Center)
+		if region.start == startId then
+			self.reachStats.answered = self.reachStats.answered + 1
+			request.onDone(AreasOf(region:RouteTo(nearest)), false)
+			return
+		end
+		self.reachStats.retargeted = self.reachStats.retargeted + 1
+		searchGoal, graph.goalPos = nearest, Center(nearest)
+	end
+	local refused, uncrossable
+	if key and not region then refused, uncrossable = Refusals(graph) end
 	local watch = self.pathWatch[request.bot.entIndex]
 	local observed = watch and self:ObserveRoute(graph, request, start, watch) or nil
-	local search = AStar.New(graph, start:GetID(), goal:GetID(), navmesh.GetNavAreaCount())
+	local search = AStar.New(graph, startId, searchGoal, navmesh.GetNavAreaCount())
 	local scheduler = self.searches
 	scheduler:Spawn(function()
 		local status = search.status
@@ -174,7 +243,11 @@ function Controller:RequestRoute(request)
 			if observed then observed.seconds = observed.seconds + SysTime() - began end
 			scheduler:CheckYield()
 		end
-		local areas, found = AreasOf(search:Route()), status == Pathfinder.FOUND
+		if refused and status == Pathfinder.FAILED and search.expanded < search.maxExpanded then
+			self.reachStats.learned = self.reachStats.learned + 1
+			self.reach:Learn(key, ReachMemo.Region(startId, search.parent, refused, uncrossable), generation)
+		end
+		local areas, found = AreasOf(search:Route()), status == Pathfinder.FOUND and not region
 		if observed then self:PublishRoute({ search = search, observed = observed }, areas, found) end
 		request.onDone(areas, found)
 	end)

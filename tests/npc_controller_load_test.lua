@@ -20,11 +20,14 @@ local WIRING = {
 	"concommand ws_path_bench",
 	"concommand ws_path_profile",
 	"hook EntityTakeDamage ws_npc_filter_damage",
+	"hook PostCleanupMap ws_npc_reach",
 	"hook PostCleanupMap ws_npc_spawn_rooms",
 	"hook Think ws_npc_spawners",
 	"hook WSNavLinked ws_npc_blockers",
 	"hook WSNbDebugNpcs ws_npc",
+	"hook WSRoundActivate ws_npc_reach",
 	"hook WSRoundActivate ws_npc_spawn_rooms",
+	"hook WSRoundActive ws_npc_reach",
 	"hook WSRoundActive ws_npc_spawn_rooms",
 }
 

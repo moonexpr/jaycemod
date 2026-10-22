@@ -104,6 +104,7 @@ function R.Start(seconds, restart)
 	if R.running then return "already recording" end
 	local npcs = WS.Feature("npc")
 	R.searches, R.started, R.running, R.map = {}, CurTime(), true, game.GetMap()
+	R.reach0 = table.Copy(npcs.reachStats or {})
 	local pending
 	local request = npcs.RequestRoute
 	Swap(npcs, "RequestRoute", function(self, req)
@@ -235,5 +236,9 @@ function R.Report()
 	end
 	local parts = {}
 	for source, n in pairs(by) do parts[#parts + 1] = source .. " " .. n end
-	return string.format("%s: %d searches (%s), %d done", R.running and "recording" or "stopped", #requests, table.concat(parts, ", "), done)
+	local reach, now = {}, WS.Feature("npc").reachStats or {}
+	for k, v in pairs(now) do reach[#reach + 1] = k .. " " .. (v - ((R.reach0 or {})[k] or 0)) end
+	table.sort(reach)
+	return string.format("%s: %d searches (%s), %d done; reach memo: %s", R.running and "recording" or "stopped", #requests,
+		table.concat(parts, ", "), done, #reach > 0 and table.concat(reach, ", ") or "off")
 end
