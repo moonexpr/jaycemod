@@ -1,6 +1,6 @@
 -- Part of the rounds controller (sv.lua): sounds and notices, logic_auto, and the
 -- effects of the round model carried out.
-local Controller, Players, PublishLimits, PublishOvertime, TIMELIMIT_TIMER_NAME, PROXY_CLASS = ...
+local Controller, Players, PublishLimits, PublishOvertime, TIMELIMIT_TIMER_NAME, RULES_CLASSES = ...
 local Rounds = WS.require("foundation.rounds")
 local Text = WS.require("foundation.rounds.text")
 local TeamPlayers, EachPlayer = Players.TeamPlayers, Players.EachPlayer
@@ -13,7 +13,8 @@ local RED, BLUE = WS.TEAM_RED, WS.TEAM_BLUE
 local LOGIC_AUTO_CLASS = "logic_auto"
 local COMPETITIVE_CLASS = "tf_logic_competitive"
 -- A full reset keeps the gamerules, as TF2 does, and the admin editors.
-local CLEANUP_KEEPS = { PROXY_CLASS, "edit_gamerules", "edit_roundtimer" }
+local CLEANUP_KEEPS = { "edit_gamerules", "edit_roundtimer" }
+for _, class in ipairs(RULES_CLASSES) do CLEANUP_KEEPS[#CLEANUP_KEEPS + 1] = class end
 
 local SUDDEN_DEATH = "Game.SuddenDeath"
 

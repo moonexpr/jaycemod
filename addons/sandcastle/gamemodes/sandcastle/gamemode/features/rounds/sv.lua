@@ -1,7 +1,9 @@
 -- The rounds feature's controller. It owns the foundation.rounds Round (the
 -- gamerules state machine), a foundation.rounds.timer Timer per
 -- team_round_timer, the timer shown in the HUD, the gamerules proxy
--- (tf_gamerules), the mode, the round listeners, the timer holds, the team
+-- (tf_gamerules or ws_gamerules: WS.Rules, which every map has from its
+-- load on) and whether the map runs rounds, the mode, the round
+-- listeners, the timer holds, the team
 -- clocks and the objective port. It feeds the models engine time and a
 -- snapshot of the players, and carries out their effects: outputs, the map
 -- cleanup, respawns, sounds and the ws_round_* and ws_timer_*
@@ -11,13 +13,15 @@
 -- state, thinking and the map's setup, and runs its parts: sv_players (the
 -- players and their teams), sv_timers (timers, team clocks and the round
 -- limits), sv_effects (sounds, logic_auto and the model's effects) and
--- sv_gamerules (the surface tf_gamerules forwards, and its inputs).
+-- sv_gamerules (the surface the gamerules forward, and their inputs).
 --
--- Loaded by tf_gamerules, team_round_timer, game_round_win and
--- tf_logic_competitive, and by every objective feature (capture, koth,
--- payload). On a map with an objective entity and no tf_gamerules it makes
--- one, as CTFGameRules::CreateStandardEntities does, so the rounds run and
--- outputs aimed at the name tf_gamerules reach it.
+-- Loaded on every map as it loads (init.lua), and by the gamerules,
+-- team_round_timer, game_round_win, tf_logic_competitive and every
+-- objective feature (capture, koth, payload). On a map with an objective
+-- entity and no tf_gamerules it makes one, as
+-- CTFGameRules::CreateStandardEntities does, so the rounds run and outputs
+-- aimed at the name tf_gamerules reach it; on a map with neither, a
+-- ws_gamerules.
 local Rounds = WS.require("foundation.rounds")
 local ControlPoints = WS.require("foundation.rounds.control_points")
 local Limits = WS.require("foundation.rounds.limits")
@@ -65,7 +69,10 @@ local chattime = ConVarOrCreate("mp_chattime", "10", FCVAR_REPLICATED, "amount o
 -- teamplay_round_timer.cpp
 local overtimeNag = ConVarOrCreate("tf_overtime_nag", "0", FCVAR_NOTIFY, "Announcer overtime nag.")
 
-local PROXY_CLASS = "tf_gamerules"
+-- The gamerules every map has (WS.Rules): TF2's, which run its rounds, or
+-- Sandcastle's (ws_gamerules), which run them once a game begins.
+local TF_RULES_CLASS, WS_RULES_CLASS = "tf_gamerules", "ws_gamerules"
+local RULES_CLASSES = { TF_RULES_CLASS, WS_RULES_CLASS }
 local MASTER_CLASS = "team_control_point_master"
 -- The entities that make a map a round-based one, proxy or not.
 local OBJECTIVE_CLASSES = {
@@ -105,7 +112,7 @@ local function NewRound()
 end
 
 local Controller = {
-	ownProxy = false, -- the tf_gamerules is one MakeProxy made (the map has none)
+	rounds = false, -- the map runs rounds: TF2's gamerules, or a game begun (EnsureRules)
 	round = NewRound(),
 	proxy = NULL,
 	timers = {}, -- team_round_timer entity -> its Timer
@@ -140,7 +147,7 @@ local Controller = {
 }
 
 local function Active()
-	return IsValid(Controller.proxy)
+	return Controller.rounds
 end
 
 -- The proxy -------------------------------------------------------------------------
@@ -177,24 +184,51 @@ end
 
 local function PublishState()
 	local round = Controller.round
+	SetGlobal2Bool("ws_rounds_active", Active())
 	SetGlobal2Int("ws_round_state", round:State())
 	SetGlobal2Int("ws_round_hud_type", round:Mode().HUD)
 	PublishLimits()
 end
 
+-- Whether the map has any of OBJECTIVE_CLASSES.
+local function HasObjective()
+	for _, class in ipairs(OBJECTIVE_CLASSES) do
+		if ents.FindByClass(class)[1] then return true end
+	end
+	return false
+end
+
+-- Gamerules spawned bind as they initialise; the first bound are the map's
+-- rules. TF2's run rounds from the start.
 function Controller:BindProxy(ent)
 	if IsValid(self.proxy) then return end
 	self.proxy = ent
 	WS.Rules = ent
-	SetGlobal2Bool("ws_rounds_active", true)
+	if ent.RunsRounds then self.rounds = true end
 	PublishState()
 end
 
-function Controller:UnbindProxy(ent)
+-- The rules removed. In a map cleanup or at shutdown (replace false)
+-- WS.Rules keeps the removed rules until the cleanup's end brings the map's
+-- own back or AfterCleanup makes them again; removed any other way, they
+-- are replaced at once, under their name.
+function Controller:UnbindProxy(ent, replace)
 	if ent ~= self.proxy then return end
 	self.proxy = NULL
-	WS.Rules = nil
-	SetGlobal2Bool("ws_rounds_active", false)
+	if replace then self:EnsureProxy(ent:GetName()) end
+end
+
+-- A map without bound rules gets them: a map with an objective a
+-- tf_gamerules, as CTFGameRules::CreateStandardEntities makes one, named
+-- as TF2 names it so the map's outputs reach it; any other Sandcastle's.
+-- Either binds to the rounds as they stand. name: the rules' name, for
+-- rules replacing others.
+function Controller:EnsureProxy(name)
+	if IsValid(self.proxy) then return end
+	local class = HasObjective() and TF_RULES_CLASS or WS_RULES_CLASS
+	local proxy = ents.Create(class)
+	proxy:SetName(name or class)
+	proxy:Spawn()
 end
 
 function Controller:Proxy()
@@ -207,8 +241,8 @@ local Part = WS.FeatureParts(getfenv(1), "rounds")
 local Players = Part("sv_players", GAME_TEAMS)
 local HavePlayers, TeamLife, Scores = Players.HavePlayers, Players.TeamLife, Players.Scores
 local RoundWon, PublishOvertime, TIMELIMIT_TIMER_NAME = Part("sv_timers", Controller, Active, GAME_TEAMS)
-Part("sv_effects", Controller, Players, PublishLimits, PublishOvertime, TIMELIMIT_TIMER_NAME, PROXY_CLASS)
-Part("sv_gamerules", Controller, Players)
+Part("sv_effects", Controller, Players, PublishLimits, PublishOvertime, TIMELIMIT_TIMER_NAME, RULES_CLASSES)
+Part("sv_gamerules", Controller, Players, Active)
 
 -- Mode, listeners and holds ----------------------------------------------------------
 
@@ -310,8 +344,8 @@ function Controller:AddPlayedRound(name) self.round:AddPlayedRound(name) end
 function Controller:History() return self.round:History() end
 function Controller:SetFirstRoundPlayed(name) self.round:SetFirstRoundPlayed(name) end
 
--- A map without a proxy has no rounds to win: game_round_win and the master
--- are ignored there, as they were without tf_gamerules.
+-- A map without rounds has none to win: game_round_win and the master are
+-- ignored there.
 function Controller:SetWinningTeam(winner, reason, forceMapReset, switchTeams, dontAddScore)
 	if not Active() then return end
 	self:Apply(self.round:SetWinningTeam(CurTime(), winner, reason, forceMapReset, switchTeams, dontAddScore, self.objective))
@@ -406,40 +440,25 @@ end)
 
 -- The map, once its entities exist ------------------------------------------------------
 
-local function HasObjective()
-	for _, class in ipairs(OBJECTIVE_CLASSES) do
-		if ents.FindByClass(class)[1] then return true end
-	end
-	return false
-end
-
--- A master makes the map a control points one (the mode other objective
--- features may raise). A map with an objective and no tf_gamerules gets
--- one, named as TF2 names it, and the gamemode then starts in its mode.
--- Without a proxy nothing sends RoundSpawn, so the timers run from map spawn.
-local function MakeProxy()
-	Controller.ownProxy = true
-	local proxy = ents.Create(PROXY_CLASS)
-	proxy:SetName(PROXY_CLASS)
-	proxy:Spawn()
-end
-
 -- The gamerules outlive any cleanup, as TF2's do. Another addon's
--- game.CleanUpMap (TF2 Multi-Fix's, 5 s into every TF2 map) keeps no
--- tf_gamerules: the map's own comes back with its entities, but one made
--- here would be gone, and the rounds with it; it is made again, and binds
--- to the rounds as they stand.
+-- game.CleanUpMap (TF2 Multi-Fix's, 5 s into every TF2 map) keeps none:
+-- the map's own come back with its entities, but those made here would be
+-- gone; they are made again, and bind to the rounds as they stand.
 function Controller:AfterCleanup()
-	if self.ownProxy and not Active() then MakeProxy() end
+	self:EnsureProxy()
 end
 
 hook.Add("PostCleanupMap", "ws_rounds_proxy", function() Controller:AfterCleanup() end)
 
+-- A master makes the map a control points one (the mode other objective
+-- features may raise). The map gets its rules (EnsureProxy), and with
+-- rounds the gamemode then starts in its mode. Without rounds nothing
+-- sends RoundSpawn, so the timers run from map spawn.
 function Controller:SetUpMap()
 	if self.mapSetUp then return end
 	self.mapSetUp = true
 	if ents.FindByClass(MASTER_CLASS)[1] then self:SetMode(ControlPoints.Mode) end
-	if not Active() and HasObjective() then MakeProxy() end
+	self:EnsureProxy()
 	self:ActivateTimers()
 	-- The rules exist now: the gamemode puts the map in its Sandbox or
 	-- Gameplay mode (StartAtLoad is idempotent).
@@ -469,13 +488,15 @@ function Controller:StartRoundTimer()
 end
 
 -- A game begun on a map without rounds (foundation.gamemode's loadRounds):
--- its tf_gamerules, as a map with an objective gets one, and the base mode,
--- untimed, played to the round limits. The gamemode keeps the rounds halted
--- until the game begins (StartAtLoad, which SetUpMap calls when it runs
--- after this; called now when it already ran).
+-- its gamerules run them, in the base mode, untimed, played to the round
+-- limits. The gamemode keeps the rounds halted until the game begins
+-- (StartAtLoad, which SetUpMap calls when it runs after this; called now
+-- when it already ran).
 function Controller:EnsureRules()
 	if Active() then return end
-	MakeProxy()
+	self:EnsureProxy()
+	self.rounds = true
+	PublishState()
 	if self.mapSetUp then WS.Feature("gamemode"):StartAtLoad() end
 end
 

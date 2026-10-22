@@ -64,7 +64,7 @@ NOTICE_WAITING = "waiting" -- everyone is told the game waits for players
 DENY_SOUND = "buttons/button10.wav"
 
 -- Why an answer changes nothing.
-NO_ROUNDS = "this map has no rounds (no tf_gamerules)"
+NO_ROUNDS = "this map has no rounds"
 ALREADY_COUNTING = "Gameplay mode is already counting down"
 ALREADY_WAITING = "Gameplay mode is already waiting for players"
 ALREADY_GAMEPLAY = "already in Gameplay mode"
@@ -154,7 +154,7 @@ local MODES = Cfsm.Define({
 local Mode = {}
 Mode.__index = Mode
 
--- hasRounds: the map has a round system to run (a tf_gamerules).
+-- hasRounds: the map's gamerules run rounds (TF2's, or a game begun).
 -- enabled: sv_gameplay_enabled at map load.
 function New(hasRounds, enabled)
 	return setmetatable({

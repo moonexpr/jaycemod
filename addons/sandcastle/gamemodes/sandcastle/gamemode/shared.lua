@@ -1,6 +1,7 @@
--- Sandcastle: Sandbox, plus working TF2 gameplay entities. On a map with a
--- tf_gamerules (any TF2 map) the round runs as in TF2; on any other map it is
--- plain Sandbox. Every override below defers to Sandbox first.
+-- Sandcastle: Sandbox, plus working TF2 gameplay entities. Every map has
+-- gamerules: on a map with a tf_gamerules (any TF2 map) the round runs as in
+-- TF2; on any other map Sandcastle's (ws_gamerules) leave it plain Sandbox
+-- until a game begins. Every override below defers to Sandbox first.
 GM.Name = "Sandcastle"
 GM.Author = "moonexpr"
 GM.Email = ""

@@ -46,8 +46,9 @@ local function ConVar(default)
 	}
 end
 
--- overrides: engine globals the test gives the file in place of the stub.
-local function Load(overrides)
+-- overrides: engine globals the test gives the file in place of the stub;
+-- wsFields: WS functions in place of the stub.
+local function Load(overrides, wsFields)
 	overrides = overrides or {}
 	local wiring = T.Wiring()
 	local deferred = {} -- timer.Simple's functions, kept and never run
@@ -61,6 +62,7 @@ local function Load(overrides)
 		TEAM_RED = Teams.RED,
 		TEAM_BLUE = Teams.BLUE,
 	}, { __index = function() return Inert end })
+	for name, value in pairs(wsFields or {}) do ws[name] = value end
 	local env = setmetatable({
 		WS = ws,
 		hook = wiring.hook,
@@ -83,7 +85,7 @@ local function Load(overrides)
 		end,
 	})
 	local controller = setfenv(assert(loadfile(SOURCE)), env)()
-	return controller, wiring
+	return controller, wiring, ws
 end
 
 local controller, wiring = Load()
@@ -127,31 +129,147 @@ T.test("unbinding another timer keeps the gamerules' own", function()
 	T.eq(controller.timeLimitTimer, own, "kept")
 end)
 
--- Another addon's cleanup (TF2 Multi-Fix's game.CleanUpMap 5 s into every
--- TF2 map) keeps no tf_gamerules: the map's own comes back with the map's
--- entities, but one the controller made (a map without one) would be gone,
--- and the rounds with it. The controller makes it again.
-local function Cleaned(own, active)
-	local created = {}
+-- Every map has gamerules (WS.Rules): its tf_gamerules, or those the
+-- controller makes. A fake map: its objective or none, and the gamerules
+-- entities made on it, which bind as they spawn (their Initialize). As the
+-- entities declare it, TF2's gamerules run rounds and Sandcastle's do not.
+local RUNS_ROUNDS = { tf_gamerules = true, ws_gamerules = false }
+
+local function Map(hasObjective)
+	local map = { created = {}, published = {}, spawnStatus = {} }
+	local function Entity(class)
+		local ent = { class = class, valid = true, RunsRounds = RUNS_ROUNDS[class] }
+		function ent:GetName() return self.name end
+		function ent:SetName(name) self.name = name end
+		function ent:Spawn() map.controller:BindProxy(self) end
+		return ent
+	end
+	map.Entity = Entity
 	local fakeEnts = {
 		Create = function(class)
-			created[#created + 1] = class
-			return Inert
+			local ent = Entity(class)
+			map.created[#map.created + 1] = ent
+			return ent
+		end,
+		FindByClass = function(class)
+			return (hasObjective and class == "team_control_point") and { Inert } or {}
 		end,
 	}
-	local loaded = Load({ ents = fakeEnts, IsValid = function() return active end })
-	loaded.ownProxy = own
-	loaded:AfterCleanup()
-	return table.concat(created, " ")
+	map.controller, _, map.ws = Load({
+		ents = fakeEnts,
+		IsValid = function(ent) return type(ent) == "table" and ent.valid == true end,
+		SetGlobal2Bool = function(key, value) map.published[key] = value end,
+	}, {
+		SetSpawnStatus = function(ply, ...) map.spawnStatus[ply] = { ... } end,
+	})
+	-- the gamerules entity removed, and what it tells the controller
+	function map:Remove(ent, replace)
+		self.controller:UnbindProxy(ent, replace)
+		ent.valid = false
+	end
+	function map:Made()
+		local list = {}
+		for i, ent in ipairs(self.created) do list[i] = ent.class .. "/" .. ent.name end
+		return table.concat(list, " ")
+	end
+	return map
 end
 
-T.test("after a cleanup the gamerules the controller made are made again", function()
-	T.eq(Cleaned(true, false), "tf_gamerules", "made again")
+T.test("a map without an objective gets Sandcastle's gamerules, running no rounds", function()
+	local map = Map(false)
+	map.controller:EnsureProxy()
+	T.eq(map:Made(), "ws_gamerules/ws_gamerules", "made")
+	T.eq(map.ws.Rules, map.created[1], "WS.Rules")
+	T.eq(map.published.ws_rounds_active, false, "no rounds")
 end)
 
-T.test("after a cleanup the map's own gamerules are the map's to bring back, and bound ones stay", function()
-	T.eq(Cleaned(false, false), "", "the map's own")
-	T.eq(Cleaned(true, true), "", "still bound")
+T.test("a map with an objective and no tf_gamerules gets one, named as TF2 names it, running rounds", function()
+	local map = Map(true)
+	map.controller:EnsureProxy()
+	T.eq(map:Made(), "tf_gamerules/tf_gamerules", "made")
+	T.eq(map.ws.Rules, map.created[1], "WS.Rules")
+	T.eq(map.published.ws_rounds_active, true, "rounds")
+end)
+
+T.test("a map's own tf_gamerules are its rules, and none are made beside them", function()
+	local map = Map(true)
+	local own = map.Entity("tf_gamerules")
+	own:Spawn()
+	map.controller:EnsureProxy()
+	T.eq(map:Made(), "", "none made")
+	T.eq(map.ws.Rules, own, "WS.Rules")
+end)
+
+-- Another addon's cleanup (TF2 Multi-Fix's game.CleanUpMap 5 s into every
+-- TF2 map) keeps no gamerules: the map's own come back with the map's
+-- entities, but any the controller made are gone. It makes them again,
+-- bound to the rounds as they stand.
+T.test("gamerules removed by a cleanup are made again after it, rounds as they stood", function()
+	for _, case in ipairs({
+		{ objective = false, made = "ws_gamerules/ws_gamerules", rounds = false },
+		{ objective = true, made = "tf_gamerules/tf_gamerules", rounds = true },
+	}) do
+		local map = Map(case.objective)
+		map.controller:EnsureProxy()
+		map:Remove(map.created[1], false)
+		T.eq(#map.created, 1, "none made during the cleanup")
+		map.controller:AfterCleanup()
+		T.eq(map:Made(), case.made .. " " .. case.made, "made again")
+		T.eq(map.ws.Rules, map.created[2], "WS.Rules")
+		T.eq(map.published.ws_rounds_active, case.rounds, "rounds as they stood")
+	end
+end)
+
+T.test("after a cleanup gamerules still bound stay", function()
+	local map = Map(true)
+	local own = map.Entity("tf_gamerules")
+	own:Spawn()
+	map.controller:AfterCleanup()
+	T.eq(map:Made(), "", "none made")
+end)
+
+-- Removed any other way (a map's Kill), the gamerules are replaced at once,
+-- under their name so the map's outputs still reach them, and the game
+-- goes on.
+T.test("gamerules removed outside a cleanup are replaced at once under their name", function()
+	local map = Map(false)
+	local own = map.Entity("tf_gamerules")
+	own:SetName("tf_gamerules")
+	own:Spawn()
+	map:Remove(own, true)
+	T.eq(map:Made(), "ws_gamerules/tf_gamerules", "replaced")
+	T.eq(map.ws.Rules, map.created[1], "WS.Rules")
+	T.eq(map.published.ws_rounds_active, true, "the rounds go on")
+end)
+
+-- A game begun on a map without rounds (foundation.gamemode's loadRounds)
+-- runs them on the map's gamerules; begun before the map was set up (the
+-- AI war's autostart), it makes them first.
+T.test("a game begun on a map without rounds runs them on its gamerules", function()
+	local map = Map(false)
+	map.controller:EnsureProxy()
+	map.controller:EnsureRules()
+	T.eq(map:Made(), "ws_gamerules/ws_gamerules", "no other gamerules")
+	T.eq(map.published.ws_rounds_active, true, "rounds")
+end)
+
+T.test("a game begun before the map was set up makes its gamerules", function()
+	local map = Map(false)
+	map.controller:EnsureRules()
+	T.eq(map:Made(), "ws_gamerules/ws_gamerules", "made")
+	T.eq(map.ws.Rules, map.created[1], "WS.Rules")
+	T.eq(map.published.ws_rounds_active, true, "rounds")
+end)
+
+-- Without rounds there are no respawn waves: a death is Sandbox's, the
+-- player clicking to respawn, as before gamerules were on every map.
+T.test("a death without rounds leaves the spawn status alone", function()
+	local map = Map(false)
+	map.controller:EnsureProxy()
+	local ply = {}
+	map.ws.Rules = map.created[1]
+	map.controller:OnPlayerDeath(ply)
+	T.eq(map.spawnStatus[ply], nil, "no spawn status")
 end)
 
 T.finish()

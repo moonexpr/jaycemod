@@ -113,7 +113,7 @@ T.test("on a map without rounds, whose convars were never made, a win condition 
 	T.eq(c:WinCondition("mp_maxrounds"), 0)
 	local ok, why = c:SetWinCondition("mp_maxrounds", 9)
 	T.eq(ok, false)
-	T.eq(why, "this map has no rounds (no tf_gamerules)")
+	T.eq(why, "this map has no rounds")
 end)
 
 T.test("scores, respawns and the timer go through the editors feature as before", function()

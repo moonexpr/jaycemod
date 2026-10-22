@@ -5,12 +5,8 @@
 local Controller = {}
 
 local RED, BLUE = WS.TEAM_RED, WS.TEAM_BLUE
-local NO_ROUNDS = "this map has no rounds (no tf_gamerules)"
+local NO_ROUNDS = "this map has no rounds"
 local NO_TIMER = "no round timer is showing"
-
-local function Rules()
-	return IsValid(WS.Rules) and WS.Rules or nil
-end
 
 -- Everyone is told what the admin changed (foundation.admin_notices). A
 -- field sends a change at every step of its slider, so its notice waits
@@ -47,14 +43,13 @@ end
 -- Respawns -------------------------------------------------------------------------
 
 function Controller:RespawnTime(t)
-	local rules = Rules()
-	return rules and rules:TeamRespawnWaveTime(t) or 0
+	return WS.Active() and WS.Rules:TeamRespawnWaveTime(t) or 0
 end
 
 -- t nil sets both teams.
 function Controller:SetRespawnTime(t, seconds)
-	local rules = Rules()
-	if not rules then return false, NO_ROUNDS end
+	if not WS.Active() then return false, NO_ROUNDS end
+	local rules = WS.Rules
 	seconds = math.max(0, seconds)
 	local changed = false
 	for _, each in ipairs(t and { t } or { RED, BLUE }) do
@@ -67,8 +62,8 @@ function Controller:SetRespawnTime(t, seconds)
 end
 
 function Controller:UseMapRespawnTimes()
-	local rules = Rules()
-	if not rules then return false, NO_ROUNDS end
+	if not WS.Active() then return false, NO_ROUNDS end
+	local rules = WS.Rules
 	rules:SetAdminRespawnWaveTime(RED, nil)
 	rules:SetAdminRespawnWaveTime(BLUE, nil)
 	WS.Notify(Notices.MapRespawnWaves())
@@ -76,13 +71,12 @@ function Controller:UseMapRespawnTimes()
 end
 
 function Controller:RespawnsDisabled()
-	local rules = Rules()
-	return rules ~= nil and rules:RespawnsDisabled()
+	return WS.Active() and WS.Rules:RespawnsDisabled()
 end
 
 function Controller:SetRespawnsDisabled(disabled)
-	local rules = Rules()
-	if not rules then return false, NO_ROUNDS end
+	if not WS.Active() then return false, NO_ROUNDS end
+	local rules = WS.Rules
 	if rules:RespawnsDisabled() ~= disabled then WS.Notify(Notices.RespawnsDisabled(disabled)) end
 	rules:SetRespawnsDisabled(disabled)
 	return true
@@ -107,9 +101,8 @@ end
 -- Rounds and carts -------------------------------------------------------------------
 
 function Controller:ResetRound()
-	local rules = Rules()
-	if not rules then return false, NO_ROUNDS end
-	rules:RestartRound()
+	if not WS.Active() then return false, NO_ROUNDS end
+	WS.Rules:RestartRound()
 	return true
 end
 

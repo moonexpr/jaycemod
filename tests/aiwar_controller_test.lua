@@ -227,6 +227,11 @@ local function Env(w)
 			for _, n in ipairs(notices) do w.notified[#w.notified + 1] = n.text end
 		end,
 		Active = function() return w.active end,
+		-- every map's gamerules (WS.Rules): respawn waves at once unless a test sets one
+		Rules = {
+			RespawnsDisabled = function() return w.respawnsDisabled == true end,
+			GetRespawnWaveMaxLength = function() return w.waveLength or 0 end,
+		},
 		State = function() return w.state end,
 		InSetup = function() return w.setup end,
 		InOvertime = function() return w.overtime end,

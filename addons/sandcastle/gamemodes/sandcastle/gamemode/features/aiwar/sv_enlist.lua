@@ -219,10 +219,10 @@ function Controller:Draft(team, pos, ang)
 end
 
 -- TF2's respawn wave for the team (0 during setup, when TF2 respawns at
--- once), or none without gamerules. With respawns stopped by an admin, or in
+-- once), or none without rounds. With respawns stopped by an admin, or in
 -- sudden death, the last wave was the last.
 local function WaveLength(team)
-	if not IsValid(WS.Rules) then return 0 end
+	if not WS.Active() then return 0 end
 	if WS.Rules:RespawnsDisabled() or WS.State() == WS.STATE.STALEMATE then return math.huge end
 	if WS.InSetup() then return 0 end
 	return WS.Rules:GetRespawnWaveMaxLength(team, true)

@@ -1,6 +1,7 @@
--- Part of the rounds controller (sv.lua): the gamerules surface tf_gamerules
--- forwards, the spawn doors of a stopped game, and tf_gamerules' inputs.
-local Controller, Players = ...
+-- Part of the rounds controller (sv.lua): the gamerules surface the gamerules
+-- (tf_gamerules, ws_gamerules) forward, the spawn doors of a stopped game,
+-- and their inputs, tf_gamerules'.
+local Controller, Players, Active = ...
 local Rounds = WS.require("foundation.rounds")
 local Spawns = WS.require("foundation.spawn_manager")
 local SpawnHold = WS.require("features.rounds.spawn_doors")
@@ -49,9 +50,12 @@ local function SpawnDoors()
 	return doors, doorTriggers
 end
 
--- The gamerules surface tf_gamerules forwards ------------------------------------------
+-- The gamerules surface the gamerules forward ------------------------------------------
 
+-- Without rounds there are no respawn waves: the player clicks to respawn,
+-- as in Sandbox.
 function Controller:OnPlayerDeath(ply)
+	if not Active() then return end
 	local now = CurTime()
 	ply.wsDeathTime = now
 	-- a death that changed the player's team (WS.SetPlayerTeam) waits only

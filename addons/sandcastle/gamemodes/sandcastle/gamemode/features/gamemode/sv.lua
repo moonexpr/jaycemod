@@ -3,7 +3,7 @@
 -- rounds, sounds, notices and the sv_gameplay_enabled setting. The Gameplay
 -- Settings' Begin Game and Stop Game buttons, an admin setting
 -- sv_gameplay_enabled in the console, and the AI war all make requests
--- (Request). Sandbox mode is tf_gamerules' Halt (no rounds, timers paused,
+-- (Request). Sandbox mode is the gamerules' Halt (no rounds, timers paused,
 -- spawn doors and forcefields open); a map with rounds starts in the mode
 -- the setting holds (StartAtLoad). The transition to Gameplay mode owns
 -- every cue, whoever asked: the map's description in the chat, the
@@ -70,7 +70,7 @@ local ADMIN_LINES = {
 }
 
 local Controller = {
-	mode = Gamemode.New(IsValid(WS.Rules), ENABLED:GetBool()),
+	mode = Gamemode.New(WS.Active(), ENABLED:GetBool()),
 	transitionSounds = {}, -- what the transition has played, to silence if it is called off
 }
 

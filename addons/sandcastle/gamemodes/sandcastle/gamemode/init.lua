@@ -66,7 +66,7 @@ function GM:PlayerSelectSpawn(ply, transition)
 	return self.BaseClass.PlayerSelectSpawn(self, ply, transition)
 end
 
--- On TF2 maps, players come back with tf_gamerules' respawn waves rather than
+-- With rounds, players come back with the gamerules' respawn waves rather than
 -- when they click; in Sandbox mode, as in Sandbox, when they click.
 function GM:PlayerDeathThink(ply)
 	if WS.Active() and not WS.GameplayStopped() then return false end
@@ -79,9 +79,13 @@ function GM:DoPlayerDeath(ply, attacker, dmg)
 	if WS.Active() and not ply.wsChangingTeam then WS.DropAmmoPack(ply) end
 end
 
+-- Every map has gamerules (WS.Rules) from its load on: its own tf_gamerules,
+-- or those the rounds controller makes (its SetUpMap).
+hook.Add("InitPostEntity", "ws_gamerules", function() WS.Feature("rounds"):SetUpMap() end)
+
 -- Neither Sandbox nor base defines PostPlayerDeath.
 function GM:PostPlayerDeath(ply)
-	if IsValid(WS.Rules) then WS.Rules:OnPlayerDeath(ply) end
+	WS.Rules:OnPlayerDeath(ply)
 end
 
 -- On maps with rounds the team keys (F2's gm_showteam, changeteam) open the

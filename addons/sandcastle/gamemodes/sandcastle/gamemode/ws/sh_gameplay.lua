@@ -98,7 +98,7 @@ local function BuildPanel(panel)
 	function status:Think()
 		local text
 		if not WS.Active() then
-			text = "This map has no rounds (no tf_gamerules): Sandbox mode."
+			text = "This map has no rounds: Sandbox mode."
 		elseif ENABLED:GetBool() then
 			text = "Status: Gameplay mode"
 		else
