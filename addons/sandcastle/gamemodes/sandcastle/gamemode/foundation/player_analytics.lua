@@ -5,9 +5,12 @@
 --     point or flag captured) or ROUND (a round won)
 --   Encode(event) -> a log line; Parse(line, number) -> the event, or an
 --     error naming the line
---   Players(events, now) -> id -> { firstSeen, sessions, playSeconds, days,
+--   Excluded(text) -> the set of SteamID64s a list names (developers);
+--     Exclude(event, excluded) -> the event without them, or nil
+--   Players(events, now[, excluded]) -> id -> { firstSeen, sessions, playSeconds, days,
 --     victories = kind -> count, first = kind -> { at, playSeconds,
---     sessions, wallSeconds } }, ANY the first victory of any kind
+--     sessions, wallSeconds } }, ANY the first victory of any kind; the
+--     excluded are left out, and taken out of victories they shared
 --   Retention(players, now) -> each day's new players (UTC days) and how
 --     many came back the next day (day1) and within seven (day7); nil while
 --     that day has not ended yet
@@ -172,9 +175,31 @@ local EVENTS = {
 	end,
 }
 
-function Players(events, now)
+-- The ids a list names (SteamID64s, separated by commas or spaces), as a set.
+function Excluded(text)
+	local set = {}
+	for id in text:gmatch("[^,%s]+") do set[Id(id)] = true end
+	return set
+end
+
+-- The event with every excluded player taken out, or nil when none is left.
+function Exclude(e, excluded)
+	if e.kind ~= VICTORY then return not excluded[e.id] and e or nil end
+	local ids = {}
+	for _, id in ipairs(e.ids) do
+		if not excluded[id] then ids[#ids + 1] = id end
+	end
+	return #ids > 0 and Victory(e.victory, ids, e.at) or nil
+end
+
+-- excluded: id -> true, players left out (developers), optional.
+function Players(events, now, excluded)
 	local players = {}
-	for _, e in ipairs(events) do EVENTS[e.kind](players, e) end
+	for _, e in ipairs(events) do
+		local kept = e
+		if excluded then kept = Exclude(e, excluded) end
+		if kept then EVENTS[kept.kind](players, kept) end
+	end
 	for _, p in pairs(players) do
 		if p.open then Close(p, now) end
 	end

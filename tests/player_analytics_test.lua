@@ -96,6 +96,24 @@ T.test("a victory for someone never seen joining is dropped, not counted", funct
 	T.eq(players[CAT], nil, "no such player")
 end)
 
+T.test("an excluded player (a developer) is left out; the others in the same victory still count", function()
+	local players = A.Players({
+		A.Join(ANN, D0),
+		A.Join(BOB, D0),
+		A.Victory(A.ROUND, { ANN, BOB }, D0 + MINUTE),
+		A.Leave(ANN, D0 + HOUR),
+	}, D0 + DAY, { [ANN] = true })
+	T.eq(players[ANN], nil, "not a player here")
+	T.eq(players[BOB].first[A.ROUND].playSeconds, MINUTE, "bob's win counts")
+end)
+
+T.test("Excluded parses a list of SteamID64s, refusing anything else", function()
+	local set = A.Excluded(ANN .. ", " .. BOB)
+	T.eq(set[ANN] and set[BOB], true, "both")
+	T.eq(next(A.Excluded("")), nil, "none")
+	Raises(function() A.Excluded("STEAM_0:1:2") end, "SteamID64", "a SteamID")
+end)
+
 T.test("retention: each day's new players, back the next day and within a week", function()
 	local players = A.Players({
 		A.Join(ANN, D0), A.Leave(ANN, D0 + HOUR),

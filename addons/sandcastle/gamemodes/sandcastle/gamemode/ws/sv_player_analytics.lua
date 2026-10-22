@@ -7,6 +7,11 @@
 -- session (ShutDown) and the next map starts it again, which the model
 -- reads as one session.
 --
+-- ws_analytics_exclude lists SteamID64s left out (the developers): nothing
+-- of theirs is recorded, and the report leaves out what was. Set it in the
+-- server's own server.cfg, not in the repo. A list that does not parse
+-- records nothing at all, and says so, rather than record a developer.
+--
 -- ws_analytics_players prints retention and the time to a first victory;
 -- WS.PlayerAnalytics() returns the same as tables. Both read the whole log,
 -- and need the server options privilege.
@@ -21,11 +26,25 @@ local GAME_TEAMS = {
 	[WS.TEAM_BLUE] = true,
 }
 
+local exclude = CreateConVar("ws_analytics_exclude", "", FCVAR_PROTECTED,
+	"SteamID64s left out of player analytics (developers), separated by commas")
+
+local function Excluded()
+	return PA.Excluded(exclude:GetString())
+end
+
 local function Human(ent)
 	return IsValid(ent) and ent:IsPlayer() and not ent:IsBot()
 end
 
 local function Record(event)
+	local ok, excluded = pcall(Excluded)
+	if not ok then
+		ErrorNoHalt("ws_analytics_exclude: " .. tostring(excluded) .. "; recording nothing until it is fixed\n")
+		return
+	end
+	event = PA.Exclude(event, excluded)
+	if not event then return end
 	file.CreateDir(DIR)
 	file.Append(LOG, PA.Encode(event) .. "\n")
 end
@@ -87,7 +106,7 @@ end
 
 function WS.PlayerAnalytics()
 	local now = os.time()
-	local players = PA.Players(Events(), now)
+	local players = PA.Players(Events(), now, Excluded())
 	return {
 		players = table.Count(players),
 		retention = PA.Retention(players, now),
