@@ -391,10 +391,10 @@ function Soldier:Detour(p)
 end
 
 -- Stuck where a player would jump (a railing, a crate): a hop the way I am
--- heading for p (the soldier's NSHop: a vault if one fits).
-function Soldier:Hop(p)
-	return self.ent:NSHop(self:Heading(p))
-end
+-- heading for p (the soldier's NSHop: a vault if one fits). Stuck at all:
+-- a fresh path from where I stand (NSRepath).
+function Soldier:Hop(p) return self.ent:NSHop(self:Heading(p)) end
+function Soldier:Repath() self.ent:NSRepath() end
 
 -- My orders stepped in on my movement (foundation.npc.debug's MARKS): told
 -- through WSNpcMark, which the nbdebug feature sends whoever has me

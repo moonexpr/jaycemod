@@ -1158,9 +1158,17 @@ T.test("with no route the soldier holds and tries again later", function()
 	T.eq(#me.requests, 2, "retried")
 end)
 
+-- The first stuck plans the soldier's path afresh, and nothing more.
+local function FreshPath(me, npc)
+	local before = me.repathed or 0
+	Tick(me, npc, (Orders.STUCK_TIME + TICK) / TICK)
+	T.eq(me.repathed, before + 1, "a fresh path first")
+end
+
 T.test("a soldier that stops getting closer asks for a new route, and gives up after a few", function()
 	local me, npc = Enlist({ role = AiWar.PUSH, route = function() return { P(900, 0) } end })
 	Tick(me, npc, 2)
+	FreshPath(me, npc)
 	Tick(me, npc, (Orders.STUCK_TIME + TICK) / TICK)
 	T.eq(#me.requests, 2, "a new route")
 	for _ = 1, Orders.MAX_REPATHS do Tick(me, npc, (Orders.STUCK_TIME + TICK) / TICK + 1) end
@@ -1266,11 +1274,12 @@ T.test("a stuck soldier first steps aside, then goes on along its new route", fu
 	local route = { P(900, 0) }
 	local me, npc = Enlist({ role = AiWar.PUSH, route = function() return route end })
 	Tick(me, npc, 2)
+	FreshPath(me, npc)
 	Tick(me, npc, (Orders.STUCK_TIME + TICK) / TICK)
 	T.eq(#me.requests, 2, "a new route")
 	T.near(FS.Distance(me.moving, P(0, 0)), Orders.SIDESTEP_DISTANCE, 1e-6, "a step aside first")
-	T.eq(Marked(me), Debug.MARK_SIDESTEP, "marked")
-	Near(me.marks[1].to, me.moving, "marked where it steps to")
+	T.eq(Marked(me), Debug.MARK_REPATH .. " " .. Debug.MARK_SIDESTEP, "marked")
+	Near(me.marks[2].to, me.moving, "marked where it steps to")
 	local aside = me.moving
 	Tick(me, npc, Orders.SIDESTEP_TIME / TICK + 1)
 	Near(me.moving, route[1], "then the route again")
@@ -1320,6 +1329,27 @@ T.test("a soldier stuck against a solid entity walks round it, then goes on alon
 	Near(me.moving, route[1], "back on its route")
 end)
 
+-- Pushed off its path (a crowd, a hop, a blast), a soldier heads straight
+-- for the path's next point, through whatever stands between: stuck, it
+-- first plans its path afresh from where it stands; stuck again within
+-- REPATH_AGAIN, it goes on to the remedies below.
+T.test("a stuck soldier first plans its path afresh, and hops only when stuck again soon", function()
+	local me, npc = Enlist({
+		role = AiWar.PUSH,
+		route = function() return { P(900, 0) } end,
+		hoppable = function() return true end,
+	})
+	Tick(me, npc, 2)
+	Tick(me, npc, (Orders.STUCK_TIME + TICK) / TICK)
+	T.eq(me.repathed, 1, "a fresh path")
+	T.eq(#me.hops, 0, "no hop yet")
+	T.eq(Marked(me), Debug.MARK_REPATH, "marked")
+	Tick(me, npc, (Orders.STUCK_TIME + TICK) / TICK)
+	T.eq(me.repathed, 1, "not again so soon")
+	T.eq(#me.hops, 1, "then a hop")
+	T.eq(Orders.REPATH_AGAIN > Orders.STUCK_TIME, true, "a second stuck falls within it")
+end)
+
 T.test("a soldier stuck while climbing hops at once, without stepping aside first", function()
 	local me, npc = Enlist({
 		role = AiWar.PUSH,
@@ -1327,10 +1357,11 @@ T.test("a soldier stuck while climbing hops at once, without stepping aside firs
 		hoppable = function() return true end,
 	})
 	Tick(me, npc, 2)
+	FreshPath(me, npc)
 	Tick(me, npc, (Orders.STUCK_TIME + TICK) / TICK)
 	T.eq(#me.hops, 1, "hopped up")
 	T.eq(me.hops[1].z, 60, "onto the waypoint above")
-	T.eq(Marked(me), Debug.MARK_HOP, "marked")
+	T.eq(Marked(me), Debug.MARK_REPATH .. " " .. Debug.MARK_HOP, "marked")
 	T.eq(#me.requests, 1, "no step aside, no new route")
 end)
 
@@ -1344,6 +1375,7 @@ T.test("a soldier stuck where it may hop hops toward its waypoint at once, witho
 		hoppable = function() return true end,
 	})
 	Tick(me, npc, 2)
+	FreshPath(me, npc)
 	Tick(me, npc, (Orders.STUCK_TIME + TICK) / TICK)
 	T.eq(#me.hops, 1, "one hop")
 	Near(me.hops[1], P(Orders.HOP_DISTANCE, 0), "a hop's length toward the waypoint")
@@ -1371,6 +1403,7 @@ end)
 T.test("a hop to somewhere a player could not walk is refused, and the trip ends", function()
 	local me, npc = Enlist({ role = AiWar.PUSH, route = function() return { P(900, 0) } end })
 	Tick(me, npc, 2)
+	FreshPath(me, npc)
 	for _ = 1, Orders.MAX_REPATHS + 1 do Tick(me, npc, (Orders.STUCK_TIME + TICK) / TICK + 1) end
 	T.eq(#me.hops, 0, "no hop")
 	T.eq(npc:State().trip, "stuck", "gave up")

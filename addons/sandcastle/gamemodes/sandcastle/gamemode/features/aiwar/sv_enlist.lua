@@ -25,6 +25,9 @@ function Controller:Enlist(ent, team, drafted, fixed)
 	}
 	-- DrGBase's hooks ask and tell the orders (ws_drg_soldier's bridge)
 	ent.NSBrain = self.soldiers[ent].npc
+	-- its paths keep off doors and brushes shut to its team (OnComputePath)
+	local npcs = WS.Feature("npc")
+	ent.NSAreaClosed = function(area) return npcs:NavBlocks(area, team) or self:ShutDoorIn(area, team) end
 	WS.SetTeamMember(ent, team)
 	self:RelateToFactions(ent, team)
 	self:PassTeammates(ent, team)

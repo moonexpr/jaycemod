@@ -203,6 +203,11 @@ function Soldier:Mark(kind, detail, to)
 	self.marks[#self.marks + 1] = { kind = kind, detail = detail, to = to }
 end
 
+-- repathed: how many times its path was planned afresh.
+function Soldier:Repath()
+	self.repathed = (self.repathed or 0) + 1
+end
+
 function Soldier:Hop(p)
 	if not self.hoppable(self.pos, p) then return false end
 	self.hops[#self.hops + 1] = p

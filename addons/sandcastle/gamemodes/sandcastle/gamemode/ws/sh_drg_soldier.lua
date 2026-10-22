@@ -11,6 +11,14 @@
 -- On clients, the heal beams of medics (their "WSHealing" target) are
 -- ws/cl_medic_effects.lua's.
 local GOAL_TOLERANCE = 32
+-- How near each of its path's points the soldier comes before the next
+-- (the path's own goal tolerance): a point round a wall's end, passed at
+-- GOAL_TOLERANCE while still short of the end, sends it into the wall.
+local PATH_TOLERANCE = 12
+-- Moved farther than this between two steps (put back at spawn, revived,
+-- thrown clear of a cart: any SetPos), the soldier plans its path afresh:
+-- the old one led from where it was.
+local TELEPORT = 128
 -- m_lifeState of a living entity (shareddefs.h); GMod names none.
 local LIFE_ALIVE = 0
 -- A ledge jump (CustomClimbing): how far in from its hull a soldier checks
@@ -233,9 +241,12 @@ function WS.DrgSoldier(ENT, baseName)
 			return true
 		end
 		local target = self.NSTarget
+		local here = self:GetPos()
+		if self.NSLastPos and here:DistToSqr(self.NSLastPos) > TELEPORT * TELEPORT then self:NSRepath() end
+		self.NSLastPos = here
 		if not target then return false end
-		if self:GetPos():DistToSqr(target) > GOAL_TOLERANCE * GOAL_TOLERANCE then
-			local result = self:FollowPath(target, GOAL_TOLERANCE)
+		if here:DistToSqr(target) > GOAL_TOLERANCE * GOAL_TOLERANCE then
+			local result = self:FollowPath(target, PATH_TOLERANCE)
 			if result == "obstacle" and self:NSVault() then result = "vaulted" end
 			self.NSMoveResult = result
 		elseif IsValid(enemy) then
@@ -406,10 +417,17 @@ function WS.DrgSoldier(ENT, baseName)
 			hull.start = a
 			return not self:TraceHull(b - a, hull).Hit
 		end
+		-- and its whole body fits where it lands: a ledge that is a thin plate's
+		-- edge (a stage over open space) would leave it set inside the plate
+		local body = { mins = Vector(mins.x, mins.y, mins.z + 1), maxs = maxs }
+		local function Fits(p)
+			body.start = p
+			return not self:TraceHull(vector_origin, body).Hit
+		end
 		local land = Leap.Arc(from, ledge, 1)
 		land = Vector(land.x, land.y, land.z)
 		local top = Vector(from.x, from.y, land.z)
-		if not (Clear(from, top) and Clear(top, land)) then
+		if not (Clear(from, top) and Clear(top, land) and Fits(land)) then
 			self.NSLeapRetry = CurTime() + LEAP_RETRY
 			return
 		end
@@ -521,12 +539,35 @@ function WS.DrgSoldier(ENT, baseName)
 		if IsValid(path) then path:Invalidate() end
 	end
 
+	-- What it stands on, for Lua: DrGBase follows the soldier's path only on
+	-- the world (FollowPath), and off it walks straight at the target into
+	-- whatever stands between; a soldier on a control point's base, a prop
+	-- or another soldier stands as firm, so anything that is not moving
+	-- counts as the world (a moving cart or lift is itself).
+	local EntityGround = FindMetaTable("Entity").GetGroundEntity
+	local STILL = 1
+	function ENT:GetGroundEntity()
+		local ground = EntityGround(self)
+		if IsValid(ground) and ground:GetVelocity():LengthSqr() < STILL * STILL then return game.GetWorld() end
+		return ground
+	end
+
+	-- Its path planned afresh from where it stands, on FollowPath's next step
+	-- (DrGBase computes again only as the target moves): pushed off it, the
+	-- soldier would run at its next point through whatever stands between.
+	function ENT:NSRepath()
+		local path = self:GetPath()
+		if IsValid(path) then path:Invalidate() end
+	end
+
 	-- DrGBase's cost of each link its path may take (GetPathGenerator, every
 	-- link but a ladder's): none it cannot cross (WS.NavLinkCrossable: a
 	-- players' map's clip along a rail, which the nav mesh links a drop past,
-	-- so it would ram the rail for good).
+	-- so it would ram the rail for good), nor into an area closed to it
+	-- (NSAreaClosed, which its controller gives it: a door shut to its team).
 	function ENT:OnComputePath(from, to)
 		if not WS.NavLinkCrossable(from, to) then return -1 end
+		if self.NSAreaClosed and self.NSAreaClosed(to) then return -1 end
 		return 0
 	end
 

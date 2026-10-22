@@ -76,6 +76,8 @@
 --     walk from here to p, so never through a wall, door or gate; I am
 --     moved there over a moment, running, and MoveTo and Release wait
 --     until I arrive
+--   Repath(): plan my way to my MoveTo target afresh from where I stand
+--     (my own path between waypoints, not the route)
 --   Mark(kind, detail, to): tell whoever debugs me that my orders stepped
 --     in on my movement (a foundation.npc.debug MARK_* kind), what happened,
 --     and where I am sent (nil: nowhere)
@@ -115,6 +117,7 @@ METHODS = {
 	"Unpose",
 	"RouteStale",
 	"Hop",
+	"Repath",
 	"Mark",
 	"UseGadget",
 	"Heal",

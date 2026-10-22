@@ -145,6 +145,7 @@ REPATH_INTERVAL, REPATH_DISTANCE = 2, 150
 -- Stuck: moved less than STUCK_PROGRESS in STUCK_TIME while running.
 STUCK_TIME, STUCK_PROGRESS = 3, 24
 MAX_REPATHS = 2
+REPATH_AGAIN = 10 -- after a fresh path, stuck again within this: on to the other remedies
 CHASE_BACKOFF = 3 -- after a straight run got stuck, routes only for this long
 -- A goal is gone straight at only within CHASE_RANGE: a clear line (the
 -- port's CanWalkTo) says nothing of the drops, pits and ledges on the way,
@@ -714,7 +715,9 @@ end
 
 -- Stuck: first, if what holds it is something only NPCs collide with, it
 -- is let through and runs on; if it is a solid entity (a cart), it walks
--- round it; if the port lets it hop (over a crate across a narrow lane, or
+-- round it; unless it did within REPATH_AGAIN, it plans its path afresh
+-- from where it stands (pushed off its path, it runs at the path's next
+-- point through whatever stands between); if the port lets it hop (over a crate across a narrow lane, or
 -- up while climbing), it leaps toward its waypoint; otherwise a step aside
 -- and a new route; after too many, a last hop, or the end of the trip.
 function Travel:Unstick(me, goal)
@@ -731,6 +734,14 @@ function Travel:Unstick(me, goal)
 		self.detour, self.detourUntil = detour, me:Now() + DETOUR_TIME
 		self:ResetProgress(me)
 		me:MoveTo(detour, self.gait)
+		return self:Continue()
+	end
+	local now = me:Now()
+	if not self.repathedAt or now - self.repathedAt >= REPATH_AGAIN then
+		self.repathedAt = now
+		me:Repath()
+		me:Mark(Debug.MARK_REPATH, "a fresh path from where it stands", nil)
+		self:ResetProgress(me)
 		return self:Continue()
 	end
 	if self:HopOn(me, goal) then return self:Continue() end
