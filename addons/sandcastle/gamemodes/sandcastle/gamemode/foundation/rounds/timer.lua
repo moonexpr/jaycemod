@@ -13,6 +13,7 @@
 --   { kind = "time_added", team, seconds }  the announced AddTimerSeconds
 local ipairs, math, pairs, setmetatable, sort = ipairs, math, pairs, setmetatable, table.sort
 local Cfsm = require("foundation.core.cfsm")
+local Snapshot = require("foundation.core.snapshot")
 module(...)
 
 STATE_SETUP = "setup"   -- RT_STATE_SETUP
@@ -130,6 +131,17 @@ function Timer:TimeRemaining(now)
 	local left = self.paused and self.remaining or self.endTime - now
 	return math.max(0, left)
 end
+
+-- The timer as plain data (foundation.core.snapshot), its end and next nag
+-- kept as seconds from now; Restore puts it back in place from the new now.
+local SNAPSHOT = Snapshot.Spec({
+	name = "timer",
+	machines = { "states" },
+	times = { "endTime", "nextNag" },
+})
+
+function Timer:Snapshot(now) return Snapshot.Take(self, SNAPSHOT, now) end
+function Timer:Restore(snapshot, now) Snapshot.Apply(self, snapshot, SNAPSHOT, now) end
 
 function Timer:Paused() return self.paused end
 function Timer:Disabled() return self.disabled end

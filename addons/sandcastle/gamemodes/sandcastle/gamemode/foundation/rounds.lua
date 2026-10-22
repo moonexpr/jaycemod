@@ -12,11 +12,12 @@
 -- snapshot, and every method that changes the game returns a list of
 -- effects, plain tables { kind = ..., ... }, for the rounds controller to
 -- carry out in order.
-local ipairs, math, pairs, setmetatable, tostring = ipairs, math, pairs, setmetatable, tostring
+local error, ipairs, math, pairs, setmetatable, tostring = error, ipairs, math, pairs, setmetatable, tostring
 local find, gmatch, sort, table_remove = string.find, string.gmatch, table.sort, table.remove
 local Teams = require("foundation.teams")
 local State = require("foundation.rounds.state")
 local Cfsm = require("foundation.core.cfsm")
+local Snapshot = require("foundation.core.snapshot")
 local Class = require("foundation.core.meta.class")
 local Spawns = require("foundation.spawn_manager")
 module(...)
@@ -561,6 +562,44 @@ function Round:TimeLeft(now)
 	return TimeLeft(self.settings.mapResetTime, self.settings.timelimit, now)
 end
 
+-- The round as plain data (foundation.core.snapshot), every time in it kept
+-- as seconds from now; Restore puts it back in place from the new now. The
+-- mode is the map's choice, so a snapshot only restores into the same one.
+local SNAPSHOT = Snapshot.Spec({
+	name = "round",
+	skip = { "mode" },
+	machines = { "states" },
+	times = {
+		"capBuffer",
+		"capEnableAt",
+		"intermissionEnd",
+		"intermissionFreeze",
+		"nextPeriodic",
+		"nextWave.*",
+		"preroundEnd",
+		"setupEnd",
+		"transitionAt",
+		"settings.mapResetTime",
+	},
+})
+
+function Round:Snapshot(now)
+	local snapshot = Snapshot.Take(self, SNAPSHOT, now)
+	snapshot.mode = self.mode.NAME
+	return snapshot
+end
+
+function Round:Restore(snapshot, now)
+	if snapshot.mode ~= self.mode.NAME then
+		error("round: the snapshot's mode is " .. tostring(snapshot.mode) .. ", this round's " .. self.mode.NAME, 2)
+	end
+	local fields = {}
+	for k, v in pairs(snapshot) do
+		if k ~= "mode" then fields[k] = v end
+	end
+	Snapshot.Apply(self, fields, SNAPSHOT, now)
+end
+
 -- New mp_winlimit, mp_maxrounds and mp_timelimit values, which TF2 reads
 -- live: limits = { winlimit, maxrounds, timelimit (minutes) }.
 function Round:SetLimits(limits)
@@ -642,7 +681,7 @@ end
 
 -- Why an admin's match win ended the match (Round:ForceMatchWin, or a
 -- sudden death called to decide it).
-ADMIN_MATCH_WIN = "Decided by an Administrator"
+ADMIN_MATCH_WIN = "Decided by the Administrator"
 -- Why a deathmatch's winner won the match.
 DEATHMATCH_MATCH_WIN = "Won the deathmatch"
 

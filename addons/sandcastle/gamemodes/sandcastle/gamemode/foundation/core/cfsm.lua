@@ -112,6 +112,12 @@ function Machine:Transition(state, ...)
 	self:Enter(state, ...)
 end
 
+-- Back into a saved state (foundation.core.snapshot): set as it was, with no
+-- handler run and no edge required, as the state was reached once already.
+function Machine:Restore(state)
+	self.current = Declared(self.def, state, "a restored state")
+end
+
 -- State_Think: the current state's think handler, if it has one.
 function Machine:Think(...)
 	local think = self.def.think[self.current]

@@ -34,6 +34,7 @@ local CATEGORY = {
 	["core/math/polynomial"] = "structures",
 	["core/math/matrix"] = "structures",
 	["core/buffer"] = "structures",
+	["core/snapshot"] = "structures",
 	["core/gma"] = "structures",
 	["core/parsers/utf16"] = "structures",
 	["core/parsers/keyvalues"] = "structures",
