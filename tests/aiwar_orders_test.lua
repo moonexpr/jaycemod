@@ -1334,20 +1334,38 @@ T.test("a soldier stuck while climbing hops at once, without stepping aside firs
 	T.eq(#me.requests, 1, "no step aside, no new route")
 end)
 
-T.test("a soldier stuck through every step aside hops toward its waypoint when a player could walk there", function()
+-- Something it cannot walk round (a crate across a narrow lane) it leaps
+-- over toward its waypoint at once, where the port allows a hop, before any
+-- step aside: a step aside and a new route lead back into the same crate.
+T.test("a soldier stuck where it may hop hops toward its waypoint at once, without stepping aside", function()
 	local me, npc = Enlist({
 		role = AiWar.PUSH,
 		route = function() return { P(900, 0) } end,
 		hoppable = function() return true end,
 	})
 	Tick(me, npc, 2)
-	for _ = 1, Orders.MAX_REPATHS + 1 do Tick(me, npc, (Orders.STUCK_TIME + TICK) / TICK + 1) end
+	Tick(me, npc, (Orders.STUCK_TIME + TICK) / TICK)
 	T.eq(#me.hops, 1, "one hop")
 	Near(me.hops[1], P(Orders.HOP_DISTANCE, 0), "a hop's length toward the waypoint")
+	T.eq(#me.requests, 1, "no step aside, no new route")
 	T.eq(Orders.JobOf(npc:Describe()), "Travel", "still on its way")
 	T.eq(npc:State().hops, 1, "counted for the report")
 	T.eq(me.marks[#me.marks].kind, Debug.MARK_HOP, "the hop marked")
 	Near(me.marks[#me.marks].to, me.hops[1], "where it hopped to")
+end)
+
+T.test("a soldier that may walk round what holds it does, rather than hop", function()
+	local beside = P(300, 120)
+	local me, npc = Enlist({
+		role = AiWar.PUSH,
+		route = function() return { P(900, 0) } end,
+		detour = function() return beside end,
+		hoppable = function() return true end,
+	})
+	Tick(me, npc, 2)
+	Tick(me, npc, (Orders.STUCK_TIME + TICK) / TICK)
+	T.eq(#me.detours, 1, "walks round")
+	T.eq(#me.hops, 0, "no hop")
 end)
 
 T.test("a hop to somewhere a player could not walk is refused, and the trip ends", function()

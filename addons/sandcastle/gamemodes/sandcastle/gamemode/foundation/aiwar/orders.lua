@@ -161,10 +161,6 @@ SIDESTEP_DISTANCE, SIDESTEP_TIME = 96, 1.5
 -- up to this far toward the waypoint, where a player could walk (a brush
 -- only NPCs collide with, a lip their step cannot take).
 HOP_DISTANCE = 160
--- A soldier stuck on a waypoint this much above its feet is climbing
--- (stairs players take on a smooth clip ramp and NPCs on the steps), and
--- hops at once rather than stepping aside first.
-CLIMB_RISE = 12
 -- A soldier stuck against a solid entity (a cart, a prop) walks to a point
 -- beside it, for up to this long, then goes on along its route.
 DETOUR_TIME = 3
@@ -718,8 +714,9 @@ end
 
 -- Stuck: first, if what holds it is something only NPCs collide with, it
 -- is let through and runs on; if it is a solid entity (a cart), it walks
--- round it; if it is climbing, it hops; otherwise a step aside and a new
--- route; after too many, a hop, or the end of the trip.
+-- round it; if the port lets it hop (over a crate across a narrow lane, or
+-- up while climbing), it leaps toward its waypoint; otherwise a step aside
+-- and a new route; after too many, a last hop, or the end of the trip.
 function Travel:Unstick(me, goal)
 	local target = self:StuckTarget(goal)
 	if me:PassBlocker(target) then
@@ -736,7 +733,7 @@ function Travel:Unstick(me, goal)
 		me:MoveTo(detour, self.gait)
 		return self:Continue()
 	end
-	if target.z - me:Position().z > CLIMB_RISE and self:HopOn(me, goal) then return self:Continue() end
+	if self:HopOn(me, goal) then return self:Continue() end
 	self.repaths = self.repaths + 1
 	if self.repaths > MAX_REPATHS then
 		if self:HopOn(me, goal) then return self:Continue() end

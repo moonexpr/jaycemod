@@ -4,6 +4,7 @@ local TFBot = WS.require("foundation.npc.path.tfbot")
 local HL2Path = WS.require("foundation.npc.path.hl2")
 local Random = WS.require("foundation.core.math.random")
 local Debug = WS.require("foundation.npc.debug")
+local Detour = WS.require("foundation.npc.detour")
 local WALK_MINS, WALK_MAXS, WALK_LIFT, WALK_MAX_RISE = Map.WALK_MINS, Map.WALK_MAXS, Map.WALK_LIFT, Map.WALK_MAX_RISE
 local Point, ToVector, Masks, IsDoor = Map.Point, Map.ToVector, Map.Masks, Map.IsDoor
 local OnFloor, PassThrough = Map.OnFloor, Map.PassThrough
@@ -359,10 +360,41 @@ function Soldier:Blocker(p)
 	return blocker, asPlayer.Entity ~= blocker
 end
 
--- NextBot movement steers round what it can; nothing is passed or hopped.
+-- NextBot movement steers round what it can; nothing is let through.
 function Soldier:PassBlocker() return false end
-function Soldier:Detour() return nil end
-function Soldier:Hop() return false end
+
+-- Where my movement heads now for p: DrGBase's path's next goal (it plans
+-- the way on the nav mesh itself; p, where I am going, may lie far off past
+-- walls), else p.
+function Soldier:Heading(p)
+	local path = self.ent:GetPath()
+	local goal = IsValid(path) and path:GetCurrentGoal()
+	return goal and goal.pos or ToVector(p)
+end
+
+-- Stuck against a solid entity the nav mesh does not know of (a crate
+-- across a lane; not map geometry, nor a door, which the door watchdog
+-- opens): the first point beside it (foundation.npc.detour) I can walk to
+-- and that is on the nav mesh, or nil.
+function Soldier:Detour(p)
+	local heading = self:Heading(p)
+	local blocker = self:Blocker(heading)
+	if not IsValid(blocker) or blocker:IsWorld() or IsDoor(blocker) then return nil end
+	local mins, maxs = blocker:OBBMins(), blocker:OBBMaxs()
+	local extent = Vector(maxs.x - mins.x, maxs.y - mins.y, 0):Length() / 2
+	local here = self.ent:GetPos()
+	for _, side in ipairs(Detour.Beside(Point(here), Point(heading), Point(blocker:WorldSpaceCenter()), extent, HOP_MAXS.x)) do
+		local at = ToVector(side)
+		if self:CanWalkTo(side) and IsValid(navmesh.GetNearestNavArea(at, false, ARRIVED, true, true)) then return side end
+	end
+	return nil
+end
+
+-- Stuck where a player would jump (a railing, a crate): a hop the way I am
+-- heading for p (the soldier's NSHop: a vault if one fits).
+function Soldier:Hop(p)
+	return self.ent:NSHop(self:Heading(p))
+end
 
 -- My orders stepped in on my movement (foundation.npc.debug's MARKS): told
 -- through WSNpcMark, which the nbdebug feature sends whoever has me

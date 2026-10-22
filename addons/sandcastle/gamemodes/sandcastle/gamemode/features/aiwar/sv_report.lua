@@ -71,6 +71,7 @@ function Controller:Describe(ent, entry)
 		"Movement: " .. (soldier:RunState() or "left to the engine's AI"),
 		"Enemy: " .. (soldier:HasEnemy() and "in sight" or "none in sight"),
 	}
+	if ent.NSHopWhy then lines[#lines + 1] = "Hop: a plain one the last time it was stuck, no vault (" .. ent.NSHopWhy .. ")" end
 	if state.wandering then lines[#lines + 1] = "Setup: wandering until it ends" end
 	if state.following then lines[#lines + 1] = "Following: its cart" end
 	if state.fighting then
