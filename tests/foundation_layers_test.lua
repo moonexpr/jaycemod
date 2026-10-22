@@ -134,6 +134,7 @@ local CATEGORY = {
 	["npc/path"] = "ns",
 	["npc/path/ground"] = "ns",
 	["npc/path/hl2"] = "ns",
+	["npc/route_record"] = "ns",
 	["npc/leap"] = "ns",
 	["npc/detour"] = "ns",
 	["npc/noise"] = "ns",
