@@ -12,7 +12,11 @@ local CHUNK_ENV = setmetatable({}, { __index = _G })
 
 -- The repo's own addons' GMod modules (lua/includes/modules/<name>.lua,
 -- which GMod's require loads by a name without dots).
-T.MODULE_DIRS = { "addons/responserules/lua/includes/modules/", "addons/teamtint/lua/includes/modules/" }
+T.MODULE_DIRS = {
+	"addons/responserules/lua/includes/modules/",
+	"addons/teamtint/lua/includes/modules/",
+	"addons/sandcastle_dev/lua/includes/modules/",
+}
 
 local function Path(name)
 	if not name:find(".", 1, true) then

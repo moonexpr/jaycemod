@@ -95,6 +95,7 @@ SERVER_LUA = {
     "autorun/server/luadev_socket.lua": "luadev_socket.lua",  # server_lua.py's listener on 127.0.0.1:27098
     "autorun/server/sandcastle_watch.lua": "sandcastle_watch.lua",  # Watch: events server_watch.py follows
     "autorun/server/sandcastle_debug.lua": "sandcastle_debug.lua",  # breakpoints and Lua errors, for gmod_mcp.py
+    "autorun/server/sandcastle_dev.lua": "sandcastle_dev.lua",  # DEBUG, and the dev workbench (addons/sandcastle_dev)
 }
 WATCH_LOG = "sandcastle_watch.txt"  # under the server's data/
 # binary modules only the server loads: name in its lua/bin -> file in the shared lua/bin.
@@ -111,6 +112,7 @@ NATIVE_BINARIES = {
 # addons built in this repo, linked into the server's addons/: name -> folder
 REPO_ADDONS = {
     "responserules": REPO / "addons" / "responserules",  # TF2's response rules; the AI war's soldiers speak by them
+    "sandcastle_dev": REPO / "addons" / "sandcastle_dev",  # the dev workbench, run by sandcastle_dev.lua; never released
 }
 SERVER_EXE = "srcds_win64.exe"
 # PE: e_lfanew at 0x3c names the "PE\\0\\0" signature; the optional header follows

@@ -1,0 +1,6 @@
+{
+	"title": "Sandcastle dev workbench",
+	"type": "tool",
+	"tags": [ "build" ],
+	"ignore": []
+}
