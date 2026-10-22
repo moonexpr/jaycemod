@@ -55,10 +55,14 @@ Its default game port is 27015 + 10·(n−1). Pick a free one with `--port`
 when that's taken. Never stop or change the map of another agent's instance.
 
 `start` takes `--map` (default `gm_construct`), `--port` (27025),
-`--maxplayers`, `--ip` (default `cosmicbook.tail`, this Mac's tailnet name,
-so the operator can join from another machine; `--ip 127.0.0.1` keeps it to
+`--maxplayers`, `--ip` (default `0.0.0.0`, every interface, so the operator
+can join from another machine on the tailnet and the server can log on to
+Steam, which it cannot when bound to the tailnet address alone; `--ip 127.0.0.1` keeps it to
 this Mac, which a client in the other bottle cannot reach) and
-`--no-lua-refresh` (adds `-disableluarefresh`) and `--console` (opens the
+`--no-lua-refresh` (adds `-disableluarefresh`), `--p2p` (adds `-p2p` and
+`sv_lan 0`, so Steam friends can join with `connect p2p:<steamid64>`, the
+`address` `status` shows; an anonymous login's Steam ID changes each start)
+and `--console` (opens the
 iTerm window, profile "Dark", that `console` opens). It first builds the
 server's own GMod root (`server_root.py`). The server runs the gamemode
 that the shared install's `garrysmod/gamemodes/sandcastle` points to, which

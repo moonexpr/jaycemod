@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 r"""Run Garry's Mod's dedicated server under CrossOver and drive it with RCON.
 
-  srcds.py start [--map gm_construct] [--port 27025] [--maxplayers 32] [--ip cosmicbook.tail] [--no-lua-refresh]
+  srcds.py start [--map gm_construct] [--port 27025] [--maxplayers 32] [--ip 0.0.0.0] [--no-lua-refresh] [--p2p]
                                                        start, wait for the map
   srcds.py rcon 'status'                               run a console command
   srcds.py stop                                        quit the server we started
@@ -30,10 +30,11 @@ places is marked a console program, so Wine hands it that pty instead of
 opening a console window: the log holds the console's ANSI colors, and
 `console` (or `start --console`) follows it in an iTerm window with the
 profile ITERM_PROFILE, a dark one, which suits GMod's truecolor text. -condebug writes
-garrysmod/console.log, which holds what the console printed. +ip binds this
-Mac's tailnet name, DEFAULT_BIND_HOST, resolved to its address (bind_address),
-so the operator can play from another machine on the tailnet; --ip 127.0.0.1
-keeps the server and its RCON on this machine. --no-lua-refresh adds -disableluarefresh, so edits
+garrysmod/console.log, which holds what the console printed. +ip binds every
+interface, DEFAULT_BIND_HOST, so the operator can play from another machine on
+the tailnet and the server logs on to Steam (bound to the tailnet address
+alone, it cannot reach Steam); --ip takes an address or a name (bind_address),
+and --ip 127.0.0.1 keeps the server and its RCON on this machine. --no-lua-refresh adds -disableluarefresh, so edits
 on disk after start-up never reach the running server (game events v2's T1).
 
 The RCON password is kept in .devtools/artifacts/rcon_password. The
@@ -103,9 +104,12 @@ HEADER = struct.Struct("<iii")  # size, id, type
 SIZE_FIELD = 4
 MIN_SLOTS = 2  # the harness's bots need room
 LOCALHOST = "127.0.0.1"
-# start binds this Mac's tailnet name by default, so the operator can play
-# from other machines on the tailnet; --ip 127.0.0.1 keeps it to this one.
-DEFAULT_BIND_HOST = "100.126.111.105" # cosmicbook.tail
+ALL_INTERFACES = "0.0.0.0"
+# start binds every interface by default, so the operator can play from other
+# machines on the tailnet and the server can log on to Steam: bound to the
+# tailnet address alone, its Steam sockets are too, and Steam is unreachable
+# from there. --ip 127.0.0.1 keeps it to this Mac.
+DEFAULT_BIND_HOST = ALL_INTERFACES
 
 REPO = Path(__file__).resolve().parents[2]
 ARTIFACTS = REPO / ".devtools" / "artifacts"
@@ -157,6 +161,11 @@ def bind_address(host: str, resolve=socket.gethostbyname) -> str:
             f"--ip 127.0.0.1 binds this Mac only") from e
 
 
+def reach_address(bound: str) -> str:
+    """Where this Mac reaches a server bound to bound (RCON, stop)."""
+    return LOCALHOST if bound == ALL_INTERFACES else bound
+
+
 class WrongBottle(Exception):
     pass
 
@@ -200,6 +209,7 @@ class ServerConfig:
     convars: Tuple[Tuple[str, str], ...] = field(default_factory=tuple)
     lua_refresh: bool = True  # False adds -disableluarefresh
     ip: str = LOCALHOST  # the address it binds, game and RCON alike
+    p2p: bool = False  # True adds -p2p and sv_lan 0, so Steam friends can join
 
     def __post_init__(self):
         if not MAP_NAME.match(self.map):
@@ -218,7 +228,7 @@ def command_line(install: Install, config: ServerConfig) -> List[str]:
         ("maxplayers", str(config.maxplayers)),
         ("gamemode", config.gamemode),
         ("rcon_password", config.rcon_password),
-        ("sv_lan", "1"),
+        ("sv_lan", "0" if config.p2p else "1"),
         ("sv_hibernate_think", "1"),
     ] + list(config.convars)
     argv = [
@@ -230,6 +240,8 @@ def command_line(install: Install, config: ServerConfig) -> List[str]:
     ]
     if not config.lua_refresh:
         argv.append("-disableluarefresh")
+    if config.p2p:
+        argv.append("-p2p")
     for name, value in convars:
         argv += ["+" + name, value]
     return argv + ["+map", config.map]
@@ -620,12 +632,12 @@ def rcon_command(instance: Instance, text: str, timeout: float = 10) -> str:
 
 
 def make_server(map_name: str, port: int, lua_refresh: bool = True, maxplayers: int = DEFAULT_MAXPLAYERS,
-                ip: Optional[str] = None, instance: Instance = MAIN) -> Server:
+                ip: Optional[str] = None, instance: Instance = MAIN, p2p: bool = False) -> Server:
     """ip: the address to bind; by default the running server's (rcon, stop), else 127.0.0.1."""
     install = Install.discover(instance)
     ip = ip or started_host(instance)
-    config = ServerConfig(map_name, port, password(), maxplayers, lua_refresh=lua_refresh, ip=ip)
-    return Server(install, config, ip, instance)
+    config = ServerConfig(map_name, port, password(), maxplayers, lua_refresh=lua_refresh, ip=ip, p2p=p2p)
+    return Server(install, config, reach_address(ip), instance)
 
 
 def main() -> int:
@@ -640,11 +652,13 @@ def main() -> int:
     start.add_argument("--port", type=int, help="by default the instance's (DEFAULT_PORT for the main one)")
     start.add_argument("--maxplayers", type=int, default=DEFAULT_MAXPLAYERS)
     start.add_argument("--ip", default=DEFAULT_BIND_HOST,
-                       help="the address or name to bind (default %(default)s, this Mac on the tailnet); "
+                       help="the address or name to bind (default %(default)s, every interface, the tailnet's among them); "
                             "127.0.0.1 keeps it to this Mac, which a client in the other bottle cannot reach")
     start.add_argument("--no-lua-refresh", dest="lua_refresh", action="store_false",
                        help="start with -disableluarefresh: edits on disk never reach the running server")
     start.add_argument("--console", action="store_true", help="follow the console in an iTerm window")
+    start.add_argument("--p2p", action="store_true",
+                       help="add -p2p and sv_lan 0, so Steam friends can join through Steam's relays")
     rcon = sub.add_parser("rcon")
     rcon.add_argument("command")
     sub.add_parser("stop")
@@ -655,7 +669,8 @@ def main() -> int:
         files = InstanceFiles.of(instance)
         if args.action == "start":
             port = args.port or files.port
-            server = make_server(args.map, port, args.lua_refresh, args.maxplayers, bind_address(args.ip), instance)
+            server = make_server(args.map, port, args.lua_refresh, args.maxplayers, bind_address(args.ip), instance,
+                                 args.p2p)
             server.start()
             if args.console:
                 open_console(files.log)

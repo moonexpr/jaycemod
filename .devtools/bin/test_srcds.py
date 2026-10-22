@@ -104,6 +104,14 @@ class CommandLine(unittest.TestCase):
         self.assertIn("-disableluarefresh", argv[argv.index("--cx-app"):argv.index("+ip")])
         self.assertEqual(argv[:3], ["/Apps/wine", "--bottle", "GModServer"])
 
+    # Steam friends join a -p2p server through Steam's relays, from outside
+    # the LAN, which sv_lan 1 turns away; by default it stays a LAN server.
+    def test_p2p_adds_p2p_and_lets_players_from_outside_the_lan_in(self):
+        self.assertNotIn("-p2p", self.argv)
+        argv = command_line(INSTALL, dataclasses.replace(self.config, p2p=True))
+        self.assertIn("-p2p", argv[argv.index("--cx-app"):argv.index("+ip")])
+        self.assertEqual(argv[argv.index("+sv_lan") + 1], "0")
+
     def _convar(self, name):
         return self.argv[self.argv.index("+" + name) + 1]
 
@@ -337,11 +345,18 @@ class BindAddress(unittest.TestCase):
     def test_a_record_from_before_the_address_was_kept_means_127_0_0_1(self):
         self.assertEqual(Launched.parse('{"supervisor": 1, "launcher": 2, "port": 27025}').host, "127.0.0.1")
 
-    # The operator plays from other machines on the tailnet: start binds this
-    # Mac's tailnet address by default.
-    def test_start_binds_the_tailnet_address_by_default(self):
-        # cosmicbook.tail's address on the tailnet
-        self.assertEqual(srcds.DEFAULT_BIND_HOST, "100.126.111.105")
+    # The operator plays from other machines on the tailnet, and the server
+    # logs on to Steam: bound to the tailnet address alone, its Steam
+    # sockets are too, and Steam is unreachable from there. start binds every
+    # interface by default, the tailnet's among them.
+    def test_start_binds_every_interface_by_default(self):
+        self.assertEqual(srcds.DEFAULT_BIND_HOST, "0.0.0.0")
+
+    def test_a_server_bound_to_every_interface_is_reached_on_this_mac(self):
+        self.assertEqual(srcds.reach_address("0.0.0.0"), "127.0.0.1")
+
+    def test_a_server_bound_to_one_address_is_reached_there(self):
+        self.assertEqual(srcds.reach_address("100.64.0.1"), "100.64.0.1")
 
     def test_a_name_is_bound_by_its_address(self):
         self.assertEqual(srcds.bind_address("cosmicbook.tail", lambda name: "100.126.111.105"), "100.126.111.105")
