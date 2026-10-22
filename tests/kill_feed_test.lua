@@ -32,6 +32,20 @@ T.test("a notice without a name keeps its team", function()
 	T.eq(Feed.Team(nil, RED), RED)
 end)
 
+-- A kill the player took part in is marked as theirs. A client still
+-- loading has no player yet (me nil), and no kill is theirs: not even a
+-- death with no killer, whose attacker is nil too.
+T.test("a kill is mine when I am its killer or its victim", function()
+	T.eq(Feed.Mine("Alice", "Alice", "Bob"), true, "my kill")
+	T.eq(Feed.Mine("Bob", "Alice", "Bob"), true, "my death")
+	T.eq(Feed.Mine("Carol", "Alice", "Bob"), false, "theirs")
+end)
+
+T.test("before my player exists no kill is mine", function()
+	T.eq(Feed.Mine(nil, "Alice", "Bob"), false, "a kill")
+	T.eq(Feed.Mine(nil, nil, "Bob"), false, "a death with no killer")
+end)
+
 T.test("every soldier class has a faction, so each gets a name", function()
 	local n = 0
 	for class, faction in pairs(Feed.SOLDIERS) do

@@ -27,3 +27,9 @@ function Team(name, team, sides)
 	if not faction then return team end
 	return sides and sides[faction] or AiWar.FACTIONS[faction].home
 end
+
+-- Whether a notice is the player's own (me: their name, or nil while their
+-- client is still loading and they have none): they killed or died.
+function Mine(me, killer, victim)
+	return me ~= nil and (killer == me or victim == me)
+end

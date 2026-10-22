@@ -65,8 +65,11 @@ local function Class(name)
 	return nil
 end
 
+-- Notices come as soon as the client can read them, before its own player
+-- exists (LocalPlayer is NULL while it loads).
 function GM:AddDeathNotice(attacker, attackerTeam, inflictor, victim, victimTeam)
-	local me = LocalPlayer():Nick()
+	local ply = LocalPlayer()
+	local me = IsValid(ply) and ply:Nick() or nil
 	local killer = Name(attacker)
 	if killer == Name(victim) then killer = nil end
 	local sides = AiWar.Sides(GetGlobal2Int(AiWar.SIDES_KEY, AiWar.FACTIONS[AiWar.COMBINE].home))
@@ -77,7 +80,7 @@ function GM:AddDeathNotice(attacker, attackerTeam, inflictor, victim, victimTeam
 		victim = Name(victim),
 		victimTeam = Feed.Team(victim, victimTeam, sides),
 		icon = Icons.For(ICONS, inflictor, Class(attacker)),
-		mine = attacker == me or victim == me,
+		mine = Feed.Mine(me, attacker, victim),
 	}
 	while #notices > MOST do table.remove(notices, 1) end
 end
