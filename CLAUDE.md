@@ -28,6 +28,26 @@ as possible; `game_` for every other.
 Check everything with `.devtools/bin/check_lua.sh` (compiles every Lua file
 and runs every test).
 
+## History search
+
+The commit messages and `docs/` hold why the code is the way it is. Before
+acting on an instruction that changes existing behaviour, write the one or two
+questions it implies, in the project's words ("what decides whether a soldier
+walks or runs?"), and search each:
+
+    dt rag/history search "QUESTION"
+
+Show the questions and what they turned up in a line or two, so the operator
+can correct a question. Search always returns its best eight and has no score
+for "nothing found": judge relevance from the snippets, and say so when nothing
+bears on the task. Before editing a file, `dt rag/history files PATH` lists the
+commits that touched it. Skip both for work with no history behind it (a new
+asset, a config value).
+
+Searches are logged to `.devtools/artifacts/rag/questions.jsonl`; a question
+that found what mattered, or one the operator corrected, becomes a case in
+`.devtools/rag/eval.jsonl` (`dt rag/history eval`).
+
 ## Commits and pull requests
 
 Author and commit as John Chandara <john.chandara@icloud.com>. Never add

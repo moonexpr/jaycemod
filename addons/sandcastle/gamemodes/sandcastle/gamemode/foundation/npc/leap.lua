@@ -34,3 +34,41 @@ function Arc(from, ledge, t)
 		z = from.z + (ledge.z + CLEARANCE - from.z) * up,
 	}
 end
+
+-- A vault: over an obstacle the walker cannot stand on (a railing, its top
+-- at `top`), onto the floor beyond (`land`), which may lie far lower. Up
+-- to VAULT_RISE of the way it rises straight up to CLEARANCE above the top;
+-- by VAULT_CROSS it has crossed to OVER past the top, still that high; then
+-- it moves on to the landing, falling ever faster, and ends on it.
+VAULT_RISE, VAULT_CROSS = 0.3, 0.6
+VAULT_DURATION = 0.7 -- seconds the vault takes
+
+-- q = { from, top, land, maxHeight (the walker's climb), maxDrop (the fall
+-- it survives) }: whether the vault is one it can make, the top no higher
+-- than it climbs above it, the landing below the top and no farther below
+-- it than it falls.
+function VaultFits(q)
+	return q.top.z - q.from.z <= q.maxHeight and q.land.z < q.top.z and q.from.z - q.land.z <= q.maxDrop
+end
+
+local function Lerp(a, b, s) return a + (b - a) * s end
+
+function Vault(from, top, land, t)
+	t = min(t, 1)
+	local apex = top.z + CLEARANCE
+	if t <= VAULT_RISE then
+		local s = 1 - (1 - t / VAULT_RISE) ^ 2
+		return { x = from.x, y = from.y, z = Lerp(from.z, apex, s) }
+	end
+	local dx, dy = top.x - from.x, top.y - from.y
+	local reach = sqrt(dx * dx + dy * dy)
+	local ux, uy = 0, 0
+	if reach > 0 then ux, uy = dx / reach, dy / reach end
+	local overX, overY = top.x + ux * OVER, top.y + uy * OVER
+	if t <= VAULT_CROSS then
+		local s = (t - VAULT_RISE) / (VAULT_CROSS - VAULT_RISE)
+		return { x = Lerp(from.x, overX, s), y = Lerp(from.y, overY, s), z = apex }
+	end
+	local s = (t - VAULT_CROSS) / (1 - VAULT_CROSS)
+	return { x = Lerp(overX, land.x, s), y = Lerp(overY, land.y, s), z = Lerp(apex, land.z, s * s) }
+end

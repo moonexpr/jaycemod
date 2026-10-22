@@ -53,10 +53,14 @@ WEAPONS = {
 	weapon_crowbar = {
 		damage = 20,
 		interval = 2.0,
+		pushback = 100,
+		lift = .1,
 	},
 	weapon_stunstick = {
 		damage = 20,
 		interval = 2.0,
+		pushback = 100,
+		lift = .1,
 	},
 	weapon_frag = { 
 		blast = 175,

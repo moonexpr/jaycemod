@@ -17,6 +17,10 @@ local LIFE_ALIVE = 0
 -- the way up and the landing, so the wall it stands against is not in the
 -- way; how long after a jump it found no way for it does not try another.
 local LEAP_INSET, LEAP_RETRY = 2, 1
+-- A vault (NSVault) over what it cannot stand on, a railing: how far ahead
+-- it looks for the obstacle; past its face, how far it looks for the floor
+-- beyond, in steps of how much; and how far onto that floor it lands.
+local VAULT_REACH, VAULT_SCAN, VAULT_SCAN_STEP, VAULT_LAND_IN = 48, 64, 8, 8
 -- The sound level of its steps and landings (PlayStepSound's SNDLVL_NORM),
 -- as the soldiers in earshot hear them (NSNotice), and of its grunts and cries.
 local STEP_LEVEL, VOICE_LEVEL = 75, 75
@@ -212,7 +216,9 @@ function WS.DrgSoldier(ENT, baseName)
 		local target = self.NSTarget
 		if not target then return false end
 		if self:GetPos():DistToSqr(target) > GOAL_TOLERANCE * GOAL_TOLERANCE then
-			self.NSMoveResult = self:FollowPath(target, GOAL_TOLERANCE)
+			local result = self:FollowPath(target, GOAL_TOLERANCE)
+			if result == "obstacle" and self:NSVault() then result = "vaulted" end
+			self.NSMoveResult = result
 		elseif IsValid(enemy) then
 			self:FaceTowards(enemy)
 		elseif self.NSLook then
@@ -400,6 +406,81 @@ function WS.DrgSoldier(ENT, baseName)
 		end
 		self.NSLeapt = true
 		self:SetNW2Bool("DrGBaseJumping", false)
+	end
+
+	-- Its path held up by an obstacle it cannot stand on (a railing, where
+	-- its route drops to the floor beyond, as a player jumps it), it vaults
+	-- it along foundation.npc.leap's arc, moved each tick of its behaviour as
+	-- CustomClimbing moves it: when the obstacle's top is no higher than it
+	-- climbs (ClimbLedgesMaxHeight), the floor beyond is on the nav mesh no
+	-- farther down than it falls (the death drop), and its hull clears the
+	-- way up, over and down (Leap.VaultFits). Not again for LEAP_RETRY after
+	-- finding no way over. Whether it vaulted.
+	function ENT:NSVault()
+		if CurTime() < (self.NSLeapRetry or 0) then return false end
+		self.NSLeapRetry = CurTime() + LEAP_RETRY
+		local path = self:GetPath()
+		if not IsValid(path) then return false end
+		local from = self:GetPos()
+		local dir = path:GetCurrentGoal().pos - from
+		dir.z = 0
+		if dir:Length2DSqr() < 1 then return false end
+		dir:Normalize()
+		local mins, maxs = self:GetCollisionBounds()
+		local step = self.loco:GetStepHeight()
+		local hull = {
+			mins = Vector(mins.x + LEAP_INSET, mins.y + LEAP_INSET, step),
+			maxs = maxs - Vector(LEAP_INSET, LEAP_INSET, LEAP_INSET),
+		}
+		local function Clear(a, b)
+			hull.start = a
+			return not self:TraceHull(b - a, hull).Hit
+		end
+		hull.start = from
+		local blocked = self:TraceHull(dir * VAULT_REACH, hull)
+		if not blocked.Hit then return false end
+		-- the obstacle's face, its top just past it
+		local face = from + dir * (blocked.Fraction * VAULT_REACH + maxs.x)
+		local reach = self.ClimbLedgesMaxHeight
+		local onTop = util.TraceLine({ start = face + dir * LEAP_INSET + Vector(0, 0, reach + 1), endpos = face + dir * LEAP_INSET + Vector(0, 0, step), mask = MASK_NPCSOLID, filter = self })
+		if not onTop.Hit or onTop.StartSolid then return false end
+		local top = onTop.HitPos
+		-- the floor beyond: the first lower than the top, landed on a hull's width in
+		local drop = self.loco:GetDeathDropHeight()
+		local land
+		for d = VAULT_SCAN_STEP, VAULT_SCAN, VAULT_SCAN_STEP do
+			local p = face + dir * d
+			local floor = util.TraceLine({ start = Vector(p.x, p.y, top.z + Leap.CLEARANCE), endpos = Vector(p.x, p.y, from.z - drop - 1), mask = MASK_NPCSOLID, filter = self })
+			if floor.Hit and not floor.StartSolid and floor.HitPos.z < top.z - 1 then
+				local q = p + dir * (maxs.x + VAULT_LAND_IN)
+				local under = util.TraceLine({ start = Vector(q.x, q.y, top.z + Leap.CLEARANCE), endpos = Vector(q.x, q.y, from.z - drop - 1), mask = MASK_NPCSOLID, filter = self })
+				if under.Hit and not under.StartSolid then land = under.HitPos end
+				break
+			end
+		end
+		if not land then return false end
+		if not Leap.VaultFits({ from = from, top = top, land = land, maxHeight = reach, maxDrop = drop }) then return false end
+		if not IsValid(navmesh.GetNearestNavArea(land, false, VAULT_SCAN, true, true)) then return false end
+		local apex = Vector(from.x, from.y, top.z + Leap.CLEARANCE)
+		local over = Leap.Vault(from, top, land, Leap.VAULT_CROSS)
+		over = Vector(over.x, over.y, over.z)
+		if not (Clear(from, apex) and Clear(apex, over) and Clear(over, land)) then return false end
+		self.NSLeapRetry = nil
+		self:FaceTowards(land)
+		self:SetNW2Bool("DrGBaseJumping", true)
+		local began = CurTime()
+		while true do
+			self.loco:SetVelocity(vector_origin)
+			local t = (CurTime() - began) / Leap.VAULT_DURATION
+			local p = Leap.Vault(from, top, land, t)
+			self:SetPos(Vector(p.x, p.y, p.z))
+			if t >= 1 then break end
+			self:YieldCoroutine(false)
+		end
+		self.NSLeapt = true
+		self:SetNW2Bool("DrGBaseJumping", false)
+		path:Invalidate()
+		return true
 	end
 
 	-- ShouldHurry, else the controller's gait (NSRun), else run at an enemy.
