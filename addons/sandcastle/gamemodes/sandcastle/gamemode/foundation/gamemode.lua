@@ -50,6 +50,7 @@ SOURCE_BUTTON, SOURCE_CONSOLE, SOURCE_AI_WAR = "button", "console", "ai_war"
 -- What the controller does on an answer.
 STAY = "stay" -- nothing changes
 START_TRANSITION = "start_transition" -- the transition's opening cues, then its countdown
+START_LOAD_COUNTDOWN = "start_load_countdown" -- the load's countdown, its opening cued later (CUE_OPENING)
 CANCEL_TRANSITION = "cancel_transition" -- silence the countdown; the rounds stayed halted
 ENTER_SANDBOX = "enter_sandbox" -- halt the rounds
 WAIT = "wait" -- wait for players, the rounds halted
@@ -89,6 +90,7 @@ LOAD_COUNTDOWN = 180
 HURRIED_COUNTDOWN = 30
 
 -- Cues Advance returns, in order.
+CUE_OPENING = "opening" -- the load countdown's opening cues, as a request's (START_TRANSITION)
 CUE_COUNT = "count" -- { kind, left, spoken }
 CUE_ADMIN_LINE = "admin_line"
 CUE_BEGIN = "begin" -- Gameplay mode begins: the rounds restart
@@ -174,6 +176,7 @@ function New(hasRounds, enabled)
 		endsAt = 0, -- when the transition ends
 		cued = 0, -- the lowest count already cued (the transition's length before any)
 		atLoad = false, -- the transition is the map's load's, which Hurry may cut short
+		opened = false, -- its opening cues have played
 	}, Mode)
 end
 
@@ -200,10 +203,12 @@ local function Decide(self, want, source, sandboxDisabled)
 end
 
 -- A countdown of length seconds from now.
+-- A request's opens as it starts; the load's later (CUE_OPENING).
 local function Start(self, now, length, atLoad)
 	self.endsAt = now + length
 	self.cued = length
 	self.atLoad = atLoad
+	self.opened = not atLoad
 end
 
 local function Apply(self, answer, now)
@@ -235,10 +240,13 @@ end
 
 local WAIT_ANSWER = Answer(WAIT, NOTICE_NONE)
 
+local LOAD_ANSWER = Answer(START_LOAD_COUNTDOWN, NOTICE_NONE)
+
 -- The map has loaded, at time now; ready whether the round mode's player
 -- requirement is met. A map loading in Gameplay mode counts down
--- LOAD_COUNTDOWN seconds (START_TRANSITION), or without its players waits
--- for them (WAIT); anything else, or a second Load, changes nothing (STAY).
+-- LOAD_COUNTDOWN seconds (START_LOAD_COUNTDOWN), or without its players
+-- waits for them (WAIT); anything else, or a second Load, changes nothing
+-- (STAY).
 function Mode:Load(now, ready)
 	if self.loaded then return QUIET end
 	self.loaded = true
@@ -249,7 +257,7 @@ function Mode:Load(now, ready)
 	end
 	Start(self, now, LOAD_COUNTDOWN, true)
 	self.modes:Enter(TRANSITION)
-	return START_ANSWER
+	return LOAD_ANSWER
 end
 
 -- The players expected from the previous map are in, at time now: the
@@ -271,12 +279,18 @@ function Mode:TransitionEnd()
 	return self.endsAt
 end
 
--- The transition's cues due by time now since the last call, in order: a
--- count for each whole second left passed; at its end the last, CUE_BEGIN,
--- puts the model in Gameplay mode. None outside the transition.
+-- The transition's cues due by time now since the last call, in order: the
+-- load countdown's opening once its players are in (Hurry) or
+-- HURRIED_COUNTDOWN seconds before its end; a count for each whole second
+-- left passed; at its end the last, CUE_BEGIN, puts the model in Gameplay
+-- mode. None outside the transition.
 function Mode:Advance(now)
 	local cues = {}
 	if not self.modes:Is(TRANSITION) then return cues end
+	if not self.opened and self.endsAt - now <= HURRIED_COUNTDOWN then
+		self.opened = true
+		cues[1] = { kind = CUE_OPENING }
+	end
 	local left = max(ceil(self.endsAt - now), 0)
 	for count = self.cued - 1, max(left, 1), -1 do
 		cues[#cues + 1] = {

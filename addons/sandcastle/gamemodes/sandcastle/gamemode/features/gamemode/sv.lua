@@ -179,15 +179,27 @@ function Controller:TransitionSound(path)
 	PlayToAll(path)
 end
 
--- The transition's opening cues, then its clock.
-function Controller:OpenTransition()
-	self.transitionSounds = {}
+-- The transition's opening cues: the map's description in the chat, with
+-- the seconds left, the matchmaking sting and the announcer.
+function Controller:Opening()
 	local title, lines = Gameplay.Describe(MapInfo())
-	lines[#lines + 1] = string.format("Gameplay mode begins in %d seconds; then choose a team.", Gamemode.ADMIN_LINE_AT)
+	local left = math.ceil(self.mode:TransitionEnd() - CurTime())
+	lines[#lines + 1] = string.format("Gameplay mode begins in %d seconds; then choose a team.", left)
 	Chat(title, lines)
 	self:TransitionSound(TRANSITION_MUSIC)
 	self:TransitionSound(Pick(TRANSITION_VOICES))
+end
+
+-- The transition's clock, fed to the model each TRANSITION_TICK.
+function Controller:OpenClock()
+	self.transitionSounds = {}
 	timer.Create(TRANSITION_TIMER, TRANSITION_TICK, 0, function() self:Tick() end)
+end
+
+-- A request's transition: its clock and its opening cues at once.
+function Controller:OpenTransition()
+	self:OpenClock()
+	self:Opening()
 end
 
 -- Calls off the transition, silencing what it played.
@@ -200,6 +212,8 @@ end
 local ACTIONS = {
 	[Gamemode.STAY] = function() end,
 	[Gamemode.START_TRANSITION] = function(self) self:OpenTransition() end,
+	-- the load's: its opening comes once the players are in (CUE_OPENING)
+	[Gamemode.START_LOAD_COUNTDOWN] = function(self) self:OpenClock() end,
 	[Gamemode.CANCEL_TRANSITION] = function(self) self:CancelTransition() end,
 	[Gamemode.ENTER_SANDBOX] = function() WS.Rules:Halt() end,
 	[Gamemode.WAIT] = function(self) self:OpenWait() end,
@@ -254,6 +268,7 @@ function Controller:SettingChanged(enabled, requester)
 end
 
 local CUES = {
+	[Gamemode.CUE_OPENING] = function(self) self:Opening() end,
 	[Gamemode.CUE_COUNT] = function(self, cue)
 		if ADMIN_LINES[cue.left] then self:TransitionSound(ADMIN_LINES[cue.left]) end
 	end,

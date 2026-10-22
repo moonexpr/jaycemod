@@ -342,7 +342,7 @@ end)
 
 T.test("a map loading in Gameplay mode counts down LOAD_COUNTDOWN seconds, then begins it", function()
 	local mode = Gamemode.New(ROUNDS, ENABLED)
-	T.eq(mode:Load(START, READY).action, Gamemode.START_TRANSITION, "counts down")
+	T.eq(mode:Load(START, READY).action, Gamemode.START_LOAD_COUNTDOWN, "counts down, quietly")
 	T.eq(mode:Mode(), Gamemode.TRANSITION, "counting down")
 	local finish = START + Gamemode.LOAD_COUNTDOWN
 	T.eq(mode:TransitionEnd(), finish, "its end")
@@ -402,6 +402,36 @@ T.test("a requested countdown keeps its length: only the load's is hurried", fun
 	T.eq(mode:Hurry(START), false, "not hurried")
 	T.eq(mode:TransitionEnd(), START + Gamemode.ADMIN_LINE_AT, "a request's length")
 	T.eq(Gamemode.New(ROUNDS, ENABLED):Hurry(START), false, "no countdown")
+end)
+
+-- The load countdown opens quietly, its players still loading: the
+-- request's opening cues (the map's description, the matchmaking sting,
+-- the announcer) come once they are in, or HURRIED_COUNTDOWN seconds before
+-- its end, whichever is first, once.
+T.test("the load countdown opens once its players are in, before the count it is cut to", function()
+	local mode = Gamemode.New(ROUNDS, ENABLED)
+	mode:Load(START, READY)
+	T.eq(#Kinds(mode:Advance(START + 10), Gamemode.CUE_OPENING), 0, "not while they load")
+	mode:Hurry(START + 10.5)
+	local cues = mode:Advance(START + 10.5)
+	T.eq(cues[1].kind, Gamemode.CUE_OPENING, "opens first")
+	T.eq(cues[2].left, Gamemode.HURRIED_COUNTDOWN, "then the count")
+	T.eq(#Kinds(mode:Advance(START + 10.5 + Gamemode.HURRIED_COUNTDOWN), Gamemode.CUE_OPENING), 0, "once")
+end)
+
+T.test("a load countdown never cut short opens HURRIED_COUNTDOWN seconds before its end", function()
+	local mode = Gamemode.New(ROUNDS, ENABLED)
+	mode:Load(START, READY)
+	local at = START + Gamemode.LOAD_COUNTDOWN - Gamemode.HURRIED_COUNTDOWN
+	T.eq(#Kinds(mode:Advance(at - 1), Gamemode.CUE_OPENING), 0, "not yet")
+	T.eq(#Kinds(mode:Advance(at), Gamemode.CUE_OPENING), 1, "opens")
+	T.eq(#Kinds(mode:Advance(START + Gamemode.LOAD_COUNTDOWN), Gamemode.CUE_OPENING), 0, "once")
+end)
+
+T.test("a requested countdown has no opening cue: its request opened it", function()
+	local mode = Gamemode.New(ROUNDS, DISABLED)
+	mode:Request(GAMEPLAY, BUTTON, START, SANDBOX_ALLOWED, READY)
+	T.eq(#Kinds(RunCountdown(mode), Gamemode.CUE_OPENING), 0)
 end)
 
 T.finish()
