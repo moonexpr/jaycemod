@@ -170,7 +170,34 @@ About 90 gameplay and NS modules (rounds, teams, players, npc, aiwar,
 combat, ...). `tests/foundation_layers_test.lua` already sends most of the
 mode-specific ones to `features/` and `ws/` (`PENDING`), spells among
 them. Those go where PENDING says (decision 6). Stage 3 moves the
-categorised ones (formalisms, gameplay, ns) into `game/`.
+categorised ones (formalisms, gameplay, ns), 76 modules, into `game/`.
+**Proposed, for review:**
+
+| Now (`foundation/...`) | Becomes (`game/...`) | Global |
+|---|---|---|
+| `events`, `features`, `gamemode`, `permissions`, `play_mode`, `spawn_manager`, `idle` | `system/<same>` | `system.events`, ... (the gamemode core; its events are `system_`) |
+| `rounds` (+ `rounds/state`, `rounds/timer`, `rounds/limits`) | `gameplay/rounds` (+ `gameplay/rounds/...`) | `gameplay.rounds` |
+| `teams`, `spawn`, `spectate`, `respawn_modifiers`, `arrivals`, `loadout`, `economy`, `kill_credit`, `kill_icons`, `vote`, `reports`, `player_analytics` | `gameplay/<same>` | `gameplay.teams`, ... |
+| `players` (+ `players/attributes`, `players/condition_effects`) | `gameplay/players` (+ parts) | `gameplay.players` |
+| `capture` (+ `area`, `master`, `point_timer`) | `gameplay/capture` (+ parts) | `gameplay.capture` |
+| `combat` (+ 9 parts), `projectile` (+ 4 parts) | `gameplay/combat`, `gameplay/projectile` (+ parts) | `gameplay.combat`, `gameplay.projectile` |
+| `npc` (the NextBot NPC system) | `npc/nextbot` | `npc.nextbot` |
+| `npc/actor`, `npc/combatant`, `npc/targeting` | `npc/<same>` | `npc.actor`, ... |
+| `wartactics` | `ns/tactics` | `ns.tactics` |
+| `aiwar/squad`, `lanes`, `speech`, `hearing`, `explore`, `hunt`, `posts`, `zone` | `ns/<same>` | `ns.squad`, ... (NS types; the mode's own aiwar/ modules stay PENDING for features/aiwar) |
+| `ns/tuning`, `nav_gaps` | `ns/tuning`, `ns/nav_gaps` | `ns.tuning`, `ns.nav_gaps` |
+| `npc/path` (+ `ground`, `hl2`, `scatter`, `tfbot`), `npc/brushes`, `clip`, `detour`, `doors`, `leap`, `noise`, `portal`, `probe`, `rappel`, `reach_memo`, `route_record` | `ns/<same>` | `ns.path`, `ns.doors`, ... (a soldier's movement) |
+
+A module's parts (`rounds/state`) load through it and are not published
+on their own. The layers test's ranks (formalisms, gameplay, ns) carry
+over to `game/`. PENDING modules left in `foundation/` are rewritten to
+the new names and move with their features later.
+
+**Open: GMod's `game` table.** `module("game.list.drawlist")` builds its
+dotted path in the real globals, and GMod already has a `game` library,
+so every game module adds a table to it (`game.list`, `game.timer`, ...;
+stage 2 adds six, stage 3 would add `game.system` and `game.ns`). None
+clash with GMod's keys today.
 
 ### Later
 
