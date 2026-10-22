@@ -431,4 +431,86 @@ Controller.rounds:AddRoundListener(Rounds.PHASE_SPAWN, Rounds.LISTEN_LOGIC, func
 	PublishTally(Controller)
 end)
 
+-- Snapshots ---------------------------------------------------------------------------
+
+-- The controller's state as plain data, for the dev workbench's capture and
+-- restore: each flag (its model, and where it lies when not carried), the
+-- capture and reset zones and the tally. Entities go through refs
+-- (Encode(ent) -> key, Decode(key) -> the entity or nil).
+function Controller:Snapshot(now, refs)
+	local snapshot = {
+		flags = {},
+		zones = {},
+		resetZones = {},
+		tally = self.tally:Snapshot(),
+	}
+	for ent, flag in pairs(self.flags) do
+		if IsValid(ent) then
+			snapshot.flags[refs:Encode(ent)] = {
+				model = flag:Snapshot(now, refs),
+				pos = ent:GetPos(),
+				angles = ent:GetAngles(),
+			}
+		end
+	end
+	for ent, zone in pairs(self.zones) do
+		if IsValid(ent) then snapshot.zones[refs:Encode(ent)] = zone.enabled end
+	end
+	for ent, zone in pairs(self.resetZones) do
+		if IsValid(ent) then snapshot.resetZones[refs:Encode(ent)] = zone.enabled end
+	end
+	return snapshot
+end
+
+-- Each flag where its state says: home, carried by its carrier, or lying
+-- where it was. A carried flag whose carrier is gone is dropped where it
+-- was, and named in notes. Returns { missing = { keys }, notes = { text } }.
+function Controller:Restore(snapshot, now, refs)
+	local missing, notes = {}, {}
+	for key, data in pairs(snapshot.flags) do
+		local ent = refs:Decode(key)
+		local flag = IsValid(ent) and self.flags[ent]
+		if not flag then
+			missing[#missing + 1] = key
+		else
+			local ok, err = pcall(flag.Restore, flag, data.model, now, refs)
+			if not ok then
+				-- the carrier is gone: a fresh drop where the flag was
+				notes[#notes + 1] = key .. ": " .. tostring(err) .. "; dropped where it was"
+				local dropped = table.Copy(data.model)
+				dropped.carrier, dropped.carrierTeam, dropped.state = nil, NOBODY, Flag.DROPPED
+				dropped.returnAt = flag:ReturnTime()
+				flag:Restore(dropped, now, refs)
+			end
+			self.carriedAt[ent] = nil
+			if flag:State() == Flag.CARRIED then
+				Carry(ent, flag:Carrier())
+			elseif flag:State() == Flag.HOME then
+				GoHome(ent)
+			else
+				ent:SetParent(NULL)
+				ent:SetPos(data.pos)
+				ent:SetAngles(data.angles)
+			end
+			ent:SetSkin(ent:WsSkin(flag:Team()))
+			PublishFlag(ent, flag)
+		end
+	end
+	for key, enabled in pairs(snapshot.zones) do
+		local zone = self.zones[refs:Decode(key) or NULL]
+		if zone then zone.enabled = enabled else missing[#missing + 1] = key end
+	end
+	for key, enabled in pairs(snapshot.resetZones) do
+		local zone = self.resetZones[refs:Decode(key) or NULL]
+		if zone then zone.enabled = enabled else missing[#missing + 1] = key end
+	end
+	self.tally:Restore(snapshot.tally)
+	PublishTally(self)
+	PublishZones(self)
+	return {
+		missing = missing,
+		notes = notes,
+	}
+end
+
 return Controller

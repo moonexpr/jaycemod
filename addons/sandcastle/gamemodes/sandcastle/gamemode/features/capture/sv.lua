@@ -14,7 +14,8 @@
 -- This root holds the state, the round phases and the wiring that spans
 -- parts; its parts are sv_points (the point set, its queries and changes),
 -- sv_master (the master, its rounds and tf_logic_cp_timer), sv_areas (the
--- capture areas) and sv_hud (what the HUD and the capture panel show).
+-- capture areas), sv_hud (what the HUD and the capture panel show) and
+-- sv_snapshot (the controller's state as plain data and back).
 local Rounds = WS.require("foundation.rounds")
 
 local NOBODY, RED, BLUE = WS.TEAM_UNASSIGNED, WS.TEAM_RED, WS.TEAM_BLUE
@@ -61,6 +62,7 @@ local ApplyPointEvents, PublishStage, AnyCapturing = Points.ApplyPointEvents, Po
 Part("sv_master", Controller, Team, Points)
 local AreaPoint = Part("sv_areas", Controller, GAME_TEAMS, capstyle, blockstyle, capdeteriorate, Points)
 local PublishPoints, PublishPanels = Part("sv_hud", Controller, capstyle, blockstyle, Points, AreaPoint)
+Part("sv_snapshot", Controller, Points)
 
 -- Round phases --------------------------------------------------------------------------
 

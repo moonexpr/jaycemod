@@ -13,7 +13,8 @@
 -- state, thinking and the map's setup, and runs its parts: sv_players (the
 -- players and their teams), sv_timers (timers, team clocks and the round
 -- limits), sv_effects (sounds, logic_auto and the model's effects) and
--- sv_gamerules (the surface the gamerules forward, and their inputs).
+-- sv_gamerules (the surface the gamerules forward, and their inputs) and
+-- sv_snapshot (the controller's state as plain data and back).
 --
 -- Loaded on every map as it loads (init.lua), and by the gamerules,
 -- team_round_timer, game_round_win, tf_logic_competitive and every
@@ -243,6 +244,7 @@ local HavePlayers, TeamLife, Scores = Players.HavePlayers, Players.TeamLife, Pla
 local RoundWon, PublishOvertime, TIMELIMIT_TIMER_NAME = Part("sv_timers", Controller, Active, GAME_TEAMS)
 Part("sv_effects", Controller, Players, PublishLimits, PublishOvertime, TIMELIMIT_TIMER_NAME, RULES_CLASSES)
 Part("sv_gamerules", Controller, Players, Active)
+Part("sv_snapshot", Controller, PublishState)
 
 -- Mode, listeners and holds ----------------------------------------------------------
 

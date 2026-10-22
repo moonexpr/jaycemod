@@ -439,4 +439,5 @@ return {
 	PlayLines = PlayLines,
 	DeclareWinner = DeclareWinner,
 	ApplyPointEvents = ApplyPointEvents,
+	ApplyPointModel = ApplyPointModel,
 }

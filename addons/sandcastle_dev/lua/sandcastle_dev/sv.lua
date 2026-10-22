@@ -15,6 +15,7 @@ if not DEBUG or not dev or not dev.load then return end
 local PARTS = {
 	"sv_util",
 	"sv_harness",
+	"sv_state",
 }
 
 for _, part in ipairs(PARTS) do dev.load("sandcastle_dev/" .. part .. ".lua") end
