@@ -132,6 +132,7 @@ local CATEGORY = {
 	["npc/doors"] = "ns",
 	["npc/portal"] = "ns",
 	["npc/probe"] = "ns",
+	["npc/rappel"] = "ns",
 	["npc/brushes"] = "ns",
 	["npc/clip"] = "ns",
 	["nav_gaps"] = "ns",

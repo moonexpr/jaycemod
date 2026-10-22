@@ -42,14 +42,16 @@ end)
 -- an HL2 body that crouches and jumps (ws/sh_drg_soldier.lua) and drops as
 -- far as DrGBase's DeathDropHeight, as off cp_steel's BLU spawn ledge (192).
 T.defined(HL2.SOLDIER_JUMP_HEIGHT, "SOLDIER_JUMP_HEIGHT")
+T.defined(HL2.SOLDIER_DROP_HEIGHT, "SOLDIER_DROP_HEIGHT")
 
-T.test("the soldiers' limits: a step up, a jump, and a drop of up to DrGBase's DeathDropHeight", function()
+T.test("the soldiers' limits: a step up, a jump, and a drop of up to SOLDIER_DROP_HEIGHT, rappelled past a safe fall", function()
 	local limits = HL2.SOLDIER_LIMITS
 	T.eq(limits.stepHeight, 18, "a step")
 	T.eq(limits.jumpHeight, HL2.SOLDIER_JUMP_HEIGHT, "a jump")
-	T.eq(limits.deathDropHeight, 200, "DrGBase's DeathDropHeight")
+	T.eq(limits.deathDropHeight, HL2.SOLDIER_DROP_HEIGHT, "as deep as it goes")
 	T.eq(HL2.Cost(Step({ heightChange = -192 }), limits, BOT) ~= Path.IMPASSABLE, true, "off cp_steel's ledge")
-	T.eq(HL2.Cost(Step({ heightChange = -250 }), limits, BOT), Path.IMPASSABLE, "a deadly fall")
+	T.eq(HL2.Cost(Step({ heightChange = -400 }), limits, BOT) ~= Path.IMPASSABLE, true, "a deadly fall, rappelled")
+	T.eq(HL2.Cost(Step({ heightChange = -(HL2.SOLDIER_DROP_HEIGHT + 1) }), limits, BOT), Path.IMPASSABLE, "deeper than it goes")
 	T.eq(HL2.Cost(Step({ heightChange = limits.jumpHeight - 1 }), limits, BOT) ~= Path.IMPASSABLE, true, "a ledge it jumps")
 	T.eq(HL2.Cost(Step({ heightChange = limits.jumpHeight }), limits, BOT), Path.IMPASSABLE, "a ledge past its jump")
 end)

@@ -76,6 +76,7 @@ function WS.DrgSoldier(ENT, baseName)
 	local HL2Path = WS.require("foundation.npc.path.hl2")
 	local Leap = WS.require("foundation.npc.leap")
 	local Noise = WS.require("foundation.npc.noise")
+	local Rappel = WS.require("foundation.npc.rappel")
 	local Arms = WS.require("foundation.aiwar.arms")
 	local SILENT = { grunt = {}, pain = {}, death = {}, fall = {} }
 
@@ -90,6 +91,9 @@ function WS.DrgSoldier(ENT, baseName)
 	-- target then takes it) by jumping it (CustomClimbing).
 	ENT.ClimbLedges = true
 	ENT.ClimbLedgesMaxHeight = HL2Path.SOLDIER_LIMITS.jumpHeight
+	-- It goes down drops as deep as its routes may (DrGBase's paths then take
+	-- them), rappelling one deeper than a safe fall (NSRappel).
+	ENT.DeathDropHeight = HL2Path.SOLDIER_LIMITS.deathDropHeight
 
 	-- Its voice for the model it wears now (foundation.npc.voices; none for a
 	-- model without one): it plays its hits' grunts and cries (NSFeedback) and
@@ -127,13 +131,28 @@ function WS.DrgSoldier(ENT, baseName)
 		local velocity = self.loco:GetVelocity()
 		if not self:IsOnGround() then
 			self.NSFallSpeed = math.max(self.NSFallSpeed or 0, -velocity.z)
+			self:NSRappel(velocity)
 			return
 		end
+		self.NSRappelling = nil
 		local step = Noise.Step(velocity:Length2D(), self.IsCrouching ~= nil and self:IsCrouching())
 		if step and now >= (self.NSNextStep or 0) then
 			PlayStep(self, Noise.Played(step.volume), self:NSGear(step.running))
 			self.NSNextStep = now + step.interval
 		end
+	end
+
+	-- Going down a drop it would land from faster than a safe fall, it comes
+	-- down no faster than a rappel (foundation.npc.rappel), to the floor.
+	local RAPPEL_LOOK = 4096
+	function ENT:NSRappel(velocity)
+		if velocity.z >= 0 then return end
+		local pos = self:GetPos()
+		local floor = util.TraceLine({ start = pos, endpos = pos - Vector(0, 0, RAPPEL_LOOK), mask = self:GetSolidMask(), filter = self })
+		local height = floor.Hit and pos.z - floor.HitPos.z or RAPPEL_LOOK
+		local speed, rappelling = Rappel.Descent(-velocity.z, height, GetConVar("sv_gravity"):GetFloat(), self.NSRappelling)
+		self.NSRappelling = rappelling or nil
+		if speed < -velocity.z then self.loco:SetVelocity(Vector(velocity.x, velocity.y, -speed)) end
 	end
 
 	-- What its gear rattles with its next step (the foot after the last).
