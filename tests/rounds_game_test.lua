@@ -931,6 +931,37 @@ T.test("respawn waves scale with the team, and admins and maps set them", functi
 	T.eq(round:RespawnAt(RED, now + 21, 8), now + 60, "the respawn time shown")
 end)
 
+-- The controller checks the waves each round think, a little after one
+-- falls due: the next is a wave after the one due, not after the late
+-- check, or the waves drift and the respawn time shown is not the wave
+-- that brings the player back.
+local THINK = 0.1
+
+T.test("waves keep their length however late the think checks them", function()
+	local round = Running(nil, nil, CPMode)
+	round:SetTeamWaveTime(RED, 2)
+	local now = T0 + 20
+	T.eq(round:WaveDue(RED, now, 8), true, "the first wave")
+	T.eq(round:WaveDue(RED, now + 2 + THINK, 8), true, "the next, checked late")
+	T.eq(round:WaveDue(RED, now + 4 - THINK / 2, 8), false, "the one after is due at now + 4")
+	T.eq(round:WaveDue(RED, now + 4, 8), true, "at now + 4, not now + 4.1")
+end)
+
+T.test("the respawn time shown is the wave that brings the player back", function()
+	local round = Running(nil, nil, CPMode)
+	round:SetTeamWaveTime(RED, 2)
+	local now = T0 + 20
+	round:WaveDue(RED, now, 8)
+	local death = now + 0.35
+	local shown = round:RespawnAt(RED, death, 8)
+	local t = now
+	while true do
+		t = t + THINK
+		if round:WaveDue(RED, t, 8) and round:MayRespawn(RED, death, t) then break end
+	end
+	T.near(t, shown, THINK, "back on the wave shown")
+end)
+
 -- A player who switches teams dies at once and comes back with the new
 -- team's next wave, not a whole wave after: only the death animation must
 -- pass first (switched).

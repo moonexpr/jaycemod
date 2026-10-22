@@ -1520,12 +1520,21 @@ function Round:RespawnStatus(team, deathTime, teamSize, switched)
 	return Spawns.WAVE, self:NextRespawn(team, deathTime, teamSize, switched)
 end
 
--- Whether the team's wave comes now; if so the next is set a wave later.
+-- Whether the team's wave comes now; if so the next is set a wave after the
+-- one due (CheckRespawnWaves sets it a wave after now: our think, every
+-- ROUND_THINK_INTERVAL, would make each wave that much longer than the one
+-- NextRespawn shows). Waves missed (none due, or a pause) start again from
+-- now.
 function Round:WaveDue(team, now, teamSize)
 	local nextWave = self.nextWave[team]
 	if nextWave ~= 0 and nextWave > now then return false end
 	local length = self:WaveMaxLength(team, teamSize, true)
-	self.nextWave[team] = length > 0 and now + length or 0
+	if length <= 0 then
+		self.nextWave[team] = 0
+		return true
+	end
+	local after = nextWave + length
+	self.nextWave[team] = after > now and after or now + length
 	return true
 end
 
