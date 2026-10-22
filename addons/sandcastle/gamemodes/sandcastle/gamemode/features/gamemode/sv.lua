@@ -5,7 +5,8 @@
 -- sv_gameplay_enabled in the console, and the AI war all make requests
 -- (Request). Sandbox mode is the gamerules' Halt (no rounds, timers paused,
 -- spawn doors and forcefields open); a map with rounds starts in the mode
--- the setting holds (StartAtLoad). The transition to Gameplay mode owns
+-- the setting holds (StartAtLoad), Gameplay mode after a countdown while
+-- the players load. The transition to Gameplay mode owns
 -- every cue, whoever asked: the map's description in the chat, the
 -- matchmaking start sting and the announcer's tournament-start line, the
 -- countdown (its end networked as ws_gamemode_transition_end for the
@@ -150,7 +151,9 @@ function Controller:Publish()
 	if setting ~= nil and ENABLED:GetBool() ~= setting then ENABLED:SetBool(setting) end
 	SetGlobal2Float("ws_gamemode_transition_end", self.mode:TransitionEnd() or NO_TRANSITION)
 	local have, need = 0, 0
-	if self.mode:Mode() == Gamemode.WAITING then have, need = PlayersNeeded() end
+	if self.mode:Mode() == Gamemode.WAITING then 
+		have, need = PlayersNeeded()
+	end
 	SetGlobal2Int("ws_gamemode_waiting_have", have)
 	SetGlobal2Int("ws_gamemode_waiting_need", need)
 end
@@ -258,12 +261,19 @@ local CUES = {
 	[Gamemode.CUE_BEGIN] = function(self)
 		timer.Remove(TRANSITION_TIMER)
 		self.transitionSounds = {}
-		self:Begin()
+		-- a second on, so the announcer's "Fight!" is heard before the round restarts
+		timer.Simple(1, function()
+			self:Begin()
+		end)
 	end,
 }
 
+-- A map's load countdown is cut short once the players expected from the
+-- previous map are in (foundation.gamemode's Hurry; ws/sv_arrivals.lua).
 function Controller:Tick()
-	for _, cue in ipairs(self.mode:Advance(CurTime())) do CUES[cue.kind](self, cue) end
+	local now = CurTime()
+	if WS.ExpectedPlayersIn() then self.mode:Hurry(now) end
+	for _, cue in ipairs(self.mode:Advance(now)) do CUES[cue.kind](self, cue) end
 	self:Publish()
 end
 
@@ -282,15 +292,13 @@ function Controller:Begin()
 	-- Center("Choose a team!")
 end
 
--- A map with rounds starts in the mode sv_gameplay_enabled holds, quietly:
--- Sandbox mode halts the rounds, Gameplay mode leaves the map's own round
--- start. Rounds loaded for a game counting down (a map without them) stay
--- halted until it begins.
+-- A map with rounds starts in the mode sv_gameplay_enabled holds: Sandbox
+-- mode halts the rounds; Gameplay mode counts down while the players load
+-- (foundation.gamemode's Load), or waits for the players its mode needs,
+-- the rounds halted until it begins. Rounds loaded for a game counting
+-- down (a map without them) stay halted until it begins.
 function Controller:StartAtLoad()
-	if self.mode:Mode() == Gamemode.GAMEPLAY and not PlayersReady() then
-		self.mode:Wait()
-		self:OpenWait()
-	end
+	ACTIONS[self.mode:Load(CurTime(), PlayersReady()).action](self)
 	if self.mode:Mode() ~= Gamemode.GAMEPLAY then WS.Rules:Halt() end
 	self:Publish()
 end

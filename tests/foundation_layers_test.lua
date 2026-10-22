@@ -81,6 +81,7 @@ local CATEGORY = {
 	["spawn"] = "gameplay",
 	["spectate"] = "gameplay",
 	["economy"] = "gameplay",
+	["arrivals"] = "gameplay",
 	["reports"] = "gameplay",
 	["vote"] = "gameplay",
 	["loadout"] = "gameplay",

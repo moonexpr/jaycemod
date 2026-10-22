@@ -20,12 +20,17 @@
 -- (mp_waitingforplayers): each request says whether it is (ready). Until
 -- then the map waits (WAITING), played as Sandbox mode, and the countdown
 -- starts by itself once the controller reports the players there
--- (Players); a map loading in Gameplay mode without them waits too (Wait).
+-- (Players); a map loading in Gameplay mode without them waits too (Load).
 -- Once Gameplay mode has begun, players leaving change nothing.
+--
+-- A map loading in Gameplay mode (a map change) counts down too, longer, as
+-- its players are still loading (Load: LOAD_COUNTDOWN), and the controller
+-- cuts it short once those expected from the previous map are in (Hurry:
+-- HURRIED_COUNTDOWN). A requested countdown keeps its length.
 --
 -- The transition's timing lives here; the controller feeds it the time
 -- (Advance) and plays the cues it returns.
-local floor, ipairs, min, setmetatable = math.floor, ipairs, math.min, setmetatable
+local ceil, ipairs, max, min, setmetatable = math.ceil, ipairs, math.max, math.min, setmetatable
 local Cfsm = require("foundation.core.cfsm")
 module(...)
 
@@ -71,13 +76,17 @@ ALREADY_GAMEPLAY = "already in Gameplay mode"
 ALREADY_SANDBOX = "already in Sandbox mode"
 SANDBOX_DISABLED = "Sandbox mode is disabled (sv_gameplay_disable_sandbox 1)"
 
--- The transition: a count each second from COUNTDOWN down to 1, the last
--- SPOKEN_COUNT spoken (the announcer's lines exist for 5..1), and at
--- ADMIN_LINE_AT seconds (TransitionEnd, which the round timer shows) the
--- Administrator's line and Gameplay mode.
+-- The transition: a count each second down to 1, the last SPOKEN_COUNT
+-- spoken (the announcer's lines exist for 5..1), and at its end
+-- (TransitionEnd, which the round timer shows) the Administrator's line and
+-- Gameplay mode. A request's lasts ADMIN_LINE_AT seconds, counting from
+-- COUNTDOWN; a map's load LOAD_COUNTDOWN, or HURRIED_COUNTDOWN from when its
+-- expected players are in, if that is sooner.
 COUNTDOWN = 12
 SPOKEN_COUNT = 5
 ADMIN_LINE_AT = 13
+LOAD_COUNTDOWN = 180
+HURRIED_COUNTDOWN = 30
 
 -- Cues Advance returns, in order.
 CUE_COUNT = "count" -- { kind, left, spoken }
@@ -138,15 +147,16 @@ local NEXT_MODE = {
 }
 
 -- The modes and the only moves between them: the transition starts from
--- Sandbox mode or the wait, and ends in Gameplay mode or, called off, back
--- in Sandbox; the wait starts from Sandbox mode, or Gameplay mode at load.
+-- Sandbox mode or the wait, or Gameplay mode at load, and ends in Gameplay
+-- mode or, called off, back in Sandbox; the wait starts from Sandbox mode,
+-- or Gameplay mode at load.
 local MODES = Cfsm.Define({
 	name = "gamemode",
 	states = { SANDBOX, TRANSITION, GAMEPLAY, WAITING },
 	transitions = {
 		[SANDBOX] = { TRANSITION, WAITING },
 		[TRANSITION] = { SANDBOX, GAMEPLAY },
-		[GAMEPLAY] = { SANDBOX, WAITING },
+		[GAMEPLAY] = { SANDBOX, WAITING, TRANSITION },
 		[WAITING] = { TRANSITION, SANDBOX },
 	},
 })
@@ -160,8 +170,10 @@ function New(hasRounds, enabled)
 	return setmetatable({
 		hasRounds = hasRounds,
 		modes = MODES:New((hasRounds and enabled) and GAMEPLAY or SANDBOX),
-		startedAt = 0, -- when the transition started
-		counted = 0, -- the transition's seconds already cued
+		loaded = false, -- Load has run
+		endsAt = 0, -- when the transition ends
+		cued = 0, -- the lowest count already cued (the transition's length before any)
+		atLoad = false, -- the transition is the map's load's, which Hurry may cut short
 	}, Mode)
 end
 
@@ -187,11 +199,15 @@ local function Decide(self, want, source, sandboxDisabled)
 	return RULES[want][mode][source]
 end
 
+-- A countdown of length seconds from now.
+local function Start(self, now, length, atLoad)
+	self.endsAt = now + length
+	self.cued = length
+	self.atLoad = atLoad
+end
+
 local function Apply(self, answer, now)
-	if answer.action == START_TRANSITION then
-		self.startedAt = now
-		self.counted = 0
-	end
+	if answer.action == START_TRANSITION then Start(self, now, ADMIN_LINE_AT, false) end
 	local nextMode = NEXT_MODE[answer.action]
 	if nextMode then self.modes:Enter(nextMode) end
 	return answer
@@ -217,40 +233,63 @@ function Mode:Players(ready, now)
 	return Apply(self, START_ANSWER, now)
 end
 
--- A map that loaded in Gameplay mode without its players waits for them.
-function Mode:Wait()
-	self.modes:Enter(WAITING)
+local WAIT_ANSWER = Answer(WAIT, NOTICE_NONE)
+
+-- The map has loaded, at time now; ready whether the round mode's player
+-- requirement is met. A map loading in Gameplay mode counts down
+-- LOAD_COUNTDOWN seconds (START_TRANSITION), or without its players waits
+-- for them (WAIT); anything else, or a second Load, changes nothing (STAY).
+function Mode:Load(now, ready)
+	if self.loaded then return QUIET end
+	self.loaded = true
+	if self:Mode() ~= GAMEPLAY then return QUIET end
+	if not ready then
+		self.modes:Enter(WAITING)
+		return WAIT_ANSWER
+	end
+	Start(self, now, LOAD_COUNTDOWN, true)
+	self.modes:Enter(TRANSITION)
+	return START_ANSWER
+end
+
+-- The players expected from the previous map are in, at time now: the
+-- load's countdown, with more than HURRIED_COUNTDOWN seconds left, ends
+-- HURRIED_COUNTDOWN from now, the time left cued at once. Returns whether
+-- its end moved.
+function Mode:Hurry(now)
+	if not (self.atLoad and self.modes:Is(TRANSITION)) then return false end
+	if self.endsAt - now <= HURRIED_COUNTDOWN then return false end
+	self.endsAt = now + HURRIED_COUNTDOWN
+	self.cued = HURRIED_COUNTDOWN + 1
+	return true
 end
 
 -- When the transition ends and Gameplay mode begins (the time Advance
 -- returns CUE_BEGIN), or nil outside the transition.
 function Mode:TransitionEnd()
 	if not self.modes:Is(TRANSITION) then return nil end
-	return self.startedAt + ADMIN_LINE_AT
+	return self.endsAt
 end
 
--- The transition's cues due by time now since the last call, in order; the
--- last, CUE_BEGIN, puts the model in Gameplay mode. None outside the
--- transition.
+-- The transition's cues due by time now since the last call, in order: a
+-- count for each whole second left passed; at its end the last, CUE_BEGIN,
+-- puts the model in Gameplay mode. None outside the transition.
 function Mode:Advance(now)
 	local cues = {}
 	if not self.modes:Is(TRANSITION) then return cues end
-	local reached = min(floor(now - self.startedAt), ADMIN_LINE_AT)
-	for second = self.counted + 1, reached do
-		if second <= COUNTDOWN then
-			local left = COUNTDOWN - second + 1
-			cues[#cues + 1] = {
-				kind = CUE_COUNT,
-				left = left,
-				spoken = left <= SPOKEN_COUNT,
-			}
-		end
-		if second == ADMIN_LINE_AT then
-			cues[#cues + 1] = { kind = CUE_ADMIN_LINE }
-			cues[#cues + 1] = { kind = CUE_BEGIN }
-			self.modes:Enter(GAMEPLAY)
-		end
+	local left = max(ceil(self.endsAt - now), 0)
+	for count = self.cued - 1, max(left, 1), -1 do
+		cues[#cues + 1] = {
+			kind = CUE_COUNT,
+			left = count,
+			spoken = count <= SPOKEN_COUNT,
+		}
 	end
-	self.counted = reached
+	self.cued = min(self.cued, max(left, 1))
+	if left == 0 then
+		cues[#cues + 1] = { kind = CUE_ADMIN_LINE }
+		cues[#cues + 1] = { kind = CUE_BEGIN }
+		self.modes:Enter(GAMEPLAY)
+	end
 	return cues
 end
