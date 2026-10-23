@@ -1,19 +1,20 @@
--- The running vote on clients (ws/sh_votes.lua): its card on the HUD, and
+-- The running vote on clients (ws/sh_votes.lua): its panel on the HUD, and
 -- F1 (yes) and F2 (no) while the player may vote, as in TF2; on a vote of
 -- choices (the next-map vote), F1 to F4 pick its options in order. Both in
--- WS.UI's look (ws/cl_ui.lua), in TF2's fonts as the nav progress box is,
+-- cooler-hud v2.6's look (votehud.res, laid out by ws.vote_hud): the
+-- VoteActive panel at the left, then VotePassed or VoteFailed in its place,
 -- with TF2's vote sounds: a vote starting, the player's own cast landing
--- (Vote.Heard), which the card then marks, and the result, which pops up
--- for RESULT_SECONDS. A refused request is a notice. The Server tab
+-- (Vote.Heard), which the panel then lights, and the result, which shows for
+-- VoteHud.RESULT_SECONDS. A refused request is a notice. The Server tab
 -- (ws/cl_menu_server.lua) reads WS.VoteState and WS.VoteMaps and hears
 -- WSVoteChanged.
 local Vote = WS.require("games.gameplay.vote")
+local VoteHud = WS.require("ws.vote_hud")
+local Hud = WS.require("ws.tf_hud")
 local E = WS.Events
 local UI = WS.UI
-local THEME = UI.THEME
+local Font, DrawImage, DrawPanel = WS.TFHud.Font, WS.TFHud.DrawImage, WS.TFHud.DrawPanel
 
-local RESULT_SECONDS = 5
-local RESULT_FADE = 0.5
 local REFUSED_SECONDS = 4
 local REFUSED_SOUND = "buttons/button10.wav"
 
@@ -22,23 +23,10 @@ local STARTED_SOUND = "ui/vote_started.wav"
 local YES_SOUND, NO_SOUND = "ui/vote_yes.wav", "ui/vote_no.wav"
 local PASSED_SOUND, FAILED_SOUND = "ui/vote_success.wav", "ui/vote_failure.wav"
 
--- TF2's 480-tall units, as the nav progress box sizes itself.
-local CARD_X, CARD_Y_SHARE, CARD_W = 8, 0.3, 190
-local LINE_TALL, GAP = 12, 3
-local TITLE_TALL, BODY_TALL = 12, 9
-local TITLE_FONT, BODY_FONT = "WS.Vote.Title", "WS.Vote.Body"
-local RESULT_W, RESULT_TALL, RESULT_Y_SHARE, STRIPE = 220, 46, 0.12, 3
--- TF2's vote panel: its passed (Vote.Passed's check) and failed colours.
-local PASSED_COLOR, FAILED_COLOR = Color(118, 178, 60), Color(189, 59, 59)
-
-local fontsFor
-
-local function Fonts(unit)
-	if fontsFor == unit then return end
-	surface.CreateFont(TITLE_FONT, { font = "TF2 Build", size = math.Round(TITLE_TALL * unit), weight = 500 })
-	surface.CreateFont(BODY_FONT, { font = "TF2 Secondary", size = math.Round(BODY_TALL * unit), weight = 500 })
-	fontsFor = unit
-end
+local function Rgba(c) return Color(c.r, c.g, c.b, c.a) end
+local GREY, SELECTED, BOX_EDGE, FAILED = Rgba(VoteHud.GREY), Rgba(VoteHud.SELECTED), Rgba(VoteHud.BOX_EDGE), Rgba(VoteHud.FAILED)
+-- Between the header's text and the clock at its right.
+local CLOCK_GAP = 4
 
 WS.VoteState = WS.VoteState or { running = false, cast = Vote.BALLOT_NONE }
 WS.VoteMaps = WS.VoteMaps or {}
@@ -59,44 +47,11 @@ E.Listen("game_vote_maps", "ws_votes", function(fields)
 	hook.Run("WSVoteChanged")
 end)
 
--- The result: the box, a stripe in its outcome's colour along its top, TF2's
--- Vote Passed! or Vote Failed and the line under it; it fades as it goes.
-UI.Define("VoteResult", "DPanel", {
-	Init = function(self)
-		self:SetMouseInputEnabled(false)
-		self:SetKeyboardInputEnabled(false)
-	end,
-	Show = function(self, fields, now)
-		self.fields = fields
-		self.untilTime = now + RESULT_SECONDS
-	end,
-	Think = function(self)
-		local now = CurTime()
-		if now >= self.untilTime then return self:Remove() end
-		local unit = ScrH() / 480
-		self:SetSize(RESULT_W * unit, RESULT_TALL * unit)
-		self:SetPos((ScrW() - RESULT_W * unit) / 2, ScrH() * RESULT_Y_SHARE)
-		self:SetAlpha(255 * math.Clamp((self.untilTime - now) / RESULT_FADE, 0, 1))
-	end,
-	Paint = function(self, w, h)
-		local unit = h / RESULT_TALL
-		Fonts(unit)
-		UI.Box(w, h)
-		local b, pad = THEME.borderWidth, GAP * 3 * unit
-		local passed = self.fields.passed
-		surface.SetDrawColor(passed and PASSED_COLOR or FAILED_COLOR)
-		surface.DrawRect(b, b, w - b * 2, STRIPE * unit)
-		draw.SimpleText(passed and "VOTE PASSED!" or "VOTE FAILED", TITLE_FONT, w / 2, pad + STRIPE * unit,
-			passed and PASSED_COLOR or FAILED_COLOR, TEXT_ALIGN_CENTER)
-		draw.SimpleText(self.fields.text, BODY_FONT, w / 2, h - pad, THEME.text, TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM)
-	end,
-})
-
-local resultBox
+-- The last result: { panel (VoteHud.Result), untilTime }.
+local result
 
 E.Listen("game_vote_ended", "ws_votes", function(fields)
-	if not IsValid(resultBox) then resultBox = vgui.Create(UI.Name("VoteResult")) end
-	resultBox:Show(fields, CurTime())
+	result = { panel = VoteHud.Result(fields), untilTime = CurTime() + VoteHud.RESULT_SECONDS }
 	surface.PlaySound(fields.passed and PASSED_SOUND or FAILED_SOUND)
 end)
 
@@ -117,7 +72,6 @@ local OPTION_BINDS = {
 	gm_showspare1 = 3,
 	gm_showspare2 = 4,
 }
-local OPTION_KEYS = { "F1", "F2", "F3", "F4" }
 
 -- A ballot: yes or no, or the option chosen (1..) on a vote of choices.
 local function Cast(yes, choice)
@@ -140,10 +94,10 @@ hook.Add("PlayerBindPress", "ws_votes", function(_, bind, pressed)
 	return true
 end)
 
--- With C held (the context menu), the card's choices take a click: a
--- panel over the card in the context menu sends the row under the cursor
--- (the rows the card last drew, clickRows: { y, h, yes, choice } in screen
--- space, within cardRect).
+-- With C held (the context menu), the panel's rows take a click: a panel
+-- over it in the context menu sends the row under the cursor (the rows the
+-- panel last drew, clickRows: { y, h, yes, choice } in screen space, within
+-- cardRect).
 local clickRows, cardRect = {}, nil
 
 UI.Define("VoteClicks", "DPanel", {
@@ -176,77 +130,115 @@ hook.Add("OnContextMenuOpen", "ws_votes", function()
 	clicks = vgui.Create(UI.Name("VoteClicks"), g_ContextMenu)
 end)
 
--- lines: { text, font, color, right (a count, right-aligned), lit (the
--- player's cast: filled with the border's colour, its text dark, as a
--- selected WS.UI button is), cast ({ yes, choice }: what clicking it with C
--- held casts) }.
-local function Card(lines, x, y, w, unit)
-	local lineH, gap = LINE_TALL * unit, GAP * unit
-	local h = #lines * lineH + gap * 2
-	UI.Box(w, h, x, y)
-	clickRows, cardRect = {}, { x = x, y = y, w = w, h = h }
-	local b, pad = THEME.borderWidth, GAP * 2 * unit
-	for i, line in ipairs(lines) do
-		local ly = y + gap + (i - 1) * lineH
-		local color = line.color or THEME.text
-		if line.lit then
-			surface.SetDrawColor(THEME.border)
-			surface.DrawRect(x + b, ly, w - b * 2, lineH)
-			color = THEME.background
-		end
-		if line.cast then clickRows[#clickRows + 1] = { y = ly, h = lineH, yes = line.cast.yes, choice = line.cast.choice } end
-		draw.SimpleText(line.text, line.font or BODY_FONT, x + pad, ly + lineH / 2, color, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
-		if line.right then
-			draw.SimpleText(line.right, BODY_FONT, x + w - pad, ly + lineH / 2, line.lit and color or THEME.muted,
-				TEXT_ALIGN_RIGHT, TEXT_ALIGN_CENTER)
-		end
-	end
+-- A label's text wrapped to its width as vgui's wrapping labels do (GMod's
+-- markup), parsed again only when what it shows changes; slot names the
+-- label.
+local wrapped = {}
+
+local function Wrapped(slot, text, font, width, color)
+	local key = table.concat({ text, font, math.floor(width), color.r, color.g, color.b, color.a }, "\0")
+	local held = wrapped[slot]
+	if held and held.key == key then return held.markup end
+	local parsed = markup.Parse(string.format("<font=%s><color=%d,%d,%d,%d>%s</color></font>", font,
+		color.r, color.g, color.b, color.a, markup.Escape(text)), width)
+	wrapped[slot] = { key = key, markup = parsed }
+	return parsed
 end
 
--- The card's last line: what the player cast, else what they may do.
-local function Footer(state)
-	local cast = state.cast
-	if #state.options > 0 then
-		if cast ~= Vote.BALLOT_NONE then return "You voted for " .. state.options[cast] .. "." end
-		return state.mine and "Press F1 to F" .. #state.options .. ", or hold C and click." or state.quorum .. " votes are needed."
+local function Rect(x, y, w, h) return { x = x, y = y, w = w, h = h } end
+
+-- VoteBarPanel::Paint's box: a grey edge, black inside, the icon inset
+-- twice the edge.
+local function DrawBox(icon, x, y, unit)
+	local size, inset = VoteHud.BOX_SIZE * unit, VoteHud.BOX_INSET * unit
+	surface.SetDrawColor(BOX_EDGE)
+	surface.DrawRect(x, y, size, size)
+	surface.SetDrawColor(0, 0, 0, 255)
+	surface.DrawRect(x + inset, y + inset, size - inset * 2, size - inset * 2)
+	DrawImage(icon, Rect(x + inset * 2, y + inset * 2, size - inset * 4, size - inset * 4))
+end
+
+local function DrawActive(state, h)
+	local unit = Hud.Unit(h)
+	local card = VoteHud.Active(state, CurTime())
+	local left, top = VoteHud.PANEL_X * unit, VoteHud.PANEL_Y * unit
+	local function X(x) return left + x * unit end
+	local function Y(y) return top + y * unit end
+	local panel = Rect(left, top, VoteHud.PANEL_W * unit, card.tall * unit)
+	DrawPanel(VoteHud.PANEL_IMAGE, panel, unit)
+	local tiny = Font(Hud.FONT_SECONDARY, VoteHud.VERY_SMALL_FONT_TALL, unit)
+	local small = Font(Hud.FONT_SECONDARY, VoteHud.SMALL_FONT_TALL, unit)
+
+	-- the header, and the time left at its right
+	surface.SetFont(tiny)
+	local clockW = surface.GetTextSize(card.clock)
+	local headerRight = X(VoteHud.HEADER_X + VoteHud.HEADER_W)
+	draw.SimpleText(card.clock, tiny, headerRight, Y(VoteHud.HEADER_Y), GREY, TEXT_ALIGN_RIGHT, TEXT_ALIGN_TOP)
+	Wrapped("header", card.header, tiny, VoteHud.HEADER_W * unit - clockW - CLOCK_GAP * unit, GREY)
+		:Draw(X(VoteHud.HEADER_X), Y(VoteHud.HEADER_Y), TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
+	Wrapped("issue", card.issue, small, VoteHud.ISSUE_W * unit, color_white)
+		:Draw(X(VoteHud.ISSUE_X), Y(VoteHud.ISSUE_Y), TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
+	surface.SetDrawColor(GREY)
+	surface.DrawRect(X(VoteHud.DIVIDER_X), Y(VoteHud.DIVIDER_Y), VoteHud.DIVIDER_W * unit, math.max(1, unit))
+
+	-- the rows, the player's cast lit behind its own
+	clickRows, cardRect = {}, panel
+	local rowW, rowH = VoteHud.OPTION_W * unit, VoteHud.OPTION_TALL * unit
+	for i, row in ipairs(card.rows) do
+		local y = Y(VoteHud.RowY(i))
+		if row.lit then
+			surface.SetDrawColor(SELECTED)
+			surface.DrawRect(X(VoteHud.OPTION_X), y, rowW, rowH)
+		end
+		draw.SimpleText(row.text, tiny, X(VoteHud.OPTION_X), y + rowH / 2, color_white, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
+		if row.count then
+			draw.SimpleText(row.count, tiny, X(VoteHud.OPTION_X + VoteHud.OPTION_W - VoteHud.OPTION_COUNT_INSET), y + rowH / 2,
+				color_white, TEXT_ALIGN_RIGHT, TEXT_ALIGN_CENTER)
+		end
+		if row.cast then clickRows[#clickRows + 1] = { y = y, h = rowH, yes = row.cast.yes, choice = row.cast.choice } end
 	end
-	if cast == Vote.BALLOT_YES then return "You voted YES." end
-	if cast == Vote.BALLOT_NO then return "You voted NO." end
-	return state.mine and "Press F1 or F2, or hold C and click." or state.quorum .. " votes are needed."
+	if not card.yesNo then return end
+
+	-- the count line, and the vote bar with each side's count
+	surface.SetDrawColor(GREY)
+	surface.DrawRect(X(VoteHud.DIVIDER_X), Y(VoteHud.DIVIDER2_Y), VoteHud.DIVIDER_W * unit, math.max(1, unit))
+	draw.SimpleText(VoteHud.COUNT_LABEL, tiny, X(VoteHud.COUNT_LABEL_X), Y(VoteHud.COUNT_LABEL_Y), GREY, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
+	DrawBox(VoteHud.YES_ICON, X(VoteHud.BAR_X), Y(VoteHud.BAR_Y), unit)
+	DrawBox(VoteHud.NO_ICON, X(VoteHud.BAR_X + VoteHud.NO_BOX_X), Y(VoteHud.BAR_Y), unit)
+	local countY = Y(VoteHud.COUNT_Y + VoteHud.BOX_SIZE / 2)
+	draw.SimpleText(card.yes, small, X(VoteHud.YES_COUNT_X + VoteHud.COUNT_W / 2), countY, color_white, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+	draw.SimpleText(card.no, small, X(VoteHud.NO_COUNT_X + VoteHud.COUNT_W / 2), countY, color_white, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 end
 
 WS.HUD:Add("game.notices.votes", WS.HUD_ORDER.NOTICES, function(_, h)
 	local state = WS.VoteState
-	if not state.running then return end
-	local unit = h / 480
-	Fonts(unit)
-	local left = math.max(0, math.ceil(state.ends - CurTime()))
-	local lines = {
-		{
-			text = state.caller ~= "" and state.caller .. " wants to call a vote" or "Vote",
-			color = THEME.muted,
-			right = string.format("%d:%02d", math.floor(left / 60), left % 60),
-		},
-		{
-			text = state.question,
-			font = TITLE_FONT,
-		},
-	}
-	if #state.options > 0 then
-		for i, option in ipairs(state.options) do
-			lines[#lines + 1] = {
-				text = OPTION_KEYS[i] .. "   " .. option,
-				right = tostring(state.counts[i]),
-				lit = state.cast == i,
-				cast = { yes = false, choice = i },
-			}
-		end
-	else
-		lines[#lines + 1] = { text = "F1   Yes", right = tostring(state.yes), lit = state.cast == Vote.BALLOT_YES,
-			cast = { yes = true, choice = 0 } }
-		lines[#lines + 1] = { text = "F2   No", right = tostring(state.no), lit = state.cast == Vote.BALLOT_NO,
-			cast = { yes = false, choice = 0 } }
+	if not state.running then
+		cardRect = nil
+		return
 	end
-	lines[#lines + 1] = { text = Footer(state), color = THEME.muted }
-	Card(lines, CARD_X * unit, h * CARD_Y_SHARE, CARD_W * unit, unit)
+	DrawActive(state, h)
 end, WS.Active)
+
+-- VotePassed or VoteFailed, where the running vote's panel was, fading as
+-- it goes; a new vote takes the place.
+local function DrawResult(r, h)
+	local unit = Hud.Unit(h)
+	local panel = r.panel
+	local left, top = VoteHud.PANEL_X * unit, VoteHud.PANEL_Y * unit
+	local function X(x) return left + x * unit end
+	local function Y(y) return top + y * unit end
+	surface.SetAlphaMultiplier(VoteHud.ResultAlpha(CurTime(), r.untilTime))
+	DrawPanel(VoteHud.PANEL_IMAGE, Rect(left, top, VoteHud.PANEL_W * unit, VoteHud.RESULT_TALL * unit), unit)
+	local icon = VoteHud.RESULT_ICON_SIZE * unit
+	DrawImage(panel.icon, Rect(X(VoteHud.RESULT_ICON_X), Y(VoteHud.RESULT_ICON_Y), icon, icon))
+	draw.SimpleText(panel.title, Font(Hud.FONT_SECONDARY, VoteHud.SMALL_FONT_TALL, unit), X(VoteHud.RESULT_TITLE_X),
+		Y(VoteHud.RESULT_TITLE_Y + VoteHud.RESULT_TITLE_TALL / 2), panel.passed and color_white or FAILED, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
+	Wrapped("result", panel.text, Font(Hud.FONT_SECONDARY, VoteHud.VERY_SMALL_FONT_TALL, unit), VoteHud.RESULT_TEXT_W * unit, color_white)
+		:Draw(X(VoteHud.RESULT_TEXT_X), Y(VoteHud.RESULT_TEXT_Y), TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
+	surface.SetAlphaMultiplier(1)
+end
+
+WS.HUD:Add("game.notices.vote_result", WS.HUD_ORDER.NOTICES, function(_, h)
+	if result == nil or CurTime() >= result.untilTime or WS.VoteState.running then return end
+	DrawResult(result, h)
+end)

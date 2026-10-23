@@ -357,8 +357,15 @@ local function Killer(victim, attacker)
 	return attacker
 end
 
+-- The killer's health as it killed, on the victim, for the freeze panel
+-- (ws/cl_freeze_panel.lua): Source sends a player's health (DT_BasePlayer's
+-- m_iHealth), not an NPC's.
+local KILLER_HEALTH = "ws_killer_health"
+
 hook.Add("PlayerDeath", "ws_spectate", function(victim, inflictor, attacker)
-	killers[victim] = Killer(victim, attacker)
+	local killer = Killer(victim, attacker)
+	killers[victim] = killer
+	victim:SetNW2Int(KILLER_HEALTH, killer and killer:Health() or 0)
 end)
 
 -- PostPlayerDeath follows every death, KillSilent included.

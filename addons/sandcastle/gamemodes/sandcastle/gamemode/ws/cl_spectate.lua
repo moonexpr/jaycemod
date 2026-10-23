@@ -1,4 +1,4 @@
--- The observer's HUD: the killer during the death cameras, then who or what
+-- The observer's HUD: the killer during the death cam, then who or what
 -- is being watched and how, with the keys that change it. Also plays TF2's
 -- freezecam sound so it ends as the camera locks on the killer. And the
 -- NPC context menu's "Spectate NPC", for admins (ws_spectate_npc,
@@ -49,7 +49,9 @@ local function Draw(w, h)
 	local y = h * 0.78
 	local target = ply:GetObserverTarget()
 	local watching = IsValid(target) and target ~= ply
-	if mode == OBS_MODE_DEATHCAM or mode == OBS_MODE_FREEZECAM then
+	-- the freeze cam's killer is the freeze panel's (ws/cl_freeze_panel.lua)
+	if mode == OBS_MODE_FREEZECAM then return end
+	if mode == OBS_MODE_DEATHCAM then
 		if watching then Line("Killed by " .. Name(target), "Sandcastle.Spectate.Title", TargetColor(target), w, y) end
 		return
 	end
