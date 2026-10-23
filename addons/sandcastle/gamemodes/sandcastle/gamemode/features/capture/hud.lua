@@ -1,22 +1,25 @@
 -- Where the capture HUD's control point icons sit, as TF2 places them
 -- (CHudControlPointIcons::PerformLayout, hud_controlpointicons.cpp): the
 -- master's caplayout rows centred at the bottom of the screen, the panel
--- ending a separator above the bottom edge (height_offset 0 on PC). Sizes
--- are TF2's proportional HUD units from scripts/hudlayout.res
--- (HudControlPointIcons) and resource/ui/ControlPointIcon.res, a unit being
--- 1/UNITS_TALL of the screen's height, so the layout scales with any
--- resolution. TF2 shows the icons for every round but payload's, whose
--- escort HUD takes the same bottom centre (CTFHudObjectiveStatus::
--- SetVisiblePanels).
-local cos, floor, ipairs, pi = math.cos, math.floor, ipairs, math.pi
+-- ending a separator and height_offset above the bottom edge. Sizes are
+-- cooler-hud's (v2.6), in TF2's proportional HUD units from its
+-- scripts/hudlayout.res (HudControlPointIcons) and
+-- resource/ui/ControlPointIcon.res, a unit being 1/UNITS_TALL of the
+-- screen's height, so the layout scales with any resolution. TF2 shows the
+-- icons for every round but payload's, whose escort HUD takes the same
+-- bottom centre (CTFHudObjectiveStatus::SetVisiblePanels).
+local cos, floor, ipairs, max, pi = math.cos, math.floor, ipairs, math.max, math.pi
 local Rounds = require("games.gameplay.rounds")
 module(...)
 
 UNITS_TALL = 480 -- a proportional screen's height in HUD units
-ICON = 33 -- ControlPointIcon.res wide and tall
-GAP_X = 9 -- HudControlPointIcons separator_width
-GAP_Y = 7 -- HudControlPointIcons separator_height
-BOTTOM_OFFSET = 0 -- HudControlPointIcons height_offset [$WIN32]
+ICON = 24 -- cooler-hud's ControlPointIcon.res wide and tall (stock 33)
+GAP_X = 2 -- cooler-hud's HudControlPointIcons separator_width (stock 9)
+GAP_Y = 1 -- cooler-hud's HudControlPointIcons separator_height (stock 7)
+BOTTOM_OFFSET = 16 -- cooler-hud's HudControlPointIcons height_offset [$WIN32] (stock 0)
+-- cooler-hud's ControlPointIcon.res BetterOutline2: a light outline at -1,-1,
+-- ICON + 2 square, behind the icon, so it shows this far round it.
+OUTLINE = 1
 LABEL = 11 -- the cappers line under each row's icons (TF2 draws it inside the icon)
 -- The capture panel's reason text, in TF2's target ID font (targetid.res's
 -- HudFontSmall: TF2 Secondary, 14 units tall, weight 500), outlined black,
@@ -45,9 +48,10 @@ function HasIcon(p)
 end
 
 -- rowSizes: how many icons each caplayout row shows, top row first; w, h:
--- the screen in pixels. Returns { size, label, top, rows }: the icon's and
--- the cappers line's height, the panel's top, and each row's icons' { x, y }
--- in pixels, left to right.
+-- the screen in pixels. Returns { size, label, outline, top, rows }: the
+-- icon's and the cappers line's height, how far the outline shows round
+-- each icon (at least a pixel), the panel's top, and each row's icons'
+-- { x, y } in pixels, left to right.
 function Layout(rowSizes, w, h)
 	local unit = h / UNITS_TALL
 	local size, label = floor(ICON * unit), floor(LABEL * unit)
@@ -70,6 +74,7 @@ function Layout(rowSizes, w, h)
 	return {
 		size = size,
 		label = label,
+		outline = max(1, floor(OUTLINE * unit)),
 		top = top,
 		rows = rows,
 	}

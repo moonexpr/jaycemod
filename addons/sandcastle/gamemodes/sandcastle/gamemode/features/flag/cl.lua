@@ -1,5 +1,6 @@
 -- The flag feature's view: TF2's flag panel (HudObjectiveFlagPanel.res and
--- FlagStatus.res), in its materials, at the foot of the screen. In CTF: the
+-- FlagStatus.res) in cooler-hud's (v2.6) layout and TF2's materials, at the
+-- foot of the screen. In CTF: the
 -- two-sided background with each team's captures (BLU's left, RED's right)
 -- and the "Playing to" tab under them; a status panel per flag, BLU's left
 -- and RED's right, each a compass in the flag's colour pointing to the flag
@@ -29,33 +30,57 @@ local function Rotated(name, cx, cy, w, h, degrees)
 end
 
 -- Layouts, in TF2's 480-tall units: x from the screen's centre, y from its
--- foot (the .res's c and r) -------------------------------------------------------------
+-- foot (the .res's c and r); cooler-hud's HudObjectiveFlagPanel.res -------------------
 
-local BG = { x = -140, y = 75, w = 280, h = 80 }
+-- LeftSideBG, RightSideBG and OutlineBG.
+local BG = { x = -112, y = 75, w = 224, h = 64 }
+-- BlueScore (west-aligned) and RedScore (east-aligned), each over its
+-- shadow (BlueScoreShadow, RedScoreShadow) a unit lower and a unit outward.
 local SCORE = {
-	[BLUE] = { x = -130, y = 47, w = 75, h = 35 },
-	[RED] = { x = 57, y = 47, w = 75, h = 35 },
+	[BLUE] = {
+		x = -97,
+		y = 57,
+		w = 75,
+		h = 35,
+		align = TEXT_ALIGN_LEFT,
+		shadowX = -1,
+	},
+	[RED] = {
+		x = 25,
+		y = 57,
+		w = 75,
+		h = 35,
+		align = TEXT_ALIGN_RIGHT,
+		shadowX = 1,
+	},
 }
-local SCORE_SHADOW_X, SCORE_SHADOW_Y = 2, 1
-local PLAYING_TO_BG = { x = -75, y = 31, w = 150, h = 38 }
-local PLAYING_TO = { x = -70, y = 28, w = 140, h = 30 }
+local SCORE_SHADOW_Y = 1
+local PLAYING_TO_BG = { x = -75, y = 41, w = 150, h = 38 }
+local PLAYING_TO = { x = -70, y = 38, w = 140, h = 30 }
+-- BlueFlag and RedFlag (CTFFlagStatus), and MvM's bomb in BlueFlag's place (if_mvm).
 local PANELS = {
-	[Flag.SLOT_BLUE] = { x = -135, y = 95 },
-	[Flag.SLOT_RED] = { x = -25, y = 95 },
+	[Flag.SLOT_BLUE] = { x = -122, y = 106 },
+	[Flag.SLOT_RED] = { x = -37, y = 106 },
 }
--- FlagStatus.res, from its panel's corner.
-local ARROW = { x = 40, y = 0, w = 80, h = 80 }
-local BRIEFCASE = { x = 65, y = 28, w = 30, h = 30 }
-local BOMB = { x = 62, y = 21, w = 38, h = 38 }
-local STATUS = { x = 75, y = 26, w = 30, h = 30 }
--- What a carrier sees.
-local CARRIED_OUTLINE = { x = -50, y = 127, w = 100, h = 50 }
-local CARRIED = { x = -50, y = 137, w = 100, h = 100 }
-local CAPTURE_ARROW = { x = -40, y = 95, w = 80, h = 80 }
+local MVM_PANELS = {
+	[Flag.SLOT_BLUE] = { x = -80, y = 111 },
+}
+-- cooler-hud's FlagStatus.res, from its panel's corner; MvM's arrow and
+-- bomb are its if_mvm sizes.
+local ARROW = { x = 48, y = 12, w = 64, h = 64 }
+local MVM_ARROW = { x = 40, y = 15, w = 80, h = 80 }
+local BRIEFCASE = { x = 65, y = 30, w = 30, h = 30 }
+local BOMB = { x = 62, y = 36, w = 38, h = 38 }
+local STATUS = { x = 75, y = 28, w = 30, h = 30 }
+-- What a carrier sees: OutlineImage, CarriedImage and CaptureFlag.
+local CARRIED_OUTLINE = { x = -52, y = 127, w = 100, h = 50 }
+local CARRIED = { x = -24, y = 115, w = 45, h = 45 }
+local CAPTURE_ARROW = { x = -32, y = 95, w = 64, h = 64 }
 
--- ClientScheme.res: HudFontBig (TF2 Build, 36) and HudFontSmall (TF2 Secondary, 14).
+-- cooler-hud's ClientScheme.res: HudFontMedium (TF2 Build, 24) and
+-- HudFontSmall (TF2 Secondary, 14).
 local SCORE_FONT, SMALL_FONT = "Sandcastle.Hud.FlagScore", "Sandcastle.Hud.FlagSmall"
-local SCORE_TALL, SMALL_TALL = 36, 14
+local SCORE_TALL, SMALL_TALL = 24, 14
 local fontsFor
 
 local function Fonts(u)
@@ -104,9 +129,10 @@ local function DrawScores(cx, h, u)
 	Image("hud/objectives_flagpanel_bg_outline", x, y, w, bh)
 	for team, L in pairs(SCORE) do
 		local text = tostring(GetGlobal2Int("ws_flag_caps_" .. team, 0))
-		local tx, ty = cx + (L.x + L.w / 2) * u, h - (L.y - L.h / 2) * u
-		draw.SimpleText(text, SCORE_FONT, tx + SCORE_SHADOW_X * u, ty + SCORE_SHADOW_Y * u, SHADOW, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
-		draw.SimpleText(text, SCORE_FONT, tx, ty, TAN_LIGHT, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+		local edge = L.align == TEXT_ALIGN_LEFT and L.x or L.x + L.w -- the side it is aligned to
+		local tx, ty = cx + edge * u, h - (L.y - L.h / 2) * u
+		draw.SimpleText(text, SCORE_FONT, tx + L.shadowX * u, ty + SCORE_SHADOW_Y * u, SHADOW, L.align, TEXT_ALIGN_CENTER)
+		draw.SimpleText(text, SCORE_FONT, tx, ty, TAN_LIGHT, L.align, TEXT_ALIGN_CENTER)
 	end
 	surface.SetDrawColor(255, 255, 255, 255)
 	Image("hud/objectives_flagpanel_bg_playingto", cx + PLAYING_TO_BG.x * u, h - PLAYING_TO_BG.y * u, PLAYING_TO_BG.w * u, PLAYING_TO_BG.h * u)
@@ -118,7 +144,7 @@ end
 -- One CTFFlagStatus: the compass, the briefcase (or bomb) and the status icon.
 local function DrawStatus(f, ox, oy, u, mvm)
 	surface.SetDrawColor(255, 255, 255, 255)
-	local x, y, w, h = Box(ARROW, ox, oy, u)
+	local x, y, w, h = Box(mvm and MVM_ARROW or ARROW, ox, oy, u)
 	local target = IsValid(f.carrier) and f.carrier:GetPos() or f.ent:GetPos()
 	local degrees = f.state == Flag.HOME and 0 or Bearing(target)
 	Rotated(Flag.Compass(f.team, f.state), x + w / 2, y + h / 2, w, h, degrees)
@@ -158,7 +184,7 @@ local function Draw(w, h)
 		end
 	end
 	for slot, f in pairs(Flag.Slots(shown, mvm)) do
-		local P = PANELS[slot]
+		local P = (mvm and MVM_PANELS or PANELS)[slot]
 		DrawStatus(f, cx + P.x * u, h - P.y * u, u, mvm)
 	end
 end

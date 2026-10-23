@@ -21,9 +21,14 @@ local Rounds = WS.require("games.gameplay.rounds")
 local NOBODY, RED, BLUE = WS.TEAM_UNASSIGNED, WS.TEAM_RED, WS.TEAM_BLUE
 local NO_POINT_STOOD_ON = 0
 
--- The icons' fonts, in TF2's HUD units (features.capture.hud): the
--- unlock countdown's (ControlPointTimer) and the cappers' (CapPlayerFont).
-local NUMBER_FONT_SIZE = 18
+-- The icons' fonts, in TF2's HUD units (features.capture.hud), from
+-- cooler-hud's ClientScheme.res: the unlock countdown's
+-- (ControlPointCountdown.res CapCountdownLabel: HudFontSmall, TF2 Secondary
+-- 14), a tf_logic_cp_timer's clock (ControlPointIcon.res CPTimerLabel:
+-- ControlPointTimer, TF2 Secondary 10, weight 400); the cappers' is
+-- Hud.LABEL (CapNumPlayers: HudFontSmallestBold, TF2 Build 11).
+local NUMBER_FONT, NUMBER_FONT_SIZE = "TF2 Secondary", 14
+local TIMER_FONT, TIMER_FONT_SIZE, TIMER_FONT_WEIGHT = "TF2 Secondary", 10, 400
 local INSET = 4 -- the capture panel's, in pixels
 local DIM_ALPHA = 70
 local PANEL_ABOVE_CROSSHAIR = 70
@@ -37,6 +42,7 @@ local ANCHOR_LIFT = 24 -- how far above the object's top the panel sits
 local ALERT = Color(230, 60, 40)
 
 local FONT_NUMBER = "Sandcastle.Capture.Number"
+local FONT_TIMER = "Sandcastle.Capture.Timer"
 local FONT_LABEL = "Sandcastle.Capture.Label"
 local FONT_REASON = "Sandcastle.Capture.Reason"
 
@@ -48,9 +54,14 @@ end
 -- The icons' fonts, sized with the screen's height.
 local function CreateFonts()
 	surface.CreateFont(FONT_NUMBER, {
-		font = "TF2 Build",
+		font = NUMBER_FONT,
 		size = Pixels(NUMBER_FONT_SIZE, ScrH()),
 		weight = 500,
+	})
+	surface.CreateFont(FONT_TIMER, {
+		font = TIMER_FONT,
+		size = Pixels(TIMER_FONT_SIZE, ScrH()),
+		weight = TIMER_FONT_WEIGHT,
 	})
 	surface.CreateFont(FONT_LABEL, {
 		font = "TF2 Build",
@@ -128,14 +139,21 @@ local function Seconds(at)
 	return math.max(0, math.ceil(at - CurTime()))
 end
 
--- TF2's ControlPointIcon.res, in its 33-unit icon: the capture icon and
--- the cappers' count (#ControlPointIconCappers), centred on it as its
--- layout code places them, the unlock countdown (CControlPointCountdown)
--- over all of it, and a
--- tf_logic_cp_timer's clock on icon_obj_timer, twice as wide, behind it.
-local ICON_UNITS = 33
+-- cooler-hud's ControlPointIcon.res, in its Hud.ICON-unit icon: the
+-- capture icon (CapPlayerImage, 10 by 20) and the cappers' count
+-- (#ControlPointIconCappers), centred on it as its layout code places them,
+-- the unlock countdown (CControlPointCountdown) over all of it, a
+-- tf_logic_cp_timer's clock on icon_obj_timer (CPTimerBG, 51 wide) behind
+-- it, and BetterOutline2 behind everything: a light rounded square
+-- Hud.OUTLINE larger all round. cooler-hud's outline is its own material
+-- (a distance-field ring of a rounded-square mask), drawn here as a rounded
+-- box in its light tint, its corner rounder than the icons' own by the
+-- outline's width.
+local ICON_UNITS = Hud.ICON
 local CAPPER_W, CAPPER_H = 10, 20
-local TIMER_BG_W = 66
+local TIMER_BG_W = 51
+local OUTLINE_COLOR = Color(230, 230, 204) -- [0.9 0.9 0.8]
+local OUTLINE_CORNER = 3 -- in HUD units
 local TAN_LIGHT = Color(235, 226, 202)
 local CAP_FILL = { [RED] = "sprites/obj_icons/icon_obj_cap_red", [BLUE] = "sprites/obj_icons/icon_obj_cap_blu" }
 
@@ -204,10 +222,11 @@ local function DrawCappers(p, x, y, size, s)
 	draw.SimpleTextOutlined(text, FONT_LABEL, left + imageW, y + size / 2, TAN_LIGHT, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER, 1, color_black)
 end
 
--- A point's icon, size pixels square at x, y on a screen h pixels tall:
--- its owner's icon from the map (team_icon_N), the capping team's sweep with the capture, blocked or, while it is being
+-- A point's icon, size pixels square at x, y, its outline showing outline
+-- pixels round it: its owner's icon from the map (team_icon_N), the
+-- capping team's sweep with the capture, blocked or, while it is being
 -- captured, its cappers, and the unlock countdown or the point's timer.
-local function DrawIcon(p, x, y, size, h)
+local function DrawIcon(p, x, y, size, outline)
 	local s = size / ICON_UNITS
 	local alpha = 255
 	local icon, dim = Mat(p.icon), false
@@ -216,9 +235,10 @@ local function DrawIcon(p, x, y, size, h)
 		surface.SetDrawColor(255, 255, 255, alpha)
 		Image(Mat("sprites/obj_icons/icon_obj_timer"), x, y, TIMER_BG_W * s, size)
 		local left = Seconds(p.timerEnd)
-		draw.SimpleText(string.format("%d:%02d", math.floor(left / 60), left % 60), FONT_LABEL,
+		draw.SimpleText(string.format("%d:%02d", math.floor(left / 60), left % 60), FONT_TIMER,
 			x + (ICON_UNITS + (TIMER_BG_W - ICON_UNITS) / 2) * s, y + size / 2, TAN_LIGHT, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 	end
+	draw.RoundedBox(math.Round(OUTLINE_CORNER * s), x - outline, y - outline, size + 2 * outline, size + 2 * outline, OUTLINE_COLOR)
 	surface.SetDrawColor(255, 255, 255, dim and DIM_ALPHA or alpha)
 	Image(icon, x, y, size, size)
 	if CAP_FILL[p.capping] and p.progress > 0 then DrawSweep(Mat(CAP_FILL[p.capping]), x, y, size, p.progress, alpha) end
@@ -259,7 +279,7 @@ local function DrawIcons(w, h)
 	for line, row in ipairs(rows) do
 		for i, p in ipairs(row) do
 			local at = layout.rows[line][i]
-			DrawIcon(p, at.x, at.y, layout.size, h)
+			DrawIcon(p, at.x, at.y, layout.size, layout.outline)
 		end
 	end
 end

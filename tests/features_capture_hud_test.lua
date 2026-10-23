@@ -1,5 +1,5 @@
 -- features.capture.hud: where the control point icons sit
--- (CHudControlPointIcons::PerformLayout with hudlayout.res's
+-- (CHudControlPointIcons::PerformLayout with cooler-hud's hudlayout.res
 -- HudControlPointIcons and ControlPointIcon.res), at real screen sizes.
 local T = dofile("tests/harness.lua")
 local Hud = T.require("features.capture.hud")
@@ -12,6 +12,25 @@ local SQUARE_W = 1440 -- 4:3 at WIDE_H
 local HALF_PIXEL = 0.5
 
 local ROW_TALL = Hud.ICON + Hud.LABEL
+local ABOVE_EDGE = Hud.GAP_Y + Hud.BOTTOM_OFFSET
+
+-- cooler-hud v2.6's published layout: hudlayout.res's HudControlPointIcons
+-- (separator_width 2, separator_height 1, height_offset 16) and
+-- ControlPointIcon.res (24 square, BetterOutline2 at -1,-1 26 square).
+T.test("the icons take cooler-hud's sizes and spacing", function()
+	T.eq(Hud.ICON, 24, "ControlPointIcon wide and tall")
+	T.eq(Hud.GAP_X, 2, "separator_width")
+	T.eq(Hud.GAP_Y, 1, "separator_height")
+	T.eq(Hud.BOTTOM_OFFSET, 16, "height_offset")
+	T.eq(Hud.OUTLINE, 1, "BetterOutline2's margin round the icon")
+end)
+
+T.test("the outline is at least a pixel round the icon and scales with the screen", function()
+	T.eq(Hud.Layout({ 1 }, BASE_W, BASE_H).outline, Hud.OUTLINE, "a unit on TF2's screen")
+	local unit = WIDE_H / Hud.UNITS_TALL
+	T.eq(Hud.Layout({ 1 }, WIDE_W, WIDE_H).outline, math.floor(Hud.OUTLINE * unit), "scaled")
+	T.eq(Hud.Layout({ 1 }, BASE_W / 2, BASE_H / 2).outline, 1, "never thinner than a pixel")
+end)
 
 local function Bottom(layout, row)
 	return layout.rows[row][1].y + layout.size + layout.label
@@ -22,21 +41,21 @@ local function Centre(layout, row)
 	return (icons[1].x + icons[#icons].x + layout.size) / 2
 end
 
-T.test("one row sits centred at the bottom, a separator above the screen's edge", function()
+T.test("one row sits centred at the bottom, a separator and the offset above the screen's edge", function()
 	local layout = Hud.Layout({ 3 }, BASE_W, BASE_H)
 	T.eq(layout.size, Hud.ICON, "an icon is its units in pixels")
 	T.eq(#layout.rows[1], 3, "three icons")
-	T.eq(Bottom(layout, 1), BASE_H - Hud.GAP_Y - Hud.BOTTOM_OFFSET, "bottom, as TF2 anchors it")
+	T.eq(Bottom(layout, 1), BASE_H - ABOVE_EDGE, "bottom, as TF2 anchors it")
 	T.near(Centre(layout, 1), BASE_W / 2, HALF_PIXEL, "centred")
 	T.eq(layout.rows[1][2].x - layout.rows[1][1].x, Hud.ICON + Hud.GAP_X, "icons a separator apart")
-	T.eq(layout.top, BASE_H - Hud.GAP_Y - ROW_TALL - Hud.GAP_Y, "the panel's top, above its first row")
+	T.eq(layout.top, BASE_H - ABOVE_EDGE - ROW_TALL - Hud.GAP_Y, "the panel's top, above its first row")
 end)
 
 T.test("the layout scales with the screen's height, as TF2's proportional HUD", function()
 	local unit = WIDE_H / Hud.UNITS_TALL
 	local wide = Hud.Layout({ 5 }, WIDE_W, WIDE_H)
 	T.eq(wide.size, math.floor(Hud.ICON * unit), "icon size")
-	T.near(Bottom(wide, 1), WIDE_H - Hud.GAP_Y * unit, 1, "a scaled separator above the edge")
+	T.near(Bottom(wide, 1), WIDE_H - ABOVE_EDGE * unit, 1, "a scaled separator and offset above the edge")
 	T.near(Centre(wide, 1), WIDE_W / 2, 1, "centred on a wide screen")
 	local square = Hud.Layout({ 5 }, SQUARE_W, WIDE_H)
 	T.eq(square.size, wide.size, "the same size at the same height")
@@ -46,7 +65,7 @@ end)
 
 T.test("caplayout's rows stack down to the bottom, each centred", function()
 	local layout = Hud.Layout({ 1, 2 }, BASE_W, BASE_H)
-	T.eq(Bottom(layout, 2), BASE_H - Hud.GAP_Y, "the last row at the bottom")
+	T.eq(Bottom(layout, 2), BASE_H - ABOVE_EDGE, "the last row at the bottom")
 	T.eq(layout.rows[2][1].y - layout.rows[1][1].y, ROW_TALL + Hud.GAP_Y, "a row and a separator apart")
 	T.near(Centre(layout, 1), BASE_W / 2, HALF_PIXEL, "the pyramid's top centred")
 	T.near(Centre(layout, 2), BASE_W / 2, HALF_PIXEL, "its base centred")
