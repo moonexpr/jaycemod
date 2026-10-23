@@ -73,15 +73,16 @@ branch's history.
 
 ## foundation layers
 
-Every foundation module is in one category of
+Every foundation and games module is in one category of
 `tests/foundation_layers_test.lua`, ranked bottom-up, and may require only
-its own rank or below: **structures** (data structures, algorithms, codecs:
-textbook names, no game nouns), **formalisms** (mechanisms that run a policy
-the caller plugs in), **gameplay** types, **ns** types. Modules pending a move
-out of foundation are listed there with their destination.
+its own rank or below, in either tree: **structures** (data structures,
+algorithms, codecs), **formalisms** (mechanisms that run a policy the caller
+plugs in), **gameplay** types, **nextsoldier** types. foundation holds only
+structures and formalisms with no game nouns. A module bound out of
+foundation is listed there (PENDING) with its destination until it moves.
 
-An abstract base lives in core; its concrete variants live beside the system
-that owns them, outside core.
+An abstract base lives in foundation; its concrete variants live beside the
+system that owns them, in games or a feature.
 
 ## foundation index
 
