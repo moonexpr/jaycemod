@@ -32,6 +32,63 @@ T.test("the outline is at least a pixel round the icon and scales with the scree
 	T.eq(Hud.Layout({ 1 }, BASE_W / 2, BASE_H / 2).outline, 1, "never thinner than a pixel")
 end)
 
+-- BetterOutline2 is a ring: the world shows through its middle, so through
+-- the icons' translucent body (icon_obj_*: alpha 173), and nothing pale
+-- shows between the ring and the icon's rounded square.
+local SIZES = { Hud.ICON, Hud.Layout({ 1 }, WIDE_W, WIDE_H).size, Hud.Layout({ 1 }, BASE_W / 2, BASE_H / 2).size }
+
+T.test("the outline's ring is the icon and its outline all round", function()
+	for _, size in ipairs(SIZES) do
+		local ring = Hud.Outline(100, 200, size, 2)
+		T.eq(ring.outer.x, 98, "left")
+		T.eq(ring.outer.y, 198, "top")
+		T.eq(ring.outer.w, size + 4, "wide")
+		T.eq(ring.outer.h, size + 4, "tall")
+	end
+end)
+
+T.test("the ring's hole lies within the icon's visible square, so the icon's rim covers its edge", function()
+	for _, size in ipairs(SIZES) do
+		local x, y = 100, 200
+		local hole = Hud.Outline(x, y, size, 1).hole
+		local edge = size * Hud.ICON_INSET
+		T.eq(hole.x > x + edge and hole.y > y + edge, true, "inside the square's left and top")
+		T.eq(hole.x + hole.w < x + size - edge and hole.y + hole.h < y + size - edge, true, "inside its right and bottom")
+		T.eq(hole.x - x, x + size - (hole.x + hole.w), "centred across")
+		T.eq(hole.w, hole.h, "square")
+		T.eq(hole.corner <= size * Hud.ICON_CORNER, true, "no rounder than the icon's corner")
+	end
+end)
+
+T.test("the ring is as wide at its corners as along its sides", function()
+	for _, size in ipairs(SIZES) do
+		local ring = Hud.Outline(100, 200, size, 3)
+		T.eq(ring.outer.corner - ring.hole.corner, ring.hole.x - ring.outer.x, "outer corner rounder by the ring's width")
+	end
+end)
+
+T.test("a rounded box's outline: each corner's arc, clockwise from the top left, on the box", function()
+	local box = { x = 10, y = 20, w = 40, h = 30, corner = 5 }
+	local segments = 4
+	local points = Hud.RoundedRect(box, segments)
+	T.eq(#points, 4 * (segments + 1), "an arc of segments a corner")
+	local centres = { { 15, 25 }, { 45, 25 }, { 45, 45 }, { 15, 45 } }
+	for i, p in ipairs(points) do
+		local c = centres[math.floor((i - 1) / (segments + 1)) + 1]
+		T.near(math.sqrt((p.x - c[1]) ^ 2 + (p.y - c[2]) ^ 2), box.corner, 1e-9, "on its corner's arc")
+		T.eq(p.x >= box.x and p.x <= box.x + box.w and p.y >= box.y and p.y <= box.y + box.h, true, "within the box")
+	end
+	T.near(points[1].x, box.x, 1e-9, "starts on the left edge")
+	T.near(points[segments + 1].y, box.y, 1e-9, "the first arc ends on the top edge")
+end)
+
+T.test("a square-cornered box's outline is its four corners", function()
+	local points = Hud.RoundedRect({ x = 0, y = 0, w = 4, h = 2, corner = 0 }, 4)
+	T.eq(#points, 4, "no arcs")
+	T.eq(points[3].x, 4, "bottom right")
+	T.eq(points[3].y, 2, "bottom right")
+end)
+
 local function Bottom(layout, row)
 	return layout.rows[row][1].y + layout.size + layout.label
 end

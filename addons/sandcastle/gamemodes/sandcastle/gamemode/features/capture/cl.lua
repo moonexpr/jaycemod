@@ -144,16 +144,18 @@ end
 -- (#ControlPointIconCappers), centred on it as its layout code places them,
 -- the unlock countdown (CControlPointCountdown) over all of it, a
 -- tf_logic_cp_timer's clock on icon_obj_timer (CPTimerBG, 51 wide) behind
--- it, and BetterOutline2 behind everything: a light rounded square
--- Hud.OUTLINE larger all round. cooler-hud's outline is its own material
--- (a distance-field ring of a rounded-square mask), drawn here as a rounded
--- box in its light tint, its corner rounder than the icons' own by the
--- outline's width.
+-- it, and BetterOutline2 behind everything: a light ring Hud.OUTLINE
+-- round the icon (features.capture.hud's Outline). cooler-hud's outline is
+-- its own material (a distance-field ring of a rounded-square mask), drawn
+-- here as a rounded box in its light tint with the icon's rounded square
+-- cut from it by the stencil, so the world shows through the icon's
+-- translucent body as in TF2.
 local ICON_UNITS = Hud.ICON
 local CAPPER_W, CAPPER_H = 10, 20
 local TIMER_BG_W = 51
 local OUTLINE_COLOR = Color(230, 230, 204) -- [0.9 0.9 0.8]
-local OUTLINE_CORNER = 3 -- in HUD units
+local HOLE_SEGMENTS = 8 -- steps in each corner of the outline's hole
+local STENCIL_HOLE = 1
 local TAN_LIGHT = Color(235, 226, 202)
 local CAP_FILL = { [RED] = "sprites/obj_icons/icon_obj_cap_red", [BLUE] = "sprites/obj_icons/icon_obj_cap_blu" }
 
@@ -174,6 +176,32 @@ end
 local function Image(material, x, y, w, h)
 	surface.SetMaterial(material)
 	surface.DrawTexturedRect(x, y, w, h)
+end
+
+-- BetterOutline2 round the icon: its outer rounded box drawn wherever the
+-- stencil does not hold the hole, a polygon (draw.RoundedBox's corner
+-- textures would mark the stencil in their transparent pixels too).
+local function DrawOutline(x, y, size, outline)
+	local ring = Hud.Outline(x, y, size, outline)
+	render.ClearStencil()
+	render.SetStencilEnable(true)
+	render.SetStencilWriteMask(255)
+	render.SetStencilTestMask(255)
+	render.SetStencilReferenceValue(STENCIL_HOLE)
+	render.SetStencilFailOperation(STENCIL_KEEP)
+	render.SetStencilZFailOperation(STENCIL_KEEP)
+	render.SetStencilCompareFunction(STENCIL_ALWAYS)
+	render.SetStencilPassOperation(STENCIL_REPLACE)
+	render.OverrideColorWriteEnable(true, false)
+	draw.NoTexture()
+	surface.SetDrawColor(255, 255, 255, 255)
+	surface.DrawPoly(Hud.RoundedRect(ring.hole, HOLE_SEGMENTS))
+	render.OverrideColorWriteEnable(false)
+	render.SetStencilCompareFunction(STENCIL_NOTEQUAL)
+	render.SetStencilPassOperation(STENCIL_KEEP)
+	local o = ring.outer
+	draw.RoundedBox(o.corner, o.x, o.y, o.w, o.h, OUTLINE_COLOR)
+	render.SetStencilEnable(false)
 end
 
 -- The cappers' count: N, or N/required when a fixed count is needed.
@@ -238,7 +266,7 @@ local function DrawIcon(p, x, y, size, outline)
 		draw.SimpleText(string.format("%d:%02d", math.floor(left / 60), left % 60), FONT_TIMER,
 			x + (ICON_UNITS + (TIMER_BG_W - ICON_UNITS) / 2) * s, y + size / 2, TAN_LIGHT, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 	end
-	draw.RoundedBox(math.Round(OUTLINE_CORNER * s), x - outline, y - outline, size + 2 * outline, size + 2 * outline, OUTLINE_COLOR)
+	DrawOutline(x, y, size, outline)
 	surface.SetDrawColor(255, 255, 255, dim and DIM_ALPHA or alpha)
 	Image(icon, x, y, size, size)
 	if CAP_FILL[p.capping] and p.progress > 0 then DrawSweep(Mat(CAP_FILL[p.capping]), x, y, size, p.progress, alpha) end

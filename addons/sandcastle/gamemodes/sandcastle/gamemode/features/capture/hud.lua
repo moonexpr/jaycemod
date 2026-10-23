@@ -8,7 +8,7 @@
 -- screen's height, so the layout scales with any resolution. TF2 shows the
 -- icons for every round but payload's, whose escort HUD takes the same
 -- bottom centre (CTFHudObjectiveStatus::SetVisiblePanels).
-local cos, floor, ipairs, max, pi = math.cos, math.floor, ipairs, math.max, math.pi
+local ceil, cos, floor, ipairs, max, pi, sin = math.ceil, math.cos, math.floor, ipairs, math.max, math.pi, math.sin
 local Rounds = gameplay.rounds
 module(...)
 
@@ -20,6 +20,11 @@ BOTTOM_OFFSET = 16 -- cooler-hud's HudControlPointIcons height_offset [$WIN32] (
 -- cooler-hud's ControlPointIcon.res BetterOutline2: a light outline at -1,-1,
 -- ICON + 2 square, behind the icon, so it shows this far round it.
 OUTLINE = 1
+-- The rounded square TF2's team icons (sprites/obj_icons/icon_obj_*) fill,
+-- as shares of the icon's side: transparent this far round it, its corner
+-- this round (measured where their alpha reaches half: 6 and 20.5 of 128).
+ICON_INSET = 6 / 128
+ICON_CORNER = 20.5 / 128
 LABEL = 11 -- the cappers line under each row's icons (TF2 draws it inside the icon)
 -- The capture panel's reason text, in TF2's target ID font (targetid.res's
 -- HudFontSmall: TF2 Secondary, 14 units tall, weight 500), outlined black,
@@ -78,4 +83,56 @@ function Layout(rowSizes, w, h)
 		top = top,
 		rows = rows,
 	}
+end
+
+-- BetterOutline2 round the icon size pixels square at x, y, showing outline
+-- pixels round it: a ring, so the world shows through the icon's
+-- translucent body as in TF2. Returns { outer, hole }, each { x, y, w, h,
+-- corner }: the ring's outer edge, and the hole in it, a pixel inside the
+-- icon's rounded square so the icon's rim covers the hole's edge. The outer
+-- corner is rounder than the hole's by the ring's width, so the ring is as
+-- wide at the corners as along the sides.
+function Outline(x, y, size, outline)
+	local inset = ceil(size * ICON_INSET) + 1
+	local hole = {
+		x = x + inset,
+		y = y + inset,
+		w = size - 2 * inset,
+		h = size - 2 * inset,
+		corner = max(0, floor(size * ICON_CORNER) - 1),
+	}
+	local outer = {
+		x = x - outline,
+		y = y - outline,
+		w = size + 2 * outline,
+		h = size + 2 * outline,
+		corner = hole.corner + outline + inset,
+	}
+	return { outer = outer, hole = hole }
+end
+
+-- The outline of box ({ x, y, w, h, corner }) as points, clockwise from
+-- its top left corner's arc, segments steps an arc; a square-cornered box
+-- is its four corners. For a convex polygon (surface.DrawPoly).
+function RoundedRect(box, segments)
+	local r = box.corner
+	if r <= 0 then
+		return {
+			{ x = box.x, y = box.y },
+			{ x = box.x + box.w, y = box.y },
+			{ x = box.x + box.w, y = box.y + box.h },
+			{ x = box.x, y = box.y + box.h },
+		}
+	end
+	local left, right, top, bottom = box.x + r, box.x + box.w - r, box.y + r, box.y + box.h - r
+	local centres = { { left, top }, { right, top }, { right, bottom }, { left, bottom } }
+	local points = {}
+	for corner, c in ipairs(centres) do
+		local from = pi + (corner - 1) * pi / 2
+		for step = 0, segments do
+			local a = from + step * (pi / 2) / segments
+			points[#points + 1] = { x = c[1] + r * cos(a), y = c[2] + r * sin(a) }
+		end
+	end
+	return points
 end
