@@ -113,6 +113,7 @@ function Controller:Publish(now)
 			else
 				SetGlobal2Float(Key(t, "end_time"), now + left)
 			end
+			SetGlobal2Float(Key(t, "max_length"), timer:MaxLength())
 			SetGlobal2Bool(Key(t, "auto_countdown"), timer:AutoCountdown())
 			SetGlobal2Int(Key(t, "serial"), timer:Serial())
 		end

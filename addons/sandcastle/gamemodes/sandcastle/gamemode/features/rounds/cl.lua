@@ -1,9 +1,10 @@
 -- The rounds feature's view, drawn from what the rounds controller networks
 -- (the ws_round_* and ws_timer_* keys and its net messages):
---   - the team scores, centred above the round timer, and the timer as TF2's
---     time panel (ws.tf_hud) with its PREPARE, SETUP, OVERTIME and GAME OVER
---     labels on its strip, and the "+m:ss" flash beside it when time is
---     added (game_teamplay_timer_time_added);
+--   - the team scores, centred above the round timer, and the timer as
+--     cooler-hud's time panel (ws.tf_hud): the clock and the progress pie
+--     on the team's outlined background, its PREPARE, SETUP, OVERTIME and
+--     GAME OVER labels in a box under it, and the "+m:ss" flash beside it
+--     when time is added (game_teamplay_timer_time_added);
 --     the koth HUD replaces the timer; during the gamemode's countdown to
 --     Gameplay mode (ws_gamemode_transition_end) the timer shows that
 --     countdown labelled "Prepare";
@@ -91,7 +92,8 @@ function View:TimerTop(h)
 	return Hud.TimerTop(ScoresTop(h), Hud.Unit(h))
 end
 
-local Font, DrawImage, DrawPanel, Shadowed = WS.TFHud.Font, WS.TFHud.DrawImage, WS.TFHud.DrawPanel, WS.TFHud.Shadowed
+local Font, DrawPanel, Shadowed = WS.TFHud.Font, WS.TFHud.DrawPanel, WS.TFHud.Shadowed
+local DrawTimerBackground, DrawPie = WS.TFHud.DrawTimerBackground, WS.TFHud.DrawPie
 
 -- Goal strings arrive as TF2 tokens ("#Goldrush_blue_setup_goal"), worded in
 -- the player's language (WS.Localize). nil when unknown or empty.
@@ -191,13 +193,16 @@ function View:DrawTimer(w, h)
 	if not display then return end
 	local unit = Hud.Unit(h)
 	local panel = Hud.TimerPanel(w / 2, self:TimerTop(h), unit)
-	local label = display.label
-	-- the label's strip peeks out under the background
-	if label then DrawImage(Hud.TIMER_STRIP, panel.label.strip) end
-	DrawImage(Hud.TimerBackground(WS.TeamOf(LocalPlayer())), panel.bg)
+	DrawTimerBackground(panel, WS.TeamOf(LocalPlayer()))
+	-- only a round's timer has a full length for the pie to run against
+	local full = display.kind == Text.DISPLAY_ROUND and GetGlobal2Float("ws_timer_max_length", 0) or 0
+	DrawPie(panel.pie, Hud.TimerElapsed(display.left, full))
 	Shadowed(display.text or Clock(display.left), Font(Hud.FONT_BUILD, Hud.TIMER_FONT_TALL, unit), panel.value.x, panel.value.y, TEXT_ALIGN_CENTER)
+	local label = display.label
 	if label then
-		Shadowed(label, Font(Hud.FONT_SMALL, Hud.TIMER_LABEL_FONT_TALL, unit), panel.label.x, panel.label.y, TEXT_ALIGN_CENTER)
+		DrawPanel(Hud.TIMER_LABEL_BORDER, panel.label.box, unit)
+		local face = label == Text.LABEL_OVERTIME and Hud.FONT_BUILD or Hud.FONT_SECONDARY
+		Shadowed(label, Font(face, Hud.TIMER_LABEL_FONT_TALL, unit), panel.label.x, panel.label.y, TEXT_ALIGN_CENTER)
 	end
 	local added = self.timeAdded
 	if display.kind == Text.DISPLAY_ROUND and added and CurTime() < added.expires then
@@ -305,13 +310,13 @@ end
 
 -- Centre panels --------------------------------------------------------------------
 
--- TF2's win panel (winpanel.res): the teams' scores in their boxes, then
--- the border in the winner's colour (brown for none) with the title and up
--- to two rows, the reason and the details.
+-- TF2's win panel (cooler-hud's winpanel.res): the teams' scores in their
+-- boxes, then the border in the winner's colour (brown for none) with the
+-- title and up to two rows, the reason and the details.
 local function DrawCentrePanel(w, h, title, winner, rows)
 	local unit = Hud.Unit(h)
 	local panel = Hud.WinPanel(w, h, unit)
-	local scoreFont, nameFont = Font(Hud.FONT_BUILD, Hud.WIN_SCORE_FONT_TALL, unit), Font(Hud.FONT_SECONDARY, Hud.WIN_NAME_FONT_TALL, unit)
+	local scoreFont, nameFont = Font(Hud.FONT_BUILD, Hud.WIN_SCORE_FONT_TALL, unit), Font(Hud.FONT_BUILD, Hud.WIN_NAME_FONT_TALL, unit)
 	for t, box in pairs(panel.boxes) do
 		DrawPanel(Hud.ScoreImage(t), box, unit)
 		local blue = t == WS.TEAM_BLUE
@@ -321,7 +326,7 @@ local function DrawCentrePanel(w, h, title, winner, rows)
 	end
 	DrawPanel(Hud.PanelImage(winner), panel.border, unit)
 	Shadowed(title, nameFont, panel.title.x, panel.title.y, TEXT_ALIGN_CENTER)
-	local textFont = Font(Hud.FONT_SMALL, Hud.WIN_TEXT_FONT_TALL, unit)
+	local textFont = Font(Hud.FONT_SECONDARY, Hud.WIN_TEXT_FONT_TALL, unit)
 	local at = { panel.reason, panel.details }
 	for i, row in ipairs(rows) do
 		if at[i] then Shadowed(row, textFont, at[i].x, at[i].y, TEXT_ALIGN_CENTER) end
@@ -355,18 +360,24 @@ end
 
 -- The round limits ---------------------------------------------------------------------
 
--- TF2's Player Destruction panel (HudObjectivePlayerDestruction.res), in its
--- 480-tall units: a 300 x 60 bar centred at the screen's foot, BLU's half
--- filling from the middle out to the left and RED's to the right, each
--- team's icon in its outer corner and count inside its end, the limit on
--- the "Playing to" tab in the middle. A panel per limit, the next above.
-local LIMIT_BAR_W, LIMIT_BAR_H, LIMIT_BAR_BOTTOM, LIMIT_STEP = 300, 60, 12, 64
-local LIMIT_HALF, LIMIT_BLUE_INSET, LIMIT_RED_INSET = 150, 10, 9
-local LIMIT_ICON, LIMIT_ICON_Y, LIMIT_BLUE_ICON_X, LIMIT_RED_ICON_X = 14, 8, 15, 271
-local LIMIT_VALUE_X, LIMIT_VALUE_Y = 33, 40 -- from each end, from the top
-local LIMIT_TAB_W, LIMIT_TAB_H, LIMIT_TAB_Y, LIMIT_LABEL_Y = 140, 35, 21, 39
+-- TF2's Player Destruction panel (cooler-hud's
+-- HudObjectivePlayerDestruction.res), in its 480-tall units: the
+-- ProgressBarContainer, a 240x48 bar centred at the screen's foot, its
+-- bottom 24 up (ScoreContainer c-200 r131, the bar 59 down in it); BLU's
+-- fill (-2, 122 wide) growing from the middle out to the left and RED's
+-- (120, 121 wide) to the right; each team's icon (FlagImageBlue/Red, 10x10)
+-- 15 in from its outer end, 8 down; each count (Blue/RedScoreValueContainer's
+-- Score, HudFontMediumBold) 15 in from BLU's end and 14 from RED's, its
+-- middle 32.5 down; the limit on the "Playing to" tab (PlayingToBG
+-- 150x38 at 26 down, PlayingTo in HudFontSmall centred 44 down). A panel
+-- per limit, the next above.
+local LIMIT_BAR_W, LIMIT_BAR_H, LIMIT_BAR_BOTTOM, LIMIT_STEP = 240, 48, 24, 52
+local LIMIT_BLUE_FILL_X, LIMIT_BLUE_FILL_W, LIMIT_RED_FILL_X, LIMIT_RED_FILL_W = -2, 122, 120, 121
+local LIMIT_ICON, LIMIT_ICON_Y, LIMIT_BLUE_ICON_X, LIMIT_RED_ICON_X = 10, 8, 15, 215
+local LIMIT_BLUE_VALUE_X, LIMIT_RED_VALUE_X, LIMIT_VALUE_Y = 15, 14, 32.5 -- from each end, from the top
+local LIMIT_TAB_W, LIMIT_TAB_H, LIMIT_TAB_Y, LIMIT_LABEL_Y = 150, 38, 26, 44
 local LIMIT_VALUE_FONT, LIMIT_LABEL_FONT = "Sandcastle.Hud.LimitValue", "Sandcastle.Hud.LimitLabel"
-local LIMIT_VALUE_TALL, LIMIT_LABEL_TALL = 22, 13
+local LIMIT_VALUE_TALL, LIMIT_LABEL_TALL = 24, 14
 local LIMIT_OUTLINE = Material("hud/objectives_corepanel_bg")
 local LIMIT_TAB = Material("hud/objectives_flagpanel_bg_playingto")
 local LIMIT_FILL = {
@@ -388,24 +399,25 @@ end
 
 local function DrawLimitPanel(panel, x, y, unit)
 	local blue, red = WS.TEAM_BLUE, WS.TEAM_RED
-	local half = LIMIT_HALF * unit
-	-- BLU's fill grows from the middle to the left, RED's from the middle to the right
-	local blueW = (LIMIT_HALF - LIMIT_BLUE_INSET) * panel.fills[blue]
-	local redW = (LIMIT_HALF - LIMIT_RED_INSET) * panel.fills[red]
+	-- each fill's image spans its panel; BLU's shows from the middle to the
+	-- left, RED's from the middle to the right, as far as the team's share
+	local blueShare, redShare = panel.fills[blue], panel.fills[red]
+	local blueW, redW = LIMIT_BLUE_FILL_W * blueShare, LIMIT_RED_FILL_W * redShare
 	surface.SetMaterial(LIMIT_FILL[blue].material)
 	surface.SetDrawColor(LIMIT_FILL[blue].color)
-	surface.DrawTexturedRectUV(x + half - blueW * unit, y, blueW * unit, LIMIT_BAR_H * unit, 1 - blueW / LIMIT_HALF, 0, 1, 1)
+	surface.DrawTexturedRectUV(x + (LIMIT_BLUE_FILL_X + LIMIT_BLUE_FILL_W - blueW) * unit, y, blueW * unit, LIMIT_BAR_H * unit,
+		1 - blueShare, 0, 1, 1)
 	surface.SetMaterial(LIMIT_FILL[red].material)
 	surface.SetDrawColor(LIMIT_FILL[red].color)
-	surface.DrawTexturedRectUV(x + half, y, redW * unit, LIMIT_BAR_H * unit, 0, 0, redW / LIMIT_HALF, 1)
+	surface.DrawTexturedRectUV(x + LIMIT_RED_FILL_X * unit, y, redW * unit, LIMIT_BAR_H * unit, 0, 0, redShare, 1)
 	surface.SetDrawColor(255, 255, 255, 255)
 	surface.SetMaterial(LIMIT_OUTLINE)
 	surface.DrawTexturedRect(x, y, LIMIT_BAR_W * unit, LIMIT_BAR_H * unit)
 	surface.SetMaterial(LIMIT_ICONS[panel.reason])
 	surface.DrawTexturedRect(x + LIMIT_BLUE_ICON_X * unit, y + LIMIT_ICON_Y * unit, LIMIT_ICON * unit, LIMIT_ICON * unit)
 	surface.DrawTexturedRect(x + LIMIT_RED_ICON_X * unit, y + LIMIT_ICON_Y * unit, LIMIT_ICON * unit, LIMIT_ICON * unit)
-	Shadowed(panel.values[blue], LIMIT_VALUE_FONT, x + LIMIT_VALUE_X * unit, y + LIMIT_VALUE_Y * unit, TEXT_ALIGN_LEFT)
-	Shadowed(panel.values[red], LIMIT_VALUE_FONT, x + (LIMIT_BAR_W - LIMIT_VALUE_X) * unit, y + LIMIT_VALUE_Y * unit, TEXT_ALIGN_RIGHT)
+	Shadowed(panel.values[blue], LIMIT_VALUE_FONT, x + LIMIT_BLUE_VALUE_X * unit, y + LIMIT_VALUE_Y * unit, TEXT_ALIGN_LEFT)
+	Shadowed(panel.values[red], LIMIT_VALUE_FONT, x + (LIMIT_BAR_W - LIMIT_RED_VALUE_X) * unit, y + LIMIT_VALUE_Y * unit, TEXT_ALIGN_RIGHT)
 	surface.SetDrawColor(255, 255, 255, 255)
 	surface.SetMaterial(LIMIT_TAB)
 	surface.DrawTexturedRect(x + (LIMIT_BAR_W - LIMIT_TAB_W) / 2 * unit, y + LIMIT_TAB_Y * unit, LIMIT_TAB_W * unit, LIMIT_TAB_H * unit)

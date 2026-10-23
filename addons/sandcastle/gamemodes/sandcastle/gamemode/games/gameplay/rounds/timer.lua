@@ -115,6 +115,7 @@ function New(kv)
 		disabled = false,
 		paused = true,
 		remaining = 0,
+		lengthSet = 0, -- m_nTimerLength: the time last set, with any added since
 		endTime = kv.now,
 		states = TIMER_STATES:New(kv.setupLength > 0 and STATE_SETUP or STATE_NORMAL),
 		timeAfterSetup = kv.length,
@@ -150,6 +151,13 @@ function Timer:ShowInHud() return self.showInHud end
 function Timer:AutoCountdown() return self.autoCountdown end
 function Timer:Serial() return self.serial end
 
+-- CTeamRoundTimer::GetTimerMaxLength: what the HUD's progress pie runs against.
+function Timer:MaxLength()
+	if self.states:Is(STATE_SETUP) then return self.setupLength end
+	if self.maxLength > 0 then return self.maxLength end
+	return self.lengthSet
+end
+
 -- Every length change re-arms the marks and bumps the serial, which is how
 -- clients re-arm their countdown.
 local function LengthChanged(self, now)
@@ -163,6 +171,7 @@ function Timer:SetTimeRemaining(now, seconds)
 	if self.disabled then return {} end
 	if self.maxLength > 0 then seconds = math.min(seconds, self.maxLength) end
 	self.remaining = seconds
+	self.lengthSet = seconds
 	self.endTime = now + seconds
 	return { LengthChanged(self, now) }
 end
@@ -283,6 +292,7 @@ function Timer:AddSeconds(now, seconds, team, q)
 	else
 		self.endTime = self.endTime + seconds
 	end
+	self.lengthSet = self.lengthSet + seconds
 	local events = { LengthChanged(self, now) }
 	if q.announces and q.isHud and not q.roundWon then
 		events[#events + 1] = {

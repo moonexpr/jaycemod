@@ -64,6 +64,7 @@ function Controller:PublishHudTimer(now)
 		SetGlobal2Float("ws_timer_end_time", now + left)
 	end
 	SetGlobal2Bool("ws_timer_in_setup", timer:InSetup())
+	SetGlobal2Float("ws_timer_max_length", timer:MaxLength())
 	SetGlobal2Bool("ws_timer_auto_countdown", timer:AutoCountdown())
 	SetGlobal2Int("ws_timer_serial", timer:Serial())
 end

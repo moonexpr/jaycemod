@@ -6,9 +6,9 @@
 local BOSS_HEALTH = "ws_boss_health"
 local Hud = WS.require("ws.tf_hud")
 
--- TF2's boss meter (CHudBossHealthMeter; ws.tf_hud's BossMeter): its
--- surround and its bar, cut to the boss's health.
-local SURROUND, BAR = Material(Hud.BOSS_SURROUND), Material(Hud.BOSS_BAR)
+-- TF2's boss meter as cooler-hud draws it (CHudBossHealthMeter; ws.tf_hud's
+-- BossMeter): its bar, cut to the boss's health, under its frame.
+local BAR = Material(Hud.BOSS_BAR)
 
 local View = {}
 
@@ -19,13 +19,13 @@ function View:DrawBossHealth(w, h)
 	local ply = LocalPlayer()
 	if fraction <= 0 or not IsValid(ply) or ply:GetObserverMode() == OBS_MODE_FREEZECAM then return end
 	local watching = not ply:Alive() or ply:GetObserverMode() ~= OBS_MODE_NONE
-	local meter = Hud.BossMeter(w, Hud.Unit(h), watching, math.min(fraction, 1))
-	local bar, surround = meter.bar, meter.surround
+	local unit = Hud.Unit(h)
+	local meter = Hud.BossMeter(w, unit, watching, math.min(fraction, 1))
+	local bar = meter.bar
 	surface.SetDrawColor(255, 255, 255, 255)
 	surface.SetMaterial(BAR)
 	surface.DrawTexturedRectUV(bar.x, bar.y, bar.w, bar.h, 0, 0, meter.u, 1)
-	surface.SetMaterial(SURROUND)
-	surface.DrawTexturedRect(surround.x, surround.y, surround.w, surround.h)
+	WS.TFHud.DrawBossFrame(meter.frame, unit)
 end
 
 WS.HUD:Add("game.notices.boss_health", WS.HUD_ORDER.NOTICES, function()

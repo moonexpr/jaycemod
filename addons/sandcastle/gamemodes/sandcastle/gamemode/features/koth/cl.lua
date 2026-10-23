@@ -1,10 +1,11 @@
 -- The koth feature's view, drawn from what the koth controller networks
 -- (ws_koth_clock_<team>_*):
 --   - the two team clocks under the team scores (CTFHudKothTimeStatus), as
---     TF2's time panels (ws.tf_hud): BLU's left and RED's right on their
---     team's backgrounds, the running one bright and the paused one dimmed,
---     OVERTIME on the strip under them while the round is in overtime; they
---     replace the round timer, which the rounds view hides in koth;
+--     cooler-hud's time panels (ws.tf_hud): BLU's left and RED's right on
+--     their team's outlined backgrounds, each with its progress pie, the
+--     active frame (ActiveTimerBG) on the running one, OVERTIME in a box
+--     under both while the round is in overtime; they replace the round
+--     timer, which the rounds view hides in koth;
 --   - each running clock's countdown, "Mission ends in 60 seconds"... "1", as
 --     every TF2 client speaks any timer in koth (CTeamRoundTimer::ClientThink
 --     and SendTimeWarning's IsInKothMode). The clocks have no setup, so they
@@ -14,19 +15,11 @@
 WS.Feature("rounds")
 local Timer = WS.require("games.gameplay.rounds.timer")
 local Hud = WS.require("ws.tf_hud")
-local Font, DrawImage, Shadowed = WS.TFHud.Font, WS.TFHud.DrawImage, WS.TFHud.Shadowed
+local TFHud = WS.TFHud
+local Font, DrawImage, DrawPanel, Shadowed = TFHud.Font, TFHud.DrawImage, TFHud.DrawPanel, TFHud.Shadowed
 
 local RED, BLUE = WS.TEAM_RED, WS.TEAM_BLUE
-local GAME_TEAMS = { RED, BLUE }
-
--- Between the two clocks, in a 480-tall screen's units.
-local CLOCK_GAP = 4
-local DIM_ALPHA = 110
--- BLU's clock sits left of the centre, RED's right.
-local SIDE = {
-	[BLUE] = -1,
-	[RED] = 1,
-}
+local GAME_TEAMS = { BLUE, RED }
 
 -- The rounds view's convar: where the team scores start, the timer row
 -- under them.
@@ -57,6 +50,7 @@ local function Clock(t)
 		shown = GetGlobal2Bool(Key(t, "shown"), false),
 		paused = paused,
 		left = math.max(0, left),
+		fullLength = GetGlobal2Float(Key(t, "max_length"), 0),
 		autoCountdown = GetGlobal2Bool(Key(t, "auto_countdown"), true),
 		serial = GetGlobal2Int(Key(t, "serial"), 0),
 	}
@@ -67,16 +61,10 @@ local function Format(seconds)
 	return string.format("%d:%02d", math.floor(seconds / 60), seconds % 60)
 end
 
-local function ClockPanel(t, w, top, unit)
-	return Hud.TimerPanel(w / 2 + SIDE[t] * (Hud.TIMER_W + CLOCK_GAP) / 2 * unit, top, unit)
-end
-
 local function DrawClock(t, c, panel, unit)
-	local alpha = c.paused and DIM_ALPHA or 255
-	DrawImage(Hud.TimerBackground(t), panel.bg, alpha)
-	local tan = WS.TFHud.TAN_LIGHT
-	Shadowed(Format(c.left), Font(Hud.FONT_BUILD, Hud.TIMER_FONT_TALL, unit), panel.value.x, panel.value.y, TEXT_ALIGN_CENTER,
-		Color(tan.r, tan.g, tan.b, alpha))
+	TFHud.DrawTimerBackground(panel, t)
+	TFHud.DrawPie(panel.pie, Hud.TimerElapsed(c.left, c.fullLength))
+	Shadowed(Format(c.left), Font(Hud.FONT_BUILD, Hud.TIMER_FONT_TALL, unit), panel.value.x, panel.value.y, TEXT_ALIGN_CENTER)
 end
 
 -- Sandbox mode shows no clocks, as it shows no round timer; nor does a win
@@ -85,24 +73,23 @@ function View:Paint(w, h)
 	if WS.GameplayStopped() then return end
 	local unit = Hud.Unit(h)
 	local top = Hud.TimerTop(math.floor(h * timerY:GetFloat()), unit)
+	local panels = Hud.KothPanels(w / 2, top, unit)
 	local shown = {}
 	for _, t in ipairs(GAME_TEAMS) do
 		local c = Clock(t)
-		if c.shown then shown[#shown + 1] = { team = t, clock = c, panel = ClockPanel(t, w, top, unit) } end
+		if c.shown then shown[#shown + 1] = { team = t, clock = c, panel = panels[t] } end
 	end
 	if #shown == 0 then return end
-	-- the overtime strip spans both clocks, under them
-	local overtime = GetGlobal2Bool("ws_round_overtime", false)
-	if overtime then
-		local first, last = shown[1].panel.label.strip, shown[#shown].panel.label.strip
-		local left, right = math.min(first.x, last.x), math.max(first.x + first.w, last.x + last.w)
-		DrawImage(Hud.TIMER_STRIP, { x = left, y = first.y, w = right - left, h = first.h })
+	for _, s in ipairs(shown) do
+		DrawClock(s.team, s.clock, s.panel, unit)
+		if not s.clock.paused then DrawImage(Hud.KOTH_ACTIVE_FRAME, Hud.KothActiveFrame(panels, s.team)) end
 	end
-	for _, s in ipairs(shown) do DrawClock(s.team, s.clock, s.panel, unit) end
-	if overtime then
-		local label = shown[1].panel.label
-		Shadowed("OVERTIME", Font(Hud.FONT_SMALL, Hud.TIMER_LABEL_FONT_TALL, unit), w / 2, label.y, TEXT_ALIGN_CENTER)
-	end
+	-- OvertimeLabel in one box under both clocks
+	if not GetGlobal2Bool("ws_round_overtime", false) then return end
+	local first, last = shown[1].panel.label, shown[#shown].panel.label
+	local box = { x = first.box.x, y = first.box.y, w = last.box.x + last.box.w - first.box.x, h = first.box.h }
+	DrawPanel(Hud.TIMER_LABEL_BORDER, box, unit)
+	Shadowed("OVERTIME", Font(Hud.FONT_BUILD, Hud.TIMER_LABEL_FONT_TALL, unit), box.x + box.w / 2, first.y, TEXT_ALIGN_CENTER)
 end
 
 local function Play(name)

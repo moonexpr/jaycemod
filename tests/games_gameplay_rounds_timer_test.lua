@@ -208,6 +208,23 @@ T.test("added time is capped by max_length and announced only by the HUD timer o
 	T.eq(timer:TimeRemaining(0), 330, "three adds")
 end)
 
+-- CTeamRoundTimer::GetTimerMaxLength, which the HUD's progress pie runs
+-- against: the setup length in setup; else max_length when set, else the
+-- length last set, with any time added since.
+T.test("the timer's full length: setup's, then max_length, else the length last set and time added", function()
+	local timer = New({ setupLength = 60 })
+	timer:RoundSpawn(0)
+	T.eq(timer:MaxLength(), 60, "setup's length in setup")
+	timer:FinishSetup(60)
+	T.eq(timer:MaxLength(), 270, "the round's length after it")
+	timer:AddSeconds(60, 30, RED, AddQ())
+	T.eq(timer:MaxLength(), 300, "time added lengthens it")
+	timer:SetTimeRemaining(60, 100)
+	T.eq(timer:MaxLength(), 100, "a new time is a new length")
+	timer:SetMaxLength(60, 400)
+	T.eq(timer:MaxLength(), 400, "max_length when set")
+end)
+
 T.test("round spawn carries normal time into the next mini-round unless reset_time", function()
 	local timer = New({ length = 600 })
 	timer:RoundSpawn(0)
