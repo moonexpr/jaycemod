@@ -4,16 +4,16 @@
 local Controller = ...
 local Pathfinder = WS.require("foundation.graph.pathfinder")
 local AStar = WS.require("games.npc.astar")
-local Portal = WS.require("games.ns.portal")
-local Doors = WS.require("games.ns.doors")
-local Path = WS.require("games.ns.path")
-local ReachMemo = WS.require("games.ns.reach_memo")
+local Portal = WS.require("games.nextsoldier.portal")
+local Doors = WS.require("games.nextsoldier.doors")
+local Path = WS.require("games.nextsoldier.path")
+local ReachMemo = WS.require("games.nextsoldier.reach_memo")
 
 local NOBODY = WS.TEAM_UNASSIGNED
 
 -------------------------------------------------------------------------------
 -- Path costs: one step builder for both searches. A path strategy
--- (games.ns.path) reads the same step whether the engine's search
+-- (games.nextsoldier.path) reads the same step whether the engine's search
 -- (Path:Compute on a NextBot) or the Lua one (games.npc.astar, for
 -- NPCs that are not NextBots) asks.
 
@@ -140,7 +140,7 @@ local function NearestArea(pos)
 	return navmesh.GetNearestNavArea(pos, true, NEAREST_AREA_FAR, false, false)
 end
 
--- Goals out of reach (games.ns.reach_memo): a search that runs out of
+-- Goals out of reach (games.nextsoldier.reach_memo): a search that runs out of
 -- areas has walked all its start leads to, so a later request from inside
 -- that region to a goal beyond it is answered without a search, from the
 -- region's area nearest the goal, as the search would have come closest:
@@ -265,7 +265,7 @@ end
 
 -- Where to walk along a route of areas, as the engine's Path::Compute
 -- places its points: each step crosses into the next area where
--- games.ns.portal says (nearest the previous crossing, off the
+-- games.nextsoldier.portal says (nearest the previous crossing, off the
 -- opening's walled ends), from `start` (default: the first area's centre);
 -- then to `goal`, or for a route that fell short of it, to the last area's
 -- point nearest it.

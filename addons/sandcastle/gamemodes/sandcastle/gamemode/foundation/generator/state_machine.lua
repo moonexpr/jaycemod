@@ -14,7 +14,7 @@
 -- Every state named anywhere must be declared, so a mistyped state is an
 -- error at load, not a machine stuck at run time. definition:New(initial)
 -- makes a machine; its handlers get whatever its caller passes along.
-local Sets = require("foundation.map.sets")
+local Sets = require("foundation.world.sets")
 local error, ipairs, pairs, setmetatable, tostring, type = error, ipairs, pairs, setmetatable, tostring, type
 module(...)
 

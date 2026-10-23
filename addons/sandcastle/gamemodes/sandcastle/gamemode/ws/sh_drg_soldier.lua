@@ -73,10 +73,10 @@ function WS.DrgSoldier(ENT, baseName)
 	if CLIENT then return end
 	local Ragdoll = WS.require("foundation.npc.ragdoll")
 	local Voices = WS.require("foundation.npc.voices")
-	local HL2Path = WS.require("games.ns.path.hl2")
-	local Leap = WS.require("games.ns.leap")
-	local Noise = WS.require("games.ns.noise")
-	local Rappel = WS.require("games.ns.rappel")
+	local HL2Path = WS.require("games.nextsoldier.path.hl2")
+	local Leap = WS.require("games.nextsoldier.leap")
+	local Noise = WS.require("games.nextsoldier.noise")
+	local Rappel = WS.require("games.nextsoldier.rappel")
 	local Arms = WS.require("features.aiwar.arms")
 	local SILENT = { grunt = {}, pain = {}, death = {}, fall = {} }
 
@@ -143,7 +143,7 @@ function WS.DrgSoldier(ENT, baseName)
 	end
 
 	-- Going down a drop it would land from faster than a safe fall, it comes
-	-- down no faster than a rappel (games.ns.rappel), to the floor.
+	-- down no faster than a rappel (games.nextsoldier.rappel), to the floor.
 	local RAPPEL_LOOK = 4096
 	function ENT:NSRappel(velocity)
 		if velocity.z >= 0 then return end
@@ -419,7 +419,7 @@ function WS.DrgSoldier(ENT, baseName)
 		return Base().OnStartClimbing(self, ledge, height, down)
 	end
 
-	-- Jumps onto the ledge along games.ns.leap's arc, set a step each
+	-- Jumps onto the ledge along games.nextsoldier.leap's arc, set a step each
 	-- tick of its behaviour, its own momentum stopped, as DrGBase's own climb
 	-- moves it: if the way straight up to the arc's top and across to its
 	-- landing is clear (the arc stays inside that, and clears the lip), else
@@ -462,7 +462,7 @@ function WS.DrgSoldier(ENT, baseName)
 	end
 
 	-- A vault over what stands toward dir (flat, of unit length) along
-	-- games.ns.leap's arc: when the obstacle's top is no higher than it
+	-- games.nextsoldier.leap's arc: when the obstacle's top is no higher than it
 	-- climbs (ClimbLedgesMaxHeight), the floor beyond is on the nav mesh no
 	-- farther down than it falls (the death drop), and its hull clears the
 	-- way up, over and down (Leap.VaultFits). The plan, { from, top, land },

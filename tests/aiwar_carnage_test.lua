@@ -1,9 +1,9 @@
--- Post-round carnage: games.ns.hunt (the winners' board of
+-- Post-round carnage: games.nextsoldier.hunt (the winners' board of
 -- sightings, where they hunt and where the losers hide), and the orders'
 -- humiliation phase, driven as scenarios against tests/fake_soldier.lua.
 local T = dofile("tests/harness.lua")
 local FS = dofile("tests/fake_soldier.lua")
-local Hunt = T.require("games.ns.hunt")
+local Hunt = T.require("games.nextsoldier.hunt")
 local Teams = T.require("games.gameplay.teams")
 
 local RED, BLUE = Teams.RED, Teams.BLUE

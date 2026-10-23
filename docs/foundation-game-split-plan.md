@@ -38,6 +38,11 @@ gameplay). Both publish their modules as globals.
     `transaction`, `nodegraph` and `sh_index` leave for their features and
     `ws/`. `settings` becomes the generic `configstore`, its menus'
     settings declared on one in `ws/settings.lua`.
+11. **Names say what they are.** foundation's `map` namespace is `world`
+    (beside games' `world.io`), games' `ns` is `nextsoldier`, and the
+    layers test's `ns` rank is `nextsoldier`. Console names keep `ns_`.
+    `capture/hud` leaves for `features/capture`. The tables below keep
+    the names as they were planned.
 
 ## Status
 
@@ -53,7 +58,8 @@ gameplay). Both publish their modules as globals.
   `features.arena.round`) or `features/rounds/<variant>`. foundation's
   root holds `transaction`, `configstore` and `nodegraph`, each a plain
   global. Still PENDING: the Halloween bosses and debug models in `npc/`,
-  `ns/overlay`, `capture/hud`.
+  and `ns/overlay`.
+- Renames (decision 11): done.
 
 ## The loader
 

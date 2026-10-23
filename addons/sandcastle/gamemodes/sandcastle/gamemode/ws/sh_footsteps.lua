@@ -4,7 +4,7 @@
 -- engine's is: the stepping player's own client plays it, and the server to
 -- everyone else (filter). The sound is the surface's step (TF2's own,
 -- ws/sh_soundscripts.lua).
-local Noise = WS.require("games.ns.noise")
+local Noise = WS.require("games.nextsoldier.noise")
 
 -- A surface's step is a sound script carrying its own level; a step that
 -- names a file (a ladder's, a map's) plays at PlayStepSound's SNDLVL_NORM.

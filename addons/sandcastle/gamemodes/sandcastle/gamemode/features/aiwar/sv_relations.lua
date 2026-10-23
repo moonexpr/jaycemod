@@ -4,7 +4,7 @@
 local Controller, Map = ...
 local AiWar = WS.require("features.aiwar.model")
 local Rounds = WS.require("games.gameplay.rounds")
-local Hearing = WS.require("games.ns.hearing")
+local Hearing = WS.require("games.nextsoldier.hearing")
 local Factions = WS.require("ws.factions")
 local Marksmanship = WS.require("features.aiwar.marksmanship")
 local BulletSteps = WS.require("games.gameplay.combat.bullet_steps")
@@ -107,7 +107,7 @@ function Controller:TeamOf(ent)
 	return info and info.team or nil
 end
 
--- Gunfire (games.ns.hearing): each soldier in earshot of a shot is
+-- Gunfire (games.nextsoldier.hearing): each soldier in earshot of a shot is
 -- told where to look (OnHeard). A shooter is heard once every
 -- HEAR_INTERVAL, however fast it fires.
 local HEAR_INTERVAL = 0.5

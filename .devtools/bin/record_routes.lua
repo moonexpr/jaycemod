@@ -1,5 +1,5 @@
 -- Records the server's Lua route searches so they replay offline
--- (games.ns.route_record; .devtools/bin/route_replay.lua), through
+-- (games.nextsoldier.route_record; .devtools/bin/route_replay.lua), through
 -- server_lua.py:
 --
 --   server_lua.py -f .devtools/bin/record_routes.lua          defines WSRouteRecord
@@ -16,11 +16,11 @@
 WSRouteRecord = WSRouteRecord or {}
 local R = WSRouteRecord
 
-local Record = WS.require("games.ns.route_record")
+local Record = WS.require("games.nextsoldier.route_record")
 local AStar = WS.require("games.npc.astar")
 local Pathfinder = WS.require("foundation.graph.pathfinder")
-local HL2 = WS.require("games.ns.path.hl2")
-local Lanes = WS.require("games.ns.lanes")
+local HL2 = WS.require("games.nextsoldier.path.hl2")
+local Lanes = WS.require("games.nextsoldier.lanes")
 
 local DIR = "ws_routes"
 

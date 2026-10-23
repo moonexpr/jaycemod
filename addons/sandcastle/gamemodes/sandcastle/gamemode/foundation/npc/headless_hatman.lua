@@ -22,7 +22,7 @@ local ipairs = ipairs
 module(...)
 
 BOSS_TYPE = HalloweenBoss.BOSS_HHH
-PATH = "games.ns.path.ground"
+PATH = "games.nextsoldier.path.ground"
 LOCOMOTION = {
 	runSpeed = 400, -- tf_halloween_bot_speed
 	stepHeight = 18,

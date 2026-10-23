@@ -4,7 +4,7 @@
 local T = dofile("tests/harness.lua")
 local Pathfinder = T.require("foundation.graph.pathfinder")
 local AStar = T.require("games.npc.astar")
-local Path = T.require("games.ns.path")
+local Path = T.require("games.nextsoldier.path")
 
 -- A graph of named nodes at 2D positions, with the given edges both ways.
 -- Cost is the running total plus the edge length, or IMPASSABLE for a

@@ -44,7 +44,7 @@ T.test("a model the war does not dress its soldiers in has no voice", function()
 	T.eq(Voices.For("models/player/kleiner.mdl"), nil)
 end)
 
--- Each voice is named for the speech rules (games.ns.speech), and
+-- Each voice is named for the speech rules (games.nextsoldier.speech), and
 -- has grunts for a light hit and a cry for a fall that hurts.
 T.test("every voice has a name, grunts and a fall cry", function()
 	for _, model in ipairs({ "models/player/group03/male_04.mdl", "models/player/group03/female_02.mdl", "models/player/alyx.mdl",

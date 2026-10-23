@@ -1,7 +1,7 @@
 -- The NextBot debug layer's rules (the nbdebug feature, ws_nb_*): the
 -- engine's nb_select, nb_debug and nb_debug_filter, redone for what the
 -- engine cannot see: our Lua Behaviors, the costs our path strategies give
--- (games.ns.path), and the routes games.npc.astar searches.
+-- (games.nextsoldier.path), and the routes games.npc.astar searches.
 --
 -- Layers: PATH (the computed path by move type, its cost and timing), COST
 -- (every area the search considered, by cost so far), BEHAVIOR (the action
@@ -18,7 +18,7 @@ local floor, huge, sqrt = math.floor, math.huge, math.sqrt
 local concat, sort = table.concat, table.sort
 local find, lower, rep, sub, upper = string.find, string.lower, string.rep, string.sub, string.upper
 local Npc = require("games.npc.nextbot")
-local Sets = require("foundation.map.sets")
+local Sets = require("foundation.world.sets")
 module(...)
 
 -------------------------------------------------------------------------------

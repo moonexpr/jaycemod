@@ -12,7 +12,7 @@
 -- chatters (Speech.CONCEPT_ENEMY_KILLED and the rest): a kill, a teammate
 -- down, an enemy slipped out of sight, the radio between fights.
 local Controller = ...
-local Speech = WS.require("games.ns.speech")
+local Speech = WS.require("games.nextsoldier.speech")
 local Payload = WS.require("features.payload.model")
 local Teams = WS.require("games.gameplay.teams")
 

@@ -304,6 +304,20 @@ MOVES = tuple(
         ("admin_notices", "ws/admin_notices"),
         ("localization", "ws/localization"),
         ("settings", "ws/settings"),
+        ("capture/hud", "features/capture/hud"),
+    )
+) + tuple(
+    # foundation's map namespace is world, beside games' world.
+    within_foundation(f"map/{name}", f"world/{name}")
+    for name in ("sets", "pairmap", "grid", "lease")
+) + tuple(
+    # NextSoldier's namespace says its name.
+    Move(f"games/ns/{name}", f"games/nextsoldier/{name}")
+    for name in (
+        "tactics", "tuning", "squad", "lanes", "speech", "hearing", "explore",
+        "hunt", "posts", "zone", "nav_gaps", "path", "path/ground", "path/hl2",
+        "path/scatter", "path/tfbot", "brushes", "clip", "detour", "doors",
+        "leap", "noise", "portal", "probe", "rappel", "reach_memo", "route_record",
     )
 )
 

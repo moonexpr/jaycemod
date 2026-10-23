@@ -2,7 +2,7 @@
 -- (foundation.graph.pathfinder), for NPCs that cannot use the engine's
 -- search: HL2's engine NPCs, which path over AI nodes that TF2 maps do not
 -- have. It is the engine's A* rule for rule, so a path strategy
--- (games.ns.path) gives the same route here as through Path:Compute.
+-- (games.nextsoldier.path) gives the same route here as through Path:Compute.
 -- The graph is a port:
 --   graph:Neighbors(node) -> list of nodes, in the engine's order
 --   graph:Cost(from, to, costSoFar) -> the total cost of reaching `to`

@@ -2,7 +2,7 @@
 -- drawn from what the capture controller networks (ws_point_*). Each
 -- point is an icon in the master's caplayout rows, centred at the bottom of
 -- the screen and scaled with its height as TF2 lays them out
--- (foundation.capture.hud), except in payload rounds, whose cart HUD takes
+-- (features.capture.hud), except in payload rounds, whose cart HUD takes
 -- the bottom centre, drawn in TF2's materials (ControlPointIcon.res): the
 -- map's icon for its owner (team_icon_N), its _locked version while locked
 -- with the unlock countdown over it (CControlPointCountdown), the capping
@@ -14,14 +14,14 @@
 -- then the capture-enabled line (CControlPointCountdown::OnTick).
 WS.Feature("rounds")
 local Capture = WS.require("games.gameplay.capture")
-local Hud = WS.require("foundation.capture.hud")
+local Hud = WS.require("features.capture.hud")
 local Feed = WS.require("features.aiwar.kill_feed")
 local Rounds = WS.require("games.gameplay.rounds")
 
 local NOBODY, RED, BLUE = WS.TEAM_UNASSIGNED, WS.TEAM_RED, WS.TEAM_BLUE
 local NO_POINT_STOOD_ON = 0
 
--- The icons' fonts, in TF2's HUD units (foundation.capture.hud): the
+-- The icons' fonts, in TF2's HUD units (features.capture.hud): the
 -- unlock countdown's (ControlPointTimer) and the cappers' (CapPlayerFont).
 local NUMBER_FONT_SIZE = 18
 local INSET = 4 -- the capture panel's, in pixels
@@ -236,7 +236,7 @@ local function DrawIcon(p, x, y, size, h)
 end
 
 -- The layout's rows of the points with icons: the current round's
--- (foundation.capture.hud's HasIcon).
+-- (features.capture.hud's HasIcon).
 local function Rows(count)
 	local rows = {}
 	for _, row in ipairs(Capture.Layout(GetGlobal2String("ws_point_layout", ""), count)) do

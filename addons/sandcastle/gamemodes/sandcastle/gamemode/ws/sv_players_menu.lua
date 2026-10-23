@@ -8,7 +8,7 @@ local Reports = WS.require("games.gameplay.reports")
 local Economy = WS.require("games.gameplay.economy")
 local Permissions = WS.require("games.system.permissions")
 local Transaction = WS.require("foundation.transaction")
-local Sets = WS.require("foundation.map.sets")
+local Sets = WS.require("foundation.world.sets")
 local E = WS.Events
 
 local book = Reports.New()

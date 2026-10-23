@@ -9,7 +9,7 @@ local Orders = T.require("features.aiwar.orders")
 local Soldier = T.require("features.aiwar.soldier")
 local Track = T.require("foundation.math.polyline")
 local Teams = T.require("games.gameplay.teams")
-local Speech = T.require("games.ns.speech")
+local Speech = T.require("games.nextsoldier.speech")
 
 local RED, BLUE = Teams.RED, Teams.BLUE
 local P = FS.Point
@@ -272,7 +272,7 @@ end)
 
 -- Tactics in a fight.
 
-local Tactics = T.require("games.ns.tactics")
+local Tactics = T.require("games.nextsoldier.tactics")
 
 local function Fighting(t)
 	local me, npc, war, member = Enlist(t)

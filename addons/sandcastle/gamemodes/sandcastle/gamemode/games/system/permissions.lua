@@ -9,7 +9,7 @@
 --   may tamper, superadmins included; a holder of the gameplay toggles may
 --   switch it back on.
 local PlayMode = require("games.system.play_mode")
-local Sets = require("foundation.map.sets")
+local Sets = require("foundation.world.sets")
 local ipairs = ipairs
 module(...)
 

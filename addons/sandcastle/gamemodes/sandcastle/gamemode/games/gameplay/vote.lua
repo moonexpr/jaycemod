@@ -17,7 +17,7 @@
 -- a rerun of this module changes the behaviour of the live book too.
 local PlayMode = require("games.system.play_mode")
 local Transaction = require("foundation.transaction")
-local Sets = require("foundation.map.sets")
+local Sets = require("foundation.world.sets")
 local ceil, error, format, ipairs, pairs, remove, tostring, type = math.ceil, error, string.format, ipairs, pairs, table.remove, tostring, type
 module(...)
 

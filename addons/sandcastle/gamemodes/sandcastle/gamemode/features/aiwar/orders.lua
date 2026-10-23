@@ -41,7 +41,7 @@
 --     StrategyMonitor      applies the war's allocation: the member's job
 --       TacticalMonitor    self-preservation (CTFBotTacticalMonitor): the
 --                          humiliated SuspendFor Humiliated
---         SquadMonitor     leader, member or solo (games.ns.squad)
+--         SquadMonitor     leader, member or solo (games.nextsoldier.squad)
 --           SquadLeader | SquadMember | Solo   a member takes its bound line
 --                          from its leader, regroups on it in a fight, and
 --                          fights the enemy its leader fights
@@ -87,14 +87,14 @@ local Debug = require("foundation.npc.debug")
 local AiWar = require("features.aiwar.model")
 local Teams = require("games.gameplay.teams")
 local Track = require("foundation.math.polyline")
-local Tactics = require("games.ns.tactics")
+local Tactics = require("games.nextsoldier.tactics")
 local Geometry = require("foundation.math.geometry")
-local Squad = require("games.ns.squad")
-local Lanes = require("games.ns.lanes")
-local Hunt = require("games.ns.hunt")
+local Squad = require("games.nextsoldier.squad")
+local Lanes = require("games.nextsoldier.lanes")
+local Hunt = require("games.nextsoldier.hunt")
 local Health = require("features.aiwar.health")
-local Speech = require("games.ns.speech")
-local Explore = require("games.ns.explore")
+local Speech = require("games.nextsoldier.speech")
+local Explore = require("games.nextsoldier.explore")
 module(...)
 
 KIND = "aiwar"
@@ -323,7 +323,7 @@ ROLES = {
 		end,
 	},
 	-- EstablishLine: a post found for the defenders (field.posts, from
-	-- games.ns.posts: high or low ground, hiding spots, watching
+	-- games.nextsoldier.posts: high or low ground, hiding spots, watching
 	-- the checkpoint the attackers head for), where it waits for them.
 	[AiWar.DEFEND] = {
 		name = "EstablishLine",
@@ -346,7 +346,7 @@ ROLES = {
 	},
 }
 
--- Exploring (games.ns.explore), every scenario's job: a squad goes
+-- Exploring (games.nextsoldier.explore), every scenario's job: a squad goes
 -- for where it fights, else its lane's end, else its waypoint (field.explore:
 -- the scenario's board), fighting what it meets; engaged, it leaves its lane.
 -- Arena's explorers do it until the point opens; on any map an admin may
@@ -530,7 +530,7 @@ function Goal(field, member)
 end
 
 -- The member's fire team's contact, reporting the enemy the member sees:
--- what one sees, its team knows (games.ns.tactics).
+-- what one sees, its team knows (games.nextsoldier.tactics).
 function TeamContact(state, me)
 	local fireTeam = state.member.fireTeam
 	if not fireTeam then return nil end
@@ -1323,7 +1323,7 @@ function Objective:ShouldPickUp(me, item)
 	return N.ANSWER_UNDEFINED
 end
 
--- A fight, by the role's tactic (games.ns.tactics).
+-- A fight, by the role's tactic (games.nextsoldier.tactics).
 BOUND_RADIUS, COVER_RADIUS, SPOT_ARRIVE = 200, 320, 48
 FLANK_TIME, FLANK_ARRIVE = 15, 160
 -- A squad member farther than REGROUP_RANGE from its leader in a fight runs
@@ -1616,7 +1616,7 @@ end
 local ScenarioMonitor = PassthroughMonitor("ScenarioMonitor", SideFor)
 
 -- The squad roles: each runs the job; which one runs follows the member's
--- place in its squad (games.ns.squad's Kind), changing itself when
+-- place in its squad (games.nextsoldier.squad's Kind), changing itself when
 -- that changes (a leader died, a hero joined, a new job's squad).
 local SquadRoles = {}
 
@@ -1656,7 +1656,7 @@ local SquadMonitor = PassthroughMonitor("SquadMonitor", function(state)
 end)
 
 -- Post-round carnage (features.aiwar.model's PHASES.humiliation,
--- games.ns.hunt; TF2's CTFBotTacticalMonitor "Get the losers!").
+-- games.nextsoldier.hunt; TF2's CTFBotTacticalMonitor "Get the losers!").
 -- The winners SeekAndDestroy: at a loser in sight, reporting it on the
 -- war's hunt board and holding to fire once within HUNT_CLOSE; with none,
 -- on a trip to the nearest fresh sighting, else to the losers' spawns. The
@@ -2010,7 +2010,7 @@ end
 local StrategyMonitor = PassthroughMonitor("StrategyMonitor", function(state) return TacticalMonitor:New(state) end)
 
 -- It also keeps the member's record current with what its squad reads of
--- it: where it is and the enemy it fights (games.ns.squad); and
+-- it: where it is and the enemy it fights (games.nextsoldier.squad); and
 -- tells the soldier where to watch.
 function StrategyMonitor:Update(me)
 	local member = self.state.member

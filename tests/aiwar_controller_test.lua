@@ -12,9 +12,9 @@ local Orders = T.require("features.aiwar.orders")
 local Base = T.require("features.aiwar.scenario")
 local Payload = T.require("features.aiwar.scenario.payload")
 local Freeform = T.require("features.aiwar.scenario.freeform")
-local Posts = T.require("games.ns.posts")
-local Lanes = T.require("games.ns.lanes")
-local HL2Path = T.require("games.ns.path.hl2")
+local Posts = T.require("games.nextsoldier.posts")
+local Lanes = T.require("games.nextsoldier.lanes")
+local HL2Path = T.require("games.nextsoldier.path.hl2")
 local Gamemode = T.require("games.system.gamemode")
 local Rounds = T.require("games.gameplay.rounds")
 local PayloadMode = T.require("features.payload.round")
@@ -23,7 +23,7 @@ local KothMode = T.require("features.koth.model")
 local STATE = T.require("games.gameplay.rounds.state")
 local Teams = T.require("games.gameplay.teams")
 local Slots = T.require("features.aiwar.slots")
-local Squad = T.require("games.ns.squad")
+local Squad = T.require("games.nextsoldier.squad")
 -- the real scenarios; tests of the controller alone swap in fakes
 local REAL = {
 	[PayloadMode.Mode.NAME] = Payload,
@@ -1052,7 +1052,7 @@ end)
 -- are planned again once it has stayed open, even when what changed is not
 -- known (every area they watch is looked at).
 T.test("lanes are planned again when the doors' blockers change", function()
-	local Lanes = T.require("games.ns.lanes")
+	local Lanes = T.require("games.nextsoldier.lanes")
 	local w = World()
 	w.spawns[RED] = { Ent(Vector(0, 0, 0)) }
 	w.spawns[BLUE] = { Ent(Vector(2000, 0, 0)) }
@@ -1135,7 +1135,7 @@ end)
 -- An area outside the room that the field reaches only by a climb too high
 -- for a soldier (a ledge) is no threshold either.
 T.test("a lane stop's threshold is not a ledge the soldiers cannot climb", function()
-	local HL2Path = T.require("games.ns.path.hl2")
+	local HL2Path = T.require("games.nextsoldier.path.hl2")
 	local w = World()
 	w.spawns[RED] = { Ent(Vector(0, 0, 0)) }
 	w.spawns[BLUE] = { Ent(Vector(2400, 0, 0)) }
@@ -1154,7 +1154,7 @@ end)
 -- a door wall they went round plans them again once it has opened and
 -- stayed open (a setup gate), not while it only flickers open.
 T.test("lanes are planned again only when a blocker changes where it touches them", function()
-	local Lanes = T.require("games.ns.lanes")
+	local Lanes = T.require("games.nextsoldier.lanes")
 	local w = World()
 	w.spawns[RED] = { Ent(Vector(0, 0, 0)) }
 	w.spawns[BLUE] = { Ent(Vector(2000, 0, 0)) }

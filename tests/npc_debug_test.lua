@@ -3,7 +3,7 @@
 local T = dofile("tests/harness.lua")
 local Debug = T.require("foundation.npc.debug")
 local N = T.require("games.npc.nextbot")
-local Path = T.require("games.ns.path")
+local Path = T.require("games.nextsoldier.path")
 
 local function V(x, y, z)
 	return {
@@ -285,7 +285,7 @@ end)
 local function Report(overrides, without)
 	local fields = {
 		source = Debug.SOURCE_ENGINE,
-		strategy = "games.ns.path.scatter",
+		strategy = "games.nextsoldier.path.scatter",
 		start = V(0, 0, 0),
 		goal = V(300, 0, 0),
 		limits = {
@@ -336,7 +336,7 @@ end)
 
 T.test("a path's summary gives the strategy, the outcome, the cost, the search's time and the path's age", function()
 	local lines = Debug.PathLines(Debug.NewPathReport(Report()), 13.5)
-	T.eq(lines[1], "Path: games.ns.path.scatter (" .. Debug.SOURCE_ENGINE .. ")", "strategy")
+	T.eq(lines[1], "Path: games.nextsoldier.path.scatter (" .. Debug.SOURCE_ENGINE .. ")", "strategy")
 	T.eq(lines[2], "Found: 2 points, cost 1234", "outcome")
 	T.eq(lines[3], "Search: 0.42 ms, 12 areas expanded", "search")
 	T.eq(lines[4], "Age: 3.5 s", "age")
@@ -557,7 +557,7 @@ T.test("a dump holds the request, the result, the explored areas and the timing 
 	T.eq(doc.map, "plr_hightower", "map")
 	T.eq(doc.npc.index, 45, "npc")
 	T.eq(doc.request.goal.x, 300, "goal as a plain point")
-	T.eq(doc.request.strategy, "games.ns.path.scatter", "strategy")
+	T.eq(doc.request.strategy, "games.nextsoldier.path.scatter", "strategy")
 	T.eq(doc.request.limits.jumpHeight, 72, "limits")
 	T.eq(doc.result.points[2].move, Debug.MOVE_NAMES[Debug.MOVE_JUMP], "moves by name")
 	T.eq(doc.result.totalCost, 1234.4, "cost")

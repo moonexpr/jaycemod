@@ -11,7 +11,7 @@ NextSoldier, the AI-war's NextBot soldiers. The gamemode lives at
 | `gamemode/shared_loader.lua` | Runs first: the gamemode's `WS.require`, then foundation's namespace indexes, each named by hand |
 | `gamemode/foundation/<namespace>/` | The generic base: data structures, algorithms, codecs, maths, classes, loaded at start and published as globals (`list.queue`) by `sh_index.lua` (index below) |
 | `gamemode/games/<namespace>/` | Models built on foundation: pure Lua systems, no GMod globals, I/O through ports (the gamemode core, gameplay, NPCs, NextSoldier, timers, the world's I/O), published as globals by `sh_init.lua` and loaded on first read (index below) |
-| `gamemode/foundation/` | Also, until they move to their features or `ws/` (`PENDING` in `tests/foundation_layers_test.lua`): the Halloween bosses and debug models in `npc/`, `ns/overlay`, `capture/hud`. foundation is copied to the globals, so it stays small and generic (`docs/foundation-game-split-plan.md`) |
+| `gamemode/foundation/` | Also, until they move to their features or `ws/` (`PENDING` in `tests/foundation_layers_test.lua`): the Halloween bosses and debug models in `npc/`, and `ns/overlay`. foundation is copied to the globals, so it stays small and generic (`docs/foundation-game-split-plan.md`) |
 | `gamemode/features/<feature>/` | Controllers: `sv.lua`/`cl.lua`/`sh.lua` composition roots and their `<realm>_<part>.lua` parts |
 | `gamemode/ws/` | Always-loaded glue |
 | `gamemode/entities/` | Map entity bindings |
@@ -89,7 +89,7 @@ foundation is the stable base the rest of the gamemode stands on, and may
 come to replace GMod's own defaults. `shared_loader.lua` runs each
 namespace's `sh_index.lua`, which publishes a module per line: module
 `foundation.<namespace>.<module>` is the global `<namespace>.<module>`,
-in a table of our own (`tree`, `map`, `cache`) or one extended in place
+in a table of our own (`tree`, `world`, `cache`) or one extended in place
 (Lua's `math`, GMod's `list`, `file`). `Export` refuses a key already
 taken; taking over a GMod or Lua default is a `Replace` line
 (`foundation.core.namespace`). Modules and indexes are listed by hand,
@@ -124,14 +124,14 @@ table. Tests are `tests/<namespace>_<module>_test.lua`.
 | `tree.heap` | `New(before)` → binary heap: `Push`, `Pop`, `Peek`, `Size`; ties are the rule's to break |
 | `tree.avl` | `New([less])` → ordered map on an AVL tree: `Insert`, `Get`, `Remove`, `Min`, `Max`, `Floor`, `Ceiling`, `Pairs` (in order), `Size`, `Height` |
 
-### map: lookups
+### world: lookups (beside games' world I/O)
 
 | Module | API |
 |---|---|
-| `map.pairmap` | `New()` → values by an ordered pair of whole numbers (0..`MAX_KEY`, a link's two area ids) under one number a pair, no key built: `Get(a, b)` (unchecked, for hot paths), `Set(a, b, value)` (nil removes; refuses a bad key), `Size`, `Clear` |
-| `map.lease` | `New()` → keys held by one holder for a term: `Holder`, `FreeFor`, `Take`, `Release`, `ReleaseAll` |
-| `map.grid` | `New(size)` → spatial hash on number keys: `Put`, `PutBox`, `Near` (3×3 cells), `Buckets`; `Thin(points, size)` keeps one point per cube |
-| `map.sets` | `Named(name, members)` → a named set, a closed vocabulary parsed once: `Has`, `Check` (an unknown member is our bug, blamed on the caller), `Match` (case-free prefix), `Members`, `Name`. Plain `value → true` sets: `Of`, `Copy`, `Union`, `Intersect`, `Subtract`, `Count`, `Sorted` |
+| `world.pairmap` | `New()` → values by an ordered pair of whole numbers (0..`MAX_KEY`, a link's two area ids) under one number a pair, no key built: `Get(a, b)` (unchecked, for hot paths), `Set(a, b, value)` (nil removes; refuses a bad key), `Size`, `Clear` |
+| `world.lease` | `New()` → keys held by one holder for a term: `Holder`, `FreeFor`, `Take`, `Release`, `ReleaseAll` |
+| `world.grid` | `New(size)` → spatial hash on number keys: `Put`, `PutBox`, `Near` (3×3 cells), `Buckets`; `Thin(points, size)` keeps one point per cube |
+| `world.sets` | `Named(name, members)` → a named set, a closed vocabulary parsed once: `Has`, `Check` (an unknown member is our bug, blamed on the caller), `Match` (case-free prefix), `Members`, `Name`. Plain `value → true` sets: `Of`, `Copy`, `Union`, `Intersect`, `Subtract`, `Count`, `Sorted` |
 
 ### cache
 
@@ -195,7 +195,7 @@ module a line: module `games.<namespace>.<module>` is the global
 `<namespace>.<module>`, loaded the first time it is read, so a map pays only
 for what it uses. A module's parts (`gameplay/rounds/state`) load through it
 and are not published. A namespace may be foundation's (`list`,
-`generator`) or GMod's (`timer`, `system`). games may require foundation,
+`world`, `generator`) or GMod's (`timer`, `system`). games may require foundation,
 never features or ws; a published foundation module never requires games;
 `tests/foundation_layers_test.lua` ranks both trees. Tests are
 `tests/games_<namespace>_<module>_test.lua`.
@@ -205,7 +205,7 @@ never features or ws; a published foundation module never requires games;
 | `system` | The gamemode core: `events` (the game event registry, `WS.Events`), `features` (per-map feature loading), `gamemode`, `permissions`, `play_mode`, `spawn_manager`, `idle` |
 | `gameplay` | `rounds` (+ `state`, `timer`, `limits`), `teams`, `players` (+ `attributes`, `condition_effects`), `spawn`, `spectate`, `respawn_modifiers`, `arrivals`, `loadout`, `economy`, `kill_credit`, `kill_icons`, `vote`, `reports`, `player_analytics`, `capture` (+ `area`, `master`, `point_timer`), `combat` (+ 9 parts), `projectile` (+ 4 parts), `tactics` |
 | `npc` | `nextbot` (the NextBot NPC system), `actor`, `combatant`, `targeting`, `astar` |
-| `ns` | NextSoldier: `tactics` (the AI war's fire-team doctrine, on `gameplay.tactics`), `tuning`, `squad`, `lanes`, `speech`, `hearing`, `explore`, `hunt`, `posts`, `zone`, `nav_gaps`; movement: `path` (+ `ground`, `hl2`, `scatter`, `tfbot`, the cost strategies a solver prices steps with), `brushes`, `clip`, `detour`, `doors`, `leap`, `noise`, `portal`, `probe`, `rappel`, `reach_memo`, `route_record` |
+| `nextsoldier` | NextSoldier: `tactics` (the AI war's fire-team doctrine, on `gameplay.tactics`), `tuning`, `squad`, `lanes`, `speech`, `hearing`, `explore`, `hunt`, `posts`, `zone`, `nav_gaps`; movement: `path` (+ `ground`, `hl2`, `scatter`, `tfbot`, the cost strategies a solver prices steps with), `brushes`, `clip`, `detour`, `doors`, `leap`, `noise`, `portal`, `probe`, `rappel`, `reach_memo`, `route_record` |
 
 | Module | API |
 |---|---|

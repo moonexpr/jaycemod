@@ -1,0 +1,28 @@
+-- NextSoldier: the soldiers' tactics, squads, senses and tuning, and how a
+-- soldier moves (path costs, doors, leaps, rappels), each loaded the first
+-- time it is read. A module's parts (path/ground) load through it. One line
+-- a module, never a loop: docs/foundation-game-split-plan.md.
+local nextsoldier = Namespace("nextsoldier")
+Defer(nextsoldier, "tactics", "games.nextsoldier.tactics")
+Defer(nextsoldier, "tuning", "games.nextsoldier.tuning")
+Defer(nextsoldier, "squad", "games.nextsoldier.squad")
+Defer(nextsoldier, "lanes", "games.nextsoldier.lanes")
+Defer(nextsoldier, "speech", "games.nextsoldier.speech")
+Defer(nextsoldier, "hearing", "games.nextsoldier.hearing")
+Defer(nextsoldier, "explore", "games.nextsoldier.explore")
+Defer(nextsoldier, "hunt", "games.nextsoldier.hunt")
+Defer(nextsoldier, "posts", "games.nextsoldier.posts")
+Defer(nextsoldier, "zone", "games.nextsoldier.zone")
+Defer(nextsoldier, "nav_gaps", "games.nextsoldier.nav_gaps")
+Defer(nextsoldier, "path", "games.nextsoldier.path")
+Defer(nextsoldier, "brushes", "games.nextsoldier.brushes")
+Defer(nextsoldier, "clip", "games.nextsoldier.clip")
+Defer(nextsoldier, "detour", "games.nextsoldier.detour")
+Defer(nextsoldier, "doors", "games.nextsoldier.doors")
+Defer(nextsoldier, "leap", "games.nextsoldier.leap")
+Defer(nextsoldier, "noise", "games.nextsoldier.noise")
+Defer(nextsoldier, "portal", "games.nextsoldier.portal")
+Defer(nextsoldier, "probe", "games.nextsoldier.probe")
+Defer(nextsoldier, "rappel", "games.nextsoldier.rappel")
+Defer(nextsoldier, "reach_memo", "games.nextsoldier.reach_memo")
+Defer(nextsoldier, "route_record", "games.nextsoldier.route_record")

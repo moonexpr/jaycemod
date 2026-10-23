@@ -3,10 +3,10 @@
 local Controller, Map = ...
 local Teams = WS.require("games.gameplay.teams")
 local Debug = WS.require("foundation.npc.debug")
-local TFBot = WS.require("games.ns.path.tfbot")
-local HL2Path = WS.require("games.ns.path.hl2")
-local Zone = WS.require("games.ns.zone")
-local Doors = WS.require("games.ns.doors")
+local TFBot = WS.require("games.nextsoldier.path.tfbot")
+local HL2Path = WS.require("games.nextsoldier.path.hl2")
+local Zone = WS.require("games.nextsoldier.zone")
+local Doors = WS.require("games.nextsoldier.doors")
 local Geometry = WS.require("foundation.math.geometry")
 local WALK_MAX_RISE, SPAWN_LIFT = Map.WALK_MAX_RISE, Map.SPAWN_LIFT
 local Point, ToVector, SpawnSpots, IsDoor = Map.Point, Map.ToVector, Map.SpawnSpots, Map.IsDoor
@@ -198,7 +198,7 @@ end
 
 -- The setup zone -------------------------------------------------------------------------
 -- The ground behind the setup gates, where the attackers wander in setup
--- (games.ns.zone): flooded over the nav mesh from the team's spawn
+-- (games.nextsoldier.zone): flooded over the nav mesh from the team's spawn
 -- points, held back by the shut doors no trigger opens (the setup gates),
 -- by what closes areas to routes (locked doors, solid brushes: the npc
 -- feature's NavBlocks) and by rises
@@ -347,7 +347,7 @@ end
 
 -- A team's spawn doors open through trigger_multiples filtered by
 -- filter_activator_tfteam, other doors through a trigger_multiple around
--- them that opens them (games.ns.doors Opens; an unnamed door, which
+-- them that opens them (games.nextsoldier.doors Opens; an unnamed door, which
 -- no output names, by any around it), and NPCs only touch triggers flagged
 -- for them. A trigger beside a door that only closes it is left alone.
 local function OpensADoor(trigger, doors)

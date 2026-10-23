@@ -14,7 +14,7 @@
 -- The server sends the list (game_aiwar_slots) once the panel asks, and again
 -- whenever it changes.
 local Slots = WS.require("features.aiwar.slots")
-local Squad = WS.require("games.ns.squad")
+local Squad = WS.require("games.nextsoldier.squad")
 local E = WS.Events
 
 local RED, BLUE = WS.TEAM_RED, WS.TEAM_BLUE
