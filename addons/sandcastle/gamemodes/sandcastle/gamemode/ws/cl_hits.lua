@@ -4,7 +4,10 @@
 -- (tf_dingalingaling, games.gameplay.combat.hit_sound), and the crit text over
 -- the victim (crit.pcf's crit_text, minicrit_text). TF2's console
 -- variables set them, from the spawn menu's Options > Client > Gameplay
--- Effects.
+-- Effects. The player's feedback is the last thing to fail, so it stands
+-- apart from the HUD: loaded before any of it (cl_init.lua), reading
+-- nothing of it, and drawn from its own HUDPaint hook, which GMod runs
+-- before the gamemode's HUDPaint (WS.HUD), so under every HUD panel.
 local P = WS.PlayerRules
 local CombatText = WS.require("games.gameplay.combat.combat_text")
 local HitSound = WS.require("games.gameplay.combat.hit_sound")
@@ -72,7 +75,7 @@ E.Listen("game_combat_text", "ws_hits", function(fields)
 	if crit then CreateParticleSystemNoEntity(crit, fields.pos, angle_zero) end
 end)
 
-WS.HUD:Add("player.hits", WS.HUD_ORDER.WORLD, function()
+hook.Add("HUDPaint", "ws_hits", function()
 	local shown = texts:Live(CurTime())
 	if #shown == 0 then return end
 	Font(ScrH() / 480)

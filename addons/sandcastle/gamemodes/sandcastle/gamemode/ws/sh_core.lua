@@ -96,7 +96,7 @@ end
 if CLIENT then
 	WS.HUD = list.drawlist.New()
 	WS.HUD_ORDER = {
-		WORLD = 100, -- over the world: damage numbers
+		WORLD = 100, -- over the world (the damage numbers draw apart, ws/cl_hits.lua)
 		OBJECTIVES = 200, -- points, flags, carts, KOTH clocks
 		ROUND = 300, -- the round's timer, scores and panels
 		NOTICES = 400, -- votes, voices, the spectator's names, bosses, spells
