@@ -1,7 +1,7 @@
 local T = dofile("tests/harness.lua")
 local Fake = dofile("tests/fake_actor.lua")
-local N = T.require("games.npc.nextbot")
-local Actor = T.require("games.npc.actor")
+local N = npc.nextbot
+local Actor = npc.actor
 
 local Action, Behavior = N.Action, N.Behavior
 
@@ -488,8 +488,8 @@ T.test("a group passes an event to each member once, in the order they joined", 
 end)
 
 T.test("the NPC system hands on game's timers by their NextBot names", function()
-	local Countdown = T.require("games.timer.countdown")
-	local Interval = T.require("games.timer.interval")
+	local Countdown = timer.countdown
+	local Interval = timer.interval
 	T.eq(N.CountdownTimer, Countdown.New, "CountdownTimer")
 	T.eq(N.IntervalTimer, Interval.New, "IntervalTimer")
 	T.eq(N.INTERVAL_UNSTARTED, Interval.INTERVAL_UNSTARTED, "INTERVAL_UNSTARTED")

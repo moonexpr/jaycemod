@@ -2,7 +2,7 @@
 -- and "Team BLU": which a team's members join, and which they leave.
 local T = dofile("tests/harness.lua")
 local Factions = T.require("ws.factions")
-local Teams = T.require("games.gameplay.teams")
+local Teams = gameplay.teams
 
 T.test("each playing team has a faction of its own, named as the team", function()
 	T.eq(Factions.Of(Teams.RED), Factions.RED, "RED")

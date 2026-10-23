@@ -1,6 +1,6 @@
 -- foundation.tree.heap: a binary heap ordered by the caller's rule.
 local T = dofile("tests/harness.lua")
-local Heap = T.require("foundation.tree.heap")
+local Heap = tree.heap
 
 local function Less(a, b) return a < b end
 

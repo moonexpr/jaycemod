@@ -1,6 +1,6 @@
 -- foundation.math.scalar: arithmetic on single numbers.
 local T = dofile("tests/harness.lua")
-local Scalar = T.require("foundation.math.scalar")
+local Scalar = math.scalar
 
 T.test("Clamp holds a value within [low, high]", function()
 	T.eq(Scalar.Clamp(5, 0, 10), 5, "inside: as it is")

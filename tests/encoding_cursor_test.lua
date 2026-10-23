@@ -1,6 +1,6 @@
 -- foundation.encoding.cursor: a position in text that parsers move along.
 local T = dofile("tests/harness.lua")
-local Cursor = T.require("foundation.encoding.cursor")
+local Cursor = encoding.cursor
 
 T.test("a literal is taken where it stands, and nothing moves when it does not", function()
 	local c = Cursor.New("hello world")

@@ -2,14 +2,14 @@
 -- follows in the AI war, driven as scenarios against tests/fake_soldier.lua.
 local T = dofile("tests/harness.lua")
 local FS = dofile("tests/fake_soldier.lua")
-local N = T.require("games.npc.nextbot")
+local N = npc.nextbot
 local Debug = T.require("features.nbdebug.model")
 local AiWar = T.require("features.aiwar.model")
 local Orders = T.require("features.aiwar.orders")
 local Soldier = T.require("features.aiwar.soldier")
-local Track = T.require("foundation.math.polyline")
-local Teams = T.require("games.gameplay.teams")
-local Speech = T.require("games.nextsoldier.speech")
+local Track = math.polyline
+local Teams = gameplay.teams
+local Speech = nextsoldier.speech
 
 local RED, BLUE = Teams.RED, Teams.BLUE
 local P = FS.Point
@@ -272,7 +272,7 @@ end)
 
 -- Tactics in a fight.
 
-local Tactics = T.require("games.nextsoldier.tactics")
+local Tactics = nextsoldier.tactics
 
 local function Fighting(t)
 	local me, npc, war, member = Enlist(t)

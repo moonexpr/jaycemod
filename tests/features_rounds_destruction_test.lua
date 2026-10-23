@@ -5,7 +5,7 @@
 -- payload, so no cart HUD. Sandcastle plays no PD scoring yet, so the
 -- round limits decide its rounds (an objective-less mode).
 local T = dofile("tests/harness.lua")
-local Rounds = T.require("games.gameplay.rounds")
+local Rounds = gameplay.rounds
 local Destruction = T.require("features.rounds.destruction")
 local Payload = T.require("features.payload.round")
 local Koth = T.require("features.koth.model")

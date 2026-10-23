@@ -1,7 +1,7 @@
 -- foundation.graph.pathfinder: the search a path solver fills in. A
 -- breadth-first solver, written here against the contract, drives it.
 local T = dofile("tests/harness.lua")
-local Pathfinder = T.require("foundation.graph.pathfinder")
+local Pathfinder = graph.pathfinder
 
 -- a - b - c - d, and e alone.
 local LINE = {

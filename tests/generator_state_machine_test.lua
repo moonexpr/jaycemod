@@ -1,6 +1,6 @@
 -- foundation.generator.state_machine: a classical, flat finite state machine.
 local T = dofile("tests/harness.lua")
-local Cfsm = T.require("foundation.generator.state_machine")
+local Cfsm = generator.state_machine
 
 local CLOSED, OPENING, OPEN = "closed", "opening", "open"
 local LOCKED = "locked"

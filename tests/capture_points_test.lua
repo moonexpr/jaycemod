@@ -2,8 +2,8 @@
 -- point list, CTFGameRules::TeamMayCapturePoint and the HUD's capture
 -- panel), driven through real maps' keyvalues.
 local T = dofile("tests/harness.lua")
-local Capture = T.require("games.gameplay.capture")
-local Teams = T.require("games.gameplay.teams")
+local Capture = gameplay.capture
+local Teams = gameplay.teams
 
 local NOBODY, RED, BLU = Teams.UNASSIGNED, Teams.RED, Teams.BLUE
 local NO_FLAGS = 0

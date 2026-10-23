@@ -4,9 +4,9 @@
 -- kick vote, or queue it behind the running one. Run against fake events,
 -- players, timers, convars and the rounds feature.
 local T = dofile("tests/harness.lua")
-local Vote = T.require("games.gameplay.vote")
-local Permissions = T.require("games.system.permissions")
-local PlayMode = T.require("games.system.play_mode")
+local Vote = gameplay.vote
+local Permissions = system.permissions
+local PlayMode = system.play_mode
 
 local KINDS = {
 	Vote.KIND_KICK,

@@ -6,8 +6,8 @@ local T = dofile("tests/harness.lua")
 local AiWar = T.require("features.aiwar.model")
 local Scenario = T.require("features.aiwar.scenario")
 local Ctf = T.require("features.aiwar.scenario.ctf")
-local Teams = T.require("games.gameplay.teams")
-local Geometry = T.require("foundation.math.geometry")
+local Teams = gameplay.teams
+local Geometry = math.geometry
 
 local RED, BLUE = Teams.RED, Teams.BLUE
 local Distance = Geometry.Distance

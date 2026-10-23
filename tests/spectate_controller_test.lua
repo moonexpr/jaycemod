@@ -2,9 +2,9 @@
 -- the engine would; a fake player answers what the tests read and takes
 -- every other call silently.
 local T = dofile("tests/harness.lua")
-local Teams = T.require("games.gameplay.teams")
+local Teams = gameplay.teams
 local STATE = T.require("games.gameplay.rounds.state")
-local Spawns = T.require("games.system.spawn_manager")
+local Spawns = system.spawn_manager
 
 local SOURCE = T.ROOT .. "ws/sv_spectate.lua"
 local FL_NOTARGET = 16384 -- GMod's

@@ -6,7 +6,7 @@
 -- time before the first shot at a new enemy (TF2's IVision recognize time).
 local T = dofile("tests/harness.lua")
 local M = T.require("features.aiwar.marksmanship")
-local Geometry = T.require("foundation.math.geometry")
+local Geometry = math.geometry
 
 local function Angle(a, b)
 	local cos = Geometry.Dot(Geometry.Normalize(a), Geometry.Normalize(b))

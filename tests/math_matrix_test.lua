@@ -1,6 +1,6 @@
 -- foundation.math.matrix: dense matrices as rows of numbers.
 local T = dofile("tests/harness.lua")
-local Matrix = T.require("foundation.math.matrix")
+local Matrix = math.matrix
 
 local function Rows(m)
 	local out = {}

@@ -1,5 +1,5 @@
 local T = dofile("tests/harness.lua")
-local L = T.require("games.gameplay.teams")
+local L = gameplay.teams
 
 local STATE = T.require("games.gameplay.rounds.state")
 

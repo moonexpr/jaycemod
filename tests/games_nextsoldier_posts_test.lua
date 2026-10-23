@@ -2,7 +2,7 @@
 -- the checkpoint the attackers are heading for, that see it, ranked by
 -- range, elevation and cover, and spaced apart.
 local T = dofile("tests/harness.lua")
-local Posts = T.require("games.nextsoldier.posts")
+local Posts = nextsoldier.posts
 
 local function P(x, y, z) return { x = x, y = y, z = z or 0 } end
 

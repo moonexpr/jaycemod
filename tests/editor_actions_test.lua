@@ -3,7 +3,7 @@
 -- holding its privilege: tampering unless it names another. Run against a
 -- fake properties library and a fake WS.Can.
 local T = dofile("tests/harness.lua")
-local Permissions = T.require("games.system.permissions")
+local Permissions = system.permissions
 
 local function Load()
 	local added = {}

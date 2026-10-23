@@ -2,8 +2,8 @@
 -- after the engine's nb_ commands).
 local T = dofile("tests/harness.lua")
 local Debug = T.require("features.nbdebug.model")
-local N = T.require("games.npc.nextbot")
-local Path = T.require("games.nextsoldier.path")
+local N = npc.nextbot
+local Path = nextsoldier.path
 
 local function V(x, y, z)
 	return {

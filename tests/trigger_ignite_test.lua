@@ -3,7 +3,7 @@
 -- driven on a fake clock against a fake player port.
 local T = dofile("tests/harness.lua")
 local Ignite = T.require("features.hazards.ignite")
-local Players = T.require("games.gameplay.players")
+local Players = gameplay.players
 
 local COND = Players.COND
 local IGNITE, DAMAGE = Ignite.IGNITE, Ignite.DAMAGE

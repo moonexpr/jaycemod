@@ -11,7 +11,7 @@ local CP = T.require("features.aiwar.scenario.control_points")
 local Koth = T.require("features.aiwar.scenario.koth")
 local Arena = T.require("features.aiwar.scenario.arena")
 local Freeform = T.require("features.aiwar.scenario.freeform")
-local Teams = T.require("games.gameplay.teams")
+local Teams = gameplay.teams
 
 local RED = Teams.RED
 local P = FS.Point

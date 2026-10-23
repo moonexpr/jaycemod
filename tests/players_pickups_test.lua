@@ -1,5 +1,5 @@
 local T = dofile("tests/harness.lua")
-local P = T.require("games.gameplay.players")
+local P = gameplay.players
 
 -- PackRatios (tf_powerup.cpp)
 

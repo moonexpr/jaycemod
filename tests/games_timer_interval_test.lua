@@ -2,7 +2,7 @@
 -- port.
 local T = dofile("tests/harness.lua")
 local Fake = dofile("tests/fake_actor.lua")
-local Interval = T.require("games.timer.interval")
+local Interval = timer.interval
 
 T.test("an unstarted interval is very old; a started one measures from its start", function()
 	local clock = Fake.Clock(10)

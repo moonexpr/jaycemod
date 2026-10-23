@@ -1,8 +1,8 @@
 -- games.gameplay.economy: every player and team NPC holds money, opened at the
 -- starting amount; earning adds to it and spending can never overdraw it.
 local T = dofile("tests/harness.lua")
-local Economy = T.require("games.gameplay.economy")
-local Transaction = T.require("foundation.transaction")
+local Economy = gameplay.economy
+local Transaction = transaction
 
 T.test("everyone starts with the starting money", function()
 	T.defined(Economy.STARTING_MONEY, "Economy.STARTING_MONEY")
@@ -90,7 +90,7 @@ T.test("a ledger made before a rerun of the economy still refuses an overdraw th
 	local ledger = Economy.New()
 	Economy.Open(ledger, "spy")
 	package.loaded["games.gameplay.economy"] = nil
-	local Rerun = T.require("games.gameplay.economy")
+	local Rerun = gameplay.economy
 	local ok, err = pcall(Rerun.Spend, ledger, "spy", Rerun.STARTING_MONEY + 1)
 	T.eq(ok, false)
 	T.eq(Transaction.IsRefusal(err, Rerun.PLAYER), true, "recognised after the rerun")

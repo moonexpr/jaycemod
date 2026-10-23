@@ -1,10 +1,10 @@
 -- features.payload.model: the team_train_watcher's decisions (team_train_watcher.cpp).
 local T = dofile("tests/harness.lua")
 local P = T.require("features.payload.model")
-local Capture = T.require("games.gameplay.capture")
+local Capture = gameplay.capture
 local Master = T.require("games.gameplay.capture.master")
-local Teams = T.require("games.gameplay.teams")
-local NEITHER = T.require("games.gameplay.rounds").RESTRICT_NEITHER
+local Teams = gameplay.teams
+local NEITHER = gameplay.rounds.RESTRICT_NEITHER
 
 local NOBODY, RED, BLU = Teams.UNASSIGNED, Teams.RED, Teams.BLUE
 

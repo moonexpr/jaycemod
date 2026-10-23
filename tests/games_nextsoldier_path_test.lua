@@ -1,5 +1,5 @@
 local T = dofile("tests/harness.lua")
-local Path = T.require("games.nextsoldier.path")
+local Path = nextsoldier.path
 local Ground = T.require("games.nextsoldier.path.ground")
 local Scatter = T.require("games.nextsoldier.path.scatter")
 

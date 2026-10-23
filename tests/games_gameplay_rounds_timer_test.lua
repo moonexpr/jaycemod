@@ -4,7 +4,7 @@
 -- timer choice.
 local T = dofile("tests/harness.lua")
 local Timer = T.require("games.gameplay.rounds.timer")
-local Teams = T.require("games.gameplay.teams")
+local Teams = gameplay.teams
 
 local NOBODY, RED = Teams.UNASSIGNED, Teams.RED
 

@@ -1,6 +1,6 @@
 local T = dofile("tests/harness.lua")
 local Tag = T.require("features.tag.model")
-local Teams = T.require("games.gameplay.teams")
+local Teams = gameplay.teams
 local Holiday = T.require("features.holiday.model")
 local Halloween = T.require("features.holiday.halloween")
 

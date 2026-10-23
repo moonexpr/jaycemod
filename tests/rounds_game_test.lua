@@ -3,11 +3,11 @@
 -- plays them. Each scenario asserts the effect list in order.
 local T = dofile("tests/harness.lua")
 local FakeObjective = dofile("tests/fake_objective.lua")
-local Rounds = T.require("games.gameplay.rounds")
+local Rounds = gameplay.rounds
 local CPMode = T.require("features.rounds.control_points").Mode
 local State = T.require("games.gameplay.rounds.state")
-local Teams = T.require("games.gameplay.teams")
-local Spawns = T.require("games.system.spawn_manager")
+local Teams = gameplay.teams
+local Spawns = system.spawn_manager
 
 local NOBODY, RED, BLUE = Teams.UNASSIGNED, Teams.RED, Teams.BLUE
 local W, SM = Rounds.WINREASON, Rounds.STALEMATE

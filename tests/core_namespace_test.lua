@@ -1,7 +1,7 @@
 -- foundation.core.namespace: the global tables a namespace index fills, one
 -- explicit Export or Replace a key.
 local T = dofile("tests/harness.lua")
-local Namespace = T.require("foundation.core.namespace")
+local Namespace = core.namespace
 
 local function Raises(fn, ...)
 	local ok, err = pcall(fn, ...)
@@ -110,19 +110,19 @@ end)
 T.test("an index runs in an environment of the calls, require and the globals", function()
 	local globals = { print = print }
 	globals._G = globals
-	local loaded = { ["foundation.list.queue"] = { New = function() end } }
+	local loaded = { ["sample.list.queue"] = { New = function() end } }
 	local function require(name) return loaded[name] end
 	local env = Namespace.Environment(globals, require)
 	local index = assert(loadstring([[
 		local list = Namespace("list")
-		Export(list, "queue", require("foundation.list.queue"))
+		Export(list, "queue", require("sample.list.queue"))
 		Export(list, "Queue", list.queue.New)
 		Export(_G, "Queue", list.queue.New)
 	]]))
 	setfenv(index, env)()
-	T.eq(globals.list.queue, loaded["foundation.list.queue"], "the module")
-	T.eq(globals.list.Queue, loaded["foundation.list.queue"].New, "a factory in the namespace")
-	T.eq(globals.Queue, loaded["foundation.list.queue"].New, "and as a plain global")
+	T.eq(globals.list.queue, loaded["sample.list.queue"], "the module")
+	T.eq(globals.list.Queue, loaded["sample.list.queue"].New, "a factory in the namespace")
+	T.eq(globals.Queue, loaded["sample.list.queue"].New, "and as a plain global")
 	T.eq(rawget(env, "list"), nil, "an index's locals stay its own")
 end)
 

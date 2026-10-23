@@ -2,7 +2,7 @@
 -- crate across a lane): the points beside it, square to the way, far
 -- enough out for the walker to pass.
 local T = dofile("tests/harness.lua")
-local Detour = T.require("games.nextsoldier.detour")
+local Detour = nextsoldier.detour
 
 local function P(x, y, z) return { x = x, y = y, z = z or 0 } end
 

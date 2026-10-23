@@ -1,6 +1,6 @@
 -- foundation.core.class: single inheritance by metatable.
 local T = dofile("tests/harness.lua")
-local Class = T.require("foundation.core.class")
+local Class = core.class
 
 local function Raises(fn, ...)
 	local ok, err = pcall(fn, ...)

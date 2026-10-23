@@ -2,8 +2,8 @@
 -- moves their respawn sooner or later, each reason told on the respawn
 -- screen; the total never cuts into the death animation.
 local T = dofile("tests/harness.lua")
-local M = T.require("games.gameplay.respawn_modifiers")
-local Credit = T.require("games.gameplay.kill_credit")
+local M = gameplay.respawn_modifiers
+local Credit = gameplay.kill_credit
 
 local NOTHING = { kills = 0, captures = 0, defenses = 0, finishedOff = false, suicide = false }
 

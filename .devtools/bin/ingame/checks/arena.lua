@@ -8,8 +8,8 @@
 -- round by elimination. The third, timed by mp_arena_round_time, ends in a
 -- stalemate with both teams alive.
 local Tests = WS_TESTS
-local Gamemode = WS.require("games.system.gamemode")
-local Rounds = WS.require("games.gameplay.rounds")
+local Gamemode = system.gamemode
+local Rounds = gameplay.rounds
 local S = WS.STATE
 local RED, BLUE = WS.TEAM_RED, WS.TEAM_BLUE
 local TEAM_SIZE = 2

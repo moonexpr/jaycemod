@@ -1,5 +1,5 @@
 local T = dofile("tests/harness.lua")
-local Features = T.require("games.system.features")
+local Features = system.features
 
 local SH, SV, CL = Features.SHARED, Features.SERVER, Features.CLIENT
 

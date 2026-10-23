@@ -1,15 +1,15 @@
 local T = dofile("tests/harness.lua")
 local FakeCombatant = dofile("tests/fake_combatant.lua")
-local Projectile = T.require("games.gameplay.projectile")
+local Projectile = gameplay.projectile
 local Rocket = T.require("games.gameplay.projectile.rocket")
-local Combat = T.require("games.gameplay.combat")
-local Teams = T.require("games.gameplay.teams")
-local NpcSystem = T.require("games.npc.nextbot")
+local Combat = gameplay.combat
+local Teams = gameplay.teams
+local NpcSystem = npc.nextbot
 local Eyeball = T.require("features.haunting.eyeball_boss")
 local BossEvents = T.require("features.npc.boss_events")
 local HalloweenBoss = T.require("features.haunting.halloween_boss")
-local Actor = T.require("games.npc.actor")
-local Players = T.require("games.gameplay.players")
+local Actor = npc.actor
+local Players = gameplay.players
 
 local V = FakeCombatant.Vector
 

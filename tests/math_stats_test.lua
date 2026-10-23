@@ -1,6 +1,6 @@
 -- foundation.math.stats: summary figures of a list of numbers.
 local T = dofile("tests/harness.lua")
-local Stats = T.require("foundation.math.stats")
+local Stats = math.stats
 
 T.test("the mean of a list, and 0 for none", function()
 	T.eq(Stats.Mean({ 1, 2, 3, 6 }), 3, "mean")

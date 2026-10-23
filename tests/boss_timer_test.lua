@@ -3,7 +3,7 @@ local FakeActor = dofile("tests/fake_actor.lua")
 local BossTimer = T.require("features.boss_timer.model")
 local Merasmus = T.require("features.haunting.merasmus")
 local HalloweenBoss = T.require("features.haunting.halloween_boss")
-local Teams = T.require("games.gameplay.teams")
+local Teams = gameplay.teams
 
 local V = FakeActor.Vector
 local MIDDLE = 0.5 -- a random draw half way: the interval itself

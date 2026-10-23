@@ -4,7 +4,7 @@
 -- rounds go through the pre-round into a running round.
 -- args: { red = n, blue = n } bots per team (default 2 each).
 local Tests = WS_TESTS
-local Gamemode = WS.require("games.system.gamemode")
+local Gamemode = system.gamemode
 local S = WS.STATE
 local RED, BLUE = WS.TEAM_RED, WS.TEAM_BLUE
 local DEFAULT_TEAM_SIZE = 2

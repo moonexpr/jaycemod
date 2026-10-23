@@ -1,6 +1,6 @@
 -- foundation.world.lease: keys held by one holder each, for a time.
 local T = dofile("tests/harness.lua")
-local Lease = T.require("foundation.world.lease")
+local Lease = world.lease
 
 T.test("a lease holds a key for its holder until it expires", function()
 	local leases = Lease.New()

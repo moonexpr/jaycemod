@@ -1,8 +1,8 @@
 -- games.gameplay.loadout: a player's five weapon slots, the weapons they own,
 -- and the store's catalog the slots are filled from.
 local T = dofile("tests/harness.lua")
-local Loadout = T.require("games.gameplay.loadout")
-local Transaction = T.require("foundation.transaction")
+local Loadout = gameplay.loadout
+local Transaction = transaction
 
 local function Catalog()
 	return Loadout.NewCatalog({
@@ -304,7 +304,7 @@ T.test("a loadout made before a rerun of the model still has its refusals recogn
 	local catalog = Catalog()
 	local before = Loadout.Starting(catalog)
 	package.loaded["games.gameplay.loadout"] = nil
-	local Rerun = T.require("games.gameplay.loadout")
+	local Rerun = gameplay.loadout
 	local _, owned = pcall(before.Buy, before, catalog:Weapon("smg"))
 	T.eq(Rerun.Refused(owned), true, "already owned")
 	local _, slot = pcall(before.Equip, before, 6, catalog:Weapon("smg"))
@@ -319,7 +319,7 @@ T.test("a loadout and a catalog made before a rerun of the model run its new met
 	local catalog = Catalog()
 	local before = Loadout.Starting(catalog)
 	package.loaded["games.gameplay.loadout"] = nil
-	local Rerun = T.require("games.gameplay.loadout")
+	local Rerun = gameplay.loadout
 	local fresh = Rerun.Starting(Catalog())
 	T.eq(before.Buy, fresh.Buy, "the loadout's methods")
 	T.eq(catalog.Weapon, Rerun.NewCatalog({}).Weapon, "the catalog's methods")

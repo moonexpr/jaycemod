@@ -1,8 +1,8 @@
 -- games.nextsoldier.squad: who leads a fire team, and the claims soldiers
 -- put on spots.
 local T = dofile("tests/harness.lua")
-local Squad = T.require("games.nextsoldier.squad")
-local Lease = T.require("foundation.world.lease")
+local Squad = nextsoldier.squad
+local Lease = world.lease
 
 local function Team(...)
 	local fireTeam = { members = {} }

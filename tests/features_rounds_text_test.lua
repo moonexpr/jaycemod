@@ -1,11 +1,11 @@
 -- features.rounds.text: the win panel's wording (CTFWinPanel::FireGameEvent) and the
 -- lookup of TF2 localization tokens in tf_english.txt (UTF-16LE).
 local T = dofile("tests/harness.lua")
-local R = T.require("games.gameplay.rounds")
+local R = gameplay.rounds
 local Text = T.require("features.rounds.text")
 
 local W = R.WINREASON
-local Teams = T.require("games.gameplay.teams")
+local Teams = gameplay.teams
 local NOBODY, RED, BLU = Teams.UNASSIGNED, Teams.RED, Teams.BLUE
 
 local function Panel(winner, reason, fullRound, remaining)

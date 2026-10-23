@@ -2,7 +2,7 @@
 -- the engine and other addons would, timer.Simple's functions run when the
 -- test says the tick has passed, and players are fakes.
 local T = dofile("tests/harness.lua")
-local Teams = T.require("games.gameplay.teams")
+local Teams = gameplay.teams
 
 local SOURCE = T.ROOT .. "ws/sv_teams.lua"
 local RUNNER = 21 -- ULX's team for a user group, as one server has it

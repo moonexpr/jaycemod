@@ -6,7 +6,7 @@
 -- begin a game for a player who may.
 local T = dofile("tests/harness.lua")
 local Tournament = T.require("features.gamemode.tournament")
-local Teams = T.require("games.gameplay.teams")
+local Teams = gameplay.teams
 local Text = T.require("features.rounds.text")
 
 local RED, BLUE = Teams.RED, Teams.BLUE

@@ -1,9 +1,9 @@
 -- games.nextsoldier.route_record: route searches recorded on the server, read
 -- back and replayed offline with the same solver and cost strategy.
 local T = dofile("tests/harness.lua")
-local Record = T.require("games.nextsoldier.route_record")
-local AStar = T.require("games.npc.astar")
-local Pathfinder = T.require("foundation.graph.pathfinder")
+local Record = nextsoldier.route_record
+local AStar = npc.astar
+local Pathfinder = graph.pathfinder
 local HL2 = T.require("games.nextsoldier.path.hl2")
 local TFBot = T.require("games.nextsoldier.path.tfbot")
 

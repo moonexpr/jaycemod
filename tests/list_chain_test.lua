@@ -1,6 +1,6 @@
 -- foundation.list.chain: whole numbers in an order, linked by arrays.
 local T = dofile("tests/harness.lua")
-local Chain = T.require("foundation.list.chain")
+local Chain = list.chain
 
 local function Joined(chain) return table.concat(chain:Ordered(), " ") end
 

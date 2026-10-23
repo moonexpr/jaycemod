@@ -1,7 +1,7 @@
 -- games.nextsoldier.brushes: the sweep TF2 makes across a nav area to find a
 -- solid func_brush standing in it (TestAndBlockOverlappingAreas).
 local T = dofile("tests/harness.lua")
-local Brushes = T.require("games.nextsoldier.brushes")
+local Brushes = nextsoldier.brushes
 
 local function P(x, y, z) return { x = x, y = y, z = z or 0 } end
 local function Key(p) return p.x .. "," .. p.y .. "," .. p.z end

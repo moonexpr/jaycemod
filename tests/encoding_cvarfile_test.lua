@@ -1,7 +1,7 @@
 -- foundation.encoding.cvarfile: convar values saved as cfg text, one
 -- `name "value"` a line, and read back only for the names asked for.
 local T = dofile("tests/harness.lua")
-local CvarFile = T.require("foundation.encoding.cvarfile")
+local CvarFile = encoding.cvarfile
 
 T.test("values are written one a line, quoted, in the order given", function()
 	local text = CvarFile.Write({ "b", "a" }, { a = "1", b = "ui/hit sound.wav" })

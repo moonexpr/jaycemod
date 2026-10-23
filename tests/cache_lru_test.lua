@@ -1,8 +1,8 @@
 -- foundation.cache.lru: a cache that evicts the least recently used.
 local T = dofile("tests/harness.lua")
-local Lru = T.require("foundation.cache.lru")
-local Cache = T.require("foundation.cache.base")
-local Class = T.require("foundation.core.class")
+local Lru = cache.lru
+local Cache = cache.base
+local Class = core.class
 
 local function Joined(list) return table.concat(list, " ") end
 

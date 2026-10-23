@@ -2,7 +2,7 @@
 -- port.
 local T = dofile("tests/harness.lua")
 local Fake = dofile("tests/fake_actor.lua")
-local Countdown = T.require("games.timer.countdown")
+local Countdown = timer.countdown
 
 T.test("an unstarted countdown has elapsed; a started one elapses after its duration", function()
 	local clock = Fake.Clock(10)

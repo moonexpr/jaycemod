@@ -1,11 +1,11 @@
 local T = dofile("tests/harness.lua")
 local Fake = dofile("tests/fake_actor.lua")
 local FakeCombatant = dofile("tests/fake_combatant.lua")
-local Combat = T.require("games.gameplay.combat")
-local Teams = T.require("games.gameplay.teams")
-local Actor = T.require("games.npc.actor")
-local Combatant = T.require("games.npc.combatant")
-local Players = T.require("games.gameplay.players")
+local Combat = gameplay.combat
+local Teams = gameplay.teams
+local Actor = npc.actor
+local Combatant = npc.combatant
+local Players = gameplay.players
 
 local V = Fake.Vector
 

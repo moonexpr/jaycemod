@@ -1,7 +1,7 @@
 -- foundation.core.constants: a closed, fixed set of named constants.
 local T = dofile("tests/harness.lua")
-local Constants = T.require("foundation.core.constants")
-local Class = T.require("foundation.core.class")
+local Constants = core.constants
+local Class = core.class
 
 local function Layout()
 	return Constants.New("inventory layout", {

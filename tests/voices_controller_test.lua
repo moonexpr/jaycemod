@@ -1,7 +1,7 @@
 -- ws/sv_voices.lua loaded in a fake GMod: its hooks are kept and called as
 -- the engine would, with fake players.
 local T = dofile("tests/harness.lua")
-local Teams = T.require("games.gameplay.teams")
+local Teams = gameplay.teams
 local Voices = T.require("ws.voices")
 
 local SOURCE = T.ROOT .. "ws/sv_voices.lua"

@@ -1,7 +1,7 @@
 -- games.world.snapshot: a model's state as plain data and back.
 local T = dofile("tests/harness.lua")
-local Snapshot = T.require("games.world.snapshot")
-local Cfsm = T.require("foundation.generator.state_machine")
+local Snapshot = world.snapshot
+local Cfsm = generator.state_machine
 
 local IDLE, BUSY = "idle", "busy"
 local LIGHT = Cfsm.Define({

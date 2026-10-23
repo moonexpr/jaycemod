@@ -1,6 +1,6 @@
 -- foundation.list.queue: a double-ended queue.
 local T = dofile("tests/harness.lua")
-local Queue = T.require("foundation.list.queue")
+local Queue = list.queue
 
 T.test("a queue gives values back first in, first out", function()
 	local q = Queue.New()

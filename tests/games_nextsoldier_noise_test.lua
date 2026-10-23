@@ -3,7 +3,7 @@
 -- footsteps by its speed, a landing by how fast it fell, and how far
 -- either carries to a listener (DrGBase's hearing).
 local T = dofile("tests/harness.lua")
-local Noise = T.require("games.nextsoldier.noise")
+local Noise = nextsoldier.noise
 
 for _, name in ipairs({ "WALK_SPEED", "RUN_SPEED", "CROUCH_WALK_SPEED", "CROUCH_RUN_SPEED", "MIN_BOUNCE_SPEED",
 	"MAX_SAFE_FALL_SPEED", "HARD_LANDING_SPEED", "JUMP_LANDING_VOLUME", "HIDDEN_HEARING" }) do

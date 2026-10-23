@@ -1,5 +1,5 @@
 local T = dofile("tests/harness.lua")
-local Teams = T.require("games.gameplay.teams")
+local Teams = gameplay.teams
 local Crit = T.require("games.gameplay.combat.crit_effects")
 
 -- CTFWeaponBase::GetTracerType and FireBullet: the weapon's tracer, by

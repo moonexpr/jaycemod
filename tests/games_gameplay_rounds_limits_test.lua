@@ -6,8 +6,8 @@
 -- death, or ends the match drawn).
 local T = dofile("tests/harness.lua")
 local Limits = T.require("games.gameplay.rounds.limits")
-local Rounds = T.require("games.gameplay.rounds")
-local Teams = T.require("games.gameplay.teams")
+local Rounds = gameplay.rounds
+local Teams = gameplay.teams
 
 local RED, BLUE = Teams.RED, Teams.BLUE
 local W = Rounds.WINREASON

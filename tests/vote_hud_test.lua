@@ -6,7 +6,7 @@
 -- panel.
 local T = dofile("tests/harness.lua")
 local VoteHud = T.require("ws.vote_hud")
-local Vote = T.require("games.gameplay.vote")
+local Vote = gameplay.vote
 
 local NOW = 100
 

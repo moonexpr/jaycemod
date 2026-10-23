@@ -1,6 +1,6 @@
 local T = dofile("tests/harness.lua")
 local Fake = dofile("tests/fake_actor.lua")
-local Projectile = T.require("games.gameplay.projectile")
+local Projectile = gameplay.projectile
 local Grenade = T.require("games.gameplay.projectile.grenade")
 
 local NONE, DETONATE, BOUNCE, EXPIRE = Projectile.NONE, Projectile.DETONATE, Projectile.BOUNCE, Projectile.EXPIRE

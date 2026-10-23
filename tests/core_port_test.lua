@@ -1,6 +1,6 @@
 -- foundation.core.port: an interface, as the methods a value must have.
 local T = dofile("tests/harness.lua")
-local Port = T.require("foundation.core.port")
+local Port = core.port
 
 local function Raises(fn, ...)
 	local ok, err = pcall(fn, ...)

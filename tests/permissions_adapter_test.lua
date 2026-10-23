@@ -3,8 +3,8 @@
 -- applying games.system.permissions. Run against a fake CAMI and fake
 -- replicated state.
 local T = dofile("tests/harness.lua")
-local Permissions = T.require("games.system.permissions")
-local PlayMode = T.require("games.system.play_mode")
+local Permissions = system.permissions
+local PlayMode = system.play_mode
 
 local function Load(state)
 	local registered, asked = {}, {}

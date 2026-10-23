@@ -3,10 +3,10 @@
 -- over a PointSet: round choice, wins, stages, the base point, and the
 -- seam between the capture feature's bindings, controller and models.
 local T = dofile("tests/harness.lua")
-local Capture = T.require("games.gameplay.capture")
+local Capture = gameplay.capture
 local Master = T.require("games.gameplay.capture.master")
-local Rounds = T.require("games.gameplay.rounds")
-local Teams = T.require("games.gameplay.teams")
+local Rounds = gameplay.rounds
+local Teams = gameplay.teams
 
 local NOBODY, RED, BLU = Teams.UNASSIGNED, Teams.RED, Teams.BLUE
 local NO_FLAGS = 0

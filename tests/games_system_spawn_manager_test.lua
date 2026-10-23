@@ -4,7 +4,7 @@
 -- brings nobody; lifting the last lock releases all of them. Shared, it
 -- also says why a player is not spawning, in TF2's words.
 local T = dofile("tests/harness.lua")
-local S = T.require("games.system.spawn_manager")
+local S = system.spawn_manager
 
 local function Names(players)
 	local names = {}

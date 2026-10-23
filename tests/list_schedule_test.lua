@@ -1,6 +1,6 @@
 -- foundation.list.schedule: cooperative tasks that share a slice of time.
 local T = dofile("tests/harness.lua")
-local Scheduler = T.require("foundation.list.schedule")
+local Scheduler = list.schedule
 
 -- A clock the test moves: each Now() call advances it by `step`.
 local function Clock(step)

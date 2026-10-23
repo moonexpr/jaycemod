@@ -2,7 +2,7 @@
 -- a player joining.
 local T = dofile("tests/harness.lua")
 local Fake = dofile("tests/fake_actor.lua")
-local Idle = T.require("games.system.idle")
+local Idle = system.idle
 
 local DELAY = 300
 local STEP = 1

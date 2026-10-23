@@ -1,6 +1,6 @@
 local T = dofile("tests/harness.lua")
-local Teams = T.require("games.gameplay.teams")
-local Credit = T.require("games.gameplay.kill_credit")
+local Teams = gameplay.teams
+local Credit = gameplay.kill_credit
 
 T.test("windows and the respawn modifier are defined", function()
 	T.defined(Credit.HISTORY, "history")

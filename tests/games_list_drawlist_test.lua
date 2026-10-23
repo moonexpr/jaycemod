@@ -2,7 +2,7 @@
 -- (game.match.team_scores.blue_score), run in a fixed order, any of them
 -- hidden by its path or an ancestor's, or held back by its own condition.
 local T = dofile("tests/harness.lua")
-local DrawList = T.require("games.list.drawlist")
+local DrawList = list.drawlist
 
 -- A list whose callbacks log their names, and the log.
 local function Logged()

@@ -6,7 +6,7 @@
 -- each is shown to bite on a fixture feature in a temp directory, never
 -- under the gamemode.
 local T = dofile("tests/harness.lua")
-local Features = T.require("games.system.features")
+local Features = system.features
 
 local FEATURES = "addons/sandcastle/gamemodes/sandcastle/gamemode/features"
 

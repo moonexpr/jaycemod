@@ -1,6 +1,6 @@
 local T = dofile("tests/harness.lua")
-local S = T.require("games.gameplay.spectate")
-local Teams = T.require("games.gameplay.teams")
+local S = gameplay.spectate
+local Teams = gameplay.teams
 
 local NOBODY, SPEC, RED, BLU = Teams.UNASSIGNED, Teams.SPECTATOR, Teams.RED, Teams.BLUE
 local TIMES = S.TIMES

@@ -2,8 +2,8 @@
 -- faster than a safe fall (games.nextsoldier.noise's MAX_SAFE_FALL_SPEED)
 -- rappels: it comes down no faster than RAPPEL_SPEED.
 local T = dofile("tests/harness.lua")
-local Rappel = T.require("games.nextsoldier.rappel")
-local Noise = T.require("games.nextsoldier.noise")
+local Rappel = nextsoldier.rappel
+local Noise = nextsoldier.noise
 
 local GRAVITY = 600
 

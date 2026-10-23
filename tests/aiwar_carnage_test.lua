@@ -3,8 +3,8 @@
 -- humiliation phase, driven as scenarios against tests/fake_soldier.lua.
 local T = dofile("tests/harness.lua")
 local FS = dofile("tests/fake_soldier.lua")
-local Hunt = T.require("games.nextsoldier.hunt")
-local Teams = T.require("games.gameplay.teams")
+local Hunt = nextsoldier.hunt
+local Teams = gameplay.teams
 
 local RED, BLUE = Teams.RED, Teams.BLUE
 local P = FS.Point
@@ -92,10 +92,10 @@ end)
 
 -- The humiliation phase in the soldiers' orders ------------------------------
 
-local N = T.require("games.npc.nextbot")
+local N = npc.nextbot
 local AiWar = T.require("features.aiwar.model")
 local Orders = T.require("features.aiwar.orders")
-local Track = T.require("foundation.math.polyline")
+local Track = math.polyline
 local STATE = T.require("games.gameplay.rounds.state")
 
 local TICK = 0.25

@@ -1,9 +1,9 @@
 -- foundation.cache.memo: a cache of computed values, each kept while
 -- the stamp it was computed under holds.
 local T = dofile("tests/harness.lua")
-local Memo = T.require("foundation.cache.memo")
-local Cache = T.require("foundation.cache.base")
-local Class = T.require("foundation.core.class")
+local Memo = cache.memo
+local Cache = cache.base
+local Class = core.class
 
 local function Counting()
 	local counter = { calls = 0 }

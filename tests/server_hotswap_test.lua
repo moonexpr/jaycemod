@@ -8,7 +8,7 @@
 -- from the fresh run, a table the live controller lacks, or a method that
 -- closes over the fresh controller refuses the whole swap.
 local T = dofile("tests/harness.lua")
-local Features = T.require("games.system.features")
+local Features = system.features
 
 local ROOT = "sandcastle/gamemode/"
 

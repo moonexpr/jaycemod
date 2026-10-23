@@ -1,7 +1,7 @@
 -- foundation.nodegraph: an AI node graph made from the nav mesh, written in
 -- the engine's .ain format (CAI_NetworkManager::SaveNetworkGraph).
 local T = dofile("tests/harness.lua")
-local Graph = T.require("foundation.nodegraph")
+local Graph = nodegraph
 
 local function P(x, y, z) return { x = x, y = y, z = z or 0 } end
 

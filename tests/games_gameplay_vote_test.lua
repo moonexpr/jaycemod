@@ -4,9 +4,9 @@
 -- the electorate voted (QUORUM_SHARE) and enough of those votes are yes
 -- (PASS_SHARE). Refusals use TF2's reasons (GameUI_vote_failed_*).
 local T = dofile("tests/harness.lua")
-local Vote = T.require("games.gameplay.vote")
-local PlayMode = T.require("games.system.play_mode")
-local Transaction = T.require("foundation.transaction")
+local Vote = gameplay.vote
+local PlayMode = system.play_mode
+local Transaction = transaction
 
 local DURATION, COOLDOWN = 20, 120 -- mp_vote_duration's and mp_vote_cooldown's defaults, as the server reads them
 

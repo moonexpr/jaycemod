@@ -1,9 +1,9 @@
 local T = dofile("tests/harness.lua")
 local FakeActor = dofile("tests/fake_actor.lua")
 local Wheel = T.require("features.wheel.model")
-local Players = T.require("games.gameplay.players")
+local Players = gameplay.players
 local Attributes = T.require("games.gameplay.players.attributes")
-local Teams = T.require("games.gameplay.teams")
+local Teams = gameplay.teams
 
 local V = FakeActor.Vector
 local COND = Players.COND

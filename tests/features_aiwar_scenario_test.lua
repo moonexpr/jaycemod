@@ -6,8 +6,8 @@ local AiWar = T.require("features.aiwar.model")
 local Orders = T.require("features.aiwar.orders")
 local Scenario = T.require("features.aiwar.scenario")
 local Payload = T.require("features.aiwar.scenario.payload")
-local Track = T.require("foundation.math.polyline")
-local Teams = T.require("games.gameplay.teams")
+local Track = math.polyline
+local Teams = gameplay.teams
 
 local RED, BLUE = Teams.RED, Teams.BLUE
 
@@ -29,7 +29,7 @@ T.test("the variants are keyed by the rounds modes' NAMEs", function()
 	for _, path in ipairs({ "features.payload.round", "features.rounds.control_points", "features.koth.model", "features.arena.round", "features.flag.model", "features.mvm.model" }) do
 		names[T.require(path).Mode.NAME] = true
 	end
-	names[T.require("games.gameplay.rounds").DEATHMATCH] = true
+	names[gameplay.rounds.DEATHMATCH] = true
 	for name in pairs(Scenario.VARIANTS) do T.eq(names[name], true, name .. " is a rounds mode") end
 	for name in pairs(names) do T.eq(Scenario.VARIANTS[name] ~= nil, true, name .. " has a variant") end
 end)
@@ -344,7 +344,7 @@ end)
 -- opens: every squad explores and hunts, whatever objective the map has.
 T.test("a deathmatch is fought as arena's shut round: all explore, with no point needed", function()
 	local Deathmatch = T.require("features.aiwar.scenario.deathmatch")
-	T.eq(Scenario.For(T.require("games.gameplay.rounds").DEATHMATCH), Deathmatch.Scenario, "its own variant")
+	T.eq(Scenario.For(gameplay.rounds.DEATHMATCH), Deathmatch.Scenario, "its own variant")
 	local field = {
 		bases = { [RED] = P(0, 0), [BLUE] = P(4000, 0) },
 		waypoints = { P(1000, 0), P(2000, 0) },

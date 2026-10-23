@@ -1,7 +1,7 @@
 -- foundation.encoding.consolecfg: a cfg file's text as the console commands it runs,
 -- for configs an addon ships, which exec cannot reach.
 local T = dofile("tests/harness.lua")
-local Cfg = T.require("foundation.encoding.consolecfg")
+local Cfg = encoding.consolecfg
 
 T.test("each command line is kept, as written; comments and blank lines are not", function()
 	local commands = Cfg.Commands(table.concat({

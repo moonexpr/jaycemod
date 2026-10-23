@@ -1,6 +1,6 @@
 -- foundation.world.sets: named sets, closed vocabularies parsed once.
 local T = dofile("tests/harness.lua")
-local Sets = T.require("foundation.world.sets")
+local Sets = world.sets
 
 local PATH, COST, NAV = "PATH", "COST", "NAV"
 

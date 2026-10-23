@@ -1,6 +1,6 @@
 -- foundation.analysis.memory: estimated bytes held by named roots.
 local T = dofile("tests/harness.lua")
-local Memory = T.require("foundation.analysis.memory")
+local Memory = analysis.memory
 
 local function Bytes(report, name)
 	for _, row in ipairs(report.rows) do

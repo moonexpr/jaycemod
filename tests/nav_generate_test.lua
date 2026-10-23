@@ -6,7 +6,7 @@
 -- spawn barriers made passable, and the map reset when it is done. Run
 -- against fakes of concommand, ents, navmesh, timer and game.
 local T = dofile("tests/harness.lua")
-local Gamemode = T.require("games.system.gamemode")
+local Gamemode = system.gamemode
 
 local function Ent(class, x, y, z)
 	return { class = class, GetClass = function() return class end, GetPos = function() return { x = x, y = y, z = z } end }

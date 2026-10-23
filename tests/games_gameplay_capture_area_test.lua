@@ -2,9 +2,9 @@
 -- machine (trigger_area_capture.cpp), and the point's capture sounds.
 local T = dofile("tests/harness.lua")
 local C = T.require("games.gameplay.capture.area")
-local Capture = T.require("games.gameplay.capture")
+local Capture = gameplay.capture
 
-local Teams = T.require("games.gameplay.teams")
+local Teams = gameplay.teams
 
 local NOBODY, RED, BLU = Teams.UNASSIGNED, Teams.RED, Teams.BLUE
 local LABEL = { [NOBODY] = "nobody", [RED] = "red", [BLU] = "blu" }

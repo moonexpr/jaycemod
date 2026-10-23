@@ -47,7 +47,7 @@ T.test("each setting's range is what its menu control offers", function()
 end)
 
 T.test("every setting names the privilege that may change it", function()
-	local Permissions = T.require("games.system.permissions")
+	local Permissions = system.permissions
 	local known = {}
 	for _, p in ipairs(Permissions.PRIVILEGES) do known[p.name] = true end
 	for name, s in Settings.SETTINGS() do T.eq(known[s.guard], true, name) end
@@ -58,7 +58,7 @@ T.test("every setting names the privilege that may change it", function()
 end)
 
 T.test("GMod's host-only NPCs and Server menu options are settings, behind server_options", function()
-	local Permissions = T.require("games.system.permissions")
+	local Permissions = system.permissions
 	for _, name in ipairs(Settings.PROXIED) do
 		T.eq(Settings.SETTINGS[name] ~= nil, true, name)
 		T.eq(Settings.SETTINGS[name].guard, Permissions.SERVER_OPTIONS, name)
@@ -69,7 +69,7 @@ T.test("GMod's host-only NPCs and Server menu options are settings, behind serve
 end)
 
 T.test("Allowed says whether a holder of privileges may change a setting", function()
-	local Permissions = T.require("games.system.permissions")
+	local Permissions = system.permissions
 	local function Holds(...)
 		local held = {}
 		for _, n in ipairs({ ... }) do held[n] = true end

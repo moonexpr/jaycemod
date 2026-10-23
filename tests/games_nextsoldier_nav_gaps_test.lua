@@ -6,7 +6,7 @@
 -- each comes with where to cross, from just inside one to just inside the
 -- other, for the server to sweep a walker across before it links them.
 local T = dofile("tests/harness.lua")
-local Gaps = T.require("games.nextsoldier.nav_gaps")
+local Gaps = nextsoldier.nav_gaps
 
 -- An area from its extent, flat at z.
 local function Area(id, x0, y0, x1, y1, z)

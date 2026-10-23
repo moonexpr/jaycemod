@@ -1,8 +1,8 @@
 -- foundation.cache.base: the base of the caches, and its own policy:
 -- bounded, the first in the first out.
 local T = dofile("tests/harness.lua")
-local Cache = T.require("foundation.cache.base")
-local Class = T.require("foundation.core.class")
+local Cache = cache.base
+local Class = core.class
 
 -- A release that writes down what it was handed, "key=value:reason".
 local function Released()

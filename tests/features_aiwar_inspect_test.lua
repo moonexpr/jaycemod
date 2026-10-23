@@ -2,7 +2,7 @@
 -- the debugging commands and the overlay tell them.
 local T = dofile("tests/harness.lua")
 local Inspect = T.require("features.aiwar.inspect")
-local Tactics = T.require("games.nextsoldier.tactics")
+local Tactics = nextsoldier.tactics
 local Orders = T.require("features.aiwar.orders")
 
 local RED, BLUE = 2, 3

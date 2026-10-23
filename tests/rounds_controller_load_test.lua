@@ -10,7 +10,7 @@
 -- and any call of which returns it, so the top level runs and nothing it
 -- defers (timer.Simple) ever does.
 local T = dofile("tests/harness.lua")
-local Teams = T.require("games.gameplay.teams")
+local Teams = gameplay.teams
 local STATE = T.require("games.gameplay.rounds.state")
 
 local SOURCE = T.ROOT .. "features/rounds/sv.lua"
@@ -111,7 +111,7 @@ end)
 -- entity stays valid until the frame ends, so the controller must have let
 -- go of it as it was unbound, and make a new one.
 T.test("a listener added again from the same place replaces the old, as a file run again does", function()
-	local Rounds = T.require("games.gameplay.rounds")
+	local Rounds = gameplay.rounds
 	local phase = Rounds.PHASE_ARENA_START
 	local before = #controller.listeners[phase]
 	local ran = {}

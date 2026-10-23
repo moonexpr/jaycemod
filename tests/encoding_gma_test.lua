@@ -1,6 +1,6 @@
 local T = dofile("tests/harness.lua")
-local Gma = T.require("foundation.encoding.gma")
-local Buffer = T.require("foundation.file.buffer")
+local Gma = encoding.gma
+local Buffer = file.buffer
 
 local FILES = {
 	{ path = "sound/a/one.wav", data = "RIFF one" },

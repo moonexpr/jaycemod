@@ -2,7 +2,7 @@
 -- next (CNavArea::ComputeClosestPointInPortal), so waypoints keep off the
 -- corners and door jambs at an opening's ends.
 local T = dofile("tests/harness.lua")
-local Portal = T.require("games.nextsoldier.portal")
+local Portal = nextsoldier.portal
 
 local N, E, S, W = Portal.NORTH, Portal.EAST, Portal.SOUTH, Portal.WEST
 

@@ -2,7 +2,7 @@
 -- replicated facts. A stopped game is Sandbox mode even while an AI war is
 -- set up; otherwise an AI war or an arena names the kind of Gameplay mode.
 local T = dofile("tests/harness.lua")
-local PlayMode = T.require("games.system.play_mode")
+local PlayMode = system.play_mode
 
 local function Facts(over)
 	local facts = {

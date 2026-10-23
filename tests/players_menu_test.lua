@@ -4,10 +4,10 @@
 -- grants need the players privilege. Run against fake events, players and
 -- economy.
 local T = dofile("tests/harness.lua")
-local Reports = T.require("games.gameplay.reports")
-local Economy = T.require("games.gameplay.economy")
-local Permissions = T.require("games.system.permissions")
-local Transaction = T.require("foundation.transaction")
+local Reports = gameplay.reports
+local Economy = gameplay.economy
+local Permissions = system.permissions
+local Transaction = transaction
 
 local function Player(name, held)
 	local p = {

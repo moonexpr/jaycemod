@@ -1,7 +1,7 @@
 -- foundation.configstore: named whole-number values, each held to a range
 -- and guarded by what the caller names, parsed from text.
 local T = dofile("tests/harness.lua")
-local ConfigStore = T.require("foundation.configstore")
+local ConfigStore = configstore
 
 local function Raises(fn, ...)
 	local ok, err = pcall(fn, ...)

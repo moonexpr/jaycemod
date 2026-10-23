@@ -1,7 +1,7 @@
 -- games.nextsoldier.doors: TF2's rule for which doors close the nav mesh to
 -- whom (CTFNavMesh::ComputeBlockedAreas).
 local T = dofile("tests/harness.lua")
-local Doors = T.require("games.nextsoldier.doors")
+local Doors = nextsoldier.doors
 
 local RED, BLUE = 2, 3
 

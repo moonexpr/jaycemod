@@ -2,10 +2,10 @@
 -- into a fresh round at another plays on exactly as the original does.
 local T = dofile("tests/harness.lua")
 local FakeObjective = dofile("tests/fake_objective.lua")
-local Rounds = T.require("games.gameplay.rounds")
+local Rounds = gameplay.rounds
 local CPMode = T.require("features.rounds.control_points").Mode
 local State = T.require("games.gameplay.rounds.state")
-local Teams = T.require("games.gameplay.teams")
+local Teams = gameplay.teams
 
 local RED, BLUE = Teams.RED, Teams.BLUE
 local W = Rounds.WINREASON

@@ -1,8 +1,8 @@
 local T = dofile("tests/harness.lua")
-local S = T.require("games.gameplay.spawn")
+local S = gameplay.spawn
 
-local Teams = T.require("games.gameplay.teams")
-local NO_POINT = T.require("games.gameplay.rounds").NO_POINT
+local Teams = gameplay.teams
+local NO_POINT = gameplay.rounds.NO_POINT
 
 local NOBODY, RED, BLU = Teams.UNASSIGNED, Teams.RED, Teams.BLUE
 local KV = tostring -- the map gives keyvalues as text

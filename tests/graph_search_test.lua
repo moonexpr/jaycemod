@@ -1,7 +1,7 @@
 -- foundation.graph.search: breadth-first floods and connected components over
 -- a graph the caller describes.
 local T = dofile("tests/harness.lua")
-local Graph = T.require("foundation.graph.search")
+local Graph = graph.search
 
 -- 1 - 2 - 3 - 4 - 5, and 6 - 7 apart.
 local EDGES = {

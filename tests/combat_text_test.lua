@@ -1,5 +1,5 @@
 local T = dofile("tests/harness.lua")
-local P = T.require("games.gameplay.players")
+local P = gameplay.players
 local Text = T.require("games.gameplay.combat.combat_text")
 
 local VICTIM, OTHER = "victim", "other"

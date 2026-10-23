@@ -2,7 +2,7 @@
 -- foundation/, features/ and ws/ except server ones (sv.lua, sv_*), and every
 -- module a shipped file requires is itself shipped.
 local T = dofile("tests/harness.lua")
-local Features = T.require("games.system.features")
+local Features = system.features
 
 local ENTITIES = T.ROOT .. "../entities/"
 local LUA = "%.lua$"

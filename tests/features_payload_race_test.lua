@@ -2,7 +2,7 @@
 local T = dofile("tests/harness.lua")
 local R = T.require("features.payload.race")
 
-local Teams = T.require("games.gameplay.teams")
+local Teams = gameplay.teams
 
 local NOBODY, RED, BLU = Teams.UNASSIGNED, Teams.RED, Teams.BLUE
 

@@ -1,8 +1,8 @@
 -- foundation.core.enum: named constants numbered in order.
 local T = dofile("tests/harness.lua")
-local Enum = T.require("foundation.core.enum")
-local Constants = T.require("foundation.core.constants")
-local Class = T.require("foundation.core.class")
+local Enum = core.enum
+local Constants = core.constants
+local Class = core.class
 
 local FIRST = 0
 

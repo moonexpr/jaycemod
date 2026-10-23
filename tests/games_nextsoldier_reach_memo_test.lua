@@ -2,9 +2,9 @@
 -- the end, kept so a goal outside one is known out of reach without a
 -- search.
 local T = dofile("tests/harness.lua")
-local ReachMemo = T.require("games.nextsoldier.reach_memo")
-local Expiring = T.require("foundation.cache.expiring")
-local Class = T.require("foundation.core.class")
+local ReachMemo = nextsoldier.reach_memo
+local Expiring = cache.expiring
+local Class = core.class
 local HL2 = T.require("games.nextsoldier.path.hl2")
 local TFBot = T.require("games.nextsoldier.path.tfbot")
 

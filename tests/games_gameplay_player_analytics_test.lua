@@ -2,7 +2,7 @@
 -- enemy killed, a capture, a round won), read back as retention by day
 -- cohort and the time to each player's first victory of each kind.
 local T = dofile("tests/harness.lua")
-local A = T.require("games.gameplay.player_analytics")
+local A = gameplay.player_analytics
 
 local DAY, HOUR, MINUTE = 86400, 3600, 60
 local D0 = 20000 * DAY -- a day's start, in Unix seconds

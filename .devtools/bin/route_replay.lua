@@ -13,13 +13,13 @@
 -- goal it called out of reach that the live search reached). Exits 1 when
 -- any finished search replays differently.
 local T = dofile("tests/harness.lua")
-local Record = T.require("games.nextsoldier.route_record")
-local Pathfinder = T.require("foundation.graph.pathfinder")
-local ReachMemo = T.require("games.nextsoldier.reach_memo")
+local Record = nextsoldier.route_record
+local Pathfinder = graph.pathfinder
+local ReachMemo = nextsoldier.reach_memo
 
 local STRATEGIES = {
 	hl2 = T.require("games.nextsoldier.path.hl2"),
-	lanes = T.require("games.nextsoldier.lanes").Strategy,
+	lanes = nextsoldier.lanes.Strategy,
 }
 
 local MICROSECONDS = 1e6

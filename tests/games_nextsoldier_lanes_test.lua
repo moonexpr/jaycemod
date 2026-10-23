@@ -1,8 +1,8 @@
 -- games.nextsoldier.lanes: keeping routes different enough to be lanes,
 -- handing them to squads, and walking them.
 local T = dofile("tests/harness.lua")
-local Lanes = T.require("games.nextsoldier.lanes")
-local Path = T.require("games.nextsoldier.path")
+local Lanes = nextsoldier.lanes
+local Path = nextsoldier.path
 
 local function P(x, y) return { x = x, y = y, z = 0 } end
 local function Lane(ids, length) return { ids = ids, points = {}, length = length } end

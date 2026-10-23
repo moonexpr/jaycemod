@@ -1,7 +1,7 @@
 -- foundation.math.geometry: distances and points along the way between points { x, y, z },
 -- where a missing z counts as 0.
 local T = dofile("tests/harness.lua")
-local Geometry = T.require("foundation.math.geometry")
+local Geometry = math.geometry
 
 T.test("the distance between two 3D points", function()
 	T.eq(Geometry.Distance({ x = 0, y = 0, z = 0 }, { x = 2, y = 3, z = 6 }), 7, "0,0,0 to 2,3,6")

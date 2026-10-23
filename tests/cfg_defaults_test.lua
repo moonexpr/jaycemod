@@ -48,7 +48,7 @@ end
 -- modules that hold their defaults.
 local function IndirectDefaults(defaults)
 	defaults.mp_aiwar_team_size = tostring(T.require("features.aiwar.model").TEAM_SIZE_DEFAULT)
-	defaults.ws_nodegraph_max_nodes = tostring(T.require("foundation.nodegraph").MAX_NODES)
+	defaults.ws_nodegraph_max_nodes = tostring(nodegraph.MAX_NODES)
 	defaults.tf_max_active_zombie = tostring(T.require("features.haunting.zombie").MAX_ACTIVE_DEFAULT)
 	defaults.tf_flag_caplimit = tostring(T.require("features.flag.model").CAPLIMIT_DEFAULT)
 	defaults.ws_mvm_setup_time = tostring(T.require("features.mvm.model").SETUP_SECONDS)

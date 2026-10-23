@@ -1,7 +1,7 @@
 -- games.gameplay.kill_icons: TF2's kill icons (scripts/mod_textures.txt's
 -- entries on its HUD/d_images sheets) and which one a kill shows.
 local T = dofile("tests/harness.lua")
-local Icons = T.require("games.gameplay.kill_icons")
+local Icons = gameplay.kill_icons
 
 local TEXTURES = [["sprites/640_hud"
 {

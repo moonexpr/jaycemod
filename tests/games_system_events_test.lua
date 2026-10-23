@@ -1,6 +1,6 @@
 local T = dofile("tests/harness.lua")
-local Events = T.require("games.system.events")
-local Buffer = T.require("foundation.file.buffer")
+local Events = system.events
+local Buffer = file.buffer
 
 -- A fake net buffer with GMod's net.* write and read functions, called with
 -- a dot as the adapter calls net's. Writes queue up; reads take them in

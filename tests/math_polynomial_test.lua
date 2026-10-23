@@ -1,6 +1,6 @@
 -- foundation.math.polynomial: evaluation and real roots.
 local T = dofile("tests/harness.lua")
-local Polynomial = T.require("foundation.math.polynomial")
+local Polynomial = math.polynomial
 
 local EPS = 1e-9
 

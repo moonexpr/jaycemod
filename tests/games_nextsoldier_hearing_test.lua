@@ -1,7 +1,7 @@
 -- Hearing gunfire (games.nextsoldier.hearing): where a soldier who hears a
 -- shot turns to look, so its own sight can find the shooter or the fight.
 local T = dofile("tests/harness.lua")
-local Hearing = T.require("games.nextsoldier.hearing")
+local Hearing = nextsoldier.hearing
 
 local function P(x, y, z) return { x = x, y = y, z = z or 0 } end
 

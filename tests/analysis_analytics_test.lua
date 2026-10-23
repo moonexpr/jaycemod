@@ -1,7 +1,7 @@
 -- foundation.analysis.analytics: timers of CPU time, counters, memory and
 -- pressure against the tick's budget.
 local T = dofile("tests/harness.lua")
-local Analytics = T.require("foundation.analysis.analytics")
+local Analytics = analysis.analytics
 
 local function Clock()
 	local clock = { time = 0 }

@@ -1,7 +1,7 @@
 -- games.system.gamemode: the gamemode's own mode, Sandbox or Gameplay, and the
 -- countdown between them, driven through whole scenarios with injected time.
 local T = dofile("tests/harness.lua")
-local Gamemode = T.require("games.system.gamemode")
+local Gamemode = system.gamemode
 
 local ROUNDS, NO_ROUNDS = true, false
 local ENABLED, DISABLED = true, false -- sv_gameplay_enabled at map load

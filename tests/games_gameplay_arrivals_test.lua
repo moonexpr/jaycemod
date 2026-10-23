@@ -1,7 +1,7 @@
 -- games.gameplay.arrivals: the players expected from the previous map, and the
 -- file that carries them across the map change.
 local T = dofile("tests/harness.lua")
-local Arrivals = T.require("games.gameplay.arrivals")
+local Arrivals = gameplay.arrivals
 
 local NOW = 1000000
 local ALICE, BOB, CAROL = "76561197960265729", "76561197960265730", "76561197960265731"

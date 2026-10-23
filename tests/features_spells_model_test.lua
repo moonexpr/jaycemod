@@ -5,7 +5,7 @@ local T = dofile("tests/harness.lua")
 local Fake = dofile("tests/fake_caster.lua")
 local Spells = T.require("features.spells.model")
 local SpellSet = T.require("features.spells.halloween")
-local Teams = T.require("games.gameplay.teams")
+local Teams = gameplay.teams
 
 local V = Fake.Vector
 
@@ -320,7 +320,7 @@ end)
 -------------------------------------------------------------------------------
 -- The flights spell projectiles bind to (games.gameplay.projectile variants)
 
-local Projectile = T.require("games.gameplay.projectile")
+local Projectile = gameplay.projectile
 local Jar = T.require("games.gameplay.projectile.jar")
 local Orb = T.require("features.spells.orb")
 

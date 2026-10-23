@@ -4,7 +4,7 @@
 -- game's on first read), and neither loops nor scans
 -- (docs/foundation-game-split-plan.md). The test scans; the loader never does.
 local T = dofile("tests/harness.lua")
-local Namespace = T.require("foundation.core.namespace")
+local Namespace = core.namespace
 
 local LOADER = T.ROOT .. "shared_loader.lua"
 local INDEX_CALL = "Index%(%s*\"([%w_/.]+)\"%s*%)"
@@ -125,7 +125,7 @@ T.test("foundation's indexes publish each module of their folder at once", funct
 			T.eq(rawget(ns, key), T.require(name), folder .. key .. " is published")
 		end
 	end
-	T.eq(globals.transaction, T.require("foundation.transaction"), "a root module is a plain global")
+	T.eq(globals.transaction, transaction, "a root module is a plain global")
 end)
 
 T.test("game's inits publish each module of their folder, loaded on first read", function()
@@ -155,8 +155,8 @@ T.test("running the indexes again, as a reload does, is not refused", function()
 	local globals = Globals()
 	RunIndexes(globals)
 	RunIndexes(globals)
-	T.eq(globals.list.queue, T.require("foundation.list.queue"), "list.queue")
-	T.eq(globals.list.drawlist, T.require("games.list.drawlist"), "list.drawlist")
+	T.eq(globals.list.queue, _G.list.queue, "list.queue")
+	T.eq(globals.list.drawlist, _G.list.drawlist, "list.drawlist")
 end)
 
 T.test("a published foundation module uses only foundation", function()
@@ -172,11 +172,14 @@ end)
 
 -- A published module is read by its global (math.geometry); require is for
 -- what has none: a module's own parts, features' and ws/'s modules. Only the
--- loader and the indexes require a published module by name.
+-- loader, the indexes and the test harness (the tests' loader) require a
+-- published module by name: the game's code, the tests and the tools read
+-- its global, by require, WS.require or T.require alike.
 T.test("no file requires a published module by name", function()
 	local found = {}
-	for _, path in ipairs(Lines("find addons -name '*.lua'")) do
-		if not path:match("_index%.lua$") and not path:match("_init%.lua$") and not path:match("shared_loader%.lua$") then
+	for _, path in ipairs(Lines("find addons tests .devtools/bin -name '*.lua'")) do
+		if not path:match("_index%.lua$") and not path:match("_init%.lua$") and not path:match("shared_loader%.lua$")
+			and path ~= "tests/harness.lua" then
 			local code = WithoutComments(Read(path))
 			for name in code:gmatch("require%(%s*[\"']([%w_.]+)[\"']") do
 				local global = T.Published.global[name]

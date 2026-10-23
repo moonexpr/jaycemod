@@ -2,8 +2,8 @@
 -- engine itself is tested through games.npc.nextbot (games_npc_nextbot_test.lua), which runs
 -- on it.
 local T = dofile("tests/harness.lua")
-local Hfsm = T.require("games.generator.hfsm")
-local Port = T.require("foundation.core.port")
+local Hfsm = generator.hfsm
+local Port = core.port
 
 -- A soldier the port is checked against: more methods than any chart needs.
 local function Soldier()

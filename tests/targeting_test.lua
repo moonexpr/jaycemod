@@ -1,7 +1,7 @@
 local T = dofile("tests/harness.lua")
-local Targeting = T.require("games.npc.targeting")
-local Players = T.require("games.gameplay.players")
-local Teams = T.require("games.gameplay.teams")
+local Targeting = npc.targeting
+local Players = gameplay.players
+local Teams = gameplay.teams
 
 local C = Players.COND
 

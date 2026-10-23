@@ -1,6 +1,6 @@
 -- foundation.encoding.keyvalues: Valve's KeyValues text, read pair by pair.
 local T = dofile("tests/harness.lua")
-local KeyValues = T.require("foundation.encoding.keyvalues")
+local KeyValues = encoding.keyvalues
 
 local function Pairs(text)
 	local out = {}

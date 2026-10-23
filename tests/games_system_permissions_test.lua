@@ -4,8 +4,8 @@
 -- model adds only the rules a rank cannot express: everyone spawns in
 -- Sandbox mode, and switching tampering off refuses it to every player.
 local T = dofile("tests/harness.lua")
-local Permissions = T.require("games.system.permissions")
-local PlayMode = T.require("games.system.play_mode")
+local Permissions = system.permissions
+local PlayMode = system.play_mode
 
 local RANKS = {
 	[Permissions.RANK_PLAYER] = true,

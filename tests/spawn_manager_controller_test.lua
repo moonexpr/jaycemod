@@ -5,7 +5,7 @@
 -- told the lock, and each player why they are not spawning. Run against
 -- fakes of hook, the NW2 globals and players.
 local T = dofile("tests/harness.lua")
-local S = T.require("games.system.spawn_manager")
+local S = system.spawn_manager
 
 local function Player(alive)
 	local p = { alive = alive, spawns = 0, centre = {}, nw = {} }

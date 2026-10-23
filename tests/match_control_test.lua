@@ -3,7 +3,7 @@
 -- reward paid to the round's winners. Run against fake commands, rounds,
 -- editors and players.
 local T = dofile("tests/harness.lua")
-local Permissions = T.require("games.system.permissions")
+local Permissions = system.permissions
 
 local RED, BLUE, UNASSIGNED, SPECTATOR = 2, 3, 0, 1
 

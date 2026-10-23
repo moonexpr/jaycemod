@@ -1,6 +1,6 @@
 -- foundation.list.slots: whole-number slots handed out and taken back.
 local T = dofile("tests/harness.lua")
-local Slots = T.require("foundation.list.slots")
+local Slots = list.slots
 
 T.test("slots are handed out from one up, each to one holder", function()
 	local pool = Slots.New()

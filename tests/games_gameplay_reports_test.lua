@@ -4,8 +4,8 @@
 -- on a server of exactly three players, where three reporters would be
 -- everyone but the target.
 local T = dofile("tests/harness.lua")
-local Reports = T.require("games.gameplay.reports")
-local Transaction = T.require("foundation.transaction")
+local Reports = gameplay.reports
+local Transaction = transaction
 
 local CONFIGURED = 3 -- mp_reports_kick_count's default, as the server reads it
 

@@ -9,8 +9,8 @@
 --   local me = FakeCombatant.Combatant({ world = world, team = Teams.HALLOWEEN })
 local Fake = dofile("tests/fake_actor.lua")
 local H = dofile("tests/harness.lua")
-local Teams = H.require("games.gameplay.teams")
-local Targeting = H.require("games.npc.targeting")
+local Teams = gameplay.teams
+local Targeting = npc.targeting
 
 local FakeCombatant = {}
 

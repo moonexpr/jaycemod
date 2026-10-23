@@ -3,9 +3,9 @@
 -- handler as a task and replies, and the reply settles the client's
 -- transaction. The pieces ws/sh_events.lua's Transact and Serve join.
 local T = dofile("tests/harness.lua")
-local Events = T.require("games.system.events")
-local Scheduler = T.require("foundation.list.schedule")
-local Transaction = T.require("foundation.transaction")
+local Events = system.events
+local Scheduler = list.schedule
+local Transaction = transaction
 
 local RATE = {
 	count = 10,

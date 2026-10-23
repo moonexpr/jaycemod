@@ -6,16 +6,16 @@
 local T = dofile("tests/harness.lua")
 local FS = dofile("tests/fake_soldier.lua")
 local FP = dofile("tests/fake_points.lua")
-local N = T.require("games.npc.nextbot")
+local N = npc.nextbot
 local Debug = T.require("features.nbdebug.model")
 local AiWar = T.require("features.aiwar.model")
 local Orders = T.require("features.aiwar.orders")
-local Tactics = T.require("games.nextsoldier.tactics")
-local Geometry = T.require("foundation.math.geometry")
-local Lanes = T.require("games.nextsoldier.lanes")
+local Tactics = nextsoldier.tactics
+local Geometry = math.geometry
+local Lanes = nextsoldier.lanes
 local Scenario = T.require("features.aiwar.scenario")
 local CP = T.require("features.aiwar.scenario.control_points")
-local Teams = T.require("games.gameplay.teams")
+local Teams = gameplay.teams
 
 local RED, BLUE = Teams.RED, Teams.BLUE
 local P = FS.Point

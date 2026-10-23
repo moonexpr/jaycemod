@@ -3,7 +3,7 @@
 -- capture control_point_3, thought every 0.15 s on a fake clock.
 local T = dofile("tests/harness.lua")
 local PointTimer = T.require("games.gameplay.capture.point_timer")
-local Teams = T.require("games.gameplay.teams")
+local Teams = gameplay.teams
 
 local BLU = Teams.BLUE
 local STEP = PointTimer.THINK_INTERVAL

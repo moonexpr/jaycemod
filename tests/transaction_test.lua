@@ -3,7 +3,7 @@
 -- value so it survives any reload), and transactions, which settle once as
 -- committed, declined or failed, now or later.
 local T = dofile("tests/harness.lua")
-local Transaction = T.require("foundation.transaction")
+local Transaction = transaction
 
 local KIND = "unknown weapon"
 local OTHER_KIND = "bad catalog"
@@ -71,13 +71,13 @@ end)
 T.test("a refusal raised before a rerun of transaction.lua is recognised by the new code", function()
 	local err = Raised(Transaction.Refuse, KIND, "bfg")
 	package.loaded["foundation.transaction"] = nil
-	local Rerun = T.require("foundation.transaction")
+	local Rerun = transaction
 	T.eq(Rerun.IsRefusal(err, KINDS), true)
 end)
 
 -- Transactions -------------------------------------------------------------------
 
-local Scheduler = T.require("foundation.list.schedule")
+local Scheduler = list.schedule
 
 local function Clock()
 	return { Now = function() return 0 end }

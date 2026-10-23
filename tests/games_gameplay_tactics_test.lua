@@ -1,7 +1,7 @@
 -- games.gameplay.tactics: the interface a fire team's tactics engine fills.
 local T = dofile("tests/harness.lua")
-local Tactics = T.require("games.gameplay.tactics")
-local Port = T.require("foundation.core.port")
+local Tactics = gameplay.tactics
+local Port = core.port
 
 local function Raises(fn, ...)
 	local ok, err = pcall(fn, ...)

@@ -21,7 +21,7 @@ for _, a in ipairs(navmesh.GetAllNavAreas()) do
 	end
 end
 
-local Graph = WS.require("foundation.graph.search")
+local Graph = graph.search
 local AREAS = #navmesh.GetAllNavAreas()
 
 -- The areas reached from starts (area -> true), over every link or over

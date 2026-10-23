@@ -3,8 +3,8 @@
 -- control point rules (TeamOwnsAllPoints, ChooseRound, TeamMayCapturePoint...)
 -- are games.gameplay.capture's, tested there.
 local T = dofile("tests/harness.lua")
-local R = T.require("games.gameplay.rounds")
-local Teams = T.require("games.gameplay.teams")
+local R = gameplay.rounds
+local Teams = gameplay.teams
 
 local NOBODY, RED, BLU = Teams.UNASSIGNED, Teams.RED, Teams.BLUE
 

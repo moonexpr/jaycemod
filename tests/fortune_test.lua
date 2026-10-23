@@ -1,6 +1,6 @@
 local T = dofile("tests/harness.lua")
 local Fortune = T.require("features.holiday.fortune")
-local Teams = T.require("games.gameplay.teams")
+local Teams = gameplay.teams
 
 local STEP = 0.01 -- the test's server tick
 local TOLERANCE = STEP + 1e-6

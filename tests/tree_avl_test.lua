@@ -1,6 +1,6 @@
 -- foundation.tree.avl: an ordered map on a balanced (AVL) tree.
 local T = dofile("tests/harness.lua")
-local Tree = T.require("foundation.tree.avl")
+local Tree = tree.avl
 
 local function Keys(tree)
 	local keys = {}

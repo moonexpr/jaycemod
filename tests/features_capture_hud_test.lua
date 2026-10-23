@@ -3,7 +3,7 @@
 -- HudControlPointIcons and ControlPointIcon.res), at real screen sizes.
 local T = dofile("tests/harness.lua")
 local Hud = T.require("features.capture.hud")
-local Rounds = T.require("games.gameplay.rounds")
+local Rounds = gameplay.rounds
 
 -- TF2's own proportional screen, where a HUD unit is a pixel.
 local BASE_W, BASE_H = 640, Hud.UNITS_TALL

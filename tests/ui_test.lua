@@ -82,7 +82,7 @@ local function ClockwiseConvex(poly)
 end
 
 T.test("every slot kind's badge is drawn as clockwise convex polygons, with its glyph", function()
-	local Loadout = T.require("games.gameplay.loadout")
+	local Loadout = gameplay.loadout
 	local GLYPHS = {
 		[Loadout.KIND_PRIMARY] = "1",
 		[Loadout.KIND_SECONDARY] = "2",

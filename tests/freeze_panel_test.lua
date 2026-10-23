@@ -6,7 +6,7 @@
 -- a health cross, a player's Steam avatar and the killer's name.
 local T = dofile("tests/harness.lua")
 local Freeze = T.require("ws.freeze_panel")
-local Teams = T.require("games.gameplay.teams")
+local Teams = gameplay.teams
 
 local function Killer(over)
 	local killer = {

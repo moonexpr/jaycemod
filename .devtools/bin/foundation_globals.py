@@ -3,11 +3,13 @@
 
 A module foundation's indexes or games' inits publish (shared_loader.lua) is
 read by its global: `local Geometry = math.geometry`, not
-`require("foundation.math.geometry")` or `WS.require(...)`. A module's own
-parts, features' and ws/'s modules are not published and keep require.
+`require("foundation.math.geometry")`, `WS.require(...)` or the test
+harness's `T.require(...)`. A module's own parts, features' and ws/'s
+modules are not published and keep require.
 
-Every Lua file under addons/ is rewritten, except the loader and the
-indexes. A site is left as it is when the global's first name could be
+Every Lua file under addons/, tests/ and .devtools/bin/ is rewritten, except
+the loader, the indexes and the test harness (the tests' loader). A site is
+left as it is when the global's first name could be
 shadowed there: at a file's top level, by a top-level local of that name
 declared above it; inside a function, by any local, parameter or loop
 variable of that name in the file. A second run finds nothing to rewrite.
@@ -30,7 +32,9 @@ INDEX_CALL = re.compile(r'Index\(\s*"([\w/.]+)"\s*\)')
 NAMESPACE = re.compile(r'local\s+(\w+)\s*=\s*Namespace\(\s*"(\w+)"\s*\)')
 EXPORT = re.compile(r'Export\(\s*(\w+)\s*,\s*"(\w+)"\s*,\s*require\(\s*"([\w.]+)"\s*\)\s*\)')
 DEFER = re.compile(r'Defer\(\s*(\w+)\s*,\s*"(\w+)"\s*,\s*"([\w.]+)"\s*\)')
-SITE = re.compile(r'(?<![\w.])(?:WS\.)?require\(\s*["\']([\w.]+)["\']\s*\)')
+SITE = re.compile(r'(?<![\w.])(?:[A-Za-z_]\w*\.)?require\(\s*["\']([\w.]+)["\']\s*\)')
+SEARCHED = ("addons", "tests", ".devtools/bin")
+HARNESS = REPO / "tests/harness.lua"
 DECLARED = re.compile(
     r'\blocal\s+function\s+(\w+)'
     r'|\blocal\s+([\w\s,]+?)\s*(?==|\n|$)'
@@ -101,12 +105,13 @@ def rewrite(text: str, path: Path, names: dict[str, str], kept: list[Kept]) -> s
 
 
 def candidates() -> list[Path]:
-    skip = {LOADER}
+    skip = {LOADER, HARNESS}
     files = []
-    for path in sorted((REPO / "addons").rglob("*.lua")):
-        if path in skip or path.name.endswith(("_index.lua", "_init.lua")):
-            continue
-        files.append(path)
+    for root in SEARCHED:
+        for path in sorted((REPO / root).rglob("*.lua")):
+            if path in skip or path.name.endswith(("_index.lua", "_init.lua")):
+                continue
+            files.append(path)
     return files
 
 

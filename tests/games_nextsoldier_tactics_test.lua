@@ -1,8 +1,8 @@
 -- games.nextsoldier.tactics: a fire team's shared contact, bounding
 -- overwatch, flanking and falling back.
 local T = dofile("tests/harness.lua")
-local Tactics = T.require("games.nextsoldier.tactics")
-local CoreTactics = T.require("games.gameplay.tactics")
+local Tactics = nextsoldier.tactics
+local CoreTactics = gameplay.tactics
 
 local function P(x, y, z) return { x = x, y = y, z = z or 0 } end
 local function Team(index, places)

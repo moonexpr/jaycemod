@@ -16,11 +16,11 @@
 WSRouteRecord = WSRouteRecord or {}
 local R = WSRouteRecord
 
-local Record = WS.require("games.nextsoldier.route_record")
-local AStar = WS.require("games.npc.astar")
-local Pathfinder = WS.require("foundation.graph.pathfinder")
+local Record = nextsoldier.route_record
+local AStar = npc.astar
+local Pathfinder = graph.pathfinder
 local HL2 = WS.require("games.nextsoldier.path.hl2")
-local Lanes = WS.require("games.nextsoldier.lanes")
+local Lanes = nextsoldier.lanes
 
 local DIR = "ws_routes"
 

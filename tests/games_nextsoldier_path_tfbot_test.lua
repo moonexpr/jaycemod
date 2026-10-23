@@ -2,10 +2,10 @@
 -- CTFBotLocomotion::IsAreaTraversable, the path cost of TF2's bots and
 -- MvM's robots.
 local T = dofile("tests/harness.lua")
-local Path = T.require("games.nextsoldier.path")
+local Path = nextsoldier.path
 local TFBot = T.require("games.nextsoldier.path.tfbot")
 local Scatter = T.require("games.nextsoldier.path.scatter")
-local Teams = T.require("games.gameplay.teams")
+local Teams = gameplay.teams
 
 local LIMITS = { stepHeight = 18, jumpHeight = 72, deathDropHeight = 1000 }
 

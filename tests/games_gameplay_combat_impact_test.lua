@@ -1,5 +1,5 @@
 local T = dofile("tests/harness.lua")
-local Teams = T.require("games.gameplay.teams")
+local Teams = gameplay.teams
 local Impact = T.require("games.gameplay.combat.impact")
 
 T.test("the tuning is defined", function()

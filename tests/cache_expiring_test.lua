@@ -1,9 +1,9 @@
 -- foundation.cache.expiring: a cache whose entries last a term from
 -- when they were written, on a clock port.
 local T = dofile("tests/harness.lua")
-local Expiring = T.require("foundation.cache.expiring")
-local Cache = T.require("foundation.cache.base")
-local Class = T.require("foundation.core.class")
+local Expiring = cache.expiring
+local Cache = cache.base
+local Class = core.class
 
 local TERM = 5
 

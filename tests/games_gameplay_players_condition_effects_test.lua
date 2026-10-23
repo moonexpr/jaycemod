@@ -1,6 +1,6 @@
 local T = dofile("tests/harness.lua")
-local P = T.require("games.gameplay.players")
-local Teams = T.require("games.gameplay.teams")
+local P = gameplay.players
+local Teams = gameplay.teams
 local Effects = T.require("games.gameplay.players.condition_effects")
 
 local C = P.COND

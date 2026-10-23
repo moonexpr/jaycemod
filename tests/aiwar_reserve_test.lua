@@ -2,7 +2,7 @@
 -- instead of spawning new ones.
 local T = dofile("tests/harness.lua")
 local Reserve = T.require("features.aiwar.reserve")
-local Teams = T.require("games.gameplay.teams")
+local Teams = gameplay.teams
 
 local RED, BLUE = Teams.RED, Teams.BLUE
 local NEXT_WAVE = 10 -- any finite wave length

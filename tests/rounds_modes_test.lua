@@ -2,9 +2,9 @@
 -- (CTFGameRules's TF_GAMETYPE_CP rules), and the objective port's contract.
 local T = dofile("tests/harness.lua")
 local FakeObjective = dofile("tests/fake_objective.lua")
-local Rounds = T.require("games.gameplay.rounds")
+local Rounds = gameplay.rounds
 local ControlPoints = T.require("features.rounds.control_points")
-local Teams = T.require("games.gameplay.teams")
+local Teams = gameplay.teams
 
 local RED, BLUE = Teams.RED, Teams.BLUE
 local CP = ControlPoints.Mode

@@ -3,7 +3,7 @@
 -- player clips players stand on (arena_well's gap round its point,
 -- pl_goldrush's second stage), and on any other map they keep the NPC's.
 local T = dofile("tests/harness.lua")
-local Clip = T.require("games.nextsoldier.clip")
+local Clip = nextsoldier.clip
 
 T.test("a map with TF2's gamerules is a players' map", function()
 	T.eq(Clip.For({ "worldspawn", "tf_gamerules", "team_control_point" }), Clip.PLAYER)

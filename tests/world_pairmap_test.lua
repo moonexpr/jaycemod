@@ -1,7 +1,7 @@
 -- foundation.world.pairmap: values kept by an ordered pair of whole
 -- numbers (a link's two nav area ids), looked up without building a key.
 local T = dofile("tests/harness.lua")
-local PairMap = T.require("foundation.world.pairmap")
+local PairMap = world.pairmap
 
 T.test("a value is kept by its ordered pair", function()
 	local map = PairMap.New()

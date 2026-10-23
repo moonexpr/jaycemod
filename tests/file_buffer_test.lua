@@ -1,7 +1,7 @@
 -- foundation.file.buffer: values as the bytes files and the wire carry,
 -- written and read back.
 local T = dofile("tests/harness.lua")
-local Buffer = T.require("foundation.file.buffer")
+local Buffer = file.buffer
 
 local function Bytes(s)
 	local out = {}

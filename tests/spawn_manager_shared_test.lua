@@ -3,8 +3,8 @@
 -- each player's status and respawn time (NW2), their team and whether
 -- teams are played (WS.TeamPlay). Run against fakes.
 local T = dofile("tests/harness.lua")
-local S = T.require("games.system.spawn_manager")
-local Teams = T.require("games.gameplay.teams")
+local S = system.spawn_manager
+local Teams = gameplay.teams
 
 local OBS_MODE_NONE, OBS_MODE_ROAMING = 0, 6
 
