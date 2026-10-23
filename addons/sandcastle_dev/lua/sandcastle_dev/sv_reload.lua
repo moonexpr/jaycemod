@@ -3,7 +3,8 @@
 -- Changed files are found by their times since the last reload (or since
 -- the workbench loaded); opts.files names them instead, as repo paths
 -- (addons/sandcastle/gamemodes/...) or LUA paths, which skips the scan.
---   foundation modules and a feature's own modules (features/<f>/model.lua):
+--   foundation and games modules, and a feature's own modules
+--   (features/<f>/model.lua):
 --     run again in place; module(...) keeps the table, so every holder sees
 --     the new functions, and each class the module keeps in an upvalue
 --     (Round, Timer, PointSet...) gets the new methods copied onto the old
@@ -92,7 +93,10 @@ local function Classify(path)
 		end
 		return { kind = "module", name = "features." .. feature .. "." .. fileName }
 	end
-	if string.StartWith(rel, "foundation/") then
+	if string.match(rel, "_index%.lua$") or string.match(rel, "_init%.lua$") then
+		return { kind = "refused", why = "a namespace's index runs with the loader; changelevel" }
+	end
+	if string.StartWith(rel, "foundation/") or string.StartWith(rel, "games/") then
 		return { kind = "module", name = string.gsub(string.gsub(rel, "%.lua$", ""), "/", ".") }
 	end
 	return { kind = "refused", why = "the gamemode's own files (ws/, init.lua) run again only with the whole gamemode; changelevel" }
