@@ -2,7 +2,7 @@
 -- and shut, and spawn doors.
 local Controller, Map = ...
 local Teams = WS.require("games.gameplay.teams")
-local Debug = WS.require("foundation.npc.debug")
+local Debug = WS.require("features.nbdebug.model")
 local TFBot = WS.require("games.nextsoldier.path.tfbot")
 local HL2Path = WS.require("games.nextsoldier.path.hl2")
 local Zone = WS.require("games.nextsoldier.zone")

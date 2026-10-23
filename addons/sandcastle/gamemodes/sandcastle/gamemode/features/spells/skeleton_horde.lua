@@ -5,7 +5,7 @@ local require = require
 local Teams = require("games.gameplay.teams")
 local Spells = require("features.spells.model")
 local SpellSet = require("features.spells.halloween")
-local Zombie = require("foundation.npc.zombie")
+local Zombie = require("features.haunting.zombie")
 module(...)
 
 INDEX = SpellSet.SPELL_SKELETON_HORDE

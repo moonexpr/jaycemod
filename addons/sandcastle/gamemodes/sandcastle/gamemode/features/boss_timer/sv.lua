@@ -11,13 +11,13 @@
 -- SharedLevel(shared) -> its level from the npc controller's shared table.
 local BossTimer = WS.require("features.boss_timer.model")
 local Holiday = WS.require("features.holiday.model")
-local HalloweenBoss = WS.require("foundation.npc.halloween_boss")
+local HalloweenBoss = WS.require("features.haunting.halloween_boss")
 
 local THINK_HOOK = "ws_boss_timer"
 local CUSTOM_SPAWN_CLASS = "spawn_boss" -- SpawnHalloweenBoss looks it up by class
 local MASTER_CLASS = "team_control_point_master"
 local WHEEL_CLASS = "wheel_of_doom"
-local MERASMUS = "foundation.npc.merasmus"
+local MERASMUS = "features.haunting.merasmus"
 local GAME_TEAMS = { WS.TEAM_RED, WS.TEAM_BLUE }
 
 local Controller = {

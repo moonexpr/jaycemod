@@ -1,7 +1,7 @@
 -- The nbdebug feature's controller: the NextBot debug layer for admins,
 -- after the engine's nb_select, nb_debug and nb_debug_filter, drawing what
 -- the engine's cannot: our Lua Behaviors, our path strategies' costs, and
--- routes searched in Lua. The rules are foundation.npc.debug's; this file
+-- routes searched in Lua. The rules are features.nbdebug.model's; this file
 -- keeps one Subscription per admin, finds the NPCs through the hook
 -- WSNbDebugNpcs (the npc and aiwar controllers answer it), asks the npc
 -- controller to watch the path searches of the NPCs someone draws, watches
@@ -11,7 +11,7 @@
 --
 -- Loaded by the first ws_nb_* command (ws/sv_nbdebug.lua) or
 -- ws_aiwar_debug; its client part (cl.lua) is the one view for all of it.
-local Debug = WS.require("foundation.npc.debug")
+local Debug = WS.require("features.nbdebug.model")
 
 -- The game events it fires are sh.lua's.
 local MAX_POINTS, MAX_NPCS, MAX_LINES = Debug.MAX_POINTS, Debug.MAX_NPCS, Debug.MAX_LINES
@@ -34,8 +34,8 @@ local Clock = {}
 function Clock:Now() return CurTime() end
 
 local Controller = {
-	subscriptions = {}, -- player -> foundation.npc.debug Subscription
-	bots = {}, -- entity -> bot, as foundation.npc.debug sees an NPC, from the last collection
+	subscriptions = {}, -- player -> features.nbdebug.model Subscription
+	bots = {}, -- entity -> bot, as features.nbdebug.model sees an NPC, from the last collection
 	npcs = {}, -- entity -> its games.npc.nextbot Npc, from the last collection
 	pathWatches = {}, -- entity -> { costs }, as last given to the npc controller
 	reports = {}, -- entity -> its last path report, while watched
@@ -420,7 +420,7 @@ end
 
 -- An NPC's behavior (the one with the given entity index, else the
 -- selected one), as the BEHAVIOR layer draws it and in both notations
--- (foundation.npc.debug's Tdbn and Obn), in the player's console.
+-- (features.nbdebug.model's Tdbn and Obn), in the player's console.
 COMMANDS.ws_nb_behavior_print = function(self, ply, sub, args)
 	local bot, ok = self:Target(ply, "ws_nb_behavior_print", args, function() return self.bots[sub.selected] end)
 	if not ok then return end

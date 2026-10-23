@@ -9,12 +9,12 @@
 --   recent changes), trace its bridge when it is an AI war soldier;
 -- - the NextBot layers and the NextSoldier overlay, which the server turns
 --   on and off (their state comes back through WSNbDebugState, run by
---   features/nbdebug/cl.lua), and what the overlay draws (foundation.ns.overlay's
+--   features/nbdebug/cl.lua), and what the overlay draws (features.nbdebug.ns_overlay's
 --   PARTS), each part this client's own convar, read by the overlay as it draws.
 -- Showing or clearing everything at once is the Debug NextSoldier panel's
 -- (ws/cl_ns_debug.lua).
-local Overlay = WS.require("foundation.ns.overlay")
-local Debug = WS.require("foundation.npc.debug")
+local Overlay = WS.require("features.nbdebug.ns_overlay")
+local Debug = WS.require("features.nbdebug.model")
 
 for _, part in ipairs(Overlay.PARTS) do
 	CreateClientConVar(Overlay.ConVar(part), "1", true, false, "The NextSoldier overlay (ws_aiwar_debug) draws: " .. Overlay.LABELS[part])

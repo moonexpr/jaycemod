@@ -1,7 +1,7 @@
 -- The nbdebug feature's game events: what the controller (sv.lua) and the
 -- aiwar controller send an admin's overlay (cl.lua). Field widths are
--- foundation.npc.debug's; the AI war's overlay keeps its own below.
-local Debug = WS.require("foundation.npc.debug")
+-- features.nbdebug.model's; the AI war's overlay keeps its own below.
+local Debug = WS.require("features.nbdebug.model")
 local E = WS.Events
 
 local INDEX = E.UInt(Debug.INDEX_BITS)

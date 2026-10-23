@@ -53,9 +53,9 @@ function Controller:BindHoliday(ent, kv)
 	self:ModeChanged()
 end
 
--- CTFGameRules::BeginHaunting's permission (foundation.npc.ghost).
+-- CTFGameRules::BeginHaunting's permission (features.haunting.ghost).
 function Controller:HauntingAllowed()
-	local Ghost = WS.require("foundation.npc.ghost")
+	local Ghost = WS.require("features.haunting.ghost")
 	return Ghost.HauntingAllowed(self:HolidayActive(Holiday.HALLOWEEN), self.bossScenario == true, self.allowHaunting == true)
 end
 

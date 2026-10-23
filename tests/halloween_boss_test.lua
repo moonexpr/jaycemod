@@ -1,7 +1,7 @@
 local T = dofile("tests/harness.lua")
 local FakeCombatant = dofile("tests/fake_combatant.lua")
 local NpcSystem = T.require("games.npc.nextbot")
-local HalloweenBoss = T.require("foundation.npc.halloween_boss")
+local HalloweenBoss = T.require("features.haunting.halloween_boss")
 local Teams = T.require("games.gameplay.teams")
 
 local V = FakeCombatant.Vector

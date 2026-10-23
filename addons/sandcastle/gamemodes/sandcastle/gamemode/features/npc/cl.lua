@@ -36,7 +36,7 @@ end)
 -- them: the cue's sound on the local player (the Horsemann's and
 -- MONOCULUS's music and lines), and its line in the chat. A player the
 -- server named whom this client cannot see is "Someone".
-local BossEvents = WS.require("foundation.npc.boss_events")
+local BossEvents = WS.require("features.npc.boss_events")
 local UNKNOWN_PLAYER = "Someone"
 
 local function NameOf(ply)

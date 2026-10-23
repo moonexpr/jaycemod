@@ -51,10 +51,10 @@ function Controller:MeasureCompute(profile, label, bot, compute)
 end
 
 -------------------------------------------------------------------------------
--- Watching path searches for the nbdebug feature (foundation.npc.debug).
+-- Watching path searches for the nbdebug feature (features.nbdebug.model).
 -- Only the NPCs it asks for are watched; for them each search is timed and,
 -- with watch.costs, every cost it asked for is recorded, and when it is done
--- a foundation.npc.debug path report goes out as the hook
+-- a features.nbdebug.model path report goes out as the hook
 -- WSNpcPathComputed(ent, report). Nothing else changes for them.
 
 local PATH_COMPUTED_HOOK = "WSNpcPathComputed"
@@ -73,7 +73,7 @@ end
 -- A watched NextBot's Path:Compute (ws_nextbot's FollowPath). An open
 -- path profile records it too.
 function Controller:ObserveCompute(watch, bot, path, goal, compute)
-	local Debug = WS.require("foundation.npc.debug")
+	local Debug = WS.require("features.nbdebug.model")
 	local recorder = watch.costs and bot.pathCost and Debug.NewCostRecorder() or nil
 	local start = bot:GetPos()
 	local found, seconds, probe = Probed(bot, recorder, compute)
@@ -118,7 +118,7 @@ end
 -- records every cost. Returns what ThinkSearches keeps of it.
 function Controller:ObserveRoute(graph, request, start, watch)
 	if watch.costs then
-		graph.recorder = WS.require("foundation.npc.debug").NewCostRecorder()
+		graph.recorder = WS.require("features.nbdebug.model").NewCostRecorder()
 		graph.recorder:Record(start:GetID(), nil, 0)
 		graph.Cost = RecordedCost
 	end
@@ -133,7 +133,7 @@ end
 -- A watched route search is done: its report, with the waypoints the NPC
 -- will be given (RouteWaypoints), all on the ground.
 function Controller:PublishRoute(running, areas, found)
-	local Debug = WS.require("foundation.npc.debug")
+	local Debug = WS.require("features.nbdebug.model")
 	local observed, search = running.observed, running.search
 	local ent, request = Entity(observed.index), observed.request
 	if not IsValid(ent) then return end

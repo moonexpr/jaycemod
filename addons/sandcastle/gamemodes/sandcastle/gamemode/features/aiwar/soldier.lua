@@ -79,7 +79,7 @@
 --   Repath(): plan my way to my MoveTo target afresh from where I stand
 --     (my own path between waypoints, not the route)
 --   Mark(kind, detail, to): tell whoever debugs me that my orders stepped
---     in on my movement (a foundation.npc.debug MARK_* kind), what happened,
+--     in on my movement (a features.nbdebug.model MARK_* kind), what happened,
 --     and where I am sent (nil: nowhere)
 module(...)
 

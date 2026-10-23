@@ -1,6 +1,6 @@
 local T = dofile("tests/harness.lua")
 local Fake = dofile("tests/fake_actor.lua")
-local Hover = T.require("foundation.npc.hover")
+local Hover = T.require("features.haunting.hover")
 
 local V = Fake.Vector
 local DT = 0.1

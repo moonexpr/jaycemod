@@ -57,9 +57,27 @@ gameplay). Both publish their modules as globals.
   variants are their features' `round.lua` (`features.payload.round`,
   `features.arena.round`) or `features/rounds/<variant>`. foundation's
   root holds `transaction`, `configstore` and `nodegraph`, each a plain
-  global. Still PENDING: the Halloween bosses and debug models in `npc/`,
-  and `ns/overlay`.
+  global. The last PENDING modules followed: the Halloween bosses to
+  `features/haunting`, `npc/boss_events` to `features/npc`, `npc/debug`
+  (as `features.nbdebug.model`) and `ns/overlay` (as
+  `features.nbdebug.ns_overlay`) to `features/nbdebug`, `npc/ragdoll` and
+  `npc/voices` to `ws/`. PENDING is empty.
 - Renames (decision 11): done.
+
+## Before merging into main
+
+1. Merge main into the branch again if it moved, then run
+   `.devtools/bin/foundation_rename.py` (it follows every rename above,
+   in order) and `.devtools/bin/check_lua.sh`.
+2. After the merge, run the script once over main's uncommitted files.
+   It cannot map `foundation.core.timers`, which became
+   `games.timer.countdown` and `games.timer.interval`: fix those by hand.
+3. Change map once rather than reload live: old module names stay in
+   `package.loaded` until then.
+4. Load a map with no Lua errors, and check `print(list.queue,
+   gameplay.rounds, system.events, nextsoldier.squad)` prints four
+   tables. GMod's `system` and `timer` tables get a metatable from
+   `Defer`; a refusal names the table.
 
 ## The loader
 

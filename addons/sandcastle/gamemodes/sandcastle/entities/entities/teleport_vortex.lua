@@ -1,5 +1,5 @@
 -- teleport_vortex (CTeleportVortex): the vortex MONOCULUS leaves behind, a
--- ±50 trigger bound to foundation.npc.eyeball_boss's Vortex model. It
+-- ±50 trigger bound to features.haunting.eyeball_boss's Vortex model. It
 -- implements the vortex port (foundation.npc.eyeball_boss.VORTEX_METHODS;
 -- the engine's Remove, EmitSound and WorldSpaceCenter already fit it).
 --
@@ -45,7 +45,7 @@ function ENT:Configure(config)
 end
 
 function ENT:Initialize()
-	local Eyeball = WS.require("foundation.npc.eyeball_boss")
+	local Eyeball = WS.require("features.haunting.eyeball_boss")
 	local death = self.configured.death
 	if death then
 		self:SetModel(Eyeball.VORTEX_BOOK_MODEL)

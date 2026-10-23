@@ -71,8 +71,8 @@ end
 function WS.DrgSoldier(ENT, baseName)
 	ENT.WSSoldier = true -- on both realms: the NPC context menu offers its trace
 	if CLIENT then return end
-	local Ragdoll = WS.require("foundation.npc.ragdoll")
-	local Voices = WS.require("foundation.npc.voices")
+	local Ragdoll = WS.require("ws.ragdoll")
+	local Voices = WS.require("ws.voices")
 	local HL2Path = WS.require("games.nextsoldier.path.hl2")
 	local Leap = WS.require("games.nextsoldier.leap")
 	local Noise = WS.require("games.nextsoldier.noise")
@@ -95,7 +95,7 @@ function WS.DrgSoldier(ENT, baseName)
 	-- them), rappelling one deeper than a safe fall (NSRappel).
 	ENT.DeathDropHeight = HL2Path.SOLDIER_LIMITS.deathDropHeight
 
-	-- Its voice for the model it wears now (foundation.npc.voices; none for a
+	-- Its voice for the model it wears now (ws.voices; none for a
 	-- model without one): it plays its hits' grunts and cries (NSFeedback) and
 	-- its death (OnDeath: WS.PlayDeath, loud and confirmed) itself, not
 	-- DrGBase.

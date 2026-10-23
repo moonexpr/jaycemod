@@ -1,8 +1,8 @@
--- foundation.npc.voices: the pain and death sounds of the AI war's soldiers,
+-- ws.voices: the pain and death sounds of the AI war's soldiers,
 -- by the model they wear (a kit may change it: Alyx, the Combine's support
 -- in the metrocops'), from HL2's own sounds, each checked to exist.
 local T = dofile("tests/harness.lua")
-local Voices = T.require("foundation.npc.voices")
+local Voices = T.require("ws.voices")
 
 local function Has(list, path)
 	for _, p in ipairs(list) do if p == path then return true end end

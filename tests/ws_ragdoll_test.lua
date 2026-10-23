@@ -1,5 +1,5 @@
 local T = dofile("tests/harness.lua")
-local Ragdoll = T.require("foundation.npc.ragdoll")
+local Ragdoll = T.require("ws.ragdoll")
 
 T.test("an NPC's or NextBot's death ragdoll goes to clients", function()
 	local owner = Ragdoll.OwnerKind(false, true)

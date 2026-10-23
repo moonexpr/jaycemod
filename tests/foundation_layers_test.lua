@@ -162,28 +162,12 @@ local GAMES = {
 	["nextsoldier/nav_gaps"] = "nextsoldier",
 }
 
--- The modules still to move, and where each goes.
-local PENDING = {
-	["npc/merasmus"] = "features/haunting",
-	["npc/eyeball_boss"] = "features/haunting",
-	["npc/headless_hatman"] = "features/haunting",
-	["npc/halloween_boss"] = "features/haunting",
-	["npc/ghost"] = "features/haunting",
-	["npc/zombie"] = "features/haunting",
-	["npc/hover"] = "features/haunting",
-
-	["npc/boss_events"] = "features/npc",
-
-	["npc/debug"] = "features/nbdebug",
-	["ns/overlay"] = "features/nbdebug",
-
-	["npc/ragdoll"] = "ws/ragdoll",
-	["npc/voices"] = "ws/voices",
-}
+-- The modules still to move, and where each goes: none. A module bound out
+-- of foundation is listed here, with its destination, until it moves.
+local PENDING = {}
 
 -- Edges that break the order today.
--- None today (orders and soldier are pending to features/aiwar, Amendment
--- 4); a future inversion needs an entry here, and a reason.
+-- None today; a future inversion needs an entry here, and a reason.
 local KNOWN_INVERSIONS = {}
 
 -- A namespace's index (sh_index.lua and its realm's) publishes modules and

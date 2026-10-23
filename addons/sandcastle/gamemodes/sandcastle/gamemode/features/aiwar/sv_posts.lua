@@ -2,7 +2,7 @@
 local Controller, Map = ...
 local AiWar = WS.require("features.aiwar.model")
 local Posts = WS.require("games.nextsoldier.posts")
-local Debug = WS.require("foundation.npc.debug")
+local Debug = WS.require("features.nbdebug.model")
 local SPAWN_LIFT = Map.SPAWN_LIFT
 local Point, ToVector, SpawnSpots, OnFloor = Map.Point, Map.ToVector, Map.SpawnSpots, Map.OnFloor
 local ClearSpotNear, GroundBelow = Map.ClearSpotNear, Map.GroundBelow

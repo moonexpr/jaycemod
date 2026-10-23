@@ -15,7 +15,7 @@
 -- no Merasmus there either. A boss the map's logic spawns anyway stops the
 -- timer for good (MapSpawned).
 --
--- New(boss) takes a foundation.npc.halloween_boss part that provides
+-- New(boss) takes a features.haunting.halloween_boss part that provides
 -- BOSS_TYPE, SpawnInterval(level, convars) -> seconds, variation (the
 -- scenario's intervals), and optionally NEUTRALIZES_POINT (VIADUCT and
 -- LAKESIDE revert the point the boss takes) and WAITS_FOR_WHEEL (LAKESIDE
@@ -33,7 +33,7 @@
 --   WheelBusy() -> whether the first wheel_of_doom is still spinning or
 --     naming its effect (not IsDoneBoardcastingEffectSound).
 local require = require
-local HalloweenBoss = require("foundation.npc.halloween_boss")
+local HalloweenBoss = require("features.haunting.halloween_boss")
 local Teams = require("games.gameplay.teams")
 local setmetatable, ipairs = setmetatable, ipairs
 module(...)
@@ -46,7 +46,7 @@ local UNSTARTED = -1
 -- TriggerLogicRelay; only Merasmus triggers one).
 SCENARIOS = {
 	{
-		variant = "foundation.npc.merasmus",
+		variant = "features.haunting.merasmus",
 		bossClass = "merasmus",
 		arrivalRelay = "boss_enter_relay",
 	},

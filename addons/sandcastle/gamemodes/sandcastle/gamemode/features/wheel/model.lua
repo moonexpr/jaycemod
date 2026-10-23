@@ -38,7 +38,7 @@
 --   CloudBoxes() -> { mins, maxs } of each spawn_cloud brush; DropJar(pos,
 --     spin) (a tf_projectile_jar with that angular impulse, nobody's);
 --   BeginHaunting(count, minDuration, maxDuration)
---     (CTFGameRules::BeginHaunting: foundation.npc.ghost's Haunt).
+--     (CTFGameRules::BeginHaunting: features.haunting.ghost's Haunt).
 local require = require
 local Players = require("games.gameplay.players")
 local Attributes = require("games.gameplay.players.attributes")

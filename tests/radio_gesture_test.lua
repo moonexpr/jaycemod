@@ -1,6 +1,6 @@
 -- ws/sh_radio_gesture.lua: GMod's chat gesture (base GM:GrabEarAnimation, a
 -- hand to the ear) is a radio call, so only a player dressed as the Combine
--- (foundation.npc.voices: its soldiers and metrocops) makes it. Run against a
+-- (ws.voices: its soldiers and metrocops) makes it. Run against a
 -- fake gamemode.
 local T = dofile("tests/harness.lua")
 

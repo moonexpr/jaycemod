@@ -1,5 +1,5 @@
 -- ghost (CGhost): a Halloween ghost, a ws_combat_nextbot bound to
--- foundation.npc.ghost, which holds its rules. It is solid to nothing
+-- features.haunting.ghost, which holds its rules. It is solid to nothing
 -- (CGhost::ShouldCollide), and implements the ghost's port: FeelerHit.
 -- Configure{ lifetime } before Spawn (the haunting controller does).
 AddCSLuaFile()
@@ -7,7 +7,7 @@ AddCSLuaFile()
 ENT.Base = "ws_combat_nextbot"
 ENT.Type = "nextbot"
 ENT.Spawnable = false
-ENT.Variant = "foundation.npc.ghost"
+ENT.Variant = "features.haunting.ghost"
 
 if CLIENT then return end
 

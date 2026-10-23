@@ -3,7 +3,7 @@
 -- where it was, an arrow to where it was sent, and the mark's words above,
 -- fading out over Debug.MARK_SECONDS. The server words it in the console too.
 local view = ...
-local Debug = WS.require("foundation.npc.debug")
+local Debug = WS.require("features.nbdebug.model")
 
 local MARK_COLOR = Color(255, 70, 200)
 local MARK_LIFT = Vector(0, 0, 40) -- the arrow at chest height

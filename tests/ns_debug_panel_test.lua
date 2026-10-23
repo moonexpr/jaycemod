@@ -66,7 +66,7 @@ end)
 T.test("the menu toggles and the panel checks every part of the overlay, and the overlay reads each part", function()
 	local menu, panel = ReadFile(MENU), ReadFile(PANEL)
 	local view = T.RealmSource("nbdebug", "cl")
-	local Overlay = T.require("foundation.ns.overlay")
+	local Overlay = T.require("features.nbdebug.ns_overlay")
 	T.eq(menu:find("Check(parts, Overlay.LABELS[part]", 1, true) ~= nil, true, "a toggle per part")
 	T.eq(panel:find("for _, group in ipairs(Overlay.GROUPS) do", 1, true) ~= nil, true, "a section per group")
 	T.eq(panel:find("for _, part in ipairs(group.parts) do panel:CheckBox(Overlay.LABELS[part], Overlay.ConVar(part))", 1, true) ~= nil,
@@ -88,7 +88,7 @@ end)
 
 T.test("the menu toggles every debug layer, and the panel keeps only showing and clearing them all", function()
 	local menu, panel = ReadFile(MENU), ReadFile(PANEL)
-	local Debug = T.require("foundation.npc.debug")
+	local Debug = T.require("features.nbdebug.model")
 	for _, layer in ipairs(Debug.LAYERS) do
 		T.eq(menu:find("[Debug." .. layer .. "]", 1, true) ~= nil, true, "a label for " .. layer)
 	end

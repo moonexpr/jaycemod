@@ -1,9 +1,9 @@
 -- The haunting feature's controller: CTFGameRules::BeginHaunting. It keeps
--- the ghosts about (m_ghostVector), asks foundation.npc.ghost's Haunt who
+-- the ghosts about (m_ghostVector), asks features.haunting.ghost's Haunt who
 -- lives on and where new ones rise, and spawns them (the ghost entity).
 -- The holiday controller says whether the map may be haunted. Loaded by the
 -- first haunting (the Wheel of Fate's Ghosts).
-local Ghost = WS.require("foundation.npc.ghost")
+local Ghost = WS.require("features.haunting.ghost")
 
 local GHOST_CLASS = "ghost"
 

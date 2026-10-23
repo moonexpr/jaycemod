@@ -25,7 +25,7 @@
 --
 -- The boss port (METHODS) extends the combatant port; the binding
 -- halloween_base_boss implements it: Break() bursts the model into gibs,
--- FireGameEvent(name, fields) fires one of foundation.npc.boss_events'
+-- FireGameEvent(name, fields) fires one of features.npc.boss_events'
 -- game events to everyone, as TF2's gameeventmanager->FireEvent does.
 local require = require
 local NpcSystem = require("games.npc.nextbot")

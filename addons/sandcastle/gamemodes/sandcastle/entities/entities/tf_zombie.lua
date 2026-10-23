@@ -1,5 +1,5 @@
 -- tf_zombie (CZombie): TF2's skeleton, a ws_combat_nextbot bound to
--- foundation.npc.zombie, which holds every rule.
+-- features.haunting.zombie, which holds every rule.
 --
 -- Config, given with Configure before Spawn by its spawner or skull
 -- grenade: { team, lifetime, owner, skeletonType }. One the map places has
@@ -12,7 +12,7 @@ AddCSLuaFile()
 ENT.Base = "ws_combat_nextbot"
 ENT.Type = "nextbot"
 ENT.Spawnable = false
-ENT.Variant = "foundation.npc.zombie"
+ENT.Variant = "features.haunting.zombie"
 
 if CLIENT then return end
 

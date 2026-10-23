@@ -1,5 +1,5 @@
 -- headless_hatman (CHeadlessHatman): the Horseless Headless Horsemann, a
--- halloween_base_boss bound to foundation.npc.headless_hatman. It
+-- halloween_base_boss bound to features.haunting.headless_hatman. It
 -- implements the Horsemann's port: the control points it guards. The maps
 -- spawn it from point_templates and remove it with Kill.
 AddCSLuaFile()
@@ -7,7 +7,7 @@ AddCSLuaFile()
 ENT.Base = "halloween_base_boss"
 ENT.Type = "nextbot"
 ENT.Spawnable = false
-ENT.Variant = "foundation.npc.headless_hatman"
+ENT.Variant = "features.haunting.headless_hatman"
 
 if CLIENT then return end
 

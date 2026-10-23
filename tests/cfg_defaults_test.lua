@@ -49,14 +49,14 @@ end
 local function IndirectDefaults(defaults)
 	defaults.mp_aiwar_team_size = tostring(T.require("features.aiwar.model").TEAM_SIZE_DEFAULT)
 	defaults.ws_nodegraph_max_nodes = tostring(T.require("foundation.nodegraph").MAX_NODES)
-	defaults.tf_max_active_zombie = tostring(T.require("foundation.npc.zombie").MAX_ACTIVE_DEFAULT)
+	defaults.tf_max_active_zombie = tostring(T.require("features.haunting.zombie").MAX_ACTIVE_DEFAULT)
 	defaults.tf_flag_caplimit = tostring(T.require("features.flag.model").CAPLIMIT_DEFAULT)
 	defaults.ws_mvm_setup_time = tostring(T.require("features.mvm.model").SETUP_SECONDS)
 	defaults.tf_bot_difficulty = tostring(T.require("features.aiwar.marksmanship").DEFAULT)
-	for _, boss in ipairs({ "foundation.npc.eyeball_boss", "foundation.npc.headless_hatman", "foundation.npc.merasmus" }) do
+	for _, boss in ipairs({ "features.haunting.eyeball_boss", "features.haunting.headless_hatman", "features.haunting.merasmus" }) do
 		for name, value in pairs(T.require(boss).CONVARS) do defaults[name] = tostring(value) end
 	end
-	local Overlay = T.require("foundation.ns.overlay")
+	local Overlay = T.require("features.nbdebug.ns_overlay")
 	for _, part in ipairs(Overlay.PARTS) do defaults[Overlay.ConVar(part)] = "1" end
 end
 

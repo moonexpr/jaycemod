@@ -2,7 +2,7 @@
 -- the engine would, with fake players.
 local T = dofile("tests/harness.lua")
 local Teams = T.require("games.gameplay.teams")
-local Voices = T.require("foundation.npc.voices")
+local Voices = T.require("ws.voices")
 
 local SOURCE = T.ROOT .. "ws/sv_voices.lua"
 local UNVOICED_MODEL = "models/editor/playerstart.mdl"

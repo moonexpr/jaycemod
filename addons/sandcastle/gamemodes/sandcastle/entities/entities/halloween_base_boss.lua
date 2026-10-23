@@ -1,6 +1,6 @@
 -- halloween_base_boss (CHalloweenBaseBoss): the base of the Halloween
 -- bosses, a ws_combat_nextbot whose variant is a
--- foundation.npc.halloween_boss part. It implements the boss port
+-- features.haunting.halloween_boss part. It implements the boss port
 -- (foundation.npc.halloween_boss.METHODS) and passes the boss's convars in
 -- its config. A subclass sets ENT.Variant. The npc feature adds the
 -- particle files (features/npc/sh.lua) and precaches the variant's PARTICLES.
@@ -57,7 +57,7 @@ function ENT:Break()
 	self:GibBreakClient(vector_origin)
 end
 
--- A boss game event (foundation.npc.boss_events, defined by the npc
+-- A boss game event (features.npc.boss_events, defined by the npc
 -- feature) to every client, whose npc view plays its cue.
 function ENT:FireGameEvent(name, fields)
 	WS.Events.Fire(name, fields)

@@ -1,4 +1,4 @@
--- HL2's voices for whoever wears its models (foundation.npc.voices): the AI
+-- HL2's voices for whoever wears its models (ws.voices): the AI
 -- war's soldiers and the players alike. A death plays where it happened, its
 -- cry loud (a rebel's scream layered) and then its confirmation (the
 -- Combine's radio and flatline beeps), so the radio still sounds after the
@@ -7,7 +7,7 @@
 -- dies as one: in its model's voice, or in a model of none, its side's (the
 -- faction fighting for its team, Voices.ForAffiliation); a spectator keeps
 -- the engine's.
-local Voices = WS.require("foundation.npc.voices")
+local Voices = WS.require("ws.voices")
 
 -- The factions by name (features.aiwar.model's FACTIONS), and the sides they
 -- start on, which hold while no war is on to trade them.

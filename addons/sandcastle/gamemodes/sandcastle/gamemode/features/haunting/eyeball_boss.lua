@@ -1,6 +1,6 @@
 -- MONOCULUS (CEyeballBoss, eyeball_boss/eyeball_boss.cpp and
 -- eyeball_behavior/*.cpp): a flying boss variant of
--- foundation.npc.halloween_boss. It rises from its summoning portal, hunts
+-- features.haunting.halloween_boss. It rises from its summoning portal, hunts
 -- the nearest visible victim with rockets, teleports around the map's
 -- spawn_boss_alt spots leaving vortexes behind, and escapes when its life
 -- runs out. Killed, it falls, pops, jarates the players near it and leaves
@@ -13,7 +13,7 @@
 --   GroundHeight(v) -> z | nil (the nav mesh's ground below v),
 --   IsNearNavMesh(v, range), SetHidden(hidden), TraceWorld(from, to) ->
 --   the hit position | nil (brushes only).
--- A map's eyeball (not a spell's) fires foundation.npc.boss_events' game
+-- A map's eyeball (not a spell's) fires features.npc.boss_events' game
 -- events where TF2 does: summoned as it rises, the escape warnings,
 -- escaped and killed; the clients play and print what they mean.
 --
@@ -25,8 +25,8 @@
 -- leveled boss fizzling grenades at its portal.
 local require = require
 local NpcSystem = require("games.npc.nextbot")
-local HalloweenBoss = require("foundation.npc.halloween_boss")
-local BossEvents = require("foundation.npc.boss_events")
+local HalloweenBoss = require("features.haunting.halloween_boss")
+local BossEvents = require("features.npc.boss_events")
 local Targeting = require("games.npc.targeting")
 local Actor = require("games.npc.actor")
 local Players = require("games.gameplay.players")
@@ -90,7 +90,7 @@ SKIN_NORMAL, SKIN_RED, SKIN_TEAM_RED, SKIN_TEAM_BLUE = 0, 1, 2, 3
 ANGER_ENRAGED, ANGER_GRUMPY, ANGER_CALM = 1, 0.4, 0
 
 FIRST_LEVEL = BossEvents.FIRST_LEVEL -- CEyeballBoss::m_level starts here
-ZOMBIE_KIND = "zombie" -- foundation.npc.zombie's registry kind
+ZOMBIE_KIND = "zombie" -- features.haunting.zombie's registry kind
 
 -- Mood
 ENRAGE_DURATION = 5 -- after a crit, or heavy DPS

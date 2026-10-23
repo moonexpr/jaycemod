@@ -1,7 +1,7 @@
--- foundation.npc.debug: the NextBot debug layer's rules (ws_nb_debug,
+-- features.nbdebug.model: the NextBot debug layer's rules (ws_nb_debug,
 -- after the engine's nb_ commands).
 local T = dofile("tests/harness.lua")
-local Debug = T.require("foundation.npc.debug")
+local Debug = T.require("features.nbdebug.model")
 local N = T.require("games.npc.nextbot")
 local Path = T.require("games.nextsoldier.path")
 
@@ -21,7 +21,7 @@ local ZOMBIE = {
 	key = "zombie",
 	index = 45,
 	class = "tf_zombie",
-	variant = "foundation.npc.zombie",
+	variant = "features.haunting.zombie",
 }
 local HATMAN = {
 	key = "hatman",
@@ -552,7 +552,7 @@ T.test("a dump holds the request, the result, the explored areas and the timing 
 		map = "plr_hightower",
 		index = 45,
 		class = "tf_zombie",
-		variant = "foundation.npc.zombie",
+		variant = "features.haunting.zombie",
 	}, Debug.NewPathReport(Report()))
 	T.eq(doc.map, "plr_hightower", "map")
 	T.eq(doc.npc.index, 45, "npc")
@@ -578,10 +578,10 @@ T.test("a position is a vector whatever type GMod gives it, and a number is not"
 		if v == gmodVector then return "Vector" end
 		return realType(v)
 	end
-	package.loaded["foundation.npc.debug"] = nil
-	local ok, Fresh = pcall(T.require, "foundation.npc.debug")
+	package.loaded["features.nbdebug.model"] = nil
+	local ok, Fresh = pcall(T.require, "features.nbdebug.model")
 	type = realType
-	package.loaded["foundation.npc.debug"] = nil
+	package.loaded["features.nbdebug.model"] = nil
 	T.eq(ok, true, tostring(Fresh))
 	T.eq(Fresh.IsVector(gmodVector), true, "a GMod Vector")
 	T.eq(Fresh.IsVector({ x = 1, y = 2, z = 3 }), true, "a position table")

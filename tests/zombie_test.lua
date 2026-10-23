@@ -1,10 +1,10 @@
--- foundation.npc.zombie: TF2's skeletons (CZombie and its actions), their
+-- features.haunting.zombie: TF2's skeletons (CZombie and its actions), their
 -- spawner's keyvalues, and the skull grenade that hatches them, driven as
 -- whole scenarios against tests/fake_combatant.lua.
 local T = dofile("tests/harness.lua")
 local FC = dofile("tests/fake_combatant.lua")
 local N = T.require("games.npc.nextbot")
-local Zombie = T.require("foundation.npc.zombie")
+local Zombie = T.require("features.haunting.zombie")
 local Actor = T.require("games.npc.actor")
 local Spawner = T.require("features.npc.spawner")
 local Players = T.require("games.gameplay.players")

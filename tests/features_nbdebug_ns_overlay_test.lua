@@ -1,7 +1,7 @@
--- foundation.ns.overlay: the NextSoldier overlay's parts, each its own
+-- features.nbdebug.ns_overlay: the NextSoldier overlay's parts, each its own
 -- client convar.
 local T = dofile("tests/harness.lua")
-local Overlay = T.require("foundation.ns.overlay")
+local Overlay = T.require("features.nbdebug.ns_overlay")
 
 T.test("each part of the overlay has its own client convar, ns_<part>_debug", function()
 	local seen = {}

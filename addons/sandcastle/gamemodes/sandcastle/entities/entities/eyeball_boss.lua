@@ -1,6 +1,6 @@
 -- eyeball_boss (CEyeballBoss): MONOCULUS, a flying halloween_base_boss
--- bound to foundation.npc.eyeball_boss. The variant's HOVER makes
--- ws_nextbot fly it with foundation.npc.hover. This file implements
+-- bound to features.haunting.eyeball_boss. The variant's HOVER makes
+-- ws_nextbot fly it with features.haunting.hover. This file implements
 -- the eyeball's port and turns its body towards where it looks
 -- (CEyeballBossBody). The maps spawn it from point_templates with teamnum 5;
 -- the MONOCULUS spell spawns it on the caster's team.
@@ -9,7 +9,7 @@ AddCSLuaFile()
 ENT.Base = "halloween_base_boss"
 ENT.Type = "nextbot"
 ENT.Spawnable = false
-ENT.Variant = "foundation.npc.eyeball_boss"
+ENT.Variant = "features.haunting.eyeball_boss"
 
 if CLIENT then return end
 

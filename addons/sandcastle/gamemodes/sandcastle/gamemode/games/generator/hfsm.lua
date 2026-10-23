@@ -37,7 +37,7 @@ local CONTINUE_RESULT, NO_EVENT_RESULT = StateChart.CONTINUE_RESULT, StateChart.
 -------------------------------------------------------------------------------
 -- Action: a state that can be buried under the one it suspends for
 
--- What the debug layer's notations need of a class (foundation.npc.debug's
+-- What the debug layer's notations need of a class (features.nbdebug.model's
 -- Tdbn): a passthrough only contains the action that does the work, as a
 -- monitor does, and a short name, when set, stands for the name there.
 Action = Class.Extend(State, {

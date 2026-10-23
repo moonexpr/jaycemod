@@ -6,9 +6,9 @@
 -- box per NPC above its head, holding every layer's lines for it (laid out
 -- by features.nbdebug.aiwar_overlay so none covers another), and the labels.
 -- Nothing here needs developer mode, so it works on dedicated servers.
-local Debug = WS.require("foundation.npc.debug")
+local Debug = WS.require("features.nbdebug.model")
 local Overlay = WS.require("features.nbdebug.aiwar_overlay")
-local Parts = WS.require("foundation.ns.overlay")
+local Parts = WS.require("features.nbdebug.ns_overlay")
 
 -- The game events it listens to are sh.lua's; game_aiwar_debug is the aiwar
 -- controller's (Controller:SendDebug).
@@ -170,7 +170,7 @@ end)
 
 -------------------------------------------------------------------------------
 -- The AI war's soldier overlay (AIWAR): what its controller last sent,
--- drawn until it goes stale. Each part (foundation.ns.overlay's PARTS) is
+-- drawn until it goes stale. Each part (features.nbdebug.ns_overlay's PARTS) is
 -- drawn while its client convar is on (the NPC context menu's toggles,
 -- ws/cl_nb_menu.lua).
 

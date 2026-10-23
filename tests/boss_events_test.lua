@@ -1,5 +1,5 @@
 local T = dofile("tests/harness.lua")
-local BossEvents = T.require("foundation.npc.boss_events")
+local BossEvents = T.require("features.npc.boss_events")
 
 -- What a client plays and prints for each boss event (ClientModeTFNormal::
 -- FireGameEvent, clientmode_tf.cpp), with tf_english.txt's words.

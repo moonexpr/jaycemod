@@ -160,7 +160,7 @@ end, "Put every NextSoldier tactics constant back to its default")
 -- drawn with the other NPC debug layers; it sets ply.wsAiwarDebug.
 concommand.Add("ws_aiwar_debug", function(ply)
 	if not IsValid(ply) or not WS.Can(ply, NEXTSOLDIER) then return end
-	WS.Feature("nbdebug"):ToggleLayer(ply, WS.require("foundation.npc.debug").AIWAR)
+	WS.Feature("nbdebug"):ToggleLayer(ply, WS.require("features.nbdebug.model").AIWAR)
 end, nil, "Toggle drawing each AI war soldier's route, goal and state (ws_nb_debug AIWAR)")
 
 -- The soldiers' Npcs, for the nbdebug feature's other layers (PATH, COST,

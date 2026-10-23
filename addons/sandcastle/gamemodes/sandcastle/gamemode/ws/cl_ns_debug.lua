@@ -8,8 +8,8 @@
 -- NPC's own debugging (selecting it, printing its behavior, tracing it, the
 -- layers drawn for it alone) is on its context menu: hold C and
 -- right-click it (ws/cl_nb_menu.lua).
-local Overlay = WS.require("foundation.ns.overlay")
-local Debug = WS.require("foundation.npc.debug")
+local Overlay = WS.require("features.nbdebug.ns_overlay")
+local Debug = WS.require("features.nbdebug.model")
 
 -- The layers with a box here, in order: those drawn for every NPC.
 local LAYERS = { Debug.AIWAR, Debug.PATH, Debug.BEHAVIOR }

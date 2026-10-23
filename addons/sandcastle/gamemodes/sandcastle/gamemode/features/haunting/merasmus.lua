@@ -1,5 +1,5 @@
 -- MERASMUS! (CMerasmus, halloween/merasmus/merasmus.cpp and
--- merasmus_behavior/*.cpp): a boss variant of foundation.npc.halloween_boss.
+-- merasmus_behavior/*.cpp): a boss variant of features.haunting.halloween_boss.
 -- He appears in a puff of smoke and chases the nearest player, whacking
 -- them with his staff, throwing bombs and zapping everyone near with fire.
 -- Every 16 s one player of each team gets a bomb head: whoever carries it
@@ -8,7 +8,7 @@
 -- players must smash to find him, healing past his first level. After
 -- 120 s he goes home. Killed, he leaves a vortex to each team's loot, and
 -- the next Merasmus is a level tougher. His announcements reach the clients
--- as foundation.npc.boss_events' game events.
+-- as features.npc.boss_events' game events.
 --
 -- Its port adds METHODS to the boss port (the merasmus binding implements
 -- it; vectors are Vecs, attachments the model's names):
@@ -23,7 +23,7 @@
 --   SetHidden(hidden), SetCollidable(on), NetworkState(revealed,
 --     aoeAttack, stunned) for the clients' effects (C_Merasmus);
 --   StartFlying(), StopFlying(), SetDesiredAltitude(h) (the binding flies
---     him with foundation.npc.hover and FLYING);
+--     him with features.haunting.hover and FLYING);
 --   TriggerRelay(name) -> the logic_relay's origin | nil;
 --   PreferredAreas(minSize) -> the centres of the nav areas inside a
 --     func_nav_prefer, at least minSize on each side, with no RED or BLU
@@ -58,8 +58,8 @@
 -- (features.boss_timer.model) brings the next one.
 local require = require
 local NpcSystem = require("games.npc.nextbot")
-local HalloweenBoss = require("foundation.npc.halloween_boss")
-local BossEvents = require("foundation.npc.boss_events")
+local HalloweenBoss = require("features.haunting.halloween_boss")
+local BossEvents = require("features.npc.boss_events")
 local Actor = require("games.npc.actor")
 local Combat = require("games.gameplay.combat")
 local Players = require("games.gameplay.players")
@@ -82,7 +82,7 @@ LOCOMOTION = {
 	acceleration = 500,
 	deceleration = 500,
 }
--- CMerasmusFlyingLocomotion: foundation.npc.hover's config.
+-- CMerasmusFlyingLocomotion: features.haunting.hover's config.
 FLYING = {
 	hoverHeight = 50,
 	acceleration = 250, -- MERASMUS_ACCELERATION

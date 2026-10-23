@@ -51,7 +51,7 @@ function Passes(distance, speed)
 end
 
 -- A soldier's criteria set: its voice's affiliation and name
--- (foundation.npc.voices), its team's role, a random draw 0..100 (TF2's
+-- (ws.voices), its team's role, a random draw 0..100 (TF2's
 -- randomnum), and whether the enemy holds the cart.
 function Criteria(voice, role, randomnum, blocked)
 	return {

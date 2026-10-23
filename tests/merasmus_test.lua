@@ -1,9 +1,9 @@
 local T = dofile("tests/harness.lua")
 local FakeCombatant = dofile("tests/fake_combatant.lua")
 local NpcSystem = T.require("games.npc.nextbot")
-local Merasmus = T.require("foundation.npc.merasmus")
-local BossEvents = T.require("foundation.npc.boss_events")
-local HalloweenBoss = T.require("foundation.npc.halloween_boss")
+local Merasmus = T.require("features.haunting.merasmus")
+local BossEvents = T.require("features.npc.boss_events")
+local HalloweenBoss = T.require("features.haunting.halloween_boss")
 local Actor = T.require("games.npc.actor")
 local Combatant = T.require("games.npc.combatant")
 local Players = T.require("games.gameplay.players")
@@ -249,8 +249,8 @@ end)
 -- CMerasmusLocomotion::ShouldCollideWith, CMerasmusFlyingLocomotion's
 T.test("players pass through him, on foot and aloft", function()
 	T.eq(Merasmus.PLAYERS_PASS_THROUGH, true, "no collision with players")
-	T.eq(T.require("foundation.npc.headless_hatman").PLAYERS_PASS_THROUGH, nil, "the Horsemann collides with them")
-	T.eq(T.require("foundation.npc.eyeball_boss").PLAYERS_PASS_THROUGH, nil, "so does the eyeball")
+	T.eq(T.require("features.haunting.headless_hatman").PLAYERS_PASS_THROUGH, nil, "the Horsemann collides with them")
+	T.eq(T.require("features.haunting.eyeball_boss").PLAYERS_PASS_THROUGH, nil, "so does the eyeball")
 end)
 
 -- CMerasmus::Spawn

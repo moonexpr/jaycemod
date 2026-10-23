@@ -723,7 +723,7 @@ T.test("a variant's particle systems are its PARTICLES, and a variant without th
 	local listed = { "some_particle" }
 	T.eq(N.Particles({ PARTICLES = listed }), listed, "listed")
 	T.eq(#N.Particles({}), 0, "none")
-	for _, name in ipairs({ "foundation.npc.zombie", "foundation.npc.headless_hatman", "foundation.npc.eyeball_boss" }) do
+	for _, name in ipairs({ "features.haunting.zombie", "features.haunting.headless_hatman", "features.haunting.eyeball_boss" }) do
 		T.eq(#N.Particles(T.require(name)) > 0, true, name .. " lists its systems")
 	end
 end)
@@ -776,7 +776,7 @@ T.test("a nextbot whose binding fails reports it once from Initialize, then remo
 	setfenv(chunk, env)()
 
 	local ent = setmetatable({
-		Variant = "foundation.npc.zombie",
+		Variant = "features.haunting.zombie",
 		removes = 0,
 	}, { __index = ENT })
 	function ent:Remove() self.removes = self.removes + 1 end

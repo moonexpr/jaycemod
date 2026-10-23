@@ -2,7 +2,7 @@
 -- makes of each (ClientModeTFNormal::FireGameEvent, clientmode_tf.cpp): the
 -- sound the local player hears and the line it reads, in tf_english.txt's
 -- words. The boss models fire them through their port's FireGameEvent
--- (foundation.npc.halloween_boss); the npc feature defines them
+-- (features.haunting.halloween_boss); the npc feature defines them
 -- (features/npc/sh.lua) and its view plays the cues. Small on purpose: a
 -- client loads it without the boss models.
 local format = string.format

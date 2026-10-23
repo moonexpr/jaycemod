@@ -3,7 +3,7 @@
 -- entity sent to every client. This file is always loaded, on every map
 -- (Sandbox too), because NPCs die everywhere: it is an engine behaviour, not
 -- a mode's content. Its client half is ws/cl_npc_ragdolls.lua, its
--- rules foundation/npc/ragdoll.lua.
+-- rules ws/ragdoll.lua.
 --
 -- One game event, game_npc_ragdoll_create (ws/sh_npc_ragdolls.lua), tells
 -- the clients that can see a body to build its ragdoll, in one of two ways:
@@ -13,7 +13,7 @@
 --  * a serverside ragdoll the engine or an addon made for a dead NPC or
 --    NextBot: its pose and velocities travel in the message and it is
 --    removed at once.
-local Ragdoll = WS.require("foundation.npc.ragdoll")
+local Ragdoll = WS.require("ws.ragdoll")
 
 -- The body's looks, the force to push it with, and the pose if the
 -- clients are to take it from the event, to the players whose PVS holds it.

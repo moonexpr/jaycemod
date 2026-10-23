@@ -1,6 +1,6 @@
 -- The Horseless Headless Horsemann (CHeadlessHatman, headless_hatman.cpp,
 -- and halloween_behavior/headless_hatman_*.cpp): a boss variant of
--- foundation.npc.halloween_boss. It rises from the ground, makes the nearest
+-- features.haunting.halloween_boss. It rises from the ground, makes the nearest
 -- player IT (features.tag.model, through the tag controller) and chases
 -- them, cleaves whoever it targets with its axe, and every 20 s yells Boo,
 -- stunning everyone nearby. It fires game_pumpkin_lord_summoned as it rises and
@@ -12,8 +12,8 @@
 -- defaulted as TF2's (CONVARS).
 local require = require
 local NpcSystem = require("games.npc.nextbot")
-local HalloweenBoss = require("foundation.npc.halloween_boss")
-local BossEvents = require("foundation.npc.boss_events")
+local HalloweenBoss = require("features.haunting.halloween_boss")
+local BossEvents = require("features.npc.boss_events")
 local Actor = require("games.npc.actor")
 local Players = require("games.gameplay.players")
 local Teams = require("games.gameplay.teams")

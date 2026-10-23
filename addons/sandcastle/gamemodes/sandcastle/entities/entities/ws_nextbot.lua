@@ -48,7 +48,7 @@ end
 
 -------------------------------------------------------------------------------
 -- Motion: the variant's LOCOMOTION drives GMod's ground locomotor; HOVER
--- drives a foundation.npc.hover model instead.
+-- drives a features.haunting.hover model instead.
 
 local GroundMotion = {}
 
@@ -74,13 +74,13 @@ function GroundMotion.Update(self, interval) end
 local HoverMotion = {}
 
 function HoverMotion.Setup(self, cfg)
-	self.hover = WS.require("foundation.npc.hover").New(cfg, Vector)
+	self.hover = WS.require("features.haunting.hover").New(cfg, Vector)
 	self.loco:SetGravity(0)
 end
 
 function HoverMotion.SetDesiredSpeed(self, u) end
 function HoverMotion.Approach(self, v) self.hover:Approach(v, self:GetPos()) end
-function HoverMotion.IsAttemptingToMove(self) return false end -- see foundation.npc.hover
+function HoverMotion.IsAttemptingToMove(self) return false end -- see features.haunting.hover
 function HoverMotion.GetGroundSpeed(self) return self.hover:GetGroundSpeed() end
 
 function HoverMotion.GroundMotionVector(self)

@@ -305,6 +305,18 @@ MOVES = tuple(
         ("localization", "ws/localization"),
         ("settings", "ws/settings"),
         ("capture/hud", "features/capture/hud"),
+        ("npc/merasmus", "features/haunting/merasmus"),
+        ("npc/eyeball_boss", "features/haunting/eyeball_boss"),
+        ("npc/headless_hatman", "features/haunting/headless_hatman"),
+        ("npc/halloween_boss", "features/haunting/halloween_boss"),
+        ("npc/ghost", "features/haunting/ghost"),
+        ("npc/zombie", "features/haunting/zombie"),
+        ("npc/hover", "features/haunting/hover"),
+        ("npc/boss_events", "features/npc/boss_events"),
+        ("npc/debug", "features/nbdebug/model"),
+        ("ns/overlay", "features/nbdebug/ns_overlay"),
+        ("npc/ragdoll", "ws/ragdoll"),
+        ("npc/voices", "ws/voices"),
     )
 ) + tuple(
     # foundation's map namespace is world, beside games' world.

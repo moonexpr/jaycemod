@@ -2,7 +2,7 @@
 -- inputs to a features.npc.spawner model the npc controller owns and
 -- thinks. The controller spawns tf_zombie at this spawner's origin with no
 -- owner. Keyvalues TeamNum, zombie_lifetime, max_zombies, infinite_zombies,
--- zombie_type (read by foundation.npc.zombie's SpawnerConfig). Inputs
+-- zombie_type (read by features.haunting.zombie's SpawnerConfig). Inputs
 -- Enable, Disable, SetMaxActiveZombies; Kill is the engine's.
 ENT.Type = "point"
 ENT.Base = "base_point"
@@ -20,7 +20,7 @@ function ENT:UpdateTransmitState()
 end
 
 function ENT:Initialize()
-	local Zombie = WS.require("foundation.npc.zombie")
+	local Zombie = WS.require("features.haunting.zombie")
 	self.spawner = WS.Feature("npc"):BindSpawner(self, Zombie.SpawnerConfig(self.kv or {}))
 end
 

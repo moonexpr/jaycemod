@@ -3,7 +3,7 @@ local Map = ...
 local TFBot = WS.require("games.nextsoldier.path.tfbot")
 local HL2Path = WS.require("games.nextsoldier.path.hl2")
 local Random = WS.require("foundation.math.weighted")
-local Debug = WS.require("foundation.npc.debug")
+local Debug = WS.require("features.nbdebug.model")
 local Detour = WS.require("games.nextsoldier.detour")
 local WALK_MINS, WALK_MAXS, WALK_LIFT, WALK_MAX_RISE = Map.WALK_MINS, Map.WALK_MAXS, Map.WALK_LIFT, Map.WALK_MAX_RISE
 local Point, ToVector, Masks, IsDoor = Map.Point, Map.ToVector, Map.Masks, Map.IsDoor
@@ -396,7 +396,7 @@ end
 function Soldier:Hop(p) return self.ent:NSHop(self:Heading(p)) end
 function Soldier:Repath() self.ent:NSRepath() end
 
--- My orders stepped in on my movement (foundation.npc.debug's MARKS): told
+-- My orders stepped in on my movement (features.nbdebug.model's MARKS): told
 -- through WSNpcMark, which the nbdebug feature sends whoever has me
 -- selected. to: where I am sent, a point or a Vector, or nil.
 function Soldier:Mark(kind, detail, to)

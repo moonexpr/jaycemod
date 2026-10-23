@@ -1,8 +1,8 @@
 local T = dofile("tests/harness.lua")
 local FakeActor = dofile("tests/fake_actor.lua")
 local BossTimer = T.require("features.boss_timer.model")
-local Merasmus = T.require("foundation.npc.merasmus")
-local HalloweenBoss = T.require("foundation.npc.halloween_boss")
+local Merasmus = T.require("features.haunting.merasmus")
+local HalloweenBoss = T.require("features.haunting.halloween_boss")
 local Teams = T.require("games.gameplay.teams")
 
 local V = FakeActor.Vector
@@ -264,7 +264,7 @@ local function Map(names, classes)
 end
 
 T.test("Merasmus's scenario is a map with his arrival relay and no Merasmus of its own", function()
-	T.eq(MERASMUS_SCENARIO.variant, "foundation.npc.merasmus", "his")
+	T.eq(MERASMUS_SCENARIO.variant, "features.haunting.merasmus", "his")
 	T.eq(MERASMUS_SCENARIO.arrivalRelay, Merasmus.ENTER_RELAY, "boss_enter_relay")
 	T.eq(MERASMUS_SCENARIO.bossClass, HalloweenBoss.CLASSES[HalloweenBoss.BOSS_MERASMUS], "merasmus")
 	-- koth_lakeside_event: the relays, the wheel, no merasmus

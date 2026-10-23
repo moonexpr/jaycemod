@@ -28,7 +28,7 @@ COUNT = 12
 -- SpellType_t
 KIND_ROCKET, KIND_JAR, KIND_SELF = 0, 1, 2
 
--- CSpellPickup's m_nTier; foundation.npc.zombie's SPELL_TIER_RARE matches.
+-- CSpellPickup's m_nTier; features.haunting.zombie's SPELL_TIER_RARE matches.
 TIER_COMMON, TIER_RARE = 0, 1
 
 ROLL_TIME = 2 -- RollNewSpell's flRollTime

@@ -1,7 +1,7 @@
 -- merasmus (CMerasmus): MERASMUS!, a halloween_base_boss bound to
--- foundation.npc.merasmus, which holds every rule. This file implements his
+-- features.haunting.merasmus, which holds every rule. This file implements his
 -- port, flies him for the bomb rain (CMerasmusFlyingLocomotion, through
--- foundation.npc.hover), plays the loop he floats with, forwards his props'
+-- features.haunting.hover), plays the loop he floats with, forwards his props'
 -- events to his Behavior, and networks the state his client effects follow
 -- (C_Merasmus; the npc view draws them). pl_fifthcurve_event and
 -- pl_rumble_event spawn him from a point_template (merasmus_triggered) and
@@ -11,7 +11,7 @@ AddCSLuaFile()
 ENT.Base = "halloween_base_boss"
 ENT.Type = "nextbot"
 ENT.Spawnable = false
-ENT.Variant = "foundation.npc.merasmus"
+ENT.Variant = "features.haunting.merasmus"
 
 -- C_Merasmus's networked flags.
 function ENT:SetupDataTables()
@@ -171,7 +171,7 @@ function ENT:StartFlying()
 	local Merasmus = WS.require(self.Variant)
 	self.groundMotion = self.motion
 	self.groundGravity = self.loco:GetGravity()
-	self.flight = WS.require("foundation.npc.hover").New(Merasmus.FLYING, Vector)
+	self.flight = WS.require("features.haunting.hover").New(Merasmus.FLYING, Vector)
 	self.flightYawRate = Merasmus.FLYING_MAX_YAW_RATE
 	self.loco:SetGravity(0)
 	self.motion = FlyingMotion

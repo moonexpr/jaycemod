@@ -1,7 +1,7 @@
 -- tf_projectile_spellspawnzombie (CreateSpellSpawnZombie and
 -- CTFProjectile_SpellSpawnZombie): a skull grenade that hatches a skeleton
 -- where it lands. A ws_projectile on the timed grenade model; it never
--- detonates on touch. foundation.npc.zombie holds its throw and what it
+-- detonates on touch. features.haunting.zombie holds its throw and what it
 -- hatches.
 --
 -- Config, given with Configure before Spawn: { thrower, team, skeletonType }.
@@ -39,7 +39,7 @@ function ENT:Configure(skull)
 end
 
 function ENT:Initialize()
-	self.zombie = WS.require("foundation.npc.zombie")
+	self.zombie = WS.require("features.haunting.zombie")
 	ReadyParticles(self.zombie)
 	local throw = self.zombie.SkullThrow(math.Rand, Vector)
 	self:SetPos(self:GetPos() + throw.offset)

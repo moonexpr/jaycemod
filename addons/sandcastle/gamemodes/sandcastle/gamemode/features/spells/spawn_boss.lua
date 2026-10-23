@@ -7,8 +7,8 @@ local require = require
 local Teams = require("games.gameplay.teams")
 local Spells = require("features.spells.model")
 local SpellSet = require("features.spells.halloween")
-local HalloweenBoss = require("foundation.npc.halloween_boss")
-local EyeballBoss = require("foundation.npc.eyeball_boss")
+local HalloweenBoss = require("features.haunting.halloween_boss")
+local EyeballBoss = require("features.haunting.eyeball_boss")
 local ipairs = ipairs
 module(...)
 
