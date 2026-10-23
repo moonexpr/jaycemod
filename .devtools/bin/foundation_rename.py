@@ -31,10 +31,15 @@ SEARCHED = ("addons", "tests", ".devtools/bin")
 
 @dataclass(frozen=True)
 class Move:
-    """A module's path under gamemode/, before and after, without .lua."""
+    """A module's path under gamemode/, before and after, without .lua.
+
+    optional: a module that may not exist in the tree the script runs over
+    (one begun in uncommitted work), so finding it nowhere is no mistake.
+    """
 
     old: str
     new: str
+    optional: bool = False
 
     def __post_init__(self) -> None:
         for path in (self.old, self.new):
@@ -320,7 +325,7 @@ MOVES = tuple(
     )
 ) + tuple(
     # Models begun on main while the split was under way.
-    Move(old, new)
+    Move(old, new, optional=True)
     for old, new in (
         ("foundation/handicap", "games/gameplay/handicap"),
         ("foundation/aiwar/capabilities", "games/gameplay/capabilities"),
@@ -363,7 +368,7 @@ def planned_moves() -> list[tuple[Path, Path]]:
                 pairs.append((old, new))
                 moved_out.add(old)
                 moved_in.add(new)
-            elif is_module and not exists(new) and not any(
+            elif is_module and not move.optional and not exists(new) and not any(
                 later.old == move.new for later in MOVES
             ):
                 raise Conflict(f"neither {old} nor {new} exists")
