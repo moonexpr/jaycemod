@@ -1,4 +1,4 @@
--- foundation.aiwar.scenario.control_points: the war over control points,
+-- features.aiwar.scenario.control_points: the war over control points,
 -- symmetric and attack/defend: each team's objectives read from the capture
 -- HUD's points (TF2's CollectCapturePoints and CollectDefendPoints), its
 -- stance from them, and the point doctrine's jobs; then whole battles of
@@ -8,13 +8,13 @@ local FS = dofile("tests/fake_soldier.lua")
 local FP = dofile("tests/fake_points.lua")
 local N = T.require("games.npc.nextbot")
 local Debug = T.require("foundation.npc.debug")
-local AiWar = T.require("foundation.aiwar")
-local Orders = T.require("foundation.aiwar.orders")
+local AiWar = T.require("features.aiwar.model")
+local Orders = T.require("features.aiwar.orders")
 local Tactics = T.require("games.ns.tactics")
 local Geometry = T.require("foundation.math.geometry")
 local Lanes = T.require("games.ns.lanes")
-local Scenario = T.require("foundation.aiwar.scenario")
-local CP = T.require("foundation.aiwar.scenario.control_points")
+local Scenario = T.require("features.aiwar.scenario")
+local CP = T.require("features.aiwar.scenario.control_points")
 local Teams = T.require("games.gameplay.teams")
 
 local RED, BLUE = Teams.RED, Teams.BLUE

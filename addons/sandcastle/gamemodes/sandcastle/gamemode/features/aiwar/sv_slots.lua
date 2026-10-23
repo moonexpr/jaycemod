@@ -1,13 +1,13 @@
 -- Part of the AI war controller (sv.lua): the slot plan, sizes, pins, and syncing them to viewers.
 local Controller, Map = ...
-local AiWar = WS.require("foundation.aiwar")
+local AiWar = WS.require("features.aiwar.model")
 local Squad = WS.require("games.ns.squad")
-local Slots = WS.require("foundation.aiwar.slots")
-local Scenario = WS.require("foundation.aiwar.scenario")
+local Slots = WS.require("features.aiwar.slots")
+local Scenario = WS.require("features.aiwar.scenario")
 local RED, BLUE = Map.RED, Map.BLUE
 local TeamSize = Map.TeamSize
 
--- Slots (foundation.aiwar.slots) -------------------------------------------------------
+-- Slots (features.aiwar.slots) -------------------------------------------------------
 -- Each faction's slots are its size; while mp_aiwar_team_size is a size,
 -- every faction is resized to it. The AI War panel's slot list edits them
 -- (mp_aiwar_slots_*, ws/sh_aiwar.lua), which turns the team size to

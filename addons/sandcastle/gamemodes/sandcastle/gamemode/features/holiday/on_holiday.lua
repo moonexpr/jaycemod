@@ -1,8 +1,8 @@
 -- tf_logic_on_holiday's Fire (CLogicOnHoliday::InputFire,
 -- tf_logic_on_holiday.cpp): the outputs to fire for the holidays that are
--- on, asked of a foundation.holiday model. With none on, IsNothing alone.
+-- on, asked of a features.holiday.model model. With none on, IsNothing alone.
 local ipairs, require = ipairs, require
-local Holiday = require("foundation.holiday")
+local Holiday = require("features.holiday.model")
 module(...)
 
 IS_APRIL_FOOLS = "IsAprilFools"

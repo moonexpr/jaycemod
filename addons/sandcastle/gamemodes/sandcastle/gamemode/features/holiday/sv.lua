@@ -1,21 +1,21 @@
--- The holiday feature's controller. It owns the foundation.holiday model
+-- The holiday feature's controller. It owns the features.holiday.model model
 -- (the map's holiday, spells on or off, the active mode) and the mode's gift
 -- schedule, reads TF2's convars once when it loads, and turns the model's
 -- answers into entities: dropped spell pickups and gifts. It also owns the
 -- fortune tellers' models, and carries out their outputs, sounds and
 -- teleports.
-local Holiday = WS.require("foundation.holiday")
+local Holiday = WS.require("features.holiday.model")
 
 -- The holiday modes this gamemode registers, in order of preference.
 local MODES = {
-	WS.require("foundation.holiday.halloween"),
+	WS.require("features.holiday.halloween"),
 }
 
 local SPELL_PICKUP = "tf_spell_pickup"
 local GIFT_PICKUP = "tf_halloween_gift_pickup"
 local GIFT_THINK_INTERVAL = 1
 local GIFT_TIMER = "ws_holiday_gifts"
-local FORTUNE_MODEL = "foundation.holiday.fortune"
+local FORTUNE_MODEL = "features.holiday.fortune"
 
 -- TF2's convars (tf_gamerules.cpp), server-only here.
 local forcedHoliday = CreateConVar("tf_forced_holiday", "0", FCVAR_NOTIFY, "Forced holiday, \n   Birthday = 1\n   Halloween = 2\n")
@@ -32,7 +32,7 @@ local Controller = {
 	mode = nil,
 	gifts = nil, -- the mode's gift schedule, when it has one
 	giftLocations = {},
-	fortunes = {}, -- fortune teller entity -> its foundation.holiday.fortune model
+	fortunes = {}, -- fortune teller entity -> its features.holiday.fortune model
 	fortuneEffects = nil,
 }
 
@@ -130,7 +130,7 @@ end
 
 -- tf_halloween_gift_pickup: config = { player, lifetime }.
 function Controller:BindGift(ent, config)
-	return WS.require("foundation.holiday.gift").New(config, CurTime())
+	return WS.require("features.holiday.gift").New(config, CurTime())
 end
 
 function Controller:SpawnGift(gift)
@@ -172,7 +172,7 @@ local function FortuneEffects(Fortune)
 end
 
 -- halloween_fortune_teller: kv = { redTeleport, blueTeleport }. The first
--- teller loads foundation.holiday.fortune.
+-- teller loads features.holiday.fortune.
 function Controller:BindFortuneTeller(ent, kv)
 	local Fortune = WS.require(FORTUNE_MODEL)
 	self.fortuneEffects = self.fortuneEffects or FortuneEffects(Fortune)

@@ -47,12 +47,12 @@ end
 -- The convars created from constants, loops and tables, resolved from the
 -- modules that hold their defaults.
 local function IndirectDefaults(defaults)
-	defaults.mp_aiwar_team_size = tostring(T.require("foundation.aiwar").TEAM_SIZE_DEFAULT)
+	defaults.mp_aiwar_team_size = tostring(T.require("features.aiwar.model").TEAM_SIZE_DEFAULT)
 	defaults.ws_nodegraph_max_nodes = tostring(T.require("foundation.nodegraph").MAX_NODES)
 	defaults.tf_max_active_zombie = tostring(T.require("foundation.npc.zombie").MAX_ACTIVE_DEFAULT)
 	defaults.tf_flag_caplimit = tostring(T.require("features.flag.model").CAPLIMIT_DEFAULT)
 	defaults.ws_mvm_setup_time = tostring(T.require("features.mvm.model").SETUP_SECONDS)
-	defaults.tf_bot_difficulty = tostring(T.require("foundation.aiwar.marksmanship").DEFAULT)
+	defaults.tf_bot_difficulty = tostring(T.require("features.aiwar.marksmanship").DEFAULT)
 	for _, boss in ipairs({ "foundation.npc.eyeball_boss", "foundation.npc.headless_hatman", "foundation.npc.merasmus" }) do
 		for name, value in pairs(T.require(boss).CONVARS) do defaults[name] = tostring(value) end
 	end

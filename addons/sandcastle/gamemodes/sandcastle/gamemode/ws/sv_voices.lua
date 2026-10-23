@@ -9,7 +9,7 @@
 -- the engine's.
 local Voices = WS.require("foundation.npc.voices")
 
--- The factions by name (foundation.aiwar's FACTIONS), and the sides they
+-- The factions by name (features.aiwar.model's FACTIONS), and the sides they
 -- start on, which hold while no war is on to trade them.
 local AFFILIATION = { Combine = Voices.COMBINE, Resistance = Voices.REBEL }
 local STARTING = { [WS.TEAM_RED] = Voices.COMBINE, [WS.TEAM_BLUE] = Voices.REBEL }

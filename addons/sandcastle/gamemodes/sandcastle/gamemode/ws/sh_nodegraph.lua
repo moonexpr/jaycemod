@@ -12,7 +12,7 @@ if WS.require("games.system.features").OFF.nodegraph then return end
 -- nodes), human if a soldier's hull can walk it.
 local E = WS.Events
 local COUNT_BITS = 16
-local Settings = WS.require("foundation.settings")
+local Settings = WS.require("ws.settings")
 
 -- Shared, so the Utilities menu's slider shows the server's value.
 local MAX_NODES_RANGE = Settings.SETTINGS.ws_nodegraph_max_nodes

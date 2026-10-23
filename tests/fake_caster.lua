@@ -1,4 +1,4 @@
--- An in-memory foundation.spells.caster for spell tests: a fake clock, a
+-- An in-memory features.spells.caster for spell tests: a fake clock, a
 -- scripted random source, fake targets (the owner among them), scripted
 -- traces, and a log of every effect a spell asked for. It implements every
 -- name in foundation.spells.caster.METHODS (spells_cast_test checks that).

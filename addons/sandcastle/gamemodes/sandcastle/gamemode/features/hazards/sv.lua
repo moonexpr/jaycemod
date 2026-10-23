@@ -1,10 +1,10 @@
--- The hazards feature's controller. It owns one foundation.hazards model per
+-- The hazards feature's controller. It owns one features.hazards.model model per
 -- hazard entity (tf_pumpkin_bomb, tf_generic_bomb, halloween_zapper,
 -- func_croc), gives the model what happens to the entity (damage with the
 -- attacker's team, inputs, touches, time) and carries out what the model
 -- answers: a blast through the combat controller, goop, gibs, outputs, a
 -- zap's beam, or a croc and its bite.
-local Hazards = WS.require("foundation.hazards")
+local Hazards = WS.require("features.hazards.model")
 
 local TRIGGER_HURT = "trigger_hurt"
 local PROJECTILE_BASE = "ws_projectile"
@@ -41,7 +41,7 @@ local function SetUpBody(ent, body)
 	end
 end
 
--- The model for a hazard entity; its variant is a foundation.hazards part.
+-- The model for a hazard entity; its variant is a features.hazards.model part.
 -- A hazard with a body gets its model, skin, scale and movement here.
 function Controller:Bind(ent, variantName, config)
 	local hazard = Hazards.New(WS.require(variantName), config, CurTime())

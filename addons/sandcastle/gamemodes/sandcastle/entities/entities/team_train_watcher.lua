@@ -5,7 +5,7 @@
 -- with handle_train_movement drives the train itself (speed by pushers,
 -- hills, receding). With handle_train_movement 0 the map moves the train
 -- from the capture area's outputs and the watcher only tracks it.
--- The decisions live in foundation/payload.lua; the payload feature's
+-- The decisions live in features/payload/model.lua; the payload feature's
 -- controller holds the watchers, the cart speed scale and the cart HUD.
 ENT.Type = "point"
 ENT.Base = "base_point"
@@ -34,7 +34,7 @@ local function Flag(value)
 end
 
 function ENT:Initialize()
-	P = WS.require("foundation.payload")
+	P = WS.require("features.payload.model")
 	self.capture = WS.Feature("capture")
 	self.payload = WS.Feature("payload")
 	self.payload:BindWatcher(self)
@@ -116,7 +116,7 @@ local function IsControlPoint(name)
 	return IsValid(ent) and ent:GetClass() == "team_control_point"
 end
 
--- Whether this watcher is the payload's (foundation.payload's IsObjective):
+-- Whether this watcher is the payload's (features.payload.model's IsObjective):
 -- it links a path_track to a team_control_point.
 function ENT:IsObjective()
 	return P.IsObjective(P.Checkpoints(function(name) return self:Key(name) end), IsControlPoint)
@@ -364,7 +364,7 @@ function ENT:ResumeSpeed()
 	if IsValid(area) then area:TriggerOutput("OnNumCappersChanged", area, tostring(math.max(self.numCappers, 0))) end
 end
 
--- The Game Rules editor's retract (foundation.payload RetractPlan): a cart
+-- The Game Rules editor's retract (features.payload.model RetractPlan): a cart
 -- just past the last point it took gives it back to its default owner, the
 -- attackers gain RETRACT_SLACK seconds on the HUD timer, and the cart is
 -- teleported to the checkpoint before it (or the start); farther on, the
@@ -388,21 +388,21 @@ function ENT:RetractToCheckpoint()
 end
 
 -- Each side told of the Game Rules editor's moves, as TF2 tells a
--- scramble (foundation.admin_notices).
+-- scramble (ws.admin_notices).
 local Notices
 
 function ENT:AnnounceRetract()
-	Notices = Notices or WS.require("foundation.admin_notices")
+	Notices = Notices or WS.require("ws.admin_notices")
 	WS.Notify(Notices.CartRetracted(self.team, WS.EnemyOf(self.team)))
 end
 
 function ENT:AnnounceAdvance()
-	Notices = Notices or WS.require("foundation.admin_notices")
+	Notices = Notices or WS.require("ws.admin_notices")
 	WS.Notify(Notices.CartAdvanced(self.team, WS.EnemyOf(self.team)))
 end
 
 -- The Game Rules editor's advance: the cart is teleported, as a retract
--- teleports it, to the node before the next checkpoint (foundation.payload
+-- teleports it, to the node before the next checkpoint (features.payload.model
 -- AdvanceFrom), then driven forward at the map's speed until it passes the
 -- checkpoint's path_track, so the map's own OnPass logic (its stop, capture
 -- relay, a stage's lift) runs as for a pushed cart. Returns true, or false

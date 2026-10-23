@@ -58,9 +58,9 @@ function ENT:PowerupModel()
 end
 
 -- m_nTier starts at 0. A pickup the map placed turns spells on
--- (foundation.holiday); a thrown one does not.
+-- (features.holiday.model); a thrown one does not.
 function ENT:Initialize()
-	self.set = WS.require("foundation.spells.halloween")
+	self.set = WS.require("features.spells.halloween")
 	if not self.dropped then WS.Feature("holiday"):SpellPickupPlaced() end
 	self.spells = WS.Feature("spells")
 	self.tier = self.tier or self.set.TIER_COMMON

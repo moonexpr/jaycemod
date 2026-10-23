@@ -1,5 +1,5 @@
 -- wheel_of_doom (CWheelOfDoom): the Wheel of Fate, a binding to a
--- foundation.holiday.wheel model through the wheel controller. Keyvalues
+-- features.wheel.model model through the wheel controller. Keyvalues
 -- effect_duration and has_spiral; inputs Spin and ClearAllEffects (Kill and
 -- AddOutput are the engine's); outputs OnEffectApplied and OnEffectExpired.
 -- Its screen (buff_plane.mdl) is hidden until a spin; with has_spiral a
@@ -13,7 +13,7 @@ ENT.Spawnable = false
 
 if CLIENT then return end
 
-local MODEL = "foundation.holiday.wheel"
+local MODEL = "features.wheel.model"
 local SPIRAL_RATE = 0.55 -- WHEEL_SPIRAL_GROW_RATE and _SHRINK_RATE, of full size a second
 local SPIRAL_FULL = 1
 local SPIRAL_NOT_SOLID = "0" -- prop_dynamic's solid keyvalue: none

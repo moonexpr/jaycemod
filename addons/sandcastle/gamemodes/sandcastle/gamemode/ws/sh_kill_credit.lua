@@ -6,7 +6,7 @@ local E = WS.Events
 local TEAM_BITS = 16 -- Sandbox's TEAM_UNASSIGNED is 1001
 
 -- victim and assister: named as GMod's death notices name them (a player's
--- name, "#<class>" for an NPC); team: the assister's, foundation.kill_feed's
+-- name, "#<class>" for an NPC); team: the assister's, features.aiwar.kill_feed's
 -- NPC_TEAM for an NPC.
 E.Define("game_kill_assist", {
 	victim = E.String(),

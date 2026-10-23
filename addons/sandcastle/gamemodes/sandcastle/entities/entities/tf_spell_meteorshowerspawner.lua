@@ -1,7 +1,7 @@
 -- tf_spell_meteorshowerspawner (CTFSpell_MeteorShowerSpawner): where a
 -- meteor shower landed. Not a projectile: it stays put while the spells
 -- controller ticks its Shot, which drops the meteors and says when it is
--- done (foundation.spells.meteor). The caster port spawns it with
+-- done (features.spells.meteor). The caster port spawns it with
 -- SetOwner(caster) and Configure{ spell, normal, team } before Spawn.
 ENT.Type = "point"
 ENT.Base = "base_point"

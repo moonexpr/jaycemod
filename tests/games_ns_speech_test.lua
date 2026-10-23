@@ -9,7 +9,7 @@ local Response = T.require("responserules")
 local Script = T.require("responserules_script")
 local Speech = T.require("games.ns.speech")
 local Voices = T.require("foundation.npc.voices")
-local Payload = T.require("foundation.payload")
+local Payload = T.require("features.payload.model")
 
 local SCRIPTS = "addons/responserules/scripts/"
 local ROOT = "responserules/response_rules.txt"
@@ -289,7 +289,7 @@ T.test("every Combine soldier line the rules speak is in the gamemode's voice pa
 	T.eq(count >= 50, true, "the soldiers' lines were found: " .. count)
 end)
 
--- Falling back to cover and leaving it for a kit (foundation.aiwar.orders'
+-- Falling back to cover and leaving it for a kit (features.aiwar.orders'
 -- RetreatToCover and FindHealth, through the soldier port's Announce).
 T.test("every voice calls out falling back to cover and going for health, each voice with lines its own", function()
 	local OWN = { combine = "CombineSoldier", metrocop = "CombineMetrocop", male = "RebelMale", female = "RebelFemale" }

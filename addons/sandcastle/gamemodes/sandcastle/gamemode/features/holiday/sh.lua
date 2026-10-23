@@ -1,7 +1,7 @@
 -- The holiday feature's particles, in both realms: the server precaches the
 -- name it sends and clients need the file to draw it. Only a taken
--- Halloween gift plays one (foundation.holiday.gift).
-local Gift = WS.require("foundation.holiday.gift")
+-- Halloween gift plays one (features.holiday.gift).
+local Gift = WS.require("features.holiday.gift")
 
 local FILES = {
 	"particles/halloween.pcf", -- duck_collect_green

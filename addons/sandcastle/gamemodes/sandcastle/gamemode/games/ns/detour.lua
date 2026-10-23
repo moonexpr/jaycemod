@@ -1,7 +1,7 @@
 -- The way round a solid entity standing in a walker's way (a crate across a
 -- lane, which the nav mesh does not know of): the points beside it, square
 -- to the way, far enough out for the walker to pass. The AI war's soldiers
--- walk to one when stuck against it (foundation.aiwar.orders' Unstick,
+-- walk to one when stuck against it (features.aiwar.orders' Unstick,
 -- through the soldier port's Detour).
 local Geometry = require("foundation.math.geometry")
 module(...)

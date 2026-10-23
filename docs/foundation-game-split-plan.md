@@ -33,6 +33,11 @@ gameplay). Both publish their modules as globals.
    builds a module's dotted path in the globals, so `game.list.drawlist`
    would add tables to GMod's `game`. Decided after the tables below were
    written with `game/`; read `games/` for them.
+10. **foundation stays small and generic: it is copied to the globals.**
+    hazards, holiday, spells, rounds' variants and every root module but
+    `transaction`, `nodegraph` and `sh_index` leave for their features and
+    `ws/`. `settings` becomes the generic `configstore`, its menus'
+    settings declared on one in `ws/settings.lua`.
 
 ## Status
 
@@ -41,9 +46,14 @@ gameplay). Both publish their modules as globals.
   without stacks; `games.generator.hfsm` extends it with NextBot's
   suspend/resume stacks, its behaviour unchanged (its tests and the NPC
   system's pass as they were).
-- Stage 3: done, as the table below proposed. What is left in
-  `foundation/` outside its namespaces is PENDING, bound for its features
-  and `ws/`.
+- Stage 3: done, as the table below proposed.
+- Evacuation (decision 10): done. A feature's root model is its
+  `model.lua` (`features.spells.model`), its parts beside it; rounds'
+  variants are their features' `round.lua` (`features.payload.round`,
+  `features.arena.round`) or `features/rounds/<variant>`. foundation's
+  root holds `transaction`, `configstore` and `nodegraph`, each a plain
+  global. Still PENDING: the Halloween bosses and debug models in `npc/`,
+  `ns/overlay`, `capture/hud`.
 
 ## The loader
 

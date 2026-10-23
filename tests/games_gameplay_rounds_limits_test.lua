@@ -65,10 +65,10 @@ T.test("only a mode without an objective plays to the round limits; an objective
 	local on = Limits.Of(Rounds.Mode, 30, 10000)
 	T.eq(on.frags == 30 and on.cash == 10000, true, "no objective: the convars")
 	local OBJECTIVE_MODES = {
-		control_points = "foundation.rounds.control_points",
+		control_points = "features.rounds.control_points",
 		koth = "features.koth.model",
-		arena = "foundation.rounds.arena",
-		payload = "foundation.rounds.payload",
+		arena = "features.arena.round",
+		payload = "features.payload.round",
 	}
 	for _, name in ipairs({ "control_points", "koth", "arena", "payload" }) do
 		local off = Limits.Of(T.require(OBJECTIVE_MODES[name]).Mode, 30, 10000)

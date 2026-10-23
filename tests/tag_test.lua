@@ -1,11 +1,11 @@
 local T = dofile("tests/harness.lua")
 local Tag = T.require("features.tag.model")
 local Teams = T.require("games.gameplay.teams")
-local Holiday = T.require("foundation.holiday")
-local Halloween = T.require("foundation.holiday.halloween")
+local Holiday = T.require("features.holiday.model")
+local Halloween = T.require("features.holiday.halloween")
 
 -- The tag model's world: the holiday controller's HolidayActive and Mode
--- (backed here by a real foundation.holiday model), and players' teams and
+-- (backed here by a real features.holiday.model model), and players' teams and
 -- lives.
 local function World(mapHoliday)
 	local holiday = Holiday.New({

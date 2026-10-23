@@ -1,6 +1,6 @@
 -- The kill feed, in TF2's look (WS.UI's theme), in place of GMod's death
 -- notices: top right, newest at the bottom, each kill a box holding its
--- killer and victim in their teams' colours (foundation.kill_feed: the AI
+-- killer and victim in their teams' colours (features.aiwar.kill_feed: the AI
 -- war's soldiers in their sides') either side of TF2's kill icon for what
 -- made it (games.gameplay.kill_icons, from TF2's own scripts/mod_textures.txt and
 -- Sandcastle's own in its look, ws/kill_icons_sheet.lua).
@@ -13,8 +13,8 @@
 -- assisted suicide. An assisted kill names its assister beside the killer,
 -- "killer + assister" (game_kill_assist). Each shows for LIFETIME
 -- seconds (hud_deathnotice_time).
-local Feed = WS.require("foundation.kill_feed")
-local AiWar = WS.require("foundation.aiwar")
+local Feed = WS.require("features.aiwar.kill_feed")
+local AiWar = WS.require("features.aiwar.model")
 local Icons = WS.require("games.gameplay.kill_icons")
 local THEME = WS.UI.THEME
 local E = WS.Events
@@ -113,7 +113,7 @@ E.Listen("game_kill_assist", "ws_kill_feed", function(fields)
 	Feed.WithAssister(row, Name(fields.assister), Feed.Team(fields.assister, fields.team, sides), Me())
 end)
 
--- A point captured or defended (foundation.kill_feed's Objective): kind,
+-- A point captured or defended (features.aiwar.kill_feed's Objective): kind,
 -- the team, names who did it as death notices name them, point its name.
 function WS.KillFeedObjective(kind, team, names, point)
 	local shown = {}

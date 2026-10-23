@@ -4,7 +4,7 @@
 -- fakes it. Method names are TF2's wherever TF2 has one.
 --
 -- Teams are games.gameplay.teams numbers; conditions and stun flags are
--- games.gameplay.players' COND and STUN; holidays are foundation.holiday's.
+-- games.gameplay.players' COND and STUN; holidays are features.holiday.model's.
 --   GetTeamNumber() -> my team
 --   TeamOf(t) -> t's team (UNASSIGNED for an entity with none)
 --   CollectPlayers(team) -> the living players of team; nil means RED and BLU

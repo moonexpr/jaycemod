@@ -1,4 +1,4 @@
--- The AI War panel's slot list (foundation.aiwar.slots), for admins, for
+-- The AI War panel's slot list (features.aiwar.slots), for admins, for
 -- testing how squads work:
 -- - a slider a side over its slots (mp_aiwar_slots_size);
 -- - switches: every soldier paused (ns_soldiers_paused), and whether the
@@ -13,7 +13,7 @@
 --   as its own context menu does (ws/cl_nb_menu.lua).
 -- The server sends the list (game_aiwar_slots) once the panel asks, and again
 -- whenever it changes.
-local Slots = WS.require("foundation.aiwar.slots")
+local Slots = WS.require("features.aiwar.slots")
 local Squad = WS.require("games.ns.squad")
 local E = WS.Events
 

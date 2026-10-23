@@ -3,7 +3,7 @@
 local T = dofile("tests/harness.lua")
 local FakeObjective = dofile("tests/fake_objective.lua")
 local Rounds = T.require("games.gameplay.rounds")
-local ControlPoints = T.require("foundation.rounds.control_points")
+local ControlPoints = T.require("features.rounds.control_points")
 local Teams = T.require("games.gameplay.teams")
 
 local RED, BLUE = Teams.RED, Teams.BLUE

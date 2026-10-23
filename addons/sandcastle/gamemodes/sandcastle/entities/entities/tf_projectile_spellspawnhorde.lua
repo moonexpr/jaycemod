@@ -1,6 +1,6 @@
 -- tf_projectile_spellspawnhorde (CTFProjectile_SpellSpawnHorde): the
 -- skeleton horde spell's skull, which bursts into three skull grenades
--- (foundation.spells.skeleton_horde).
+-- (features.spells.skeleton_horde).
 AddCSLuaFile()
 
 ENT.Type = "anim"

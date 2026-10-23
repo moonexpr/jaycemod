@@ -1,9 +1,9 @@
 -- Part of the AI war controller (sv.lua): the ws_aiwar_* and ns_* console commands.
 local Controller, Map = ...
-local Orders = WS.require("foundation.aiwar.orders")
+local Orders = WS.require("features.aiwar.orders")
 local Tactics = WS.require("games.ns.tactics")
 local Squad = WS.require("games.ns.squad")
-local Slots = WS.require("foundation.aiwar.slots")
+local Slots = WS.require("features.aiwar.slots")
 local Lanes = WS.require("games.ns.lanes")
 local Tuning = WS.require("games.ns.tuning")
 local Permissions = WS.require("games.system.permissions")

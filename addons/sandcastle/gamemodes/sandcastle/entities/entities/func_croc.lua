@@ -1,4 +1,4 @@
--- func_croc (CFuncCroc): a trigger bound to a foundation.hazards.croc model
+-- func_croc (CFuncCroc): a trigger bound to a features.hazards.croc model
 -- through the hazards controller. Keyvalues TeamNum, StartDisabled,
 -- filtername and croc_model; inputs Enable, Disable and Toggle (the
 -- trigger's; Kill and AddOutput are the engine's); outputs OnEat, OnEatRed
@@ -8,7 +8,7 @@
 ENT.Type = "brush"
 ENT.Base = "ws_trigger_volume"
 
-local VARIANT = "foundation.hazards.croc"
+local VARIANT = "features.hazards.croc"
 local CONTENT_PATH = "GAME"
 
 -- GetCrocModel: croc_model only when the file exists.

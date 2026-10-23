@@ -1,5 +1,5 @@
 -- tf_pumpkin_bomb (CTFPumpkinBomb): a binding to a
--- foundation.hazards.pumpkin_bomb model through the hazards controller. A
+-- features.hazards.pumpkin_bomb model through the hazards controller. A
 -- map's pumpkin reads no keyvalues (TF2 ignores the FGD's). The MIRV spell
 -- makes team pumpkins: ents.Create("tf_pumpkin_bomb"), then
 -- Configure{ scale, damage, radius, team, lifetime, isSpell } before Spawn.
@@ -11,7 +11,7 @@ ENT.Spawnable = false
 
 if CLIENT then return end
 
-local VARIANT = "foundation.hazards.pumpkin_bomb"
+local VARIANT = "features.hazards.pumpkin_bomb"
 local THINK_INTERVAL = 0.1 -- for a team pumpkin's lifetime
 
 function ENT:Configure(config)

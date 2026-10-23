@@ -2,12 +2,12 @@
 -- shows for a token, in the player's GMod language (gmod_language), with
 -- English behind it for tokens that language lacks. The text comes from the
 -- mounted TF2's own language files (resource/tf_<language>.txt, under the
--- "tf" path), read by foundation.localization the first time a token is
+-- "tf" path), read by ws.localization the first time a token is
 -- needed; a change of language reads only the new language's file. Every token is also
 -- handed to GMod's language.Add, so language.GetPhrase and VGUI labels that
 -- say "#Badwater_cap_1" show it too. The server never localizes: it sends
 -- tokens, and each client words them.
-local L = WS.require("foundation.localization")
+local L = WS.require("ws.localization")
 
 local MOUNT = "tf" -- the mounted TF2's path id
 local LANGUAGE_CONVAR = "gmod_language"

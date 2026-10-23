@@ -4,7 +4,7 @@
 local T = dofile("tests/harness.lua")
 local FakeObjective = dofile("tests/fake_objective.lua")
 local Rounds = T.require("games.gameplay.rounds")
-local CPMode = T.require("foundation.rounds.control_points").Mode
+local CPMode = T.require("features.rounds.control_points").Mode
 local State = T.require("games.gameplay.rounds.state")
 local Teams = T.require("games.gameplay.teams")
 local Spawns = T.require("games.system.spawn_manager")
@@ -1214,7 +1214,7 @@ end)
 -- breaks, OnFinished goes to a game_round_win for RED.
 T.test("an A/D round: setup, time added by a capture, overtime while capping, then the defenders win", function()
 	local Timer = T.require("games.gameplay.rounds.timer")
-	local ControlPoints = T.require("foundation.rounds.control_points")
+	local ControlPoints = T.require("features.rounds.control_points")
 	local objective = FakeObjective.Objective()
 	local round = Rounds.New(Settings())
 	round:SetMode(ControlPoints.Mode)

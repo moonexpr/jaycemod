@@ -15,11 +15,14 @@ local TREES = {
 	{ root = "games", file = "_init.lua", lazy = true },
 }
 
--- Folders that still hold modules bound elsewhere: only what their index
--- lists is published, until those move (the plan's stage 3).
-local PARTLY = {
-	["foundation/"] = true,
-}
+-- foundation's root folder publishes its modules as plain globals.
+local ROOT_FOLDER = "foundation/"
+
+-- The table a folder's index publishes into.
+local function NamespaceOf(globals, folder)
+	if folder == ROOT_FOLDER then return globals end
+	return globals[folder:match("([%w_]+)/$")]
+end
 
 local function Read(path)
 	local file = assert(io.open(path))
@@ -112,12 +115,10 @@ T.test("foundation's indexes publish each module of their folder at once", funct
 	RunIndexes(globals)
 	for _, path in ipairs(IndexFiles(TREES[1])) do
 		local folder = path:match("^(.-)[%a]+_index%.lua$")
-		if not PARTLY[folder] then
-			local ns = globals[folder:match("([%w_]+)/$")]
-			for _, key in ipairs(ModulesIn(folder)) do
-				local name = folder:gsub("/", ".") .. key
-				T.eq(rawget(ns, key), T.require(name), folder .. key .. " is published")
-			end
+		local ns = NamespaceOf(globals, folder)
+		for _, key in ipairs(ModulesIn(folder)) do
+			local name = folder:gsub("/", ".") .. key
+			T.eq(rawget(ns, key), T.require(name), folder .. key .. " is published")
 		end
 	end
 	T.eq(globals.transaction, T.require("foundation.transaction"), "a root module is a plain global")
@@ -154,13 +155,13 @@ T.test("running the indexes again, as a reload does, is not refused", function()
 	T.eq(globals.list.drawlist, T.require("games.list.drawlist"), "list.drawlist")
 end)
 
-T.test("a published foundation module requires nothing from game", function()
+T.test("a published foundation module requires only foundation", function()
 	for _, path in ipairs(IndexFiles(TREES[1])) do
 		local folder = path:match("^(.-)[%a]+_index%.lua$")
-		if not PARTLY[folder] then
-			for _, key in ipairs(ModulesIn(folder)) do
-				local code = Read(T.ROOT .. folder .. key .. ".lua")
-				T.eq(code:find("require%(%s*[\"']game%."), nil, folder .. key .. " requires game")
+		for _, key in ipairs(ModulesIn(folder)) do
+			local code = Read(T.ROOT .. folder .. key .. ".lua")
+			for name in code:gmatch("require%(%s*[\"']([%w_.]+)[\"']") do
+				T.eq(name:match("^foundation%.") ~= nil, true, folder .. key .. " requires " .. name)
 			end
 		end
 	end

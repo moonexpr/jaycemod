@@ -46,6 +46,8 @@ local CATEGORY = {
 	["list/schedule"] = "formalisms",
 	["math/geometry"] = "structures",
 	["transaction"] = "structures",
+	["configstore"] = "structures",
+	["nodegraph"] = "structures",
 	["map/sets"] = "structures",
 	["core/port"] = "structures",
 	["core/namespace"] = "structures",
@@ -162,45 +164,7 @@ local GAMES = {
 
 -- The modules still to move, and where each goes.
 local PENDING = {
-	["holiday"] = "features/holiday",
-	["holiday/fortune"] = "features/holiday",
-	["holiday/gift"] = "features/holiday",
-	["holiday/halloween"] = "features/holiday",
-	["holiday/wheel"] = "features/wheel",
-
-	["payload"] = "features/payload",
-	["payload/hud"] = "features/payload",
-	["payload/race"] = "features/payload",
-	["rounds/payload"] = "features/payload",
-	["rounds/arena"] = "features/arena",
-	["rounds/control_points"] = "features/rounds",
-	["rounds/destruction"] = "features/rounds",
-	["rounds/text"] = "features/rounds",
 	["capture/hud"] = "features/capture",
-
-	["spells"] = "features/spells",
-	["spells/athletic"] = "features/spells",
-	["spells/bats"] = "features/spells",
-	["spells/blastjump"] = "features/spells",
-	["spells/caster"] = "features/spells",
-	["spells/fireball"] = "features/spells",
-	["spells/halloween"] = "features/spells",
-	["spells/lightning"] = "features/spells",
-	["spells/meteor"] = "features/spells",
-	["spells/mirv"] = "features/spells",
-	["spells/overheal"] = "features/spells",
-	["spells/skeleton_horde"] = "features/spells",
-	["spells/spawn_boss"] = "features/spells",
-	["spells/stealth"] = "features/spells",
-	["spells/teleport"] = "features/spells",
-	["projectile/orb"] = "features/spells",
-
-	["hazards"] = "features/hazards",
-	["hazards/croc"] = "features/hazards",
-	["hazards/generic_bomb"] = "features/hazards",
-	["hazards/ignite"] = "features/hazards",
-	["hazards/pumpkin_bomb"] = "features/hazards",
-	["hazards/zapper"] = "features/hazards",
 
 	["npc/merasmus"] = "features/haunting",
 	["npc/eyeball_boss"] = "features/haunting",
@@ -213,42 +177,10 @@ local PENDING = {
 	["npc/boss_events"] = "features/npc",
 
 	["npc/debug"] = "features/nbdebug",
-	["aiwar/overlay"] = "features/nbdebug",
 	["ns/overlay"] = "features/nbdebug",
 
-	["aiwar"] = "features/aiwar",
-	["aiwar/slots"] = "features/aiwar",
-	["aiwar/spawns"] = "features/aiwar",
-	["aiwar/scenario"] = "features/aiwar",
-	["aiwar/scenario/arena"] = "features/aiwar",
-	["aiwar/scenario/control_points"] = "features/aiwar",
-	["aiwar/scenario/ctf"] = "features/aiwar",
-	["aiwar/scenario/deathmatch"] = "features/aiwar",
-	["aiwar/health"] = "features/aiwar",
-	["aiwar/marksmanship"] = "features/aiwar",
-	["aiwar/arms"] = "features/aiwar",
-	["aiwar/scenario/freeform"] = "features/aiwar",
-	["aiwar/scenario/koth"] = "features/aiwar",
-	["aiwar/scenario/mvm"] = "features/aiwar",
-	["aiwar/scenario/payload"] = "features/aiwar",
-	["ns/inspect"] = "features/aiwar",
-	-- an AI war soldier's orders, with payload woven into its behaviour
-	-- tree: mode policy, not an NS type (admission rule, Amendment 4)
-	["aiwar/orders"] = "features/aiwar",
-	["aiwar/soldier"] = "features/aiwar",
-	["kill_feed"] = "features/aiwar",
-
-	["nodegraph"] = "features/nodegraph",
-
-	["settings"] = "ws/settings",
-	["replicated"] = "ws/replicated",
-	["factions"] = "ws/factions",
-	["scoreboard"] = "ws/scoreboard",
-	["nav_progress"] = "ws/nav_progress",
-	["admin_notices"] = "ws/admin_notices",
 	["npc/ragdoll"] = "ws/ragdoll",
 	["npc/voices"] = "ws/voices",
-	["localization"] = "ws/localization",
 }
 
 -- Edges that break the order today.

@@ -15,7 +15,7 @@ ENT.AdminOnly = true
 ENT.PrintName = "Game Rules Editor"
 ENT.Category = "Editors"
 
-local CART_SPEED_MIN, CART_SPEED_MAX = 0.1, 4 -- foundation.payload's clamp
+local CART_SPEED_MIN, CART_SPEED_MAX = 0.1, 4 -- features.payload.model's clamp
 
 ENT.Fields = {
 	{

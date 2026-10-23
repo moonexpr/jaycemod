@@ -15,7 +15,7 @@
 WSRouteCapture = WSRouteCapture or {}
 local C = WSRouteCapture
 
--- Travel:Plan's call sites in foundation.aiwar.orders.
+-- Travel:Plan's call sites in features.aiwar.orders.
 local REASONS = { [750] = "new trip", [677] = "stuck", [763] = "goal moved" }
 
 -- How near a leg's ends must be to the last plan's to count as the same leg.

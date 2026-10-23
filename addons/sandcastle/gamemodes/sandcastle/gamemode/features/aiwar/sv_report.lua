@@ -1,10 +1,10 @@
 -- Part of the AI war controller (sv.lua): describing soldiers, the reports, and the debug overlay.
 local Controller, Map, ARRIVED = ...
-local AiWar = WS.require("foundation.aiwar")
-local Orders = WS.require("foundation.aiwar.orders")
+local AiWar = WS.require("features.aiwar.model")
+local Orders = WS.require("features.aiwar.orders")
 local Tactics = WS.require("games.ns.tactics")
 local Squad = WS.require("games.ns.squad")
-local Inspect = WS.require("foundation.ns.inspect")
+local Inspect = WS.require("features.aiwar.inspect")
 local RED, BLUE = Map.RED, Map.BLUE
 local ToVector, IsDoor = Map.ToVector, Map.IsDoor
 
@@ -251,7 +251,7 @@ end
 
 -- The team's battle lines: its posts (a ring round a hill all may be
 -- attacked from, else facing out from its base) and its forward posts, as
--- { kind, shape } (foundation.ns.inspect's Shape).
+-- { kind, shape } (features.aiwar.inspect's Shape).
 function Controller:BattleLines(field, team)
 	local base = field.bases and field.bases[team]
 	local lines = {}

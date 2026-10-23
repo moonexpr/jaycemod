@@ -1,9 +1,9 @@
 -- Part of the AI war controller (sv.lua): how the war reads the map: points, masks, spawn spots, hiding spots, doors
 -- and the ground. Its helpers go to the other parts as Map.
 local Controller = ...
-local Spawns = WS.require("foundation.aiwar.spawns")
-local Slots = WS.require("foundation.aiwar.slots")
-local AiWar = WS.require("foundation.aiwar")
+local Spawns = WS.require("features.aiwar.spawns")
+local Slots = WS.require("features.aiwar.slots")
+local AiWar = WS.require("features.aiwar.model")
 
 -- CanWalkTo's sweep: a soldier's hull above its step height, so stairs and
 -- slopes pass and walls do not.
@@ -29,7 +29,7 @@ local function Masks() return WS.ClipMasks() end
 -- Where a team's soldiers join the fight: its TF2 team spawns; on a map
 -- without any, its own HL2 deathmatch spawns, else its share of the nav
 -- mesh's hiding spots, else the map's shared player starts
--- (foundation.aiwar.spawns). A hiding spot is a spot as a spawn entity is
+-- (features.aiwar.spawns). A hiding spot is a spot as a spawn entity is
 -- one: GetPos and GetAngles.
 local function Present(class) return #ents.FindByClass(class) > 0 end
 

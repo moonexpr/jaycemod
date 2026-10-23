@@ -15,7 +15,7 @@
 WS.Feature("rounds")
 local Capture = WS.require("games.gameplay.capture")
 local Hud = WS.require("foundation.capture.hud")
-local Feed = WS.require("foundation.kill_feed")
+local Feed = WS.require("features.aiwar.kill_feed")
 local Rounds = WS.require("games.gameplay.rounds")
 
 local NOBODY, RED, BLUE = WS.TEAM_UNASSIGNED, WS.TEAM_RED, WS.TEAM_BLUE

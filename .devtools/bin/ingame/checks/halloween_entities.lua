@@ -16,7 +16,7 @@ return function(t)
 	local holiday = t:Feature("holiday")
 	t:Check("the holiday feature is loaded", holiday ~= nil, table.concat(WS.FeatureLoader:Loaded(), ", "))
 	if holiday then
-		local Holiday = WS.require("foundation.holiday")
+		local Holiday = WS.require("features.holiday.model")
 		local wanted = t.args.holiday or Holiday.HALLOWEEN
 		t:Check("the holiday the map's tf_logic_holiday names (" .. wanted .. ") is active", holiday:HolidayActive(wanted), "")
 		t:Info("halloween_active", holiday:HolidayActive(Holiday.HALLOWEEN))

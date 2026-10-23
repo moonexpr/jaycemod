@@ -1,4 +1,4 @@
--- halloween_zapper (CTFHellZap): a binding to a foundation.hazards.zapper
+-- halloween_zapper (CTFHellZap): a binding to a features.hazards.zapper
 -- model through the hazards controller. Keyvalues touch_trigger (a
 -- dispenser_touch_trigger, found by name), ParticleEffect and ZapperType;
 -- inputs Enable, Disable and ZapTouching (Kill and AddOutput are the
@@ -8,7 +8,7 @@
 ENT.Type = "point"
 ENT.Base = "base_point"
 
-local VARIANT = "foundation.hazards.zapper"
+local VARIANT = "features.hazards.zapper"
 
 -- FIELD_INTEGER keyvalues read as atoi does: a non-number is 0.
 local ATOI_FALLBACK = 0

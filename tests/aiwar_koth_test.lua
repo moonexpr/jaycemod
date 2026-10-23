@@ -1,4 +1,4 @@
--- foundation.aiwar.scenario.koth: King of the Hill, the control point
+-- features.aiwar.scenario.koth: King of the Hill, the control point
 -- scenario with one hill always a target, and stances read from the team
 -- clocks; then whole battles of tests/fake_soldier.lua soldiers
 -- (tests/fake_points.lua).
@@ -6,11 +6,11 @@ local T = dofile("tests/harness.lua")
 local FS = dofile("tests/fake_soldier.lua")
 local FP = dofile("tests/fake_points.lua")
 local N = T.require("games.npc.nextbot")
-local AiWar = T.require("foundation.aiwar")
-local Orders = T.require("foundation.aiwar.orders")
-local Scenario = T.require("foundation.aiwar.scenario")
-local CP = T.require("foundation.aiwar.scenario.control_points")
-local Koth = T.require("foundation.aiwar.scenario.koth")
+local AiWar = T.require("features.aiwar.model")
+local Orders = T.require("features.aiwar.orders")
+local Scenario = T.require("features.aiwar.scenario")
+local CP = T.require("features.aiwar.scenario.control_points")
+local Koth = T.require("features.aiwar.scenario.koth")
 local Teams = T.require("games.gameplay.teams")
 
 local RED, BLUE = Teams.RED, Teams.BLUE

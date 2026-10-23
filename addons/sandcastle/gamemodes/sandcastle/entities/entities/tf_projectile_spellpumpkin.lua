@@ -1,6 +1,6 @@
 -- tf_projectile_spellpumpkin (CTFProjectile_SpellPumpkin): a MIRV bomblet,
 -- blind to touches for its first second, that leaves a spell pumpkin bomb
--- (foundation.spells.mirv).
+-- (features.spells.mirv).
 AddCSLuaFile()
 
 ENT.Type = "anim"

@@ -1,4 +1,4 @@
--- The AI war in arena (foundation.aiwar.scenario.arena), soldiers only, on
+-- The AI war in arena (features.aiwar.scenario.arena), soldiers only, on
 -- an arena map, three rounds made to end one way each:
 --   tie          soldiers take no damage, the point never opens, and
 --                mp_arena_round_time runs out: a stalemate
@@ -10,7 +10,7 @@
 -- The war may already be on: it starts itself on a map it can fight over
 -- (ws/sh_aiwar.lua); the check then uses it, and the next round.
 local Tests = WS_TESTS
-local AiWar = WS.require("foundation.aiwar")
+local AiWar = WS.require("features.aiwar.model")
 local Rounds = WS.require("games.gameplay.rounds")
 local S = WS.STATE
 local NEVER = 9999 -- mp_arena_override_cap_enable_time: the point stays shut

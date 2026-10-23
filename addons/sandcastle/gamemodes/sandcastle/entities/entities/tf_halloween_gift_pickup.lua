@@ -1,5 +1,5 @@
 -- tf_halloween_gift_pickup (CHalloweenGiftPickup): a binding to a
--- foundation.holiday.gift model through the holiday controller, which
+-- features.holiday.gift model through the holiday controller, which
 -- creates it with Configure{ player, lifetime } before Spawn. Only its
 -- player is sent the entity, and only that player can take it; taking it
 -- plays the pickup effects and gives nothing. Unclaimed, it is hidden from
@@ -22,7 +22,7 @@ function ENT:Configure(config)
 end
 
 function ENT:Initialize()
-	self.system = WS.require("foundation.holiday.gift")
+	self.system = WS.require("features.holiday.gift")
 	self.gift = WS.Feature("holiday"):BindGift(self, self.configured)
 	self:SetModel(self.system.MODEL)
 	self:SetMoveType(MOVETYPE_NONE)

@@ -49,7 +49,7 @@
 -- soul packs and halloween_boss_killed, which only feed those; and TF2's
 -- scoreboard gives no points for him either.
 --
--- His Wheel of Fate is foundation.holiday.wheel (wheel_of_doom). Left out
+-- His Wheel of Fate is features.wheel.model (wheel_of_doom). Left out
 -- besides: the critical flag on hits while stunned or raining bombs (only
 -- TF2's hit numbers and sounds show it; ModifyDamage maps the per-weapon multipliers
 -- to damage types), and the holiday ammo pack's health (the props drop a

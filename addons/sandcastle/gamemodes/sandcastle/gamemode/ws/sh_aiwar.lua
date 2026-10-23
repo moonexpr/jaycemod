@@ -1,12 +1,12 @@
 -- The AI war's switch: the team-size convar, the commands that start and
 -- end it, mp_aiwar_autostart, which starts it as each map loads, the slot
--- list's commands and events (foundation.aiwar.slots), and on clients the
+-- list's commands and events (features.aiwar.slots), and on clients the
 -- Utilities menu entry: a button that reads "Start AI War" or "End AI
 -- War", and the slot list (ws/cl_aiwar_slots.lua). The war itself is
 -- the aiwar feature (features/aiwar), loaded the first time it starts or
 -- its slots are asked for.
-local AiWar = WS.require("foundation.aiwar")
-local Slots = WS.require("foundation.aiwar.slots")
+local AiWar = WS.require("features.aiwar.model")
+local Slots = WS.require("features.aiwar.slots")
 local Squad = WS.require("games.ns.squad")
 local Permissions = WS.require("games.system.permissions")
 local E = WS.Events

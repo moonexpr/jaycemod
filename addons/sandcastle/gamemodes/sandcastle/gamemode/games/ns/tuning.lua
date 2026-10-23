@@ -41,7 +41,7 @@ Whole("tactics", "FALLBACK_STEPS", 0, 10, "the most steps a team falls back")
 Whole("tactics", "FALLBACK_MEMBERS", 0, 16, "a team down to this many falls back")
 Real("tactics", "FALLBACK_RANGE", 0, 4096, "an enemy this near a team's post makes it fall back")
 Real("tactics", "FALLBACK_INTERVAL", 0, 120, "seconds between two steps back")
--- foundation.aiwar.orders: formation, bounds, cover, the defenders' rows
+-- features.aiwar.orders: formation, bounds, cover, the defenders' rows
 Real("orders", "REGROUP_RANGE", 0, 8192, "a member farther than this from its leader in a fight regroups on it")
 Real("orders", "SQUAD_SPACING", 0, 1024, "the gap between members on a bound line, and regrouping")
 Real("orders", "FOLLOW_SPACING", 0, 1024, "the gap per place behind the leader when following")

@@ -1,6 +1,6 @@
 -- tf_projectile_spellspawnboss (CTFProjectile_SpellSpawnBoss): the spawn
 -- boss spell's skull, which summons a MONOCULUS where it lands
--- (foundation.spells.spawn_boss).
+-- (features.spells.spawn_boss).
 AddCSLuaFile()
 
 ENT.Type = "anim"

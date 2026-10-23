@@ -1,10 +1,10 @@
 -- The aiwar feature's controller: a round (payload, control points or King
 -- of the Hill) fought by DrGBase NextBot soldiers (ws_drg_combine,
--- ws_drg_rebel; the war needs DrGBase). It owns the foundation.aiwar
--- War and the scenario (foundation.aiwar.scenario) the round's mode picks,
+-- ws_drg_rebel; the war needs DrGBase). It owns the features.aiwar.model
+-- War and the scenario (features.aiwar.scenario) the round's mode picks,
 -- spawns each side's soldiers at its team's spawns in TF2's respawn waves,
 -- enlists any soldier that appears while the war runs (a player's
--- included), gives each a foundation.aiwar.orders Behavior over the soldier
+-- included), gives each a features.aiwar.orders Behavior over the soldier
 -- port (sv_soldier.lua), and sets who is friend or foe. The rules live in
 -- the models; this root declares the controller's state and runs its parts,
 -- which feed them the round, the carts and the points and turn their
@@ -14,13 +14,13 @@
 -- Controller
 
 local Controller = {
-	war = nil, -- a foundation.aiwar War while the war runs
+	war = nil, -- a features.aiwar.model War while the war runs
 	soldiers = {}, -- NPC entity -> { soldier = port, npc = games.npc.nextbot Npc, speaker (sv_speech) }
 	doorFlags = {}, -- trigger_multiple -> its spawnflags before the war
 	tracks = setmetatable({}, { __mode = "k" }), -- a watcher's path node list -> Track
 	nextThink = 0,
 	nextRelations = 0,
-	slots = nil, -- the foundation.aiwar.slots Plan, read from slotStore when first needed
+	slots = nil, -- the features.aiwar.slots Plan, read from slotStore when first needed
 	slotStore = nil, -- where the slot list is kept between maps (SlotFile, below)
 	paused = false, -- every soldier stands still (ns_soldiers_paused, SetPaused)
 	slotViewers = {}, -- admins whose AI War panel shows the slots -> true

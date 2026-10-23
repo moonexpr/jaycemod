@@ -4,7 +4,7 @@
 -- the Round's objective port.
 local T = dofile("tests/harness.lua")
 local Rounds = T.require("games.gameplay.rounds")
-local ControlPoints = T.require("foundation.rounds.control_points")
+local ControlPoints = T.require("features.rounds.control_points")
 local Capture = T.require("games.gameplay.capture")
 local Master = T.require("games.gameplay.capture.master")
 local State = T.require("games.gameplay.rounds.state")

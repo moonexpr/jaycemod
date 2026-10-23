@@ -31,7 +31,7 @@ LANE_SPREAD = 300 -- how far either side of a route its band reaches
 WAYPOINT_SPACING, WAYPOINT_REACH, LOOKAHEAD = 300, 160, 2
 POCKET_LIMIT = 128 -- fewer areas outside a spawn room leading into an area: a pocket the room encloses
 
--- The jobs whose squads take lanes (foundation.aiwar's ESCORT, RAID,
+-- The jobs whose squads take lanes (features.aiwar.model's ESCORT, RAID,
 -- ASSAULT: the point scenarios' escort, and EXPLORE: arena's explorers).
 JOBS = {
 	escort = true,
@@ -246,7 +246,7 @@ end
 -- Gives each squad of a lane job a lane of its team, keeping the one it has
 -- while its team's lanes are the same plan (lanes.key): of the kinds its
 -- job takes, the least taken, the first planned on a tie. fireTeams:
--- foundation.aiwar's; lanesByTeam: team -> lanes.
+-- features.aiwar.model's; lanesByTeam: team -> lanes.
 function Assign(fireTeams, lanesByTeam)
 	local taken = {}
 	local waiting = {}

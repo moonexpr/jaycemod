@@ -1,6 +1,6 @@
 -- The nav mesh progress box while mp_nav_generate runs (ws/sv_nav.lua):
 -- the server tells every client the progress alone, the stage
--- (foundation.nav_progress) and, done, the areas made, and a client that
+-- (ws.nav_progress) and, done, the areas made, and a client that
 -- loads while it runs the stage it missed. Everything else is the
 -- client's: each shows a WS.UI dialog in the middle of its screen
 -- (ws/cl_nav_progress.lua, a cl_ module so it loads after cl_ui), timed by
@@ -16,7 +16,7 @@ E.Define("game_nav_progress", {
 })
 
 if SERVER then
-	local P = WS.require("foundation.nav_progress")
+	local P = WS.require("ws.nav_progress")
 	-- The stage last told, for a client that loads while it runs; kept on
 	-- WS so a Lua refresh mid-run keeps it.
 	function WS.NavProgress(stage, areas)

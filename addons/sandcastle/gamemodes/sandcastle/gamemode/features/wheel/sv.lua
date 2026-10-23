@@ -1,11 +1,11 @@
 -- The wheel feature's controller: the Wheel of Fate. It owns one
--- foundation.holiday.wheel model per wheel_of_doom entity, implements its
+-- features.wheel.model model per wheel_of_doom entity, implements its
 -- world port, ticks it, reapplies its effects to players as they spawn
 -- (player_spawn, so after the spawn's own clearing), holds the gravity
 -- multiplier, and networks the HUD's effect (ws_wheel_effect, _start
 -- and _duration; the view draws it). Attributes go through the attributes
 -- controller. Loaded by the first wheel_of_doom; it loads attributes.
-local Wheel = WS.require("foundation.holiday.wheel")
+local Wheel = WS.require("features.wheel.model")
 
 local WHEEL_CLASS = "wheel_of_doom"
 local DANCER_CLASS = "merasmus_dancer"

@@ -1,11 +1,11 @@
--- foundation.aiwar.scenario.ctf: the war fought over the intelligence.
+-- features.aiwar.scenario.ctf: the war fought over the intelligence.
 -- Couriers fetch the enemy's flag and carry it home, defenders guard their
 -- own and run down whoever takes it, and operatives hold a remote base on
 -- the way the enemy's carrier would run, to widen the defenders' reach.
 local T = dofile("tests/harness.lua")
-local AiWar = T.require("foundation.aiwar")
-local Scenario = T.require("foundation.aiwar.scenario")
-local Ctf = T.require("foundation.aiwar.scenario.ctf")
+local AiWar = T.require("features.aiwar.model")
+local Scenario = T.require("features.aiwar.scenario")
+local Ctf = T.require("features.aiwar.scenario.ctf")
 local Teams = T.require("games.gameplay.teams")
 local Geometry = T.require("foundation.math.geometry")
 

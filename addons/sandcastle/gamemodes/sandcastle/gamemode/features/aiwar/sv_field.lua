@@ -1,10 +1,10 @@
 -- Part of the AI war controller (sv.lua): tracks, the field snapshot, the think and sight (lanes: sv_lanes.lua).
 local Controller, Map, WATCH_INTERVAL = ...
-local AiWar = WS.require("foundation.aiwar")
+local AiWar = WS.require("features.aiwar.model")
 local Teams = WS.require("games.gameplay.teams")
 local Track = WS.require("foundation.math.polyline")
 local Explore = WS.require("games.ns.explore")
-local Scenario = WS.require("foundation.aiwar.scenario")
+local Scenario = WS.require("features.aiwar.scenario")
 local GROUND_PROBE, RED, BLUE = Map.GROUND_PROBE, Map.RED, Map.BLUE
 local Point, Masks, SpawnSpots = Map.Point, Map.Masks, Map.SpawnSpots
 local LoadedFeature, StalemateIsRound, GroundBelow = Map.LoadedFeature, Map.StalemateIsRound, Map.GroundBelow
@@ -133,7 +133,7 @@ function Controller:Bases()
 end
 
 -- Each team's flag and where its carriers capture, as the flag feature
--- holds them (foundation.aiwar.scenario.ctf's field.flags and field.zones):
+-- holds them (features.aiwar.scenario.ctf's field.flags and field.zones):
 -- a flag where it is now (home, dropped on the ground, or with its
 -- carrier), a zone's centre on the ground; and its tally, each team's
 -- captures this round and the limit (field.captures, field.caplimit); all

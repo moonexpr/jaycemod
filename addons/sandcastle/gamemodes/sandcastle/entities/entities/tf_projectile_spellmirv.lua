@@ -1,5 +1,5 @@
 -- tf_projectile_spellmirv (CTFProjectile_SpellMirv): the MIRV spell's
--- cannonball, which bursts into pumpkin bomblets (foundation.spells.mirv).
+-- cannonball, which bursts into pumpkin bomblets (features.spells.mirv).
 AddCSLuaFile()
 
 ENT.Type = "anim"

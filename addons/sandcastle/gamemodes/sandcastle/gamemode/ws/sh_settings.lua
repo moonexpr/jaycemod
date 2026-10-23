@@ -1,4 +1,4 @@
--- The menus' server settings (foundation.settings): on a dedicated server a
+-- The menus' server settings (ws.settings): on a dedicated server a
 -- client cannot set a server's convar, so a menu's control sends
 -- ws_server_set, which the server runs for a holder of that setting's
 -- privilege. Many of these convars are not replicated, so the server keeps
@@ -6,7 +6,7 @@
 -- client asks, then each as it changes); a setting whose convar this map
 -- has not created (its feature not loaded) is left out and its control
 -- disabled.
-local Settings = WS.require("foundation.settings")
+local Settings = WS.require("ws.settings")
 local E = WS.Events
 local COMMAND = "ws_server_set"
 local SEND_AFTER = 0.3 -- seconds a slider rests before its value is sent
@@ -49,7 +49,7 @@ if SERVER then
 	-- change reaches every client.
 	local function Snapshot()
 		local values = {}
-		for name in SortedPairs(Settings.SETTINGS) do
+		for name in Settings.SETTINGS() do
 			local convar = GetConVar(name)
 			if convar then
 				values[#values + 1] = {

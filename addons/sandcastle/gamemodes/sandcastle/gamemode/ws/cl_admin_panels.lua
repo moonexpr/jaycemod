@@ -1,7 +1,7 @@
 -- The admins' panels in the spawn menu's tool tabs, a collapsible section
 -- each, shown only to holders of the section's privilege (an admin mod
 -- decides who holds what):
--- - Options > Admin > Gameplay Rules: the rules' settings (foundation.settings),
+-- - Options > Admin > Gameplay Rules: the rules' settings (ws.settings),
 --   each following the server's value; hover one for what it does and its
 --   console variable.
 -- - Utilities > Admin > Match Control: round, match, tampering and

@@ -1,13 +1,13 @@
--- Squads (docs/aiwar-command.md §3): a fire team of foundation.aiwar with a
+-- Squads (docs/aiwar-command.md §3): a fire team of features.aiwar.model with a
 -- leader, and the keys of the spots soldiers claim (on a foundation.map.lease)
 -- so no two take the same.
 --
 -- A fire team is { team, role, index, members = place -> member, leader };
--- a member is foundation.aiwar's roster entry, which a soldier's orders keep
+-- a member is features.aiwar.model's roster entry, which a soldier's orders keep
 -- current with what its squad needs to know of it: pos (where it is), enemy
 -- (the enemy it fights, an opaque handle) and hero (its kit is a hero's);
 -- and the controller with its slot's pin (LEADER, MEMBER or nil; the slots
--- of foundation.aiwar.slots carry it).
+-- of features.aiwar.slots carry it).
 local ipairs, pairs = ipairs, pairs
 local floor, HUGE = math.floor, math.huge
 module(...)

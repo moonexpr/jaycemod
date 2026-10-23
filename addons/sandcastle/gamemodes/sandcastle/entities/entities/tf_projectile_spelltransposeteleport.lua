@@ -1,6 +1,6 @@
 -- tf_projectile_spelltransposeteleport (CTFProjectile_SpellTransposeTeleport):
 -- the teleport spell's jar, which remembers where it has been
--- (foundation.spells.teleport).
+-- (features.spells.teleport).
 AddCSLuaFile()
 
 ENT.Type = "anim"

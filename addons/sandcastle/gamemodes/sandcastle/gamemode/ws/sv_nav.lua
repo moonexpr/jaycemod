@@ -30,7 +30,7 @@
 -- the next-map vote carry on.
 local Gamemode = WS.require("games.system.gamemode")
 local Doors = WS.require("games.ns.doors")
-local Progress = WS.require("foundation.nav_progress")
+local Progress = WS.require("ws.nav_progress")
 local Clip = WS.require("games.ns.clip")
 local NavGaps = WS.require("games.ns.nav_gaps")
 local PairMap = WS.require("foundation.map.pairmap")

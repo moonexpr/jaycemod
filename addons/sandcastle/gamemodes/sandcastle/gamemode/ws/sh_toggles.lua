@@ -1,5 +1,5 @@
 -- The superadmins' switches, the C menu's Economy and Gameplay menus
--- (ws/cl_menubar.lua; foundation.settings names who may flip them):
+-- (ws/cl_menubar.lua; ws.settings names who may flip them):
 -- - mp_economy_enabled: 0 closes the store and hides the Loadout and Store
 --   tabs; everyone spawns with the starter loadout and money stops counting
 --   (ws/sv_economy.lua, ws/sv_loadout.lua, ws/cl_economy_tabs.lua).

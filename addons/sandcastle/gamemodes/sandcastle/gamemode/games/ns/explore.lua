@@ -1,4 +1,4 @@
--- Exploring: arena's squads search the map (foundation.aiwar.scenario.arena).
+-- Exploring: arena's squads search the map (features.aiwar.scenario.arena).
 -- The waypoints are the nav mesh's area centres thinned to one per SPACING
 -- cell (Sample). A Board keeps, per squad, the waypoints its own soldiers
 -- have been near (Visit): each squad knows only where it has been. Next
@@ -81,7 +81,7 @@ function Board.New(waypoints)
 	}, Board)
 end
 
--- A squad's lane and fights (fireTeam: foundation.aiwar's) -------------------
+-- A squad's lane and fights (fireTeam: features.aiwar.model's) -------------------
 
 -- The squad's contact (games.ns.tactics' { pos, time }) engages it.
 function Board:Engage(fireTeam, contact)
@@ -129,7 +129,7 @@ local function ClaimsOf(self, team)
 	return claims
 end
 
--- The war's members this think (foundation.aiwar's): each squad's soldiers
+-- The war's members this think (features.aiwar.model's): each squad's soldiers
 -- mark where they have been and how far along its lane, and a squad in
 -- contact is engaged.
 function Board:Survey(members, now)

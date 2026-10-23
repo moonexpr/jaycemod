@@ -1,6 +1,6 @@
 -- tf_weapon_spellbook (CTFSpellBook): a thin weapon that stands for a
 -- player's spellbook. The spells controller hands it out while spells are
--- on, owns the book behind it (foundation.spells) and networks the book on
+-- on, owns the book behind it (features.spells.model) and networks the book on
 -- it for the spell HUD. Equipped any other way (the spawn menu), it asks the
 -- controller for a book, which goes when the weapon is dropped or removed.
 -- Attacking with it casts, as TF2's action key (+use_action_slot_item) does

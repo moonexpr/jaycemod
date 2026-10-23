@@ -7,28 +7,28 @@
 -- gamemode) are fakes that record what they are asked.
 local T = dofile("tests/harness.lua")
 local FP = dofile("tests/fake_points.lua")
-local AiWar = T.require("foundation.aiwar")
-local Orders = T.require("foundation.aiwar.orders")
-local Base = T.require("foundation.aiwar.scenario")
-local Payload = T.require("foundation.aiwar.scenario.payload")
-local Freeform = T.require("foundation.aiwar.scenario.freeform")
+local AiWar = T.require("features.aiwar.model")
+local Orders = T.require("features.aiwar.orders")
+local Base = T.require("features.aiwar.scenario")
+local Payload = T.require("features.aiwar.scenario.payload")
+local Freeform = T.require("features.aiwar.scenario.freeform")
 local Posts = T.require("games.ns.posts")
 local Lanes = T.require("games.ns.lanes")
 local HL2Path = T.require("games.ns.path.hl2")
 local Gamemode = T.require("games.system.gamemode")
 local Rounds = T.require("games.gameplay.rounds")
-local PayloadMode = T.require("foundation.rounds.payload")
-local ControlPointsMode = T.require("foundation.rounds.control_points")
+local PayloadMode = T.require("features.payload.round")
+local ControlPointsMode = T.require("features.rounds.control_points")
 local KothMode = T.require("features.koth.model")
 local STATE = T.require("games.gameplay.rounds.state")
 local Teams = T.require("games.gameplay.teams")
-local Slots = T.require("foundation.aiwar.slots")
+local Slots = T.require("features.aiwar.slots")
 local Squad = T.require("games.ns.squad")
 -- the real scenarios; tests of the controller alone swap in fakes
 local REAL = {
 	[PayloadMode.Mode.NAME] = Payload,
-	[ControlPointsMode.Mode.NAME] = T.require("foundation.aiwar.scenario.control_points"),
-	[KothMode.Mode.NAME] = T.require("foundation.aiwar.scenario.koth"),
+	[ControlPointsMode.Mode.NAME] = T.require("features.aiwar.scenario.control_points"),
+	[KothMode.Mode.NAME] = T.require("features.aiwar.scenario.koth"),
 }
 
 local RED, BLUE, NOBODY = Teams.RED, Teams.BLUE, Teams.UNASSIGNED
@@ -222,7 +222,7 @@ local function Env(w)
 		-- the real loader would load a missing feature: the fake refuses, so
 		-- a query of a feature not loaded fails the test
 		Feature = function(name) return w.features[name] or error("loaded a feature to check it: " .. name) end,
-		-- the admin notices it sends (foundation.admin_notices), in order
+		-- the admin notices it sends (ws.admin_notices), in order
 		Notify = function(notices)
 			for _, n in ipairs(notices) do w.notified[#w.notified + 1] = n.text end
 		end,
@@ -693,7 +693,7 @@ T.test("an MvM map with its bomb and hatch starts the war; without the hatch it 
 end)
 
 T.test("an MvM war sizes its sides by the scenario's split, and keeps the slots that need", function()
-	local Mvm = T.require("foundation.aiwar.scenario.mvm")
+	local Mvm = T.require("features.aiwar.scenario.mvm")
 	local MvmMode = T.require("features.mvm.model").Mode
 	local w = World()
 	w.teamSize = 8
@@ -958,7 +958,7 @@ end)
 
 T.test("arena's round is the arena phase; a sudden death after it is sudden death's", function()
 	local w = World()
-	local controller = Started(w, T.require("foundation.rounds.arena").Mode, {})
+	local controller = Started(w, T.require("features.arena.round").Mode, {})
 	w.active, w.state = true, STATE.STALEMATE
 	T.eq(controller:Survey(NOW).phase, AiWar.PHASES.arena, "the arena round")
 	w.suddenDeath = true

@@ -1,10 +1,10 @@
--- The teams' DrGBase factions (foundation.factions): FACTION_TEAM_RED and
+-- The teams' DrGBase factions (ws.factions): FACTION_TEAM_RED and
 -- FACTION_TEAM_BLU, beside DrGBase's own FACTION_COMBINE and the rest, for
 -- an NPC's ENT.Factions. On the server, WS.JoinTeamFaction puts a
 -- player or a DrGBase NextBot in its team's faction and out of the other's;
 -- WS.SetPlayerTeam and WS.SetTeamMember call it, so whoever is on
 -- a team is in its faction. Without DrGBase there are no factions to join.
-local Factions = WS.require("foundation.factions")
+local Factions = WS.require("ws.factions")
 
 FACTION_TEAM_RED = Factions.RED
 FACTION_TEAM_BLU = Factions.BLU

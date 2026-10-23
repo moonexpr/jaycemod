@@ -1,8 +1,8 @@
--- foundation.hazards.ignite: trigger_ignite (CTriggerIgnite, tf_triggers.cpp)
+-- features.hazards.ignite: trigger_ignite (CTriggerIgnite, tf_triggers.cpp)
 -- on cp_lavapit_final's lava (burn_duration 5, damage_percent_per_second 4),
 -- driven on a fake clock against a fake player port.
 local T = dofile("tests/harness.lua")
-local Ignite = T.require("foundation.hazards.ignite")
+local Ignite = T.require("features.hazards.ignite")
 local Players = T.require("games.gameplay.players")
 
 local COND = Players.COND

@@ -19,7 +19,7 @@ local function P(x, y) return { x = x, y = y, z = 0 } end
 
 T.test("MvM outranks the game types its maps also carry", function()
 	T.eq(Mvm.Mode.NAME, "mvm", "named")
-	for _, path in ipairs({ "foundation.rounds.control_points", "foundation.rounds.payload", "features.koth.model" }) do
+	for _, path in ipairs({ "features.rounds.control_points", "features.payload.round", "features.koth.model" }) do
 		T.eq(Mvm.Mode.PRIORITY > T.require(path).Mode.PRIORITY, true, "over " .. path)
 	end
 	T.eq(Mvm.Mode.PRIORITY > Flag.Mode.PRIORITY, true, "over CTF")

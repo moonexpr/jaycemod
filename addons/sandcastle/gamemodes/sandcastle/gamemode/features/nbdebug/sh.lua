@@ -83,7 +83,7 @@ local WAR_LINE_POINT_COUNT_BITS = 6
 local WAR_FRONT_COUNT_BITS = 2
 
 -- fire_teams: every squad with a leader, its summary
--- (foundation.ns.inspect), and while it fights its contact and flank.
+-- (features.aiwar.inspect), and while it fights its contact and flank.
 -- lines: each team's battle lines, their posts in order across the way
 -- they face (a ring when closed); fronts: where each team's lanes lead.
 E.Define("game_aiwar_debug", {

@@ -10,7 +10,7 @@
 -- run here provides what features.boss_timer.model asks of it, plus
 -- SharedLevel(shared) -> its level from the npc controller's shared table.
 local BossTimer = WS.require("features.boss_timer.model")
-local Holiday = WS.require("foundation.holiday")
+local Holiday = WS.require("features.holiday.model")
 local HalloweenBoss = WS.require("foundation.npc.halloween_boss")
 
 local THINK_HOOK = "ws_boss_timer"

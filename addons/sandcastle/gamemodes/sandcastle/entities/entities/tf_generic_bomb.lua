@@ -1,5 +1,5 @@
 -- tf_generic_bomb (CTFGenericBomb): a binding to a
--- foundation.hazards.generic_bomb model through the hazards controller.
+-- features.hazards.generic_bomb model through the hazards controller.
 -- Keyvalues damage, radius, health, explode_particle, sound, friendlyfire
 -- and passActivator, plus model, skin, modelscale and TeamNum; input
 -- Detonate; output OnDetonate.
@@ -11,7 +11,7 @@ ENT.Spawnable = false
 
 if CLIENT then return end
 
-local VARIANT = "foundation.hazards.generic_bomb"
+local VARIANT = "features.hazards.generic_bomb"
 
 -- Keyvalues read as atof and atoi do: a non-number is 0. A missing
 -- modelscale is the engine's 1.

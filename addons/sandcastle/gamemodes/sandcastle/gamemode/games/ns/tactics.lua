@@ -1,5 +1,5 @@
 -- The AI war's tactics engine (games.gameplay.tactics): a fire team's
--- tactics in a fight, as foundation.aiwar.orders reads them.
+-- tactics in a fight, as features.aiwar.orders reads them.
 --
 -- Contact: what one member sees, its whole team knows: the last place an
 -- enemy was seen, for CONTACT_MEMORY seconds; and where a member fell, for

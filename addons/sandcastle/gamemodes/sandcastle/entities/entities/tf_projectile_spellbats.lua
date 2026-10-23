@@ -1,5 +1,5 @@
 -- tf_projectile_spellbats (CTFProjectile_SpellBats): the bats spell's jar,
--- invisible but for its swarm (foundation.spells.bats).
+-- invisible but for its swarm (features.spells.bats).
 AddCSLuaFile()
 
 ENT.Type = "anim"

@@ -24,7 +24,7 @@
 -- aimed at the name tf_gamerules reach it; on a map with neither, a
 -- ws_gamerules.
 local Rounds = WS.require("games.gameplay.rounds")
-local ControlPoints = WS.require("foundation.rounds.control_points")
+local ControlPoints = WS.require("features.rounds.control_points")
 local Limits = WS.require("games.gameplay.rounds.limits")
 
 local S = WS.STATE

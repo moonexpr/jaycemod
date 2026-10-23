@@ -1,4 +1,4 @@
--- The spells feature's controller. It owns the foundation.spells Library
+-- The spells feature's controller. It owns the features.spells.model Library
 -- (one SpellBook per caster: a player, or an NPC an AI layer grants one to)
 -- and a Shot per spell projectile or spawner, implements the caster port
 -- over any caster entity, hands living RED and BLU players
@@ -8,8 +8,8 @@
 -- applies the conditions only spells give. The holiday controller loads
 -- this feature when spells turn on; the players' books follow its
 -- UsingSpells() from then on.
-local Spells = WS.require("foundation.spells")
-local SpellSet = WS.require("foundation.spells.halloween")
+local Spells = WS.require("features.spells.model")
+local SpellSet = WS.require("features.spells.halloween")
 
 local P = WS.PlayerRules
 local C = P.COND
@@ -70,7 +70,7 @@ local function IsAlive(ent)
 end
 
 -------------------------------------------------------------------------------
--- The caster port (foundation.spells.caster) over a caster entity
+-- The caster port (features.spells.caster) over a caster entity
 
 local Caster = {}
 Caster.__index = Caster

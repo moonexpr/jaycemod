@@ -4,10 +4,10 @@
 -- the aiwar controller sends as ws_aiwar_debug) in one pass: lines and
 -- areas in the world after the translucent renderables, then in HUDPaint one
 -- box per NPC above its head, holding every layer's lines for it (laid out
--- by foundation.aiwar.overlay so none covers another), and the labels.
+-- by features.nbdebug.aiwar_overlay so none covers another), and the labels.
 -- Nothing here needs developer mode, so it works on dedicated servers.
 local Debug = WS.require("foundation.npc.debug")
-local Overlay = WS.require("foundation.aiwar.overlay")
+local Overlay = WS.require("features.nbdebug.aiwar_overlay")
 local Parts = WS.require("foundation.ns.overlay")
 
 -- The game events it listens to are sh.lua's; game_aiwar_debug is the aiwar

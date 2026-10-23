@@ -1,6 +1,6 @@
 -- tf_projectile_spellmeteorshower (CTFProjectile_SpellMeteorShower): the
 -- meteor spell's jar, which lands a tf_spell_meteorshowerspawner
--- (foundation.spells.meteor).
+-- (features.spells.meteor).
 AddCSLuaFile()
 
 ENT.Type = "anim"

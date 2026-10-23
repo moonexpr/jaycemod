@@ -1,4 +1,4 @@
--- The team scoreboard (foundation.scoreboard): Sandbox's scoreboard (base's
+-- The team scoreboard (ws.scoreboard): Sandbox's scoreboard (base's
 -- cl_scoreboard.lua, its fonts and grey rows of avatar, name, kills, deaths,
 -- ping and mute, with money (games.gameplay.economy) beside the name), split
 -- into TF2's columns, BLU left and RED right, each
@@ -7,7 +7,7 @@
 -- TF2 shows bots). Below: anyone on no team, the spectators, the map, and the
 -- match's win conditions. Shown wherever teams play (a TF2 map's rounds, the
 -- AI war); elsewhere Sandbox's own.
-local Scoreboard = WS.require("foundation.scoreboard")
+local Scoreboard = WS.require("ws.scoreboard")
 local Teams = WS.require("games.gameplay.teams")
 local Economy = WS.require("games.gameplay.economy")
 

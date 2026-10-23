@@ -359,7 +359,7 @@ T.test("every spawn limit is 0 while it generates, and put back after", function
 end)
 
 T.test("every client is told each stage: opening the doors, generating, done with the areas made", function()
-	local Progress = T.require("foundation.nav_progress")
+	local Progress = T.require("ws.nav_progress")
 	local s = load({ entities = SPAWNS })
 	s.commands.mp_nav_generate(nil)
 	s.Poll()

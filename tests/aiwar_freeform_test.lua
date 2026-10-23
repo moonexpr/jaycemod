@@ -1,18 +1,18 @@
 -- The AI war where the rounds mode is none the war knows (no rounds, or a
--- map without a standard objective): foundation.aiwar.scenario.freeform.
+-- map without a standard objective): features.aiwar.scenario.freeform.
 -- Every squad explores, in bigger squads; a squad follows the nearest
 -- living player of its team, and without one explores as arena's do. The
 -- soldiers join the fight where the map has no TF2 team spawns at their
 -- team's HL2 deathmatch spawns, else at the nav mesh's hiding spots split
--- between the teams (foundation.aiwar.spawns).
+-- between the teams (features.aiwar.spawns).
 local T = dofile("tests/harness.lua")
 local FS = dofile("tests/fake_soldier.lua")
 local FP = dofile("tests/fake_points.lua")
-local AiWar = T.require("foundation.aiwar")
+local AiWar = T.require("features.aiwar.model")
 local Explore = T.require("games.ns.explore")
-local Scenario = T.require("foundation.aiwar.scenario")
-local Freeform = T.require("foundation.aiwar.scenario.freeform")
-local Spawns = T.require("foundation.aiwar.spawns")
+local Scenario = T.require("features.aiwar.scenario")
+local Freeform = T.require("features.aiwar.scenario.freeform")
+local Spawns = T.require("features.aiwar.spawns")
 local Squad = T.require("games.ns.squad")
 local Tactics = T.require("games.ns.tactics")
 local Teams = T.require("games.gameplay.teams")

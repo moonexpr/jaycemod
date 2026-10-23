@@ -23,7 +23,7 @@
 --     speaks, and only while it runs with auto_countdown on.
 local Rounds = WS.require("games.gameplay.rounds")
 local Timer = WS.require("games.gameplay.rounds.timer")
-local Text = WS.require("foundation.rounds.text")
+local Text = WS.require("features.rounds.text")
 local Limits = WS.require("games.gameplay.rounds.limits")
 local Hud = WS.require("ws.tf_hud")
 
@@ -165,7 +165,7 @@ end)
 
 -- The timer -----------------------------------------------------------------------
 
--- foundation.rounds.text decides the clock: the gamemode's countdown to
+-- features.rounds.text decides the clock: the gamemode's countdown to
 -- Gameplay mode ("Prepare"), else the round's timer while the rounds run.
 -- Sandbox mode otherwise shows no timer, as TF2's tournament pre-ready
 -- state; the koth HUD draws its own clocks.
@@ -468,7 +468,7 @@ end
 
 -- A win screen (the round's win panel, the match's end) shows the teams'
 -- scores itself: while one is up, the small scores and KOTH's clocks go
--- (foundation.rounds.text's ShowsTeamBar).
+-- (features.rounds.text's ShowsTeamBar).
 local TEAM_BAR = { "game.match.team_scores", "game.match.team_clocks" }
 local teamBarShown = true
 

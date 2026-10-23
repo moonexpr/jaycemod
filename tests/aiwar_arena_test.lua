@@ -1,4 +1,4 @@
--- The AI war in arena (foundation.aiwar.scenario.arena, foundation.aiwar.
+-- The AI war in arena (features.aiwar.scenario.arena, features.aiwar.model.
 -- explore): the arena round is no sudden death for the soldiers (no hunt,
 -- no sight of every enemy); squads keep together and explore the map,
 -- each going for what its own soldiers saw, until the point opens; then a
@@ -6,11 +6,11 @@
 local T = dofile("tests/harness.lua")
 local FS = dofile("tests/fake_soldier.lua")
 local FP = dofile("tests/fake_points.lua")
-local AiWar = T.require("foundation.aiwar")
+local AiWar = T.require("features.aiwar.model")
 local Explore = T.require("games.ns.explore")
-local Scenario = T.require("foundation.aiwar.scenario")
-local CP = T.require("foundation.aiwar.scenario.control_points")
-local Arena = T.require("foundation.aiwar.scenario.arena")
+local Scenario = T.require("features.aiwar.scenario")
+local CP = T.require("features.aiwar.scenario.control_points")
+local Arena = T.require("features.aiwar.scenario.arena")
 local Squad = T.require("games.ns.squad")
 local Tactics = T.require("games.ns.tactics")
 local State = T.require("games.gameplay.rounds.state")

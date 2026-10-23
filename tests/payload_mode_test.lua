@@ -1,15 +1,15 @@
--- The payload mode (foundation.rounds.payload, CTFGameRules's
+-- The payload mode (features.payload.round, CTFGameRules's
 -- TF_GAMETYPE_ESCORT) and payload played through the models: a single cart
 -- pushed along its checkpoints, a payload race, the recede countdown,
 -- overtime held by a pushed cart, and the cart HUD's wire format
--- (foundation.payload.hud). Also the seams of the payload feature.
+-- (features.payload.hud). Also the seams of the payload feature.
 local T = dofile("tests/harness.lua")
 local Rounds = T.require("games.gameplay.rounds")
-local ControlPoints = T.require("foundation.rounds.control_points")
-local PayloadMode = T.require("foundation.rounds.payload")
-local Payload = T.require("foundation.payload")
-local Race = T.require("foundation.payload.race")
-local Hud = T.require("foundation.payload.hud")
+local ControlPoints = T.require("features.rounds.control_points")
+local PayloadMode = T.require("features.payload.round")
+local Payload = T.require("features.payload.model")
+local Race = T.require("features.payload.race")
+local Hud = T.require("features.payload.hud")
 local Timer = T.require("games.gameplay.rounds.timer")
 local Teams = T.require("games.gameplay.teams")
 

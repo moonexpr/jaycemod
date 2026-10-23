@@ -1,8 +1,8 @@
 -- Part of the AI war controller (sv.lua): starting and ending the war, pausing, and squads and jobs by hand.
 local Controller, Map = ...
-local AiWar = WS.require("foundation.aiwar")
-local Scenario = WS.require("foundation.aiwar.scenario")
-local Notices = WS.require("foundation.admin_notices")
+local AiWar = WS.require("features.aiwar.model")
+local Scenario = WS.require("features.aiwar.scenario")
+local Notices = WS.require("ws.admin_notices")
 local Gamemode = WS.require("games.system.gamemode")
 local RED, BLUE = Map.RED, Map.BLUE
 local RoundsModeName = Map.RoundsModeName
@@ -223,7 +223,7 @@ function Controller:End()
 end
 
 -- The team the Combine fight for, for clients (the kill feed's colours:
--- foundation.aiwar's SIDES_KEY); without a war, their home.
+-- features.aiwar.model's SIDES_KEY); without a war, their home.
 function Controller:PublishSides()
 	local combine = self.war and self.war:TeamOf(AiWar.COMBINE) or AiWar.FACTIONS[AiWar.COMBINE].home
 	SetGlobal2Int(AiWar.SIDES_KEY, combine)

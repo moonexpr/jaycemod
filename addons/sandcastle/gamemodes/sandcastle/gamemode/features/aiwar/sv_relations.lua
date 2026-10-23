@@ -2,11 +2,11 @@
 -- teammates passing through each other, and how well soldiers shoot
 -- (tf_bot_difficulty).
 local Controller, Map = ...
-local AiWar = WS.require("foundation.aiwar")
+local AiWar = WS.require("features.aiwar.model")
 local Rounds = WS.require("games.gameplay.rounds")
 local Hearing = WS.require("games.ns.hearing")
-local Factions = WS.require("foundation.factions")
-local Marksmanship = WS.require("foundation.aiwar.marksmanship")
+local Factions = WS.require("ws.factions")
+local Marksmanship = WS.require("features.aiwar.marksmanship")
 local BulletSteps = WS.require("games.gameplay.combat.bullet_steps")
 local RED, BLUE = Map.RED, Map.BLUE
 local Point, PassThrough = Map.Point, Map.PassThrough
@@ -21,7 +21,7 @@ function Controller:Disposition(team, otherTeam)
 	return DISPOSITION[AiWar.Relation(team, otherTeam, self.losers)]
 end
 
--- A soldier toward each team's DrGBase faction (foundation.factions; it is
+-- A soldier toward each team's DrGBase faction (ws.factions; it is
 -- in its own team's, WS.SetTeamMember): its team's its allies, the
 -- other its enemies, or feared once its side lost. DrGBase relates it so to
 -- every soldier and player in each, as they come and go.

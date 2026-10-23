@@ -1,5 +1,5 @@
 -- halloween_fortune_teller (CTFHalloweenFortuneTeller): Merasmus's booth, a
--- binding to a foundation.holiday.fortune model through the holiday
+-- binding to a features.holiday.fortune model through the holiday
 -- controller. Keyvalues red_teleport and blue_teleport; inputs
 -- EnableFortuneTelling, DisableFortuneTelling, StartFortuneTelling and
 -- EndFortuneTelling (Kill and AddOutput are the engine's); outputs
@@ -12,7 +12,7 @@ ENT.Spawnable = false
 
 if CLIENT then return end
 
-local MODEL = "foundation.holiday.fortune"
+local MODEL = "features.holiday.fortune"
 
 function ENT:KeyValue(key, value)
 	self.kv = self.kv or {}

@@ -87,11 +87,12 @@ T.test("no server file is sent", function()
 	T.eq(table.concat(server, ", "), "", "server files sent")
 end)
 
--- init.lua's former rule: all of foundation/, each feature's sh.lua and
--- cl.lua, and ws/sh_* and ws/cl_*. The new rule adds only modules: the
--- files under features/ and ws/ with no realm.
+-- init.lua's former rule: all of foundation/ (and of games/, split from
+-- it), each feature's sh.lua and cl.lua, and ws/sh_* and ws/cl_*. The new
+-- rule adds only modules: the files under features/ and ws/ with no realm.
 T.test("the sent set is the old rule's set plus the feature and ws modules", function()
 	local expected = Set(LuaFilesUnder(T.ROOT .. "foundation/", T.ROOT))
+	for _, path in ipairs(LuaFilesUnder(T.ROOT .. "games/", T.ROOT)) do expected[path] = true end
 	for _, name in ipairs(Names(T.ROOT .. Features.ROOT, "d")) do
 		for _, part in ipairs(Features.CLIENT_PARTS) do
 			local path = Features.PartPath(name, part)

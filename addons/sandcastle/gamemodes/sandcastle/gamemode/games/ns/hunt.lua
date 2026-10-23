@@ -4,7 +4,7 @@
 -- hunter goes for the nearest sighting still fresh, else to the losers'
 -- spawns. Routes refuse enemy spawn rooms, so a trip to a losers' spawn
 -- ends at its door (TF2's spawn-room thresholds). The losers run from what
--- they see and otherwise hide at their own spawn (foundation.aiwar.orders'
+-- they see and otherwise hide at their own spawn (features.aiwar.orders'
 -- Humiliated).
 --
 -- Subjects are opaque enemy handles; positions are { x, y, z } tables.

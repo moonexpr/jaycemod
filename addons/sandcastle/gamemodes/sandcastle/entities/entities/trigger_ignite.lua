@@ -1,13 +1,13 @@
 -- trigger_ignite (CTriggerIgnite, tf_triggers.cpp): sets players who walk
 -- in alight and burns everyone inside by a share of their max health (the
 -- lava on cp_lavapit_final, the fires on cp_gravelpit_snowy). A binding to
--- foundation.hazards.ignite, loaded by the first one on a map: this feeds
+-- features.hazards.ignite, loaded by the first one on a map: this feeds
 -- it the players who pass the filter as they come and go, and carries out
 -- its events (the ignite particle and sound, BURNING, burn damage).
 ENT.Type = "brush"
 ENT.Base = "ws_trigger_volume"
 
-local IGNITE_MODEL = "foundation.hazards.ignite"
+local IGNITE_MODEL = "features.hazards.ignite"
 
 -- The model's port on the players' conditions.
 local PLAYERS = {

@@ -8,14 +8,14 @@
 -- line may use; shared.lua skips it among the other sh_ files.
 include("sh_events.lua")
 
--- The gamemode's convars are replicated and notify (foundation.replicated),
+-- The gamemode's convars are replicated and notify (ws.replicated),
 -- so a client's console knows every one: from here on, a convar the
 -- gamemode's own files create gets FCVAR_REPLICATED and FCVAR_NOTIFY on
 -- both realms (other addons' are
 -- left as they are), and the server tells each ready client the ones only
 -- it has (system_server_convars), which the client creates too.
 do
-	local Replicated = WS.require("foundation.replicated")
+	local Replicated = WS.require("ws.replicated")
 	local E = WS.Events
 	local FOLDER = GM.FolderName
 	local CONVAR_BITS = 12

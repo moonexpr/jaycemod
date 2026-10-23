@@ -4,7 +4,7 @@
 -- is told the stage it missed, so a player joining mid-run sees the box
 -- too. Run against a fake of WS.Events.
 local T = dofile("tests/harness.lua")
-local P = T.require("foundation.nav_progress")
+local P = T.require("ws.nav_progress")
 
 local SOURCE = "addons/sandcastle/gamemodes/sandcastle/gamemode/ws/sh_nav_progress.lua"
 

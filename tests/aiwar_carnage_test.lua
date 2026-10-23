@@ -93,8 +93,8 @@ end)
 -- The humiliation phase in the soldiers' orders ------------------------------
 
 local N = T.require("games.npc.nextbot")
-local AiWar = T.require("foundation.aiwar")
-local Orders = T.require("foundation.aiwar.orders")
+local AiWar = T.require("features.aiwar.model")
+local Orders = T.require("features.aiwar.orders")
 local Track = T.require("foundation.math.polyline")
 local STATE = T.require("games.gameplay.rounds.state")
 

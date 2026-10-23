@@ -1,12 +1,12 @@
--- foundation.aiwar.scenario.mvm: the war fought over BLU's bomb, as TF2's
+-- features.aiwar.scenario.mvm: the war fought over BLU's bomb, as TF2's
 -- invading robots fight it (CTFBotScenarioMonitor's MvM branch:
 -- CTFBotFetchFlag, then CTFBotDeliverFlag for the carrier and
 -- CTFBotEscortFlagCarrier or CTFBotAttackFlagDefenders for the rest), and
 -- RED defends the hatch and runs the bomb down, as its players would.
 local T = dofile("tests/harness.lua")
-local AiWar = T.require("foundation.aiwar")
-local Scenario = T.require("foundation.aiwar.scenario")
-local Mvm = T.require("foundation.aiwar.scenario.mvm")
+local AiWar = T.require("features.aiwar.model")
+local Scenario = T.require("features.aiwar.scenario")
+local Mvm = T.require("features.aiwar.scenario.mvm")
 local Teams = T.require("games.gameplay.teams")
 local Geometry = T.require("foundation.math.geometry")
 

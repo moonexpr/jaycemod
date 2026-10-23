@@ -1,7 +1,7 @@
 -- merasmus_dancer (CMerasmusDancer): the Merasmus who dances with the
 -- players while the Wheel of Fate's Dance lasts. The wheel controller
 -- spawns him; he appears in a puff of smoke dancing, and Vanish takes him
--- in another, or BlastOff flies him off first. foundation.holiday.wheel
+-- in another, or BlastOff flies him off first. features.wheel.model
 -- holds his model, dance, puff and timing.
 AddCSLuaFile()
 
@@ -12,7 +12,7 @@ ENT.AutomaticFrameAdvance = true
 
 if CLIENT then return end
 
-local MODEL = "foundation.holiday.wheel"
+local MODEL = "features.wheel.model"
 local STAFF_BODYGROUP = "staff"
 
 function ENT:Initialize()

@@ -1,5 +1,5 @@
 -- Point snapshots and fields for the point scenarios' tests
--- (foundation.aiwar.scenario.control_points and .koth), in the shape the
+-- (features.aiwar.scenario.control_points and .koth), in the shape the
 -- aiwar controller builds them (docs/aiwar-koth-cp.md §2.4), and a battle:
 -- War + the scenario's Command + Orders + tests/fake_soldier.lua soldiers,
 -- ticked together, each soldier walking FP.SPEED toward where it was last
@@ -7,8 +7,8 @@
 local H = dofile("tests/harness.lua")
 local FS = dofile("tests/fake_soldier.lua")
 local N = H.require("games.npc.nextbot")
-local AiWar = H.require("foundation.aiwar")
-local Orders = H.require("foundation.aiwar.orders")
+local AiWar = H.require("features.aiwar.model")
+local Orders = H.require("features.aiwar.orders")
 local Teams = H.require("games.gameplay.teams")
 
 local FP = {}

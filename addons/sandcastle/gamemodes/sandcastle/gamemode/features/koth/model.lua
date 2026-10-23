@@ -10,7 +10,7 @@
 -- hill wins when its clock reads zero and the timer may expire, so an
 -- enemy on the point holds it at zero in overtime.
 local Rounds = require("games.gameplay.rounds")
-local ControlPoints = require("foundation.rounds.control_points")
+local ControlPoints = require("features.rounds.control_points")
 local Teams = require("games.gameplay.teams")
 local ipairs, setmetatable = ipairs, setmetatable
 module(...)

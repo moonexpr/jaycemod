@@ -6,13 +6,13 @@
 -- the killer cam all credit them, as TF2's Event_Killed rewrites it. A
 -- player so killed respawns sooner (WS.DeathCredited, a respawn modifier:
 -- ws/sv_respawn_modifiers.lua), and its death notice reads "finished off"
--- (foundation.kill_feed's FINISHED_OFF). The hit path (ws/sv_hits.lua)
+-- (features.aiwar.kill_feed's FINISHED_OFF). The hit path (ws/sv_hits.lua)
 -- calls both. A kill's assister is the latest other enemy who hurt the
 -- victim within ASSIST_WINDOW (CTFGameRules::GetAssister's damager rule):
 -- counted as ws_assists (the scoreboard's column and points) and named in
 -- the kill feed beside the killer (game_kill_assist).
 local Credit = WS.require("games.gameplay.kill_credit")
-local Feed = WS.require("foundation.kill_feed")
+local Feed = WS.require("features.aiwar.kill_feed")
 local E = WS.Events
 
 local ASSISTS = "ws_assists" -- the NW2 int a player's or soldier's assists are counted in

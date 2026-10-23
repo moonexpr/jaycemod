@@ -6,7 +6,7 @@
 --
 -- The game's variations are Mode strategies (Mode:Extend(name) plus
 -- overrides), chosen by map entities: control points, koth and payload are
--- parts of their own (foundation.rounds.control_points, .koth, .payload).
+-- parts of their own (features.rounds.control_points, .koth, .payload).
 --
 -- Nothing here touches the engine. Time comes in as `now`, the world as a
 -- snapshot, and every method that changes the game returns a list of
@@ -608,7 +608,7 @@ function Round:SetLimits(limits)
 	self.settings.timelimit = limits.timelimit
 end
 
--- How the match ends, for the scoreboard (foundation.scoreboard's WinConditions).
+-- How the match ends, for the scoreboard (ws.scoreboard's WinConditions).
 function Round:Limits(now)
 	return {
 		winlimit = self.settings.winlimit,

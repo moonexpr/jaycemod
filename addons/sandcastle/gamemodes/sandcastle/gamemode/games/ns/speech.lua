@@ -16,12 +16,12 @@ CONCEPT_BATTLE_STANCE = "TLK_NS_BATTLE_STANCE"
 CONCEPT_PLAYER_PASSING = "TLK_NS_PLAYER_PASSING"
 CONCEPT_ENEMY_SPOTTED = "TLK_NS_ENEMY_SPOTTED"
 
--- A hurt soldier calls for a medic (foundation.aiwar.orders' CallMedic),
+-- A hurt soldier calls for a medic (features.aiwar.orders' CallMedic),
 -- heard by all near.
 CONCEPT_CALL_MEDIC = "TLK_NS_CALL_MEDIC"
 
 -- A hurt soldier calls out as it falls back to cover, and as it leaves
--- cover (or its post) for a health kit (foundation.aiwar.orders'
+-- cover (or its post) for a health kit (features.aiwar.orders'
 -- RetreatToCover and FindHealth), heard by all near.
 CONCEPT_RETREAT_TO_COVER = "TLK_NS_RETREAT_TO_COVER"
 CONCEPT_GET_HEALTH = "TLK_NS_GET_HEALTH"

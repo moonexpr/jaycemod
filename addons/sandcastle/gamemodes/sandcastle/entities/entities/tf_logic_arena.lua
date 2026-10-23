@@ -1,6 +1,6 @@
 -- tf_logic_arena (CArenaLogic, tf_gamerules.cpp): makes the map arena. A
 -- binding to the arena controller, which owns its model
--- (foundation.rounds.arena), fires its OnArenaRoundStart as the arena round
+-- (features.arena.round), fires its OnArenaRoundStart as the arena round
 -- starts and its OnCapEnabled as the point opens. It has no inputs of its own.
 ENT.Type = "point"
 ENT.Base = "base_point"

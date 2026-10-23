@@ -1,4 +1,4 @@
--- Arena (tf_logic_arena; foundation.rounds.arena) from Sandbox mode, with
+-- Arena (tf_logic_arena; features.arena.round) from Sandbox mode, with
 -- mp_arena_override_cap_enable_time at a few seconds: gameplay starts with
 -- bots on both teams; the pre-round lasts mp_arena_preround_time and ends in
 -- the arena round (STALEMATE) with OnArenaRoundStart; BLU bots on the point

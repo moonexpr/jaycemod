@@ -11,7 +11,7 @@ NextSoldier, the AI-war's NextBot soldiers. The gamemode lives at
 | `gamemode/shared_loader.lua` | Runs first: the gamemode's `WS.require`, then foundation's namespace indexes, each named by hand |
 | `gamemode/foundation/<namespace>/` | The generic base: data structures, algorithms, codecs, maths, classes, loaded at start and published as globals (`list.queue`) by `sh_index.lua` (index below) |
 | `gamemode/games/<namespace>/` | Models built on foundation: pure Lua systems, no GMod globals, I/O through ports (the gamemode core, gameplay, NPCs, NextSoldier, timers, the world's I/O), published as globals by `sh_init.lua` and loaded on first read (index below) |
-| `gamemode/foundation/` | Also, until they move to their features or `ws/` (`PENDING` in `tests/foundation_layers_test.lua`): mode-specific models, loaded per map with `WS.require("foundation.x")` (`docs/foundation-game-split-plan.md`) |
+| `gamemode/foundation/` | Also, until they move to their features or `ws/` (`PENDING` in `tests/foundation_layers_test.lua`): the Halloween bosses and debug models in `npc/`, `ns/overlay`, `capture/hud`. foundation is copied to the globals, so it stays small and generic (`docs/foundation-game-split-plan.md`) |
 | `gamemode/features/<feature>/` | Controllers: `sv.lua`/`cl.lua`/`sh.lua` composition roots and their `<realm>_<part>.lua` parts |
 | `gamemode/ws/` | Always-loaded glue |
 | `gamemode/entities/` | Map entity bindings |
@@ -182,6 +182,8 @@ table. Tests are `tests/<namespace>_<module>_test.lua`.
 | `analysis.analytics` | Timers, counters, tick pressure, memory samples; clock and memory are ports |
 | `analysis.memory` | `Measure(roots)` → estimated bytes per named root (each object once); `Format(report, rows)`. `ws_analytics_memory` runs it over the loaded foundation modules |
 | `transaction` | Exchanges between user and system or between modules, settling once as committed (value), declined (a refusal: the caller's mistake) or failed (our bug). Refusals: `Refuse(kind, detail)`, `IsRefusal(err, kinds)`, `Message`, `Explain`, `Detail`. `New()` → `Commit`/`Decline`/`Fail`, `State`, `Value`, `Refusal`, `Error`, `OnSettle`, `Await(scheduler)` (in a task); `Run(fn, ...)`, `Spawn(scheduler, fn, ...)` with `fn(work, ...)` and `work:Undo(fn)` compensations; `All(list)`. Wire: `Ledger()` (`Open`, `Settle`, `Expire`, `Count`), `Reply(tx[, kinds])`. Over the network: `WS.Events.Transact` (client) and `WS.Events.Serve` (server), events defined with `transaction = true` |
+| `configstore` | Named whole-number values, each held to a range and guarded by what the caller names: `New(name)` → `Range(key, min, max, guard)`, `Switch(key, guard)`, `store[key]` (`Get`; read-only `min`, `max`, `guard`), `Has`, `for key, entry in store()` (key order; `Keys`), `Size` (`__len`), `tostring`, `Allowed(key, holds)`, `Parse(key, text)` → text or nil and why. The menus' settings are one (`ws.settings`, guards are privileges) |
+| `nodegraph` | An HL2 AI node graph made from the nav mesh: picks nodes, proposes links, assigns zones, reads and writes `maps/graphs/<map>.ain` |
 
 ## games index
 

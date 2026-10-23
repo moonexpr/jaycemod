@@ -1,6 +1,6 @@
 local T = dofile("tests/harness.lua")
 local FakeActor = dofile("tests/fake_actor.lua")
-local Wheel = T.require("foundation.holiday.wheel")
+local Wheel = T.require("features.wheel.model")
 local Players = T.require("games.gameplay.players")
 local Attributes = T.require("games.gameplay.players.attributes")
 local Teams = T.require("games.gameplay.teams")

@@ -13,7 +13,7 @@
 -- the subjects' names. The warnings play only while Halloween is on and its
 -- mode ANNOUNCES_IT; the chat line that names a tag always plays.
 local require = require
-local Holiday = require("foundation.holiday")
+local Holiday = require("features.holiday.model")
 local setmetatable = setmetatable
 module(...)
 

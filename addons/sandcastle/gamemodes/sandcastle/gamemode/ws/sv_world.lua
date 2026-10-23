@@ -137,11 +137,11 @@ function WS.Announce(text, team, audience, icon)
 	})
 end
 
--- foundation.admin_notices' notices: each one's chime on CHAN_AUTO and
+-- ws.admin_notices' notices: each one's chime on CHAN_AUTO and
 -- announcer line on CHAN_VOICE2 (the neutral alert once in a while:
 -- Spoken), then its card, to its audience. The alert's time is kept for
 -- the map: the first neutral notice on a new map speaks it.
-local AdminNotices = WS.require("foundation.admin_notices")
+local AdminNotices = WS.require("ws.admin_notices")
 local neutralLineAt
 
 function WS.Notify(notices)

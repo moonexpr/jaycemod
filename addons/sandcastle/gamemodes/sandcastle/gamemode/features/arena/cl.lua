@@ -3,7 +3,7 @@
 -- five seconds spoken, then the cap-enabled line. The countdown itself is
 -- on the round timer (the rounds view's, as POINT UNLOCKS).
 WS.Feature("rounds")
-local Arena = WS.require("foundation.rounds.arena")
+local Arena = WS.require("features.arena.round")
 
 local View = {
 	enableAt = 0, -- the cap-enable time the countdown is armed for

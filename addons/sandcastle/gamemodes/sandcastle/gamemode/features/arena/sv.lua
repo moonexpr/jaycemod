@@ -1,5 +1,5 @@
 -- The arena feature's controller. It owns the tf_logic_arena model
--- (foundation.rounds.arena), puts the round in the arena mode, and gives the
+-- (features.arena.round), puts the round in the arena mode, and gives the
 -- round the arena's convars: mp_arena_preround_time and mp_arena_round_time.
 -- As the arena round starts it does what SetupOnStalemateStart's arena
 -- branch does: fires OnArenaRoundStart, sets the round's cap-enable time
@@ -10,7 +10,7 @@
 -- (ws_round_arena).
 --
 -- Loaded by tf_logic_arena. It loads rounds.
-local Arena = WS.require("foundation.rounds.arena")
+local Arena = WS.require("features.arena.round")
 local Rounds = WS.require("games.gameplay.rounds")
 
 local THINK_INTERVAL = 0.1 -- ArenaLogicThink's

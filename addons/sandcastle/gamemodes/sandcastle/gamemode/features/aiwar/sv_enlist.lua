@@ -1,8 +1,8 @@
 -- Part of the AI war controller (sv.lua): enlisting, kits, medics, discharge, spawning, waves and seats.
 local Controller, Map = ...
-local AiWar = WS.require("foundation.aiwar")
+local AiWar = WS.require("features.aiwar.model")
 local Teams = WS.require("games.gameplay.teams")
-local Orders = WS.require("foundation.aiwar.orders")
+local Orders = WS.require("features.aiwar.orders")
 local NpcSystem = WS.require("games.npc.nextbot")
 local SPAWN_LIFT, RED, BLUE = Map.SPAWN_LIFT, Map.RED, Map.BLUE
 local Point, Masks, SpawnSpots, ClearSpotNear = Map.Point, Map.Masks, Map.SpawnSpots, Map.ClearSpotNear
@@ -44,7 +44,7 @@ end
 
 -- Kits (ws_drg_soldier's NSKit), by faction and role: every soldier carries
 -- a primary (one of those listed, at random), a secondary and a melee
--- weapon (foundation.aiwar.arms), the Combine's the pistol and stunstick,
+-- weapon (features.aiwar.arms), the Combine's the pistol and stunstick,
 -- the Resistance's the pistol and crowbar. Blockers and a point's holders
 -- carry the shotgun, hit harder and charge faster; raiders carry the
 -- crossbow (the Resistance) or the AR2 and throw grenades; the Combine's

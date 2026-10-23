@@ -1,6 +1,6 @@
 -- Part of the AI war controller (sv.lua): the observer, and the posts where soldiers hold their line.
 local Controller, Map = ...
-local AiWar = WS.require("foundation.aiwar")
+local AiWar = WS.require("features.aiwar.model")
 local Posts = WS.require("games.ns.posts")
 local Debug = WS.require("foundation.npc.debug")
 local SPAWN_LIFT = Map.SPAWN_LIFT

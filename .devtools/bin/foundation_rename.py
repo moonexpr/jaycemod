@@ -19,6 +19,7 @@ import re
 import subprocess
 import sys
 from dataclasses import dataclass
+from functools import cached_property
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
@@ -37,8 +38,8 @@ class Move:
 
     def __post_init__(self) -> None:
         for path in (self.old, self.new):
-            if not re.fullmatch(r"(foundation|game|games)(/[a-z_][a-z0-9_]*)+", path):
-                raise ValueError(f"not a module path under foundation/ or games/: {path!r}")
+            if not re.fullmatch(r"(foundation|game|games|features|ws)(/[a-z_][a-z0-9_]*)+", path):
+                raise ValueError(f"not a module path under the gamemode's module trees: {path!r}")
 
     @property
     def files(self) -> tuple[Path, Path]:
@@ -58,16 +59,33 @@ class Move:
     def within_foundation(self) -> bool:
         return self.old.startswith(FOUNDATION) and self.new.startswith(FOUNDATION)
 
-    def rewrite(self, text: str) -> str:
+    @cached_property
+    def substitutions(self) -> tuple[tuple[re.Pattern[str], str], ...]:
+        """Each old spelling's pattern and its new spelling, compiled once."""
         test_old, test_new = (p.stem for p in self.tests)
-        text = re.sub(rf"(?<![\w]){re.escape(test_old)}(?![\w])", test_new, text)
         dotted_old, dotted_new = (p.replace("/", ".") for p in (self.old, self.new))
-        # not a module under this one (foundation.npc.actor is not foundation.npc's)
-        text = re.sub(rf"(?<![\w.]){re.escape(dotted_old)}(?![\w]|\.\w)", dotted_new, text)
-        text = re.sub(rf"(?<![\w.]){re.escape(self.old)}(?![\w/])", self.new, text)
+        pairs = [
+            (rf"(?<![\w]){re.escape(test_old)}(?![\w])", test_new),
+            # not a module under this one (foundation.npc.actor is not foundation.npc's)
+            (rf"(?<![\w.]){re.escape(dotted_old)}(?![\w]|\.\w)", dotted_new),
+            (rf"(?<![\w.]){re.escape(self.old)}(?![\w/])", self.new),
+        ]
         if self.within_foundation:
             bare_old, bare_new = (p.removeprefix(FOUNDATION) for p in (self.old, self.new))
-            text = re.sub(rf"(?<![\w./]){re.escape(bare_old)}(?![\w/])", bare_new, text)
+            pairs.append((rf"(?<![\w./]){re.escape(bare_old)}(?![\w/])", bare_new))
+        return tuple((re.compile(pattern), new) for pattern, new in pairs)
+
+    @cached_property
+    def needles(self) -> tuple[str, ...]:
+        """Plain text one of the old spellings contains: a file without any is skipped."""
+        test_old = self.tests[0].stem
+        return (test_old, self.old.replace("/", "."), self.old.removeprefix(FOUNDATION))
+
+    def rewrite(self, text: str) -> str:
+        if not any(needle in text for needle in self.needles):
+            return text
+        for pattern, new in self.substitutions:
+            text = pattern.sub(new, text)
         return text
 
 
@@ -218,6 +236,74 @@ MOVES = tuple(
         ("npc/rappel", "ns/rappel"),
         ("npc/reach_memo", "ns/reach_memo"),
         ("npc/route_record", "ns/route_record"),
+    )
+) + tuple(
+    # Out of foundation, too close to game logic: to the features and ws/
+    # files that run them. A feature's root model is its model.lua.
+    Move(f"foundation/{old}", new)
+    for old, new in (
+        ("hazards", "features/hazards/model"),
+        ("hazards/croc", "features/hazards/croc"),
+        ("hazards/generic_bomb", "features/hazards/generic_bomb"),
+        ("hazards/ignite", "features/hazards/ignite"),
+        ("hazards/pumpkin_bomb", "features/hazards/pumpkin_bomb"),
+        ("hazards/zapper", "features/hazards/zapper"),
+        ("holiday", "features/holiday/model"),
+        ("holiday/fortune", "features/holiday/fortune"),
+        ("holiday/gift", "features/holiday/gift"),
+        ("holiday/halloween", "features/holiday/halloween"),
+        ("holiday/wheel", "features/wheel/model"),
+        ("spells", "features/spells/model"),
+        ("spells/athletic", "features/spells/athletic"),
+        ("spells/bats", "features/spells/bats"),
+        ("spells/blastjump", "features/spells/blastjump"),
+        ("spells/caster", "features/spells/caster"),
+        ("spells/fireball", "features/spells/fireball"),
+        ("spells/halloween", "features/spells/halloween"),
+        ("spells/lightning", "features/spells/lightning"),
+        ("spells/meteor", "features/spells/meteor"),
+        ("spells/mirv", "features/spells/mirv"),
+        ("spells/overheal", "features/spells/overheal"),
+        ("spells/skeleton_horde", "features/spells/skeleton_horde"),
+        ("spells/spawn_boss", "features/spells/spawn_boss"),
+        ("spells/stealth", "features/spells/stealth"),
+        ("spells/teleport", "features/spells/teleport"),
+        ("projectile/orb", "features/spells/orb"),
+        ("payload", "features/payload/model"),
+        ("payload/hud", "features/payload/hud"),
+        ("payload/race", "features/payload/race"),
+        ("rounds/payload", "features/payload/round"),
+        ("rounds/arena", "features/arena/round"),
+        ("rounds/control_points", "features/rounds/control_points"),
+        ("rounds/destruction", "features/rounds/destruction"),
+        ("rounds/text", "features/rounds/text"),
+        ("aiwar", "features/aiwar/model"),
+        ("aiwar/slots", "features/aiwar/slots"),
+        ("aiwar/spawns", "features/aiwar/spawns"),
+        ("aiwar/scenario", "features/aiwar/scenario"),
+        ("aiwar/scenario/arena", "features/aiwar/scenario/arena"),
+        ("aiwar/scenario/control_points", "features/aiwar/scenario/control_points"),
+        ("aiwar/scenario/ctf", "features/aiwar/scenario/ctf"),
+        ("aiwar/scenario/deathmatch", "features/aiwar/scenario/deathmatch"),
+        ("aiwar/scenario/freeform", "features/aiwar/scenario/freeform"),
+        ("aiwar/scenario/koth", "features/aiwar/scenario/koth"),
+        ("aiwar/scenario/mvm", "features/aiwar/scenario/mvm"),
+        ("aiwar/scenario/payload", "features/aiwar/scenario/payload"),
+        ("aiwar/health", "features/aiwar/health"),
+        ("aiwar/marksmanship", "features/aiwar/marksmanship"),
+        ("aiwar/arms", "features/aiwar/arms"),
+        ("aiwar/orders", "features/aiwar/orders"),
+        ("aiwar/soldier", "features/aiwar/soldier"),
+        ("aiwar/overlay", "features/nbdebug/aiwar_overlay"),
+        ("kill_feed", "features/aiwar/kill_feed"),
+        ("ns/inspect", "features/aiwar/inspect"),
+        ("replicated", "ws/replicated"),
+        ("factions", "ws/factions"),
+        ("scoreboard", "ws/scoreboard"),
+        ("nav_progress", "ws/nav_progress"),
+        ("admin_notices", "ws/admin_notices"),
+        ("localization", "ws/localization"),
+        ("settings", "ws/settings"),
     )
 )
 

@@ -5,7 +5,7 @@
 -- which works only for a listen server's host; Sandcastle's send it to the
 -- server (ws_server_set, ws/sh_settings.lua), which checks the
 -- server_options privilege. Every option follows the server's value.
-local Settings = WS.require("foundation.settings")
+local Settings = WS.require("ws.settings")
 local Permissions = WS.require("games.system.permissions")
 
 local NOT_LOADED = "This map has not loaded what this switches."

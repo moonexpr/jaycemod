@@ -7,13 +7,13 @@
 -- marks a payload race for the rounds controller (tf_logic_multiple_escort,
 -- CTFGameRules::SetMultipleTrains); and it publishes every cart for the
 -- payload view (ws_cart_*). The watchers' own decisions are
--- foundation.payload's; the race's and the HUD's are its parts'.
+-- features.payload.model's; the race's and the HUD's are its parts'.
 --
 -- Loaded by team_train_watcher and tf_logic_multiple_escort.
-local Payload = WS.require("foundation.payload")
-local PayloadMode = WS.require("foundation.rounds.payload")
-local Race = WS.require("foundation.payload.race")
-local Hud = WS.require("foundation.payload.hud")
+local Payload = WS.require("features.payload.model")
+local PayloadMode = WS.require("features.payload.round")
+local Race = WS.require("features.payload.race")
+local Hud = WS.require("features.payload.hud")
 
 local NOBODY = WS.TEAM_UNASSIGNED
 local PUBLISH_INTERVAL = 0.1 -- the HUD's 10 Hz

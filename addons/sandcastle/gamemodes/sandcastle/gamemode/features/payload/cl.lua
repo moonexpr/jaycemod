@@ -13,8 +13,8 @@
 -- use CHAN_VOICE2 and no attenuation.
 WS.Feature("rounds")
 WS.Feature("capture")
-local Hud = WS.require("foundation.payload.hud")
-local Race = WS.require("foundation.payload.race")
+local Hud = WS.require("features.payload.hud")
+local Race = WS.require("features.payload.race")
 
 local NOBODY = WS.TEAM_UNASSIGNED
 local RED, BLUE = WS.TEAM_RED, WS.TEAM_BLUE

@@ -1,6 +1,6 @@
 -- tf_projectile_spellfireball (CTFProjectile_SpellFireball): the fireball
 -- spell's rocket, and each meteor of a meteor shower. Invisible but for its
--- flame; it bursts on the first thing it touches (foundation.spells.fireball).
+-- flame; it bursts on the first thing it touches (features.spells.fireball).
 AddCSLuaFile()
 
 ENT.Type = "anim"

@@ -77,7 +77,7 @@ function WS.DrgSoldier(ENT, baseName)
 	local Leap = WS.require("games.ns.leap")
 	local Noise = WS.require("games.ns.noise")
 	local Rappel = WS.require("games.ns.rappel")
-	local Arms = WS.require("foundation.aiwar.arms")
+	local Arms = WS.require("features.aiwar.arms")
 	local SILENT = { grunt = {}, pain = {}, death = {}, fall = {} }
 
 	local function Base() return baseclass.Get(baseName) end
@@ -340,7 +340,7 @@ function WS.DrgSoldier(ENT, baseName)
 
 	-- DrGBase's human AI holds a melee weapon but never strikes with it: the
 	-- soldier strikes the enemy in reach for the weapon's damage, at its
-	-- pace (foundation.aiwar.arms), playing the melee swing.
+	-- pace (features.aiwar.arms), playing the melee swing.
 	function ENT:OnMeleeAttack(enemy, weapon)
 		if self.NSFrozen then return true end
 		if Answered(Ask(self, "ShouldAttack", self:GetEnemy()), "ANSWER_NO") then return true end
@@ -606,7 +606,7 @@ function WS.DrgSoldier(ENT, baseName)
 		return true
 	end
 
-	-- The orders' hop when stuck (foundation.aiwar.orders' Unstick, through
+	-- The orders' hop when stuck (features.aiwar.orders' Unstick, through
 	-- the soldier port's Hop): toward p, a vault if one fits, else a plain hop
 	-- (a soldier hopping beats one ramming a wall), run at its next step
 	-- (NSSteer). NSHopWhy says why no vault fitted, for the AI war's report.
@@ -639,7 +639,7 @@ function WS.DrgSoldier(ENT, baseName)
 	end
 
 	-- The controller's kit for the soldier's job: { primary (classes, one
-	-- drawn), secondary, melee (foundation.aiwar.arms' Loadout: it carries
+	-- drawn), secondary, melee (features.aiwar.arms' Loadout: it carries
 	-- these three and nothing else, the primary in hand; a kit without them,
 	-- the vortigaunt's, leaves its arms alone), model, health (its most),
 	-- damage (its damage scale), runSpeed }; nil fields take the soldier's own.

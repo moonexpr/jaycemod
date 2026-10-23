@@ -1,10 +1,10 @@
--- Halloween gifts (foundation.holiday.halloween's schedule): the holiday
+-- Halloween gifts (features.holiday.halloween's schedule): the holiday
 -- controller holds the map's gift spawn locations and a schedule whose
 -- first round is 7 to 12 minutes off. The check moves that round to now
 -- (the schedule's own nextAt, as a test clock would) and the controller
 -- then gives every player a tf_halloween_gift_pickup at one of the
 -- locations.
-local Halloween = WS.require("foundation.holiday.halloween")
+local Halloween = WS.require("features.holiday.halloween")
 local SECONDS_PER_MINUTE = 60
 local SPAWN_TIMEOUT = 3
 local AT_LOCATION = 1 -- units

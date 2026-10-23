@@ -16,7 +16,7 @@ local SF_TRIGGER_ALLOW_CLIENTS, SF_TRIGGER_ALLOW_NPCS, SF_TRIGGER_ALLOW_ALL = 1,
 
 -- Setup gates -------------------------------------------------------------------------
 -- In setup the defending side lines up past the gates the attackers must
--- come through (foundation.aiwar.orders). A gate is the last door on the
+-- come through (features.aiwar.orders). A gate is the last door on the
 -- attackers' route from their spawn to what they head for: the
 -- setup gate beyond a spawn door, or the spawn exit on maps whose exits
 -- are the gates. Found once per round.

@@ -1,7 +1,7 @@
 -- The wheel feature's view: the Wheel of Fate's effect on the HUD (TF2's
 -- PlayerStatus_WheelOfDoom), drawn from what the wheel controller networks:
 -- the effect's icon, by the player's health, blinking as it runs out.
-local Wheel = WS.require("foundation.holiday.wheel")
+local Wheel = WS.require("features.wheel.model")
 
 local EFFECT = "ws_wheel_effect"
 local EFFECT_START = "ws_wheel_effect_start"

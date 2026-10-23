@@ -5,8 +5,8 @@
 -- tick a little slower, with alternating tick sounds; a new spell plays the
 -- set sound. Casting is TF2's +use_action_slot_item: with no key bound the
 -- HUD says "bind h +use_action_slot_item".
-local Spells = WS.require("foundation.spells")
-local SpellSet = WS.require("foundation.spells.halloween")
+local Spells = WS.require("features.spells.model")
+local SpellSet = WS.require("features.spells.halloween")
 
 local WEAPON = "tf_weapon_spellbook"
 local CAST_COMMAND = "+use_action_slot_item"
