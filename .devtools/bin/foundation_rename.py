@@ -319,6 +319,14 @@ MOVES = tuple(
         ("npc/voices", "ws/voices"),
     )
 ) + tuple(
+    # Models begun on main while the split was under way.
+    Move(old, new)
+    for old, new in (
+        ("foundation/handicap", "games/gameplay/handicap"),
+        ("foundation/aiwar/capabilities", "games/gameplay/capabilities"),
+        ("foundation/nav_attributes", "games/world/nav_attributes"),
+    )
+) + tuple(
     # foundation's map namespace is world, beside games' world.
     within_foundation(f"map/{name}", f"world/{name}")
     for name in ("sets", "pairmap", "grid", "lease")
