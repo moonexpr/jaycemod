@@ -1,8 +1,8 @@
 include("shared.lua")
 -- cl_ui (WS.UI) loads first: other cl_ modules build their panels on it;
 -- then cl_client_settings (WS.PersistClientConVars), which keeps their
--- settings.
-local LOADED_FIRST = { "cl_ui.lua", "cl_client_settings.lua" }
+-- settings; and cl_tf_hud (WS.TFHud), which the HUD panels draw with.
+local LOADED_FIRST = { "cl_ui.lua", "cl_client_settings.lua", "cl_tf_hud.lua" }
 local loaded = {}
 for _, f in ipairs(LOADED_FIRST) do
 	include("ws/" .. f)
