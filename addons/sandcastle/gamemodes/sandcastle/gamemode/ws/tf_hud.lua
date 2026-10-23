@@ -227,6 +227,37 @@ function RespawnLabel(screenTall, unit)
 	return Rect(RESPAWN_X * unit, screenTall - RESPAWN_BOTTOM * unit, RESPAWN_W * unit, RESPAWN_H * unit)
 end
 
+-- What moved the respawn (games.gameplay.respawn_modifiers), a line a
+-- reason in a panel of its own REASONS_GAP under the label, as wide and as
+-- far off the screen's left, in TFFatLineBorder's brown: each line's
+-- seconds right-aligned in a column REASON_SECONDS_W wide from the screen's
+-- edge, its words REASON_WORDS_GAP after. REASON_TALL lines, so the most a
+-- respawn can have (five reasons and the limited total) fit in the 63 units
+-- under the label.
+REASONS_PANEL = "hud/color_panel_brown"
+REASONS_GAP, REASONS_PAD, REASON_TALL = 2, 3, 9
+REASON_SECONDS_W, REASON_WORDS_GAP = 28, 5
+
+-- count lines -> { panel, lines }: the panel's rect and each line's
+-- { seconds, words } anchors, the seconds' right edge and the words' left
+-- edge, at the line's middle.
+function RespawnReasons(screenTall, unit, count)
+	local label = RespawnLabel(screenTall, unit)
+	local top = label.y + label.h + REASONS_GAP * unit
+	local panel = Rect(label.x, top, label.w, (2 * REASONS_PAD + count * REASON_TALL) * unit)
+	local edge = label.x - RESPAWN_X * unit -- the screen's left edge, where the label hangs off it
+	local secondsX = edge + (REASONS_PAD + REASON_SECONDS_W) * unit
+	local lines = {}
+	for i = 1, count do
+		local y = top + (REASONS_PAD + (i - 0.5) * REASON_TALL) * unit
+		lines[i] = {
+			seconds = { x = secondsX, y = y },
+			words = { x = secondsX + REASON_WORDS_GAP * unit, y = y },
+		}
+	end
+	return { panel = panel, lines = lines }
+end
+
 -- CTFHudTimeStatus::SetTeamBackground: the local team's, BLU's for anyone else.
 function TimerBackground(team)
 	return team == RED and "hud/objectives_timepanel_red_bg" or "hud/objectives_timepanel_blue_bg"

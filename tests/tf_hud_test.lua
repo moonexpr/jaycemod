@@ -145,6 +145,47 @@ T.test("the respawn label sits at the bottom left, its left edge off the screen"
 	T.eq(Hud.RESPAWN_BORDER, "hud/tournament_panel_brown", "TFThinLineBorder's image")
 end)
 
+-- What moved the respawn, in a panel of its own under the label.
+local SCREENS = { { 480, 1 }, { 1080, 1080 / 480 }, { 720, 1.5 } }
+
+T.test("the respawn reasons' panel hangs under the label, as wide and as far off the screen", function()
+	for _, s in ipairs(SCREENS) do
+		local label = Hud.RespawnLabel(s[1], s[2])
+		local panel = Hud.RespawnReasons(s[1], s[2], 2).panel
+		T.eq(Near(panel.x, label.x) and Near(panel.w, label.w), true, "the label's left and width")
+		T.eq(Near(panel.y, label.y + label.h + Hud.REASONS_GAP * s[2]), true, "a gap under the label")
+	end
+	T.eq(Hud.REASONS_PANEL, "hud/color_panel_brown", "TFFatLineBorder's brown, apart from the label's thin line")
+end)
+
+T.test("the most reasons a respawn can have, and its limited total, fit above the screen's bottom", function()
+	local M = gameplay.respawn_modifiers
+	local every = M.For({ kills = M.MOST_KILLS, captures = 1, defenses = 1, finishedOff = true, suicide = true })
+	local lines = #every + 1 -- the total, when a limit cut it
+	for _, s in ipairs(SCREENS) do
+		local panel = Hud.RespawnReasons(s[1], s[2], lines).panel
+		T.eq(panel.y + panel.h <= s[1], true, lines .. " lines on a " .. s[1] .. "-tall screen")
+	end
+end)
+
+T.test("the reasons stack down the panel, the seconds in a column before the words", function()
+	local unit = 2
+	local reasons = Hud.RespawnReasons(960, unit, 3)
+	local panel = reasons.panel
+	T.eq(#reasons.lines, 3, "a line a reason")
+	for i, line in ipairs(reasons.lines) do
+		T.eq(Near(line.seconds.y, line.words.y), true, "the seconds and words on one line")
+		T.eq(line.seconds.x < line.words.x, true, "the seconds' right edge before the words")
+		T.eq(line.seconds.x > 0, true, "the seconds on the screen, though the panel hangs off it")
+		T.eq(line.seconds.y > panel.y and line.seconds.y < panel.y + panel.h, true, "inside the panel")
+		if i > 1 then
+			T.eq(Near(line.seconds.y - reasons.lines[i - 1].seconds.y, Hud.REASON_TALL * unit), true, "a line apart")
+			T.eq(Near(line.seconds.x, reasons.lines[1].seconds.x), true, "one column")
+		end
+	end
+	T.eq(Near(reasons.lines[1].seconds.y - panel.y, panel.y + panel.h - reasons.lines[3].seconds.y), true, "as much room above as below")
+end)
+
 T.test("the timer's background is the local team's, BLU's for anyone else", function()
 	T.eq(Hud.TimerBackground(RED), "hud/objectives_timepanel_red_bg", "RED's")
 	T.eq(Hud.TimerBackground(BLUE), "hud/objectives_timepanel_blue_bg", "BLU's")
