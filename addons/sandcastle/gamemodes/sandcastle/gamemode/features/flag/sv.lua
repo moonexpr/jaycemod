@@ -14,7 +14,7 @@
 --
 -- Loaded by item_teamflag and func_capturezone. It loads rounds.
 local Flag = WS.require("features.flag.model")
-local Rounds = WS.require("games.gameplay.rounds")
+local Rounds = gameplay.rounds
 
 local NOBODY, RED, BLUE = WS.TEAM_UNASSIGNED, WS.TEAM_RED, WS.TEAM_BLUE
 local GAME_TEAMS = { RED, BLUE }

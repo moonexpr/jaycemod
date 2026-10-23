@@ -4,7 +4,7 @@
 -- help and difficulty votes; kick votes start only from reports
 -- (ws/sv_players_menu.lua). Team help and soldier difficulty have no system
 -- behind them yet, so they are not offered (WS.VOTE_READY).
-local Vote = WS.require("games.gameplay.vote")
+local Vote = gameplay.vote
 local E = WS.Events
 
 local FLAGS = { FCVAR_ARCHIVE, FCVAR_REPLICATED, FCVAR_NOTIFY }

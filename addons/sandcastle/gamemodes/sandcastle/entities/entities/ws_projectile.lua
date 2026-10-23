@@ -28,7 +28,7 @@ end
 
 function ENT:Initialize()
 	local config = self:Config()
-	self.system = WS.require("games.gameplay.projectile")
+	self.system = gameplay.projectile
 	self:SetModel(config.model)
 	self:SetSolid(SOLID_BBOX)
 	self:SetCollisionGroup(COLLISION_GROUP_PROJECTILE)

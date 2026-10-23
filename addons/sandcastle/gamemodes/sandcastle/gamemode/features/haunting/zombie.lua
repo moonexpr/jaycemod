@@ -16,10 +16,10 @@
 local ipairs, pairs, tonumber = ipairs, pairs, tonumber
 local floor = math.floor
 local require = require
-local Npc = require("games.npc.nextbot")
-local Actor = require("games.npc.actor")
-local Targeting = require("games.npc.targeting")
-local Teams = require("games.gameplay.teams")
+local Npc = npc.nextbot
+local Actor = npc.actor
+local Targeting = npc.targeting
+local Teams = gameplay.teams
 module(...)
 
 -- CZombie::SkeletonType_t

@@ -11,7 +11,7 @@
 --   :DistanceTo(center, origin, direct) -> the distance DamageTo takes;
 --   :DamageTo{ team, isAttacker, distance, visible } -> amount | nil.
 local require = require
-local Teams = require("games.gameplay.teams")
+local Teams = gameplay.teams
 local math, setmetatable = math, setmetatable
 module(...)
 

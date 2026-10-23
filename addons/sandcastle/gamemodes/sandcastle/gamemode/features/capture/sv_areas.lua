@@ -1,7 +1,7 @@
 -- Part of the capture controller (sv.lua): the capture areas, their
 -- captures and their inputs.
 local Controller, GAME_TEAMS, capstyle, blockstyle, capdeteriorate, Points = ...
-local Capture = WS.require("games.gameplay.capture")
+local Capture = gameplay.capture
 local Area = WS.require("games.gameplay.capture.area")
 local PointByName, AreasOf = Points.PointByName, Points.AreasOf
 local PlayLines, FireTeamOutput, ApplyPointEvents = Points.PlayLines, Points.FireTeamOutput, Points.ApplyPointEvents

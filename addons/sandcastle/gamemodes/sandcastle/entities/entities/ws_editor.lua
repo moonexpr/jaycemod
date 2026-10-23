@@ -46,7 +46,7 @@ function ENT:SetupDataTables()
 end
 
 function ENT:CanEditVariables(ply)
-	return WS.Can(ply, WS.require("games.system.permissions").TAMPER) == true
+	return WS.Can(ply, system.permissions.TAMPER) == true
 end
 
 if CLIENT then return end

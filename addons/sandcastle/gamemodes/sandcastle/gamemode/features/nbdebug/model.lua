@@ -17,8 +17,8 @@ local error, format, ipairs, pairs, setmetatable, tonumber, tostring, type =
 local floor, huge, sqrt = math.floor, math.huge, math.sqrt
 local concat, sort = table.concat, table.sort
 local find, lower, rep, sub, upper = string.find, string.lower, string.rep, string.sub, string.upper
-local Npc = require("games.npc.nextbot")
-local Sets = require("foundation.world.sets")
+local Npc = npc.nextbot
+local Sets = world.sets
 module(...)
 
 -------------------------------------------------------------------------------

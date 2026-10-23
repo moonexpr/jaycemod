@@ -41,6 +41,69 @@ function T.require(name)
 end
 CHUNK_ENV.require = T.require
 
+local function ReadFile(path)
+	local file = assert(io.open(path))
+	local text = file:read("*a")
+	file:close()
+	return text
+end
+
+-- The index and init files shared_loader.lua runs, in its order.
+function T.Indexes()
+	local paths = {}
+	for path in ReadFile(T.ROOT .. "shared_loader.lua"):gmatch('Index%(%s*"([%w_/.]+)"%s*%)') do
+		paths[#paths + 1] = path
+	end
+	return paths
+end
+
+-- Every published module: T.Published.global[module name] -> its global
+-- ("math.geometry", or "transaction" at foundation's root), and
+-- T.Published.module[global] -> the module name, read from the indexes.
+T.Published = { global = {}, module = {} }
+for _, path in ipairs(T.Indexes()) do
+	local text = ReadFile(T.ROOT .. path)
+	local namespaces = { _G = "" }
+	for var, name in text:gmatch('local%s+([%w_]+)%s*=%s*Namespace%(%s*"([%w_]+)"%s*%)') do namespaces[var] = name .. "." end
+	local function Publish(var, key, module)
+		local global = assert(namespaces[var], path .. ": no namespace " .. var) .. key
+		T.Published.global[module], T.Published.module[global] = global, module
+	end
+	for var, key, module in text:gmatch('Export%(%s*([%w_]+)%s*,%s*"([%w_]+)"%s*,%s*require%(%s*"([%w_.]+)"%s*%)%s*%)') do Publish(var, key, module) end
+	for var, key, module in text:gmatch('Defer%(%s*([%w_]+)%s*,%s*"([%w_]+)"%s*,%s*"([%w_.]+)"%s*%)') do Publish(var, key, module) end
+end
+
+-- The modules a source text uses, each once: every require of one, and
+-- every read of a published module's global (math.geometry, transaction),
+-- comments left out.
+function T.Uses(text)
+	local code = text:gsub("%-%-%[%[.-%]%]", ""):gsub("%-%-[^\n]*", "")
+	local uses, seen = {}, {}
+	local function Add(name)
+		if not seen[name] then
+			seen[name] = true
+			uses[#uses + 1] = name
+		end
+	end
+	for name in code:gmatch("require%(%s*[\"']([%w_.]+)[\"']") do Add(name) end
+	for global, module in pairs(T.Published.module) do
+		if code:find("%f[%w_.]" .. global:gsub("%.", "%%.") .. "%f[^%w_]") then Add(module) end
+	end
+	table.sort(uses)
+	return uses
+end
+
+-- The globals, published as shared_loader.lua publishes them in the game:
+-- foundation's at once, games' on first read, so a module may read another
+-- by its global (math.geometry) under LuaJIT too.
+do
+	local env = T.require("foundation.core.namespace").Environment(_G, T.require)
+	for _, path in ipairs(T.Indexes()) do
+		local chunk = assert(loadfile(T.ROOT .. path))
+		setfenv(chunk, env)()
+	end
+end
+
 -- A gamemode tree on disk: `root` is the folder holding features/, ending in
 -- "/" (T.ROOT, or a temp directory in the harness's own tests).
 --   RealmSource(name, realm): the text of features/<name>/<realm>.lua, then

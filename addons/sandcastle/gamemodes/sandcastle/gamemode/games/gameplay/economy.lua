@@ -12,7 +12,7 @@
 local error, floor, format, reverse, tostring, type =
 	error, math.floor, string.format, string.reverse, tostring, type
 local gsub = string.gsub
-local Transaction = require("foundation.transaction")
+local Transaction = transaction
 module(...)
 
 STARTING_MONEY = 2000

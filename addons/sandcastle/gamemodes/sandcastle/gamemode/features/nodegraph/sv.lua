@@ -17,7 +17,7 @@
 -- each node's nearest within LINK_RANGE, kept for each hull whose box
 -- sweeps from one to the other above step height, over floor that never
 -- rises or falls more than a step between samples.
-local Graph = WS.require("foundation.nodegraph")
+local Graph = nodegraph
 
 local Controller = {
 	job = nil, -- the generation coroutine while it runs

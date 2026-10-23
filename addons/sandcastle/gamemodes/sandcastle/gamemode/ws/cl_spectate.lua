@@ -3,7 +3,7 @@
 -- freezecam sound so it ends as the camera locks on the killer. And the
 -- NPC context menu's "Spectate NPC", for admins (ws_spectate_npc,
 -- ws/sv_spectate.lua).
-local Spec = WS.require("games.gameplay.spectate")
+local Spec = gameplay.spectate
 
 surface.CreateFont("Sandcastle.Spectate.Title", { font = "Roboto", size = 26, weight = 800 })
 surface.CreateFont("Sandcastle.Spectate.Hint", { font = "Roboto", size = 16, weight = 600 })
@@ -137,7 +137,7 @@ properties.Add("ws_spectate_npc", {
 	Order = 8998,
 	Filter = function(self, ent, ply)
 		return IsValid(ent) and (ent:IsNPC() or ent:IsNextBot()) and ent:Health() > 0 and IsValid(ply)
-			and WS.Can(ply, WS.require("games.system.permissions").PLAYERS) == true
+			and WS.Can(ply, system.permissions.PLAYERS) == true
 	end,
 	Action = function(self, ent)
 		RunConsoleCommand("ws_spectate_npc", tostring(ent:EntIndex()))

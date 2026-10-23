@@ -13,7 +13,7 @@
 --   the nearest start (Dijkstra), edges(node) -> a list of { node, cost }
 --   (costs not negative); nodes farther than limit are left out.
 local ipairs = ipairs
-local Heap = require("foundation.tree.heap")
+local Heap = tree.heap
 module(...)
 
 function Flood(starts, neighbors, admit, limit, stop)

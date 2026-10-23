@@ -26,9 +26,9 @@
 -- brings; the controller briefs only a field that Lacks none.
 local error, ipairs, require, setmetatable = error, ipairs, require, setmetatable
 local AiWar = require("features.aiwar.model")
-local Explore = require("games.nextsoldier.explore")
-local Teams = require("games.gameplay.teams")
-local Class = require("foundation.core.class")
+local Explore = nextsoldier.explore
+local Teams = gameplay.teams
+local Class = core.class
 module(...)
 
 ALLOCATION_HOLD = 3 -- docs/aiwar-command.md §2.2

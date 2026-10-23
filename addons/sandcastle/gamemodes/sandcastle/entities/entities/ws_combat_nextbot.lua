@@ -30,7 +30,7 @@ function ENT:Initialize()
 	self.team = (config and config.team) or self.teamKeyValue or WS.TEAM_UNASSIGNED
 	self.combat = WS.Feature("combat")
 	self.holiday = WS.Feature("holiday")
-	self.targeting = WS.require("games.npc.targeting")
+	self.targeting = npc.targeting
 	Base.Initialize(self)
 end
 

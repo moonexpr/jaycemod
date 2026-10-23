@@ -8,8 +8,8 @@
 -- match's win conditions. Shown wherever teams play (a TF2 map's rounds, the
 -- AI war); elsewhere Sandbox's own.
 local Scoreboard = WS.require("ws.scoreboard")
-local Teams = WS.require("games.gameplay.teams")
-local Economy = WS.require("games.gameplay.economy")
+local Teams = gameplay.teams
+local Economy = gameplay.economy
 
 local UNASSIGNED = Teams.UNASSIGNED
 local GATHER = 1 -- seconds between snapshots of who is on the board

@@ -3,7 +3,7 @@ local Controller, Map = ...
 local AiWar = WS.require("features.aiwar.model")
 local Scenario = WS.require("features.aiwar.scenario")
 local Notices = WS.require("ws.admin_notices")
-local Gamemode = WS.require("games.system.gamemode")
+local Gamemode = system.gamemode
 local RED, BLUE = Map.RED, Map.BLUE
 local RoundsModeName = Map.RoundsModeName
 

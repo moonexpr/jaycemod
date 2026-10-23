@@ -2,8 +2,8 @@
 -- (tf_gamerules, ws_gamerules) forward, the spawn doors of a stopped game,
 -- and their inputs, tf_gamerules'.
 local Controller, Players, Active = ...
-local Rounds = WS.require("games.gameplay.rounds")
-local Spawns = WS.require("games.system.spawn_manager")
+local Rounds = gameplay.rounds
+local Spawns = system.spawn_manager
 local SpawnHold = WS.require("features.rounds.spawn_doors")
 local TeamPlayers, EachPlayer = Players.TeamPlayers, Players.EachPlayer
 

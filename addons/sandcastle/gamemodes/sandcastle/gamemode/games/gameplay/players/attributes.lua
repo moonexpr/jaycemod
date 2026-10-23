@@ -12,7 +12,7 @@
 --
 -- Pure functions over one player's attrs table: name -> { value, expireAt }.
 local require = require
-local Actor = require("games.npc.actor")
+local Actor = npc.actor
 local bor, band = bit.bor, bit.band
 local pairs = pairs
 module(...)

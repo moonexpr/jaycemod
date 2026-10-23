@@ -11,7 +11,7 @@
 local Tournament = WS.require("features.gamemode.tournament")
 local Hud = WS.require("ws.tf_hud")
 local Text = WS.require("features.rounds.text")
-local Permissions = WS.require("games.system.permissions")
+local Permissions = system.permissions
 local Font, DrawBorder = WS.TFHud.Font, WS.TFHud.DrawBorder
 local TAN_LIGHT = WS.TFHud.TAN_LIGHT
 

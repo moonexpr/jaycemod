@@ -6,7 +6,6 @@
 local T = dofile("tests/harness.lua")
 
 local FOUNDATION = T.ROOT .. "foundation/"
-local REQUIRE = "require%(%s*[\"']([%w_.]+)[\"']"
 local FOUNDATION_PREFIX = "^foundation%."
 local OUTSIDE_PREFIXES = { "^features%.", "^ws%." }
 
@@ -202,15 +201,12 @@ local function Exists(tree, module)
 	return file ~= nil
 end
 
+-- The modules a module uses: by require, or by reading its global.
 local function Requires(tree, module)
 	local file = assert(io.open(tree.dir .. module .. ".lua"))
 	local text = file:read("*a")
 	file:close()
-	local names = {}
-	for name in text:gmatch(REQUIRE) do
-		names[#names + 1] = name
-	end
-	return names
+	return T.Uses(text)
 end
 
 -- A required name's tree and its module there, or nil for neither tree's.

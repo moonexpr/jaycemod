@@ -20,7 +20,7 @@
 -- Its timers follow SetContextThink: each runs at its own time, however
 -- late the tick that runs it, and one set in the past runs at once.
 local require = require
-local Teams = require("games.gameplay.teams")
+local Teams = gameplay.teams
 local ipairs, setmetatable = ipairs, setmetatable
 local max = math.max
 module(...)

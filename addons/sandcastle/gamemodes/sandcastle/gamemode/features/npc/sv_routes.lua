@@ -2,12 +2,12 @@
 -- route search walks, the route requests and searches, and the waypoints
 -- along a route. Its NavGraph goes to sv_profile, which records its costs.
 local Controller = ...
-local Pathfinder = WS.require("foundation.graph.pathfinder")
-local AStar = WS.require("games.npc.astar")
-local Portal = WS.require("games.nextsoldier.portal")
-local Doors = WS.require("games.nextsoldier.doors")
-local Path = WS.require("games.nextsoldier.path")
-local ReachMemo = WS.require("games.nextsoldier.reach_memo")
+local Pathfinder = graph.pathfinder
+local AStar = npc.astar
+local Portal = nextsoldier.portal
+local Doors = nextsoldier.doors
+local Path = nextsoldier.path
+local ReachMemo = nextsoldier.reach_memo
 
 local NOBODY = WS.TEAM_UNASSIGNED
 

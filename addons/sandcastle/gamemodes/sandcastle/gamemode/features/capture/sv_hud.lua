@@ -1,7 +1,7 @@
 -- Part of the capture controller (sv.lua): what the point HUD (ws_point_*)
 -- and each player's capture panel show, and publishing them.
 local Controller, capstyle, blockstyle, Points, AreaPoint = ...
-local Capture = WS.require("games.gameplay.capture")
+local Capture = gameplay.capture
 local Area = WS.require("games.gameplay.capture.area")
 local PointByName, AreasOf, OrderQuery = Points.PointByName, Points.AreasOf, Points.OrderQuery
 

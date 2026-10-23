@@ -11,12 +11,12 @@
 -- blueMayCapture }. Its numbers come from the binding's convars, named and
 -- defaulted as TF2's (CONVARS).
 local require = require
-local NpcSystem = require("games.npc.nextbot")
+local NpcSystem = npc.nextbot
 local HalloweenBoss = require("features.haunting.halloween_boss")
 local BossEvents = require("features.npc.boss_events")
-local Actor = require("games.npc.actor")
-local Players = require("games.gameplay.players")
-local Teams = require("games.gameplay.teams")
+local Actor = npc.actor
+local Players = gameplay.players
+local Teams = gameplay.teams
 local atan2, cos, deg, floor, huge, rad, sin = math.atan2, math.cos, math.deg, math.floor, math.huge, math.rad, math.sin
 local ipairs = ipairs
 module(...)

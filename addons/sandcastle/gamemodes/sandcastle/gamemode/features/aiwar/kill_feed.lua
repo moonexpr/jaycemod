@@ -8,8 +8,8 @@
 -- a death to the world credited to an enemy reads "finished off" (Credited).
 local concat, floor, ipairs, pairs, sub = table.concat, math.floor, ipairs, pairs, string.sub
 local AiWar = require("features.aiwar.model")
-local Icons = require("games.gameplay.kill_icons")
-local Teams = require("games.gameplay.teams")
+local Icons = gameplay.kill_icons
+local Teams = gameplay.teams
 module(...)
 
 NPC_TEAM = -1 -- the team a death notice gives an NPC

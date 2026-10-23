@@ -14,12 +14,12 @@
 -- carry out in order.
 local error, ipairs, math, pairs, setmetatable, tostring = error, ipairs, math, pairs, setmetatable, tostring
 local find, gmatch, sort, table_remove = string.find, string.gmatch, table.sort, table.remove
-local Teams = require("games.gameplay.teams")
+local Teams = gameplay.teams
 local State = require("games.gameplay.rounds.state")
-local Cfsm = require("foundation.generator.state_machine")
-local Snapshot = require("games.world.snapshot")
-local Class = require("foundation.core.class")
-local Spawns = require("games.system.spawn_manager")
+local Cfsm = generator.state_machine
+local Snapshot = world.snapshot
+local Class = core.class
+local Spawns = system.spawn_manager
 module(...)
 
 -- teamplayroundbased_gamerules.h

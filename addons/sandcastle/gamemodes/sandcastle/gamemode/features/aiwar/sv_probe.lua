@@ -1,6 +1,6 @@
 -- Part of the AI war controller (sv.lua): path probes along the lanes (ns_lanes_probe).
 local Controller, Map = ...
-local Probe = WS.require("games.nextsoldier.probe")
+local Probe = nextsoldier.probe
 local ToVector, OnFloor, SPAWN_LIFT = Map.ToVector, Map.OnFloor, Map.SPAWN_LIFT
 
 -- One probe (ws_drg_probe) walks each lane of each team from its first

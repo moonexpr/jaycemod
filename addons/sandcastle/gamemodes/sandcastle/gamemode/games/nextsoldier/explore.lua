@@ -17,10 +17,10 @@
 --
 -- Positions are { x, y, z } tables; a squad is any key.
 local ipairs, pairs, setmetatable = ipairs, pairs, setmetatable
-local Lease = require("foundation.world.lease")
-local Grid = require("foundation.world.grid")
-local Tactics = require("games.nextsoldier.tactics")
-local Distance = require("foundation.math.geometry").Distance
+local Lease = world.lease
+local Grid = world.grid
+local Tactics = nextsoldier.tactics
+local Distance = math.geometry.Distance
 module(...)
 
 -- A waypoint per cell this wide, a waypoint counts as visited by a soldier

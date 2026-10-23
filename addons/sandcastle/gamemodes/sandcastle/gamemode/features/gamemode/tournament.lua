@@ -9,7 +9,7 @@
 -- there is, beginning a game, for a player who may. Rects are { x, y, w, h }
 -- in pixels.
 local ceil, concat, format, ipairs = math.ceil, table.concat, string.format, ipairs
-local Teams = require("games.gameplay.teams")
+local Teams = gameplay.teams
 local Text = require("features.rounds.text")
 module(...)
 

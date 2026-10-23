@@ -2,8 +2,8 @@
 -- blockers on the nav mesh (func_door and func_brush), as the path costs
 -- and route searches see them.
 local Controller = ...
-local Doors = WS.require("games.nextsoldier.doors")
-local Brushes = WS.require("games.nextsoldier.brushes")
+local Doors = nextsoldier.doors
+local Brushes = nextsoldier.brushes
 
 local NOBODY = WS.TEAM_UNASSIGNED
 
@@ -39,7 +39,7 @@ function Controller:SpawnRoomTeam(area)
 	local center = area:GetCenter()
 	for _, room in ipairs(ents.FindByClass("func_respawnroom")) do
 		if room:PointIsWithin(center) then
-			Spawn = Spawn or WS.require("games.gameplay.spawn")
+			Spawn = Spawn or gameplay.spawn
 			team = Spawn.RoomTeam(room.team, SpawnTeamsIn(room))
 			break
 		end

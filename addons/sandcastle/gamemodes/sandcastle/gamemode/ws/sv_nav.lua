@@ -28,12 +28,12 @@
 -- ws/sv_idle.lua) on a map with no mesh, it runs as the console's would, and
 -- goes back to Gameplay mode when it left it to generate, so the rounds and
 -- the next-map vote carry on.
-local Gamemode = WS.require("games.system.gamemode")
-local Doors = WS.require("games.nextsoldier.doors")
+local Gamemode = system.gamemode
+local Doors = nextsoldier.doors
 local Progress = WS.require("ws.nav_progress")
-local Clip = WS.require("games.nextsoldier.clip")
-local NavGaps = WS.require("games.nextsoldier.nav_gaps")
-local PairMap = WS.require("foundation.world.pairmap")
+local Clip = nextsoldier.clip
+local NavGaps = nextsoldier.nav_gaps
+local PairMap = world.pairmap
 
 local SEEDS = { "info_player_teamspawn", "info_player_start", "team_control_point" }
 local DOORS = { "func_door", "func_door_rotating", "prop_door_rotating" }
@@ -299,7 +299,7 @@ local function Generate(ply, resume)
 end
 
 concommand.Add("mp_nav_generate", function(ply)
-	if not WS.Can(ply, WS.require("games.system.permissions").RULES) then
+	if not WS.Can(ply, system.permissions.RULES) then
 		Tell(ply, "Navigation mesh: you may not generate it")
 		return
 	end

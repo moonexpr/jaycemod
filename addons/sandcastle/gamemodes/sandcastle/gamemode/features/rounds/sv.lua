@@ -23,7 +23,7 @@
 -- CTFGameRules::CreateStandardEntities does, so the rounds run and outputs
 -- aimed at the name tf_gamerules reach it; on a map with neither, a
 -- ws_gamerules.
-local Rounds = WS.require("games.gameplay.rounds")
+local Rounds = gameplay.rounds
 local ControlPoints = WS.require("features.rounds.control_points")
 local Limits = WS.require("games.gameplay.rounds.limits")
 
@@ -542,7 +542,7 @@ concommand.Add("mp_forcewin", function(ply, _, args)
 	local function Reply(text)
 		if IsValid(ply) then ply:ChatPrint(text) else print(text) end
 	end
-	if not WS.Can(ply, WS.require("games.system.permissions").MATCH) then return Reply("mp_forcewin: you may not force a win") end
+	if not WS.Can(ply, system.permissions.MATCH) then return Reply("mp_forcewin: you may not force a win") end
 	local target = Rounds.ForceWinTarget(args[1] or "")
 	if not target then return Reply("usage: mp_forcewin " .. table.concat(FORCE_WIN_OPTIONS, "|")) end
 	if not Active() then return Reply("mp_forcewin: this map has no rounds") end

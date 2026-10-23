@@ -20,9 +20,9 @@ local ipairs, pairs = ipairs, pairs
 local huge, min, sqrt = math.huge, math.min, math.sqrt
 local sort = table.sort
 local HL2Path = require("games.nextsoldier.path.hl2")
-local Path = require("games.nextsoldier.path")
-local Distance = require("foundation.math.geometry").Distance
-local Graph = require("foundation.graph.search")
+local Path = nextsoldier.path
+local Distance = math.geometry.Distance
+local Graph = graph.search
 module(...)
 
 LANE_PENALTY = 8

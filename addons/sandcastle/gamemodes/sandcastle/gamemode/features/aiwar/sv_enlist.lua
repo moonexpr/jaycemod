@@ -1,9 +1,9 @@
 -- Part of the AI war controller (sv.lua): enlisting, kits, medics, discharge, spawning, waves and seats.
 local Controller, Map = ...
 local AiWar = WS.require("features.aiwar.model")
-local Teams = WS.require("games.gameplay.teams")
+local Teams = gameplay.teams
 local Orders = WS.require("features.aiwar.orders")
-local NpcSystem = WS.require("games.npc.nextbot")
+local NpcSystem = npc.nextbot
 local SPAWN_LIFT, RED, BLUE = Map.SPAWN_LIFT, Map.RED, Map.BLUE
 local Point, Masks, SpawnSpots, ClearSpotNear = Map.Point, Map.Masks, Map.SpawnSpots, Map.ClearSpotNear
 

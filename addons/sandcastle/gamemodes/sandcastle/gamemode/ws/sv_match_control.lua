@@ -9,7 +9,7 @@
 --   payload carts (mp_cart_advance, mp_cart_retract), the round clock
 --   (mp_round_timer_add, mp_round_timer_pause), and respawns
 --   (mp_respawn_all, mp_respawn_maptimes).
-local Permissions = WS.require("games.system.permissions")
+local Permissions = system.permissions
 
 local REWARD = CreateConVar("mp_round_reward_money", "0", { FCVAR_ARCHIVE, FCVAR_NOTIFY },
 	"Money paid to every player on the team that wins a round", 0, 100000)

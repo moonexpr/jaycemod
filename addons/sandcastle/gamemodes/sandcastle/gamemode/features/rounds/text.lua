@@ -2,9 +2,9 @@
 -- sudden death panel (CHudStalemate::SetupStalematePanel), the time-added
 -- flash. TF2's "#Token" strings are worded by ws.localization.
 local math, string, table = math, string, table
-local Rounds = require("games.gameplay.rounds")
+local Rounds = gameplay.rounds
 local State = require("games.gameplay.rounds.state")
-local Teams = require("games.gameplay.teams")
+local Teams = gameplay.teams
 module(...)
 
 -- The states whose centre panel shows the teams' scores itself (the win

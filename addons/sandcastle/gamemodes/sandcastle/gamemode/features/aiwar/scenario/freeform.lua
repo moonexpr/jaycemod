@@ -9,11 +9,11 @@
 -- once without gamerules (the controller's WaveLength).
 local ipairs = ipairs
 local AiWar = require("features.aiwar.model")
-local Explore = require("games.nextsoldier.explore")
+local Explore = nextsoldier.explore
 local Orders = require("features.aiwar.orders")
-local Teams = require("games.gameplay.teams")
+local Teams = gameplay.teams
 local Base = require("features.aiwar.scenario")
-local Distance = require("foundation.math.geometry").Distance
+local Distance = math.geometry.Distance
 module(...)
 
 MODE = "freeform"

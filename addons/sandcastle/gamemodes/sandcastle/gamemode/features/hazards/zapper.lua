@@ -8,7 +8,7 @@
 -- (ParticleEffect) }. Touches come from its dispenser_touch_trigger.
 local require = require
 local Hazards = require("features.hazards.model")
-local Teams = require("games.gameplay.teams")
+local Teams = gameplay.teams
 local ipairs, huge, remove = ipairs, math.huge, table.remove
 module(...)
 

@@ -17,8 +17,8 @@
 --   any weapon or blast (ws/sv_hits.lua, features/combat).
 -- mp_tampering_enabled, sv_gameplay_disable_sandbox and sv_gameplay_enabled
 -- live with what they switch (ws/sh_permissions.lua, ws/sh_gameplay.lua).
-local Economy = WS.require("games.gameplay.economy")
-local PlayMode = WS.require("games.system.play_mode")
+local Economy = gameplay.economy
+local PlayMode = system.play_mode
 local FixedSpread = WS.require("games.gameplay.combat.fixed_spread")
 local BulletSteps = WS.require("games.gameplay.combat.bullet_steps")
 

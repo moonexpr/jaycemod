@@ -10,8 +10,8 @@
 -- loadout made from the old one.
 local floor, format, ipairs, pairs, setmetatable, tostring, type =
 	math.floor, string.format, ipairs, pairs, setmetatable, tostring, type
-local Transaction = require("foundation.transaction")
-local Sets = require("foundation.world.sets")
+local Transaction = transaction
+local Sets = world.sets
 module(...)
 
 PRICE = 10

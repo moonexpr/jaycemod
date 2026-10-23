@@ -4,11 +4,11 @@
 -- Money a player gives moves through WS.TransferMoney. Kicks, bans and
 -- grants need the players privilege. Every answer goes back to the player
 -- who asked as game_players_menu_said.
-local Reports = WS.require("games.gameplay.reports")
-local Economy = WS.require("games.gameplay.economy")
-local Permissions = WS.require("games.system.permissions")
-local Transaction = WS.require("foundation.transaction")
-local Sets = WS.require("foundation.world.sets")
+local Reports = gameplay.reports
+local Economy = gameplay.economy
+local Permissions = system.permissions
+local Transaction = transaction
+local Sets = world.sets
 local E = WS.Events
 
 local book = Reports.New()

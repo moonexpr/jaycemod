@@ -20,9 +20,9 @@
 -- "kind: message". A client's request the server will not take (unknown,
 -- not client-sendable, over its rate) is refused instead: ReadRequest
 -- returns nil and the refusal, since a client's mistake is not ours.
-local Buffer = require("foundation.file.buffer")
-local Sets = require("foundation.world.sets")
-local Transaction = require("foundation.transaction")
+local Buffer = file.buffer
+local Sets = world.sets
+local Transaction = transaction
 local error, format, getmetatable, ipairs, pairs, pcall, setmetatable, sort, tostring, type =
 	error, string.format, getmetatable, ipairs, pairs, pcall, setmetatable, table.sort, tostring, type
 local match = string.match

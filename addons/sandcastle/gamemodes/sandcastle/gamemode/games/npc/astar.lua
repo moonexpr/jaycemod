@@ -11,8 +11,8 @@
 --   graph:Estimate(node, goal) -> the straight-line distance left
 -- Nodes are nav area ids, or any values usable as table keys. A blocked
 -- area is the cost's to refuse (IsAreaTraversable), not the search's.
-local Heap = require("foundation.tree.heap")
-local Pathfinder = require("foundation.graph.pathfinder")
+local Heap = tree.heap
+local Pathfinder = graph.pathfinder
 local ipairs = ipairs
 module(...)
 

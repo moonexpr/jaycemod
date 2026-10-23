@@ -33,10 +33,10 @@ local floor, max, min = math.floor, math.max, math.min
 local ipairs = ipairs
 local AiWar = require("features.aiwar.model")
 local Orders = require("features.aiwar.orders")
-local Tactics = require("games.nextsoldier.tactics")
-local Teams = require("games.gameplay.teams")
+local Tactics = nextsoldier.tactics
+local Teams = gameplay.teams
 local Base = require("features.aiwar.scenario")
-local Geometry = require("foundation.math.geometry")
+local Geometry = math.geometry
 local Distance = Geometry.Distance
 module(...)
 

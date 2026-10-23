@@ -5,7 +5,7 @@
 -- team_train_watcher, makes no payload map and shows no cart HUD.
 -- Sandcastle plays no destruction scoring yet: a stand-in mode without an
 -- objective, whose rounds the round limits decide (games.gameplay.rounds.limits).
-local Rounds = require("games.gameplay.rounds")
+local Rounds = gameplay.rounds
 module(...)
 
 Mode = Rounds.Mode:Extend("destruction")

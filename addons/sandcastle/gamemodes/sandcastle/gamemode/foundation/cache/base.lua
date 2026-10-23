@@ -45,9 +45,9 @@
 -- keep their own fields in State(cache) (order: the chain; keys, values: by
 -- slot), and may call DropSlot(slot, reason). A subclass's own Destroy runs
 -- before this one, while the entries are still held.
-local Class = require("foundation.core.class")
-local Slots = require("foundation.list.slots")
-local Chain = require("foundation.list.chain")
+local Class = core.class
+local Slots = list.slots
+local Chain = list.chain
 local error, floor, getmetatable, rawget, setmetatable, tostring, type = error, math.floor, getmetatable, rawget, setmetatable, tostring, type
 module(...)
 

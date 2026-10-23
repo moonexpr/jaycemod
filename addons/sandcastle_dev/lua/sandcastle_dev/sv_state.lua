@@ -285,8 +285,8 @@ Section("players", function(now)
 	end
 	return players
 end, function(players, _, report)
-	local Loadout = WS.require("games.gameplay.loadout")
-	local Players = WS.require("games.gameplay.players")
+	local Loadout = gameplay.loadout
+	local Players = gameplay.players
 	local restored = 0
 	for key, p in pairs(players) do
 		local ply = Refs:Decode(key)

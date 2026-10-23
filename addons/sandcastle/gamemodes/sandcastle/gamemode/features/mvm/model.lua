@@ -11,10 +11,10 @@
 -- (CTFBotFetchFlag's "we just spawned - give us the flag"), and invaders in
 -- their spawn room cannot be hurt (CTFBotMainAction::Update).
 local ipairs = ipairs
-local Rounds = require("games.gameplay.rounds")
-local Teams = require("games.gameplay.teams")
-local Players = require("games.gameplay.players")
-local Geometry = require("foundation.math.geometry")
+local Rounds = gameplay.rounds
+local Teams = gameplay.teams
+local Players = gameplay.players
+local Geometry = math.geometry
 module(...)
 
 local C = Players.COND

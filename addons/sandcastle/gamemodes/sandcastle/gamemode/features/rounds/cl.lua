@@ -22,7 +22,7 @@
 --     when setup gives way to the round, and the overtime line
 --     (CTFGameRules::HandleOvertimeBegin). Only the timer shown in the HUD
 --     speaks, and only while it runs with auto_countdown on.
-local Rounds = WS.require("games.gameplay.rounds")
+local Rounds = gameplay.rounds
 local Timer = WS.require("games.gameplay.rounds.timer")
 local Text = WS.require("features.rounds.text")
 local Limits = WS.require("games.gameplay.rounds.limits")

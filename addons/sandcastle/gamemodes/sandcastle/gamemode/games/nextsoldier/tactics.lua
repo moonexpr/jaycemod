@@ -21,7 +21,7 @@
 --
 -- Positions are plain { x, y, z } tables.
 local ipairs, math, sqrt = ipairs, math, math.sqrt
-local Tactics = require("games.gameplay.tactics")
+local Tactics = gameplay.tactics
 module(...)
 
 CONTACT_MEMORY = 8

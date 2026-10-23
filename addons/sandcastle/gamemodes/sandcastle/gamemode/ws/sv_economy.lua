@@ -4,8 +4,8 @@
 -- int ws_money (the scoreboard's Money column). Everything else earns
 -- and spends through WS.EarnMoney and WS.SpendMoney, which raise a
 -- refusal (Economy.INSUFFICIENT_FUNDS, foundation.transaction) rather than overdraw.
-local Economy = WS.require("games.gameplay.economy")
-local Transaction = WS.require("foundation.transaction")
+local Economy = gameplay.economy
+local Transaction = transaction
 
 local ledger = Economy.New()
 

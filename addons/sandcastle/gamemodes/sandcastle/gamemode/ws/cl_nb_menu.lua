@@ -43,7 +43,7 @@ end)
 
 -- The ws_nb_* commands' gate (ws/sv_nbdebug.lua).
 function WS.NpcDebugAllowed(ply)
-	return IsValid(ply) and WS.Can(ply, WS.require("games.system.permissions").NPC_DEBUG) == true
+	return IsValid(ply) and WS.Can(ply, system.permissions.NPC_DEBUG) == true
 end
 
 local function Check(menu, label, on, run)

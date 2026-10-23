@@ -9,7 +9,7 @@
 --   player of their team is, in any mode, while they live.
 -- Viewer: { id, team }. Rules: { forcecamera, teamWin, now }.
 local ipairs = ipairs
-local Teams = require("games.gameplay.teams")
+local Teams = gameplay.teams
 module(...)
 
 local NOBODY, SPECTATOR, FIRST_GAME_TEAM = Teams.UNASSIGNED, Teams.SPECTATOR, Teams.FIRST_GAME_TEAM

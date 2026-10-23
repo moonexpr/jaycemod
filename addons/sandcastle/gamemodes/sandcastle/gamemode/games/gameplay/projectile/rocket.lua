@@ -7,8 +7,8 @@
 -- launcher's owner, or the launcher); radius is optional, for launchers
 -- with their own (tf_point_weapon_mimic's SplashRadius).
 local require = require
-local Projectile = require("games.gameplay.projectile")
-local Teams = require("games.gameplay.teams")
+local Projectile = gameplay.projectile
+local Teams = gameplay.teams
 module(...)
 
 GRAVITY = 0

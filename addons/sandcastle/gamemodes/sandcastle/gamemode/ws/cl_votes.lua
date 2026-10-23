@@ -8,7 +8,7 @@
 -- VoteHud.RESULT_SECONDS. A refused request is a notice. The Server tab
 -- (ws/cl_menu_server.lua) reads WS.VoteState and WS.VoteMaps and hears
 -- WSVoteChanged.
-local Vote = WS.require("games.gameplay.vote")
+local Vote = gameplay.vote
 local VoteHud = WS.require("ws.vote_hud")
 local Hud = WS.require("ws.tf_hud")
 local E = WS.Events

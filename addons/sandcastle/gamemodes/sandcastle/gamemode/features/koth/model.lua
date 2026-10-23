@@ -9,9 +9,9 @@
 -- OnCapTeam -> tf_gamerules.Set<Team>KothClockActive). A team owning the
 -- hill wins when its clock reads zero and the timer may expire, so an
 -- enemy on the point holds it at zero in overtime.
-local Rounds = require("games.gameplay.rounds")
+local Rounds = gameplay.rounds
 local ControlPoints = require("features.rounds.control_points")
-local Teams = require("games.gameplay.teams")
+local Teams = gameplay.teams
 local ipairs, setmetatable = ipairs, setmetatable
 module(...)
 

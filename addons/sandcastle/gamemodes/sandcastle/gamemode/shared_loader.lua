@@ -30,16 +30,19 @@ local function Index(path)
 	setfenv(CompileFile(GAMEMODE_ROOT .. path), INDEX_ENV)()
 end
 
-Index("foundation/core/sh_index.lua")
-Index("foundation/math/sh_index.lua")
-Index("foundation/list/sh_index.lua")
-Index("foundation/tree/sh_index.lua")
+-- A module reads the modules it uses by their globals as it loads, so a
+-- namespace comes after every namespace its modules read
+-- (tests/foundation_index_test.lua checks the order).
 Index("foundation/world/sh_index.lua")
+Index("foundation/tree/sh_index.lua")
+Index("foundation/list/sh_index.lua")
+Index("foundation/math/sh_index.lua")
+Index("foundation/file/sh_index.lua")
+Index("foundation/core/sh_index.lua")
 Index("foundation/graph/sh_index.lua")
 Index("foundation/cache/sh_index.lua")
 Index("foundation/generator/sh_index.lua")
 Index("foundation/encoding/sh_index.lua")
-Index("foundation/file/sh_index.lua")
 Index("foundation/analysis/sh_index.lua")
 Index("foundation/sh_index.lua")
 

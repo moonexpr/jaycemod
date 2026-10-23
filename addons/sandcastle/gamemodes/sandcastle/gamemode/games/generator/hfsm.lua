@@ -9,10 +9,10 @@
 --
 -- Chart{ name, port, events?, queries?, initial } as state_chart's, its
 -- states Actions, which may also define OnSuspend and OnResume.
-local Class = require("foundation.core.class")
-local StateChart = require("foundation.generator.state_chart")
-local Countdown = require("games.timer.countdown")
-local Interval = require("games.timer.interval")
+local Class = core.class
+local StateChart = generator.state_chart
+local Countdown = timer.countdown
+local Interval = timer.interval
 local error, ipairs = error, ipairs
 module(...)
 

@@ -1,13 +1,13 @@
 -- Part of the AI war controller (sv.lua): setup gates, forcefields, carts in the way, the setup zone, doors opened
 -- and shut, and spawn doors.
 local Controller, Map = ...
-local Teams = WS.require("games.gameplay.teams")
+local Teams = gameplay.teams
 local Debug = WS.require("features.nbdebug.model")
 local TFBot = WS.require("games.nextsoldier.path.tfbot")
 local HL2Path = WS.require("games.nextsoldier.path.hl2")
-local Zone = WS.require("games.nextsoldier.zone")
-local Doors = WS.require("games.nextsoldier.doors")
-local Geometry = WS.require("foundation.math.geometry")
+local Zone = nextsoldier.zone
+local Doors = nextsoldier.doors
+local Geometry = math.geometry
 local WALK_MAX_RISE, SPAWN_LIFT = Map.WALK_MAX_RISE, Map.SPAWN_LIFT
 local Point, ToVector, SpawnSpots, IsDoor = Map.Point, Map.ToVector, Map.SpawnSpots, Map.IsDoor
 local Clear, CartRadius = Map.Clear, Map.CartRadius

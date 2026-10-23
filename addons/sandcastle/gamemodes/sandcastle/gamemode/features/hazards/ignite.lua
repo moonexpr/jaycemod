@@ -19,7 +19,7 @@
 -- Only players touch it here, so CTriggerIgnite's removal of any other
 -- entity that walks in is left out.
 local ipairs, remove, setmetatable = ipairs, table.remove, setmetatable
-local Players = require("games.gameplay.players")
+local Players = gameplay.players
 module(...)
 
 -- The CTriggerIgnite constructor and BURN_INTERVAL.

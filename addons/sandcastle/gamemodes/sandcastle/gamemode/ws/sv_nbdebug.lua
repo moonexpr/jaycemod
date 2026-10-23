@@ -26,7 +26,7 @@ local COMMANDS = {
 }
 
 local function Allowed(ply)
-	return IsValid(ply) and WS.Can(ply, WS.require("games.system.permissions").NPC_DEBUG) == true
+	return IsValid(ply) and WS.Can(ply, system.permissions.NPC_DEBUG) == true
 end
 
 for _, command in ipairs(COMMANDS) do

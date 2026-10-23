@@ -1,12 +1,12 @@
 -- Part of the AI war controller (sv.lua): the ws_aiwar_* and ns_* console commands.
 local Controller, Map = ...
 local Orders = WS.require("features.aiwar.orders")
-local Tactics = WS.require("games.nextsoldier.tactics")
-local Squad = WS.require("games.nextsoldier.squad")
+local Tactics = nextsoldier.tactics
+local Squad = nextsoldier.squad
 local Slots = WS.require("features.aiwar.slots")
-local Lanes = WS.require("games.nextsoldier.lanes")
-local Tuning = WS.require("games.nextsoldier.tuning")
-local Permissions = WS.require("games.system.permissions")
+local Lanes = nextsoldier.lanes
+local Tuning = nextsoldier.tuning
+local Permissions = system.permissions
 local RED, BLUE = Map.RED, Map.BLUE
 local NEXTSOLDIER = Permissions.NEXTSOLDIER
 

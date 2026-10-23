@@ -18,7 +18,7 @@
 --
 -- The graph is the solver's port; the search reads nothing of it. Nodes
 -- are any values usable as table keys.
-local Class = require("foundation.core.class")
+local Class = core.class
 local error, setmetatable, tostring, type = error, setmetatable, tostring, type
 module(...)
 

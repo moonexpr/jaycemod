@@ -3,7 +3,7 @@
 -- 0.2 s it pulls enemies within 200 towards itself; every 0.25-0.35 s it
 -- zaps 2 of them for 20 burn damage; at the end it zaps up to 16.
 local require = require
-local Teams = require("games.gameplay.teams")
+local Teams = gameplay.teams
 local Spells = require("features.spells.model")
 local SpellSet = require("features.spells.halloween")
 local ipairs, min = ipairs, math.min

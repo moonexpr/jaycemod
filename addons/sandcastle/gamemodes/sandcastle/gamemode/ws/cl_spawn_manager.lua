@@ -9,8 +9,8 @@
 -- waits for a wave, what moved their respawn
 -- (games.gameplay.respawn_modifiers): a line for each reason, its seconds green
 -- when sooner and red when later, and whether a limit cut the total.
-local M = WS.require("games.gameplay.respawn_modifiers")
-local S = WS.require("games.system.spawn_manager")
+local M = gameplay.respawn_modifiers
+local S = system.spawn_manager
 local Hud = WS.require("ws.tf_hud")
 
 -- TF2's 480-tall units.

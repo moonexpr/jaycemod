@@ -11,7 +11,7 @@
 -- victim within ASSIST_WINDOW (CTFGameRules::GetAssister's damager rule):
 -- counted as ws_assists (the scoreboard's column and points) and named in
 -- the kill feed beside the killer (game_kill_assist).
-local Credit = WS.require("games.gameplay.kill_credit")
+local Credit = gameplay.kill_credit
 local Feed = WS.require("features.aiwar.kill_feed")
 local E = WS.Events
 

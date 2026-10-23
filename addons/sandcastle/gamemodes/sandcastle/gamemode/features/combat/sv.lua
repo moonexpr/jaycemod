@@ -4,8 +4,8 @@
 -- the world, and answers the side questions the combatant port asks: an
 -- entity's team, and whether it stands in a respawn room. The rules live in
 -- the models; this file only finds entities, traces, and deals damage.
-local Combat = WS.require("games.gameplay.combat")
-local Projectile = WS.require("games.gameplay.projectile")
+local Combat = gameplay.combat
+local Projectile = gameplay.projectile
 
 -- MASK_RADIUS_DAMAGE (tf_gamerules.cpp): what stops a blast.
 local BLAST_MASK = bit.band(MASK_SHOT, bit.bnot(CONTENTS_HITBOX))

@@ -12,7 +12,7 @@
 -- route's preference is the skeletons' (games.nextsoldier.path.scatter) in
 -- Lua's doubles, where TF2 takes FastCos of a float product: the same
 -- spread over routes, not the same route as TF2 for a given bot and area.
-local Path = require("games.nextsoldier.path")
+local Path = nextsoldier.path
 local Scatter = require("games.nextsoldier.path.scatter")
 module(...)
 

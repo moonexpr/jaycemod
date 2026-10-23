@@ -14,7 +14,7 @@
 -- The server sends the list (game_aiwar_slots) once the panel asks, and again
 -- whenever it changes.
 local Slots = WS.require("features.aiwar.slots")
-local Squad = WS.require("games.nextsoldier.squad")
+local Squad = nextsoldier.squad
 local E = WS.Events
 
 local RED, BLUE = WS.TEAM_RED, WS.TEAM_BLUE
@@ -367,7 +367,7 @@ end
 function WS.AiWarSlotList(panel)
 	panel:Help("Testing squads: pause the soldiers, turn the war's own squads off, dissolve them, and form your own. "
 		.. "Click a slot to select it, Ctrl+click to add more (a squad selects all its soldiers); right-click for more.")
-	if not WS.Can(LocalPlayer(), WS.require("games.system.permissions").NEXTSOLDIER) then
+	if not WS.Can(LocalPlayer(), system.permissions.NEXTSOLDIER) then
 		panel:Help("The slot list is for admins.")
 		return
 	end

@@ -3,7 +3,7 @@
 -- loads, each counted in as their client loads (system_client_ready) or
 -- leaves. The gamemode cuts a map's load countdown short once they are all
 -- in (WS.ExpectedPlayersIn).
-local Arrivals = WS.require("games.gameplay.arrivals")
+local Arrivals = gameplay.arrivals
 
 local FILE = "ws_arrivals.txt" -- under garrysmod/data
 

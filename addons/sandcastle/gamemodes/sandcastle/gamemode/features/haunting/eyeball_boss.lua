@@ -24,13 +24,13 @@
 -- buff), the per-weapon damage multipliers, the purgatory Z check, and the
 -- leveled boss fizzling grenades at its portal.
 local require = require
-local NpcSystem = require("games.npc.nextbot")
+local NpcSystem = npc.nextbot
 local HalloweenBoss = require("features.haunting.halloween_boss")
 local BossEvents = require("features.npc.boss_events")
-local Targeting = require("games.npc.targeting")
-local Actor = require("games.npc.actor")
-local Players = require("games.gameplay.players")
-local Teams = require("games.gameplay.teams")
+local Targeting = npc.targeting
+local Actor = npc.actor
+local Players = gameplay.players
+local Teams = gameplay.teams
 local cos, floor, huge, max, pi, rad, sin = math.cos, math.floor, math.huge, math.max, math.pi, math.rad, math.sin
 local ipairs, setmetatable = ipairs, setmetatable
 module(...)

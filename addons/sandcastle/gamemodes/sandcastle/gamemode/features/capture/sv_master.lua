@@ -2,7 +2,7 @@
 -- rounds controller's objective port, and tf_logic_cp_timer.
 local Controller, Team, Points = ...
 local Master = WS.require("games.gameplay.capture.master")
-local Rounds = WS.require("games.gameplay.rounds")
+local Rounds = gameplay.rounds
 local PointByName, RoundSpecs, DeclareWinner = Points.PointByName, Points.RoundSpecs, Points.DeclareWinner
 
 local NOBODY = WS.TEAM_UNASSIGNED

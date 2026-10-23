@@ -4,7 +4,7 @@
 -- corners, each swept up to the hover height; the eyeball appears where the
 -- first free sweep stops. With no room the caster gets the spell back.
 local require = require
-local Teams = require("games.gameplay.teams")
+local Teams = gameplay.teams
 local Spells = require("features.spells.model")
 local SpellSet = require("features.spells.halloween")
 local HalloweenBoss = require("features.haunting.halloween_boss")

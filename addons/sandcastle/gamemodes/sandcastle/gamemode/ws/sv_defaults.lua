@@ -3,7 +3,7 @@
 -- garrysmod/cfg/, but the addon's own folders are on the GAME search path,
 -- so the server reads the file from there and runs its lines itself
 -- (foundation.encoding.consolecfg). For admins, or the server console.
-local Cfg = WS.require("foundation.encoding.consolecfg")
+local Cfg = encoding.consolecfg
 
 local DEFAULTS_CFG = "cfg/sandcastle_defaults.cfg"
 local COMMAND = "ws_defaults_apply"
@@ -14,7 +14,7 @@ local function Tell(ply, text)
 end
 
 concommand.Add(COMMAND, function(ply)
-	if not WS.Can(ply, WS.require("games.system.permissions").RULES) then return end
+	if not WS.Can(ply, system.permissions.RULES) then return end
 	local text = file.Read(DEFAULTS_CFG, "GAME")
 	if not text then
 		Tell(ply, COMMAND .. ": " .. DEFAULTS_CFG .. " not found on the GAME path; is the addon mounted?")

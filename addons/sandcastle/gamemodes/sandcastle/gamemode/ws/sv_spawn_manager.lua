@@ -8,7 +8,7 @@
 -- Every client is told the lock (the global ws_spawn_lock) and each player
 -- why they are not spawning (WS.SetSpawnStatus), for ws/sh_spawn_manager.lua
 -- to put in words.
-local S = WS.require("games.system.spawn_manager")
+local S = system.spawn_manager
 
 -- Kept across a Lua refresh: the locks and the players held stay.
 WS.SpawnManager = WS.SpawnManager or S.New()

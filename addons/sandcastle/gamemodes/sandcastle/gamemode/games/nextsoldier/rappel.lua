@@ -4,7 +4,7 @@
 -- paths may take drops as deep as games.nextsoldier.path.hl2's
 -- SOLDIER_DROP_HEIGHT: mvm_decoy's ledge below BLU's spawn, cp_steel's.
 -- Speeds are downward, in units a second; gravity is sv_gravity's.
-local Noise = require("games.nextsoldier.noise")
+local Noise = nextsoldier.noise
 local sqrt = math.sqrt
 module(...)
 

@@ -16,8 +16,8 @@
 -- The controller thinks a timer only while it has found its point
 -- (m_hControlPoint).
 local setmetatable = setmetatable
-local Teams = require("games.gameplay.teams")
-local Snapshot = require("games.world.snapshot")
+local Teams = gameplay.teams
+local Snapshot = world.snapshot
 module(...)
 
 -- The CCPTimerLogic constructor.

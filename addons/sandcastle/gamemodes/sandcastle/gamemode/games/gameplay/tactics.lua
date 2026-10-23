@@ -28,7 +28,7 @@
 --
 -- Check(engine) hands back an engine that has every function, else refuses
 -- it, naming what it lacks.
-local Port = require("foundation.core.port")
+local Port = core.port
 module(...)
 
 ENGINE = Port.New("tactics engine", {

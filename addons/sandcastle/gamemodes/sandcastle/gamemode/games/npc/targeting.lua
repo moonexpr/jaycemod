@@ -5,8 +5,8 @@
 -- model asks through its combatant port:
 --   Targeting.IsHiddenFromNPC(function(cond) return me:InCond(t, cond) end)
 local require = require
-local Players = require("games.gameplay.players")
-local Teams = require("games.gameplay.teams")
+local Players = gameplay.players
+local Teams = gameplay.teams
 local ipairs = ipairs
 module(...)
 

@@ -47,7 +47,7 @@ local function Near(ply, origin)
 		mask = SPLASH_MASK,
 		filter = function(ent) return not ent:IsPlayer() end,
 	})
-	local Targeting = WS.require("games.npc.targeting")
+	local Targeting = npc.targeting
 	return {
 		team = ply:Team(),
 		alive = ply:Alive(),

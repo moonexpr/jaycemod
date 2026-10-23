@@ -31,8 +31,8 @@ local abs = math.abs
 local gmatch = string.gmatch
 local sort = table.sort
 local tonumber = tonumber
-local Teams = require("games.gameplay.teams")
-local Snapshot = require("games.world.snapshot")
+local Teams = gameplay.teams
+local Snapshot = world.snapshot
 module(...)
 
 -- A control point index or rank that names no point (the SDK's -1).

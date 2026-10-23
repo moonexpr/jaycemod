@@ -3,7 +3,7 @@
 -- TOGGLES on it, held until toggled off or, for a player, their death (a
 -- life starts with none: ws/sv_teams_conditions.lua). Tampering, so for
 -- holders of the tamper privilege while mp_tampering_enabled allows it.
-local Permissions = WS.require("games.system.permissions")
+local Permissions = system.permissions
 local Effects = WS.require("games.gameplay.players.condition_effects")
 local P = WS.PlayerRules
 

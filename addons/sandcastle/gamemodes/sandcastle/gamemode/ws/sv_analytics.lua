@@ -5,9 +5,9 @@
 -- off, nothing runs per tick. ws_analytics_print and
 -- ws_analytics_reset need the server options privilege, as does
 -- ws_analytics_memory, the estimated memory each loaded foundation module holds.
-local Analytics = WS.require("foundation.analysis.analytics")
-local MemoryReport = WS.require("foundation.analysis.memory")
-local Permissions = WS.require("games.system.permissions")
+local Analytics = analysis.analytics
+local MemoryReport = analysis.memory
+local Permissions = system.permissions
 
 local Clock = {}
 function Clock:Now() return SysTime() end

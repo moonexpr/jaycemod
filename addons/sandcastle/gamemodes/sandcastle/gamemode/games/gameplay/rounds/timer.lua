@@ -12,8 +12,8 @@
 --   { kind = "length_changed" }      CalculateOutputMessages: the serial bumped
 --   { kind = "time_added", team, seconds }  the announced AddTimerSeconds
 local ipairs, math, pairs, setmetatable, sort = ipairs, math, pairs, setmetatable, table.sort
-local Cfsm = require("foundation.generator.state_machine")
-local Snapshot = require("games.world.snapshot")
+local Cfsm = generator.state_machine
+local Snapshot = world.snapshot
 module(...)
 
 STATE_SETUP = "setup"   -- RT_STATE_SETUP

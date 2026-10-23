@@ -5,8 +5,8 @@
 -- choice (CTFPlayer::SelectSpawnSpotByType). Pure: spawns are records
 -- { team, disabled, controlpoint, roundBlue, roundRed, spawnMode, matchSummary }.
 local ipairs, tonumber = ipairs, tonumber
-local Teams = require("games.gameplay.teams")
-local NO_POINT = require("games.gameplay.rounds").NO_POINT
+local Teams = gameplay.teams
+local NO_POINT = gameplay.rounds.NO_POINT
 module(...)
 
 -- info_player_teamspawn's SpawnMode and MatchSummary keyvalues.

@@ -423,7 +423,7 @@ local TEAMS = {
 function H.force_win(who)
 	Require()
 	local rounds = dev.Rounds()
-	local Rounds = WS.require("games.gameplay.rounds")
+	local Rounds = gameplay.rounds
 	if who == "stalemate" then
 		Original("SetStalemate")(rounds, Rounds.STALEMATE.ADMIN, true, false)
 	elseif TEAMS[who] then

@@ -1,6 +1,6 @@
 -- Part of the rounds controller (sv.lua): the timers, the team clocks and the round limits.
 local Controller, Active, GAME_TEAMS = ...
-local Rounds = WS.require("games.gameplay.rounds")
+local Rounds = gameplay.rounds
 local Timer = WS.require("games.gameplay.rounds.timer")
 local Limits = WS.require("games.gameplay.rounds.limits")
 

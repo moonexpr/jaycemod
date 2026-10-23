@@ -2,7 +2,7 @@
 -- three skull grenades (tf_projectile_spellspawnzombie) of the caster's
 -- team; each hatches a normal skeleton the caster owns.
 local require = require
-local Teams = require("games.gameplay.teams")
+local Teams = gameplay.teams
 local Spells = require("features.spells.model")
 local SpellSet = require("features.spells.halloween")
 local Zombie = require("features.haunting.zombie")

@@ -3,7 +3,7 @@
 --   and how far along it, line:PointAt(d), line:Offset(d, lateral),
 --   line:DistanceOf(p) -> how far along the point nearest p lies
 local setmetatable, sqrt = setmetatable, math.sqrt
-local Distance = require("foundation.math.geometry").Distance
+local Distance = math.geometry.Distance
 module(...)
 
 local Polyline = {}

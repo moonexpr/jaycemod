@@ -3,7 +3,7 @@
 -- what the server shares: the lock (the global ws_spawn_lock, "" for none)
 -- and each player's status and respawn time (NW2 ws_spawn_status,
 -- ws_respawn_time). ws/cl_spawn_manager.lua shows it.
-local S = WS.require("games.system.spawn_manager")
+local S = system.spawn_manager
 
 -- Why ply is held out of play (games.system.spawn_manager's Reason), NONE
 -- when nothing holds them: the server spawns a watcher held for nothing

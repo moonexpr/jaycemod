@@ -28,8 +28,8 @@
 -- FireGameEvent(name, fields) fires one of features.npc.boss_events'
 -- game events to everyone, as TF2's gameeventmanager->FireEvent does.
 local require = require
-local NpcSystem = require("games.npc.nextbot")
-local Teams = require("games.gameplay.teams")
+local NpcSystem = npc.nextbot
+local Teams = gameplay.teams
 local ipairs = ipairs
 module(...)
 

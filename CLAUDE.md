@@ -95,8 +95,16 @@ in a table of our own (`tree`, `world`, `cache`) or one extended in place
 taken; taking over a GMod or Lua default is a `Replace` line
 (`foundation.core.namespace`). Modules and indexes are listed by hand,
 never by a loop or a folder scan (`tests/foundation_index_test.lua`).
-Code may `require` a module by name or read its global: they are the same
-table. Tests are `tests/<namespace>_<module>_test.lua`.
+Code reads a published module by its global, bound to a local at the top
+of the file: `local Geometry = math.geometry`, never
+`require("foundation.math.geometry")`. `require` (`WS.require`) is for what
+has no global: a module's own parts, features' and `ws/`'s modules. Only
+the loader and the indexes require a published module by name
+(`tests/foundation_index_test.lua`; `.devtools/bin/foundation_globals.py`
+rewrites old requires). foundation's namespaces load in `shared_loader.lua`
+after every namespace their modules read. Tests load modules with
+`T.require`; the harness publishes the globals first, as the game does.
+Tests are `tests/<namespace>_<module>_test.lua`.
 
 ### core: classes, interfaces, namespaces
 

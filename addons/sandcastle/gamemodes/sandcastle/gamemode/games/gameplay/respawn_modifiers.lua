@@ -6,7 +6,7 @@
 -- rules: sooner by at most the team's wave, never into the death animation,
 -- later by at most MOST_PENALTY.
 local format, ipairs, max, min = string.format, ipairs, math.max, math.min
-local Credit = require("games.gameplay.kill_credit")
+local Credit = gameplay.kill_credit
 module(...)
 
 -- Reasons, in the order they are told: sooner first, then later.

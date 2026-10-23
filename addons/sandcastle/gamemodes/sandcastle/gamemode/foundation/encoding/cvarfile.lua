@@ -2,7 +2,7 @@
 -- (through parsers.consolecfg: comments skipped, chained commands refused)
 -- only for the names asked for, so a file edited by hand sets nothing else.
 local concat, format, ipairs, match = table.concat, string.format, ipairs, string.match
-local ConsoleCfg = require("foundation.encoding.consolecfg")
+local ConsoleCfg = encoding.consolecfg
 module(...)
 
 -- names: the order to write in; values: name -> its value, a string.

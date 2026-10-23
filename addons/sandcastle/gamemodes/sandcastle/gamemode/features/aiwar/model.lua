@@ -9,13 +9,13 @@
 -- Members are opaque handles (the NPC entities). Carts are given as the set
 -- of teams with a cart moving on the map.
 local floor, max, min, ipairs, next, pairs, setmetatable, sort, table, type = math.floor, math.max, math.min, ipairs, next, pairs, setmetatable, table.sort, table, type
-local Teams = require("games.gameplay.teams")
+local Teams = gameplay.teams
 local STATE = require("games.gameplay.rounds.state")
-local Squad = require("games.nextsoldier.squad")
-local Lease = require("foundation.world.lease")
-local Lanes = require("games.nextsoldier.lanes")
-local Hunt = require("games.nextsoldier.hunt")
-local Tactics = require("games.nextsoldier.tactics")
+local Squad = nextsoldier.squad
+local Lease = world.lease
+local Lanes = nextsoldier.lanes
+local Hunt = nextsoldier.hunt
+local Tactics = nextsoldier.tactics
 module(...)
 
 local RED, BLUE = Teams.RED, Teams.BLUE

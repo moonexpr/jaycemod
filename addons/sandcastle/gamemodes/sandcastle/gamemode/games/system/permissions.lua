@@ -8,8 +8,8 @@
 -- - With gameplay tampering switched off (mp_tampering_enabled 0), no player
 --   may tamper, superadmins included; a holder of the gameplay toggles may
 --   switch it back on.
-local PlayMode = require("games.system.play_mode")
-local Sets = require("foundation.world.sets")
+local PlayMode = system.play_mode
+local Sets = world.sets
 local ipairs = ipairs
 module(...)
 

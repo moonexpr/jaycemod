@@ -5,7 +5,7 @@
 -- bomblets, m_flImpactTime). A Jarate jar (tf_projectile_jar) breaks into
 -- a splash: Drenches says who it soaks (JarExplode).
 local require = require
-local Projectile = require("games.gameplay.projectile")
+local Projectile = gameplay.projectile
 module(...)
 
 local NONE, DETONATE, BOUNCE = Projectile.NONE, Projectile.DETONATE, Projectile.BOUNCE

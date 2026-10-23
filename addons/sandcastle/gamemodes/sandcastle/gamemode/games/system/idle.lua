@@ -4,7 +4,7 @@
 -- an idle server, makes it ACTIVE again. ws/sv_idle.lua runs it and says
 -- each change (WSServerIdle, WSServerActive).
 local setmetatable = setmetatable
-local Countdown = require("games.timer.countdown")
+local Countdown = timer.countdown
 module(...)
 
 IDLE = "idle"

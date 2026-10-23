@@ -40,10 +40,10 @@
 --   BeginHaunting(count, minDuration, maxDuration)
 --     (CTFGameRules::BeginHaunting: features.haunting.ghost's Haunt).
 local require = require
-local Players = require("games.gameplay.players")
+local Players = gameplay.players
 local Attributes = require("games.gameplay.players.attributes")
-local Teams = require("games.gameplay.teams")
-local Class = require("foundation.core.class")
+local Teams = gameplay.teams
+local Class = core.class
 local ipairs, setmetatable = ipairs, setmetatable
 local floor, log, max, min = math.floor, math.log, math.max, math.min
 local format = string.format

@@ -9,7 +9,7 @@
 -- order, choices (optional: { label, value } list, shown as a submenu),
 -- run(editors, ent, value) -> true, or false and why, done (the chat line
 -- on success) }.
-local Permissions = WS.require("games.system.permissions")
+local Permissions = system.permissions
 
 function WS.EditorAction(name, def)
 	local privilege = def.privilege or Permissions.TAMPER

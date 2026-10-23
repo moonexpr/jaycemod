@@ -27,11 +27,11 @@
 --     search (the solver's, done) }, strategies: name -> strategy
 --     (Cost(step, limits, bot))
 --   Matches(result, replayed) -> whether both searches did the same
-local Buffer = require("foundation.file.buffer")
-local Geometry = require("foundation.math.geometry")
-local Pathfinder = require("foundation.graph.pathfinder")
-local AStar = require("games.npc.astar")
-local Path = require("games.nextsoldier.path")
+local Buffer = file.buffer
+local Geometry = math.geometry
+local Pathfinder = graph.pathfinder
+local AStar = npc.astar
+local Path = nextsoldier.path
 local error, format, ipairs, pairs, pcall, setmetatable, tonumber, tostring = error, string.format, ipairs, pairs, pcall, setmetatable, tonumber, tostring
 module(...)
 

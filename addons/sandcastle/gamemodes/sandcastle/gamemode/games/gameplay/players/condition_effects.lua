@@ -13,8 +13,8 @@
 -- thirdPersonOnly: its particle not shown to its holder in first person;
 -- corpse, the particle one who dies holding it burns on with; ignite, the
 -- game sound of catching it (ws/sv_teams_conditions.lua).
-local P = require("games.gameplay.players")
-local Teams = require("games.gameplay.teams")
+local P = gameplay.players
+local Teams = gameplay.teams
 local ipairs = ipairs
 module(...)
 

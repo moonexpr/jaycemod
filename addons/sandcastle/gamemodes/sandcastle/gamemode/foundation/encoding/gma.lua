@@ -7,7 +7,7 @@
 --
 -- Write(name, files) -> bytes; files are { path, data }, in order.
 -- Read(bytes) -> { name, files }, refusing what is not an archive.
-local Buffer = require("foundation.file.buffer")
+local Buffer = file.buffer
 local concat, error, find, ipairs, sub = table.concat, error, string.find, ipairs, string.sub
 module(...)
 

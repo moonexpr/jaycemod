@@ -1,12 +1,12 @@
 -- Part of the AI war controller (sv.lua): lanes, each team's ways from its spawn (games.nextsoldier.lanes).
 local Controller, Map = ...
-local Teams = WS.require("games.gameplay.teams")
-local Geometry = WS.require("foundation.math.geometry")
+local Teams = gameplay.teams
+local Geometry = math.geometry
 local TFBot = WS.require("games.nextsoldier.path.tfbot")
 local HL2Path = WS.require("games.nextsoldier.path.hl2")
-local Path = WS.require("games.nextsoldier.path")
-local Lanes = WS.require("games.nextsoldier.lanes")
-local Graph = WS.require("foundation.graph.search")
+local Path = nextsoldier.path
+local Lanes = nextsoldier.lanes
+local Graph = graph.search
 local RED, BLUE = Map.RED, Map.BLUE
 local Point, ToVector, SpawnSpots, WorldWalkClear = Map.Point, Map.ToVector, Map.SpawnSpots, Map.WorldWalkClear
 

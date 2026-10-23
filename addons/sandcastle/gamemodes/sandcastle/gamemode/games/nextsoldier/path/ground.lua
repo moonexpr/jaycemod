@@ -1,7 +1,7 @@
 -- A walker's path cost: the body CZombiePathCost and CHeadlessHatmanPathCost
 -- share. Weighted(step, limits, preference) is that body with the distance
 -- weighed by a preference; Cost uses none.
-local Path = require("games.nextsoldier.path")
+local Path = nextsoldier.path
 module(...)
 
 local IMPASSABLE, JUMP_PENALTY = Path.IMPASSABLE, Path.JUMP_PENALTY

@@ -3,7 +3,7 @@
 -- of invulnerability and 3 s of quick healing; enemy players are pushed 300
 -- away.
 local require = require
-local Teams = require("games.gameplay.teams")
+local Teams = gameplay.teams
 local Spells = require("features.spells.model")
 local SpellSet = require("features.spells.halloween")
 local ipairs = ipairs

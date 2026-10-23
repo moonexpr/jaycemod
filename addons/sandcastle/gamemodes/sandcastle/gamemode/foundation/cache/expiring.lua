@@ -8,9 +8,9 @@
 --   cache:Prune(): every expired entry dropped and released (EXPIRED);
 --     each new entry prunes first, so the expired never pile up
 -- Reading it, walking it (cache()) and Keys never meet an expired entry.
-local Cache = require("foundation.cache.base")
-local Class = require("foundation.core.class")
-local Port = require("foundation.core.port")
+local Cache = cache.base
+local Class = core.class
+local Port = core.port
 local error, rawget, tostring, type = error, rawget, tostring, type
 module(...)
 

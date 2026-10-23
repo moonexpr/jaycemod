@@ -64,8 +64,12 @@ end
 -- Globals as GMod's would start: Lua's math, and a list, file and timer
 -- library holding a default each.
 local function Globals()
+	-- Lua's own math: its functions and numbers, not the namespaces the
+	-- harness already published in the real one.
 	local math = {}
-	for key, value in pairs(_G.math) do math[key] = value end
+	for key, value in pairs(_G.math) do
+		if type(value) ~= "table" then math[key] = value end
+	end
 	local globals = {
 		math = math,
 		list = { Get = function() end },
@@ -155,13 +159,48 @@ T.test("running the indexes again, as a reload does, is not refused", function()
 	T.eq(globals.list.drawlist, T.require("games.list.drawlist"), "list.drawlist")
 end)
 
-T.test("a published foundation module requires only foundation", function()
+T.test("a published foundation module uses only foundation", function()
 	for _, path in ipairs(IndexFiles(TREES[1])) do
 		local folder = path:match("^(.-)[%a]+_index%.lua$")
 		for _, key in ipairs(ModulesIn(folder)) do
-			local code = Read(T.ROOT .. folder .. key .. ".lua")
+			for _, name in ipairs(T.Uses(Read(T.ROOT .. folder .. key .. ".lua"))) do
+				T.eq(name:match("^foundation%.") ~= nil, true, folder .. key .. " uses " .. name)
+			end
+		end
+	end
+end)
+
+-- A published module is read by its global (math.geometry); require is for
+-- what has none: a module's own parts, features' and ws/'s modules. Only the
+-- loader and the indexes require a published module by name.
+T.test("no file requires a published module by name", function()
+	local found = {}
+	for _, path in ipairs(Lines("find addons -name '*.lua'")) do
+		if not path:match("_index%.lua$") and not path:match("_init%.lua$") and not path:match("shared_loader%.lua$") then
+			local code = WithoutComments(Read(path))
 			for name in code:gmatch("require%(%s*[\"']([%w_.]+)[\"']") do
-				T.eq(name:match("^foundation%.") ~= nil, true, folder .. key .. " requires " .. name)
+				local global = T.Published.global[name]
+				if global then found[#found + 1] = path .. ": " .. name .. " (read " .. global .. ")" end
+			end
+		end
+	end
+	T.eq(table.concat(found, "\n"), "", "requires of published modules")
+end)
+
+-- foundation loads at once, each module reading the globals it uses as it
+-- loads: in the loader's order, a module uses only modules published before
+-- it (or itself).
+T.test("each foundation module is published after every module it uses", function()
+	local published = {}
+	for _, path in ipairs(LoaderIndexes()) do
+		if path:match("^foundation/") then
+			for module in Read(T.ROOT .. path):gmatch('require%(%s*"([%w_.]+)"%s*%)') do
+				for _, used in ipairs(T.Uses(Read(T.ROOT .. module:gsub("%.", "/") .. ".lua"))) do
+					if used ~= module and used:match("^foundation%.") then
+						T.eq(published[used], true, module .. " uses " .. used .. " before it is published")
+					end
+				end
+				published[module] = true
 			end
 		end
 	end

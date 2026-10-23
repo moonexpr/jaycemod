@@ -6,7 +6,7 @@
 -- relates each soldier to each faction (ALL). Names are upper case, as
 -- DrGBase keeps them.
 local ipairs = ipairs
-local Teams = require("games.gameplay.teams")
+local Teams = gameplay.teams
 module(...)
 
 RED = "FACTION_SANDCASTLE_TEAM_RED"

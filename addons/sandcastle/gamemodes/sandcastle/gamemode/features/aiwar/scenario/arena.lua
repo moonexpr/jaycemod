@@ -21,7 +21,7 @@
 local ipairs, pairs, setmetatable = ipairs, pairs, setmetatable
 local AiWar = require("features.aiwar.model")
 local Orders = require("features.aiwar.orders")
-local Teams = require("games.gameplay.teams")
+local Teams = gameplay.teams
 local Base = require("features.aiwar.scenario")
 local CP = require("features.aiwar.scenario.control_points")
 module(...)

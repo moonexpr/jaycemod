@@ -4,7 +4,7 @@
 -- games.gameplay.spectate's: first person just below the top of its bounds,
 -- looking where it faces; third person over its right shoulder, turned by
 -- the observer's view and pulled in short of walls.
-local Spec = WS.require("games.gameplay.spectate")
+local Spec = gameplay.spectate
 
 local WALL_GAP = 4
 local CAMERA_HULL = Vector(4, 4, 4)

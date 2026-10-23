@@ -19,8 +19,8 @@
 -- An engine with more (a stack of suspended states) extends State and Root,
 -- fills the transitions table and the hooks named _ below, and makes its
 -- charts with ChartsOf{ state, root, lifecycle }.
-local Class = require("foundation.core.class")
-local Port = require("foundation.core.port")
+local Class = core.class
+local Port = core.port
 local error, ipairs, setmetatable, tostring, type =
 	error, ipairs, setmetatable, tostring, type
 local concat, find = table.concat, string.find

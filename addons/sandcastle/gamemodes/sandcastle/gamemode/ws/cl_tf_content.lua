@@ -11,7 +11,7 @@
 --     shader flags and drawing values, any texture HL2 hides comes from its
 --     copy. A map's patched materials
 --     (its cubemaps') take those of the material they include.
-local Gma = WS.require("foundation.encoding.gma")
+local Gma = encoding.gma
 local SoundPaths = WS.require("ws.sound_paths")
 local Materials = WS.require("ws.tf_materials")
 

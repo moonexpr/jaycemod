@@ -1,7 +1,7 @@
 -- Part of the rounds controller (sv.lua): the players, their teams and their scores.
 local GAME_TEAMS = ...
 local UNASSIGNED = WS.TEAM_UNASSIGNED
-local Credit = WS.require("games.gameplay.kill_credit")
+local Credit = gameplay.kill_credit
 local RED, BLUE = WS.TEAM_RED, WS.TEAM_BLUE
 
 -- Players -----------------------------------------------------------------------

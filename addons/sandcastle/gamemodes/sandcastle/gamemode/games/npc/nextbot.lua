@@ -12,7 +12,7 @@
 -- refuses players). Actions receive the actor as `me`.
 local ipairs, setmetatable = ipairs, setmetatable
 local remove = table.remove
-local Hfsm = require("games.generator.hfsm")
+local Hfsm = generator.hfsm
 module(...)
 
 CONTINUE, CHANGE_TO, SUSPEND_FOR, DONE, SUSTAIN =

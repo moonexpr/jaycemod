@@ -3,8 +3,8 @@
 -- registered with CAMI (ws/sh_cami.lua, or a newer copy an admin mod loaded),
 -- so ULX, SAM or ServerGuard can give it to any rank; without an admin mod,
 -- CAMI's fallback grants it by its default rank.
-local Permissions = WS.require("games.system.permissions")
-local PlayMode = WS.require("games.system.play_mode")
+local Permissions = system.permissions
+local PlayMode = system.play_mode
 
 local TAMPERING = CreateConVar("mp_tampering_enabled", "1", { FCVAR_REPLICATED, FCVAR_NOTIFY, FCVAR_ARCHIVE },
 	"0: no player may tamper with live gameplay (move the payload, change the clock, respawns), superadmins included", 0, 1)

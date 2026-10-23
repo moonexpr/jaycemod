@@ -74,9 +74,9 @@ function WS.DrgSoldier(ENT, baseName)
 	local Ragdoll = WS.require("ws.ragdoll")
 	local Voices = WS.require("ws.voices")
 	local HL2Path = WS.require("games.nextsoldier.path.hl2")
-	local Leap = WS.require("games.nextsoldier.leap")
-	local Noise = WS.require("games.nextsoldier.noise")
-	local Rappel = WS.require("games.nextsoldier.rappel")
+	local Leap = nextsoldier.leap
+	local Noise = nextsoldier.noise
+	local Rappel = nextsoldier.rappel
 	local Arms = WS.require("features.aiwar.arms")
 	local SILENT = { grunt = {}, pain = {}, death = {}, fall = {} }
 
@@ -297,7 +297,7 @@ function WS.DrgSoldier(ENT, baseName)
 	local function Brain(self)
 		local brain = self.NSBrain
 		if not brain then return nil end
-		Engine = Engine or WS.require("games.npc.nextbot")
+		Engine = Engine or npc.nextbot
 		return brain
 	end
 

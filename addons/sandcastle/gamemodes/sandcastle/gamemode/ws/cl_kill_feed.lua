@@ -15,7 +15,7 @@
 -- seconds (hud_deathnotice_time).
 local Feed = WS.require("features.aiwar.kill_feed")
 local AiWar = WS.require("features.aiwar.model")
-local Icons = WS.require("games.gameplay.kill_icons")
+local Icons = gameplay.kill_icons
 local THEME = WS.UI.THEME
 local E = WS.Events
 

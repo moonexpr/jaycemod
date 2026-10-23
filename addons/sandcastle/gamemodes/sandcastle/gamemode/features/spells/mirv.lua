@@ -3,7 +3,7 @@
 -- fuse 0.05 s longer than the last and blind to touches for its first
 -- second. A bomblet leaves a spell pumpkin bomb of its team.
 local require = require
-local Teams = require("games.gameplay.teams")
+local Teams = gameplay.teams
 local Spells = require("features.spells.model")
 local SpellSet = require("features.spells.halloween")
 local ipairs = ipairs

@@ -16,8 +16,8 @@
 --   enum:First(), enum:Last(), enum:Count() (#enum where # honours __len):
 --                      a convar's bounds
 --   enum:Names()       the names in value order, a fresh list
-local Class = require("foundation.core.class")
-local Constants = require("foundation.core.constants")
+local Class = core.class
+local Constants = core.constants
 local concat, error, floor, ipairs, rawget, setmetatable, tostring, type = table.concat, error, math.floor, ipairs, rawget, setmetatable, tostring, type
 local gsub, lower, sub = string.gsub, string.lower, string.sub
 module(...)

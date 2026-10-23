@@ -5,7 +5,7 @@
 -- suicide) moves their respawn sooner or later. The rounds controller asks
 -- at each death (WS.RespawnAdjust), and the player is told every reason
 -- (game_respawn_modifiers, under the respawn bar).
-local M = WS.require("games.gameplay.respawn_modifiers")
+local M = gameplay.respawn_modifiers
 
 local lives = setmetatable({}, { __mode = "k" }) -- player -> what they did since their last spawn
 

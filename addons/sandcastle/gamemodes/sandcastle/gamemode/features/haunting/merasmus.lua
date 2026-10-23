@@ -57,13 +57,13 @@
 -- point are measured straight, where TF2 walks the mesh. TF2's boss timer
 -- (features.boss_timer.model) brings the next one.
 local require = require
-local NpcSystem = require("games.npc.nextbot")
+local NpcSystem = npc.nextbot
 local HalloweenBoss = require("features.haunting.halloween_boss")
 local BossEvents = require("features.npc.boss_events")
-local Actor = require("games.npc.actor")
-local Combat = require("games.gameplay.combat")
-local Players = require("games.gameplay.players")
-local Teams = require("games.gameplay.teams")
+local Actor = npc.actor
+local Combat = gameplay.combat
+local Players = gameplay.players
+local Teams = gameplay.teams
 local atan2, cos, deg, floor, huge, max, min, rad, sin = math.atan2, math.cos, math.deg, math.floor, math.huge, math.max, math.min, math.rad, math.sin
 local ipairs = ipairs
 local band = bit.band

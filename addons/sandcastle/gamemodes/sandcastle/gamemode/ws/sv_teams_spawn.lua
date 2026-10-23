@@ -5,7 +5,7 @@
 -- The records are set up per round as TF2 does before it respawns players
 -- (games/gameplay/spawn.lua), map inputs change them during the round, and a
 -- spawning player takes the next valid spot.
-local S = WS.require("games.gameplay.spawn")
+local S = gameplay.spawn
 
 local records = setmetatable({}, { __mode = "k" })
 

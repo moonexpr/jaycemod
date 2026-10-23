@@ -6,9 +6,9 @@
 -- limit together go to the higher count, and an equal one is a tie, a
 -- stalemate for games.gameplay.rounds to break.
 local ceil, ipairs, min, setmetatable, tostring = math.ceil, ipairs, math.min, setmetatable, tostring
-local Economy = require("games.gameplay.economy")
-local Rounds = require("games.gameplay.rounds")
-local Teams = require("games.gameplay.teams")
+local Economy = gameplay.economy
+local Rounds = gameplay.rounds
+local Teams = gameplay.teams
 module(...)
 
 -- A team this share of the way to a limit is close to winning (Calls).

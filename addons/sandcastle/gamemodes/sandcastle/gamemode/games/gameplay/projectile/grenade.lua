@@ -2,7 +2,7 @@
 -- fuse runs out; with explodeOnTouch it also detonates on an enemy it hits
 -- before its first bounce off the world (CTFGrenadePipebombProjectile::
 -- PipebombTouch and VPhysicsCollision). Everything else bounces.
-local Projectile = require("games.gameplay.projectile")
+local Projectile = gameplay.projectile
 module(...)
 
 local NONE, DETONATE, BOUNCE = Projectile.NONE, Projectile.DETONATE, Projectile.BOUNCE

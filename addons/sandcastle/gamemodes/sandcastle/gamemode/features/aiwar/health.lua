@@ -12,7 +12,7 @@
 --     goes whatever the danger, barely hurt only once safe.
 local min, max = math.min, math.max
 local ipairs = ipairs
-local Geometry = require("foundation.math.geometry")
+local Geometry = math.geometry
 module(...)
 
 CRITICAL, OK = 0.3, 0.8 -- tf_bot_health_critical_ratio, tf_bot_health_ok_ratio

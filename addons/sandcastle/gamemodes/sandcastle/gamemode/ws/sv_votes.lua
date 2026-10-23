@@ -18,10 +18,10 @@
 -- idle (ws/sv_nav.lua), unless players picked the next map or an admin set
 -- nextlevel. Still running when the level changes
 -- (WSChangeLevel), it is counted then.
-local Vote = WS.require("games.gameplay.vote")
-local Rounds = WS.require("games.gameplay.rounds")
-local Permissions = WS.require("games.system.permissions")
-local Transaction = WS.require("foundation.transaction")
+local Vote = gameplay.vote
+local Rounds = gameplay.rounds
+local Permissions = system.permissions
+local Transaction = transaction
 local E = WS.Events
 
 local TIMER = "ws_vote"

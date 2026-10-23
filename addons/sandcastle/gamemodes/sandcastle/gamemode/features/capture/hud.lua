@@ -9,7 +9,7 @@
 -- icons for every round but payload's, whose escort HUD takes the same
 -- bottom centre (CTFHudObjectiveStatus::SetVisiblePanels).
 local cos, floor, ipairs, max, pi = math.cos, math.floor, ipairs, math.max, math.pi
-local Rounds = require("games.gameplay.rounds")
+local Rounds = gameplay.rounds
 module(...)
 
 UNITS_TALL = 480 -- a proportional screen's height in HUD units

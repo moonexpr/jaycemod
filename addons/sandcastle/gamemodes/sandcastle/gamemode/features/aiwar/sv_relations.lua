@@ -3,8 +3,8 @@
 -- (tf_bot_difficulty).
 local Controller, Map = ...
 local AiWar = WS.require("features.aiwar.model")
-local Rounds = WS.require("games.gameplay.rounds")
-local Hearing = WS.require("games.nextsoldier.hearing")
+local Rounds = gameplay.rounds
+local Hearing = nextsoldier.hearing
 local Factions = WS.require("ws.factions")
 local Marksmanship = WS.require("features.aiwar.marksmanship")
 local BulletSteps = WS.require("games.gameplay.combat.bullet_steps")

@@ -1,9 +1,9 @@
 -- Part of the AI war controller (sv.lua): tracks, the field snapshot, the think and sight (lanes: sv_lanes.lua).
 local Controller, Map, WATCH_INTERVAL = ...
 local AiWar = WS.require("features.aiwar.model")
-local Teams = WS.require("games.gameplay.teams")
-local Track = WS.require("foundation.math.polyline")
-local Explore = WS.require("games.nextsoldier.explore")
+local Teams = gameplay.teams
+local Track = math.polyline
+local Explore = nextsoldier.explore
 local Scenario = WS.require("features.aiwar.scenario")
 local GROUND_PROBE, RED, BLUE = Map.GROUND_PROBE, Map.RED, Map.BLUE
 local Point, Masks, SpawnSpots = Map.Point, Map.Masks, Map.SpawnSpots

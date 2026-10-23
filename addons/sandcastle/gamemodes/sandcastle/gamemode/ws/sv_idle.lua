@@ -5,7 +5,7 @@
 -- (WSServerActive). WS.ServerIdle() asks. While it is idle, a map without a
 -- nav mesh has one generated (ws/sv_nav.lua) and the AI war stands still
 -- (features/aiwar/sv_war.lua); the rounds run on, so the maps rotate.
-local Idle = WS.require("games.system.idle")
+local Idle = system.idle
 
 local DELAY = CreateConVar("sv_idle_delay", "300", FCVAR_ARCHIVE,
 	"Seconds an empty server waits before it is idle (from the next map)", 0)

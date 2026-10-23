@@ -16,10 +16,10 @@
 local floor, ipairs, min, pairs, sort = math.floor, ipairs, math.min, pairs, table.sort
 local AiWar = require("features.aiwar.model")
 local Orders = require("features.aiwar.orders")
-local Teams = require("games.gameplay.teams")
+local Teams = gameplay.teams
 local Base = require("features.aiwar.scenario")
 local Ctf = require("features.aiwar.scenario.ctf")
-local Geometry = require("foundation.math.geometry")
+local Geometry = math.geometry
 local Distance = Geometry.Distance
 module(...)
 

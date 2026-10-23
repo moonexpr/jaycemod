@@ -40,7 +40,7 @@ end
 -- class, recorded output connections, and observers of outputs and inputs.
 -- Its maps are rebuilt when the map's entities are all spawned or cleaned
 -- up; entities created after join them as they are created.
-local MapIO = WS.require("games.world.io")
+local MapIO = world.io
 
 -- The port outlives a reload with WS.MapIO, so a reload redefines its
 -- methods in place.

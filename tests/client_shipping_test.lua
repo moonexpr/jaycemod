@@ -5,7 +5,6 @@ local T = dofile("tests/harness.lua")
 local Features = T.require("games.system.features")
 
 local ENTITIES = T.ROOT .. "../entities/"
-local REQUIRE = "require%(%s*[\"']([%w_.]+)[\"']"
 local LUA = "%.lua$"
 
 -- The lines a shell command prints.
@@ -114,10 +113,10 @@ T.test("the sent set is the old rule's set plus the feature and ws modules", fun
 	T.eq(table.concat(shipped, "\n"), table.concat(Sorted(expected), "\n"), "sent set")
 end)
 
--- Every literal require in a file a client may run (any shipped file, and
--- every entity and weapon file) names a module that is shipped, so neither a
--- server part nor a missing file can be required on a client.
-T.test("every module a shipped file or an entity requires is shipped", function()
+-- Every module a file a client may run uses (any shipped file, and every
+-- entity and weapon file), by a literal require or by its global, is
+-- shipped, so neither a server part nor a missing file is loaded on a client.
+T.test("every module a shipped file or an entity uses is shipped", function()
 	local sources = {}
 	for _, path in ipairs(shipped) do sources[#sources + 1] = { path, T.ROOT .. path } end
 	for _, path in ipairs(LuaFilesUnder(ENTITIES, ENTITIES)) do
@@ -125,7 +124,7 @@ T.test("every module a shipped file or an entity requires is shipped", function(
 	end
 	local unshipped = {}
 	for _, source in ipairs(sources) do
-		for name in Read(source[2]):gmatch(REQUIRE) do
+		for _, name in ipairs(T.Uses(Read(source[2]))) do
 			local target = name:gsub("%.", "/") .. ".lua"
 			if not ships[target] then unshipped[#unshipped + 1] = source[1] .. " -> " .. target end
 		end

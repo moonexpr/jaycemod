@@ -4,7 +4,7 @@
 -- (ws/sv_loadout.lua). The server owns every loadout; a client asks to buy,
 -- equip or clear, each a transaction (WS.Events.Transact), and hears its
 -- loadout back (game_loadout_state) or why its request was declined.
-local Loadout = WS.require("games.gameplay.loadout")
+local Loadout = gameplay.loadout
 local E = WS.Events
 
 local PRICE = Loadout.PRICE

@@ -2,7 +2,7 @@
 -- solid to nothing but the world, which it bounces off (RocketTouch), and
 -- ends when its fuse runs out. config { fuse }.
 local require = require
-local Projectile = require("games.gameplay.projectile")
+local Projectile = gameplay.projectile
 module(...)
 
 local NONE, DETONATE, BOUNCE = Projectile.NONE, Projectile.DETONATE, Projectile.BOUNCE

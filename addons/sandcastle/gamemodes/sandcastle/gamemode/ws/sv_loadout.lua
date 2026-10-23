@@ -6,10 +6,10 @@
 -- change; each request is a transaction (WS.Events.Serve) whose decline goes
 -- back with its refusal. On TF2 maps the
 -- equipped weapons are what a player spawns with (GM:PlayerLoadout, init.lua).
-local Economy = WS.require("games.gameplay.economy")
-local Loadout = WS.require("games.gameplay.loadout")
+local Economy = gameplay.economy
+local Loadout = gameplay.loadout
 local Balance = WS.require("games.gameplay.combat.weapon_balance")
-local Sets = WS.require("foundation.world.sets")
+local Sets = world.sets
 local E = WS.Events
 
 local CATALOG = WS.LoadoutCatalog

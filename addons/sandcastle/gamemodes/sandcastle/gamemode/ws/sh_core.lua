@@ -94,7 +94,7 @@ end
 -- cl_hud_hidden, and cl_hud_print lists them (ws/cl_hud_hidden.lua). Made
 -- here, before any module can add to it.
 if CLIENT then
-	WS.HUD = WS.require("games.list.drawlist").New()
+	WS.HUD = list.drawlist.New()
 	WS.HUD_ORDER = {
 		WORLD = 100, -- over the world: damage numbers
 		OBJECTIVES = 200, -- points, flags, carts, KOTH clocks
@@ -105,7 +105,7 @@ if CLIENT then
 	}
 end
 
-local Features = WS.require("games.system.features")
+local Features = system.features
 local FEATURE_COUNT_BITS = 16
 
 WS.Events.Define("system_feature_load", {
@@ -174,7 +174,7 @@ if SERVER then
 
 	-- A full collection stalls the server, so players need the rules privilege.
 	concommand.Add("ws_memory", function(ply)
-		if not WS.Can(ply, WS.require("games.system.permissions").RULES) then return end
+		if not WS.Can(ply, system.permissions.RULES) then return end
 		local report = MemoryReport()
 		print(report)
 		if IsValid(ply) then ply:PrintMessage(HUD_PRINTCONSOLE, report) end
@@ -191,8 +191,8 @@ end
 
 -- Pure rule libraries (gamemode/foundation/), shared so client prediction and
 -- drawing follow the same rules as the server.
-WS.TeamRules = WS.require("games.gameplay.teams")
-WS.PlayerRules = WS.require("games.gameplay.players")
+WS.TeamRules = gameplay.teams
+WS.PlayerRules = gameplay.players
 
 -- TF2's team numbers and round states, as the rule libraries define them.
 local Teams = WS.TeamRules

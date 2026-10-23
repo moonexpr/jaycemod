@@ -11,10 +11,10 @@
 -- points = { ids } } }, firstAfterRestart (default true) }.
 local ipairs, setmetatable = ipairs, setmetatable
 local sort, remove = table.sort, table.remove
-local Capture = require("games.gameplay.capture")
-local Rounds = require("games.gameplay.rounds")
-local Teams = require("games.gameplay.teams")
-local Snapshot = require("games.world.snapshot")
+local Capture = gameplay.capture
+local Rounds = gameplay.rounds
+local Teams = gameplay.teams
+local Snapshot = world.snapshot
 module(...)
 
 -- score_style: a team scores per round won, or per point captured.

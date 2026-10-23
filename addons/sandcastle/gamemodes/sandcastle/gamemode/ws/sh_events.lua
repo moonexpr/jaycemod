@@ -28,9 +28,9 @@
 -- Vector, Angle, Team, List(type, countBits), Record(fields), Optional(type),
 -- Default(type, value)). Included by sh_core.lua, before anything that
 -- defines an event.
-local Events = WS.require("games.system.events")
-local Scheduler = WS.require("foundation.list.schedule")
-local Transaction = WS.require("foundation.transaction")
+local Events = system.events
+local Scheduler = list.schedule
+local Transaction = transaction
 
 local FIRE_NET = "ws_game_event_fire" -- server to clients
 local REQUEST_NET = "ws_game_event_request" -- client to server

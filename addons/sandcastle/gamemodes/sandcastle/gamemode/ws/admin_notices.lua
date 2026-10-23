@@ -7,7 +7,7 @@
 -- goes to everyone. Each function returns the list of { audience, team,
 -- text, icon, sound, chime }.
 local format, ipairs = string.format, ipairs
-local Teams = require("games.gameplay.teams")
+local Teams = gameplay.teams
 module(...)
 
 local EVERYONE = Teams.UNASSIGNED

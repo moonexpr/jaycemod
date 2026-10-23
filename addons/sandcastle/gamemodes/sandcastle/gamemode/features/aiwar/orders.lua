@@ -82,19 +82,19 @@
 local abs, ceil, cos, floor, max, min, pi, sin, sqrt = math.abs, math.ceil, math.cos, math.floor, math.max, math.min, math.pi, math.sin, math.sqrt
 local ipairs, pairs = ipairs, pairs
 local format = string.format
-local N = require("games.npc.nextbot")
+local N = npc.nextbot
 local Debug = require("features.nbdebug.model")
 local AiWar = require("features.aiwar.model")
-local Teams = require("games.gameplay.teams")
-local Track = require("foundation.math.polyline")
-local Tactics = require("games.nextsoldier.tactics")
-local Geometry = require("foundation.math.geometry")
-local Squad = require("games.nextsoldier.squad")
-local Lanes = require("games.nextsoldier.lanes")
-local Hunt = require("games.nextsoldier.hunt")
+local Teams = gameplay.teams
+local Track = math.polyline
+local Tactics = nextsoldier.tactics
+local Geometry = math.geometry
+local Squad = nextsoldier.squad
+local Lanes = nextsoldier.lanes
+local Hunt = nextsoldier.hunt
 local Health = require("features.aiwar.health")
-local Speech = require("games.nextsoldier.speech")
-local Explore = require("games.nextsoldier.explore")
+local Speech = nextsoldier.speech
+local Explore = nextsoldier.explore
 module(...)
 
 KIND = "aiwar"

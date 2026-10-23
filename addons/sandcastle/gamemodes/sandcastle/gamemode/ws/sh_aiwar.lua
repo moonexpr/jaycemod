@@ -7,8 +7,8 @@
 -- its slots are asked for.
 local AiWar = WS.require("features.aiwar.model")
 local Slots = WS.require("features.aiwar.slots")
-local Squad = WS.require("games.nextsoldier.squad")
-local Permissions = WS.require("games.system.permissions")
+local Squad = nextsoldier.squad
+local Permissions = system.permissions
 local E = WS.Events
 
 local ACTIVE_KEY = "ws.aiwar"

@@ -15,8 +15,8 @@
 -- ws_analytics_players prints retention and the time to a first victory;
 -- WS.PlayerAnalytics() returns the same as tables. Both read the whole log,
 -- and need the server options privilege.
-local PA = WS.require("games.gameplay.player_analytics")
-local Permissions = WS.require("games.system.permissions")
+local PA = gameplay.player_analytics
+local Permissions = system.permissions
 
 local DIR = "sandcastle"
 local LOG = DIR .. "/player_events.txt"

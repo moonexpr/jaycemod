@@ -2,9 +2,9 @@
 local Map = ...
 local TFBot = WS.require("games.nextsoldier.path.tfbot")
 local HL2Path = WS.require("games.nextsoldier.path.hl2")
-local Random = WS.require("foundation.math.weighted")
+local Random = math.weighted
 local Debug = WS.require("features.nbdebug.model")
-local Detour = WS.require("games.nextsoldier.detour")
+local Detour = nextsoldier.detour
 local WALK_MINS, WALK_MAXS, WALK_LIFT, WALK_MAX_RISE = Map.WALK_MINS, Map.WALK_MAXS, Map.WALK_LIFT, Map.WALK_MAX_RISE
 local Point, ToVector, Masks, IsDoor = Map.Point, Map.ToVector, Map.Masks, Map.IsDoor
 local OnFloor, PassThrough = Map.OnFloor, Map.PassThrough

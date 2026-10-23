@@ -19,9 +19,9 @@
 -- there yet (PLAYERS_NEEDED, mp_waitingforplayers) waits in Sandbox mode,
 -- checked each WAIT_TICK, and counts down once they come; the count is
 -- networked as ws_gamemode_waiting_have and _need (need 0: no wait).
-local Gamemode = WS.require("games.system.gamemode")
+local Gamemode = system.gamemode
 local Gameplay = WS.require("features.gamemode.gameplay")
-local Rounds = WS.require("games.gameplay.rounds")
+local Rounds = gameplay.rounds
 
 -- Both made in ws/sh_gameplay.lua.
 local ENABLED = GetConVar("sv_gameplay_enabled")

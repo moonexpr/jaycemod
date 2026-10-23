@@ -5,8 +5,8 @@
 -- conditions beneath. A team's NPCs (the AI war's soldiers) sit in its column
 -- beside its players.
 local floor, format, ipairs, sort = math.floor, string.format, ipairs, table.sort
-local Credit = require("games.gameplay.kill_credit")
-local Teams = require("games.gameplay.teams")
+local Credit = gameplay.kill_credit
+local Teams = gameplay.teams
 module(...)
 
 local RED, BLUE, SPECTATOR = Teams.RED, Teams.BLUE, Teams.SPECTATOR

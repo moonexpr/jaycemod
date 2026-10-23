@@ -7,7 +7,7 @@
 --
 -- damage = { byPlayer, dmgType }: whether a player dealt it, and its bits.
 local require = require
-local Actor = require("games.npc.actor")
+local Actor = npc.actor
 local bor, band = bit.bor, bit.band
 module(...)
 

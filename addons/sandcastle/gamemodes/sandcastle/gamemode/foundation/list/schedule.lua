@@ -19,7 +19,7 @@
 -- picks which ready task runs next, in place of first in first out.
 local coroutine, error, select, setmetatable, tostring, unpack = coroutine, error, select, setmetatable, tostring, unpack
 local traceback = debug.traceback
-local Queue = require("foundation.list.queue")
+local Queue = list.queue
 module(...)
 
 local Scheduler = {}

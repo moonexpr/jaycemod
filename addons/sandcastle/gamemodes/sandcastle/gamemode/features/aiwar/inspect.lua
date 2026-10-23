@@ -11,10 +11,10 @@
 local ipairs, sort = ipairs, table.sort
 local atan2, floor, max, min, sqrt, HUGE = math.atan2, math.floor, math.max, math.min, math.sqrt, math.huge
 local format, concat = string.format, table.concat
-local Tactics = require("games.nextsoldier.tactics")
-local Squad = require("games.nextsoldier.squad")
+local Tactics = nextsoldier.tactics
+local Squad = nextsoldier.squad
 local Orders = require("features.aiwar.orders")
-local Distance = require("foundation.math.geometry").Distance
+local Distance = math.geometry.Distance
 module(...)
 
 local LEFT = 1 -- Tactics.FlankSide's side to the left

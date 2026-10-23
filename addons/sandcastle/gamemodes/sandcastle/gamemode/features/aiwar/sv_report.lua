@@ -2,8 +2,8 @@
 local Controller, Map, ARRIVED = ...
 local AiWar = WS.require("features.aiwar.model")
 local Orders = WS.require("features.aiwar.orders")
-local Tactics = WS.require("games.nextsoldier.tactics")
-local Squad = WS.require("games.nextsoldier.squad")
+local Tactics = nextsoldier.tactics
+local Squad = nextsoldier.squad
 local Inspect = WS.require("features.aiwar.inspect")
 local RED, BLUE = Map.RED, Map.BLUE
 local ToVector, IsDoor = Map.ToVector, Map.IsDoor

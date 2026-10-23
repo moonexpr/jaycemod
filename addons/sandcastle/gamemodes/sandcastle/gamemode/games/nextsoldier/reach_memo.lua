@@ -36,10 +36,10 @@
 --     where # honours __len), region:RouteTo(id) (its search's way there from
 --     its start), region:Nearest(goalPos, center(id)) (the area nearest the
 --     goal: where a search for it would have come closest)
-local Cache = require("foundation.cache.base")
-local Class = require("foundation.core.class")
-local Expiring = require("foundation.cache.expiring")
-local Geometry = require("foundation.math.geometry")
+local Cache = cache.base
+local Class = core.class
+local Expiring = cache.expiring
+local Geometry = math.geometry
 local concat, ipairs, pairs, rawget, setmetatable, type = table.concat, ipairs, pairs, rawget, setmetatable, type
 module(...)
 

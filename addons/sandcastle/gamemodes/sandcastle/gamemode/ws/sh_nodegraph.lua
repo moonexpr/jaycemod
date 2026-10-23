@@ -4,7 +4,7 @@
 -- overlay that draws it.
 
 -- Switched off (games.system.features OFF): no commands, menu or overlay.
-if WS.require("games.system.features").OFF.nodegraph then return end
+if system.features.OFF.nodegraph then return end
 
 -- The overlay's snapshot, which the nodegraph feature fires to an admin who
 -- turned it on: which graph (generated, installed or none), the nodes near
@@ -16,7 +16,7 @@ local Settings = WS.require("ws.settings")
 
 -- Shared, so the Utilities menu's slider shows the server's value.
 local MAX_NODES_RANGE = Settings.SETTINGS.ws_nodegraph_max_nodes
-CreateConVar("ws_nodegraph_max_nodes", tostring(WS.require("foundation.nodegraph").MAX_NODES),
+CreateConVar("ws_nodegraph_max_nodes", tostring(nodegraph.MAX_NODES),
 	{ FCVAR_ARCHIVE, FCVAR_REPLICATED },
 	"The most nodes a generated AI node graph may have (the engine's limit is 1500 in the 2013 SDK)",
 	MAX_NODES_RANGE.min, MAX_NODES_RANGE.max)
@@ -37,7 +37,7 @@ E.Define("game_nodegraph_debug", {
 if SERVER then
 	local function Command(name, method, help)
 		concommand.Add(name, function(ply)
-			if not WS.Can(ply, WS.require("games.system.permissions").NEXTSOLDIER) then
+			if not WS.Can(ply, system.permissions.NEXTSOLDIER) then
 				ply:ChatPrint("Node graph: you may not do that")
 				return
 			end

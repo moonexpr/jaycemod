@@ -8,8 +8,8 @@
 --   memo:Fetch(key, stamp, compute) -> the value, compute(key) called only
 --     when the key holds no value for that stamp
 -- A value put by hand (Put) holds no stamp, so the next Fetch computes.
-local Cache = require("foundation.cache.base")
-local Class = require("foundation.core.class")
+local Cache = cache.base
+local Class = core.class
 local error = error
 module(...)
 

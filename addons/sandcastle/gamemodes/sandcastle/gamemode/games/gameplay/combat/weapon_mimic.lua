@@ -11,7 +11,7 @@
 -- mimic's direction vectors, which support + and * by a number. FireSound
 -- and ParticleEffect are read by CTFPointWeaponMimic and never played.
 local require = require
-local Teams = require("games.gameplay.teams")
+local Teams = gameplay.teams
 local abs, cos, floor, max, rad, sin = math.abs, math.cos, math.floor, math.max, math.rad, math.sin
 local setmetatable = setmetatable
 module(...)

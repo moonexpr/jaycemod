@@ -13,7 +13,7 @@
 -- Loaded by tf_logic_mann_vs_machine. It loads rounds and flag.
 local Mvm = WS.require("features.mvm.model")
 local Flag = WS.require("features.flag.model")
-local Rounds = WS.require("games.gameplay.rounds")
+local Rounds = gameplay.rounds
 
 local THINK_INTERVAL = 0.25
 local THINK_HOOK = "ws_mvm"

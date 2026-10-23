@@ -10,7 +10,7 @@
 -- submenu, a choice with checked as a ticked or unticked entry),
 -- run(ply, ent, value) on the server }. Every choice goes to the server as
 -- game_admin_property, which checks the filter and the privilege again.
-local Permissions = WS.require("games.system.permissions")
+local Permissions = system.permissions
 local E = WS.Events
 
 local DEFS = {}

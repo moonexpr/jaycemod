@@ -3,7 +3,7 @@
 -- race, control points and their rounds) and its name's prefix (pl_, plr_,
 -- koth_, ctf_, cp_, arena_...).
 local format, lower, match = string.format, string.lower, string.match
-local Economy = require("games.gameplay.economy")
+local Economy = gameplay.economy
 module(...)
 
 -- info = { map, trains (team_train_watchers), race (tf_logic_multiple_escort

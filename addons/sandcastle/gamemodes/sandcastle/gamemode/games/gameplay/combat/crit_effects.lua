@@ -5,7 +5,7 @@
 -- critical_grenade_*), each in its shooter's team's colour: RED's for RED,
 -- BLU's for anyone else, as GetTracerType picks. The controller
 -- (ws/sv_hits.lua, ws/sh_crit_effects.lua) draws them.
-local Teams = require("games.gameplay.teams")
+local Teams = gameplay.teams
 local ipairs, pairs = ipairs, pairs
 module(...)
 

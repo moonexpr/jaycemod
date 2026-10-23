@@ -13,8 +13,8 @@
 local format, ipairs, pairs, remove, setmetatable, sort, tonumber, type, upper =
 	string.format, ipairs, pairs, table.remove, setmetatable, table.sort, tonumber, type, string.upper
 local floor = math.floor
-local Teams = require("games.gameplay.teams")
-local Squad = require("games.nextsoldier.squad")
+local Teams = gameplay.teams
+local Squad = nextsoldier.squad
 module(...)
 
 local LEADER, MEMBER = Squad.LEADER, Squad.MEMBER

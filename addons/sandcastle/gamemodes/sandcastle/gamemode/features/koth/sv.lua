@@ -11,7 +11,7 @@
 --
 -- Loaded by tf_logic_koth. It loads rounds and capture.
 local Koth = WS.require("features.koth.model")
-local Rounds = WS.require("games.gameplay.rounds")
+local Rounds = gameplay.rounds
 
 local RED, BLUE = WS.TEAM_RED, WS.TEAM_BLUE
 local GAME_TEAMS = { RED, BLUE }

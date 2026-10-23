@@ -12,7 +12,7 @@
 -- Besides a step's usual fields it reads step.attributes (the area's
 -- NAV_MESH_* flags).
 local band = bit.band
-local Path = require("games.nextsoldier.path")
+local Path = nextsoldier.path
 local TFBot = require("games.nextsoldier.path.tfbot")
 module(...)
 

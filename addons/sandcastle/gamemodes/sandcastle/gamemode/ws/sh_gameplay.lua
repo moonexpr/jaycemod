@@ -10,8 +10,8 @@
 -- times, win conditions and team scores). On clients: the Utilities menu's
 -- Admin > Gameplay Settings, the modes and those settings, and a note on the
 -- HUD in Sandbox mode.
-local Gamemode = WS.require("games.system.gamemode")
-local Permissions = WS.require("games.system.permissions")
+local Gamemode = system.gamemode
+local Permissions = system.permissions
 
 local SETTINGS = "ws_gameplay_settings"
 

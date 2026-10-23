@@ -8,9 +8,9 @@
 -- capping } (UpdateBlocked), { kind = "owner", old, team } (the area's new owner).
 local band = bit.band
 local ipairs, pairs = ipairs, pairs
-local Capture = require("games.gameplay.capture")
-local Teams = require("games.gameplay.teams")
-local Snapshots = require("games.world.snapshot")
+local Capture = gameplay.capture
+local Teams = gameplay.teams
+local Snapshots = world.snapshot
 module(...)
 
 -- mp_blockstyle: whether a block ends the capture or pauses it.

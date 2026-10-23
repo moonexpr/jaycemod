@@ -190,7 +190,7 @@ local function Tell(ply, lines)
 end
 
 local function Admin(ply)
-	return WS.Can(ply, WS.require("games.system.permissions").NEXTSOLDIER) == true
+	return WS.Can(ply, system.permissions.NEXTSOLDIER) == true
 end
 
 concommand.Add("ws_path_profile", function(ply, _, args)

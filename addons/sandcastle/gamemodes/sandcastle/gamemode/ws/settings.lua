@@ -7,10 +7,10 @@
 -- setting's privilege (games.system.permissions), after Parse holds the value
 -- to the range the menu's control offers. Every setting is an integer, kept
 -- in a foundation.configstore whose guards are privileges.
-local ConfigStore = require("foundation.configstore")
+local ConfigStore = configstore
 local AiWar = require("features.aiwar.model")
 local Slots = require("features.aiwar.slots")
-local Permissions = require("games.system.permissions")
+local Permissions = system.permissions
 module(...)
 
 local RULES = Permissions.RULES

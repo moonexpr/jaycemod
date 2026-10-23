@@ -8,7 +8,7 @@
 -- the vote bar with each side's count; VotePassed and VoteFailed for the
 -- result. The game's vote state is ws/sh_votes.lua's game_vote_state.
 local ceil, floor, format, ipairs, max, min, tostring = math.ceil, math.floor, string.format, ipairs, math.max, math.min, tostring
-local Vote = require("games.gameplay.vote")
+local Vote = gameplay.vote
 module(...)
 
 -- VoteActive: 8,150 150x144, border TFFatLineBorderOpaque.
