@@ -4,6 +4,10 @@
 -- WS and WS.require, the gamemode's require, come from shared_loader.lua,
 -- which also loaded foundation's namespaces.
 
+-- The gamemode's folder, for the feature files below. GM exists only while
+-- the gamemode loads.
+local GAMEMODE_ROOT = GM.FolderName .. "/gamemode/"
+
 -- The game event library (WS.Events), which everything after this
 -- line may use; shared.lua skips it among the other sh_ files.
 include("sh_events.lua")
