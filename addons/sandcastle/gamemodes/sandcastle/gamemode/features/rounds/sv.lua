@@ -55,6 +55,8 @@ local scrambleWinDifference = ConVarOrCreate("mp_scrambleteams_auto_windifferenc
 local winlimit = ConVarOrCreate("mp_winlimit", "0", { FCVAR_REPLICATED, FCVAR_NOTIFY }, "Max score one team can reach before server changes maps", 0)
 local maxrounds = ConVarOrCreate("mp_maxrounds", "0", { FCVAR_REPLICATED, FCVAR_NOTIFY }, "max number of rounds to play before server changes maps", 0)
 local timelimit = ConVarOrCreate("mp_timelimit", "30", { FCVAR_NOTIFY, FCVAR_REPLICATED }, "game time per map in minutes")
+local casualWinConditions = ConVarOrCreate("mp_casual_win_conditions", "1", FCVAR_NOTIFY,
+	"1: each map sets mp_winlimit and mp_maxrounds as TF2's casual matches do for its kind; 0: they stay as set")
 -- GMod defines mp_timelimit itself, at 0 (no limit); Sandcastle's default
 -- is DEFAULT_TIMELIMIT minutes, taken while the server leaves it at GMod's.
 local DEFAULT_TIMELIMIT = 30
@@ -520,9 +522,41 @@ function Controller:EnsureRules()
 	if self.mapSetUp then WS.Feature("gamemode"):StartAtLoad() end
 end
 
+-- What decides the map's casual win conditions (Limits.WinConditions), once
+-- the objective features have set the mode and the master is bound.
+local function MapKind()
+	local mode = Controller:Mode().NAME
+	local master = ents.FindByClass(MASTER_CLASS)[1]
+	return {
+		mvm = mode == "mvm",
+		payload = mode == "payload",
+		ctf = mode == "ctf",
+		multipleTrains = ents.FindByClass("tf_logic_multiple_escort")[1] ~= nil,
+		miniRounds = Controller.objective:PlayingMiniRounds(),
+		stages = #ents.FindByClass("team_control_point_round"),
+		switchTeams = IsValid(master) and (master.wsKv or {}).switch_teams == "1",
+	}
+end
+
+-- As TF2 execs a server_casual_*_win_conditions.cfg at a casual match's
+-- start: once a map, so an admin's change holds until the next.
+local function ApplyWinConditions()
+	if not casualWinConditions:GetBool() then return end
+	local conditions = Limits.WinConditions(MapKind())
+	if not conditions then return end
+	winlimit:SetInt(conditions.winlimit)
+	maxrounds:SetInt(conditions.maxrounds)
+	print(string.format("Win conditions (TF2 casual, %s): mp_winlimit %d, mp_maxrounds %d",
+		conditions.name, conditions.winlimit, conditions.maxrounds))
+end
+
 -- Loaded during the map's spawn this waits for InitPostEntity; loaded later,
--- the next tick has every entity.
-hook.Add("InitPostEntity", THINK_HOOK, function() Controller:SetUpMap() end)
+-- the next tick has every entity. A live reload sets the map up again but
+-- leaves its win conditions.
+hook.Add("InitPostEntity", THINK_HOOK, function()
+	Controller:SetUpMap()
+	ApplyWinConditions()
+end)
 timer.Simple(0, function() Controller:SetUpMap() end)
 
 -- The timers take their RoundSpawn from the rounds, first of all.

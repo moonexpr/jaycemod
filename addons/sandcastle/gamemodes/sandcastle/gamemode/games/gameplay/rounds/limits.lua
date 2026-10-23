@@ -4,7 +4,8 @@
 -- earned (not what it held to begin with). Frags decide before money; both
 -- teams at a
 -- limit together go to the higher count, and an equal one is a tie, a
--- stalemate for games.gameplay.rounds to break.
+-- stalemate for games.gameplay.rounds to break. And the match's win
+-- conditions on a map of each kind (WinConditions).
 local ceil, ipairs, min, setmetatable, tostring = math.ceil, ipairs, math.min, setmetatable, tostring
 local Economy = gameplay.economy
 local Rounds = gameplay.rounds
@@ -101,6 +102,33 @@ end
 -- limits, frags first, or nil while no limit is reached.
 function Outcome(limits, tally)
 	return AtLimit(limits.frags, tally.frags, W.FRAGLIMIT) or AtLimit(limits.cash, tally.earned, W.CASHLIMIT)
+end
+
+-------------------------------------------------------------------------------
+-- The match's win conditions
+
+-- TF2's casual matches: mp_winlimit and mp_maxrounds as the
+-- server_casual_*_win_conditions.cfg for the map's kind sets them, over
+-- server_matchmaking_base.cfg's zeroes. name: the cfg's.
+WIN_CONDITIONS = {
+	ROUNDS = { name = "rounds", winlimit = 2, maxrounds = 0 },
+	STOPWATCH = { name = "stopwatch", winlimit = 0, maxrounds = 2 },
+	MAX_ROUNDS = { name = "max_rounds", winlimit = 0, maxrounds = 1 },
+}
+
+-- map = { mvm, payload, ctf (the round's mode), multipleTrains (a race),
+-- miniRounds, stages (the master's rounds), switchTeams (the master's
+-- switch_teams) }. TF2's choice (CTFMatchDescCasual's
+-- InitGameRulesSettingsPostEntity): an attack/defend map
+-- (CTFGameRules::IsAttackDefenseMode) plays stopwatch; a payload race in
+-- stages and CTF play one round; any other map goes to the first team to
+-- the win limit. nil for MvM, whose waves decide.
+function WinConditions(map)
+	if map.mvm then return nil end
+	if not map.multipleTrains and (map.payload or map.miniRounds or map.switchTeams) then return WIN_CONDITIONS.STOPWATCH end
+	local raceInStages = map.payload and map.multipleTrains and map.miniRounds and map.stages > 1
+	if raceInStages or map.ctf then return WIN_CONDITIONS.MAX_ROUNDS end
+	return WIN_CONDITIONS.ROUNDS
 end
 
 -------------------------------------------------------------------------------

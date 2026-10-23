@@ -138,4 +138,46 @@ T.test("no panel for a limit that is off", function()
 	T.eq(#only == 1 and only[1].reason, W.CASHLIMIT, "money alone")
 end)
 
+-- The match's win conditions: TF2's casual ones for the map's kind
+-- (tf_match_description_casual.cpp picks a server_casual_*_win_conditions.cfg).
+
+local function Map(facts)
+	local map = { mvm = false, payload = false, ctf = false, multipleTrains = false, miniRounds = false, stages = 0, switchTeams = false }
+	for k, v in pairs(facts) do map[k] = v end
+	return map
+end
+
+local C = Limits.WIN_CONDITIONS
+
+T.test("TF2's casual win conditions, as its cfgs set them", function()
+	T.eq(C.ROUNDS.winlimit, 2, "server_casual_rounds_win_conditions: first to two")
+	T.eq(C.ROUNDS.maxrounds, 0, "no round limit")
+	T.eq(C.STOPWATCH.maxrounds, 2, "server_casual_stopwatch_win_conditions: two rounds")
+	T.eq(C.STOPWATCH.winlimit, 0, "no win limit")
+	T.eq(C.MAX_ROUNDS.maxrounds, 1, "server_casual_max_rounds_win_conditions: one round")
+	T.eq(C.MAX_ROUNDS.winlimit, 0, "no win limit")
+end)
+
+T.test("a symmetric map is won by the first team to the win limit", function()
+	T.eq(Limits.WinConditions(Map({})), C.ROUNDS, "no objective, symmetric control points or KOTH")
+	T.eq(Limits.WinConditions(Map({ payload = true, multipleTrains = true })), C.ROUNDS, "a one-stage payload race")
+end)
+
+T.test("an attack/defend map plays stopwatch", function()
+	T.eq(Limits.WinConditions(Map({ payload = true })), C.STOPWATCH, "payload")
+	T.eq(Limits.WinConditions(Map({ payload = true, miniRounds = true, stages = 3 })), C.STOPWATCH, "multi-stage payload")
+	T.eq(Limits.WinConditions(Map({ miniRounds = true, stages = 3 })), C.STOPWATCH, "control points in stages")
+	T.eq(Limits.WinConditions(Map({ switchTeams = true })), C.STOPWATCH, "control points that switch teams on a win")
+end)
+
+T.test("a multi-stage payload race and CTF play one round", function()
+	T.eq(Limits.WinConditions(Map({ payload = true, multipleTrains = true, miniRounds = true, stages = 3 })), C.MAX_ROUNDS, "race in stages")
+	T.eq(Limits.WinConditions(Map({ ctf = true })), C.MAX_ROUNDS, "CTF")
+	T.eq(Limits.WinConditions(Map({ payload = true, multipleTrains = true, miniRounds = true, stages = 1 })), C.ROUNDS, "a race of one stage is symmetric")
+end)
+
+T.test("Mann vs. Machine has no casual win conditions", function()
+	T.eq(Limits.WinConditions(Map({ mvm = true, ctf = true })), nil, "its waves decide")
+end)
+
 T.finish()
