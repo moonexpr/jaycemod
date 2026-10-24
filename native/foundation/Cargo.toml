@@ -1,0 +1,18 @@
+[package]
+name = "foundation"
+version = "0.1.0"
+edition = "2021"
+description = "Sandcastle's foundation structures and algorithms, native: the Lua modules' backing on the server"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = ["entry"]
+# The module's exported entry points (gmod13_open, luaopen_foundation)
+entry = []
+
+[profile.release]
+panic = "abort"
+lto = true
