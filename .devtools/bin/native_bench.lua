@@ -26,9 +26,14 @@ local function Path(module)
 	return "foundation/" .. module:gsub("%.", "/") .. ".lua"
 end
 
--- The Lua twin of `module` ("tree.heap") and its native twin, or nil.
+-- The Lua twin of `module` ("tree.heap", or a root module: "nodegraph")
+-- and its native twin, or nil.
 local function Twins(module)
 	local ns, name = module:match("^([%w_]+)%.([%w_]+)$")
+	if not ns then
+		if SERVER_SIDE then return _G[module], nil end
+		return _G[module], native[module]
+	end
 	if SERVER_SIDE then
 		local installed = _G[ns] and _G[ns][name]
 		local env = setmetatable({}, { __index = _G })
@@ -54,7 +59,7 @@ local function Keys(n, span)
 	return keys
 end
 
-local KEYS = Keys(N, 100000)
+local KEYS = Keys(N + 3, 100000)
 
 local CASES = {
 	["tree.heap"] = {
@@ -99,6 +104,141 @@ local CASES = {
 			local tree = Avl()
 			for i = 1, N do tree:Insert(KEYS[i], i) end
 			for i = 1, N do tree:Remove(KEYS[i]) end
+		end },
+	},
+	["list.queue"] = {
+		{ "push back, pop front", 2 * N, function(Queue)
+			local q = Queue.New()
+			for i = 1, N do q:PushBack(i) end
+			for _ = 1, N do q:PopFront() end
+		end },
+	},
+	["list.ring"] = {
+		{ "push into 64", N, function(Ring)
+			local ring = Ring.New(64)
+			for i = 1, N do ring:Push(i) end
+		end },
+	},
+	["list.slots"] = {
+		{ "alloc then free", 2 * N, function(Slots)
+			local pool, got = Slots.New(), {}
+			for i = 1, N do got[i] = pool:Alloc() end
+			for i = 1, N do pool:Free(got[i]) end
+		end },
+	},
+	["list.chain"] = {
+		{ "push back, move front, unlink", 3 * N, function(Chain)
+			local chain = Chain.New()
+			for i = 1, N do chain:PushBack(i) end
+			for i = 1, N do chain:MoveFront(KEYS[i] % N + 1) end
+			for i = 1, N do chain:Unlink(i) end
+		end },
+	},
+	["world.pairmap"] = {
+		{ "set then get", 2 * N, function(PairMap)
+			local map = PairMap.New()
+			for i = 1, N do map:Set(i, KEYS[i] % 5000, i) end
+			for i = 1, N do map:Get(i, KEYS[i] % 5000) end
+		end },
+	},
+	["world.lease"] = {
+		{ "take, holder, release", 3 * N, function(Lease)
+			local leases, holder = Lease.New(), {}
+			for i = 1, N do leases:Take(KEYS[i] % 500, holder, i, 10) end
+			for i = 1, N do leases:Holder(KEYS[i] % 500, i) end
+			for i = 1, N do leases:Release(KEYS[i] % 500, holder) end
+		end },
+	},
+	["world.sets"] = {
+		{ "named set Has", N, function(Sets)
+			local set = Sets.Named("bench", { "alpha", "beta", "gamma", "delta" })
+			local words = { "alpha", "beta", "omega", "delta" }
+			for i = 1, N do set:Has(words[i % 4 + 1]) end
+		end },
+	},
+	["math.geometry"] = {
+		{ "Distance of two points", N, function(Geometry)
+			local a, b = { x = 1, y = 2, z = 3 }, { x = 4, y = 6, z = 8 }
+			for _ = 1, N do Geometry.Distance(a, b) end
+		end },
+		{ "Normalize (a new point)", N, function(Geometry)
+			local a = { x = 1, y = 2, z = 3 }
+			for _ = 1, N do Geometry.Normalize(a) end
+		end },
+	},
+	["math.scalar"] = {
+		{ "Clamp", N, function(Scalar)
+			for i = 1, N do Scalar.Clamp(KEYS[i], 100, 90000) end
+		end },
+	},
+	["math.weighted"] = {
+		{ "PickWeighted of 10", N, function(Weighted)
+			local items = {}
+			for i = 1, 10 do items[i] = { w = i } end
+			local function Weight(item) return item.w end
+			for i = 1, N do Weighted.PickWeighted(items, Weight, (KEYS[i] % 1000) / 1000) end
+		end },
+	},
+	["math.polynomial"] = {
+		{ "Evaluate a cubic", N, function(Polynomial)
+			local c = { 1, -2, 3, 0.5 }
+			for i = 1, N do Polynomial.Evaluate(c, i / N) end
+		end },
+		{ "Roots of a cubic", N, function(Polynomial)
+			local c = { -6, 11, -6, 1 }
+			for _ = 1, N do Polynomial.Roots(c) end
+		end },
+	},
+	["math.stats"] = {
+		{ "Percentile of 1000 (one call)", 1, function(Stats)
+			local list = {}
+			for i = 1, 1000 do list[i] = KEYS[i] end
+			Stats.Percentile(list, 0.9)
+		end },
+		{ "Mean of 1000 (one call)", 1, function(Stats)
+			local list = {}
+			for i = 1, 1000 do list[i] = KEYS[i] end
+			Stats.Mean(list)
+		end },
+	},
+	["math.matrix"] = {
+		{ "8x8 multiply (one call)", 1, function(Matrix)
+			local rows = {}
+			for i = 1, 8 do rows[i] = {} for j = 1, 8 do rows[i][j] = (KEYS[i * 8 + j] % 100) / 7 end end
+			local m = Matrix.New(rows)
+			m:Multiply(m)
+		end },
+		{ "32x32 inverse (one call)", 1, function(Matrix)
+			local rows = {}
+			for i = 1, 32 do rows[i] = {} for j = 1, 32 do rows[i][j] = (KEYS[i * 32 + j] % 100) / 7 + (i == j and 50 or 0) end end
+			Matrix.New(rows):Inverse()
+		end },
+	},
+	["math.polyline"] = {
+		{ "DistanceOf on 200 points", N / 10, function(Polyline)
+			local points = {}
+			for i = 1, 200 do points[i] = { x = i * 50, y = (KEYS[i] % 300), z = 0 } end
+			local line = Polyline.New(points)
+			for i = 1, N / 10 do line:DistanceOf({ x = KEYS[i] % 10000, y = 100, z = 0 }) end
+		end },
+		{ "PointAt on 200 points", N, function(Polyline)
+			local points = {}
+			for i = 1, 200 do points[i] = { x = i * 50, y = (KEYS[i] % 300), z = 0 } end
+			local line = Polyline.New(points)
+			local length = line:Length()
+			for i = 1, N do line:PointAt((KEYS[i] % 1000) / 1000 * length) end
+		end },
+	},
+	["world.grid"] = {
+		{ "Thin 5000 points (one call)", 1, function(Grid)
+			local points = {}
+			for i = 1, 5000 do points[i] = { x = KEYS[i] % 4000, y = KEYS[i + 1] % 4000, z = KEYS[i + 2] % 300 } end
+			Grid.Thin(points, 64)
+		end },
+		{ "Put 5000, Near each", 5000, function(Grid)
+			local grid, points = Grid.New(128), {}
+			for i = 1, 5000 do points[i] = { x = KEYS[i] % 4000, y = KEYS[i + 1] % 4000 } grid:Put(points[i], i) end
+			for i = 1, 5000 do grid:Near(points[i], function() end) end
 		end },
 	},
 }
