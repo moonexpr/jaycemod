@@ -14,5 +14,7 @@ default = ["entry"]
 entry = []
 
 [profile.release]
-panic = "abort"
+# A Lua error unwinds through Rust frames (C-unwind); panic = "abort" would
+# turn that unwind into an abort, so pcall could never catch a refusal.
+panic = "unwind"
 lto = true

@@ -20,6 +20,7 @@ pub const GLOBALSINDEX: c_int = -10002;
 pub const TNIL: c_int = 0;
 pub const TNUMBER: c_int = 3;
 pub const TTABLE: c_int = 5;
+pub const TFUNCTION: c_int = 6;
 
 macro_rules! api {
     ($($field:ident: fn($($arg:ty),*) $(-> $ret:ty)? = $symbol:literal;)*) => {
@@ -54,6 +55,9 @@ api! {
     objlen: fn(L, c_int) -> usize = c"lua_objlen";
     pushnil: fn(L) = c"lua_pushnil";
     pushnumber: fn(L, f64) = c"lua_pushnumber";
+    pushboolean: fn(L, c_int) = c"lua_pushboolean";
+    toboolean: fn(L, c_int) -> c_int = c"lua_toboolean";
+    call: fn(L, c_int, c_int) = c"lua_call";
     pushcclosure: fn(L, CFunction, c_int) = c"lua_pushcclosure";
     createtable: fn(L, c_int, c_int) = c"lua_createtable";
     getfield: fn(L, c_int, *const c_char) = c"lua_getfield";
@@ -124,6 +128,49 @@ pub unsafe fn set_function(l: L, name: &CStr, function: CFunction) {
     let api = api();
     (api.pushcclosure)(l, function, 0);
     (api.setfield)(l, -2, name.as_ptr());
+}
+
+/// Pushes `text` as a Lua string.
+///
+/// # Safety
+/// `l` is a live state, after `open`.
+pub unsafe fn push_str(l: L, text: &str) {
+    (api().pushlstring)(l, text.as_ptr().cast(), text.len());
+}
+
+/// The number in `table[name]` (the table at `index`), or None when absent.
+///
+/// # Safety
+/// `l` is a live state with a table at `index` (an absolute index), after `open`.
+pub unsafe fn field_number(l: L, index: c_int, name: &CStr) -> Option<f64> {
+    let api = api();
+    (api.getfield)(l, index, name.as_ptr());
+    let value = ((api.type_of)(l, -1) == TNUMBER).then(|| (api.tonumber)(l, -1));
+    (api.settop)(l, -2);
+    value
+}
+
+/// Whether `table[name]` (the table at `index`) is truthy.
+///
+/// # Safety
+/// `l` is a live state with a table at `index` (an absolute index), after `open`.
+pub unsafe fn field_truthy(l: L, index: c_int, name: &CStr) -> bool {
+    let api = api();
+    (api.getfield)(l, index, name.as_ptr());
+    let value = (api.toboolean)(l, -1) != 0;
+    (api.settop)(l, -2);
+    value
+}
+
+/// A Lua error with an owned `message`, pushed and dropped before raising.
+///
+/// # Safety
+/// As `raise`.
+pub unsafe fn raise_owned(l: L, message: String) -> ! {
+    push_str(l, &message);
+    drop(message);
+    (api().error)(l);
+    unreachable!("lua_error does not return")
 }
 
 /// A Lua error with `message`; it never returns.

@@ -114,7 +114,6 @@ pub unsafe fn open(l: L) {
 }
 
 /// GMod's entry point.
-#[cfg(feature = "entry")]
 #[no_mangle]
 pub unsafe extern "C-unwind" fn gmod13_open(l: L) -> c_int {
     if crate::lua::open().is_err() {
@@ -125,7 +124,6 @@ pub unsafe extern "C-unwind" fn gmod13_open(l: L) -> c_int {
     0
 }
 
-#[cfg(feature = "entry")]
 #[no_mangle]
 pub unsafe extern "C-unwind" fn gmod13_close(_l: L) -> c_int {
     0
@@ -133,7 +131,6 @@ pub unsafe extern "C-unwind" fn gmod13_close(_l: L) -> c_int {
 
 /// Stock Lua's entry point (`package.loadlib`), for the LuaJIT tests:
 /// returns `foundation.native`.
-#[cfg(feature = "entry")]
 #[no_mangle]
 pub unsafe extern "C-unwind" fn luaopen_foundation(l: L) -> c_int {
     if crate::lua::open().is_err() {

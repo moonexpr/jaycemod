@@ -23,4 +23,5 @@ pub mod heap;
 pub mod lua;
 pub mod userdata;
 
+#[cfg(feature = "entry")]
 mod bind;

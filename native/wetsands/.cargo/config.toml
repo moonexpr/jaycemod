@@ -1,0 +1,4 @@
+# The C runtime linked in, so the DLL loads in a Wine bottle without the
+# Visual C++ redistributable.
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]

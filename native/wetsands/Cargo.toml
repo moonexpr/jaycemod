@@ -1,0 +1,18 @@
+[package]
+name = "wetsands"
+version = "0.1.0"
+edition = "2021"
+description = "foundation.wetsands, native: Sandcastle's systems built on the native foundation (route search on the nav mesh)"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+foundation = { path = "../foundation", default-features = false }
+
+[profile.release]
+# A Lua error unwinds through Rust frames (C-unwind); panic = "abort" would
+# turn that unwind into an abort, so pcall could never catch a refusal.
+panic = "unwind"
+lto = true
