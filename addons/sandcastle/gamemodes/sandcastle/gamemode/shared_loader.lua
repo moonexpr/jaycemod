@@ -51,6 +51,7 @@ Index("foundation/sh_index.lua")
 -- with a binary module installed has it replace its Lua twins' globals here,
 -- after the indexes publish them and before any module binds one to a
 -- local. One line a module, never a loop.
+if SERVER and util.IsBinaryModuleInstalled("foundation") then require("foundation") end
 if SERVER and util.IsBinaryModuleInstalled("wetsands") then require("wetsands") end
 
 -- game: published at once, each module loaded the first time it is read,

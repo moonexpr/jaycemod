@@ -1,7 +1,9 @@
 //! Rust values as Lua full userdata: one metatable a type, its methods read
-//! through `__index`, dropped once by `__gc`.
+//! through `__index`, dropped once by `__gc`. Each value is stored behind a
+//! tag (a hash of its type's name), so a method checks its argument's type
+//! with two API calls rather than luaL_checkudata's registry lookup by name.
 
-use crate::lua::{api, set_function, CFunction, L};
+use crate::lua::{api, raise_owned, set_function, CFunction, L, TUSERDATA};
 use std::ffi::{c_int, CStr};
 
 /// A Rust type Lua holds as a userdata handle.
@@ -15,8 +17,27 @@ pub trait Native: Sized + 'static {
     const INDEX: Option<CFunction> = None;
 }
 
+/// FNV-1a of a type's name: the tag its values carry.
+const fn tag_of(name: &CStr) -> u64 {
+    let bytes = name.to_bytes();
+    let mut hash = 0xcbf2_9ce4_8422_2325u64;
+    let mut i = 0;
+    while i < bytes.len() {
+        hash ^= bytes[i] as u64;
+        hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
+        i += 1;
+    }
+    hash
+}
+
+#[repr(C)]
+struct Tagged<T> {
+    tag: u64,
+    value: T,
+}
+
 unsafe extern "C-unwind" fn collect<T: Native>(l: L) -> c_int {
-    let value = (api().checkudata)(l, 1, T::NAME.as_ptr()).cast::<T>();
+    let value: *mut T = check::<T>(l, 1);
     // SAFETY: __gc runs once, on a userdata `push` initialised with a T.
     std::ptr::drop_in_place(value);
     0
@@ -27,11 +48,11 @@ unsafe extern "C-unwind" fn collect<T: Native>(l: L) -> c_int {
 /// # Safety
 /// `l` is a live state, after `lua::open`.
 pub unsafe fn push<T: Native>(l: L, value: T) {
-    const { assert!(std::mem::align_of::<T>() <= 8, "Lua aligns userdata to 8 bytes") };
+    const { assert!(std::mem::align_of::<Tagged<T>>() <= 8, "Lua aligns userdata to 8 bytes") };
     let api = api();
-    let slot = (api.newuserdata)(l, std::mem::size_of::<T>()).cast::<T>();
-    // SAFETY: newuserdata returned size_of::<T>() bytes, aligned to 8.
-    slot.write(value);
+    let slot = (api.newuserdata)(l, std::mem::size_of::<Tagged<T>>()).cast::<Tagged<T>>();
+    // SAFETY: newuserdata returned the size of a Tagged<T>, aligned to 8.
+    slot.write(Tagged { tag: tag_of(T::NAME), value });
     if (api.newmetatable)(l, T::NAME.as_ptr()) != 0 {
         match T::INDEX {
             Some(index) => set_function(l, c"__index", index),
@@ -54,7 +75,15 @@ pub unsafe fn push<T: Native>(l: L, value: T) {
 /// `l` is a live state, after `lua::open`; the reference is used only while
 /// the userdata stays on the stack, and no other reference to it is live.
 pub unsafe fn check<'a, T: Native>(l: L, index: c_int) -> &'a mut T {
-    // SAFETY: checkudata returns only a userdata carrying T's metatable,
-    // which `push` gave only to values it initialised as a T.
-    &mut *(api().checkudata)(l, index, T::NAME.as_ptr()).cast::<T>()
+    let api = api();
+    if (api.type_of)(l, index) == TUSERDATA {
+        let tagged = (api.touserdata)(l, index).cast::<Tagged<T>>();
+        // SAFETY: every userdata at least 8 bytes long that this module
+        // pushed starts with its tag; a userdata of another module is read
+        // only if at least that long, checked first.
+        if (api.objlen)(l, index) >= std::mem::size_of::<Tagged<T>>() && (*tagged).tag == tag_of(T::NAME) {
+            return &mut (*tagged).value;
+        }
+    }
+    raise_owned(l, format!("argument {index}: a {} is wanted", T::NAME.to_string_lossy()))
 }

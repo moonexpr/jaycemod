@@ -1,26 +1,28 @@
--- An ordered map on an AVL tree: keys kept in order by the caller's rule,
--- inserted, found and removed in O(log n).
---   New([less]) orders keys by less(a, b) (default a < b)
+-- An ordered map of number keys on an AVL tree: inserted, found and removed
+-- in O(log n). This is the Lua twin; a server with native/foundation has it
+-- replaced in place by the native tree, which runs this algorithm node for
+-- node (so heights agree too).
+--   Avl() (New()) -> an empty tree
 --   tree:Insert(key, value) (a key inserted again takes the new value),
 --   tree:Get(key), tree:Remove(key) -> whether it was there, tree:Size(),
 --   tree:Min(), tree:Max(), tree:Floor(key), tree:Ceiling(key) -> the
 --   nearest key at or below, at or above (and its value), or nil,
---   tree:Pairs() -> an iterator in order (key, value), tree:Height()
+--   tree:Pairs() -> an iterator in order (key, value), not to be run across
+--   a change to the tree, tree:Height()
 local max, setmetatable = math.max, setmetatable
 module(...)
 
 local Tree = {}
 Tree.__index = Tree
 
-local function Less(a, b) return a < b end
-
-function New(less)
+function New()
 	return setmetatable({
-		less = less or Less,
 		root = nil,
 		size = 0,
 	}, Tree)
 end
+
+setmetatable(_M, { __call = function() return New() end })
 
 local function HeightOf(node)
 	return node and node.height or 0
@@ -61,7 +63,7 @@ local function Balance(node)
 end
 
 -- Returns the subtree with key set, and whether the key is new.
-local function Insert(node, key, value, less)
+local function Insert(node, key, value)
 	if not node then
 		return {
 			key = key,
@@ -70,10 +72,10 @@ local function Insert(node, key, value, less)
 		}, true
 	end
 	local added
-	if less(key, node.key) then
-		node.left, added = Insert(node.left, key, value, less)
-	elseif less(node.key, key) then
-		node.right, added = Insert(node.right, key, value, less)
+	if key < node.key then
+		node.left, added = Insert(node.left, key, value)
+	elseif node.key < key then
+		node.right, added = Insert(node.right, key, value)
 	else
 		node.value = value
 		return node, false
@@ -93,13 +95,13 @@ local function MinNode(node)
 end
 
 -- Returns the subtree without key, and whether it was there.
-local function Remove(node, key, less)
+local function Remove(node, key)
 	if not node then return nil, false end
 	local removed
-	if less(key, node.key) then
-		node.left, removed = Remove(node.left, key, less)
-	elseif less(node.key, key) then
-		node.right, removed = Remove(node.right, key, less)
+	if key < node.key then
+		node.left, removed = Remove(node.left, key)
+	elseif node.key < key then
+		node.right, removed = Remove(node.right, key)
 	else
 		if not node.left then return node.right, true end
 		if not node.right then return node.left, true end
@@ -113,23 +115,23 @@ end
 
 function Tree:Insert(key, value)
 	local added
-	self.root, added = Insert(self.root, key, value, self.less)
+	self.root, added = Insert(self.root, key, value)
 	if added then self.size = self.size + 1 end
 end
 
 function Tree:Remove(key)
 	local removed
-	self.root, removed = Remove(self.root, key, self.less)
+	self.root, removed = Remove(self.root, key)
 	if removed then self.size = self.size - 1 end
 	return removed
 end
 
 function Tree:Get(key)
-	local node, less = self.root, self.less
+	local node = self.root
 	while node do
-		if less(key, node.key) then
+		if key < node.key then
 			node = node.left
-		elseif less(node.key, key) then
+		elseif node.key < key then
 			node = node.right
 		else
 			return node.value
@@ -160,13 +162,13 @@ function Tree:Max()
 end
 
 function Tree:Floor(key)
-	local node, less, best = self.root, self.less, nil
+	local node, best = self.root, nil
 	while node do
-		if less(key, node.key) then
+		if key < node.key then
 			node = node.left
 		else
 			best = node
-			if not less(node.key, key) then break end
+			if not (node.key < key) then break end
 			node = node.right
 		end
 	end
@@ -175,13 +177,13 @@ function Tree:Floor(key)
 end
 
 function Tree:Ceiling(key)
-	local node, less, best = self.root, self.less, nil
+	local node, best = self.root, nil
 	while node do
-		if less(node.key, key) then
+		if node.key < key then
 			node = node.right
 		else
 			best = node
-			if not less(key, node.key) then break end
+			if not (key < node.key) then break end
 			node = node.left
 		end
 	end

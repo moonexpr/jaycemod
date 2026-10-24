@@ -21,6 +21,7 @@ pub const TNIL: c_int = 0;
 pub const TSTRING: c_int = 4;
 pub const TNUMBER: c_int = 3;
 pub const TTABLE: c_int = 5;
+pub const TUSERDATA: c_int = 7;
 pub const TFUNCTION: c_int = 6;
 
 macro_rules! api {
@@ -50,6 +51,7 @@ macro_rules! api {
 api! {
     gettop: fn(L) -> c_int = c"lua_gettop";
     settop: fn(L, c_int) = c"lua_settop";
+    remove: fn(L, c_int) = c"lua_remove";
     pushvalue: fn(L, c_int) = c"lua_pushvalue";
     type_of: fn(L, c_int) -> c_int = c"lua_type";
     tonumber: fn(L, c_int) -> f64 = c"lua_tonumber";
@@ -72,6 +74,7 @@ api! {
     tolstring: fn(L, c_int, *mut usize) -> *const c_char = c"lua_tolstring";
     rawseti: fn(L, c_int, c_int) = c"lua_rawseti";
     newuserdata: fn(L, usize) -> *mut c_void = c"lua_newuserdata";
+    touserdata: fn(L, c_int) -> *mut c_void = c"lua_touserdata";
     setmetatable: fn(L, c_int) -> c_int = c"lua_setmetatable";
     newmetatable: fn(L, *const c_char) -> c_int = c"luaL_newmetatable";
     checkudata: fn(L, c_int, *const c_char) -> *mut c_void = c"luaL_checkudata";

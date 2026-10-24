@@ -1,58 +1,82 @@
--- A binary heap: New(before) orders its values by before(a, b), true when a
--- comes out ahead of b. The heap keeps no order among values the rule calls
--- equal, so a rule that needs one breaks the tie itself (a push count).
---   heap:Push(value), heap:Pop() -> the first value or nil,
---   heap:Peek() -> the first value, left in, or nil, heap:Size()
+-- A binary heap of values keyed by numbers: the lowest key comes out
+-- first, and of equal keys the one pushed first, so a search ordered by it
+-- breaks ties the way NavAreaBuildPath does without a count of its own.
+-- This is the Lua twin; a server with native/foundation has it replaced in
+-- place by the native heap, which keeps this contract.
+--   Heap() (New()) -> a heap
+--   heap:Push(key, value)   key a number, value anything but nil
+--   heap:Pop() -> value, key of the first, taken out; nil when empty
+--   heap:Peek() -> value, key of the first, left in; nil when empty
+--   heap:Size(), heap:Clear() (and the push order starts again)
+-- Entries live in three arrays by heap position (key, push number,
+-- value), so a push allocates no table.
 local setmetatable = setmetatable
 module(...)
 
 local Heap = {}
 Heap.__index = Heap
 
-function New(before)
-	return setmetatable({
-		before = before,
-		n = 0,
-		values = {},
-	}, Heap)
+function New()
+	return setmetatable({ n = 0, pushed = 0, keys = {}, seqs = {}, values = {} }, Heap)
 end
+
+setmetatable(_M, { __call = function() return New() end })
 
 function Heap:Size()
 	return self.n
 end
 
-function Heap:Peek()
-	return self.values[1]
+function Heap:Clear()
+	self.n, self.pushed, self.keys, self.seqs, self.values = 0, 0, {}, {}, {}
 end
 
-function Heap:Push(value)
-	local values, before = self.values, self.before
-	local n = self.n + 1
-	self.n = n
-	while n > 1 do
-		local parent = (n - n % 2) / 2
-		if not before(value, values[parent]) then break end
-		values[n] = values[parent]
-		n = parent
+function Heap:Push(key, value)
+	local keys, seqs, values = self.keys, self.seqs, self.values
+	local seq = self.pushed + 1
+	self.pushed = seq
+	local i = self.n + 1
+	self.n = i
+	while i > 1 do
+		local parent = (i - i % 2) / 2
+		local pk = keys[parent]
+		if pk < key or (pk == key and seqs[parent] < seq) then break end
+		keys[i], seqs[i], values[i] = pk, seqs[parent], values[parent]
+		i = parent
 	end
-	values[n] = value
+	keys[i], seqs[i], values[i] = key, seq, value
+end
+
+function Heap:Peek()
+	if self.n == 0 then return nil end
+	return self.values[1], self.keys[1]
 end
 
 function Heap:Pop()
-	if self.n == 0 then return nil end
-	local values, before = self.values, self.before
-	local top, last = values[1], values[self.n]
-	values[self.n] = nil
-	self.n = self.n - 1
-	local n, i = self.n, 1
-	while true do
-		local child = i * 2
-		if child > n then break end
-		if child < n and before(values[child + 1], values[child]) then child = child + 1 end
-		if not before(values[child], last) then break end
-		values[i] = values[child]
-		i = child
+	local n = self.n
+	if n == 0 then return nil end
+	local keys, seqs, values = self.keys, self.seqs, self.values
+	local topValue, topKey = values[1], keys[1]
+	local key, seq, value = keys[n], seqs[n], values[n]
+	keys[n], seqs[n], values[n] = nil, nil, nil
+	n = n - 1
+	self.n = n
+	if n > 0 then
+		local i = 1
+		while true do
+			local child = i * 2
+			if child > n then break end
+			local ck, cs = keys[child], seqs[child]
+			if child < n then
+				local rk, rs = keys[child + 1], seqs[child + 1]
+				if rk < ck or (rk == ck and rs < cs) then
+					child, ck, cs = child + 1, rk, rs
+				end
+			end
+			if key < ck or (key == ck and seq < cs) then break end
+			keys[i], seqs[i], values[i] = ck, cs, values[child]
+			i = child
+		end
+		keys[i], seqs[i], values[i] = key, seq, value
 	end
-	if n > 0 then values[i] = last end
-	return top
+	return topValue, topKey
 end

@@ -21,9 +21,11 @@
 //! of entry points is exported from each DLL.
 
 pub mod astar;
+pub mod avl;
 pub mod graph;
 pub mod heap;
 pub mod lua;
+pub mod module;
 pub mod userdata;
 
 #[cfg(feature = "entry")]

@@ -133,8 +133,8 @@ Tests are `tests/<namespace>_<module>_test.lua`.
 
 | Module | API |
 |---|---|
-| `tree.heap` | `New(before)` → binary heap: `Push`, `Pop`, `Peek`, `Size`; ties are the rule's to break |
-| `tree.avl` | `New([less])` → ordered map on an AVL tree: `Insert`, `Get`, `Remove`, `Min`, `Max`, `Floor`, `Ceiling`, `Pairs` (in order), `Size`, `Height` |
+| `tree.heap` | `Heap()` (`New`) → values keyed by numbers: `Push(key, value)`, `Pop`/`Peek` → value, key (lowest key first, ties in push order), `Size`, `Clear`. Native on a server with `native/foundation` |
+| `tree.avl` | `Avl()` (`New`) → ordered map of number keys on an AVL tree: `Insert`, `Get`, `Remove`, `Min`, `Max`, `Floor`, `Ceiling`, `Pairs` (in order), `Size`, `Height`. Native on a server with `native/foundation` |
 
 ### world: lookups (beside games' world I/O)
 

@@ -21,23 +21,18 @@ NAN_COST = 1e30
 -- Every step costs at least a little more than its parent.
 local MIN_STEP_SCALE, MIN_STEP_ADD = 1.00001, 0.00001
 
--- The open list is ordered by total cost, then by when an entry was pushed.
--- The engine keeps a sorted list in which a new or cheapened node goes
--- after every node of equal cost, so the push order breaks ties the same
--- way. A node pushed again leaves its old entry behind, skipped when it
--- comes up.
-local function Before(a, b)
-	if a.total ~= b.total then return a.total < b.total end
-	return a.seq < b.seq
-end
+-- The open list is ordered by total cost, then by when an entry was pushed
+-- (tree.heap's own order). The engine keeps a sorted list in which a new or
+-- cheapened node goes after every node of equal cost, so the push order
+-- breaks ties the same way. A node pushed again leaves its old entry
+-- behind, skipped when it comes up.
 
 local AStar = Pathfinder.Solver("astar")
 
 New, Find = AStar.New, AStar.Find
 
 function AStar:Begin()
-	self.open = Heap.New(Before)
-	self.seq = 0
+	self.open = Heap()
 	self.costSoFar = { [self.start] = 0 }
 	self.entryOf = {} -- node -> its live open-list entry
 	self.closed = {}
@@ -47,14 +42,9 @@ function AStar:Begin()
 end
 
 function AStar:Open(node, total)
-	self.seq = self.seq + 1
-	local entry = {
-		node = node,
-		total = total,
-		seq = self.seq,
-	}
+	local entry = { node = node }
 	self.entryOf[node] = entry
-	self.open:Push(entry)
+	self.open:Push(total, entry)
 end
 
 -- The next live entry's node, or nil when the open list is empty.

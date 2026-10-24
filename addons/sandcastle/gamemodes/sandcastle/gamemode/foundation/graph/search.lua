@@ -65,20 +65,20 @@ end
 
 function Distances(starts, edges, limit)
 	local dist = {}
-	local queue = Heap.New(function(a, b) return a.cost < b.cost end)
+	local queue = Heap()
 	for _, node in ipairs(starts) do
 		dist[node] = 0
-		queue:Push({ node = node, cost = 0 })
+		queue:Push(0, node)
 	end
 	while queue:Size() > 0 do
-		local top = queue:Pop()
-		if top.cost == dist[top.node] then
-			for _, edge in ipairs(edges(top.node)) do
-				local cost = top.cost + edge.cost
+		local node, reached = queue:Pop()
+		if reached == dist[node] then
+			for _, edge in ipairs(edges(node)) do
+				local cost = reached + edge.cost
 				local known = dist[edge.node]
 				if cost <= limit and (known == nil or cost < known) then
 					dist[edge.node] = cost
-					queue:Push({ node = edge.node, cost = cost })
+					queue:Push(cost, edge.node)
 				end
 			end
 		end
