@@ -7,10 +7,19 @@ with them.
 
 Two crates, two DLLs, one binding:
 
-| Crate | DLL | Lua | Holds |
-|---|---|---|---|
-| `native/foundation` | `gmsv_foundation_win64.dll` | `foundation.native` | base, generic structures and algorithms (heap, graph, A\* rule, grid, ...): no game nouns |
-| `native/wetsands` | `gmsv_wetsands_win64.dll` | `foundation.wetsands.native` | systems moved out of `games/` into `foundation.wetsands` because they gain from native backing; built on the foundation crate as a Rust library |
+| Crate | DLL | Holds |
+|---|---|---|
+| `native/foundation` | `gmsv_foundation_win64.dll` | base, generic structures and algorithms (heap, graph, A\* rule, grid, ...): no game nouns |
+| `native/wetsands` | `gmsv_wetsands_win64.dll` | systems moved out of `games/` into `foundation.wetsands` because they gain from native backing; built on the foundation crate as a Rust library |
+
+Each is a drop-in, accelerated foundation for a server that loads it: GMod
+opening a DLL installs each native module over the global its Lua twin
+publishes (`wetsands.navsearch`), with no namespace of its own, so callers
+keep `local NavSearch = wetsands.navsearch` and get the native one. The
+server requires the DLLs right after foundation's indexes, before any
+module binds a global to a local. For the tests, `luaopen_<crate>` returns
+the module's table instead, installing nothing, so the Lua twin stays as
+the oracle beside it (`T.native`).
 
 `foundation.wetsands` (the Lua namespace, global `wetsands`) is the one part
 of foundation that names game things: TF2's nav mesh rules, the bots' cost
@@ -45,6 +54,12 @@ above are a proxy (arm64, not Rosetta and Wine).
 
 ## Rules for native structures
 
+- A native module and its Lua twin keep one contract, so the native one can
+  replace the Lua in place. Foundation's callback contracts (a heap's
+  `before`, a graph port's `Cost`) cannot: a call back into Lua per element
+  would cancel the gain. An accelerated module's contract takes data
+  (numbers, a strategy's `Model(limits, bot)`), and its Lua twin is written
+  to it first.
 - They hold numbers: a slot, an id, a cost. What a number stands for stays in
   Lua, in arrays by slot (the CLAUDE.md rule for structures already says
   so). No Lua values are kept natively, so no registry references.
@@ -76,6 +91,17 @@ above are a proxy (arm64, not Rosetta and Wine).
 4. **Tree and caches** (`tree.avl`, `cache.*` on `list.slots`/`list.chain`),
    each after the bench says it pays.
 5. **Codecs** (`file.buffer`, `Crc32`, `encoding.keyvalues`).
+
+## Binding
+
+The crates resolve Lua's C API by name from whatever process opened them
+(`lua_shared.dll` in GMod, the `luajit` running the tests), in about 150
+lines (`native/foundation/src/lua.rs`). gmod-rs (WilliamVenner/gmod-rs) was
+considered and not taken: it needs a nightly toolchain, and it finds
+`lua_shared` by GMod's paths only, so a module could not open in the plain
+LuaJIT the oracle tests run in. Its guard that the Lua state is touched
+only from the thread that opened it is worth taking once worker threads
+come.
 
 What stays Lua: `pairmap`, `ring`, `queue`, `sets`, `geometry`'s per-point
 maths, `class`/`port`/`enum`: single-lookup operations or metatable

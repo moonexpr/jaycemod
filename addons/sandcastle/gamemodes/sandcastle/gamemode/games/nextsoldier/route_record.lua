@@ -22,17 +22,17 @@
 -- their centres.
 --
 --   Write(record) -> bytes, Read(bytes) -> record (refuses another format)
---   Graph(record, request, strategy) -> the solver's graph port over it
---   Replay(record, request, strategies) -> { status, expanded, route,
---     search (the solver's, done) }, strategies: name -> strategy
---     (Cost(step, limits, bot))
+--   Mesh(record, NavSearch) -> the record's mesh for a navsearch
+--     implementation (wetsands.navsearch, or the native one), built once
+--   Replay(record, request, strategies[, NavSearch]) -> { status, expanded,
+--     route, search (done) }: the search through NavSearch (default the Lua
+--     wetsands.navsearch), strategies: name -> strategy (Cost(step, limits,
+--     bot), and Model(limits, bot) for the native one)
 --   Matches(result, replayed) -> whether both searches did the same
 local Buffer = file.buffer
-local Geometry = math.geometry
 local Pathfinder = graph.pathfinder
-local AStar = wetsands.astar
-local Path = wetsands.path
-local error, format, ipairs, pairs, pcall, setmetatable, tonumber, tostring = error, string.format, ipairs, pairs, pcall, setmetatable, tonumber, tostring
+local LuaNavSearch = wetsands.navsearch
+local error, format, ipairs, pairs, pcall, setmetatable, sort, tonumber, tostring = error, string.format, ipairs, pairs, pcall, setmetatable, table.sort, tonumber, tostring
 module(...)
 
 FORMAT, VERSION = "ws_route_record", 1
@@ -255,75 +255,48 @@ end
 
 -- Replaying ----------------------------------------------------------------------------
 
--- Each area's neighbours and links by their far end, derived once per mesh.
-local derived = setmetatable({}, { __mode = "k" })
+-- Each record's mesh, built once for each navsearch implementation.
+local meshes = setmetatable({}, { __mode = "k" })
 
-local function Derived(areas)
-	local d = derived[areas]
-	if d then return d end
-	d = {
-		neighbors = {},
-		linkTo = {},
-	}
-	for id, area in pairs(areas) do
-		local ids, byTo = {}, {}
-		for i, link in ipairs(area.links) do
-			ids[i] = link.to
-			byTo[link.to] = link
-		end
-		d.neighbors[id], d.linkTo[id] = ids, byTo
+function Mesh(record, NavSearch)
+	local built = meshes[record]
+	if not built then
+		built = {}
+		meshes[record] = built
 	end
-	derived[areas] = d
-	return d
+	if built[NavSearch] then return built[NavSearch] end
+	local ids = {}
+	for id in pairs(record.areas) do ids[#ids + 1] = id end
+	sort(ids)
+	local mesh = NavSearch.Mesh()
+	for _, id in ipairs(ids) do
+		local area = record.areas[id]
+		mesh:Area(id, area.x, area.y, area.z, area.attributes)
+	end
+	for _, id in ipairs(ids) do
+		for _, link in ipairs(record.areas[id].links) do mesh:Link(id, link.to, link.distance, link.rise) end
+	end
+	mesh:Seal()
+	built[NavSearch] = mesh
+	return mesh
 end
 
-local ReplayGraph = {}
-ReplayGraph.__index = ReplayGraph
-
--- The step a strategy prices, as the controller's FillStep fills it for the
--- Lua search (no ladders: an engine NPC climbs none).
-function ReplayGraph:Cost(from, to, costSoFar)
-	local request = self.request
-	local refused = request.uncrossable[from]
-	if refused and refused[to] then return Path.IMPASSABLE end
-	local link, step = self.linkTo[from][to], self.step
-	step.hasFrom = true
-	step.traversable = not request.blocked[to]
-	step.ladderLength = nil
-	step.length = link.distance
-	step.centerDistance = link.distance
-	step.heightChange = link.rise
-	step.fromCostSoFar = costSoFar
-	step.areaId = to
-	step.spawnRoomTeam = request.rooms[to] or NO_ROOM
-	step.attributes = self.areas[to].attributes
-	return self.strategy.Cost(step, request.limits, request.bot)
+-- What the live search was told and found, as navsearch's told.
+local function Told(request)
+	return {
+		closed = request.blocked,
+		uncrossable = request.uncrossable,
+		rooms = request.rooms,
+		estimates = request.estimates,
+	}
 end
 
-function ReplayGraph:Neighbors(id)
-	return self.neighbors[id]
-end
-
-function ReplayGraph:Estimate(id)
-	return self.request.estimates[id] or Geometry.Distance(self.areas[id], self.request.goalPos)
-end
-
-function Graph(record, request, strategy)
-	local d = Derived(record.areas)
-	return setmetatable({
-		areas = record.areas,
-		neighbors = d.neighbors,
-		linkTo = d.linkTo,
-		request = request,
-		strategy = strategy,
-		step = {},
-	}, ReplayGraph)
-end
-
-function Replay(record, request, strategies)
+function Replay(record, request, strategies, NavSearch)
+	NavSearch = NavSearch or LuaNavSearch
 	local strategy = strategies[request.strategy]
 	if not strategy then error("no strategy " .. tostring(request.strategy) .. " to replay with", 2) end
-	local search = AStar.New(Graph(record, request, strategy), request.start, request.goal, request.maxExpanded)
+	local search = NavSearch.New(Mesh(record, NavSearch), strategy, request.limits, request.bot, request.start,
+		request.goal, request.goalPos, request.maxExpanded, Told(request))
 	while search:Step(search.maxExpanded + 1) == Pathfinder.RUNNING do end
 	return {
 		status = search.status,

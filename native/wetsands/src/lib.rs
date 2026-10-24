@@ -1,17 +1,20 @@
-//! `gmsv_wetsands_win64.dll`: foundation.wetsands, native. Opened, it sets
-//! `foundation.wetsands.native`, which `foundation.wetsands`' Lua modules
-//! read to back themselves; the Lua implementations stay the oracle.
-//! Built on the foundation crate as a Rust library (its structures, its
-//! binding), so the two DLLs share code but not entry points.
+//! `gmsv_wetsands_win64.dll`: foundation.wetsands, native, a drop-in
+//! replacement on a server that loads it. Opened by GMod, it installs
+//! itself over `wetsands.navsearch`, the global its Lua twin
+//! (foundation/wetsands/navsearch.lua) was published to, keeping that
+//! contract; the Lua stays the oracle and what clients run. Built on the
+//! foundation crate as a Rust library (its structures, its binding), so the
+//! two DLLs share code but not entry points.
 //!
 //! ```lua
 //! require("wetsands")                -- GMod: lua/bin/gmsv_wetsands_win64.dll
-//! local mesh = foundation.wetsands.native.mesh.New()
+//! local NavSearch = wetsands.navsearch
+//! local mesh = NavSearch.Mesh()
 //! mesh:Area(id, x, y, z, attributes) -- every area, then
 //! mesh:Link(from, to, distance, rise) -- each area's links in order
 //! mesh:Seal()
-//! local search = mesh:Search(model, start, goal, maxExpanded, gx, gy, gz)
-//! while search:Step(16, traversable, crossable) == "running" do end
+//! local search = NavSearch.New(mesh, strategy, limits, bot, start, goal, goalPos, maxExpanded, told, rules)
+//! while search:Step(16) == "running" do end
 //! local route = search:Route()
 //! ```
 

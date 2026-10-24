@@ -10,6 +10,9 @@ pub trait Native: Sized + 'static {
     const NAME: &'static CStr;
     /// Its methods and metamethods (`__len`, `__tostring`), by name.
     const METHODS: &'static [(&'static CStr, CFunction)];
+    /// Its `__index`, when it answers more than its methods (fields read
+    /// from the value); None reads the methods alone.
+    const INDEX: Option<CFunction> = None;
 }
 
 unsafe extern "C-unwind" fn collect<T: Native>(l: L) -> c_int {
@@ -30,8 +33,13 @@ pub unsafe fn push<T: Native>(l: L, value: T) {
     // SAFETY: newuserdata returned size_of::<T>() bytes, aligned to 8.
     slot.write(value);
     if (api.newmetatable)(l, T::NAME.as_ptr()) != 0 {
-        (api.pushvalue)(l, -1);
-        (api.setfield)(l, -2, c"__index".as_ptr());
+        match T::INDEX {
+            Some(index) => set_function(l, c"__index", index),
+            None => {
+                (api.pushvalue)(l, -1);
+                (api.setfield)(l, -2, c"__index".as_ptr());
+            }
+        }
         set_function(l, c"__gc", collect::<T>);
         for (name, function) in T::METHODS {
             set_function(l, name, *function);

@@ -1,11 +1,14 @@
 //! `gmsv_foundation_win64.dll`: Sandcastle's foundation structures and
-//! algorithms, native. Opened, it sets `foundation.native`, which the Lua
-//! modules read to back themselves; the Lua implementations stay as the
-//! oracle the native ones are tested against, and as what the client runs.
+//! algorithms, native: a drop-in replacement for foundation's Lua modules on
+//! a server that loads it. Opened by GMod, it installs each native module
+//! over the global its Lua twin publishes (`tree.heap`...), where the two
+//! keep one contract; the Lua stays the oracle and what clients run. None
+//! has its twin yet, so nothing is installed; `luaopen_foundation` returns
+//! the module's table (structures, probes) for the tests and the bench:
 //!
 //! ```lua
-//! require("foundation")            -- GMod: lua/bin/gmsv_foundation_win64.dll
-//! local heap = foundation.native.heap.New()
+//! local native = package.loadlib(path, "luaopen_foundation")()
+//! local heap = native.heap.New()
 //! heap:Push(2.5, 7)                -- key, value: both numbers
 //! local value, key = heap:Pop()
 //! ```

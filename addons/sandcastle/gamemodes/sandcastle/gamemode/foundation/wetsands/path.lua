@@ -6,7 +6,11 @@
 --   limits = the variant's LOCOMOTION (stepHeight, jumpHeight, deathDropHeight),
 --   bot    = { entIndex, now }.
 -- The binding builds `step` from the engine's navigation areas; a variant
--- names its strategy in PATH.
+-- names its strategy in PATH. A strategy the native search can run also
+-- provides Model(limits, bot) -> the walker model native/wetsands prices a
+-- step with (its walker.rs): the same cost as parameters, built on
+-- Model(limits, fields) here.
+local pairs = pairs
 module(...)
 
 IMPASSABLE = -1
@@ -16,4 +20,16 @@ JUMP_PENALTY = 5 -- jumping is slower than flat ground
 -- by deltaZ: up less than its jump, down no further than its death drop.
 function Walkable(deltaZ, limits)
 	return deltaZ < limits.jumpHeight and deltaZ >= -limits.deathDropHeight
+end
+
+-- A walker model: the limits, and the strategy's fields over them.
+function Model(limits, fields)
+	local model = {
+		stepHeight = limits.stepHeight,
+		jumpHeight = limits.jumpHeight,
+		deathDropHeight = limits.deathDropHeight,
+		crouches = limits.crouches == true,
+	}
+	for key, value in pairs(fields) do model[key] = value end
+	return model
 end

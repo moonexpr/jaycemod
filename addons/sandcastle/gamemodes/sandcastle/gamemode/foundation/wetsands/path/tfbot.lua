@@ -52,3 +52,15 @@ function Cost(step, limits, bot)
 	if deltaZ >= limits.stepHeight then dist = dist * JUMP_PENALTY end
 	return dist * Preference(step, bot) + step.fromCostSoFar
 end
+
+function Model(limits, bot)
+	return Path.Model(limits, {
+		jumpScaled = JUMP_PENALTY,
+		rooms = true,
+		team = bot.team,
+		winners = (bot.roundWon and bot.winningTeam == bot.team) == true,
+		scatter = bot.route == DEFAULT_ROUTE and not bot.miniBoss,
+		entIndex = bot.entIndex,
+		now = bot.now,
+	})
+end

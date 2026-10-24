@@ -71,6 +71,7 @@ local CATEGORY = {
 	["wetsands/path/hl2"] = "nextsoldier",
 	["wetsands/path/scatter"] = "nextsoldier",
 	["wetsands/path/tfbot"] = "nextsoldier",
+	["wetsands/navsearch"] = "nextsoldier",
 }
 
 -- games/'s modules, by the same categories (docs/foundation-game-split-plan.md).
@@ -78,7 +79,6 @@ local GAMES = {
 	["timer/countdown"] = "structures",
 	["timer/interval"] = "structures",
 	["world/snapshot"] = "structures",
-	["world/nav_attributes"] = "structures",
 
 	["list/drawlist"] = "formalisms",
 	["world/io"] = "formalisms",
@@ -117,8 +117,6 @@ local GAMES = {
 	["gameplay/arrivals"] = "gameplay",
 	["gameplay/reports"] = "gameplay",
 	["gameplay/vote"] = "gameplay",
-	["gameplay/handicap"] = "gameplay",
-	["gameplay/capabilities"] = "gameplay",
 	["gameplay/loadout"] = "gameplay",
 	["gameplay/combat"] = "gameplay",
 	["gameplay/combat/weapon_mimic"] = "gameplay",

@@ -1,7 +1,7 @@
 //! The module's Lua face: `foundation.native`, its structures and probes.
 
 use crate::heap::Heap;
-use crate::lua::{api, set_function, CFunction, GLOBALSINDEX, L, TTABLE};
+use crate::lua::{api, set_function, CFunction, L};
 use crate::userdata::{self, Native};
 use std::ffi::{c_int, CStr};
 
@@ -94,33 +94,19 @@ unsafe fn library(l: L, name: &CStr, functions: &[(&CStr, CFunction)]) {
     (api.setfield)(l, -2, name.as_ptr());
 }
 
-/// Builds `foundation.native` and leaves it on the stack. The global
-/// `foundation` is the Lua modules' (module() makes it), so it is extended,
-/// or made when the binary opens first.
-pub unsafe fn open(l: L) {
-    let api = api();
-    (api.getfield)(l, GLOBALSINDEX, c"foundation".as_ptr());
-    if (api.type_of)(l, -1) != TTABLE {
-        (api.settop)(l, -2);
-        (api.createtable)(l, 0, 1);
-        (api.pushvalue)(l, -1);
-        (api.setfield)(l, GLOBALSINDEX, c"foundation".as_ptr());
-    }
-    (api.createtable)(l, 0, 2);
+/// Pushes the module's table: its structures and probes, for the tests and
+/// the boundary bench. No foundation module has a native twin of the same
+/// contract yet, so the game's entry point installs nothing over a global.
+unsafe fn module(l: L) {
+    (api().createtable)(l, 0, 2);
     library(l, c"heap", &[(c"New", heap_new)]);
     library(l, c"probe", &[(c"Nothing", probe_nothing), (c"Add", probe_add)]);
-    (api.pushvalue)(l, -1);
-    (api.setfield)(l, -3, c"native".as_ptr());
 }
 
-/// GMod's entry point.
+/// GMod's entry point: the API resolved; nothing installed yet (see module).
 #[no_mangle]
-pub unsafe extern "C-unwind" fn gmod13_open(l: L) -> c_int {
-    if crate::lua::open().is_err() {
-        return 0;
-    }
-    open(l);
-    (api().settop)(l, -3);
+pub unsafe extern "C-unwind" fn gmod13_open(_l: L) -> c_int {
+    let _ = crate::lua::open();
     0
 }
 
@@ -129,13 +115,13 @@ pub unsafe extern "C-unwind" fn gmod13_close(_l: L) -> c_int {
     0
 }
 
-/// Stock Lua's entry point (`package.loadlib`), for the LuaJIT tests:
-/// returns `foundation.native`.
+/// Stock Lua's entry point (`package.loadlib`), for the LuaJIT tests and the
+/// bench: returns the module's table, installing nothing.
 #[no_mangle]
 pub unsafe extern "C-unwind" fn luaopen_foundation(l: L) -> c_int {
     if crate::lua::open().is_err() {
         return 0;
     }
-    open(l);
+    module(l);
     1
 }

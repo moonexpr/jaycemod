@@ -1,17 +1,19 @@
-//! The module's Lua face: `foundation.wetsands.native`, with the nav mesh,
-//! the walker model and the route search as userdata.
+//! The module's Lua face: `wetsands.navsearch`'s contract (see its Lua twin,
+//! foundation/wetsands/navsearch.lua), installed over the Lua one when GMod
+//! opens the module, with the nav mesh and the route search as userdata.
 //!
-//! A search's rules are Lua functions passed to each Step, asked from inside
-//! it; a rule that uses the search it was asked by is refused (the search is
-//! busy), and one that raises leaves the search spent.
+//! A search keeps its rules (Lua functions) in its userdata's environment
+//! and asks them from inside Step; a rule that uses the search it was asked
+//! by is refused (the search is busy), and one that raises leaves the search
+//! spent.
 
 use crate::navmesh::{MeshBuilder, NavMesh};
 use crate::search::{RouteSearch, Rules};
 use crate::walker::{Jump, Limits, Preference, Rooms, Step, Walker};
 use foundation::astar::Status;
 use foundation::lua::{
-    api, field_number, field_truthy, push_str, raise, raise_owned, set_function, CFunction, GLOBALSINDEX, L, TFUNCTION,
-    TNUMBER, TTABLE,
+    api, each, field_number, field_truthy, push_str, raise, raise_owned, set_function, string_at, CFunction, GLOBALSINDEX,
+    L, TFUNCTION, TNIL, TNUMBER, TTABLE,
 };
 use foundation::userdata::{self, Native};
 use std::ffi::{c_int, CStr};
@@ -37,7 +39,6 @@ impl Native for Mesh {
         (c"Seal", mesh_seal),
         (c"Sealed", mesh_sealed),
         (c"Areas", mesh_areas),
-        (c"Search", mesh_search),
     ];
 }
 
@@ -48,23 +49,9 @@ impl Native for WalkerHandle {
 
 impl Native for SearchHandle {
     const NAME: &'static CStr = c"foundation.wetsands.native.search";
-    const METHODS: &'static [(&'static CStr, CFunction)] = &[
-        (c"Close", search_close),
-        (c"CloseLink", search_close_link),
-        (c"Room", search_room),
-        (c"Penalize", search_penalize),
-        (c"Estimate", search_estimate),
-        (c"Step", search_step),
-        (c"Status", search_status),
-        (c"Expanded", search_expanded),
-        (c"MaxExpanded", search_max_expanded),
-        (c"Start", search_start),
-        (c"Goal", search_goal),
-        (c"Closest", search_closest),
-        (c"Route", search_route),
-        (c"CostSoFar", search_cost_so_far),
-        (c"Parents", search_parents),
-    ];
+    const METHODS: &'static [(&'static CStr, CFunction)] =
+        &[(c"Step", search_step), (c"Route", search_route), (c"CostSoFar", search_cost_so_far)];
+    const INDEX: Option<CFunction> = Some(search_index);
 }
 
 /// The whole number at `index` (an area id, a budget), or a Lua error.
@@ -108,8 +95,8 @@ unsafe fn building<'a>(l: L) -> &'a mut MeshBuilder {
     }
 }
 
-unsafe fn sealed(l: L) -> Arc<NavMesh> {
-    match userdata::check::<Mesh>(l, 1) {
+unsafe fn sealed(l: L, index: c_int) -> Arc<NavMesh> {
+    match userdata::check::<Mesh>(l, index) {
         Mesh::Sealed(mesh) => Arc::clone(mesh),
         Mesh::Building(_) => raise(l, c"the mesh is not sealed yet"),
     }
@@ -160,21 +147,7 @@ unsafe extern "C-unwind" fn mesh_sealed(l: L) -> c_int {
 
 /// mesh:Areas() -> how many areas a sealed mesh has.
 unsafe extern "C-unwind" fn mesh_areas(l: L) -> c_int {
-    number(l, sealed(l).areas() as f64)
-}
-
-/// mesh:Search(model, startId, goalId, maxExpanded, goalX, goalY, goalZ) -> a search
-unsafe extern "C-unwind" fn mesh_search(l: L) -> c_int {
-    let api = api();
-    let mesh = sealed(l);
-    let walker = walker_from(l, 2);
-    let (start, goal, max_expanded) = (check_whole(l, 3), check_whole(l, 4), check_whole(l, 5));
-    let goal_pos = [(api.checknumber)(l, 6), (api.checknumber)(l, 7), (api.checknumber)(l, 8)];
-    match RouteSearch::new(mesh, walker, start, goal, max_expanded, goal_pos) {
-        Ok(search) => userdata::push(l, SearchHandle { search, busy: false }),
-        Err(e) => raise_owned(l, e.to_string()),
-    }
-    1
+    number(l, sealed(l, 1).areas() as f64)
 }
 
 // The walker ----------------------------------------------------------------
@@ -257,47 +230,117 @@ unsafe fn search<'a>(l: L) -> &'a mut RouteSearch {
     &mut handle.search
 }
 
-macro_rules! told {
-    ($l:expr, $result:expr) => {
-        if let Err(e) = $result {
-            raise_owned($l, e.to_string());
-        }
+/// The area id a told table's key (at -2) or value (at -1) holds.
+unsafe fn id_at(l: L, index: c_int, what: &str) -> u32 {
+    let api = api();
+    let value = if (api.type_of)(l, index) == TNUMBER { (api.tonumber)(l, index) } else { -1.0 };
+    if !(0.0..=u32::MAX as f64).contains(&value) || value.fract() != 0.0 {
+        raise_owned(l, format!("{what}: area ids are whole numbers"));
+    }
+    value as u32
+}
+
+/// `t[name]` of the table at `index` (absolute), pushed, when it is a table;
+/// its absolute index, or None (nothing left pushed).
+unsafe fn subtable_at(l: L, index: c_int, name: &CStr) -> Option<c_int> {
+    let api = api();
+    (api.getfield)(l, index, name.as_ptr());
+    if (api.type_of)(l, -1) == TTABLE {
+        return Some((api.gettop)(l));
+    }
+    (api.settop)(l, -2);
+    None
+}
+
+/// Tells the search at `handle` what `told` (a table at `told`) says.
+unsafe fn tell(l: L, handle: *mut SearchHandle, told: c_int) {
+    let search = &mut (*handle).search;
+    if let Some(closed) = subtable_at(l, told, c"closed") {
+        each(l, closed, |l| told_ok(l, search.close(id_at(l, -2, "told.closed"))));
+        (api().settop)(l, -2);
+    }
+    if let Some(uncrossable) = subtable_at(l, told, c"uncrossable") {
+        each(l, uncrossable, |l| {
+            let from = id_at(l, -2, "told.uncrossable");
+            if (api().type_of)(l, -1) == TTABLE {
+                let tos = (api().gettop)(l);
+                each(l, tos, |l| told_ok(l, search.close_link(from, id_at(l, -2, "told.uncrossable"))));
+            }
+        });
+        (api().settop)(l, -2);
+    }
+    if let Some(rooms) = subtable_at(l, told, c"rooms") {
+        each(l, rooms, |l| {
+            let team = (api().tonumber)(l, -1) as i32;
+            told_ok(l, search.room(id_at(l, -2, "told.rooms"), team));
+        });
+        (api().settop)(l, -2);
+    }
+    if let Some(estimates) = subtable_at(l, told, c"estimates") {
+        each(l, estimates, |l| {
+            let estimate = (api().tonumber)(l, -1);
+            told_ok(l, search.estimate(id_at(l, -2, "told.estimates"), estimate));
+        });
+        (api().settop)(l, -2);
+    }
+}
+
+unsafe fn told_ok(l: L, result: Result<(), crate::search::SearchError>) {
+    if let Err(e) = result {
+        raise_owned(l, e.to_string());
+    }
+}
+
+/// navsearch.New(mesh, strategy, limits, bot, start, goal, goalPos,
+/// maxExpanded[, told[, rules]]) -> a search
+unsafe extern "C-unwind" fn search_new(l: L) -> c_int {
+    let api = api();
+    userdata::check::<Mesh>(l, 1);
+    (api.checktype)(l, 2, TTABLE);
+    (api.getfield)(l, 2, c"Model".as_ptr());
+    if (api.type_of)(l, -1) != TFUNCTION {
+        raise(l, c"the strategy has no Model(limits, bot): it cannot run natively");
+    }
+    (api.pushvalue)(l, 3);
+    (api.pushvalue)(l, 4);
+    (api.call)(l, 2, 1);
+    let model = (api.gettop)(l);
+    let walker = walker_from(l, model);
+    let (start, goal, max_expanded) = (check_whole(l, 5), check_whole(l, 6), check_whole(l, 8));
+    (api.checktype)(l, 7, TTABLE);
+    let goal_pos = [
+        required(l, 7, c"x"),
+        required(l, 7, c"y"),
+        field_number(l, 7, c"z").unwrap_or(0.0),
+    ];
+    let search = match RouteSearch::new(sealed(l, 1), walker, start, goal, max_expanded, goal_pos) {
+        Ok(search) => search,
+        Err(e) => raise_owned(l, e.to_string()),
     };
-}
-
-/// search:Close(id)
-unsafe extern "C-unwind" fn search_close(l: L) -> c_int {
-    let id = check_whole(l, 2);
-    told!(l, search(l).close(id));
-    0
-}
-
-/// search:CloseLink(fromId, toId)
-unsafe extern "C-unwind" fn search_close_link(l: L) -> c_int {
-    let (from, to) = (check_whole(l, 2), check_whole(l, 3));
-    told!(l, search(l).close_link(from, to));
-    0
-}
-
-/// search:Room(id, team)
-unsafe extern "C-unwind" fn search_room(l: L) -> c_int {
-    let (id, team) = (check_whole(l, 2), (api().checknumber)(l, 3) as i32);
-    told!(l, search(l).room(id, team));
-    0
-}
-
-/// search:Penalize(id)
-unsafe extern "C-unwind" fn search_penalize(l: L) -> c_int {
-    let id = check_whole(l, 2);
-    told!(l, search(l).penalize(id));
-    0
-}
-
-/// search:Estimate(id, estimate)
-unsafe extern "C-unwind" fn search_estimate(l: L) -> c_int {
-    let (id, estimate) = (check_whole(l, 2), (api().checknumber)(l, 3));
-    told!(l, search(l).estimate(id, estimate));
-    0
+    userdata::push(l, SearchHandle { search, busy: false });
+    let ud = (api.gettop)(l);
+    let handle: *mut SearchHandle = userdata::check::<SearchHandle>(l, ud);
+    if let Some(penalized) = subtable_at(l, model, c"penalized") {
+        each(l, penalized, |l| told_ok(l, (*handle).search.penalize(id_at(l, -2, "model.penalized"))));
+        (api.settop)(l, -2);
+    }
+    if (api.type_of)(l, 9) == TTABLE {
+        tell(l, handle, 9);
+    }
+    (api.createtable)(l, 0, 2);
+    if (api.type_of)(l, 10) == TTABLE {
+        for name in [c"traversable", c"crossable"] {
+            (api.getfield)(l, 10, name.as_ptr());
+            if (api.type_of)(l, -1) == TFUNCTION {
+                (api.setfield)(l, -2, name.as_ptr());
+            } else {
+                (api.settop)(l, -2);
+            }
+        }
+    }
+    (api.setfenv)(l, ud);
+    (api.pushvalue)(l, ud);
+    1
 }
 
 /// The rules as Lua functions on the stack: traversable(areaId) -> bool,
@@ -332,19 +375,22 @@ impl Rules for LuaRules {
     }
 }
 
-unsafe fn optional_function(l: L, index: c_int) -> Option<c_int> {
-    match (api().type_of)(l, index) {
-        TFUNCTION => Some(index),
-        t if t <= 0 => None,
-        _ => raise_owned(l, format!("argument {index}: a rule function or nil is wanted")),
-    }
+/// The rule `name` in the environment table at `env`, pushed; its index
+/// when it is a function.
+unsafe fn rule(l: L, env: c_int, name: &CStr) -> Option<c_int> {
+    let api = api();
+    (api.getfield)(l, env, name.as_ptr());
+    ((api.type_of)(l, -1) == TFUNCTION).then(|| (api.gettop)(l))
 }
 
-/// search:Step(budget[, traversable[, crossable]]) -> "running", "found" or "failed"
+/// search:Step(budget) -> "running", "found" or "failed"
 unsafe extern "C-unwind" fn search_step(l: L) -> c_int {
+    let api = api();
     let budget = check_whole(l, 2);
-    let mut rules = LuaRules { l, traversable: optional_function(l, 3), crossable: optional_function(l, 4) };
     search(l);
+    (api.settop)(l, 2);
+    (api.getfenv)(l, 1);
+    let mut rules = LuaRules { l, traversable: rule(l, 3, c"traversable"), crossable: rule(l, 3, c"crossable") };
     let handle = userdata::check::<SearchHandle>(l, 1);
     handle.busy = true;
     let result = handle.search.step(budget, &mut rules);
@@ -355,29 +401,34 @@ unsafe extern "C-unwind" fn search_step(l: L) -> c_int {
     }
 }
 
-unsafe extern "C-unwind" fn search_status(l: L) -> c_int {
-    let status = search(l).status();
-    push_status(l, status)
-}
-
-unsafe extern "C-unwind" fn search_expanded(l: L) -> c_int {
-    number(l, search(l).expanded() as f64)
-}
-
-unsafe extern "C-unwind" fn search_max_expanded(l: L) -> c_int {
-    number(l, search(l).max_expanded() as f64)
-}
-
-unsafe extern "C-unwind" fn search_start(l: L) -> c_int {
-    number(l, search(l).start() as f64)
-}
-
-unsafe extern "C-unwind" fn search_goal(l: L) -> c_int {
-    number(l, search(l).goal() as f64)
-}
-
-unsafe extern "C-unwind" fn search_closest(l: L) -> c_int {
-    number(l, search(l).closest() as f64)
+/// The search's fields (graph.pathfinder's): status, expanded, maxExpanded,
+/// start, goal, closest, parent; its methods first.
+unsafe extern "C-unwind" fn search_index(l: L) -> c_int {
+    let api = api();
+    (api.getmetatable)(l, 1);
+    (api.pushvalue)(l, 2);
+    (api.rawget)(l, -2);
+    if (api.type_of)(l, -1) != TNIL {
+        return 1;
+    }
+    let Some(key) = string_at(l, 2) else {
+        (api.pushnil)(l);
+        return 1;
+    };
+    let search = search(l);
+    match key {
+        b"status" => push_status(l, search.status()),
+        b"expanded" => number(l, search.expanded() as f64),
+        b"maxExpanded" => number(l, search.max_expanded() as f64),
+        b"start" => number(l, search.start() as f64),
+        b"goal" => number(l, search.goal() as f64),
+        b"closest" => number(l, search.closest() as f64),
+        b"parent" => push_parents(l, search),
+        _ => {
+            (api.pushnil)(l);
+            1
+        }
+    }
 }
 
 /// search:Route([lastId]) -> the area ids from the start
@@ -410,10 +461,10 @@ unsafe extern "C-unwind" fn search_cost_so_far(l: L) -> c_int {
     }
 }
 
-/// search:Parents() -> areaId -> the id of the area it was reached from
-unsafe extern "C-unwind" fn search_parents(l: L) -> c_int {
+/// areaId -> the id of the area it was reached from
+unsafe fn push_parents(l: L, search: &RouteSearch) -> c_int {
     let api = api();
-    let parents = search(l).parents();
+    let parents = search.parents();
     (api.createtable)(l, 0, parents.len() as c_int);
     for &(id, parent) in &parents {
         (api.pushnumber)(l, parent as f64);
@@ -425,49 +476,35 @@ unsafe extern "C-unwind" fn search_parents(l: L) -> c_int {
 
 // Opening -------------------------------------------------------------------
 
-unsafe fn library(l: L, name: &CStr, functions: &[(&CStr, CFunction)]) {
+/// Pushes the module's table: navsearch's contract (Mesh, New) and Walker,
+/// a single model's pricing for the tests.
+unsafe fn module(l: L) {
     let api = api();
-    (api.createtable)(l, 0, functions.len() as c_int);
-    for (function_name, function) in functions {
-        set_function(l, function_name, *function);
-    }
-    (api.setfield)(l, -2, name.as_ptr());
+    (api.createtable)(l, 0, 3);
+    set_function(l, c"Mesh", mesh_new);
+    set_function(l, c"New", search_new);
+    set_function(l, c"Walker", walker_new);
 }
 
-/// `t[name]`, made a table when absent, pushed (t at `index`, absolute).
-unsafe fn subtable(l: L, index: c_int, name: &CStr) {
-    let api = api();
-    (api.getfield)(l, index, name.as_ptr());
-    if (api.type_of)(l, -1) != TTABLE {
-        (api.settop)(l, -2);
-        (api.createtable)(l, 0, 1);
-        (api.pushvalue)(l, -1);
-        (api.setfield)(l, index, name.as_ptr());
-    }
-}
-
-/// Builds `foundation.wetsands.native` and leaves it on the stack, above
-/// `foundation` and `foundation.wetsands`.
-unsafe fn open(l: L) {
-    let api = api();
-    subtable(l, GLOBALSINDEX, c"foundation");
-    let foundation = (api.gettop)(l);
-    subtable(l, foundation, c"wetsands");
-    (api.createtable)(l, 0, 2);
-    library(l, c"mesh", &[(c"New", mesh_new)]);
-    library(l, c"walker", &[(c"New", walker_new)]);
-    (api.pushvalue)(l, -1);
-    (api.setfield)(l, -3, c"native".as_ptr());
-}
-
-/// GMod's entry point.
+/// GMod's entry point: installs the module over `wetsands.navsearch`, the
+/// global the Lua twin was published to (the server requires the module
+/// after foundation's indexes have run).
 #[no_mangle]
 pub unsafe extern "C-unwind" fn gmod13_open(l: L) -> c_int {
     if foundation::lua::open().is_err() {
         return 0;
     }
-    open(l);
-    (api().settop)(l, -4);
+    let api = api();
+    (api.getfield)(l, GLOBALSINDEX, c"wetsands".as_ptr());
+    if (api.type_of)(l, -1) != TTABLE {
+        (api.settop)(l, -2);
+        (api.createtable)(l, 0, 1);
+        (api.pushvalue)(l, -1);
+        (api.setfield)(l, GLOBALSINDEX, c"wetsands".as_ptr());
+    }
+    module(l);
+    (api.setfield)(l, -2, c"navsearch".as_ptr());
+    (api.settop)(l, -2);
     0
 }
 
@@ -477,12 +514,13 @@ pub unsafe extern "C-unwind" fn gmod13_close(_l: L) -> c_int {
 }
 
 /// Stock Lua's entry point (`package.loadlib`), for the LuaJIT tests:
-/// returns `foundation.wetsands.native`.
+/// returns the module's table, installing nothing, so the Lua twin stays
+/// beside it as the oracle.
 #[no_mangle]
 pub unsafe extern "C-unwind" fn luaopen_wetsands(l: L) -> c_int {
     if foundation::lua::open().is_err() {
         return 0;
     }
-    open(l);
+    module(l);
     1
 }

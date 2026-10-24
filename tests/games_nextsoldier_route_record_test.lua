@@ -85,9 +85,22 @@ T.test("an enemy spawn room the live search saw is closed in the replay", functi
 end)
 
 T.test("the replay uses the estimates the live search computed", function()
-	local graph = Record.Graph({ map = "x", areas = Mesh(), requests = {} }, Request({ estimates = { [2] = 12.5 } }), HL2)
-	T.eq(graph:Estimate(2), 12.5, "the recorded one")
-	T.eq(graph:Estimate(3), CELL, "else the distance from its centre")
+	local record = { map = "x", areas = Mesh(), requests = {} }
+	local plain = Record.Replay(record, Request(), STRATEGIES)
+	local steered = Record.Replay(record, Request({ estimates = { [2] = 1e6 } }), STRATEGIES)
+	T.eq(Joined(plain.route), "1 2 3 4", "by the centres' distances")
+	T.eq(Joined(steered.route), "1 5 3 4", "away from the area the recorded estimate overrates")
+end)
+
+T.test("a native replay does what the Lua replay does", function()
+	local Native = T.native("wetsands")
+	local record = { map = "x", areas = Mesh(), requests = {} }
+	for _, fields in ipairs({ {}, { blocked = { [2] = true } }, { uncrossable = { [3] = { [4] = true } } },
+		{ rooms = { [2] = BLUE } }, { estimates = { [2] = 1e6 } }, { maxExpanded = 1 } }) do
+		local lua = Record.Replay(record, Request(fields), STRATEGIES)
+		local native = Record.Replay(record, Request(fields), STRATEGIES, Native)
+		T.eq(Record.Matches(lua, native), true, "same search")
+	end
 end)
 
 T.test("Matches says whether a replay did what the live search did", function()

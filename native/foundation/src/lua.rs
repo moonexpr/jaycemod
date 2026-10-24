@@ -18,6 +18,7 @@ pub type CFunction = unsafe extern "C-unwind" fn(L) -> c_int;
 
 pub const GLOBALSINDEX: c_int = -10002;
 pub const TNIL: c_int = 0;
+pub const TSTRING: c_int = 4;
 pub const TNUMBER: c_int = 3;
 pub const TTABLE: c_int = 5;
 pub const TFUNCTION: c_int = 6;
@@ -63,6 +64,12 @@ api! {
     getfield: fn(L, c_int, *const c_char) = c"lua_getfield";
     setfield: fn(L, c_int, *const c_char) = c"lua_setfield";
     rawgeti: fn(L, c_int, c_int) = c"lua_rawgeti";
+    rawget: fn(L, c_int) = c"lua_rawget";
+    next: fn(L, c_int) -> c_int = c"lua_next";
+    getmetatable: fn(L, c_int) -> c_int = c"lua_getmetatable";
+    getfenv: fn(L, c_int) = c"lua_getfenv";
+    setfenv: fn(L, c_int) -> c_int = c"lua_setfenv";
+    tolstring: fn(L, c_int, *mut usize) -> *const c_char = c"lua_tolstring";
     rawseti: fn(L, c_int, c_int) = c"lua_rawseti";
     newuserdata: fn(L, usize) -> *mut c_void = c"lua_newuserdata";
     setmetatable: fn(L, c_int) -> c_int = c"lua_setmetatable";
@@ -160,6 +167,36 @@ pub unsafe fn field_truthy(l: L, index: c_int, name: &CStr) -> bool {
     let value = (api.toboolean)(l, -1) != 0;
     (api.settop)(l, -2);
     value
+}
+
+/// The string at `index`, or None for any other value.
+///
+/// # Safety
+/// `l` is a live state, after `open`; the bytes live while the value stays
+/// on the stack.
+pub unsafe fn string_at<'a>(l: L, index: c_int) -> Option<&'a [u8]> {
+    let api = api();
+    if (api.type_of)(l, index) != TSTRING {
+        return None;
+    }
+    let mut len = 0usize;
+    let text = (api.tolstring)(l, index, &mut len);
+    Some(std::slice::from_raw_parts(text.cast::<u8>(), len))
+}
+
+/// Calls `visit(l)` with each key at -2 and its value at -1 of the table at
+/// `index` (absolute), in `next`'s order.
+///
+/// # Safety
+/// `l` is a live state with a table at `index`, after `open`; `visit` leaves
+/// the stack as it found it.
+pub unsafe fn each(l: L, index: c_int, mut visit: impl FnMut(L)) {
+    let api = api();
+    (api.pushnil)(l);
+    while (api.next)(l, index) != 0 {
+        visit(l);
+        (api.settop)(l, -2);
+    }
 }
 
 /// A Lua error with an owned `message`, pushed and dropped before raising.

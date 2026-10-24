@@ -17,7 +17,7 @@ NextSoldier, the AI-war's NextBot soldiers. The gamemode lives at
 | `gamemode/entities/` | Map entity bindings |
 | `addons/teamtint/` | Team Tint, its own addon: RED/BLU NPCs in TF2's shading, a tuning tool and debug views; pure modules in `lua/includes/modules/`, textures baked by `.devtools/bin/teamtint_bake.py` (`docs/team-theming-plan.md`) |
 | `tests/*_test.lua` | LuaJIT tests, `tests/harness.lua`; `tests/foundation_layers_test.lua` guards foundation's layers |
-| `native/` | Rust binary modules: `foundation` (foundation's structures, native), `wetsands` (foundation.wetsands' systems, on the foundation crate), `ws_profile` (the sampling profiler); `vendor/source-sdk-2013` the raw Source SDK headers they read Source's values from (`docs/native-foundation-plan.md`) |
+| `native/` | Rust binary modules, each a drop-in that a server's `require` installs over the globals its Lua twins publish: `foundation` (foundation's structures), `wetsands` (foundation.wetsands' systems, on the foundation crate), `ws_profile` (the sampling profiler); `vendor/source-sdk-2013` the raw Source SDK headers they read Source's values from (`docs/native-foundation-plan.md`) |
 | `docs/` | Design notes; `docs/research/foundation-admission-rule.md` decides what belongs in foundation |
 | `.devtools/bin/` | Project tools; `.devtools/artifacts/` generated output |
 
@@ -206,7 +206,8 @@ the native code is tested against, and what runs without the binary.
 | Module | API |
 |---|---|
 | `wetsands.astar` | `graph.pathfinder`'s solver for NavAreaBuildPath's A*, the routes of HL2 NPCs (`features/npc/sv_routes.lua`) |
-| `wetsands.path` | Path costs: a NextBot's IPathCost as strategies, parts `ground`, `hl2`, `scatter`, `tfbot` (`require("foundation.wetsands.path.<name>")`), each `Cost(step, limits, bot)`; `IMPASSABLE`, `JUMP_PENALTY`, `Walkable` |
+| `wetsands.navsearch` | Route searches on a nav mesh snapshot: `Mesh()` (`Area`, `Link`, `Seal`), `New(mesh, strategy, limits, bot, start, goal, goalPos, maxExpanded[, told[, rules]])` → `graph.pathfinder`'s search; told: closed areas, uncrossable links, rooms, estimates; rules asked once an area or link. A server with `native/wetsands` has it replaced in place |
+| `wetsands.path` | Path costs: a NextBot's IPathCost as strategies, parts `ground`, `hl2`, `scatter`, `tfbot` (`require("foundation.wetsands.path.<name>")`), each `Cost(step, limits, bot)` and `Model(limits, bot)` (the native search's walker); `IMPASSABLE`, `JUMP_PENALTY`, `Walkable` |
 
 ## games index
 

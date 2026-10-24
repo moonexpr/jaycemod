@@ -55,3 +55,9 @@ function Cost(step, limits, bot)
 	if step.hasFrom and Uncrossable(step.attributes, limits) then return Path.IMPASSABLE end
 	return TFBot.Cost(step, limits, bot)
 end
+
+function Model(limits, bot)
+	local model = TFBot.Model(limits, bot)
+	model.attributeRule = true
+	return model
+end

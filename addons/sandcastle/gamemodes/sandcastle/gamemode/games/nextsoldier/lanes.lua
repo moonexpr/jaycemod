@@ -61,6 +61,12 @@ Strategy = {
 		local from = step.fromCostSoFar or 0
 		return from + (cost - from) * LANE_PENALTY
 	end,
+	-- HL2's walker with the penalty, and the areas it falls on.
+	Model = function(limits, bot)
+		local model = HL2Path.Model(limits, bot)
+		model.lanePenalty, model.penalized = LANE_PENALTY, bot.penalized
+		return model
+	end,
 }
 
 -- A route's band: the ids of its areas and of every area within

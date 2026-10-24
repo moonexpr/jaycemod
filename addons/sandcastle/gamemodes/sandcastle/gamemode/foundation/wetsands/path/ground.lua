@@ -26,3 +26,8 @@ end
 function Cost(step, limits, bot)
 	return Weighted(step, limits, NO_PREFERENCE)
 end
+
+-- Weighted's walker, its jump penalty added to the distance.
+function Model(limits, bot)
+	return Path.Model(limits, { jumpAdded = JUMP_PENALTY })
+end

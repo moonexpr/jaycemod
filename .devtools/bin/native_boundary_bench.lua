@@ -1,14 +1,10 @@
 -- What a call into the native foundation module costs against the Lua it
--- would replace, with the JIT on and off. Locally:
+-- would replace, with the JIT on and off, under plain LuaJIT (GMod has no
+-- package.loadlib, and the module installs nothing there yet):
 --   luajit .devtools/bin/native_boundary_bench.lua native/foundation/target/release/libfoundation.dylib
--- On the dev server (the module required, tree.heap published):
---   python3 .devtools/bin/server_lua.py -f .devtools/bin/native_boundary_bench.lua
 -- Prints one line per case: ns per operation, JIT on and off.
-local native = foundation and foundation.native
-if not native then
-	local path = assert((...) or arg and arg[1], "usage: native_boundary_bench.lua <path to the built module>")
-	native = assert(package.loadlib(path, "luaopen_foundation"))()
-end
+local path = assert((...) or arg and arg[1], "usage: native_boundary_bench.lua <path to the built module>")
+local native = assert(package.loadlib(path, "luaopen_foundation"))()
 
 local Heap = tree and tree.heap
 if not Heap then

@@ -3,8 +3,11 @@
 -- (games.nextsoldier.route_record), and reports what they cost and whether
 -- each replay did exactly what the live search did.
 --
---   luajit .devtools/bin/route_replay.lua RECORD.dat [--repeat N] [--reach TERM]
+--   luajit .devtools/bin/route_replay.lua RECORD.dat [--repeat N] [--reach TERM] [--native]
 --
+-- --native replays through the native search (native/wetsands, built by
+-- cargo build --release) instead of the Lua one: the same check, that each
+-- search does exactly what the live one did.
 -- Run from the repo root. --repeat replays every search N times for steadier
 -- timings (default 1). --reach plays the searches in order through a reach
 -- memo (games.nextsoldier.reach_memo) of that term: which would have been
@@ -37,6 +40,9 @@ local function Args(argv)
 		if argv[i] == "--repeat" then
 			args.repeats = assert(tonumber(argv[i + 1]), "--repeat takes a count")
 			i = i + 2
+		elseif argv[i] == "--native" then
+			args.native = true
+			i = i + 1
 		elseif argv[i] == "--reach" then
 			args.reach = assert(tonumber(argv[i + 1]), "--reach takes a term in seconds")
 			i = i + 2
@@ -45,7 +51,7 @@ local function Args(argv)
 			i = i + 1
 		end
 	end
-	assert(args.path, "usage: luajit .devtools/bin/route_replay.lua RECORD.dat [--repeat N] [--reach TERM]")
+	assert(args.path, "usage: luajit .devtools/bin/route_replay.lua RECORD.dat [--repeat N] [--reach TERM] [--native]")
 	return args
 end
 
@@ -77,7 +83,7 @@ end
 -- record has no blocker log, so every change of generation counts as one
 -- the edges' check catches (no change to the mesh's links). A request sent
 -- to a region's nearest area is replayed so, to count what that costs.
-local function Reach(record, term)
+local function Reach(record, term, NavSearch)
 	local clock = { now = 0 }
 	function clock:Now() return self.now end
 	local memo = ReachMemo.New({
@@ -118,10 +124,10 @@ local function Reach(record, term)
 					local nearest = region:Nearest(request.goalPos, Center)
 					local nearer = setmetatable({ goal = nearest, goalPos = Center(nearest), estimates = {} }, { __index = request })
 					g.retargeted = g.retargeted + 1
-					g.saved = g.saved + result.expanded - Record.Replay(record, nearer, STRATEGIES).expanded
+					g.saved = g.saved + result.expanded - Record.Replay(record, nearer, STRATEGIES, NavSearch).expanded
 				end
 			elseif result.status == Pathfinder.FAILED and result.expanded < request.maxExpanded then
-				local search = Record.Replay(record, request, STRATEGIES).search
+				local search = Record.Replay(record, request, STRATEGIES, NavSearch).search
 				memo:Learn(key, ReachMemo.Region(request.start, search.parent, blocked, uncrossable), request.generation)
 			end
 		end
@@ -138,6 +144,8 @@ end
 local function Main(argv)
 	local args = Args(argv)
 	local record = Load(args.path)
+	local NavSearch = args.native and T.native("wetsands") or nil
+	Record.Mesh(record, NavSearch or wetsands.navsearch)
 	local areas, links = 0, 0
 	for _, area in pairs(record.areas) do
 		areas = areas + 1
@@ -157,7 +165,7 @@ local function Main(argv)
 				order[#order + 1] = request.source
 			end
 			local started, result = os.clock(), nil
-			for _ = 1, args.repeats do result = Record.Replay(record, request, STRATEGIES) end
+			for _ = 1, args.repeats do result = Record.Replay(record, request, STRATEGIES, NavSearch) end
 			seconds = seconds + (os.clock() - started) / args.repeats
 			expansions = expansions + result.expanded
 			g.n, g.live = g.n + 1, g.live + request.result.expanded
@@ -177,7 +185,7 @@ local function Main(argv)
 	end
 	print(string.format("replayed %d (skipped %d: unfinished or no strategy); %d of %d match the live search", replayed, skipped, matched, replayed))
 	if expansions > 0 then
-		print(string.format("offline: %.3f s, %.2f us an expansion", seconds, seconds * MICROSECONDS / expansions))
+		print(string.format("offline (%s): %.3f s, %.2f us an expansion", args.native and "native" or "Lua", seconds, seconds * MICROSECONDS / expansions))
 	end
 	for k = 1, math.min(#mismatches, SHOWN_MISMATCHES) do
 		local m = mismatches[k]
@@ -185,7 +193,7 @@ local function Main(argv)
 		print(string.format("  mismatch #%d %s %d->%d: live %s %d expanded, %d areas; replay %s %d expanded, %d areas",
 			m.i, m.request.source, m.request.start, m.request.goal, live.status, live.expanded, #live.route, again.status, again.expanded, #again.route))
 	end
-	if args.reach then Reach(record, args.reach) end
+	if args.reach then Reach(record, args.reach, NavSearch) end
 	return #mismatches == 0
 end
 
