@@ -5,7 +5,9 @@
 -- range, the shotgun's past short range. The crossbow punches rather than
 -- kills: no headshot crit and a hard knockback. The shotgun crits more the
 -- nearer its target. Melee is left as it is;
--- the frag, the SLAM and the RPG hit harder. The controller
+-- the frag, the SLAM and the RPG hit harder. The gravity gun's punt hits a
+-- player or an NPC for its own damage and throws them hard enough to be
+-- slammed dead into a wall. The controller
 -- (ws/sv_hits.lua, ws/sh_weapon_balance.lua) applies it to each hit and shot.
 local math = math
 module(...)
@@ -20,7 +22,9 @@ module(...)
 -- fraction of it added upward (a push along the ground is lost to friction),
 -- stagger: the
 -- seconds the victim is slowed and staggerSlow: by how much (none without);
--- blast: an explosion's damage at its centre, in place of HL2_BLAST.
+-- blast: an explosion's damage at its centre, in place of HL2_BLAST. A
+-- weapon's damage replaces HL2's for a bullet and for the gravity gun's
+-- punt.
 RANGE_LONG, RANGE_MEDIUM, RANGE_SHORT = "long", "medium", "short"
 
 WEAPONS = {
@@ -77,6 +81,16 @@ WEAPONS = {
 		knockback = 1400,
 		lift = 1
 	},
+}
+
+-- The gravity gun's punt (CWeaponPhysCannon::PuntNonVPhysics): HL2 hits a
+-- character for 1 (DMG_CRUSH | DMG_PHYSGUN), pushing it along a unit
+-- vector; here PUNT_THROW times the crowbar's push.
+PUNT_THROW = 50
+WEAPONS.weapon_physcannon = {
+	damage = 10,
+	knockback = PUNT_THROW * WEAPONS.weapon_crowbar.pushback,
+	lift = 0.2,
 }
 
 -- The damage of HL2's explosives at their centre (GMod's skill convars:
@@ -143,7 +157,7 @@ local function CritChance(distance)
 end
 
 -- A hit by class (a weapon class or nil): hit = { damage (HL2's), bullet
--- (a bullet's), blast (an explosion's), distance (from the attacker),
+-- (a bullet's), blast (an explosion's), punt (the gravity gun's), distance (from the attacker),
 -- headshot, roll (in [0, 1), drawn by the caller) } -> its damage, whether
 -- its headshot counts, and whether it is a crit by distance.
 function Shot(class, hit)
@@ -152,6 +166,7 @@ function Shot(class, hit)
 	local damage = hit.damage
 	if hit.blast and weapon.blast then damage = damage * weapon.blast / HL2_BLAST[class] end
 	local crit = false
+	if hit.punt then damage = weapon.damage or damage end
 	if hit.bullet then
 		damage = weapon.damage or damage
 		damage = damage * Falloff(weapon.range, hit.distance)

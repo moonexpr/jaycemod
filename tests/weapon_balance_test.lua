@@ -191,4 +191,16 @@ T.test("the Store shows the damage a weapon deals", function()
 	T.eq(Balance.Damage("weapon_smg1", 4), 4, "smg, the skill's")
 end)
 
+-- The gravity gun's punt: HL2 hits a character for 1 (DMG_CRUSH |
+-- DMG_PHYSGUN) and pushes it along a unit vector; here it hits for its own
+-- damage and throws its victim at 50 times the crowbar's push, hard enough
+-- to slam it dead into a wall (games.gameplay.combat.impact).
+T.test("the gravity gun's punt hits for its own damage and throws hard", function()
+	local damage = Balance.Shot("weapon_physcannon", { damage = 1, punt = true, distance = 100, roll = 0.5 })
+	T.eq(damage, W.weapon_physcannon.damage, "its damage, not HL2's 1")
+	T.eq(W.weapon_physcannon.damage, 10, "ten")
+	T.eq(Balance.Knockback("weapon_physcannon").speed, 50 * W.weapon_crowbar.pushback, "fifty times the crowbar's push")
+	T.eq(Balance.Shot("weapon_physcannon", { damage = 1, distance = 100, roll = 0.5 }), 1, "a hit that is no punt: HL2's")
+end)
+
 T.finish()

@@ -92,13 +92,14 @@ end
 
 -- What attacker's hit on target with class (balanced, or nil) does:
 -- its damage, whether its headshot counts, and its scale and kind
--- (games.gameplay.players' Hit). shot: { damage, bullet, blast, headshot,
--- critical (marked a crit already) }.
+-- (games.gameplay.players' Hit). shot: { damage, bullet, blast, punt (the
+-- gravity gun's), headshot, critical (marked a crit already) }.
 local function Judge(target, attacker, class, shot)
 	local damage, headshot, rolled = Balance.Shot(class, {
 		damage = shot.damage,
 		bullet = shot.bullet,
 		blast = shot.blast,
+		punt = shot.punt,
 		distance = Distance(attacker, target),
 		headshot = shot.headshot,
 		roll = Roll(attacker),
@@ -125,6 +126,7 @@ hook.Add("EntityTakeDamage", "ws_hits", function(target, dmg)
 		damage = dmg:GetDamage(),
 		bullet = dmg:IsBulletDamage(),
 		blast = dmg:IsDamageType(DMG_BLAST),
+		punt = dmg:IsDamageType(DMG_PHYSGUN),
 		headshot = Headshot(target),
 		critical = dmg:IsDamageType(DMG_ACID),
 	})
