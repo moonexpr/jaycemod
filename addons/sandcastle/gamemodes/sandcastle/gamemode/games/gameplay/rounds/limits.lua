@@ -114,20 +114,27 @@ WIN_CONDITIONS = {
 	ROUNDS = { name = "rounds", winlimit = 2, maxrounds = 0 },
 	STOPWATCH = { name = "stopwatch", winlimit = 0, maxrounds = 2 },
 	MAX_ROUNDS = { name = "max_rounds", winlimit = 0, maxrounds = 1 },
+	-- Sandcastle's own, for a control-point map TF2 would play to the win
+	-- limit: a capture can be a point on the score (score_style 1), so a
+	-- win limit would end the match a few captures in; mp_timelimit ends it.
+	CONTROL_POINTS = { name = "control_points", winlimit = 0, maxrounds = 0 },
 }
 
--- map = { mvm, payload, ctf (the round's mode), multipleTrains (a race),
--- miniRounds, stages (the master's rounds), switchTeams (the master's
--- switch_teams) }. TF2's choice (CTFMatchDescCasual's
+-- map = { mvm, payload, ctf, controlPoints (the round's mode: KOTH and
+-- arena are not), multipleTrains (a race), miniRounds, stages (the master's
+-- rounds), switchTeams (the master's switch_teams), scorePerCapture (its
+-- score_style 1) }. TF2's choice (CTFMatchDescCasual's
 -- InitGameRulesSettingsPostEntity): an attack/defend map
 -- (CTFGameRules::IsAttackDefenseMode) plays stopwatch; a payload race in
 -- stages and CTF play one round; any other map goes to the first team to
--- the win limit. nil for MvM, whose waves decide.
+-- the win limit, but for control-point maps and a score per capture
+-- (CONTROL_POINTS). nil for MvM, whose waves decide.
 function WinConditions(map)
 	if map.mvm then return nil end
 	if not map.multipleTrains and (map.payload or map.miniRounds or map.switchTeams) then return WIN_CONDITIONS.STOPWATCH end
 	local raceInStages = map.payload and map.multipleTrains and map.miniRounds and map.stages > 1
 	if raceInStages or map.ctf then return WIN_CONDITIONS.MAX_ROUNDS end
+	if map.controlPoints or map.scorePerCapture then return WIN_CONDITIONS.CONTROL_POINTS end
 	return WIN_CONDITIONS.ROUNDS
 end
 

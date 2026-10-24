@@ -535,6 +535,8 @@ local function MapKind()
 		miniRounds = Controller.objective:PlayingMiniRounds(),
 		stages = #ents.FindByClass("team_control_point_round"),
 		switchTeams = IsValid(master) and (master.wsKv or {}).switch_teams == "1",
+		controlPoints = mode == "control_points",
+		scorePerCapture = IsValid(master) and (master.wsKv or {}).score_style == "1",
 	}
 end
 

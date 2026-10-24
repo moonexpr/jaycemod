@@ -142,7 +142,8 @@ end)
 -- (tf_match_description_casual.cpp picks a server_casual_*_win_conditions.cfg).
 
 local function Map(facts)
-	local map = { mvm = false, payload = false, ctf = false, multipleTrains = false, miniRounds = false, stages = 0, switchTeams = false }
+	local map = { mvm = false, payload = false, ctf = false, multipleTrains = false, miniRounds = false, stages = 0, switchTeams = false,
+		controlPoints = false, scorePerCapture = false }
 	for k, v in pairs(facts) do map[k] = v end
 	return map
 end
@@ -159,7 +160,7 @@ T.test("TF2's casual win conditions, as its cfgs set them", function()
 end)
 
 T.test("a symmetric map is won by the first team to the win limit", function()
-	T.eq(Limits.WinConditions(Map({})), C.ROUNDS, "no objective, symmetric control points or KOTH")
+	T.eq(Limits.WinConditions(Map({})), C.ROUNDS, "no objective or KOTH")
 	T.eq(Limits.WinConditions(Map({ payload = true, multipleTrains = true })), C.ROUNDS, "a one-stage payload race")
 end)
 
@@ -174,6 +175,18 @@ T.test("a multi-stage payload race and CTF play one round", function()
 	T.eq(Limits.WinConditions(Map({ payload = true, multipleTrains = true, miniRounds = true, stages = 3 })), C.MAX_ROUNDS, "race in stages")
 	T.eq(Limits.WinConditions(Map({ ctf = true })), C.MAX_ROUNDS, "CTF")
 	T.eq(Limits.WinConditions(Map({ payload = true, multipleTrains = true, miniRounds = true, stages = 1 })), C.ROUNDS, "a race of one stage is symmetric")
+end)
+
+-- A capture is a point on a control-point map's score (score_style 1, as
+-- cp_egypt_final's), so a win limit ends the match a few captures in,
+-- before its later stages: control-point maps play to no win limit.
+T.test("control-point maps, and any map scoring each capture, play to no win limit", function()
+	local symmetric = Limits.WinConditions(Map({ controlPoints = true }))
+	T.eq(symmetric.winlimit, 0, "symmetric control points: no win limit")
+	T.eq(symmetric.maxrounds, 0, "nor a round limit: the time limit ends it")
+	T.eq(Limits.WinConditions(Map({ controlPoints = true, miniRounds = true, stages = 3 })), C.STOPWATCH,
+		"in stages: stopwatch, which has none either")
+	T.eq(Limits.WinConditions(Map({ scorePerCapture = true })).winlimit, 0, "a score per capture")
 end)
 
 T.test("Mann vs. Machine has no casual win conditions", function()
