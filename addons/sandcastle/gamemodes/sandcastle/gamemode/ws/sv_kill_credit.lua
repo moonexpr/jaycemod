@@ -10,7 +10,9 @@
 -- calls both. A kill's assister is the latest other enemy who hurt the
 -- victim within ASSIST_WINDOW (CTFGameRules::GetAssister's damager rule):
 -- counted as ws_assists (the scoreboard's column and points) and named in
--- the kill feed beside the killer (game_kill_assist).
+-- the kill feed beside the killer (game_kill_assist). A victim slammed dead
+-- into a surface (ws/sv_hits.lua's strike, WS.MarkSlammed) shows the
+-- impact's icon (features.aiwar.kill_feed's SLAMMED).
 local Credit = gameplay.kill_credit
 local Feed = WS.require("features.aiwar.kill_feed")
 local E = WS.Events
@@ -21,6 +23,13 @@ local damagers = setmetatable({}, { __mode = "k" }) -- victim -> Credit.Damagers
 local creditedAt = setmetatable({}, { __mode = "k" }) -- victim -> when its lethal hit was credited
 local assistedAt = setmetatable({}, { __mode = "k" }) -- victim -> when its death was assisted
 local assistedBy = setmetatable({}, { __mode = "k" }) -- victim -> its assister
+local slammedAt = setmetatable({}, { __mode = "k" }) -- victim -> when a strike was dealt it
+
+-- victim is being dealt a strike now: if it dies of it, its death notice
+-- shows the impact.
+function WS.MarkSlammed(victim)
+	slammedAt[victim] = CurTime()
+end
 
 -- A hit that landed on victim, remembered when an enemy dealt it.
 function WS.RecordDamager(victim, attacker)
@@ -91,6 +100,7 @@ end
 
 function GM:SendDeathNotice(attacker, inflictor, victim, flags)
 	if Told(self, victim, creditedAt) then flags = bit.bor(flags, Feed.FINISHED_OFF) end
+	if Told(self, victim, slammedAt) then flags = bit.bor(flags, Feed.SLAMMED) end
 	self.BaseClass.SendDeathNotice(self, attacker, inflictor, victim, flags)
 	local dead = Told(self, victim, assistedAt)
 	if dead == nil then return end

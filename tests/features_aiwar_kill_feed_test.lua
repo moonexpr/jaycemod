@@ -104,6 +104,23 @@ T.test("the flag is one GMod's notices leave free, within their byte", function(
 	end
 end)
 
+-- A victim thrown and slammed dead into a surface (ws/sv_hits.lua's
+-- strike) shows the impact's own icon, not its thrower's weapon.
+T.test("a death by impact shows the impact's icon", function()
+	T.eq(Feed.Icon(Feed.SLAMMED), Feed.IMPACT_ICON, "slammed")
+	T.eq(Feed.IMPACT_ICON, "ws_impact", "Sandcastle's own, on its sheet")
+	T.eq(Feed.Icon(Feed.SLAMMED + 2), Feed.IMPACT_ICON, "with another flag")
+	T.eq(Feed.Icon(0), nil, "any other death: by what struck")
+	T.eq(Feed.Icon(Feed.FINISHED_OFF), nil, "a credited death has its own")
+end)
+
+T.test("the impact's flag is another GMod leaves free, apart from finished off's", function()
+	T.eq(Feed.SLAMMED < 256, true, "a byte")
+	for _, taken in ipairs({ 1, 2, 4, 8, Feed.FINISHED_OFF }) do
+		T.eq(Feed.SLAMMED ~= taken, true, "not " .. taken)
+	end
+end)
+
 -- CTFHudDeathNotice: an assisted kill names "killer + assister".
 T.test("an assister joins the killer's side of the row, in their own team", function()
 	local row = { killer = "Scout", killerTeam = RED, victim = "Heavy", victimTeam = BLUE, mine = false }

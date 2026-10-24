@@ -456,7 +456,33 @@ MONOCULUS = Icon(
 )
 
 
-ICONS = (PISTOL, MAGNUM, SMG, PULSE_RIFLE, SHOTGUN, CROSSBOW, CROWBAR, STUNSTICK, FRAG, RPG, GRAVITY_GUN, PROP, BUGBAIT, SLAM, PUMPKIN_BOMB, HORSEMANN, MONOCULUS)
+# An impact's kill (ws/sv_hits.lua's strike): a figure thrown head first into
+# a brick wall, its arms and legs trailing, the wall cracked where it struck;
+# the dim speed lines behind it in the flash's place.
+WALL_X = 74
+IMPACT = Icon(
+    "ws_impact",
+    solid(rect(WALL_X, 1, 8, 30))
+    + cuts(
+        rect(WALL_X, 8, 8, 0.7), rect(WALL_X, 16, 8, 0.7), rect(WALL_X, 24, 8, 0.7),
+        rect(WALL_X + 4, 1, 0.7, 7), rect(WALL_X + 2, 8.7, 0.7, 7.3), rect(WALL_X + 5.5, 16.7, 0.7, 7.3),
+        rect(WALL_X + 3, 24.7, 0.7, 6.3),
+        thick(((WALL_X, 14), (WALL_X + 3, 11), (WALL_X + 4.5, 6)), 0.8),
+        thick(((WALL_X, 14), (WALL_X + 3.5, 16.5), (WALL_X + 5, 21)), 0.8),
+    )
+    + solid(
+        circle(WALL_X - 4.5, 14, 3.6),  # the head, against the wall
+        thick(((WALL_X - 9, 14.5), (52, 16)), 6),  # the body
+        thick(((WALL_X - 11, 12.5), (58, 8.5), (49, 6)), 2.4),  # an arm flung back
+        thick(((WALL_X - 11, 17.5), (59, 21.5), (50, 23.5)), 2.4),  # the other
+        thick(((53, 14.5), (42, 11), (31, 9.5)), 3.2),  # a leg trailing
+        thick(((53, 17.5), (43, 21), (33, 24.5)), 3.2),  # the other
+    ),
+    solid(rect(6, 9, 18, 0.9), rect(2, 15.5, 22, 0.9), rect(8, 22, 18, 0.9)),
+)
+
+
+ICONS = (PISTOL, MAGNUM, SMG, PULSE_RIFLE, SHOTGUN, CROSSBOW, CROWBAR, STUNSTICK, FRAG, RPG, GRAVITY_GUN, PROP, BUGBAIT, SLAM, PUMPKIN_BOMB, HORSEMANN, MONOCULUS, IMPACT)
 
 
 # The sheet

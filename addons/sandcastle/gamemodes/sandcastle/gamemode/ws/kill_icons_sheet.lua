@@ -1,5 +1,5 @@
 -- Sandcastle's kill icon sheets' layout, in TF2's scripts/mod_textures.txt
--- format (games.gameplay.kill_icons parses it; ws/cl_kill_feed.lua draws them).
+-- format (foundation.kill_icons parses it; ws/cl_kill_feed.lua draws them).
 -- Written by .devtools/bin/kill_icons_art.py: edit the designs there.
 module(...)
 
@@ -10,8 +10,8 @@ TEXT = [==[
 	{
 		"weapon_pistol"
 		{
-			"dfile"	"sandcastle/kill_icons/hl2_924e3878.png"
-			"dnegfile"	"sandcastle/kill_icons/hl2_924e3878_neg.png"
+			"dfile"	"sandcastle/kill_icons/hl2_ac2a10cd.png"
+			"dnegfile"	"sandcastle/kill_icons/hl2_ac2a10cd_neg.png"
 			"x"	"0"
 			"y"	"0"
 			"width"	"142"
@@ -19,8 +19,8 @@ TEXT = [==[
 		}
 		"weapon_357"
 		{
-			"dfile"	"sandcastle/kill_icons/hl2_924e3878.png"
-			"dnegfile"	"sandcastle/kill_icons/hl2_924e3878_neg.png"
+			"dfile"	"sandcastle/kill_icons/hl2_ac2a10cd.png"
+			"dnegfile"	"sandcastle/kill_icons/hl2_ac2a10cd_neg.png"
 			"x"	"142"
 			"y"	"0"
 			"width"	"159"
@@ -28,8 +28,8 @@ TEXT = [==[
 		}
 		"weapon_smg1"
 		{
-			"dfile"	"sandcastle/kill_icons/hl2_924e3878.png"
-			"dnegfile"	"sandcastle/kill_icons/hl2_924e3878_neg.png"
+			"dfile"	"sandcastle/kill_icons/hl2_ac2a10cd.png"
+			"dnegfile"	"sandcastle/kill_icons/hl2_ac2a10cd_neg.png"
 			"x"	"301"
 			"y"	"0"
 			"width"	"176"
@@ -37,8 +37,8 @@ TEXT = [==[
 		}
 		"weapon_ar2"
 		{
-			"dfile"	"sandcastle/kill_icons/hl2_924e3878.png"
-			"dnegfile"	"sandcastle/kill_icons/hl2_924e3878_neg.png"
+			"dfile"	"sandcastle/kill_icons/hl2_ac2a10cd.png"
+			"dnegfile"	"sandcastle/kill_icons/hl2_ac2a10cd_neg.png"
 			"x"	"0"
 			"y"	"64"
 			"width"	"198"
@@ -46,8 +46,8 @@ TEXT = [==[
 		}
 		"weapon_shotgun"
 		{
-			"dfile"	"sandcastle/kill_icons/hl2_924e3878.png"
-			"dnegfile"	"sandcastle/kill_icons/hl2_924e3878_neg.png"
+			"dfile"	"sandcastle/kill_icons/hl2_ac2a10cd.png"
+			"dnegfile"	"sandcastle/kill_icons/hl2_ac2a10cd_neg.png"
 			"x"	"198"
 			"y"	"64"
 			"width"	"170"
@@ -55,8 +55,8 @@ TEXT = [==[
 		}
 		"weapon_crossbow"
 		{
-			"dfile"	"sandcastle/kill_icons/hl2_924e3878.png"
-			"dnegfile"	"sandcastle/kill_icons/hl2_924e3878_neg.png"
+			"dfile"	"sandcastle/kill_icons/hl2_ac2a10cd.png"
+			"dnegfile"	"sandcastle/kill_icons/hl2_ac2a10cd_neg.png"
 			"x"	"0"
 			"y"	"128"
 			"width"	"188"
@@ -64,8 +64,8 @@ TEXT = [==[
 		}
 		"weapon_crowbar"
 		{
-			"dfile"	"sandcastle/kill_icons/hl2_924e3878.png"
-			"dnegfile"	"sandcastle/kill_icons/hl2_924e3878_neg.png"
+			"dfile"	"sandcastle/kill_icons/hl2_ac2a10cd.png"
+			"dnegfile"	"sandcastle/kill_icons/hl2_ac2a10cd_neg.png"
 			"x"	"188"
 			"y"	"128"
 			"width"	"165"
@@ -73,8 +73,8 @@ TEXT = [==[
 		}
 		"weapon_stunstick"
 		{
-			"dfile"	"sandcastle/kill_icons/hl2_924e3878.png"
-			"dnegfile"	"sandcastle/kill_icons/hl2_924e3878_neg.png"
+			"dfile"	"sandcastle/kill_icons/hl2_ac2a10cd.png"
+			"dnegfile"	"sandcastle/kill_icons/hl2_ac2a10cd_neg.png"
 			"x"	"0"
 			"y"	"192"
 			"width"	"183"
@@ -82,8 +82,8 @@ TEXT = [==[
 		}
 		"weapon_frag"
 		{
-			"dfile"	"sandcastle/kill_icons/hl2_924e3878.png"
-			"dnegfile"	"sandcastle/kill_icons/hl2_924e3878_neg.png"
+			"dfile"	"sandcastle/kill_icons/hl2_ac2a10cd.png"
+			"dnegfile"	"sandcastle/kill_icons/hl2_ac2a10cd_neg.png"
 			"x"	"183"
 			"y"	"192"
 			"width"	"114"
@@ -91,8 +91,8 @@ TEXT = [==[
 		}
 		"weapon_rpg"
 		{
-			"dfile"	"sandcastle/kill_icons/hl2_924e3878.png"
-			"dnegfile"	"sandcastle/kill_icons/hl2_924e3878_neg.png"
+			"dfile"	"sandcastle/kill_icons/hl2_ac2a10cd.png"
+			"dnegfile"	"sandcastle/kill_icons/hl2_ac2a10cd_neg.png"
 			"x"	"297"
 			"y"	"192"
 			"width"	"192"
@@ -100,8 +100,8 @@ TEXT = [==[
 		}
 		"weapon_physcannon"
 		{
-			"dfile"	"sandcastle/kill_icons/hl2_924e3878.png"
-			"dnegfile"	"sandcastle/kill_icons/hl2_924e3878_neg.png"
+			"dfile"	"sandcastle/kill_icons/hl2_ac2a10cd.png"
+			"dnegfile"	"sandcastle/kill_icons/hl2_ac2a10cd_neg.png"
 			"x"	"0"
 			"y"	"256"
 			"width"	"176"
@@ -109,8 +109,8 @@ TEXT = [==[
 		}
 		"prop_physics"
 		{
-			"dfile"	"sandcastle/kill_icons/hl2_924e3878.png"
-			"dnegfile"	"sandcastle/kill_icons/hl2_924e3878_neg.png"
+			"dfile"	"sandcastle/kill_icons/hl2_ac2a10cd.png"
+			"dnegfile"	"sandcastle/kill_icons/hl2_ac2a10cd_neg.png"
 			"x"	"176"
 			"y"	"256"
 			"width"	"160"
@@ -118,8 +118,8 @@ TEXT = [==[
 		}
 		"weapon_bugbait"
 		{
-			"dfile"	"sandcastle/kill_icons/hl2_924e3878.png"
-			"dnegfile"	"sandcastle/kill_icons/hl2_924e3878_neg.png"
+			"dfile"	"sandcastle/kill_icons/hl2_ac2a10cd.png"
+			"dnegfile"	"sandcastle/kill_icons/hl2_ac2a10cd_neg.png"
 			"x"	"336"
 			"y"	"256"
 			"width"	"57"
@@ -127,8 +127,8 @@ TEXT = [==[
 		}
 		"weapon_slam"
 		{
-			"dfile"	"sandcastle/kill_icons/hl2_924e3878.png"
-			"dnegfile"	"sandcastle/kill_icons/hl2_924e3878_neg.png"
+			"dfile"	"sandcastle/kill_icons/hl2_ac2a10cd.png"
+			"dnegfile"	"sandcastle/kill_icons/hl2_ac2a10cd_neg.png"
 			"x"	"0"
 			"y"	"320"
 			"width"	"132"
@@ -136,8 +136,8 @@ TEXT = [==[
 		}
 		"tf_pumpkin_bomb"
 		{
-			"dfile"	"sandcastle/kill_icons/hl2_924e3878.png"
-			"dnegfile"	"sandcastle/kill_icons/hl2_924e3878_neg.png"
+			"dfile"	"sandcastle/kill_icons/hl2_ac2a10cd.png"
+			"dnegfile"	"sandcastle/kill_icons/hl2_ac2a10cd_neg.png"
 			"x"	"132"
 			"y"	"320"
 			"width"	"114"
@@ -145,8 +145,8 @@ TEXT = [==[
 		}
 		"headless_hatman"
 		{
-			"dfile"	"sandcastle/kill_icons/hl2_924e3878.png"
-			"dnegfile"	"sandcastle/kill_icons/hl2_924e3878_neg.png"
+			"dfile"	"sandcastle/kill_icons/hl2_ac2a10cd.png"
+			"dnegfile"	"sandcastle/kill_icons/hl2_ac2a10cd_neg.png"
 			"x"	"246"
 			"y"	"320"
 			"width"	"184"
@@ -154,11 +154,20 @@ TEXT = [==[
 		}
 		"eyeball_boss"
 		{
-			"dfile"	"sandcastle/kill_icons/hl2_924e3878.png"
-			"dnegfile"	"sandcastle/kill_icons/hl2_924e3878_neg.png"
+			"dfile"	"sandcastle/kill_icons/hl2_ac2a10cd.png"
+			"dnegfile"	"sandcastle/kill_icons/hl2_ac2a10cd_neg.png"
 			"x"	"0"
 			"y"	"384"
 			"width"	"98"
+			"height"	"64"
+		}
+		"ws_impact"
+		{
+			"dfile"	"sandcastle/kill_icons/hl2_ac2a10cd.png"
+			"dnegfile"	"sandcastle/kill_icons/hl2_ac2a10cd_neg.png"
+			"x"	"98"
+			"y"	"384"
+			"width"	"168"
 			"height"	"64"
 		}
 	}

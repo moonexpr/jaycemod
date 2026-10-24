@@ -79,6 +79,20 @@ function Credited(flags)
 	return nil
 end
 
+-- A death notice's flag: the victim was thrown and slammed dead into a
+-- surface (ws/sv_hits.lua's strike), credited to its thrower.
+SLAMMED = 128
+
+-- The impact's icon, Sandcastle's own (ws/kill_icons_sheet.lua): a figure
+-- slammed into a wall.
+IMPACT_ICON = "ws_impact"
+
+-- The icon a notice's flags choose over what struck, or nil for none.
+function Icon(flags)
+	if floor(flags / SLAMMED) % 2 == 1 then return IMPACT_ICON end
+	return nil
+end
+
 -- CTFHudDeathNotice's assisted kill: assister (a name, in assisterTeam's
 -- colour) joins the killer, "killer + assister"; the row is mine too when
 -- I (me, nil while my client loads) assisted. Sets row's fields.

@@ -86,6 +86,13 @@ local function Push(notice)
 	while #notices > MOST do table.remove(notices, 1) end
 end
 
+-- A credited death's icon; else the one the flags choose (an impact's),
+-- else by what struck, or the boss who killed.
+local function NoticeIcon(credited, flags, inflictor, attacker)
+	if credited then return Icons.For(ICONS, credited.icon) end
+	return Icons.For(ICONS, Feed.Icon(flags) or inflictor, Class(attacker))
+end
+
 function GM:AddDeathNotice(attacker, attackerTeam, inflictor, victim, victimTeam, flags)
 	local me = Me()
 	local killer = Name(attacker)
@@ -98,7 +105,7 @@ function GM:AddDeathNotice(attacker, attackerTeam, inflictor, victim, victimTeam
 		killerTeam = Feed.Team(attacker, attackerTeam, sides),
 		victim = Name(victim),
 		victimTeam = Feed.Team(victim, victimTeam, sides),
-		icon = credited and Icons.For(ICONS, credited.icon) or Icons.For(ICONS, inflictor, Class(attacker)),
+		icon = NoticeIcon(credited, flags or 0, inflictor, attacker),
 		info = credited and credited.info or nil,
 		mine = Feed.Mine(me, attacker, victim),
 	})

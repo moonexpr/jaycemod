@@ -193,6 +193,7 @@ local function Strike(victim, throw, velocity)
 		strike:SetInflictor(throw.by)
 		strike:SetDamageType(DMG_CRUSH)
 		strike:SetDamagePosition(tr.HitPos)
+		WS.MarkSlammed(victim)
 		striking = victim
 		victim:TakeDamageInfo(strike)
 		striking = nil
