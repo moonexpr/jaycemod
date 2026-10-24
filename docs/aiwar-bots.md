@@ -79,8 +79,12 @@ Measured on the dev server (`.devtools/bin/bot_probe.lua`):
 `Drive` (one bot's keys, per tick) on the dev server under CrossOver:
 about 32 µs with `ws_jit_enabled 0`, about 126 µs with the JIT on, where the
 JIT's default capacity thrashes (`docs/ns-performance-baseline.md`, H12):
-about 1 ms a tick for 30 bots with the JIT off. The look (every 0.2 s) is
-about 0.15 ms a tick for six bots.
+about 1 ms a tick for 30 bots with the JIT off. The look (every 0.2 s, its
+route planning included) averaged 0.25 ms a tick for six bots on
+`pl_upward` with the JIT on, but a long route planned in one call took up
+to 19 ms: the engine's search runs whole, its cost callback in Lua.
+Spreading the plans out (one bot's a tick), or caching routes between
+nearby starts and goals, is the next step if that hitch shows.
 
 ## Not yet
 
