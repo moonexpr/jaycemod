@@ -2,7 +2,8 @@
 -- crossbow's punch, an explosion's blast, games.gameplay.combat.weapon_balance)
 -- is hurt by the wall or ceiling it strikes within WINDOW of the throw, by
 -- its speed into the surface, dealt by whoever threw it. Floors are left to
--- fall damage. Nobody is hurt by throwing themselves or a teammate. The
+-- fall damage. Nobody is hurt by throwing themselves or a teammate. Every
+-- strike sounds, soft or hard as it hurts (Sounds). The
 -- controller (ws/sv_hits.lua) watches the thrown and traces what they hit.
 local Geometry = math.geometry
 local math = math
@@ -42,4 +43,20 @@ end
 -- The damage of striking a surface at speed into it.
 function Damage(speed)
 	return math.min(MAX_DAMAGE, math.max(0, speed - MIN_SPEED) * DAMAGE_PER_SPEED)
+end
+
+-- HL2's body impacts (physics/body/body_medium_impact_*), each strike one at
+-- random (the caller draws it): a strike too slow to hurt thuds soft.
+local function Variants(kind, count)
+	local paths = {}
+	for i = 1, count do paths[i] = "physics/body/body_medium_impact_" .. kind .. i .. ".wav" end
+	return paths
+end
+
+SOFT_SOUNDS = Variants("soft", 7)
+HARD_SOUNDS = Variants("hard", 6)
+
+-- The sounds a strike dealing damage plays from.
+function Sounds(damage)
+	return damage > 0 and HARD_SOUNDS or SOFT_SOUNDS
 end

@@ -186,6 +186,8 @@ local function Strike(victim, throw, velocity)
 	local tr = SurfaceAhead(victim, before)
 	if not tr.Hit or not Impact.Struck(tr.HitNormal.z) then return false end
 	local damage = Impact.Damage(Impact.Into(before, tr.HitNormal))
+	local sounds = Impact.Sounds(damage)
+	victim:EmitSound(sounds[math.random(#sounds)])
 	if damage > 0 and IsValid(throw.by) then
 		local strike = DamageInfo()
 		strike:SetDamage(damage)

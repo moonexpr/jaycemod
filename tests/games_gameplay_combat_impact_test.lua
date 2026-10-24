@@ -52,4 +52,14 @@ T.test("a throw is stopped when its speed falls to the stop fraction in a tick",
 	T.eq(Impact.Stopped(0, 0), false, "never moving")
 end)
 
+-- HL2's body impacts (physics/body/body_medium_impact_*): a strike too slow
+-- to hurt thuds soft, one that hurts hard.
+T.test("a harmless strike sounds soft, a hurting one hard, from HL2's body impacts", function()
+	T.eq(Impact.Sounds(Impact.Damage(Impact.MIN_SPEED)), Impact.SOFT_SOUNDS, "no damage: soft")
+	T.eq(Impact.Sounds(Impact.Damage(Impact.MIN_SPEED + 100)), Impact.HARD_SOUNDS, "damage: hard")
+	T.eq(#Impact.SOFT_SOUNDS, 7, "body_medium_impact_soft1 to 7")
+	T.eq(#Impact.HARD_SOUNDS, 6, "body_medium_impact_hard1 to 6")
+	T.eq(Impact.HARD_SOUNDS[6], "physics/body/body_medium_impact_hard6.wav", "their paths")
+end)
+
 T.finish()
