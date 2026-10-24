@@ -74,23 +74,57 @@ above are a proxy (arm64, not Rosetta and Wine).
 
 ## Order
 
-1. **Route search** (this branch of work). `games/npc/astar.lua` and
-   `games/nextsoldier/path*.lua` move to `foundation/wetsands/`. The
-   generic A\* (NavAreaBuildPath's rule: ties by push order, a minimum step,
-   NaN clamped) and the graph it walks go in `native/foundation`; the nav
-   mesh snapshot and the cost strategies, as data, in `native/wetsands`.
-   Each strategy gains `Model(limits, bot)`, the parameters the native
-   search prices a step with. Parity: every recorded search
-   (`.devtools/artifacts/routes/*.dat`) replays natively with the same
-   status, expansions and route as live (`route_replay.lua --native`).
-   Then `features/npc/sv_routes.lua` runs its searches natively.
-2. **Floods and distances** (`graph.search`: lanes' pockets, zones, lane
+1. **Route search: done, live on the dev server.** `wetsands.astar` and
+   `wetsands.path` (moved from `games/`), `wetsands.navsearch` (the
+   contract, with its Lua twin), the generic A\* and graph in
+   `native/foundation`, the mesh, walker and search in `native/wetsands`;
+   `features/npc/sv_routes.lua` searches through navsearch on a mesh
+   snapshot. See "Measured" below.
+2. **Traversal state as native data.** The live rules cost about 70 % of a
+   native search (below): the doors' and brushes' closures per team
+   (renewed with the blocker generation), the engine's blocked areas, the
+   spawn rooms (per round) and `WS.NavLinkCrossable` (fixed per map) become
+   masks the mesh holds, set from Lua when they change, so a search asks
+   Lua nothing but the request's own `avoid`. That is also what a search
+   off the game thread would need.
+3. **Floods and distances** (`graph.search`: lanes' pockets, zones, lane
    bands) on the native graph, the filters as closed-area sets.
-3. **Grid** (`world.grid`: `Near`, `Thin`; `nav_gaps`, `explore`) and
+4. **Grid** (`world.grid`: `Near`, `Thin`; `nav_gaps`, `explore`) and
    `nodegraph`'s nearest pairs.
-4. **Tree and caches** (`tree.avl`, `cache.*` on `list.slots`/`list.chain`),
+5. **Tree and caches** (`tree.avl`, `cache.*` on `list.slots`/`list.chain`),
    each after the bench says it pays.
-5. **Codecs** (`file.buffer`, `Crc32`, `encoding.keyvalues`).
+6. **Codecs** (`file.buffer`, `Crc32`, `encoding.keyvalues`).
+
+The foundation DLL installs nothing yet: each structure needs its Lua twin
+written to a data contract first (a keyed heap of numbers beside
+`tree.heap`'s comparator one, floods over the native graph).
+
+## Measured
+
+| What | Lua | Native |
+|---|---|---|
+| Recorded pl_upward searches replayed offline (47, all exact) | 2.25 µs an expansion | 0.31 µs |
+| Live, dev server, cp_gorge_event, 40 searches alike, JIT on | 40.1 µs | 0.29 µs |
+| Live, with the controller's rules as Lua callbacks | | 0.96 µs (0.30 µs a rule call, two an area) |
+| Mesh snapshot, 1880 areas | 14.9 ms | 8.5 ms |
+| Five live route requests answered | | 30 ms, 3 ticks (stepped 16 expansions a look at the clock) |
+
+Live native searches recorded on the server replay offline exactly through
+both implementations (`record_routes.lua`, `route_replay.lua [--native]`).
+
+## Threads and caches
+
+Caching pays now; threads do not yet. At the baseline's busiest (113,230
+expansions in 180 s), the native search costs about 0.6 ms of CPU a
+second where the Lua one cost about 60: route search stops being a tick
+cost, so moving it to a worker thread would save little, while it would
+need every rule as data, a result queue polled each tick, and the guard
+that the Lua state is touched only from its own thread. What pays is
+step 2: the rules as native data, which cuts a live search about 4×
+again, and is the precondition for a thread should a later load ask for
+one. Threads fit better whole-mesh jobs a frame cannot hold (lane
+planning's floods over every area, the node graph build), once they
+are native.
 
 ## Binding
 
