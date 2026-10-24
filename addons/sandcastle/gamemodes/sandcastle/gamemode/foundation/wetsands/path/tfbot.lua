@@ -9,11 +9,11 @@
 -- spy's building and teammate terms (no classes), training mode, and
 -- func_nav_cost multipliers (the func_nav_* entities are no-ops here). A
 -- safest or retreat route therefore costs as a fastest one. The default
--- route's preference is the skeletons' (games.nextsoldier.path.scatter) in
+-- route's preference is the skeletons' (foundation.wetsands.path.scatter) in
 -- Lua's doubles, where TF2 takes FastCos of a float product: the same
 -- spread over routes, not the same route as TF2 for a given bot and area.
-local Path = nextsoldier.path
-local Scatter = require("games.nextsoldier.path.scatter")
+local Path = wetsands.path
+local Scatter = require("foundation.wetsands.path.scatter")
 module(...)
 
 -- RouteType (nav_pathfind.h)

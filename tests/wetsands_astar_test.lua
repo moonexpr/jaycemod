@@ -1,10 +1,10 @@
--- games.npc.astar: NavAreaBuildPath (nav_pathfind.h) over any graph
+-- foundation.wetsands.astar: NavAreaBuildPath (nav_pathfind.h) over any graph
 -- the caller describes, run here on small grids whose costs the tests
 -- control, whole or a few expansions at a time.
 local T = dofile("tests/harness.lua")
 local Pathfinder = graph.pathfinder
-local AStar = npc.astar
-local Path = nextsoldier.path
+local AStar = wetsands.astar
+local Path = wetsands.path
 
 -- A graph of named nodes at 2D positions, with the given edges both ways.
 -- Cost is the running total plus the edge length, or IMPASSABLE for a

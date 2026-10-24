@@ -1,5 +1,5 @@
 -- Path costs: the IPathCost functor a NextBot hands its path search, as
--- strategies. A strategy is a part (games.nextsoldier.path.<name>) providing
+-- strategies. A strategy is a part (foundation.wetsands.path.<name>) providing
 -- Cost(step, limits, bot) -> cost or IMPASSABLE, where
 --   step   = { hasFrom, traversable, ladderLength, length, centerDistance,
 --              heightChange, fromCostSoFar, areaId } for the move into an area,

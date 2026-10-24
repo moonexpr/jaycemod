@@ -1,9 +1,9 @@
--- games.nextsoldier.path.hl2: the route cost of HL2's engine NPCs on a TF2
+-- foundation.wetsands.path.hl2: the route cost of HL2's engine NPCs on a TF2
 -- nav mesh: TF2's bot cost, minus every move the NPC's body cannot make.
 local T = dofile("tests/harness.lua")
-local Path = nextsoldier.path
-local HL2 = T.require("games.nextsoldier.path.hl2")
-local TFBot = T.require("games.nextsoldier.path.tfbot")
+local Path = wetsands.path
+local HL2 = T.require("foundation.wetsands.path.hl2")
+local TFBot = T.require("foundation.wetsands.path.tfbot")
 local Teams = gameplay.teams
 
 local BOT = {

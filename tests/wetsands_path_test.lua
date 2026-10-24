@@ -1,7 +1,7 @@
 local T = dofile("tests/harness.lua")
-local Path = nextsoldier.path
-local Ground = T.require("games.nextsoldier.path.ground")
-local Scatter = T.require("games.nextsoldier.path.scatter")
+local Path = wetsands.path
+local Ground = T.require("foundation.wetsands.path.ground")
+local Scatter = T.require("foundation.wetsands.path.scatter")
 
 local LIMITS = {
 	runSpeed = 300,

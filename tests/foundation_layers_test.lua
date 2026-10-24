@@ -62,6 +62,15 @@ local CATEGORY = {
 
 	["generator/state_machine"] = "formalisms",
 	["generator/state_chart"] = "formalisms",
+
+	-- foundation.wetsands: systems moved out of games/ for native backing
+	-- (docs/native-foundation-plan.md), the one part that names game things.
+	["wetsands/astar"] = "structures",
+	["wetsands/path"] = "nextsoldier",
+	["wetsands/path/ground"] = "nextsoldier",
+	["wetsands/path/hl2"] = "nextsoldier",
+	["wetsands/path/scatter"] = "nextsoldier",
+	["wetsands/path/tfbot"] = "nextsoldier",
 }
 
 -- games/'s modules, by the same categories (docs/foundation-game-split-plan.md).
@@ -69,7 +78,7 @@ local GAMES = {
 	["timer/countdown"] = "structures",
 	["timer/interval"] = "structures",
 	["world/snapshot"] = "structures",
-	["npc/astar"] = "structures",
+	["world/nav_attributes"] = "structures",
 
 	["list/drawlist"] = "formalisms",
 	["world/io"] = "formalisms",
@@ -108,6 +117,8 @@ local GAMES = {
 	["gameplay/arrivals"] = "gameplay",
 	["gameplay/reports"] = "gameplay",
 	["gameplay/vote"] = "gameplay",
+	["gameplay/handicap"] = "gameplay",
+	["gameplay/capabilities"] = "gameplay",
 	["gameplay/loadout"] = "gameplay",
 	["gameplay/combat"] = "gameplay",
 	["gameplay/combat/weapon_mimic"] = "gameplay",
@@ -142,11 +153,6 @@ local GAMES = {
 	["nextsoldier/posts"] = "nextsoldier",
 	["nextsoldier/zone"] = "nextsoldier",
 	["nextsoldier/tuning"] = "nextsoldier",
-	["nextsoldier/path"] = "nextsoldier",
-	["nextsoldier/path/ground"] = "nextsoldier",
-	["nextsoldier/path/hl2"] = "nextsoldier",
-	["nextsoldier/path/scatter"] = "nextsoldier",
-	["nextsoldier/path/tfbot"] = "nextsoldier",
 	["nextsoldier/route_record"] = "nextsoldier",
 	["nextsoldier/reach_memo"] = "nextsoldier",
 	["nextsoldier/leap"] = "nextsoldier",

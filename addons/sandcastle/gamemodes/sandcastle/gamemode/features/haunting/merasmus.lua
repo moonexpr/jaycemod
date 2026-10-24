@@ -71,7 +71,7 @@ local format = string.format
 module(...)
 
 BOSS_TYPE = HalloweenBoss.BOSS_MERASMUS
-PATH = "games.nextsoldier.path.ground"
+PATH = "foundation.wetsands.path.ground"
 -- CMerasmusLocomotion
 LOCOMOTION = {
 	runSpeed = 600, -- tf_merasmus_speed

@@ -1,7 +1,7 @@
 -- Part of the AI war controller (sv.lua): the soldier port over a DrGBase soldier; its gadgets are sv_gadgets.lua.
 local Map = ...
-local TFBot = WS.require("games.nextsoldier.path.tfbot")
-local HL2Path = WS.require("games.nextsoldier.path.hl2")
+local TFBot = WS.require("foundation.wetsands.path.tfbot")
+local HL2Path = WS.require("foundation.wetsands.path.hl2")
 local Random = math.weighted
 local Debug = WS.require("features.nbdebug.model")
 local Detour = nextsoldier.detour

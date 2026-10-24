@@ -3,8 +3,8 @@
 local Controller, Map = ...
 local Teams = gameplay.teams
 local Debug = WS.require("features.nbdebug.model")
-local TFBot = WS.require("games.nextsoldier.path.tfbot")
-local HL2Path = WS.require("games.nextsoldier.path.hl2")
+local TFBot = WS.require("foundation.wetsands.path.tfbot")
+local HL2Path = WS.require("foundation.wetsands.path.hl2")
 local Zone = nextsoldier.zone
 local Doors = nextsoldier.doors
 local Geometry = math.geometry

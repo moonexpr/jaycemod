@@ -18,7 +18,7 @@ local Pathfinder = graph.pathfinder
 local ReachMemo = nextsoldier.reach_memo
 
 local STRATEGIES = {
-	hl2 = T.require("games.nextsoldier.path.hl2"),
+	hl2 = T.require("foundation.wetsands.path.hl2"),
 	lanes = nextsoldier.lanes.Strategy,
 }
 

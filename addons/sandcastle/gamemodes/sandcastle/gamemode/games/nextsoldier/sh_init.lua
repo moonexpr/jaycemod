@@ -1,7 +1,8 @@
 -- NextSoldier: the soldiers' tactics, squads, senses and tuning, and how a
--- soldier moves (path costs, doors, leaps, rappels), each loaded the first
--- time it is read. A module's parts (path/ground) load through it. One line
--- a module, never a loop: docs/foundation-game-split-plan.md.
+-- soldier moves (doors, leaps, rappels), each loaded the first time it is
+-- read; the path costs it moves by are foundation.wetsands.path. A module's
+-- parts load through it. One line a module, never a loop:
+-- docs/foundation-game-split-plan.md.
 local nextsoldier = Namespace("nextsoldier")
 Defer(nextsoldier, "tactics", "games.nextsoldier.tactics")
 Defer(nextsoldier, "tuning", "games.nextsoldier.tuning")
@@ -14,7 +15,6 @@ Defer(nextsoldier, "hunt", "games.nextsoldier.hunt")
 Defer(nextsoldier, "posts", "games.nextsoldier.posts")
 Defer(nextsoldier, "zone", "games.nextsoldier.zone")
 Defer(nextsoldier, "nav_gaps", "games.nextsoldier.nav_gaps")
-Defer(nextsoldier, "path", "games.nextsoldier.path")
 Defer(nextsoldier, "brushes", "games.nextsoldier.brushes")
 Defer(nextsoldier, "clip", "games.nextsoldier.clip")
 Defer(nextsoldier, "detour", "games.nextsoldier.detour")

@@ -73,7 +73,7 @@ function WS.DrgSoldier(ENT, baseName)
 	if CLIENT then return end
 	local Ragdoll = WS.require("ws.ragdoll")
 	local Voices = WS.require("ws.voices")
-	local HL2Path = WS.require("games.nextsoldier.path.hl2")
+	local HL2Path = WS.require("foundation.wetsands.path.hl2")
 	local Leap = nextsoldier.leap
 	local Noise = nextsoldier.noise
 	local Rappel = nextsoldier.rappel

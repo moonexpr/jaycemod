@@ -23,7 +23,7 @@ end)
 -- walker's feet are above the lip by the time it gets there; for every
 -- ledge a soldier's route may jump.
 T.test("the feet are above the lip before the walker reaches the wall", function()
-	local HL2 = T.require("games.nextsoldier.path.hl2")
+	local HL2 = T.require("foundation.wetsands.path.hl2")
 	local from = P(0, 0, 0)
 	for _, height in ipairs({ 19, 30, HL2.SOLDIER_JUMP_HEIGHT - 1 }) do
 		for _, reach in ipairs({ 1, 10, 20, 30 }) do

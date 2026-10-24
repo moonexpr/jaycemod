@@ -1,6 +1,6 @@
 -- Route searches as the server ran them, recorded so they replay offline
--- (under plain LuaJIT) with the same solver (games.npc.astar)
--- and cost strategy (games.nextsoldier.path.*): what the npc controller's
+-- (under plain LuaJIT) with the same solver (foundation.wetsands.astar)
+-- and cost strategy (foundation.wetsands.path.*): what the npc controller's
 -- NavGraph (features/npc/sv_routes.lua) answered is written down, so a
 -- replay asks the same questions of the record instead of the engine.
 -- .devtools/bin/record_routes.lua records on the server;
@@ -30,8 +30,8 @@
 local Buffer = file.buffer
 local Geometry = math.geometry
 local Pathfinder = graph.pathfinder
-local AStar = npc.astar
-local Path = nextsoldier.path
+local AStar = wetsands.astar
+local Path = wetsands.path
 local error, format, ipairs, pairs, pcall, setmetatable, tonumber, tostring = error, string.format, ipairs, pairs, pcall, setmetatable, tonumber, tostring
 module(...)
 

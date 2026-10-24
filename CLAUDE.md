@@ -17,7 +17,7 @@ NextSoldier, the AI-war's NextBot soldiers. The gamemode lives at
 | `gamemode/entities/` | Map entity bindings |
 | `addons/teamtint/` | Team Tint, its own addon: RED/BLU NPCs in TF2's shading, a tuning tool and debug views; pure modules in `lua/includes/modules/`, textures baked by `.devtools/bin/teamtint_bake.py` (`docs/team-theming-plan.md`) |
 | `tests/*_test.lua` | LuaJIT tests, `tests/harness.lua`; `tests/foundation_layers_test.lua` guards foundation's layers |
-| `native/` | Rust binary modules (`ws_profile`, the sampling profiler) |
+| `native/` | Rust binary modules: `foundation` (foundation's structures, native), `wetsands` (foundation.wetsands' systems, on the foundation crate), `ws_profile` (the sampling profiler); `vendor/source-sdk-2013` the raw Source SDK headers they read Source's values from (`docs/native-foundation-plan.md`) |
 | `docs/` | Design notes; `docs/research/foundation-admission-rule.md` decides what belongs in foundation |
 | `.devtools/bin/` | Project tools; `.devtools/artifacts/` generated output |
 
@@ -78,7 +78,8 @@ Every foundation and games module is in one category of
 its own rank or below, in either tree: **structures** (data structures,
 algorithms, codecs), **formalisms** (mechanisms that run a policy the caller
 plugs in), **gameplay** types, **nextsoldier** types. foundation holds only
-structures and formalisms with no game nouns. A module bound out of
+structures and formalisms with no game nouns, but for `foundation.wetsands`:
+the systems moved out of games to stand on native backing. A module bound out of
 foundation is listed there (PENDING) with its destination until it moves.
 
 An abstract base lives in foundation; its concrete variants live beside the
@@ -196,6 +197,17 @@ Tests are `tests/<namespace>_<module>_test.lua`.
 | `configstore` | Named whole-number values, each held to a range and guarded by what the caller names: `New(name)` → `Range(key, min, max, guard)`, `Switch(key, guard)`, `store[key]` (`Get`; read-only `min`, `max`, `guard`), `Has`, `for key, entry in store()` (key order; `Keys`), `Size` (`__len`), `tostring`, `Allowed(key, holds)`, `Parse(key, text)` → text or nil and why. The menus' settings are one (`ws.settings`, guards are privileges) |
 | `nodegraph` | An HL2 AI node graph made from the nav mesh: picks nodes, proposes links, assigns zones, reads and writes `maps/graphs/<map>.ain` |
 
+### wetsands: systems on native backing
+
+The systems moved out of `games/` because native backing speeds them up
+(`native/wetsands`, `docs/native-foundation-plan.md`); the Lua is the oracle
+the native code is tested against, and what runs without the binary.
+
+| Module | API |
+|---|---|
+| `wetsands.astar` | `graph.pathfinder`'s solver for NavAreaBuildPath's A*, the routes of HL2 NPCs (`features/npc/sv_routes.lua`) |
+| `wetsands.path` | Path costs: a NextBot's IPathCost as strategies, parts `ground`, `hl2`, `scatter`, `tfbot` (`require("foundation.wetsands.path.<name>")`), each `Cost(step, limits, bot)`; `IMPASSABLE`, `JUMP_PENALTY`, `Walkable` |
+
 ## games index
 
 `gamemode/games/<namespace>/<module>.lua`: the specialised code built on
@@ -215,8 +227,8 @@ never features or ws; a published foundation module never requires games;
 |---|---|
 | `system` | The gamemode core: `events` (the game event registry, `WS.Events`), `features` (per-map feature loading), `gamemode`, `permissions`, `play_mode`, `spawn_manager`, `idle` |
 | `gameplay` | `rounds` (+ `state`, `timer`, `limits`), `teams`, `players` (+ `attributes`, `condition_effects`), `spawn`, `spectate`, `respawn_modifiers`, `arrivals`, `loadout`, `economy`, `kill_credit`, `kill_icons`, `vote`, `reports`, `player_analytics`, `capture` (+ `area`, `master`, `point_timer`), `combat` (+ 9 parts), `projectile` (+ 4 parts), `tactics` |
-| `npc` | `nextbot` (the NextBot NPC system), `actor`, `combatant`, `targeting`, `astar` |
-| `nextsoldier` | NextSoldier: `tactics` (the AI war's fire-team doctrine, on `gameplay.tactics`), `tuning`, `squad`, `lanes`, `speech`, `hearing`, `explore`, `hunt`, `posts`, `zone`, `nav_gaps`; movement: `path` (+ `ground`, `hl2`, `scatter`, `tfbot`, the cost strategies a solver prices steps with), `brushes`, `clip`, `detour`, `doors`, `leap`, `noise`, `portal`, `probe`, `rappel`, `reach_memo`, `route_record`; bot players (`docs/aiwar-bots.md`): `bot_quota` (tf_bot_quota's rules), `vision` (seen, recognized, remembered: the contact), `player_body` (moves, aim and fire as a player's keys), `route_walk` (a route walked waypoint by waypoint) |
+| `npc` | `nextbot` (the NextBot NPC system), `actor`, `combatant`, `targeting` |
+| `nextsoldier` | NextSoldier: `tactics` (the AI war's fire-team doctrine, on `gameplay.tactics`), `tuning`, `squad`, `lanes`, `speech`, `hearing`, `explore`, `hunt`, `posts`, `zone`, `nav_gaps`; movement (on `wetsands.path`'s costs): `brushes`, `clip`, `detour`, `doors`, `leap`, `noise`, `portal`, `probe`, `rappel`, `reach_memo`, `route_record`; bot players (`docs/aiwar-bots.md`): `bot_quota` (tf_bot_quota's rules), `vision` (seen, recognized, remembered: the contact), `player_body` (moves, aim and fire as a player's keys), `route_walk` (a route walked waypoint by waypoint) |
 
 | Module | API |
 |---|---|
@@ -226,7 +238,6 @@ never features or ws; a published foundation module never requires games;
 | `generator.hfsm` | NextBot Action/Behavior engine: `generator.state_chart` with stacks. `Action` adds `SuspendFor`/`TrySuspendFor`, `OnSuspend`/`OnResume`, buried actions hearing events and queries after the one covering them; `Behavior`; `Chart` as state_chart's; NextBot's timers as `CountdownTimer`, `IntervalTimer` |
 | `world.io` | A map's entity lookups and output connections, through a world port |
 | `gameplay.tactics` | The tactics engine interface: `ENGINE` (a port), `Check(engine)` |
-| `npc.astar` | `graph.pathfinder`'s solver for NavAreaBuildPath's A*, the routes of HL2 NPCs (`features/npc/sv_routes.lua`) |
 | `list.drawlist` | `New()` → draw callbacks named by dotted paths, run in order (by order, a tie by path): `Add(path, order, draw[, when])` (a path again replaces it), `HideElements(path)`/`ShowElements(path)` (the code's: a path hides all under it), `SetHidden(paths)` (the player's, apart), `Draw(...)`, `Entries()`; `ParseNames(text)`. The HUD's (`WS.HUD`, `cl_hud_hidden`) |
 
 Rationale, what stays out of foundation's namespaces, and what to evaluate

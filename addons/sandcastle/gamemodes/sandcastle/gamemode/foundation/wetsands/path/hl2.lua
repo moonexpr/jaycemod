@@ -1,5 +1,5 @@
 -- The route cost of HL2's engine NPCs (the AI war's soldiers) on a TF2 nav
--- mesh: TF2's bot cost (games.nextsoldier.path.tfbot), minus every move their
+-- mesh: TF2's bot cost (foundation.wetsands.path.tfbot), minus every move their
 -- body cannot make. The mesh was generated for TF2 players, who crouch and
 -- jump; an engine NPC moving without an AI node graph does neither:
 -- - it steps up at most StepHeight (CAI_BaseNPC::StepHeight, 18), and down
@@ -12,8 +12,8 @@
 -- Besides a step's usual fields it reads step.attributes (the area's
 -- NAV_MESH_* flags).
 local band = bit.band
-local Path = nextsoldier.path
-local TFBot = require("games.nextsoldier.path.tfbot")
+local Path = wetsands.path
+local TFBot = require("foundation.wetsands.path.tfbot")
 module(...)
 
 -- nav.h's NavAttributeType

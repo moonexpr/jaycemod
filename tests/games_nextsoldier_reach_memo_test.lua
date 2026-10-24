@@ -5,8 +5,8 @@ local T = dofile("tests/harness.lua")
 local ReachMemo = nextsoldier.reach_memo
 local Expiring = cache.expiring
 local Class = core.class
-local HL2 = T.require("games.nextsoldier.path.hl2")
-local TFBot = T.require("games.nextsoldier.path.tfbot")
+local HL2 = T.require("foundation.wetsands.path.hl2")
+local TFBot = T.require("foundation.wetsands.path.tfbot")
 
 local RED, BLUE = 2, 3
 local TERM = 30

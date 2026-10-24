@@ -44,6 +44,7 @@ Index("foundation/cache/sh_index.lua")
 Index("foundation/generator/sh_index.lua")
 Index("foundation/encoding/sh_index.lua")
 Index("foundation/analysis/sh_index.lua")
+Index("foundation/wetsands/sh_index.lua")
 Index("foundation/sh_index.lua")
 
 -- game: published at once, each module loaded the first time it is read,

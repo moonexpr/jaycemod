@@ -26,7 +26,7 @@ module(...)
 SKELETON_NORMAL, SKELETON_KING, SKELETON_MINI = 0, 1, 2
 
 KIND = "zombie"
-PATH = "games.nextsoldier.path.scatter"
+PATH = "foundation.wetsands.path.scatter"
 
 MAX_ACTIVE_DEFAULT = 30 -- tf_max_active_zombie
 CHASE_MIN_DURATION = 3 -- ZOMBIE_CHASE_MIN_DURATION

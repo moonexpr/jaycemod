@@ -1,10 +1,10 @@
--- games.nextsoldier.path.tfbot: CTFBotPathCost (tf_bot.h) with
+-- foundation.wetsands.path.tfbot: CTFBotPathCost (tf_bot.h) with
 -- CTFBotLocomotion::IsAreaTraversable, the path cost of TF2's bots and
 -- MvM's robots.
 local T = dofile("tests/harness.lua")
-local Path = nextsoldier.path
-local TFBot = T.require("games.nextsoldier.path.tfbot")
-local Scatter = T.require("games.nextsoldier.path.scatter")
+local Path = wetsands.path
+local TFBot = T.require("foundation.wetsands.path.tfbot")
+local Scatter = T.require("foundation.wetsands.path.scatter")
 local Teams = gameplay.teams
 
 local LIMITS = { stepHeight = 18, jumpHeight = 72, deathDropHeight = 1000 }

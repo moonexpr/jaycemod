@@ -2,9 +2,9 @@
 local Controller, Map = ...
 local Teams = gameplay.teams
 local Geometry = math.geometry
-local TFBot = WS.require("games.nextsoldier.path.tfbot")
-local HL2Path = WS.require("games.nextsoldier.path.hl2")
-local Path = nextsoldier.path
+local TFBot = WS.require("foundation.wetsands.path.tfbot")
+local HL2Path = WS.require("foundation.wetsands.path.hl2")
+local Path = wetsands.path
 local Lanes = nextsoldier.lanes
 local Graph = graph.search
 local RED, BLUE = Map.RED, Map.BLUE

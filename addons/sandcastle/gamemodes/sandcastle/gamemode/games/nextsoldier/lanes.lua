@@ -19,8 +19,8 @@
 local ipairs, pairs = ipairs, pairs
 local huge, min, sqrt = math.huge, math.min, math.sqrt
 local sort = table.sort
-local HL2Path = require("games.nextsoldier.path.hl2")
-local Path = nextsoldier.path
+local HL2Path = require("foundation.wetsands.path.hl2")
+local Path = wetsands.path
 local Distance = math.geometry.Distance
 local Graph = graph.search
 module(...)

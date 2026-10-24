@@ -14,7 +14,7 @@ local Payload = T.require("features.aiwar.scenario.payload")
 local Freeform = T.require("features.aiwar.scenario.freeform")
 local Posts = nextsoldier.posts
 local Lanes = nextsoldier.lanes
-local HL2Path = T.require("games.nextsoldier.path.hl2")
+local HL2Path = T.require("foundation.wetsands.path.hl2")
 local Gamemode = system.gamemode
 local Rounds = gameplay.rounds
 local PayloadMode = T.require("features.payload.round")
@@ -1136,7 +1136,7 @@ end)
 -- An area outside the room that the field reaches only by a climb too high
 -- for a soldier (a ledge) is no threshold either.
 T.test("a lane stop's threshold is not a ledge the soldiers cannot climb", function()
-	local HL2Path = T.require("games.nextsoldier.path.hl2")
+	local HL2Path = T.require("foundation.wetsands.path.hl2")
 	local w = World()
 	w.spawns[RED] = { Ent(Vector(0, 0, 0)) }
 	w.spawns[BLUE] = { Ent(Vector(2400, 0, 0)) }

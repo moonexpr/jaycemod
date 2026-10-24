@@ -2,7 +2,7 @@
 -- handing them to squads, and walking them.
 local T = dofile("tests/harness.lua")
 local Lanes = nextsoldier.lanes
-local Path = nextsoldier.path
+local Path = wetsands.path
 
 local function P(x, y) return { x = x, y = y, z = 0 } end
 local function Lane(ids, length) return { ids = ids, points = {}, length = length } end

@@ -2,7 +2,7 @@
 -- preference term makes each bot favour different areas, and keeps its
 -- choice for ten seconds so repaths follow the same route.
 local cos, floor = math.cos, math.floor
-local Ground = require("games.nextsoldier.path.ground")
+local Ground = require("foundation.wetsands.path.ground")
 module(...)
 
 local ROUTE_PERIOD = 10 -- seconds a bot keeps its preferences
