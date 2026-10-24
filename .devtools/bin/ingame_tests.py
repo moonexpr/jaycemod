@@ -116,6 +116,7 @@ PLAN: Tuple[MapRun, ...] = (
         Step("defaults_apply", 20, before="ws_defaults_apply"),
         Step("aiwar", 90),
         Step("aiwar_sitting", 300),
+        Step("aiwar_bots", 330),
         GAMEPLAY_START,
         Step("payload", 420),
     )),

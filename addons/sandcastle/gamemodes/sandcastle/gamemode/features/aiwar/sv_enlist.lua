@@ -10,27 +10,39 @@ local Point, Masks, SpawnSpots, ClearSpotNear = Map.Point, Map.Masks, Map.SpawnS
 -- Enlisting ---------------------------------------------------------------------
 
 -- fixed: the job it only ever does (a drafted medic); by default its
--- class's (the vortigaunt's).
+-- class's (the vortigaunt's). A bot player (sv_bots.lua) is a player on
+-- its team already: the engine relates it, the rounds count it, and its
+-- body is the bot soldier port's (sv_bot_soldier.lua), not DrGBase's.
 function Controller:Enlist(ent, team, drafted, fixed)
-	local member = self.war:Enlist(ent, team, drafted, fixed or AiWar.FixedRole(ent:GetClass()))
+	local bot = ent:IsPlayer()
+	local member = self.war:Enlist(ent, team, drafted, fixed or (not bot and AiWar.FixedRole(ent:GetClass())) or nil)
 	-- a drafted soldier fills a slot of its faction, and leads or follows as it is pinned
 	if drafted then member.pin = self:SlotPlan():Fill(self:FactionName(team), ent).pin end
-	if self.paused then ent:SetAIDisabled(true) end
-	-- a NextBot's locomotion moves under its solid mask; an HL2 NPC's mask is the engine's
-	if ent:IsNextBot() then ent:SetSolidMask(Masks().solid) end
-	local soldier = self.Soldier.New(ent, self, team)
-	self.soldiers[ent] = {
-		soldier = soldier,
-		npc = NpcSystem.Npc.New(Orders, { war = self.war, member = member }, soldier),
-	}
-	-- DrGBase's hooks ask and tell the orders (ws_drg_soldier's bridge)
-	ent.NSBrain = self.soldiers[ent].npc
-	-- its paths keep off doors and brushes shut to its team (OnComputePath)
-	local npcs = WS.Feature("npc")
-	ent.NSAreaClosed = function(area) return npcs:NavBlocks(area, team) or self:ShutDoorIn(area, team) end
-	WS.SetTeamMember(ent, team)
-	self:RelateToFactions(ent, team)
-	self:PassTeammates(ent, team)
+	if bot then
+		local soldier = self:NewBotSoldier(ent, team)
+		self.soldiers[ent] = {
+			soldier = soldier,
+			npc = NpcSystem.Npc.New(Orders, { war = self.war, member = member }, soldier),
+		}
+		self:ReadyBot(ent, self.soldiers[ent])
+	else
+		if self.paused then ent:SetAIDisabled(true) end
+		-- a NextBot's locomotion moves under its solid mask; an HL2 NPC's mask is the engine's
+		if ent:IsNextBot() then ent:SetSolidMask(Masks().solid) end
+		local soldier = self.Soldier.New(ent, self, team)
+		self.soldiers[ent] = {
+			soldier = soldier,
+			npc = NpcSystem.Npc.New(Orders, { war = self.war, member = member }, soldier),
+		}
+		-- DrGBase's hooks ask and tell the orders (ws_drg_soldier's bridge)
+		ent.NSBrain = self.soldiers[ent].npc
+		-- its paths keep off doors and brushes shut to its team (OnComputePath)
+		local npcs = WS.Feature("npc")
+		ent.NSAreaClosed = function(area) return npcs:NavBlocks(area, team) or self:ShutDoorIn(area, team) end
+		WS.SetTeamMember(ent, team)
+		self:RelateToFactions(ent, team)
+		self:PassTeammates(ent, team)
+	end
 	self:JoinSquad(ent, member)
 	if team == self.losers then self:Disarm(ent, self.soldiers[ent]) end
 	self.nextRelations = 0
@@ -145,7 +157,7 @@ end
 
 function Controller:Equip(ent, entry, member)
 	local role = member and member.role or false
-	if entry.equipped == role or not ent.NSKit then return end
+	if entry.equipped == role or not (ent.NSKit or ent:IsPlayer()) then return end
 	entry.equipped = role
 	local team = entry.soldier.team
 	if self.heroes then
@@ -161,7 +173,7 @@ function Controller:Equip(ent, entry, member)
 	entry.soldier.kit = kit
 	-- a hero leads its squad (games.nextsoldier.squad)
 	if member then member.hero = kit.hero == true or nil end
-	ent:NSKit(kit)
+	if ent:IsPlayer() then self:KitBot(ent, entry.soldier, kit) else ent:NSKit(kit) end
 end
 
 -- A soldier died: OnOtherKilled(victim, its team) to every soldier within
@@ -192,7 +204,7 @@ function Controller:Discharge(ent)
 	self.war:Discharge(ent)
 	self:SlotPlan():Vacate(ent)
 	entry.npc:Destroy()
-	WS.SetTeamMember(ent, nil)
+	if not ent:IsPlayer() then WS.SetTeamMember(ent, nil) end
 end
 
 -- A Combine or Resistance NPC that appeared on its own (a player spawned
@@ -232,8 +244,12 @@ local function WaveLength(team)
 	return WS.Rules:GetRespawnWaveMaxLength(team, true)
 end
 
+-- The war's own soldiers fill the slots its bot players (sv_bots.lua)
+-- leave: each bot on a team takes one of that team's.
 function Controller:Reinforce(now)
-	for team, count in pairs(self.war:Reinforcements(now, self:Sizes(), WaveLength)) do
+	local sizes = self:Sizes()
+	for _, team in ipairs({ RED, BLUE }) do sizes[team] = math.max(0, sizes[team] - self:BotsOn(team)) end
+	for team, count in pairs(self.war:Reinforcements(now, sizes, WaveLength)) do
 		local spots = SpawnSpots(team)
 		for i = 1, #spots > 0 and count or 0 do
 			local spot = spots[(i - 1) % #spots + 1]
@@ -272,7 +288,12 @@ function Controller:RespawnAll()
 	local spots, used = {}, {}
 	for _, e in ipairs(entries) do
 		local ent = e.ent
-		if IsValid(ent) then
+		if IsValid(ent) and ent:IsPlayer() then
+			-- a bot player: the round respawns it as every player; its orders start over
+			e.entry.soldier:Release()
+			self:Discharge(ent)
+			if ent:Alive() then self:Enlist(ent, WS.TeamOf(ent), false) end
+		elseif IsValid(ent) then
 			-- a soldier a player spawned follows its faction to its side
 			local team = self.war:FactionTeam(ent:GetClass()) or e.entry.soldier.team
 			local drafted = self.war:Member(ent).drafted

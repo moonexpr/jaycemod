@@ -15,7 +15,8 @@
 
 local Controller = {
 	war = nil, -- a features.aiwar.model War while the war runs
-	soldiers = {}, -- NPC entity -> { soldier = port, npc = games.npc.nextbot Npc, speaker (sv_speech) }
+	soldiers = {}, -- NPC entity or bot player -> { soldier = port, npc = games.npc.nextbot Npc, speaker (sv_speech) }
+	bots = {}, -- bot players tf_bot_quota made -> true (sv_bots.lua)
 	doorFlags = {}, -- trigger_multiple -> its spawnflags before the war
 	tracks = setmetatable({}, { __mode = "k" }), -- a watcher's path node list -> Track
 	nextThink = 0,
@@ -54,6 +55,8 @@ local Controller = {
 	-- tuner = nil, -- the tactics tuner of ns_tactics_*, made when first used
 	-- probes = nil, -- path probes walking the lanes, with their findings (ProbeLanes)
 	-- probeReport = nil, -- the last probe run's report, as lines (StepProbes)
+	-- botSerial = nil, -- how many bots it has made, for their names (AddBot)
+	-- nextQuota = nil, -- when the quota is next kept (MaintainBotQuota)
 }
 
 function Controller:Active()
@@ -80,8 +83,10 @@ local Map = Part("sv_map", Controller)
 local Soldier, ARRIVED = Part("sv_soldier", Map)
 Part("sv_gadgets", Map, Soldier)
 Controller.Soldier = Soldier
+Controller.BotSoldier = Part("sv_bot_soldier", Map, Soldier)
 Part("sv_relations", Controller, Map)
 Part("sv_enlist", Controller, Map)
+Part("sv_bots", Controller, Map)
 Part("sv_reserve", Controller)
 Part("sv_speech", Controller)
 Part("sv_obstacles", Controller, Map)

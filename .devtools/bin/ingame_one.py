@@ -2,6 +2,7 @@
 
   ingame_one.py capture_cleanup              deploy the runner and checks, run it, print the JSON
   ingame_one.py aiwar_arena --timeout 900    wait up to 900 s for a long check's record
+  ingame_one.py aiwar_bots --instance 2      on a second server (srcds.py --instance 2 start)
 
 For a quick red/green loop on a single check; ingame_tests.py runs the plan
 and writes the report.
@@ -19,8 +20,9 @@ RESULT_TIMEOUT = 120
 RUNNING = "gm_construct"  # a placeholder: the map only matters to start, which this never calls
 
 
-def main(check: str, timeout: float) -> int:
-    server = srcds.make_server(RUNNING, srcds.started_port(srcds.DEFAULT_PORT))
+def main(check: str, timeout: float, instance: srcds.Instance) -> int:
+    files = srcds.InstanceFiles.of(instance)
+    server = srcds.make_server(RUNNING, srcds.started_port(files.port, instance), instance=instance)
     data_root = server.install.data_dir / it.DATA_NAME
     it.deploy(data_root)
     server.rcon(it.BOOT)
@@ -43,5 +45,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run one in-game check on the running server.")
     parser.add_argument("check")
     parser.add_argument("--timeout", type=float, default=RESULT_TIMEOUT, help="seconds to wait for its record")
+    parser.add_argument("--instance", type=int, default=srcds.MAIN_INSTANCE,
+                        help="the server srcds.py --instance started (1, the default, is the main one)")
     args = parser.parse_args()
-    sys.exit(main(args.check, args.timeout))
+    sys.exit(main(args.check, args.timeout, srcds.Instance(args.instance)))

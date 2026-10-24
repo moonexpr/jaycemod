@@ -22,8 +22,9 @@ end
 
 function Controller:SetPaused(on)
 	self.paused = on
+	-- a bot player stands still by its keys (sv_bots.lua's Drive)
 	for ent in pairs(self.soldiers) do
-		if IsValid(ent) then ent:SetAIDisabled(on) end
+		if IsValid(ent) and not ent:IsPlayer() then ent:SetAIDisabled(on) end
 	end
 end
 
@@ -204,10 +205,11 @@ function Controller:End()
 			local drafted = self.war:Member(e.ent).drafted
 			e.entry.soldier:Release()
 			self:Discharge(e.ent)
-			if drafted then e.ent:Remove() elseif self.paused then e.ent:SetAIDisabled(false) end
+			if drafted then e.ent:Remove() elseif self.paused and not e.ent:IsPlayer() then e.ent:SetAIDisabled(false) end
 		end
 	end
 	self.soldiers = {}
+	self:DismissBots()
 	self.losers = nil
 	self:SweepGadgets(nil, true)
 	self.heroes = nil
@@ -270,8 +272,9 @@ end)
 hook.Add("WSTeamCombatants", "ws_aiwar", function(team)
 	if not Controller.war then return end
 	local count = 0
+	-- bot players are counted with the players
 	for ent, entry in pairs(Controller.soldiers) do
-		if entry.soldier.team == team and IsValid(ent) and ent:Health() > 0 then count = count + 1 end
+		if entry.soldier.team == team and IsValid(ent) and not ent:IsPlayer() and ent:Health() > 0 then count = count + 1 end
 	end
 	return count
 end)

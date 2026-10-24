@@ -454,10 +454,11 @@ T.test("pins are kept with the slot list, and read back on the next map", functi
 end)
 
 -- A soldier the controller holds, with entity index `index`, whose DrGBase
--- AI can be turned off.
+-- AI can be turned off: an NPC, not a bot player.
 local function FakeSoldier(index)
 	return {
 		EntIndex = function() return index end,
+		IsPlayer = function() return false end,
 		SetAIDisabled = function(self, off) self.aiOff = off end,
 	}
 end

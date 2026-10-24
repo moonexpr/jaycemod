@@ -15,16 +15,18 @@ module(...)
 -- chase and avoid: how near DrGBase closes and how far it backs off, its
 -- own for the hold type. A melee weapon: damage a strike, interval between
 -- strikes (Half-Life's crowbar's, CCrowbar::Swing: a hit swings again 0.25
--- seconds on).
+-- seconds on). automatic: it fires, or swings, for as long as its trigger
+-- is held; the rest fire once a press (a bot soldier presses again:
+-- games.nextsoldier.player_body).
 WEAPONS = {
 	weapon_crossbow = { cone = 0, reach = 3000, chase = 2000, avoid = 750 },
 	weapon_357 = { cone = 1, reach = 750, chase = 500, avoid = 350 },
 	weapon_pistol = { cone = 2, reach = 750, chase = 500, avoid = 350 },
-	weapon_ar2 = { cone = 3, reach = 1500, chase = 1000, avoid = 750 },
-	weapon_smg1 = { cone = 5, reach = 1500, chase = 1000, avoid = 750 },
+	weapon_ar2 = { cone = 3, reach = 1500, chase = 1000, avoid = 750, automatic = true },
+	weapon_smg1 = { cone = 5, reach = 1500, chase = 1000, avoid = 750, automatic = true },
 	weapon_shotgun = { cone = 10, reach = 325, chase = 250, avoid = 175 },
-	weapon_crowbar = { melee = true, damage = 25, interval = 0.25 },
-	weapon_stunstick = { melee = true, damage = 30, interval = 0.25 },
+	weapon_crowbar = { melee = true, damage = 25, interval = 0.25, automatic = true },
+	weapon_stunstick = { melee = true, damage = 30, interval = 0.25, automatic = true },
 }
 
 -- How near a melee weapon strikes from, and how near an enemy is before the

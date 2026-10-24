@@ -87,6 +87,15 @@ T.test("a shown body draws its weapon in hand and its other parts, never a holst
 	T.eq(Arms.Drawn(true, false, false), true, "a part that is not a weapon")
 end)
 
+T.test("the automatic arms are the SMG, the AR2 and the melee weapons; the rest fire once a press", function()
+	for _, class in ipairs({ "weapon_smg1", "weapon_ar2", "weapon_crowbar", "weapon_stunstick" }) do
+		T.eq(Arms.WEAPONS[class].automatic, true, class)
+	end
+	for _, class in ipairs({ "weapon_crossbow", "weapon_357", "weapon_pistol", "weapon_shotgun" }) do
+		T.eq(Arms.WEAPONS[class].automatic, nil, class)
+	end
+end)
+
 T.test("a hidden body draws nothing", function()
 	T.eq(Arms.Drawn(false, true, true), false, "the weapon in hand")
 	T.eq(Arms.Drawn(false, false, false), false, "another part")

@@ -159,6 +159,9 @@ local GAMES = {
 	["nextsoldier/brushes"] = "nextsoldier",
 	["nextsoldier/clip"] = "nextsoldier",
 	["nextsoldier/nav_gaps"] = "nextsoldier",
+	["nextsoldier/bot_quota"] = "nextsoldier",
+	["nextsoldier/vision"] = "nextsoldier",
+	["nextsoldier/player_body"] = "nextsoldier",
 }
 
 -- The modules still to move, and where each goes: none. A module bound out

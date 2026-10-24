@@ -60,10 +60,12 @@ function Controller:GadgetsOf(soldier, kind)
 	return n
 end
 
+-- Bot players are related as players are (DrGBase and the engine relate to
+-- a player by its team): the soldier passes below are the NPCs'.
 function Controller:RelateGadget(gadget)
 	local info = self.gadgets[gadget]
 	for ent, entry in pairs(self.soldiers) do
-		if IsValid(ent) then
+		if IsValid(ent) and not ent:IsPlayer() then
 			gadget:AddEntityRelationship(ent, self:Disposition(info.team, entry.soldier.team), RELATIONSHIP_PRIORITY)
 			ent:AddEntityRelationship(gadget, self:Disposition(entry.soldier.team, info.team), RELATIONSHIP_PRIORITY)
 		end
@@ -166,7 +168,7 @@ function Controller:RelateMonsters()
 			self.monsters[monster] = nil
 		else
 			for ent, entry in pairs(self.soldiers) do
-				local disposition = IsValid(ent) and self:MonsterDisposition(entry.soldier.team, monster)
+				local disposition = IsValid(ent) and not ent:IsPlayer() and self:MonsterDisposition(entry.soldier.team, monster)
 				if disposition and entry.soldier.relations[monster] ~= disposition then
 					entry.soldier.relations[monster] = disposition
 					ent:AddEntityRelationship(monster, disposition, RELATIONSHIP_PRIORITY)
@@ -186,7 +188,7 @@ end
 -- the unassigned) are left alone.
 function Controller:RelatePlayers()
 	for ent, entry in pairs(self.soldiers) do
-		if IsValid(ent) then
+		if IsValid(ent) and not ent:IsPlayer() then
 			for _, ply in ipairs(player.GetAll()) do
 				local disposition = self:Disposition(entry.soldier.team, WS.TeamOf(ply))
 				if entry.soldier.relations[ply] ~= disposition then
@@ -201,7 +203,7 @@ end
 -- Every soldier toward each faction and every player, again (the losers changed).
 function Controller:RelateEveryone()
 	for ent, entry in pairs(self.soldiers) do
-		if IsValid(ent) then
+		if IsValid(ent) and not ent:IsPlayer() then
 			self:RelateToFactions(ent, entry.soldier.team)
 			entry.soldier.relations = {}
 		end
