@@ -35,7 +35,9 @@ impl Heap {
         self.pushed = 0;
     }
 
-    pub fn push(&mut self, key: f64, value: f64) {
+    /// Pushes `value` under `key` and returns its push number (1 up, until
+    /// `clear`), which `pop_entry` gives back.
+    pub fn push(&mut self, key: f64, value: f64) -> u64 {
         self.pushed += 1;
         let entry = Entry { key, seq: self.pushed, value };
         let mut i = self.entries.len();
@@ -49,6 +51,7 @@ impl Heap {
             i = parent;
         }
         self.entries[i] = entry;
+        entry.seq
     }
 
     /// The first entry's (value, key), left in.
@@ -58,6 +61,11 @@ impl Heap {
 
     /// The first entry's (value, key), taken out.
     pub fn pop(&mut self) -> Option<(f64, f64)> {
+        self.pop_entry().map(|(value, key, _)| (value, key))
+    }
+
+    /// The first entry's (value, key, push number), taken out.
+    pub fn pop_entry(&mut self) -> Option<(f64, f64, u64)> {
         let top = *self.entries.first()?;
         let last = self.entries.pop().expect("a heap with a first entry has a last");
         let n = self.entries.len();
@@ -79,7 +87,7 @@ impl Heap {
             }
             self.entries[i] = last;
         }
-        Some((top.value, top.key))
+        Some((top.value, top.key, top.seq))
     }
 }
 
@@ -110,6 +118,16 @@ mod tests {
             }
             last = Some((value, key));
         }
+    }
+
+    #[test]
+    fn pop_entry_gives_back_the_push_number() {
+        let mut heap = Heap::default();
+        let first = heap.push(3.0, 30.0);
+        let second = heap.push(1.0, 10.0);
+        assert_eq!((first, second), (1, 2));
+        assert_eq!(heap.pop_entry(), Some((10.0, 1.0, 2)));
+        assert_eq!(heap.pop_entry(), Some((30.0, 3.0, 1)));
     }
 
     #[test]

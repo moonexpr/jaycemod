@@ -117,6 +117,9 @@ pub fn api() -> &'static Api {
 }
 
 /// Sets `table[name] = function` on the table at the top of the stack.
+///
+/// # Safety
+/// `l` is a live state with a table at the top, after `open`.
 pub unsafe fn set_function(l: L, name: &CStr, function: CFunction) {
     let api = api();
     (api.pushcclosure)(l, function, 0);
@@ -124,6 +127,10 @@ pub unsafe fn set_function(l: L, name: &CStr, function: CFunction) {
 }
 
 /// A Lua error with `message`; it never returns.
+///
+/// # Safety
+/// `l` is a live state, after `open`; the caller holds nothing that needs a
+/// destructor, since the error unwinds past it.
 pub unsafe fn raise(l: L, message: &CStr) -> ! {
     let api = api();
     let bytes = message.to_bytes();

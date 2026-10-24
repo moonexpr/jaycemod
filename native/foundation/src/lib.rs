@@ -17,6 +17,8 @@
 //! structures and its binding, with the `entry` feature off so only one set
 //! of entry points is exported from each DLL.
 
+pub mod astar;
+pub mod graph;
 pub mod heap;
 pub mod lua;
 pub mod userdata;

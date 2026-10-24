@@ -20,6 +20,9 @@ unsafe extern "C-unwind" fn collect<T: Native>(l: L) -> c_int {
 }
 
 /// Pushes `value` as a new userdata of its type.
+///
+/// # Safety
+/// `l` is a live state, after `lua::open`.
 pub unsafe fn push<T: Native>(l: L, value: T) {
     const { assert!(std::mem::align_of::<T>() <= 8, "Lua aligns userdata to 8 bytes") };
     let api = api();
@@ -38,6 +41,10 @@ pub unsafe fn push<T: Native>(l: L, value: T) {
 }
 
 /// The userdata of type T at `index`; anything else is a Lua error naming T.
+///
+/// # Safety
+/// `l` is a live state, after `lua::open`; the reference is used only while
+/// the userdata stays on the stack, and no other reference to it is live.
 pub unsafe fn check<'a, T: Native>(l: L, index: c_int) -> &'a mut T {
     // SAFETY: checkudata returns only a userdata carrying T's metatable,
     // which `push` gave only to values it initialised as a T.
