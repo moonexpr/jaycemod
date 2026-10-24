@@ -292,7 +292,8 @@ unsafe fn told_ok(l: L, result: Result<(), crate::search::SearchError>) {
 }
 
 /// navsearch.New(mesh, strategy, limits, bot, start, goal, goalPos,
-/// maxExpanded[, told[, rules]]) -> a search
+/// maxExpanded[, told[, rules]]) -> a search; goalPos is anything with x
+/// and y (and z) to read: a table, or GMod's Vector.
 unsafe extern "C-unwind" fn search_new(l: L) -> c_int {
     let api = api();
     userdata::check::<Mesh>(l, 1);
@@ -307,7 +308,6 @@ unsafe extern "C-unwind" fn search_new(l: L) -> c_int {
     let model = (api.gettop)(l);
     let walker = walker_from(l, model);
     let (start, goal, max_expanded) = (check_whole(l, 5), check_whole(l, 6), check_whole(l, 8));
-    (api.checktype)(l, 7, TTABLE);
     let goal_pos = [
         required(l, 7, c"x"),
         required(l, 7, c"y"),
@@ -329,7 +329,7 @@ unsafe extern "C-unwind" fn search_new(l: L) -> c_int {
     }
     (api.createtable)(l, 0, 2);
     if (api.type_of)(l, 10) == TTABLE {
-        for name in [c"traversable", c"crossable"] {
+        for name in [c"traversable", c"crossable", c"room"] {
             (api.getfield)(l, 10, name.as_ptr());
             if (api.type_of)(l, -1) == TFUNCTION {
                 (api.setfield)(l, -2, name.as_ptr());
@@ -344,11 +344,23 @@ unsafe extern "C-unwind" fn search_new(l: L) -> c_int {
 }
 
 /// The rules as Lua functions on the stack: traversable(areaId) -> bool,
-/// crossable(fromId, toId) -> bool; an absent one opens everything.
+/// crossable(fromId, toId) -> bool, room(areaId) -> team; an absent one
+/// opens everything (rooms: none).
 struct LuaRules {
     l: L,
     traversable: Option<c_int>,
     crossable: Option<c_int>,
+    room: Option<c_int>,
+}
+
+unsafe fn ask_number(l: L, function: c_int, area: u32) -> f64 {
+    let api = api();
+    (api.pushvalue)(l, function);
+    (api.pushnumber)(l, area as f64);
+    (api.call)(l, 1, 1);
+    let answer = (api.tonumber)(l, -1);
+    (api.settop)(l, -2);
+    answer
 }
 
 unsafe fn ask(l: L, function: c_int, args: &[u32]) -> bool {
@@ -373,6 +385,11 @@ impl Rules for LuaRules {
         // SAFETY: as traversable.
         self.crossable.is_none_or(|f| unsafe { ask(self.l, f, &[from, to]) })
     }
+
+    fn room(&mut self, area: u32) -> i32 {
+        // SAFETY: as traversable; a nil answer reads as 0, no room.
+        self.room.map_or(crate::walker::NO_ROOM, |f| unsafe { ask_number(self.l, f, area) } as i32)
+    }
 }
 
 /// The rule `name` in the environment table at `env`, pushed; its index
@@ -390,7 +407,12 @@ unsafe extern "C-unwind" fn search_step(l: L) -> c_int {
     search(l);
     (api.settop)(l, 2);
     (api.getfenv)(l, 1);
-    let mut rules = LuaRules { l, traversable: rule(l, 3, c"traversable"), crossable: rule(l, 3, c"crossable") };
+    let mut rules = LuaRules {
+        l,
+        traversable: rule(l, 3, c"traversable"),
+        crossable: rule(l, 3, c"crossable"),
+        room: rule(l, 3, c"room"),
+    };
     let handle = userdata::check::<SearchHandle>(l, 1);
     handle.busy = true;
     let result = handle.search.step(budget, &mut rules);

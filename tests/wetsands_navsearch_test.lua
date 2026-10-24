@@ -95,6 +95,15 @@ local CASES = {
 		for _, n in pairs(seen) do once = once and n == 1 end
 		return { s.status, Joined(s:Route()), once, crossed > 0 }
 	end },
+	{ "a room rule is asked once an area, after what the search was told", function(N)
+		local asked = {}
+		local s = Run(Search(N, { told = { rooms = { [5] = RED } }, rules = {
+			room = function(id) asked[id] = (asked[id] or 0) + 1 return id == 2 and BLUE or 0 end,
+		} }))
+		local once = true
+		for _, n in pairs(asked) do once = once and n == 1 end
+		return { s.status, Joined(s:Route()), once, asked[5] == nil }
+	end },
 	{ "a crouch area is closed to a walker that cannot crouch", function(N)
 		local mesh = Mesh(N, { [2] = HL2.NAV_MESH_CROUCH })
 		local s = Run(Search(N, { mesh = mesh, limits = HL2.LIMITS }))
@@ -123,6 +132,11 @@ local CASES = {
 	{ "a route to an area on the way", function(N)
 		local s = Run(Search(N))
 		return { Joined(s:Route(3)) }
+	end },
+	{ "a goal position is read by indexing, as GMod's Vector is", function(N)
+		local vector = setmetatable({}, { __index = function(_, key) return ({ x = 3 * CELL, y = 0, z = 0 })[key] end })
+		local s = Run(Search(N, { goalPos = vector }))
+		return { s.status, Joined(s:Route()) }
 	end },
 	{ "an area the mesh lacks is refused", function(N)
 		local ok = pcall(Search, N, { goal = 9 })
@@ -163,6 +177,7 @@ T.test("the Lua implementation's answers are the expected ones", function()
 	T.eq(seen["an enemy spawn room is closed until the round is won"].lua, "1 5 3 4 | 1 2 3 4", "rooms")
 	T.eq(seen["rules are asked once an area and a link, and refuse"].lua, "failed | 1 2 | true | true", "rules")
 	T.eq(seen["a crouch area is closed to a walker that cannot crouch"].lua, "found | 1 5 3 4", "crouch")
+	T.eq(seen["a room rule is asked once an area, after what the search was told"].lua, "found | 1 5 3 4 | true | true", "room rule")
 	T.eq(seen["the lanes' penalty pushes a plan off an earlier lane"].lua, "found | 1 5 3", "lanes")
 	T.eq(seen["a start that is the goal is found at once"].lua, "found | 2 | found", "no move")
 	T.eq(seen["an area the mesh lacks is refused"].lua, "false | false", "refused")

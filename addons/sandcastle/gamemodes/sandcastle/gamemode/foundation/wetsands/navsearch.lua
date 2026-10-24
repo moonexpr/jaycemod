@@ -14,8 +14,10 @@
 --     told = { closed = id -> true, uncrossable = from -> to -> true,
 --       rooms = id -> spawn room team, estimates = id -> estimate } is what
 --       the search knows from the start, and
---     rules = { traversable(id) -> bool, crossable(from, to) -> bool } are
---       asked the first time the search reaches an area or a link, once each.
+--     rules = { traversable(id) -> bool, crossable(from, to) -> bool,
+--       room(id) -> spawn room team } are asked the first time the search
+--       reaches an area or a link, once each (room only for an area told
+--       none).
 --   A search is graph.pathfinder's: status, expanded, maxExpanded, start,
 --   goal, closest, parent (id -> the id it was reached from), Step(budget),
 --   Route([last]) -> area ids.
@@ -99,16 +101,25 @@ function Graph:Traversable(id)
 	return self.entered[id]
 end
 
+function Graph:Room(id)
+	local rooms = self.told.rooms
+	if rooms and rooms[id] then return rooms[id] end
+	local room = self.rules.room
+	if not room then return NO_ROOM end
+	if self.roomOf[id] == nil then self.roomOf[id] = room(id) or NO_ROOM end
+	return self.roomOf[id]
+end
+
 function Graph:Cost(from, to, costSoFar)
 	if not self:Crossable(from, to) then return Path.IMPASSABLE end
-	local link, step, rooms = self.mesh.links[from][to], self.step, self.told.rooms
+	local link, step = self.mesh.links[from][to], self.step
 	step.traversable = self:Traversable(to)
 	step.length = link.distance
 	step.centerDistance = link.distance
 	step.heightChange = link.rise
 	step.fromCostSoFar = costSoFar
 	step.areaId = to
-	step.spawnRoomTeam = rooms and rooms[to] or NO_ROOM
+	step.spawnRoomTeam = self:Room(to)
 	step.attributes = self.mesh.areas[to].attributes
 	return self.strategy.Cost(step, self.limits, self.bot)
 end
@@ -133,6 +144,7 @@ function New(mesh, strategy, limits, bot, start, goal, goalPos, maxExpanded, tol
 		rules = rules or NOTHING,
 		crossings = {},
 		entered = {},
+		roomOf = {},
 		step = { hasFrom = true },
 	}, Graph)
 	return AStar.New(graph, start, goal, maxExpanded)

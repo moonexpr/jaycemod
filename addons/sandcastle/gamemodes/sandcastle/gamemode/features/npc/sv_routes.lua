@@ -4,6 +4,7 @@
 local Controller = ...
 local Pathfinder = graph.pathfinder
 local AStar = wetsands.astar
+local NavSearch = wetsands.navsearch
 local Portal = nextsoldier.portal
 local Doors = nextsoldier.doors
 local Path = wetsands.path
@@ -116,6 +117,36 @@ function NavGraph:Estimate(id)
 	return Center(id):Distance(self.goalPos)
 end
 
+-- The mesh as the route searches walk it: a wetsands.navsearch mesh (native
+-- on a server that loads native/wetsands), holding every area and its floor
+-- links as NavGraph walks them, with the centre distance and height change
+-- FillStep gives. Built once a map, and again when the mesh's links change
+-- (WSNavLinked), as a search task an area at a time in the searches' slice;
+-- a search waits for it. True once it is ready.
+function Controller:NavMeshReady()
+	if self.navMesh then return true end
+	if self.navMeshBuilding == self.navMeshGeneration then return false end
+	local generation, scheduler = self.navMeshGeneration, self.searches
+	self.navMeshBuilding = generation
+	scheduler:Spawn(function()
+		local mesh, areas = NavSearch.Mesh(), navmesh.GetAllNavAreas()
+		for _, area in ipairs(areas) do
+			local center = Center(area:GetID())
+			mesh:Area(area:GetID(), center.x, center.y, center.z, area:GetAttributes())
+		end
+		for _, area in ipairs(areas) do
+			local id = area:GetID()
+			for _, to in ipairs(NavGraph:Neighbors(id)) do
+				mesh:Link(id, to, Center(to):Distance(Center(id)), area:ComputeAdjacentConnectionHeightChange(Area(to)))
+			end
+			scheduler:CheckYield()
+		end
+		mesh:Seal()
+		if self.navMeshGeneration == generation then self.navMesh = mesh end
+	end)
+	return false
+end
+
 -- request = { from, to (positions), strategy, limits, bot (the strategy's,
 -- with team), avoid(area) -> bool (optional: areas to route around, as
 -- if blocked; the goal's area is never avoided), crossable(fromArea,
@@ -129,6 +160,11 @@ local NEAREST_AREA_RANGE = 200
 -- are spent. A search may cover the whole mesh, as the engine's may: spread
 -- over ticks, that costs time, not a hitch.
 local SEARCH_SECONDS = 0.002
+-- How many expansions a search on the mesh runs between looks at the clock:
+-- natively about 1 us each with the live rules, a crossing into the module
+-- about 3 us, so one at a time would spend most of the slice crossing.
+-- The watched Lua search, at up to 100 us an expansion live, takes one.
+local MESH_STEP = 16
 
 local NEAREST_AREA_FAR = 600
 
@@ -233,13 +269,27 @@ function Controller:RequestRoute(request)
 	if key and not region then refused, uncrossable = Refusals(graph) end
 	local watch = self.pathWatch[request.bot.entIndex]
 	local observed = watch and self:ObserveRoute(graph, request, start, watch) or nil
-	local search = AStar.New(graph, startId, searchGoal, navmesh.GetNavAreaCount())
+	-- A watched search runs the Lua solver on the NavGraph, whose costs
+	-- sv_profile records step by step; every other runs on the mesh.
+	local rules = {
+		traversable = function(id) return graph.traversable(Area(id)) end,
+		crossable = request.crossable and function(from, to) return graph.crossable(Area(from), Area(to)) end or nil,
+		room = function(id) return self:SpawnRoomTeam(Area(id)) end,
+	}
 	local scheduler = self.searches
 	scheduler:Spawn(function()
-		local status = search.status
+		local search
+		if observed then
+			search = AStar.New(graph, startId, searchGoal, navmesh.GetNavAreaCount())
+		else
+			scheduler:Wait(function() return self:NavMeshReady() end)
+			search = NavSearch.New(self.navMesh, request.strategy, request.limits, request.bot, startId, searchGoal,
+				graph.goalPos, navmesh.GetNavAreaCount(), nil, rules)
+		end
+		local status, budget = search.status, observed and 1 or MESH_STEP
 		while status == Pathfinder.RUNNING do
 			local began = observed and SysTime()
-			status = search:Step(1)
+			status = search:Step(budget)
 			if observed then observed.seconds = observed.seconds + SysTime() - began end
 			scheduler:CheckYield()
 		end

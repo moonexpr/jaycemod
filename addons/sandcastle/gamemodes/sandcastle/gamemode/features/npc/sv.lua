@@ -30,6 +30,9 @@ local Controller = {
 	searches = Scheduler.New({ Now = function() return SysTime() end }), -- the Lua route searches still running, each a task
 	neighbors = {}, -- nav area id -> its floor neighbours' ids (read again when seams are linked: WSNavLinked)
 	centers = {}, -- nav area id -> its centre
+	-- navMesh = nil, -- the mesh as route searches walk it (a wetsands.navsearch mesh), set by sv_routes once built
+	navMeshGeneration = 0, -- counts the mesh's link changes (WSNavLinked): a snapshot of an older one is dropped
+	-- navMeshBuilding = nil, -- the generation a snapshot is being built for, set by sv_routes
 	navBlocked = {}, -- nav area id -> the teams its doors and brushes block (games.nextsoldier.doors)
 	nextBlockerRefresh = 0,
 	blockerGeneration = 0,
@@ -166,10 +169,13 @@ function Controller:ThinkSpawners(now)
 	end
 end
 
--- The mesh's links changed: the neighbours read from it are read again, and
--- routes planned before are stale.
+-- The mesh's links changed: the neighbours read from it are read again, the
+-- route searches' snapshot of it is built again, and routes planned before
+-- are stale.
 hook.Add("WSNavLinked", "ws_npc_blockers", function()
 	Controller.neighbors = {}
+	Controller.navMesh = nil
+	Controller.navMeshGeneration = Controller.navMeshGeneration + 1
 	Controller:NoteBlockerChange(nil)
 end)
 

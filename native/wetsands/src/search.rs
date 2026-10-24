@@ -19,6 +19,8 @@ const CLOSED: u8 = 2;
 pub trait Rules {
     fn traversable(&mut self, area: u32) -> bool;
     fn crossable(&mut self, from: u32, to: u32) -> bool;
+    /// The team whose spawn room the area lies in (NO_ROOM for none).
+    fn room(&mut self, area: u32) -> i32;
 }
 
 /// Rules that open everything not closed up front.
@@ -31,7 +33,13 @@ impl Rules for Open {
     fn crossable(&mut self, _from: u32, _to: u32) -> bool {
         true
     }
+    fn room(&mut self, _area: u32) -> i32 {
+        NO_ROOM
+    }
 }
+
+/// A room not yet told or asked.
+const UNASKED: i32 = i32::MIN;
 
 #[derive(Debug, PartialEq)]
 pub enum SearchError {
@@ -75,7 +83,7 @@ struct Pricing<'a, R: Rules> {
     goal_pos: [f64; 3],
     areas: &'a mut [u8],
     links: &'a mut [u8],
-    rooms: &'a [i32],
+    rooms: &'a mut [i32],
     penalized: &'a [bool],
     estimates: &'a HashMap<u32, f64>,
     rules: &'a mut R,
@@ -88,6 +96,13 @@ impl<R: Rules> Pricing<'_, R> {
             self.links[link] = if open { OPEN } else { CLOSED };
         }
         self.links[link] == OPEN
+    }
+
+    fn room(&mut self, area: u32) -> i32 {
+        if self.rooms[area as usize] == UNASKED {
+            self.rooms[area as usize] = self.rules.room(self.mesh.id(area));
+        }
+        self.rooms[area as usize]
     }
 
     fn traversable(&mut self, area: u32) -> bool {
@@ -105,9 +120,10 @@ impl<R: Rules> Costs for Pricing<'_, R> {
             return IMPASSABLE;
         }
         let traversable = self.traversable(to);
+        let room = self.room(to);
         self.walker.price(&Step {
             traversable,
-            room: self.rooms.get(to as usize).copied().unwrap_or(NO_ROOM),
+            room,
             attributes: self.mesh.attributes(to),
             distance: self.mesh.distance(link),
             rise: self.mesh.rise(link),
@@ -143,7 +159,7 @@ impl RouteSearch {
             max_expanded,
             areas: vec![UNKNOWN; areas],
             links: vec![UNKNOWN; links],
-            rooms: Vec::new(),
+            rooms: vec![UNASKED; areas],
             penalized: Vec::new(),
             estimates: HashMap::new(),
             astar: None,
@@ -178,9 +194,6 @@ impl RouteSearch {
     /// Area `id` lies in `team`'s spawn room.
     pub fn room(&mut self, id: u32, team: i32) -> Result<(), SearchError> {
         let area = self.area(id)? as usize;
-        if self.rooms.is_empty() {
-            self.rooms = vec![NO_ROOM; self.mesh.areas() as usize];
-        }
         self.rooms[area] = team;
         Ok(())
     }
@@ -224,7 +237,7 @@ impl RouteSearch {
             goal_pos: self.goal_pos,
             areas: &mut self.areas,
             links: &mut self.links,
-            rooms: &self.rooms,
+            rooms: &mut self.rooms,
             penalized: &self.penalized,
             estimates: &self.estimates,
             rules,
@@ -381,6 +394,9 @@ mod tests {
         fn crossable(&mut self, _from: u32, _to: u32) -> bool {
             self.crossings += 1;
             true
+        }
+        fn room(&mut self, _area: u32) -> i32 {
+            NO_ROOM
         }
     }
 

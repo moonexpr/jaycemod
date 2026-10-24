@@ -47,6 +47,12 @@ Index("foundation/analysis/sh_index.lua")
 Index("foundation/wetsands/sh_index.lua")
 Index("foundation/sh_index.lua")
 
+-- The native foundation (native/, docs/native-foundation-plan.md): a server
+-- with a binary module installed has it replace its Lua twins' globals here,
+-- after the indexes publish them and before any module binds one to a
+-- local. One line a module, never a loop.
+if SERVER and util.IsBinaryModuleInstalled("wetsands") then require("wetsands") end
+
 -- game: published at once, each module loaded the first time it is read,
 -- so a map pays only for the gameplay it uses.
 Index("games/list/sh_init.lua")
