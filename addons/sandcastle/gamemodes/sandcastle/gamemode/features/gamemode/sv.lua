@@ -18,9 +18,14 @@
 -- A game whose round mode's players are not
 -- there yet (PLAYERS_NEEDED, mp_waitingforplayers) waits in Sandbox mode,
 -- checked each WAIT_TICK, and counts down once they come; the count is
--- networked as ws_gamemode_waiting_have and _need (need 0: no wait).
+-- networked as ws_gamemode_waiting_have and _need (need 0: no wait). Its
+-- ready-up (features.gamemode.ready) can end the wait sooner, or in MvM
+-- must: F4 (gm_showspare2, TF2's ready key) or player_ready_toggle
+-- toggles the player's team's ready (ws_ready_team_<team>) or, in MvM, the
+-- player's own (NW2 ws_ready); everyone is unready when the wait ends.
 local Gamemode = system.gamemode
 local Gameplay = WS.require("features.gamemode.gameplay")
+local Ready = WS.require("features.gamemode.ready")
 local Rounds = gameplay.rounds
 
 -- Both made in ws/sh_gameplay.lua.
@@ -74,6 +79,7 @@ local ADMIN_LINES = {
 local Controller = {
 	mode = Gamemode.New(WS.Active(), ENABLED:GetBool()),
 	transitionSounds = {}, -- what the transition has played, to silence if it is called off
+	teamReady = { [WS.TEAM_RED] = false, [WS.TEAM_BLUE] = false },
 }
 
 local function PlayToAll(path)
@@ -133,15 +139,57 @@ end
 
 -- How many count toward the round mode's player requirement, and how many
 -- it needs (0 with mp_waitingforplayers off, or no rounds loaded).
-local function PlayersNeeded()
-	if not waitingForPlayers:GetBool() then return 0, 0 end
-	local needed = WS.Active() and WS.Feature("rounds"):Mode().PLAYERS_NEEDED or Rounds.Mode.PLAYERS_NEEDED
-	return Rounds.PlayersNeeded(needed, TeamCounts())
+-- The round mode's player requirement (its PLAYERS_NEEDED).
+local function Needed()
+	return WS.Active() and WS.Feature("rounds"):Mode().PLAYERS_NEEDED or Rounds.Mode.PLAYERS_NEEDED
 end
 
-local function PlayersReady()
+local function PlayersNeeded()
+	if not waitingForPlayers:GetBool() then return 0, 0 end
+	return Rounds.PlayersNeeded(Needed(), TeamCounts())
+end
+
+local function ReadyKind()
+	return Ready.Kind(GetGlobal2Bool("ws_mvm", false))
+end
+
+-- The team MvM's players ready on: its player requirement's (its defenders).
+local function Defenders()
+	return Needed().team or WS.TEAM_RED
+end
+
+-- The human players on each game team (bots never ready), and how many of
+-- the defenders are ready.
+local function Humans()
+	local humans, readyDefenders = { [WS.TEAM_RED] = 0, [WS.TEAM_BLUE] = 0 }, 0
+	local defenders = Defenders()
+	for _, ply in ipairs(player.GetHumans()) do
+		local t = WS.TeamOf(ply)
+		if humans[t] then humans[t] = humans[t] + 1 end
+		if t == defenders and ply:GetNW2Bool("ws_ready", false) then readyDefenders = readyDefenders + 1 end
+	end
+	return humans, readyDefenders
+end
+
+-- What features.gamemode.ready's Met and Enabled read.
+local function ReadyQuery()
 	local have, need = PlayersNeeded()
-	return have >= need
+	local humans, readyDefenders = Humans()
+	return {
+		kind = ReadyKind(),
+		have = have,
+		need = need,
+		humans = humans,
+		teamReady = Controller.teamReady,
+		defenders = Defenders(),
+		readyDefenders = readyDefenders,
+	}
+end
+
+-- Whether a game may begin: the round mode's player requirement, as its
+-- ready-up meets it.
+local function PlayersReady()
+	return Ready.Met(ReadyQuery())
 end
 
 -- sv_gameplay_enabled follows a settled mode; the transition and the wait
@@ -157,6 +205,46 @@ function Controller:Publish()
 	end
 	SetGlobal2Int("ws_gamemode_waiting_have", have)
 	SetGlobal2Int("ws_gamemode_waiting_need", need)
+	for t, ready in pairs(self.teamReady) do SetGlobal2Bool("ws_ready_team_" .. t, ready) end
+end
+
+-- Everyone unready: the wait has ended, or been called off.
+function Controller:ClearReady()
+	for t in pairs(self.teamReady) do self.teamReady[t] = false end
+	for _, ply in ipairs(player.GetAll()) do ply:SetNW2Bool("ws_ready", false) end
+end
+
+-- A ready left behind: a team whose players have all gone, a player no
+-- longer a defender.
+function Controller:DropStaleReady()
+	local humans = Humans()
+	for t in pairs(self.teamReady) do
+		if humans[t] == 0 then self.teamReady[t] = false end
+	end
+	local defenders = Defenders()
+	for _, ply in ipairs(player.GetAll()) do
+		if WS.TeamOf(ply) ~= defenders and ply:GetNW2Bool("ws_ready", false) then ply:SetNW2Bool("ws_ready", false) end
+	end
+end
+
+local READY_WORDS = { [true] = "Ready", [false] = "Not Ready" }
+
+-- ply toggles the ready-up: their team's, or in MvM their own, while the
+-- game waits for players and the toggle does anything (Ready.Enabled);
+-- TF2's chat line says who changed it. The wait ends at once if that was
+-- the last.
+function Controller:ToggleReady(ply)
+	if self.mode:Mode() ~= Gamemode.WAITING then return end
+	local q = ReadyQuery()
+	local t = WS.TeamOf(ply)
+	if not Ready.MayToggle(q.kind, t, q.defenders) or not Ready.Enabled(q) then return end
+	if q.kind == Ready.PLAYER then
+		ply:SetNW2Bool("ws_ready", not ply:GetNW2Bool("ws_ready", false))
+	else
+		self.teamReady[t] = not self.teamReady[t]
+		PrintMessage(HUD_PRINTTALK, string.format("%s changed team state to %s", ply:Nick(), READY_WORDS[self.teamReady[t]]))
+	end
+	self:WaitTick()
 end
 
 -- The wait: the players counted each WAIT_TICK until they are there, then
@@ -166,9 +254,11 @@ function Controller:OpenWait()
 end
 
 function Controller:WaitTick()
+	self:DropStaleReady()
 	local answer = self.mode:Players(PlayersReady(), CurTime())
 	if answer.action == Gamemode.START_TRANSITION then
 		timer.Remove(WAIT_TIMER)
+		self:ClearReady()
 		self:OpenTransition()
 	end
 	self:Publish()
@@ -218,7 +308,10 @@ local ACTIONS = {
 	[Gamemode.CANCEL_TRANSITION] = function(self) self:CancelTransition() end,
 	[Gamemode.ENTER_SANDBOX] = function() WS.Rules:Halt() end,
 	[Gamemode.WAIT] = function(self) self:OpenWait() end,
-	[Gamemode.STOP_WAITING] = function() timer.Remove(WAIT_TIMER) end,
+	[Gamemode.STOP_WAITING] = function(self)
+		timer.Remove(WAIT_TIMER)
+		self:ClearReady()
+	end,
 }
 
 -- story: the requester's own notice, { title, lines } for the chat and
@@ -322,3 +415,10 @@ function Controller:StartAtLoad()
 end
 
 return Controller
+-- TF2's ready key, F4: GMod binds it to gm_showspare2. player_ready_toggle
+-- for a key of the player's own (the panel names whichever is bound).
+hook.Add("ShowSpare2", "ws_gamemode_ready", function(ply) Controller:ToggleReady(ply) end)
+concommand.Add("player_ready_toggle", function(ply)
+	if IsValid(ply) then Controller:ToggleReady(ply) end
+end, nil, "Toggle your team's ready, or in MvM your own, while a game waits for players")
+

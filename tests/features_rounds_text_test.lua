@@ -140,38 +140,29 @@ T.test("the match won, the timer counts down to the map change as GAME OVER", fu
 	T.eq(Display({ gameOverEnd = NOW }).kind, Text.DISPLAY_ROUND, "run out: the round's clock again")
 end)
 
-T.test("the countdown to Gameplay mode shows on the timer as Prepare while the rounds are halted", function()
-	local d = Display({
-		transitionEnd = NOW + 9,
-		halted = true,
-	})
-	T.eq(d.kind, Text.DISPLAY_TRANSITION, "the transition's clock")
-	T.eq(d.left, 9, "seconds until Gameplay mode")
-	T.eq(d.label, Text.LABEL_TRANSITION, "labelled")
-	T.eq(Text.LABEL_TRANSITION, "Prepare", "the operator's word")
+-- Before a game: Sandbox mode, the wait for players and the countdown to
+-- Gameplay mode show on the pregame (tournament) panel in place of the top
+-- timer and scores, never both.
+local function Pregame(fields)
+	local q = { now = NOW, transitionEnd = NO_TRANSITION, waitingNeed = 0, halted = false }
+	for k, v in pairs(fields) do q[k] = v end
+	return Text.Pregame(q)
+end
+
+T.test("the pregame is the wait, then the countdown, then Sandbox mode", function()
+	T.eq(Pregame({ waitingNeed = 2, transitionEnd = NOW + 5, halted = true }), Text.PREGAME_WAITING, "the wait first")
+	T.eq(Pregame({ transitionEnd = NOW + 5, halted = true }), Text.PREGAME_COUNTDOWN, "the countdown")
+	T.eq(Pregame({ transitionEnd = NOW + 5 }), Text.PREGAME_COUNTDOWN, "the countdown past its pre-round")
+	T.eq(Pregame({ halted = true }), Text.PREGAME_SANDBOX, "Sandbox mode")
+	T.eq(Pregame({}), nil, "Gameplay mode: no pregame")
+	T.eq(Pregame({ transitionEnd = NOW }), nil, "a countdown run out")
 end)
 
-T.test("the countdown shows even without a HUD timer or on a koth map", function()
-	local plain = Display({
-		transitionEnd = NOW + 3,
-		halted = true,
-		shown = false,
-	})
-	T.eq(plain.kind, Text.DISPLAY_TRANSITION, "no team_round_timer")
-	local koth = Display({
-		transitionEnd = NOW + 3,
-		halted = true,
-		koth = true,
-	})
-	T.eq(koth.kind, Text.DISPLAY_TRANSITION, "koth")
-end)
-
-T.test("a game waiting for players shows how many are here of how many it needs, in place of a clock", function()
-	local d = Display({ halted = true, waitingHave = 1, waitingNeed = 2 })
-	T.eq(d.kind, Text.DISPLAY_WAITING, "the wait")
-	T.eq(d.text, "1/2", "here of needed")
-	T.eq(d.label, Text.LABEL_WAITING, "labelled")
-	T.eq(Display({ halted = true, waitingHave = 0, waitingNeed = 0 }), nil, "no wait")
+T.test("the timer shows nothing while the pregame panel is up", function()
+	T.eq(Display({ transitionEnd = NOW + 9, halted = true }), nil, "the countdown")
+	T.eq(Display({ transitionEnd = NOW + 9, preround = true }), nil, "the countdown past its pre-round")
+	T.eq(Display({ transitionEnd = NOW + 3, shown = false, koth = true }), nil, "on any map")
+	T.eq(Display({ halted = true, waitingHave = 1, waitingNeed = 2 }), nil, "the wait")
 end)
 
 T.test("Sandbox mode outside a transition shows no timer", function()
@@ -237,7 +228,7 @@ T.test("an arena's setup counts down on the timer as SETUP, before the unlock co
 end)
 
 T.test("the game-mode countdown and game over still come before the unlock countdown", function()
-	T.eq(Display({ capUnlockEnd = NOW + 16, transitionEnd = NOW + 5 }).kind, Text.DISPLAY_TRANSITION)
+	T.eq(Display({ capUnlockEnd = NOW + 16, transitionEnd = NOW + 5 }), nil, "the countdown's panel")
 	T.eq(Display({ capUnlockEnd = NOW + 16, gameOverEnd = NOW + 5 }).kind, Text.DISPLAY_GAME_OVER)
 end)
 

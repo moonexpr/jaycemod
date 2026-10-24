@@ -5,9 +5,9 @@
 --     on the team's outlined background, its PREPARE, SETUP, OVERTIME and
 --     GAME OVER labels in a box under it, and the "+m:ss" flash beside it
 --     when time is added (game_teamplay_timer_time_added);
---     the koth HUD replaces the timer; during the gamemode's countdown to
---     Gameplay mode (ws_gamemode_transition_end) the timer shows that
---     countdown labelled "Prepare";
+--     the koth HUD replaces the timer; before a game (Sandbox mode, the
+--     wait for players, the countdown to Gameplay mode) the pregame panel
+--     (features/gamemode/cl.lua) takes the scores' and the timer's place;
 --   - the pre-round and respawn countdowns and the announcement line;
 --   - the round limits' counters (games.gameplay.rounds.limits), as TF2's Player
 --     Destruction panel (HudObjectivePlayerDestruction.res);
@@ -85,6 +85,22 @@ end
 -- The top of the team scores, the timer row under them.
 local function ScoresTop(h)
 	return math.floor(h * timerY:GetFloat())
+end
+
+-- The top of the team scores' slot, which the pregame panel takes.
+function View:ScoresTop(h)
+	return ScoresTop(h)
+end
+
+-- features.rounds.text's Pregame: before a game, while the pregame panel
+-- has the top of the screen; nil in Gameplay mode.
+function View:Pregame()
+	return Text.Pregame({
+		now = CurTime(),
+		transitionEnd = GetGlobal2Float("ws_gamemode_transition_end", 0),
+		waitingNeed = GetGlobal2Int("ws_gamemode_waiting_need", 0),
+		halted = WS.GameplayStopped(),
+	})
 end
 
 -- The top of the timer row, which other views line up under.
@@ -167,10 +183,9 @@ end)
 
 -- The timer -----------------------------------------------------------------------
 
--- features.rounds.text decides the clock: the gamemode's countdown to
--- Gameplay mode ("Prepare"), else the round's timer while the rounds run.
--- Sandbox mode otherwise shows no timer, as TF2's tournament pre-ready
--- state; the koth HUD draws its own clocks.
+-- features.rounds.text decides the clock: none before a game (the pregame
+-- panel shows the wait and the countdown, as TF2's tournament panel), else
+-- the round's timer while the rounds run; the koth HUD draws its own clocks.
 function View:DrawTimer(w, h)
 	local display = Text.TimerDisplay({
 		now = CurTime(),
@@ -186,7 +201,6 @@ function View:DrawTimer(w, h)
 		capUnlockEnd = WS.State() == S.STALEMATE and GetGlobal2Float("ws_arena_cap_enable_time", 0) or 0,
 		setupEnd = GetGlobal2Float("ws_arena_setup_end", 0),
 		matchEnd = GetGlobal2Float("ws_match_time_end", 0),
-		waitingHave = GetGlobal2Int("ws_gamemode_waiting_have", 0),
 		waitingNeed = GetGlobal2Int("ws_gamemode_waiting_need", 0),
 		left = TimerLeft(),
 	})
@@ -197,7 +211,7 @@ function View:DrawTimer(w, h)
 	-- only a round's timer has a full length for the pie to run against
 	local full = display.kind == Text.DISPLAY_ROUND and GetGlobal2Float("ws_timer_max_length", 0) or 0
 	DrawPie(panel.pie, Hud.TimerElapsed(display.left, full))
-	Shadowed(display.text or Clock(display.left), Font(Hud.FONT_BUILD, Hud.TIMER_FONT_TALL, unit), panel.value.x, panel.value.y, TEXT_ALIGN_CENTER)
+	Shadowed(Clock(display.left), Font(Hud.FONT_BUILD, Hud.TIMER_FONT_TALL, unit), panel.value.x, panel.value.y, TEXT_ALIGN_CENTER)
 	local label = display.label
 	if label then
 		DrawPanel(Hud.TIMER_LABEL_BORDER, panel.label.box, unit)
@@ -212,11 +226,11 @@ function View:DrawTimer(w, h)
 end
 
 -- A team's score: BLU's box left of the centre, RED's right, above the
--- timer row, while the rounds run; an admin's "+points" beside its box.
--- The win screens hide them (game.match.team_scores), showing the scores
--- themselves.
+-- timer row, once a game is on (the pregame panel has their slot before);
+-- an admin's "+points" beside its box. The win screens hide them
+-- (game.match.team_scores), showing the scores themselves.
 function View:DrawScore(t, w, h)
-	if WS.GameplayStopped() then return end
+	if self:Pregame() then return end
 	local unit = Hud.Unit(h)
 	local box = Hud.ScoreBoxes(w / 2, ScoresTop(h), unit)[t]
 	local font = Font(Hud.FONT_BUILD, Hud.SCORE_FONT_TALL, unit)

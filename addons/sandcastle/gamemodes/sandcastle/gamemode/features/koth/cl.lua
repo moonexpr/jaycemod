@@ -70,7 +70,8 @@ end
 -- Sandbox mode shows no clocks, as it shows no round timer; nor does a win
 -- panel, which has the scores and the game over timer.
 function View:Paint(w, h)
-	if WS.GameplayStopped() then return end
+	-- the pregame panel has the top of the screen before a game (features/rounds/cl.lua)
+	if WS.Feature("rounds"):Pregame() then return end
 	local unit = Hud.Unit(h)
 	local top = Hud.TimerTop(math.floor(h * timerY:GetFloat()), unit)
 	local panels = Hud.KothPanels(w / 2, top, unit)

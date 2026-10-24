@@ -132,19 +132,33 @@ function NextMapNote(map)
 	return string.format("Next map: %s", map)
 end
 
+-- Before a game, the pregame (tournament) panel shows in place of the top
+-- timer and scores (features.gamemode.tournament): the wait for players,
+-- the countdown to Gameplay mode, or Sandbox mode.
+PREGAME_WAITING, PREGAME_COUNTDOWN, PREGAME_SANDBOX = "waiting", "countdown", "sandbox"
+
+-- The pregame now, or nil in Gameplay mode. q = { now, transitionEnd (the
+-- gamemode's ws_gamemode_transition_end, 0 outside a transition),
+-- waitingNeed (how many players the gamemode's wait needs; 0 outside it),
+-- halted (the rounds stand still) }: the wait first, then the countdown
+-- (which runs on once its pre-round lets the rounds run), then Sandbox mode.
+function Pregame(q)
+	if q.waitingNeed > 0 then return PREGAME_WAITING end
+	if q.transitionEnd > q.now then return PREGAME_COUNTDOWN end
+	if q.halted then return PREGAME_SANDBOX end
+	return nil
+end
+
 -- Which clock the timer box shows.
-DISPLAY_TRANSITION = "transition" -- the gamemode's countdown to Gameplay mode
 DISPLAY_ROUND = "round" -- the round's own timer
 DISPLAY_GAME_OVER = "game_over" -- the match won: the countdown to the next map
 DISPLAY_CAP_UNLOCK = "cap_unlock" -- arena: the countdown to the point unlocking
 DISPLAY_SETUP = "setup" -- arena: its setup's countdown (no team_round_timer has it)
 DISPLAY_MAP = "map" -- no round timer: the map's time left under mp_timelimit (CTFHudTimeStatus)
-DISPLAY_WAITING = "waiting" -- a game waiting for players: how many are here (text), no clock
 
--- The label under the clock. The transition's is the operator's word as
--- written; the round's are TF2's, in capitals.
-LABEL_TRANSITION = "Prepare"
+-- The wait's words, on the pregame panel.
 LABEL_WAITING = "Waiting for players"
+-- The label under the clock: TF2's, in capitals.
 LABEL_PREROUND = "PREPARE"
 LABEL_SETUP = "SETUP"
 LABEL_OVERTIME = "OVERTIME"
@@ -158,39 +172,22 @@ local function RoundLabel(q)
 	return nil
 end
 
--- What the timer box shows, or nil for nothing. q = { now, transitionEnd
--- (the gamemode's ws_gamemode_transition_end, 0 outside a transition),
--- shown (a HUD timer exists), halted (the rounds stand still: Sandbox mode
--- or its transition), koth (the koth HUD draws its own clocks), preround,
--- setup, overtime, gameOverEnd (ws_game_over_end: when the won
--- match's map changes, 0 before), setupEnd (arena: when its setup ends,
--- else 0), capUnlockEnd (arena: when the point unlocks while the round waits
--- for it, else 0), matchEnd (ws_match_time_end: when mp_timelimit runs out,
--- 0 without one), waitingHave and waitingNeed (the gamemode's wait for
--- players: how many are here of how many it needs; need 0 outside it),
--- left (the round timer's seconds) }. The wait for players, then the
--- countdown to
--- Gameplay mode wins while it runs, then the won match's to its map
--- change, on any map; then, while the rounds run, an arena's setup, then
--- its countdown to the point unlocking (with or without a round timer of
--- its own), else the round's timer, else (a map without one, as ctf_2fort)
--- the map's time left. Returns { kind, left, label }, or for the wait
--- { kind, text, label }.
+-- What the timer box shows, or nil for nothing. q = { now, transitionEnd,
+-- waitingNeed and halted (as Pregame takes them), shown (a HUD timer
+-- exists), koth (the koth HUD draws its own clocks), preround, setup,
+-- overtime, gameOverEnd (ws_game_over_end: when the won match's map
+-- changes, 0 before), setupEnd (arena: when its setup ends, else 0),
+-- capUnlockEnd (arena: when the point unlocks while the round waits for
+-- it, else 0), matchEnd (ws_match_time_end: when mp_timelimit runs out, 0
+-- without one), left (the round timer's seconds) }. Nothing before a game
+-- (Pregame: its panel shows the wait and the countdown); then the won
+-- match's countdown to its map change, on any map; then, while the rounds
+-- run, an arena's setup, then its countdown to the point unlocking (with or
+-- without a round timer of its own), else the round's timer, else (a map
+-- without one, as ctf_2fort) the map's time left. Returns { kind, left,
+-- label }.
 function TimerDisplay(q)
-	if q.waitingNeed > 0 then
-		return {
-			kind = DISPLAY_WAITING,
-			text = string.format("%d/%d", q.waitingHave, q.waitingNeed),
-			label = LABEL_WAITING,
-		}
-	end
-	if q.transitionEnd > q.now then
-		return {
-			kind = DISPLAY_TRANSITION,
-			left = q.transitionEnd - q.now,
-			label = LABEL_TRANSITION,
-		}
-	end
+	if Pregame(q) then return nil end
 	if q.gameOverEnd > q.now then
 		return {
 			kind = DISPLAY_GAME_OVER,
@@ -198,7 +195,6 @@ function TimerDisplay(q)
 			label = LABEL_GAME_OVER,
 		}
 	end
-	if q.halted then return nil end
 	if q.setupEnd > q.now then
 		return {
 			kind = DISPLAY_SETUP,
