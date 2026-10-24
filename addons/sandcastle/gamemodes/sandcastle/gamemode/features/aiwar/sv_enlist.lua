@@ -49,8 +49,9 @@ end
 -- carry the shotgun, hit harder and charge faster; raiders carry the
 -- crossbow (the Resistance) or the AR2 and throw grenades; the Combine's
 -- support are metrocops who deploy a turret and send manhacks, the
--- Resistance's are its heroes, who hit hard. Soldier:UseGadget uses a kit's
--- gadgets.
+-- Resistance's are its heroes, who hit hard. Raiders and metrocops punt an
+-- enemy close by with the gravity gun first (its reach is under a
+-- grenade's least). Soldier:UseGadget uses a kit's gadgets.
 local function Blocker(melee)
 	return { name = "shotgunner", primary = { "weapon_shotgun" }, secondary = "weapon_pistol", melee = melee, damage = 1.5, runSpeed = 260 }
 end
@@ -59,18 +60,18 @@ local KITS = {
 	[AiWar.COMBINE] = {
 		[AiWar.BLOCK] = COMBINE_BLOCKER,
 		[AiWar.HOLD] = COMBINE_BLOCKER,
-		[AiWar.RAID] = { name = "grenadier", primary = { "weapon_ar2" }, secondary = "weapon_pistol", melee = "weapon_stunstick", gadgets = { "grenade" } },
+		[AiWar.RAID] = { name = "grenadier", primary = { "weapon_ar2" }, secondary = "weapon_pistol", melee = "weapon_stunstick", gadgets = { "punt", "grenade" } },
 		[AiWar.SUPPORT] = {
 			name = "metrocop", model = "models/player/police.mdl",
 			primary = { "weapon_smg1" }, secondary = "weapon_pistol", melee = "weapon_stunstick",
-			gadgets = { "turret", "manhack" },
+			gadgets = { "punt", "turret", "manhack" },
 		},
 		default = { primary = { "weapon_ar2", "weapon_smg1" }, secondary = "weapon_pistol", melee = "weapon_stunstick" },
 	},
 	[AiWar.RESISTANCE] = {
 		[AiWar.BLOCK] = RESISTANCE_BLOCKER,
 		[AiWar.HOLD] = RESISTANCE_BLOCKER,
-		[AiWar.RAID] = { name = "crossbow", primary = { "weapon_crossbow" }, secondary = "weapon_pistol", melee = "weapon_crowbar", gadgets = { "grenade" } },
+		[AiWar.RAID] = { name = "crossbow", primary = { "weapon_crossbow" }, secondary = "weapon_pistol", melee = "weapon_crowbar", gadgets = { "punt", "grenade" } },
 		default = { primary = { "weapon_smg1", "weapon_ar2" }, secondary = "weapon_pistol", melee = "weapon_crowbar" },
 	},
 }

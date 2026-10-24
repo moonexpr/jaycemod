@@ -1,4 +1,4 @@
--- Part of the AI war controller (sv.lua): the soldier port over a DrGBase soldier, and its gadgets.
+-- Part of the AI war controller (sv.lua): the soldier port over a DrGBase soldier; its gadgets are sv_gadgets.lua.
 local Map = ...
 local TFBot = WS.require("games.nextsoldier.path.tfbot")
 local HL2Path = WS.require("games.nextsoldier.path.hl2")
@@ -512,89 +512,5 @@ function Soldier:Unpose() self.ent.NSStance = nil end
 function Soldier:FollowCart() return false end
 function Soldier:Unfollow() end
 function Soldier:RemoveScript() end
-
--- Gadgets: what a kit's soldier throws, deploys or sends (the kit's
--- gadgets, first ready first): a frag grenade lobbed at p when nothing
--- solid stands between (every time asked); a floor turret set down toward
--- p (one per soldier, standing until it dies); a manhack sent from its hand
--- (one per soldier at a time, gone after MANHACK_LIFE).
-local GRENADE_FUSE, GRENADE_SPEED, GRENADE_MIN, GRENADE_MAX = 2.5, 700, 256, 1000
-local TURRET_STEP, MANHACK_LIFE = 48, 45
-local GADGET_CHEST = Vector(0, 0, 32)
-
-local function ThrowAnimation(ent)
-	if ent.AddGesture then ent:AddGesture(ACT_GMOD_GESTURE_ITEM_THROW) end
-end
-
-local GADGETS = {}
-
-function GADGETS.grenade(soldier, target)
-	local ent = soldier.ent
-	local from = ent:EyePos()
-	local distance = from:Distance(target)
-	if distance < GRENADE_MIN or distance > GRENADE_MAX then return false end
-	local tr = util.TraceLine({ start = from, endpos = target + GADGET_CHEST, mask = MASK_SOLID_BRUSHONLY })
-	if tr.Hit then return false end
-	local grenade = ents.Create("npc_grenade_frag")
-	if not IsValid(grenade) then return false end
-	grenade:SetPos(from + ent:GetForward() * 16)
-	grenade:SetOwner(ent)
-	grenade:Spawn()
-	grenade:Activate()
-	grenade:Fire("SetTimer", tostring(GRENADE_FUSE))
-	-- a lob: across at GRENADE_SPEED, up enough to land on target
-	local t = distance / GRENADE_SPEED
-	local velocity = (target - from) / t
-	velocity.z = velocity.z + 0.5 * physenv.GetGravity():Length() * t
-	local phys = grenade:GetPhysicsObject()
-	if IsValid(phys) then phys:SetVelocity(velocity) end
-	ThrowAnimation(ent)
-	soldier.controller:AddGadget(grenade, soldier, "grenade", CurTime() + GRENADE_FUSE + 1)
-	return true
-end
-
-function GADGETS.turret(soldier, target)
-	if soldier.controller:GadgetsOf(soldier, "turret") > 0 then return false end
-	local ent = soldier.ent
-	local dir = target - ent:GetPos()
-	dir.z = 0
-	if dir:IsZero() then return false end
-	dir:Normalize()
-	local pos = ent:GetPos() + dir * TURRET_STEP
-	local tr = util.TraceHull({ start = pos + Vector(0, 0, 8), endpos = pos + Vector(0, 0, 8), mins = Vector(-16, -16, 0), maxs = Vector(16, 16, 64), mask = MASK_SOLID })
-	if tr.Hit then return false end
-	local turret = ents.Create("npc_turret_floor")
-	if not IsValid(turret) then return false end
-	turret:SetPos(pos)
-	turret:SetAngles(Angle(0, dir:Angle().y, 0))
-	turret:Spawn()
-	turret:Activate()
-	ThrowAnimation(ent)
-	soldier.controller:AddGadget(turret, soldier, "turret")
-	return true
-end
-
-function GADGETS.manhack(soldier)
-	if soldier.controller:GadgetsOf(soldier, "manhack") > 0 then return false end
-	local ent = soldier.ent
-	local manhack = ents.Create("npc_manhack")
-	if not IsValid(manhack) then return false end
-	manhack:SetPos(ent:EyePos() + ent:GetForward() * 32)
-	manhack:SetAngles(ent:GetAngles())
-	manhack:Spawn()
-	manhack:Activate()
-	ThrowAnimation(ent)
-	soldier.controller:AddGadget(manhack, soldier, "manhack", CurTime() + MANHACK_LIFE)
-	return true
-end
-
-function Soldier:UseGadget(p)
-	if not self.kit or not self.kit.gadgets or self.disarmed then return nil end
-	local target = ToVector(p)
-	for _, name in ipairs(self.kit.gadgets) do
-		if GADGETS[name](self, target) then return name end
-	end
-	return nil
-end
 
 return Soldier, ARRIVED
