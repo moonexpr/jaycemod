@@ -95,9 +95,11 @@ above are a proxy (arm64, not Rosetta and Wine).
    each after the bench says it pays.
 6. **Codecs** (`file.buffer`, `Crc32`, `encoding.keyvalues`).
 
-The foundation DLL installs nothing yet: each structure needs its Lua twin
-written to a data contract first (a keyed heap of numbers beside
-`tree.heap`'s comparator one, floods over the native graph).
+The foundation DLL installs `tree.heap` and `tree.avl` whole and patches
+`nodegraph`'s `PickNodes`, `Candidates` and `Bridges`; each has its Lua
+twin written to the data contract first, ties included (the nodegraph
+searches used `table.sort`, which is unstable: they now break ties by
+index, at about 10 % of the Lua twin's time).
 
 ## Measured
 
@@ -111,6 +113,38 @@ written to a data contract first (a keyed heap of numbers beside
 
 Live native searches recorded on the server replay offline exactly through
 both implementations (`record_routes.lua`, `route_replay.lua [--native]`).
+
+### foundation, on the dev server
+
+`native_bench.lua` on instance 1 (Rosetta and Wine, JIT on and off), ns
+an operation, or a call where one call does the whole job:
+
+| Module | Case | Lua (on / off) | Native (on / off) |
+|---|---|---|---|
+| `tree.heap` | push and pop | 198 / 643 | 118 / 126 |
+| `tree.avl` | insert, get, floor, walk, remove | (see below) / 1120–2240 | 112–194 / 115–208 |
+| `nodegraph` | `PickNodes`, 6000 areas | 16.1 ms / 19.4 ms | 3.0 ms / 2.9 ms |
+| `nodegraph` | `Candidates`, 1500 nodes within 512 | 36.8 ms / 37.6 ms | 3.4 ms / 3.3 ms |
+| `nodegraph` | `Bridges`, 1500 nodes within 720 | 24.5 ms / 28.6 ms | 1.8 ms / 1.6 ms |
+
+The node graph build yields between steps to spend at most 4 ms of a tick,
+but each of these is one call: in Lua each stalled a tick for 9 to 37 ms
+(it varies with the server's load), natively each fits the budget.
+`tree.avl`'s Lua twin with the JIT on measured 120 to 260 µs an operation
+on the server against 2.6 µs locally: the bench flushes the JIT between
+modes and the twin is recompiled from scratch under Rosetta, so that
+column is not the game's; the JIT-off column (the twin at its slowest
+honest speed) is 8 to 11× the native.
+
+Under the floor, measured in Lua alone against a native call (about 15 ns
+locally, 20 on the server): `list.slots` 24 ns (server, JIT on), `chain`
+7, `world.pairmap` 40 for a set and a get, `lease` 18, `queue`, `ring`,
+`sets.Has`, `geometry`, `scalar`, `polynomial.Evaluate`. No native twin
+of an operation that cheap can win; they stay Lua. `math.matrix`,
+`math.polynomial.Roots` and `math.stats` do bulk work (a 32×32 inverse
+1.4 ms, `Percentile` of 1000 216 µs) but nothing in the game calls them
+on a hot path (`analysis.analytics` takes a percentile per report), so
+they wait for a caller.
 
 ## Threads and caches
 
@@ -137,6 +171,7 @@ LuaJIT the oracle tests run in. Its guard that the Lua state is touched
 only from the thread that opened it is worth taking once worker threads
 come.
 
-What stays Lua: `pairmap`, `ring`, `queue`, `sets`, `geometry`'s per-point
-maths, `class`/`port`/`enum`: single-lookup operations or metatable
-mechanisms, which a crossing would only slow.
+What stays Lua: `pairmap`, `lease`, `slots`, `chain`, `ring`, `queue`,
+`sets`, `geometry`'s per-point maths, `scalar`, `class`/`port`/`enum`:
+single-lookup operations or metatable mechanisms, which a crossing would
+only slow (measured above).

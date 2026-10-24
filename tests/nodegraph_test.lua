@@ -96,4 +96,108 @@ T.test("the header alone can be read, to tell whether an installed graph fits th
 	T.eq(Graph.Decode("short"), nil, "too short")
 end)
 
+-- The pair searches, through both twins: the Lua module's and
+-- native/foundation's, which a server patches over them. Ties are part of
+-- the contract: nearer first, then the lower index; links nearest first,
+-- then by a, then by b; areas largest first, then in the order given.
+local TWINS = {
+	{ "lua", Graph },
+	{ "native", T.native("foundation").nodegraph },
+}
+
+local function Links(links)
+	local out = {}
+	for i, link in ipairs(links) do out[i] = link.a .. "-" .. link.b .. "@" .. string.format("%.6f", link.distance) end
+	return table.concat(out, " ")
+end
+
+local function Scatter(n, seed, span, height)
+	local points, x = {}, seed
+	for i = 1, n do
+		local c = {}
+		for k = 1, 3 do
+			x = (x * 1103515245 + 12345) % 2147483648
+			c[k] = x % (k == 3 and height or span) - (k == 3 and 0 or span / 2)
+		end
+		points[i] = P(c[1], c[2], c[3])
+	end
+	return points
+end
+
+local SQUARE = { P(0, 0), P(100, 0), P(0, 100), P(100, 100) }
+
+local PAIR_CASES = {
+	{ "equal distances break by the lower index", function(G)
+		return { Links(G.Candidates(SQUARE, 150, 2)), Links(G.Candidates(SQUARE, 150, 1)) }
+	end },
+	{ "a node exactly at the range is in it; none past it", function(G)
+		return { Links(G.Candidates({ P(0, 0), P(300, 0), P(600.5, 0) }, 300, 4)) }
+	end },
+	{ "negative coordinates bucket like positive ones", function(G)
+		return { Links(G.Candidates({ P(-10, -10), P(10, 10), P(-130, 5), P(-1000, -1000) }, 128, 4)) }
+	end },
+	{ "nothing in, nothing out; none per node, none at all", function(G)
+		return { #G.Candidates({}, 100, 4), #G.Candidates(SQUARE, 150, 0), #G.Bridges({}, {}, 100, 4), #G.PickNodes({}, 100, 5) }
+	end },
+	{ "bridges join only across zones, ties as candidates", function(G)
+		return { Links(G.Bridges(SQUARE, { 4, 4, 5, 5 }, 720, 1)), Links(G.Bridges(SQUARE, { 4, 4, 4, 4 }, 720, 4)) }
+	end },
+	{ "areas of equal size are picked in the order given", function(G)
+		local areas = { { pos = P(0, 0), size = 5 }, { pos = P(50, 0), size = 5 }, { pos = P(500, 0), size = 9 }, { pos = P(520, 0), size = 9 } }
+		local chosen = G.PickNodes(areas, 100, math.huge)
+		local out = {}
+		for i, area in ipairs(chosen) do
+			for j, given in ipairs(areas) do
+				if area == given then out[i] = j end
+			end
+		end
+		return { table.concat(out, " "), #G.PickNodes(areas, 100, 1) }
+	end },
+	{ "a map's worth of candidates and bridges", function(G)
+		local positions = Scatter(1200, 11, 6000, 400)
+		local zones = {}
+		for i, p in ipairs(positions) do zones[i] = 4 + math.floor((p.x + 3000) / 900) end
+		return { Links(G.Candidates(positions, 512, 16)), Links(G.Bridges(positions, zones, 720, 4)) }
+	end },
+	{ "a map's worth of areas", function(G)
+		local areas = {}
+		for i, p in ipairs(Scatter(4000, 5, 8000, 400)) do areas[i] = { pos = p, size = i % 37 } end
+		local out = {}
+		for i, area in ipairs(G.PickNodes(areas, 96, 1500)) do out[i] = area.size .. ":" .. area.pos.x end
+		return { #out, table.concat(out, " ") }
+	end },
+	{ "a position without its z is refused", function(G)
+		return { (pcall(G.Candidates, { P(0, 0), { x = 1, y = 2 } }, 100, 4)) }
+	end },
+}
+
+local seenPairs = {}
+for _, case in ipairs(PAIR_CASES) do
+	for _, twin in ipairs(TWINS) do
+		local name, G = twin[1], twin[2]
+		T.test(name .. ": " .. case[1], function()
+			local ok, result = pcall(case[2], G)
+			T.eq(ok, true, "ran: " .. tostring(result))
+			local parts = {}
+			for i, v in ipairs(ok and result or {}) do parts[i] = tostring(v) end
+			seenPairs[case[1]] = seenPairs[case[1]] or {}
+			seenPairs[case[1]][name] = table.concat(parts, " | ")
+		end)
+	end
+end
+
+T.test("the two twins agree on every pair search", function()
+	for _, case in ipairs(PAIR_CASES) do T.eq(seenPairs[case[1]].native, seenPairs[case[1]].lua, case[1]) end
+end)
+
+T.test("the Lua twin's ties are the contract's", function()
+	T.eq(seenPairs["equal distances break by the lower index"].lua,
+		"1-2@100.000000 1-3@100.000000 2-4@100.000000 3-4@100.000000 | 1-2@100.000000 1-3@100.000000 2-4@100.000000", "ties")
+	T.eq(seenPairs["a node exactly at the range is in it; none past it"].lua, "1-2@300.000000", "range")
+	T.eq(seenPairs["bridges join only across zones, ties as candidates"].lua, "1-3@100.000000 2-4@100.000000 | ", "bridges")
+	T.eq(seenPairs["areas of equal size are picked in the order given"].lua, "3 1 | 1", "areas")
+	T.eq(seenPairs["nothing in, nothing out; none per node, none at all"].lua, "0 | 0 | 0 | 0", "empty")
+	T.eq(seenPairs["a position without its z is refused"].lua, "false", "no z")
+end)
+
 T.finish()

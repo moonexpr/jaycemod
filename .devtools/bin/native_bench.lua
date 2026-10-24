@@ -28,21 +28,28 @@ end
 
 -- The Lua twin of `module` ("tree.heap", or a root module: "nodegraph")
 -- and its native twin, or nil.
+-- Whether any of a module's functions is native: replaced whole (`New`)
+-- or patched function by function.
+local function HasNative(installed)
+	if type(installed) ~= "table" then return false end
+	for _, value in pairs(installed) do
+		if type(value) == "function" and debug.getinfo(value, "S").what == "C" then return true end
+	end
+	return false
+end
+
 local function Twins(module)
 	local ns, name = module:match("^([%w_]+)%.([%w_]+)$")
-	if not ns then
-		if SERVER_SIDE then return _G[module], nil end
-		return _G[module], native[module]
-	end
 	if SERVER_SIDE then
-		local installed = _G[ns] and _G[ns][name]
+		local installed
+		if ns then installed = _G[ns] and _G[ns][name] else installed = _G[module] end
 		local env = setmetatable({}, { __index = _G })
 		local chunk = CompileFile(GAMEMODE.FolderName .. "/gamemode/" .. Path(module))
 		setfenv(chunk, env)("ws_native_bench." .. module)
 		local lua = package.loaded["ws_native_bench." .. module]
-		local isNative = installed and type(installed.New) == "function" and debug.getinfo(installed.New, "S").what == "C"
-		return lua, isNative and installed or nil
+		return lua, HasNative(installed) and installed or nil
 	end
+	if not ns then return _G[module], native[module] end
 	return _G[ns][name], native[ns] and native[ns][name] or nil
 end
 
@@ -60,6 +67,18 @@ local function Keys(n, span)
 end
 
 local KEYS = Keys(N + 3, 100000)
+
+-- At a TF2 map's scale (cp_spookeyridge: 2003 areas, 353 hiding spots,
+-- the seams between): what nodegraph's build runs between its yields,
+-- built once so only the call is timed.
+local NODEGRAPH = { areas = {}, positions = {}, zones = {} }
+for i = 1, 6000 do
+	NODEGRAPH.areas[i] = { pos = { x = KEYS[i] % 8000, y = KEYS[i + 1] % 8000, z = KEYS[i + 2] % 400 }, size = KEYS[i] % 900 }
+end
+for i = 1, 1500 do
+	NODEGRAPH.positions[i] = { x = KEYS[i] % 8000, y = KEYS[i + 1] % 8000, z = KEYS[i + 2] % 400 }
+	NODEGRAPH.zones[i] = 4 + math.floor(NODEGRAPH.positions[i].x / 1000)
+end
 
 local CASES = {
 	["tree.heap"] = {
@@ -227,6 +246,17 @@ local CASES = {
 			local line = Polyline.New(points)
 			local length = line:Length()
 			for i = 1, N do line:PointAt((KEYS[i] % 1000) / 1000 * length) end
+		end },
+	},
+	["nodegraph"] = {
+		{ "PickNodes of 6000 at 96 (one call)", 1, function(Graph)
+			Graph.PickNodes(NODEGRAPH.areas, 96, math.huge)
+		end },
+		{ "Candidates of 1500 within 512 (one call)", 1, function(Graph)
+			Graph.Candidates(NODEGRAPH.positions, 512, 16)
+		end },
+		{ "Bridges of 1500 within 720 (one call)", 1, function(Graph)
+			Graph.Bridges(NODEGRAPH.positions, NODEGRAPH.zones, 720, 4)
 		end },
 	},
 	["world.grid"] = {

@@ -4,6 +4,7 @@
 
 mod avl;
 mod heap;
+mod nodegraph;
 mod slots;
 
 use crate::lua::{api, set_function, CFunction, L};
@@ -32,7 +33,7 @@ unsafe fn library(l: L, name: &CStr, functions: &[(&CStr, CFunction)]) {
 }
 
 /// Pushes the module's table, laid out as foundation's globals are
-/// (`.tree.heap`), with the boundary probes, for the tests and the bench.
+/// (`.tree.heap`, `.nodegraph`), with the boundary probes, for the tests and the bench.
 unsafe fn module(l: L) {
     let api = api();
     (api.createtable)(l, 0, 2);
@@ -42,6 +43,7 @@ unsafe fn module(l: L) {
     avl::push_module(l);
     (api.setfield)(l, -2, c"avl".as_ptr());
     (api.setfield)(l, -2, c"tree".as_ptr());
+    library(l, c"nodegraph", nodegraph::FUNCTIONS);
     library(l, c"probe", &[(c"Nothing", probe_nothing), (c"Add", probe_add)]);
 }
 
@@ -52,6 +54,7 @@ unsafe fn install(l: L) {
     crate::module::install(l, c"tree", c"heap");
     avl::push_module(l);
     crate::module::install(l, c"tree", c"avl");
+    crate::module::patch(l, None, c"nodegraph", nodegraph::FUNCTIONS);
 }
 
 /// GMod's entry point: the server requires the module right after

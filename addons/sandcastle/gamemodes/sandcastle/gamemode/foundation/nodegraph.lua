@@ -46,16 +46,21 @@ local function Distance(a, b)
 	return sqrt(dx * dx + dy * dy + dz * dz)
 end
 
--- Nodes: the centres of the areas, largest areas first, none within
--- `spacing` of another, at most `limit`. areas: { pos, size }. Returns the
--- chosen areas in order.
+-- Nodes: the centres of the areas, largest areas first (equal sizes in the
+-- order given), none within `spacing` of another, at most `limit`. areas:
+-- { pos, size }. Returns the chosen areas in order.
 function PickNodes(areas, spacing, limit)
 	local order = {}
-	for i, area in ipairs(areas) do order[i] = area end
-	sort(order, function(a, b) return a.size > b.size end)
+	for i = 1, #areas do order[i] = i end
+	sort(order, function(x, y)
+		local sx, sy = areas[x].size, areas[y].size
+		if sx ~= sy then return sx > sy end
+		return x < y
+	end)
 	local chosen, grid = {}, Grid.New(spacing)
-	for _, area in ipairs(order) do
+	for _, i in ipairs(order) do
 		if #chosen >= limit then break end
+		local area = areas[i]
 		local crowded = grid:Near(area.pos, function(other) return Distance(other.pos, area.pos) < spacing end)
 		if not crowded then
 			chosen[#chosen + 1] = area
@@ -80,53 +85,34 @@ function SeamPoint(from, to, dir)
 	return dir == 3 and from.lo.x or from.hi.x, (low + high) / 2
 end
 
--- The links worth testing: each node's `perNode` nearest within
--- maxDistance, each pair once. positions: a list; returns { a, b, distance }
--- with a < b, nearest first.
-function Candidates(positions, maxDistance, perNode)
-	local grid = Grid.New(maxDistance)
-	for i, p in ipairs(positions) do grid:Put(p, i) end
-	local seen, pairsOut = {}, {}
-	for i, p in ipairs(positions) do
-		local near = {}
-		grid:Near(p, function(j)
-			if j ~= i then
-				local d = Distance(p, positions[j])
-				if d <= maxDistance then near[#near + 1] = { j = j, d = d } end
-			end
-		end)
-		sort(near, function(a, b) return a.d < b.d end)
-		for k = 1, perNode < #near and perNode or #near do
-			local j = near[k].j
-			local a, b = i < j and i or j, i < j and j or i
-			local key = a * 65536 + b
-			if not seen[key] then
-				seen[key] = true
-				pairsOut[#pairsOut + 1] = { a = a, b = b, distance = near[k].d }
-			end
-		end
-	end
-	sort(pairsOut, function(x, y) return x.distance < y.distance end)
-	return pairsOut
+local function Nearer(x, y)
+	if x.d ~= y.d then return x.d < y.d end
+	return x.j < y.j
 end
 
--- Links that would join zones: for each node, its `perNode` nearest nodes
--- of other zones within maxDistance, each pair once, nearest first. A
--- node's nearest few may all lie on its own side of a wall or doorway, so
--- Candidates alone can leave rooms unjoined.
-function Bridges(positions, zones, maxDistance, perNode)
+local function Shorter(x, y)
+	if x.distance ~= y.distance then return x.distance < y.distance end
+	if x.a ~= y.a then return x.a < y.a end
+	return x.b < y.b
+end
+
+-- Each node's `perNode` nearest other nodes within maxDistance (of
+-- another zone, given zones), each pair once: { a, b, distance } with
+-- a < b, nearest first. Ties: nearer, then the lower index; links by
+-- distance, a, then b.
+local function NearestPairs(positions, maxDistance, perNode, zones)
 	local grid = Grid.New(maxDistance)
 	for i, p in ipairs(positions) do grid:Put(p, i) end
 	local seen, out = {}, {}
 	for i, p in ipairs(positions) do
-		local near = {}
+		local near, zone = {}, zones and zones[i]
 		grid:Near(p, function(j)
-			if zones[j] ~= zones[i] then
+			if j ~= i and (not zones or zones[j] ~= zone) then
 				local d = Distance(p, positions[j])
 				if d <= maxDistance then near[#near + 1] = { j = j, d = d } end
 			end
 		end)
-		sort(near, function(a, b) return a.d < b.d end)
+		sort(near, Nearer)
 		for k = 1, perNode < #near and perNode or #near do
 			local j = near[k].j
 			local a, b = i < j and i or j, i < j and j or i
@@ -137,8 +123,23 @@ function Bridges(positions, zones, maxDistance, perNode)
 			end
 		end
 	end
-	sort(out, function(x, y) return x.distance < y.distance end)
+	sort(out, Shorter)
 	return out
+end
+
+-- The links worth testing: each node's `perNode` nearest within
+-- maxDistance, each pair once. positions: a list; returns { a, b, distance }
+-- with a < b, nearest first.
+function Candidates(positions, maxDistance, perNode)
+	return NearestPairs(positions, maxDistance, perNode, nil)
+end
+
+-- Links that would join zones: for each node, its `perNode` nearest nodes
+-- of other zones within maxDistance, each pair once, nearest first. A
+-- node's nearest few may all lie on its own side of a wall or doorway, so
+-- Candidates alone can leave rooms unjoined.
+function Bridges(positions, zones, maxDistance, perNode)
+	return NearestPairs(positions, maxDistance, perNode, zones)
 end
 
 -- Keeps the shortest links, at most `limit` on any node. links: { a, b,
