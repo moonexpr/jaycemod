@@ -7,17 +7,21 @@
 --   server_lua.py 'return WSRouteRecord.Report()'             what it has so far
 --   server_lua.py 'return WSRouteRecord.Save("pl_upward_war")'  data/ws_routes/<name>.dat
 --
--- Each search's graph (features/npc/sv_routes.lua's NavGraph) is wrapped as
--- foundation.wetsands.astar makes the search: every area the search found
--- untraversable, every link its crossable refused, every spawn room it read
--- and every estimate it took is written down, with the request and, once the
--- search is done, what it found. Save adds the nav mesh: each area's centre,
+-- Each search is wrapped as it is made: a search on the mesh
+-- (wetsands.navsearch, native on a server with native/wetsands) through its
+-- rules, a watched one (foundation.wetsands.astar, on the NavGraph) through
+-- its graph. Every area the search found untraversable, every link its
+-- crossable refused, every spawn room it read (and, on the NavGraph, every
+-- estimate it took; the mesh's are its centres' distances, which a replay
+-- computes alike) is written down, with the request and, once the search is
+-- done, what it found. Save adds the nav mesh: each area's centre,
 -- attributes and links in the order the NavGraph walks them.
 WSRouteRecord = WSRouteRecord or {}
 local R = WSRouteRecord
 
 local Record = nextsoldier.route_record
 local AStar = wetsands.astar
+local NavSearch = wetsands.navsearch
 local Pathfinder = graph.pathfinder
 local HL2 = WS.require("foundation.wetsands.path.hl2")
 local Lanes = nextsoldier.lanes
@@ -100,6 +104,66 @@ local function Watch(graph, rec)
 	end
 end
 
+-- The rules' answers written into rec as the search asks them.
+local function WatchRules(rules, rec)
+	local watched = {}
+	if rules.traversable then
+		watched.traversable = function(id)
+			local open = rules.traversable(id)
+			if not open then rec.blocked[id] = true end
+			return open
+		end
+	end
+	if rules.crossable then
+		watched.crossable = function(from, to)
+			local ok = rules.crossable(from, to)
+			if not ok then
+				rec.uncrossable[from] = rec.uncrossable[from] or {}
+				rec.uncrossable[from][to] = true
+			end
+			return ok
+		end
+	end
+	if rules.room then
+		watched.room = function(id)
+			local team = rules.room(id)
+			if team ~= Record.NO_ROOM then rec.rooms[id] = team end
+			return team
+		end
+	end
+	return watched
+end
+
+-- The request a search was made for, as a record holds it.
+local function Rec(npcs, source, strategy, limits, bot, start, goal, goalPos, maxExpanded)
+	return {
+		t = CurTime() - R.started,
+		source = source or "other",
+		team = bot.team or WS.TEAM_UNASSIGNED,
+		start = start,
+		goal = goal,
+		goalPos = {
+			x = goalPos.x,
+			y = goalPos.y,
+			z = goalPos.z,
+		},
+		strategy = StrategyName(strategy),
+		generation = npcs.blockerGeneration,
+		maxExpanded = maxExpanded or Pathfinder.MAX_EXPANDED,
+		limits = {
+			stepHeight = limits.stepHeight,
+			jumpHeight = limits.jumpHeight,
+			deathDropHeight = limits.deathDropHeight,
+			crouches = limits.crouches == true,
+		},
+		bot = CopyBot(bot),
+		blocked = {},
+		uncrossable = {},
+		rooms = {},
+		estimates = {},
+	}
+end
+
 function R.Start(seconds, restart)
 	if R.running then return "already recording" end
 	local npcs = WS.Feature("npc")
@@ -115,36 +179,19 @@ function R.Start(seconds, restart)
 	end)
 	local new = AStar.New
 	Swap(AStar, "New", function(graph, start, goal, maxExpanded)
-		local bot, goalPos = graph.bot or {}, graph.goalPos
-		local limits = graph.limits
-		local rec = {
-			t = CurTime() - R.started,
-			source = pending or "other",
-			team = bot.team or WS.TEAM_UNASSIGNED,
-			start = start,
-			goal = goal,
-			goalPos = {
-				x = goalPos.x,
-				y = goalPos.y,
-				z = goalPos.z,
-			},
-			strategy = StrategyName(graph.strategy),
-			generation = npcs.blockerGeneration,
-			maxExpanded = maxExpanded or Pathfinder.MAX_EXPANDED,
-			limits = {
-				stepHeight = limits.stepHeight,
-				jumpHeight = limits.jumpHeight,
-				deathDropHeight = limits.deathDropHeight,
-				crouches = limits.crouches == true,
-			},
-			bot = CopyBot(bot),
-			blocked = {},
-			uncrossable = {},
-			rooms = {},
-			estimates = {},
-		}
+		local rec = Rec(npcs, pending, graph.strategy, graph.limits, graph.bot or {}, start, goal, graph.goalPos, maxExpanded)
 		Watch(graph, rec)
 		local search = new(graph, start, goal, maxExpanded)
+		R.searches[#R.searches + 1] = {
+			rec = rec,
+			search = search,
+		}
+		return search
+	end)
+	local newMesh = NavSearch.New
+	Swap(NavSearch, "New", function(mesh, strategy, limits, bot, start, goal, goalPos, maxExpanded, told, rules)
+		local rec = Rec(npcs, pending, strategy, limits, bot or {}, start, goal, goalPos, maxExpanded)
+		local search = newMesh(mesh, strategy, limits, bot, start, goal, goalPos, maxExpanded, told, WatchRules(rules or {}, rec))
 		R.searches[#R.searches + 1] = {
 			rec = rec,
 			search = search,
