@@ -110,3 +110,20 @@ function TFHud.Shadowed(text, font, x, y, alignX, color)
 	draw.SimpleText(text, font, x + 1, y + 1, color_black, alignX, TEXT_ALIGN_CENTER)
 	draw.SimpleText(text, font, x, y, color or TAN_LIGHT, alignX, TEXT_ALIGN_CENTER)
 end
+
+-- The objectives' stack at the foot of the screen (ws.tf_hud's
+-- ObjectiveLifts): each objective view names how to measure itself, key one
+-- of OBJECTIVE_ORDER and span(w, h) its content's { bottom, top } in units,
+-- or nil while it shows nothing, and draws lifted by ObjectiveLift.
+local objectiveSpans = {}
+
+function TFHud.ObjectiveSpan(key, span)
+	objectiveSpans[key] = span
+end
+
+-- Units the objective key is lifted by this frame.
+function TFHud.ObjectiveLift(key, w, h)
+	local spans = {}
+	for k, span in pairs(objectiveSpans) do spans[k] = span(w, h) end
+	return Hud.ObjectiveLifts(spans)[key] or 0
+end

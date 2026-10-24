@@ -221,6 +221,29 @@ function KothSetupTop(top, unit)
 	return top + (TIMER_H + KOTH_SETUP_GAP) * unit
 end
 
+-- The objective HUDs at the foot of the screen, each laid out from it as
+-- its .res places it, stack when several show: bottom first, frags (the
+-- round limits' panels), payload's track, the control points' icons, then
+-- the flag or MvM's bomb on top. spans: by key, each shown one's content
+-- { bottom, top }, in units above the screen's foot where it would sit
+-- alone. Returns by key how many units each is lifted: just clear of the
+-- one below it, OBJECTIVE_GAP apart; the lowest, never.
+OBJECTIVE_ORDER = { "frags", "payload", "points", "flags" }
+OBJECTIVE_GAP = 2
+
+function ObjectiveLifts(spans)
+	local lifts, stackTop = {}, nil
+	for _, key in ipairs(OBJECTIVE_ORDER) do
+		local span = spans[key]
+		if span then
+			local lift = stackTop and max(0, stackTop + OBJECTIVE_GAP - span.bottom) or 0
+			lifts[key] = lift
+			stackTop = span.top + lift
+		end
+	end
+	return lifts
+end
+
 function KothActiveFrame(panels, team)
 	return panels[team].bg
 end

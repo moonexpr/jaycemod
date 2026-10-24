@@ -128,6 +128,21 @@ T.test("caplayout's rows stack down to the bottom, each centred", function()
 	T.near(Centre(layout, 2), BASE_W / 2, HALF_PIXEL, "its base centred")
 end)
 
+T.test("lifted, the rows move up by the lift in units, their size unchanged", function()
+	local unit = WIDE_H / Hud.UNITS_TALL
+	local at, lifted = Hud.Layout({ 3 }, WIDE_W, WIDE_H), Hud.Layout({ 3 }, WIDE_W, WIDE_H, 40)
+	T.near(at.rows[1][1].y - lifted.rows[1][1].y, 40 * unit, 1, "up by the lift")
+	T.eq(lifted.size, at.size, "the same size")
+end)
+
+-- The span the stack (ws.tf_hud's ObjectiveLifts) knows the icons by: their
+-- foot and top above the screen's foot, in units.
+T.test("the icons' span runs from the offset above the edge to the top of their rows", function()
+	local span = Hud.Span(2)
+	T.eq(span.bottom, ABOVE_EDGE, "a separator and the offset above the edge")
+	T.eq(span.top, ABOVE_EDGE + 2 * (ROW_TALL + Hud.GAP_Y), "two rows")
+end)
+
 T.test("no rows, no icons", function()
 	T.eq(#Hud.Layout({}, BASE_W, BASE_H).rows, 0, "empty")
 end)
@@ -138,6 +153,7 @@ T.test("the icons give the bottom centre to payload's cart HUD, as TF2's escort 
 	T.eq(Hud.Shown(Rounds.HUD_KOTH), true, "koth")
 	T.eq(Hud.Shown(Rounds.HUD_DEATHMATCH), false, "a deathmatch: frags alone")
 	T.eq(Hud.Shown(Rounds.HUD_NONE), true, "a round without a HUD type")
+	T.eq(Hud.Shown(Rounds.HUD_CONTROL_POINTS, true), false, "MvM: the bomb alone")
 end)
 
 -- The capture panel's reason text fades white -> red -> white, once every

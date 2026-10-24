@@ -39,9 +39,10 @@ function ReasonRedness(now)
 	return (1 - cos(2 * pi * now / REASON_PULSE)) / 2
 end
 
--- Whether the icons show in a round with HUD type hudType (a Rounds.HUD_*).
-function Shown(hudType)
-	return hudType ~= Rounds.HUD_PAYLOAD and hudType ~= Rounds.HUD_DEATHMATCH
+-- Whether the icons show in a round with HUD type hudType (a Rounds.HUD_*);
+-- mvm: an MvM map, where the bomb's panel is the only objective shown.
+function Shown(hudType, mvm)
+	return not mvm and hudType ~= Rounds.HUD_PAYLOAD and hudType ~= Rounds.HUD_DEATHMATCH
 end
 
 -- CHudControlPointIcons::InitIcons: whether point p ({ inRound, hidden },
@@ -52,17 +53,25 @@ function HasIcon(p)
 	return p.inRound and not p.hidden
 end
 
+-- The icons' rows' content, in units above the screen's foot, for the
+-- objectives' stack (ws.tf_hud's ObjectiveLifts): { bottom, top }.
+function Span(rowCount)
+	local bottom = BOTTOM_OFFSET + GAP_Y
+	return { bottom = bottom, top = bottom + rowCount * (ICON + LABEL + GAP_Y) }
+end
+
 -- rowSizes: how many icons each caplayout row shows, top row first; w, h:
--- the screen in pixels. Returns { size, label, outline, top, rows }: the
+-- the screen in pixels; lift: units the rows are raised by (the objectives'
+-- stack), 0 by default. Returns { size, label, outline, top, rows }: the
 -- icon's and the cappers line's height, how far the outline shows round
 -- each icon (at least a pixel), the panel's top, and each row's icons'
 -- { x, y } in pixels, left to right.
-function Layout(rowSizes, w, h)
+function Layout(rowSizes, w, h, lift)
 	local unit = h / UNITS_TALL
 	local size, label = floor(ICON * unit), floor(LABEL * unit)
 	local gapX, gapY = floor(GAP_X * unit), floor(GAP_Y * unit)
 	local pitch = size + label + gapY
-	local top = h - floor(BOTTOM_OFFSET * unit) - gapY - #rowSizes * pitch
+	local top = h - floor((BOTTOM_OFFSET + (lift or 0)) * unit) - gapY - #rowSizes * pitch
 	local rows = {}
 	for line, count in ipairs(rowSizes) do
 		local x = floor((w - (count * size + (count - 1) * gapX)) / 2)

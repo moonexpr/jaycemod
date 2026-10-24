@@ -298,12 +298,27 @@ local function Rows(count)
 	return rows
 end
 
+-- The rows shown now: none in a payload or deathmatch round, nor on an MvM
+-- map, where the bomb's panel is the only objective.
+local function ShownRows()
+	if not Hud.Shown(GetGlobal2Int("ws_round_hud_type", Rounds.HUD_NONE), GetGlobal2Bool("ws_mvm", false)) then return {} end
+	return Rows(GetGlobal2Int("ws_point_count", 0))
+end
+
+-- In the objectives' stack (ws.tf_hud's ObjectiveLifts): above frags and
+-- payload, under the flag.
+WS.TFHud.ObjectiveSpan("points", function()
+	local rows = ShownRows()
+	if #rows == 0 then return nil end
+	return Hud.Span(#rows)
+end)
+
 local function DrawIcons(w, h)
-	if not Hud.Shown(GetGlobal2Int("ws_round_hud_type", Rounds.HUD_NONE)) then return end
-	local rows = Rows(GetGlobal2Int("ws_point_count", 0))
+	local rows = ShownRows()
+	if #rows == 0 then return end
 	local sizes = {}
 	for i, row in ipairs(rows) do sizes[i] = #row end
-	local layout = Hud.Layout(sizes, w, h)
+	local layout = Hud.Layout(sizes, w, h, WS.TFHud.ObjectiveLift("points", w, h))
 	for line, row in ipairs(rows) do
 		for i, p in ipairs(row) do
 			local at = layout.rows[line][i]

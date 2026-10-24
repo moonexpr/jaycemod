@@ -148,6 +148,27 @@ T.test("KOTH's setup timer hangs centred under the clocks, clear of them", funct
 	T.eq(setup.bg.x + setup.bg.w / 2, 320 + (Hud.TIMER_BG_X + Hud.TIMER_W / 2 - Hud.TIMER_PANEL_W / 2) * unit, "centred as the round timer is")
 end)
 
+-- The objective HUDs stack from the foot of the screen, bottom first:
+-- frags, payload, control points, then the flag or bomb on top. Each is
+-- lifted only as far as clears the one under it.
+T.test("the objectives stack frags, payload, points, then the flag, each clear of the one below", function()
+	local spans = {
+		frags = { bottom = 8, top = 72 },
+		points = { bottom = 17, top = 53 },
+		flags = { bottom = 30, top = 140 },
+	}
+	local lifts = Hud.ObjectiveLifts(spans)
+	T.eq(lifts.frags, 0, "the lowest stays where it is")
+	T.eq(lifts.payload, nil, "absent")
+	T.eq(lifts.points + spans.points.bottom, spans.frags.top + Hud.OBJECTIVE_GAP, "the points just above the frags")
+	T.eq(lifts.flags + spans.flags.bottom, spans.points.top + lifts.points + Hud.OBJECTIVE_GAP, "the flag just above the points")
+end)
+
+T.test("an objective already clear of the one below stays put, and one alone is never lifted", function()
+	T.eq(Hud.ObjectiveLifts({ points = { bottom = 17, top = 53 }, flags = { bottom = 80, top = 140 } }).flags, 0, "clear already")
+	T.eq(Hud.ObjectiveLifts({ flags = { bottom = 3, top = 140 } }).flags, 0, "alone")
+end)
+
 -- spectator.res's ReinforcementsLabel: -8, r91, 292x28, in TFThinLineBorder.
 T.test("the respawn label sits at the bottom left, its left edge off the screen", function()
 	local label = Hud.RespawnLabel(960, 2)

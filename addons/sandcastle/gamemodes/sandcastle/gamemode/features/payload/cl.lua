@@ -264,6 +264,25 @@ local function DrawEscort(cart, L, ox, oy, u, race, offset)
 	DrawCart(cart, L, ox, oy, u, race, offset * u, opaque and L.hillItemY or L.itemY)
 end
 
+-- The objectives' stack (ws.tf_hud's ObjectiveLifts): the track above
+-- frags, under the points and the flag. Its content, in units above the
+-- screen's foot: from the checkpoints' foot (a race's: RED's cart under the
+-- lower track) to the alarm's top over the cart.
+local function Span()
+	if GetGlobal2Int("ws_cart_count", 0) == 0 then return nil end
+	local top = SINGLE.panelBottom - (math.min(SINGLE.itemY, SINGLE.hillItemY) + SINGLE.above.alert.y)
+	if not GetGlobal2Bool("ws_cart_race", false) then
+		return { bottom = SINGLE.panelBottom - (SINGLE.pointY + SINGLE.pointSize), top = top }
+	end
+	local below = RACE.below.alert
+	return {
+		bottom = RACE.panelBottom - (RACE.itemY + below.y + below.h + RACE_TRACK_GAP),
+		top = RACE.panelBottom - (RACE.itemY + RACE.above.alert.y),
+	}
+end
+
+WS.TFHud.ObjectiveSpan("payload", Span)
+
 local function DrawCarts(w, h)
 	local count = GetGlobal2Int("ws_cart_count", 0)
 	if count == 0 then return end
@@ -271,7 +290,8 @@ local function DrawCarts(w, h)
 	local L = race and RACE or SINGLE
 	local u = h / 480
 	CappersFont(u)
-	local ox, oy = w / 2 - L.panelW / 2 * u, h - L.panelBottom * u
+	local lift = WS.TFHud.ObjectiveLift("payload", w, h)
+	local ox, oy = w / 2 - L.panelW / 2 * u, h - (L.panelBottom + lift) * u
 	for i = 1, count do
 		-- the controller orders BLU's cart first (Hud.Order): its track above RED's
 		DrawEscort(Cart(i), L, ox, oy, u, race, race and (i - 1) * RACE_TRACK_GAP or 0)

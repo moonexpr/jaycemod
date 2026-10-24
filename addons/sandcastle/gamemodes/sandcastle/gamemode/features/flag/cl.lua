@@ -168,24 +168,47 @@ local function DrawCarried(f, cx, h, u)
 	Rotated(Flag.Compass(f.carrierTeam, Flag.CARRIED), x + w / 2, y + ah / 2, w, ah, Bearing(zone))
 end
 
+-- The objectives' stack (ws.tf_hud's ObjectiveLifts): the flag panel on
+-- top, its content's foot as it sits alone: the "Playing to" tab under the
+-- scores, else the carrier's arrow, MvM's bomb, or the status panels'
+-- compasses. The top is the status panels'.
+local function Span()
+	if #ents.FindByClass("item_teamflag") == 0 then return nil end
+	local mvm = GetGlobal2Bool("ws_mvm", false)
+	local bottom
+	if not mvm and GetGlobal2Bool("ws_flag_scores", false) then
+		bottom = PLAYING_TO_BG.y - PLAYING_TO_BG.h
+	elseif mvm then
+		bottom = MVM_PANELS[Flag.SLOT_BLUE].y - (MVM_ARROW.y + MVM_ARROW.h)
+	else
+		bottom = math.min(PANELS[Flag.SLOT_BLUE].y - (ARROW.y + ARROW.h), CAPTURE_ARROW.y - CAPTURE_ARROW.h)
+	end
+	return { bottom = bottom, top = PANELS[Flag.SLOT_BLUE].y }
+end
+
+WS.TFHud.ObjectiveSpan("flags", Span)
+
+-- foot: the screen's foot, raised by the stack's lift; the layouts hang
+-- from it.
 local function Draw(w, h)
 	local shown = Shown()
 	if #shown == 0 then return end
 	local u = h / 480
 	Fonts(u)
 	local cx = w / 2
+	local foot = h - WS.TFHud.ObjectiveLift("flags", w, h) * u
 	local mvm = GetGlobal2Bool("ws_mvm", false)
-	if not mvm and GetGlobal2Bool("ws_flag_scores", false) then DrawScores(cx, h, u) end
+	if not mvm and GetGlobal2Bool("ws_flag_scores", false) then DrawScores(cx, foot, u) end
 	local me = LocalPlayer()
 	for _, f in ipairs(shown) do
 		if f.state == Flag.CARRIED and f.carrier == me then
-			DrawCarried(f, cx, h, u)
+			DrawCarried(f, cx, foot, u)
 			return
 		end
 	end
 	for slot, f in pairs(Flag.Slots(shown, mvm)) do
 		local P = (mvm and MVM_PANELS or PANELS)[slot]
-		DrawStatus(f, cx + P.x * u, h - P.y * u, u, mvm)
+		DrawStatus(f, cx + P.x * u, foot - P.y * u, u, mvm)
 	end
 end
 
