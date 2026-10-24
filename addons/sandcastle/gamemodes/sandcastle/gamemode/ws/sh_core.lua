@@ -260,6 +260,12 @@ function WS.TeamPlay()
 	return Teams.TeamPlay(WS.Active(), WS.GameplayStopped(), WS.State())
 end
 
+-- Whether players may pick a team now (games.gameplay.teams' TeamChoice):
+-- before the round starts too.
+function WS.TeamChoice()
+	return Teams.TeamChoice(WS.Active(), WS.State())
+end
+
 -- TF2's convar; the map's SetRoundRespawnFreezeEnabled input sets it.
 -- Replicated, so client prediction freezes too.
 WS.RestartFreeze = CreateConVar("tf_player_movement_restart_freeze", "1", FCVAR_REPLICATED,

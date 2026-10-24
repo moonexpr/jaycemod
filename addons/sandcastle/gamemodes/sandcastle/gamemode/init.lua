@@ -97,9 +97,9 @@ function GM:ShowTeam(ply)
 	self.BaseClass.ShowTeam(self, ply)
 end
 
--- Base's changeteam command goes through TF2's join rules on TF2 maps, in
--- team play only; without a team index it does nothing here (the client's
--- bind opens the menu).
+-- Base's changeteam command goes through TF2's join rules on TF2 maps,
+-- whenever a team may be picked (WS.TeamChoice); without a team index it
+-- does nothing here (the client's bind opens the menu).
 local JOIN_NAME = {
 	[WS.TEAM_SPECTATOR] = "spectate",
 	[WS.TEAM_RED] = "red",
@@ -108,7 +108,7 @@ local JOIN_NAME = {
 
 function GM:PlayerRequestTeam(ply, teamIndex)
 	if WS.Active() then
-		if WS.TeamPlay() and JOIN_NAME[teamIndex] then WS.JoinTeam(ply, JOIN_NAME[teamIndex]) end
+		if WS.TeamChoice() and JOIN_NAME[teamIndex] then WS.JoinTeam(ply, JOIN_NAME[teamIndex]) end
 		return
 	end
 	self.BaseClass.PlayerRequestTeam(self, ply, teamIndex)

@@ -7,9 +7,12 @@ local Teams = gameplay.teams
 local SOURCE = T.ROOT .. "ws/sv_teams.lua"
 local RUNNER = 21 -- ULX's team for a user group, as one server has it
 
--- active: whether a game is on (WS.Active, and WS.TeamPlay: Gameplay mode).
-local function Load(active)
-	local hooks, deferred = {}, {}
+-- active: whether a game is on (WS.Active, and WS.TeamPlay: Gameplay mode);
+-- choice: whether players may pick a team (WS.TeamChoice), as active by
+-- default.
+local function Load(active, choice)
+	if choice == nil then choice = active end
+	local hooks, deferred, commands = {}, {}, {}
 	local ws = {
 		TeamRules = Teams,
 		UnbalanceLimit = { GetInt = function() return 1 end },
@@ -19,6 +22,15 @@ local function Load(active)
 		TEAM_BLUE = Teams.BLUE,
 		Active = function() return active end,
 		TeamPlay = function() return active end,
+		TeamChoice = function() return choice end,
+		STATE = { GAME_OVER = "game over" },
+		State = function() return "between rounds" end,
+		MayChooseTeam = function() return true end,
+		ForceAutoTeam = { GetBool = function() return false end },
+		AllowSpectators = { GetBool = function() return true end },
+		JoinTeamFaction = function() end,
+		StartObserving = function() end,
+		StopObserving = function() end,
 	}
 	local env = setmetatable({
 		WS = ws,
@@ -32,13 +44,14 @@ local function Load(active)
 			Simple = function(_, fn) deferred[#deferred + 1] = fn end,
 			Create = function() end,
 		},
-		concommand = { Add = function() end },
+		concommand = { Add = function(name, fn) commands[name] = fn end },
+		team = { NumPlayers = function() return 0 end },
 		CreateConVar = function() return { GetBool = function() return true end } end,
 		FCVAR_NOTIFY = 256,
 		IsValid = function(v) return v ~= nil end,
 	}, { __index = _G })
 	setfenv(assert(loadfile(SOURCE)), env)()
-	local world = { hooks = hooks }
+	local world = { hooks = hooks, commands = commands }
 	-- every hook on event, as GMod calls them
 	function world:Call(event, ...)
 		for _, fn in pairs(self.hooks[event] or {}) do fn(...) end
@@ -88,6 +101,24 @@ T.test("in Sandbox mode, the other addon's team stays", function()
 	world:Call("UCLAuthed", ply)
 	world:Tick()
 	T.eq(ply:Team(), RUNNER, "still the Runner")
+end)
+
+-- A player picks a team before the round starts: in Sandbox mode and the
+-- wait for players (team play off), the team keys and jointeam still work.
+T.test("with team play off but team choice on, jointeam puts a player on the team", function()
+	local world = Load(false, true)
+	local ply = Player(Teams.UNASSIGNED, Teams.UNASSIGNED)
+	function ply:Alive() return true end
+	function ply:KillSilent() end
+	world.commands.jointeam(ply, "jointeam", { "red" })
+	T.eq(ply:Team(), Teams.RED, "on RED")
+end)
+
+T.test("without team choice, jointeam changes nothing", function()
+	local world = Load(false, false)
+	local ply = Player(Teams.UNASSIGNED, Teams.UNASSIGNED)
+	world.commands.jointeam(ply, "jointeam", { "red" })
+	T.eq(ply:Team(), Teams.UNASSIGNED, "still unassigned")
 end)
 
 T.finish()

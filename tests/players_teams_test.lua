@@ -296,4 +296,14 @@ T.test("there is no team play without rounds, or in Sandbox mode", function()
 	T.eq(L.TeamPlay(true, true, STATE.RND_RUNNING), false, "Sandbox mode halts the rounds")
 end)
 
+-- Picking a team is wider than team play: before the round starts, in
+-- Sandbox mode, the wait for players and the countdown, as in TF2's
+-- tournament ready-up, where the teams form before anyone readies.
+T.test("a team is picked on any map with rounds past INIT, Sandbox mode too", function()
+	for name, state in pairs(STATE) do
+		T.eq(L.TeamChoice(true, state), state ~= STATE.INIT, name)
+	end
+	T.eq(L.TeamChoice(false, STATE.PREGAME), false, "no tf_gamerules")
+end)
+
 T.finish()

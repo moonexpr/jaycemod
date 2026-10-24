@@ -246,6 +246,14 @@ function TeamPlay(rounds, halted, state)
 	return rounds and not halted and state ~= STATE.INIT
 end
 
+-- Whether a player may pick a team (the team keys, jointeam): wider than
+-- team play, before the round starts too, in Sandbox mode, the wait for
+-- players and the countdown, as TF2's tournament ready-up forms its teams
+-- before anyone readies. Nobody is made to watch or shown the menu there.
+function TeamChoice(rounds, state)
+	return rounds and state ~= STATE.INIT
+end
+
 -- What the client does with its team menu, which it opens itself: TF2's
 -- fallback state is having no team, and an unassigned player sees the menu
 -- (as a fresh join does), whoever unassigned them.
