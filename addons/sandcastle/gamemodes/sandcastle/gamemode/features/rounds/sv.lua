@@ -554,10 +554,13 @@ end
 
 -- Loaded during the map's spawn this waits for InitPostEntity; loaded later,
 -- the next tick has every entity. A live reload sets the map up again but
--- leaves its win conditions.
+-- leaves its win conditions. Those wait a tick past InitPostEntity: the
+-- engine runs server.cfg from its command buffer at the start of the map's
+-- first frame, after InitPostEntity and before the frame's timers, and TF2
+-- execs its casual cfg after server.cfg, so the map's kind wins over it.
 hook.Add("InitPostEntity", THINK_HOOK, function()
 	Controller:SetUpMap()
-	ApplyWinConditions()
+	timer.Simple(0, ApplyWinConditions)
 end)
 timer.Simple(0, function() Controller:SetUpMap() end)
 
