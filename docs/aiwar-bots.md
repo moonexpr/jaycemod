@@ -36,13 +36,25 @@ role, weapon, target, speed and contact.
 | `nextsoldier.bot_quota` | `games/nextsoldier/bot_quota.lua` | TF2's quota rules: bots wanted, add or kick one, the team to kick from |
 | `nextsoldier.vision` | `games/nextsoldier/vision.lua` | TF2's IVision: an enemy seen at once, recognized after the reaction time, remembered where last seen for a while; the most dangerous recognized one is the contact. Its events are the orders' (`OnSight`, `OnLostSight`, `OnContact`, `OnContactLost`) |
 | `nextsoldier.player_body` | `games/nextsoldier/player_body.lua` | TF2's PlayerBody and PlayerLocomotion: from target, gait, look, aim and weapon to a command (move yaw, eye angles turned at `TURN_RATE`, walk, duck, jump, use, attack, reload); crouch jumps when stuck, jumps a low obstacle, ducks under a high one, uses a door ahead (GLambda Players' checks); sent nowhere, closes on or backs off its enemy to its weapon's chase and avoid ranges (DrGBase's own fighting) |
-| `BotSoldier` | `features/aiwar/sv_bot_soldier.lua` | The soldier port over a bot player, a subclass of the DrGBase one: no route planning of its own (`PlansRoutes` false, so the orders walk the route), routes stale when the nav blockers changed, hops only where a crouch jump clears, no seats or poses |
+| `nextsoldier.route_walk` | `games/nextsoldier/route_walk.lua` | A route walked waypoint by waypoint, as the orders walk theirs: a waypoint passed within `RADIUS` when the next is in a clear line, one round a corner only within `ON`, and the farthest of the next `LOOKAHEAD` in a clear line made for |
+| `BotSoldier` | `features/aiwar/sv_bot_soldier.lua` | The soldier port over a bot player, a subclass of the DrGBase one. It plans its own way, as DrGBase does (`PlansRoutes` true: the orders give it the goal): its navigator computes the route with the engine's path search, priced by `RouteCost` (blocked and shut areas, enemy spawn rooms, a player's step, crouch jump and safe drop), planned again when the goal moves, the blockers change or the orders ask (`Repath`). Hops only where a crouch jump clears, no seats or poses |
+| `ws_bot_navigator` | `entities/entities/ws_bot_navigator.lua` | A hidden NextBot per bot, standing where its bot stands, so `Path:Compute` (which needs a NextBot) can plan for a player, as GLambda Players' `glace_navigator` does |
 | Controller part | `features/aiwar/sv_bots.lua` | Keeps the quota, enlists bots as they spawn and discharges them as they die, kits them (`KitBot`: model, loadout, ammunition, health), looks every 0.2 s (field of view, line of sight, attackers and anyone within earshot), asks the orders `ShouldAttack` and `SelectMoreDangerousThreat`, and writes each bot's keys in `StartCommand` |
 
 The rest of the controller treats a bot as a player: the engine and
 DrGBase relate to it by its team, so the relationship passes, factions,
 `SetAIDisabled` and the team-member registry skip it; the rounds' rules
 (freezes, stuns, humiliation) reach its keys through `GM:StartCommand`.
+Bots pass through their teammates (`SetNoCollideWithTeammates`), as TF2's
+teammates do: one held up behind another in a doorway crouch-jumped onto
+its head and stayed there.
+
+Why the bots plan with the engine: the orders' own route walking
+(`PlansRoutes` false, `Travel:FollowRoute`) asks the war's Lua route search,
+whose queue the lane planning keeps 20 to 30 deep on `pl_upward`; a trip the
+orders restart (a fire team's contact ends it) asked afresh and dropped the
+search in flight, so bots stood for minutes. DrGBase soldiers never met it:
+their engine plans their paths.
 
 ## What a bot player can be made to do
 
@@ -78,8 +90,11 @@ about 0.15 ms a tick for six bots.
   `damage` and `runSpeed` (DrGBase's) are not applied.
 - A Resistance medic's kit (the vortigaunt's) has no arms: a bot given that
   role keeps what it carried.
-- Their routes use the HL2 soldiers' cost (`path/hl2`); TF2's bots'
-  (`path/tfbot`) may suit a player's body better.
+- Their route cost is a plain distance with a jump penalty; TF2's bots'
+  (`path/tfbot`: spread over routes, the safest route when retreating) is
+  not used yet.
+- Names are the faction's at join time: after the sides trade, a bot
+  called Combine fights for the Resistance.
 - TF NextBot monsters are not in their sight.
 - Ladders and doors that open by +use alone are untested.
 - `Drive` allocates a few tables a tick: a weapon record per weapon and a

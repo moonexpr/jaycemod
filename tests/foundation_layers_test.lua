@@ -162,6 +162,7 @@ local GAMES = {
 	["nextsoldier/bot_quota"] = "nextsoldier",
 	["nextsoldier/vision"] = "nextsoldier",
 	["nextsoldier/player_body"] = "nextsoldier",
+	["nextsoldier/route_walk"] = "nextsoldier",
 }
 
 -- The modules still to move, and where each goes: none. A module bound out

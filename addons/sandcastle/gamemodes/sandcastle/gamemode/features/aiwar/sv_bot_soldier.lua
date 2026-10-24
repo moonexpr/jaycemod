@@ -2,13 +2,17 @@
 -- (features.aiwar.soldier) over a bot player (player.CreateNextBot, kept
 -- by tf_bot_quota: sv_bots.lua), beside sv_soldier.lua's over a DrGBase
 -- NextBot. It is that port where the two agree (routes, cover, kits,
--- gadgets, health kits) and differs where the body does: a player's body
--- plans no routes of its own (the orders walk its route), sees and fights
--- through its vision and body (games.nextsoldier.vision, player_body;
--- sv_bots.lua presses its keys), and neither sits on carts nor takes poses.
+-- gadgets, health kits) and differs where the body does: it walks a route
+-- of its own to the goal its orders give (as DrGBase plans its own), sees
+-- and fights through its vision and body (games.nextsoldier.vision,
+-- player_body; sv_bots.lua presses its keys), and neither sits on carts
+-- nor takes poses.
 local Map, Soldier = ...
 local Vision = nextsoldier.vision
 local PlayerBody = nextsoldier.player_body
+local RouteWalk = nextsoldier.route_walk
+local Geometry = math.geometry
+local Teams = gameplay.teams
 local ToVector, Point = Map.ToVector, Map.Point
 local WALK_MINS, WALK_MAXS, WALK_LIFT, WALK_MAX_RISE = Map.WALK_MINS, Map.WALK_MAXS, Map.WALK_LIFT, Map.WALK_MAX_RISE
 
@@ -21,6 +25,17 @@ local HOP_CLEAR = Vector(0, 0, 56)
 local HOP_RETRY = 6
 -- How long it remembers an enemy out of sight, where last seen.
 local MEMORY = 5
+-- Its own routes (Steer): asked again when the goal moved this far, at
+-- most every REPATH_INTERVAL seconds; a goal within DIRECT_RANGE in a clear
+-- line is walked straight at (the orders' CHASE_RANGE).
+local REPATH_DISTANCE, REPATH_INTERVAL = 128, 1
+local DIRECT_RANGE = 256
+local FIRST_PLAN = 0.3
+-- What a player's body climbs and falls (RouteCost): a stair step, a crouch
+-- jump (Sandbox's jump power with the legs tucked), the fall it survives
+-- unhurt; a jump costs JUMP_PENALTY times its length more (CTFBotPathCost).
+local STEP_HEIGHT, JUMP_HEIGHT, SAFE_DROP = 18, 52, 300
+local JUMP_PENALTY = 2
 
 local BotSoldier = setmetatable({}, { __index = Soldier })
 BotSoldier.__index = BotSoldier
@@ -43,6 +58,11 @@ function BotSoldier.New(ent, controller, team, reaction)
 		body = PlayerBody.New(),
 		look = nil, -- where it faces with no enemy (Watch), a Vector
 		hopUntil = 0,
+		steer = nil, -- the point its body makes for (Steer)
+		walk = nil, -- the route of its own it walks (games.nextsoldier.route_walk)
+		planned = nil, -- the goal that route was planned for
+		-- its first route waits a moment: a navigator just made knows no nav area yet
+		nextPlan = CurTime() + FIRST_PLAN,
 		mayFire = false, -- its orders let it fire at its contact (sv_bots.lua asks them)
 		loadout = nil, -- features.aiwar.arms' loadout it carries (KitBot)
 		wantWeapon = nil, -- the weapon its contact's distance calls for
@@ -77,18 +97,63 @@ function BotSoldier:EnemyPosition()
 	return (self.vision:LastKnown(enemy))
 end
 
--- A player's body plans no route: the orders walk the route they ask for,
--- planned again once what blocks the nav mesh has changed since (a door
--- opened or shut, setup's gates gone: the npc feature's BlockerGeneration).
-function BotSoldier:PlansRoutes() return false end
+-- A player's body plans its own way, as DrGBase's does: the orders give it
+-- the goal itself (their Chase), and it walks a route of its own there
+-- (games.nextsoldier.route_walk), or straight at a goal near and in a clear
+-- line. The route is the engine's path search's, through its navigator
+-- (ws_bot_navigator), priced by RouteCost, as DrGBase's paths are: the
+-- war's own Lua route searches queue behind its lane planning for tens of
+-- seconds, which a body waiting on them spends standing still. It is
+-- planned again only when the goal has moved REPATH_DISTANCE, what blocks
+-- the nav mesh has changed (a door, setup's gates: the npc feature's
+-- BlockerGeneration), or its orders ask (Repath), at most every
+-- REPATH_INTERVAL.
+function BotSoldier:PlansRoutes() return true end
 
-function BotSoldier:RequestRoute(goal)
-	self.routeGeneration = WS.Feature("npc"):BlockerGeneration()
-	Soldier.RequestRoute(self, goal)
+-- Its navigator, made with its first route and kept with the bot player
+-- across its lives (it goes when the bot does).
+function BotSoldier:Navigator()
+	local ply = self.ent
+	if IsValid(ply.NSNavigator) then return ply.NSNavigator end
+	local navigator = ents.Create("ws_bot_navigator")
+	navigator:SetOwner(ply)
+	navigator:SetPos(ply:GetPos())
+	navigator:Spawn()
+	ply.NSNavigator = navigator
+	return navigator
 end
 
-function BotSoldier:RouteStale()
-	return self.routeGeneration ~= nil and WS.Feature("npc"):BlockerGeneration() ~= self.routeGeneration
+-- The price of a step from fromArea into area (Path:Compute's generator),
+-- or -1 where a player of my team may not go: an area its doors or brushes
+-- close to it (the npc feature's blockers, the doors the war found shut),
+-- the enemy's spawn rooms (their visualizers stop players), a rise higher
+-- than a crouch jump, a drop farther than a safe fall. A step up past a
+-- stair costs JUMP_PENALTY times its length more (CTFBotPathCost's).
+function BotSoldier:RouteCost()
+	local controller, team = self.controller, self.team
+	local npcs = WS.Feature("npc")
+	local enemy = Teams.EnemyOf(team)
+	return function(area, fromArea, ladder, _, length)
+		if not IsValid(fromArea) then return 0 end
+		if npcs:NavBlocks(area, team) or controller:ShutDoorIn(area, team) or npcs:SpawnRoomTeam(area) == enemy then return -1 end
+		local distance
+		if IsValid(ladder) then
+			distance = ladder:GetLength()
+		elseif length > 0 then
+			distance = length
+		else
+			distance = area:GetCenter():Distance(fromArea:GetCenter())
+		end
+		local cost = distance + fromArea:GetCostSoFar()
+		local rise = fromArea:ComputeAdjacentConnectionHeightChange(area)
+		if rise > STEP_HEIGHT then
+			if rise > JUMP_HEIGHT then return -1 end
+			cost = cost + JUMP_PENALTY * distance
+		elseif rise < -SAFE_DROP then
+			return -1
+		end
+		return cost
+	end
 end
 
 function BotSoldier:MoveTo(p, gait)
@@ -98,7 +163,39 @@ end
 
 function BotSoldier:Release()
 	self.moveTarget = nil
+	self.steer = nil
 	self.walkSpeed = 0
+end
+
+function BotSoldier:Repath() self.repath = true end
+
+-- Every look (sv_bots.lua): the point its body makes for now (steer) on
+-- its way to its move target.
+function BotSoldier:Steer(now)
+	local goal = self.moveTarget
+	if not goal then
+		self.steer = nil
+		return
+	end
+	local generation = WS.Feature("npc"):BlockerGeneration()
+	local stale = self.planned == nil or self.repath or generation ~= self.routeGeneration
+		or Geometry.Distance(goal, self.planned) > REPATH_DISTANCE
+	if stale and now >= self.nextPlan then
+		self.planned, self.repath, self.routeGeneration, self.nextPlan = goal, false, generation, now + REPATH_INTERVAL
+		local route = self:Navigator():PlanRoute(ToVector(goal), self:RouteCost())
+		local points = {}
+		for i, v in ipairs(route or {}) do points[i] = Point(v) end
+		self.walk = route and RouteWalk.New(points) or nil
+		-- none found: planned again after REPATH_INTERVAL
+		if not route then self.planned = nil end
+	end
+	if self:RangeTo(goal) <= DIRECT_RANGE and self:CanWalkTo(goal) then
+		self.steer = goal
+		return
+	end
+	-- with no route there, straight at it, for the orders to unstick
+	local walk = self.walk
+	self.steer = walk and walk:Next(Point(self.ent:GetPos()), function(q) return self:CanWalkTo(q) end) or goal
 end
 
 function BotSoldier:Watch(p)
@@ -131,8 +228,8 @@ function BotSoldier:Blocker(p)
 	return hit.HitWorld and game.GetWorld() or hit.Entity, false
 end
 
--- My movement heads straight for p (the orders' waypoint).
-function BotSoldier:Heading(p) return ToVector(p) end
+-- Where my movement heads now for p: the point my route makes for, else p.
+function BotSoldier:Heading(p) return ToVector(self.steer or p) end
 
 -- A hop: it jumps (a crouch jump) on its way to p, as a player would, where
 -- a jump clears what stands between (a hull swept at the jump's height,
@@ -150,9 +247,6 @@ function BotSoldier:Hop(p)
 end
 
 function BotSoldier:Hopping(now) return now < self.hopUntil end
-
--- Its path is the orders' route: nothing of its own to plan again.
-function BotSoldier:Repath() end
 
 -- A player's body neither sits on the cart nor strikes poses.
 function BotSoldier:Sit() return false end

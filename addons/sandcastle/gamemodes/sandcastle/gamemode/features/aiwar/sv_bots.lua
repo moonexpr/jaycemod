@@ -185,6 +185,8 @@ function Controller:ReadyBot(ply, entry)
 	soldier.nextLook = 0
 	soldier.attackedAt = -math.huge
 	soldier.sense = { eye = {} }
+	-- its navigator learns where it stands before its first route
+	soldier:Navigator()
 end
 
 -- A bot spawned (a wave, the round's start): enlisted afresh, its orders
@@ -194,6 +196,9 @@ function Controller:EnlistBot(ply)
 	local team = WS.TeamOf(ply)
 	if team ~= RED and team ~= BLUE then return end
 	if self.soldiers[ply] then self:Discharge(ply) end
+	-- TF2's teammates pass through each other: a bot held up behind another
+	-- in a doorway climbed onto its head and stayed there
+	ply:SetNoCollideWithTeammates(true)
 	self:Enlist(ply, team, false)
 end
 
@@ -255,12 +260,14 @@ function Controller:TellSight(ply, entry, events)
 	end
 end
 
--- A look around: the enemies in its field of view (or that just hurt it),
+-- A look around: the point it steers for on its way (BotSoldier:Steer);
+-- the enemies in its field of view (or that just hurt it, or are near),
 -- within SIGHT_RANGE and in a clear line, to its vision; then whether its
 -- orders let it fire, the weapon for its contact's distance, the nav area
 -- it stands in, and its ammunition.
 function Controller:Look(ply, entry, enemies, now)
 	local soldier = entry.soldier
+	soldier:Steer(now)
 	local eye, facing = ply:EyePos(), ply:GetAimVector()
 	local seen = {}
 	for _, enemy in ipairs(enemies) do
@@ -355,7 +362,7 @@ function Controller:Drive(ply, entry, cmd)
 	sense.eye.pitch, sense.eye.yaw = eye.p, eye.y
 	sense.speed = ply:GetVelocity():Length2D()
 	sense.onGround = ply:OnGround()
-	sense.target = soldier.moveTarget
+	sense.target = soldier.steer
 	sense.walk = soldier.gait == Orders.WALK
 	sense.crouchArea, sense.jumpArea = soldier.crouchArea, soldier.jumpArea
 	sense.hop = soldier:Hopping(now)
