@@ -23,6 +23,7 @@ local THINK_HOOK = "ws_flag"
 
 local caplimit = CreateConVar("tf_flag_caplimit", tostring(Flag.CAPLIMIT_DEFAULT), { FCVAR_NOTIFY, FCVAR_REPLICATED },
 	"Number of captures to win")
+local captureBonusTime = CreateConVar("tf_ctf_bonus_time", "10", FCVAR_NOTIFY, "Length of team crit time for CTF capture.")
 
 -- TF2's outputs number the game teams from 1: RED's OnCapTeam1, BLU's OnCapTeam2.
 local TEAM_OUTPUT = {
@@ -173,6 +174,22 @@ local function Score(self, team)
 	end
 end
 
+-- CTFGameRules::HandleCTFCaptureBonus: the capturing team's living players,
+-- and here its soldiers too (as the winners' bonus crits are theirs), are
+-- crit-boosted for tf_ctf_bonus_time seconds.
+local function CaptureBonus(team)
+	local seconds = captureBonusTime:GetFloat()
+	if seconds <= 0 then return end
+	local members = WS.TeamMembers(team)
+	for _, ply in ipairs(player.GetAll()) do
+		if WS.TeamOf(ply) == team then members[#members + 1] = ply end
+	end
+	for _, ent in ipairs(members) do
+		local alive = ent:IsPlayer() and ent:Alive() or not ent:IsPlayer() and ent:Health() > 0
+		if alive then WS.AddCondition(ent, WS.PlayerRules.COND.CRITBOOSTED_CTF_CAPTURE, seconds) end
+	end
+end
+
 local function Apply(self, ent, events, activator)
 	local flag = self.flags[ent]
 	local mode = Mode()
@@ -191,7 +208,10 @@ local function Apply(self, ent, events, activator)
 		if e.kind == Flag.CAPTURE then hook.Run("WSFlagCaptured", ent, e.team, activator) end
 		if mode.FLAG_CAPS_SCORE then
 			for _, line in ipairs(Flag.Lines(e)) do WS.BroadcastSound(line.team, line.sound) end
-			if e.kind == Flag.CAPTURE then Score(self, e.team) end
+			if e.kind == Flag.CAPTURE then
+				CaptureBonus(e.team)
+				Score(self, e.team)
+			end
 		elseif mode.FLAG_INVADERS then
 			for _, line in ipairs(Flag.InvadeLines(e)) do WS.BroadcastSound(line.team, line.sound) end
 		end
