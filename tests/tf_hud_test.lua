@@ -138,6 +138,16 @@ T.test("KOTH's clocks: BLU's left and RED's right of the centre, the active fram
 	T.eq(Hud.KothActiveFrame(clocks, BLUE).w, 78, "as big as a background")
 end)
 
+-- The hill's lock at a koth round's start counts down on a timer panel of
+-- its own, under the (greyed) clocks, where the overtime box would be.
+T.test("KOTH's setup timer hangs centred under the clocks, clear of them", function()
+	local unit = 2
+	local clocks = Hud.KothPanels(320, 50, unit)
+	local setup = Hud.TimerPanel(320, Hud.KothSetupTop(50, unit), unit)
+	T.eq(setup.bg.y > clocks[BLUE].bg.y + clocks[BLUE].bg.h, true, "below the clocks' backgrounds")
+	T.eq(setup.bg.x + setup.bg.w / 2, 320 + (Hud.TIMER_BG_X + Hud.TIMER_W / 2 - Hud.TIMER_PANEL_W / 2) * unit, "centred as the round timer is")
+end)
+
 -- spectator.res's ReinforcementsLabel: -8, r91, 292x28, in TFThinLineBorder.
 T.test("the respawn label sits at the bottom left, its left edge off the screen", function()
 	local label = Hud.RespawnLabel(960, 2)

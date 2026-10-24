@@ -211,6 +211,16 @@ function KothPanels(centre, top, unit)
 	return { [BLUE] = At(KOTH_BLUE_X), [RED] = At(KOTH_RED_X) }
 end
 
+-- The top of the timer panel counting down the hill's lock at a koth
+-- round's start (Sandcastle's own: TF2 shows it only on the point's icon),
+-- KOTH_SETUP_GAP under the clocks' backgrounds, over the label row an
+-- overtime box takes (no overtime runs in setup).
+KOTH_SETUP_GAP = 3
+
+function KothSetupTop(top, unit)
+	return top + (TIMER_H + KOTH_SETUP_GAP) * unit
+end
+
 function KothActiveFrame(panels, team)
 	return panels[team].bg
 end

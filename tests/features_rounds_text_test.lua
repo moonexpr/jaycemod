@@ -103,6 +103,7 @@ local function Display(fields)
 		matchEnd = 0,
 		waitingHave = 0,
 		waitingNeed = 0,
+		kothUnlockEnd = 0,
 		left = ROUND_LEFT,
 	}
 	for k, v in pairs(fields) do q[k] = v end
@@ -191,6 +192,19 @@ T.test("the round's timer carries its phase's label", function()
 		preround = true,
 		setup = true,
 	}).label, Text.LABEL_PREROUND, "pre-round before setup")
+end)
+
+-- tf_logic_koth locks the hill for unlock_point seconds at each round's
+-- start: the timer box counts it down as SETUP, and the team clocks are
+-- greyed, disabled, until the point unlocks.
+T.test("on a koth map the hill's unlock counts down on the timer as SETUP", function()
+	local d = Display({ koth = true, kothUnlockEnd = NOW + 25 })
+	T.eq(d.kind, Text.DISPLAY_SETUP, "setup")
+	T.eq(d.left, 25, "seconds to the unlock")
+	T.eq(d.label, Text.LABEL_SETUP, "labelled")
+	T.eq(Display({ koth = true, kothUnlockEnd = NOW - 1 }), nil, "unlocked: the team clocks")
+	T.eq(Text.KothClocksLive({ now = NOW, kothUnlockEnd = NOW + 25 }), false, "the clocks greyed meanwhile")
+	T.eq(Text.KothClocksLive({ now = NOW, kothUnlockEnd = NOW - 1 }), true, "then live")
 end)
 
 T.test("no round timer without a HUD timer or on a koth map", function()

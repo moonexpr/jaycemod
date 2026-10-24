@@ -5,7 +5,9 @@
 --     their team's outlined backgrounds, each with its progress pie, the
 --     active frame (ActiveTimerBG) on the running one, OVERTIME in a box
 --     under both while the round is in overtime; they replace the round
---     timer, which the rounds view hides in koth;
+--     timer, which the rounds view hides in koth, but for the hill's lock at
+--     the round's start, which it counts down as SETUP under them while
+--     they are greyed, disabled;
 --   - each running clock's countdown, "Mission ends in 60 seconds"... "1", as
 --     every TF2 client speaks any timer in koth (CTeamRoundTimer::ClientThink
 --     and SendTimeWarning's IsInKothMode). The clocks have no setup, so they
@@ -14,6 +16,7 @@
 -- overtime line is the rounds view's.
 WS.Feature("rounds")
 local Timer = WS.require("games.gameplay.rounds.timer")
+local Text = WS.require("features.rounds.text")
 local Hud = WS.require("ws.tf_hud")
 local TFHud = WS.TFHud
 local Font, DrawImage, DrawPanel, Shadowed = TFHud.Font, TFHud.DrawImage, TFHud.DrawPanel, TFHud.Shadowed
@@ -61,10 +64,21 @@ local function Format(seconds)
 	return string.format("%d:%02d", math.floor(seconds / 60), seconds % 60)
 end
 
-local function DrawClock(t, c, panel, unit)
+-- A clock disabled while the hill's lock counts down: faded, its numbers
+-- grey, no pie.
+local DISABLED_ALPHA = 90
+local DISABLED_TEXT = Color(150, 150, 150)
+
+local function DrawClock(t, c, panel, unit, live)
+	local font = Font(Hud.FONT_BUILD, Hud.TIMER_FONT_TALL, unit)
+	if not live then
+		TFHud.DrawTimerBackground(panel, t, DISABLED_ALPHA)
+		Shadowed(Format(c.left), font, panel.value.x, panel.value.y, TEXT_ALIGN_CENTER, DISABLED_TEXT)
+		return
+	end
 	TFHud.DrawTimerBackground(panel, t)
 	TFHud.DrawPie(panel.pie, Hud.TimerElapsed(c.left, c.fullLength))
-	Shadowed(Format(c.left), Font(Hud.FONT_BUILD, Hud.TIMER_FONT_TALL, unit), panel.value.x, panel.value.y, TEXT_ALIGN_CENTER)
+	Shadowed(Format(c.left), font, panel.value.x, panel.value.y, TEXT_ALIGN_CENTER)
 end
 
 -- Sandbox mode shows no clocks, as it shows no round timer; nor does a win
@@ -81,9 +95,10 @@ function View:Paint(w, h)
 		if c.shown then shown[#shown + 1] = { team = t, clock = c, panel = panels[t] } end
 	end
 	if #shown == 0 then return end
+	local live = Text.KothClocksLive({ now = CurTime(), kothUnlockEnd = WS.Feature("rounds"):KothUnlockEnd() })
 	for _, s in ipairs(shown) do
-		DrawClock(s.team, s.clock, s.panel, unit)
-		if not s.clock.paused then DrawImage(Hud.KOTH_ACTIVE_FRAME, Hud.KothActiveFrame(panels, s.team)) end
+		DrawClock(s.team, s.clock, s.panel, unit, live)
+		if live and not s.clock.paused then DrawImage(Hud.KOTH_ACTIVE_FRAME, Hud.KothActiveFrame(panels, s.team)) end
 	end
 	-- OvertimeLabel in one box under both clocks
 	if not GetGlobal2Bool("ws_round_overtime", false) then return end

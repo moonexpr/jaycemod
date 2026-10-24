@@ -178,12 +178,14 @@ end
 -- overtime, gameOverEnd (ws_game_over_end: when the won match's map
 -- changes, 0 before), setupEnd (arena: when its setup ends, else 0),
 -- capUnlockEnd (arena: when the point unlocks while the round waits for
--- it, else 0), matchEnd (ws_match_time_end: when mp_timelimit runs out, 0
+-- it, else 0), kothUnlockEnd (koth: when tf_logic_koth's lock on the hill
+-- at the round's start ends, else 0), matchEnd (ws_match_time_end: when mp_timelimit runs out, 0
 -- without one), left (the round timer's seconds) }. Nothing before a game
 -- (Pregame: its panel shows the wait and the countdown); then the won
 -- match's countdown to its map change, on any map; then, while the rounds
 -- run, an arena's setup, then its countdown to the point unlocking (with or
--- without a round timer of its own), else the round's timer, else (a map
+-- without a round timer of its own), a koth hill's lock as SETUP (the team
+-- clocks greyed meanwhile: KothClocksLive), else the round's timer, else (a map
 -- without one, as ctf_2fort) the map's time left. Returns { kind, left,
 -- label }.
 function TimerDisplay(q)
@@ -209,7 +211,14 @@ function TimerDisplay(q)
 			label = LABEL_CAP_UNLOCK,
 		}
 	end
-	if q.koth then return nil end
+	if q.koth then
+		if q.kothUnlockEnd <= q.now then return nil end
+		return {
+			kind = DISPLAY_SETUP,
+			left = q.kothUnlockEnd - q.now,
+			label = LABEL_SETUP,
+		}
+	end
 	if not q.shown then
 		if q.matchEnd <= q.now then return nil end
 		return {
@@ -222,4 +231,11 @@ function TimerDisplay(q)
 		left = q.left,
 		label = RoundLabel(q),
 	}
+end
+
+-- Whether koth's team clocks run yet: greyed, as disabled, while the hill's
+-- lock at the round's start (q = { now, kothUnlockEnd }) counts down as
+-- SETUP on the timer.
+function KothClocksLive(q)
+	return q.kothUnlockEnd <= q.now
 end

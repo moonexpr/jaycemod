@@ -103,6 +103,18 @@ function View:Pregame()
 	})
 end
 
+-- When tf_logic_koth's lock on the hill at a koth round's start ends (the
+-- capture controller's ws_point_<rank>_locked and _unlock_time: the soonest
+-- timed unlock of a locked point), or 0 once none waits to unlock.
+function View:KothUnlockEnd()
+	local now, soonest = CurTime(), 0
+	for r = 1, GetGlobal2Int("ws_point_count", 0) do
+		local at = GetGlobal2Float("ws_point_" .. r .. "_unlock_time", 0)
+		if GetGlobal2Bool("ws_point_" .. r .. "_locked", false) and at > now and (soonest == 0 or at < soonest) then soonest = at end
+	end
+	return soonest
+end
+
 -- The top of the timer row, which other views line up under.
 function View:TimerTop(h)
 	return Hud.TimerTop(ScoresTop(h), Hud.Unit(h))
@@ -185,14 +197,17 @@ end)
 
 -- features.rounds.text decides the clock: none before a game (the pregame
 -- panel shows the wait and the countdown, as TF2's tournament panel), else
--- the round's timer while the rounds run; the koth HUD draws its own clocks.
+-- the round's timer while the rounds run; the koth HUD draws its own clocks,
+-- with the hill's lock at the round's start counted down under them.
 function View:DrawTimer(w, h)
+	local koth = GetGlobal2Int("ws_round_hud_type", Rounds.HUD_NONE) == Rounds.HUD_KOTH
 	local display = Text.TimerDisplay({
 		now = CurTime(),
 		transitionEnd = GetGlobal2Float("ws_gamemode_transition_end", 0),
 		shown = GetGlobal2Bool("ws_timer_shown", false),
 		halted = WS.GameplayStopped(),
-		koth = GetGlobal2Int("ws_round_hud_type", Rounds.HUD_NONE) == Rounds.HUD_KOTH,
+		koth = koth,
+		kothUnlockEnd = koth and self:KothUnlockEnd() or 0,
 		preround = WS.State() == S.PREROUND,
 		setup = GetGlobal2Bool("ws_timer_in_setup", false),
 		overtime = GetGlobal2Bool("ws_round_overtime", false),
@@ -206,7 +221,9 @@ function View:DrawTimer(w, h)
 	})
 	if not display then return end
 	local unit = Hud.Unit(h)
-	local panel = Hud.TimerPanel(w / 2, self:TimerTop(h), unit)
+	local top = self:TimerTop(h)
+	local underClocks = koth and display.kind == Text.DISPLAY_SETUP
+	local panel = Hud.TimerPanel(w / 2, underClocks and Hud.KothSetupTop(top, unit) or top, unit)
 	DrawTimerBackground(panel, WS.TeamOf(LocalPlayer()))
 	-- only a round's timer has a full length for the pie to run against
 	local full = display.kind == Text.DISPLAY_ROUND and GetGlobal2Float("ws_timer_max_length", 0) or 0
