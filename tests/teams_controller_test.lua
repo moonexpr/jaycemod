@@ -8,7 +8,7 @@ local SOURCE = T.ROOT .. "ws/sv_teams.lua"
 local RUNNER = 21 -- ULX's team for a user group, as one server has it
 
 -- active: whether a game is on (WS.Active, and WS.TeamPlay: Gameplay mode);
--- choice: whether players may pick a team (WS.TeamChoice), as active by
+-- choice: whether players may pick a team (WS.MayPickTeam), as active by
 -- default.
 local function Load(active, choice)
 	if choice == nil then choice = active end
@@ -22,7 +22,7 @@ local function Load(active, choice)
 		TEAM_BLUE = Teams.BLUE,
 		Active = function() return active end,
 		TeamPlay = function() return active end,
-		TeamChoice = function() return choice end,
+		MayPickTeam = function() return choice end,
 		STATE = { GAME_OVER = "game over" },
 		State = function() return "between rounds" end,
 		MayChooseTeam = function() return true end,

@@ -250,7 +250,7 @@ end
 -- team play, before the round starts too, in Sandbox mode, the wait for
 -- players and the countdown, as TF2's tournament ready-up forms its teams
 -- before anyone readies. Nobody is made to watch or shown the menu there.
-function TeamChoice(rounds, state)
+function MayPickTeam(rounds, state)
 	return rounds and state ~= STATE.INIT
 end
 

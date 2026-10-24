@@ -260,10 +260,10 @@ function WS.TeamPlay()
 	return Teams.TeamPlay(WS.Active(), WS.GameplayStopped(), WS.State())
 end
 
--- Whether players may pick a team now (games.gameplay.teams' TeamChoice):
+-- Whether players may pick a team now (games.gameplay.teams' MayPickTeam):
 -- before the round starts too.
-function WS.TeamChoice()
-	return Teams.TeamChoice(WS.Active(), WS.State())
+function WS.MayPickTeam()
+	return Teams.MayPickTeam(WS.Active(), WS.State())
 end
 
 -- TF2's convar; the map's SetRoundRespawnFreezeEnabled input sets it.

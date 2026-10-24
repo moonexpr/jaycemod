@@ -358,7 +358,7 @@ timer.Create("ws_team_menu", REACT_INTERVAL, 0, function()
 end)
 
 -- The team keys (F2's gm_showteam, TF2's changeteam) open the menu here, on
--- a map with rounds, whenever a team may be picked (WS.TeamChoice: before
+-- a map with rounds, whenever a team may be picked (WS.MayPickTeam: before
 -- the round starts too); CTFTeamMenu::ShowPanel refuses during game over and
 -- to a losing player while the winners celebrate.
 local TEAM_BINDS = {
@@ -373,7 +373,7 @@ local function Voting()
 end
 
 hook.Add("PlayerBindPress", "ws_teams", function(ply, bind, pressed)
-	if not pressed or not TEAM_BINDS[bind] or not WS.TeamChoice() or Voting() then return end
+	if not pressed or not TEAM_BINDS[bind] or not WS.MayPickTeam() or Voting() then return end
 	local winner = GetGlobal2Int("ws_round_winner", WS.TEAM_UNASSIGNED)
 	if L.TeamMenuAllowed(WS.State(), ply:Team(), winner) then
 		WS.OpenTeamMenu()

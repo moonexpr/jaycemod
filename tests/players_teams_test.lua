@@ -301,9 +301,9 @@ end)
 -- tournament ready-up, where the teams form before anyone readies.
 T.test("a team is picked on any map with rounds past INIT, Sandbox mode too", function()
 	for name, state in pairs(STATE) do
-		T.eq(L.TeamChoice(true, state), state ~= STATE.INIT, name)
+		T.eq(L.MayPickTeam(true, state), state ~= STATE.INIT, name)
 	end
-	T.eq(L.TeamChoice(false, STATE.PREGAME), false, "no tf_gamerules")
+	T.eq(L.MayPickTeam(false, STATE.PREGAME), false, "no tf_gamerules")
 end)
 
 T.finish()
