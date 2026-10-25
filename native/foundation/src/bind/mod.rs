@@ -6,6 +6,7 @@ mod avl;
 mod heap;
 mod nodegraph;
 mod pathfinder;
+mod search;
 mod slots;
 
 use crate::lua::{api, set_function, CFunction, L};
@@ -47,6 +48,8 @@ unsafe fn module(l: L) {
     (api.createtable)(l, 0, 1);
     pathfinder::push_module(l);
     (api.setfield)(l, -2, c"pathfinder".as_ptr());
+    search::push_module(l);
+    (api.setfield)(l, -2, c"search".as_ptr());
     (api.setfield)(l, -2, c"graph".as_ptr());
     // twins not yet whole: in the tests, never provided
     (api.createtable)(l, 0, 1);
@@ -64,6 +67,8 @@ unsafe fn provide(l: L) {
     crate::module::provide(l, Some(c"tree"), c"avl");
     pathfinder::push_module(l);
     crate::module::provide(l, Some(c"graph"), c"pathfinder");
+    search::push_module(l);
+    crate::module::provide(l, Some(c"graph"), c"search");
 }
 
 /// GMod's entry point: the server requires the module before foundation's
