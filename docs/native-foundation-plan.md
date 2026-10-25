@@ -103,7 +103,13 @@ above are a proxy (arm64, not Rosetta and Wine).
    Lane planning's walks (`PlansAfterDirect`) run on it: on
    cp_ambush_event 15 walks alike to the double, 349 ms by WalkEdges
    (each walk one call, up to 57 ms warm and hundreds cold) against
-   4.2 ms. The floods (`FlankGround`, zones, pockets) still call back.
+   4.2 ms. The floods still call back: `FlankGround` 15.7 ms once a lane
+   plan, `FloodZone` 13 and 5 ms a team every 10 s on cp_ambush_event
+   (where the zone leaks early; a payload map's setup, up to 4000 areas,
+   is unmeasured). `FlankGround` floods along the links into each area,
+   in the order `GetIncomingConnections` gives, and its callers read the
+   flood in order, so its native twin needs the mesh to keep incoming
+   links in the engine's order first.
 4. **Grid** (`world.grid`: `Near`, `Thin`; `nav_gaps`, `explore`) and
    `nodegraph`'s nearest pairs.
 5. **Tree and caches** (`tree.avl`, `cache.*` on `list.slots`/`list.chain`),
