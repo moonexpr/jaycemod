@@ -50,6 +50,15 @@ end
 
 local function Joined(list) return table.concat(list, " ") end
 
+-- A Distances result, area id -> walk, as "id=walk" in id order.
+local function Walks(walks)
+	local ids, out = {}, {}
+	for id in pairs(walks) do ids[#ids + 1] = id end
+	table.sort(ids)
+	for i, id in ipairs(ids) do out[i] = id .. "=" .. string.format("%.6f", walks[id]) end
+	return table.concat(out, " ")
+end
+
 local function Search(NavSearch, fields)
 	fields = fields or {}
 	return NavSearch.New(fields.mesh or Mesh(NavSearch), fields.strategy or HL2, fields.limits or HL2.SOLDIER_LIMITS,
@@ -144,6 +153,47 @@ local CASES = {
 		local sealed = pcall(mesh.Area, mesh, 9, 0, 0, 0, 0)
 		return { ok, sealed }
 	end },
+	{ "distances walk from the nearest start, up to the limit", function(N)
+		local mesh = Mesh(N)
+		return { Walks(N.Distances(mesh, { 1 }, math.huge, HL2.SOLDIER_LIMITS)), Walks(N.Distances(mesh, { 1, 4 }, math.huge, HL2.SOLDIER_LIMITS)),
+			Walks(N.Distances(mesh, { 1 }, 2 * CELL, HL2.SOLDIER_LIMITS)), Walks(N.Distances(mesh, { 4 }, 0, HL2.SOLDIER_LIMITS)) }
+	end },
+	{ "distances keep to links the limits can walk", function(N)
+		local limits = HL2.SOLDIER_LIMITS
+		local mesh = N.Mesh()
+		for id = 1, 4 do mesh:Area(id, id * CELL, 0, 0, 0) end
+		mesh:Link(1, 2, CELL, limits.jumpHeight - 1) -- a climb it makes
+		mesh:Link(2, 3, CELL, limits.jumpHeight) -- one too high
+		mesh:Link(2, 4, CELL, -limits.deathDropHeight) -- the deepest drop it takes
+		mesh:Link(4, 3, CELL, -limits.deathDropHeight - 1) -- one too deep
+		mesh:Seal()
+		return { Walks(N.Distances(mesh, { 1 }, math.huge, limits)) }
+	end },
+	{ "distances keep off the links told uncrossable, one way only", function(N)
+		local mesh = Mesh(N)
+		local told = { uncrossable = { [2] = { [3] = true } } }
+		return { Walks(N.Distances(mesh, { 1 }, math.huge, HL2.SOLDIER_LIMITS, told)), Walks(N.Distances(mesh, { 4 }, math.huge, HL2.SOLDIER_LIMITS, told)) }
+	end },
+	{ "distances over a map's worth of areas", function(N)
+		local mesh, x, size = N.Mesh(), 41, 40
+		local function Next(n) x = (x * 1103515245 + 12345) % 2147483648 return x % n end
+		for id = 1, size * size do mesh:Area(id, (id - 1) % size * CELL, math.floor((id - 1) / size) * CELL, 0, 0) end
+		local told = { uncrossable = {} }
+		for id = 1, size * size do
+			for _, d in ipairs({ 1, -1, size, -size }) do
+				local to = id + d
+				if to >= 1 and to <= size * size and not (math.abs(d) == 1 and math.floor((to - 1) / size) ~= math.floor((id - 1) / size)) then
+					mesh:Link(id, to, CELL + Next(37) / 7, Next(90) - 45)
+					if Next(23) == 0 then told.uncrossable[id] = told.uncrossable[id] or {} told.uncrossable[id][to] = true end
+				end
+			end
+		end
+		mesh:Seal()
+		return { Walks(N.Distances(mesh, { 1, size * size }, 30 * CELL, HL2.SOLDIER_LIMITS, told)) }
+	end },
+	{ "distances refuse a start the mesh lacks", function(N)
+		return { (pcall(N.Distances, Mesh(N), { 9 }, math.huge, HL2.SOLDIER_LIMITS)) }
+	end },
 }
 
 local seen = {}
@@ -181,6 +231,15 @@ T.test("the Lua implementation's answers are the expected ones", function()
 	T.eq(seen["the lanes' penalty pushes a plan off an earlier lane"].lua, "found | 1 5 3", "lanes")
 	T.eq(seen["a start that is the goal is found at once"].lua, "found | 2 | found", "no move")
 	T.eq(seen["an area the mesh lacks is refused"].lua, "false | false", "refused")
+	T.eq(seen["distances walk from the nearest start, up to the limit"].lua,
+		"1=0.000000 2=100.000000 3=200.000000 4=300.000000 5=200.000000"
+		.. " | 1=0.000000 2=100.000000 3=100.000000 4=0.000000 5=200.000000"
+		.. " | 1=0.000000 2=100.000000 3=200.000000 5=200.000000"
+		.. " | 4=0.000000", "distances")
+	T.eq(seen["distances keep to links the limits can walk"].lua, "1=0.000000 2=100.000000 4=200.000000", "walkable")
+	T.eq(seen["distances keep off the links told uncrossable, one way only"].lua,
+		"1=0.000000 2=100.000000 3=400.000000 4=500.000000 5=200.000000 | 1=300.000000 2=200.000000 3=100.000000 4=0.000000 5=300.000000", "uncrossable")
+	T.eq(seen["distances refuse a start the mesh lacks"].lua, "false", "refused start")
 end)
 
 T.finish()

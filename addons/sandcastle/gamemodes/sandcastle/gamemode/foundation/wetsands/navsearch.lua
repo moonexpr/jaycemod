@@ -21,9 +21,15 @@
 --   A search is graph.pathfinder's: status, expanded, maxExpanded, start,
 --   goal, closest, parent (id -> the id it was reached from), Step(budget),
 --   Route([last]) -> area ids.
+--   Distances(mesh, starts, limit, limits[, told]) -> area id -> the
+--     cheapest walk to it from the nearest of starts (graph.search's
+--     Distances), along the links whose rise wetsands.path.Walkable allows
+--     to limits and not told.uncrossable, at the link's distance; a walk
+--     beyond limit is not followed.
 -- An area the mesh lacks is refused as start or goal, or once sealed.
 local AStar = wetsands.astar
 local Path = wetsands.path
+local Search = graph.search
 local Geometry = math.geometry
 local error, ipairs, pairs, setmetatable, tostring = error, ipairs, pairs, setmetatable, tostring
 module(...)
@@ -148,4 +154,22 @@ function New(mesh, strategy, limits, bot, start, goal, goalPos, maxExpanded, tol
 		step = { hasFrom = true },
 	}, Graph)
 	return AStar.New(graph, start, goal, maxExpanded)
+end
+
+function Distances(mesh, starts, limit, limits, told)
+	if not mesh.sealed then error("the mesh is not sealed yet", 2) end
+	for _, id in ipairs(starts) do
+		if not mesh.areas[id] then error("no area " .. tostring(id) .. " in the mesh", 2) end
+	end
+	local uncrossable = (told or NOTHING).uncrossable
+	return Search.Distances(starts, function(id)
+		local edges, refused, links = {}, uncrossable and uncrossable[id], mesh.links[id]
+		for _, to in ipairs(mesh.neighbors[id]) do
+			local link = links[to]
+			if Path.Walkable(link.rise, limits) and not (refused and refused[to]) then
+				edges[#edges + 1] = { node = to, cost = link.distance }
+			end
+		end
+		return edges
+	end, limit)
 end

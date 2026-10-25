@@ -206,7 +206,7 @@ the native code is tested against, and what runs without the binary.
 | Module | API |
 |---|---|
 | `wetsands.astar` | `graph.pathfinder`'s solver for NavAreaBuildPath's A*, the routes of HL2 NPCs (`features/npc/sv_routes.lua`) |
-| `wetsands.navsearch` | Route searches on a nav mesh snapshot: `Mesh()` (`Area`, `Link`, `Seal`), `New(mesh, strategy, limits, bot, start, goal, goalPos, maxExpanded[, told[, rules]])` → `graph.pathfinder`'s search; told: closed areas, uncrossable links, rooms, estimates; rules asked once an area or link. A server with `native/wetsands` has it replaced in place |
+| `wetsands.navsearch` | Route searches on a nav mesh snapshot: `Mesh()` (`Area`, `Link`, `Seal`), `New(mesh, strategy, limits, bot, start, goal, goalPos, maxExpanded[, told[, rules]])` → `graph.pathfinder`'s search; told: closed areas, uncrossable links, rooms, estimates; rules asked once an area or link. `Distances(mesh, starts, limit, limits[, told])`: graph.search's walks on the mesh (walkable rises, `told.uncrossable`). A server with `native/wetsands` has it replaced in place |
 | `wetsands.path` | Path costs: a NextBot's IPathCost as strategies, parts `ground`, `hl2`, `scatter`, `tfbot` (`require("foundation.wetsands.path.<name>")`), each `Cost(step, limits, bot)` and `Model(limits, bot)` (the native search's walker); `IMPASSABLE`, `JUMP_PENALTY`, `Walkable` |
 
 ## games index

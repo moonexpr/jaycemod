@@ -498,13 +498,89 @@ unsafe fn push_parents(l: L, search: &RouteSearch) -> c_int {
 
 // Opening -------------------------------------------------------------------
 
-/// Pushes the module's table: navsearch's contract (Mesh, New) and Walker,
-/// a single model's pricing for the tests.
+// Walks ----------------------------------------------------------------------
+
+/// The whole number at `index`, or None for any other value.
+unsafe fn whole_at(l: L, index: c_int) -> Option<u32> {
+    let api = api();
+    if (api.type_of)(l, index) != TNUMBER {
+        return None;
+    }
+    let value = (api.tonumber)(l, index);
+    ((0.0..=u32::MAX as f64).contains(&value) && value.fract() == 0.0).then_some(value as u32)
+}
+
+/// The walks Distances answers, (area id, walk), read from its arguments:
+/// the mesh (1), starts (2), told (`told`, a table index, if any).
+unsafe fn walks_of(l: L, limit: f64, jump: f64, drop: f64, told: Option<c_int>) -> Result<Vec<(u32, f64)>, String> {
+    let api = api();
+    let mesh = match userdata::check::<Mesh>(l, 1) {
+        Mesh::Sealed(mesh) => Arc::clone(mesh),
+        Mesh::Building(_) => return Err("the mesh is not sealed yet".into()),
+    };
+    let mut starts = Vec::new();
+    for i in 1..=(api.objlen)(l, 2) {
+        (api.rawgeti)(l, 2, i as c_int);
+        let id = whole_at(l, -1);
+        (api.settop)(l, -2);
+        let start = id.and_then(|id| mesh.index_of(id));
+        starts.push(start.ok_or_else(|| format!("no area {} in the mesh", id.map_or("?".into(), |id| id.to_string())))?);
+    }
+    let mut refused = vec![false; mesh.graph().links()];
+    if let Some(uncrossable) = told.and_then(|told| subtable_at(l, told, c"uncrossable")) {
+        each(l, uncrossable, |l| {
+            let from = whole_at(l, -2).and_then(|id| mesh.index_of(id));
+            if from.is_none() || (api.type_of)(l, -1) != TTABLE {
+                return;
+            }
+            let tos = (api.gettop)(l);
+            each(l, tos, |l| {
+                let to = whole_at(l, -2).and_then(|id| mesh.index_of(id));
+                if let (Some(from), Some(to)) = (from, to) {
+                    if (api.toboolean)(l, -1) != 0 {
+                        if let Some(link) = mesh.link_between(from, to) {
+                            refused[link] = true;
+                        }
+                    }
+                }
+            });
+        });
+        (api.settop)(l, -2);
+    }
+    let walks = crate::walks::distances(&mesh, &starts, limit, |rise| rise < jump && rise >= -drop, |link| !refused[link]);
+    Ok(walks.iter().enumerate().filter_map(|(area, walk)| walk.map(|walk| (mesh.id(area as u32), walk))).collect())
+}
+
+/// navsearch.Distances(mesh, starts, limit, limits[, told]) -> area id ->
+/// the cheapest walk to it from the nearest start
+unsafe extern "C-unwind" fn distances(l: L) -> c_int {
+    let api = api();
+    (api.checktype)(l, 2, TTABLE);
+    let limit = (api.checknumber)(l, 3);
+    (api.checktype)(l, 4, TTABLE);
+    let jump = field_number(l, 4, c"jumpHeight").unwrap_or_else(|| raise(l, c"limits need a number jumpHeight"));
+    let drop = field_number(l, 4, c"deathDropHeight").unwrap_or_else(|| raise(l, c"limits need a number deathDropHeight"));
+    let told = ((api.type_of)(l, 5) == TTABLE).then_some(5);
+    let walks = match walks_of(l, limit, jump, drop, told) {
+        Ok(walks) => walks,
+        Err(message) => raise_owned(l, message),
+    };
+    (api.createtable)(l, 0, walks.len() as c_int);
+    for &(id, walk) in &walks {
+        (api.pushnumber)(l, walk);
+        (api.rawseti)(l, -2, id as c_int);
+    }
+    1
+}
+
+/// Pushes the module's table: navsearch's contract (Mesh, New, Distances)
+/// and Walker, a single model's pricing for the tests.
 unsafe fn module(l: L) {
     let api = api();
-    (api.createtable)(l, 0, 3);
+    (api.createtable)(l, 0, 4);
     set_function(l, c"Mesh", mesh_new);
     set_function(l, c"New", search_new);
+    set_function(l, c"Distances", distances);
     set_function(l, c"Walker", walker_new);
 }
 

@@ -96,7 +96,14 @@ above are a proxy (arm64, not Rosetta and Wine).
    cost nothing a search, and are what a search off the game thread
    would need.
 3. **Floods and distances** (`graph.search`: lanes' pockets, zones, lane
-   bands) on the native graph, the filters as closed-area sets.
+   bands) on the native graph, the filters as closed-area sets. Distances
+   done: `navsearch.Distances` walks the mesh snapshot with the walkable
+   rise and the told uncrossable links, which the snapshot's build now
+   gathers (`WS.NavLinkCrossable` of every link, spread over its slices).
+   Lane planning's walks (`PlansAfterDirect`) run on it: on
+   cp_ambush_event 15 walks alike to the double, 349 ms by WalkEdges
+   (each walk one call, up to 57 ms warm and hundreds cold) against
+   4.2 ms. The floods (`FlankGround`, zones, pockets) still call back.
 4. **Grid** (`world.grid`: `Near`, `Thin`; `nav_gaps`, `explore`) and
    `nodegraph`'s nearest pairs.
 5. **Tree and caches** (`tree.avl`, `cache.*` on `list.slots`/`list.chain`),

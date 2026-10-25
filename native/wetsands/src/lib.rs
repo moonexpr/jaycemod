@@ -21,6 +21,7 @@
 pub mod navmesh;
 pub mod search;
 pub mod walker;
+pub mod walks;
 
 /// The values the Source SDK 2013's headers name (native/vendor), read at
 /// build time under their Source names: `source::nav::NAV_MESH_CROUCH`.

@@ -7,6 +7,7 @@ local HL2Path = WS.require("foundation.wetsands.path.hl2")
 local Path = wetsands.path
 local Lanes = nextsoldier.lanes
 local Graph = graph.search
+local NavSearch = wetsands.navsearch
 local RED, BLUE = Map.RED, Map.BLUE
 local Point, ToVector, SpawnSpots, WorldWalkClear = Map.Point, Map.ToVector, Map.SpawnSpots, Map.WorldWalkClear
 
@@ -184,6 +185,19 @@ local function WalkEdges(id)
 	return list
 end
 
+-- The walks from starts (area ids): on the npc controller's mesh snapshot,
+-- which holds the same links, rises and centre distances and the links
+-- WS.NavLinkCrossable refuses (navsearch's Distances, native on a server
+-- with native/wetsands: on cp_ambush_event 4 ms for walks WalkEdges took
+-- 350 ms over, each one call a tick could not break); by WalkEdges only
+-- while the snapshot is being built again (seams linked).
+local function Walks(npcs, starts)
+	if npcs.navMesh then
+		return NavSearch.Distances(npcs.navMesh, starts, SEPARATION_LIMIT, HL2Path.SOLDIER_LIMITS, { uncrossable = npcs.navUncrossable })
+	end
+	return Graph.Distances(starts, WalkEdges, SEPARATION_LIMIT)
+end
+
 -- The lanes after the direct one (Lanes.Plans), once it is routed: the flank
 -- siblings among the ground, by their walks from the direct lane's band
 -- (band: area id -> true; empty when it found no route) and between them;
@@ -195,7 +209,7 @@ function Controller:PlansAfterDirect(from, to, band, defenses, enemySpawnNear, n
 	-- a walk beyond the search is at least SEPARATION_LIMIT
 	local walks = {}
 	local function WalkFrom(a)
-		walks[a] = walks[a] or Graph.Distances({ a }, WalkEdges, SEPARATION_LIMIT)
+		walks[a] = walks[a] or Walks(npcs, { a })
 		return function(b) return walks[a][b] or SEPARATION_LIMIT end
 	end
 	local function Between(a, b) return WalkFrom(a)(b) end
@@ -203,7 +217,7 @@ function Controller:PlansAfterDirect(from, to, band, defenses, enemySpawnNear, n
 	local a, b
 	-- no band (the direct lane found no route): nothing to keep out of the way of
 	if #starts > 0 then
-		local fromBand = Graph.Distances(starts, WalkEdges, SEPARATION_LIMIT)
+		local fromBand = Walks(npcs, starts)
 		local function Separation(id) return fromBand[id] or SEPARATION_LIMIT end
 		a, b = Lanes.Siblings(self:FlankGround(to, npcs), Separation, WalkFrom)
 	end
