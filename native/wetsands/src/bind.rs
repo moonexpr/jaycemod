@@ -595,6 +595,9 @@ pub unsafe extern "C-unwind" fn gmod13_open(l: L) -> c_int {
     }
     module(l);
     foundation::module::provide(l, Some(c"wetsands"), c"navsearch");
+    crate::path_bind::push_path(l);
+    foundation::module::provide(l, Some(c"wetsands"), c"path");
+    crate::path_bind::preload(l);
     0
 }
 
@@ -613,10 +616,19 @@ pub unsafe extern "C-unwind" fn luaopen_wetsands(l: L) -> c_int {
         return 0;
     }
     let api = api();
-    (api.createtable)(l, 0, 1);
-    (api.createtable)(l, 0, 1);
+    (api.createtable)(l, 0, 2);
+    (api.createtable)(l, 0, 2);
     module(l);
     (api.setfield)(l, -2, c"navsearch".as_ptr());
+    crate::path_bind::push_path(l);
+    (api.setfield)(l, -2, c"path".as_ptr());
     (api.setfield)(l, -2, c"wetsands".as_ptr());
+    // the parts WS.require loads by name, for package.loaded
+    (api.createtable)(l, 0, crate::path_bind::PARTS.len() as c_int);
+    for (i, name) in crate::path_bind::PARTS.iter().enumerate() {
+        crate::path_bind::push_part(l, i);
+        (api.setfield)(l, -2, name.as_ptr());
+    }
+    (api.setfield)(l, -2, c"preload".as_ptr());
     1
 }

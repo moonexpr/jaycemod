@@ -11,6 +11,8 @@
 -- Its hull is narrower than a TF2 player's, so no area is too narrow.
 -- Besides a step's usual fields it reads step.attributes (the area's
 -- NAV_MESH_* flags).
+-- This is the Lua twin, which clients run; a server with native/foundation
+-- has the native one in its place, which keeps this contract.
 local band = bit.band
 local Path = wetsands.path
 local TFBot = require("foundation.wetsands.path.tfbot")

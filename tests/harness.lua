@@ -136,6 +136,8 @@ if T.NATIVE then
 				end
 			end
 		end
+		-- parts loaded by name (WS.require), not globals: preloaded
+		for name, part in pairs(loaded.preload or {}) do package.loaded[name] = part end
 	end
 end
 
@@ -147,6 +149,24 @@ do
 	for _, path in ipairs(T.Indexes()) do
 		local chunk = assert(loadfile(T.ROOT .. path))
 		setfenv(chunk, env)()
+	end
+end
+
+-- A preloaded native part is the whole module, as Twin holds a global's
+-- native twin to: every key of the Lua twin's, or the harness refuses it.
+if T.NATIVE then
+	local MODULE_KEYS = { _M = true, _NAME = true, _PACKAGE = true }
+	for _, crate in ipairs({ "foundation", "wetsands" }) do
+		for name, part in pairs(T.native(crate).preload or {}) do
+			local chunk = assert(loadfile(Path(name)))
+			setfenv(chunk, CHUNK_ENV)("ws_native_check." .. name)
+			local missing = {}
+			for key in pairs(package.loaded["ws_native_check." .. name]) do
+				if not MODULE_KEYS[key] and part[key] == nil then missing[#missing + 1] = tostring(key) end
+			end
+			table.sort(missing)
+			assert(#missing == 0, name .. ": the native part lacks " .. table.concat(missing, ", "))
+		end
 	end
 end
 

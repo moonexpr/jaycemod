@@ -1,6 +1,8 @@
 -- A walker's path cost that spreads bots over routes: CZombiePathCost's
 -- preference term makes each bot favour different areas, and keeps its
 -- choice for ten seconds so repaths follow the same route.
+-- This is the Lua twin, which clients run; a server with native/foundation
+-- has the native one in its place, which keeps this contract.
 local cos, floor = math.cos, math.floor
 local Ground = require("foundation.wetsands.path.ground")
 module(...)

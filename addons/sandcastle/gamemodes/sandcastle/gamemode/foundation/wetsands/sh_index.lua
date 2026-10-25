@@ -3,5 +3,5 @@
 -- foundation that names game things. One line a module, never a loop:
 -- docs/foundation-game-split-plan.md.
 local wetsands = Namespace("wetsands")
-Export(wetsands, "path", require("foundation.wetsands.path"))
+Twin(wetsands, "path", require("foundation.wetsands.path"))
 Twin(wetsands, "navsearch", require("foundation.wetsands.navsearch"))

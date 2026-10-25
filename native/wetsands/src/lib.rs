@@ -19,6 +19,7 @@
 //! ```
 
 pub mod navmesh;
+mod path_bind;
 pub mod search;
 pub mod walker;
 pub mod walks;

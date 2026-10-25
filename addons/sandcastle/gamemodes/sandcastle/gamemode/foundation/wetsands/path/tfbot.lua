@@ -12,6 +12,8 @@
 -- route's preference is the skeletons' (foundation.wetsands.path.scatter) in
 -- Lua's doubles, where TF2 takes FastCos of a float product: the same
 -- spread over routes, not the same route as TF2 for a given bot and area.
+-- This is the Lua twin, which clients run; a server with native/foundation
+-- has the native one in its place, which keeps this contract.
 local Path = wetsands.path
 local Scatter = require("foundation.wetsands.path.scatter")
 module(...)

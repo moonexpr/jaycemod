@@ -10,6 +10,8 @@
 -- provides Model(limits, bot) -> the walker model native/wetsands prices a
 -- step with (its walker.rs): the same cost as parameters, built on
 -- Model(limits, fields) here.
+-- This is the Lua twin, which clients run; a server with native/foundation
+-- has the native one in its place, which keeps this contract.
 local pairs = pairs
 module(...)
 

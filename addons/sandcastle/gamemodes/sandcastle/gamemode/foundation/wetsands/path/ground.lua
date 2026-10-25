@@ -1,6 +1,8 @@
 -- A walker's path cost: the body CZombiePathCost and CHeadlessHatmanPathCost
 -- share. Weighted(step, limits, preference) is that body with the distance
 -- weighed by a preference; Cost uses none.
+-- This is the Lua twin, which clients run; a server with native/foundation
+-- has the native one in its place, which keeps this contract.
 local Path = wetsands.path
 module(...)
 
