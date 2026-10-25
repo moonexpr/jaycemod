@@ -47,12 +47,12 @@ fn byte_of(n: f64) -> u8 {
     n as i64 as u8
 }
 
-fn int16(n: f64) -> [u8; 2] {
+pub(super) fn int16(n: f64) -> [u8; 2] {
     let n = modulo(n, 65536.0);
     [byte_of(modulo(n, 256.0)), byte_of(modulo((n / 256.0).floor(), 256.0))]
 }
 
-fn int32(n: f64) -> [u8; 4] {
+pub(super) fn int32(n: f64) -> [u8; 4] {
     let n = modulo(n, 4_294_967_296.0);
     [
         byte_of(modulo(n, 256.0)),
@@ -66,7 +66,7 @@ const MANTISSA: f64 = 8_388_608.0; // 2^23
 
 /// The Lua twin's Float32: frexp, round half up, the carry into the next
 /// power of two.
-fn float32(x: f64) -> [u8; 4] {
+pub(super) fn float32(x: f64) -> [u8; 4] {
     if x == 0.0 {
         return [0; 4];
     }

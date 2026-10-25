@@ -102,7 +102,7 @@ end)
 -- then by a, then by b; areas largest first, then in the order given.
 local TWINS = {
 	{ "lua", Graph },
-	{ "native", T.native("foundation").pending.nodegraph },
+	{ "native", T.native("foundation").nodegraph },
 }
 
 local function Links(links)

@@ -8,6 +8,8 @@
 --
 -- Positions are plain { x, y, z } tables. Node and link ids in the file are
 -- 0-based; here nodes are a 1-based list.
+-- This is the Lua twin, which clients run; a server with native/foundation
+-- has the native one in its place, which keeps this contract.
 local concat, sort, sqrt = table.concat, table.sort, math.sqrt
 local ipairs, pairs = ipairs, pairs
 local Buffer = file.buffer

@@ -40,7 +40,7 @@ unsafe fn library(l: L, name: &CStr, functions: &[(&CStr, CFunction)]) {
 }
 
 /// Pushes the module's table, laid out as foundation's globals are
-/// (`.tree.heap`, `.graph.pathfinder`; `.pending` the twins not yet whole), with the boundary probes, for the tests and the bench.
+/// (`.tree.heap`, `.nodegraph`), with the boundary probes, for the tests and the bench.
 unsafe fn module(l: L) {
     let api = api();
     (api.createtable)(l, 0, 2);
@@ -56,10 +56,8 @@ unsafe fn module(l: L) {
     search::push_module(l);
     (api.setfield)(l, -2, c"search".as_ptr());
     (api.setfield)(l, -2, c"graph".as_ptr());
-    // twins not yet whole: in the tests, never provided
-    (api.createtable)(l, 0, 1);
-    library(l, c"nodegraph", nodegraph::FUNCTIONS);
-    (api.setfield)(l, -2, c"pending".as_ptr());
+    nodegraph::push_module(l);
+    (api.setfield)(l, -2, c"nodegraph".as_ptr());
     namespace(l, c"list", list::push_modules);
     namespace(l, c"world", world::push_modules);
     namespace(l, c"math", math::push_modules);
@@ -102,6 +100,8 @@ unsafe fn provide(l: L) {
     search::push_module(l);
     crate::module::provide(l, Some(c"graph"), c"search");
     provide_all(l, c"list", list::push_modules, list::NAMES);
+    nodegraph::push_module(l);
+    crate::module::provide(l, None, c"nodegraph");
     provide_all(l, c"world", world::push_modules, world::NAMES);
     provide_all(l, c"math", math::push_modules, math::NAMES);
     provide_all(l, c"file", codec::push_file, codec::FILE_NAMES);
