@@ -21,6 +21,12 @@ pub unsafe fn boolean(l: L, b: bool) -> c_int {
     1
 }
 
+/// Whether the value at `index` can be read by field, as a point is: a
+/// table, or a userdata answering through its metatable (GMod's Vector).
+pub unsafe fn indexable(l: L, index: c_int) -> bool {
+    matches!((api().type_of)(l, index), crate::lua::TTABLE | crate::lua::TUSERDATA)
+}
+
 /// Whether argument `i` is nil or not given at all.
 pub unsafe fn absent(l: L, i: c_int) -> bool {
     (api().type_of)(l, i) <= TNIL

@@ -266,8 +266,9 @@ unsafe extern "C-unwind" fn grid_new(l: L) -> c_int {
 
 /// The x and y of the point table at `index`.
 unsafe fn xy(l: L, index: c_int) -> (f64, f64) {
-    let api = api();
-    (api.checktype)(l, index, TTABLE);
+    if !super::util::indexable(l, index) {
+        raise_where(l, "a position is a { x, y } table or a Vector".into());
+    }
     let x = crate::lua::field_number(l, index, c"x").unwrap_or(f64::NAN);
     let y = crate::lua::field_number(l, index, c"y").unwrap_or(f64::NAN);
     (x, y)

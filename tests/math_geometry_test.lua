@@ -63,4 +63,20 @@ T.test("the distance across the ground leaves height out", function()
 	T.eq(Geometry.Distance2D({ x = 0, y = 0 }, { x = 6, y = 8 }), 10, "points without a z")
 end)
 
+-- GMod's Vector: a userdata answering x, y and z through its metatable
+-- (newproxy stands in for one under plain LuaJIT).
+local function Vector(x, y, z)
+	local v = newproxy(true)
+	getmetatable(v).__index = { x = x, y = y, z = z }
+	return v
+end
+
+T.test("a point may be any value answering x, y and z, as GMod's Vector does", function()
+	T.eq(Geometry.Distance(Vector(0, 0, 0), Vector(3, 4, 0)), 5, "two Vectors")
+	T.eq(Geometry.Distance({ x = 0, y = 0, z = 0 }, Vector(0, 0, 2)), 2, "a table and a Vector")
+	T.eq(Geometry.Distance2D(Vector(0, 0, 9), { x = 6, y = 8 }), 10, "across")
+	T.eq(Geometry.Add(Vector(1, 2, 3), Vector(1, 1, 1)).z, 4, "added")
+	T.eq(Geometry.Toward(Vector(0, 0, 5), Vector(10, 0, 0), 4).x, 4, "toward")
+end)
+
 T.finish()

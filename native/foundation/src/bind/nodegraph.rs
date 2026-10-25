@@ -13,9 +13,9 @@ use std::ffi::c_int;
 unsafe fn point_at_top(l: L, what: &str, i: usize) -> Result<Point, String> {
     let api = api();
     let top = (api.gettop)(l);
-    if (api.type_of)(l, top) != TTABLE {
+    if !super::util::indexable(l, top) {
         (api.settop)(l, -2);
-        return Err(format!("{what} {i} is no {{ x, y, z }} table"));
+        return Err(format!("{what} {i} is no {{ x, y, z }} table or Vector"));
     }
     let point = (field_number(l, top, c"x"), field_number(l, top, c"y"), field_number(l, top, c"z"));
     (api.settop)(l, -2);

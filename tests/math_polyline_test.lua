@@ -45,4 +45,18 @@ T.test("a point's distance along is its projection on the nearest leg", function
 	T.eq(line:DistanceOf(P(-50, 0)), 0, "before the start")
 end)
 
+-- GMod's Vector: a userdata answering x, y and z through its metatable
+-- (newproxy stands in for one under plain LuaJIT).
+local function Vector(x, y, z)
+	local v = newproxy(true)
+	getmetatable(v).__index = { x = x, y = y, z = z }
+	return v
+end
+
+T.test("a polyline's points may be any value answering x, y and z, as GMod's Vector does", function()
+	local line = Polyline.New({ Vector(0, 0, 0), Vector(10, 0, 0) })
+	T.eq(line:Length(), 10, "measured")
+	T.eq(line:DistanceOf(Vector(4, 3, 0)), 4, "a Vector projected")
+end)
+
 T.finish()

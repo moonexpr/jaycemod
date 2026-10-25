@@ -13,9 +13,8 @@ type Point = [f64; 3];
 
 /// The point table at `index`: x and y numbers, z a number or 0.
 unsafe fn point_at(l: L, index: c_int) -> Point {
-    let api = api();
-    if (api.type_of)(l, index) != TTABLE {
-        raise_where(l, "a point is a { x, y, z } table".into());
+    if !super::util::indexable(l, index) {
+        raise_where(l, "a point is a { x, y, z } table or a Vector".into());
     }
     let x = field_number(l, index, c"x");
     let y = field_number(l, index, c"y");

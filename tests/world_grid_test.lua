@@ -69,4 +69,20 @@ T.test("thinning keeps the first point in each cube, in order", function()
 	T.eq(kept[3], points[4], "a cube east; a missing z is 0")
 end)
 
+-- GMod's Vector: a userdata answering x, y and z through its metatable
+-- (newproxy stands in for one under plain LuaJIT).
+local function Vector(x, y, z)
+	local v = newproxy(true)
+	getmetatable(v).__index = { x = x, y = y, z = z }
+	return v
+end
+
+T.test("positions may be any value answering x and y, as GMod's Vector does", function()
+	local grid = Grid.New(100)
+	grid:Put(Vector(10, 10, 0), "a")
+	local found = grid:Near(Vector(50, 50, 0), function(item) return item == "a" end)
+	T.eq(found, true, "found near a Vector")
+	T.eq(#Grid.Thin({ Vector(1, 1, 1), Vector(2, 2, 2), Vector(500, 1, 1) }, 100), 2, "thinned Vectors")
+end)
+
 T.finish()
