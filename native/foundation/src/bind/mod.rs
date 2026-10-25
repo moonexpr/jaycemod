@@ -14,6 +14,7 @@ mod util;
 mod world;
 mod nodegraph;
 mod schedule;
+mod state_machine;
 mod pathfinder;
 mod search;
 mod slots;
@@ -69,10 +70,19 @@ unsafe fn module(l: L) {
     namespace(l, c"math", math::push_modules);
     namespace(l, c"core", core::push_modules);
     namespace(l, c"cache", cache::push_modules);
+    namespace(l, c"generator", generator_modules);
     namespace(l, c"file", codec::push_file);
     namespace(l, c"encoding", codec::push_encoding);
     library(l, c"probe", &[(c"Nothing", probe_nothing), (c"Add", probe_add)]);
 }
+
+/// Pushes the generator namespace's native modules into the table at the top.
+unsafe fn generator_modules(l: L) {
+    state_machine::push_module(l);
+    (api().setfield)(l, -2, c"state_machine".as_ptr());
+}
+
+const GENERATOR_NAMES: &[&CStr] = &[c"state_machine"];
 
 /// Pushes a table of a namespace's native modules (filled by `push`) into the
 /// table at the top of the stack, as `name`.
@@ -116,6 +126,7 @@ unsafe fn provide(l: L) {
     provide_all(l, c"math", math::push_modules, math::NAMES);
     provide_all(l, c"core", core::push_modules, core::NAMES);
     provide_all(l, c"cache", cache::push_modules, cache::NAMES);
+    provide_all(l, c"generator", generator_modules, GENERATOR_NAMES);
     provide_all(l, c"file", codec::push_file, codec::FILE_NAMES);
     provide_all(l, c"encoding", codec::push_encoding, codec::ENCODING_NAMES);
 }

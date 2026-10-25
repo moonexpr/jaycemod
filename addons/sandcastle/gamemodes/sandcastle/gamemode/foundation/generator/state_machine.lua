@@ -14,8 +14,8 @@
 -- Every state named anywhere must be declared, so a mistyped state is an
 -- error at load, not a machine stuck at run time. definition:New(initial)
 -- makes a machine; its handlers get whatever its caller passes along.
--- Core-rule exception: stays Lua. Its states are Lua hooks; nothing to gain
--- natively.
+-- This is the Lua twin, which clients run; a server with native/foundation
+-- has the native one in its place, which keeps this contract.
 local Sets = world.sets
 local error, ipairs, pairs, setmetatable, tostring, type = error, ipairs, pairs, setmetatable, tostring, type
 module(...)
