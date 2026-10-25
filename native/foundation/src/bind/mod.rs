@@ -15,6 +15,7 @@ mod util;
 mod world;
 mod nodegraph;
 mod schedule;
+mod state_chart;
 mod state_machine;
 mod pathfinder;
 mod search;
@@ -85,9 +86,11 @@ unsafe fn module(l: L) {
 unsafe fn generator_modules(l: L) {
     state_machine::push_module(l);
     (api().setfield)(l, -2, c"state_machine".as_ptr());
+    state_chart::push_module(l);
+    (api().setfield)(l, -2, c"state_chart".as_ptr());
 }
 
-const GENERATOR_NAMES: &[&CStr] = &[c"state_machine"];
+const GENERATOR_NAMES: &[&CStr] = &[c"state_machine", c"state_chart"];
 
 /// Pushes a table of a namespace's native modules (filled by `push`) into the
 /// table at the top of the stack, as `name`.

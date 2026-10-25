@@ -2,4 +2,4 @@
 -- docs/foundation-game-split-plan.md.
 local generator = Namespace("generator")
 Twin(generator, "state_machine", require("foundation.generator.state_machine"))
-Export(generator, "state_chart", require("foundation.generator.state_chart"))
+Twin(generator, "state_chart", require("foundation.generator.state_chart"))

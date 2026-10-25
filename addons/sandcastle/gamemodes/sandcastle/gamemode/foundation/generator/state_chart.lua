@@ -19,8 +19,8 @@
 -- An engine with more (a stack of suspended states) extends State and Root,
 -- fills the transitions table and the hooks named _ below, and makes its
 -- charts with ChartsOf{ state, root, lifecycle }.
--- Core-rule exception: stays Lua. Its states are Lua hooks; nothing to gain
--- natively.
+-- This is the Lua twin, which clients run; a server with native/foundation
+-- has the native one in its place, which keeps this contract.
 local Class = core.class
 local Port = core.port
 local error, ipairs, setmetatable, tostring, type =
