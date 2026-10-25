@@ -67,6 +67,8 @@ api! {
     createtable: fn(L, c_int, c_int) = c"lua_createtable";
     getfield: fn(L, c_int, *const c_char) = c"lua_getfield";
     setfield: fn(L, c_int, *const c_char) = c"lua_setfield";
+    settable: fn(L, c_int) = c"lua_settable";
+    iscfunction: fn(L, c_int) -> c_int = c"lua_iscfunction";
     rawgeti: fn(L, c_int, c_int) = c"lua_rawgeti";
     rawget: fn(L, c_int) = c"lua_rawget";
     rawset: fn(L, c_int) = c"lua_rawset";

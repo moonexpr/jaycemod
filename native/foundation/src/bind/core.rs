@@ -942,6 +942,8 @@ pub unsafe fn push_modules(l: L) {
     enum_class(l);
     (api.setfield)(l, -2, c"Enum".as_ptr());
     (api.setfield)(l, -2, c"enum".as_ptr());
+    super::namespace::push_module(l);
+    (api.setfield)(l, -2, c"namespace".as_ptr());
 }
 
-pub const NAMES: &[&CStr] = &[c"class", c"port", c"constants", c"enum"];
+pub const NAMES: &[&CStr] = &[c"class", c"port", c"constants", c"enum", c"namespace"];

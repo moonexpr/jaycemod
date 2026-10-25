@@ -145,7 +145,8 @@ end
 -- foundation's at once, games' on first read, so a module may read another
 -- by its global (math.geometry) under LuaJIT too.
 do
-	local env = T.require("foundation.core.namespace").Environment(_G, T.require)
+	local Namespaces = T.NATIVE and core.namespace or T.require("foundation.core.namespace")
+	local env = Namespaces.Environment(_G, T.require)
 	for _, path in ipairs(T.Indexes()) do
 		local chunk = assert(loadfile(T.ROOT .. path))
 		setfenv(chunk, env)()

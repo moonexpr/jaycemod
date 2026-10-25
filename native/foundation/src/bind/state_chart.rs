@@ -1235,6 +1235,21 @@ unsafe fn push_root(l: L) {
 /// Pushes the generator.state_chart module table.
 pub unsafe fn push_module(l: L) {
     let api = api();
+    (api.getfield)(l, REGISTRY, SHARED.as_ptr());
+    if (api.type_of)(l, -1) == TTABLE {
+        (api.settop)(l, -2);
+    } else {
+        (api.settop)(l, -2);
+        push_shared(l);
+    }
+    push_api(l);
+}
+
+/// The values the module shares by identity, one set a Lua state, kept in
+/// the registry: a module opened again (a reload) hands out the same
+/// CONTINUE_RESULT, which hfsm compares results to.
+unsafe fn push_shared(l: L) {
+    let api = api();
     (api.createtable)(l, 0, 4);
     let reg = (api.gettop)(l);
     push_result(l, CONTINUE, 0, 0, 0);
@@ -1260,7 +1275,10 @@ pub unsafe fn push_module(l: L) {
     );
     (api.setfield)(l, reg, c"MachineClass".as_ptr());
     (api.setfield)(l, REGISTRY, SHARED.as_ptr());
+}
 
+unsafe fn push_api(l: L) {
+    let api = api();
     crate::module::push(l, &[(c"Result", result), (c"ChartsOf", charts_of)], None);
     let module = (api.gettop)(l);
     for (name, value) in [

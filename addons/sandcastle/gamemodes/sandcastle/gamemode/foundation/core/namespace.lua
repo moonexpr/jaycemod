@@ -27,8 +27,8 @@
 -- it again (a live reload runs the index again) is not refused. Which keys
 -- those are is kept on this module's table, which module(...) keeps across
 -- a reload.
--- Core-rule exception: stays Lua. A metatable mechanism over Lua tables;
--- nothing to gain natively.
+-- This is the Lua twin, which clients run; a server with native/foundation
+-- has the native one in its place, which keeps this contract.
 local debug, error, getmetatable, pairs, rawget, rawset, setmetatable, tostring, type = debug, error, getmetatable, pairs, rawget, rawset, setmetatable, tostring, type
 local concat, match, sort = table.concat, string.match, table.sort
 module(...)

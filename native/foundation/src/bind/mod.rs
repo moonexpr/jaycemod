@@ -13,6 +13,7 @@ mod list;
 mod math;
 mod util;
 mod world;
+mod namespace;
 mod nodegraph;
 mod schedule;
 mod state_chart;

@@ -24,20 +24,24 @@ function WS.require(name)
 end
 CHUNK_ENV.require = WS.require
 
-local INDEX_ENV = WS.require("foundation.core.namespace").Environment(_G, WS.require)
+-- The native foundation (native/, docs/native-foundation-plan.md): a server
+-- with a binary module installed has it put its native twins at their
+-- globals first, before any index runs; each module's index line (Twin)
+-- then keeps the native twin, whole, so every module that binds one to a
+-- local as it loads gets the native one. One line a module, never a loop.
+local NATIVE = SERVER and util.IsBinaryModuleInstalled("foundation")
+if NATIVE then require("foundation") end
+if SERVER and util.IsBinaryModuleInstalled("wetsands") then require("wetsands") end
+
+-- The indexes run in core.namespace's environment: the native one, which
+-- the binary put at its global, on a server with it; the Lua twin's on a
+-- client.
+local Namespaces = NATIVE and core.namespace or WS.require("foundation.core.namespace")
+local INDEX_ENV = Namespaces.Environment(_G, WS.require)
 
 local function Index(path)
 	setfenv(CompileFile(GAMEMODE_ROOT .. path), INDEX_ENV)()
 end
-
--- The native foundation (native/, docs/native-foundation-plan.md): a server
--- with a binary module installed has it put its native twins at their
--- globals first, before any index runs; each module's index line (Twin)
--- then keeps the native twin and fills it with the rest of the Lua twin, so
--- every module that binds one to a local as it loads gets the native one.
--- One line a module, never a loop.
-if SERVER and util.IsBinaryModuleInstalled("foundation") then require("foundation") end
-if SERVER and util.IsBinaryModuleInstalled("wetsands") then require("wetsands") end
 
 -- A module reads the modules it uses by their globals as it loads, so a
 -- namespace comes after every namespace its modules read
