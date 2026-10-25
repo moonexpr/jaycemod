@@ -1,4 +1,6 @@
 -- Summary figures of a list of numbers. An empty list's figures are 0.
+-- Core-rule exception: stays Lua. Percentile of 1000 costs 216 us on the dev
+-- server, but its only caller is analysis.analytics, once a report.
 local ceil, ipairs, max, sort, unpack = math.ceil, ipairs, math.max, table.sort, unpack
 module(...)
 

@@ -2,6 +2,10 @@
 -- them; a point without a z lies on the z = 0 plane. Points double as
 -- vectors: Add, Sub, Scale, Dot, Cross, Length and Normalize (nil for the
 -- zero vector, which has no direction) return new points.
+-- Core-rule exception: stays Lua. Distance costs 0.3 ns JIT-compiled
+-- (inlined); a call into native/foundation costs about 15 ns (20 on the dev
+-- server; docs/native-foundation-plan.md), so a native twin could only be
+-- slower.
 local sqrt = math.sqrt
 module(...)
 

@@ -3,6 +3,9 @@
 -- can sample per-tick work.
 --   New(capacity), ring:Push(value), ring:Size(),
 --   ring:Ordered() -> the values, oldest first, a fresh list
+-- Core-rule exception: stays Lua. A push costs 6.8 ns JIT-compiled; a call
+-- into native/foundation costs about 15 ns (20 on the dev server;
+-- docs/native-foundation-plan.md), so a native twin could only be slower.
 local error, floor, setmetatable, tostring, type = error, math.floor, setmetatable, tostring, type
 local min = math.min
 module(...)

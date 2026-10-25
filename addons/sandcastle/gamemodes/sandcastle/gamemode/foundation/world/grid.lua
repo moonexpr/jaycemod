@@ -11,6 +11,10 @@
 --
 -- A cell is keyed by one number, not a string, so bucketing allocates no
 -- key; coordinates span 2^20 cells either side of the origin.
+-- Core-rule exception: stays Lua. Near calls the caller back for each item,
+-- which a native grid would cross back into Lua for; Thin runs once a map
+-- (explore's waypoints, about 2000 points, under 1 ms on the dev server).
+-- Its hot user, nodegraph's pair searches, is native whole.
 local error, floor, ipairs, next, setmetatable, tostring, type = error, math.floor, ipairs, next, setmetatable, tostring, type
 module(...)
 

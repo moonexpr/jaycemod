@@ -20,6 +20,8 @@
 -- Lua 5.1 cannot catch rebinding a name the set already has without
 -- slowing every read, so the set only refuses new names and unknown reads.
 -- Methods are CamelCase and constants upper-case, so the two never meet.
+-- Core-rule exception: stays Lua. A constant read is one plain-table index
+-- by design, faster than any call.
 local Class = core.class
 local error, getmetatable, next, pairs, rawget, rawset, setmetatable, sort, tostring, type = error, getmetatable, next, pairs, rawget, rawset, setmetatable, table.sort, tostring, type
 local match = string.match

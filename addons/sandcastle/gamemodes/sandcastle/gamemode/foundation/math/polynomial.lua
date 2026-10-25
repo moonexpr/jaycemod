@@ -6,6 +6,10 @@
 --                    the quadratic by the stable formula (no cancellation
 --                    in the small root), the cubic by Cardano for one real
 --                    root and by the trigonometric form for three
+-- Core-rule exception: stays Lua. Evaluate costs 9.6 ns JIT-compiled, under
+-- a call into native/foundation costs about 15 ns (20 on the dev server;
+-- docs/native-foundation-plan.md); Roots (362 ns on the dev server) has no
+-- hot caller in the game.
 local abs, acos, cos, error, huge, max, pi, sort, sqrt = math.abs, math.acos, math.cos, error, math.huge, math.max, math.pi, table.sort, math.sqrt
 local ipairs, tostring = ipairs, tostring
 module(...)

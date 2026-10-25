@@ -18,6 +18,8 @@
 --
 -- The graph is the solver's port; the search reads nothing of it. Nodes
 -- are any values usable as table keys.
+-- Core-rule exception: stays Lua. A template method whose hooks are Lua; the
+-- native search is its concrete solver (wetsands.navsearch), not this base.
 local Class = core.class
 local error, setmetatable, tostring, type = error, setmetatable, tostring, type
 module(...)

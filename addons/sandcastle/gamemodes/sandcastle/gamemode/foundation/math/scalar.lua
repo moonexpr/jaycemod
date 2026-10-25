@@ -1,6 +1,9 @@
 -- Arithmetic on single numbers.
 --   Clamp(value, low, high) -> value held within [low, high]; a range whose
 --   low is above its high is the caller's mistake
+-- Core-rule exception: stays Lua. Clamp costs 1.6 ns JIT-compiled; a call
+-- into native/foundation costs about 15 ns (20 on the dev server;
+-- docs/native-foundation-plan.md), so a native twin could only be slower.
 local error, tostring = error, tostring
 module(...)
 

@@ -6,6 +6,10 @@
 --   map:Clear()
 -- Set refuses a key that is no whole number in 0..MAX_KEY; Get, on hot
 -- paths, takes the same keys unchecked.
+-- Core-rule exception: stays Lua. A set or a get costs about 20 ns JIT-
+-- compiled on the dev server; a call into native/foundation costs about 15
+-- ns (20 on the dev server; docs/native-foundation-plan.md), so a native
+-- twin would at best tie.
 local error, floor, setmetatable, tostring, type = error, math.floor, setmetatable, tostring, type
 module(...)
 

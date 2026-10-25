@@ -9,6 +9,8 @@
 -- Measure(roots) with roots a list of { name, value } -> { rows = list of
 --   { name, bytes } in roots' order, total }
 -- Format(report, rows) -> lines: the total, then the `rows` largest roots
+-- Core-rule exception: stays Lua. It walks Lua's own objects, which only Lua
+-- can see.
 local format, getinfo, getmetatable, ipairs, next, sort, type = string.format, debug.getinfo, getmetatable, ipairs, next, table.sort, type
 module(...)
 

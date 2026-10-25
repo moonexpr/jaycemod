@@ -16,6 +16,10 @@
 -- Plain sets are value -> true tables. Of(list), Copy(set),
 -- Union(a, b, ...), Intersect(a, b) and Subtract(a, b) make new ones;
 -- Count(set) and Sorted(set) (members in sort order) read them.
+-- Core-rule exception: stays Lua. Has costs 2.3 ns JIT-compiled, and the
+-- members are strings; a call into native/foundation costs about 15 ns (20
+-- on the dev server; docs/native-foundation-plan.md), so a native twin could
+-- only be slower.
 local error, ipairs, setmetatable, tostring, type = error, ipairs, setmetatable, tostring, type
 local pairs, select, sort = pairs, select, table.sort
 local sub, upper = string.sub, string.upper
