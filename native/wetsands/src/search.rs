@@ -115,6 +115,12 @@ impl<R: Rules> Pricing<'_, R> {
 }
 
 impl<R: Rules> Costs for Pricing<'_, R> {
+    fn neighbors(&mut self, node: u32, out: &mut Vec<(usize, u32)>) {
+        let graph = self.mesh.graph();
+        out.clear();
+        out.extend(graph.links_of(node).map(|link| (link, graph.target(link))));
+    }
+
     fn cost(&mut self, from: u32, link: usize, to: u32, so_far: f64) -> f64 {
         if !self.crossable(from, link, to) {
             return IMPASSABLE;
@@ -223,9 +229,9 @@ impl RouteSearch {
         } else {
             self.begun = true;
             let (start, goal, max_expanded) = (self.start, self.goal, self.max_expanded);
-            AStar::new(mesh.graph(), &mut self.pricing(&mesh, rules), start, goal, max_expanded)
+            AStar::new(mesh.areas() as usize, &mut self.pricing(&mesh, rules), start, goal, max_expanded)
         };
-        let status = astar.step(mesh.graph(), &mut self.pricing(&mesh, rules), budget);
+        let status = astar.step(&mut self.pricing(&mesh, rules), budget);
         self.astar = Some(astar);
         Ok(status)
     }

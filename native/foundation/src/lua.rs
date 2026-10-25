@@ -67,6 +67,7 @@ api! {
     setfield: fn(L, c_int, *const c_char) = c"lua_setfield";
     rawgeti: fn(L, c_int, c_int) = c"lua_rawgeti";
     rawget: fn(L, c_int) = c"lua_rawget";
+    rawset: fn(L, c_int) = c"lua_rawset";
     next: fn(L, c_int) -> c_int = c"lua_next";
     getmetatable: fn(L, c_int) -> c_int = c"lua_getmetatable";
     getfenv: fn(L, c_int) = c"lua_getfenv";

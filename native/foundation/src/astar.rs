@@ -1,7 +1,8 @@
-//! NavAreaBuildPath's A* (nav_pathfind.h) over a `Graph`, priced by a
-//! `Costs` the caller supplies, a few expansions at a time: the Lua solver
-//! `foundation.wetsands.astar` rule for rule, so the same costs give the same
-//! route, the same expansions, the same closest node.
+//! NavAreaBuildPath's A* (nav_pathfind.h) over a graph and its prices, both
+//! the caller's `Costs`, a few expansions at a time: foundation's Lua
+//! `graph.pathfinder` rule for rule, so the same costs give the same route,
+//! the same expansions, the same closest node. Nodes are whole numbers from
+//! 0; the search's tables grow to the highest it meets.
 //!
 //! - The open list is ordered by total cost, then by push order: a node
 //!   opened or cheapened goes after every node of equal cost.
@@ -10,7 +11,6 @@
 //! - A closed node reached more cheaply is opened again.
 //! - A node expands its neighbours in the graph's order, skipping its parent.
 
-use crate::graph::Graph;
 use crate::heap::Heap;
 
 pub const NAN_COST: f64 = 1e30;
@@ -20,6 +20,9 @@ const NONE: u32 = u32::MAX;
 
 /// What a search asks of its caller.
 pub trait Costs {
+    /// Writes `node`'s neighbours to `out` (emptied first), in the order the
+    /// search expands them, each with the number of the link reaching it.
+    fn neighbors(&mut self, node: u32, out: &mut Vec<(usize, u32)>);
     /// The total cost of reaching `to` from `from` over `link`, `so_far`
     /// having been spent reaching `from`: negative for no way through.
     fn cost(&mut self, from: u32, link: usize, to: u32, so_far: f64) -> f64;
@@ -47,12 +50,14 @@ pub struct AStar {
     live: Vec<u64>,
     closed: Vec<bool>,
     open: Heap,
+    links: Vec<(usize, u32)>,
 }
 
 impl AStar {
     /// A search from `start` to `goal`, its frontier opened at the start.
-    pub fn new(graph: &Graph, costs: &mut impl Costs, start: u32, goal: u32, max_expanded: u32) -> Self {
-        let nodes = graph.nodes() as usize;
+    /// `nodes` is how many to make room for at once (more are made as met).
+    pub fn new(nodes: usize, costs: &mut impl Costs, start: u32, goal: u32, max_expanded: u32) -> Self {
+        let nodes = nodes.max(start.max(goal) as usize + 1);
         let mut search = AStar {
             start,
             goal,
@@ -66,6 +71,7 @@ impl AStar {
             live: vec![0; nodes],
             closed: vec![false; nodes],
             open: Heap::default(),
+            links: Vec::new(),
         };
         if start == goal {
             search.status = Status::Found;
@@ -76,6 +82,17 @@ impl AStar {
         search.approach(start, estimate);
         search.open(start, estimate);
         search
+    }
+
+    /// Makes room for `node` in the per-node tables.
+    fn meet(&mut self, node: u32) {
+        let need = node as usize + 1;
+        if need > self.so_far.len() {
+            self.so_far.resize(need, f64::NAN);
+            self.parent.resize(need, NONE);
+            self.live.resize(need, 0);
+            self.closed.resize(need, false);
+        }
     }
 
     fn approach(&mut self, node: u32, distance: f64) {
@@ -103,6 +120,7 @@ impl AStar {
     }
 
     fn relax(&mut self, costs: &mut impl Costs, node: u32, link: usize, next: u32) {
+        self.meet(next);
         let so_far = self.so_far[node as usize];
         let mut cost = costs.cost(node, link, next, so_far);
         if cost.is_nan() {
@@ -128,10 +146,11 @@ impl AStar {
         self.open(next, cost + remaining);
     }
 
-    fn expand(&mut self, graph: &Graph, costs: &mut impl Costs, node: u32) {
+    fn expand(&mut self, costs: &mut impl Costs, node: u32) {
         let parent = self.parent[node as usize];
-        for link in graph.links_of(node) {
-            let next = graph.target(link);
+        costs.neighbors(node, &mut self.links);
+        for i in 0..self.links.len() {
+            let (link, next) = self.links[i];
             if next != parent && next != node {
                 self.relax(costs, node, link, next);
             }
@@ -140,7 +159,7 @@ impl AStar {
     }
 
     /// Runs up to `budget` expansions and returns the status.
-    pub fn step(&mut self, graph: &Graph, costs: &mut impl Costs, mut budget: u32) -> Status {
+    pub fn step(&mut self, costs: &mut impl Costs, mut budget: u32) -> Status {
         while self.status == Status::Running && budget > 0 {
             match self.next() {
                 None => self.status = Status::Failed,
@@ -152,7 +171,7 @@ impl AStar {
                 Some(node) => {
                     self.expanded += 1;
                     budget -= 1;
-                    self.expand(graph, costs, node);
+                    self.expand(costs, node);
                 }
             }
         }
@@ -198,13 +217,18 @@ impl AStar {
 
     /// The node `node` was reached from by its best way, or None.
     pub fn parent(&self, node: u32) -> Option<u32> {
-        let parent = self.parent[node as usize];
+        let parent = *self.parent.get(node as usize)?;
         (parent != NONE).then_some(parent)
+    }
+
+    /// Every node reached from another, with the node it was reached from.
+    pub fn parents(&self) -> impl Iterator<Item = (u32, u32)> + '_ {
+        self.parent.iter().enumerate().filter(|(_, &p)| p != NONE).map(|(node, &p)| (node as u32, p))
     }
 
     /// What reaching `node` cost by its best way, or None if never reached.
     pub fn cost_so_far(&self, node: u32) -> Option<f64> {
-        let cost = self.so_far[node as usize];
+        let cost = *self.so_far.get(node as usize)?;
         (!cost.is_nan()).then_some(cost)
     }
 }
@@ -212,7 +236,7 @@ impl AStar {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::graph::Builder;
+    use crate::graph::{Builder, Graph};
     use std::collections::HashMap;
 
     type Price = Box<dyn Fn(&str, &str, f64) -> Option<f64>>;
@@ -278,10 +302,8 @@ mod tests {
         fn search(&mut self, start: &str, goal: &str, max: u32) -> AStar {
             let (start, goal) = (self.id(start), self.id(goal));
             self.goal = goal;
-            let graph = std::mem::replace(&mut self.graph, Builder::default().finish().unwrap());
-            let mut search = AStar::new(&graph, self, start, goal, max);
-            while search.step(&graph, self, max + 1) == Status::Running {}
-            self.graph = graph;
+            let mut search = AStar::new(self.graph.nodes() as usize, self, start, goal, max);
+            while search.step(self, max + 1) == Status::Running {}
             search
         }
 
@@ -297,6 +319,11 @@ mod tests {
     }
 
     impl Costs for Plane {
+        fn neighbors(&mut self, node: u32, out: &mut Vec<(usize, u32)>) {
+            out.clear();
+            out.extend(self.graph.links_of(node).map(|link| (link, self.graph.target(link))));
+        }
+
         fn cost(&mut self, from: u32, _link: usize, to: u32, so_far: f64) -> f64 {
             let (a, b) = (self.names[from as usize], self.names[to as usize]);
             if let Some(price) = &self.price {
@@ -404,10 +431,9 @@ mod tests {
         plane.blocked = vec![("b", "c")];
         let (start, goal) = (plane.id("a"), plane.id("c"));
         plane.goal = goal;
-        let graph = std::mem::replace(&mut plane.graph, Builder::default().finish().unwrap());
-        let mut search = AStar::new(&graph, &mut plane, start, goal, 4000);
+        let mut search = AStar::new(plane.graph.nodes() as usize, &mut plane, start, goal, 4000);
         let mut steps = 0;
-        while search.step(&graph, &mut plane, 1) == Status::Running {
+        while search.step(&mut plane, 1) == Status::Running {
             steps += 1;
         }
         assert_eq!(search.status(), Status::Found);

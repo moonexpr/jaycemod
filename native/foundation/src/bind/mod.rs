@@ -5,6 +5,7 @@
 mod avl;
 mod heap;
 mod nodegraph;
+mod pathfinder;
 mod slots;
 
 use crate::lua::{api, set_function, CFunction, L};
@@ -33,7 +34,7 @@ unsafe fn library(l: L, name: &CStr, functions: &[(&CStr, CFunction)]) {
 }
 
 /// Pushes the module's table, laid out as foundation's globals are
-/// (`.tree.heap`; `.pending` the twins not yet whole), with the boundary probes, for the tests and the bench.
+/// (`.tree.heap`, `.graph.pathfinder`; `.pending` the twins not yet whole), with the boundary probes, for the tests and the bench.
 unsafe fn module(l: L) {
     let api = api();
     (api.createtable)(l, 0, 2);
@@ -43,6 +44,10 @@ unsafe fn module(l: L) {
     avl::push_module(l);
     (api.setfield)(l, -2, c"avl".as_ptr());
     (api.setfield)(l, -2, c"tree".as_ptr());
+    (api.createtable)(l, 0, 1);
+    pathfinder::push_module(l);
+    (api.setfield)(l, -2, c"pathfinder".as_ptr());
+    (api.setfield)(l, -2, c"graph".as_ptr());
     // twins not yet whole: in the tests, never provided
     (api.createtable)(l, 0, 1);
     library(l, c"nodegraph", nodegraph::FUNCTIONS);
@@ -57,6 +62,8 @@ unsafe fn provide(l: L) {
     crate::module::provide(l, Some(c"tree"), c"heap");
     avl::push_module(l);
     crate::module::provide(l, Some(c"tree"), c"avl");
+    pathfinder::push_module(l);
+    crate::module::provide(l, Some(c"graph"), c"pathfinder");
 }
 
 /// GMod's entry point: the server requires the module before foundation's
