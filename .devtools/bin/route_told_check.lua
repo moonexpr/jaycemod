@@ -3,7 +3,9 @@
 -- sv_routes asked them before), against the same searches told them as
 -- data up front (the controller's ClosedFor and SpawnRooms), on the live
 -- mesh snapshot, for seeded random area pairs and both teams: each pair's
--- status, expansions and route compared, with the time each took.
+-- status, expansions and route compared, with the time each took; every
+-- second pair asks as lanes do (nor over a link WS.NavLinkCrossable
+-- refuses), against the uncrossable links the mesh build gathered.
 --
 --   dt lua -f .devtools/bin/route_told_check.lua     defines WSRouteToldCheck
 --   dt lua 'return WSRouteToldCheck.Run(40)'         40 pairs a team: a report
@@ -45,10 +47,18 @@ function Check.Run(count)
 			end,
 			room = function(id) return c:SpawnRoomTeam(Area(id)) end,
 		}
-		for _ = 1, count do
+		-- as lanes ask: nor over a link WS.NavLinkCrossable refuses
+		local laneRules = {
+			traversable = rules.traversable,
+			room = rules.room,
+			crossable = function(from, to) return WS.NavLinkCrossable(Area(from), Area(to)) end,
+		}
+		for i = 1, count do
 			local start, goal = areas[Next(#areas)]:GetID(), areas[Next(#areas)]:GetID()
-			local a = Search(c, team, start, goal, nil, rules)
-			local b = Search(c, team, start, goal, { closed = c:ClosedFor(team), rooms = c:SpawnRooms() }, nil)
+			local lane = i % 2 == 0
+			local toldRooms = { closed = c:ClosedFor(team), rooms = c:SpawnRooms(), uncrossable = lane and c.navUncrossable or nil }
+			local a = Search(c, team, start, goal, nil, lane and laneRules or rules)
+			local b = Search(c, team, start, goal, toldRooms, nil)
 			total, asked, told, expansions = total + 1, asked + a.seconds, told + b.seconds, expansions + a.expanded
 			if a.status == b.status and a.expanded == b.expanded and a.route == b.route then
 				same = same + 1

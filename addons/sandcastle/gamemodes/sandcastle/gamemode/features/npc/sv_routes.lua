@@ -122,14 +122,17 @@ end
 -- links as NavGraph walks them, with the centre distance and height change
 -- FillStep gives. Built once a map, and again when the mesh's links change
 -- (WSNavLinked), as a search task an area at a time in the searches' slice;
--- a search waits for it. True once it is ready.
+-- a search waits for it. True once it is ready. The build also asks
+-- WS.NavLinkCrossable of every link (traces, about 150 ms a map, spread
+-- over the slices), keeping those a soldier cannot cross as navUncrossable
+-- (from -> to -> true), so a search is told them instead of asking.
 function Controller:NavMeshReady()
 	if self.navMesh then return true end
 	if self.navMeshBuilding == self.navMeshGeneration then return false end
 	local generation, scheduler = self.navMeshGeneration, self.searches
 	self.navMeshBuilding = generation
 	scheduler:Spawn(function()
-		local mesh, areas = NavSearch.Mesh(), navmesh.GetAllNavAreas()
+		local mesh, areas, uncrossable = NavSearch.Mesh(), navmesh.GetAllNavAreas(), {}
 		for _, area in ipairs(areas) do
 			local center = Center(area:GetID())
 			mesh:Area(area:GetID(), center.x, center.y, center.z, area:GetAttributes())
@@ -137,12 +140,17 @@ function Controller:NavMeshReady()
 		for _, area in ipairs(areas) do
 			local id = area:GetID()
 			for _, to in ipairs(NavGraph:Neighbors(id)) do
-				mesh:Link(id, to, Center(to):Distance(Center(id)), area:ComputeAdjacentConnectionHeightChange(Area(to)))
+				local other = Area(to)
+				mesh:Link(id, to, Center(to):Distance(Center(id)), area:ComputeAdjacentConnectionHeightChange(other))
+				if not WS.NavLinkCrossable(area, other) then
+					uncrossable[id] = uncrossable[id] or {}
+					uncrossable[id][to] = true
+				end
 			end
 			scheduler:CheckYield()
 		end
 		mesh:Seal()
-		if self.navMeshGeneration == generation then self.navMesh = mesh end
+		if self.navMeshGeneration == generation then self.navMesh, self.navUncrossable = mesh, uncrossable end
 	end)
 	return false
 end
@@ -228,12 +236,19 @@ local function Refusals(graph)
 	return refused, uncrossable
 end
 
--- Adds to refused each closed area a link from the region leads into: the
--- region holds start and every area in parents.
-local function ClosedEdge(closed, start, parents, refused)
+-- Adds what the search was told and never asked about at the region's
+-- edge: to refused each closed area a link from the region leads into, to
+-- uncrossable each told-uncrossable link out of it (toldUncrossable may be
+-- nil). The region holds start and every area in parents.
+local function ToldEdge(closed, toldUncrossable, start, parents, refused, uncrossable)
 	local function Edge(id)
+		local out = toldUncrossable and toldUncrossable[id]
 		for _, to in ipairs(NavGraph:Neighbors(id)) do
 			if closed[to] then refused[to] = true end
+			if out and out[to] then
+				uncrossable[id] = uncrossable[id] or {}
+				uncrossable[id][to] = true
+			end
 		end
 	end
 	Edge(start)
@@ -287,11 +302,13 @@ function Controller:RequestRoute(request)
 	-- A watched search runs the Lua solver on the NavGraph, whose costs
 	-- sv_profile records step by step; every other runs on the mesh, told
 	-- the closed areas and the spawn rooms, and asking Lua only what the
-	-- request itself adds: the areas it avoids, the links it cannot cross.
+	-- request itself adds: the areas it avoids, the links it cannot cross
+	-- (but WS.NavLinkCrossable's, which the mesh's build gathered).
+	local mapCrossable = request.crossable == WS.NavLinkCrossable
 	local told = { closed = closed, rooms = self:SpawnRooms() }
 	local rules = {
 		traversable = avoid and function(id) return graph.traversable(Area(id)) end or nil,
-		crossable = request.crossable and function(from, to) return graph.crossable(Area(from), Area(to)) end or nil,
+		crossable = request.crossable and not mapCrossable and function(from, to) return graph.crossable(Area(from), Area(to)) end or nil,
 	}
 	local scheduler = self.searches
 	scheduler:Spawn(function()
@@ -300,6 +317,7 @@ function Controller:RequestRoute(request)
 			search = AStar.New(graph, startId, searchGoal, navmesh.GetNavAreaCount())
 		else
 			scheduler:Wait(function() return self:NavMeshReady() end)
+			if mapCrossable then told.uncrossable = self.navUncrossable end
 			search = NavSearch.New(self.navMesh, request.strategy, request.limits, request.bot, startId, searchGoal,
 				graph.goalPos, navmesh.GetNavAreaCount(), told, rules)
 		end
@@ -312,7 +330,7 @@ function Controller:RequestRoute(request)
 		end
 		if refused and status == Pathfinder.FAILED and search.expanded < search.maxExpanded then
 			self.reachStats.learned = self.reachStats.learned + 1
-			ClosedEdge(closed, startId, search.parent, refused)
+			ToldEdge(closed, told.uncrossable, startId, search.parent, refused, uncrossable)
 			self.reach:Learn(key, ReachMemo.Region(startId, search.parent, refused, uncrossable), generation)
 		end
 		local areas, found = AreasOf(search:Route()), status == Pathfinder.FOUND and not region

@@ -32,6 +32,7 @@ local Controller = {
 	centers = {}, -- nav area id -> its centre
 	-- navMesh = nil, -- the mesh as route searches walk it (a wetsands.navsearch mesh), set by sv_routes once built
 	navMeshGeneration = 0, -- counts the mesh's link changes (WSNavLinked): a snapshot of an older one is dropped
+	-- navUncrossable = nil, -- nav area id -> id -> true: the links WS.NavLinkCrossable refuses, gathered with navMesh
 	-- navMeshBuilding = nil, -- the generation a snapshot is being built for, set by sv_routes
 	navBlocked = {}, -- nav area id -> the teams its doors and brushes block (games.nextsoldier.doors)
 	nextBlockerRefresh = 0,
@@ -176,7 +177,7 @@ end
 -- are stale.
 hook.Add("WSNavLinked", "ws_npc_blockers", function()
 	Controller.neighbors = {}
-	Controller.navMesh = nil
+	Controller.navMesh, Controller.navUncrossable = nil, nil
 	Controller.navMeshGeneration = Controller.navMeshGeneration + 1
 	Controller:NoteBlockerChange(nil)
 end)
