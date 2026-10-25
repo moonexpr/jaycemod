@@ -18,6 +18,7 @@ pub type CFunction = unsafe extern "C-unwind" fn(L) -> c_int;
 
 pub const GLOBALSINDEX: c_int = -10002;
 pub const TNIL: c_int = 0;
+pub const TBOOLEAN: c_int = 1;
 pub const TSTRING: c_int = 4;
 pub const TNUMBER: c_int = 3;
 pub const TTABLE: c_int = 5;

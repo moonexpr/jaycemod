@@ -17,8 +17,8 @@
 --                                rounded to a whole number, or nil and why
 -- Storing a key twice, an empty or fractional range, or a key or guard
 -- that is not a name is the caller's mistake.
--- Core-rule exception: stays Lua. Read when a menu opens or a setting
--- changes, with guards that are Lua predicates; nothing per tick.
+-- This is the Lua twin, which clients run; a server with native/foundation
+-- has the native one in its place, which keeps this contract.
 local error, floor, format, setmetatable, sort, tonumber, tostring, type =
 	error, math.floor, string.format, setmetatable, table.sort, tonumber, tostring, type
 module(...)
@@ -27,7 +27,7 @@ module(...)
 local CALLER_OF_METHOD = 3
 
 -- store -> { name, entries = { key -> entry }, keys = sorted list }
-State = State or setmetatable({}, { __mode = "k" })
+local State = setmetatable({}, { __mode = "k" })
 
 local Store = {}
 

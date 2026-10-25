@@ -4,6 +4,7 @@
 
 mod avl;
 mod codec;
+mod configstore;
 mod heap;
 mod list;
 mod math;
@@ -59,6 +60,8 @@ unsafe fn module(l: L) {
     (api.setfield)(l, -2, c"graph".as_ptr());
     nodegraph::push_module(l);
     (api.setfield)(l, -2, c"nodegraph".as_ptr());
+    configstore::push_module(l);
+    (api.setfield)(l, -2, c"configstore".as_ptr());
     namespace(l, c"list", list::push_modules);
     namespace(l, c"world", world::push_modules);
     namespace(l, c"math", math::push_modules);
@@ -103,6 +106,8 @@ unsafe fn provide(l: L) {
     provide_all(l, c"list", list::push_modules, list::NAMES);
     nodegraph::push_module(l);
     crate::module::provide(l, None, c"nodegraph");
+    configstore::push_module(l);
+    crate::module::provide(l, None, c"configstore");
     provide_all(l, c"world", world::push_modules, world::NAMES);
     provide_all(l, c"math", math::push_modules, math::NAMES);
     provide_all(l, c"file", codec::push_file, codec::FILE_NAMES);
