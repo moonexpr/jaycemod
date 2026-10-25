@@ -15,8 +15,8 @@
 -- reads CPU-side wall time at sub-millisecond resolution) and
 -- memory:Kilobytes() (collectgarbage("count")). Recording allocates only a
 -- name's first sample, so a timer can wrap per-tick work.
--- Core-rule exception: stays Lua. Its timers and counters run when a report
--- is asked for (ws_analytics), and its clock and memory are Lua ports.
+-- This is the Lua twin, which clients run; a server with native/foundation
+-- has the native one in its place, which keeps this contract.
 local Ring = list.ring
 local Stats = math.stats
 local error, ipairs, pairs, setmetatable = error, ipairs, pairs, setmetatable
@@ -165,7 +165,7 @@ local function SortedKeys(map, before)
 end
 
 -- A report as console lines: pressure, memory, then timers by total time,
--- slowest first, then counters by name.
+-- slowest first (equal totals by name), then counters by name.
 function Format(report)
 	local p, m = report.pressure, report.memory
 	local lines = {
@@ -179,7 +179,11 @@ function Format(report)
 		lines[#lines + 1] = "memory: no frame sampled yet"
 	end
 	local timers = report.timers
-	for _, name in ipairs(SortedKeys(timers, function(a, b) return timers[a].total > timers[b].total end)) do
+	local function Slower(a, b)
+		if timers[a].total ~= timers[b].total then return timers[a].total > timers[b].total end
+		return a < b
+	end
+	for _, name in ipairs(SortedKeys(timers, Slower)) do
 		local t = timers[name]
 		lines[#lines + 1] = format("  %s: %d calls, %.3f ms total, mean %.3f, p95 %.3f, max %.3f ms",
 			name, t.count, t.total * MS_PER_SECOND, t.mean * MS_PER_SECOND, t.p95 * MS_PER_SECOND,

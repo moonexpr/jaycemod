@@ -2,6 +2,7 @@
 //! by namespace as the Lua ones are published, and installed over them when
 //! GMod opens the module.
 
+mod analysis;
 mod avl;
 mod cache;
 mod codec;
@@ -71,6 +72,7 @@ unsafe fn module(l: L) {
     namespace(l, c"core", core::push_modules);
     namespace(l, c"cache", cache::push_modules);
     namespace(l, c"generator", generator_modules);
+    namespace(l, c"analysis", analysis::push_modules);
     namespace(l, c"file", codec::push_file);
     namespace(l, c"encoding", codec::push_encoding);
     library(l, c"probe", &[(c"Nothing", probe_nothing), (c"Add", probe_add)]);
@@ -127,6 +129,7 @@ unsafe fn provide(l: L) {
     provide_all(l, c"core", core::push_modules, core::NAMES);
     provide_all(l, c"cache", cache::push_modules, cache::NAMES);
     provide_all(l, c"generator", generator_modules, GENERATOR_NAMES);
+    provide_all(l, c"analysis", analysis::push_modules, analysis::NAMES);
     provide_all(l, c"file", codec::push_file, codec::FILE_NAMES);
     provide_all(l, c"encoding", codec::push_encoding, codec::ENCODING_NAMES);
 }

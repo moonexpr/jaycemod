@@ -9,8 +9,9 @@
 -- Measure(roots) with roots a list of { name, value } -> { rows = list of
 --   { name, bytes } in roots' order, total }
 -- Format(report, rows) -> lines: the total, then the `rows` largest roots
--- Core-rule exception: stays Lua. It walks Lua's own objects, which only Lua
--- can see.
+--   (equal sizes by name)
+-- This is the Lua twin, which clients run; a server with native/foundation
+-- has the native one in its place, which keeps this contract.
 local format, getinfo, getmetatable, ipairs, next, sort, type = string.format, debug.getinfo, getmetatable, ipairs, next, table.sort, type
 module(...)
 
@@ -66,7 +67,10 @@ end
 function Format(report, rows)
 	local sorted = {}
 	for i, row in ipairs(report.rows) do sorted[i] = row end
-	sort(sorted, function(a, b) return a.bytes > b.bytes end)
+	sort(sorted, function(a, b)
+		if a.bytes ~= b.bytes then return a.bytes > b.bytes end
+		return a.name < b.name
+	end)
 	local lines = { format("memory: %.1f KB estimated over %d roots", report.total / BYTES_PER_KB, #report.rows) }
 	for i = 1, rows < #sorted and rows or #sorted do
 		lines[#lines + 1] = format("%10.1f KB  %s", sorted[i].bytes / BYTES_PER_KB, sorted[i].name)
