@@ -70,6 +70,11 @@ api! {
     rawset: fn(L, c_int) = c"lua_rawset";
     concat: fn(L, c_int) = c"lua_concat";
     replace: fn(L, c_int) = c"lua_replace";
+    insert: fn(L, c_int) = c"lua_insert";
+    gettable: fn(L, c_int) = c"lua_gettable";
+    equal: fn(L, c_int, c_int) -> c_int = c"lua_equal";
+    rawequal: fn(L, c_int, c_int) -> c_int = c"lua_rawequal";
+    lessthan: fn(L, c_int, c_int) -> c_int = c"lua_lessthan";
     where_: fn(L, c_int) = c"luaL_where";
     next: fn(L, c_int) -> c_int = c"lua_next";
     getmetatable: fn(L, c_int) -> c_int = c"lua_getmetatable";
@@ -237,8 +242,18 @@ pub unsafe fn raise(l: L, message: &CStr) -> ! {
 /// # Safety
 /// As `raise`.
 pub unsafe fn raise_where(l: L, message: String) -> ! {
+    raise_at(l, 1, message)
+}
+
+/// A Lua error with `message` after the position of the Lua code `level`
+/// calls up from the running C function (1: its caller), as Lua's
+/// error(message, level + 1) gives from inside a Lua function.
+///
+/// # Safety
+/// As `raise`.
+pub unsafe fn raise_at(l: L, level: c_int, message: String) -> ! {
     let api = api();
-    (api.where_)(l, 1);
+    (api.where_)(l, level);
     push_str(l, &message);
     drop(message);
     (api.concat)(l, 2);

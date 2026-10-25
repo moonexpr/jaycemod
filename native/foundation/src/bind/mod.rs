@@ -5,6 +5,8 @@
 mod avl;
 mod heap;
 mod list;
+mod util;
+mod world;
 mod nodegraph;
 mod pathfinder;
 mod search;
@@ -57,6 +59,7 @@ unsafe fn module(l: L) {
     library(l, c"nodegraph", nodegraph::FUNCTIONS);
     (api.setfield)(l, -2, c"pending".as_ptr());
     namespace(l, c"list", list::push_modules);
+    namespace(l, c"world", world::push_modules);
     library(l, c"probe", &[(c"Nothing", probe_nothing), (c"Add", probe_add)]);
 }
 
@@ -94,6 +97,7 @@ unsafe fn provide(l: L) {
     search::push_module(l);
     crate::module::provide(l, Some(c"graph"), c"search");
     provide_all(l, c"list", list::push_modules, list::NAMES);
+    provide_all(l, c"world", world::push_modules, world::NAMES);
 }
 
 /// GMod's entry point: the server requires the module before foundation's

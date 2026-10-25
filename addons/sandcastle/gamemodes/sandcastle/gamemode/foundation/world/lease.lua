@@ -7,10 +7,8 @@
 --   leases:FreeFor(key, holder, now) -> unheld, expired, or the holder's own
 --   leases:Take(key, holder, now, term) -> true, or false when another holds it
 --   leases:Release(key, holder), leases:ReleaseAll(holder): only its own
--- Core-rule exception: stays Lua. A take, holder or release costs 18 ns JIT-
--- compiled on the dev server; a call into native/foundation costs about 15
--- ns (20 on the dev server; docs/native-foundation-plan.md), so a native
--- twin would at best tie.
+-- This is the Lua twin, which clients run; a server with native/foundation
+-- has the native one in its place, which keeps this contract.
 local pairs, setmetatable = pairs, setmetatable
 module(...)
 
