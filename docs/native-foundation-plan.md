@@ -16,10 +16,42 @@ Each is a drop-in, accelerated foundation for a server that loads it: GMod
 opening a DLL installs each native module over the global its Lua twin
 publishes (`wetsands.navsearch`), with no namespace of its own, so callers
 keep `local NavSearch = wetsands.navsearch` and get the native one. The
-server requires the DLLs right after foundation's indexes, before any
-module binds a global to a local. For the tests, `luaopen_<crate>` returns
-the module's table instead, installing nothing, so the Lua twin stays as
-the oracle beside it (`T.native`).
+server requires the DLLs before foundation's indexes run, and the loader
+runs every index in the native `core.namespace`'s Environment; each
+index line is a `Twin`, which keeps the native module only whole (every
+key of the Lua twin's, or it is refused naming what it lacks). For the
+tests, `luaopen_<crate>` returns the tables laid out as the globals
+(`.tree.heap`, `.wetsands.path`), installing nothing: `T.native` reads
+them beside the Lua twins, and the second pass of `run_lua_tests.sh`
+(`WS_NATIVE=1`) places them at their globals first, as the server does,
+so every test runs against both.
+
+## One implementation a realm
+
+A server runs foundation in Rust and a client in Lua, with nothing in
+between: no module is part native, part Lua (the operator's rule, which
+replaced "native only where it measures faster"). Every module foundation
+publishes has a whole native twin, the Lua one included in what it
+replaces: `core.namespace` and the indexes themselves, `transaction` and
+`list.schedule`, `generator.state_chart` with games' hfsm built on it,
+`cache.*`, the codecs. A module whose operations sit under a crossing's
+floor (`list.slots`, `world.pairmap`, `math.scalar`) is native too, at
+the cost of a crossing a call; none has shown up live (lanes, the AI
+war's behaviour, tracebacks), but they are not benchmarked one by one.
+
+Mechanisms over Lua values stay so natively: `core.class`, `core.port`,
+the caches, the state machines, `transaction` and `core.namespace` build
+the Lua tables their contracts hand out, with metatables of C functions,
+and keep their per-object state in weak-keyed registry tables, one set a
+Lua state, so a module opened again goes on where the first left off.
+Where a contract is extended in Lua (hfsm's Action and Behavior on
+state_chart's State and Root, reach_memo on `cache.base`), every step the
+native engine takes is a method looked up on the object, so the
+subclass's override runs. Lua 5.1 cannot yield across a C frame: the
+native scheduler resumes tasks with `coroutine.resume`, its `Yield` and
+`Wait` return `lua_yield`, and transactions reach it through two hooks
+(a task's end handed to its transaction, a task parked on one) rather
+than Lua glue.
 
 `foundation.wetsands` (the Lua namespace, global `wetsands`) is the one part
 of foundation that names game things: TF2's nav mesh rules, the bots' cost
@@ -55,14 +87,14 @@ above are a proxy (arm64, not Rosetta and Wine).
 ## Rules for native structures
 
 - A native module and its Lua twin keep one contract, so the native one can
-  replace the Lua in place. Foundation's callback contracts (a heap's
-  `before`, a graph port's `Cost`) cannot: a call back into Lua per element
-  would cancel the gain. An accelerated module's contract takes data
-  (numbers, a strategy's `Model(limits, bot)`), and its Lua twin is written
-  to it first.
-- They hold numbers: a slot, an id, a cost. What a number stands for stays in
-  Lua, in arrays by slot (the CLAUDE.md rule for structures already says
-  so). No Lua values are kept natively, so no registry references.
+  replace the Lua in place. Where speed is the point, the contract takes
+  data (numbers, a strategy's `Model(limits, bot)`, told closed sets) rather
+  than a call back into Lua per element, and its Lua twin is written to it
+  first. A callback contract (a graph port's `Cost`, a cache's hooks) is
+  kept where the contract is one, called through the C API.
+- Structures hold numbers: a slot, an id, a cost. What a number stands for
+  stays in Lua, in arrays by slot (the CLAUDE.md rule for structures
+  already says so). Mechanisms over Lua values are the exception above.
 - Rust values are full userdata, one metatable a type, freed by `__gc`.
 - The Lua implementation stays: it is the oracle the native one is tested
   against, and what the client and plain LuaJIT without the build run.
@@ -116,11 +148,10 @@ above are a proxy (arm64, not Rosetta and Wine).
    each after the bench says it pays.
 6. **Codecs** (`file.buffer`, `Crc32`, `encoding.keyvalues`).
 
-The foundation DLL installs `tree.heap` and `tree.avl` whole and patches
-`nodegraph`'s `PickNodes`, `Candidates` and `Bridges`; each has its Lua
-twin written to the data contract first, ties included (the nodegraph
-searches used `table.sort`, which is unstable: they now break ties by
-index, at about 10 % of the Lua twin's time).
+All of it is done, and every module installs whole. Each has its Lua twin
+written to the contract first, ties included (the nodegraph searches used
+`table.sort`, which is unstable: they now break ties by index, and the
+analysis sorts by name).
 
 ## Measured
 
@@ -162,7 +193,8 @@ Under the floor, measured in Lua alone against a native call (about 15 ns
 locally, 20 on the server): `list.slots` 24 ns (server, JIT on), `chain`
 7, `world.pairmap` 40 for a set and a get, `lease` 18, `queue`, `ring`,
 `sets.Has`, `geometry`, `scalar`, `polynomial.Evaluate`. No native twin
-of an operation that cheap can win; they stay Lua. `math.matrix`,
+of an operation that cheap can win; they are native anyway (one
+implementation a realm, above). `math.matrix`,
 `math.polynomial.Roots` and `math.stats` do bulk work (a 32×32 inverse
 1.4 ms, `Percentile` of 1000 216 µs) but nothing in the game calls them
 on a hot path (`analysis.analytics` takes a percentile per report), so
@@ -233,7 +265,6 @@ LuaJIT the oracle tests run in. Its guard that the Lua state is touched
 only from the thread that opened it is worth taking once worker threads
 come.
 
-What stays Lua: `pairmap`, `lease`, `slots`, `chain`, `ring`, `queue`,
-`sets`, `geometry`'s per-point maths, `scalar`, `class`/`port`/`enum`:
-single-lookup operations or metatable mechanisms, which a crossing would
-only slow (measured above).
+The API grows as modules need it (`lua_pcall`, `lua_yield`,
+`lua_settable`, `lua_iscfunction`, `luaL_where` for refusals blamed where
+the Lua twin's `error(message, level)` blames them).

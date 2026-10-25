@@ -88,7 +88,9 @@ system that owns them, in games or a feature.
 ## foundation index
 
 foundation is the stable base the rest of the gamemode stands on, and may
-come to replace GMod's own defaults. `shared_loader.lua` runs each
+come to replace GMod's own defaults. On a server with `native/foundation` and
+`native/wetsands`, every module is its native twin, whole; clients run
+the Lua twins. `shared_loader.lua` runs each
 namespace's `sh_index.lua`, which publishes a module per line: module
 `foundation.<namespace>.<module>` is the global `<namespace>.<module>`,
 in a table of our own (`tree`, `world`, `cache`) or one extended in place
@@ -117,7 +119,7 @@ Tests are `tests/<namespace>_<module>_test.lua`.
 | `core.port` | `New(name, methods)` → an interface: `Check(value)`, `Facade(value)`, `Methods`, `Name`; `Is(value)` |
 | `core.constants` | `New(name, constants)` → a `ConstantSet`: upper-case names read as fields at plain-table speed; an unknown name read, or a new one set, is refused naming the set; `set(token)` parses a name from outside (or nil; `Has`); `pairs` gives only the constants; `Names` (sorted), `tostring`/`Name`, `__len`. Values may repeat (layout sizes, colours) |
 | `core.enum` | `New(name, first, names)` → an `Enum` (a `ConstantSet`) numbering names from `first`: `enum[value]` → its name (`NameOf`), `enum(token)` parses a value or a name (or nil; `Valid`), `Check`, `tostring` → "0 Default, 1 Electro" for a convar's help (`Describe`), `First`, `Last`, `Count` (`__len`), `Names` (value order) |
-| `core.namespace` | What an index runs: `Namespace(globals, name)` (the global table, made if absent), `Export(ns, key, value)` (refuses a key something else holds), `Replace(ns, key, value)` (takes a default over on purpose), `Environment(globals, require)`. A key once set is the namespace's own, so a reload sets it again |
+| `core.namespace` | What an index runs: `Namespace(globals, name)` (the global table, made if absent), `Export(ns, key, value)` (refuses a key something else holds), `Replace(ns, key, value)` (takes a default over on purpose), `Twin(ns, key, lua)` (the native twin a binary put there, only whole), `Defer(ns, key, load)` (loaded on first read), `Environment(globals, require)`. A key once set is the namespace's own, so a reload sets it again |
 
 ### list: lists, queues, slots
 
@@ -133,8 +135,8 @@ Tests are `tests/<namespace>_<module>_test.lua`.
 
 | Module | API |
 |---|---|
-| `tree.heap` | `Heap()` (`New`) → values keyed by numbers: `Push(key, value)`, `Pop`/`Peek` → value, key (lowest key first, ties in push order), `Size`, `Clear`. Native on a server with `native/foundation` |
-| `tree.avl` | `Avl()` (`New`) → ordered map of number keys on an AVL tree: `Insert`, `Get`, `Remove`, `Min`, `Max`, `Floor`, `Ceiling`, `Pairs` (in order), `Size`, `Height`. Native on a server with `native/foundation` |
+| `tree.heap` | `Heap()` (`New`) → values keyed by numbers: `Push(key, value)`, `Pop`/`Peek` → value, key (lowest key first, ties in push order), `Size`, `Clear` |
+| `tree.avl` | `Avl()` (`New`) → ordered map of number keys on an AVL tree: `Insert`, `Get`, `Remove`, `Min`, `Max`, `Floor`, `Ceiling`, `Pairs` (in order), `Size`, `Height` |
 
 ### world: lookups (beside games' world I/O)
 
@@ -195,7 +197,7 @@ Tests are `tests/<namespace>_<module>_test.lua`.
 | `analysis.memory` | `Measure(roots)` → estimated bytes per named root (each object once); `Format(report, rows)`. `ws_analytics_memory` runs it over the loaded foundation modules |
 | `transaction` | Exchanges between user and system or between modules, settling once as committed (value), declined (a refusal: the caller's mistake) or failed (our bug). Refusals: `Refuse(kind, detail)`, `IsRefusal(err, kinds)`, `Message`, `Explain`, `Detail`. `New()` → `Commit`/`Decline`/`Fail`, `State`, `Value`, `Refusal`, `Error`, `OnSettle`, `Await(scheduler)` (in a task); `Run(fn, ...)`, `Spawn(scheduler, fn, ...)` with `fn(work, ...)` and `work:Undo(fn)` compensations; `All(list)`. Wire: `Ledger()` (`Open`, `Settle`, `Expire`, `Count`), `Reply(tx[, kinds])`. Over the network: `WS.Events.Transact` (client) and `WS.Events.Serve` (server), events defined with `transaction = true` |
 | `configstore` | Named whole-number values, each held to a range and guarded by what the caller names: `New(name)` → `Range(key, min, max, guard)`, `Switch(key, guard)`, `store[key]` (`Get`; read-only `min`, `max`, `guard`), `Has`, `for key, entry in store()` (key order; `Keys`), `Size` (`__len`), `tostring`, `Allowed(key, holds)`, `Parse(key, text)` → text or nil and why. The menus' settings are one (`ws.settings`, guards are privileges) |
-| `nodegraph` | An HL2 AI node graph made from the nav mesh: picks nodes, proposes links, assigns zones, reads and writes `maps/graphs/<map>.ain`. `PickNodes`, `Candidates`, `Bridges` break ties by index, and are native on a server with `native/foundation` |
+| `nodegraph` | An HL2 AI node graph made from the nav mesh: picks nodes, proposes links, assigns zones, reads and writes `maps/graphs/<map>.ain`. `PickNodes`, `Candidates`, `Bridges` break ties by index |
 
 ### wetsands: systems on native backing
 
@@ -205,7 +207,7 @@ the native code is tested against, and what runs without the binary.
 
 | Module | API |
 |---|---|
-| `wetsands.navsearch` | Route searches on a nav mesh snapshot: `Mesh()` (`Area`, `Link`, `Seal`), `New(mesh, strategy, limits, bot, start, goal, goalPos, maxExpanded[, told[, rules]])` → `graph.pathfinder`'s search; told: closed areas, uncrossable links, rooms, estimates; rules asked once an area or link. `Distances(mesh, starts, limit, limits[, told])`: graph.search's walks on the mesh (walkable rises, `told.uncrossable`). A server with `native/wetsands` has it replaced in place |
+| `wetsands.navsearch` | Route searches on a nav mesh snapshot: `Mesh()` (`Area`, `Link`, `Seal`), `New(mesh, strategy, limits, bot, start, goal, goalPos, maxExpanded[, told[, rules]])` → `graph.pathfinder`'s search; told: closed areas, uncrossable links, rooms, estimates; rules asked once an area or link. `Distances(mesh, starts, limit, limits[, told])`: graph.search's walks on the mesh (walkable rises, `told.uncrossable`) |
 | `wetsands.path` | Path costs: a NextBot's IPathCost as strategies, parts `ground`, `hl2`, `scatter`, `tfbot` (`require("foundation.wetsands.path.<name>")`), each `Cost(step, limits, bot)` and `Model(limits, bot)` (the native search's walker); `IMPASSABLE`, `JUMP_PENALTY`, `Walkable` |
 
 ## games index
@@ -254,8 +256,12 @@ line in its namespace's `sh_index.lua`, and a line in the index above. A
 new namespace is a line in `shared_loader.lua`. foundation names no mode,
 feature or game noun.
 
-New data structures and algorithms use or extend foundation (to become a binary module), unless that would cost the use case
-its performance: such exceptions are reviewed case by case and leave a "Core-rule exception" comment saying why.
+New data structures and algorithms use or extend foundation. A server
+runs foundation in Rust and a client in Lua, never a module part one and
+part the other: a new module gets its Lua twin (what clients run, and the
+oracle) and a whole native twin in `native/foundation` (or
+`native/wetsands`), held by the same tests in both passes, and its index
+line is a `Twin` (`docs/native-foundation-plan.md`).
 
 A structure's behaviour goes in its metamethods first (indexing, assigning,
 calling to walk or parse, `tostring`), with named methods as proxies
