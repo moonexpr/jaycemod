@@ -9,7 +9,7 @@
 --
 -- Each search is wrapped as it is made: a search on the mesh
 -- (wetsands.navsearch, native on a server with native/wetsands) through its
--- rules, a watched one (foundation.wetsands.astar, on the NavGraph) through
+-- rules, a watched one (foundation.graph.pathfinder, on the NavGraph) through
 -- its graph. Every area the search found untraversable, every link its
 -- crossable refused, every spawn room it read (and, on the NavGraph, every
 -- estimate it took; the mesh's are its centres' distances, which a replay
@@ -20,7 +20,6 @@ WSRouteRecord = WSRouteRecord or {}
 local R = WSRouteRecord
 
 local Record = nextsoldier.route_record
-local AStar = wetsands.astar
 local NavSearch = wetsands.navsearch
 local Pathfinder = graph.pathfinder
 local HL2 = WS.require("foundation.wetsands.path.hl2")
@@ -177,8 +176,8 @@ function R.Start(seconds, restart)
 		pending = nil
 		return r
 	end)
-	local new = AStar.New
-	Swap(AStar, "New", function(graph, start, goal, maxExpanded)
+	local new = Pathfinder.New
+	Swap(Pathfinder, "New", function(graph, start, goal, maxExpanded)
 		local rec = Rec(npcs, pending, graph.strategy, graph.limits, graph.bot or {}, start, goal, graph.goalPos, maxExpanded)
 		Watch(graph, rec)
 		local search = new(graph, start, goal, maxExpanded)

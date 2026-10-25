@@ -1,4 +1,4 @@
--- Route searches on a nav mesh snapshot: NavAreaBuildPath (wetsands.astar)
+-- Route searches on a nav mesh snapshot: NavAreaBuildPath (graph.pathfinder)
 -- priced by a path strategy (wetsands.path). This is the Lua implementation,
 -- the oracle; a server that loads native/wetsands (require("wetsands")) has
 -- it replaced in place by the native one, which keeps this contract:
@@ -27,7 +27,7 @@
 --     to limits and not told.uncrossable, at the link's distance; a walk
 --     beyond limit is not followed.
 -- An area the mesh lacks is refused as start or goal, or once sealed.
-local AStar = wetsands.astar
+local Pathfinder = graph.pathfinder
 local Path = wetsands.path
 local Search = graph.search
 local Geometry = math.geometry
@@ -153,7 +153,7 @@ function New(mesh, strategy, limits, bot, start, goal, goalPos, maxExpanded, tol
 		roomOf = {},
 		step = { hasFrom = true },
 	}, Graph)
-	return AStar.New(graph, start, goal, maxExpanded)
+	return Pathfinder.New(graph, start, goal, maxExpanded)
 end
 
 function Distances(mesh, starts, limit, limits, told)

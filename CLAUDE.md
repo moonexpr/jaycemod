@@ -159,7 +159,7 @@ Tests are `tests/<namespace>_<module>_test.lua`.
 | Module | API |
 |---|---|
 | `graph.search` | `Flood(starts, neighbors, admit, limit[, stop])` → reached, cut; `Components(nodes, neighbors)` → node → group number; `Distances(starts, edges, limit)` → node → cheapest walk from the nearest start (Dijkstra; `edges(node)` → `{ node, cost }`s) |
-| `graph.pathfinder` | Abstract path search (template method): `Solver(name)` → a solver class filling `Begin`, `Next`, `Expand` (reporting with `Reach`, `Approach`); it gets `New`, `Find`, `Step(budget)`, `Route`. `RUNNING`, `FOUND`, `FAILED`, `MAX_EXPANDED` |
+| `graph.pathfinder` | NavAreaBuildPath's A* over a graph port (`Neighbors`, `Cost`, `Estimate`): `New(graph, start, goal[, maxExpanded])` → a search (`status`, `expanded`, `maxExpanded`, `start`, `goal`, `closest`, `parent`, `Step(budget)`, `Route([last])`, `CostSoFar(node)`), `Find`; `RUNNING`, `FOUND`, `FAILED`, `MAX_EXPANDED`, `NAN_COST`. The routes of HL2 NPCs (`features/npc/sv_routes.lua`) |
 
 ### math, in Lua's math table
 
@@ -205,7 +205,6 @@ the native code is tested against, and what runs without the binary.
 
 | Module | API |
 |---|---|
-| `wetsands.astar` | `graph.pathfinder`'s solver for NavAreaBuildPath's A*, the routes of HL2 NPCs (`features/npc/sv_routes.lua`) |
 | `wetsands.navsearch` | Route searches on a nav mesh snapshot: `Mesh()` (`Area`, `Link`, `Seal`), `New(mesh, strategy, limits, bot, start, goal, goalPos, maxExpanded[, told[, rules]])` → `graph.pathfinder`'s search; told: closed areas, uncrossable links, rooms, estimates; rules asked once an area or link. `Distances(mesh, starts, limit, limits[, told])`: graph.search's walks on the mesh (walkable rises, `told.uncrossable`). A server with `native/wetsands` has it replaced in place |
 | `wetsands.path` | Path costs: a NextBot's IPathCost as strategies, parts `ground`, `hl2`, `scatter`, `tfbot` (`require("foundation.wetsands.path.<name>")`), each `Cost(step, limits, bot)` and `Model(limits, bot)` (the native search's walker); `IMPASSABLE`, `JUMP_PENALTY`, `Walkable` |
 

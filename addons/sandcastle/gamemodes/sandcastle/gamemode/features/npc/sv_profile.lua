@@ -155,7 +155,7 @@ function Controller:PublishRoute(running, areas, found)
 		found = found,
 		points = points,
 		areaIds = route,
-		totalCost = search.costSoFar[route[#route]],
+		totalCost = search:CostSoFar(route[#route]),
 		microseconds = observed.seconds * MICROSECONDS,
 		nodesExpanded = search.expanded,
 		explored = recorder and recorder:Explored() or nil,

@@ -2,7 +2,6 @@
 -- back and replayed offline with the same solver and cost strategy.
 local T = dofile("tests/harness.lua")
 local Record = nextsoldier.route_record
-local AStar = wetsands.astar
 local Pathfinder = graph.pathfinder
 local HL2 = T.require("foundation.wetsands.path.hl2")
 local TFBot = T.require("foundation.wetsands.path.tfbot")

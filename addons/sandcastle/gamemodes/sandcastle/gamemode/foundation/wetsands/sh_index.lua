@@ -4,5 +4,4 @@
 -- docs/foundation-game-split-plan.md.
 local wetsands = Namespace("wetsands")
 Export(wetsands, "path", require("foundation.wetsands.path"))
-Export(wetsands, "astar", require("foundation.wetsands.astar"))
 Twin(wetsands, "navsearch", require("foundation.wetsands.navsearch"))

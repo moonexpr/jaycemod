@@ -65,7 +65,6 @@ local CATEGORY = {
 
 	-- foundation.wetsands: systems moved out of games/ for native backing
 	-- (docs/native-foundation-plan.md), the one part that names game things.
-	["wetsands/astar"] = "structures",
 	["wetsands/path"] = "nextsoldier",
 	["wetsands/path/ground"] = "nextsoldier",
 	["wetsands/path/hl2"] = "nextsoldier",

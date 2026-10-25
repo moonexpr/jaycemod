@@ -3,7 +3,6 @@
 -- along a route. Its NavGraph goes to sv_profile, which records its costs.
 local Controller = ...
 local Pathfinder = graph.pathfinder
-local AStar = wetsands.astar
 local NavSearch = wetsands.navsearch
 local Portal = nextsoldier.portal
 local Doors = nextsoldier.doors
@@ -15,7 +14,7 @@ local NOBODY = WS.TEAM_UNASSIGNED
 -------------------------------------------------------------------------------
 -- Path costs: one step builder for both searches. A path strategy
 -- (foundation.wetsands.path) reads the same step whether the engine's search
--- (Path:Compute on a NextBot) or the Lua one (foundation.wetsands.astar, for
+-- (Path:Compute on a NextBot) or the Lua one (foundation.graph.pathfinder, for
 -- NPCs that are not NextBots) asks.
 
 -- Fills `step` for the move from fromArea (nil for the first area) into
@@ -67,7 +66,7 @@ function Controller:EnginePathCost(ent, strategy, limits, bot)
 	end
 end
 
--- The graph foundation.wetsands.astar searches: nav area ids, their floor
+-- The graph foundation.graph.pathfinder searches: nav area ids, their floor
 -- neighbours in GetAdjacentAreas' order (north, east, south, west; nav
 -- ladders are left out, as no engine NPC climbs them), the strategy's cost
 -- with ILocomotion's default traversal rule (not blocked for the mover's
@@ -314,7 +313,7 @@ function Controller:RequestRoute(request)
 	scheduler:Spawn(function()
 		local search
 		if observed then
-			search = AStar.New(graph, startId, searchGoal, navmesh.GetNavAreaCount())
+			search = Pathfinder.New(graph, startId, searchGoal, navmesh.GetNavAreaCount())
 		else
 			scheduler:Wait(function() return self:NavMeshReady() end)
 			if mapCrossable then told.uncrossable = self.navUncrossable end

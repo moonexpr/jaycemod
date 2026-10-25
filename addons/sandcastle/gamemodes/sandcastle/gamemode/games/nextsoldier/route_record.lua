@@ -1,5 +1,5 @@
 -- Route searches as the server ran them, recorded so they replay offline
--- (under plain LuaJIT) with the same solver (foundation.wetsands.astar)
+-- (under plain LuaJIT) with the same solver (foundation.graph.pathfinder)
 -- and cost strategy (foundation.wetsands.path.*): what the npc controller's
 -- NavGraph (features/npc/sv_routes.lua) answered is written down, so a
 -- replay asks the same questions of the record instead of the engine.
