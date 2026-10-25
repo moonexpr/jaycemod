@@ -4,9 +4,8 @@
 --   m:Determinant(), m:Inverse() -> nil when singular,
 --   m:Solve(b) -> x with m x = b (b and x lists), nil when singular;
 --   elimination pivots on the largest entry of each column
--- Core-rule exception: stays Lua. A 32x32 inverse costs 1.4 ms on the dev
--- server, but nothing in the game calls it on a hot path; a native matrix
--- waits for a caller.
+-- This is the Lua twin, which clients run; a server with native/foundation
+-- has the native one in its place, which keeps this contract.
 local abs, error, ipairs, setmetatable, tostring, type = math.abs, error, ipairs, setmetatable, tostring, type
 module(...)
 

@@ -2,10 +2,8 @@
 --   New(points), line:Length(), line:Leg(d) -> the leg holding distance d
 --   and how far along it, line:PointAt(d), line:Offset(d, lateral),
 --   line:DistanceOf(p) -> how far along the point nearest p lies
--- Core-rule exception: stays Lua. PointAt and Offset cost about 160 ns on
--- the dev server and return a new point table, which a native twin would
--- build through the C API at about the same cost; DistanceOf has no hot
--- caller.
+-- This is the Lua twin, which clients run; a server with native/foundation
+-- has the native one in its place, which keeps this contract.
 local setmetatable, sqrt = setmetatable, math.sqrt
 local Distance = math.geometry.Distance
 module(...)
