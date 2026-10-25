@@ -28,24 +28,35 @@ local function SpawnTeamsIn(room)
 end
 
 -- TF_NAV_SPAWN_ROOM_RED/_BLUE, which GMod's nav areas do not carry: the
--- team of the func_respawnroom holding the area's centre, as its spawns
--- say (games.gameplay.spawn's RoomTeam), found once per area per round (rooms
--- take their teams at round start, some only once the round is active).
-function Controller:SpawnRoomTeam(area)
-	local id = area:GetID()
-	local team = self.spawnRoomTeams[id]
-	if team then return team end
-	team = NOBODY
-	local center = area:GetCenter()
+-- areas in spawn rooms, nav area id -> the team of the func_respawnroom
+-- holding the area's centre, as its spawns say (games.gameplay.spawn's
+-- RoomTeam), the first room in FindByClass' order taking an area; areas in
+-- none left out. Found once a round (rooms take their teams at round
+-- start, some only once the round is active), for every area at once, so
+-- a route search is told them (wetsands.navsearch's told.rooms).
+function Controller:SpawnRooms()
+	local rooms = self.spawnRooms
+	if rooms then return rooms end
+	rooms = {}
 	for _, room in ipairs(ents.FindByClass("func_respawnroom")) do
-		if room:PointIsWithin(center) then
-			Spawn = Spawn or gameplay.spawn
-			team = Spawn.RoomTeam(room.team, SpawnTeamsIn(room))
-			break
+		Spawn = Spawn or gameplay.spawn
+		local team = Spawn.RoomTeam(room.team, SpawnTeamsIn(room))
+		local mins, maxs = room:WorldSpaceAABB()
+		for _, area in ipairs(navmesh.FindInBox(mins, maxs)) do
+			local id = area:GetID()
+			if not rooms[id] and room:PointIsWithin(area:GetCenter()) then rooms[id] = team end
 		end
 	end
-	self.spawnRoomTeams[id] = team
-	return team
+	for id, team in pairs(rooms) do
+		if team == NOBODY then rooms[id] = nil end
+	end
+	self.spawnRooms = rooms
+	return rooms
+end
+
+-- The team whose spawn room holds the area, or NOBODY.
+function Controller:SpawnRoomTeam(area)
+	return self:SpawnRooms()[area:GetID()] or NOBODY
 end
 
 -- Blockers on the nav mesh, as TF2's nav mesh has them
@@ -176,6 +187,7 @@ function Controller:RefreshBlockers(now)
 	end
 	local before = self.navBlocked
 	self.navBlocked = blocked
+	self.closedFor, self.engineClosedFor = {}, {}
 	local signature = {}
 	for id, teams in SortedPairs(blocked) do signature[#signature + 1] = id .. "=" .. table.concat(teams, "+") end
 	signature = table.concat(signature, ",")
@@ -267,6 +279,38 @@ function Controller:EngineBlocks(area, team)
 	return not (self.doorAreas and self.doorAreas[area:GetID()])
 end
 
+-- The areas closed to the team, nav area id -> true, as a route search is
+-- told them (wetsands.navsearch's told.closed): those a door or brush
+-- closes to it (unless ignoreBlockers), and those the engine blocks
+-- (EngineBlocks). Taken again with the blockers, so as fresh as they are:
+-- the engine's flag read for every area at once costs about a
+-- millisecond, where read as a search reaches each area it cost every
+-- search a call into Lua an area.
+function Controller:ClosedFor(team, ignoreBlockers)
+	self:RefreshBlockers(CurTime())
+	local engine = self.engineClosedFor[team]
+	if not engine then
+		engine = {}
+		local doorAreas = self.doorAreas or {}
+		for _, area in ipairs(navmesh.GetAllNavAreas()) do
+			local id = area:GetID()
+			if area:IsBlocked(team) and not doorAreas[id] then engine[id] = true end
+		end
+		self.engineClosedFor[team] = engine
+	end
+	if ignoreBlockers then return engine end
+	local closed = self.closedFor[team]
+	if not closed then
+		closed = {}
+		for id in pairs(engine) do closed[id] = true end
+		for id, teams in pairs(self.navBlocked) do
+			if Doors.Blocks(teams, team) then closed[id] = true end
+		end
+		self.closedFor[team] = closed
+	end
+	return closed
+end
+
 -- Whether a door or brush closes the area to the team.
 function Controller:NavBlocks(area, team)
 	self:RefreshBlockers(CurTime())
@@ -274,7 +318,7 @@ function Controller:NavBlocks(area, team)
 end
 
 local function ForgetSpawnRooms()
-	Controller.spawnRoomTeams = {}
+	Controller.spawnRooms = nil
 end
 hook.Add("PostCleanupMap", "ws_npc_spawn_rooms", ForgetSpawnRooms)
 hook.Add("WSRoundActivate", "ws_npc_spawn_rooms", ForgetSpawnRooms)

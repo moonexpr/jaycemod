@@ -203,7 +203,9 @@ hook.Add("WSRoundActivate", "ws_npc_reach", ForgetRegions)
 hook.Add("WSRoundActive", "ws_npc_reach", ForgetRegions)
 
 -- The graph's traversable and crossable, writing down each refusal: the
--- edge of the region a failed search walks.
+-- edge of the region a failed search walks. A search told the closed areas
+-- never asks about them, so those at the edge are added once it fails
+-- (ClosedEdge).
 local function Refusals(graph)
 	local refused, uncrossable = {}, {}
 	local traversable, crossable = graph.traversable, graph.crossable
@@ -226,6 +228,18 @@ local function Refusals(graph)
 	return refused, uncrossable
 end
 
+-- Adds to refused each closed area a link from the region leads into: the
+-- region holds start and every area in parents.
+local function ClosedEdge(closed, start, parents, refused)
+	local function Edge(id)
+		for _, to in ipairs(NavGraph:Neighbors(id)) do
+			if closed[to] then refused[to] = true end
+		end
+	end
+	Edge(start)
+	for id in pairs(parents) do Edge(id) end
+end
+
 function Controller:RequestRoute(request)
 	local start, goal = NearestArea(request.from), NearestArea(request.to)
 	if not (IsValid(start) and IsValid(goal)) then
@@ -234,7 +248,8 @@ function Controller:RequestRoute(request)
 	end
 	local team = request.bot.team or NOBODY
 	self:RefreshBlockers(CurTime())
-	local avoid, goalId, ignoreBlockers = request.avoid, goal:GetID(), request.ignoreBlockers
+	local avoid, goalId = request.avoid, goal:GetID()
+	local closed = self:ClosedFor(team, request.ignoreBlockers)
 	local graph = setmetatable({
 		controller = self,
 		step = {},
@@ -244,9 +259,9 @@ function Controller:RequestRoute(request)
 		goalPos = request.to,
 		crossable = request.crossable,
 		traversable = function(area)
-			if avoid and area:GetID() ~= goalId and avoid(area) then return false end
-			if not ignoreBlockers and Doors.Blocks(self.navBlocked[area:GetID()], team) then return false end
-			return not self:EngineBlocks(area, team)
+			local id = area:GetID()
+			if closed[id] then return false end
+			return not (avoid and id ~= goalId and avoid(area))
 		end,
 	}, NavGraph)
 	local startId, searchGoal, generation = start:GetID(), goalId, self.blockerGeneration
@@ -270,11 +285,13 @@ function Controller:RequestRoute(request)
 	local watch = self.pathWatch[request.bot.entIndex]
 	local observed = watch and self:ObserveRoute(graph, request, start, watch) or nil
 	-- A watched search runs the Lua solver on the NavGraph, whose costs
-	-- sv_profile records step by step; every other runs on the mesh.
+	-- sv_profile records step by step; every other runs on the mesh, told
+	-- the closed areas and the spawn rooms, and asking Lua only what the
+	-- request itself adds: the areas it avoids, the links it cannot cross.
+	local told = { closed = closed, rooms = self:SpawnRooms() }
 	local rules = {
-		traversable = function(id) return graph.traversable(Area(id)) end,
+		traversable = avoid and function(id) return graph.traversable(Area(id)) end or nil,
 		crossable = request.crossable and function(from, to) return graph.crossable(Area(from), Area(to)) end or nil,
-		room = function(id) return self:SpawnRoomTeam(Area(id)) end,
 	}
 	local scheduler = self.searches
 	scheduler:Spawn(function()
@@ -284,7 +301,7 @@ function Controller:RequestRoute(request)
 		else
 			scheduler:Wait(function() return self:NavMeshReady() end)
 			search = NavSearch.New(self.navMesh, request.strategy, request.limits, request.bot, startId, searchGoal,
-				graph.goalPos, navmesh.GetNavAreaCount(), nil, rules)
+				graph.goalPos, navmesh.GetNavAreaCount(), told, rules)
 		end
 		local status, budget = search.status, observed and 1 or MESH_STEP
 		while status == Pathfinder.RUNNING do
@@ -295,6 +312,7 @@ function Controller:RequestRoute(request)
 		end
 		if refused and status == Pathfinder.FAILED and search.expanded < search.maxExpanded then
 			self.reachStats.learned = self.reachStats.learned + 1
+			ClosedEdge(closed, startId, search.parent, refused)
 			self.reach:Learn(key, ReachMemo.Region(startId, search.parent, refused, uncrossable), generation)
 		end
 		local areas, found = AreasOf(search:Route()), status == Pathfinder.FOUND and not region

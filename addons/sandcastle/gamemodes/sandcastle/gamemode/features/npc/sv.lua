@@ -26,7 +26,7 @@ local Controller = {
 	navChecked = false,
 	pathProfile = nil, -- a features.npc.profile while ws_path_profile's window is open
 	pathWatch = {}, -- entity index -> { costs } while the nbdebug feature watches its path searches
-	spawnRoomTeams = {}, -- nav area id -> the team whose spawn room holds it, this round
+	-- spawnRooms = nil, -- nav area id -> its spawn room's team, the areas in one only, this round, set by SpawnRooms
 	searches = Scheduler.New({ Now = function() return SysTime() end }), -- the Lua route searches still running, each a task
 	neighbors = {}, -- nav area id -> its floor neighbours' ids (read again when seams are linked: WSNavLinked)
 	centers = {}, -- nav area id -> its centre
@@ -35,6 +35,8 @@ local Controller = {
 	-- navMeshBuilding = nil, -- the generation a snapshot is being built for, set by sv_routes
 	navBlocked = {}, -- nav area id -> the teams its doors and brushes block (games.nextsoldier.doors)
 	nextBlockerRefresh = 0,
+	closedFor = {}, -- team -> nav area id -> true: closed to it by the blockers or the engine, until the blockers are taken again
+	engineClosedFor = {}, -- team -> nav area id -> true: closed to it by the engine alone, as long
 	blockerGeneration = 0,
 	blockerLog = {}, -- the latest generations: { generation, changes = area id -> true, or nil when not known }
 	-- reach = nil, -- the regions failed route searches walked (games.nextsoldier.reach_memo), set by sv_routes

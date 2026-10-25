@@ -80,13 +80,21 @@ above are a proxy (arm64, not Rosetta and Wine).
    `native/foundation`, the mesh, walker and search in `native/wetsands`;
    `features/npc/sv_routes.lua` searches through navsearch on a mesh
    snapshot. See "Measured" below.
-2. **Traversal state as native data.** The live rules cost about 70 % of a
-   native search (below): the doors' and brushes' closures per team
-   (renewed with the blocker generation), the engine's blocked areas, the
-   spawn rooms (per round) and `WS.NavLinkCrossable` (fixed per map) become
-   masks the mesh holds, set from Lua when they change, so a search asks
-   Lua nothing but the request's own `avoid`. That is also what a search
-   off the game thread would need.
+2. **Traversal state as data** (done). The live rules cost most of a
+   native search: now the npc controller keeps, per team, the areas closed
+   to it (doors and brushes, and the engine's blocked flag read for every
+   area at once, about a millisecond, when the blockers are taken again)
+   and, per round, the spawn rooms' areas (`ClosedFor`, `SpawnRooms`), and
+   tells them to each search (`told`), which asks Lua only what the
+   request adds (`avoid`, `crossable`). `route_told_check.lua` runs the
+   same searches both ways on the live mesh: on cp_ambush_event 80 of 80
+   alike, 2.71 µs an expansion with the rules against 0.32 µs told
+   (the told tables, 524 room areas and 70 closed, read each search). A
+   failed search's region gets its closed edge from the closed set
+   (`ClosedEdge`), since the search no longer asks about those areas. The
+   told tables are still read per search; held by the mesh, they would
+   cost nothing a search, and are what a search off the game thread
+   would need.
 3. **Floods and distances** (`graph.search`: lanes' pockets, zones, lane
    bands) on the native graph, the filters as closed-area sets.
 4. **Grid** (`world.grid`: `Near`, `Thin`; `nav_gaps`, `explore`) and
@@ -108,6 +116,7 @@ index, at about 10 % of the Lua twin's time).
 | Recorded pl_upward searches replayed offline (47, all exact) | 2.25 µs an expansion | 0.31 µs |
 | Live, dev server, cp_gorge_event, 40 searches alike, JIT on | 40.1 µs | 0.29 µs |
 | Live, with the controller's rules as Lua callbacks | | 0.96 µs (0.30 µs a rule call, two an area) |
+| Live, cp_ambush_event, 80 searches: rules asked, against told as data | | 2.71 µs, against 0.32 µs |
 | Mesh snapshot, 1880 areas | 14.9 ms | 8.5 ms |
 | Five live route requests answered | | 30 ms, 3 ticks (stepped 16 expansions a look at the clock) |
 
