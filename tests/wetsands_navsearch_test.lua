@@ -10,7 +10,7 @@ local Lanes = nextsoldier.lanes
 
 local IMPLEMENTATIONS = {
 	{ "lua", wetsands.navsearch },
-	{ "native", T.native("wetsands") },
+	{ "native", T.native("wetsands").wetsands.navsearch },
 }
 
 local RED, BLUE = 2, 3

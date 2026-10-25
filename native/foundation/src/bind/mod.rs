@@ -33,7 +33,7 @@ unsafe fn library(l: L, name: &CStr, functions: &[(&CStr, CFunction)]) {
 }
 
 /// Pushes the module's table, laid out as foundation's globals are
-/// (`.tree.heap`, `.nodegraph`), with the boundary probes, for the tests and the bench.
+/// (`.tree.heap`; `.pending` the twins not yet whole), with the boundary probes, for the tests and the bench.
 unsafe fn module(l: L) {
     let api = api();
     (api.createtable)(l, 0, 2);
@@ -43,28 +43,30 @@ unsafe fn module(l: L) {
     avl::push_module(l);
     (api.setfield)(l, -2, c"avl".as_ptr());
     (api.setfield)(l, -2, c"tree".as_ptr());
+    // twins not yet whole: in the tests, never provided
+    (api.createtable)(l, 0, 1);
     library(l, c"nodegraph", nodegraph::FUNCTIONS);
+    (api.setfield)(l, -2, c"pending".as_ptr());
     library(l, c"probe", &[(c"Nothing", probe_nothing), (c"Add", probe_add)]);
 }
 
-/// Installs each native twin that measured faster over its Lua twin's
-/// global (docs/native-foundation-plan.md has the measurements).
-unsafe fn install(l: L) {
+/// Provides each native twin that is whole at its Lua twin's global, before
+/// the indexes run (docs/native-foundation-plan.md).
+unsafe fn provide(l: L) {
     heap::push_module(l);
-    crate::module::install(l, c"tree", c"heap");
+    crate::module::provide(l, Some(c"tree"), c"heap");
     avl::push_module(l);
-    crate::module::install(l, c"tree", c"avl");
-    crate::module::patch(l, None, c"nodegraph", nodegraph::FUNCTIONS);
+    crate::module::provide(l, Some(c"tree"), c"avl");
 }
 
-/// GMod's entry point: the server requires the module right after
-/// foundation's indexes have published the Lua twins.
+/// GMod's entry point: the server requires the module before foundation's
+/// indexes run.
 #[no_mangle]
 pub unsafe extern "C-unwind" fn gmod13_open(l: L) -> c_int {
     if crate::lua::open().is_err() {
         return 0;
     }
-    install(l);
+    provide(l);
     0
 }
 

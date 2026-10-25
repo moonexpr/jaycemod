@@ -5,4 +5,4 @@
 local wetsands = Namespace("wetsands")
 Export(wetsands, "path", require("foundation.wetsands.path"))
 Export(wetsands, "astar", require("foundation.wetsands.astar"))
-Export(wetsands, "navsearch", require("foundation.wetsands.navsearch"))
+Twin(wetsands, "navsearch", require("foundation.wetsands.navsearch"))

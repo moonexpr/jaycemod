@@ -30,6 +30,15 @@ local function Index(path)
 	setfenv(CompileFile(GAMEMODE_ROOT .. path), INDEX_ENV)()
 end
 
+-- The native foundation (native/, docs/native-foundation-plan.md): a server
+-- with a binary module installed has it put its native twins at their
+-- globals first, before any index runs; each module's index line (Twin)
+-- then keeps the native twin and fills it with the rest of the Lua twin, so
+-- every module that binds one to a local as it loads gets the native one.
+-- One line a module, never a loop.
+if SERVER and util.IsBinaryModuleInstalled("foundation") then require("foundation") end
+if SERVER and util.IsBinaryModuleInstalled("wetsands") then require("wetsands") end
+
 -- A module reads the modules it uses by their globals as it loads, so a
 -- namespace comes after every namespace its modules read
 -- (tests/foundation_index_test.lua checks the order).
@@ -46,13 +55,6 @@ Index("foundation/encoding/sh_index.lua")
 Index("foundation/analysis/sh_index.lua")
 Index("foundation/wetsands/sh_index.lua")
 Index("foundation/sh_index.lua")
-
--- The native foundation (native/, docs/native-foundation-plan.md): a server
--- with a binary module installed has it replace its Lua twins' globals here,
--- after the indexes publish them and before any module binds one to a
--- local. One line a module, never a loop.
-if SERVER and util.IsBinaryModuleInstalled("foundation") then require("foundation") end
-if SERVER and util.IsBinaryModuleInstalled("wetsands") then require("wetsands") end
 
 -- game: published at once, each module loaded the first time it is read,
 -- so a map pays only for the gameplay it uses.

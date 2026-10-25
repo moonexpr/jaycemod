@@ -93,7 +93,7 @@ T.test("the replay uses the estimates the live search computed", function()
 end)
 
 T.test("a native replay does what the Lua replay does", function()
-	local Native = T.native("wetsands")
+	local Native = T.native("wetsands").wetsands.navsearch
 	local record = { map = "x", areas = Mesh(), requests = {} }
 	for _, fields in ipairs({ {}, { blocked = { [2] = true } }, { uncrossable = { [3] = { [4] = true } } },
 		{ rooms = { [2] = BLUE } }, { estimates = { [2] = 1e6 } }, { maxExpanded = 1 } }) do

@@ -89,6 +89,7 @@ for _, path in ipairs(T.Indexes()) do
 		T.Published.global[module], T.Published.module[global] = global, module
 	end
 	for var, key, module in text:gmatch('Export%(%s*([%w_]+)%s*,%s*"([%w_]+)"%s*,%s*require%(%s*"([%w_.]+)"%s*%)%s*%)') do Publish(var, key, module) end
+	for var, key, module in text:gmatch('Twin%(%s*([%w_]+)%s*,%s*"([%w_]+)"%s*,%s*require%(%s*"([%w_.]+)"%s*%)%s*%)') do Publish(var, key, module) end
 	for var, key, module in text:gmatch('Defer%(%s*([%w_]+)%s*,%s*"([%w_]+)"%s*,%s*"([%w_.]+)"%s*%)') do Publish(var, key, module) end
 end
 
@@ -110,6 +111,32 @@ function T.Uses(text)
 	end
 	table.sort(uses)
 	return uses
+end
+
+-- WS_NATIVE=1: the server's foundation. Each native twin the built binary
+-- modules hold at a published module's global (their luaopen tables are
+-- laid out as the globals: tree.heap) is put there before the indexes run,
+-- as the server's require does, and the index's Twin keeps it: every test
+-- of the module then runs against the native one (run_lua_tests.sh's
+-- second pass).
+T.NATIVE = os.getenv("WS_NATIVE") == "1"
+if T.NATIVE then
+	for _, crate in ipairs({ "foundation", "wetsands" }) do
+		local loaded = T.native(crate)
+		for global in pairs(T.Published.module) do
+			local value = loaded
+			for part in global:gmatch("[^.]+") do value = type(value) == "table" and value[part] or nil end
+			if value ~= nil then
+				local ns, key = global:match("^([%w_]+)%.([%w_]+)$")
+				if ns then
+					_G[ns] = _G[ns] or {}
+					_G[ns][key] = value
+				else
+					_G[global] = value
+				end
+			end
+		end
+	end
 end
 
 -- The globals, published as shared_loader.lua publishes them in the game:
@@ -214,7 +241,7 @@ function T.test(name, fn)
 		T.passed = T.passed + 1
 	else
 		T.failed = T.failed + 1
-		print("FAIL " .. name .. ": " .. tostring(err))
+		print("FAIL " .. (T.NATIVE and "[native] " or "") .. name .. ": " .. tostring(err))
 	end
 end
 

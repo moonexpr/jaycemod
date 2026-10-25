@@ -15,6 +15,6 @@ echo "compiled $count files"
 out=$(.devtools/bin/run_lua_tests.sh 2>&1) || status=1
 echo "$out" | grep -E '^FAIL'
 # a test file without its summary (it died, or never called T.finish) is missing from the totals: name it
-echo "$out" | awk '/^== / { if (file && !summed) print "NO SUMMARY " file; file = $2; summed = 0 } / passed, / { summed = 1 } END { if (file && !summed) print "NO SUMMARY " file }'
+echo "$out" | awk '/^== / { if (file && !summed) print "NO SUMMARY " file; file = substr($0, 4); summed = 0 } / passed, / { summed = 1 } END { if (file && !summed) print "NO SUMMARY " file }'
 echo "$out" | awk '/passed/ { p += $1; f += $3 } END { print "TOTAL " p " passed, " f " failed" }'
 exit $status

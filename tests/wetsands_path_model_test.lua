@@ -4,7 +4,7 @@
 -- every boundary the costs test (a rise of exactly a step, a jump, a drop;
 -- each room; each attribute; penalised or not; a closed area).
 local T = dofile("tests/harness.lua")
-local Native = T.native("wetsands")
+local Native = T.native("wetsands").wetsands.navsearch
 local Path = wetsands.path
 local Ground = T.require("foundation.wetsands.path.ground")
 local Scatter = T.require("foundation.wetsands.path.scatter")

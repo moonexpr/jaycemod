@@ -126,4 +126,46 @@ T.test("an index runs in an environment of the calls, require and the globals", 
 	T.eq(rawget(env, "list"), nil, "an index's locals stay its own")
 end)
 
+-- A native twin as a binary module puts one: a table holding C functions
+-- (os.time, a C function, stands in for one).
+local NATIVE_NEW = os.time
+
+T.test("twin publishes the Lua twin when no binary module put a native one first", function()
+	local ns = {}
+	local lua = { New = function() end, LIMIT = 4 }
+	T.eq(Namespace.Twin(ns, "heap", lua), lua, "returns what it published")
+	T.eq(ns.heap, lua, "published")
+end)
+
+T.test("twin keeps a native twin that has the whole of the Lua twin's interface", function()
+	local native = { New = NATIVE_NEW, Encode = NATIVE_NEW, LIMIT = 4 }
+	local ns = { heap = native }
+	local lua = { New = function() end, Encode = function() end, LIMIT = 4, _M = {}, _NAME = "foundation.tree.heap", _PACKAGE = "foundation.tree." }
+	T.eq(Namespace.Twin(ns, "heap", lua), native, "the native one stays")
+	T.eq(ns.heap, native, "published")
+	T.eq(native.Encode, NATIVE_NEW, "untouched: nothing of the Lua twin is mixed in")
+	T.eq(rawget(native, "_M"), nil, "module(...)'s own keys are no part of the interface")
+	T.eq(Namespace.Twin(ns, "heap", lua), native, "and again, as a reload twins it")
+end)
+
+T.test("twin refuses a native twin that lacks part of the interface, naming each part", function()
+	local ns = { heap = { New = NATIVE_NEW } }
+	local err = Raises(Namespace.Twin, ns, "heap", { New = function() end, Encode = function() end, LIMIT = 4 })
+	Has(err, "heap", "names the module")
+	Has(err, "Encode", "names a missing function")
+	Has(err, "LIMIT", "names a missing constant")
+end)
+
+T.test("twin refuses a key something other than a native twin holds", function()
+	local err = Raises(Namespace.Twin, { heap = { New = function() end } }, "heap", { New = function() end })
+	Has(err, "heap", "names it")
+	Raises(Namespace.Twin, { heap = 3 }, "heap", {})
+end)
+
+T.test("an index can twin", function()
+	local globals = {}
+	local env = Namespace.Environment(globals, function() return { New = function() end } end)
+	T.eq(type(env.Twin), "function", "Twin is one of the calls")
+end)
+
 T.finish()

@@ -1,7 +1,5 @@
-//! Module tables as foundation's Lua twins publish them, and their install
-//! over the globals: a whole module replaced (an object's constructor and
-//! its type), or single functions patched over the Lua module where only
-//! they gain.
+//! Module tables as foundation's Lua twins publish them, and where a server
+//! puts them: at their globals before the indexes run, each a whole module.
 
 use crate::lua::{api, set_function, CFunction, GLOBALSINDEX, L, TTABLE};
 use std::ffi::{c_int, CStr};
@@ -37,57 +35,29 @@ pub unsafe fn push(l: L, functions: &[(&CStr, CFunction)], call: Option<CFunctio
     }
 }
 
-/// The table `namespace` names (a global), pushed; its index, or None
-/// (nothing pushed) when the global is no table.
-unsafe fn global_table(l: L, name: &CStr) -> Option<c_int> {
-    let api = api();
-    (api.getfield)(l, GLOBALSINDEX, name.as_ptr());
-    if (api.type_of)(l, -1) == TTABLE {
-        return Some((api.gettop)(l));
-    }
-    (api.settop)(l, -2);
-    None
-}
-
-/// Replaces `namespace.key` with the module table at the top of the stack
-/// (popped), when the Lua twin's namespace is published.
+/// Puts the native module table at the top of the stack (popped) at its
+/// global, `namespace.key` (the namespace made when absent) or `key` at the
+/// root, before foundation's indexes run: each index line's Twin then keeps
+/// it as the module, whole (core.namespace refuses one that lacks part of
+/// the Lua twin's interface).
 ///
 /// # Safety
 /// `l` is a live state with a module table at the top, after `lua::open`.
-pub unsafe fn install(l: L, namespace: &CStr, key: &CStr) {
+pub unsafe fn provide(l: L, namespace: Option<&CStr>, key: &CStr) {
     let api = api();
-    if let Some(ns) = global_table(l, namespace) {
-        (api.pushvalue)(l, ns - 1);
-        (api.setfield)(l, ns, key.as_ptr());
-        (api.settop)(l, -2);
-    }
-    (api.settop)(l, -2);
-}
-
-/// Sets each of `functions` over the Lua module `path` names (a global
-/// `name`, or `namespace.name`), when it is published.
-///
-/// # Safety
-/// `l` is a live state, after `lua::open`.
-pub unsafe fn patch(l: L, namespace: Option<&CStr>, name: &CStr, functions: &[(&CStr, CFunction)]) {
-    let api = api();
-    let module = match namespace {
-        None => global_table(l, name),
+    match namespace {
+        None => (api.setfield)(l, GLOBALSINDEX, key.as_ptr()),
         Some(namespace) => {
-            let Some(ns) = global_table(l, namespace) else { return };
-            (api.getfield)(l, ns, name.as_ptr());
-            if (api.type_of)(l, -1) == TTABLE {
-                Some((api.gettop)(l))
-            } else {
-                (api.settop)(l, -3);
-                return;
+            (api.getfield)(l, GLOBALSINDEX, namespace.as_ptr());
+            if (api.type_of)(l, -1) != TTABLE {
+                (api.settop)(l, -2);
+                (api.createtable)(l, 0, 4);
+                (api.pushvalue)(l, -1);
+                (api.setfield)(l, GLOBALSINDEX, namespace.as_ptr());
             }
+            (api.pushvalue)(l, -2);
+            (api.setfield)(l, -2, key.as_ptr());
+            (api.settop)(l, -3);
         }
-    };
-    let Some(module) = module else { return };
-    for (function_name, function) in functions {
-        (api.pushcclosure)(l, *function, 0);
-        (api.setfield)(l, module, function_name.as_ptr());
     }
-    (api.settop)(l, if namespace.is_some() { -3 } else { -2 });
 }

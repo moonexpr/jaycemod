@@ -144,7 +144,7 @@ end
 local function Main(argv)
 	local args = Args(argv)
 	local record = Load(args.path)
-	local NavSearch = args.native and T.native("wetsands") or nil
+	local NavSearch = args.native and T.native("wetsands").wetsands.navsearch or nil
 	Record.Mesh(record, NavSearch or wetsands.navsearch)
 	local areas, links = 0, 0
 	for _, area in pairs(record.areas) do

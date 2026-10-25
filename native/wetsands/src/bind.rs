@@ -12,7 +12,7 @@ use crate::search::{RouteSearch, Rules};
 use crate::walker::{Jump, Limits, Preference, Rooms, Step, Walker};
 use foundation::astar::Status;
 use foundation::lua::{
-    api, each, field_number, field_truthy, push_str, raise, raise_owned, set_function, string_at, CFunction, GLOBALSINDEX,
+    api, each, field_number, field_truthy, push_str, raise, raise_owned, set_function, string_at, CFunction,
     L, TFUNCTION, TNIL, TNUMBER, TTABLE,
 };
 use foundation::userdata::{self, Native};
@@ -582,27 +582,19 @@ unsafe fn module(l: L) {
     set_function(l, c"New", search_new);
     set_function(l, c"Distances", distances);
     set_function(l, c"Walker", walker_new);
+    (api.pushnumber)(l, crate::walker::NO_ROOM as f64);
+    (api.setfield)(l, -2, c"NO_ROOM".as_ptr());
 }
 
-/// GMod's entry point: installs the module over `wetsands.navsearch`, the
-/// global the Lua twin was published to (the server requires the module
-/// after foundation's indexes have run).
+/// GMod's entry point: provides the module at `wetsands.navsearch` before
+/// foundation's indexes run, where the index's Twin keeps it.
 #[no_mangle]
 pub unsafe extern "C-unwind" fn gmod13_open(l: L) -> c_int {
     if foundation::lua::open().is_err() {
         return 0;
     }
-    let api = api();
-    (api.getfield)(l, GLOBALSINDEX, c"wetsands".as_ptr());
-    if (api.type_of)(l, -1) != TTABLE {
-        (api.settop)(l, -2);
-        (api.createtable)(l, 0, 1);
-        (api.pushvalue)(l, -1);
-        (api.setfield)(l, GLOBALSINDEX, c"wetsands".as_ptr());
-    }
     module(l);
-    (api.setfield)(l, -2, c"navsearch".as_ptr());
-    (api.settop)(l, -2);
+    foundation::module::provide(l, Some(c"wetsands"), c"navsearch");
     0
 }
 
@@ -612,13 +604,19 @@ pub unsafe extern "C-unwind" fn gmod13_close(_l: L) -> c_int {
 }
 
 /// Stock Lua's entry point (`package.loadlib`), for the LuaJIT tests:
-/// returns the module's table, installing nothing, so the Lua twin stays
+/// returns the module's table laid out as the globals (`.wetsands.navsearch`),
+/// installing nothing, so the Lua twin stays
 /// beside it as the oracle.
 #[no_mangle]
 pub unsafe extern "C-unwind" fn luaopen_wetsands(l: L) -> c_int {
     if foundation::lua::open().is_err() {
         return 0;
     }
+    let api = api();
+    (api.createtable)(l, 0, 1);
+    (api.createtable)(l, 0, 1);
     module(l);
+    (api.setfield)(l, -2, c"navsearch".as_ptr());
+    (api.setfield)(l, -2, c"wetsands".as_ptr());
     1
 }
