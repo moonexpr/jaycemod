@@ -1,9 +1,8 @@
 -- Convar values saved as cfg text, one `name "value"` a line, and read back
 -- (through parsers.consolecfg: comments skipped, chained commands refused)
 -- only for the names asked for, so a file edited by hand sets nothing else.
--- Core-rule exception: stays Lua. Its one caller saves and loads the
--- client's settings; native/foundation is a server module, so a client
--- caller cannot gain from it.
+-- This is the Lua twin, which clients run; a server with native/foundation
+-- has the native one in its place, which keeps this contract.
 local concat, format, ipairs, match = table.concat, string.format, ipairs, string.match
 local ConsoleCfg = encoding.consolecfg
 module(...)

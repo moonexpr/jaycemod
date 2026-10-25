@@ -8,8 +8,8 @@
 --   c:Whitespace() -> the blank space skipped, or nil
 --   c:Save(), c:Restore() (back to the saved position), c:Commit() (keep it)
 --   c:Position(), c:AtEnd(), c:Rest()
--- Core-rule exception: stays Lua. A parser's per-call primitives, each
--- cheaper than a call into a native module.
+-- This is the Lua twin, which clients run; a server with native/foundation
+-- has the native one in its place, which keeps this contract.
 local find, lower, select, setmetatable, sub, unpack = string.find, string.lower, select, setmetatable, string.sub, unpack
 module(...)
 

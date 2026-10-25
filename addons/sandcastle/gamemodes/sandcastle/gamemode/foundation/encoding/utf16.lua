@@ -1,9 +1,8 @@
 -- UTF-16LE text, as Valve's resource files store it, decoded to UTF-8:
 -- Decode(raw) drops the byte-order mark, joins surrogate pairs, and ignores
 -- a trailing odd byte.
--- Core-rule exception: stays Lua. Its one caller, localization, decodes a
--- language file once, on the client; native/foundation is a server module,
--- so a client caller cannot gain from it.
+-- This is the Lua twin, which clients run; a server with native/foundation
+-- has the native one in its place, which keeps this contract.
 local Buffer = file.buffer
 local byte, char, concat = string.byte, string.char, table.concat
 module(...)
