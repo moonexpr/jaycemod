@@ -8,8 +8,8 @@
 --   memo:Fetch(key, stamp, compute) -> the value, compute(key) called only
 --     when the key holds no value for that stamp
 -- A value put by hand (Put) holds no stamp, so the next Fetch computes.
--- Core-rule exception: stays Lua. It fills cache.base's Lua hooks and calls
--- the caller's compute; see cache.base.
+-- This is the Lua twin, which clients run; a server with native/foundation
+-- has the native one in its place, which keeps this contract.
 local Cache = cache.base
 local Class = core.class
 local error = error

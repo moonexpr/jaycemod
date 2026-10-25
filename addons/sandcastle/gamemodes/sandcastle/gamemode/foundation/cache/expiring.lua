@@ -8,8 +8,8 @@
 --   cache:Prune(): every expired entry dropped and released (EXPIRED);
 --     each new entry prunes first, so the expired never pile up
 -- Reading it, walking it (cache()) and Keys never meet an expired entry.
--- Core-rule exception: stays Lua. It fills cache.base's Lua hooks, and
--- reach_memo extends it in turn; see cache.base.
+-- This is the Lua twin, which clients run; a server with native/foundation
+-- has the native one in its place, which keeps this contract.
 local Cache = cache.base
 local Class = core.class
 local Port = core.port

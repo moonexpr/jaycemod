@@ -45,10 +45,8 @@
 -- keep their own fields in State(cache) (order: the chain; keys, values: by
 -- slot), and may call DropSlot(slot, reason). A subclass's own Destroy runs
 -- before this one, while the entries are still held.
--- Core-rule exception: stays Lua. A template whose subclasses fill Lua hooks
--- (reach_memo extends it with core.class), holding Lua values and a release
--- callback each; a native userdata could not be subclassed, and its slots
--- and chain measured under a native call's cost.
+-- This is the Lua twin, which clients run; a server with native/foundation
+-- has the native one in its place, which keeps this contract.
 local Class = core.class
 local Slots = list.slots
 local Chain = list.chain

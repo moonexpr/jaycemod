@@ -66,7 +66,7 @@ const INHERITED: &[&CStr] = &[
 ];
 
 /// class.Extend(parent, fields) -> a class
-unsafe extern "C-unwind" fn extend(l: L) -> c_int {
+pub(super) unsafe extern "C-unwind" fn extend(l: L) -> c_int {
     let api = api();
     (api.settop)(l, 2);
     let has_parent = (api.type_of)(l, 1) == TTABLE;
@@ -229,7 +229,7 @@ unsafe extern "C-unwind" fn construct(l: L) -> c_int {
 }
 
 /// class.Destroy(instance, ...): each own Destroy, most derived first
-unsafe extern "C-unwind" fn destroy(l: L) -> c_int {
+pub(super) unsafe extern "C-unwind" fn destroy(l: L) -> c_int {
     let api = api();
     let n = (api.gettop)(l);
     if (api.getmetatable)(l, 1) == 0 {
@@ -270,7 +270,7 @@ unsafe fn port_meta(l: L) {
 }
 
 /// port.New(name, methods) -> a port
-unsafe extern "C-unwind" fn port_new(l: L) -> c_int {
+pub(super) unsafe extern "C-unwind" fn port_new(l: L) -> c_int {
     let api = api();
     (api.settop)(l, 2);
     let name = string_at(l, 1).filter(|n| !n.is_empty()).map(|n| String::from_utf8_lossy(n).into_owned());
@@ -345,7 +345,7 @@ unsafe fn methods_of(l: L) -> c_int {
     (api.gettop)(l)
 }
 
-unsafe extern "C-unwind" fn port_check(l: L) -> c_int {
+pub(super) unsafe extern "C-unwind" fn port_check(l: L) -> c_int {
     let api = api();
     (api.settop)(l, 2);
     let list = methods_of(l);
@@ -580,7 +580,7 @@ unsafe extern "C-unwind" fn set_names(l: L) -> c_int {
 
 /// Calls core.class.Construct on the class at `class` with the arguments at
 /// `first`..top, as the Lua twin's New does through Class.Construct.
-unsafe fn construct_through(l: L, class: c_int, first: c_int) -> c_int {
+pub(super) unsafe fn construct_through(l: L, class: c_int, first: c_int) -> c_int {
     let api = api();
     let top = (api.gettop)(l);
     (api.pushcclosure)(l, construct, 0);

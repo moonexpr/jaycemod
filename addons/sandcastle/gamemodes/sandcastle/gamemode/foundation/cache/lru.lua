@@ -3,8 +3,8 @@
 -- the front, so the one past the capacity is the one longest unused. Peek
 -- reads without counting as a use.
 --   New(options): options as the cache's, capacity required
--- Core-rule exception: stays Lua. It fills cache.base's Lua hooks; see
--- there.
+-- This is the Lua twin, which clients run; a server with native/foundation
+-- has the native one in its place, which keeps this contract.
 local Cache = cache.base
 local Class = core.class
 local error = error
