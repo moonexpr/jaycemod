@@ -553,7 +553,9 @@ pub unsafe fn push_modules(l: L) {
     (api.setfield)(l, -2, c"slots".as_ptr());
     module::push(l, &[(c"New", chain_new)], None);
     (api.setfield)(l, -2, c"chain".as_ptr());
+    super::schedule::push_module(l);
+    (api.setfield)(l, -2, c"schedule".as_ptr());
 }
 
 /// The names push_modules sets, for provide.
-pub const NAMES: &[&CStr] = &[c"queue", c"ring", c"slots", c"chain"];
+pub const NAMES: &[&CStr] = &[c"queue", c"ring", c"slots", c"chain", c"schedule"];

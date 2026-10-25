@@ -17,8 +17,8 @@
 --
 -- TODO: accept a greedy sorter, a function the caller hands to New that
 -- picks which ready task runs next, in place of first in first out.
--- Core-rule exception: stays Lua. Its tasks are Lua coroutines, which only
--- Lua can resume; nothing to gain natively.
+-- This is the Lua twin, which clients run; a server with native/foundation
+-- has the native one in its place, which keeps this contract.
 local coroutine, error, select, setmetatable, tostring, unpack = coroutine, error, select, setmetatable, tostring, unpack
 local traceback = debug.traceback
 local Queue = list.queue

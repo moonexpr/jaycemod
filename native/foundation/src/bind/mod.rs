@@ -10,6 +10,7 @@ mod math;
 mod util;
 mod world;
 mod nodegraph;
+mod schedule;
 mod pathfinder;
 mod search;
 mod slots;

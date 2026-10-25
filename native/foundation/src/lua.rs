@@ -72,6 +72,8 @@ api! {
     replace: fn(L, c_int) = c"lua_replace";
     insert: fn(L, c_int) = c"lua_insert";
     gettable: fn(L, c_int) = c"lua_gettable";
+    yield_: fn(L, c_int) -> c_int = c"lua_yield";
+    pushthread: fn(L) -> c_int = c"lua_pushthread";
     equal: fn(L, c_int, c_int) -> c_int = c"lua_equal";
     rawequal: fn(L, c_int, c_int) -> c_int = c"lua_rawequal";
     lessthan: fn(L, c_int, c_int) -> c_int = c"lua_lessthan";

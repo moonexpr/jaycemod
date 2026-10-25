@@ -92,17 +92,17 @@ T.test("a task may give up its turn before the slice is spent", function()
 end)
 
 T.test("a waiting task is parked until its condition holds, without spinning the slice", function()
-	local clock = Clock(0)
+	-- a clock that counts its reads once counting starts
+	local calls, counting = 0, false
+	local clock = { Now = function() if counting then calls = calls + 1 end return 0 end }
 	local scheduler = Scheduler.New(clock)
 	local ready, log = false, {}
 	scheduler:Spawn(function()
 		scheduler:Wait(function() return ready end)
 		log[#log + 1] = "woke"
 	end)
-	local calls = 0
-	local counting = { Now = function() calls = calls + 1; return 0 end }
-	scheduler.clock = counting
 	scheduler:Run(1)
+	counting = true
 	scheduler:Run(1)
 	T.eq(#log, 0, "still parked")
 	T.eq(calls < 10, true, "a run with only parked tasks returns at once")
