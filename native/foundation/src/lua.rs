@@ -62,6 +62,7 @@ api! {
     pushboolean: fn(L, c_int) = c"lua_pushboolean";
     toboolean: fn(L, c_int) -> c_int = c"lua_toboolean";
     call: fn(L, c_int, c_int) = c"lua_call";
+    pcall: fn(L, c_int, c_int, c_int) -> c_int = c"lua_pcall";
     pushcclosure: fn(L, CFunction, c_int) = c"lua_pushcclosure";
     createtable: fn(L, c_int, c_int) = c"lua_createtable";
     getfield: fn(L, c_int, *const c_char) = c"lua_getfield";

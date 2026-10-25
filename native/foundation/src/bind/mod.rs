@@ -19,6 +19,7 @@ mod state_machine;
 mod pathfinder;
 mod search;
 mod slots;
+mod transaction;
 
 use crate::lua::{api, set_function, CFunction, L};
 use std::ffi::{c_int, CStr};
@@ -66,6 +67,8 @@ unsafe fn module(l: L) {
     (api.setfield)(l, -2, c"nodegraph".as_ptr());
     configstore::push_module(l);
     (api.setfield)(l, -2, c"configstore".as_ptr());
+    transaction::push_module(l);
+    (api.setfield)(l, -2, c"transaction".as_ptr());
     namespace(l, c"list", list::push_modules);
     namespace(l, c"world", world::push_modules);
     namespace(l, c"math", math::push_modules);
@@ -124,6 +127,8 @@ unsafe fn provide(l: L) {
     crate::module::provide(l, None, c"nodegraph");
     configstore::push_module(l);
     crate::module::provide(l, None, c"configstore");
+    transaction::push_module(l);
+    crate::module::provide(l, None, c"transaction");
     provide_all(l, c"world", world::push_modules, world::NAMES);
     provide_all(l, c"math", math::push_modules, math::NAMES);
     provide_all(l, c"core", core::push_modules, core::NAMES);

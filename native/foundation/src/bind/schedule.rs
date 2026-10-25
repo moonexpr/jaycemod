@@ -47,7 +47,7 @@ unsafe extern "C-unwind" fn new(l: L) -> c_int {
     (api.getfenv)(l, -1);
     (api.pushvalue)(l, 1);
     (api.setfield)(l, -2, c"clock".as_ptr());
-    for name in [c"threads", c"args", c"waiting"] {
+    for name in [c"threads", c"args", c"waiting", c"finish", c"awaiting"] {
         (api.createtable)(l, 0, 0);
         (api.setfield)(l, -2, name.as_ptr());
     }
@@ -92,8 +92,13 @@ unsafe fn forget(l: L, table: &CStr, task: u32) {
 
 /// scheduler:Spawn(fn, ...) -> the task (its coroutine), run from the next Run
 unsafe extern "C-unwind" fn spawn(l: L) -> c_int {
+    spawn_frame(l, (api().gettop)(l))
+}
+
+/// Spawns the task of the scheduler at 1, the function at 2 and its
+/// arguments at 3..n; values above n are left alone. Pushes the task.
+unsafe fn spawn_frame(l: L, n: c_int) -> c_int {
     let api = api();
-    let n = (api.gettop)(l);
     let s = userdata::check::<Scheduler>(l, 1);
     s.next += 1;
     let task = s.next;
@@ -165,9 +170,26 @@ unsafe extern "C-unwind" fn wait(l: L) -> c_int {
     (api.yield_)(l, 0)
 }
 
-/// Whether the task may run: not parked, or its condition now holds.
+/// Whether the transaction at `tx` has settled (its state is not pending).
+unsafe fn settled(l: L, tx: c_int) -> bool {
+    let api = api();
+    (api.getfield)(l, tx, c"state".as_ptr());
+    let pending = crate::lua::string_at(l, -1) == Some(b"pending".as_slice());
+    (api.settop)(l, -2);
+    !pending
+}
+
+/// Whether the task may run: not parked, or its condition now holds (its
+/// condition function, or the transaction it awaits settled).
 unsafe fn may_run(l: L, task: u32) -> bool {
     let api = api();
+    fetch(l, c"awaiting", task);
+    if (api.type_of)(l, -1) != TNIL {
+        let ready = settled(l, (api.gettop)(l));
+        (api.settop)(l, -2);
+        return ready;
+    }
+    (api.settop)(l, -2);
     fetch(l, c"waiting", task);
     if (api.type_of)(l, -1) == TNIL {
         (api.settop)(l, -2);
@@ -179,8 +201,9 @@ unsafe fn may_run(l: L, task: u32) -> bool {
     ready
 }
 
-/// Resumes the task: (ok, err) left on the stack, and the coroutine below.
-unsafe fn resume(l: L, task: u32) {
+/// Resumes the task with the value at `with` (else true, or its arguments
+/// on its first run): the coroutine, then (ok, results...) left on the stack.
+unsafe fn resume(l: L, task: u32, with: Option<c_int>) {
     let api = api();
     let started = !userdata::check::<Scheduler>(l, 1).started.insert(task);
     (api.getfield)(l, GLOBALSINDEX, c"coroutine".as_ptr());
@@ -191,8 +214,11 @@ unsafe fn resume(l: L, task: u32) {
     (api.insert)(l, -3);
     let mut nargs = 1;
     if started {
-        // what CheckYield and Yield return to the task, as the Lua twin's do
-        (api.pushboolean)(l, 1);
+        match with {
+            // what CheckYield and Yield return to the task, as the Lua twin's do
+            None => (api.pushboolean)(l, 1),
+            Some(value) => (api.pushvalue)(l, value),
+        }
         nargs += 1;
     } else {
         fetch(l, c"args", task);
@@ -207,7 +233,7 @@ unsafe fn resume(l: L, task: u32) {
         nargs += n;
         forget(l, c"args", task);
     }
-    (api.call)(l, nargs, 2);
+    (api.call)(l, nargs, -1);
 }
 
 /// Whether the coroutine at `index` has finished.
@@ -223,11 +249,97 @@ unsafe fn dead(l: L, index: c_int) -> bool {
     status
 }
 
+/// Forgets a task that has ended.
 unsafe fn finish(l: L, task: u32) {
-    forget(l, c"threads", task);
-    forget(l, c"waiting", task);
-    forget(l, c"args", task);
+    for table in [c"threads", c"waiting", c"args", c"finish", c"awaiting"] {
+        forget(l, table, task);
+    }
     userdata::check::<Scheduler>(l, 1).started.remove(&task);
+}
+
+/// Hands a task's outcome (ok, then the values from `first` to the top) to
+/// its finish handler, when it has one; whether it had.
+unsafe fn hand_over(l: L, task: u32, ok: bool, first: c_int) -> bool {
+    let api = api();
+    let top = (api.gettop)(l);
+    fetch(l, c"finish", task);
+    if (api.type_of)(l, -1) == TNIL {
+        (api.settop)(l, top);
+        return false;
+    }
+    (api.pushboolean)(l, ok as c_int);
+    for i in first..=top {
+        (api.pushvalue)(l, i);
+    }
+    finish(l, task);
+    (api.call)(l, top - first + 2, 0);
+    (api.settop)(l, top);
+    true
+}
+
+/// A task's error raised from Run, as the Lua twin raises it (a traceback
+/// of the coroutine at `thread`, the error at `err`).
+unsafe fn raise_task_error(l: L, thread: c_int, err: c_int) -> ! {
+    let api = api();
+    (api.getfield)(l, GLOBALSINDEX, c"debug".as_ptr());
+    (api.getfield)(l, -1, c"traceback".as_ptr());
+    (api.pushvalue)(l, thread);
+    crate::lua::push_tostring(l, err);
+    (api.call)(l, 2, 1);
+    (api.error)(l);
+    unreachable!("lua_error does not return")
+}
+
+/// Runs one task: resumed (or, awaiting a transaction that declined or
+/// failed, ended with its refusal or error, as an uncaught raise would end
+/// it), then handed over, requeued or forgotten.
+unsafe fn step_task(l: L, task: u32) {
+    let api = api();
+    let base = (api.gettop)(l);
+    fetch(l, c"awaiting", task);
+    let tx = (api.gettop)(l);
+    let mut with = None;
+    if (api.type_of)(l, tx) != TNIL {
+        forget(l, c"awaiting", task);
+        (api.getfield)(l, tx, c"state".as_ptr());
+        let committed = crate::lua::string_at(l, -1) == Some(b"committed".as_slice());
+        let declined = crate::lua::string_at(l, -1) == Some(b"declined".as_slice());
+        (api.settop)(l, tx);
+        if committed {
+            (api.getfield)(l, tx, c"value".as_ptr());
+            with = Some((api.gettop)(l));
+        } else {
+            (api.getfield)(l, tx, if declined { c"refusal".as_ptr() } else { c"err".as_ptr() });
+            let err = (api.gettop)(l);
+            if !hand_over(l, task, false, err) {
+                fetch(l, c"threads", task);
+                let thread = (api.gettop)(l);
+                finish(l, task);
+                raise_task_error(l, thread, err);
+            }
+            (api.settop)(l, base);
+            return;
+        }
+    }
+    userdata::check::<Scheduler>(l, 1).current = Some(task);
+    let before = (api.gettop)(l);
+    resume(l, task, with);
+    userdata::check::<Scheduler>(l, 1).current = None;
+    let thread = before + 1;
+    let ok = (api.toboolean)(l, thread + 1) != 0;
+    if !ok {
+        if !hand_over(l, task, false, thread + 2) {
+            finish(l, task);
+            raise_task_error(l, thread, thread + 2);
+        }
+    } else if dead(l, thread) {
+        if !hand_over(l, task, true, thread + 2) {
+            finish(l, task);
+        }
+    } else {
+        userdata::check::<Scheduler>(l, 1).tasks.push_back(task);
+    }
+    (api.settop)(l, base);
 }
 
 /// scheduler:Run(seconds): the tasks in turn until the slice is spent or
@@ -249,26 +361,7 @@ unsafe extern "C-unwind" fn run(l: L) -> c_int {
         } else {
             forget(l, c"waiting", task);
             parked = 0;
-            userdata::check::<Scheduler>(l, 1).current = Some(task);
-            resume(l, task);
-            userdata::check::<Scheduler>(l, 1).current = None;
-            let ok = (api.toboolean)(l, -2) != 0;
-            if !ok {
-                finish(l, task);
-                let (thread, err) = (3, 5);
-                (api.getfield)(l, GLOBALSINDEX, c"debug".as_ptr());
-                (api.getfield)(l, -1, c"traceback".as_ptr());
-                (api.pushvalue)(l, thread);
-                crate::lua::push_tostring(l, err);
-                (api.call)(l, 2, 1);
-                (api.error)(l);
-            }
-            if dead(l, -3) {
-                finish(l, task);
-            } else {
-                userdata::check::<Scheduler>(l, 1).tasks.push_back(task);
-            }
-            (api.settop)(l, 2);
+            step_task(l, task);
         }
         let size = userdata::check::<Scheduler>(l, 1).tasks.len();
         if size == 0 || parked >= size || now(l) >= deadline {
@@ -276,6 +369,32 @@ unsafe extern "C-unwind" fn run(l: L) -> c_int {
         }
     }
     0
+}
+
+/// For transaction.Spawn: spawns the function at 2 with the arguments from
+/// 3 to `last` as a task of the scheduler at 1, whose outcome goes to the
+/// handler at `last + 1` (handler(ok, ...)) instead of being raised by Run.
+/// Values above `last + 1` are left where they are.
+pub(super) unsafe fn spawn_finishing(l: L, last: c_int) {
+    let api = api();
+    let task = userdata::check::<Scheduler>(l, 1).next + 1;
+    (api.pushvalue)(l, last + 1);
+    store(l, c"finish", task);
+    spawn_frame(l, last);
+}
+
+/// For transaction's Await: parks the running task of the scheduler at 1
+/// until the transaction at 2 settles; the C function calling returns this.
+pub(super) unsafe fn park_on(l: L) -> c_int {
+    let api = api();
+    if !in_task(l) {
+        raise_where(l, "only a running task can wait".into());
+    }
+    let task = userdata::check::<Scheduler>(l, 1).current.unwrap_or_default();
+    (api.pushvalue)(l, 2);
+    store(l, c"awaiting", task);
+    (api.settop)(l, 0);
+    (api.yield_)(l, 0)
 }
 
 unsafe extern "C-unwind" fn count(l: L) -> c_int {

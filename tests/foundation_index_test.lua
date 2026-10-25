@@ -125,7 +125,7 @@ T.test("foundation's indexes publish each module of their folder at once", funct
 			T.eq(rawget(ns, key), T.require(name), folder .. key .. " is published")
 		end
 	end
-	T.eq(globals.transaction, transaction, "a root module is a plain global")
+	T.eq(rawget(globals, "transaction"), package.loaded["foundation.transaction"], "a root module is a plain global")
 end)
 
 T.test("game's inits publish each module of their folder, loaded on first read", function()

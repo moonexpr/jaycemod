@@ -42,8 +42,8 @@
 -- given the kinds that are the caller's mistake, a decline of any other kind
 -- (our bug) is told as failed. A
 -- scheduler is handed to Await and Spawn, never required here.
--- Core-rule exception: stays Lua. Lua values, callbacks and coroutines
--- throughout; a native ledger would hand every value back to Lua.
+-- This is the Lua twin, which clients run; a server with native/foundation
+-- has the native one in its place, which keeps this contract.
 local error, ipairs, pairs, pcall, setmetatable, tostring, type = error, ipairs, pairs, pcall, setmetatable, tostring, type
 module(...)
 
