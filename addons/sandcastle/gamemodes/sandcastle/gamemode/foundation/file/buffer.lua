@@ -17,6 +17,9 @@
 -- Reading. Reader(data) -> r: r:Byte(), r:Int16(), r:UInt16(), r:Int32(),
 -- r:Float32(), r:Varint(), r:String() read the next value; r:Consumed() is
 -- how many bytes it has read.
+-- Core-rule exception: stays Lua. Its server callers run once (Crc32 of an
+-- event's name when it is defined, nodegraph's Encode and Decode once a
+-- build, route_record's dev recordings); nothing encodes per tick.
 local bit, byte, char, floor, frexp, huge, ldexp = bit, string.byte, string.char, math.floor, math.frexp, math.huge, math.ldexp
 local sub = string.sub
 local concat, error, setmetatable, tostring, type = table.concat, error, setmetatable, tostring, type

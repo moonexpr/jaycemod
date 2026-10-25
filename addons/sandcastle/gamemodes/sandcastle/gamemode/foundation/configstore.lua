@@ -17,6 +17,8 @@
 --                                rounded to a whole number, or nil and why
 -- Storing a key twice, an empty or fractional range, or a key or guard
 -- that is not a name is the caller's mistake.
+-- Core-rule exception: stays Lua. Read when a menu opens or a setting
+-- changes, with guards that are Lua predicates; nothing per tick.
 local error, floor, format, setmetatable, sort, tonumber, tostring, type =
 	error, math.floor, string.format, setmetatable, table.sort, tonumber, tostring, type
 module(...)

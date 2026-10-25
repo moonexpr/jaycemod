@@ -5,6 +5,10 @@
 -- Read(text, visit) calls visit(path, key, value) for each pair in order,
 -- path the keys of the blocks it is in, outermost first, as written (""
 -- for a block with no key before it). The path is reused: copy it to keep it.
+-- Core-rule exception: stays Lua. Read visits each key through the caller's
+-- function, and its callers (localization, kill icons) read a file once, on
+-- the client; native/foundation is a server module, so a client caller
+-- cannot gain from it.
 local byte, concat, sub = string.byte, table.concat, string.sub
 module(...)
 

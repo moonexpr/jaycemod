@@ -4,6 +4,8 @@
 -- line, `//` comments and blank lines skipped, a `//` inside quotes kept as
 -- text. A line chaining commands with `;` outside quotes is refused, so a
 -- config line can run one command and nothing more.
+-- Core-rule exception: stays Lua. Read once, when the server applies its
+-- defaults.
 local sub = string.sub
 module(...)
 

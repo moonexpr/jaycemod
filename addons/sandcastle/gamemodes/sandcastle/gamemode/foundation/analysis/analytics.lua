@@ -15,6 +15,8 @@
 -- reads CPU-side wall time at sub-millisecond resolution) and
 -- memory:Kilobytes() (collectgarbage("count")). Recording allocates only a
 -- name's first sample, so a timer can wrap per-tick work.
+-- Core-rule exception: stays Lua. Its timers and counters run when a report
+-- is asked for (ws_analytics), and its clock and memory are Lua ports.
 local Ring = list.ring
 local Stats = math.stats
 local error, ipairs, pairs, setmetatable = error, ipairs, pairs, setmetatable

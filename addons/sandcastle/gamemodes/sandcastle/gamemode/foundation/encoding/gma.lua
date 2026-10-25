@@ -7,6 +7,9 @@
 --
 -- Write(name, files) -> bytes; files are { path, data }, in order.
 -- Read(bytes) -> { name, files }, refusing what is not an archive.
+-- Core-rule exception: stays Lua. Its one caller is the client's TF2 content
+-- mount; native/foundation is a server module, so a client caller cannot
+-- gain from it.
 local Buffer = file.buffer
 local concat, error, find, ipairs, sub = table.concat, error, string.find, ipairs, string.sub
 module(...)
