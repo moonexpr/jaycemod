@@ -3,9 +3,8 @@
 --   New(), q:PushBack(v), q:PushFront(v), q:PopFront(), q:PopBack(),
 --   q:Front(), q:Back() (nil when empty), q:Size(),
 --   q:Values() -> an iterator front to back (i, value)
--- Core-rule exception: stays Lua. A push or a pop costs 1.7 ns JIT-compiled;
--- a call into native/foundation costs about 15 ns (20 on the dev server;
--- docs/native-foundation-plan.md), so a native twin could only be slower.
+-- This is the Lua twin, which clients run; a server with native/foundation
+-- has the native one in its place, which keeps this contract.
 local setmetatable = setmetatable
 module(...)
 

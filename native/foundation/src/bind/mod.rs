@@ -4,6 +4,7 @@
 
 mod avl;
 mod heap;
+mod list;
 mod nodegraph;
 mod pathfinder;
 mod search;
@@ -55,7 +56,30 @@ unsafe fn module(l: L) {
     (api.createtable)(l, 0, 1);
     library(l, c"nodegraph", nodegraph::FUNCTIONS);
     (api.setfield)(l, -2, c"pending".as_ptr());
+    namespace(l, c"list", list::push_modules);
     library(l, c"probe", &[(c"Nothing", probe_nothing), (c"Add", probe_add)]);
+}
+
+/// Pushes a table of a namespace's native modules (filled by `push`) into the
+/// table at the top of the stack, as `name`.
+unsafe fn namespace(l: L, name: &CStr, push: unsafe fn(L)) {
+    let api = api();
+    (api.createtable)(l, 0, 8);
+    push(l);
+    (api.setfield)(l, -2, name.as_ptr());
+}
+
+/// Provides each of a namespace's native modules (filled by `push`, keyed by
+/// `names`) at `namespace.<name>`.
+unsafe fn provide_all(l: L, namespace: &CStr, push: unsafe fn(L), names: &[&CStr]) {
+    let api = api();
+    (api.createtable)(l, 0, names.len() as c_int);
+    push(l);
+    for name in names {
+        (api.getfield)(l, -1, name.as_ptr());
+        crate::module::provide(l, Some(namespace), name);
+    }
+    (api.settop)(l, -2);
 }
 
 /// Provides each native twin that is whole at its Lua twin's global, before
@@ -69,6 +93,7 @@ unsafe fn provide(l: L) {
     crate::module::provide(l, Some(c"graph"), c"pathfinder");
     search::push_module(l);
     crate::module::provide(l, Some(c"graph"), c"search");
+    provide_all(l, c"list", list::push_modules, list::NAMES);
 }
 
 /// GMod's entry point: the server requires the module before foundation's

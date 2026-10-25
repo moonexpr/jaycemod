@@ -155,7 +155,7 @@ T.test("running the indexes again, as a reload does, is not refused", function()
 	local globals = Globals()
 	RunIndexes(globals)
 	RunIndexes(globals)
-	T.eq(globals.list.queue, _G.list.queue, "list.queue")
+	T.eq(globals.list.queue, package.loaded["foundation.list.queue"], "list.queue: the Lua twin, as no binary module put one first")
 	T.eq(globals.list.drawlist, _G.list.drawlist, "list.drawlist")
 end)
 

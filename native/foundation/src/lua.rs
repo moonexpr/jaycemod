@@ -68,6 +68,9 @@ api! {
     rawgeti: fn(L, c_int, c_int) = c"lua_rawgeti";
     rawget: fn(L, c_int) = c"lua_rawget";
     rawset: fn(L, c_int) = c"lua_rawset";
+    concat: fn(L, c_int) = c"lua_concat";
+    replace: fn(L, c_int) = c"lua_replace";
+    where_: fn(L, c_int) = c"luaL_where";
     next: fn(L, c_int) -> c_int = c"lua_next";
     getmetatable: fn(L, c_int) -> c_int = c"lua_getmetatable";
     getfenv: fn(L, c_int) = c"lua_getfenv";
@@ -225,4 +228,43 @@ pub unsafe fn raise(l: L, message: &CStr) -> ! {
     (api.pushlstring)(l, bytes.as_ptr().cast(), bytes.len());
     (api.error)(l);
     unreachable!("lua_error does not return")
+}
+
+/// A Lua error with `message` after the position of the Lua code that
+/// called the running C function ("file:line: "), as Lua's error(message,
+/// 2) gives from inside a Lua function; it never returns.
+///
+/// # Safety
+/// As `raise`.
+pub unsafe fn raise_where(l: L, message: String) -> ! {
+    let api = api();
+    (api.where_)(l, 1);
+    push_str(l, &message);
+    drop(message);
+    (api.concat)(l, 2);
+    (api.error)(l);
+    unreachable!("lua_error does not return")
+}
+
+/// Pushes tostring(value at `index`), as Lua's tostring gives it.
+///
+/// # Safety
+/// `l` is a live state, after `open`.
+pub unsafe fn push_tostring(l: L, index: c_int) {
+    let api = api();
+    let index = if index < 0 && index > GLOBALSINDEX { (api.gettop)(l) + index + 1 } else { index };
+    (api.getfield)(l, GLOBALSINDEX, c"tostring".as_ptr());
+    (api.pushvalue)(l, index);
+    (api.call)(l, 1, 1);
+}
+
+/// tostring(value at `index`), as an owned string.
+///
+/// # Safety
+/// As `push_tostring`.
+pub unsafe fn tostring(l: L, index: c_int) -> String {
+    push_tostring(l, index);
+    let text = string_at(l, -1).map(|b| String::from_utf8_lossy(b).into_owned()).unwrap_or_default();
+    (api().settop)(l, -2);
+    text
 }

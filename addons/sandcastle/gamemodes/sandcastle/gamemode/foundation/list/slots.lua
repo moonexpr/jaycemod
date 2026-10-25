@@ -7,10 +7,8 @@
 --   __len), pool:High() (the most ever handed out), pool:Clear() (every
 --   slot taken back), tostring(pool)
 -- Freeing a slot not in use is our bug, refused.
--- Core-rule exception: stays Lua. An alloc or a free costs 15 ns JIT-
--- compiled (24 on the dev server); a call into native/foundation costs about
--- 15 ns (20 on the dev server; docs/native-foundation-plan.md), so a native
--- twin would at best tie.
+-- This is the Lua twin, which clients run; a server with native/foundation
+-- has the native one in its place, which keeps this contract.
 local error, setmetatable, tostring = error, setmetatable, tostring
 module(...)
 

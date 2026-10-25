@@ -11,10 +11,8 @@
 --   tostring(chain)
 -- Linking a member twice, unlinking a stranger or a slot that is no whole
 -- number of at least 1 is our bug, refused.
--- Core-rule exception: stays Lua. A link or an unlink costs 6 to 7 ns JIT-
--- compiled; a call into native/foundation costs about 15 ns (20 on the dev
--- server; docs/native-foundation-plan.md), so a native twin could only be
--- slower.
+-- This is the Lua twin, which clients run; a server with native/foundation
+-- has the native one in its place, which keeps this contract.
 local concat, error, floor, setmetatable, tostring, type = table.concat, error, math.floor, setmetatable, tostring, type
 module(...)
 
