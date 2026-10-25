@@ -5,6 +5,7 @@
 mod avl;
 mod codec;
 mod configstore;
+mod core;
 mod heap;
 mod list;
 mod math;
@@ -65,6 +66,7 @@ unsafe fn module(l: L) {
     namespace(l, c"list", list::push_modules);
     namespace(l, c"world", world::push_modules);
     namespace(l, c"math", math::push_modules);
+    namespace(l, c"core", core::push_modules);
     namespace(l, c"file", codec::push_file);
     namespace(l, c"encoding", codec::push_encoding);
     library(l, c"probe", &[(c"Nothing", probe_nothing), (c"Add", probe_add)]);
@@ -110,6 +112,7 @@ unsafe fn provide(l: L) {
     crate::module::provide(l, None, c"configstore");
     provide_all(l, c"world", world::push_modules, world::NAMES);
     provide_all(l, c"math", math::push_modules, math::NAMES);
+    provide_all(l, c"core", core::push_modules, core::NAMES);
     provide_all(l, c"file", codec::push_file, codec::FILE_NAMES);
     provide_all(l, c"encoding", codec::push_encoding, codec::ENCODING_NAMES);
 }

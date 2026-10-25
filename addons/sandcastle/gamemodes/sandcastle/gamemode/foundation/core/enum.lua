@@ -16,8 +16,8 @@
 --   enum:First(), enum:Last(), enum:Count() (#enum where # honours __len):
 --                      a convar's bounds
 --   enum:Names()       the names in value order, a fresh list
--- Core-rule exception: stays Lua. A constant read is one plain-table index
--- by design, faster than any call.
+-- This is the Lua twin, which clients run; a server with native/foundation
+-- has the native one in its place, which keeps this contract.
 local Class = core.class
 local Constants = core.constants
 local concat, error, floor, ipairs, rawget, setmetatable, tostring, type = table.concat, error, math.floor, ipairs, rawget, setmetatable, tostring, type

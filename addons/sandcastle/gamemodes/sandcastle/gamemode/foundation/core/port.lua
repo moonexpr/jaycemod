@@ -13,8 +13,8 @@
 --   port:Methods()      the method names in order, a fresh list
 --   port:Name()         what errors call it
 -- Is(value) says whether value is a port.
--- Core-rule exception: stays Lua. A metatable mechanism over Lua tables;
--- nothing to gain natively.
+-- This is the Lua twin, which clients run; a server with native/foundation
+-- has the native one in its place, which keeps this contract.
 local Sets = world.sets
 local error, getmetatable, ipairs, setmetatable, tostring, type = error, getmetatable, ipairs, setmetatable, tostring, type
 local concat = table.concat

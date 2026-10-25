@@ -15,8 +15,8 @@
 -- Guard(class, check) -> class: each new key assigned on its subclasses
 --   (at any depth) or their instances is first put to check(key, value),
 --   which refuses it by returning why; the class's own keys are its own
--- Core-rule exception: stays Lua. A metatable mechanism over Lua tables;
--- nothing to gain natively.
+-- This is the Lua twin, which clients run; a server with native/foundation
+-- has the native one in its place, which keeps this contract.
 local error, getmetatable, ipairs, pairs, rawget, rawset, setmetatable, type = error, getmetatable, ipairs, pairs, rawget, rawset, setmetatable, type
 module(...)
 
