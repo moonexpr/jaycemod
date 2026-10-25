@@ -160,6 +160,46 @@ one. Threads fit better whole-mesh jobs a frame cannot hold (lane
 planning's floods over every area, the node graph build), once they
 are native.
 
+## Detouring the engine's functions
+
+A binary module can also hook the engine's own functions: find one in
+`server.dll`, patch its entry to jump to ours, and keep a trampoline to
+the original (https://gmodwiki.com/Binary_Modules_Detouring_Functions,
+garrysmod_common's `Detouring::Hook`; in Rust the `retour` crate's
+`RawDetour`, which builds on stable). It is a different lever from
+everything above: the twins make Lua's own work faster, a detour replaces
+or skips engine work.
+
+What the dev server says (instance 1, cp_spookeyridge, the AI war with
+16 DrGBase soldiers, `wsprofile` sampling every millisecond for 30 s):
+the server runs at 74 FPS on about 28 % of a core, and Lua (compiled,
+interpreted, the GC and the JIT together) is about 4 % of a core; the
+rest of the samples are time outside the VM, which LuaJIT's profiler
+charges to the next Lua entry (`hook.Call`), so they read as one line of
+ULib's hook.lua. Most of the server's work is the engine's (physics,
+NPC and NextBot movement, traces), not Lua's.
+
+So a detour is worth its cost only aimed at an engine hot path we can
+replace with something faster, and nothing yet names one: the Windows
+`server.dll` exports almost nothing (a 1 KB export table, no symbols) and
+runs translated under Rosetta, so its time cannot yet be attributed to
+functions. Its RTTI type descriptors are present (`.?AVCNavArea@@`),
+which locate a class's vtable more robustly than a byte signature,
+though either breaks when GMod updates the binary. Before any detour:
+
+1. an engine-side profile that names the function (symbols from the
+   Linux `server_srv.so` of the same build, matched to the Windows code by
+   its RTTI or strings);
+2. the drop-in rule kept: a target not found leaves the engine as it was,
+   and the Lua and engine paths stay the oracle;
+3. the patch made and undone in `gmod13_open`/`gmod13_close`, since a
+   changelevel reopens the module.
+
+The nearer use of the same knowledge is reading, not patching: the
+traversal state (the engine's blocked areas, the doors) read natively
+from the engine's `CNavArea`s, laid out as the vendored `nav_area.h`
+says, instead of asked of Lua per area.
+
 ## Binding
 
 The crates resolve Lua's C API by name from whatever process opened them
