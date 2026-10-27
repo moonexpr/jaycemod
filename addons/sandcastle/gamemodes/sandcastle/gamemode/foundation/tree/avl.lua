@@ -4,7 +4,7 @@
 -- node (so heights agree too).
 --   Avl() (New()) -> an empty tree
 --   tree:Insert(key, value) (a key inserted again takes the new value),
---   tree:Get(key), tree:Remove(key) -> whether it was there, tree:Size(),
+--   tree:Get(key), tree:Remove(key) -> whether it was there, tree:Size() (__len),
 --   tree:Min(), tree:Max(), tree:Floor(key), tree:Ceiling(key) -> the
 --   nearest key at or below, at or above (and its value), or nil,
 --   tree:Pairs() -> an iterator in order (key, value), not to be run across
@@ -143,6 +143,7 @@ end
 function Tree:Size()
 	return self.size
 end
+Tree.__len = Tree.Size
 
 function Tree:Height()
 	return HeightOf(self.root)
