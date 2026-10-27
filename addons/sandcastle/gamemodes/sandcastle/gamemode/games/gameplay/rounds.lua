@@ -365,7 +365,7 @@ end
 -- GetRespawnTimeScalar: a quarter of the wave for one player, all of it
 -- for OPTIMAL_TEAM_SIZE.
 local function RespawnTimeScalar(teamSize)
-	local n = math.min(math.max(teamSize, 1), OPTIMAL_TEAM_SIZE)
+	local n = math.scalar.Clamp(teamSize, 1, OPTIMAL_TEAM_SIZE)
 	return MIN_WAVE_SCALE + (n - 1) / (OPTIMAL_TEAM_SIZE - 1) * (MAX_WAVE_SCALE - MIN_WAVE_SCALE)
 end
 
@@ -528,6 +528,7 @@ function New(settings)
 		originalWaveTime = PerTeam(WAVE_TIME_UNSET),
 		adminWaveTime = PerTeam(WAVE_TIME_UNSET),
 		nextWave = PerTeam(0),
+		waveScale = PerTeam(1), -- a helped team's share of its wave (games.gameplay.handicap)
 		respawnsDisabled = false,
 		capEnableAt = nil, -- CTFGameRules's m_flCapturePointEnableTime (arena), or nil
 	}, Round)
@@ -1532,7 +1533,13 @@ function Round:WaveMaxLength(team, teamSize, scale)
 	if scale and t > MIN_SCALED_WAVE then
 		t = math.max(MIN_SCALED_WAVE, t * RespawnTimeScalar(teamSize))
 	end
-	return t
+	return t * self.waveScale[team]
+end
+
+-- A helped team's share of the wave TF2 would give it (Help Other Team,
+-- games.gameplay.handicap); 1 for every other team.
+function Round:SetWaveScale(team, scale)
+	self.waveScale[team] = scale
 end
 
 -- CTFGameRules::GetMinTimeWhenPlayerMaySpawn: the earliest a player dead
