@@ -83,6 +83,7 @@ local abs, ceil, cos, floor, max, min, pi, sin, sqrt = math.abs, math.ceil, math
 local ipairs, pairs = ipairs, pairs
 local format = string.format
 local N = npc.nextbot
+local MonitorLib = nextsoldier.monitor
 local Debug = require("features.nbdebug.model")
 local AiWar = require("features.aiwar.model")
 local Teams = gameplay.teams
@@ -1570,21 +1571,9 @@ end
 -------------------------------------------------------------------------------
 -- The monitors (docs/aiwar-command.md §1)
 
--- A monitor holds the state and contains one action.
-local function Monitor(name, contained)
-	local class = N.Action:Extend(name)
-	function class:Init(state) self.state = state end
-	function class:InitialContainedAction(me) return contained(self.state) end
-	return class
-end
-
--- A monitor that only passes through to what it contains, which the debug
--- layer's TDBN leaves out (games.npc.nextbot's Action.passthrough).
-local function PassthroughMonitor(name, contained)
-	local class = Monitor(name, contained)
-	class.passthrough = true
-	return class
-end
+-- A monitor holds the state and contains one action; a passthrough one is
+-- left out by the debug layer's TDBN (games.nextsoldier.monitor).
+local Monitor, PassthroughMonitor = MonitorLib.New, MonitorLib.Passthrough
 
 -- The side actions (PayloadAttacker, PayloadDefender, ...): each runs the
 -- member's job, and changes itself when the member's side changes.
@@ -1612,8 +1601,31 @@ local function SideFor(state)
 	return classes[side]:New(state)
 end
 
--- ScenarioMonitor: runs the member's side.
-local ScenarioMonitor = PassthroughMonitor("ScenarioMonitor", SideFor)
+-- The war's scenario entry (games.nextsoldier.scenarios), which the
+-- controller puts on the field; nil in a field without one.
+local function ScenarioOf(state)
+	return state.war:Field().scenario
+end
+
+-- ScenarioMonitor: runs the scenario's own monitor when it registered one,
+-- else the member's side; begins again when the scenario changes.
+local ScenarioMonitor = PassthroughMonitor("ScenarioMonitor", function(state)
+	local scenario = ScenarioOf(state)
+	if scenario and scenario.monitor then return scenario.monitor:New(state) end
+	return SideFor(state)
+end)
+
+function ScenarioMonitor:OnStart(me)
+	self.scenario = ScenarioOf(self.state)
+	return self:Continue()
+end
+
+function ScenarioMonitor:Update(me)
+	if ScenarioOf(self.state) ~= self.scenario then
+		return self:ChangeTo(ScenarioMonitor:New(self.state), "scenario changed")
+	end
+	return self:Continue()
+end
 
 -- The squad roles: each runs the job; which one runs follows the member's
 -- place in its squad (games.nextsoldier.squad's Kind), changing itself when

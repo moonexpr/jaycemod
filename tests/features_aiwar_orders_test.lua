@@ -83,6 +83,24 @@ local function StagedField(stage)
 	return { phase = AiWar.PHASES.running, carts = {}, doctrine = STAGED, stage = stage }
 end
 
+-- A scenario registered with a monitor of its own (nextsoldier.scenarios)
+-- has ScenarioMonitor run it in place of the doctrine's side.
+T.test("a registered scenario's own monitor runs under ScenarioMonitor, and leaves with its scenario", function()
+	local HoldLine = N.Action:Extend("HoldLine")
+	local Holdout = nextsoldier.monitor.New("Holdout", function(state) return HoldLine:New(state) end)
+	local field = Field({})
+	field.scenario = { name = "holdout", monitor = Holdout }
+	local me, npc, war = Enlist({ field = field })
+	Tick(me, npc)
+	T.eq(npc:Describe():find("ScenarioMonitor/Holdout/HoldLine", 1, true) ~= nil, true, npc:Describe())
+	local plain = Field({})
+	plain.scenario = { name = "payload" }
+	war:SetField(plain)
+	Tick(me, npc, 2)
+	T.eq(npc:Describe():find("Holdout", 1, true), nil, "back to the doctrine's side: " .. npc:Describe())
+	T.eq(Orders.JobOf(npc:Describe()) ~= nil, true, "a job again: " .. npc:Describe())
+end)
+
 T.test("a role's stage names its action under its side, and a new stage changes it", function()
 	local me, npc, war = Enlist({ role = AiWar.COURIER, field = StagedField("RetrieveFlag") })
 	local job, _, side = Orders.JobOf(npc:Describe())

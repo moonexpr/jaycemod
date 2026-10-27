@@ -642,6 +642,30 @@ per area. Neither is foundation's code, so the port could not reach them;
 the cost callback is the next candidate (a native cost, as
 `wetsands.path`'s `Model` gives the route search).
 
+## The soldiers' path cost, natively (2026-10-27)
+
+DrGBase's path generator (`path.lua:75`, a Lua closure the engine's
+`Path:Compute` calls once per link) was the largest piece of foundation-shaped
+work left on the thread. Soldiers now hand the engine
+`wetsands.navsearch.Calculator` instead: the strategy their routes are
+planned with (HL2Path at `SOLDIER_LIMITS`), priced natively over the
+team's told tables, the engine asked only area ids and the cost so far.
+Live, 16 soldiers' computes to the same goals took 29.6 ms with the
+calculator against 84.2 ms with DrGBase's generator.
+
+The same bench, two native legs, against the morning's two native legs:
+
+| | Before | With the calculator |
+|---|---|---|
+| Path compute (`path.lua:Compute`, inclusive) | 10.7 % of the thread | 3.8 % |
+| DrGBase's generator (`path.lua:75`) | 10.7 % | gone |
+| Tick p95 / p99 | 36 / 69 ms | 34 / 44 ms |
+| Late ticks (of about 4050) | 395, 374 | 334, 354 |
+| Process CPU | 63.7, 54.7 % | 58.9, 62.0 % |
+
+Process CPU moves as much between legs of one kind as between kinds here, so
+it shows no change. The tail ticks show the gain.
+
 ## Reproducing
 
 ```

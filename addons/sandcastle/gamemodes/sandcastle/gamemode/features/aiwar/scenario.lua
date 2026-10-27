@@ -29,6 +29,7 @@ local AiWar = require("features.aiwar.model")
 local Explore = nextsoldier.explore
 local Teams = gameplay.teams
 local Class = core.class
+local Scenarios = nextsoldier.scenarios
 module(...)
 
 ALLOCATION_HOLD = 3 -- docs/aiwar-command.md §2.2
@@ -46,10 +47,41 @@ VARIANTS = {
 	mvm = "features.aiwar.scenario.mvm",
 }
 
--- The variant's Scenario class for a rounds mode's NAME: freeform for a
--- mode without a standard objective, or no rounds at all.
+-- The war's own scenarios, registered as any script registers one
+-- (games.nextsoldier.scenarios): each variant active for its rounds mode, at
+-- MODE_PRIORITY, loaded the first time it is chosen, and freeform, active
+-- always, below them. A script's scenario at a higher priority, with its
+-- own criteria, takes over where those hold.
+FREEFORM_PRIORITY, MODE_PRIORITY = 0, 10
+
+local function ModeIs(name)
+	return function(context) return context.mode == name end
+end
+
+local function Always() return true end
+
+Scenarios.Shared:Register({ name = "freeform", priority = FREEFORM_PRIORITY, active = Always, scenario = FREEFORM })
+Scenarios.Shared:Register({ name = "payload", priority = MODE_PRIORITY, active = ModeIs("payload"), scenario = VARIANTS.payload })
+Scenarios.Shared:Register({ name = "control_points", priority = MODE_PRIORITY, active = ModeIs("control_points"), scenario = VARIANTS.control_points })
+Scenarios.Shared:Register({ name = "koth", priority = MODE_PRIORITY, active = ModeIs("koth"), scenario = VARIANTS.koth })
+Scenarios.Shared:Register({ name = "arena", priority = MODE_PRIORITY, active = ModeIs("arena"), scenario = VARIANTS.arena })
+Scenarios.Shared:Register({ name = "ctf", priority = MODE_PRIORITY, active = ModeIs("ctf"), scenario = VARIANTS.ctf })
+Scenarios.Shared:Register({ name = "deathmatch", priority = MODE_PRIORITY, active = ModeIs("deathmatch"), scenario = VARIANTS.deathmatch })
+Scenarios.Shared:Register({ name = "mvm", priority = MODE_PRIORITY, active = ModeIs("mvm"), scenario = VARIANTS.mvm })
+
+-- The scenario entry the war plays in context ({ mode, field }: never the
+-- map's name, as the map's entities choose), and its Scenario class.
+function Entry(context)
+	local entry = Scenarios.Shared:Choose(context)
+	return entry, Scenarios.Shared:Class(entry)
+end
+
+-- The Scenario class for a rounds mode's NAME alone: freeform for a mode
+-- without a standard objective, or no rounds at all, unless a registered
+-- scenario takes over.
 function For(modeName)
-	return require(modeName and VARIANTS[modeName] or FREEFORM).Scenario
+	local _, class = Entry({ mode = modeName })
+	return class
 end
 
 local TEAMS = { Teams.RED, Teams.BLUE }

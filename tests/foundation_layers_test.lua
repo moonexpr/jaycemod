@@ -141,6 +141,8 @@ local GAMES = {
 	["npc/targeting"] = "gameplay",
 
 	["nextsoldier/tactics"] = "nextsoldier",
+	["nextsoldier/monitor"] = "nextsoldier",
+	["nextsoldier/scenarios"] = "nextsoldier",
 	["nextsoldier/squad"] = "nextsoldier",
 	["nextsoldier/lanes"] = "nextsoldier",
 	["nextsoldier/speech"] = "nextsoldier",
