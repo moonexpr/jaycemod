@@ -215,8 +215,7 @@ function Lateral(k)
 end
 
 function Ring(pos, slot, radius)
-	local angle = slot * GOLDEN_ANGLE
-	return { x = pos.x + cos(angle) * radius, y = pos.y + sin(angle) * radius, z = pos.z }
+	return Geometry.Polar(pos, radius, slot * GOLDEN_ANGLE)
 end
 
 -- 0 in the middle, then alternately left and right, one spacing further
@@ -405,18 +404,13 @@ end
 -- `to` moved `offset` sideways, across the line from `from` to it (left
 -- for a positive offset).
 function Across(from, to, offset)
-	local dx, dy = to.x - from.x, to.y - from.y
-	local length = sqrt(dx * dx + dy * dy)
-	if length == 0 or offset == 0 then return to end
-	return { x = to.x - dy / length * offset, y = to.y + dx / length * offset, z = to.z }
+	if offset == 0 then return to end
+	return Geometry.Offset2D(to, from, 0, offset)
 end
 
 -- A point `distance` from p, away from `from`.
 function Behind(p, from, distance)
-	local dx, dy = p.x - from.x, p.y - from.y
-	local length = sqrt(dx * dx + dy * dy)
-	if length == 0 then return p end
-	return { x = p.x + dx / length * distance, y = p.y + dy / length * distance, z = p.z }
+	return Geometry.Offset2D(p, from, distance, 0)
 end
 
 ROLES[AiWar.RAID] = {

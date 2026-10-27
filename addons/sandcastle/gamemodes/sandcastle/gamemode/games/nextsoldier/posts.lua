@@ -10,7 +10,8 @@
 -- ahead of the cart. A candidate has ahead (how far ahead of the cart
 -- along the track) and sees (a clear line to the cart) instead.
 -- Guards (ScoreGuard): posts round a control point, below.
-local abs, ipairs, min, sort, sqrt = math.abs, ipairs, math.min, table.sort, math.sqrt
+local abs, ipairs, min, sort = math.abs, ipairs, math.min, table.sort
+local Distance = math.geometry.Distance
 module(...)
 
 MAX_RANGE = 1400 -- from the checkpoint
@@ -67,8 +68,7 @@ function ScoreGuard(c)
 end
 
 local function Apart(a, b)
-	local dx, dy, dz = a.x - b.x, a.y - b.y, a.z - b.z
-	return sqrt(dx * dx + dy * dy + dz * dz) >= SPACING
+	return Distance(a, b) >= SPACING
 end
 
 -- Up to `count` posts, best first by `scorer` (default Score), each at

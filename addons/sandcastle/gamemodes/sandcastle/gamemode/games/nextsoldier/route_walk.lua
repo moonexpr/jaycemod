@@ -6,7 +6,8 @@
 -- edges, by walls: cutting toward the next from RADIUS out ran bots into
 -- the corner); the farthest of the next LOOKAHEAD in a clear line is made
 -- for, and the last is held until reached.
-local min, sqrt = math.min, math.sqrt
+local min = math.min
+local Distance = math.geometry.Distance
 local setmetatable = setmetatable
 module(...)
 
@@ -23,11 +24,6 @@ function New(points)
 		points = points,
 		index = 1,
 	}, Walk)
-end
-
-local function Distance(a, b)
-	local dx, dy, dz = b.x - a.x, b.y - a.y, b.z - a.z
-	return sqrt(dx * dx + dy * dy + dz * dz)
 end
 
 -- The waypoint to make for from pos, or nil once the last is reached.

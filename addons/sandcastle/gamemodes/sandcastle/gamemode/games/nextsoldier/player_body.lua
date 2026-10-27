@@ -9,6 +9,7 @@
 -- positive looking down.
 local abs, atan2, deg, sqrt = math.abs, math.atan2, math.deg, math.sqrt
 local setmetatable = setmetatable
+local Distance2D = math.geometry.Distance2D
 module(...)
 
 -- How fast it turns its eyes, degrees a second (CTFBot's head turning,
@@ -52,11 +53,6 @@ end
 
 local function YawTo(from, to)
 	return deg(atan2(to.y - from.y, to.x - from.x))
-end
-
-local function Distance2D(a, b)
-	local dx, dy = b.x - a.x, b.y - a.y
-	return sqrt(dx * dx + dy * dy)
 end
 
 -- The eye angles toward p from the eye at eyePos.

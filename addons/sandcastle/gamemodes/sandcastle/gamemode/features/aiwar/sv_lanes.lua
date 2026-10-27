@@ -169,8 +169,7 @@ function Controller:FlankGround(to, npcs)
 	local function Admit(id)
 		local area = navmesh.GetNavAreaByID(id)
 		local center = area:GetCenter()
-		local dx, dy = center.x - to.x, center.y - to.y
-		return math.sqrt(dx * dx + dy * dy) <= GROUND_REACH and npcs:SpawnRoomTeam(area) == WS.TEAM_UNASSIGNED
+		return Geometry.Distance2D(center, to) <= GROUND_REACH and npcs:SpawnRoomTeam(area) == WS.TEAM_UNASSIGNED
 	end
 	local ground = {}
 	for _, id in ipairs(Graph.Flood({ here:GetID() }, AreasInto, Admit, GROUND_LIMIT)) do

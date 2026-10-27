@@ -20,7 +20,8 @@
 -- to its post once contact has been lost for CONTACT_MEMORY.
 --
 -- Positions are plain { x, y, z } tables.
-local ipairs, math, sqrt = ipairs, math, math.sqrt
+local ipairs, math = ipairs, math
+local Offset2D = math.geometry.Offset2D
 local Tactics = gameplay.tactics
 module(...)
 
@@ -111,11 +112,7 @@ end
 -- The point FLANK_OFFSET beside the enemy, to the left (side 1) or right
 -- (side -1) of the line from `from` to it.
 function FlankPoint(from, enemy, side)
-	local dx, dy = enemy.x - from.x, enemy.y - from.y
-	local length = sqrt(dx * dx + dy * dy)
-	if length == 0 then return { x = enemy.x, y = enemy.y, z = enemy.z } end
-	local px, py = -dy / length, dx / length
-	return { x = enemy.x + px * FLANK_OFFSET * side, y = enemy.y + py * FLANK_OFFSET * side, z = enemy.z }
+	return Offset2D(enemy, from, 0, FLANK_OFFSET * side)
 end
 
 function FlankSide(fireTeam)
@@ -148,11 +145,7 @@ end
 -- The post, FALLBACK_STEP per step further from the threat.
 function FallbackPoint(post, threat, steps)
 	if not steps or steps <= 0 then return post end
-	local dx, dy = post.x - threat.x, post.y - threat.y
-	local length = sqrt(dx * dx + dy * dy)
-	if length == 0 then return post end
-	local d = FALLBACK_STEP * steps / length
-	return { x = post.x + dx * d, y = post.y + dy * d, z = post.z }
+	return Offset2D(post, threat, FALLBACK_STEP * steps, 0)
 end
 
 Tactics.Check(_M)
