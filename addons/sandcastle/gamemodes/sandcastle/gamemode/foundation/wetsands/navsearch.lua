@@ -6,7 +6,9 @@
 --   Mesh() -> a mesh to fill: mesh:Area(id, x, y, z, attributes) for every
 --     area, then mesh:Link(from, to, distance, rise) for each area's floor
 --     links in GetAdjacentAreas' order (the distance between centres, and
---     ComputeAdjacentConnectionHeightChange), then mesh:Seal()
+--     ComputeAdjacentConnectionHeightChange), then mesh:Seal();
+--     mesh:Sealed() -> whether it is, mesh:Areas() -> how many areas a
+--     sealed mesh has
 --   New(mesh, strategy, limits, bot, start, goal, goalPos, maxExpanded[,
 --     told[, rules]]) -> a search from area start to area goal, estimated
 --     toward goalPos, priced by strategy.Cost(step, limits, bot) (natively,
@@ -56,7 +58,7 @@ local MeshClass = {}
 MeshClass.__index = MeshClass
 
 function Mesh()
-	return setmetatable({ areas = {}, neighbors = {}, links = {}, sealed = false }, MeshClass)
+	return setmetatable({ areas = {}, neighbors = {}, links = {}, sealed = false, count = 0 }, MeshClass)
 end
 
 local function Unsealed(mesh)
@@ -68,6 +70,7 @@ function MeshClass:Area(id, x, y, z, attributes)
 	if self.areas[id] then error("area " .. tostring(id) .. " added twice", 2) end
 	self.areas[id] = { x = x, y = y, z = z, attributes = attributes }
 	self.neighbors[id], self.links[id] = {}, {}
+	self.count = self.count + 1
 end
 
 function MeshClass:Link(from, to, distance, rise)
@@ -86,6 +89,15 @@ function MeshClass:Seal()
 		end
 	end
 	self.sealed = true
+end
+
+function MeshClass:Sealed()
+	return self.sealed
+end
+
+function MeshClass:Areas()
+	if not self.sealed then error("the mesh is not sealed yet", 2) end
+	return self.count
 end
 
 local NOTHING = {}
