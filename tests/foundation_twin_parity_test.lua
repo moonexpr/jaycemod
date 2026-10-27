@@ -312,6 +312,7 @@ local RECIPES = {
 local LIBRARIES = {
 	["foundation.math.geometry"] = true,
 	["foundation.math.scalar"] = true,
+	["foundation.list.select"] = true,
 	["foundation.math.stats"] = true,
 	["foundation.math.weighted"] = true,
 	["foundation.math.polynomial"] = true,

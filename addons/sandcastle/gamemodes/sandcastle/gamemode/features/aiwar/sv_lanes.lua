@@ -2,6 +2,7 @@
 local Controller, Map = ...
 local Teams = gameplay.teams
 local Geometry = math.geometry
+local Select = list.select
 local TFBot = WS.require("foundation.wetsands.path.tfbot")
 local HL2Path = WS.require("foundation.wetsands.path.hl2")
 local Path = wetsands.path
@@ -97,13 +98,7 @@ end
 
 -- Of positions, the nearest to p, or nil for none.
 local function Nearest(positions, p)
-	local target = ToVector(p)
-	local best, bestDistance
-	for _, pos in ipairs(positions) do
-		local d = pos:DistToSqr(target)
-		if not bestDistance or d < bestDistance then best, bestDistance = pos, d end
-	end
-	return best
+	return (Select.Nearest(positions, ToVector(p)))
 end
 
 -- A lane stop inside the enemy's spawn room moves to its threshold

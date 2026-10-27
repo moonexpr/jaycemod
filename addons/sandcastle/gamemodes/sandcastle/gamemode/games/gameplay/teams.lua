@@ -2,6 +2,7 @@
 -- auto-assignment, balance, and the team tests of the spawn-room entities.
 local ipairs, math, pairs, string, table = ipairs, math, pairs, string, table
 local STATE = require("games.gameplay.rounds.state")
+local Select = list.select
 module(...)
 
 -- The team numbers of shareddefs.h, which map keyvalues (TeamNum) use too.
@@ -142,13 +143,11 @@ end
 -- `required` + 2 candidates by score; mid-round only dead ones may move.
 -- candidates: { id, score, alive }. Returns the ids to switch.
 function PickBalanceSwitches(candidates, required, requireDead)
-	local sorted = {}
-	for i, c in ipairs(candidates) do sorted[i] = c end
-	table.sort(sorted, function(a, b) return a.score > b.score end)
+	local best = Select.TopK(candidates, required + 2, function(a, b) return a.score > b.score end)
 	local picked = {}
-	for i = 1, math.min(#sorted, required + 2) do
+	for i = 1, #best do
 		if #picked >= required then break end
-		local c = sorted[i]
+		local c = best[i]
 		if not requireDead or not c.alive then picked[#picked + 1] = c.id end
 	end
 	return picked

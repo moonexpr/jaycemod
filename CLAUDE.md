@@ -129,6 +129,7 @@ Tests are `tests/<namespace>_<module>_test.lua`.
 | `list.ring` | `New(capacity)` → the last values pushed: `Push`, `Size`, `Ordered` (oldest first) |
 | `list.slots` | `New()` → whole-number slots for arrays kept by slot: `pool()` (`Alloc`; a freed one first), `Free` (refuses one not in use), `InUse`, `Size` (`__len`), `High`, `Clear`, `tostring` |
 | `list.chain` | `New()` → slots in an order, linked by two arrays: `PushFront`, `PushBack`, `Unlink`, `MoveFront`, `Front`, `Back`, `After`, `Before`, `Has`, `for slot in chain()` (`Ordered`), `Size` (`__len`), `Clear`, `tostring` |
+| `list.select` | Which item a score or an order picks; lower is better and a tie goes to the earlier item: `Lowest(list, score[, keep])` and `Highest` → item, score, place; `Nearest(list, from[, position[, keep]])` → item, distance, place; `TopK(list, k, before)` (the first k in order, n log k); `Order(list, before)` (places, stable); `Ranks(list, before)` (from 1) |
 | `list.schedule` | `New(clock)` → cooperative tasks in a time slice: `Spawn(fn, ...)`, `Run(seconds)`, `CheckYield` (in a task: yield once the slice is spent), `Yield`, `Wait(ready)` (park until ready), `Count`. `WS.Transactions` is each realm's, run every tick |
 
 ### tree

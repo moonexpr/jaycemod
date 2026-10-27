@@ -21,6 +21,7 @@ local huge, min = math.huge, math.min
 local sort = table.sort
 local HL2Path = require("foundation.wetsands.path.hl2")
 local Path = wetsands.path
+local Select = list.select
 local Distance, Distance2D, Offset2D = math.geometry.Distance, math.geometry.Distance2D, math.geometry.Offset2D
 local Graph = graph.search
 module(...)
@@ -159,20 +160,11 @@ end
 -- searched, whatever the candidates. Nil when no two are off the band and
 -- apart.
 function Siblings(candidates, separation, walkFrom)
-	local a, farthest = nil, 0
-	for _, key in ipairs(candidates) do
-		if separation(key) > farthest then a, farthest = key, separation(key) end
-	end
-	if not a then return nil end
+	local a, farthest = Select.Highest(candidates, separation)
+	if not a or farthest <= 0 then return nil end
 	local fromA = walkFrom(a)
-	local b, best = nil, 0
-	for _, key in ipairs(candidates) do
-		if key ~= a then
-			local score = min(separation(key), fromA(key))
-			if score > best then b, best = key, score end
-		end
-	end
-	if not b then return nil end
+	local b, best = Select.Highest(candidates, function(key) return min(separation(key), fromA(key)) end, function(key) return key ~= a end)
+	if not b or best <= 0 then return nil end
 	return a, b
 end
 

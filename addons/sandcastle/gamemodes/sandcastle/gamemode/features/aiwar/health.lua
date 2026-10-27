@@ -14,6 +14,7 @@ local max = math.max
 local ipairs = ipairs
 local Geometry = math.geometry
 local Saturate = math.scalar.Saturate
+local Select = list.select
 module(...)
 
 CRITICAL, OK = 0.3, 0.8 -- tf_bot_health_critical_ratio, tf_bot_health_ok_ratio
@@ -43,11 +44,10 @@ function Leaves(urgency, safety)
 end
 
 -- The nearest of kits ({ pos }) to pos within range, or nil.
+local function KitPos(kit) return kit.pos end
+
 function PickKit(kits, pos, range)
-	local best, bestRange
-	for _, kit in ipairs(kits) do
-		local d = Geometry.Distance(kit.pos, pos)
-		if d <= range and (not bestRange or d < bestRange) then best, bestRange = kit, d end
-	end
-	return best
+	local kit, distance = Select.Nearest(kits, pos, KitPos)
+	if kit and distance <= range then return kit end
+	return nil
 end

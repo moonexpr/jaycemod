@@ -14,6 +14,7 @@ local Orders = require("features.aiwar.orders")
 local Teams = gameplay.teams
 local Base = require("features.aiwar.scenario")
 local Distance = math.geometry.Distance
+local Select = list.select
 module(...)
 
 MODE = "freeform"
@@ -28,13 +29,10 @@ local EnemyOf = Teams.EnemyOf
 local EXPLORE = AiWar.EXPLORE
 
 -- The nearest of players ({ handle, pos }) to pos, or nil.
+local function PlayerPos(p) return p.pos end
+
 local function Nearest(players, pos)
-	local best, bestDistance
-	for _, p in ipairs(players) do
-		local d = Distance(p.pos, pos)
-		if not bestDistance or d < bestDistance then best, bestDistance = p, d end
-	end
-	return best
+	return (Select.Nearest(players, pos, PlayerPos))
 end
 
 -- The doctrine ---------------------------------------------------------------------

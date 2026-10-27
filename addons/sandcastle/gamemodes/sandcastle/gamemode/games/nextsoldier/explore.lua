@@ -21,6 +21,7 @@ local Lease = world.lease
 local Grid = world.grid
 local Tactics = nextsoldier.tactics
 local Distance = math.geometry.Distance
+local Select = list.select
 module(...)
 
 -- A waypoint per cell this wide, a waypoint counts as visited by a soldier
@@ -156,14 +157,10 @@ end
 -- claimed for another squad, or nil.
 local function Nearest(self, squad, team, here, now)
 	local visited, claims = Visited(self, squad), ClaimsOf(self, team)
-	local best, bestDistance
-	for i, w in ipairs(self.waypoints) do
-		if not visited[i] and claims:FreeFor(i, squad, now) then
-			local d = Distance(w, here)
-			if not bestDistance or d < bestDistance then best, bestDistance = i, d end
-		end
-	end
-	return best
+	local _, _, index = Select.Nearest(self.waypoints, here, nil, function(_, i)
+		return not visited[i] and claims:FreeFor(i, squad, now)
+	end)
+	return index
 end
 
 -- The squad's waypoint, from here (where it is), or nil without waypoints.

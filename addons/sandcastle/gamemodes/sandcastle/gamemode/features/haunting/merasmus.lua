@@ -64,6 +64,7 @@ local Actor = npc.actor
 local Combat = gameplay.combat
 local Players = gameplay.players
 local Teams = gameplay.teams
+local Select = list.select
 local Remap = math.scalar.Remap
 local atan2, cos, deg, floor, huge, max, min, rad, sin = math.atan2, math.cos, math.deg, math.floor, math.huge, math.max, math.min, math.rad, math.sin
 local ipairs = ipairs
@@ -378,12 +379,7 @@ local function Up(me) return me:Vector(0, 0, 1) end
 
 -- The nearest of targets by range (INextBot::GetRangeTo), or nil.
 local function Nearest(me, targets)
-	local nearest, nearestRange = nil, huge
-	for _, t in ipairs(targets) do
-		local range = me:RangeTo(t)
-		if range < nearestRange then nearest, nearestRange = t, range end
-	end
-	return nearest
+	return (Select.Lowest(targets, function(t) return me:RangeTo(t) end))
 end
 
 -- Up and away from `from`: flat towards their eyes, then straight up.

@@ -20,6 +20,7 @@ mod state_chart;
 mod state_machine;
 mod pathfinder;
 mod search;
+mod select;
 mod slots;
 mod transaction;
 

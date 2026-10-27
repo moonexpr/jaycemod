@@ -12,7 +12,7 @@ use std::ffi::{c_int, CStr};
 type Point = [f64; 3];
 
 /// The point table at `index`: x and y numbers, z a number or 0.
-unsafe fn point_at(l: L, index: c_int) -> Point {
+pub(super) unsafe fn point_at(l: L, index: c_int) -> [f64; 3] {
     if !super::util::indexable(l, index) {
         raise_where(l, "a point is a { x, y, z } table or a Vector".into());
     }

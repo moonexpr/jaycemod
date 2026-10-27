@@ -10,11 +10,12 @@
 -- capLayout, disabled, rounds = { { name, priority, restrict, printName,
 -- points = { ids } } }, firstAfterRestart (default true) }.
 local ipairs, setmetatable = ipairs, setmetatable
-local sort, remove = table.sort, table.remove
+local remove = table.remove
 local Capture = gameplay.capture
 local Rounds = gameplay.rounds
 local Teams = gameplay.teams
 local Snapshot = world.snapshot
+local Select = list.select
 module(...)
 
 -- score_style: a team scores per round won, or per point captured.
@@ -208,13 +209,7 @@ end
 -- Round choice ---------------------------------------------------------------------------
 
 local function ByPriority(rounds)
-	local order = {}
-	for i = 1, #rounds do order[i] = i end
-	sort(order, function(a, b)
-		if rounds[a].priority ~= rounds[b].priority then return rounds[a].priority > rounds[b].priority end
-		return a < b
-	end)
-	return order
+	return Select.Order(rounds, function(a, b) return a.priority > b.priority end)
 end
 
 -- GetControlPointRoundToPlay: the playable rounds of the highest playable
