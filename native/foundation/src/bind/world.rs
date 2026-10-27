@@ -400,6 +400,17 @@ unsafe extern "C-unwind" fn grid_thin(l: L) -> c_int {
 /// world.grid.Spread(items, spacing[, limit[, position]]) -> the items, in order, that are not within
 /// spacing of one kept before them
 unsafe extern "C-unwind" fn grid_spread(l: L) -> c_int {
+    scan(l, false)
+}
+
+/// world.grid.Isolated(items, spacing[, limit[, position]]) -> the items, in order, with no item
+/// before them in the list within spacing, kept or not (TF2's SelectSeparatedShuffleSet)
+unsafe extern "C-unwind" fn grid_isolated(l: L) -> c_int {
+    scan(l, true)
+}
+
+/// The scan both share; `everyone`: every item seen is remembered for the next, not only those kept.
+unsafe fn scan(l: L, everyone: bool) -> c_int {
     let api = api();
     let spacing = cell_size(l, 2);
     (api.checktype)(l, 1, TTABLE);
@@ -451,9 +462,11 @@ unsafe extern "C-unwind" fn grid_spread(l: L) -> c_int {
                 })
             })
         });
+        if everyone || !crowded {
+            cells.entry(cell).or_default().push(at);
+        }
         if !crowded {
             places.push(place);
-            cells.entry(cell).or_default().push(at);
             if limit.is_some_and(|n| places.len() >= n) {
                 done = true;
             }
@@ -743,7 +756,7 @@ pub unsafe fn push_modules(l: L) {
     (api.setfield)(l, -2, c"pairmap".as_ptr());
     module::push(l, &[(c"New", lease_new)], None);
     (api.setfield)(l, -2, c"lease".as_ptr());
-    module::push(l, &[(c"New", grid_new), (c"Thin", grid_thin), (c"Spread", grid_spread)], None);
+    module::push(l, &[(c"New", grid_new), (c"Thin", grid_thin), (c"Spread", grid_spread), (c"Isolated", grid_isolated)], None);
     (api.setfield)(l, -2, c"grid".as_ptr());
     module::push(
         l,

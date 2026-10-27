@@ -12,6 +12,11 @@
 -- is not within `spacing` (straight-line, z counted) of one already kept,
 -- up to `limit` items (none for 0, any number for nil); position(item) is
 -- the item's point (the item itself without it).
+-- Isolated(items, spacing[, limit[, position]]) keeps each item, in order,
+-- that has no item before it in `items` within `spacing`, whether that one
+-- was kept or not: TF2's SelectSeparatedShuffleSet, where a point near a
+-- dropped neighbour is dropped as well. Spread compares only with those
+-- kept.
 --
 -- A cell is keyed by one number, not a string, so bucketing allocates no
 -- key; coordinates span 2^20 cells either side of the origin.
@@ -96,11 +101,14 @@ function Thin(points, size)
 	return kept
 end
 
-function Spread(items, spacing, limit, position)
-	CheckSize(spacing)
+local function CheckLimit(limit)
 	if limit ~= nil and (type(limit) ~= "number" or limit < 0 or floor(limit) ~= limit) then
-		error("a spread's limit is a whole number of at least 0, not " .. tostring(limit), 2)
+		error("a spread's limit is a whole number of at least 0, not " .. tostring(limit), 3)
 	end
+end
+
+-- everyone: every item seen is remembered for the next, not only those kept.
+local function Scan(items, spacing, limit, position, everyone)
 	local cells, kept = {}, {}
 	if limit == 0 then return kept end
 	for _, item in ipairs(items) do
@@ -124,8 +132,7 @@ function Spread(items, spacing, limit, position)
 			end
 			if crowded then break end
 		end
-		if not crowded then
-			kept[#kept + 1] = item
+		if everyone or not crowded then
 			local key = Key(cx, cy)
 			local list = cells[key]
 			if not list then
@@ -134,8 +141,23 @@ function Spread(items, spacing, limit, position)
 			end
 			local n = #list
 			list[n + 1], list[n + 2], list[n + 3] = x, y, z
+		end
+		if not crowded then
+			kept[#kept + 1] = item
 			if limit and #kept >= limit then break end
 		end
 	end
 	return kept
+end
+
+function Spread(items, spacing, limit, position)
+	CheckSize(spacing)
+	CheckLimit(limit)
+	return Scan(items, spacing, limit, position, false)
+end
+
+function Isolated(items, spacing, limit, position)
+	CheckSize(spacing)
+	CheckLimit(limit)
+	return Scan(items, spacing, limit, position, true)
 end

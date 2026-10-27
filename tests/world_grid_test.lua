@@ -150,4 +150,52 @@ T.test("Spread compares a point only with those kept, not with those it skipped"
 	T.eq(Xs(kept), "0 16", "8 is skipped for 0; 16 is near the skipped 8 but not near 0")
 end)
 
+T.test("Isolated keeps each item with no earlier item within spacing, kept or not", function()
+	local kept = Grid.Isolated({ { x = 0, y = 0 }, { x = 8, y = 0 }, { x = 16, y = 0 }, { x = 40, y = 0 } }, 10)
+	T.eq(Xs(kept), "0 40", "16 is dropped for the 8 that was dropped for the 0; Spread keeps it")
+	T.eq(#Grid.Isolated({ { x = 0, y = 0, z = 0 }, { x = 0, y = 0, z = 10 } }, 10), 2, "exactly spacing away is apart")
+	T.eq(#Grid.Isolated({ { x = -1, y = 0 }, { x = 1, y = 0 } }, 5), 1, "across the origin's cell border")
+end)
+
+T.test("Isolated stops at limit, reads points through position and refuses a bad spacing", function()
+	local items = {}
+	for i = 1, 10 do items[i] = { at = { x = i * 100, y = 0 } } end
+	local at = function(item) return item.at end
+	local kept = Grid.Isolated(items, 10, 4, at)
+	T.eq(#kept, 4, "limit")
+	T.eq(kept[4], items[4], "the items given, in order")
+	T.eq(#Grid.Isolated(items, 10, 0, at), 0, "a limit of 0")
+	T.eq(#Grid.Isolated(items, 10, math.huge, at), 10, "an infinite limit is none")
+	T.eq(pcall(Grid.Isolated, {}, 0), false, "a spacing of 0")
+end)
+
+T.test("Isolated is what comparing every point with every earlier one gives", function()
+	local seed = 777
+	local function Next(n)
+		seed = (seed * 1103515245 + 12345) % 2147483648
+		return seed % n
+	end
+	for trial = 1, 20 do
+		local points = {}
+		for i = 1, 150 do points[i] = { x = Next(500) - 250, y = Next(500) - 250, z = Next(60) } end
+		local spacing = 20 + Next(60)
+		local limit = trial % 2 == 0 and 5 + Next(20) or nil
+		local expected = {}
+		for i, p in ipairs(points) do
+			local alone = true
+			for j = 1, i - 1 do
+				local q = points[j]
+				if math.sqrt((p.x - q.x) ^ 2 + (p.y - q.y) ^ 2 + (p.z - q.z) ^ 2) < spacing then alone = false break end
+			end
+			if alone then expected[#expected + 1] = p end
+			if limit and #expected >= limit then break end
+		end
+		local kept = Grid.Isolated(points, spacing, limit)
+		T.eq(#kept, #expected, "trial " .. trial .. ": as many")
+		for i = 1, #expected do
+			if kept[i] ~= expected[i] then T.eq(false, true, "trial " .. trial .. ": the same point at " .. i) break end
+		end
+	end
+end)
+
 T.finish()

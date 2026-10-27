@@ -65,6 +65,7 @@ local Combat = gameplay.combat
 local Players = gameplay.players
 local Teams = gameplay.teams
 local Select = list.select
+local Grid = world.grid
 local Remap = math.scalar.Remap
 local atan2, cos, deg, floor, huge, max, min, rad, sin = math.atan2, math.cos, math.deg, math.floor, math.huge, math.max, math.min, math.rad, math.sin
 local ipairs = ipairs
@@ -705,18 +706,7 @@ local function SeparatedShuffle(me, areas, maxCount, minSeparation)
 		shuffled[n], shuffled[k] = shuffled[k], shuffled[n]
 		n = n - 1
 	end
-	local kept = {}
-	for i, area in ipairs(shuffled) do
-		local near = false
-		for j = 1, i - 1 do
-			if (area - shuffled[j]):Length() < minSeparation then near = true end
-		end
-		if not near then
-			kept[#kept + 1] = area
-			if #kept >= maxCount then break end
-		end
-	end
-	return kept
+	return Grid.Isolated(shuffled, minSeparation, maxCount)
 end
 
 -------------------------------------------------------------------------------
