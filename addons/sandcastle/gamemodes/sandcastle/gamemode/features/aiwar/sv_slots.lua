@@ -36,6 +36,12 @@ function Controller:FactionName(team)
 	return self:Faction(team).name
 end
 
+-- A slot's soldier leaves with its slot: an NPC is removed, a bot player
+-- kicked (a player is never Removed).
+local function Dismiss(ent)
+	if ent:IsPlayer() then ent:Kick("AI war slot removed") else ent:Remove() end
+end
+
 -- At a team size each faction is resized to its side's share of it (the
 -- scenario's TeamSizes: MvM's invaders outnumber the defenders), and the
 -- soldiers whose slots go leave. Returns whether a faction's size changed.
@@ -45,7 +51,7 @@ function Controller:ResizeSlots(size)
 	for _, team in ipairs({ RED, BLUE }) do
 		local faction = self:FactionName(team)
 		local before = plan:Size(faction)
-		for _, ent in ipairs(plan:Resize(faction, sizes[team])) do ent:Remove() end
+		for _, ent in ipairs(plan:Resize(faction, sizes[team])) do Dismiss(ent) end
 		changed = changed or plan:Size(faction) ~= before
 	end
 	return changed
@@ -82,7 +88,7 @@ function Controller:SetSlotCount(team, count)
 	self:CustomSlots()
 	local faction = self:FactionName(team)
 	local before = self.slots:Size(faction)
-	for _, ent in ipairs(self.slots:Resize(faction, count)) do ent:Remove() end
+	for _, ent in ipairs(self.slots:Resize(faction, count)) do Dismiss(ent) end
 	if self.war and count > before then self.war:CallWave(team) end
 	self:SlotsChanged()
 	return { string.format("mp_aiwar_slots_size: the %s (%s) keep %d slots", faction, WS.TeamName[team], count) }
@@ -97,7 +103,7 @@ function Controller:RemoveSlots(ids)
 		if slot == nil then
 			lines[#lines + 1] = string.format("mp_aiwar_slots_remove: no slot %d", id)
 		else
-			if slot.holder ~= nil then slot.holder:Remove() end
+			if slot.holder ~= nil then Dismiss(slot.holder) end
 			lines[#lines + 1] = string.format("mp_aiwar_slots_remove: slot %d removed", id)
 		end
 	end
@@ -138,7 +144,7 @@ function Controller:SlotFields()
 				id = slot.id,
 				pin = slot.pin or Slots.NONE,
 				index = ent and ent:EntIndex() or 0,
-				class = ent and ent:GetClass() or "",
+				class = ent and (ent:IsPlayer() and ent:Nick() or ent:GetClass()) or "",
 				role = member and member.role or "",
 				squad = fireTeam and string.format("%s %d", fireTeam.role, fireTeam.index + 1) or "",
 				leads = fireTeam ~= nil and Squad.Leader(fireTeam) == member,

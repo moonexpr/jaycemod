@@ -141,6 +141,18 @@ end
 WS.FeatureLoader = WS.FeatureLoader
 	or Features.New(SERVER and Features.SERVER or Features.CLIENT, FeatureFiles)
 
+-- The resources a feature names (features/<name>/resources.lua), preloaded
+-- as it loads: its models on both realms, its materials on clients. Its
+-- soundscapes are the client's soundscape library's (ws/sh_announcer.lua).
+WS.FeatureLoader:Handle(Features.MODELS, function(paths)
+	for _, path in ipairs(paths) do util.PrecacheModel(path) end
+end)
+if CLIENT then
+	WS.FeatureLoader:Handle(Features.MATERIALS, function(paths)
+		for _, path in ipairs(paths) do Material(path) end
+	end)
+end
+
 -- The server's controller or the client's view for a feature, loaded once.
 function WS.Feature(name)
 	return WS.FeatureLoader:Feature(name)

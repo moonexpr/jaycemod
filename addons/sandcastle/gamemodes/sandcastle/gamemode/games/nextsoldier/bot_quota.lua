@@ -1,6 +1,8 @@
 -- How many bot players a server keeps (the AI war's bot soldiers), by TF2's
 -- tf_bot_quota rules (CTFBotManager::MaintainBotQuota): tf_bot_quota_mode
 -- says what the quota counts, tf_bot_join_after_player waits for a human,
+-- but unlike TF2 a human who goes to spectate still counts there and in
+-- MATCH, so the bots leave only when the humans leave the server,
 -- and, as tf_bot_auto_vacate does, the bots leave one slot free for a human
 -- to join. The bots change one at a time: added to a team the way a player
 -- is auto-assigned (gameplay.teams' AutoTeam), kicked from the team with
@@ -18,6 +20,14 @@ local MODES = {
 	[MATCH] = MATCH,
 }
 
+-- ns_soldiers_actor: who the war's soldiers are, never both: NPC, its own
+-- NextBots (no bots kept), or BOT, bot players (no NPCs drafted).
+NPC, BOT = "npc", "bot"
+local ACTORS = {
+	[NPC] = NPC,
+	[BOT] = BOT,
+}
+
 -- What a step does.
 ADD, KICK = "add", "kick"
 
@@ -29,19 +39,28 @@ function Mode(text)
 	return MODES[lower(text)]
 end
 
--- The bots wanted. settings: { mode, quota, joinAfterPlayer }; population:
--- { humans (on the game teams), spectators (humans on no game team),
--- bots, slots (the server's most players) }.
+-- An ns_soldiers_actor value, or nil for none of its words.
+function Actors(text)
+	return ACTORS[lower(text)]
+end
+
+-- The bots wanted. settings: { mode, quota, joinAfterPlayer, actors,
+-- soldiers (the war's teams' sizes added up: BOT's quota when it is 0) };
+-- population: { humans (on the game teams), spectators (humans on no game
+-- team), bots, slots (the server's most players) }.
 function Wanted(settings, population)
+	if settings.actors == NPC then return 0 end
 	local humans = population.humans
+	local connected = humans + population.spectators
 	local wanted = settings.quota
+	if wanted == 0 then wanted = settings.soldiers end
 	if settings.mode == FILL then
 		wanted = wanted - humans
 	elseif settings.mode == MATCH then
-		wanted = wanted * humans
+		wanted = wanted * connected
 	end
-	if settings.joinAfterPlayer and humans == 0 then wanted = 0 end
-	wanted = min(wanted, population.slots - humans - population.spectators - VACATE)
+	if settings.joinAfterPlayer and connected == 0 then wanted = 0 end
+	wanted = min(wanted, population.slots - connected - VACATE)
 	return max(wanted, 0)
 end
 

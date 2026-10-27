@@ -41,10 +41,10 @@ local MATCH_WIN_LINE = {
 }
 
 local function PlayMatchEnd(winner)
-	WS.BroadcastSound(winner, MATCH_WIN_MUSIC)
-	WS.BroadcastSound(WS.EnemyOf(winner), MATCH_LOSE_MUSIC)
-	WS.BroadcastSound(SPECTATOR, MATCH_SPECTATOR_MUSIC[winner])
-	WS.BroadcastPA(UNASSIGNED, MATCH_WIN_LINE[winner])
+	WS.BroadcastSoundscape(winner, MATCH_WIN_MUSIC)
+	WS.BroadcastSoundscape(WS.EnemyOf(winner), MATCH_LOSE_MUSIC)
+	WS.BroadcastSoundscape(SPECTATOR, MATCH_SPECTATOR_MUSIC[winner])
+	WS.BroadcastSoundscape(UNASSIGNED, MATCH_WIN_LINE[winner])
 end
 
 -- The level after the match (Rounds.NextMap): the engine's nextlevel, else
@@ -103,16 +103,16 @@ end
 local function PlayWinSong(winner)
 	if winner == UNASSIGNED then
 		-- a tie: the stalemate music, the announcer calling it over it
-		WS.BroadcastPA(UNASSIGNED, "Game.Stalemate")
-		WS.BroadcastPA(UNASSIGNED, STALEMATE_LINE)
+		WS.BroadcastSoundscape(UNASSIGNED, "Game.Stalemate")
+		WS.BroadcastSoundscape(UNASSIGNED, STALEMATE_LINE)
 		return
 	end
-	WS.BroadcastPA(winner, "Game.YourTeamWon")
-	WS.BroadcastPA(WS.EnemyOf(winner), "Game.YourTeamLost")
+	WS.BroadcastSoundscape(winner, "Game.YourTeamWon")
+	WS.BroadcastSoundscape(WS.EnemyOf(winner), "Game.YourTeamLost")
 	-- spectators, of neither team, hear who won over the stalemate music
 	-- (CHAN_AUTO, under the announcer's CHAN_VOICE2)
-	WS.BroadcastPA(SPECTATOR, winner == BLUE and "Announcer.CompRoundWinBlu" or "Announcer.CompRoundWinRed")
-	WS.BroadcastSound(SPECTATOR, SPECTATOR_WIN_MUSIC)
+	WS.BroadcastSoundscape(SPECTATOR, winner == BLUE and "Announcer.CompRoundWinBlu" or "Announcer.CompRoundWinRed")
+	WS.BroadcastSoundscape(SPECTATOR, SPECTATOR_WIN_MUSIC)
 
 end
 
@@ -124,7 +124,7 @@ function Controller:CapSounds(capTeam, wouldWinGame, scorePerRound)
 		wouldWinGame = wouldWinGame,
 		scorePerRound = scorePerRound,
 	})
-	for _, line in ipairs(lines) do WS.BroadcastPA(line.team, line.sound) end
+	for _, line in ipairs(lines) do WS.BroadcastSoundscape(line.team, line.sound) end
 end
 
 -- logic_auto (CLogicAuto::Think) ----------------------------------------------------
@@ -267,7 +267,7 @@ local EFFECTS = {
 	switch_teams = function() SwitchTeams() end,
 	-- mp_scrambleteams_auto: told with the win, done as the next round starts
 	scramble_due = function()
-		WS.BroadcastPA(UNASSIGNED, SCRAMBLE_LINE)
+		WS.BroadcastSoundscape(UNASSIGNED, SCRAMBLE_LINE)
 		WS.Announce(Text.SCRAMBLE_NOTE, UNASSIGNED, UNASSIGNED, ICON_SCRAMBLE)
 	end,
 	scramble_teams = function() ScrambleTeams() end,
@@ -318,20 +318,20 @@ local EFFECTS = {
 	win_song = function(self, e)
 		PlayWinSong(e.winner)
 		for t, line in pairs(self.round:Mode():RoundWinLines(e.winner, e.fullRound, self.multipleTrains)) do
-			WS.BroadcastPA(t, line)
+			WS.BroadcastSoundscape(t, line)
 		end
 	end,
 	-- nobody respawns, so the setup gates (the map's OnSetupFinished relays)
 	-- and every spawn door open: the last of each side have nowhere to hide
 	sudden_death = function(self, e, now)
-		WS.BroadcastPA(UNASSIGNED, SUDDEN_DEATH)
+		WS.BroadcastSoundscape(UNASSIGNED, SUDDEN_DEATH)
 		WS.Announce(Text.SuddenDeathNote(e.reason), UNASSIGNED, UNASSIGNED, ICON_SUDDEN_DEATH)
 		self:FinishSetup(now)
 		self:OpenSpawnDoors(now)
 	end,
 	-- a tied match's deathmatch: frags alone, to mp_round_fraglimit
 	deathmatch = function()
-		WS.BroadcastPA(UNASSIGNED, SUDDEN_DEATH)
+		WS.BroadcastSoundscape(UNASSIGNED, SUDDEN_DEATH)
 		WS.Announce(Text.DeathmatchNote(GetConVar("mp_round_fraglimit"):GetInt()), UNASSIGNED, UNASSIGNED, ICON_SUDDEN_DEATH)
 	end,
 	hide_timers = function(self) self:HideActiveTimer() end,

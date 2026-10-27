@@ -137,14 +137,14 @@ end
 function ENT:ControlPoints() return baseclass.Get("headless_hatman").ControlPoints(self) end
 
 -- A line everyone hears, wherever they are (SNDLVL_NONE).
-function ENT:PlayHighPrioritySound(name) WS.BroadcastSound(WS.TEAM_UNASSIGNED, name) end
+function ENT:PlayHighPrioritySound(name) WS.BroadcastSoundscape(WS.TEAM_UNASSIGNED, name) end
 
 -- A line those near hear, never over one he is already saying.
 function ENT:PlayLowPrioritySound(name)
 	self:EmitSound(name, LINE_LEVEL, PITCH_NORM, 1, CHAN_VOICE2, SND_DO_NOT_OVERWRITE_EXISTING_ON_CHANNEL)
 end
 
-function ENT:BroadcastGameSound(name) WS.BroadcastSound(WS.TEAM_UNASSIGNED, name) end
+function ENT:BroadcastGameSound(name) WS.BroadcastSoundscape(WS.TEAM_UNASSIGNED, name) end
 
 function ENT:AddTimedGesture(act) return self:GetLayerDuration(self:AddGesture(act)) end
 function ENT:SetStaff(n) self:SetBodygroup(self:FindBodygroupByName(STAFF_BODYGROUP), n) end

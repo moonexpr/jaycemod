@@ -251,7 +251,14 @@ local function Env(w)
 			Speaker = function() return {} end,
 			Speak = function() return nil end,
 		},
-		CreateConVar = function() return {} end,
+		-- a convar the controller makes keeps its default
+		CreateConVar = function(_, default)
+			return {
+				GetString = function() return default end,
+				GetInt = function() return tonumber(default) end,
+				GetBool = function() return default == "1" end,
+			}
+		end,
 		-- the team size is w.teamSize, every other convar a bool in w.bools
 		GetConVar = function(name)
 			if name == "ns_squads_max" or name == "ns_squads_min" then
@@ -426,7 +433,7 @@ T.test("removing slots by id removes their soldiers, and sets that side's size",
 	local controller = Load(w)
 	controller:Sizes()
 	local removed = false
-	controller:SlotPlan():Fill("Resistance", { Remove = function() removed = true end })
+	controller:SlotPlan():Fill("Resistance", { Remove = function() removed = true end, IsPlayer = function() return false end })
 	local ids = SlotIds(controller, RED)
 	local lines = controller:RemoveSlots({ ids[1], ids[2], 99 })
 	T.eq(removed, true, "the soldier in the first went with it")

@@ -31,4 +31,13 @@ T.test("a hit sound waits out the repeat delay after the last", function()
 	T.eq(HitSound.Ready(1, 1, 0), true, "no delay")
 end)
 
+-- The hit sound plays as a file, so its pitch (by damage) and volume are
+-- ours: played by name, a soundscript's own would override them.
+T.test("a hit sound's files: a soundscript's one or many, or a path as itself", function()
+	T.eq(table.concat(HitSound.Files("Player.HitSoundBeepo", "ui/hitsound_beepo.wav"), " "), "ui/hitsound_beepo.wav", "one")
+	T.eq(table.concat(HitSound.Files("Player.HitSoundNotes", { "ui/hitsound_menu_note1.wav", "ui/hitsound_menu_note2.wav" }), " "),
+		"ui/hitsound_menu_note1.wav ui/hitsound_menu_note2.wav", "many")
+	T.eq(table.concat(HitSound.Files("ui/my_ding.wav", nil), " "), "ui/my_ding.wav", "an override, no soundscript")
+end)
+
 T.finish()

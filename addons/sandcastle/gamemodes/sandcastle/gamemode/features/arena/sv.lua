@@ -68,7 +68,7 @@ function Controller:RoundStart()
 	self.rounds:SetCapEnableTime(at)
 	SetGlobal2Float("ws_arena_cap_enable_time", at)
 	WS.FireOutput(self.logicEnt, "OnArenaRoundStart", self.logicEnt)
-	WS.BroadcastPA(WS.TEAM_UNASSIGNED, Arena.ROUND_START_LINE)
+	WS.BroadcastSoundscape(WS.TEAM_UNASSIGNED, Arena.ROUND_START_LINE)
 end
 
 function Controller:Think(now)

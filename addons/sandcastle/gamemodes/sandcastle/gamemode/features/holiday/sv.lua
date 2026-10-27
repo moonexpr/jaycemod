@@ -166,7 +166,7 @@ end
 local function FortuneEffects(Fortune)
 	return {
 		[Fortune.OUTPUT] = function(ent, e) ent:TriggerOutput(e.name, ent) end,
-		[Fortune.BROADCAST] = function(ent, e) WS.BroadcastSound(WS.TEAM_UNASSIGNED, e.sound) end,
+		[Fortune.BROADCAST] = function(ent, e) WS.BroadcastSoundscape(WS.TEAM_UNASSIGNED, e.sound) end,
 		[Fortune.TELEPORT] = function(ent, e) TeleportTeam(Fortune, e.team, e.target) end,
 	}
 end
