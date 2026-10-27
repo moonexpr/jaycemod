@@ -3,7 +3,8 @@
 -- by the damage dealt (tf_dingaling_pitchmindmg at LOW_DAMAGE or less,
 -- tf_dingaling_pitchmaxdmg at HIGH_DAMAGE or more), and the least time
 -- between two (tf_dingalingaling_repeat_delay). ws/cl_hits.lua plays it.
-local min, max = math.min, math.max
+local type = type
+local Scalar = math.scalar
 module(...)
 
 -- tf_dingalingaling_effect's choices, 0 first, as TF2's options list them.
@@ -28,10 +29,19 @@ function Sound(effect, override)
 	return EFFECTS[effect + 1].sound
 end
 
+-- The files the hit sound plays, one picked a hit: sound's soundscript's
+-- (scriptFiles: its one file or its list), or sound itself, a path, when
+-- no soundscript has it (nil). Played as files, its pitch and volume are
+-- the player's; a soundscript played by name would override them.
+function Files(sound, scriptFiles)
+	if scriptFiles == nil then return { sound } end
+	if type(scriptFiles) == "string" then return { scriptFiles } end
+	return scriptFiles
+end
+
 -- RemapValClamped(damage, LOW_DAMAGE, HIGH_DAMAGE, minPitch, maxPitch)
 function Pitch(damage, minPitch, maxPitch)
-	local t = (min(max(damage, LOW_DAMAGE), HIGH_DAMAGE) - LOW_DAMAGE) / (HIGH_DAMAGE - LOW_DAMAGE)
-	return minPitch + (maxPitch - minPitch) * t
+	return Scalar.Remap(damage, LOW_DAMAGE, HIGH_DAMAGE, minPitch, maxPitch)
 end
 
 -- Whether a hit sound may play now, the last at lastAt (nil for none yet).

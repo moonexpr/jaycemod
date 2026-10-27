@@ -12,7 +12,7 @@ use std::ffi::{c_int, CStr};
 type Point = [f64; 3];
 
 /// The point table at `index`: x and y numbers, z a number or 0.
-unsafe fn point_at(l: L, index: c_int) -> Point {
+pub(super) unsafe fn point_at(l: L, index: c_int) -> [f64; 3] {
     if !super::util::indexable(l, index) {
         raise_where(l, "a point is a { x, y, z } table or a Vector".into());
     }
@@ -110,6 +110,83 @@ unsafe extern "C-unwind" fn normalize(l: L) -> c_int {
     push_point(l, a[0] * s, a[1] * s, Some(a[2] * s))
 }
 
+unsafe extern "C-unwind" fn distance_squared(l: L) -> c_int {
+    let (a, b) = (point_at(l, 1), point_at(l, 2));
+    let (dx, dy, dz) = (a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+    number(l, dx * dx + dy * dy + dz * dz)
+}
+
+unsafe extern "C-unwind" fn normalize2d(l: L) -> c_int {
+    let a = point_at(l, 1);
+    let length = (a[0] * a[0] + a[1] * a[1]).sqrt();
+    if length == 0.0 {
+        return nothing(l);
+    }
+    push_point(l, a[0] / length, a[1] / length, Some(0.0))
+}
+
+unsafe extern "C-unwind" fn left2d(l: L) -> c_int {
+    let a = point_at(l, 1);
+    push_point(l, -a[1], a[0], Some(0.0))
+}
+
+unsafe extern "C-unwind" fn offset2d(l: L) -> c_int {
+    let api = api();
+    let (p, from) = (point_at(l, 1), point_at(l, 2));
+    let (along, across) = ((api.checknumber)(l, 3), (api.checknumber)(l, 4));
+    let (dx, dy) = (p[0] - from[0], p[1] - from[1]);
+    let length = (dx * dx + dy * dy).sqrt();
+    if length == 0.0 {
+        return push_point(l, p[0], p[1], Some(p[2]));
+    }
+    let (ux, uy) = (dx / length, dy / length);
+    push_point(l, p[0] + ux * along + -uy * across, p[1] + uy * along + ux * across, Some(p[2]))
+}
+
+unsafe extern "C-unwind" fn closest_on_segment(l: L) -> c_int {
+    let (p, a, b) = (point_at(l, 1), point_at(l, 2), point_at(l, 3));
+    let (abx, aby, abz) = (b[0] - a[0], b[1] - a[1], b[2] - a[2]);
+    let length2 = abx * abx + aby * aby + abz * abz;
+    let mut t = 0.0;
+    if length2 > 0.0 {
+        t = ((p[0] - a[0]) * abx + (p[1] - a[1]) * aby + (p[2] - a[2]) * abz) / length2;
+        if t < 0.0 {
+            t = 0.0;
+        } else if t > 1.0 {
+            t = 1.0;
+        }
+    }
+    push_point(l, a[0] + abx * t, a[1] + aby * t, Some(a[2] + abz * t))
+}
+
+fn polar_of(center: &Point, radius: f64, angle: f64) -> Point {
+    [center[0] + angle.cos() * radius, center[1] + angle.sin() * radius, center[2]]
+}
+
+unsafe extern "C-unwind" fn polar(l: L) -> c_int {
+    let api = api();
+    let center = point_at(l, 1);
+    let (radius, angle) = ((api.checknumber)(l, 2), (api.checknumber)(l, 3));
+    let at = polar_of(&center, radius, angle);
+    push_point(l, at[0], at[1], Some(at[2]))
+}
+
+unsafe extern "C-unwind" fn circle(l: L) -> c_int {
+    let api = api();
+    let center = point_at(l, 1);
+    let (radius, count, start) = ((api.checknumber)(l, 2), (api.checknumber)(l, 3), (api.checknumber)(l, 4));
+    if !(count >= 1.0) || count.floor() != count {
+        raise_where(l, format!("a circle's count is a whole number of at least 1, not {}", tostring(l, 3)));
+    }
+    (api.createtable)(l, count as c_int, 0);
+    for i in 0..count as c_int {
+        let at = polar_of(&center, radius, start + (i as f64 * (2.0 * std::f64::consts::PI)) / count);
+        push_point(l, at[0], at[1], Some(at[2]));
+        (api.rawseti)(l, -2, i + 1);
+    }
+    1
+}
+
 // math.scalar ---------------------------------------------------------------
 
 unsafe extern "C-unwind" fn clamp(l: L) -> c_int {
@@ -120,6 +197,51 @@ unsafe extern "C-unwind" fn clamp(l: L) -> c_int {
         raise_where(l, format!("an empty range: {lo} above {hi}"));
     }
     number(l, if value < low { low } else if value > high { high } else { value })
+}
+
+fn saturate_of(value: f64) -> f64 {
+    if value < 0.0 {
+        0.0
+    } else if value > 1.0 {
+        1.0
+    } else {
+        value
+    }
+}
+
+unsafe extern "C-unwind" fn saturate(l: L) -> c_int {
+    number(l, saturate_of((api().checknumber)(l, 1)))
+}
+
+unsafe extern "C-unwind" fn lerp(l: L) -> c_int {
+    let api = api();
+    let (a, b, t) = ((api.checknumber)(l, 1), (api.checknumber)(l, 2), (api.checknumber)(l, 3));
+    number(l, a + (b - a) * t)
+}
+
+/// The fraction of the span `a..b` that `value` covers, held to [0, 1]; a span with no length is
+/// the caller's mistake, raised at the caller's line.
+unsafe fn span_fraction(l: L, value: f64, a_index: c_int) -> f64 {
+    let api = api();
+    let (a, b) = ((api.checknumber)(l, a_index), (api.checknumber)(l, a_index + 1));
+    if a == b {
+        let (from, to) = (tostring(l, a_index), tostring(l, a_index + 1));
+        raise_where(l, format!("a span with no length: {from} to {to}"));
+    }
+    saturate_of((value - a) / (b - a))
+}
+
+unsafe extern "C-unwind" fn inverse_lerp(l: L) -> c_int {
+    let value = (api().checknumber)(l, 3);
+    number(l, span_fraction(l, value, 1))
+}
+
+unsafe extern "C-unwind" fn remap(l: L) -> c_int {
+    let api = api();
+    let value = (api.checknumber)(l, 1);
+    let t = span_fraction(l, value, 2);
+    let (c, d) = ((api.checknumber)(l, 4), (api.checknumber)(l, 5));
+    number(l, c + (d - c) * t)
 }
 
 // math.stats ----------------------------------------------------------------
@@ -677,11 +799,28 @@ pub unsafe fn push_modules(l: L) {
             (c"Cross", cross),
             (c"Length", length),
             (c"Normalize", normalize),
+            (c"DistanceSquared", distance_squared),
+            (c"Normalize2D", normalize2d),
+            (c"Left2D", left2d),
+            (c"Offset2D", offset2d),
+            (c"ClosestOnSegment", closest_on_segment),
+            (c"Polar", polar),
+            (c"Circle", circle),
         ],
         None,
     );
     (api.setfield)(l, -2, c"geometry".as_ptr());
-    module::push(l, &[(c"Clamp", clamp)], None);
+    module::push(
+        l,
+        &[
+            (c"Clamp", clamp),
+            (c"Saturate", saturate),
+            (c"Lerp", lerp),
+            (c"InverseLerp", inverse_lerp),
+            (c"Remap", remap),
+        ],
+        None,
+    );
     (api.setfield)(l, -2, c"scalar".as_ptr());
     module::push(l, &[(c"Mean", mean), (c"Percentile", percentile)], None);
     (api.setfield)(l, -2, c"stats".as_ptr());

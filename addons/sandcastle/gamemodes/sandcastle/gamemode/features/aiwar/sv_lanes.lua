@@ -2,6 +2,7 @@
 local Controller, Map = ...
 local Teams = gameplay.teams
 local Geometry = math.geometry
+local Select = list.select
 local TFBot = WS.require("foundation.wetsands.path.tfbot")
 local HL2Path = WS.require("foundation.wetsands.path.hl2")
 local Path = wetsands.path
@@ -97,13 +98,7 @@ end
 
 -- Of positions, the nearest to p, or nil for none.
 local function Nearest(positions, p)
-	local target = ToVector(p)
-	local best, bestDistance
-	for _, pos in ipairs(positions) do
-		local d = pos:DistToSqr(target)
-		if not bestDistance or d < bestDistance then best, bestDistance = pos, d end
-	end
-	return best
+	return (Select.Nearest(positions, ToVector(p)))
 end
 
 -- A lane stop inside the enemy's spawn room moves to its threshold
@@ -169,8 +164,7 @@ function Controller:FlankGround(to, npcs)
 	local function Admit(id)
 		local area = navmesh.GetNavAreaByID(id)
 		local center = area:GetCenter()
-		local dx, dy = center.x - to.x, center.y - to.y
-		return math.sqrt(dx * dx + dy * dy) <= GROUND_REACH and npcs:SpawnRoomTeam(area) == WS.TEAM_UNASSIGNED
+		return Geometry.Distance2D(center, to) <= GROUND_REACH and npcs:SpawnRoomTeam(area) == WS.TEAM_UNASSIGNED
 	end
 	local ground = {}
 	for _, id in ipairs(Graph.Flood({ here:GetID() }, AreasInto, Admit, GROUND_LIMIT)) do

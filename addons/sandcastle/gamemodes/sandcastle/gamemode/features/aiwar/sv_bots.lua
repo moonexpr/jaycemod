@@ -3,7 +3,8 @@
 -- (nextsoldier.bot_quota): each joins a team as a player is
 -- auto-assigned, spawns in its team's respawn waves as every player does,
 -- and is enlisted as it spawns, under the same orders as the war's NPC
--- soldiers, who fill only the slots the bots leave (Reinforce). Being
+-- soldiers. ns_soldiers_actor picks one or the other: bots kept by the
+-- quota, or NPCs drafted in the waves (Reinforce), never both. Being
 -- players, bots pass the map's triggers and filters for players, and the
 -- rounds' rules (freezes, stuns, humiliation) reach their keys as anyone's.
 --
@@ -29,6 +30,9 @@ local QUOTA_MODE = CreateConVar("tf_bot_quota_mode", "normal", FLAGS,
 	"What tf_bot_quota counts: normal (bots), fill (players on the teams), match (bots for each human)")
 local JOIN_AFTER_PLAYER = CreateConVar("tf_bot_join_after_player", "1", FLAGS,
 	"Whether the AI war's bots wait for a human to join a team")
+local ACTOR = CreateConVar("ns_soldiers_actor", "npc", FLAGS,
+	"Who the AI war's soldiers are, never both: npc (its NextBots; tf_bot_quota is ignored) "
+	.. "or bot (bot players; no NPCs are drafted, and a tf_bot_quota of 0 fills the teams' sizes)")
 local DIFFICULTY = GetConVar("tf_bot_difficulty") -- ws/sh_votes.lua's
 local MIMIC = GetConVar("bot_mimic")
 
@@ -37,6 +41,22 @@ cvars.AddChangeCallback("tf_bot_quota_mode", function(_, old, new)
 	print(string.format("tf_bot_quota_mode: %q is none of normal, fill, match; kept %s", new, old))
 	QUOTA_MODE:SetString(old)
 end, "ws_aiwar_bots")
+
+cvars.AddChangeCallback("ns_soldiers_actor", function(_, old, new)
+	if not Quota.Actors(new) then
+		print(string.format("ns_soldiers_actor: %q is neither npc nor bot; kept %s", new, old))
+		ACTOR:SetString(old)
+		return
+	end
+	-- bots take over: the drafted NPCs go now; NPCs take over: the bots are
+	-- kicked a second at a time by the quota, and the waves draft in their place
+	if Quota.Actors(new) == Quota.BOT and Controller.war then Controller:DismissDrafted() end
+end, "ws_aiwar_bots")
+
+-- Who the war's soldiers are (ns_soldiers_actor): Quota.NPC or Quota.BOT.
+function Controller:Actors()
+	return Quota.Actors(ACTOR:GetString())
+end
 
 -- How often the quota is kept (MaintainBotQuota's think) and a bot looks.
 local QUOTA_INTERVAL, LOOK_INTERVAL = 1, 0.2
@@ -136,10 +156,13 @@ function Controller:KickBot()
 end
 
 function Controller:MaintainBotQuota()
+	local sizes = self:Sizes()
 	local step = Quota.Step({
 		mode = Quota.Mode(QUOTA_MODE:GetString()),
 		quota = QUOTA:GetInt(),
 		joinAfterPlayer = JOIN_AFTER_PLAYER:GetBool(),
+		actors = self:Actors(),
+		soldiers = sizes[RED] + sizes[BLUE],
 	}, self:Population())
 	if step == Quota.ADD then
 		self:AddBot()

@@ -11,6 +11,7 @@
 local ipairs, pairs, setmetatable, sort = ipairs, pairs, setmetatable, table.sort
 local Teams = gameplay.teams
 local Distance = math.geometry.Distance
+local Select = list.select
 module(...)
 
 -- A sighting of a loser is followed this long.
@@ -28,12 +29,7 @@ local ENEMY = {
 }
 
 local function Nearest(points, here)
-	local best, bestDistance
-	for _, p in ipairs(points) do
-		local d = Distance(p, here)
-		if not bestDistance or d < bestDistance then best, bestDistance = p, d end
-	end
-	return best
+	return (Select.Nearest(points, here))
 end
 
 -------------------------------------------------------------------------------
@@ -74,13 +70,23 @@ function Board:Sightings(team, now)
 end
 
 -- The nearest sighting to here, or nil.
+local function SightingPos(sighting) return sighting.pos end
+
 function Quarry(sightings, here)
-	local best, bestDistance
-	for _, sighting in ipairs(sightings) do
-		local d = Distance(sighting.pos, here)
-		if not bestDistance or d < bestDistance then best, bestDistance = sighting, d end
-	end
-	return best
+	return (Select.Nearest(sightings, here, SightingPos))
+end
+
+-- A hunter on its way turns for a loser sighted within PURSUE_REACH of it.
+PURSUE_REACH = 1200
+
+-- The sighting a hunter on its way to goal turns for: the nearest fresh one
+-- within PURSUE_REACH of here, unless the trip already goes there; nil to
+-- keep on.
+function Pursues(sightings, here, goal)
+	local quarry = Quarry(sightings, here)
+	if not quarry or Distance(quarry.pos, here) > PURSUE_REACH then return nil end
+	if goal and Distance(quarry.pos, goal) <= HUNT_ARRIVE then return nil end
+	return quarry
 end
 
 -- Where a winner hunts: its quarry, else the member's pick of the losers'

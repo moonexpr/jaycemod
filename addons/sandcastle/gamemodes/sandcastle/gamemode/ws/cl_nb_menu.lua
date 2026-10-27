@@ -116,8 +116,13 @@ function WS.NpcDebugMenu(menu, index, soldier)
 	for _, layer in ipairs(SELECTED_LAYERS) do SelectedLayerOption(menu, layer, index) end
 end
 
+-- A bot player is debugged as an NPC: the AI war's bots are its soldiers.
+local function BotPlayer(ent)
+	return ent:IsPlayer() and ent:IsBot()
+end
+
 local function Filter(self, ent, ply)
-	return IsValid(ent) and ent:IsNextBot() and WS.NpcDebugAllowed(ply)
+	return IsValid(ent) and (ent:IsNextBot() or BotPlayer(ent)) and WS.NpcDebugAllowed(ply)
 end
 
 properties.Add("ws_nb_select", {
@@ -137,6 +142,6 @@ properties.Add("ws_nb_debug", {
 	Filter = Filter,
 	Action = function(self, ent) end,
 	MenuOpen = function(self, option, ent)
-		WS.NpcDebugMenu(option:AddSubMenu(), ent:EntIndex(), ent.WSSoldier == true)
+		WS.NpcDebugMenu(option:AddSubMenu(), ent:EntIndex(), ent.WSSoldier == true or BotPlayer(ent))
 	end,
 })

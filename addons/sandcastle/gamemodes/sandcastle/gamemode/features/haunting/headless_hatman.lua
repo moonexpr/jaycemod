@@ -17,6 +17,7 @@ local BossEvents = require("features.npc.boss_events")
 local Actor = npc.actor
 local Players = gameplay.players
 local Teams = gameplay.teams
+local Select = list.select
 local atan2, cos, deg, floor, huge, rad, sin = math.atan2, math.cos, math.deg, math.floor, math.huge, math.rad, math.sin
 local ipairs = ipairs
 module(...)
@@ -119,12 +120,7 @@ end
 
 -- The nearest of targets by range (INextBot::GetRangeTo), or nil.
 local function Nearest(me, targets)
-	local nearest, nearestRange = nil, huge
-	for _, t in ipairs(targets) do
-		local range = me:RangeTo(t)
-		if range < nearestRange then nearest, nearestRange = t, range end
-	end
-	return nearest
+	return (Select.Lowest(targets, function(t) return me:RangeTo(t) end))
 end
 
 local function Forward(me)

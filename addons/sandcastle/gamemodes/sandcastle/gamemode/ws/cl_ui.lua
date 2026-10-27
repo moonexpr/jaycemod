@@ -180,12 +180,7 @@ local function Bevelled(corners)
 end
 
 local function Ring(radius, count, startDeg)
-	local points = {}
-	for i = 0, count - 1 do
-		local a = math.rad(startDeg + i * 360 / count)
-		points[#points + 1] = { x = 0.5 + radius * math.cos(a), y = 0.5 + radius * math.sin(a) }
-	end
-	return points
+	return math.geometry.Circle({ x = 0.5, y = 0.5 }, radius, count, math.rad(startDeg))
 end
 
 -- The star as a fan of triangles from its centre: DrawPoly takes only convex shapes.

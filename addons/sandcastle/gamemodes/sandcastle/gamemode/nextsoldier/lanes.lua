@@ -17,11 +17,12 @@
 -- WAYPOINT_SPACING apart), length }; a team's lanes are { key, [1..n] =
 -- lane }. Positions are { x, y, z } tables.
 local ipairs, pairs = ipairs, pairs
-local huge, min, sqrt = math.huge, math.min, math.sqrt
+local huge, min = math.huge, math.min
 local sort = table.sort
 local HL2Path = require("foundation.wetsands.path.hl2")
 local Path = wetsands.path
-local Distance = math.geometry.Distance
+local Select = list.select
+local Distance, Distance2D, Offset2D = math.geometry.Distance, math.geometry.Distance2D, math.geometry.Offset2D
 local Graph = graph.search
 module(...)
 
@@ -149,8 +150,7 @@ end
 FLANK_MIN, FLANK_MAX = 400, 1200
 
 function InFlankRange(objective, p)
-	local dx, dy = p.x - objective.x, p.y - objective.y
-	local flat = sqrt(dx * dx + dy * dy)
+	local flat = Distance2D(p, objective)
 	return flat >= FLANK_MIN and flat <= FLANK_MAX
 end
 
@@ -160,20 +160,11 @@ end
 -- searched, whatever the candidates. Nil when no two are off the band and
 -- apart.
 function Siblings(candidates, separation, walkFrom)
-	local a, farthest = nil, 0
-	for _, key in ipairs(candidates) do
-		if separation(key) > farthest then a, farthest = key, separation(key) end
-	end
-	if not a then return nil end
+	local a, farthest = Select.Highest(candidates, separation)
+	if not a or farthest <= 0 then return nil end
 	local fromA = walkFrom(a)
-	local b, best = nil, 0
-	for _, key in ipairs(candidates) do
-		if key ~= a then
-			local score = min(separation(key), fromA(key))
-			if score > best then b, best = key, score end
-		end
-	end
-	if not b then return nil end
+	local b, best = Select.Highest(candidates, function(key) return min(separation(key), fromA(key)) end, function(key) return key ~= a end)
+	if not b or best <= 0 then return nil end
 	return a, b
 end
 
@@ -193,11 +184,7 @@ end
 -- The flanks with no ground to choose from: FLANK_RADIUS left and right of
 -- the objective, across the way in from spawn.
 function FixedFlanks(spawn, objective)
-	local dx, dy = objective.x - spawn.x, objective.y - spawn.y
-	local length = sqrt(dx * dx + dy * dy)
-	local lx, ly = -dy / length, dx / length -- the left of the way in
-	return Point(objective.x + lx * FLANK_RADIUS, objective.y + ly * FLANK_RADIUS, objective.z),
-		Point(objective.x - lx * FLANK_RADIUS, objective.y - ly * FLANK_RADIUS, objective.z)
+	return Offset2D(objective, spawn, 0, FLANK_RADIUS), Offset2D(objective, spawn, 0, -FLANK_RADIUS)
 end
 
 -- The lanes after the direct one, in order: { kind, stops }, routed from

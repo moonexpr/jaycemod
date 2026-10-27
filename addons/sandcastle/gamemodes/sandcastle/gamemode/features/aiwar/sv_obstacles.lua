@@ -8,6 +8,7 @@ local HL2Path = WS.require("foundation.wetsands.path.hl2")
 local Zone = nextsoldier.zone
 local Doors = nextsoldier.doors
 local Geometry = math.geometry
+local Select = list.select
 local WALK_MAX_RISE, SPAWN_LIFT = Map.WALK_MAX_RISE, Map.SPAWN_LIFT
 local Point, ToVector, SpawnSpots, IsDoor = Map.Point, Map.ToVector, Map.SpawnSpots, Map.IsDoor
 local Clear, CartRadius = Map.Clear, Map.CartRadius
@@ -43,12 +44,11 @@ end
 -- A team's spawn points far apart: the first and the one farthest from it.
 local function SpreadSpawns(team)
 	local spawns = SpawnSpots(team)
-	local first, far, farthest = spawns[1], nil, -1
-	for _, spawn in ipairs(spawns) do
-		local d = spawn:GetPos():DistToSqr(first:GetPos())
-		if d > farthest then far, farthest = spawn, d end
-	end
-	return first and { first:GetPos(), far:GetPos() } or {}
+	local first = spawns[1]
+	if not first then return {} end
+	local from = first:GetPos()
+	local far = Select.Highest(spawns, function(spawn) return spawn:GetPos():DistToSqr(from) end)
+	return { from, far:GetPos() }
 end
 
 -- The attacking teams and what each heads for are the scenario's

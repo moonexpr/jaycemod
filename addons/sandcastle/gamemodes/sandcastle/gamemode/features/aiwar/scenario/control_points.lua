@@ -37,6 +37,7 @@ local Tactics = nextsoldier.tactics
 local Teams = gameplay.teams
 local Base = require("features.aiwar.scenario")
 local Geometry = math.geometry
+local Select = list.select
 local Distance = Geometry.Distance
 module(...)
 
@@ -83,14 +84,7 @@ end
 
 -- The first of points (rank order) nearest pos that passes keep, or nil.
 local function Nearest(points, pos, keep)
-	local best, bestRange
-	for _, point in ipairs(points) do
-		if not keep or keep(point) then
-			local range = Distance(Center(point), pos)
-			if not bestRange or range < bestRange then best, bestRange = point, range end
-		end
-	end
-	return best
+	return (Select.Nearest(points, pos, Center, keep))
 end
 
 local function Contested(point)

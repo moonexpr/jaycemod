@@ -12,8 +12,16 @@
 --
 -- A file's name says its realm: sv.lua and sv_*, cl.lua and cl_*, sh.lua and sh_*; any other name is a
 -- pure module. Clients are sent every file but the server's.
-local error, format, ipairs, match, pcall, setfenv, setmetatable, tostring, type =
-	error, string.format, ipairs, string.match, pcall, setfenv, setmetatable, tostring, type
+--
+-- A feature may name the resources it brings, worth preloading with it:
+-- features/<name>/resources.lua returns kind -> names (KINDS: soundscapes,
+-- models, materials). As the feature loads, before its parts run, the
+-- loader hands each kind's names to the handler its realm registered for
+-- the kind (Loader:Handle; a handler registered later is handed the
+-- features already loaded); a kind no handler takes on this realm is
+-- skipped (the server plays no soundscape), a kind not in KINDS refused.
+local error, format, ipairs, match, pairs, pcall, setfenv, setmetatable, tostring, type =
+	error, string.format, ipairs, string.match, pairs, pcall, setfenv, setmetatable, tostring, type
 local concat, sort = table.concat, table.sort
 local floor = math.floor
 module(...)
@@ -30,6 +38,15 @@ CLIENT_PARTS = { SHARED, CLIENT }
 
 function PartPath(name, part)
 	return ROOT .. name .. "/" .. part .. ".lua"
+end
+
+-- The kinds of resource a feature may name, in the order they are handed out.
+SOUNDSCAPES, MODELS, MATERIALS = "soundscapes", "models", "materials"
+KINDS = { SOUNDSCAPES, MODELS, MATERIALS }
+local IS_KIND = { [SOUNDSCAPES] = true, [MODELS] = true, [MATERIALS] = true }
+
+function ResourcesPath(name)
+	return ROOT .. name .. "/resources.lua"
 end
 
 -- The folders, relative to the gamemode folder, whose files clients are sent.
@@ -127,6 +144,8 @@ function New(realm, port)
 		failed = {},
 		order = {},
 		hasClientPart = {},
+		resources = {}, -- feature -> kind -> names, as its resources.lua named them
+		handlers = {}, -- kind -> handler(names, feature)
 	}, Loader)
 end
 
@@ -138,6 +157,37 @@ local function RunTable(port, path)
 	return value
 end
 
+local function CheckKind(kind, what)
+	if not IS_KIND[kind] then error(format("%s: %q is not a resource kind (%s)", what, tostring(kind), concat(KINDS, ", ")), 0) end
+end
+
+-- The feature's resources (none without a resources.lua), each kind checked.
+local function ReadResources(port, name)
+	local path = ResourcesPath(name)
+	if not port:Exists(path) then return {} end
+	local resources = RunTable(port, path)
+	for kind in pairs(resources) do CheckKind(kind, path) end
+	return resources
+end
+
+local function HandOut(self, name, resources)
+	for _, kind in ipairs(KINDS) do
+		local handler, names = self.handlers[kind], resources[kind]
+		if handler and names then handler(names, name) end
+	end
+end
+
+-- handler(names, feature) takes this realm's resources of kind: those of
+-- every feature that loads, and of each already loaded.
+function Loader:Handle(kind, handler)
+	CheckKind(kind, "a handler")
+	self.handlers[kind] = handler
+	for _, name in ipairs(self.order) do
+		local names = self.resources[name][kind]
+		if names then handler(names, name) end
+	end
+end
+
 -- Dependencies a part loads finish first, so the order is dependency order.
 local function Load(self, name)
 	local port = self.port
@@ -147,7 +197,10 @@ local function Load(self, name)
 	if missing then error(missing, 0) end
 
 	self.loading[name] = true
+	local resources
 	local ok, value = pcall(function()
+		resources = ReadResources(port, name)
+		HandOut(self, name, resources)
 		if hasShared then port:Run(sharedPath) end
 		return hasOwn and RunTable(port, ownPath) or nil
 	end)
@@ -160,6 +213,7 @@ local function Load(self, name)
 
 	local clientPart = hasShared or port:Exists(PartPath(name, CLIENT))
 	self.values[name] = value
+	self.resources[name] = resources
 	self.loaded[name] = true
 	self.hasClientPart[name] = clientPart
 	self.order[#self.order + 1] = name

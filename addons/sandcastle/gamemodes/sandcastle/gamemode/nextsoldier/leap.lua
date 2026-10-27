@@ -8,6 +8,7 @@
 -- second half, ending OVER past the lip.
 local sqrt = math.sqrt
 local min = math.min
+local Lerp = math.scalar.Lerp
 module(...)
 
 CLEARANCE = 10 -- how far above the lip the arc ends
@@ -50,8 +51,6 @@ VAULT_DURATION = 0.7 -- seconds the vault takes
 function VaultFits(q)
 	return q.top.z - q.from.z <= q.maxHeight and q.land.z < q.top.z and q.from.z - q.land.z <= q.maxDrop
 end
-
-local function Lerp(a, b, s) return a + (b - a) * s end
 
 function Vault(from, top, land, t)
 	t = min(t, 1)

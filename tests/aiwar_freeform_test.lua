@@ -162,4 +162,48 @@ T.test("the hiding spots are split between the teams along the map's longest sid
 	T.eq(#Spawns.Split({}, RED), 0, "no spots, none")
 end)
 
+-- A graph of areas: links[a] = the areas a soldier crosses to from a (a
+-- drop it rappels down is a link one way only).
+local function Neighbors(links)
+	return function(area) return links[area] or {} end
+end
+
+local function Spot(area) return { x = 0, y = 0, z = 0, area = area } end
+
+local function Areas(spots)
+	local list = {}
+	for i, spot in ipairs(spots) do list[i] = spot.area end
+	table.sort(list)
+	return table.concat(list, ",")
+end
+
+T.test("spawn bases are the spots every other base reaches, and reaches back", function()
+	-- 1 <-> 2 <-> 3 is the map; 4 is a roof reached only by dropping off it
+	-- (4 -> 1); 5 and 6 are a pit one only drops into (3 -> 5) and walks
+	-- about in (5 <-> 6) but never leaves
+	local links = { [1] = { 2 }, [2] = { 1, 3 }, [3] = { 2, 5 }, [4] = { 1 }, [5] = { 6 }, [6] = { 5 } }
+	local spots = { Spot(4), Spot(1), Spot(5), Spot(3), Spot(6), Spot(2) }
+	T.eq(Areas(Spawns.Connected(spots, Neighbors(links))), "1,2,3", "the roof and the pit are left out")
+end)
+
+T.test("a drop rappelled down is a way in, so a loop through it joins", function()
+	-- a ledge 4 above 1, dropped from (4 -> 1) and climbed back by stairs (2 -> 4)
+	local links = { [1] = { 2 }, [2] = { 1, 4 }, [4] = { 1 } }
+	T.eq(Areas(Spawns.Connected({ Spot(1), Spot(2), Spot(4) }, Neighbors(links))), "1,2,4", "all three")
+end)
+
+T.test("the largest group of bases wins; spots on one area count each", function()
+	-- two islands: 1 <-> 2 holds three spots, 7 <-> 8 two
+	local links = { [1] = { 2 }, [2] = { 1 }, [7] = { 8 }, [8] = { 7 } }
+	local spots = { Spot(7), Spot(8), Spot(1), Spot(1), Spot(2) }
+	T.eq(Areas(Spawns.Connected(spots, Neighbors(links))), "1,1,2", "the bigger island")
+	T.eq(#Spawns.Connected({}, Neighbors(links)), 0, "no spots, none")
+	T.eq(Areas(Spawns.Connected({ Spot(9) }, Neighbors({}))), "9", "a lone spot is its own group")
+end)
+
+T.test("between equal groups, the first spot's group wins, whatever the order of areas", function()
+	local links = { [1] = { 2 }, [2] = { 1 }, [7] = { 8 }, [8] = { 7 } }
+	T.eq(Areas(Spawns.Connected({ Spot(7), Spot(1), Spot(8), Spot(2) }, Neighbors(links))), "7,8", "7 came first")
+end)
+
 T.finish()

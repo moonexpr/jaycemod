@@ -2,6 +2,7 @@
 local Controller, Map = ...
 local AiWar = WS.require("features.aiwar.model")
 local Teams = gameplay.teams
+local Quota = nextsoldier.bot_quota
 local Orders = WS.require("features.aiwar.orders")
 local NpcSystem = npc.nextbot
 local SPAWN_LIFT, RED, BLUE = Map.SPAWN_LIFT, Map.RED, Map.BLUE
@@ -16,8 +17,13 @@ local Point, Masks, SpawnSpots, ClearSpotNear = Map.Point, Map.Masks, Map.SpawnS
 function Controller:Enlist(ent, team, drafted, fixed)
 	local bot = ent:IsPlayer()
 	local member = self.war:Enlist(ent, team, drafted, fixed or (not bot and AiWar.FixedRole(ent:GetClass())) or nil)
-	-- a drafted soldier fills a slot of its faction, and leads or follows as it is pinned
+	-- a drafted soldier fills a slot of its faction, and leads or follows as it is pinned;
+	-- so does a quota bot while one is free, which lists it in the AI War panel's slots
 	if drafted then member.pin = self:SlotPlan():Fill(self:FactionName(team), ent).pin end
+	if bot and self.bots[ent] then
+		local slot = self:SlotPlan():Fill(self:FactionName(team), ent)
+		member.pin = slot and slot.pin
+	end
 	if bot then
 		local soldier = self:NewBotSoldier(ent, team)
 		self.soldiers[ent] = {
@@ -243,11 +249,13 @@ local function WaveLength(team)
 	return WS.Rules:GetRespawnWaveMaxLength(team, true)
 end
 
--- The war's own soldiers fill the slots its bot players (sv_bots.lua)
--- leave: each bot on a team takes one of that team's.
+-- The war's own soldiers, drafted only while they are its actors
+-- (ns_soldiers_actor), fill the slots its bot players (sv_bots.lua) leave
+-- as they are kicked: each bot on a team takes one of that team's.
 function Controller:Reinforce(now)
 	local sizes = self:Sizes()
-	for _, team in ipairs({ RED, BLUE }) do sizes[team] = math.max(0, sizes[team] - self:BotsOn(team)) end
+	local npcs = self:Actors() == Quota.NPC
+	for _, team in ipairs({ RED, BLUE }) do sizes[team] = npcs and math.max(0, sizes[team] - self:BotsOn(team)) or 0 end
 	for team, count in pairs(self.war:Reinforcements(now, sizes, WaveLength)) do
 		local spots = SpawnSpots(team)
 		for i = 1, #spots > 0 and count or 0 do
@@ -255,6 +263,26 @@ function Controller:Reinforce(now)
 			local pos = ClearSpotNear(spot:GetPos())
 			if pos then self:Draft(team, pos, spot:GetAngles()) end
 		end
+	end
+end
+
+-- The map's spawn bases as team spawns, on a map without any (sv_map.lua).
+function Controller:PlaceSpawnBases()
+	return Map.PlaceSpawnBases()
+end
+
+-- The drafted NPC soldiers leave the war at once (bots took over as its
+-- actors); the ones players spawned stay.
+function Controller:DismissDrafted()
+	self:DisbandReserve()
+	local drafted = {}
+	for ent, entry in pairs(self.soldiers) do
+		if IsValid(ent) and not ent:IsPlayer() and self.war:Member(ent).drafted then drafted[#drafted + 1] = { ent = ent, entry = entry } end
+	end
+	for _, d in ipairs(drafted) do
+		d.entry.soldier:Release()
+		self:Discharge(d.ent)
+		d.ent:Remove()
 	end
 end
 

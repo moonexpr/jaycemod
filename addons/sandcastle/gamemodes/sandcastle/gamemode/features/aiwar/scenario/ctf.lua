@@ -27,7 +27,7 @@
 -- Brief puts on the field, per team, its objectives: own, its flag; enemy,
 -- the enemy's; zone, where it captures; stolen, its flag carried by the
 -- enemy; carrying, the enemy's flag carried by one of its own; outpost.
-local abs, ceil, ipairs, max, min, pairs, sort = math.abs, math.ceil, ipairs, math.max, math.min, pairs, table.sort
+local abs, ceil, ipairs, min, pairs, sort = math.abs, math.ceil, ipairs, math.min, pairs, table.sort
 local AiWar = require("features.aiwar.model")
 local Orders = require("features.aiwar.orders")
 local Teams = gameplay.teams
@@ -71,10 +71,7 @@ local function ObjectivesOf(field, member) return field.objectives[member.team] 
 
 -- The distance from p to the segment a-b.
 local function ToSegment(p, a, b)
-	local ab, ap = Geometry.Sub(b, a), Geometry.Sub(p, a)
-	local length2 = Geometry.Dot(ab, ab)
-	local t = length2 > 0 and min(1, max(0, Geometry.Dot(ap, ab) / length2)) or 0
-	return Distance(p, Geometry.Add(a, Geometry.Scale(ab, t)))
+	return Distance(p, Geometry.ClosestOnSegment(p, a, b))
 end
 
 -- The team's outpost from waypoints, or nil with none in reach.

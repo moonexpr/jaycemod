@@ -440,7 +440,7 @@ end
 function ENT:PlayCaptureAlert(cp)
 	if WS.State() ~= WS.STATE.RND_RUNNING then return end
 	local final = self.capture:FinalPointInMap(cp)
-	WS.BroadcastSound(WS.TEAM_UNASSIGNED, final and "Announcer.Cart.FinalWarning" or "Announcer.Cart.Warning")
+	WS.BroadcastSoundscape(WS.TEAM_UNASSIGNED, final and "Announcer.Cart.FinalWarning" or "Announcer.Cart.Warning")
 end
 
 function ENT:FinalLinkedPoint()

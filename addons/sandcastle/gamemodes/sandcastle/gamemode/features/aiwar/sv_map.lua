@@ -4,6 +4,8 @@ local Controller = ...
 local Spawns = WS.require("features.aiwar.spawns")
 local Slots = WS.require("features.aiwar.slots")
 local AiWar = WS.require("features.aiwar.model")
+local HL2Path = WS.require("foundation.wetsands.path.hl2")
+local Path = wetsands.path
 
 -- CanWalkTo's sweep: a soldier's hull above its step height, so stairs and
 -- slopes pass and walls do not.
@@ -41,17 +43,51 @@ function HidingSpot:GetAngles() return Angle(0, 0, 0) end
 -- team -> its hiding spots, split once the nav mesh has any
 local hidingSpots
 
+-- The areas a soldier crosses to from an area, as its routes do (rises it
+-- climbs, drops as deep as it rappels, crossings clear of walls): read from
+-- the npc controller's mesh snapshot once it is built, else from the mesh.
+local function SoldierNeighbors()
+	local npcs = WS.Feature("npc")
+	local mesh, uncrossable = npcs.navMesh, npcs.navUncrossable
+	if mesh then
+		return function(id)
+			local list, links, refused = {}, mesh.links[id], uncrossable[id]
+			for _, to in ipairs(mesh.neighbors[id] or {}) do
+				if Path.Walkable(links[to].rise, HL2Path.SOLDIER_LIMITS) and not (refused and refused[to]) then list[#list + 1] = to end
+			end
+			return list
+		end
+	end
+	return function(id)
+		local area, list = navmesh.GetNavAreaByID(id), {}
+		for _, other in ipairs(area:GetAdjacentAreas()) do
+			if Path.Walkable(area:ComputeAdjacentConnectionHeightChange(other), HL2Path.SOLDIER_LIMITS)
+				and WS.NavLinkCrossable(area, other) then
+				list[#list + 1] = other:GetID()
+			end
+		end
+		return list
+	end
+end
+
+-- The hiding spots spawned at: those every other reaches, and reaches back
+-- (Spawns.Connected), split between the teams.
 local function HidingSpotsOf(team)
 	if not hidingSpots then
 		local all = {}
 		for _, area in ipairs(navmesh.GetAllNavAreas()) do
-			for _, pos in ipairs(area:GetHidingSpots() or {}) do all[#all + 1] = Point(pos) end
+			for _, pos in ipairs(area:GetHidingSpots() or {}) do
+				local spot = Point(pos)
+				spot.area = area:GetID()
+				all[#all + 1] = spot
+			end
 		end
 		if #all == 0 then return {} end
+		local bases = Spawns.Connected(all, SoldierNeighbors())
 		hidingSpots = {}
 		for _, t in ipairs({ RED, BLUE }) do
 			local list = {}
-			for i, pos in ipairs(Spawns.Split(all, t)) do list[i] = setmetatable({ pos = pos }, HidingSpot) end
+			for i, pos in ipairs(Spawns.Split(bases, t)) do list[i] = setmetatable({ pos = pos }, HidingSpot) end
 			hidingSpots[t] = list
 		end
 	end
@@ -221,7 +257,40 @@ local function CartRadius(train)
 	return math.sqrt(size.x * size.x + size.y * size.y) / 2 + CART_CLEARANCE
 end
 
+-- How far apart two spawn bases of a team are at least: one hiding spot of
+-- a nook, not each.
+local BASE_SPACING = 192
+
+-- On a map without TF2's team spawns (gm_construct), a team with no HL2
+-- spawns of its faction gets its share of the spawn bases among the hiding
+-- spots as info_player_teamspawns, as early as the map allows (ws/sh_aiwar.lua:
+-- after its entities, and again after each cleanup, which removes them).
+-- Players, bot players and the war's soldiers then all spawn at them through
+-- TF2's own spawn choice (ws/sv_teams_spawn.lua). Returns how many it placed.
+local function PlaceSpawnBases()
+	if Present("info_player_teamspawn") or not navmesh.IsLoaded() then return 0 end
+	local placed = 0
+	for _, team in ipairs({ RED, BLUE }) do
+		if #Spawns.Classes(Controller:Faction(team).id, Present) == 0 then
+			local points = {}
+			for i, spot in ipairs(HidingSpotsOf(team)) do points[i] = spot.pos end
+			for _, point in ipairs(world.grid.Thin(points, BASE_SPACING)) do
+				local pos = ClearSpotNear(ToVector(point))
+				if pos then
+					local ent = ents.Create("info_player_teamspawn")
+					ent:SetKeyValue("TeamNum", tostring(team))
+					ent:SetPos(pos)
+					ent:Spawn()
+					placed = placed + 1
+				end
+			end
+		end
+	end
+	return placed
+end
+
 return {
+	PlaceSpawnBases = PlaceSpawnBases,
 	WALK_MINS = WALK_MINS,
 	WALK_MAXS = WALK_MAXS,
 	WALK_LIFT = WALK_LIFT,

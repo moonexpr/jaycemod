@@ -130,6 +130,7 @@ Tests are `tests/<namespace>_<module>_test.lua`.
 | `list.ring` | `New(capacity)` → the last values pushed: `Push`, `Size`, `Ordered` (oldest first) |
 | `list.slots` | `New()` → whole-number slots for arrays kept by slot: `pool()` (`Alloc`; a freed one first), `Free` (refuses one not in use), `InUse`, `Size` (`__len`), `High`, `Clear`, `tostring` |
 | `list.chain` | `New()` → slots in an order, linked by two arrays: `PushFront`, `PushBack`, `Unlink`, `MoveFront`, `Front`, `Back`, `After`, `Before`, `Has`, `for slot in chain()` (`Ordered`), `Size` (`__len`), `Clear`, `tostring` |
+| `list.select` | Which item a score or an order picks; lower is better and a tie goes to the earlier item: `Lowest(list, score[, keep])` and `Highest` → item, score, place; `Nearest(list, from[, position[, keep]])` → item, distance, place; `TopK(list, k, before)` (the first k in order, n log k); `Order(list, before)` (places, stable); `Ranks(list, before)` (from 1) |
 | `list.schedule` | `New(clock)` → cooperative tasks in a time slice: `Spawn(fn, ...)`, `Run(seconds)`, `CheckYield` (in a task: yield once the slice is spent), `Yield`, `Wait(ready)` (park until ready), `Count`. `WS.Transactions` is each realm's, run every tick |
 
 ### tree
@@ -168,8 +169,8 @@ Tests are `tests/<namespace>_<module>_test.lua`.
 
 | Module | API |
 |---|---|
-| `math.geometry` | On `{ x, y, z }` points (missing z is 0): `Distance`, `Distance2D` (across the ground), `Toward`, `Add`, `Sub`, `Scale`, `Dot`, `Cross`, `Length`, `Normalize` (nil for the zero vector) |
-| `math.scalar` | `Clamp(value, low, high)` (an empty range is the caller's mistake) |
+| `math.geometry` | On `{ x, y, z }` points (missing z is 0): `Distance`, `Distance2D` (across the ground), `Toward`, `Add`, `Sub`, `Scale`, `Dot`, `Cross`, `Length`, `Normalize` (nil for the zero vector), `DistanceSquared`; across the ground, height left out of the direction and a point's own z kept: `Normalize2D`, `Left2D`, `Offset2D(p, from, along, across)` (p moved away from `from` and to the left of that way), `ClosestOnSegment(p, a, b)`, `Polar(center, radius, angle)`, `Circle(center, radius, count, start)` |
+| `math.scalar` | `Clamp(value, low, high)` (an empty range is the caller's mistake), `Saturate(value)` (0..1), `Lerp(a, b, t)` (t unheld), `InverseLerp(a, b, value)` and `Remap(value, a, b, c, d)` (held to the span; a span with no length is the caller's mistake) |
 | `math.stats` | `Mean(list)`, `Percentile(list, p)` (nearest rank) |
 | `math.weighted` | `PickWeighted(items, weight, r)`, `r` drawn by the caller |
 | `math.polynomial` | Coefficients from the constant up: `Evaluate`, `Derivative`, `Roots` (real, ascending, up to a cubic) |

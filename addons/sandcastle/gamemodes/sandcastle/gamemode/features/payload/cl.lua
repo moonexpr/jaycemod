@@ -10,7 +10,7 @@
 -- networks (ws_cart_*). In a race BLU's cart rides above its track and
 -- RED's below its own. It also registers the payload race announcer lines
 -- (Announcer.PLR_*), which TF2's soundscripts no longer define, for
--- WS.BroadcastSound to play here; like TF2's other announcer entries they
+-- WS.BroadcastSoundscape to play here; like TF2's other announcer entries they
 -- use CHAN_VOICE2 and no attenuation.
 WS.Feature("rounds")
 WS.Feature("capture")

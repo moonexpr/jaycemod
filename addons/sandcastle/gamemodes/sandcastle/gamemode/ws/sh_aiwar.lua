@@ -172,6 +172,18 @@ if SERVER then
 		if WS.FeatureLoaded("aiwar") then WS.Feature("aiwar"):CompileScenarios() end
 	end
 
+	-- A map without TF2's team spawns (gm_construct) is given them at its
+	-- spawn bases as soon as its entities are up, before anyone spawns, and
+	-- again after a cleanup removes them (features/aiwar/sv_map.lua). Only
+	-- such a map loads the war's code for it.
+	local function PlaceSpawnBases()
+		if #ents.FindByClass("info_player_teamspawn") > 0 then return end
+		local placed = WS.Feature("aiwar"):PlaceSpawnBases()
+		if placed > 0 then print(string.format("AI war: %d team spawns placed at the map's spawn bases", placed)) end
+	end
+	hook.Add("InitPostEntity", "ws_aiwar_spawn_bases", PlaceSpawnBases)
+	hook.Add("PostCleanupMap", "ws_aiwar_spawn_bases", PlaceSpawnBases)
+
 	-- A tick after the map loads, once the gamemode has put it in its mode
 	-- (its own InitPostEntity); a map the war cannot be fought on says why
 	-- in the server console.

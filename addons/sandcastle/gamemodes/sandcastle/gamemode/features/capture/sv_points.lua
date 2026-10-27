@@ -310,7 +310,7 @@ local LINE_FILTER = {
 local function PlayLines(self, point, lines)
 	for _, line in ipairs(lines) do
 		if line.hearer == Capture.HEAR_OTHERS then
-			WS.BroadcastSoundToOthers(line.team, line.sound)
+			WS.BroadcastSoundscapeToOthers(line.team, line.sound)
 		else
 			local filter = RecipientFilter()
 			LINE_FILTER[line.hearer](filter, line.team)
@@ -352,7 +352,7 @@ local POINT_EVENTS = {
 		local point = e.id
 		PlayLines(self, point, e.lines)
 		-- the capture bell, everyone's own sound wherever they are
-		if e.bell then WS.BroadcastSound(NOBODY, e.bell) end
+		if e.bell then WS.BroadcastSoundscape(NOBODY, e.bell) end
 		ApplyPointModel(self, point)
 		if e.team == NOBODY then
 			WS.FireOutput(point, "OnCapReset", point)

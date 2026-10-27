@@ -10,7 +10,9 @@
 -- ahead of the cart. A candidate has ahead (how far ahead of the cart
 -- along the track) and sees (a clear line to the cart) instead.
 -- Guards (ScoreGuard): posts round a control point, below.
-local abs, ipairs, min, sort, sqrt = math.abs, ipairs, math.min, table.sort, math.sqrt
+local abs, ipairs, min = math.abs, ipairs, math.min
+local Distance = math.geometry.Distance
+local Select = list.select
 module(...)
 
 MAX_RANGE = 1400 -- from the checkpoint
@@ -67,8 +69,7 @@ function ScoreGuard(c)
 end
 
 local function Apart(a, b)
-	local dx, dy, dz = a.x - b.x, a.y - b.y, a.z - b.z
-	return sqrt(dx * dx + dy * dy + dz * dz) >= SPACING
+	return Distance(a, b) >= SPACING
 end
 
 -- Up to `count` posts, best first by `scorer` (default Score), each at
@@ -80,9 +81,9 @@ function Pick(candidates, count, scorer)
 		local score = scorer(c)
 		if score then ranked[#ranked + 1] = { pos = c.pos, score = score } end
 	end
-	sort(ranked, function(a, b) return a.score > b.score end)
 	local picked = {}
-	for _, r in ipairs(ranked) do
+	for _, place in ipairs(Select.Order(ranked, function(a, b) return a.score > b.score end)) do
+		local r = ranked[place]
 		if #picked >= count then break end
 		local free = true
 		for _, p in ipairs(picked) do

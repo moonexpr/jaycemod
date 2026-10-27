@@ -10,6 +10,7 @@
 -- Viewer: { id, team }. Rules: { forcecamera, teamWin, now }.
 local ipairs = ipairs
 local Teams = gameplay.teams
+local Select = list.select
 module(...)
 
 local NOBODY, SPECTATOR, FIRST_GAME_TEAM = Teams.UNASSIGNED, Teams.SPECTATOR, Teams.FIRST_GAME_TEAM
@@ -137,14 +138,11 @@ function FindNext(list, current, reverse, valid)
 end
 
 -- CTFPlayer::FindNearestObservableTarget, by each candidate's precomputed dist.
+local function Dist(c) return c.dist end
+
 function Nearest(list, valid)
-	local best, bestDist
-	for i, c in ipairs(list) do
-		if valid(c) and (not bestDist or c.dist < bestDist) then
-			best, bestDist = i, c.dist
-		end
-	end
-	return best
+	local _, _, index = Select.Lowest(list, Dist, valid)
+	return index
 end
 
 -- CTFPlayer::PickWelcomeObserverPoint: walks the points taking each usable

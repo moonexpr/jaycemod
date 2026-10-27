@@ -1,30 +1,37 @@
 -- Server-side world helpers shared by the TF2 entities.
 
--- CTeamplayRoundBasedRules::BroadcastSound: a game sound every player of a
--- team hears as their own (announcer lines, win/lose music). Team 0 is
--- everyone. Each client decides whether it hears it (ws/sh_announcer.lua).
-function WS.BroadcastSound(team, name)
+-- Sounds every player of a team hears as their own, two kinds kept apart
+-- (ws/sh_announcer.lua): a soundscape, a soundscript's name, which clients
+-- precache and play with the script's own channel, level and pitch
+-- (announcer lines, win and lose music); and a sound file, a path, played
+-- at the channel given. Team UNASSIGNED is everyone; each client decides
+-- whether its player hears it.
+
+-- CTeamplayRoundBasedRules::BroadcastSound.
+function WS.BroadcastSoundscape(team, name)
 	WS.Events.Fire("game_teamplay_broadcast_audio", {
 		team = team,
 		sound = name,
 	})
 end
 
-function WS.BroadcastPA(team, name)
-	WS.Events.Fire("game_teamplay_broadcast_audio", {
-		team = team,
-		sound = name,
-		channel = CHAN_VOICE2
-	})
-end
-
--- A game sound every player not on the team hears as their own
+-- A soundscape every player not on the team hears as their own
 -- (CLocalPlayerFilter lines: the capture's lines for the other team).
-function WS.BroadcastSoundToOthers(team, name)
+function WS.BroadcastSoundscapeToOthers(team, name)
 	WS.Events.Fire("game_teamplay_broadcast_audio", {
 		team = team,
 		sound = name,
 		others = true,
+	})
+end
+
+-- A sound file (path: a .wav or .mp3 under sound/) on channel, CHAN_AUTO
+-- when nil.
+function WS.BroadcastSoundFile(team, path, channel)
+	WS.Events.Fire("game_sound_file", {
+		team = team,
+		path = path,
+		channel = channel,
 	})
 end
 
@@ -137,8 +144,8 @@ function WS.Announce(text, team, audience, icon)
 	})
 end
 
--- ws.admin_notices' notices: each one's chime on CHAN_AUTO and
--- announcer line on CHAN_VOICE2 (the neutral alert once in a while:
+-- ws.admin_notices' notices: each one's chime and announcer line,
+-- soundscapes on their scripts' channels (the neutral alert once in a while:
 -- Spoken), then its card, to its audience. The alert's time is kept for
 -- the map: the first neutral notice on a new map speaks it.
 local AdminNotices = WS.require("ws.admin_notices")
@@ -147,8 +154,8 @@ local neutralLineAt
 function WS.Notify(notices)
 	notices, neutralLineAt = AdminNotices.Spoken(notices, neutralLineAt, SysTime())
 	for _, n in ipairs(notices) do
-		if n.chime then WS.BroadcastSound(n.audience, n.chime) end
-		if n.sound then WS.BroadcastPA(n.audience, n.sound) end
+		if n.chime then WS.BroadcastSoundscape(n.audience, n.chime) end
+		if n.sound then WS.BroadcastSoundscape(n.audience, n.sound) end
 		WS.Announce(n.text, n.team, n.audience, n.icon)
 	end
 end

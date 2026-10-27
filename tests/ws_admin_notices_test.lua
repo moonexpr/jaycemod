@@ -39,7 +39,7 @@ local function Neutral(notice, text, icon)
 	T.eq(notice.audience, NOBODY, "everyone")
 	T.eq(notice.team, NOBODY, "in no team's colour")
 	T.eq(notice.sound, Notices.NEUTRAL_LINE, "the announcer's security alert")
-	T.eq(notice.chime, Notices.NEUTRAL_CHIME, "the system alert")
+	T.eq(notice.chime, Notices.NEUTRAL_CHIME, "the UI hint")
 	if icon then T.eq(notice.icon, icon) end
 end
 
@@ -47,7 +47,7 @@ T.test("respawn waves changed, for either team or both, are one notice: the resp
 	local notices = Notices.RespawnTimesModified()
 	T.eq(#notices, 1)
 	Neutral(notices[1], "The Administrator has modified the respawn times.", Notices.ICON_CLOCK)
-	T.eq(Notices.NEUTRAL_CHIME, "ui/system_message_alert.wav")
+	T.eq(Notices.NEUTRAL_CHIME, "Hud.Hint", "a soundscript, as every chime")
 	T.eq(Notices.NEUTRAL_LINE, "Announcer.SecurityAlert")
 end)
 

@@ -9,7 +9,8 @@
 -- A bench computes paths back to back, each goal once with the engine's own
 -- cost (BENCH_ENGINE_LABEL) and once with the variant's Lua cost, so it
 -- measures per-compute cost and the Lua overhead, not a share of play time.
-local ceil, max, min = math.ceil, math.max, math.min
+local max = math.max
+local Stats = math.stats
 local format = string.format
 local ipairs, setmetatable, sort = ipairs, setmetatable, table.sort
 module(...)
@@ -42,12 +43,6 @@ end
 
 function Profile:Record(sample)
 	self.samples[#self.samples + 1] = sample
-end
-
--- Nearest rank: the smallest value with at least fraction p of the values at
--- or below it.
-local function Percentile(sorted, p)
-	return sorted[max(1, min(#sorted, ceil(p * #sorted)))]
 end
 
 local function Labels(samples)
@@ -96,10 +91,9 @@ function Profile:Report(now)
 		if not s.found then report.failed = report.failed + 1 end
 	end
 	if report.count == 0 then return report end
-	sort(durations)
 	report.mean = report.totalSeconds / report.count
-	report.p50 = Percentile(durations, 0.5)
-	report.p95 = Percentile(durations, 0.95)
+	report.p50 = Stats.Percentile(durations, 0.5)
+	report.p95 = Stats.Percentile(durations, 0.95)
 	report.costShare = report.totalSeconds > 0 and report.costSeconds / report.totalSeconds or 0
 	report.perSecond = window > 0 and report.count / window or 0
 	report.frameShare = window > 0 and report.totalSeconds / window or 0

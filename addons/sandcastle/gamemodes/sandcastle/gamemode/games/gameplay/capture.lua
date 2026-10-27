@@ -32,6 +32,7 @@ local gmatch = string.gmatch
 local sort = table.sort
 local tonumber = tonumber
 local Teams = gameplay.teams
+local Select = list.select
 local Snapshot = world.snapshot
 module(...)
 
@@ -120,14 +121,8 @@ local ENEMY = {
 -- CTeamControlPointMaster::FindControlPoints renumbers the points 0..n-1 in
 -- point_index order. Returns each input's rank.
 function Ranks(indices)
-	local order = {}
-	for i = 1, #indices do order[i] = i end
-	sort(order, function(a, b)
-		if indices[a] ~= indices[b] then return indices[a] < indices[b] end
-		return a < b
-	end)
-	local ranks = {}
-	for rank, i in ipairs(order) do ranks[i] = rank - 1 end
+	local ranks = Select.Ranks(indices, function(a, b) return a < b end)
+	for i, rank in ipairs(ranks) do ranks[i] = rank - 1 end
 	return ranks
 end
 

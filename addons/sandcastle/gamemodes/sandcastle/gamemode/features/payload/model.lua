@@ -3,6 +3,7 @@
 -- it recedes, how far it has come, and when the announcer and the capture
 -- alarm sound. The entity feeds them what it reads from the world.
 local ipairs, math = ipairs, math
+local Scalar = math.scalar
 module(...)
 
 HILL_NONE, HILL_UP, HILL_DOWN = 0, 1, 2
@@ -136,7 +137,7 @@ function DistanceToGoal(total, distanceAt, targetIndex, straight)
 end
 
 function Progress(total, distanceToGoal)
-	return math.min(math.max(1 - distanceToGoal / total, 0), 1)
+	return Scalar.Saturate(1 - distanceToGoal / total)
 end
 
 -- Approach alerts. links = { { distance, alerted }, ... }, updated in place;
@@ -254,7 +255,7 @@ CART_SPEED_DEFAULT = 1 -- the map's own speed
 
 -- The scale an admin asked for, within the editor's range.
 function SpeedScale(scale)
-	return math.min(math.max(scale, CART_SPEED_MIN), CART_SPEED_MAX)
+	return Scalar.Clamp(scale, CART_SPEED_MIN, CART_SPEED_MAX)
 end
 
 -- links: the watcher's checkpoints in path order, { distance, index }.

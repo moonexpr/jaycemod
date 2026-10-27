@@ -17,13 +17,34 @@ local function Population(humans, bots, spectators)
 	}
 end
 
-local function Settings(mode, quota, joinAfterPlayer)
+-- The war's soldiers, its teams' sizes added up.
+local SOLDIERS = 12
+
+local function Settings(mode, quota, joinAfterPlayer, actors)
 	return {
 		mode = mode,
 		quota = quota,
 		joinAfterPlayer = joinAfterPlayer or false,
+		actors = actors or Quota.BOT,
+		soldiers = SOLDIERS,
 	}
 end
+
+T.test("the actors parse from ns_soldiers_actor's words, and nothing else", function()
+	T.eq(Quota.Actors("npc"), Quota.NPC, "npc")
+	T.eq(Quota.Actors("BOT"), Quota.BOT, "bot, any case")
+	T.eq(Quota.Actors("both"), nil, "never both")
+end)
+
+T.test("NPC soldiers: no bots, whatever the quota", function()
+	T.eq(Quota.Wanted(Settings(Quota.NORMAL, 6, false, Quota.NPC), Population(1, 0)), 0, "none wanted")
+	T.eq(Quota.Step(Settings(Quota.NORMAL, 6, false, Quota.NPC), Population(1, 3)), Quota.KICK, "those there leave")
+end)
+
+T.test("bot soldiers: a quota of 0 fills the war's teams with bots", function()
+	T.eq(Quota.Wanted(Settings(Quota.NORMAL, 0), Population(1, 0)), SOLDIERS, "the war's sizes")
+	T.eq(Quota.Wanted(Settings(Quota.NORMAL, 4), Population(1, 0)), 4, "a quota set is kept")
+end)
 
 T.test("the modes parse from tf_bot_quota_mode's words, and nothing else", function()
 	T.eq(Quota.Mode("normal"), Quota.NORMAL, "normal")
@@ -44,14 +65,17 @@ T.test("fill tops the players on the game teams up to the quota", function()
 	T.eq(Quota.Wanted(Settings(Quota.FILL, 6), Population(8, 0)), 0, "more humans than the quota: none")
 end)
 
-T.test("match keeps the quota of bots for each human on the game teams", function()
+T.test("match keeps the quota of bots for each human on the server", function()
 	T.eq(Quota.Wanted(Settings(Quota.MATCH, 2), Population(3, 0)), 6, "two each for three")
 	T.eq(Quota.Wanted(Settings(Quota.MATCH, 2), Population(0, 0)), 0, "none for nobody")
+	T.eq(Quota.Wanted(Settings(Quota.MATCH, 2), Population(1, 0, 1)), 4, "a spectator still counts")
 end)
 
-T.test("join after player: no bots until a human plays on a game team", function()
-	T.eq(Quota.Wanted(Settings(Quota.NORMAL, 6, true), Population(0, 0, 2)), 0, "spectators only")
+T.test("join after player: no bots until a human is on the server", function()
+	T.eq(Quota.Wanted(Settings(Quota.NORMAL, 6, true), Population(0, 0)), 0, "nobody")
 	T.eq(Quota.Wanted(Settings(Quota.NORMAL, 6, true), Population(1, 0)), 6, "one human")
+	T.eq(Quota.Wanted(Settings(Quota.NORMAL, 6, true), Population(0, 6, 1)), 6,
+		"a human gone to spectate keeps the bots: only leaving the server sends them away")
 end)
 
 T.test("bots never take the last free slot, so a human can still join", function()
