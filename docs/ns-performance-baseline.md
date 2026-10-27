@@ -594,6 +594,54 @@ in `ws/sh_drg_soldier.lua`, inside DrGBase's path compute, the profile's
 areas, renewed with the blockers' generation and the shut doors, is the next
 candidate; its cost was not measured yet.
 
+## Native foundation against the Lua twins (2026-10-27)
+
+Every foundation module now has a whole native twin on the server
+(`docs/native-foundation-plan.md`). `.devtools/bin/aiwar_ab_bench.py` runs
+the same war with the DLLs installed and without them, in alternating
+legs: pl_upward, 15v15 (30 soldiers), JIT on with its defaults, a fresh
+map and war each leg, 90 s of warm-up, then 60 s measured. Instance 1, on
+port 27025, after a host OS update; the A/B is the comparison that holds,
+since the earlier sections' numbers predate that update.
+
+| Leg | CPU | FPS | Tick p50 / p95 / p99 / max | Ticks later than 1.5 intervals | Lua's share of the server thread | VM states |
+|---|---|---|---|---|---|---|
+| native | 63.7 % | 64.5 | 14.4 / 35.8 / 69.2 / 278 ms | 395 of 4052 | 58.9 % | C 72.2, interpreted 15.1, compiled 9.3, compiler 1.9, GC 1.5 |
+| Lua | 80.9 % | 45.7 | 12.3 / 42.4 / 72.0 / 391 ms | 483 of 4058 | 78.4 % | C 51.3, compiled 23.3, interpreted 19.4, compiler 4.2, GC 1.8 |
+| native | 54.7 % | 54.4 | 14.5 / 36.2 / 68.6 / 100 ms | 374 of 4054 | 56.3 % | C 72.8, interpreted 14.5, compiled 9.3, compiler 1.9, GC 1.5 |
+| Lua | 77.3 % | 39.7 | 12.8 / 39.5 / 68.2 / 760 ms | 436 of 4008 | 76.8 % | C 50.1, compiled 25.1, interpreted 18.7, compiler 4.2, GC 1.9 |
+
+Averaged over the two legs of each:
+
+- **Process CPU: 59 % native against 79 % Lua**, 20 points, a quarter less.
+- **Lua's share of the server thread: 58 % against 78 %.** The Lua leg
+  matches the October baseline's 77 %.
+- **Slow ticks: p95 36 against 41 ms, 385 against 460 late ticks** (16 %
+  fewer). The p99 is unchanged at about 69 ms, and the worst tick fell
+  from 391 and 760 ms to 278 and 100 ms. The median tick reads a little
+  higher natively (14.5 against 12.5 ms), which fits fewer late ticks
+  each followed by a short catch-up tick (not checked).
+- **The JIT's own work halves** (compiler 4.2 % to 1.9 %): less Lua to trace.
+- Lua memory at the window's end: 41 and 35 MB against 44 and 39 MB.
+
+Where the Lua leg's time went, and what is left natively (inclusive share
+of the server thread, the mean of each leg's two windows):
+
+| Path | Lua | native |
+|---|---|---|
+| Route search: `sv_routes.lua:313` (`pathfinder` `Step`, `Expand`, `Relax`; `navsearch` `Cost`) | 14.5 % | gone from the top 25 |
+| The behaviour engine: `state_chart` `_InvokeUpdate`, `orders` | 8.4 % | gone from the top 25; `nextbot.lua:Update` 7.6 → 4.4 % |
+| AI war controller think (`sv_field.lua:Think`) | 8.1 % | 5.2 % |
+| DrGBase entity think (`shared.lua:403`, `233`, `HandleEnemy`) | 19.0 % | 19.4 % |
+| `FollowPath` → the engine's path compute with a Lua cost (`path.lua:75`) | 9.8 % | 10.7 % |
+
+What the native foundation took is what foundation ran: the route
+search and the behaviour engine. What is left is DrGBase's entity think
+and the engine's `Path:Compute`, whose cost function is Lua and is called
+per area. Neither is foundation's code, so the port could not reach them;
+the cost callback is the next candidate (a native cost, as
+`wetsands.path`'s `Model` gives the route search).
+
 ## Reproducing
 
 ```
@@ -612,6 +660,13 @@ luajit .devtools/bin/route_replay.lua RECORD.dat --reach 30
 ```
 
 The recording lands in the server root's `garrysmod/data/ws_routes/`.
+
+The native against Lua A/B (about 15 minutes; puts the DLL links back as
+they were, then change level to load them again):
+
+```bash
+python3 .devtools/bin/aiwar_ab_bench.py --legs native,lua,native,lua
+```
 
 Experiments B to L were one-off probes run through `server_lua.py`; each
 restored what it patched.
