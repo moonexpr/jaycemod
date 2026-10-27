@@ -86,12 +86,22 @@ function Controller:EnemyDefenses(field, team)
 	return front and { front } or {}
 end
 
-local function Nearest(spots, p)
+-- Where spawn spots stand, read when a plan begins: its searches run on
+-- after, and a spot the map removes meanwhile (a round restart's cleanup)
+-- is no entity to read by then.
+local function Positions(spots)
+	local list = {}
+	for i, spot in ipairs(spots) do list[i] = spot:GetPos() end
+	return list
+end
+
+-- Of positions, the nearest to p, or nil for none.
+local function Nearest(positions, p)
 	local target = ToVector(p)
 	local best, bestDistance
-	for _, spot in ipairs(spots) do
-		local d = spot:GetPos():DistToSqr(target)
-		if not bestDistance or d < bestDistance then best, bestDistance = spot, d end
+	for _, pos in ipairs(positions) do
+		local d = pos:DistToSqr(target)
+		if not bestDistance or d < bestDistance then best, bestDistance = pos, d end
 	end
 	return best
 end
@@ -237,12 +247,12 @@ function Controller:PlansAfterDirect(from, to, band, defenses, enemySpawnNear, n
 end
 
 function Controller:PlanLanes(team, to, field, now)
-	local own = Nearest(SpawnSpots(team), to)
+	local own = Nearest(Positions(SpawnSpots(team)), to)
 	if not own then return end
-	local from = Point(own:GetPos())
+	local from = Point(own)
 	local enemy = Teams.EnemyOf(team)
-	local enemySpawns = SpawnSpots(enemy)
-	local function EnemySpawnNear(p) return Point(Nearest(enemySpawns, p):GetPos()) end
+	local enemySpawns = Positions(SpawnSpots(enemy))
+	local function EnemySpawnNear(p) return Point(Nearest(enemySpawns, p)) end
 	local defenses = #enemySpawns > 0 and self:EnemyDefenses(field, team) or {}
 	local npcs = WS.Feature("npc")
 	-- the direct lane first; the rest once it is routed (PlansAfterDirect)

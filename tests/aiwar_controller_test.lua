@@ -1049,6 +1049,32 @@ T.test("lanes lead to the scenario's front", function()
 	T.eq(w.routes[1].to.x, 1000, "to RED's front")
 end)
 
+-- The direct lane's search runs while the round goes on: a spawn point the
+-- map removes meanwhile (a round restart's cleanup) leaves the tours planned
+-- after it going to where the enemy's spawns stood when planning began.
+T.test("an enemy spawn removed while the direct lane is searched leaves the tours to where it stood", function()
+	local w = World()
+	local blueSpawn = Ent(Vector(2400, 0, 0))
+	w.spawns[RED] = { Ent(Vector(0, 0, 0)) }
+	w.spawns[BLUE] = { blueSpawn }
+	local controller = Started(w, ControlPointsMode.Mode, { fronts = { [RED] = { x = 1000, y = 0, z = 0 }, [BLUE] = { x = 1500, y = 0, z = 0 } } })
+	controller:Survey(NOW)
+	local direct
+	for _, route in ipairs(w.routes) do
+		if route.bot.team == RED then direct = route end
+	end
+	T.eq(direct ~= nil, true, "RED's direct lane asked for")
+	blueSpawn.GetPos = function() error("Tried to use a NULL entity!") end
+	direct.onDone(nil)
+	local specs = controller.lanePlans[RED].specs
+	local tours = {}
+	for _, spec in ipairs(specs) do
+		if spec.kind == Lanes.TOUR then tours[#tours + 1] = spec end
+	end
+	T.eq(#tours, 2, "both tours planned")
+	for i, tour in ipairs(tours) do T.eq(tour.stops[#tour.stops].x, 2400, "tour " .. i .. " ends where BLUE's spawn stood") end
+end)
+
 -- A setup gate opening changes the doors' blockers: lanes planned around it
 -- are planned again once it has stayed open, even when what changed is not
 -- known (every area they watch is looked at).
