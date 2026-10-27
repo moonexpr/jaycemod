@@ -44,6 +44,7 @@ local Controller = {
 	-- doorOpened = nil, -- door -> when a soldier may open it again (OpenDoorFor)
 	-- openedDoors = nil, -- doors soldiers opened, closed again when left (OpenDoorFor)
 	-- shutDoors = nil, -- door that stayed shut -> its areas and the teams it holds up (NoteShutDoor)
+	-- scenarios = nil, -- the registered scenarios compiled when the war starts (games.nextsoldier.scenarios), what each think decides from
 	shutDoorStamp = 0, -- changes when a door is noted shut to a team, or one noted is gone (ShutDoorAreas)
 	shutDoorAreas = {}, -- team -> { doors, stamp, areas = nav area id -> true }: the areas of the doors noted shut to it
 	-- postCache = nil, -- the posts found, by kind, team and key (CachedPosts)

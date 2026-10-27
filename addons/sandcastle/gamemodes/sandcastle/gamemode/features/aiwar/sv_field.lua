@@ -287,7 +287,7 @@ function Controller:Survey(now)
 	self:RefreshCartBounds()
 	-- the rounds mode can change under the war (a tied match's deathmatch):
 	-- the scenario follows it
-	local entry, variant = Scenario.Entry({ mode = RoundsModeName(), field = field })
+	local entry, variant = Scenario.Entry(self.scenarios, { mode = RoundsModeName(), field = field })
 	field.scenario = entry
 	if getmetatable(self.scenario) ~= variant then self.scenario = variant:New() end
 	self.waitingFor = self.scenario:Lacks(field)

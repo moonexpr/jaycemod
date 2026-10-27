@@ -158,7 +158,8 @@ function Controller:Start()
 	if not WS.SoldiersEnabled() then return false, "NextSoldier is switched off on this server (ns_soldiers_enabled 0)" end
 	if not DrGBase then return false, "the AI war needs DrGBase (Steam Workshop) for its soldiers" end
 	-- a map whose mode is none the war knows is fought freeform
-	local _, variant = Scenario.Entry({ mode = RoundsModeName() })
+	self.scenarios = Scenario.Compile()
+	local _, variant = Scenario.Entry(self.scenarios, { mode = RoundsModeName() })
 	self.baseCache = nil
 	local flags, zones = self:FlagsSnapshot()
 	local lacks = variant:MapLacks({

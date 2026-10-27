@@ -48,39 +48,40 @@ VARIANTS = {
 }
 
 -- The war's own scenarios, registered as any script registers one
--- (games.nextsoldier.scenarios): each variant active for its rounds mode, at
--- MODE_PRIORITY, loaded the first time it is chosen, and freeform, active
--- always, below them. A script's scenario at a higher priority, with its
--- own criteria, takes over where those hold.
+-- (games.nextsoldier.scenarios): each variant for its rounds mode, at
+-- MODE_PRIORITY, required when chosen, and freeform, for any mode, below
+-- them. A script's scenario at a higher priority, with its own criteria,
+-- takes over where those hold.
 FREEFORM_PRIORITY, MODE_PRIORITY = 0, 10
 
-local function ModeIs(name)
-	return function(context) return context.mode == name end
+Scenarios.Shared:Register({ name = "freeform", priority = FREEFORM_PRIORITY, scenario = FREEFORM })
+Scenarios.Shared:Register({ name = "payload", priority = MODE_PRIORITY, mode = "payload", scenario = VARIANTS.payload })
+Scenarios.Shared:Register({ name = "control_points", priority = MODE_PRIORITY, mode = "control_points", scenario = VARIANTS.control_points })
+Scenarios.Shared:Register({ name = "koth", priority = MODE_PRIORITY, mode = "koth", scenario = VARIANTS.koth })
+Scenarios.Shared:Register({ name = "arena", priority = MODE_PRIORITY, mode = "arena", scenario = VARIANTS.arena })
+Scenarios.Shared:Register({ name = "ctf", priority = MODE_PRIORITY, mode = "ctf", scenario = VARIANTS.ctf })
+Scenarios.Shared:Register({ name = "deathmatch", priority = MODE_PRIORITY, mode = "deathmatch", scenario = VARIANTS.deathmatch })
+Scenarios.Shared:Register({ name = "mvm", priority = MODE_PRIORITY, mode = "mvm", scenario = VARIANTS.mvm })
+
+-- The registered scenarios, compiled: what the war decides from, made
+-- once when it starts.
+function Compile()
+	return Scenarios.Shared:Compile()
 end
 
-local function Always() return true end
-
-Scenarios.Shared:Register({ name = "freeform", priority = FREEFORM_PRIORITY, active = Always, scenario = FREEFORM })
-Scenarios.Shared:Register({ name = "payload", priority = MODE_PRIORITY, active = ModeIs("payload"), scenario = VARIANTS.payload })
-Scenarios.Shared:Register({ name = "control_points", priority = MODE_PRIORITY, active = ModeIs("control_points"), scenario = VARIANTS.control_points })
-Scenarios.Shared:Register({ name = "koth", priority = MODE_PRIORITY, active = ModeIs("koth"), scenario = VARIANTS.koth })
-Scenarios.Shared:Register({ name = "arena", priority = MODE_PRIORITY, active = ModeIs("arena"), scenario = VARIANTS.arena })
-Scenarios.Shared:Register({ name = "ctf", priority = MODE_PRIORITY, active = ModeIs("ctf"), scenario = VARIANTS.ctf })
-Scenarios.Shared:Register({ name = "deathmatch", priority = MODE_PRIORITY, active = ModeIs("deathmatch"), scenario = VARIANTS.deathmatch })
-Scenarios.Shared:Register({ name = "mvm", priority = MODE_PRIORITY, active = ModeIs("mvm"), scenario = VARIANTS.mvm })
-
--- The scenario entry the war plays in context ({ mode, field }: never the
+-- The scenario entry compiled plays in context ({ mode, field }: never the
 -- map's name, as the map's entities choose), and its Scenario class.
-function Entry(context)
-	local entry = Scenarios.Shared:Choose(context)
-	return entry, Scenarios.Shared:Class(entry)
+function Entry(compiled, context)
+	local entry = compiled:Choose(context)
+	return entry, compiled:Class(entry)
 end
 
--- The Scenario class for a rounds mode's NAME alone: freeform for a mode
--- without a standard objective, or no rounds at all, unless a registered
--- scenario takes over.
+-- The Scenario class for a rounds mode's NAME alone, from a fresh compile
+-- (for a test or a report, not a think): freeform for a mode without a
+-- standard objective, or no rounds at all, unless a registered scenario
+-- takes over.
 function For(modeName)
-	local _, class = Entry({ mode = modeName })
+	local _, class = Entry(Compile(), { mode = modeName })
 	return class
 end
 
