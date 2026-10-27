@@ -1328,9 +1328,13 @@ T.test("everyone who hit him in his last 5 s is named his killer, at his level",
 	local s, red, blue = KillersScene(false)
 	local killers = FiredNamed(s.me, BossEvents.MERASMUS_KILLER)
 	T.eq(#killers, 2, "the two late hitters, not the early one")
-	T.eq(killers[1].player, red, "red")
-	T.eq(killers[1].level, 2, "at his level")
-	T.eq(killers[2].player, blue, "blue")
+	local named = {}
+	for _, killer in ipairs(killers) do
+		named[killer.player] = true
+		T.eq(killer.level, 2, "at his level")
+	end
+	T.eq(named[red], true, "red")
+	T.eq(named[blue], true, "blue")
 end)
 
 T.test("a Merasmus spawned with cheats on names no killers", function()

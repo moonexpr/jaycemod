@@ -31,6 +31,7 @@ local require = require
 local NpcSystem = npc.nextbot
 local Teams = gameplay.teams
 local ipairs = ipairs
+local Lru = cache.lru
 module(...)
 
 -- HalloweenBossType
@@ -38,6 +39,7 @@ BOSS_INVALID, BOSS_HHH, BOSS_MONOCULUS, BOSS_MERASMUS = 0, 1, 2, 3
 
 KIND = "boss"
 DPS_WINDOW = 5 -- UpdateDamagePerSecond's windowDuration
+ATTACKERS_KEPT = 128 -- more than any server has players
 SPAWN_HEIGHT = 10 -- SpawnBossAtPos lifts the boss this far
 
 -- SpawnBossAtPos's entity class per boss type.
@@ -82,16 +84,7 @@ function RememberAttacker(state, attacker, damage, now)
 		damage = damage,
 		at = now,
 	}
-	for _, known in ipairs(state.attackers) do
-		if known.attacker == attacker then
-			known.at = now
-			return
-		end
-	end
-	state.attackers[#state.attackers + 1] = {
-		attacker = attacker,
-		at = now,
-	}
+	state.attackers[attacker] = now
 end
 
 -- UpdateDamagePerSecond: the damage no older than the window, per second.
@@ -165,7 +158,7 @@ local function NewState(boss, config, me)
 		convars = config.convars,
 		spawnedByCheats = config.cheats == true, -- m_wasSpawnedByCheats: sv_cheats was on
 		level = boss.Level and boss.Level(me) or 0,
-		attackers = {},
+		attackers = Lru.New({ capacity = ATTACKERS_KEPT }), -- attacker -> the time of its latest hit
 		samples = {},
 		dps = 0,
 		maxDps = 0,

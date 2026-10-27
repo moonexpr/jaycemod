@@ -172,14 +172,14 @@ T.test("the boss takes the amount ModifyDamage gives", function()
 	local taken, amount = s.npc:FilterDamage(Damage(s.red, 10, { scale = 3 }))
 	T.eq(taken, true, "taken")
 	T.eq(amount, 30, "tripled")
-	T.eq(s.npc:State().attackers[1].attacker, s.red, "remembered")
+	T.eq(s.npc:State().attackers:Peek(s.red), s.me:Now(), "remembered, at the time of its hit")
 	T.eq(s.npc:State().samples[1].damage, 30, "at what it took")
 end)
 
 T.test("a hit ModifyDamage takes to nothing is refused", function()
 	local s = Scene({})
 	T.eq(s.npc:FilterDamage(Damage(s.red, 10, { scale = 0 })), false, "zeroed")
-	T.eq(#s.npc:State().attackers, 0, "not remembered")
+	T.eq(s.npc:State().attackers:Size(), 0, "not remembered")
 end)
 
 -- RememberAttacker
@@ -193,12 +193,11 @@ T.test("players who hurt the boss are remembered once each, with their latest ti
 	s.npc:FilterDamage(Damage(s.red, 10))
 	s.npc:FilterDamage(Damage(s.world, 10))
 	local attackers = s.npc:State().attackers
-	T.eq(#attackers, 2, "red and blue")
-	T.eq(attackers[1].attacker, s.red, "red first")
-	T.eq(attackers[1].at, s.me:Now(), "red's latest hit")
-	T.eq(attackers[2].attacker, s.blue, "blue")
+	T.eq(attackers:Size(), 2, "red and blue")
+	T.eq(attackers:Peek(s.red), s.me:Now(), "red's latest hit")
+	T.eq(attackers:Peek(s.blue), s.me:Now() - 1, "blue's")
 	T.eq(s.npc:FilterDamage(Damage(skeleton, 10)), true, "an NPC's damage is taken")
-	T.eq(#s.npc:State().attackers, 2, "but an NPC is not a player")
+	T.eq(s.npc:State().attackers:Size(), 2, "but an NPC is not a player")
 end)
 
 -- UpdateDamagePerSecond: the damage of the last DPS_WINDOW seconds, per second.

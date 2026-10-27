@@ -2,6 +2,7 @@
 local Controller, Map = ...
 local AiWar = WS.require("features.aiwar.model")
 local Posts = nextsoldier.posts
+local Memo = cache.memo
 local Debug = WS.require("features.nbdebug.model")
 local SPAWN_LIFT = Map.SPAWN_LIFT
 local Point, ToVector, SpawnSpots, OnFloor = Map.Point, Map.ToVector, Map.SpawnSpots, Map.OnFloor
@@ -142,13 +143,8 @@ local function CandidateSpots(center, radius)
 end
 
 function Controller:CachedPosts(kind, team, key, find)
-	self.postCache = self.postCache or {}
-	local cacheKey = kind .. team
-	local cached = self.postCache[cacheKey]
-	if cached and cached.key == key then return cached.posts end
-	local posts = find()
-	self.postCache[cacheKey] = { key = key, posts = posts }
-	return posts
+	self.postCache = self.postCache or Memo.New({})
+	return self.postCache:Fetch(kind .. team, key, find)
 end
 
 -- Where a team's defenders wait for the enemy cart.

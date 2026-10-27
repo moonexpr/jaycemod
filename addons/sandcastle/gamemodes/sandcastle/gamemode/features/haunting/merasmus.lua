@@ -1450,10 +1450,10 @@ end
 local function NameKillers(state, me)
 	if state.spawnedByCheats then return end
 	local now, level = me:Now(), Level(me)
-	for _, known in ipairs(state.attackers) do
-		if me:IsTargetValid(known.attacker) and now - known.at < KILLER_WINDOW then
+	for attacker, at in state.attackers() do
+		if me:IsTargetValid(attacker) and now - at < KILLER_WINDOW then
 			me:FireGameEvent(BossEvents.MERASMUS_KILLER, {
-				player = known.attacker,
+				player = attacker,
 				level = level,
 			})
 		end
