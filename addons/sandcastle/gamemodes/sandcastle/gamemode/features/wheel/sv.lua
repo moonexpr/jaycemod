@@ -103,7 +103,7 @@ local function World(controller, ent)
 		Wheels(others, function(w) w:ShrinkSpiral() end)
 	end
 
-	function world:BroadcastSound(name) WS.BroadcastSound(WS.TEAM_UNASSIGNED, name) end
+	function world:BroadcastSound(name) WS.BroadcastSoundscape(WS.TEAM_UNASSIGNED, name) end
 
 	-- Merasmus says it if he is about; otherwise everyone hears it.
 	function world:Announce(name)
@@ -111,7 +111,7 @@ local function World(controller, ent)
 		if IsValid(merasmus) then
 			merasmus:PlayHighPrioritySound(name)
 		else
-			WS.BroadcastSound(WS.TEAM_UNASSIGNED, name)
+			WS.BroadcastSoundscape(WS.TEAM_UNASSIGNED, name)
 		end
 	end
 

@@ -33,6 +33,9 @@ E.Define("game_gameplay_chat", {
 E.Define("game_gameplay_transition_cancelled", {
 	sounds = E.List(E.String(), COUNT_BITS),
 })
+-- A game called off (its countdown, or its wait for players): each client
+-- says so in its chat, with the UI's hint.
+E.Define("game_gameplay_called_off", {})
 
 if SERVER then
 	CreateConVar("sv_gameplay_disable_sandbox", "0", FCVAR_NOTIFY,
@@ -125,6 +128,13 @@ local TITLE_COLOR, LINE_COLOR = Color(255, 205, 80), Color(235, 235, 235)
 E.Listen("game_gameplay_chat", "ws_gameplay", function(fields)
 	chat.AddText(TITLE_COLOR, fields.title)
 	for _, line in ipairs(fields.lines) do chat.AddText(LINE_COLOR, line) end
+end)
+
+local CALLED_OFF_SOUND = "Hud.Hint"
+
+E.Listen("game_gameplay_called_off", "ws_gameplay", function()
+	chat.AddText(TITLE_COLOR, "Game called off. Carry on.")
+	WS.PlaySoundscape(CALLED_OFF_SOUND)
 end)
 
 -- A countdown called off: silence what it played.

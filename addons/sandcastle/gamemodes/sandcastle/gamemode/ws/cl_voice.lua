@@ -42,25 +42,57 @@ hook.Add("PlayerEndVoice", "ws_voice", function(ply)
 	return true
 end)
 
-WS.HUD:Add("game.notices.voice", WS.HUD_ORDER.NOTICES, function(w, h)
+-- The announcer as a talker: a soundscape on its channel (CHAN_VOICE2, the
+-- announcer's soundscripts: WS.PlaySoundscape) shows ANNOUNCER, newest, until
+-- the line ends; a new line, which cuts the last off, starts it again. A
+-- script picks one of its files as it plays, so the note lasts the longest;
+-- at least ANNOUNCER_LEAST, as an .mp3's length may read 0. Its bar beats
+-- at ANNOUNCER_BEAT, there being no voice level to read.
+local ANNOUNCER = "Administrator"
+local ANNOUNCER_LEAST, ANNOUNCER_BEAT = 1, 10
+local announcerUntil = 0
+
+hook.Add("WSSoundscapePlayed", "ws_voice", function(name)
+	local script = sound.GetProperties(name)
+	if not script or script.channel ~= CHAN_VOICE2 then return end
+	local files = isstring(script.sound) and { script.sound } or script.sound
+	local longest = ANNOUNCER_LEAST
+	for _, path in ipairs(files) do longest = math.max(longest, SoundDuration(path)) end
+	announcerUntil = CurTime() + longest
+end)
+
+-- The boxes to draw, oldest first: { name, color, level }.
+local function Notes()
+	local notes = {}
 	for i = #talkers, 1, -1 do
 		if not IsValid(talkers[i]) then table.remove(talkers, i) end
 	end
-	if #talkers == 0 then return end
+	for _, ply in ipairs(talkers) do
+		notes[#notes + 1] = { name = ply:Nick(), color = WS.TeamColor[ply:Team()] or NEUTRAL, level = ply:VoiceVolume() }
+	end
+	local now = CurTime()
+	if now < announcerUntil then
+		notes[#notes + 1] = { name = ANNOUNCER, color = NEUTRAL, level = math.abs(math.sin(now * ANNOUNCER_BEAT)) }
+	end
+	return notes
+end
+
+WS.HUD:Add("game.notices.voice", WS.HUD_ORDER.NOTICES, function(w, h)
+	local notes = Notes()
+	if #notes == 0 then return end
 	local unit = h / 480
 	Font(unit)
 	local bw, bh, gap = WIDE * unit, TALL * unit, GAP * unit
 	local x = w - bw - PAD * unit
-	for i = #talkers, 1, -1 do
-		local ply = talkers[i]
-		local y = h - BOTTOM * unit - (#talkers - i + 1) * (bh + gap)
+	for i = #notes, 1, -1 do
+		local note = notes[i]
+		local y = h - BOTTOM * unit - (#notes - i + 1) * (bh + gap)
 		UI.Box(bw, bh, x, y)
 		local b = THEME.borderWidth
-		draw.RoundedBoxEx(THEME.corner, x + b, y + b, EDGE * unit, bh - b * 2, WS.TeamColor[ply:Team()] or NEUTRAL,
-			true, false, true, false)
+		draw.RoundedBoxEx(THEME.corner, x + b, y + b, EDGE * unit, bh - b * 2, note.color, true, false, true, false)
 		local pad = PAD * unit + EDGE * unit
-		draw.SimpleText(ply:Nick(), NAME_FONT, x + pad, y + bh / 2 - BAR_TALL * unit / 2, THEME.text, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
-		local barW = (bw - pad - PAD * unit) * math.Clamp(ply:VoiceVolume(), 0, 1)
+		draw.SimpleText(note.name, NAME_FONT, x + pad, y + bh / 2 - BAR_TALL * unit / 2, THEME.text, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
+		local barW = (bw - pad - PAD * unit) * math.Clamp(note.level, 0, 1)
 		surface.SetDrawColor(THEME.border)
 		surface.DrawRect(x + pad, y + bh - b - BAR_TALL * unit - unit, barW, BAR_TALL * unit)
 	end

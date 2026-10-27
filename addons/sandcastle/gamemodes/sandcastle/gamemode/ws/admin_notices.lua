@@ -1,6 +1,6 @@
 -- What each side hears and sees when an admin changes the game from the
 -- editors, as TF2 tells a scramble: an announcer line (sound, on
--- CHAN_VOICE2), a chime (on CHAN_AUTO, under it; nil for none) and a
+-- CHAN_VOICE2), a chime (under it; nil for none), both soundscapes, and a
 -- notification card (text, in team's colour, with icon) to audience (a
 -- team; UNASSIGNED is everyone). A change good for one side and bad for the
 -- other gives each its line; a neutral one (NEUTRAL_LINE and NEUTRAL_CHIME)
@@ -20,7 +20,7 @@ ICON_VISITORS = "hud/ico_teamswitch" -- the AI war's soldiers come and go
 
 local GOOD, BAD = "Announcer.TimeAwardedCongrats", "Announcer.TimeAddedForEnemy"
 NEUTRAL_LINE = "Announcer.SecurityAlert"
-NEUTRAL_CHIME = "ui/system_message_alert.wav"
+NEUTRAL_CHIME = "Hud.Hint" -- the UI's hint (ui/hint.wav)
 NEUTRAL_LINE_GAP = 30 * 60 -- the security alert speaks once in this long
 BELL = "Hud.EndRoundScored" -- a point awarded: TF2's chime as a team scores (ui/scored.wav)
 

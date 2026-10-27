@@ -43,10 +43,11 @@ local WAIT_TIMER = "ws_gamemode_waiting"
 local WAIT_TICK = 1 -- seconds between counting the players a waiting game needs
 local GAME_TEAMS = { WS.TEAM_RED, WS.TEAM_BLUE }
 
--- Sandbox mode begins with one of GMod's save/load chimes. The transition
--- with the casual matchmaking start sting and one of the announcer's
--- tournament-start lines, and Gameplay mode with one of the
--- Administrator's competitive-match lines.
+-- Sandbox mode begins with one of GMod's save/load chimes (sound files).
+-- The transition with the casual matchmaking start sting and the
+-- announcer's tournament-start line, and Gameplay mode with the
+-- Administrator's competitive-match lines (soundscapes). A game called off
+-- is the client's to sound (ws/sh_gameplay.lua).
 local SANDBOX_SOUNDS = {
 	"garrysmod/save_load1.wav",
 	"garrysmod/save_load2.wav",
@@ -54,13 +55,7 @@ local SANDBOX_SOUNDS = {
 	"garrysmod/save_load4.wav",
 }
 local TRANSITION_MUSIC = "MatchMaking.RoundStartCasual"
-local TRANSITION_VOICES = {
-	"vo/announcer_tournament_started1.mp3",
-	"vo/announcer_tournament_started2.mp3",
-	"vo/announcer_tournament_started3.mp3",
-	"vo/announcer_tournament_started4.mp3",
-}
-local CALLED_OFF_SFX = "ui/vote_failure.wav"
+local TRANSITION_VOICE = "Announcer.TournamentModeStart"
 -- The competitive announcer's countdown, by seconds left: the transition
 -- voices those it reaches (it lasts Gamemode.ADMIN_LINE_AT seconds), and
 -- [0] as Gameplay mode begins.
@@ -82,8 +77,13 @@ local Controller = {
 	teamReady = { [WS.TEAM_RED] = false, [WS.TEAM_BLUE] = false },
 }
 
-local function PlayToAll(path)
-	WS.BroadcastPA(WS.TEAM_UNASSIGNED, path) -- the unassigned team: everyone, spectators too
+-- To the unassigned team: everyone, spectators too.
+local function SoundscapeToAll(name)
+	WS.BroadcastSoundscape(WS.TEAM_UNASSIGNED, name)
+end
+
+local function SoundFileToAll(path)
+	WS.BroadcastSoundFile(WS.TEAM_UNASSIGNED, path)
 end
 
 local function Pick(list)
@@ -264,10 +264,10 @@ function Controller:WaitTick()
 	self:Publish()
 end
 
--- A transition sound, remembered so Stop Game can silence it.
-function Controller:TransitionSound(path)
-	self.transitionSounds[#self.transitionSounds + 1] = path
-	PlayToAll(path)
+-- A transition soundscape, remembered so Stop Game can silence it.
+function Controller:TransitionSound(name)
+	self.transitionSounds[#self.transitionSounds + 1] = name
+	SoundscapeToAll(name)
 end
 
 -- The transition's opening cue: the map's description in the chat, with
@@ -332,11 +332,10 @@ local NOTICES = {
 	[Gamemode.NOTICE_REQUEST_CHAT] = function(_, story) Chat(story.title, story.lines) end,
 	[Gamemode.NOTICE_REQUEST_ANNOUNCEMENT] = function(_, story) WS.Announce(story.announcement) end,
 	[Gamemode.NOTICE_CALLED_OFF] = function()
-		Chat("Game called off. Carry on.", { })
-		PlayToAll(CALLED_OFF_SFX)	
+		WS.Events.Fire("game_gameplay_called_off", {})
 	end,
 	[Gamemode.NOTICE_SANDBOX] = function()
-		PlayToAll(Pick(SANDBOX_SOUNDS))
+		SoundFileToAll(Pick(SANDBOX_SOUNDS))
 		WS.Announce("Gameplay mode has ended. Sandbox mode until a new game begins.")
 	end,
 	[Gamemode.NOTICE_REFUSED] = function(requester, _, refusal) Tell(requester, "Gameplay: " .. refusal) end,
@@ -377,14 +376,14 @@ local CUES = {
 	[Gamemode.CUE_CLEANUP] = function() WS.Rules:CleanUp() end,
 	[Gamemode.CUE_ANNOUNCE] = function(self)
 		self:TransitionSound(TRANSITION_MUSIC)
-		self:TransitionSound(Pick(TRANSITION_VOICES))
+		self:TransitionSound(TRANSITION_VOICE)
 	end,
 	[Gamemode.CUE_PREROUND] = function(self) self:Begin() end,
 	[Gamemode.CUE_COUNT] = function(self, cue)
 		if ADMIN_LINES[cue.left] then self:TransitionSound(ADMIN_LINES[cue.left]) end
 	end,
 	-- the pre-round ends as the countdown does: the round runs to "Fight!"
-	[Gamemode.CUE_ADMIN_LINE] = function() PlayToAll(ADMIN_LINES[0]) end,
+	[Gamemode.CUE_ADMIN_LINE] = function() SoundscapeToAll(ADMIN_LINES[0]) end,
 	[Gamemode.CUE_BEGIN] = function(self)
 		timer.Remove(TRANSITION_TIMER)
 		self.transitionSounds = {}
@@ -416,6 +415,7 @@ function Controller:Begin()
 	end
 	hook.Run("MatchStart")
 	WS.Rules:BeginGame(self.mode:TransitionEnd())
+	hook.Run("WSGameBegin")
 end
 
 -- A map with rounds starts in the mode sv_gameplay_enabled holds: Sandbox
