@@ -3,7 +3,7 @@
 -- by the damage dealt (tf_dingaling_pitchmindmg at LOW_DAMAGE or less,
 -- tf_dingaling_pitchmaxdmg at HIGH_DAMAGE or more), and the least time
 -- between two (tf_dingalingaling_repeat_delay). ws/cl_hits.lua plays it.
-local min, max = math.min, math.max
+local Scalar = math.scalar
 module(...)
 
 -- tf_dingalingaling_effect's choices, 0 first, as TF2's options list them.
@@ -30,7 +30,7 @@ end
 
 -- RemapValClamped(damage, LOW_DAMAGE, HIGH_DAMAGE, minPitch, maxPitch)
 function Pitch(damage, minPitch, maxPitch)
-	local t = (min(max(damage, LOW_DAMAGE), HIGH_DAMAGE) - LOW_DAMAGE) / (HIGH_DAMAGE - LOW_DAMAGE)
+	local t = (Scalar.Clamp(damage, LOW_DAMAGE, HIGH_DAMAGE) - LOW_DAMAGE) / (HIGH_DAMAGE - LOW_DAMAGE)
 	return minPitch + (maxPitch - minPitch) * t
 end
 

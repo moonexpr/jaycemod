@@ -6,7 +6,8 @@
 -- show at the end, LINGER seconds. While it runs, MvM's upgrade
 -- station music plays, silent for MUSIC_DELAY seconds, then fading in over
 -- MUSIC_FADE.
-local floor, format, min, max = math.floor, string.format, math.min, math.max
+local floor, format = math.floor, string.format
+local Scalar = math.scalar
 module(...)
 
 IDLE, OPENING, GENERATING, DONE = 0, 1, 2, 3
@@ -46,7 +47,7 @@ end
 -- MUSIC_DELAY, rising to full over MUSIC_FADE, none once done.
 function MusicVolume(stage, elapsed)
 	if stage ~= OPENING and stage ~= GENERATING then return 0 end
-	return min(max((elapsed - MUSIC_DELAY) / MUSIC_FADE, 0), 1)
+	return Scalar.Clamp((elapsed - MUSIC_DELAY) / MUSIC_FADE, 0, 1)
 end
 
 -- Whether the box shows at now: while it runs, and LINGER after it is done

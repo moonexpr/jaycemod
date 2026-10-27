@@ -10,6 +10,7 @@
 -- slammed dead into a wall. The controller
 -- (ws/sv_hits.lua, ws/sh_weapon_balance.lua) applies it to each hit and shot.
 local math = math
+local Scalar = math.scalar
 module(...)
 
 -- damage: a hit's damage, in place of HL2's; cone: the full spread in
@@ -141,7 +142,7 @@ end
 
 -- 0 at from, 1 at to, clamped.
 local function Progress(value, from, to)
-	return math.min(math.max((value - from) / (to - from), 0), 1)
+	return Scalar.Clamp((value - from) / (to - from), 0, 1)
 end
 
 -- The fraction of its damage a bullet keeps at distance; all of it for a

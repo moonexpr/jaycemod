@@ -44,9 +44,7 @@ end
 function Count(book, target)
 	local entry = book.against[target]
 	if not entry then return 0 end
-	local n = 0
-	for _ in pairs(entry.by) do n = n + 1 end
-	return n
+	return Sets.Count(entry.by)
 end
 
 -- The commonest reason among a target's reports; a tie goes to the latest.
