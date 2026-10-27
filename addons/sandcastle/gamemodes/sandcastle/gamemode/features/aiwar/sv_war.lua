@@ -149,6 +149,14 @@ local NO_NAV_MESH = "this map has no navigation mesh for the soldiers to walk; "
 -- arena's squads explore the nav mesh's waypoints
 MAP_LACKS[Scenario.WAYPOINTS] = NO_NAV_MESH
 
+-- The registered scenarios compiled again, what each think decides from:
+-- as the war starts, and as a game's players are ready (RoundPlayersReady,
+-- ws/sh_aiwar.lua), so a late addon's registration plays in the game it
+-- comes before.
+function Controller:CompileScenarios()
+	self.scenarios = Scenario.Compile()
+end
+
 -- Starts the war at once and requests Gameplay mode, whose countdown
 -- restarts the rounds. The scenario is the rounds mode's (the map's own
 -- entities chose it), never the map's name. Returns true, or false and why
@@ -158,7 +166,7 @@ function Controller:Start()
 	if not WS.SoldiersEnabled() then return false, "NextSoldier is switched off on this server (ns_soldiers_enabled 0)" end
 	if not DrGBase then return false, "the AI war needs DrGBase (Steam Workshop) for its soldiers" end
 	-- a map whose mode is none the war knows is fought freeform
-	self.scenarios = Scenario.Compile()
+	self:CompileScenarios()
 	local _, variant = Scenario.Entry(self.scenarios, { mode = RoundsModeName() })
 	self.baseCache = nil
 	local flags, zones = self:FlagsSnapshot()

@@ -285,10 +285,21 @@ function Controller:OpenClock()
 	timer.Create(TRANSITION_TIMER, TRANSITION_TICK, 0, function() self:Tick() end)
 end
 
+-- The game is set to begin with its players, however it came to: a
+-- request's transition, a wait that ended, or a load's countdown opening
+-- (hurried as its expected players came in, or reaching its last stretch).
+-- RoundPlayersReady runs first, once a transition: its listeners, then the
+-- gamemode's own (late addons register what they bring before the AI
+-- war's scenarios compile, ws/sh_aiwar.lua); then the opening cues.
+function Controller:PlayersReady()
+	hook.Run("RoundPlayersReady")
+	self:Opening()
+end
+
 -- A request's transition: its clock and its opening cues at once.
 function Controller:OpenTransition()
 	self:OpenClock()
-	self:Opening()
+	self:PlayersReady()
 end
 
 -- Calls off the transition, silencing what it played; a pre-round it
@@ -362,7 +373,7 @@ function Controller:SettingChanged(enabled, requester)
 end
 
 local CUES = {
-	[Gamemode.CUE_OPENING] = function(self) self:Opening() end,
+	[Gamemode.CUE_OPENING] = function(self) self:PlayersReady() end,
 	[Gamemode.CUE_CLEANUP] = function() WS.Rules:CleanUp() end,
 	[Gamemode.CUE_ANNOUNCE] = function(self)
 		self:TransitionSound(TRANSITION_MUSIC)
@@ -391,7 +402,10 @@ end
 
 -- The first pre-round: the scores cleared, everyone on a team (a player on
 -- RED or BLU keeps it, the rest but spectators are assigned one), then the
--- rounds respawn and hold them until the countdown ends.
+-- rounds respawn and hold them until the countdown ends. The match starts
+-- here (MatchStart, for addons), once the teams are set and before the
+-- rounds begin, so its first round's hooks (RoundStateChanged, RoundStart:
+-- features/rounds/sv_effects.lua) come after it.
 function Controller:Begin()
 	team.SetScore(WS.TEAM_RED, 0)
 	team.SetScore(WS.TEAM_BLUE, 0)
@@ -400,6 +414,7 @@ function Controller:Begin()
 			WS.SetPlayerTeam(ply, WS.AutoTeam(), true)
 		end
 	end
+	hook.Run("MatchStart")
 	WS.Rules:BeginGame(self.mode:TransitionEnd())
 end
 
@@ -414,7 +429,6 @@ function Controller:StartAtLoad()
 	self:Publish()
 end
 
-return Controller
 -- TF2's ready key, F4: GMod binds it to gm_showspare2. player_ready_toggle
 -- for a key of the player's own (the panel names whichever is bound).
 hook.Add("ShowSpare2", "ws_gamemode_ready", function(ply) Controller:ToggleReady(ply) end)
@@ -422,3 +436,4 @@ concommand.Add("player_ready_toggle", function(ply)
 	if IsValid(ply) then Controller:ToggleReady(ply) end
 end, nil, "Toggle your team's ready, or in MvM your own, while a game waits for players")
 
+return Controller

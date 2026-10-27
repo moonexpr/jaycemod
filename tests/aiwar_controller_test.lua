@@ -783,6 +783,31 @@ T.test("an ended war can start again, with a new scenario", function()
 	T.eq(controller.scenario ~= first, true, "a new instance")
 end)
 
+-- A late addon's scenario (registered after the war started, as on a map
+-- whose war autostarts at load) is in the compile the players' readiness
+-- makes (RoundPlayersReady), and the next think plays it.
+T.test("a scenario registered after the war started is played once the scenarios compile again", function()
+	local Late = Base.Scenario:Extend("late_addon")
+	function Late:Brief(field) field.doctrine = Orders.PAYLOAD end
+	function Late:Stances() return {}, {} end
+	function Late:Front() return nil end
+	function Late:SetupAttacks() return {} end
+	local registered = true
+	local controller = Started(World(), PayloadMode.Mode)
+	nextsoldier.scenarios.Shared:Register({
+		name = "late_addon",
+		priority = Base.MODE_PRIORITY + 1,
+		mode = PayloadMode.Mode.NAME,
+		active = function() return registered end,
+		scenario = Late,
+	})
+	T.eq(controller:Survey(NOW).scenario.name, PayloadMode.Mode.NAME, "not before the compile")
+	controller:CompileScenarios()
+	T.eq(controller:Survey(NOW).scenario.name, "late_addon", "the late one, after it")
+	T.eq(getmetatable(controller.scenario), Late, "played")
+	registered = false
+end)
+
 -- The field -------------------------------------------------------------------------
 
 T.test("every think's field carries the scenario's doctrine and the round's phase", function()

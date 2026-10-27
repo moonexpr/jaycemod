@@ -75,12 +75,23 @@ local function PublishOvertime(on)
 	hook.Run("WSOvertime", on)
 end
 
+-- Whether the round is being played: running, or an arena or sudden death
+-- round (STALEMATE).
+local function Played(round)
+	local state = round:State()
+	return state == S.RND_RUNNING or state == S.STALEMATE
+end
+
 -- CTeamplayRoundBasedRules::SetSetup, from every timer's SetState. Its
--- change is heard as WSSetup(on): MvM's wave starts as setup ends.
+-- change is heard as WSSetup(on): MvM's wave starts as setup ends. A setup
+-- turned on while the round is played is SetupStart, for addons; one armed
+-- before (the timer made in the pre-round) starts with the round
+-- (sv_effects.lua's RoundStart).
 function Controller:SetSetup(on)
 	if not self.round:SetSetup(on) then return end
 	SetGlobal2Bool("ws_round_in_setup", on)
 	hook.Run("WSSetup", on)
+	if on and Played(self.round) then hook.Run("SetupStart") end
 end
 
 function Controller:SetOvertime(on)
