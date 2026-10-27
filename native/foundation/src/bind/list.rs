@@ -152,7 +152,7 @@ pub struct Ring {
 impl Native for Ring {
     const NAME: &'static CStr = c"foundation.list.ring";
     const METHODS: &'static [(&'static CStr, CFunction)] =
-        &[(c"Push", ring_push), (c"Size", ring_size), (c"Ordered", ring_ordered)];
+        &[(c"Push", ring_push), (c"Size", ring_size), (c"Ordered", ring_ordered), (c"Newest", ring_newest)];
 }
 
 /// list.ring.New(capacity) -> an empty ring of capacity
@@ -181,6 +181,22 @@ unsafe extern "C-unwind" fn ring_push(l: L) -> c_int {
 
 unsafe extern "C-unwind" fn ring_size(l: L) -> c_int {
     number(l, userdata::check::<Ring>(l, 1).size as f64)
+}
+
+/// ring:Newest() -> the last value pushed, nil for an empty ring
+unsafe extern "C-unwind" fn ring_newest(l: L) -> c_int {
+    let ring = userdata::check::<Ring>(l, 1);
+    if ring.size == 0 {
+        return nothing(l);
+    }
+    let capacity = ring.slots.len();
+    match ring.slots[(ring.next + capacity - 1) % capacity] {
+        Some(slot) => {
+            ValueSlots::push(l, slot);
+            1
+        }
+        None => nothing(l),
+    }
 }
 
 /// ring:Ordered() -> the values, oldest first, a fresh list

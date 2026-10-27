@@ -19,6 +19,7 @@ local concat, sort = table.concat, table.sort
 local find, lower, rep, sub, upper = string.find, string.lower, string.rep, string.sub, string.upper
 local Npc = npc.nextbot
 local Sets = world.sets
+local Ring = list.ring
 module(...)
 
 -------------------------------------------------------------------------------
@@ -606,30 +607,25 @@ BehaviorLog.__index = BehaviorLog
 function NewBehaviorLog(clock, capacity)
 	return setmetatable({
 		clock = clock,
-		capacity = capacity,
-		entries = {},
+		entries = Ring.New(capacity),
 	}, BehaviorLog)
 end
 
 local function Append(log, text)
 	local entries, now = log.entries, log.clock:Now()
-	local last = entries[#entries]
+	local last = entries:Newest()
 	if last and last.base == text then
 		last.count = last.count + 1
 		last.text = format("%s x%d", text, last.count)
 		last.time = now
 		return
 	end
-	entries[#entries + 1] = {
+	entries:Push({
 		base = text,
 		text = text,
 		count = 1,
 		time = now,
-	}
-	while #entries > log.capacity do
-		for i = 1, #entries - 1 do entries[i] = entries[i + 1] end
-		entries[#entries] = nil
-	end
+	})
 end
 
 function BehaviorLog:Transition(resultType, fromName, toName, reason, starting)
@@ -651,7 +647,7 @@ end
 -- { time, text }, oldest first.
 function BehaviorLog:Entries()
 	local list = {}
-	for i, entry in ipairs(self.entries) do
+	for i, entry in ipairs(self.entries:Ordered()) do
 		list[i] = {
 			time = entry.time,
 			text = entry.text,

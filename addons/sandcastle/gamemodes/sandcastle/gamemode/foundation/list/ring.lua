@@ -3,6 +3,8 @@
 -- can sample per-tick work.
 --   New(capacity), ring:Push(value), ring:Size(),
 --   ring:Ordered() -> the values, oldest first, a fresh list
+--   ring:Newest() -> the last value pushed, nil for an empty ring (a table
+--     pushed is the table given back: change it in place)
 -- This is the Lua twin, which clients run; a server with native/foundation
 -- has the native one in its place, which keeps this contract.
 local error, floor, setmetatable, tostring, type = error, math.floor, setmetatable, tostring, type
@@ -39,4 +41,9 @@ function Ring:Ordered()
 	local start = self.size < capacity and 1 or self.next
 	for i = 0, self.size - 1 do list[#list + 1] = self.values[(start + i - 1) % capacity + 1] end
 	return list
+end
+
+function Ring:Newest()
+	if self.size == 0 then return nil end
+	return self.values[(self.next - 2) % self.capacity + 1]
 end
