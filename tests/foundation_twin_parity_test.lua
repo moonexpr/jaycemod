@@ -224,7 +224,7 @@ local RECIPES = {
 	["foundation.list.schedule"] = { Make = function(M) return { scheduler = M.New(Clock()) } end },
 	["foundation.tree.heap"] = { Make = function(M) return { heap = M.New() } end },
 	["foundation.tree.avl"] = { Make = function(M) return { tree = M.New() } end },
-	["foundation.world.pairmap"] = { Make = function(M) return { pairmap = M.New() } end },
+	["foundation.world.pairmap"] = { Make = function(M) return { pairmap = M.New(), unordered = M.Unordered() } end },
 	["foundation.world.lease"] = { Make = function(M) return { leases = M.New() } end },
 	["foundation.world.grid"] = { Make = function(M) return { grid = M.New(100) } end },
 	["foundation.world.sets"] = { Make = function(M) return { set = M.Named("colours", { "red", "blue" }) } end },

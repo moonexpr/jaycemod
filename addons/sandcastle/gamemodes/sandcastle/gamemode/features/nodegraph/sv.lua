@@ -123,10 +123,9 @@ end
 local function Seams(area, list, seen)
 	for dir = 0, 3 do
 		for _, other in ipairs(area:GetAdjacentAreasAtSide(dir) or {}) do
-			local key = math.min(area:GetID(), other:GetID()) .. ":" .. math.max(area:GetID(), other:GetID())
-			if not seen[key] and Walkable(other)
+			if not seen:Get(area:GetID(), other:GetID()) and Walkable(other)
 				and (Slopes(area) or Slopes(other) or math.abs(area:GetCenter().z - other:GetCenter().z) > STEP) then
-				seen[key] = true
+				seen:Set(area:GetID(), other:GetID(), true)
 				local x, y = Graph.SeamPoint(Rect(area), Rect(other), dir)
 				local z = math.max(area:GetZ(Vector(x, y, 0)), other:GetZ(Vector(x, y, 0)))
 				local floor = FloorBelow(Vector(x, y, z))
@@ -139,7 +138,7 @@ end
 -- The candidates: hiding spots, seams where the ground changes height and
 -- walkable area centres, on the floor.
 local function Candidates()
-	local list, seen = {}, {}
+	local list, seen = {}, world.pairmap.Unordered()
 	for _, area in ipairs(navmesh.GetAllNavAreas()) do
 		if Walkable(area) then
 			Seams(area, list, seen)

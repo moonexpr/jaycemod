@@ -20,6 +20,7 @@ const MAX_KEY: f64 = SPAN - 1.0;
 pub struct PairMap {
     keys: HashMap<u64, u32>,
     values: ValueSlots,
+    unordered: bool,
 }
 
 impl Native for PairMap {
@@ -28,8 +29,10 @@ impl Native for PairMap {
         &[(c"Get", pairmap_get), (c"Set", pairmap_set), (c"Size", pairmap_size), (c"Clear", pairmap_clear)];
 }
 
-/// The pair's one key, as the Lua twin's table holds it (-0 and 0 alike).
-fn pair_key(a: f64, b: f64) -> u64 {
+/// The pair's one key, as the Lua twin's table holds it (-0 and 0 alike); an unordered map puts the
+/// pair in order first.
+fn pair_key(unordered: bool, a: f64, b: f64) -> u64 {
+    let (a, b) = if unordered && a > b { (b, a) } else { (a, b) };
     (a * SPAN + b + 0.0).to_bits()
 }
 
@@ -39,10 +42,17 @@ unsafe extern "C-unwind" fn pairmap_new(l: L) -> c_int {
     1
 }
 
+unsafe extern "C-unwind" fn pairmap_unordered(l: L) -> c_int {
+    userdata::push(l, PairMap { unordered: true, ..PairMap::default() });
+    fresh_environment(l, -1);
+    1
+}
+
 unsafe extern "C-unwind" fn pairmap_get(l: L) -> c_int {
     let api = api();
     let (a, b) = ((api.checknumber)(l, 2), (api.checknumber)(l, 3));
-    match userdata::check::<PairMap>(l, 1).keys.get(&pair_key(a, b)) {
+    let map = userdata::check::<PairMap>(l, 1);
+    match map.keys.get(&pair_key(map.unordered, a, b)) {
         Some(&slot) => {
             ValueSlots::push(l, slot);
             1
@@ -65,7 +75,7 @@ unsafe extern "C-unwind" fn pairmap_set(l: L) -> c_int {
     (api().settop)(l, 4);
     let (a, b) = (pair_part(l, 2), pair_part(l, 3));
     let map = userdata::check::<PairMap>(l, 1);
-    let key = pair_key(a, b);
+    let key = pair_key(map.unordered, a, b);
     if let Some(old) = map.keys.remove(&key) {
         map.values.release(l, old);
     }
@@ -657,7 +667,7 @@ unsafe extern "C-unwind" fn sets_sorted(l: L) -> c_int {
 /// Pushes the world namespace's native modules into the table at the top.
 pub unsafe fn push_modules(l: L) {
     let api = api();
-    module::push(l, &[(c"New", pairmap_new)], None);
+    module::push(l, &[(c"New", pairmap_new), (c"Unordered", pairmap_unordered)], None);
     (api.pushnumber)(l, MAX_KEY);
     (api.setfield)(l, -2, c"MAX_KEY".as_ptr());
     (api.setfield)(l, -2, c"pairmap".as_ptr());
