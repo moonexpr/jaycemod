@@ -10,12 +10,14 @@ local E = WS.Events
 
 local TAB_NAME = "Server"
 local TAB_ICON = "icon16/group.png"
-local TAB_ORDER = -20 -- after Loadout (-40) and Store (-30), ahead of Sandbox's Spawnlists (-10)
+local TAB_ORDER = 10000 -- the last tab on the left, after Sandbox's own
 
-local GAP = 8
-local TILE_H = 64
-local CHOICE_H = 40
-local CHOICE_W = 200
+local LAYOUT = core.constants.New("server tab layout", {
+	GAP = 8,
+	TILE_H = 64,
+	CHOICE_H = 40,
+	CHOICE_W = 200,
+})
 local REFRESH_SECONDS = 1 -- how often the tab rereads the vote settings
 
 -- What each vote does, for its tile's tooltip.
@@ -31,6 +33,11 @@ local NOT_READY = "Coming soon."
 local DISABLED = "Server has disabled that issue."
 local RUNNING = "A vote is currently in progress."
 local NO_MAPS = "No maps available"
+local DIFFICULTY = GetConVar("tf_bot_difficulty")
+local OTHER_TEAM = {
+	[WS.TEAM_RED] = WS.TEAM_BLUE,
+	[WS.TEAM_BLUE] = WS.TEAM_RED,
+}
 
 local function Call(kind, subject)
 	E.Request("game_vote_call", {
@@ -48,13 +55,13 @@ end
 
 UI.Define("ServerMenu", "DPanel", {
 	Init = function(self)
-		self:DockPadding(GAP, GAP, GAP, GAP)
+		self:DockPadding(LAYOUT.GAP, LAYOUT.GAP, LAYOUT.GAP, LAYOUT.GAP)
 		UI.Title(self, "Call Vote")
 		self.tiles = vgui.Create("DPanel", self)
 		self.tiles:SetPaintBackground(false)
 		self.tiles:Dock(TOP)
-		self.tiles:SetTall(TILE_H)
-		self.tiles:DockMargin(0, GAP, 0, GAP)
+		self.tiles:SetTall(LAYOUT.TILE_H)
+		self.tiles:DockMargin(0, LAYOUT.GAP, 0, LAYOUT.GAP)
 		self.buttons = {}
 		for _, kind in ipairs(Vote.CALLABLE) do
 			local tile = vgui.Create(UI.Name("Button"), self.tiles)
@@ -69,10 +76,10 @@ UI.Define("ServerMenu", "DPanel", {
 		end
 		self.tiles.PerformLayout = function(tiles, w)
 			local n = #Vote.CALLABLE
-			local tw = (w - GAP * (n - 1)) / n
+			local tw = (w - LAYOUT.GAP * (n - 1)) / n
 			for i, kind in ipairs(Vote.CALLABLE) do
-				self.buttons[kind]:SetPos((i - 1) * (tw + GAP), 0)
-				self.buttons[kind]:SetSize(tw, TILE_H)
+				self.buttons[kind]:SetPos((i - 1) * (tw + LAYOUT.GAP), 0)
+				self.buttons[kind]:SetSize(tw, LAYOUT.TILE_H)
 			end
 		end
 		self.prompt = vgui.Create(UI.Name("Label"), self)
@@ -80,9 +87,9 @@ UI.Define("ServerMenu", "DPanel", {
 		self.prompt:Dock(TOP)
 		self.choices = vgui.Create("DIconLayout", self)
 		self.choices:Dock(TOP)
-		self.choices:DockMargin(0, GAP, 0, 0)
-		self.choices:SetSpaceX(GAP)
-		self.choices:SetSpaceY(GAP)
+		self.choices:DockMargin(0, LAYOUT.GAP, 0, 0)
+		self.choices:SetSpaceX(LAYOUT.GAP)
+		self.choices:SetSpaceY(LAYOUT.GAP)
 		local hint = vgui.Create(UI.Name("Label"), self)
 		hint:SetTextColor(THEME.muted)
 		hint:SetContentAlignment(4)
@@ -107,7 +114,7 @@ UI.Define("ServerMenu", "DPanel", {
 
 	Choice = function(self, text, onClick, enabled)
 		local button = self.choices:Add(UI.Name("Button"))
-		button:SetSize(CHOICE_W, CHOICE_H)
+		button:SetSize(LAYOUT.CHOICE_W, LAYOUT.CHOICE_H)
 		button:SetText(text)
 		button:SetEnabled(enabled)
 		button.DoClick = onClick
@@ -125,6 +132,20 @@ UI.Define("ServerMenu", "DPanel", {
 			self.prompt:SetText(blocked or "Set the next map to:")
 			if #WS.VoteMaps == 0 then self.prompt:SetText(NO_MAPS) end
 			for _, map in ipairs(WS.VoteMaps) do self:Choice(map, function() Call(kind, map) end, blocked == nil) end
+		elseif kind == Vote.KIND_DIFFICULTY then
+			local now = Vote.DIFFICULTIES[DIFFICULTY:GetInt() + 1]
+			self.prompt:SetText(blocked or ("Set the soldiers' difficulty (now " .. now .. ") to:"))
+			for _, level in ipairs(Vote.DIFFICULTIES) do
+				self:Choice(string.upper(level:sub(1, 1)) .. level:sub(2), function() Call(kind, level) end, blocked == nil and level ~= now)
+			end
+		elseif kind == Vote.KIND_SUPPORT then
+			local other = OTHER_TEAM[LocalPlayer():Team()]
+			if not other then
+				self.prompt:SetText("Join RED or BLU to call this vote.")
+			else
+				self.prompt:SetText(blocked or WS.VoteQuestion(kind, team.GetName(other), nil))
+				self:Choice("Call Vote", function() Call(kind) end, blocked == nil and GetGlobal2Int("ws_handicap_team", 0) ~= other)
+			end
 		else
 			self.prompt:SetText(blocked or WS.VoteQuestion(kind, "", nil))
 			self:Choice("Call Vote", function() Call(kind) end, blocked == nil)
