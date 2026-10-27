@@ -412,4 +412,76 @@ T.test("a part name is checked before anything compiles", function()
 	T.eq(#port.compiled, 0, "nothing compiled")
 end)
 
+-- Resources ------------------------------------------------------------------
+-- A feature names what it brings to preload (features/<name>/resources.lua:
+-- kind -> names); the loader hands each kind to the handler this realm
+-- registered for it, as the feature loads.
+
+T.test("a feature's resources path is resources.lua beside its parts", function()
+	T.eq(Features.ResourcesPath("wheel"), "features/wheel/resources.lua")
+end)
+
+-- A handler that keeps what it was handed: "feature:name" in order.
+local function Keeper()
+	local kept = {}
+	return kept, function(names, feature)
+		for _, name in ipairs(names) do kept[#kept + 1] = feature .. ":" .. name end
+	end
+end
+
+T.test("a feature's resources go to each kind's handler as it loads, before its parts run", function()
+	local port = FakePort({
+		[Features.ResourcesPath("wheel")] = Returns({
+			soundscapes = { "Halloween.WheelofFate" },
+			models = { "models/props_lakeside_event/wof_plane2.mdl" },
+		}),
+		[P("wheel", CL)] = Returns({}),
+	})
+	local loader = Features.New(CL, port)
+	local sounds, keepSounds = Keeper()
+	local models, keepModels = Keeper()
+	loader:Handle(Features.SOUNDSCAPES, keepSounds)
+	loader:Handle(Features.MODELS, keepModels)
+	loader:Feature("wheel")
+	T.eq(List(sounds), "wheel:Halloween.WheelofFate", "soundscapes")
+	T.eq(List(models), "wheel:models/props_lakeside_event/wof_plane2.mdl", "models")
+	T.eq(List(port.runs), Features.ResourcesPath("wheel") .. "," .. P("wheel", CL), "resources first")
+end)
+
+T.test("a handler registered after a feature loaded is handed that feature's resources", function()
+	local port = FakePort({
+		[Features.ResourcesPath("wheel")] = Returns({ soundscapes = { "Halloween.WheelofFate" } }),
+		[P("wheel", CL)] = Returns({}),
+	})
+	local loader = Features.New(CL, port)
+	loader:Feature("wheel")
+	local sounds, keepSounds = Keeper()
+	loader:Handle(Features.SOUNDSCAPES, keepSounds)
+	T.eq(List(sounds), "wheel:Halloween.WheelofFate", "handed late")
+end)
+
+T.test("a kind no handler takes on this realm is skipped; a feature without resources loads as before", function()
+	local port = FakePort({
+		[Features.ResourcesPath("wheel")] = Returns({ soundscapes = { "Halloween.WheelofFate" } }),
+		[P("wheel", SV)] = Returns({}),
+		[P("rounds", SV)] = Returns({}),
+	})
+	local loader = Features.New(SV, port)
+	T.eq(type(loader:Feature("wheel")), "table", "the server takes no soundscapes, and loads it")
+	T.eq(type(loader:Feature("rounds")), "table", "no resources.lua")
+end)
+
+T.test("a resource kind the loader does not know is refused, naming the feature and the kind", function()
+	local port = FakePort({
+		[Features.ResourcesPath("wheel")] = Returns({ sounds = { "Halloween.WheelofFate" } }),
+		[P("wheel", SV)] = Returns({}),
+	})
+	local loader = Features.New(SV, port)
+	local err = ErrorOf(function() loader:Feature("wheel") end)
+	Has(err, "wheel", "the feature")
+	Has(err, "sounds", "the kind")
+	T.eq(ErrorOf(function() loader:Handle("sounds", function() end) end):find("sounds", 1, true) ~= nil, true,
+		"a handler for it too")
+end)
+
 T.finish()

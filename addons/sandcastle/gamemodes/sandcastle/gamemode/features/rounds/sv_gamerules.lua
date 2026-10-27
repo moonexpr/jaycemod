@@ -286,7 +286,7 @@ local function ScoreAdder(t)
 end
 
 local function VoiceTo(t)
-	return function(self, v) WS.BroadcastPA(t, tostring(v)) end
+	return function(self, v) WS.BroadcastSoundscape(t, tostring(v)) end
 end
 
 local function ClockActivator(t)
@@ -310,7 +310,7 @@ local PROXY_INPUTS = {
 	setstalemateontimelimit = function(self, v)
 		self.round:SetStalemateOnTimelimit(tonumber(v) == 1 or tostring(v) == "true")
 	end,
-	-- PlayVO is heard by everyone (BroadcastPA to 255), the others by one team.
+	-- PlayVO is heard by everyone (BroadcastSoundscape to 255), the others by one team.
 	playvo = VoiceTo(UNASSIGNED),
 	playvored = VoiceTo(RED),
 	playvoblue = VoiceTo(BLUE),

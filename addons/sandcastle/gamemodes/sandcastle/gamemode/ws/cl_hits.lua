@@ -55,11 +55,26 @@ local function Rebatch() texts = CombatText.New(Window()) end
 cvars.AddChangeCallback(BATCHING:GetName(), Rebatch, "ws_hits")
 cvars.AddChangeCallback(BATCHING_WINDOW:GetName(), Rebatch, "ws_hits")
 
+-- The selected hit sound's files (HitSound.Files), resolved and precached
+-- once a choice, not each hit: played as files, the pitch by damage and
+-- the volume are the player's, as a soundscript's own would override them.
+local selected, selectedFiles
+
+local function HitFiles()
+	local name = HitSound.Sound(EFFECT:GetInt(), WAV_OVERRIDE:GetString())
+	if name ~= selected then
+		local script = sound.GetProperties(name)
+		selected, selectedFiles = name, HitSound.Files(name, script and script.sound)
+		for _, path in ipairs(selectedFiles) do util.PrecacheSound(path) end
+	end
+	return selectedFiles
+end
+
 -- The hit sound for damage: heard by the attacker alone, from nowhere.
 local function Ding(damage)
-	local sound = HitSound.Sound(EFFECT:GetInt(), WAV_OVERRIDE:GetString())
+	local files = HitFiles()
 	local pitch = HitSound.Pitch(damage, PITCH_LOW:GetFloat(), PITCH_HIGH:GetFloat())
-	LocalPlayer():EmitSound(sound, 0, pitch, VOLUME:GetFloat(), CHAN_STATIC)
+	LocalPlayer():EmitSound(files[math.random(#files)], 0, pitch, VOLUME:GetFloat(), CHAN_STATIC)
 end
 
 local lastDing

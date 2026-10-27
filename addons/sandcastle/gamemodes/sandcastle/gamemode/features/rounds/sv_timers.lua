@@ -33,11 +33,11 @@ local OVERTIME_NAG = "Game.Overtime"
 -- The announcer credits the team the time was added for (AddTeamTime).
 local function AnnounceTimeAdded(t)
 	if t == RED or t == BLUE then
-		WS.BroadcastPA(t, table.Random(TIME_ADDED_WINNER))
-		WS.BroadcastPA(WS.EnemyOf(t), TIME_ADDED_LOSER)
-		WS.BroadcastPA(SPECTATOR, TIME_ADDED)
+		WS.BroadcastSoundscape(t, table.Random(TIME_ADDED_WINNER))
+		WS.BroadcastSoundscape(WS.EnemyOf(t), TIME_ADDED_LOSER)
+		WS.BroadcastSoundscape(SPECTATOR, TIME_ADDED)
 	else
-		WS.BroadcastPA(UNASSIGNED, TIME_ADDED)
+		WS.BroadcastSoundscape(UNASSIGNED, TIME_ADDED)
 	end
 end
 
@@ -118,7 +118,7 @@ local TIMER_EVENTS = {
 	end,
 	setup = function(self, ent, e) self:SetSetup(e.value) end,
 	overtime = function(self, ent, e) self:SetOvertime(e.value) end,
-	nag = function() WS.BroadcastPA(UNASSIGNED, OVERTIME_NAG) end,
+	nag = function() WS.BroadcastSoundscape(UNASSIGNED, OVERTIME_NAG) end,
 	length_changed = function() end,
 	time_added = function(self, ent, e)
 		AnnounceTimeAdded(e.team)
@@ -348,10 +348,12 @@ end
 
 -- Round limits (games.gameplay.rounds.limits) ---------------------------------------------
 
--- The announcer's cues: the arena's first blood, and Player Destruction's
--- close to winning, to the team and to its enemy.
+-- The announcer's cues: the arena's first blood (a soundscape), and close
+-- to winning, to the team and to its enemy: Payload Race's general lines,
+-- sound files on the announcer's channel (Player Destruction's own speak
+-- of an "energy reactor").
 local FIRST_BLOOD = "Announcer.AM_FirstBloodRandom"
-local CLOSE_OURS, CLOSE_THEIRS = "Announcer.OurTeamCloseToWinning", "Announcer.EnemyTeamCloseToWinning"
+local CLOSE_OURS, CLOSE_THEIRS = "vo/announcer_plr_racegeneral14.mp3", "vo/announcer_plr_racegeneral03.mp3"
 
 function Controller:RoundLimits()
 	return Limits.Of(self.round:Mode(), roundFraglimit:GetInt(), roundCashlimit:GetInt())
@@ -376,10 +378,10 @@ function Controller:Counted()
 	self:PublishRoundLimits()
 	for _, call in ipairs(self.tally:Calls(limits)) do
 		if call.kind == "first_blood" then
-			WS.BroadcastPA(UNASSIGNED, FIRST_BLOOD)
+			WS.BroadcastSoundscape(UNASSIGNED, FIRST_BLOOD)
 		else
-			WS.BroadcastPA(call.team, CLOSE_OURS)
-			WS.BroadcastPA(WS.EnemyOf(call.team), CLOSE_THEIRS)
+			WS.BroadcastSoundFile(call.team, CLOSE_OURS, CHAN_VOICE2)
+			WS.BroadcastSoundFile(WS.EnemyOf(call.team), CLOSE_THEIRS, CHAN_VOICE2)
 		end
 	end
 	local outcome = Limits.Outcome(limits, self.tally)
@@ -399,8 +401,8 @@ hook.Add("WSTeamFrag", "ws_rounds_limits", function(team)
 	if not Counts() then return end
 	Controller.tally:Frag(team)
 	if Controller:RoundLimits().frags > 0 then
-		WS.BroadcastSound(team, SCORE_OURS)
-		WS.BroadcastSound(WS.EnemyOf(team), SCORE_THEIRS)
+		WS.BroadcastSoundscape(team, SCORE_OURS)
+		WS.BroadcastSoundscape(WS.EnemyOf(team), SCORE_THEIRS)
 	end
 	Controller:Counted()
 end)
