@@ -4,7 +4,9 @@
 -- behaviour its soldiers' ScenarioMonitor runs in place of the doctrine's
 -- sides (a nextsoldier.monitor, or any npc.nextbot Action).
 --
--- Registering is open while the game loads. At the game's beginning
+-- Registering is open while the game loads. At the game's beginning (the
+-- war's start, and RoundPlayersReady, as a game's players are ready: a late
+-- addon registers by then, or in its own listener of that hook)
 -- Compile() makes the structure a decision reads mid-game: immutable, its
 -- entries in priority order and indexed by the rounds mode they are for,
 -- so a choice asks only the scenarios of the context's mode and those of

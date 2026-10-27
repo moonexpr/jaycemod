@@ -31,17 +31,17 @@ as possible; `game_` for every other.
 Check everything with `.devtools/bin/check_lua.sh` (compiles every Lua file
 and runs every test).
 
-## Dev workbench
+## The live server: gmod MCP and the dev workbench
 
-To try a Lua change on the dev server, reload it and keep the game where it
-is: `dev.reload({ files = { ... } })` (about 20 ms), with the situation saved
-once as a scenario (`dev.scenario.save`, `quicksave`) and loaded back as
-needed. Reach for it before `changelevel`, and change map only when it
-refuses a file. The workbench (`addons/sandcastle_dev`, dev server only)
-also captures and restores state (`dev.capture`, `dev.apply`,
-`dev.check_roundtrip`), freezes and steps gameplay, and traces the map's
-gamerules I/O (`dev_gamerules_harness 1`). Commands, scenario format and
-limits: the `dev-workbench` skill (`.claude/skills/dev-workbench/SKILL.md`).
+Test a change on the running dev server, and find your way around the code
+by asking it, through the `gmod` MCP (`.devtools/bin/gmod_mcp.py`, tools
+`mcp__gmod__*`; `dt gmod TOOL name=value` from a shell) and the dev
+workbench (`addons/sandcastle_dev`): load the change with
+`dev.reload({ files = { ... } })`, never a restart, then check it as
+returned data. The steps, the navigation tricks and the indexed dev library
+(every function and console command) are the rule
+`.claude/rules/live-server.md`, which `tests/dev_library_index_test.lua`
+holds to the workbench's code.
 
 ## History search
 
@@ -284,7 +284,11 @@ runs foundation in Rust and a client in Lua, never a module part one and
 part the other: a new module gets its Lua twin (what clients run, and the
 oracle) and a whole native twin in `native/foundation` (or
 `native/wetsands`), held by the same tests in both passes, and its index
-line is a `Twin` (`docs/native-foundation-plan.md`).
+line is a `Twin` (`docs/native-foundation-plan.md`). The twins answer to
+one interface, both ways: the same module keys, classes, constants and
+metamethods, and what their constructors make the same methods
+(`tests/foundation_twin_parity_test.lua`, where a new `Twin` gets a recipe
+or a `LIBRARIES` line; a native-only test seam is a `NATIVE_ONLY` line).
 
 A structure's behaviour goes in its metamethods first (indexing, assigning,
 calling to walk or parse, `tostring`), with named methods as proxies

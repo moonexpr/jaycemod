@@ -7,7 +7,7 @@
 --   heap:Push(key, value)   key a number, value anything but nil
 --   heap:Pop() -> value, key of the first, taken out; nil when empty
 --   heap:Peek() -> value, key of the first, left in; nil when empty
---   heap:Size(), heap:Clear() (and the push order starts again)
+--   heap:Size() (__len), heap:Clear() (and the push order starts again)
 -- Entries live in three arrays by heap position (key, push number,
 -- value), so a push allocates no table.
 local setmetatable = setmetatable
@@ -25,6 +25,7 @@ setmetatable(_M, { __call = function() return New() end })
 function Heap:Size()
 	return self.n
 end
+Heap.__len = Heap.Size
 
 function Heap:Clear()
 	self.n, self.pushed, self.keys, self.seqs, self.values = 0, 0, {}, {}, {}

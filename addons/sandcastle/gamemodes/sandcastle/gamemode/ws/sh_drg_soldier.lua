@@ -230,8 +230,13 @@ function WS.DrgSoldier(ENT, baseName)
 		end
 	end
 
-	-- DrGBase's, once it has picked the soldier's model.
+	-- DrGBase's, once it has picked the soldier's model. It is lag compensated,
+	-- as a player is: a player's shot (FireBullets, or a trace between
+	-- LagCompensation calls) meets it where the shooter saw it, not where it
+	-- has walked since; GMod compensates only players unless asked, and
+	-- DrGBase never asks (docs/prediction.md).
 	function ENT:CustomInitialize()
+		self:SetLagCompensated(true)
 		self:NSVoice()
 	end
 

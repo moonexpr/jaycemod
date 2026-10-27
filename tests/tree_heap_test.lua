@@ -67,6 +67,12 @@ local CASES = {
 		heap:Push(1.5, "one")
 		return { (heap:Pop()) }
 	end },
+	{ "__len is Size", function(Heap)
+		local heap = Heap()
+		heap:Push(2, "b")
+		heap:Push(1, "a")
+		return { getmetatable(heap).__len(heap), heap:Size() }
+	end },
 	{ "many keys come out sorted, ties in push order", function(Heap)
 		local heap, x, expected = Heap(), 7, {}
 		for i = 1, 2000 do
@@ -112,6 +118,7 @@ T.test("the Lua twin's answers are the expected ones", function()
 	T.eq(seen["any value comes back as it went in"].lua, "true | true | true | true", "values")
 	T.eq(seen["clearing empties it, and the order starts again"].lua, "2 | late@2 later@2", "clear")
 	T.eq(seen["New is the call"].lua, "one", "New")
+	T.eq(seen["__len is Size"].lua, "2 | 2", "__len")
 	T.eq(seen["many keys come out sorted, ties in push order"].lua, "true | 0", "many")
 end)
 

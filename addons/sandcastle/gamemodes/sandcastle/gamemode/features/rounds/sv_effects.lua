@@ -153,12 +153,25 @@ end
 -- Effects ---------------------------------------------------------------------------
 
 -- The model's round hooks, for other features: the round is running
--- (spawns, the AI war), and a round was won (winner, its WINREASON).
+-- (spawns, the AI war), and a round was won (winner, its WINREASON). Each
+-- has its name for addons too: RoundStart, then SetupStart if the round
+-- runs in setup (its setup timer, armed in the pre-round, counts from now;
+-- an arena round's own); BonusRoundStart (winner, WINREASON), the bonus
+-- round being the winners' time to hunt the humiliated (TEAM_WIN,
+-- mp_bonusroundtime); BonusRoundEnd as the round state leaves it, however
+-- (the next round, the match's end, a halt).
 local ROUND_ACTIVE = "WSRoundActive"
 local ROUND_WIN = "WSRoundWin"
 local ROUND_HOOKS = {
-	[ROUND_ACTIVE] = function() hook.Run(ROUND_ACTIVE) end,
-	[ROUND_WIN] = function(args) hook.Run(ROUND_WIN, args[1], args[2]) end,
+	[ROUND_ACTIVE] = function(self)
+		hook.Run(ROUND_ACTIVE)
+		hook.Run("RoundStart")
+		if self.round:InSetup() then hook.Run("SetupStart") end
+	end,
+	[ROUND_WIN] = function(_, args)
+		hook.Run(ROUND_WIN, args[1], args[2])
+		hook.Run("BonusRoundStart", args[1], args[2])
+	end,
 }
 
 local function FireCompetitive(output)
@@ -190,6 +203,7 @@ local EFFECTS = {
 		SetGlobal2Int("ws_round_state", e.to)
 		PublishLimits()
 		self:RetellDead()
+		if e.from == S.TEAM_WIN then hook.Run("BonusRoundEnd") end
 		if e.to == S.PREROUND then
 			self:RestoreSpawnDoors()
 			SetGlobal2Float("ws_preround_end_time", e.preroundEnd)
@@ -284,7 +298,7 @@ local EFFECTS = {
 	end,
 	doors_lock = function() FireCompetitive("OnSpawnRoomDoorsShouldLock") end,
 	doors_unlock = function() FireCompetitive("OnSpawnRoomDoorsShouldUnlock") end,
-	hook = function(self, e) ROUND_HOOKS[e.name](e.args) end,
+	hook = function(self, e) ROUND_HOOKS[e.name](self, e.args) end,
 	score = function(self, e) team.AddScore(e.team, e.points) end,
 	-- What the win panel shows (SendWinPanelInfo).
 	publish_win = function(self, e, now)
@@ -336,11 +350,14 @@ local EFFECTS = {
 			self:SetWinningTeam(e.team, Rounds.WINREASON.OPPONENTS_DEAD, e.forceMapReset)
 		end
 	end,
+	-- the match ended, its winner decided (nobody, drawn): MatchEnded (winner,
+	-- why), for addons
 	intermission = function(self, e, now)
 		SetGlobal2String("ws_game_over_reason", e.reason)
 		SetGlobal2Int("ws_match_winner", e.winner)
 		SetGlobal2Float("ws_game_over_end", e["until"])
 		hook.Run("WSMatchWin", e.winner)
+		hook.Run("MatchEnded", e.winner, e.reason)
 		-- its winners hunt the humiliated losers to its music through the
 		-- setup gates and every spawn door (MATCH_WIN_EXTRA), then everyone
 		-- is frozen for mp_chattime; a match ended drawn (a stalemate) is
@@ -383,7 +400,15 @@ local EFFECTS = {
 	skip_setup = function(self, e, now) self:FinishSetup(now) end,
 }
 
+-- Every change of the round's state is told to addons last, as
+-- RoundStateChanged(previous, next) (the states games.gameplay.rounds.state
+-- names): once the whole batch it came in is applied, so everything the
+-- change brought (its outputs, respawns, RoundStart, BonusRoundStart...)
+-- has run. A batch of several changes tells each, in order.
 function Controller:Apply(effects)
 	local now = CurTime()
 	for _, e in ipairs(effects) do EFFECTS[e.kind](self, e, now) end
+	for _, e in ipairs(effects) do
+		if e.kind == "state" then hook.Run("RoundStateChanged", e.from, e.to) end
+	end
 end

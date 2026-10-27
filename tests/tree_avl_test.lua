@@ -55,6 +55,12 @@ local CASES = {
 		tree:Insert(1, "one")
 		return { tree:Get(1) }
 	end },
+	{ "__len is Size", function(Avl)
+		local tree = Avl()
+		tree:Insert(1, "one")
+		tree:Insert(2, "two")
+		return { getmetatable(tree).__len(tree), tree:Size() }
+	end },
 	{ "thousands of mixed inserts and removes stay sorted and balanced", function(Avl)
 		local tree, present, x = Avl(), {}, 99
 		for _ = 1, 5000 do
@@ -107,6 +113,7 @@ T.test("the Lua twin's answers are the expected ones", function()
 	T.eq(seen["floor and ceiling find the nearest keys either side"].lua, "20 | 30 | 20 | nil | nil | v20 | 30 | v30", "floor, ceiling")
 	T.eq(seen["an empty tree"].lua, "0 | nil | nil | false |  | 0 | nil", "empty")
 	T.eq(seen["any value comes back as it went in, and falls out when removed"].lua, "true | true | nil | 1", "values")
+	T.eq(seen["__len is Size"].lua, "2 | 2", "__len")
 	T.eq(seen["thousands of mixed inserts and removes stay sorted and balanced"].lua:match("^true | true | true"), "true | true | true", "sorted, sized, balanced")
 end)
 

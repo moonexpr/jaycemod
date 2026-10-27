@@ -173,6 +173,13 @@ local CASES = {
 		local sealed = pcall(mesh.Area, mesh, 9, 0, 0, 0, 0)
 		return { ok, sealed }
 	end },
+	{ "a mesh says whether it is sealed, and once sealed how many areas it has", function(N)
+		local mesh = N.Mesh()
+		mesh:Area(1, 0, 0, 0, 0)
+		local before, counted = mesh:Sealed(), pcall(mesh.Areas, mesh)
+		mesh:Seal()
+		return { before, counted, mesh:Sealed(), mesh:Areas(), Mesh(N):Areas() }
+	end },
 	{ "a calculator gives the first area nothing and prices the engine's moves", function(N)
 		local cost = Calculator(N)
 		return { cost(EngineArea(1), nil, nil, nil, -1), cost(EngineArea(2), EngineArea(1, 50), nil, nil, -1),
@@ -295,6 +302,7 @@ T.test("the Lua implementation's answers are the expected ones", function()
 	T.eq(seen["the lanes' penalty pushes a plan off an earlier lane"].lua, "found | 1 5 3", "lanes")
 	T.eq(seen["a start that is the goal is found at once"].lua, "found | 2 | found", "no move")
 	T.eq(seen["an area the mesh lacks is refused"].lua, "false | false", "refused")
+	T.eq(seen["a mesh says whether it is sealed, and once sealed how many areas it has"].lua, "false | false | true | 1 | 5", "sealed, areas")
 	T.eq(seen["a calculator gives the first area nothing and prices the engine's moves"].lua, "0 | 150 | 200 | 150", "calculator")
 	T.eq(seen["a calculator closes what its Told holds: areas, links one way, enemy rooms"].lua, "-1 | -1 | 100 | -1 | 100", "calculator told")
 	T.eq(seen["a calculator's Told is a copy: changing the tables after changes nothing"].lua, "100", "told copied")
