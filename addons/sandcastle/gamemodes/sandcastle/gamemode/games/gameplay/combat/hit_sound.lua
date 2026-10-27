@@ -30,8 +30,7 @@ end
 
 -- RemapValClamped(damage, LOW_DAMAGE, HIGH_DAMAGE, minPitch, maxPitch)
 function Pitch(damage, minPitch, maxPitch)
-	local t = (Scalar.Clamp(damage, LOW_DAMAGE, HIGH_DAMAGE) - LOW_DAMAGE) / (HIGH_DAMAGE - LOW_DAMAGE)
-	return minPitch + (maxPitch - minPitch) * t
+	return Scalar.Remap(damage, LOW_DAMAGE, HIGH_DAMAGE, minPitch, maxPitch)
 end
 
 -- Whether a hit sound may play now, the last at lastAt (nil for none yet).

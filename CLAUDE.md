@@ -168,7 +168,7 @@ Tests are `tests/<namespace>_<module>_test.lua`.
 | Module | API |
 |---|---|
 | `math.geometry` | On `{ x, y, z }` points (missing z is 0): `Distance`, `Distance2D` (across the ground), `Toward`, `Add`, `Sub`, `Scale`, `Dot`, `Cross`, `Length`, `Normalize` (nil for the zero vector) |
-| `math.scalar` | `Clamp(value, low, high)` (an empty range is the caller's mistake) |
+| `math.scalar` | `Clamp(value, low, high)` (an empty range is the caller's mistake), `Saturate(value)` (0..1), `Lerp(a, b, t)` (t unheld), `InverseLerp(a, b, value)` and `Remap(value, a, b, c, d)` (held to the span; a span with no length is the caller's mistake) |
 | `math.stats` | `Mean(list)`, `Percentile(list, p)` (nearest rank) |
 | `math.weighted` | `PickWeighted(items, weight, r)`, `r` drawn by the caller |
 | `math.polynomial` | Coefficients from the constant up: `Evaluate`, `Derivative`, `Roots` (real, ascending, up to a cubic) |

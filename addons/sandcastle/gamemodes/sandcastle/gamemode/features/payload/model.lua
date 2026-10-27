@@ -137,7 +137,7 @@ function DistanceToGoal(total, distanceAt, targetIndex, straight)
 end
 
 function Progress(total, distanceToGoal)
-	return Scalar.Clamp(1 - distanceToGoal / total, 0, 1)
+	return Scalar.Saturate(1 - distanceToGoal / total)
 end
 
 -- Approach alerts. links = { { distance, alerted }, ... }, updated in place;

@@ -142,7 +142,7 @@ end
 
 -- 0 at from, 1 at to, clamped.
 local function Progress(value, from, to)
-	return Scalar.Clamp((value - from) / (to - from), 0, 1)
+	return Scalar.InverseLerp(from, to, value)
 end
 
 -- The fraction of its damage a bullet keeps at distance; all of it for a

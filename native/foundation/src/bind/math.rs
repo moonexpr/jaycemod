@@ -122,6 +122,51 @@ unsafe extern "C-unwind" fn clamp(l: L) -> c_int {
     number(l, if value < low { low } else if value > high { high } else { value })
 }
 
+fn saturate_of(value: f64) -> f64 {
+    if value < 0.0 {
+        0.0
+    } else if value > 1.0 {
+        1.0
+    } else {
+        value
+    }
+}
+
+unsafe extern "C-unwind" fn saturate(l: L) -> c_int {
+    number(l, saturate_of((api().checknumber)(l, 1)))
+}
+
+unsafe extern "C-unwind" fn lerp(l: L) -> c_int {
+    let api = api();
+    let (a, b, t) = ((api.checknumber)(l, 1), (api.checknumber)(l, 2), (api.checknumber)(l, 3));
+    number(l, a + (b - a) * t)
+}
+
+/// The fraction of the span `a..b` that `value` covers, held to [0, 1]; a span with no length is
+/// the caller's mistake, raised at the caller's line.
+unsafe fn span_fraction(l: L, value: f64, a_index: c_int) -> f64 {
+    let api = api();
+    let (a, b) = ((api.checknumber)(l, a_index), (api.checknumber)(l, a_index + 1));
+    if a == b {
+        let (from, to) = (tostring(l, a_index), tostring(l, a_index + 1));
+        raise_where(l, format!("a span with no length: {from} to {to}"));
+    }
+    saturate_of((value - a) / (b - a))
+}
+
+unsafe extern "C-unwind" fn inverse_lerp(l: L) -> c_int {
+    let value = (api().checknumber)(l, 3);
+    number(l, span_fraction(l, value, 1))
+}
+
+unsafe extern "C-unwind" fn remap(l: L) -> c_int {
+    let api = api();
+    let value = (api.checknumber)(l, 1);
+    let t = span_fraction(l, value, 2);
+    let (c, d) = ((api.checknumber)(l, 4), (api.checknumber)(l, 5));
+    number(l, c + (d - c) * t)
+}
+
 // math.stats ----------------------------------------------------------------
 
 /// The numbers of the list at `index`, in order until the first nil.
@@ -681,7 +726,17 @@ pub unsafe fn push_modules(l: L) {
         None,
     );
     (api.setfield)(l, -2, c"geometry".as_ptr());
-    module::push(l, &[(c"Clamp", clamp)], None);
+    module::push(
+        l,
+        &[
+            (c"Clamp", clamp),
+            (c"Saturate", saturate),
+            (c"Lerp", lerp),
+            (c"InverseLerp", inverse_lerp),
+            (c"Remap", remap),
+        ],
+        None,
+    );
     (api.setfield)(l, -2, c"scalar".as_ptr());
     module::push(l, &[(c"Mean", mean), (c"Percentile", percentile)], None);
     (api.setfield)(l, -2, c"stats".as_ptr());

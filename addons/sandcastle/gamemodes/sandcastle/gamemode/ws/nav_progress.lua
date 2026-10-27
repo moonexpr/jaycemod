@@ -47,7 +47,7 @@ end
 -- MUSIC_DELAY, rising to full over MUSIC_FADE, none once done.
 function MusicVolume(stage, elapsed)
 	if stage ~= OPENING and stage ~= GENERATING then return 0 end
-	return Scalar.Clamp((elapsed - MUSIC_DELAY) / MUSIC_FADE, 0, 1)
+	return Scalar.Saturate((elapsed - MUSIC_DELAY) / MUSIC_FADE)
 end
 
 -- Whether the box shows at now: while it runs, and LINGER after it is done

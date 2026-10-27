@@ -10,9 +10,10 @@
 --     1 with no known threat: how far the enemy has drawn off;
 --   it leaves when u + s >= 1, for the nearest kit within R: near death it
 --     goes whatever the danger, barely hurt only once safe.
-local min, max = math.min, math.max
+local max = math.max
 local ipairs = ipairs
 local Geometry = math.geometry
+local Saturate = math.scalar.Saturate
 module(...)
 
 CRITICAL, OK = 0.3, 0.8 -- tf_bot_health_critical_ratio, tf_bot_health_ok_ratio
@@ -20,11 +21,9 @@ NEAR_RANGE, FAR_RANGE = 1000, 2000 -- tf_bot_health_search_near_range, _far_rang
 THREAT_NEAR, THREAT_FAR = 500, 1500
 QUIET_TIME = 5
 
-local function Clamp01(x) return min(1, max(0, x)) end
-
 function Urgency(healthShare, burning)
 	if burning then return 1 end
-	return 1 - Clamp01((healthShare - CRITICAL) / (OK - CRITICAL))
+	return 1 - Saturate((healthShare - CRITICAL) / (OK - CRITICAL))
 end
 
 function SearchRange(urgency)
@@ -35,8 +34,8 @@ end
 -- seconds since its last enemy.
 function Safety(threatDistance, quiet)
 	if threatDistance == nil then return 1 end
-	local away = Clamp01((threatDistance - THREAT_NEAR) / (THREAT_FAR - THREAT_NEAR))
-	return max(away, Clamp01(quiet / QUIET_TIME))
+	local away = Saturate((threatDistance - THREAT_NEAR) / (THREAT_FAR - THREAT_NEAR))
+	return max(away, Saturate(quiet / QUIET_TIME))
 end
 
 function Leaves(urgency, safety)

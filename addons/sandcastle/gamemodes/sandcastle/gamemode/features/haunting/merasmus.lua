@@ -64,6 +64,7 @@ local Actor = npc.actor
 local Combat = gameplay.combat
 local Players = gameplay.players
 local Teams = gameplay.teams
+local Remap = math.scalar.Remap
 local atan2, cos, deg, floor, huge, max, min, rad, sin = math.atan2, math.cos, math.deg, math.floor, math.huge, math.max, math.min, math.rad, math.sin
 local ipairs = ipairs
 local band = bit.band
@@ -402,12 +403,6 @@ local function PushAllPlayersAway(me, from, range, force, team)
 	for _, ply in ipairs(me:CollectPlayers(team)) do
 		if (me:TargetEyes(ply) - from):Length() < range then me:ApplyImpulse(ply, Away(me, from, ply, force)) end
 	end
-end
-
-local function RemapValClamped(value, a, b, c, d)
-	local t = (value - a) / (b - a)
-	if t < 0 then t = 0 elseif t > 1 then t = 1 end
-	return c + (d - c) * t
 end
 
 -- The level every Merasmus shares (CMerasmus::m_level), from the variant's
@@ -1114,7 +1109,7 @@ local function CastSpell(me, t, range, minDamage, maxDamage)
 	me:ApplyImpulse(t, me:Vector(0, 0, ZAP_LIFT))
 	local to = me:EyePosition() - me:TargetCenter(t)
 	local halfRange = 0.5 * range
-	local damage = RemapValClamped(to:Dot(to), ZAP_NEAR_SQR, halfRange * halfRange, maxDamage, minDamage)
+	local damage = Remap(to:Dot(to), ZAP_NEAR_SQR, halfRange * halfRange, maxDamage, minDamage)
 	me:DealDamage(t, damage, Actor.DMG_BURN)
 	me:DispatchBeam(ZAP_PARTICLE, STAFF_ATTACHMENT, me:TargetEyes(t))
 end
