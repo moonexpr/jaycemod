@@ -263,7 +263,11 @@ runs foundation in Rust and a client in Lua, never a module part one and
 part the other: a new module gets its Lua twin (what clients run, and the
 oracle) and a whole native twin in `native/foundation` (or
 `native/wetsands`), held by the same tests in both passes, and its index
-line is a `Twin` (`docs/native-foundation-plan.md`).
+line is a `Twin` (`docs/native-foundation-plan.md`). The twins answer to
+one interface, both ways: the same module keys, classes, constants and
+metamethods, and what their constructors make the same methods
+(`tests/foundation_twin_parity_test.lua`, where a new `Twin` gets a recipe
+or a `LIBRARIES` line; a native-only test seam is a `NATIVE_ONLY` line).
 
 A structure's behaviour goes in its metamethods first (indexing, assigning,
 calling to walk or parse, `tostring`), with named methods as proxies
