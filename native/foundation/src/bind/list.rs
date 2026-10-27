@@ -215,6 +215,92 @@ unsafe extern "C-unwind" fn ring_ordered(l: L) -> c_int {
     1
 }
 
+// list.window ----------------------------------------------------------------
+
+pub struct Window {
+    span: f64,
+    entries: VecDeque<(f64, f64)>,
+    sum: f64,
+}
+
+impl Native for Window {
+    const NAME: &'static CStr = c"foundation.list.window";
+    const METHODS: &'static [(&'static CStr, CFunction)] = &[
+        (c"Add", window_add),
+        (c"Sum", window_sum),
+        (c"Count", window_count),
+        (c"Size", window_size),
+        (c"Clear", window_clear),
+    ];
+}
+
+impl Window {
+    /// Lets go of the entries more than span old at `now`; an empty window starts its sum again at 0.
+    fn drop_aged(&mut self, now: f64) {
+        while let Some(&(at, value)) = self.entries.front() {
+            if now - at > self.span {
+                self.sum -= value;
+                self.entries.pop_front();
+            } else {
+                break;
+            }
+        }
+        if self.entries.is_empty() {
+            self.sum = 0.0;
+        }
+    }
+}
+
+unsafe extern "C-unwind" fn window_new(l: L) -> c_int {
+    let span = if (api().type_of)(l, 1) == TNUMBER { (api().tonumber)(l, 1) } else { f64::NAN };
+    if !(span > 0.0) {
+        let given = tostring(l, 1);
+        raise_where(l, format!("a window's span is a number above 0, not {given}"));
+    }
+    userdata::push(l, Window { span, entries: VecDeque::new(), sum: 0.0 });
+    1
+}
+
+unsafe extern "C-unwind" fn window_add(l: L) -> c_int {
+    let api = api();
+    let (at, value) = ((api.checknumber)(l, 2), (api.checknumber)(l, 3));
+    let window = userdata::check::<Window>(l, 1);
+    if let Some(&(last, _)) = window.entries.back() {
+        if at < last {
+            let (given, before) = (tostring(l, 2), format!("{last}"));
+            raise_where(l, format!("a window's entries come in time order: {given} is before {before}"));
+        }
+    }
+    window.entries.push_back((at, value));
+    window.sum += value;
+    0
+}
+
+unsafe extern "C-unwind" fn window_sum(l: L) -> c_int {
+    let now = (api().checknumber)(l, 2);
+    let window = userdata::check::<Window>(l, 1);
+    window.drop_aged(now);
+    number(l, window.sum)
+}
+
+unsafe extern "C-unwind" fn window_count(l: L) -> c_int {
+    let now = (api().checknumber)(l, 2);
+    let window = userdata::check::<Window>(l, 1);
+    window.drop_aged(now);
+    number(l, window.entries.len() as f64)
+}
+
+unsafe extern "C-unwind" fn window_size(l: L) -> c_int {
+    number(l, userdata::check::<Window>(l, 1).entries.len() as f64)
+}
+
+unsafe extern "C-unwind" fn window_clear(l: L) -> c_int {
+    let window = userdata::check::<Window>(l, 1);
+    window.entries.clear();
+    window.sum = 0.0;
+    0
+}
+
 // list.slots -----------------------------------------------------------------
 
 #[derive(Default)]
@@ -573,7 +659,9 @@ pub unsafe fn push_modules(l: L) {
     (api.setfield)(l, -2, c"schedule".as_ptr());
     super::select::push_module(l);
     (api.setfield)(l, -2, c"select".as_ptr());
+    module::push(l, &[(c"New", window_new)], None);
+    (api.setfield)(l, -2, c"window".as_ptr());
 }
 
 /// The names push_modules sets, for provide.
-pub const NAMES: &[&CStr] = &[c"queue", c"ring", c"slots", c"chain", c"schedule", c"select"];
+pub const NAMES: &[&CStr] = &[c"queue", c"ring", c"slots", c"chain", c"schedule", c"select", c"window"];

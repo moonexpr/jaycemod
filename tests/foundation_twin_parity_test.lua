@@ -222,6 +222,7 @@ local RECIPES = {
 	["foundation.list.slots"] = { Make = function(M) return { slots = M.New() } end },
 	["foundation.list.chain"] = { Make = function(M) return { chain = M.New() } end },
 	["foundation.list.schedule"] = { Make = function(M) return { scheduler = M.New(Clock()) } end },
+	["foundation.list.window"] = { Make = function(M) return { window = M.New(5) } end },
 	["foundation.tree.heap"] = { Make = function(M) return { heap = M.New() } end },
 	["foundation.tree.avl"] = { Make = function(M) return { tree = M.New() } end },
 	["foundation.world.pairmap"] = { Make = function(M) return { pairmap = M.New(), unordered = M.Unordered() } end },

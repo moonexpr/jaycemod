@@ -173,7 +173,7 @@ T.test("the boss takes the amount ModifyDamage gives", function()
 	T.eq(taken, true, "taken")
 	T.eq(amount, 30, "tripled")
 	T.eq(s.npc:State().attackers:Peek(s.red), s.me:Now(), "remembered, at the time of its hit")
-	T.eq(s.npc:State().samples[1].damage, 30, "at what it took")
+	T.eq(s.npc:State().samples:Sum(s.me:Now()), 30, "at what it took")
 end)
 
 T.test("a hit ModifyDamage takes to nothing is refused", function()

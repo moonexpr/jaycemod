@@ -130,6 +130,7 @@ Tests are `tests/<namespace>_<module>_test.lua`.
 | `list.slots` | `New()` → whole-number slots for arrays kept by slot: `pool()` (`Alloc`; a freed one first), `Free` (refuses one not in use), `InUse`, `Size` (`__len`), `High`, `Clear`, `tostring` |
 | `list.chain` | `New()` → slots in an order, linked by two arrays: `PushFront`, `PushBack`, `Unlink`, `MoveFront`, `Front`, `Back`, `After`, `Before`, `Has`, `for slot in chain()` (`Ordered`), `Size` (`__len`), `Clear`, `tostring` |
 | `list.select` | Which item a score or an order picks; lower is better and a tie goes to the earlier item: `Lowest(list, score[, keep])` and `Highest` → item, score, place; `Nearest(list, from[, position[, keep]])` → item, distance, place; `TopK(list, k, before)` (the first k in order, n log k); `Order(list, before)` (places, stable); `Ranks(list, before)` (from 1) |
+| `list.window` | `New(span)` → numbers added with their time, summed over the last `span` seconds: `Add(at, value)` (in time order), `Sum(now)`, `Count(now)` (an entry exactly `span` old counts; older ones let go), `Size`, `Clear`; the sum is kept running |
 | `list.schedule` | `New(clock)` → cooperative tasks in a time slice: `Spawn(fn, ...)`, `Run(seconds)`, `CheckYield` (in a task: yield once the slice is spent), `Yield`, `Wait(ready)` (park until ready), `Count`. `WS.Transactions` is each realm's, run every tick |
 
 ### tree

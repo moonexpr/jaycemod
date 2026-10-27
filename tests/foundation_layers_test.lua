@@ -46,6 +46,7 @@ local CATEGORY = {
 	["math/box"] = "structures",
 	["list/schedule"] = "formalisms",
 	["list/select"] = "formalisms",
+	["list/window"] = "structures",
 	["math/geometry"] = "structures",
 	["transaction"] = "structures",
 	["configstore"] = "structures",

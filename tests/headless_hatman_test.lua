@@ -691,7 +691,7 @@ T.test("a hit sprays the injured particle where it lands and is taken in full", 
 	local particle = s.me:Called("DispatchParticleEffect")[1]
 	T.eq(particle[1], "halloween_boss_injured", "injured")
 	T.eq(particle[2], V(1, 2, 3), "at the hit")
-	T.eq(s.npc:State().samples[1].damage, 40, "in full")
+	T.eq(s.npc:State().samples:Sum(s.me:Now()), 40, "in full")
 end)
 
 -- CHeadlessHatmanDying
