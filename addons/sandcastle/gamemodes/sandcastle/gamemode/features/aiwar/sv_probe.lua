@@ -1,6 +1,7 @@
 -- Part of the AI war controller (sv.lua): path probes along the lanes (ns_lanes_probe).
 local Controller, Map = ...
 local Probe = nextsoldier.probe
+local TFBot = WS.require("foundation.wetsands.path.tfbot")
 local ToVector, OnFloor, SPAWN_LIFT = Map.ToVector, Map.OnFloor, Map.SPAWN_LIFT
 
 -- One probe (ws_drg_probe) walks each lane of each team from its first
@@ -13,7 +14,6 @@ local PROBE_STEP = 0.25
 
 function Controller:ProbeLanes()
 	self:EndProbes()
-	local npcs = WS.Feature("npc")
 	local runs, now = {}, CurTime()
 	for team, lanes in pairs(self.laneSets or {}) do
 		for index, lane in ipairs(lanes) do
@@ -23,7 +23,10 @@ function Controller:ProbeLanes()
 				ent:Spawn()
 				ent:Activate()
 				WS.SetTeamMember(ent, team)
-				ent.NSAreaClosed = function(area) return npcs:NavBlocks(area, team) or self:ShutDoorIn(area, team) end
+				ent.NSPathCost = self:SoldierPathCost(team, function()
+					return { entIndex = ent:EntIndex(), now = CurTime(), team = team, route = TFBot.FASTEST_ROUTE,
+						miniBoss = false, roundWon = false, winningTeam = WS.TEAM_UNASSIGNED }
+				end)
 				local points = { unpack(lane.points, 2) }
 				runs[#runs + 1] = { ent = ent, team = team, lane = index, kind = lane.kind, count = #points,
 					probe = Probe.New(points, now), started = now }

@@ -178,8 +178,11 @@ end
 function Controller:BenchGoal(profile, bot, goal)
 	local enginePath = Path("Follow")
 	self:MeasureCompute(profile, Profile.BENCH_ENGINE_LABEL, bot, function() return enginePath:Compute(bot, goal) end)
-	local luaPath = Path("Follow")
-	self:MeasureCompute(profile, bot.Variant, bot, function() return luaPath:Compute(bot, goal, bot.pathCost) end)
+	local strategyPath = Path("Follow")
+	self:MeasureCompute(profile, bot.Variant, bot, function()
+		local cost = bot.pathCost()
+		return cost ~= nil and strategyPath:Compute(bot, goal, cost)
+	end)
 end
 
 local function Tell(ply, lines)

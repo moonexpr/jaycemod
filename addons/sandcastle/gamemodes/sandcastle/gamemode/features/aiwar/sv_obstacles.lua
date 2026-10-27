@@ -328,6 +328,43 @@ function Controller:NoteShutDoor(door, team)
 	end
 	if noted.teams[team] then return end
 	noted.teams[team] = true
+	self.shutDoorStamp = self.shutDoorStamp + 1
+end
+
+-- The areas of the doors noted shut to team, as a soldier's path cost is
+-- told them (SoldierPathCost): { areas = nav area id -> true, stamp }, the
+-- same table until a door is noted shut to it, or one noted is gone.
+function Controller:ShutDoorAreas(team)
+	local doors = self.shutDoors
+	for door in pairs(doors or {}) do
+		if not IsValid(door) then
+			doors[door] = nil
+			self.shutDoorStamp = self.shutDoorStamp + 1
+		end
+	end
+	local held = self.shutDoorAreas[team]
+	if held and held.doors == doors and held.stamp == self.shutDoorStamp then return held end
+	local areas = {}
+	for _, noted in pairs(doors or {}) do
+		if noted.teams[team] then
+			for id in pairs(noted.areas) do areas[id] = true end
+		end
+	end
+	held = { doors = doors, stamp = self.shutDoorStamp, areas = areas }
+	self.shutDoorAreas[team] = held
+	return held
+end
+
+-- A soldier's (or a lane probe's) path cost maker, for its
+-- GetPathGenerator (ws_drg_soldier): () -> the cost of one compute, priced
+-- as its routes are (HL2Path at SOLDIER_LIMITS, the bot bot() gives) by
+-- the npc controller's EngineCost, natively, over what its team knows and
+-- the doors noted shut to it; nil while the mesh snapshot is built.
+function Controller:SoldierPathCost(team, bot)
+	local npcs = WS.Feature("npc")
+	return function()
+		return npcs:EngineCost(team, HL2Path, HL2Path.SOLDIER_LIMITS, bot(), self:ShutDoorAreas(team))
+	end
 end
 
 function Controller:ShutDoorIn(area, team)

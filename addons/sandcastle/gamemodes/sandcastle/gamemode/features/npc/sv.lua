@@ -37,6 +37,7 @@ local Controller = {
 	navBlocked = {}, -- nav area id -> the teams its doors and brushes block (games.nextsoldier.doors)
 	nextBlockerRefresh = 0,
 	closedFor = {}, -- team -> nav area id -> true: closed to it by the blockers or the engine, until the blockers are taken again
+	engineKnown = {}, -- team -> { mesh, closed, rooms, also, stamp, known }: what its engine path computations know (EngineCost's Told), made again when one changes
 	engineClosedFor = {}, -- team -> nav area id -> true: closed to it by the engine alone, as long
 	blockerGeneration = 0,
 	blockerLog = {}, -- the latest generations: { generation, changes = area id -> true, or nil when not known }

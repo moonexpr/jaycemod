@@ -5,7 +5,6 @@ local Controller = ...
 local Pathfinder = graph.pathfinder
 local NavSearch = wetsands.navsearch
 local Portal = nextsoldier.portal
-local Doors = nextsoldier.doors
 local Path = wetsands.path
 local ReachMemo = nextsoldier.reach_memo
 
@@ -34,36 +33,72 @@ function Controller:FillStep(step, area, fromArea, ladder, length, fromCostSoFar
 	return step
 end
 
--- The cost callback Path:Compute takes (IPathCost), for a NextBot. bot is
--- the strategy's bot table; its `now` is kept current. Areas a door or a
--- brush closes to the bot's team are not traversable, nor links its body
--- cannot cross (WS.NavLinkCrossable: a players' map's clip along a rail,
--- which the nav mesh links a drop past). While a path profile
--- measures a compute, or the nbdebug feature watches it, ent.pathProbe
--- counts the calls and their time, and its recorder (if any) each cost.
+-- What the engine's path computations for a team know (a wetsands.navsearch
+-- Told): the areas closed to it (ClosedFor, and also.areas when the caller
+-- adds some, stamped also.stamp), the links WS.NavLinkCrossable refuses (a
+-- players' map's clip along a rail, which the nav mesh links a drop past),
+-- and the spawn rooms. Made again only when one of those changes; nil
+-- until the mesh snapshot is ready.
+function Controller:EngineKnown(team, also)
+	if not self:NavMeshReady() then return nil end
+	local closed, rooms = self:ClosedFor(team), self:SpawnRooms()
+	local held = self.engineKnown[team]
+	if held and held.mesh == self.navMesh and held.closed == closed and held.rooms == rooms
+		and held.also == (also and also.areas) and held.stamp == (also and also.stamp) then
+		return held.known
+	end
+	local told = closed
+	if also and next(also.areas) then
+		told = {}
+		for id in pairs(closed) do told[id] = true end
+		for id in pairs(also.areas) do told[id] = true end
+	end
+	held = {
+		mesh = self.navMesh,
+		closed = closed,
+		rooms = rooms,
+		also = also and also.areas,
+		stamp = also and also.stamp,
+		known = NavSearch.Told(self.navMesh, { closed = told, rooms = rooms, uncrossable = self.navUncrossable }),
+	}
+	self.engineKnown[team] = held
+	return held.known
+end
+
+-- The cost callback Path:Compute takes (IPathCost) for one compute: a
+-- wetsands.navsearch Calculator of the strategy over the team's
+-- EngineKnown, which prices each move natively; nil while the mesh snapshot
+-- is not ready, when a NextBot has no path yet. bot is the strategy's bot
+-- table, read as the calculator is made.
+function Controller:EngineCost(team, strategy, limits, bot, also)
+	local known = self:EngineKnown(team, also)
+	return known and NavSearch.Calculator(known, strategy, limits, bot)
+end
+
+-- A NextBot's cost maker: () -> EngineCost for this compute, its bot's
+-- `now` set. While a path profile measures a compute, or the nbdebug
+-- feature watches it, ent.pathProbe counts the calls and their time, and
+-- its recorder (if any) each cost.
 function Controller:EnginePathCost(ent, strategy, limits, bot)
-	local step = {}
-	self:RefreshBlockers(CurTime())
-	local team = WS.TeamNumber(ent)
-	local function Traversable(area)
-		return ent.loco:IsAreaTraversable(area) and not Doors.Blocks(self.navBlocked[area:GetID()], team)
-	end
-	local function Cost(area, fromArea, ladder, elevator, length)
-		if IsValid(fromArea) and not WS.NavLinkCrossable(fromArea, area) then return Path.IMPASSABLE end
-		self:FillStep(step, area, fromArea, ladder, length, IsValid(fromArea) and fromArea:GetCostSoFar() or 0, Traversable)
+	return function()
 		bot.now = CurTime()
-		return strategy.Cost(step, limits, bot)
-	end
-	return function(area, fromArea, ladder, elevator, length)
+		local cost = self:EngineCost(WS.TeamNumber(ent), strategy, limits, bot)
 		local probe = ent.pathProbe
-		if not probe then return Cost(area, fromArea, ladder, elevator, length) end
-		local started = SysTime()
-		local cost = Cost(area, fromArea, ladder, elevator, length)
-		probe.costCalls = probe.costCalls + 1
-		probe.costSeconds = probe.costSeconds + SysTime() - started
-		if probe.recorder then probe.recorder:Record(area:GetID(), IsValid(fromArea) and fromArea:GetID() or nil, cost) end
-		return cost
+		if not (cost and probe) then return cost end
+		return function(area, fromArea, ladder, elevator, length)
+			return self:ProbedCost(probe, cost, area, fromArea, ladder, elevator, length)
+		end
 	end
+end
+
+-- One call of cost, counted and timed by a path probe, and recorded.
+function Controller:ProbedCost(probe, cost, area, fromArea, ladder, elevator, length)
+	local started = SysTime()
+	local price = cost(area, fromArea, ladder, elevator, length)
+	probe.costCalls = probe.costCalls + 1
+	probe.costSeconds = probe.costSeconds + SysTime() - started
+	if probe.recorder then probe.recorder:Record(area:GetID(), IsValid(fromArea) and fromArea:GetID() or nil, price) end
+	return price
 end
 
 -- The graph foundation.graph.pathfinder searches: nav area ids, their floor
