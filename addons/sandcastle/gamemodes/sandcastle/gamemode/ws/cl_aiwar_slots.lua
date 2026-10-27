@@ -71,6 +71,7 @@ local SIZED_TEXT = "Each side has mp_aiwar_team_size slots; moving a slider sets
 local lists = setmetatable({}, { __mode = "k" })
 local last = nil
 
+-- An NPC's class's printed name; a bot player's row carries its name.
 local function SoldierName(class)
 	local stored = scripted_ents.Get(class)
 	return stored and stored.PrintName or class
@@ -234,7 +235,9 @@ local function OpenMenu(list, side, node)
 		Run("mp_aiwar_slots_remove", unpack(ids))
 		Pick(list, side, {})
 	end):SetIcon(ICONS.remove)
-	if #soldiers == 1 then
+	-- a bot player is watched as any player is, not by ws_spectate_npc
+	local holder = #soldiers == 1 and Entity(soldiers[1].index)
+	if holder and not (IsValid(holder) and holder:IsPlayer()) then
 		menu:AddSpacer()
 		menu:AddOption("Spectate NPC", function() Run("ws_spectate_npc", soldiers[1].index) end):SetIcon("icon16/eye.png")
 	end
