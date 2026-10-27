@@ -1,4 +1,4 @@
--- games.nextsoldier.vision: what a soldier knows of the enemies it sees,
+-- nextsoldier.vision: what a soldier knows of the enemies it sees,
 -- TF2's IVision: seen at once, recognized after a reaction time, remembered
 -- where last seen for a while out of sight, and one of them, the most
 -- dangerous recognized, its contact.

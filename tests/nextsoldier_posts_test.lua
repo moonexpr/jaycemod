@@ -1,4 +1,4 @@
--- games.nextsoldier.posts: where defenders establish their line: posts near
+-- nextsoldier.posts: where defenders establish their line: posts near
 -- the checkpoint the attackers are heading for, that see it, ranked by
 -- range, elevation and cover, and spaced apart.
 local T = dofile("tests/harness.lua")

@@ -218,7 +218,7 @@ local function NearestArea(pos)
 	return navmesh.GetNearestNavArea(pos, true, NEAREST_AREA_FAR, false, false)
 end
 
--- Goals out of reach (games.nextsoldier.reach_memo): a search that runs out of
+-- Goals out of reach (nextsoldier.reach_memo): a search that runs out of
 -- areas has walked all its start leads to, so a later request from inside
 -- that region to a goal beyond it is answered without a search, from the
 -- region's area nearest the goal, as the search would have come closest:
@@ -385,7 +385,7 @@ end
 
 -- Where to walk along a route of areas, as the engine's Path::Compute
 -- places its points: each step crosses into the next area where
--- games.nextsoldier.portal says (nearest the previous crossing, off the
+-- nextsoldier.portal says (nearest the previous crossing, off the
 -- opening's walled ends), from `start` (default: the first area's centre);
 -- then to `goal`, or for a route that fell short of it, to the last area's
 -- point nearest it.

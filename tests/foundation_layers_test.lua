@@ -1,8 +1,8 @@
--- foundation/'s and games/'s layers (docs/research/foundation-admission-rule.md):
--- every module is in one of four categories, ranked bottom-up, or is pending
--- a move out of foundation. A category may require only itself and the
--- categories below it, in either tree, and neither tree requires a feature
--- or a ws/ file.
+-- foundation/'s, games/' and nextsoldier/'s layers
+-- (docs/research/foundation-admission-rule.md): every module is in one of
+-- four categories, ranked bottom-up, or is pending a move out of
+-- foundation. A category may require only itself and the categories below
+-- it, in any tree, and no tree requires a feature or a ws/ file.
 local T = dofile("tests/harness.lua")
 
 local FOUNDATION = T.ROOT .. "foundation/"
@@ -139,35 +139,39 @@ local GAMES = {
 	["gameplay/rounds/timer"] = "gameplay",
 	["gameplay/rounds/limits"] = "gameplay",
 	["npc/targeting"] = "gameplay",
+}
 
-	["nextsoldier/tactics"] = "nextsoldier",
-	["nextsoldier/monitor"] = "nextsoldier",
-	["nextsoldier/scenarios"] = "nextsoldier",
-	["nextsoldier/squad"] = "nextsoldier",
-	["nextsoldier/lanes"] = "nextsoldier",
-	["nextsoldier/speech"] = "nextsoldier",
-	["nextsoldier/hearing"] = "nextsoldier",
-	["nextsoldier/explore"] = "nextsoldier",
-	["nextsoldier/hunt"] = "nextsoldier",
-	["nextsoldier/posts"] = "nextsoldier",
-	["nextsoldier/zone"] = "nextsoldier",
-	["nextsoldier/tuning"] = "nextsoldier",
-	["nextsoldier/route_record"] = "nextsoldier",
-	["nextsoldier/reach_memo"] = "nextsoldier",
-	["nextsoldier/leap"] = "nextsoldier",
-	["nextsoldier/detour"] = "nextsoldier",
-	["nextsoldier/noise"] = "nextsoldier",
-	["nextsoldier/doors"] = "nextsoldier",
-	["nextsoldier/portal"] = "nextsoldier",
-	["nextsoldier/probe"] = "nextsoldier",
-	["nextsoldier/rappel"] = "nextsoldier",
-	["nextsoldier/brushes"] = "nextsoldier",
-	["nextsoldier/clip"] = "nextsoldier",
-	["nextsoldier/nav_gaps"] = "nextsoldier",
-	["nextsoldier/bot_quota"] = "nextsoldier",
-	["nextsoldier/vision"] = "nextsoldier",
-	["nextsoldier/player_body"] = "nextsoldier",
-	["nextsoldier/route_walk"] = "nextsoldier",
+-- nextsoldier/'s modules: NextSoldier, its own subsystem beside foundation
+-- and games, on both.
+local NEXTSOLDIER = {
+	["tactics"] = "nextsoldier",
+	["monitor"] = "nextsoldier",
+	["scenarios"] = "nextsoldier",
+	["squad"] = "nextsoldier",
+	["lanes"] = "nextsoldier",
+	["speech"] = "nextsoldier",
+	["hearing"] = "nextsoldier",
+	["explore"] = "nextsoldier",
+	["hunt"] = "nextsoldier",
+	["posts"] = "nextsoldier",
+	["zone"] = "nextsoldier",
+	["tuning"] = "nextsoldier",
+	["route_record"] = "nextsoldier",
+	["reach_memo"] = "nextsoldier",
+	["leap"] = "nextsoldier",
+	["detour"] = "nextsoldier",
+	["noise"] = "nextsoldier",
+	["doors"] = "nextsoldier",
+	["portal"] = "nextsoldier",
+	["probe"] = "nextsoldier",
+	["rappel"] = "nextsoldier",
+	["brushes"] = "nextsoldier",
+	["clip"] = "nextsoldier",
+	["nav_gaps"] = "nextsoldier",
+	["bot_quota"] = "nextsoldier",
+	["vision"] = "nextsoldier",
+	["player_body"] = "nextsoldier",
+	["route_walk"] = "nextsoldier",
 }
 
 -- The modules still to move, and where each goes: none. A module bound out
@@ -185,11 +189,12 @@ local INDEX = "_index%.lua$"
 -- A games tree's init (sh_init.lua) publishes modules and is not one.
 local INIT = "_init%.lua$"
 
--- The two trees: where each lives, the dotted prefix of its module names,
--- and its categories.
+-- The trees: where each lives, the dotted prefix of its module names, and
+-- its categories.
 local TREES = {
 	{ dir = FOUNDATION, prefix = FOUNDATION_PREFIX, category = CATEGORY, pending = PENDING },
 	{ dir = T.ROOT .. "games/", prefix = "^games%.", category = GAMES, pending = {} },
+	{ dir = T.ROOT .. "nextsoldier/", prefix = "^nextsoldier%.", category = NEXTSOLDIER, pending = {} },
 }
 
 local function Modules(tree)
@@ -218,7 +223,7 @@ local function Requires(tree, module)
 	return T.Uses(text)
 end
 
--- A required name's tree and its module there, or nil for neither tree's.
+-- A required name's tree and its module there, or nil for no tree's.
 local function Place(name)
 	for _, tree in ipairs(TREES) do
 		if name:match(tree.prefix) then
@@ -243,7 +248,7 @@ T.test("every module is categorised or pending a move, and every entry exists", 
 	end
 end)
 
-T.test("foundation and games require nothing from features or ws", function()
+T.test("foundation, games and nextsoldier require nothing from features or ws", function()
 	for _, tree in ipairs(TREES) do
 		for module in pairs(Modules(tree)) do
 			for _, name in ipairs(Requires(tree, module)) do

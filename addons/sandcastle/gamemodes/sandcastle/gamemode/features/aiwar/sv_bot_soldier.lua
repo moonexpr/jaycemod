@@ -4,7 +4,7 @@
 -- NextBot. It is that port where the two agree (routes, cover, kits,
 -- gadgets, health kits) and differs where the body does: it walks a route
 -- of its own to the goal its orders give (as DrGBase plans its own), sees
--- and fights through its vision and body (games.nextsoldier.vision,
+-- and fights through its vision and body (nextsoldier.vision,
 -- player_body; sv_bots.lua presses its keys), and neither sits on carts
 -- nor takes poses.
 local Map, Soldier = ...
@@ -59,7 +59,7 @@ function BotSoldier.New(ent, controller, team, reaction)
 		look = nil, -- where it faces with no enemy (Watch), a Vector
 		hopUntil = 0,
 		steer = nil, -- the point its body makes for (Steer)
-		walk = nil, -- the route of its own it walks (games.nextsoldier.route_walk)
+		walk = nil, -- the route of its own it walks (nextsoldier.route_walk)
 		planned = nil, -- the goal that route was planned for
 		-- its first route waits a moment: a navigator just made knows no nav area yet
 		nextPlan = CurTime() + FIRST_PLAN,
@@ -99,7 +99,7 @@ end
 
 -- A player's body plans its own way, as DrGBase's does: the orders give it
 -- the goal itself (their Chase), and it walks a route of its own there
--- (games.nextsoldier.route_walk), or straight at a goal near and in a clear
+-- (nextsoldier.route_walk), or straight at a goal near and in a clear
 -- line. The route is the engine's path search's, through its navigator
 -- (ws_bot_navigator), priced by RouteCost, as DrGBase's paths are: the
 -- war's own Lua route searches queue behind its lane planning for tens of

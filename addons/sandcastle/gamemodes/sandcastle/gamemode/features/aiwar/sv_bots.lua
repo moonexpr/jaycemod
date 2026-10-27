@@ -1,6 +1,6 @@
 -- Part of the AI war controller (sv.lua): bot players as soldiers. While
 -- the war runs, tf_bot_quota keeps bots on the server as TF2 keeps its own
--- (games.nextsoldier.bot_quota): each joins a team as a player is
+-- (nextsoldier.bot_quota): each joins a team as a player is
 -- auto-assigned, spawns in its team's respawn waves as every player does,
 -- and is enlisted as it spawns, under the same orders as the war's NPC
 -- soldiers, who fill only the slots the bots leave (Reinforce). Being
@@ -8,8 +8,8 @@
 -- rounds' rules (freezes, stuns, humiliation) reach their keys as anyone's.
 --
 -- A bot soldier (sv_bot_soldier.lua) looks around every LOOK_INTERVAL (its
--- games.nextsoldier.vision), and every tick its body
--- (games.nextsoldier.player_body) presses its keys (StartCommand).
+-- nextsoldier.vision), and every tick its body
+-- (nextsoldier.player_body) presses its keys (StartCommand).
 local Controller, Map = ...
 local Quota = nextsoldier.bot_quota
 local Vision = nextsoldier.vision

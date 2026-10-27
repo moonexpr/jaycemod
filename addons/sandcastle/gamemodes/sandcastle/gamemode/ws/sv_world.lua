@@ -71,7 +71,7 @@ local RECORDED = {
 	path_track = true,
 	info_player_teamspawn = true,
 	team_control_point = true,
-	-- which doors a trigger opens (games.nextsoldier.doors Opens)
+	-- which doors a trigger opens (nextsoldier.doors Opens)
 	trigger_multiple = true,
 	-- the rounds feature fires its OnMultiNewRound, which GMod never does
 	logic_auto = true,

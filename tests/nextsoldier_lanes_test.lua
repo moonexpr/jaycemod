@@ -1,4 +1,4 @@
--- games.nextsoldier.lanes: keeping routes different enough to be lanes,
+-- nextsoldier.lanes: keeping routes different enough to be lanes,
 -- handing them to squads, and walking them.
 local T = dofile("tests/harness.lua")
 local Lanes = nextsoldier.lanes

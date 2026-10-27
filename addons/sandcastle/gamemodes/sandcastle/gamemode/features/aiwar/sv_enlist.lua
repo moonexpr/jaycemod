@@ -170,7 +170,7 @@ function Controller:Equip(ent, entry, member)
 	local kit = (role == AiWar.MEDIC and MEDIC_KITS[faction]) or kits[role]
 		or (faction == AiWar.RESISTANCE and role == AiWar.SUPPORT and self:HeroKit(ent)) or kits.default or {}
 	entry.soldier.kit = kit
-	-- a hero leads its squad (games.nextsoldier.squad)
+	-- a hero leads its squad (nextsoldier.squad)
 	if member then member.hero = kit.hero == true or nil end
 	if ent:IsPlayer() then self:KitBot(ent, entry.soldier, kit) else ent:NSKit(kit) end
 end

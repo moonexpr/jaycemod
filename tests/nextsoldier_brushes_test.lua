@@ -1,4 +1,4 @@
--- games.nextsoldier.brushes: the sweep TF2 makes across a nav area to find a
+-- nextsoldier.brushes: the sweep TF2 makes across a nav area to find a
 -- solid func_brush standing in it (TestAndBlockOverlappingAreas).
 local T = dofile("tests/harness.lua")
 local Brushes = nextsoldier.brushes

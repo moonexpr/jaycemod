@@ -10,7 +10,8 @@ NextSoldier, the AI-war's NextBot soldiers. The gamemode lives at
 |---|---|
 | `gamemode/shared_loader.lua` | Runs first: the gamemode's `WS.require`, then foundation's namespace indexes, each named by hand |
 | `gamemode/foundation/<namespace>/` | The generic base: data structures, algorithms, codecs, maths, classes, loaded at start and published as globals (`list.queue`) by `sh_index.lua` (index below) |
-| `gamemode/games/<namespace>/` | Models built on foundation: pure Lua systems, no GMod globals, I/O through ports (the gamemode core, gameplay, NPCs, NextSoldier, timers, the world's I/O), published as globals by `sh_init.lua` and loaded on first read (index below) |
+| `gamemode/games/<namespace>/` | Models built on foundation: pure Lua systems, no GMod globals, I/O through ports (the gamemode core, gameplay, NPCs, timers, the world's I/O), published as globals by `sh_init.lua` and loaded on first read (index below) |
+| `gamemode/nextsoldier/` | NextSoldier, the soldier AI: its own subsystem on foundation and games, published as `nextsoldier.<module>` by `sh_init.lua` and loaded on first read (index below) |
 | `gamemode/foundation/` | Nothing but its namespaces and three plain globals at its root (`transaction`, `configstore`, `nodegraph`): foundation is copied to the globals, so it stays small and generic. A feature's or mode's model is the feature's `model.lua` and its parts (`docs/foundation-game-split-plan.md`) |
 | `gamemode/features/<feature>/` | Controllers: `sv.lua`/`cl.lua`/`sh.lua` composition roots and their `<realm>_<part>.lua` parts |
 | `gamemode/ws/` | Always-loaded glue |
@@ -75,7 +76,7 @@ branch's history.
 
 Every foundation and games module is in one category of
 `tests/foundation_layers_test.lua`, ranked bottom-up, and may require only
-its own rank or below, in either tree: **structures** (data structures,
+its own rank or below, in any tree: **structures** (data structures,
 algorithms, codecs), **formalisms** (mechanisms that run a policy the caller
 plugs in), **gameplay** types, **nextsoldier** types. foundation holds only
 structures and formalisms with no game nouns, but for `foundation.wetsands`:
@@ -222,7 +223,7 @@ for what it uses. A module's parts (`gameplay/rounds/state`) load through it
 and are not published. A namespace may be foundation's (`list`,
 `world`, `generator`) or GMod's (`timer`, `system`). games may require foundation,
 never features or ws; a published foundation module never requires games;
-`tests/foundation_layers_test.lua` ranks both trees. Tests are
+`tests/foundation_layers_test.lua` ranks every tree. Tests are
 `tests/games_<namespace>_<module>_test.lua`.
 
 | Namespace | Modules |
@@ -230,7 +231,6 @@ never features or ws; a published foundation module never requires games;
 | `system` | The gamemode core: `events` (the game event registry, `WS.Events`), `features` (per-map feature loading), `gamemode`, `permissions`, `play_mode`, `spawn_manager`, `idle` |
 | `gameplay` | `rounds` (+ `state`, `timer`, `limits`), `teams`, `players` (+ `attributes`, `condition_effects`), `spawn`, `spectate`, `respawn_modifiers`, `arrivals`, `loadout`, `economy`, `kill_credit`, `kill_icons`, `vote`, `reports`, `player_analytics`, `capture` (+ `area`, `master`, `point_timer`), `combat` (+ 9 parts), `projectile` (+ 4 parts), `tactics` |
 | `npc` | `nextbot` (the NextBot NPC system), `actor`, `combatant`, `targeting` |
-| `nextsoldier` | NextSoldier: `tactics` (the AI war's fire-team doctrine, on `gameplay.tactics`), `tuning`, `squad`, `lanes`, `speech`, `hearing`, `explore`, `hunt`, `posts`, `zone`, `nav_gaps`; movement (on `wetsands.path`'s costs): `brushes`, `clip`, `detour`, `doors`, `leap`, `noise`, `portal`, `probe`, `rappel`, `reach_memo`, `route_record`; bot players (`docs/aiwar-bots.md`): `bot_quota` (tf_bot_quota's rules), `vision` (seen, recognized, remembered: the contact), `player_body` (moves, aim and fire as a player's keys), `route_walk` (a route walked waypoint by waypoint) |
 
 | Module | API |
 |---|---|
@@ -240,13 +240,34 @@ never features or ws; a published foundation module never requires games;
 | `generator.hfsm` | NextBot Action/Behavior engine: `generator.state_chart` with stacks. `Action` adds `SuspendFor`/`TrySuspendFor`, `OnSuspend`/`OnResume`, buried actions hearing events and queries after the one covering them; `Behavior`; `Chart` as state_chart's; NextBot's timers as `CountdownTimer`, `IntervalTimer` |
 | `world.io` | A map's entity lookups and output connections, through a world port |
 | `gameplay.tactics` | The tactics engine interface: `ENGINE` (a port), `Check(engine)` |
-| `nextsoldier.scenarios` | The scenarios soldiers play, which any script registers while the game loads: `New()` → a registry (`Shared` is the war's): `Register{ name, priority, mode?, active?(context), scenario (a Scenario class or its module, required when chosen), monitor? (a behaviour ScenarioMonitor runs in place of the doctrine's sides) }` (a name again replaces it); `Compile()` at the game's beginning → an immutable structure, entries by priority and indexed by mode, all a decision mid-game reads: `Choose(context)` → the active entry of highest priority (context: `mode`, `field`; never the map's name), `Class(entry)`, `Entries()`. The AI war's own register at `MODE_PRIORITY` and compile when it starts (`features.aiwar.scenario`) |
-| `nextsoldier.monitor` | A monitor: a behaviour (npc.nextbot Action) holding the soldier's state and containing one: `New(name, contains)`, `Passthrough(name, contains)` (left out of the debug layer's TDBN) |
 | `list.drawlist` | `New()` → draw callbacks named by dotted paths, run in order (by order, a tie by path): `Add(path, order, draw[, when])` (a path again replaces it), `HideElements(path)`/`ShowElements(path)` (the code's: a path hides all under it), `SetHidden(paths)` (the player's, apart), `Draw(...)`, `Entries()`; `ParseNames(text)`. The HUD's (`WS.HUD`, `cl_hud_hidden`) |
 
 Rationale, what stays out of foundation's namespaces, and what to evaluate
 next (native backing): `docs/foundation-core.md`. The split into
 foundation and game: `docs/foundation-game-split-plan.md`.
+
+## nextsoldier index
+
+`gamemode/nextsoldier/<module>.lua`: NextSoldier, the soldier AI, its own
+subsystem beside foundation and games, built on both (`docs/ns-split.md`,
+issue #8). `shared_loader.lua` runs `nextsoldier/sh_init.lua` after games'
+inits, which `Defer`s a module a line: module `nextsoldier.<module>` is the
+global of that name, loaded on first read. Its module names are its
+globals', so `module(...)` builds a module's table at its key in the
+`nextsoldier` namespace as it loads, the same table the deferred load keeps
+(`tests/foundation_index_test.lua`). nextsoldier may require foundation and
+games, never features or ws; neither requires nextsoldier
+(`tests/foundation_layers_test.lua`). Tests are
+`tests/nextsoldier_<module>_test.lua`.
+
+| Modules | |
+|---|---|
+| NextSoldier | `tactics` (the AI war's fire-team doctrine, on `gameplay.tactics`), `tuning`, `squad`, `lanes`, `speech`, `hearing`, `explore`, `hunt`, `posts`, `zone`, `nav_gaps`; movement (on `wetsands.path`'s costs): `brushes`, `clip`, `detour`, `doors`, `leap`, `noise`, `portal`, `probe`, `rappel`, `reach_memo`, `route_record`; bot players (`docs/aiwar-bots.md`): `bot_quota` (tf_bot_quota's rules), `vision` (seen, recognized, remembered: the contact), `player_body` (moves, aim and fire as a player's keys), `route_walk` (a route walked waypoint by waypoint) |
+
+| Module | API |
+|---|---|
+| `nextsoldier.scenarios` | The scenarios soldiers play, which any script registers while the game loads: `New()` → a registry (`Shared` is the war's): `Register{ name, priority, mode?, active?(context), scenario (a Scenario class or its module, required when chosen), monitor? (a behaviour ScenarioMonitor runs in place of the doctrine's sides) }` (a name again replaces it); `Compile()` at the game's beginning → an immutable structure, entries by priority and indexed by mode, all a decision mid-game reads: `Choose(context)` → the active entry of highest priority (context: `mode`, `field`; never the map's name), `Class(entry)`, `Entries()`. The AI war's own register at `MODE_PRIORITY` and compile when it starts (`features.aiwar.scenario`) |
+| `nextsoldier.monitor` | A monitor: a behaviour (npc.nextbot Action) holding the soldier's state and containing one: `New(name, contains)`, `Passthrough(name, contains)` (left out of the debug layer's TDBN) |
 
 ## Adding to foundation
 

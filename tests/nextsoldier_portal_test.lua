@@ -1,4 +1,4 @@
--- games.nextsoldier.portal: where a path crosses from one nav area into the
+-- nextsoldier.portal: where a path crosses from one nav area into the
 -- next (CNavArea::ComputeClosestPointInPortal), so waypoints keep off the
 -- corners and door jambs at an opening's ends.
 local T = dofile("tests/harness.lua")

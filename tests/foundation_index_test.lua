@@ -13,6 +13,7 @@ local INDEX_CALL = "Index%(%s*\"([%w_/.]+)\"%s*%)"
 local TREES = {
 	{ root = "foundation", file = "_index.lua", lazy = false },
 	{ root = "games", file = "_init.lua", lazy = true },
+	{ root = "nextsoldier", file = "_init.lua", lazy = true },
 }
 
 -- foundation's root folder publishes its modules as plain globals.
@@ -128,17 +129,33 @@ T.test("foundation's indexes publish each module of their folder at once", funct
 	T.eq(rawget(globals, "transaction"), package.loaded["foundation.transaction"], "a root module is a plain global")
 end)
 
-T.test("game's inits publish each module of their folder, loaded on first read", function()
+T.test("game's and nextsoldier's inits publish each module of their folder, loaded on first read", function()
 	local globals = Globals()
 	RunIndexes(globals)
-	for _, path in ipairs(IndexFiles(TREES[2])) do
-		local folder = path:match("^(.-)[%a]+_init%.lua$")
-		local ns = globals[folder:match("([%w_]+)/$")]
-		for _, key in ipairs(ModulesIn(folder)) do
-			T.eq(rawget(ns, key), nil, folder .. key .. " is not loaded before it is read")
-			local name = folder:gsub("/", ".") .. key
-			T.eq(ns[key], T.require(name), folder .. key .. " is published")
+	T.eq(#IndexFiles(TREES[3]), 1, "nextsoldier/ has its init")
+	for _, tree in ipairs(TREES) do
+		if tree.lazy then
+			for _, path in ipairs(IndexFiles(tree)) do
+				local folder = path:match("^(.-)[%a]+_init%.lua$")
+				local ns = globals[folder:match("([%w_]+)/$")]
+				for _, key in ipairs(ModulesIn(folder)) do
+					T.eq(rawget(ns, key), nil, folder .. key .. " is not loaded before it is read")
+					local name = folder:gsub("/", ".") .. key
+					T.eq(ns[key], T.require(name), folder .. key .. " is published")
+				end
+			end
 		end
+	end
+end)
+
+-- nextsoldier/'s module names are its globals' (nextsoldier.lanes), so
+-- module(...) builds each module's table at its key in the namespace as it
+-- loads, before the deferred load keeps it there: the same table.
+T.test("a nextsoldier module required by name is the one at its global", function()
+	for _, key in ipairs(ModulesIn("nextsoldier/")) do
+		local name = "nextsoldier." .. key
+		T.eq(T.require(name), _G.nextsoldier[key], name)
+		T.eq(rawget(_G.nextsoldier, key), package.loaded[name], name .. " is kept")
 	end
 end)
 

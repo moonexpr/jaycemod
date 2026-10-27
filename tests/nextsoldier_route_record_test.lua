@@ -1,4 +1,4 @@
--- games.nextsoldier.route_record: route searches recorded on the server, read
+-- nextsoldier.route_record: route searches recorded on the server, read
 -- back and replayed offline with the same solver and cost strategy.
 local T = dofile("tests/harness.lua")
 local Record = nextsoldier.route_record

@@ -198,7 +198,7 @@ end
 
 -- The setup zone -------------------------------------------------------------------------
 -- The ground behind the setup gates, where the attackers wander in setup
--- (games.nextsoldier.zone): flooded over the nav mesh from the team's spawn
+-- (nextsoldier.zone): flooded over the nav mesh from the team's spawn
 -- points, held back by the shut doors no trigger opens (the setup gates),
 -- by what closes areas to routes (locked doors, solid brushes: the npc
 -- feature's NavBlocks) and by rises
@@ -384,7 +384,7 @@ end
 
 -- A team's spawn doors open through trigger_multiples filtered by
 -- filter_activator_tfteam, other doors through a trigger_multiple around
--- them that opens them (games.nextsoldier.doors Opens; an unnamed door, which
+-- them that opens them (nextsoldier.doors Opens; an unnamed door, which
 -- no output names, by any around it), and NPCs only touch triggers flagged
 -- for them. A trigger beside a door that only closes it is left alone.
 local function OpensADoor(trigger, doors)

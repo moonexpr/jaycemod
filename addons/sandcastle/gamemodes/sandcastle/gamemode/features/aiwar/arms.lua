@@ -17,7 +17,7 @@ module(...)
 -- strikes (Half-Life's crowbar's, CCrowbar::Swing: a hit swings again 0.25
 -- seconds on). automatic: it fires, or swings, for as long as its trigger
 -- is held; the rest fire once a press (a bot soldier presses again:
--- games.nextsoldier.player_body).
+-- nextsoldier.player_body).
 WEAPONS = {
 	weapon_crossbow = { cone = 0, reach = 3000, chase = 2000, avoid = 750 },
 	weapon_357 = { cone = 1, reach = 750, chase = 500, avoid = 350 },

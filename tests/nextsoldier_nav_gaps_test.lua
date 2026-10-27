@@ -1,4 +1,4 @@
--- Nav gaps (games.nextsoldier.nav_gaps): GMod's generator leaves seams between
+-- Nav gaps (nextsoldier.nav_gaps): GMod's generator leaves seams between
 -- areas at the same height (a crack a player walks over, often covered by a
 -- clip brush), so routes cannot cross them: arena_well's point was one-way
 -- out. Candidates are the pairs of areas a narrow seam apart, side by side

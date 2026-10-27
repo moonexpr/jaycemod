@@ -1,4 +1,4 @@
--- games.nextsoldier.zone: the ground behind the setup gates, flooded over
+-- nextsoldier.zone: the ground behind the setup gates, flooded over
 -- the nav mesh from the attackers' spawn and held back at the gates.
 local T = dofile("tests/harness.lua")
 local Zone = nextsoldier.zone

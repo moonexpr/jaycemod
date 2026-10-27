@@ -109,7 +109,7 @@ function Controller:TeamOf(ent)
 	return info and info.team or nil
 end
 
--- Gunfire (games.nextsoldier.hearing): each soldier in earshot of a shot is
+-- Gunfire (nextsoldier.hearing): each soldier in earshot of a shot is
 -- told where to look (OnHeard). A shooter is heard once every
 -- HEAR_INTERVAL, however fast it fires.
 local HEAR_INTERVAL = 0.5

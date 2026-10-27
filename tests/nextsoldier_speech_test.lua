@@ -1,5 +1,5 @@
 -- The AI war's soldiers on the payload cart: their criteria set
--- (games.nextsoldier.speech) against the rules in the responserules addon
+-- (nextsoldier.speech) against the rules in the responserules addon
 -- (addons/responserules/scripts/responserules/: response_rules.txt and the
 -- affiliation files it includes), as the server loads them: what they say
 -- when the cart moves, stops, rolls back or is cut off by the enemy, by the

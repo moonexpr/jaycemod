@@ -1,5 +1,5 @@
 -- Records the server's Lua route searches so they replay offline
--- (games.nextsoldier.route_record; .devtools/bin/route_replay.lua), through
+-- (nextsoldier.route_record; .devtools/bin/route_replay.lua), through
 -- server_lua.py:
 --
 --   server_lua.py -f .devtools/bin/record_routes.lua          defines WSRouteRecord

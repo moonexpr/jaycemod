@@ -1,4 +1,4 @@
--- games.nextsoldier.reach_memo: the regions failed route searches walked to
+-- nextsoldier.reach_memo: the regions failed route searches walked to
 -- the end, kept so a goal outside one is known out of reach without a
 -- search.
 local T = dofile("tests/harness.lua")

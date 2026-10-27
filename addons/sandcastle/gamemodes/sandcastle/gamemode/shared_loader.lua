@@ -69,4 +69,6 @@ Index("games/generator/sh_init.lua")
 Index("games/system/sh_init.lua")
 Index("games/gameplay/sh_init.lua")
 Index("games/npc/sh_init.lua")
-Index("games/nextsoldier/sh_init.lua")
+
+-- NextSoldier, its own subsystem beside foundation and games, on both.
+Index("nextsoldier/sh_init.lua")

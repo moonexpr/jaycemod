@@ -27,7 +27,7 @@ LIMITS = { stepHeight = STEP_HEIGHT, jumpHeight = STEP_HEIGHT, deathDropHeight =
 
 -- The AI war's soldiers, DrGBase NextBots now: the same body, but they go
 -- down drops as deep as SOLDIER_DROP_HEIGHT, rappelling one deeper than a
--- safe fall (games.nextsoldier.rappel; cp_steel's BLU spawn is a ledge 192
+-- safe fall (nextsoldier.rappel; cp_steel's BLU spawn is a ledge 192
 -- above the yard, mvm_decoy's deeper), their DrGBase DeathDropHeight; the soldier
 -- crouches and jumps (ws/sh_drg_soldier.lua). Its hull does not catch on a
 -- low ceiling, so a crouch area only needs it to crouch; it jumps a ledge

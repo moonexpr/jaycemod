@@ -54,7 +54,7 @@ function WS.NavMeshUsable()
 end
 
 -- The masks walkers move under on this map, and the traces that stand in
--- for their walking take (games.nextsoldier.clip: on a players' map, the
+-- for their walking take (nextsoldier.clip: on a players' map, the
 -- player's clips), read off the map's entities once.
 local CLIP_MASKS = {
 	[Clip.PLAYER] = { solid = MASK_PLAYERSOLID, brushes = MASK_PLAYERSOLID_BRUSHONLY },
@@ -71,7 +71,7 @@ function WS.ClipMasks()
 	return clipMasks
 end
 
--- The mesh's seams (games.nextsoldier.nav_gaps), linked both ways where a walker
+-- The mesh's seams (nextsoldier.nav_gaps), linked both ways where a walker
 -- crosses: a soldier's hull above step height sweeps across clear under the
 -- clip masks, and finds floor (a clip brush counts) under the seam. Swept
 -- GAP_BATCH a tick, to keep the tick short; once the map's mesh has loaded
@@ -94,7 +94,7 @@ local function Crosses(from, to, mask)
 end
 
 -- Whether a walker crosses the link from area a into area b (a lane over
--- it): its lines across the opening (games.nextsoldier.nav_gaps' CrossingLines,
+-- it): its lines across the opening (nextsoldier.nav_gaps' CrossingLines,
 -- as a path may cross anywhere along it) clear at a step's, a waist's and a
 -- chest's height under the clip masks' brushes (the map alone, not who
 -- stands there), so a players' map's clip along a rail (a bullet passes it,

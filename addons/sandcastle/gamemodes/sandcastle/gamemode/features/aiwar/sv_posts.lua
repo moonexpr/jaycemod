@@ -97,7 +97,7 @@ function Controller:Watch(ent, entry, now)
 end
 
 -- Posts: where soldiers establish their line ----------------------------------------------
--- games.nextsoldier.posts picks among the nav mesh's hiding spots (with
+-- nextsoldier.posts picks among the nav mesh's hiding spots (with
 -- their cover and sniper flags) and the centres of areas well above or
 -- below the place in question (high ground, pits), each tested for a
 -- clear line from eye height:

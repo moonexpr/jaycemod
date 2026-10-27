@@ -31,7 +31,7 @@ end
 local function Real(module, key, min, max, help) Add(module, key, min, max, false, help) end
 local function Whole(module, key, min, max, help) Add(module, key, min, max, true, help) end
 
--- games.nextsoldier.tactics: contact, bounding overwatch, flanking, falling back
+-- nextsoldier.tactics: contact, bounding overwatch, flanking, falling back
 Real("tactics", "CONTACT_MEMORY", 0, 60, "seconds a fire team remembers where it last saw the enemy")
 Real("tactics", "BOUND_DISTANCE", 0, 4096, "how far a bounding element moves toward the objective")
 Real("tactics", "BOUND_TIME", 0.5, 60, "seconds before the elements swap, arrived or not")
@@ -59,7 +59,7 @@ Whole("orders", "DEFEND_ROWS", 1, 8, "the defenders' rows, without posts")
 Real("orders", "LATERAL", 0, 1024, "the gap between columns across a line")
 Real("orders", "SUPPORT_BEHIND", 0, 4096, "how far behind its line support stands")
 Real("orders", "RAID_SHIFT", 0, 4096, "how far the enemy's line moves before raiders go round again")
--- games.nextsoldier.lanes: planning lanes, and walking them
+-- nextsoldier.lanes: planning lanes, and walking them
 Real("lanes", "LANE_PENALTY", 1, 100, "how much more an area in an earlier lane's band costs")
 Real("lanes", "LANE_SPREAD", 0, 4096, "how far either side of a lane its band reaches")
 Real("lanes", "FLANK_RADIUS", 0, 4096, "how far beside the objective a fixed flank ends, where the ground has no flank pair")
@@ -68,7 +68,7 @@ Real("lanes", "FLANK_MAX", 0, 8192, "the farthest from the objective a flank's g
 Real("lanes", "WAYPOINT_SPACING", 16, 4096, "the gap between a lane's waypoints")
 Real("lanes", "WAYPOINT_REACH", 0, 2048, "how near a waypoint counts as reached")
 Whole("lanes", "LOOKAHEAD", 0, 8, "waypoints ahead a leader may skip to")
--- games.nextsoldier.squad: claims
+-- nextsoldier.squad: claims
 Real("squad", "CLAIM_GRID", 1, 1024, "spots this close share one claim")
 
 -- The tunable of that name, whatever its case, or nil.
@@ -84,7 +84,7 @@ end
 Tuner = {}
 Tuner.__index = Tuner
 
--- modules: short name -> the module table ("tactics" -> games.nextsoldier.tactics).
+-- modules: short name -> the module table ("tactics" -> nextsoldier.tactics).
 function Tuner.New(modules)
 	local defaults = {}
 	for _, tunable in ipairs(TUNABLES) do defaults[tunable.name] = modules[tunable.module][tunable.key] end

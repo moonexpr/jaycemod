@@ -5,7 +5,7 @@
 -- CUSTOM_SIZE the slots are edited one by one, so the sides may differ (a
 -- side alone, for testing). A slot may be pinned: its soldier leads its fire
 -- team (LEADER), or never leads while another is in it (MEMBER): the pins
--- are games.nextsoldier.squad's, whose Leader honours them.
+-- are nextsoldier.squad's, whose Leader honours them.
 --
 -- A slot is { id, pin (LEADER, MEMBER or nil), holder (its soldier's
 -- handle, or nil) }; slots are kept by faction name, as factions trade

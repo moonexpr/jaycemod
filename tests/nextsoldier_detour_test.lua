@@ -1,4 +1,4 @@
--- games.nextsoldier.detour: the way round a solid entity in a walker's way (a
+-- nextsoldier.detour: the way round a solid entity in a walker's way (a
 -- crate across a lane): the points beside it, square to the way, far
 -- enough out for the walker to pass.
 local T = dofile("tests/harness.lua")

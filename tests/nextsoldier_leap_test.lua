@@ -1,4 +1,4 @@
--- games.nextsoldier.leap: a walker's jump onto a ledge as an arc it is moved
+-- nextsoldier.leap: a walker's jump onto a ledge as an arc it is moved
 -- along, from where it stands to past the ledge's lip.
 local T = dofile("tests/harness.lua")
 local Leap = nextsoldier.leap

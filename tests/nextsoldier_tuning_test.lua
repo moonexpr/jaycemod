@@ -1,4 +1,4 @@
--- games.nextsoldier.tuning: changing NextSoldier's tactics constants while
+-- nextsoldier.tuning: changing NextSoldier's tactics constants while
 -- they run (ns_tactics_tune), within bounds, and putting them back.
 local T = dofile("tests/harness.lua")
 local Tuning = nextsoldier.tuning

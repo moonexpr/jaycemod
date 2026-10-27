@@ -1,4 +1,4 @@
--- games.nextsoldier.route_walk: a route walked waypoint by waypoint, by a
+-- nextsoldier.route_walk: a route walked waypoint by waypoint, by a
 -- body that plans its own way (a bot player): reached waypoints are passed,
 -- the farthest of the next few in a clear line is made for, and the last
 -- is held until reached.

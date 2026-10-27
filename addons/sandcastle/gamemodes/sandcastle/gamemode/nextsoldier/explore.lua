@@ -8,7 +8,7 @@
 -- GIVE_UP is given up as visited (unreachable, or the way is long); a squad
 -- that has been everywhere starts over.
 --
--- Before the waypoints, a squad walks its lane (games.nextsoldier.lanes,
+-- Before the waypoints, a squad walks its lane (nextsoldier.lanes,
 -- fireTeam.lane) to the objective, until one of its soldiers stands within
 -- VISIT_RADIUS of the lane's end (Board:Walk). A squad in a fight is engaged
 -- (Board:Engage): it leaves its lane and hunts where it last saw the enemy for
@@ -83,7 +83,7 @@ end
 
 -- A squad's lane and fights (fireTeam: features.aiwar.model's) -------------------
 
--- The squad's contact (games.nextsoldier.tactics' { pos, time }) engages it.
+-- The squad's contact (nextsoldier.tactics' { pos, time }) engages it.
 function Board:Engage(fireTeam, contact)
 	self.engaged[fireTeam.squad] = {
 		pos = contact.pos,

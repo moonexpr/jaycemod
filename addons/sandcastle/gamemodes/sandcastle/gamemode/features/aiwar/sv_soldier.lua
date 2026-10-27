@@ -374,7 +374,7 @@ end
 
 -- Stuck against a solid entity the nav mesh does not know of (a crate
 -- across a lane; not map geometry, nor a door, which the door watchdog
--- opens): the first point beside it (games.nextsoldier.detour) I can walk to
+-- opens): the first point beside it (nextsoldier.detour) I can walk to
 -- and that is on the nav mesh, or nil.
 function Soldier:Detour(p)
 	local heading = self:Heading(p)

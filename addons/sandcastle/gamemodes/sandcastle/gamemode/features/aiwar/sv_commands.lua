@@ -117,7 +117,7 @@ WarCommand("ns_battlelines_print", function()
 	return Controller:LineReport()
 end, "Print each team's battle lines: its front, its posts' width and depth, and the squads in contact or falling back")
 
--- Tuning the tactics while they run (games.nextsoldier.tuning). A lanes
+-- Tuning the tactics while they run (nextsoldier.tuning). A lanes
 -- constant plans the lanes again. Values last until the map changes.
 local function Tuner()
 	Controller.tuner = Controller.tuner or Tuning.Tuner.New({

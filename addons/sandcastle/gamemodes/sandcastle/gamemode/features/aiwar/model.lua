@@ -274,7 +274,7 @@ end
 -- freezes players; sudden death has no respawns, and both sides hunt each
 -- other down (everyoneHunts), every live enemy on their boards (sightAll);
 -- a round won by a team is its humiliation of the losers, when the winners
--- hunt them down knowing what they saw (hunt: games.nextsoldier.hunt, TF2's
+-- hunt them down knowing what they saw (hunt: nextsoldier.hunt, TF2's
 -- CTFBotTacticalMonitor "Get the losers!"); a round over with no winner
 -- ends orders.
 PHASES = {
@@ -374,8 +374,8 @@ function War.New()
 		squadsMax = SQUADS_MAX_DEFAULT, -- the most squads a team forms (SetSquadsMax)
 		squadsMin = SQUADS_MIN_DEFAULT, -- the fewest (SetSquadsMin)
 		enlisted = 0, -- members ever enlisted, for their order
-		claims = Lease.New(), -- spots soldiers hold, by games.nextsoldier.squad's Key
-		hunt = Hunt.Board.New(), -- the winners' sightings of the losers (games.nextsoldier.hunt)
+		claims = Lease.New(), -- spots soldiers hold, by nextsoldier.squad's Key
+		hunt = Hunt.Board.New(), -- the winners' sightings of the losers (nextsoldier.hunt)
 		stances = {}, -- team -> stance
 		defense = {}, -- team -> its defense share (DefenseShare), or nil
 		drafts = { [RED] = 0, [BLUE] = 0 },
@@ -902,7 +902,7 @@ end
 -- { pos, dir }: the doors that team must pass to reach the rest of the map,
 -- dir the way it passes them, posts = team -> points where its defenders
 -- establish their line, forwardPosts = team -> points ahead of its own
--- cart where its escorts do (games.nextsoldier.posts) }. The war adds
+-- cart where its escorts do (nextsoldier.posts) }. The war adds
 -- defense = team -> its defense share (DefenseShare).
 function War:SetField(field)
 	field.defense = self.defense

@@ -1,4 +1,4 @@
--- games.nextsoldier.noise: the noises a walker's body makes, by Source's
+-- nextsoldier.noise: the noises a walker's body makes, by Source's
 -- player rules (CBasePlayer::UpdateStepSound, CGameMovement's landing):
 -- footsteps by its speed, a landing by how fast it fell, and how far
 -- either carries to a listener (DrGBase's hearing).

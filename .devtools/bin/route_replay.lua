@@ -1,6 +1,6 @@
 -- Replays recorded route searches (.devtools/bin/record_routes.lua) under
 -- plain LuaJIT, with the gamemode's own solver and cost strategies
--- (games.nextsoldier.route_record), and reports what they cost and whether
+-- (nextsoldier.route_record), and reports what they cost and whether
 -- each replay did exactly what the live search did.
 --
 --   luajit .devtools/bin/route_replay.lua RECORD.dat [--repeat N] [--reach TERM] [--native]
@@ -10,7 +10,7 @@
 -- search does exactly what the live one did.
 -- Run from the repo root. --repeat replays every search N times for steadier
 -- timings (default 1). --reach plays the searches in order through a reach
--- memo (games.nextsoldier.reach_memo) of that term: which would have been
+-- memo (nextsoldier.reach_memo) of that term: which would have been
 -- answered without a search, the expansions saved, whether each answer is
 -- the route the live search then found, and any it would have got wrong (a
 -- goal it called out of reach that the live search reached). Exits 1 when

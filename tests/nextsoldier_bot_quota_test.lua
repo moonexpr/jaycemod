@@ -1,4 +1,4 @@
--- games.nextsoldier.bot_quota: how many bot players a server keeps, by
+-- nextsoldier.bot_quota: how many bot players a server keeps, by
 -- TF2's tf_bot_quota rules (CTFBotManager::MaintainBotQuota): a quota of
 -- bots, of players (fill) or of bots per human (match), one bot added or
 -- kicked at a time, never taking the last free slot.

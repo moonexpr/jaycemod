@@ -1,4 +1,4 @@
--- games.nextsoldier.player_body: a soldier in a player's body, as TF2's
+-- nextsoldier.player_body: a soldier in a player's body, as TF2's
 -- bots drive theirs (PlayerBody, PlayerLocomotion): where it is sent, where
 -- it looks and what it shoots become the command a player's keys would
 -- make, every tick.

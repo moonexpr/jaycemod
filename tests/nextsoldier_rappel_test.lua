@@ -1,5 +1,5 @@
--- games.nextsoldier.rappel: a soldier going down a drop it would land from
--- faster than a safe fall (games.nextsoldier.noise's MAX_SAFE_FALL_SPEED)
+-- nextsoldier.rappel: a soldier going down a drop it would land from
+-- faster than a safe fall (nextsoldier.noise's MAX_SAFE_FALL_SPEED)
 -- rappels: it comes down no faster than RAPPEL_SPEED.
 local T = dofile("tests/harness.lua")
 local Rappel = nextsoldier.rappel

@@ -1,4 +1,4 @@
--- Clip brushes (games.nextsoldier.clip): the AI war's soldiers stand in for
+-- Clip brushes (nextsoldier.clip): the AI war's soldiers stand in for
 -- players, so on a map made for players (TF2's, CS:S's) they stand on the
 -- player clips players stand on (arena_well's gap round its point,
 -- pl_goldrush's second stage), and on any other map they keep the NPC's.
