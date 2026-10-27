@@ -244,6 +244,70 @@ unsafe extern "C-unwind" fn remap(l: L) -> c_int {
     number(l, c + (d - c) * t)
 }
 
+// math.interval -------------------------------------------------------------
+
+unsafe extern "C-unwind" fn interval_overlaps(l: L) -> c_int {
+    let api = api();
+    let (alo, ahi, blo, bhi) = ((api.checknumber)(l, 1), (api.checknumber)(l, 2), (api.checknumber)(l, 3), (api.checknumber)(l, 4));
+    super::util::boolean(l, alo <= bhi && blo <= ahi)
+}
+
+unsafe extern "C-unwind" fn interval_intersect(l: L) -> c_int {
+    let api = api();
+    let (alo, ahi, blo, bhi) = ((api.checknumber)(l, 1), (api.checknumber)(l, 2), (api.checknumber)(l, 3), (api.checknumber)(l, 4));
+    (api.pushnumber)(l, if alo > blo { alo } else { blo });
+    (api.pushnumber)(l, if ahi < bhi { ahi } else { bhi });
+    2
+}
+
+// math.box ------------------------------------------------------------------
+
+unsafe extern "C-unwind" fn box_overlaps(l: L) -> c_int {
+    let (a_mins, a_maxs, b_mins, b_maxs) = (point_at(l, 1), point_at(l, 2), point_at(l, 3), point_at(l, 4));
+    let overlap = (0..3).all(|axis| a_mins[axis] <= b_maxs[axis] && b_mins[axis] <= a_maxs[axis]);
+    super::util::boolean(l, overlap)
+}
+
+unsafe extern "C-unwind" fn box_contains(l: L) -> c_int {
+    let (mins, maxs, p) = (point_at(l, 1), point_at(l, 2), point_at(l, 3));
+    super::util::boolean(l, (0..3).all(|axis| p[axis] >= mins[axis] && p[axis] <= maxs[axis]))
+}
+
+unsafe extern "C-unwind" fn box_extent(l: L) -> c_int {
+    (api().checktype)(l, 1, TTABLE);
+    let mut corners: Option<(Point, Point)> = None;
+    each_item(l, 1, |l, p| {
+        let at = point_at(l, p);
+        match &mut corners {
+            None => corners = Some((at, at)),
+            Some((lo, hi)) => {
+                for axis in 0..3 {
+                    if at[axis] < lo[axis] {
+                        lo[axis] = at[axis];
+                    }
+                    if at[axis] > hi[axis] {
+                        hi[axis] = at[axis];
+                    }
+                }
+            }
+        }
+    });
+    match corners {
+        None => nothing(l),
+        Some((lo, hi)) => {
+            push_point(l, lo[0], lo[1], Some(lo[2]));
+            push_point(l, hi[0], hi[1], Some(hi[2]));
+            2
+        }
+    }
+}
+
+unsafe extern "C-unwind" fn box_longest_axis_2d(l: L) -> c_int {
+    let (mins, maxs) = (point_at(l, 1), point_at(l, 2));
+    crate::lua::push_str(l, if maxs[0] - mins[0] >= maxs[1] - mins[1] { "x" } else { "y" });
+    1
+}
+
 // math.stats ----------------------------------------------------------------
 
 /// The numbers of the list at `index`, in order until the first nil.
@@ -832,6 +896,14 @@ pub unsafe fn push_modules(l: L) {
     (api.setfield)(l, -2, c"matrix".as_ptr());
     module::push(l, &[(c"New", polyline_new)], None);
     (api.setfield)(l, -2, c"polyline".as_ptr());
+    module::push(l, &[(c"Overlaps", interval_overlaps), (c"Intersect", interval_intersect)], None);
+    (api.setfield)(l, -2, c"interval".as_ptr());
+    module::push(
+        l,
+        &[(c"Overlaps", box_overlaps), (c"Contains", box_contains), (c"Extent", box_extent), (c"LongestAxis2D", box_longest_axis_2d)],
+        None,
+    );
+    (api.setfield)(l, -2, c"box".as_ptr());
 }
 
-pub const NAMES: &[&CStr] = &[c"geometry", c"scalar", c"stats", c"weighted", c"polynomial", c"matrix", c"polyline"];
+pub const NAMES: &[&CStr] = &[c"geometry", c"scalar", c"stats", c"weighted", c"polynomial", c"matrix", c"polyline", c"interval", c"box"];

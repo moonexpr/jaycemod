@@ -16,6 +16,7 @@ local ipairs, sort = ipairs, table.sort
 local ceil, huge = math.ceil, math.huge
 local Teams = gameplay.teams
 local Search = graph.search
+local Box = math.box
 local AiWar = require("features.aiwar.model")
 module(...)
 
@@ -99,14 +100,7 @@ end
 -- count both teams'.
 function Split(spots, team)
 	if #spots == 0 then return {} end
-	local loX, hiX, loY, hiY = spots[1].x, spots[1].x, spots[1].y, spots[1].y
-	for _, p in ipairs(spots) do
-		if p.x < loX then loX = p.x end
-		if p.x > hiX then hiX = p.x end
-		if p.y < loY then loY = p.y end
-		if p.y > hiY then hiY = p.y end
-	end
-	local axis = (hiX - loX >= hiY - loY) and "x" or "y"
+	local axis = Box.LongestAxis2D(Box.Extent(spots))
 	local sorted = {}
 	for i, p in ipairs(spots) do sorted[i] = p end
 	sort(sorted, function(a, b) return a[axis] < b[axis] end)

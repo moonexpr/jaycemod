@@ -42,6 +42,8 @@ local CATEGORY = {
 	["tree/avl"] = "structures",
 	["world/pairmap"] = "structures",
 	["math/scalar"] = "structures",
+	["math/interval"] = "structures",
+	["math/box"] = "structures",
 	["list/schedule"] = "formalisms",
 	["list/select"] = "formalisms",
 	["math/geometry"] = "structures",
@@ -104,7 +106,6 @@ local GAMES = {
 	["system/spawn_manager"] = "formalisms",
 	["system/play_mode"] = "formalisms",
 	["system/permissions"] = "formalisms",
-	["system/local_player"] = "formalisms",
 	["system/local_player"] = "formalisms",
 
 	["gameplay/players"] = "gameplay",

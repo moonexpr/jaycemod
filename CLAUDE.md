@@ -170,6 +170,8 @@ Tests are `tests/<namespace>_<module>_test.lua`.
 |---|---|
 | `math.geometry` | On `{ x, y, z }` points (missing z is 0): `Distance`, `Distance2D` (across the ground), `Toward`, `Add`, `Sub`, `Scale`, `Dot`, `Cross`, `Length`, `Normalize` (nil for the zero vector), `DistanceSquared`; across the ground, height left out of the direction and a point's own z kept: `Normalize2D`, `Left2D`, `Offset2D(p, from, along, across)` (p moved away from `from` and to the left of that way), `ClosestOnSegment(p, a, b)`, `Polar(center, radius, angle)`, `Circle(center, radius, count, start)` |
 | `math.scalar` | `Clamp(value, low, high)` (an empty range is the caller's mistake), `Saturate(value)` (0..1), `Lerp(a, b, t)` (t unheld), `InverseLerp(a, b, value)` and `Remap(value, a, b, c, d)` (held to the span; a span with no length is the caller's mistake) |
+| `math.interval` | Ranges [low, high] of one number line: `Overlaps(alo, ahi, blo, bhi)` (touching counts), `Intersect(...)` → low, high (low above high when apart) |
+| `math.box` | Axis-aligned boxes by their corners (missing z is 0): `Overlaps(aMins, aMaxs, bMins, bMaxs)`, `Contains(mins, maxs, p)`, `Extent(points)` → mins, maxs (nil for none), `LongestAxis2D(mins, maxs)` → "x" or "y" |
 | `math.stats` | `Mean(list)`, `Percentile(list, p)` (nearest rank) |
 | `math.weighted` | `PickWeighted(items, weight, r)`, `r` drawn by the caller |
 | `math.polynomial` | Coefficients from the constant up: `Evaluate`, `Derivative`, `Roots` (real, ascending, up to a cubic) |
