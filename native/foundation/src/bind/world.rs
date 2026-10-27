@@ -397,6 +397,76 @@ unsafe extern "C-unwind" fn grid_thin(l: L) -> c_int {
     1
 }
 
+/// world.grid.Spread(items, spacing[, limit[, position]]) -> the items, in order, that are not within
+/// spacing of one kept before them
+unsafe extern "C-unwind" fn grid_spread(l: L) -> c_int {
+    let api = api();
+    let spacing = cell_size(l, 2);
+    (api.checktype)(l, 1, TTABLE);
+    let limit = if absent(l, 3) {
+        None
+    } else {
+        match number_at(l, 3).filter(|n| *n >= 0.0 && (n.fract() == 0.0 || n.is_infinite())) {
+            Some(n) => Some(n as usize),
+            None => {
+                let given = tostring(l, 3);
+                raise_where(l, format!("a spread's limit is a whole number of at least 0, not {given}"));
+            }
+        }
+    };
+    let position = if absent(l, 4) {
+        None
+    } else {
+        (api.checktype)(l, 4, crate::lua::TFUNCTION);
+        Some(4)
+    };
+    let mut cells: HashMap<(i64, i64), Vec<[f64; 3]>> = HashMap::new();
+    let mut places: Vec<c_int> = Vec::new();
+    let mut place: c_int = 0;
+    let mut done = limit == Some(0);
+    each_item(l, 1, |l, item| {
+        place += 1;
+        if done {
+            return;
+        }
+        let at = match position {
+            None => super::math::point_at(l, item),
+            Some(f) => {
+                (api.pushvalue)(l, f);
+                (api.pushvalue)(l, item);
+                (api.call)(l, 1, 1);
+                let at = super::math::point_at(l, (api.gettop)(l));
+                (api.settop)(l, item);
+                at
+            }
+        };
+        let cell = ((at[0] / spacing).floor() as i64, (at[1] / spacing).floor() as i64);
+        let crowded = (-1..=1).any(|dx| {
+            (-1..=1).any(|dy| {
+                cells.get(&(cell.0 + dx, cell.1 + dy)).is_some_and(|list| {
+                    list.iter().any(|o| {
+                        let (ox, oy, oz) = (at[0] - o[0], at[1] - o[1], at[2] - o[2]);
+                        (ox * ox + oy * oy + oz * oz).sqrt() < spacing
+                    })
+                })
+            })
+        });
+        if !crowded {
+            places.push(place);
+            cells.entry(cell).or_default().push(at);
+            if limit.is_some_and(|n| places.len() >= n) {
+                done = true;
+            }
+        }
+    });
+    (api.createtable)(l, places.len() as c_int, 0);
+    for (i, p) in places.iter().enumerate() {
+        (api.rawgeti)(l, 1, *p);
+        (api.rawseti)(l, -2, i as c_int + 1);
+    }
+    1
+}
+
 // world.sets --------------------------------------------------------------------
 
 /// A named set: env.name, env.list (the members in order), env.has.
@@ -673,7 +743,7 @@ pub unsafe fn push_modules(l: L) {
     (api.setfield)(l, -2, c"pairmap".as_ptr());
     module::push(l, &[(c"New", lease_new)], None);
     (api.setfield)(l, -2, c"lease".as_ptr());
-    module::push(l, &[(c"New", grid_new), (c"Thin", grid_thin)], None);
+    module::push(l, &[(c"New", grid_new), (c"Thin", grid_thin), (c"Spread", grid_spread)], None);
     (api.setfield)(l, -2, c"grid".as_ptr());
     module::push(
         l,

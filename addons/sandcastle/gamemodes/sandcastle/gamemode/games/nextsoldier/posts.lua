@@ -11,7 +11,7 @@
 -- along the track) and sees (a clear line to the cart) instead.
 -- Guards (ScoreGuard): posts round a control point, below.
 local abs, ipairs, min = math.abs, ipairs, math.min
-local Distance = math.geometry.Distance
+local Spread = world.grid.Spread
 local Select = list.select
 module(...)
 
@@ -68,10 +68,6 @@ function ScoreGuard(c)
 	return -W_RANGE * abs(c.toPoint - IDEAL_RANGE) / IDEAL_RANGE + Ground(c)
 end
 
-local function Apart(a, b)
-	return Distance(a, b) >= SPACING
-end
-
 -- Up to `count` posts, best first by `scorer` (default Score), each at
 -- least SPACING from those picked before it.
 function Pick(candidates, count, scorer)
@@ -81,15 +77,7 @@ function Pick(candidates, count, scorer)
 		local score = scorer(c)
 		if score then ranked[#ranked + 1] = { pos = c.pos, score = score } end
 	end
-	local picked = {}
-	for _, place in ipairs(Select.Order(ranked, function(a, b) return a.score > b.score end)) do
-		local r = ranked[place]
-		if #picked >= count then break end
-		local free = true
-		for _, p in ipairs(picked) do
-			if not Apart(r.pos, p) then free = false break end
-		end
-		if free then picked[#picked + 1] = r.pos end
-	end
-	return picked
+	local positions = {}
+	for i, place in ipairs(Select.Order(ranked, function(a, b) return a.score > b.score end)) do positions[i] = ranked[place].pos end
+	return Spread(positions, SPACING, count)
 end

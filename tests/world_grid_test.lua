@@ -85,4 +85,69 @@ T.test("positions may be any value answering x and y, as GMod's Vector does", fu
 	T.eq(#Grid.Thin({ Vector(1, 1, 1), Vector(2, 2, 2), Vector(500, 1, 1) }, 100), 2, "thinned Vectors")
 end)
 
+local function Xs(points)
+	local xs = {}
+	for i, p in ipairs(points) do xs[i] = p.x end
+	return table.concat(xs, " ")
+end
+
+T.test("Spread keeps each point, in order, that is not within spacing of one kept", function()
+	local kept = Grid.Spread({ { x = 0, y = 0 }, { x = 5, y = 0 }, { x = 10, y = 0 }, { x = 12, y = 0 }, { x = 20, y = 0 } }, 10)
+	T.eq(Xs(kept), "0 10 20", "0, then 10 (exactly spacing away is apart), then 20")
+end)
+
+T.test("Spread measures in 3D, across cell borders, and with negative coordinates", function()
+	T.eq(#Grid.Spread({ { x = 0, y = 0, z = 0 }, { x = 0, y = 0, z = 9 } }, 10), 1, "9 above is too close")
+	T.eq(#Grid.Spread({ { x = 0, y = 0, z = 0 }, { x = 0, y = 0, z = 10 } }, 10), 2, "10 above is apart")
+	T.eq(#Grid.Spread({ { x = -1, y = 0 }, { x = 1, y = 0 } }, 5), 1, "across the origin's cell border")
+	T.eq(#Grid.Spread({ { x = 4.9, y = 4.9 }, { x = 5.1, y = 5.1 } }, 5), 1, "across a corner")
+end)
+
+T.test("Spread stops at limit, and reads each item's point through position", function()
+	local items = {}
+	for i = 1, 10 do items[i] = { name = i, at = { x = i * 100, y = 0 } } end
+	local kept = Grid.Spread(items, 10, 3, function(item) return item.at end)
+	T.eq(#kept, 3, "limit")
+	T.eq(kept[1] == items[1] and kept[3] == items[3], true, "the first ones, as the items given")
+	T.eq(#Grid.Spread(items, 10, 0, function(item) return item.at end), 0, "a limit of 0")
+	T.eq(#Grid.Spread(items, 10, nil, function(item) return item.at end), 10, "no limit")
+	T.eq(#Grid.Spread(items, 10, math.huge, function(item) return item.at end), 10, "an infinite limit is none")
+end)
+
+T.test("Spread refuses a spacing that is not positive", function()
+	T.eq(pcall(Grid.Spread, {}, 0), false, "zero")
+	T.eq(pcall(Grid.Spread, {}, -3), false, "negative")
+end)
+
+T.test("Spread is what comparing every point with every one kept gives", function()
+	local seed = 12345
+	local function Next(n)
+		seed = (seed * 1103515245 + 12345) % 2147483648
+		return seed % n
+	end
+	for trial = 1, 20 do
+		local points = {}
+		for i = 1, 200 do points[i] = { x = Next(600) - 300, y = Next(600) - 300, z = Next(100) } end
+		local spacing = 20 + Next(60)
+		local expected = {}
+		for _, p in ipairs(points) do
+			local apart = true
+			for _, q in ipairs(expected) do
+				if math.sqrt((p.x - q.x) ^ 2 + (p.y - q.y) ^ 2 + (p.z - q.z) ^ 2) < spacing then apart = false break end
+			end
+			if apart then expected[#expected + 1] = p end
+		end
+		local kept = Grid.Spread(points, spacing)
+		T.eq(#kept, #expected, "trial " .. trial .. ": as many")
+		for i = 1, #expected do
+			if kept[i] ~= expected[i] then T.eq(false, true, "trial " .. trial .. ": the same point at " .. i) break end
+		end
+	end
+end)
+
+T.test("Spread compares a point only with those kept, not with those it skipped", function()
+	local kept = Grid.Spread({ { x = 0, y = 0 }, { x = 8, y = 0 }, { x = 16, y = 0 } }, 10)
+	T.eq(Xs(kept), "0 16", "8 is skipped for 0; 16 is near the skipped 8 but not near 0")
+end)
+
 T.finish()

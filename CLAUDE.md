@@ -145,7 +145,7 @@ Tests are `tests/<namespace>_<module>_test.lua`.
 |---|---|
 | `world.pairmap` | `New()` → values by an ordered pair of whole numbers (0..`MAX_KEY`, a link's two area ids) under one number a pair, no key built: `Get(a, b)` (unchecked, for hot paths), `Set(a, b, value)` (nil removes; refuses a bad key), `Size`, `Clear`; `Unordered()` → the same where (a, b) and (b, a) are one pair |
 | `world.lease` | `New()` → keys held by one holder for a term: `Holder`, `FreeFor`, `Take`, `Release`, `ReleaseAll` |
-| `world.grid` | `New(size)` → spatial hash on number keys: `Put`, `PutBox`, `Near` (3×3 cells), `Buckets`; `Thin(points, size)` keeps one point per cube |
+| `world.grid` | `New(size)` → spatial hash on number keys: `Put`, `PutBox`, `Near` (3×3 cells), `Buckets`; `Thin(points, size)` keeps one point per cube; `Spread(items, spacing[, limit[, position]])` keeps each item, in order, not within `spacing` (3D) of one already kept |
 | `world.sets` | `Named(name, members)` → a named set, a closed vocabulary parsed once: `Has`, `Check` (an unknown member is our bug, blamed on the caller), `Match` (case-free prefix), `Members`, `Name`. Plain `value → true` sets: `Of`, `Copy`, `Union`, `Intersect`, `Subtract`, `Count`, `Sorted` |
 
 ### cache
