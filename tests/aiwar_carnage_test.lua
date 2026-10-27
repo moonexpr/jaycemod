@@ -100,8 +100,10 @@ local STATE = T.require("games.gameplay.rounds.state")
 
 local TICK = 0.25
 local SEEK = "NextSoldier/StrategyMonitor/SeekAndDestroy"
--- A trip buries the action that took it: the trip shows, a level up.
-local TRIP = "NextSoldier/StrategyMonitor/Travel"
+-- A trip buries the action that took it: the trip shows, a level up. The
+-- hunt's trips are weak: they give way to any enemy at hand.
+local TRIP = "NextSoldier/StrategyMonitor/WeakTravel"
+local HIDE_TRIP = "NextSoldier/StrategyMonitor/Travel"
 local HUMILIATED = "NextSoldier/StrategyMonitor/Humiliated"
 local SPAWNS = {
 	[RED] = { P(3000, 0), P(3000, 800), P(-2000, 0) },
@@ -204,6 +206,40 @@ T.test("with nothing seen, a hunter makes for a losers' spawn by its slot", func
 	Near(npc:State().goal, SPAWNS[RED][4 % 3 + 1], "the spawn its slot picks")
 end)
 
+T.test("a hunter on its way turns on a loser it sees at once, firing as it went", function()
+	local war = NewWar(CarnageField(nil, BLUE))
+	local me, npc = Enlist(war, { slot = 4, walkable = function() return true end })
+	Tick(me, npc, 3)
+	T.eq(npc:Describe(), TRIP, "travelling")
+	T.eq(npc:Query("ShouldAttack", "red1"), N.ANSWER_YES, "it fires on the way")
+	me.enemy, me.enemyHandle, me.enemyPos = true, "red1", P(-500, 300)
+	Tick(me, npc)
+	T.eq(npc:Describe(), SEEK, "the trip gave way that tick")
+	Tick(me, npc)
+	Near(me.moving, P(-500, 300), "at the loser the next")
+end)
+
+T.test("a hunter on its way to a spawn breaks off for a loser reported near it", function()
+	local war = NewWar(CarnageField(nil, BLUE))
+	local me, npc = Enlist(war, { slot = 4, walkable = function() return true end })
+	Tick(me, npc, 3)
+	local spawn = SPAWNS[RED][4 % 3 + 1]
+	Near(npc:State().goal, spawn, "for the spawn")
+	local near = P(me.pos.x + Hunt.PURSUE_REACH / 2, me.pos.y + 200)
+	war.hunt:Report(BLUE, "red2", near, me:Now())
+	Tick(me, npc, 2)
+	Near(npc:State().goal, near, "to the loser reported nearby first")
+end)
+
+T.test("a hunter pays no mind to a loser reported far off", function()
+	local war = NewWar(CarnageField(nil, BLUE))
+	local me, npc = Enlist(war, { slot = 4, walkable = function() return true end })
+	Tick(me, npc, 3)
+	local goal = npc:State().goal
+	war.hunt:Report(BLUE, "red3", P(me.pos.x, me.pos.y + Hunt.PURSUE_REACH * 3), me:Now())
+	T.eq(Hunt.Pursues(war.hunt:Sightings(BLUE, me:Now()), me.pos, goal), nil, "too far to turn for")
+end)
+
 T.test("a loser flees a winner it sees, to cover away from it, else straight away", function()
 	local war = NewWar(CarnageField(nil, BLUE))
 	local cover = P(-300, 100)
@@ -245,7 +281,7 @@ T.test("a loser with no winner in sight runs to its nearest spawn and hides ther
 	local me, npc = Enlist(war, { team = RED, walkable = function() return true end })
 	me.disarmed = true
 	Tick(me, npc, 3)
-	T.eq(npc:Describe(), TRIP, "on its way")
+	T.eq(npc:Describe(), HIDE_TRIP, "on its way")
 	T.eq(Runs(npc, "Humiliated"), true, "humiliated")
 	Near(npc:State().goal, P(-2000, 0), "its nearest spawn")
 	T.eq(me.gait, Orders.RUN, "running")

@@ -1771,12 +1771,42 @@ function SeekAndDestroy:OnStart(me)
 	return self:Continue()
 end
 
--- A hunt trip goes on while the hunt does and no loser is in sight.
+-- WeakTravel: a trip that gives way to any enemy at hand (TF2 has none; its
+-- SeekAndDestroy walks a path it keeps itself). It ends the moment a loser
+-- is in sight, or one is sighted within Hunt.PURSUE_REACH that the trip does
+-- not already go for, so the hunt it buries turns on it at once; while it
+-- runs the hunt below it answers the queries (ShouldAttack: it fires on the
+-- way).
+local WeakTravel = Travel:Extend("WeakTravel")
+
+-- quarry(field, soldier, goal) -> nil to go on, else why it gives way.
+function WeakTravel:Init(state, role, spot, keep, quarry)
+	Travel.Init(self, state, role, spot, keep)
+	self.quarry = quarry
+end
+
+function WeakTravel:Update(me)
+	local field = self.state.war:Field()
+	local why = self.quarry(field, me, self.spot)
+	if why then return self:End(why) end
+	return Travel.Update(self, me)
+end
+
+-- A hunt trip goes on while the hunt does.
 local function KeepHunting(member)
 	return function(field, soldier)
 		if not Hunting(field, member) then return false, "the round is over" end
-		if soldier:HasEnemy() then return false, "a loser in sight" end
 		return true
+	end
+end
+
+-- What a hunt trip gives way to: a loser in sight, or one sighted near.
+local function HuntQuarry(state)
+	return function(field, soldier, goal)
+		if soldier:HasEnemy() then return "a loser in sight" end
+		local sightings = state.war.hunt:Sightings(state.member.team, soldier:Now())
+		if Hunt.Pursues(sightings, soldier:Position(), goal) then return "a loser sighted near" end
+		return nil
 	end
 end
 
@@ -1797,7 +1827,7 @@ function SeekAndDestroy:Update(me)
 		me:Hold()
 		return self:Continue()
 	end
-	return self:SuspendFor(Travel:New(state, HUNT, goal, KeepHunting(member)), "hunting")
+	return self:SuspendFor(WeakTravel:New(state, HUNT, goal, KeepHunting(member), HuntQuarry(state)), "hunting")
 end
 
 function SeekAndDestroy:OnResume(me, interrupting)
@@ -1805,6 +1835,7 @@ function SeekAndDestroy:OnResume(me, interrupting)
 	return self:Continue()
 end
 
+function SeekAndDestroy:ShouldAttack(me, them) return N.ANSWER_YES end
 function SeekAndDestroy:ShouldRetreat(me) return N.ANSWER_NO end
 function SeekAndDestroy:ShouldHurry(me) return N.ANSWER_YES end
 
