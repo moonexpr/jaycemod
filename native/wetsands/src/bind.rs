@@ -7,6 +7,7 @@
 //! by is refused (the search is busy), and one that raises leaves the search
 //! spent.
 
+use crate::calculator::{Calculator, Known, Move};
 use crate::navmesh::{MeshBuilder, NavMesh};
 use crate::search::{RouteSearch, Rules};
 use crate::walker::{Jump, Limits, Preference, Rooms, Step, Walker};
@@ -30,6 +31,20 @@ struct SearchHandle {
 }
 
 struct WalkerHandle(Walker);
+
+struct KnownHandle(Arc<Known>);
+
+struct CalculatorHandle(Calculator);
+
+impl Native for KnownHandle {
+    const NAME: &'static CStr = c"foundation.wetsands.native.told";
+    const METHODS: &'static [(&'static CStr, CFunction)] = &[];
+}
+
+impl Native for CalculatorHandle {
+    const NAME: &'static CStr = c"foundation.wetsands.native.calculator";
+    const METHODS: &'static [(&'static CStr, CFunction)] = &[];
+}
 
 impl Native for Mesh {
     const NAME: &'static CStr = c"foundation.wetsands.native.mesh";
@@ -573,6 +588,128 @@ unsafe extern "C-unwind" fn distances(l: L) -> c_int {
     1
 }
 
+// The engine's path search: Told and Calculator ------------------------------
+
+unsafe fn calculator_ok<T>(l: L, result: Result<T, crate::calculator::CalculatorError>) -> T {
+    match result {
+        Ok(value) => value,
+        Err(e) => raise_owned(l, e.to_string()),
+    }
+}
+
+/// navsearch.Told(mesh, told) -> what a team's computations know, a copy of
+/// told's closed areas, uncrossable links and spawn rooms (only the entries
+/// whose value holds), refusing an area or link the mesh lacks.
+unsafe extern "C-unwind" fn told_new(l: L) -> c_int {
+    let api = api();
+    let mut known = Known::new(sealed(l, 1));
+    if (api.type_of)(l, 2) == TTABLE {
+        if let Some(closed) = subtable_at(l, 2, c"closed") {
+            each(l, closed, |l| {
+                if (api.toboolean)(l, -1) != 0 {
+                    calculator_ok(l, known.close(id_at(l, -2, "told.closed")));
+                }
+            });
+            (api.settop)(l, -2);
+        }
+        if let Some(uncrossable) = subtable_at(l, 2, c"uncrossable") {
+            each(l, uncrossable, |l| {
+                let from = id_at(l, -2, "told.uncrossable");
+                if (api.type_of)(l, -1) == TTABLE {
+                    let tos = (api.gettop)(l);
+                    each(l, tos, |l| {
+                        if (api.toboolean)(l, -1) != 0 {
+                            calculator_ok(l, known.close_link(from, id_at(l, -2, "told.uncrossable")));
+                        }
+                    });
+                }
+            });
+            (api.settop)(l, -2);
+        }
+        if let Some(rooms) = subtable_at(l, 2, c"rooms") {
+            each(l, rooms, |l| {
+                let team = (api.tonumber)(l, -1) as i32;
+                calculator_ok(l, known.room(id_at(l, -2, "told.rooms"), team));
+            });
+            (api.settop)(l, -2);
+        }
+    }
+    userdata::push(l, KnownHandle(Arc::new(known)));
+    1
+}
+
+/// object:name([the value at arg]) -> its number.
+unsafe fn ask_method(l: L, object: c_int, name: &CStr, arg: Option<c_int>) -> f64 {
+    let api = api();
+    (api.getfield)(l, object, name.as_ptr());
+    (api.pushvalue)(l, object);
+    let nargs = match arg {
+        Some(arg) => {
+            (api.pushvalue)(l, arg);
+            2
+        }
+        None => 1,
+    };
+    (api.call)(l, nargs, 1);
+    let value = (api.tonumber)(l, -1);
+    (api.settop)(l, -2);
+    value
+}
+
+/// An engine area's id, by asking it.
+unsafe fn area_id(l: L, area: c_int) -> u32 {
+    let id = ask_method(l, area, c"GetID", None);
+    if !(0.0..=u32::MAX as f64).contains(&id) || id.fract() != 0.0 {
+        raise_owned(l, format!("an area's GetID gave {id}, not a whole number"));
+    }
+    id as u32
+}
+
+/// The calculator's cost function (upvalue 1 the calculator): (area,
+/// fromArea, ladder, elevator, length) -> cost, as Path:Compute calls it.
+unsafe extern "C-unwind" fn calculate(l: L) -> c_int {
+    let api = api();
+    (api.settop)(l, 5);
+    if (api.type_of)(l, 2) == TNIL {
+        return number(l, 0.0);
+    }
+    let (from, to) = (area_id(l, 2), area_id(l, 1));
+    let step = if (api.type_of)(l, 3) != TNIL {
+        let length = ask_method(l, 3, c"GetLength", None);
+        Move::Ladder { length, rise: ask_method(l, 2, c"ComputeAdjacentConnectionHeightChange", Some(1)) }
+    } else {
+        Move::Floor { length: (api.tonumber)(l, 5) }
+    };
+    let so_far = ask_method(l, 2, c"GetCostSoFar", None);
+    let calculator = &userdata::check::<CalculatorHandle>(l, foundation::lua::GLOBALSINDEX - 1).0;
+    let cost = calculator_ok(l, calculator.price(from, to, so_far, step));
+    number(l, cost)
+}
+
+/// navsearch.Calculator(known, strategy, limits, bot) -> the cost function
+/// Path:Compute takes, pricing by strategy.Model(limits, bot) over a Told.
+unsafe extern "C-unwind" fn calculator_new(l: L) -> c_int {
+    let api = api();
+    let known = Arc::clone(&userdata::check::<KnownHandle>(l, 1).0);
+    (api.checktype)(l, 2, TTABLE);
+    (api.getfield)(l, 2, c"Model".as_ptr());
+    if (api.type_of)(l, -1) != TFUNCTION {
+        raise(l, c"the strategy has no Model(limits, bot): it cannot run natively");
+    }
+    (api.pushvalue)(l, 3);
+    (api.pushvalue)(l, 4);
+    (api.call)(l, 2, 1);
+    let model = (api.gettop)(l);
+    let mut calculator = Calculator::new(known, walker_from(l, model));
+    if let Some(penalized) = subtable_at(l, model, c"penalized") {
+        each(l, penalized, |l| calculator_ok(l, calculator.penalize(id_at(l, -2, "model.penalized"))));
+        (api.settop)(l, -2);
+    }
+    userdata::push(l, CalculatorHandle(calculator));
+    (api.pushcclosure)(l, calculate, 1);
+    1
+}
+
 /// Pushes the module's table: navsearch's contract (Mesh, New, Distances)
 /// and Walker, a single model's pricing for the tests.
 unsafe fn module(l: L) {
@@ -581,6 +718,8 @@ unsafe fn module(l: L) {
     set_function(l, c"Mesh", mesh_new);
     set_function(l, c"New", search_new);
     set_function(l, c"Distances", distances);
+    set_function(l, c"Told", told_new);
+    set_function(l, c"Calculator", calculator_new);
     set_function(l, c"Walker", walker_new);
     (api.pushnumber)(l, crate::walker::NO_ROOM as f64);
     (api.setfield)(l, -2, c"NO_ROOM".as_ptr());

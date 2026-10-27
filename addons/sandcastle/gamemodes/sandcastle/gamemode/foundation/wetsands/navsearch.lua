@@ -26,12 +26,27 @@
 --     Distances), along the links whose rise wetsands.path.Walkable allows
 --     to limits and not told.uncrossable, at the link's distance; a walk
 --     beyond limit is not followed.
+--   Told(mesh, told) -> what a team's computations know of a sealed mesh,
+--     held as a copy: told is New's (closed, uncrossable, rooms; an area or
+--     link the mesh lacks is refused). Made once while they hold, not per
+--     computation.
+--   Calculator(known, strategy, limits, bot) -> cost(area, fromArea, ladder,
+--     elevator, length): the IPathCost the engine's Path:Compute takes, a
+--     consumer of the strategy's cost model over a Told. The engine is asked
+--     only area:GetID(), fromArea:GetID() and fromArea:GetCostSoFar() (and,
+--     for a ladder move, ladder:GetLength() and
+--     fromArea:ComputeAdjacentConnectionHeightChange(area)); the rest is the
+--     mesh's and the Told's. It prices a move as strategy.Cost prices the
+--     step the npc controller's FillStep builds from it: the first area
+--     (no fromArea) costs nothing, a length above 0 is the step's length,
+--     a floor move the mesh lacks is refused. Cheap to make: one a
+--     computation, as a scatter strategy's preference changes with time.
 -- An area the mesh lacks is refused as start or goal, or once sealed.
 local Pathfinder = graph.pathfinder
 local Path = wetsands.path
 local Search = graph.search
 local Geometry = math.geometry
-local error, ipairs, pairs, setmetatable, tostring = error, ipairs, pairs, setmetatable, tostring
+local error, getmetatable, ipairs, pairs, setmetatable, tostring = error, getmetatable, ipairs, pairs, setmetatable, tostring
 module(...)
 
 -- TEAM_UNASSIGNED: an area in no spawn room.
@@ -172,4 +187,83 @@ function Distances(mesh, starts, limit, limits, told)
 		end
 		return edges
 	end, limit)
+end
+
+local ToldClass = {}
+ToldClass.__index = ToldClass
+
+-- told[what]'s entries whose value holds, refusing an area the mesh lacks.
+local function CopyAreas(mesh, ids, what)
+	local copy = {}
+	for id, value in pairs(ids or NOTHING) do
+		if not mesh.areas[id] then error(what .. ": no area " .. tostring(id) .. " in the mesh", 3) end
+		if value then copy[id] = value end
+	end
+	return copy
+end
+
+function Told(mesh, told)
+	if not mesh.sealed then error("the mesh is not sealed yet", 2) end
+	told = told or NOTHING
+	local uncrossable = {}
+	for from, tos in pairs(told.uncrossable or NOTHING) do
+		for to, refused in pairs(tos) do
+			if not (mesh.links[from] and mesh.links[from][to]) then
+				error("told.uncrossable: no link " .. tostring(from) .. " -> " .. tostring(to) .. " in the mesh", 2)
+			end
+			if refused then
+				uncrossable[from] = uncrossable[from] or {}
+				uncrossable[from][to] = true
+			end
+		end
+	end
+	return setmetatable({
+		mesh = mesh,
+		told = {
+			closed = CopyAreas(mesh, told.closed, "told.closed"),
+			rooms = CopyAreas(mesh, told.rooms, "told.rooms"),
+			uncrossable = uncrossable,
+		},
+	}, ToldClass)
+end
+
+function Calculator(known, strategy, limits, bot)
+	if getmetatable(known) ~= ToldClass then error("a calculator prices over a Told", 2) end
+	local mesh = known.mesh
+	local graph = setmetatable({
+		mesh = mesh,
+		strategy = strategy,
+		limits = limits,
+		bot = bot,
+		told = known.told,
+		rules = NOTHING,
+		crossings = {},
+		entered = {},
+		roomOf = {},
+	}, Graph)
+	local step = { hasFrom = true }
+	return function(area, fromArea, ladder, elevator, length)
+		if fromArea == nil then return 0 end
+		local from, to = fromArea:GetID(), area:GetID()
+		if ladder ~= nil then
+			if not mesh.areas[to] then error("no area " .. tostring(to) .. " in the mesh", 2) end
+			step.ladderLength = ladder:GetLength()
+			step.centerDistance = 0
+			step.heightChange = fromArea:ComputeAdjacentConnectionHeightChange(area)
+		else
+			local link = mesh.links[from] and mesh.links[from][to]
+			if not link then error("no link " .. tostring(from) .. " -> " .. tostring(to) .. " in the mesh", 2) end
+			if not graph:Crossable(from, to) then return Path.IMPASSABLE end
+			step.ladderLength = nil
+			step.centerDistance = link.distance
+			step.heightChange = link.rise
+		end
+		step.traversable = graph:Traversable(to)
+		step.length = length or 0
+		step.fromCostSoFar = fromArea:GetCostSoFar()
+		step.areaId = to
+		step.spawnRoomTeam = graph:Room(to)
+		step.attributes = mesh.areas[to].attributes
+		return strategy.Cost(step, limits, bot)
+	end
 end
