@@ -158,6 +158,8 @@ local GAMES = {
 -- and games, that runs without the war's tactics engine.
 local NEXTSOLDIER = {
 	["base"] = "nextsoldier",
+	["soldier"] = "nextsoldier",
+	["chart"] = "nextsoldier",
 	["monitor"] = "nextsoldier",
 	["speech"] = "nextsoldier",
 	["hearing"] = "nextsoldier",

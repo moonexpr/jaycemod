@@ -1,5 +1,6 @@
 -- The orders of an AI war soldier: an NPC variant (games.npc.nextbot) whose
--- Actions run over the soldier port (features.aiwar.soldier). The engine's
+-- Actions, the states of NextSoldier's chart (nextsoldier.chart), run over
+-- the soldier port (nextsoldier.soldier). The engine's
 -- own AI does the fighting; the orders decide where a soldier should be and
 -- walk it there over the nav mesh, since TF2 maps have no AI node graph for
 -- the engine's pathfinder.
@@ -84,6 +85,7 @@ local ipairs, pairs = ipairs, pairs
 local format = string.format
 local N = npc.nextbot
 local MonitorLib = nextsoldier.monitor
+local SoldierChart = nextsoldier.chart.CHART
 local Debug = require("features.nbdebug.model")
 local AiWar = require("features.aiwar.model")
 local Teams = gameplay.teams
@@ -610,7 +612,7 @@ end
 -------------------------------------------------------------------------------
 -- Travel: follow a route to the role's goal, or (in setup) to a wander spot
 
-local Travel = N.Action:Extend("Travel")
+local Travel = SoldierChart:State("Travel")
 
 -- Whether role (a job's, or one at a stage: StageRole) is what the doctrine
 -- gives member now: the same job's role, at the same stage when that stage
@@ -954,7 +956,7 @@ function ChaseWanted(role, me, field, member)
 	return profile
 end
 
-local Chase = N.Action:Extend("Chase")
+local Chase = SoldierChart:State("Chase")
 Chase.chase = true
 
 function Chase:Init(state, target, profile)
@@ -998,10 +1000,10 @@ end
 -------------------------------------------------------------------------------
 -- Objectives: one Action per role of each doctrine
 
-local Objective = N.Action:Extend("Objective")
+local Objective = SoldierChart:State("Objective")
 local OBJECTIVE_OF = {} -- doctrine -> job -> its Objective class
 -- No role (or one its doctrine lacks): the engine's AI has the soldier.
-local Idle = N.Action:Extend("Idle")
+local Idle = SoldierChart:State("Idle")
 
 -- A role at a stage: its own settings with the stage's (STAGES[stage])
 -- over them; false clears one (chases = false: it chases nobody). The
@@ -1701,7 +1703,7 @@ end
 -- FLEE_COVER away from it (else RETREAT_DISTANCE straight away), picking
 -- again once the winner has moved FLEE_REPICK or the spot is reached; with
 -- none in sight it runs to its nearest spawn and hides there.
-local Humiliated = N.Action:Extend("Humiliated")
+local Humiliated = SoldierChart:State("Humiliated")
 
 function Humiliated:Init(state)
 	self.state = state
@@ -1758,7 +1760,7 @@ function Humiliated:ShouldAttack(me, them) return N.ANSWER_NO end
 function Humiliated:ShouldHurry(me) return N.ANSWER_YES end
 
 -- SeekAndDestroy (CTFBotSeekAndDestroy): its side won the round.
-local SeekAndDestroy = N.Action:Extend("SeekAndDestroy")
+local SeekAndDestroy = SoldierChart:State("SeekAndDestroy")
 
 function SeekAndDestroy:Init(state)
 	self.state = state
@@ -1856,9 +1858,9 @@ local function HealthShare(me)
 	return me:Health() / max(me:MaxHealth(), 1)
 end
 
-local RetreatToCover = N.Action:Extend("RetreatToCover")
-local FindHealth = N.Action:Extend("FindHealth")
-local CallMedic = N.Action:Extend("CallMedic")
+local RetreatToCover = SoldierChart:State("RetreatToCover")
+local FindHealth = SoldierChart:State("FindHealth")
+local CallMedic = SoldierChart:State("CallMedic")
 
 function RetreatToCover:Init(state) self.state = state end
 

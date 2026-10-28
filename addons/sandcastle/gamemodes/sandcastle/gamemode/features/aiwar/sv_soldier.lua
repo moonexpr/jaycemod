@@ -10,7 +10,7 @@ local Point, ToVector, Masks, IsDoor = Map.Point, Map.ToVector, Map.Masks, Map.I
 local OnFloor, PassThrough = Map.OnFloor, Map.PassThrough
 
 -------------------------------------------------------------------------------
--- The soldier port (features.aiwar.soldier) over a DrGBase soldier
+-- The soldier port (nextsoldier.soldier) over a DrGBase soldier
 -- (ws_drg_soldier): orders set its target and gait; it walks there on
 -- the nav mesh as a NextBot, fighting on the way as DrGBase's human AI.
 

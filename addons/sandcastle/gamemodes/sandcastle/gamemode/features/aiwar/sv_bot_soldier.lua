@@ -1,5 +1,5 @@
 -- Part of the AI war controller (sv.lua): the soldier port
--- (features.aiwar.soldier) over a bot player (player.CreateNextBot, kept
+-- (nextsoldier.soldier) over a bot player (player.CreateNextBot, kept
 -- by tf_bot_quota: sv_bots.lua), beside sv_soldier.lua's over a DrGBase
 -- NextBot. It is that port where the two agree (routes, cover, kits,
 -- gadgets, health kits) and differs where the body does: it walks a route

@@ -2,7 +2,7 @@
 -- each with its activation criteria, its Scenario class (the Commander's:
 -- features.aiwar.scenario's base) and, optionally, its own monitor, the
 -- behaviour its soldiers' ScenarioMonitor runs in place of the doctrine's
--- sides (a nextsoldier.monitor, or any npc.nextbot Action).
+-- sides (a nextsoldier.monitor, or any behaviour of NextSoldier's chart).
 --
 -- Registering is open while the game loads. At the game's beginning (the
 -- war's start, and RoundPlayersReady, as a game's players are ready: a late
@@ -32,7 +32,7 @@
 local error, ipairs, pairs, require, setmetatable, sort, tostring, type =
 	error, ipairs, pairs, require, setmetatable, table.sort, tostring, type
 local Class = core.class
-local Action = npc.nextbot.Action
+local SoldierChart = nextsoldier.chart
 module(...)
 
 local Registry = {}
@@ -53,7 +53,7 @@ function Registry:Register(spec)
 	Check(spec.mode == nil or type(spec.mode) == "string", "names its mode by the rounds mode's NAME")
 	Check(spec.active == nil or type(spec.active) == "function", "gives its further criteria as active(context)")
 	Check(type(spec.scenario) == "table" or type(spec.scenario) == "string", "needs its Scenario class or module")
-	Check(spec.monitor == nil or Class.IsA(spec.monitor, Action), "gives a monitor that is a behaviour (an npc.nextbot Action)")
+	Check(spec.monitor == nil or Class.IsA(spec.monitor, SoldierChart.CHART.base), "gives a monitor that is a behaviour of NextSoldier's chart")
 	self.specs[spec.name] = {
 		name = spec.name,
 		priority = spec.priority,

@@ -6,6 +6,8 @@
 -- docs/foundation-game-split-plan.md.
 local nextsoldier = Namespace("nextsoldier")
 Defer(nextsoldier, "base", "nextsoldier.base")
+Defer(nextsoldier, "soldier", "nextsoldier.soldier")
+Defer(nextsoldier, "chart", "nextsoldier.chart")
 Defer(nextsoldier, "speech", "nextsoldier.speech")
 Defer(nextsoldier, "hearing", "nextsoldier.hearing")
 Defer(nextsoldier, "nav_gaps", "nextsoldier.nav_gaps")

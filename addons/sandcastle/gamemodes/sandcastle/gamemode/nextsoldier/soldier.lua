@@ -1,7 +1,12 @@
--- The soldier port: what features.aiwar.orders may ask of the
--- soldier it drives. The features/aiwar controller implements it over a
--- DrGBase NextBot soldier (ws_drg_soldier) and tests/fake_soldier.lua
--- fakes it.
+-- The soldier port: what a NextSoldier soldier's behaviours (the states of
+-- nextsoldier.chart, features.aiwar.orders' among them) may ask of the
+-- soldier they drive. The features/aiwar controller implements it over a
+-- DrGBase NextBot soldier (ws_drg_soldier) and over a bot player, and
+-- tests/fake_soldier.lua fakes it. Some of it is still the war's, not the
+-- soldier's (Sit, Stand, IsSeated and FollowCart for the cart, IsDisarmed,
+-- UseGadget, Heal, CallMedic, Announce), to move out with the orders.
+--
+-- METHODS lists the names; PORT is them as a core.port.
 --
 -- Positions are plain { x, y, z } tables.
 --   Now() -> the time
@@ -81,6 +86,7 @@
 --   Mark(kind, detail, to): tell whoever debugs me that my orders stepped
 --     in on my movement (a features.nbdebug.model MARK_* kind), what happened,
 --     and where I am sent (nil: nowhere)
+local Port = core.port
 module(...)
 
 METHODS = {
@@ -127,3 +133,5 @@ METHODS = {
 	"CallMedic",
 	"Announce",
 }
+
+PORT = Port.New("NextSoldier soldier", METHODS)

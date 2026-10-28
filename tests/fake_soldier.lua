@@ -1,4 +1,4 @@
--- An in-memory features.aiwar.soldier for model tests: a fake clock, a
+-- An in-memory nextsoldier.soldier for model tests: a fake clock, a
 -- position the test moves by hand, a scripted enemy, a route finder that
 -- answers after a set number of polls, and a log of the moves and releases
 -- the model asked for. It implements every name in
