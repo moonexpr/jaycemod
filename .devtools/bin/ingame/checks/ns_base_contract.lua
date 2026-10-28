@@ -4,7 +4,7 @@
 -- DrGBase's; once NextSoldier's own base replaces it, the same check holds
 -- that one to the interface our code keeps. An entity of each class is
 -- created unspawned, checked and removed.
-local CLASSES = { "ws_drg_combine", "ws_drg_rebel", "ws_drg_vortigaunt" }
+local CLASSES = { "ws_drg_combine", "ws_drg_rebel", "ws_drg_vortigaunt", "base_nextsoldier" }
 
 return function(t)
 	local Base = nextsoldier.base
