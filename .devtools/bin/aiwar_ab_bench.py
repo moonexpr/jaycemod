@@ -8,7 +8,7 @@ players, in alternating legs on the same map and settings.
   aiwar_ab_bench.py --legs native:npc,native:bot,native:npc,native:bot
 
 A leg is an implementation (native or lua) and, after a colon, the
-soldiers (ns_soldiers_actor: npc, the default, or bot). Each leg moves the
+soldiers (ns_soldiers_actor: npc, a leg's default, or bot). Each leg moves the
 two DLL links in or out of the server root's lua/bin
 (gmsv_<crate>_win64.dll <-> .off, so util.IsBinaryModuleInstalled sees
 them or not), changes level, checks which implementation loaded, sets the

@@ -31,7 +31,7 @@ local QUOTA_MODE = CreateConVar("tf_bot_quota_mode", "normal", FLAGS,
 	"What tf_bot_quota counts: normal (bots), fill (players on the teams), match (bots for each human)")
 local JOIN_AFTER_PLAYER = CreateConVar("tf_bot_join_after_player", "1", FLAGS,
 	"Whether the AI war's bots wait for a human to join a team")
-local ACTOR = CreateConVar("ns_soldiers_actor", "npc", FLAGS,
+local ACTOR = CreateConVar("ns_soldiers_actor", "bot", FLAGS,
 	"Who the AI war's soldiers are, never both: npc (its NextBots; tf_bot_quota is ignored) "
 	.. "or bot (bot players; no NPCs are drafted, and a tf_bot_quota of 0 fills the teams' sizes)")
 local DIFFICULTY = GetConVar("tf_bot_difficulty") -- ws/sh_votes.lua's
