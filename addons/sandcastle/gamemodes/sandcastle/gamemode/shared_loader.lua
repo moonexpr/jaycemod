@@ -62,11 +62,11 @@ Index("foundation/sh_index.lua")
 
 -- game: published at once, each module loaded the first time it is read,
 -- so a map pays only for the gameplay it uses.
+Index("games/system/sh_init.lua")
 Index("games/list/sh_init.lua")
 Index("games/timer/sh_init.lua")
 Index("games/world/sh_init.lua")
 Index("games/generator/sh_init.lua")
-Index("games/system/sh_init.lua")
 Index("games/gameplay/sh_init.lua")
 Index("games/npc/sh_init.lua")
 
