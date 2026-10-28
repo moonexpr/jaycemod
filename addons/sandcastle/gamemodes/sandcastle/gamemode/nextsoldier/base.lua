@@ -15,8 +15,15 @@
 -- hooks and fields are named sets, or nil for a component with none;
 -- Hooks(component) and Fields(component) list them either way.
 --
--- COMPONENTS, in order; INTENTION, SENSES, RELATIONS, LOCOMOTION, BODY, LIFE
--- METHODS     the port of every component's methods, in order
+-- An optional component (optional = true) is one a soldier may lack, as
+-- DrGBase's non-human NextBots lack crouching: a soldier has it whole or
+-- not at all, and its callers ask Has first.
+--
+-- COMPONENTS, in order; INTENTION, SENSES, RELATIONS, LOCOMOTION, POSTURE
+--             (optional), BODY, LIFE
+-- METHODS     the port of every required component's methods, in order
+-- Has(soldier, component) -> whether soldier has an optional component;
+--             one with only some of its methods is refused, naming them
 -- HOOKS       the named set of every hook; FIELDS, of every field
 -- ComponentOf(name) -> the component declaring a method, hook or field, or nil
 -- REPLACED    names our code uses of DrGBase that the base does not keep,
@@ -25,7 +32,7 @@
 -- .devtools/bin/drg_interface.py inventories the DrGBase names our code
 -- uses, and its check refuses one this file does not declare.
 local Port, Sets = core.port, world.sets
-local ipairs = ipairs
+local concat, error, ipairs = table.concat, error, ipairs
 module(...)
 
 local function Named(name, members)
@@ -39,6 +46,7 @@ local function Component(name, spec)
 		methods = Port.New("NextSoldier " .. name, spec.methods),
 		hooks = Named("NextSoldier " .. name .. " hooks", spec.hooks),
 		fields = Named("NextSoldier " .. name .. " fields", spec.fields),
+		optional = spec.optional == true,
 	}
 end
 
@@ -78,11 +86,16 @@ RELATIONS = Component("relations", {
 -- How it moves: its path, priced by the class (GetPathGenerator), facing,
 -- jumping, crouching, climbing ledges and dropping down.
 LOCOMOTION = Component("locomotion", {
-	methods = { "FollowPath", "GetPath", "FaceTowards", "IsMoving", "Jump", "IsCrouching", "SetCrouching",
-		"GetStepHeight", "GetDeathDropHeight" },
+	methods = { "FollowPath", "GetPath", "FaceTowards", "IsMoving", "Jump", "GetStepHeight", "GetDeathDropHeight" },
 	hooks = { "GetPathGenerator", "OnComputePath", "CustomClimbing", "OnStartClimbing", "OnLandOnGround",
 		"OnNavAreaChanged" },
 	fields = { "WalkSpeed", "RunSpeed", "ClimbLedges", "ClimbLedgesMaxHeight", "DeathDropHeight" },
+})
+
+-- Crouching, which a human soldier has and a vortigaunt does not.
+POSTURE = Component("posture", {
+	methods = { "IsCrouching", "SetCrouching" },
+	optional = true,
 })
 
 -- What it looks like and holds: its weapons, scale, models, animations and
@@ -101,12 +114,13 @@ LIFE = Component("life", {
 	fields = { "SpawnHealth", "RagdollOnDeath" },
 })
 
-COMPONENTS = { INTENTION, SENSES, RELATIONS, LOCOMOTION, BODY, LIFE }
+COMPONENTS = { INTENTION, SENSES, RELATIONS, LOCOMOTION, POSTURE, BODY, LIFE }
 
 local methods, hooks, fields, owner = {}, {}, {}, {}
 for _, component in ipairs(COMPONENTS) do
 	for _, name in ipairs(component.methods:Methods()) do
-		methods[#methods + 1], owner[name] = name, component
+		owner[name] = component
+		if not component.optional then methods[#methods + 1] = name end
 	end
 	for _, name in ipairs(Hooks(component)) do
 		hooks[#hooks + 1], owner[name] = name, component
@@ -122,6 +136,17 @@ FIELDS = Sets.Named("NextSoldier fields", fields)
 
 function ComponentOf(name)
 	return owner[name]
+end
+
+function Has(soldier, component)
+	local present, missing = 0, {}
+	for _, name in ipairs(component.methods:Methods()) do
+		if soldier[name] ~= nil then present = present + 1 else missing[#missing + 1] = name end
+	end
+	if present > 0 and #missing > 0 then
+		error("a soldier has part of NextSoldier " .. component.name .. ": no " .. concat(missing, ", "), 2)
+	end
+	return present > 0
 end
 
 REPLACED = {

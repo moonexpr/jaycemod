@@ -41,12 +41,32 @@ T.test("a name is declared by one component only", function()
 	end
 end)
 
-T.test("the base port is every component's methods, in order", function()
+T.test("the base port is every required component's methods, in order", function()
 	local methods = {}
 	for _, component in ipairs(Base.COMPONENTS) do
-		for _, name in ipairs(component.methods:Methods()) do methods[#methods + 1] = name end
+		if not component.optional then
+			for _, name in ipairs(component.methods:Methods()) do methods[#methods + 1] = name end
+		end
 	end
 	T.eq(table.concat(Base.METHODS:Methods(), " "), table.concat(methods, " "))
+end)
+
+T.test("an optional component's methods are not required, and a body without them is still a base", function()
+	T.eq(Base.POSTURE.optional, true)
+	T.eq(Base.METHODS:Methods()[1] ~= nil, true)
+	for _, name in ipairs(Base.POSTURE.methods:Methods()) do
+		for _, required in ipairs(Base.METHODS:Methods()) do T.eq(required ~= name, true, name .. " is not required") end
+	end
+end)
+
+T.test("a soldier has an optional component whole or not at all", function()
+	local whole, none, half = {}, {}, {}
+	for _, name in ipairs(Base.POSTURE.methods:Methods()) do whole[name] = function() end end
+	half[Base.POSTURE.methods:Methods()[1]] = function() end
+	T.eq(Base.Has(whole, Base.POSTURE), true)
+	T.eq(Base.Has(none, Base.POSTURE), false)
+	local ok = pcall(Base.Has, half, Base.POSTURE)
+	T.eq(ok, false, "half a component is refused")
 end)
 
 T.test("each name's component is found", function()

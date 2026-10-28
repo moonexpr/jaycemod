@@ -279,7 +279,7 @@ requires it (`tests/foundation_layers_test.lua`). Tests are
 
 | Module | API |
 |---|---|
-| `nextsoldier.base` | The interface our code keeps of DrGBase's NextBot, names and hook contracts only, which NextSoldier's own base implements from scratch, native where it pays: `COMPONENTS` after NextBot's own (`INTENTION`, `SENSES`, `RELATIONS`, `LOCOMOTION`, `BODY`, `LIFE`), each with `methods` (a `core.port`), `hooks` and `fields` (named sets, or nil); `METHODS` (every method), `HOOKS`, `FIELDS`, `Hooks(c)`, `Fields(c)`, `ComponentOf(name)`, `REPLACED` (DrGBase names the base drops, with what replaces each). `.devtools/bin/drg_interface.py check` refuses a DrGBase name our code uses that it does not declare |
+| `nextsoldier.base` | The interface our code keeps of DrGBase's NextBot, names and hook contracts only, which NextSoldier's own base implements from scratch, native where it pays: `COMPONENTS` after NextBot's own (`INTENTION`, `SENSES`, `RELATIONS`, `LOCOMOTION`, `POSTURE` (optional), `BODY`, `LIFE`), each with `methods` (a `core.port`), `hooks` and `fields` (named sets, or nil); `METHODS` (every required method), `Has(soldier, c)` (an optional component, whole or refused), `HOOKS`, `FIELDS`, `Hooks(c)`, `Fields(c)`, `ComponentOf(name)`, `REPLACED` (DrGBase names the base drops, with what replaces each). `.devtools/bin/drg_interface.py check` refuses a DrGBase name our code uses that it does not declare |
 | `nextsoldier.monitor` | A monitor: a behaviour (npc.nextbot Action) holding the soldier's state and containing one: `New(name, contains)`, `Passthrough(name, contains)` (left out of the debug layer's TDBN) |
 
 ## wartactics index
