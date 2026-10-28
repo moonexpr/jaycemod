@@ -1,14 +1,19 @@
 """An A/B bench of the AI war on the dev server: the native foundation
 (native/foundation and native/wetsands installed) against the Lua twins
-alone, in alternating legs on the same map and settings.
+alone, and the war's NPC soldiers (DrGBase NextBots) against its bot
+players, in alternating legs on the same map and settings.
 
   aiwar_ab_bench.py [--map pl_upward] [--team-size 15] [--legs native,lua,native,lua]
                     [--warmup 90] [--window 60] [--instance 1]
+  aiwar_ab_bench.py --legs native:npc,native:bot,native:npc,native:bot
 
-Each leg moves the two DLL links in or out of the server root's lua/bin
+A leg is an implementation (native or lua) and, after a colon, the
+soldiers (ns_soldiers_actor: npc, the default, or bot). Each leg moves the
+two DLL links in or out of the server root's lua/bin
 (gmsv_<crate>_win64.dll <-> .off, so util.IsBinaryModuleInstalled sees
-them or not), changes level, checks which implementation loaded, starts a
-war at the team size, warms up, then measures for the window:
+them or not), changes level, checks which implementation loaded, sets the
+soldiers, starts a war at the team size, warms up, then measures for the
+window:
 
   ticks     the gap between Tick hooks (p50, p95, p99, max, how many came
             later than 1.5 tick intervals)
@@ -36,14 +41,61 @@ REPO = Path(__file__).resolve().parents[2]
 BIN = REPO / ".devtools/bin"
 ARTIFACTS = REPO / ".devtools/artifacts"
 CRATES = ("foundation", "wetsands")
-LEGS = ("native", "lua")
+IMPLEMENTATIONS = ("native", "lua")
+ACTORS = ("npc", "bot")
 STATS_EVERY = 10
 LATE = 1.5  # tick intervals
 READY_TIMEOUT = 300
 
+# The soldiers each actor makes: DrGBase NextBots, or bot players.
+SOLDIERS = {
+    "npc": 'local n = 0 for _, e in ipairs(ents.GetAll()) do if e.IsNextBot and e:IsNextBot() then n = n + 1 end end return n',
+    "bot": "return #player.GetBots()",
+}
+
 
 class BenchError(Exception):
     pass
+
+
+@dataclass(frozen=True)
+class Leg:
+    implementation: str
+    actor: str
+
+    def __post_init__(self):
+        if self.implementation not in IMPLEMENTATIONS:
+            raise ValueError(f"an implementation is one of {IMPLEMENTATIONS}, not {self.implementation!r}")
+        if self.actor not in ACTORS:
+            raise ValueError(f"an actor is one of {ACTORS}, not {self.actor!r}")
+
+    @classmethod
+    def parse(cls, text: str) -> "Leg":
+        parts = text.split(":")
+        if len(parts) > 2:
+            raise ValueError(f"a leg is implementation[:actor], not {text!r}")
+        return cls(parts[0], parts[1] if len(parts) == 2 else "npc")
+
+    @property
+    def label(self) -> str:
+        return f"{self.implementation}:{self.actor}"
+
+    @property
+    def soldiers_lua(self) -> str:
+        return SOLDIERS[self.actor]
+
+    @property
+    def convars(self) -> dict[str, str]:
+        """What the leg sets: its soldiers, and for bots, joining with no human
+        on the server (tf_bot_join_after_player would keep them out)."""
+        if self.actor == "bot":
+            return {"ns_soldiers_actor": "bot", "tf_bot_join_after_player": "0"}
+        return {"ns_soldiers_actor": "npc"}
+
+
+def convar_values(server: "Server", names: list[str]) -> dict[str, str]:
+    code = "return " + ", ".join(f'GetConVarString("{name}")' for name in names)
+    return dict(zip(names, server.lua(code)))
 
 
 @dataclass(frozen=True)
@@ -115,19 +167,18 @@ table.sort(d)
 local function at(p) return d[math.max(1, math.ceil(#d * p))] or 0 end
 local interval, late = engine.TickInterval(), 0
 for _, x in ipairs(d) do if x > interval * __LATE__ then late = late + 1 end end
-local soldiers = 0
-for _, e in ipairs(ents.GetAll()) do if e.IsNextBot and e:IsNextBot() then soldiers = soldiers + 1 end end
+local nextbots = 0
+for _, e in ipairs(ents.GetAll()) do if e.IsNextBot and e:IsNextBot() then nextbots = nextbots + 1 end end
 return util.TableToJSON({
 	ticks = { count = #d, interval = interval, p50 = at(0.5), p95 = at(0.95), p99 = at(0.99), max = d[#d] or 0, late = late },
 	profile = report,
-	soldiers = soldiers,
+	nextbots = nextbots,
+	bots = #player.GetBots(),
 	memory_kb = { start = WSBench.memory, finish = collectgarbage("count") },
 })
 """.replace("__LATE__", str(LATE))
 
 IMPLEMENTATION = 'return debug.getinfo(core.namespace.Twin, "S").what .. " " .. debug.getinfo(tree.heap.New, "S").what'
-
-SOLDIERS = 'local n = 0 for _, e in ipairs(ents.GetAll()) do if e.IsNextBot and e:IsNextBot() then n = n + 1 end end return n'
 
 STATS = re.compile(r"^\s*([\d.]+)\s+[\d.]+\s+[\d.]+\s+\d+\s+\d+\s+([\d.]+)\s+\d+", re.M)
 
@@ -144,22 +195,25 @@ def wait_for(what: str, check, timeout: float = READY_TIMEOUT) -> None:
     raise BenchError(f"timed out waiting for {what}")
 
 
-def run_leg(server: Server, links: Links, leg: str, args) -> dict:
-    links.set({crate: leg == "native" for crate in CRATES})
+def run_leg(server: Server, links: Links, leg: Leg, args) -> dict:
+    native = leg.implementation == "native"
+    links.set({crate: native for crate in CRATES})
+    for name, value in leg.convars.items():
+        server.rcon(f"{name} {value}")
     server.rcon(f"changelevel {args.map}")
     time.sleep(10)
     wait_for("the map", lambda: server.lua("return game.GetMap()")[0] == args.map)
-    expected = "C C" if leg == "native" else "Lua Lua"
+    expected = "C C" if native else "Lua Lua"
     loaded = server.lua(IMPLEMENTATION)[0]
     if loaded != expected:
-        raise BenchError(f"{leg} leg loaded {loaded!r}, expected {expected!r}")
+        raise BenchError(f"{leg.label} leg loaded {loaded!r}, expected {expected!r}")
     server.rcon(f"mp_aiwar_team_size {args.team_size}")
     server.rcon("mp_aiwar_end")
     time.sleep(2)
     server.rcon("mp_aiwar_start")
     target = 2 * args.team_size - 2
-    wait_for(f"{target} soldiers", lambda: int(server.lua(SOLDIERS)[0]) >= target)
-    print(f"[{leg}] {loaded}: war up, warming {args.warmup} s", flush=True)
+    wait_for(f"{target} {leg.actor} soldiers", lambda: int(server.lua(leg.soldiers_lua)[0]) >= target)
+    print(f"[{leg.label}] {loaded}: war up, warming {args.warmup} s", flush=True)
     time.sleep(args.warmup)
     started = server.lua(START)[0]
     if not started.startswith("true"):
@@ -172,7 +226,7 @@ def run_leg(server: Server, links: Links, leg: str, args) -> dict:
         if match:
             stats.append({"cpu": float(match.group(1)), "fps": float(match.group(2))})
     result = json.loads(server.lua(FINISH, timeout=120)[0])
-    result.update(leg=leg, loaded=loaded, stats=stats)
+    result.update(leg=leg.label, actor=leg.actor, loaded=loaded, stats=stats)
     return result
 
 
@@ -188,7 +242,8 @@ def summary(result: dict) -> str:
     cpu = sum(s["cpu"] for s in stats) / len(stats) if stats else float("nan")
     fps = sum(s["fps"] for s in stats) / len(stats) if stats else float("nan")
     states = ", ".join(f"{r['name']} {r['share'] * 100:.1f}" for r in result["profile"]["states"])
-    return (f"{result['leg']:6s} soldiers {result['soldiers']:2d}  CPU {cpu:5.1f} %  FPS {fps:5.1f}  "
+    soldiers = result["bots"] if result["actor"] == "bot" else result["nextbots"]
+    return (f"{result['leg']:10s} soldiers {soldiers:2d}  CPU {cpu:5.1f} %  FPS {fps:5.1f}  "
             f"tick p50/p95/p99/max {t['p50'] * 1e3:.1f}/{t['p95'] * 1e3:.1f}/{t['p99'] * 1e3:.1f}/{t['max'] * 1e3:.1f} ms  "
             f"late {t['late']}/{t['count']}  Lua {100 * (1 - outside_lua(result['profile'])):.1f} % of the thread  "
             f"[{states}]")
@@ -203,13 +258,15 @@ def main() -> int:
     ap.add_argument("--window", type=int, default=60)
     ap.add_argument("--instance", type=int, default=1)
     args = ap.parse_args()
-    legs = args.legs.split(",")
-    for leg in legs:
-        if leg not in LEGS:
-            ap.error(f"a leg is one of {LEGS}, not {leg!r}")
+    try:
+        legs = [Leg.parse(text) for text in args.legs.split(",")]
+    except ValueError as e:
+        ap.error(str(e))
     server = Server(args.instance)
     links = Links(server.root())
     found = links.state()
+    names = sorted({name for leg in legs for name in leg.convars})
+    convars = convar_values(server, names)
     results = []
     try:
         for leg in legs:
@@ -217,6 +274,8 @@ def main() -> int:
             print(summary(results[-1]), flush=True)
     finally:
         links.set(found)
+        for name, value in convars.items():
+            server.rcon(f"{name} {value}")
         stamp = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
         out = ARTIFACTS / f"aiwar_ab_bench-{stamp}.json"
         out.write_text(json.dumps({"args": vars(args), "results": results}, indent=1))

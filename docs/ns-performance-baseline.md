@@ -666,6 +666,40 @@ The same bench, two native legs, against the morning's two native legs:
 Process CPU moves as much between legs of one kind as between kinds here, so
 it shows no change. The tail ticks show the gain.
 
+## DrGBase's NPCs against bot players (2026-10-27)
+
+With foundation native, DrGBase's entity think was most of the Lua left on
+the thread. The war's soldiers can be bot players instead
+(`ns_soldiers_actor bot`, f2eaa19, 74316fc), which use none of DrGBase. The
+bench now takes the soldiers per leg (`native:npc`, `native:bot`); bot legs
+set `tf_bot_join_after_player 0`, as no human is on the server. pl_upward,
+15 a side, 90 s warm-up, 60 s window, native in every leg. Three NPC legs
+(one from a run whose bot leg failed before that setting) and one bot leg;
+the second bot leg's server died silently mid-window (the log ends on a
+normal `stats` line).
+
+| | NPC legs (DrGBase) | Bot leg |
+|---|---|---|
+| Process CPU | 73.2, 64.5, 65.8 % | 84.5 % |
+| Server FPS | 42.1, 58.5, 88.5 | 23.4 |
+| Tick p95 / p99 / max | 38.0 / 53.0 / 128, 34.8 / 47.4 / 97, 35.6 / 46.5 / 99 ms | 38.1 / 54.8 / 141 ms |
+| Late ticks (of about 4050) | 451, 371, 358 | 544 |
+| Lua's share of the thread | 70.3, 60.4, 61.2 % | 64.2 % |
+
+What fills the thread (inclusive):
+- NPC legs: DrGBase's think (`shared.lua:233`) 19 to 23 %, `shared.lua:403`
+  11 to 12 %, `HandleEnemy` 9 to 10 %, `FollowPath` 7 to 8 %, detection and
+  awareness about 1 to 2 % each.
+- Bot leg: none of DrGBase. Driving the bots (`sv_bots.lua`: `Drive`,
+  `Look`, `LookAround`) 22 %, `player_body`'s `Command` 5 %.
+
+So bot players take DrGBase out of the Lua profile, and their own driving
+costs about what DrGBase's think did. But the process works harder (CPU
+up 10 to 20 points, server FPS halved, more late ticks): a bot player is a
+whole player to the engine (movement, user commands, lag compensation),
+which no Lua profile shows. One bot leg is one sample; repeat it before
+deciding on it, and find why the second one's server died.
+
 ## Reproducing
 
 ```
@@ -690,6 +724,7 @@ they were, then change level to load them again):
 
 ```bash
 python3 .devtools/bin/aiwar_ab_bench.py --legs native,lua,native,lua
+python3 .devtools/bin/aiwar_ab_bench.py --legs native:npc,native:bot,native:npc,native:bot
 ```
 
 Experiments B to L were one-off probes run through `server_lua.py`; each
