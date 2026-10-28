@@ -41,7 +41,7 @@ local function Enlist(t)
 	member.role = t.role or member.role
 	member.slot = t.slot or 0
 	local me = FS.Soldier(t)
-	local npc = N.Npc.New(Orders, { war = war, member = member, behaviors = BEHAVIORS }, me)
+	local npc = N.Npc.New(Orders, { war = war, member = member, behaviors = t.behaviors or BEHAVIORS }, me)
 	npc:Update(TICK)
 	return me, npc, war, member
 end
@@ -90,9 +90,12 @@ end
 T.test("a registered scenario's own monitor runs under ScenarioMonitor, and leaves with its scenario", function()
 	local HoldLine = N.Action:Extend("HoldLine")
 	local Holdout = nextsoldier.monitor.New("Holdout", function(state) return HoldLine:New(state) end)
+	local registry = nextsoldier.behaviors.New()
+	for _, name in ipairs(BEHAVIORS:Names()) do registry:Register({ name = name, behavior = BEHAVIORS:Get(name) }) end
+	registry:Register({ name = "Holdout", behavior = Holdout })
 	local field = Field({})
-	field.scenario = { name = "holdout", monitor = Holdout }
-	local me, npc, war = Enlist({ field = field })
+	field.scenario = { name = "holdout", monitor = "Holdout" }
+	local me, npc, war = Enlist({ field = field, behaviors = registry:Compile() })
 	Tick(me, npc)
 	T.eq(npc:Describe():find("ScenarioMonitor/Holdout/HoldLine", 1, true) ~= nil, true, npc:Describe())
 	local plain = Field({})

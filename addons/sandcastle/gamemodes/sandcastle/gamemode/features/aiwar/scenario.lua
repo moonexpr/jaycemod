@@ -30,6 +30,7 @@ local Explore = wartactics.explore
 local Teams = gameplay.teams
 local Class = core.class
 local Scenarios = wartactics.scenarios
+local Behaviors = nextsoldier.behaviors
 module(...)
 
 ALLOCATION_HOLD = 3 -- docs/aiwar-command.md §2.2
@@ -63,10 +64,11 @@ Scenarios.Shared:Register({ name = "ctf", priority = MODE_PRIORITY, mode = "ctf"
 Scenarios.Shared:Register({ name = "deathmatch", priority = MODE_PRIORITY, mode = "deathmatch", scenario = VARIANTS.deathmatch })
 Scenarios.Shared:Register({ name = "mvm", priority = MODE_PRIORITY, mode = "mvm", scenario = VARIANTS.mvm })
 
--- The registered scenarios, compiled: what the war decides from, made
--- once when it starts.
-function Compile()
-	return Scenarios.Shared:Compile()
+-- The registered scenarios, compiled against NextSoldier's compiled
+-- behaviours (each behaviour a scenario names must be among them): what the
+-- war decides from, made when it starts.
+function Compile(behaviors)
+	return Scenarios.Shared:Compile(behaviors)
 end
 
 -- The scenario entry compiled plays in context ({ mode, field }: never the
@@ -81,7 +83,7 @@ end
 -- standard objective, or no rounds at all, unless a registered scenario
 -- takes over.
 function For(modeName)
-	local _, class = Entry(Compile(), { mode = modeName })
+	local _, class = Entry(Compile(Behaviors.Shared:Compile()), { mode = modeName })
 	return class
 end
 

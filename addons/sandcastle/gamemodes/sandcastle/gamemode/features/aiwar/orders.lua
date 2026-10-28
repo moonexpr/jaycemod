@@ -1604,11 +1604,12 @@ local function ScenarioOf(state)
 	return state.war:Field().scenario
 end
 
--- ScenarioMonitor: runs the scenario's own monitor when it registered one,
--- else the member's side; begins again when the scenario changes.
+-- ScenarioMonitor: runs the scenario's own monitor when it registered one
+-- (by the name it was given NextSoldier under), else the member's side;
+-- begins again when the scenario changes.
 local ScenarioMonitor = PassthroughMonitor("ScenarioMonitor", function(state)
 	local scenario = ScenarioOf(state)
-	if scenario and scenario.monitor then return scenario.monitor:New(state) end
+	if scenario and scenario.monitor then return state.behaviors:Get(scenario.monitor):New(state) end
 	return SideFor(state)
 end)
 

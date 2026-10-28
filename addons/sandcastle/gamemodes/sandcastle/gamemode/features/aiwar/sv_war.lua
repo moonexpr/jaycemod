@@ -155,8 +155,8 @@ MAP_LACKS[Scenario.WAYPOINTS] = NO_NAV_MESH
 -- as a game's players are ready (RoundPlayersReady, ws/sh_aiwar.lua), so a
 -- late addon's registration plays in the game it comes before.
 function Controller:CompileRegistries()
-	self.scenarios = Scenario.Compile()
 	self.behaviors = Behaviors.Shared:Compile()
+	self.scenarios = Scenario.Compile(self.behaviors)
 end
 
 -- Starts the war at once and requests Gameplay mode, whose countdown
