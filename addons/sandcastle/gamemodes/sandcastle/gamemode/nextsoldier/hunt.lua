@@ -8,7 +8,8 @@
 -- Humiliated).
 --
 -- Subjects are opaque enemy handles; positions are { x, y, z } tables.
-local ipairs, pairs, setmetatable, sort = ipairs, pairs, setmetatable, table.sort
+local ipairs, setmetatable = ipairs, setmetatable
+local Expiring = cache.expiring
 local Teams = gameplay.teams
 local Distance = math.geometry.Distance
 local Select = list.select
@@ -38,14 +39,22 @@ end
 Board = {}
 Board.__index = Board
 
+-- A board is told the time by each report and each asking, and keeps each
+-- team's sightings in a cache that forgets them HUNT_MEMORY after the report.
 function Board.New()
-	return setmetatable({ seen = {} }, Board)
+	local board = setmetatable({ seen = {}, now = 0 }, Board)
+	board.clock = { Now = function() return board.now end }
+	return board
 end
 
 -- A soldier of `team` saw `subject` at `pos`.
 function Board:Report(team, subject, pos, now)
-	local seen = self.seen[team] or {}
-	self.seen[team] = seen
+	self.now = now
+	local seen = self.seen[team]
+	if not seen then
+		seen = Expiring.New({ clock = self.clock, term = HUNT_MEMORY })
+		self.seen[team] = seen
+	end
 	seen[subject] = {
 		subject = subject,
 		pos = pos,
@@ -56,16 +65,11 @@ end
 -- The team's sightings within HUNT_MEMORY, newest first; older ones are
 -- forgotten.
 function Board:Sightings(team, now)
-	local seen = self.seen[team] or {}
+	self.now = now
 	local list = {}
-	for subject, sighting in pairs(seen) do
-		if now - sighting.time <= HUNT_MEMORY then
-			list[#list + 1] = sighting
-		else
-			seen[subject] = nil
-		end
-	end
-	sort(list, function(a, b) return a.time > b.time end)
+	local seen = self.seen[team]
+	if not seen then return list end
+	for _, sighting in seen() do list[#list + 1] = sighting end
 	return list
 end
 

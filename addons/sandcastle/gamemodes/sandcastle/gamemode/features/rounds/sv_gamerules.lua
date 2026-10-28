@@ -15,10 +15,7 @@ local ROLE_NONE = 0 -- TEAM_ROLE_NONE
 
 -- The spawn doors of a stopped game ---------------------------------------------------
 
-local function Overlap(aMins, aMaxs, bMins, bMaxs)
-	return aMins.x <= bMaxs.x and bMins.x <= aMaxs.x and aMins.y <= bMaxs.y and bMins.y <= aMaxs.y
-		and aMins.z <= bMaxs.z and bMins.z <= aMaxs.z
-end
+local Overlap = math.box.Overlaps
 
 -- func_doors overlapped by a trigger_multiple whose filter is a
 -- filter_activator_tfteam, and those triggers.
@@ -230,6 +227,13 @@ end
 -- Allowing respawns again puts the dead back in the waves.
 function Controller:SetRespawnsDisabled(disabled)
 	if not self.round:SetRespawnsDisabled(disabled) then return end
+	self:RetellDead()
+end
+
+-- A helped team's share of its respawn wave (Help Other Team,
+-- ws/sv_handicap.lua); the dead hear their new wait.
+function Controller:SetWaveScale(t, scale)
+	self.round:SetWaveScale(t, scale)
 	self:RetellDead()
 end
 

@@ -20,6 +20,7 @@ const MAX_KEY: f64 = SPAN - 1.0;
 pub struct PairMap {
     keys: HashMap<u64, u32>,
     values: ValueSlots,
+    unordered: bool,
 }
 
 impl Native for PairMap {
@@ -28,8 +29,10 @@ impl Native for PairMap {
         &[(c"Get", pairmap_get), (c"Set", pairmap_set), (c"Size", pairmap_size), (c"Clear", pairmap_clear)];
 }
 
-/// The pair's one key, as the Lua twin's table holds it (-0 and 0 alike).
-fn pair_key(a: f64, b: f64) -> u64 {
+/// The pair's one key, as the Lua twin's table holds it (-0 and 0 alike); an unordered map puts the
+/// pair in order first.
+fn pair_key(unordered: bool, a: f64, b: f64) -> u64 {
+    let (a, b) = if unordered && a > b { (b, a) } else { (a, b) };
     (a * SPAN + b + 0.0).to_bits()
 }
 
@@ -39,10 +42,17 @@ unsafe extern "C-unwind" fn pairmap_new(l: L) -> c_int {
     1
 }
 
+unsafe extern "C-unwind" fn pairmap_unordered(l: L) -> c_int {
+    userdata::push(l, PairMap { unordered: true, ..PairMap::default() });
+    fresh_environment(l, -1);
+    1
+}
+
 unsafe extern "C-unwind" fn pairmap_get(l: L) -> c_int {
     let api = api();
     let (a, b) = ((api.checknumber)(l, 2), (api.checknumber)(l, 3));
-    match userdata::check::<PairMap>(l, 1).keys.get(&pair_key(a, b)) {
+    let map = userdata::check::<PairMap>(l, 1);
+    match map.keys.get(&pair_key(map.unordered, a, b)) {
         Some(&slot) => {
             ValueSlots::push(l, slot);
             1
@@ -65,7 +75,7 @@ unsafe extern "C-unwind" fn pairmap_set(l: L) -> c_int {
     (api().settop)(l, 4);
     let (a, b) = (pair_part(l, 2), pair_part(l, 3));
     let map = userdata::check::<PairMap>(l, 1);
-    let key = pair_key(a, b);
+    let key = pair_key(map.unordered, a, b);
     if let Some(old) = map.keys.remove(&key) {
         map.values.release(l, old);
     }
@@ -85,6 +95,71 @@ unsafe extern "C-unwind" fn pairmap_clear(l: L) -> c_int {
     map.keys.clear();
     map.values.clear(l);
     0
+}
+
+// world.bucket -----------------------------------------------------------------
+
+pub struct Bucket {
+    capacity: f64,
+    seconds: f64,
+    tokens: f64,
+    at: f64,
+}
+
+impl Native for Bucket {
+    const NAME: &'static CStr = c"foundation.world.bucket";
+    const METHODS: &'static [(&'static CStr, CFunction)] = &[(c"Take", bucket_take), (c"Tokens", bucket_tokens)];
+}
+
+impl Bucket {
+    /// Brings the tokens up to now, never past the capacity.
+    fn refill(&mut self, now: f64) -> f64 {
+        let tokens = self.tokens + (now - self.at) * self.capacity / self.seconds;
+        self.tokens = if tokens > self.capacity { self.capacity } else { tokens };
+        self.at = now;
+        self.tokens
+    }
+}
+
+unsafe extern "C-unwind" fn bucket_new(l: L) -> c_int {
+    let (capacity, seconds, now) = (number_at(l, 1), number_at(l, 2), number_at(l, 3));
+    match capacity {
+        Some(c) if c >= 1.0 => {}
+        _ => {
+            let given = tostring(l, 1);
+            raise_where(l, format!("a bucket's capacity is a number of at least 1, not {given}"));
+        }
+    }
+    match seconds {
+        Some(s) if s > 0.0 => {}
+        _ => {
+            let given = tostring(l, 2);
+            raise_where(l, format!("a bucket's seconds are a number above 0, not {given}"));
+        }
+    }
+    let Some(now) = now else {
+        let given = tostring(l, 3);
+        raise_where(l, format!("a bucket starts at a time, not {given}"));
+    };
+    let capacity = capacity.unwrap_or(1.0);
+    userdata::push(l, Bucket { capacity, seconds: seconds.unwrap_or(1.0), tokens: capacity, at: now });
+    1
+}
+
+unsafe extern "C-unwind" fn bucket_take(l: L) -> c_int {
+    let now = (api().checknumber)(l, 2);
+    let bucket = userdata::check::<Bucket>(l, 1);
+    let tokens = bucket.refill(now);
+    if tokens < 1.0 {
+        return boolean(l, false);
+    }
+    bucket.tokens = tokens - 1.0;
+    boolean(l, true)
+}
+
+unsafe extern "C-unwind" fn bucket_tokens(l: L) -> c_int {
+    let now = (api().checknumber)(l, 2);
+    number(l, userdata::check::<Bucket>(l, 1).refill(now))
 }
 
 // world.lease ------------------------------------------------------------------
@@ -387,6 +462,89 @@ unsafe extern "C-unwind" fn grid_thin(l: L) -> c_int {
     1
 }
 
+/// world.grid.Spread(items, spacing[, limit[, position]]) -> the items, in order, that are not within
+/// spacing of one kept before them
+unsafe extern "C-unwind" fn grid_spread(l: L) -> c_int {
+    scan(l, false)
+}
+
+/// world.grid.Isolated(items, spacing[, limit[, position]]) -> the items, in order, with no item
+/// before them in the list within spacing, kept or not (TF2's SelectSeparatedShuffleSet)
+unsafe extern "C-unwind" fn grid_isolated(l: L) -> c_int {
+    scan(l, true)
+}
+
+/// The scan both share; `everyone`: every item seen is remembered for the next, not only those kept.
+unsafe fn scan(l: L, everyone: bool) -> c_int {
+    let api = api();
+    let spacing = cell_size(l, 2);
+    (api.checktype)(l, 1, TTABLE);
+    let limit = if absent(l, 3) {
+        None
+    } else {
+        match number_at(l, 3).filter(|n| *n >= 0.0 && (n.fract() == 0.0 || n.is_infinite())) {
+            Some(n) => Some(n as usize),
+            None => {
+                let given = tostring(l, 3);
+                raise_where(l, format!("a spread's limit is a whole number of at least 0, not {given}"));
+            }
+        }
+    };
+    let position = if absent(l, 4) {
+        None
+    } else {
+        (api.checktype)(l, 4, crate::lua::TFUNCTION);
+        Some(4)
+    };
+    let mut cells: HashMap<(i64, i64), Vec<[f64; 3]>> = HashMap::new();
+    let mut places: Vec<c_int> = Vec::new();
+    let mut place: c_int = 0;
+    let mut done = limit == Some(0);
+    each_item(l, 1, |l, item| {
+        place += 1;
+        if done {
+            return;
+        }
+        let at = match position {
+            None => super::math::point_at(l, item),
+            Some(f) => {
+                (api.pushvalue)(l, f);
+                (api.pushvalue)(l, item);
+                (api.call)(l, 1, 1);
+                let at = super::math::point_at(l, (api.gettop)(l));
+                (api.settop)(l, item);
+                at
+            }
+        };
+        let cell = ((at[0] / spacing).floor() as i64, (at[1] / spacing).floor() as i64);
+        let crowded = (-1..=1).any(|dx| {
+            (-1..=1).any(|dy| {
+                cells.get(&(cell.0 + dx, cell.1 + dy)).is_some_and(|list| {
+                    list.iter().any(|o| {
+                        let (ox, oy, oz) = (at[0] - o[0], at[1] - o[1], at[2] - o[2]);
+                        (ox * ox + oy * oy + oz * oz).sqrt() < spacing
+                    })
+                })
+            })
+        });
+        if everyone || !crowded {
+            cells.entry(cell).or_default().push(at);
+        }
+        if !crowded {
+            places.push(place);
+            if limit.is_some_and(|n| places.len() >= n) {
+                done = true;
+            }
+        }
+    });
+    (api.createtable)(l, places.len() as c_int, 0);
+    for (i, p) in places.iter().enumerate() {
+        (api.rawgeti)(l, 1, *p);
+        (api.rawseti)(l, -2, i as c_int + 1);
+    }
+    1
+}
+
 // world.sets --------------------------------------------------------------------
 
 /// A named set: env.name, env.list (the members in order), env.has.
@@ -657,13 +815,15 @@ unsafe extern "C-unwind" fn sets_sorted(l: L) -> c_int {
 /// Pushes the world namespace's native modules into the table at the top.
 pub unsafe fn push_modules(l: L) {
     let api = api();
-    module::push(l, &[(c"New", pairmap_new)], None);
+    module::push(l, &[(c"New", bucket_new)], None);
+    (api.setfield)(l, -2, c"bucket".as_ptr());
+    module::push(l, &[(c"New", pairmap_new), (c"Unordered", pairmap_unordered)], None);
     (api.pushnumber)(l, MAX_KEY);
     (api.setfield)(l, -2, c"MAX_KEY".as_ptr());
     (api.setfield)(l, -2, c"pairmap".as_ptr());
     module::push(l, &[(c"New", lease_new)], None);
     (api.setfield)(l, -2, c"lease".as_ptr());
-    module::push(l, &[(c"New", grid_new), (c"Thin", grid_thin)], None);
+    module::push(l, &[(c"New", grid_new), (c"Thin", grid_thin), (c"Spread", grid_spread), (c"Isolated", grid_isolated)], None);
     (api.setfield)(l, -2, c"grid".as_ptr());
     module::push(
         l,
@@ -682,4 +842,4 @@ pub unsafe fn push_modules(l: L) {
     (api.setfield)(l, -2, c"sets".as_ptr());
 }
 
-pub const NAMES: &[&CStr] = &[c"pairmap", c"lease", c"grid", c"sets"];
+pub const NAMES: &[&CStr] = &[c"pairmap", c"lease", c"grid", c"sets", c"bucket"];

@@ -65,6 +65,8 @@ local Combat = gameplay.combat
 local Players = gameplay.players
 local Teams = gameplay.teams
 local Select = list.select
+local Grid = world.grid
+local Choice = math.choice
 local Remap = math.scalar.Remap
 local atan2, cos, deg, floor, huge, max, min, rad, sin = math.atan2, math.cos, math.deg, math.floor, math.huge, math.max, math.min, math.rad, math.sin
 local ipairs = ipairs
@@ -694,29 +696,15 @@ local function OnDisguise(state, me)
 	state.toReveal = me:RandomInt(fewest, count)
 end
 
+-- Merasmus's dice as the random source the formalisms take.
+local function Dice(me)
+	return function(low, high) return me:RandomInt(low, high) end
+end
+
 -- SelectSeparatedShuffleSet: shuffled, then each kept unless it is near an
 -- area before it in the shuffle (kept or not).
 local function SeparatedShuffle(me, areas, maxCount, minSeparation)
-	local shuffled = {}
-	for i, area in ipairs(areas) do shuffled[i] = area end
-	local n = #shuffled
-	while n > 1 do
-		local k = me:RandomInt(1, n)
-		shuffled[n], shuffled[k] = shuffled[k], shuffled[n]
-		n = n - 1
-	end
-	local kept = {}
-	for i, area in ipairs(shuffled) do
-		local near = false
-		for j = 1, i - 1 do
-			if (area - shuffled[j]):Length() < minSeparation then near = true end
-		end
-		if not near then
-			kept[#kept + 1] = area
-			if #kept >= maxCount then break end
-		end
-	end
-	return kept
+	return Grid.Isolated(Choice.Shuffle(areas, Dice(me)), minSeparation, maxCount)
 end
 
 -------------------------------------------------------------------------------
@@ -1088,14 +1076,7 @@ local function CollectTargets(me, range, count)
 			candidates[#candidates + 1] = ply
 		end
 	end
-	local targets = {}
-	while #candidates > 0 and #targets ~= count do
-		local which = me:RandomInt(1, #candidates)
-		targets[#targets + 1] = candidates[which]
-		candidates[which] = candidates[#candidates]
-		candidates[#candidates] = nil
-	end
-	return targets
+	return Choice.Draw(candidates, count, Dice(me))
 end
 
 -- CastSpell: set alight, flung up, hurt more the closer to my eyes, and a
@@ -1450,10 +1431,10 @@ end
 local function NameKillers(state, me)
 	if state.spawnedByCheats then return end
 	local now, level = me:Now(), Level(me)
-	for _, known in ipairs(state.attackers) do
-		if me:IsTargetValid(known.attacker) and now - known.at < KILLER_WINDOW then
+	for attacker, at in state.attackers() do
+		if me:IsTargetValid(attacker) and now - at < KILLER_WINDOW then
 			me:FireGameEvent(BossEvents.MERASMUS_KILLER, {
-				player = known.attacker,
+				player = attacker,
 				level = level,
 			})
 		end

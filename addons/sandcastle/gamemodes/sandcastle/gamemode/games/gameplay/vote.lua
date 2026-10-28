@@ -18,6 +18,7 @@
 local PlayMode = system.play_mode
 local Transaction = transaction
 local Sets = world.sets
+local Teams = gameplay.teams
 local ceil, error, format, ipairs, pairs, remove, tostring, type = math.ceil, error, string.format, ipairs, pairs, table.remove, tostring, type
 module(...)
 
@@ -57,6 +58,9 @@ NOT_VOTER = "not a voter"
 ALREADY_VOTED = "already voted"
 NO_VOTE = "no vote"
 NOT_A_CHOICE = "not a choice"
+ALREADY_SUPPORTED = "already supported"
+NOT_ON_TEAM = "not on a team"
+SAME_DIFFICULTY = "same difficulty"
 
 -- The refusals that are the player's mistake.
 PLAYER = {
@@ -71,11 +75,32 @@ PLAYER = {
 	[ALREADY_VOTED] = true,
 	[NO_VOTE] = true,
 	[NOT_A_CHOICE] = true,
+	[ALREADY_SUPPORTED] = true,
+	[NOT_ON_TEAM] = true,
+	[SAME_DIFFICULTY] = true,
 }
 
 -- Why a vote failed (GameUI_vote_failed_quorum and _yesno).
 FAILED_QUORUM = "Not enough players voted."
 FAILED_YES = "Not enough players voted \"Yes.\""
+
+-- The soldiers' difficulty levels a difficulty vote names, in tf_bot_difficulty's
+-- order (0 easy ... 3 expert).
+DIFFICULTIES = { "easy", "normal", "hard", "expert" }
+
+-- A level's tf_bot_difficulty value, or nil for a name that is not one.
+function DifficultyLevel(name)
+	for i, level in ipairs(DIFFICULTIES) do
+		if level == name then return i - 1 end
+	end
+	return nil
+end
+
+-- The team a support vote by a member of `own` helps.
+local OTHER_TEAM = {
+	[Teams.RED] = Teams.BLUE,
+	[Teams.BLUE] = Teams.RED,
+}
 
 local KIND = Sets.Named("vote kind", {
 	KIND_KICK,
@@ -124,8 +149,11 @@ local function Start(book, kind, subject, caller, now, facts, leavingOut)
 end
 
 -- req = { caller, kind, subject }; facts = { electorate, mode, enabled
--- (kind -> true), duration, cooldown, scramblePending }. The vote, or a
--- refusal.
+-- (kind -> true), duration, cooldown, scramblePending }, and for a support
+-- vote teams (voter -> team) and supported (the team helped, or
+-- Teams.UNASSIGNED), for a difficulty vote difficulty (the level set). A
+-- support vote is about the caller's other team, and only the caller's team
+-- votes. The vote, or a refusal.
 function Call(book, req, now, facts)
 	local kind = req.kind
 	KIND:Check(kind)
@@ -134,12 +162,31 @@ function Call(book, req, now, facts)
 	if not facts.enabled[kind] then Transaction.Refuse(DISABLED, "Server has disabled that issue.") end
 	if NEEDS_ROUNDS[kind] and PlayMode.IsSandbox(facts.mode) then Transaction.Refuse(MODE, "This vote needs a game running.") end
 	if kind == KIND_SCRAMBLE and facts.scramblePending then Transaction.Refuse(SCRAMBLE_PENDING, "Teams are already set to be scrambled.") end
+	local subject = req.subject
+	if kind == KIND_DIFFICULTY then
+		if DifficultyLevel(subject) == nil then Transaction.Refuse(NOT_A_CHOICE, "That is not a difficulty.") end
+		if subject == facts.difficulty then Transaction.Refuse(SAME_DIFFICULTY, "The soldiers are already set to " .. subject .. ".") end
+	end
+	if kind == KIND_SUPPORT then
+		local own = facts.teams[req.caller]
+		subject = OTHER_TEAM[own]
+		if subject == nil then Transaction.Refuse(NOT_ON_TEAM, "Join a team to call this vote.") end
+		if facts.supported == subject then Transaction.Refuse(ALREADY_SUPPORTED, "That team is already being helped.") end
+		local team = {}
+		for _, voter in ipairs(facts.electorate) do
+			if facts.teams[voter] == own then team[#team + 1] = voter end
+		end
+		local narrowed = {}
+		for k, v in pairs(facts) do narrowed[k] = v end
+		narrowed.electorate = team
+		facts = narrowed
+	end
 	local last = book.calledAt[req.caller]
 	if last ~= nil and now - last < facts.cooldown then
 		Transaction.Refuse(COOLDOWN, format("You cannot call a vote for %d seconds.", ceil(facts.cooldown - (now - last))))
 	end
 	book.calledAt[req.caller] = now
-	return Start(book, kind, req.subject, req.caller, now, facts, nil)
+	return Start(book, kind, subject, req.caller, now, facts, nil)
 end
 
 -- Reports reached the count against target: their kick vote now, or nil

@@ -31,6 +31,8 @@ local require = require
 local NpcSystem = npc.nextbot
 local Teams = gameplay.teams
 local ipairs = ipairs
+local Lru = cache.lru
+local Window = list.window
 module(...)
 
 -- HalloweenBossType
@@ -38,6 +40,7 @@ BOSS_INVALID, BOSS_HHH, BOSS_MONOCULUS, BOSS_MERASMUS = 0, 1, 2, 3
 
 KIND = "boss"
 DPS_WINDOW = 5 -- UpdateDamagePerSecond's windowDuration
+ATTACKERS_KEPT = 128 -- more than any server has players
 SPAWN_HEIGHT = 10 -- SpawnBossAtPos lifts the boss this far
 
 -- SpawnBossAtPos's entity class per boss type.
@@ -78,34 +81,14 @@ end
 -- RememberAttacker: every hit counts towards the DPS; each attacker is kept
 -- once, with the time of its latest hit.
 function RememberAttacker(state, attacker, damage, now)
-	state.samples[#state.samples + 1] = {
-		damage = damage,
-		at = now,
-	}
-	for _, known in ipairs(state.attackers) do
-		if known.attacker == attacker then
-			known.at = now
-			return
-		end
-	end
-	state.attackers[#state.attackers + 1] = {
-		attacker = attacker,
-		at = now,
-	}
+	state.samples:Add(now, damage)
+	state.attackers[attacker] = now
 end
 
 -- UpdateDamagePerSecond: the damage no older than the window, per second.
 -- Older samples are dropped, since they never count again.
 function UpdateDamagePerSecond(state, now)
-	local kept, total = {}, 0
-	for _, sample in ipairs(state.samples) do
-		if now - sample.at <= DPS_WINDOW then
-			kept[#kept + 1] = sample
-			total = total + sample.damage
-		end
-	end
-	state.samples = kept
-	state.dps = total / DPS_WINDOW
+	state.dps = state.samples:Sum(now) / DPS_WINDOW
 	if state.dps > state.maxDps then state.maxDps = state.dps end
 end
 
@@ -165,8 +148,8 @@ local function NewState(boss, config, me)
 		convars = config.convars,
 		spawnedByCheats = config.cheats == true, -- m_wasSpawnedByCheats: sv_cheats was on
 		level = boss.Level and boss.Level(me) or 0,
-		attackers = {},
-		samples = {},
+		attackers = Lru.New({ capacity = ATTACKERS_KEPT }), -- attacker -> the time of its latest hit
+		samples = Window.New(DPS_WINDOW), -- the damage of each hit, by the time of it
 		dps = 0,
 		maxDps = 0,
 	}

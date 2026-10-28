@@ -6,7 +6,7 @@ T.test("each hit sound effect is TF2's sound for it", function()
 	T.eq(HitSound.Sound(0, ""), "Player.HitSoundDefaultDing", "Default")
 	T.eq(HitSound.Sound(1, ""), "Player.HitSoundElectro", "Electro")
 	T.eq(HitSound.Sound(8, ""), "Player.HitSoundSquasher", "Squasher")
-	T.eq(#HitSound.EFFECTS, 9, "Default to Squasher")
+	T.eq(HitSound.EFFECTS:Count(), 9, "Default to Squasher")
 end)
 
 T.test("a wav override plays in place of the effect", function()
@@ -38,6 +38,16 @@ T.test("a hit sound's files: a soundscript's one or many, or a path as itself", 
 	T.eq(table.concat(HitSound.Files("Player.HitSoundNotes", { "ui/hitsound_menu_note1.wav", "ui/hitsound_menu_note2.wav" }), " "),
 		"ui/hitsound_menu_note1.wav ui/hitsound_menu_note2.wav", "many")
 	T.eq(table.concat(HitSound.Files("ui/my_ding.wav", nil), " "), "ui/my_ding.wav", "an override, no soundscript")
+end)
+
+T.test("the effects are an enumeration from 0: the convar's help text, its bounds and the menu's labels", function()
+	local effects = HitSound.EFFECTS
+	T.eq(tostring(effects), "0 Default, 1 Electro, 2 Notes, 3 Percussion, 4 Retro, 5 Space, 6 Beepo, 7 Vortex, 8 Squasher", "the help text")
+	T.eq(effects:First(), 0, "the lowest")
+	T.eq(effects:Last(), 8, "the highest")
+	T.eq(HitSound.Label(effects:Last()), "Squasher", "a menu label")
+	T.eq(HitSound.Label(0), "Default", "the first")
+	T.eq(pcall(HitSound.Sound, 9, ""), false, "an effect past the last is refused")
 end)
 
 T.finish()

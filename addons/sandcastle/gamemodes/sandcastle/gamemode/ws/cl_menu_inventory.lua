@@ -1,3 +1,8 @@
+-- Disabled for demo
+if true then
+	return
+end
+
 -- The spawn menu's Store tab: one grid of icon tiles, everything on sale and
 -- every player model, icons first and text second, as TF2's loadout and
 -- GMod's spawn icons show items. A tile carries its slot badge, its name,
@@ -21,26 +26,30 @@ local TAB_ORDER = -30 -- after Loadout (-40), ahead of Sandbox's Spawnlists (-10
 local FAVORITES_COOKIE = "sandcastle_store_favorites"
 local FAVORITE_SEP = "\n"
 
-local GAP = 8
-local TILE = 112
-local BADGE = 18
-local HEART = 16
-local PAD = 4
-local TIP_W = 280
-local TIP_OFFSET = 16
+local LAYOUT = core.constants.New("inventory layout", {
+	GAP = 8,
+	TILE = 112,
+	BADGE = 18,
+	HEART = 16,
+	PAD = 4,
+	TIP_W = 280,
+	TIP_OFFSET = 16,
+})
 
-local NAME_COLOR = Color(255, 215, 0) -- TF2's unique quality
-local TIP_BACK = Color(43, 39, 36)
-local TIP_BORDER = Color(92, 84, 76)
-local TIP_TEXT = Color(235, 226, 202)
-local TIP_DESC = Color(200, 191, 168)
-local TIP_REFUSED = Color(255, 64, 64)
-local PRICE_BACK = Color(143, 191, 74)
-local PRICE_TEXT = Color(16, 20, 12)
-local PRICE_DIM = Color(58, 58, 68)
-local OWNED_DIM = Color(255, 255, 255, 140)
-local UNAFFORDABLE = Color(120, 120, 120, 140)
-local HEART_OFF = Color(255, 255, 255, 110)
+local COLOR = core.constants.New("inventory colors", {
+	NAME_COLOR = Color(255, 215, 0), -- TF2's unique quality
+	TIP_BACK = Color(43, 39, 36),
+	TIP_BORDER = Color(92, 84, 76),
+	TIP_TEXT = Color(235, 226, 202),
+	TIP_DESC = Color(200, 191, 168),
+	TIP_REFUSED = Color(255, 64, 64),
+	PRICE_BACK = Color(143, 191, 74),
+	PRICE_TEXT = Color(16, 20, 12),
+	PRICE_DIM = Color(58, 58, 68),
+	OWNED_DIM = Color(255, 255, 255, 140),
+	UNAFFORDABLE = Color(120, 120, 120, 140),
+	HEART_OFF = Color(255, 255, 255, 110),
+})
 
 local KIND_TYPE = {
 	[Loadout.KIND_PRIMARY] = "Primary weapon",
@@ -131,7 +140,7 @@ UI.Define("StoreTip", "DPanel", {
 		self:SetDrawOnTop(true)
 		self:SetMouseInputEnabled(false)
 		self:SetVisible(false)
-		self:SetWide(TIP_W)
+		self:SetWide(LAYOUT.TIP_W)
 	end,
 	Show = function(self, lines, x, y)
 		self.lines = lines
@@ -139,23 +148,23 @@ UI.Define("StoreTip", "DPanel", {
 		local h = THEME.padding * 2
 		for _, line in ipairs(lines) do h = h + (line.gap or 0) + select(2, surface.GetTextSize(line.text)) end
 		self:SetTall(h)
-		local sx = x + TIP_OFFSET
-		if sx + TIP_W > ScrW() then sx = x - TIP_OFFSET - TIP_W end
+		local sx = x + LAYOUT.TIP_OFFSET
+		if sx + LAYOUT.TIP_W > ScrW() then sx = x - LAYOUT.TIP_OFFSET - LAYOUT.TIP_W end
 		self:SetPos(sx, math.min(y, ScrH() - h))
 		self:SetVisible(true)
 	end,
 	Paint = function(self, w, h)
-		surface.SetDrawColor(TIP_BORDER)
+		surface.SetDrawColor(COLOR.TIP_BORDER)
 		surface.DrawRect(0, 0, w, h)
-		surface.SetDrawColor(TIP_BACK)
+		surface.SetDrawColor(COLOR.TIP_BACK)
 		surface.DrawRect(2, 2, w - 4, h - 4)
 		local y = THEME.padding
 		for _, line in ipairs(self.lines or {}) do
 			y = y + (line.gap or 0)
 			local x = THEME.padding
 			if line.badge then
-				UI.SlotBadge(line.badge, x, y + 1, BADGE - 4, line.color, TIP_BACK)
-				x = x + BADGE
+				UI.SlotBadge(line.badge, x, y + 1, LAYOUT.BADGE - 4, line.color, COLOR.TIP_BACK)
+				x = x + LAYOUT.BADGE
 			end
 			local _, th = draw.SimpleText(line.text, line.font or THEME.bodyFont, x, y, line.color)
 			y = y + th
@@ -166,30 +175,30 @@ UI.Define("StoreTip", "DPanel", {
 UI.Define("StoreTile", "DButton", {
 	Init = function(self)
 		self:SetText("")
-		self:SetSize(TILE, TILE)
+		self:SetSize(LAYOUT.TILE, LAYOUT.TILE)
 		self.heart = vgui.Create("DImageButton", self)
 		self.heart:SetImage("icon16/heart.png")
-		self.heart:SetSize(HEART, HEART)
+		self.heart:SetSize(LAYOUT.HEART, LAYOUT.HEART)
 	end,
 	PerformLayout = function(self, w, h)
-		self.heart:SetPos(w - HEART - PAD, h - HEART - PAD)
+		self.heart:SetPos(w - LAYOUT.HEART - LAYOUT.PAD, h - LAYOUT.HEART - LAYOUT.PAD)
 		if IsValid(self.icon) then self.icon:SetSize(w, h) end
 	end,
 	SetItem = function(self, item, owned, affordable, onFavorite)
 		self.item, self.owned, self.affordable = item, owned, affordable
 		if IsValid(self.icon) then self.icon:Remove() end
 		if item.weapon then
-			self.icon = WS.WeaponIcon(self, item.weapon, TILE)
-			self.icon:SetImageColor(owned and OWNED_DIM or (affordable and color_white or UNAFFORDABLE))
+			self.icon = WS.WeaponIcon(self, item.weapon, LAYOUT.TILE)
+			self.icon:SetImageColor(owned and COLOR.OWNED_DIM or (affordable and color_white or COLOR.UNAFFORDABLE))
 		else
 			self.icon = vgui.Create("SpawnIcon", self)
 			self.icon:SetModel(item.path)
 		end
 		self.icon:SetMouseInputEnabled(false)
 		self.icon:SetPos(0, 0)
-		self.icon:SetSize(TILE, TILE)
+		self.icon:SetSize(LAYOUT.TILE, LAYOUT.TILE)
 		self.icon:MoveToBack()
-		self.heart:SetColor(item.favorite and color_white or HEART_OFF)
+		self.heart:SetColor(item.favorite and color_white or COLOR.HEART_OFF)
 		self.heart.DoClick = onFavorite
 	end,
 	Paint = function(self, w, h)
@@ -204,32 +213,32 @@ UI.Define("StoreTile", "DButton", {
 			surface.SetDrawColor(THEME.border)
 			surface.DrawOutlinedRect(0, 0, w, h, 2)
 		end
-		if item.kind then UI.SlotBadge(item.kind, PAD, PAD, BADGE, color_white, THEME.background) end
-		draw.SimpleTextOutlined(item.name, THEME.bodyFont, PAD + 2, h - PAD, color_white, TEXT_ALIGN_LEFT, TEXT_ALIGN_BOTTOM, 1, color_black)
+		if item.kind then UI.SlotBadge(item.kind, LAYOUT.PAD, LAYOUT.PAD, LAYOUT.BADGE, color_white, THEME.background) end
+		draw.SimpleTextOutlined(item.name, THEME.bodyFont, LAYOUT.PAD + 2, h - LAYOUT.PAD, color_white, TEXT_ALIGN_LEFT, TEXT_ALIGN_BOTTOM, 1, color_black)
 		if not item.weapon then return end
 		if self.owned then
-			draw.SimpleText("✓", THEME.titleFont, w - PAD - 2, PAD, color_white, TEXT_ALIGN_RIGHT)
+			draw.SimpleText("✓", THEME.titleFont, w - LAYOUT.PAD - 2, LAYOUT.PAD, color_white, TEXT_ALIGN_RIGHT)
 			return
 		end
 		local price = Economy.Format(item.weapon.price)
 		surface.SetFont(THEME.bodyFont)
 		local tw, th = surface.GetTextSize(price)
-		surface.SetDrawColor(self.affordable and PRICE_BACK or PRICE_DIM)
-		surface.DrawRect(w - tw - PAD * 3, PAD, tw + PAD * 2, th)
-		draw.SimpleText(price, THEME.bodyFont, w - PAD * 2, PAD, self.affordable and PRICE_TEXT or THEME.muted, TEXT_ALIGN_RIGHT)
+		surface.SetDrawColor(self.affordable and COLOR.PRICE_BACK or COLOR.PRICE_DIM)
+		surface.DrawRect(w - tw - LAYOUT.PAD * 3, LAYOUT.PAD, tw + LAYOUT.PAD * 2, th)
+		draw.SimpleText(price, THEME.bodyFont, w - LAYOUT.PAD * 2, LAYOUT.PAD, self.affordable and COLOR.PRICE_TEXT or THEME.muted, TEXT_ALIGN_RIGHT)
 	end,
 })
 
 UI.Define("StoreMenu", "DPanel", {
 	Init = function(self)
-		self:DockPadding(GAP, GAP, GAP, GAP)
+		self:DockPadding(LAYOUT.GAP, LAYOUT.GAP, LAYOUT.GAP, LAYOUT.GAP)
 		self.balance = UI.Title(self, "")
 		self.scroll = vgui.Create("DScrollPanel", self)
 		self.scroll:Dock(FILL)
 		self.grid = self.scroll:Add("DIconLayout")
 		self.grid:Dock(TOP)
-		self.grid:SetSpaceX(GAP)
-		self.grid:SetSpaceY(GAP)
+		self.grid:SetSpaceX(LAYOUT.GAP)
+		self.grid:SetSpaceY(LAYOUT.GAP)
 		self.tip = vgui.Create(UI.Name("StoreTip"))
 		hook.Add("WSLoadoutChanged", self, function() self:Refresh() end)
 		self:Refresh()
@@ -262,15 +271,15 @@ UI.Define("StoreMenu", "DPanel", {
 			{
 				text = item.name,
 				font = THEME.titleFont,
-				color = NAME_COLOR,
+				color = COLOR.NAME_COLOR,
 			},
 		}
 		if not item.weapon then
 			lines[#lines + 1] = { text = "Player model · Free", color = THEME.muted }
 			lines[#lines + 1] = {
 				text = "Click to wear it from your next spawn.",
-				color = TIP_TEXT,
-				gap = GAP,
+				color = COLOR.TIP_TEXT,
+				gap = LAYOUT.GAP,
 			}
 			return lines
 		end
@@ -283,28 +292,28 @@ UI.Define("StoreMenu", "DPanel", {
 		for i, stat in ipairs(StatLines(weapon)) do
 			lines[#lines + 1] = {
 				text = stat,
-				color = TIP_TEXT,
-				gap = i == 1 and GAP or 0,
+				color = COLOR.TIP_TEXT,
+				gap = i == 1 and LAYOUT.GAP or 0,
 			}
 		end
 		local details = WS.WeaponDetails[weapon.class]
 		if details then
 			lines[#lines + 1] = {
 				text = details.description,
-				color = TIP_DESC,
-				gap = GAP,
+				color = COLOR.TIP_DESC,
+				gap = LAYOUT.GAP,
 			}
 		end
-		local action, color = "Click to buy · ♥ to keep it first", TIP_TEXT
+		local action, color = "Click to buy · ♥ to keep it first", COLOR.TIP_TEXT
 		if tile.owned then
 			action = "Owned. Equip it in Loadout."
 		elseif not tile.affordable then
-			action, color = "Not enough money.", TIP_REFUSED
+			action, color = "Not enough money.", COLOR.TIP_REFUSED
 		end
 		lines[#lines + 1] = {
 			text = action,
 			color = color,
-			gap = GAP,
+			gap = LAYOUT.GAP,
 		}
 		return lines
 	end,

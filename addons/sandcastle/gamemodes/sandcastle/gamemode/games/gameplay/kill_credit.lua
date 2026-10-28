@@ -5,7 +5,8 @@
 -- suicide, "finished off"). The victim of such a death respawns sooner
 -- (CREDITED_RESPAWN). The controller (ws/sv_kill_credit.lua) records the
 -- hits and rewrites the lethal one's attacker.
-local floor, ipairs, setmetatable = math.floor, ipairs, setmetatable
+local floor, setmetatable = math.floor, setmetatable
+local Lru = cache.lru
 module(...)
 
 HISTORY = 4 -- MAX_ACHIEVEMENT_HISTORY_SLOTS
@@ -35,32 +36,27 @@ end
 local History = {}
 History.__index = History
 
--- The damagers a victim remembers, the latest first, each once.
+-- The damagers a victim remembers, the latest first, each once: a cache of
+-- the time of each one's latest hit, HISTORY of them.
 function Damagers()
-	return setmetatable({ list = {} }, History)
+	return setmetatable({ hits = Lru.New({ capacity = HISTORY }) }, History)
 end
 
 function History:Record(damager, now)
-	local kept = { { damager = damager, at = now } }
-	for _, entry in ipairs(self.list) do
-		if entry.damager ~= damager and #kept < HISTORY then kept[#kept + 1] = entry end
-	end
-	self.list = kept
+	self.hits[damager] = now
 end
 
 -- The latest damager who hit within the last within seconds, other than
 -- skip (the one credited, asking for an assister), or nil.
 function History:Recent(now, within, skip)
-	for _, entry in ipairs(self.list) do
-		if now - entry.at > within then return nil end
-		if entry.damager ~= skip then return entry.damager end
+	for damager, at in self.hits() do
+		if now - at > within then return nil end
+		if damager ~= skip then return damager end
 	end
 	return nil
 end
 
 -- The damagers held, the latest first.
 function History:Held()
-	local held = {}
-	for i, entry in ipairs(self.list) do held[i] = entry.damager end
-	return held
+	return self.hits:Keys()
 end

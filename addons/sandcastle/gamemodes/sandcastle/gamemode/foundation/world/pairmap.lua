@@ -4,6 +4,8 @@
 -- share a key and a lookup builds no string.
 --   New(), map:Get(a, b), map:Set(a, b, value) (nil removes), map:Size(),
 --   map:Clear()
+--   Unordered() -> the same, for an unordered pair: (a, b) and (b, a) are
+--     one pair (a link seen from either end)
 -- Set refuses a key that is no whole number in 0..MAX_KEY; Get, on hot
 -- paths, takes the same keys unchecked.
 -- This is the Lua twin, which clients run; a server with native/foundation
@@ -31,9 +33,7 @@ function PairMap:Get(a, b)
 	return self.values[a * SPAN + b]
 end
 
-function PairMap:Set(a, b, value)
-	Check(a)
-	Check(b)
+local function Put(self, a, b, value)
 	local key = a * SPAN + b
 	local had = self.values[key] ~= nil
 	self.values[key] = value
@@ -44,10 +44,35 @@ function PairMap:Set(a, b, value)
 	end
 end
 
+function PairMap:Set(a, b, value)
+	Check(a)
+	Check(b)
+	Put(self, a, b, value)
+end
+
 function PairMap:Size()
 	return self.size
 end
 
 function PairMap:Clear()
 	self.values, self.size = {}, 0
+end
+
+local UnorderedMap = setmetatable({}, { __index = PairMap })
+UnorderedMap.__index = UnorderedMap
+
+function UnorderedMap:Get(a, b)
+	if a > b then a, b = b, a end
+	return self.values[a * SPAN + b]
+end
+
+function UnorderedMap:Set(a, b, value)
+	Check(a)
+	Check(b)
+	if a > b then a, b = b, a end
+	Put(self, a, b, value)
+end
+
+function Unordered()
+	return setmetatable({ values = {}, size = 0 }, UnorderedMap)
 end

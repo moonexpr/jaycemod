@@ -5,7 +5,8 @@
 --
 -- Bodies are handles (the controller's entities), kept by team and class,
 -- and a wave takes the oldest of the class it drafts.
-local huge, ipairs, pairs, remove, setmetatable = math.huge, ipairs, pairs, table.remove, setmetatable
+local huge, pairs, setmetatable = math.huge, pairs, setmetatable
+local Queue = list.queue
 module(...)
 
 -- Whether a fallen soldier is kept: revives on (enabled), drafted by the
@@ -20,7 +21,7 @@ Reserve.__index = Reserve
 
 function New()
 	return setmetatable({
-		byTeam = {}, -- team -> class -> handles, oldest first
+		byTeam = {}, -- team -> class -> a queue of handles, oldest first
 		kept = {}, -- handle -> true
 	}, Reserve)
 end
@@ -30,16 +31,16 @@ function Reserve:Keep(handle, team, class)
 	self.kept[handle] = true
 	local classes = self.byTeam[team] or {}
 	self.byTeam[team] = classes
-	local list = classes[class] or {}
-	classes[class] = list
-	list[#list + 1] = handle
+	local queue = classes[class] or Queue.New()
+	classes[class] = queue
+	queue:PushBack(handle)
 end
 
 -- The oldest kept body of the team and class, no longer kept, or nil.
 function Reserve:Take(team, class)
-	local list = self.byTeam[team] and self.byTeam[team][class]
-	while list and #list > 0 do
-		local handle = remove(list, 1)
+	local queue = self.byTeam[team] and self.byTeam[team][class]
+	while queue and queue:Size() > 0 do
+		local handle = queue:PopFront()
 		if self.kept[handle] then
 			self.kept[handle] = nil
 			return handle
@@ -55,8 +56,8 @@ end
 
 function Reserve:Count(team)
 	local n = 0
-	for _, list in pairs(self.byTeam[team] or {}) do
-		for _, handle in ipairs(list) do
+	for _, queue in pairs(self.byTeam[team] or {}) do
+		for _, handle in queue:Values() do
 			if self.kept[handle] then n = n + 1 end
 		end
 	end

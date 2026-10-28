@@ -1,0 +1,63 @@
+-- foundation.list.window: numbers added with the time they happened, summed
+-- over the last `span` seconds.
+local T = dofile("tests/harness.lua")
+local Window = list.window
+
+T.test("a window sums what was added within its span of now, the edge included", function()
+	local window = Window.New(5)
+	window:Add(1, 10)
+	window:Add(3, 20)
+	window:Add(6, 30)
+	T.eq(window:Sum(6), 60, "all three: 1 is exactly 5 old")
+	T.eq(window:Sum(6.5), 50, "1 has aged out")
+	T.eq(window:Sum(8), 50, "3 is exactly 5 old")
+	T.eq(window:Sum(8.1), 30, "3 has aged out")
+	T.eq(window:Sum(20), 0, "all aged out")
+	T.eq(window:Size(), 0, "and let go")
+end)
+
+T.test("Count and Size follow what is held", function()
+	local window = Window.New(2)
+	window:Add(0, 1)
+	window:Add(1, 1)
+	window:Add(2, 1)
+	T.eq(window:Size(), 3, "held before anyone asks")
+	T.eq(window:Count(2), 3, "within span of 2")
+	T.eq(window:Count(2.5), 2, "0 aged out")
+	T.eq(window:Size(), 2, "and let go")
+end)
+
+T.test("values added at the same time all count", function()
+	local window = Window.New(1)
+	window:Add(4, 1.5)
+	window:Add(4, 2.5)
+	T.eq(window:Sum(4), 4, "both")
+	T.eq(window:Count(4), 2, "two")
+end)
+
+T.test("a running sum stays true after many adds and ageings", function()
+	local window = Window.New(10)
+	for t = 1, 1000 do window:Add(t, 0.1) end
+	T.near(window:Sum(1000), 1.1, 1e-9, "11 of 0.1 at the end: the times 990 to 1000")
+	T.eq(window:Count(1000), 11, "eleven")
+	T.eq(window:Sum(2000), 0, "then none")
+	T.eq(window:Size(), 0, "empty")
+end)
+
+T.test("Clear forgets everything, and an add before the last is refused", function()
+	local window = Window.New(5)
+	window:Add(10, 1)
+	T.eq(pcall(window.Add, window, 9, 1), false, "time going back is the caller's mistake")
+	window:Clear()
+	T.eq(window:Sum(10), 0, "cleared")
+	window:Add(1, 5)
+	T.eq(window:Sum(1), 5, "and usable, from any time")
+end)
+
+T.test("a span is a positive number", function()
+	T.eq(pcall(Window.New, 0), false, "zero")
+	T.eq(pcall(Window.New, -1), false, "negative")
+	T.eq(pcall(Window.New, "5"), false, "a string")
+end)
+
+T.finish()

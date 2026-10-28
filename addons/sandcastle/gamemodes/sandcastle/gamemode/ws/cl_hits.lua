@@ -17,7 +17,7 @@ local COMBAT_TEXT = CreateClientConVar("hud_combattext", "1", true, false, "1: s
 local BATCHING = CreateClientConVar("hud_combattext_batching", "0", true, false, "1: hits on one victim close together show as one number", 0, 1)
 local BATCHING_WINDOW = CreateClientConVar("hud_combattext_batching_window", "0.2", true, false, "Seconds within which hits on one victim add into one number", 0.1, 2)
 local DINGALING = CreateClientConVar("tf_dingalingaling", "1", true, false, "1: play a sound when you hit an enemy", 0, 1)
-local EFFECT = CreateClientConVar("tf_dingalingaling_effect", "0", true, false, "The hit sound: 0 Default, 1 Electro, 2 Notes, 3 Percussion, 4 Retro, 5 Space, 6 Beepo, 7 Vortex, 8 Squasher", 0, #HitSound.EFFECTS - 1)
+local EFFECT = CreateClientConVar("tf_dingalingaling_effect", "0", true, false, "The hit sound: " .. tostring(HitSound.EFFECTS), HitSound.EFFECTS:First(), HitSound.EFFECTS:Last())
 local VOLUME = CreateClientConVar("tf_dingaling_volume", "0.6", true, false, "The hit sound's volume", 0, 1)
 local PITCH_LOW = CreateClientConVar("tf_dingaling_pitchmindmg", "100", true, false, "The hit sound's pitch for the least damage", 1, 255)
 local PITCH_HIGH = CreateClientConVar("tf_dingaling_pitchmaxdmg", "100", true, false, "The hit sound's pitch for the most damage", 1, 255)
@@ -125,7 +125,7 @@ local function BuildPanel(panel)
 	panel:Help("Hit sounds")
 	panel:CheckBox("Play a sound when I hit an enemy", DINGALING:GetName())
 	local effect = panel:ComboBox("Hit sound", EFFECT:GetName())
-	for i, choice in ipairs(HitSound.EFFECTS) do effect:AddChoice(choice.label, i - 1) end
+	for value = HitSound.EFFECTS:First(), HitSound.EFFECTS:Last() do effect:AddChoice(HitSound.Label(value), value) end
 	panel:NumSlider("Volume", VOLUME:GetName(), 0, 1, 2)
 	panel:NumSlider("Pitch at low damage", PITCH_LOW:GetName(), 1, 255, 0)
 	panel:NumSlider("Pitch at high damage", PITCH_HIGH:GetName(), 1, 255, 0)

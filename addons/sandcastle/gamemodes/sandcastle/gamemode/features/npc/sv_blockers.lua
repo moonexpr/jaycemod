@@ -71,10 +71,7 @@ local BLOCKER_REFRESH = 1
 local DOOR_FLOOR = Vector(0, 0, 32)
 local UNASSIGNED = WS.TEAM_UNASSIGNED
 
-local function Overlapping(aMins, aMaxs, bMins, bMaxs)
-	return aMins.x <= bMaxs.x and bMins.x <= aMaxs.x and aMins.y <= bMaxs.y and bMins.y <= aMaxs.y
-		and aMins.z <= bMaxs.z and bMins.z <= aMaxs.z
-end
+local Overlapping = math.box.Overlaps
 
 -- The enabled trigger_multiples, with their boxes and the team their
 -- filter_activator_tfteam admits (or nil).

@@ -10,6 +10,7 @@
 -- nav area's north-west and south-east corners); `to.edges[dir]` is true
 -- when `to` has no neighbour on that side (CNavArea::IsEdge).
 local Scalar = math.scalar
+local Interval = math.interval
 module(...)
 
 -- NavDirType: north is -y, east is +x.
@@ -30,23 +31,24 @@ local function Span(low, high, lowEdge, highEdge)
 	return lowMargin, highMargin
 end
 
+-- The usable span of the opening on one axis: what the two rooms share (their
+-- lows and highs on it), less the margin at an edge.
+local function Opening(fromLo, fromHi, toLo, toHi, lowEdge, highEdge)
+	local low, high = Interval.Intersect(fromLo, fromHi, toLo, toHi)
+	return Span(low, high, lowEdge, highEdge)
+end
+
 -- The crossing from `from` into `to`, which lies in direction dir of it,
 -- for a path coming from fromPos: returns x, y.
 function ClosestPointInPortal(from, to, dir, fromPos)
 	local edges = to.edges
 	if dir == NORTH or dir == SOUTH then
 		local y = dir == NORTH and from.lo.y or from.hi.y
-		local low, high = Span(
-			from.lo.x > to.lo.x and from.lo.x or to.lo.x,
-			from.hi.x < to.hi.x and from.hi.x or to.hi.x,
-			edges[WEST], edges[EAST])
+		local low, high = Opening(from.lo.x, from.hi.x, to.lo.x, to.hi.x, edges[WEST], edges[EAST])
 		return Limit(fromPos.x, low, high), y
 	end
 	local x = dir == WEST and from.lo.x or from.hi.x
-	local low, high = Span(
-		from.lo.y > to.lo.y and from.lo.y or to.lo.y,
-		from.hi.y < to.hi.y and from.hi.y or to.hi.y,
-		edges[NORTH], edges[SOUTH])
+	local low, high = Opening(from.lo.y, from.hi.y, to.lo.y, to.hi.y, edges[NORTH], edges[SOUTH])
 	return x, Limit(fromPos.y, low, high)
 end
 
@@ -58,16 +60,10 @@ function MiddleOfPortal(from, to, dir)
 	local x, y = ClosestPointInPortal(from, to, dir, from.lo)
 	local edges = to.edges
 	if dir == NORTH or dir == SOUTH then
-		local low, high = Span(
-			from.lo.x > to.lo.x and from.lo.x or to.lo.x,
-			from.hi.x < to.hi.x and from.hi.x or to.hi.x,
-			edges[WEST], edges[EAST])
+		local low, high = Opening(from.lo.x, from.hi.x, to.lo.x, to.hi.x, edges[WEST], edges[EAST])
 		return (low + high) / 2, y
 	end
-	local low, high = Span(
-		from.lo.y > to.lo.y and from.lo.y or to.lo.y,
-		from.hi.y < to.hi.y and from.hi.y or to.hi.y,
-		edges[NORTH], edges[SOUTH])
+	local low, high = Opening(from.lo.y, from.hi.y, to.lo.y, to.hi.y, edges[NORTH], edges[SOUTH])
 	return x, (low + high) / 2
 end
 

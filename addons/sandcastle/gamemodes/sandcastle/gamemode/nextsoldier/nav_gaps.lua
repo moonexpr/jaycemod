@@ -13,6 +13,7 @@
 local max, min, abs, ceil = math.max, math.min, math.abs, math.ceil
 local ipairs = ipairs
 local Grid = world.grid
+local PairMap = world.pairmap
 module(...)
 
 GAP_MAX = 50 -- two of the generator's 25-unit steps
@@ -52,15 +53,14 @@ function Candidates(areas, zAt, linked)
 	for _, area in ipairs(areas) do
 		grid:PutBox({ x = area.lo.x - GAP_MAX, y = area.lo.y - GAP_MAX }, { x = area.hi.x + GAP_MAX, y = area.hi.y + GAP_MAX }, area)
 	end
-	local seen, found = {}, {}
+	local seen, found = PairMap.Unordered(), {}
 	for _, list in grid:Buckets() do
 		for i = 1, #list do
 			for j = i + 1, #list do
 				local a, b = list[i], list[j]
 				if a.id > b.id then a, b = b, a end
-				local key = a.id .. ":" .. b.id
-				if not seen[key] then
-					seen[key] = true
+				if not seen:Get(a.id, b.id) then
+					seen:Set(a.id, b.id, true)
 					local from, to = Crossing(a, b, "x", "y")
 					if not from then from, to = Crossing(a, b, "y", "x") end
 					if from then

@@ -7,8 +7,79 @@ are userdata handles. Taken on 2026-10-22, after `51f25cf` (pair map,
 ground distance, clamp).
 
 Each finding names its sites, what core would offer, and what it is built
-from, so structures grow from the primitives up. Nothing here is migrated
-yet; the call sites are listed for that work.
+from, so structures grow from the primitives up. When it was written,
+nothing here was migrated; the call sites were listed for that work.
+
+## Status, 2026-10-27
+
+The work is tracked in epic #12 (moonexpr/sandcastle), which has every
+checklist item, its commit and each decision not to do one. The paths below
+are from before the foundation/games split (`foundation/<x>.lua` sites now
+live under `games/`, `features/`); #12 has the current ones. Each module
+below was built with its Lua and native twins (the modules added since this
+survey are in CLAUDE.md's foundation index).
+
+| Finding | Now |
+|---|---|
+| Caches, constants, enums at their sites | Done, bar two: `NavGraph:Neighbors` is already dropped whole with the mesh generation (the survey's "never invalidated" was wrong), and `KitReachable` is weak-keyed by entity |
+| Bounded logs and windows | `list.ring:Newest` and `list.window` built; `BehaviorLog` and the bosses' damage per second moved. The kill feed, the blocker log, the teleport trail and `profile.lua`'s samples stay (removal from the middle, indexed reads, five points, no ageing) |
+| Selection (`list.select`) | Built: `Lowest`, `Highest`, `Nearest`, `TopK`, `Order`, `Ranks`; fourteen sites moved |
+| Random choice | `math.choice` built as `Shuffle` and `Draw` (named so because `math.random` is Lua's own function); `Pick` is not, as `list[me:RandomInt(1, #list)]` is shorter than the helper and its adapter. The four hand-written draws were not one operation |
+| `math.apportion` | Not built: one ten-line pure function with one caller |
+| Spatial | `world.grid:Spread` and `Isolated` (TF2's rule), `math.interval`, `math.box` built and moved; `grid:Nearest` is not (its only caller is `nodegraph`, which has its own native implementation); `Thin` keeps its string key |
+| Ground-plane vectors, scalars | `math.geometry` and `math.scalar` extended; the by-hand copies moved, but for those that need the reach with the direction (`leap`), a point a tick (`hover`), or the deltas again (`orders` HopOn, `nbdebug` Pick) |
+| Already in core, not yet used | Done (percentile, set counts, clamps), except the three `Contains` scans, which run over constants of five or lists built per call |
+| Counting (`world.counter`) | Not built: the six tallies read six different sources, and none is hot |
+| Rate limiting | `world.bucket` built; the events' rate limits use it |
+| Pair keys | `world.pairmap:Unordered` built; two of three sites moved (`nodegraph`'s packed key is the oracle of a native twin) |
+
+### Benched, 2026-10-27
+
+`.devtools/bin/bench_foundation.lua` times each module against the code it
+replaced, copied as it was. Run on the dev server (ctf_2fort, empty, JIT on,
+the native twins: its DLL reloads on a map change) the best of five, in ns an
+operation:
+
+| Operation | Old code | Module | Module / old |
+|---|---|---|---|
+| Nearest of 128 points | 26,100 | `Select.Nearest` | 0.47 |
+| Top 5 of 1000 | 520,000 | `Select.TopK` | 0.16 |
+| Order 200 | 81,400 | `Select.Order` | 0.79 |
+| Spread, 300 points, 24 posts | 59,800 | `Grid.Spread` | 0.26 |
+| Spread, 2000 points, no limit | 208,000,000 | `Grid.Spread` | 0.004 |
+| Isolated, 150 areas | 1,617,000 | `Grid.Isolated` | 0.05 |
+| Damage per second over a 300-hit window, a tick | 9,160 | `list.window` | 0.014 |
+| Bounded log of 64, a push | 168 | `list.ring` | 0.81 |
+| Lowest of 128 by a score function | 208 | `Select.Lowest` | **29** |
+| Draw 8 of 30 | 948 | `math.choice.Draw` | **2.0** |
+| Seen-pair set, 511 pairs | 68,400 | `pairmap.Unordered` | **2.0** |
+| Rate limit, a take | 2 | `world.bucket` | **39** (97 ns) |
+| `Saturate`, `box.Overlaps` | 1 | the module | **100 and 430 ns** |
+
+What it says:
+
+- Where the module replaces a scan or a sort, native wins, from 1.3 times to
+  more than 200: top-k, spread, isolated, the window, nearest.
+- Where the operation is a few nanoseconds that the JIT compiles inline, or
+  the module calls the caller's Lua once an item (`Lowest`, `Draw`), a
+  native call loses. A crossing is about 100 ns on the server, and a call
+  from native back into Lua about 25 ns (`Lowest` makes two an item: 47 ns
+  an item against the JIT-compiled loop's 1.6). In absolute terms every loss
+  is under 10 µs a call; the worst, the bosses' `Nearest` through `Lowest`
+  over 128 targets, would cost 0.04 % of a core even if it ran every tick.
+- This Mac, JIT on, agrees on the direction but flatters the Lua: there the
+  Lua twin of `Nearest` beats the native by 3 to 10 times. With the JIT off
+  (a thrashing server's interpreter, baseline H12) the native wins nearly
+  everywhere, `box.Overlaps` and `Lowest` apart. The server's own JIT is on
+  for this run. Local results are in `.devtools/artifacts/bench-foundation-*.txt`.
+
+The operator's rule (a module is whole native on a server) holds in every
+row; the rows above 1.0 are the argument for letting a module stay Lua when
+it is a few nanoseconds of inline arithmetic or a loop over the caller's
+own callbacks. That is the operator's call, and not made here.
+
+A live check of the moved sites in play (a round, a war) is not done: only
+the bench ran on the server.
 
 ## Built in this pass
 

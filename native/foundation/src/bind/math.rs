@@ -244,6 +244,147 @@ unsafe extern "C-unwind" fn remap(l: L) -> c_int {
     number(l, c + (d - c) * t)
 }
 
+// math.interval -------------------------------------------------------------
+
+unsafe extern "C-unwind" fn interval_overlaps(l: L) -> c_int {
+    let api = api();
+    let (alo, ahi, blo, bhi) = ((api.checknumber)(l, 1), (api.checknumber)(l, 2), (api.checknumber)(l, 3), (api.checknumber)(l, 4));
+    super::util::boolean(l, alo <= bhi && blo <= ahi)
+}
+
+unsafe extern "C-unwind" fn interval_intersect(l: L) -> c_int {
+    let api = api();
+    let (alo, ahi, blo, bhi) = ((api.checknumber)(l, 1), (api.checknumber)(l, 2), (api.checknumber)(l, 3), (api.checknumber)(l, 4));
+    (api.pushnumber)(l, if alo > blo { alo } else { blo });
+    (api.pushnumber)(l, if ahi < bhi { ahi } else { bhi });
+    2
+}
+
+// math.box ------------------------------------------------------------------
+
+unsafe extern "C-unwind" fn box_overlaps(l: L) -> c_int {
+    let (a_mins, a_maxs, b_mins, b_maxs) = (point_at(l, 1), point_at(l, 2), point_at(l, 3), point_at(l, 4));
+    let overlap = (0..3).all(|axis| a_mins[axis] <= b_maxs[axis] && b_mins[axis] <= a_maxs[axis]);
+    super::util::boolean(l, overlap)
+}
+
+unsafe extern "C-unwind" fn box_contains(l: L) -> c_int {
+    let (mins, maxs, p) = (point_at(l, 1), point_at(l, 2), point_at(l, 3));
+    super::util::boolean(l, (0..3).all(|axis| p[axis] >= mins[axis] && p[axis] <= maxs[axis]))
+}
+
+unsafe extern "C-unwind" fn box_extent(l: L) -> c_int {
+    (api().checktype)(l, 1, TTABLE);
+    let mut corners: Option<(Point, Point)> = None;
+    each_item(l, 1, |l, p| {
+        let at = point_at(l, p);
+        match &mut corners {
+            None => corners = Some((at, at)),
+            Some((lo, hi)) => {
+                for axis in 0..3 {
+                    if at[axis] < lo[axis] {
+                        lo[axis] = at[axis];
+                    }
+                    if at[axis] > hi[axis] {
+                        hi[axis] = at[axis];
+                    }
+                }
+            }
+        }
+    });
+    match corners {
+        None => nothing(l),
+        Some((lo, hi)) => {
+            push_point(l, lo[0], lo[1], Some(lo[2]));
+            push_point(l, hi[0], hi[1], Some(hi[2]));
+            2
+        }
+    }
+}
+
+unsafe extern "C-unwind" fn box_longest_axis_2d(l: L) -> c_int {
+    let (mins, maxs) = (point_at(l, 1), point_at(l, 2));
+    crate::lua::push_str(l, if maxs[0] - mins[0] >= maxs[1] - mins[1] { "x" } else { "y" });
+    1
+}
+
+// math.choice ---------------------------------------------------------------
+
+/// A place from 1 to n, drawn by the function at `source`; an answer outside that is our bug, refused.
+unsafe fn place(l: L, source: c_int, n: usize) -> usize {
+    let api = api();
+    (api.pushvalue)(l, source);
+    (api.pushnumber)(l, 1.0);
+    (api.pushnumber)(l, n as f64);
+    (api.call)(l, 2, 1);
+    let k = number_at(l, -1).unwrap_or(f64::NAN);
+    if !(k >= 1.0 && k <= n as f64) || k.fract() != 0.0 {
+        let given = tostring(l, -1);
+        raise_where(l, format!("the random source gave {given} for 1 to {n}"));
+    }
+    (api.settop)(l, -2);
+    k as usize
+}
+
+/// Pushes a new list holding the items of the list at `list` (up to the first nil); its length.
+unsafe fn copy_list(l: L, list: c_int) -> usize {
+    let api = api();
+    (api.createtable)(l, 0, 0);
+    let copy = (api.gettop)(l);
+    let mut n = 0;
+    each_item(l, list, |l, item| {
+        n += 1;
+        (api.pushvalue)(l, item);
+        (api.rawseti)(l, copy, n as c_int);
+    });
+    n
+}
+
+unsafe extern "C-unwind" fn choice_shuffle(l: L) -> c_int {
+    let api = api();
+    (api.checktype)(l, 1, TTABLE);
+    (api.checktype)(l, 2, crate::lua::TFUNCTION);
+    let mut n = copy_list(l, 1);
+    let out = (api.gettop)(l);
+    while n > 1 {
+        let k = place(l, 2, n);
+        (api.rawgeti)(l, out, n as c_int);
+        (api.rawgeti)(l, out, k as c_int);
+        (api.rawseti)(l, out, n as c_int);
+        (api.rawseti)(l, out, k as c_int);
+        n -= 1;
+    }
+    1
+}
+
+unsafe extern "C-unwind" fn choice_draw(l: L) -> c_int {
+    let api = api();
+    (api.checktype)(l, 1, TTABLE);
+    (api.checktype)(l, 3, crate::lua::TFUNCTION);
+    let count = number_at(l, 2).unwrap_or(f64::NAN);
+    if !(count >= 0.0) || count.fract() != 0.0 {
+        let given = tostring(l, 2);
+        raise_where(l, format!("a draw's count is a whole number of at least 0, not {given}"));
+    }
+    let mut left = copy_list(l, 1);
+    let pool = (api.gettop)(l);
+    (api.createtable)(l, 0, 0);
+    let out = (api.gettop)(l);
+    let mut taken = 0usize;
+    while left > 0 && (taken as f64) < count {
+        let k = place(l, 3, left);
+        (api.rawgeti)(l, pool, k as c_int);
+        taken += 1;
+        (api.rawseti)(l, out, taken as c_int);
+        (api.rawgeti)(l, pool, left as c_int);
+        (api.rawseti)(l, pool, k as c_int);
+        (api.pushnil)(l);
+        (api.rawseti)(l, pool, left as c_int);
+        left -= 1;
+    }
+    1
+}
+
 // math.stats ----------------------------------------------------------------
 
 /// The numbers of the list at `index`, in order until the first nil.
@@ -832,6 +973,16 @@ pub unsafe fn push_modules(l: L) {
     (api.setfield)(l, -2, c"matrix".as_ptr());
     module::push(l, &[(c"New", polyline_new)], None);
     (api.setfield)(l, -2, c"polyline".as_ptr());
+    module::push(l, &[(c"Overlaps", interval_overlaps), (c"Intersect", interval_intersect)], None);
+    (api.setfield)(l, -2, c"interval".as_ptr());
+    module::push(
+        l,
+        &[(c"Overlaps", box_overlaps), (c"Contains", box_contains), (c"Extent", box_extent), (c"LongestAxis2D", box_longest_axis_2d)],
+        None,
+    );
+    (api.setfield)(l, -2, c"box".as_ptr());
+    module::push(l, &[(c"Shuffle", choice_shuffle), (c"Draw", choice_draw)], None);
+    (api.setfield)(l, -2, c"choice".as_ptr());
 }
 
-pub const NAMES: &[&CStr] = &[c"geometry", c"scalar", c"stats", c"weighted", c"polynomial", c"matrix", c"polyline"];
+pub const NAMES: &[&CStr] = &[c"geometry", c"scalar", c"stats", c"weighted", c"polynomial", c"matrix", c"polyline", c"interval", c"box", c"choice"];

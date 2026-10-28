@@ -127,10 +127,11 @@ Tests are `tests/<namespace>_<module>_test.lua`.
 | Module | API |
 |---|---|
 | `list.queue` | `New()` → double-ended queue: `PushBack`, `PushFront`, `PopFront`, `PopBack`, `Front`, `Back`, `Size`, `Values` |
-| `list.ring` | `New(capacity)` → the last values pushed: `Push`, `Size`, `Ordered` (oldest first) |
+| `list.ring` | `New(capacity)` → the last values pushed: `Push`, `Size`, `Ordered` (oldest first), `Newest` (a table pushed is given back, to change in place) |
 | `list.slots` | `New()` → whole-number slots for arrays kept by slot: `pool()` (`Alloc`; a freed one first), `Free` (refuses one not in use), `InUse`, `Size` (`__len`), `High`, `Clear`, `tostring` |
 | `list.chain` | `New()` → slots in an order, linked by two arrays: `PushFront`, `PushBack`, `Unlink`, `MoveFront`, `Front`, `Back`, `After`, `Before`, `Has`, `for slot in chain()` (`Ordered`), `Size` (`__len`), `Clear`, `tostring` |
 | `list.select` | Which item a score or an order picks; lower is better and a tie goes to the earlier item: `Lowest(list, score[, keep])` and `Highest` → item, score, place; `Nearest(list, from[, position[, keep]])` → item, distance, place; `TopK(list, k, before)` (the first k in order, n log k); `Order(list, before)` (places, stable); `Ranks(list, before)` (from 1) |
+| `list.window` | `New(span)` → numbers added with their time, summed over the last `span` seconds: `Add(at, value)` (in time order), `Sum(now)`, `Count(now)` (an entry exactly `span` old counts; older ones let go), `Size`, `Clear`; the sum is kept running |
 | `list.schedule` | `New(clock)` → cooperative tasks in a time slice: `Spawn(fn, ...)`, `Run(seconds)`, `CheckYield` (in a task: yield once the slice is spent), `Yield`, `Wait(ready)` (park until ready), `Count`. `WS.Transactions` is each realm's, run every tick |
 
 ### tree
@@ -144,9 +145,10 @@ Tests are `tests/<namespace>_<module>_test.lua`.
 
 | Module | API |
 |---|---|
-| `world.pairmap` | `New()` → values by an ordered pair of whole numbers (0..`MAX_KEY`, a link's two area ids) under one number a pair, no key built: `Get(a, b)` (unchecked, for hot paths), `Set(a, b, value)` (nil removes; refuses a bad key), `Size`, `Clear` |
+| `world.pairmap` | `New()` → values by an ordered pair of whole numbers (0..`MAX_KEY`, a link's two area ids) under one number a pair, no key built: `Get(a, b)` (unchecked, for hot paths), `Set(a, b, value)` (nil removes; refuses a bad key), `Size`, `Clear`; `Unordered()` → the same where (a, b) and (b, a) are one pair |
+| `world.bucket` | `New(capacity, seconds, now)` → a token bucket, full at `now`, refilled at `capacity` per `seconds`: `Take(now)` (spends one or is refused; a refusal spends nothing), `Tokens(now)`. Time is the caller's and does not go back. The events' rate limits (`games.system.events`) are one per sender and event |
 | `world.lease` | `New()` → keys held by one holder for a term: `Holder`, `FreeFor`, `Take`, `Release`, `ReleaseAll` |
-| `world.grid` | `New(size)` → spatial hash on number keys: `Put`, `PutBox`, `Near` (3×3 cells), `Buckets`; `Thin(points, size)` keeps one point per cube |
+| `world.grid` | `New(size)` → spatial hash on number keys: `Put`, `PutBox`, `Near` (3×3 cells), `Buckets`; `Thin(points, size)` keeps one point per cube; `Spread(items, spacing[, limit[, position]])` keeps each item, in order, not within `spacing` (3D) of one already kept; `Isolated(...)` the same but against every earlier item, kept or not (TF2's SelectSeparatedShuffleSet) |
 | `world.sets` | `Named(name, members)` → a named set, a closed vocabulary parsed once: `Has`, `Check` (an unknown member is our bug, blamed on the caller), `Match` (case-free prefix), `Members`, `Name`. Plain `value → true` sets: `Of`, `Copy`, `Union`, `Intersect`, `Subtract`, `Count`, `Sorted` |
 
 ### cache
@@ -171,6 +173,9 @@ Tests are `tests/<namespace>_<module>_test.lua`.
 |---|---|
 | `math.geometry` | On `{ x, y, z }` points (missing z is 0): `Distance`, `Distance2D` (across the ground), `Toward`, `Add`, `Sub`, `Scale`, `Dot`, `Cross`, `Length`, `Normalize` (nil for the zero vector), `DistanceSquared`; across the ground, height left out of the direction and a point's own z kept: `Normalize2D`, `Left2D`, `Offset2D(p, from, along, across)` (p moved away from `from` and to the left of that way), `ClosestOnSegment(p, a, b)`, `Polar(center, radius, angle)`, `Circle(center, radius, count, start)` |
 | `math.scalar` | `Clamp(value, low, high)` (an empty range is the caller's mistake), `Saturate(value)` (0..1), `Lerp(a, b, t)` (t unheld), `InverseLerp(a, b, value)` and `Remap(value, a, b, c, d)` (held to the span; a span with no length is the caller's mistake) |
+| `math.interval` | Ranges [low, high] of one number line: `Overlaps(alo, ahi, blo, bhi)` (touching counts), `Intersect(...)` → low, high (low above high when apart) |
+| `math.box` | Axis-aligned boxes by their corners (missing z is 0): `Overlaps(aMins, aMaxs, bMins, bMaxs)`, `Contains(mins, maxs, p)`, `Extent(points)` → mins, maxs (nil for none), `LongestAxis2D(mins, maxs)` → "x" or "y" |
+| `math.choice` | Shuffling and drawing with a random source the caller gives, `randomInt(low, high)`: `Shuffle(list, randomInt)` (a new list; the last place swaps with a draw from those before it), `Draw(list, count, randomInt)` (up to `count` drawn without replacement, the last filling the place of the one drawn); a source answering outside the range is refused |
 | `math.stats` | `Mean(list)`, `Percentile(list, p)` (nearest rank) |
 | `math.weighted` | `PickWeighted(items, weight, r)`, `r` drawn by the caller |
 | `math.polynomial` | Coefficients from the constant up: `Evaluate`, `Derivative`, `Roots` (real, ascending, up to a cubic) |
