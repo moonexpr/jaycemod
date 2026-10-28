@@ -124,7 +124,17 @@ class SrcdsBackend(Backend):
         self._running(instance).stop()
 
     def current_map(self, instance: Instance) -> Optional[str]:
-        return self._running(instance).current_map()
+        """The map, once a server loading one answers (RCON, then its Lua);
+        None for a server down."""
+        server = self._running(instance)
+        deadline = time.monotonic() + srcds.MAP_LOAD_TIMEOUT
+        name = server.current_map()
+        while name is None and server.alive() and time.monotonic() < deadline:
+            time.sleep(1)
+            name = server.current_map()
+        if name is not None:
+            self._wait_for_lua(instance)
+        return name
 
     def change_map(self, instance: Instance, map_name: str) -> None:
         if not srcds.MAP_NAME.match(map_name):

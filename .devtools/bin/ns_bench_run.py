@@ -44,8 +44,11 @@ ARRIVE = 64  # a bot within this of its goal has arrived (npc_pathfollower's own
 SAMPLE = 0.5  # seconds between a bot's samples
 NAV_TIMEOUT = 900  # nav_generate on a bench map
 BOT_TIMEOUT = 90  # until the war has a bot soldier
-# convar -> its value while the bench runs: the war's soldiers are bots, two of them, joining with no
-# human on; the server never idles
+SETTLE_FOR = 3  # seconds the war stays ready before the bot errands begin
+HARNESS = "dev.harness"  # saved beside the convars: whether it was on, and suppressing wins
+# convar -> its value while the bench runs: the war's soldiers are bots, one a
+# team (a team left empty restarts the round), joining with no human on; the
+# server never idles
 CONVARS = {"tf_bot_join_after_player": "0", "sv_idle_delay": "86400", "ns_soldiers_actor": "bot", "tf_bot_quota": "2"}
 
 Vec = Tuple[float, float, float]
@@ -99,19 +102,61 @@ return follower:EntIndex()
 
 FOLLOWER_REPORT = "return NSBench and NSBench[%(key)s] or ''"
 
-FIND_BOT = """
-local aiwar = WS.Feature("aiwar")
-for ent, entry in pairs(aiwar.soldiers or {}) do
-	if IsValid(ent) and ent:IsPlayer() and ent:Alive() and entry.soldier.Pin then
-		NSBenchBot = { ent = ent, soldier = entry.soldier }
-		return ent:Nick()
-	end
+# The bench's bot is kept by its entity (NSBenchBot); its soldier is asked of
+# the war each time, as a new round enlists every bot afresh.
+BENCH_BOT = """
+local function BenchBot()
+	local ent = NSBenchBot
+	local entry = IsValid(ent) and WS.Feature("aiwar").soldiers[ent]
+	return ent, entry and entry.soldier
 end
-return ''
 """
 
-SEND_BOT = """
-local bot, soldier = NSBenchBot.ent, NSBenchBot.soldier
+# One bot soldier for the errands; every other made unhurtable and pinned
+# where it stands, so no one fights, falls or wins a round meanwhile.
+FIND_BOT = BENCH_BOT + """
+local chosen = BenchBot()
+chosen = IsValid(chosen) and chosen:Alive() and chosen or nil
+for ent, entry in pairs(WS.Feature("aiwar").soldiers or {}) do
+	if IsValid(ent) and ent:IsPlayer() and ent:Alive() and entry.soldier.Pin then
+		if not chosen then
+			chosen = ent
+		elseif ent ~= chosen then
+			ent:GodEnable()
+			local pos = ent:GetPos()
+			entry.soldier:Pin({ x = pos.x, y = pos.y, z = pos.z })
+		end
+	end
+end
+NSBenchBot = chosen
+return chosen and chosen:Nick() or ''
+"""
+
+# Whether the war is ready for errands: a round running, every bot soldier
+# the quota asks for alive.
+SETTLED = """
+local alive = 0
+for ent in pairs(WS.Feature("aiwar").soldiers or {}) do
+	if IsValid(ent) and ent:IsPlayer() and ent:Alive() then alive = alive + 1 end
+end
+return tostring(WS.State() == %(running)d and alive >= GetConVarNumber("tf_bot_quota"))
+"""
+ROUND_RUNNING = 4  # gamerules_roundstate_t's GR_STATE_RND_RUNNING (games.gameplay.rounds.state)
+
+# Every bot soldier unpinned and hurtable again.
+RELEASE_ALL = """
+for ent, entry in pairs(WS.Feature("aiwar").soldiers or {}) do
+	if IsValid(ent) and ent:IsPlayer() and entry.soldier.Unpin then
+		entry.soldier:Unpin()
+		ent:GodDisable()
+	end
+end
+NSBenchBot = nil
+return true
+"""
+
+SEND_BOT = BENCH_BOT + """
+local bot, soldier = BenchBot()
 bot:GodEnable()
 bot:SetPos(%(start)s)
 bot:SetVelocity(-bot:GetVelocity())
@@ -119,10 +164,11 @@ soldier:Pin({ x = %(gx)g, y = %(gy)g, z = %(gz)g })
 return true
 """
 
-SAMPLE_BOT = """
-local bench = NSBenchBot
-local bot, soldier = bench and bench.ent, bench and bench.soldier
-if not (IsValid(bot) and bot:Alive()) then return util.TableToJSON({ gone = true }) end
+SAMPLE_BOT = BENCH_BOT + """
+local bot, soldier = BenchBot()
+if not (IsValid(bot) and bot:Alive() and soldier) then
+	return util.TableToJSON({ gone = true, why = not IsValid(bot) and "left" or (bot:Alive() and "unenlisted" or "died") })
+end
 local pos, walk, steer, body = bot:GetPos(), soldier.walk, soldier.steer, soldier.body
 local function P(v) return v and { math.Round(v.x), math.Round(v.y), math.Round(v.z) } end
 return util.TableToJSON({
@@ -135,15 +181,20 @@ return util.TableToJSON({
 	done = walk and walk:Done() or nil,
 	steer = steer and { math.Round(steer.x), math.Round(steer.y), math.Round(steer.z) } or nil,
 	stuck = body and body.stuckSince ~= nil or false,
+	area = (function() local area = navmesh.GetNearestNavArea(pos, false, 64) return area and area:GetID() or nil end)(),
+	planned = soldier.planned ~= nil,
+	pinned = soldier.pin ~= nil,
+	round = WS.State(),
+	enemy = (function() local e = soldier.vision:Contact() return IsValid(e) and e:EntIndex() or nil end)(),
 	distance = math.Round(pos:Distance(%(goal)s)),
 })
 """
 
-RELEASE_BOT = """
-local bench = NSBenchBot
-if bench and IsValid(bench.ent) then
-	bench.soldier:Unpin()
-	bench.ent:GodDisable()
+RELEASE_BOT = BENCH_BOT + """
+local bot, soldier = BenchBot()
+if IsValid(bot) then
+	if soldier then soldier:Unpin() end
+	bot:GodDisable()
 end
 return true
 """
@@ -197,7 +248,7 @@ async def run_bot(server: instances.GameServer, errand: Errand) -> dict:
             await asyncio.sleep(SAMPLE)
             sample = returned(await server.lua(SAMPLE_BOT % {"goal": vector(errand.goal)}))
             if sample.get("gone"):
-                status = "bot gone"
+                status = f"bot {sample['why']}"
                 break
             sample["at"] = round(time.monotonic() - began, 1)
             samples.append(sample)
@@ -234,16 +285,43 @@ def stalls(samples: List[dict], slow: float = 20, least: int = 4) -> List[dict]:
 
 
 async def setup(server: instances.GameServer) -> dict:
+    """The bench's settings, and what they were. Rounds are not won while it
+    runs (the gamerules harness drops every win): a round won ends the
+    errand's round, and a match won reloads the map."""
     saved = {}
     for name, value in CONVARS.items():
         saved[name] = (await server.lua(f"return GetConVarString({json.dumps(name)})")).returns[0]
         await server.rcon(f"{name} {value}")
+    harness = returned(await server.lua("return util.TableToJSON(dev.harness.status())"))
+    saved[HARNESS] = (harness["on"], harness["suppress_wins"])
+    await server.lua("dev.harness.enable(true) dev.harness.suppress_wins(true) return true")
     return saved
 
 
-async def find_bot(server: instances.GameServer) -> Optional[str]:
+async def teardown(server: instances.GameServer, saved: dict) -> None:
+    on, suppress = saved.pop(HARNESS)
+    await server.lua(f"dev.harness.suppress_wins({str(suppress).lower()}) dev.harness.enable({str(on).lower()}) return true")
+    for convar, value in saved.items():
+        await server.rcon(f"{convar} {value}")
+
+
+async def settle(server: instances.GameServer) -> bool:
+    """Waits until the war is ready for errands (SETTLED) for SETTLE_FOR seconds
+    running: a round begun, its pre-round freeze over, every bot enlisted."""
     if (await server.lua("return WS.Feature('aiwar').war ~= nil")).returns[0] != "true":
         await server.rcon("mp_aiwar_start")
+    deadline, since = time.monotonic() + BOT_TIMEOUT, None
+    while time.monotonic() < deadline:
+        ready = (await server.lua(SETTLED % {"running": ROUND_RUNNING})).returns[0] == "true"
+        now = time.monotonic()
+        since = (since or now) if ready else None
+        if since is not None and now - since >= SETTLE_FOR:
+            return True
+        await asyncio.sleep(1)
+    return False
+
+
+async def find_bot(server: instances.GameServer) -> Optional[str]:
     deadline = time.monotonic() + BOT_TIMEOUT
     while time.monotonic() < deadline:
         name = (await server.lua(FIND_BOT)).returns[0]
@@ -270,14 +348,14 @@ async def bench(name: str, kinds: List[str], only: Optional[str], pool: instance
                     result = await run_follower(server, errand)
                     report["errands"].append({"kind": "follower", "errand": asdict(errand), "result": result})
             if "bot" in kinds:
+                report["settled"] = await settle(server)
                 for errand in errands:
                     bot = await find_bot(server)  # afresh: one may fall between errands
                     result = await run_bot(server, errand) if bot else {"status": "no bot soldier"}
                     report["errands"].append({"kind": "bot", "bot": bot, "errand": asdict(errand), "result": result})
-                await server.lua("NSBenchBot = nil return true")
+                await server.lua(RELEASE_ALL)
         finally:
-            for convar, value in saved.items():
-                await server.rcon(f"{convar} {value}")
+            await teardown(server, saved)
     return report
 
 
