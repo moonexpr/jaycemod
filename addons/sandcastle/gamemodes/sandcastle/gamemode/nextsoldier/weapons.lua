@@ -4,14 +4,15 @@
 -- its interval, empties, and reloads for its reload time before firing
 -- again.
 --
--- Stats{ damage (the skill convar of an HL2 NPC's damage with it), bullets
---   (a shot's), interval (between shots), clip, reload (seconds), sound,
+-- Stats{ damage (a bullet's), bullets (a shot's), interval (between
+--   shots), clip, reload (seconds), sound,
 --   tracer, hold (its hold type, for the body's acts), spread (degrees across
 --   its cone: features.aiwar.arms' cones) } -> stats, made once
 -- STATS[class] -> HL2's guns the soldiers carry
 -- Magazine(stats) -> magazine: Ready(now), Fire(now) (refused when not
 --   ready: our bug), Reloading(now), Rounds()
 local error, setmetatable, type = error, setmetatable, type
+local deg, atan = math.deg, math.atan
 module(...)
 
 local PARTS = { "damage", "bullets", "interval", "clip", "reload", "sound", "tracer", "hold", "spread" }
@@ -23,23 +24,29 @@ function Stats(spec)
 		if spec[key] == nil then error("gun stats need " .. key, 2) end
 		stats[key] = spec[key]
 	end
+	if type(stats.damage) ~= "number" or stats.damage <= 0 then error("a gun's damage is a number above 0", 2) end
 	return stats
 end
 
--- HL2's guns: its NPCs' damage convars and fire rates, its clips, reload
--- times near its reload animations, its fire sounds and tracers.
+-- The degrees across a cone whose spread (FireBullets' Spread) is s.
+local function Cone(s) return 2 * deg(atan(s)) end
+
+-- HL2's guns as DrGBase's NextBots fire them (its SUPPORTED_GUNS: damage,
+-- pellets, interval, spread; the crossbow's bolt's damage), which the AI
+-- war's balance was set against; HL2's clips, reload times near its reload
+-- animations, its fire sounds and tracers.
 STATS = {
-	weapon_ar2 = Stats({ damage = "sk_npc_dmg_ar2", bullets = 1, interval = 0.1, clip = 30, reload = 1.6,
-		sound = "Weapon_AR2.Single", tracer = "AR2Tracer", hold = "ar2", spread = 3 }),
-	weapon_smg1 = Stats({ damage = "sk_npc_dmg_smg1", bullets = 1, interval = 0.075, clip = 45, reload = 1.5,
-		sound = "Weapon_SMG1.Single", tracer = "Tracer", hold = "smg", spread = 5 }),
-	weapon_shotgun = Stats({ damage = "sk_npc_dmg_buckshot", bullets = 8, interval = 0.8, clip = 6, reload = 2.5,
-		sound = "Weapon_Shotgun.Single", tracer = "Tracer", hold = "shotgun", spread = 10 }),
-	weapon_pistol = Stats({ damage = "sk_npc_dmg_pistol", bullets = 1, interval = 0.4, clip = 18, reload = 1.4,
-		sound = "Weapon_Pistol.Single", tracer = "Tracer", hold = "pistol", spread = 2 }),
-	weapon_357 = Stats({ damage = "sk_npc_dmg_357", bullets = 1, interval = 0.75, clip = 6, reload = 3,
-		sound = "Weapon_357.Single", tracer = "Tracer", hold = "revolver", spread = 1 }),
-	weapon_crossbow = Stats({ damage = "sk_npc_dmg_crossbow", bullets = 1, interval = 1.9, clip = 1, reload = 1.9,
+	weapon_ar2 = Stats({ damage = 8, bullets = 1, interval = 0.1, clip = 30, reload = 1.6,
+		sound = "Weapon_AR2.Single", tracer = "AR2Tracer", hold = "ar2", spread = Cone(0.02) }),
+	weapon_smg1 = Stats({ damage = 4, bullets = 1, interval = 0.065, clip = 45, reload = 1.5,
+		sound = "Weapon_SMG1.Single", tracer = "Tracer", hold = "smg", spread = Cone(0.035) }),
+	weapon_shotgun = Stats({ damage = 8, bullets = 7, interval = 1.25, clip = 6, reload = 2.5,
+		sound = "Weapon_Shotgun.Single", tracer = "Tracer", hold = "shotgun", spread = Cone(0.1) }),
+	weapon_pistol = Stats({ damage = 5, bullets = 1, interval = 0.75, clip = 18, reload = 1.4,
+		sound = "Weapon_Pistol.Single", tracer = "Tracer", hold = "pistol", spread = Cone(0.015) }),
+	weapon_357 = Stats({ damage = 40, bullets = 1, interval = 1.25, clip = 6, reload = 3,
+		sound = "Weapon_357.Single", tracer = "Tracer", hold = "revolver", spread = Cone(0.015) }),
+	weapon_crossbow = Stats({ damage = 100, bullets = 1, interval = 1.9, clip = 1, reload = 1.9,
 		sound = "Weapon_Crossbow.Single", tracer = "Tracer", hold = "crossbow", spread = 0 }),
 }
 

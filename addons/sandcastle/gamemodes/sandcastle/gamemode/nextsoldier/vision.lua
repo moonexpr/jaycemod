@@ -4,7 +4,9 @@
 -- features.aiwar.marksmanship); once recognized it stays so, remembered
 -- where it was last seen, until it has been out of sight for the memory.
 -- The most dangerous recognized enemy in sight is the soldier's contact,
--- kept while remembered when none is in sight.
+-- kept while remembered when none is in sight; a soldier that pursues
+-- (TF2's GetPrimaryKnownThreat with onlyVisibleThreats false) takes the most
+-- dangerous it remembers when none is in sight.
 --
 -- Its events are the orders' (features.aiwar.orders): the caller tells the
 -- soldier's behaviour each one, with the enemy's handle.
@@ -18,11 +20,12 @@ CONTACT, CONTACT_LOST = "OnContact", "OnContactLost"
 local Vision = {}
 Vision.__index = Vision
 
--- tuning: { reaction, memory }, in seconds.
+-- tuning: { reaction, memory (in seconds), unseen (pursues the remembered) }.
 function New(tuning)
 	return setmetatable({
 		reaction = tuning.reaction,
 		memory = tuning.memory,
+		unseen = tuning.unseen == true,
 		known = {}, -- handle -> { pos, seenAt, since (in sight from, nil out of it), recognized }
 		contact = nil,
 	}, Vision)
@@ -57,15 +60,23 @@ function Vision:Contact()
 	return self.contact
 end
 
--- The contact after this look: the most dangerous (better(a, b): a is) of
--- the recognized enemies in sight; with none in sight, the contact as it
--- was while it is remembered.
-local function PickContact(self, better)
+-- The most dangerous (better(a, b): a is) of the recognized enemies, in
+-- sight or (inSight false) any remembered.
+local function Best(self, better, inSight)
 	local best
 	for handle, entry in pairs(self.known) do
-		if entry.since and entry.recognized and (best == nil or better(handle, best)) then best = handle end
+		if entry.recognized and (entry.since or not inSight) and (best == nil or better(handle, best)) then best = handle end
 	end
+	return best
+end
+
+-- The contact after this look: the most dangerous in sight; with none in
+-- sight, the most dangerous remembered when pursuing, else the contact as
+-- it was while it is remembered.
+local function PickContact(self, better)
+	local best = Best(self, better, true)
 	if best then return best end
+	if self.unseen then return Best(self, better, false) end
 	if self.contact and self.known[self.contact] then return self.contact end
 	return nil
 end
@@ -112,14 +123,30 @@ function Vision:Update(now, seen, better)
 	return events
 end
 
+-- An enemy heard at now, at pos (TF2's OnSound adding a known entity):
+-- known to be an enemy, remembered from now where it was heard, not in
+-- sight; the events, as Update's.
+function Vision:Hear(now, handle, pos, better)
+	local events = {}
+	local entry = self.known[handle]
+	if not entry then
+		entry = {}
+		self.known[handle] = entry
+	end
+	entry.pos, entry.seenAt, entry.recognized = pos, now, true
+	SetContact(self, PickContact(self, better), events)
+	return events
+end
+
 -- Forgets an enemy at once (it died or left); the events, as Update's.
-function Vision:Forget(handle)
+-- Given better, the contact it was is picked again at once, else at the
+-- next look (none until then).
+function Vision:Forget(handle, better)
 	local events = {}
 	if not self.known[handle] then return events end
 	self.known[handle] = nil
 	if self.contact == handle then
-		-- the next look picks another contact; until then there is none
-		SetContact(self, nil, events)
+		SetContact(self, better and PickContact(self, better) or nil, events)
 	end
 	return events
 end

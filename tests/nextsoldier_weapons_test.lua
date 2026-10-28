@@ -4,7 +4,7 @@
 local T = dofile("tests/harness.lua")
 local Weapons = nextsoldier.weapons
 
-local GUN = Weapons.Stats({ damage = "sk_npc_dmg_test", bullets = 1, interval = 0.1, clip = 3, reload = 2,
+local GUN = Weapons.Stats({ damage = 5, bullets = 1, interval = 0.1, clip = 3, reload = 2,
 	sound = "Weapon_Test.Single", tracer = "Tracer", hold = "ar2", spread = 3 })
 
 T.test("a full magazine fires at once, then at its interval", function()
@@ -44,7 +44,16 @@ T.test("HL2's guns the soldiers carry have stats", function()
 end)
 
 T.test("stats missing a part are refused", function()
-	T.eq(pcall(Weapons.Stats, { damage = "x", bullets = 1, interval = 0.1, clip = 3 }), false)
+	T.eq(pcall(Weapons.Stats, { damage = 5, bullets = 1, interval = 0.1, clip = 3 }), false)
+end)
+
+T.test("a gun's damage is a number of its own, not a convar's name", function()
+	local spec = { damage = "sk_npc_dmg_ar2", bullets = 1, interval = 0.1, clip = 3, reload = 2,
+		sound = "Weapon_Test.Single", tracer = "Tracer", hold = "ar2", spread = 3 }
+	T.eq(pcall(Weapons.Stats, spec), false)
+	for class, stats in pairs(Weapons.STATS) do
+		T.eq(type(stats.damage) == "number" and stats.damage > 0, true, class .. " hurts")
+	end
 end)
 
 T.finish()

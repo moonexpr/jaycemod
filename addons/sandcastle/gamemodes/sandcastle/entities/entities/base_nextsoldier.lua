@@ -89,7 +89,10 @@ local HEARD_NOTICE = 2
 -- Its eyes where its model has none (TF2's VEC_VIEW and VEC_DUCK_VIEW, near enough).
 local EYE_HEIGHT, CROUCH_EYE_HEIGHT = 64, 28
 local LOOK_INTERVAL = 0.2
-local VISION = { reaction = 0.1, memory = 8 }
+-- It pursues an enemy out of sight, the most dangerous it remembers, and
+-- remembers one for DrGBase's SpotDuration, which the war's orders were
+-- tuned against.
+local VISION = { reaction = 0.1, memory = 30, unseen = true }
 -- A melee weapon's hold types.
 local MELEE_HOLDS = { melee = true, melee2 = true, knife = true, fist = true }
 -- A player model's acts for a hold type are named ACT_HL2MP_<MOVE>_<HOLD>;
@@ -141,6 +144,7 @@ function ENT:Initialize()
 	self.nsRelations = Relations.New({ default = self.DefaultRelationship or D_NU, ally = D_LI })
 	for _, faction in ipairs(self.Factions) do self.nsRelations:Join(faction) end
 	self.nsVision = Vision.New(VISION)
+	self.nsBetter = function(a, b) return self:IsMoreDangerous(a, b) end
 	self.nsNextLook = 0
 	self.nsWeapons = {}
 	self.nsMagazines = setmetatable({}, { __mode = "k" })
@@ -502,7 +506,8 @@ function ENT:VisionUpdate(now)
 				local center = other:WorldSpaceCenter()
 				local to = center - eye
 				local distance = to:Length()
-				if (distance <= NOTICE_NEAR or other == self.nsAttacker or (self.nsNoticed[other] or 0) > now
+				-- its enemy it looks for wherever it walks, as TF2's head aims at its threat
+				if (distance <= NOTICE_NEAR or other == self.nsEnemy or other == self.nsAttacker or (self.nsNoticed[other] or 0) > now
 					or to:Dot(facing) >= FOV_COS * distance)
 					and (Clear(eye, center, self, other) or Clear(eye, EyesOf(other), self, other)) then
 					seen[other] = other:GetPos()
@@ -521,8 +526,10 @@ function ENT:VisionTell(events)
 		elseif event.kind == Vision.LOST_SIGHT then
 			self:OnLost(event.handle)
 		elseif event.kind == Vision.CONTACT then
+			local old = self:GetEnemy()
 			self.nsEnemy = event.handle
-			self:OnNewEnemy(event.handle)
+			-- a first enemy is new; another after it is a change (DrGBase's split)
+			if old then self:OnEnemyChange(old, event.handle) else self:OnNewEnemy(event.handle) end
 		elseif event.kind == Vision.CONTACT_LOST then
 			self.nsEnemy = nil
 			self:OnLastEnemy(event.handle)
@@ -550,11 +557,10 @@ end
 -- body's).
 function ENT:IntentionUpdate(interval)
 	local now = CurTime()
-	self.nsBetter = self.nsBetter or function(a, b) return self:IsMoreDangerous(a, b) end
 	if now >= self.nsNextLook then
 		self.nsNextLook = now + LOOK_INTERVAL
 		local enemy = self.nsEnemy
-		if enemy ~= nil and not (IsValid(enemy) and enemy:Health() > 0) then self:VisionTell(self.nsVision:Forget(enemy)) end
+		if enemy ~= nil and not (IsValid(enemy) and enemy:Health() > 0) then self:VisionTell(self.nsVision:Forget(enemy, self.nsBetter)) end
 		self:VisionUpdate(now)
 	end
 	local enemy = self:GetEnemy()
@@ -604,7 +610,7 @@ function ENT:RangeAttack(enemy, weapon)
 	local spread = math.tan(math.rad(stats.spread / 2))
 	self:FireBullets({
 		Attacker = self,
-		Damage = GetConVar(stats.damage):GetFloat(),
+		Damage = stats.damage,
 		Num = stats.bullets,
 		Src = src,
 		Dir = (enemy:WorldSpaceCenter() - src):GetNormalized(),
@@ -629,6 +635,7 @@ function ENT:CustomInitialize() end
 function ENT:CustomThink() end
 function ENT:OnIdle() end
 function ENT:OnNewEnemy(enemy) end
+function ENT:OnEnemyChange(old, new) end
 function ENT:OnLastEnemy(enemy) end
 function ENT:OnFetchEnemy(a, b) return nil end
 function ENT:OnChaseEnemy(enemy) return false end
@@ -639,14 +646,17 @@ function ENT:OnMeleeAttack(enemy, weapon) return false end
 function ENT:ShouldRun() return false end
 function ENT:OnSpotted(ent) end
 -- A noise heard (DrGBase's OnSound: sound = { Entity, Pos, SoundLevel,
--- Volume }): a hostile source is noticed for its next looks, wherever it
--- stands, and one with no enemy turns toward it.
+-- Volume }): a hostile source is known where it was heard, noticed for its
+-- next looks wherever it stands, and one with no enemy turns toward it.
 function ENT:OnSound(ent, sound)
 	if not IsValid(ent) then return end
 	local disposition = self:Disposition(ent)
 	if disposition ~= D_HT and disposition ~= D_FR then return end
-	self.nsNoticed[ent] = CurTime() + HEARD_NOTICE
+	local now = CurTime()
+	self.nsNoticed[ent] = now + HEARD_NOTICE
 	if not self:HasEnemy() then self:FaceTowards(sound.Pos) end
+	-- known where it was heard, as TF2's OnSound adds a known entity
+	self:VisionTell(self.nsVision:Hear(now, ent, sound.Pos, self.nsBetter))
 end
 function ENT:OnLost(ent) end
 -- The path's cost by default: the length of each link, with the class's

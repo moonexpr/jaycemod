@@ -117,7 +117,7 @@ VISION = Component("vision", {
 -- states, run from its Update.
 INTENTION = Component("intention", {
 	methods = { "GetEnemy", "HasEnemy", "SetAIDisabled", "IsAIDisabled" },
-	hooks = { "OnIdle", "OnNewEnemy", "OnLastEnemy", "OnFetchEnemy", "OnChaseEnemy", "OnAvoidEnemy",
+	hooks = { "OnIdle", "OnNewEnemy", "OnEnemyChange", "OnLastEnemy", "OnFetchEnemy", "OnChaseEnemy", "OnAvoidEnemy",
 		"OnIdleEnemy", "OnRangeAttack", "OnMeleeAttack", "ShouldRun" },
 	fields = { "ReachEnemyRange", "AvoidEnemyRange", "RangeAttackRange", "MeleeAttackRange" },
 })

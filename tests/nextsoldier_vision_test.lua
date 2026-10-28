@@ -116,6 +116,71 @@ T.test("a contact in sight is kept over a remembered one out of sight", function
 	T.eq(v:Contact(), "scout", "the one in sight, while the heavy is out of it")
 end)
 
+-- Pursuing (TF2's GetPrimaryKnownThreat with onlyVisibleThreats false): with
+-- none in sight, the most dangerous remembered enemy is the contact.
+local function Pursuing()
+	return Vision.New({
+		reaction = REACTION,
+		memory = MEMORY,
+		unseen = true,
+	})
+end
+
+T.test("pursuing, with none in sight the most dangerous remembered enemy is the contact", function()
+	local danger = Ranked({ "heavy", "scout" })
+	for _, case in ipairs({ { Pursuing(), "heavy" }, { New(), "scout" } }) do
+		local v, expected = case[1], case[2]
+		v:Update(0, { scout = HERE, heavy = THERE }, danger)
+		v:Update(REACTION, { scout = HERE, heavy = THERE }, danger)
+		v:Update(1, { scout = HERE }, danger)
+		T.eq(v:Contact(), "scout", "the one in sight comes first")
+		v:Update(1.1, {}, danger)
+		T.eq(v:Contact(), expected, "none in sight")
+	end
+end)
+
+T.test("pursuing, a contact forgotten (it died) gives way to a remembered enemy at once", function()
+	local v = Pursuing()
+	v:Update(0, { scout = HERE, heavy = THERE }, ANY)
+	v:Update(REACTION, { scout = HERE, heavy = THERE }, ANY)
+	v:Update(1, {}, ANY)
+	T.eq(v:Contact(), "scout", "the more dangerous")
+	local events = v:Forget("scout", ANY)
+	T.eq(Kinds(events, "heavy"), Vision.CONTACT, "the heavy, remembered, is the contact")
+	T.eq(v:Contact(), "heavy", "pursued out of sight")
+end)
+
+-- Heard (TF2's OnSound adding a known entity): known where it was heard,
+-- not in sight.
+T.test("an enemy heard is known where it was heard, out of sight, and pursued", function()
+	local v = Pursuing()
+	local events = v:Hear(0, "scout", THERE, ANY)
+	T.eq(Kinds(events, "scout"), Vision.CONTACT, "a contact, no sight")
+	T.eq(v:Visible("scout"), false, "not in sight")
+	T.eq(v:LastKnown("scout"), THERE, "where it was heard")
+	events = v:Update(0.1, { scout = HERE }, ANY)
+	T.eq(Kinds(events, "scout"), Vision.SIGHT, "seen: the same contact")
+	T.eq(v:Recognized("scout", 0.1), true, "known to be an enemy, no reaction time")
+end)
+
+T.test("an enemy heard again is remembered from then, where it was heard", function()
+	local v = New()
+	v:Hear(0, "scout", HERE, ANY)
+	T.eq(v:Contact(), nil, "not pursuing: heard is no contact")
+	v:Hear(MEMORY - 0.5, "scout", THERE, ANY)
+	v:Update(MEMORY + 0.1, {}, ANY)
+	T.eq(v:LastKnown("scout"), THERE, "remembered from the second time")
+	v:Update(MEMORY - 0.5 + MEMORY, {}, ANY)
+	T.eq(v:LastKnown("scout"), nil, "forgotten a memory after")
+end)
+
+T.test("a glimpse not recognized is not pursued", function()
+	local v = Pursuing()
+	v:Update(0, { scout = HERE }, ANY)
+	v:Update(0.1, {}, ANY)
+	T.eq(v:Contact(), nil, "no contact")
+end)
+
 T.test("an enemy forgotten on purpose (it died) ends the contact", function()
 	local v = New()
 	v:Update(0, { scout = HERE }, ANY)
