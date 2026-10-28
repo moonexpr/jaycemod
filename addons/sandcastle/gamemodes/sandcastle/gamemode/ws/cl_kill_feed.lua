@@ -19,14 +19,9 @@ local Icons = gameplay.kill_icons
 local THEME = WS.UI.THEME
 local E = WS.Events
 
--- The soldiers' entities register after the gamemode, so their names are
--- read once every entity has.
-hook.Add("InitPostEntity", "ws_kill_feed_names", function()
-	for class in pairs(Feed.SOLDIERS) do
-		local stored = scripted_ents.GetStored(class)
-		if stored then language.Add(class, stored.t.PrintName) end
-	end
-end)
+-- Each kind of soldier's name, as its notices name it (Feed.Notice).
+local Profiles = WS.require("features.aiwar.profiles")
+for kind in pairs(Feed.SOLDIERS) do language.Add(kind, Profiles.PROFILES[kind].PrintName) end
 
 local ICONS = Icons.Over(Icons.Parse(file.Read("scripts/mod_textures.txt", "tf")),
 	Icons.Parse(WS.require("ws.kill_icons_sheet").TEXT))

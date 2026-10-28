@@ -77,44 +77,34 @@ FIRE_TEAM_SIZE = 4
 SQUADS_MAX_DEFAULT = 3
 SQUADS_MIN_DEFAULT = 3
 
--- The sides' soldiers: DrGBase NextBots (the entities ws_drg_combine
--- and ws_drg_rebel), each drafting its own model and weapons. Each faction
+-- The sides' soldiers: NextSoldier's NextBots (SOLDIER_CLASS, one class as
+-- TF2's CTFBot is), each kind of soldier a profile (features.aiwar.profiles)
+-- with its own models and weapons, and known by its kind. Each faction
 -- starts a war on its home team, the one its look belongs to (the
 -- Combine's cold, industrial palette is BLU's, the Resistance's browns
 -- RED's: docs/team-theming-plan.md), and fights for either as the sides
 -- trade (War:SwapFactions).
--- A soldier is known by its kind: on NextSoldier's base (NEXTSOLDIER_CLASS,
--- one class as TF2's CTFBot is) its profile's name, on DrGBase its class.
--- A faction's classes list both; a recruit names its DrGBase class and its
--- kind (SpawnOf picks by the base the war fields).
 COMBINE, RESISTANCE = "combine", "resistance"
-NEXTSOLDIER_CLASS = "npc_nextsoldier"
+SOLDIER_CLASS = "npc_nextsoldier"
 FACTIONS = {
 	[COMBINE] = {
 		id = COMBINE,
 		name = "Combine",
 		home = BLUE,
-		classes = { ws_drg_combine = true, combine = true },
-		recruits = { { class = "ws_drg_combine", kind = "combine" } },
-		medic = { class = "ws_drg_combine", kind = "combine" }, -- in a metrocop's kit
+		kinds = { combine = true },
+		recruits = { { kind = "combine" } },
+		medic = { kind = "combine" }, -- in a metrocop's kit
 	},
 	[RESISTANCE] = {
 		id = RESISTANCE,
 		name = "Resistance",
 		home = RED,
-		-- a class whose value is a job only ever does that job
-		classes = { ws_drg_rebel = true, ws_drg_vortigaunt = MEDIC, rebel = true, vortigaunt = MEDIC },
-		recruits = { { class = "ws_drg_rebel", kind = "rebel" } },
-		medic = { class = "ws_drg_vortigaunt", kind = "vortigaunt" },
+		-- a kind whose value is a job only ever does that job
+		kinds = { rebel = true, vortigaunt = MEDIC },
+		recruits = { { kind = "rebel" } },
+		medic = { kind = "vortigaunt" },
 	},
 }
-
--- What to create for a recruit: its DrGBase class, or on NextSoldier's
--- base its kind's profile.
-function SpawnOf(recruit, onNextSoldier)
-	if onNextSoldier then return { class = NEXTSOLDIER_CLASS, profile = recruit.kind } end
-	return { class = recruit.class }
-end
 
 -- Clients learn the sides from the team the Combine fight for now
 -- (Global2Int SIDES_KEY, set by features/aiwar); Sides(that team) gives
@@ -133,19 +123,19 @@ function HomeFaction(team)
 	return nil
 end
 
--- The job a class only ever does (the vortigaunt heals), or nil.
-function FixedRole(class)
+-- The job a kind only ever does (the vortigaunt heals), or nil.
+function FixedRole(kind)
 	for _, faction in pairs(FACTIONS) do
-		local value = faction.classes[class]
+		local value = faction.kinds[kind]
 		if type(value) == "string" then return value end
 	end
 	return nil
 end
 
--- The faction an NPC class belongs to, or nil for a class in none.
-function FactionOf(class)
+-- The faction a kind of soldier belongs to, or nil for a kind in none.
+function FactionOf(kind)
 	for _, faction in pairs(FACTIONS) do
-		if faction.classes[class] then return faction end
+		if faction.kinds[kind] then return faction end
 	end
 	return nil
 end
@@ -414,10 +404,10 @@ function War:TeamOf(faction)
 	return nil
 end
 
--- The team a class fights for in this war, or nil for a class in no faction.
-function War:FactionTeam(class)
+-- The team a kind fights for in this war, or nil for a kind in no faction.
+function War:FactionTeam(kind)
 	for team, faction in pairs(self.factions) do
-		if faction.classes[class] then return team end
+		if faction.kinds[kind] then return team end
 	end
 	return nil
 end

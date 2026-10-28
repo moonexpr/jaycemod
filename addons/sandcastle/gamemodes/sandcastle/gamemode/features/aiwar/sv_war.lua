@@ -166,7 +166,6 @@ end
 function Controller:Start()
 	if self.war then return false, "the war is already on" end
 	if not WS.SoldiersEnabled() then return false, "NextSoldier is switched off on this server (ns_soldiers_enabled 0)" end
-	if not DrGBase then return false, "the AI war needs DrGBase (Steam Workshop) for its soldiers" end
 	-- a map whose mode is none the war knows is fought freeform
 	self:CompileRegistries()
 	local _, variant = Scenario.Entry(self.scenarios, { mode = RoundsModeName() })
@@ -208,7 +207,6 @@ end
 -- the engine's AI alone.
 function Controller:End()
 	if not self.war then return false, "no war is on" end
-	self:DisbandReserve()
 	local entries = {}
 	for ent, entry in pairs(self.soldiers) do entries[#entries + 1] = { ent = ent, entry = entry } end
 	for _, e in ipairs(entries) do

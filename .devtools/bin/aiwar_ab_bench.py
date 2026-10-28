@@ -1,6 +1,6 @@
 """An A/B bench of the AI war on the dev server: the native foundation
 (native/foundation and native/wetsands installed) against the Lua twins
-alone, and the war's NPC soldiers (DrGBase NextBots) against its bot
+alone, and the war's NPC soldiers (NextSoldier's NextBots) against its bot
 players, in alternating legs on the same map and settings.
 
   aiwar_ab_bench.py [--map pl_upward] [--team-size 15] [--legs native,lua,native,lua]
@@ -47,7 +47,7 @@ STATS_EVERY = 10
 LATE = 1.5  # tick intervals
 READY_TIMEOUT = 300
 
-# The soldiers each actor makes: DrGBase NextBots, or bot players.
+# The soldiers each actor makes: NextSoldier's NextBots, or bot players.
 SOLDIERS = {
     "npc": 'local n = 0 for _, e in ipairs(ents.GetAll()) do if e.IsNextBot and e:IsNextBot() then n = n + 1 end end return n',
     "bot": "return #player.GetBots()",

@@ -25,7 +25,7 @@ local E = WS.Events
 -- Source has no locational damage in TF2: a hit's group only says whether
 -- it was a headshot, recorded for the damage the same trace deals this
 -- tick (ScalePlayerDamage and ScaleNPCDamage; the AI war's soldiers report
--- theirs from OnTraceAttack, ws/sh_drg_soldier.lua).
+-- theirs from OnTraceAttack, ws/sh_war_soldier.lua).
 local traced = setmetatable({}, { __mode = "k" }) -- entity -> { tick, hitgroup }
 
 function WS.TraceHit(ent, hitgroup)

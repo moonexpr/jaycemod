@@ -83,10 +83,3 @@ function Ranges(class)
 	return { attack = huge, melee = 0, chase = weapon.chase, avoid = weapon.avoid }
 end
 
-
--- Whether a part of a soldier's body is drawn: nothing while the body is
--- hidden (shown false); while shown, every part but a weapon (isWeapon)
--- out of hand (inHand): a soldier carries its whole loadout, holding one.
-function Drawn(shown, isWeapon, inHand)
-	return shown and (not isWeapon or inHand)
-end

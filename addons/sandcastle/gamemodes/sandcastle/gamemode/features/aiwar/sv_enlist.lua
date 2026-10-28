@@ -40,7 +40,7 @@ function Controller:Enlist(ent, team, drafted, fixed)
 			soldier = soldier,
 			npc = NpcSystem.Npc.New(Orders, { war = self.war, member = member, behaviors = self.behaviors }, soldier),
 		}
-		-- DrGBase's hooks ask and tell the orders (ws_drg_soldier's bridge)
+		-- the soldier's hooks ask and tell the orders (WS.WarSoldier's bridge)
 		ent.NSBrain = self.soldiers[ent].npc
 		-- its paths priced as its routes are, off doors and brushes shut to its team (GetPathGenerator)
 		ent.NSPathCost = self:SoldierPathCost(team, function() return soldier:Bot() end)
@@ -59,7 +59,7 @@ function Controller:JoinSquad(ent, member)
 	ent.wsSquad = member and member.fireTeam and member.fireTeam.squad or nil
 end
 
--- Kits (ws_drg_soldier's NSKit), by faction and role: every soldier carries
+-- Kits (WS.WarSoldier's NSKit), by faction and role: every soldier carries
 -- a primary (one of those listed, at random), a secondary and a melee
 -- weapon (features.aiwar.arms), the Combine's the pistol and stunstick,
 -- the Resistance's the pistol and crowbar. Blockers and a point's holders
@@ -222,26 +222,16 @@ end
 
 -- Spawning ------------------------------------------------------------------------
 
--- Which base the war's soldiers are on: DrGBase's classes, or NextSoldier's
--- own (npc_nextsoldier, each kind a profile).
-local BASE = CreateConVar("ns_soldiers_base", "drgbase", { FCVAR_ARCHIVE, FCVAR_NOTIFY },
-	"The AI war's soldiers: drgbase (DrGBase's NextBots) or nextsoldier (NextSoldier's own base)")
-
--- A recruit: a body the reserve kept, revived (sv_reserve.lua), else a new
--- entity, on the base ns_soldiers_base picks (AiWar.SpawnOf).
+-- A recruit: a new soldier with its kind's profile.
 function Controller:Draft(team, pos, ang)
 	local draft = self.war:Draft(team)
-	local spawn = AiWar.SpawnOf(draft.recruit, BASE:GetString() == "nextsoldier")
-	local ent = self:Revive(team, spawn.profile or spawn.class, pos + SPAWN_LIFT, ang)
-	if ent == nil then
-		ent = ents.Create(spawn.class)
-		if not IsValid(ent) then return end
-		if spawn.profile then ent:SetProfile(spawn.profile) end
-		ent:SetPos(pos + SPAWN_LIFT)
-		ent:SetAngles(ang)
-		ent:Spawn()
-		ent:Activate()
-	end
+	local ent = ents.Create(AiWar.SOLDIER_CLASS)
+	if not IsValid(ent) then return end
+	ent:NSProfile(draft.recruit.kind)
+	ent:SetPos(pos + SPAWN_LIFT)
+	ent:SetAngles(ang)
+	ent:Spawn()
+	ent:Activate()
 	self:Enlist(ent, team, true, draft.role)
 end
 
@@ -280,7 +270,6 @@ end
 -- The drafted NPC soldiers leave the war at once (bots took over as its
 -- actors); the ones players spawned stay.
 function Controller:DismissDrafted()
-	self:DisbandReserve()
 	local drafted = {}
 	for ent, entry in pairs(self.soldiers) do
 		if IsValid(ent) and not ent:IsPlayer() and self.war:Member(ent).drafted then drafted[#drafted + 1] = { ent = ent, entry = entry } end
@@ -299,7 +288,6 @@ end
 -- stage's), and their orders start over. The round's winner, the bases and
 -- the posts are the last round's, and the scenario starts the round afresh.
 function Controller:RespawnAll()
-	self:DisbandReserve()
 	self:SweepGadgets(nil, true)
 	self.lanePlans, self.laneSets = nil, nil
 	self.roomExits = nil
@@ -468,8 +456,6 @@ end
 hook.Add("OnNPCKilled", "ws_aiwar", function(ent, attacker)
 	if not Controller.war then return end
 	Controller:Fallen(ent, attacker)
-	local entry = Controller.soldiers[ent]
-	if entry then Controller:Retire(ent, WaveLength(entry.soldier.team)) end
 	Controller:Discharge(ent)
 end)
 

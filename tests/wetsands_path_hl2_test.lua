@@ -39,7 +39,7 @@ T.test("the limits are the engine NPC's: one step up or down, no more", function
 end)
 
 -- The AI war's soldiers are DrGBase NextBots now (NextBotGroundLocomotion):
--- an HL2 body that crouches and jumps (ws/sh_drg_soldier.lua) and drops as
+-- an HL2 body that crouches and jumps (ws/sh_war_soldier.lua) and drops as
 -- far as DrGBase's DeathDropHeight, as off cp_steel's BLU spawn ledge (192).
 T.defined(HL2.SOLDIER_JUMP_HEIGHT, "SOLDIER_JUMP_HEIGHT")
 T.defined(HL2.SOLDIER_DROP_HEIGHT, "SOLDIER_DROP_HEIGHT")

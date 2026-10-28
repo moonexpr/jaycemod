@@ -1,7 +1,7 @@
 -- The soldier port: what a NextSoldier soldier's behaviours (the states of
 -- nextsoldier.chart, features.aiwar.orders' among them) may ask of the
 -- soldier they drive. The features/aiwar controller implements it over a
--- DrGBase NextBot soldier (ws_drg_soldier) and over a bot player, and
+-- NextBot soldier (npc_nextsoldier) and over a bot player, and
 -- tests/fake_soldier.lua fakes it. Some of it is still the war's, not the
 -- soldier's (Sit, Stand, IsSeated and FollowCart for the cart, IsDisarmed,
 -- UseGadget, Heal, CallMedic, Announce), to move out with the orders.

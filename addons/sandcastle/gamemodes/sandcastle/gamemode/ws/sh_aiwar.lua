@@ -219,7 +219,7 @@ local HELP = "In Sandbox mode, counts down to Gameplay mode and a new round. "
 	.. "The Combine spawn at BLU's spawn and the Resistance at RED's (they trade sides when the defenders win), and fight the map's round: "
 	.. "they push or stop the cart, take and hold the points, or fight for the hill. "
 	.. "Sandcastle's Combine and Resistance soldiers you spawn join their side. "
-	.. "Payload, control point and King of the Hill maps. Needs DrGBase (Steam Workshop) for its soldiers."
+	.. "Payload, control point and King of the Hill maps."
 
 local function BuildPanel(panel)
 	panel:ClearControls()

@@ -1,7 +1,6 @@
 -- ws_aiwar_sitting_enabled (features/aiwar/sv.lua): with the war on a
 -- payload map, pushers sit on the cart; turning the convar off gets every
--- one off, and none sits again while it is off. Needs DrGBase (the server
--- root server_root.py builds mounts it).
+-- one off, and none sits again while it is off.
 -- args: { timeout = seconds to wait for a seated soldier }
 local CONVAR = "ws_aiwar_sitting_enabled"
 local START_TIMEOUT = 40
@@ -17,7 +16,6 @@ local function Seated(aiwar)
 end
 
 return function(t)
-	if DrGBase == nil then return t:Skip("DrGBase is not loaded on this server") end
 	RunConsoleCommand(CONVAR, "1")
 	-- mp_aiwar_start loads the feature on a map that has not yet
 	game.ConsoleCommand("mp_aiwar_start\n")

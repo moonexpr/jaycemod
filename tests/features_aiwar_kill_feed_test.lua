@@ -1,22 +1,22 @@
 -- features.aiwar.kill_feed: GMod's death notices name an NPC "#<class>" with
--- team -1 (an NPC's colour); the AI war's soldiers are shown in their
--- team's colour.
+-- team -1 (an NPC's colour); the AI war's soldiers, named "#<kind>"
+-- (Notice), are shown in their team's colour.
 local T = dofile("tests/harness.lua")
 local Feed = T.require("features.aiwar.kill_feed")
 local AiWar = T.require("features.aiwar.model")
 local RED, BLUE = 2, 3
 
 T.test("a soldier's notice takes the team its faction fights for: its home without a war", function()
-	T.eq(Feed.Team("#ws_drg_rebel", -1), RED)
-	T.eq(Feed.Team("#ws_drg_vortigaunt", -1), RED)
-	T.eq(Feed.Team("#ws_drg_combine", -1), BLUE)
-	T.eq(Feed.Team("ws_drg_rebel", -1), RED, "the class as GMod's feed passes it, without the #")
+	T.eq(Feed.Team(Feed.Notice("rebel"), -1), RED)
+	T.eq(Feed.Team(Feed.Notice("vortigaunt"), -1), RED)
+	T.eq(Feed.Team(Feed.Notice("combine"), -1), BLUE)
+	T.eq(Feed.Team("rebel", -1), RED, "the kind without the #")
 end)
 
 T.test("once the sides trade, a soldier's notice follows its faction", function()
 	local sides = AiWar.Sides(RED) -- the Combine on RED
-	T.eq(Feed.Team("#ws_drg_combine", -1, sides), RED, "the Combine")
-	T.eq(Feed.Team("#ws_drg_vortigaunt", -1, sides), BLUE, "the Resistance")
+	T.eq(Feed.Team(Feed.Notice("combine"), -1, sides), RED, "the Combine")
+	T.eq(Feed.Team(Feed.Notice("vortigaunt"), -1, sides), BLUE, "the Resistance")
 	T.eq(Feed.Team("Some Player", BLUE, sides), BLUE, "a player keeps the notice's")
 end)
 
@@ -73,14 +73,18 @@ T.test("a capture no one is named for is the team's; before my player exists it 
 	T.eq(Feed.Objective(Feed.CAPTURED, RED, { "Alice" }, "RED", "A", "Alice").mine, true, "I capped it")
 end)
 
-T.test("every soldier class and kind has a faction, so each gets a name", function()
+T.test("a soldier's notice names its kind, one class being every kind's", function()
+	T.eq(Feed.Notice("combine"), "#combine")
+end)
+
+T.test("every soldier kind has a faction, so each gets a name", function()
 	local n, listed = 0, 0
-	for class, faction in pairs(Feed.SOLDIERS) do
+	for kind, faction in pairs(Feed.SOLDIERS) do
 		n = n + 1
-		T.eq(AiWar.FACTIONS[faction] ~= nil, true, class)
+		T.eq(AiWar.FACTIONS[faction] ~= nil, true, kind)
 	end
 	for _, faction in pairs(AiWar.FACTIONS) do
-		for _ in pairs(faction.classes) do listed = listed + 1 end
+		for _ in pairs(faction.kinds) do listed = listed + 1 end
 	end
 	T.eq(n, listed, "every one the factions list")
 end)

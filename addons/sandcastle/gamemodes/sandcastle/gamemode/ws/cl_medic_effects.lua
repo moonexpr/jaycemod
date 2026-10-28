@@ -30,7 +30,7 @@ local function Head(ent)
 end
 
 hook.Add("Think", "ws_medic_effects", function()
-	local soldiers, now = ents.FindByClass("ws_drg_*"), CurTime()
+	local soldiers, now = ents.FindByClass("npc_nextsoldier"), CurTime()
 	local seen = {}
 	for _, ent in ipairs(soldiers) do
 		seen[ent] = true

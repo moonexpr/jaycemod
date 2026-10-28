@@ -1,10 +1,8 @@
--- NextSoldier's base interface (nextsoldier.base): each soldier class the
--- war fields has every method the base requires, and each optional
--- component whole or not at all. Today the classes are
--- DrGBase's; once NextSoldier's own base replaces it, the same check holds
--- that one to the interface our code keeps. An entity of each class is
--- created unspawned, checked and removed.
-local CLASSES = { "ws_drg_combine", "ws_drg_rebel", "ws_drg_vortigaunt", "base_nextsoldier" }
+-- NextSoldier's base interface (nextsoldier.base): NextSoldier's base and
+-- each class on it has every method the base requires, and each optional
+-- component whole or not at all. An entity of each class is created
+-- unspawned, checked and removed.
+local CLASSES = { "base_nextsoldier", "npc_nextsoldier", "npc_path_probe" }
 
 return function(t)
 	local Base = nextsoldier.base

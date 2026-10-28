@@ -1,6 +1,6 @@
 -- The aiwar feature's controller: a round (payload, control points or King
--- of the Hill) fought by DrGBase NextBot soldiers (ws_drg_combine,
--- ws_drg_rebel; the war needs DrGBase). It owns the features.aiwar.model
+-- of the Hill) fought by NextSoldier's NextBot soldiers (npc_nextsoldier,
+-- each kind a profile). It owns the features.aiwar.model
 -- War and the scenario (features.aiwar.scenario) the round's mode picks,
 -- spawns each side's soldiers at its team's spawns in TF2's respawn waves,
 -- enlists any soldier that appears while the war runs (a player's
@@ -33,7 +33,6 @@ local Controller = {
 	-- winner = nil, -- the round's winner while the winners hunt (RoundWon)
 	-- swapFactions = nil, -- the defenders won: the factions trade sides at the next respawn (RoundWon)
 	-- heroes = nil, -- a hero's name -> the soldier given its kit (HeroKit)
-	-- reserve = nil, -- fallen drafted soldiers a wave revives (features.aiwar.reserve; Reserve)
 	-- lanePlans = nil, -- team -> its lane plan being made (UpdateLanes)
 	-- laneSets = nil, -- team -> its lanes found (UpdateLanes)
 	-- roomExits = nil, -- a nav area in an enemy spawn room -> where a lane stop there ends instead, this round (OutsideRoom)
@@ -91,7 +90,6 @@ Controller.BotSoldier = Part("sv_bot_soldier", Map, Soldier)
 Part("sv_relations", Controller, Map)
 Part("sv_enlist", Controller, Map)
 Part("sv_bots", Controller, Map)
-Part("sv_reserve", Controller)
 Part("sv_speech", Controller)
 Part("sv_obstacles", Controller, Map)
 local WATCH_INTERVAL = Part("sv_posts", Controller, Map)

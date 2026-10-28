@@ -25,11 +25,11 @@ NAV_MESH_JUMP = 0x00000002
 local STEP_HEIGHT = 18
 LIMITS = { stepHeight = STEP_HEIGHT, jumpHeight = STEP_HEIGHT, deathDropHeight = STEP_HEIGHT }
 
--- The AI war's soldiers, DrGBase NextBots now: the same body, but they go
+-- The AI war's soldiers, NextSoldier's NextBots: the same body, but they go
 -- down drops as deep as SOLDIER_DROP_HEIGHT, rappelling one deeper than a
 -- safe fall (nextsoldier.rappel; cp_steel's BLU spawn is a ledge 192
--- above the yard, mvm_decoy's deeper), their DrGBase DeathDropHeight; the soldier
--- crouches and jumps (ws/sh_drg_soldier.lua). Its hull does not catch on a
+-- above the yard, mvm_decoy's deeper), their DeathDropHeight; the soldier
+-- crouches and jumps (ws/sh_war_soldier.lua). Its hull does not catch on a
 -- low ceiling, so a crouch area only needs it to crouch; it jumps a ledge
 -- lower than SOLDIER_JUMP_HEIGHT, an HL2 player's crouch jump.
 SOLDIER_DROP_HEIGHT = 1000

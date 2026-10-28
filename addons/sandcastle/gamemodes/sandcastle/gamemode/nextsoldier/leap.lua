@@ -1,5 +1,5 @@
 -- A walker's jump onto a ledge as an arc it is moved along (the AI war's
--- soldiers: ws/sh_drg_soldier.lua's CustomClimbing), not left to physics:
+-- soldiers: ws/sh_war_soldier.lua's CustomClimbing), not left to physics:
 -- a jump pushed at a wall hits its face and falls back, where an arc set
 -- each tick lands. The walker rises first and only then moves across, so
 -- its feet are above the lip wherever the wall stands between it and the

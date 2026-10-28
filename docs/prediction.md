@@ -33,7 +33,7 @@ Checked on the dev server (pl_upward, 2026-10-27): before the fix, 0 of the
 
 ## What we did
 
-`WS.DrgSoldier`'s `CustomInitialize` (ws/sh_drg_soldier.lua) calls
+`WS.WarSoldier`'s `CustomInitialize` (ws/sh_war_soldier.lua) calls
 `self:SetLagCompensated(true)`, so every AI war soldier (`ws_drg_combine`,
 `ws_drg_rebel`, `ws_drg_vortigaunt`, and `ws_drg_probe` through them) is
 compensated from its first tick. A revived soldier (sv_reserve.lua) is the
@@ -110,7 +110,7 @@ into account); `ply:LagCompensation(false)` puts them back. Limits:
 | `ws/sh_bullets.lua` | The bullet steps run on both realms inside the predicted `FireBullets`, so a step must decide the same on both (fixed spread does: `FixedSpread.Offset(i)`, no randomness) |
 | `ws/sh_footsteps.lua` | Footsteps play once: `if CLIENT and not IsFirstTimePredicted() then return true end` |
 | `ws/sv_hits.lua` | A crit's tracer lifts `SuppressHostEvents` (`GetPredictionPlayer`) so the shooter sees their own crit |
-| `ws/sh_drg_soldier.lua` | Soldiers are lag compensated |
+| `ws/sh_war_soldier.lua` | Soldiers are lag compensated |
 
 ## Using it ourselves
 

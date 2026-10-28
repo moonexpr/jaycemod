@@ -27,7 +27,7 @@ end
 
 local function Holders()
 	local holders = player.GetAll()
-	for _, soldier in ipairs(ents.FindByClass("ws_drg_*")) do holders[#holders + 1] = soldier end
+	for _, soldier in ipairs(ents.FindByClass("npc_nextsoldier")) do holders[#holders + 1] = soldier end
 	return holders
 end
 

@@ -19,6 +19,7 @@ local HL2Path = WS.require("foundation.wetsands.path.hl2")
 local Arms = WS.require("features.aiwar.arms")
 local Marksmanship = WS.require("features.aiwar.marksmanship")
 local Orders = WS.require("features.aiwar.orders")
+local Profiles = WS.require("features.aiwar.profiles")
 local NpcSystem = npc.nextbot
 local Point = Map.Point
 local RED, BLUE = Map.RED, Map.BLUE
@@ -225,14 +226,13 @@ function Controller:EnlistBot(ply)
 	self:Enlist(ply, team, false)
 end
 
--- The model a recruit of the faction wears (its NextBot's ENT.Models).
+-- The model a recruit of the faction wears (its kind's profile's).
 local function FactionModel(faction)
-	local stored = scripted_ents.GetStored(faction.recruits[1].class)
-	local models = stored.t.Models
+	local models = Profiles.PROFILES[faction.recruits[1].kind].Models
 	return models[math.random(#models)]
 end
 
--- A role's kit on a bot (Equip; a DrGBase soldier's is its NSKit): its
+-- A role's kit on a bot (Equip; a NextBot soldier's is its NSKit): its
 -- model, its loadout's weapons with ammunition, its health. A kit with no
 -- arms (the vortigaunt medic's) leaves what it carries.
 function Controller:KitBot(ply, soldier, kit)

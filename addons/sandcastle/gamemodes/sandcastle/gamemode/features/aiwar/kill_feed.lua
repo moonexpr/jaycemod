@@ -2,8 +2,9 @@
 -- "#<class>" with team -1, drawn in a fixed NPC colour; a soldier's notice
 -- takes the team its faction fights for instead (features.aiwar.model's
 -- factions: the Combine and the Resistance, each on its home team until
--- the sides trade), so it is drawn in that team's colour, and each class
--- is given its display name (ws/cl_kill_feed.lua). Control points'
+-- the sides trade), so it is drawn in that team's colour. A soldier is
+-- named by its kind (Notice: every kind is one class, npc_nextsoldier),
+-- each given its display name (ws/cl_kill_feed.lua). Control points'
 -- captures and defenses have rows of their own, as in TF2 (Objective), and
 -- a death to the world credited to an enemy reads "finished off" (Credited).
 local concat, floor, ipairs, pairs, sub = table.concat, math.floor, ipairs, pairs, string.sub
@@ -14,20 +15,23 @@ module(...)
 
 NPC_TEAM = -1 -- the team a death notice gives an NPC
 
--- class -> its faction's id
+-- kind -> its faction's id
 SOLDIERS = {}
 for id, faction in pairs(AiWar.FACTIONS) do
-	for class in pairs(faction.classes) do SOLDIERS[class] = id end
+	for kind in pairs(faction.kinds) do SOLDIERS[kind] = id end
 end
 
--- The team to show a notice's name in: for a soldier's class ("<class>" as
--- GMod's feed passes an entity, or "#<class>"), the team its faction fights
+-- A soldier's name in a death notice, as GMod's "#<class>" names an NPC.
+function Notice(kind) return "#" .. kind end
+
+-- The team to show a notice's name in: for a soldier's kind ("#<kind>",
+-- Notice, or the kind alone), the team its faction fights
 -- for in sides (features.aiwar.model's Sides; without it, its home); else the
 -- notice's own team, as for a death with no name (nil: a fall, a suicide).
 function Team(name, team, sides)
 	if team ~= NPC_TEAM or name == nil then return team end
-	local class = sub(name, 1, 1) == "#" and sub(name, 2) or name
-	local faction = SOLDIERS[class]
+	local kind = sub(name, 1, 1) == "#" and sub(name, 2) or name
+	local faction = SOLDIERS[kind]
 	if not faction then return team end
 	return sides and sides[faction] or AiWar.FACTIONS[faction].home
 end

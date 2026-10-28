@@ -1,4 +1,4 @@
--- A soldier (ws/sh_drg_soldier.lua) is lag compensated: a player's shot,
+-- A soldier (ws/sh_war_soldier.lua) is lag compensated: a player's shot,
 -- which the server traces with every lag-compensated entity moved back to
 -- where the shooter saw it, finds the soldier where the shooter aimed.
 -- GMod compensates only players unless an entity asks (SetLagCompensated),
@@ -22,8 +22,8 @@ local function SoldierClass()
 		FindMetaTable = function() return {} end,
 		WS = { require = function(name) return T.require(name) end },
 	}, { __index = _G })
-	setfenv(assert(loadfile(T.ROOT .. "ws/sh_drg_soldier.lua")), env)()
-	env.WS.DrgSoldier(ENT, "drgbase_nextbot_human")
+	setfenv(assert(loadfile(T.ROOT .. "ws/sh_war_soldier.lua")), env)()
+	env.WS.WarSoldier(ENT)
 	return ENT
 end
 

@@ -32,9 +32,9 @@ end
 -- it is not still speaking; to listener alone when given (a greeting).
 function Controller:SpeakConcept(ent, concept, role, blocked, now, listener)
 	local entry = self.soldiers[ent]
-	-- an enlisted NPC that is no DrGBase soldier, or a model with no voice, says nothing
+	-- an enlisted NPC that is no NextBot soldier, or a model with no voice, says nothing
 	local voice = ent.NSVoiceLines
-	if not (voice and voice.name and entry.soldier:IsAlive()) or ent.NSDormant then return end
+	if not (voice and voice.name and entry.soldier:IsAlive()) then return end
 	local speaker = Speaker(entry)
 	if now < speaker.busyUntil then return end
 	local criteria = Speech.Criteria(voice, role, math.random(0, 100), blocked)
@@ -83,7 +83,7 @@ function Controller:AnnounceLine(ent, concept)
 	self:SpeakConcept(ent, concept, self:RoleOf(entry), false, CurTime())
 end
 
--- A soldier that has just spotted a new enemy (ws_drg_soldier's
+-- A soldier that has just spotted a new enemy (WS.WarSoldier's
 -- OnNewEnemy) may call it out, to all near.
 hook.Add("WSSoldierContact", "ws_aiwar_speech", function(ent)
 	if not Controller.war then return end
@@ -179,7 +179,7 @@ hook.Add("Think", "ws_aiwar_idle_chatter", function()
 	nextIdle = now + Speech.IDLE_INTERVAL
 	local calm = {}
 	for ent, entry in pairs(Controller.soldiers) do
-		if IsValid(ent) and not ent.NSDormant and entry.soldier:IsAlive() and not entry.soldier:HasEnemy() then
+		if IsValid(ent) and entry.soldier:IsAlive() and not entry.soldier:HasEnemy() then
 			local team = entry.soldier.team
 			calm[team] = calm[team] or {}
 			calm[team][#calm[team] + 1] = ent

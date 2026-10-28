@@ -2,8 +2,8 @@
 -- realms so a player's own shots predict: a balanced weapon's cone is its
 -- own, and it fires no faster than its interval. A player's attack button
 -- is held back until the weapon may fire again (HL2's pistol refires on
--- every click, whatever its next attack time says); a soldier's DrGBase
--- gun waits as long as its own delay or the interval, whichever is longer.
+-- every click, whatever its next attack time says); a soldier's gun keeps
+-- its own pace (nextsoldier.weapons).
 -- Its hits are ws/sv_hits.lua's.
 local Balance = WS.require("games.gameplay.combat.weapon_balance")
 local BulletSteps = WS.require("games.gameplay.combat.bullet_steps")
@@ -24,7 +24,6 @@ WS.BulletSteps:Add("ws_weapon_balance", BulletSteps.BALANCE, function(ent, data)
 	local next = Balance.NextShot(class, now)
 	if next ~= nil then
 		weapon.WSFiredAt = now
-		if not shooter:IsPlayer() then weapon._DrGBaseNextShoot = math.max(weapon._DrGBaseNextShoot or 0, next) end
 	end
 	local spread = Balance.Spread(class)
 	if spread == nil then return end

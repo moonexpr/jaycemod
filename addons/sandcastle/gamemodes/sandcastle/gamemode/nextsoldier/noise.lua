@@ -1,5 +1,5 @@
 -- The noises a walker's body makes (the AI war's soldiers:
--- ws/sh_drg_soldier.lua), by Source's player rules with HL2's 600 gravity
+-- ws/sh_war_soldier.lua), by Source's player rules with HL2's 600 gravity
 -- (GMod's): footsteps by its speed (CBasePlayer::UpdateStepSound,
 -- GetStepSoundVelocities, SetStepSoundTime), a landing's volume by how fast
 -- it fell (CGameMovement::CheckFalling, shareddefs.h's HL2 fall speeds),

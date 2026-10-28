@@ -130,7 +130,7 @@ function ENT:Initialize()
 	-- a profile's hull (its half width and height, as DrGBase's CollisionBounds), else a player's
 	local bounds = self.CollisionBounds
 	self.nsHullMins = bounds and Vector(-bounds.x, -bounds.y, 0) or HULL_MINS
-	self.nsHullMaxs = bounds or HULL_MAXS
+	self.nsHullMaxs = bounds and Vector(bounds.x, bounds.y, bounds.z) or HULL_MAXS
 	self:SetCollisionBounds(self.nsHullMins, self.nsHullMaxs)
 	if self.BloodColor then self:SetBloodColor(self.BloodColor) end
 	self.loco:SetStepHeight(STEP_HEIGHT)
@@ -168,17 +168,15 @@ function ENT:OnInjured(dmg)
 	if IsValid(attacker) and attacker ~= self then self.nsAttacker = attacker end
 end
 
--- Dead: the class's OnDeath, then the body: kept (KeepBody, for a reserve
--- that revives it), a ragdoll (RagdollOnDeath), or removed once it has
--- lingered (Linger: the clients' ragdoll handoff) - DrGBase's coroutine
--- pause and rest, as TF2 keeps no coroutine.
+-- Dead: the class's OnDeath, then the body: a ragdoll (RagdollOnDeath), or
+-- removed once it has lingered (Linger: the clients' ragdoll handoff), with
+-- no coroutine to pause, as TF2 keeps none.
 function ENT:OnKilled(dmg)
 	if not self.nsAlive then return end
 	self.nsAlive = false
-	self.nsEnemy, self.nsScramble, self.nsKeepBody, self.nsLinger = nil, nil, nil, 0
+	self.nsEnemy, self.nsScramble, self.nsLinger = nil, nil, 0
 	hook.Run("OnNPCKilled", self, dmg:GetAttacker(), dmg:GetInflictor())
 	self:OnDeath(dmg)
-	if self.nsKeepBody then return end
 	if self.RagdollOnDeath then
 		self:BecomeRagdoll(dmg)
 	else
@@ -187,13 +185,12 @@ function ENT:OnKilled(dmg)
 end
 
 function ENT:Linger(seconds) self.nsLinger = math.max(self.nsLinger or 0, seconds) end
-function ENT:KeepBody() self.nsKeepBody = true end
 
 -- Begins again (TF2's INextBot::Reset): alive, its senses, enemy, path and
--- scramble cleared; a kept body revived.
+-- scramble cleared.
 function ENT:Reset()
 	self.nsAlive = true
-	self.nsKeepBody, self.nsEnemy, self.nsScramble, self.nsPath, self.nsAttacker = nil, nil, nil, nil, nil
+	self.nsEnemy, self.nsScramble, self.nsPath, self.nsAttacker = nil, nil, nil, nil
 	self.nsVision = Vision.New(VISION)
 	self.nsNextLook = 0
 end
@@ -618,6 +615,8 @@ function ENT:RangeAttack(enemy, weapon)
 		Tracer = 1,
 		TracerName = stats.tracer,
 		IgnoreEntity = weapon,
+		-- struck by its gun, as a player's shot is (the kill feed's icon)
+		Callback = function(_, _, dmg) dmg:SetInflictor(weapon) end,
 	})
 	weapon:EmitSound(stats.sound)
 	weapon:MuzzleFlash()

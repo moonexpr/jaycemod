@@ -3,7 +3,7 @@
 -- metrocops' model), from HL2's own sounds, every one found in the game's
 -- files. The soldier plays a hit's grunt or cry (Feedback), a hurtful
 -- fall's cry and its death (Death: loud, then confirmed) itself
--- (ws/sh_drg_soldier.lua, ws/sv_voices.lua), as players wearing these
+-- (ws/sh_war_soldier.lua, ws/sv_voices.lua), as players wearing these
 -- models do. A voice is { name, affiliation (what the speech
 -- rules call it and its side: nextsoldier.speech), grunt, pain, death,
 -- fall = { path... }, confirm = { path... } (a death's signature after its

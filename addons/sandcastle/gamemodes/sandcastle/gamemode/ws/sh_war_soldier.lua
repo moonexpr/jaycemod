@@ -1,12 +1,11 @@
--- What every AI war soldier entity shares, whatever DrGBase base it is
--- built on (drgbase_nextbot_human for the Combine and the Resistance's
--- fighters, drgbase_nextbot for the vortigaunt): WS.DrgSoldier(ENT,
--- baseName) installs it. The controller (features/aiwar) sets NSTarget,
+-- What the AI war's soldier entity (npc_nextsoldier, on NextSoldier's base,
+-- base_nextsoldier) does for the war: WS.WarSoldier(ENT) installs it. The
+-- controller (features/aiwar) sets NSTarget,
 -- a position to go to, NSRun, whether to run there, NSLook, where to
 -- face while it stands with no enemy (the threat it watches), and NSBrain,
 -- the orders it asks and tells (whether to attack, which enemy, what it saw
 -- and suffered). With a target, the soldier walks it whatever else it does,
--- fighting on the way; without one it is left to DrGBase.
+-- fighting on the way; without one it is left to its base.
 --
 -- On clients, the heal beams of medics (their "WSHealing" target) are
 -- ws/cl_medic_effects.lua's.
@@ -19,8 +18,6 @@ local PATH_TOLERANCE = 12
 -- thrown clear of a cart: any SetPos), the soldier plans its path afresh:
 -- the old one led from where it was.
 local TELEPORT = 128
--- m_lifeState of a living entity (shareddefs.h); GMod names none.
-local LIFE_ALIVE = 0
 -- A ledge jump (CustomClimbing): how far in from its hull a soldier checks
 -- the way up and the landing, so the wall it stands against is not in the
 -- way; how long after a jump it found no way for it does not try another.
@@ -68,7 +65,9 @@ local function Show(value)
 	return tostring(value)
 end
 
-function WS.DrgSoldier(ENT, baseName)
+local BASE = "base_nextsoldier"
+
+function WS.WarSoldier(ENT)
 	ENT.WSSoldier = true -- on both realms: the NPC context menu offers its trace
 	if CLIENT then return end
 	local Ragdoll = WS.require("ws.ragdoll")
@@ -80,25 +79,24 @@ function WS.DrgSoldier(ENT, baseName)
 	local Arms = WS.require("features.aiwar.arms")
 	local SILENT = { grunt = {}, pain = {}, death = {}, fall = {} }
 
-	local function Base() return baseclass.Get(baseName) end
+	local function Base() return baseclass.Get(BASE) end
 
 	-- One of a voice's lines, if it has any.
 	local function Say(self, lines)
 		if #lines > 0 then self:EmitSound(lines[math.random(#lines)], VOICE_LEVEL) end
 	end
 
-	-- It climbs a ledge as high as its route may (DrGBase's path to each
-	-- target then takes it) by jumping it (CustomClimbing).
+	-- It climbs a ledge as high as its route may (its path to each target
+	-- then takes it) by jumping it (CustomClimbing).
 	ENT.ClimbLedges = true
 	ENT.ClimbLedgesMaxHeight = HL2Path.SOLDIER_LIMITS.jumpHeight
-	-- It goes down drops as deep as its routes may (DrGBase's paths then take
+	-- It goes down drops as deep as its routes may (its paths then take
 	-- them), rappelling one deeper than a safe fall (NSRappel).
 	ENT.DeathDropHeight = HL2Path.SOLDIER_LIMITS.deathDropHeight
 
 	-- Its voice for the model it wears now (ws.voices; none for a
 	-- model without one): it plays its hits' grunts and cries (NSFeedback) and
-	-- its death (OnDeath: WS.PlayDeath, loud and confirmed) itself, not
-	-- DrGBase.
+	-- its death (OnDeath: WS.PlayDeath, loud and confirmed) itself.
 	function ENT:NSVoice()
 		local voice = Voices.For(self:GetModel()) or SILENT
 		self.NSVoiceLines = voice
@@ -122,7 +120,6 @@ function WS.DrgSoldier(ENT, baseName)
 	-- its footsteps, timed by its speed as a player's are (Noise.Step), and
 	-- in the air, how fast it is falling (for its landing).
 	function ENT:CustomThink()
-		if self.NSDormant then return end
 		local now = CurTime()
 		if now >= (self.NSNextArm or 0) and self:HasEnemy() then
 			self.NSNextArm = now + ARM_INTERVAL
@@ -170,8 +167,7 @@ function WS.DrgSoldier(ENT, baseName)
 	end
 
 	-- A weapon in hand: its ranges are the arms' (a gun fires at any enemy in
-	-- sight), in place of DrGBase's for the hold type; a weapon the arms do
-	-- not know keeps DrGBase's.
+	-- sight); a weapon the arms do not know keeps the class's.
 	function ENT:OnWeaponChange(old, new)
 		local ranges = IsValid(new) and Arms.Ranges(new:GetClass())
 		if not ranges then return end
@@ -188,14 +184,11 @@ function WS.DrgSoldier(ENT, baseName)
 		return Base().OnAnimEvent(self, event, ...)
 	end
 
-	-- Landing: DrGBase's own handling (its ground state, fall damage), as its
-	-- mixin wraps the base's hook, then the impact: a step as loud as the fall
-	-- was fast (Noise.Landing; a jump onto a ledge, as a jump's), a brief
+	-- Landing (the base has landed it before raising this): the impact, a
+	-- step as loud as the fall was fast (Noise.Landing; a jump onto a ledge, as a jump's), a brief
 	-- landing animation, a grunt for a hard landing or a cry for a hurtful
 	-- one, and the enemies in earshot notice it (NSNotice).
 	function ENT:OnLandOnGround(ground)
-		-- DrGBase's own first; NextSoldier's base lands before raising this
-		if self._HandleLandOnGround then self:_HandleLandOnGround(ground) end
 		local fall = self.NSFallSpeed or 0
 		local volume = self.NSLeapt and Noise.JUMP_LANDING_VOLUME or Noise.Landing(fall)
 		self.NSFallSpeed, self.NSLeapt = 0, nil
@@ -212,16 +205,13 @@ function WS.DrgSoldier(ENT, baseName)
 		self:NSNotice(STEP_LEVEL, volume)
 	end
 
-	-- A noise of its body that the NextBots in earshot hear (Noise.Hears, as
-	-- DrGBase hears a player's: DrGBase hears no NextBot's), noticing it as
-	-- DrGBase's OnSound does.
+	-- A noise of its body that the soldiers in earshot hear (Noise.Hears),
+	-- each told it (OnSound).
 	function ENT:NSNotice(level, volume)
 		local pos = self:GetPos()
 		local sound = { Entity = self, Pos = pos, SoundLevel = level, Volume = volume }
 		local reach = Noise.HearingRange(level, volume)
-		local hearers = DrGBase and table.Copy(DrGBase.GetNextbots()) or {}
-		for bot in pairs(WS.NextSoldierBots or {}) do hearers[#hearers + 1] = bot end
-		for _, bot in ipairs(hearers) do
+		for bot in pairs(WS.NextSoldierBots) do
 			if IsValid(bot) and bot ~= self and not bot:IsAIDisabled() and not bot:IsDeaf() then
 				local coefficient = bot:GetHearingCoefficient()
 				local distance = bot:GetRangeTo(pos)
@@ -233,11 +223,10 @@ function WS.DrgSoldier(ENT, baseName)
 		end
 	end
 
-	-- DrGBase's, once it has picked the soldier's model. It is lag compensated,
-	-- as a player is: a player's shot (FireBullets, or a trace between
-	-- LagCompensation calls) meets it where the shooter saw it, not where it
-	-- has walked since; GMod compensates only players unless asked, and
-	-- DrGBase never asks (docs/prediction.md).
+	-- The base's, once it has its model. It is lag compensated, as a player
+	-- is: a player's shot (FireBullets, or a trace between LagCompensation
+	-- calls) meets it where the shooter saw it, not where it has walked
+	-- since; GMod compensates only players unless asked (docs/prediction.md).
 	function ENT:CustomInitialize()
 		self:SetLagCompensated(true)
 		self:NSVoice()
@@ -284,22 +273,21 @@ function WS.DrgSoldier(ENT, baseName)
 		return true
 	end
 
-	-- No enemy: the target, else stand watching NSLook (DrGBase would
-	-- wander off at random).
+	-- No enemy: the target, else stand watching NSLook.
 	function ENT:OnIdle()
 		if not self:NSSteer() and self.NSLook then self:FaceTowards(self.NSLook) end
 	end
 
-	-- An enemy: with a target the soldier keeps to it, and DrGBase still aims
-	-- and fires at the enemy in sight; without one, DrGBase's own chase,
+	-- An enemy: with a target the soldier keeps to it, and the base still
+	-- fires at the enemy in sight; without one, the base's own chase,
 	-- retreat and facing.
 	function ENT:OnChaseEnemy(enemy) return self:NSSteer(enemy) end
 	function ENT:OnAvoidEnemy(enemy) return self:NSSteer(enemy) end
 	function ENT:OnIdleEnemy(enemy) return self:NSSteer(enemy) end
 
-	-- The bridge to the war's orders (docs/aiwar-command.md §6): DrGBase's
-	-- hooks become queries and events. DrGBase's own hooks that do work
-	-- (spotting an attacker, reloading) are called through.
+	-- The bridge to the war's orders (docs/aiwar-command.md §6): the base's
+	-- hooks become queries and events; its own that do work are called
+	-- through.
 	local Engine -- games.npc.nextbot, required on first use
 
 	local function Brain(self)
@@ -338,7 +326,7 @@ function WS.DrgSoldier(ENT, baseName)
 		brain:Event(name, ...)
 	end
 
-	-- ShouldAttack NO skips DrGBase's attack (the humiliated, a healing
+	-- ShouldAttack NO skips the base's attack (the humiliated, a healing
 	-- medic), as do a freeze and the reaction time to a new enemy
 	-- (NSReactAt, tf_bot_difficulty's).
 	function ENT:OnRangeAttack()
@@ -346,9 +334,9 @@ function WS.DrgSoldier(ENT, baseName)
 		if Answered(Ask(self, "ShouldAttack", self:GetEnemy()), "ANSWER_NO") then return true end
 	end
 
-	-- DrGBase's human AI holds a melee weapon but never strikes with it: the
-	-- soldier strikes the enemy in reach for the weapon's damage, at its
-	-- pace (features.aiwar.arms), playing the melee swing.
+	-- The base strikes with no melee weapon of its own: the soldier strikes
+	-- the enemy in reach for the weapon's damage, at its pace
+	-- (features.aiwar.arms), playing the melee swing.
 	function ENT:OnMeleeAttack(enemy, weapon)
 		if self.NSFrozen then return true end
 		if Answered(Ask(self, "ShouldAttack", self:GetEnemy()), "ANSWER_NO") then return true end
@@ -370,7 +358,7 @@ function WS.DrgSoldier(ENT, baseName)
 	end
 
 	-- SelectMoreDangerousThreat: true when a is the one to fight; nil leaves
-	-- DrGBase's order (priority, then range).
+	-- the base's order (priority, then range).
 	function ENT:OnFetchEnemy(a, b)
 		local pick = Ask(self, "SelectMoreDangerousThreat", a, b)
 		if pick == a then return true end
@@ -417,8 +405,8 @@ function WS.DrgSoldier(ENT, baseName)
 		Tell(self, "OnNavAreaChanged", old, new)
 	end
 
-	-- A ledge (not a ladder, which DrGBase climbs) it jumps: CustomClimbing;
-	-- not again for LEAP_RETRY after a jump with no way up.
+	-- A ledge it jumps: CustomClimbing; not again for LEAP_RETRY after a jump
+	-- with no way up.
 	function ENT:OnStartClimbing(ledge, height, down)
 		if isvector(ledge) and not down then
 			if CurTime() < (self.NSLeapRetry or 0) then return false end
@@ -428,41 +416,23 @@ function WS.DrgSoldier(ENT, baseName)
 	end
 
 	-- A motion along at(t) (t from 0 to 1 over duration seconds), facing
-	-- toward, its own momentum stopped each step: on NextSoldier's base a
-	-- scramble its locomotion steps each tick (TF2's climbs and jumps, no
-	-- coroutine), on DrGBase a step each tick of its behaviour's coroutine.
-	-- done() runs as it ends.
+	-- toward: a scramble its locomotion steps each tick (TF2's climbs and
+	-- jumps, no coroutine). done() runs as it ends.
 	local function Move(self, duration, at, toward, done)
 		self:FaceTowards(toward)
-		self:SetNW2Bool("DrGBaseJumping", true)
-		local function Finish()
+		self:Scramble({ duration = duration, at = at, done = function()
 			self.NSLeapt = true
-			self:SetNW2Bool("DrGBaseJumping", false)
 			if done then done() end
-		end
-		if self.Scramble then
-			self:Scramble({ duration = duration, at = at, done = Finish })
-			return
-		end
-		local began = CurTime()
-		while true do
-			self.loco:SetVelocity(vector_origin)
-			local t = (CurTime() - began) / duration
-			self:SetPos(at(t))
-			if t >= 1 then break end
-			self:YieldCoroutine(false)
-		end
-		Finish()
+		end })
 	end
 
-	-- Jumps onto the ledge along nextsoldier.leap's arc, as DrGBase's own
-	-- climb moves it (Move): if the way straight up to the arc's top and
+	-- Jumps onto the ledge along nextsoldier.leap's arc (Move): if the way straight up to the arc's top and
 	-- across to its landing is clear (the arc stays inside that, and clears
 	-- the lip), else it stays.
 	function ENT:CustomClimbing(ledge)
 		local from = self:GetPos()
 		local mins, maxs = self:GetCollisionBounds()
-		-- from step height up, as DrGBase's ledge trace: a sloped floor is no wall
+		-- from step height up: a sloped floor is no wall
 		local hull = {
 			mins = Vector(mins.x + LEAP_INSET, mins.y + LEAP_INSET, self.loco:GetStepHeight()),
 			maxs = maxs - Vector(LEAP_INSET, LEAP_INSET, LEAP_INSET),
@@ -574,11 +544,10 @@ function WS.DrgSoldier(ENT, baseName)
 		end)
 	end
 
-	-- What it stands on, for Lua: DrGBase follows the soldier's path only on
-	-- the world (FollowPath), and off it walks straight at the target into
-	-- whatever stands between; a soldier on a control point's base, a prop
-	-- or another soldier stands as firm, so anything that is not moving
-	-- counts as the world (a moving cart or lift is itself).
+	-- What it stands on, for Lua: a soldier on a control point's base, a
+	-- prop or another soldier stands as firm as on the world, so anything
+	-- that is not moving counts as the world (a moving cart or lift is
+	-- itself).
 	local EntityGround = FindMetaTable("Entity").GetGroundEntity
 	local STILL = 1
 	function ENT:GetGroundEntity()
@@ -588,26 +557,26 @@ function WS.DrgSoldier(ENT, baseName)
 	end
 
 	-- Its path planned afresh from where it stands, on FollowPath's next step
-	-- (DrGBase computes again only as the target moves): pushed off it, the
+	-- (it is computed again only as the target moves): pushed off it, the
 	-- soldier would run at its next point through whatever stands between.
 	function ENT:NSRepath()
 		local path = self:GetPath()
 		if IsValid(path) then path:Invalidate() end
 	end
 
-	-- Its path's cost (GetPathGenerator, which DrGBase's path search takes):
+	-- Its path's cost (GetPathGenerator, which its path search takes):
 	-- the one its controller makes for each compute (NSPathCost: the
 	-- strategy its routes are planned by, priced natively by
 	-- wetsands.navsearch's Calculator), and while the mesh snapshot is still
 	-- built, none: every move refused, no path yet. A soldier no controller
-	-- enlisted keeps DrGBase's own, with the link rule below.
+	-- enlisted keeps the base's own, with the link rule below.
 	local function NoPath(area, fromArea) return fromArea == nil and 0 or -1 end
 	function ENT:GetPathGenerator()
 		if not self.NSPathCost then return Base().GetPathGenerator(self) end
 		return self.NSPathCost() or NoPath
 	end
 
-	-- DrGBase's cost of each link, for a soldier no controller enlisted: none
+	-- The base's cost of each link, for a soldier no controller enlisted: none
 	-- it cannot cross (WS.NavLinkCrossable: a players' map's clip along a
 	-- rail, which the nav mesh links a drop past, so it would ram the rail
 	-- for good).
@@ -727,7 +696,7 @@ function WS.DrgSoldier(ENT, baseName)
 		self:AddGesture(HoldAct("ACT_HL2MP_GESTURE_RELOAD_", HoldType(self)))
 	end
 
-	-- Seated on the cart: the sitting pose, whatever DrGBase would play; a
+	-- Seated on the cart: the sitting pose, whatever the base would play; a
 	-- loser on its feet (WS.IsLoser): the loser state's, scared standing
 	-- and panicked on the move, as a player's (sh_core.lua); in a battle
 	-- stance, its crouch.
@@ -744,13 +713,12 @@ function WS.DrgSoldier(ENT, baseName)
 		return self.NSDamageScale
 	end
 
-	-- Dead: no ragdoll on the server at all (RagdollOnDeath is false, so
-	-- DrGBase only removes the body). DrGBase's death callback, OnDeath, runs
-	-- in its behaviour coroutine: every client near is told to ragdoll its
-	-- own copy of the soldier (ws/sv_npc_ragdolls.lua), and the soldier
-	-- lingers, not solid, Ragdoll.HANDOFF seconds while the message arrives,
-	-- before DrGBase removes it. The method is ours: NextBot's BecomeRagdoll
-	-- belongs to the engine (and DrGBase), and an ENT method of that name is
+	-- Dead: no ragdoll on the server at all (RagdollOnDeath is false, so the
+	-- base only removes the body). OnDeath: every client near is told to
+	-- ragdoll its own copy of the soldier (ws/sv_npc_ragdolls.lua), and the
+	-- soldier lingers, not solid, Ragdoll.HANDOFF seconds while the message
+	-- arrives, before the base removes it. The method is ours: NextBot's
+	-- BecomeRagdoll belongs to the engine, and an ENT method of that name is
 	-- never reached.
 	function ENT:NSClientRagdoll(dmg)
 		if not Ragdoll.LeavesBody(self:IsFlagSet(FL_DISSOLVING), dmg:IsDamageType(DMG_REMOVENORAGDOLL)) then return false end
@@ -760,60 +728,9 @@ function WS.DrgSoldier(ENT, baseName)
 		return true
 	end
 
-	-- The body waits the clients' ragdoll handoff before it goes: NextSoldier's
-	-- base lingers (no coroutine), DrGBase's death coroutine pauses.
-	local function Linger(self, seconds)
-		if self.Linger then self:Linger(seconds) else self:PauseCoroutine(seconds) end
-	end
-
 	function ENT:OnDeath(dmg)
 		WS.PlayDeath(self:GetPos(), self.NSVoiceLines)
-		if self:NSClientRagdoll(dmg) then Linger(self, Ragdoll.HANDOFF) end
-		if self.NSDormant then self:NSRest() end
-	end
-
-	-- Kept for a respawn wave (the AI war's reserve sets NSDormant as the
-	-- soldier falls): after the clients' ragdoll handoff the body is hidden
-	-- and not solid, and DrGBase's death coroutine waits here instead of
-	-- going on to remove it, until NSRevive gives the soldier a new one.
-	local function SetShown(self, shown)
-		self:SetNoDraw(not shown)
-		local active = self:GetActiveWeapon()
-		for _, child in ipairs(self:GetChildren()) do
-			child:SetNoDraw(not Arms.Drawn(shown, child:IsWeapon(), child == active))
-		end
-	end
-
-	function ENT:NSRest()
-		SetShown(self, false)
-		self:SetNotSolid(true)
-		-- NextSoldier's base keeps the body; DrGBase's death coroutine waits here
-		if self.KeepBody then return self:KeepBody() end
-		while true do coroutine.yield() end
-	end
-
-	-- A wave revives a kept body where it spawns its soldiers: at full
-	-- health, seen and solid, alive to the engine and to DrGBase, with a fresh
-	-- behaviour coroutine in place of the death one. A soldier that died
-	-- mid-climb or mid-leap (CustomClimbing) never reached the end where
-	-- DrGBase clears those: they are cleared here, or it comes back walking
-	-- in its climb animation.
-	function ENT:NSRevive(pos, ang)
-		self.NSDormant = nil
-		self:SetPos(pos)
-		self:SetAngles(ang)
-		self:SetNW2Bool("DrGBaseDying", false)
-		self:SetNW2Bool("DrGBaseDead", false)
-		self:SetNW2Bool("DrGBaseClimbing", false)
-		self:SetNW2Bool("DrGBaseClimbingDown", false)
-		self:SetNW2Bool("DrGBaseJumping", false)
-		self._DrGBaseClimbLadder, self.NSLeapt, self.NSLeapRetry = nil, nil, nil
-		self:SetSaveValue("m_lifeState", LIFE_ALIVE)
-		self:SetHealth(self:GetMaxHealth())
-		self:SetNotSolid(false)
-		SetShown(self, true)
-		self.BehaveThread = nil
-		self:BehaveStart()
+		if self:NSClientRagdoll(dmg) then self:Linger(Ragdoll.HANDOFF) end
 	end
 end
 

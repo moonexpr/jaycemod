@@ -3,6 +3,8 @@ local Base = nextsoldier.base
 
 local GAMEMODE = T.ROOT
 local ENTITIES = "addons/sandcastle/gamemodes/sandcastle/entities/entities/"
+-- The war's soldier classes, on NextSoldier's base.
+local SOLDIER_CLASSES = { "npc_nextsoldier", "npc_path_probe" }
 
 local function Read(path)
 	local file = assert(io.open(path))
@@ -77,7 +79,7 @@ T.test("each name's component is TF2's (INextBot and its ILocomotion, IBody, IVi
 	T.eq(Base.ComponentOf("GetEnemy").name, "intention")
 	T.eq(Base.ComponentOf("SelectWeapon").name, "body")
 	T.eq(Base.ComponentOf("SetCrouching").name, "posture")
-	T.eq(Base.ComponentOf("NSRest"), nil)
+	T.eq(Base.ComponentOf("NSKit"), nil)
 end)
 
 T.test("no coroutine: the behaviour coroutine's names are replaced, by Reset and locomotion's ticked processes", function()
@@ -88,18 +90,24 @@ T.test("no coroutine: the behaviour coroutine's names are replaced, by Reset and
 end)
 
 T.test("every hook the soldier defines on the base is declared", function()
-	local text = Read(GAMEMODE .. "ws/sh_drg_soldier.lua")
-	for _, path in ipairs(Lines("ls " .. ENTITIES .. "ws_drg_*.lua")) do text = text .. Read(path) end
+	local text = Read(GAMEMODE .. "ws/sh_war_soldier.lua")
+	for _, name in ipairs(SOLDIER_CLASSES) do text = text .. Read(ENTITIES .. name .. ".lua") end
 	for name in text:gmatch("function%s+ENT:([%w_]+)%s*%(") do
 		T.eq(Ours(name) or GMOD[name] == true or Base.HOOKS:Has(name), true, "ENT:" .. name .. " is a declared hook")
 	end
 end)
 
-T.test("every setting the soldier classes give the base is declared", function()
-	for _, path in ipairs(Lines("ls " .. ENTITIES .. "ws_drg_*.lua")) do
+T.test("every setting the soldier classes and profiles give the base is declared", function()
+	for _, class in ipairs(SOLDIER_CLASSES) do
+		local path = ENTITIES .. class .. ".lua"
 		for name in Read(path):gmatch("\n%s*ENT%.([%w_]+)%s*=") do
 			T.eq(Ours(name) or GMOD[name] == true or Base.FIELDS:Has(name), true, path .. ": ENT." .. name .. " is a declared field")
 		end
+	end
+	-- a profile's fields are set on the soldier as it spawns (npc_nextsoldier's NSProfile)
+	local profiles = Read(GAMEMODE .. "features/aiwar/profiles.lua"):match("PROFILES = (%b{})")
+	for name in profiles:gmatch("[{,]%s*(%u[%w_]*)%s*=") do
+		T.eq(Ours(name) or GMOD[name] == true or Base.FIELDS:Has(name), true, "profile field " .. name .. " is declared")
 	end
 end)
 

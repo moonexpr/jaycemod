@@ -2,7 +2,6 @@
 -- join to the quota, balanced between the teams; each is enlisted as a
 -- soldier carrying its kit; under their orders they walk the map and fire
 -- at enemies; a lower quota kicks them down to it, and 0 leaves none.
--- Needs DrGBase (the war's own soldiers fill the slots the bots leave).
 -- args: { quota = bots to keep, timeout = seconds for them to move and fight }
 local QUOTA = 6
 local START_TIMEOUT, JOIN_TIMEOUT, ENLIST_TIMEOUT, KICK_TIMEOUT = 40, 30, 30, 30
@@ -23,7 +22,6 @@ local function Bots(aiwar)
 end
 
 return function(t)
-	if DrGBase == nil then return t:Skip("DrGBase is not loaded on this server") end
 	local quota = t.args.quota or QUOTA
 	game.ConsoleCommand("mp_aiwar_start\n")
 	local aiwar = t:WaitFor(START_TIMEOUT, function()

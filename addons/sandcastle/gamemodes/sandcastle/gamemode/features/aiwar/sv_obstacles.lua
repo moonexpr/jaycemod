@@ -356,7 +356,7 @@ function Controller:ShutDoorAreas(team)
 end
 
 -- A soldier's (or a lane probe's) path cost maker, for its
--- GetPathGenerator (ws_drg_soldier): () -> the cost of one compute, priced
+-- GetPathGenerator (WS.WarSoldier): () -> the cost of one compute, priced
 -- as its routes are (HL2Path at SOLDIER_LIMITS, the bot bot() gives) by
 -- the npc controller's EngineCost, natively, over what its team knows and
 -- the doors noted shut to it; nil while the mesh snapshot is built.
@@ -414,7 +414,7 @@ function Controller:OpenDoorsToSoldiers()
 	end
 	-- Hazards: TF2 maps tick only "Clients" on their trigger_hurts (pits,
 	-- saws, trains, the kill triggers inside carts), having no NPCs, so a
-	-- soldier (a DrGBase NextBot: FL_NPC) fell through every one. They hurt
+	-- soldier (a NextBot: FL_NPC) fell through every one. They hurt
 	-- soldiers as they hurt players; their filters (filter_activator_tfteam)
 	-- already take a soldier as its team's player. Restored with the doors.
 	for _, trigger in ipairs(ents.FindByClass("trigger_hurt")) do

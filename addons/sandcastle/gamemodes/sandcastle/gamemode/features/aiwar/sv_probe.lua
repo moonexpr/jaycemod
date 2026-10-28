@@ -4,11 +4,11 @@ local Probe = nextsoldier.probe
 local TFBot = WS.require("foundation.wetsands.path.tfbot")
 local ToVector, OnFloor, SPAWN_LIFT = Map.ToVector, Map.OnFloor, Map.SPAWN_LIFT
 
--- One probe (ws_drg_probe) walks each lane of each team from its first
+-- One probe (npc_path_probe) walks each lane of each team from its first
 -- point (nextsoldier.probe), on its team (a spawn door opens for it,
 -- and its path keeps off doors shut to it, as a soldier's does); when the
 -- last is done, the report is printed and kept (probeReport).
-local PROBE_CLASS = "ws_drg_probe"
+local PROBE_CLASS = "npc_path_probe"
 local PROBE_TIMER = "ns_lanes_probe"
 local PROBE_STEP = 0.25
 

@@ -98,6 +98,13 @@ local function NoticeName(gm, ent)
 	return gm:GetDeathNoticeEntityName(ent)
 end
 
+-- An AI war soldier by its kind (one class is every kind's: Feed.Notice).
+function GM:GetDeathNoticeEntityName(ent)
+	local kind = ent:GetNW2String("NSKind", "")
+	if kind ~= "" then return Feed.Notice(kind) end
+	return self.BaseClass.GetDeathNoticeEntityName(self, ent)
+end
+
 function GM:SendDeathNotice(attacker, inflictor, victim, flags)
 	if Told(self, victim, creditedAt) then flags = bit.bor(flags, Feed.FINISHED_OFF) end
 	if Told(self, victim, slammedAt) then flags = bit.bor(flags, Feed.SLAMMED) end

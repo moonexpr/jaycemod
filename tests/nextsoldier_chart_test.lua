@@ -33,7 +33,7 @@ end)
 
 T.test("every event the soldier and the war send its orders is declared", function()
 	local sent = {}
-	for name in Code(GAMEMODE .. "ws/sh_drg_soldier.lua"):gmatch('Tell%(self,%s*"(On%u[%w_]*)"') do sent[name] = true end
+	for name in Code(GAMEMODE .. "ws/sh_war_soldier.lua"):gmatch('Tell%(self,%s*"(On%u[%w_]*)"') do sent[name] = true end
 	for _, path in ipairs(Lines("ls " .. GAMEMODE .. "features/aiwar/*.lua")) do
 		for name in Code(path):gmatch(':Event%(%s*"(On%u[%w_]*)"') do sent[name] = true end
 	end
@@ -45,7 +45,7 @@ end)
 
 T.test("every query the soldier and the war ask its orders is declared", function()
 	local asked = {}
-	for name in Code(GAMEMODE .. "ws/sh_drg_soldier.lua"):gmatch('Ask%(self,%s*"([%w_]+)"') do asked[name] = true end
+	for name in Code(GAMEMODE .. "ws/sh_war_soldier.lua"):gmatch('Ask%(self,%s*"([%w_]+)"') do asked[name] = true end
 	for _, path in ipairs(Lines("ls " .. GAMEMODE .. "features/aiwar/*.lua")) do
 		for name in Code(path):gmatch(':Query%(%s*"([%w_]+)"') do asked[name] = true end
 	end

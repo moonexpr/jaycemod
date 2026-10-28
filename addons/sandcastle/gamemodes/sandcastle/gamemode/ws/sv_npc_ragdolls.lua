@@ -8,7 +8,7 @@
 -- One game event, game_npc_ragdoll_create (ws/sh_npc_ragdolls.lua), tells
 -- the clients that can see a body to build its ragdoll, in one of two ways:
 --  * a body the server still has (WS.SendClientRagdoll: an AI war
---    soldier, ws/sh_drg_soldier.lua): clients take the pose from their
+--    soldier, ws/sh_war_soldier.lua): clients take the pose from their
 --    own copy of it and hide it; its owner removes it Ragdoll.HANDOFF later.
 --  * a serverside ragdoll the engine or an addon made for a dead NPC or
 --    NextBot: its pose and velocities travel in the message and it is

@@ -3,7 +3,7 @@
 -- cry loud (a rebel's scream layered) and then its confirmation (the
 -- Combine's radio and flatline beeps), so the radio still sounds after the
 -- soldier's body is gone. A player grunts
--- or cries out on a hit, as a soldier does (ws/sh_drg_soldier.lua), and
+-- or cries out on a hit, as a soldier does (ws/sh_war_soldier.lua), and
 -- dies as one: in its model's voice, or in a model of none, its side's (the
 -- faction fighting for its team, Voices.ForAffiliation); a spectator keeps
 -- the engine's.

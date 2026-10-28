@@ -241,13 +241,12 @@ local function Env(w)
 		ServerIdle = function() return w.idle == true end,
 		SetTeamMember = function() end,
 		ClipMasks = function() return { solid = 5, brushes = 6 } end,
-		-- a soldier's kind: its class, as on DrGBase (ws/sh_aiwar.lua)
+		-- a soldier's kind (ws/sh_aiwar.lua): a test soldier has none, so its class
 		SoldierKind = function(ent) return ent:GetClass() end,
 	}
 	local env = {
 		WS = ws,
 		Vector = Vector,
-		DrGBase = {},
 		-- the responserules addon's service; its own tests cover what is said
 		ResponseRules = {
 			Speaker = function() return {} end,
@@ -480,7 +479,7 @@ T.test("a soldier held up by a door in its way finds the door", function()
 	local door = Ent(Vector(50, 0, 0))
 	door.GetClass = function() return "func_door" end
 	local soldier = FakeSoldier(1)
-	soldier.GetClass = function() return "ws_drg_rebel" end
+	soldier.GetClass = function() return "npc_nextsoldier" end
 	soldier.GetPos = function() return Vector(0, 0, 0) end
 	soldier.IsNextBot = function() return false end
 	soldier.SetFactionRelationship = function() end
@@ -616,17 +615,6 @@ T.test("a rounds mode without a standard objective is fought freeform; without a
 	local ok, why = Load(bare):Start()
 	T.eq(ok, false, "refused")
 	T.eq(why:find("mp_nav_generate", 1, true) ~= nil, true, "why: " .. tostring(why))
-end)
-
-T.test("the war still needs DrGBase first", function()
-	local w = World()
-	w:Load("rounds", FakeRounds(PayloadMode.Mode, w))
-	local env = Env(w)
-	env.DrGBase = false
-	local chunk = assert(loadfile(SOURCE))
-	local ok, why = setfenv(chunk, env)():Start()
-	T.eq(ok, false, "refused")
-	T.eq(why:find("DrGBase", 1, true) ~= nil, true, "why: " .. tostring(why))
 end)
 
 T.test("with NextSoldier switched off (ns_soldiers_enabled 0) the war is refused, and says why", function()

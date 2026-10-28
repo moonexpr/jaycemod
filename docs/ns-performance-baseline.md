@@ -587,7 +587,7 @@ stopped drafting soldiers at all (not traced; the route search is not on
 the drafting path).
 
 **Where route cost sits now.** The soldiers' per-link hook (`OnComputePath`
-in `ws/sh_drg_soldier.lua`, inside DrGBase's path compute, the profile's
+in `ws/sh_war_soldier.lua`, inside DrGBase's path compute, the profile's
 `path.lua:75`) asks `WS.NavLinkCrossable` (already cached by link) and
 `NSAreaClosed`, which walks every shut door the war noted, with an
 `IsValid` each, for every link a path weighs. A per-team cache of closed

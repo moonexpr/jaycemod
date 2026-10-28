@@ -48,5 +48,4 @@ return function(t)
 	t:Info("lua_memory_kb_after_collect", math.floor(collectgarbage("count")))
 	t:Info("ws_memory", WS.FeatureLoader:MemoryReport(count, collectgarbage("count")))
 	t:Info("navmesh", navmesh.IsLoaded() and navmesh.GetNavAreaCount() or 0)
-	t:Info("drgbase", DrGBase ~= nil)
 end

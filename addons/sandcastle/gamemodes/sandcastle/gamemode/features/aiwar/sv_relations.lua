@@ -288,7 +288,7 @@ function Controller:Marksman(ent, data)
 end
 
 -- A new enemy: no shot at it for the difficulty's reaction time
--- (ws/sh_drg_soldier.lua's OnRangeAttack reads NSReactAt).
+-- (ws/sh_war_soldier.lua's OnRangeAttack reads NSReactAt).
 hook.Add("WSSoldierContact", "ws_aiwar_reaction", function(ent)
 	if not Controller.soldiers[ent] then return end
 	ent.NSReactAt = CurTime() + Skill().reaction

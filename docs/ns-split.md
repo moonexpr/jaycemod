@@ -72,7 +72,7 @@ side of a doctrine.
   scenario. It asks the NS feature to take a soldier, gives it a job,
   and hands it the field.
 
-`ws/sh_drg_soldier.lua`'s bridge talks to NS, not the war.
+`ws/sh_war_soldier.lua`'s bridge talks to NS, not the war.
 
 ## 4. Names
 

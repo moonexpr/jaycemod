@@ -5,15 +5,16 @@
 
 The GModServer bottle's GarrysMod is the operator's install (a link into the
 "Steam" bottle), shared with the game the operator plays. The server needs
-addons the game must not load twice (DrGBase, mounted from the operator's
-Workshop downloads by the server's own autorun). So the server runs from
+addons the game must not load twice (ULX and the rest, mounted from the
+operator's Workshop downloads by the server's own autorun). So the server runs from
 GarrysModServer beside it: every entry a symlink to the shared install, but
 garrysmod/ is a folder whose addons/, data/ and cache/ are its own (the
 server writes there, the game never reads them). addons/ links each of the
 shared addons, the repo's own (REPO_ADDONS), and server_mounts, whose lua/ links the server's own Lua in
 server_root/ (SERVER_LUA): an autorun (mounts.lua) that mounts each Workshop
 archive in SERVER_WORKSHOP, linked as cache/<name>.gma (GMod ignores a loose
-.gma in addons/), and each map pool map in SERVER_MAPS, from steamcmd's
+.gma in addons/; an archive no longer listed leaves cache/, since every one
+there is mounted), and each map pool map in SERVER_MAPS, from steamcmd's
 downloads, as cache/workshop_map_<item>.gma, the gamemode's entities winning over a mounted addon's of
 the same name, luadev's access on a LAN server, ULX's luadev commands, and
 luadev's socket for server_lua.py. lua/ is its own too, every entry a link
@@ -75,7 +76,6 @@ SERVER_MAPS = {
 MAP_ARCHIVE_PREFIX = "workshop_map_"
 # Workshop addons the server mounts: name -> item id
 SERVER_WORKSHOP = {
-    "drgbase": "1560118657",
     "ulib": "557962238",
     "ulx": "557962280",
     "tf2_weapon_pack": "949733637",
@@ -280,8 +280,14 @@ def build(layout: Layout) -> Path:
         target = game / "data" / path
         target.parent.mkdir(parents=True, exist_ok=True)
         link(target, source)
+    cache = game / "cache"
+    cache.mkdir(exist_ok=True)
+    listed = {f"{name}.gma" for name in SERVER_WORKSHOP} | {map_archive_name(item) for item in SERVER_MAPS.values()}
+    for archive in cache.glob("*.gma"):
+        if archive.name not in listed:
+            archive.unlink()
     for name, item in SERVER_WORKSHOP.items():
-        place_archive(game / "cache" / f"{name}.gma", workshop_archive(layout.workshop, item))
+        place_archive(cache / f"{name}.gma", workshop_archive(layout.workshop, item))
     for name, item in SERVER_MAPS.items():
         try:
             archive = workshop_archive(layout.maps, item)

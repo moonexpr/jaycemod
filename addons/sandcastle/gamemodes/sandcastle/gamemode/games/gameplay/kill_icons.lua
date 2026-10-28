@@ -26,7 +26,6 @@ HL2 = {
 	npc_turret_floor = "obj_sentrygun",
 	entityflame = "flamethrower",
 	env_fire = "flamethrower",
-	ws_drg_vortigaunt = "righteous_bison", -- its beam
 	prop_physics_multiplayer = "prop_physics", -- the gravity gun and its box
 	prop_physics_respawnable = "prop_physics",
 	prop_physics_override = "prop_physics",

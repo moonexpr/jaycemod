@@ -64,7 +64,6 @@ local function NextRound(t, timeout)
 end
 
 return function(t)
-	if DrGBase == nil then return t:Skip("DrGBase is not loaded (the war's soldiers)") end
 	local rounds = t:Feature("rounds")
 	if not (rounds and t:Loaded("arena")) then return t:Skip("not an arena map") end
 	Tests.KickBots()

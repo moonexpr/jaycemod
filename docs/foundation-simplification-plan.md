@@ -224,8 +224,8 @@ Two placements differ from the scholar's:
 | `scoreboard` | `ws/cl_scoreboard.lua` | yes |
 | `nav_progress` | `ws/cl_nav_progress.lua`, `ws/sv_nav.lua` | yes |
 | `admin_notices` | `ws/sv_world.lua`, `features/editors`, `features/aiwar`, an entity | yes |
-| `npc/ragdoll` | `ws/sh_drg_soldier.lua`, `ws/sv_npc_ragdolls.lua` | yes |
-| `npc/voices` | `ws/sh_drg_soldier.lua` | yes |
+| `npc/ragdoll` | `ws/sh_war_soldier.lua`, `ws/sv_npc_ragdolls.lua` | yes |
+| `npc/voices` | `ws/sh_war_soldier.lua` | yes |
 | `localization` | `ws/cl_localization.lua`; the KeyValues reader stays as a structure | yes |
 
 **Home (judgment call):** `ws/<name>.lua` with no realm prefix, loaded as

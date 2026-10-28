@@ -1,9 +1,7 @@
 -- npc_nextsoldier: the AI war's soldier on NextSoldier's own base
--- (base_nextsoldier, no DrGBase): one class, as TF2's CTFBot is, each kind
--- of soldier a profile (features.aiwar.profiles) given before it spawns.
--- The soldier's hooks (WS.DrgSoldier) steer it as they steer the DrGBase
--- soldiers it stands in for; the war fields it in their place when
--- ns_soldiers_base is "nextsoldier".
+-- (base_nextsoldier): one class, as TF2's CTFBot is, each kind of soldier a
+-- profile (features.aiwar.profiles) given before it spawns, steered for the
+-- war by its hooks (WS.WarSoldier).
 AddCSLuaFile()
 
 local Profiles = WS.require("features.aiwar.profiles")
@@ -13,7 +11,7 @@ ENT.Type = "nextbot"
 ENT.PrintName = "NextSoldier"
 ENT.Category = "Sandcastle"
 ENT.Spawnable = false
-ENT.RagdollOnDeath = false -- dies into clientside ragdolls (WS.DrgSoldier)
+ENT.RagdollOnDeath = false -- dies into clientside ragdolls (WS.WarSoldier)
 
 -- Loaded with the map, in both realms, so the first to spawn does not hang the game.
 for _, profile in pairs(Profiles.PROFILES) do
@@ -23,7 +21,7 @@ end
 if SERVER then
 	-- Before it spawns: its kind's profile over the base's fields, and its
 	-- kind for clients too (WS.SoldierKind).
-	function ENT:SetProfile(kind)
+	function ENT:NSProfile(kind)
 		local profile = Profiles.PROFILES[kind]
 		if not profile then error("no NextSoldier profile " .. tostring(kind), 2) end
 		for key, value in pairs(profile) do self[key] = value end
@@ -31,4 +29,4 @@ if SERVER then
 	end
 end
 
-WS.DrgSoldier(ENT, "base_nextsoldier")
+WS.WarSoldier(ENT)

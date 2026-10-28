@@ -1,9 +1,6 @@
 -- The AI war and NextSoldier's debugging commands (docs/aiwar-koth-cp.md §6,
--- docs/ns-debugging.md): with DrGBase loaded, mp_aiwar_start, then each
--- ns_* command runs (the harness finds any Lua error it printed in
--- console.log). DrGBase is a Workshop addon: the dedicated server mounts
--- it from the operator's download (server_root.py); without it this check
--- is skipped.
+-- docs/ns-debugging.md): mp_aiwar_start, then each ns_* command runs (the
+-- harness finds any Lua error it printed in console.log).
 local NS_COMMANDS = {
 	"ns_squads_print",
 	"ns_lanes_print",
@@ -17,9 +14,6 @@ local START_TIMEOUT = 40
 local SETTLE = 1
 
 return function(t)
-	if DrGBase == nil then
-		return t:Skip("DrGBase is not loaded on this server (a Workshop addon; server_root.py mounts it from the operator's download)")
-	end
 	game.ConsoleCommand("mp_aiwar_start\n")
 	local registered = t:WaitFor(START_TIMEOUT, function() return concommand.GetTable()[NS_COMMANDS[1]] ~= nil end)
 	t:Check("mp_aiwar_start registers the ns_ commands", registered ~= nil, "")

@@ -11,7 +11,7 @@ local OnFloor, PassThrough = Map.OnFloor, Map.PassThrough
 
 -------------------------------------------------------------------------------
 -- The soldier port (nextsoldier.soldier) over a DrGBase soldier
--- (ws_drg_soldier): orders set its target and gait; it walks there on
+-- (npc_nextsoldier): orders set its target and gait; it walks there on
 -- the nav mesh as a NextBot, fighting on the way as DrGBase's human AI.
 
 local Soldier = {}
@@ -79,7 +79,7 @@ function Soldier:MaxHealth() return self.ent:GetMaxHealth() end
 -- Riding the cart: SEATS_PER_CART seats on top of each cart, SEAT_SPREAD
 -- either side of its middle, taken by a soldier within SEAT_REACH of the
 -- cart's edge. A seated soldier is carried along by the controller's tick
--- (Controller:CarrySeated), sits (ws_drg_soldier's WSSeated pose)
+-- (Controller:CarrySeated), sits (WS.WarSoldier's WSSeated pose)
 -- and fights from there; it gets off beside the cart (EjectFromCart). With
 -- ws_aiwar_sitting_enabled 0 no seat is free, and turning it off
 -- stands every seated soldier (Controller:StandSeated).
@@ -495,7 +495,7 @@ function Soldier:CoverSpot(center, radius, threat, exclude, taken)
 	return best and Point(best) or nil
 end
 
--- A battle stance where it stands (ws_drg_soldier's NSTakeStance), held
+-- A battle stance where it stands (WS.WarSoldier's NSTakeStance), held
 -- until Unpose or MoveTo; taking one, it may say it is ready (the
 -- controller's AnnounceStance). Asking again keeps the stance it has.
 function Soldier:Pose()

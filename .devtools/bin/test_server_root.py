@@ -104,6 +104,18 @@ def test_the_shared_addons_are_linked_and_the_workshop_archives_land_in_cache(la
             assert (cache / f"{name}.gma").resolve() == layout.workshop / item / "addon.gma"
 
 
+def test_an_archive_the_server_no_longer_mounts_leaves_cache(layout):
+    cache = layout.root / "garrysmod" / "cache"
+    cache.mkdir(parents=True)
+    retired = cache / "retired_addon.gma"
+    retired.symlink_to(layout.workshop / next(iter(SERVER_WORKSHOP.values())) / "addon.gma")
+    other = cache / "notes.txt"
+    other.write_text("not an archive")
+    build(layout)
+    assert not retired.is_symlink() and not retired.exists(), "every cache/*.gma is mounted: a retired one would be too"
+    assert other.exists(), "what is not an archive stays"
+
+
 def test_the_repos_own_addons_are_linked_into_the_servers_addons(layout):
     addons = build(layout) / "garrysmod" / "addons"
     assert REPO_ADDONS, "the repo has addons of its own"
