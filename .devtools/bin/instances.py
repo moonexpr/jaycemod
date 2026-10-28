@@ -30,6 +30,10 @@ errands.
 
 The instances a manager may use are named when it is made; the default is
 the main server alone (a second one only when the caller lists it).
+
+From a shell, for looking around on a bench's map without managing a server:
+
+    python3 .devtools/bin/instances.py MAP 'return game.GetMap()'   # - reads the chunk from stdin
 """
 from __future__ import annotations
 
@@ -301,3 +305,38 @@ class InstanceManager:
             yield held.server
         finally:
             await self.release(held, keep_running)
+
+
+# The command line: Lua on a leased server ------------------------------------------
+
+
+async def run_lua(pool: InstanceManager, map_name: str, code: str, timeout: float) -> Reply:
+    async with pool.lease(map_name, "instances.py lua", keep_running=True) as server:
+        return await server.lua(code, timeout)
+
+
+def main() -> int:
+    import argparse
+    import sys
+    parser = argparse.ArgumentParser(description="Run Lua on a server leased on a map (it stays running after)")
+    parser.add_argument("map")
+    parser.add_argument("code", help="a Lua chunk; - reads it from stdin")
+    parser.add_argument("--timeout", type=float, default=30)
+    parser.add_argument("--instance", type=int, nargs="+", default=[MAIN_INSTANCE])
+    args = parser.parse_args()
+    code = sys.stdin.read() if args.code == "-" else args.code
+    pool = InstanceManager.default([Instance(n) for n in args.instance])
+    try:
+        reply = asyncio.run(run_lua(pool, args.map, code, args.timeout))
+    except LuaFailed as e:
+        print(e, file=sys.stderr)
+        return 1
+    for line in reply.output:
+        print(line)
+    for value in reply.returns:
+        print(value)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -14,12 +14,14 @@ The steps, each through a tool that already does it:
 
   1. decompile the map with BSPSource (java; BSPSRC_JAR, default
      ~/.local/share/bspsrc-1.4.8/bspsrc.jar) to <bench>.vmf;
-  2. drop every point entity outside the box (vbsp's cordon cuts brushes,
-     never point entities or static props) and every spawn, then add the
-     bench's spawns (info_player_teamspawn, info_player_start);
-  3. set the cordon (hammer-mcp's set_cordon) and compile
-     (hammer-mcp's run_compile, the MapCompile bottle; TF2's content
-     mounted there through its cfg/mount.cfg);
+  2. cut the box out (cut): drop the world brushes, brush entities, point
+     entities and static props outside it, and every spawn, then add the
+     bench's spawns (info_player_teamspawn, info_player_start). GMod's
+     vbsp ignores a VMF's cordons (hammer-mcp's set_cordon compiled the
+     whole map), so the cut is made here;
+  3. seal the box with skybox slabs (hammer-mcp's write_vmf_solid) and
+     compile (hammer-mcp's run_compile, the MapCompile bottle; TF2's
+     content mounted there through its cfg/mount.cfg);
   4. with --install, copy the .bsp into the dedicated server's maps.
 
 Output goes to .devtools/artifacts/maps/benches/. Run from the repo root:
@@ -66,6 +68,9 @@ class Bench:
     def contains(self, p: Vec) -> bool:
         return all(lo <= v <= hi for v, lo, hi in zip(p, self.mins, self.maxs))
 
+    def overlaps(self, lo: Vec, hi: Vec) -> bool:
+        return all(a < bhi and b < ahi for a, ahi, b, bhi in zip(lo, hi, self.mins, self.maxs))
+
 
 def column(team: int, x: float, z: float, yaw: float) -> Tuple[Spawn, ...]:
     return tuple(Spawn(team, (x, y, z), yaw) for y in (-96, -32, 32, 96))
@@ -84,12 +89,33 @@ BENCHES = {
     ),
 }
 
-# Entities the bench keeps wherever they are: they have no place in the
-# world, or a brush that the cordon already cuts.
-KEPT_ANYWHERE = {"worldspawn"}
 SPAWNS = {"info_player_teamspawn", "info_player_start"}
+SEAL = "TOOLS/TOOLSSKYBOX"
+SEAL_THICKNESS = 16
+WORLD = re.compile(r"^world\n\{\n.*?^\}\n", re.S | re.M)
 ENTITY = re.compile(r"^entity\n\{\n.*?^\}\n", re.S | re.M)
+SOLID = re.compile(r"^\tsolid\n\t\{\n.*?^\t\}\n", re.S | re.M)
 KEYVALUE = re.compile(r'^\t"([^"]+)" "([^"]*)"$', re.M)
+PLANE_POINT = re.compile(r"\(([-\d.e+]+) ([-\d.e+]+) ([-\d.e+]+)\)")
+
+
+def brush_bounds(solid: str) -> Tuple[Vec, Vec]:
+    """A brush's bounds by its sides' plane points (BSPSource puts them on the faces)."""
+    points = [tuple(float(v) for v in p) for line in solid.splitlines() if '"plane"' in line
+              for p in PLANE_POINT.findall(line)]
+    return tuple(min(c) for c in zip(*points)), tuple(max(c) for c in zip(*points))
+
+
+def shell(mins: Vec, maxs: Vec, thickness: float) -> List[dict]:
+    """Six slabs around the box, sealing it."""
+    (x0, y0, z0), (x1, y1, z1), t = mins, maxs, thickness
+    boxes = [((x0 - t, y0 - t, z0 - t), (x1 + t, y1 + t, z0)),  # floor
+             ((x0 - t, y0 - t, z1), (x1 + t, y1 + t, z1 + t)),  # ceiling
+             ((x0 - t, y0 - t, z0), (x0, y1 + t, z1)),  # west
+             ((x1, y0 - t, z0), (x1 + t, y1 + t, z1)),  # east
+             ((x0, y0 - t, z0), (x1, y0, z1)),  # south
+             ((x0, y1, z0), (x1, y1 + t, z1))]  # north
+    return [{"shape": "box", "mins": list(lo), "maxs": list(hi)} for lo, hi in boxes]
 
 
 def entity_text(classname: str, origin: Vec, keyvalues: dict, eid: int) -> str:
@@ -99,25 +125,37 @@ def entity_text(classname: str, origin: Vec, keyvalues: dict, eid: int) -> str:
 
 
 def cut(vmf: str, bench: Bench) -> Tuple[str, int, int]:
-    """The VMF without the point entities outside the box nor the map's
-    spawns, with the bench's spawns; and how many were dropped and added."""
+    """The VMF with only what lies in the box (world brushes, brush entities
+    with a brush in it, point entities and static props standing in it),
+    the map's spawns replaced by the bench's; and how many things were
+    dropped and added. (vbsp ignores a VMF's cordons, so the cut is made here.)"""
     dropped = 0
 
-    def keep(match: re.Match) -> str:
+    def keep_solid(match: re.Match) -> str:
+        nonlocal dropped
+        if bench.overlaps(*brush_bounds(match.group(0))):
+            return match.group(0)
+        dropped += 1
+        return ""
+
+    def keep_entity(match: re.Match) -> str:
         nonlocal dropped
         block = match.group(0)
-        top = dict(KEYVALUE.findall(block))  # one tab deep: the entity's own, not its solids'
-        classname = top.get("classname", "")
-        if classname in KEPT_ANYWHERE or "\n\tsolid\n" in block:
+        solids = SOLID.findall(block)
+        if solids:
+            inside = any(bench.overlaps(*brush_bounds(s)) for s in solids)
+        else:
+            top = dict(KEYVALUE.findall(block))  # one tab deep: the entity's own, not its solids'
+            origin = top.get("origin")
+            inside = top.get("classname") not in SPAWNS and (
+                origin is None or bench.contains(tuple(float(v) for v in origin.split())))
+        if inside:
             return block
-        origin = top.get("origin")
-        inside = origin is not None and bench.contains(tuple(float(v) for v in origin.split()))
-        if classname in SPAWNS or (origin is not None and not inside):
-            dropped += 1
-            return ""
-        return block
+        dropped += 1
+        return ""
 
-    kept = ENTITY.sub(keep, vmf)
+    kept = WORLD.sub(lambda world: SOLID.sub(keep_solid, world.group(0)), vmf)
+    kept = ENTITY.sub(keep_entity, kept)
     top_id = max(int(i) for i in re.findall(r'^\t*"id" "(\d+)"', kept, re.M))
     added: List[str] = []
     for i, spawn in enumerate(bench.spawns):
@@ -164,10 +202,10 @@ def main() -> None:
     decompile(bench.source, vmf)
     text, dropped, added = cut(vmf.read_text(encoding="utf-8", errors="surrogateescape"), bench)
     vmf.write_text(text, encoding="utf-8", errors="surrogateescape")
-    print(f"{vmf.name}: {dropped} point entities outside the box or spawns dropped, {added} spawns added")
+    print(f"{vmf.name}: {dropped} brushes and entities outside the box (or spawns) dropped, {added} spawns added")
     results = hammer([
-        ("set_cordon", {"path": str(vmf), "mins": list(bench.mins), "maxs": list(bench.maxs), "confirm": True,
-                        "backup": False}),
+        ("write_vmf_solid", {"path": str(vmf), "solids": shell(bench.mins, bench.maxs, SEAL_THICKNESS),
+                             "material": SEAL, "confirm": True, "backup": False}),
         ("run_compile", {"vmf": str(vmf), "toolchain": "stock", "fast": True, "confirm": True}),
     ])
     compiled = results["run_compile"]

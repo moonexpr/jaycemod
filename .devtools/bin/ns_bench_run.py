@@ -20,7 +20,7 @@ it generated when the map has none, and waits while it is. The report (every err
 .devtools/artifacts/benches/<bench>/<time>.json and summed up on stdout.
 
     python3 .devtools/bin/ns_bench_run.py dev_watchtower_ns_locomotion [--kind follower|bot|both]
-        [--errand NAME] [--keep-running] [--instance N ...]
+        [--errand NAME] [--keep-running] [--regenerate-nav] [--instance N ...]
 """
 from __future__ import annotations
 
@@ -44,8 +44,9 @@ ARRIVE = 64  # a bot within this of its goal has arrived (npc_pathfollower's own
 SAMPLE = 0.5  # seconds between a bot's samples
 NAV_TIMEOUT = 900  # nav_generate on a bench map
 BOT_TIMEOUT = 90  # until the war has a bot soldier
-# convar -> its value while the bench runs: bots join with no human on, the server never idles
-CONVARS = {"tf_bot_join_after_player": "0", "sv_idle_delay": "86400"}
+# convar -> its value while the bench runs: the war's soldiers are bots, two of them, joining with no
+# human on; the server never idles
+CONVARS = {"tf_bot_join_after_player": "0", "sv_idle_delay": "86400", "ns_soldiers_actor": "bot", "tf_bot_quota": "2"}
 
 Vec = Tuple[float, float, float]
 
@@ -144,7 +145,6 @@ if bench and IsValid(bench.ent) then
 	bench.soldier:Unpin()
 	bench.ent:GodDisable()
 end
-NSBenchBot = nil
 return true
 """
 
@@ -254,11 +254,14 @@ async def find_bot(server: instances.GameServer) -> Optional[str]:
 
 
 async def bench(name: str, kinds: List[str], only: Optional[str], pool: instances.InstanceManager,
-                keep_running: bool) -> dict:
+                keep_running: bool, regenerate_nav: bool = False) -> dict:
     errands = [e for e in BENCHES[name] if only is None or e.name == only]
     report = {"bench": name, "started": time.strftime("%Y-%m-%dT%H:%M:%S"), "errands": []}
     async with pool.lease(name, OWNER, keep_running=keep_running) as server:
         report["instance"] = server.instance.number
+        if regenerate_nav:
+            await server.change_map(name)  # the gamemode's Lua loaded afresh, the generator's among it
+            await server.lua("navmesh.Reset() return true")
         report["nav_areas"] = await ensure_nav(server)
         saved = await setup(server)
         try:
@@ -267,10 +270,11 @@ async def bench(name: str, kinds: List[str], only: Optional[str], pool: instance
                     result = await run_follower(server, errand)
                     report["errands"].append({"kind": "follower", "errand": asdict(errand), "result": result})
             if "bot" in kinds:
-                bot = await find_bot(server)
                 for errand in errands:
+                    bot = await find_bot(server)  # afresh: one may fall between errands
                     result = await run_bot(server, errand) if bot else {"status": "no bot soldier"}
                     report["errands"].append({"kind": "bot", "bot": bot, "errand": asdict(errand), "result": result})
+                await server.lua("NSBenchBot = nil return true")
         finally:
             for convar, value in saved.items():
                 await server.rcon(f"{convar} {value}")
@@ -300,11 +304,13 @@ def main() -> int:
     parser.add_argument("--kind", choices=("follower", "bot", "both"), default="both")
     parser.add_argument("--errand", help="one errand's name, else every one")
     parser.add_argument("--keep-running", action="store_true", help="leave a server this run started running")
+    parser.add_argument("--regenerate-nav", action="store_true",
+                        help="reload the map (and the gamemode's Lua), drop its mesh and generate a new one")
     parser.add_argument("--instance", type=int, nargs="+", default=[1], help="the instances the run may lease")
     args = parser.parse_args()
     kinds = ["follower", "bot"] if args.kind == "both" else [args.kind]
     pool = instances.InstanceManager.default([Instance(n) for n in args.instance])
-    report = asyncio.run(bench(args.bench, kinds, args.errand, pool, args.keep_running))
+    report = asyncio.run(bench(args.bench, kinds, args.errand, pool, args.keep_running, args.regenerate_nav))
     folder = REPORTS / args.bench
     folder.mkdir(parents=True, exist_ok=True)
     path = folder / (time.strftime("%Y%m%d-%H%M%S") + ".json")
