@@ -4,7 +4,10 @@
 -- converts those). mp_nav_generate, for admins and the server console,
 -- builds one: GMod's generator walks out from seeds, and TF2 maps spawn
 -- players at info_player_teamspawn, which it does not seed from, so every
--- spawn point and control point is a seed. It walks only what stands in
+-- spawn point and control point is a seed, and every health and ammo pack:
+-- a map puts them where players are meant to get, and some only by ways
+-- the generator cannot walk up (arena_watchtower's west pipe, reached by
+-- logs too narrow for its 25-unit steps). It walks only what stands in
 -- place, and a map's spawn doors, setup gates and bridges (cp_steel's slide
 -- out to its last point as the others fall) stand shut or drawn back: every
 -- door is unlocked, and opened, or closed when it is a floor (flat and
@@ -35,7 +38,8 @@ local Clip = nextsoldier.clip
 local NavGaps = nextsoldier.nav_gaps
 local PairMap = world.pairmap
 
-local SEEDS = { "info_player_teamspawn", "info_player_start", "team_control_point" }
+local SEEDS = { "info_player_teamspawn", "info_player_start", "team_control_point", "item_healthkit_small",
+	"item_healthkit_medium", "item_healthkit_full", "item_ammopack_small", "item_ammopack_medium", "item_ammopack_full" }
 local DOORS = { "func_door", "func_door_rotating", "prop_door_rotating" }
 local BARRIERS = { "func_respawnroomvisualizer" }
 local DOOR_WAIT = 60
