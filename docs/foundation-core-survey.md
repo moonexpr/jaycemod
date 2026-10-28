@@ -7,8 +7,36 @@ are userdata handles. Taken on 2026-10-22, after `51f25cf` (pair map,
 ground distance, clamp).
 
 Each finding names its sites, what core would offer, and what it is built
-from, so structures grow from the primitives up. Nothing here is migrated
-yet; the call sites are listed for that work.
+from, so structures grow from the primitives up. When it was written,
+nothing here was migrated; the call sites were listed for that work.
+
+## Status, 2026-10-27
+
+The work is tracked in epic #12 (moonexpr/sandcastle), which has every
+checklist item, its commit and each decision not to do one. The paths below
+are from before the foundation/games split (`foundation/<x>.lua` sites now
+live under `games/`, `features/`); #12 has the current ones. Each module
+below was built with its Lua and native twins (the modules added since this
+survey are in CLAUDE.md's foundation index).
+
+| Finding | Now |
+|---|---|
+| Caches, constants, enums at their sites | Done, bar two: `NavGraph:Neighbors` is already dropped whole with the mesh generation (the survey's "never invalidated" was wrong), and `KitReachable` is weak-keyed by entity |
+| Bounded logs and windows | `list.ring:Newest` and `list.window` built; `BehaviorLog` and the bosses' damage per second moved. The kill feed, the blocker log, the teleport trail and `profile.lua`'s samples stay (removal from the middle, indexed reads, five points, no ageing) |
+| Selection (`list.select`) | Built: `Lowest`, `Highest`, `Nearest`, `TopK`, `Order`, `Ranks`; fourteen sites moved |
+| Random choice | `math.choice` built as `Shuffle` and `Draw` (named so because `math.random` is Lua's own function); `Pick` is not, as `list[me:RandomInt(1, #list)]` is shorter than the helper and its adapter. The four hand-written draws were not one operation |
+| `math.apportion` | Not built: one ten-line pure function with one caller |
+| Spatial | `world.grid:Spread` and `Isolated` (TF2's rule), `math.interval`, `math.box` built and moved; `grid:Nearest` is not (its only caller is `nodegraph`, which has its own native implementation); `Thin` keeps its string key |
+| Ground-plane vectors, scalars | `math.geometry` and `math.scalar` extended; the by-hand copies moved, but for those that need the reach with the direction (`leap`), a point a tick (`hover`), or the deltas again (`orders` HopOn, `nbdebug` Pick) |
+| Already in core, not yet used | Done (percentile, set counts, clamps), except the three `Contains` scans, which run over constants of five or lists built per call |
+| Counting (`world.counter`) | Not built: the six tallies read six different sources, and none is hot |
+| Rate limiting | `world.bucket` built; the events' rate limits use it |
+| Pair keys | `world.pairmap:Unordered` built; two of three sites moved (`nodegraph`'s packed key is the oracle of a native twin) |
+
+Not done, and needing the dev server: benches of the selection, window and
+spread modules against the code they replace, and a live check of the moved
+sites. The dev server on 2026-10-27 was running code older than the new
+modules, so both wait on a map change.
 
 ## Built in this pass
 
