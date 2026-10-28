@@ -161,6 +161,7 @@ local NEXTSOLDIER = {
 	["soldier"] = "nextsoldier",
 	["chart"] = "nextsoldier",
 	["behaviors"] = "nextsoldier",
+	["relations"] = "nextsoldier",
 	["monitor"] = "nextsoldier",
 	["speech"] = "nextsoldier",
 	["hearing"] = "nextsoldier",
