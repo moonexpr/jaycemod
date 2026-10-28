@@ -2,7 +2,8 @@
 -- NextBot that plans the bot's routes with the engine's path search, which
 -- needs a NextBot (Path:Compute starts from its last known nav area), as
 -- GLambda Players' glace_navigator does. It stands where its owner stands,
--- touches nothing and is never seen; it goes when its owner does.
+-- touches nothing, is never seen, hurt (a blast reaches it all the same)
+-- or anyone's target; it goes when its owner does.
 ENT.Base = "base_nextbot"
 ENT.Type = "nextbot"
 ENT.PrintName = "Bot Navigator"
@@ -20,6 +21,13 @@ function ENT:Initialize()
 	self:SetCollisionGroup(COLLISION_GROUP_IN_VEHICLE)
 	self:SetNoDraw(true)
 	self:DrawShadow(false)
+	self:AddFlags(FL_NOTARGET)
+end
+
+if SERVER then
+	hook.Add("EntityTakeDamage", "ws_bot_navigator", function(ent)
+		if ent:GetClass() == "ws_bot_navigator" then return true end
+	end)
 end
 
 function ENT:RunBehaviour()
