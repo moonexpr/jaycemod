@@ -4,3 +4,4 @@
 local world = Namespace("world")
 Defer(world, "io", "games.world.io")
 Defer(world, "snapshot", "games.world.snapshot")
+Defer(world, "nav_attributes", "games.world.nav_attributes")

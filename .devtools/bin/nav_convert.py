@@ -2,13 +2,21 @@
 """Convert TF2 navigation meshes to files Garry's Mod can load.
 
   nav_convert.py MAP.bsp|MAP.nav...              convert and report; writes nothing
-  nav_convert.py MAP.bsp|MAP.nav... --out DIR    also write DIR/<map>.nav
+  nav_convert.py MAP.bsp|MAP.nav... --out DIR    also write DIR/<map>.nav and DIR/<map>.tfnav.txt
 
 TF2 saves version 16, sub-version 2: CTFNavArea::Save appends a u32 of TF
 attributes to every area (sdk/server/tf/nav_mesh/tf_nav_area.cpp), and
 CTFNavMesh adds no mesh data before or after the areas. GMod's loader is the
 base CNavArea::Load, which cannot skip that u32. The converted file is the
 same mesh at sub-version 0, without the u32s, stamped with the BSP's real size.
+
+The u32s go to a sidecar instead, <map>.tfnav.txt: a "tfnav 1 <size>" line
+(the converted mesh's size in bytes, so a mesh generated over it later is
+told apart), then
+"<area id> <attributes>" for each area with any of TF_NAV_PERSISTENT_ATTRIBUTES
+(the ones TF2 saves: sentry and sniper spots, setup gates, one-way doors...),
+in id order. The converted mesh keeps every area id, so the ids match; the
+gamemode reads it as foundation.nav.tf_attributes.
 
 For a .bsp, the mesh is found where TF2's CNavMesh::GetNavDataFromFile looks:
 a loose maps/<map>.nav, then maps/<map>.nav in tf/*_dir.vpk, then the BSP's
@@ -25,7 +33,7 @@ import sys
 import zipfile
 from dataclasses import dataclass, replace
 from pathlib import Path
-from typing import Callable, Tuple
+from typing import Callable, Dict, Tuple
 
 from tf2_content import Vpk
 
@@ -40,6 +48,10 @@ NUM_CORNERS = 4
 PAKFILE_LUMP = 40
 BSP_LUMP_TABLE = 8
 BSP_LUMP_SIZE = 16
+TF_NAV_SNIPER_SPOT = 0x00200000
+TF_NAV_SENTRY_SPOT = 0x00400000
+TF_NAV_PERSISTENT_ATTRIBUTES = 0x767FF800  # tf_nav_area.h: what CTFNavArea::Save keeps
+SIDECAR_HEADER = "tfnav 1"
 
 
 class NavError(Exception):
@@ -336,6 +348,23 @@ def convert(mesh: NavMesh, bsp_size: int) -> NavMesh:
     return replace(mesh, sub_version=GMOD_SUB_VERSION, bsp_size=bsp_size, areas=areas)
 
 
+def tf_attributes(mesh: NavMesh) -> Dict[int, int]:
+    """Area id -> its persistent TF attributes, for the areas that have any."""
+    found = {}
+    for area in mesh.areas:
+        if area.custom:
+            kept = struct.unpack("<I", area.custom)[0] & TF_NAV_PERSISTENT_ATTRIBUTES
+            if kept:
+                found[area.id] = kept
+    return found
+
+
+def write_sidecar(attributes: Dict[int, int], nav_size: int) -> str:
+    """nav_size: the converted mesh's bytes, so a mesh made since (mp_nav_generate) is told apart."""
+    lines = [f"{SIDECAR_HEADER} {nav_size}\n"] + [f"{i} {attributes[i]}\n" for i in sorted(attributes)]
+    return "".join(lines)
+
+
 # Finding the mesh
 
 
@@ -392,8 +421,10 @@ def _convert_one(path: Path, out_dir) -> str:
     mesh = TF_LOADER.parse(source.data)
     converted = convert(mesh, source.bsp_size)
     data = write_nav(converted)
+    attributes = tf_attributes(mesh)
     line = (
-        f"{source.map}: {len(mesh.areas)} areas, {len(mesh.ladders)} ladders, {len(mesh.places.names)} places; "
+        f"{source.map}: {len(mesh.areas)} areas, {len(mesh.ladders)} ladders, {len(mesh.places.names)} places, "
+        f"{len(attributes)} areas with TF attributes; "
         f"sub-version {mesh.sub_version} -> {converted.sub_version}; "
         f"bsp size {mesh.bsp_size} -> {converted.bsp_size}; {len(source.data)} -> {len(data)} bytes; "
         f"from {source.origin}"
@@ -402,13 +433,15 @@ def _convert_one(path: Path, out_dir) -> str:
         return line + "; not written (pass --out DIR)"
     target = out_dir / f"{source.map}.nav"
     target.write_bytes(data)
-    return line + f"; wrote {target}"
+    sidecar = out_dir / f"{source.map}.tfnav.txt"
+    sidecar.write_text(write_sidecar(attributes, len(data)))
+    return line + f"; wrote {target} and {sidecar.name}"
 
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("paths", nargs="+", type=Path, metavar="MAP.bsp|MAP.nav")
-    ap.add_argument("--out", type=Path, help="write <map>.nav here, e.g. garrysmod/maps")
+    ap.add_argument("--out", type=Path, help="write <map>.nav and <map>.tfnav.txt here, e.g. garrysmod/maps")
     args = ap.parse_args(argv)
     if args.out is not None and not args.out.is_dir():
         ap.error(f"--out {args.out} is not a directory")

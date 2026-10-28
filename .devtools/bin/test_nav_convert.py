@@ -17,10 +17,14 @@ from nav_convert import (
     Truncated,
     TrailingData,
     UnsupportedVersion,
+    TF_NAV_PERSISTENT_ATTRIBUTES,
+    TF_NAV_SENTRY_SPOT,
     convert,
     load_source,
     main,
+    tf_attributes,
     write_nav,
+    write_sidecar,
 )
 from tf2_content import TF_DIR
 
@@ -120,6 +124,46 @@ class ConvertForGmod(unittest.TestCase):
             GMOD_LOADER.parse(nav_bytes())
 
 
+def mesh_with_attributes(by_id):
+    """A sub-version 2 mesh whose areas carry these TF attribute words."""
+    areas = b"".join(area_bytes(i, struct.pack("<I", a)) for i, a in by_id.items())
+    b = struct.pack("<IIIIB", 0xFEEDFACE, 16, 2, 1234, 1)
+    b += struct.pack("<H", 0) + struct.pack("<B", 0)
+    b += struct.pack("<I", len(by_id)) + areas + struct.pack("<I", 0)
+    return TF_LOADER.parse(b)
+
+
+class KeepTheTfAttributes(unittest.TestCase):
+    def test_the_persistent_mask_is_the_sdks(self):
+        flags = (0x200000, 0x400000, 0x2000000, 0x800, 0x1000, 0x2000, 0x4000, 0x8000, 0x10000,
+                 0x10000000, 0x20000000, 0x40000000, 0x20000, 0x40000, 0x80000, 0x100000, 0x4000000)
+        mask = 0
+        for flag in flags:
+            mask |= flag
+        self.assertEqual(TF_NAV_PERSISTENT_ATTRIBUTES, mask)
+    def test_keeps_each_areas_persistent_attributes_by_id(self):
+        mesh = mesh_with_attributes({5: TF_NAV_SENTRY_SPOT, 3: TF_NAV_SENTRY_SPOT | 0x2})
+        self.assertEqual(tf_attributes(mesh), {3: TF_NAV_SENTRY_SPOT, 5: TF_NAV_SENTRY_SPOT})
+
+    def test_leaves_out_areas_with_none_or_only_round_time_ones(self):
+        round_time = 0x40  # TF_NAV_CONTROL_POINT: computed each round, never saved
+        self.assertFalse(round_time & TF_NAV_PERSISTENT_ATTRIBUTES)
+        mesh = mesh_with_attributes({1: 0, 2: round_time})
+        self.assertEqual(tf_attributes(mesh), {})
+
+    def test_meshes_before_sub_version_2_have_none(self):
+        self.assertEqual(tf_attributes(TF_LOADER.parse(nav_bytes(sub_version=1, custom=b""))), {})
+
+    def test_the_sidecar_is_a_header_with_the_meshs_size_then_an_id_and_its_attributes_a_line_in_id_order(self):
+        text = write_sidecar({9: TF_NAV_SENTRY_SPOT, 2: 0x200000}, nav_size=5000)
+        self.assertEqual(text, f"tfnav 1 5000\n2 {0x200000}\n9 {TF_NAV_SENTRY_SPOT}\n")
+
+    def test_converting_keeps_the_area_ids_the_sidecar_names(self):
+        mesh = mesh_with_attributes({7: TF_NAV_SENTRY_SPOT, 4: 0})
+        converted = GMOD_LOADER.parse(write_nav(convert(mesh, 1)))
+        self.assertEqual({a.id for a in converted.areas}, {7, 4})
+
+
 class FindTheMesh(unittest.TestCase):
     def test_reads_the_mesh_embedded_in_a_bsp_and_its_real_size(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -192,6 +236,18 @@ class CommandLine(unittest.TestCase):
             self.assertEqual(run([str(bsp), "--out", str(out_dir)])[0], 0)
             mesh = GMOD_LOADER.parse((out_dir / "pl_x.nav").read_bytes())
             self.assertEqual((mesh.sub_version, mesh.bsp_size), (0, bsp.stat().st_size))
+
+    def test_out_writes_the_tf_attributes_sidecar_beside_the_mesh(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            bsp = Path(tmp) / "pl_x.bsp"
+            bsp.write_bytes(bsp_with_pakfile({"maps/pl_x.nav": nav_bytes()}))
+            out_dir = Path(tmp) / "out"
+            out_dir.mkdir()
+            code, out = run([str(bsp), "--out", str(out_dir)])
+            self.assertEqual(code, 0)
+            nav_size = (out_dir / "pl_x.nav").stat().st_size
+            self.assertEqual((out_dir / "pl_x.tfnav.txt").read_text(), f"tfnav 1 {nav_size}\n")
+            self.assertIn("0 areas with TF attributes", out)
 
     def test_a_bad_map_is_reported_and_the_rest_still_convert(self):
         with tempfile.TemporaryDirectory() as tmp:
