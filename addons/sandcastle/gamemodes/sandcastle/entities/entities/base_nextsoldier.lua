@@ -45,7 +45,20 @@ local STEP_HEIGHT, JUMP_HEIGHT = 18, 58
 if CLIENT then return end
 
 local Relations = nextsoldier.relations
+local Vision = nextsoldier.vision
+local Intention = nextsoldier.intention
 local Factions = WS.require("ws.factions")
+
+-- Its sight: how far, how wide, and how often it looks (TF2's IVision
+-- update), how soon it recognizes what it sees and how long it remembers.
+local SIGHT_RANGE, FOV_COS = 4000, math.cos(math.rad(60))
+local NOTICE_NEAR = 200
+-- Its eyes where its model has none (TF2's VEC_VIEW and VEC_DUCK_VIEW, near enough).
+local EYE_HEIGHT, CROUCH_EYE_HEIGHT = 64, 28
+local LOOK_INTERVAL = 0.2
+local VISION = { reaction = 0.1, memory = 8 }
+-- A melee weapon's hold types.
+local MELEE_HOLDS = { melee = true, melee2 = true, knife = true, fist = true }
 
 -- Each team's faction, for a player's (a player's faction is its team's).
 local function TeamFaction(team)
@@ -80,12 +93,21 @@ function ENT:Initialize()
 	self.nsAlive = true
 	self.nsRelations = Relations.New({ default = self.DefaultRelationship or D_NU, ally = D_LI })
 	for _, faction in ipairs(self.Factions) do self.nsRelations:Join(faction) end
+	self.nsVision = Vision.New(VISION)
+	self.nsNextLook = 0
 	self.nsWeapons = {}
+	self:NSReadRanges()
 	if #self.Weapons > 0 then self:SelectWeapon(self:GiveWeapon(self.Weapons[math.random(#self.Weapons)])) end
 	self:CustomInitialize()
 end
 
 function ENT:IsAlive() return self.nsAlive == true end
+
+-- Hurt: whoever did it is noticed at the next look, wherever it stands.
+function ENT:OnInjured(dmg)
+	local attacker = dmg:GetAttacker()
+	if IsValid(attacker) and attacker ~= self then self.nsAttacker = attacker end
+end
 function ENT:IsDead() return not self:IsAlive() end
 function ENT:IsDown() return false end
 
@@ -179,6 +201,7 @@ function ENT:SelectWeapon(weapon)
 	weapon:SetNoDraw(false)
 	self.nsActive = weapon
 	self:OnWeaponChange(old, weapon)
+	self:NSReadRanges()
 end
 
 function ENT:RemoveWeapon(class)
@@ -224,10 +247,136 @@ function ENT:HasEnemy() return self:GetEnemy() ~= nil end
 function ENT:SetAIDisabled(disabled) self.nsAIDisabled = disabled == true end
 function ENT:IsAIDisabled() return self.nsAIDisabled == true end
 
--- Each tick with the AI on: with no enemy, the idle hook.
-function ENT:IntentionUpdate(interval)
-	if not self:HasEnemy() then self:OnIdle() end
+-- The class's ranges (which OnWeaponChange may set), read again as its
+-- weapon changes.
+function ENT:NSReadRanges()
+	self.nsRanges = Intention.Ranges({
+		reach = self.ReachEnemyRange, avoid = self.AvoidEnemyRange, range = self.RangeAttackRange, melee = self.MeleeAttackRange,
+	})
 end
+
+-- A look around: the hostile entities (its relations' D_HT and D_FR) in its
+-- field of view, near it, or that just hurt it, in a clear line, to its
+-- vision; vision's events raise the class's hooks.
+-- Where it looks from: its model's eyes, else a player's eye height (a
+-- NextBot's EyePos is its hips).
+function ENT:NSEye()
+	local attachment = self:LookupAttachment("eyes")
+	if attachment and attachment > 0 then return self:GetAttachment(attachment).Pos end
+	return self:GetPos() + Vector(0, 0, self:IsCrouching() and CROUCH_EYE_HEIGHT or EYE_HEIGHT)
+end
+
+-- Whether the line from eye to point reaches other (or nothing).
+local function Clear(eye, point, self, other)
+	local tr = util.TraceLine({ start = eye, endpos = point, mask = MASK_SHOT, filter = self })
+	return not tr.Hit or tr.Entity == other
+end
+
+-- Another's eyes: a soldier's own, else its EyePos.
+local function EyesOf(other)
+	if other.NSEye then return other:NSEye() end
+	return other:EyePos()
+end
+
+-- A look around: its centre or its eyes in a clear line, as TF2's vision
+-- tries more than one point of what it looks at.
+function ENT:NSLook(now)
+	local eye, facing = self:NSEye(), self:GetForward()
+	local seen = {}
+	for _, other in ipairs(ents.FindInSphere(eye, SIGHT_RANGE)) do
+		if other ~= self and (other:IsPlayer() or other:IsNPC() or other:IsNextBot()) and other:Health() > 0
+			and not other:IsFlagSet(FL_NOTARGET) then
+			local disposition = self:Disposition(other)
+			if disposition == D_HT or disposition == D_FR then
+				local center = other:WorldSpaceCenter()
+				local to = center - eye
+				local distance = to:Length()
+				if (distance <= NOTICE_NEAR or other == self.nsAttacker or to:Dot(facing) >= FOV_COS * distance)
+					and (Clear(eye, center, self, other) or Clear(eye, EyesOf(other), self, other)) then
+					seen[other] = other:GetPos()
+				end
+			end
+		end
+	end
+	self:NSTell(self.nsVision:Update(now, seen, self.nsBetter))
+end
+
+-- Vision's events as the class's hooks: sight, and the contact as its enemy.
+function ENT:NSTell(events)
+	for _, event in ipairs(events) do
+		if event.kind == Vision.SIGHT then
+			self:OnSpotted(event.handle)
+		elseif event.kind == Vision.LOST_SIGHT then
+			self:OnLost(event.handle)
+		elseif event.kind == Vision.CONTACT then
+			self.nsEnemy = event.handle
+			self:OnNewEnemy(event.handle)
+		elseif event.kind == Vision.CONTACT_LOST then
+			self.nsEnemy = nil
+			self:OnLastEnemy(event.handle)
+		end
+	end
+end
+
+-- Which of two threats is the more dangerous: the class's OnFetchEnemy,
+-- then the higher priority, then the nearer (nextsoldier.intention).
+function ENT:NSBetter(a, b)
+	return Intention.Better(a, b,
+		function(x, y) return self:OnFetchEnemy(x, y) end,
+		function(x) local _, priority = self:Disposition(x) return priority end,
+		function(x) return self:GetRangeTo(x) end)
+end
+
+function ENT:IsMeleeWeapon(weapon)
+	return IsValid(weapon) and MELEE_HOLDS[weapon:GetHoldType()] == true
+end
+
+-- Each tick with the AI on: a look every LOOK_INTERVAL; with no enemy, the
+-- idle hook; with one, the stage of fighting it by its distance (the
+-- class's hook, else the base's own: chase it, back away, or face it), then
+-- an attack if it is in sight and in range (the class's hook, else the
+-- body's).
+function ENT:IntentionUpdate(interval)
+	local now = CurTime()
+	self.nsBetter = self.nsBetter or function(a, b) return self:NSBetter(a, b) end
+	if now >= self.nsNextLook then
+		self.nsNextLook = now + LOOK_INTERVAL
+		local enemy = self.nsEnemy
+		if enemy ~= nil and not (IsValid(enemy) and enemy:Health() > 0) then self:NSTell(self.nsVision:Forget(enemy)) end
+		self:NSLook(now)
+	end
+	local enemy = self:GetEnemy()
+	if not enemy then
+		self:OnIdle()
+		return
+	end
+	local ranges = self.nsRanges
+	local distance = self:GetRangeTo(enemy)
+	local stage = Intention.Stage(distance, ranges)
+	if stage == Intention.CHASE then
+		if not self:OnChaseEnemy(enemy) then self:FollowPath(enemy) end
+	elseif stage == Intention.AVOID then
+		if not self:OnAvoidEnemy(enemy) then
+			local away = self:GetPos() + (self:GetPos() - enemy:GetPos()):GetNormalized() * ranges.avoid
+			self:FollowPath(away)
+		end
+	elseif not self:OnIdleEnemy(enemy) then
+		self:FaceTowards(enemy)
+	end
+	local weapon = self:GetActiveWeapon()
+	local visible = self.nsVision:Visible(enemy) and self.nsVision:Recognized(enemy, now)
+	local attack = Intention.Attack(distance, ranges, visible, self:IsMeleeWeapon(weapon))
+	if attack == Intention.MELEE then
+		if not self:OnMeleeAttack(enemy, weapon) then self:MeleeAttack(enemy, weapon) end
+	elseif attack == Intention.RANGED then
+		if not self:OnRangeAttack(enemy) then self:RangeAttack(enemy, weapon) end
+	end
+end
+
+-- The body's own attacks, which the body slice (L3, our soldier weapons)
+-- fills: until then a soldier whose class does not attack does not.
+function ENT:RangeAttack(enemy, weapon) end
+function ENT:MeleeAttack(enemy, weapon) end
 
 -------------------------------------------------------------------------------
 -- The hooks' defaults (nextsoldier.base's HOOKS), for a class that does not
@@ -255,6 +404,6 @@ function ENT:OnWeaponChange(old, new) end
 function ENT:OnUpdateAnimation() return nil end
 function ENT:OnAnimEvent(event, ...) end
 function ENT:OnTakeDamage(dmg, hitgroup) return nil end
-function ENT:OnTraceAttack(dmg, dir, trace) return nil end
+function ENT:OnTraceAttack(dmg, dir, trace) self.nsHitGroup = trace.HitGroup end
 function ENT:OnDealtDamage(victim, dmg) end
 function ENT:OnDeath(dmg) end

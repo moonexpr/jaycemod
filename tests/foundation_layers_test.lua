@@ -162,6 +162,7 @@ local NEXTSOLDIER = {
 	["chart"] = "nextsoldier",
 	["behaviors"] = "nextsoldier",
 	["relations"] = "nextsoldier",
+	["intention"] = "nextsoldier",
 	["monitor"] = "nextsoldier",
 	["speech"] = "nextsoldier",
 	["hearing"] = "nextsoldier",
