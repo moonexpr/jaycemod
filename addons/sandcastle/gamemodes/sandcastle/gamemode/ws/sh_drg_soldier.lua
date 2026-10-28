@@ -757,9 +757,15 @@ function WS.DrgSoldier(ENT, baseName)
 		return true
 	end
 
+	-- The body waits the clients' ragdoll handoff before it goes: NextSoldier's
+	-- base lingers (no coroutine), DrGBase's death coroutine pauses.
+	local function Linger(self, seconds)
+		if self.Linger then self:Linger(seconds) else self:PauseCoroutine(seconds) end
+	end
+
 	function ENT:OnDeath(dmg)
 		WS.PlayDeath(self:GetPos(), self.NSVoiceLines)
-		if self:NSClientRagdoll(dmg) then self:PauseCoroutine(Ragdoll.HANDOFF) end
+		if self:NSClientRagdoll(dmg) then Linger(self, Ragdoll.HANDOFF) end
 		if self.NSDormant then self:NSRest() end
 	end
 
@@ -778,6 +784,8 @@ function WS.DrgSoldier(ENT, baseName)
 	function ENT:NSRest()
 		SetShown(self, false)
 		self:SetNotSolid(true)
+		-- NextSoldier's base keeps the body; DrGBase's death coroutine waits here
+		if self.KeepBody then return self:KeepBody() end
 		while true do coroutine.yield() end
 	end
 

@@ -51,6 +51,7 @@ if CLIENT then return end
 local Relations = nextsoldier.relations
 local Vision = nextsoldier.vision
 local Intention = nextsoldier.intention
+local Weapons = nextsoldier.weapons
 local Factions = WS.require("ws.factions")
 
 -- Its sight: how far, how wide, and how often it looks (TF2's IVision
@@ -63,6 +64,12 @@ local LOOK_INTERVAL = 0.2
 local VISION = { reaction = 0.1, memory = 8 }
 -- A melee weapon's hold types.
 local MELEE_HOLDS = { melee = true, melee2 = true, knife = true, fist = true }
+-- A player model's acts for a hold type are named ACT_HL2MP_<MOVE>_<HOLD>;
+-- the hold types named otherwise, and the hold for one it has none of.
+local HOLD_ACT_NAMES = { smg = "SMG1" }
+local HOLD_DEFAULT = "normal"
+-- Faster than its walk by this, it runs (the run acts).
+local RUN_OVER_WALK = 10
 
 -- Each team's faction, for a player's (a player's faction is its team's).
 local function TeamFaction(team)
@@ -100,6 +107,7 @@ function ENT:Initialize()
 	self.nsVision = Vision.New(VISION)
 	self.nsNextLook = 0
 	self.nsWeapons = {}
+	self.nsMagazines = setmetatable({}, { __mode = "k" })
 	self:NSReadRanges()
 	if #self.Weapons > 0 then self:SelectWeapon(self:GiveWeapon(self.Weapons[math.random(#self.Weapons)])) end
 	self:CustomInitialize()
@@ -107,10 +115,41 @@ end
 
 function ENT:IsAlive() return self.nsAlive == true end
 
--- Hurt: whoever did it is noticed at the next look, wherever it stands.
+-- Hurt (the engine raises this before the damage is taken): whoever did it
+-- is noticed at the next look, wherever it stands.
 function ENT:OnInjured(dmg)
 	local attacker = dmg:GetAttacker()
 	if IsValid(attacker) and attacker ~= self then self.nsAttacker = attacker end
+end
+
+-- Dead: the class's OnDeath, then the body: kept (KeepBody, for a reserve
+-- that revives it), a ragdoll (RagdollOnDeath), or removed once it has
+-- lingered (Linger: the clients' ragdoll handoff) - DrGBase's coroutine
+-- pause and rest, as TF2 keeps no coroutine.
+function ENT:OnKilled(dmg)
+	if not self.nsAlive then return end
+	self.nsAlive = false
+	self.nsEnemy, self.nsScramble, self.nsKeepBody, self.nsLinger = nil, nil, nil, 0
+	hook.Run("OnNPCKilled", self, dmg:GetAttacker(), dmg:GetInflictor())
+	self:OnDeath(dmg)
+	if self.nsKeepBody then return end
+	if self.RagdollOnDeath then
+		self:BecomeRagdoll(dmg)
+	else
+		SafeRemoveEntityDelayed(self, self.nsLinger)
+	end
+end
+
+function ENT:Linger(seconds) self.nsLinger = math.max(self.nsLinger or 0, seconds) end
+function ENT:KeepBody() self.nsKeepBody = true end
+
+-- Begins again (TF2's INextBot::Reset): alive, its senses, enemy, path and
+-- scramble cleared; a kept body revived.
+function ENT:Reset()
+	self.nsAlive = true
+	self.nsKeepBody, self.nsEnemy, self.nsScramble, self.nsPath, self.nsAttacker = nil, nil, nil, nil, nil
+	self.nsVision = Vision.New(VISION)
+	self.nsNextLook = 0
 end
 function ENT:IsDead() return not self:IsAlive() end
 function ENT:IsDown() return false end
@@ -122,9 +161,10 @@ function ENT:JoinFaction(faction) self.nsRelations:Join(faction) end
 function ENT:LeaveFaction(faction) self.nsRelations:Leave(faction) end
 function ENT:GetFactions() return self.nsRelations:Factions() end
 
--- No coroutine: BehaveStart starts nothing, and BehaveUpdate updates the
--- bot each tick, as TF2's INextBot::Update does its components.
-function ENT:BehaveStart() end
+-- No coroutine: BehaveStart (the engine's, once at spawn) resets the bot,
+-- and BehaveUpdate updates it each tick, as TF2's INextBot::Update does its
+-- components.
+function ENT:BehaveStart() self:Reset() end
 
 function ENT:BehaveUpdate(interval)
 	if not self:IsAlive() then return end
@@ -224,15 +264,18 @@ function ENT:GiveWeapon(class)
 	weapon:Spawn()
 	weapon:SetNoDraw(true)
 	self.nsWeapons[class] = weapon
+	local stats = Weapons.STATS[class]
+	if stats then self.nsMagazines[weapon] = Weapons.Magazine(stats) end
 	return weapon
 end
 
+-- Its weapons by class, as DrGBase's contract has them.
 function ENT:GetWeapons()
-	local list = {}
-	for _, weapon in pairs(self.nsWeapons) do
-		if IsValid(weapon) then list[#list + 1] = weapon end
+	local held = {}
+	for class, weapon in pairs(self.nsWeapons) do
+		if IsValid(weapon) then held[class] = weapon end
 	end
-	return list
+	return held
 end
 
 function ENT:GetActiveWeapon() return self.nsActive end
@@ -266,6 +309,42 @@ function ENT:SetCrouching(crouching)
 	self.nsCrouching = crouching
 	local maxs = Vector(HULL_MAXS.x, HULL_MAXS.y, crouching and CROUCH_HEIGHT or HULL_MAXS.z)
 	self:SetCollisionBounds(HULL_MINS, maxs)
+end
+
+-- Its hold type's act named prefix .. HOLD (ACT_HL2MP_RUN_AR2), or the
+-- plain hold's.
+function ENT:NSHoldAct(prefix)
+	local weapon = self:GetActiveWeapon()
+	local hold = IsValid(weapon) and weapon:GetHoldType() or HOLD_DEFAULT
+	return _G[prefix .. (HOLD_ACT_NAMES[hold] or hold:upper())] or _G[prefix .. HOLD_DEFAULT:upper()]
+end
+
+-- Its animation each tick: the class's (OnUpdateAnimation -> act, rate),
+-- else its own; moving, its feet keep to its speed.
+function ENT:BodyUpdate()
+	local act, rate = self:OnUpdateAnimation()
+	if act == nil then act, rate = self:NSAnimation() end
+	if self:GetActivity() ~= act then self:StartActivity(act) end
+	if rate then self:SetPlaybackRate(rate) end
+	if self:IsMoving() then self:BodyMoveXY() else self:FrameAdvance() end
+end
+
+-- Its own animation: a profile's IdleAnimation, WalkAnimation and
+-- RunAnimation when it has them (a vortigaunt), else a player model's acts
+-- for its hold type, crouched or standing, idle, walking or running.
+function ENT:NSAnimation()
+	local speed = self.loco:GetVelocity():Length2D()
+	if self.IdleAnimation then
+		if speed > self.WalkSpeed + RUN_OVER_WALK then return self.RunAnimation, 1 end
+		if speed > 1 then return self.WalkAnimation, 1 end
+		return self.IdleAnimation, 1
+	end
+	if self:IsCrouching() then
+		return self:NSHoldAct(speed > 1 and "ACT_HL2MP_WALK_CROUCH_" or "ACT_HL2MP_IDLE_CROUCH_"), 1
+	end
+	if speed > self.WalkSpeed + RUN_OVER_WALK then return self:NSHoldAct("ACT_HL2MP_RUN_"), 1 end
+	if speed > 1 then return self:NSHoldAct("ACT_HL2MP_WALK_"), 1 end
+	return self:NSHoldAct("ACT_HL2MP_IDLE_"), 1
 end
 
 -------------------------------------------------------------------------------
@@ -417,9 +496,39 @@ function ENT:IntentionUpdate(interval)
 	end
 end
 
--- The body's own attacks, which the body slice (L3, our soldier weapons)
--- fills: until then a soldier whose class does not attack does not.
-function ENT:RangeAttack(enemy, weapon) end
+-- The body's own shot (TF2's split: the intention decides, the body fires):
+-- one of its gun's (nextsoldier.weapons) when the magazine is ready, at the
+-- enemy's centre within the gun's spread, from the muzzle, with the gun's
+-- sound, flash and the hold type's firing gesture. A weapon that is not one
+-- of NextSoldier's guns is not fired.
+function ENT:RangeAttack(enemy, weapon)
+	if not IsValid(weapon) then return end
+	local magazine = self.nsMagazines[weapon]
+	if not magazine then return end
+	local now = CurTime()
+	if not magazine:Ready(now) then return end
+	magazine:Fire(now)
+	local stats = magazine.stats
+	self:FaceTowards(enemy)
+	local muzzle = weapon:LookupAttachment("muzzle")
+	local src = muzzle and muzzle > 0 and weapon:GetAttachment(muzzle).Pos or self:NSEye()
+	local spread = math.tan(math.rad(stats.spread / 2))
+	self:FireBullets({
+		Attacker = self,
+		Damage = GetConVar(stats.damage):GetFloat(),
+		Num = stats.bullets,
+		Src = src,
+		Dir = (enemy:WorldSpaceCenter() - src):GetNormalized(),
+		Spread = Vector(spread, spread, 0),
+		Tracer = 1,
+		TracerName = stats.tracer,
+	})
+	weapon:EmitSound(stats.sound)
+	weapon:MuzzleFlash()
+	self:AddGesture(self:NSHoldAct("ACT_HL2MP_GESTURE_RANGE_ATTACK_"), true)
+end
+
+-- A melee strike is the class's (OnMeleeAttack): the base has none of its own.
 function ENT:MeleeAttack(enemy, weapon) end
 
 -------------------------------------------------------------------------------
@@ -461,3 +570,12 @@ function ENT:OnTakeDamage(dmg, hitgroup) return nil end
 function ENT:OnTraceAttack(dmg, dir, trace) self.nsHitGroup = trace.HitGroup end
 function ENT:OnDealtDamage(victim, dmg) end
 function ENT:OnDeath(dmg) end
+
+-- What a soldier deals, scaled by its class's OnDealtDamage (a number, else
+-- as dealt).
+hook.Add("EntityTakeDamage", "base_nextsoldier_dealt", function(victim, dmg)
+	local attacker = dmg:GetAttacker()
+	if not (IsValid(attacker) and attacker.IsNextSoldier) then return end
+	local scale = attacker:OnDealtDamage(victim, dmg)
+	if isnumber(scale) then dmg:ScaleDamage(scale) end
+end)
