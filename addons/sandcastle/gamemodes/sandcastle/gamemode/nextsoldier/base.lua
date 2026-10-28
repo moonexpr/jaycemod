@@ -73,7 +73,7 @@ end
 -- by entity and by faction; INextBot's IsEnemy and IsFriend read them).
 NEXTBOT = Component("nextbot", {
 	methods = { "IsAlive", "IsDead", "IsDown", "AddEntityRelationship", "SetFactionRelationship", "Disposition",
-		"JoinFaction", "LeaveFaction" },
+		"JoinFaction", "LeaveFaction", "GetFactions" },
 	hooks = { "CustomInitialize", "CustomThink", "OnTakeDamage", "OnTraceAttack", "OnDealtDamage", "OnDeath" },
 	fields = { "SpawnHealth", "RagdollOnDeath", "Factions", "DefaultRelationship" },
 })
