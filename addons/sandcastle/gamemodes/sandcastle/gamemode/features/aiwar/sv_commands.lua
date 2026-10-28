@@ -113,6 +113,20 @@ WarCommand("ns_jobs_release", function(args)
 	return Controller:ReleaseJob(indexes)
 end, "Hand soldiers' jobs by entity index back to the war")
 
+-- A bench's errand (.devtools/bin/ingame/checks/bot_nav_bench.lua): a bot
+-- soldier sent to a point whatever its orders say, until released.
+WarCommand("ns_bots_goto", function(args)
+	local index, x, y, z = tonumber(args[1]), tonumber(args[2]), tonumber(args[3]), tonumber(args[4])
+	if not (index and x and y and z) then return { "ns_bots_goto: a bot's entity index, then x y z" } end
+	return Controller:PinBot(index, { x = x, y = y, z = z })
+end, "Send a bot soldier (entity index) to x y z whatever its orders say, until ns_bots_release")
+
+WarCommand("ns_bots_release", function(args)
+	local indexes, told = Indexes("ns_bots_release", args, 1)
+	if indexes == nil then return told end
+	return Controller:UnpinBots(indexes)
+end, "Hand bot soldiers (entity indexes) sent by ns_bots_goto back to their orders")
+
 WarCommand("ns_battlelines_print", function()
 	return Controller:LineReport()
 end, "Print each team's battle lines: its front, its posts' width and depth, and the squads in contact or falling back")

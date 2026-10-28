@@ -226,6 +226,30 @@ function Controller:EnlistBot(ply)
 	self:Enlist(ply, team, false)
 end
 
+-- A bench's errand (ns_bots_goto): the bot soldier at index sent to p.
+function Controller:PinBot(index, p)
+	local ent = Entity(index)
+	local entry = IsValid(ent) and ent:IsPlayer() and self.soldiers[ent]
+	if not entry then return { string.format("ns_bots_goto: #%d is no bot soldier", index) } end
+	entry.soldier:Pin(p)
+	return { string.format("ns_bots_goto: %s sent to %.0f %.0f %.0f", ent:Nick(), p.x, p.y, p.z) }
+end
+
+function Controller:UnpinBots(indexes)
+	local lines = {}
+	for _, index in ipairs(indexes) do
+		local ent = Entity(index)
+		local entry = IsValid(ent) and self.soldiers[ent]
+		if entry and entry.soldier.Unpin then
+			entry.soldier:Unpin()
+			lines[#lines + 1] = "ns_bots_release: " .. ent:Nick() .. " back to its orders"
+		else
+			lines[#lines + 1] = string.format("ns_bots_release: #%d is no bot soldier", index)
+		end
+	end
+	return lines
+end
+
 -- The model a recruit of the faction wears (its kind's profile's).
 local function FactionModel(faction)
 	local models = Profiles.PROFILES[faction.recruits[1].kind].Models

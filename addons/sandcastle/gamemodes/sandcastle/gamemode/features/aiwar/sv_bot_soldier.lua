@@ -157,14 +157,28 @@ function BotSoldier:RouteCost()
 end
 
 function BotSoldier:MoveTo(p, gait)
+	if self.pin then return end
 	self.moveTarget = p
 	self.gait = gait or "run"
 end
 
 function BotSoldier:Release()
+	if self.pin then return end
 	self.moveTarget = nil
 	self.steer = nil
 	self.walkSpeed = 0
+end
+
+-- A bench's pin (ns_bots_goto): sent to p at a run whatever its orders
+-- say, its route planned afresh, until unpinned (ns_bots_release).
+function BotSoldier:Pin(p)
+	self.pin = p
+	self.moveTarget, self.gait, self.planned = p, "run", nil
+end
+
+function BotSoldier:Unpin()
+	self.pin = nil
+	self.planned = nil
 end
 
 function BotSoldier:Repath() self.repath = true end

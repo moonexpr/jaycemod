@@ -4,8 +4,10 @@
   aiwar_fight_watch.py                                     pl_upward, 180 s
   aiwar_fight_watch.py --map koth_viaduct --seconds 120
   aiwar_fight_watch.py --instance 2
+  aiwar_fight_watch.py --here                              the map running now, as it is
 
-Changes map (the server must be running: srcds.py start), waits for the
+Changes map (the server must be running: srcds.py start; --here keeps the
+map and its game, for a server someone is playing on), waits for the
 war's soldiers, then counts while it runs: the shots
 they fire, the hits they take and their damage, their deaths, and at the end how many there
 are, how many have an enemy, and whether the server went idle (the war
@@ -17,7 +19,7 @@ and the war stands still from then, so once the map is up (its server.cfg
 puts the defaults back) the watch sets the delay to a day, and puts the
 old value back after, failed or not.
 
-A soldier is an entity the war drives (its NSBrain).
+A soldier is one the war has enlisted: an NPC or a bot player.
 """
 from __future__ import annotations
 
@@ -40,29 +42,35 @@ NEVER_IDLE = 86400
 COUNT_LUA = """
 local W = { shots = 0, hits = 0, damage = 0, deaths = 0, start = CurTime() }
 NSFightWatch = W
-hook.Add("EntityFireBullets", "ns_fight_watch", function(ent) if ent.NSBrain then W.shots = W.shots + 1 end end)
-hook.Add("PostEntityTakeDamage", "ns_fight_watch", function(ent, dmg, took)
-	if took and ent.NSBrain then W.hits = W.hits + 1 W.damage = W.damage + dmg:GetDamage() end
+local function Soldier(ent) return WS.Feature("aiwar").soldiers[ent] ~= nil end
+hook.Add("EntityFireBullets", "ns_fight_watch", function(ent)
+	local shooter = ent:IsWeapon() and ent:GetOwner() or ent
+	if Soldier(shooter) then W.shots = W.shots + 1 end
 end)
-hook.Add("OnNPCKilled", "ns_fight_watch", function(ent) if ent.NSBrain then W.deaths = W.deaths + 1 end end)
+hook.Add("PostEntityTakeDamage", "ns_fight_watch", function(ent, dmg, took)
+	if took and Soldier(ent) then W.hits = W.hits + 1 W.damage = W.damage + dmg:GetDamage() end
+end)
+local function Died(ent) if Soldier(ent) then W.deaths = W.deaths + 1 end end
+hook.Add("OnNPCKilled", "ns_fight_watch", Died)
+hook.Add("PlayerDeath", "ns_fight_watch", Died)
 return W.start
 """
 
 READ_LUA = """
 local W = NSFightWatch
-for _, name in ipairs({ "EntityFireBullets", "PostEntityTakeDamage", "OnNPCKilled" }) do hook.Remove(name, "ns_fight_watch") end
+for _, name in ipairs({ "EntityFireBullets", "PostEntityTakeDamage", "OnNPCKilled", "PlayerDeath" }) do hook.Remove(name, "ns_fight_watch") end
 local soldiers, enemies = 0, 0
-for _, e in ipairs(ents.GetAll()) do
-	if e.NSBrain then
+for ent, entry in pairs(WS.Feature("aiwar").soldiers) do
+	if IsValid(ent) then
 		soldiers = soldiers + 1
-		if e:HasEnemy() then enemies = enemies + 1 end
+		if entry.soldier:HasEnemy() then enemies = enemies + 1 end
 	end
 end
 return util.TableToJSON({ seconds = CurTime() - W.start, shots = W.shots, hits = W.hits, damage = W.damage, deaths = W.deaths,
 	soldiers = soldiers, enemies = enemies, idle = WS.ServerIdle() })
 """
 
-SOLDIERS_LUA = "local n = 0 for _, e in ipairs(ents.GetAll()) do if e.NSBrain then n = n + 1 end end return n"
+SOLDIERS_LUA = "local n = 0 for e in pairs(WS.Feature('aiwar').soldiers) do if IsValid(e) then n = n + 1 end end return n"
 
 
 @dataclass(frozen=True)
@@ -105,9 +113,12 @@ class Server:
             return 0  # the map is still loading
 
 
-def watch(server: Server, map_name: str, seconds: float, wait: float) -> Fights:
-    server.rcon(f"changelevel {map_name}")
-    time.sleep(15)
+def watch(server: Server, map_name: str, seconds: float, wait: float, here: bool) -> Fights:
+    if here:
+        map_name = server.lua("return game.GetMap()")
+    else:
+        server.rcon(f"changelevel {map_name}")
+        time.sleep(15)
     deadline = time.monotonic() + wait
     while server.soldiers() < WAR_UP_SOLDIERS:
         if time.monotonic() > deadline:
@@ -135,9 +146,10 @@ def main() -> int:
     parser.add_argument("--seconds", type=float, default=180)
     parser.add_argument("--wait", type=float, default=240, help="seconds to wait for the war after the map loads")
     parser.add_argument("--instance", type=int, default=1)
+    parser.add_argument("--here", action="store_true", help="count on the map running now, without changing it")
     args = parser.parse_args()
     Instance(args.instance)  # refuses an instance that does not exist
-    fights = watch(Server(args.instance), args.map, args.seconds, args.wait)
+    fights = watch(Server(args.instance), args.map, args.seconds, args.wait, args.here)
     print(json.dumps(fights.__dict__))
     return 0
 
