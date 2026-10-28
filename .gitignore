@@ -7,3 +7,6 @@ native/*/target/
 
 # the dev workbench's quicksave slots (named scenarios are kept)
 .devtools/scenarios/*/quick_*.json
+
+# reference material kept beside the repo, never committed
+reference/**/*

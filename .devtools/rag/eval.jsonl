@@ -1,0 +1,54 @@
+{"q": "Why did the round clock stop working after the map was reset?", "kind": "paraphrase", "expect": ["0b999a5"]}
+{"q": "Why are spectators ignored by the bots now?", "kind": "paraphrase", "expect": ["0b999a5"]}
+{"q": "Players put on the wrong team by the admin mod never respawn — was that fixed?", "kind": "paraphrase", "expect": ["0b999a5"]}
+{"q": "How do we tell a caller's mistake apart from our own bug when an async exchange settles?", "kind": "paraphrase", "expect": ["78b932c"]}
+{"q": "Why did pathfinding blow past its per-frame time budget?", "kind": "paraphrase", "expect": ["c17e90b", "730d4c7"]}
+{"q": "Where did the idea for cooperative coroutine time slicing come from?", "kind": "paraphrase", "expect": ["c17e90b"]}
+{"q": "Several systems each had their own string-keyed spatial lookup; did we unify them?", "kind": "paraphrase", "expect": ["ee0c874"]}
+{"q": "Why did a route search to the enemy base exhaust the whole map before failing?", "kind": "paraphrase", "expect": ["806270b"]}
+{"q": "Bringing a dead soldier back was very slow and leaked entities — what was the cause?", "kind": "paraphrase", "expect": ["be5d523"]}
+{"q": "Which files are sent to clients and which stay on the server?", "kind": "paraphrase", "expect": ["8123529"]}
+{"q": "On the gold mining map, the third stage began with the cart already at the end. Why?", "kind": "paraphrase", "expect": ["5ea88a1"]}
+{"q": "A player spawned behind a closed door in a later stage while in sandbox mode", "kind": "paraphrase", "expect": ["2ab2feb"]}
+{"q": "Why did the second attack lane just run next to the first one?", "kind": "paraphrase", "expect": ["ff60933"]}
+{"q": "Why didn't overriding the corpse method on the soldiers do anything?", "kind": "paraphrase", "expect": ["33d6f4f", "0dece33"]}
+{"q": "When did we move off Half-Life 2's built-in NPCs for the soldiers, and what replaced them?", "kind": "paraphrase", "expect": ["00e8545"]}
+{"q": "Forcing the soldiers to run somewhere made them stop fighting back. What did we do instead?", "kind": "paraphrase", "expect": ["361319a"]}
+{"q": "Why couldn't routes go through doorways, even spawn room doors?", "kind": "paraphrase", "expect": ["0755949"]}
+{"q": "Links from the steps up to a landing set back from the top were being rejected", "kind": "paraphrase", "expect": ["8012aca"]}
+{"q": "A soldier was stuck walking at zero speed into a wall the player can walk through", "kind": "paraphrase", "expect": ["b06ba34"]}
+{"q": "Why was the payload cart making no sound?", "kind": "paraphrase", "expect": ["86eab77"]}
+{"q": "Why do voice lines depend on the model a soldier wears and not its team?", "kind": "paraphrase", "expect": ["9017963"]}
+{"q": "What happens when a soldier keeps failing to get through the same door?", "kind": "paraphrase", "expect": ["b7e4a16"]}
+{"q": "Why did the old TF2 hook names get replaced across the codebase?", "kind": "paraphrase", "expect": ["99b9b77", "4897796"]}
+{"q": "What rule decides whether a module belongs in the pure model layer?", "kind": "paraphrase", "expect": ["docs/research/foundation-admission-rule.md"]}
+{"q": "Which of our functions does LuaJIT's compiler make slower?", "kind": "paraphrase", "expect": ["docs/ns-performance-baseline.md", "be5d523"]}
+{"q": "SetFactionRelationship walks every entity on the map", "kind": "exact", "expect": ["be5d523"]}
+{"q": "still loading: a cyclic dependency, or its load failed", "kind": "exact", "expect": ["f17dee2"]}
+{"q": "EntityFireBullets first hook that answers starves pellet spread", "kind": "exact", "expect": ["3ff73f8"]}
+{"q": "aiscripted_schedule SCHED_FORCED_GO_RUN", "kind": "exact", "expect": ["361319a"]}
+{"q": "CAI_MoveProbe::ShouldBrushBeIgnored func_brush", "kind": "exact", "expect": ["b06ba34"]}
+{"q": "game_sounds_manifest.txt sound.Add Cart.RollStart", "kind": "exact", "expect": ["86eab77"]}
+{"q": "NavAreaBuildPath ties go to the node opened first", "kind": "exact", "expect": ["730d4c7"]}
+{"q": "SetSquad fire teams of at most four", "kind": "exact", "expect": ["92288d1"]}
+{"q": "Why are you using BASH commands to edit and not the Write or Update tool?", "kind": "none", "expect": []}
+{"q": "What is the most expensive function in the AI War?", "kind": "user", "expect": ["docs/ns-performance-baseline.md", "a9e865d", "e8076c3", "be5d523"]}
+{"q": "How do we increase the independent generation for lane calculation so the lanes do not converge on a single hallway?", "kind": "user", "expect": ["ff60933", "58466fd", "bef6956", "339fa60"]}
+{"q": "How do we measure how much fun the player is having in the game and how should we track player retention?", "kind": "none", "expect": []}
+{"q": "How do we balance the power of Lua binary modules and standard Lua in the interest of optimizing server performance during a 15v15 AI war on pl_upward?", "kind": "user", "expect": ["docs/foundation-core.md", "docs/ns-performance-baseline.md", "effa07e", "e8076c3", "be5d523", "a9e865d"]}
+{"q": "RED's lanes also seem to clump together... yet they don't explore the right path for some reason. Same for BLU. Normally, this is a good place for fights.", "kind": "implicit", "expect": ["339fa60", "e3cd5d0", "4c6e173", "e42b8f1"], "before": "2026-10-09T02:58", "asks": ["Why do a team's lanes bunch into the same corridor?", "How are a team's lanes chosen and kept apart from each other?"]}
+{"q": "lastly, figure out why all the NPCs are just walking everywhere rather than running", "kind": "implicit", "expect": ["361319a", "92288d1", "00e8545", "8ee8dc2"], "before": "2026-10-10T07:58", "asks": ["What decides whether a soldier walks or runs?", "Have soldiers walking instead of running come up before?"]}
+{"q": "stage 3 on the previous multistage payload map immediately sets that cart onto the last point. also right-click advance and retract cart options do not work.", "kind": "implicit", "expect": ["1c11251", "124f9b9", "365e89d", "e63137c", "3a1a9fe", "2ab2feb"], "before": "2026-10-10T05:30", "asks": ["How does the cart advance between stages on multi-stage payload maps?", "How do the right-click advance and retract cart options work?"]}
+{"q": "develop some hypothesis and use hypothesis testing to zero in on whats causing the biggest performance cost. we can talk solutions after we properly identify whats causing it", "kind": "implicit", "expect": ["4ecebcb", "be1756a", "730d4c7"], "before": "2026-10-16T22:08", "asks": ["What has been measured about the server's performance cost with many soldiers?", "Which systems were profiled before, and how?"]}
+{"q": "lets also figure out this lane dilemma, maybe we just re-calculate the lanes on change. the bots use pre-calculated paths as highways and use smaller pathfinding queries", "kind": "implicit", "expect": ["58466fd", "ff60933", "4c6e173", "e42b8f1", "339fa60", "e3cd5d0"], "before": "2026-10-17T03:32", "asks": ["When and why are lanes re-planned?", "How do soldiers use lanes as precomputed paths alongside smaller path searches?"]}
+{"q": "augment refusals library as \u201ctransactions\u201d. we\u2019ll use this system for all sorts of transactions between user and system, and also intramodule transactions. should be async", "kind": "implicit", "expect": ["fd2d3fb", "c17e90b"], "before": "2026-10-17T21:08", "asks": ["How does the refusals library work and who uses it?", "How do modules report a refused request versus a failure?"]}
+{"q": "ok good! the current game reached 0:00 on the current round but nothing happened. since we're already in a bonus round, this should become a stalemate game.", "kind": "implicit", "expect": ["9521eef", "e3b3b28", "f6ba863", "7599199", "2b2cf48", "eac6457", "941152a"], "before": "2026-10-18T16:25", "asks": ["What happens when the round timer reaches zero?", "How do stalemate and the bonus round work?"]}
+{"q": "mp_match_forcewin doesn't work on arena because no round apparently exists", "kind": "implicit", "expect": ["e3b3b28", "0e5b2f7", "cd7d5d5"], "before": "2026-10-18T00:00", "asks": ["How does mp_match_forcewin work?", "How is arena mode's round set up?"]}
+{"q": "one new bug: the bomb was pushed into a bomb reset zone (off a cliff for bigrock) but it did not trigger the correct bomb reset", "kind": "implicit", "expect": ["c0f70ed", "bcaeb1c"], "before": "2026-10-18T21:34", "asks": ["How is the MvM bomb reset when it falls into a reset zone?", "How is the bomb carried and dropped in MvM?"]}
+{"q": "Let's formalize the spawn manager as an actual controller which acts as a gate for spawning. This allow us to simply lock the spawn manager during nav generation rather than", "kind": "implicit", "expect": ["68342a4", "9505e09", "2bdbb7c", "6c316bc"], "before": "2026-10-19T02:12", "asks": ["How does spawning get blocked during nav generation?", "Where are player spawns and respawn waves controlled?"]}
+{"q": "responserules is still not being picked up by listen server", "kind": "implicit", "expect": ["f17dee2", "9017963", "91dd1f6"], "before": "2026-10-20T18:52", "asks": ["How is the responserules addon loaded?", "Why would response rules work on a dedicated server but not a listen server?"]}
+{"q": "on gm_construct, the repawn timer is missing and the player never respawns unless they rejoin the team", "kind": "implicit", "expect": ["6c316bc", "057bcf6", "9392f9f", "ab1356e"], "before": "2026-10-20T18:59", "asks": ["How does the respawn timer work and when is it shown?", "How does respawning work outside TF2 maps, like on gm_construct?"]}
+{"q": "setting the owner to blu did not trigger the relay for cp capture and open the door for point b", "kind": "implicit", "expect": ["34ecb33", "43aec1b", "f22a272", "b0d13c2", "ba5724a", "3ac72d5"], "before": "2026-10-10T00:36", "asks": ["How does a control point's owner change fire the map's outputs and relays?", "How are capture point relays and doors handled?"]}
+{"q": "can you figure out why lua refresh is not working when you finish debugging? I symlinked the gamemode directly into the gamemode folder yet file changes arent picked up", "kind": "implicit", "expect": ["59715a5", "4ff0d02"], "before": "2026-10-09T01:43", "asks": ["How does Lua file refresh work on the running server?", "Why would file changes in a symlinked gamemode not be picked up?"]}
+{"q": "why does the inventory take so long to load during a game but loads instantly in the menu? the game stutters while loading the inventory icons", "kind": "implicit", "expect": ["6340f7a", "docs/spawn-menu-design.md", "e24765c"], "before": "2026-10-20T18:17", "asks": ["How are inventory and store icons loaded in the spawn menu?", "What makes the spawn menu slow during a game?"]}
+{"q": "attackers on mvm arent picking up the bomb. could you switch to decoy so watch for a successful round?", "kind": "implicit", "expect": ["bcaeb1c", "0a03dfa", "01d5d4c"], "before": "2026-10-18T17:22", "asks": ["How does the MvM bomb get picked up by attackers?", "How do soldiers decide to go for the bomb?"]}

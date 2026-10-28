@@ -234,6 +234,7 @@ def command_line(install: Install, config: ServerConfig) -> List[str]:
         ("rcon_password", config.rcon_password),
         ("sv_lan", "0"),  # an internet server: Steam authenticates, VAC secures (a LAN one never is)
         ("sv_hibernate_think", "1"),
+        ("mp_maxrounds", "3")
     ] + list(config.convars)
     if config.steam_account:
         convars.append(("sv_setsteamaccount", config.steam_account))
