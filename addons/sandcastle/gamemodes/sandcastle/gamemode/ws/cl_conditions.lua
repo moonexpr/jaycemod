@@ -5,6 +5,13 @@
 -- Jarate's and Mad Milk's drips and the holder's screen overlay, the speed
 -- boost's trail, the uber's material.
 local Effects = WS.require("games.gameplay.players.condition_effects")
+-- The local player, asked of the engine until there is one (it is NULL
+-- while the client loads), then kept.
+local me = NULL
+local function Me()
+	if not IsValid(me) then me = LocalPlayer() end
+	return me
+end
 
 for _, path in ipairs(Effects.FILES) do game.AddParticles(path) end
 for _, effect in ipairs(Effects.EFFECTS) do
@@ -36,7 +43,7 @@ local function Showing(ent)
 end
 
 local function FirstPerson(ent)
-	return ent == LocalPlayer() and not ent:ShouldDrawLocalPlayer()
+	return ent == Me() and not ent:ShouldDrawLocalPlayer()
 end
 
 -- What an effect's particle plays on: a WEAPON effect's on the holder's view
@@ -143,7 +150,7 @@ hook.Add("CreateClientsideRagdoll", "ws_condition_effects", WS.CorpseEffects)
 
 -- The holder's own screen: Jarate's yellow, Mad Milk's white, a fire's heat.
 hook.Add("RenderScreenspaceEffects", "ws_condition_effects", function()
-	local ply = LocalPlayer()
+	local ply = Me()
 	if not (IsValid(ply) and ply:Alive()) then return end
 	for _, effect in ipairs(Effects.Shown(EndsOf(ply), CurTime())) do
 		if effect.overlay then DrawMaterialOverlay(effect.overlay, 0) end
