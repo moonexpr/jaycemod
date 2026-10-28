@@ -88,7 +88,8 @@ end)
 
 -- init.lua's former rule: all of foundation/ (and of games/, split from
 -- it), each feature's sh.lua and cl.lua, and ws/sh_* and ws/cl_*. The new
--- rule adds only modules: the files under features/ and ws/ with no realm.
+-- rule adds the modules (the files under features/ and ws/ with no realm),
+-- the features' client and shared parts, and the vendored libraries.
 T.test("the sent set is the old rule's set plus the feature and ws modules", function()
 	local expected = Set(LuaFilesUnder(T.ROOT .. "foundation/", T.ROOT))
 	for _, path in ipairs(LuaFilesUnder(T.ROOT .. "games/", T.ROOT)) do expected[path] = true end
@@ -112,6 +113,13 @@ T.test("the sent set is the old rule's set plus the feature and ws modules", fun
 			if Features.Realm(Basename(path)) == nil then expected[path] = true end
 		end
 	end
+	-- a feature's client and shared parts beside its roots (rounds' cl_limits)
+	for _, path in ipairs(LuaFilesUnder(T.ROOT .. Features.ROOT, T.ROOT)) do
+		local realm = Features.Realm(Basename(path))
+		if realm == Features.CLIENT or realm == Features.SHARED then expected[path] = true end
+	end
+	-- vendored libraries, every file (docs/vendor.md)
+	for _, path in ipairs(LuaFilesUnder(T.ROOT .. "vendor/", T.ROOT)) do expected[path] = true end
 	T.eq(table.concat(shipped, "\n"), table.concat(Sorted(expected), "\n"), "sent set")
 end)
 
