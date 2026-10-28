@@ -44,6 +44,7 @@ local CATEGORY = {
 	["math/scalar"] = "structures",
 	["math/interval"] = "structures",
 	["math/box"] = "structures",
+	["math/choice"] = "formalisms",
 	["list/schedule"] = "formalisms",
 	["list/select"] = "formalisms",
 	["list/window"] = "structures",

@@ -173,6 +173,7 @@ Tests are `tests/<namespace>_<module>_test.lua`.
 | `math.scalar` | `Clamp(value, low, high)` (an empty range is the caller's mistake), `Saturate(value)` (0..1), `Lerp(a, b, t)` (t unheld), `InverseLerp(a, b, value)` and `Remap(value, a, b, c, d)` (held to the span; a span with no length is the caller's mistake) |
 | `math.interval` | Ranges [low, high] of one number line: `Overlaps(alo, ahi, blo, bhi)` (touching counts), `Intersect(...)` → low, high (low above high when apart) |
 | `math.box` | Axis-aligned boxes by their corners (missing z is 0): `Overlaps(aMins, aMaxs, bMins, bMaxs)`, `Contains(mins, maxs, p)`, `Extent(points)` → mins, maxs (nil for none), `LongestAxis2D(mins, maxs)` → "x" or "y" |
+| `math.choice` | Shuffling and drawing with a random source the caller gives, `randomInt(low, high)`: `Shuffle(list, randomInt)` (a new list; the last place swaps with a draw from those before it), `Draw(list, count, randomInt)` (up to `count` drawn without replacement, the last filling the place of the one drawn); a source answering outside the range is refused |
 | `math.stats` | `Mean(list)`, `Percentile(list, p)` (nearest rank) |
 | `math.weighted` | `PickWeighted(items, weight, r)`, `r` drawn by the caller |
 | `math.polynomial` | Coefficients from the constant up: `Evaluate`, `Derivative`, `Roots` (real, ascending, up to a cubic) |

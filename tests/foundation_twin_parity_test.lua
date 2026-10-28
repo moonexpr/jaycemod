@@ -315,6 +315,7 @@ local LIBRARIES = {
 	["foundation.math.scalar"] = true,
 	["foundation.math.interval"] = true,
 	["foundation.math.box"] = true,
+	["foundation.math.choice"] = true,
 	["foundation.list.select"] = true,
 	["foundation.math.stats"] = true,
 	["foundation.math.weighted"] = true,

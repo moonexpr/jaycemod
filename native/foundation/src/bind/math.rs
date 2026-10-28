@@ -308,6 +308,83 @@ unsafe extern "C-unwind" fn box_longest_axis_2d(l: L) -> c_int {
     1
 }
 
+// math.choice ---------------------------------------------------------------
+
+/// A place from 1 to n, drawn by the function at `source`; an answer outside that is our bug, refused.
+unsafe fn place(l: L, source: c_int, n: usize) -> usize {
+    let api = api();
+    (api.pushvalue)(l, source);
+    (api.pushnumber)(l, 1.0);
+    (api.pushnumber)(l, n as f64);
+    (api.call)(l, 2, 1);
+    let k = number_at(l, -1).unwrap_or(f64::NAN);
+    if !(k >= 1.0 && k <= n as f64) || k.fract() != 0.0 {
+        let given = tostring(l, -1);
+        raise_where(l, format!("the random source gave {given} for 1 to {n}"));
+    }
+    (api.settop)(l, -2);
+    k as usize
+}
+
+/// Pushes a new list holding the items of the list at `list` (up to the first nil); its length.
+unsafe fn copy_list(l: L, list: c_int) -> usize {
+    let api = api();
+    (api.createtable)(l, 0, 0);
+    let copy = (api.gettop)(l);
+    let mut n = 0;
+    each_item(l, list, |l, item| {
+        n += 1;
+        (api.pushvalue)(l, item);
+        (api.rawseti)(l, copy, n as c_int);
+    });
+    n
+}
+
+unsafe extern "C-unwind" fn choice_shuffle(l: L) -> c_int {
+    let api = api();
+    (api.checktype)(l, 1, TTABLE);
+    (api.checktype)(l, 2, crate::lua::TFUNCTION);
+    let mut n = copy_list(l, 1);
+    let out = (api.gettop)(l);
+    while n > 1 {
+        let k = place(l, 2, n);
+        (api.rawgeti)(l, out, n as c_int);
+        (api.rawgeti)(l, out, k as c_int);
+        (api.rawseti)(l, out, n as c_int);
+        (api.rawseti)(l, out, k as c_int);
+        n -= 1;
+    }
+    1
+}
+
+unsafe extern "C-unwind" fn choice_draw(l: L) -> c_int {
+    let api = api();
+    (api.checktype)(l, 1, TTABLE);
+    (api.checktype)(l, 3, crate::lua::TFUNCTION);
+    let count = number_at(l, 2).unwrap_or(f64::NAN);
+    if !(count >= 0.0) || count.fract() != 0.0 {
+        let given = tostring(l, 2);
+        raise_where(l, format!("a draw's count is a whole number of at least 0, not {given}"));
+    }
+    let mut left = copy_list(l, 1);
+    let pool = (api.gettop)(l);
+    (api.createtable)(l, 0, 0);
+    let out = (api.gettop)(l);
+    let mut taken = 0usize;
+    while left > 0 && (taken as f64) < count {
+        let k = place(l, 3, left);
+        (api.rawgeti)(l, pool, k as c_int);
+        taken += 1;
+        (api.rawseti)(l, out, taken as c_int);
+        (api.rawgeti)(l, pool, left as c_int);
+        (api.rawseti)(l, pool, k as c_int);
+        (api.pushnil)(l);
+        (api.rawseti)(l, pool, left as c_int);
+        left -= 1;
+    }
+    1
+}
+
 // math.stats ----------------------------------------------------------------
 
 /// The numbers of the list at `index`, in order until the first nil.
@@ -904,6 +981,8 @@ pub unsafe fn push_modules(l: L) {
         None,
     );
     (api.setfield)(l, -2, c"box".as_ptr());
+    module::push(l, &[(c"Shuffle", choice_shuffle), (c"Draw", choice_draw)], None);
+    (api.setfield)(l, -2, c"choice".as_ptr());
 }
 
-pub const NAMES: &[&CStr] = &[c"geometry", c"scalar", c"stats", c"weighted", c"polynomial", c"matrix", c"polyline", c"interval", c"box"];
+pub const NAMES: &[&CStr] = &[c"geometry", c"scalar", c"stats", c"weighted", c"polynomial", c"matrix", c"polyline", c"interval", c"box", c"choice"];
