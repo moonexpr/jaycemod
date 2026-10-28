@@ -63,6 +63,16 @@ come with the body.
 class is data: `npc_nextsoldier`, each faction's soldier (Combine, rebel,
 vortigaunt) a profile: model, weapons, posture, voice.
 
+**Detouring the engine** (the operator, 2026-10-27: "feel free to use
+detouring in the foundation lib if you need more power"): a component may
+have the native foundation detour an engine function where Lua cannot reach
+what it needs, as `docs/native-foundation-plan.md` ("Detouring the engine's
+functions") assesses it: only against a hot path an engine profile names,
+on the drop-in rule, patched in open and out in close, found by RTTI
+descriptors rather than byte signatures. The likeliest uses are reading
+`CNavArea` state natively for locomotion, and NextBot's own locomotion if
+the bench shows it hot once DrGBase's Lua is gone.
+
 ## 3. Slices
 
 Each ships alone, tests first; nothing switches a soldier until the last.
