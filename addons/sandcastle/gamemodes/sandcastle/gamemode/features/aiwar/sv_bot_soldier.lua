@@ -32,9 +32,9 @@ local REPATH_DISTANCE, REPATH_INTERVAL = 128, 1
 local DIRECT_RANGE = 256
 local FIRST_PLAN = 0.3
 -- What a player's body climbs and falls (RouteCost): a stair step, a crouch
--- jump (Sandbox's jump power with the legs tucked), the fall it survives
--- unhurt; a jump costs JUMP_PENALTY times its length more (CTFBotPathCost).
-local STEP_HEIGHT, JUMP_HEIGHT, SAFE_DROP = 18, 52, 300
+-- jump (JumpReachOf), the fall it survives unhurt; a jump costs
+-- JUMP_PENALTY times its length more (CTFBotPathCost).
+local STEP_HEIGHT, SAFE_DROP = 18, 300
 local JUMP_PENALTY = 2
 
 local BotSoldier = setmetatable({}, { __index = Soldier })
@@ -123,6 +123,16 @@ function BotSoldier:Navigator()
 	return navigator
 end
 
+-- How high ply's crouch jump reaches, from its own jump power, gravity and
+-- hulls (PlayerBody.JumpReach): GMod's player, about 69; TF2's, 72.
+local function JumpReachOf(ply)
+	local _, stand = ply:GetHull()
+	local _, duck = ply:GetHullDuck()
+	local scale = ply:GetGravity()
+	local gravity = GetConVarNumber("sv_gravity") * (scale ~= 0 and scale or 1)
+	return PlayerBody.JumpReach(ply:GetJumpPower(), gravity, stand.z, duck.z)
+end
+
 -- The price of a step from fromArea into area (Path:Compute's generator),
 -- or -1 where a player of my team may not go: an area its doors or brushes
 -- close to it (the npc feature's blockers, the doors the war found shut),
@@ -133,6 +143,7 @@ function BotSoldier:RouteCost()
 	local controller, team = self.controller, self.team
 	local npcs = WS.Feature("npc")
 	local enemy = Teams.EnemyOf(team)
+	local reach = JumpReachOf(self.ent)
 	return function(area, fromArea, ladder, _, length)
 		if not IsValid(fromArea) then return 0 end
 		if npcs:NavBlocks(area, team) or controller:ShutDoorIn(area, team) or npcs:SpawnRoomTeam(area) == enemy then return -1 end
@@ -147,7 +158,7 @@ function BotSoldier:RouteCost()
 		local cost = distance + fromArea:GetCostSoFar()
 		local rise = fromArea:ComputeAdjacentConnectionHeightChange(area)
 		if rise > STEP_HEIGHT then
-			if rise > JUMP_HEIGHT then return -1 end
+			if rise > reach then return -1 end
 			cost = cost + JUMP_PENALTY * distance
 		elseif rise < -SAFE_DROP then
 			return -1

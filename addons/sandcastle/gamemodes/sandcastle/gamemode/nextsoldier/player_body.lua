@@ -30,6 +30,15 @@ FIRE_CONE, MELEE_CONE = 2, 30
 -- it still stands in the way (GLambda's players' door check).
 USE_INTERVAL = 2
 
+-- How high a crouch jump lifts a player's feet: the jump's apex (its jump
+-- speed squared over twice the gravity) and, legs tucked in the air, the
+-- standing hull's height over the crouching one's (gamemovement's
+-- FinishDuck). TF2's physics give its bots' 72 (CTFBotLocomotion's
+-- GetMaxJumpHeight).
+function JumpReach(jumpSpeed, gravity, standHeight, duckHeight)
+	return jumpSpeed * jumpSpeed / (2 * gravity) + standHeight - duckHeight
+end
+
 local Body = {}
 Body.__index = Body
 
