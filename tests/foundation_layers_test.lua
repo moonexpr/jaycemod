@@ -41,6 +41,7 @@ local CATEGORY = {
 	["list/queue"] = "structures",
 	["tree/avl"] = "structures",
 	["world/pairmap"] = "structures",
+	["world/bucket"] = "structures",
 	["math/scalar"] = "structures",
 	["math/interval"] = "structures",
 	["math/box"] = "structures",

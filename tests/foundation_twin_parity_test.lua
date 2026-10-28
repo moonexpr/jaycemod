@@ -225,6 +225,7 @@ local RECIPES = {
 	["foundation.list.window"] = { Make = function(M) return { window = M.New(5) } end },
 	["foundation.tree.heap"] = { Make = function(M) return { heap = M.New() } end },
 	["foundation.tree.avl"] = { Make = function(M) return { tree = M.New() } end },
+	["foundation.world.bucket"] = { Make = function(M) return { bucket = M.New(3, 1, 0) } end },
 	["foundation.world.pairmap"] = { Make = function(M) return { pairmap = M.New(), unordered = M.Unordered() } end },
 	["foundation.world.lease"] = { Make = function(M) return { leases = M.New() } end },
 	["foundation.world.grid"] = { Make = function(M) return { grid = M.New(100) } end },

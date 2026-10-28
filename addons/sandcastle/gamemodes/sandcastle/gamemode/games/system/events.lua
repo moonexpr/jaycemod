@@ -22,11 +22,12 @@
 -- returns nil and the refusal, since a client's mistake is not ours.
 local Buffer = file.buffer
 local Sets = world.sets
+local Bucket = world.bucket
 local Transaction = transaction
 local error, format, getmetatable, ipairs, pairs, pcall, setmetatable, sort, tostring, type =
 	error, string.format, getmetatable, ipairs, pairs, pcall, setmetatable, table.sort, tostring, type
 local match = string.match
-local floor, min = math.floor, math.min
+local floor = math.floor
 module(...)
 
 ID_BITS = 24
@@ -337,7 +338,7 @@ function NewRegistry(checks)
 		byName = {},
 		byId = {},
 		listeners = {},
-		allowances = setmetatable({}, { __mode = "k" }), -- sender -> name -> { tokens, at }
+		allowances = setmetatable({}, { __mode = "k" }), -- sender -> name -> a world.bucket
 	}, Registry)
 end
 
@@ -449,17 +450,10 @@ local function Admit(self, sender, definition, now)
 	local rate = definition.rate
 	local allowance = bySender[definition.name]
 	if not allowance then
-		allowance = {
-			tokens = rate.count,
-			at = now,
-		}
+		allowance = Bucket.New(rate.count, rate.seconds, now)
 		bySender[definition.name] = allowance
 	end
-	allowance.tokens = min(rate.count, allowance.tokens + (now - allowance.at) * rate.count / rate.seconds)
-	allowance.at = now
-	if allowance.tokens < 1 then return false end
-	allowance.tokens = allowance.tokens - 1
-	return true
+	return allowance:Take(now)
 end
 
 -- A client's request as the server receives it: the event, or nil and the

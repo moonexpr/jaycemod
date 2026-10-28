@@ -97,6 +97,71 @@ unsafe extern "C-unwind" fn pairmap_clear(l: L) -> c_int {
     0
 }
 
+// world.bucket -----------------------------------------------------------------
+
+pub struct Bucket {
+    capacity: f64,
+    seconds: f64,
+    tokens: f64,
+    at: f64,
+}
+
+impl Native for Bucket {
+    const NAME: &'static CStr = c"foundation.world.bucket";
+    const METHODS: &'static [(&'static CStr, CFunction)] = &[(c"Take", bucket_take), (c"Tokens", bucket_tokens)];
+}
+
+impl Bucket {
+    /// Brings the tokens up to now, never past the capacity.
+    fn refill(&mut self, now: f64) -> f64 {
+        let tokens = self.tokens + (now - self.at) * self.capacity / self.seconds;
+        self.tokens = if tokens > self.capacity { self.capacity } else { tokens };
+        self.at = now;
+        self.tokens
+    }
+}
+
+unsafe extern "C-unwind" fn bucket_new(l: L) -> c_int {
+    let (capacity, seconds, now) = (number_at(l, 1), number_at(l, 2), number_at(l, 3));
+    match capacity {
+        Some(c) if c >= 1.0 => {}
+        _ => {
+            let given = tostring(l, 1);
+            raise_where(l, format!("a bucket's capacity is a number of at least 1, not {given}"));
+        }
+    }
+    match seconds {
+        Some(s) if s > 0.0 => {}
+        _ => {
+            let given = tostring(l, 2);
+            raise_where(l, format!("a bucket's seconds are a number above 0, not {given}"));
+        }
+    }
+    let Some(now) = now else {
+        let given = tostring(l, 3);
+        raise_where(l, format!("a bucket starts at a time, not {given}"));
+    };
+    let capacity = capacity.unwrap_or(1.0);
+    userdata::push(l, Bucket { capacity, seconds: seconds.unwrap_or(1.0), tokens: capacity, at: now });
+    1
+}
+
+unsafe extern "C-unwind" fn bucket_take(l: L) -> c_int {
+    let now = (api().checknumber)(l, 2);
+    let bucket = userdata::check::<Bucket>(l, 1);
+    let tokens = bucket.refill(now);
+    if tokens < 1.0 {
+        return boolean(l, false);
+    }
+    bucket.tokens = tokens - 1.0;
+    boolean(l, true)
+}
+
+unsafe extern "C-unwind" fn bucket_tokens(l: L) -> c_int {
+    let now = (api().checknumber)(l, 2);
+    number(l, userdata::check::<Bucket>(l, 1).refill(now))
+}
+
 // world.lease ------------------------------------------------------------------
 
 /// Leases: env.holders (key -> holder) and env.expires (key -> time).
@@ -750,6 +815,8 @@ unsafe extern "C-unwind" fn sets_sorted(l: L) -> c_int {
 /// Pushes the world namespace's native modules into the table at the top.
 pub unsafe fn push_modules(l: L) {
     let api = api();
+    module::push(l, &[(c"New", bucket_new)], None);
+    (api.setfield)(l, -2, c"bucket".as_ptr());
     module::push(l, &[(c"New", pairmap_new), (c"Unordered", pairmap_unordered)], None);
     (api.pushnumber)(l, MAX_KEY);
     (api.setfield)(l, -2, c"MAX_KEY".as_ptr());
@@ -775,4 +842,4 @@ pub unsafe fn push_modules(l: L) {
     (api.setfield)(l, -2, c"sets".as_ptr());
 }
 
-pub const NAMES: &[&CStr] = &[c"pairmap", c"lease", c"grid", c"sets"];
+pub const NAMES: &[&CStr] = &[c"pairmap", c"lease", c"grid", c"sets", c"bucket"];
