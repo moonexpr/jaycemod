@@ -2,8 +2,7 @@
 -- each kind, shared by the server (ws/sv_votes.lua), the HUD card and the
 -- Server tab (ws/cl_votes.lua). Players call map, restart, scramble, team
 -- help and difficulty votes; kick votes start only from reports
--- (ws/sv_players_menu.lua). Team help and soldier difficulty have no system
--- behind them yet, so they are not offered (WS.VOTE_READY).
+-- (ws/sv_players_menu.lua).
 local Vote = gameplay.vote
 local E = WS.Events
 
@@ -15,6 +14,11 @@ CreateConVar("mp_vote_reset_enabled", "1", FLAGS, "1: players may vote to restar
 CreateConVar("mp_vote_scramble_enabled", "1", FLAGS, "1: players may vote to scramble the teams", 0, 1)
 CreateConVar("mp_vote_support_enabled", "1", FLAGS, "1: a team may vote to help the other team", 0, 1)
 CreateConVar("mp_vote_difficulty_enabled", "1", FLAGS, "1: players may vote on the soldiers' difficulty", 0, 1)
+-- How well the AI war's soldiers shoot (features/aiwar/sv_relations.lua reads it):
+-- here, replicated, so the Server tab knows the level a difficulty vote would change.
+local Marksmanship = WS.require("features.aiwar.marksmanship")
+CreateConVar("tf_bot_difficulty", tostring(Marksmanship.DEFAULT), FLAGS,
+	"How well the AI war's soldiers shoot, on both teams: 0 easy, 1 normal, 2 hard, 3 expert", Marksmanship.EASY, Marksmanship.EXPERT)
 CreateConVar("mp_vote_nextmap_enabled", "1", FLAGS,
 	"1: once the match is one round from its end or over, everyone votes on the next map among three", 0, 1)
 
@@ -41,6 +45,8 @@ WS.VOTE_READY = {
 	[Vote.KIND_MAP] = true,
 	[Vote.KIND_RESET] = true,
 	[Vote.KIND_SCRAMBLE] = true,
+	[Vote.KIND_SUPPORT] = true,
+	[Vote.KIND_DIFFICULTY] = true,
 }
 
 -- Whether players may call a kind now, on this realm's view of the convars.

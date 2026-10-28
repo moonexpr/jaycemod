@@ -89,6 +89,8 @@ local function ScrambleTeams()
 	team.SetScore(RED, 0)
 	team.SetScore(BLUE, 0)
 	PrintMessage(HUD_PRINTTALK, "The teams have been scrambled.")
+	-- a team helped is no longer the players it was voted for (ws/sv_handicap.lua)
+	hook.Run("WSTeamsScrambled")
 end
 
 return {

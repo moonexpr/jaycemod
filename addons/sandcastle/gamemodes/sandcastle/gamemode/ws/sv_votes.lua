@@ -2,7 +2,8 @@
 -- starts a vote and a timer for its end; every cast, the timer and a player
 -- leaving may end it. A passed vote runs its effect: the next map
 -- (nextlevel), a round restart or a scramble of the next round's teams
--- (the rounds feature), or a kick. Reports reaching the count
+-- (the rounds feature), help for the caller's other team (ws/sv_handicap.lua),
+-- the soldiers' difficulty (tf_bot_difficulty), or a kick. Reports reaching the count
 -- (WSReportsReached) start a kick vote, queued behind a running vote.
 -- Every player hears the vote as game_vote_state; holders of the players
 -- privilege (admins, by default) are never put to a kick vote.
@@ -26,6 +27,9 @@ local E = WS.Events
 
 local TIMER = "ws_vote"
 local book = Vote.New()
+-- the next-map vote's, read by Conclude and the level change
+local nextMapCalled = false -- once a map: the Lua state starts over with the map
+local nextMapPicked = false -- players picked the next map, rather than its being drawn
 
 -- The map cycle (mapcyclefile under cfg/): one map a line, // comments.
 local function ReadCycle()
@@ -44,9 +48,12 @@ for _, map in ipairs(MAPS) do IN_CYCLE[map] = true end
 
 local function Facts()
 	local humans = player.GetHumans()
-	local enabled, immune = {}, {}
+	local enabled, immune, teams = {}, {}, {}
 	for _, kind in ipairs(Vote.CALLABLE) do enabled[kind] = WS.VoteEnabled(kind) end
-	for _, ply in ipairs(humans) do immune[ply] = WS.Can(ply, Permissions.PLAYERS) == true end
+	for _, ply in ipairs(humans) do
+		immune[ply] = WS.Can(ply, Permissions.PLAYERS) == true
+		teams[ply] = ply:Team()
+	end
 	return {
 		electorate = humans,
 		mode = WS.PlayMode(),
@@ -55,12 +62,16 @@ local function Facts()
 		cooldown = GetConVar("mp_vote_cooldown"):GetInt(),
 		scramblePending = WS.Active() and WS.Feature("rounds"):ScramblePending() or false,
 		immune = immune,
+		teams = teams,
+		supported = WS.Handicap():Supported(),
+		difficulty = Vote.DIFFICULTIES[GetConVar("tf_bot_difficulty"):GetInt() + 1],
 	}
 end
 
 -- What a vote is about, as players read it.
 local function SubjectText(vote)
 	if vote.kind == Vote.KIND_KICK then return IsValid(vote.subject) and vote.subject:Nick() or "" end
+	if vote.kind == Vote.KIND_SUPPORT then return team.GetName(vote.subject) end
 	return vote.subject
 end
 
@@ -111,6 +122,8 @@ local EFFECTS = {
 	[Vote.KIND_MAP] = function(vote) RunConsoleCommand("nextlevel", vote.subject) end,
 	[Vote.KIND_RESET] = function() WS.Feature("rounds"):RestartRound() end,
 	[Vote.KIND_SCRAMBLE] = function() WS.Feature("rounds"):ScheduleScramble() end,
+	[Vote.KIND_SUPPORT] = function(vote) WS.GrantHandicap(vote.subject) end,
+	[Vote.KIND_DIFFICULTY] = function(vote) GetConVar("tf_bot_difficulty"):SetInt(Vote.DifficultyLevel(vote.subject)) end,
 	-- known at once (WS.VotedNextLevel, which the rounds feature changes level
 	-- to): the level may be changing now, before the queued nextlevel runs,
 	-- and Lua may not set the engine's convar itself
@@ -163,6 +176,8 @@ E.Listen("game_vote_call", "ws_votes", function(fields, ply)
 		end
 		subject = fields.subject
 	end
+	-- the model checks a level; a support vote's team is the model's to pick
+	if kind == Vote.KIND_DIFFICULTY then subject = fields.subject end
 	local ok, result = pcall(Vote.Call, book, {
 		caller = ply,
 		kind = kind,
@@ -204,8 +219,6 @@ end)
 -- CTFGameRules::ManageServerSideVoteCreation's throttle, about.
 local NEXTMAP_CHECK_SECONDS = 1
 local NEXTMAP_TIMER = "ws_vote_nextmap"
-local nextMapCalled = false -- once a map: the Lua state starts over with the map
-local nextMapPicked = false -- players picked the next map, rather than its being drawn
 
 local function CheckNextMapVote()
 	if nextMapCalled or not WS.Active() then return end

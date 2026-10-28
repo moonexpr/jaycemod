@@ -16,6 +16,7 @@ local Lease = world.lease
 local Lanes = wartactics.lanes
 local Hunt = wartactics.hunt
 local Tactics = wartactics.fireteam
+local Capabilities = gameplay.capabilities
 module(...)
 
 local RED, BLUE = Teams.RED, Teams.BLUE
@@ -387,7 +388,19 @@ function War.New()
 		field = nil,
 		offRoles = OFF_ROLES, -- roles no stance gives (SetOffRoles)
 		onStances = setmetatable({}, { __mode = "k" }), -- stance -> it without them
+		capabilities = {}, -- team -> what its soldiers may use beyond their opponents' (SetCapabilities)
 	}, War)
+end
+
+-- What a team's soldiers may use beyond their opponents' (games.gameplay.capabilities;
+-- a helped team's, games.gameplay.handicap): held for the AI Commander, which offers
+-- the jobs a capability opens. Until then it changes no behaviour.
+function War:SetCapabilities(team, set)
+	self.capabilities[team] = set
+end
+
+function War:Capabilities(team)
+	return self.capabilities[team] or Capabilities.None()
 end
 
 -- The faction fighting for team: its home faction to begin with, swapped

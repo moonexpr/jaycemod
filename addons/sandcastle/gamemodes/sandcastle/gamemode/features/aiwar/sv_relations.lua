@@ -267,9 +267,7 @@ end
 
 -- Marksmanship -----------------------------------------------------------------
 
-local DIFFICULTY = CreateConVar("tf_bot_difficulty", tostring(Marksmanship.DEFAULT), { FCVAR_ARCHIVE, FCVAR_NOTIFY },
-	"How well the AI war's soldiers shoot, on both teams: 0 easy, 1 normal, 2 hard, 3 expert", Marksmanship.EASY,
-	Marksmanship.EXPERT)
+local DIFFICULTY = GetConVar("tf_bot_difficulty") -- ws/sh_votes.lua's, replicated for the difficulty vote
 
 local function Skill() return Marksmanship.For(DIFFICULTY:GetInt()) end
 

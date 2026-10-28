@@ -24,14 +24,18 @@ local function Index(kind)
 	end
 end
 
-local function Player(name, held)
+local RED, BLUE = 2, 3 -- TF2's teams
+
+local function Player(name, held, team)
 	local p = {
 		name = name,
 		held = held or {},
 		got = {},
+		team = team or RED,
 	}
 	function p:Nick() return self.name end
 	function p:IsPlayer() return true end
+	function p:Team() return self.team end
 	return p
 end
 
@@ -71,8 +75,10 @@ local function Load(players, opts)
 		mapcyclefile = "mapcycle.txt",
 		mp_vote_nextmap_enabled = opts.nextmapEnabled == false and 0 or 1,
 		nextlevel = opts.nextlevel or "",
+		tf_bot_difficulty = 1,
 	}
 	s.convars = convars
+	s.handicaps = {}
 	local function Got(ply, name, fields)
 		ply.got[#ply.got + 1] = {
 			name = name,
@@ -83,7 +89,9 @@ local function Load(players, opts)
 		require = T.require,
 		VOTE_KINDS = KINDS,
 		VoteKindIndex = Index,
-		VoteEnabled = function(kind) return kind == Vote.KIND_MAP or kind == Vote.KIND_RESET or kind == Vote.KIND_SCRAMBLE end,
+		VoteEnabled = function(kind) return kind ~= Vote.KIND_KICK and not (opts.disabled or {})[kind] end,
+		Handicap = function() return { Supported = function() return s.supported or 0 end } end,
+		GrantHandicap = function(t) s.handicaps[#s.handicaps + 1] = t end,
 		VoteQuestion = function(kind, subject) return kind .. "?" .. subject end,
 		VotePassed = function(kind, subject) return kind .. "!" .. subject end,
 		Events = {
@@ -132,9 +140,11 @@ local function Load(players, opts)
 				GetBool = function() return convars[name] ~= 0 end,
 				-- GMod: "attempted to modify ConVar not created by Lua"
 				SetString = function() error("attempted to modify ConVar not created by Lua", 2) end,
+				SetInt = function(_, value) convars[name] = value end,
 			}
 		end,
 		game = { GetMap = function() return s.map end },
+		team = { GetName = function(t) return ({ [RED] = "RED", [BLUE] = "BLU" })[t] end },
 		math = setmetatable({ random = function(a, b) if b then return a end return 1 end }, { __index = math }),
 		file = {
 			Read = function(path, where)
@@ -235,9 +245,9 @@ T.test("a map not in the cycle is refused", function()
 	T.eq(Last(alice, "game_vote_refused") ~= nil, true)
 end)
 
-T.test("a kind not offered is refused with the server's reason", function()
+T.test("a kind the server disabled is refused with the server's reason", function()
 	local alice = Player("Alice")
-	local s = Load({ alice })
+	local s = Load({ alice }, { disabled = { [Vote.KIND_SUPPORT] = true } })
 	CallVote(s, alice, Vote.KIND_SUPPORT)
 	T.eq(Last(alice, "game_vote_refused").text, "Server has disabled that issue.")
 end)
@@ -500,6 +510,35 @@ T.test("a pick on a vote of choices is heard as its option", function()
 	Pick(s, alice, 2)
 	T.eq(NextMapVote(alice).cast, 2, "her pick")
 	T.eq(NextMapVote(bob).cast, Vote.BALLOT_NONE, "bob's own")
+end)
+
+-- Help Other Team and Soldier Difficulty -----------------------------------------------
+
+T.test("a passed support vote helps the caller's other team, and only the caller's team votes", function()
+	local alice, bob = Player("Alice", nil, RED), Player("Bob", nil, RED)
+	local carol = Player("Carol", nil, BLUE)
+	local s = Load({ alice, bob, carol })
+	CallVote(s, alice, Vote.KIND_SUPPORT)
+	T.eq(Last(alice, "game_vote_state").question, Vote.KIND_SUPPORT .. "?BLU", "about BLU")
+	T.eq(Last(carol, "game_vote_state").mine, false, "BLU does not vote")
+	Cast(s, bob, true)
+	T.eq(table.concat(s.handicaps, ","), tostring(BLUE), "BLU helped")
+end)
+
+T.test("a passed difficulty vote sets the soldiers' level", function()
+	local alice, bob = Player("Alice"), Player("Bob")
+	local s = Load({ alice, bob })
+	CallVote(s, alice, Vote.KIND_DIFFICULTY, "expert")
+	Cast(s, bob, true)
+	T.eq(s.convars.tf_bot_difficulty, Vote.DifficultyLevel("expert"), "expert")
+end)
+
+T.test("a difficulty vote for no level is refused to its caller", function()
+	local alice = Player("Alice")
+	local s = Load({ alice })
+	CallVote(s, alice, Vote.KIND_DIFFICULTY, "impossible")
+	T.eq(Last(alice, "game_vote_refused") ~= nil, true, "refused")
+	T.eq(s.convars.tf_bot_difficulty, 1, "unchanged")
 end)
 
 T.finish()

@@ -321,4 +321,62 @@ T.test("nothing to hear while no vote runs, or as one ends", function()
 	T.eq(Vote.Heard(Heard(true), Heard(false)), nil, "its result is heard instead")
 end)
 
+-- Help Other Team (decision Q6) ------------------------------------------------------
+
+local Teams = gameplay.teams
+local TEAMS = {
+	alice = Teams.RED,
+	bob = Teams.RED,
+	carol = Teams.BLUE,
+	dave = Teams.BLUE,
+	erin = Teams.SPECTATOR,
+}
+
+local function SupportFacts(over)
+	local facts = Facts({
+		teams = TEAMS,
+		supported = Teams.UNASSIGNED,
+	})
+	for k, v in pairs(over or {}) do facts[k] = v end
+	return facts
+end
+
+T.test("a support vote helps the other team, and only the caller's team votes", function()
+	local book = Vote.New()
+	local vote = Call(book, "alice", Vote.KIND_SUPPORT, "", 0, SupportFacts())
+	T.eq(vote.subject, Teams.BLUE, "the team helped is the other one")
+	T.eq(vote.electorateSize, 2, "alice and bob")
+	T.eq(vote.voters.carol, nil, "the helped team does not vote")
+	T.eq(vote.voters.erin, nil, "nor do spectators")
+end)
+
+T.test("a team already helped cannot be helped again", function()
+	Refused(Vote.ALREADY_SUPPORTED, Call, Vote.New(), "alice", Vote.KIND_SUPPORT, "", 0, SupportFacts({ supported = Teams.BLUE }))
+end)
+
+T.test("a caller on no game team cannot call a support vote", function()
+	Refused(Vote.NOT_ON_TEAM, Call, Vote.New(), "erin", Vote.KIND_SUPPORT, "", 0, SupportFacts())
+end)
+
+-- Soldier Difficulty ---------------------------------------------------------------
+
+T.test("a difficulty vote names one of the levels", function()
+	local vote = Call(Vote.New(), "alice", Vote.KIND_DIFFICULTY, "hard", 0, Facts({ difficulty = "normal" }))
+	T.eq(vote.subject, "hard", "the level")
+	T.eq(Vote.DifficultyLevel("hard"), Vote.DifficultyLevel("normal") + 1, "levels are in order")
+	Refused(Vote.NOT_A_CHOICE, Call, Vote.New(), "alice", Vote.KIND_DIFFICULTY, "impossible", 0, Facts({ difficulty = "normal" }))
+end)
+
+T.test("the levels are the soldiers' marksmanship levels, in order", function()
+	local Marksmanship = T.require("features.aiwar.marksmanship")
+	T.eq(Vote.DifficultyLevel("easy"), Marksmanship.EASY, "easy")
+	T.eq(Vote.DifficultyLevel("normal"), Marksmanship.NORMAL, "normal")
+	T.eq(Vote.DifficultyLevel("hard"), Marksmanship.HARD, "hard")
+	T.eq(Vote.DifficultyLevel("expert"), Marksmanship.EXPERT, "expert")
+end)
+
+T.test("a difficulty vote for the level already set is refused", function()
+	Refused(Vote.SAME_DIFFICULTY, Call, Vote.New(), "alice", Vote.KIND_DIFFICULTY, "normal", 0, Facts({ difficulty = "normal" }))
+end)
+
 T.finish()
