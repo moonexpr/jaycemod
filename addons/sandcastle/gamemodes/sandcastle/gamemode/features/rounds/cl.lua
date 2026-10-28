@@ -66,16 +66,6 @@ local View = {
 	armed = {},
 }
 
-local function PlayPA(name)
-	local ply = LocalPlayer()
-	if IsValid(ply) then ply:EmitSound(name, 100, 100, 1, CHAN_VOICE2) end
-end
-
-local function Play(name)
-	local ply = LocalPlayer()
-	if IsValid(ply) then ply:EmitSound(name) end
-end
-
 local function Clock(seconds)
 	seconds = math.max(0, math.ceil(seconds))
 	return string.format("%d:%02d", math.floor(seconds / 60), seconds % 60)
@@ -452,7 +442,7 @@ end
 -- OnDataChanged: overtime beginning is announced once.
 function View:OvertimeThink()
 	local overtime = GetGlobal2Bool("ws_round_overtime", false)
-	if overtime and not self.wasOvertime and not WS.GameplayStopped() then Play(OVERTIME) end
+	if overtime and not self.wasOvertime and not WS.GameplayStopped() then WS.PlaySoundscape(OVERTIME) end
 	self.wasOvertime = overtime
 end
 
@@ -472,7 +462,7 @@ function View:CountdownThink()
 	local left = TimerLeft()
 
 	if Timer.StartsRound(self.wasSetup, setup) and speaks then
-		Play(Timer.WarningSound(Timer.WARNING_TIME_START, false))
+		WS.PlaySoundscape(Timer.WarningSound(Timer.WARNING_TIME_START, false))
 	end
 	self.wasSetup = setup
 
@@ -487,7 +477,7 @@ function View:CountdownThink()
 	local warning = Timer.NextClientWarning(self.armed, left, setup)
 	if warning then
 		self.armed[warning] = false
-		if speaks then Play(Timer.WarningSound(warning, setup)) end
+		if speaks then WS.PlaySoundscape(Timer.WarningSound(warning, setup)) end
 	end
 end
 

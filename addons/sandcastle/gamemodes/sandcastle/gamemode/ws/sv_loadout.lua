@@ -133,6 +133,10 @@ end
 -- change made since spawning takes effect without dying. The weapon in hand
 -- stays drawn if it is still equipped, else the first equipped is.
 function WS.RestockLoadout(ply)
+	if not WS.EconomyEnabled() then
+		return
+	end
+
 	local held = {}
 	for _, wep in ipairs(ply:GetWeapons()) do held[#held + 1] = wep:GetClass() end
 	local loadout = Carried(ply)
