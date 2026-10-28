@@ -1,6 +1,8 @@
 # The war's director: Left 4 Dead's pacing in the tactics engine
 
-**Status: plan, for the operator's approval. Nothing below is built.**
+**Status: paused (2026-10-27) while what already works is optimized. The
+operator's answers (§6) replace §3 to §5 where they differ; the design is
+to be redone from them. Nothing below is built.**
 
 The operator's request (2026-10-27): "next up for the tactics engine... we
 will begin work on incorporating the same director tech as left4dead2."
@@ -143,3 +145,20 @@ Each ships alone, tests first, and keeps `check_lua.sh` green.
 4. **L4D2's script interface.** Expose the director's settings to maps or
    addons as L4D2's `DirectorOptions` (a registry, compiled at the game's
    beginning as the scenarios are), or keep them as convars for now?
+
+## 6. The operator's answers (2026-10-27)
+
+1. **Intensity is the director's own score**, not a player's stress: the
+   director optimizes for the most frags, and the most stylish ones (an
+   assisted kill counts for more).
+2. **The director is a military commander, not a dungeon master**, with
+   two hats:
+   - it chooses each squad's mission: the objective, pushing the line
+     back, or spawncamping the other team;
+   - it tunes spawn rates: a team being rolled gets shorter respawn times,
+     the team rolling it longer.
+   It favours neither team: its goal is the most frags, with tug-of-war
+   conditions kept. A stalemate is heavily penalized, and the round must
+   still be settled properly before it ends.
+3. **CTF first**, with new gameplay pieces such as support units.
+4. **No script interface** (L4D2's `DirectorOptions`) for now.
