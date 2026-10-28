@@ -28,9 +28,10 @@ if CLIENT then return end
 
 -- Within ARRIVE of its goal it has arrived.
 local ARRIVE = 48
--- Gaining less than PROGRESS toward its goal in RECOVER_AFTER seconds, it
--- recovers: its path planned again; after NUDGE_AFTER recoveries running,
--- it is nudged as well (a hop or a vault toward its goal).
+-- Moving less than PROGRESS in RECOVER_AFTER seconds, it recovers: its path
+-- planned again; after NUDGE_AFTER recoveries running, it is nudged as well
+-- (a hop or a vault toward its path's next waypoint). Headway is movement,
+-- not nearing the goal: a stairway winding away from the goal is headway.
 local PROGRESS, RECOVER_AFTER, NUDGE_AFTER = 32, 3, 2
 -- A fall of more than this between two updates is marked.
 local DROP_MARK = 64
@@ -75,7 +76,7 @@ function ENT:NSErrand(goal, seconds)
 		deadline = now + (seconds or DEFAULT_SECONDS),
 		nearest = self:GetPos():Distance(goal),
 		progressAt = now,
-		progressDistance = self:GetPos():Distance(goal),
+		progressPos = self:GetPos(),
 		recoveriesRunning = 0,
 		failures = {}, recoveries = {}, nudges = {}, marks = {},
 	}
@@ -97,10 +98,16 @@ function ENT:IntentionUpdate()
 	errand.rappelling = self.NSRappelling
 	self.NSTarget = errand.goal
 	self:NSSteer()
+	-- a path planned again marked only when it goes another way (its waypoints' kinds)
 	local path = self:GetPath()
 	if path ~= errand.path and path and path:IsValid() then
 		errand.path = path
-		self:NSNote("marks", "path planned", PathKinds(path))
+		local kinds = PathKinds(path)
+		local shape = util.TableToJSON(kinds)
+		if shape ~= errand.shape then
+			errand.shape = shape
+			self:NSNote("marks", "path planned", kinds)
+		end
 	end
 	local result = self.NSMoveResult
 	if result ~= errand.result then
@@ -113,16 +120,17 @@ function ENT:IntentionUpdate()
 			self:NSNote("marks", "held by an obstacle")
 		end
 	end
-	if errand.progressDistance - distance >= PROGRESS then
-		errand.progressAt, errand.progressDistance, errand.recoveriesRunning = now, distance, 0
+	if pos:Distance(errand.progressPos) >= PROGRESS then
+		errand.progressAt, errand.progressPos, errand.recoveriesRunning = now, pos, 0
 	elseif now - errand.progressAt >= RECOVER_AFTER then
 		errand.progressAt = now
 		errand.recoveriesRunning = errand.recoveriesRunning + 1
 		self:NSRepath()
 		self:NSNote("recoveries", "no headway: path planned again", string.format("%.0f units from the goal", distance))
 		if errand.recoveriesRunning >= NUDGE_AFTER then
-			self:NSHop(errand.goal)
-			self:NSNote("nudges", "hop toward the goal", self.NSHopWhy)
+			local waypoint = path and path:IsValid() and path:GetCurrentGoal()
+			self:NSHop(waypoint and waypoint.pos or errand.goal)
+			self:NSNote("nudges", "hop toward the next waypoint", self.NSHopWhy)
 		end
 	end
 end
