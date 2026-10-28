@@ -1,6 +1,8 @@
 # base_nextsoldier: NextSoldier's own NextBot base (issue #8 L1, L2)
 
-**Status: plan, for the operator's approval. Nothing below is built.**
+**Status: plan, the operator's decisions taken (§4): TF2's organization in
+source-sdk-2013 over DrGBase's. Nothing below is built but the interface
+(`nextsoldier.base`), already reorganised by it.**
 
 The soldiers run on DrGBase today, and after foundation went native its
 think is most of the Lua left on the server thread (the bench: its
@@ -35,21 +37,31 @@ implements the contract's methods by delegating to them. The models are
 pure Lua over ports, tested under LuaJIT, each with a native twin where the
 bench says it pays (L2).
 
-| Component | Model | What it holds | Native (L2) |
-|---|---|---|---|
-| relations | `nextsoldier.relations` | dispositions by entity, then faction, then default; priorities | yes: a table by entity and faction, asked per sight check |
-| senses | `nextsoldier.vision`, `.hearing` (exist) | seen, recognized, remembered; heard | yes: the sight checks over the soldiers |
-| intention | `nextsoldier.intention` | the enemy (chosen from the senses by relations and priority), AI on or off, the stage of fighting it (idle, new, chase, avoid, range or melee attack) as a state machine raising the `On*Enemy` hooks | the enemy choice |
-| locomotion | `nextsoldier.locomotion` | following a path (GMod's PathFollower, priced by the native calculator), facing, jumping, climbing and dropping (the movement modules), speeds | the path cost (done) |
-| posture | in locomotion | crouching, where the class has it | no |
-| body | `nextsoldier.body` | weapons held, the active one, aim and shoot position, animations | no |
-| life | `nextsoldier.life` | alive, down, dead; damage and death | no |
+The components are TF2's (server/NextBot/): the bot itself and its four
+INextBotComponents, each updated every tick (`nextsoldier.base` is
+organised so).
 
-The behaviour coroutine DrGBase's interface exposes (`BehaveStart`,
-`YieldCoroutine`, `PauseCoroutine`; our leaps and vaults yield through it)
-becomes a `list.schedule` task per soldier, run in a time slice from
-`BehaveUpdate`, so the names are kept and no Lua coroutine runs per entity
-unless a task needs one.
+| Component (TF2) | Model | What it holds | Native (L2) |
+|---|---|---|---|
+| the bot (`INextBot`) | `nextsoldier.relations`, `nextsoldier.life` | alive, down, dead; damage and death; whom it fights: dispositions by entity, then faction, then default (`IsEnemy`, `IsFriend`) | yes: the relations table by entity and faction |
+| `ILocomotion` | `nextsoldier.locomotion` | following a path (GMod's PathFollower, priced by the native calculator), facing, speeds; climbs, jumps, leaps, vaults and rappels as its own processes started by `ClimbUpToLedge`, `JumpAcrossGap`, `Jump` and carried out over ticks in its `Update` (the movement modules) | the path cost (done) |
+| `IBody` | `nextsoldier.body` | posture (stand, crouch), head aim (`AimHeadTowards`, `IsHeadAimingOnTarget`), weapons held and the active one, animation | no |
+| `IVision` | `nextsoldier.vision`, `.hearing` (exist) | seen, recognized, remembered (`GetPrimaryKnownThreat`), heard, ignored (`IsIgnored`) | yes: the sight checks over the soldiers |
+| `IIntention` | `nextsoldier.intention` | the enemy, AI on or off, the queries; the behaviours (the chart's states, the war's) run from its `Update` | the enemy choice |
+
+**No coroutine** (TF2 runs none per bot): DrGBase's `BehaveStart` becomes
+the bot's `Reset`, and what yielded through `YieldCoroutine` (our leaps and
+vaults) becomes a locomotion process ticked in its `Update`; what paused
+(`PauseCoroutine`) becomes a behaviour that waits.
+
+**Weapons** on TF2's split: the bot equips the best weapon for its threat
+(`CTFBot::EquipBestWeaponForThreat`), the body aims, and the intention's
+behaviours fire once the head is on target. Our own soldier weapons (L3)
+come with the body.
+
+**One class, its kind as data**, as `CTFBot` is one class whose player
+class is data: `npc_nextsoldier`, each faction's soldier (Combine, rebel,
+vortigaunt) a profile: model, weapons, posture, voice.
 
 ## 3. Slices
 
@@ -66,20 +78,19 @@ Each ships alone, tests first; nothing switches a soldier until the last.
    the movement modules wired as DrGBase's hooks are today.
 5. **Body and life**: weapons held and fired (with L3: our own soldier
    weapons in place of DrGBase's), animation, damage and death.
-6. **One class across**: a test class, `npc_nextsoldier_combine`, on the
-   new base behind a convar; the war fields it beside DrGBase's; the
-   bench's A/B (`--legs native:npc,...` with the new class) against
-   DrGBase's, then each class.
+6. **One class across**: `npc_nextsoldier` with the Combine profile behind
+   a convar; the war fields it beside DrGBase's; the bench's A/B against
+   DrGBase's, then the rebel and vortigaunt profiles.
 7. **L2**: the relations table and the sight checks native, each measured.
 8. **L4**: DrGBase leaves the server's mounts.
 
-## 4. Questions for the operator
+## 4. The operator's decisions (2026-10-27)
 
-1. **The coroutine.** Keep `YieldCoroutine`/`PauseCoroutine` as names over a
-   `list.schedule` task (no per-entity Lua coroutine), or drop them from
-   the interface and rewrite the leaps and vaults as steps of a behaviour?
-2. **Weapons.** DrGBase's soldiers hold `drgbase_weapon` SWEPs. Build our
-   own soldier weapons (L3) inside slice 5, or first keep firing through
-   GMod's NPC weapon path?
-3. **The first class across.** The Combine soldier (the most fielded), or
-   the vortigaunt (the simplest: no weapons, no posture)?
+"Take tf2's organization in source-sdk-2013 over DrGBase for these design
+decisions":
+1. **The coroutine**: none; TF2's locomotion processes and behaviours that
+   wait (§2).
+2. **Weapons**: our own, on TF2's equip, aim and fire split, with the body
+   (slice 5).
+3. **The first class**: one class with profiles as data, as `CTFBot`; the
+   Combine profile first (§3, slice 6).

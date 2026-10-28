@@ -1,26 +1,34 @@
 -- NextSoldier's base: the interface our code keeps of DrGBase's NextBot
--- (issue #8), its names and hook contracts only. NextSoldier's own NextBot
--- base implements it from scratch over GMod's NextBot, nothing taken from
--- DrGBase's source, each component on its own model and native where that
--- pays: the senses on nextsoldier.vision and .hearing, the relations as a
--- table by entity and faction, locomotion on wetsands' path costs, the
--- intention on generator.hfsm's chart.
+-- (issue #8), its names and hook contracts only, organised as TF2's NextBot
+-- is in source-sdk-2013 (server/NextBot/), not as DrGBase is. NextSoldier's
+-- own base (base_nextsoldier) implements it from scratch over GMod's
+-- NextBot, nothing taken from DrGBase's source, each component on its own
+-- model and native where that pays.
 --
--- The components are NextBot's own (TF2's INextBotComponent: IIntention,
--- IVision, ILocomotion, IBody), with the relations and the soldier's life
--- apart. Each declares:
+-- The components are TF2's: the bot itself (INextBot: its life, and whom it
+-- fights, IsEnemy and IsFriend being INextBot's) and its INextBotComponents,
+-- each updated every tick:
+--   ILocomotion  moving; climbs and jumps are its own processes, started by
+--                ClimbUpToLedge, JumpAcrossGap, Jump and carried out over
+--                ticks in its Update (IsClimbingOrJumping): no coroutine
+--   IBody        what it holds and how it stands: weapons, aim, posture
+--   IVision      what it senses
+--   IIntention   what it wants: its enemy, and the behaviours (nextsoldier
+--                .chart's states) run from its Update
+-- Each declares:
 --   methods  a core.port: what the base does when asked
 --   hooks    what the base raises on a soldier class, which it may define
 --   fields   a class's settings, read by the base
 -- hooks and fields are named sets, or nil for a component with none;
 -- Hooks(component) and Fields(component) list them either way.
 --
--- An optional component (optional = true) is one a soldier may lack, as
--- DrGBase's non-human NextBots lack crouching: a soldier has it whole or
--- not at all, and its callers ask Has first.
+-- Posture is the body's (IBody::SetDesiredPosture), apart as an optional
+-- component only while DrGBase's classes stand in, its non-human NextBots
+-- lacking crouching: a soldier has it whole or not at all, and its callers
+-- ask Has first.
 --
--- COMPONENTS, in order; INTENTION, SENSES, RELATIONS, LOCOMOTION, POSTURE
---             (optional), BODY, LIFE
+-- COMPONENTS, in order; NEXTBOT, LOCOMOTION, BODY, POSTURE (optional),
+--             VISION, INTENTION
 -- METHODS     the port of every required component's methods, in order
 -- Has(soldier, component) -> whether soldier has an optional component;
 --             one with only some of its methods is refused, naming them
@@ -60,31 +68,18 @@ function Fields(component)
 	return component.fields and component.fields:Members() or NONE
 end
 
--- What the soldier wants and does: its enemy, its AI on or off, and the
--- behaviour coroutine (BehaveStart, yielded and paused); its hooks are the
--- stages of fighting an enemy.
-INTENTION = Component("intention", {
-	methods = { "GetEnemy", "HasEnemy", "SetAIDisabled", "IsAIDisabled", "BehaveStart", "YieldCoroutine",
-		"PauseCoroutine" },
-	hooks = { "OnIdle", "OnNewEnemy", "OnLastEnemy", "OnFetchEnemy", "OnChaseEnemy", "OnAvoidEnemy",
-		"OnIdleEnemy", "OnRangeAttack", "OnMeleeAttack", "ShouldRun" },
-	fields = { "ReachEnemyRange", "AvoidEnemyRange", "RangeAttackRange", "MeleeAttackRange" },
+-- The bot itself (INextBot, its combat character): alive, down or dead,
+-- hurt and dying, its own setup and think, and whom it fights (dispositions
+-- by entity and by faction; INextBot's IsEnemy and IsFriend read them).
+NEXTBOT = Component("nextbot", {
+	methods = { "IsAlive", "IsDead", "IsDown", "AddEntityRelationship", "SetFactionRelationship", "Disposition",
+		"JoinFaction", "LeaveFaction" },
+	hooks = { "CustomInitialize", "CustomThink", "OnTakeDamage", "OnTraceAttack", "OnDealtDamage", "OnDeath" },
+	fields = { "SpawnHealth", "RagdollOnDeath", "Factions", "DefaultRelationship", "IsDrGNextbot" },
 })
 
--- What it senses: sight (spotted, lost), hearing, and the range to another.
-SENSES = Component("senses", {
-	methods = { "IsDeaf", "GetHearingCoefficient", "GetRangeTo", "SetNoTarget" },
-	hooks = { "OnSpotted", "OnLost" },
-})
-
--- Whom it fights: dispositions by entity and by faction.
-RELATIONS = Component("relations", {
-	methods = { "AddEntityRelationship", "SetFactionRelationship", "Disposition", "JoinFaction", "LeaveFaction" },
-	fields = { "Factions", "DefaultRelationship", "IsDrGNextbot" },
-})
-
--- How it moves: its path, priced by the class (GetPathGenerator), facing,
--- jumping, crouching, climbing ledges and dropping down.
+-- Moving (ILocomotion): its path, priced by the class (GetPathGenerator),
+-- facing, jumping, climbing ledges and dropping down, its speeds.
 LOCOMOTION = Component("locomotion", {
 	methods = { "FollowPath", "GetPath", "FaceTowards", "IsMoving", "Jump", "GetStepHeight", "GetDeathDropHeight" },
 	hooks = { "GetPathGenerator", "OnComputePath", "CustomClimbing", "OnStartClimbing", "OnLandOnGround",
@@ -92,14 +87,9 @@ LOCOMOTION = Component("locomotion", {
 	fields = { "WalkSpeed", "RunSpeed", "ClimbLedges", "ClimbLedgesMaxHeight", "DeathDropHeight" },
 })
 
--- Crouching, which a human soldier has and a vortigaunt does not.
-POSTURE = Component("posture", {
-	methods = { "IsCrouching", "SetCrouching" },
-	optional = true,
-})
-
--- What it looks like and holds: its weapons, scale, models, animations and
--- sounds.
+-- What it holds and looks like (IBody): its weapons (the bot equips the best
+-- for its threat, as CTFBot::EquipBestWeaponForThreat; the intention fires),
+-- its scale, models, animations and sounds.
 BODY = Component("body", {
 	methods = { "GetActiveWeapon", "GetWeapons", "GiveWeapon", "RemoveWeapon", "SelectWeapon", "SetScale" },
 	hooks = { "OnWeaponChange", "OnUpdateAnimation", "OnAnimEvent" },
@@ -107,14 +97,31 @@ BODY = Component("body", {
 		"RunAnimation", "OnDamageSounds", "OnDeathSounds" },
 })
 
--- Its life: alive, down or dead, hurt and dying, and its own setup and think.
-LIFE = Component("life", {
-	methods = { "IsAlive", "IsDead", "IsDown" },
-	hooks = { "CustomInitialize", "CustomThink", "OnTakeDamage", "OnTraceAttack", "OnDealtDamage", "OnDeath" },
-	fields = { "SpawnHealth", "RagdollOnDeath" },
+-- The body's posture: crouching, which a human soldier has and a
+-- vortigaunt does not.
+POSTURE = Component("posture", {
+	methods = { "IsCrouching", "SetCrouching" },
+	optional = true,
 })
 
-COMPONENTS = { INTENTION, SENSES, RELATIONS, LOCOMOTION, POSTURE, BODY, LIFE }
+-- What it senses (IVision, with hearing): sight (spotted, lost), hearing,
+-- the range to another, and being no one's target.
+VISION = Component("vision", {
+	methods = { "IsDeaf", "GetHearingCoefficient", "GetRangeTo", "SetNoTarget" },
+	hooks = { "OnSpotted", "OnLost" },
+})
+
+-- What it wants (IIntention): its enemy, its AI on or off, and the stages
+-- of fighting an enemy; the behaviours themselves are nextsoldier.chart's
+-- states, run from its Update.
+INTENTION = Component("intention", {
+	methods = { "GetEnemy", "HasEnemy", "SetAIDisabled", "IsAIDisabled" },
+	hooks = { "OnIdle", "OnNewEnemy", "OnLastEnemy", "OnFetchEnemy", "OnChaseEnemy", "OnAvoidEnemy",
+		"OnIdleEnemy", "OnRangeAttack", "OnMeleeAttack", "ShouldRun" },
+	fields = { "ReachEnemyRange", "AvoidEnemyRange", "RangeAttackRange", "MeleeAttackRange" },
+})
+
+COMPONENTS = { NEXTBOT, LOCOMOTION, BODY, POSTURE, VISION, INTENTION }
 
 local methods, hooks, fields, owner = {}, {}, {}, {}
 for _, component in ipairs(COMPONENTS) do
@@ -153,4 +160,10 @@ REPLACED = {
 	-- DrGBase's own landing handling, which the soldier's OnLandOnGround
 	-- calls first: the base runs its own before raising the hook.
 	_HandleLandOnGround = "the base's landing, run before OnLandOnGround",
+	-- DrGBase's behaviour coroutine: TF2 runs none. The bot's Reset begins
+	-- its components and behaviour again; a leap, vault or rappel is a
+	-- locomotion process carried out over ticks in ILocomotion's Update.
+	BehaveStart = "Reset (INextBot::Reset): the components and the behaviour begin again",
+	YieldCoroutine = "a locomotion process, ticked in ILocomotion's Update (as ClimbUpToLedge)",
+	PauseCoroutine = "a behaviour that waits, ticked in IIntention's Update",
 }

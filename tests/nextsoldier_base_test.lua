@@ -69,11 +69,22 @@ T.test("a soldier has an optional component whole or not at all", function()
 	T.eq(ok, false, "half a component is refused")
 end)
 
-T.test("each name's component is found", function()
+T.test("each name's component is TF2's (INextBot and its ILocomotion, IBody, IVision, IIntention)", function()
 	T.eq(Base.ComponentOf("FollowPath").name, "locomotion")
-	T.eq(Base.ComponentOf("OnSpotted").name, "senses")
-	T.eq(Base.ComponentOf("SpawnHealth").name, "life")
+	T.eq(Base.ComponentOf("OnSpotted").name, "vision")
+	T.eq(Base.ComponentOf("SpawnHealth").name, "nextbot")
+	T.eq(Base.ComponentOf("Disposition").name, "nextbot")
+	T.eq(Base.ComponentOf("GetEnemy").name, "intention")
+	T.eq(Base.ComponentOf("SelectWeapon").name, "body")
+	T.eq(Base.ComponentOf("SetCrouching").name, "posture")
 	T.eq(Base.ComponentOf("NSRest"), nil)
+end)
+
+T.test("no coroutine: the behaviour coroutine's names are replaced, by Reset and locomotion's ticked processes", function()
+	for _, name in ipairs({ "BehaveStart", "YieldCoroutine", "PauseCoroutine" }) do
+		T.eq(Base.ComponentOf(name), nil, name .. " is no component's")
+		T.eq(type(Base.REPLACED[name]), "string", name .. " is replaced")
+	end
 end)
 
 T.test("every hook the soldier defines on the base is declared", function()
