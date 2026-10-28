@@ -27,7 +27,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[2]
 GMA = (Path.home() / "Library/Application Support/CrossOver/Bottles/Steam/drive_c/Steam/steamapps"
        / "workshop/content/4000/1560118657/gmpublisher.gma")
-NEXTBOT_DIRS = ("lua/entities/drgbase_nextbot/", "lua/entities/drgbase_nextbot_human/")
+NEXTBOT_DIRS = ("lua/entities/drgbase_nextbot/", "lua/entities/drgbase_nextbot_human/", "lua/drgbase/")
 OUR_ROOTS = ("addons/sandcastle", "addons/sandcastle_dev")
 SKIP = ("/vendor/",)
 BASE = REPO / "addons/sandcastle/gamemodes/sandcastle/gamemode/nextsoldier/base.lua"
@@ -42,16 +42,24 @@ COLLISIONS = {
     **dict.fromkeys(("BehaveUpdate", "BodyUpdate", "OnContact", "OnInjured", "OnKilled", "OnLeaveGround"),
                     "GMod's NextBot hooks, on our own NextBots (ws_nextbot, the bosses)"),
     "PlaySequence": "our own NextBots' (ws_nextbot, eyeball_boss)",
-    **dict.fromkeys(("Alive", "Team", "SetTeam", "Kill", "GetShootPos", "GetAimVector", "GetWeapon", "HasWeapon"),
+    **dict.fromkeys(("Alive", "SetTeam", "Kill", "GetShootPos", "GetAimVector", "GetWeapon", "HasWeapon"),
                     "GMod's Player and NPC methods, on players, bots and HL2's NPCs"),
     **dict.fromkeys(("Base", "Type", "PrintName", "Category", "ModelScale"), "GMod's scripted entity keys"),
     "Length": "GMod's Vector:Length", "Height": "our own (a size's height)",
     **dict.fromkeys(("Attack", "Patrol", "IsStuck", "Wait"), "features.aiwar.orders' own actions and port"),
     "IsEnemy": "our projectiles' own (ws_projectile, tf_projectile_jar)",
+    **dict.fromkeys(("EyeAngles", "EyePos", "GetMaxHealth", "GetModelScale", "GetVelocity", "Health", "Remove",
+                     "SetHealth", "SetMaxHealth", "SetPos"),
+                    "GMod's entity methods, which DrGBase redefines on its NextBots; NextSoldier's base keeps GMod's"),
+    "SetVelocity": "GMod's locomotion (self.loco)", "ClearStuck": "GMod's locomotion (self.loco)", "OnGround": "GMod's Player:OnGround, on bot players",
+    "ScreenShake": "our own NextBots' (ws_nextbot, the bosses)",
+    **dict.fromkeys(("DrG_JoinFaction", "DrG_LeaveFaction"),
+                    "DrGBase's player factions, which only its own NextBots read (ws/sh_factions.lua)"),
 }
 
 COMMENT = re.compile(r"--\[(=*)\[.*?\]\1\]|--[^\n]*", re.S)
-DRG_METHOD = re.compile(r"\bfunction\s+ENT:(\w+)\s*\(")
+# its NextBot's (ENT) and what it adds to GMod's metatables, not its own helper classes
+DRG_METHOD = re.compile(r"\bfunction\s+(?:ENT|entMETA|plyMETA|npcMETA|physMETA|vecMETA):(\w+)\s*\(")
 DRG_FIELD = re.compile(r"^\s*ENT\.(\w+)\s*=", re.M)
 OUR_DEFINED = re.compile(r"\bfunction\s+ENT:(\w+)\s*\(|^\s*ENT\.(\w+)\s*=\s*function\b", re.M)
 OUR_SET = re.compile(r"^\s*ENT\.(\w+)\s*=(?!\s*function\b)", re.M)

@@ -42,6 +42,15 @@ function DrGBase.GetNextbots() end
         self.assertEqual(names.methods, {"GetEnemy", "OnNewEnemy"})
         self.assertEqual(names.fields, {"RunSpeed", "ClimbLedges"})
 
+    def test_what_it_adds_to_gmods_metatables_but_not_its_own_classes(self):
+        text = """
+function entMETA:DrG_TraceHull(data) end
+function plyMETA:DrG_JoinFaction(f) end
+function vecMETA:DrG_Away(v) end
+function Node:GetPos() end
+"""
+        self.assertEqual(Names.of_drgbase(text).methods, {"DrG_TraceHull", "DrG_JoinFaction", "DrG_Away"})
+
 
 class OurUsage(unittest.TestCase):
     TEXT = """

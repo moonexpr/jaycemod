@@ -13,6 +13,14 @@ local E = WS.Events
 
 local ACTIVE_KEY = "ws.aiwar"
 
+-- A soldier's kind, as features.aiwar.model knows it: its NextSoldier
+-- profile (npc_nextsoldier's, networked), else its class.
+function WS.SoldierKind(ent)
+	local kind = ent:GetNW2String("NSKind", "")
+	if kind ~= "" then return kind end
+	return ent:GetClass()
+end
+
 CreateConVar("mp_aiwar_team_size", tostring(AiWar.TEAM_SIZE_DEFAULT), { FCVAR_ARCHIVE, FCVAR_REPLICATED },
 	"Soldiers each side of the AI war keeps in the field; -1: each side's own slots, as the AI War panel's slot list "
 		.. "(mp_aiwar_slots_*) edits them", Slots.CUSTOM_SIZE, AiWar.TEAM_SIZE_MAX)
@@ -204,7 +212,7 @@ end
 -- (ws/cl_npc_ragdolls.lua); engine NPCs fighting in the war die into
 -- the engine's own clientside ragdolls, which fade the same way.
 hook.Add("CreateClientsideRagdoll", "ws_aiwar_ragdoll_fade", function(owner, ragdoll)
-	if IsValid(owner) and AiWar.FactionTeam(owner:GetClass()) then WS.FadeRagdollLater(ragdoll) end
+	if IsValid(owner) and AiWar.FactionTeam(WS.SoldierKind(owner)) then WS.FadeRagdollLater(ragdoll) end
 end)
 
 local HELP = "In Sandbox mode, counts down to Gameplay mode and a new round. "

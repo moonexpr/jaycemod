@@ -42,6 +42,28 @@ T.test("sides stand by their team and fight the other; the losers of a round fea
 	T.eq(AiWar.LosersOf(Teams.UNASSIGNED), nil, "a stalemate humiliates nobody")
 end)
 
+T.test("a soldier's kind: its NextSoldier profile, a faction's member as its DrGBase class is", function()
+	T.eq(AiWar.FactionTeam("combine"), BLUE, "the Combine's soldier")
+	T.eq(AiWar.FactionTeam("rebel"), RED, "the Resistance's fighter")
+	T.eq(AiWar.FactionOf("vortigaunt").id, AiWar.RESISTANCE)
+	T.eq(AiWar.FixedRole("vortigaunt"), AiWar.MEDIC, "a vortigaunt only heals, on either base")
+end)
+
+T.test("a recruit spawns as its DrGBase class, or on NextSoldier's base as its kind's profile", function()
+	for _, faction in pairs(AiWar.FACTIONS) do
+		for _, recruit in ipairs(faction.recruits) do
+			local drgbase = AiWar.SpawnOf(recruit, false)
+			T.eq(drgbase.class, recruit.class)
+			T.eq(drgbase.profile, nil)
+			local ours = AiWar.SpawnOf(recruit, true)
+			T.eq(ours.class, AiWar.NEXTSOLDIER_CLASS)
+			T.eq(ours.profile, recruit.kind)
+			T.eq(AiWar.FactionTeam(recruit.kind), faction.home, faction.name .. " " .. recruit.kind)
+		end
+		T.eq(AiWar.FactionTeam(faction.medic.kind), faction.home, faction.name .. "'s medic")
+	end
+end)
+
 T.test("each recruit of a faction is one of its members", function()
 	for id, faction in pairs(AiWar.FACTIONS) do
 		T.eq(faction.id, id, faction.name .. " id")

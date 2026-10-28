@@ -241,6 +241,8 @@ local function Env(w)
 		ServerIdle = function() return w.idle == true end,
 		SetTeamMember = function() end,
 		ClipMasks = function() return { solid = 5, brushes = 6 } end,
+		-- a soldier's kind: its class, as on DrGBase (ws/sh_aiwar.lua)
+		SoldierKind = function(ent) return ent:GetClass() end,
 	}
 	local env = {
 		WS = ws,

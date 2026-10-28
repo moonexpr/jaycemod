@@ -83,26 +83,38 @@ SQUADS_MIN_DEFAULT = 3
 -- Combine's cold, industrial palette is BLU's, the Resistance's browns
 -- RED's: docs/team-theming-plan.md), and fights for either as the sides
 -- trade (War:SwapFactions).
+-- A soldier is known by its kind: on NextSoldier's base (NEXTSOLDIER_CLASS,
+-- one class as TF2's CTFBot is) its profile's name, on DrGBase its class.
+-- A faction's classes list both; a recruit names its DrGBase class and its
+-- kind (SpawnOf picks by the base the war fields).
 COMBINE, RESISTANCE = "combine", "resistance"
+NEXTSOLDIER_CLASS = "npc_nextsoldier"
 FACTIONS = {
 	[COMBINE] = {
 		id = COMBINE,
 		name = "Combine",
 		home = BLUE,
-		classes = { ws_drg_combine = true },
-		recruits = { { class = "ws_drg_combine" } },
-		medic = { class = "ws_drg_combine" }, -- in a metrocop's kit
+		classes = { ws_drg_combine = true, combine = true },
+		recruits = { { class = "ws_drg_combine", kind = "combine" } },
+		medic = { class = "ws_drg_combine", kind = "combine" }, -- in a metrocop's kit
 	},
 	[RESISTANCE] = {
 		id = RESISTANCE,
 		name = "Resistance",
 		home = RED,
 		-- a class whose value is a job only ever does that job
-		classes = { ws_drg_rebel = true, ws_drg_vortigaunt = MEDIC },
-		recruits = { { class = "ws_drg_rebel" } },
-		medic = { class = "ws_drg_vortigaunt" },
+		classes = { ws_drg_rebel = true, ws_drg_vortigaunt = MEDIC, rebel = true, vortigaunt = MEDIC },
+		recruits = { { class = "ws_drg_rebel", kind = "rebel" } },
+		medic = { class = "ws_drg_vortigaunt", kind = "vortigaunt" },
 	},
 }
+
+-- What to create for a recruit: its DrGBase class, or on NextSoldier's
+-- base its kind's profile.
+function SpawnOf(recruit, onNextSoldier)
+	if onNextSoldier then return { class = NEXTSOLDIER_CLASS, profile = recruit.kind } end
+	return { class = recruit.class }
+end
 
 -- Clients learn the sides from the team the Combine fight for now
 -- (Global2Int SIDES_KEY, set by features/aiwar); Sides(that team) gives

@@ -73,13 +73,16 @@ T.test("a capture no one is named for is the team's; before my player exists it 
 	T.eq(Feed.Objective(Feed.CAPTURED, RED, { "Alice" }, "RED", "A", "Alice").mine, true, "I capped it")
 end)
 
-T.test("every soldier class has a faction, so each gets a name", function()
-	local n = 0
+T.test("every soldier class and kind has a faction, so each gets a name", function()
+	local n, listed = 0, 0
 	for class, faction in pairs(Feed.SOLDIERS) do
 		n = n + 1
 		T.eq(AiWar.FACTIONS[faction] ~= nil, true, class)
 	end
-	T.eq(n, 3)
+	for _, faction in pairs(AiWar.FACTIONS) do
+		for _ in pairs(faction.classes) do listed = listed + 1 end
+	end
+	T.eq(n, listed, "every one the factions list")
 end)
 
 -- CTFHudDeathNotice: an assisted suicide (a death to the world credited to

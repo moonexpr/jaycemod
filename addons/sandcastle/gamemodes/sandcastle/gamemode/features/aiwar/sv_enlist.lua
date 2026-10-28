@@ -16,7 +16,7 @@ local Point, Masks, SpawnSpots, ClearSpotNear = Map.Point, Map.Masks, Map.SpawnS
 -- body is the bot soldier port's (sv_bot_soldier.lua), not DrGBase's.
 function Controller:Enlist(ent, team, drafted, fixed)
 	local bot = ent:IsPlayer()
-	local member = self.war:Enlist(ent, team, drafted, fixed or (not bot and AiWar.FixedRole(ent:GetClass())) or nil)
+	local member = self.war:Enlist(ent, team, drafted, fixed or (not bot and AiWar.FixedRole(WS.SoldierKind(ent))) or nil)
 	-- a drafted soldier fills a slot of its faction, and leads or follows as it is pinned;
 	-- so does a quota bot while one is free, which lists it in the AI War panel's slots
 	if drafted then member.pin = self:SlotPlan():Fill(self:FactionName(team), ent).pin end
@@ -216,21 +216,27 @@ end
 -- it) joins its side, once its spawn has finished.
 function Controller:Consider(ent)
 	if not self.war or self.soldiers[ent] or not IsValid(ent) or not (ent:IsNPC() or ent:IsNextBot()) then return end
-	local team = self.war:FactionTeam(ent:GetClass())
+	local team = self.war:FactionTeam(WS.SoldierKind(ent))
 	if team and ent:Health() > 0 then self:Enlist(ent, team, false) end
 end
 
 -- Spawning ------------------------------------------------------------------------
 
+-- Which base the war's soldiers are on: DrGBase's classes, or NextSoldier's
+-- own (npc_nextsoldier, each kind a profile).
+local BASE = CreateConVar("ns_soldiers_base", "drgbase", { FCVAR_ARCHIVE, FCVAR_NOTIFY },
+	"The AI war's soldiers: drgbase (DrGBase's NextBots) or nextsoldier (NextSoldier's own base)")
+
 -- A recruit: a body the reserve kept, revived (sv_reserve.lua), else a new
--- entity.
+-- entity, on the base ns_soldiers_base picks (AiWar.SpawnOf).
 function Controller:Draft(team, pos, ang)
 	local draft = self.war:Draft(team)
-	local recruit = draft.recruit
-	local ent = self:Revive(team, recruit.class, pos + SPAWN_LIFT, ang)
+	local spawn = AiWar.SpawnOf(draft.recruit, BASE:GetString() == "nextsoldier")
+	local ent = self:Revive(team, spawn.profile or spawn.class, pos + SPAWN_LIFT, ang)
 	if ent == nil then
-		ent = ents.Create(recruit.class)
+		ent = ents.Create(spawn.class)
 		if not IsValid(ent) then return end
+		if spawn.profile then ent:SetProfile(spawn.profile) end
 		ent:SetPos(pos + SPAWN_LIFT)
 		ent:SetAngles(ang)
 		ent:Spawn()
@@ -322,7 +328,7 @@ function Controller:RespawnAll()
 			if ent:Alive() then self:Enlist(ent, WS.TeamOf(ent), false) end
 		elseif IsValid(ent) then
 			-- a soldier a player spawned follows its faction to its side
-			local team = self.war:FactionTeam(ent:GetClass()) or e.entry.soldier.team
+			local team = self.war:FactionTeam(WS.SoldierKind(ent)) or e.entry.soldier.team
 			local drafted = self.war:Member(ent).drafted
 			e.entry.soldier:Release()
 			self:Discharge(ent)
@@ -427,7 +433,7 @@ hook.Add("OnEntityCreated", "ws_aiwar", function(ent)
 	if not Controller.war then return end
 	timer.Simple(0, function()
 		if not Controller.war or not IsValid(ent) then return end
-		if AiWar.FactionTeam(ent:GetClass()) then Controller:Consider(ent) else Controller:NoteMonster(ent) end
+		if AiWar.FactionTeam(WS.SoldierKind(ent)) then Controller:Consider(ent) else Controller:NoteMonster(ent) end
 	end)
 end)
 

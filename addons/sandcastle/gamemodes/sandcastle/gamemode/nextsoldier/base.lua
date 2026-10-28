@@ -73,7 +73,7 @@ end
 -- by entity and by faction; INextBot's IsEnemy and IsFriend read them).
 NEXTBOT = Component("nextbot", {
 	methods = { "IsAlive", "IsDead", "IsDown", "AddEntityRelationship", "SetFactionRelationship", "Disposition",
-		"JoinFaction", "LeaveFaction", "GetFactions" },
+		"JoinFaction", "LeaveFaction", "GetFactions", "Team", "Timer" },
 	hooks = { "CustomInitialize", "CustomThink", "OnTakeDamage", "OnTraceAttack", "OnDealtDamage", "OnDeath" },
 	fields = { "SpawnHealth", "RagdollOnDeath", "Factions", "DefaultRelationship" },
 })
@@ -81,7 +81,8 @@ NEXTBOT = Component("nextbot", {
 -- Moving (ILocomotion): its path, priced by the class (GetPathGenerator),
 -- facing, jumping, climbing ledges and dropping down, its speeds.
 LOCOMOTION = Component("locomotion", {
-	methods = { "FollowPath", "GetPath", "FaceTowards", "IsMoving", "Jump", "GetStepHeight", "GetDeathDropHeight" },
+	methods = { "FollowPath", "GetPath", "FaceTowards", "IsMoving", "Jump", "GetStepHeight", "GetDeathDropHeight",
+		"IsOnGround", "TraceHull", "TraceLine" },
 	hooks = { "GetPathGenerator", "OnComputePath", "CustomClimbing", "OnStartClimbing", "OnLandOnGround",
 		"OnNavAreaChanged" },
 	fields = { "WalkSpeed", "RunSpeed", "ClimbLedges", "ClimbLedgesMaxHeight", "DeathDropHeight" },
@@ -108,7 +109,7 @@ POSTURE = Component("posture", {
 -- the range to another, and being no one's target.
 VISION = Component("vision", {
 	methods = { "IsDeaf", "GetHearingCoefficient", "GetRangeTo", "SetNoTarget" },
-	hooks = { "OnSpotted", "OnLost" },
+	hooks = { "OnSpotted", "OnLost", "OnSound" },
 })
 
 -- What it wants (IIntention): its enemy, its AI on or off, and the stages

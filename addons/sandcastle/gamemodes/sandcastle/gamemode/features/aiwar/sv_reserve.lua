@@ -23,14 +23,14 @@ function Controller:Retire(ent, waveLength)
 	if not (member and entry and ent.NSRest) then return end
 	if not Reserve.Keeps(not REGULAR_SPAWNS:GetBool(), member.drafted == true, waveLength) then return end
 	ent.NSDormant = true
-	self:Reserve():Keep(ent, entry.soldier.team, ent:GetClass())
+	self:Reserve():Keep(ent, entry.soldier.team, WS.SoldierKind(ent))
 end
 
--- A kept body of the team and class revived at pos, or nil.
-function Controller:Revive(team, class, pos, ang)
+-- A kept body of the team and kind (WS.SoldierKind) revived at pos, or nil.
+function Controller:Revive(team, kind, pos, ang)
 	local reserve = self:Reserve()
-	local ent = reserve:Take(team, class)
-	while ent ~= nil and not IsValid(ent) do ent = reserve:Take(team, class) end
+	local ent = reserve:Take(team, kind)
+	while ent ~= nil and not IsValid(ent) do ent = reserve:Take(team, kind) end
 	if ent == nil then return nil end
 	ent:NSRevive(pos, ang)
 	return ent

@@ -11,6 +11,11 @@ module(...)
 
 RED = "FACTION_SANDCASTLE_TEAM_RED"
 BLU = "FACTION_SANDCASTLE_TEAM_BLU"
+-- HL2's sides, by DrGBase's own names for them (its FACTION_COMBINE and
+-- FACTION_REBELS), so its NextBots and NextSoldier's share them, and ours
+-- need no DrGBase.
+HL2_COMBINE = "FACTION_HL2_COMBINE"
+HL2_REBELS = "FACTION_HL2_REBELS"
 
 LABEL = { [RED] = "Team RED", [BLU] = "Team BLU" }
 

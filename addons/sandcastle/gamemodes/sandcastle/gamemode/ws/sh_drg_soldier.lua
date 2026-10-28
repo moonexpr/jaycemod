@@ -219,8 +219,10 @@ function WS.DrgSoldier(ENT, baseName)
 		local pos = self:GetPos()
 		local sound = { Entity = self, Pos = pos, SoundLevel = level, Volume = volume }
 		local reach = Noise.HearingRange(level, volume)
-		for _, bot in ipairs(DrGBase.GetNextbots()) do
-			if bot ~= self and not bot:IsAIDisabled() and not bot:IsDeaf() then
+		local hearers = DrGBase and table.Copy(DrGBase.GetNextbots()) or {}
+		for bot in pairs(WS.NextSoldierBots or {}) do hearers[#hearers + 1] = bot end
+		for _, bot in ipairs(hearers) do
+			if IsValid(bot) and bot ~= self and not bot:IsAIDisabled() and not bot:IsDeaf() then
 				local coefficient = bot:GetHearingCoefficient()
 				local distance = bot:GetRangeTo(pos)
 				-- the sight test only for one near enough to hear it seen
@@ -696,7 +698,8 @@ function WS.DrgSoldier(ENT, baseName)
 			self:SetMaxHealth(most)
 		end
 		self.NSDamageScale = kit.damage
-		self.RunSpeed = kit.runSpeed
+		self.NSOwnRunSpeed = self.NSOwnRunSpeed or self.RunSpeed
+		self.RunSpeed = kit.runSpeed or self.NSOwnRunSpeed
 	end
 
 	-- A battle stance (the AI war's Pose, in setup): crouched ready with its
