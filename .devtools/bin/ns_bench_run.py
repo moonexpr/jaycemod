@@ -14,12 +14,12 @@ the bench's errands, each a walk from a start to a goal in a time:
   point it steers for, and whether its body is stuck. The samples are what
   a stall is told apart by.
 
-A bench map has no nav mesh until the server generates one (nav_generate,
-which saves maps/<bench>.nav); the runner has it generated when the map
-has none. The report (every errand's result and samples) is written to
+A bench map has no nav mesh until the server generates one (the
+gamemode's mp_nav_generate, which saves maps/<bench>.nav); the runner has
+it generated when the map has none, and waits while it is. The report (every errand's result and samples) is written to
 .devtools/artifacts/benches/<bench>/<time>.json and summed up on stdout.
 
-    python3 .devtools/bin/ns_bench_run.py ns_bench_watchtower [--kind follower|bot|both]
+    python3 .devtools/bin/ns_bench_run.py dev_watchtower_ns_locomotion [--kind follower|bot|both]
         [--errand NAME] [--keep-running] [--instance N ...]
 """
 from __future__ import annotations
@@ -58,11 +58,11 @@ class Errand:
     seconds: float
 
 
-# arena_watchtower's errands (ns_bench_watchtower keeps its coordinates):
+# arena_watchtower's errands (dev_watchtower_ns_locomotion keeps its coordinates):
 # up the log ramps to the health pack on each side's pipe, and from the
 # west pipe across to the point by the stairway.
 BENCHES = {
-    "ns_bench_watchtower": (
+    "dev_watchtower_ns_locomotion": (
         Errand("west pack, up the logs", (-1213, 13, 16), (-1250, 8, 832), 60),
         Errand("east pack, up the logs", (1212, 12, 24), (1238, -16, 816), 60),
         Errand("west pipe to the point", (-1250, 8, 848), (-2, 1, 760), 45),
@@ -157,8 +157,10 @@ async def ensure_nav(server: instances.GameServer) -> int:
     areas = int((await server.lua(NAV_AREAS)).returns[0])
     if areas:
         return areas
-    print("no nav mesh: nav_generate (the map reloads when it is done)")
-    await server.rcon("nav_generate")
+    print("no nav mesh: mp_nav_generate (a few minutes)")
+    # the gamemode's, which starts none while one is under way (ws/sv_nav.lua); a
+    # console command run from Lua returns at once, where RCON waits on the busy server
+    await server.lua('RunConsoleCommand("mp_nav_generate") return true')
     deadline = time.monotonic() + NAV_TIMEOUT
     while time.monotonic() < deadline:
         await asyncio.sleep(5)

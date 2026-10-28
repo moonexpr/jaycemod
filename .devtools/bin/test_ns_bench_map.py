@@ -62,5 +62,14 @@ class CutTest(unittest.TestCase):
         self.assertLess(self.text.index("info_player_start"), self.text.index("cameras"))
 
 
+class NamesTest(unittest.TestCase):
+    def test_bench_names_are_dev_origin_purpose(self):
+        for name, bench in M.BENCHES.items():
+            words = name.split("_")
+            self.assertEqual(words[0], "dev", name)
+            self.assertIn(words[1], bench.source.stem, f"{name}: its second word names the map it comes from")
+            self.assertGreater(len(words), 2, f"{name}: what it tests follows")
+
+
 if __name__ == "__main__":
     unittest.main()

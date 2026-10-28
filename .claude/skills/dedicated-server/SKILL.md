@@ -23,8 +23,34 @@ repo root with `python3`.
   operator's game starts.
 - Don't use port 27015: it belongs to the operator's own game. The server
   uses 27025.
+- **Don't start, stop or change the map of a server from the shell to run
+  a bench or test.** A bench leases a server from the instance manager
+  (below), which owns that lifecycle.
+
+## Benches lease servers
+
+A test-managing program (a bench, a runner) asks `instances.py`'s
+`InstanceManager` for a server on a map and gets a `GameServer` for as
+long as it holds the lease. The manager reuses a running instance no one
+holds, changing its map if it must, or starts one (the main server alone
+unless the caller lists more), and stops on release only what it started.
+Benches are asyncio tasks; leases are shared among a process's tasks and,
+by lease files (`srcds[-n].lease`), among processes.
+
+```python
+pool = instances.InstanceManager.default()
+async with pool.lease("dev_watchtower_ns_locomotion", owner="my_bench") as server:
+    reply = await server.lua("return game.GetMap()")   # also rcon, change_map
+```
+
+The navigation benches: `ns_bench_map.py` builds a bench map (a region of
+a shipped map, decompiled with BSPSource and cordoned off with hammer-mcp),
+and `ns_bench_run.py <bench>` runs its errands on a leased server and
+writes a report to `.devtools/artifacts/benches/<bench>/`.
 
 ## Start, command, stop
+
+By hand, for playing or looking around, not for benches:
 
 From anywhere in the repo, `dt` runs the server tools by short name (its
 project drawer is `.devtools/bin/dt/`; `dt list` shows them): `dt srcds`,

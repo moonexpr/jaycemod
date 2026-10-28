@@ -6,7 +6,9 @@ and displacements) cut out by a cordon box, with spawns put inside it, so
 the same errands can be run on it again and again without the rest of
 the map or its game (ns_bench_run.py runs them). Each bench is named in
 BENCHES: the map it comes from, the cordon box, and where each team
-spawns.
+spawns. A bench's name is dev_<origin>_<purpose>: dev_ marks a map not for
+production, the second word is the map (or place) it comes from, the rest
+what it tests (dev_watchtower_ns_locomotion).
 
 The steps, each through a tool that already does it:
 
@@ -22,7 +24,7 @@ The steps, each through a tool that already does it:
 
 Output goes to .devtools/artifacts/maps/benches/. Run from the repo root:
 
-    python3 .devtools/bin/ns_bench_map.py ns_bench_watchtower [--install]
+    python3 .devtools/bin/ns_bench_map.py dev_watchtower_ns_locomotion [--install]
 """
 import argparse
 import json
@@ -74,7 +76,7 @@ def column(team: int, x: float, z: float, yaw: float) -> Tuple[Spawn, ...]:
 # point's platform; the spawn buildings (y beyond +-2000) are left out.
 # RED spawns on the west ground, BLU on the east.
 BENCHES = {
-    "ns_bench_watchtower": Bench(
+    "dev_watchtower_ns_locomotion": Bench(
         source=TF_MAPS / "arena_watchtower.bsp",
         mins=(-1600, -1100, -192),
         maxs=(1600, 1100, 1344),
