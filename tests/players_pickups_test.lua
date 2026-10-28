@@ -103,6 +103,19 @@ T.test("a stronger or longer stun wins", function()
 	T.eq(P.StunHas(s, P.STUN.LOSER_STATE, 14), false, "over")
 end)
 
+T.test("a stun is TF_COND_STUNNED", function()
+	T.eq(P.COND.STUNNED, 15, "ETFCond")
+end)
+
+-- CTFPlayerShared::IsLoser: the round's losers, and a loser state stun
+T.test("the humiliated and the loser state stunned are losers", function()
+	T.eq(P.IsLoser(true, false, 0), true, "lost the round")
+	T.eq(P.IsLoser(false, true, P.STUN.MOVEMENT + P.STUN.LOSER_STATE), true, "loser state stun")
+	T.eq(P.IsLoser(false, true, P.STUN.MOVEMENT + P.STUN.CONTROLS), false, "another stun")
+	T.eq(P.IsLoser(false, false, P.STUN.LOSER_STATE), false, "a stun over")
+	T.eq(P.IsLoser(false, false, 0), false, "neither")
+end)
+
 -- CTFPlayer::TeamFortress_CalculateMaxSpeed and CTFGameMovement's stun slow
 
 T.test("speed boost adds 40 percent, at most 105 units", function()

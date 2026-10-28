@@ -15,8 +15,10 @@
 --   URINE (Jarate): mini-crits taken.
 -- What players see of them (games.gameplay.players.condition_effects) is drawn by
 -- cl_conditions.lua from the end of each, networked as ws_cond_<number>.
+--   STUNNED (StunPlayer): slowed, and by its flags held still, disarmed or
+--   humiliated (sh_core.lua).
 -- Movement and stun state reach clients as NW2 vars for prediction:
--- ws_speed_boosted, ws_stun_end_time, ws_stun_speed_reduction,
+-- ws_speed_boosted, the stun's ws_cond_<STUNNED>, ws_stun_speed_reduction,
 -- ws_stun_flags.
 local P = WS.PlayerRules
 local C = P.COND
@@ -77,13 +79,10 @@ function WS.InCondition(ent, cond)
 	return P.InCond(WS.ConditionsOf(ent), cond, CurTime())
 end
 
--- CTFPlayerShared::RemoveAllCond: also ends a stun.
+-- CTFPlayerShared::RemoveAllCond: also ends a stun (TF_COND_STUNNED).
 function WS.RemoveAllConditions(ply)
 	if P.InCond(Conds(ply), C.HALLOWEEN_THRILLER, CurTime()) then ply:Freeze(false) end
 	ply.wsConds = {}
-	ply.wsStun = nil
-	ply:SetNW2Float("ws_stun_end_time", 0)
-	ply:SetNW2Int("ws_stun_flags", 0)
 	SyncNetworked(ply)
 end
 
@@ -93,20 +92,23 @@ function WS.ClearConditionsOnRegenerate(ply)
 	SyncNetworked(ply)
 end
 
+-- CTFPlayerShared::StunPlayer: TF_COND_STUNNED for as long as the stun
+-- folded with the one held lasts; its slow and flags are kept beside it,
+-- and mean nothing once the condition ends, however it ends.
 function WS.StunPlayer(ply, duration, reduction, flags)
-	local stun = P.Stun(ply.wsStun, duration, reduction, flags, CurTime())
+	local now = CurTime()
+	local held = P.InCond(Conds(ply), C.STUNNED, now) and ply.wsStun or nil
+	local stun = P.Stun(held, duration, reduction, flags, now)
 	ply.wsStun = stun
-	ply:SetNW2Float("ws_stun_end_time", stun.ends)
 	ply:SetNW2Float("ws_stun_speed_reduction", stun.reduction)
 	ply:SetNW2Int("ws_stun_flags", stun.flags)
+	WS.AddCondition(ply, C.STUNNED, stun.ends - now)
 end
 
 -- RemoveCond( TF_COND_STUNNED ): the stun ends now (Merasmus frees a bomb
 -- head who reached him).
 function WS.EndStun(ply)
-	ply.wsStun = nil
-	ply:SetNW2Float("ws_stun_end_time", 0)
-	ply:SetNW2Int("ws_stun_flags", 0)
+	WS.RemoveCondition(ply, C.STUNNED)
 end
 
 -- A player starts each life with no conditions.
@@ -141,11 +143,37 @@ local function SyncBonusCrits(now)
 			if boosted ~= P.InCond(WS.ConditionsOf(ent), C.CRITBOOSTED_BONUS_TIME, now) then
 				if boosted then
 					WS.AddCondition(ent, C.CRITBOOSTED_BONUS_TIME, P.PERMANENT)
+					WS.AddCondition(ent, C.SPEED_BOOST, P.PERMANENT)
 				else
 					WS.RemoveCondition(ent, C.CRITBOOSTED_BONUS_TIME)
+					WS.RemoveCondition(ent, C.SPEED_BOOST)
 				end
 			end
 		end
+	end
+end
+
+-- CTFPlayerShared's SetWeaponVisible( false ) for a loser (WS.IsLoser): its
+-- active weapon is not drawn, nor a player's view model, until it is a
+-- loser no more. Hidden again every think, as a weapon drawn anew shows; a
+-- weapon put away is the engine's to hide and show.
+local function SyncLoserWeapon(ent)
+	local weapon, hidden = ent:GetActiveWeapon(), ent.wsLoserWeapon
+	if IsValid(weapon) and WS.IsLoser(ent) then
+		weapon:AddEffects(EF_NODRAW)
+		ent.wsLoserWeapon = weapon
+		if ent:IsPlayer() then ent:DrawViewModel(false) end
+	elseif hidden then
+		ent.wsLoserWeapon = nil
+		if hidden == weapon then weapon:RemoveEffects(EF_NODRAW) end
+		if ent:IsPlayer() then ent:DrawViewModel(true) end
+	end
+end
+
+local function SyncLoserWeapons()
+	for _, ply in ipairs(player.GetAll()) do SyncLoserWeapon(ply) end
+	for _, t in ipairs({ WS.TEAM_RED, WS.TEAM_BLUE }) do
+		for _, ent in ipairs(WS.TeamMembers(t)) do SyncLoserWeapon(ent) end
 	end
 end
 
@@ -153,6 +181,7 @@ local nextBurn = 0
 timer.Create("ws_conditions", THINK_INTERVAL, 0, function()
 	local now = CurTime()
 	SyncBonusCrits(now)
+	SyncLoserWeapons()
 	local burnTick = now >= nextBurn
 	if burnTick then nextBurn = now + BURN_INTERVAL end
 	for ent in pairs(holders) do

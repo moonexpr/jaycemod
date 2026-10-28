@@ -326,11 +326,18 @@ function WS.RestrictCommand(ply, cmd)
 	end
 end
 
+-- Whether ply holds TF_COND_STUNNED, from the end the server networks
+-- (sv_teams_conditions.lua).
+local STUNNED_END = "ws_cond_" .. WS.PlayerRules.COND.STUNNED
+local function Stunned(ply)
+	return CurTime() < ply:GetNW2Float(STUNNED_END, 0)
+end
+
 -- A stun's control effects (CTFPlayerShared::StunPlayer): TF_STUN_CONTROLS
 -- takes movement and attacks, TF_STUN_LOSER_STATE attacks. The server sets
 -- the NW2 vars (sv_teams_conditions.lua).
 function WS.RestrictStunned(ply, cmd)
-	if CurTime() >= ply:GetNW2Float("ws_stun_end_time", 0) then return end
+	if not Stunned(ply) then return end
 	local flags = ply:GetNW2Int("ws_stun_flags", 0)
 	local STUN = WS.PlayerRules.STUN
 	if bit.band(flags, STUN.CONTROLS) ~= 0 then
@@ -350,9 +357,35 @@ hook.Add("SetupMove", "ws_conditions", function(ply, mv)
 	local boost = ply:GetNW2Bool("ws_speed_boosted", false)
 	local scale = ply:GetNW2Float("ws_speed_scale", 1)
 	local reduction = 0
-	if CurTime() < ply:GetNW2Float("ws_stun_end_time", 0) then reduction = ply:GetNW2Float("ws_stun_speed_reduction", 0) end
+	if Stunned(ply) then reduction = ply:GetNW2Float("ws_stun_speed_reduction", 0) end
 	if not boost and reduction == 0 and scale == 1 then return end
 	local speed = WS.PlayerRules.MaxSpeed(mv:GetMaxClientSpeed(), boost, reduction, scale)
 	mv:SetMaxClientSpeed(speed)
 	mv:SetMaxSpeed(speed)
+end)
+
+-- s_acttableLoserState (tf_playeranimstate.cpp) in GMod's player
+-- animations: a loser stands scared, cowers crouched, and runs in a panic,
+-- whatever it holds.
+local LOSER_ACTS = {
+	[ACT_MP_STAND_IDLE] = ACT_HL2MP_IDLE_SCARED,
+	[ACT_MP_CROUCH_IDLE] = ACT_HL2MP_IDLE_COWER,
+	[ACT_MP_RUN] = ACT_HL2MP_RUN_PANICKED,
+	[ACT_MP_WALK] = ACT_HL2MP_RUN_PANICKED,
+}
+
+-- CTFPlayerShared::IsLoser, for a player or a soldier: its team lost the
+-- round, or a loser state stun holds it.
+function WS.IsLoser(ent)
+	local state = WS.State()
+	local humiliated = WS.TeamRules.Humiliated(state, WS.Winner(state), WS.TeamOf(ent))
+	return WS.PlayerRules.IsLoser(humiliated, Stunned(ent), ent:GetNW2Int("ws_stun_flags", 0))
+end
+
+-- CTFPlayerAnimState::TranslateActivity: a loser takes the loser state's
+-- activities in place of its weapon's. Soldiers take theirs in
+-- ENT:OnUpdateAnimation (sh_war_soldier.lua).
+hook.Add("TranslateActivity", "ws_loser_state", function(ply, act)
+	local loser = LOSER_ACTS[act]
+	if loser and WS.IsLoser(ply) then return loser end
 end)

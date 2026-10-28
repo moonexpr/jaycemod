@@ -74,6 +74,7 @@ EFFECTS = {
 		name = "invulnerable",
 		conds = { C.INVULNERABLE, C.INVULNERABLE_USER_BUFF, C.INVULNERABLE_CARD_EFFECT },
 		material = { red = "models/effects/invulnfx_red", blue = "models/effects/invulnfx_blue" },
+		loop = "TFPlayer.InvulnerableOn",
 	},
 }
 
@@ -99,11 +100,17 @@ end
 
 -- The particle files the effects play from, each once.
 FILES = {}
--- The conditions whose end the server networks, each once: the effects'
--- and the toggles'.
+-- The conditions whose end the server networks, each once: those both
+-- realms predict with (a stun's controls, speed and animations,
+-- ws/sh_core.lua), the effects' and the toggles'.
+PREDICTED = { C.STUNNED }
 NETWORKED = {}
 do
 	local files, conds = {}, {}
+	for _, cond in ipairs(PREDICTED) do
+		conds[cond] = true
+		NETWORKED[#NETWORKED + 1] = cond
+	end
 	for _, toggle in ipairs(TOGGLES) do
 		conds[toggle.cond] = true
 		NETWORKED[#NETWORKED + 1] = toggle.cond

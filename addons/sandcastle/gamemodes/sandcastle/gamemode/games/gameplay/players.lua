@@ -43,6 +43,7 @@ COND = {
 	STEALTHED_BLINK = 9,
 	CRITBOOSTED = 11,
 	PHASE = 14,
+	STUNNED = 15,
 	BURNING = 22,
 	URINE = 24,
 	BLEEDING = 25,
@@ -142,6 +143,13 @@ end
 
 function StunHas(stun, flag, now)
 	return stun ~= nil and now < stun.ends and bit.band(stun.flags, flag) ~= 0
+end
+
+-- CTFPlayerShared::IsLoser: a player whose team lost the round
+-- (games.gameplay.teams' Humiliated), or one stunned (in TF_COND_STUNNED)
+-- with TF_STUN_LOSER_STATE among its stun's flags.
+function IsLoser(humiliated, stunned, stunFlags)
+	return humiliated or (stunned and bit.band(stunFlags, STUN.LOSER_STATE) ~= 0)
 end
 
 -- tf_whip_speed_increase: the cap on a speed boost's bonus.

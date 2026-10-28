@@ -98,4 +98,10 @@ T.test("each condition the menu toggles is networked and found by its number", f
 	T.eq(Effects.Toggle(C.HALLOWEEN_THRILLER), nil, "the dance is no toggle")
 end)
 
+T.test("a stun is networked, for both realms to predict", function()
+	local networked = {}
+	for _, cond in ipairs(Effects.NETWORKED) do networked[cond] = true end
+	T.eq(networked[C.STUNNED], true, "stunned")
+end)
+
 T.finish()
