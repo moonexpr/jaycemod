@@ -8,12 +8,17 @@
 local Idle = system.idle
 
 local DELAY = CreateConVar("sv_idle_delay", "300", FCVAR_ARCHIVE,
-	"Seconds an empty server waits before it is idle (from the next map)", 0)
+	"Seconds an empty server waits before it is idle", 0)
 local CHECK_SECONDS = 1
 local TIMER = "ws_idle"
 
 local CLOCK = { Now = function() return CurTime() end }
 local watch = Idle.New(CLOCK, DELAY:GetFloat())
+
+-- a new delay applies to the countdown under way
+cvars.AddChangeCallback("sv_idle_delay", function()
+	watch:SetDelay(DELAY:GetFloat())
+end, "ws_idle")
 
 local HOOKS = {
 	[Idle.IDLE] = "WSServerIdle",

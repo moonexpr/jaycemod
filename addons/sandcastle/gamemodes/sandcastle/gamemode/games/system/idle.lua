@@ -3,7 +3,7 @@
 -- empty), it goes IDLE; a player joining calls the countdown off, or, on
 -- an idle server, makes it ACTIVE again. ws/sv_idle.lua runs it and says
 -- each change (WSServerIdle, WSServerActive).
-local setmetatable = setmetatable
+local max, setmetatable = math.max, setmetatable
 local Countdown = timer.countdown
 module(...)
 
@@ -23,6 +23,14 @@ function New(clock, delay)
 end
 
 function Watch:IsIdle() return self.idle end
+
+-- The delay from now on; a countdown under way runs to it from when it
+-- started (one already past it ends at the next update).
+function Watch:SetDelay(delay)
+	self.delay = delay
+	local countdown = self.countdown
+	if countdown:HasStarted() then countdown:Start(max(delay - countdown:GetElapsedTime(), 0)) end
+end
 
 -- The players on the server now; IDLE or ACTIVE when that changes whether
 -- the server is idle, else nil.

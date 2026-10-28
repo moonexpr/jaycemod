@@ -8,12 +8,14 @@
 Sets ns_soldiers_base, changes map (the server must be running: srcds.py
 start), waits for the war's soldiers, then counts while it runs: the shots
 they fire, the hits they take and their damage, their deaths, and at the end how many there
-are and how many have an enemy. Prints one line of JSON. Leaves the base
+are, how many have an enemy, and whether the server went idle (the war
+stood still). Prints one line of JSON. Leaves the base
 set as asked; the counting hooks remove themselves at the end.
 
 An empty server goes idle sv_idle_delay seconds into a map (ws/sv_idle.lua)
-and the war stands still from then, so the watch sets the delay to a day
-for its map and puts the old value back after, failed or not.
+and the war stands still from then, so once the map is up (its server.cfg
+puts the defaults back) the watch sets the delay to a day, and puts the
+old value back after, failed or not.
 
 A soldier is an entity the war drives (its NSBrain), on either base.
 """
@@ -58,7 +60,7 @@ for _, e in ipairs(ents.GetAll()) do
 	end
 end
 return util.TableToJSON({ seconds = CurTime() - W.start, shots = W.shots, hits = W.hits, damage = W.damage, deaths = W.deaths,
-	soldiers = soldiers, enemies = enemies })
+	soldiers = soldiers, enemies = enemies, idle = WS.ServerIdle() })
 """
 
 SOLDIERS_LUA = "local n = 0 for _, e in ipairs(ents.GetAll()) do if e.NSBrain then n = n + 1 end end return n"
@@ -75,12 +77,13 @@ class Fights:
     deaths: int
     soldiers: int
     enemies: int
+    idle: bool
 
     @classmethod
     def parse(cls, base: str, map_name: str, text: str) -> "Fights":
         data = json.loads(text)
         return cls(base, map_name, round(float(data["seconds"]), 1), int(data["shots"]), int(data["hits"]),
-                   round(float(data["damage"]), 1), int(data["deaths"]), int(data["soldiers"]), int(data["enemies"]))
+                   round(float(data["damage"]), 1), int(data["deaths"]), int(data["soldiers"]), int(data["enemies"]), bool(data["idle"]))
 
 
 @dataclass(frozen=True)
@@ -105,15 +108,6 @@ class Server:
 
 
 def watch(server: Server, base: str, map_name: str, seconds: float, wait: float) -> Fights:
-    idle_delay = server.lua('return GetConVarString("sv_idle_delay")')
-    server.rcon(f"sv_idle_delay {NEVER_IDLE}")
-    try:
-        return counted(server, base, map_name, seconds, wait)
-    finally:
-        server.rcon(f"sv_idle_delay {idle_delay}")
-
-
-def counted(server: Server, base: str, map_name: str, seconds: float, wait: float) -> Fights:
     server.rcon(f"ns_soldiers_base {base}")
     server.rcon(f"changelevel {map_name}")
     time.sleep(15)
@@ -122,6 +116,17 @@ def counted(server: Server, base: str, map_name: str, seconds: float, wait: floa
         if time.monotonic() > deadline:
             raise TimeoutError(f"no war of {WAR_UP_SOLDIERS} soldiers on {map_name} after {wait:.0f} s")
         time.sleep(5)
+    idle_delay = server.lua('return GetConVarString("sv_idle_delay")')
+    server.rcon(f"sv_idle_delay {NEVER_IDLE}")
+    try:
+        return counted(server, base, map_name, seconds)
+    finally:
+        server.rcon(f"sv_idle_delay {idle_delay}")
+
+
+def counted(server: Server, base: str, map_name: str, seconds: float) -> Fights:
+    if server.lua("return WS.ServerIdle()") == "true":
+        raise RuntimeError(f"{map_name} went idle before the count began")
     server.lua(COUNT_LUA)
     time.sleep(seconds)
     return Fights.parse(base, map_name, server.lua(READ_LUA))
