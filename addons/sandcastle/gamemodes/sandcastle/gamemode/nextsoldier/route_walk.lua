@@ -6,7 +6,11 @@
 -- edges, by walls: cutting toward the next from RADIUS out ran bots into
 -- the corner); the farthest of the next LOOKAHEAD in a clear line is made
 -- for, and the last is held until reached.
-local min = math.min
+--
+-- A clear line has a floor all along it, not only room to pass: a line
+-- beside a log the route climbs (dev_watchtower_ns_locomotion's) is clear
+-- of anything, over thin air. Footing gives where the caller looks for it.
+local floor, min = math.floor, math.min
 local Distance = math.geometry.Distance
 local setmetatable = setmetatable
 module(...)
@@ -14,6 +18,27 @@ module(...)
 RADIUS = 48
 ON = 32
 LOOKAHEAD = 3
+-- The floor under a straight walk is looked for this far apart, at most
+-- FOOTING_MAX times: narrower than the narrowest beam walked (a 32-unit log).
+FOOTING_SPACING = 24
+FOOTING_MAX = 12
+
+-- Where the floor under a straight walk from `from` to `to` is looked for:
+-- points between the ends, evenly, FOOTING_SPACING apart (or fewer and
+-- wider, FOOTING_MAX at most), each at the line's height there.
+function Footing(from, to)
+	local count = min(FOOTING_MAX, floor(Distance(from, to) / FOOTING_SPACING) - 1)
+	local points = {}
+	for i = 1, count do
+		local t = i / (count + 1)
+		points[i] = {
+			x = from.x + (to.x - from.x) * t,
+			y = from.y + (to.y - from.y) * t,
+			z = from.z + (to.z - from.z) * t,
+		}
+	end
+	return points
+end
 
 local Walk = {}
 Walk.__index = Walk

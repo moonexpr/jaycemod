@@ -53,4 +53,34 @@ T.test("an empty route is walked at once", function()
 	T.eq(walk:Done(), true, "over")
 end)
 
+-- Where the floor under a straight walk is looked for: points along the
+-- line, FOOTING_SPACING apart and at most FOOTING_MAX of them, the ends left
+-- out (one stands on the start; the end is the waypoint's own floor), each
+-- at the line's height there.
+T.defined(Walk.FOOTING_SPACING, "FOOTING_SPACING")
+T.defined(Walk.FOOTING_MAX, "FOOTING_MAX")
+
+T.test("the floor is looked for along the line, evenly, the ends left out", function()
+	local from, to = { x = 0, y = 0, z = 0 }, { x = Walk.FOOTING_SPACING * 4, y = 0, z = 40 }
+	local points = Walk.Footing(from, to)
+	T.eq(#points, 3, "between the ends")
+	for i, p in ipairs(points) do
+		T.near(p.x, Walk.FOOTING_SPACING * i, 1e-9, "spaced " .. i)
+		T.near(p.z, 10 * i, 1e-9, "at the line's height " .. i)
+	end
+end)
+
+T.test("a walk shorter than the spacing looks for no floor between", function()
+	T.eq(#Walk.Footing({ x = 0, y = 0, z = 0 }, { x = Walk.FOOTING_SPACING / 2, y = 0, z = 0 }), 0, "none")
+end)
+
+T.test("a long walk is looked at no more than FOOTING_MAX times, still evenly", function()
+	local far = { x = Walk.FOOTING_SPACING * Walk.FOOTING_MAX * 3, y = 0, z = 0 }
+	local points = Walk.Footing({ x = 0, y = 0, z = 0 }, far)
+	T.eq(#points, Walk.FOOTING_MAX, "capped")
+	local step = far.x / (Walk.FOOTING_MAX + 1)
+	T.near(points[1].x, step, 1e-9, "first")
+	T.near(points[#points].x, far.x - step, 1e-9, "last")
+end)
+
 T.finish()

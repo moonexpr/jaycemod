@@ -29,12 +29,18 @@ local MEMORY = 5
 -- most every REPATH_INTERVAL seconds; a goal within DIRECT_RANGE in a clear
 -- line is walked straight at (the orders' CHASE_RANGE).
 local REPATH_DISTANCE, REPATH_INTERVAL = 128, 1
+-- Moved farther than this between two looks, it was set down elsewhere (a
+-- respawn, a side swap, a bench): its route is dropped and planned anew.
+local TELEPORTED = 256
 local DIRECT_RANGE = 256
 local FIRST_PLAN = 0.3
 -- What a player's body climbs and falls (RouteCost): a stair step, a crouch
 -- jump (JumpReachOf), the fall it survives unhurt; a jump costs
 -- JUMP_PENALTY times its length more (CTFBotPathCost).
 local STEP_HEIGHT, SAFE_DROP = 18, 300
+-- A straight walk's floor is looked for from a step above its line to two
+-- below (CanWalkTo): a stair up or down the way is floor, a ledge's edge not.
+local FOOTING_ABOVE, FOOTING_BELOW = Vector(0, 0, STEP_HEIGHT), Vector(0, 0, 2 * STEP_HEIGHT)
 local JUMP_PENALTY = 2
 
 local BotSoldier = setmetatable({}, { __index = Soldier })
@@ -185,6 +191,8 @@ end
 function BotSoldier:Pin(p)
 	self.pin = p
 	self.moveTarget, self.gait, self.planned = p, "run", nil
+	-- the route it was on goes, and the new one is planned at the next look
+	self.walk, self.steer, self.nextPlan = nil, nil, 0
 end
 
 function BotSoldier:Unpin()
@@ -195,9 +203,16 @@ end
 function BotSoldier:Repath() self.repath = true end
 
 -- Every look (sv_bots.lua): the point its body makes for now (steer) on
--- its way to its move target.
+-- its way to its move target. A route is planned from where its navigator
+-- knows it stands (Path:Compute starts at the navigator's last known area),
+-- so not until the navigator has caught up with a body set down elsewhere.
 function BotSoldier:Steer(now)
 	local goal = self.moveTarget
+	local pos = Point(self.ent:GetPos())
+	if self.lookedFrom and Geometry.Distance(pos, self.lookedFrom) > TELEPORTED then
+		self.walk, self.planned, self.nextPlan = nil, nil, 0
+	end
+	self.lookedFrom = pos
 	if not goal then
 		self.steer = nil
 		return
@@ -205,7 +220,7 @@ function BotSoldier:Steer(now)
 	local generation = WS.Feature("npc"):BlockerGeneration()
 	local stale = self.planned == nil or self.repath or generation ~= self.routeGeneration
 		or Geometry.Distance(goal, self.planned) > REPATH_DISTANCE
-	if stale and now >= self.nextPlan then
+	if stale and now >= self.nextPlan and self:Navigator():Settled() then
 		self.planned, self.repath, self.routeGeneration, self.nextPlan = goal, false, generation, now + REPATH_INTERVAL
 		local route = self:Navigator():PlanRoute(ToVector(goal), self:RouteCost())
 		local points = {}
@@ -227,7 +242,9 @@ function BotSoldier:Watch(p)
 	self.look = p and ToVector(p) or nil
 end
 
--- A clear walk under player movement's mask: what stops a player stops it.
+-- A clear walk under player movement's mask: what stops a player stops it,
+-- and a floor all along (RouteWalk.Footing), within a step above or two
+-- below the line: a line beside a beam is clear of everything, over air.
 function BotSoldier:CanWalkTo(p)
 	local from, to = self.ent:GetPos(), ToVector(p)
 	if math.abs(to.z - from.z) > WALK_MAX_RISE then return false end
@@ -239,7 +256,14 @@ function BotSoldier:CanWalkTo(p)
 		mask = MASK_PLAYERSOLID,
 		filter = self.ent,
 	})
-	return not tr.Hit
+	if tr.Hit then return false end
+	for _, q in ipairs(RouteWalk.Footing(Point(from), Point(to))) do
+		local at = ToVector(q)
+		local floor = util.TraceLine({ start = at + FOOTING_ABOVE, endpos = at - FOOTING_BELOW, mask = MASK_PLAYERSOLID,
+			filter = self.ent })
+		if not floor.Hit then return false end
+	end
+	return true
 end
 
 -- What stands between me and p for a player's movement; a player passes

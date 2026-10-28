@@ -11,6 +11,8 @@ ENT.Spawnable = false
 
 -- Any model gives it a NextBot's hull; it is never drawn.
 local MODEL = "models/player/police.mdl"
+-- The nav area it stands over is looked for this far below it (two steps).
+local SETTLE_REACH = 36
 
 if SERVER then AddCSLuaFile() end
 
@@ -44,6 +46,14 @@ function ENT:Think()
 	self:SetPos(owner:GetPos())
 	self:NextThink(CurTime())
 	return true
+end
+
+-- Whether it knows where it stands: its last known nav area (where
+-- Path:Compute starts) is the one it stands over, or it stands over none.
+-- The engine catches it up a tick or so after it is set down elsewhere.
+function ENT:Settled()
+	local here = navmesh.GetNavArea(self:GetPos(), SETTLE_REACH)
+	return not IsValid(here) or self:GetLastKnownArea() == here
 end
 
 -- The waypoints (Vectors) of a route from where it stands to goal, priced
