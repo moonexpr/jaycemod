@@ -165,11 +165,11 @@ if SERVER then
 	end)
 
 	-- A game's players are ready (features/gamemode/sv.lua): the war's
-	-- scenarios compile again. The gamemode's own handler, so it runs after
+	-- scenarios and behaviours compile again. The gamemode's own handler, so it runs after
 	-- every RoundPlayersReady listener (one returning a value stops it), and
 	-- an addon that registers a scenario in its listener is in it.
 	function GM:RoundPlayersReady()
-		if WS.FeatureLoaded("aiwar") then WS.Feature("aiwar"):CompileScenarios() end
+		if WS.FeatureLoaded("aiwar") then WS.Feature("aiwar"):CompileRegistries() end
 	end
 
 	-- A map without TF2's team spawns (gm_construct) is given them at its

@@ -1,6 +1,15 @@
 # NextSoldier's behaviours: the agent apart from the strategy (issue #8 S3)
 
-**Status: plan, for the operator's approval. Nothing below is built.**
+**Status: decided otherwise (2026-10-27).** The operator: "lets have war
+provide these behaviors to nextsoldier via the registry", "so war uses
+nextsoldier and owns the behaviors", "as well as the squad monitor". The
+behaviours stay the war's; NextSoldier owns the contract (the chart), the
+soldier and a registry (`nextsoldier.behaviors`) through which the war
+gives it its behaviours, compiled with the scenarios as the war starts, a
+soldier's root being the registered `NextSoldier`. Built: the registry,
+the war's fifteen behaviours registered (the monitors among them), roots
+taken from it. §2's split is not done; §1 stands as the map of what the
+war's behaviours read.
 
 The operator's distinction (2026-10-27): NextSoldier concerns the agent
 itself and runs on its own, without the tactics engine; the tactics engine

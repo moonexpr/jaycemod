@@ -86,6 +86,7 @@ local format = string.format
 local N = npc.nextbot
 local MonitorLib = nextsoldier.monitor
 local SoldierChart = nextsoldier.chart.CHART
+local Behaviors = nextsoldier.behaviors.Shared
 local Debug = require("features.nbdebug.model")
 local AiWar = require("features.aiwar.model")
 local Teams = gameplay.teams
@@ -2086,11 +2087,31 @@ function JobOf(fullName)
 	return job, role, side
 end
 
--- config = { war (features.aiwar.model War), member (its roster entry) }
+-- The behaviours the war owns, given to NextSoldier through its registry
+-- (nextsoldier.behaviors), which the war compiles as it starts: a soldier
+-- runs the NextSoldier its compiled behaviours give, and the tree below it.
+Behaviors:Register({ name = "NextSoldier", behavior = NextSoldier })
+Behaviors:Register({ name = "StrategyMonitor", behavior = StrategyMonitor })
+Behaviors:Register({ name = "TacticalMonitor", behavior = TacticalMonitor })
+Behaviors:Register({ name = "SquadMonitor", behavior = SquadMonitor })
+Behaviors:Register({ name = "ScenarioMonitor", behavior = ScenarioMonitor })
+Behaviors:Register({ name = "Travel", behavior = Travel })
+Behaviors:Register({ name = "WeakTravel", behavior = WeakTravel })
+Behaviors:Register({ name = "Chase", behavior = Chase })
+Behaviors:Register({ name = "Idle", behavior = Idle })
+Behaviors:Register({ name = "Objective", behavior = Objective })
+Behaviors:Register({ name = "Humiliated", behavior = Humiliated })
+Behaviors:Register({ name = "SeekAndDestroy", behavior = SeekAndDestroy })
+Behaviors:Register({ name = "RetreatToCover", behavior = RetreatToCover })
+Behaviors:Register({ name = "FindHealth", behavior = FindHealth })
+Behaviors:Register({ name = "CallMedic", behavior = CallMedic })
+
+-- config = { war (features.aiwar.model War), member (its roster entry),
+-- behaviors (nextsoldier.behaviors, compiled) }
 function NewState(config, me)
-	return { war = config.war, member = config.member }
+	return { war = config.war, member = config.member, behaviors = config.behaviors }
 end
 
 function InitialAction(state)
-	return NextSoldier:New(state)
+	return state.behaviors:Get("NextSoldier"):New(state)
 end

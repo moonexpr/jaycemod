@@ -160,6 +160,7 @@ local NEXTSOLDIER = {
 	["base"] = "nextsoldier",
 	["soldier"] = "nextsoldier",
 	["chart"] = "nextsoldier",
+	["behaviors"] = "nextsoldier",
 	["monitor"] = "nextsoldier",
 	["speech"] = "nextsoldier",
 	["hearing"] = "nextsoldier",

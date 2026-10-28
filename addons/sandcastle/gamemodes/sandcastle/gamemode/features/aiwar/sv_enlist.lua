@@ -28,7 +28,7 @@ function Controller:Enlist(ent, team, drafted, fixed)
 		local soldier = self:NewBotSoldier(ent, team)
 		self.soldiers[ent] = {
 			soldier = soldier,
-			npc = NpcSystem.Npc.New(Orders, { war = self.war, member = member }, soldier),
+			npc = NpcSystem.Npc.New(Orders, { war = self.war, member = member, behaviors = self.behaviors }, soldier),
 		}
 		self:ReadyBot(ent, self.soldiers[ent])
 	else
@@ -38,7 +38,7 @@ function Controller:Enlist(ent, team, drafted, fixed)
 		local soldier = self.Soldier.New(ent, self, team)
 		self.soldiers[ent] = {
 			soldier = soldier,
-			npc = NpcSystem.Npc.New(Orders, { war = self.war, member = member }, soldier),
+			npc = NpcSystem.Npc.New(Orders, { war = self.war, member = member, behaviors = self.behaviors }, soldier),
 		}
 		-- DrGBase's hooks ask and tell the orders (ws_drg_soldier's bridge)
 		ent.NSBrain = self.soldiers[ent].npc

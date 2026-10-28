@@ -6,6 +6,8 @@ local N = npc.nextbot
 local Debug = T.require("features.nbdebug.model")
 local AiWar = T.require("features.aiwar.model")
 local Orders = T.require("features.aiwar.orders")
+-- what the war registered, compiled as the controller compiles it
+local BEHAVIORS = nextsoldier.behaviors.Shared:Compile()
 local Soldier = nextsoldier.soldier
 local Track = math.polyline
 local Teams = gameplay.teams
@@ -39,7 +41,7 @@ local function Enlist(t)
 	member.role = t.role or member.role
 	member.slot = t.slot or 0
 	local me = FS.Soldier(t)
-	local npc = N.Npc.New(Orders, { war = war, member = member }, me)
+	local npc = N.Npc.New(Orders, { war = war, member = member, behaviors = BEHAVIORS }, me)
 	npc:Update(TICK)
 	return me, npc, war, member
 end
@@ -607,8 +609,8 @@ local function Squadmates(t)
 	war:ChangeRole(b, t.role)
 	local meA, meB = FS.Soldier(t.a or {}), FS.Soldier(t.b or {})
 	meA.enemy, meB.enemy = (t.a or {}).enemy == true, (t.b or {}).enemy == true
-	local npcA = N.Npc.New(Orders, { war = war, member = a }, meA)
-	local npcB = N.Npc.New(Orders, { war = war, member = b }, meB)
+	local npcA = N.Npc.New(Orders, { war = war, member = a, behaviors = BEHAVIORS }, meA)
+	local npcB = N.Npc.New(Orders, { war = war, member = b, behaviors = BEHAVIORS }, meB)
 	local function TickBoth(n)
 		for _ = 1, n or 1 do
 			meA:Advance(TICK)
@@ -689,7 +691,7 @@ T.test("an attached soldier follows its host, not the squad's leader", function(
 	local medic = s.war:Enlist("medic", BLUE, true)
 	s.war:ChangeRole(medic, AiWar.PUSH)
 	local meC = FS.Soldier({ pos = P(3600, 0) })
-	local npcC = N.Npc.New(Orders, { war = s.war, member = medic }, meC)
+	local npcC = N.Npc.New(Orders, { war = s.war, member = medic, behaviors = BEHAVIORS }, meC)
 	s.war:Attach(medic, s.b)
 	T.eq(medic.fireTeam, s.a.fireTeam, "in the squad a leads")
 	for _ = 1, 2 do
@@ -728,8 +730,8 @@ local function Reassigned(t)
 	T.eq(x.fireTeam ~= nil and x.fireTeam ~= y.fireTeam and not x.fireTeam.manual, true, "x in the war's own squad")
 	y.hero = t.hero
 	local meX, meY = FS.Soldier({ pos = P(3000, 0) }), FS.Soldier({ pos = P(3500, 0) })
-	local npcX = N.Npc.New(Orders, { war = war, member = x }, meX)
-	local npcY = N.Npc.New(Orders, { war = war, member = y }, meY)
+	local npcX = N.Npc.New(Orders, { war = war, member = x, behaviors = BEHAVIORS }, meX)
+	local npcY = N.Npc.New(Orders, { war = war, member = y, behaviors = BEHAVIORS }, meY)
 	local function TickBoth(n)
 		for _ = 1, n or 1 do
 			meX:Advance(TICK)
@@ -1715,6 +1717,25 @@ T.test("a hurt soldier calls for a medic, then gets on with its job", function()
 	me:Advance(Orders.CALL_MEDIC_COOLDOWN)
 	Tick(me, npc)
 	T.eq(#me.medicCalls, 2, "again")
+end)
+
+T.test("the war owns its behaviours and gives them to NextSoldier through its registry", function()
+	local owned = { "NextSoldier", "StrategyMonitor", "TacticalMonitor", "SquadMonitor", "ScenarioMonitor", "Travel",
+		"Chase", "Idle", "Humiliated", "SeekAndDestroy", "RetreatToCover", "FindHealth", "CallMedic" }
+	for _, name in ipairs(owned) do T.eq(BEHAVIORS:Has(name), true, name .. " is registered") end
+end)
+
+T.test("a soldier's root is the NextSoldier its compiled behaviours give", function()
+	local registry = nextsoldier.behaviors.New()
+	local Stand = nextsoldier.chart.CHART:State("StandIn")
+	registry:Register({ name = "NextSoldier", behavior = Stand })
+	local war = AiWar.War.New()
+	war:Assign({ [BLUE] = true })
+	war:SetField(Field({}))
+	local member = war:Enlist("me", BLUE, true)
+	local npc = N.Npc.New(Orders, { war = war, member = member, behaviors = registry:Compile() }, FS.Soldier({}))
+	npc:Update(TICK)
+	T.eq(npc:Describe():match("^StandIn") ~= nil, true, npc:Describe())
 end)
 
 T.finish()

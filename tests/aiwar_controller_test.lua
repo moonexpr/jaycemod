@@ -809,7 +809,7 @@ T.test("a scenario registered after the war started is played once the scenarios
 		scenario = Late,
 	})
 	T.eq(controller:Survey(NOW).scenario.name, PayloadMode.Mode.NAME, "not before the compile")
-	controller:CompileScenarios()
+	controller:CompileRegistries()
 	T.eq(controller:Survey(NOW).scenario.name, "late_addon", "the late one, after it")
 	T.eq(getmetatable(controller.scenario), Late, "played")
 	registered = false
