@@ -333,11 +333,14 @@ end
 
 -- The areas of the doors noted shut to team, as a soldier's path cost is
 -- told them (SoldierPathCost): { areas = nav area id -> true, stamp }, the
--- same table until a door is noted shut to it, or one noted is gone.
+-- same table until a door is noted shut to it, or one noted is gone or
+-- seen open (Doors.StaysShut).
 function Controller:ShutDoorAreas(team)
 	local doors = self.shutDoors
 	for door in pairs(doors or {}) do
-		if not IsValid(door) then
+		-- gone, or seen open since (its trigger opened it, the map's logic
+		-- did): its way is back for every team
+		if not IsValid(door) or not Doors.StaysShut(door:GetInternalVariable("m_toggle_state")) then
 			doors[door] = nil
 			self.shutDoorStamp = self.shutDoorStamp + 1
 		end

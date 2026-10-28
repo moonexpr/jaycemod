@@ -40,6 +40,13 @@ function IsClosed(toggleState)
 	return toggleState == TS_AT_BOTTOM or toggleState == TS_GOING_DOWN
 end
 
+-- Whether a door a soldier found shut (held up by it) is still to be
+-- routed round: until it is seen open; a door with no toggle state (nil: a
+-- prop door) as it was found.
+function StaysShut(toggleState)
+	return toggleState == nil or IsClosed(toggleState)
+end
+
 -- door = { floor, closed, locked, touchOpens (TouchOpens), controlled (an
 -- enabled trigger overlaps it), owner (the team its trigger's filter admits,
 -- or nil) }. Returns the team the door blocks routes for (ANY for

@@ -113,4 +113,12 @@ T.test("nothing changed between two equal maps", function()
 	T.eq(next(Doors.Changed({ [7] = { Doors.ANY } }, { [7] = { Doors.ANY } })), nil, "none")
 end)
 
+T.test("a door noted shut stays so while closed, and not once it is seen open", function()
+	T.eq(Doors.StaysShut(Doors.TS_AT_BOTTOM), true, "still shut")
+	T.eq(Doors.StaysShut(Doors.TS_GOING_DOWN), true, "closing again")
+	T.eq(Doors.StaysShut(Doors.TS_AT_TOP), false, "open: the way is back")
+	T.eq(Doors.StaysShut(Doors.TS_GOING_UP), false, "opening")
+	T.eq(Doors.StaysShut(nil), true, "a door with no toggle state stays as it was noted")
+end)
+
 T.finish()
