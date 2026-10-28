@@ -633,7 +633,7 @@ def started_port(default: int, instance: Instance = MAIN) -> int:
     return launched.port if launched else default
 
 
-DEFAULT_PORT = 27015  # beside the client's 27015, so the operator's own game keeps its port
+DEFAULT_PORT = 27025  # beside the client's 27015, so the operator's own game keeps its port
 INSTANCE_PORT_STEP = 10  # each further instance's default port, above the last
 DEFAULT_MAXPLAYERS = 32
 MAP_LOAD_TIMEOUT = 240

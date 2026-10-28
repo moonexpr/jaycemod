@@ -274,6 +274,11 @@ class Instances(unittest.TestCase):
         self.assertEqual((files.pid, files.log, files.port),
                          (ARTIFACTS / "srcds-2.pid", ARTIFACTS / "srcds-2.log", DEFAULT_PORT + 10))
 
+    def test_no_instance_takes_the_operators_game_port(self):
+        client_port = 27015  # Source's client port: the operator's own TF2 or GMod holds it
+        for number in range(1, 6):
+            self.assertNotEqual(InstanceFiles.of(Instance(number)).port, client_port, f"instance {number}")
+
     def test_an_install_runs_from_its_instances_root(self):
         second = Instance(2)
         install = Install.on(Path("/Apps/wine"), second)
