@@ -194,7 +194,8 @@ function WS.DrgSoldier(ENT, baseName)
 	-- landing animation, a grunt for a hard landing or a cry for a hurtful
 	-- one, and the enemies in earshot notice it (NSNotice).
 	function ENT:OnLandOnGround(ground)
-		self:_HandleLandOnGround(ground)
+		-- DrGBase's own first; NextSoldier's base lands before raising this
+		if self._HandleLandOnGround then self:_HandleLandOnGround(ground) end
 		local fall = self.NSFallSpeed or 0
 		local volume = self.NSLeapt and Noise.JUMP_LANDING_VOLUME or Noise.Landing(fall)
 		self.NSFallSpeed, self.NSLeapt = 0, nil
@@ -424,13 +425,40 @@ function WS.DrgSoldier(ENT, baseName)
 		return Base().OnStartClimbing(self, ledge, height, down)
 	end
 
-	-- Jumps onto the ledge along nextsoldier.leap's arc, set a step each
-	-- tick of its behaviour, its own momentum stopped, as DrGBase's own climb
-	-- moves it: if the way straight up to the arc's top and across to its
-	-- landing is clear (the arc stays inside that, and clears the lip), else
-	-- it stays.
+	-- A motion along at(t) (t from 0 to 1 over duration seconds), facing
+	-- toward, its own momentum stopped each step: on NextSoldier's base a
+	-- scramble its locomotion steps each tick (TF2's climbs and jumps, no
+	-- coroutine), on DrGBase a step each tick of its behaviour's coroutine.
+	-- done() runs as it ends.
+	local function Move(self, duration, at, toward, done)
+		self:FaceTowards(toward)
+		self:SetNW2Bool("DrGBaseJumping", true)
+		local function Finish()
+			self.NSLeapt = true
+			self:SetNW2Bool("DrGBaseJumping", false)
+			if done then done() end
+		end
+		if self.Scramble then
+			self:Scramble({ duration = duration, at = at, done = Finish })
+			return
+		end
+		local began = CurTime()
+		while true do
+			self.loco:SetVelocity(vector_origin)
+			local t = (CurTime() - began) / duration
+			self:SetPos(at(t))
+			if t >= 1 then break end
+			self:YieldCoroutine(false)
+		end
+		Finish()
+	end
+
+	-- Jumps onto the ledge along nextsoldier.leap's arc, as DrGBase's own
+	-- climb moves it (Move): if the way straight up to the arc's top and
+	-- across to its landing is clear (the arc stays inside that, and clears
+	-- the lip), else it stays.
 	function ENT:CustomClimbing(ledge)
-		local from, began = self:GetPos(), CurTime()
+		local from = self:GetPos()
 		local mins, maxs = self:GetCollisionBounds()
 		-- from step height up, as DrGBase's ledge trace: a sloped floor is no wall
 		local hull = {
@@ -452,18 +480,10 @@ function WS.DrgSoldier(ENT, baseName)
 			self.NSLeapRetry = CurTime() + LEAP_RETRY
 			return
 		end
-		self:FaceTowards(ledge)
-		self:SetNW2Bool("DrGBaseJumping", true)
-		while true do
-			self.loco:SetVelocity(vector_origin)
-			local t = (CurTime() - began) / Leap.DURATION
+		Move(self, Leap.DURATION, function(t)
 			local p = Leap.Arc(from, ledge, t)
-			self:SetPos(Vector(p.x, p.y, p.z))
-			if t >= 1 then break end
-			self:YieldCoroutine(false)
-		end
-		self.NSLeapt = true
-		self:SetNW2Bool("DrGBaseJumping", false)
+			return Vector(p.x, p.y, p.z)
+		end, ledge)
 	end
 
 	-- A vault over what stands toward dir (flat, of unit length) along
@@ -539,25 +559,17 @@ function WS.DrgSoldier(ENT, baseName)
 		return { from = from, top = top, land = land }
 	end
 
-	-- A vault planned (NSVaultPlan), moved each tick of its behaviour as
-	-- CustomClimbing moves it; its path is planned again from where it lands.
+	-- A vault planned (NSVaultPlan), moved as CustomClimbing moves it (Move);
+	-- its path is planned again from where it lands.
 	function ENT:NSVaultRun(plan)
 		local from, top, land = plan.from, plan.top, plan.land
-		self:FaceTowards(land)
-		self:SetNW2Bool("DrGBaseJumping", true)
-		local began = CurTime()
-		while true do
-			self.loco:SetVelocity(vector_origin)
-			local t = (CurTime() - began) / Leap.VAULT_DURATION
+		Move(self, Leap.VAULT_DURATION, function(t)
 			local p = Leap.Vault(from, top, land, t)
-			self:SetPos(Vector(p.x, p.y, p.z))
-			if t >= 1 then break end
-			self:YieldCoroutine(false)
-		end
-		self.NSLeapt = true
-		self:SetNW2Bool("DrGBaseJumping", false)
-		local path = self:GetPath()
-		if IsValid(path) then path:Invalidate() end
+			return Vector(p.x, p.y, p.z)
+		end, land, function()
+			local path = self:GetPath()
+			if IsValid(path) then path:Invalidate() end
+		end)
 	end
 
 	-- What it stands on, for Lua: DrGBase follows the soldier's path only on

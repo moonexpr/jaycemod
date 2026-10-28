@@ -40,6 +40,10 @@ local CROUCH_HEIGHT = 36
 -- A path is computed again for a goal moved this far, or this old.
 local REPATH_DISTANCE, REPATH_AGE = 64, 2
 local PATH_LOOKAHEAD = 300
+-- A path segment's type (GMod's PathFollower goals, NextBot's SegmentType).
+local CLIMB_UP = 2
+-- A climb begins this near the ledge's foot.
+local CLIMB_REACH = 48
 local STEP_HEIGHT, JUMP_HEIGHT = 18, 58
 
 if CLIENT then return end
@@ -125,6 +129,7 @@ function ENT:BehaveStart() end
 function ENT:BehaveUpdate(interval)
 	if not self:IsAlive() then return end
 	self:CustomThink()
+	if self:NSScrambleUpdate() then return end
 	if self:IsAIDisabled() then return end
 	self.loco:SetDesiredSpeed(self:ShouldRun() and self.RunSpeed or self.WalkSpeed)
 	self:IntentionUpdate(interval)
@@ -134,6 +139,44 @@ end
 -- Locomotion (ILocomotion): the path followed, priced by the class
 
 function ENT:GetPath() return self.nsPath end
+
+-- A scramble (TF2's ClimbUpToLedge, JumpAcrossGap: a locomotion process
+-- carried out over ticks, no coroutine): { duration, at(t) -> position,
+-- done() }, its momentum stopped each step; nothing else moves it, and its
+-- intention waits, until it ends.
+function ENT:Scramble(motion)
+	self.nsScramble = { duration = motion.duration, at = motion.at, done = motion.done, began = CurTime() }
+end
+
+function ENT:IsScrambling() return self.nsScramble ~= nil end
+
+-- One step of the scramble under way; whether one was.
+function ENT:NSScrambleUpdate()
+	local scramble = self.nsScramble
+	if not scramble then return false end
+	local t = math.min(1, (CurTime() - scramble.began) / scramble.duration)
+	self.loco:SetVelocity(vector_origin)
+	self:SetPos(scramble.at(t))
+	if t >= 1 then
+		self.nsScramble = nil
+		if scramble.done then scramble.done() end
+	end
+	return true
+end
+
+-- A climb up its path's next goal, when the class climbs ledges, asks to
+-- (OnStartClimbing) and begins one (CustomClimbing): whether it did.
+function ENT:NSClimb(path)
+	if not self.ClimbLedges then return false end
+	local goal = path:GetCurrentGoal()
+	if not goal or goal.type ~= CLIMB_UP then return false end
+	local pos = self:GetPos()
+	if (pos - goal.pos):Length2D() > CLIMB_REACH then return false end
+	local height = goal.pos.z - pos.z
+	if height > self.ClimbLedgesMaxHeight or not self:OnStartClimbing(goal.pos, height, false) then return false end
+	self:CustomClimbing(goal.pos)
+	return self:IsScrambling()
+end
 
 -- Follows a path to goal, computed again when the goal has moved or the path
 -- has aged: "unreachable" (no path), "reached", "obstacle" (stuck against
@@ -150,6 +193,7 @@ function ENT:FollowPath(goal, tolerance)
 		self.nsPath, self.nsPathGoal = path, goal
 		if not path:IsValid() then return "unreachable" end
 	end
+	if self:NSClimb(path) then return "moving" end
 	path:Update(self)
 	if not path:IsValid() then return "reached" end
 	if self.loco:IsStuck() then return "obstacle" end
@@ -396,7 +440,17 @@ function ENT:OnMeleeAttack(enemy, weapon) return false end
 function ENT:ShouldRun() return false end
 function ENT:OnSpotted(ent) end
 function ENT:OnLost(ent) end
-function ENT:GetPathGenerator() return nil end
+-- The path's cost by default: the length of each link, with the class's
+-- OnComputePath added (-1 refuses the link, as DrGBase's contract has it).
+function ENT:GetPathGenerator()
+	return function(area, fromArea, ladder, elevator, length)
+		if not IsValid(fromArea) then return 0 end
+		local extra = self:OnComputePath(fromArea, area)
+		if extra ~= nil and extra < 0 then return -1 end
+		local link = length and length > 0 and length or area:GetCenter():Distance(fromArea:GetCenter())
+		return fromArea:GetCostSoFar() + link + (extra or 0)
+	end
+end
 function ENT:OnComputePath(from, to) return nil end
 function ENT:OnStartClimbing(ledge, height, down) return false end
 function ENT:CustomClimbing(ledge) return false end
