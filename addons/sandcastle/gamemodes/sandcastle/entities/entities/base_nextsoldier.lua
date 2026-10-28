@@ -95,9 +95,10 @@ local LOOK_INTERVAL = 0.2
 local VISION = { reaction = 0.1, memory = 30, unseen = true }
 -- A melee weapon's hold types.
 local MELEE_HOLDS = { melee = true, melee2 = true, knife = true, fist = true }
--- A player model's acts for a hold type are named ACT_HL2MP_<MOVE>_<HOLD>;
--- the hold types named otherwise, and the hold for one it has none of.
-local HOLD_ACT_NAMES = { smg = "SMG1" }
+-- A player model's acts for a hold type are named ACT_HL2MP_<MOVE>_<HOLD>,
+-- the plain hold's (no weapon) ACT_HL2MP_<MOVE>; the hold types named
+-- otherwise (false: the plain hold's name), and the hold with no weapon.
+local HOLD_ACT_NAMES = { smg = "SMG1", normal = false }
 local HOLD_DEFAULT = "normal"
 -- Faster than its walk by this, it runs (the run acts).
 local RUN_OVER_WALK = 10
@@ -140,6 +141,9 @@ function ENT:Initialize()
 	self.loco:SetAcceleration(ACCELERATION)
 	self.loco:SetDeceleration(DECELERATION)
 	self.loco:SetMaxYawRate(MAX_YAW_RATE)
+	-- an NPC to the map: a trigger flagged for NPCs (a spawn door's, which
+	-- the AI war flags) sees it only so
+	self:AddFlags(FL_NPC)
 	self.nsAlive = true
 	self.nsRelations = Relations.New({ default = self.DefaultRelationship or D_NU, ally = D_LI })
 	for _, faction in ipairs(self.Factions) do self.nsRelations:Join(faction) end
@@ -229,6 +233,10 @@ function ENT:Think()
 	if self:IsAlive() and not self:ScrambleUpdate() then
 		local path = self.nsPath
 		if path and path:IsValid() and CurTime() - (self.nsFollowedAt or 0) <= FOLLOW_HOLD then path:Update(self) end
+		-- an enemy in sight is faced, the path walked sideways or backing
+		-- (BodyMoveXY), as a player fights: the path's own turn comes first
+		local enemy = self:GetEnemy()
+		if enemy and self.nsVision:Visible(enemy) then self.loco:FaceTowards(enemy:GetPos()) end
 	end
 	self:NextThink(CurTime())
 	return true
@@ -319,19 +327,32 @@ function ENT:IsOnGround() return self.loco:IsOnGround() end
 function ENT:GiveWeapon(class)
 	local weapon = ents.Create(class)
 	if not IsValid(weapon) then return nil end
-	weapon:SetOwner(self)
 	weapon:SetPos(self:GetPos())
-	weapon:SetParent(self)
-	weapon:AddEffects(EF_BONEMERGE)
 	weapon:Spawn()
-	-- held, it stops no bullet, its holder's or anyone's
+	-- spawned, a weapon lies ready to be picked up (a physics object and a
+	-- pickup trigger): held, it has neither, follows its holder's hand
+	-- (bonemerged) and stops no bullet, its holder's or anyone's
+	weapon:PhysicsDestroy()
+	weapon:SetMoveType(MOVETYPE_NONE)
 	weapon:SetSolid(SOLID_NONE)
+	weapon:SetTrigger(false)
+	weapon:SetOwner(self)
+	weapon:SetParent(self)
+	weapon:SetLocalPos(vector_origin)
+	weapon:SetLocalAngles(angle_zero)
+	weapon:AddEffects(EF_BONEMERGE)
 	weapon:SetNoDraw(true)
 	self.nsWeapons[class] = weapon
 	local stats = Weapons.STATS[class]
 	if stats then self.nsMagazines[weapon] = Weapons.Magazine(stats) end
 	return weapon
 end
+
+-- A weapon a soldier holds is no one else's to pick up.
+hook.Add("PlayerCanPickupWeapon", "base_nextsoldier", function(_, weapon)
+	local holder = weapon:GetOwner()
+	if IsValid(holder) and WS.NextSoldierBots[holder] then return false end
+end)
 
 -- No longer one of the live bots others' noises reach.
 function ENT:OnRemove() WS.NextSoldierBots[self] = nil end
@@ -400,22 +421,42 @@ function ENT:SetCrouching(crouching)
 	self:SetCollisionBounds(self.nsHullMins, Vector(hull.x, hull.y, crouching and CROUCH_HEIGHT or hull.z))
 end
 
--- Its hold type's act named prefix .. HOLD (ACT_HL2MP_RUN_AR2), or the
--- plain hold's.
+-- Its hold type's act named prefix .. HOLD (ACT_HL2MP_RUN_AR2), or, for the
+-- plain hold or one the model has no act of, the plain hold's (prefix
+-- without its last _: ACT_HL2MP_RUN).
 function ENT:HoldAct(prefix)
 	local weapon = self:GetActiveWeapon()
 	local hold = IsValid(weapon) and weapon:GetHoldType() or HOLD_DEFAULT
-	return _G[prefix .. (HOLD_ACT_NAMES[hold] or hold:upper())] or _G[prefix .. HOLD_DEFAULT:upper()]
+	local plain = prefix:sub(1, -2)
+	local suffix = HOLD_ACT_NAMES[hold]
+	if suffix == false then return _G[plain] end
+	return _G[prefix .. (suffix or hold:upper())] or _G[plain]
 end
 
 -- Its animation each tick: the class's (OnUpdateAnimation -> act, rate),
 -- else its own; moving, its feet keep to its speed.
 function ENT:BodyUpdate()
+	self:AimUpdate()
 	local act, rate = self:OnUpdateAnimation()
 	if act == nil then act, rate = self:DefaultAnimation() end
 	if self:GetActivity() ~= act then self:StartActivity(act) end
 	if rate then self:SetPlaybackRate(rate) end
 	if self:IsMoving() then self:BodyMoveXY() else self:FrameAdvance() end
+end
+
+-- Its upper body aims at the enemy in sight (the model's aim_yaw and
+-- aim_pitch, which hold them to their ranges) while it turns to it, as
+-- TF2's body aims its head apart from its legs; with none, straight ahead.
+function ENT:AimUpdate()
+	local enemy = self:GetEnemy()
+	local yaw, pitch = 0, 0
+	if enemy and self.nsVision:Visible(enemy) then
+		local aim = (enemy:WorldSpaceCenter() - self:GetEyePosition()):Angle()
+		yaw = math.NormalizeAngle(aim.y - self:GetAngles().y)
+		pitch = math.NormalizeAngle(aim.p)
+	end
+	self:SetPoseParameter("aim_yaw", yaw)
+	self:SetPoseParameter("aim_pitch", pitch)
 end
 
 -- Its own animation: a profile's IdleAnimation, WalkAnimation and
@@ -477,6 +518,9 @@ function ENT:GetEyePosition()
 	if attachment and attachment > 0 then return self:GetAttachment(attachment).Pos end
 	return self:GetPos() + Vector(0, 0, self:IsCrouching() and CROUCH_EYE_HEIGHT or EYE_HEIGHT)
 end
+
+-- Whether a known enemy is still there to fight.
+local function Alive(ent) return IsValid(ent) and ent:Health() > 0 end
 
 -- Whether the line from eye to point reaches other (or nothing).
 local function Clear(eye, point, self, other)
@@ -556,8 +600,8 @@ function ENT:IntentionUpdate(interval)
 	local now = CurTime()
 	if now >= self.nsNextLook then
 		self.nsNextLook = now + LOOK_INTERVAL
-		local enemy = self.nsEnemy
-		if enemy ~= nil and not (IsValid(enemy) and enemy:Health() > 0) then self:VisionTell(self.nsVision:Forget(enemy, self.nsBetter)) end
+		-- the removed and the dead are forgotten before any is ranked
+		self:VisionTell(self.nsVision:Prune(Alive, self.nsBetter))
 		self:VisionUpdate(now)
 	end
 	local enemy = self:GetEnemy()
@@ -589,8 +633,8 @@ function ENT:IntentionUpdate(interval)
 end
 
 -- The body's own shot (TF2's split: the intention decides, the body fires):
--- one of its gun's (nextsoldier.weapons) when the magazine is ready, at the
--- enemy's centre within the gun's spread, from the muzzle, with the gun's
+-- one of its gun's (nextsoldier.weapons) when the magazine is ready, from
+-- the muzzle, its bullets (Shoot) or its projectile (Throw), with the gun's
 -- sound, flash and the hold type's firing gesture. A weapon that is not one
 -- of NextSoldier's guns is not fired.
 function ENT:RangeAttack(enemy, weapon)
@@ -604,6 +648,39 @@ function ENT:RangeAttack(enemy, weapon)
 	self:FaceTowards(enemy)
 	local muzzle = weapon:LookupAttachment("muzzle")
 	local src = muzzle and muzzle > 0 and weapon:GetAttachment(muzzle).Pos or self:GetEyePosition()
+	if stats.projectile then
+		self:Throw(stats, src, enemy)
+	else
+		self:Shoot(stats, src, enemy, weapon)
+	end
+	weapon:EmitSound(stats.sound)
+	weapon:MuzzleFlash()
+	self:AddGesture(self:HoldAct("ACT_HL2MP_GESTURE_RANGE_ATTACK_"), true)
+end
+
+-- How fast something moves: a NextBot's locomotion's, else its own.
+local function VelocityOf(ent)
+	if ent.loco then return ent.loco:GetVelocity() end
+	return ent:GetVelocity()
+end
+
+-- A gun's projectile (HL2's crossbow's bolt), aimed where the enemy will be
+-- (Weapons.Lead), owned by the soldier so the hit is its.
+function ENT:Throw(stats, src, enemy)
+	local projectile = stats.projectile
+	local aim = Weapons.Lead(src, enemy:WorldSpaceCenter(), VelocityOf(enemy), projectile.speed)
+	local dir = (Vector(aim.x, aim.y, aim.z) - src):GetNormalized()
+	local thrown = ents.Create(projectile.class)
+	thrown:SetPos(src)
+	thrown:SetAngles(dir:Angle())
+	thrown:SetOwner(self)
+	thrown:Fire("SetDamage", tostring(stats.damage))
+	thrown:Spawn()
+	thrown:SetVelocity(dir * projectile.speed)
+end
+
+-- A gun's bullets at the enemy's centre within its spread.
+function ENT:Shoot(stats, src, enemy, weapon)
 	local spread = math.tan(math.rad(stats.spread / 2))
 	self:FireBullets({
 		Attacker = self,
@@ -618,9 +695,6 @@ function ENT:RangeAttack(enemy, weapon)
 		-- struck by its gun, as a player's shot is (the kill feed's icon)
 		Callback = function(_, _, dmg) dmg:SetInflictor(weapon) end,
 	})
-	weapon:EmitSound(stats.sound)
-	weapon:MuzzleFlash()
-	self:AddGesture(self:HoldAct("ACT_HL2MP_GESTURE_RANGE_ATTACK_"), true)
 end
 
 -- A melee strike is the class's (OnMeleeAttack): the base has none of its own.

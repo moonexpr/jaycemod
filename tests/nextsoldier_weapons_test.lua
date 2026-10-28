@@ -43,6 +43,26 @@ T.test("HL2's guns the soldiers carry have stats", function()
 	end
 end)
 
+T.test("the crossbow throws a bolt that flies; the guns fire bullets", function()
+	T.eq(Weapons.STATS.weapon_crossbow.projectile ~= nil, true, "a bolt")
+	T.eq(Weapons.STATS.weapon_crossbow.projectile.speed > 0, true, "that flies")
+	T.eq(Weapons.STATS.weapon_ar2.projectile, nil, "bullets")
+end)
+
+T.test("a projectile is aimed where its target will be when it arrives", function()
+	local speed = 1000
+	local at = Weapons.Lead({ x = 0, y = 0, z = 0 }, { x = 1000, y = 0, z = 0 }, { x = 0, y = 100, z = 0 }, speed)
+	T.eq(at.x, 1000)
+	T.eq(at.y, 100, "a second of flight: a second of its walk ahead")
+	local still = Weapons.Lead({ x = 0, y = 0, z = 0 }, { x = 500, y = 0, z = 0 }, { x = 0, y = 0, z = 0 }, speed)
+	T.eq(still.y, 0, "a target standing still is aimed at")
+end)
+
+T.test("a projectile's speed must be above 0", function()
+	T.eq(pcall(Weapons.Stats, { damage = 5, bullets = 1, interval = 0.1, clip = 3, reload = 2,
+		sound = "s", tracer = "t", hold = "ar2", spread = 0, projectile = { class = "crossbow_bolt", speed = 0 } }), false)
+end)
+
 T.test("stats missing a part are refused", function()
 	T.eq(pcall(Weapons.Stats, { damage = 5, bullets = 1, interval = 0.1, clip = 3 }), false)
 end)

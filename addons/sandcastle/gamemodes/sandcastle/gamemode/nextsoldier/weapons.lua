@@ -7,12 +7,17 @@
 -- Stats{ damage (a bullet's), bullets (a shot's), interval (between
 --   shots), clip, reload (seconds), sound,
 --   tracer, hold (its hold type, for the body's acts), spread (degrees across
---   its cone: features.aiwar.arms' cones) } -> stats, made once
+--   its cone: features.aiwar.arms' cones), projectile (optional: { class,
+--   speed } it throws instead of a bullet, HL2's crossbow's bolt) } -> stats,
+--   made once
+-- Lead(from, target, velocity, speed) -> where to aim a projectile so it
+--   meets a target moving at velocity (first order: its flight time ahead)
 -- STATS[class] -> HL2's guns the soldiers carry
 -- Magazine(stats) -> magazine: Ready(now), Fire(now) (refused when not
 --   ready: our bug), Reloading(now), Rounds()
 local error, setmetatable, type = error, setmetatable, type
 local deg, atan = math.deg, math.atan
+local Geometry = math.geometry
 module(...)
 
 local PARTS = { "damage", "bullets", "interval", "clip", "reload", "sound", "tracer", "hold", "spread" }
@@ -25,6 +30,11 @@ function Stats(spec)
 		stats[key] = spec[key]
 	end
 	if type(stats.damage) ~= "number" or stats.damage <= 0 then error("a gun's damage is a number above 0", 2) end
+	local projectile = spec.projectile
+	if projectile ~= nil then
+		if not (type(projectile.speed) == "number" and projectile.speed > 0) then error("a projectile's speed is above 0", 2) end
+		stats.projectile = { class = projectile.class, speed = projectile.speed }
+	end
 	return stats
 end
 
@@ -47,8 +57,14 @@ STATS = {
 	weapon_357 = Stats({ damage = 40, bullets = 1, interval = 1.25, clip = 6, reload = 3,
 		sound = "Weapon_357.Single", tracer = "Tracer", hold = "revolver", spread = Cone(0.015) }),
 	weapon_crossbow = Stats({ damage = 100, bullets = 1, interval = 1.9, clip = 1, reload = 1.9,
-		sound = "Weapon_Crossbow.Single", tracer = "Tracer", hold = "crossbow", spread = 0 }),
+		sound = "Weapon_Crossbow.Single", tracer = "Tracer", hold = "crossbow", spread = 0,
+		projectile = { class = "crossbow_bolt", speed = 3500 } }),
 }
+
+function Lead(from, target, velocity, speed)
+	local flight = Geometry.Distance(from, target) / speed
+	return Geometry.Add(target, Geometry.Scale(velocity, flight))
+end
 
 local Magazine_ = {}
 Magazine_.__index = Magazine_

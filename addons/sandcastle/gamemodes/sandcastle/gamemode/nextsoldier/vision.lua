@@ -138,6 +138,20 @@ function Vision:Hear(now, handle, pos, better)
 	return events
 end
 
+-- Forgets every known enemy alive(handle) says is no more (removed, dead),
+-- the contact picked again at once; the events, as Update's.
+function Vision:Prune(alive, better)
+	local events, lost = {}, false
+	for handle in pairs(self.known) do
+		if not alive(handle) then
+			self.known[handle] = nil
+			lost = lost or handle == self.contact
+		end
+	end
+	if lost then SetContact(self, PickContact(self, better), events) end
+	return events
+end
+
 -- Forgets an enemy at once (it died or left); the events, as Update's.
 -- Given better, the contact it was is picked again at once, else at the
 -- next look (none until then).

@@ -174,6 +174,18 @@ T.test("an enemy heard again is remembered from then, where it was heard", funct
 	T.eq(v:LastKnown("scout"), nil, "forgotten a memory after")
 end)
 
+T.test("pruned, every known enemy no longer alive is forgotten, the contact with it", function()
+	local v = Pursuing()
+	v:Update(0, { scout = HERE, heavy = THERE }, ANY)
+	v:Update(REACTION, { scout = HERE, heavy = THERE }, ANY)
+	v:Update(1, {}, ANY)
+	local gone = { scout = true }
+	local events = v:Prune(function(handle) return not gone[handle] end, ANY)
+	T.eq(Kinds(events, "heavy"), Vision.CONTACT, "the heavy, still alive, is pursued")
+	T.eq(v:LastKnown("scout"), nil, "the scout is forgotten")
+	T.eq(#v:Prune(function() return true end, ANY), 0, "all alive: nothing told")
+end)
+
 T.test("a glimpse not recognized is not pursued", function()
 	local v = Pursuing()
 	v:Update(0, { scout = HERE }, ANY)

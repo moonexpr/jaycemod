@@ -673,27 +673,13 @@ function WS.WarSoldier(ENT)
 
 	-- A battle stance (the AI war's Pose, in setup): crouched ready with its
 	-- weapon, in the player model's crouch idle for the weapon's hold type,
-	-- checking it (the hold type's reload gesture) as it settles.
+	-- checking it (the hold type's reload gesture) as it settles; the acts
+	-- its base names for its hold (HoldAct).
 	local STANCE_CROUCHED = "crouched"
-	local STANCE_HOLD_DEFAULT = "ar2"
-
-	local function HoldType(self)
-		local weapon = self:GetActiveWeapon()
-		return IsValid(weapon) and weapon:GetHoldType() or STANCE_HOLD_DEFAULT
-	end
-
-	-- The acts' names for hold types named otherwise (weapon_smg1's "smg").
-	local HOLD_ACT_NAMES = { smg = "SMG1" }
-
-	-- The act named prefix .. HOLD (ACT_HL2MP_IDLE_CROUCH_AR2), or the AR2's
-	-- for a hold type the player model has none for.
-	local function HoldAct(prefix, hold)
-		return _G[prefix .. (HOLD_ACT_NAMES[hold] or hold:upper())] or _G[prefix .. STANCE_HOLD_DEFAULT:upper()]
-	end
 
 	function ENT:NSTakeStance()
 		self.NSStance = STANCE_CROUCHED
-		self:AddGesture(HoldAct("ACT_HL2MP_GESTURE_RELOAD_", HoldType(self)))
+		self:AddGesture(self:HoldAct("ACT_HL2MP_GESTURE_RELOAD_"))
 	end
 
 	-- Seated on the cart: the sitting pose, whatever the base would play; a
@@ -705,7 +691,7 @@ function WS.WarSoldier(ENT)
 		if WS.IsLoser(self) and self:IsOnGround() and not (self:IsDown() or self:IsDead()) then
 			return self:IsMoving() and ACT_HL2MP_RUN_PANICKED or ACT_HL2MP_IDLE_SCARED, 1
 		end
-		if self.NSStance then return HoldAct("ACT_HL2MP_IDLE_CROUCH_", HoldType(self)), 1 end
+		if self.NSStance then return self:HoldAct("ACT_HL2MP_IDLE_CROUCH_"), 1 end
 		return Base().OnUpdateAnimation(self)
 	end
 
