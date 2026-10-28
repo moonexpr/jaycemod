@@ -157,6 +157,7 @@ local GAMES = {
 -- movement, senses and behaviours), a subsystem of its own on foundation
 -- and games, that runs without the war's tactics engine.
 local NEXTSOLDIER = {
+	["base"] = "nextsoldier",
 	["monitor"] = "nextsoldier",
 	["speech"] = "nextsoldier",
 	["hearing"] = "nextsoldier",

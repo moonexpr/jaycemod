@@ -5,6 +5,7 @@
 -- foundation.wetsands.path. One line a module, never a loop:
 -- docs/foundation-game-split-plan.md.
 local nextsoldier = Namespace("nextsoldier")
+Defer(nextsoldier, "base", "nextsoldier.base")
 Defer(nextsoldier, "speech", "nextsoldier.speech")
 Defer(nextsoldier, "hearing", "nextsoldier.hearing")
 Defer(nextsoldier, "nav_gaps", "nextsoldier.nav_gaps")

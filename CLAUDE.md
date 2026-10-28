@@ -275,9 +275,11 @@ requires it (`tests/foundation_layers_test.lua`). Tests are
 | Movement (on `wetsands.path`'s costs) | `brushes`, `clip`, `detour`, `doors`, `leap`, `noise`, `portal`, `probe` (a path follower walking points), `rappel`, `reach_memo`, `route_record`, `route_walk` (a route walked waypoint by waypoint), `nav_gaps` |
 | Senses and body | `hearing`, `vision` (seen, recognized, remembered: the contact), `player_body` (a bot player's moves, aim and fire as a player's keys), `speech` (its criteria for the response rules) |
 | Behaviours | `monitor` |
+| The base | `base` (the interface NextSoldier's own NextBot base implements) |
 
 | Module | API |
 |---|---|
+| `nextsoldier.base` | The interface our code keeps of DrGBase's NextBot, names and hook contracts only, which NextSoldier's own base implements from scratch, native where it pays: `COMPONENTS` after NextBot's own (`INTENTION`, `SENSES`, `RELATIONS`, `LOCOMOTION`, `BODY`, `LIFE`), each with `methods` (a `core.port`), `hooks` and `fields` (named sets, or nil); `METHODS` (every method), `HOOKS`, `FIELDS`, `Hooks(c)`, `Fields(c)`, `ComponentOf(name)`, `REPLACED` (DrGBase names the base drops, with what replaces each). `.devtools/bin/drg_interface.py check` refuses a DrGBase name our code uses that it does not declare |
 | `nextsoldier.monitor` | A monitor: a behaviour (npc.nextbot Action) holding the soldier's state and containing one: `New(name, contains)`, `Passthrough(name, contains)` (left out of the debug layer's TDBN) |
 
 ## wartactics index
