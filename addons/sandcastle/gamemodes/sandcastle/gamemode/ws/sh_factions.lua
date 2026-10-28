@@ -11,13 +11,16 @@ FACTION_TEAM_BLU = Factions.BLU
 
 if CLIENT then return end
 
+-- A player's faction is held for DrGBase alone (NextSoldier's base reads a
+-- player's from its team); a NextBot with factions (DrGBase's, or
+-- base_nextsoldier's, which needs no DrGBase) is moved itself.
 function WS.JoinTeamFaction(ent, team)
-	if not DrGBase then return end
 	local leave, join = Factions.Change(team)
 	if ent:IsPlayer() then
+		if not DrGBase then return end
 		for _, faction in ipairs(leave) do ent:DrG_LeaveFaction(faction) end
 		if join then ent:DrG_JoinFaction(join) end
-	elseif ent.IsDrGNextbot then
+	elseif ent.JoinFaction then
 		for _, faction in ipairs(leave) do ent:LeaveFaction(faction) end
 		if join then ent:JoinFaction(join) end
 	end

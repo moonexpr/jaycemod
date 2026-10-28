@@ -75,7 +75,7 @@ NEXTBOT = Component("nextbot", {
 	methods = { "IsAlive", "IsDead", "IsDown", "AddEntityRelationship", "SetFactionRelationship", "Disposition",
 		"JoinFaction", "LeaveFaction" },
 	hooks = { "CustomInitialize", "CustomThink", "OnTakeDamage", "OnTraceAttack", "OnDealtDamage", "OnDeath" },
-	fields = { "SpawnHealth", "RagdollOnDeath", "Factions", "DefaultRelationship", "IsDrGNextbot" },
+	fields = { "SpawnHealth", "RagdollOnDeath", "Factions", "DefaultRelationship" },
 })
 
 -- Moving (ILocomotion): its path, priced by the class (GetPathGenerator),
