@@ -52,6 +52,18 @@ local function PathKinds(path)
 	return kinds
 end
 
+-- Where a path leaves the ground (a drop, climb, gap or ladder), each with
+-- its kind and waypoint, in order: the steps an errand fails on.
+local function PathSteps(path)
+	local steps = {}
+	for _, segment in ipairs(path:GetAllSegments()) do
+		if segment.type ~= 0 then
+			steps[#steps + 1] = { kind = SEGMENT_KINDS[segment.type] or tostring(segment.type), pos = Point(segment.pos) }
+		end
+	end
+	return steps
+end
+
 local SoldierInitialize = ENT.CustomInitialize
 
 function ENT:CustomInitialize()
@@ -106,7 +118,7 @@ function ENT:IntentionUpdate()
 		local shape = util.TableToJSON(kinds)
 		if shape ~= errand.shape then
 			errand.shape = shape
-			self:NSNote("marks", "path planned", kinds)
+			self:NSNote("marks", "path planned", { kinds = kinds, steps = PathSteps(path) })
 		end
 	end
 	local result = self.NSMoveResult
