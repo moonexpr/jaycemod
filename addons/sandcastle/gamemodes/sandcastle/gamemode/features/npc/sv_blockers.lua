@@ -31,9 +31,11 @@ end
 -- areas in spawn rooms, nav area id -> the team of the func_respawnroom
 -- holding the area's centre, as its spawns say (games.gameplay.spawn's
 -- RoomTeam), the first room in FindByClass' order taking an area; areas in
--- none left out. Found once a round (rooms take their teams at round
--- start, some only once the round is active), for every area at once, so
--- a route search is told them (wetsands.navsearch's told.rooms).
+-- none left out. Found again as a round starts (rooms take their teams at
+-- round start, some only once the round is active) and as a room or a spawn
+-- changes mid-round (WSSpawnRoomsChanged: a payload map's forward spawn
+-- becomes the attackers' as a point falls), for every area at once, so a
+-- route search is told them (wetsands.navsearch's told.rooms).
 function Controller:SpawnRooms()
 	local rooms = self.spawnRooms
 	if rooms then return rooms end
@@ -320,3 +322,4 @@ end
 hook.Add("PostCleanupMap", "ws_npc_spawn_rooms", ForgetSpawnRooms)
 hook.Add("WSRoundActivate", "ws_npc_spawn_rooms", ForgetSpawnRooms)
 hook.Add("WSRoundActive", "ws_npc_spawn_rooms", ForgetSpawnRooms)
+hook.Add("WSSpawnRoomsChanged", "ws_npc_spawn_rooms", ForgetSpawnRooms)

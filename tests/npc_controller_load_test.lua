@@ -29,6 +29,7 @@ local WIRING = {
 	"hook WSRoundActivate ws_npc_spawn_rooms",
 	"hook WSRoundActive ws_npc_reach",
 	"hook WSRoundActive ws_npc_spawn_rooms",
+	"hook WSSpawnRoomsChanged ws_npc_spawn_rooms",
 }
 
 -- the features features/npc/sv.lua asks WS.Feature for, in order

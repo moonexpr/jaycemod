@@ -1,5 +1,6 @@
 -- func_respawnroom (CFuncRespawnRoom): a team's spawn room. Its team and
--- active state drive the func_respawnroomvisualizer forcefields that name it.
+-- active state drive the func_respawnroomvisualizer forcefields that name it;
+-- a change of either is told (WSSpawnRoomsChanged).
 ENT.Type = "brush"
 ENT.Base = "ws_brush_volume"
 
@@ -24,12 +25,14 @@ function ENT:SetActive(active)
 	self.active = active
 	self.enabled = active
 	self:EachVisualizer(function(viz) viz:SetActive(active) end)
+	hook.Run("WSSpawnRoomsChanged")
 end
 
 -- CFuncRespawnRoom::ChangeTeam
 function ENT:ChangeTeam(team)
 	self.team = team
 	self:EachVisualizer(function(viz) viz:ChangeTeam(team) end)
+	hook.Run("WSSpawnRoomsChanged")
 end
 
 function ENT:PointIsWithin(pos)

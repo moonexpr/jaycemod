@@ -33,6 +33,8 @@ hook.Add("AcceptInput", "ws_team_spawn", function(ent, input, activator, caller,
 	local handler = SPAWN_INPUTS[string.lower(input)]
 	if not handler then return end
 	handler(WS.SpawnState(ent), value)
+	-- the rooms' teams follow their spawns (features/npc's SpawnRooms)
+	hook.Run("WSSpawnRoomsChanged")
 	return true
 end)
 
