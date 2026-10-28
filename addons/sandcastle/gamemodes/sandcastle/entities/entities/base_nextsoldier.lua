@@ -100,6 +100,12 @@ local MELEE_HOLDS = { melee = true, melee2 = true, knife = true, fist = true }
 -- otherwise (false: the plain hold's name), and the hold with no weapon.
 local HOLD_ACT_NAMES = { smg = "SMG1", normal = false }
 local HOLD_DEFAULT = "normal"
+-- Its hold with no enemy: a long gun carried low, a pistol or a melee
+-- weapon as no weapon, as DrGBase's soldiers carry them.
+local CALM_HOLDS = {
+	ar2 = "passive", smg = "passive", shotgun = "passive",
+	pistol = "normal", revolver = "normal", melee = "normal", melee2 = "normal", fist = "normal", knife = "normal", duel = "normal",
+}
 -- Faster than its walk by this, it runs (the run acts).
 local RUN_OVER_WALK = 10
 
@@ -421,12 +427,14 @@ function ENT:SetCrouching(crouching)
 	self:SetCollisionBounds(self.nsHullMins, Vector(hull.x, hull.y, crouching and CROUCH_HEIGHT or hull.z))
 end
 
--- Its hold type's act named prefix .. HOLD (ACT_HL2MP_RUN_AR2), or, for the
+-- Its hold type's act named prefix .. HOLD (ACT_HL2MP_RUN_AR2; calm, its
+-- CALM_HOLDS one), or, for the
 -- plain hold or one the model has no act of, the plain hold's (prefix
 -- without its last _: ACT_HL2MP_RUN).
 function ENT:HoldAct(prefix)
 	local weapon = self:GetActiveWeapon()
 	local hold = IsValid(weapon) and weapon:GetHoldType() or HOLD_DEFAULT
+	if not self:HasEnemy() then hold = CALM_HOLDS[hold] or hold end
 	local plain = prefix:sub(1, -2)
 	local suffix = HOLD_ACT_NAMES[hold]
 	if suffix == false then return _G[plain] end
@@ -643,11 +651,12 @@ function ENT:RangeAttack(enemy, weapon)
 	if not magazine then return end
 	local now = CurTime()
 	if not magazine:Ready(now) then return end
-	magazine:Fire(now)
-	local stats = magazine.stats
 	self:FaceTowards(enemy)
 	local muzzle = weapon:LookupAttachment("muzzle")
 	local src = muzzle and muzzle > 0 and weapon:GetAttachment(muzzle).Pos or self:GetEyePosition()
+	if not self:LineOfFire(src, enemy, weapon) then return end
+	magazine:Fire(now)
+	local stats = magazine.stats
 	if stats.projectile then
 		self:Throw(stats, src, enemy)
 	else
@@ -656,6 +665,18 @@ function ENT:RangeAttack(enemy, weapon)
 	weapon:EmitSound(stats.sound)
 	weapon:MuzzleFlash()
 	self:AddGesture(self:HoldAct("ACT_HL2MP_GESTURE_RANGE_ATTACK_"), true)
+	-- the last round: it reloads, the hold type's reload played
+	if magazine:Reloading(now) then self:AddGesture(self:HoldAct("ACT_HL2MP_GESTURE_RELOAD_"), true) end
+end
+
+-- Whether a shot from src reaches the enemy before anything else (a small
+-- hull, as DrGBase's soldiers check before firing): a wall or a teammate in
+-- the way holds the shot.
+local FIRE_HULL = Vector(5, 5, 5)
+function ENT:LineOfFire(src, enemy, weapon)
+	local tr = util.TraceHull({ start = src, endpos = enemy:WorldSpaceCenter(), mins = -FIRE_HULL, maxs = FIRE_HULL,
+		mask = MASK_SHOT, filter = { self, weapon } })
+	return tr.Entity == enemy
 end
 
 -- How fast something moves: a NextBot's locomotion's, else its own.
