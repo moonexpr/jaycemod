@@ -22,7 +22,7 @@ local ReachMemo = nextsoldier.reach_memo
 
 local STRATEGIES = {
 	hl2 = T.require("foundation.wetsands.path.hl2"),
-	lanes = nextsoldier.lanes.Strategy,
+	lanes = wartactics.lanes.Strategy,
 }
 
 local MICROSECONDS = 1e6

@@ -6,7 +6,7 @@ local T = dofile("tests/harness.lua")
 local Pathfinder = graph.pathfinder
 local HL2 = T.require("foundation.wetsands.path.hl2")
 local TFBot = T.require("foundation.wetsands.path.tfbot")
-local Lanes = nextsoldier.lanes
+local Lanes = wartactics.lanes
 
 local IMPLEMENTATIONS = {
 	{ "lua", wetsands.navsearch },

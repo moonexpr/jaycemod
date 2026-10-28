@@ -26,10 +26,10 @@
 -- brings; the controller briefs only a field that Lacks none.
 local error, ipairs, require, setmetatable = error, ipairs, require, setmetatable
 local AiWar = require("features.aiwar.model")
-local Explore = nextsoldier.explore
+local Explore = wartactics.explore
 local Teams = gameplay.teams
 local Class = core.class
-local Scenarios = nextsoldier.scenarios
+local Scenarios = wartactics.scenarios
 module(...)
 
 ALLOCATION_HOLD = 3 -- docs/aiwar-command.md §2.2
@@ -48,7 +48,7 @@ VARIANTS = {
 }
 
 -- The war's own scenarios, registered as any script registers one
--- (nextsoldier.scenarios): each variant for its rounds mode, at
+-- (wartactics.scenarios): each variant for its rounds mode, at
 -- MODE_PRIORITY, required when chosen, and freeform, for any mode, below
 -- them. A script's scenario at a higher priority, with its own criteria,
 -- takes over where those hold.
@@ -97,7 +97,7 @@ end
 -- The parts of the controller's field a variant's Brief may read that a map
 -- or a moment can lack, each with what having it means: points, the capture
 -- HUD's (at least one); bases, both teams'; clocks, both teams' KOTH clocks;
--- waypoints, the nav mesh's to explore (nextsoldier.explore); flags,
+-- waypoints, the nav mesh's to explore (wartactics.explore); flags,
 -- both teams' (capture the flag); bomb, BLU's flag and the zone it is
 -- delivered to (Mann vs. Machine).
 POINTS, BASES, CLOCKS, WAYPOINTS, FLAGS, BOMB = "points", "bases", "clocks", "waypoints", "flags", "bomb"
@@ -166,7 +166,7 @@ function Scenario:Reset()
 	self.board = nil
 end
 
--- Every scenario keeps the exploration board (nextsoldier.explore),
+-- Every scenario keeps the exploration board (wartactics.explore),
 -- explore being every doctrine's job: each squad's soldiers mark where they
 -- have been and how far along its lane, a squad in contact is engaged, and
 -- the field carries the board (field.explore). Then the variant briefs the

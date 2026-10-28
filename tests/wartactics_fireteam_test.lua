@@ -1,7 +1,7 @@
--- nextsoldier.tactics: a fire team's shared contact, bounding
+-- wartactics.fireteam: a fire team's shared contact, bounding
 -- overwatch, flanking and falling back.
 local T = dofile("tests/harness.lua")
-local Tactics = nextsoldier.tactics
+local Tactics = wartactics.fireteam
 local CoreTactics = gameplay.tactics
 
 local function P(x, y, z) return { x = x, y = y, z = z or 0 } end

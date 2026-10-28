@@ -1,11 +1,11 @@
--- nextsoldier.tuning: changing NextSoldier's tactics constants while
+-- wartactics.tuning: changing NextSoldier's tactics constants while
 -- they run (ns_tactics_tune), within bounds, and putting them back.
 local T = dofile("tests/harness.lua")
-local Tuning = nextsoldier.tuning
-local Tactics = nextsoldier.tactics
-local Lanes = nextsoldier.lanes
+local Tuning = wartactics.tuning
+local Tactics = wartactics.fireteam
+local Lanes = wartactics.lanes
 local Orders = T.require("features.aiwar.orders")
-local Squad = nextsoldier.squad
+local Squad = wartactics.squad
 
 local MODULES = {
 	tactics = Tactics,

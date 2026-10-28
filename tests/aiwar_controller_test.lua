@@ -12,8 +12,8 @@ local Orders = T.require("features.aiwar.orders")
 local Base = T.require("features.aiwar.scenario")
 local Payload = T.require("features.aiwar.scenario.payload")
 local Freeform = T.require("features.aiwar.scenario.freeform")
-local Posts = nextsoldier.posts
-local Lanes = nextsoldier.lanes
+local Posts = wartactics.posts
+local Lanes = wartactics.lanes
 local HL2Path = T.require("foundation.wetsands.path.hl2")
 local Gamemode = system.gamemode
 local Rounds = gameplay.rounds
@@ -23,7 +23,7 @@ local KothMode = T.require("features.koth.model")
 local STATE = T.require("games.gameplay.rounds.state")
 local Teams = gameplay.teams
 local Slots = T.require("features.aiwar.slots")
-local Squad = nextsoldier.squad
+local Squad = wartactics.squad
 -- the real scenarios; tests of the controller alone swap in fakes
 local REAL = {
 	[PayloadMode.Mode.NAME] = Payload,
@@ -801,7 +801,7 @@ T.test("a scenario registered after the war started is played once the scenarios
 	function Late:SetupAttacks() return {} end
 	local registered = true
 	local controller = Started(World(), PayloadMode.Mode)
-	nextsoldier.scenarios.Shared:Register({
+	wartactics.scenarios.Shared:Register({
 		name = "late_addon",
 		priority = Base.MODE_PRIORITY + 1,
 		mode = PayloadMode.Mode.NAME,
@@ -1111,7 +1111,7 @@ end)
 -- are planned again once it has stayed open, even when what changed is not
 -- known (every area they watch is looked at).
 T.test("lanes are planned again when the doors' blockers change", function()
-	local Lanes = nextsoldier.lanes
+	local Lanes = wartactics.lanes
 	local w = World()
 	w.spawns[RED] = { Ent(Vector(0, 0, 0)) }
 	w.spawns[BLUE] = { Ent(Vector(2000, 0, 0)) }
@@ -1213,7 +1213,7 @@ end)
 -- a door wall they went round plans them again once it has opened and
 -- stayed open (a setup gate), not while it only flickers open.
 T.test("lanes are planned again only when a blocker changes where it touches them", function()
-	local Lanes = nextsoldier.lanes
+	local Lanes = wartactics.lanes
 	local w = World()
 	w.spawns[RED] = { Ent(Vector(0, 0, 0)) }
 	w.spawns[BLUE] = { Ent(Vector(2000, 0, 0)) }

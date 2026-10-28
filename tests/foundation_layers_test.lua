@@ -1,6 +1,6 @@
--- foundation/'s, games/' and nextsoldier/'s layers
+-- foundation/'s, games/', nextsoldier/'s and wartactics/' layers
 -- (docs/research/foundation-admission-rule.md): every module is in one of
--- four categories, ranked bottom-up, or is pending a move out of
+-- five categories, ranked bottom-up, or is pending a move out of
 -- foundation. A category may require only itself and the categories below
 -- it, in any tree, and no tree requires a feature or a ws/ file.
 local T = dofile("tests/harness.lua")
@@ -14,6 +14,7 @@ local RANK = {
 	formalisms = 2,
 	gameplay = 3,
 	nextsoldier = 4,
+	wartactics = 5,
 }
 
 -- The modules that stay, by category.
@@ -152,21 +153,13 @@ local GAMES = {
 	["npc/targeting"] = "gameplay",
 }
 
--- nextsoldier/'s modules: NextSoldier, its own subsystem beside foundation
--- and games, on both.
+-- nextsoldier/'s modules: NextSoldier, the soldier itself (its body,
+-- movement, senses and behaviours), a subsystem of its own on foundation
+-- and games, that runs without the war's tactics engine.
 local NEXTSOLDIER = {
-	["tactics"] = "nextsoldier",
 	["monitor"] = "nextsoldier",
-	["scenarios"] = "nextsoldier",
-	["squad"] = "nextsoldier",
-	["lanes"] = "nextsoldier",
 	["speech"] = "nextsoldier",
 	["hearing"] = "nextsoldier",
-	["explore"] = "nextsoldier",
-	["hunt"] = "nextsoldier",
-	["posts"] = "nextsoldier",
-	["zone"] = "nextsoldier",
-	["tuning"] = "nextsoldier",
 	["route_record"] = "nextsoldier",
 	["reach_memo"] = "nextsoldier",
 	["leap"] = "nextsoldier",
@@ -179,10 +172,25 @@ local NEXTSOLDIER = {
 	["brushes"] = "nextsoldier",
 	["clip"] = "nextsoldier",
 	["nav_gaps"] = "nextsoldier",
-	["bot_quota"] = "nextsoldier",
 	["vision"] = "nextsoldier",
 	["player_body"] = "nextsoldier",
 	["route_walk"] = "nextsoldier",
+}
+
+-- wartactics/'s modules: the AI war's tactics engine, the strategy its
+-- soldiers are organised by (fire teams, squads, lanes, posts, the
+-- scenarios), on NextSoldier and never under it.
+local WARTACTICS = {
+	["fireteam"] = "wartactics",
+	["scenarios"] = "wartactics",
+	["squad"] = "wartactics",
+	["lanes"] = "wartactics",
+	["explore"] = "wartactics",
+	["hunt"] = "wartactics",
+	["posts"] = "wartactics",
+	["zone"] = "wartactics",
+	["tuning"] = "wartactics",
+	["bot_quota"] = "wartactics",
 }
 
 -- The modules still to move, and where each goes: none. A module bound out
@@ -206,6 +214,7 @@ local TREES = {
 	{ dir = FOUNDATION, prefix = FOUNDATION_PREFIX, category = CATEGORY, pending = PENDING },
 	{ dir = T.ROOT .. "games/", prefix = "^games%.", category = GAMES, pending = {} },
 	{ dir = T.ROOT .. "nextsoldier/", prefix = "^nextsoldier%.", category = NEXTSOLDIER, pending = {} },
+	{ dir = T.ROOT .. "wartactics/", prefix = "^wartactics%.", category = WARTACTICS, pending = {} },
 }
 
 local function Modules(tree)
@@ -259,7 +268,7 @@ T.test("every module is categorised or pending a move, and every entry exists", 
 	end
 end)
 
-T.test("foundation, games and nextsoldier require nothing from features or ws", function()
+T.test("foundation, games, nextsoldier and wartactics require nothing from features or ws", function()
 	for _, tree in ipairs(TREES) do
 		for module in pairs(Modules(tree)) do
 			for _, name in ipairs(Requires(tree, module)) do

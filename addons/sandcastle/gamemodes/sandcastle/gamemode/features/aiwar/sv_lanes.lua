@@ -1,4 +1,4 @@
--- Part of the AI war controller (sv.lua): lanes, each team's ways from its spawn (nextsoldier.lanes).
+-- Part of the AI war controller (sv.lua): lanes, each team's ways from its spawn (wartactics.lanes).
 local Controller, Map = ...
 local Teams = gameplay.teams
 local Geometry = math.geometry
@@ -6,13 +6,13 @@ local Select = list.select
 local TFBot = WS.require("foundation.wetsands.path.tfbot")
 local HL2Path = WS.require("foundation.wetsands.path.hl2")
 local Path = wetsands.path
-local Lanes = nextsoldier.lanes
+local Lanes = wartactics.lanes
 local Graph = graph.search
 local NavSearch = wetsands.navsearch
 local RED, BLUE = Map.RED, Map.BLUE
 local Point, ToVector, SpawnSpots, WorldWalkClear = Map.Point, Map.ToVector, Map.SpawnSpots, Map.WorldWalkClear
 
--- Lanes (nextsoldier.lanes): each team's ways from its spawn: straight
+-- Lanes (wartactics.lanes): each team's ways from its spawn: straight
 -- to its front (the scenario's Front: on payload its own cart, else the
 -- enemy's), to either side of it, and through the enemy's defenses (its
 -- posts, else its front) on to the enemy's spawn, planned one after the

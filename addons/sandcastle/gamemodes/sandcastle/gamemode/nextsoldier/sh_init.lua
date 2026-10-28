@@ -1,19 +1,12 @@
--- NextSoldier: the soldiers' tactics, squads, senses and tuning, and how a
--- soldier moves (doors, leaps, rappels), each loaded the first time it is
--- read; the path costs it moves by are foundation.wetsands.path. A module's
--- parts load through it. One line a module, never a loop:
+-- NextSoldier: the soldier itself, which runs without the war's tactics
+-- engine (wartactics/): how a soldier moves (doors, leaps, rappels, its
+-- route), what it senses (sight, hearing), its body, voice and behaviours,
+-- each loaded the first time it is read; the path costs it moves by are
+-- foundation.wetsands.path. One line a module, never a loop:
 -- docs/foundation-game-split-plan.md.
 local nextsoldier = Namespace("nextsoldier")
-Defer(nextsoldier, "tactics", "nextsoldier.tactics")
-Defer(nextsoldier, "tuning", "nextsoldier.tuning")
-Defer(nextsoldier, "squad", "nextsoldier.squad")
-Defer(nextsoldier, "lanes", "nextsoldier.lanes")
 Defer(nextsoldier, "speech", "nextsoldier.speech")
 Defer(nextsoldier, "hearing", "nextsoldier.hearing")
-Defer(nextsoldier, "explore", "nextsoldier.explore")
-Defer(nextsoldier, "hunt", "nextsoldier.hunt")
-Defer(nextsoldier, "posts", "nextsoldier.posts")
-Defer(nextsoldier, "zone", "nextsoldier.zone")
 Defer(nextsoldier, "nav_gaps", "nextsoldier.nav_gaps")
 Defer(nextsoldier, "brushes", "nextsoldier.brushes")
 Defer(nextsoldier, "clip", "nextsoldier.clip")
@@ -26,9 +19,7 @@ Defer(nextsoldier, "probe", "nextsoldier.probe")
 Defer(nextsoldier, "rappel", "nextsoldier.rappel")
 Defer(nextsoldier, "reach_memo", "nextsoldier.reach_memo")
 Defer(nextsoldier, "route_record", "nextsoldier.route_record")
-Defer(nextsoldier, "bot_quota", "nextsoldier.bot_quota")
 Defer(nextsoldier, "vision", "nextsoldier.vision")
 Defer(nextsoldier, "monitor", "nextsoldier.monitor")
-Defer(nextsoldier, "scenarios", "nextsoldier.scenarios")
 Defer(nextsoldier, "player_body", "nextsoldier.player_body")
 Defer(nextsoldier, "route_walk", "nextsoldier.route_walk")

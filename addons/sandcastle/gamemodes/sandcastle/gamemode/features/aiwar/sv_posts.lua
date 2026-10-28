@@ -1,7 +1,7 @@
 -- Part of the AI war controller (sv.lua): the observer, and the posts where soldiers hold their line.
 local Controller, Map = ...
 local AiWar = WS.require("features.aiwar.model")
-local Posts = nextsoldier.posts
+local Posts = wartactics.posts
 local Memo = cache.memo
 local Debug = WS.require("features.nbdebug.model")
 local SPAWN_LIFT = Map.SPAWN_LIFT
@@ -98,7 +98,7 @@ function Controller:Watch(ent, entry, now)
 end
 
 -- Posts: where soldiers establish their line ----------------------------------------------
--- nextsoldier.posts picks among the nav mesh's hiding spots (with
+-- wartactics.posts picks among the nav mesh's hiding spots (with
 -- their cover and sniper flags) and the centres of areas well above or
 -- below the place in question (high ground, pits), each tested for a
 -- clear line from eye height:

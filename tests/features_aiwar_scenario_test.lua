@@ -26,7 +26,7 @@ end)
 
 T.test("a scenario a script registers, with its own criteria, takes over where they hold", function()
 	local Holdout = Scenario.Scenario:Extend("holdout")
-	nextsoldier.scenarios.Shared:Register({ name = "test_holdout", priority = Scenario.MODE_PRIORITY + 1, mode = "payload",
+	wartactics.scenarios.Shared:Register({ name = "test_holdout", priority = Scenario.MODE_PRIORITY + 1, mode = "payload",
 		active = function(c) return c.field ~= nil and c.field.testHoldout == true end, scenario = Holdout })
 	local entry, class = Scenario.Entry(Scenario.Compile(), { mode = "payload", field = { testHoldout = true } })
 	T.eq(class, Holdout, "where its criteria hold")

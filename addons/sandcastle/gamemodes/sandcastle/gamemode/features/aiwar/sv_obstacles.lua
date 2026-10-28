@@ -5,7 +5,7 @@ local Teams = gameplay.teams
 local Debug = WS.require("features.nbdebug.model")
 local TFBot = WS.require("foundation.wetsands.path.tfbot")
 local HL2Path = WS.require("foundation.wetsands.path.hl2")
-local Zone = nextsoldier.zone
+local Zone = wartactics.zone
 local Doors = nextsoldier.doors
 local Geometry = math.geometry
 local Select = list.select
@@ -198,7 +198,7 @@ end
 
 -- The setup zone -------------------------------------------------------------------------
 -- The ground behind the setup gates, where the attackers wander in setup
--- (nextsoldier.zone): flooded over the nav mesh from the team's spawn
+-- (wartactics.zone): flooded over the nav mesh from the team's spawn
 -- points, held back by the shut doors no trigger opens (the setup gates),
 -- by what closes areas to routes (locked doors, solid brushes: the npc
 -- feature's NavBlocks) and by rises

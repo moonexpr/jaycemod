@@ -83,7 +83,7 @@ local function StagedField(stage)
 	return { phase = AiWar.PHASES.running, carts = {}, doctrine = STAGED, stage = stage }
 end
 
--- A scenario registered with a monitor of its own (nextsoldier.scenarios)
+-- A scenario registered with a monitor of its own (wartactics.scenarios)
 -- has ScenarioMonitor run it in place of the doctrine's side.
 T.test("a registered scenario's own monitor runs under ScenarioMonitor, and leaves with its scenario", function()
 	local HoldLine = N.Action:Extend("HoldLine")
@@ -290,7 +290,7 @@ end)
 
 -- Tactics in a fight.
 
-local Tactics = nextsoldier.tactics
+local Tactics = wartactics.fireteam
 
 local function Fighting(t)
 	local me, npc, war, member = Enlist(t)

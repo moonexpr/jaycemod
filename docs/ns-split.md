@@ -4,10 +4,19 @@
 
 ## 0. The distinction
 
-- **NextSoldier (NS)** is the soldier AI built on NextBot, with its tactical
-  planning: the behavior tree, travel, squads, tactics, lanes, posts and
-  battle lines. It is a library. It knows nothing of rounds, carts, points
-  or who won.
+The operator's distinction (2026-10-27), which replaces this plan's first
+one (NextSoldier as the soldier AI with its tactical planning):
+
+- **NextSoldier (NS)** is the agent itself, built on NextBot: how a soldier
+  moves (travel, doors, leaps, rappels), what it senses (sight, hearing),
+  its body, voice and behaviours. It is a library, and it runs on its own,
+  without the tactics engine. It knows nothing of rounds, carts, points or
+  who won. `gamemode/nextsoldier/`.
+- **The war tactics engine** (`wartactics`) is the high-level strategy the
+  soldiers are organised by: a fire team's doctrine, squads, lanes, posts
+  and battle lines, the setup zone, the hunt, the scenarios, the bot quota.
+  It stands on NextSoldier, never under it
+  (`tests/foundation_layers_test.lua` ranks it above). `gamemode/wartactics/`.
 - **AIWar** is a multiplayer system. It adds PvE that plays like PvP: bot
   sides fighting the map's own round. It decides who fights, for which side,
   in which job, and when the dead come back. It uses NS for the soldiers.

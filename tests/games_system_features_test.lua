@@ -350,8 +350,8 @@ T.test("client files: every shipping .lua file under the folders, recursively, s
 	}))
 end)
 
-T.test("client files walk the gamemode's six folders", function()
-	T.eq(List(Features.CLIENT_DIRS), "foundation/,games/,nextsoldier/,features/,ws/,vendor/")
+T.test("client files walk the gamemode's seven folders", function()
+	T.eq(List(Features.CLIENT_DIRS), "foundation/,games/,nextsoldier/,wartactics/,features/,ws/,vendor/")
 end)
 
 -- Realm parts ----------------------------------------------------------------

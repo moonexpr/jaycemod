@@ -33,7 +33,7 @@ role, weapon, target, speed and contact.
 
 | Piece | Where | Job |
 |---|---|---|
-| `nextsoldier.bot_quota` | `nextsoldier/bot_quota.lua` | TF2's quota rules: bots wanted, add or kick one, the team to kick from |
+| `wartactics.bot_quota` | `wartactics/bot_quota.lua` | TF2's quota rules: bots wanted, add or kick one, the team to kick from |
 | `nextsoldier.vision` | `nextsoldier/vision.lua` | TF2's IVision: an enemy seen at once, recognized after the reaction time, remembered where last seen for a while; the most dangerous recognized one is the contact. Its events are the orders' (`OnSight`, `OnLostSight`, `OnContact`, `OnContactLost`) |
 | `nextsoldier.player_body` | `nextsoldier/player_body.lua` | TF2's PlayerBody and PlayerLocomotion: from target, gait, look, aim and weapon to a command (move yaw, eye angles turned at `TURN_RATE`, walk, duck, jump, use, attack, reload); crouch jumps when stuck, jumps a low obstacle, ducks under a high one, uses a door ahead (GLambda Players' checks); sent nowhere, closes on or backs off its enemy to its weapon's chase and avoid ranges (DrGBase's own fighting) |
 | `nextsoldier.route_walk` | `nextsoldier/route_walk.lua` | A route walked waypoint by waypoint, as the orders walk theirs: a waypoint passed within `RADIUS` when the next is in a clear line, one round a corner only within `ON`, and the farthest of the next `LOOKAHEAD` in a clear line made for |

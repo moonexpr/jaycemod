@@ -96,7 +96,7 @@ local function Classify(path)
 	if string.match(rel, "_index%.lua$") or string.match(rel, "_init%.lua$") then
 		return { kind = "refused", why = "a namespace's index runs with the loader; changelevel" }
 	end
-	if string.StartWith(rel, "foundation/") or string.StartWith(rel, "games/") or string.StartWith(rel, "nextsoldier/") then
+	if string.StartWith(rel, "foundation/") or string.StartWith(rel, "games/") or string.StartWith(rel, "nextsoldier/") or string.StartWith(rel, "wartactics/") then
 		return { kind = "module", name = string.gsub(string.gsub(rel, "%.lua$", ""), "/", ".") }
 	end
 	return { kind = "refused", why = "the gamemode's own files (ws/, init.lua) run again only with the whole gamemode; changelevel" }

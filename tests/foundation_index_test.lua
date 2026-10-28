@@ -14,6 +14,7 @@ local TREES = {
 	{ root = "foundation", file = "_index.lua", lazy = false },
 	{ root = "games", file = "_init.lua", lazy = true },
 	{ root = "nextsoldier", file = "_init.lua", lazy = true },
+	{ root = "wartactics", file = "_init.lua", lazy = true },
 }
 
 -- foundation's root folder publishes its modules as plain globals.
@@ -129,10 +130,11 @@ T.test("foundation's indexes publish each module of their folder at once", funct
 	T.eq(rawget(globals, "transaction"), package.loaded["foundation.transaction"], "a root module is a plain global")
 end)
 
-T.test("game's and nextsoldier's inits publish each module of their folder, loaded on first read", function()
+T.test("the lazy trees' inits publish each module of their folder, loaded on first read", function()
 	local globals = Globals()
 	RunIndexes(globals)
 	T.eq(#IndexFiles(TREES[3]), 1, "nextsoldier/ has its init")
+	T.eq(#IndexFiles(TREES[4]), 1, "wartactics/ has its init")
 	for _, tree in ipairs(TREES) do
 		if tree.lazy then
 			for _, path in ipairs(IndexFiles(tree)) do
@@ -148,14 +150,17 @@ T.test("game's and nextsoldier's inits publish each module of their folder, load
 	end
 end)
 
--- nextsoldier/'s module names are its globals' (nextsoldier.lanes), so
--- module(...) builds each module's table at its key in the namespace as it
--- loads, before the deferred load keeps it there: the same table.
-T.test("a nextsoldier module required by name is the one at its global", function()
-	for _, key in ipairs(ModulesIn("nextsoldier/")) do
-		local name = "nextsoldier." .. key
-		T.eq(T.require(name), _G.nextsoldier[key], name)
-		T.eq(rawget(_G.nextsoldier, key), package.loaded[name], name .. " is kept")
+-- nextsoldier/'s and wartactics/' module names are their globals'
+-- (nextsoldier.leap, wartactics.lanes), so module(...) builds each module's
+-- table at its key in the namespace as it loads, before the deferred load
+-- keeps it there: the same table.
+T.test("a nextsoldier or wartactics module required by name is the one at its global", function()
+	for _, root in ipairs({ "nextsoldier", "wartactics" }) do
+		for _, key in ipairs(ModulesIn(root .. "/")) do
+			local name = root .. "." .. key
+			T.eq(T.require(name), _G[root][key], name)
+			T.eq(rawget(_G[root], key), package.loaded[name], name .. " is kept")
+		end
 	end
 end)
 

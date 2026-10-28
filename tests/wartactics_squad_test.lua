@@ -1,7 +1,7 @@
--- nextsoldier.squad: who leads a fire team, and the claims soldiers
+-- wartactics.squad: who leads a fire team, and the claims soldiers
 -- put on spots.
 local T = dofile("tests/harness.lua")
-local Squad = nextsoldier.squad
+local Squad = wartactics.squad
 local Lease = world.lease
 
 local function Team(...)

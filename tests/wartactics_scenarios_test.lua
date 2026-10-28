@@ -1,10 +1,10 @@
--- nextsoldier.scenarios: scenarios any script registers, each with its
+-- wartactics.scenarios: scenarios any script registers, each with its
 -- activation criteria, its Scenario class and, optionally, the behaviour its
 -- scenario monitor runs. Registering is open while the game loads; at the
 -- game's beginning Compile() makes an immutable structure built for the
 -- choice, which is all a decision mid-game reads.
 local T = dofile("tests/harness.lua")
-local Scenarios = nextsoldier.scenarios
+local Scenarios = wartactics.scenarios
 local Monitor = nextsoldier.monitor
 
 local function Class(name) return { NAME = name } end
@@ -99,7 +99,7 @@ T.test("a spec missing a part is refused, blamed on the caller", function()
 	}) do
 		local ok, err = pcall(function() registry:Register(With(case[1], case[2])) end)
 		T.eq(ok, false, case[1] .. " refused")
-		T.eq(tostring(err):find("nextsoldier_scenarios_test.lua", 1, true) ~= nil, true, "blamed on the caller: " .. tostring(err))
+		T.eq(tostring(err):find("wartactics_scenarios_test.lua", 1, true) ~= nil, true, "blamed on the caller: " .. tostring(err))
 	end
 end)
 

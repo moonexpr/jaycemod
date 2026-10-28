@@ -23,7 +23,7 @@ local Record = nextsoldier.route_record
 local NavSearch = wetsands.navsearch
 local Pathfinder = graph.pathfinder
 local HL2 = WS.require("foundation.wetsands.path.hl2")
-local Lanes = nextsoldier.lanes
+local Lanes = wartactics.lanes
 
 local DIR = "ws_routes"
 

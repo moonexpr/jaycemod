@@ -70,5 +70,7 @@ Index("games/system/sh_init.lua")
 Index("games/gameplay/sh_init.lua")
 Index("games/npc/sh_init.lua")
 
--- NextSoldier, its own subsystem beside foundation and games, on both.
+-- NextSoldier, the soldier itself, beside foundation and games, on both;
+-- then the war's tactics engine, on NextSoldier.
 Index("nextsoldier/sh_init.lua")
+Index("wartactics/sh_init.lua")

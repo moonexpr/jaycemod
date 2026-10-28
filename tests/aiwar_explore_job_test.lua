@@ -1,7 +1,7 @@
 -- Exploring is every scenario's job, so an admin can send soldiers
 -- exploring by hand (the slots panel's Job menu, ns_jobs_assign) on any
 -- map: every doctrine has it, and every scenario keeps the exploration
--- board (nextsoldier.explore) its explorers go by.
+-- board (wartactics.explore) its explorers go by.
 local T = dofile("tests/harness.lua")
 local FS = dofile("tests/fake_soldier.lua")
 local FP = dofile("tests/fake_points.lua")

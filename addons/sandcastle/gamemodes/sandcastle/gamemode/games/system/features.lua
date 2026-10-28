@@ -50,7 +50,7 @@ function ResourcesPath(name)
 end
 
 -- The folders, relative to the gamemode folder, whose files clients are sent.
-CLIENT_DIRS = { "foundation/", "games/", "nextsoldier/", "features/", "ws/", "vendor/" }
+CLIENT_DIRS = { "foundation/", "games/", "nextsoldier/", "wartactics/", "features/", "ws/", "vendor/" }
 
 local REALM_OF = {
 	[SERVER] = SERVER,

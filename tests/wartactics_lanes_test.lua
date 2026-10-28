@@ -1,7 +1,7 @@
--- nextsoldier.lanes: keeping routes different enough to be lanes,
+-- wartactics.lanes: keeping routes different enough to be lanes,
 -- handing them to squads, and walking them.
 local T = dofile("tests/harness.lua")
-local Lanes = nextsoldier.lanes
+local Lanes = wartactics.lanes
 local Path = wetsands.path
 
 local function P(x, y) return { x = x, y = y, z = 0 } end

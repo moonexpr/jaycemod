@@ -1,9 +1,9 @@
--- nextsoldier.bot_quota: how many bot players a server keeps, by
+-- wartactics.bot_quota: how many bot players a server keeps, by
 -- TF2's tf_bot_quota rules (CTFBotManager::MaintainBotQuota): a quota of
 -- bots, of players (fill) or of bots per human (match), one bot added or
 -- kicked at a time, never taking the last free slot.
 local T = dofile("tests/harness.lua")
-local Quota = nextsoldier.bot_quota
+local Quota = wartactics.bot_quota
 local Teams = gameplay.teams
 
 local SLOTS = 32

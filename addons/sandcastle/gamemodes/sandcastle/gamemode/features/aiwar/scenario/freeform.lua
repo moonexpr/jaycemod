@@ -1,7 +1,7 @@
 -- The freeform scenario (features.aiwar.scenario): the war on a map whose
 -- rounds mode is none the war knows (no rounds at all, or no standard
 -- objective). Nothing is fought over, so every squad explores
--- (nextsoldier.explore), in squads of SQUAD_SIZE: a squad follows the
+-- (wartactics.explore), in squads of SQUAD_SIZE: a squad follows the
 -- nearest living player of its team (field.players), and without one its
 -- leader explores as arena's do, walking its lane toward the enemy's base
 -- (Front; none where both teams start in the same place), then the
@@ -9,7 +9,7 @@
 -- once without gamerules (the controller's WaveLength).
 local ipairs = ipairs
 local AiWar = require("features.aiwar.model")
-local Explore = nextsoldier.explore
+local Explore = wartactics.explore
 local Orders = require("features.aiwar.orders")
 local Teams = gameplay.teams
 local Base = require("features.aiwar.scenario")

@@ -1,6 +1,6 @@
 -- Part of the AI war controller (sv.lua): bot players as soldiers. While
 -- the war runs, tf_bot_quota keeps bots on the server as TF2 keeps its own
--- (nextsoldier.bot_quota): each joins a team as a player is
+-- (wartactics.bot_quota): each joins a team as a player is
 -- auto-assigned, spawns in its team's respawn waves as every player does,
 -- and is enlisted as it spawns, under the same orders as the war's NPC
 -- soldiers. ns_soldiers_actor picks one or the other: bots kept by the
@@ -12,7 +12,7 @@
 -- nextsoldier.vision), and every tick its body
 -- (nextsoldier.player_body) presses its keys (StartCommand).
 local Controller, Map = ...
-local Quota = nextsoldier.bot_quota
+local Quota = wartactics.bot_quota
 local Vision = nextsoldier.vision
 local Teams = gameplay.teams
 local HL2Path = WS.require("foundation.wetsands.path.hl2")

@@ -4,11 +4,11 @@
 -- (field.capEnableAt, features.arena.round). The arena round is no
 -- sudden death for the soldiers (features.aiwar.model's PHASES.arena: no hunt,
 -- no sight of every enemy). Until the point opens every squad explores
--- (EXPLORE, nextsoldier.explore): it keeps together, its leader
+-- (EXPLORE, wartactics.explore): it keeps together, its leader
 -- walking its lane from the spawn to the point (Front; the enemy's base on
 -- a map without one), then making for the nearest waypoint the squad has
 -- not been near. A squad that sees the enemy (its fire team's contact,
--- nextsoldier.tactics) is engaged: it leaves its lane to fight, and
+-- wartactics.fireteam) is engaged: it leaves its lane to fight, and
 -- hunts where the enemy was, before it goes on to the objective. Once
 -- open, the point is a target to the team without it and guarded by its
 -- owner, as in King of the Hill, and the stances split, a share still

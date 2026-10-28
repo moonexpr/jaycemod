@@ -50,7 +50,7 @@ local function Leaders(aiwar)
 	for ent in pairs(aiwar.soldiers) do
 		local member = IsValid(ent) and aiwar.war:Member(ent)
 		if member and member.role == AiWar.EXPLORE and member.fireTeam
-			and nextsoldier.squad.Leader(member.fireTeam) == member then
+			and wartactics.squad.Leader(member.fireTeam) == member then
 			list[#list + 1] = ent
 		end
 	end

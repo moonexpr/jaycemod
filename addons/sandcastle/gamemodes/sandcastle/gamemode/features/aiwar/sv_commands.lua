@@ -1,11 +1,11 @@
 -- Part of the AI war controller (sv.lua): the ws_aiwar_* and ns_* console commands.
 local Controller, Map = ...
 local Orders = WS.require("features.aiwar.orders")
-local Tactics = nextsoldier.tactics
-local Squad = nextsoldier.squad
+local Tactics = wartactics.fireteam
+local Squad = wartactics.squad
 local Slots = WS.require("features.aiwar.slots")
-local Lanes = nextsoldier.lanes
-local Tuning = nextsoldier.tuning
+local Lanes = wartactics.lanes
+local Tuning = wartactics.tuning
 local Permissions = system.permissions
 local RED, BLUE = Map.RED, Map.BLUE
 local NEXTSOLDIER = Permissions.NEXTSOLDIER
@@ -117,7 +117,7 @@ WarCommand("ns_battlelines_print", function()
 	return Controller:LineReport()
 end, "Print each team's battle lines: its front, its posts' width and depth, and the squads in contact or falling back")
 
--- Tuning the tactics while they run (nextsoldier.tuning). A lanes
+-- Tuning the tactics while they run (wartactics.tuning). A lanes
 -- constant plans the lanes again. Values last until the map changes.
 local function Tuner()
 	Controller.tuner = Controller.tuner or Tuning.Tuner.New({

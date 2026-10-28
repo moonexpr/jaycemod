@@ -1,8 +1,8 @@
--- nextsoldier.posts: where defenders establish their line: posts near
+-- wartactics.posts: where defenders establish their line: posts near
 -- the checkpoint the attackers are heading for, that see it, ranked by
 -- range, elevation and cover, and spaced apart.
 local T = dofile("tests/harness.lua")
-local Posts = nextsoldier.posts
+local Posts = wartactics.posts
 
 local function P(x, y, z) return { x = x, y = y, z = z or 0 } end
 

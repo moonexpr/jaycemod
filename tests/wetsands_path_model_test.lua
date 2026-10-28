@@ -10,7 +10,7 @@ local Ground = T.require("foundation.wetsands.path.ground")
 local Scatter = T.require("foundation.wetsands.path.scatter")
 local TFBot = T.require("foundation.wetsands.path.tfbot")
 local HL2 = T.require("foundation.wetsands.path.hl2")
-local Lanes = nextsoldier.lanes
+local Lanes = wartactics.lanes
 
 local STEPS = 4000
 
