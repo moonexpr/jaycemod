@@ -32,6 +32,7 @@ end
 function GM:PlayerSpawn(ply, transition)
 	if not WS.TeamPlay() then
 		self.BaseClass.PlayerSpawn(self, ply, transition)
+		WS.ApplyMovement(ply)
 		return
 	end
 	-- CTFPlayer::StateEnterWELCOME: a player without a team is an observer,
@@ -40,6 +41,7 @@ function GM:PlayerSpawn(ply, transition)
 		WS.StartObserving(ply)
 	else
 		self.BaseClass.PlayerSpawn(self, ply, transition)
+		WS.ApplyMovement(ply)
 		if ply:Team() == WS.TEAM_SPECTATOR then WS.StartObserving(ply) end
 	end
 	-- another addon's team change is undone by ws/sv_teams.lua's hooks

@@ -31,9 +31,11 @@ LIMITS = { stepHeight = STEP_HEIGHT, jumpHeight = STEP_HEIGHT, deathDropHeight =
 -- above the yard, mvm_decoy's deeper), their DeathDropHeight; the soldier
 -- crouches and jumps (ws/sh_war_soldier.lua). Its hull does not catch on a
 -- low ceiling, so a crouch area only needs it to crouch; it jumps a ledge
--- lower than SOLDIER_JUMP_HEIGHT, an HL2 player's crouch jump.
+-- lower than SOLDIER_JUMP_HEIGHT, a TF2 player's crouch jump (the
+-- gamemode's movement, games.gameplay.movement; CTFBotLocomotion's
+-- GetMaxJumpHeight).
 SOLDIER_DROP_HEIGHT = 1000
-SOLDIER_JUMP_HEIGHT = 56
+SOLDIER_JUMP_HEIGHT = 72
 SOLDIER_LIMITS = {
 	stepHeight = STEP_HEIGHT,
 	jumpHeight = SOLDIER_JUMP_HEIGHT,

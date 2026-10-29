@@ -128,6 +128,7 @@ local GAMES = {
 	["gameplay/vote"] = "gameplay",
 	["gameplay/handicap"] = "gameplay",
 	["gameplay/capabilities"] = "gameplay",
+	["gameplay/movement"] = "gameplay",
 	["gameplay/loadout"] = "gameplay",
 	["gameplay/combat"] = "gameplay",
 	["gameplay/combat/weapon_mimic"] = "gameplay",

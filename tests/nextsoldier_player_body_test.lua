@@ -213,19 +213,4 @@ T.test("a hop its orders ask for is a jump toward its target", function()
 	T.near(cmd.moveYaw, 0, 1e-6, "toward the target")
 end)
 
--- How high a crouch jump reaches: the jump's apex, v^2 / 2g, and the legs
--- tucked in the air, which lifts the feet by the standing hull's height over
--- the crouching one's (gamemovement's FinishDuck in the air).
-T.test("a crouch jump reaches TF2's 72 units with TF2's physics", function()
-	-- tf_gamemovement.cpp's 289 at gravity 800, hulls 82 and 62 (CTFBotLocomotion::GetMaxJumpHeight)
-	T.near(Body.JumpReach(289, 800, 82, 62), 72, 0.5, "TF2")
-end)
-
-T.test("a crouch jump reaches higher on a lighter gravity, lower on a smaller jump", function()
-	local sandbox = Body.JumpReach(200, 600, 72, 36)
-	T.near(sandbox, 200 * 200 / 1200 + 36, 1e-9, "GMod's player")
-	T.eq(Body.JumpReach(200, 800, 72, 36) < sandbox, true, "heavier")
-	T.eq(Body.JumpReach(150, 600, 72, 36) < sandbox, true, "a smaller jump")
-end)
-
 T.finish()

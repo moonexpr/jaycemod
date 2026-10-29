@@ -10,6 +10,7 @@
 local Map, Soldier = ...
 local Vision = nextsoldier.vision
 local PlayerBody = nextsoldier.player_body
+local Movement = gameplay.movement
 local RouteWalk = nextsoldier.route_walk
 local Geometry = math.geometry
 local Teams = gameplay.teams
@@ -130,13 +131,13 @@ function BotSoldier:Navigator()
 end
 
 -- How high ply's crouch jump reaches, from its own jump power, gravity and
--- hulls (PlayerBody.JumpReach): GMod's player, about 69; TF2's, 72.
+-- hulls (Movement.JumpReach): TF2's body, 72; GMod's, about 69.
 local function JumpReachOf(ply)
 	local _, stand = ply:GetHull()
 	local _, duck = ply:GetHullDuck()
 	local scale = ply:GetGravity()
 	local gravity = GetConVarNumber("sv_gravity") * (scale ~= 0 and scale or 1)
-	return PlayerBody.JumpReach(ply:GetJumpPower(), gravity, stand.z, duck.z)
+	return Movement.JumpReach(ply:GetJumpPower(), gravity, stand.z, duck.z)
 end
 
 -- The price of a step from fromArea into area (Path:Compute's generator),

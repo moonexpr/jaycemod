@@ -20,7 +20,7 @@ it generated when the map has none, and waits while it is. The report (every err
 .devtools/artifacts/benches/<bench>/<time>.json and summed up on stdout.
 
     python3 .devtools/bin/ns_bench_run.py dev_watchtower_ns_locomotion [--kind follower|bot|both]
-        [--errand NAME] [--keep-running] [--regenerate-nav] [--instance N ...]
+        [--errand NAME] [--keep-running] [--reload] [--regenerate-nav] [--instance N ...]
 """
 from __future__ import annotations
 
@@ -332,13 +332,14 @@ async def find_bot(server: instances.GameServer) -> Optional[str]:
 
 
 async def bench(name: str, kinds: List[str], only: Optional[str], pool: instances.InstanceManager,
-                keep_running: bool, regenerate_nav: bool = False) -> dict:
+                keep_running: bool, regenerate_nav: bool = False, reload: bool = False) -> dict:
     errands = [e for e in BENCHES[name] if only is None or e.name == only]
     report = {"bench": name, "started": time.strftime("%Y-%m-%dT%H:%M:%S"), "errands": []}
     async with pool.lease(name, OWNER, keep_running=keep_running) as server:
         report["instance"] = server.instance.number
+        if reload or regenerate_nav:
+            await server.change_map(name)  # the gamemode's Lua loaded afresh
         if regenerate_nav:
-            await server.change_map(name)  # the gamemode's Lua loaded afresh, the generator's among it
             await server.lua("navmesh.Reset() return true")
         report["nav_areas"] = await ensure_nav(server)
         saved = await setup(server)
@@ -382,13 +383,14 @@ def main() -> int:
     parser.add_argument("--kind", choices=("follower", "bot", "both"), default="both")
     parser.add_argument("--errand", help="one errand's name, else every one")
     parser.add_argument("--keep-running", action="store_true", help="leave a server this run started running")
+    parser.add_argument("--reload", action="store_true", help="reload the map (and the gamemode's Lua) first")
     parser.add_argument("--regenerate-nav", action="store_true",
                         help="reload the map (and the gamemode's Lua), drop its mesh and generate a new one")
     parser.add_argument("--instance", type=int, nargs="+", default=[1], help="the instances the run may lease")
     args = parser.parse_args()
     kinds = ["follower", "bot"] if args.kind == "both" else [args.kind]
     pool = instances.InstanceManager.default([Instance(n) for n in args.instance])
-    report = asyncio.run(bench(args.bench, kinds, args.errand, pool, args.keep_running, args.regenerate_nav))
+    report = asyncio.run(bench(args.bench, kinds, args.errand, pool, args.keep_running, args.regenerate_nav, args.reload))
     folder = REPORTS / args.bench
     folder.mkdir(parents=True, exist_ok=True)
     path = folder / (time.strftime("%Y%m%d-%H%M%S") + ".json")

@@ -49,7 +49,10 @@ local FOLLOW_HOLD = 0.5
 local CLIMB_UP = 2
 -- A climb begins this near the ledge's foot.
 local CLIMB_REACH = 48
-local STEP_HEIGHT, JUMP_HEIGHT = 20, 58
+-- It steps and jumps as a TF2 player (games.gameplay.movement): a stair
+-- step, and as high as a crouch jump reaches (it does not tuck its legs).
+local Movement = gameplay.movement
+local STEP_HEIGHT, JUMP_HEIGHT = Movement.TF2.stepHeight, Movement.CrouchJump(Movement.TF2)
 -- How fast it gets up to speed and stops, and turns (degrees a second).
 local ACCELERATION, DECELERATION, MAX_YAW_RATE = 1000, 1000, 250
 
