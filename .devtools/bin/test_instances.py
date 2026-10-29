@@ -158,6 +158,16 @@ class LeaseTest(unittest.TestCase):
 
         self.assertEqual(run(bench()).owner, "t")
 
+    def test_a_restart_lease_starts_the_instance_afresh(self):
+        backend = FakeBackend({1: "m"})
+
+        async def bench():
+            async with manager(backend, self.folder).lease("m", "t", restart=True, keep_running=True):
+                pass
+
+        run(bench())
+        self.assertEqual(backend.log, ["stop 1", "start 1 m"], "stopped, then started: new binaries load")
+
     def test_the_lease_is_given_back_after_a_failure(self):
         backend = FakeBackend({1: "m"})
         pool = manager(backend, self.folder)

@@ -19,6 +19,9 @@ changes the map of a server itself:
   the map.
 - Given back, an instance the lease started is stopped (unless the bench
   asks to keep it running); one that was already running is left as it was.
+- A bench that needs the server's binaries loaded afresh (a native module
+  rebuilt) asks for restart=True: a running instance is stopped, then
+  started on the map, and is the lease's own.
 
 Benches run as asyncio tasks, any number at once: the manager's condition
 shares the instances out among the tasks of one process, and a lease file
@@ -268,7 +271,8 @@ class InstanceManager:
                 return instance
         return None
 
-    async def acquire(self, map_name: str, owner: str, timeout: float = DEFAULT_LEASE_TIMEOUT) -> Lease:
+    async def acquire(self, map_name: str, owner: str, timeout: float = DEFAULT_LEASE_TIMEOUT,
+                      restart: bool = False) -> Lease:
         changed = self._condition()
         deadline = time.monotonic() + timeout
         async with changed:
@@ -283,7 +287,11 @@ class InstanceManager:
                 with contextlib.suppress(asyncio.TimeoutError):
                     await asyncio.wait_for(changed.wait(), min(self.poll, remaining))
         try:
-            started = not await asyncio.to_thread(self.backend.alive, instance)
+            alive = await asyncio.to_thread(self.backend.alive, instance)
+            if alive and restart:
+                await asyncio.to_thread(self.backend.stop, instance)
+                alive = False
+            started = not alive
             if started:
                 await asyncio.to_thread(self.backend.start, instance, map_name)
             elif await asyncio.to_thread(self.backend.current_map, instance) != map_name:
@@ -309,8 +317,8 @@ class InstanceManager:
 
     @contextlib.asynccontextmanager
     async def lease(self, map_name: str, owner: str, timeout: float = DEFAULT_LEASE_TIMEOUT,
-                    keep_running: bool = False) -> AsyncIterator[GameServer]:
-        held = await self.acquire(map_name, owner, timeout)
+                    keep_running: bool = False, restart: bool = False) -> AsyncIterator[GameServer]:
+        held = await self.acquire(map_name, owner, timeout, restart)
         try:
             yield held.server
         finally:
@@ -320,8 +328,9 @@ class InstanceManager:
 # The command line: Lua on a leased server ------------------------------------------
 
 
-async def run_lua(pool: InstanceManager, map_name: str, code: str, timeout: float, reload: bool) -> Reply:
-    async with pool.lease(map_name, "instances.py lua", keep_running=True) as server:
+async def run_lua(pool: InstanceManager, map_name: str, code: str, timeout: float, reload: bool,
+                  restart: bool = False) -> Reply:
+    async with pool.lease(map_name, "instances.py lua", keep_running=True, restart=restart) as server:
         if reload:
             await server.change_map(map_name)
         return await server.lua(code, timeout)
@@ -335,12 +344,13 @@ def main() -> int:
     parser.add_argument("code", help="a Lua chunk; - reads it from stdin")
     parser.add_argument("--timeout", type=float, default=30)
     parser.add_argument("--reload", action="store_true", help="reload the map (and the gamemode's Lua) first")
+    parser.add_argument("--restart", action="store_true", help="restart the server first (its native modules load afresh)")
     parser.add_argument("--instance", type=int, nargs="+", default=[MAIN_INSTANCE])
     args = parser.parse_args()
     code = sys.stdin.read() if args.code == "-" else args.code
     pool = InstanceManager.default([Instance(n) for n in args.instance])
     try:
-        reply = asyncio.run(run_lua(pool, args.map, code, args.timeout, args.reload))
+        reply = asyncio.run(run_lua(pool, args.map, code, args.timeout, args.reload, args.restart))
     except LuaFailed as e:
         print(e, file=sys.stderr)
         return 1
