@@ -50,6 +50,7 @@ local Controller = {
 	footAreas = setmetatable({}, { __mode = "k" }), -- soldier -> the nav area id it last stood on, on the ground (NoteFooting)
 	-- hazards = nil, -- the map's wartactics.hazards, read from its save when first asked (Hazards)
 	-- hazardsSaved = nil, -- the map has a save of its hazards (Hazards, SaveHazards)
+	-- newlyDisabled = nil, -- the areas disabled since the last separation judgement, spared if they cut a team off (SpareKeystones)
 	-- separationCheck = nil, -- the transaction judging whether the disabled hazards cut a team off, on the slow lane (CheckSeparation)
 	-- separationAgain = nil, -- asked again while it was judging: judged once more when done
 	-- hazardsApplied = nil, -- the saved hazards were applied and the map judged, once its first field was made (HazardsThink)

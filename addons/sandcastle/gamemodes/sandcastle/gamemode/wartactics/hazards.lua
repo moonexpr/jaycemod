@@ -6,11 +6,13 @@
 -- is a spawn room's or blocked already). The hazards are kept across maps
 -- (Encode, Decode) until someone inspects the areas and clears them; and
 -- when closing them cuts a team's spawns off from the objective it fights
--- for (Separated), the caller ends the match.
+-- for (Separated), the area is a keystone, the only way through: the caller
+-- spares it (Spare), open again and never disabled after, so the map stays
+-- playable.
 --
 -- An entry: { id, count, causes (cause -> count), where ({ x, y, z }: the
 -- area's centre when it was first laid on it, to know it again on a mesh
--- made since), disabled }.
+-- made since), disabled, spared }.
 local error, ipairs, pairs, setmetatable, sort, tostring = error, ipairs, pairs, setmetatable, table.sort, tostring
 module(...)
 
@@ -40,8 +42,16 @@ function Hazards:Record(id, cause, where)
 	end
 	entry.count = entry.count + 1
 	entry.causes[cause] = (entry.causes[cause] or 0) + 1
-	if entry.disabled or entry.count < THRESHOLD then return false end
+	if entry.disabled or entry.spared or entry.count < THRESHOLD then return false end
 	entry.disabled = true
+	return true
+end
+
+-- A keystone: open again, and never disabled after. Whether it was laid on.
+function Hazards:Spare(id)
+	local entry = self.areas[id]
+	if not entry then return false end
+	entry.disabled, entry.spared = false, true
 	return true
 end
 
@@ -84,7 +94,7 @@ function Encode(hazards)
 	for i, entry in ipairs(hazards:Entries()) do
 		local causes = {}
 		for cause, count in pairs(entry.causes) do causes[cause] = count end
-		areas[i] = { id = entry.id, count = entry.count, causes = causes, where = entry.where, disabled = entry.disabled }
+		areas[i] = { id = entry.id, count = entry.count, causes = causes, where = entry.where, disabled = entry.disabled, spared = entry.spared }
 	end
 	return { version = VERSION, areas = areas }
 end
@@ -105,6 +115,7 @@ function Decode(data)
 			causes = causes,
 			where = { x = saved.where.x, y = saved.where.y, z = saved.where.z },
 			disabled = saved.disabled == true,
+			spared = saved.spared == true,
 		}
 	end
 	return hazards
