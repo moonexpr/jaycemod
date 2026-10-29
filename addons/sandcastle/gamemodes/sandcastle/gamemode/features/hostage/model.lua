@@ -19,6 +19,10 @@ HELD, FOLLOWING, RESCUED, KILLED = "held", "following", "rescued", "killed"
 -- Outcome: the rescuers won.
 RESCUED_WIN = "rescued"
 
+-- How near a rescuer must stand to a held hostage to take it (CS:S's use
+-- reach), in units.
+USE_RANGE = 80
+
 -- A rescued fraction of the total at which the rescuers win, once none is
 -- left unresolved.
 RESCUE_SHARE = 0.5

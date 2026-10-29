@@ -43,6 +43,7 @@ VARIANTS = {
 	control_points = "features.aiwar.scenario.control_points",
 	koth = "features.aiwar.scenario.koth",
 	arena = "features.aiwar.scenario.arena",
+	hostage = "features.aiwar.scenario.hostage",
 	ctf = "features.aiwar.scenario.ctf",
 	deathmatch = "features.aiwar.scenario.deathmatch",
 	mvm = "features.aiwar.scenario.mvm",
@@ -63,6 +64,7 @@ Scenarios.Shared:Register({ name = "arena", priority = MODE_PRIORITY, mode = "ar
 Scenarios.Shared:Register({ name = "ctf", priority = MODE_PRIORITY, mode = "ctf", scenario = VARIANTS.ctf })
 Scenarios.Shared:Register({ name = "deathmatch", priority = MODE_PRIORITY, mode = "deathmatch", scenario = VARIANTS.deathmatch })
 Scenarios.Shared:Register({ name = "mvm", priority = MODE_PRIORITY, mode = "mvm", scenario = VARIANTS.mvm })
+Scenarios.Shared:Register({ name = "hostage", priority = MODE_PRIORITY, mode = "hostage", scenario = VARIANTS.hostage })
 
 -- The registered scenarios, compiled against NextSoldier's compiled
 -- behaviours (each behaviour a scenario names must be among them): what the
@@ -102,7 +104,9 @@ end
 -- waypoints, the nav mesh's to explore (wartactics.explore); flags,
 -- both teams' (capture the flag); bomb, BLU's flag and the zone it is
 -- delivered to (Mann vs. Machine).
-POINTS, BASES, CLOCKS, WAYPOINTS, FLAGS, BOMB = "points", "bases", "clocks", "waypoints", "flags", "bomb"
+-- hostages, the hostages
+-- and the zone BLU leads them to (hostage rescue).
+POINTS, BASES, CLOCKS, WAYPOINTS, FLAGS, BOMB, HOSTAGES = "points", "bases", "clocks", "waypoints", "flags", "bomb", "hostages"
 PARTS = {
 	[POINTS] = function(field) return field.points ~= nil and #field.points > 0 end,
 	[BASES] = function(field) return BothTeams(field.bases) end,
@@ -111,6 +115,9 @@ PARTS = {
 	[FLAGS] = function(field) return BothTeams(field.flags) end,
 	[BOMB] = function(field)
 		return field.flags ~= nil and field.flags[Teams.BLUE] ~= nil and field.zones ~= nil and field.zones[Teams.BLUE] ~= nil
+	end,
+	[HOSTAGES] = function(field)
+		return field.hostages ~= nil and #field.hostages > 0 and field.zones ~= nil and field.zones[Teams.BLUE] ~= nil
 	end,
 }
 

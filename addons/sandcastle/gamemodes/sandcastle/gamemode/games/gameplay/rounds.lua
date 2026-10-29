@@ -38,6 +38,8 @@ WINREASON = {
 	CASHLIMIT = 10,
 	-- CTF's time limit: the team with more captures wins (features/flag)
 	MOST_CAPTURES = 11,
+	-- hostage rescue: BLU led the hostages out (features/hostage)
+	HOSTAGES_RESCUED = 12,
 }
 STALEMATE = {
 	JOIN_MID = 0,
