@@ -15,7 +15,7 @@
 
 use super::schedule;
 use super::util::boolean;
-use crate::lua::{api, push_str, raise_where, set_function, tostring, CFunction, GLOBALSINDEX, L, TNIL, TTABLE};
+use crate::lua::{api, push_str, raise_where, set_function, tostring, CFunction, GLOBALSINDEX, L, TFUNCTION, TNIL, TTABLE, TUSERDATA};
 use std::ffi::{c_int, CStr};
 
 const TX: &CStr = c"foundation.transaction.tx";
@@ -27,6 +27,7 @@ const DECLINED: &str = "declined";
 const FAILED: &str = "failed";
 const TIMED_OUT: &str = "timed out";
 const TIMED_OUT_DETAIL: &str = "The server did not answer in time.";
+const RAN_OUT_DETAIL: &str = "The transaction ran out of time.";
 const ID_BITS: f64 = 16.0;
 
 fn upvalue(i: c_int) -> c_int {
@@ -154,6 +155,8 @@ unsafe fn push_tx(l: L) {
             (c"Error", error_of),
             (c"OnSettle", on_settle),
             (c"Await", await_tx),
+            (c"Within", within),
+            (c"Remaining", remaining),
         ],
     );
     (api.setmetatable)(l, -2);
@@ -296,7 +299,19 @@ unsafe fn push_work(l: L) {
     (api.createtable)(l, 0, 1);
     (api.createtable)(l, 0, 0);
     (api.setfield)(l, -2, c"undos".as_ptr());
-    metatable(l, WORK, &[(c"Undo", undo)]);
+    metatable(
+        l,
+        WORK,
+        &[
+            (c"Undo", undo),
+            (c"Yield", work_yield),
+            (c"CheckYield", work_check_yield),
+            (c"Wait", work_wait),
+            (c"WaitFor", work_wait_for),
+            (c"Await", work_await),
+            (c"Remaining", work_remaining),
+        ],
+    );
     (api.setmetatable)(l, -2);
 }
 
@@ -308,6 +323,193 @@ unsafe extern "C-unwind" fn undo(l: L) -> c_int {
     (api.pushvalue)(l, 2);
     (api.rawseti)(l, -2, n + 1);
     0
+}
+
+/// Replaces the work at 1 with its scheduler; a transaction run at once
+/// has none, which is our bug.
+unsafe fn scheduler_for_work(l: L) {
+    let api = api();
+    (api.getfield)(l, 1, c"scheduler".as_ptr());
+    if (api.type_of)(l, -1) == TNIL {
+        raise_where(l, "this transaction runs at once: it has no scheduler to yield on".into());
+    }
+    (api.replace)(l, 1);
+}
+
+/// work:Yield(): the running task gives up its turn.
+unsafe extern "C-unwind" fn work_yield(l: L) -> c_int {
+    (api().settop)(l, 1);
+    scheduler_for_work(l);
+    schedule::yield_turn(l)
+}
+
+/// work:CheckYield(): yields once the scheduler's slice is spent.
+unsafe extern "C-unwind" fn work_check_yield(l: L) -> c_int {
+    (api().settop)(l, 1);
+    scheduler_for_work(l);
+    schedule::check_yield(l)
+}
+
+/// work:Wait(ready): parks until ready() holds.
+unsafe extern "C-unwind" fn work_wait(l: L) -> c_int {
+    (api().settop)(l, 2);
+    scheduler_for_work(l);
+    schedule::wait(l)
+}
+
+/// The condition of work:WaitFor: upvalue 1 the countdown; whether it has
+/// elapsed.
+unsafe extern "C-unwind" fn elapsed(l: L) -> c_int {
+    let api = api();
+    (api.pushvalue)(l, upvalue(1));
+    (api.getfield)(l, -1, c"IsElapsed".as_ptr());
+    (api.pushvalue)(l, -2);
+    (api.call)(l, 1, 1);
+    1
+}
+
+/// work:WaitFor(countdown): parks until the countdown has elapsed.
+unsafe extern "C-unwind" fn work_wait_for(l: L) -> c_int {
+    let api = api();
+    (api.settop)(l, 2);
+    (api.pushvalue)(l, 2);
+    (api.pushcclosure)(l, elapsed, 1);
+    scheduler_for_work(l);
+    // scheduler, countdown, condition: the countdown is not wanted
+    (api.remove)(l, 2);
+    schedule::wait(l)
+}
+
+/// work:Await(tx): parks until tx settles, then its value; its refusal or
+/// error ends this task.
+unsafe extern "C-unwind" fn work_await(l: L) -> c_int {
+    let api = api();
+    (api.settop)(l, 2);
+    scheduler_for_work(l);
+    if state_of(l, 2) != PENDING {
+        (api.remove)(l, 1);
+        return outcome(l);
+    }
+    schedule::park_on(l)
+}
+
+/// Pushes the seconds left on the countdown of the transaction at `tx`,
+/// math.huge with no deadline.
+unsafe fn push_remaining(l: L, tx: c_int) {
+    let api = api();
+    (api.getfield)(l, tx, c"countdown".as_ptr());
+    if (api.type_of)(l, -1) == TNIL {
+        (api.settop)(l, -2);
+        (api.pushnumber)(l, f64::INFINITY);
+        return;
+    }
+    (api.getfield)(l, -1, c"GetRemainingTime".as_ptr());
+    (api.pushvalue)(l, -2);
+    (api.call)(l, 1, 1);
+    (api.remove)(l, -2);
+}
+
+/// work:Remaining(): the seconds left to its transaction.
+unsafe extern "C-unwind" fn work_remaining(l: L) -> c_int {
+    let api = api();
+    (api.settop)(l, 1);
+    (api.getfield)(l, 1, c"tx".as_ptr());
+    if (api.type_of)(l, -1) == TNIL {
+        (api.pushnumber)(l, f64::INFINITY);
+        return 1;
+    }
+    push_remaining(l, (api.gettop)(l));
+    1
+}
+
+/// tx:Remaining(): the seconds left to it, math.huge with no deadline.
+unsafe extern "C-unwind" fn remaining(l: L) -> c_int {
+    (api().settop)(l, 1);
+    push_remaining(l, 1);
+    1
+}
+
+/// Whether the value at `index` is a started countdown, as a deadline is
+/// read: it says IsElapsed, GetRemainingTime and HasStarted, and has started.
+unsafe fn is_started_countdown(l: L, index: c_int) -> bool {
+    let api = api();
+    let kind = (api.type_of)(l, index);
+    if kind != TTABLE && kind != TUSERDATA {
+        return false;
+    }
+    for name in [c"IsElapsed", c"GetRemainingTime", c"HasStarted"] {
+        (api.getfield)(l, index, name.as_ptr());
+        let function = (api.type_of)(l, -1) == TFUNCTION;
+        (api.settop)(l, -2);
+        if !function {
+            return false;
+        }
+    }
+    (api.getfield)(l, index, c"HasStarted".as_ptr());
+    (api.pushvalue)(l, index);
+    (api.call)(l, 1, 1);
+    let started = (api.toboolean)(l, -1) != 0;
+    (api.settop)(l, -2);
+    started
+}
+
+/// A task the scheduler ended for want of time (upvalue 1 the transaction):
+/// the work undone, the transaction declined as timed out.
+unsafe extern "C-unwind" fn ran_out(l: L) -> c_int {
+    let api = api();
+    (api.settop)(l, 0);
+    (api.pushvalue)(l, upvalue(1));
+    let tx = (api.gettop)(l);
+    if state_of(l, tx) != PENDING {
+        return 0;
+    }
+    (api.getfield)(l, tx, c"work".as_ptr());
+    let work = (api.gettop)(l);
+    push_str(l, TIMED_OUT);
+    push_str(l, RAN_OUT_DETAIL);
+    push_refusal(l, work + 1, work + 2);
+    let refusal = (api.gettop)(l);
+    conclude(l, tx, work, false, refusal);
+    0
+}
+
+/// tx:Within(countdown) -> tx: a time to settle in (see the Lua twin).
+unsafe extern "C-unwind" fn within(l: L) -> c_int {
+    let api = api();
+    (api.settop)(l, 2);
+    let now = state_of(l, 1);
+    if now != PENDING {
+        raise_where(l, format!("a {now} transaction has no time left to limit"));
+    }
+    (api.getfield)(l, 1, c"task".as_ptr());
+    let task = (api.type_of)(l, -1) != TNIL;
+    (api.settop)(l, 2);
+    if !task {
+        raise_where(l, "only a spawned transaction has a task to limit".into());
+    }
+    (api.getfield)(l, 1, c"countdown".as_ptr());
+    let limited = (api.type_of)(l, -1) != TNIL;
+    (api.settop)(l, 2);
+    if limited {
+        raise_where(l, "a transaction has one deadline".into());
+    }
+    if !is_started_countdown(l, 2) {
+        raise_where(l, "a deadline is a started countdown (an unstarted one has elapsed)".into());
+    }
+    (api.pushvalue)(l, 2);
+    (api.setfield)(l, 1, c"countdown".as_ptr());
+    // scheduler:Limit(task, countdown, ran_out)
+    (api.getfield)(l, 1, c"scheduler".as_ptr());
+    let scheduler = (api.gettop)(l);
+    (api.getfield)(l, scheduler, c"Limit".as_ptr());
+    (api.pushvalue)(l, scheduler);
+    (api.getfield)(l, 1, c"task".as_ptr());
+    (api.pushvalue)(l, 2);
+    (api.pushvalue)(l, 1);
+    (api.pushcclosure)(l, ran_out, 1);
+    (api.call)(l, 4, 0);
+    (api.settop)(l, 1);
+    1
 }
 
 /// Runs the work at `work`'s undos newest first; pushes the first error
@@ -359,6 +561,8 @@ unsafe extern "C-unwind" fn run(l: L) -> c_int {
     let tx = (api.gettop)(l);
     push_work(l);
     let work = (api.gettop)(l);
+    (api.pushvalue)(l, tx);
+    (api.setfield)(l, work, c"tx".as_ptr());
     (api.pushvalue)(l, 1);
     (api.pushvalue)(l, work);
     for i in 2..=n {
@@ -401,7 +605,20 @@ unsafe extern "C-unwind" fn spawn(l: L) -> c_int {
     // the handler right after the task's values: tx moves up to n + 3
     (api.insert)(l, n + 2);
     schedule::spawn_finishing(l, n + 1);
-    (api.pushvalue)(l, n + 3);
+    // the task (spawn_finishing left it on top), the scheduler and the work,
+    // kept on the transaction and the other way, as the Lua twin's
+    let (tx, work, thread) = (n + 3, n + 4, (api.gettop)(l));
+    (api.pushvalue)(l, thread);
+    (api.setfield)(l, tx, c"task".as_ptr());
+    (api.pushvalue)(l, 1);
+    (api.setfield)(l, tx, c"scheduler".as_ptr());
+    (api.pushvalue)(l, work);
+    (api.setfield)(l, tx, c"work".as_ptr());
+    (api.pushvalue)(l, tx);
+    (api.setfield)(l, work, c"tx".as_ptr());
+    (api.pushvalue)(l, 1);
+    (api.setfield)(l, work, c"scheduler".as_ptr());
+    (api.pushvalue)(l, tx);
     1
 }
 
@@ -683,6 +900,7 @@ pub unsafe fn push_module(l: L) {
         (c"FAILED", FAILED),
         (c"TIMED_OUT", TIMED_OUT),
         (c"TIMED_OUT_DETAIL", TIMED_OUT_DETAIL),
+        (c"RAN_OUT_DETAIL", RAN_OUT_DETAIL),
     ] {
         push_str(l, v);
         (api.setfield)(l, -2, name.as_ptr());

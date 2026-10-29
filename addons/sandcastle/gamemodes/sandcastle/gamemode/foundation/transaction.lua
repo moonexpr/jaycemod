@@ -29,6 +29,26 @@
 --     declines, anything else fails
 --   Spawn(scheduler, fn, ...) -> tx: the same as a task of a
 --     foundation.list.schedule, so it may await other transactions
+--
+-- A spawned transaction is a coroutine object: its task is the coroutine,
+-- and the systems that need not run every tick, or rapidly (admin
+-- operations, the game rules, the tactics engine, anti-cheat), run as
+-- transactions that yield, so combat, pathfinding and the player's feedback
+-- keep the tick to run synchronously.
+--   tx:Within(countdown) -> tx: gives it a time to settle in, a started
+--     timer.countdown (anything with IsElapsed, GetRemainingTime and
+--     HasStarted); one unfinished when it elapses is ended at its next turn
+--     on the scheduler, its steps undone, and declined as TIMED_OUT. Only a
+--     pending spawned transaction has a task to limit, and one deadline
+--   tx:Remaining() the seconds left to it, math.huge with no deadline
+--   work:Yield(), work:CheckYield() (yields once the scheduler's slice is
+--     spent; whether it did), work:Wait(ready) (parks until ready() holds),
+--     work:WaitFor(countdown) (parks until it has elapsed: a slow system's
+--     sleep between passes), work:Await(tx) (parks until tx settles, then
+--     its value, or its refusal or error raised: this one is ended), and
+--     work:Remaining() give the task up to the scheduler, and are the
+--     work's own: a transaction run at once has no scheduler, so yielding
+--     is our bug. A deadline is read at the task's turns, never mid-step
 --   work:Undo(fn) registers a compensation for a step just done: a
 --     transaction that declines or fails runs them newest first (one that
 --     breaks fails the transaction, naming both errors)
@@ -44,7 +64,7 @@
 -- scheduler is handed to Await and Spawn, never required here.
 -- This is the Lua twin, which clients run; a server with native/foundation
 -- has the native one in its place, which keeps this contract.
-local error, ipairs, pairs, pcall, setmetatable, tostring, type = error, ipairs, pairs, pcall, setmetatable, tostring, type
+local error, huge, ipairs, pairs, pcall, setmetatable, tostring, type = error, math.huge, ipairs, pairs, pcall, setmetatable, tostring, type
 module(...)
 
 PENDING, COMMITTED, DECLINED, FAILED = "pending", "committed", "declined", "failed"
@@ -52,6 +72,8 @@ PENDING, COMMITTED, DECLINED, FAILED = "pending", "committed", "declined", "fail
 -- A request whose reply never came.
 TIMED_OUT = "timed out"
 TIMED_OUT_DETAIL = "The server did not answer in time."
+-- A spawned transaction that did not settle within its countdown.
+RAN_OUT_DETAIL = "The transaction ran out of time."
 
 -- Wire ids are whole numbers below 2^ID_BITS, reused once they wrap.
 ID_BITS = 16
@@ -124,6 +146,13 @@ function Tx:Value() return self.value end
 function Tx:Refusal() return self.refusal end
 function Tx:Error() return self.err end
 
+-- Whether the value is a started countdown, as a deadline is read.
+local function IsStartedCountdown(countdown)
+	return (type(countdown) == "table" or type(countdown) == "userdata")
+		and type(countdown.IsElapsed) == "function" and type(countdown.GetRemainingTime) == "function"
+		and type(countdown.HasStarted) == "function" and countdown:HasStarted()
+end
+
 function Tx:OnSettle(fn)
 	if self.state == PENDING then
 		self.callbacks[#self.callbacks + 1] = fn
@@ -152,6 +181,39 @@ function Work:Undo(fn)
 	self.undos[#self.undos + 1] = fn
 end
 
+-- The scheduler a spawned transaction's work yields on.
+local function Scheduler(work)
+	if not work.scheduler then error("this transaction runs at once: it has no scheduler to yield on", 3) end
+	return work.scheduler
+end
+
+function Work:Yield()
+	Scheduler(self):Yield()
+end
+
+function Work:CheckYield()
+	return Scheduler(self):CheckYield()
+end
+
+function Work:Wait(ready)
+	Scheduler(self):Wait(ready)
+end
+
+function Work:WaitFor(countdown)
+	Scheduler(self):Wait(function() return countdown:IsElapsed() end)
+end
+
+function Work:Await(tx)
+	local scheduler = Scheduler(self)
+	if tx.state == PENDING then scheduler:Wait(function() return tx.state ~= PENDING end) end
+	return Outcome(tx)
+end
+
+function Work:Remaining()
+	local countdown = self.tx and self.tx.countdown
+	return countdown and countdown:GetRemainingTime() or huge
+end
+
 -- Runs the undos newest first; the first that breaks, or nil.
 local function Rollback(work)
 	local undos = work.undos
@@ -162,10 +224,9 @@ local function Rollback(work)
 	return nil
 end
 
--- Settles tx by fn(work, ...), called the way `call` calls it.
-local function Execute(tx, call, fn, ...)
-	local work = setmetatable({ undos = {} }, Work)
-	local ok, result = call(fn, work, ...)
+-- Settles tx by what its work did: ok with the value at result, else the
+-- error (or refusal) result after the undos, newest first.
+local function Conclude(tx, work, ok, result)
 	if ok then
 		tx:Commit(result)
 		return
@@ -180,16 +241,50 @@ local function Execute(tx, call, fn, ...)
 	end
 end
 
+-- Settles tx by fn(work, ...), called the way `call` calls it.
+local function Execute(tx, work, call, fn, ...)
+	Conclude(tx, work, call(fn, work, ...))
+end
+
+local function NewWork(tx, scheduler)
+	return setmetatable({ undos = {}, tx = tx, scheduler = scheduler }, Work)
+end
+
 function Run(fn, ...)
 	local tx = New()
-	Execute(tx, pcall, fn, ...)
+	Execute(tx, NewWork(tx), pcall, fn, ...)
 	return tx
 end
 
 function Spawn(scheduler, fn, ...)
 	local tx = New()
-	scheduler:Spawn(Execute, tx, pcall, fn, ...)
+	local work = NewWork(tx, scheduler)
+	tx.scheduler, tx.work = scheduler, work
+	tx.task = scheduler:Spawn(Execute, tx, work, pcall, fn, ...)
 	return tx
+end
+
+-- A task the scheduler ended for want of time: the work undone, the
+-- transaction declined.
+local function RanOut(tx)
+	if tx.state == PENDING then Conclude(tx, tx.work, false, NewRefusal(TIMED_OUT, RAN_OUT_DETAIL)) end
+end
+
+function Tx:Within(countdown)
+	if self.state ~= PENDING then error("a " .. self.state .. " transaction has no time left to limit", 2) end
+	if not self.task then error("only a spawned transaction has a task to limit", 2) end
+	if self.countdown then error("a transaction has one deadline", 2) end
+	if not IsStartedCountdown(countdown) then
+		error("a deadline is a started countdown (an unstarted one has elapsed)", 2)
+	end
+	self.countdown = countdown
+	self.scheduler:Limit(self.task, countdown, function() RanOut(self) end)
+	return self
+end
+
+function Tx:Remaining()
+	local countdown = self.countdown
+	return countdown and countdown:GetRemainingTime() or huge
 end
 
 function All(list)

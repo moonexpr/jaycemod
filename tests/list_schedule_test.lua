@@ -147,4 +147,87 @@ T.test("a run with nothing to do returns at once", function()
 	T.eq(scheduler:Count(), 0, "nothing")
 end)
 
+-- A countdown (timer.countdown's contract, as far as the scheduler reads it:
+-- IsElapsed) the test moves by hand.
+local function Countdown(elapsed)
+	local c = { elapsed = elapsed == true }
+	function c:IsElapsed() return self.elapsed end
+	return c
+end
+
+-- Limit(task, countdown, onExpire): a task not finished when its countdown
+-- has elapsed is ended at its next turn, not resumed, and onExpire(task) is
+-- told once.
+T.test("a parked task whose countdown elapses is ended and its handler told once", function()
+	local scheduler = Scheduler.New(Clock(0))
+	local countdown, expired, ran = Countdown(), {}, 0
+	local task = scheduler:Spawn(function()
+		ran = ran + 1
+		scheduler:Wait(function() return false end)
+		ran = ran + 100
+	end)
+	scheduler:Limit(task, countdown, function(t) expired[#expired + 1] = t end)
+	scheduler:Run(1)
+	T.eq(scheduler:Count(), 1, "parked, within its time")
+	T.eq(#expired, 0, "not told yet")
+	countdown.elapsed = true
+	scheduler:Run(1)
+	T.eq(scheduler:Count(), 0, "ended")
+	T.eq(expired[1], task, "told, of the task")
+	T.eq(ran, 1, "never resumed past its wait")
+	scheduler:Run(1)
+	T.eq(#expired, 1, "told once")
+end)
+
+T.test("a yielding task whose countdown elapses is not resumed again", function()
+	local scheduler = Scheduler.New(Clock(1)) -- each run spends its slice on one turn
+	local countdown, steps, told = Countdown(), 0, false
+	local task = scheduler:Spawn(function()
+		while true do
+			steps = steps + 1
+			scheduler:Yield()
+		end
+	end)
+	scheduler:Limit(task, countdown, function() told = true end)
+	scheduler:Run(1)
+	scheduler:Run(1)
+	T.eq(steps, 2, "two turns")
+	countdown.elapsed = true
+	scheduler:Run(1)
+	T.eq(steps, 2, "no third")
+	T.eq(told, true, "told")
+	T.eq(scheduler:Count(), 0, "gone")
+end)
+
+T.test("a task not yet started whose countdown has elapsed never runs", function()
+	local scheduler = Scheduler.New(Clock(0))
+	local ran, told = false, false
+	local task = scheduler:Spawn(function() ran = true end)
+	scheduler:Limit(task, Countdown(true), function() told = true end)
+	scheduler:Run(1)
+	T.eq(ran, false, "not run")
+	T.eq(told, true, "told")
+end)
+
+T.test("a task that finishes in its time is never told, and the others go on", function()
+	local scheduler = Scheduler.New(Clock(0))
+	local countdown, told, other = Countdown(), false, 0
+	local task = scheduler:Spawn(function() end)
+	scheduler:Limit(task, countdown, function() told = true end)
+	scheduler:Spawn(function() other = other + 1 end)
+	scheduler:Run(1)
+	countdown.elapsed = true
+	scheduler:Run(1)
+	T.eq(told, false, "finished: not told")
+	T.eq(other, 1, "the other ran")
+end)
+
+T.test("a limit is refused for a countdown that cannot say, or a second one (our bug)", function()
+	local scheduler = Scheduler.New(Clock(0))
+	local task = scheduler:Spawn(function() end)
+	T.eq(pcall(scheduler.Limit, scheduler, task, {}, function() end), false, "no IsElapsed")
+	scheduler:Limit(task, Countdown(), function() end)
+	T.eq(pcall(scheduler.Limit, scheduler, task, Countdown(), function() end), false, "a second")
+end)
+
 T.finish()

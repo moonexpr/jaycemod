@@ -13,13 +13,22 @@
 --   Yield()        in a task: gives up its turn now; false outside a task
 --   Wait(ready)    in a task: parks it until ready() is true; a run passes
 --                  parked tasks by, and ends once only parked ones are left
+--   Limit(task, countdown, onExpire)
+--                  gives a task a time to finish in: countdown:IsElapsed()
+--                  (a timer.countdown, any port with it) is asked at the
+--                  task's every turn, and a task not finished once it has
+--                  elapsed is ended there, not resumed, and onExpire(task)
+--                  told once (it unwinds the task's work: a transaction
+--                  declines). A running task is never cut short: the
+--                  countdown is read when its turn comes; a task parked or
+--                  yielding is ended at once
 --   Count()        the tasks not yet finished
 --
 -- TODO: accept a greedy sorter, a function the caller hands to New that
 -- picks which ready task runs next, in place of first in first out.
 -- This is the Lua twin, which clients run; a server with native/foundation
 -- has the native one in its place, which keeps this contract.
-local coroutine, error, select, setmetatable, tostring, unpack = coroutine, error, select, setmetatable, tostring, unpack
+local coroutine, error, select, setmetatable, tostring, type, unpack = coroutine, error, select, setmetatable, tostring, type, unpack
 local traceback = debug.traceback
 local Queue = list.queue
 module(...)
@@ -86,7 +95,12 @@ function Scheduler:Run(seconds)
 	local parked = 0 -- parked tasks passed by since one last ran
 	repeat
 		local task = tasks:PopFront()
-		if task.waiting and not task.waiting() then
+		if task.limit and task.limit:IsElapsed() then
+			parked = 0
+			local onExpire = task.onExpire
+			task.limit, task.onExpire = nil, nil
+			if onExpire then onExpire(task) end
+		elseif task.waiting and not task.waiting() then
 			tasks:PushBack(task)
 			parked = parked + 1
 		else
@@ -99,6 +113,14 @@ function Scheduler:Run(seconds)
 			if coroutine.status(task.co) ~= "dead" then tasks:PushBack(task) end
 		end
 	until tasks:Size() == 0 or parked >= tasks:Size() or self.clock:Now() >= self.deadline
+end
+
+function Scheduler:Limit(task, countdown, onExpire)
+	if task.limit then error("a task has one countdown", 2) end
+	if type(countdown) ~= "table" and type(countdown) ~= "userdata" or type(countdown.IsElapsed) ~= "function" then
+		error("a task's countdown must say whether it has elapsed (IsElapsed)", 2)
+	end
+	task.limit, task.onExpire = countdown, onExpire
 end
 
 function Scheduler:Count()
