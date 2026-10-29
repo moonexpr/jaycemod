@@ -42,6 +42,8 @@ function Controller:Recover(ent, entry, reason, pos)
 	local soldier, now = entry.soldier, CurTime()
 	local relapse = soldier.recoveredAt and now - soldier.recoveredAt < RELAPSE_TIME
 	if relapse or not pos then
+		-- sent back to spawn: forced to respawn by where it stood (sv_hazards.lua)
+		self:NoteHazard(ent, wartactics.hazards.RECOVERED)
 		pos = self:SpawnSpot(soldier.team)
 		reason = reason .. (relapse and ", again: back to spawn" or ": back to spawn")
 	end

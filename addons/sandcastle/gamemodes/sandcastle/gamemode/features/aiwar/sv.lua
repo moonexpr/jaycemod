@@ -23,6 +23,7 @@ local Controller = {
 	nextRelations = 0,
 	slots = nil, -- the features.aiwar.slots Plan, read from slotStore when first needed
 	slotStore = nil, -- where the slot list is kept between maps (SlotFile, below)
+	hazardStore = nil, -- where the map's nav hazards are kept between loads (HazardFile, below)
 	paused = false, -- every soldier stands still (ns_soldiers_paused, SetPaused)
 	slotViewers = {}, -- admins whose AI War panel shows the slots -> true
 	slotSignature = nil, -- what the viewers were last sent, as text
@@ -46,6 +47,10 @@ local Controller = {
 	-- scenarios = nil, -- the registered scenarios compiled when the war starts and as a game's players are ready (CompileRegistries), what each think decides from
 	-- behaviors = nil, -- the registered behaviours (nextsoldier.behaviors) compiled with them, what each soldier enlisted runs
 	shutDoorStamp = 0, -- changes when a door is noted shut to a team, or one noted is gone (ShutDoorAreas)
+	footAreas = setmetatable({}, { __mode = "k" }), -- soldier -> the nav area id it last stood on, on the ground (NoteFooting)
+	-- hazards = nil, -- the map's wartactics.hazards, read from its save when first asked (Hazards)
+	-- hazardsSaved = nil, -- the map has a save of its hazards (Hazards, SaveHazards)
+	-- hazardsApplied = nil, -- the saved hazards were applied and the map judged, once its first field was made (HazardsThink)
 	shutDoorAreas = {}, -- team -> { doors, stamp, areas = nav area id -> true }: the areas of the doors noted shut to it
 	-- postCache = nil, -- the posts found, by kind, team and key (CachedPosts)
 	-- baseCache = nil, -- each team's spawns on the ground and its base, kept until the next round (Bases)
@@ -81,6 +86,21 @@ end
 
 Controller.slotStore = SlotFile
 
+-- The map's nav hazards (sv_hazards.lua), kept in data/ between loads.
+local HAZARDS_FOLDER = "sandcastle/nav_hazards/"
+
+local HazardFile = {}
+
+function HazardFile:Read()
+	return WS.MapData.Read(HAZARDS_FOLDER)
+end
+
+function HazardFile:Write(data)
+	WS.MapData.Write(HAZARDS_FOLDER, data)
+end
+
+Controller.hazardStore = HazardFile
+
 local Part = WS.FeatureParts(getfenv(1), "aiwar")
 local Map = Part("sv_map", Controller)
 local Soldier, ARRIVED = Part("sv_soldier", Map)
@@ -100,6 +120,7 @@ Part("sv_slots", Controller, Map)
 Part("sv_war", Controller, Map)
 Part("sv_report", Controller, Map, ARRIVED)
 Part("sv_commands", Controller, Map)
+Part("sv_hazards", Controller, Map)
 
 -- A cleanup (every full round reset) removes the soldiers and remakes the
 -- map's triggers: the doors are opened again and the first wave comes at once.

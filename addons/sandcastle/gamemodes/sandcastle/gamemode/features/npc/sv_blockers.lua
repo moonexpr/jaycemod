@@ -155,6 +155,11 @@ function Controller:RefreshBlockers(now)
 			for _, area in ipairs(self:BrushAreas(brush)) do Block(blocked, area, Doors.ANY) end
 		end
 	end
+	-- areas the AI war disabled (wartactics.hazards): closed to every team
+	for id in pairs(self.navDisabled) do
+		local area = navmesh.GetNavAreaByID(id)
+		if IsValid(area) then Block(blocked, area, Doors.ANY) end
+	end
 	for _, door in ipairs(ents.FindByClass("func_door*")) do
 		local mins, maxs = door:WorldSpaceAABB()
 		local size = maxs - mins
@@ -308,6 +313,25 @@ function Controller:ClosedFor(team, ignoreBlockers)
 		self.closedFor[team] = closed
 	end
 	return closed
+end
+
+-- The areas closed to every team for good, nav area id -> true (the AI
+-- war's disabled hazards): blockers like doors and brushes, taken at once,
+-- so routes planned before are planned again.
+function Controller:SetDisabledAreas(set)
+	self.navDisabled = set
+	self.nextBlockerRefresh = 0
+	self:RefreshBlockers(CurTime())
+end
+
+-- Whether the area is in a spawn room or closed already (a door, a brush or
+-- the engine's blocked flag), to either team: not one to disable.
+function Controller:SpawnOrBlocked(area)
+	if self:SpawnRooms()[area:GetID()] then return true end
+	for _, team in ipairs({ WS.TEAM_RED, WS.TEAM_BLUE }) do
+		if self:EngineBlocks(area, team) or (self:NavBlocks(area, team) and not self.navDisabled[area:GetID()]) then return true end
+	end
+	return false
 end
 
 -- Whether a door or brush closes the area to the team.

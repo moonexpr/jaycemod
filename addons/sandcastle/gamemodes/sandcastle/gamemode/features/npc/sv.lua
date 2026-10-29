@@ -35,6 +35,7 @@ local Controller = {
 	-- navUncrossable = nil, -- nav area id -> id -> true: the links WS.NavLinkCrossable refuses, gathered with navMesh
 	-- navMeshBuilding = nil, -- the generation a snapshot is being built for, set by sv_routes
 	navBlocked = {}, -- nav area id -> the teams its doors and brushes block (nextsoldier.doors)
+	navDisabled = {}, -- nav area id -> true: closed to every team by the AI war's hazards (SetDisabledAreas)
 	nextBlockerRefresh = 0,
 	closedFor = {}, -- team -> nav area id -> true: closed to it by the blockers or the engine, until the blockers are taken again
 	engineKnown = {}, -- team -> { mesh, closed, rooms, also, stamp, known }: what its engine path computations know (EngineCost's Told), made again when one changes

@@ -238,7 +238,7 @@ never features or ws; a published foundation module never requires games;
 | Namespace | Modules |
 |---|---|
 | `system` | The gamemode core: `events` (the game event registry, `WS.Events`), `features` (per-map feature loading), `gamemode`, `permissions`, `play_mode`, `spawn_manager`, `idle` |
-| `gameplay` | `rounds` (+ `state`, `timer`, `limits`), `teams`, `players` (+ `attributes`, `condition_effects`), `spawn`, `spectate`, `respawn_modifiers`, `arrivals`, `loadout`, `economy`, `kill_credit`, `kill_icons`, `vote`, `reports`, `player_analytics`, `capture` (+ `area`, `master`, `point_timer`), `combat` (+ 9 parts), `projectile` (+ 4 parts), `tactics` |
+| `gameplay` | `rounds` (+ `state`, `timer`, `limits`), `teams`, `players` (+ `attributes`, `condition_effects`), `spawn`, `spectate`, `respawn_modifiers`, `arrivals`, `loadout`, `economy`, `kill_credit`, `kill_icons`, `vote`, `reports`, `player_analytics`, `capture` (+ `area`, `master`, `point_timer`), `combat` (+ 9 parts), `projectile` (+ 4 parts), `tactics`, `movement` (TF2's player movement, the standard), `standing` (which team is nearer to completing its objective), `handicap`, `capabilities` |
 | `npc` | `nextbot` (the NextBot NPC system), `actor`, `combatant`, `targeting` |
 
 | Module | API |
@@ -299,7 +299,7 @@ features or ws. Tests are `tests/wartactics_<module>_test.lua`.
 |---|---|
 | Fire teams and squads | `fireteam` (a fire team's doctrine in a fight, the engine `gameplay.tactics` names), `squad` |
 | The field | `lanes`, `posts` (where a line is established), `zone` (the ground behind the setup gates), `explore`, `hunt` (post-round carnage) |
-| The war | `scenarios`, `bot_quota` (tf_bot_quota's rules, `docs/aiwar-bots.md`), `tuning` (live tuning of fireteam, lanes and squad) |
+| The war | `scenarios`, `bot_quota` (tf_bot_quota's rules, `docs/aiwar-bots.md`), `tuning` (live tuning of fireteam, lanes and squad), `hazards` (nav areas that keep forcing soldiers to respawn, disabled and saved until inspected) |
 
 | Module | API |
 |---|---|
