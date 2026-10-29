@@ -28,6 +28,9 @@ function ENT:Initialize()
 	local Models = WS.require("features.hostage.models")
 	self:SetModel(Models.Pick(self:EntIndex()))
 	self:SetCollisionBounds(HULL_MINS, HULL_MAXS)
+	-- players walk through it (ws_nextbot's PLAYERS_PASS_THROUGH group): a
+	-- rescuer turning back for it in a narrow hall is not walled in by it
+	self:SetCollisionGroup(COLLISION_GROUP_PASSABLE_DOOR)
 	self:SetMaxHealth(UNHURT_HEALTH)
 	self:SetHealth(UNHURT_HEALTH)
 	self.loco:SetDesiredSpeed(SPEED)
