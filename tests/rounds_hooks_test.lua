@@ -68,6 +68,8 @@ local function Load()
 		TEAM_RED = Teams.RED,
 		TEAM_BLUE = Teams.BLUE,
 		State = function() return STATE.RND_RUNNING end,
+		-- the gamerules' fact watch is a transaction on the slow lane
+		SlowTransactions = list.schedule.New({ Now = function() return 0 end }),
 	}, { __index = function() return Inert end })
 	local env = setmetatable({
 		WS = ws,

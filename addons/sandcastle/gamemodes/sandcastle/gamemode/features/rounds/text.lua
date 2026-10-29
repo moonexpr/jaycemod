@@ -39,7 +39,7 @@ local REASON_TEXT = {
 	[WINREASON.WINDIFFLIMIT] = "%s was ahead by the required difference to win",
 	[WINREASON.FRAGLIMIT] = "%s reached the frag limit",
 	[WINREASON.CASHLIMIT] = "%s reached the cash limit",
-	[WINREASON.EXPEDIENT] = "%s was nearer to completing the objective when the match was closed",
+	[WINREASON.ENDED_EARLY] = "The match ended early",
 }
 -- Winreason_FlagCaptureLimit(_One): a CTF win, at the capture limit or by
 -- the most captures at the time limit, counts them.
@@ -95,7 +95,7 @@ local STALEMATE_REASON = {
 	[STALEMATE.ADMIN] = "The Administrator has called sudden death. No more spawning.",
 	[STALEMATE.BOTH_DEAD] = "Both teams fell at once. Again: no more spawning, the last team standing wins.",
 	[STALEMATE.LIMIT_TIED] = "Both teams reached the limit together. No more spawning, the last team standing wins.",
-	[STALEMATE.EXPEDIENT] = "The match is being closed on a tie. No more spawning, the last team standing wins the match.",
+	[STALEMATE.ENDED_EARLY] = "The match is ending early. No more spawning, the last team standing wins.",
 }
 
 function StalematePanel(reason)

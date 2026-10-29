@@ -61,6 +61,8 @@ local function Load(overrides, wsFields)
 		TEAM_SPECTATOR = Teams.SPECTATOR,
 		TEAM_RED = Teams.RED,
 		TEAM_BLUE = Teams.BLUE,
+		-- the gamerules' fact watch is a transaction on the slow lane
+		SlowTransactions = list.schedule.New({ Now = function() return 0 end }),
 	}, { __index = function() return Inert end })
 	for name, value in pairs(wsFields or {}) do ws[name] = value end
 	local env = setmetatable({

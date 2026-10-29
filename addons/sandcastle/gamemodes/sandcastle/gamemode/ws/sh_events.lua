@@ -100,6 +100,13 @@ WS.Transactions = WS.Transactions or Scheduler.New(Clock)
 hook.Add("Think", TRANSACTION_HOOK, function() WS.Transactions:Run(TRANSACTION_SECONDS) end)
 
 -- The slow lane: a slice of SLOW_SECONDS each SLOW_PERIOD seconds.
+-- On it: the tactics engine's separation check (features/aiwar/sv_hazards.lua)
+-- and the gamerules' match closure (features/rounds/sv_gamerules.lua).
+-- TODO(slow lane): anti-cheat's checks (accuracy and reliability over
+-- rate) belong here as transactions with a WS.Deadline.
+-- TODO(slow lane): admin operations (kicks, bans, scrambles, map changes:
+-- ws/sv_players_menu.lua, ws/sv_votes.lua) belong here too, each a
+-- transaction its caller may await.
 local SLOW_SECONDS, SLOW_PERIOD = 0.002, 0.25
 local SLOW_HOOK = "ws_slow_transactions"
 local nextSlow = 0

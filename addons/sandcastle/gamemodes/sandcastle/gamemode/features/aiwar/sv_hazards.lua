@@ -13,10 +13,10 @@
 -- since may number its areas otherwise) until someone inspects and clears
 -- them (ns_hazards_print, ns_hazards_clear). When the disabled areas cut a
 -- team's spawns off from the objective it fights for, which they could
--- reach before, the war requests a forced match closure from the gamerules
--- (the rounds feature's RequestMatchClosure), which decide how the match
--- ends; the intermission then changes the map. With no gamerules running,
--- the next map is loaded.
+-- reach before, the war publishes a fact, ws_objective_unreachable, and
+-- only that: the
+-- gamerules decide whether and how the match ends (features/rounds/
+-- sv_gamerules.lua). With no gamerules running, the next map is loaded.
 --
 -- Judging separation is walks over the whole mesh, and nothing waits on
 -- it: it is a transaction on the slow lane (WS.SlowTransactions) that
@@ -41,6 +41,8 @@ local AREA_REACH = 256
 -- A walk is followed this far (every area of any map).
 local WALK_LIMIT = 1e7
 local SEPARATED = "the AI war's soldiers are cut off from the objective by nav areas disabled as hazards"
+-- The fact the war publishes (read by the gamerules, which decide what to do).
+local UNREACHABLE = "ws_objective_unreachable"
 -- A separation check that has not finished in this many seconds is given up.
 local SEPARATION_TIME = 30
 
@@ -160,23 +162,11 @@ function Controller:JudgeSeparation(work)
 		work:CheckYield()
 	end
 	-- the war may have ended, or the areas been cleared, while it yielded
-	if not self.war or not Hazards.Separated(fronts) or next(self:DisabledAreas()) == nil then return false end
-	print("AI war: " .. SEPARATED)
-	if WS.Active() and WS.FeatureLoaded("rounds") then
-		local closing = WS.Feature("rounds"):RequestMatchClosure(SEPARATED)
-		closing:OnSettle(function(tx)
-			if tx:State() == Transaction.COMMITTED then
-				local winner = tx:Value().winner
-				print("AI war: the match is closed, " .. (winner and ("won by team " .. winner) or "a sudden death deciding it"))
-			elseif tx:State() == Transaction.DECLINED then
-				print("AI war: the gamerules declined to close the match: " .. Transaction.Message(tx:Refusal()))
-			else
-				ErrorNoHalt("AI war: closing the match failed: " .. tostring(tx:Error()) .. "\n")
-			end
-		end)
-	else
-		WS.ChangeToNextMap()
-	end
+	local separated = self.war ~= nil and Hazards.Separated(fronts) and next(self:DisabledAreas()) ~= nil
+	-- a fact for any system to read (the gamerules decide what to make of it)
+	SetGlobal2Bool(UNREACHABLE, separated)
+	if separated then print("AI war: " .. SEPARATED) end
+	if separated and not (WS.Active() and WS.FeatureLoaded("rounds")) then WS.ChangeToNextMap() end
 	return true
 end
 
@@ -255,5 +245,6 @@ concommand.Add("ns_hazards_clear", function(ply, _, args)
 	end
 	Controller:ApplyHazards()
 	Controller:SaveHazards()
+	Controller:CheckSeparation() -- the fact is withdrawn if the areas were what cut it off
 	print("ns_hazards_clear: cleared " .. args[1])
 end, nil, "Open nav areas the AI war disabled as hazards again, once inspected: one by its id, or all")
