@@ -171,6 +171,16 @@ T.test("an attack/defend map plays stopwatch", function()
 	T.eq(Limits.WinConditions(Map({ switchTeams = true })), C.STOPWATCH, "control points that switch teams on a win")
 end)
 
+-- A hostage map's rounds are won by rescue or by killing, never by a count
+-- of wins ending the match early: it plays ten rounds, whoever wins them.
+T.test("a hostage map plays ten rounds, with no win limit", function()
+	local conditions = Limits.WinConditions(Map({ hostage = true }))
+	T.eq(conditions, C.HOSTAGE, "hostage")
+	T.eq(C.HOSTAGE.winlimit, 0, "no win limit")
+	T.eq(C.HOSTAGE.maxrounds, 10, "ten rounds")
+	T.eq(Limits.WinConditions(Map({ hostage = true, payload = true })), C.HOSTAGE, "whatever else it carries")
+end)
+
 T.test("a multi-stage payload race and CTF play one round", function()
 	T.eq(Limits.WinConditions(Map({ payload = true, multipleTrains = true, miniRounds = true, stages = 3 })), C.MAX_ROUNDS, "race in stages")
 	T.eq(Limits.WinConditions(Map({ ctf = true })), C.MAX_ROUNDS, "CTF")

@@ -529,6 +529,7 @@ local function MapKind()
 	local master = ents.FindByClass(MASTER_CLASS)[1]
 	return {
 		mvm = mode == "mvm",
+		hostage = mode == "hostage",
 		payload = mode == "payload",
 		ctf = mode == "ctf",
 		multipleTrains = ents.FindByClass("tf_logic_multiple_escort")[1] ~= nil,

@@ -11,7 +11,7 @@
 
 use super::slots::fresh_environment;
 use super::util::{boolean, env_field, number};
-use crate::lua::{api, raise_where, CFunction, GLOBALSINDEX, L, TNIL};
+use crate::lua::{api, raise_where, CFunction, GLOBALSINDEX, L, TFUNCTION, TNIL, TTABLE, TUSERDATA};
 use crate::module;
 use crate::userdata::{self, Native};
 use std::collections::{HashSet, VecDeque};
@@ -34,6 +34,7 @@ impl Native for Scheduler {
         (c"CheckYield", check_yield),
         (c"Yield", yield_turn),
         (c"Wait", wait),
+        (c"Limit", limit),
         (c"Count", count),
     ];
 }
@@ -47,7 +48,7 @@ unsafe extern "C-unwind" fn new(l: L) -> c_int {
     (api.getfenv)(l, -1);
     (api.pushvalue)(l, 1);
     (api.setfield)(l, -2, c"clock".as_ptr());
-    for name in [c"threads", c"args", c"waiting", c"finish", c"awaiting"] {
+    for name in [c"threads", c"args", c"waiting", c"finish", c"awaiting", c"limit", c"expire"] {
         (api.createtable)(l, 0, 0);
         (api.setfield)(l, -2, name.as_ptr());
     }
@@ -134,7 +135,7 @@ unsafe fn in_task(l: L) -> bool {
     same
 }
 
-unsafe extern "C-unwind" fn yield_turn(l: L) -> c_int {
+pub(super) unsafe extern "C-unwind" fn yield_turn(l: L) -> c_int {
     if !in_task(l) {
         return boolean(l, false);
     }
@@ -142,7 +143,7 @@ unsafe extern "C-unwind" fn yield_turn(l: L) -> c_int {
     (api().yield_)(l, 0)
 }
 
-unsafe extern "C-unwind" fn check_yield(l: L) -> c_int {
+pub(super) unsafe extern "C-unwind" fn check_yield(l: L) -> c_int {
     if !in_task(l) || now(l) < userdata::check::<Scheduler>(l, 1).deadline {
         return boolean(l, false);
     }
@@ -150,7 +151,7 @@ unsafe extern "C-unwind" fn check_yield(l: L) -> c_int {
     (api().yield_)(l, 0)
 }
 
-unsafe extern "C-unwind" fn wait(l: L) -> c_int {
+pub(super) unsafe extern "C-unwind" fn wait(l: L) -> c_int {
     let api = api();
     (api.settop)(l, 2);
     if !in_task(l) {
@@ -170,6 +171,66 @@ unsafe extern "C-unwind" fn wait(l: L) -> c_int {
     (api.yield_)(l, 0)
 }
 
+/// scheduler:Limit(task, countdown, onExpire): gives the task a time to
+/// finish in. The task is found among the live ones (the queue and the one
+/// running) by its coroutine, which is what Spawn returns.
+unsafe extern "C-unwind" fn limit(l: L) -> c_int {
+    let api = api();
+    (api.settop)(l, 4);
+    let kind = (api.type_of)(l, 3);
+    if kind != TTABLE && kind != TUSERDATA {
+        raise_where(l, "a task's countdown must say whether it has elapsed (IsElapsed)".into());
+    }
+    (api.getfield)(l, 3, c"IsElapsed".as_ptr());
+    let says = (api.type_of)(l, -1) == TFUNCTION;
+    (api.settop)(l, 4);
+    if !says {
+        raise_where(l, "a task's countdown must say whether it has elapsed (IsElapsed)".into());
+    }
+    let live: Vec<u32> = {
+        let s = userdata::check::<Scheduler>(l, 1);
+        s.tasks.iter().copied().chain(s.current).collect()
+    };
+    let mut found = None;
+    for task in live {
+        fetch(l, c"threads", task);
+        let same = (api.rawequal)(l, -1, 2) != 0;
+        (api.settop)(l, 4);
+        if same {
+            found = Some(task);
+            break;
+        }
+    }
+    let Some(task) = found else { raise_where(l, "no such task to limit".into()) };
+    fetch(l, c"limit", task);
+    let has = (api.type_of)(l, -1) != TNIL;
+    (api.settop)(l, 4);
+    if has {
+        raise_where(l, "a task has one countdown".into());
+    }
+    (api.pushvalue)(l, 3);
+    store(l, c"limit", task);
+    (api.pushvalue)(l, 4);
+    store(l, c"expire", task);
+    0
+}
+
+/// Whether the task's countdown, if it has one, has elapsed.
+unsafe fn limit_elapsed(l: L, task: u32) -> bool {
+    let api = api();
+    fetch(l, c"limit", task);
+    if (api.type_of)(l, -1) == TNIL {
+        (api.settop)(l, -2);
+        return false;
+    }
+    (api.getfield)(l, -1, c"IsElapsed".as_ptr());
+    (api.pushvalue)(l, -2);
+    (api.call)(l, 1, 1);
+    let elapsed = (api.toboolean)(l, -1) != 0;
+    (api.settop)(l, -3);
+    elapsed
+}
+
 /// Whether the transaction at `tx` has settled (its state is not pending).
 unsafe fn settled(l: L, tx: c_int) -> bool {
     let api = api();
@@ -183,6 +244,10 @@ unsafe fn settled(l: L, tx: c_int) -> bool {
 /// condition function, or the transaction it awaits settled).
 unsafe fn may_run(l: L, task: u32) -> bool {
     let api = api();
+    // one out of time is ended, parked or not
+    if limit_elapsed(l, task) {
+        return true;
+    }
     fetch(l, c"awaiting", task);
     if (api.type_of)(l, -1) != TNIL {
         let ready = settled(l, (api.gettop)(l));
@@ -251,7 +316,7 @@ unsafe fn dead(l: L, index: c_int) -> bool {
 
 /// Forgets a task that has ended.
 unsafe fn finish(l: L, task: u32) {
-    for table in [c"threads", c"waiting", c"args", c"finish", c"awaiting"] {
+    for table in [c"threads", c"waiting", c"args", c"finish", c"awaiting", c"limit", c"expire"] {
         forget(l, table, task);
     }
     userdata::check::<Scheduler>(l, 1).started.remove(&task);
@@ -296,6 +361,17 @@ unsafe fn raise_task_error(l: L, thread: c_int, err: c_int) -> ! {
 unsafe fn step_task(l: L, task: u32) {
     let api = api();
     let base = (api.gettop)(l);
+    // out of time: not resumed; its handler told, once, with the task
+    if limit_elapsed(l, task) {
+        fetch(l, c"expire", task);
+        fetch(l, c"threads", task);
+        finish(l, task);
+        if (api.type_of)(l, base + 1) != TNIL {
+            (api.call)(l, 1, 0);
+        }
+        (api.settop)(l, base);
+        return;
+    }
     fetch(l, c"awaiting", task);
     let tx = (api.gettop)(l);
     let mut with = None;

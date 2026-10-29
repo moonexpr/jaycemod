@@ -13,10 +13,15 @@
 -- since may number its areas otherwise) until someone inspects and clears
 -- them (ns_hazards_print, ns_hazards_clear). When the disabled areas cut a
 -- team's spawns off from the objective it fights for, which they could
--- reach before, the war requests a forced match closure from the gamerules
--- (the rounds feature's RequestMatchClosure), which decide how the match
--- ends; the intermission then changes the map. With no gamerules running,
--- the next map is loaded.
+-- reach before, the war publishes a fact, ws_objective_unreachable, and
+-- only that: the
+-- gamerules decide whether and how the match ends (features/rounds/
+-- sv_gamerules.lua). With no gamerules running, the next map is loaded.
+--
+-- Judging separation is walks over the whole mesh, and nothing waits on
+-- it: it is a transaction on the slow lane (WS.SlowTransactions) that
+-- yields between its walks and has SEPARATION_TIME to finish in (WS.Deadline),
+-- so the tick is left to the soldiers' combat and pathfinding.
 local Controller, Map = ...
 local Hazards = wartactics.hazards
 local Transaction = transaction
@@ -36,6 +41,10 @@ local AREA_REACH = 256
 -- A walk is followed this far (every area of any map).
 local WALK_LIMIT = 1e7
 local SEPARATED = "the AI war's soldiers are cut off from the objective by nav areas disabled as hazards"
+-- The fact the war publishes (read by the gamerules, which decide what to do).
+local UNREACHABLE = "ws_objective_unreachable"
+-- A separation check that has not finished in this many seconds is given up.
+local SEPARATION_TIME = 30
 
 -- The map's hazards, read from its save the first time they are asked.
 function Controller:Hazards()
@@ -120,7 +129,7 @@ end
 -- Whether the team's spawns reach the front it fights for, with and
 -- without the disabled areas; nil, nil when it has no spawn or front to
 -- judge.
-function Controller:Reaches(team, front, disabled)
+function Controller:Reaches(team, front, disabled, work)
 	local starts = {}
 	for _, spot in ipairs(SpawnSpots(team)) do
 		local area = navmesh.GetNearestNavArea(spot:GetPos(), false, AREA_REACH)
@@ -129,13 +138,16 @@ function Controller:Reaches(team, front, disabled)
 	local goal = navmesh.GetNearestNavArea(ToVector(front), false, AREA_REACH)
 	if #starts == 0 or not IsValid(goal) then return nil, nil end
 	local id = goal:GetID()
-	return Walks(starts, {})[id] ~= nil, Walks(starts, disabled)[id] ~= nil
+	local before = Walks(starts, {})[id] ~= nil
+	work:Yield() -- the second walk on another turn
+	return before, Walks(starts, disabled)[id] ~= nil
 end
 
--- Whether the disabled areas cut a team off from its objective, which it
--- reached without them; if so, the gamerules are asked to close the match
--- (else, with no gamerules, the next map is loaded).
-function Controller:CheckSeparation()
+-- The judgement itself, as a transaction's work: whether the disabled
+-- areas cut a team off from its objective, which it reached without them;
+-- if so, the gamerules are asked to close the match (else, with no
+-- gamerules, the next map is loaded). Yields between the walks.
+function Controller:JudgeSeparation(work)
 	local field = self.war and self.war:Field()
 	if not field then return false end
 	local disabled = self:DisabledAreas()
@@ -144,27 +156,43 @@ function Controller:CheckSeparation()
 	for _, team in ipairs({ RED, BLUE }) do
 		local front = self.scenario:Front(field, team)
 		if front then
-			local before, now = self:Reaches(team, front, disabled)
+			local before, now = self:Reaches(team, front, disabled, work)
 			if before then fronts[#fronts + 1] = { team = team, reaches = now } end
 		end
+		work:CheckYield()
 	end
-	if not Hazards.Separated(fronts) then return false end
-	print("AI war: " .. SEPARATED)
-	if WS.Active() and WS.FeatureLoaded("rounds") then
-		WS.Feature("rounds"):RequestMatchClosure(SEPARATED):OnSettle(function(tx)
-			if tx:State() == Transaction.COMMITTED then
-				local winner = tx:Value().winner
-				print("AI war: the match is closed, " .. (winner and ("won by team " .. winner) or "a sudden death deciding it"))
-			elseif tx:State() == Transaction.DECLINED then
-				print("AI war: the gamerules declined to close the match: " .. Transaction.Message(tx:Refusal()))
-			else
-				ErrorNoHalt("AI war: closing the match failed: " .. tostring(tx:Error()) .. "\n")
-			end
-		end)
-	else
-		WS.ChangeToNextMap()
-	end
+	-- the war may have ended, or the areas been cleared, while it yielded
+	local separated = self.war ~= nil and Hazards.Separated(fronts) and next(self:DisabledAreas()) ~= nil
+	-- a fact for any system to read (the gamerules decide what to make of it)
+	SetGlobal2Bool(UNREACHABLE, separated)
+	if separated then print("AI war: " .. SEPARATED) end
+	if separated and not (WS.Active() and WS.FeatureLoaded("rounds")) then WS.ChangeToNextMap() end
 	return true
+end
+
+-- Judges separation on the slow lane, one judgement at a time: asked
+-- while one is under way, it is judged again once that one is done.
+function Controller:CheckSeparation()
+	if not (self.war and self.war:Field()) then return end
+	if self.separationCheck then
+		self.separationAgain = true
+		return
+	end
+	local tx = Transaction.Spawn(WS.SlowTransactions, function(work) return self:JudgeSeparation(work) end)
+		:Within(WS.Deadline(SEPARATION_TIME))
+	self.separationCheck = tx
+	tx:OnSettle(function(settled)
+		self.separationCheck = nil
+		if settled:State() == Transaction.DECLINED then
+			print("AI war: the separation check was dropped: " .. Transaction.Message(settled:Refusal()))
+		elseif settled:State() == Transaction.FAILED then
+			ErrorNoHalt("AI war: the separation check failed: " .. tostring(settled:Error()) .. "\n")
+		end
+		if self.separationAgain then
+			self.separationAgain = nil
+			self:CheckSeparation()
+		end
+	end)
 end
 
 -- The hazards saved on a load find the war's first field: applied, and the
@@ -217,5 +245,6 @@ concommand.Add("ns_hazards_clear", function(ply, _, args)
 	end
 	Controller:ApplyHazards()
 	Controller:SaveHazards()
+	Controller:CheckSeparation() -- the fact is withdrawn if the areas were what cut it off
 	print("ns_hazards_clear: cleared " .. args[1])
 end, nil, "Open nav areas the AI war disabled as hazards again, once inspected: one by its id, or all")

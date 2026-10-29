@@ -140,25 +140,53 @@ function Controller:ObjectiveStanding()
 	return objective
 end
 
--- Another system asks the match closed now (the AI war, its soldiers cut
--- off from the objective: features/aiwar/sv_hazards.lua): the gamerules'
--- expedient means, a transaction the gamerules may decline
--- (Rounds.EXPEDIENT_NO_ROUNDS, EXPEDIENT_MATCH_OVER). Their evaluation of
--- the game's progress (gameplay.standing over ObjectiveStanding and the
--- match score) names the team nearer to completing the objective, and the
--- match closes as a round completed, that team winning it
--- (Round:CloseByExpedientMeans); a genuine tie goes to a sudden death that
--- decides the match. The intermission then changes the map. Commits
--- { winner }: the leader, or nil while a sudden death decides it.
-function Controller:RequestMatchClosure(reason)
-	return Transaction.Run(function()
-		if not Active() then Transaction.Refuse(Rounds.EXPEDIENT_NO_ROUNDS, "This map has no rounds to close.") end
-		local leader = Standing.Leader(self:ObjectiveStanding(), { [RED] = team.GetScore(RED), [BLUE] = team.GetScore(BLUE) })
-		local effects = self.round:CloseByExpedientMeans(CurTime(), leader, self.objective)
-		if #effects == 0 then Transaction.Refuse(Rounds.EXPEDIENT_MATCH_OVER, "The match is already over.") end
-		PrintMessage(HUD_PRINTTALK, "The match is being closed: " .. reason)
-		self:Apply(effects)
-		return { winner = leader }
+-- The gamerules decide for themselves; no other system tells them what to
+-- do (only their initialization does). They are a slow system, so they
+-- watch: a transaction on the slow lane (WS.SlowTransactions), begun when
+-- this part loads, that sleeps WATCH_PERIOD between passes
+-- (work:WaitFor) and reads what the other systems publish as facts. One
+-- fact today: the objective unreachable (ws_objective_unreachable, which the
+-- AI war publishes when nav areas it disabled cut its soldiers off from the
+-- objective). Held for UNREACHABLE_PASSES passes running, the gamerules
+-- end the match early: their evaluation of the game's
+-- progress (gameplay.standing over ObjectiveStanding and the match
+-- score) names the team nearer to completing the objective, and the match
+-- closes as a round completed, that team winning it
+-- (Round:EndEarly); a genuine tie goes to a sudden death that
+-- decides the match; with no rounds, or the match already over, there is
+-- nothing to end. The intermission then changes the map. This is a
+-- server-side maneuver: clients and players are told only that the match
+-- ended early (why stays in the server's log), and any reason beyond it is
+-- an admin's to give, outside the game.
+local WATCH_PERIOD = 5
+local UNREACHABLE_PASSES = 2
+local UNREACHABLE_FACT = "ws_objective_unreachable"
+
+function Controller:EndEarly(why)
+	if not Active() then return false end
+	local leader = Standing.Leader(self:ObjectiveStanding(), { [RED] = team.GetScore(RED), [BLUE] = team.GetScore(BLUE) })
+	local effects = self.round:EndEarly(CurTime(), leader, self.objective)
+	if #effects == 0 then return false end
+	PrintMessage(HUD_PRINTTALK, "The match has ended early.") -- all a player is told: any reason is an admin's to give, outside the game
+	print("gamerules: the match ended early (" .. why .. "), " .. (leader and ("won by team " .. leader) or "a sudden death deciding it"))
+	self:Apply(effects)
+	return true
+end
+
+function Controller:WatchFacts(work)
+	local held = 0
+	while true do
+		work:WaitFor(WS.Deadline(WATCH_PERIOD))
+		held = GetGlobal2Bool(UNREACHABLE_FACT, false) and held + 1 or 0
+		if held >= UNREACHABLE_PASSES and self:EndEarly("the objective is unreachable") then held = 0 end
+	end
+end
+
+-- Begun once, as the gamerules initialise (a Lua refresh finds it going).
+if not (Controller.factWatch and Controller.factWatch:State() == Transaction.PENDING) then
+	Controller.factWatch = Transaction.Spawn(WS.SlowTransactions, function(work) return Controller:WatchFacts(work) end)
+	Controller.factWatch:OnSettle(function(tx)
+		if tx:State() == Transaction.FAILED then ErrorNoHalt("gamerules: the fact watch failed: " .. tostring(tx:Error()) .. "\n") end
 	end)
 end
 

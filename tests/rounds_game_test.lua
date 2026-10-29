@@ -1397,36 +1397,35 @@ T.test("a sudden death called to decide the match ends it, won by the round's wi
 	T.eq(over.winner, RED)
 end)
 
--- The gamerules' expedient means: another system asks the match closed
--- (the AI war cut off from its objective), with the gamerules' evaluation
--- of the game's progress (gameplay.standing): the match closes as a round
+-- The match ended early, by the gamerules' own judgement, with their
+-- evaluation of the game's progress (gameplay.standing): it ends as a round
 -- completed, won by the team it puts ahead, and that win decides the match;
 -- a genuine tie goes to a sudden death whose winner decides it.
-T.test("closed by expedient means, the leader wins the round and with it the match", function()
+T.test("ended early, the leader wins the round and with it the match", function()
 	local round = Running({ winlimit = 3 })
-	local effects = round:CloseByExpedientMeans(T0 + 20, RED, FakeObjective.Objective())
+	local effects = round:EndEarly(T0 + 20, RED, FakeObjective.Objective())
 	local over = Intermission(effects)
 	T.eq(over ~= nil, true, "the match is over: " .. Describe(effects))
 	T.eq(over.winner, RED, "won by the leader")
-	T.eq(over.reason, Rounds.EXPEDIENT_MATCH_WIN, "by expedient means")
-	T.eq(#round:CloseByExpedientMeans(T0 + 21, BLUE, FakeObjective.Objective()), 0, "an ended match is not closed again")
+	T.eq(over.reason, Rounds.ENDED_EARLY_WIN, "ended early")
+	T.eq(#round:EndEarly(T0 + 21, BLUE, FakeObjective.Objective()), 0, "an ended match is not closed again")
 end)
 
-T.test("closed by expedient means on a tie, a sudden death decides the match", function()
+T.test("ended early on a tie, a sudden death decides the match", function()
 	local round = Running({ winlimit = 3 })
-	local called = round:CloseByExpedientMeans(T0 + 20, nil, FakeObjective.Objective())
+	local called = round:EndEarly(T0 + 20, nil, FakeObjective.Objective())
 	T.eq(Has(called, "sudden_death"), true, "sudden death: " .. Describe(called))
 	local won = round:SetWinningTeam(T0 + 30, BLUE, W.OPPONENTS_DEAD, true, false, false, FakeObjective.Objective())
 	local over = Intermission(won)
 	T.eq(over ~= nil, true, "the match is over: " .. Describe(won))
 	T.eq(over.winner, BLUE, "the survivors win it")
-	T.eq(over.reason, Rounds.EXPEDIENT_MATCH_WIN, "by expedient means")
+	T.eq(over.reason, Rounds.ENDED_EARLY_WIN, "ended early")
 end)
 
-T.test("closed by expedient means on a tie with no round under way, the match ends drawn", function()
+T.test("ended early on a tie with no round under way, the match ends drawn", function()
 	local round = Rounds.New(Settings({ winlimit = 3 }))
 	T.eq(round:State(), State.PREGAME, "waiting for players: no round to hold a sudden death")
-	local effects = round:CloseByExpedientMeans(T0, nil, FakeObjective.Objective())
+	local effects = round:EndEarly(T0, nil, FakeObjective.Objective())
 	local over = Intermission(effects)
 	T.eq(over ~= nil, true, "the match is over: " .. Describe(effects))
 	T.eq(over.winner, Rounds.NOBODY_WON, "drawn")

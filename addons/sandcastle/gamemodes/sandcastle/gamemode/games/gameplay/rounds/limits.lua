@@ -118,6 +118,9 @@ WIN_CONDITIONS = {
 	-- limit: a capture can be a point on the score (score_style 1), so a
 	-- win limit would end the match a few captures in; mp_timelimit ends it.
 	CONTROL_POINTS = { name = "control_points", winlimit = 0, maxrounds = 0 },
+	-- Sandcastle's own, for a hostage map: a round is won by rescue or by
+	-- killing, so the match is ten rounds, not a count of wins.
+	HOSTAGE = { name = "hostage", winlimit = 0, maxrounds = 10 },
 }
 
 -- map = { mvm, payload, ctf, controlPoints (the round's mode: KOTH and
@@ -131,6 +134,7 @@ WIN_CONDITIONS = {
 -- (CONTROL_POINTS). nil for MvM, whose waves decide.
 function WinConditions(map)
 	if map.mvm then return nil end
+	if map.hostage then return WIN_CONDITIONS.HOSTAGE end
 	if not map.multipleTrains and (map.payload or map.miniRounds or map.switchTeams) then return WIN_CONDITIONS.STOPWATCH end
 	local raceInStages = map.payload and map.multipleTrains and map.miniRounds and map.stages > 1
 	if raceInStages or map.ctf then return WIN_CONDITIONS.MAX_ROUNDS end

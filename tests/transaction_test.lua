@@ -277,4 +277,180 @@ T.test("ledger ids wrap within the wire's bits", function()
 	end
 end)
 
+-- A transaction is a coroutine object ---------------------------------------------------
+-- A spawned transaction's task is its coroutine: it yields (work:Yield,
+-- CheckYield, Wait, WaitFor, Await) to give the rest of the tick to
+-- synchronous systems, and carries a deadline, a timer.countdown
+-- (tx:Within): one unfinished when it elapses is ended at its next turn,
+-- its steps undone, and declined as TIMED_OUT.
+local Countdown = timer.countdown
+
+-- A clock the test sets by hand.
+local function Moving()
+	return { t = 0, Now = function(self) return self.t end }
+end
+
+local function Started(clock, seconds)
+	local countdown = Countdown.New(clock)
+	countdown:Start(seconds)
+	return countdown
+end
+
+T.test("a spawned transaction past its countdown is ended, its steps undone, and declined as timed out", function()
+	local clock = Moving()
+	local scheduler = Scheduler.New(clock)
+	local log, never = {}, Transaction.New()
+	local tx = Transaction.Spawn(scheduler, function(work)
+		work:Undo(function() log[#log + 1] = "undone" end)
+		return never:Await(scheduler)
+	end):Within(Started(clock, 5))
+	scheduler:Run(1)
+	T.eq(tx:State(), Transaction.PENDING, "waiting, within its time")
+	T.near(tx:Remaining(), 5, 1e-9, "five seconds left")
+	clock.t = 6
+	scheduler:Run(1)
+	T.eq(tx:State(), Transaction.DECLINED, "declined")
+	T.eq(tx:Refusal().kind, Transaction.TIMED_OUT, "as timed out")
+	T.eq(log[1], "undone", "its steps undone")
+	T.eq(scheduler:Count(), 0, "its task gone")
+end)
+
+T.test("a transaction that settles in its time is not touched by the countdown", function()
+	local clock = Moving()
+	local scheduler = Scheduler.New(clock)
+	local tx = Transaction.Spawn(scheduler, function() return "done" end):Within(Started(clock, 5))
+	scheduler:Run(1)
+	clock.t = 60
+	scheduler:Run(1)
+	T.eq(tx:Value(), "done", "committed")
+end)
+
+T.test("a transaction not yet started whose time is up never runs", function()
+	local clock = Moving()
+	local scheduler = Scheduler.New(clock)
+	local ran = false
+	local tx = Transaction.Spawn(scheduler, function() ran = true end):Within(Started(clock, 1))
+	clock.t = 2
+	scheduler:Run(1)
+	T.eq(ran, false, "its work never ran")
+	T.eq(tx:Refusal().kind, Transaction.TIMED_OUT, "timed out")
+end)
+
+T.test("a deadline is held to a pending transaction with a task, once, and a started countdown", function()
+	local clock = Moving()
+	local scheduler = Scheduler.New(clock)
+	local countdown = Started(clock, 5)
+	T.eq(pcall(Transaction.New().Within, Transaction.New(), countdown), false, "no task to limit")
+	T.eq(pcall(Transaction.Run(function() end).Within, Transaction.Run(function() end), countdown), false, "settled")
+	local tx = Transaction.Spawn(scheduler, function() end)
+	T.eq(pcall(tx.Within, tx, {}), false, "not a countdown")
+	T.eq(pcall(tx.Within, tx, Countdown.New(clock)), false, "not started: an unstarted countdown has elapsed")
+	T.eq(tx:Within(countdown), tx, "chained")
+	T.eq(pcall(tx.Within, tx, Started(clock, 9)), false, "one deadline")
+end)
+
+T.test("with no deadline a transaction has unlimited time", function()
+	T.eq(Transaction.New():Remaining(), math.huge, "no deadline")
+end)
+
+T.test("work yields its turn: tasks interleave, a transaction a step at a time", function()
+	local scheduler = Scheduler.New(Moving())
+	local log = {}
+	local function Steps(name)
+		return function(work)
+			for i = 1, 2 do
+				log[#log + 1] = name .. i
+				work:Yield()
+			end
+			return name
+		end
+	end
+	local a, b = Transaction.Spawn(scheduler, Steps("a")), Transaction.Spawn(scheduler, Steps("b"))
+	scheduler:Run(1)
+	T.eq(table.concat(log, " "), "a1 b1 a2 b2", "interleaved")
+	T.eq(a:Value() .. b:Value(), "ab", "both committed")
+end)
+
+T.test("work's CheckYield gives up the turn once the slice is spent", function()
+	local clock = Moving()
+	local scheduler = Scheduler.New(clock)
+	local steps = 0
+	local tx = Transaction.Spawn(scheduler, function(work)
+		for _ = 1, 3 do
+			steps = steps + 1
+			clock.t = clock.t + 1
+			work:CheckYield()
+		end
+	end)
+	scheduler:Run(1)
+	T.eq(steps, 1, "one step in the slice")
+	for _ = 1, 3 do scheduler:Run(1) end
+	T.eq(steps, 3, "a step a run")
+	T.eq(tx:State(), Transaction.COMMITTED, "done over four runs")
+end)
+
+T.test("work waits for a condition, or for a countdown of its own: a slow system's sleep", function()
+	local clock = Moving()
+	local scheduler = Scheduler.New(clock)
+	local ready, passes = false, 0
+	local tx = Transaction.Spawn(scheduler, function(work)
+		work:Wait(function() return ready end)
+		passes = passes + 1
+		local nap = Started(clock, 10)
+		work:WaitFor(nap)
+		passes = passes + 1
+	end)
+	scheduler:Run(1)
+	T.eq(passes, 0, "waiting for the condition")
+	ready = true
+	scheduler:Run(1)
+	T.eq(passes, 1, "past it, asleep")
+	clock.t = 5
+	scheduler:Run(1)
+	T.eq(passes, 1, "still asleep")
+	clock.t = 11
+	scheduler:Run(1)
+	T.eq(passes, 2, "woke")
+	T.eq(tx:State(), Transaction.COMMITTED, "done")
+end)
+
+T.test("work awaits a transaction, and a deadline cuts the wait short", function()
+	local clock = Moving()
+	local scheduler = Scheduler.New(clock)
+	local inner = Transaction.New()
+	local outer = Transaction.Spawn(scheduler, function(work) return work:Await(inner) + 1 end)
+	scheduler:Run(1)
+	inner:Commit(41)
+	scheduler:Run(1)
+	T.eq(outer:Value(), 42, "went on with its value")
+	local slow = Transaction.Spawn(scheduler, function(work) return work:Await(Transaction.New()) end):Within(Started(clock, 3))
+	scheduler:Run(1)
+	clock.t = 4
+	scheduler:Run(1)
+	T.eq(slow:Refusal().kind, Transaction.TIMED_OUT, "timed out waiting")
+end)
+
+T.test("work says how long it has left, a second countdown asleep within a deadline times out first", function()
+	local clock = Moving()
+	local scheduler = Scheduler.New(clock)
+	local left
+	local tx = Transaction.Spawn(scheduler, function(work)
+		left = work:Remaining()
+		work:WaitFor(Started(clock, 100))
+	end):Within(Started(clock, 5))
+	scheduler:Run(1)
+	T.near(left, 5, 1e-9, "its deadline's")
+	clock.t = 6
+	scheduler:Run(1)
+	T.eq(tx:Refusal().kind, Transaction.TIMED_OUT, "the deadline first")
+	T.eq(Transaction.Spawn(scheduler, function(work) left = work:Remaining() end) ~= nil, true)
+	scheduler:Run(1)
+	T.eq(left, math.huge, "no deadline: unlimited")
+end)
+
+T.test("work of a transaction run at once has no scheduler to yield on (our bug)", function()
+	local tx = Transaction.Run(function(work) work:Yield() end)
+	T.eq(tx:State(), Transaction.FAILED, "failed")
+end)
+
 T.finish()

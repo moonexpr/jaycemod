@@ -76,11 +76,34 @@ function Controller:ApplyHotfixes()
 		end
 	end
 	if cut > 0 then print(string.format("hostage: %d nav link(s) cut on %s", cut, map)) end
+
+	-- the tops of props the mesh calls walkable (dumpsters) go
+	local props = Hotfixes.Props(map)
+	local tops = {}
+	if #props > 0 then
+		for _, area in ipairs(navmesh.GetAllNavAreas()) do
+			local center = area:GetCenter()
+			for _, prop in ipairs(props) do
+				if Hotfixes.OnTop(prop, center) then
+					tops[#tops + 1] = area
+					break
+				end
+			end
+		end
+	end
+	for _, area in ipairs(tops) do area:Remove() end
+	if #tops > 0 then print(string.format("hostage: %d nav area(s) on top of props removed on %s", #tops, map)) end
 end
 
-hook.Add("InitPostEntity", "ws_hostage_hotfixes", function()
-	if navmesh.IsLoaded() then Controller:ApplyHotfixes() end
-end)
+-- Applied once, as soon as the nav mesh is up: at load, at InitPostEntity, and
+-- before the war reads the map (Snapshot), whichever comes first.
+function Controller:EnsureHotfixes()
+	if self.hotfixed or not navmesh.IsLoaded() then return end
+	self.hotfixed = true
+	self:ApplyHotfixes()
+end
+
+hook.Add("InitPostEntity", "ws_hostage_hotfixes", function() Controller:EnsureHotfixes() end)
 
 local function Alive(ent)
 	if not IsValid(ent) then return false end
@@ -148,6 +171,7 @@ end
 -- What the AI war reads: each hostage of the round { id, home, pos, state,
 -- rescuer }, in vectors, and the zone's centre.
 function Controller:Snapshot()
+	self:EnsureHotfixes()
 	local list = {}
 	if not self.round and next(self.bound) then self:NewRound() end
 	local round = self.round
@@ -162,6 +186,7 @@ end
 
 -- The rules applied to the map, every THINK_INTERVAL while the round is on.
 function Controller:Think()
+	self:EnsureHotfixes()
 	self:Configure()
 	if not self.round then
 		if next(self.bound) then self:NewRound() end
@@ -203,6 +228,8 @@ hook.Add("Think", THINK_HOOK, function()
 	Controller.nextThink = now + THINK_INTERVAL
 	Controller:Think()
 end)
+
+Controller:EnsureHotfixes()
 
 Controller.rounds:AddRoundListener(Rounds.PHASE_ARENA_START, Rounds.LISTEN_LOGIC, function() Controller:NewRound() end)
 

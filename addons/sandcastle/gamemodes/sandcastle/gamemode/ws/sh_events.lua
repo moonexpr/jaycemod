@@ -20,7 +20,13 @@
 --
 -- WS.Transactions is each realm's scheduler (foundation.list.schedule) for
 -- transactions and other work spread over ticks, run TRANSACTION_SECONDS a
--- tick. A transaction's reply, system_transaction_settled, belongs to this library,
+-- tick. WS.SlowTransactions is its slow lane, run SLOW_SECONDS every
+-- SLOW_PERIOD: for the systems that need not run every tick, or rapidly,
+-- and optimise for accuracy and reliability (admin operations, the
+-- gamerules, the tactics engine, anti-cheat), which spawn their work as
+-- transactions (Transaction.Spawn, a coroutine object: it yields, and
+-- carries a deadline, WS.Deadline) and leave the tick to the systems that
+-- run synchronously (combat, pathfinding, the player's feedback, comms). A transaction's reply, system_transaction_settled, belongs to this library,
 -- not to the game's events: like the recovery events it changes with the
 -- library (docs/game-events-v2.md).
 --
@@ -92,6 +98,34 @@ function Clock:Now() return SysTime() end
 -- Kept across a Lua refresh: tasks in flight keep running.
 WS.Transactions = WS.Transactions or Scheduler.New(Clock)
 hook.Add("Think", TRANSACTION_HOOK, function() WS.Transactions:Run(TRANSACTION_SECONDS) end)
+
+-- The slow lane: a slice of SLOW_SECONDS each SLOW_PERIOD seconds.
+-- On it: the tactics engine's separation check (features/aiwar/sv_hazards.lua)
+-- and the gamerules' match closure (features/rounds/sv_gamerules.lua).
+-- TODO(slow lane): anti-cheat's checks (accuracy and reliability over
+-- rate) belong here as transactions with a WS.Deadline.
+-- TODO(slow lane): admin operations (kicks, bans, scrambles, map changes:
+-- ws/sv_players_menu.lua, ws/sv_votes.lua) belong here too, each a
+-- transaction its caller may await.
+local SLOW_SECONDS, SLOW_PERIOD = 0.002, 0.25
+local SLOW_HOOK = "ws_slow_transactions"
+local nextSlow = 0
+
+WS.SlowTransactions = WS.SlowTransactions or Scheduler.New(Clock)
+hook.Add("Think", SLOW_HOOK, function()
+	local now = SysTime()
+	if now < nextSlow then return end
+	nextSlow = now + SLOW_PERIOD
+	WS.SlowTransactions:Run(SLOW_SECONDS)
+end)
+
+-- A deadline for a transaction (tx:Within): a countdown of seconds on the
+-- real clock, which no pause or freeze of the game's time stops.
+function WS.Deadline(seconds)
+	local countdown = timer.countdown.New(Clock)
+	countdown:Start(seconds)
+	return countdown
+end
 
 -- A transaction's outcome, to the client that asked: its state, and for a
 -- decline the refusal's kind and detail (never our error's).
