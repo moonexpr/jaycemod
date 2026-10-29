@@ -16,6 +16,7 @@
 local Rescue = WS.require("features.hostage.model")
 local Round = WS.require("features.hostage.round")
 local Zone = WS.require("features.hostage.zone")
+local Hotfixes = WS.require("features.hostage.hotfixes")
 local State = WS.require("games.gameplay.rounds.state")
 local Rounds = gameplay.rounds
 
@@ -51,6 +52,35 @@ end
 
 -- Before the first pre-round reads it.
 Controller:Configure()
+
+-- The nav area whose centre is at pos (a hotfix's position), or nil.
+local function AreaAt(pos)
+	local area = navmesh.GetNearestNavArea(Vector(pos.x, pos.y, pos.z), false, Hotfixes.TOLERANCE * 2)
+	if area and Hotfixes.Near(area:GetCenter(), pos) then return area end
+	return nil
+end
+
+-- The map's curated navigation fixes (features.hostage.hotfixes): each link
+-- through a wall is cut both ways, before the war plans a route.
+function Controller:ApplyHotfixes()
+	local map = game.GetMap()
+	local cut = 0
+	for _, fix in ipairs(Hotfixes.For(map)) do
+		local a, b = AreaAt(fix.a), AreaAt(fix.b)
+		if a and b then
+			a:Disconnect(b)
+			b:Disconnect(a)
+			cut = cut + 1
+		else
+			print(string.format("hostage hotfix not applied on %s: no nav area at %s (%s)", map, a and "b" or "a", fix.why))
+		end
+	end
+	if cut > 0 then print(string.format("hostage: %d nav link(s) cut on %s", cut, map)) end
+end
+
+hook.Add("InitPostEntity", "ws_hostage_hotfixes", function()
+	if navmesh.IsLoaded() then Controller:ApplyHotfixes() end
+end)
 
 local function Alive(ent)
 	if not IsValid(ent) then return false end
