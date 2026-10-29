@@ -54,22 +54,45 @@ round cannot stall with BLU alive. BLU takes 60% of the soldiers.
   and two hostages stood still near (1250, 170) and most of BLU sat at its
   spawn. Not diagnosed; invulnerability may itself be the cause.
 
+## Fixed since (2026-10-29)
+
+- **Gamerules:** `cs_gamerules` (on `ws_gamerules`) runs the hostage mode
+  (`Mode.RULES_CLASS`) and answers CS:S's round-end inputs
+  (`features.hostage.rules`).
+- **Round timer:** `mp_hostage_roundtime` (240 s); when it runs out RED wins
+  (`HOSTAGES_NOT_RESCUED`, via `Mode:StalemateTimerWin`).
+- **Match length:** `mp_winlimit 0`, `mp_maxrounds 10` (`WIN_CONDITIONS.HOSTAGE`);
+  the default win limit of 2 had ended matches after two round wins.
+- **Spawns:** each team at its own side (`gameplay.spawn` `SIDE_CLASSES`); GMod's
+  base picker had spawned players and bots on either side at random. Checked
+  live: 64 spawns, none on the wrong side.
+- **Rescue zones:** the map's own `func_hostage_rescue` brushes, the one nearest
+  BLU's spawns first.
+- **Hotfixes** (`features.hostage.hotfixes`, applied at load, mesh files
+  untouched): `cs_office`'s link through the wall at the T exit, and its eleven
+  dumpster lids, named one by one.
+- **Team sizes:** new bots join the team furthest below the scenario's size, so
+  BLU really is 10 to RED's 6 at `mp_aiwar_team_size 8`.
+- **The stall** was soldiers stuck on corners: bot soldiers are TF2 players 48
+  wide, but every walk check swept 26. Fixed for all modes (`BotSoldier:Sweep`,
+  the lanes, the nav seam links); on `cp_sunshine` 2 recoveries in 6 minutes
+  after, none disabled. The route mesh also failed to build on maps with a nav
+  area's top attribute flag set (signed read); fixed.
+
 ## Open
 
-- **Nav area 757**, a 25-wide strip at (1212, 375) on the route into group 1,
-  with two links through world geometry, stranded soldiers again and again.
-  The client's mesh needs fixing there, or the hazards module to cope.
+- **The other cs_ maps** (`cs_assault`, `cs_compound`, `cs_havana`, `cs_italy`,
+  `cs_militia`) have no nav mesh yet, so no hotfixes are known for them.
+- **Hazards on the server roots** were laid during the 26-wide-sweep bug; the
+  hazards module forced match closures on `cs_office` until cleared
+  (`ns_hazards_clear all`). Other maps' files on both roots likely hold false
+  hazards from the same bug.
 - **The Female Civilian model has two sequences** (a reference pose): it
   cannot animate, so a following hostage of that model slides in a T-pose.
-  The Classified Civilian NPC models (1417 sequences) animate.
-- BLU is outgunned: RED wins most rounds. The 60% share (`TeamSizes`) did not
-  show up with `tf_bot_quota 0` (teams were 8 and 8): the bot actor's team
-  sizes are not the scenario's yet.
-- The hostage NPC is a plain nextbot with a path follower and a hop when stuck,
-  not a `ws_nextbot` variant; it cannot be hurt.
-- The timeout is untimed by design; a stalled round is ended only by the hunt.
-- Human players: spawns and a way to use a hostage (the controller takes any
-  BLU soldier or player within `USE_RANGE`) are untested.
+- The hostage NPC is a plain nextbot with a path follower and a hop when stuck;
+  it cannot be hurt.
+- Human players using a hostage (the controller takes any BLU player within
+  `USE_RANGE`) is untested.
 - Loadouts and the buy menu are not started.
 
 ## The hostages' models
