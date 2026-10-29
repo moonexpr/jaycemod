@@ -525,8 +525,7 @@ end
 -- What decides the map's casual win conditions (Limits.WinConditions), once
 -- the objective features have set the mode and the master is bound.
 local function MapKind()
-	local mode = Controller:Mode().NAME
-	local master = ents.FindByClass(MASTER_CLASS)[1]
+	local mode, master = Controller:Mode().NAME, ents.FindByClass(MASTER_CLASS)[1]
 	return {
 		mvm = mode == "mvm",
 		hostage = mode == "hostage",

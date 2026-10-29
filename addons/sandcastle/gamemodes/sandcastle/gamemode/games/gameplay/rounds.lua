@@ -674,7 +674,7 @@ end
 -- GoToIntermission: the match's winner (MatchWinner) is celebrated for
 -- MATCH_WIN_EXTRA, its side hunting the humiliated losers to its music,
 -- then everyone is frozen for mp_chattime, then the level changes.
-MATCH_WIN_EXTRA = 30
+MATCH_WIN_EXTRA = 15
 
 -- The match is over, won by winner.
 local function Intermission(self, effects, reason, now, winner)
@@ -697,7 +697,7 @@ end
 
 -- Why an admin's match win ended the match (Round:ForceMatchWin, or a
 -- sudden death called to decide it).
-ADMIN_MATCH_WIN = "Decided by the Administrator"
+ADMIN_MATCH_WIN = "The Administrator has called the match."
 -- Why a deathmatch's winner won the match.
 DEATHMATCH_MATCH_WIN = "Won the deathmatch"
 -- Why a match ended early was won (Round:EndEarly); all a player is told.
