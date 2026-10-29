@@ -15,6 +15,7 @@
 local ipairs, sort = ipairs, table.sort
 local ceil, huge = math.ceil, math.huge
 local Teams = gameplay.teams
+local Spawn = gameplay.spawn
 local Search = graph.search
 local Box = math.box
 local AiWar = require("features.aiwar.model")
@@ -23,12 +24,6 @@ module(...)
 FACTION_CLASSES = {
 	[AiWar.COMBINE] = { "info_player_combine" },
 	[AiWar.RESISTANCE] = { "info_player_rebel" },
-}
--- CS:S's sides: the terrorists are RED and the counter-terrorists BLU,
--- whichever faction fights for either.
-TEAM_CLASSES = {
-	[Teams.RED] = { "info_player_terrorist" },
-	[Teams.BLUE] = { "info_player_counterterrorist" },
 }
 SHARED_CLASSES = { "info_player_deathmatch", "info_player_start" }
 
@@ -47,9 +42,12 @@ function Classes(faction, present)
 	return Present(FACTION_CLASSES[faction] or {}, present)
 end
 
--- The spawn classes of a team's CS:S side the map has.
+-- The spawn classes of a team's CS:S side the map has (gameplay.spawn's
+-- SIDE_CLASSES: the terrorists are RED and the counter-terrorists BLU,
+-- whichever faction fights for either).
 function TeamClasses(team, present)
-	return Present(TEAM_CLASSES[team] or {}, present)
+	local class = Spawn.SideClass(team)
+	return Present(class and { class } or {}, present)
 end
 
 -- The shared player start classes the map has.

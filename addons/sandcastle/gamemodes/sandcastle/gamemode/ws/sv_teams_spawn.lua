@@ -182,11 +182,26 @@ end
 -- g_pLastSpawnPoints: each team's spot handed out last.
 local lastSpawn = {}
 
+-- A map without TF2's team spawns, a CS:S one: the team's side spawns
+-- (gameplay.spawn's SIDE_CLASSES) in turn, clear ones first; nil when the
+-- map has none for it.
+local function PickSideSpawn(team)
+	local class = S.SideClass(team)
+	if not class then return nil end
+	local list = ents.FindByClass(class)
+	local last = table.KeyFromValue(list, lastSpawn[team])
+	local i = S.PickNext(#list, last, function(j) return not Occupied(list[j]) end)
+	if not i then return nil end
+	lastSpawn[team] = list[i]
+	return list[i]
+end
+
 -- CTFPlayer::EntSelectSpawnPoint for RED and BLU: the next valid spot after
 -- the team's last one, clear of players if any is; nil when there is none.
 function WS.PickSpawn(team)
 	EnsureRoundSetup()
 	local list, states = TeamSpawns()
+	if #list == 0 then return PickSideSpawn(team) end
 	local last = table.KeyFromValue(list, lastSpawn[team])
 	local i = S.Pick(states, team, last, function(j) return not Occupied(list[j]) end)
 	if not i then return nil end

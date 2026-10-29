@@ -181,4 +181,23 @@ T.test("a room with both teams' spawns inside keeps its own team", function()
 	T.eq(S.RoomTeam(RED, { RED, BLU }, BLU), RED, "both")
 end)
 
+-- A CS:S map has no info_player_teamspawn: each side spawns at its own class,
+-- the terrorists (RED) at info_player_terrorist and the counter-terrorists
+-- (BLU) at info_player_counterterrorist, never the other side's.
+T.test("on a CS:S map each team spawns at its own side's class", function()
+	T.eq(S.SideClass(RED), "info_player_terrorist", "RED")
+	T.eq(S.SideClass(BLU), "info_player_counterterrorist", "BLU")
+	T.eq(S.SideClass(NOBODY), nil, "no team, no side")
+end)
+
+T.test("a side's spots are taken in turn after the last, clear ones first", function()
+	local clear = function() return true end
+	T.eq(S.PickNext(3, nil, clear), 1, "the first")
+	T.eq(S.PickNext(3, 1, clear), 2, "after the last")
+	T.eq(S.PickNext(3, 3, clear), 1, "wraps")
+	T.eq(S.PickNext(3, 1, function(i) return i == 1 end), 1, "the only clear one")
+	T.eq(S.PickNext(3, 1, function() return false end), 2, "none clear: the next")
+	T.eq(S.PickNext(0, nil, clear), nil, "no spots")
+end)
+
 T.finish()

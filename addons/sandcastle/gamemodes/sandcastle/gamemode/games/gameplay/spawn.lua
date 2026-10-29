@@ -138,6 +138,30 @@ function Pick(spawns, team, last, isClear)
 	return fallback
 end
 
+-- CS:S's sides: a map without info_player_teamspawn spawns the terrorists
+-- (RED) and the counter-terrorists (BLU) at their own class.
+SIDE_CLASSES = {
+	[RED] = "info_player_terrorist",
+	[BLUE] = "info_player_counterterrorist",
+}
+
+-- The spawn class of the team's CS:S side, or nil.
+function SideClass(team)
+	return SIDE_CLASSES[team]
+end
+
+-- Of n spots, the next after the last one taken (nil: none yet) that is clear
+-- (isClear(i)), else the next one; nil with no spots.
+function PickNext(n, last, isClear)
+	if n == 0 then return nil end
+	local start = last or 0
+	for step = 1, n do
+		local i = (start + step - 1) % n + 1
+		if isClear(i) then return i end
+	end
+	return start % n + 1
+end
+
 -- A spawn room's team for routes (TF_NAV_SPAWN_ROOM_*): the one team whose
 -- spawns stand inside it (spawnTeams: theirs, a list), else, none inside,
 -- the team of the spawn nearest it (nearestTeam, nil without spawns), else
