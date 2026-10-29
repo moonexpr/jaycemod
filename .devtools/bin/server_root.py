@@ -35,12 +35,14 @@ from __future__ import annotations
 
 import lzma
 import os
+import zipfile
 import struct
 import sys
 import argparse
 from dataclasses import dataclass
 from pathlib import Path
 
+from gma import Gma, GmaFile, write_gma
 from vpk import Vpk
 
 STEAMAPPS = Path.home() / "Library/Application Support/CrossOver/Bottles/GModServer/drive_c/Steam/steamapps"
@@ -89,8 +91,15 @@ SERVER_WORKSHOP = {
 # them, downloaded by steamcmd beside the maps: name -> item id. The hostage
 # models of the hostage rescue mode (features/hostage/resources.lua).
 SERVER_DOWNLOADS = {
-    "hostage_civilian": "3172805326",  # TF2 Classified Civilian/VIP, with NPC models
-    "hostage_fem_civilian": "886058416",  # TF2 Female Civilian (a legacy .bin)
+    "hostage_civilian": "3172805326",  # TF2 Classified Civilian/VIP, its npc_civilian models
+}
+# Packs of loose sounds from another app's Workshop, downloaded by steamcmd
+# (steamcmd +login anonymous +workshop_download_item <app> <item> +quit) beside
+# GMod's, and mounted as a GMA of their sounds: name -> (app, item). The
+# hostages' voice (features/hostage/voice.lua): TF2 Classic's Civilian, by
+# Benjamoose, from Source Filmmaker's Workshop, a zip of 689 .wav files.
+SERVER_PACKS = {
+    "hostage_civilian_voice": ("1840", "584658549"),
 }
 SERVER_LUA_DIR = Path(__file__).resolve().parent / "server_root"
 # the server's own Lua: path under server_mounts/lua/ -> file in SERVER_LUA_DIR
@@ -253,6 +262,31 @@ def downloaded_archive(layout: "Layout", name: str, item: str) -> Path:
         raise FileNotFoundError(f"{name}: {e}; fetch it with: steamcmd +login anonymous +workshop_download_item 4000 {item} +quit") from e
 
 
+def pack_archive(layout: "Layout", name: str, app: str, item: str) -> Path:
+    """A pack's download (one .bin, a zip), or the refusal that says how to fetch it."""
+    folder = layout.maps.parent / app / item
+    archives = sorted(folder.glob("*.bin")) + sorted(folder.glob("*.zip"))
+    if len(archives) != 1:
+        raise FileNotFoundError(f"{name}: expected one .bin or .zip under {folder}, found {len(archives)}; "
+                                f"fetch it with: steamcmd +login anonymous +workshop_download_item {app} {item} +quit")
+    return archives[0]
+
+
+def place_pack(path: Path, archive: Path) -> None:
+    """A zip of loose files as a GMA of its sounds (Windows paths made GMod's),
+    built again only when the download is newer."""
+    if path.exists() and path.stat().st_mtime >= archive.stat().st_mtime:
+        return
+    files = []
+    with zipfile.ZipFile(archive) as z:
+        for info in z.infolist():
+            name = info.filename.replace("\\", "/").lower()
+            at = name.find("sound/")
+            if at >= 0 and not name.endswith("/"):
+                files.append(GmaFile(name[at:], z.read(info)))
+    path.write_bytes(write_gma(Gma(path.stem, tuple(files))))
+
+
 def place_archive(path: Path, archive: Path) -> None:
     """A .gma is linked; a legacy .bin is decompressed, again only when the download is newer."""
     if archive.suffix == ".gma":
@@ -326,7 +360,7 @@ def build(layout: Layout) -> Path:
         link(target, source)
     cache = game / "cache"
     cache.mkdir(exist_ok=True)
-    listed = {f"{name}.gma" for name in SERVER_WORKSHOP | SERVER_DOWNLOADS.keys()} | {map_archive_name(item) for item in SERVER_MAPS.values()}
+    listed = {f"{name}.gma" for name in SERVER_WORKSHOP | SERVER_DOWNLOADS.keys() | SERVER_PACKS.keys()} | {map_archive_name(item) for item in SERVER_MAPS.values()}
     for archive in cache.glob("*.gma"):
         if archive.name not in listed:
             archive.unlink()
@@ -336,6 +370,8 @@ def build(layout: Layout) -> Path:
         place_archive(game / "cache" / map_archive_name(item), downloaded_archive(layout, name, item))
     for name, item in SERVER_DOWNLOADS.items():
         place_archive(cache / f"{name}.gma", downloaded_archive(layout, name, item))
+    for name, (app, item) in SERVER_PACKS.items():
+        place_pack(cache / f"{name}.gma", pack_archive(layout, name, app, item))
     pak = Vpk.open(layout.tf / TF_PAK)
     for path in TF_SCRIPTS:
         target = game / "data" / TF_SCRIPTS_DIR / path

@@ -16,8 +16,17 @@ local function Sorted(list)
 	return copy
 end
 
+-- The Classified Civilian addon's npc_civilian models (its friendly
+-- civilians, one a team colour), which animate; the Female Civilian, a
+-- player model with only a reference pose, is not among them.
+T.test("the hostages are the four npc_civilian models", function()
+	T.eq(#Models.All(), 4, "four")
+	for _, path in ipairs(Models.All()) do
+		T.eq(path:match("^models/player/team/fortress/npc_arces_%l+_civilian%.mdl$") ~= nil, true, path)
+	end
+end)
+
 T.test("every model is a lower-case .mdl path under models/", function()
-	T.eq(#Models.All(), #Models.MALE + #Models.FEMALE, "the two lists make up the whole")
 	for _, path in ipairs(Models.All()) do
 		T.eq(path:match("^models/[%l%d_/]+%.mdl$") ~= nil, true, path)
 	end

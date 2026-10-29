@@ -1,21 +1,37 @@
 """server_root.py's symlinked server root, built in a temporary folder: every
 shared entry is a link, the server's own folders are real, and nothing is
 copied."""
+import io
 import lzma
+import zipfile
 import os
 import struct
 from dataclasses import replace
+
+from gma import read_gma
 from pathlib import Path
 
 import pytest
 
 from server_root import GAMEMODE_ENV, LUADEV_PORT_FILE, REPO_ADDONS, REPO_DATA, ROOT, ROOT_WINDOWS, SERVER_BINARIES, SERVER_LUA, SERVER_EXE, SERVER_WORKSHOP, TF_SCRIPTS,\
-    TF_SCRIPTS_DIR, SERVER_DOWNLOADS, SERVER_MAPS, map_archive_name, Instance, Layout, NotAnExe, build, console_exe
+    TF_SCRIPTS_DIR, SERVER_DOWNLOADS, SERVER_MAPS, SERVER_PACKS, map_archive_name, Instance, Layout, NotAnExe, build, console_exe
 from test_vpk import DIR_ARCHIVE, entry, write_pak
 
 # a Workshop item from before .gma downloads: one LZMA-compressed .gma, as .bin
 LEGACY = "949733637"
 LEGACY_GMA = b"GMAD legacy"
+# a pack of loose sounds from another app's Workshop (SERVER_PACKS), a zip
+# with Windows paths, as the civilian voice pack is
+def pack_zip() -> bytes:
+    out = io.BytesIO()
+    with zipfile.ZipFile(out, "w") as z:
+        z.writestr("sound\\vo\\civilian_benjamoose\\civ_thanks(1).wav", b"RIFF thanks")
+        z.writestr("voicepack\\credits.txt", b"credits")
+    return out.getvalue()
+
+
+PACK_ZIP = pack_zip()
+
 # the same in the server's own downloads (SERVER_DOWNLOADS)
 LEGACY_DOWNLOAD = "886058416"
 
@@ -66,6 +82,9 @@ def layout(tmp_path: Path) -> Layout:
             (maps / item / "456_legacy.bin").write_bytes(lzma.compress(LEGACY_GMA, format=lzma.FORMAT_ALONE))
         else:
             (maps / item / "addon.gma").write_bytes(b"GMAD download")
+    for name, (app, item) in SERVER_PACKS.items():
+        (maps.parent / app / item).mkdir(parents=True)
+        (maps.parent / app / item / "789_legacy.bin").write_bytes(PACK_ZIP)
     lua = tmp_path / "server_root"
     lua.mkdir()
     for source in SERVER_LUA.values():
@@ -189,6 +208,7 @@ def test_nothing_is_copied_but_tf2s_hidden_sound_scripts_legacy_archives_and_the
         [f"garrysmod/data/{TF_SCRIPTS_DIR}/{path}" for path in TF_SCRIPTS]
         + [f"garrysmod/cache/{legacy_name()}.gma", SERVER_EXE, f"garrysmod/data/{LUADEV_PORT_FILE}"]
         + [f"garrysmod/cache/{name}.gma" for name, item in SERVER_DOWNLOADS.items() if item == LEGACY_DOWNLOAD]
+        + [f"garrysmod/cache/{name}.gma" for name in SERVER_PACKS]
     )
 
 
@@ -360,3 +380,33 @@ def test_an_instance_below_one_is_refused():
 def test_the_build_tells_the_servers_lua_its_luadev_port(layout):
     build(layout)
     assert (layout.root / "garrysmod" / "data" / LUADEV_PORT_FILE).read_text() == "27100"
+
+
+# A pack of loose sounds (SERVER_PACKS: the hostages' civilian voice lines,
+# from Source Filmmaker's Workshop) is mounted as a GMA of its sounds, paths
+# as GMod's, built again only when the download is newer.
+def test_a_pack_of_sounds_is_mounted_as_a_gma_of_them(layout):
+    root = build(layout)
+    for name in SERVER_PACKS:
+        gma = read_gma((root / "garrysmod" / "cache" / f"{name}.gma").read_bytes())
+        assert [(f.path, f.data) for f in gma.files] == [("sound/vo/civilian_benjamoose/civ_thanks(1).wav", b"RIFF thanks")]
+
+
+def test_a_pack_is_built_again_only_when_its_download_is_newer(layout):
+    name, (app, item) = next(iter(SERVER_PACKS.items()))
+    gma = build(layout) / "garrysmod" / "cache" / f"{name}.gma"
+    gma.write_bytes(b"GMAD kept")
+    build(layout)
+    assert gma.read_bytes() == b"GMAD kept"
+    download = layout.maps.parent / app / item / "789_legacy.bin"
+    later = gma.stat().st_mtime + 10
+    os.utime(download, (later, later))
+    build(layout)
+    assert read_gma(gma.read_bytes()).files
+
+
+def test_a_pack_not_fetched_is_refused_with_how_to_fetch_it(layout):
+    name, (app, item) = next(iter(SERVER_PACKS.items()))
+    (layout.maps.parent / app / item / "789_legacy.bin").unlink()
+    with pytest.raises(FileNotFoundError, match=f"steamcmd.*{app} {item}"):
+        build(layout)

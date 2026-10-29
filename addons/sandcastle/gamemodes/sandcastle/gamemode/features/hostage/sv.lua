@@ -17,6 +17,7 @@ local Rescue = WS.require("features.hostage.model")
 local Round = WS.require("features.hostage.round")
 local Zone = WS.require("features.hostage.zone")
 local Hotfixes = WS.require("features.hostage.hotfixes")
+local Voice = WS.require("features.hostage.voice")
 local State = WS.require("games.gameplay.rounds.state")
 local Rounds = gameplay.rounds
 
@@ -26,6 +27,13 @@ local THINK_HOOK = "ws_hostage"
 local ZONE_MARGIN = 150
 
 local BLUE = WS.TEAM_BLUE
+
+-- Its voice carries as a voice does, and it calls for help to a BLU soldier
+-- within CALL_RANGE of it, in sight.
+local VOICE_LEVEL = 80
+local CALL_RANGE = 600
+-- The model addon clients download (features.hostage.models).
+local MODEL_WORKSHOP = "3172805326"
 
 -- The round's timer: when it runs out RED has kept the hostages and wins
 -- (features.hostage.round).
@@ -218,6 +226,7 @@ function Controller:Think()
 		if IsValid(ent) then
 			info.pos = ent:GetPos()
 			local state = round:StateOf(id)
+			local before = state
 			if state == Rescue.HELD then
 				local rescuer = RescuerNear(ent)
 				if rescuer then round = round:Follow(id, rescuer) end
@@ -231,6 +240,7 @@ function Controller:Think()
 			end
 			local leader = round:StateOf(id) == Rescue.FOLLOWING and round:RescuerOf(id) or nil
 			ent:SetLeader(leader)
+			self:Voice(ent, before, round:StateOf(id))
 		end
 	end
 	self.round = round
@@ -238,6 +248,51 @@ function Controller:Think()
 		self.won = true
 		self.rounds:SetWinningTeam(BLUE, Rounds.WINREASON.HOSTAGES_RESCUED, true, false, false)
 	end
+end
+
+-- What a hostage says (features.hostage.voice): a line as its state changes
+-- (taken, left behind, rescued), and now and then, no sooner than
+-- FOLLOW_CHATTER after its last, while following or, held, calling for help
+-- to a BLU soldier near.
+local CHANGES = {
+	[Rescue.HELD .. ">" .. Rescue.FOLLOWING] = Voice.TAKEN,
+	[Rescue.FOLLOWING .. ">" .. Rescue.HELD] = Voice.LEFT,
+	[Rescue.FOLLOWING .. ">" .. Rescue.RESCUED] = Voice.RESCUED,
+}
+
+local function BluNear(ent)
+	for _, other in ipairs(ents.FindInSphere(ent:GetPos(), CALL_RANGE)) do
+		if other.Team and (other:IsPlayer() or other:IsNextBot()) and Alive(other) and WS.TeamOf(other) == BLUE and ent:Visible(other) then
+			return true
+		end
+	end
+	return false
+end
+
+function Controller:Voice(ent, before, after)
+	local now = CurTime()
+	local event = CHANGES[before .. ">" .. after]
+	if not event then
+		if now - (ent.wsSpokeAt or -math.huge) < Voice.FOLLOW_CHATTER then return end
+		if after == Rescue.FOLLOWING then
+			event = Voice.FOLLOWING
+		elseif after == Rescue.HELD and BluNear(ent) then
+			event = Voice.CALLING
+		else
+			return
+		end
+	end
+	if not Voice.MaySpeak(ent.wsSpokeAt, now) then return end
+	ent.wsSpokeAt = now
+	ent:EmitSound(Voice.Pick(event, math.random(#Voice.Lines(event))), VOICE_LEVEL)
+end
+
+-- Clients fetch the hostages' models (their Workshop addon) and the lines
+-- they say; the server precaches the lines.
+resource.AddWorkshop(MODEL_WORKSHOP)
+for _, path in ipairs(Voice.All()) do
+	resource.AddFile("sound/" .. path)
+	util.PrecacheSound(path)
 end
 
 hook.Add("Think", THINK_HOOK, function()

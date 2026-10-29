@@ -9,8 +9,9 @@
 -- player or an NPC for its own damage and throws them hard enough to be
 -- slammed dead into a wall. The controller
 -- (ws/sv_hits.lua, ws/sh_weapon_balance.lua) applies it to each hit and shot.
-local math = math
+local math, pairs = math, pairs
 local Scalar = math.scalar
+local Css = gameplay.css_weapons
 module(...)
 
 -- damage: a hit's damage, in place of HL2's; cone: the full spread in
@@ -111,6 +112,14 @@ INFLICTORS = {
 	npc_tripmine = "weapon_slam",
 	rpg_missile = "weapon_rpg",
 }
+
+-- CS:S's weapons deal their own damage (gameplay.css_weapons: by range and
+-- hit group, a headshot already four times), so none is balanced here and a
+-- headshot is no crit on top.
+for class, weapon in pairs(Css.WEAPONS) do
+	WEAPONS[class] = { headshotCrit = false }
+	if weapon.grenade then INFLICTORS[weapon.grenade.projectile] = class end
+end
 
 -- By range: full damage to start units, falling to floor of it at finish
 -- and beyond. A long range has none.

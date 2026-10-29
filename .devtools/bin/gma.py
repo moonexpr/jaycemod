@@ -77,6 +77,23 @@ def read_gma(blob: bytes) -> Gma:
     return Gma(name, tuple(GmaFile(path, r.take(size)) for path, size in entries))
 
 
+WRITE_VERSION = 3
+
+
+def write_gma(gma: Gma) -> bytes:
+    """The archive gmad writes (version 3, no required content, no CRCs), which
+    GMod mounts and read_gma reads back."""
+    out = bytearray(MAGIC + bytes([WRITE_VERSION]) + struct.pack("<QQ", 0, 0))
+    out += b"\x00"  # no required content
+    out += gma.name.encode() + b"\x00" + b"\x00" + b"\x00" + struct.pack("<i", 1)
+    for number, f in enumerate(gma.files, start=1):
+        out += struct.pack("<I", number) + f.path.encode() + b"\x00" + struct.pack("<qI", len(f.data), 0)
+    out += struct.pack("<I", 0)
+    for f in gma.files:
+        out += f.data
+    return bytes(out + struct.pack("<I", 0))
+
+
 def main(argv) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("gma", type=Path)
