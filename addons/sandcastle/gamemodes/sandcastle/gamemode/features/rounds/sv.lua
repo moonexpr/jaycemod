@@ -74,8 +74,8 @@ local overtimeNag = ConVarOrCreate("tf_overtime_nag", "0", FCVAR_NOTIFY, "Announ
 
 -- The gamerules every map has (WS.Rules): TF2's, which run its rounds, or
 -- Sandcastle's (ws_gamerules), which run them once a game begins.
-local TF_RULES_CLASS, WS_RULES_CLASS = "tf_gamerules", "ws_gamerules"
-local RULES_CLASSES = { TF_RULES_CLASS, WS_RULES_CLASS }
+local TF_RULES_CLASS, WS_RULES_CLASS, CS_RULES_CLASS = "tf_gamerules", "ws_gamerules", "cs_gamerules"
+local RULES_CLASSES = { TF_RULES_CLASS, WS_RULES_CLASS, CS_RULES_CLASS }
 local MASTER_CLASS = "team_control_point_master"
 -- The entities that make a map a round-based one, proxy or not.
 local OBJECTIVE_CLASSES = {
@@ -228,7 +228,7 @@ end
 -- rules replacing others.
 function Controller:EnsureProxy(name)
 	if IsValid(self.proxy) then return end
-	local class = HasObjective() and TF_RULES_CLASS or WS_RULES_CLASS
+	local class = self:Mode().RULES_CLASS or (HasObjective() and TF_RULES_CLASS or WS_RULES_CLASS)
 	local proxy = ents.Create(class)
 	proxy:SetName(name or class)
 	proxy:Spawn()

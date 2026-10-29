@@ -41,6 +41,7 @@ local REASON_TEXT = {
 	[WINREASON.CASHLIMIT] = "%s reached the cash limit",
 	[WINREASON.EXPEDIENT] = "%s was nearer to completing the objective when the match was closed",
 	[WINREASON.HOSTAGES_RESCUED] = "%s rescued the hostages",
+	[WINREASON.HOSTAGES_NOT_RESCUED] = "%s kept the hostages until time ran out",
 }
 -- Winreason_FlagCaptureLimit(_One): a CTF win, at the capture limit or by
 -- the most captures at the time limit, counts them.

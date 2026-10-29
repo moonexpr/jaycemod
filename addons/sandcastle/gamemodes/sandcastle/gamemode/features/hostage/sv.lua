@@ -26,6 +26,12 @@ local ZONE_MARGIN = 150
 
 local BLUE = WS.TEAM_BLUE
 
+-- The round's timer: when it runs out RED has kept the hostages and wins
+-- (features.hostage.round).
+local roundTime = CreateConVar("mp_hostage_roundtime", "240", { FCVAR_NOTIFY, FCVAR_REPLICATED },
+	"Length of a hostage round in seconds, shown as its timer; when it runs out the hostages were not rescued and RED wins. 0: untimed.",
+	0, 3600)
+
 local Controller = {
 	rounds = WS.Feature("rounds"),
 	bound = {}, -- id -> its entity, while it lives
@@ -38,6 +44,13 @@ local Controller = {
 
 Controller.rounds:SetMode(Round.Mode)
 SetGlobal2Bool("ws_round_arena", true)
+
+function Controller:Configure()
+	self.rounds:ConfigureRound({ hostageRoundTime = roundTime:GetInt() })
+end
+
+-- Before the first pre-round reads it.
+Controller:Configure()
 
 local function Alive(ent)
 	if not IsValid(ent) then return false end
@@ -119,6 +132,7 @@ end
 
 -- The rules applied to the map, every THINK_INTERVAL while the round is on.
 function Controller:Think()
+	self:Configure()
 	if not self.round then
 		if next(self.bound) then self:NewRound() end
 		return

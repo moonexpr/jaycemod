@@ -43,6 +43,8 @@ WINREASON = {
 	EXPEDIENT = 12,
 	-- hostage rescue: BLU led the hostages out (features/hostage)
 	HOSTAGES_RESCUED = 13,
+	-- hostage rescue: the round's timer ran out with hostages unrescued
+	HOSTAGES_NOT_RESCUED = 14,
 }
 STALEMATE = {
 	JOIN_MID = 0,
@@ -391,6 +393,9 @@ Mode = {
 	STALEMATE_IS_ROUND = false,
 	-- mp_scrambleteams_auto applies.
 	AUTO_SCRAMBLE = true,
+	-- The gamerules entity class this mode runs under, when it is not the map's
+	-- own choice (tf_gamerules with an objective, else ws_gamerules).
+	RULES_CLASS = nil,
 	-- The map has an objective that decides its rounds, so the round limits
 	-- (games.gameplay.rounds.limits) are off: none here, the base mode's.
 	OBJECTIVE = false,
@@ -441,6 +446,10 @@ end
 function Mode:TimelimitWin(world)
 	return TimelimitWinner(world.scores), WINREASON.TIMELIMIT
 end
+
+-- Who wins when the timer of a round fought in STALEMATE (arena) runs out,
+-- and why: nobody by default, the round a stalemate. world: the round's.
+function Mode:StalemateTimerWin(world) return nil end
 
 -- How long a round fought in STALEMATE (arena) is in setup first; none.
 function Mode:SetupSeconds(settings) return 0 end
@@ -1121,7 +1130,16 @@ THINK[State.STALEMATE] = function(self, effects, now, world)
 	if allDead then return Stalemate(self, effects, now, STALEMATE.BOTH_DEAD) end
 	local left = world.stalemateTimerLeft
 	if not (left ~= nil and world.timerMayExpire and left <= 0) then return end
-	if not suddenDeath then return Stalemate(self, effects, now, STALEMATE.TIMER) end
+	if not suddenDeath then
+		local timerWinner, timerReason = self.mode:StalemateTimerWin(world)
+		if timerWinner then
+			for _, e in ipairs(self:SetWinningTeam(now, timerWinner, timerReason, self.forceMapReset, false, false, world.objective)) do
+				Add(effects, e)
+			end
+			return
+		end
+		return Stalemate(self, effects, now, STALEMATE.TIMER)
+	end
 	-- sudden death timed out: a tie, a point to each team
 	Add(effects, Kind("sudden_death_over"))
 	for _, e in ipairs(self:Tie(now, not world.objective:PlayingMiniRounds())) do Add(effects, e) end
