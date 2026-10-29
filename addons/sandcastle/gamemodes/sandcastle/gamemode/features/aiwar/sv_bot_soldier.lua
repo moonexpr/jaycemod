@@ -50,6 +50,14 @@ local STEP_HEIGHT, SAFE_DROP = 18, 300
 local FOOTING_ABOVE, FOOTING_BELOW = Vector(0, 0, STEP_HEIGHT), Vector(0, 0, 2 * STEP_HEIGHT)
 local JUMP_PENALTY = 2
 
+-- A goal off the mesh (a guard's spot on a ring round its charge that falls
+-- in or behind a wall) is walked to as the first point on the mesh along the
+-- line back from it toward the bot, looked for OFF_MESH_STEP apart: else the
+-- bot presses into the wall for as long as it guards.
+local OFF_MESH_STEP, OFF_MESH_HEIGHT, OFF_MESH_LIFT = 16, 60, Vector(0, 0, 20)
+
+local function OnMesh(p) return navmesh.GetNavArea(p + OFF_MESH_LIFT, OFF_MESH_HEIGHT) ~= nil end
+
 -- A trace filter passing whoever walks about: players and NPCs.
 local function Unmoving(ent) return not (ent:IsPlayer() or ent:IsNPC() or ent:IsNextBot()) end
 
@@ -214,12 +222,26 @@ end
 
 function BotSoldier:Repath() self.repath = true end
 
+-- Where to walk for goal (a point): itself on the mesh, else the first
+-- point on the mesh back from it toward where it stands, else itself.
+function BotSoldier:MeshGoal(goal)
+	local to = ToVector(goal)
+	if OnMesh(to) then return goal end
+	local from = self.ent:GetPos()
+	local length = from:Distance(to)
+	for along = OFF_MESH_STEP, length, OFF_MESH_STEP do
+		local p = to + (from - to) * (along / length)
+		if OnMesh(p) then return Point(p) end
+	end
+	return goal
+end
+
 -- Every look (sv_bots.lua): the point its body makes for now (steer) on
 -- its way to its move target. A route is planned from where its navigator
 -- knows it stands (Path:Compute starts at the navigator's last known area),
 -- so not until the navigator has caught up with a body set down elsewhere.
 function BotSoldier:Steer(now)
-	local goal = self.moveTarget
+	local goal = self.moveTarget and self:MeshGoal(self.moveTarget)
 	local pos = Point(self.ent:GetPos())
 	if self.lookedFrom and Geometry.Distance(pos, self.lookedFrom) > TELEPORTED then
 		self.walk, self.planned, self.nextPlan = nil, nil, now + SETTLE_DELAY
