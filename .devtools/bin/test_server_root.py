@@ -4,11 +4,12 @@ copied."""
 import lzma
 import os
 import struct
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
 
-from server_root import LUADEV_PORT_FILE, REPO_ADDONS, REPO_DATA, ROOT, ROOT_WINDOWS, SERVER_BINARIES, SERVER_LUA, SERVER_EXE, SERVER_WORKSHOP, TF_SCRIPTS,\
+from server_root import GAMEMODE_ENV, LUADEV_PORT_FILE, REPO_ADDONS, REPO_DATA, ROOT, ROOT_WINDOWS, SERVER_BINARIES, SERVER_LUA, SERVER_EXE, SERVER_WORKSHOP, TF_SCRIPTS,\
     TF_SCRIPTS_DIR, SERVER_DOWNLOADS, SERVER_MAPS, map_archive_name, Instance, Layout, NotAnExe, build, console_exe
 from test_vpk import DIR_ARCHIVE, entry, write_pak
 
@@ -270,6 +271,40 @@ def test_a_workshop_map_not_downloaded_is_refused_with_how_to_fetch_it(layout, t
     missing = Layout(layout.shared, layout.root, layout.workshop, layout.lua, layout.tf, layout.luadev_port, tmp_path / "empty")
     with pytest.raises(FileNotFoundError, match="steamcmd"):
         build(missing)
+
+
+# An instance may run another checkout's gamemode (a worktree's), the shared
+# install's gamemodes folder otherwise left as it is.
+def test_a_gamemode_override_makes_gamemodes_a_folder_of_links_with_the_overridden_one(layout, tmp_path):
+    modes = layout.shared / "garrysmod" / "gamemodes"
+    (modes / "sandcastle").mkdir(parents=True)
+    (modes / "sandbox").mkdir()
+    worktree = tmp_path / "worktree" / "sandcastle"
+    worktree.mkdir(parents=True)
+    root = build(replace(layout, gamemode=worktree))
+    gamemodes = root / "garrysmod" / "gamemodes"
+    assert gamemodes.is_dir() and not gamemodes.is_symlink()
+    assert (gamemodes / "sandcastle").resolve() == worktree
+    assert (gamemodes / "sandbox").resolve() == modes / "sandbox"
+    assert modes.joinpath("sandcastle").exists() and not modes.joinpath("sandcastle").is_symlink(), "the shared install is untouched"
+
+
+def test_without_an_override_gamemodes_is_the_shared_folder_again(layout, tmp_path):
+    modes = layout.shared / "garrysmod" / "gamemodes"
+    (modes / "sandcastle").mkdir(parents=True)
+    worktree = tmp_path / "worktree" / "sandcastle"
+    worktree.mkdir(parents=True)
+    build(replace(layout, gamemode=worktree))
+    root = build(layout)
+    assert (root / "garrysmod" / "gamemodes").is_symlink()
+    assert (root / "garrysmod" / "gamemodes").resolve() == modes
+
+
+def test_the_override_is_read_from_the_environment(monkeypatch, tmp_path):
+    monkeypatch.setenv(GAMEMODE_ENV, str(tmp_path))
+    assert Layout.of(Instance(2)).gamemode == tmp_path
+    monkeypatch.delenv(GAMEMODE_ENV)
+    assert Layout.of(Instance(2)).gamemode is None
 
 
 # Addons the server needs whether or not the operator subscribed to them

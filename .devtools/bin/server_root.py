@@ -34,6 +34,7 @@ program started from srcds.py's pty it writes to that pty, colors and all.
 from __future__ import annotations
 
 import lzma
+import os
 import struct
 import sys
 import argparse
@@ -136,6 +137,11 @@ SUBSYSTEM_OFFSET = 4 + 20 + 68
 CONSOLE_SUBSYSTEM = 3  # IMAGE_SUBSYSTEM_WINDOWS_CUI
 # garrysmod/ entries the server owns: never links into the operator's game
 OWN = ("addons", "data", "cache", "lua", "console.log", "clientside_errors.txt")
+# The gamemodes folder, and the gamemode the server runs. An instance may run
+# another checkout's (a worktree's addons/sandcastle/gamemodes/sandcastle)
+# when GAMEMODE_ENV names its folder; the others keep the shared install's.
+GAMEMODES, GAMEMODE = "gamemodes", "sandcastle"
+GAMEMODE_ENV = "SANDCASTLE_GAMEMODE"
 # luadev's socket (luadev_socket.lua, server_lua.py): the main server's port,
 # the others' from LUADEV_PORT_STEP above it, so 27099, socketdev's in the
 # operator's game, stays clear; the build writes it to the root's data/
@@ -198,10 +204,13 @@ class Layout:
     tf: Path  # TF2's tf/, which holds TF_PAK
     luadev_port: int  # luadev_socket.lua's, written to LUADEV_PORT_FILE
     maps: Path  # steamcmd's workshop/content/4000, which holds SERVER_MAPS
+    gamemode: Path | None = None  # another checkout's gamemode/sandcastle folder this root runs, or the shared install's
 
     @classmethod
     def of(cls, instance: Instance) -> "Layout":
-        return cls(SHARED, instance.root, WORKSHOP, SERVER_LUA_DIR, TF, instance.luadev_port, STEAMCMD_WORKSHOP)
+        override = os.environ.get(GAMEMODE_ENV)
+        return cls(SHARED, instance.root, WORKSHOP, SERVER_LUA_DIR, TF, instance.luadev_port, STEAMCMD_WORKSHOP,
+                   Path(override) if override else None)
 
 
 def map_archive_name(item: str) -> str:
@@ -215,6 +224,25 @@ def workshop_archive(workshop: Path, item: str) -> Path:
     if len(archives) != 1:
         raise FileNotFoundError(f"Workshop item {item}: expected one .gma or .bin under {workshop / item}, found {len(archives)}")
     return archives[0]
+
+
+def place_gamemodes(layout: "Layout", path: Path) -> None:
+    """The shared install's gamemodes, linked as one; with an override (a
+    worktree's gamemode), a folder of links to each of them but the game's own
+    gamemode, which is the override."""
+    shared = layout.shared / "garrysmod" / GAMEMODES
+    if layout.gamemode is None:
+        if path.is_dir() and not path.is_symlink():
+            for child in path.iterdir():
+                child.unlink()
+            path.rmdir()
+        link(path, shared)
+        return
+    own_dir(path)
+    for entry in shared.iterdir():
+        if entry.name != GAMEMODE:
+            link(path / entry.name, entry)
+    link(path / GAMEMODE, layout.gamemode)
 
 
 def downloaded_archive(layout: "Layout", name: str, item: str) -> Path:
@@ -267,8 +295,9 @@ def build(layout: Layout) -> Path:
     game = layout.root / "garrysmod"
     game.mkdir(exist_ok=True)
     for entry in (layout.shared / "garrysmod").iterdir():
-        if entry.name not in OWN:
+        if entry.name not in OWN and entry.name != GAMEMODES:
             link(game / entry.name, entry)
+    place_gamemodes(layout, game / GAMEMODES)
     for own in ("addons", "data", "cache", "lua", "lua/bin"):
         own_dir(game / own)
     shared_lua = layout.shared / "garrysmod" / "lua"
