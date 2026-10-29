@@ -324,10 +324,12 @@ function Controller:Think(now)
 	-- the war waits: its soldiers act only on a whole field
 	if not field then return end
 	self.war:SetField(field)
+	self:HazardsThink()
 	if field.phase.reinforce then self:Reinforce(now) end
 	if field.phase.sightAll then self:SightAll(now) end
 	for ent, entry in pairs(self.soldiers) do
 		if IsValid(ent) then
+			self:NoteFooting(ent)
 			local member = self.war:Member(ent)
 			self:JoinSquad(ent, member)
 			self:Equip(ent, entry, member)

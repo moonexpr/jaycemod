@@ -33,7 +33,7 @@ the main server alone (a second one only when the caller lists it).
 
 From a shell, for looking around on a bench's map without managing a server:
 
-    python3 .devtools/bin/instances.py MAP 'return game.GetMap()'   # - reads the chunk from stdin
+    python3 .devtools/bin/instances.py MAP 'return game.GetMap()'   # - reads the chunk from stdin; --reload first
 """
 from __future__ import annotations
 
@@ -320,8 +320,10 @@ class InstanceManager:
 # The command line: Lua on a leased server ------------------------------------------
 
 
-async def run_lua(pool: InstanceManager, map_name: str, code: str, timeout: float) -> Reply:
+async def run_lua(pool: InstanceManager, map_name: str, code: str, timeout: float, reload: bool) -> Reply:
     async with pool.lease(map_name, "instances.py lua", keep_running=True) as server:
+        if reload:
+            await server.change_map(map_name)
         return await server.lua(code, timeout)
 
 
@@ -332,12 +334,13 @@ def main() -> int:
     parser.add_argument("map")
     parser.add_argument("code", help="a Lua chunk; - reads it from stdin")
     parser.add_argument("--timeout", type=float, default=30)
+    parser.add_argument("--reload", action="store_true", help="reload the map (and the gamemode's Lua) first")
     parser.add_argument("--instance", type=int, nargs="+", default=[MAIN_INSTANCE])
     args = parser.parse_args()
     code = sys.stdin.read() if args.code == "-" else args.code
     pool = InstanceManager.default([Instance(n) for n in args.instance])
     try:
-        reply = asyncio.run(run_lua(pool, args.map, code, args.timeout))
+        reply = asyncio.run(run_lua(pool, args.map, code, args.timeout, args.reload))
     except LuaFailed as e:
         print(e, file=sys.stderr)
         return 1

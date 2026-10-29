@@ -22,6 +22,19 @@ T.test("it makes for the first waypoint, and passes each it has reached", functi
 	T.eq(walk:Next(P(STEP), NEVER), ROUTE[2], "it never goes back")
 end)
 
+-- Standing on a waypoint is judged across the ground, as the body arrives
+-- (player_body's ARRIVE), with REACH_HEIGHT up or down allowed: a waypoint
+-- on an area's edge lies below a bot on the log it leads onto.
+T.defined(Walk.REACH_HEIGHT, "REACH_HEIGHT")
+
+T.test("a waypoint below or above it is stood on across the ground", function()
+	local walk = Walk.New(ROUTE)
+	local over = { x = STEP - Walk.ON + 1, y = 0, z = Walk.ON }
+	T.eq(walk:Next(over, NEVER), ROUTE[2], "above the first, within reach: on")
+	local high = Walk.New(ROUTE)
+	T.eq(high:Next({ x = STEP, y = 0, z = Walk.REACH_HEIGHT + 1 }, NEVER), ROUTE[1], "far above it: not on it")
+end)
+
 T.test("a waypoint round a corner is passed only once it stands on it", function()
 	local walk = Walk.New(ROUTE)
 	local nearFirst = P(STEP - Walk.RADIUS)
@@ -81,6 +94,65 @@ T.test("a long walk is looked at no more than FOOTING_MAX times, still evenly", 
 	local step = far.x / (Walk.FOOTING_MAX + 1)
 	T.near(points[1].x, step, 1e-9, "first")
 	T.near(points[#points].x, far.x - step, 1e-9, "last")
+end)
+
+-- With no clear line to the waypoint it makes for (beside a log, over air),
+-- it is led back onto the route's own line, from the last waypoint to this
+-- one: the point LINE_LEAD beyond where it stands along it, as TF2's path
+-- follower makes for a point ahead on its path.
+T.defined(Walk.LINE_LEAD, "LINE_LEAD")
+
+T.test("off a line it cannot cut back across, it is led along the route's line", function()
+	local walk = Walk.New(ROUTE)
+	walk:Next(P(STEP), NEVER) -- on the first: the second is made for
+	local beside = { x = STEP + 100, y = 40, z = 0 }
+	local lead = walk:Next(beside, NEVER)
+	T.near(lead.x, STEP + 100 + Walk.LINE_LEAD, 1e-9, "ahead of it along the line")
+	T.near(lead.y, 0, 1e-9, "on the line")
+	T.eq(walk.index, 2, "the waypoint is still the second")
+end)
+
+T.test("the lead never passes the waypoint", function()
+	local walk = Walk.New(ROUTE)
+	walk:Next(P(STEP), NEVER)
+	local lead = walk:Next({ x = 2 * STEP - Walk.LINE_LEAD / 2, y = 60, z = 0 }, NEVER)
+	T.near(lead.x, 2 * STEP, 1e-9, "at the waypoint")
+end)
+
+T.test("with a clear line, it makes for the waypoint itself", function()
+	local walk = Walk.New(ROUTE)
+	walk:Next(P(STEP), NEVER)
+	local onlySecond = function(q) return q == ROUTE[2] end
+	T.eq(walk:Next({ x = STEP + 100, y = 40, z = 0 }, onlySecond), ROUTE[2], "the waypoint")
+end)
+
+-- Stalled: no nearer its waypoint by PROGRESS in STALL_TIME seconds (fallen
+-- off a log beneath its route, wedged); the caller plans its route anew.
+T.defined(Walk.PROGRESS, "PROGRESS")
+T.defined(Walk.STALL_TIME, "STALL_TIME")
+
+T.test("a walk getting nearer its waypoint is not stalled", function()
+	local walk = Walk.New(ROUTE)
+	local t = 0
+	for x = 0, STEP - Walk.RADIUS, Walk.PROGRESS do
+		T.eq(walk:Stalled(P(x), t), false, "at " .. x)
+		t = t + Walk.STALL_TIME / 2
+	end
+end)
+
+T.test("a walk no nearer its waypoint for STALL_TIME is stalled", function()
+	local walk = Walk.New(ROUTE)
+	T.eq(walk:Stalled(P(0), 0), false, "begun")
+	T.eq(walk:Stalled(P(Walk.PROGRESS / 2), Walk.STALL_TIME / 2), false, "a little nearer: not yet")
+	T.eq(walk:Stalled(P(Walk.PROGRESS / 2), Walk.STALL_TIME), true, "no nearer for STALL_TIME")
+end)
+
+T.test("a new waypoint is a new start", function()
+	local walk = Walk.New(ROUTE)
+	walk:Stalled(P(0), 0)
+	walk:Next(P(STEP), NEVER)
+	T.eq(walk:Stalled(P(STEP), Walk.STALL_TIME), false, "the second just begun")
+	T.eq(walk:Stalled(P(STEP), 2 * Walk.STALL_TIME), true, "and stalled after")
 end)
 
 T.finish()

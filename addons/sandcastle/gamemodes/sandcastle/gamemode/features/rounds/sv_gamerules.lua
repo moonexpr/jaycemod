@@ -3,6 +3,8 @@
 -- and their inputs, tf_gamerules'.
 local Controller, Players, Active = ...
 local Rounds = gameplay.rounds
+local Standing = gameplay.standing
+local Transaction = transaction
 local Spawns = system.spawn_manager
 local SpawnHold = WS.require("features.rounds.spawn_doors")
 local TeamPlayers, EachPlayer = Players.TeamPlayers, Players.EachPlayer
@@ -99,6 +101,65 @@ function Controller:ForceMatchWin(team)
 	if #effects == 0 then return false, "the match is already over" end
 	self:Apply(effects)
 	return true
+end
+
+-- How near each team is to completing the round's objective, as
+-- gameplay.standing judges it: the carts' progress (the payload
+-- feature's), the flags captured and the limit (the flag feature's), the
+-- teams' KOTH clocks, the round's points and their owners (the capture
+-- feature's); each part only on a map with it.
+function Controller:ObjectiveStanding()
+	local objective = {}
+	if WS.FeatureLoaded("payload") then
+		local carts = {}
+		for _, watcher in ipairs(WS.Feature("payload").watchers) do
+			if IsValid(watcher) and watcher:IsActive() then
+				local hud = watcher:HudState()
+				carts[hud.team] = math.max(carts[hud.team] or 0, hud.progress)
+			end
+		end
+		if next(carts) then objective.carts = carts end
+	end
+	if WS.FeatureLoaded("flag") then
+		local flag = WS.Feature("flag")
+		objective.captures = { [RED] = flag.tally:Captures(RED), [BLUE] = flag.tally:Captures(BLUE) }
+		objective.caplimit = flag:CapLimit()
+	end
+	local red, blue = self:TeamClock(RED), self:TeamClock(BLUE)
+	if red and blue then
+		local now = CurTime()
+		objective.clocks = { [RED] = self:TimerOf(red):TimeRemaining(now), [BLUE] = self:TimerOf(blue):TimeRemaining(now) }
+	end
+	if WS.FeatureLoaded("capture") then
+		local points = {}
+		for _, entry in ipairs(WS.Feature("capture"):HudPoints()) do
+			points[#points + 1] = { owner = entry.hud.owner, inRound = entry.hud.inRound, hidden = entry.hud.hidden }
+		end
+		objective.points = points
+	end
+	return objective
+end
+
+-- Another system asks the match closed now (the AI war, its soldiers cut
+-- off from the objective: features/aiwar/sv_hazards.lua): the gamerules'
+-- expedient means, a transaction the gamerules may decline
+-- (Rounds.EXPEDIENT_NO_ROUNDS, EXPEDIENT_MATCH_OVER). Their evaluation of
+-- the game's progress (gameplay.standing over ObjectiveStanding and the
+-- match score) names the team nearer to completing the objective, and the
+-- match closes as a round completed, that team winning it
+-- (Round:CloseByExpedientMeans); a genuine tie goes to a sudden death that
+-- decides the match. The intermission then changes the map. Commits
+-- { winner }: the leader, or nil while a sudden death decides it.
+function Controller:RequestMatchClosure(reason)
+	return Transaction.Run(function()
+		if not Active() then Transaction.Refuse(Rounds.EXPEDIENT_NO_ROUNDS, "This map has no rounds to close.") end
+		local leader = Standing.Leader(self:ObjectiveStanding(), { [RED] = team.GetScore(RED), [BLUE] = team.GetScore(BLUE) })
+		local effects = self.round:CloseByExpedientMeans(CurTime(), leader, self.objective)
+		if #effects == 0 then Transaction.Refuse(Rounds.EXPEDIENT_MATCH_OVER, "The match is already over.") end
+		PrintMessage(HUD_PRINTTALK, "The match is being closed: " .. reason)
+		self:Apply(effects)
+		return { winner = leader }
+	end)
 end
 
 function Controller:Halted()

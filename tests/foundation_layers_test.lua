@@ -129,6 +129,7 @@ local GAMES = {
 	["gameplay/handicap"] = "gameplay",
 	["gameplay/capabilities"] = "gameplay",
 	["gameplay/movement"] = "gameplay",
+	["gameplay/standing"] = "gameplay",
 	["gameplay/loadout"] = "gameplay",
 	["gameplay/combat"] = "gameplay",
 	["gameplay/combat/weapon_mimic"] = "gameplay",
@@ -199,6 +200,7 @@ local WARTACTICS = {
 	["zone"] = "wartactics",
 	["tuning"] = "wartactics",
 	["bot_quota"] = "wartactics",
+	["hazards"] = "wartactics",
 }
 
 -- The modules still to move, and where each goes: none. A module bound out

@@ -11,8 +11,9 @@ ENT.Spawnable = false
 
 -- Any model gives it a NextBot's hull; it is never drawn.
 local MODEL = "models/player/police.mdl"
--- The nav area it stands over is looked for this far below it (two steps).
-local SETTLE_REACH = 36
+-- The nav area its owner stands on is the nearest within this (a curved
+-- pipe's area can lie further below than a step).
+local SETTLE_REACH = 64
 
 if SERVER then AddCSLuaFile() end
 
@@ -48,11 +49,13 @@ function ENT:Think()
 	return true
 end
 
--- Whether it knows where it stands: its last known nav area (where
--- Path:Compute starts) is the one it stands over, or it stands over none.
--- The engine catches it up a tick or so after it is set down elsewhere.
+-- Whether it knows where its owner stands: its last known nav area (where
+-- Path:Compute starts) is the nearest to its owner, or the owner is near
+-- none. It follows its owner on its next think and the engine
+-- catches its area up after that, so a tick or two after the owner is set
+-- down elsewhere.
 function ENT:Settled()
-	local here = navmesh.GetNavArea(self:GetPos(), SETTLE_REACH)
+	local here = navmesh.GetNearestNavArea(self:GetOwner():GetPos(), false, SETTLE_REACH)
 	return not IsValid(here) or self:GetLastKnownArea() == here
 end
 

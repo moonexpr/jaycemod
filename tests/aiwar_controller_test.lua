@@ -354,6 +354,7 @@ local function Load(w)
 	local chunk = assert(loadfile(SOURCE))
 	local controller = setfenv(chunk, Env(w))()
 	controller.slotStore = MemoryStore()
+	controller.hazardStore = MemoryStore()
 	return controller
 end
 

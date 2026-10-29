@@ -38,8 +38,11 @@ WINREASON = {
 	CASHLIMIT = 10,
 	-- CTF's time limit: the team with more captures wins (features/flag)
 	MOST_CAPTURES = 11,
+	-- the gamerules' expedient means: the match closed early, won by the
+	-- team nearer to completing the objective (Round:CloseByExpedientMeans)
+	EXPEDIENT = 12,
 	-- hostage rescue: BLU led the hostages out (features/hostage)
-	HOSTAGES_RESCUED = 12,
+	HOSTAGES_RESCUED = 13,
 }
 STALEMATE = {
 	JOIN_MID = 0,
@@ -49,6 +52,7 @@ STALEMATE = {
 	ADMIN = 4, -- the Administrator called it (mp_forcewin)
 	BOTH_DEAD = 5, -- both teams fell at once: no tie-breaker, sudden death again
 	LIMIT_TIED = 6, -- both teams reached a round limit together (games.gameplay.rounds.limits)
+	EXPEDIENT = 7, -- the match closed early on a tie (Round:CloseByExpedientMeans)
 }
 
 -- mp_forcewin's argument: RED ("red", "2"), BLUE ("blue", "blu", "3") or
@@ -687,6 +691,12 @@ end
 ADMIN_MATCH_WIN = "Decided by the Administrator"
 -- Why a deathmatch's winner won the match.
 DEATHMATCH_MATCH_WIN = "Won the deathmatch"
+-- Why a match closed by expedient means was won (Round:CloseByExpedientMeans).
+EXPEDIENT_MATCH_WIN = "Decided by expedient means"
+-- The gamerules' refusals of a request to close the match by expedient
+-- means (the rounds controller's RequestMatchClosure, a transaction): a map
+-- without rounds, a match already over.
+EXPEDIENT_NO_ROUNDS, EXPEDIENT_MATCH_OVER = "no rounds", "match over"
 
 -- A stalemate is the game's default end. With no sudden death to break it,
 -- the match ends drawn (STALEMATE_GAME_OVER): nobody won, so nobody is
@@ -1359,6 +1369,28 @@ function Round:SuddenDeathForMatch(now)
 	local effects = self:SuddenDeath(now, STALEMATE.ADMIN)
 	if #effects > 0 then self.decideMatch, self.decideReason = true, ADMIN_MATCH_WIN end
 	return effects
+end
+
+-- The gamerules' expedient means: another system asks the match closed
+-- now (the AI war, its soldiers cut off from the objective), with the
+-- gamerules' expressed evaluation of the game's progress, leader: the team
+-- nearer to completing the objective (gameplay.standing), or nil on a
+-- genuine tie. The match closes as a round completed: the leader wins the
+-- round (SetWinningTeam, WINREASON.EXPEDIENT) and that win decides the
+-- match; a tie goes to a sudden death whose winner decides it, and with no
+-- round under way to hold one, the match ends drawn.
+function Round:CloseByExpedientMeans(now, leader, objective)
+	if Over(self) then return {} end
+	if leader then
+		self.decideMatch, self.decideReason = true, EXPEDIENT_MATCH_WIN
+		return self:SetWinningTeam(now, leader, WINREASON.EXPEDIENT, true, false, false, objective)
+	end
+	local effects = self:SuddenDeath(now, STALEMATE.EXPEDIENT)
+	if #effects > 0 then
+		self.decideMatch, self.decideReason = true, EXPEDIENT_MATCH_WIN
+		return effects
+	end
+	return StalemateGameOver(self, {}, now, STALEMATE.EXPEDIENT)
 end
 
 -- A passed scramble vote (TF_vote_passed_scramble_teams): the next round's
