@@ -284,8 +284,8 @@ end
 
 -- Looking ------------------------------------------------------------------------
 
--- The live fighters of each game team, players (bots included) and the
--- war's NPC soldiers.
+-- The live fighters of each game team, players (bots included), the war's
+-- NPC soldiers, and those a hook WSWarFighters(fighters) adds.
 function Controller:Fighters()
 	local fighters = { [RED] = {}, [BLUE] = {} }
 	for _, ply in ipairs(player.GetAll()) do
@@ -296,6 +296,8 @@ function Controller:Fighters()
 		local list = fighters[entry.soldier.team]
 		if list and IsValid(ent) and not ent:IsPlayer() and ent:Health() > 0 then list[#list + 1] = ent end
 	end
+	-- others a mode makes fight for a side (an armed hostage: features.hostage)
+	hook.Run("WSWarFighters", fighters)
 	return fighters
 end
 

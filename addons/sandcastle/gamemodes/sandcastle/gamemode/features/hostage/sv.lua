@@ -8,6 +8,12 @@
 -- wins by killing BLU, which the rounds controller decides as it does in
 -- arena.
 --
+-- One hostage a round is armed (features.hostage.pistol), its gun hidden
+-- until, freed, it fires at RED: from then it can be killed, which the round
+-- counts (killed hostages are never rescued); its pistol then lies where it
+-- fell, the hostages still held or following rush for it, and the first to
+-- reach it is armed with it.
+--
 -- The AI war reads it through Snapshot (features.aiwar.sv_field): every
 -- hostage of the round, rescued ones too, so the groups of hostages stay the
 -- same all round.
@@ -18,6 +24,7 @@ local Round = WS.require("features.hostage.round")
 local Zone = WS.require("features.hostage.zone")
 local Hotfixes = WS.require("features.hostage.hotfixes")
 local Voice = WS.require("features.hostage.voice")
+local Pistol = WS.require("features.hostage.pistol")
 local State = WS.require("games.gameplay.rounds.state")
 local Rounds = gameplay.rounds
 
@@ -46,6 +53,8 @@ local Controller = {
 	bound = {}, -- id -> its entity, while it lives
 	known = {}, -- id -> { home, pos } for each hostage of the round
 	round = nil, -- features.hostage.model's round
+	pistol = nil, -- features.hostage.pistol's, nil without hostages
+	pistolEnt = nil, -- the pistol lying, as an entity
 	zone = nil,
 	won = false,
 	nextThink = 0,
@@ -139,6 +148,69 @@ function Controller:NewRound()
 	self.round = #ids > 0 and Rescue.New(ids) or nil
 	self.zone = nil
 	self.won = false
+	SafeRemoveEntity(self.pistolEnt)
+	self.pistol, self.pistolEnt = Pistol.Arm(ids, math.random), nil
+	if self.pistol then self.bound[self.pistol:Holder()]:Arm(Pistol.CLASS, Pistol.STATS) end
+end
+
+-- A hostage died (hostage_entity's OnDeath): the round counts it, and its
+-- pistol, if it held it, lies where it fell.
+function Controller:Killed(ent)
+	local id, round = ent.wsHostageId, self.round
+	if not (round and round:Has(id)) then return end
+	local state = round:StateOf(id)
+	if state == Rescue.HELD or state == Rescue.FOLLOWING then self.round = round:Kill(id) end
+	local pistol = self.pistol
+	if pistol and pistol:Holder() == id then
+		local pos = ent:GetPos()
+		self.pistol = pistol:Drop({ x = pos.x, y = pos.y, z = pos.z })
+		local lying = ents.Create(Pistol.CLASS)
+		lying:SetPos(pos + Vector(0, 0, 16))
+		lying.wsHostagePistol = true
+		lying:Spawn()
+		self.pistolEnt = lying
+	end
+end
+
+-- The armed hostage, once it has fired, fights for BLU: the war's bots see it
+-- as they see BLU.
+hook.Add("WSWarFighters", "ws_hostage_pistol", function(fighters)
+	local pistol = Controller.pistol
+	local holder = pistol and pistol:Holder() and Controller.bound[pistol:Holder()]
+	if IsValid(holder) and holder:Revealed() and holder:Health() > 0 and not holder.rescued and fighters[BLUE] then
+		table.insert(fighters[BLUE], holder)
+	end
+end)
+
+-- The pistol lying is the hostages' alone: no player takes it up.
+hook.Add("PlayerCanPickupWeapon", "ws_hostage_pistol", function(_, weapon)
+	if weapon.wsHostagePistol then return false end
+end)
+
+-- While the pistol lies, the hostages still held or following rush for it,
+-- and the nearest within reach is armed with it.
+function Controller:RushForPistol()
+	local pistol, round = self.pistol, self.round
+	if not (pistol and pistol:Lying()) then return end
+	local rushers, positions = {}, {}
+	for _, id in ipairs(pistol:Rushers(round)) do
+		local ent = self.bound[id]
+		if IsValid(ent) then
+			local pos = ent:GetPos()
+			rushers[id], positions[id] = ent, { x = pos.x, y = pos.y, z = pos.z }
+		end
+	end
+	local claimant = pistol:Claimant(positions)
+	if claimant then
+		self.pistol = pistol:PickUp(claimant)
+		SafeRemoveEntity(self.pistolEnt)
+		self.pistolEnt = nil
+		for _, ent in pairs(rushers) do ent:Rush(nil) end
+		rushers[claimant]:Arm(Pistol.CLASS, Pistol.STATS)
+		return
+	end
+	local lying = IsValid(self.pistolEnt) and self.pistolEnt:GetPos() or Vector(pistol:Lying().x, pistol:Lying().y, pistol:Lying().z)
+	for _, ent in pairs(rushers) do ent:Rush(lying) end
 end
 
 local function BluSpawns()
@@ -210,11 +282,21 @@ function Controller:Snapshot()
 	return list, zone and Vector(zone.center.x, zone.center.y, zone.center.z)
 end
 
+-- Whether the round's hostages were replaced: none of them is bound and
+-- others are (a cleanup made the map's hostages anew after the round began).
+function Controller:Replaced()
+	if not next(self.bound) then return false end
+	for id in pairs(self.known) do
+		if self.bound[id] then return false end
+	end
+	return true
+end
+
 -- The rules applied to the map, every THINK_INTERVAL while the round is on.
 function Controller:Think()
 	self:EnsureHotfixes()
 	self:Configure()
-	if not self.round then
+	if not self.round or self:Replaced() then
 		if next(self.bound) then self:NewRound() end
 		return
 	end
@@ -244,6 +326,8 @@ function Controller:Think()
 		end
 	end
 	self.round = round
+	self:RushForPistol()
+	round = self.round
 	if not self.won and round:Outcome() == Rescue.RESCUED_WIN then
 		self.won = true
 		self.rounds:SetWinningTeam(BLUE, Rounds.WINREASON.HOSTAGES_RESCUED, true, false, false)
