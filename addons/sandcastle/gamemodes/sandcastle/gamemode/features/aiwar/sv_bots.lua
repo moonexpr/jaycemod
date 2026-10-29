@@ -134,7 +134,7 @@ end
 
 function Controller:AddBot()
 	local counts = self:TeamCounts()
-	local team = Teams.AutoTeam(counts[RED].players, counts[BLUE].players)
+	local team = Quota.TeamToJoin({ [RED] = counts[RED].players, [BLUE] = counts[BLUE].players }, self:Sizes())
 	self.botSerial = (self.botSerial or 0) + 1
 	local bot = player.CreateNextBot(string.format("%s %d", self:FactionName(team), self.botSerial))
 	if not IsValid(bot) then return end

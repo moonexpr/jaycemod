@@ -104,4 +104,14 @@ T.test("a kicked bot comes from the team with more players, else the one with mo
 	T.eq(Quota.TeamToKick({ [Teams.RED] = Side(1, 0), [Teams.BLUE] = Side(1, 0) }), nil, "no bots at all")
 end)
 
+-- A scenario may size the sides unevenly (hostage rescue: BLU 60%): a new bot
+-- joins the team furthest below its own size, so the split follows them.
+T.test("a new bot joins the team furthest below its size; even sizes, the auto-assigned team", function()
+	local RED, BLUE = Teams.RED, Teams.BLUE
+	T.eq(Quota.TeamToJoin({ [RED] = 4, [BLUE] = 4 }, { [RED] = 6, [BLUE] = 10 }), BLUE, "BLU is further below")
+	T.eq(Quota.TeamToJoin({ [RED] = 3, [BLUE] = 9 }, { [RED] = 6, [BLUE] = 10 }), RED, "RED is")
+	T.eq(Quota.TeamToJoin({ [RED] = 4, [BLUE] = 5 }, { [RED] = 8, [BLUE] = 8 }), Teams.AutoTeam(4, 5), "even sizes: auto-assign")
+	T.eq(Quota.TeamToJoin({ [RED] = 6, [BLUE] = 10 }, { [RED] = 6, [BLUE] = 10 }), Teams.AutoTeam(6, 10), "both full: auto-assign")
+end)
+
 T.finish()
