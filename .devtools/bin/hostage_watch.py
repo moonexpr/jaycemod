@@ -16,6 +16,8 @@ from pathlib import Path
 
 SCRIPT = Path(__file__).with_name("hostage_status.lua")
 ROUND_STATES = {5: "team win", 7: "running"}
+# games.gameplay.rounds WINREASON
+WIN_REASONS = {0: "none", 2: "opponents dead", 13: "hostages rescued"}
 
 
 def sample(instance: int) -> dict:
@@ -41,7 +43,8 @@ def main() -> int:
             time.sleep(args.every)
             continue
         states = ",".join(h.split()[1] for h in d.get("hostages", []))
-        print(f"{time.strftime('%H:%M:%S')} {ROUND_STATES.get(d['state'], d['state'])} winner={d.get('winner')} alive={d['alive']} hostages={states}")
+        print(f"{time.strftime('%H:%M:%S')} {ROUND_STATES.get(d['state'], d['state'])} winner={d.get('winner')} "
+              f"reason={WIN_REASONS.get(d.get('reason'), d.get('reason'))} alive={d['alive']} hostages={states}")
         if args.members:
             for m in d["members"]:
                 print("   ", m)

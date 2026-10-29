@@ -43,6 +43,7 @@ end
 return util.TableToJSON({
 	state = rounds:State(),
 	winner = WS.Feature("aiwar").winner,
+	reason = GetGlobal2Int("ws_round_win_reason", 0),
 	hostages = hostages,
 	alive = soldiers,
 	members = members,

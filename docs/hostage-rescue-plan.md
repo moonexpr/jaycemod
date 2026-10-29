@@ -15,11 +15,62 @@ tests first.
   killing the Counter-Terrorists. No draws.
 - Source's bug (rescuing the last hostage wins however many died) is not kept.
 
-## Done
+## Built
 
-`features/hostage/model.lua`, tested by `tests/features_hostage_model_test.lua`:
-the rules above as an immutable round (`Follow`, `Release`, `ReleaseFrom`,
-`Rescue`, `Kill`, `Outcome`). It knows nothing of entities, teams or zones.
+CS:S's sides are RED (terrorists, who keep the hostages) and BLU
+(counter-terrorists, who lead them to their spawn); no new team ids.
+
+| Piece | Where | Tests |
+|---|---|---|
+| The rules as an immutable round | `features/hostage/model.lua` | `features_hostage_model_test` |
+| Hostage groups, and squads bound to them | `features/hostage/groups.lua` | `features_hostage_groups_test` |
+| The rescue zone round BLU's spawns | `features/hostage/zone.lua` | `features_hostage_zone_test` |
+| The rounds mode (arena-like, untimed, no respawns) and `HOSTAGES_RESCUED` | `features/hostage/round.lua`, `games/gameplay/rounds.lua` | `features_hostage_round_test`, `features_rounds_text_test` |
+| The AI war's scenario: BLU rescuers, RED's new HostageDefender | `features/aiwar/scenario/hostage.lua` | `aiwar_hostage_test` |
+| The controller and `hostage_entity` | `features/hostage/sv.lua`, `entities/entities/hostage_entity.lua` | live only |
+| CS:S spawns for RED and BLU | `features/aiwar/spawns.lua`, `sv_map.lua` | `aiwar_cs_spawns_test` |
+| An instance running a worktree's gamemode | `.devtools/bin/server_root.py` (`SANDCASTLE_GAMEMODE`) | `test_server_root.py` |
+| Watching a match | `.devtools/bin/hostage_watch.py`, `hostage_status.lua` | |
+
+Squads: each team forms a squad for every hostage group (`war:SetSquadsMin`,
+raised to the group count, never lowered) and every squad owns one group.
+BLU: free the nearest held hostage of the group, the soldier with one
+following leads it (going back when it lags `LEAD_LAG`), the squad escorts, a
+settled squad helps the other group, then hunts RED. RED: guard the group's
+hostages tight (`HOSTAGE_RING`, `HOSTAGE_LEASH`) where they stand now, recover
+a taken one at once past the leash, cover another group once its own is
+settled, and once the hostages have been quiet `HUNT_AFTER` seconds hunt the
+nearest BLU soldier (the first of each squad after `HUNT_ALL_AFTER`), so a
+round cannot stall with BLU alive. BLU takes 60% of the soldiers.
+
+## Seen live (cs_office, instance 2, 2026-10-28)
+
+- RED won many rounds by killing all of BLU ("opponents dead"), and a game
+  ended on it (the server then rotated to the next map).
+- BLU freed hostages of both groups and led them into the zone (`rescued`),
+  and won one round (RED eliminated, three rescued, the fourth following).
+- Not seen: the `HOSTAGES_RESCUED` win itself, all four led out. A run with
+  everyone invulnerable (so only the rescue could end it) stalled: the leader
+  and two hostages stood still near (1250, 170) and most of BLU sat at its
+  spawn. Not diagnosed; invulnerability may itself be the cause.
+
+## Open
+
+- **Nav area 757**, a 25-wide strip at (1212, 375) on the route into group 1,
+  with two links through world geometry, stranded soldiers again and again.
+  The client's mesh needs fixing there, or the hazards module to cope.
+- **The Female Civilian model has two sequences** (a reference pose): it
+  cannot animate, so a following hostage of that model slides in a T-pose.
+  The Classified Civilian NPC models (1417 sequences) animate.
+- BLU is outgunned: RED wins most rounds. The 60% share (`TeamSizes`) did not
+  show up with `tf_bot_quota 0` (teams were 8 and 8): the bot actor's team
+  sizes are not the scenario's yet.
+- The hostage NPC is a plain nextbot with a path follower and a hop when stuck,
+  not a `ws_nextbot` variant; it cannot be hurt.
+- The timeout is untimed by design; a stalled round is ended only by the hunt.
+- Human players: spawns and a way to use a hostage (the controller takes any
+  BLU soldier or player within `USE_RANGE`) are untested.
+- Loadouts and the buy menu are not started.
 
 ## The hostages' models
 
@@ -38,27 +89,6 @@ and mounted from `cache/`:
 The Female Civilian's loose-files zip from the author's page has the same
 model paths; the Workshop download is what the server uses.
 
-Unverified: whether these models' animation sets suit an NPC that follows
-and idles (the Female Civilian is a player model, and commenters report
-T-posing outside player animations). Check on the dev server before the NPC
-variant is built.
-
-## Not done, in the order they depend on each other
-
-1. **Teams.** `gameplay.teams` holds TF2's RED and BLU. CS:S needs T and CT
-   (`docs/foundation-simplification-plan.md` defers this to the first CS:S
-   consumer). Decide: new team ids, or CS:S sides mapped onto RED/BLU.
-2. **The round mode.** A `rounds` mode (like `features/arena/round.lua`) with
-   no respawns, a round timer, and win reasons for the two sides.
-3. **Map entities**, as Lua bindings in `gamemode/entities/entities/`:
-   `hostage_entity` (an NPC variant on `ws_nextbot` whose behaviour follows its
-   rescuer; `docs/pass3-halloween.md` section 12), `func_hostage_rescue`
-   (the zone), `info_player_terrorist` and `info_player_counterterrorist`
-   (spawns), `func_buyzone` (no buying yet).
-4. **The controller**, `features/hostage/sv.lua`: loaded by a `hostage_entity`,
-   builds the round from the map's hostages, turns use, zone entry, death and
-   disconnect into model moves, and ends the round on `Outcome()`.
-5. **The map.** `cs_office` is not in this repository. It needs mounting on
-   the dev server, a nav mesh (CS:S meshes need verifying against
-   `nav_convert.py`), and a `dev_cs_office_*` test map per the naming rule.
-6. **Loadouts.** CS:S weapons and the buy menu; out of scope until 1 to 4 run.
+Checked live: the Classified Civilian NPC models have a full animation set
+(`run_all`, `idle_subtle`); the Female Civilian has two sequences and cannot
+animate (see Open).
