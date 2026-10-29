@@ -273,7 +273,7 @@ local function PlaceSpawnBases()
 	if Present("info_player_teamspawn") or not navmesh.IsLoaded() then return 0 end
 	local placed = 0
 	for _, team in ipairs({ RED, BLUE }) do
-		if #Spawns.Classes(Controller:Faction(team).id, Present) == 0 then
+		if #Spawns.TeamClasses(team, Present) == 0 and #Spawns.Classes(Controller:Faction(team).id, Present) == 0 then
 			local points = {}
 			for i, spot in ipairs(HidingSpotsOf(team)) do points[i] = spot.pos end
 			for _, point in ipairs(world.grid.Thin(points, BASE_SPACING)) do

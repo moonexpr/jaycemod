@@ -54,10 +54,19 @@ HOSTAGE_RING, HOSTAGE_ARRIVE, HOSTAGE_LEASH = 120, 60, 300
 RECOVER_ARRIVE, RECOVER_LEASH = 90, 800
 -- The sweep stands SWEEP_RING from BLU's zone and ranges SWEEP_LEASH.
 SWEEP_RING, SWEEP_LEASH = 500, 1200
--- BLU's squad escorts at ESCORT_RING from the hostage, hunts RED within
--- HUNT_RING of its base.
+-- A leader whose hostage has fallen further behind than LEAD_LAG goes back
+-- to it before leading on.
+LEAD_LAG = 350
+-- BLU's squad escorts at ESCORT_RING from the hostage. Hunting, BLU's squads
+-- close to HUNT_RING of RED's base and RED's soldiers of the soldier they
+-- hunt.
 ESCORT_RING = Ctf.ESCORT_RING
-HUNT_RING = 600
+HUNT_RING = 250
+-- RED holds its posts for as long as the hostages change; quiet for
+-- HUNT_AFTER seconds, all but the first of each squad hunt BLU's soldiers,
+-- and for HUNT_ALL_AFTER the first too, so the round cannot stall with BLU
+-- alive.
+HUNT_AFTER, HUNT_ALL_AFTER = 45, 120
 -- BLU walks onto a hostage to take it; the hostage takes it within USE_RANGE.
 USE_ARRIVE = Rescue.USE_RANGE / 2
 
@@ -99,7 +108,7 @@ local function InGroup(o, group)
 	local list = {}
 	if not group then return list end
 	for _, h in ipairs(o.hostages) do
-		if o.groupOf[h.id] == group then list[#list + 1] = h end
+		if o.groupOf[h.id].index == group.index then list[#list + 1] = h end
 	end
 	return list
 end
@@ -137,7 +146,11 @@ end
 -- BLU's stage and where it goes: stage, pos.
 local function RescuerPlan(field, member)
 	local o = ObjectivesOf(field, member)
-	if Led(o, member) then return "LeadHostage", o.zone end
+	local led = Led(o, member)
+	if led then
+		if member.pos and Distance(member.pos, led.pos) > LEAD_LAG then return "StayWithHostage", led.pos end
+		return "LeadHostage", o.zone
+	end
 	local own = InGroup(o, OwnGroup(o, member))
 	local following = Nearest(With(own, FOLLOWING), member.pos)
 	if following then return "EscortHostage", Orders.Ring(following.pos, member.slot, ESCORT_RING) end
@@ -150,12 +163,28 @@ local function RescuerPlan(field, member)
 	return "HuntGuards", Orders.Ring(field.bases[RED], member.slot, HUNT_RING)
 end
 
+-- Where the soldier hunts, or nil: the nearest BLU soldier, once the hostages
+-- have been quiet HUNT_AFTER seconds (HUNT_ALL_AFTER for the first of its
+-- squad, who keeps the post until then).
+local function HuntFor(o, member)
+	if not (o.quiet and o.rescuers and #o.rescuers > 0) or o.quiet < HUNT_AFTER then return nil end
+	if (member.place or 0) == 0 and o.quiet < HUNT_ALL_AFTER then return nil end
+	local best, bestRange
+	for _, pos in ipairs(o.rescuers) do
+		local range = member.pos and Distance(member.pos, pos) or 0
+		if not best or range < bestRange then best, bestRange = pos, range end
+	end
+	return Orders.Ring(best, member.slot, HUNT_RING)
+end
+
 -- RED's stage and where it goes: stage, pos.
 local function DefenderPlan(field, member)
 	local o = ObjectivesOf(field, member)
 	local own = InGroup(o, OwnGroup(o, member))
 	local taken = Nearest(With(own, FOLLOWING), member.pos)
 	if taken then return "RecoverHostage", taken.pos end
+	local hunt = HuntFor(o, member)
+	if hunt then return "HuntRescuers", hunt end
 	local held = With(own, HELD)
 	if #held > 0 then return "GuardHostages", Orders.Ring(Centre(held), member.slot, HOSTAGE_RING) end
 	taken = Nearest(With(o.hostages, FOLLOWING), member.pos)
@@ -183,7 +212,7 @@ local RESCUER = {
 	-- freeing a hostage and leading it out are urgent: hurried, never retreating
 	Urgent = function(field, member)
 		local stage = RescuerPlan(field, member)
-		return stage == "FreeHostage" or stage == "LeadHostage"
+		return stage == "FreeHostage" or stage == "LeadHostage" or stage == "StayWithHostage"
 	end,
 	STAGES = {
 		LeadHostage = {
@@ -195,6 +224,10 @@ local RESCUER = {
 			heals = false,
 			squads = false,
 			Zone = false,
+		},
+		StayWithHostage = {
+			arrive = Ctf.ESCORT_FOLLOW,
+			chases = false,
 		},
 		EscortHostage = {
 			arrive = Ctf.ESCORT_FOLLOW,
@@ -223,6 +256,12 @@ local DEFENDER = {
 			patrols = false,
 			arrive = RECOVER_ARRIVE,
 			leash = RECOVER_LEASH,
+		},
+		HuntRescuers = {
+			chases = "opportunist",
+			patrols = false,
+			arrive = Orders.DEFEND_ARRIVE,
+			leash = SWEEP_LEASH,
 		},
 		SweepForRescuers = {
 			chases = "opportunist",
@@ -276,6 +315,37 @@ DOCTRINE = {
 Scenario = Base.Scenario:Extend(MODE)
 Scenario.NEEDS = { Base.BASES, Base.HOSTAGES, Base.WAYPOINTS }
 
+function Scenario:Reset()
+	Base.Scenario.Reset(self)
+	self.memory = {}
+end
+
+function Scenario:Command(war, field, now)
+	self:Explore(field).explore:Survey(war:Members(), now)
+	self:Brief(field, now)
+	self:Locate(war, field, now)
+	self:Allocate(war, field, now)
+end
+
+-- Where BLU's soldiers are (objectives' rescuers, positions) and for how
+-- long no hostage has changed state (quiet, seconds), which RED hunts by.
+function Scenario:Locate(war, field, now)
+	local rescuers = {}
+	for _, member in ipairs(war:Members()) do
+		if member.team == RESCUERS and member.pos then rescuers[#rescuers + 1] = member.pos end
+	end
+	local states = {}
+	for i, h in ipairs(field.hostages) do states[i] = h.id .. "=" .. h.state end
+	sort(states)
+	local signature = concat(states, ",")
+	if signature ~= self.memory.signature then self.memory.signature, self.memory.changedAt = signature, now end
+	local quiet = now - self.memory.changedAt
+	for _, team in ipairs(TEAMS) do
+		field.objectives[team].rescuers = rescuers
+		field.objectives[team].quiet = quiet
+	end
+end
+
 -- The groups are those of the hostages' homes, so they stay the same as the
 -- hostages move.
 function Scenario:Brief(field, now)
@@ -320,10 +390,11 @@ end
 
 local JOBS = { [COURIER] = true, [CTF_DEFEND] = true }
 
--- A squad for every group on each team, each squad given a group.
+-- A squad for every group on each team (at least: the operator's own minimum
+-- stands when larger), each squad given a group.
 function Scenario:Allocate(war, field, now)
 	local groups = field.objectives[RED].groups
-	war:SetSquadsMin(#groups)
+	if war.squadsMin < #groups then war:SetSquadsMin(#groups) end
 	Base.Scenario.Allocate(self, war, field, now)
 	Groups.Assign(war.fireTeams, groups, JOBS)
 end

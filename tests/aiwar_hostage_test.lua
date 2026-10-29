@@ -95,10 +95,21 @@ T.test("the soldier who has a hostage following leads it to the zone, stopping f
 	T.eq(Role(field, lead).STAGES.LeadHostage.chases, false, "chases nobody")
 end)
 
+T.test("the leader goes back to a hostage that has fallen behind, and leads on once it is close", function()
+	local me = {}
+	local lagging = Briefed({ h1 = { state = FOLLOWING, rescuer = me, pos = P(900, 400) } })
+	local far = Member(lagging, BLUE, AiWar.COURIER, 1, P(900 - Hostage.LEAD_LAG - 100, 400), me)
+	T.eq(Stage(lagging, far), "StayWithHostage", "stage")
+	T.eq(Near(Goal(lagging, far), P(900, 400), 1), true, "back to the hostage")
+	T.eq(Urgent(lagging, far), true, "urgent: it keeps the hostage in hand")
+	local close = Member(lagging, BLUE, AiWar.COURIER, 1, P(900 - Hostage.LEAD_LAG + 100, 400), me)
+	T.eq(Stage(lagging, close), "LeadHostage", "close enough to lead on")
+end)
+
 T.test("any BLU soldier that has a hostage leads it, whatever its squad", function()
 	local me = {}
 	local field = Briefed({ h3 = { state = FOLLOWING, rescuer = me, pos = P(950, -450) } })
-	local stray = Member(field, BLUE, AiWar.COURIER, 1, P(900, 400), me)
+	local stray = Member(field, BLUE, AiWar.COURIER, 1, P(940, -440), me)
 	T.eq(Stage(field, stray), "LeadHostage", "leads")
 end)
 
@@ -188,6 +199,77 @@ T.test("with every hostage settled, RED sweeps for the rescuers at BLU's zone", 
 	T.eq(Role(field, guard).STAGES.SweepForRescuers.chases, "opportunist", "fights what it meets")
 end)
 
+-- Once the hostages have been quiet a while and BLU is out there, RED stops
+-- waiting for it: all but each squad's first soldier hunt the nearest BLU
+-- soldier, and later even the first, so the round ends by BLU's death.
+local function Hunted(quiet, rescuers)
+	local field = Briefed()
+	for _, team in ipairs({ RED, BLUE }) do
+		field.objectives[team].quiet = quiet
+		field.objectives[team].rescuers = rescuers
+	end
+	return field
+end
+
+T.test("RED holds its post while the hostages are not yet quiet, or no BLU soldier is known", function()
+	local blu = { P(0, 0) }
+	local calm = Hunted(Hostage.HUNT_AFTER - 1, blu)
+	local second = Member(calm, RED, AiWar.CTF_DEFEND, 1)
+	second.place = 1
+	T.eq(Stage(calm, second), "GuardHostages", "not quiet")
+	local none = Hunted(Hostage.HUNT_ALL_AFTER + 1, {})
+	T.eq(Stage(none, second), "GuardHostages", "no one to hunt")
+end)
+
+T.test("after a quiet spell RED's squad mates hunt the nearest BLU soldier, the first of each squad staying", function()
+	local field = Hunted(Hostage.HUNT_AFTER + 1, { P(-300, 0), P(-3000, 0) })
+	local first = Member(field, RED, AiWar.CTF_DEFEND, 1, P(1000, 500))
+	first.place = 0
+	local mate = Member(field, RED, AiWar.CTF_DEFEND, 1, P(1000, 500))
+	mate.place = 1
+	T.eq(Stage(field, first), "GuardHostages", "the first stays")
+	T.eq(Stage(field, mate), "HuntRescuers", "the mate hunts")
+	T.eq(Near(Goal(field, mate), P(-300, 0), Hostage.HUNT_RING + 1), true, "the nearest BLU soldier")
+	T.eq(Role(field, mate).STAGES.HuntRescuers.chases, "opportunist", "fights what it meets")
+	T.eq(Role(field, mate).STAGES.HuntRescuers.patrols, false, "no patrol")
+end)
+
+T.test("after a long quiet even the first of a squad hunts", function()
+	local field = Hunted(Hostage.HUNT_ALL_AFTER + 1, { P(-300, 0) })
+	local first = Member(field, RED, AiWar.CTF_DEFEND, 1, P(1000, 500))
+	first.place = 0
+	T.eq(Stage(field, first), "HuntRescuers", "everyone hunts")
+end)
+
+T.test("a hostage taken ends the hunt: RED recovers it", function()
+	local field = Briefed({ h1 = { state = FOLLOWING, rescuer = {}, pos = P(900, 400) } })
+	for _, team in ipairs({ RED, BLUE }) do
+		field.objectives[team].quiet = Hostage.HUNT_ALL_AFTER + 1
+		field.objectives[team].rescuers = { P(0, 0) }
+	end
+	local mate = Member(field, RED, AiWar.CTF_DEFEND, 1, P(1000, 500))
+	mate.place = 1
+	T.eq(Stage(field, mate), "RecoverHostage", "recovers")
+end)
+
+T.test("the scenario tracks BLU's soldiers and how long the hostages have been quiet", function()
+	local war = AiWar.War.New()
+	local blu = war:Enlist("blu", BLUE, true)
+	blu.pos = P(-500, 20)
+	local dead = war:Enlist("red", RED, true)
+	dead.pos = P(1000, 500)
+	local field, scenario = Briefed()
+	scenario:Locate(war, field, 100)
+	T.eq(#field.objectives[RED].rescuers, 1, "only BLU's")
+	T.eq(Near(field.objectives[RED].rescuers[1], P(-500, 20), 1), true, "where it is")
+	T.eq(field.objectives[RED].quiet, 0, "just started")
+	scenario:Locate(war, field, 130)
+	T.eq(field.objectives[RED].quiet, 30, "30 seconds quiet")
+	local taken = Briefed({ h1 = { state = FOLLOWING, rescuer = {} } }, scenario)
+	scenario:Locate(war, taken, 140)
+	T.eq(taken.objectives[RED].quiet, 0, "a hostage was taken: not quiet")
+end)
+
 T.test("RED's patrol ends when the state of its group's hostages changes", function()
 	local before = Briefed()
 	local guard = Member(before, RED, AiWar.CTF_DEFEND, 1)
@@ -249,6 +331,17 @@ T.test("each team forms a squad for every hostage group, and every squad owns on
 		end
 		T.eq(owned[1] and owned[2], true, "team " .. team .. " covers both groups")
 	end
+end)
+
+T.test("the war's squads minimum is raised to the number of groups, never lowered", function()
+	local field, scenario = Briefed()
+	local war = AiWar.War.New()
+	war:SetSquadsMin(1)
+	scenario:Allocate(war, field, 0)
+	T.eq(war.squadsMin, 2, "raised to the two groups")
+	war:SetSquadsMin(3)
+	scenario:Allocate(war, field, 1)
+	T.eq(war.squadsMin, 3, "the operator's larger minimum stands")
 end)
 
 T.test("the lanes lead to the group BLU reaches first", function()

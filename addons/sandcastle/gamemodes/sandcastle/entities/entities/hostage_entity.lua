@@ -16,13 +16,23 @@ local SPEED = 190
 local PATH_REFRESH = 0.4
 local IDLE_WAIT = 0.2
 local UNHURT_HEALTH = 1000000
+-- A player's body: the models' own bounds reach below the floor.
+local HULL_MINS, HULL_MAXS = Vector(-13, -13, 0), Vector(13, 13, 72)
+local STEP_HEIGHT, DROP_HEIGHT = 18, 400
+-- A hostage that has not moved this long, with its rescuer away, is put on its
+-- path's next point.
+local STUCK_SECONDS, STUCK_MOVED_SQR = 2, 25
+local HOP_LIFT = Vector(0, 0, 4)
 
 function ENT:Initialize()
 	local Models = WS.require("features.hostage.models")
 	self:SetModel(Models.Pick(self:EntIndex()))
+	self:SetCollisionBounds(HULL_MINS, HULL_MAXS)
 	self:SetMaxHealth(UNHURT_HEALTH)
 	self:SetHealth(UNHURT_HEALTH)
 	self.loco:SetDesiredSpeed(SPEED)
+	self.loco:SetStepHeight(STEP_HEIGHT)
+	self.loco:SetDeathDropHeight(DROP_HEIGHT)
 	self.hostage = WS.Feature("hostage")
 	self.hostage:Bind(self)
 end
@@ -49,13 +59,17 @@ function ENT:FollowLeader(leader)
 	path:SetMinLookAheadDistance(100)
 	path:SetGoalTolerance(FOLLOW_GAP * 0.6)
 	path:Compute(self, leader:GetPos())
+	local lastPos, lastMoved = self:GetPos(), CurTime()
 	while path:IsValid() and IsValid(leader) and leader == self.leader and not self.rescued
 		and self:GetPos():Distance(leader:GetPos()) > FOLLOW_GAP do
 		if path:GetAge() > PATH_REFRESH then path:Compute(self, leader:GetPos()) end
 		path:Update(self)
-		if self.loco:IsStuck() then
-			self:HandleStuck()
-			return
+		if self:GetPos():DistToSqr(lastPos) > STUCK_MOVED_SQR then
+			lastPos, lastMoved = self:GetPos(), CurTime()
+		elseif CurTime() - lastMoved > STUCK_SECONDS then
+			local goal = path:GetCurrentGoal()
+			if goal then self:SetPos(goal.pos + HOP_LIFT) end
+			lastPos, lastMoved = self:GetPos(), CurTime()
 		end
 		coroutine.yield()
 	end
@@ -68,6 +82,8 @@ function ENT:RunBehaviour()
 			self:StartActivity(ACT_RUN)
 			self.loco:SetDesiredSpeed(SPEED)
 			self:FollowLeader(leader)
+			-- no path, or the leader reached: never spin without yielding
+			coroutine.wait(IDLE_WAIT)
 		else
 			self:StartActivity(ACT_IDLE)
 			coroutine.wait(IDLE_WAIT)

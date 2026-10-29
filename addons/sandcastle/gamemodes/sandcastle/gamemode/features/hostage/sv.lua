@@ -94,7 +94,8 @@ end
 -- A living BLU soldier or player within reach of the hostage.
 local function RescuerNear(hostage)
 	for _, other in ipairs(ents.FindInSphere(hostage:GetPos(), Rescue.USE_RANGE)) do
-		if other ~= hostage and (other:IsPlayer() or other:IsNPC() or other:IsNextBot()) and Alive(other) and WS.TeamOf(other) == BLUE then
+		if other ~= hostage and other.Team and (other:IsPlayer() or other:IsNPC() or other:IsNextBot()) and Alive(other)
+			and WS.TeamOf(other) == BLUE then
 			return other
 		end
 	end
@@ -105,6 +106,7 @@ end
 -- rescuer }, in vectors, and the zone's centre.
 function Controller:Snapshot()
 	local list = {}
+	if not self.round and next(self.bound) then self:NewRound() end
 	local round = self.round
 	if not round then return list, nil end
 	for id, info in pairs(self.known) do
@@ -112,7 +114,7 @@ function Controller:Snapshot()
 	end
 	table.sort(list, function(a, b) return a.id < b.id end)
 	local zone = self:ZoneOf()
-	return list, zone and zone.center
+	return list, zone and Vector(zone.center.x, zone.center.y, zone.center.z)
 end
 
 -- The rules applied to the map, every THINK_INTERVAL while the round is on.

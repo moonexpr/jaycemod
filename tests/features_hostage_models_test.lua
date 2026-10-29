@@ -3,7 +3,11 @@
 -- under models/ that ends in .mdl, none named twice.
 local T = dofile("tests/harness.lua")
 local Models = T.require("features.hostage.models")
-local resources = assert(loadfile(T.ROOT .. "features/hostage/resources.lua"))()
+-- A feature's resources.lua runs under the feature loader, where the game's
+-- plain require does not reach the gamemode's modules: only WS.require does.
+local chunk = assert(loadfile(T.ROOT .. "features/hostage/resources.lua"))
+setfenv(chunk, setmetatable({ WS = { require = T.require } }, { __index = {} }))
+local resources = chunk()
 
 local function Sorted(list)
 	local copy = {}
