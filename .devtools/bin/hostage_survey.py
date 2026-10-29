@@ -59,10 +59,13 @@ def survey(instance: int, name: str, minutes: float) -> dict:
         except subprocess.TimeoutExpired:
             d = None
         if d is None:
+            # the Lua bridge drops for a moment now and then: only a map name
+            # that is not this one says the map changed
             current = lua(instance, "return game.GetMap()")
-            if name not in current:
+            if current.startswith("=>") and name not in current:
                 result["left_map"] = current
                 break
+            result["bridge_drops"] = result.get("bridge_drops", 0) + 1
             time.sleep(SAMPLE_SECONDS)
             continue
         if d["state"] == TEAM_WIN and last_state != TEAM_WIN:
