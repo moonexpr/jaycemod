@@ -21,6 +21,28 @@ tests first.
 the rules above as an immutable round (`Follow`, `Release`, `ReleaseFrom`,
 `Rescue`, `Kill`, `Outcome`). It knows nothing of entities, teams or zones.
 
+## The hostages' models
+
+Two Workshop addons, downloaded by steamcmd (`SERVER_DOWNLOADS` in
+`.devtools/bin/server_root.py`, so the server needs no operator subscription)
+and mounted from `cache/`:
+
+| Name | Item | Models |
+|---|---|---|
+| `hostage_civilian` | 3172805326, TF2 Classified Civilian/VIP | `models/player/team/fortress/npc_arces_{red,blue,green,yellow}_civilian.mdl` (the archive also has player and `jerknpc_` hostile variants, and c_arms) |
+| `hostage_fem_civilian` | 886058416, Maxxy's TF2 Female Civilian | `models/player/hwm/fem_civilian.mdl`, `fem_civilian_flexible.mdl` (skirt bones move; GMod's) |
+
+`features/hostage/models.lua` lists them (`MALE`, `FEMALE`, `All`, `Pick`);
+`features/hostage/resources.lua` has the feature preload them. Fetch with
+`steamcmd +login anonymous +workshop_download_item 4000 <item> +quit`.
+The Female Civilian's loose-files zip from the author's page has the same
+model paths; the Workshop download is what the server uses.
+
+Unverified: whether these models' animation sets suit an NPC that follows
+and idles (the Female Civilian is a player model, and commenters report
+T-posing outside player animations). Check on the dev server before the NPC
+variant is built.
+
 ## Not done, in the order they depend on each other
 
 1. **Teams.** `gameplay.teams` holds TF2's RED and BLU. CS:S needs T and CT

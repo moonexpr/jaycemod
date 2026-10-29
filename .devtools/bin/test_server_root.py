@@ -9,12 +9,14 @@ from pathlib import Path
 import pytest
 
 from server_root import LUADEV_PORT_FILE, REPO_ADDONS, REPO_DATA, ROOT, ROOT_WINDOWS, SERVER_BINARIES, SERVER_LUA, SERVER_EXE, SERVER_WORKSHOP, TF_SCRIPTS,\
-    TF_SCRIPTS_DIR, SERVER_MAPS, map_archive_name, Instance, Layout, NotAnExe, build, console_exe
+    TF_SCRIPTS_DIR, SERVER_DOWNLOADS, SERVER_MAPS, map_archive_name, Instance, Layout, NotAnExe, build, console_exe
 from test_vpk import DIR_ARCHIVE, entry, write_pak
 
 # a Workshop item from before .gma downloads: one LZMA-compressed .gma, as .bin
 LEGACY = "949733637"
 LEGACY_GMA = b"GMAD legacy"
+# the same in the server's own downloads (SERVER_DOWNLOADS)
+LEGACY_DOWNLOAD = "886058416"
 
 # a PE image's header, as far as the subsystem: e_lfanew at 0x3c, "PE\0\0", the
 # 20-byte file header, and the optional header whose subsystem sits at +68
@@ -57,6 +59,12 @@ def layout(tmp_path: Path) -> Layout:
     for name, item in SERVER_MAPS.items():
         (maps / item).mkdir(parents=True)
         (maps / item / f"{name}.gma").write_bytes(b"GMAD map")
+    for item in SERVER_DOWNLOADS.values():
+        (maps / item).mkdir(parents=True)
+        if item == LEGACY_DOWNLOAD:
+            (maps / item / "456_legacy.bin").write_bytes(lzma.compress(LEGACY_GMA, format=lzma.FORMAT_ALONE))
+        else:
+            (maps / item / "addon.gma").write_bytes(b"GMAD download")
     lua = tmp_path / "server_root"
     lua.mkdir()
     for source in SERVER_LUA.values():
@@ -179,6 +187,7 @@ def test_nothing_is_copied_but_tf2s_hidden_sound_scripts_legacy_archives_and_the
     assert files == sorted(
         [f"garrysmod/data/{TF_SCRIPTS_DIR}/{path}" for path in TF_SCRIPTS]
         + [f"garrysmod/cache/{legacy_name()}.gma", SERVER_EXE, f"garrysmod/data/{LUADEV_PORT_FILE}"]
+        + [f"garrysmod/cache/{name}.gma" for name, item in SERVER_DOWNLOADS.items() if item == LEGACY_DOWNLOAD]
     )
 
 
@@ -261,6 +270,35 @@ def test_a_workshop_map_not_downloaded_is_refused_with_how_to_fetch_it(layout, t
     missing = Layout(layout.shared, layout.root, layout.workshop, layout.lua, layout.tf, layout.luadev_port, tmp_path / "empty")
     with pytest.raises(FileNotFoundError, match="steamcmd"):
         build(missing)
+
+
+# Addons the server needs whether or not the operator subscribed to them
+# (SERVER_DOWNLOADS: the hostage models), downloaded by steamcmd beside the
+# maps and mounted from cache/ under their own names.
+def test_the_downloaded_addons_land_in_cache_named_for_themselves(layout):
+    root = build(layout)
+    cache = root / "garrysmod" / "cache"
+    for name, item in SERVER_DOWNLOADS.items():
+        if item == LEGACY_DOWNLOAD:
+            assert (cache / f"{name}.gma").read_bytes() == LEGACY_GMA, name
+        else:
+            assert (cache / f"{name}.gma").resolve() == layout.maps / item / "addon.gma", name
+
+
+def test_a_downloaded_addon_not_fetched_is_refused_with_how_to_fetch_it(layout):
+    item = next(iter(SERVER_DOWNLOADS.values()))
+    for archive in (layout.maps / item).iterdir():
+        archive.unlink()
+    with pytest.raises(FileNotFoundError, match=f"steamcmd.*{item}"):
+        build(layout)
+
+
+def test_a_retired_downloaded_addon_is_cleared_from_cache(layout):
+    root = build(layout)
+    stale = root / "garrysmod" / "cache" / "no_longer_listed.gma"
+    stale.write_bytes(b"old")
+    build(layout)
+    assert not stale.exists()
 
 
 

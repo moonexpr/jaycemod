@@ -84,6 +84,13 @@ SERVER_WORKSHOP = {
     "custom_loadout": "2675972006",
     "sound_browser": "2718685926",
 }
+# Workshop addons the server needs whether or not the operator subscribed to
+# them, downloaded by steamcmd beside the maps: name -> item id. The hostage
+# models of the hostage rescue mode (features/hostage/resources.lua).
+SERVER_DOWNLOADS = {
+    "hostage_civilian": "3172805326",  # TF2 Classified Civilian/VIP, with NPC models
+    "hostage_fem_civilian": "886058416",  # TF2 Female Civilian (a legacy .bin)
+}
 SERVER_LUA_DIR = Path(__file__).resolve().parent / "server_root"
 # the server's own Lua: path under server_mounts/lua/ -> file in SERVER_LUA_DIR
 SERVER_LUA = {
@@ -210,6 +217,14 @@ def workshop_archive(workshop: Path, item: str) -> Path:
     return archives[0]
 
 
+def downloaded_archive(layout: "Layout", name: str, item: str) -> Path:
+    """A steamcmd download's archive, or the refusal that says how to fetch it."""
+    try:
+        return workshop_archive(layout.maps, item)
+    except FileNotFoundError as e:
+        raise FileNotFoundError(f"{name}: {e}; fetch it with: steamcmd +login anonymous +workshop_download_item 4000 {item} +quit") from e
+
+
 def place_archive(path: Path, archive: Path) -> None:
     """A .gma is linked; a legacy .bin is decompressed, again only when the download is newer."""
     if archive.suffix == ".gma":
@@ -282,18 +297,16 @@ def build(layout: Layout) -> Path:
         link(target, source)
     cache = game / "cache"
     cache.mkdir(exist_ok=True)
-    listed = {f"{name}.gma" for name in SERVER_WORKSHOP} | {map_archive_name(item) for item in SERVER_MAPS.values()}
+    listed = {f"{name}.gma" for name in SERVER_WORKSHOP | SERVER_DOWNLOADS.keys()} | {map_archive_name(item) for item in SERVER_MAPS.values()}
     for archive in cache.glob("*.gma"):
         if archive.name not in listed:
             archive.unlink()
     for name, item in SERVER_WORKSHOP.items():
         place_archive(cache / f"{name}.gma", workshop_archive(layout.workshop, item))
     for name, item in SERVER_MAPS.items():
-        try:
-            archive = workshop_archive(layout.maps, item)
-        except FileNotFoundError as e:
-            raise FileNotFoundError(f"{name}: {e}; fetch it with: steamcmd +login anonymous +workshop_download_item 4000 {item} +quit") from e
-        place_archive(game / "cache" / map_archive_name(item), archive)
+        place_archive(game / "cache" / map_archive_name(item), downloaded_archive(layout, name, item))
+    for name, item in SERVER_DOWNLOADS.items():
+        place_archive(cache / f"{name}.gma", downloaded_archive(layout, name, item))
     pak = Vpk.open(layout.tf / TF_PAK)
     for path in TF_SCRIPTS:
         target = game / "data" / TF_SCRIPTS_DIR / path
