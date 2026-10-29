@@ -144,6 +144,7 @@ local MAP_LACKS = {
 	[Scenario.POINTS] = "this map's round has no control points for the AI war to fight over",
 	[Scenario.FLAGS] = "this map has no intelligence for both teams for the AI war to fight over",
 	[Scenario.BOMB] = "this map has no bomb and hatch for the AI war's robots to deliver it to",
+	[Scenario.HOSTAGES] = "this map has no hostages, and BLU spawns to lead them to, for the AI war to fight over",
 }
 local NO_NAV_MESH = "this map has no navigation mesh for the soldiers to walk; "
 	.. "run mp_nav_generate in the console to make one (a few minutes), then start the war"
@@ -171,9 +172,11 @@ function Controller:Start()
 	local _, variant = Scenario.Entry(self.scenarios, { mode = RoundsModeName() })
 	self.baseCache = nil
 	local flags, zones = self:FlagsSnapshot()
+	local hostages, hostageZones = self:HostagesSnapshot()
 	local lacks = variant:MapLacks({
 		flags = flags,
-		zones = zones,
+		hostages = hostages,
+		zones = zones or hostageZones,
 		points = self:PointsSnapshot(),
 		bases = self:Bases().bases,
 		waypoints = self:Waypoints(),

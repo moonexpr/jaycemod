@@ -167,6 +167,22 @@ function Controller:FlagsSnapshot()
 	return flags, zones, captures, feature:CapLimit()
 end
 
+-- The hostages and the zone BLU leads them to, as the hostage feature holds
+-- them (features.aiwar.scenario.hostage's field.hostages and field.zones):
+-- each { id, home, pos, state, rescuer } with positions as points, and the
+-- zone's centre on the ground; nil while the map has no hostages.
+function Controller:HostagesSnapshot()
+	local feature = LoadedFeature("hostage")
+	if not feature then return nil, nil end
+	local hostages, zone = feature:Snapshot()
+	if #hostages == 0 or not zone then return nil, nil end
+	local list = {}
+	for i, h in ipairs(hostages) do
+		list[i] = { id = h.id, home = Point(h.home), pos = Point(h.pos), state = h.state, rescuer = h.rescuer }
+	end
+	return list, { [BLUE] = Point(GroundBelow(zone)) }
+end
+
 -- Each team's first active cart: its path, how far along it is, where its
 -- next checkpoint is, and the ground under it; the points, the clocks and
 -- the bases (docs/aiwar-koth-cp.md §2.4); the flags and capture zones; the
@@ -196,6 +212,7 @@ function Controller:Field(phase, now)
 	local rounds = LoadedFeature("rounds")
 	local bases = self:Bases()
 	local flags, zones, captures, caplimit = self:FlagsSnapshot()
+	local hostages, hostageZones = self:HostagesSnapshot()
 	return {
 		phase = phase,
 		now = now,
@@ -208,7 +225,8 @@ function Controller:Field(phase, now)
 		players = self:Players(),
 		points = self:PointsSnapshot(),
 		flags = flags,
-		zones = zones,
+		zones = zones or hostageZones,
+		hostages = hostages,
 		captures = captures,
 		caplimit = caplimit,
 		clocks = rounds and Clocks(rounds, now),

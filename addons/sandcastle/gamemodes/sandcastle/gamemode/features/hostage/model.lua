@@ -67,6 +67,8 @@ end
 
 function Round:Total() return #self.ids end
 
+function Round:Has(id) return self.states[id] ~= nil end
+
 function Round:StateOf(id) return Known(self, id) end
 
 -- Who a following hostage follows; nil otherwise.

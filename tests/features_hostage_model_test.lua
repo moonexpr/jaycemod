@@ -61,6 +61,12 @@ T.test("only a held hostage can be taken, only a following one rescued or let go
 	Refused(done.Rescue, done, "h1")
 end)
 
+T.test("a round knows which hostages are its own", function()
+	local round = Round(2)
+	T.eq(round:Has("h1"), true, "its own")
+	T.eq(round:Has("nobody"), false, "a stranger")
+end)
+
 T.test("an unknown hostage is the caller's mistake", function()
 	local round = Round(1)
 	Refused(round.Follow, round, "nobody", "ann")

@@ -105,6 +105,8 @@ end
 local function SpawnSpots(team)
 	local teamSpawns = WS.SpawnPoints(team)
 	if #teamSpawns > 0 or Present("info_player_teamspawn") then return teamSpawns end
+	local sides = Spawns.TeamClasses(team, Present)
+	if #sides > 0 then return EntitiesOf(sides) end
 	local own = Spawns.Classes(Controller:Faction(team).id, Present)
 	if #own > 0 then return EntitiesOf(own) end
 	local hiding = HidingSpotsOf(team)
