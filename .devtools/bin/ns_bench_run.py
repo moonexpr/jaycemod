@@ -83,10 +83,26 @@ SUNSHINE = (
     Errand("BLU spawn to its second point", (-7731, 7795, -44), (-7704, 6824, 132), 45),
     Errand("BLU spawn to the middle point", (-7731, 7795, -44), (-5632, 5248, 68), 90),
 )
+# gm_bigmaze's errands, the path follower's bench (operator, 2026-10-29;
+# Workshop 119710404, mounted by server_root.py's SERVER_MAPS): its corridors
+# are 64 wall to wall, the nav strip in them 50, so a 48-wide body has 8 a
+# side and a route point off a corridor's middle puts its shoulders in a wall,
+# at every one of the maze's right-angle turns. Each errand starts in the
+# maze and has a way on the floor; the wall tops (128 above it, 50 wide on
+# the mesh, reached by a jump from the spawn room's ramp) are walkable, and a
+# route may take them ("seventeen turns" did).
+BIGMAZE = (
+    Errand("four turns", (225, 675, -336), (475, 200, -336), 20),
+    Errand("ten turns east", (4100, 2525, -336), (5088, 2862, -336), 40),
+    Errand("ten turns south", (550, -988, -336), (225, -375, -336), 40),
+    Errand("seventeen turns", (-1438, 1762, -336), (-1562, 3412, -336), 60),
+    Errand("nineteen turns", (550, -988, -336), (1150, -1825, -336), 75),
+)
 BENCHES = {
     "dev_watchtower_ns_locomotion": WATCHTOWER,
     "arena_watchtower": WATCHTOWER,
     "cp_sunshine": SUNSHINE,
+    "gm_bigmaze": BIGMAZE,
 }
 def vector(p: Vec) -> str:
     return "Vector(%g, %g, %g)" % p

@@ -75,6 +75,7 @@ SERVER_MAPS = {
     "gm_genesis": "266666023",
     "gm_shopstruct": "3654206412",
     "gm_construct_build_conquer13": "2716888672",
+    "gm_bigmaze": "119710404",  # the path follower's bench (ns_bench_run.py), not in the rotation
 }
 MAP_ARCHIVE_PREFIX = "workshop_map_"
 # Workshop addons the server mounts: name -> item id
