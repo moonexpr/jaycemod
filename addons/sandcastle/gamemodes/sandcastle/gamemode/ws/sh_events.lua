@@ -107,7 +107,7 @@ hook.Add("Think", TRANSACTION_HOOK, function() WS.Transactions:Run(TRANSACTION_S
 -- TODO(slow lane): admin operations (kicks, bans, scrambles, map changes:
 -- ws/sv_players_menu.lua, ws/sv_votes.lua) belong here too, each a
 -- transaction its caller may await.
-local SLOW_SECONDS, SLOW_PERIOD = 0.002, 0.25
+local SLOW_SECONDS, SLOW_PERIOD = 0.002, 1
 local SLOW_HOOK = "ws_slow_transactions"
 local nextSlow = 0
 
