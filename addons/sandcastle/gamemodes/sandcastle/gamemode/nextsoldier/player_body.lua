@@ -22,6 +22,11 @@ ARRIVE = 16
 -- crouch jump clears what a plain one does not).
 STUCK_SPEED, STUCK_TIME = 30, 0.8
 CROUCH_JUMP_TIME = 0.5
+-- Trying to move, held still in the air (neither across the ground nor up
+-- or down faster than STUCK_SPEED) for STUCK_TIME: wedged between slopes too
+-- steep to stand on, with no ground to jump from; it backs away from where
+-- it is sent for BACKOFF_TIME, then goes on.
+BACKOFF_TIME = 0.6
 -- A gun fires once its aim is within the enemy's width at its distance, or
 -- FIRE_CONE degrees of its centre, whichever is wider; a melee weapon
 -- strikes within MELEE_CONE degrees.
@@ -36,6 +41,8 @@ Body.__index = Body
 function New()
 	return setmetatable({
 		stuckSince = nil, -- when it began to make no headway, on the ground
+		wedgedSince = nil, -- when it began to hang still in the air
+		backingUntil = nil, -- backing away, wedged, until then
 		jumpedAt = nil, -- its last jump's time, for the crouch in the air
 		jumped = false, -- it pressed jump last tick: the key is let go before another
 		attacked = false, -- it pressed attack last tick
@@ -115,7 +122,8 @@ local function Engage(sense)
 end
 
 -- The command for this tick. sense: { pos, eyePos, eye = { pitch, yaw },
--- speed (across the ground), onGround, target (where it is sent, or nil),
+-- speed (across the ground), climb (up, negative falling), onGround,
+-- target (where it is sent, or nil),
 -- walk (at a walk), crouchArea, jumpArea (the nav mesh's where it stands),
 -- hop (its orders ask a jump), lowBlocked, headBlocked (something ahead at
 -- its knees, at its head), doorAhead, look (where to face, or nil), aim
@@ -132,6 +140,17 @@ function Body:Command(now, dt, sense)
 	else
 		moveYaw = Engage(sense)
 	end
+
+	-- wedged: hanging still in the air, trying to move; it backs away
+	if moveYaw and not sense.onGround and sense.speed < STUCK_SPEED and abs(sense.climb) < STUCK_SPEED then
+		self.wedgedSince = self.wedgedSince or now
+		if now - self.wedgedSince >= STUCK_TIME then
+			self.backingUntil, self.wedgedSince = now + BACKOFF_TIME, nil
+		end
+	else
+		self.wedgedSince = nil
+	end
+	if moveYaw and self.backingUntil and now < self.backingUntil then moveYaw = Normal(moveYaw + 180) end
 
 	-- stuck: counted only on the ground, trying to move
 	if moveYaw and sense.onGround and sense.speed < STUCK_SPEED then

@@ -407,7 +407,8 @@ function Controller:Drive(ply, entry, cmd)
 	local sense, eye = soldier.sense, ply:EyeAngles()
 	sense.pos, sense.eyePos = ply:GetPos(), ply:EyePos()
 	sense.eye.pitch, sense.eye.yaw = eye.p, eye.y
-	sense.speed = ply:GetVelocity():Length2D()
+	local velocity = ply:GetVelocity()
+	sense.speed, sense.climb = velocity:Length2D(), velocity.z
 	sense.onGround = ply:OnGround()
 	sense.target = soldier.steer
 	sense.walk = soldier.gait == Orders.WALK

@@ -5,7 +5,7 @@
 local T = dofile("tests/harness.lua")
 local Body = nextsoldier.player_body
 
-for _, name in ipairs({ "TURN_RATE", "ARRIVE", "STUCK_SPEED", "STUCK_TIME", "CROUCH_JUMP_TIME", "FIRE_CONE", "MELEE_CONE", "USE_INTERVAL" }) do
+for _, name in ipairs({ "TURN_RATE", "ARRIVE", "STUCK_SPEED", "STUCK_TIME", "CROUCH_JUMP_TIME", "FIRE_CONE", "MELEE_CONE", "USE_INTERVAL", "BACKOFF_TIME" }) do
 	T.defined(Body[name], name)
 end
 
@@ -26,6 +26,7 @@ local function Sense(fields)
 		eyePos = { x = 0, y = 0, z = 64 },
 		eye = { pitch = 0, yaw = 0 },
 		speed = 200,
+		climb = 0,
 		onGround = true,
 		walk = false,
 		fire = true,
@@ -211,6 +212,34 @@ T.test("a hop its orders ask for is a jump toward its target", function()
 	local cmd = body:Command(0, TICK, Sense({ target = EAST, hop = true }))
 	T.eq(cmd.jump, true, "jumps")
 	T.near(cmd.moveYaw, 0, 1e-6, "toward the target")
+end)
+
+-- Wedged: held up in the air between two slopes too steep to stand on (a
+-- crevice beside arena_watchtower's logs), it cannot jump, having no
+-- ground; it backs away from where it is sent for BACKOFF_TIME, then goes on.
+local WEDGED = { target = EAST, onGround = false, speed = 0, climb = 0 }
+
+T.test("held still in the air, it backs away from where it is sent", function()
+	local body = Body.New()
+	local cmd = Run(body, 0, Body.STUCK_TIME / 2, WEDGED)
+	T.near(cmd.moveYaw, 0, 1e-6, "not yet: still toward it")
+	cmd = Run(body, Body.STUCK_TIME / 2, Body.STUCK_TIME, WEDGED)
+	T.near(math.abs(cmd.moveYaw), 180, 1e-6, "wedged: away")
+	T.eq(cmd.jump, false, "no ground to jump from")
+end)
+
+T.test("having backed away, it goes on toward where it is sent", function()
+	local body = Body.New()
+	Run(body, 0, Body.STUCK_TIME * 1.5, WEDGED)
+	local free = { target = EAST, onGround = true, speed = 200, climb = 0 }
+	local cmd = Run(body, Body.STUCK_TIME * 1.5, Body.BACKOFF_TIME * 1.5, free)
+	T.near(cmd.moveYaw, 0, 1e-6, "toward it again")
+end)
+
+T.test("falling straight down is not being wedged", function()
+	local body = Body.New()
+	local cmd = Run(body, 0, Body.STUCK_TIME * 2, { target = EAST, onGround = false, speed = 0, climb = -400 })
+	T.near(cmd.moveYaw, 0, 1e-6, "toward it")
 end)
 
 T.finish()

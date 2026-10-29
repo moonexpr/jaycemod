@@ -62,18 +62,19 @@ class Errand:
     seconds: float
 
 
-# arena_watchtower's errands (dev_watchtower_ns_locomotion keeps its coordinates):
-# up the log ramps to the health pack on each side's pipe, and from the
-# west pipe across to the point by the stairway.
+# arena_watchtower's errands: up the log ramps to the health pack on each
+# side's pipe, and from the west pipe across to the point by the stairway.
+# dev_watchtower_ns_locomotion keeps the map's coordinates, so the same
+# errands run on the bench and on the map itself (its own mesh).
+WATCHTOWER = (
+    Errand("west pack, up the logs", (-1213, 13, 16), (-1250, 8, 832), 60),
+    Errand("east pack, up the logs", (1212, 12, 24), (1238, -16, 816), 60),
+    Errand("west pipe to the point", (-1250, 8, 848), (-2, 1, 760), 45),
+)
 BENCHES = {
-    "dev_watchtower_ns_locomotion": (
-        Errand("west pack, up the logs", (-1213, 13, 16), (-1250, 8, 832), 60),
-        Errand("east pack, up the logs", (1212, 12, 24), (1238, -16, 816), 60),
-        Errand("west pipe to the point", (-1250, 8, 848), (-2, 1, 760), 45),
-    ),
+    "dev_watchtower_ns_locomotion": WATCHTOWER,
+    "arena_watchtower": WATCHTOWER,
 }
-
-
 def vector(p: Vec) -> str:
     return "Vector(%g, %g, %g)" % p
 
