@@ -186,6 +186,7 @@ local NEXTSOLDIER = {
 	["vision"] = "nextsoldier",
 	["player_body"] = "nextsoldier",
 	["route_walk"] = "nextsoldier",
+	["corners"] = "nextsoldier",
 }
 
 -- wartactics/'s modules: the AI war's tactics engine, the strategy its

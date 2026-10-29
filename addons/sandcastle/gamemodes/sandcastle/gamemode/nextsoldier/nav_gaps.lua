@@ -147,6 +147,34 @@ function CrossingLines(lo, hi, side, otherLo, otherHi, z)
 	return lines
 end
 
+-- Whether the body fits through the opening at all: the lines across it to
+-- sweep the body's box along, at the overlap's middle first and on outward
+-- both ways FIT_STEP apart, both ends included (a corridor the mesh splits
+-- into two strips abreast is passed on their shared edge, an end of each
+-- strip's opening); one line, where the crossing runs, when the edges do not
+-- overlap. The caller stops at the first that clears.
+FIT_STEP = 4
+
+function FitLines(lo, hi, side, otherLo, otherHi, z)
+	local s = SIDES[side]
+	local a, b = max(lo[s.other], otherLo[s.other]), min(hi[s.other], otherHi[s.other])
+	local function Line(along)
+		local start, finish = CrossingLine(lo, hi, side, otherLo, otherHi, z, along)
+		return { start = start, finish = finish }
+	end
+	if a > b then return { Line(nil) } end
+	local middle = (a + b) / 2
+	local lines = { Line(middle) }
+	local reach = ceil((b - middle) / FIT_STEP)
+	for i = 1, reach do
+		local offset = i * FIT_STEP
+		local up, down = min(b, middle + offset), max(a, middle - offset)
+		lines[#lines + 1] = Line(up)
+		if down < up then lines[#lines + 1] = Line(down) end
+	end
+	return lines
+end
+
 -- A link from a floor at fromZ down to one at toZ, more than STEP_HEIGHT
 -- below, is a drop off the edge: it crosses only where the floor past the
 -- edge (floorZ, nil for none: the walker falls) falls away more than a

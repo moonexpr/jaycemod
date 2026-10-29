@@ -124,6 +124,20 @@ local FLOOR_DEPTH = 1000
 -- weighs, so looked up without building a key
 local crossable = PairMap.New()
 
+-- Whether the standard body (CROSS_MINS, CROSS_MAXS: a TF2 player's box
+-- above a step) fits through the opening somewhere along it
+-- (nextsoldier.nav_gaps' FitLines, middle first): an opening the mesh,
+-- generated for a narrower walker, leaves too narrow for its shoulders is no
+-- way at all for now, until a soldier's locomotion squeezes through.
+local function BodyFits(lo, hi, side, otherLo, otherHi, z, mask)
+	for _, line in ipairs(NavGaps.FitLines(lo, hi, side, otherLo, otherHi, z)) do
+		local sweep = util.TraceHull({ start = V(line.start) + STEP, endpos = V(line.finish) + STEP,
+			mins = CROSS_MINS, maxs = CROSS_MAXS, mask = mask, filter = StaticMap })
+		if not sweep.Hit and not sweep.StartSolid then return true end
+	end
+	return false
+end
+
 function WS.NavLinkCrossable(a, b)
 	local aId, bId = a:GetID(), b:GetID()
 	local known = crossable:Get(aId, bId)
@@ -160,6 +174,7 @@ function WS.NavLinkCrossable(a, b)
 		local floor = util.TraceLine({ start = V(finish) + STEP, endpos = V(finish) - Vector(0, 0, FLOOR_DEPTH), mask = mask, filter = StaticMap })
 		clear = NavGaps.FallsAway(seamFrom, seamTo, floor.Hit and floor.HitPos.z or nil)
 	end
+	clear = clear and BodyFits(lo, hi, side, otherLo, otherHi, z, mask)
 	crossable:Set(aId, bId, clear)
 	return clear
 end

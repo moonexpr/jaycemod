@@ -12,6 +12,7 @@ local Vision = nextsoldier.vision
 local PlayerBody = nextsoldier.player_body
 local Movement = gameplay.movement
 local RouteWalk = nextsoldier.route_walk
+local Corners = nextsoldier.corners
 local Geometry = math.geometry
 local Teams = gameplay.teams
 local Movement = gameplay.movement
@@ -48,6 +49,9 @@ local STEP_HEIGHT, SAFE_DROP = 18, 300
 -- below (CanWalkTo): a stair up or down the way is floor, a ledge's edge not.
 local FOOTING_ABOVE, FOOTING_BELOW = Vector(0, 0, STEP_HEIGHT), Vector(0, 0, 2 * STEP_HEIGHT)
 local JUMP_PENALTY = 2
+
+-- A trace filter passing whoever walks about: players and NPCs.
+local function Unmoving(ent) return not (ent:IsPlayer() or ent:IsNPC() or ent:IsNextBot()) end
 
 local BotSoldier = setmetatable({}, { __index = Soldier })
 BotSoldier.__index = BotSoldier
@@ -159,6 +163,8 @@ function BotSoldier:RouteCost()
 	return function(area, fromArea, ladder, _, length)
 		if not IsValid(fromArea) then return 0 end
 		if npcs:NavBlocks(area, team) or controller:ShutDoorIn(area, team) or npcs:SpawnRoomTeam(area) == enemy then return -1 end
+		-- a link its body does not fit through, or that crosses a clip or a wall's end
+		if not WS.NavLinkCrossable(fromArea, area) then return -1 end
 		local distance
 		if IsValid(ladder) then
 			distance = ladder:GetLength()
@@ -234,6 +240,9 @@ function BotSoldier:Steer(now)
 		local route = self:Navigator():PlanRoute(ToVector(goal), self:RouteCost())
 		local points = {}
 		for i, v in ipairs(route or {}) do points[i] = Point(v) end
+		-- its turns pushed out off the inside walls until its body passes them
+		-- (the map's, not who stands there now)
+		points = Corners.Route(points, function(a, b) return self:WalkClear(ToVector(a), ToVector(b), Unmoving) end)
 		self.walk = route and RouteWalk.New(points) or nil
 		-- none found: planned again after REPATH_INTERVAL
 		if not route then self.planned = nil end
@@ -264,7 +273,12 @@ end
 -- and a floor all along (RouteWalk.Footing), within a step above or two
 -- below the line: a line beside a beam is clear of everything, over air.
 function BotSoldier:CanWalkTo(p)
-	local from, to = self.ent:GetPos(), ToVector(p)
+	return self:WalkClear(self.ent:GetPos(), ToVector(p))
+end
+
+-- The same for a walk from `from` to `to` (Vectors), wherever it stands;
+-- filter, a trace filter, in place of its own (only itself).
+function BotSoldier:WalkClear(from, to, filter)
 	if math.abs(to.z - from.z) > WALK_MAX_RISE then return false end
 	local mins, maxs = self:Sweep()
 	local tr = util.TraceHull({
@@ -273,7 +287,7 @@ function BotSoldier:CanWalkTo(p)
 		mins = mins,
 		maxs = maxs,
 		mask = MASK_PLAYERSOLID,
-		filter = self.ent,
+		filter = filter or self.ent,
 	})
 	if tr.Hit then return false end
 	for _, q in ipairs(RouteWalk.Footing(Point(from), Point(to))) do

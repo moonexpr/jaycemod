@@ -156,6 +156,40 @@ T.test("an opening narrower than twice CLEARANCE is traced once, at its middle",
 	T.eq(lines[1].start.y, 110, "the middle")
 end)
 
+-- Whether the body fits through: where along the opening to sweep it across,
+-- the middle first and on outward both ways, FIT_STEP apart and both ends
+-- of the overlap included (a corridor the mesh splits into two strips
+-- abreast is passed on their shared edge, an end of each strip's opening).
+T.defined(Gaps.FIT_STEP, "FIT_STEP")
+
+T.test("the body is fitted across the opening from its middle outward, FIT_STEP apart, ends included", function()
+	local lines = Gaps.FitLines(Pt(0, 0), Pt(200, 200), 1, Pt(200, 40), Pt(400, 200), 0)
+	local middle = Gaps.CrossingLine(Pt(0, 0), Pt(200, 200), 1, Pt(200, 40), Pt(400, 200), 0)
+	T.eq(lines[1].start.y, middle.y, "the middle first")
+	local along, seen = {}, {}
+	for i, line in ipairs(lines) do
+		along[i] = line.start.y
+		seen[line.start.y] = true
+		T.eq(line.start.x, middle.x, "each as deep as the middle's " .. i)
+		if i > 1 then
+			T.eq(math.abs(line.start.y - 120) >= math.abs(lines[i - 1].start.y - 120), true, "outward " .. i)
+		end
+	end
+	T.eq(seen[40] and seen[200], true, "both ends")
+	table.sort(along)
+	for i = 2, #along do
+		T.eq(along[i] - along[i - 1] <= Gaps.FIT_STEP, true, "no wider apart than FIT_STEP")
+		T.eq(along[i] > along[i - 1], true, "each once")
+	end
+end)
+
+T.test("areas whose edges do not overlap are fitted once, where the crossing runs", function()
+	local lines = Gaps.FitLines(Pt(0, 0), Pt(200, 100), 1, Pt(225, 150), Pt(400, 200), 0)
+	local start = Gaps.CrossingLine(Pt(0, 0), Pt(200, 100), 1, Pt(225, 150), Pt(400, 200), 0)
+	T.eq(#lines, 1, "one")
+	T.eq(lines[1].start.y, start.y, "as the crossing")
+end)
+
 T.test("across a strip between the areas, a crossing runs on INSIDE into the area entered", function()
 	-- east: from ends at x 200, to starts at x 250
 	local _, finish = Gaps.CrossingLine(Pt(0, 0), Pt(200, 200), 1, Pt(250, 0), Pt(400, 200), 0)

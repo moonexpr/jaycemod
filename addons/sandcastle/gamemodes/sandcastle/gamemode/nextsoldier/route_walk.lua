@@ -2,10 +2,13 @@
 -- (the AI war's bot soldiers: features/aiwar/sv_bot_soldier.lua), as the
 -- orders walk theirs (features.aiwar.orders' Travel:Advance): a waypoint
 -- within RADIUS is passed when the next is in a clear line, and one round a
--- corner only once it is within ON (the engine's route points sit on area
--- edges, by walls: cutting toward the next from RADIUS out ran bots into
--- the corner); the farthest of the next LOOKAHEAD in a clear line is made
--- for, and the last is held until reached.
+-- corner only once it is within ON, as near as the body comes when it
+-- arrives (nextsoldier.player_body's ARRIVE: the engine's route points sit
+-- on area edges, by walls, and nextsoldier.corners pushes a turn's off the
+-- inside wall just enough for the body, so leaving for the next from
+-- farther short of it runs the body into the corner); the farthest of the
+-- next LOOKAHEAD in a clear line is made for, and the last is held until
+-- reached.
 --
 -- A clear line has a floor all along it, not only room to pass: a line
 -- beside a log the route climbs (dev_watchtower_ns_locomotion's) is clear
@@ -14,10 +17,11 @@ local abs, floor, max, min, sqrt = math.abs, math.floor, math.max, math.min, mat
 local Distance, Distance2D = math.geometry.Distance, math.geometry.Distance2D
 local setmetatable = setmetatable
 local HUGE = math.huge
+local ARRIVE = nextsoldier.player_body.ARRIVE
 module(...)
 
 RADIUS = 48
-ON = 32
+ON = ARRIVE
 LOOKAHEAD = 3
 -- A waypoint is stood on, or within RADIUS, across the ground, as the body
 -- arrives (nextsoldier.player_body's ARRIVE), with this much height either
