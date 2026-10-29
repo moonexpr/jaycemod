@@ -32,20 +32,26 @@ T.test("every fix on every map names two different places", function()
 	end
 end)
 
--- Props whose tops the mesh calls walkable (dumpsters, which soldiers climb
--- and cannot get on from, hostages least of all): the areas on top go.
-T.test("cs_office's dumpsters are listed, each by where it stands", function()
-	local props = Hotfixes.Props("cs_office")
-	T.eq(#props, 7, "its seven dumpsters")
-	for _, prop in ipairs(props) do T.eq(type(prop.x) == "number" and type(prop.z) == "number", true, "a position") end
-	T.eq(#Hotfixes.Props("gm_construct"), 0, "none elsewhere")
+-- The nav areas on the lids of cs_office's dumpsters, which soldiers climbed
+-- and hostages followed them onto: named one by one (a radius round each
+-- dumpster also took ledges and the floor above), removed as the map loads.
+T.test("cs_office's dumpster lids are listed one by one, each with why", function()
+	local areas = Hotfixes.Areas("cs_office")
+	T.eq(#areas, 11, "eleven lid areas")
+	for _, area in ipairs(areas) do
+		T.eq(type(area.at.x) == "number" and type(area.at.z) == "number", true, "a position")
+		T.eq(type(area.why), "string", "why")
+	end
+	T.eq(#Hotfixes.Areas("gm_construct"), 0, "none elsewhere")
 end)
 
-T.test("an area is on a prop's top when it is beside it and above its foot", function()
-	local prop = { x = 916, y = -1123, z = -272 }
-	T.eq(Hotfixes.OnTop(prop, { x = 912, y = -1125, z = -206 }), true, "the dumpster's top")
-	T.eq(Hotfixes.OnTop(prop, { x = 912, y = -1125, z = -272 }), false, "the ground beside it")
-	T.eq(Hotfixes.OnTop(prop, { x = 916 + Hotfixes.PROP_RADIUS + 1, y = -1123, z = -206 }), false, "a ledge elsewhere, as high")
+T.test("no two areas listed on a map are the same place", function()
+	for _, map in ipairs(Hotfixes.Maps()) do
+		local areas = Hotfixes.Areas(map)
+		for i = 1, #areas do
+			for j = i + 1, #areas do T.eq(Hotfixes.Near(areas[i].at, areas[j].at), false, map .. " " .. i .. "," .. j) end
+		end
+	end
 end)
 
 T.finish()

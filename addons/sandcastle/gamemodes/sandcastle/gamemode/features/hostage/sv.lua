@@ -77,22 +77,17 @@ function Controller:ApplyHotfixes()
 	end
 	if cut > 0 then print(string.format("hostage: %d nav link(s) cut on %s", cut, map)) end
 
-	-- the tops of props the mesh calls walkable (dumpsters) go
-	local props = Hotfixes.Props(map)
-	local tops = {}
-	if #props > 0 then
-		for _, area in ipairs(navmesh.GetAllNavAreas()) do
-			local center = area:GetCenter()
-			for _, prop in ipairs(props) do
-				if Hotfixes.OnTop(prop, center) then
-					tops[#tops + 1] = area
-					break
-				end
-			end
+	local removed = 0
+	for _, fix in ipairs(Hotfixes.Areas(map)) do
+		local area = AreaAt(fix.at)
+		if area then
+			area:Remove()
+			removed = removed + 1
+		else
+			print(string.format("hostage hotfix not applied on %s: no nav area at the %s", map, fix.why))
 		end
 	end
-	for _, area in ipairs(tops) do area:Remove() end
-	if #tops > 0 then print(string.format("hostage: %d nav area(s) on top of props removed on %s", #tops, map)) end
+	if removed > 0 then print(string.format("hostage: %d nav area(s) removed on %s", removed, map)) end
 end
 
 -- Applied once, as soon as the nav mesh is up: at load, at InitPostEntity, and
@@ -148,11 +143,34 @@ local function BluSpawns()
 end
 
 -- The rescue zone round BLU's spawns; nil while it has none.
+-- The map's func_hostage_rescue brushes as world boxes, the one nearest
+-- BLU's spawns (spots) first: the war leads hostages to it, home.
+local function RescueBoxes(spots)
+	local boxes = {}
+	for _, ent in ipairs(ents.FindByClass("func_hostage_rescue")) do
+		local mins, maxs = ent:WorldSpaceAABB()
+		boxes[#boxes + 1] = { mins = mins, maxs = maxs, mid = (mins + maxs) / 2 }
+	end
+	if #spots > 0 then
+		local home = Vector(0, 0, 0)
+		for _, p in ipairs(spots) do home = home + p end
+		home = home / #spots
+		table.sort(boxes, function(a, b) return a.mid:DistToSqr(home) < b.mid:DistToSqr(home) end)
+	end
+	return boxes
+end
+
+-- The rescue zone: the map's own rescue brushes, else round BLU's spawns;
+-- nil while it has neither.
 function Controller:ZoneOf()
 	if not self.zone then
 		local spots = BluSpawns()
-		if #spots == 0 then return nil end
-		self.zone = Zone.Of(spots, ZONE_MARGIN)
+		local boxes = RescueBoxes(spots)
+		if #boxes > 0 then
+			self.zone = Zone.Boxes(boxes)
+		elseif #spots > 0 then
+			self.zone = Zone.Of(spots, ZONE_MARGIN)
+		end
 	end
 	return self.zone
 end

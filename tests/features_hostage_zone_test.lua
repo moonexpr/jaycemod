@@ -20,6 +20,24 @@ T.test("a hostage inside the radius and the zone's height is in; beyond either, 
 	T.eq(Zone.Contains(zone, P(100, 0, 10 - Zone.HEIGHT - 1)), false, "a floor below")
 end)
 
+-- A map's func_hostage_rescue brushes are its zones, as CS:S has them: a
+-- hostage inside any of their boxes is rescued.
+T.test("a zone of the map's rescue boxes holds what is inside any of them", function()
+	local zone = Zone.Boxes({
+		{ mins = P(0, 0, 0), maxs = P(100, 100, 100) },
+		{ mins = P(500, 500, 0), maxs = P(600, 600, 100) },
+	})
+	T.eq(Zone.Contains(zone, P(50, 50, 10)), true, "in the first")
+	T.eq(Zone.Contains(zone, P(550, 550, 10)), true, "in the second")
+	T.eq(Zone.Contains(zone, P(300, 300, 10)), false, "between them")
+	T.eq(Zone.Contains(zone, P(50, 50, 200)), false, "above")
+	T.near(zone.center.x, 50, 1e-6, "its centre is the first box's")
+end)
+
+T.test("a zone of boxes needs boxes", function()
+	T.eq(pcall(Zone.Boxes, {}), false, "none")
+end)
+
 T.test("a zone needs spawns", function()
 	T.eq(pcall(Zone.Of, {}, 50), false, "none")
 end)
