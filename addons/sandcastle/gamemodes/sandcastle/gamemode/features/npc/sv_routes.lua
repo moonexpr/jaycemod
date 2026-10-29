@@ -169,7 +169,9 @@ function Controller:NavMeshReady()
 		local mesh, areas, uncrossable = NavSearch.Mesh(), navmesh.GetAllNavAreas(), {}
 		for _, area in ipairs(areas) do
 			local center = Center(area:GetID())
-			mesh:Area(area:GetID(), center.x, center.y, center.z, area:GetAttributes())
+			-- the engine reads the flags back signed: an area with the top flag set
+			-- (cp_sunshine has one) comes back negative, which the mesh's u32 refuses
+			mesh:Area(area:GetID(), center.x, center.y, center.z, area:GetAttributes() % 4294967296)
 		end
 		for _, area in ipairs(areas) do
 			local id = area:GetID()
