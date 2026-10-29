@@ -333,6 +333,16 @@ T.test("each team forms a squad for every hostage group, and every squad owns on
 	end
 end)
 
+T.test("BLU, who must free and lead the hostages out through the guards, has more soldiers than RED, the total unchanged", function()
+	local _, scenario = Briefed()
+	for _, size in ipairs({ 4, 8, 15 }) do
+		local sizes = scenario:TeamSizes(size)
+		T.eq(sizes[RED] + sizes[BLUE], size * 2, "the total at size " .. size)
+		T.eq(sizes[BLUE] > sizes[RED], true, "BLU outnumbers RED at size " .. size)
+		T.eq(sizes[RED] >= 1, true, "RED keeps a guard at size " .. size)
+	end
+end)
+
 T.test("the war's squads minimum is raised to the number of groups, never lowered", function()
 	local field, scenario = Briefed()
 	local war = AiWar.War.New()

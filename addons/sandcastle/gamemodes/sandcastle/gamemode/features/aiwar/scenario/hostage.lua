@@ -32,6 +32,7 @@
 -- the field, per team, its objectives: hostages, groups, groupOf (id ->
 -- group), zone.
 local ipairs, pairs, select = ipairs, pairs, select
+local floor = math.floor
 local concat, sort = table.concat, table.sort
 local AiWar = require("features.aiwar.model")
 local Orders = require("features.aiwar.orders")
@@ -397,6 +398,15 @@ function Scenario:Allocate(war, field, now)
 	if war.squadsMin < #groups then war:SetSquadsMin(#groups) end
 	Base.Scenario.Allocate(self, war, field, now)
 	Groups.Assign(war.fireTeams, groups, JOBS)
+end
+
+-- BLU must free the hostages and lead them out through the guards, so it
+-- takes RESCUER_SHARE of the soldiers of both sides.
+RESCUER_SHARE = 0.6
+
+function Scenario:TeamSizes(size)
+	local rescuers = floor(size * 2 * RESCUER_SHARE + 0.5)
+	return { [RESCUERS] = rescuers, [RED] = size * 2 - rescuers }
 end
 
 -- The lanes lead to the group BLU reaches first, its nearest to the zone
