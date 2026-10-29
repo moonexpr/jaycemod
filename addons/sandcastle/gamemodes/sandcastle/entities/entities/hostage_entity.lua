@@ -38,10 +38,10 @@ function ENT:CustomInitialize()
 	self.hostage:Bind(self)
 end
 
-local SoldierRemove = ENT.OnRemove
+-- the base's own, which GMod gives the class only once it is registered
 function ENT:OnRemove()
 	if self.hostage then self.hostage:Unbind(self) end
-	SoldierRemove(self)
+	self.BaseClass.OnRemove(self)
 end
 
 -- No hurt reaches it.
