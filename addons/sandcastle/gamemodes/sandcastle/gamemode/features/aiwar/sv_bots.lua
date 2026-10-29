@@ -145,10 +145,10 @@ function Controller:AddBot()
 	WS.SetPlayerTeam(bot, team)
 end
 
--- A bot of the team TeamToKick names, a dead one first; any of the
--- quota's when none is on a team.
-function Controller:KickBot()
-	local team = Quota.TeamToKick(self:TeamCounts())
+-- A bot of the team (by default the one TeamToKick names), a dead one first;
+-- any of the quota's when none is on a team.
+function Controller:KickBot(team)
+	team = team or Quota.TeamToKick(self:TeamCounts())
 	local pick
 	for bot in pairs(self.bots) do
 		if IsValid(bot) and (team == nil or WS.TeamOf(bot) == team) and (pick == nil or not bot:Alive()) then pick = bot end
@@ -169,6 +169,11 @@ function Controller:MaintainBotQuota()
 		self:AddBot()
 	elseif step == Quota.KICK then
 		self:KickBot()
+	else
+		-- the total is right, the split may not be: the next AddBot fills the short side
+		local counts = self:TeamCounts()
+		local over = Quota.TeamOverSize({ [RED] = counts[RED].players, [BLUE] = counts[BLUE].players }, sizes)
+		if over then self:KickBot(over) end
 	end
 end
 

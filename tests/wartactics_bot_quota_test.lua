@@ -114,4 +114,16 @@ T.test("a new bot joins the team furthest below its size; even sizes, the auto-a
 	T.eq(Quota.TeamToJoin({ [RED] = 6, [BLUE] = 10 }, { [RED] = 6, [BLUE] = 10 }), Teams.AutoTeam(6, 10), "both full: auto-assign")
 end)
 
+-- Bots keep their team across a map load, so a split made before the sizes
+-- changed stays wrong with the total right: a bot leaves the team over its
+-- size while the other is under, and the next one joins the short team.
+T.test("a team over its size while the other is under gives up a bot", function()
+	local RED, BLUE = Teams.RED, Teams.BLUE
+	local sizes = { [RED] = 6, [BLUE] = 10 }
+	T.eq(Quota.TeamOverSize({ [RED] = 8, [BLUE] = 8 }, sizes), RED, "RED over, BLU under")
+	T.eq(Quota.TeamOverSize({ [RED] = 6, [BLUE] = 10 }, sizes), nil, "as sized")
+	T.eq(Quota.TeamOverSize({ [RED] = 7, [BLUE] = 10 }, sizes), nil, "over, but nobody is short: the quota's to trim")
+	T.eq(Quota.TeamOverSize({ [RED] = 5, [BLUE] = 9 }, sizes), nil, "both short: bots join")
+end)
+
 T.finish()
