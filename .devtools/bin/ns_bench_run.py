@@ -71,9 +71,22 @@ WATCHTOWER = (
     Errand("east pack, up the logs", (1212, 12, 24), (1238, -16, 816), 60),
     Errand("west pipe to the point", (-1250, 8, 848), (-2, 1, 760), 45),
 )
+# cp_sunshine's errands, the pathfinder's bench (operator, 2026-10-29): plain
+# geometry a body of the right hull walks without trouble. Area 425, the
+# corner outside RED's spawn on the way to its second point, is where bots
+# stuck and the hazards disabled a valid area while their walks were swept 26
+# wide for a 48-wide body. Each team's ways out, and the long ways to the middle.
+SUNSHINE = (
+    Errand("round the corner at area 425", (-2800, 2387, -63), (-2950, 2650, -63), 20),
+    Errand("RED spawn to its second point", (-3529, 2693, -44), (-3560, 3672, 132), 45),
+    Errand("RED spawn to the middle point", (-3529, 2693, -44), (-5632, 5248, 68), 90),
+    Errand("BLU spawn to its second point", (-7731, 7795, -44), (-7704, 6824, 132), 45),
+    Errand("BLU spawn to the middle point", (-7731, 7795, -44), (-5632, 5248, 68), 90),
+)
 BENCHES = {
     "dev_watchtower_ns_locomotion": WATCHTOWER,
     "arena_watchtower": WATCHTOWER,
+    "cp_sunshine": SUNSHINE,
 }
 def vector(p: Vec) -> str:
     return "Vector(%g, %g, %g)" % p
