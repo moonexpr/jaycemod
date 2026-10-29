@@ -147,13 +147,14 @@ return chosen and chosen:Nick() or ''
 """
 
 # Whether the war is ready for errands: a round running, every bot soldier
-# the quota asks for alive.
+# the quota asks for alive, and no more bots than it asks for: a server that
+# had more trims them one a think, and would kick the bench's bot meanwhile.
 SETTLED = """
-local alive = 0
+local alive, quota = 0, GetConVarNumber("tf_bot_quota")
 for ent in pairs(WS.Feature("aiwar").soldiers or {}) do
 	if IsValid(ent) and ent:IsPlayer() and ent:Alive() then alive = alive + 1 end
 end
-return tostring(WS.State() == %(running)d and alive >= GetConVarNumber("tf_bot_quota"))
+return tostring(WS.State() == %(running)d and alive >= quota and #player.GetBots() <= quota)
 """
 ROUND_RUNNING = 4  # gamerules_roundstate_t's GR_STATE_RND_RUNNING (games.gameplay.rounds.state)
 
