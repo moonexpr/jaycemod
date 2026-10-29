@@ -14,8 +14,9 @@ local Movement = gameplay.movement
 local RouteWalk = nextsoldier.route_walk
 local Geometry = math.geometry
 local Teams = gameplay.teams
+local Movement = gameplay.movement
 local ToVector, Point = Map.ToVector, Map.Point
-local WALK_MINS, WALK_MAXS, WALK_LIFT, WALK_MAX_RISE = Map.WALK_MINS, Map.WALK_MAXS, Map.WALK_LIFT, Map.WALK_MAX_RISE
+local WALK_MAXS, WALK_LIFT, WALK_MAX_RISE = Map.WALK_MAXS, Map.WALK_LIFT, Map.WALK_MAX_RISE
 
 -- How long it keeps the jump key's wish when its orders ask a hop: long
 -- enough to land on the ground and press it.
@@ -250,17 +251,27 @@ function BotSoldier:Watch(p)
 	self.look = p and ToVector(p) or nil
 end
 
+-- The box its walks and hops are swept with: its own player hull's width
+-- (a TF2 player's 48; Map's 26-wide walk sweep passes lines its shoulders
+-- catch on door frames), WALK_MAXS high above WALK_LIFT.
+function BotSoldier:Sweep()
+	local mn, mx = self.ent:GetHull()
+	local mins, maxs = Movement.Sweep(mn, mx, WALK_MAXS.z)
+	return ToVector(mins), ToVector(maxs)
+end
+
 -- A clear walk under player movement's mask: what stops a player stops it,
 -- and a floor all along (RouteWalk.Footing), within a step above or two
 -- below the line: a line beside a beam is clear of everything, over air.
 function BotSoldier:CanWalkTo(p)
 	local from, to = self.ent:GetPos(), ToVector(p)
 	if math.abs(to.z - from.z) > WALK_MAX_RISE then return false end
+	local mins, maxs = self:Sweep()
 	local tr = util.TraceHull({
 		start = from + WALK_LIFT,
 		endpos = to + WALK_LIFT,
-		mins = WALK_MINS,
-		maxs = WALK_MAXS,
+		mins = mins,
+		maxs = maxs,
 		mask = MASK_PLAYERSOLID,
 		filter = self.ent,
 	})
@@ -280,7 +291,8 @@ function BotSoldier:Blocker(p)
 	local controller = self.controller
 	local from, to = self.ent:GetPos() + WALK_LIFT, ToVector(p) + WALK_LIFT
 	local function NotSoldier(hit) return controller.soldiers[hit] == nil end
-	local hit = util.TraceHull({ start = from, endpos = to, mins = WALK_MINS, maxs = WALK_MAXS, mask = MASK_PLAYERSOLID, filter = NotSoldier })
+	local mins, maxs = self:Sweep()
+	local hit = util.TraceHull({ start = from, endpos = to, mins = mins, maxs = maxs, mask = MASK_PLAYERSOLID, filter = NotSoldier })
 	if not hit.Hit then return nil, false end
 	return hit.HitWorld and game.GetWorld() or hit.Entity, false
 end
@@ -296,7 +308,8 @@ function BotSoldier:Hop(p)
 	local now = CurTime()
 	if now - (self.hoppedAt or -math.huge) < HOP_RETRY then return false end
 	local from, to = self.ent:GetPos() + HOP_CLEAR, ToVector(p) + HOP_CLEAR
-	local tr = util.TraceHull({ start = from, endpos = to, mins = WALK_MINS, maxs = WALK_MAXS, mask = MASK_PLAYERSOLID, filter = self.ent })
+	local mins, maxs = self:Sweep()
+	local tr = util.TraceHull({ start = from, endpos = to, mins = mins, maxs = maxs, mask = MASK_PLAYERSOLID, filter = self.ent })
 	if tr.Hit then return false end
 	self.hoppedAt = now
 	self.hopUntil = now + HOP_WISH

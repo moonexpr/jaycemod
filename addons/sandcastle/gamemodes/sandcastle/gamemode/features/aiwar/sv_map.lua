@@ -7,9 +7,12 @@ local AiWar = WS.require("features.aiwar.model")
 local HL2Path = WS.require("foundation.wetsands.path.hl2")
 local Path = wetsands.path
 
--- CanWalkTo's sweep: a soldier's hull above its step height, so stairs and
--- slopes pass and walls do not.
-local WALK_MINS, WALK_MAXS = Vector(-13, -13, 0), Vector(13, 13, 52)
+-- CanWalkTo's and the lanes' sweep: the standard body's width (a TF2
+-- player's, gameplay.movement; the bot soldiers' own, and wider than the NPC
+-- soldiers'), above its step height, so stairs and slopes pass and walls do
+-- not. A narrower sweep passes lines a bot's shoulders catch on door frames.
+local Movement = gameplay.movement
+local WALK_MINS, WALK_MAXS = Vector(Movement.TF2.hullMin.x, Movement.TF2.hullMin.y, 0), Vector(Movement.TF2.hullMax.x, Movement.TF2.hullMax.y, 52)
 local WALK_LIFT = Vector(0, 0, 20)
 local WALK_MAX_RISE = 40
 
