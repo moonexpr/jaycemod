@@ -33,6 +33,10 @@ local REPATH_DISTANCE, REPATH_INTERVAL = 128, 1
 -- Moved farther than this between two looks, it was set down elsewhere (a
 -- respawn, a side swap, a bench): its route is dropped and planned anew.
 local TELEPORTED = 256
+-- Set down elsewhere or pinned, it plans no sooner than this after: its
+-- navigator follows it on its next think and the engine catches the
+-- navigator's area up after that.
+local SETTLE_DELAY = 0.5
 local DIRECT_RANGE = 256
 local FIRST_PLAN = 0.3
 -- What a player's body climbs and falls (RouteCost): a stair step, a crouch
@@ -192,8 +196,8 @@ end
 function BotSoldier:Pin(p)
 	self.pin = p
 	self.moveTarget, self.gait, self.planned = p, "run", nil
-	-- the route it was on goes, and the new one is planned at the next look
-	self.walk, self.steer, self.nextPlan = nil, nil, 0
+	-- the route it was on goes; the new one is planned once it has settled
+	self.walk, self.steer, self.nextPlan = nil, nil, CurTime() + SETTLE_DELAY
 end
 
 function BotSoldier:Unpin()
@@ -211,9 +215,12 @@ function BotSoldier:Steer(now)
 	local goal = self.moveTarget
 	local pos = Point(self.ent:GetPos())
 	if self.lookedFrom and Geometry.Distance(pos, self.lookedFrom) > TELEPORTED then
-		self.walk, self.planned, self.nextPlan = nil, nil, 0
+		self.walk, self.planned, self.nextPlan = nil, nil, now + SETTLE_DELAY
 	end
 	self.lookedFrom = pos
+	-- no nearer its waypoint for a while (fallen off beneath its route,
+	-- wedged): planned anew from where it is
+	if self.walk and self.walk:Stalled(pos, now) then self.walk, self.planned = nil, nil end
 	if not goal then
 		self.steer = nil
 		return

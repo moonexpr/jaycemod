@@ -307,10 +307,14 @@ async def teardown(server: instances.GameServer, saved: dict) -> None:
 
 
 async def settle(server: instances.GameServer) -> bool:
-    """Waits until the war is ready for errands (SETTLED) for SETTLE_FOR seconds
-    running: a round begun, its pre-round freeze over, every bot enlisted."""
+    """Puts the round running and waits until the war is ready for errands
+    (SETTLED) for SETTLE_FOR seconds running: the round running, every bot
+    enlisted."""
     if (await server.lua("return WS.Feature('aiwar').war ~= nil")).returns[0] != "true":
         await server.rcon("mp_aiwar_start")
+    # the round put running as a restore does (no pre-round freeze): one left
+    # won or stalemated (arena stalemates again after a restart) never runs again
+    await server.lua(f"dev.harness.set_round_state({ROUND_RUNNING}) return true")
     deadline, since = time.monotonic() + BOT_TIMEOUT, None
     while time.monotonic() < deadline:
         ready = (await server.lua(SETTLED % {"running": ROUND_RUNNING})).returns[0] == "true"
