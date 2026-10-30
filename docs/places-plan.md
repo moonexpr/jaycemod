@@ -101,7 +101,7 @@ the rest on occupation's changes, and each change is held as occupation is
 
 | Class | A room that | Found from |
 |---|---|---|
-| Restricted | a team's spawns and the well-protected ground behind them: the other team may not enter until the round has ended | the team's spawn claims (§2.2), and one flood from the enemy's spawns: the team's held rooms it can reach only through restricted ones |
+| Restricted | a team's spawns and the well-protected ground behind them: the other team may not enter while the round is played; the class stands after the round ends, when the winners break in (a breach, §2.3 below) | the team's spawn claims (§2.2), and one flood from the enemy's spawns: the team's held rooms it can reach only through restricted ones |
 | Stronghold | a team holds, protected and commuted: its own soldiers pass through it, the enemy cannot reach it without crossing the team's rooms | occupation; the same flood stopped at the team's held rooms; the team's own traffic |
 | Outpost | a team claims far from its spawns, out on its own, which may reach out of doors | occupation (a remote base's works and presence, §4) where the team's incursion is long and the room is not joined to its strongholds by its own rooms |
 | Highway | carries the most traffic, or an objective passes through: the payload's track, a capture point's room | flow; the objective's entities (the cart's path_tracks, the capture areas) |
@@ -132,20 +132,27 @@ and shrinks by a ladder, each step held as occupation is:
   an outpost at once, a stronghold once the enemy's claim beats the team's.
 - **Breached: restricted ground claimed.** Restricted ground can be claimed
   too (the enemy's sentry in a spawn's doorway, a squad camping it). It is
-  a breach, and the tactics engine is penalized for it: the claim is the
-  enemy's outpost as any other, and on top of that
-  - the war's record counts each breach against the tactics engine, who
-    breached whom, where and for how long, in its analytics
-    (`analysis.analytics`) and the overlay's label, so a tuning run or a
-    bench reads it as a failure (spawn camping makes a bad game, whichever
-    side does it);
-  - the breached team's engine answers at once: retaking the room comes
-    before every other mission (an assault from its spawns, its lanes
-    planned again as for a lasting change);
-  - the breaching team's engine is held back from it: no mission chooses
-    restricted ground, and squads that drift into it are called out.
+  a breach: the claim is the enemy's outpost as any other, the room stays
+  restricted (a class keeps its meaning when the round ends), and the
+  tactics engine issues an automatic penalty for it to the director. The
+  director decides penalties; until it is built (`docs/director-plan.md`,
+  paused), the penalty is fixed:
+  - the compromised team respawns sooner (its wait shortened, a reason of
+    `gameplay.respawn_modifiers` told on its respawn screen), and its
+    players and soldiers spawn ubercharged and crit boosted for a while
+    (`players.condition_effects`' `INVULNERABLE` and `CRITBOOSTED`),
+  - until it claims back its restricted spawn and the rooms around it.
 
-  How strongly each is weighed is open (§7).
+  The director asks the gamerules to apply it, and the gamerules decide:
+  while the round is over they refuse it (a declined transaction, its
+  refusal the round's end). So the winners breaking into the losers' spawn
+  to finish their SeekAndDestroy is a breach as any other, its penalty
+  issued and refused. The hunt's routes then go into the losers' restricted
+  ground instead of ending at its door (`wartactics.hunt` today: "routes
+  refuse enemy spawn rooms").
+
+  Each breach is also recorded (who breached whom, where, for how long) in
+  the war's analytics (`analysis.analytics`) and on the overlay's label.
 
 The measures behind them (§2.1) stay available for queries beside the
 class: a room's ways and entries, its depth (a dead end), its flow and
@@ -221,14 +228,6 @@ The layer stands on the rooms, so they hold first:
 
 ## 7. Open questions for the operator
 
-- The breach penalty (§2.3): read as both a failure counted against the
-  tactics engine (analytics, for tuning and benches) and play that answers
-  it (the breached team retakes first, the breaching team is held back).
-  Is the penalty meant as the score, the in-game answer, or both? And is a
-  breach the defender's failure, the attacker's (spawn camping), or both?
-- Restricted ground: read as "the other team may not enter until the
-  round has ended" (TF2's spawn rooms, open to the winners in humiliation).
-  Is that the meaning?
 - Wilds: found from the floor's surface material (dirt, grass, snow, sand,
   foliage, rock under an outdoor room). Is nature that, or something else
   (off the routes, terrain made of displacements)?
@@ -238,3 +237,20 @@ The layer stands on the rooms, so they hold first:
   (as the plan first had it, and as a TF2 engineer builds where its team
   arrives first), or off the routes the enemy uses, on ground it values
   little (the Army's patrol base doctrine). The research leaves it open.
+
+## 8. Settled with the operator
+
+- The room classes are the operator's seven: restricted, stronghold,
+  outpost, highway, commons, wilds, unoccupied (§2.3).
+- Rooms are classed again as the war goes: a claim makes an outpost, the
+  team's traffic makes it a stronghold and its neighbours outposts.
+- Any room can be claimed, restricted ground too. A sentry or support an
+  engineer or support soldier sets up claims its room (as a teleporter's
+  exit will, once there are teleporters).
+- A class keeps its meaning when the round ends: the winners breaking into
+  the losers' spawn for their SeekAndDestroy is a breach.
+- The breach penalty, until the director decides penalties: the
+  compromised team respawns sooner and spawns ubercharged and crit boosted
+  until it claims back its restricted spawn and the rooms around it. The
+  penalty is always issued to the director; the gamerules refuse it while
+  the round is over.
