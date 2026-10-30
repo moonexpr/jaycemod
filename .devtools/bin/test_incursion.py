@@ -167,6 +167,50 @@ class BreachesTest(unittest.TestCase):
         self.assertEqual([b.areas for b in incursion.Breaches(self.tree(graph, [1, 5]), 1.0)], [(1, 2, 3), (5, 4)])
 
 
+def Window(a, b, graph):
+    """A breakable window halfway between areas a and b, as the dump gives it."""
+    ca, cb = graph[a]["center"], graph[b]["center"]
+    return {"from": a, "to": b, "pos": {k: (ca[k] + cb[k]) / 2 for k in "xyz"}, "breakable": True}
+
+
+class WindowTest(unittest.TestCase):
+    def test_a_window_is_a_way_through_both_ways_costing_the_break(self):
+        graph = Line()
+        graph[9] = Area(2, 1)   # a room behind glass beside area 2, no link to it
+        edges = Edges(Middles(graph), [Window(2, 9, graph)])
+        there = next(s for s in edges[2] if s.to == 9)
+        self.assertTrue(there.window)
+        self.assertAlmostEqual(there.cost, CELL + incursion.WINDOW_COST)
+        self.assertTrue(any(s.to == 2 and s.window for s in edges[9]), "and back")
+
+    def test_a_window_no_one_can_break_is_no_way_through(self):
+        graph = Line()
+        graph[9] = Area(2, 1)
+        window = dict(Window(2, 9, graph), breakable=False)   # an areaportal window: seen through only
+        self.assertFalse(any(s.to == 9 for s in Edges(Middles(graph), [window])[2]))
+
+    def test_a_window_too_high_to_climb_to_is_only_a_way_down(self):
+        graph = Line()
+        graph[9] = Area(2, 1, z=3 * incursion.CLIMB)
+        edges = Edges(Middles(graph), [Window(2, 9, graph)])
+        self.assertFalse(any(s.to == 9 for s in edges[2]), "no climbing up to it")
+        self.assertTrue(any(s.to == 2 for s in edges[9]), "jumping out of it down")
+
+    def test_a_route_breaks_through_a_window_where_it_is_the_way_in(self):
+        graph = Line()
+        graph[9] = Area(5, 1)   # BLU's spawn behind glass beside area 5, no link to it
+        edges = Edges(Middles(graph), [Window(5, 9, graph)])
+        routes = incursion.Routes(edges, {RED: [1], BLU: [9]})
+        self.assertEqual(next(r for r in routes if r.team == RED).areas, (1, 2, 3, 4, 5, 9))
+
+    def test_a_step_carries_where_it_crosses_the_shared_edge_or_the_window(self):
+        graph = Line()
+        graph[9] = Area(2, 1)
+        edges = Edges(Middles(graph), [Window(2, 9, graph)])
+        self.assertEqual(next(s for s in edges[1] if s.to == 2).via, (150.0, 0.0, 0.0))
+        self.assertEqual(next(s for s in edges[2] if s.to == 9).via, (200.0, 50.0, 0.0))
+
+
 class TrafficTest(unittest.TestCase):
     def test_traffic_counts_the_routes_through_each_area_by_team(self):
         # BLU spawns at 5 and at 6 beside it; both of RED's routes come through 2-4

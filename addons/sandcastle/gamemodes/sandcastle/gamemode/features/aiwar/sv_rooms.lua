@@ -128,15 +128,17 @@ local function BspAreas()
 	end
 end
 
--- The map's windows, which no nav link crosses: areaportal windows and
--- breakable glass, each with the nav areas a little way out from either
--- face, on its side of the glass.
-local WINDOW_CLASSES = { "func_areaportalwindow", "func_breakable_surf" }
+-- The map's windows, which no nav link crosses: areaportal windows,
+-- breakable glass and breakable brushes (boards, grates), each with the nav
+-- areas a little way out from either face, on its side, and whether it can
+-- be broken through (an areaportal window is only seen through).
+local WINDOW_CLASSES = { func_areaportalwindow = false, func_breakable_surf = true, func_breakable = true }
+local WINDOW_ORDER = { "func_areaportalwindow", "func_breakable_surf", "func_breakable" }
 local WINDOW_REACH, WINDOW_SEARCH = 24, 160
 
 local function Windows(playable)
 	local windows = {}
-	for _, class in ipairs(WINDOW_CLASSES) do
+	for _, class in ipairs(WINDOW_ORDER) do
 		for _, ent in ipairs(ents.FindByClass(class)) do
 			local mins, maxs = ent:WorldSpaceAABB()
 			local size, middle = maxs - mins, (mins + maxs) / 2
@@ -147,7 +149,8 @@ local function Windows(playable)
 				sides[i] = IsValid(area) and playable[area:GetID()] and area:GetID()
 			end
 			if sides[1] and sides[2] and sides[1] ~= sides[2] then
-				windows[#windows + 1] = { pos = Point(middle), from = sides[1], to = sides[2] }
+				windows[#windows + 1] = { pos = Point(middle), from = sides[1], to = sides[2],
+					breakable = WINDOW_CLASSES[class] }
 			end
 		end
 	end
@@ -259,7 +262,7 @@ end
 -- What is kept: the rooms with their areas, doors and windows, the passages,
 -- and the mesh's size. A save is of ROOMS_VERSION's way of finding rooms;
 -- another's is found again.
-local ROOMS_VERSION = 5
+local ROOMS_VERSION = 6
 
 local function Connections(list)
 	local kept = {}

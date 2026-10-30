@@ -43,6 +43,7 @@ SPAWN_FILL = {"RED": (120, 0, 0), "BLU": (0, 30, 130)}
 AREA_EDGE, BLOCK_EDGE, UNREACHED = (200, 200, 200), (70, 70, 70), (255, 255, 255)
 LINE_MIN, LINE_MAX, OPTION_MAX = 2, 9, 5
 BEZIER_SAMPLES = 12
+WINDOW_FILL, WINDOW_MARK = (0, 220, 255), 7
 KEY = [("RED first", "RED's walk from its spawns reaches the area first", SIDE_FILL["RED"]),
        ("BLU first", "BLU's walk reaches it first", SIDE_FILL["BLU"]),
        ("the front", f"both walks reach it within {FRONT_SHARE:.0%} of the walk between the spawns", SIDE_FILL[None]),
@@ -92,7 +93,23 @@ def Separation(fields: dict, spawns: dict) -> float:
                for enemy, areas in spawns.items() if enemy != team for a in areas)
 
 
-def Draw(dump, found, fields, routes, side, out: Path) -> None:
+def Crossings(edges: dict) -> dict:
+    """Each step by the two areas it joins: (from, to) -> its Step (where it crosses, and whether through
+    a window)."""
+    return {(a, step.to): step for a, steps in edges.items() for step in steps}
+
+
+def BrokenWindows(pen, at, crossings: dict, levels: dict, areas: tuple) -> None:
+    """A diamond where a path breaks through a window."""
+    for a, b in zip(areas, areas[1:]):
+        step = crossings[(a, b)]
+        if step.window and b in levels:
+            x, y = at(levels[b], *step.via[:2])
+            pen.polygon([(x, y - WINDOW_MARK), (x + WINDOW_MARK, y), (x, y + WINDOW_MARK), (x - WINDOW_MARK, y)],
+                        fill=WINDOW_FILL, outline=(0, 0, 0))
+
+
+def Draw(dump, found, fields, routes, side, crossings: dict, out: Path) -> None:
     count = max(found.levels, 1)
     x0, x1, y0, y1, scale = rooms_view.Frame(dump.areas)
     w, h = int((x1 - x0) * scale) + 2 * MARGIN, rooms_view.PanelHeight(dump.areas)
@@ -139,8 +156,7 @@ def Draw(dump, found, fields, routes, side, out: Path) -> None:
     most = max(pieces.values(), default=1)
 
     def Middle(a, b):
-        m = next(l["middle"] for l in dump.graph[a]["links"] if l["to"] == b)
-        return m["x"], m["y"]
+        return crossings[(a, b)].via[:2]
 
     # the other options beneath, the highways over them
     for (option, team, before, area, after), n in sorted(pieces.items(), key=lambda kv: (not kv[0][0], kv[1])):
@@ -155,6 +171,8 @@ def Draw(dump, found, fields, routes, side, out: Path) -> None:
         top = OPTION_MAX if option else LINE_MAX
         pen.line([(x + d, y + d) for x, y in curve], fill=(OPTION_LINE if option else TEAM_LINE)[team],
                  width=round(LINE_MIN + (top - LINE_MIN) * n / most), joint="curve")
+    for route in routes:
+        BrokenWindows(pen, At, crossings, levels, route.areas)
     pen.line([(0, h), (w * count, h)], fill=(0, 0, 0))
     pen.text((MARGIN, h + 4), "Key", fill=(0, 0, 0), font=font)
     column = w * count // 2
@@ -209,11 +227,13 @@ TREE_KEY = [("breach", f"the fewest paths from the spawns along the tree coverin
              f"numbered at their ends in the order taken; ground within {COVER_REACH} units of one is tinted", None),
             ("branch", "pale: each area joined to the one its team's walk reaches it from; wider, the more floor is "
              "reached through it (the square root of its share)", None),
+            ("window", f"a breakable window or brush a breach breaks through ({incursion.WINDOW_COST} units' "
+             "walk to break and climb over)", None),
             ("fork", f"where a branch splits into ways each reaching {FORK_SHARE:.0%} of the map or more", None),
             ("spawn areas", "the tree's roots, dark in the team's colour", None)]
 
 
-def DrawTrees(dump, found, trees: dict, breaches: dict, covered: dict, out: Path) -> None:
+def DrawTrees(dump, found, trees: dict, breaches: dict, covered: dict, crossings: dict, out: Path) -> None:
     """Each team's tree in a row of its own, one panel a level, its breaching paths over it."""
     count = max(found.levels, 1)
     x0, x1, y0, y1, scale = rooms_view.Frame(dump.areas)
@@ -226,8 +246,7 @@ def DrawTrees(dump, found, trees: dict, breaches: dict, covered: dict, out: Path
     levels = AreaLevels(dump, found)
 
     def Middle(a, b):
-        m = next(l["middle"] for l in dump.graph[a]["links"] if l["to"] == b)
-        return m["x"], m["y"]
+        return crossings[(a, b)].via[:2]
 
     def Centre(a):
         c = dump.graph[a]["center"]
@@ -288,6 +307,7 @@ def DrawTrees(dump, found, trees: dict, breaches: dict, covered: dict, out: Path
                 end = Middle(area, after) if after is not None else Centre(area)
                 pen.line([At(levels[area], x, y) for x, y in Bezier(start, Centre(area), end)], fill=TEAM_LINE[team],
                          width=BREACH_WIDTH, joint="curve")
+            BrokenWindows(pen, At, crossings, levels, breach.areas)
             leaf = breach.areas[-1]
             if leaf in levels:
                 pen.text(At(levels[leaf], *Centre(leaf)), str(number), fill=(0, 0, 0), font=font, anchor="mm",
@@ -307,6 +327,9 @@ def DrawTrees(dump, found, trees: dict, breaches: dict, covered: dict, out: Path
         elif name == "branch":
             pen.line([(MARGIN, y + 8), (MARGIN + 14, y + 8)], fill=OPTION_LINE["RED"], width=6)
             pen.line([(MARGIN + 14, y + 8), (MARGIN + 28, y + 8)], fill=OPTION_LINE["BLU"], width=2)
+        elif name == "window":
+            pen.polygon([(MARGIN + 14, y + 1), (MARGIN + 21, y + 8), (MARGIN + 14, y + 15), (MARGIN + 7, y + 8)],
+                        fill=WINDOW_FILL, outline=(0, 0, 0))
         elif name == "fork":
             pen.ellipse([MARGIN + 7, y + 1, MARGIN + 21, y + 15], outline=(0, 0, 0), width=2)
         else:
@@ -349,18 +372,19 @@ def main() -> int:
     args = parser.parse_args()
     dump = rooms_view.LoadDump(args.graph)
     found = rooms_view.Partition(dump)
-    edges = incursion.Edges(dump.graph)
+    edges = incursion.Edges(dump.graph, dump.windows)
+    crossings = Crossings(edges)
     fields = incursion.Fields(edges, dump.spawns)
     routes = incursion.Routes(edges, dump.spawns, fields)
     side = incursion.Front(fields, FRONT_SHARE * Separation(fields, dump.spawns))
     out = args.graph.with_name(f"{dump.map}.incursion.png")
-    Draw(dump, found, fields, routes, side, out)
+    Draw(dump, found, fields, routes, side, crossings, out)
     trees = {team: incursion.Grow(field, team, dump.graph) for team, field in fields.items()}
     near = incursion.Near(edges, COVER_REACH)
     breaches = {team: incursion.Breaches(tree, COVER_SHARE, near) for team, tree in trees.items()}
     covered = {team: {c for b in found_ for a in b.areas for c in near[a]} for team, found_ in breaches.items()}
     tree_out = args.graph.with_name(f"{dump.map}.tree.png")
-    DrawTrees(dump, found, trees, breaches, covered, tree_out)
+    DrawTrees(dump, found, trees, breaches, covered, crossings, tree_out)
     print("\n".join(Summary(dump, found, fields, routes, side) + TreeSummary(found, trees, breaches)))
     print(out)
     print(tree_out)

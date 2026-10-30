@@ -25,16 +25,25 @@ from dataclasses import dataclass
 # most half again as long as the shortest; an area a way already takes
 # costs three times as much to the next.
 ALTERNATIVES, DETOUR, PENALTY = 4, 0.5, 3.0
+# A breakable window or brush is a way through at the cost of breaking it
+# and climbing over its sill, as much as walking WINDOW_COST further; no
+# one climbs up through one more than CLIMB (a crouch-jump) above them,
+# but anyone jumps down out of one.
+WINDOW_COST, CLIMB = 128, 64
 
 
 @dataclass(frozen=True)
 class Step:
     to: int
     cost: float
+    via: tuple            # where it crosses: the shared edge's middle, or the window
+    window: bool = False  # through a breakable window or brush, no nav link
 
 
-def Edges(graph: dict) -> dict:
-    """Each area's steps out: area id -> [Step], one a link as the dump lists it."""
+def Edges(graph: dict, windows: list = ()) -> dict:
+    """Each area's steps out: area id -> [Step], one a link as the dump lists it, and through each of
+    windows ({ from, to, pos, breakable }: glass, brushes and areaportal windows between two areas) that
+    can be broken, both ways where it can be climbed through."""
     def Point(p):
         return p["x"], p["y"], p["z"]
     edges = {}
@@ -45,8 +54,14 @@ def Edges(graph: dict) -> dict:
             if to is not None:
                 middle = Point(link["middle"])
                 steps.append(Step(link["to"], math.dist(Point(area["center"]), middle)
-                                  + math.dist(middle, Point(to["center"]))))
+                                  + math.dist(middle, Point(to["center"])), middle))
         edges[aid] = steps
+    for window in (w for w in windows if w["breakable"]):
+        pos = Point(window["pos"])
+        for a, b in ((window["from"], window["to"]), (window["to"], window["from"])):
+            if a in graph and b in graph and graph[b]["center"]["z"] - graph[a]["center"]["z"] <= CLIMB:
+                ca, cb = Point(graph[a]["center"]), Point(graph[b]["center"])
+                edges[a].append(Step(b, math.dist(ca, pos) + math.dist(pos, cb) + WINDOW_COST, pos, True))
     return edges
 
 
