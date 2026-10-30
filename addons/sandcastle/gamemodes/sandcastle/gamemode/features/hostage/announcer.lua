@@ -1,6 +1,8 @@
--- The announcer's lines for the hostages: TF2 Classified's VIP lines
--- (scripts/game_sounds_vo_tf2c.txt's Announcer.VIP_*, which are TF2's own
--- voice files, mounted already). The rescuers, BLU, hear the "our team"
+-- The announcer's lines for the hostages: TF2 Classified's one-sided VIP
+-- lines (scripts/game_sounds_vo_tf2c.txt's Announcer.VIP_*, which are TF2's
+-- own voice files, mounted already), the escorted VIP's: not VIP Race's,
+-- whose VIPs race for control points to the control points' lines and the
+-- Civilian's own (Civilian.VIPR_*). The rescuers, BLU, hear the "our team"
 -- line of each event, RED the "their team" one: a hostage taken
 -- (VIP_*TeamHasFlag), let go when its rescuer dies (VIP_*TeamDroppedFlag),
 -- rescued (VIP_*TeamCapped) or killed (VIP_OurVIPDeath for BLU, VIP_VIPDeath
