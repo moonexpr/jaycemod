@@ -13,11 +13,13 @@ def Area(x, y=0.0, z=0.0, links=()):
 
 
 def Middles(graph):
-    """Each link's middle halfway between the two centres, as the dump gives it."""
+    """Each link's middle halfway between the two centres, and its shared edge a cell wide, as the dump gives
+    them."""
     for area in graph.values():
         for link in area["links"]:
             a, b = area["center"], graph[link["to"]]["center"]
             link["middle"] = {k: (a[k] + b[k]) / 2 for k in "xyz"}
+            link["width"] = CELL
     return graph
 
 
@@ -202,6 +204,13 @@ class WindowTest(unittest.TestCase):
         edges = Edges(Middles(graph), [Window(5, 9, graph)])
         routes = incursion.Routes(edges, {RED: [1], BLU: [9]})
         self.assertEqual(next(r for r in routes if r.team == RED).areas, (1, 2, 3, 4, 5, 9))
+
+    def test_a_step_carries_how_wide_it_is_the_shared_edge_or_a_doors_width_for_a_window(self):
+        graph = Line()
+        graph[9] = Area(2, 1)
+        edges = Edges(Middles(graph), [Window(2, 9, graph)])
+        self.assertEqual(next(s for s in edges[1] if s.to == 2).width, CELL)
+        self.assertEqual(next(s for s in edges[2] if s.to == 9).width, incursion.WINDOW_WIDTH)
 
     def test_a_step_carries_where_it_crosses_the_shared_edge_or_the_window(self):
         graph = Line()

@@ -1,20 +1,24 @@
-"""Ambush hints: hiding spots from which a team can catch an enemy squad coming through an entrance.
+"""Ambush hints: hiding spots beside the entrances an enemy squad comes through.
 
 An entrance is where an enemy's path (an incursion route or breach) steps
-into a room: from the area outside (through a doorway, a window) into the
-area inside. Its approach is the walk up to it, the last stretch of each
-path through it. A hiding spot (the nav mesh's) is an ambush for the
-defenders (the other team) at an entrance when
+into a room: from the area outside, through a doorway or a window (its
+aperture, as wide as the crossing), into the area inside. Its approach is
+the walk up to it, the last stretch of each path through it. Walking up,
+the squad sees into the room only through the aperture: from each point
+of the approach, a wedge (the frustum through the doorway). A hiding spot
+(the nav mesh's) is an ambush for the defenders (the other team) at an
+entrance when
 
-- standing up from it, a player sees just inside the entrance (sees);
-- crouched at it, a player is in sight of none of the approach (seen): the
-  squad does not see it coming, though it may be in plain sight of a
-  player standing;
-- it is off the squad's walk, and between near and far of the entrance;
+- it is in the room the entrance opens into, between near and far of it;
+- it is outside the frustum from every point of the approach: behind the
+  wall the doorway is cut in, unseen until the squad steps through;
+- standing up from it, a player sees just inside the entrance (sees): it
+  has a line of fire on the doorway;
 - the defenders' walk from their spawns reaches it before the enemy's
   reaches the entrance: there is time to set it up.
 
-Positions are (x, y, z); a path is (team, its areas from its spawn).
+Positions are (x, y, z), judged across the ground; a path is (team, its
+areas from its spawn).
 """
 import math
 from dataclasses import dataclass
@@ -25,7 +29,6 @@ class Spot:
     pos: tuple
     area: int
     sees: frozenset   # the areas a player standing up from it sees
-    seen: frozenset   # the areas from which a player standing sees one crouched at it
 
 
 @dataclass(frozen=True)
@@ -34,9 +37,10 @@ class Entrance:
     outside: int      # the area before the entrance
     inside: int       # the area through it, in the room
     room: tuple       # the room it enters, ("room", id)
-    via: tuple        # where it crosses: the doorway's middle, the window
-    approach: tuple   # the areas walked up to it, within the approach of the outside, outside last
-    line: tuple       # the walk's crossings around it, the squad's line through it
+    via: tuple        # the aperture's middle: the doorway's, the window
+    width: float      # the aperture's width
+    heading: tuple    # the way the squad walks through it, a unit vector across the ground
+    approach: tuple   # the points the squad walks through up to it, the farthest first
     paths: int        # how many paths come through it
 
 
@@ -46,6 +50,12 @@ class Ambush:
     spot: Spot
     entrance: Entrance
     distance: float   # from the spot to the entrance
+
+
+def Heading(a: tuple, b: tuple) -> tuple:
+    dx, dy = b[0] - a[0], b[1] - a[1]
+    length = math.hypot(dx, dy)
+    return dx / length, dy / length
 
 
 def Entrances(paths: list, crossings: dict, region: dict, approach: float) -> list:
@@ -58,46 +68,55 @@ def Entrances(paths: list, crossings: dict, region: dict, approach: float) -> li
             room = region.get(inside)
             if room is None or room[0] != "room" or region.get(outside) == room:
                 continue
-            back, walked, j = [outside], 0.0, i - 1
+            door = crossings[(outside, inside)]
+            points, walked, j = [], 0.0, i - 1
             while j > 0:
-                walked += crossings[(areas[j - 1], areas[j])].cost
+                step = crossings[(areas[j - 1], areas[j])]
+                walked += step.cost
                 if walked > approach:
                     break
-                back.append(areas[j - 1])
+                points.append(step.via)
                 j -= 1
-            line, walked, k = [crossings[(outside, inside)].via], 0.0, i
-            while k + 1 < len(areas) and walked <= approach:
-                step = crossings[(areas[k], areas[k + 1])]
-                line.append(step.via)
-                walked += step.cost
-                k += 1
-            line = [crossings[(back[n + 1], back[n])].via for n in reversed(range(len(back) - 1))] + line
+            if points:
+                heading = Heading(points[0], door.via)
+            else:
+                after = crossings[(inside, areas[i + 1])].via if i + 1 < len(areas) else None
+                heading = Heading(door.via, after)
             key = (team, outside, inside)
             if key not in found:
                 order.append(key)
-                found[key] = Entrance(team, outside, inside, room, crossings[(outside, inside)].via,
-                                      tuple(reversed(back)), tuple(line), 0)
+                found[key] = Entrance(team, outside, inside, room, door.via, door.width, heading,
+                                      tuple(reversed(points)), 0)
             e = found[key]
-            found[key] = Entrance(e.team, e.outside, e.inside, e.room, e.via, e.approach, e.line, e.paths + 1)
+            found[key] = Entrance(e.team, e.outside, e.inside, e.room, e.via, e.width, e.heading, e.approach,
+                                  e.paths + 1)
     return [found[k] for k in order]
 
 
-def OffLine(p: tuple, line: tuple) -> float:
-    """How far p is from the polyline through line's points, across the ground."""
-    if len(line) == 1:
-        return math.dist(p[:2], line[0][:2])
-    best = math.inf
-    for a, b in zip(line, line[1:]):
-        ax, ay, bx, by = a[0], a[1], b[0], b[1]
-        dx, dy = bx - ax, by - ay
-        t = 0.0 if dx == dy == 0 else max(0.0, min(1.0, ((p[0] - ax) * dx + (p[1] - ay) * dy) / (dx * dx + dy * dy)))
-        best = min(best, math.hypot(p[0] - ax - t * dx, p[1] - ay - t * dy))
-    return best
+def Hidden(spot: tuple, door: Entrance) -> bool:
+    """Whether spot, beyond the aperture, is out of the squad's sight through it from every point of the
+    approach: the line from each point to the spot crosses the aperture's line outside the aperture."""
+    hx, hy = door.heading
+    nx, ny = -hy, hx                     # along the aperture
+    vx, vy = door.via[0], door.via[1]
+    ahead = (spot[0] - vx) * hx + (spot[1] - vy) * hy
+    if ahead <= 0:
+        return False                     # not through the door
+    for point in door.approach:
+        behind = (point[0] - vx) * hx + (point[1] - vy) * hy   # negative: before the door
+        if behind >= 0:
+            continue
+        t = -behind / (ahead - behind)   # where the line meets the aperture's line
+        across = ((point[0] + t * (spot[0] - point[0])) - vx) * nx + ((point[1] + t * (spot[1] - point[1])) - vy) * ny
+        if abs(across) <= door.width / 2:
+            return False
+    return True
 
 
-def Ambushes(entrances: list, spots: list, fields: dict, near: float, far: float) -> list:
+def Ambushes(entrances: list, spots: list, fields: dict, region: dict, near: float, far: float) -> list:
     """The ambushes the spots give at the entrances, nearest the entrance first for each. fields: team ->
-    its incursion walk (incursion.Field), to tell who reaches a spot or an entrance first."""
+    its incursion walk (incursion.Field), to tell who reaches a spot or an entrance first; region: area id
+    -> its space, as Entrances takes it."""
     found = []
     for door in entrances:
         enemy_at = fields[door.team].distance.get(door.outside, math.inf)
@@ -106,9 +125,9 @@ def Ambushes(entrances: list, spots: list, fields: dict, near: float, far: float
                 continue
             here = []
             for spot in spots:
-                distance = math.dist(spot.pos, door.via)
-                if (door.inside in spot.sees and not (spot.seen & set(door.approach))
-                        and near <= distance <= far and OffLine(spot.pos, door.line) >= near
+                distance = math.dist(spot.pos[:2], door.via[:2])
+                if (region.get(spot.area) == door.room and near <= distance <= far
+                        and door.inside in spot.sees and Hidden(spot.pos, door)
                         and field.distance.get(spot.area, math.inf) < enemy_at):
                     here.append(Ambush(team, spot, door, distance))
             found.extend(sorted(here, key=lambda a: (a.distance, a.spot.pos)))

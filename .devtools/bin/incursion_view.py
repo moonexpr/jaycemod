@@ -367,17 +367,19 @@ def TreeSummary(found, trees: dict, breaches: dict) -> list:
 
 # Ambush hints: the enemy's highways and breaches make the entrances; the
 # approach is the last APPROACH of the walk up to one; a marking is a hiding
-# spot between AMBUSH_NEAR and AMBUSH_FAR of the entrance (and AMBUSH_NEAR
-# off the squad's line), up to AMBUSH_KEEP the entrance, nearest first.
-APPROACH, AMBUSH_NEAR, AMBUSH_FAR, AMBUSH_KEEP = 384, 96, 768, 3
+# spot in the room between AMBUSH_NEAR and AMBUSH_FAR of the entrance, out
+# of the frustum through it, up to AMBUSH_KEEP the entrance, nearest first.
+APPROACH, AMBUSH_NEAR, AMBUSH_FAR, AMBUSH_KEEP = 384, 48, 384, 3
 ENTRANCE_RADIUS, SPOT_SIZE = 9, 7
 AMBUSH_KEY = [("enemy path", "the enemy's highways and breaches, pale in its colour", None),
               ("entrance", "where an enemy path steps into a room, ringed in the enemy's colour; the number, "
                "how many paths come through", None),
-              ("ambush", f"a hiding spot for the defenders, joined to the entrance it covers: it sees just inside, "
-               f"a player crouched at it is out of sight of the last {APPROACH} units of the approach, it lies "
-               f"{AMBUSH_NEAR}-{AMBUSH_FAR} units off, and the defenders reach it before the enemy reaches the "
-               f"entrance; up to {AMBUSH_KEEP} an entrance", None)]
+              ("frustum", f"what the squad sees of the room through the entrance, from the nearest point of its "
+               f"approach, out to {AMBUSH_FAR} units", None),
+              ("ambush", f"a hiding spot for the defenders, joined to the entrance it covers: in the room, "
+               f"{AMBUSH_NEAR}-{AMBUSH_FAR} units off, out of the frustum from every point of the last {APPROACH} "
+               f"units of the approach, seeing just inside, and reached by the defenders before the enemy reaches "
+               f"the entrance; up to {AMBUSH_KEEP} an entrance", None)]
 
 
 def DrawAmbushes(dump, found, paths: list, entrances: list, ambushes: list, crossings: dict, out: Path) -> None:
@@ -454,6 +456,8 @@ def DrawAmbushes(dump, found, paths: list, entrances: list, ambushes: list, cros
             if door.inside not in levels:
                 continue
             x, y = At(levels[door.inside], *door.via[:2])
+            for edge in Frustum(door):
+                pen.line([At(levels[door.inside], *p) for p in edge], fill=OPTION_LINE[enemy], width=1)
             pen.ellipse([x - ENTRANCE_RADIUS, y - ENTRANCE_RADIUS, x + ENTRANCE_RADIUS, y + ENTRANCE_RADIUS],
                         outline=TEAM_LINE[enemy], width=3)
             pen.text((x + ENTRANCE_RADIUS + 2, y - ENTRANCE_RADIUS), str(door.paths), fill=TEAM_LINE[enemy], font=small)
@@ -469,6 +473,9 @@ def DrawAmbushes(dump, found, paths: list, entrances: list, ambushes: list, cros
         y = key_top + TITLE + i * KEY_LINE
         if name == "enemy path":
             pen.line([(MARGIN, y + 8), (MARGIN + 28, y + 8)], fill=OPTION_LINE["BLU"], width=3)
+        elif name == "frustum":
+            pen.line([(MARGIN, y + 14), (MARGIN + 28, y + 2)], fill=OPTION_LINE["BLU"], width=1)
+            pen.line([(MARGIN, y + 14), (MARGIN + 28, y + 14)], fill=OPTION_LINE["BLU"], width=1)
         elif name == "entrance":
             pen.ellipse([MARGIN + 6, y, MARGIN + 22, y + 16], outline=TEAM_LINE["BLU"], width=3)
         else:
@@ -476,6 +483,26 @@ def DrawAmbushes(dump, found, paths: list, entrances: list, ambushes: list, cros
                         outline=(0, 0, 0))
         pen.text((MARGIN + 36, y + 2), f"{name}: {means}", fill=(0, 0, 0), font=font)
     image.save(out)
+
+
+def Frustum(door) -> list:
+    """The frustum's edges across the ground, as lines of (x, y): the aperture, and the two rays from the
+    approach's nearest point through its ends, out to AMBUSH_FAR beyond it."""
+    hx, hy = door.heading
+    nx, ny = -hy, hx
+    vx, vy = door.via[:2]
+    half = door.width / 2
+    ends = [(vx + nx * half, vy + ny * half), (vx - nx * half, vy - ny * half)]
+    edges = [ends]
+    if door.approach:
+        ax, ay = door.approach[-1][:2]
+        for ex, ey in ends:
+            dx, dy = ex - ax, ey - ay
+            ahead = dx * hx + dy * hy
+            if ahead > 0:
+                k = (ahead + AMBUSH_FAR) / ahead
+                edges.append([(ex, ey), (ax + dx * k, ay + dy * k)])
+    return edges
 
 
 def entrances_of(entrances: list, team: str) -> list:
@@ -535,7 +562,7 @@ def main() -> int:
     region = {aid: ("room" if found.rooms.get(space.id) is space else "passage", space.id)
               for aid, space in found.region.items()}
     entrances = ambush.Entrances(paths, crossings, region, APPROACH)
-    marks = Kept(ambush.Ambushes(entrances, dump.hiding, fields, AMBUSH_NEAR, AMBUSH_FAR))
+    marks = Kept(ambush.Ambushes(entrances, dump.hiding, fields, region, AMBUSH_NEAR, AMBUSH_FAR))
     ambush_out = args.graph.with_name(f"{dump.map}.ambush.png")
     DrawAmbushes(dump, found, paths, entrances, marks, crossings, ambush_out)
     print("\n".join(Summary(dump, found, fields, routes, side) + TreeSummary(found, trees, breaches)

@@ -127,8 +127,8 @@ def LoadDump(path: Path) -> Dump:
     seals = [((v["lo"]["x"], v["lo"]["y"], v["lo"]["z"]), (v["hi"]["x"], v["hi"]["y"], v["hi"]["z"]))
              for v in data["visualizers"]]
     # a dump made before hiding spots were dumped has none
-    hiding = [ambush.Spot((h["pos"]["x"], h["pos"]["y"], h["pos"]["z"]), h["area"], frozenset(h["sees"]),
-                          frozenset(h["seen"])) for h in data.get("hiding", [])]
+    hiding = [ambush.Spot((h["pos"]["x"], h["pos"]["y"], h["pos"]["z"]), h["area"], frozenset(h["sees"]))
+              for h in data.get("hiding", [])]
     return Dump(data["map"], areas, graph, data["windows"], data["spawns"], data["objectives"], seals, hiding)
 
 

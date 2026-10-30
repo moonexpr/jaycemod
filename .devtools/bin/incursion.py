@@ -30,6 +30,8 @@ ALTERNATIVES, DETOUR, PENALTY = 4, 0.5, 3.0
 # one climbs up through one more than CLIMB (a crouch-jump) above them,
 # but anyone jumps down out of one.
 WINDOW_COST, CLIMB = 128, 64
+# A window's opening, which the dump does not measure: a door's width.
+WINDOW_WIDTH = 96
 
 
 @dataclass(frozen=True)
@@ -37,6 +39,7 @@ class Step:
     to: int
     cost: float
     via: tuple            # where it crosses: the shared edge's middle, or the window
+    width: float          # how wide the way through is: the shared edge, or WINDOW_WIDTH
     window: bool = False  # through a breakable window or brush, no nav link
 
 
@@ -54,14 +57,15 @@ def Edges(graph: dict, windows: list = ()) -> dict:
             if to is not None:
                 middle = Point(link["middle"])
                 steps.append(Step(link["to"], math.dist(Point(area["center"]), middle)
-                                  + math.dist(middle, Point(to["center"])), middle))
+                                  + math.dist(middle, Point(to["center"])), middle, link["width"]))
         edges[aid] = steps
     for window in (w for w in windows if w["breakable"]):
         pos = Point(window["pos"])
         for a, b in ((window["from"], window["to"]), (window["to"], window["from"])):
             if a in graph and b in graph and graph[b]["center"]["z"] - graph[a]["center"]["z"] <= CLIMB:
                 ca, cb = Point(graph[a]["center"]), Point(graph[b]["center"])
-                edges[a].append(Step(b, math.dist(ca, pos) + math.dist(pos, cb) + WINDOW_COST, pos, True))
+                edges[a].append(Step(b, math.dist(ca, pos) + math.dist(pos, cb) + WINDOW_COST, pos, WINDOW_WIDTH,
+                                     True))
     return edges
 
 
