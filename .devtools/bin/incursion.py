@@ -65,6 +65,12 @@ def Edges(graph: dict, windows: list = ()) -> dict:
     return edges
 
 
+def Crossings(edges: dict) -> dict:
+    """Each step by the two areas it joins: (from, to) -> its Step (where it crosses, and whether through
+    a window)."""
+    return {(a, step.to): step for a, steps in edges.items() for step in steps}
+
+
 @dataclass(frozen=True)
 class Field:
     distance: dict    # area id -> the walk from the nearest start

@@ -87,7 +87,7 @@ class ClassesTest(unittest.TestCase):
     def test_spawn_and_objective_areas_count_by_the_rooms_they_are_in_and_corridors_are_left_out(self):
         found = Parse(ParseTest.LINES)
         door = (5.0, 6.0, 0.0)
-        dump = Dump("map", {}, {}, [], {"RED": [100, 102], "BLU": [101]}, [100], [(door, door)])
+        dump = Dump("map", {}, {}, [], {"RED": [100, 102], "BLU": [101]}, [100], [(door, door)], [])
         classes = Classes(dump, found)
         self.assertEqual(sorted(classes), [1, 2], "rooms alone")
         self.assertEqual(classes[1].cls, places.RESTRICTED, "its one door sealed by the visualizer")
@@ -103,7 +103,7 @@ class KeyTest(unittest.TestCase):
         classes = {1: places.Placed(places.HIGHWAY, None), 2: places.Placed(places.STRONGHOLD, "BLU")}
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp) / "map.png"
-            spawned = Dump("map", {}, {}, [], {"RED": [100], "BLU": [101]}, [], [])
+            spawned = Dump("map", {}, {}, [], {"RED": [100], "BLU": [101]}, [], [], [])
             Draw("map", areas, found, classes, Places(spawned, found), out)
             from PIL import Image
             with Image.open(out) as image:

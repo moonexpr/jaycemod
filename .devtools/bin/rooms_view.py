@@ -27,6 +27,7 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
+import ambush
 import places
 
 REPO = Path(__file__).resolve().parents[2]
@@ -111,6 +112,7 @@ class Dump:
     spawns: dict     # team name -> its spawn area ids
     objectives: list # the objectives' area ids
     seals: list      # the respawn room visualizers' boxes, ((x, y, z), (x, y, z)) corners
+    hiding: list     # the nav mesh's hiding spots, as ambush.Spot
 
 
 def LoadDump(path: Path) -> Dump:
@@ -124,7 +126,10 @@ def LoadDump(path: Path) -> Dump:
              for i, a in graph.items()}
     seals = [((v["lo"]["x"], v["lo"]["y"], v["lo"]["z"]), (v["hi"]["x"], v["hi"]["y"], v["hi"]["z"]))
              for v in data["visualizers"]]
-    return Dump(data["map"], areas, graph, data["windows"], data["spawns"], data["objectives"], seals)
+    # a dump made before hiding spots were dumped has none
+    hiding = [ambush.Spot((h["pos"]["x"], h["pos"]["y"], h["pos"]["z"]), h["area"], frozenset(h["sees"]),
+                          frozenset(h["seen"])) for h in data.get("hiding", [])]
+    return Dump(data["map"], areas, graph, data["windows"], data["spawns"], data["objectives"], seals, hiding)
 
 
 def LuaValue(value) -> str:
