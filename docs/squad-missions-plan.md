@@ -71,16 +71,15 @@ waits. A soldier with no squad (solo) asks nothing and keeps today's orders.
   under 1, or a negative wait. `kind` is `ADVANCE` for now. `way` is the
   waypoints (a lane, as `wartactics.lanes` gives them). `size` is the
   soldiers the squad should be. `wait` is in seconds from `issued`.
-- `Wait(nextWave, now, travel, missing)`: how long the leader waits for
-  its members. If none is missing, there is no wait. Otherwise it is the
-  time to its team's next wave (`War.nextWave`, which
+- `Wait{ missing, nextWave, now, travel }`: how long the leader waits for
+  its members. If none is missing, there is no wait. After spawning, it is
+  the time to its team's next wave (`War.nextWave`, which
   `War:Reinforcements` keeps) plus their walk from spawn to the muster spot
-  (`travel`, the distance over a soldier's run speed), held to `WAIT_MAX`.
-  A wave that will bring no one (the team at full strength) is not waited
-  for.
-- `Casualties(mission, alive)`, `Progress(mission, track, pos, now)`:
-  whether the squad must regroup. `track` is the mission's own record of
-  its best distance along the way, and when.
+  (`travel`, the distance over a soldier's run speed). After a regroup (no
+  `nextWave`), it is only the walk of the living. It is held to `WAIT_MAX`.
+- `Casualties(mission, alive)` and `Track(remaining, now)`'s
+  `Stuck(remaining, now)`: whether the squad must regroup. A track is the
+  squad's record of its best distance left along the way, and when.
 
 Tuning (`WAIT_MAX`, `CASUALTY_SHARE`, `STUCK_TIME`, `PROGRESS_STEP`) is
 defined and tested for being defined; the tests derive from it.
@@ -89,11 +88,21 @@ defined and tested for being defined; the tests derive from it.
 
 `features/aiwar/sv_missions.lua`, a controller part:
 
+- **The alpha squad comes first.** Each team always has one alpha squad,
+  tending the objective directly: the direct lane to its front (pushing or
+  guarding the cart, taking or holding the point). Every other mission is
+  secondary to it. A request from a team with no alpha squad makes the
+  asking squad its alpha, whatever it was given before. When the alpha
+  squad is wiped out or regroups, the next squad to ask becomes the alpha.
+  A special mission (§6) is only ever given to a squad other than the
+  alpha, and only while the alpha squad is out on its mission.
 - `Controller:RequestMission(fireTeam)` → a transaction, at most one per
   squad: `Transaction.Spawn(WS.SlowTransactions, ...)` with a
-  `:Within(WS.Deadline(MISSION_TIME))`. Its work reads the field, chooses
-  the squad's lane (the least taken of its job's kinds, as `Lanes.Assign`
-  does now, for one squad), computes the wait, and commits a `Mission`. It
+  `:Within(WS.Deadline(MISSION_TIME))`. Its work reads the field, decides
+  whether the squad is the alpha, chooses the squad's lane (the alpha: the
+  direct lane; any other: the least taken of its job's kinds, as
+  `Lanes.Assign` does now, for one squad), computes the wait, and commits a
+  `Mission`. It
   yields (`work:CheckYield`) between squads' worth of work. It never plans
   lanes itself: lane planning stays where it is (`UpdateLanes`).
 - It declines `NO_LANES` while its team has no lanes yet. The leader
@@ -139,7 +148,9 @@ Each step is a commit with its tests first, and keeps the suite green.
 
 ## 6. Later mission kinds
 
-Each is a kind, its choice in the request, and its leading in the orders:
+Each is a kind, its choice in the request, and its leading in the orders.
+Each is secondary to the alpha squad (§3): never given to it, and given to
+another squad only while the alpha squad is out on the objective.
 
 - **Ambush** a room the enemy will come through: the squad hides at its
   doors and waits for contact. Needs rooms: the nav mesh's areas grouped
@@ -160,3 +171,5 @@ Each is a kind, its choice in the request, and its leading in the orders:
 3. Members waiting with the leader take their battle stance (the crouch,
    `Pose`) and announce it, as in setup. The seated stances replace it
    once spawn rooms are known.
+4. Special missions are always secondary to an alpha squad tending the
+   objective directly (§3).
