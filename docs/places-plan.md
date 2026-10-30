@@ -93,11 +93,12 @@ never the truth (knowledge is earned, `docs/aiwar-command.md` decision 6).
 ### 2.3 Room classes (`wartactics.places`)
 
 The operator's seven. Each room has one class at a time, the first of this
-table it answers to; the first three belong to a team (a room is one
-team's restricted ground and the other's way in to it), the rest to no
-one. Static parts (nature, the objective's track) are found once a map;
-the rest on occupation's changes, and each change is held as occupation is
-(hysteresis), so a room does not flicker between classes.
+table it answers to, the wilds taking every room left in a final pass. The
+first three belong to a team (a room is one team's restricted ground and
+the other's way in to it), the rest to no one. Static parts (the
+objective's track) are found once a map; the rest on occupation's changes,
+and each change is held as occupation is (hysteresis), so a room does not
+flicker between classes.
 
 | Class | A room that | Found from |
 |---|---|---|
@@ -106,8 +107,8 @@ the rest on occupation's changes, and each change is held as occupation is
 | Outpost | a team claims far from its spawns, out on its own, which may reach out of doors | occupation (a remote base's works and presence, §4) where the team's incursion is long and the room is not joined to its strongholds by its own rooms |
 | Highway | carries the most traffic, or an objective passes through: the payload's track, a capture point's room | flow; the objective's entities (the cart's path_tracks, the capture areas) |
 | Commons | both teams cross, in moderate traffic | each team's traffic through it (its intel's `Traffic` for the enemy, its own soldiers' passing for itself), both above a floor, neither a highway's |
-| Wilds | outdoors and nature: open ground off the built map | outdoor rooms whose floor is mostly natural ground (the surface's material: dirt, grass, snow, sand, foliage, rock), found once a map |
 | Unoccupied | far from both teams' active spawns, with little traffic | incursion long for both, traffic below the commons' floor |
+| Wilds | any room none of the others take: the final pass | what is left |
 
 Rooms are classed again as the war goes, not once. A team's ground grows
 and shrinks by a ladder, each step held as occupation is:
@@ -228,9 +229,6 @@ The layer stands on the rooms, so they hold first:
 
 ## 7. Open questions for the operator
 
-- Wilds: found from the floor's surface material (dirt, grass, snow, sand,
-  foliage, rock under an outdoor room). Is nature that, or something else
-  (off the routes, terrain made of displacements)?
 - Whether presence alone should make a room a team's (a squad holding a
   hall for a minute), or only spawns, objectives and works.
 - Where a remote base goes along the frontier: forward on the team's lanes
@@ -254,3 +252,5 @@ The layer stands on the rooms, so they hold first:
   until it claims back its restricted spawn and the rooms around it. The
   penalty is always issued to the director; the gamerules refuse it while
   the round is over.
+- The wilds are not found from anything of their own: they are any room
+  the other classes have not taken, the final pass.
