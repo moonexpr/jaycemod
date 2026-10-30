@@ -41,7 +41,11 @@ Rooms are nodes. An edge is a way between two rooms: a door, a corridor
 (its length, and the doors at either end), a window (seen through, shot
 through, crossed once broken), a stairwell's flight. Each edge carries its
 kind, width, length and where it is. Built once from the saved partition;
-the nav mesh is not read again.
+the nav mesh is not read again. A team's teleporter adds an edge of its
+own while it stands, one way, for that team alone, from its entrance's room
+to its exit's, of no length: the exit's room is then near the team's
+ground however far it is to walk (teleporters are `docs/engineers-plan.md`'s,
+unbuilt; a map's own teleporting triggers are the same edge for all).
 
 Static measures of each room, from the graph alone:
 
@@ -73,7 +77,7 @@ Claims come from sources, each with its strength and how it fades:
 | Spawn | a team's active `func_respawnroom` over the room, or its enabled `info_player_teamspawn` in it, or the spawn base the war placed there on a map without team spawns (`features.aiwar.spawns`, 11abcdd0): the strongest claim, never fades | the map enables, disables or re-teams a respawn room or spawn point (the I/O the gamerules harness already traces) |
 | Objective | a control point a team owns, the room its capture area stands in | `game_point_captured`, a round's reset |
 | Presence | a team's soldiers and players in the room, no enemy with them, held for `HOLD_TIME`: grows while they stay, fades after they leave | sightings and positions each slow tick |
-| Works | a team's turret, dispenser or teleporter standing in it | built, destroyed |
+| Works | a team's turret, dispenser or teleporter standing in it (a teleporter claims its exit's room too, §2.3) | built, destroyed |
 
 Initial occupation is the spawns, as today. The systems that change it are
 the rows below the first: captures move a point's room (and, when the map
@@ -104,6 +108,25 @@ the rest on occupation's changes, and each change is held as occupation is
 | Commons | both teams cross, in moderate traffic | each team's traffic through it (its intel's `Traffic` for the enemy, its own soldiers' passing for itself), both above a floor, neither a highway's |
 | Wilds | outdoors and nature: open ground off the built map | outdoor rooms whose floor is mostly natural ground (the surface's material: dirt, grass, snow, sand, foliage, rock), found once a map |
 | Unoccupied | far from both teams' active spawns, with little traffic | incursion long for both, traffic below the commons' floor |
+
+Rooms are classed again as the war goes, not once. A team's ground grows
+and shrinks by a ladder, each step held as occupation is:
+
+- **Claimed: to outpost.** An unoccupied room, a commons or the wilds the
+  team claims becomes its outpost: a remote base's works, a squad holding
+  it, or the exit of the team's teleporter from a stronghold (the
+  teleporter's edge makes the room the team's at once, however far).
+- **Commuted: outpost to stronghold.** An outpost the team's own soldiers
+  pass through enough (its traffic over `STRONGHOLD_TRAFFIC`, held) becomes
+  a stronghold; the rooms next to it the team does not hold (unoccupied,
+  commons, wilds; never the enemy's, restricted ground or a highway)
+  become its outposts, so the ground spreads a room at a time.
+- **Abandoned: back down.** A stronghold its soldiers stop passing through
+  falls back to an outpost, and an outpost with no claim left (works
+  destroyed, teleporter gone, no one holding) to what it was before: the
+  class its measures give.
+- **Taken: to the enemy.** A room the enemy comes to hold (§2.2) is lost:
+  an outpost at once, a stronghold once the enemy's claim beats the team's.
 
 The measures behind them (§2.1) stay available for queries beside the
 class: a room's ways and entries, its depth (a dead end), its flow and
