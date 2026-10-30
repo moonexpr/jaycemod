@@ -271,6 +271,102 @@ local CASES = {
 			for i = 1, 5000 do grid:Near(points[i], function() end) end
 		end },
 	},
+	["list.select"] = {
+		{ "TopK 10 of 2000 (one call)", 1, function(Select)
+			local list = {}
+			for i = 1, 2000 do list[i] = KEYS[i] end
+			Select.TopK(list, 10, function(a, b) return a < b end)
+		end },
+		{ "Order 2000 (one call)", 1, function(Select)
+			local list = {}
+			for i = 1, 2000 do list[i] = KEYS[i] end
+			Select.Order(list, function(a, b) return a < b end)
+		end },
+	},
+	["list.window"] = {
+		{ "add 20k in time order, sum each", 2 * N, function(Window)
+			local window = Window.New(10)
+			for i = 1, N do
+				window:Add(i / 100, KEYS[i])
+				window:Sum(i / 100)
+			end
+		end },
+	},
+	["list.schedule"] = {
+		{ "1000 tasks yielding 10 times (resumes)", 10000, function(Schedule)
+			local scheduler = Schedule.New({ Now = function() return 0 end })
+			for _ = 1, 1000 do
+				scheduler:Spawn(function()
+					for _ = 1, 10 do scheduler:Yield() end
+				end)
+			end
+			while scheduler:Count() > 0 do scheduler:Run(1) end
+		end },
+	},
+	["cache.lru"] = {
+		{ "put 20k into 1000, get 20k", 2 * N, function(Lru)
+			local cache = Lru.New({ capacity = 1000 })
+			for i = 1, N do cache[KEYS[i] % 3000] = i end
+			for i = 1, N do local _ = cache[KEYS[i + 1] % 3000] end
+		end },
+	},
+	["file.buffer"] = {
+		{ "write 20k int32 and varints, read back", 4 * N, function(Buffer)
+			local w = Buffer.Writer()
+			for i = 1, N do
+				w:Int32(KEYS[i])
+				w:Varint(KEYS[i + 1])
+			end
+			local r = Buffer.Reader(w:Bytes())
+			for _ = 1, N do
+				r:Int32()
+				r:Varint()
+			end
+		end },
+	},
+	["encoding.keyvalues"] = {
+		{ "read 2000 pairs in 200 blocks (one call)", 1, function(KeyValues)
+			local parts = { '"root"\n{\n' }
+			for b = 1, 200 do
+				parts[#parts + 1] = '\t"block' .. b .. '"\n\t{\n'
+				for p = 1, 10 do parts[#parts + 1] = '\t\t"key' .. p .. '" "' .. KEYS[b * 10 + p] .. '"\n' end
+				parts[#parts + 1] = "\t}\n"
+			end
+			parts[#parts + 1] = "}\n"
+			KeyValues.Read(table.concat(parts), function() end)
+		end },
+	},
+	["generator.state_machine"] = {
+		{ "20k transitions round three states", N, function(Machine)
+			local machine = Machine.Define({
+				name = "bench",
+				states = { "a", "b", "c" },
+				transitions = { a = { "b" }, b = { "c" }, c = { "a" } },
+				enter = { b = function() end },
+			}):New("a")
+			local after = { a = "b", b = "c", c = "a" }
+			for _ = 1, N do machine:Transition(after[machine:State()]) end
+		end },
+	},
+	["configstore"] = {
+		{ "parse 20k texts over 50 keys", N, function(Store)
+			local store = Store.New("bench")
+			for k = 1, 50 do store:Range("key" .. k, 0, 1000, "guard") end
+			for i = 1, N do store:Parse("key" .. (i % 50 + 1), tostring(KEYS[i] % 1200)) end
+		end },
+	},
+	["core.class"] = {
+		{ "20k instances of a subclass", N, function(Class)
+			local Base = Class.Extend(nil, { legs = 4 })
+			local Bird = Class.Extend(Base, { legs = 2 })
+			for _ = 1, N do Class.New(Bird) end
+		end },
+	},
+	["transaction"] = {
+		{ "20k transactions run to a commit", N, function(Transaction)
+			for i = 1, N do Transaction.Run(function(_, a) return a + 1 end, i) end
+		end },
+	},
 }
 
 -- Running ----------------------------------------------------------------------------
