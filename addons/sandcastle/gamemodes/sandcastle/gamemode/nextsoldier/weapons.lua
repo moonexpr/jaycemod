@@ -18,7 +18,7 @@
 local error, ipairs, setmetatable, type = error, ipairs, setmetatable, type
 local deg, atan = math.deg, math.atan
 local Geometry = math.geometry
-local Css = gameplay.css_weapons
+local Css = gameplay.cstrike_weapons
 module(...)
 
 local PARTS = { "damage", "bullets", "interval", "clip", "reload", "sound", "tracer", "hold", "spread" }
@@ -62,7 +62,7 @@ STATS = {
 		projectile = { class = "crossbow_bolt", speed = 3500 } }),
 }
 
--- CS:S's guns (gameplay.css_weapons), as the game has them: a bullet's
+-- CS:S's guns (gameplay.cstrike_weapons), as the game has them: a bullet's
 -- damage at the muzzle, the pellets, cycle and clip, its shot's sound, its
 -- standing inaccuracy and spread as the cone.
 for _, class in ipairs(Css.CLASSES) do

@@ -43,10 +43,10 @@ T.test("HL2's guns the soldiers carry have stats", function()
 	end
 end)
 
--- CS:S's guns fire as gameplay.css_weapons has them: its damage, pellets,
+-- CS:S's guns fire as gameplay.cstrike_weapons has them: its damage, pellets,
 -- cycle, clip, sound and standing spread.
 T.test("CS:S's guns have stats, CS:S's own", function()
-	local Css = gameplay.css_weapons
+	local Css = gameplay.cstrike_weapons
 	for _, class in ipairs(Css.CLASSES) do
 		local w = Css.WEAPONS[class]
 		local stats = Weapons.STATS[class]

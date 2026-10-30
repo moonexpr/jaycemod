@@ -93,7 +93,7 @@ round cannot stall with BLU alive. BLU takes 60% of the soldiers.
   it cannot be hurt.
 - Human players using a hostage (the controller takes any BLU player within
   `USE_RANGE`) is untested.
-- **CS:S's weapons are built, unchecked in game** (`gameplay.css_weapons`,
+- **CS:S's weapons are built, unchecked in game** (`gameplay.cstrike_weapons`,
   below); the buy menu is not started: players get them from the spawn menu
   (category Counter-Strike: Source), the war's soldiers from the scenario's
   kits.
@@ -106,10 +106,10 @@ shown by GMod's own c_ models (`models/weapons/cstrike/c_*.mdl`, which GMod
 ships: they take the player's hands, and need CS:S mounted for their
 textures), with CS:S's sounds.
 
-- **From the game's files.** `.devtools/bin/css_weapons.py` reads CS:S's
+- **From the game's files.** `.devtools/bin/cstrike_weapons.py` reads CS:S's
   weapon scripts out of `cstrike_pak_dir.vpk` (`scripts/weapon_*.ctx`,
   ICE-encrypted: `.devtools/bin/ice.py`) and its English names, and writes
-  `games/gameplay/css_weapons/scripts.lua`: price, team, damage, pellets,
+  `games/gameplay/cstrike_weapons/scripts.lua`: price, team, damage, pellets,
   cycle, range and range modifier, clip, ammo, speed, and the accuracy
   model's numbers (spread; standing, crouching, moving, jumping, landing,
   ladder and firing inaccuracy; recovery times; a second set for the second
@@ -122,7 +122,7 @@ textures), with CS:S's sounds.
   plus its punch. Damage falls by the range modifier every 500 units, times
   CS:S's hit groups (head 4, stomach 1.25, legs 0.75); the balance leaves it
   whole and a headshot is no TF2 crit on top.
-- **Tuning, not from the game** (`css_weapons.lua`, near CS:S as it plays,
+- **Tuning, not from the game** (`cstrike_weapons.lua`, near CS:S as it plays,
   never read from its code, which is not public): recoil (KickBack for the
   automatics, a punch a shot for the rest), burst timings, scope fields of
   view, ammo carried, reload seconds for NPC soldiers, the knife's strikes
@@ -152,7 +152,7 @@ textures), with CS:S's sounds.
   primary, "unpopular"), the Five-seveN (among "the least popular
   pistols"); the P228 split opinion and is next if one more is wanted.
 - **The least loved get a twist, not damage, and each twist is a TF2
-  player condition** its hit inflicts (`Css.TWISTS`, `weapon_css_base`'s
+  player condition** its hit inflicts (`Css.TWISTS`, `weapon_cstrike_base`'s
   `Hit`, `WS.Inflict`; a hit while one is held lasts the longer,
   `gameplay.players` `Inflict`): the UMP-45, `MAD_MILK` (3 s; whoever
   hurts its victim heals 60 % of the damage, TF2's ApplyOnHitAttributes,
@@ -196,7 +196,7 @@ Still open:
   networked to clients. The check found every second mode's shot erroring
   (no recovery times in the second accuracy) and bleeds ticking on one
   shared clock; both fixed.
-- **Still to check in game**, with a client: the c_ models' framing (`WS.CSS_VIEWMODEL_FOV` 54), the
+- **Still to check in game**, with a client: the c_ models' framing (`WS.cstrike_VIEWMODEL_FOV` 54), the
   scope overlay's arcs (`sprites/scope_arc`, its quadrants' orientation),
   the silencer and Elites' animations, a shotgun's loading, recoil's feel,
   grenades' throws, flash and smoke, and the bots' fire with each kit.

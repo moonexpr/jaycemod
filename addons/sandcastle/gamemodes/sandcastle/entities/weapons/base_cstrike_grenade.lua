@@ -1,12 +1,12 @@
--- weapon_css_grenade_base: CS:S's grenades (weapon_hegrenade,
+-- weapon_cstrike_grenade_base: CS:S's grenades (weapon_hegrenade,
 -- weapon_flashbang, weapon_smokegrenade). Pressing attack pulls the pin;
--- letting go throws it (gameplay.css_weapons' Throw: higher than aimed, to
+-- letting go throws it (gameplay.cstrike_weapons' Throw: higher than aimed, to
 -- the grenade's speed, with the thrower's own speed), as its projectile
--- (entities/entities/base_css_grenade.lua). A grenade is thrown once: the
+-- (entities/entities/base_cstrike_grenade.lua). A grenade is thrown once: the
 -- weapon goes with it.
 AddCSLuaFile()
 
-local Css = gameplay.css_weapons
+local Css = gameplay.cstrike_weapons
 
 SWEP.PrintName = "CS:S grenade"
 SWEP.Spawnable = false

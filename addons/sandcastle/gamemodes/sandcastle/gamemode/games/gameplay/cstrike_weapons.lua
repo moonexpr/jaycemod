@@ -1,8 +1,8 @@
 -- CS:S's weapons, for hostage rescue and the other CS:S modes: each made
--- from the game's own script (css_weapons/scripts.lua, written by
--- .devtools/bin/css_weapons.py), with what CS:S keeps in code instead (its
+-- from the game's own script (cstrike_weapons/scripts.lua, written by
+-- .devtools/bin/cstrike_weapons.py), with what CS:S keeps in code instead (its
 -- recoil, second modes, ammo, the knife and the grenades) as tuning here.
--- Players hold them as SWEPs (entities/weapons/weapon_css_base.lua), bot
+-- Players hold them as SWEPs (entities/weapons/weapon_cstrike_base.lua), bot
 -- soldiers through the same SWEPs, and NPC soldiers through their stats
 -- (nextsoldier.weapons).
 --
@@ -37,7 +37,7 @@ local error, ipairs, pairs, setmetatable, tostring, type = error, ipairs, pairs,
 local cos, sin, exp, log, pi, min = math.cos, math.sin, math.exp, math.log, math.pi, math.min
 local Scalar = math.scalar
 local COND = gameplay.players.COND
-local Scripts = require("games.gameplay.css_weapons.scripts")
+local Scripts = require("games.gameplay.cstrike_weapons.scripts")
 module(...)
 
 GUN, KNIFE, GRENADE = "gun", "knife", "grenade"
@@ -180,7 +180,7 @@ GRENADES = {
 }
 
 local function Refuse(class, what)
-	error("css_weapons: " .. class .. " " .. what, 3)
+	error("cstrike_weapons: " .. class .. " " .. what, 3)
 end
 
 local function KindOf(type)
@@ -200,7 +200,7 @@ end
 local function Frozen(t)
 	return setmetatable({}, {
 		__index = t,
-		__newindex = function(_, key) error("css_weapons: a weapon is not changed (" .. tostring(key) .. ")", 2) end,
+		__newindex = function(_, key) error("cstrike_weapons: a weapon is not changed (" .. tostring(key) .. ")", 2) end,
 	})
 end
 

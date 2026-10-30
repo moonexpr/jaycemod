@@ -1,11 +1,11 @@
 -- smokegrenade_projectile: CS:S's smoke grenade, thrown. Once its fuse is
 -- spent and it has come to rest, it pours a cloud of CS:S's smoke
 -- (particle/particle_smokegrenade) its radius wide that stands for its
--- duration (gameplay.css_weapons' GRENADES), then goes. The cloud is each
+-- duration (gameplay.cstrike_weapons' GRENADES), then goes. The cloud is each
 -- client's own; bot soldiers still see through it.
 AddCSLuaFile()
 
-ENT.Base = "base_css_grenade"
+ENT.Base = "base_cstrike_grenade"
 ENT.CSSClass = "weapon_smokegrenade"
 ENT.Model = "models/weapons/w_eq_smokegrenade_thrown.mdl"
 ENT.BounceSound = "SmokeGrenade.Bounce"

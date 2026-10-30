@@ -1,6 +1,6 @@
 -- CS:S's weapon scripts (cstrike_pak_dir.vpk, scripts/weapon_*.ctx), as
--- data: written by .devtools/bin/css_weapons.py from the game's own files,
--- never by hand. gameplay.css_weapons makes its weapons from them.
+-- data: written by .devtools/bin/cstrike_weapons.py from the game's own files,
+-- never by hand. gameplay.cstrike_weapons makes its weapons from them.
 module(...)
 
 SCRIPTS = {

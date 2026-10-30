@@ -1,10 +1,10 @@
 -- hegrenade_projectile: CS:S's HE grenade, thrown. It blasts its damage at
--- its centre, falling to none at its radius (gameplay.css_weapons'
+-- its centre, falling to none at its radius (gameplay.cstrike_weapons'
 -- GRENADES), credited to its thrower; the balance leaves the blast as it is
 -- (weapon_balance's INFLICTORS).
 AddCSLuaFile()
 
-ENT.Base = "base_css_grenade"
+ENT.Base = "base_cstrike_grenade"
 ENT.CSSClass = "weapon_hegrenade"
 ENT.Model = "models/weapons/w_eq_fraggrenade_thrown.mdl"
 ENT.BounceSound = "HEGrenade.Bounce"

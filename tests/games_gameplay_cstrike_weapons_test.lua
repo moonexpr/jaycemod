@@ -1,11 +1,11 @@
--- games.gameplay.css_weapons: CS:S's weapons, made from the game's own
--- scripts (css_weapons/scripts.lua): their teams, damage by range and hit
+-- games.gameplay.cstrike_weapons: CS:S's weapons, made from the game's own
+-- scripts (cstrike_weapons/scripts.lua): their teams, damage by range and hit
 -- group, the accuracy model (a penalty each shot adds and time takes away,
 -- movement, the air), the spray a shot's bullets make, recoil, second modes
 -- (silencer, burst, scope) and the knife's backstab.
 local T = dofile("tests/harness.lua")
-local Css = gameplay.css_weapons
-local Scripts = T.require("games.gameplay.css_weapons.scripts")
+local Css = gameplay.cstrike_weapons
+local Scripts = T.require("games.gameplay.cstrike_weapons.scripts")
 
 local AK, M4, AWP, GLOCK, M3 = "weapon_ak47", "weapon_m4a1", "weapon_awp", "weapon_glock", "weapon_m3"
 

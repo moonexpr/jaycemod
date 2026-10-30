@@ -1,5 +1,4 @@
--- weapon_p228: CS:S's, on weapon_css_base (gameplay.css_weapons).
+-- weapon_p228: CS:S's, on weapon_cstrike_base (gameplay.cstrike_weapons).
 AddCSLuaFile()
 
-SWEP.Base = "weapon_css_base"
-WS.CSSWeapon(SWEP, "weapon_p228")
+SWEP.Base = "base_cstrike_shooter"WS.CSSWeapon(SWEP, "weapon_p228")

@@ -1,4 +1,4 @@
--- weapon_css_base: CS:S's guns (gameplay.css_weapons), each a SWEP on this
+-- weapon_cstrike_base: CS:S's guns (gameplay.cstrike_weapons), each a SWEP on this
 -- base named as CS:S names it (weapon_ak47, weapon_m4a1, ...), shown by
 -- GMod's c_ model of it in the player's own hands. Everything that decides
 -- a shot is predicted, on both realms: the accuracy model's penalty (kept
@@ -17,7 +17,7 @@
 -- a shell at a time, and firing stops the loading.
 AddCSLuaFile()
 
-local Css = gameplay.css_weapons
+local Css = gameplay.cstrike_weapons
 
 SWEP.PrintName = "CS:S gun"
 SWEP.Spawnable = false
@@ -191,7 +191,7 @@ function SWEP:Shoot()
 		onGround = owner:IsOnGround(),
 		ladder = owner:GetMoveType() == MOVETYPE_LADDER,
 	}
-	local spray = Css.Spray(Css.Inaccuracy(w, acc, state), acc.spread, w.bullets, Random("css_spray"))
+	local spray = Css.Spray(Css.Inaccuracy(w, acc, state), acc.spread, w.bullets, Random("cstrike_spray"))
 	local aim = owner:EyeAngles()
 	if owner:IsPlayer() then aim = aim + owner:GetViewPunchAngles() end
 	local forward, right, up = aim:Forward(), aim:Right(), aim:Up()
@@ -248,9 +248,9 @@ function SWEP:Recoil(owner, state)
 		or (owner:Crouching() and Css.CROUCH) or Css.STAND
 	local roll
 	if w.kick.punch then
-		roll = util.SharedRandom("css_kick", 0, 1)
+		roll = util.SharedRandom("cstrike_kick", 0, 1)
 	else
-		roll = math.floor(util.SharedRandom("css_kick", 0, w.kick.flip + 1))
+		roll = math.floor(util.SharedRandom("cstrike_kick", 0, w.kick.flip + 1))
 	end
 	local p = owner:GetViewPunchAngles()
 	local punch, left = Css.Kick(w, stance, self:GetShots(), { pitch = p.p, yaw = p.y }, self:GetKickLeft(), roll)

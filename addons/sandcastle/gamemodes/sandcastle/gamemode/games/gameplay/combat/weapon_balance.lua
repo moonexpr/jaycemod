@@ -11,7 +11,7 @@
 -- (ws/sv_hits.lua, ws/sh_weapon_balance.lua) applies it to each hit and shot.
 local math, pairs = math, pairs
 local Scalar = math.scalar
-local Css = gameplay.css_weapons
+local Css = gameplay.cstrike_weapons
 module(...)
 
 -- damage: a hit's damage, in place of HL2's; cone: the full spread in
@@ -113,7 +113,7 @@ INFLICTORS = {
 	rpg_missile = "weapon_rpg",
 }
 
--- CS:S's weapons deal their own damage (gameplay.css_weapons: by range and
+-- CS:S's weapons deal their own damage (gameplay.cstrike_weapons: by range and
 -- hit group, a headshot already four times), so none is balanced here and a
 -- headshot is no crit on top.
 for class, weapon in pairs(Css.WEAPONS) do
@@ -221,7 +221,7 @@ function Knockback(class, headshot, excess)
 end
 
 -- No hit kills from full health but a skill shot (a scoped sniper's, a
--- backstab: gameplay.css_weapons' SkillShot): one shot deals a victim at
+-- backstab: gameplay.cstrike_weapons' SkillShot): one shot deals a victim at
 -- most HIT_CAP of its most health, its pellets together (dealt: what the
 -- shot has dealt it already), and the rest is its excess, which pushes
 -- rather than hurts (Knockback). -> damage dealt, excess.

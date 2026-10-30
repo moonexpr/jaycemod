@@ -1,12 +1,12 @@
 -- flashbang_projectile: CS:S's flashbang, thrown. Every player who can see
--- it is blinded white for as long as gameplay.css_weapons' FlashBlind
+-- it is blinded white for as long as gameplay.cstrike_weapons' FlashBlind
 -- says (how near, how they face it), their ears ringing when it is long.
 -- Bot soldiers' vision is their own and does not go white.
 AddCSLuaFile()
 
-local Css = gameplay.css_weapons
+local Css = gameplay.cstrike_weapons
 
-ENT.Base = "base_css_grenade"
+ENT.Base = "base_cstrike_grenade"
 ENT.CSSClass = "weapon_flashbang"
 ENT.Model = "models/weapons/w_eq_flashbang_thrown.mdl"
 ENT.BounceSound = "Flashbang.Bounce"

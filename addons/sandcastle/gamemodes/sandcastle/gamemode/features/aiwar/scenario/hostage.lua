@@ -321,7 +321,7 @@ function Scenario:Reset()
 	self.memory = {}
 end
 
--- CS:S's arms (gameplay.css_weapons), the maps' own sides': RED the
+-- CS:S's arms (gameplay.cstrike_weapons), the maps' own sides': RED the
 -- terrorists' (AK-47 or Galil, Glock, knife), BLU the counter-terrorists'
 -- (M4A1 or FAMAS, USP, knife). Blockers and a point's holders carry the M3,
 -- raiders an SMG, support the side's heavy gun; medics keep their

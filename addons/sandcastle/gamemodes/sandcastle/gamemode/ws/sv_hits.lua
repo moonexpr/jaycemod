@@ -39,7 +39,7 @@ end
 function GM:ScalePlayerDamage(ply, hitgroup) WS.TraceHit(ply, hitgroup) end
 function GM:ScaleNPCDamage(npc, hitgroup) WS.TraceHit(npc, hitgroup) end
 
--- A skill shot on ent this tick (gameplay.css_weapons' SkillShot: a scoped
+-- A skill shot on ent this tick (gameplay.cstrike_weapons' SkillShot: a scoped
 -- sniper's, a backstab), told by the weapon before its damage: the one hit
 -- the cap lets kill from full health.
 local skilled = setmetatable({}, { __mode = "k" }) -- entity -> tick

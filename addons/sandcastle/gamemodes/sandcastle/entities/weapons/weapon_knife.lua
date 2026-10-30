@@ -1,11 +1,11 @@
--- weapon_knife: CS:S's knife (gameplay.css_weapons' KNIFE_STATS). The
+-- weapon_knife: CS:S's knife (gameplay.cstrike_weapons' KNIFE_STATS). The
 -- primary slashes (harder the first time in a while), the secondary stabs;
 -- either hits three times as hard from behind. A strike traces a line from
 -- the eye, then a hull as wide as a head when the line finds nothing, as
 -- CS:S's does, lag compensated.
 AddCSLuaFile()
 
-local Css = gameplay.css_weapons
+local Css = gameplay.cstrike_weapons
 local K = Css.KNIFE_STATS
 
 WS.CSSWeapon(SWEP, "weapon_knife")

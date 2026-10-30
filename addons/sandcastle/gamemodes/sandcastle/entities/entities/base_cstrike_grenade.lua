@@ -1,11 +1,11 @@
--- base_css_grenade: a thrown CS:S grenade (hegrenade_projectile,
+-- base_cstrike_grenade: a thrown CS:S grenade (hegrenade_projectile,
 -- flashbang_projectile, smokegrenade_projectile), a physics object that
 -- bounces with its own sound and, its fuse spent, Detonates as its kind
 -- does. A kind may hold its detonation until it has come to rest
 -- (WaitsForRest: the smoke).
 AddCSLuaFile()
 
-local Css = gameplay.css_weapons
+local Css = gameplay.cstrike_weapons
 
 ENT.Type = "anim"
 ENT.PrintName = "CS:S grenade"

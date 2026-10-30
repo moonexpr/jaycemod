@@ -87,11 +87,11 @@ T.test("the automatic arms are the SMG, the AR2 and the melee weapons; the rest 
 	end
 end)
 
--- CS:S's weapons (gameplay.css_weapons), for the CS:S modes' soldiers: each
+-- CS:S's weapons (gameplay.cstrike_weapons), for the CS:S modes' soldiers: each
 -- gun known by its type's reach and its own precision, fired held when
 -- CS:S fires it so; the knife a melee weapon striking as its slash does.
 T.test("the soldiers know CS:S's guns and knife", function()
-	local Css = gameplay.css_weapons
+	local Css = gameplay.cstrike_weapons
 	local loadout = Arms.Loadout({ primary = { "weapon_ak47" }, secondary = "weapon_glock", melee = "weapon_knife" }, First)
 	T.eq(loadout.primary, "weapon_ak47", "a CS:S kit")
 	for _, class in ipairs(Css.CLASSES) do

@@ -203,7 +203,7 @@ T.test("the gravity gun's punt hits for its own damage and throws hard", functio
 	T.eq(Balance.Shot("weapon_physcannon", { damage = 1, distance = 100, roll = 0.5 }), 1, "a hit that is no punt: HL2's")
 end)
 
--- CS:S's weapons deal their own damage (gameplay.css_weapons: by range and
+-- CS:S's weapons deal their own damage (gameplay.cstrike_weapons: by range and
 -- hit group, a headshot four times), so the balance leaves it whole and a
 -- headshot is no crit on top; an HE grenade's blast is its own too.
 T.test("a CS:S weapon's damage is its own, and its headshot no crit", function()

@@ -1,8 +1,8 @@
--- CS:S's weapons in GMod (gameplay.css_weapons): CS:S's ammo types, and
+-- CS:S's weapons in GMod (gameplay.cstrike_weapons): CS:S's ammo types, and
 -- what each weapon's SWEP takes from its weapon (WS.CSSWeapon), for
--- entities/weapons/weapon_css_base.lua, weapon_knife.lua,
--- weapon_css_grenade_base.lua and the weapons on them.
-local Css = gameplay.css_weapons
+-- entities/weapons/weapon_cstrike_base.lua, weapon_knife.lua,
+-- weapon_cstrike_grenade_base.lua and the weapons on them.
+local Css = gameplay.cstrike_weapons
 
 for _, name in ipairs({
 	"BULLET_PLAYER_50AE", "BULLET_PLAYER_762MM", "BULLET_PLAYER_556MM", "BULLET_PLAYER_556MM_BOX",
@@ -12,22 +12,22 @@ for _, name in ipairs({
 	game.AddAmmoType({ name = name, dmgtype = DMG_BULLET, tracer = TRACER_LINE_AND_WHIZ, maxcarry = Css.AMMO[name].max })
 end
 
-WS.CSS_CATEGORY = "Counter-Strike: Source"
-WS.CSS_VIEWMODEL_FOV = 54 -- what GMod's cstrike c_ models are framed for
+WS.cstrike_CATEGORY = "Counter-Strike: Source"
+WS.cstrike_VIEWMODEL_FOV = 54 -- what GMod's cstrike c_ models are framed for
 
 -- Fills a SWEP table from CS:S's weapon class: its name, slot, models,
 -- hold type and clip. The SWEP keeps its class (CSSClass) and reads the
--- weapon from gameplay.css_weapons, never a copy of it.
+-- weapon from gameplay.cstrike_weapons, never a copy of it.
 function WS.CSSWeapon(SWEP, class)
 	local w = Css.WEAPONS[class]
 	if not w then error("no CS:S weapon " .. tostring(class), 2) end
 	SWEP.CSSClass = class
 	SWEP.PrintName = w.name
-	SWEP.Category = WS.CSS_CATEGORY
+	SWEP.Category = WS.cstrike_CATEGORY
 	SWEP.Spawnable = true
 	SWEP.Slot, SWEP.SlotPos = w.slot, w.slotPos
 	SWEP.ViewModel, SWEP.WorldModel = w.viewModel, w.worldModel
-	SWEP.ViewModelFOV, SWEP.ViewModelFlip, SWEP.UseHands = WS.CSS_VIEWMODEL_FOV, false, true
+	SWEP.ViewModelFOV, SWEP.ViewModelFlip, SWEP.UseHands = WS.cstrike_VIEWMODEL_FOV, false, true
 	SWEP.HoldType = w.hold
 	SWEP.DrawCrosshair = w.type ~= "SniperRifle"
 	SWEP.Primary = {

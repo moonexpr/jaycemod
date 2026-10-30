@@ -369,7 +369,7 @@ end)
 -- medic keeps its faction's kit, and other scenarios keep theirs.
 T.test("hostage rescue's soldiers carry CS:S's arms, each side its own", function()
 	local Arms = T.require("features.aiwar.arms")
-	local Css = gameplay.css_weapons
+	local Css = gameplay.cstrike_weapons
 	local scenario = Hostage.Scenario:New()
 	local sides = { [RED] = Css.Set(Css.For(Css.TERRORIST)), [BLUE] = Css.Set(Css.For(Css.CT)) }
 	for team, allowed in pairs(sides) do

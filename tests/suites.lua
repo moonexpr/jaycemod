@@ -27,7 +27,7 @@ return {
 			"weapon_*", "player_attributes", "players_conditions", "players_pickups", "players_ctf_capture_crits",
 			"targeting",
 		},
-		sources = { G .. "games/", E .. "weapons/", E .. "entities/base_css_grenade", E .. "entities/tf_projectile_" },
+		sources = { G .. "games/", E .. "weapons/", E .. "entities/base_cstrike_grenade", E .. "entities/tf_projectile_" },
 	},
 	{
 		name = "nextsoldier",
