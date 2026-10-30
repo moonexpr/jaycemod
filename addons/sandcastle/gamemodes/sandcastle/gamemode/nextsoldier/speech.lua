@@ -34,6 +34,9 @@ CONCEPT_GET_HEALTH = "TLK_NS_GET_HEALTH"
 -- A squad leader calls its squad out on its mission, its wait over
 -- (features.aiwar.orders' Muster), heard by all near.
 CONCEPT_MOVE_OUT = "TLK_NS_MOVE_OUT"
+-- A squad leader calls its squad together to a hiding spot, its mission
+-- gone wrong (heavy casualties, no progress), heard by all near.
+CONCEPT_REGROUP = "TLK_NS_REGROUP"
 
 CONCEPT_ENEMY_KILLED = "TLK_NS_ENEMY_KILLED"
 CONCEPT_ALLY_DOWN = "TLK_NS_ALLY_DOWN"

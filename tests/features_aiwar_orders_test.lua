@@ -877,7 +877,55 @@ T.test("in setup a squad leader asks for its mission at its stance, and leads ou
 	s.war.field.setup = false
 	s.Tick(2)
 	T.eq(s.fireTeam.missionLed, true, "out as setup ends")
+	T.eq(s.fireTeam.ledStrength, 2, "the strength it led out")
 	for _, p in ipairs(s.meA.moves) do T.eq(FS.Distance(p, MUSTER) > 1, true, "never back to the muster") end
+end)
+
+-- Regrouping: the controller recalls a squad out on its mission
+-- (wartactics.mission's Recall) on heavy casualties or no progress.
+local HIDE = P(450, 300)
+
+local function Led(t)
+	local s = Mustered({ leaderAt = MUSTER, size = 2 })
+	s.meA.covers = { HIDE }
+	s.Tick()
+	Issue(s, 0)
+	s.Tick(2)
+	T.eq(s.fireTeam.missionLed, true, "led out")
+	if t and t.contact then s.meA.enemy, s.meA.enemyPos = true, P(900, 0) end
+	Mission.Recall(s.fireTeam, Mission.CASUALTIES)
+	return s
+end
+
+T.test("a recalled squad's leader signals the group, calls it and takes it to a hiding spot", function()
+	local s = Led()
+	s.Tick(2)
+	T.eq(Has(s.meA.gestured, Gestures.SIGNAL_GROUP), true, "signals group")
+	T.eq(Has(s.meA.announced, Speech.CONCEPT_REGROUP), true, "calls the regroup")
+	Near(s.meA.moving, HIDE, "to the hiding spot")
+end)
+
+T.test("hidden, it asks again", function()
+	local s = Led()
+	s.Tick(2)
+	s.meA.pos = HIDE
+	s.Tick()
+	T.eq(s.fireTeam.missionWanted, true, "asked again")
+	T.eq(s.fireTeam.regrouping, Mission.CASUALTIES, "as a squad regrouping")
+end)
+
+T.test("a regroup goes on under fire", function()
+	local s = Led({ contact = true })
+	s.Tick(2)
+	Near(s.meA.moving, HIDE, "to the hiding spot, not the fight")
+end)
+
+T.test("it signals and calls the regroup once", function()
+	local s = Led()
+	s.Tick(4)
+	local n = 0
+	for _, o in ipairs(s.meA.gestured) do if o == Gestures.SIGNAL_GROUP then n = n + 1 end end
+	T.eq(n, 1)
 end)
 
 T.test("a squad leader on a trip when its squad comes to muster stops to muster", function()

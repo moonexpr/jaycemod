@@ -7,12 +7,17 @@
 -- lane, with MISSION_TIME to settle in. Committed, the mission is the
 -- squad's (fireTeam.mission), which its lane follows (wartactics.lanes'
 -- Assign); declined for want of lanes, it asks again after LANE_RETRY; out
--- of time, at the next think. A request that fails (our bug, logged), or a
+-- of time, at the next think. A squad out on its mission is judged each
+-- think and recalled to regroup on heavy casualties or no progress
+-- (JudgeMission). A request that fails (our bug, logged), or a
 -- mission given up (AbandonMission), leaves the squad on its scenario's
 -- default behaviour (the lane wartactics.lanes' Assign gives it, its
 -- orders), and it asks no more.
 local Controller = ...
 local Mission = wartactics.mission
+local Lanes = wartactics.lanes
+local Squad = wartactics.squad
+local Tactics = wartactics.fireteam
 local Geometry = math.geometry
 local Transaction = transaction
 
@@ -84,9 +89,26 @@ function Controller:AbandonMission(fireTeam)
 	fireTeam.mission, fireTeam.missionWanted, fireTeam.regrouping, fireTeam.missionsOff = nil, nil, nil, true
 end
 
--- Every squad that wants a mission and has none on the way asks.
+-- A squad out on its mission is judged (wartactics.mission's Regroup):
+-- heavy casualties against the strength it led out with, or no progress
+-- along its way from its leader's place, and it is recalled to regroup
+-- (Recall), which its orders carry out.
+function Controller:JudgeMission(fireTeam, now)
+	local leader = Squad.Leader(fireTeam)
+	if not (leader and leader.pos) then return end
+	local alive = Living(fireTeam)
+	local remaining = Lanes.Remaining(fireTeam.mission.way, leader.pos)
+	fireTeam.missionTrack = fireTeam.missionTrack or Mission.Track(remaining, now)
+	local why = Mission.Regroup(fireTeam.missionTrack, fireTeam.ledStrength or alive, alive, remaining, now,
+		Tactics.Contact(fireTeam, now) ~= nil)
+	if why then Mission.Recall(fireTeam, why) end
+end
+
+-- Every squad out on its mission is judged; every squad that wants one and
+-- has none on the way asks.
 function Controller:MissionsThink(now)
 	for _, fireTeam in ipairs(self.war.fireTeams) do
+		if fireTeam.missionLed and fireTeam.mission then self:JudgeMission(fireTeam, now) end
 		if fireTeam.missionWanted and not fireTeam.missionRequest and now >= (fireTeam.missionRetryAt or 0) then
 			self:RequestMission(fireTeam)
 		end

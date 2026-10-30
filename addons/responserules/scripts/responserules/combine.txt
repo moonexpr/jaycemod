@@ -706,3 +706,39 @@ rule MoveOutCombineMetrocop
 	ApplyContext "SaidMoveOut:1:10"
 	response MoveOutCombineMetrocop
 }
+
+// Regroup: a squad leader calls its squad together to a hiding spot, to all near
+response RegroupCombine
+{
+	print "Combine: regroup" defaultdelay
+}
+rule RegroupCombine
+{
+	criteria ConceptRegroup IsCombine NotSaidRegroup
+	ApplyContext "SaidRegroup:1:10"
+	response RegroupCombine
+}
+response RegroupCombineSoldier
+{
+	speak "npc/combine_soldier/vo/cover.wav" defaultdelay
+	speak "npc/combine_soldier/vo/coverme.wav" defaultdelay
+	speak "npc/combine_soldier/vo/coverhurt.wav" defaultdelay
+}
+rule RegroupCombineSoldier
+{
+	criteria ConceptRegroup IsCombine NotSaidRegroup IsSoldierVoice
+	ApplyContext "SaidRegroup:1:10"
+	response RegroupCombineSoldier
+}
+response RegroupCombineMetrocop
+{
+	speak "npc/metropolice/vo/movingtocover.wav" defaultdelay
+	speak "npc/metropolice/vo/takecover.wav" defaultdelay
+	speak "npc/metropolice/vo/backup.wav" defaultdelay
+}
+rule RegroupCombineMetrocop
+{
+	criteria ConceptRegroup IsCombine NotSaidRegroup IsMetrocopVoice
+	ApplyContext "SaidRegroup:1:10"
+	response RegroupCombineMetrocop
+}

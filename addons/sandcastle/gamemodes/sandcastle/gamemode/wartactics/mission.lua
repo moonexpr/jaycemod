@@ -24,11 +24,17 @@
 --   time; one due counts as now) and the walk from spawn (travel, seconds);
 --   after a regroup (no nextWave), only the walk of the living; held to
 --   WAIT_MAX
--- Casualties(mission, alive) -> whether the squad, alive strong, is down to
---   CASUALTY_SHARE of the mission's size or fewer
+-- Casualties(strength, alive) -> whether the squad, alive strong, is down to
+--   CASUALTY_SHARE of the strength it led out with, or fewer
 -- Track(remaining, now) -> a record of the squad's best distance left along
 --   its way: Stuck(remaining, now) -> whether it has come no PROGRESS_STEP
---   nearer in STUCK_TIME
+--   nearer in STUCK_TIME; Reset(remaining, now) starts it again from there
+-- Regroup(track, strength, alive, remaining, now, fighting) -> why a squad
+--   out on its mission (strength: as it led out) must regroup, or nil:
+--   CASUALTIES (heavy, even in a
+--   fight), else STUCK (no progress along its way, remaining, not counting
+--   time in a fight, nor within ARRIVED of its end, where there is none to
+--   make)
 local error, ipairs, setmetatable, max, min, tostring = error, ipairs, setmetatable, math.max, math.min, tostring
 local Lanes = wartactics.lanes
 local Transaction = transaction
@@ -117,8 +123,8 @@ function Wait(spec)
 	return min(WAIT_MAX, wave + spec.travel)
 end
 
-function Casualties(mission, alive)
-	return alive <= mission.size * CASUALTY_SHARE
+function Casualties(strength, alive)
+	return alive <= strength * CASUALTY_SHARE
 end
 
 local Track_ = {}
@@ -134,4 +140,32 @@ function Track_:Stuck(remaining, now)
 		return false
 	end
 	return now - self.at >= STUCK_TIME
+end
+
+function Track_:Reset(remaining, now)
+	self.best, self.at = remaining, now
+end
+
+CASUALTIES, STUCK = "heavy casualties", "no progress"
+ARRIVED = 400
+
+-- A squad recalled to regroup (why: CASUALTIES or STUCK): it leads its
+-- mission no more and musters afresh, at a hiding spot its leader finds,
+-- keeping its mission until a new one comes. fireTeam: the squad's
+-- blackboard (missionLed, regrouping, musterAt, musterArrived,
+-- missionWanted, regroupCalled, missionTrack).
+function Recall(fireTeam, why)
+	fireTeam.regrouping, fireTeam.missionLed = why, nil
+	fireTeam.musterAt, fireTeam.musterArrived, fireTeam.missionWanted = nil, nil, nil
+	fireTeam.regroupCalled, fireTeam.missionTrack = nil, nil
+end
+
+function Regroup(track, strength, alive, remaining, now, fighting)
+	if Casualties(strength, alive) then return CASUALTIES end
+	if fighting or remaining <= ARRIVED then
+		track:Reset(remaining, now)
+		return nil
+	end
+	if track:Stuck(remaining, now) then return STUCK end
+	return nil
 end

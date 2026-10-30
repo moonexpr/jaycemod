@@ -235,6 +235,20 @@ function Muster(lane, inRoom)
 	return points[#points]
 end
 
+-- What is left of a lane from pos: to its nearest waypoint, then along the
+-- lane from there to its end, so a winding lane is measured as walked.
+function Remaining(lane, pos)
+	local points = lane.points
+	local nearest, best = 1, huge
+	for i, p in ipairs(points) do
+		local d = Distance(pos, p)
+		if d < best then nearest, best = i, d end
+	end
+	local left = best
+	for i = nearest, #points - 1 do left = left + Distance(points[i], points[i + 1]) end
+	return left
+end
+
 -- A muster is found once and kept for the map (the controller saves them):
 -- by its team and the spawn its lanes leave, to the MUSTER_GRID cell.
 MUSTER_GRID = 64

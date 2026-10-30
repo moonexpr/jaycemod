@@ -186,6 +186,13 @@ T.test("a squad musters at its lane's first point outside its spawn room", funct
 	T.eq(Lanes.Muster(lane, function() return true end), lane.points[3], "all in the room: its end")
 end)
 
+T.test("what is left of a lane from a point: to its nearest waypoint, then along it", function()
+	local lane = { points = { { x = 0, y = 0, z = 0 }, { x = 300, y = 0, z = 0 }, { x = 300, y = 400, z = 0 } } }
+	T.near(Lanes.Remaining(lane, { x = 0, y = 0, z = 0 }), 700, 1e-9, "from its start")
+	T.near(Lanes.Remaining(lane, { x = 300, y = 30, z = 0 }), 30 + 400, 1e-9, "near its corner")
+	T.near(Lanes.Remaining(lane, { x = 300, y = 400, z = 0 }), 0, 1e-9, "at its end")
+end)
+
 T.test("a muster is kept by its team and the spawn its lanes leave, to MUSTER_GRID", function()
 	local a = Lanes.MusterKey(2, { x = 10, y = 20, z = 30 })
 	T.eq(a, Lanes.MusterKey(2, { x = 10 + Lanes.MUSTER_GRID / 4, y = 20, z = 30 }), "a step away: the same spawn")

@@ -69,13 +69,12 @@ T.test("the wait is held to WAIT_MAX", function()
 	T.eq(Mission.Wait({ missing = 2, nextWave = 100 + Mission.WAIT_MAX, now = 100, travel = 30 }), Mission.WAIT_MAX)
 end)
 
-T.test("heavy casualties: down to CASUALTY_SHARE of the mission's size or fewer", function()
-	local m = Mission.New(Valid({ size = 4 }))
-	T.eq(Mission.Casualties(m, 3), false)
-	T.eq(Mission.Casualties(m, 2), true, "half")
-	local odd = Mission.New(Valid({ size = 3 }))
-	T.eq(Mission.Casualties(odd, 2), false)
-	T.eq(Mission.Casualties(odd, 1), true)
+T.test("heavy casualties: down to CASUALTY_SHARE of the squad that led out, or fewer", function()
+	T.eq(Mission.Casualties(4, 3), false)
+	T.eq(Mission.Casualties(4, 2), true, "half")
+	T.eq(Mission.Casualties(3, 2), false)
+	T.eq(Mission.Casualties(3, 1), true)
+	T.eq(Mission.Casualties(2, 2), false, "a squad led out short is not a casualty of its own size")
 end)
 
 T.test("a squad that keeps getting PROGRESS_STEP nearer is progressing", function()
@@ -96,6 +95,50 @@ T.test("progress made resets the clock", function()
 	T.eq(track:Stuck(1000 - Mission.PROGRESS_STEP, Mission.STUCK_TIME - 1), false)
 	T.eq(track:Stuck(1000 - Mission.PROGRESS_STEP, 2 * Mission.STUCK_TIME - 2), false, "counted from the progress")
 	T.eq(track:Stuck(1000 - Mission.PROGRESS_STEP, 2 * Mission.STUCK_TIME - 1), true)
+end)
+
+-- Regrouping: whether a squad out on its mission must regroup.
+T.test("the regroup tuning is defined", function()
+	T.defined(Mission.ARRIVED, "ARRIVED")
+end)
+
+local function Judge(t)
+	return Mission.Regroup(t.track or Mission.Track(t.remaining or 1000, 0), 4, t.alive or 4, t.remaining or 1000,
+		t.now or 0, t.fighting or false)
+end
+
+T.test("heavy casualties call a regroup, even in a fight", function()
+	T.eq(Judge({ alive = 2, fighting = true }), Mission.CASUALTIES)
+	T.eq(Judge({ alive = 3 }), nil)
+end)
+
+T.test("no progress along the way calls a regroup", function()
+	local track = Mission.Track(1000, 0)
+	T.eq(Judge({ track = track, remaining = 1000, now = Mission.STUCK_TIME }), Mission.STUCK)
+end)
+
+T.test("a fight is no lack of progress: the clock starts again after it", function()
+	local track = Mission.Track(1000, 0)
+	T.eq(Judge({ track = track, remaining = 1000, now = Mission.STUCK_TIME, fighting = true }), nil, "fighting")
+	T.eq(Judge({ track = track, remaining = 1000, now = 2 * Mission.STUCK_TIME - 1 }), nil, "counted from the fight")
+	T.eq(Judge({ track = track, remaining = 1000, now = 2 * Mission.STUCK_TIME }), Mission.STUCK)
+end)
+
+T.test("a squad within ARRIVED of its way's end has no progress to make", function()
+	local track = Mission.Track(Mission.ARRIVED, 0)
+	T.eq(Judge({ track = track, remaining = Mission.ARRIVED, now = 10 * Mission.STUCK_TIME }), nil)
+end)
+
+T.test("a squad recalled to regroup leads no more and musters afresh, keeping its mission until a new one", function()
+	local m = Mission.New(Valid())
+	local squad = { mission = m, missionLed = true, musterAt = { x = 1, y = 2, z = 3 }, musterArrived = 5, missionTrack = {} }
+	Mission.Recall(squad, Mission.STUCK)
+	T.eq(squad.regrouping, Mission.STUCK, "why")
+	T.eq(squad.missionLed, nil)
+	T.eq(squad.musterAt, nil, "a hiding spot to find")
+	T.eq(squad.musterArrived, nil)
+	T.eq(squad.missionTrack, nil)
+	T.eq(squad.mission, m, "kept meanwhile")
 end)
 
 -- Issuing: the tactics engine's answer to a squad leader's request.

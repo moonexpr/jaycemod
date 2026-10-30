@@ -851,3 +851,39 @@ rule MoveOutRebelFemale
 	ApplyContext "SaidMoveOut:1:10"
 	response MoveOutRebelFemale
 }
+
+// Regroup: a squad leader calls its squad together to a hiding spot, to all near
+response RegroupRebel
+{
+	print "Rebel: over here, regroup" defaultdelay
+}
+rule RegroupRebel
+{
+	criteria ConceptRegroup IsRebel NotSaidRegroup
+	ApplyContext "SaidRegroup:1:10"
+	response RegroupRebel
+}
+response RegroupRebelMale
+{
+	speak "vo/npc/male01/overhere01.wav" defaultdelay
+	speak "vo/npc/male01/squad_follow02.wav" defaultdelay
+	speak "vo/npc/male01/takecover02.wav" defaultdelay
+}
+rule RegroupRebelMale
+{
+	criteria ConceptRegroup IsRebel NotSaidRegroup IsMaleVoice
+	ApplyContext "SaidRegroup:1:10"
+	response RegroupRebelMale
+}
+response RegroupRebelFemale
+{
+	speak "vo/npc/female01/overhere01.wav" defaultdelay
+	speak "vo/npc/female01/squad_follow02.wav" defaultdelay
+	speak "vo/npc/female01/takecover02.wav" defaultdelay
+}
+rule RegroupRebelFemale
+{
+	criteria ConceptRegroup IsRebel NotSaidRegroup IsFemaleVoice
+	ApplyContext "SaidRegroup:1:10"
+	response RegroupRebelFemale
+}

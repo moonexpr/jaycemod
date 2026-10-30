@@ -548,13 +548,14 @@ end
 -- The member's team's lanes while its squad musters for a mission
 -- (Objective:Muster), else nil: a squad of a lane job, its lanes with a
 -- muster, its mission not yet led nor given up, out of setup, not hurrying
--- and in no fight.
+-- and in no fight, unless it is regrouping (wartactics.mission's Recall),
+-- which it does under fire.
 local function MusterLanes(state, me, field, urgent)
 	local member = state.member
 	local fireTeam = member.fireTeam
 	local lanes = field and field.lanes and field.lanes[member.team]
 	if not (OrdersRun(field) and fireTeam and Lanes.JOBS[member.role] and lanes and lanes.muster) or field.setup or urgent
-		or fireTeam.missionLed or fireTeam.missionsOff or TeamContact(state, me) then
+		or fireTeam.missionLed or fireTeam.missionsOff or (not fireTeam.regrouping and TeamContact(state, me)) then
 		return nil
 	end
 	return lanes
@@ -1482,10 +1483,14 @@ function Objective:EndMuster(me)
 	return nil
 end
 
-local function Whole(fireTeam)
+local function Strength(fireTeam)
 	local n = 0
 	for _ in pairs(fireTeam.members) do n = n + 1 end
-	return n >= fireTeam.size
+	return n
+end
+
+local function Whole(fireTeam)
+	return Strength(fireTeam) >= fireTeam.size
 end
 
 -- The leader's head on the next lane's way out, every SCAN_PERIOD.
@@ -1499,8 +1504,29 @@ function Objective:Scan(me, lanes, now)
 	me:LookAt({ x = p.x, y = p.y, z = (p.z or 0) + SCAN_HEIGHT }, SCAN_PERIOD)
 end
 
+-- Recalled to regroup (wartactics.mission's Recall), the leader signals the
+-- group and calls it, once, and musters at a hiding spot within
+-- REGROUP_RADIUS out of the threat's sight (its squad's contact, else its
+-- way's end), else where it stands.
+local REGROUP_RADIUS = 600
+
+function Objective:RegroupSpot(me, fireTeam)
+	local contact = Tactics.Contact(fireTeam, me:Now())
+	local way = fireTeam.mission and fireTeam.mission.way.points
+	local threat = contact and contact.pos or (way and way[#way])
+	return threat and me:CoverSpot(me:Position(), REGROUP_RADIUS, threat, nil, nil) or me:Position()
+end
+
 function Objective:MusterLeader(me, fireTeam, lanes)
 	local state, now = self.state, me:Now()
+	if fireTeam.regrouping and not fireTeam.regroupCalled then
+		fireTeam.regroupCalled = true
+		me:Gesture(Gestures.SIGNAL_GROUP)
+		me:Announce(Speech.CONCEPT_REGROUP)
+	end
+	if fireTeam.regrouping and not fireTeam.musterAt then
+		fireTeam.musterFrom, fireTeam.musterAt = now, self:RegroupSpot(me, fireTeam)
+	end
 	if not fireTeam.musterAt then
 		-- still between its spawn (where its lanes start) and the muster
 		local start = lanes[1].points[1]
@@ -1514,7 +1540,8 @@ function Objective:MusterLeader(me, fireTeam, lanes)
 		return self:Continue()
 	end
 	me:Release()
-	local mission = fireTeam.mission
+	-- regrouping, it waits for a new mission, not the one gone wrong
+	local mission = not fireTeam.regrouping and fireTeam.mission
 	if not mission then
 		if not fireTeam.musterArrived then
 			fireTeam.musterArrived = now
@@ -1524,7 +1551,7 @@ function Objective:MusterLeader(me, fireTeam, lanes)
 			return self:EndMuster(me)
 		end
 	elseif Mission.Waited(mission, now) or Whole(fireTeam) then
-		fireTeam.missionLed = true
+		fireTeam.missionLed, fireTeam.ledStrength = true, Strength(fireTeam)
 		me:Gesture(Gestures.SIGNAL_FORWARD)
 		me:Announce(Speech.CONCEPT_MOVE_OUT)
 		return self:EndMuster(me)

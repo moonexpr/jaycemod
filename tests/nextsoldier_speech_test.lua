@@ -305,17 +305,19 @@ T.test("every voice calls out falling back to cover and going for health, each v
 	end
 end)
 
-T.test("every squad leader calls its squad out on a mission, each voice with lines its own, at most every 10 s", function()
+T.test("every squad leader calls its squad out and calls a regroup, each voice with lines its own, at most every 10 s", function()
 	local OWN = { combine = "CombineSoldier", metrocop = "CombineMetrocop", male = "RebelMale", female = "RebelFemale" }
-	for _, voice in ipairs(VOICES) do
-		local speaker = Speaker()
-		local said = Say(voice, Speech.OFFENSE, Speech.CONCEPT_MOVE_OUT, false, speaker)
-		T.eq(said ~= nil, true, voice.name)
-		if OWN[voice.name] then
-			T.eq(said.rule, "MoveOut" .. OWN[voice.name], voice.name .. "'s own")
-			T.eq(said.response.kind, "speak", "a sound")
+	for concept, name in pairs({ [Speech.CONCEPT_MOVE_OUT] = "MoveOut", [Speech.CONCEPT_REGROUP] = "Regroup" }) do
+		for _, voice in ipairs(VOICES) do
+			local speaker = Speaker()
+			local said = Say(voice, Speech.OFFENSE, concept, false, speaker)
+			T.eq(said ~= nil, true, voice.name .. ": " .. name)
+			if OWN[voice.name] then
+				T.eq(said.rule, name .. OWN[voice.name], voice.name .. "'s own")
+				T.eq(said.response.kind, "speak", "a sound")
+			end
+			T.eq(Say(voice, Speech.OFFENSE, concept, false, speaker), nil, voice.name .. ": not again at once")
 		end
-		T.eq(Say(voice, Speech.OFFENSE, Speech.CONCEPT_MOVE_OUT, false, speaker), nil, voice.name .. ": not again at once")
 	end
 end)
 

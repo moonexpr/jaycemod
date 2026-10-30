@@ -44,6 +44,8 @@ criterion "ConceptContactLost" "Concept" "TLK_NS_CONTACT_LOST" required
 criterion "ConceptIdle" "Concept" "TLK_NS_IDLE" required
 // a squad leader calling its squad out on its mission
 criterion "ConceptMoveOut" "Concept" "TLK_NS_MOVE_OUT" required
+// a squad leader calling its squad together to a hiding spot, its mission gone wrong
+criterion "ConceptRegroup" "Concept" "TLK_NS_REGROUP" required
 
 // Chances (randomnum, 0..100) ------------------------------------------------
 
@@ -94,6 +96,8 @@ criterion "NotSaidContactLost" "SaidContactLost" "!=1" required weight 0
 criterion "NotSaidIdle" "SaidIdle" "!=1" required weight 0
 // called its squad out within 10 s
 criterion "NotSaidMoveOut" "SaidMoveOut" "!=1" required weight 0
+// called a regroup within 10 s
+criterion "NotSaidRegroup" "SaidRegroup" "!=1" required weight 0
 
 // Speakers, by affiliation -------------------------------------------------------
 
