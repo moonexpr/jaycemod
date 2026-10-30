@@ -62,7 +62,7 @@ Claims come from sources, each with its strength and how it fades:
 
 | Source | Claim | Changes when |
 |---|---|---|
-| Spawn | a team's active `func_respawnroom` over the room, or its enabled `info_player_teamspawn` in it: the strongest claim, never fades | the map enables, disables or re-teams a respawn room or spawn point (the I/O the gamerules harness already traces) |
+| Spawn | a team's active `func_respawnroom` over the room, or its enabled `info_player_teamspawn` in it, or the spawn base the war placed there on a map without team spawns (`features.aiwar.spawns`, 11abcdd0): the strongest claim, never fades | the map enables, disables or re-teams a respawn room or spawn point (the I/O the gamerules harness already traces) |
 | Objective | a control point a team owns, the room its capture area stands in | `game_point_captured`, a round's reset |
 | Presence | a team's soldiers and players in the room, no enemy with them, held for `HOLD_TIME`: grows while they stay, fades after they leave | sightings and positions each slow tick |
 | Works | a team's turret, dispenser or teleporter standing in it | built, destroyed |
@@ -105,7 +105,10 @@ derived in tests from the fixtures, never pinned.
   and ways of the routes before it), walked door to door: its waypoints are
   the doors and corridor ends it passes. The nav mesh is walked only within
   a room, by the soldier's own pathing. Lanes refuse the enemy's
-  strongholds (today: its spawn rooms).
+  strongholds (today: its spawn rooms). As for doors today (8251de92: a
+  door opening and shutting again re-planned every lane), a lane is planned
+  again only for a lasting change of occupation in the rooms it crosses or
+  borders, never for presence coming and going.
 - **The zone** becomes the attackers' strongholds before the gates open.
 - **Missions** read classes and the team's view of occupation instead of
   sampling lane points.
