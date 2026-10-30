@@ -98,6 +98,45 @@ class AlternativesTest(unittest.TestCase):
         self.assertAlmostEqual(second.length, 10 * CELL * 1.2)
 
 
+def Floors(graph, floor=1.0):
+    for area in graph.values():
+        area["floor"] = floor
+    return graph
+
+
+class TreeTest(unittest.TestCase):
+    def fork(self):
+        """RED's spawn 1, a hall 2, and from it two ways: 3-4 and 5."""
+        graph = {1: Area(0, links=[2]), 2: Area(1, links=[1, 3, 5]), 3: Area(2, 1, links=[2, 4]),
+                 4: Area(3, 1, links=[3]), 5: Area(2, -1, links=[2])}
+        return Floors(Middles(graph))
+
+    def test_the_tree_is_the_walk_each_area_a_child_of_the_area_it_is_reached_from(self):
+        graph = self.fork()
+        tree = incursion.Grow(incursion.Incursion(Edges(graph), [1]), RED, graph)
+        self.assertEqual(tree.roots, (1,))
+        self.assertEqual(tree.children[2], (3, 5), "the fork")
+        self.assertEqual(tree.children[4], (), "a leaf")
+        self.assertEqual(tree.parent[4], 3)
+
+    def test_a_branchs_weight_is_the_floor_reached_through_it(self):
+        graph = self.fork()
+        tree = incursion.Grow(incursion.Incursion(Edges(graph), [1]), RED, graph)
+        self.assertEqual((tree.weight[1], tree.weight[2], tree.weight[3], tree.weight[5]), (5, 4, 2, 1))
+
+    def test_each_spawn_is_a_root_of_its_own_and_areas_go_to_the_nearer(self):
+        graph = Floors(Line())
+        tree = incursion.Grow(incursion.Incursion(Edges(graph), [1, 5]), RED, graph)
+        self.assertEqual(tree.roots, (1, 5))
+        self.assertEqual((tree.weight[1], tree.weight[5]), (3, 2), "the middle, tied, to the earlier spawn")
+
+    def test_the_forks_are_where_a_branch_splits_into_ways_each_carrying_a_share(self):
+        graph = self.fork()
+        tree = incursion.Grow(incursion.Incursion(Edges(graph), [1]), RED, graph)
+        self.assertEqual(tree.Forks(share=0.2), [2], "1 of 5 floor down the short way is a fifth: a way")
+        self.assertEqual(tree.Forks(share=0.3), [], "below that share, only a twig")
+
+
 class TrafficTest(unittest.TestCase):
     def test_traffic_counts_the_routes_through_each_area_by_team(self):
         # BLU spawns at 5 and at 6 beside it; both of RED's routes come through 2-4

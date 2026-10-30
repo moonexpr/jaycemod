@@ -89,6 +89,38 @@ def Incursion(edges: dict, starts: list, weight=Plain) -> Field:
 
 
 @dataclass(frozen=True)
+class Tree:
+    """A team's walk as the tree it is (the shortest-path tree): rooted at its spawns, each area a child of
+    the area it is reached from, weighted by the floor reached through it, so its trunk is the way most of
+    the map is reached by and its twigs the ends."""
+    team: str
+    roots: tuple      # the spawn areas, ascending
+    parent: dict      # area id -> the area it is reached from (a root has none)
+    children: dict    # area id -> the areas reached from it, ascending
+    weight: dict      # area id -> the floor of it and of everything reached through it
+
+    def Forks(self, share: float) -> list:
+        """The areas where a branch splits into ways each carrying at least share of the tree's floor."""
+        total = sum(self.weight[r] for r in self.roots)
+        return sorted(a for a, kids in self.children.items()
+                      if sum(1 for k in kids if self.weight[k] >= share * total) >= 2)
+
+
+def Grow(field: Field, team: str, graph: dict) -> Tree:
+    """The tree of a team's walk (field), weighted by the areas' floors in graph."""
+    reached = sorted(field.distance, key=lambda a: (field.distance[a], a))
+    children = {a: [] for a in reached}
+    for area in reached:
+        if area in field.parent:
+            children[field.parent[area]].append(area)
+    weight = {}
+    for area in reversed(reached):
+        weight[area] = graph[area]["floor"] + sum(weight[k] for k in children[area])
+    return Tree(team, tuple(sorted(a for a in reached if a not in field.parent)), dict(field.parent),
+                {a: tuple(sorted(k)) for a, k in children.items()}, weight)
+
+
+@dataclass(frozen=True)
 class Route:
     team: str
     areas: tuple      # from the team's spawn to the enemy's spawn area
