@@ -169,36 +169,82 @@ both implementations (`record_routes.lua`, `route_replay.lua [--native]`).
 
 ### foundation, on the dev server
 
-`native_bench.lua` on instance 1 (Rosetta and Wine, JIT on and off), ns
-an operation, or a call where one call does the whole job:
+`native_bench.lua` on instance 1 (Rosetta and Wine, JIT on and off), every
+module with a case, 2026-10-29 on cp_ambush_event with the AI war running:
+ns an operation unless marked, or the time of one call where one call does
+the whole job. The raw run is `.devtools/artifacts/native_bench_server.txt`.
 
 | Module | Case | Lua (on / off) | Native (on / off) |
 |---|---|---|---|
-| `tree.heap` | push and pop | 198 / 643 | 118 / 126 |
-| `tree.avl` | insert, get, floor, walk, remove | (see below) / 1120–2240 | 112–194 / 115–208 |
-| `nodegraph` | `PickNodes`, 6000 areas | 16.1 ms / 19.4 ms | 3.0 ms / 2.9 ms |
-| `nodegraph` | `Candidates`, 1500 nodes within 512 | 36.8 ms / 37.6 ms | 3.4 ms / 3.3 ms |
-| `nodegraph` | `Bridges`, 1500 nodes within 720 | 24.5 ms / 28.6 ms | 1.8 ms / 1.6 ms |
+| `cache.lru` | put 20k into 1000, get 20k | 648 / 666 | 659 / 680 |
+| `configstore` | parse 20k texts over 50 keys | 93 / 308 | 427 / 433 |
+| `core.class` | 20k instances of a subclass | 0.7 / 34 | 61 / 59 |
+| `encoding.keyvalues` | read 2000 pairs in 200 blocks (one call) | 1.1 ms / 2.6 ms | 647 µs / 792 µs |
+| `file.buffer` | write 20k int32 and varints, read back | 111 / 279 | 52 / 53 |
+| `generator.state_machine` | 20k transitions round three states | 455 / 517 | 536 / 553 |
+| `list.chain` | push back, move front, unlink | 10 / 157 | 52 / 58 |
+| `list.queue` | push back, pop front | 4.9 / 55 | 66 / 65 |
+| `list.ring` | push into 64 | 8.9 / 68 | 75 / 82 |
+| `list.schedule` | 1000 tasks yielding 10 times (a resume) | 566 / 486 | 943 / 934 |
+| `list.select` | TopK 10 of 2000 (one call) | 449 µs / 301 µs | 265 µs / 275 µs |
+| `list.select` | Order 2000 (one call) | 1.1 ms / 1.3 ms | 833 µs / 926 µs |
+| `list.slots` | alloc then free | 25 / 110 | 46 / 46 |
+| `list.window` | add 20k in time order, sum each | 27 / 121 | 42 / 45 |
+| `math.geometry` | Distance of two points | 0.7 / 56 | 183 / 177 |
+| `math.geometry` | Normalize (a new point) | 1.1 / 148 | 190 / 180 |
+| `math.matrix` | 8x8 multiply (one call) | 737 µs / 61 µs | 20 µs / 14 µs |
+| `math.matrix` | 32x32 inverse (one call) | 2.8 ms / 1.8 ms | 170 µs / 198 µs |
+| `math.polyline` | DistanceOf on 200 points | 3.9 µs / 29 µs | 891 / 843 |
+| `math.polyline` | PointAt on 200 points | 156 / 1.0 µs | 217 / 230 |
+| `math.polynomial` | Evaluate a cubic | 12 / 63 | 190 / 188 |
+| `math.polynomial` | Roots of a cubic | 408 / 860 | 398 / 394 |
+| `math.scalar` | Clamp | 2.5 / 25 | 30 / 31 |
+| `math.stats` | Percentile of 1000 (one call) | 224 µs / 235 µs | 40 µs / 47 µs |
+| `math.stats` | Mean of 1000 (one call) | 8.5 µs / 26 µs | 29 µs / 39 µs |
+| `math.weighted` | PickWeighted of 10 | 86 / 469 | 986 / 862 |
+| `nodegraph` | PickNodes of 6000 at 96 (one call) | 12.7 ms / 14.1 ms | 2.6 ms / 2.6 ms |
+| `nodegraph` | Candidates of 1500 within 512 (one call) | 25.9 ms / 34.4 ms | 3.4 ms / 3.5 ms |
+| `nodegraph` | Bridges of 1500 within 720 (one call) | 18.0 ms / 24.4 ms | 1.8 ms / 1.7 ms |
+| `transaction` | 20k transactions run to a commit | 304 / 390 | 542 / 564 |
+| `tree.avl` | insert 20k keys | (see below) / 1.9 µs | 201 / 207 |
+| `tree.avl` | insert 20k, get each | (see below) / 1.2 µs | 175 / 177 |
+| `tree.avl` | insert 20k, 20k floors | (see below) / 1.2 µs | 176 / 179 |
+| `tree.avl` | insert 20k, walk in order | (see below) / 970 | 125 / 116 |
+| `tree.avl` | insert 20k, remove each | (see below) / 1.7 µs | 171 / 176 |
+| `tree.heap` | push and pop 20k (numbers) | 334 / 527 | 128 / 134 |
+| `tree.heap` | search-like: 3 pushes a pop, 6k | 217 / 354 | 108 / 116 |
+| `world.grid` | Thin 5000 points (one call) | 1.4 ms / 1.8 ms | 1.3 ms / 2.1 ms |
+| `world.grid` | Put 5000, Near each | 1.4 µs / 2.6 µs | 3.2 µs / 3.3 µs |
+| `world.lease` | take, holder, release | 26 / 86 | 168 / 178 |
+| `world.pairmap` | set then get | 43 / 176 | 135 / 143 |
+| `world.sets` | named set Has | 7.8 / 48 | 102 / 117 |
 
-The node graph build yields between steps to spend at most 4 ms of a tick,
-but each of these is one call: in Lua each stalled a tick for 9 to 37 ms
-(it varies with the server's load), natively each fits the budget.
-`tree.avl`'s Lua twin with the JIT on measured 120 to 260 µs an operation
-on the server against 2.6 µs locally: the bench flushes the JIT between
-modes and the twin is recompiled from scratch under Rosetta, so that
-column is not the game's; the JIT-off column (the twin at its slowest
-honest speed) is 8 to 11× the native.
+Natively faster: the modules doing bulk work in one call or a hot loop
+(`nodegraph` 5 to 10×, `math.matrix` 9 to 17×, `math.stats.Percentile`
+5.6×, `math.polyline.DistanceOf` 4×, `tree.avl` 6 to 9× against the
+JIT-off twin, `tree.heap` 2 to 2.6×, `file.buffer` 2×, `encoding.keyvalues`
+1.7×, `list.select` 1.3 to 1.7×). The node graph build yields between steps
+to spend at most 4 ms of a tick, but each of its cases is one call: in Lua
+each stalls a tick for 13 to 26 ms, natively each fits the budget.
 
-Under the floor, measured in Lua alone against a native call (about 15 ns
-locally, 20 on the server): `list.slots` 24 ns (server, JIT on), `chain`
-7, `world.pairmap` 40 for a set and a get, `lease` 18, `queue`, `ring`,
-`sets.Has`, `geometry`, `scalar`, `polynomial.Evaluate`. No native twin
-of an operation that cheap can win; they are native anyway (one
-implementation a realm, above). `math.matrix`,
-`math.polynomial.Roots` and `math.stats` do bulk work (a 32×32 inverse
-1.4 ms, `Percentile` of 1000 216 µs) but nothing in the game calls them
-on a hot path (`analysis.analytics` takes a percentile per report), so
-they wait for a caller.
+Natively slower, by the crossing a call: everything the JIT compiles into
+a few instructions (`geometry`, `scalar`, `polynomial.Evaluate`, the list
+structures, `world.*`, `core.class`, `math.weighted`), and the ones that
+call back into Lua or resume coroutines across the boundary
+(`list.schedule` 1.7×, `transaction` 1.8×, `generator.state_machine`
+1.2×, `configstore.Parse` 4.6×, which builds its answer as a Lua string).
+`math.geometry` costs about 180 ns a call natively, nine times a bare
+crossing, because each point is read field by field through the C API.
+They are native anyway (one implementation a realm, above); none of them
+is on a path the profile shows hot (`docs/ns-performance-baseline.md`).
+
+Two columns are not the game's. `tree.avl`'s Lua twin with the JIT on
+measured 89 to 238 µs an operation on the server against 2.6 µs locally:
+the bench flushes the JIT between modes and the twin is recompiled from
+scratch under Rosetta; the JIT-off column (the twin at its slowest honest
+speed) is the one to compare. `cache.lru`'s Lua twin, compiled beside the
+installed natives, extends the native `cache.base`, so its Lua column is
+the subclass over the native base, not Lua alone.
 
 ## Threads and caches
 
