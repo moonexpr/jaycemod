@@ -8,8 +8,12 @@
 -- measured across the floor: an area's clearance is its walk to the nearest
 -- wall, starting from its own middle's distance to a wall it stands by. No
 -- room or corridor crosses a func_door, the threshold between indoors and
--- outdoors, or an areaportal (the map's own areas). A patch of indoors or
--- outdoors too small to be a room takes the side of what surrounds it.
+-- outdoors, an areaportal (the map's own areas), or a drop (floors more
+-- than LEVEL_GAP apart: a ledge over a yard is a level above it, the drop a
+-- door). A patch of indoors or outdoors too small to be a room takes the
+-- side of what surrounds it, and floor too small to be a room with nothing
+-- on its own floor to join (a crate's top) is the room or corridor it drops
+-- into.
 --
 -- Floor wider than a corridor (clearance over half CORRIDOR_WIDTH) forms the
 -- cores of rooms, joined where such floor meets; a core of ROOM_MIN_FLOOR or
@@ -76,10 +80,23 @@ ROOM, STAIRWELL, CORRIDOR = "room", "stairwell", "corridor"
 local YIELD_EVERY = 64
 
 -- A link a room or passage never crosses: through a func_door, over the
--- threshold between indoors and outdoors, or between two of the map's own
--- areas (sealed from each other by an areaportal).
+-- threshold between indoors and outdoors, between two of the map's own
+-- areas (sealed from each other by an areaportal), or a drop: floors more
+-- than LEVEL_GAP apart, a ledge over a yard, are two levels, the drop a door
+-- between them.
+local function Drop(area, to)
+	return max(to.lo.z - area.hi.z, area.lo.z - to.hi.z) > LEVEL_GAP
+end
+
 local function Within(area, link, to)
 	return not link.door and (area.outdoor == true) == (to.outdoor == true) and area.bsp == to.bsp
+		and not Drop(area, to)
+end
+
+-- Over a drop alone: what a crate's top, too small to be a room, is part of.
+local function Over(area, link, to)
+	return not link.door and (area.outdoor == true) == (to.outdoor == true) and area.bsp == to.bsp
+		and Drop(area, to)
 end
 
 local function Centres(area, _, to) return Distance(area.center, to.center) end
@@ -236,9 +253,10 @@ local function Flights(graph, ids, free, yield)
 end
 
 -- The rooms a piece opens on (by any link, as a set), and the one it shares
--- the widest edge with within its own side (no door, no threshold between),
--- or nil.
-local function Neighbours(graph, areas, of)
+-- the widest edge with over links joined lets through (by default Within:
+-- its own side and floor, no door, no threshold between), or nil.
+local function Neighbours(graph, areas, of, joined)
+	joined = joined or Within
 	local rooms, widths = {}, {}
 	for _, id in ipairs(areas) do
 		local area = graph[id]
@@ -247,7 +265,7 @@ local function Neighbours(graph, areas, of)
 			local room = to and of[link.to]
 			if room then
 				rooms[room] = true
-				if Within(area, link, to) then widths[room] = (widths[room] or 0) + link.width end
+				if joined(area, link, to) then widths[room] = (widths[room] or 0) + link.width end
 			end
 		end
 	end
@@ -467,13 +485,22 @@ function Partition(graph, yield, windows)
 	while left[1] do
 		local still = {}
 		for _, piece in ipairs(left) do
+			local small = FloorOf(graph, piece) < ROOM_MIN_FLOOR
 			local _, widest = Neighbours(graph, piece, of)
 			local _, along = Neighbours(graph, piece, passageOf)
+			local _, below = Neighbours(graph, piece, of, Over)
+			local _, under = Neighbours(graph, piece, passageOf, Over)
 			if widest then
 				for _, id in ipairs(piece) do of[id] = widest end
-			elseif along and FloorOf(graph, piece) < ROOM_MIN_FLOOR then
+			elseif along and small then
 				for _, id in ipairs(piece) do
 					passageOf[id], along.areas[#along.areas + 1] = along, id
+				end
+			elseif below and small then
+				for _, id in ipairs(piece) do of[id] = below end
+			elseif under and small then
+				for _, id in ipairs(piece) do
+					passageOf[id], under.areas[#under.areas + 1] = under, id
 				end
 			else
 				still[#still + 1] = piece

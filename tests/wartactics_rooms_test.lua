@@ -266,6 +266,50 @@ T.test("rooms storeys apart are on levels numbered from the ground up; a stairwe
 	T.eq(table.concat(p.levels[2].rooms, ","), tostring(high.id), "each level's rooms, the stairwell in neither")
 end)
 
+T.test("a ledge a drop above the yard beside it is a room of its own on the level above, the drop its door", function()
+	local mesh = Mesh()
+	local drop = Rooms.LEVEL_GAP * 3
+	mesh:Block(0, 0, 10, 10, 0, true)
+	mesh:Block(10, 0, 10, 10, drop, true) -- the ledge, its edge over the yard along a whole side
+	for r = 0, 9 do mesh:Join(mesh:Id(9, r), mesh:Id(10, r)) end
+	local p = Rooms.Partition(mesh:Graph())
+	local yard, ledge = Rooms.RoomOf(p, mesh:Id(0, 5)), Rooms.RoomOf(p, mesh:Id(19, 5))
+	T.eq(yard ~= ledge, true, "two rooms, not one climbing the drop")
+	T.eq(yard.level, 1, "the yard")
+	T.eq(ledge.level, 2, "the ledge, the level above")
+	T.eq(#ledge.doors > 0 and ledge.doors[1].leads[1], yard.id, "dropping off the ledge leads to the yard")
+end)
+
+T.test("a crate's top, too small to be a room, is the room it drops into", function()
+	local mesh = Mesh()
+	mesh:Block(0, 0, 10, 10, 0, true)
+	mesh:Block(10, 4, 2, 2, Rooms.LEVEL_GAP * 3, true)
+	for r = 4, 5 do mesh:Join(mesh:Id(9, r), mesh:Id(10, r)) end
+	local p = Rooms.Partition(mesh:Graph())
+	T.eq(#p.rooms, 1, "no room of its own")
+	T.eq(Rooms.RoomOf(p, mesh:Id(11, 5)), Rooms.RoomOf(p, mesh:Id(0, 5)), "the yard's")
+	T.eq(#p.levels, 1, "nor a level")
+end)
+
+T.test("a ledge too small to be a room, over a corridor, is the corridor's", function()
+	local mesh = TwoHalls()
+	Corridor(mesh, 5)
+	mesh:Block(14, 6, 2, 2, Rooms.LEVEL_GAP * 3)
+	for c = 14, 15 do mesh:Join(mesh:Id(c, 5), mesh:Id(c, 6)) end
+	local p = Rooms.Partition(mesh:Graph())
+	T.eq(#p.rooms, 2, "the halls alone")
+	T.eq(Rooms.PassageOf(p, mesh:Id(15, 7)), Rooms.PassageOf(p, mesh:Id(12, 5)), "the corridor's")
+end)
+
+T.test("a ledge no higher than LEVEL_GAP over the yard is the yard's floor", function()
+	local mesh = Mesh()
+	mesh:Block(0, 0, 10, 10, 0, true)
+	mesh:Block(10, 0, 10, 10, Rooms.LEVEL_GAP, true)
+	for r = 0, 9 do mesh:Join(mesh:Id(9, r), mesh:Id(10, r)) end
+	local p = Rooms.Partition(mesh:Graph())
+	T.eq(Rooms.RoomOf(p, mesh:Id(0, 5)), Rooms.RoomOf(p, mesh:Id(19, 5)), "one room, stepped")
+end)
+
 T.test("a map on one floor has one level", function()
 	local mesh = TwoHalls()
 	Corridor(mesh, 5)
