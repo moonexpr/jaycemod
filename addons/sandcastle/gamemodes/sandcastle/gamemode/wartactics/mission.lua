@@ -1,11 +1,23 @@
 -- A squad's mission from the tactics engine (docs/squad-missions-plan.md),
 -- the wait for its members, and when the squad must regroup.
 --
--- New{ kind, way, size, wait, issued } -> a mission, unchangeable: the kind
---   (ADVANCE), the way it goes (waypoints, { x, y, z }), how many soldiers
---   the squad should be, how long its leader waits for them (seconds from
---   issued); a kind it does not know, an empty way, a size under 1 or a
---   negative wait is our bug
+-- New{ kind, way, size, wait, issued, alpha } -> a mission, unchangeable:
+--   the kind (ADVANCE), the way it goes (a lane of wartactics.lanes), how
+--   many soldiers the squad should be, how long its leader waits for them
+--   (seconds from issued), and whether the squad is its team's alpha (the
+--   squad on the objective directly, before any other); a kind it does not
+--   know, a way without points, a size under 1 or a negative wait is our bug
+-- Issue{ fireTeam, fireTeams, lanes, now, nextWave, travel, missing, size,
+--   regrouped } -> the mission a squad leader asked for: the squad is its
+--   team's alpha, on the direct lane (else the first), when its job comes at
+--   the objective directly (its lane kinds hold DIRECT: never raiders) and
+--   no other squad
+--   of its team holds the alpha's mission out on the objective (one
+--   regrouping does not); any other squad takes the least taken lane of
+--   its job's kinds (wartactics.lanes' Choices) among the missions out. Its
+--   wait: Wait, with no wave after a regroup. Declined NO_LANES while its
+--   team has none; a squad of a job that takes no lanes is our bug.
+--   fireTeam: { team, role, mission, regrouping }; lanes: its team's
 -- Waited(mission, now) -> whether the leader's wait is over
 -- Wait{ missing, nextWave, now, travel } -> seconds to wait: none with no
 --   one missing; after spawning, until the team's next wave (nextWave, a
@@ -17,11 +29,16 @@
 -- Track(remaining, now) -> a record of the squad's best distance left along
 --   its way: Stuck(remaining, now) -> whether it has come no PROGRESS_STEP
 --   nearer in STUCK_TIME
-local error, setmetatable, max, min, tostring = error, setmetatable, math.max, math.min, tostring
+local error, ipairs, setmetatable, max, min, tostring = error, ipairs, setmetatable, math.max, math.min, tostring
+local Lanes = wartactics.lanes
+local Transaction = transaction
 module(...)
 
 ADVANCE = "advance"
 local KINDS = { [ADVANCE] = true }
+
+-- A request declined while the asking squad's team has no lanes planned.
+NO_LANES = "no lanes"
 
 WAIT_MAX = 45
 CASUALTY_SHARE = 0.5
@@ -31,11 +48,63 @@ local function Frozen(_, key) error("a mission is not changed: " .. tostring(key
 
 function New(spec)
 	if not KINDS[spec.kind] then error("no mission kind " .. tostring(spec.kind), 2) end
-	if not (spec.way and spec.way[1]) then error("a mission needs a way", 2) end
 	if not (spec.size and spec.size >= 1) then error("a mission needs a size of 1 or more", 2) end
 	if not (spec.wait and spec.wait >= 0) then error("a mission's wait is never negative", 2) end
-	local fields = { kind = spec.kind, way = spec.way, size = spec.size, wait = spec.wait, issued = spec.issued }
+	if not (spec.way and spec.way.points and spec.way.points[1]) then error("a mission needs a way", 2) end
+	local fields = { kind = spec.kind, way = spec.way, size = spec.size, wait = spec.wait, issued = spec.issued,
+		alpha = spec.alpha == true }
 	return setmetatable({}, { __index = fields, __newindex = Frozen })
+end
+
+-- Whether a squad of team other than fireTeam holds the alpha's mission and
+-- is out on it.
+local function AlphaOut(fireTeams, fireTeam)
+	for _, other in ipairs(fireTeams) do
+		if other ~= fireTeam and other.team == fireTeam.team and other.mission and other.mission.alpha
+			and not other.regrouping then
+			return true
+		end
+	end
+	return false
+end
+
+local function Direct(lanes)
+	for _, lane in ipairs(lanes) do
+		if lane.kind == Lanes.DIRECT then return lane end
+	end
+	return lanes[1]
+end
+
+-- Of the lanes the job takes, the one fewest other squads' missions are on;
+-- the first planned on a tie.
+local function LeastTaken(fireTeams, fireTeam, lanes)
+	local best, bestCount
+	for _, i in ipairs(Lanes.Choices(lanes, fireTeam.role)) do
+		local count = 0
+		for _, other in ipairs(fireTeams) do
+			if other ~= fireTeam and other.team == fireTeam.team and other.mission and other.mission.way == lanes[i] then
+				count = count + 1
+			end
+		end
+		if best == nil or count < bestCount then best, bestCount = lanes[i], count end
+	end
+	return best
+end
+
+function Issue(spec)
+	local fireTeam, lanes = spec.fireTeam, spec.lanes
+	if not Lanes.JOBS[fireTeam.role] then error("a squad of job " .. tostring(fireTeam.role) .. " asks for no mission", 2) end
+	if not (lanes and lanes[1]) then Transaction.Refuse(NO_LANES, "its team has no lanes planned yet") end
+	local alpha = Lanes.JOB_KINDS[fireTeam.role][Lanes.DIRECT] == true and not AlphaOut(spec.fireTeams, fireTeam)
+	return New({
+		kind = ADVANCE,
+		way = alpha and Direct(lanes) or LeastTaken(spec.fireTeams, fireTeam, lanes),
+		size = spec.size,
+		wait = Wait({ missing = spec.missing, nextWave = not spec.regrouped and spec.nextWave or nil, now = spec.now,
+			travel = spec.travel }),
+		issued = spec.now,
+		alpha = alpha,
+	})
 end
 
 function Waited(mission, now)

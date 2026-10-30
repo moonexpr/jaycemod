@@ -224,9 +224,9 @@ function Thin(points, clear)
 	return kept, length
 end
 
--- The lanes a squad of job `role` may take: those of its kinds
+-- The lanes a squad of job `role` may take, by index: those of its kinds
 -- (JOB_KINDS), or every lane when none of those could be planned.
-local function Choices(lanes, role)
+function Choices(lanes, role)
 	local choices = {}
 	for i, lane in ipairs(lanes) do
 		if JOB_KINDS[role][lane.kind] then choices[#choices + 1] = i end
@@ -238,14 +238,24 @@ end
 
 -- Gives each squad of a lane job a lane of its team, keeping the one it has
 -- while its team's lanes are the same plan (lanes.key): of the kinds its
--- job takes, the least taken, the first planned on a tie. fireTeams:
--- features.aiwar.model's; lanesByTeam: team -> lanes.
+-- job takes, the least taken, the first planned on a tie. A squad on a
+-- mission (wartactics.mission) walks its mission's way, which counts as
+-- taken while it is one of the plan's. fireTeams: features.aiwar.model's;
+-- lanesByTeam: team -> lanes.
 function Assign(fireTeams, lanesByTeam)
 	local taken = {}
 	local waiting = {}
 	for _, fireTeam in ipairs(fireTeams) do
 		local lanes = lanesByTeam[fireTeam.team]
-		if JOBS[fireTeam.role] and lanes and #lanes > 0 then
+		if fireTeam.mission then
+			fireTeam.laneKey, fireTeam.laneIndex = nil, nil
+			for i, lane in ipairs(lanes or {}) do
+				if lane == fireTeam.mission.way then
+					taken[lanes] = taken[lanes] or {}
+					taken[lanes][i] = (taken[lanes][i] or 0) + 1
+				end
+			end
+		elseif JOBS[fireTeam.role] and lanes and #lanes > 0 then
 			if fireTeam.laneKey == lanes.key and lanes[fireTeam.laneIndex] then
 				taken[lanes] = taken[lanes] or {}
 				taken[lanes][fireTeam.laneIndex] = (taken[lanes][fireTeam.laneIndex] or 0) + 1
@@ -268,7 +278,11 @@ function Assign(fireTeams, lanesByTeam)
 	end
 	for _, fireTeam in ipairs(fireTeams) do
 		local lanes = lanesByTeam[fireTeam.team]
-		fireTeam.lane = fireTeam.laneIndex and lanes and lanes[fireTeam.laneIndex] or nil
+		if fireTeam.mission then
+			fireTeam.lane = fireTeam.mission.way
+		else
+			fireTeam.lane = fireTeam.laneIndex and lanes and lanes[fireTeam.laneIndex] or nil
+		end
 	end
 end
 

@@ -169,6 +169,22 @@ T.test("raiders take the tours, and assault squads take lanes as escorts do", fu
 	T.eq(Lanes.JOBS.assault, true, "a lane job")
 end)
 
+T.test("a squad on a mission walks its mission's way, which the others count as taken", function()
+	local lanes = { key = "k", Kind("direct", 1000), Kind("flank", 1200), Kind("flank", 1300) }
+	local onMission = { team = 3, role = "escort", mission = { way = lanes[1] } }
+	local other = { team = 3, role = "escort" }
+	Lanes.Assign({ onMission, other }, { [3] = lanes })
+	T.eq(onMission.lane, lanes[1], "the mission's way")
+	T.eq(other.laneIndex, 2, "the direct lane is taken")
+end)
+
+T.test("Choices: the lanes of a job's kinds, else every lane", function()
+	local lanes = { key = "k", Kind("direct", 1000), Kind("flank", 1200), Kind("tour", 2000) }
+	T.eq(table.concat(Lanes.Choices(lanes, "escort"), ","), "1,2")
+	T.eq(table.concat(Lanes.Choices(lanes, "raid"), ","), "3")
+	T.eq(table.concat(Lanes.Choices({ key = "k", Kind("direct", 1) }, "raid"), ","), "1")
+end)
+
 T.test("a squad whose kind of lane could not be planned takes any lane", function()
 	local lanes = { key = "k", Kind("direct", 1000), Kind("flank", 1200) }
 	local raiders = { team = 3, role = "raid" }

@@ -160,6 +160,15 @@ another squad only while the alpha squad is out on the objective.
   only what soldiers saw, and when.
 - **Topple a support base**: the enemy's turrets, dispensers and medics, as
   sighted. Needs the same reports.
+- **Establish a remote base** along the battle lines: the squad leads its
+  engineers and support to a post on the line (`wartactics.posts`) and
+  holds it while they set up turrets, health and a way back from spawn (a
+  teleporter, `docs/engineers-plan.md`). Needs the player classes' kits
+  for building.
+
+Reference for later kinds: bakaemon/gmod-combat-intelligent-ai (squad
+roles: leader, suppressor, flanker, breacher; room clearing; morale). Its
+code is GPL-3.0: ideas only, no code.
 
 ## 7. Settled with the operator
 
@@ -172,4 +181,9 @@ another squad only while the alpha squad is out on the objective.
    `Pose`) and announce it, as in setup. The seated stances replace it
    once spawn rooms are known.
 4. Special missions are always secondary to an alpha squad tending the
-   objective directly (§3).
+   objective directly (§3). Only a job that comes at the objective
+   directly (its lanes hold the direct one: escort, assault, explore) can
+   be the alpha; raiders never are.
+5. A mission that fails, or a request that does, leaves the squad on its
+   scenario's default behaviour (today's lane and orders). The leader's
+   wait never holds a squad with no mission coming.

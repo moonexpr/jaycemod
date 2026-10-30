@@ -324,6 +324,7 @@ function Controller:Think(now)
 	-- the war waits: its soldiers act only on a whole field
 	if not field then return end
 	self.war:SetField(field)
+	self:MissionsThink(now)
 	self:HazardsThink()
 	if field.phase.reinforce then self:Reinforce(now) end
 	if field.phase.sightAll then self:SightAll(now) end
