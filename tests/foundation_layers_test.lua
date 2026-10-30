@@ -198,6 +198,7 @@ local WARTACTICS = {
 	["fireteam"] = "wartactics",
 	["scenarios"] = "wartactics",
 	["squad"] = "wartactics",
+	["mission"] = "wartactics",
 	["lanes"] = "wartactics",
 	["explore"] = "wartactics",
 	["hunt"] = "wartactics",
