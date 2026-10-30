@@ -184,7 +184,7 @@ by; nothing more.
 |---|---|---|
 | Ambush | commons and unoccupied rooms (and wilds) beside an enemy highway, not on it (TF2's ambush code and FM 3-21.8 both put the ambushers off the kill zone), the enemy's traffic on that highway high (`intel:Traffic`); ordered by that traffic | the door onto the highway: the squad waits behind it |
 | Assault | the enemy's strongholds and outposts as the team's view has them, guarded within the squad's odds (`intel:Guarded`); never restricted ground; ordered by worth to the team's lanes (on them first) | the room's way nearest the team's own rooms |
-| Remote base | establishes an outpost: an unoccupied room or wilds on the team's frontier, with one or two ways in (easy to hold), not contested; where along the frontier is open (§7) | where the builders set up: the room's centre, away from its ways |
+| Remote base | establishes an outpost in a commons, an unoccupied room, or a place of significance in the wilds: a hiding spot the nav mesh identifies (`area:GetHidingSpots()`, as `features.aiwar.spawns` reads them, 11abcdd0); with one or two ways in (easy to hold), not contested | where the builders set up: the hiding spot in the wilds, else the room's centre, away from its ways |
 | Topple a support base | the enemy's outposts and strongholds with works the team knows of | as an assault |
 
 A squad's choice is drawn among the best two or three, not always the
@@ -231,10 +231,6 @@ The layer stands on the rooms, so they hold first:
 
 - Whether presence alone should make a room a team's (a squad holding a
   hall for a minute), or only spawns, objectives and works.
-- Where a remote base goes along the frontier: forward on the team's lanes
-  (as the plan first had it, and as a TF2 engineer builds where its team
-  arrives first), or off the routes the enemy uses, on ground it values
-  little (the Army's patrol base doctrine). The research leaves it open.
 
 ## 8. Settled with the operator
 
@@ -254,3 +250,5 @@ The layer stands on the rooms, so they hold first:
   the round is over.
 - The wilds are not found from anything of their own: they are any room
   the other classes have not taken, the final pass.
+- A remote base takes a commons, an unoccupied room, or a place of
+  significance in the wilds such as an identified hiding spot (§4).
