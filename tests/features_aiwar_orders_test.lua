@@ -966,6 +966,15 @@ T.test("a squad whose request failed, or that waited past MUSTER_PATIENCE, goes 
 	T.eq(t.fireTeam.missionWanted, nil, "and asks no more")
 end)
 
+T.test("a leader that cannot reach its muster spot in MUSTER_WALK_LIMIT musters where it stands", function()
+	local s = Mustered({})
+	s.Tick(2)
+	Near(s.meA.moving, MUSTER, "on its way")
+	s.Tick(Orders.MUSTER_WALK_LIMIT / TICK + 2)
+	Near(s.fireTeam.musterAt, P(100, 0), "where it stands, stuck")
+	T.eq(s.fireTeam.missionWanted, true, "and asks there")
+end)
+
 T.test("contact at the muster: the squad fights", function()
 	local s = Mustered({ leaderAt = MUSTER })
 	s.Tick()

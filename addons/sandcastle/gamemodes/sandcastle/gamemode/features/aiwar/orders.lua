@@ -1481,6 +1481,9 @@ end
 -- squad fights. No mission after MUSTER_PATIENCE, or a request that failed
 -- (missionsOff), and the squad goes on as its scenario's default would.
 MUSTER_ARRIVE, MUSTER_PATIENCE, SCAN_PERIOD = 64, 30, 2
+-- A leader not at its muster spot (a regroup's hiding spot on a floor it
+-- cannot reach) after MUSTER_WALK_LIMIT musters where it stands.
+MUSTER_WALK_LIMIT = 12
 local MUSTERING, WAITING, GATHERED = "mustering", "waiting for its squad", "crouched with its squad"
 local SCAN_HEIGHT, SCAN_POINT = 64, 3
 
@@ -1545,6 +1548,9 @@ function Objective:MusterLeader(me, fireTeam, lanes)
 		local out = me:RangeTo(start) > Distance(lanes.muster, start) + MUSTER_ARRIVE
 		fireTeam.musterFrom = now
 		fireTeam.musterAt = out and me:Position() or lanes.muster
+	end
+	if me:RangeTo(fireTeam.musterAt) > MUSTER_ARRIVE and now - fireTeam.musterFrom >= MUSTER_WALK_LIMIT then
+		fireTeam.musterAt = me:Position()
 	end
 	if me:RangeTo(fireTeam.musterAt) > MUSTER_ARRIVE then
 		state.tactic, state.goal = MUSTERING, fireTeam.musterAt
