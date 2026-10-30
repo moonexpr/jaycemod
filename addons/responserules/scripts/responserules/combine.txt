@@ -742,3 +742,40 @@ rule RegroupCombineMetrocop
 	ApplyContext "SaidRegroup:1:10"
 	response RegroupCombineMetrocop
 }
+
+// Taunt: a soldier taunting says a long line with it, to all near
+response TauntCombine
+{
+	print "Combine: target contained" defaultdelay
+}
+rule TauntCombine
+{
+	criteria ConceptTaunt IsCombine NotSaidTaunt
+	ApplyContext "SaidTaunt:1:20"
+	response TauntCombine
+}
+response TauntCombineSoldier
+{
+	speak "npc/combine_soldier/vo/overwatchconfirmhvtcontained.wav" defaultdelay
+	speak "npc/combine_soldier/vo/overwatchtarget1sterilized.wav" defaultdelay
+	speak "npc/combine_soldier/vo/overwatchtargetcontained.wav" defaultdelay
+}
+rule TauntCombineSoldier
+{
+	criteria ConceptTaunt IsCombine NotSaidTaunt IsSoldierVoice
+	ApplyContext "SaidTaunt:1:20"
+	response TauntCombineSoldier
+}
+response TauntCombineMetrocop
+{
+	speak "npc/metropolice/vo/putitinthetrash1.wav" defaultdelay
+	speak "npc/metropolice/vo/putitinthetrash2.wav" defaultdelay
+	speak "npc/metropolice/vo/pickupthecan2.wav" defaultdelay
+	speak "npc/metropolice/vo/youwantamalcomplianceverdict.wav" defaultdelay
+}
+rule TauntCombineMetrocop
+{
+	criteria ConceptTaunt IsCombine NotSaidTaunt IsMetrocopVoice
+	ApplyContext "SaidTaunt:1:20"
+	response TauntCombineMetrocop
+}

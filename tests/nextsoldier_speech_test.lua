@@ -307,7 +307,8 @@ end)
 
 T.test("every squad leader calls its squad out and calls a regroup, each voice with lines its own, at most every 10 s", function()
 	local OWN = { combine = "CombineSoldier", metrocop = "CombineMetrocop", male = "RebelMale", female = "RebelFemale" }
-	for concept, name in pairs({ [Speech.CONCEPT_MOVE_OUT] = "MoveOut", [Speech.CONCEPT_REGROUP] = "Regroup" }) do
+	for concept, name in pairs({ [Speech.CONCEPT_MOVE_OUT] = "MoveOut", [Speech.CONCEPT_REGROUP] = "Regroup",
+		[Speech.CONCEPT_TAUNT] = "Taunt" }) do
 		for _, voice in ipairs(VOICES) do
 			local speaker = Speaker()
 			local said = Say(voice, Speech.OFFENSE, concept, false, speaker)
@@ -318,6 +319,22 @@ T.test("every squad leader calls its squad out and calls a regroup, each voice w
 			end
 			T.eq(Say(voice, Speech.OFFENSE, concept, false, speaker), nil, voice.name .. ": not again at once")
 		end
+	end
+end)
+
+T.test("a taunt's line is a long one: every Combine and male rebel taunt runs over a second and a half", function()
+	local LONG = 1.5
+	local seconds = {
+		["npc/combine_soldier/vo/overwatchconfirmhvtcontained.wav"] = 2.5,
+		["npc/combine_soldier/vo/overwatchtarget1sterilized.wav"] = 2.0,
+		["npc/combine_soldier/vo/overwatchtargetcontained.wav"] = 1.6,
+		["vo/npc/male01/oneforme.wav"] = 2.7,
+		["vo/npc/male01/fantastic01.wav"] = 1.7,
+	}
+	for file, length in pairs(seconds) do T.eq(length >= LONG, true, file) end
+	local text = Read("responserules/combine.txt") .. Read("responserules/rebel.txt")
+	for file in pairs(seconds) do
+		T.eq(text:find('speak "' .. file .. '"', 1, true) ~= nil, true, "a taunt line: " .. file)
 	end
 end)
 

@@ -887,3 +887,38 @@ rule RegroupRebelFemale
 	ApplyContext "SaidRegroup:1:10"
 	response RegroupRebelFemale
 }
+
+// Taunt: a soldier taunting says a long line with it, to all near
+response TauntRebel
+{
+	print "Rebel: one for me" defaultdelay
+}
+rule TauntRebel
+{
+	criteria ConceptTaunt IsRebel NotSaidTaunt
+	ApplyContext "SaidTaunt:1:20"
+	response TauntRebel
+}
+response TauntRebelMale
+{
+	speak "vo/npc/male01/oneforme.wav" defaultdelay
+	speak "vo/npc/male01/fantastic01.wav" defaultdelay
+}
+rule TauntRebelMale
+{
+	criteria ConceptTaunt IsRebel NotSaidTaunt IsMaleVoice
+	ApplyContext "SaidTaunt:1:20"
+	response TauntRebelMale
+}
+response TauntRebelFemale
+{
+	speak "vo/npc/female01/fantastic01.wav" defaultdelay
+	speak "vo/npc/female01/likethat.wav" defaultdelay
+	speak "vo/npc/female01/yeah02.wav" defaultdelay
+}
+rule TauntRebelFemale
+{
+	criteria ConceptTaunt IsRebel NotSaidTaunt IsFemaleVoice
+	ApplyContext "SaidTaunt:1:20"
+	response TauntRebelFemale
+}

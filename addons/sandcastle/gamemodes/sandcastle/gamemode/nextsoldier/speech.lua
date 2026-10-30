@@ -37,6 +37,10 @@ CONCEPT_MOVE_OUT = "TLK_NS_MOVE_OUT"
 -- A squad leader calls its squad together to a hiding spot, its mission
 -- gone wrong (heavy casualties, no progress), heard by all near.
 CONCEPT_REGROUP = "TLK_NS_REGROUP"
+-- A soldier taunting (a celebration or greeting played whole, standing:
+-- features/aiwar/sv_gestures.lua) says a long line to go with it, heard by
+-- all near.
+CONCEPT_TAUNT = "TLK_NS_TAUNT"
 
 CONCEPT_ENEMY_KILLED = "TLK_NS_ENEMY_KILLED"
 CONCEPT_ALLY_DOWN = "TLK_NS_ALLY_DOWN"
