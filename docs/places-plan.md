@@ -48,15 +48,23 @@ Static measures of each room, from the graph alone:
 | Measure | What |
 |---|---|
 | ways | its doors, corridors and windows, by kind |
-| betweenness | how many of the shortest routes between the map's key rooms (spawns, objectives) pass through it |
-| depth | how far it lies from the nearest way on: 0 for a room on a route, more for rooms off it; a dead end is the far room of a branch |
+| incursion | each team's walk to it from its active spawn rooms over the room graph (TF2's incursion distance, `tf_nav_area.h` `GetIncursionDistance`, per room instead of per area); walked again only on a capture, setup's end, a point's unlock and a round's reset. Comparing the two teams' says which reaches a room first |
+| flow | how much of the movement between the key rooms (spawns, objectives) passes through it: every route, not the one shortest (a second route nearly as short would score nothing); the team's planned lanes through it, or current-flow betweenness, one solve a map |
+| entries | for an objective room, the fewest doors that part it from the enemy's spawn: where it is guarded and come at (Killzone 2's playtesters' first complaint was bots guarding the objective instead of its entries) |
+| depth | how far it lies off the routes; a dead end is a branch hanging off one room, with no spawn or objective in it |
 | floor, level | from the rooms |
+
+Sources and their costs: `docs/research/places-prior-art.md`. Every measure is
+a walk or a flood over 20 to 200 rooms, well under a millisecond.
 
 ### 2.2 Occupation (`wartactics.occupation`)
 
 Who holds each room, as evidence weighed, not a flag set once. A room's
 holder is the team whose claim passes `HOLD` and beats the other's by a
-margin; otherwise it is contested (both claim) or open (neither).
+margin; otherwise it is contested (both claim) or open (neither). Holding
+has hysteresis, so occupation does not flicker: a room is taken above
+`HOLD` and lost only below a lower `LOSE`, and only after its holder has
+held it `HOLD_TIME`.
 
 Claims come from sources, each with its strength and how it fades:
 
@@ -86,13 +94,13 @@ occupation changes.
 
 | Class | A room that | Found from |
 |---|---|---|
-| Stronghold | a team holds and the enemy cannot reach without passing through others it holds: its spawn rooms and what lies behind them | occupation, and the graph cut at the team's frontier |
-| Frontier | a team holds next to rooms the enemy holds or contests | occupation and edges |
+| Stronghold | a team holds and the enemy cannot reach without passing through others it holds: its spawn rooms and what lies behind them | one flood from the enemy's spawns over rooms the team does not hold: the team's rooms it never reaches (no min-cut needed) |
+| Frontier | a team holds next to rooms the enemy holds or contests; before any presence, the rooms where the two teams' incursions meet | occupation and edges; incursion |
 | Contested | both teams claim | occupation |
 | Common | neither holds, wide and well connected: the open ground the fight crosses | floor, ways, betweenness, occupation |
-| Thoroughfare | the routes between the key rooms pass through, for its size: corridors' rooms, stairwells, a hall between wings | betweenness over floor |
-| Dead end | one way in (depth past a single door) | ways, depth |
-| Objective | holds a capture point, the cart's track, a flag | the map's entities |
+| Thoroughfare | the movement between the key rooms passes through, for its size: corridors' rooms, stairwells, a hall between wings | flow over floor |
+| Dead end | a branch off one room, no spawn or objective in it | ways, depth |
+| Objective | holds a capture point, the cart's track, a flag; its entries marked | the map's entities; entries |
 | Overlook | looks over another room through a window or from a level above | windows, levels |
 
 The tuning (what high betweenness is, how wide is wide) is constants,
@@ -120,10 +128,15 @@ by; nothing more.
 
 | Mission | The rooms | The door |
 |---|---|---|
-| Ambush | thoroughfares or dead ends on the enemy's lanes (their routes through rooms), not held by the enemy, its traffic high (`intel:Traffic`); ordered by traffic | the one the enemy's route comes in by; the squad waits at the others |
+| Ambush | rooms beside the enemy's route, not on it (TF2's ambush code and FM 3-21.8 both put the ambushers off the kill zone): rooms with a door onto a thoroughfare or objective entry the enemy's traffic is high in (`intel:Traffic`), not held by the enemy; ordered by that traffic | the door onto the enemy's route: the squad waits behind it |
 | Assault | rooms the team's view says the enemy holds, guarded within the squad's odds (`intel:Guarded`), not strongholds; ordered by worth to the team's lanes (on them first) | the room's way nearest the team's own holdings |
-| Remote base | rooms the team holds on its frontier, on its lanes, with one or two ways in (easy to hold), not contested; ordered by how far forward | where the builders set up: the room's centre, away from its ways |
+| Remote base | rooms the team holds on its frontier, with one or two ways in (easy to hold), not contested; where along the frontier is open (§7) | where the builders set up: the room's centre, away from its ways |
 | Topple a support base | rooms with enemy works the team knows of | as an assault |
+
+A squad's choice is drawn among the best two or three, not always the
+first, so a team does not do the same thing every round; and a team
+outnumbered takes fewer missions (Colonel Blotto: the weaker side leaves
+some fronts to the enemy).
 
 ## 5. Steps
 
@@ -167,3 +180,7 @@ The layer stands on the rooms, so they hold first:
   and overlook are proposed.
 - Whether presence alone should make a room a team's (a squad holding a
   hall for a minute), or only spawns, objectives and works.
+- Where a remote base goes along the frontier: forward on the team's lanes
+  (as the plan first had it, and as a TF2 engineer builds where its team
+  arrives first), or off the routes the enemy uses, on ground it values
+  little (the Army's patrol base doctrine). The research leaves it open.
