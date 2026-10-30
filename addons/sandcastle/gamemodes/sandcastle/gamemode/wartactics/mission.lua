@@ -271,6 +271,15 @@ function Recall(fireTeam, why)
 	fireTeam.regroupCalled, fireTeam.missionTrack = nil, nil
 end
 
+-- A squad whose mission is done (an ambush sprung and fought, or never
+-- sprung): it lets the mission go and asks afresh, mustering where it
+-- stands (its leader past the muster).
+function Finish(fireTeam)
+	Recall(fireTeam, nil)
+	fireTeam.mission, fireTeam.sprung, fireTeam.ambushSetAt, fireTeam.halted = nil, nil, nil, nil
+	fireTeam.stackedAt, fireTeam.breachAt, fireTeam.clearSince = nil, nil, nil
+end
+
 function Regroup(track, strength, alive, remaining, now, fighting)
 	if Casualties(strength, alive) then return CASUALTIES end
 	if fighting or remaining <= ARRIVED then

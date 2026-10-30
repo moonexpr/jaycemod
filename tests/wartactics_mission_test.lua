@@ -333,6 +333,16 @@ T.test("Issue keeps rooms other squads hold missions in out of a squad's choice"
 	T.eq(Ask(second, { alpha, first, second }, lanes, { special = Options(rooms) }).kind, Mission.ADVANCE)
 end)
 
+T.test("a squad whose mission is done asks afresh from where it stands, its mission let go", function()
+	local squad = { mission = Mission.New(Valid()), missionLed = true, musterAt = P(1), musterArrived = 3, missionTrack = {},
+		regrouping = Mission.STUCK, sprung = 4, ambushSetAt = 2, stackedAt = 5, breachAt = 6, clearSince = 7 }
+	Mission.Finish(squad)
+	for _, field in ipairs({ "mission", "missionLed", "musterAt", "musterArrived", "missionTrack", "regrouping", "sprung",
+		"ambushSetAt", "stackedAt", "breachAt", "clearSince" }) do
+		T.eq(squad[field], nil, field)
+	end
+end)
+
 T.test("a special mission needs its target", function()
 	T.eq(pcall(Mission.New, Valid({ kind = Mission.AMBUSH })), false)
 end)

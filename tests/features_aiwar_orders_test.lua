@@ -941,6 +941,161 @@ T.test("a squad out whose mission the engine replaced: its leader signals halt, 
 	T.eq(s.fireTeam.missionWanted, nil, "asks nothing")
 end)
 
+-- An ambush (docs/special-missions-plan.md §2.4): hidden near the room's
+-- door, holding fire until it is sprung.
+local DOOR, ROOM_MIDDLE = P(900, 0), P(1300, 0)
+
+local function Ambush()
+	local s = Mustered({ leaderAt = MUSTER, size = 2 })
+	s.meA.covers, s.meB.covers = { P(1000, 60) }, { P(1000, -60) }
+	s.Tick()
+	s.fireTeam.mission = Mission.New({ kind = Mission.AMBUSH, way = s.war.field.lanes[BLUE][1], size = 2, wait = 0,
+		issued = s.meA.now, target = { room = 4, pos = ROOM_MIDDLE, door = { pos = DOOR } } })
+	s.fireTeam.missionLed = true
+	return s
+end
+
+local function AtSpots(s)
+	s.Tick(2)
+	s.meA.pos, s.meB.pos = P(1000, 60), P(1000, -60)
+	s.Tick(2)
+end
+
+T.test("an ambush squad takes hiding spots inside the room by its door, and crouches there", function()
+	local s = Ambush()
+	s.Tick(2)
+	Near(s.meA.moving, P(1000, 60), "the leader to its spot")
+	Near(s.meB.moving, P(1000, -60), "the member to its own")
+	AtSpots(s)
+	T.eq(s.meA.posing ~= nil and s.meB.posing ~= nil, true, "both crouched")
+	T.eq(s.npcA:State().tactic, Orders.LYING_IN_WAIT)
+	T.eq(s.fireTeam.ambushSetAt ~= nil, true, "set")
+end)
+
+T.test("lying in wait, it holds its fire on an enemy away from the door", function()
+	local s = Ambush()
+	AtSpots(s)
+	s.meA.enemy, s.meA.enemyPos = true, P(DOOR.x - Orders.SPRING_RANGE - 200, 0)
+	s.Tick()
+	T.eq(s.npcA:Query("ShouldAttack", "e1"), N.ANSWER_NO, "held")
+	T.eq(s.fireTeam.sprung, nil)
+end)
+
+T.test("an enemy at the door springs it: the squad fights", function()
+	local s = Ambush()
+	AtSpots(s)
+	s.meA.enemy, s.meA.enemyPos = true, P(DOOR.x - Orders.SPRING_RANGE / 2, 0)
+	s.Tick(2)
+	T.eq(s.fireTeam.sprung ~= nil, true, "sprung")
+	T.eq(s.npcA:Query("ShouldAttack", "e1") ~= N.ANSWER_NO, true, "fire")
+	T.eq(s.npcA:State().fighting, true, "fighting")
+end)
+
+T.test("a hit springs it too", function()
+	local s = Ambush()
+	AtSpots(s)
+	s.meB.hurtAt = s.meB.now + 1
+	s.meB:Advance(2)
+	s.Tick(2)
+	T.eq(s.fireTeam.sprung ~= nil, true)
+end)
+
+T.test("no enemy in AMBUSH_PATIENCE, the ambush is done and the squad asks again where it stands", function()
+	local s = Ambush()
+	AtSpots(s)
+	s.Tick(Orders.AMBUSH_PATIENCE / TICK + 2)
+	T.eq(s.fireTeam.missionLed, nil, "done")
+	T.eq(s.fireTeam.missionWanted, true, "asking again")
+	Near(s.fireTeam.musterAt, P(1000, 60), "where it stands")
+end)
+
+T.test("sprung, once the fight is over the ambush is done", function()
+	local s = Ambush()
+	AtSpots(s)
+	s.meA.enemy, s.meA.enemyPos = true, P(DOOR.x, 0)
+	s.Tick(2)
+	s.meA.enemy, s.meA.enemyPos = false, nil
+	s.Tick((wartactics.fireteam.CONTACT_MEMORY + Orders.SPRING_GRACE) / TICK + 4)
+	T.eq(s.fireTeam.missionLed, nil, "done")
+end)
+
+T.test("the orders lead ambushes, assaults and topples, so the tactics engine may give them", function()
+	T.eq(Orders.SPECIAL_KINDS[Mission.AMBUSH], true)
+	T.eq(Orders.SPECIAL_KINDS[Mission.ASSAULT], true)
+	T.eq(Orders.SPECIAL_KINDS[Mission.TOPPLE], true)
+end)
+
+-- An assault (and a topple, an assault on a support base): stacked outside
+-- the door, then in together.
+local function Assault(kind)
+	local s = Mustered({ leaderAt = MUSTER, size = 2 })
+	s.Tick()
+	s.fireTeam.mission = Mission.New({ kind = kind or Mission.ASSAULT, way = s.war.field.lanes[BLUE][1], size = 2, wait = 0,
+		issued = s.meA.now, target = { room = 4, pos = ROOM_MIDDLE, door = { pos = DOOR } } })
+	s.fireTeam.missionLed = true
+	s.meA.gadget = "grenade"
+	return s
+end
+
+local STACK = P(DOOR.x - Orders.STACK_BACK, 0)
+
+T.test("an assault squad stacks up outside the door", function()
+	local s = Assault()
+	s.Tick(2)
+	Near(s.meA.moving, STACK, "the leader to the stack")
+	T.eq(s.meB.moving ~= nil and FS.Distance(s.meB.moving, STACK) <= Orders.STACK_GATHER, true, "the member by it")
+end)
+
+local function Stacked(s)
+	s.Tick(2)
+	s.meA.pos = STACK
+	s.meB.pos = s.meB.moving
+	s.Tick(2)
+end
+
+T.test("stacked, the leader signals, a grenade goes through the door, and all go in", function()
+	local s = Assault()
+	Stacked(s)
+	T.eq(Has(s.meA.gestured, Gestures.SIGNAL_FORWARD), true, "signals")
+	T.eq(#(s.meA.gadgetsAt or {}) >= 1, true, "a grenade in")
+	T.eq(FS.Distance(s.meA.gadgetsAt[1], DOOR) <= Orders.STACK_BACK * 2 and s.meA.gadgetsAt[1].x > DOOR.x, true, "through the door")
+	Near(s.meA.moving, ROOM_MIDDLE, "the leader in")
+	Near(s.meB.moving, ROOM_MIDDLE, "the member in")
+end)
+
+T.test("a squad not all stacked goes in after STACK_PATIENCE", function()
+	local s = Assault()
+	s.Tick(2)
+	s.meA.pos = STACK
+	s.Tick(2)
+	T.eq(s.fireTeam.breachAt, nil, "waiting for its member")
+	s.Tick(Orders.STACK_PATIENCE / TICK + 2)
+	T.eq(s.fireTeam.breachAt ~= nil, true, "in without it")
+end)
+
+T.test("met in the room, the squad fights", function()
+	local s = Assault()
+	Stacked(s)
+	s.meA.enemy, s.meA.enemyPos = true, P(1200, 0)
+	s.Tick(2)
+	T.eq(s.npcA:State().fighting, true)
+end)
+
+T.test("the room clear, the assault is done and the squad asks again", function()
+	local s = Assault()
+	Stacked(s)
+	s.meA.pos, s.meB.pos = ROOM_MIDDLE, P(ROOM_MIDDLE.x + 50, 0)
+	s.Tick(Orders.SPRING_GRACE / TICK + 4)
+	T.eq(s.fireTeam.missionLed, nil, "done")
+	T.eq(s.fireTeam.missionWanted, true, "asking again")
+end)
+
+T.test("a topple is led as an assault on the base", function()
+	local s = Assault(Mission.TOPPLE)
+	s.Tick(2)
+	Near(s.meA.moving, STACK, "to the stack")
+end)
+
 T.test("a squad leader on a trip when its squad comes to muster stops to muster", function()
 	local field = MusterField()
 	local muster = field.lanes[BLUE].muster

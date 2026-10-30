@@ -127,6 +127,8 @@ function Controller:RequestMission(fireTeam)
 		if fireTeam.missionsOff then return end
 		if state == Transaction.COMMITTED then
 			fireTeam.mission, fireTeam.missionWanted, fireTeam.regrouping = settled:Value(), nil, nil
+			-- a new mission starts afresh: no ambush sprung, no door stacked or breached
+			fireTeam.sprung, fireTeam.ambushSetAt, fireTeam.stackedAt, fireTeam.breachAt, fireTeam.clearSince = nil, nil, nil, nil, nil
 			-- a squad out on one when the new came: halt, and on to the new
 			if fireTeam.missionLed then fireTeam.halted, fireTeam.missionTrack = true, nil end
 		elseif state == Transaction.DECLINED then
@@ -155,7 +157,9 @@ function Controller:JudgeMission(fireTeam, now)
 	local leader = Squad.Leader(fireTeam)
 	if not (leader and leader.pos) then return end
 	local alive = Living(fireTeam)
-	local remaining = Lanes.Remaining(fireTeam.mission.way, leader.pos)
+	-- a special mission's way is to its target's door; an advance's, its lane
+	local target = fireTeam.mission.target
+	local remaining = target and Geometry.Distance(leader.pos, target.door.pos) or Lanes.Remaining(fireTeam.mission.way, leader.pos)
 	fireTeam.missionTrack = fireTeam.missionTrack or Mission.Track(remaining, now)
 	local why = Mission.Regroup(fireTeam.missionTrack, fireTeam.ledStrength or alive, alive, remaining, now,
 		Tactics.Contact(fireTeam, now) ~= nil)

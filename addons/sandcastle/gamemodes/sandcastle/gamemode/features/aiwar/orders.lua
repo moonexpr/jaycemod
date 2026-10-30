@@ -555,6 +555,13 @@ local function Halt(state, me)
 	me:Gesture(Gestures.SIGNAL_HALT)
 end
 
+-- Whether the squad lies in wait on an ambush not yet sprung
+-- (Objective:Ambush), holding its fire.
+local function Lying(fireTeam)
+	local mission = fireTeam and fireTeam.missionLed and fireTeam.mission
+	return mission ~= nil and mission.kind == Mission.AMBUSH and not fireTeam.sprung
+end
+
 -- The member's team's lanes while its squad musters for a mission
 -- (Objective:Muster), else nil: a squad of a lane job, its lanes with a
 -- muster, its mission not yet led nor given up, out of setup, not hurrying
@@ -1202,6 +1209,9 @@ function Objective:Update(me)
 	if OrdersRun(field) then
 		local mustering = self:Muster(me, field, urgent)
 		if mustering then return mustering end
+		-- and leads its special mission (LeadSpecial)
+		local leading = self:LeadSpecial(me, field)
+		if leading then return leading end
 	end
 	local goal = OrdersRun(field) and self.role.Goal(field, state.member)
 	if not goal then
@@ -1338,6 +1348,8 @@ end
 -- A medic holds its fire while it heals, as TF2's cannot fire and heal.
 function Objective:ShouldAttack(me, them)
 	if self.role.heals and self.state.healing then return N.ANSWER_NO end
+	-- lying in wait, the ambush holds its fire until sprung
+	if Lying(self.state.member.fireTeam) then return N.ANSWER_NO end
 	return N.ANSWER_UNDEFINED
 end
 
@@ -1484,7 +1496,7 @@ MUSTER_ARRIVE, MUSTER_PATIENCE, SCAN_PERIOD = 64, 30, 2
 -- The special missions (wartactics.mission) these orders can lead, which
 -- the tactics engine may give: none until each kind's leading is written
 -- (docs/special-missions-plan.md steps 4 to 6).
-SPECIAL_KINDS = {}
+SPECIAL_KINDS = { [Mission.AMBUSH] = true, [Mission.ASSAULT] = true, [Mission.TOPPLE] = true }
 -- A leader not at its muster spot (a regroup's hiding spot on a floor it
 -- cannot reach) after MUSTER_WALK_LIMIT musters where it stands.
 MUSTER_WALK_LIMIT = 12
@@ -1616,6 +1628,146 @@ function Objective:PlanInSetup()
 		return
 	end
 	fireTeam.missionWanted, fireTeam.musterWalk = true, 0
+end
+
+-- Special missions (docs/special-missions-plan.md §2.4), led once the squad
+-- is out on one (missionLed).
+--
+-- An ambush: each soldier claims a hiding spot inside the target room by its
+-- door, within AMBUSH_RADIUS, out of sight of the door's outside
+-- (AMBUSH_LOOKOUT beyond it), and crouches there; the squad holds its fire
+-- (ShouldAttack) until it is sprung: an enemy within SPRING_RANGE of the
+-- door, or one of it hit since it lay in wait. Sprung, it fights as a
+-- squad does, and the ambush is done SPRING_GRACE after its contact is
+-- gone; never sprung in AMBUSH_PATIENCE, it is done too. Done, the squad
+-- asks afresh from where it stands (wartactics.mission's Finish).
+AMBUSH_RADIUS, AMBUSH_LOOKOUT, SPRING_RANGE, AMBUSH_PATIENCE, SPRING_GRACE = 400, 200, 300, 60, 5
+LYING_IN_WAIT = "lying in wait"
+local TO_AMBUSH = "to its ambush"
+
+function Objective:EndSpecial(me)
+	local state = self.state
+	if state.specialPose then
+		me:Unpose()
+		state.specialPose = nil
+	end
+	state.special, state.specialSpot = nil, nil
+	if state.tactic == LYING_IN_WAIT or state.tactic == TO_AMBUSH or state.tactic == "stacking at the door"
+		or state.tactic == "going in" then
+		state.tactic = nil
+	end
+	return nil
+end
+
+function Objective:Ambush(me, fireTeam, mission)
+	local state, now = self.state, me:Now()
+	local door, room = mission.target.door.pos, mission.target.pos
+	if not fireTeam.sprung then
+		local enemy = me:HasEnemy() and me:EnemyPosition()
+		if (enemy and Distance(enemy, door) <= SPRING_RANGE) or (fireTeam.ambushSetAt and me:HurtSince(fireTeam.ambushSetAt)) then
+			fireTeam.sprung = now
+		end
+	end
+	if fireTeam.sprung then
+		if not TeamContact(state, me) and now - fireTeam.sprung >= SPRING_GRACE then Mission.Finish(fireTeam) end
+		return self:EndSpecial(me)
+	end
+	if fireTeam.ambushSetAt and now - fireTeam.ambushSetAt >= AMBUSH_PATIENCE then
+		Mission.Finish(fireTeam)
+		return self:EndSpecial(me)
+	end
+	if not state.specialSpot then
+		local inside = Geometry.Toward(door, room, AMBUSH_RADIUS / 2)
+		local outside = Geometry.Toward(door, room, -AMBUSH_LOOKOUT)
+		state.specialSpot = self:ClaimCover(me, inside, AMBUSH_RADIUS, outside, nil) or inside
+	end
+	if me:RangeTo(state.specialSpot) > MUSTER_ARRIVE then
+		state.tactic, state.goal = TO_AMBUSH, state.specialSpot
+		me:MoveTo(state.specialSpot, RUN)
+		return self:Continue()
+	end
+	me:Release()
+	self:KeepClaim(me)
+	if not state.specialPose then
+		me:Pose()
+		state.specialPose = true
+	end
+	if Squad.Kind(state.member) == "leader" and not fireTeam.ambushSetAt then fireTeam.ambushSetAt = now end
+	state.tactic = LYING_IN_WAIT
+	return self:Continue()
+end
+
+-- An assault, and a topple (an assault on the enemy's support base): the
+-- squad stacks up STACK_BACK outside the room's door, its members by its
+-- leader; once all are within STACK_GATHER of the stack, or STACK_PATIENCE
+-- after the leader got there, the leader signals forward and puts a gadget
+-- (a grenade) BREACH_LEAD through the door, and all go in to the room's
+-- middle, fighting what they meet as a squad does. The room clear (the
+-- leader in its middle, no contact) for SPRING_GRACE, it is done.
+STACK_BACK, STACK_GATHER, STACK_PATIENCE, BREACH_LEAD = 150, 200, 15, 150
+local STACKING, GOING_IN = "stacking at the door", "going in"
+
+local function AllStacked(fireTeam, stack)
+	for _, member in pairs(fireTeam.members) do
+		if not member.pos or Distance(member.pos, stack) > STACK_GATHER then return false end
+	end
+	return true
+end
+
+function Objective:Assault(me, fireTeam, mission)
+	local state, now = self.state, me:Now()
+	local door, room = mission.target.door.pos, mission.target.pos
+	local leads = Squad.Kind(state.member) == "leader"
+	if fireTeam.breachAt then
+		if TeamContact(state, me) then
+			fireTeam.clearSince = nil
+			return self:EndSpecial(me)
+		end
+		if leads and me:RangeTo(room) <= MUSTER_ARRIVE * 2 then
+			fireTeam.clearSince = fireTeam.clearSince or now
+			if now - fireTeam.clearSince >= SPRING_GRACE then
+				Mission.Finish(fireTeam)
+				return self:EndSpecial(me)
+			end
+		end
+		state.tactic, state.goal = GOING_IN, room
+		me:MoveTo(room, RUN)
+		return self:Continue()
+	end
+	local stack = Geometry.Toward(door, room, -STACK_BACK)
+	if not leads then stack = Geometry.Toward(stack, me:Position(), SQUAD_SPACING * (state.member.place or 1)) end
+	if me:RangeTo(stack) > MUSTER_ARRIVE then
+		state.tactic, state.goal = STACKING, stack
+		me:MoveTo(stack, RUN)
+		return self:Continue()
+	end
+	me:Release()
+	state.tactic = STACKING
+	if not leads then return self:Continue() end
+	fireTeam.stackedAt = fireTeam.stackedAt or now
+	if AllStacked(fireTeam, stack) or now - fireTeam.stackedAt >= STACK_PATIENCE then
+		me:Gesture(Gestures.SIGNAL_FORWARD)
+		me:UseGadget(Geometry.Toward(door, room, BREACH_LEAD))
+		fireTeam.breachAt = now
+		state.tactic, state.goal = GOING_IN, room
+		me:MoveTo(room, RUN)
+	end
+	return self:Continue()
+end
+
+-- The squad's special mission led, or nil (none, or the fight's turn).
+function Objective:LeadSpecial(me, field)
+	local state = self.state
+	local fireTeam = state.member.fireTeam
+	local mission = fireTeam and fireTeam.missionLed and fireTeam.mission
+	if not (mission and SPECIAL_KINDS[mission.kind]) or field.setup then return self:EndSpecial(me) end
+	-- a new mission: a spot of its own
+	if state.special ~= mission then
+		self:EndSpecial(me)
+		state.special = mission
+	end
+	if mission.kind == Mission.AMBUSH then return self:Ambush(me, fireTeam, mission) end
+	return self:Assault(me, fireTeam, mission)
 end
 
 function Objective:Muster(me, field, urgent)
