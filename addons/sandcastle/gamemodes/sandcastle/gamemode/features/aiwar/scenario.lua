@@ -44,6 +44,7 @@ VARIANTS = {
 	koth = "features.aiwar.scenario.koth",
 	arena = "features.aiwar.scenario.arena",
 	hostage = "features.aiwar.scenario.hostage",
+	defuse = "features.aiwar.scenario.defuse",
 	ctf = "features.aiwar.scenario.ctf",
 	deathmatch = "features.aiwar.scenario.deathmatch",
 	mvm = "features.aiwar.scenario.mvm",
@@ -65,6 +66,7 @@ Scenarios.Shared:Register({ name = "ctf", priority = MODE_PRIORITY, mode = "ctf"
 Scenarios.Shared:Register({ name = "deathmatch", priority = MODE_PRIORITY, mode = "deathmatch", scenario = VARIANTS.deathmatch })
 Scenarios.Shared:Register({ name = "mvm", priority = MODE_PRIORITY, mode = "mvm", scenario = VARIANTS.mvm })
 Scenarios.Shared:Register({ name = "hostage", priority = MODE_PRIORITY, mode = "hostage", scenario = VARIANTS.hostage })
+Scenarios.Shared:Register({ name = "defuse", priority = MODE_PRIORITY, mode = "defuse", scenario = VARIANTS.defuse })
 
 -- The registered scenarios, compiled against NextSoldier's compiled
 -- behaviours (each behaviour a scenario names must be among them): what the

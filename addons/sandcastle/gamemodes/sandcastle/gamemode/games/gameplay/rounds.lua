@@ -45,6 +45,11 @@ WINREASON = {
 	HOSTAGES_RESCUED = 13,
 	-- hostage rescue: the round's timer ran out with hostages unrescued
 	HOSTAGES_NOT_RESCUED = 14,
+	-- bomb defusal (features/defuse): the bomb exploded; BLU defused it; the
+	-- round's time ran out with it never planted
+	TARGET_BOMBED = 15,
+	BOMB_DEFUSED = 16,
+	TARGET_SAVED = 17,
 }
 STALEMATE = {
 	JOIN_MID = 0,
@@ -450,6 +455,15 @@ end
 -- Who wins when the timer of a round fought in STALEMATE (arena) runs out,
 -- and why: nobody by default, the round a stalemate. world: the round's.
 function Mode:StalemateTimerWin(world) return nil end
+
+-- Whether, in a round fought in STALEMATE, team (the only one left alive;
+-- nil when none is) wins by it: always, by default. world.objectiveState is
+-- what the map's objective feature has told the rounds (SetObjectiveState).
+function Mode:EliminationWins(team, world) return true end
+
+-- Whether a round fought in STALEMATE goes on when its timer has run out
+-- (a planted bomb decides it instead): never, by default.
+function Mode:HoldsStalemateTimer(world) return false end
 
 -- How long a round fought in STALEMATE (arena) is in setup first; none.
 function Mode:SetupSeconds(settings) return 0 end
@@ -1112,6 +1126,10 @@ THINK[State.STALEMATE] = function(self, effects, now, world)
 		return
 	end
 	local winner, allDead = StalemateOutcome(world.teams)
+	-- the mode may keep the round on with one team, or none, left (a bomb
+	-- planted must still be defused, or explode)
+	if winner and not self.mode:EliminationWins(winner, world) then winner = nil end
+	if allDead and not self.mode:EliminationWins(nil, world) then allDead = false end
 	local suddenDeath = self.suddenDeath
 	if winner then
 		-- Without a full reset the survivors take the round's points.
@@ -1127,6 +1145,7 @@ THINK[State.STALEMATE] = function(self, effects, now, world)
 	if allDead then return Stalemate(self, effects, now, STALEMATE.BOTH_DEAD) end
 	local left = world.stalemateTimerLeft
 	if not (left ~= nil and world.timerMayExpire and left <= 0) then return end
+	if self.mode:HoldsStalemateTimer(world) then return end
 	if not suddenDeath then
 		local timerWinner, timerReason = self.mode:StalemateTimerWin(world)
 		if timerWinner then

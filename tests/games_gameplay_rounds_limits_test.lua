@@ -181,6 +181,12 @@ T.test("a hostage map plays ten rounds, with no win limit", function()
 	T.eq(Limits.WinConditions(Map({ hostage = true, payload = true })), C.HOSTAGE, "whatever else it carries")
 end)
 
+-- A bomb defusal map's are won by the bomb or by killing, the same way.
+T.test("a defuse map plays ten rounds, with no win limit", function()
+	T.eq(Limits.WinConditions(Map({ defuse = true })), C.HOSTAGE, "as a hostage map's")
+	T.eq(Limits.WinConditions(Map({ defuse = true, control_points = true })), C.HOSTAGE, "though its sites are points")
+end)
+
 T.test("a multi-stage payload race and CTF play one round", function()
 	T.eq(Limits.WinConditions(Map({ payload = true, multipleTrains = true, miniRounds = true, stages = 3 })), C.MAX_ROUNDS, "race in stages")
 	T.eq(Limits.WinConditions(Map({ ctf = true })), C.MAX_ROUNDS, "CTF")

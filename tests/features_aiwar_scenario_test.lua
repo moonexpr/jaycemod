@@ -36,7 +36,7 @@ end)
 
 T.test("the variants are keyed by the rounds modes' NAMEs", function()
 	local names = {}
-	for _, path in ipairs({ "features.payload.round", "features.rounds.control_points", "features.koth.model", "features.arena.round", "features.flag.model", "features.mvm.model", "features.hostage.round" }) do
+	for _, path in ipairs({ "features.payload.round", "features.rounds.control_points", "features.koth.model", "features.arena.round", "features.flag.model", "features.mvm.model", "features.hostage.round", "features.defuse.round" }) do
 		names[T.require(path).Mode.NAME] = true
 	end
 	names[gameplay.rounds.DEATHMATCH] = true
