@@ -38,26 +38,39 @@ inputs from the map and feeds them in.
 
 ### 2.1 Rooms (`wartactics.rooms`)
 
-The nav mesh's areas grouped into rooms, joined by doors, found from the
-mesh's shape:
+The map's spaces, indoors and outdoors, on its levels, and the corridors,
+doors and windows joining them. Rooms are big blocks: they need not follow
+the walls, so long as the doors, windows and connections are right. The
+module's header holds the rules and their tuning; in short:
 
-- Two linked areas are in one room when the edge they share is at least
-  `DOOR_WIDTH` wide: open floor joins, a doorway or a corridor does not.
-- A group of areas whose floor is under `ROOM_MIN_FLOOR` is a passage, not a
-  room (a corridor cut into pieces by its narrow links): passages join the
-  rooms they link.
-- A room's doors are its links to another room or to a passage: where they
-  are (the middle of the shared edge), how wide, and which room is on the
-  other side (through any passage). A map's func_door walls
-  (`npcs:DoorWallIn`) are doors whatever their width.
-- `Partition(graph)` takes `{ id -> { center, floor, links = { { to, width,
-  middle } } } }` and returns the rooms (`id`, `areas`, `center`, `floor`,
-  `doors`) and the room of each area. `RoomOf(rooms, areaId)`,
-  `Doors(room)`, `Between(rooms, a, b)`.
-- Found once per map and saved in the map's data (`WS.MapData` section
-  `rooms`, with the mesh's area count to know a stale save). The debug
-  overlay draws them (`ns_rooms_debug`), for tuning `DOOR_WIDTH` and
-  `ROOM_MIN_FLOOR` by eye.
+- No room or corridor crosses a func_door, the threshold between indoors
+  and outdoors (an area is indoors under a ceiling), or an areaportal: each
+  nav area is given the BSP area its leaf is in, read from the map's .bsp
+  through the vendored bsp3 (`WS.MapFile`), and the mapper's areaportals
+  seal those from each other. Not every map has areaportals; the shape
+  decides the rest.
+- Floor wider than a corridor (`CORRIDOR_WIDTH`) forms the cores of rooms,
+  which reach out to their walls. Of what is left, a run of flights and
+  landings indoors climbing a storey (`STOREY_RISE`) is a stairwell, a room
+  of its own; a long narrow piece joining two rooms or corridors is a
+  corridor, no room's; any other piece joins the room it shares the widest
+  edge with. A patch of indoors or outdoors too small to be a room takes
+  the side around it, and a room open widely to the outdoors (a porch)
+  counts as outdoors.
+- Doors are where rooms and corridors meet; windows (areaportal windows and
+  breakable glass, which no nav link crosses) join the rooms on either side.
+- Levels are numbered from the ground up, by the rooms' floor heights; a
+  stairwell spans the levels it joins.
+- Found once per map on the slow lane and saved in the map's data
+  (`WS.MapData` section `rooms`, with the mesh's area count and the way of
+  finding them). The special missions plan on the rooms indoors.
+- Seeing them: the debug overlay's rooms part (`ns_rooms_debug`) draws each
+  room's block, its doors, windows and the corridors, labelled with kind,
+  indoors or out, and level; `ns_rooms_find` finds them again at once and
+  `ns_rooms_print` reports them. Off the server, `.devtools/bin/rooms_dump.lua`
+  dumps the map's room graph and `.devtools/bin/rooms_view.py` partitions it
+  with the same code and draws each level from above
+  (`.devtools/artifacts/rooms/<map>.png`), for tuning by eye.
 
 ### 2.2 What a team knows (`wartactics.intel`)
 

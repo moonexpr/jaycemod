@@ -73,19 +73,31 @@ E.Define("game_nb_debug_mark", {
 
 -- The map's rooms (wartactics.rooms) and what each team knows of them
 -- (wartactics.intel), sent by the aiwar controller every few seconds: each
--- room's centre and label, and its doors, each with the room it leads to
--- (0 for none).
+-- room's block (its areas' extent), centre and label, whether it is
+-- outdoors, and its doors and windows, each with the room it leads to (0
+-- for none); and the corridors between them, each its block and label.
 local ROOM_COUNT_BITS, ROOM_ID_BITS, DOOR_COUNT_BITS = 8, 8, 6
+
+local Connection = E.Record({
+	pos = E.Vector(),
+	leads = E.UInt(ROOM_ID_BITS),
+})
 
 E.Define("game_aiwar_rooms", {
 	rooms = E.List(E.Record({
 		id = E.UInt(ROOM_ID_BITS),
 		center = E.Vector(),
+		lo = E.Vector(),
+		hi = E.Vector(),
+		outdoor = E.Bool(),
 		label = E.String(),
-		doors = E.List(E.Record({
-			pos = E.Vector(),
-			leads = E.UInt(ROOM_ID_BITS),
-		}), DOOR_COUNT_BITS),
+		doors = E.List(Connection, DOOR_COUNT_BITS),
+		windows = E.List(Connection, DOOR_COUNT_BITS),
+	}), ROOM_COUNT_BITS),
+	passages = E.List(E.Record({
+		lo = E.Vector(),
+		hi = E.Vector(),
+		label = E.String(),
 	}), ROOM_COUNT_BITS),
 })
 

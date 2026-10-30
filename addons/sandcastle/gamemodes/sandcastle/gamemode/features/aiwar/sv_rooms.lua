@@ -96,6 +96,52 @@ local function Playable(work)
 	return reached
 end
 
+-- The map's own areas (sealed from each other by areaportals, the mapper's
+-- doors and windows): the BSP area of the leaf a point stands in, read from
+-- the map's .bsp (WS.MapFile, the vendored bsp3); the low bits of a leaf's
+-- areaflags are its area.
+local AREA_BITS = 0x1FF
+local AREA_LIFT = Vector(0, 0, 16)
+
+local function BspAreas()
+	local lumps = WS.MapFile({ "PLANES", "NODES", "LEAFS" })
+	local root = lumps.NODES[1]
+	return function(pos)
+		local node = root
+		while not node.contents do
+			local plane = node.plane
+			node = plane.normal:Dot(pos) - plane.dist >= 0 and node.children[1] or node.children[2]
+		end
+		return bit.band(node.areaflags, AREA_BITS)
+	end
+end
+
+-- The map's windows, which no nav link crosses: areaportal windows and
+-- breakable glass, each with the nav areas a little way out from either
+-- face, on its side of the glass.
+local WINDOW_CLASSES = { "func_areaportalwindow", "func_breakable_surf" }
+local WINDOW_REACH, WINDOW_SEARCH = 24, 160
+
+local function Windows(playable)
+	local windows = {}
+	for _, class in ipairs(WINDOW_CLASSES) do
+		for _, ent in ipairs(ents.FindByClass(class)) do
+			local mins, maxs = ent:WorldSpaceAABB()
+			local size, middle = maxs - mins, (mins + maxs) / 2
+			local across = size.x < size.y and Vector(size.x / 2 + WINDOW_REACH, 0, 0) or Vector(0, size.y / 2 + WINDOW_REACH, 0)
+			local sides = {}
+			for i, at in ipairs({ middle + across, middle - across }) do
+				local area = navmesh.GetNearestNavArea(at, false, WINDOW_SEARCH, true, true)
+				sides[i] = IsValid(area) and playable[area:GetID()] and area:GetID()
+			end
+			if sides[1] and sides[2] and sides[1] ~= sides[2] then
+				windows[#windows + 1] = { pos = Point(middle), from = sides[1], to = sides[2] }
+			end
+		end
+	end
+	return windows
+end
+
 -- Indoors: a ceiling over the area (a trace straight up from its middle meets
 -- the world within ROOF_HEIGHT, not the sky).
 local ROOF_HEIGHT, ROOF_LIFT = 1024, Vector(0, 0, 32)
@@ -106,12 +152,15 @@ local function Roofed(area)
 	return tr.Hit and not tr.HitSky
 end
 
--- The nav mesh as Partition's graph, yielding as it goes: the playable areas
--- indoors; a link from one to a playable area outdoors is a way outside,
--- and such an area is by a wall for its clearance.
+-- The nav mesh as Partition's graph, and the map's windows, yielding as it
+-- goes: the playable areas, each indoors or outdoors and in its BSP area;
+-- an area by the threshold between indoors and outdoors is by a wall for
+-- its clearance.
 function Controller:RoomGraph(work)
 	local under, graph = DoorAreas(), {}
 	local playable = Playable(work)
+	local AreaAt = BspAreas()
+	work:CheckYield()
 	local indoor = {}
 	local i = 0
 	for id, area in pairs(playable) do
@@ -119,57 +168,78 @@ function Controller:RoomGraph(work)
 		i = i + 1
 		if i % 64 == 0 then work:CheckYield() end
 	end
-	local function Outdoor(other) return not indoor[other:GetID()] end
-	for id in pairs(indoor) do
-		local area = playable[id]
+	for id, area in pairs(playable) do
+		local function Across(other) return not indoor[other:GetID()] ~= not indoor[id] end
 		local links = {}
 		for _, other in ipairs(area:GetAdjacentAreas()) do
 			local otherId = other:GetID()
 			if playable[otherId] then
 				local width, middle = SharedEdge(area, other)
-				links[#links + 1] = { to = otherId, width = width, middle = middle, outside = not indoor[otherId],
+				links[#links + 1] = { to = otherId, width = width, middle = middle,
 					door = under[id] == true or under[otherId] == true }
 			end
 		end
+		local extent = area:GetExtentInfo()
 		graph[id] = { center = Point(area:GetCenter()), floor = area:GetSizeX() * area:GetSizeY(),
-			wall = WallDistance(area, Outdoor), links = links }
+			outdoor = not indoor[id], lo = Point(extent.lo), hi = Point(extent.hi),
+			bsp = AreaAt(area:GetCenter() + AREA_LIFT), wall = WallDistance(area, Across), links = links }
 		i = i + 1
 		if i % 64 == 0 then work:CheckYield() end
 	end
-	return graph
+	return graph, Windows(playable)
 end
 
--- What is kept: the rooms with their areas and doors, and the mesh's size.
--- A save is of ROOMS_VERSION's way of finding rooms; another's is found again.
-local ROOMS_VERSION = 3
+-- What is kept: the rooms with their areas, doors and windows, the passages,
+-- and the mesh's size. A save is of ROOMS_VERSION's way of finding rooms;
+-- another's is found again.
+local ROOMS_VERSION = 4
+
+local function Connections(list)
+	local kept = {}
+	for i, c in ipairs(list) do
+		kept[i] = { pos = c.pos, width = c.width, area = c.area, leads = c.leads, passage = c.passage, outside = c.outside }
+	end
+	return kept
+end
 
 local function Saved(partition, areas)
-	local rooms = {}
+	local rooms, passages = {}, {}
 	for i, room in ipairs(partition.rooms) do
-		local doors = {}
-		for j, door in ipairs(room.doors) do
-			doors[j] = { pos = door.pos, width = door.width, area = door.area, leads = door.leads, outside = door.outside }
-		end
-		rooms[i] = { id = room.id, areas = room.areas, floor = room.floor, center = room.center, doors = doors }
+		rooms[i] = { id = room.id, kind = room.kind, outdoor = room.outdoor, level = room.level, top = room.top,
+			areas = room.areas, floor = room.floor, center = room.center, lo = room.lo, hi = room.hi,
+			doors = Connections(room.doors), windows = Connections(room.windows) }
 	end
-	return { version = ROOMS_VERSION, areas = areas, rooms = rooms }
+	for i, passage in ipairs(partition.passages) do
+		passages[i] = { id = passage.id, kind = passage.kind, outdoor = passage.outdoor, level = passage.level,
+			top = passage.top, areas = passage.areas, floor = passage.floor, center = passage.center, lo = passage.lo,
+			hi = passage.hi, joins = passage.joins, doors = Connections(passage.doors) }
+	end
+	return { version = ROOMS_VERSION, areas = areas, rooms = rooms, passages = passages, levels = partition.levels }
 end
+
+local function Find(graph, windows, yield)
+	return Rooms.Partition(graph, yield, windows)
+end
+
 -- Finds the rooms now, at once, and keeps them (ns_rooms_find, for tuning on
 -- a bench map): the seconds it took.
 function Controller:FindRoomsNow()
 	local started = SysTime()
 	local work = { CheckYield = function() end }
-	self.rooms = Rooms.Partition(self:RoomGraph(work))
+	self.rooms = Find(self:RoomGraph(work))
 	self.roomStore:Write(Saved(self.rooms, #navmesh.GetAllNavAreas()))
 	return SysTime() - started
 end
 
 local function Loaded(saved)
-	local of = {}
+	local of, passageOf = {}, {}
 	for _, room in ipairs(saved.rooms) do
 		for _, id in ipairs(room.areas) do of[id] = room end
 	end
-	return { rooms = saved.rooms, of = of }
+	for _, passage in ipairs(saved.passages) do
+		for _, id in ipairs(passage.areas) do passageOf[id] = passage end
+	end
+	return { rooms = saved.rooms, passages = saved.passages, levels = saved.levels, of = of, passageOf = passageOf }
 end
 
 -- The map's rooms, or nil while they are being found (the first ask starts
@@ -184,7 +254,8 @@ function Controller:Rooms()
 	end
 	if self.roomsFinding then return nil end
 	self.roomsFinding = Transaction.Spawn(WS.SlowTransactions, function(work)
-		return Rooms.Partition(self:RoomGraph(work), function() work:CheckYield() end)
+		local graph, windows = self:RoomGraph(work)
+		return Find(graph, windows, function() work:CheckYield() end)
 	end):Within(WS.Deadline(ROOMS_TIME))
 	self.roomsFinding:OnSettle(function(settled)
 		self.roomsFinding = nil
@@ -207,8 +278,14 @@ local ROOMS_DEBUG_INTERVAL = 5
 local ROOMS_MAX, DOORS_MAX = 255, 63
 local TEAM_TAG = { [WS.TEAM_RED] = "RED", [WS.TEAM_BLUE] = "BLU" }
 
+-- Indoors or out, and its level (from its foot to its head on a stairwell).
+local function Where(room)
+	local level = room.level == room.top and "level " .. room.level or string.format("levels %d-%d", room.level, room.top)
+	return (room.outdoor and "outdoors, " or "indoors, ") .. level
+end
+
 function Controller:RoomLabel(room, now)
-	local label = string.format("room %d: %d areas", room.id, #room.areas)
+	local label = string.format("%s %d (%s): %d areas", room.kind, room.id, Where(room), #room.areas)
 	for _, team in ipairs({ WS.TEAM_RED, WS.TEAM_BLUE }) do
 		local intel = self.intel and self.intel[team]
 		if intel then
@@ -224,49 +301,69 @@ function Controller:RoomLabel(room, now)
 	return label
 end
 
+local function V(p) return Vector(p.x, p.y, p.z) end
+
+local function Sent(connections)
+	local sent = {}
+	for j = 1, math.min(#connections, DOORS_MAX) do
+		local c = connections[j]
+		sent[j] = { pos = V(c.pos), leads = c.leads[1] or 0 }
+	end
+	return sent
+end
+
 function Controller:SendRoomsDebug(viewers, now)
 	if now < (self.nextRoomsDebug or 0) then return end
 	self.nextRoomsDebug = now + ROOMS_DEBUG_INTERVAL
 	local partition = self:Rooms()
 	if not partition then return end
-	local rooms = {}
+	local rooms, passages = {}, {}
 	for i = 1, math.min(#partition.rooms, ROOMS_MAX) do
 		local room = partition.rooms[i]
-		local doors = {}
-		for j = 1, math.min(#room.doors, DOORS_MAX) do
-			local door = room.doors[j]
-			doors[j] = { pos = Vector(door.pos.x, door.pos.y, door.pos.z), leads = door.leads[1] or 0 }
-		end
-		rooms[i] = { id = room.id, center = Vector(room.center.x, room.center.y, room.center.z),
-			label = self:RoomLabel(room, now), doors = doors }
+		rooms[i] = { id = room.id, center = V(room.center), lo = V(room.lo), hi = V(room.hi), outdoor = room.outdoor,
+			label = self:RoomLabel(room, now), doors = Sent(room.doors), windows = Sent(room.windows) }
 	end
-	WS.Events.Fire("game_aiwar_rooms", { rooms = rooms }, viewers)
+	for i = 1, math.min(#partition.passages, ROOMS_MAX) do
+		local passage = partition.passages[i]
+		passages[i] = { lo = V(passage.lo), hi = V(passage.hi),
+			label = string.format("%s %d: joins %s", passage.kind, passage.id, table.concat(passage.joins, ", ")) }
+	end
+	WS.Events.Fire("game_aiwar_rooms", { rooms = rooms, passages = passages }, viewers)
 end
 
--- ns_rooms_print's lines: how many rooms, doors and ways outside, the areas
--- in no room, and the largest rooms with their doors.
+-- ns_rooms_print's lines: how many rooms of each kind, indoors and out, the
+-- corridors, doors and windows, the areas in no room or corridor, and the
+-- largest rooms with their doors and windows.
 local LARGEST = 8
 
 function Controller:RoomReport()
 	local rooms = self:Rooms()
 	if not rooms then return { "ns_rooms_print: the rooms are being found; ask again in a moment" } end
-	local doors, dead, passages = 0, 0, 0
+	local kinds, doors, windows, loose = {}, 0, 0, 0
 	for _, room in ipairs(rooms.rooms) do
-		doors = doors + #room.doors
-		for _, door in ipairs(room.doors) do if #door.leads == 0 then dead = dead + 1 end end
+		local key = room.kind .. " " .. Where(room)
+		kinds[key] = (kinds[key] or 0) + 1
+		doors, windows = doors + #room.doors, windows + #room.windows
 	end
 	for _, area in ipairs(navmesh.GetAllNavAreas()) do
-		if not rooms.of[area:GetID()] then passages = passages + 1 end
+		if not rooms.of[area:GetID()] and not rooms.passageOf[area:GetID()] then loose = loose + 1 end
 	end
-	local lines = { string.format("ns_rooms_print: %d rooms, %d doors (%d ways outside), %d nav areas in no room",
-		#rooms.rooms, doors, dead, passages) }
+	local counts = {}
+	for key, n in SortedPairs(kinds) do counts[#counts + 1] = n .. " " .. key end
+	local lines = { string.format("ns_rooms_print: %d levels, %d rooms (%s), %d corridors, %d doors, %d windows, %d nav areas in neither",
+		#rooms.levels, #rooms.rooms, table.concat(counts, ", "), #rooms.passages, doors, windows, loose) }
+	for _, level in ipairs(rooms.levels) do
+		lines[#lines + 1] = string.format("  level %d: floors at %d to %d, rooms %s", level.id, level.low, level.high,
+			table.concat(level.rooms, ", "))
+	end
 	local largest = {}
 	for _, room in ipairs(rooms.rooms) do largest[#largest + 1] = room end
 	table.sort(largest, function(a, b) return a.floor > b.floor end)
 	for i = 1, math.min(LARGEST, #largest) do
 		local room = largest[i]
-		lines[#lines + 1] = string.format("  room %d: %d areas, floor %d, at (%d, %d, %d), %d doors", room.id, #room.areas,
-			room.floor, room.center.x, room.center.y, room.center.z, #room.doors)
+		lines[#lines + 1] = string.format("  %s %d (%s): %d areas, floor %d, at (%d, %d, %d), %d doors, %d windows", room.kind,
+			room.id, Where(room), #room.areas, room.floor, room.center.x, room.center.y, room.center.z, #room.doors,
+			#room.windows)
 	end
 	return lines
 end

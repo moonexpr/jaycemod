@@ -183,15 +183,6 @@ end
 -- Neon team colours, brighter than the HUD's, to read over any map.
 local WAR_COLOR = { [WS.TEAM_RED] = Color(255, 70, 110), [WS.TEAM_BLUE] = Color(60, 210, 255) }
 
--- The map's rooms, as last sent (game_aiwar_rooms), each with its doors
--- and the room each leads to, by id.
-local rooms, roomById = {}, {}
-
-E.Listen("game_aiwar_rooms", "ws_nbdebug_view", function(fields)
-	rooms, roomById = fields.rooms, {}
-	for _, room in ipairs(rooms) do roomById[room.id] = room end
-end)
-
 E.Listen("game_aiwar_debug", "ws_nbdebug_view", function(fields)
 	local teams = fields.fire_teams
 	war.spheres = fields.spheres
@@ -207,10 +198,6 @@ end)
 local CONTACT_COLOR, COVER_COLOR = Color(255, 190, 40), Color(90, 230, 120)
 local COVER_BOX, FLANK_BOX, FLANK_ANGLE = Vector(8, 8, 8), Vector(14, 14, 14), Angle(45, 45, 0)
 local LANE_MARK = Vector(4, 4, 4)
--- Rooms in violet, apart from both teams' colours: a mark at each centre,
--- a smaller one on each door, all lifted off the floor.
-local ROOM_COLOR = Color(190, 140, 255)
-local ROOM_MARK, DOOR_MARK, ROOM_LIFT = Vector(10, 10, 10), Vector(6, 6, 6), Vector(0, 0, 40)
 -- Squads: a ring at the leader's feet, and a link from each member to it
 -- (bright while its element moves, dim while it holds).
 local LEADER_RING, LINK_LIFT = 28, Vector(0, 0, 16)
@@ -237,6 +224,10 @@ local function NeonLine(from, to, color)
 	render.SetColorMaterial()
 	render.DrawBeam(from, to, CORE_WIDTH, 0, 1, Color(r + (255 - r) * CORE_LIFT, g + (255 - g) * CORE_LIFT, b + (255 - b) * CORE_LIFT))
 end
+
+-- The rooms part's drawing (cl_rooms.lua); its Label is given below, once defined.
+local roomsDraw = { NeonLine = NeonLine, Dim = Dim }
+local Rooms = Part("cl_rooms", roomsDraw)
 
 local function Ring(center, radius, segments, color)
 	local last
@@ -332,21 +323,7 @@ local function DrawWar()
 			Ring(front.pos + GROUND_LIFT, FRONT_RING, RING_SEGMENTS, color)
 		end
 	end
-	if Shows(Parts.ROOMS) then
-		-- each room: a mark at its centre, a spoke to each door, a box on the
-		-- door, and a dim line from the door on to the room it leads to
-		for _, room in ipairs(rooms) do
-			local center = room.center + ROOM_LIFT
-			render.DrawWireframeBox(center, angle_zero, -ROOM_MARK, ROOM_MARK, ROOM_COLOR, false)
-			for _, door in ipairs(room.doors) do
-				local pos = door.pos + ROOM_LIFT
-				NeonLine(center, pos, ROOM_COLOR)
-				render.DrawWireframeBox(pos, angle_zero, -DOOR_MARK, DOOR_MARK, ROOM_COLOR, false)
-				local other = roomById[door.leads]
-				if other then NeonLine(pos, other.center + ROOM_LIFT, Dim(ROOM_COLOR)) end
-			end
-		end
-	end
+	if Shows(Parts.ROOMS) then Rooms.Draw() end
 	if Shows(Parts.LANES) then
 		-- each team's lanes: a dim line along its waypoints, a mark at each
 		for _, lane in ipairs(war.lanes) do
@@ -551,6 +528,7 @@ local function Label(pos, text, color, align)
 	if not screen.visible then return end
 	draw.SimpleTextOutlined(text, "WSNbDebugLabel", screen.x, screen.y, color, TEXT_ALIGN_CENTER, align or TEXT_ALIGN_BOTTOM, LABEL_OUTLINE, color_black)
 end
+roomsDraw.Label = Label
 
 local TEAM_LABEL = { [WS.TEAM_RED] = "RED", [WS.TEAM_BLUE] = "BLU" }
 
@@ -574,9 +552,7 @@ local function DrawWarLabels()
 			end
 		end
 	end
-	if Shows(Parts.ROOMS) then
-		for _, room in ipairs(rooms) do Label(room.center + ROOM_LIFT + ROOM_MARK, room.label, ROOM_COLOR) end
-	end
+	if Shows(Parts.ROOMS) then Rooms.Labels() end
 	if Shows(Parts.LANES) then
 		for _, lane in ipairs(war.lanes) do
 			if #lane.points > 0 then

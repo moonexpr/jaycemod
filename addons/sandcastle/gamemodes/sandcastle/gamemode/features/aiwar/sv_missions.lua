@@ -59,7 +59,8 @@ function Controller:LaneRooms(lanes)
 end
 
 -- The special missions' spec for a squad (wartactics.mission's Choose): the
--- map's rooms with what its team knows of each, whose lanes pass through
+-- map's rooms indoors (sealed spaces; a yard is no room to assault or
+-- ambush in) with what its team knows of each, whose lanes pass through
 -- them, whether its team defends (on payload, the side without a cart),
 -- where each side's lanes start, and the kinds its orders can lead
 -- (Orders.SPECIAL_KINDS). nil before the rooms are known or with no lanes.
@@ -76,9 +77,11 @@ function Controller:SpecialSpec(fireTeam, size, now)
 	for _, base in ipairs(intel:SupportBases(now)) do bases[base.room] = base.strength end
 	local rooms = {}
 	for _, room in ipairs(partition.rooms) do
-		rooms[#rooms + 1] = { id = room.id, center = room.center, doors = room.doors, guarded = intel:Guarded(room.id, now),
-			traffic = intel:Traffic(room.id, now), support = bases[room.id] or 0, ours = ours[room.id] == true,
-			theirs = theirs[room.id] == true }
+		if not room.outdoor then
+			rooms[#rooms + 1] = { id = room.id, center = room.center, doors = room.doors, guarded = intel:Guarded(room.id, now),
+				traffic = intel:Traffic(room.id, now), support = bases[room.id] or 0, ours = ours[room.id] == true,
+				theirs = theirs[room.id] == true }
+		end
 	end
 	local ourFrom = ourLanes[1].points[1]
 	local carts = field.carts or {}
