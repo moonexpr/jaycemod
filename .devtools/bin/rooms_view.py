@@ -117,10 +117,11 @@ def LoadDump(path: Path) -> Dump:
     """The dump, past the server's own lines before its JSON."""
     text = path.read_text()
     data = json.loads(text[text.index("{"):])
-    areas = {}
-    for key, a in data["areas"].items():
-        areas[int(key)] = Area(int(key), (a["lo"]["x"], a["lo"]["y"]), (a["hi"]["x"], a["hi"]["y"]), a["center"]["z"])
-    graph = {int(k): v for k, v in data["areas"].items()}
+    # GMod's TableToJSON writes ids running 1 to n as a list
+    dumped = data["areas"]
+    graph = {i + 1: a for i, a in enumerate(dumped)} if isinstance(dumped, list) else {int(k): a for k, a in dumped.items()}
+    areas = {i: Area(i, (a["lo"]["x"], a["lo"]["y"]), (a["hi"]["x"], a["hi"]["y"]), a["center"]["z"])
+             for i, a in graph.items()}
     seals = [((v["lo"]["x"], v["lo"]["y"], v["lo"]["z"]), (v["hi"]["x"], v["hi"]["y"], v["hi"]["z"]))
              for v in data["visualizers"]]
     return Dump(data["map"], areas, graph, data["windows"], data["spawns"], data["objectives"], seals)

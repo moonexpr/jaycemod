@@ -1,10 +1,11 @@
+import json
 import subprocess
 import tempfile
 import unittest
 from pathlib import Path
 
 import places
-from rooms_view import KEY, KEY_HEIGHT, Area, Classes, Draw, Dump, LuaValue, PanelHeight, Parse, Places, Summary
+from rooms_view import KEY, KEY_HEIGHT, Area, Classes, Draw, Dump, LoadDump, LuaValue, PanelHeight, Parse, Places, Summary
 
 
 class LuaValueTest(unittest.TestCase):
@@ -20,6 +21,26 @@ class LuaValueTest(unittest.TestCase):
             script.write_text(check)
             done = subprocess.run(["luajit", str(script), str(path)], capture_output=True, text=True)
         self.assertEqual(done.returncode, 0, done.stderr)
+
+
+class LoadDumpTest(unittest.TestCase):
+    AREA = {"lo": {"x": 0, "y": 0, "z": 0}, "hi": {"x": 50, "y": 50, "z": 0}, "center": {"x": 25, "y": 25, "z": 0},
+            "links": []}
+
+    def load(self, areas):
+        data = {"map": "m", "areas": areas, "windows": [], "spawns": {}, "objectives": [], "visualizers": []}
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "m.graph.json"
+            path.write_text("server_lua running on server\n" + json.dumps(data))
+            return LoadDump(path)
+
+    def test_areas_keyed_by_id_read_as_their_ids(self):
+        self.assertEqual(sorted(self.load({"3": self.AREA, "8": self.AREA}).graph), [3, 8])
+
+    def test_areas_numbered_one_to_n_come_as_a_json_list_and_read_from_id_one(self):
+        dump = self.load([self.AREA, self.AREA])
+        self.assertEqual(sorted(dump.graph), [1, 2])
+        self.assertEqual(sorted(dump.areas), [1, 2])
 
 
 class ParseTest(unittest.TestCase):

@@ -6,8 +6,8 @@
 -- Area ids are keys as strings; everything else is as the graph holds it.
 -- A team's spawn areas: those its func_respawnroom holds (the npc
 -- controller's SpawnRooms), and those its spawn points stand on
--- (WS.SpawnPoints, which knows CS:S's terrorist and counter-terrorist
--- spawns). The objectives: the areas under a capture area, a flag, a
+-- (the controller's TeamSpawns: TF2's team spawns, CS:S's terrorist and
+-- counter-terrorist ones). The objectives: the areas under a capture area, a flag, a
 -- hostage, a rescue zone or a bomb target, and the payload's track.
 local Controller = WS.Feature("aiwar")
 local graph, windows = Controller:RoomGraph({ CheckYield = function() end })
@@ -20,7 +20,7 @@ local held = WS.Feature("npc"):SpawnRooms()
 for name, team in pairs(TEAMS) do
 	local set = {}
 	for id, owner in pairs(held) do if owner == team then set[id] = true end end
-	for _, point in ipairs(WS.SpawnPoints(team)) do
+	for _, point in ipairs(Controller:TeamSpawns(team)) do
 		local area = navmesh.GetNearestNavArea(point:GetPos())
 		if IsValid(area) then set[area:GetID()] = true end
 	end

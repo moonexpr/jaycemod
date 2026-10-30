@@ -70,15 +70,22 @@ local function WallDistance(area, outdoor)
 	return nearest
 end
 
--- The playable areas: those reached over the mesh's links from the spawns
--- (off-map ledges, cliffs and water the mesh also covers are left out).
-local SPAWN_CLASSES = { "info_player_teamspawn", "info_player_counterterrorist", "info_player_terrorist",
-	"info_player_start", "info_player_deathmatch" }
+-- A team's spawns: TF2's team spawns live this round (WS.SpawnPoints), and
+-- on a CS:S map its side's (gameplay.spawn's SideClass).
+function Controller:TeamSpawns(team)
+	local spawns = WS.SpawnPoints(team)
+	local class = gameplay.spawn.SideClass(team)
+	if class then table.Add(spawns, ents.FindByClass(class)) end
+	return spawns
+end
 
+-- The playable areas: those reached over the mesh's links from the teams'
+-- spawns (off-map ledges, cliffs and water the mesh also covers are left
+-- out, and so is a box of spawns for no team under the map: pl_upward's).
 local function Playable(work)
 	local reached, stack = {}, {}
-	for _, class in ipairs(SPAWN_CLASSES) do
-		for _, spawn in ipairs(ents.FindByClass(class)) do
+	for _, team in ipairs({ WS.TEAM_RED, WS.TEAM_BLUE }) do
+		for _, spawn in ipairs(Controller:TeamSpawns(team)) do
 			local area = navmesh.GetNearestNavArea(spawn:GetPos())
 			if IsValid(area) and not reached[area:GetID()] then
 				reached[area:GetID()] = area
@@ -167,6 +174,51 @@ local function Roofed(area)
 	return covered * 2 > #ROOF_SAMPLES
 end
 
+-- How much of an area's sides opens onto the open air (a balcony's
+-- front over a drop): on each side neighbours on its floor (within
+-- LEVEL_GAP; the yard a drop lands in is none) do not wholly meet, a trace out from points along it at OPEN_HEIGHT, over a
+-- railing, that goes OPEN_REACH without meeting anything and ends under the
+-- sky (no roof within ROOF_HEIGHT) is that share of the side open. Every
+-- area is measured: a strip of outdoors too small to stand alone takes the
+-- side of the roofed room around it, its open front with it.
+local OPEN_HEIGHT, OPEN_REACH, OPEN_INSET = 64, 256, 2
+local OPEN_SAMPLES = { 0.25, 0.5, 0.75 }
+-- Source's nav directions: north is -y, east +x, south +y, west -x.
+local OUTWARD = { [0] = Vector(0, -1, 0), Vector(1, 0, 0), Vector(0, 1, 0), Vector(-1, 0, 0) }
+
+local function Open(area)
+	local extent, open = area:GetExtentInfo(), 0
+	for dir = 0, 3 do
+		local alongX = dir == 0 or dir == 2
+		local along = alongX and area:GetSizeX() or area:GetSizeY()
+		local met = 0
+		for _, other in ipairs(area:GetAdjacentAreasAtSide(dir) or {}) do
+			local oe = other:GetExtentInfo()
+			if math.max(oe.lo.z - extent.hi.z, extent.lo.z - oe.hi.z) <= Rooms.LEVEL_GAP then
+				met = met + (SharedEdge(area, other))
+			end
+		end
+		if met < along - EDGE_SLACK then
+			local out, clear = OUTWARD[dir], 0
+			for _, t in ipairs(OPEN_SAMPLES) do
+				local x = alongX and extent.lo.x + (extent.hi.x - extent.lo.x) * t
+					or (dir == 1 and extent.hi.x - OPEN_INSET or extent.lo.x + OPEN_INSET)
+				local y = alongX and (dir == 2 and extent.hi.y - OPEN_INSET or extent.lo.y + OPEN_INSET)
+					or extent.lo.y + (extent.hi.y - extent.lo.y) * t
+				local from = Vector(x, y, area:GetZ(Vector(x, y, 0)) + OPEN_HEIGHT)
+				local across = util.TraceLine({ start = from, endpos = from + out * OPEN_REACH, mask = MASK_SOLID })
+				if not across.Hit then
+					local up = util.TraceLine({ start = across.HitPos, endpos = across.HitPos + Vector(0, 0, ROOF_HEIGHT),
+						mask = MASK_SOLID_BRUSHONLY })
+					if not up.Hit or up.HitSky then clear = clear + 1 end
+				end
+			end
+			open = open + (along - met) * clear / #OPEN_SAMPLES
+		end
+	end
+	return open > 0 and open or nil
+end
+
 -- The nav mesh as Partition's graph, and the map's windows, yielding as it
 -- goes: the playable areas, each indoors or outdoors and in its BSP area;
 -- an area by the threshold between indoors and outdoors is by a wall for
@@ -196,7 +248,7 @@ function Controller:RoomGraph(work)
 		end
 		local extent = area:GetExtentInfo()
 		graph[id] = { center = Point(area:GetCenter()), floor = area:GetSizeX() * area:GetSizeY(),
-			outdoor = not indoor[id], lo = Point(extent.lo), hi = Point(extent.hi),
+			outdoor = not indoor[id], lo = Point(extent.lo), hi = Point(extent.hi), open = Open(area),
 			bsp = AreaAt(area:GetCenter() + AREA_LIFT), wall = WallDistance(area, Across), links = links }
 		i = i + 1
 		if i % 64 == 0 then work:CheckYield() end
@@ -207,7 +259,7 @@ end
 -- What is kept: the rooms with their areas, doors and windows, the passages,
 -- and the mesh's size. A save is of ROOMS_VERSION's way of finding rooms;
 -- another's is found again.
-local ROOMS_VERSION = 4
+local ROOMS_VERSION = 5
 
 local function Connections(list)
 	local kept = {}

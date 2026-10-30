@@ -485,6 +485,17 @@ T.test("a roofed space open along a whole side is not sealed: it counts as outdo
 	T.eq(Rooms.RoomOf(p, mesh:Id(0, 0)) ~= Rooms.RoomOf(p, mesh:Id(19, 0)), true, "still apart from the yard")
 end)
 
+T.test("a roofed balcony open over a drop along a whole side, with no link there, counts as outdoors", function()
+	local function Balcony(open)
+		local mesh = Mesh()
+		mesh:Block(0, 0, 10, 10)
+		for c = 0, 9 do mesh.graph[mesh:Id(c, 0)].open = open end
+		return Rooms.Partition(mesh:Graph()).rooms[1]
+	end
+	T.eq(Balcony(CELL).outdoor, true, "its front opens onto the air")
+	T.eq(Balcony(nil).outdoor, false, "walled all round: indoors")
+end)
+
 T.test("a big area against walls is open floor: its clearance counts from its wall, not its middle", function()
 	local side = 300
 	local graph = { [1] = { center = { x = 0, y = 0, z = 0 }, floor = side * side, wall = side / 2, links = {},

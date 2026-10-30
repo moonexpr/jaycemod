@@ -34,8 +34,10 @@
 --   (its floor's size), outdoor, bsp (the map's own area it stands in, which
 --   areaportals seal; nil for none), wall (for an area by a wall, a side not
 --   wholly met by neighbours or by the threshold: its middle's distance to
---   it), links = { { to, width (of the shared edge), middle (of it), door (a
---   func_door over either area) } } }, a link listed from each side. yield(),
+--   it), open (the width of its sides onto the open air, no area there: a
+--   balcony's front; nil for none), links = { { to, width (of the shared
+--   edge), middle (of it), door (a func_door over either area) } } }, a
+--   link listed from each side. yield(),
 --   when given, is called as the work goes on (a slow-lane transaction's
 --   CheckYield). windows: { pos, from, to (the area ids on its two sides) },
 --   breakable glass and areaportal windows, which no link crosses.
@@ -379,11 +381,13 @@ local function Levels(rooms, passages)
 	return levels
 end
 
--- Sealed: its openings to the outdoors together no wider than SEAL_OPENING
--- of its perimeter (taken as a square's of its floor).
+-- Sealed: its openings to the outdoors (its links to outdoor areas, and its
+-- sides onto the open air: a balcony's front over a drop) together no wider
+-- than SEAL_OPENING of its perimeter (taken as a square's of its floor).
 local function Sealed(graph, room)
 	local opening = 0
 	for _, id in ipairs(room.areas) do
+		opening = opening + (graph[id].open or 0)
 		for _, link in ipairs(graph[id].links) do
 			local to = graph[link.to]
 			if to and to.outdoor then opening = opening + link.width end
