@@ -41,8 +41,18 @@ local function Mesh()
 		end
 	end
 	function mesh:Id(col, row) return self.at[col .. ":" .. row] end
+	-- a link from a cell out to open ground (an outdoor area, not in the graph)
+	function mesh:Outside(id, dx, dy)
+		local c = self.graph[id].center
+		local middle = { x = c.x + (dx or 0) * CELL / 2, y = c.y + (dy or 0) * CELL / 2, z = 0 }
+		self.graph[id].links[#self.graph[id].links + 1] = { to = -id, width = CELL, middle = middle, outside = true }
+	end
 	function mesh:Graph()
-		for _, area in pairs(self.graph) do area.edge = #area.links < 4 end
+		for _, area in pairs(self.graph) do
+			local inside = 0
+			for _, link in ipairs(area.links) do if not link.outside then inside = inside + 1 end end
+			area.wall = inside < 4 and CELL / 2 or nil
+		end
 		return self.graph
 	end
 	return mesh
@@ -154,6 +164,50 @@ T.test("a mesh with no open floor has no rooms", function()
 	local p = Rooms.Partition(mesh:Graph())
 	T.eq(#p.rooms, 0)
 	T.eq(Rooms.RoomOf(p, 1), nil)
+end)
+
+-- Sealed rooms: the graph holds the indoor areas alone; a link out to open
+-- ground is a way outside.
+T.test("the tuning for sealed rooms is defined", function()
+	T.defined(Rooms.SEAL_OPENING, "SEAL_OPENING")
+end)
+
+T.test("a room's way out to open ground is a door leading outside", function()
+	local mesh = Mesh()
+	mesh:Block(0, 0, 10, 10)
+	mesh:Outside(mesh:Id(0, 5), -1, 0)
+	local p = Rooms.Partition(mesh:Graph())
+	T.eq(#p.rooms, 1, "sealed but for one doorway")
+	local door = p.rooms[1].doors[1]
+	T.eq(door.outside, true, "outside")
+	T.eq(#door.leads, 0, "to no room")
+	T.eq(door.pos.x, -CELL / 2, "in the wall")
+end)
+
+T.test("a roofed space open along a whole side is no room: it is not sealed", function()
+	local mesh = Mesh()
+	mesh:Block(0, 0, 10, 10)
+	for r = 0, 9 do mesh:Outside(mesh:Id(0, r), -1, 0) end
+	T.eq(#Rooms.Partition(mesh:Graph()).rooms, 0)
+end)
+
+T.test("beside a space that is not sealed, a room's door there leads outside", function()
+	local mesh = TwoRooms()
+	Corridor(mesh, 5)
+	for r = 0, 9 do mesh:Outside(mesh:Id(29, r), 1, 0) end -- the second hall is open along its far side
+	local p = Rooms.Partition(mesh:Graph())
+	T.eq(#p.rooms, 1, "the first hall alone")
+	local door = Rooms.RoomOf(p, mesh:Id(0, 0)).doors[1]
+	T.eq(door.outside, true, "its corridor's door leads outside")
+	T.eq(Rooms.RoomOf(p, mesh:Id(25, 5)), nil, "the open hall is in no room")
+end)
+
+T.test("a big area against walls is open floor: its clearance counts from its wall, not its middle", function()
+	local side = 300
+	local graph = { [1] = { center = { x = 0, y = 0, z = 0 }, floor = side * side, wall = side / 2, links = {} } }
+	local p = Rooms.Partition(graph)
+	T.eq(#p.rooms, 1, "one office, one area")
+	T.eq(Rooms.RoomOf(p, 1).id, 1)
 end)
 
 T.test("the work yields to its caller as it goes", function()

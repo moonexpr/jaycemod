@@ -60,9 +60,13 @@ WarCommand("ns_lanes_print", function()
 	return Controller:LaneReport()
 end, "Print each team's lanes: length against the shortest, overlap, and the squads holding them")
 
-WarCommand("ns_rooms_print", function()
+AdminCommand("ns_rooms_print", function()
 	return Controller:RoomReport()
-end, "Print the map's rooms (wartactics.rooms): how many, their doors and dead ends, the areas in passages, the largest")
+end, "Print the map's rooms (wartactics.rooms): how many, their doors and ways outside, the areas in no room, the largest")
+
+AdminCommand("ns_rooms_find", function()
+	return { string.format("ns_rooms_find: found in %.2f s", Controller:FindRoomsNow()), unpack(Controller:RoomReport()) }
+end, "Find the map's rooms now, at once (the server stops meanwhile), and keep them: for tuning on a bench map")
 
 WarCommand("ns_lanes_probe", function()
 	return Controller:ProbeLanes()
