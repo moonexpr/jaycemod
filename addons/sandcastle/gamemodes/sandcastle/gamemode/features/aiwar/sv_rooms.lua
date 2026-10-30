@@ -147,14 +147,24 @@ local function Windows(playable)
 	return windows
 end
 
--- Indoors: a ceiling over the area (a trace straight up from its middle meets
--- the world within ROOF_HEIGHT, not the sky).
+-- Indoors: a ceiling over most of the area. A trace straight up from its
+-- middle and from a point in each quarter meets the world within
+-- ROOF_HEIGHT, not the sky, at more than half of them, so a lamp's gap or
+-- a skylight over the middle (ctf_2fort's bridge) leaves a roofed area
+-- roofed.
 local ROOF_HEIGHT, ROOF_LIFT = 1024, Vector(0, 0, 32)
+local ROOF_SAMPLES = { { 0.5, 0.5 }, { 0.25, 0.25 }, { 0.75, 0.25 }, { 0.25, 0.75 }, { 0.75, 0.75 } }
 
 local function Roofed(area)
-	local from = area:GetCenter() + ROOF_LIFT
-	local tr = util.TraceLine({ start = from, endpos = from + Vector(0, 0, ROOF_HEIGHT), mask = MASK_SOLID_BRUSHONLY })
-	return tr.Hit and not tr.HitSky
+	local extent, z = area:GetExtentInfo(), area:GetCenter().z
+	local covered = 0
+	for _, at in ipairs(ROOF_SAMPLES) do
+		local from = Vector(extent.lo.x + (extent.hi.x - extent.lo.x) * at[1],
+			extent.lo.y + (extent.hi.y - extent.lo.y) * at[2], z) + ROOF_LIFT
+		local tr = util.TraceLine({ start = from, endpos = from + Vector(0, 0, ROOF_HEIGHT), mask = MASK_SOLID_BRUSHONLY })
+		if tr.Hit and not tr.HitSky then covered = covered + 1 end
+	end
+	return covered * 2 > #ROOF_SAMPLES
 end
 
 -- The nav mesh as Partition's graph, and the map's windows, yielding as it
