@@ -274,7 +274,7 @@ requires it (`tests/foundation_layers_test.lua`). Tests are
 | Modules | |
 |---|---|
 | Movement (on `wetsands.path`'s costs) | `brushes`, `clip`, `detour`, `doors`, `leap`, `noise`, `portal`, `probe` (a path follower walking points), `rappel`, `reach_memo`, `route_record`, `route_walk` (a route walked waypoint by waypoint), `corners` (a route's turns pushed out until the body passes them), `nav_gaps` |
-| Senses and body | `hearing`, `vision` (seen or heard, recognized, remembered: the contact, pursued out of sight when asked), `player_body` (a bot player's moves, aim and fire as a player's keys), `speech` (its criteria for the response rules), `gestures` (what an occasion plays, how fast, how often; a squad wiped out; a crit's canned death) |
+| Senses and body | `hearing`, `vision` (seen or heard, recognized, remembered: the contact, pursued out of sight when asked), `player_body` (a bot player's moves, aim and fire as a player's keys), `speech` (its criteria for the response rules), `gestures` (what an occasion plays, how fast, how often; a squad wiped out; a crit's canned death), `gaze` (where a head looks apart from the aim, turned on clients) |
 | Behaviours | `chart` (the contract every behaviour is a state of), `soldier` (the port behaviours drive a soldier through), `behaviors` (the registry the hosting mode gives its behaviours through), `monitor` |
 | The base | `base` (the interface NextSoldier's own NextBot base implements) |
 

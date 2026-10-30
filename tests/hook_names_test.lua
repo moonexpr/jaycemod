@@ -16,7 +16,7 @@ for _, name in ipairs({
 	"PlayerEndVoice", "PlayerFootstep", "PlayerHurt", "PlayerInitialSpawn", "PlayerLoadout",
 	"PlayerRequestTeam", "PlayerSpawn", "PlayerStartVoice", "PopulateMenuBar", "PopulateToolMenu",
 	"PostCleanupMap", "PostDrawTranslucentRenderables", "PostEntityTakeDamage", "PostPlayerDeath",
-	"PostPlayerDraw", "PostRender", "PreCleanupMap", "PreDrawHUD", "PreDrawViewModel", "PreRender",
+	"PostPlayerDraw", "PostRender", "PreCleanupMap", "PrePlayerDraw", "PreDrawHUD", "PreDrawViewModel", "PreRender",
 	"RenderScreenspaceEffects", "SetupMove", "SetupPlayerVisibility", "ShouldCollide", "ShowSpare2",
 	"ShowTeam", "ShutDown", "StartCommand", "Think", "Tick", "TranslateActivity",
 	"UCLAuthed", -- ULib

@@ -56,9 +56,27 @@ local STEP_HEIGHT, JUMP_HEIGHT = Movement.TF2.stepHeight, Movement.CrouchJump(Mo
 -- How fast it gets up to speed and stops, and turns (degrees a second).
 local ACCELERATION, DECELERATION, MAX_YAW_RATE = 1000, 1000, 250
 
-if CLIENT then return end
+if CLIENT then
+	-- Its head turns to what interests it apart from its aim (WS.GazeUpdate),
+	-- here on the client and only while it is drawn: the server says only
+	-- whether it fights (NSFighting) and where it was told to look, until
+	-- when, and whether at once (NSLook, NSLookUntil, NSLookUrgent: LookAt).
+	-- Teammate players are looked at. Fighting, or told urgently, the head
+	-- snaps.
+	function ENT:Draw()
+		local hint = self:GetNW2Float("NSLookUntil", 0) > CurTime() and self:GetNW2Vector("NSLook") or nil
+		local fighting = self:GetNW2Bool("NSFighting")
+		local urgent = fighting or (hint ~= nil and self:GetNW2Bool("NSLookUrgent"))
+		WS.GazeUpdate(self, self:GetAngles().y, fighting, hint, self:GetNW2Int("ws_team", TEAM_UNASSIGNED), urgent)
+		self:DrawModel()
+	end
+	return
+end
 
 local Relations = nextsoldier.relations
+local Gaze = nextsoldier.gaze
+-- A point looked at along a path, at eye height.
+local LOOK_HEIGHT = Vector(0, 0, 64)
 -- The live bots on this base, which others' noises reach (DrGBase keeps
 -- its own: DrGBase.GetNextbots).
 WS.NextSoldierBots = WS.NextSoldierBots or setmetatable({}, { __mode = "k" })
@@ -175,10 +193,14 @@ function ENT:IsAlive() return self.nsAlive == true end
 function ENT:Team() return self:GetNW2Int("ws_team", TEAM_UNASSIGNED) end
 
 -- Hurt (the engine raises this before the damage is taken): whoever did it
--- is noticed at the next look, wherever it stands.
+-- is noticed at the next look, wherever it stands, and its head snaps to
+-- them (LookAt).
 function ENT:OnInjured(dmg)
 	local attacker = dmg:GetAttacker()
-	if IsValid(attacker) and attacker ~= self then self.nsAttacker = attacker end
+	if IsValid(attacker) and attacker ~= self then
+		self.nsAttacker = attacker
+		self:LookAt(attacker:WorldSpaceCenter(), Gaze.HINT_SECONDS, true)
+	end
 end
 
 -- Dead: the class's OnDeath, then the body: a ragdoll (RagdollOnDeath), or
@@ -302,18 +324,22 @@ end
 
 -- Follows a path to goal, computed again when the goal has moved or the path
 -- has aged: "unreachable" (no path), "reached", "obstacle" (stuck against
--- something on its way) or "moving".
+-- something on its way) or "moving". A path made afresh (none, or for a
+-- goal moved), not one merely aged, has it look PATH_LOOKAHEAD along its
+-- new way a while (LookAt).
 function ENT:FollowPath(goal, tolerance)
 	if isentity(goal) then goal = goal:GetPos() end
 	local path = self.nsPath
-	if not (path and path:IsValid()) or path:GetAge() > REPATH_AGE
-		or (self.nsPathGoal and self.nsPathGoal:DistToSqr(goal) > REPATH_DISTANCE * REPATH_DISTANCE) then
+	local afresh = not (path and path:IsValid())
+		or (self.nsPathGoal and self.nsPathGoal:DistToSqr(goal) > REPATH_DISTANCE * REPATH_DISTANCE)
+	if afresh or path:GetAge() > REPATH_AGE then
 		path = Path("Follow")
 		path:SetMinLookAheadDistance(PATH_LOOKAHEAD)
 		path:SetGoalTolerance(tolerance or 20)
 		path:Compute(self, goal, self:GetPathGenerator())
 		self.nsPath, self.nsPathGoal = path, goal
 		if not path:IsValid() then return "unreachable" end
+		if afresh then self:LookAt(path:GetPositionOnPath(PATH_LOOKAHEAD) + LOOK_HEIGHT, Gaze.HINT_SECONDS) end
 	end
 	if self:ClimbPathGoal(path) then return "moving" end
 	self.nsFollowedAt = CurTime()
@@ -477,13 +503,26 @@ end
 function ENT:AimUpdate()
 	local enemy = self:GetEnemy()
 	local yaw, pitch = 0, 0
-	if enemy and self.nsVision:Visible(enemy) then
+	local fighting = enemy ~= nil and self.nsVision:Visible(enemy)
+	if fighting then
 		local aim = (enemy:WorldSpaceCenter() - self:GetEyePosition()):Angle()
 		yaw = math.NormalizeAngle(aim.y - self:GetAngles().y)
 		pitch = math.NormalizeAngle(aim.p)
 	end
 	self:SetPoseParameter("aim_yaw", yaw)
 	self:SetPoseParameter("aim_pitch", pitch)
+	if fighting ~= self.nsFighting then
+		self.nsFighting = fighting
+		self:SetNW2Bool("NSFighting", fighting)
+	end
+end
+
+-- Its head looks at pos for seconds unless it fights (the clients turn it:
+-- nextsoldier.gaze), if the head turns that far; urgent, it snaps there.
+function ENT:LookAt(pos, seconds, urgent)
+	self:SetNW2Vector("NSLook", pos)
+	self:SetNW2Float("NSLookUntil", CurTime() + seconds)
+	self:SetNW2Bool("NSLookUrgent", urgent == true)
 end
 
 -- Its own animation: a profile's IdleAnimation, WalkAnimation and
