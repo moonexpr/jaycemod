@@ -72,6 +72,17 @@ function Soldier:Announce(concept)
 	self.controller:AnnounceLine(self.ent, concept)
 end
 
+-- Its head looks at p a while (base_nextsoldier's LookAt; a DrGBase body
+-- has no head of its own to turn, and looks as it faces).
+function Soldier:LookAt(p, seconds)
+	if self.ent.LookAt then self.ent:LookAt(ToVector(p), seconds) end
+end
+
+-- Plays a gesture (features/aiwar/sv_gestures.lua).
+function Soldier:Gesture(occasion)
+	self.controller:Gesture(self.ent, occasion, CurTime())
+end
+
 function Soldier:CallingMedic() return CurTime() < (self.callingMedicUntil or 0) end
 function Soldier:Health() return self.ent:Health() end
 function Soldier:MaxHealth() return self.ent:GetMaxHealth() end

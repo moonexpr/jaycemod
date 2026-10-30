@@ -422,7 +422,7 @@ function Controller:Drive(ply, entry, cmd)
 	sense.crouchArea, sense.jumpArea = soldier.crouchArea, soldier.jumpArea
 	sense.hop = soldier:Hopping(now)
 	sense.lowBlocked, sense.headBlocked, sense.doorAhead = soldier.lowBlocked, soldier.headBlocked, soldier.doorAhead
-	sense.look = soldier.look
+	sense.look = soldier:Looking(now)
 	sense.aim, sense.aimRadius = aim, AIM_RADIUS
 	local ranges = arm and Arms.Ranges(weapon:GetClass())
 	sense.chase, sense.avoid = ranges and ranges.chase, ranges and ranges.avoid

@@ -282,6 +282,17 @@ function BotSoldier:Watch(p)
 	self.look = p and ToVector(p) or nil
 end
 
+-- Its eyes go to p a while, over where Watch points them (Looking).
+function BotSoldier:LookAt(p, seconds)
+	self.glance, self.glanceUntil = ToVector(p), CurTime() + seconds
+end
+
+-- Where its eyes go with no enemy: a glance still held, else what it watches.
+function BotSoldier:Looking(now)
+	if self.glance and now < self.glanceUntil then return self.glance end
+	return self.look
+end
+
 -- The box its walks and hops are swept with: its own player hull's width
 -- (a TF2 player's 48; Map's 26-wide walk sweep passes lines its shoulders
 -- catch on door frames), WALK_MAXS high above WALK_LIFT.

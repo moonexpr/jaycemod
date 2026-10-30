@@ -60,13 +60,13 @@ if CLIENT then
 	-- Its head turns to what interests it apart from its aim (WS.GazeUpdate),
 	-- here on the client and only while it is drawn: the server says only
 	-- whether it fights (NSFighting) and where it was told to look, until
-	-- when, and whether at once (NSLook, NSLookUntil, NSLookUrgent: LookAt).
+	-- when, and whether at once (NSGaze, NSGazeUntil, NSGazeUrgent: LookAt).
 	-- Teammate players are looked at. Fighting, or told urgently, the head
 	-- snaps.
 	function ENT:Draw()
-		local hint = self:GetNW2Float("NSLookUntil", 0) > CurTime() and self:GetNW2Vector("NSLook") or nil
+		local hint = self:GetNW2Float("NSGazeUntil", 0) > CurTime() and self:GetNW2Vector("NSGaze") or nil
 		local fighting = self:GetNW2Bool("NSFighting")
-		local urgent = fighting or (hint ~= nil and self:GetNW2Bool("NSLookUrgent"))
+		local urgent = fighting or (hint ~= nil and self:GetNW2Bool("NSGazeUrgent"))
 		WS.GazeUpdate(self, self:GetAngles().y, fighting, hint, self:GetNW2Int("ws_team", TEAM_UNASSIGNED), urgent)
 		self:DrawModel()
 	end
@@ -520,9 +520,9 @@ end
 -- Its head looks at pos for seconds unless it fights (the clients turn it:
 -- nextsoldier.gaze), if the head turns that far; urgent, it snaps there.
 function ENT:LookAt(pos, seconds, urgent)
-	self:SetNW2Vector("NSLook", pos)
-	self:SetNW2Float("NSLookUntil", CurTime() + seconds)
-	self:SetNW2Bool("NSLookUrgent", urgent == true)
+	self:SetNW2Vector("NSGaze", pos)
+	self:SetNW2Float("NSGazeUntil", CurTime() + seconds)
+	self:SetNW2Bool("NSGazeUrgent", urgent == true)
 end
 
 -- Its own animation: a profile's IdleAnimation, WalkAnimation and

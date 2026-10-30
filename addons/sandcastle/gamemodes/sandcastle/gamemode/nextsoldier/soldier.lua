@@ -77,6 +77,11 @@
 --     while, and my teammates see that I called
 --   Announce(concept): call out what I am doing (a nextsoldier.speech
 --     concept), if my voice has a line for it
+--   LookAt(p, seconds): look at p a while, unless I fight (my head, a
+--     NextBot's; my eyes, a bot player's), whatever Watch says
+--   Gesture(occasion): play a nextsoldier.gestures occasion (a squad
+--     leader's signals among them), if my model has it and it is not
+--     cooling down
 --   Hop(p) -> whether I will be carried to p: only where a player could
 --     walk from here to p, so never through a wall, door or gate; I am
 --     moved there over a moment, running, and MoveTo and Release wait
@@ -132,6 +137,8 @@ METHODS = {
 	"Burning",
 	"CallMedic",
 	"Announce",
+	"LookAt",
+	"Gesture",
 }
 
 PORT = Port.New("NextSoldier soldier", METHODS)

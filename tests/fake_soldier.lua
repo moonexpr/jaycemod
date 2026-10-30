@@ -188,6 +188,18 @@ function Soldier:Announce(concept)
 	self.announced[#self.announced + 1] = concept
 end
 
+-- lookedAt: each { p, seconds } LookAt was given, in order.
+function Soldier:LookAt(p, seconds)
+	self.lookedAt = self.lookedAt or {}
+	self.lookedAt[#self.lookedAt + 1] = { p = p, seconds = seconds }
+end
+
+-- gestured: the occasions it played (Gesture), in order.
+function Soldier:Gesture(occasion)
+	self.gestured = self.gestured or {}
+	self.gestured[#self.gestured + 1] = occasion
+end
+
 function Soldier:Hold()
 	self.holding = true
 	self.moving = self.pos
