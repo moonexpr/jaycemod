@@ -146,6 +146,20 @@ Each step is a commit with its tests first, and keeps the suite green.
    state and mission over time), and the tactics engine's tick cost before
    and after under `native/ws_profile`.
 
+### Measured (step 7, 2026-10-30)
+
+On `pl_upward`, a war of bot players under way (missions requested,
+judged and checked for promotion every think, squads mustering), one 60 s
+window of `ws_analytics_sample` (40,098 samples, JIT on): no frame of the
+missions (`sv_missions.lua`, `wartactics.mission`, the orders' `Muster`)
+appears in the report, which lists stacks down to 0.2 % (about 80
+samples). The missions cost the server thread less than that; the war's
+whole think (`sv_field.lua:Think`) was 3.2 %. The war's largest cost in
+the window was lane planning (`sv_lanes.lua:onDone`, 4.2 %), which the
+missions do not add to: lanes are planned as before, and a squad's lane is
+now its mission's way. `War:Assign` still runs `Lanes.Assign` each update
+for squads without a mission; it did not show either.
+
 ## 6. Later mission kinds
 
 Each is a kind, its choice in the request, and its leading in the orders.
