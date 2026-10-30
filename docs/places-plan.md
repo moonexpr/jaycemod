@@ -112,19 +112,22 @@ the rest on occupation's changes, and each change is held as occupation is
 Rooms are classed again as the war goes, not once. A team's ground grows
 and shrinks by a ladder, each step held as occupation is:
 
-- **Claimed: to outpost.** An unoccupied room, a commons or the wilds the
-  team claims becomes its outpost: a remote base's works, a squad holding
-  it, or the exit of the team's teleporter from a stronghold (the
-  teleporter's edge makes the room the team's at once, however far).
+- **Claimed: to outpost.** Any room can be claimed for occupation. A room
+  the team claims becomes its outpost: a sentry, turret or other support
+  an engineer or support soldier sets up there (the works of §2.2, here
+  today), a remote base, a squad holding it, or, once there are
+  teleporters, the exit of the team's teleporter from a stronghold (its
+  edge makes the room the team's at once, however far). A room the enemy
+  holds is claimed only once the team's claim beats the enemy's (§2.2).
 - **Commuted: outpost to stronghold.** An outpost the team's own soldiers
   pass through enough (its traffic over `STRONGHOLD_TRAFFIC`, held) becomes
-  a stronghold; the rooms next to it the team does not hold (unoccupied,
-  commons, wilds; never the enemy's, restricted ground or a highway)
-  become its outposts, so the ground spreads a room at a time.
+  a stronghold; the rooms next to it the team does not hold become its
+  outposts (one the enemy holds only once the team's claim there beats the
+  enemy's), so the ground spreads a room at a time.
 - **Abandoned: back down.** A stronghold its soldiers stop passing through
-  falls back to an outpost, and an outpost with no claim left (works
-  destroyed, teleporter gone, no one holding) to what it was before: the
-  class its measures give.
+  falls back to an outpost, and an outpost with no claim left (its sentry
+  or support destroyed, teleporter gone, no one holding) to what it was
+  before: the class its measures give.
 - **Taken: to the enemy.** A room the enemy comes to hold (§2.2) is lost:
   an outpost at once, a stronghold once the enemy's claim beats the team's.
 
