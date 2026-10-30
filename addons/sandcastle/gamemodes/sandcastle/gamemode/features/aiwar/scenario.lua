@@ -205,6 +205,10 @@ function Scenario:TeamSizes(size)
 	return { [Teams.RED] = size, [Teams.BLUE] = size }
 end
 
+-- The kit (features.aiwar.sv_enlist's: primary, secondary, melee) a
+-- soldier of team in role carries, or nil for its faction's.
+function Scenario:Kit(team, role) return nil end
+
 function Scenario:Brief(field, now) NotImplemented(self, "Brief") end
 function Scenario:Stances(field, now) NotImplemented(self, "Stances") end
 function Scenario:Front(field, team) NotImplemented(self, "Front") end

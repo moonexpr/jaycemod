@@ -7,10 +7,12 @@
 --
 -- An effect: name; conds, any of which shows it; file, the particle file of
 -- its particle; particle, by team (red, blue) or for all (any); on, BODY or
--- WEAPON (the active weapon: the view model for its holder in first person);
+-- WEAPON (the active weapon: the view model for its holder in first person)
+-- or OVERHEAD (above the eyes by above, as GetOverheadEffectPosition);
 -- loop, a game sound played while it shows; overlay, the holder's screen
 -- material; material, by team, over the model and its weapon;
 -- thirdPersonOnly: its particle not shown to its holder in first person;
+-- othersOnly: its particle never shown to its holder;
 -- corpse, the particle one who dies holding it burns on with; ignite, the
 -- game sound of catching it (ws/sv_teams_conditions.lua).
 local P = gameplay.players
@@ -20,7 +22,7 @@ module(...)
 
 local C = P.COND
 
-BODY, WEAPON = "body", "weapon"
+BODY, WEAPON, OVERHEAD = "body", "weapon", "overhead"
 
 EFFECTS = {
 	-- UpdateCritBoostEffect
@@ -59,7 +61,24 @@ EFFECTS = {
 		file = "particles/item_fx.pcf",
 		particle = { any = "peejar_drips_milk" },
 		on = BODY,
-		overlay = "effects/milk_screen", -- TF_SCREEN_OVERLAY_MATERIAL_MILK
+		-- no overlay: OnAddMadMilk's TF_SCREEN_OVERLAY_MATERIAL_MILK is
+		-- commented out in TF2
+	},
+	-- OnAddBleeding
+	{
+		name = "bleeding",
+		conds = { C.BLEEDING },
+		overlay = "effects/bleed_overlay", -- TF_SCREEN_OVERLAY_MATERIAL_BLEED
+	},
+	-- C_TFPlayer::UpdateMarkedForDeathEffect, AddOverheadEffect
+	{
+		name = "marked",
+		conds = { C.MARKED_FOR_DEATH },
+		file = "particles/item_fx.pcf",
+		particle = { any = "mark_for_death" },
+		on = OVERHEAD,
+		above = 20,
+		othersOnly = true,
 	},
 	-- OnAddSpeedBoost
 	{
@@ -89,6 +108,8 @@ TOGGLES = {
 	{ cond = C.BURNING, label = "Burning" },
 	{ cond = C.URINE, label = "Jarate" },
 	{ cond = C.MAD_MILK, label = "Mad Milk" },
+	{ cond = C.BLEEDING, label = "Bleeding" },
+	{ cond = C.MARKED_FOR_DEATH, label = "Marked for death" },
 }
 
 function Toggle(cond)

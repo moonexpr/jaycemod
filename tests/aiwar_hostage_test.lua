@@ -363,4 +363,28 @@ T.test("the lanes lead to the group BLU reaches first", function()
 	T.eq(next(scenario:SetupAttacks(field)), nil, "no setup gates")
 end)
 
+-- On CS:S's hostage maps the war's soldiers carry CS:S's arms: RED's are the
+-- terrorists' and BLU's the counter-terrorists' (the maps' own sides), every
+-- role's kit one the soldiers can carry, of weapons its side may use; a
+-- medic keeps its faction's kit, and other scenarios keep theirs.
+T.test("hostage rescue's soldiers carry CS:S's arms, each side its own", function()
+	local Arms = T.require("features.aiwar.arms")
+	local Css = gameplay.css_weapons
+	local scenario = Hostage.Scenario:New()
+	local sides = { [RED] = Css.Set(Css.For(Css.TERRORIST)), [BLUE] = Css.Set(Css.For(Css.CT)) }
+	for team, allowed in pairs(sides) do
+		for _, role in ipairs({ AiWar.BLOCK, AiWar.HOLD, AiWar.RAID, AiWar.SUPPORT, AiWar.PUSH, false }) do
+			local kit = scenario:Kit(team, role)
+			T.eq(kit ~= nil, true, tostring(role) .. " has a kit")
+			for _, primary in ipairs(kit.primary) do
+				local loadout = Arms.Loadout({ primary = { primary }, secondary = kit.secondary, melee = kit.melee }, function() return 1 end)
+				for _, class in ipairs(Arms.Classes(loadout)) do T.eq(allowed[class], true, team .. " may use " .. class) end
+			end
+		end
+		T.eq(scenario:Kit(team, AiWar.MEDIC), nil, "a medic's is its faction's")
+	end
+	T.eq(scenario:Kit(RED, false).primary[1] ~= scenario:Kit(BLUE, false).primary[1], true, "the sides differ")
+	T.eq(Scenario.Scenario:New():Kit(RED, false), nil, "another scenario's soldiers keep their faction's")
+end)
+
 T.finish()

@@ -170,10 +170,11 @@ function Controller:Equip(ent, entry, member)
 			if holder == ent then self.heroes[name] = nil end
 		end
 	end
-	-- kits are the faction's, whichever team it fights for since the sides last traded
+	-- kits are the scenario's for the team (CS:S's sides' on its hostage
+	-- maps), else the faction's, whichever team it fights for since the sides last traded
 	local faction = self:Faction(team).id
 	local kits = KITS[faction] or {}
-	local kit = (role == AiWar.MEDIC and MEDIC_KITS[faction]) or kits[role]
+	local kit = (self.scenario and self.scenario:Kit(team, role)) or (role == AiWar.MEDIC and MEDIC_KITS[faction]) or kits[role]
 		or (faction == AiWar.RESISTANCE and role == AiWar.SUPPORT and self:HeroKit(ent)) or kits.default or {}
 	entry.soldier.kit = kit
 	-- a hero leads its squad (wartactics.squad)

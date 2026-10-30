@@ -141,6 +141,20 @@ T.test("second modes: the M4A1's silencer and the AWP's scope use the script's s
 	T.eq(Css.WEAPONS[AK].second, nil, "the AK has none")
 end)
 
+-- A script's second accuracy has no recovery times of its own: CS:S keeps
+-- one RecoveryTimeStand and RecoveryTimeCrouch a gun.
+T.test("a gun recovers from firing in its second mode as in its first", function()
+	for class, w in pairs(Css.WEAPONS) do
+		if w.accuracy then
+			local acc, alt = Css.Accuracy(w, false), Css.Accuracy(w, true)
+			T.eq(alt.recoveryStand, acc.recoveryStand, class .. " standing")
+			T.eq(alt.recoveryCrouch, acc.recoveryCrouch, class .. " crouching")
+			local fired = Css.Fired(alt, Css.Base(alt, false))
+			T.eq(Css.Recover(alt, fired, false, alt.recoveryStand) < fired, true, class .. " recovers")
+		end
+	end
+end)
+
 T.test("the knife: a stab hits harder than a slash, and either hits harder from behind", function()
 	local knife = Css.KNIFE_STATS
 	T.eq(knife.stab.damage > knife.slash.damage, true, "stab")
@@ -148,7 +162,32 @@ T.test("the knife: a stab hits harder than a slash, and either hits harder from 
 	T.eq(Css.Backstab({ x = 1, y = 0 }, { x = 1, y = 0 }), true, "behind")
 	T.eq(Css.Backstab({ x = 1, y = 0 }, { x = -1, y = 0 }), false, "face to face")
 	T.eq(Css.Backstab({ x = 1, y = 0 }, { x = 0, y = 1 }), false, "beside")
-	T.eq(Css.KnifeDamage(knife.stab, true), knife.stab.damage * Css.BACKSTAB, "a backstab")
+	T.eq(Css.KnifeDamage(knife.stab, true, false), knife.stab.damage * Css.BACKSTAB, "a backstab")
+	T.eq(Css.KnifeDamage(knife.slash, false, true), knife.slash.firstDamage, "a fresh slash")
+	T.eq(Css.KnifeDamage(knife.slash, false, false), knife.slash.damage, "a slash after another")
+	T.eq(Css.KnifeDamage(knife.stab, false, true), knife.stab.damage, "a stab is never fresher")
+end)
+
+T.test("a flashbang blinds longest face on at its centre, less turned away or farther, and not past its radius", function()
+	local flash = Css.GRENADES.weapon_flashbang
+	local full = Css.FlashBlind(flash, 0, 1)
+	T.near(full, flash.blind, 1e-9, "face on, at the centre")
+	T.eq(Css.FlashBlind(flash, flash.radius / 2, 1) < full, true, "farther")
+	T.eq(Css.FlashBlind(flash, 0, 0) < full, true, "turned aside")
+	T.eq(Css.FlashBlind(flash, 0, -1) < Css.FlashBlind(flash, 0, 0), true, "turned away")
+	T.eq(Css.FlashBlind(flash, flash.radius, 1), 0, "at its radius")
+end)
+
+T.test("a grenade is thrown higher than aimed and faster the higher it is aimed, to its speed", function()
+	local he = Css.GRENADES.weapon_hegrenade
+	local pitch, speed = Css.Throw(he, 0)
+	T.eq(pitch < 0, true, "level aim throws upward")
+	T.eq(speed <= he.speed, true, "at most its speed")
+	local _, low = Css.Throw(he, 60)
+	T.eq(low < speed, true, "aimed down, slower")
+	local _, high = Css.Throw(he, -80)
+	T.eq(high, he.speed, "aimed up, its speed")
+	T.eq(Css.Throw(he, 300), Css.Throw(he, -60), "an angle past 90 read as its negative")
 end)
 
 T.test("a gun script without its accuracy model is refused", function()
@@ -166,6 +205,56 @@ T.test("the tuning the scripts lack is defined", function()
 	T.defined(Css.GRENADES.weapon_smokegrenade.duration, "smoke")
 	for class, w in pairs(Css.WEAPONS) do
 		if w.kind == Css.GUN then T.defined(w.reload, class .. " reload") end
+	end
+end)
+
+-- The shots that may kill from full health: a bolt-action sniper rifle's
+-- through its scope, and the knife's from behind; no other. The automatic
+-- snipers are CS:S's "no skill" guns, so theirs are no skill shot.
+T.test("the skill shots are a scoped bolt-action rifle's and the knife's backstab", function()
+	local W = Css.WEAPONS
+	T.eq(Css.SkillShot(W.weapon_awp, { scoped = true }), true, "the AWP scoped")
+	T.eq(Css.SkillShot(W.weapon_scout, { scoped = true }), true, "the Scout scoped")
+	T.eq(Css.SkillShot(W.weapon_g3sg1, { scoped = true }), false, "the G3SG1, an automatic")
+	T.eq(Css.SkillShot(W.weapon_sg550, { scoped = true }), false, "the SG 550, an automatic")
+	T.eq(Css.SkillShot(W.weapon_awp, { scoped = false }), false, "the AWP unscoped")
+	T.eq(Css.SkillShot(W.weapon_aug, { scoped = true }), false, "a rifle's scope is no sniper's")
+	T.eq(Css.SkillShot(W.weapon_deagle, {}), false, "a pistol")
+	T.eq(Css.SkillShot(W.weapon_knife, { back = true }), true, "a backstab")
+	T.eq(Css.SkillShot(W.weapon_knife, { back = false }), false, "a stab to the face")
+	T.eq(Css.SkillShot(W.weapon_hegrenade, {}), false, "a grenade")
+end)
+
+-- CS:S's least loved guns (the UMP-45, the TMP, the Five-seveN) each have
+-- a twist that is no more damage but a TF2 player condition its hit
+-- inflicts: milked, bleeding, marked for death.
+T.test("only the least loved guns have a twist", function()
+	local twisted = {}
+	for _, class in ipairs(Css.CLASSES) do
+		if Css.Twist(class) then twisted[#twisted + 1] = class end
+	end
+	table.sort(twisted)
+	T.eq(table.concat(twisted, " "), "weapon_fiveseven weapon_tmp weapon_ump45", "the twisted")
+end)
+
+T.test("each twist is a condition its hit inflicts for a while", function()
+	local C = gameplay.players.COND
+	T.eq(Css.Twist("weapon_ump45").cond, C.MAD_MILK, "the UMP-45 milks")
+	T.eq(Css.Twist("weapon_tmp").cond, C.BLEEDING, "the TMP bleeds")
+	T.eq(Css.Twist("weapon_fiveseven").cond, C.MARKED_FOR_DEATH, "the Five-seveN marks")
+	for _, class in ipairs({ "weapon_ump45", "weapon_tmp", "weapon_fiveseven" }) do
+		T.defined(Css.Twist(class).seconds, class .. " seconds")
+	end
+end)
+
+-- A stun takes its victim's control away, so it belongs to a projectile that
+-- takes skill to land, never to a gun's hitscan bullets, which land too
+-- often to bear: every CS:S gun fires hitscan bullets.
+T.test("no gun's twist stuns", function()
+	local C = gameplay.players.COND
+	for _, class in ipairs(Css.CLASSES) do
+		local twist = Css.Twist(class)
+		if twist then T.eq(twist.cond ~= C.STUNNED, true, class .. " does not stun") end
 	end
 end)
 

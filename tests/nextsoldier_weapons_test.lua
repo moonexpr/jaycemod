@@ -43,6 +43,26 @@ T.test("HL2's guns the soldiers carry have stats", function()
 	end
 end)
 
+-- CS:S's guns fire as gameplay.css_weapons has them: its damage, pellets,
+-- cycle, clip, sound and standing spread.
+T.test("CS:S's guns have stats, CS:S's own", function()
+	local Css = gameplay.css_weapons
+	for _, class in ipairs(Css.CLASSES) do
+		local w = Css.WEAPONS[class]
+		local stats = Weapons.STATS[class]
+		if w.kind == Css.GUN then
+			T.eq(stats ~= nil, true, class)
+			T.eq(stats.damage, w.damage, class .. " damage")
+			T.eq(stats.bullets, w.bullets, class .. " pellets")
+			T.eq(stats.interval, w.cycle, class .. " cycle")
+			T.eq(stats.clip, w.clip, class .. " clip")
+			T.eq(stats.sound, w.sounds.single_shot, class .. " sound")
+		else
+			T.eq(stats, nil, class .. " is no gun")
+		end
+	end
+end)
+
 T.test("the crossbow throws a bolt that flies; the guns fire bullets", function()
 	T.eq(Weapons.STATS.weapon_crossbow.projectile ~= nil, true, "a bolt")
 	T.eq(Weapons.STATS.weapon_crossbow.projectile.speed > 0, true, "that flies")

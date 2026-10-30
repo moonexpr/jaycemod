@@ -321,6 +321,33 @@ function Scenario:Reset()
 	self.memory = {}
 end
 
+-- CS:S's arms (gameplay.css_weapons), the maps' own sides': RED the
+-- terrorists' (AK-47 or Galil, Glock, knife), BLU the counter-terrorists'
+-- (M4A1 or FAMAS, USP, knife). Blockers and a point's holders carry the M3,
+-- raiders an SMG, support the side's heavy gun; medics keep their
+-- faction's kit, healing being theirs.
+local function Side(primary, secondary, raider, heavy)
+	local function Kit(name, guns) return { name = name, primary = guns, secondary = secondary, melee = "weapon_knife" } end
+	local shotgunner = Kit("shotgunner", { "weapon_m3" })
+	return {
+		[AiWar.BLOCK] = shotgunner,
+		[AiWar.HOLD] = shotgunner,
+		[AiWar.RAID] = Kit("raider", { raider }),
+		[AiWar.SUPPORT] = Kit("support", { heavy }),
+		default = Kit("rifleman", primary),
+	}
+end
+KITS = {
+	[Teams.RED] = Side({ "weapon_ak47", "weapon_galil" }, "weapon_glock", "weapon_mac10", "weapon_m249"),
+	[Teams.BLUE] = Side({ "weapon_m4a1", "weapon_famas" }, "weapon_usp", "weapon_mp5navy", "weapon_p90"),
+}
+
+function Scenario:Kit(team, role)
+	if role == AiWar.MEDIC then return nil end
+	local side = KITS[team]
+	return side[role] or side.default
+end
+
 function Scenario:Command(war, field, now)
 	self:Explore(field).explore:Survey(war:Members(), now)
 	self:Brief(field, now)

@@ -6,7 +6,9 @@
 -- players and soldiers alike, by the conditions of both
 -- (ws/sv_teams_conditions.lua). A crit is
 -- marked DMG_CRITICAL (DMG_ACID's bit, as TF2's), so what reads the damage
--- after knows it. Then the hit is heard and told: a crit or mini-crit
+-- after knows it. Last, no player's or soldier's shot kills a fighter from
+-- full health but a skill shot (Balance.Cap, WS.SkillShot): what it could
+-- not deal pushes and staggers instead. Then the hit is heard and told: a crit or mini-crit
 -- sounds from its victim (TFPlayer.CritHit, CritHitMini; CritPain to a
 -- player hit), and the attacking player is told its damage
 -- (game_combat_text, ws/cl_hits.lua). A crit bullet is seen as one: TF2's
@@ -36,6 +38,20 @@ end
 -- a limb.
 function GM:ScalePlayerDamage(ply, hitgroup) WS.TraceHit(ply, hitgroup) end
 function GM:ScaleNPCDamage(npc, hitgroup) WS.TraceHit(npc, hitgroup) end
+
+-- A skill shot on ent this tick (gameplay.css_weapons' SkillShot: a scoped
+-- sniper's, a backstab), told by the weapon before its damage: the one hit
+-- the cap lets kill from full health.
+local skilled = setmetatable({}, { __mode = "k" }) -- entity -> tick
+
+function WS.SkillShot(ent)
+	skilled[ent] = engine.TickCount()
+end
+
+local function SkillShot(ent)
+	local tick = skilled[ent]
+	return tick ~= nil and tick == engine.TickCount()
+end
 
 local function Headshot(ent)
 	local trace = traced[ent]
@@ -138,8 +154,38 @@ hook.Add("EntityTakeDamage", "ws_hits", function(target, dmg)
 		class = class,
 		headshot = headshot,
 		credited = Combatant(target) and WS.CreditEnvironmentalHit(target, dmg),
+		skill = SkillShot(target),
+		excess = 0,
 	}
 end)
+
+-- Whose hits are held under a kill from full health (Balance.Cap): a
+-- player's or a war soldier's on another fighter, never the world's,
+-- a boss's or one's own.
+local function Capped(target, attacker)
+	return IsValid(attacker) and attacker ~= target and Combatant(target)
+		and (attacker:IsPlayer() or attacker.WSSoldier == true)
+end
+
+-- What each attacker's shot this tick has dealt each victim, so a shot's
+-- pellets, each its own hit, are held together.
+local shots = setmetatable({}, { __mode = "k" }) -- target -> { tick, attacker, dealt }
+
+-- The cap is the last word on a hit, after every hook has scaled it (a
+-- soldier's kit, base_nextsoldier_dealt): the gamemode's own runs after them.
+function GM:EntityTakeDamage(target, dmg)
+	local hit, attacker = taking[target], dmg:GetAttacker()
+	if hit == nil or not Capped(target, attacker) then return end
+	local tick, shot = engine.TickCount(), shots[target]
+	if shot == nil or shot.tick ~= tick or shot.attacker ~= attacker then
+		shot = { tick = tick, attacker = attacker, dealt = 0 }
+		shots[target] = shot
+	end
+	local hurt, excess = Balance.Cap(dmg:GetDamage(), shot.dealt, target:GetMaxHealth(), hit.skill)
+	dmg:SetDamage(hurt)
+	shot.dealt = shot.dealt + hurt
+	hit.excess = excess
+end
 
 -- The way a hit pushes: along its force, or else from its attacker.
 local function PushDirection(target, dmg)
@@ -220,10 +266,10 @@ hook.Add("Tick", "ws_hits_impact", function()
 	end
 end)
 
--- The crossbow's punch: the victim thrown along the shot and, a player,
--- staggered by a weapon that staggers.
+-- The crossbow's punch, or what the cap held back: the victim thrown along
+-- the shot and, a player, staggered.
 local function KnockBack(target, dmg, hit)
-	local push = Balance.Knockback(hit.class, hit.headshot)
+	local push = Balance.Knockback(hit.class, hit.headshot, hit.excess)
 	if push == nil or target:Health() <= 0 then return end
 	local dir = PushDirection(target, dmg)
 	if dir == nil then return end
@@ -248,6 +294,15 @@ local function Top(ent)
 	return ent:GetPos() + Vector(0, 0, ent:OBBMaxs().z)
 end
 
+-- Mad Milk's heal: attacker, a fighter alive, heals part of what it dealt
+-- target, up to its most health (TakeHealth: no overheal).
+local function MilkHeal(target, attacker, damage)
+	if not (IsValid(attacker) and attacker ~= target and Combatant(attacker) and attacker:Health() > 0) then return end
+	local heal = P.MilkHeal(WS.ConditionsOf(target), damage, CurTime())
+	if heal <= 0 then return end
+	attacker:SetHealth(math.min(attacker:GetMaxHealth(), attacker:Health() + heal))
+end
+
 hook.Add("PostEntityTakeDamage", "ws_hits", function(target, dmg, took)
 	local hit = taking[target]
 	taking[target] = nil
@@ -255,6 +310,7 @@ hook.Add("PostEntityTakeDamage", "ws_hits", function(target, dmg, took)
 	-- the environment's hit, though credited, is no one's to be told of
 	if hit.credited then return end
 	WS.RecordDamager(target, dmg:GetAttacker())
+	MilkHeal(target, dmg:GetAttacker(), dmg:GetDamage())
 	local kind = hit.kind
 	KnockBack(target, dmg, hit)
 	local sound = HIT_SOUNDS[kind]

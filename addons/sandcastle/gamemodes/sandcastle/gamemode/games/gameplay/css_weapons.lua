@@ -30,10 +30,13 @@
 -- { x, y } offsets (random() in [0, 1), the caller's); Damage(weapon,
 -- distance, hitgroup); Kick(weapon, stance, shots, punch, left, roll) ->
 -- punch, left (roll: random 0..kick.flip, or a 0..1 fraction of a punch's
--- range); Backstab(fromAttacker, victimFacing); KnifeDamage(strike, back).
-local error, ipairs, setmetatable, tostring, type = error, ipairs, setmetatable, tostring, type
+-- range); Backstab(fromAttacker, victimFacing); KnifeDamage(strike, back,
+-- fresh); FlashBlind(flash, distance, facing) -> seconds; Throw(grenade,
+-- viewPitch) -> pitch, speed.
+local error, ipairs, pairs, setmetatable, tostring, type = error, ipairs, pairs, setmetatable, tostring, type
 local cos, sin, exp, log, pi, min = math.cos, math.sin, math.exp, math.log, math.pi, math.min
 local Scalar = math.scalar
+local COND = gameplay.players.COND
 local Scripts = require("games.gameplay.css_weapons.scripts")
 module(...)
 
@@ -201,6 +204,16 @@ local function Frozen(t)
 	})
 end
 
+-- A script's second accuracy, with the gun's recovery times: CS:S keeps one
+-- RecoveryTimeStand and RecoveryTimeCrouch a gun, whatever its mode.
+local function Alt(script)
+	if not script.alt then return script.accuracy end
+	local alt = {}
+	for key, value in pairs(script.alt) do alt[key] = value end
+	alt.recoveryStand, alt.recoveryCrouch = script.accuracy.recoveryStand, script.accuracy.recoveryCrouch
+	return alt
+end
+
 -- A weapon from its script (a SCRIPTS entry); refused when the script lacks
 -- what its kind needs: our content's mistake.
 function Weapon(class, script)
@@ -227,7 +240,7 @@ function Weapon(class, script)
 		w.damage, w.bullets, w.cycle = script.damage, script.bullets, script.cycle
 		w.range, w.rangeModifier, w.penetration = script.range, script.rangeModifier, script.penetration
 		w.clip, w.ammo, w.fullAuto = script.clip, script.ammo, script.fullAuto == true
-		w.accuracy, w.alt = Frozen(script.accuracy), Frozen(script.alt or script.accuracy)
+		w.accuracy, w.alt = Frozen(script.accuracy), Frozen(Alt(script))
 		w.second = SECOND[class] and Frozen(SECOND[class]) or nil
 		w.kick = Frozen(KICK[class] or KICK_BY_TYPE[script.type])
 		w.reload = RELOAD[script.type]
@@ -332,6 +345,69 @@ function Backstab(fromAttacker, victimFacing)
 	return fromAttacker.x * victimFacing.x + fromAttacker.y * victimFacing.y > BACKSTAB_DOT
 end
 
-function KnifeDamage(strike, back)
-	return strike.damage * (back and BACKSTAB or 1)
+-- The scripts' type of the sniper rifles.
+SNIPER_RIFLE = "SniperRifle"
+
+-- Whether weapon's hit is a skill shot, the only kind that may kill from
+-- full health (weapon_balance's Cap): a bolt-action sniper rifle's through
+-- its scope (the automatic snipers, the G3SG1 and SG 550, are the ones CS:S
+-- players call skill-free), the knife's from behind. facts: { scoped, back }.
+function SkillShot(weapon, facts)
+	if weapon.type == SNIPER_RIFLE then return facts.scoped == true and not weapon.fullAuto end
+	if weapon.kind == KNIFE then return facts.back == true end
+	return false
+end
+
+-- The twists of CS:S's least loved guns, by its players' word: the UMP-45
+-- (the least earned weapon achievement in CS:S), the TMP (the weakest
+-- primary, "unpopular") and the Five-seveN (among "the least popular
+-- pistols"). Each gains no damage but a TF2 player condition its hit
+-- inflicts on whoever it may hurt, for seconds (gameplay.players' Inflict);
+-- never a stun, which takes a victim's control away and belongs to a
+-- projectile that takes skill to land, not to hitscan bullets:
+--   the UMP-45, MAD_MILK: whoever hurts its victim heals part of the
+--     damage, so its shooter and team outlast a fight;
+--   the TMP, BLEEDING: hurt by its shooter as TF2's bleed hurts;
+--   the Five-seveN, MARKED_FOR_DEATH: mini-crits from anyone, so its
+--     shooter marks a target for the team.
+TWISTS = {
+	weapon_ump45 = { cond = COND.MAD_MILK, seconds = 3 },
+	weapon_tmp = { cond = COND.BLEEDING, seconds = 2 },
+	weapon_fiveseven = { cond = COND.MARKED_FOR_DEATH, seconds = 3 },
+}
+
+-- class's twist, or nil.
+function Twist(class)
+	return TWISTS[class]
+end
+
+-- fresh: the strike comes its fresh seconds or more after the last.
+function KnifeDamage(strike, back, fresh)
+	local damage = fresh and strike.firstDamage or strike.damage
+	return damage * (back and BACKSTAB or 1)
+end
+
+-- Seconds a flash blinds whoever sees it distance away, facing it by
+-- facing (the dot of their view and the way to it): FLASH_FACING's
+-- fraction by how they face, falling to none at its radius.
+FLASH_FACING = { { dot = 0.5, scale = 1 }, { dot = -0.5, scale = 0.5 }, { dot = -1, scale = 0.2 } }
+
+function FlashBlind(flash, distance, facing)
+	local near = 1 - Scalar.Saturate(distance / flash.radius)
+	for _, f in ipairs(FLASH_FACING) do
+		if facing >= f.dot then return flash.blind * f.scale * near end
+	end
+	return 0
+end
+
+-- A grenade's throw from a view pitched by pitch degrees (down is
+-- positive, as Source's): CS:S's, the throw raised by THROW_LIFT and
+-- flattened toward the horizon, its speed THROW_SPEED a degree below
+-- straight up, to the grenade's speed. -> pitch, speed.
+THROW_LIFT, THROW_SPEED = 10, 6
+
+function Throw(grenade, pitch)
+	if pitch > 90 then pitch = pitch - 360 elseif pitch < -90 then pitch = pitch + 360 end
+	local thrown = -THROW_LIFT + pitch * (90 - THROW_LIFT) / 90
+	return thrown, min((90 - thrown) * THROW_SPEED, grenade.speed)
 end
