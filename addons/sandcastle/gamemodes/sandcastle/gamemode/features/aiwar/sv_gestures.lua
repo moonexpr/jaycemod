@@ -42,14 +42,17 @@ local function NearestWitness(team, pos, except)
 	return witness
 end
 
--- A kill: the killer, if a soldier, counts it toward a squad wiped out, and
--- the nearest teammate of the killer that saw it nods.
+-- A kill by a soldier or a player: the killer, if a soldier, counts it
+-- toward a squad wiped out, and the nearest teammate of the killer that saw
+-- it nods. Anything else (a grenade, the world) is no one's teammate.
 local function Killed(victim, attacker)
 	if not Controller.war or not IsValid(attacker) or attacker == victim then return end
 	local now = CurTime()
 	local killer = Controller.soldiers[attacker]
-	if killer then Memory(killer):Killed(now) end
-	local witness = NearestWitness(WS.TeamOf(attacker), victim:GetPos(), attacker)
+	if killer then Memory(killer):Killed(now)
+	elseif not attacker:IsPlayer() then return end
+	local team = killer and killer.soldier.team or attacker:Team()
+	local witness = NearestWitness(team, victim:GetPos(), attacker)
 	if witness then Controller:Gesture(witness, Gestures.AGREE, now) end
 end
 
