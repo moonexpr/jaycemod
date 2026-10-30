@@ -79,6 +79,7 @@ local DESCRIBE = {
 	sudden_death = function(e) return "sudden_death " .. e.reason end,
 	deathmatch = function(e) return "deathmatch" end,
 	stalemate_winner = function(e) return "stalemate_winner " .. e.team end,
+	restart_seconds = function(e) return "restart_seconds " .. e.seconds .. (e.announce and (" " .. e.announce) or "") end,
 	intermission = function(e) return "intermission " .. e.reason end,
 	overtime = function(e) return "overtime " .. tostring(e.value) end,
 }
@@ -705,6 +706,16 @@ T.test("a tied match at the win limit is a deathmatch round too; without deathma
 	T.eq(Effect(oldEffects, "sudden_death") ~= nil, true, "sudden death instead")
 end)
 
+T.test("a tied match at a round limit goes to its deathmatch on a map with time left", function()
+	local round = Running({ maxrounds = 1, deathmatchEnable = true, timelimit = TIMELIMIT_MINUTES })
+	round:SetWinningTeam(T0 + 20, NOBODY, W.STALEMATE, true, false, false, FakeObjective.Objective())
+	local back = T0 + 20 + Settings().bonusRoundTime + 1
+	round:Think(back, World())
+	round:Think(back + Rounds.PREROUND_SECONDS, World())
+	round:Think(back + Rounds.PREROUND_SECONDS + 0.1, World())
+	T.eq(round:InDeathmatch(), true)
+end)
+
 -- The bonus rounds, deathmatch and sudden death, open with a freeze of
 -- BONUS_FREEZE_SECONDS in place of setup, so everyone reads the rules:
 -- deathmatch's pre-round lasts it and its map's setup ends at once.
@@ -790,6 +801,113 @@ T.test("a restart outside a round in play is silent, players or not", function()
 	local won = Running()
 	won:SetWinningTeam(T0 + 20, RED, W.ALL_POINTS_CAPTURED, true, false, false, FakeObjective.Objective())
 	Expect(won:RestartRound(T0 + 21, WITH_PLAYERS), { "state PREGAME" }, "while the winners celebrate")
+end)
+
+-- mp_restartround, mp_restartgame and mp_restartgame_immediate
+-- (CTeamplayRoundBasedRules::CheckRestartRound), as the world reads them:
+-- RestartRequest(restartround, restartgame, immediate).
+T.test("mp_restartround is read first, mp_restartgame when it is 0, and only a game restart resets the map", function()
+	T.eq(Rounds.RestartRequest(0, 0, false), nil, "nothing asked")
+	local round = Rounds.RestartRequest(5, 0, false)
+	T.eq(round.seconds, 5)
+	T.eq(round.fullReset, false, "the round alone: a mini-round restarts on the map as it is")
+	T.eq(round.line, Rounds.RESTART_ROUND, "announced")
+	local game = Rounds.RestartRequest(0, 3, false)
+	T.eq(game.seconds, 3)
+	T.eq(game.fullReset, true)
+	T.eq(game.line, Rounds.RESTART_GAME)
+	local both = Rounds.RestartRequest(4, 9, false)
+	T.eq(both.seconds, 4, "mp_restartround's delay")
+	T.eq(both.fullReset, true, "mp_restartgame's reset")
+	T.eq(both.line, Rounds.RESTART_GAME)
+end)
+
+T.test("mp_restartgame_immediate restarts the game now; delays are held to RESTART_DELAY_MAX", function()
+	local now = Rounds.RestartRequest(0, 0, true)
+	T.eq(now.seconds, 0)
+	T.eq(now.fullReset, true)
+	T.eq(Rounds.RestartRequest(0, Rounds.RESTART_DELAY_MAX + 1, false).seconds, Rounds.RESTART_DELAY_MAX)
+	T.eq(Rounds.RestartRequest(-1, 5, false), nil, "a negative mp_restartround asks nothing, as TF2 reads it")
+end)
+
+-- The first Think a second after Running()'s last: its periodic checks run.
+local PERIODIC_AT = T0 + 1 + Rounds.PREROUND_SECONDS + Rounds.PERIODIC_INTERVAL + 0.5
+
+local function Restarting(seconds, fullReset, line)
+	return World({ restart = { seconds = seconds, fullReset = fullReset, line = line } })
+end
+
+T.test("a restart asked is told once, its convars spent, and comes after its delay", function()
+	local round = Running()
+	local told = round:Think(PERIODIC_AT, Restarting(5, false, Rounds.RESTART_ROUND))
+	T.eq(Has(told, "restart_seconds 5 " .. Rounds.RESTART_ROUND), true, Describe(told))
+	T.eq(Has(round:Think(PERIODIC_AT + 4.9, World()), "reset_scores"), false, "the round runs on")
+	T.eq(round:State(), State.RND_RUNNING)
+	round:Think(PERIODIC_AT + 5, World())
+	T.eq(round:State(), State.PREROUND, "restarted")
+end)
+
+T.test("a round restart resets the scores, the rounds played and the map's time, and keeps the map", function()
+	local round = Running({ timelimit = TIMELIMIT_MINUTES, maxrounds = 5 })
+	round:SetWinningTeam(T0 + 10, RED, W.ALL_POINTS_CAPTURED, true, false, false, FakeObjective.Objective())
+	local back = T0 + 10 + Settings().bonusRoundTime + 1
+	round:Think(back, World())
+	round:Think(back + 1 + Rounds.PREROUND_SECONDS, World())
+	T.eq(round:Limits(back).roundsPlayed, 1, "a round played")
+	local at = back + 10
+	round:Think(at, Restarting(0, false, Rounds.RESTART_ROUND))
+	local restart = round:Think(at + Rounds.PERIODIC_INTERVAL + 0.5, World())
+	local now = at + Rounds.PERIODIC_INTERVAL + 0.5
+	T.eq(Has(restart, "reset_scores"), true, Describe(restart))
+	T.eq(Has(restart, "cleanup"), false, "the map kept")
+	T.eq(Has(restart, "clear_gore"), true)
+	T.eq(round:Limits(now).roundsPlayed, 0)
+	T.eq(round:Limits(now).timeLeft, TIMELIMIT_MINUTES * MINUTE)
+	T.eq(round:State(), State.PREROUND)
+end)
+
+T.test("a game restart resets the map too", function()
+	local round = Running()
+	round:Think(PERIODIC_AT, Restarting(0, true, Rounds.RESTART_GAME))
+	local restart = round:Think(PERIODIC_AT + 0.1, World())
+	T.eq(Has(restart, "reset_scores"), true, Describe(restart))
+	T.eq(Has(restart, "cleanup"), true, "a full reset")
+end)
+
+T.test("a game restart is announced only as a team switch, or a scramble, due", function()
+	local quiet = Running():Think(PERIODIC_AT, Restarting(3, true, Rounds.RESTART_GAME))
+	T.eq(Has(quiet, "restart_seconds 3"), true, Describe(quiet))
+	T.eq(Has(quiet, "restart_seconds 3 "), false, "nothing to say")
+	local scrambling = Running()
+	scrambling:ScheduleScramble()
+	local told = scrambling:Think(PERIODIC_AT, Restarting(3, true, Rounds.RESTART_GAME))
+	T.eq(Has(told, "scramble_due"), true, "the scramble told again: " .. Describe(told))
+end)
+
+T.test("a restart due waits for a running round", function()
+	local round = Running()
+	round:SetWinningTeam(T0 + 10, RED, W.ALL_POINTS_CAPTURED, true, false, false, FakeObjective.Objective())
+	round:Think(T0 + 11, Restarting(0, true, Rounds.RESTART_GAME))
+	T.eq(Has(round:Think(T0 + 12, World()), "reset_scores"), false, "the winners celebrate")
+	local back = T0 + 10 + Settings().bonusRoundTime + 1
+	round:Think(back, World())
+	round:Think(back + 1 + Rounds.PREROUND_SECONDS, World())
+	T.eq(round:State(), State.RND_RUNNING)
+	T.eq(Has(round:Think(back + 1.1 + Rounds.PREROUND_SECONDS, World()), "reset_scores"), true, "the next round running restarts")
+end)
+
+T.test("a restart due is forgotten by mp_round_restart and by a halt", function()
+	local restarted = Running()
+	restarted:Think(PERIODIC_AT, Restarting(5, true, Rounds.RESTART_GAME))
+	restarted:RestartRound(PERIODIC_AT + 1, NOBODY_PLAYING)
+	restarted:Think(PERIODIC_AT + 2, World())
+	restarted:Think(PERIODIC_AT + 3 + Rounds.PREROUND_SECONDS, World())
+	T.eq(Has(restarted:Think(PERIODIC_AT + 6, World()), "reset_scores"), false)
+	local halted = Running()
+	halted:Think(PERIODIC_AT, Restarting(5, true, Rounds.RESTART_GAME))
+	halted:Halt(PERIODIC_AT + 1)
+	halted:Unhalt()
+	T.eq(Has(halted:Think(PERIODIC_AT + 6, World()), "reset_scores"), false)
 end)
 
 T.test("Halt waits between rounds until a new game", function()
@@ -1313,17 +1431,46 @@ T.test("Configure takes new convar values", function()
 	T.eq(round:Think(T0 + 25, World())[1].kind, "previous_round_end", "a 5 s bonus")
 end)
 
--- mp_forcewin: a team wins the round, or the round goes to sudden death.
-T.test("mp_forcewin takes red, blue or sudden death, by name or number", function()
-	T.eq(Rounds.ForceWinTarget("red"), RED)
-	T.eq(Rounds.ForceWinTarget("2"), RED)
-	T.eq(Rounds.ForceWinTarget("BLUE"), BLUE)
-	T.eq(Rounds.ForceWinTarget("blu"), BLUE)
-	T.eq(Rounds.ForceWinTarget("3"), BLUE)
-	T.eq(Rounds.ForceWinTarget("sudden"), Rounds.FORCE_SUDDEN_DEATH)
-	T.eq(Rounds.ForceWinTarget("0"), Rounds.FORCE_SUDDEN_DEATH)
-	T.eq(Rounds.ForceWinTarget("green"), nil, "anything else is refused")
-	T.eq(Rounds.ForceWinTarget(""), nil)
+-- mp_forcewin (teamplayroundbased_gamerules.cpp): a team wins the round,
+-- team 0 is a stalemate, and with no team the first player's team wins.
+T.test("mp_forcewin takes TF2's team numbers, the teams' names, or sudden death", function()
+	T.eq(Rounds.ForceWinTarget({ "2" }), RED)
+	T.eq(Rounds.ForceWinTarget({ "3" }), BLUE)
+	T.eq(Rounds.ForceWinTarget({ "0" }), NOBODY, "team 0: a stalemate")
+	T.eq(Rounds.ForceWinTarget({ "red" }), RED)
+	T.eq(Rounds.ForceWinTarget({ "BLUE" }), BLUE)
+	T.eq(Rounds.ForceWinTarget({ "blu" }), BLUE)
+	T.eq(Rounds.ForceWinTarget({ "sudden" }), Rounds.FORCE_SUDDEN_DEATH)
+	T.eq(Rounds.ForceWinTarget({ tostring(Teams.SPECTATOR) }), nil, "spectators win nothing")
+	T.eq(Rounds.ForceWinTarget({ "green" }), nil, "anything else is refused")
+	T.eq(Rounds.ForceWinTarget({ "2", "3" }), nil, "one team at most")
+end)
+
+T.test("mp_forcewin with no team gives the round to the first player's team", function()
+	T.eq(Rounds.ForceWinTarget({}, BLUE), BLUE)
+	T.eq(Rounds.ForceWinTarget({}, NOBODY), NOBODY, "an unassigned first player: a stalemate")
+	local target, why = Rounds.ForceWinTarget({}, nil)
+	T.eq(target, nil, "no player, no default team")
+	T.eq(why, Rounds.FORCE_WIN_NO_DEFAULT, "and why")
+end)
+
+T.test("mp_forcewin's win is all points captured, scored as the map scores a round", function()
+	local round = Running()
+	local effects = round:ForceWin(T0 + 20, RED, FakeObjective.Objective({ scorePerRound = false }))
+	T.eq(Has(effects, "score"), false, "points come from captures: no round point, as TF2's AddScore")
+	T.eq(round:State(), State.TEAM_WIN)
+	T.eq(effects[1].reason, W.ALL_POINTS_CAPTURED, "why: " .. Describe(effects))
+	local scored = Running():ForceWin(T0 + 20, BLUE, FakeObjective.Objective())
+	Expect({ scored[1] }, { "score " .. BLUE .. " 1" }, "a map scoring by rounds")
+end)
+
+T.test("mp_forcewin 0 ends the round a stalemate, nobody scoring", function()
+	local round = Running()
+	local effects = round:ForceWin(T0 + 20, NOBODY, FakeObjective.Objective())
+	T.eq(round:State(), State.TEAM_WIN)
+	T.eq(effects[1].reason, W.STALEMATE)
+	T.eq(Has(effects, "publish_win " .. NOBODY), true, Describe(effects))
+	T.eq(Has(effects, "score"), false)
 end)
 
 T.test("a forced sudden death starts whatever mp_stalemate_enable says, called by the Administrator", function()
@@ -1440,7 +1587,7 @@ T.test("a plain sudden death, or a restart, leaves the match to its limits", fun
 	T.eq(Intermission(plain:SetWinningTeam(T0 + 30, RED, W.OPPONENTS_DEAD, true, false, false, FakeObjective.Objective())), nil)
 end)
 
-T.test("mp_forcewin's win scores a point where points come from captures, and can win the match", function()
+T.test("a win handed out with WINREASON.NONE scores a point where points come from captures, and can win the match", function()
 	local round = Running({ winlimit = 1 })
 	local effects = round:SetWinningTeam(T0 + 20, BLUE, W.NONE, true, false, false,
 		FakeObjective.Objective({ scorePerRound = false }))

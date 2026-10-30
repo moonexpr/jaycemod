@@ -124,6 +124,12 @@ end)
 
 T.test("mp_chattime's note names the next map", function()
 	T.eq(Text.NextMapNote("pl_upward"), "Next map: pl_upward")
+	-- tf_english.txt's #round_restart_in_sec(s) and #game_switch_in_sec(s),
+	-- the singular for a second or less, as CheckRestartRound picks them
+	T.eq(Text.RestartNote(R.RESTART_ROUND, 5), "The round will restart in 5 seconds")
+	T.eq(Text.RestartNote(R.RESTART_ROUND, 1), "The round will restart in 1 second")
+	T.eq(Text.RestartNote(R.RESTART_ROUND, 0), "The round will restart in 0 second")
+	T.eq(Text.RestartNote(R.RESTART_SWITCH, 3), "Switching teams!\nThe game will restart in 3 seconds")
 end)
 
 T.test("sudden death's card says why, as its panel did", function()

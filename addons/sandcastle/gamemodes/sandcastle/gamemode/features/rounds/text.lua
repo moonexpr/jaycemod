@@ -129,6 +129,19 @@ end
 -- mp_scrambleteams_auto's card, with the round won that made a scramble due.
 SCRAMBLE_NOTE = "Teams will be scrambled next round!"
 
+-- A restart asked (gameplay.rounds' RestartRequest), as every player's
+-- centre and console print it: tf_english.txt's #round_restart_in_sec(s) and
+-- #game_switch_in_sec(s), by the announcement CheckRestartRound chose.
+local RESTART_NOTES = {
+	[Rounds.RESTART_ROUND] = { "The round will restart in %d second", "The round will restart in %d seconds" },
+	[Rounds.RESTART_SWITCH] = { "Switching teams!\nThe game will restart in %d second", "Switching teams!\nThe game will restart in %d seconds" },
+}
+
+function RestartNote(announce, seconds)
+	local forms = RESTART_NOTES[announce]
+	return string.format(seconds > 1 and forms[2] or forms[1], seconds)
+end
+
 -- The note everyone gets as mp_chattime begins: the map that comes next.
 function NextMapNote(map)
 	return string.format("Next map: %s", map)

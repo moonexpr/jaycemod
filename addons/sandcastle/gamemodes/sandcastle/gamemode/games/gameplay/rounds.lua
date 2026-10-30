@@ -53,18 +53,56 @@ STALEMATE = {
 	ENDED_EARLY = 7, -- the match closed early on a tie (Round:EndEarly)
 }
 
--- mp_forcewin's argument: RED ("red", "2"), BLUE ("blue", "blu", "3") or
--- FORCE_SUDDEN_DEATH ("sudden", "0"), whatever the case; nil for anything
--- else.
+-- mp_forcewin's arguments (teamplayroundbased_gamerules.cpp): a team by
+-- TF2's number, RED (2) or BLUE (3), or UNASSIGNED (0), a stalemate; with
+-- none, firstPlayerTeam, the first player's team. Sandcastle also takes
+-- the teams' names ("red", "blue", "blu", whatever the case) and
+-- FORCE_SUDDEN_DEATH ("sudden"). Returns the target, or nil and why: no
+-- player to take a team from, or anything else (TF2 reads any word as 0, a
+-- stalemate; Sandcastle refuses it).
 FORCE_SUDDEN_DEATH = "sudden_death"
+FORCE_WIN_USAGE = "Usage: mp_forcewin <opt: team#> (2 red, 3 blue, 0 stalemate; or red, blue, sudden)"
+FORCE_WIN_NO_DEFAULT = "Unable to determine default team. " .. FORCE_WIN_USAGE
 local FORCE_TARGETS = {
-	red = Teams.RED, ["2"] = Teams.RED,
-	blue = Teams.BLUE, blu = Teams.BLUE, ["3"] = Teams.BLUE,
-	sudden = FORCE_SUDDEN_DEATH, ["0"] = FORCE_SUDDEN_DEATH,
+	[tostring(Teams.UNASSIGNED)] = Teams.UNASSIGNED,
+	red = Teams.RED, [tostring(Teams.RED)] = Teams.RED,
+	blue = Teams.BLUE, blu = Teams.BLUE, [tostring(Teams.BLUE)] = Teams.BLUE,
+	sudden = FORCE_SUDDEN_DEATH,
 }
 
-function ForceWinTarget(text)
-	return FORCE_TARGETS[text:lower()]
+function ForceWinTarget(args, firstPlayerTeam)
+	if #args > 1 then return nil, FORCE_WIN_USAGE end
+	local text = args[1]
+	if text == nil then
+		if firstPlayerTeam == nil then return nil, FORCE_WIN_NO_DEFAULT end
+		text = tostring(firstPlayerTeam)
+	end
+	local target = FORCE_TARGETS[text:lower()]
+	if target == nil then return nil, FORCE_WIN_USAGE end
+	return target
+end
+
+-- mp_restartround, mp_restartgame and mp_restartgame_immediate as
+-- CTeamplayRoundBasedRules::CheckRestartRound reads them: mp_restartround's
+-- seconds, else mp_restartgame's, held to RESTART_DELAY_MAX; the immediate
+-- one restarts now. Only a game restart resets the map (fullReset); a round
+-- restart restarts the mini-round on the map as it is. line: what asked it,
+-- RESTART_ROUND or RESTART_GAME, for what players are told. nil when
+-- nothing is asked (a negative mp_restartround asks nothing, as in TF2).
+RESTART_DELAY_MAX = 60
+RESTART_ROUND, RESTART_GAME = "round", "game"
+-- What a game restart tells players when the teams will be switched.
+RESTART_SWITCH = "switch"
+
+function RestartRequest(restartround, restartgame, immediate)
+	local seconds = restartround
+	if seconds == 0 and not immediate then seconds = restartgame end
+	if seconds <= 0 and not immediate then return nil end
+	return {
+		seconds = immediate and 0 or math.min(seconds, RESTART_DELAY_MAX),
+		fullReset = restartgame > 0 or immediate,
+		line = (restartgame > 0 and RESTART_GAME) or (restartround > 0 and RESTART_ROUND) or nil,
+	}
 end
 
 local UNASSIGNED, RED, BLUE = Teams.UNASSIGNED, Teams.RED, Teams.BLUE
@@ -535,6 +573,8 @@ function New(settings)
 		waveScale = PerTeam(1), -- a helped team's share of its wave (games.gameplay.handicap)
 		respawnsDisabled = false,
 		capEnableAt = nil, -- CTFGameRules's m_flCapturePointEnableTime (arena), or nil
+		restartAt = nil, -- m_flRestartRoundTime: a restart asked (RestartRequest) comes then, or nil
+		restartFullReset = false,
 	}, Round)
 	round:Configure(settings)
 	return round
@@ -582,6 +622,7 @@ local SNAPSHOT = Snapshot.Spec({
 		"nextPeriodic",
 		"nextWave.*",
 		"preroundEnd",
+		"restartAt",
 		"setupEnd",
 		"transitionAt",
 		"settings.mapResetTime",
@@ -767,17 +808,17 @@ end
 -- A tied match's bonus round: deathmatch, when on (mp_deathmatch_enable), a
 -- fresh round of frags alone whose winner wins the match; else sudden death.
 -- Fought, it is timed as sudden death is (RND_RUNNING's enter and think).
-local function Deathmatch(self, effects, now)
+local function Deathmatch(self, effects, now, world)
 	self.deathmatch = true
 	self.decideMatch, self.decideReason = true, DEATHMATCH_MATCH_WIN
 	self.forceMapReset = true
 	Add(effects, Kind("deathmatch"))
-	return Transition(self, effects, State.PREROUND, now)
+	return Transition(self, effects, State.PREROUND, now, world)
 end
 
-local function MatchSuddenDeath(self, effects, now)
+local function MatchSuddenDeath(self, effects, now, world)
 	self.suddenDeathMatch = false
-	if self.settings.deathmatchEnable then return Deathmatch(self, effects, now) end
+	if self.settings.deathmatchEnable then return Deathmatch(self, effects, now, world) end
 	return ForcedSuddenDeath(self, effects, now, STALEMATE.MATCH_TIED)
 end
 
@@ -791,7 +832,7 @@ local function EndMatch(self, effects, reason, now, world)
 		return true
 	end
 	if self:State() == State.RND_RUNNING then
-		MatchSuddenDeath(self, effects, now)
+		MatchSuddenDeath(self, effects, now, world)
 		return true
 	end
 	self.suddenDeathMatch = true
@@ -913,7 +954,7 @@ local function CheckTimelimitStalemate(self, effects, now, world)
 	if not (self.allowStalemateAtTimelimit or self.settings.matchEndAtTimelimit) then return end
 	local winner, reason = self.mode:TimelimitWin(world)
 	if winner == UNASSIGNED and self.settings.deathmatchEnable then
-		Deathmatch(self, effects, now)
+		Deathmatch(self, effects, now, world)
 	elseif winner == UNASSIGNED then
 		self.changelevelAfterStalemate = true
 		for _, e in ipairs(self:SetStalemate(now, STALEMATE.SERVER_TIMELIMIT, self.forceMapReset)) do Add(effects, e) end
@@ -922,6 +963,53 @@ local function CheckTimelimitStalemate(self, effects, now, world)
 			Add(effects, e)
 		end
 	end
+end
+
+-- CheckRestartRound, in the once-a-second checks: a restart asked
+-- (RestartRequest) is due in its seconds, told now (restart_seconds, which
+-- spends the convars that asked it), with the line players hear: a round
+-- restart's, or a game restart's when the teams will be switched; a
+-- scramble due is told again in its place.
+local function CheckRestartRound(self, effects, now, request)
+	self.restartAt = now + request.seconds
+	self.restartFullReset = request.fullReset
+	local announce
+	if request.line == RESTART_ROUND then
+		announce = RESTART_ROUND
+	elseif request.line == RESTART_GAME and self.switchTeams then
+		announce = RESTART_SWITCH
+	end
+	Add(effects, {
+		kind = "restart_seconds",
+		seconds = request.seconds,
+		announce = announce,
+	})
+	if request.line == RESTART_GAME and not self.switchTeams and self.scrambleTeams then Add(effects, Kind("scramble_due")) end
+end
+
+-- CheckReadyRestart: only a round being fought (running, or arena's) restarts.
+local function RestartDue(self, now)
+	return self.restartAt ~= nil and now >= self.restartAt
+end
+
+-- State_Enter_RESTART: the teams' and players' scores, the rounds played
+-- and the map's time start again (ResetScores, ResetMapTime), then a new
+-- pre-round, on a reset map for a game restart, the mini-round's map kept
+-- for a round restart. Any tie-breaker the match was in is over.
+local function Restart(self, effects, now, world)
+	self.restartAt = nil
+	if self.deathmatch then Add(effects, Kind("restore_timers")) end
+	self.decideMatch, self.deathmatch, self.suddenDeathMatch = false, false, false
+	self.forceMapReset = self.restartFullReset
+	self.roundsPlayed = 0
+	self.scores = PerTeam(0)
+	self.settings.mapResetTime = now
+	Add(effects, Kind("reset_scores"))
+	-- a full reset's RoundRespawn sets the time limit's timer itself
+	if not self.forceMapReset then
+		for _, e in ipairs(self:TimeLimitTimer(now, world)) do Add(effects, e) end
+	end
+	return Transition(self, effects, State.PREROUND, now, world)
 end
 
 -- PREGAME
@@ -996,11 +1084,12 @@ THINK[State.RND_RUNNING] = function(self, effects, now, world)
 	end
 	-- the round after a tied match's end is played as sudden death
 	if self.suddenDeathMatch then
-		MatchSuddenDeath(self, effects, now)
+		MatchSuddenDeath(self, effects, now, world)
 		return
 	end
 	if DeathmatchTimedOut(self, world) then return StalemateGameOver(self, effects, now, STALEMATE.TIMER) end
 	CheckRespawnWaves(self, effects, now, world)
+	if RestartDue(self, now) then return Restart(self, effects, now, world) end
 	CheckTimelimitStalemate(self, effects, now, world)
 end
 
@@ -1090,6 +1179,8 @@ THINK[State.STALEMATE] = function(self, effects, now, world)
 		Transition(self, effects, State.PREGAME, now, world)
 		return
 	end
+	-- TF2's arena never restarts (its rounds are never RND_RUNNING); Sandcastle's does
+	if not self.suddenDeath and RestartDue(self, now) then return Restart(self, effects, now, world) end
 	if self.setupEnd then
 		if now < self.setupEnd then
 			CheckRespawnWaves(self, effects, now, world)
@@ -1160,10 +1251,12 @@ local function PeriodicThink(self, effects, now, world)
 			Add(effects, Output(COUNT_OUTPUT[t], tostring(n)))
 		end
 	end
+	if world.restart then CheckRestartRound(self, effects, now, world.restart) end
 end
 
 -- world = { havePlayers, teams = { [team] = { players, alive } }, scores,
--- stalemateTimerLeft = n or nil, timerMayExpire, mapHasActiveTimer, objective }.
+-- stalemateTimerLeft = n or nil, timerMayExpire, mapHasActiveTimer, objective,
+-- restart = a RestartRequest from the convars, or nil }.
 function Round:Think(now, world)
 	local effects = {}
 	self.scores = world.scores
@@ -1248,13 +1341,20 @@ function Round:SetWinningTeam(now, winner, reason, forceMapReset, switchTeams, d
 	if Over(self) then return {} end
 	forceMapReset = forceMapReset ~= false
 	local reward = ShouldRewardTeam(forceMapReset, self.settings.timelimit, self:TimeLeft(now), dontAddScore == true)
-	-- the survivors of sudden death, a team the Administrator hands the round
-	-- (mp_forcewin's WINREASON.NONE) and one at a round limit take a point
+	-- the survivors of sudden death, a team handed the round with
+	-- WINREASON.NONE (the dev workbench's force_win) and one at a round limit take a point
 	-- whatever the map scores by
 	local always = self:State() == State.STALEMATE or reason == WINREASON.NONE
 		or reason == WINREASON.FRAGLIMIT or reason == WINREASON.CASHLIMIT
 	local scored = reward and winner ~= UNASSIGNED and (always or objective:ScorePerRound())
 	return EndRound(self, now, winner, reason, forceMapReset, switchTeams, scored and { winner } or {})
+end
+
+-- mp_forcewin: team wins the round as if it had captured every point, a
+-- full round scored as the map scores one; UNASSIGNED ends it a stalemate.
+function Round:ForceWin(now, team, objective)
+	local reason = team == UNASSIGNED and WINREASON.STALEMATE or WINREASON.ALL_POINTS_CAPTURED
+	return self:SetWinningTeam(now, team, reason, true, false, false, objective)
 end
 
 -- Sudden death timed out: a tie, nobody's win, a point to each team.
@@ -1336,6 +1436,7 @@ function Round:RestartRound(now, withPlayers)
 	if self.halted then return effects end
 	self.switchTeams, self.scrambleTeams = false, false
 	self.decideMatch, self.deathmatch = false, false
+	self.restartAt = nil
 	local inPlay = self:State() == State.PREROUND or self:State() == State.RND_RUNNING or self:State() == State.STALEMATE
 	if withPlayers and inPlay then
 		return EndRound(self, now, UNASSIGNED, WINREASON.STALEMATE, true, false, {})
@@ -1415,6 +1516,7 @@ function Round:Halt(now)
 	end
 	self.halted = true
 	self.mapFresh = false
+	self.restartAt = nil
 	if self:State() ~= State.BETWEEN_RNDS then Transition(self, effects, State.BETWEEN_RNDS, now) end
 	return effects
 end
@@ -1440,6 +1542,7 @@ function Round:BeginGame(now, preroundEnd, world)
 	self.halted = false
 	self.switchTeams, self.scrambleTeams = false, false
 	self.decideMatch, self.deathmatch = false, false
+	self.restartAt = nil
 	self.forceMapReset = true
 	self.preroundEnd = preroundEnd
 	return Transition(self, {}, State.PREROUND, now, world)

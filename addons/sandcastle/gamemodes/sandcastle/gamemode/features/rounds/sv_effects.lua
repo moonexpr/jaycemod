@@ -197,6 +197,9 @@ local function NextMap()
 end
 
 local BONUS_FREEZE_TIMER = "ws_rounds_bonus_freeze"
+-- What asks a restart (features/rounds/sv.lua's), spent once it is due.
+local RESTART_CONVARS = { "mp_restartround", "mp_restartgame", "mp_restartgame_immediate" }
+local ASSISTS = "ws_assists" -- ws/sv_kill_credit.lua's
 
 local EFFECTS = {
 	state = function(self, e)
@@ -398,6 +401,28 @@ local EFFECTS = {
 	end,
 	-- the deathmatch's map has no setup: its gates open as the round starts
 	skip_setup = function(self, e, now) self:FinishSetup(now) end,
+	-- a restart asked: its convars spent, players told (CheckRestartRound),
+	-- and WSRoundRestartSeconds(seconds) for addons (teamplay_round_restart_seconds)
+	restart_seconds = function(self, e)
+		for _, name in ipairs(RESTART_CONVARS) do RunConsoleCommand(name, "0") end
+		if e.announce then
+			local note = Text.RestartNote(e.announce, e.seconds)
+			PrintMessage(HUD_PRINTCENTER, note)
+			PrintMessage(HUD_PRINTCONSOLE, note .. "\n")
+		end
+		hook.Run("WSRoundRestartSeconds", e.seconds)
+	end,
+	-- State_Enter_RESTART's ResetScores: every team's score and every
+	-- player's, then WSScoresReset for addons (the AI war's soldiers)
+	reset_scores = function()
+		for _, t in ipairs({ UNASSIGNED, RED, BLUE }) do team.SetScore(t, 0) end
+		EachPlayer(function(ply)
+			ply:SetFrags(0)
+			ply:SetDeaths(0)
+			ply:SetNW2Int(ASSISTS, 0)
+		end)
+		hook.Run("WSScoresReset")
+	end,
 }
 
 -- Every change of the round's state is told to addons last, as

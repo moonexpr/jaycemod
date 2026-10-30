@@ -13,8 +13,9 @@
 -- state, thinking and the map's setup, and runs its parts: sv_players (the
 -- players and their teams), sv_timers (timers, team clocks and the round
 -- limits), sv_effects (sounds, logic_auto and the model's effects) and
--- sv_gamerules (the surface the gamerules forward, and their inputs) and
--- sv_snapshot (the controller's state as plain data and back).
+-- sv_gamerules (the surface the gamerules forward, and their inputs),
+-- sv_snapshot (the controller's state as plain data and back) and
+-- sv_commands (mp_forcewin, and the convars that ask a restart).
 --
 -- Loaded on every map as it loads (init.lua), and by the gamerules,
 -- team_round_timer, game_round_win, tf_logic_competitive and every
@@ -247,6 +248,7 @@ local RoundWon, PublishOvertime, TIMELIMIT_TIMER_NAME = Part("sv_timers", Contro
 Part("sv_effects", Controller, Players, PublishLimits, PublishOvertime, TIMELIMIT_TIMER_NAME, RULES_CLASSES)
 Part("sv_gamerules", Controller, Players, Active)
 Part("sv_snapshot", Controller, PublishState)
+local RestartAsked = Part("sv_commands", Controller, Active, ConVarOrCreate)
 
 -- Mode, listeners and holds ----------------------------------------------------------
 
@@ -402,6 +404,7 @@ function Controller:World(now)
 		timerMayExpire = self:TimerMayExpire(),
 		mapHasActiveTimer = self:MapHasActiveTimer(),
 		objective = self.objective,
+		restart = RestartAsked(),
 	}
 end
 
@@ -571,30 +574,5 @@ Controller:AddRoundListener(Rounds.PHASE_SPAWN, Rounds.LISTEN_TIMERS, function()
 		if IsValid(ent) then Controller:ApplyTimerEvents(ent, Controller.timers[ent]:RoundSpawn(now)) end
 	end
 end)
-
--- mp_forcewin red|blue|sudden (TF2's): a team wins the round as if it had
--- (a win that ends the match is the match win), or the running round goes
--- to sudden death, called by the Administrator. Admins only.
-local FORCE_WIN_OPTIONS = { "red", "blue", "sudden" }
-
-concommand.Add("mp_forcewin", function(ply, _, args)
-	local function Reply(text)
-		if IsValid(ply) then ply:ChatPrint(text) else print(text) end
-	end
-	if not WS.Can(ply, system.permissions.MATCH) then return Reply("mp_forcewin: you may not force a win") end
-	local target = Rounds.ForceWinTarget(args[1] or "")
-	if not target then return Reply("usage: mp_forcewin " .. table.concat(FORCE_WIN_OPTIONS, "|")) end
-	if not Active() then return Reply("mp_forcewin: this map has no rounds") end
-	if target == Rounds.FORCE_SUDDEN_DEATH then
-		if Controller.round:State() ~= S.RND_RUNNING then return Reply("mp_forcewin: no round is running") end
-		Controller:Apply(Controller.round:SuddenDeath(CurTime(), Rounds.STALEMATE.ADMIN))
-		return
-	end
-	Controller:SetWinningTeam(target, Rounds.WINREASON.NONE, true, false, false)
-end, function(cmd)
-	local options = {}
-	for i, option in ipairs(FORCE_WIN_OPTIONS) do options[i] = cmd .. " " .. option end
-	return options
-end, "Force the round's end: mp_forcewin red, blue or sudden (sudden death); admins only")
 
 return Controller
