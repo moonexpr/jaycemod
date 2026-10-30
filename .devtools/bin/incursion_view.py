@@ -6,8 +6,9 @@
 Each level from above, as rooms_view.py draws it: every area tinted by the
 side whose walk reaches it first (the front, incursion.Front), the rooms'
 blocks outlined, each team's spawn areas marked, and each team's routes to
-the enemy's spawn areas drawn through the areas' middles, wider where more
-of them share a step. The picture goes to <map>.incursion.png beside the
+the enemy's spawn areas drawn as smooth curves (a quadratic Bézier in each
+area, from the edge in to the edge out, bent through its middle), wider
+where more of them share a piece. The picture goes to <map>.incursion.png beside the
 graph, and a summary is printed: the routes' lengths, the share of the map
 each side reaches first, and the rooms and corridors the most routes cross.
 """
@@ -31,6 +32,7 @@ TEAM_OFFSET = {"RED": -2, "BLU": 2}       # pixels, so the two teams' routes on 
 SPAWN_FILL = {"RED": (120, 0, 0), "BLU": (0, 30, 130)}
 AREA_EDGE, BLOCK_EDGE, UNREACHED = (200, 200, 200), (70, 70, 70), (255, 255, 255)
 LINE_MIN, LINE_MAX = 2, 9
+BEZIER_SAMPLES = 12
 KEY = [("RED first", "RED's walk from its spawns reaches the area first", SIDE_FILL["RED"]),
        ("BLU first", "BLU's walk reaches it first", SIDE_FILL["BLU"]),
        ("the front", f"both walks reach it within {FRONT_SHARE:.0%} of the walk between the spawns", SIDE_FILL[None]),
@@ -53,6 +55,23 @@ def AreaLevels(dump, found) -> dict:
         span = [l for l in space.levels if l in middle] or [space.level]
         level[aid] = min(span, key=lambda l: abs(middle.get(l, 0) - dump.areas[aid].z))
     return level
+
+
+def Bezier(start: tuple, control: tuple, end: tuple, samples: int = BEZIER_SAMPLES) -> list:
+    """A quadratic Bézier curve from start to end, pulled toward control, as samples + 1 points."""
+    def At(t):
+        return tuple((1 - t) ** 2 * s + 2 * (1 - t) * t * c + t ** 2 * e for s, c, e in zip(start, control, end))
+    return [At(i / samples) for i in range(samples + 1)]
+
+
+def Pieces(areas: tuple) -> list:
+    """A route's pieces, one an area it passes through: (the area before or None, the area, the one after
+    or None). Each is drawn from the edge it comes in by to the edge it leaves by, curving through the
+    area's middle, so the pieces join smoothly; a route's ends start and stop at its end areas' middles."""
+    if len(areas) < 2:
+        return []
+    padded = (None,) + tuple(areas) + (None,)
+    return [padded[i - 1:i + 2] for i in range(1, len(padded) - 1)]
 
 
 def Separation(fields: dict, spawns: dict) -> float:
@@ -100,21 +119,27 @@ def Draw(dump, found, fields, routes, side, out: Path) -> None:
                 a = dump.areas[aid]
                 pen.rectangle([At(levels[aid], a.lo[0], a.hi[1]), At(levels[aid], a.hi[0], a.lo[1])],
                               fill=SPAWN_FILL[team])
-    steps = {}
+    pieces = {}
     for route in routes:
-        for a, b in zip(route.areas, route.areas[1:]):
-            steps[(route.team, a, b)] = steps.get((route.team, a, b), 0) + 1
-    most = max(steps.values(), default=1)
-    for (team, a, b), n in sorted(steps.items(), key=lambda kv: kv[1]):
-        if a not in levels or b not in levels:
+        for piece in Pieces(route.areas):
+            pieces[(route.team,) + piece] = pieces.get((route.team,) + piece, 0) + 1
+    most = max(pieces.values(), default=1)
+
+    def Middle(a, b):
+        m = next(l["middle"] for l in dump.graph[a]["links"] if l["to"] == b)
+        return m["x"], m["y"]
+
+    for (team, before, area, after), n in sorted(pieces.items(), key=lambda kv: kv[1]):
+        if area not in levels:
             continue
-        middle = next(l["middle"] for l in dump.graph[a]["links"] if l["to"] == b)
-        ca, cb, d = dump.graph[a]["center"], dump.graph[b]["center"], TEAM_OFFSET[team]
-        points = [At(levels[a], ca["x"], ca["y"]), At(levels[a], middle["x"], middle["y"]),
-                  At(levels[b], middle["x"], middle["y"]), At(levels[b], cb["x"], cb["y"])]
-        width = round(LINE_MIN + (LINE_MAX - LINE_MIN) * n / most)
-        for p, q in ((points[0], points[1]), (points[2], points[3])):
-            pen.line([(p[0] + d, p[1] + d), (q[0] + d, q[1] + d)], fill=TEAM_LINE[team], width=width)
+        c = dump.graph[area]["center"]
+        middle = (c["x"], c["y"])
+        start = Middle(before, area) if before is not None else middle
+        end = Middle(area, after) if after is not None else middle
+        d = TEAM_OFFSET[team]
+        curve = [At(levels[area], x, y) for x, y in Bezier(start, middle, end)]
+        pen.line([(x + d, y + d) for x, y in curve], fill=TEAM_LINE[team],
+                 width=round(LINE_MIN + (LINE_MAX - LINE_MIN) * n / most), joint="curve")
     pen.line([(0, h), (w * count, h)], fill=(0, 0, 0))
     pen.text((MARGIN, h + 4), "Key", fill=(0, 0, 0), font=font)
     column = w * count // 2
