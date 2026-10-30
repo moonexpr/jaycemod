@@ -130,6 +130,22 @@ and shrinks by a ladder, each step held as occupation is:
   before: the class its measures give.
 - **Taken: to the enemy.** A room the enemy comes to hold (§2.2) is lost:
   an outpost at once, a stronghold once the enemy's claim beats the team's.
+- **Breached: restricted ground claimed.** Restricted ground can be claimed
+  too (the enemy's sentry in a spawn's doorway, a squad camping it). It is
+  a breach, and the tactics engine is penalized for it: the claim is the
+  enemy's outpost as any other, and on top of that
+  - the war's record counts each breach against the tactics engine, who
+    breached whom, where and for how long, in its analytics
+    (`analysis.analytics`) and the overlay's label, so a tuning run or a
+    bench reads it as a failure (spawn camping makes a bad game, whichever
+    side does it);
+  - the breached team's engine answers at once: retaking the room comes
+    before every other mission (an assault from its spawns, its lanes
+    planned again as for a lasting change);
+  - the breaching team's engine is held back from it: no mission chooses
+    restricted ground, and squads that drift into it are called out.
+
+  How strongly each is weighed is open (§7).
 
 The measures behind them (§2.1) stay available for queries beside the
 class: a room's ways and entries, its depth (a dead end), its flow and
@@ -205,6 +221,11 @@ The layer stands on the rooms, so they hold first:
 
 ## 7. Open questions for the operator
 
+- The breach penalty (§2.3): read as both a failure counted against the
+  tactics engine (analytics, for tuning and benches) and play that answers
+  it (the breached team retakes first, the breaching team is held back).
+  Is the penalty meant as the score, the in-game answer, or both? And is a
+  breach the defender's failure, the attacker's (spawn camping), or both?
 - Restricted ground: read as "the other team may not enter until the
   round has ended" (TF2's spawn rooms, open to the winners in humiliation).
   Is that the meaning?
