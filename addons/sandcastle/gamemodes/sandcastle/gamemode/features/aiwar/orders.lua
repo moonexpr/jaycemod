@@ -1481,6 +1481,10 @@ end
 -- squad fights. No mission after MUSTER_PATIENCE, or a request that failed
 -- (missionsOff), and the squad goes on as its scenario's default would.
 MUSTER_ARRIVE, MUSTER_PATIENCE, SCAN_PERIOD = 64, 30, 2
+-- The special missions (wartactics.mission) these orders can lead, which
+-- the tactics engine may give: none until each kind's leading is written
+-- (docs/special-missions-plan.md steps 4 to 6).
+SPECIAL_KINDS = {}
 -- A leader not at its muster spot (a regroup's hiding spot on a floor it
 -- cannot reach) after MUSTER_WALK_LIMIT musters where it stands.
 MUSTER_WALK_LIMIT = 12

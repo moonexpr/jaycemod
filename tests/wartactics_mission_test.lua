@@ -234,6 +234,109 @@ T.test("raiders are never the alpha: they tour, even with no alpha out", functio
 	T.eq(m.way, lanes[4])
 end)
 
+-- Special missions (docs/special-missions-plan.md §2.3): a squad other than
+-- the alpha is given an ambush, an assault or a topple when the team's
+-- intel makes one worth it, else it advances.
+local P = function(x, y) return { x = x, y = y or 0, z = 0 } end
+
+local function Room(id, t)
+	return { id = id, center = P(id * 1000), doors = t.doors or { { pos = P(id * 1000 - 100) }, { pos = P(id * 1000 + 100) } },
+		guarded = t.guarded or 0, traffic = t.traffic or 0, support = t.support or 0, ours = t.ours or false, theirs = t.theirs or false }
+end
+
+local function Options(rooms, extra)
+	local spec = { rooms = rooms, size = 4, defending = false, taken = {}, enemyFrom = P(10000), ourFrom = P(-10000) }
+	for k, v in pairs(extra or {}) do spec[k] = v end
+	return spec
+end
+
+T.test("the special missions' tuning is defined", function()
+	T.defined(Mission.AMBUSH_TRAFFIC, "AMBUSH_TRAFFIC")
+	T.defined(Mission.ASSAULT_ODDS, "ASSAULT_ODDS")
+	T.defined(Mission.TOPPLE_WEIGHT, "TOPPLE_WEIGHT")
+end)
+
+T.test("an ambush: a room on the enemy's way with traffic, not held, at the door the enemy comes by", function()
+	local kind, target = Mission.Choose(Options({ Room(3, { theirs = true, traffic = Mission.AMBUSH_TRAFFIC }) }))
+	T.eq(kind, Mission.AMBUSH)
+	T.eq(target.room, 3)
+	T.eq(target.door.pos.x, 3100, "the door nearer the enemy's side")
+end)
+
+T.test("no ambush where the enemy holds the room, nor where few pass", function()
+	T.eq(Mission.Choose(Options({ Room(3, { theirs = true, traffic = Mission.AMBUSH_TRAFFIC, guarded = 1 }) })), nil)
+	T.eq(Mission.Choose(Options({ Room(3, { theirs = true, traffic = Mission.AMBUSH_TRAFFIC - 1 }) })), nil)
+	T.eq(Mission.Choose(Options({ Room(3, { traffic = Mission.AMBUSH_TRAFFIC }) })), nil, "not on their way")
+end)
+
+T.test("an assault: a guarded room on our way the squad can take, at the door we come by", function()
+	local kind, target = Mission.Choose(Options({ Room(5, { ours = true, guarded = 3 }) }))
+	T.eq(kind, Mission.ASSAULT)
+	T.eq(target.room, 5)
+	T.eq(target.door.pos.x, 4900, "the door nearer our side")
+	T.eq(Mission.Choose(Options({ Room(5, { ours = true, guarded = 4 * Mission.ASSAULT_ODDS + 1 }) })), nil, "too strongly held")
+	T.eq(Mission.Choose(Options({ Room(5, { guarded = 3 }) })), nil, "not on our way")
+end)
+
+T.test("a topple: the enemy's support base the squad can take, the strongest first", function()
+	local kind, target = Mission.Choose(Options({ Room(6, { support = 2, guarded = 2 }), Room(7, { support = 5, guarded = 5 }) }))
+	T.eq(kind, Mission.TOPPLE)
+	T.eq(target.room, 7)
+	T.eq(target.door ~= nil, true, "the door we come by")
+end)
+
+T.test("defenders favour ambushes, attackers assaults", function()
+	local rooms = { Room(3, { theirs = true, traffic = Mission.AMBUSH_TRAFFIC }), Room(5, { ours = true, guarded = 2 }) }
+	T.eq((Mission.Choose(Options(rooms, { defending = true }))), Mission.AMBUSH)
+	T.eq((Mission.Choose(Options(rooms, { defending = false }))), Mission.ASSAULT)
+end)
+
+T.test("only the kinds the orders can lead are chosen", function()
+	local rooms = { Room(5, { ours = true, guarded = 3 }) }
+	T.eq(Mission.Choose(Options(rooms, { kinds = { [Mission.AMBUSH] = true } })), nil, "no assault led yet")
+	T.eq((Mission.Choose(Options(rooms, { kinds = { [Mission.ASSAULT] = true } }))), Mission.ASSAULT)
+end)
+
+T.test("a room another squad of the team has a mission in is not given again", function()
+	local rooms = { Room(5, { ours = true, guarded = 3 }) }
+	T.eq(Mission.Choose(Options(rooms, { taken = { [5] = true } })), nil)
+end)
+
+T.test("Issue gives a squad other than the alpha its special mission, its way still a lane", function()
+	local lanes = TeamLanes()
+	local alpha = { team = 2, role = "escort" }
+	alpha.mission = Ask(alpha, { alpha }, lanes)
+	local second = { team = 2, role = "escort" }
+	local m = Ask(second, { alpha, second }, lanes, { special = Options({ Room(5, { ours = true, guarded = 2 }) }) })
+	T.eq(m.kind, Mission.ASSAULT)
+	T.eq(m.target.room, 5)
+	T.eq(m.way ~= nil, true, "a lane to muster and scan by")
+	T.eq(m.alpha, false)
+end)
+
+T.test("the alpha is never given a special mission", function()
+	local lanes = TeamLanes()
+	local squad = { team = 2, role = "escort" }
+	local m = Ask(squad, { squad }, lanes, { special = Options({ Room(5, { ours = true, guarded = 2 }) }) })
+	T.eq(m.kind, Mission.ADVANCE)
+	T.eq(m.alpha, true)
+end)
+
+T.test("Issue keeps rooms other squads hold missions in out of a squad's choice", function()
+	local lanes = TeamLanes()
+	local alpha = { team = 2, role = "escort" }
+	alpha.mission = Ask(alpha, { alpha }, lanes)
+	local first = { team = 2, role = "escort" }
+	local rooms = { Room(5, { ours = true, guarded = 2 }) }
+	first.mission = Ask(first, { alpha, first }, lanes, { special = Options(rooms) })
+	local second = { team = 2, role = "escort" }
+	T.eq(Ask(second, { alpha, first, second }, lanes, { special = Options(rooms) }).kind, Mission.ADVANCE)
+end)
+
+T.test("a special mission needs its target", function()
+	T.eq(pcall(Mission.New, Valid({ kind = Mission.AMBUSH })), false)
+end)
+
 -- Promoting: a team with no alpha out takes one of its squads out on
 -- another mission off it, to be its alpha.
 local function Out(team, role, alpha)

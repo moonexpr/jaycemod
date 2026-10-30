@@ -1,14 +1,32 @@
 -- A squad's mission from the tactics engine (docs/squad-missions-plan.md),
 -- the wait for its members, and when the squad must regroup.
 --
--- New{ kind, way, size, wait, issued, alpha } -> a mission, unchangeable:
---   the kind (ADVANCE), the way it goes (a lane of wartactics.lanes), how
---   many soldiers the squad should be, how long its leader waits for them
---   (seconds from issued), and whether the squad is its team's alpha (the
---   squad on the objective directly, before any other); a kind it does not
---   know, a way without points, a size under 1 or a negative wait is our bug
+-- New{ kind, way, size, wait, issued, alpha, target } -> a mission,
+--   unchangeable: the kind (ADVANCE, or a special mission: AMBUSH, ASSAULT,
+--   TOPPLE), the way it goes (a lane of wartactics.lanes), how many soldiers
+--   the squad should be, how long its leader waits for them (seconds from
+--   issued), whether the squad is its team's alpha (the squad on the
+--   objective directly, before any other), and a special mission's target
+--   ({ room, pos, door }); a kind it does not know, a way without points, a
+--   size under 1, a negative wait or a special mission with no target is
+--   our bug
+-- Choose{ rooms, size, defending, taken, enemyFrom, ourFrom[, kinds] } ->
+--   the special mission worth most, and its target, or nil: rooms are the
+--   candidates with what the team knows of each ({ id, center, doors,
+--   guarded, traffic, support (a base's strength), ours, theirs (on our
+--   lanes, on the enemy's) }). An ambush where AMBUSH_TRAFFIC or more came
+--   by on the enemy's way and none holds it, at the door toward the enemy
+--   (enemyFrom); an assault on a room held on our way, at the door toward
+--   us (ourFrom); a topple of a support base; each held no more strongly
+--   than ASSAULT_ODDS times the squad's size; a side's own kind
+--   (defenders' ambushes, attackers' assaults) counts FAVOURED times; never
+--   a room taken (room id -> true), only the kinds given (kind -> true; all
+--   when nil), the lower room on a tie
 -- Issue{ fireTeam, fireTeams, lanes, now, nextWave, travel, missing, size,
---   regrouped } -> the mission a squad leader asked for: the squad is its
+--   regrouped[, special] } -> the mission a squad leader asked for; a squad
+--   other than the alpha is given Choose's special mission when one is worth
+--   it (special: Choose's spec; rooms other squads of the team hold missions
+--   in are taken), else it advances. The squad is its
 --   team's alpha, on the direct lane (else the first), when its job comes at
 --   the objective directly (its lane kinds hold DIRECT: never raiders) and
 --   no other squad
@@ -39,13 +57,26 @@
 --   fight), else STUCK (no progress along its way, remaining, not counting
 --   time in a fight, nor within ARRIVED of its end, where there is none to
 --   make)
-local error, ipairs, setmetatable, max, min, tostring = error, ipairs, setmetatable, math.max, math.min, tostring
+local error, ipairs, pairs, setmetatable, max, min, tostring = error, ipairs, pairs, setmetatable, math.max, math.min, tostring
+local Distance = math.geometry.Distance
 local Lanes = wartactics.lanes
 local Transaction = transaction
 module(...)
 
 ADVANCE = "advance"
-local KINDS = { [ADVANCE] = true }
+-- The special missions (docs/special-missions-plan.md), each on a target
+-- room: an ambush at its door on the enemy's way, an assault through its
+-- door on ours, toppling the enemy's support base in it.
+AMBUSH, ASSAULT, TOPPLE = "ambush", "assault", "topple"
+local KINDS = { [ADVANCE] = true, [AMBUSH] = true, [ASSAULT] = true, [TOPPLE] = true }
+local SPECIAL = { [AMBUSH] = true, [ASSAULT] = true, [TOPPLE] = true }
+
+-- An ambush is laid where AMBUSH_TRAFFIC or more enemies came lately; a
+-- room is assaulted, or a base toppled, held no more strongly than
+-- ASSAULT_ODDS times the squad's size; a base weighs TOPPLE_WEIGHT times its
+-- strength; a side's own kind (defenders' ambush, attackers' assault)
+-- counts FAVOURED times.
+AMBUSH_TRAFFIC, ASSAULT_ODDS, TOPPLE_WEIGHT, FAVOURED = 2, 2, 2, 2
 
 -- A request declined while the asking squad's team has no lanes planned.
 NO_LANES = "no lanes"
@@ -61,8 +92,11 @@ function New(spec)
 	if not (spec.size and spec.size >= 1) then error("a mission needs a size of 1 or more", 2) end
 	if not (spec.wait and spec.wait >= 0) then error("a mission's wait is never negative", 2) end
 	if not (spec.way and spec.way.points and spec.way.points[1]) then error("a mission needs a way", 2) end
+	if SPECIAL[spec.kind] and not (spec.target and spec.target.room and spec.target.door) then
+		error("a " .. spec.kind .. " needs its target room and door", 2)
+	end
 	local fields = { kind = spec.kind, way = spec.way, size = spec.size, wait = spec.wait, issued = spec.issued,
-		alpha = spec.alpha == true }
+		alpha = spec.alpha == true, target = spec.target }
 	return setmetatable({}, { __index = fields, __newindex = Frozen })
 end
 
@@ -117,19 +151,76 @@ local function LeastTaken(fireTeams, fireTeam, lanes)
 	return best
 end
 
+-- The room's door nearest a point.
+local function DoorToward(room, p)
+	local best, bestDistance
+	for _, door in ipairs(room.doors) do
+		local d = Distance(door.pos, p)
+		if not best or d < bestDistance then best, bestDistance = door, d end
+	end
+	return best
+end
+
+-- Each kind's worth in a room, 0 when it is none of it.
+local function Worth(room, spec)
+	local odds = spec.size * ASSAULT_ODDS
+	local ambush = room.theirs and room.guarded == 0 and room.traffic >= AMBUSH_TRAFFIC and room.traffic or 0
+	local assault = room.ours and room.guarded > 0 and room.guarded <= odds and room.guarded or 0
+	local topple = room.support > 0 and room.guarded <= odds and room.support * TOPPLE_WEIGHT or 0
+	if spec.defending then ambush = ambush * FAVOURED else assault = assault * FAVOURED end
+	return { [AMBUSH] = ambush, [ASSAULT] = assault, [TOPPLE] = topple }
+end
+
+function Choose(spec)
+	local bestKind, bestRoom, bestWorth
+	for _, room in ipairs(spec.rooms) do
+		if not spec.taken[room.id] and room.doors[1] then
+			for _, kind in ipairs({ TOPPLE, ASSAULT, AMBUSH }) do
+				local worth = (not spec.kinds or spec.kinds[kind]) and Worth(room, spec)[kind] or 0
+				if worth > 0 and (not bestWorth or worth > bestWorth or (worth == bestWorth and room.id < bestRoom.id)) then
+					bestKind, bestRoom, bestWorth = kind, room, worth
+				end
+			end
+		end
+	end
+	if not bestKind then return nil end
+	local from = bestKind == AMBUSH and spec.enemyFrom or spec.ourFrom
+	return bestKind, { room = bestRoom.id, pos = bestRoom.center, door = DoorToward(bestRoom, from) }
+end
+
+-- The rooms other squads of the team hold missions in, beside those given.
+local function Taken(fireTeams, fireTeam, given)
+	local taken = {}
+	for room in pairs(given or {}) do taken[room] = true end
+	for _, other in ipairs(fireTeams) do
+		local target = other ~= fireTeam and other.team == fireTeam.team and other.mission and other.mission.target
+		if target then taken[target.room] = true end
+	end
+	return taken
+end
+
 function Issue(spec)
 	local fireTeam, lanes = spec.fireTeam, spec.lanes
 	if not Lanes.JOBS[fireTeam.role] then error("a squad of job " .. tostring(fireTeam.role) .. " asks for no mission", 2) end
 	if not (lanes and lanes[1]) then Transaction.Refuse(NO_LANES, "its team has no lanes planned yet") end
 	local alpha = MayLead(fireTeam.role) and not AlphaOut(spec.fireTeams, fireTeam.team, fireTeam)
+	local kind, target = ADVANCE, nil
+	if not alpha and spec.special then
+		local special = {}
+		for k, v in pairs(spec.special) do special[k] = v end
+		special.taken = Taken(spec.fireTeams, fireTeam, spec.special.taken)
+		local chosen, at = Choose(special)
+		if chosen then kind, target = chosen, at end
+	end
 	return New({
-		kind = ADVANCE,
+		kind = kind,
 		way = alpha and Direct(lanes) or LeastTaken(spec.fireTeams, fireTeam, lanes),
 		size = spec.size,
 		wait = Wait({ missing = spec.missing, nextWave = not spec.regrouped and spec.nextWave or nil, now = spec.now,
 			travel = spec.travel }),
 		issued = spec.now,
 		alpha = alpha,
+		target = target,
 	})
 end
 

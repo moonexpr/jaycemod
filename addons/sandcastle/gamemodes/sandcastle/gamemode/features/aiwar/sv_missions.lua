@@ -15,6 +15,7 @@
 -- orders), and it asks no more.
 local Controller = ...
 local Mission = wartactics.mission
+local Orders = WS.require("features.aiwar.orders")
 local Lanes = wartactics.lanes
 local Squad = wartactics.squad
 local Tactics = wartactics.fireteam
@@ -39,6 +40,59 @@ local function Living(fireTeam)
 	return alive, farthest
 end
 
+-- The rooms a team's lanes pass through (room id -> true), worked out once
+-- for each plan of them.
+local laneRooms = setmetatable({}, { __mode = "k" })
+
+function Controller:LaneRooms(lanes)
+	if not lanes then return {} end
+	if laneRooms[lanes] then return laneRooms[lanes] end
+	local crossed = {}
+	for _, lane in ipairs(lanes) do
+		for _, p in ipairs(lane.points) do
+			local room = self:RoomAt(Vector(p.x, p.y, p.z))
+			if room then crossed[room] = true end
+		end
+	end
+	laneRooms[lanes] = crossed
+	return crossed
+end
+
+-- The special missions' spec for a squad (wartactics.mission's Choose): the
+-- map's rooms with what its team knows of each, whose lanes pass through
+-- them, whether its team defends (on payload, the side without a cart),
+-- where each side's lanes start, and the kinds its orders can lead
+-- (Orders.SPECIAL_KINDS). nil before the rooms are known or with no lanes.
+function Controller:SpecialSpec(fireTeam, size, now)
+	local partition, field = self.rooms, self.war:Field()
+	if not (partition and field and field.lanes) then return nil end
+	local team = fireTeam.team
+	local enemy = Teams.EnemyOf(team)
+	local ourLanes, theirLanes = field.lanes[team], field.lanes[enemy]
+	if not (ourLanes and ourLanes[1]) then return nil end
+	local ours, theirs = self:LaneRooms(ourLanes), self:LaneRooms(theirLanes)
+	local intel = self:Intel(team)
+	local bases = {}
+	for _, base in ipairs(intel:SupportBases(now)) do bases[base.room] = base.strength end
+	local rooms = {}
+	for _, room in ipairs(partition.rooms) do
+		rooms[#rooms + 1] = { id = room.id, center = room.center, doors = room.doors, guarded = intel:Guarded(room.id, now),
+			traffic = intel:Traffic(room.id, now), support = bases[room.id] or 0, ours = ours[room.id] == true,
+			theirs = theirs[room.id] == true }
+	end
+	local ourFrom = ourLanes[1].points[1]
+	local carts = field.carts or {}
+	return {
+		rooms = rooms,
+		size = size,
+		defending = carts[team] == nil and next(carts) ~= nil,
+		taken = {},
+		ourFrom = ourFrom,
+		enemyFrom = theirLanes and theirLanes[1] and theirLanes[1].points[1] or ourFrom,
+		kinds = Orders.SPECIAL_KINDS,
+	}
+end
+
 -- The request's inputs, read on the slow lane: the squad's strength and how
 -- long its members take to come (its leader's own walk to where it waits,
 -- after spawning; the farthest living member's walk to it), its team's next
@@ -56,7 +110,8 @@ function Controller:MissionSpec(fireTeam, now)
 		travel = math.max(fireTeam.musterWalk or 0, farthest / RUN_SPEED),
 		missing = size - alive,
 		size = size,
-		regrouped = fireTeam.regrouping == true,
+		regrouped = fireTeam.regrouping ~= nil,
+		special = self:SpecialSpec(fireTeam, size, now),
 	}
 end
 
