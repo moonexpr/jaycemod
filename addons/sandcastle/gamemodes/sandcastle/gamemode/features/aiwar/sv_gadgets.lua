@@ -3,10 +3,12 @@
 local Map, Soldier = ...
 local Punt = WS.require("features.aiwar.punt")
 local ToVector = Map.ToVector
+local Gestures = nextsoldier.gestures
 
 -- Gadgets: what a kit's soldier throws, deploys or sends (the kit's
 -- gadgets, first ready first): a frag grenade lobbed at p when nothing
--- solid stands between (every time asked); a floor turret set down toward
+-- solid stands between (every time asked), rolled or thrown by its distance
+-- (nextsoldier.gestures' Throw); a floor turret set down toward
 -- p (one per soldier, standing until it dies); a manhack sent from its hand
 -- (one per soldier at a time, gone after MANHACK_LIFE); the gravity gun's
 -- punt at the nearest enemy in its reach (features.aiwar.punt), a player's
@@ -42,7 +44,7 @@ function GADGETS.grenade(soldier, target)
 	velocity.z = velocity.z + 0.5 * physenv.GetGravity():Length() * t
 	local phys = grenade:GetPhysicsObject()
 	if IsValid(phys) then phys:SetVelocity(velocity) end
-	ThrowAnimation(ent)
+	soldier.controller:Gesture(ent, Gestures.Throw(distance), CurTime())
 	soldier.controller:AddGadget(grenade, soldier, "grenade", CurTime() + GRENADE_FUSE + 1)
 	return true
 end

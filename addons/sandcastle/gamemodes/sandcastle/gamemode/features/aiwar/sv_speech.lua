@@ -13,6 +13,7 @@
 -- down, an enemy slipped out of sight, the radio between fights.
 local Controller = ...
 local Speech = nextsoldier.speech
+local Gestures = nextsoldier.gestures
 local Payload = WS.require("features.payload.model")
 local Teams = gameplay.teams
 
@@ -60,11 +61,13 @@ function Controller:RoleOf(entry)
 end
 
 -- A soldier settled into its battle stance (Soldier:Pose, in setup) may say
--- it is ready.
+-- it is ready, and greets as it lines up (sv_gestures.lua).
 function Controller:AnnounceStance(ent)
 	local entry = self.soldiers[ent]
 	if not entry then return end
-	self:SpeakConcept(ent, Speech.CONCEPT_BATTLE_STANCE, self:RoleOf(entry), false, CurTime())
+	local now = CurTime()
+	self:SpeakConcept(ent, Speech.CONCEPT_BATTLE_STANCE, self:RoleOf(entry), false, now)
+	self:Gesture(ent, Gestures.GREET, now)
 end
 
 -- A hurt soldier calling for a medic (the soldier port's CallMedic) says
@@ -108,6 +111,7 @@ hook.Add("Think", "ws_aiwar_greetings", function()
 				if IsValid(ent) and entry.soldier.team == team and not entry.soldier:HasEnemy()
 					and Speech.Passes(ent:GetPos():Distance(pos), speed) then
 					Controller:SpeakConcept(ent, Speech.CONCEPT_PLAYER_PASSING, Controller:RoleOf(entry), false, now, ply)
+					Controller:Gesture(ent, Gestures.GREET, now)
 				end
 			end
 		end

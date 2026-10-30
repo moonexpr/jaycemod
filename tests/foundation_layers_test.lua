@@ -170,6 +170,7 @@ local NEXTSOLDIER = {
 	["weapons"] = "nextsoldier",
 	["monitor"] = "nextsoldier",
 	["speech"] = "nextsoldier",
+	["gestures"] = "nextsoldier",
 	["hearing"] = "nextsoldier",
 	["route_record"] = "nextsoldier",
 	["reach_memo"] = "nextsoldier",
