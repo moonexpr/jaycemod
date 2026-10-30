@@ -417,7 +417,7 @@ function Controller:Drive(ply, entry, cmd)
 	local velocity = ply:GetVelocity()
 	sense.speed, sense.climb = velocity:Length2D(), velocity.z
 	sense.onGround = ply:OnGround()
-	sense.target = soldier.steer
+	sense.target = not soldier:Still(now) and soldier.steer or nil
 	sense.walk = soldier.gait == Orders.WALK
 	sense.crouchArea, sense.jumpArea = soldier.crouchArea, soldier.jumpArea
 	sense.hop = soldier:Hopping(now)

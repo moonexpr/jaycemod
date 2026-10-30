@@ -12,10 +12,12 @@
 --   Killed(now): a kill in the fight it is in
 --   Calm(now) -> whether, out of the fight DOWNTIME after its last kill,
 --     it killed SQUAD_KILLS or more in it; the fight's count ends either way
+-- Still(act name) -> whether the act is a taunt (GMod's ACT_GMOD_TAUNT_*,
+--   the whole body's), played standing still, not a gesture on the move
 -- Throw(distance) -> GRENADE_ROLL within ROLL_RANGE, else GRENADE_THROW
 -- DEATHS, Death(critical, randomInt) -> a crit's canned death (a player
 --   model's sequence name), or nil for any other death
-local error, setmetatable, tostring = error, setmetatable, tostring
+local error, setmetatable, tostring, sub = error, setmetatable, tostring, string.sub
 module(...)
 
 -- Witnessing a teammate's kill or capture; a squad wiped out with time to
@@ -73,6 +75,12 @@ function Memory_:Calm(now)
 	local wiped = self.kills >= SQUAD_KILLS
 	self.kills, self.lastKill = 0, nil
 	return wiped
+end
+
+local TAUNT_PREFIX = "ACT_GMOD_TAUNT_"
+
+function Still(act)
+	return sub(act, 1, #TAUNT_PREFIX) == TAUNT_PREFIX
 end
 
 -- Grenades within ROLL_RANGE are rolled underhand, farther ones thrown.

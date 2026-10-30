@@ -78,6 +78,12 @@ function Soldier:LookAt(p, seconds)
 	if self.ent.LookAt then self.ent:LookAt(ToVector(p), seconds) end
 end
 
+-- It stands still for seconds (base_nextsoldier's HoldStill; a DrGBase body
+-- keeps its own pace).
+function Soldier:HoldStill(seconds)
+	if self.ent.HoldStill then self.ent:HoldStill(seconds) end
+end
+
 -- Plays a gesture (features/aiwar/sv_gestures.lua).
 function Soldier:Gesture(occasion)
 	self.controller:Gesture(self.ent, occasion, CurTime())

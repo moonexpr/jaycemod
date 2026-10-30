@@ -221,6 +221,11 @@ end
 
 function ENT:Linger(seconds) self.nsLinger = math.max(self.nsLinger or 0, seconds) end
 
+-- It stands still for seconds, its path waiting (a taunt played whole).
+function ENT:HoldStill(seconds)
+	self.nsStillUntil = math.max(self.nsStillUntil or 0, CurTime() + seconds)
+end
+
 -- Dying, its body plays sequence once, from the start, as its last (a canned
 -- death), and nothing else; the sequence's length in seconds.
 function ENT:DeathSequence(sequence)
@@ -342,6 +347,8 @@ function ENT:FollowPath(goal, tolerance)
 		if afresh then self:LookAt(path:GetPositionOnPath(PATH_LOOKAHEAD) + LOOK_HEIGHT, Gaze.HINT_SECONDS) end
 	end
 	if self:ClimbPathGoal(path) then return "moving" end
+	-- a taunt is played standing still (HoldStill)
+	if CurTime() < (self.nsStillUntil or 0) then return "moving" end
 	self.nsFollowedAt = CurTime()
 	path:Update(self)
 	if not path:IsValid() then return "reached" end

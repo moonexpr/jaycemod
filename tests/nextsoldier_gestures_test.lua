@@ -78,6 +78,13 @@ T.test("grenades and signals play every time", function()
 	end
 end)
 
+T.test("a taunt is played standing still; a gesture on the move", function()
+	T.eq(Gestures.Still("ACT_GMOD_TAUNT_MUSCLE"), true)
+	T.eq(Gestures.Still("ACT_GMOD_TAUNT_DANCE"), true)
+	T.eq(Gestures.Still("ACT_GMOD_GESTURE_AGREE"), false)
+	T.eq(Gestures.Still("ACT_SIGNAL_FORWARD"), false)
+end)
+
 T.test("an unknown occasion is our bug", function()
 	T.eq(pcall(Gestures.Memory().Play, Gestures.Memory(), "shrug", 0, First), false)
 end)

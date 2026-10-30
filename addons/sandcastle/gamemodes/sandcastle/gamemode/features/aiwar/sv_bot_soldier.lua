@@ -287,6 +287,16 @@ function BotSoldier:LookAt(p, seconds)
 	self.glance, self.glanceUntil = ToVector(p), CurTime() + seconds
 end
 
+-- It stands still for seconds (a taunt played whole): no steering while it
+-- lasts (Still).
+function BotSoldier:HoldStill(seconds)
+	self.stillUntil = math.max(self.stillUntil or 0, CurTime() + seconds)
+end
+
+function BotSoldier:Still(now)
+	return now < (self.stillUntil or 0)
+end
+
 -- Where its eyes go with no enemy: a glance still held, else what it watches.
 function BotSoldier:Looking(now)
 	if self.glance and now < self.glanceUntil then return self.glance end
