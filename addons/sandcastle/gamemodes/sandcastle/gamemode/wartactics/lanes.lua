@@ -17,7 +17,7 @@
 -- WAYPOINT_SPACING apart), length }; a team's lanes are { key, [1..n] =
 -- lane }. Positions are { x, y, z } tables.
 local ipairs, pairs = ipairs, pairs
-local huge, min = math.huge, math.min
+local floor, huge, min = math.floor, math.huge, math.min
 local sort = table.sort
 local HL2Path = require("foundation.wetsands.path.hl2")
 local Path = wetsands.path
@@ -222,6 +222,26 @@ function Thin(points, clear)
 		end
 	end
 	return kept, length
+end
+
+-- Where a team's squads muster for a mission (wartactics.mission): the
+-- first point of its lane (its direct lane, which leaves its spawn) not in
+-- its own spawn room (inRoom(p)), so just outside it; its last when all are.
+function Muster(lane, inRoom)
+	local points = lane.points
+	for _, p in ipairs(points) do
+		if not inRoom(p) then return p end
+	end
+	return points[#points]
+end
+
+-- A muster is found once and kept for the map (the controller saves them):
+-- by its team and the spawn its lanes leave, to the MUSTER_GRID cell.
+MUSTER_GRID = 64
+
+function MusterKey(team, spawn)
+	return team .. ":" .. floor(spawn.x / MUSTER_GRID) .. ":" .. floor(spawn.y / MUSTER_GRID) .. ":"
+		.. floor((spawn.z or 0) / MUSTER_GRID)
 end
 
 -- The lanes a squad of job `role` may take, by index: those of its kinds

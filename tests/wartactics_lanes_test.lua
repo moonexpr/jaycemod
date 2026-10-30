@@ -178,6 +178,22 @@ T.test("a squad on a mission walks its mission's way, which the others count as 
 	T.eq(other.laneIndex, 2, "the direct lane is taken")
 end)
 
+T.test("a squad musters at its lane's first point outside its spawn room", function()
+	local lane = { kind = "direct", points = { { x = 0, y = 0, z = 0 }, { x = 300, y = 0, z = 0 }, { x = 600, y = 0, z = 0 } } }
+	local inRoom = function(p) return p.x < 200 end
+	T.eq(Lanes.Muster(lane, inRoom), lane.points[2])
+	T.eq(Lanes.Muster(lane, function() return false end), lane.points[1], "a spawn with no room: where the lane starts")
+	T.eq(Lanes.Muster(lane, function() return true end), lane.points[3], "all in the room: its end")
+end)
+
+T.test("a muster is kept by its team and the spawn its lanes leave, to MUSTER_GRID", function()
+	local a = Lanes.MusterKey(2, { x = 10, y = 20, z = 30 })
+	T.eq(a, Lanes.MusterKey(2, { x = 10 + Lanes.MUSTER_GRID / 4, y = 20, z = 30 }), "a step away: the same spawn")
+	T.eq(a == Lanes.MusterKey(3, { x = 10, y = 20, z = 30 }), false, "the other team's")
+	T.eq(a == Lanes.MusterKey(2, { x = 10 + Lanes.MUSTER_GRID * 2, y = 20, z = 30 }), false, "another spawn")
+	T.eq(type(a), "string", "a key JSON keeps")
+end)
+
 T.test("Choices: the lanes of a job's kinds, else every lane", function()
 	local lanes = { key = "k", Kind("direct", 1000), Kind("flank", 1200), Kind("tour", 2000) }
 	T.eq(table.concat(Lanes.Choices(lanes, "escort"), ","), "1,2")

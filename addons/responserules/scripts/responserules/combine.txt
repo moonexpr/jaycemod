@@ -670,3 +670,39 @@ rule IdleCombineMetrocop
 	ApplyContext "SaidIdle:1:30"
 	response IdleCombineMetrocop
 }
+
+// MoveOut: a squad leader calls its squad out on its mission, to all near
+response MoveOutCombine
+{
+	print "Combine: move in" defaultdelay
+}
+rule MoveOutCombine
+{
+	criteria ConceptMoveOut IsCombine NotSaidMoveOut
+	ApplyContext "SaidMoveOut:1:10"
+	response MoveOutCombine
+}
+response MoveOutCombineSoldier
+{
+	speak "npc/combine_soldier/vo/movein.wav" defaultdelay
+	speak "npc/combine_soldier/vo/sweepingin.wav" defaultdelay
+	speak "npc/combine_soldier/vo/gosharpgosharp.wav" defaultdelay
+}
+rule MoveOutCombineSoldier
+{
+	criteria ConceptMoveOut IsCombine NotSaidMoveOut IsSoldierVoice
+	ApplyContext "SaidMoveOut:1:10"
+	response MoveOutCombineSoldier
+}
+response MoveOutCombineMetrocop
+{
+	speak "npc/metropolice/vo/allunitsmovein.wav" defaultdelay
+	speak "npc/metropolice/vo/moveit.wav" defaultdelay
+	speak "npc/metropolice/vo/movetoarrestpositions.wav" defaultdelay
+}
+rule MoveOutCombineMetrocop
+{
+	criteria ConceptMoveOut IsCombine NotSaidMoveOut IsMetrocopVoice
+	ApplyContext "SaidMoveOut:1:10"
+	response MoveOutCombineMetrocop
+}

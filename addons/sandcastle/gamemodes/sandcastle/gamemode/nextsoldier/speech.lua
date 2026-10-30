@@ -31,6 +31,10 @@ CONCEPT_GET_HEALTH = "TLK_NS_GET_HEALTH"
 -- calls the loss; a soldier whose last enemy slipped out of sight (still
 -- alive) says it lost contact; and between fights, every IDLE_INTERVAL,
 -- one soldier of each team not fighting talks on the radio.
+-- A squad leader calls its squad out on its mission, its wait over
+-- (features.aiwar.orders' Muster), heard by all near.
+CONCEPT_MOVE_OUT = "TLK_NS_MOVE_OUT"
+
 CONCEPT_ENEMY_KILLED = "TLK_NS_ENEMY_KILLED"
 CONCEPT_ALLY_DOWN = "TLK_NS_ALLY_DOWN"
 CONCEPT_CONTACT_LOST = "TLK_NS_CONTACT_LOST"

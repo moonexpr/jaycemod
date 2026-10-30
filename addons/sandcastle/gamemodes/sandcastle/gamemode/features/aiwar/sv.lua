@@ -24,6 +24,8 @@ local Controller = {
 	slots = nil, -- the features.aiwar.slots Plan, read from slotStore when first needed
 	slotStore = nil, -- where the slot list is kept between maps (SlotFile, below)
 	hazardStore = nil, -- where the map's nav hazards are kept between loads (HazardFile, below)
+	musterStore = nil, -- where the map's musters are kept between loads (MusterFile, below)
+	-- musters = nil, -- Lanes.MusterKey -> where a team's squads muster from that spawn, read from its save when first asked (Muster)
 	paused = false, -- every soldier stands still (ns_soldiers_paused, SetPaused)
 	slotViewers = {}, -- admins whose AI War panel shows the slots -> true
 	slotSignature = nil, -- what the viewers were last sent, as text
@@ -89,18 +91,29 @@ end
 
 Controller.slotStore = SlotFile
 
--- The map's nav hazards (sv_hazards.lua), kept in data/ between loads.
-local HAZARDS_FOLDER = "sandcastle/nav_hazards/"
-
+-- The map's nav hazards (sv_hazards.lua) and squads' musters (sv_lanes.lua),
+-- each a section of the map's saved data (WS.MapData) between loads.
 local HazardFile = {}
 
 function HazardFile:Read()
-	return WS.MapData.Read(HAZARDS_FOLDER)
+	return WS.MapData.Read("nav_hazards")
 end
 
 function HazardFile:Write(data)
-	WS.MapData.Write(HAZARDS_FOLDER, data)
+	WS.MapData.Write("nav_hazards", data)
 end
+
+local MusterFile = {}
+
+function MusterFile:Read()
+	return WS.MapData.Read("musters")
+end
+
+function MusterFile:Write(data)
+	WS.MapData.Write("musters", data)
+end
+
+Controller.musterStore = MusterFile
 
 Controller.hazardStore = HazardFile
 

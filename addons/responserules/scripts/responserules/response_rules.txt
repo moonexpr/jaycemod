@@ -42,6 +42,8 @@ criterion "ConceptEnemyKilled" "Concept" "TLK_NS_ENEMY_KILLED" required
 criterion "ConceptAllyDown" "Concept" "TLK_NS_ALLY_DOWN" required
 criterion "ConceptContactLost" "Concept" "TLK_NS_CONTACT_LOST" required
 criterion "ConceptIdle" "Concept" "TLK_NS_IDLE" required
+// a squad leader calling its squad out on its mission
+criterion "ConceptMoveOut" "Concept" "TLK_NS_MOVE_OUT" required
 
 // Chances (randomnum, 0..100) ------------------------------------------------
 
@@ -90,6 +92,8 @@ criterion "NotSaidEnemyKilled" "SaidEnemyKilled" "!=1" required weight 0
 criterion "NotSaidAllyDown" "SaidAllyDown" "!=1" required weight 0
 criterion "NotSaidContactLost" "SaidContactLost" "!=1" required weight 0
 criterion "NotSaidIdle" "SaidIdle" "!=1" required weight 0
+// called its squad out within 10 s
+criterion "NotSaidMoveOut" "SaidMoveOut" "!=1" required weight 0
 
 // Speakers, by affiliation -------------------------------------------------------
 

@@ -63,6 +63,7 @@ function Controller:RequestMission(fireTeam)
 	tx:OnSettle(function(settled)
 		fireTeam.missionRequest = nil
 		local state = settled:State()
+		if fireTeam.missionsOff then return end
 		if state == Transaction.COMMITTED then
 			fireTeam.mission, fireTeam.missionWanted, fireTeam.regrouping = settled:Value(), nil, nil
 		elseif state == Transaction.DECLINED then
@@ -80,7 +81,7 @@ end
 -- The squad gives its mission up and asks for none: its scenario's
 -- default behaviour again.
 function Controller:AbandonMission(fireTeam)
-	fireTeam.mission, fireTeam.missionWanted, fireTeam.regrouping = nil, nil, nil
+	fireTeam.mission, fireTeam.missionWanted, fireTeam.regrouping, fireTeam.missionsOff = nil, nil, nil, true
 end
 
 -- Every squad that wants a mission and has none on the way asks.

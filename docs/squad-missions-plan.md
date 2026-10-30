@@ -187,3 +187,10 @@ code is GPL-3.0: ideas only, no code.
 5. A mission that fails, or a request that does, leaves the squad on its
    scenario's default behaviour (today's lane and orders). The leader's
    wait never holds a squad with no mission coming.
+6. Both teams plan at their stances during setup: a leader asks for its
+   mission where it stands, and leads out as setup ends, with no walk
+   back to the muster. A leader already past the muster on its way out
+   musters where it stands. Muster spots are kept for the map, in the one
+   per-map data file (`WS.MapData`'s sections). Later, seated stances on
+   the benches and meeting places of a spawn (BLU's on `pl_upward`) are
+   where squads plan.

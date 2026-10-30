@@ -816,3 +816,38 @@ rule IdleRebelVortigaunt
 	ApplyContext "SaidIdle:1:30"
 	response IdleRebelVortigaunt
 }
+
+// MoveOut: a squad leader calls its squad out on its mission, to all near
+response MoveOutRebel
+{
+	print "Rebel: let's go" defaultdelay
+}
+rule MoveOutRebel
+{
+	criteria ConceptMoveOut IsRebel NotSaidMoveOut
+	ApplyContext "SaidMoveOut:1:10"
+	response MoveOutRebel
+}
+response MoveOutRebelMale
+{
+	speak "vo/npc/male01/letsgo01.wav" defaultdelay
+	speak "vo/npc/male01/letsgo02.wav" defaultdelay
+	speak "vo/npc/male01/squad_away01.wav" defaultdelay
+}
+rule MoveOutRebelMale
+{
+	criteria ConceptMoveOut IsRebel NotSaidMoveOut IsMaleVoice
+	ApplyContext "SaidMoveOut:1:10"
+	response MoveOutRebelMale
+}
+response MoveOutRebelFemale
+{
+	speak "vo/npc/female01/letsgo01.wav" defaultdelay
+	speak "vo/npc/female01/letsgo02.wav" defaultdelay
+}
+rule MoveOutRebelFemale
+{
+	criteria ConceptMoveOut IsRebel NotSaidMoveOut IsFemaleVoice
+	ApplyContext "SaidMoveOut:1:10"
+	response MoveOutRebelFemale
+}

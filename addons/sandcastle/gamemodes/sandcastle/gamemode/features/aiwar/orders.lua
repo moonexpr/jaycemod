@@ -98,7 +98,9 @@ local Lanes = wartactics.lanes
 local Hunt = wartactics.hunt
 local Health = require("features.aiwar.health")
 local Speech = nextsoldier.speech
+local Gestures = nextsoldier.gestures
 local Explore = wartactics.explore
+local Mission = wartactics.mission
 module(...)
 
 KIND = "aiwar"
@@ -543,6 +545,21 @@ local function OrdersRun(field)
 	return field ~= nil and field.phase.orders
 end
 
+-- The member's team's lanes while its squad musters for a mission
+-- (Objective:Muster), else nil: a squad of a lane job, its lanes with a
+-- muster, its mission not yet led nor given up, out of setup, not hurrying
+-- and in no fight.
+local function MusterLanes(state, me, field, urgent)
+	local member = state.member
+	local fireTeam = member.fireTeam
+	local lanes = field and field.lanes and field.lanes[member.team]
+	if not (OrdersRun(field) and fireTeam and Lanes.JOBS[member.role] and lanes and lanes.muster) or field.setup or urgent
+		or fireTeam.missionLed or fireTeam.missionsOff or TeamContact(state, me) then
+		return nil
+	end
+	return lanes
+end
+
 -- An attacker (a team with a cart the other side lacks) in setup.
 local function WaitingForSetup(field, member)
 	return field.setup == true and field.carts[member.team] ~= nil and field.carts[Teams.EnemyOf(member.team)] == nil
@@ -875,6 +892,7 @@ function Travel:Update(me)
 	-- its job hurrying, the trip stops for no one (ShouldHurry)
 	local urgent = not self.spot and AskInterrupted(self, me, "ShouldHurry") == N.ANSWER_YES
 	if not self.spot and not urgent and role.tactic and TeamContact(state, me) then return self:End("contact") end
+	if not self.spot and MusterLanes(state, me, field, urgent) then return self:End("mustering") end
 	if not self.spot and not urgent and role.chases and ChaseWanted(role, me, field, state.member) then return self:End("a weakened enemy") end
 	local goal, over = self:Goal(me, field)
 	self.gait = (self.spot and (role.gait or WALK)) or (field and field.setup and PANIC) or ((role.rushes or urgent) and RUSH) or RUN
@@ -1138,6 +1156,7 @@ function Objective:Update(me)
 		local stage = self.role.Stage(field, state.member)
 		if stage ~= self.stage then return self:ChangeTo(ObjectiveFor(state), "now " .. (stage or self.role.name)) end
 	end
+	if OrdersRun(field) and field.setup then self:PlanInSetup() end
 	if OrdersRun(field) and self.doctrine.WaitsForSetup(field, state.member) then return self:Wander(me) end
 	local urgent = self:ShouldHurry(me) == N.ANSWER_YES
 	if state.wandering then
@@ -1166,6 +1185,11 @@ function Objective:Update(me)
 		return self:Continue()
 	end
 	StopFollowing(state, me)
+	-- a squad musters for its mission (Muster)
+	if OrdersRun(field) then
+		local mustering = self:Muster(me, field, urgent)
+		if mustering then return mustering end
+	end
 	local goal = OrdersRun(field) and self.role.Goal(field, state.member)
 	if not goal then
 		me:Release()
@@ -1427,6 +1451,133 @@ function Objective:Regroup(me)
 	state.goal, state.coverSpot = spot, nil
 	me:MoveTo(spot, RUN)
 	return self:Continue()
+end
+
+-- Missions (docs/squad-missions-plan.md). A squad of a lane job with no
+-- mission led yet musters where its team's lanes leave its spawn
+-- (lanes.muster, wartactics.lanes' Muster), or, its leader already past it
+-- on its way out (after setup, enlisted afar), where its leader stands; a
+-- trip under way ends for it (Travel). There its leader
+-- asks for a mission (fireTeam.missionWanted, with musterWalk, its own walk
+-- there: the controller's sv_missions.lua asks the tactics engine) and
+-- waits, its head on each lane's way in turn (SCAN_PERIOD each), until the
+-- mission has come and its wait is over or the squad is whole
+-- (wartactics.mission); then it signals forward, calls the squad out and
+-- leads (fireTeam.missionLed), its lane its mission's way. Its members
+-- crouch around it in their battle stance meanwhile. Contact first: the
+-- squad fights. No mission after MUSTER_PATIENCE, or a request that failed
+-- (missionsOff), and the squad goes on as its scenario's default would.
+MUSTER_ARRIVE, MUSTER_PATIENCE, SCAN_PERIOD = 64, 30, 2
+local MUSTERING, WAITING, GATHERED = "mustering", "waiting for its squad", "crouched with its squad"
+local SCAN_HEIGHT, SCAN_POINT = 64, 3
+
+-- Its own pose at the muster, if it took one, let go: nil, to carry on.
+function Objective:EndMuster(me)
+	local state = self.state
+	if state.musterPose then
+		me:Unpose()
+		state.musterPose = nil
+	end
+	if state.tactic == MUSTERING or state.tactic == WAITING or state.tactic == GATHERED then state.tactic = nil end
+	return nil
+end
+
+local function Whole(fireTeam)
+	local n = 0
+	for _ in pairs(fireTeam.members) do n = n + 1 end
+	return n >= fireTeam.size
+end
+
+-- The leader's head on the next lane's way out, every SCAN_PERIOD.
+function Objective:Scan(me, lanes, now)
+	local state = self.state
+	if now < (state.scanAt or 0) then return end
+	state.scanAt = now + SCAN_PERIOD
+	state.scanIndex = (state.scanIndex or 0) % #lanes + 1
+	local points = lanes[state.scanIndex].points
+	local p = points[min(SCAN_POINT, #points)]
+	me:LookAt({ x = p.x, y = p.y, z = (p.z or 0) + SCAN_HEIGHT }, SCAN_PERIOD)
+end
+
+function Objective:MusterLeader(me, fireTeam, lanes)
+	local state, now = self.state, me:Now()
+	if not fireTeam.musterAt then
+		-- still between its spawn (where its lanes start) and the muster
+		local start = lanes[1].points[1]
+		local out = me:RangeTo(start) > Distance(lanes.muster, start) + MUSTER_ARRIVE
+		fireTeam.musterFrom = now
+		fireTeam.musterAt = out and me:Position() or lanes.muster
+	end
+	if me:RangeTo(fireTeam.musterAt) > MUSTER_ARRIVE then
+		state.tactic, state.goal = MUSTERING, fireTeam.musterAt
+		me:MoveTo(fireTeam.musterAt, RUN)
+		return self:Continue()
+	end
+	me:Release()
+	local mission = fireTeam.mission
+	if not mission then
+		if not fireTeam.musterArrived then
+			fireTeam.musterArrived = now
+			if not fireTeam.missionWanted then fireTeam.missionWanted, fireTeam.musterWalk = true, now - fireTeam.musterFrom end
+		elseif now - fireTeam.musterArrived >= MUSTER_PATIENCE then
+			fireTeam.missionsOff, fireTeam.missionWanted = true, nil
+			return self:EndMuster(me)
+		end
+	elseif Mission.Waited(mission, now) or Whole(fireTeam) then
+		fireTeam.missionLed = true
+		me:Gesture(Gestures.SIGNAL_FORWARD)
+		me:Announce(Speech.CONCEPT_MOVE_OUT)
+		return self:EndMuster(me)
+	end
+	state.tactic = WAITING
+	self:Scan(me, lanes, now)
+	return self:Continue()
+end
+
+function Objective:MusterMember(me, fireTeam)
+	local state = self.state
+	if not fireTeam.musterAt then return self:EndMuster(me) end
+	local spot = Geometry.Toward(fireTeam.musterAt, me:Position(), SQUAD_SPACING * (state.member.place or 1))
+	if me:RangeTo(spot) > MUSTER_ARRIVE then
+		state.tactic, state.goal = MUSTERING, spot
+		me:MoveTo(spot, RUN)
+		state.musterPose = nil
+		return self:Continue()
+	end
+	me:Release()
+	if not state.musterPose then
+		me:Pose()
+		state.musterPose = true
+	end
+	state.tactic = GATHERED
+	return self:Continue()
+end
+
+-- In setup a squad plans at its stances, as the operator settled: its
+-- leader asks for its mission where it stands, from no walk, and once
+-- setup ends musters as above (where it stands, if past the muster), the
+-- mission come and waited: it leads out at once.
+function Objective:PlanInSetup()
+	local member = self.state.member
+	local fireTeam = member.fireTeam
+	local field = self.state.war:Field()
+	local lanes = field.lanes and field.lanes[member.team]
+	if not (fireTeam and Lanes.JOBS[member.role] and lanes and lanes.muster) or fireTeam.missionLed
+		or fireTeam.missionsOff or fireTeam.missionWanted or fireTeam.mission or Squad.Kind(member) ~= "leader" then
+		return
+	end
+	fireTeam.missionWanted, fireTeam.musterWalk = true, 0
+end
+
+function Objective:Muster(me, field, urgent)
+	local state = self.state
+	local lanes = MusterLanes(state, me, field, urgent)
+	if not lanes then return self:EndMuster(me) end
+	local member = state.member
+	local kind = Squad.Kind(member)
+	if kind == "leader" then return self:MusterLeader(me, member.fireTeam, lanes) end
+	if kind == "member" then return self:MusterMember(me, member.fireTeam) end
+	return self:EndMuster(me)
 end
 
 function Objective:Fight(me, goal, contact)

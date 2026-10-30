@@ -240,6 +240,19 @@ function Controller:PlansAfterDirect(from, to, band, defenses, enemySpawnNear, n
 	return Lanes.Plans(flanks, da and { defenseAt[da], defenseAt[db] } or flanks, enemySpawnNear)
 end
 
+-- Musters, kept for the map (musterStore) by team and spawn
+-- (Lanes.MusterKey): the one saved, else find() -> one, saved.
+function Controller:Muster(team, spawn, find)
+	self.musters = self.musters or self.musterStore:Read() or {}
+	local key = Lanes.MusterKey(team, spawn)
+	local saved = self.musters[key]
+	if saved then return Point(saved) end
+	local found = find()
+	self.musters[key] = Point(found)
+	self.musterStore:Write(self.musters)
+	return found
+end
+
 function Controller:PlanLanes(team, to, field, now)
 	local own = Nearest(Positions(SpawnSpots(team)), to)
 	if not own then return end
@@ -261,9 +274,17 @@ function Controller:PlanLanes(team, to, field, now)
 		blockers = npcs:BlockerGeneration(), snapshot = npcs:DoorWalls(), specs = specs }
 	self.lanePlans[team] = plan
 	local npcs = WS.Feature("npc")
+	-- where the team's squads muster for their missions: just out of its own
+	-- spawn room along its first lane (Lanes.Muster), found once for this
+	-- spawn and kept for the map (Muster)
+	local function InOwnRoom(p)
+		local area = navmesh.GetNearestNavArea(ToVector(p))
+		return IsValid(area) and npcs:SpawnRoomTeam(area) == team
+	end
 	local function Finish()
 		plan.planning = false
 		if #plan.lanes > 0 then
+			plan.lanes.muster = self:Muster(team, from, function() return Lanes.Muster(plan.lanes[1], InOwnRoom) end)
 			self.laneSets[team] = plan.lanes
 		else
 			plan.retryAt = CurTime() + LANE_RETRY

@@ -776,6 +776,143 @@ T.test("a squad leader walks its lane to its goal, then leaves it", function()
 	T.eq(s.npcA:State().onLane, nil, "walked: off the lane")
 end)
 
+-- Missions (docs/squad-missions-plan.md): a squad musters where its lanes
+-- leave its spawn, its leader asks for a mission and waits for its members.
+local Mission = wartactics.mission
+local Gestures = nextsoldier.gestures
+local MUSTER = P(500, 0)
+
+local function MusterField()
+	local field = Field({})
+	field.lanes = { [BLUE] = { key = "plan", muster = MUSTER,
+		{ kind = "direct", ids = { 1, 2 }, points = { P(0, 0), MUSTER, P(1500, 0) }, length = 1500 } } }
+	return field
+end
+
+local function Mustered(t)
+	local field = MusterField()
+	local s = Squadmates({ role = AiWar.ESCORT, field = field,
+		a = { pos = t.leaderAt or P(100, 0), walkable = function() return true end },
+		b = { pos = t.memberAt or P(120, 50), walkable = function() return true end } })
+	s.war:SetField(field)
+	s.fireTeam = s.a.fireTeam
+	if t.size then s.fireTeam.size = t.size end
+	return s
+end
+
+local function Issue(s, wait)
+	s.fireTeam.mission = Mission.New({ kind = Mission.ADVANCE, way = s.war.field.lanes[BLUE][1], size = s.fireTeam.size,
+		wait = wait, issued = s.meA.now, alpha = true })
+end
+
+local function Has(list, value)
+	for _, v in ipairs(list or {}) do if v == value then return true end end
+	return false
+end
+
+T.test("a squad leader with no mission musters where its lanes leave spawn", function()
+	local s = Mustered({})
+	s.Tick(2)
+	Near(s.meA.moving, MUSTER, "to the muster")
+	T.eq(s.fireTeam.missionWanted, nil, "asks nothing on the way")
+end)
+
+T.test("at the muster it asks for a mission, with its walk there", function()
+	local s = Mustered({})
+	s.Tick(4)
+	s.meA.pos = MUSTER
+	s.Tick()
+	T.eq(s.fireTeam.missionWanted, true, "asked")
+	T.eq(s.fireTeam.musterWalk >= TICK * 4, true, "its walk: " .. tostring(s.fireTeam.musterWalk))
+end)
+
+T.test("while it waits, its members crouch around it and its head scans the lanes", function()
+	local s = Mustered({ leaderAt = MUSTER })
+	s.Tick()
+	s.meB.pos = s.meB.moving or s.meB.pos
+	s.Tick(Orders.SCAN_PERIOD / TICK + 2)
+	T.eq(s.meB.posing ~= nil, true, "the member crouches")
+	T.eq(#(s.meA.lookedAt or {}) >= 1, true, "the leader looks down the lanes")
+	T.eq(s.meA.moving, nil, "the leader holds")
+end)
+
+T.test("a squad not yet whole waits out its mission's wait, then the leader signals, calls it and leads", function()
+	local s = Mustered({ leaderAt = MUSTER, size = 4 })
+	s.Tick()
+	Issue(s, 2)
+	s.Tick(4)
+	T.eq(s.fireTeam.missionLed, nil, "still waiting")
+	s.Tick(6)
+	T.eq(s.fireTeam.missionLed, true, "the wait is over")
+	T.eq(Has(s.meA.gestured, Gestures.SIGNAL_FORWARD), true, "signals forward")
+	T.eq(Has(s.meA.announced, Speech.CONCEPT_MOVE_OUT), true, "calls it")
+	T.eq(s.meB.posing, nil, "the member is up")
+end)
+
+T.test("a whole squad needs no wait", function()
+	local s = Mustered({ leaderAt = MUSTER, size = 2 })
+	s.Tick()
+	Issue(s, 30)
+	s.Tick(2)
+	T.eq(s.fireTeam.missionLed, true)
+end)
+
+T.test("a leader already past the muster on its way out (after setup, enlisted afar) musters where it stands", function()
+	local s = Mustered({ leaderAt = P(1000, 0) })
+	s.Tick(2)
+	T.eq(s.fireTeam.missionWanted, true, "asked at once")
+	T.eq(s.fireTeam.musterWalk, 0, "no walk")
+	Near(s.fireTeam.musterAt, P(1000, 0), "where it stands")
+end)
+
+T.test("in setup a squad leader asks for its mission at its stance, and leads out as setup ends, no walk back", function()
+	local s = Mustered({ leaderAt = P(1000, 0), size = 4 })
+	s.war.field.setup = true
+	s.Tick(2)
+	T.eq(s.fireTeam.missionWanted, true, "asked in setup")
+	T.eq(s.fireTeam.musterWalk, 0, "from where it stands")
+	Issue(s, 0)
+	s.Tick(2)
+	T.eq(s.fireTeam.missionLed, nil, "setup holds it")
+	s.war.field.setup = false
+	s.Tick(2)
+	T.eq(s.fireTeam.missionLed, true, "out as setup ends")
+	for _, p in ipairs(s.meA.moves) do T.eq(FS.Distance(p, MUSTER) > 1, true, "never back to the muster") end
+end)
+
+T.test("a squad leader on a trip when its squad comes to muster stops to muster", function()
+	local field = MusterField()
+	local muster = field.lanes[BLUE].muster
+	field.lanes[BLUE].muster = nil
+	local s = Squadmates({ role = AiWar.ESCORT, field = field, a = { pos = P(3000, 0) }, b = { pos = P(3100, 0) } })
+	s.war:SetField(field)
+	s.Tick(2)
+	T.eq(s.npcA:Describe():find("Travel", 1, true) ~= nil, true, "on a trip: " .. s.npcA:Describe())
+	field.lanes[BLUE].muster = muster
+	s.Tick(2)
+	T.eq(s.npcA:Describe():find("Travel", 1, true), nil, "the trip ended: " .. s.npcA:Describe())
+	T.eq(s.a.fireTeam.missionWanted, true, "asked where it stands")
+end)
+
+T.test("a squad whose request failed, or that waited past MUSTER_PATIENCE, goes on as by default", function()
+	local s = Mustered({})
+	s.fireTeam.missionsOff = true
+	s.Tick(2)
+	T.eq(s.fireTeam.missionWanted, nil, "asks nothing")
+	local t = Mustered({ leaderAt = MUSTER })
+	t.Tick(Orders.MUSTER_PATIENCE / TICK + 2)
+	T.eq(t.fireTeam.missionsOff, true, "gave up waiting")
+	T.eq(t.fireTeam.missionWanted, nil, "and asks no more")
+end)
+
+T.test("contact at the muster: the squad fights", function()
+	local s = Mustered({ leaderAt = MUSTER })
+	s.Tick()
+	s.meA.enemy, s.meA.enemyPos = true, P(900, 0)
+	s.Tick(2)
+	T.eq(s.npcA:State().fighting, true, "fighting")
+end)
+
 T.test("a trip to the objective ends on contact, for the fight", function()
 	local me, npc = Enlist({ role = AiWar.ESCORT, pos = P(0, 0), walkable = function() return true end })
 	Tick(me, npc, 2)
