@@ -43,7 +43,9 @@ class Map:
         return self
 
     def start(self, spawns, objectives):
-        return places.Start(list(self.rooms.values()), list(self.passages.values()), spawns, objectives, self.seals)
+        """spawns: team -> room ids, or ("passage", id) for a corridor inside a spawn."""
+        keyed = {t: [k if isinstance(k, tuple) else ("room", k) for k in ids] for t, ids in spawns.items()}
+        return places.Start(list(self.rooms.values()), list(self.passages.values()), keyed, objectives, self.seals)
 
 
 def Line():
@@ -80,6 +82,15 @@ class StartTest(unittest.TestCase):
     def test_every_unsealed_spawn_room_is_its_teams_stronghold_ways_or_not(self):
         c = Line().start({RED: [1, 7], BLU: [5]}, [3])
         self.assertEqual(c[7], places.Placed(places.STRONGHOLD, RED), "a spawn room no way starts from")
+
+    def test_a_corridor_inside_the_spawn_is_its_ground_too_sealed_at_its_far_door(self):
+        m = Map()
+        for rid, x in ((1, 0), (2, 2), (3, 3), (5, 5)):
+            m.room(rid, x)
+        m.corridor(1, 1, 2).door(2, 3).door(3, 5).seal(2, 3)  # RED's spawn: room 1 and its corridor to room 2
+        c = m.start({RED: [1, ("passage", 1), 2], BLU: [5]}, [3])
+        self.assertEqual(c[1], places.Placed(places.RESTRICTED, RED), "sealed at room 2's door, not the corridor's")
+        self.assertEqual(c[2], places.Placed(places.RESTRICTED, RED))
 
     def test_one_door_left_unsealed_opens_the_spawn(self):
         c = Line().seal(4, 5).start(SPAWNS, [3])

@@ -69,6 +69,9 @@ DOOR_WIDTH, ROOM_MIN_FLOOR, DOOR_MERGE, SEAL_OPENING = 96, 40000, 128, 0.2
 -- past its open floor; a storey about two soldiers' height; stairs climbing
 -- more than about one in seven.
 CORRIDOR_WIDTH, ROOM_REACH, STOREY_RISE, STAIR_SLOPE = 160, 100, 96, 0.15
+-- Floors no further apart than a player standing, less a step, are one
+-- level: no floor can lie over another so close.
+LEVEL_GAP = 64
 ROOM, STAIRWELL, CORRIDOR = "room", "stairwell", "corridor"
 local YIELD_EVERY = 64
 
@@ -318,8 +321,8 @@ local function Windows(rooms, windows, of, passageOf)
 end
 
 -- The map's levels, numbered from the ground up: the rooms' floors (their
--- floor-weighted heights; a stairwell's left out), a gap of more than half
--- STOREY_RISE between one and the next starting a level. Each room and
+-- floor-weighted heights; a stairwell's left out), a gap of more than
+-- LEVEL_GAP between one and the next starting a level. Each room and
 -- passage is given the level its foot is nearest (level) and the one its
 -- head is (top), the same but on a stairwell or a climbing corridor.
 local function Levels(rooms, passages)
@@ -329,7 +332,7 @@ local function Levels(rooms, passages)
 	local levels = {}
 	for _, room in ipairs(floors) do
 		local level = levels[#levels]
-		if not level or room.center.z - level.high > STOREY_RISE / 2 then
+		if not level or room.center.z - level.high > LEVEL_GAP then
 			level = { id = #levels + 1, low = room.center.z, rooms = {} }
 			levels[level.id] = level
 		end

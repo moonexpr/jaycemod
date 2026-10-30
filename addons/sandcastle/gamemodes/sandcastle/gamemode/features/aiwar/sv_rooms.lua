@@ -16,7 +16,9 @@ local Transaction = transaction
 -- The slow lane gives 2 ms a second; pl_upward's 5,410 areas take some
 -- 0.46 s of work, so several minutes, once a map: the rooms are kept.
 local ROOMS_TIME = 900
-local DOOR_CLASSES = { "func_door", "func_door_rotating", "prop_door_rotating" }
+-- The doors no room crosses: the map's doors, and the respawn room
+-- visualizers sealing a spawn's doorways, so a spawn room ends at them.
+local DOOR_CLASSES = { "func_door", "func_door_rotating", "prop_door_rotating", "func_respawnroomvisualizer" }
 
 local function Point(v) return { x = v.x, y = v.y, z = v.z } end
 
@@ -31,13 +33,16 @@ local function SharedEdge(a, b)
 	return width, { x = (x0 + x1) / 2, y = (y0 + y1) / 2, z = z }
 end
 
--- The areas a door stands over.
+-- The areas a door stands over: its box reaches DOOR_FLOOR below it, as the
+-- npc blockers' does, for a door or visualizer hung a little above the floor.
+local DOOR_FLOOR = Vector(0, 0, 32)
+
 local function DoorAreas()
 	local under = {}
 	for _, class in ipairs(DOOR_CLASSES) do
 		for _, door in ipairs(ents.FindByClass(class)) do
 			local mins, maxs = door:WorldSpaceAABB()
-			for _, area in ipairs(navmesh.FindInBox(mins, maxs)) do under[area:GetID()] = true end
+			for _, area in ipairs(navmesh.FindInBox(mins - DOOR_FLOOR, maxs)) do under[area:GetID()] = true end
 		end
 	end
 	return under

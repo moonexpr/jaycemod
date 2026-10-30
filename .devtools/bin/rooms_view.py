@@ -177,15 +177,22 @@ def Partition(dump: Dump) -> Found:
 
 
 def Classes(dump: Dump, found: Found) -> dict:
-    """Each room's starting class (places.Start): room id -> places.Placed. The dump's spawn and
-    objective areas count by the rooms they are in."""
+    """Each room's starting class (places.Start): room id -> places.Placed. The dump's spawn areas
+    count by the rooms and corridors they are in, its objective areas by the rooms."""
     def RoomsOf(area_ids):
         return sorted({found.region[a].id for a in area_ids
                        if a in found.region and found.rooms.get(found.region[a].id) is found.region[a]})
     def Spaces(spaces, kind):
         return [places.Space(s.id, kind == "room", s.center, found.ways.get((kind, s.id), []), s.outdoor)
                 for s in spaces.values()]
-    spawns = {team: RoomsOf(ids) for team, ids in dump.spawns.items()}
+    def SpacesOf(area_ids):
+        keys = set()
+        for a in area_ids:
+            if a in found.region:
+                space = found.region[a]
+                keys.add(("room" if found.rooms.get(space.id) is space else "passage", space.id))
+        return sorted(keys)
+    spawns = {team: SpacesOf(ids) for team, ids in dump.spawns.items()}
     return places.Start(Spaces(found.rooms, "room"), Spaces(found.passages, "passage"), spawns,
                         RoomsOf(dump.objectives), dump.seals)
 

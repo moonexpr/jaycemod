@@ -83,7 +83,7 @@ end
 
 T.test("the tuning is defined", function()
 	for _, name in ipairs({ "DOOR_WIDTH", "ROOM_MIN_FLOOR", "DOOR_MERGE", "SEAL_OPENING", "CORRIDOR_WIDTH", "ROOM_REACH",
-		"STOREY_RISE", "STAIR_SLOPE" }) do
+		"STOREY_RISE", "STAIR_SLOPE", "LEVEL_GAP" }) do
 		T.defined(Rooms[name], name)
 	end
 	T.eq(Rooms.STOREY_RISE * 1.5 / 11 / CELL > Rooms.STAIR_SLOPE, true, "the fixtures' stairs: steeper than a stair")
@@ -251,13 +251,13 @@ T.test("rooms storeys apart are on levels numbered from the ground up; a stairwe
 	local rise = Rooms.STOREY_RISE * 1.5
 	mesh:Block(0, 0, 10, 10)
 	mesh:Block(20, 0, 10, 10, rise)
-	mesh:Block(0, 20, 10, 10, rise / 4) -- a hall a few steps up: the ground floor still
+	mesh:Block(0, 20, 10, 10, Rooms.LEVEL_GAP) -- a hall raised as much as a level's gap: the ground floor still
 	Corridor(mesh, 5, rise)
 	local p = Rooms.Partition(mesh:Graph())
 	T.eq(#p.levels, 2, "two levels")
 	local low, high, raised = Rooms.RoomOf(p, mesh:Id(0, 0)), Rooms.RoomOf(p, mesh:Id(29, 9)), Rooms.RoomOf(p, mesh:Id(0, 25))
 	T.eq(low.level, 1, "the ground floor")
-	T.eq(raised.level, 1, "a few steps up is the same floor")
+	T.eq(raised.level, 1, "raised by no more than LEVEL_GAP is the same floor")
 	T.eq(high.level, 2, "the floor above")
 	T.eq(low.top, 1, "a room on one level reaches no other")
 	local stairs = Rooms.RoomOf(p, mesh:Id(14, 5))

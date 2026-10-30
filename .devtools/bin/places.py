@@ -32,8 +32,9 @@ RESTRICTED, STRONGHOLD, OUTPOST, HIGHWAY = "restricted", "stronghold", "outpost"
 COMMONS, UNOCCUPIED, WILDS = "commons", "unoccupied", "wilds"
 # A highway is on two ways in three; unoccupied ground is at least three
 # quarters of the walk between the spawns from either; a door is sealed by a
-# visualizer whose box, grown by SEAL_REACH, holds it.
-HIGHWAY_SHARE, FAR_SHARE, SEAL_REACH = 2 / 3, 0.75, 32
+# visualizer whose box, grown by SEAL_REACH, holds it: a door is where two
+# nav areas meet, up to about an area's depth from the brush.
+HIGHWAY_SHARE, FAR_SHARE, SEAL_REACH = 2 / 3, 0.75, 128
 
 
 @dataclass(frozen=True)
@@ -119,13 +120,14 @@ def Enclosed(edges: dict, ground: set, seals: list) -> set:
 
 
 def Start(rooms: list, passages: list, spawns: dict, objectives: list, seals: list) -> dict:
-    """Each room's class when a round starts: room id -> Placed. spawns: team -> room ids; seals: the
-    respawn room visualizers' boxes, (lo, hi) corners."""
+    """Each room's class when a round starts: room id -> Placed. spawns: team -> the nodes its spawns
+    take, ("room", id) and ("passage", id) for a corridor inside a spawn; seals: the respawn room
+    visualizers' boxes, (lo, hi) corners."""
     edges = Graph(rooms, passages)
     outdoor = {r.id for r in rooms if r.outdoor}
     teams = sorted(spawns)
     objective = {("room", rid) for rid in objectives if ("room", rid) in edges}
-    home = {t: [("room", rid) for rid in spawns[t] if ("room", rid) in edges] for t in teams}
+    home = {t: [key for key in spawns[t] if key in edges] for t in teams}
     reach, parents = {}, {}
     for t in teams:
         reach[t], parents[t] = Walk(edges, home[t])
@@ -137,10 +139,11 @@ def Start(rooms: list, passages: list, spawns: dict, objectives: list, seals: li
                 continue
             open_ground, _ = Walk(edges, home[enemy], lambda key: key not in own)
             for key in edges:
-                if key[0] == "room" and key in reach[t] and (key in own or key not in open_ground):
+                if key in reach[t] and (key in own or key not in open_ground):
                     ground.add(key)
         for key in Enclosed(edges, ground, seals):
-            restricted[key] = t
+            if key[0] == "room":
+                restricted[key] = t
     flow = {t: {} for t in teams}
     ways, team_ways, separation = 0, {t: 0 for t in teams}, math.inf
     for t in teams:
