@@ -65,6 +65,25 @@ function Controller:EngineKnown(team, also)
 	return held.known
 end
 
+-- What a route search with these closed areas (a ClosedFor table) knows
+-- from the start (a wetsands.navsearch Told): the closed areas, the spawn
+-- rooms, and, for a request crossing by WS.NavLinkCrossable, the links it
+-- refuses. Held while closed, the rooms and the mesh hold, so a search
+-- reads no table of them.
+function Controller:SearchKnown(closed, mapCrossable)
+	local rooms, held = self:SpawnRooms(), self.searchKnown[closed]
+	if not (held and held.mesh == self.navMesh and held.rooms == rooms) then
+		held = { mesh = self.navMesh, rooms = rooms }
+		self.searchKnown[closed] = held
+	end
+	local key = mapCrossable and "crossing" or "walking"
+	if not held[key] then
+		held[key] = NavSearch.Told(self.navMesh,
+			{ closed = closed, rooms = rooms, uncrossable = mapCrossable and self.navUncrossable or nil })
+	end
+	return held[key]
+end
+
 -- The cost callback Path:Compute takes (IPathCost) for one compute: a
 -- wetsands.navsearch Calculator of the strategy over the team's
 -- EngineKnown, which prices each move natively; nil while the mesh snapshot
@@ -169,7 +188,9 @@ function Controller:NavMeshReady()
 		local mesh, areas, uncrossable = NavSearch.Mesh(), navmesh.GetAllNavAreas(), {}
 		for _, area in ipairs(areas) do
 			local center = Center(area:GetID())
-			mesh:Area(area:GetID(), center.x, center.y, center.z, area:GetAttributes())
+			-- the engine reads the flags back signed: an area with the top flag set
+			-- (cp_sunshine has one) comes back negative, which the mesh's u32 refuses
+			mesh:Area(area:GetID(), center.x, center.y, center.z, area:GetAttributes() % 4294967296)
 		end
 		for _, area in ipairs(areas) do
 			local id = area:GetID()
@@ -339,7 +360,7 @@ function Controller:RequestRoute(request)
 	-- request itself adds: the areas it avoids, the links it cannot cross
 	-- (but WS.NavLinkCrossable's, which the mesh's build gathered).
 	local mapCrossable = request.crossable == WS.NavLinkCrossable
-	local told = { closed = closed, rooms = self:SpawnRooms() }
+	local toldUncrossable
 	local rules = {
 		traversable = avoid and function(id) return graph.traversable(Area(id)) end or nil,
 		crossable = request.crossable and not mapCrossable and function(from, to) return graph.crossable(Area(from), Area(to)) end or nil,
@@ -351,9 +372,9 @@ function Controller:RequestRoute(request)
 			search = Pathfinder.New(graph, startId, searchGoal, navmesh.GetNavAreaCount())
 		else
 			scheduler:Wait(function() return self:NavMeshReady() end)
-			if mapCrossable then told.uncrossable = self.navUncrossable end
+			if mapCrossable then toldUncrossable = self.navUncrossable end
 			search = NavSearch.New(self.navMesh, request.strategy, request.limits, request.bot, startId, searchGoal,
-				graph.goalPos, navmesh.GetNavAreaCount(), told, rules)
+				graph.goalPos, navmesh.GetNavAreaCount(), self:SearchKnown(closed, mapCrossable), rules)
 		end
 		local status, budget = search.status, observed and 1 or MESH_STEP
 		while status == Pathfinder.RUNNING do
@@ -364,7 +385,7 @@ function Controller:RequestRoute(request)
 		end
 		if refused and status == Pathfinder.FAILED and search.expanded < search.maxExpanded then
 			self.reachStats.learned = self.reachStats.learned + 1
-			ToldEdge(closed, told.uncrossable, startId, search.parent, refused, uncrossable)
+			ToldEdge(closed, toldUncrossable, startId, search.parent, refused, uncrossable)
 			self.reach:Learn(key, ReachMemo.Region(startId, search.parent, refused, uncrossable), generation)
 		end
 		local areas, found = AreasOf(search:Route()), status == Pathfinder.FOUND and not region

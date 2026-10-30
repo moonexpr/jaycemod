@@ -40,6 +40,11 @@ local REASON_TEXT = {
 	[WINREASON.FRAGLIMIT] = "%s reached the frag limit",
 	[WINREASON.CASHLIMIT] = "%s reached the cash limit",
 	[WINREASON.ENDED_EARLY] = "The match ended early",
+	[WINREASON.HOSTAGES_RESCUED] = "%s rescued the hostages",
+	[WINREASON.HOSTAGES_NOT_RESCUED] = "%s kept the hostages until time ran out",
+	[WINREASON.TARGET_BOMBED] = "%s bombed the target",
+	[WINREASON.BOMB_DEFUSED] = "%s defused the bomb",
+	[WINREASON.TARGET_SAVED] = "%s saved the targets until time ran out",
 }
 -- Winreason_FlagCaptureLimit(_One): a CTF win, at the capture limit or by
 -- the most captures at the time limit, counts them.

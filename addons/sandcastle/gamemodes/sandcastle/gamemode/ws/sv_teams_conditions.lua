@@ -12,7 +12,11 @@
 --   by water.
 --   HALLOWEEN_QUICK_HEAL: heals 30 health a second, up to max health.
 --   HALLOWEEN_THRILLER: the forced dance holds the player still (frozen).
---   URINE (Jarate): mini-crits taken.
+--   URINE (Jarate), MARKED_FOR_DEATH: mini-crits taken.
+--   MAD_MILK: whoever hurts its holder heals part of the damage (sv_hits.lua).
+--   BLEEDING: TF_BLEEDING_DMG every TF_BLEEDING_FREQUENCY, dealt by whoever
+--   inflicted it (WS.Inflict: a hit's condition, as CS:S's least loved
+--   guns inflict theirs).
 -- What players see of them (games.gameplay.players.condition_effects) is drawn by
 -- cl_conditions.lua from the end of each, networked as ws_cond_<number>.
 --   STUNNED (StunPlayer): slowed, and by its flags held still, disarmed or
@@ -105,6 +109,19 @@ function WS.StunPlayer(ply, duration, reduction, flags)
 	WS.AddCondition(ply, C.STUNNED, stun.ends - now)
 end
 
+-- A condition attacker's hit inflicts on ent for seconds (gameplay.players'
+-- Inflict, the longer of the one held and the new): BLEEDING hurts ent in
+-- attacker's name; any other is held as it is.
+function WS.Inflict(ent, attacker, cond, seconds)
+	local now = CurTime()
+	if cond == C.BLEEDING then
+		ent.wsBleeder = attacker
+		if not P.InCond(Conds(ent), cond, now) then ent.wsNextBleed = now + P.BLEED_INTERVAL end
+	end
+	P.Inflict(Conds(ent), cond, seconds, now)
+	SyncNetworked(ent)
+end
+
 -- RemoveCond( TF_COND_STUNNED ): the stun ends now (Merasmus frees a bomb
 -- head who reached him).
 function WS.EndStun(ply)
@@ -121,6 +138,18 @@ local function Burn(ent)
 	dmg:SetDamage(BURN_DAMAGE)
 	dmg:SetDamageType(DMG_BURN)
 	dmg:SetAttacker(game.GetWorld())
+	dmg:SetInflictor(game.GetWorld())
+	ent:TakeDamageInfo(dmg)
+end
+
+-- CTFPlayerShared's bleed: TF_BLEEDING_DMG, a slash, dealt by whoever made
+-- it bleed (the world, once they are gone), so its kill is theirs.
+local function Bleed(ent)
+	local bleeder = IsValid(ent.wsBleeder) and ent.wsBleeder or game.GetWorld()
+	local dmg = DamageInfo()
+	dmg:SetDamage(P.BLEED_DAMAGE)
+	dmg:SetDamageType(DMG_SLASH)
+	dmg:SetAttacker(bleeder)
 	dmg:SetInflictor(game.GetWorld())
 	ent:TakeDamageInfo(dmg)
 end
@@ -195,6 +224,9 @@ timer.Create("ws_conditions", THINK_INTERVAL, 0, function()
 					Burn(ent)
 				end
 			end
+			local bleeds
+			bleeds, ent.wsNextBleed = P.BleedTick(conds, ent.wsNextBleed, now)
+			if bleeds and Alive(ent) then Bleed(ent) end
 			if ent:IsPlayer() and P.InCond(conds, C.HALLOWEEN_QUICK_HEAL, now) and ent:Alive() and ent:Health() < ent:GetMaxHealth() then
 				ent:SetHealth(math.min(ent:GetMaxHealth(), ent:Health() + math.ceil(QUICK_HEAL_RATE * THINK_INTERVAL)))
 			end

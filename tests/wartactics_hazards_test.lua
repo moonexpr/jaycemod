@@ -90,4 +90,27 @@ T.test("the war is separated when a team cannot reach its objective", function()
 	T.eq(Hazards.Separated({}), false, "no objective")
 end)
 
+-- An area whose closing cuts a team off from its objective is a keystone: the
+-- only way through (cs_office's halls into the hostage rooms). It is spared,
+-- open again and never disabled after, so the map stays playable.
+T.test("a keystone area is spared: open again, and never disabled after", function()
+	local h = Hazards.New()
+	for _ = 1, Hazards.THRESHOLD do h:Record(7, Hazards.RECOVERED, WHERE) end
+	T.eq(h:IsDisabled(7), true, "disabled")
+	T.eq(h:Spare(7), true, "spared")
+	T.eq(h:IsDisabled(7), false, "open again")
+	for _ = 1, Hazards.THRESHOLD * 3 do T.eq(h:Record(7, Hazards.RECOVERED, WHERE), false, "never disabled again") end
+	T.eq(h:IsDisabled(7), false, "still open")
+	T.eq(h:Spare(99), false, "an area never laid on is not spared")
+end)
+
+T.test("a spared area stays spared through a save", function()
+	local h = Hazards.New()
+	for _ = 1, Hazards.THRESHOLD do h:Record(7, Hazards.RECOVERED, WHERE) end
+	h:Spare(7)
+	local back = Hazards.Decode(Hazards.Encode(h))
+	T.eq(back:Record(7, Hazards.RECOVERED, WHERE), false, "spared")
+	T.eq(back:Entries()[1].spared, true, "kept")
+end)
+
 T.finish()

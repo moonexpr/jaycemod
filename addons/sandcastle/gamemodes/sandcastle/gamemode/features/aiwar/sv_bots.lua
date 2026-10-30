@@ -134,7 +134,7 @@ end
 
 function Controller:AddBot()
 	local counts = self:TeamCounts()
-	local team = Teams.AutoTeam(counts[RED].players, counts[BLUE].players)
+	local team = Quota.TeamToJoin({ [RED] = counts[RED].players, [BLUE] = counts[BLUE].players }, self:Sizes())
 	self.botSerial = (self.botSerial or 0) + 1
 	local bot = player.CreateNextBot(string.format("%s %d", self:FactionName(team), self.botSerial))
 	if not IsValid(bot) then return end
@@ -145,10 +145,10 @@ function Controller:AddBot()
 	WS.SetPlayerTeam(bot, team)
 end
 
--- A bot of the team TeamToKick names, a dead one first; any of the
--- quota's when none is on a team.
-function Controller:KickBot()
-	local team = Quota.TeamToKick(self:TeamCounts())
+-- A bot of the team (by default the one TeamToKick names), a dead one first;
+-- any of the quota's when none is on a team.
+function Controller:KickBot(team)
+	team = team or Quota.TeamToKick(self:TeamCounts())
 	local pick
 	for bot in pairs(self.bots) do
 		if IsValid(bot) and (team == nil or WS.TeamOf(bot) == team) and (pick == nil or not bot:Alive()) then pick = bot end
@@ -169,6 +169,11 @@ function Controller:MaintainBotQuota()
 		self:AddBot()
 	elseif step == Quota.KICK then
 		self:KickBot()
+	else
+		-- the total is right, the split may not be: the next AddBot fills the short side
+		local counts = self:TeamCounts()
+		local over = Quota.TeamOverSize({ [RED] = counts[RED].players, [BLUE] = counts[BLUE].players }, sizes)
+		if over then self:KickBot(over) end
 	end
 end
 
@@ -279,8 +284,8 @@ end
 
 -- Looking ------------------------------------------------------------------------
 
--- The live fighters of each game team, players (bots included) and the
--- war's NPC soldiers.
+-- The live fighters of each game team, players (bots included), the war's
+-- NPC soldiers, and those a hook WSWarFighters(fighters) adds.
 function Controller:Fighters()
 	local fighters = { [RED] = {}, [BLUE] = {} }
 	for _, ply in ipairs(player.GetAll()) do
@@ -291,6 +296,8 @@ function Controller:Fighters()
 		local list = fighters[entry.soldier.team]
 		if list and IsValid(ent) and not ent:IsPlayer() and ent:Health() > 0 then list[#list + 1] = ent end
 	end
+	-- others a mode makes fight for a side (an armed hostage: features.hostage)
+	hook.Run("WSWarFighters", fighters)
 	return fighters
 end
 

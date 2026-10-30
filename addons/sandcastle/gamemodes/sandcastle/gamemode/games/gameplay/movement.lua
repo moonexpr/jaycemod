@@ -49,6 +49,14 @@ function JumpReach(jumpSpeed, gravity, standHeight, duckHeight)
 	return jumpSpeed * jumpSpeed / (2 * gravity) + standHeight - duckHeight
 end
 
+-- The box a walk is swept with: the body's own width (hullMin, hullMax:
+-- { x, y, z } corners), from its feet to height (above the step it lifts the
+-- sweep by, so stairs pass). A narrower sweep than the body passes lines its
+-- shoulders catch on.
+function Sweep(hullMin, hullMax, height)
+	return { x = hullMin.x, y = hullMin.y, z = 0 }, { x = hullMax.x, y = hullMax.y, z = height }
+end
+
 -- A body's crouch jump at its own gravity: TF2's 72 (CTFBotLocomotion's
 -- GetMaxJumpHeight), GMod's about 69.
 function CrouchJump(body)

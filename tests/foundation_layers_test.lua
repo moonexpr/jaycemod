@@ -130,6 +130,8 @@ local GAMES = {
 	["gameplay/capabilities"] = "gameplay",
 	["gameplay/movement"] = "gameplay",
 	["gameplay/standing"] = "gameplay",
+	["gameplay/css_weapons"] = "gameplay",
+	["gameplay/css_weapons/scripts"] = "gameplay",
 	["gameplay/loadout"] = "gameplay",
 	["gameplay/combat"] = "gameplay",
 	["gameplay/combat/weapon_mimic"] = "gameplay",
@@ -184,6 +186,7 @@ local NEXTSOLDIER = {
 	["vision"] = "nextsoldier",
 	["player_body"] = "nextsoldier",
 	["route_walk"] = "nextsoldier",
+	["corners"] = "nextsoldier",
 }
 
 -- wartactics/'s modules: the AI war's tactics engine, the strategy its

@@ -63,6 +63,25 @@ impl Known {
         self.rooms[area] = team;
         Ok(())
     }
+
+    pub fn mesh(&self) -> &Arc<NavMesh> {
+        &self.mesh
+    }
+
+    /// Area index -> closed to the team.
+    pub fn closed(&self) -> &[bool] {
+        &self.closed
+    }
+
+    /// Link index -> not to be crossed.
+    pub fn uncrossable(&self) -> &[bool] {
+        &self.uncrossable
+    }
+
+    /// Area index -> the team whose spawn room it lies in, or NO_ROOM.
+    pub fn rooms(&self) -> &[i32] {
+        &self.rooms
+    }
 }
 
 /// A move the engine asks the price of.

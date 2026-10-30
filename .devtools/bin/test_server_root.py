@@ -1,20 +1,39 @@
 """server_root.py's symlinked server root, built in a temporary folder: every
 shared entry is a link, the server's own folders are real, and nothing is
 copied."""
+import io
 import lzma
+import zipfile
 import os
 import struct
+from dataclasses import replace
+
+from gma import read_gma
 from pathlib import Path
 
 import pytest
 
-from server_root import LUADEV_PORT_FILE, REPO_ADDONS, REPO_DATA, ROOT, ROOT_WINDOWS, SERVER_BINARIES, SERVER_LUA, SERVER_EXE, SERVER_WORKSHOP, TF_SCRIPTS,\
-    TF_SCRIPTS_DIR, SERVER_MAPS, map_archive_name, Instance, Layout, NotAnExe, build, console_exe
+from server_root import GAMEMODE_ENV, LUADEV_PORT_FILE, REPO_ADDONS, REPO_DATA, ROOT, ROOT_WINDOWS, SERVER_BINARIES, SERVER_LUA, SERVER_EXE, SERVER_WORKSHOP, TF_SCRIPTS,\
+    TF_SCRIPTS_DIR, SERVER_DOWNLOADS, SERVER_MAPS, SERVER_PACKS, map_archive_name, Instance, Layout, NotAnExe, build, console_exe
 from test_vpk import DIR_ARCHIVE, entry, write_pak
 
 # a Workshop item from before .gma downloads: one LZMA-compressed .gma, as .bin
 LEGACY = "949733637"
 LEGACY_GMA = b"GMAD legacy"
+# a pack of loose sounds from another app's Workshop (SERVER_PACKS), a zip
+# with Windows paths, as the civilian voice pack is
+def pack_zip() -> bytes:
+    out = io.BytesIO()
+    with zipfile.ZipFile(out, "w") as z:
+        z.writestr("sound\\vo\\civilian_benjamoose\\civ_thanks(1).wav", b"RIFF thanks")
+        z.writestr("voicepack\\credits.txt", b"credits")
+    return out.getvalue()
+
+
+PACK_ZIP = pack_zip()
+
+# the same in the server's own downloads (SERVER_DOWNLOADS)
+LEGACY_DOWNLOAD = "886058416"
 
 # a PE image's header, as far as the subsystem: e_lfanew at 0x3c, "PE\0\0", the
 # 20-byte file header, and the optional header whose subsystem sits at +68
@@ -57,6 +76,15 @@ def layout(tmp_path: Path) -> Layout:
     for name, item in SERVER_MAPS.items():
         (maps / item).mkdir(parents=True)
         (maps / item / f"{name}.gma").write_bytes(b"GMAD map")
+    for item in SERVER_DOWNLOADS.values():
+        (maps / item).mkdir(parents=True)
+        if item == LEGACY_DOWNLOAD:
+            (maps / item / "456_legacy.bin").write_bytes(lzma.compress(LEGACY_GMA, format=lzma.FORMAT_ALONE))
+        else:
+            (maps / item / "addon.gma").write_bytes(b"GMAD download")
+    for name, (app, item) in SERVER_PACKS.items():
+        (maps.parent / app / item).mkdir(parents=True)
+        (maps.parent / app / item / "789_legacy.bin").write_bytes(PACK_ZIP)
     lua = tmp_path / "server_root"
     lua.mkdir()
     for source in SERVER_LUA.values():
@@ -179,6 +207,8 @@ def test_nothing_is_copied_but_tf2s_hidden_sound_scripts_legacy_archives_and_the
     assert files == sorted(
         [f"garrysmod/data/{TF_SCRIPTS_DIR}/{path}" for path in TF_SCRIPTS]
         + [f"garrysmod/cache/{legacy_name()}.gma", SERVER_EXE, f"garrysmod/data/{LUADEV_PORT_FILE}"]
+        + [f"garrysmod/cache/{name}.gma" for name, item in SERVER_DOWNLOADS.items() if item == LEGACY_DOWNLOAD]
+        + [f"garrysmod/cache/{name}.gma" for name in SERVER_PACKS]
     )
 
 
@@ -263,6 +293,69 @@ def test_a_workshop_map_not_downloaded_is_refused_with_how_to_fetch_it(layout, t
         build(missing)
 
 
+# An instance may run another checkout's gamemode (a worktree's), the shared
+# install's gamemodes folder otherwise left as it is.
+def test_a_gamemode_override_makes_gamemodes_a_folder_of_links_with_the_overridden_one(layout, tmp_path):
+    modes = layout.shared / "garrysmod" / "gamemodes"
+    (modes / "sandcastle").mkdir(parents=True)
+    (modes / "sandbox").mkdir()
+    worktree = tmp_path / "worktree" / "sandcastle"
+    worktree.mkdir(parents=True)
+    root = build(replace(layout, gamemode=worktree))
+    gamemodes = root / "garrysmod" / "gamemodes"
+    assert gamemodes.is_dir() and not gamemodes.is_symlink()
+    assert (gamemodes / "sandcastle").resolve() == worktree
+    assert (gamemodes / "sandbox").resolve() == modes / "sandbox"
+    assert modes.joinpath("sandcastle").exists() and not modes.joinpath("sandcastle").is_symlink(), "the shared install is untouched"
+
+
+def test_without_an_override_gamemodes_is_the_shared_folder_again(layout, tmp_path):
+    modes = layout.shared / "garrysmod" / "gamemodes"
+    (modes / "sandcastle").mkdir(parents=True)
+    worktree = tmp_path / "worktree" / "sandcastle"
+    worktree.mkdir(parents=True)
+    build(replace(layout, gamemode=worktree))
+    root = build(layout)
+    assert (root / "garrysmod" / "gamemodes").is_symlink()
+    assert (root / "garrysmod" / "gamemodes").resolve() == modes
+
+
+def test_the_override_is_read_from_the_environment(monkeypatch, tmp_path):
+    monkeypatch.setenv(GAMEMODE_ENV, str(tmp_path))
+    assert Layout.of(Instance(2)).gamemode == tmp_path
+    monkeypatch.delenv(GAMEMODE_ENV)
+    assert Layout.of(Instance(2)).gamemode is None
+
+
+# Addons the server needs whether or not the operator subscribed to them
+# (SERVER_DOWNLOADS: the hostage models), downloaded by steamcmd beside the
+# maps and mounted from cache/ under their own names.
+def test_the_downloaded_addons_land_in_cache_named_for_themselves(layout):
+    root = build(layout)
+    cache = root / "garrysmod" / "cache"
+    for name, item in SERVER_DOWNLOADS.items():
+        if item == LEGACY_DOWNLOAD:
+            assert (cache / f"{name}.gma").read_bytes() == LEGACY_GMA, name
+        else:
+            assert (cache / f"{name}.gma").resolve() == layout.maps / item / "addon.gma", name
+
+
+def test_a_downloaded_addon_not_fetched_is_refused_with_how_to_fetch_it(layout):
+    item = next(iter(SERVER_DOWNLOADS.values()))
+    for archive in (layout.maps / item).iterdir():
+        archive.unlink()
+    with pytest.raises(FileNotFoundError, match=f"steamcmd.*{item}"):
+        build(layout)
+
+
+def test_a_retired_downloaded_addon_is_cleared_from_cache(layout):
+    root = build(layout)
+    stale = root / "garrysmod" / "cache" / "no_longer_listed.gma"
+    stale.write_bytes(b"old")
+    build(layout)
+    assert not stale.exists()
+
+
 
 # A second server beside the first (another agent's tests on one): each
 # instance has its own root, so its own console.log, data/ and cache/.
@@ -287,3 +380,33 @@ def test_an_instance_below_one_is_refused():
 def test_the_build_tells_the_servers_lua_its_luadev_port(layout):
     build(layout)
     assert (layout.root / "garrysmod" / "data" / LUADEV_PORT_FILE).read_text() == "27100"
+
+
+# A pack of loose sounds (SERVER_PACKS: the hostages' civilian voice lines,
+# from Source Filmmaker's Workshop) is mounted as a GMA of its sounds, paths
+# as GMod's, built again only when the download is newer.
+def test_a_pack_of_sounds_is_mounted_as_a_gma_of_them(layout):
+    root = build(layout)
+    for name in SERVER_PACKS:
+        gma = read_gma((root / "garrysmod" / "cache" / f"{name}.gma").read_bytes())
+        assert [(f.path, f.data) for f in gma.files] == [("sound/vo/civilian_benjamoose/civ_thanks(1).wav", b"RIFF thanks")]
+
+
+def test_a_pack_is_built_again_only_when_its_download_is_newer(layout):
+    name, (app, item) = next(iter(SERVER_PACKS.items()))
+    gma = build(layout) / "garrysmod" / "cache" / f"{name}.gma"
+    gma.write_bytes(b"GMAD kept")
+    build(layout)
+    assert gma.read_bytes() == b"GMAD kept"
+    download = layout.maps.parent / app / item / "789_legacy.bin"
+    later = gma.stat().st_mtime + 10
+    os.utime(download, (later, later))
+    build(layout)
+    assert read_gma(gma.read_bytes()).files
+
+
+def test_a_pack_not_fetched_is_refused_with_how_to_fetch_it(layout):
+    name, (app, item) = next(iter(SERVER_PACKS.items()))
+    (layout.maps.parent / app / item / "789_legacy.bin").unlink()
+    with pytest.raises(FileNotFoundError, match=f"steamcmd.*{app} {item}"):
+        build(layout)

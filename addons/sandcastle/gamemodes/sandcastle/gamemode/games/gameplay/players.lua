@@ -48,6 +48,7 @@ COND = {
 	URINE = 24,
 	BLEEDING = 25,
 	MAD_MILK = 27,
+	MARKED_FOR_DEATH = 30,
 	SPEED_BOOST = 32,
 	CRITBOOSTED_PUMPKIN = 33,
 	CRITBOOSTED_USER_BUFF = 34,
@@ -79,6 +80,38 @@ PERMANENT = -1
 -- conds maps a condition to the time it ends.
 function AddCond(conds, cond, duration, now)
 	conds[cond] = duration == PERMANENT and math.huge or now + duration
+end
+
+-- A condition a hit inflicts (CTFPlayerShared::MakeBleed, AddCond of a
+-- mark): it lasts the longer of the one held and duration from now.
+function Inflict(conds, cond, duration, now)
+	local ends = now + duration
+	if InCond(conds, cond, now) and conds[cond] > ends then return end
+	conds[cond] = ends
+end
+
+-- TF_BLEEDING_FREQUENCY, TF_BLEEDING_DMG: a bleeding victim's hurt, dealt
+-- by whoever made it bleed.
+BLEED_INTERVAL, BLEED_DAMAGE = 0.5, 4
+
+-- CTFWeaponBase::ApplyOnHitAttributes: a hit on a victim covered in Mad
+-- Milk heals its attacker MILK_HEAL of the damage, rounded down.
+MILK_HEAL = 0.6
+
+function MilkHeal(victimConds, damage, now)
+	if not InCond(victimConds, COND.MAD_MILK, now) then return 0 end
+	return math.floor(damage * MILK_HEAL)
+end
+
+-- Whether a bleed hurts at now, and when it next does (nil: it starts
+-- now): a full interval after it starts, then every interval on its own
+-- clock, however coarsely it is asked; never once it has ended, as
+-- ConditionThink removes an expired bleed before its tick.
+function BleedTick(conds, nextTick, now)
+	if not InCond(conds, COND.BLEEDING, now) then return false, nil end
+	if not nextTick then return false, now + BLEED_INTERVAL end
+	if now < nextTick then return false, nextTick end
+	return true, math.max(nextTick + BLEED_INTERVAL, now)
 end
 
 function RemoveCond(conds, cond)
@@ -189,14 +222,16 @@ HIT_NORMAL, HIT_MINICRIT, HIT_CRIT = 0, 1, 2
 -- critical (DMG_CRITICAL: a crit already, its damage tripled where it was
 -- dealt). An invulnerable victim, or a blast-immune one hit by a blast,
 -- takes nothing; a crit-boosted attacker, a headshot or a rolled crit
--- deals triple, but never to the attacker itself; a jarated victim takes
--- mini-crits from anyone but themselves.
+-- deals triple, but never to the attacker itself; a jarated victim, or one
+-- marked for death, takes mini-crits from anyone but themselves.
 function Hit(victimConds, attackerConds, now, facts)
 	if InCond(victimConds, C.INVULNERABLE, now) then return 0, HIT_NORMAL end
 	if facts.blast and InCond(victimConds, C.BLAST_IMMUNE, now) then return 0, HIT_NORMAL end
 	if facts.critical then return 1, HIT_CRIT end
 	if facts.selfHarm then return 1, HIT_NORMAL end
 	if facts.headshot or facts.rolled or CritBoosted(attackerConds, now) then return CRIT_MULTIPLIER, HIT_CRIT end
-	if InCond(victimConds, C.URINE, now) then return MINICRIT_MULTIPLIER, HIT_MINICRIT end
+	if InCond(victimConds, C.URINE, now) or InCond(victimConds, C.MARKED_FOR_DEATH, now) then
+		return MINICRIT_MULTIPLIER, HIT_MINICRIT
+	end
 	return 1, HIT_NORMAL
 end

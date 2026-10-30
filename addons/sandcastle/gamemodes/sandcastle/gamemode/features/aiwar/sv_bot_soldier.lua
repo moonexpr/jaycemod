@@ -12,10 +12,12 @@ local Vision = nextsoldier.vision
 local PlayerBody = nextsoldier.player_body
 local Movement = gameplay.movement
 local RouteWalk = nextsoldier.route_walk
+local Corners = nextsoldier.corners
 local Geometry = math.geometry
 local Teams = gameplay.teams
+local Movement = gameplay.movement
 local ToVector, Point = Map.ToVector, Map.Point
-local WALK_MINS, WALK_MAXS, WALK_LIFT, WALK_MAX_RISE = Map.WALK_MINS, Map.WALK_MAXS, Map.WALK_LIFT, Map.WALK_MAX_RISE
+local WALK_MAXS, WALK_LIFT, WALK_MAX_RISE = Map.WALK_MAXS, Map.WALK_LIFT, Map.WALK_MAX_RISE
 
 -- How long it keeps the jump key's wish when its orders ask a hop: long
 -- enough to land on the ground and press it.
@@ -47,6 +49,17 @@ local STEP_HEIGHT, SAFE_DROP = 18, 300
 -- below (CanWalkTo): a stair up or down the way is floor, a ledge's edge not.
 local FOOTING_ABOVE, FOOTING_BELOW = Vector(0, 0, STEP_HEIGHT), Vector(0, 0, 2 * STEP_HEIGHT)
 local JUMP_PENALTY = 2
+
+-- A goal off the mesh (a guard's spot on a ring round its charge that falls
+-- in or behind a wall) is walked to as the first point on the mesh along the
+-- line back from it toward the bot, looked for OFF_MESH_STEP apart: else the
+-- bot presses into the wall for as long as it guards.
+local OFF_MESH_STEP, OFF_MESH_HEIGHT, OFF_MESH_LIFT = 16, 60, Vector(0, 0, 20)
+
+local function OnMesh(p) return navmesh.GetNavArea(p + OFF_MESH_LIFT, OFF_MESH_HEIGHT) ~= nil end
+
+-- A trace filter passing whoever walks about: players and NPCs.
+local function Unmoving(ent) return not (ent:IsPlayer() or ent:IsNPC() or ent:IsNextBot()) end
 
 local BotSoldier = setmetatable({}, { __index = Soldier })
 BotSoldier.__index = BotSoldier
@@ -158,6 +171,8 @@ function BotSoldier:RouteCost()
 	return function(area, fromArea, ladder, _, length)
 		if not IsValid(fromArea) then return 0 end
 		if npcs:NavBlocks(area, team) or controller:ShutDoorIn(area, team) or npcs:SpawnRoomTeam(area) == enemy then return -1 end
+		-- a link its body does not fit through, or that crosses a clip or a wall's end
+		if not WS.NavLinkCrossable(fromArea, area) then return -1 end
 		local distance
 		if IsValid(ladder) then
 			distance = ladder:GetLength()
@@ -207,12 +222,26 @@ end
 
 function BotSoldier:Repath() self.repath = true end
 
+-- Where to walk for goal (a point): itself on the mesh, else the first
+-- point on the mesh back from it toward where it stands, else itself.
+function BotSoldier:MeshGoal(goal)
+	local to = ToVector(goal)
+	if OnMesh(to) then return goal end
+	local from = self.ent:GetPos()
+	local length = from:Distance(to)
+	for along = OFF_MESH_STEP, length, OFF_MESH_STEP do
+		local p = to + (from - to) * (along / length)
+		if OnMesh(p) then return Point(p) end
+	end
+	return goal
+end
+
 -- Every look (sv_bots.lua): the point its body makes for now (steer) on
 -- its way to its move target. A route is planned from where its navigator
 -- knows it stands (Path:Compute starts at the navigator's last known area),
 -- so not until the navigator has caught up with a body set down elsewhere.
 function BotSoldier:Steer(now)
-	local goal = self.moveTarget
+	local goal = self.moveTarget and self:MeshGoal(self.moveTarget)
 	local pos = Point(self.ent:GetPos())
 	if self.lookedFrom and Geometry.Distance(pos, self.lookedFrom) > TELEPORTED then
 		self.walk, self.planned, self.nextPlan = nil, nil, now + SETTLE_DELAY
@@ -233,6 +262,9 @@ function BotSoldier:Steer(now)
 		local route = self:Navigator():PlanRoute(ToVector(goal), self:RouteCost())
 		local points = {}
 		for i, v in ipairs(route or {}) do points[i] = Point(v) end
+		-- its turns pushed out off the inside walls until its body passes them
+		-- (the map's, not who stands there now)
+		points = Corners.Route(points, function(a, b) return self:WalkClear(ToVector(a), ToVector(b), Unmoving) end)
 		self.walk = route and RouteWalk.New(points) or nil
 		-- none found: planned again after REPATH_INTERVAL
 		if not route then self.planned = nil end
@@ -250,19 +282,34 @@ function BotSoldier:Watch(p)
 	self.look = p and ToVector(p) or nil
 end
 
+-- The box its walks and hops are swept with: its own player hull's width
+-- (a TF2 player's 48; Map's 26-wide walk sweep passes lines its shoulders
+-- catch on door frames), WALK_MAXS high above WALK_LIFT.
+function BotSoldier:Sweep()
+	local mn, mx = self.ent:GetHull()
+	local mins, maxs = Movement.Sweep(mn, mx, WALK_MAXS.z)
+	return ToVector(mins), ToVector(maxs)
+end
+
 -- A clear walk under player movement's mask: what stops a player stops it,
 -- and a floor all along (RouteWalk.Footing), within a step above or two
 -- below the line: a line beside a beam is clear of everything, over air.
 function BotSoldier:CanWalkTo(p)
-	local from, to = self.ent:GetPos(), ToVector(p)
+	return self:WalkClear(self.ent:GetPos(), ToVector(p))
+end
+
+-- The same for a walk from `from` to `to` (Vectors), wherever it stands;
+-- filter, a trace filter, in place of its own (only itself).
+function BotSoldier:WalkClear(from, to, filter)
 	if math.abs(to.z - from.z) > WALK_MAX_RISE then return false end
+	local mins, maxs = self:Sweep()
 	local tr = util.TraceHull({
 		start = from + WALK_LIFT,
 		endpos = to + WALK_LIFT,
-		mins = WALK_MINS,
-		maxs = WALK_MAXS,
+		mins = mins,
+		maxs = maxs,
 		mask = MASK_PLAYERSOLID,
-		filter = self.ent,
+		filter = filter or self.ent,
 	})
 	if tr.Hit then return false end
 	for _, q in ipairs(RouteWalk.Footing(Point(from), Point(to))) do
@@ -280,7 +327,8 @@ function BotSoldier:Blocker(p)
 	local controller = self.controller
 	local from, to = self.ent:GetPos() + WALK_LIFT, ToVector(p) + WALK_LIFT
 	local function NotSoldier(hit) return controller.soldiers[hit] == nil end
-	local hit = util.TraceHull({ start = from, endpos = to, mins = WALK_MINS, maxs = WALK_MAXS, mask = MASK_PLAYERSOLID, filter = NotSoldier })
+	local mins, maxs = self:Sweep()
+	local hit = util.TraceHull({ start = from, endpos = to, mins = mins, maxs = maxs, mask = MASK_PLAYERSOLID, filter = NotSoldier })
 	if not hit.Hit then return nil, false end
 	return hit.HitWorld and game.GetWorld() or hit.Entity, false
 end
@@ -296,7 +344,8 @@ function BotSoldier:Hop(p)
 	local now = CurTime()
 	if now - (self.hoppedAt or -math.huge) < HOP_RETRY then return false end
 	local from, to = self.ent:GetPos() + HOP_CLEAR, ToVector(p) + HOP_CLEAR
-	local tr = util.TraceHull({ start = from, endpos = to, mins = WALK_MINS, maxs = WALK_MAXS, mask = MASK_PLAYERSOLID, filter = self.ent })
+	local mins, maxs = self:Sweep()
+	local tr = util.TraceHull({ start = from, endpos = to, mins = mins, maxs = maxs, mask = MASK_PLAYERSOLID, filter = self.ent })
 	if tr.Hit then return false end
 	self.hoppedAt = now
 	self.hopUntil = now + HOP_WISH

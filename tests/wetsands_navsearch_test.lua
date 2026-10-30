@@ -200,6 +200,34 @@ local CASES = {
 		told.closed[2] = true
 		return { cost(EngineArea(2), EngineArea(1)) }
 	end },
+	{ "a search told a Told runs as one told its tables", function(N)
+		local mesh, routes = Mesh(N), {}
+		for _, told in ipairs({ { closed = { [2] = true } }, { uncrossable = { [3] = { [4] = true } } }, { rooms = { [2] = BLUE } } }) do
+			local held = Run(Search(N, { mesh = mesh, told = N.Told(mesh, told) }))
+			local tables = Run(Search(N, { mesh = mesh, told = told }))
+			routes[#routes + 1] = held.status .. " " .. Joined(held:Route())
+			routes[#routes + 1] = tostring(held.status == tables.status and Joined(held:Route()) == Joined(tables:Route())
+				and held.expanded == tables.expanded)
+		end
+		return routes
+	end },
+	{ "a search's Told is a copy: changing the tables after changes nothing", function(N)
+		local mesh, told = Mesh(N), { closed = {} }
+		local known = N.Told(mesh, told)
+		told.closed[2] = true
+		return { Joined(Run(Search(N, { mesh = mesh, told = known })):Route()) }
+	end },
+	{ "rules are asked only of what a search's Told leaves open", function(N)
+		local mesh, asked = Mesh(N), {}
+		local s = Run(Search(N, { mesh = mesh, told = N.Told(mesh, { closed = { [2] = true } }), rules = {
+			traversable = function(id) asked[id] = true return true end,
+		} }))
+		return { Joined(s:Route()), tostring(asked[2] == nil), tostring(asked[5] == true) }
+	end },
+	{ "a search refuses a Told of another mesh", function(N)
+		local mesh = Mesh(N)
+		return { (pcall(Search, N, { mesh = mesh, told = N.Told(Mesh(N)) })) }
+	end },
 	{ "a calculator prices a climb, a jump and a fall by the mesh's rise", function(N)
 		local limits = HL2.SOLDIER_LIMITS
 		local mesh = N.Mesh()
@@ -306,6 +334,11 @@ T.test("the Lua implementation's answers are the expected ones", function()
 	T.eq(seen["a calculator gives the first area nothing and prices the engine's moves"].lua, "0 | 150 | 200 | 150", "calculator")
 	T.eq(seen["a calculator closes what its Told holds: areas, links one way, enemy rooms"].lua, "-1 | -1 | 100 | -1 | 100", "calculator told")
 	T.eq(seen["a calculator's Told is a copy: changing the tables after changes nothing"].lua, "100", "told copied")
+	T.eq(seen["a search told a Told runs as one told its tables"].lua,
+		"found 1 5 3 4 | true | failed 1 2 3 | true | found 1 5 3 4 | true", "search told a Told")
+	T.eq(seen["a search's Told is a copy: changing the tables after changes nothing"].lua, "1 2 3 4", "search's Told copied")
+	T.eq(seen["rules are asked only of what a search's Told leaves open"].lua, "1 5 3 4 | true | true", "rules after a Told")
+	T.eq(seen["a search refuses a Told of another mesh"].lua, "false", "another mesh's Told")
 	T.eq(seen["a calculator prices a climb, a jump and a fall by the mesh's rise"].lua, "200 | -1 | -1", "rise")
 	T.eq(seen["a ladder move is priced by its length and the engine's height change"].lua, "510 | -1", "ladder")
 	T.eq(seen["a calculator refuses a move the mesh lacks, and a Told what it names amiss"].lua, "false | false | false | false | false", "refused moves")

@@ -7,9 +7,12 @@ local AiWar = WS.require("features.aiwar.model")
 local HL2Path = WS.require("foundation.wetsands.path.hl2")
 local Path = wetsands.path
 
--- CanWalkTo's sweep: a soldier's hull above its step height, so stairs and
--- slopes pass and walls do not.
-local WALK_MINS, WALK_MAXS = Vector(-13, -13, 0), Vector(13, 13, 52)
+-- CanWalkTo's and the lanes' sweep: the standard body's width (a TF2
+-- player's, gameplay.movement; the bot soldiers' own, and wider than the NPC
+-- soldiers'), above its step height, so stairs and slopes pass and walls do
+-- not. A narrower sweep passes lines a bot's shoulders catch on door frames.
+local Movement = gameplay.movement
+local WALK_MINS, WALK_MAXS = Vector(Movement.TF2.hullMin.x, Movement.TF2.hullMin.y, 0), Vector(Movement.TF2.hullMax.x, Movement.TF2.hullMax.y, 52)
 local WALK_LIFT = Vector(0, 0, 20)
 local WALK_MAX_RISE = 40
 
@@ -105,6 +108,8 @@ end
 local function SpawnSpots(team)
 	local teamSpawns = WS.SpawnPoints(team)
 	if #teamSpawns > 0 or Present("info_player_teamspawn") then return teamSpawns end
+	local sides = Spawns.TeamClasses(team, Present)
+	if #sides > 0 then return EntitiesOf(sides) end
 	local own = Spawns.Classes(Controller:Faction(team).id, Present)
 	if #own > 0 then return EntitiesOf(own) end
 	local hiding = HidingSpotsOf(team)
@@ -271,7 +276,7 @@ local function PlaceSpawnBases()
 	if Present("info_player_teamspawn") or not navmesh.IsLoaded() then return 0 end
 	local placed = 0
 	for _, team in ipairs({ RED, BLUE }) do
-		if #Spawns.Classes(Controller:Faction(team).id, Present) == 0 then
+		if #Spawns.TeamClasses(team, Present) == 0 and #Spawns.Classes(Controller:Faction(team).id, Present) == 0 then
 			local points = {}
 			for i, spot in ipairs(HidingSpotsOf(team)) do points[i] = spot.pos end
 			for _, point in ipairs(world.grid.Thin(points, BASE_SPACING)) do

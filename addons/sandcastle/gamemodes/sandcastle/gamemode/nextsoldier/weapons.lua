@@ -12,12 +12,13 @@
 --   made once
 -- Lead(from, target, velocity, speed) -> where to aim a projectile so it
 --   meets a target moving at velocity (first order: its flight time ahead)
--- STATS[class] -> HL2's guns the soldiers carry
+-- STATS[class] -> the guns the soldiers carry: HL2's and CS:S's
 -- Magazine(stats) -> magazine: Ready(now), Fire(now) (refused when not
 --   ready: our bug), Reloading(now), Rounds()
-local error, setmetatable, type = error, setmetatable, type
+local error, ipairs, setmetatable, type = error, ipairs, setmetatable, type
 local deg, atan = math.deg, math.atan
 local Geometry = math.geometry
+local Css = gameplay.css_weapons
 module(...)
 
 local PARTS = { "damage", "bullets", "interval", "clip", "reload", "sound", "tracer", "hold", "spread" }
@@ -60,6 +61,18 @@ STATS = {
 		sound = "Weapon_Crossbow.Single", tracer = "Tracer", hold = "crossbow", spread = 0,
 		projectile = { class = "crossbow_bolt", speed = 3500 } }),
 }
+
+-- CS:S's guns (gameplay.css_weapons), as the game has them: a bullet's
+-- damage at the muzzle, the pellets, cycle and clip, its shot's sound, its
+-- standing inaccuracy and spread as the cone.
+for _, class in ipairs(Css.CLASSES) do
+	local w = Css.WEAPONS[class]
+	if w.kind == Css.GUN then
+		STATS[class] = Stats({ damage = w.damage, bullets = w.bullets, interval = w.cycle, clip = w.clip,
+			reload = w.reload, sound = w.sounds.single_shot, tracer = "Tracer", hold = w.hold,
+			spread = Cone(w.accuracy.stand + w.accuracy.spread) })
+	end
+end
 
 function Lead(from, target, velocity, speed)
 	local flight = Geometry.Distance(from, target) / speed

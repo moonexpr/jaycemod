@@ -6,7 +6,9 @@
 -- a soldier opens fire as it calls them out, not only within DrGBase's range
 -- for the hold type; tf_bot_difficulty's aim and spread (aiwar.marksmanship)
 -- make far shots miss.
-local error, format, huge = error, string.format, math.huge
+local error, format, huge, ipairs = error, string.format, math.huge, ipairs
+local atan, deg = math.atan, math.deg
+local Css = gameplay.css_weapons
 module(...)
 
 -- cone: how far a shot strays, in degrees (about HL2's NPC bullet cones;
@@ -28,6 +30,36 @@ WEAPONS = {
 	weapon_crowbar = { melee = true, damage = 25, interval = 0.25, automatic = true },
 	weapon_stunstick = { melee = true, damage = 30, interval = 0.25, automatic = true },
 }
+
+-- CS:S's weapons (gameplay.css_weapons), for the CS:S modes' soldiers: a
+-- gun's cone is its standing inaccuracy and spread, in degrees across; its
+-- reach, chase and avoid its type's, as the HL2 gun nearest it; automatic
+-- when CS:S fires it held. The knife strikes as its slash. Grenades are no
+-- arms: a soldier does not carry them.
+local CSS_RANGES = {
+	Pistol = { reach = 750, chase = 500, avoid = 350 },
+	SubMachinegun = { reach = 1000, chase = 700, avoid = 500 },
+	Rifle = { reach = 1500, chase = 1000, avoid = 750 },
+	Machinegun = { reach = 1500, chase = 1000, avoid = 750 },
+	Shotgun = { reach = 325, chase = 250, avoid = 175 },
+	SniperRifle = { reach = 3000, chase = 2000, avoid = 750 },
+}
+for _, class in ipairs(Css.CLASSES) do
+	local w = Css.WEAPONS[class]
+	if w.kind == Css.GUN then
+		local ranges = CSS_RANGES[w.type]
+		WEAPONS[class] = {
+			cone = 2 * deg(atan(w.accuracy.stand + w.accuracy.spread)),
+			reach = ranges.reach,
+			chase = ranges.chase,
+			avoid = ranges.avoid,
+			automatic = w.fullAuto or nil,
+		}
+	elseif w.kind == Css.KNIFE then
+		local slash = Css.KNIFE_STATS.slash
+		WEAPONS[class] = { melee = true, damage = slash.damage, interval = slash.interval, automatic = true }
+	end
+end
 
 -- How near a melee weapon strikes from, and how near an enemy is before the
 -- soldier draws it (the farther, so it is out before it can strike).

@@ -72,6 +72,28 @@ function Step(settings, population)
 	return nil
 end
 
+-- The team a new bot joins: players[team], each team's players now, and
+-- sizes[team], each team's size (the scenario's, which may be uneven): the
+-- team furthest below its size, else, both as far, the auto-assigned one.
+function TeamToJoin(players, sizes)
+	local red, blue = Teams.RED, Teams.BLUE
+	local redShort, blueShort = sizes[red] - players[red], sizes[blue] - players[blue]
+	if redShort ~= blueShort and (redShort > 0 or blueShort > 0) then
+		return redShort > blueShort and red or blue
+	end
+	return Teams.AutoTeam(players[red], players[blue])
+end
+
+-- The team that should give up a bot so the split follows the sizes: the one
+-- over its size while the other is under it (bots keep their team across a
+-- map load, so a split made before the sizes changed stays); nil otherwise.
+function TeamOverSize(players, sizes)
+	local red, blue = Teams.RED, Teams.BLUE
+	if players[red] > sizes[red] and players[blue] < sizes[blue] then return red end
+	if players[blue] > sizes[blue] and players[red] < sizes[red] then return blue end
+	return nil
+end
+
 -- The team a bot is kicked from: teams[team] = { players, bots } for RED
 -- and BLU; the one with more players, on an even split the one with more
 -- bots, and only a team with a bot to kick. nil with no bots.

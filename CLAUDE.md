@@ -217,7 +217,7 @@ the native code is tested against, and what runs without the binary.
 
 | Module | API |
 |---|---|
-| `wetsands.navsearch` | Route searches on a nav mesh snapshot: `Mesh()` (`Area`, `Link`, `Seal`), `New(mesh, strategy, limits, bot, start, goal, goalPos, maxExpanded[, told[, rules]])` → `graph.pathfinder`'s search; told: closed areas, uncrossable links, rooms, estimates; rules asked once an area or link. `Distances(mesh, starts, limit, limits[, told])`: graph.search's walks on the mesh (walkable rises, `told.uncrossable`). `Told(mesh, told)` → what a team's computations know, held; `Calculator(known, strategy, limits, bot)` → the cost `Path:Compute` takes, the strategy's model priced over a Told (the engine asked only area ids and the cost so far) |
+| `wetsands.navsearch` | Route searches on a nav mesh snapshot: `Mesh()` (`Area`, `Link`, `Seal`), `New(mesh, strategy, limits, bot, start, goal, goalPos, maxExpanded[, told[, rules]])` → `graph.pathfinder`'s search; told: closed areas, uncrossable links, rooms, estimates, or a held `Told` of the mesh (read no table a search); rules asked once an area or link. `Distances(mesh, starts, limit, limits[, told])`: graph.search's walks on the mesh (walkable rises, `told.uncrossable`). `Told(mesh, told)` → what a team's computations know, held; `Calculator(known, strategy, limits, bot)` → the cost `Path:Compute` takes, the strategy's model priced over a Told (the engine asked only area ids and the cost so far) |
 | `wetsands.path` | Path costs: a NextBot's IPathCost as strategies, parts `ground`, `hl2`, `scatter`, `tfbot` (`require("foundation.wetsands.path.<name>")`), each `Cost(step, limits, bot)` and `Model(limits, bot)` (the native search's walker); `IMPASSABLE`, `JUMP_PENALTY`, `Walkable` |
 
 ## games index
@@ -238,7 +238,7 @@ never features or ws; a published foundation module never requires games;
 | Namespace | Modules |
 |---|---|
 | `system` | The gamemode core: `events` (the game event registry, `WS.Events`), `features` (per-map feature loading), `gamemode`, `permissions`, `play_mode`, `spawn_manager`, `idle` |
-| `gameplay` | `rounds` (+ `state`, `timer`, `limits`), `teams`, `players` (+ `attributes`, `condition_effects`), `spawn`, `spectate`, `respawn_modifiers`, `arrivals`, `loadout`, `economy`, `kill_credit`, `kill_icons`, `vote`, `reports`, `player_analytics`, `capture` (+ `area`, `master`, `point_timer`), `combat` (+ 9 parts), `projectile` (+ 4 parts), `tactics`, `movement` (TF2's player movement, the standard), `standing` (which team is nearer to completing its objective), `handicap`, `capabilities` |
+| `gameplay` | `rounds` (+ `state`, `timer`, `limits`), `teams`, `players` (+ `attributes`, `condition_effects`), `spawn`, `spectate`, `respawn_modifiers`, `arrivals`, `loadout`, `economy`, `kill_credit`, `kill_icons`, `vote`, `reports`, `player_analytics`, `capture` (+ `area`, `master`, `point_timer`), `combat` (+ 9 parts), `projectile` (+ 4 parts), `tactics`, `movement` (TF2's player movement, the standard), `standing` (which team is nearer to completing its objective), `handicap`, `capabilities`, `css_weapons` (+ `scripts`: CS:S's weapon scripts, written by `.devtools/bin/css_weapons.py`) |
 | `npc` | `nextbot` (the NextBot NPC system), `actor`, `combatant`, `targeting` |
 
 | Module | API |
@@ -249,6 +249,7 @@ never features or ws; a published foundation module never requires games;
 | `generator.hfsm` | NextBot Action/Behavior engine: `generator.state_chart` with stacks. `Action` adds `SuspendFor`/`TrySuspendFor`, `OnSuspend`/`OnResume`, buried actions hearing events and queries after the one covering them; `Behavior`; `Chart` as state_chart's; NextBot's timers as `CountdownTimer`, `IntervalTimer` |
 | `world.io` | A map's entity lookups and output connections, through a world port |
 | `gameplay.tactics` | The tactics engine interface: `ENGINE` (a port), `Check(engine)` |
+| `gameplay.css_weapons` | CS:S's weapons from the game's own scripts (`css_weapons/scripts`), the rest (recoil, second modes, ammo, knife, grenades) as tuning: `CLASSES` (buy order), `WEAPONS[class]` (`kind` `GUN`/`KNIFE`/`GRENADE`, `team`, `price`, `damage`, `accuracy`, `alt`, `second`, `kick`, GMod's c_ `viewModel`, ...), `For(team)`, `Damage(weapon, distance, hitgroup)` (falloff and `HITGROUPS`), the accuracy model (`Accuracy`, `Base`, `Inaccuracy`, `Fired`, `Landed`, `Recover`), `Spray(inaccuracy, spread, bullets, random)`, `Kick`, `Backstab`, `KnifeDamage`, `FlashBlind`, `Throw`. Played by the SWEPs `weapon_css_base` (CS:S's class names: `weapon_ak47`, ...), `weapon_knife`, `weapon_css_grenade_base` and `base_css_grenade`'s projectiles (`ws/sh_css_weapons.lua`), by bots through `features.aiwar.arms` and by NPCs through `nextsoldier.weapons` |
 | `list.drawlist` | `New()` → draw callbacks named by dotted paths, run in order (by order, a tie by path): `Add(path, order, draw[, when])` (a path again replaces it), `HideElements(path)`/`ShowElements(path)` (the code's: a path hides all under it), `SetHidden(paths)` (the player's, apart), `Draw(...)`, `Entries()`; `ParseNames(text)`. The HUD's (`WS.HUD`, `cl_hud_hidden`) |
 
 Rationale, what stays out of foundation's namespaces, and what to evaluate
@@ -272,7 +273,7 @@ requires it (`tests/foundation_layers_test.lua`). Tests are
 
 | Modules | |
 |---|---|
-| Movement (on `wetsands.path`'s costs) | `brushes`, `clip`, `detour`, `doors`, `leap`, `noise`, `portal`, `probe` (a path follower walking points), `rappel`, `reach_memo`, `route_record`, `route_walk` (a route walked waypoint by waypoint), `nav_gaps` |
+| Movement (on `wetsands.path`'s costs) | `brushes`, `clip`, `detour`, `doors`, `leap`, `noise`, `portal`, `probe` (a path follower walking points), `rappel`, `reach_memo`, `route_record`, `route_walk` (a route walked waypoint by waypoint), `corners` (a route's turns pushed out until the body passes them), `nav_gaps` |
 | Senses and body | `hearing`, `vision` (seen or heard, recognized, remembered: the contact, pursued out of sight when asked), `player_body` (a bot player's moves, aim and fire as a player's keys), `speech` (its criteria for the response rules) |
 | Behaviours | `chart` (the contract every behaviour is a state of), `soldier` (the port behaviours drive a soldier through), `behaviors` (the registry the hosting mode gives its behaviours through), `monitor` |
 | The base | `base` (the interface NextSoldier's own NextBot base implements) |

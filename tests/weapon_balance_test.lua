@@ -203,4 +203,53 @@ T.test("the gravity gun's punt hits for its own damage and throws hard", functio
 	T.eq(Balance.Shot("weapon_physcannon", { damage = 1, distance = 100, roll = 0.5 }), 1, "a hit that is no punt: HL2's")
 end)
 
+-- CS:S's weapons deal their own damage (gameplay.css_weapons: by range and
+-- hit group, a headshot four times), so the balance leaves it whole and a
+-- headshot is no crit on top; an HE grenade's blast is its own too.
+T.test("a CS:S weapon's damage is its own, and its headshot no crit", function()
+	for _, class in ipairs({ "weapon_ak47", "weapon_awp", "weapon_knife", "weapon_hegrenade" }) do
+		local damage, headshot, crit = Balance.Shot(class, { damage = 144, bullet = true, distance = 3000, headshot = true, roll = 0 })
+		T.eq(damage, 144, class .. " damage")
+		T.eq(headshot, false, class .. " no headshot crit")
+		T.eq(crit, false, class .. " no close crit")
+	end
+	T.eq(Balance.Weapon("hegrenade_projectile"), "weapon_hegrenade", "the HE grenade's projectile")
+end)
+
+-- No hit kills from full health but a skill shot: what one shot deals a
+-- victim is held under its health, and the rest is pushed, not dealt.
+T.test("no shot kills from full health unless it is a skill shot", function()
+	T.defined(Balance.HIT_CAP, "the most of its health one shot takes")
+	for _, most in ipairs({ 100, 300 }) do
+		local dealt, excess = Balance.Cap(1000, 0, most, false)
+		T.eq(dealt < most, true, most .. ": the victim lives")
+		T.eq(dealt + excess, 1000, most .. ": what is not dealt is the excess")
+		local again = Balance.Cap(1000, dealt, most, false)
+		T.eq(again, 0, most .. ": a shot's next pellet adds nothing past it")
+	end
+	T.eq(Balance.Cap(10, 0, 100, false), 10, "a small hit is whole")
+	local first = Balance.Cap(60, 0, 100, false)
+	local second = Balance.Cap(60, first, 100, false)
+	T.eq(first + second < 100, true, "two pellets of one shot are held together")
+	local skill, none = Balance.Cap(1000, 0, 100, true)
+	T.eq(skill, 1000, "a skill shot is whole")
+	T.eq(none, 0, "and has no excess")
+end)
+
+T.test("what a shot could not deal pushes and staggers its victim instead", function()
+	T.eq(Balance.Knockback("weapon_ak47", true, 0), nil, "nothing held back, no push")
+	local small = Balance.Knockback("weapon_ak47", true, 10)
+	local big = Balance.Knockback("weapon_ak47", true, 40)
+	T.eq(small.speed > 0 and small.stagger > 0 and small.slow > 0, true, "a push, a stagger and a slow")
+	T.eq(big.speed > small.speed, true, "harder the more was held back")
+	T.eq(big.stagger > small.stagger, true, "longer the more was held back")
+	local huge = Balance.Knockback("weapon_ak47", true, 1e6)
+	T.eq(huge.speed, Balance.OVERFLOW.maxSpeed, "a push has a limit")
+	T.eq(huge.stagger, Balance.OVERFLOW.maxStagger, "and so has a stagger")
+	local bolt = Balance.Knockback("weapon_crossbow", false, 10)
+	T.eq(bolt.speed, W.weapon_crossbow.knockback, "a weapon's own push, when the stronger")
+	local blast = Balance.Knockback("weapon_frag", false, 1e6)
+	T.eq(blast.speed, math.max(W.weapon_frag.knockback, Balance.OVERFLOW.maxSpeed), "the stronger of the two")
+end)
+
 T.finish()

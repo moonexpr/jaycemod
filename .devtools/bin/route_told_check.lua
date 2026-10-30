@@ -5,7 +5,9 @@
 -- mesh snapshot, for seeded random area pairs and both teams: each pair's
 -- status, expansions and route compared, with the time each took; every
 -- second pair asks as lanes do (nor over a link WS.NavLinkCrossable
--- refuses), against the uncrossable links the mesh build gathered.
+-- refuses), against the uncrossable links the mesh build gathered. A third
+-- search a pair is told the controller's held Told (SearchKnown) in place
+-- of the tables: alike to the table's, and timed a search.
 --
 --   dt lua -f .devtools/bin/route_told_check.lua     defines WSRouteToldCheck
 --   dt lua 'return WSRouteToldCheck.Run(40)'         40 pairs a team: a report
@@ -34,6 +36,7 @@ function Check.Run(count)
 	if not c.navMesh then return "the npc controller has no mesh snapshot yet: ask a route first" end
 	local areas = navmesh.GetAllNavAreas()
 	local x, same, total, asked, told, expansions = 12345, 0, 0, 0, 0, 0
+	local heldSame, heldSeconds = 0, 0
 	local function Next(n)
 		x = (x * 1103515245 + 12345) % 2147483648
 		return x % n + 1
@@ -59,7 +62,10 @@ function Check.Run(count)
 			local toldRooms = { closed = c:ClosedFor(team), rooms = c:SpawnRooms(), uncrossable = lane and c.navUncrossable or nil }
 			local a = Search(c, team, start, goal, nil, lane and laneRules or rules)
 			local b = Search(c, team, start, goal, toldRooms, nil)
+			local held = Search(c, team, start, goal, c:SearchKnown(toldRooms.closed, lane), nil)
 			total, asked, told, expansions = total + 1, asked + a.seconds, told + b.seconds, expansions + a.expanded
+			heldSeconds = heldSeconds + held.seconds
+			if held.status == b.status and held.expanded == b.expanded and held.route == b.route then heldSame = heldSame + 1 end
 			if a.status == b.status and a.expanded == b.expanded and a.route == b.route then
 				same = same + 1
 			elseif #mismatches < 3 then
@@ -70,7 +76,9 @@ function Check.Run(count)
 	local rooms, closed = 0, 0
 	for _ in pairs(c:SpawnRooms()) do rooms = rooms + 1 end
 	for _ in pairs(c:ClosedFor(2)) do closed = closed + 1 end
-	return string.format("%s: %d searches, %d alike; %d expansions: rules %.2f us, told %.2f us an expansion (%d room areas, %d closed to RED)%s",
+	return string.format("%s: %d searches, %d alike; %d expansions: rules %.2f us, told %.2f us an expansion (%d room areas, %d closed to RED);"
+		.. " held Told %d alike, %.1f us a search against the tables' %.1f%s",
 		game.GetMap(), total, same, expansions, asked * 1e6 / math.max(expansions, 1), told * 1e6 / math.max(expansions, 1),
-		rooms, closed, #mismatches > 0 and ("; " .. table.concat(mismatches, "; ")) or "")
+		rooms, closed, heldSame, heldSeconds * 1e6 / math.max(total, 1), told * 1e6 / math.max(total, 1),
+		#mismatches > 0 and ("; " .. table.concat(mismatches, "; ")) or "")
 end

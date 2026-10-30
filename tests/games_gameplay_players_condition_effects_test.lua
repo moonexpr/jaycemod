@@ -80,6 +80,38 @@ T.test("burning is TF2's: the holder's overlay, flames for others, a burning cor
 	T.eq(crit.thirdPersonOnly, nil, "a crit glows in first person too (the view model)")
 end)
 
+-- OnAddBleeding: the bleeding player's own screen bleeds
+-- (TF_SCREEN_OVERLAY_MATERIAL_BLEED); nothing shows on the body.
+T.test("bleeding is TF2's: the bleeder's own screen bleeds", function()
+	local bleeding = Effects.Shown(Ends({ [C.BLEEDING] = 10 }), 0)
+	T.eq(Names(bleeding), "bleeding", "shown")
+	T.eq(bleeding[1].overlay, "effects/bleed_overlay", "the holder's screen")
+	T.eq(bleeding[1].particle, nil, "no particle")
+end)
+
+-- C_TFPlayer::UpdateMarkedForDeathEffect: item_fx.pcf's mark_for_death,
+-- over the head (GetOverheadEffectPosition: the eyes and 20 more), shown to
+-- everyone but its holder, who has no overlay of it.
+T.test("a mark for death is TF2's: its particle over the head, for others only", function()
+	local marked = Effects.Shown(Ends({ [C.MARKED_FOR_DEATH] = 10 }), 0)
+	T.eq(Names(marked), "marked", "shown")
+	local mark = marked[1]
+	T.eq(Effects.Particle(mark, Teams.RED), "mark_for_death", "TF2's particle")
+	T.eq(mark.file, "particles/item_fx.pcf", "from its file")
+	T.eq(mark.on, Effects.OVERHEAD, "over the head")
+	T.eq(mark.above, 20, "the eyes and 20 more")
+	T.eq(mark.othersOnly, true, "not to its holder")
+	T.eq(mark.overlay, nil, "no overlay")
+end)
+
+-- OnAddMadMilk: the drips; TF2 left its milk screen overlay commented out,
+-- so the holder's view stays clear.
+T.test("Mad Milk drips but leaves its holder's screen clear", function()
+	local milk = Effects.Shown(Ends({ [C.MAD_MILK] = 10 }), 0)[1]
+	T.eq(Effects.Particle(milk, Teams.RED), "peejar_drips_milk", "the drips")
+	T.eq(milk.overlay, nil, "no overlay")
+end)
+
 T.test("catching a condition plays its effect's ignite sound, if it has one", function()
 	T.eq(Effects.IgniteSound(C.BURNING), "Fire.Engulf", "catching fire")
 	T.eq(Effects.IgniteSound(C.URINE), nil, "Jarate has none")

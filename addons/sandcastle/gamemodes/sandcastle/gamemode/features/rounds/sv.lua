@@ -75,8 +75,8 @@ local overtimeNag = ConVarOrCreate("tf_overtime_nag", "0", FCVAR_NOTIFY, "Announ
 
 -- The gamerules every map has (WS.Rules): TF2's, which run its rounds, or
 -- Sandcastle's (ws_gamerules), which run them once a game begins.
-local TF_RULES_CLASS, WS_RULES_CLASS = "tf_gamerules", "ws_gamerules"
-local RULES_CLASSES = { TF_RULES_CLASS, WS_RULES_CLASS }
+local TF_RULES_CLASS, WS_RULES_CLASS, CS_RULES_CLASS = "tf_gamerules", "ws_gamerules", "cs_gamerules"
+local RULES_CLASSES = { TF_RULES_CLASS, WS_RULES_CLASS, CS_RULES_CLASS }
 local MASTER_CLASS = "team_control_point_master"
 -- The entities that make a map a round-based one, proxy or not.
 local OBJECTIVE_CLASSES = {
@@ -135,6 +135,7 @@ local Controller = {
 	},
 	holds = {},
 	objective = Rounds.NO_OBJECTIVE,
+	objectiveState = nil, -- the objective feature's (SetObjectiveState)
 	tally = Limits.Tally.New(), -- the round's frags and earnings, for its limits
 	roundTime = 0, -- an admin's round time on a map without an objective (0: untimed)
 	roundTimer = NULL, -- its timer this round
@@ -229,7 +230,7 @@ end
 -- rules replacing others.
 function Controller:EnsureProxy(name)
 	if IsValid(self.proxy) then return end
-	local class = HasObjective() and TF_RULES_CLASS or WS_RULES_CLASS
+	local class = self:Mode().RULES_CLASS or (HasObjective() and TF_RULES_CLASS or WS_RULES_CLASS)
 	local proxy = ents.Create(class)
 	proxy:SetName(name or class)
 	proxy:Spawn()
@@ -387,26 +388,24 @@ end
 -- This round's flag captures, as the flag feature publishes its tally
 -- (none on a map without flags).
 local function Captures()
-	return {
-		[RED] = GetGlobal2Int("ws_flag_caps_" .. RED, 0),
-		[BLUE] = GetGlobal2Int("ws_flag_caps_" .. BLUE, 0),
-	}
+	return { [RED] = GetGlobal2Int("ws_flag_caps_" .. RED, 0), [BLUE] = GetGlobal2Int("ws_flag_caps_" .. BLUE, 0) }
 end
 
 function Controller:World(now)
 	local stalemateTimer = self.stalemateTimer
 	return {
-		havePlayers = HavePlayers(),
-		teams = TeamLife(),
-		scores = Scores(),
-		captures = Captures(),
+		havePlayers = HavePlayers(), teams = TeamLife(), scores = Scores(), captures = Captures(),
 		stalemateTimerLeft = IsValid(stalemateTimer) and self.timers[stalemateTimer]:TimeRemaining(now) or nil,
 		timerMayExpire = self:TimerMayExpire(),
 		mapHasActiveTimer = self:MapHasActiveTimer(),
 		objective = self.objective,
 		restart = RestartAsked(),
+		objectiveState = self.objectiveState,
 	}
 end
+
+-- The map's objective feature's state (a planted bomb), for the mode's rules.
+function Controller:SetObjectiveState(state) self.objectiveState = state end
 
 -- Sandbox mode pauses every timer and lets none of them fire.
 function Controller:ThinkTimers(now)
@@ -528,10 +527,10 @@ end
 -- What decides the map's casual win conditions (Limits.WinConditions), once
 -- the objective features have set the mode and the master is bound.
 local function MapKind()
-	local mode = Controller:Mode().NAME
-	local master = ents.FindByClass(MASTER_CLASS)[1]
+	local mode, master = Controller:Mode().NAME, ents.FindByClass(MASTER_CLASS)[1]
 	return {
 		mvm = mode == "mvm",
+		hostage = mode == "hostage", defuse = mode == "defuse",
 		payload = mode == "payload",
 		ctf = mode == "ctf",
 		multipleTrains = ents.FindByClass("tf_logic_multiple_escort")[1] ~= nil,

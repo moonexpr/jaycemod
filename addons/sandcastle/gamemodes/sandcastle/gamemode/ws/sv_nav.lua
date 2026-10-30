@@ -82,9 +82,13 @@ end
 -- and after mp_nav_generate, since the links live only in memory.
 local GAP_BATCH = 64
 local GAP_TIMER = "ws_nav_gaps"
-local CROSS_MINS, CROSS_MAXS = Vector(-12, -12, 0), Vector(12, 12, 72 - NavGaps.STEP_HEIGHT)
+-- the standard body's width (a TF2 player's, gameplay.movement): a seam a
+-- narrower box crosses can be too narrow for the bots' shoulders
+local BODY = gameplay.movement.TF2
+local CROSS_MINS, CROSS_MAXS = Vector(BODY.hullMin.x, BODY.hullMin.y, 0), Vector(BODY.hullMax.x, BODY.hullMax.y, 72 - NavGaps.STEP_HEIGHT)
 local STEP = Vector(0, 0, NavGaps.STEP_HEIGHT)
-local FLOOR_MAXS = Vector(12, 12, 1)
+-- the floor under a seam is looked for under the feet, not the shoulders
+local FLOOR_MINS, FLOOR_MAXS = Vector(-12, -12, 0), Vector(12, 12, 1)
 
 local function V(p) return Vector(p.x, p.y, p.z) end
 local function Point(v) return { x = v.x, y = v.y, z = v.z } end
@@ -93,7 +97,7 @@ local function Crosses(from, to, mask)
 	local across = util.TraceHull({ start = from + STEP, endpos = to + STEP, mins = CROSS_MINS, maxs = CROSS_MAXS, mask = mask })
 	if across.Hit or across.StartSolid then return false end
 	local middle = (from + to) / 2
-	local below = util.TraceHull({ start = middle + STEP, endpos = middle - STEP, mins = CROSS_MINS, maxs = FLOOR_MAXS, mask = mask })
+	local below = util.TraceHull({ start = middle + STEP, endpos = middle - STEP, mins = FLOOR_MINS, maxs = FLOOR_MAXS, mask = mask })
 	return below.Hit and not below.StartSolid
 end
 
@@ -119,6 +123,20 @@ local FLOOR_DEPTH = 1000
 -- each link's answer, by its two areas' ids: asked for every link a path
 -- weighs, so looked up without building a key
 local crossable = PairMap.New()
+
+-- Whether the standard body (CROSS_MINS, CROSS_MAXS: a TF2 player's box
+-- above a step) fits through the opening somewhere along it
+-- (nextsoldier.nav_gaps' FitLines, middle first): an opening the mesh,
+-- generated for a narrower walker, leaves too narrow for its shoulders is no
+-- way at all for now, until a soldier's locomotion squeezes through.
+local function BodyFits(lo, hi, side, otherLo, otherHi, z, mask)
+	for _, line in ipairs(NavGaps.FitLines(lo, hi, side, otherLo, otherHi, z)) do
+		local sweep = util.TraceHull({ start = V(line.start) + STEP, endpos = V(line.finish) + STEP,
+			mins = CROSS_MINS, maxs = CROSS_MAXS, mask = mask, filter = StaticMap })
+		if not sweep.Hit and not sweep.StartSolid then return true end
+	end
+	return false
+end
 
 function WS.NavLinkCrossable(a, b)
 	local aId, bId = a:GetID(), b:GetID()
@@ -156,6 +174,7 @@ function WS.NavLinkCrossable(a, b)
 		local floor = util.TraceLine({ start = V(finish) + STEP, endpos = V(finish) - Vector(0, 0, FLOOR_DEPTH), mask = mask, filter = StaticMap })
 		clear = NavGaps.FallsAway(seamFrom, seamTo, floor.Hit and floor.HitPos.z or nil)
 	end
+	clear = clear and BodyFits(lo, hi, side, otherLo, otherHi, z, mask)
 	crossable:Set(aId, bId, clear)
 	return clear
 end

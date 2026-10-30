@@ -4,6 +4,7 @@
 //! asked of `Rules` the first time the search reaches them, the answer kept
 //! for the rest of the search. Areas are named by engine id at this face.
 
+use crate::calculator::Known;
 use crate::navmesh::NavMesh;
 use crate::walker::{Step, Walker, IMPASSABLE, NO_ROOM};
 use foundation::astar::{AStar, Costs, Status};
@@ -44,6 +45,8 @@ const UNASKED: i32 = i32::MIN;
 #[derive(Debug, PartialEq)]
 pub enum SearchError {
     NoSuchArea(u32),
+    /// Told a Known of another mesh.
+    OtherMesh,
     /// Told something once it had begun.
     Begun,
     /// A step was interrupted (a rule raised a Lua error): its state is lost.
@@ -54,6 +57,7 @@ impl std::fmt::Display for SearchError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             SearchError::NoSuchArea(id) => write!(f, "no area {id} in the mesh"),
+            SearchError::OtherMesh => write!(f, "the Told is another mesh's"),
             SearchError::Begun => write!(f, "the search has begun: close, rooms, penalties and estimates come first"),
             SearchError::Spent => write!(f, "the search was interrupted mid-step and is spent"),
         }
@@ -201,6 +205,33 @@ impl RouteSearch {
     pub fn room(&mut self, id: u32, team: i32) -> Result<(), SearchError> {
         let area = self.area(id)? as usize;
         self.rooms[area] = team;
+        Ok(())
+    }
+
+    /// Everything `known` holds is closed, uncrossable or a room, as if told
+    /// one by one; what it leaves open is still asked of the rules.
+    pub fn know(&mut self, known: &Known) -> Result<(), SearchError> {
+        if self.begun {
+            return Err(SearchError::Begun);
+        }
+        if !Arc::ptr_eq(known.mesh(), &self.mesh) {
+            return Err(SearchError::OtherMesh);
+        }
+        for (state, &closed) in self.areas.iter_mut().zip(known.closed()) {
+            if closed {
+                *state = CLOSED;
+            }
+        }
+        for (state, &uncrossable) in self.links.iter_mut().zip(known.uncrossable()) {
+            if uncrossable {
+                *state = CLOSED;
+            }
+        }
+        for (room, &team) in self.rooms.iter_mut().zip(known.rooms()) {
+            if team != NO_ROOM {
+                *room = team;
+            }
+        }
         Ok(())
     }
 

@@ -1,7 +1,7 @@
 import struct
 import unittest
 
-from gma import GmaError, read_gma
+from gma import Gma, GmaError, GmaFile, read_gma, write_gma
 
 
 def gma_with(files: list[tuple[str, bytes]], version: int = 3) -> bytes:
@@ -35,6 +35,16 @@ class ReadGma(unittest.TestCase):
     def test_rejects_a_truncated_file(self):
         with self.assertRaises(GmaError):
             read_gma(gma_with([("x.lua", b"0123456789")])[:-8])
+
+
+class WriteGma(unittest.TestCase):
+    def test_what_it_writes_reads_back_the_same(self):
+        gma = Gma("voices", (GmaFile("sound/vo/a.wav", b"RIFF a"), GmaFile("sound/vo/b.wav", b"")))
+        self.assertEqual(read_gma(write_gma(gma)), gma)
+
+    def test_it_writes_gmad_version_three(self):
+        blob = write_gma(Gma("x", ()))
+        self.assertEqual(blob[:5], b"GMAD\x03")
 
 
 if __name__ == "__main__":

@@ -71,9 +71,38 @@ WATCHTOWER = (
     Errand("east pack, up the logs", (1212, 12, 24), (1238, -16, 816), 60),
     Errand("west pipe to the point", (-1250, 8, 848), (-2, 1, 760), 45),
 )
+# cp_sunshine's errands, the pathfinder's bench (operator, 2026-10-29): plain
+# geometry a body of the right hull walks without trouble. Area 425, the
+# corner outside RED's spawn on the way to its second point, is where bots
+# stuck and the hazards disabled a valid area while their walks were swept 26
+# wide for a 48-wide body. Each team's ways out, and the long ways to the middle.
+SUNSHINE = (
+    Errand("round the corner at area 425", (-2800, 2387, -63), (-2950, 2650, -63), 20),
+    Errand("RED spawn to its second point", (-3529, 2693, -44), (-3560, 3672, 132), 45),
+    Errand("RED spawn to the middle point", (-3529, 2693, -44), (-5632, 5248, 68), 90),
+    Errand("BLU spawn to its second point", (-7731, 7795, -44), (-7704, 6824, 132), 45),
+    Errand("BLU spawn to the middle point", (-7731, 7795, -44), (-5632, 5248, 68), 90),
+)
+# gm_bigmaze's errands, the path follower's bench (operator, 2026-10-29;
+# Workshop 119710404, mounted by server_root.py's SERVER_MAPS): its corridors
+# are 64 wall to wall, the nav strip in them 50, so a 48-wide body has 8 a
+# side and a route point off a corridor's middle puts its shoulders in a wall,
+# at every one of the maze's right-angle turns. Each errand starts in the
+# maze and has a way on the floor; the wall tops (128 above it, 50 wide on
+# the mesh, reached by a jump from the spawn room's ramp) are walkable, and a
+# route may take them ("seventeen turns" did).
+BIGMAZE = (
+    Errand("four turns", (225, 675, -336), (475, 200, -336), 20),
+    Errand("ten turns east", (4100, 2525, -336), (5088, 2862, -336), 40),
+    Errand("ten turns south", (550, -988, -336), (225, -375, -336), 40),
+    Errand("seventeen turns", (-1438, 1762, -336), (-1562, 3412, -336), 60),
+    Errand("nineteen turns", (550, -988, -336), (1150, -1825, -336), 75),
+)
 BENCHES = {
     "dev_watchtower_ns_locomotion": WATCHTOWER,
     "arena_watchtower": WATCHTOWER,
+    "cp_sunshine": SUNSHINE,
+    "gm_bigmaze": BIGMAZE,
 }
 def vector(p: Vec) -> str:
     return "Vector(%g, %g, %g)" % p
@@ -134,13 +163,14 @@ return chosen and chosen:Nick() or ''
 """
 
 # Whether the war is ready for errands: a round running, every bot soldier
-# the quota asks for alive.
+# the quota asks for alive, and no more bots than it asks for: a server that
+# had more trims them one a think, and would kick the bench's bot meanwhile.
 SETTLED = """
-local alive = 0
+local alive, quota = 0, GetConVarNumber("tf_bot_quota")
 for ent in pairs(WS.Feature("aiwar").soldiers or {}) do
 	if IsValid(ent) and ent:IsPlayer() and ent:Alive() then alive = alive + 1 end
 end
-return tostring(WS.State() == %(running)d and alive >= GetConVarNumber("tf_bot_quota"))
+return tostring(WS.State() == %(running)d and alive >= quota and #player.GetBots() <= quota)
 """
 ROUND_RUNNING = 4  # gamerules_roundstate_t's GR_STATE_RND_RUNNING (games.gameplay.rounds.state)
 

@@ -2,8 +2,9 @@
 -- the AI war's soldiers (ws_cond_<number>, ws/sv_teams_conditions.lua), as
 -- TF2's client shows them (games.gameplay.players.condition_effects): a crit
 -- boost's glow on the weapon and its hum, the burning player's flames,
--- Jarate's and Mad Milk's drips and the holder's screen overlay, the speed
--- boost's trail, the uber's material.
+-- Jarate's and Mad Milk's drips, the holder's screen overlay (Jarate's, a
+-- fire's, a bleed's), the mark for death over the head, the speed boost's
+-- trail, the uber's material.
 local Effects = WS.require("games.gameplay.players.condition_effects")
 -- The local player, asked of the engine until there is one (it is NULL
 -- while the client loads), then kept.
@@ -46,11 +47,20 @@ local function FirstPerson(ent)
 	return ent == Me() and not ent:ShouldDrawLocalPlayer()
 end
 
+-- Where an effect's particle sits on its owner: an OVERHEAD one above its
+-- eyes (C_TFPlayer::GetOverheadEffectPosition), any other at its origin.
+local function Offset(owner, effect)
+	if effect.on ~= Effects.OVERHEAD then return nil end
+	return Vector(0, 0, owner:EyePos().z - owner:GetPos().z + effect.above)
+end
+
 -- What an effect's particle plays on: a WEAPON effect's on the holder's view
--- model in first person; none for a thirdPersonOnly one there.
+-- model in first person; none for a thirdPersonOnly one there, nor ever for
+-- an othersOnly one on its holder.
 local function Owner(ent, effect)
+	if effect.othersOnly and ent == Me() then return NULL end
 	if effect.thirdPersonOnly and FirstPerson(ent) then return NULL end
-	if effect.on == Effects.BODY then return ent end
+	if effect.on == Effects.BODY or effect.on == Effects.OVERHEAD then return ent end
 	if FirstPerson(ent) then return ent:GetViewModel() end
 	return ent.GetActiveWeapon and ent:GetActiveWeapon() or NULL
 end
@@ -77,7 +87,7 @@ local function Show(ent, effect, shown)
 			if shown.particle and shown.particle:IsValid() then shown.particle:StopEmission() end
 			shown.owner = owner
 			shown.particle = IsValid(owner) and owner:CreateParticleEffect(name, {
-				{ entity = owner, attachtype = PATTACH_ABSORIGIN_FOLLOW },
+				{ entity = owner, attachtype = PATTACH_ABSORIGIN_FOLLOW, position = Offset(owner, effect) },
 			}) or nil
 		end
 	end
@@ -148,7 +158,7 @@ end
 
 hook.Add("CreateClientsideRagdoll", "ws_condition_effects", WS.CorpseEffects)
 
--- The holder's own screen: Jarate's yellow, Mad Milk's white, a fire's heat.
+-- The holder's own screen: Jarate's yellow, a fire's heat, a bleed's red.
 hook.Add("RenderScreenspaceEffects", "ws_condition_effects", function()
 	local ply = Me()
 	if not (IsValid(ply) and ply:Alive()) then return end

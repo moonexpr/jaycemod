@@ -9,8 +9,9 @@
 -- player or an NPC for its own damage and throws them hard enough to be
 -- slammed dead into a wall. The controller
 -- (ws/sv_hits.lua, ws/sh_weapon_balance.lua) applies it to each hit and shot.
-local math = math
+local math, pairs = math, pairs
 local Scalar = math.scalar
+local Css = gameplay.css_weapons
 module(...)
 
 -- damage: a hit's damage, in place of HL2's; cone: the full spread in
@@ -112,6 +113,14 @@ INFLICTORS = {
 	rpg_missile = "weapon_rpg",
 }
 
+-- CS:S's weapons deal their own damage (gameplay.css_weapons: by range and
+-- hit group, a headshot already four times), so none is balanced here and a
+-- headshot is no crit on top.
+for class, weapon in pairs(Css.WEAPONS) do
+	WEAPONS[class] = { headshotCrit = false }
+	if weapon.grenade then INFLICTORS[weapon.grenade.projectile] = class end
+end
+
 -- By range: full damage to start units, falling to floor of it at finish
 -- and beyond. A long range has none.
 FALLOFF = {
@@ -179,17 +188,61 @@ end
 -- How class's hit pushes its victim, { speed (along the shot), lift
 -- (upward), stagger (seconds), slow (the fraction of speed lost) }, or nil
 -- for a weapon that does not knock back.
-function Knockback(class, headshot)
+-- excess: the damage the hit could not deal (Cap), which pushes and
+-- staggers by OVERFLOW; the stronger of that and the weapon's own counts.
+function Knockback(class, headshot, excess)
 	local weapon = WEAPONS[class]
-	if not weapon or not weapon.knockback then return nil end
-	local speed = weapon.knockback
-	if headshot and weapon.headshotKnockback then speed = speed * weapon.headshotKnockback end
-	return {
+	local own = nil
+	if weapon and weapon.knockback then
+		local speed = weapon.knockback
+		if headshot and weapon.headshotKnockback then speed = speed * weapon.headshotKnockback end
+		own = {
+			speed = speed,
+			lift = speed * weapon.lift,
+			stagger = weapon.stagger,
+			slow = weapon.staggerSlow,
+		}
+	end
+	if not excess or excess <= 0 then return own end
+	local speed = math.min(excess * OVERFLOW.speed, OVERFLOW.maxSpeed)
+	local over = {
 		speed = speed,
-		lift = speed * weapon.lift,
-		stagger = weapon.stagger,
-		slow = weapon.staggerSlow,
+		lift = speed * OVERFLOW.lift,
+		stagger = math.min(excess * OVERFLOW.stagger, OVERFLOW.maxStagger),
+		slow = OVERFLOW.slow,
 	}
+	if own == nil then return over end
+	return {
+		speed = math.max(own.speed, over.speed),
+		lift = math.max(own.lift, over.lift),
+		stagger = math.max(own.stagger or 0, over.stagger),
+		slow = math.max(own.slow or 0, over.slow),
+	}
+end
+
+-- No hit kills from full health but a skill shot (a scoped sniper's, a
+-- backstab: gameplay.css_weapons' SkillShot): one shot deals a victim at
+-- most HIT_CAP of its most health, its pellets together (dealt: what the
+-- shot has dealt it already), and the rest is its excess, which pushes
+-- rather than hurts (Knockback). -> damage dealt, excess.
+HIT_CAP = 0.8
+
+-- The excess's push: speed per point, up to maxSpeed, lifted by lift of
+-- it; its stagger: seconds per point, up to maxStagger, slowed by slow.
+OVERFLOW = {
+	speed = 6,
+	maxSpeed = 600,
+	lift = 0.25,
+	stagger = 0.008,
+	maxStagger = 0.6,
+	slow = 0.5,
+}
+
+function Cap(damage, dealt, maxHealth, skill)
+	if skill then return damage, 0 end
+	local room = math.max(0, HIT_CAP * maxHealth - dealt)
+	local hurt = math.min(damage, room)
+	return hurt, damage - hurt
 end
 
 -- When class may fire after a shot at firedAt, or nil when its rate is the

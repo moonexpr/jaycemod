@@ -58,4 +58,16 @@ T.test("the TF2 layer moves as TF2, Sandbox as GMod", function()
 	T.eq(Movement.For(false), Movement.GMOD, "Sandbox")
 end)
 
+-- A walk is swept with the body that walks it: a TF2 player is 48 wide, and a
+-- line a narrower sweep finds clear catches its shoulders on a door frame.
+T.test("a walk's sweep is the body's own width, to the height asked", function()
+	local mins, maxs = Movement.Sweep(Movement.TF2.hullMin, Movement.TF2.hullMax, 52)
+	T.eq(mins.x, -24, "TF2's half width")
+	T.eq(maxs.y, 24, "both ways")
+	T.eq(mins.z, 0, "from the feet")
+	T.eq(maxs.z, 52, "to the height asked")
+	local gmin = Movement.Sweep(Movement.GMOD.hullMin, Movement.GMOD.hullMax, 52)
+	T.eq(gmin.x, -16, "GMod's")
+end)
+
 T.finish()

@@ -105,9 +105,34 @@ function Controller:NoteHazard(ent, cause)
 	if not self:Hazards():Record(id, cause, Point(area:GetCenter())) then return end
 	print(string.format("AI war: nav area %d at %s disabled: soldiers were forced to respawn from it %d times (ns_hazards_print, ns_hazards_clear)",
 		id, tostring(area:GetCenter()), Hazards.THRESHOLD))
+	self.newlyDisabled = self.newlyDisabled or {}
+	self.newlyDisabled[#self.newlyDisabled + 1] = id
 	self:ApplyHazards()
 	self:SaveHazards()
 	self:CheckSeparation()
+end
+
+-- The disabled areas cut a team off: they are keystones, the only way
+-- through, and are spared (open again, never disabled after) so the map stays
+-- playable: those disabled since the last judgement, else, none new (a save
+-- from before), every disabled one. Returns how many.
+function Controller:SpareKeystones()
+	local hazards, spared = self:Hazards(), 0
+	local ids = self.newlyDisabled
+	if not ids or #ids == 0 then
+		ids = {}
+		for id in pairs(hazards:Disabled()) do ids[#ids + 1] = id end
+	end
+	for _, id in ipairs(ids) do
+		if hazards:Spare(id) then
+			spared = spared + 1
+			print(string.format("AI war: nav area %d spared: closing it cut a team off from its objective", id))
+		end
+	end
+	self.newlyDisabled = nil
+	self:ApplyHazards()
+	self:SaveHazards()
+	return spared
 end
 
 -- The walks from starts (area ids) over the mesh, closed areas left out.
@@ -163,6 +188,11 @@ function Controller:JudgeSeparation(work)
 	end
 	-- the war may have ended, or the areas been cleared, while it yielded
 	local separated = self.war ~= nil and Hazards.Separated(fronts) and next(self:DisabledAreas()) ~= nil
+	if separated and self:SpareKeystones() > 0 then
+		separated = false
+	else
+		self.newlyDisabled = nil
+	end
 	-- a fact for any system to read (the gamerules decide what to make of it)
 	SetGlobal2Bool(UNREACHABLE, separated)
 	if separated then print("AI war: " .. SEPARATED) end

@@ -35,6 +35,15 @@ T.test("a waypoint below or above it is stood on across the ground", function()
 	T.eq(high:Next({ x = STEP, y = 0, z = Walk.REACH_HEIGHT + 1 }, NEVER), ROUTE[1], "far above it: not on it")
 end)
 
+-- Standing on a corner's waypoint is as near as the body comes when it
+-- arrives (player_body's ARRIVE), no nearer, or it never passes the turn,
+-- and no farther: a turn's point is pushed off the inside wall just enough
+-- for the body, and leaving for the next from farther short of it cuts back
+-- across the corner.
+T.test("a waypoint is stood on as near as the body arrives", function()
+	T.eq(Walk.ON, nextsoldier.player_body.ARRIVE, "ON is the body's ARRIVE")
+end)
+
 T.test("a waypoint round a corner is passed only once it stands on it", function()
 	local walk = Walk.New(ROUTE)
 	local nearFirst = P(STEP - Walk.RADIUS)

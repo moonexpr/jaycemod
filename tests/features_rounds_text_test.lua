@@ -24,6 +24,14 @@ T.test("a full round win says the team wins", function()
 	T.eq(p.details, nil)
 end)
 
+-- Hostage rescue: BLU wins by rescuing the hostages, RED by killing BLU (the
+-- arena wording, an elimination in a round without sudden death).
+T.test("a hostage rescue win says the team rescued the hostages", function()
+	local p = Panel(BLU, W.HOSTAGES_RESCUED, true, 0)
+	T.eq(p.title, "BLU TEAM WINS!")
+	T.eq(p.reason, "BLU rescued the hostages")
+end)
+
 -- Winreason_FlagCaptureLimit(_One), for the capture limit and for the most
 -- captures at the time limit.
 T.test("a CTF win says how many times the team captured the intelligence", function()
