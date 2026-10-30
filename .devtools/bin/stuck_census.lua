@@ -55,14 +55,27 @@ timer.Create("stuck_census", SAMPLE, 0, function()
 			Track(ent, "bot", ent:Nick(), busy)
 		end
 	end
-	for _, h in ipairs(ents.FindByClass("hostage_entity")) do
-		local leader = h.leader
-		local busy = running and not h.rescued and IsValid(leader) and h:GetPos():Distance(leader:GetPos()) > FOLLOW_FAR
-		Track(h, "hostage", "hostage " .. h:EntIndex(), busy)
+	for _, observer in pairs(WS.Feature("hostage").bound) do
+		local h = IsValid(observer) and observer:Body()
+		if h then
+			local leader = h.leader
+			local busy = running and not h.rescued and IsValid(leader) and h:GetPos():Distance(leader:GetPos()) > FOLLOW_FAR
+			Track(h, "hostage", "hostage " .. observer.wsHostageId, busy)
+		end
 	end
 end)
 
 hook.Add("WSRoundActivate", "stuck_census", function() census.rounds = census.rounds + 1 end)
+
+-- How many hostages were rescued, in every round it has seen.
+census.rescued = 0
+local lastRescued = 0
+timer.Create("stuck_census_rescued", 1, 0, function()
+	local round = WS.Feature("hostage").round
+	local now = round and round:Rescued() or 0
+	if now > lastRescued then census.rescued = census.rescued + (now - lastRescued) end
+	lastRescued = now
+end)
 
 -- What became of the armed hostage's pistol: each change of hands, in order.
 census.pistols = {}

@@ -1,12 +1,19 @@
 -- The hostage feature's controller. It puts the round in the hostage mode
 -- (features.hostage.round), owns the round's rules (features.hostage.model)
--- and applies them to the map's hostage_entity hostages: a held hostage
--- within USE_RANGE of a living BLU soldier or player follows them; one whose
--- rescuer dies or leaves is let go; one led into the rescue zone round BLU's
--- spawns (features.hostage.zone) is rescued; and once none is left
--- unresolved with half or more rescued, BLU wins (HOSTAGES_RESCUED). RED
--- wins by killing BLU, which the rounds controller decides as it does in
--- arena.
+-- and applies them to the map's hostages through their hostage_entity
+-- observers, each of which tells whether its hostage lives and whether it
+-- stands in a rescue zone: a held hostage within USE_RANGE of a living BLU
+-- soldier or player follows them; one whose rescuer dies or leaves is let go;
+-- one led into a func_hostage_rescue (else, on a map without one, the zone
+-- round BLU's spawns: features.hostage.zone) is rescued; one no longer alive
+-- is killed; and once none is left unresolved with half or more rescued, BLU
+-- wins (HOSTAGES_RESCUED). RED wins by killing BLU, which the rounds
+-- controller decides as it does in arena. A hostage that can follow, be armed
+-- or be rescued (npc_civilian: SetLeader, Arm, Rush, Rescued) is told so; a
+-- hostage of another class (a prop) is only observed.
+--
+-- The map's settings are its cs_logic_hostage's (features.hostage.config),
+-- made with the defaults on a map without one.
 --
 -- One hostage a round is armed (features.hostage.pistol), its gun hidden
 -- until, freed, it fires at RED: from then it can be killed, which the round
@@ -48,17 +55,34 @@ local roundTime = CreateConVar("mp_hostage_roundtime", "240", { FCVAR_NOTIFY, FC
 	"Length of a hostage round in seconds, shown as its timer; when it runs out the hostages were not rescued and RED wins. 0: untimed.",
 	0, 3600)
 
+local LOGIC_CLASS = "cs_logic_hostage"
+
 local Controller = {
 	rounds = WS.Feature("rounds"),
-	bound = {}, -- id -> its entity, while it lives
+	bound = {}, -- id -> its hostage_entity observer, while it is there
 	known = {}, -- id -> { home, pos } for each hostage of the round
 	round = nil, -- features.hostage.model's round
-	pistol = nil, -- features.hostage.pistol's, nil without hostages
+	pistol = nil, -- features.hostage.pistol's, nil without hostages or with none armed
+	armed = false, -- whether the pistol's first holder has its pistol yet
 	pistolEnt = nil, -- the pistol lying, as an entity
+	logic = nil, -- the map's cs_logic_hostage
 	zone = nil,
 	won = false,
 	nextThink = 0,
 }
+
+-- The map's hostage settings (features.hostage.config): its
+-- cs_logic_hostage's, made with the defaults on a map without one.
+function Controller:Config()
+	if not IsValid(self.logic) then
+		self.logic = ents.FindByClass(LOGIC_CLASS)[1]
+		if not IsValid(self.logic) then
+			self.logic = ents.Create(LOGIC_CLASS)
+			self.logic:Spawn()
+		end
+	end
+	return self.logic:Config()
+end
 
 Controller.rounds:SetMode(Round.Mode)
 SetGlobal2Bool("ws_round_arena", true)
@@ -124,24 +148,32 @@ local function Alive(ent)
 end
 
 -- A hostage_entity binds as it is made and unbinds as it goes.
-function Controller:Bind(ent)
-	local id = "h" .. ent:EntIndex()
-	ent.wsHostageId, ent.wsHome = id, ent:GetPos()
-	self.bound[id] = ent
+function Controller:Bind(observer)
+	local id = "h" .. observer:EntIndex()
+	observer.wsHostageId, observer.wsHome = id, observer:GetPos()
+	self.bound[id] = observer
 end
 
-function Controller:Unbind(ent)
-	if self.bound[ent.wsHostageId] == ent then self.bound[ent.wsHostageId] = nil end
+function Controller:Unbind(observer)
+	if self.bound[observer.wsHostageId] == observer then self.bound[observer.wsHostageId] = nil end
 end
 
--- A round's hostages are those bound as it begins.
+-- The hostage an id's observer observes, while it is there, else nil.
+function Controller:BodyOf(id)
+	local observer = self.bound[id]
+	return IsValid(observer) and observer:Body() or nil
+end
+
+-- A round's hostages are those bound as it begins. One is drawn to be armed
+-- (the map's pistol setting), and is armed once its hostage has spawned and
+-- if it can be (Arm).
 function Controller:NewRound()
 	local ids = {}
 	self.known = {}
-	for id, ent in pairs(self.bound) do
-		if IsValid(ent) then
+	for id, observer in pairs(self.bound) do
+		if IsValid(observer) then
 			ids[#ids + 1] = id
-			self.known[id] = { home = ent.wsHome, pos = ent:GetPos() }
+			self.known[id] = { home = observer.wsHome, pos = observer:GetPos() }
 		end
 	end
 	table.sort(ids)
@@ -149,20 +181,36 @@ function Controller:NewRound()
 	self.zone = nil
 	self.won = false
 	SafeRemoveEntity(self.pistolEnt)
-	self.pistol, self.pistolEnt = Pistol.Arm(ids, math.random), nil
-	if self.pistol then self.bound[self.pistol:Holder()]:Arm(Pistol.CLASS, Pistol.STATS) end
+	self.pistolEnt = nil
+	self.pistol = self:Config().pistol and Pistol.Arm(ids, math.random) or nil
+	self.armed = false
 end
 
--- A hostage died (hostage_entity's OnDeath): the round counts it, and its
--- pistol, if it held it, lies where it fell.
-function Controller:Killed(ent)
-	local id, round = ent.wsHostageId, self.round
-	if not (round and round:Has(id)) then return end
+-- The pistol's first holder, given its pistol once its hostage has spawned;
+-- a hostage that cannot carry one (a prop) leaves the round with none.
+function Controller:ArmFirst()
+	local pistol = self.pistol
+	if self.armed or not pistol or not pistol:Holder() then return end
+	local observer = self.bound[pistol:Holder()]
+	if not (IsValid(observer) and observer:Spawned()) then return end
+	self.armed = true
+	local body = observer:Body()
+	if body and body.Arm then
+		body:Arm(Pistol.CLASS, Pistol.STATS)
+	else
+		self.pistol = nil
+	end
+end
+
+-- A hostage its observer no longer sees alive: the round counts it killed,
+-- and its pistol, if it held it, lies where it was last seen.
+function Controller:Killed(id)
+	local round = self.round
 	local state = round:StateOf(id)
 	if state == Rescue.HELD or state == Rescue.FOLLOWING then self.round = round:Kill(id) end
 	local pistol = self.pistol
 	if pistol and pistol:Holder() == id then
-		local pos = ent:GetPos()
+		local pos = self.known[id].pos
 		self.pistol = pistol:Drop({ x = pos.x, y = pos.y, z = pos.z })
 		local lying = ents.Create(Pistol.CLASS)
 		lying:SetPos(pos + Vector(0, 0, 16))
@@ -176,8 +224,8 @@ end
 -- as they see BLU.
 hook.Add("WSWarFighters", "ws_hostage_pistol", function(fighters)
 	local pistol = Controller.pistol
-	local holder = pistol and pistol:Holder() and Controller.bound[pistol:Holder()]
-	if IsValid(holder) and holder:Revealed() and holder:Health() > 0 and not holder.rescued and fighters[BLUE] then
+	local holder = pistol and pistol:Holder() and Controller:BodyOf(pistol:Holder())
+	if holder and holder.Revealed and holder:Revealed() and holder:Health() > 0 and not holder.rescued and fighters[BLUE] then
 		table.insert(fighters[BLUE], holder)
 	end
 end)
@@ -194,10 +242,10 @@ function Controller:RushForPistol()
 	if not (pistol and pistol:Lying()) then return end
 	local rushers, positions = {}, {}
 	for _, id in ipairs(pistol:Rushers(round)) do
-		local ent = self.bound[id]
-		if IsValid(ent) then
-			local pos = ent:GetPos()
-			rushers[id], positions[id] = ent, { x = pos.x, y = pos.y, z = pos.z }
+		local body = self:BodyOf(id)
+		if body and body.Rush and body.Arm then
+			local pos = body:GetPos()
+			rushers[id], positions[id] = body, { x = pos.x, y = pos.y, z = pos.z }
 		end
 	end
 	local claimant = pistol:Claimant(positions)
@@ -240,12 +288,14 @@ local function RescueBoxes(spots)
 	return boxes
 end
 
--- The rescue zone: the map's own rescue brushes, else round BLU's spawns;
--- nil while it has neither.
+-- The rescue zone, where the war leads the hostages: the map's own rescue
+-- brushes, else round BLU's spawns; nil while it has neither. zoneFromBrushes:
+-- whether it is the brushes', which then decide a rescue (InRescueZone).
 function Controller:ZoneOf()
 	if not self.zone then
 		local spots = BluSpawns()
 		local boxes = RescueBoxes(spots)
+		self.zoneFromBrushes = #boxes > 0
 		if #boxes > 0 then
 			self.zone = Zone.Boxes(boxes)
 		elseif #spots > 0 then
@@ -253,6 +303,13 @@ function Controller:ZoneOf()
 		end
 	end
 	return self.zone
+end
+
+-- Whether the hostage id's observer sees it in a rescue zone: a
+-- func_hostage_rescue, or on a map without one the zone round BLU's spawns.
+function Controller:InRescueZone(id, observer)
+	if self.zoneFromBrushes then return observer:InRescueZone() end
+	return Zone.Contains(self.zone, self.known[id].pos)
 end
 
 -- A living BLU soldier or player within reach of the hostage.
@@ -292,6 +349,28 @@ function Controller:Replaced()
 	return true
 end
 
+-- One living hostage of the round (body, its observer's): taken by a BLU
+-- soldier near, let go when its rescuer is no more, rescued in a rescue zone;
+-- told whom to follow and what to say, when it can be.
+function Controller:Observe(id, info, body, observer)
+	info.pos = body:GetPos()
+	local round = self.round
+	local before = round:StateOf(id)
+	if before == Rescue.HELD then
+		local rescuer = RescuerNear(body)
+		if rescuer then round = round:Follow(id, rescuer) end
+	elseif not Alive(round:RescuerOf(id)) then
+		round = round:Release(id)
+	elseif self:InRescueZone(id, observer) then
+		round = round:Rescue(id)
+		if body.Rescued then body:Rescued() end
+	end
+	self.round = round
+	local after = round:StateOf(id)
+	if body.SetLeader then body:SetLeader(after == Rescue.FOLLOWING and round:RescuerOf(id) or nil) end
+	self:Voice(body, before, after)
+end
+
 -- The rules applied to the map, every THINK_INTERVAL while the round is on.
 function Controller:Think()
 	self:EnsureHotfixes()
@@ -300,35 +379,24 @@ function Controller:Think()
 		if next(self.bound) then self:NewRound() end
 		return
 	end
+	self:ArmFirst()
 	local zone = self:ZoneOf()
 	if self.rounds:State() ~= State.STALEMATE or not zone then return end
-	local round = self.round
 	for id, info in pairs(self.known) do
-		local ent = self.bound[id]
-		if IsValid(ent) then
-			info.pos = ent:GetPos()
-			local state = round:StateOf(id)
-			local before = state
-			if state == Rescue.HELD then
-				local rescuer = RescuerNear(ent)
-				if rescuer then round = round:Follow(id, rescuer) end
-			elseif state == Rescue.FOLLOWING then
-				if not Alive(round:RescuerOf(id)) then
-					round = round:Release(id)
-				elseif Zone.Contains(zone, info.pos) then
-					round = round:Rescue(id)
-					ent:Rescued()
-				end
+		local observer = self.bound[id]
+		local state = self.round:StateOf(id)
+		local alive = state == Rescue.HELD or state == Rescue.FOLLOWING
+		-- an observer gone (the map cleaned up) or not yet spawned its hostage says nothing
+		if IsValid(observer) and observer:Spawned() and alive then
+			if observer:Lives() then
+				self:Observe(id, info, observer:Body(), observer)
+			else
+				self:Killed(id)
 			end
-			local leader = round:StateOf(id) == Rescue.FOLLOWING and round:RescuerOf(id) or nil
-			ent:SetLeader(leader)
-			self:Voice(ent, before, round:StateOf(id))
 		end
 	end
-	self.round = round
 	self:RushForPistol()
-	round = self.round
-	if not self.won and round:Outcome() == Rescue.RESCUED_WIN then
+	if not self.won and self.round:Outcome() == Rescue.RESCUED_WIN then
 		self.won = true
 		self.rounds:SetWinningTeam(BLUE, Rounds.WINREASON.HOSTAGES_RESCUED, true, false, false)
 	end

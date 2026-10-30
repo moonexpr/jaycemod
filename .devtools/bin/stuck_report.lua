@@ -19,5 +19,6 @@ return util.TableToJSON({
 	pistol = pistol and { holder = pistol:Holder(), lying = pistol:Lying() } or nil,
 	pistols = census.pistols,
 	killed = hostage.round and hostage.round:Killed() or nil,
+	rescued = census.rescued,
 	events = events,
 })
