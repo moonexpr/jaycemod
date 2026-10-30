@@ -112,9 +112,10 @@ following as they do now:
   (`UseGadget`), then in together; done once the room is clear.
 - **Topple:** to the base, the support first (`SelectMoreDangerousThreat`
   answers for a turret, a medic, a dispenser over a soldier).
-- **Remote base:** to the post, its builders deploy (`UseGadget`: today the
-  turret), its medic stays, the squad holds the post as defenders hold
-  theirs (`Defend`).
+- **Remote base:** to the post, its engineer builds a sentry, a dispenser
+  and a teleporter exit there (the engineers plan's port, `Build`), its
+  medic stays, the squad holds the post as defenders hold theirs
+  (`Defend`).
 
 ## 3. Steps
 
@@ -129,15 +130,15 @@ Each ends with its tests green, a live check, a commit and a push.
 4. **Ambush** in the orders, then live.
 5. **Assault.**
 6. **Topple.**
-7. **Remote base**, with today's turret; dispensers and teleporters join
-   with the engineers plan.
+7. **Engineers** (`docs/engineers-plan.md`'s steps), then the **remote
+   base** on their buildings.
 
-## 4. Questions for the operator
+## 4. Settled with the operator
 
-1. Rooms from the mesh's shape: a doorway or corridor narrower than
-   `DOOR_WIDTH` (96, a little over two soldiers abreast) separates rooms.
-   Good, or should the map's own markings (func_door, the TF2 nav
-   attributes once the sidecar keeps them) lead?
-2. Until engineers exist, a remote base is a turret from a squad member
-   whose kit has one (today the Combine's metrocop support), with a medic
-   where the squad has one. Enough to start?
+1. Rooms come from the mesh's shape: a doorway or corridor narrower than
+   `DOOR_WIDTH` (96, a little over two soldiers abreast) separates rooms,
+   and a func_door wall is always a door.
+2. Engineers are built first (`docs/engineers-plan.md`): a remote base has
+   real buildings, a sentry, a dispenser and a teleporter exit, not a
+   stand-in turret. Step 7 is the engineers plan's steps, then the remote
+   base on them.
