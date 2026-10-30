@@ -124,9 +124,10 @@ above are a proxy (arm64, not Rosetta and Wine).
    (the told tables, 524 room areas and 70 closed, read each search). A
    failed search's region gets its closed edge from the closed set
    (`ClosedEdge`), since the search no longer asks about those areas. The
-   told tables are still read per search; held by the mesh, they would
-   cost nothing a search, and are what a search off the game thread
-   would need.
+   told tables are held (`navsearch.New` takes a `Told` of the mesh, which
+   the controller keeps per closed set: `SearchKnown`), so a search reads
+   no table: on cp_ambush_event 80 of 80 alike, 140 to 160 µs a search
+   against 330 to 375 µs read from the tables (`route_told_check.lua`).
 3. **Floods and distances** (`graph.search`: lanes' pockets, zones, lane
    bands) on the native graph, the filters as closed-area sets. Distances
    done: `navsearch.Distances` walks the mesh snapshot with the walkable
@@ -247,6 +248,11 @@ installed natives, extends the native `cache.base`, so its Lua column is
 the subclass over the native base, not Lua alone.
 
 ## Threads and caches
+
+No worker threads (the operator's decision, 2026-10-29): work too slow for
+a tick runs as transactions on the slow lane (`WS.SlowTransactions`, a
+deadline each, `foundation.transaction`), yielding between steps, not on
+a thread. What follows is why threads were not taken before.
 
 Caching pays now; threads do not yet. At the baseline's busiest (113,230
 expansions in 180 s), the native search costs about 0.6 ms of CPU a
