@@ -3,7 +3,8 @@
 An entrance is where an enemy's path (an incursion route or breach) steps
 into a room: from the area outside, through a doorway or a window (its
 aperture, as wide as the crossing), into the area inside. Its approach is
-the walk up to it, the last stretch of each path through it. Walking up,
+the walk up to it, the last stretch of each path through it; a room
+stepped into straight from the spawn has none, and is no entrance. Walking up,
 the squad sees into the room only through the aperture: from each point
 of the approach, a wedge (the frustum through the doorway). A hiding spot
 (the nav mesh's) is an ambush for the defenders (the other team) at an
@@ -77,11 +78,9 @@ def Entrances(paths: list, crossings: dict, region: dict, approach: float) -> li
                     break
                 points.append(step.via)
                 j -= 1
-            if points:
-                heading = Heading(points[0], door.via)
-            else:
-                after = crossings[(inside, areas[i + 1])].via if i + 1 < len(areas) else None
-                heading = Heading(door.via, after)
+            if not points:
+                continue                 # straight out of the spawn: no approach to lie in wait for
+            heading = Heading(points[0], door.via)
             key = (team, outside, inside)
             if key not in found:
                 order.append(key)

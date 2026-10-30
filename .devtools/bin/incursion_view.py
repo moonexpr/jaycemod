@@ -450,8 +450,8 @@ def DrawAmbushes(dump, found, paths: list, entrances: list, ambushes: list, cros
             door, spot = mark.entrance, mark.spot
             if door.inside not in levels or spot.area not in levels:
                 continue
-            sx, sy = At(levels[spot.area], *spot.pos[:2])
-            pen.line([(sx, sy), At(levels[door.inside], *door.via[:2])], fill=TEAM_LINE[team], width=1)
+            level = levels[spot.area]
+            pen.line([At(level, *spot.pos[:2]), At(level, *door.via[:2])], fill=TEAM_LINE[team], width=1)
         for door in {m.entrance for m in mine} | {e for e in entrances_of(entrances, enemy)}:
             if door.inside not in levels:
                 continue

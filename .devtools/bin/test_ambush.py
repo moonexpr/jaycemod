@@ -51,6 +51,11 @@ class EntrancesTest(unittest.TestCase):
         entrances = ambush.Entrances([path, path], incursion.Crossings(edges), REGION, approach=CELL)
         self.assertEqual([e.paths for e in entrances], [2])
 
+    def test_a_room_stepped_into_straight_from_the_spawn_has_no_approach_and_is_no_entrance(self):
+        graph = Corridor()
+        edges, _ = Fields(graph)
+        self.assertEqual(ambush.Entrances([(BLU, (5, 6))], incursion.Crossings(edges), REGION, approach=CELL), [])
+
     def test_stepping_into_a_corridor_is_no_entrance(self):
         graph = Corridor()
         edges, _ = Fields(graph)
