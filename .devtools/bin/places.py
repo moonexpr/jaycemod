@@ -20,6 +20,15 @@ graph: the traffic it is expected to bring. A room is
 - the final pass, any room left: WILDS outdoors (open ground and nature),
   UNOCCUPIED indoors.
 
+Rooms belong to places above them (Places): a building is the indoor rooms
+and corridors joined to each other without going out of doors, grounds the
+outdoor ones likewise. A place holding one team's spawns is that team's; one
+holding both teams' (two bases joined underground) is split where their
+walks meet, the rooms within NEUTRAL_SHARE of the walk between the spawns of
+the middle no one's. Inside a team's place, a room the rules above leave
+UNOCCUPIED or WILDS is the team's STRONGHOLD, and one the enemy's STRONGHOLD
+is COMMONS: to reach it the enemy crosses into the team's ground.
+
 No room is an OUTPOST at the start: an outpost needs a claim. Corridors
 carry the ways but are given no class. Walks go centre to door to centre.
 The game's own version is to come in Lua (wartactics); this is the tooling's.
@@ -35,6 +44,11 @@ COMMONS, UNOCCUPIED, WILDS = "commons", "unoccupied", "wilds"
 # visualizer whose box, grown by SEAL_REACH, holds it: a door is where two
 # nav areas meet, up to about an area's depth from the brush.
 HIGHWAY_SHARE, FAR_SHARE, SEAL_REACH = 2 / 3, 0.75, 128
+BUILDING, GROUNDS = "building", "grounds"
+# The middle of a building joining both teams' spawns, no one's: the rooms
+# whose walks from the two spawns differ by no more than a fifth of the walk
+# between them.
+NEUTRAL_SHARE = 0.2
 
 
 @dataclass(frozen=True)
@@ -119,6 +133,59 @@ def Enclosed(edges: dict, ground: set, seals: list) -> set:
     return kept
 
 
+@dataclass(frozen=True)
+class Place:
+    id: int
+    kind: str             # BUILDING or GROUNDS
+    owner: object         # the team whose place it is, or None
+    members: frozenset    # its nodes, ("room" | "passage", id)
+
+
+def Pieces(nodes: set, edges: dict, joined) -> list:
+    """nodes in pieces joined over edges joined(a, b) lets through, each sorted, in order of their first."""
+    pieces, seen = [], set()
+    for start in sorted(nodes):
+        if start in seen:
+            continue
+        piece, stack = [start], [start]
+        seen.add(start)
+        while stack:
+            node = stack.pop()
+            for to, _, _ in edges[node]:
+                if to in nodes and to not in seen and joined(node, to):
+                    seen.add(to)
+                    piece.append(to)
+                    stack.append(to)
+        pieces.append(sorted(piece))
+    return sorted(pieces)
+
+
+def Places(rooms: list, passages: list, spawns: dict) -> list:
+    """The map's places: list of Place. spawns: team -> the nodes its spawns take."""
+    edges = Graph(rooms, passages)
+    outdoor = {("room", r.id): r.outdoor for r in rooms}
+    outdoor.update({("passage", p.id): p.outdoor for p in passages})
+    teams = sorted(spawns)
+    found = []
+    for piece in Pieces(set(edges), edges, lambda a, b: outdoor[a] == outdoor[b]):
+        kind = GROUNDS if outdoor[piece[0]] else BUILDING
+        inside = set(piece)
+        homes = {t: [k for k in spawns[t] if k in inside] for t in teams}
+        holding = [t for t in teams if homes[t]]
+        if len(holding) < 2:
+            found.append((piece, kind, holding[0] if holding else None))
+            continue
+        reach = {t: Walk(edges, homes[t], lambda key: key in inside)[0] for t in holding}
+        between = min(reach[a].get(k, math.inf) for a in holding for b in holding if a != b for k in homes[b])
+        label = {}
+        for key in piece:
+            ds = sorted((reach[t].get(key, math.inf), t) for t in holding)
+            label[key] = None if ds[1][0] - ds[0][0] <= NEUTRAL_SHARE * between else ds[0][1]
+        for part in Pieces(inside, edges, lambda a, b: label[a] == label[b]):
+            found.append((part, kind, label[part[0]]))
+    return [Place(i + 1, kind, owner, frozenset(members)) for i, (members, kind, owner) in enumerate(sorted(found))]
+
+
 def Start(rooms: list, passages: list, spawns: dict, objectives: list, seals: list) -> dict:
     """Each room's class when a round starts: room id -> Placed. spawns: team -> the nodes its spawns
     take, ("room", id) and ("passage", id) for a corridor inside a spawn; seals: the respawn room
@@ -161,6 +228,7 @@ def Start(rooms: list, passages: list, spawns: dict, objectives: list, seals: li
         for e in enemies:
             for key in home[e]:
                 separation = min(separation, reach[t].get(key, math.inf))
+    owner = {key: place.owner for place in Places(rooms, passages, spawns) for key in place.members}
     classes = {}
     for key in sorted(edges):
         if key[0] != "room":
@@ -186,5 +254,10 @@ def Start(rooms: list, passages: list, spawns: dict, objectives: list, seals: li
             placed = Placed(UNOCCUPIED, None)
         else:
             placed = Placed(WILDS if key[1] in outdoor else UNOCCUPIED, None)
+        home_team = owner.get(key)
+        if home_team is not None and placed.cls in (UNOCCUPIED, WILDS):
+            placed = Placed(STRONGHOLD, home_team)
+        elif home_team is not None and placed.cls == STRONGHOLD and placed.team != home_team:
+            placed = Placed(COMMONS, None)
         classes[key[1]] = placed
     return classes

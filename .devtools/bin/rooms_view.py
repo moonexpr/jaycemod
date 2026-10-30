@@ -53,7 +53,7 @@ for _, room in ipairs(p.rooms) do
 end
 for _, passage in ipairs(p.passages) do
 	out("passage", passage.id, passage.kind, passage.level, passage.top, passage.center.x, passage.center.y,
-		passage.center.z)
+		passage.center.z, tostring(passage.outdoor))
 	for _, id in ipairs(passage.areas) do out("in", id, "passage", passage.id) end
 	for _, door in ipairs(passage.doors) do
 		out("door", passage.level, door.pos.x, door.pos.y, door.pos.z, "passage", passage.id, door.passage or "",
@@ -149,7 +149,7 @@ def Parse(stdout: str) -> Found:
             rooms[int(f[1])] = Space(int(f[1]), f[2], f[3] == "true", int(f[4]), int(f[5]),
                                      (float(f[6]), float(f[7]), float(f[8])))
         elif f[0] == "passage":
-            passages[int(f[1])] = Space(int(f[1]), f[2], False, int(f[3]), int(f[4]),
+            passages[int(f[1])] = Space(int(f[1]), f[2], f[8] == "true", int(f[3]), int(f[4]),
                                         (float(f[5]), float(f[6]), float(f[7])))
         elif f[0] == "in":
             members.append((int(f[1]), f[2], int(f[3])))
@@ -176,25 +176,37 @@ def Partition(dump: Dump) -> Found:
     return Parse(done.stdout)
 
 
+def Keyed(found: Found, area_ids) -> list:
+    """The rooms and corridors the areas are in, as places' nodes."""
+    keys = set()
+    for a in area_ids:
+        if a in found.region:
+            space = found.region[a]
+            keys.add(("room" if found.rooms.get(space.id) is space else "passage", space.id))
+    return sorted(keys)
+
+
+def Spaces(found: Found) -> tuple:
+    """The partition's rooms and corridors as places' Spaces."""
+    def Of(spaces, kind):
+        return [places.Space(s.id, kind == "room", s.center, found.ways.get((kind, s.id), []), s.outdoor)
+                for s in spaces.values()]
+    return Of(found.rooms, "room"), Of(found.passages, "passage")
+
+
+def Places(dump: Dump, found: Found) -> list:
+    """The map's places (places.Places), the dump's spawn areas counting by their rooms and corridors."""
+    rooms, passages = Spaces(found)
+    return places.Places(rooms, passages, {team: Keyed(found, ids) for team, ids in dump.spawns.items()})
+
+
 def Classes(dump: Dump, found: Found) -> dict:
     """Each room's starting class (places.Start): room id -> places.Placed. The dump's spawn areas
     count by the rooms and corridors they are in, its objective areas by the rooms."""
-    def RoomsOf(area_ids):
-        return sorted({found.region[a].id for a in area_ids
-                       if a in found.region and found.rooms.get(found.region[a].id) is found.region[a]})
-    def Spaces(spaces, kind):
-        return [places.Space(s.id, kind == "room", s.center, found.ways.get((kind, s.id), []), s.outdoor)
-                for s in spaces.values()]
-    def SpacesOf(area_ids):
-        keys = set()
-        for a in area_ids:
-            if a in found.region:
-                space = found.region[a]
-                keys.add(("room" if found.rooms.get(space.id) is space else "passage", space.id))
-        return sorted(keys)
-    spawns = {team: SpacesOf(ids) for team, ids in dump.spawns.items()}
-    return places.Start(Spaces(found.rooms, "room"), Spaces(found.passages, "passage"), spawns,
-                        RoomsOf(dump.objectives), dump.seals)
+    objectives = sorted({key[1] for key in Keyed(found, dump.objectives) if key[0] == "room"})
+    rooms, passages = Spaces(found)
+    spawns = {team: Keyed(found, ids) for team, ids in dump.spawns.items()}
+    return places.Start(rooms, passages, spawns, objectives, dump.seals)
 
 
 # Each starting class's fill: a team's own ground in its colour, darkest
@@ -216,6 +228,7 @@ CLASS_MEANS = {
     places.WILDS: "an outdoor room the other classes did not take (one indoors is unoccupied)",
 }
 CORRIDOR_FILL, LOOSE_EDGE, EDGE = (150, 150, 150), (220, 0, 0), (40, 40, 40)
+PLACE_EDGE = {"RED": (200, 0, 0), "BLU": (0, 60, 220), None: (0, 0, 0)}
 WINDOW_FILL, DOOR_FILL = (0, 220, 255), (0, 0, 0)
 
 
@@ -269,6 +282,9 @@ KEY = [KeyEntry(f"{cls}{' ' + team if team else ''}", CLASS_MEANS[cls], Swatch(f
              lambda pen, box: pen.rectangle(box, fill=(255, 255, 255), outline=LOOSE_EDGE)),
     KeyEntry("room's block", "the outline round all of a room's areas: the room as the war sees it",
              lambda pen, box: pen.rectangle(box, outline=(60, 60, 60), width=3)),
+    KeyEntry("place", "P2 building RED: the rooms under one roof (a building) or out of doors (grounds), "
+             "the team whose spawns are in it",
+             lambda pen, box: pen.rectangle(box, outline=PLACE_EDGE[None], width=1)),
     KeyEntry("door", "where a room meets another room or a corridor",
              lambda pen, box: Door(pen, *Middle(box))),
     KeyEntry("window", "breakable glass or an areaportal window between rooms",
@@ -304,7 +320,7 @@ def DrawKey(pen, font, top: int, width: int) -> None:
         pen.text((x + KEY_SAMPLE + 8, y + 2), f"{entry.name}: {entry.means}", fill=(0, 0, 0), font=font)
 
 
-def Draw(name: str, areas: dict, found: Found, classes: dict, out: Path) -> None:
+def Draw(name: str, areas: dict, found: Found, classes: dict, places_found: list, out: Path) -> None:
     count = max(found.levels, 1)
     x0, x1, y0, y1, scale = Frame(areas)
     w, h = int((x1 - x0) * scale) + 2 * MARGIN, PanelHeight(areas)
@@ -340,6 +356,22 @@ def Draw(name: str, areas: dict, found: Found, classes: dict, out: Path) -> None
                 blocks[(space.id, level)] = (min(bx0, ax), min(by0, ay), max(bx1, bx), max(by1, by))
     for (rid, _), box in blocks.items():
         pen.rectangle(box, outline=tuple(c // 2 for c in ClassFill(classes[rid])), width=3)
+    place_of = {key: place for place in places_found for key in place.members}
+    hulls = {}
+    for area in areas.values():
+        space = found.region.get(area.id)
+        if space is None:
+            continue
+        place = place_of[("room" if found.rooms.get(space.id) is space else "passage", space.id)]
+        for level in space.levels:
+            (ax, ay), (bx, by) = Box(level, area)
+            hx0, hy0, hx1, hy1 = hulls.get((place, level), (ax, ay, bx, by))
+            hulls[(place, level)] = (min(hx0, ax), min(hy0, ay), max(hx1, bx), max(hy1, by))
+    for (place, _), (hx0, hy0, hx1, hy1) in hulls.items():
+        edge = PLACE_EDGE[place.owner]
+        pen.rectangle([hx0 - 4, hy0 - 4, hx1 + 4, hy1 + 4], outline=edge, width=1)
+        pen.text((hx0 - 3, hy0 - 16), f"P{place.id} {place.kind}" + (f" {place.owner}" if place.owner else ""),
+                 fill=edge, font=small)
     for level, x, y in found.doors:
         Door(pen, *At(level, x, y))
     for level, x, y in found.windows:
@@ -380,7 +412,7 @@ def main() -> int:
     found = Partition(dump)
     classes = Classes(dump, found)
     out = args.graph.with_name(f"{dump.map}.png")
-    Draw(dump.map, dump.areas, found, classes, out)
+    Draw(dump.map, dump.areas, found, classes, Places(dump, found), out)
     print("\n".join(Summary(dump.areas, found, classes)))
     print(out)
     return 0

@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 
 import places
-from rooms_view import KEY, KEY_HEIGHT, Area, Classes, Draw, Dump, LuaValue, PanelHeight, Parse, Summary
+from rooms_view import KEY, KEY_HEIGHT, Area, Classes, Draw, Dump, LuaValue, PanelHeight, Parse, Places, Summary
 
 
 class LuaValueTest(unittest.TestCase):
@@ -31,7 +31,7 @@ class ParseTest(unittest.TestCase):
         "room\t2\tstairwell\tfalse\t1\t2\t30\t40\t50",
         "in\t101\troom\t2",
         "window\t1\t7\t8",
-        "passage\t1\tcorridor\t2\t2\t20\t30\t0",
+        "passage\t1\tcorridor\t2\t2\t20\t30\t0\tfalse",
         "in\t102\tpassage\t1",
         "door\t2\t9\t9\t0\tpassage\t1\t\t2",
     ])
@@ -82,7 +82,8 @@ class KeyTest(unittest.TestCase):
         classes = {1: places.Placed(places.HIGHWAY, None), 2: places.Placed(places.STRONGHOLD, "BLU")}
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp) / "map.png"
-            Draw("map", areas, found, classes, out)
+            spawned = Dump("map", {}, {}, [], {"RED": [100], "BLU": [101]}, [], [])
+            Draw("map", areas, found, classes, Places(spawned, found), out)
             from PIL import Image
             with Image.open(out) as image:
                 height = image.height
@@ -90,7 +91,7 @@ class KeyTest(unittest.TestCase):
         names = [entry.name for entry in KEY]
         for name in ("restricted RED", "restricted BLU", "stronghold RED", "stronghold BLU", "outpost RED",
                      "outpost BLU", "highway", "commons", "unoccupied", "wilds", "stairwell", "corridor",
-                     "area in no room", "room's block", "door", "window"):
+                     "area in no room", "room's block", "place", "door", "window"):
             self.assertIn(name, names)
 
 

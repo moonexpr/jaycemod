@@ -61,6 +61,28 @@ Static measures of each room, from the graph alone:
 Sources and their costs: `docs/research/places-prior-art.md`. Every measure is
 a walk or a flood over 20 to 200 rooms, well under a millisecond.
 
+### 2.1b Places: buildings and grounds (`.devtools/bin/places.py` for now)
+
+Above rooms, places group them by what they belong to, as a player reads a
+map (ctf_2fort's two forts, told apart by their wood and concrete and their
+soundscapes): a building is the indoor rooms and corridors joined to each
+other without going out of doors, grounds the outdoor ones likewise. A place
+holding one team's spawns is that team's; one holding both teams' (two
+bases joined underground) is split where the teams' walks meet, a band of
+`NEUTRAL_SHARE` of the walk between the spawns in the middle no one's.
+Inside a team's place, a room the classes would leave unoccupied or wilds is
+the team's stronghold, and one the enemy's stronghold is commons: to reach
+it the enemy crosses into the team's ground. Restricted ground, highways and
+commons keep their class.
+
+Structure alone finds them, on any map. Two cues can split or group places
+where structure falls short, both read and checked on ctf_2fort: the
+soundscape an area plays (`env_soundscape`, `env_soundscape_proxy`:
+2fort.Indoor, OutdoorFort, OutdoorPond, Underground, Underground2,
+respawn_room; places by kind, mostly not by team) and the surface materials
+round a room (2fort's RED fort wood, BLU's concrete and metal; which team is
+which still comes from the spawns). Neither is used yet.
+
 ### 2.2 Occupation (`wartactics.occupation`)
 
 Who holds each room, as evidence weighed, not a flag set once. A room's
@@ -262,3 +284,6 @@ The layer stands on the rooms, so they hold first:
 - Restricted ground needs its doors sealed by respawn room visualizers; a
   spawn without them is its team's stronghold.
 - The final pass: a room left is wilds outdoors, unoccupied indoors.
+- Places group rooms into buildings and grounds, owned by the team whose
+  spawns are in them; a room in a team's place is its stronghold where the
+  classes would leave it unoccupied or wilds.
