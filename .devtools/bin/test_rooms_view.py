@@ -65,10 +65,11 @@ class ParseTest(unittest.TestCase):
 class ClassesTest(unittest.TestCase):
     def test_spawn_and_objective_areas_count_by_the_rooms_they_are_in_and_corridors_are_left_out(self):
         found = Parse(ParseTest.LINES)
-        dump = Dump("map", {}, {}, [], {"RED": [100, 102], "BLU": [101]}, [100])
+        door = (5.0, 6.0, 0.0)
+        dump = Dump("map", {}, {}, [], {"RED": [100, 102], "BLU": [101]}, [100], [(door, door)])
         classes = Classes(dump, found)
         self.assertEqual(sorted(classes), [1, 2], "rooms alone")
-        self.assertEqual(classes[1].cls, places.RESTRICTED)
+        self.assertEqual(classes[1].cls, places.RESTRICTED, "its one door sealed by the visualizer")
         self.assertEqual(classes[1].team, "RED")
         self.assertEqual(classes[2].team, "BLU")
 

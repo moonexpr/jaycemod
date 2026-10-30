@@ -110,6 +110,7 @@ class Dump:
     windows: list    # as dumped
     spawns: dict     # team name -> its spawn area ids
     objectives: list # the objectives' area ids
+    seals: list      # the respawn room visualizers' boxes, ((x, y, z), (x, y, z)) corners
 
 
 def LoadDump(path: Path) -> Dump:
@@ -120,7 +121,9 @@ def LoadDump(path: Path) -> Dump:
     for key, a in data["areas"].items():
         areas[int(key)] = Area(int(key), (a["lo"]["x"], a["lo"]["y"]), (a["hi"]["x"], a["hi"]["y"]), a["center"]["z"])
     graph = {int(k): v for k, v in data["areas"].items()}
-    return Dump(data["map"], areas, graph, data["windows"], data["spawns"], data["objectives"])
+    seals = [((v["lo"]["x"], v["lo"]["y"], v["lo"]["z"]), (v["hi"]["x"], v["hi"]["y"], v["hi"]["z"]))
+             for v in data["visualizers"]]
+    return Dump(data["map"], areas, graph, data["windows"], data["spawns"], data["objectives"], seals)
 
 
 def LuaValue(value) -> str:
@@ -180,10 +183,11 @@ def Classes(dump: Dump, found: Found) -> dict:
         return sorted({found.region[a].id for a in area_ids
                        if a in found.region and found.rooms.get(found.region[a].id) is found.region[a]})
     def Spaces(spaces, kind):
-        return [places.Space(s.id, kind == "room", s.center, found.ways.get((kind, s.id), [])) for s in spaces.values()]
+        return [places.Space(s.id, kind == "room", s.center, found.ways.get((kind, s.id), []), s.outdoor)
+                for s in spaces.values()]
     spawns = {team: RoomsOf(ids) for team, ids in dump.spawns.items()}
     return places.Start(Spaces(found.rooms, "room"), Spaces(found.passages, "passage"), spawns,
-                        RoomsOf(dump.objectives))
+                        RoomsOf(dump.objectives), dump.seals)
 
 
 # Each starting class's fill: a team's own ground in its colour, darkest
@@ -196,13 +200,13 @@ CLASS_FILL = {
     (places.UNOCCUPIED, None): (205, 205, 185), (places.WILDS, None): (115, 175, 95),
 }
 CLASS_MEANS = {
-    places.RESTRICTED: "a team's spawns and what lies behind them: the enemy may not enter while the round is played",
+    places.RESTRICTED: "a team's spawns and what lies behind them, every door sealed by a respawn visualizer",
     places.STRONGHOLD: "a team's protected ground its own soldiers commute through",
     places.OUTPOST: "ground a team claims far from its spawns (none at the start: an outpost needs a claim)",
     places.HIGHWAY: "an objective's room, or most of both teams' ways, or of one team's own, pass through",
     places.COMMONS: "both teams' ways cross it, moderately",
-    places.UNOCCUPIED: "off every way, far from both teams' spawns",
-    places.WILDS: "any room the other classes did not take",
+    places.UNOCCUPIED: "off every way, far from both teams' spawns; or an indoor room the others did not take",
+    places.WILDS: "an outdoor room the other classes did not take (one indoors is unoccupied)",
 }
 CORRIDOR_FILL, LOOSE_EDGE, EDGE = (150, 150, 150), (220, 0, 0), (40, 40, 40)
 WINDOW_FILL, DOOR_FILL = (0, 220, 255), (0, 0, 0)

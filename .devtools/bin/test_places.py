@@ -11,10 +11,10 @@ class Map:
     """A partition by hand: rooms at (x, y) * STEP, joined by door() or through a corridor()."""
 
     def __init__(self):
-        self.rooms, self.passages = {}, {}
+        self.rooms, self.passages, self.seals = {}, {}, []
 
-    def room(self, rid, x, y=0):
-        self.rooms[rid] = Space(rid, True, (x * STEP, y * STEP, 0.0), [])
+    def room(self, rid, x, y=0, outdoor=False):
+        self.rooms[rid] = Space(rid, True, (x * STEP, y * STEP, 0.0), [], outdoor)
         return self
 
     @staticmethod
@@ -31,13 +31,19 @@ class Map:
         ca, cb = self.rooms[a].center, self.rooms[b].center
         mid = self.between(ca, cb)
         pa, pb = self.between(ca, mid), self.between(cb, mid)
-        self.passages[pid] = Space(pid, False, mid, [Door(pa, (a,), None), Door(pb, (b,), None)])
+        self.passages[pid] = Space(pid, False, mid, [Door(pa, (a,), None), Door(pb, (b,), None)], False)
         self.rooms[a].doors.append(Door(pa, (b,), pid))
         self.rooms[b].doors.append(Door(pb, (a,), pid))
         return self
 
+    def seal(self, a, b):
+        """A respawn room visualizer over the door between rooms a and b."""
+        x, y, z = self.between(self.rooms[a].center, self.rooms[b].center)
+        self.seals.append(((x - 8, y - 64, z), (x + 8, y + 64, z + 128)))
+        return self
+
     def start(self, spawns, objectives):
-        return places.Start(list(self.rooms.values()), list(self.passages.values()), spawns, objectives)
+        return places.Start(list(self.rooms.values()), list(self.passages.values()), spawns, objectives, self.seals)
 
 
 def Line():
@@ -54,12 +60,32 @@ def Line():
 SPAWNS = {RED: [1], BLU: [5]}
 
 
+def Sealed():
+    """The line with both spawns sealed at their doors by respawn room visualizers."""
+    return Line().seal(1, 2).seal(4, 5)
+
+
 class StartTest(unittest.TestCase):
     def test_a_teams_spawn_rooms_and_the_rooms_the_enemy_reaches_only_through_them_are_its_restricted_ground(self):
-        c = Line().start(SPAWNS, [3])
+        c = Sealed().start(SPAWNS, [3])
         self.assertEqual(c[1], places.Placed(places.RESTRICTED, RED))
         self.assertEqual(c[7], places.Placed(places.RESTRICTED, RED), "behind RED's spawn")
         self.assertEqual(c[5], places.Placed(places.RESTRICTED, BLU))
+
+    def test_a_spawn_whose_doors_no_visualizer_seals_is_no_restricted_ground(self):
+        c = Line().start(SPAWNS, [3])
+        self.assertNotIn(places.RESTRICTED, {p.cls for p in c.values()})
+        self.assertEqual(c[1], places.Placed(places.STRONGHOLD, RED), "RED's own ground its ways start from")
+
+    def test_every_unsealed_spawn_room_is_its_teams_stronghold_ways_or_not(self):
+        c = Line().start({RED: [1, 7], BLU: [5]}, [3])
+        self.assertEqual(c[7], places.Placed(places.STRONGHOLD, RED), "a spawn room no way starts from")
+
+    def test_one_door_left_unsealed_opens_the_spawn(self):
+        c = Line().seal(4, 5).start(SPAWNS, [3])
+        self.assertEqual(c[5], places.Placed(places.RESTRICTED, BLU), "BLU's spawn, sealed")
+        self.assertNotEqual(c[1].cls, places.RESTRICTED, "RED's spawn, open")
+        self.assertNotEqual(c[7].cls, places.RESTRICTED, "nor what lies behind it")
 
     def test_an_objectives_room_is_a_highway_and_no_ones(self):
         self.assertEqual(Line().start(SPAWNS, [3])[3], places.Placed(places.HIGHWAY, None))
@@ -69,10 +95,13 @@ class StartTest(unittest.TestCase):
         self.assertEqual(c[2], places.Placed(places.STRONGHOLD, RED))
         self.assertEqual(c[4], places.Placed(places.STRONGHOLD, BLU))
 
-    def test_off_every_way_far_from_both_spawns_is_unoccupied_and_near_a_spawn_wilds(self):
-        c = Line().start(SPAWNS, [3])
-        self.assertEqual(c[8].cls, places.UNOCCUPIED, "far out from the middle")
-        self.assertEqual(c[6].cls, places.WILDS, "beside BLU's way, near its spawn: the final pass")
+    def test_off_every_way_far_from_both_spawns_is_unoccupied(self):
+        self.assertEqual(Line().start(SPAWNS, [3])[8].cls, places.UNOCCUPIED, "far out from the middle")
+
+    def test_the_final_pass_makes_a_room_left_wilds_outdoors_and_unoccupied_indoors(self):
+        self.assertEqual(Line().start(SPAWNS, [3])[6].cls, places.UNOCCUPIED, "beside BLU's way, under a roof")
+        outdoors = Line().room(6, 3, 1, outdoor=True).start(SPAWNS, [3])
+        self.assertEqual(outdoors[6].cls, places.WILDS, "the same, out of doors")
 
     def test_no_room_is_an_outpost_at_the_start_an_outpost_needs_a_claim(self):
         self.assertNotIn(places.OUTPOST, {p.cls for p in Line().start(SPAWNS, [3]).values()})
@@ -103,8 +132,9 @@ class StartTest(unittest.TestCase):
     def test_with_no_objectives_the_ways_go_to_the_enemys_spawns(self):
         self.assertEqual(Line().start(SPAWNS, [])[3].cls, places.HIGHWAY, "the middle, on every way")
 
-    def test_a_room_no_team_reaches_is_wilds(self):
-        self.assertEqual(Line().room(20, 9, 9).start(SPAWNS, [3])[20].cls, places.WILDS)
+    def test_a_room_no_team_reaches_is_left_to_the_final_pass(self):
+        self.assertEqual(Line().room(20, 9, 9, outdoor=True).start(SPAWNS, [3])[20].cls, places.WILDS)
+        self.assertEqual(Line().room(20, 9, 9).start(SPAWNS, [3])[20].cls, places.UNOCCUPIED)
 
 
 if __name__ == "__main__":

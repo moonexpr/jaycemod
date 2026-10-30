@@ -102,13 +102,13 @@ flicker between classes.
 
 | Class | A room that | Found from |
 |---|---|---|
-| Restricted | a team's spawns and the well-protected ground behind them: the other team may not enter while the round is played; the class stands after the round ends, when the winners break in (a breach, §2.3 below) | the team's spawn claims (§2.2), and one flood from the enemy's spawns: the team's held rooms it can reach only through restricted ones |
-| Stronghold | a team holds, protected and commuted: its own soldiers pass through it, the enemy cannot reach it without crossing the team's rooms | occupation; the same flood stopped at the team's held rooms; the team's own traffic |
+| Restricted | a team's spawns and the well-protected ground behind them, every door out of them sealed by a respawn room visualizer (`func_respawnroomvisualizer`): the other team may not enter while the round is played; the class stands after the round ends, when the winners break in (a breach, §2.3 below). A spawn with no visualizer at its doors (CS:S's maps) is no restricted ground | the team's spawn claims (§2.2), and one flood from the enemy's spawns: the team's held rooms it can reach only through restricted ones; kept only where each door out is under a visualizer |
+| Stronghold | a team holds, protected and commuted: its own soldiers pass through it, the enemy cannot reach it without crossing the team's rooms; a spawn room of the team's not sealed off | occupation; the same flood stopped at the team's held rooms; the team's own traffic; its spawn claims |
 | Outpost | a team claims far from its spawns, out on its own, which may reach out of doors | occupation (a remote base's works and presence, §4) where the team's incursion is long and the room is not joined to its strongholds by its own rooms |
 | Highway | carries the most traffic, or an objective passes through: the payload's track, a capture point's room | flow (both teams' ways, or most of one team's own: its way across the other's side); the objective's entities (the cart's path_tracks, the capture areas) |
 | Commons | both teams cross, in moderate traffic | each team's traffic through it (its intel's `Traffic` for the enemy, its own soldiers' passing for itself), both above a floor, neither a highway's |
-| Unoccupied | far from both teams' active spawns, with little traffic | incursion long for both, traffic below the commons' floor |
-| Wilds | any room none of the others take: the final pass | what is left |
+| Unoccupied | far from both teams' active spawns, with little traffic; and, in the final pass, any indoor room left | incursion long for both, traffic below the commons' floor |
+| Wilds | any outdoor room none of the others take: the final pass (an indoor one is unoccupied) | what is left, out of doors |
 
 Rooms are classed again as the war goes, not once. A team's ground grows
 and shrinks by a ladder, each step held as occupation is:
@@ -259,3 +259,6 @@ The layer stands on the rooms, so they hold first:
   the other classes have not taken, the final pass.
 - A remote base takes a commons, an unoccupied room, or a place of
   significance in the wilds such as an identified hiding spot (§4).
+- Restricted ground needs its doors sealed by respawn room visualizers; a
+  spawn without them is its team's stronghold.
+- The final pass: a room left is wilds outdoors, unoccupied indoors.

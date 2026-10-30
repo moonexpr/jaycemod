@@ -49,5 +49,13 @@ local objectives = {}
 for id in pairs(objective) do objectives[#objectives + 1] = id end
 table.sort(objectives)
 
+-- The respawn room visualizers, which seal a spawn's doors: only behind
+-- them is restricted ground.
+local visualizers = {}
+for _, ent in ipairs(ents.FindByClass("func_respawnroomvisualizer")) do
+	local mins, maxs = ent:WorldSpaceAABB()
+	visualizers[#visualizers + 1] = { lo = { x = mins.x, y = mins.y, z = mins.z }, hi = { x = maxs.x, y = maxs.y, z = maxs.z } }
+end
+
 print(util.TableToJSON({ map = game.GetMap(), areas = areas, windows = windows, spawns = spawns,
-	objectives = objectives }))
+	objectives = objectives, visualizers = visualizers }))
