@@ -187,7 +187,12 @@ counts, in by one door and out by another: on ctf_2fort RED's way over the
 bridge to BLU's intel is 3% longer than the one through the basements, and
 on the one shortest only BLU's crossed it, so the bridge was BLU's
 stronghold, not commons. `places_diff.py` lists the rooms whose class a
-change to the rules moves. The game's own, in Lua (wartactics), is to
+change to the rules moves. The incursion measure itself is drawn over the
+nav areas, below the rooms, by `incursion_view.py` (`incursion.py`, tests
+in `test_incursion.py`): each team's walk from its spawns, one way over
+drops, its shortest route to each enemy spawn area, the traffic those
+routes make, and the front where the two walks meet: the baseline traffic
+flow, before objectives. The game's own, in Lua (wartactics), is to
 follow.
 
 The measures behind them (§2.1) stay available for queries beside the
