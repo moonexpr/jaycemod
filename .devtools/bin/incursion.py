@@ -3,10 +3,14 @@
 A team's incursion field is its walk from its spawn areas over the nav mesh,
 TF2's incursion distance (CTFNavArea::GetIncursionDistance): each area's
 distance from the nearest of the team's spawns, along the links the mesh
-gives, one way where the mesh is (a drop is walked down, never up). A route
-is a team's shortest walk from its spawns to one of the enemy's spawn
-areas; the routes together are the baseline traffic, before any objective
-or any choice of a soldier's. The front is where the two teams' walks meet:
+gives, one way where the mesh is (a drop is walked down, never up). A
+team's routes to one of the enemy's spawn areas are its highway, the
+shortest walk, and its other options: each found by walking again with the
+areas the routes before it took made PENALTY times as costly, kept while
+it is a new way and no more than DETOUR longer than the highway, up to
+ALTERNATIVES in all (the penalty method for diverse routes). The routes
+together are the baseline traffic, before any objective or any choice of
+a soldier's. The front is where the two teams' walks meet:
 an area is the side of the team that reaches it first, and no one's within
 the margin of both.
 
@@ -16,6 +20,11 @@ rooms_dump.lua prints.
 import heapq
 import math
 from dataclasses import dataclass
+
+# Up to four ways from a team's spawns to each enemy spawn area, each at
+# most half again as long as the shortest; an area a way already takes
+# costs three times as much to the next.
+ALTERNATIVES, DETOUR, PENALTY = 4, 0.5, 3.0
 
 
 @dataclass(frozen=True)
@@ -56,8 +65,12 @@ class Field:
         return tuple(reversed(path))
 
 
-def Incursion(edges: dict, starts: list) -> Field:
-    """The walk from the starts (Dijkstra; ties to the earlier start)."""
+def Plain(step: Step) -> float:
+    return step.cost
+
+
+def Incursion(edges: dict, starts: list, weight=Plain) -> Field:
+    """The walk from the starts (Dijkstra; ties to the earlier start), each step costing weight(step)."""
     distance, parent = {s: 0.0 for s in starts}, {}
     heap = [(0.0, i, s) for i, s in enumerate(starts)]
     heapq.heapify(heap)
@@ -67,7 +80,7 @@ def Incursion(edges: dict, starts: list) -> Field:
         if d > distance[node]:
             continue
         for step in edges[node]:
-            nd = d + step.cost
+            nd = d + weight(step)
             if nd < distance.get(step.to, math.inf):
                 distance[step.to], parent[step.to] = nd, node
                 heapq.heappush(heap, (nd, order, step.to))
@@ -80,6 +93,7 @@ class Route:
     team: str
     areas: tuple      # from the team's spawn to the enemy's spawn area
     length: float
+    alternative: bool # one of the other options, not the highway
 
 
 def Fields(edges: dict, spawns: dict) -> dict:
@@ -87,18 +101,42 @@ def Fields(edges: dict, spawns: dict) -> dict:
     return {team: Incursion(edges, [a for a in starts if a in edges]) for team, starts in sorted(spawns.items())}
 
 
+def Length(edges: dict, path: tuple) -> float:
+    """A path's own walk, step by step."""
+    return sum(min(s.cost for s in edges[a] if s.to == b) for a, b in zip(path, path[1:]))
+
+
+def Ways(edges: dict, team: str, starts: list, target: int, highway: Field) -> list:
+    """A team's routes from its starts to target: the highway (the shortest walk), then its other options."""
+    path = highway.Path(target)
+    if path is None:
+        return []
+    routes = [Route(team, path, highway.distance[target], False)]
+    ends = set(starts) | {target}
+    taken = set(path) - ends
+    while len(routes) < ALTERNATIVES:
+        walk = Incursion(edges, starts, lambda step: step.cost * (PENALTY if step.to in taken else 1))
+        path = walk.Path(target)
+        length = Length(edges, path)
+        if any(r.areas == path for r in routes) or length > (1 + DETOUR) * routes[0].length:
+            break
+        routes.append(Route(team, path, length, True))
+        taken |= set(path) - ends
+    return routes
+
+
 def Routes(edges: dict, spawns: dict, fields: dict = None) -> list:
-    """Each team's routes, one to each enemy spawn area its walk reaches. spawns: team -> area ids."""
+    """Each team's routes to each enemy spawn area its walk reaches, highway and other options. spawns:
+    team -> area ids."""
     fields = fields or Fields(edges, spawns)
     routes = []
     for team, field in fields.items():
+        starts = [a for a in spawns[team] if a in edges]
         for enemy, targets in sorted(spawns.items()):
             if enemy == team:
                 continue
             for target in sorted(set(targets)):
-                path = field.Path(target)
-                if path is not None:
-                    routes.append(Route(team, path, field.distance[target]))
+                routes.extend(Ways(edges, team, starts, target, field))
     return routes
 
 

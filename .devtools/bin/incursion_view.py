@@ -6,7 +6,7 @@
 Each level from above, as rooms_view.py draws it: every area tinted by the
 side whose walk reaches it first (the front, incursion.Front), the rooms'
 blocks outlined, each team's spawn areas marked, and each team's routes to
-the enemy's spawn areas drawn as smooth curves (a quadratic Bézier in each
+the enemy's spawn areas (highways bold, other options pale) drawn as smooth curves (a quadratic Bézier in each
 area, from the edge in to the edge out, bent through its middle), wider
 where more of them share a piece. The picture goes to <map>.incursion.png beside the
 graph, and a summary is printed: the routes' lengths, the share of the map
@@ -28,16 +28,19 @@ from rooms_view import MARGIN, TITLE
 FRONT_SHARE = 0.05
 SIDE_FILL = {"RED": (255, 214, 214), "BLU": (214, 226, 255), None: (255, 244, 186)}
 TEAM_LINE = {"RED": (200, 0, 0), "BLU": (0, 60, 220)}
+OPTION_LINE = {"RED": (240, 130, 130), "BLU": (120, 160, 245)}
 TEAM_OFFSET = {"RED": -2, "BLU": 2}       # pixels, so the two teams' routes on one step both show
 SPAWN_FILL = {"RED": (120, 0, 0), "BLU": (0, 30, 130)}
 AREA_EDGE, BLOCK_EDGE, UNREACHED = (200, 200, 200), (70, 70, 70), (255, 255, 255)
-LINE_MIN, LINE_MAX = 2, 9
+LINE_MIN, LINE_MAX, OPTION_MAX = 2, 9, 5
 BEZIER_SAMPLES = 12
 KEY = [("RED first", "RED's walk from its spawns reaches the area first", SIDE_FILL["RED"]),
        ("BLU first", "BLU's walk reaches it first", SIDE_FILL["BLU"]),
        ("the front", f"both walks reach it within {FRONT_SHARE:.0%} of the walk between the spawns", SIDE_FILL[None]),
-       ("RED's routes", "RED's shortest walks to each of BLU's spawn areas; wider, more of them", TEAM_LINE["RED"]),
-       ("BLU's routes", "BLU's to each of RED's", TEAM_LINE["BLU"]),
+       ("RED's highways", "RED's shortest walks to each of BLU's spawn areas; wider, more of them", TEAM_LINE["RED"]),
+       ("RED's other options", "its other ways, each new and at most half again as long", OPTION_LINE["RED"]),
+       ("BLU's highways", "BLU's to each of RED's", TEAM_LINE["BLU"]),
+       ("BLU's other options", "its other ways", OPTION_LINE["BLU"]),
        ("spawn areas", "where each team's spawns stand, dark in its colour", SPAWN_FILL["RED"])]
 KEY_LINE = 22
 KEY_HEIGHT = TITLE + KEY_LINE * ((len(KEY) + 1) // 2) + MARGIN
@@ -122,14 +125,16 @@ def Draw(dump, found, fields, routes, side, out: Path) -> None:
     pieces = {}
     for route in routes:
         for piece in Pieces(route.areas):
-            pieces[(route.team,) + piece] = pieces.get((route.team,) + piece, 0) + 1
+            key = (route.alternative, route.team) + piece
+            pieces[key] = pieces.get(key, 0) + 1
     most = max(pieces.values(), default=1)
 
     def Middle(a, b):
         m = next(l["middle"] for l in dump.graph[a]["links"] if l["to"] == b)
         return m["x"], m["y"]
 
-    for (team, before, area, after), n in sorted(pieces.items(), key=lambda kv: kv[1]):
+    # the other options beneath, the highways over them
+    for (option, team, before, area, after), n in sorted(pieces.items(), key=lambda kv: (not kv[0][0], kv[1])):
         if area not in levels:
             continue
         c = dump.graph[area]["center"]
@@ -138,8 +143,9 @@ def Draw(dump, found, fields, routes, side, out: Path) -> None:
         end = Middle(area, after) if after is not None else middle
         d = TEAM_OFFSET[team]
         curve = [At(levels[area], x, y) for x, y in Bezier(start, middle, end)]
-        pen.line([(x + d, y + d) for x, y in curve], fill=TEAM_LINE[team],
-                 width=round(LINE_MIN + (LINE_MAX - LINE_MIN) * n / most), joint="curve")
+        top = OPTION_MAX if option else LINE_MAX
+        pen.line([(x + d, y + d) for x, y in curve], fill=(OPTION_LINE if option else TEAM_LINE)[team],
+                 width=round(LINE_MIN + (top - LINE_MIN) * n / most), joint="curve")
     pen.line([(0, h), (w * count, h)], fill=(0, 0, 0))
     pen.text((MARGIN, h + 4), "Key", fill=(0, 0, 0), font=font)
     column = w * count // 2
@@ -153,10 +159,15 @@ def Draw(dump, found, fields, routes, side, out: Path) -> None:
 def Summary(dump, found, fields, routes, side) -> list:
     lines = []
     for team in sorted(fields):
-        mine = sorted(r.length for r in routes if r.team == team)
+        mine = sorted(r.length for r in routes if r.team == team and not r.alternative)
+        options = [r for r in routes if r.team == team and r.alternative]
         if mine:
-            lines.append(f"{team}: {len(mine)} routes from {len(set(dump.spawns[team]))} spawn areas, "
-                         f"{mine[0]:.0f} to {mine[-1]:.0f} units long (median {statistics.median(mine):.0f})")
+            lines.append(f"{team}: {len(mine)} highways from {len(set(dump.spawns[team]))} spawn areas, "
+                         f"{mine[0]:.0f} to {mine[-1]:.0f} units long (median {statistics.median(mine):.0f}), "
+                         f"and {len(options)} other options")
+    highway = {a for r in routes if not r.alternative for a in r.areas}
+    every = {a for r in routes for a in r.areas}
+    lines.append(f"covered: highways {len(highway)} areas, with the other options {len(every)} of {len(side)}")
     shares = {}
     for s in side.values():
         shares[s] = shares.get(s, 0) + 1

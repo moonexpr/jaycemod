@@ -63,6 +63,41 @@ class RoutesTest(unittest.TestCase):
         self.assertEqual(sorted(r.areas[-1] for r in routes if r.team == RED), [5])
 
 
+def Ways(detours):
+    """RED's spawn (1) and BLU's (2), CELL * 10 apart, joined straight and by each detour: an area off to
+    the side making the way that much longer (a share of the straight way's length)."""
+    graph = {1: Area(0, links=[3]), 2: Area(10, links=[3]), 3: Area(5, links=[1, 2])}
+    for i, detour in enumerate(detours):
+        aid = 10 + i
+        side = ((5 * (1 + detour)) ** 2 - 25) ** 0.5   # 2 * hypot(5, side) = 10 * (1 + detour)
+        graph[aid] = Area(5, side * (1 if i % 2 == 0 else -1), links=[1, 2])
+        graph[1]["links"].append({"to": aid})
+        graph[2]["links"].append({"to": aid})
+    return Middles(graph)
+
+
+class AlternativesTest(unittest.TestCase):
+    def test_a_second_way_a_little_longer_is_a_route_too(self):
+        routes = incursion.Routes(Edges(Ways([0.2])), {RED: [1], BLU: [2]})
+        self.assertEqual(sorted(r.areas for r in routes if r.team == RED), [(1, 3, 2), (1, 10, 2)])
+        self.assertTrue(all(r.alternative == (r.areas != (1, 3, 2)) for r in routes if r.team == RED),
+                        "the shortest is the highway, the other an option")
+
+    def test_a_way_far_longer_than_the_shortest_is_none(self):
+        far = incursion.DETOUR + 0.2
+        routes = incursion.Routes(Edges(Ways([far])), {RED: [1], BLU: [2]})
+        self.assertEqual([r.areas for r in routes if r.team == RED], [(1, 3, 2)])
+
+    def test_no_more_routes_a_pair_than_ALTERNATIVES(self):
+        routes = incursion.Routes(Edges(Ways([0.1] * (incursion.ALTERNATIVES + 2))), {RED: [1], BLU: [2]})
+        self.assertEqual(len([r for r in routes if r.team == RED]), incursion.ALTERNATIVES)
+
+    def test_a_routes_length_is_its_own_walk_not_the_penalised_one(self):
+        routes = incursion.Routes(Edges(Ways([0.2])), {RED: [1], BLU: [2]})
+        second = next(r for r in routes if r.team == RED and r.alternative)
+        self.assertAlmostEqual(second.length, 10 * CELL * 1.2)
+
+
 class TrafficTest(unittest.TestCase):
     def test_traffic_counts_the_routes_through_each_area_by_team(self):
         # BLU spawns at 5 and at 6 beside it; both of RED's routes come through 2-4
