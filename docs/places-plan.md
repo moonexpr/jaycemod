@@ -105,7 +105,7 @@ flicker between classes.
 | Restricted | a team's spawns and the well-protected ground behind them: the other team may not enter while the round is played; the class stands after the round ends, when the winners break in (a breach, §2.3 below) | the team's spawn claims (§2.2), and one flood from the enemy's spawns: the team's held rooms it can reach only through restricted ones |
 | Stronghold | a team holds, protected and commuted: its own soldiers pass through it, the enemy cannot reach it without crossing the team's rooms | occupation; the same flood stopped at the team's held rooms; the team's own traffic |
 | Outpost | a team claims far from its spawns, out on its own, which may reach out of doors | occupation (a remote base's works and presence, §4) where the team's incursion is long and the room is not joined to its strongholds by its own rooms |
-| Highway | carries the most traffic, or an objective passes through: the payload's track, a capture point's room | flow; the objective's entities (the cart's path_tracks, the capture areas) |
+| Highway | carries the most traffic, or an objective passes through: the payload's track, a capture point's room | flow (both teams' ways, or most of one team's own: its way across the other's side); the objective's entities (the cart's path_tracks, the capture areas) |
 | Commons | both teams cross, in moderate traffic | each team's traffic through it (its intel's `Traffic` for the enemy, its own soldiers' passing for itself), both above a floor, neither a highway's |
 | Unoccupied | far from both teams' active spawns, with little traffic | incursion long for both, traffic below the commons' floor |
 | Wilds | any room none of the others take: the final pass | what is left |
@@ -154,6 +154,13 @@ and shrinks by a ladder, each step held as occupation is:
 
   Each breach is also recorded (who breached whom, where, for how long) in
   the war's analytics (`analysis.analytics`) and on the overlay's label.
+
+The classes a round starts with are computed today by the tooling, in
+Python (`.devtools/bin/places.py`, drawn by `rooms_view.py`, tests in
+`test_places.py`): occupation is then the spawns alone, each team's ways
+run from its spawns to the objectives (to the enemy's spawns on a map with
+none), and no room is an outpost. The game's own, in Lua (wartactics), is
+to follow.
 
 The measures behind them (§2.1) stay available for queries beside the
 class: a room's ways and entries, its depth (a dead end), its flow and
