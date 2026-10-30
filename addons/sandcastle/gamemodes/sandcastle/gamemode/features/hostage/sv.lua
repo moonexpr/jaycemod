@@ -32,6 +32,8 @@ local Zone = WS.require("features.hostage.zone")
 local Hotfixes = WS.require("features.hostage.hotfixes")
 local Voice = WS.require("features.hostage.voice")
 local Pistol = WS.require("features.hostage.pistol")
+local Announcer = WS.require("features.hostage.announcer")
+local Hud = WS.require("features.hostage.hud")
 local State = WS.require("games.gameplay.rounds.state")
 local Rounds = gameplay.rounds
 
@@ -202,12 +204,32 @@ function Controller:ArmFirst()
 	end
 end
 
+-- The announcer's line of a hostage's change (features.hostage.announcer),
+-- each team its own; an event no sooner than ANNOUNCE_GAP after its last (a
+-- hostage let go and taken again at once is not announced over and over).
+local ANNOUNCE_GAP = 4
+local announced = {}
+
+function Controller:Announce(before, after)
+	local event = Announcer.Event(before, after)
+	if not event then return end
+	local now = CurTime()
+	if now - (announced[event] or -math.huge) < ANNOUNCE_GAP then return end
+	announced[event] = now
+	for _, team in ipairs({ WS.TEAM_RED, BLUE }) do
+		WS.BroadcastSoundFile(team, Announcer.Pick(event, team, math.random))
+	end
+end
+
 -- A hostage its observer no longer sees alive: the round counts it killed,
 -- and its pistol, if it held it, lies where it was last seen.
 function Controller:Killed(id)
 	local round = self.round
 	local state = round:StateOf(id)
-	if state == Rescue.HELD or state == Rescue.FOLLOWING then self.round = round:Kill(id) end
+	if state == Rescue.HELD or state == Rescue.FOLLOWING then
+		self.round = round:Kill(id)
+		self:Announce(state, Rescue.KILLED)
+	end
 	local pistol = self.pistol
 	if pistol and pistol:Holder() == id then
 		local pos = self.known[id].pos
@@ -369,6 +391,24 @@ function Controller:Observe(id, info, body, observer)
 	local after = round:StateOf(id)
 	if body.SetLeader then body:SetLeader(after == Rescue.FOLLOWING and round:RescuerOf(id) or nil) end
 	self:Voice(body, before, after)
+	self:Announce(before, after)
+end
+
+-- What the hostage HUD reads (features.hostage.hud, cl.lua): each hostage
+-- of the round, in id order, its state and how far it has come toward the
+-- rescue zone (ws_hostage_*).
+function Controller:Publish()
+	local zone = self.zone
+	if not (self.round and zone) then return end
+	local ids = {}
+	for id in pairs(self.known) do ids[#ids + 1] = id end
+	table.sort(ids)
+	SetGlobal2Int("ws_hostage_count", #ids)
+	for i, id in ipairs(ids) do
+		local info = self.known[id]
+		SetGlobal2String("ws_hostage_" .. i .. "_state", self.round:StateOf(id))
+		SetGlobal2Float("ws_hostage_" .. i .. "_progress", Hud.Progress(info.pos, info.home, zone.center))
+	end
 end
 
 -- The rules applied to the map, every THINK_INTERVAL while the round is on.
@@ -396,6 +436,7 @@ function Controller:Think()
 		end
 	end
 	self:RushForPistol()
+	self:Publish()
 	if not self.won and self.round:Outcome() == Rescue.RESCUED_WIN then
 		self.won = true
 		self.rounds:SetWinningTeam(BLUE, Rounds.WINREASON.HOSTAGES_RESCUED, true, false, false)
@@ -446,6 +487,13 @@ for _, path in ipairs(Voice.All()) do
 	resource.AddFile("sound/" .. path)
 	util.PrecacheSound(path)
 end
+-- the announcer's lines are TF2's (mounted); the HUD's track is TF2
+-- Classified's, in the addon (.devtools/bin/tf2c_assets.py)
+for _, path in ipairs(Announcer.All()) do util.PrecacheSound(path) end
+for _, name in ipairs({ "vip_track", "vip_home", "vip_car", "vip_civ", "vip_civ_bottom" }) do
+	resource.AddFile("materials/hud/" .. name .. ".vmt")
+end
+SetGlobal2Bool("ws_hostage", true)
 
 hook.Add("Think", THINK_HOOK, function()
 	local now = CurTime()

@@ -61,6 +61,7 @@ local Controller = {
 
 Controller.rounds:SetMode(Round.Mode)
 SetGlobal2Bool("ws_round_arena", true)
+SetGlobal2Bool("ws_defuse", true)
 
 -- The map's settings: its cs_defuse_logic's, made with the defaults on a map without one.
 function Controller:Config()
@@ -284,10 +285,34 @@ hook.Add("WSPointCaptured", THINK_HOOK, function(point, team)
 	end
 end)
 
+-- What the defuse HUD reads (features.defuse.hud, cl.lua): the bomb's state,
+-- the planted site's index, and each site's name, owner and capture
+-- (ws_defuse_*); the explosion's time is set as the bomb is planted.
+function Controller:Publish()
+	SetGlobal2String("ws_defuse_state", self.bomb:State())
+	local hud = {}
+	for _, entry in ipairs(self.capture:HudPoints()) do hud[entry.point] = entry.hud end
+	local list = self:SiteList()
+	SetGlobal2Int("ws_defuse_sites", #list)
+	local planted = 0
+	for i, site in ipairs(list) do
+		local s = self.sites[site]
+		local h = IsValid(s.point) and hud[s.point]
+		local prefix = "ws_defuse_site_" .. i .. "_"
+		SetGlobal2String(prefix .. "name", s.name)
+		SetGlobal2Int(prefix .. "owner", h and h.owner or BLUE)
+		SetGlobal2Int(prefix .. "capping", h and h.capping or 0)
+		SetGlobal2Float(prefix .. "progress", h and h.progress or 0)
+		if self.bomb:Site() == site then planted = i end
+	end
+	SetGlobal2Int("ws_defuse_planted", planted)
+end
+
 function Controller:Think(now)
 	self:Configure()
 	if not self.bomb then self:NewRound() end
 	self:EnsureRoundEntities()
+	self:Publish()
 	-- the bomb is fought over only while the round runs: none after its win
 	if self.rounds:State() ~= State.STALEMATE then return end
 	local state = self.bomb:State()

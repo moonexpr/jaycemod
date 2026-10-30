@@ -223,12 +223,13 @@ end
 
 -- The objective HUDs at the foot of the screen, each laid out from it as
 -- its .res places it, stack when several show: bottom first, frags (the
--- round limits' panels), payload's track, the control points' icons, then
--- the flag or MvM's bomb on top. spans: by key, each shown one's content
+-- round limits' panels), the bomb defusal's panel (on its maps the points'
+-- and flags' panels are hidden, above it), payload's track, the control
+-- points' icons, then the flag or MvM's bomb on top. spans: by key, each shown one's content
 -- { bottom, top }, in units above the screen's foot where it would sit
 -- alone. Returns by key how many units each is lifted: just clear of the
 -- one below it, OBJECTIVE_GAP apart; the lowest, never.
-OBJECTIVE_ORDER = { "frags", "payload", "points", "flags" }
+OBJECTIVE_ORDER = { "frags", "defuse", "payload", "points", "flags" }
 OBJECTIVE_GAP = 2
 
 function ObjectiveLifts(spans)
