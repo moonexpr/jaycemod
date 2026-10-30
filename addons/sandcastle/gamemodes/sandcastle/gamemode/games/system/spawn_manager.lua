@@ -15,7 +15,7 @@ module(...)
 LOCKS = Sets.Named("spawn lock", { "nav" })
 
 local LOCK_MESSAGES = {
-	nav = "No respawning allowed during map navigation processing",
+	nav = "No respawning permitted",
 }
 
 -- Why a player is not spawning: dead, waiting for a wave (at a time), in

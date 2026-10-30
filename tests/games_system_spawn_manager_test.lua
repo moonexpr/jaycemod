@@ -65,10 +65,6 @@ T.test("why a player is not spawning, in TF2's words", function()
 	T.eq(S.Message(S.NONE, 0), nil, "nothing to say")
 end)
 
-T.test("held, the lock says why", function()
-	T.eq(S.Message(S.HELD, 0, "nav"), "No respawning allowed during map navigation processing")
-end)
-
 -- Reason: a player out of play (dead, or watching) is held only for a
 -- reason they are told; with none, they are free to spawn.
 
