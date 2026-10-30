@@ -2,8 +2,8 @@
 
 The layer above `wartactics.rooms` (`docs/special-missions-plan.md` §2.1):
 the map as a graph of rooms, which team holds each and how that changes,
-and what each room is for (a team's stronghold, common ground, a
-thoroughfare, ...). Lanes and the special missions are to be rebased on it:
+and what each room is for (a team's restricted ground or stronghold, a
+highway, the commons, the wilds, ...). Lanes and the special missions are to be rebased on it:
 a lane becomes a route through rooms, not over nav areas, and a mission a
 question asked of the places. The test of the layer: ambushes, assaults and
 remote bases fall out of it as plain queries (§4), with no geometry of
@@ -48,7 +48,7 @@ Static measures of each room, from the graph alone:
 | Measure | What |
 |---|---|
 | ways | its doors, corridors and windows, by kind |
-| incursion | each team's walk to it from its active spawn rooms over the room graph (TF2's incursion distance, `tf_nav_area.h` `GetIncursionDistance`, per room instead of per area); walked again only on a capture, setup's end, a point's unlock and a round's reset. Comparing the two teams' says which reaches a room first |
+| incursion | each team's walk to it from its active spawn rooms over the room graph (TF2's incursion distance, `tf_nav_area.h` `GetIncursionDistance`, per room instead of per area); walked again only on a capture, setup's end, a point's unlock and a round's reset. Comparing the two teams' says which reaches a room first; where they meet is the frontier |
 | flow | how much of the movement between the key rooms (spawns, objectives) passes through it: every route, not the one shortest (a second route nearly as short would score nothing); the team's planned lanes through it, or current-flow betweenness, one solve a map |
 | entries | for an objective room, the fewest doors that part it from the enemy's spawn: where it is guarded and come at (Killzone 2's playtesters' first complaint was bots guarding the objective instead of its entries) |
 | depth | how far it lies off the routes; a dead end is a branch hanging off one room, with no spawn or objective in it |
@@ -88,22 +88,26 @@ never the truth (knowledge is earned, `docs/aiwar-command.md` decision 6).
 
 ### 2.3 Room classes (`wartactics.places`)
 
-What a room is for, from its measures and its occupation; a room may be of
-more than one. Static classes are found once a map; dynamic ones as
-occupation changes.
+The operator's seven. Each room has one class at a time, the first of this
+table it answers to; the first three belong to a team (a room is one
+team's restricted ground and the other's way in to it), the rest to no
+one. Static parts (nature, the objective's track) are found once a map;
+the rest on occupation's changes, and each change is held as occupation is
+(hysteresis), so a room does not flicker between classes.
 
 | Class | A room that | Found from |
 |---|---|---|
-| Stronghold | a team holds and the enemy cannot reach without passing through others it holds: its spawn rooms and what lies behind them | one flood from the enemy's spawns over rooms the team does not hold: the team's rooms it never reaches (no min-cut needed) |
-| Frontier | a team holds next to rooms the enemy holds or contests; before any presence, the rooms where the two teams' incursions meet | occupation and edges; incursion |
-| Contested | both teams claim | occupation |
-| Common | neither holds, wide and well connected: the open ground the fight crosses | floor, ways, betweenness, occupation |
-| Thoroughfare | the movement between the key rooms passes through, for its size: corridors' rooms, stairwells, a hall between wings | flow over floor |
-| Dead end | a branch off one room, no spawn or objective in it | ways, depth |
-| Objective | holds a capture point, the cart's track, a flag; its entries marked | the map's entities; entries |
-| Overlook | looks over another room through a window or from a level above | windows, levels |
+| Restricted | a team's spawns and the well-protected ground behind them: the other team may not enter until the round has ended | the team's spawn claims (§2.2), and one flood from the enemy's spawns: the team's held rooms it can reach only through restricted ones |
+| Stronghold | a team holds, protected and commuted: its own soldiers pass through it, the enemy cannot reach it without crossing the team's rooms | occupation; the same flood stopped at the team's held rooms; the team's own traffic |
+| Outpost | a team claims far from its spawns, out on its own, which may reach out of doors | occupation (a remote base's works and presence, §4) where the team's incursion is long and the room is not joined to its strongholds by its own rooms |
+| Highway | carries the most traffic, or an objective passes through: the payload's track, a capture point's room | flow; the objective's entities (the cart's path_tracks, the capture areas) |
+| Commons | both teams cross, in moderate traffic | each team's traffic through it (its intel's `Traffic` for the enemy, its own soldiers' passing for itself), both above a floor, neither a highway's |
+| Wilds | outdoors and nature: open ground off the built map | outdoor rooms whose floor is mostly natural ground (the surface's material: dirt, grass, snow, sand, foliage, rock), found once a map |
+| Unoccupied | far from both teams' active spawns, with little traffic | incursion long for both, traffic below the commons' floor |
 
-The tuning (what high betweenness is, how wide is wide) is constants,
+The measures behind them (§2.1) stay available for queries beside the
+class: a room's ways and entries, its depth (a dead end), its flow and
+level. The tuning (what high traffic is, how far is far) is constants,
 derived in tests from the fixtures, never pinned.
 
 ## 3. The rebase
@@ -113,11 +117,11 @@ derived in tests from the fixtures, never pinned.
   and ways of the routes before it), walked door to door: its waypoints are
   the doors and corridor ends it passes. The nav mesh is walked only within
   a room, by the soldier's own pathing. Lanes refuse the enemy's
-  strongholds (today: its spawn rooms). As for doors today (8251de92: a
+  restricted ground (today: its spawn rooms). As for doors today (8251de92: a
   door opening and shutting again re-planned every lane), a lane is planned
   again only for a lasting change of occupation in the rooms it crosses or
   borders, never for presence coming and going.
-- **The zone** becomes the attackers' strongholds before the gates open.
+- **The zone** becomes the attackers' restricted ground before the gates open.
 - **Missions** read classes and the team's view of occupation instead of
   sampling lane points.
 
@@ -128,10 +132,10 @@ by; nothing more.
 
 | Mission | The rooms | The door |
 |---|---|---|
-| Ambush | rooms beside the enemy's route, not on it (TF2's ambush code and FM 3-21.8 both put the ambushers off the kill zone): rooms with a door onto a thoroughfare or objective entry the enemy's traffic is high in (`intel:Traffic`), not held by the enemy; ordered by that traffic | the door onto the enemy's route: the squad waits behind it |
-| Assault | rooms the team's view says the enemy holds, guarded within the squad's odds (`intel:Guarded`), not strongholds; ordered by worth to the team's lanes (on them first) | the room's way nearest the team's own holdings |
-| Remote base | rooms the team holds on its frontier, with one or two ways in (easy to hold), not contested; where along the frontier is open (§7) | where the builders set up: the room's centre, away from its ways |
-| Topple a support base | rooms with enemy works the team knows of | as an assault |
+| Ambush | commons and unoccupied rooms (and wilds) beside an enemy highway, not on it (TF2's ambush code and FM 3-21.8 both put the ambushers off the kill zone), the enemy's traffic on that highway high (`intel:Traffic`); ordered by that traffic | the door onto the highway: the squad waits behind it |
+| Assault | the enemy's strongholds and outposts as the team's view has them, guarded within the squad's odds (`intel:Guarded`); never restricted ground; ordered by worth to the team's lanes (on them first) | the room's way nearest the team's own rooms |
+| Remote base | establishes an outpost: an unoccupied room or wilds on the team's frontier, with one or two ways in (easy to hold), not contested; where along the frontier is open (§7) | where the builders set up: the room's centre, away from its ways |
+| Topple a support base | the enemy's outposts and strongholds with works the team knows of | as an assault |
 
 A squad's choice is drawn among the best two or three, not always the
 first, so a team does not do the same thing every round; and a team
@@ -155,7 +159,7 @@ some fronts to the enemy).
    table of §4, replacing `LaneRooms` and the hand-built specs in
    `sv_missions.lua`.
 5. **Lanes through rooms** (`wartactics.lanes`): routes over the room graph,
-   waypoints at doors; the zone as strongholds.
+   waypoints at doors; the zone as restricted ground.
 
 Each step is checked on cs_office and one TF2 map (pl_upward, which has the
 spawn rooms, gates and points) before the next.
@@ -175,9 +179,12 @@ The layer stands on the rooms, so they hold first:
 
 ## 7. Open questions for the operator
 
-- The classes' names and which matter first: stronghold, common and
-  thoroughfare are the operator's; frontier, contested, dead end, objective
-  and overlook are proposed.
+- Restricted ground: read as "the other team may not enter until the
+  round has ended" (TF2's spawn rooms, open to the winners in humiliation).
+  Is that the meaning?
+- Wilds: found from the floor's surface material (dirt, grass, snow, sand,
+  foliage, rock under an outdoor room). Is nature that, or something else
+  (off the routes, terrain made of displacements)?
 - Whether presence alone should make a room a team's (a squad holding a
   hall for a minute), or only spawns, objectives and works.
 - Where a remote base goes along the frontier: forward on the team's lanes
