@@ -234,6 +234,38 @@ T.test("raiders are never the alpha: they tour, even with no alpha out", functio
 	T.eq(m.way, lanes[4])
 end)
 
+-- Promoting: a team with no alpha out takes one of its squads out on
+-- another mission off it, to be its alpha.
+local function Out(team, role, alpha)
+	local squad = { team = team, role = role, missionLed = true }
+	squad.mission = Mission.New(Valid({ alpha = alpha }))
+	return squad
+end
+
+T.test("a team with no alpha out promotes a squad out on another mission whose job comes at the objective", function()
+	local raider, escort = Out(2, "raid", false), Out(2, "escort", false)
+	T.eq(Mission.Promote({ raider, escort }, 2), escort)
+end)
+
+T.test("no promotion while the alpha is out, nor of raiders, nor of squads not out, nor across teams", function()
+	local alpha, other = Out(2, "escort", true), Out(2, "escort", false)
+	T.eq(Mission.Promote({ alpha, other }, 2), nil, "the alpha is out")
+	T.eq(Mission.Promote({ Out(2, "raid", false) }, 2), nil, "raiders")
+	local waiting = Out(2, "escort", false)
+	waiting.missionLed = nil
+	T.eq(Mission.Promote({ waiting }, 2), nil, "not out yet: it asks for itself")
+	T.eq(Mission.Promote({ Out(3, "escort", false) }, 2), nil, "the other team's")
+	local regrouping = Out(2, "escort", false)
+	regrouping.regrouping = Mission.STUCK
+	T.eq(Mission.Promote({ regrouping }, 2), nil, "regrouping")
+end)
+
+T.test("an alpha regrouping is not out: another squad is promoted", function()
+	local alpha, other = Out(2, "escort", true), Out(2, "escort", false)
+	alpha.regrouping = Mission.CASUALTIES
+	T.eq(Mission.Promote({ alpha, other }, 2), other)
+end)
+
 T.test("a squad of a job that takes no lanes asking is our bug", function()
 	local squad = { team = 2, role = "guard" }
 	T.eq(pcall(Ask, squad, { squad }, TeamLanes()), false)

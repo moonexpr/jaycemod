@@ -545,6 +545,16 @@ local function OrdersRun(field)
 	return field ~= nil and field.phase.orders
 end
 
+-- A squad leader whose mission the tactics engine replaced while it was
+-- out (sv_missions.lua: a promotion to its team's alpha) signals halt, once,
+-- and leads the new one, on its way at once.
+local function Halt(state, me)
+	local fireTeam = state.member.fireTeam
+	if not (fireTeam and fireTeam.halted) or Squad.Kind(state.member) ~= "leader" then return end
+	fireTeam.halted = nil
+	me:Gesture(Gestures.SIGNAL_HALT)
+end
+
 -- The member's team's lanes while its squad musters for a mission
 -- (Objective:Muster), else nil: a squad of a lane job, its lanes with a
 -- muster, its mission not yet led nor given up, out of setup, not hurrying
@@ -891,6 +901,7 @@ function Travel:Update(me)
 	local state, role = self.state, self.role
 	local field = state.war:Field()
 	-- its job hurrying, the trip stops for no one (ShouldHurry)
+	Halt(state, me)
 	local urgent = not self.spot and AskInterrupted(self, me, "ShouldHurry") == N.ANSWER_YES
 	if not self.spot and not urgent and role.tactic and TeamContact(state, me) then return self:End("contact") end
 	if not self.spot and MusterLanes(state, me, field, urgent) then return self:End("mustering") end
@@ -1157,6 +1168,7 @@ function Objective:Update(me)
 		local stage = self.role.Stage(field, state.member)
 		if stage ~= self.stage then return self:ChangeTo(ObjectiveFor(state), "now " .. (stage or self.role.name)) end
 	end
+	Halt(state, me)
 	if OrdersRun(field) and field.setup then self:PlanInSetup() end
 	if OrdersRun(field) and self.doctrine.WaitsForSetup(field, state.member) then return self:Wander(me) end
 	local urgent = self:ShouldHurry(me) == N.ANSWER_YES

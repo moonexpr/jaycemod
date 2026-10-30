@@ -928,6 +928,19 @@ T.test("it signals and calls the regroup once", function()
 	T.eq(n, 1)
 end)
 
+T.test("a squad out whose mission the engine replaced: its leader signals halt, once, and leads the new one", function()
+	local s = Led()
+	s.fireTeam.regrouping = nil
+	s.fireTeam.missionLed = true
+	s.fireTeam.halted = true
+	s.Tick(3)
+	local n = 0
+	for _, o in ipairs(s.meA.gestured) do if o == Gestures.SIGNAL_HALT then n = n + 1 end end
+	T.eq(n, 1, "one halt")
+	T.eq(s.fireTeam.missionLed, true, "leads on, no wait")
+	T.eq(s.fireTeam.missionWanted, nil, "asks nothing")
+end)
+
 T.test("a squad leader on a trip when its squad comes to muster stops to muster", function()
 	local field = MusterField()
 	local muster = field.lanes[BLUE].muster

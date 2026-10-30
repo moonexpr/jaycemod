@@ -18,6 +18,10 @@
 --   wait: Wait, with no wave after a regroup. Declined NO_LANES while its
 --   team has none; a squad of a job that takes no lanes is our bug.
 --   fireTeam: { team, role, mission, regrouping }; lanes: its team's
+-- Promote(fireTeams, team) -> with no alpha of team out (none, or it
+--   regroups), the first of its squads out on another mission (missionLed),
+--   not regrouping, whose job may be the alpha: asked again, it is made the
+--   alpha, so a special mission never outlasts the objective's squad
 -- Waited(mission, now) -> whether the leader's wait is over
 -- Wait{ missing, nextWave, now, travel } -> seconds to wait: none with no
 --   one missing; after spawning, until the team's next wave (nextWave, a
@@ -62,16 +66,32 @@ function New(spec)
 	return setmetatable({}, { __index = fields, __newindex = Frozen })
 end
 
--- Whether a squad of team other than fireTeam holds the alpha's mission and
--- is out on it.
-local function AlphaOut(fireTeams, fireTeam)
+-- Whether a squad of team other than except holds the alpha's mission and
+-- is not regrouping.
+local function AlphaOut(fireTeams, team, except)
 	for _, other in ipairs(fireTeams) do
-		if other ~= fireTeam and other.team == fireTeam.team and other.mission and other.mission.alpha
-			and not other.regrouping then
+		if other ~= except and other.team == team and other.mission and other.mission.alpha and not other.regrouping then
 			return true
 		end
 	end
 	return false
+end
+
+-- Whether a squad of job role may be an alpha: its lanes hold the direct one.
+local function MayLead(role)
+	return Lanes.JOB_KINDS[role] ~= nil and Lanes.JOB_KINDS[role][Lanes.DIRECT] == true
+end
+
+-- With no alpha out, the first squad of team out on another mission, not
+-- regrouping, that may be an alpha: it asks again, to be the alpha.
+function Promote(fireTeams, team)
+	if AlphaOut(fireTeams, team, nil) then return nil end
+	for _, squad in ipairs(fireTeams) do
+		if squad.team == team and squad.missionLed and squad.mission and not squad.regrouping and MayLead(squad.role) then
+			return squad
+		end
+	end
+	return nil
 end
 
 local function Direct(lanes)
@@ -101,7 +121,7 @@ function Issue(spec)
 	local fireTeam, lanes = spec.fireTeam, spec.lanes
 	if not Lanes.JOBS[fireTeam.role] then error("a squad of job " .. tostring(fireTeam.role) .. " asks for no mission", 2) end
 	if not (lanes and lanes[1]) then Transaction.Refuse(NO_LANES, "its team has no lanes planned yet") end
-	local alpha = Lanes.JOB_KINDS[fireTeam.role][Lanes.DIRECT] == true and not AlphaOut(spec.fireTeams, fireTeam)
+	local alpha = MayLead(fireTeam.role) and not AlphaOut(spec.fireTeams, fireTeam.team, fireTeam)
 	return New({
 		kind = ADVANCE,
 		way = alpha and Direct(lanes) or LeastTaken(spec.fireTeams, fireTeam, lanes),

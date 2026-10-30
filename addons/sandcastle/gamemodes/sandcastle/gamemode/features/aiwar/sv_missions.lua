@@ -18,6 +18,7 @@ local Mission = wartactics.mission
 local Lanes = wartactics.lanes
 local Squad = wartactics.squad
 local Tactics = wartactics.fireteam
+local Teams = gameplay.teams
 local Geometry = math.geometry
 local Transaction = transaction
 
@@ -71,6 +72,8 @@ function Controller:RequestMission(fireTeam)
 		if fireTeam.missionsOff then return end
 		if state == Transaction.COMMITTED then
 			fireTeam.mission, fireTeam.missionWanted, fireTeam.regrouping = settled:Value(), nil, nil
+			-- a squad out on one when the new came: halt, and on to the new
+			if fireTeam.missionLed then fireTeam.halted, fireTeam.missionTrack = true, nil end
 		elseif state == Transaction.DECLINED then
 			if Transaction.IsRefusal(settled:Refusal(), { [Mission.NO_LANES] = true }) then
 				fireTeam.missionRetryAt = CurTime() + LANE_RETRY
@@ -105,12 +108,18 @@ function Controller:JudgeMission(fireTeam, now)
 end
 
 -- Every squad out on its mission is judged; every squad that wants one and
--- has none on the way asks.
+-- has none on the way asks; and a team with no alpha out has a squad out
+-- on another mission ask again, to be made its alpha (Promote), which halts
+-- it and sends it on the new.
 function Controller:MissionsThink(now)
 	for _, fireTeam in ipairs(self.war.fireTeams) do
 		if fireTeam.missionLed and fireTeam.mission then self:JudgeMission(fireTeam, now) end
 		if fireTeam.missionWanted and not fireTeam.missionRequest and now >= (fireTeam.missionRetryAt or 0) then
 			self:RequestMission(fireTeam)
 		end
+	end
+	for _, team in ipairs({ Teams.RED, Teams.BLUE }) do
+		local promoted = Mission.Promote(self.war.fireTeams, team)
+		if promoted and not promoted.missionRequest then self:RequestMission(promoted) end
 	end
 end
