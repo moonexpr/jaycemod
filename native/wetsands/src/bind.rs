@@ -14,7 +14,7 @@ use crate::walker::{Jump, Limits, Preference, Rooms, Step, Walker};
 use foundation::astar::Status;
 use foundation::lua::{
     api, each, field_number, field_truthy, push_str, raise, raise_owned, set_function, string_at, CFunction,
-    L, TFUNCTION, TNIL, TNUMBER, TTABLE,
+    L, TFUNCTION, TNIL, TNUMBER, TTABLE, TUSERDATA,
 };
 use foundation::userdata::{self, Native};
 use std::ffi::{c_int, CStr};
@@ -307,8 +307,9 @@ unsafe fn told_ok(l: L, result: Result<(), crate::search::SearchError>) {
 }
 
 /// navsearch.New(mesh, strategy, limits, bot, start, goal, goalPos,
-/// maxExpanded[, told[, rules]]) -> a search; goalPos is anything with x
-/// and y (and z) to read: a table, or GMod's Vector.
+/// maxExpanded[, told[, rules]]) -> a search; told is a table or a Told of
+/// the same mesh; goalPos is anything with x and y (and z) to read: a
+/// table, or GMod's Vector.
 unsafe extern "C-unwind" fn search_new(l: L) -> c_int {
     let api = api();
     userdata::check::<Mesh>(l, 1);
@@ -339,8 +340,13 @@ unsafe extern "C-unwind" fn search_new(l: L) -> c_int {
         each(l, penalized, |l| told_ok(l, (*handle).search.penalize(id_at(l, -2, "model.penalized"))));
         (api.settop)(l, -2);
     }
-    if (api.type_of)(l, 9) == TTABLE {
-        tell(l, handle, 9);
+    match (api.type_of)(l, 9) {
+        TTABLE => tell(l, handle, 9),
+        TUSERDATA => {
+            let known = Arc::clone(&userdata::check::<KnownHandle>(l, 9).0);
+            told_ok(l, (*handle).search.know(&known));
+        }
+        _ => {}
     }
     (api.createtable)(l, 0, 2);
     if (api.type_of)(l, 10) == TTABLE {

@@ -14,7 +14,8 @@
 --     toward goalPos, priced by strategy.Cost(step, limits, bot) (natively,
 --     by strategy.Model(limits, bot)), where
 --     told = { closed = id -> true, uncrossable = from -> to -> true,
---       rooms = id -> spawn room team, estimates = id -> estimate } is what
+--       rooms = id -> spawn room team, estimates = id -> estimate }, or a
+--       Told of the same mesh (held, so a search reads no table), is what
 --       the search knows from the start, and
 --     rules = { traversable(id) -> bool, crossable(from, to) -> bool,
 --       room(id) -> spawn room team } are asked the first time the search
@@ -102,6 +103,9 @@ end
 
 local NOTHING = {}
 
+local ToldClass = {}
+ToldClass.__index = ToldClass
+
 -- The search's graph port: the mesh's data, what it was told, its rules
 -- (each answer kept), and the strategy pricing a step as the npc
 -- controller's FillStep fills it (no ladders: an engine NPC climbs none).
@@ -167,6 +171,10 @@ function New(mesh, strategy, limits, bot, start, goal, goalPos, maxExpanded, tol
 	for _, id in ipairs({ start, goal }) do
 		if not mesh.areas[id] then error("no area " .. tostring(id) .. " in the mesh", 2) end
 	end
+	if getmetatable(told) == ToldClass then
+		if told.mesh ~= mesh then error("the Told is another mesh's", 2) end
+		told = told.told
+	end
 	local graph = setmetatable({
 		mesh = mesh,
 		strategy = strategy,
@@ -200,9 +208,6 @@ function Distances(mesh, starts, limit, limits, told)
 		return edges
 	end, limit)
 end
-
-local ToldClass = {}
-ToldClass.__index = ToldClass
 
 -- told[what]'s entries whose value holds, refusing an area the mesh lacks.
 local function CopyAreas(mesh, ids, what)
