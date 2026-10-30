@@ -29,8 +29,18 @@ the registry refuses any other name: `system_` for the gamemode core's own
 `system_server_convars`), a contract within a major release, so kept as few
 as possible; `game_` for every other.
 
-Check everything with `.devtools/bin/check_lua.sh` (compiles every Lua file
-and runs every test).
+Check the systems a change touches, never all of them:
+`.devtools/bin/check_lua.sh --changed` runs the groups of the suites your
+changes touch, `check_lua.sh GROUP...` named ones (`--list` shows the
+groups: foundation, games, nextsoldier, war, rounds, features, ws, addons,
+tooling). Each compiles its group's files and runs its tests in both passes
+(Lua, then native twins). `tests/suites.lua` assigns every test to exactly
+one group and every source file to one (`tests/suites_test.lua`); a new
+test goes in its system's group. A change to a lower layer's interface
+(foundation, games, nextsoldier) also runs the groups above it that use
+what changed. The whole suite (`check_lua.sh all`) is the operator's: the
+project's hook (`.devtools/bin/check_lua_gate.py`) refuses it to an agent
+unless the operator asks, with `CHECK_LUA_ALL=1`.
 
 ## The live server: gmod MCP and the dev workbench
 

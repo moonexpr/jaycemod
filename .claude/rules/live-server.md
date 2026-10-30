@@ -18,7 +18,7 @@ RCON, and instead of guessing from the source what the game does.
 
 ## To test a change
 
-Pass the LuaJIT tests first (`.devtools/bin/check_lua.sh`). Then, on the
+Pass the LuaJIT tests first (`.devtools/bin/check_lua.sh --changed`). Then, on the
 server:
 
 1. Load the change with `dev.reload({ files = { "addons/..." } })`, which

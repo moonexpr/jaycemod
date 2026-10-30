@@ -155,9 +155,9 @@ python3 .devtools/bin/ingame_one.py <check>                  # one check on the 
 ```
 
 The checks are `.devtools/bin/ingame/checks/<name>.lua`. `ingame_tests.py`
-writes `.devtools/artifacts/ingame-report-<date>.md`. Run the LuaJIT suite
-first (`.devtools/bin/run_lua_tests.sh`): it is faster and catches most
-things.
+writes `.devtools/artifacts/ingame-report-<date>.md`. Run the LuaJIT suites
+of what changed first (`.devtools/bin/check_lua.sh --changed`): it is faster
+and catches most things.
 
 ## A client on the server
 

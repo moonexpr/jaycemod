@@ -26,7 +26,7 @@ total() {
 	if [ ! -f "$scratch/$1.total" ]; then
 		mkdir "$scratch/$1"
 		git archive "$1" | tar -x -C "$scratch/$1" || exit 2
-		out=$(sh "$scratch/$1/.devtools/bin/check_lua.sh" 2>&1)
+		out=$(sh "$scratch/$1/.devtools/bin/check_lua.sh" all 2>&1)
 		code=$?
 		line=$(echo "$out" | grep -E '^TOTAL [0-9]+ passed, [0-9]+ failed' | tail -1)
 		passed=$(echo "$line" | awk '{ print $2 }')
