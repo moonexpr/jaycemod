@@ -54,6 +54,14 @@ returned data. The steps, the navigation tricks and the indexed dev library
 `.claude/rules/live-server.md`, which `tests/dev_library_index_test.lua`
 holds to the workbench's code.
 
+To keep the server on one map while you work (the map rotation moves it
+on when a round's win conditions or the time limit are met), turn them off
+over RCON: `mp_timelimit 0; mp_winlimit 0; mp_maxrounds 0`. Each map sets
+them again as it loads (`sandcastle_defaults.cfg`, the rounds feature), so
+set them again after any `changelevel`, and a `changelevel` puts the
+rotation back. Others share the dev server: check `game.GetMap()` before
+work that depends on the map.
+
 ## History search
 
 The commit messages and `docs/` hold why the code is the way it is. Before
