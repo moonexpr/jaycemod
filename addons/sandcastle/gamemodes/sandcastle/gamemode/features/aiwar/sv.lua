@@ -25,6 +25,11 @@ local Controller = {
 	slotStore = nil, -- where the slot list is kept between maps (SlotFile, below)
 	hazardStore = nil, -- where the map's nav hazards are kept between loads (HazardFile, below)
 	musterStore = nil, -- where the map's musters are kept between loads (MusterFile, below)
+	roomStore = nil, -- where the map's rooms are kept between loads (RoomFile, below)
+	-- rooms = nil, -- the map's wartactics.rooms partition, read or found when first asked (Rooms)
+	-- roomsFinding = nil, -- the transaction finding them, on the slow lane (Rooms)
+	-- intel = nil, -- team -> its wartactics.intel, what it knows of the enemy by room (Intel)
+	-- nextRoomsDebug = nil, -- when the rooms are next sent to the overlay's viewers (SendRoomsDebug)
 	-- musters = nil, -- Lanes.MusterKey -> where a team's squads muster from that spawn, read from its save when first asked (Muster)
 	paused = false, -- every soldier stands still (ns_soldiers_paused, SetPaused)
 	slotViewers = {}, -- admins whose AI War panel shows the slots -> true
@@ -115,6 +120,18 @@ end
 
 Controller.musterStore = MusterFile
 
+local RoomFile = {}
+
+function RoomFile:Read()
+	return WS.MapData.Read("rooms")
+end
+
+function RoomFile:Write(data)
+	WS.MapData.Write("rooms", data)
+end
+
+Controller.roomStore = RoomFile
+
 Controller.hazardStore = HazardFile
 
 local Part = WS.FeatureParts(getfenv(1), "aiwar")
@@ -129,6 +146,8 @@ Part("sv_bots", Controller, Map)
 Part("sv_speech", Controller)
 Part("sv_gestures", Controller)
 Part("sv_missions", Controller)
+Part("sv_rooms", Controller)
+Part("sv_intel", Controller)
 Part("sv_obstacles", Controller, Map)
 local WATCH_INTERVAL = Part("sv_posts", Controller, Map)
 Part("sv_lanes", Controller, Map)

@@ -309,7 +309,7 @@ features or ws. Tests are `tests/wartactics_<module>_test.lua`.
 | Modules | |
 |---|---|
 | Fire teams and squads | `fireteam` (a fire team's doctrine in a fight, the engine `gameplay.tactics` names), `squad`, `mission` (a squad's mission, the wait for its members by the waves, when it must regroup: `docs/squad-missions-plan.md`) |
-| The field | `lanes`, `posts` (where a line is established), `zone` (the ground behind the setup gates), `explore`, `hunt` (post-round carnage) |
+| The field | `lanes`, `posts` (where a line is established), `zone` (the ground behind the setup gates), `explore`, `hunt` (post-round carnage), `rooms` (the nav mesh's areas grouped into rooms by its shape, and their doors), `intel` (what a team knows of the enemy by room: how strongly held, traffic, support bases) |
 | The war | `scenarios`, `bot_quota` (tf_bot_quota's rules, `docs/aiwar-bots.md`), `tuning` (live tuning of fireteam, lanes and squad), `hazards` (nav areas that keep forcing soldiers to respawn, disabled and saved until inspected) |
 
 | Module | API |

@@ -299,6 +299,7 @@ function Controller:SendDebug(now)
 		if ply.wsAiwarDebug then viewers[#viewers + 1] = ply end
 	end
 	if #viewers == 0 then return end
+	self:SendRoomsDebug(viewers, now)
 	local list = {}
 	for ent, entry in pairs(self.soldiers) do
 		if IsValid(ent) then list[#list + 1] = { ent = ent, entry = entry } end

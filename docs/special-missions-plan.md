@@ -133,6 +133,20 @@ Each ends with its tests green, a live check, a commit and a push.
 7. **Engineers** (`docs/engineers-plan.md`'s steps), then the **remote
    base** on their buildings.
 
+### Done so far
+
+- Steps 1 and 2: `wartactics.rooms`, found by clearance (an area's walk to
+  the nearest area by a wall: open floor over half `DOOR_WIDTH` forms the
+  cores, every other area joins the nearest core, never across a
+  func_door). A first try by shared-edge width failed: a mesh cuts open
+  floor into small areas, so 2,762 "doors" and only 1,006 of 5,410 areas in
+  rooms on `pl_upward`. By clearance: 30 rooms holding 4,819 areas, 232
+  doors, found once in 408 s on the slow lane (2 ms a second) and kept in
+  the map's data; read back in under a millisecond. `wartactics.intel`,
+  fed each second from every soldier's enemy in sight, our losses and the
+  enemy's dead. Both on the overlay's rooms part (`ns_rooms_debug`), and
+  `ns_rooms_print`.
+
 ## 4. Settled with the operator
 
 1. Rooms come from the mesh's shape: a doorway or corridor narrower than

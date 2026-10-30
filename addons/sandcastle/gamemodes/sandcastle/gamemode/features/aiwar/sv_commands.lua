@@ -60,6 +60,10 @@ WarCommand("ns_lanes_print", function()
 	return Controller:LaneReport()
 end, "Print each team's lanes: length against the shortest, overlap, and the squads holding them")
 
+WarCommand("ns_rooms_print", function()
+	return Controller:RoomReport()
+end, "Print the map's rooms (wartactics.rooms): how many, their doors and dead ends, the areas in passages, the largest")
+
 WarCommand("ns_lanes_probe", function()
 	return Controller:ProbeLanes()
 end, "Send a path probe (a soldier's movement, no fighting) along each lane; prints where each stalled when the last is done")

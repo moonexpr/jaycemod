@@ -71,6 +71,24 @@ E.Define("game_nb_debug_mark", {
 	to = E.Optional(E.Vector()),
 })
 
+-- The map's rooms (wartactics.rooms) and what each team knows of them
+-- (wartactics.intel), sent by the aiwar controller every few seconds: each
+-- room's centre and label, and its doors, each with the room it leads to
+-- (0 for none).
+local ROOM_COUNT_BITS, ROOM_ID_BITS, DOOR_COUNT_BITS = 8, 8, 6
+
+E.Define("game_aiwar_rooms", {
+	rooms = E.List(E.Record({
+		id = E.UInt(ROOM_ID_BITS),
+		center = E.Vector(),
+		label = E.String(),
+		doors = E.List(E.Record({
+			pos = E.Vector(),
+			leads = E.UInt(ROOM_ID_BITS),
+		}), DOOR_COUNT_BITS),
+	}), ROOM_COUNT_BITS),
+})
+
 -- The AI war's soldier overlay (AIWAR), sent by the aiwar controller.
 local WAR_COUNT_BITS = 8 -- fire teams, soldiers, route points
 local WAR_SPHERE_COUNT_BITS = 4
