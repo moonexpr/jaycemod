@@ -137,6 +137,36 @@ class TreeTest(unittest.TestCase):
         self.assertEqual(tree.Forks(share=0.3), [], "below that share, only a twig")
 
 
+class BreachesTest(unittest.TestCase):
+    def tree(self, graph, starts):
+        return incursion.Grow(incursion.Incursion(Edges(graph), starts), RED, graph)
+
+    def test_the_fewest_paths_from_the_spawn_covering_the_whole_map_one_a_leaf(self):
+        tree = self.tree(TreeTest.fork(None), [1])
+        self.assertEqual([b.areas for b in incursion.Breaches(tree, 1.0)], [(1, 2, 3, 4), (1, 2, 5)])
+
+    def test_the_path_covering_the_most_comes_first_and_enough_of_them_to_cover_the_share(self):
+        tree = self.tree(TreeTest.fork(None), [1])
+        breaches = incursion.Breaches(tree, 0.8)
+        self.assertEqual([b.areas for b in breaches], [(1, 2, 3, 4)], "4 of 5 floor")
+        self.assertEqual(breaches[0].gain, 4)
+
+    def test_a_later_path_counts_only_the_floor_it_adds(self):
+        tree = self.tree(TreeTest.fork(None), [1])
+        self.assertEqual([b.gain for b in incursion.Breaches(tree, 1.0)], [4, 1], "1 and 2 already covered")
+
+    def test_ground_within_reach_of_a_path_is_covered_by_it(self):
+        tree = self.tree(TreeTest.fork(None), [1])
+        near = incursion.Near(Edges(TreeTest.fork(None)), reach=1.5 * CELL)
+        breaches = incursion.Breaches(tree, 1.0, near)
+        self.assertEqual([b.areas for b in breaches], [(1, 2, 3, 4)], "5 lies within reach of 2: one path does")
+        self.assertEqual(breaches[0].gain, 5)
+
+    def test_each_spawn_starts_its_own_paths(self):
+        graph = Floors(Line())
+        self.assertEqual([b.areas for b in incursion.Breaches(self.tree(graph, [1, 5]), 1.0)], [(1, 2, 3), (5, 4)])
+
+
 class TrafficTest(unittest.TestCase):
     def test_traffic_counts_the_routes_through_each_area_by_team(self):
         # BLU spawns at 5 and at 6 beside it; both of RED's routes come through 2-4

@@ -121,6 +121,65 @@ def Grow(field: Field, team: str, graph: dict) -> Tree:
 
 
 @dataclass(frozen=True)
+class Breach:
+    areas: tuple      # from a spawn along the tree to a leaf
+    gain: float       # the floor it covers that the breaches before it did not
+
+
+def Near(edges: dict, reach: float) -> dict:
+    """The ground within reach of each area: area id -> the areas its walk reaches within reach, itself
+    included."""
+    near = {}
+    for area in edges:
+        distance, heap = {area: 0.0}, [(0.0, area)]
+        while heap:
+            d, node = heapq.heappop(heap)
+            if d > distance[node]:
+                continue
+            for step in edges[node]:
+                nd = d + step.cost
+                if nd <= reach and nd < distance.get(step.to, math.inf):
+                    distance[step.to] = nd
+                    heapq.heappush(heap, (nd, step.to))
+        near[area] = frozenset(distance)
+    return near
+
+
+def Breaches(tree: Tree, cover: float, near: dict = None) -> list:
+    """The fewest paths from the team's spawns, along its tree, covering at least cover (a share) of the
+    floor it reaches, the one covering most first: maximum coverage. Each candidate runs from a spawn to
+    a leaf; a path covers its areas and, given near (Near), the ground within reach of them. Paths are
+    taken greedily by the floor each adds, lazily (a path's gain only falls as others are taken); with no
+    reach this is exact on a tree (the long-path decomposition), with one within 1 - 1/e of the best."""
+    own = {a: w - sum(tree.weight[k] for k in tree.children[a]) for a, w in tree.weight.items()}
+    total = sum(own.values())
+
+    def Lead(leaf):
+        path = [leaf]
+        while path[-1] in tree.parent:
+            path.append(tree.parent[path[-1]])
+        return tuple(reversed(path))
+
+    candidates = [Lead(a) for a, kids in tree.children.items() if not kids]
+    ground = [frozenset().union(*((near or {}).get(a, {a}) for a in path)) & own.keys() for path in candidates]
+    covered, chosen, gained = set(), [], 0.0
+    heap = [(-sum(own[a] for a in g), path, i) for i, (path, g) in enumerate(zip(candidates, ground))]
+    heapq.heapify(heap)
+    while heap and gained < cover * total:
+        _, path, i = heapq.heappop(heap)
+        gain = sum(own[a] for a in ground[i] - covered)
+        if heap and gain < -heap[0][0]:
+            heapq.heappush(heap, (-gain, path, i))
+            continue
+        if gain <= 0:
+            break
+        chosen.append(Breach(path, gain))
+        covered |= ground[i]
+        gained += gain
+    return chosen
+
+
+@dataclass(frozen=True)
 class Route:
     team: str
     areas: tuple      # from the team's spawn to the enemy's spawn area

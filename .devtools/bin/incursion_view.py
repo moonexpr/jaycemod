@@ -15,8 +15,11 @@ each side reaches first, and the rooms and corridors the most routes cross.
 Beside it, <map>.tree.png draws each team's incursion tree (incursion.Grow)
 in a row of its own: every area joined to the one the team's walk reaches
 it from, wider the more floor is reached through it, the forks where a
-branch splits into ways each reaching FORK_SHARE of the map ringed; the
-summary names the forks and the shares of their ways.
+branch splits into ways each reaching FORK_SHARE of the map ringed, and
+over it the team's breaching paths (incursion.Breaches): the fewest paths
+from its spawns along the tree covering COVER_SHARE of the map, ground
+within COVER_REACH of a path tinted, each numbered at its end in the
+order taken; the summary names the forks and each breach's end and gain.
 """
 import argparse
 import statistics
@@ -192,18 +195,26 @@ def Summary(dump, found, fields, routes, side) -> list:
     return lines
 
 
-TREE_MIN, TREE_MAX = 1, 14
+TREE_MIN, TREE_MAX = 1, 10
+# The breaching paths: the fewest from a team's spawns covering COVER_SHARE
+# of the map, an area covered within COVER_REACH (about a room's depth) of
+# a path's.
+COVER_SHARE, COVER_REACH = 0.9, 256
+BREACH_WIDTH = 4
+COVERED_FILL = {"RED": (255, 226, 226), "BLU": (226, 234, 255)}
 # A fork: a branch splitting into ways each carrying a tenth of the tree's floor.
 FORK_SHARE = 0.1
 FORK_RADIUS = 7
-TREE_KEY = [("branch", "each area joined to the one its team's walk reaches it from; wider, the more floor is "
+TREE_KEY = [("breach", f"the fewest paths from the spawns along the tree covering {COVER_SHARE:.0%} of the map, "
+             f"numbered at their ends in the order taken; ground within {COVER_REACH} units of one is tinted", None),
+            ("branch", "pale: each area joined to the one its team's walk reaches it from; wider, the more floor is "
              "reached through it (the square root of its share)", None),
             ("fork", f"where a branch splits into ways each reaching {FORK_SHARE:.0%} of the map or more", None),
             ("spawn areas", "the tree's roots, dark in the team's colour", None)]
 
 
-def DrawTrees(dump, found, trees: dict, out: Path) -> None:
-    """Each team's tree in a row of its own, one panel a level."""
+def DrawTrees(dump, found, trees: dict, breaches: dict, covered: dict, out: Path) -> None:
+    """Each team's tree in a row of its own, one panel a level, its breaching paths over it."""
     count = max(found.levels, 1)
     x0, x1, y0, y1, scale = rooms_view.Frame(dump.areas)
     w, h = int((x1 - x0) * scale) + 2 * MARGIN, rooms_view.PanelHeight(dump.areas)
@@ -239,7 +250,8 @@ def DrawTrees(dump, found, trees: dict, out: Path) -> None:
                 continue
             level = levels[area.id]
             box = [At(level, area.lo[0], area.hi[1]), At(level, area.hi[0], area.lo[1])]
-            pen.rectangle(box, fill=(250, 250, 250) if area.id in tree.weight else UNREACHED, outline=AREA_EDGE)
+            fill = COVERED_FILL[team] if area.id in covered[team] else (250, 250, 250)
+            pen.rectangle(box, fill=fill if area.id in tree.weight else UNREACHED, outline=AREA_EDGE)
             space = found.region[area.id]
             if found.rooms.get(space.id) is space:
                 (ax, ay), (bx, by) = box
@@ -262,11 +274,24 @@ def DrawTrees(dump, found, trees: dict, out: Path) -> None:
             width = round(TREE_MIN + (TREE_MAX - TREE_MIN) * (tree.weight[area] / total) ** 0.5)
             start, middle, end = Centre(parent), Middle(parent, area), Centre(area)
             if levels[area] == levels[parent]:
-                pen.line([At(levels[area], x, y) for x, y in Bezier(start, middle, end)], fill=TEAM_LINE[team],
+                pen.line([At(levels[area], x, y) for x, y in Bezier(start, middle, end)], fill=OPTION_LINE[team],
                          width=width, joint="curve")
             else:
-                pen.line([At(levels[parent], *start), At(levels[parent], *middle)], fill=TEAM_LINE[team], width=width)
-                pen.line([At(levels[area], *middle), At(levels[area], *end)], fill=TEAM_LINE[team], width=width)
+                pen.line([At(levels[parent], *start), At(levels[parent], *middle)], fill=OPTION_LINE[team],
+                         width=width)
+                pen.line([At(levels[area], *middle), At(levels[area], *end)], fill=OPTION_LINE[team], width=width)
+        for number, breach in enumerate(breaches[team], 1):
+            for before, area, after in Pieces(breach.areas):
+                if area not in levels:
+                    continue
+                start = Middle(before, area) if before is not None else Centre(area)
+                end = Middle(area, after) if after is not None else Centre(area)
+                pen.line([At(levels[area], x, y) for x, y in Bezier(start, Centre(area), end)], fill=TEAM_LINE[team],
+                         width=BREACH_WIDTH, joint="curve")
+            leaf = breach.areas[-1]
+            if leaf in levels:
+                pen.text(At(levels[leaf], *Centre(leaf)), str(number), fill=(0, 0, 0), font=font, anchor="mm",
+                         stroke_width=2, stroke_fill=(255, 255, 255))
         for aid in tree.Forks(FORK_SHARE):
             if aid in levels:
                 x, y = At(levels[aid], *Centre(aid))
@@ -276,9 +301,12 @@ def DrawTrees(dump, found, trees: dict, out: Path) -> None:
     pen.text((MARGIN, key_top + 4), "Key: one tree a team, from its spawns", fill=(0, 0, 0), font=font)
     for i, (name, means, _) in enumerate(TREE_KEY):
         y = key_top + TITLE + i * KEY_LINE
-        if name == "branch":
-            pen.line([(MARGIN, y + 8), (MARGIN + 14, y + 8)], fill=TEAM_LINE["RED"], width=6)
-            pen.line([(MARGIN + 14, y + 8), (MARGIN + 28, y + 8)], fill=TEAM_LINE["BLU"], width=2)
+        if name == "breach":
+            pen.line([(MARGIN, y + 8), (MARGIN + 14, y + 8)], fill=TEAM_LINE["RED"], width=BREACH_WIDTH)
+            pen.line([(MARGIN + 14, y + 8), (MARGIN + 28, y + 8)], fill=TEAM_LINE["BLU"], width=BREACH_WIDTH)
+        elif name == "branch":
+            pen.line([(MARGIN, y + 8), (MARGIN + 14, y + 8)], fill=OPTION_LINE["RED"], width=6)
+            pen.line([(MARGIN + 14, y + 8), (MARGIN + 28, y + 8)], fill=OPTION_LINE["BLU"], width=2)
         elif name == "fork":
             pen.ellipse([MARGIN + 7, y + 1, MARGIN + 21, y + 15], outline=(0, 0, 0), width=2)
         else:
@@ -288,7 +316,7 @@ def DrawTrees(dump, found, trees: dict, out: Path) -> None:
     image.save(out)
 
 
-def TreeSummary(found, trees: dict) -> list:
+def TreeSummary(found, trees: dict, breaches: dict) -> list:
     """Each tree's forks, by the room or corridor each stands in."""
     def Name(aid):
         space = found.region.get(aid)
@@ -306,6 +334,12 @@ def TreeSummary(found, trees: dict) -> list:
             forks.append(f"{Name(aid)} ({' / '.join(f'{s:.0%}' for s in ways)})")
         lines.append(f"{team}'s tree: {len(tree.weight)} areas from {len(tree.roots)} spawn areas; forks: "
                      + (", ".join(forks) or "none"))
+        mine = breaches[team]
+        shares = []
+        for breach in mine:
+            shares.append(breach.gain / total)
+        ends = ", ".join(f"{i} to {Name(b.areas[-1])} +{s:.0%}" for i, (b, s) in enumerate(zip(mine, shares), 1))
+        lines.append(f"{team}'s breaches: {len(mine)} paths cover {sum(shares):.0%} (within {COVER_REACH}): {ends}")
     return lines
 
 
@@ -322,9 +356,12 @@ def main() -> int:
     out = args.graph.with_name(f"{dump.map}.incursion.png")
     Draw(dump, found, fields, routes, side, out)
     trees = {team: incursion.Grow(field, team, dump.graph) for team, field in fields.items()}
+    near = incursion.Near(edges, COVER_REACH)
+    breaches = {team: incursion.Breaches(tree, COVER_SHARE, near) for team, tree in trees.items()}
+    covered = {team: {c for b in found_ for a in b.areas for c in near[a]} for team, found_ in breaches.items()}
     tree_out = args.graph.with_name(f"{dump.map}.tree.png")
-    DrawTrees(dump, found, trees, tree_out)
-    print("\n".join(Summary(dump, found, fields, routes, side) + TreeSummary(found, trees)))
+    DrawTrees(dump, found, trees, breaches, covered, tree_out)
+    print("\n".join(Summary(dump, found, fields, routes, side) + TreeSummary(found, trees, breaches)))
     print(out)
     print(tree_out)
     return 0
