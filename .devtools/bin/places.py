@@ -2,8 +2,10 @@
 
 Occupation is then only the spawns, so the starting classes come from the
 room graph alone. Each team's ways run from its spawn rooms to every
-objective (to the enemy's spawns on a map with none), the shortest over the
-graph: the traffic it is expected to bring. A room is
+objective (to the enemy's spawns on a map with none), every route through
+the graph at most ROUTE_SLACK longer than the shortest: the traffic it is
+expected to bring. A route passes through a room, in by one door and out by
+another, so a dead end beside a way is on none. A room is
 
 - RESTRICTED (a team's): its spawn rooms, and the rooms the enemy reaches
   only through them, but only where every door out of them is sealed by a
@@ -44,6 +46,10 @@ COMMONS, UNOCCUPIED, WILDS = "commons", "unoccupied", "wilds"
 # visualizer whose box, grown by SEAL_REACH, holds it: a door is where two
 # nav areas meet, up to about an area's depth from the brush.
 HIGHWAY_SHARE, FAR_SHARE, SEAL_REACH = 2 / 3, 0.75, 128
+# A way is every route from the spawn to the target at most ROUTE_SLACK
+# longer than the shortest: players take the bridge as well as the tunnel.
+# ROUNDING lets the shortest itself through, its length summed two ways.
+ROUTE_SLACK, ROUNDING = 0.1, 1e-9
 BUILDING, GROUNDS = "building", "grounds"
 # The middle of a building joining both teams' spawns, no one's: the rooms
 # whose walks from the two spawns differ by no more than a fifth of the walk
@@ -106,6 +112,30 @@ def Walk(edges: dict, starts: list, admit=lambda key: True) -> tuple:
                 heapq.heappush(heap, (nd, order, to))
                 order += 1
     return distance, parent
+
+
+def Reversed(edges: dict) -> dict:
+    """The edges turned round: node -> [(from, length, door's pos)], to walk back from a target."""
+    back = {key: [] for key in edges}
+    for key, out in edges.items():
+        for to, length, pos in out:
+            back[to].append((key, length, pos))
+    return back
+
+
+def Way(edges: dict, start: dict, back: dict, target) -> set:
+    """The nodes a way to target passes through: start is the walk from the spawns. A node is on it when a
+    route through it, in by one door and out by another to a different node, is at most ROUTE_SLACK longer
+    than the shortest; a dead end, gone in and out of, is on none."""
+    to_target, _ = Walk(back, [target])
+    budget = (1 + ROUTE_SLACK + ROUNDING) * start[target]
+    on = {target} | {key for key, d in start.items() if d == 0}
+    for node, out in edges.items():
+        ins = sorted((start[a] + length, a) for a, length, _ in back[node] if a in start)[:2]
+        outs = sorted((length + to_target[b], b) for b, length, _ in out if b in to_target)[:2]
+        if any(a != b and i + o <= budget for i, a in ins for o, b in outs):
+            on.add(node)
+    return on
 
 
 def Sealed(pos: tuple, seals: list) -> bool:
@@ -195,9 +225,7 @@ def Start(rooms: list, passages: list, spawns: dict, objectives: list, seals: li
     teams = sorted(spawns)
     objective = {("room", rid) for rid in objectives if ("room", rid) in edges}
     home = {t: [key for key in spawns[t] if key in edges] for t in teams}
-    reach, parents = {}, {}
-    for t in teams:
-        reach[t], parents[t] = Walk(edges, home[t])
+    reach = {t: Walk(edges, home[t])[0] for t in teams}
     restricted = {}
     for t in teams:
         own, ground = set(home[t]), set()
@@ -211,7 +239,7 @@ def Start(rooms: list, passages: list, spawns: dict, objectives: list, seals: li
         for key in Enclosed(edges, ground, seals):
             if key[0] == "room":
                 restricted[key] = t
-    flow = {t: {} for t in teams}
+    flow, back = {t: {} for t in teams}, Reversed(edges)
     ways, team_ways, separation = 0, {t: 0 for t in teams}, math.inf
     for t in teams:
         enemies = [e for e in teams if e != t]
@@ -221,10 +249,8 @@ def Start(rooms: list, passages: list, spawns: dict, objectives: list, seals: li
                 continue
             ways += 1
             team_ways[t] += 1
-            node = target
-            while node is not None:
+            for node in Way(edges, reach[t], back, target):
                 flow[t][node] = flow[t].get(node, 0) + 1
-                node = parents[t].get(node)
         for e in enemies:
             for key in home[e]:
                 separation = min(separation, reach[t].get(key, math.inf))

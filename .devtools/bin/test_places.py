@@ -140,6 +140,20 @@ class StartTest(unittest.TestCase):
         self.assertEqual(crossing().start(SPAWNS, [3, 9])[10].cls, places.COMMONS, "on half the ways")
         self.assertEqual(crossing().start(SPAWNS, [9])[10].cls, places.HIGHWAY, "on every way to the one objective")
 
+    def test_a_way_nearly_as_short_as_the_shortest_is_a_way_too(self):
+        # Two ways between the bases: a tunnel (3) and, a little longer, a bridge (2) nearer BLU's side
+        m = Map()
+        m.room(1, 0).room(5, 4).room(3, 2, -0.9).room(2, 2.1, 1, outdoor=True)
+        for a, b in ((1, 3), (3, 5), (1, 2), (2, 5)):
+            m.door(a, b)
+        c = m.start(SPAWNS, [])
+        self.assertIn(c[2].cls, (places.COMMONS, places.HIGHWAY), "both teams cross the bridge")
+        self.assertIn(c[3].cls, (places.COMMONS, places.HIGHWAY), "and the tunnel")
+
+    def test_a_dead_end_beside_a_way_is_on_no_way(self):
+        c = Line().room(9, 2, 0.4, outdoor=True).door(3, 9).start(SPAWNS, [3])
+        self.assertEqual(c[9].cls, places.WILDS, "a nook off the yard, however near the way")
+
     def test_a_room_on_most_of_one_teams_ways_not_its_own_ground_is_a_highway(self):
         c = Line().start(SPAWNS, [2])  # the objective by RED's spawn: BLU comes all the way across
         self.assertEqual(c[3].cls, places.HIGHWAY, "on BLU's every way, as near RED as BLU")

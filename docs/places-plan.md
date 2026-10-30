@@ -181,8 +181,14 @@ The classes a round starts with are computed today by the tooling, in
 Python (`.devtools/bin/places.py`, drawn by `rooms_view.py`, tests in
 `test_places.py`): occupation is then the spawns alone, each team's ways
 run from its spawns to the objectives (to the enemy's spawns on a map with
-none), and no room is an outpost. The game's own, in Lua (wartactics), is
-to follow.
+none), and no room is an outpost. A way is every route at most a tenth
+longer than the shortest (`ROUTE_SLACK`), passing through each room it
+counts, in by one door and out by another: on ctf_2fort RED's way over the
+bridge to BLU's intel is 3% longer than the one through the basements, and
+on the one shortest only BLU's crossed it, so the bridge was BLU's
+stronghold, not commons. `places_diff.py` lists the rooms whose class a
+change to the rules moves. The game's own, in Lua (wartactics), is to
+follow.
 
 The measures behind them (§2.1) stay available for queries beside the
 class: a room's ways and entries, its depth (a dead end), its flow and
