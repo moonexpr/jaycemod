@@ -150,11 +150,13 @@ Each is a kind, its choice in the request, and its leading in the orders:
 - **Topple a support base**: the enemy's turrets, dispensers and medics, as
   sighted. Needs the same reports.
 
-## 7. Questions for the operator
+## 7. Settled with the operator
 
-1. Does a squad wait at the muster spot only after spawning, or also after
-   a regroup? This plan waits after both, but after a regroup only for
-   members already alive.
-2. Heavy casualties: half the mission's size (`CASUALTY_SHARE = 0.5`)?
-3. Do members waiting with the leader take their battle stance (a crouch)
-   or stand?
+1. A squad waits after spawning and after a regroup. After spawning, it
+   waits for the next wave and the walk from spawn (`Wait`). After a
+   regroup, it waits only for members still alive to reach the hiding
+   spot, never for respawns.
+2. Heavy casualties are half the mission's size: `CASUALTY_SHARE = 0.5`.
+3. Members waiting with the leader take their battle stance (the crouch,
+   `Pose`) and announce it, as in setup. The seated stances replace it
+   once spawn rooms are known.
