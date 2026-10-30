@@ -199,11 +199,22 @@ end
 
 function ENT:Linger(seconds) self.nsLinger = math.max(self.nsLinger or 0, seconds) end
 
+-- Dying, its body plays sequence once, from the start, as its last (a canned
+-- death), and nothing else; the sequence's length in seconds.
+function ENT:DeathSequence(sequence)
+	self.nsDeathSequence = sequence
+	self:ResetSequence(sequence)
+	self:SetCycle(0)
+	self:SetPlaybackRate(1)
+	return self:SequenceDuration(sequence)
+end
+
 -- Begins again (TF2's INextBot::Reset): alive, its senses, enemy, path and
 -- scramble cleared.
 function ENT:Reset()
 	self.nsAlive = true
 	self.nsEnemy, self.nsScramble, self.nsPath, self.nsAttacker = nil, nil, nil, nil
+	self.nsDeathSequence = nil
 	self.nsVision = Vision.New(VISION)
 	self.nsNextLook = 0
 end
@@ -445,8 +456,13 @@ function ENT:HoldAct(prefix)
 end
 
 -- Its animation each tick: the class's (OnUpdateAnimation -> act, rate),
--- else its own; moving, its feet keep to its speed.
+-- else its own; moving, its feet keep to its speed. A death sequence plays
+-- out alone.
 function ENT:BodyUpdate()
+	if self.nsDeathSequence then
+		self:FrameAdvance()
+		return
+	end
 	self:AimUpdate()
 	local act, rate = self:OnUpdateAnimation()
 	if act == nil then act, rate = self:DefaultAnimation() end

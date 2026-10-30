@@ -71,6 +71,7 @@ function WS.WarSoldier(ENT)
 	ENT.WSSoldier = true -- on both realms: the NPC context menu offers its trace
 	if CLIENT then return end
 	local Ragdoll = WS.require("ws.ragdoll")
+	local Gestures = nextsoldier.gestures
 	local Voices = WS.require("ws.voices")
 	local HL2Path = WS.require("foundation.wetsands.path.hl2")
 	local Leap = nextsoldier.leap
@@ -714,8 +715,28 @@ function WS.WarSoldier(ENT)
 		return true
 	end
 
+	-- A crit's death (DMG_CRITICAL, DMG_ACID's bit) is canned: the body
+	-- plays one of the player model's deaths (nextsoldier.gestures' Death),
+	-- not solid, and is handed to the clients' ragdolls where it ends. A
+	-- body that leaves none, or a model with no such death, falls at once.
+	function ENT:NSCannedDeath(dmg)
+		local death = Gestures.Death(dmg:IsDamageType(DMG_ACID), math.random)
+		local sequence = death and self:LookupSequence(death) or -1
+		if sequence < 0 or not self.DeathSequence then return false end
+		if not Ragdoll.LeavesBody(self:IsFlagSet(FL_DISSOLVING), dmg:IsDamageType(DMG_REMOVENORAGDOLL)) then return false end
+		self:SetNotSolid(true)
+		self.NSTarget = nil
+		local length = self:DeathSequence(sequence)
+		timer.Simple(length, function()
+			if IsValid(self) then WS.SendClientRagdoll(self, vector_origin) end
+		end)
+		self:Linger(length + Ragdoll.HANDOFF)
+		return true
+	end
+
 	function ENT:OnDeath(dmg)
 		WS.PlayDeath(self:GetPos(), self.NSVoiceLines)
+		if self:NSCannedDeath(dmg) then return end
 		if self:NSClientRagdoll(dmg) then self:Linger(Ragdoll.HANDOFF) end
 	end
 end
