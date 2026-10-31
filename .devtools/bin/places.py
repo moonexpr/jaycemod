@@ -216,6 +216,28 @@ def Places(rooms: list, passages: list, spawns: dict) -> list:
     return [Place(i + 1, kind, owner, frozenset(members)) for i, (members, kind, owner) in enumerate(sorted(found))]
 
 
+def Restricted(edges: dict, home: dict, seals: list) -> dict:
+    """Each team's restricted rooms: room key -> team. home: team -> the nodes its spawns take. A team's
+    spawn rooms and the rooms the enemy reaches only through them, where every door out of them is sealed
+    by a visualizer (seals)."""
+    teams = sorted(home)
+    restricted = {}
+    for t in teams:
+        reach, _ = Walk(edges, home[t])
+        own, ground = set(home[t]), set()
+        for enemy in teams:
+            if enemy == t:
+                continue
+            open_ground, _ = Walk(edges, home[enemy], lambda key: key not in own)
+            for key in edges:
+                if key in reach and (key in own or key not in open_ground):
+                    ground.add(key)
+        for key in Enclosed(edges, ground, seals):
+            if key[0] == "room":
+                restricted[key] = t
+    return restricted
+
+
 def Start(rooms: list, passages: list, spawns: dict, objectives: list, seals: list) -> dict:
     """Each room's class when a round starts: room id -> Placed. spawns: team -> the nodes its spawns
     take, ("room", id) and ("passage", id) for a corridor inside a spawn; seals: the respawn room
@@ -226,19 +248,7 @@ def Start(rooms: list, passages: list, spawns: dict, objectives: list, seals: li
     objective = {("room", rid) for rid in objectives if ("room", rid) in edges}
     home = {t: [key for key in spawns[t] if key in edges] for t in teams}
     reach = {t: Walk(edges, home[t])[0] for t in teams}
-    restricted = {}
-    for t in teams:
-        own, ground = set(home[t]), set()
-        for enemy in teams:
-            if enemy == t:
-                continue
-            open_ground, _ = Walk(edges, home[enemy], lambda key: key not in own)
-            for key in edges:
-                if key in reach[t] and (key in own or key not in open_ground):
-                    ground.add(key)
-        for key in Enclosed(edges, ground, seals):
-            if key[0] == "room":
-                restricted[key] = t
+    restricted = Restricted(edges, home, seals)
     flow, back = {t: {} for t in teams}, Reversed(edges)
     ways, team_ways, separation = 0, {t: 0 for t in teams}, math.inf
     for t in teams:

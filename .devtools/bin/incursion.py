@@ -123,6 +123,7 @@ class Tree:
     parent: dict      # area id -> the area it is reached from (a root has none)
     children: dict    # area id -> the areas reached from it, ascending
     weight: dict      # area id -> the floor of it and of everything reached through it
+    distance: dict    # area id -> the walk to it from the nearest spawn
 
     def Forks(self, share: float) -> list:
         """The areas where a branch splits into ways each carrying at least share of the tree's floor."""
@@ -142,7 +143,7 @@ def Grow(field: Field, team: str, graph: dict) -> Tree:
     for area in reversed(reached):
         weight[area] = graph[area]["floor"] + sum(weight[k] for k in children[area])
     return Tree(team, tuple(sorted(a for a in reached if a not in field.parent)), dict(field.parent),
-                {a: tuple(sorted(k)) for a, k in children.items()}, weight)
+                {a: tuple(sorted(k)) for a, k in children.items()}, weight, dict(field.distance))
 
 
 @dataclass(frozen=True)
