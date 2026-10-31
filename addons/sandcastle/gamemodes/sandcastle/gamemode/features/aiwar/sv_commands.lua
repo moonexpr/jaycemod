@@ -64,6 +64,10 @@ AdminCommand("ns_rooms_print", function()
 	return Controller:RoomReport()
 end, "Print the map's rooms (wartactics.rooms): how many, their doors and ways outside, the areas in no room, the largest")
 
+AdminCommand("ns_classes_print", function()
+	return Controller:ClassReport()
+end, "Print the map's room classes from the incursion (wartactics.classes): the highways, the junctions, and each team's tree, breaching paths and ambush markings")
+
 AdminCommand("ns_rooms_find", function()
 	return { string.format("ns_rooms_find: found in %.2f s", Controller:FindRoomsNow()), unpack(Controller:RoomReport()) }
 end, "Find the map's rooms now, at once (the server stops meanwhile), and keep them: for tuning on a bench map")
