@@ -50,6 +50,20 @@ Every result is plain Lua tables, the native work done in one call.
    markings.
 6. Lanes on the spanning tree: a later plan.
 
+## Done
+
+Steps 1 to 4 (2026-10-30): `paths.rs` and its binding, the stub and its
+native-pass tests; `wartactics.incursion` (native-pass tests),
+`wartactics.classes` (the stages over the spaces in both passes, the
+gradient and junctions native) and `wartactics.ambush` (both passes);
+`features/aiwar/sv_classes.lua` and `ns_classes_print`. Step 5: the
+rooms overlay (game_aiwar_rooms) carries each room's class, team and
+gradient, each team's tree as branches, the junctions and the ambush
+markings; `cl_rooms.lua` colours the rooms by class and draws the rest. A map change
+loads a rebuilt `gmsv_foundation_win64.dll` (`cargo xwin build --release
+--target x86_64-pc-windows-msvc`, which `server_root.py` links into the
+server's `lua/bin`); no restart was needed.
+
 ## Open
 
 - The Lua oracle of `graph.paths`, should clients ever need it.

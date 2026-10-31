@@ -373,6 +373,9 @@ end
 
 local function V(p) return Vector(p.x, p.y, p.z) end
 
+-- A room's place in the overlay before the classes are found.
+local UNCLASSED = { class = "", team = 0, gradient = 0 }
+
 local function Sent(connections)
 	local sent = {}
 	for j = 1, math.min(#connections, DOORS_MAX) do
@@ -387,18 +390,28 @@ function Controller:SendRoomsDebug(viewers, now)
 	self.nextRoomsDebug = now + ROOMS_DEBUG_INTERVAL
 	local partition = self:Rooms()
 	if not partition then return end
+	local classes = self:ClassesDebug()
 	local rooms, passages = {}, {}
 	for i = 1, math.min(#partition.rooms, ROOMS_MAX) do
 		local room = partition.rooms[i]
+		local placed = classes and classes.rooms[room.id] or UNCLASSED
+		local label = self:RoomLabel(room, now)
+		if placed.class ~= "" then
+			label = label .. "; " .. placed.class .. (TEAM_TAG[placed.team] and " " .. TEAM_TAG[placed.team] or "")
+				.. ((placed.class == "stronghold" or placed.class == "commons") and string.format(" %.2f", placed.gradient / 100) or "")
+		end
 		rooms[i] = { id = room.id, center = V(room.center), lo = V(room.lo), hi = V(room.hi), outdoor = room.outdoor,
-			label = self:RoomLabel(room, now), doors = Sent(room.doors), windows = Sent(room.windows) }
+			label = label, doors = Sent(room.doors), windows = Sent(room.windows), class = placed.class,
+			team = placed.team, gradient = placed.gradient }
 	end
 	for i = 1, math.min(#partition.passages, ROOMS_MAX) do
 		local passage = partition.passages[i]
 		passages[i] = { lo = V(passage.lo), hi = V(passage.hi),
 			label = string.format("%s %d: joins %s", passage.kind, passage.id, table.concat(passage.joins, ", ")) }
 	end
-	WS.Events.Fire("game_aiwar_rooms", { rooms = rooms, passages = passages }, viewers)
+	WS.Events.Fire("game_aiwar_rooms", { rooms = rooms, passages = passages,
+		branches = classes and classes.branches or {}, junctions = classes and classes.junctions or {},
+		ambushes = classes and classes.ambushes or {} }, viewers)
 end
 
 -- ns_rooms_print's lines: how many rooms of each kind, indoors and out, the

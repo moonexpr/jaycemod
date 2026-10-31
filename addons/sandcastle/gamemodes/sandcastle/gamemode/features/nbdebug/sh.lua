@@ -76,7 +76,15 @@ E.Define("game_nb_debug_mark", {
 -- room's block (its areas' extent), centre and label, whether it is
 -- outdoors, and its doors and windows, each with the room it leads to (0
 -- for none); and the corridors between them, each its block and label.
+-- Once the room classes are found (the controller's Classes, from the
+-- incursion): each room's class ("" until then), its team (0 for none) and
+-- its gradient (a percent, 100 at its team's buildings, 0 on the
+-- highways); each team's tree over the rooms, a branch from the entry of
+-- each space to the entry of the one its walk enters it from; the
+-- junctions' blocks; and the ambush markings, each a hiding spot of a
+-- team's and the entrance it covers.
 local ROOM_COUNT_BITS, ROOM_ID_BITS, DOOR_COUNT_BITS = 8, 8, 6
+local BRANCH_COUNT_BITS, JUNCTION_COUNT_BITS, AMBUSH_COUNT_BITS = 10, 6, 8
 
 local Connection = E.Record({
 	pos = E.Vector(),
@@ -93,12 +101,18 @@ E.Define("game_aiwar_rooms", {
 		label = E.String(),
 		doors = E.List(Connection, DOOR_COUNT_BITS),
 		windows = E.List(Connection, DOOR_COUNT_BITS),
+		class = E.String(),
+		team = E.Team(),
+		gradient = E.UInt(7),
 	}), ROOM_COUNT_BITS),
 	passages = E.List(E.Record({
 		lo = E.Vector(),
 		hi = E.Vector(),
 		label = E.String(),
 	}), ROOM_COUNT_BITS),
+	branches = E.List(E.Record({ team = E.Team(), from = E.Vector(), to = E.Vector() }), BRANCH_COUNT_BITS),
+	junctions = E.List(E.Record({ lo = E.Vector(), hi = E.Vector() }), JUNCTION_COUNT_BITS),
+	ambushes = E.List(E.Record({ team = E.Team(), spot = E.Vector(), via = E.Vector() }), AMBUSH_COUNT_BITS),
 })
 
 -- The AI war's soldier overlay (AIWAR), sent by the aiwar controller.

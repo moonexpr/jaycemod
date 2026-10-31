@@ -267,3 +267,58 @@ function Controller:ClassReport()
 	end
 	return lines
 end
+
+-- The overlay's part of them (the game_aiwar_rooms event, features/nbdebug/
+-- sh.lua), or nil until found: by room id its class, team (the game's
+-- number, 0 for none) and gradient (a percent); each team's tree as
+-- branches between the entries of its spaces; the junctions' blocks; the
+-- ambush markings, a spot and the entrance it covers. Capped at what the
+-- event carries.
+local TEAM_ID = { RED = WS.TEAM_RED, BLU = WS.TEAM_BLUE }
+local BRANCHES_MAX, JUNCTIONS_MAX, AMBUSHES_MAX = 1023, 63, 255
+
+local function Centre(id)
+	local area = navmesh.GetNavAreaByID(id)
+	return IsValid(area) and area:GetCenter() or nil
+end
+
+local function V(p) return Vector(p.x, p.y, p.z) end
+
+function Controller:ClassesDebug()
+	local found = self:Classes()
+	if not found then return nil end
+	local rooms = {}
+	for room, placed in pairs(found.classed) do
+		rooms[room.id] = { class = placed.cls, team = TEAM_ID[placed.team] or 0,
+			gradient = math.Round(math.Clamp(placed.gradient, 0, 1) * 100) }
+	end
+	local branches = {}
+	for _, team in ipairs(Teams(found.trees)) do
+		local tree = found.trees[team]
+		for space, up in pairs(tree.parent) do
+			local from, to = Centre(tree.entry[up]), Centre(tree.entry[space])
+			if from and to and #branches < BRANCHES_MAX then
+				branches[#branches + 1] = { team = TEAM_ID[team], from = from, to = to }
+			end
+		end
+	end
+	local junctions = {}
+	for i = 1, math.min(#found.junctions, JUNCTIONS_MAX) do
+		local lo, hi
+		for _, id in ipairs(found.junctions[i].areas) do
+			local area = navmesh.GetNavAreaByID(id)
+			if IsValid(area) then
+				local e = area:GetExtentInfo()
+				lo = lo and Vector(math.min(lo.x, e.lo.x), math.min(lo.y, e.lo.y), math.min(lo.z, e.lo.z)) or e.lo
+				hi = hi and Vector(math.max(hi.x, e.hi.x), math.max(hi.y, e.hi.y), math.max(hi.z, e.hi.z)) or e.hi
+			end
+		end
+		if lo then junctions[#junctions + 1] = { lo = lo, hi = hi } end
+	end
+	local ambushes = {}
+	for i = 1, math.min(#found.ambushes, AMBUSHES_MAX) do
+		local mark = found.ambushes[i]
+		ambushes[i] = { team = TEAM_ID[mark.team], spot = V(mark.spot.pos), via = V(mark.entrance.via) }
+	end
+	return { rooms = rooms, branches = branches, junctions = junctions, ambushes = ambushes }
+end
