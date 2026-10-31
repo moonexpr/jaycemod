@@ -50,11 +50,16 @@ local STEP_HEIGHT, SAFE_DROP = 18, 300
 local FOOTING_ABOVE, FOOTING_BELOW = Vector(0, 0, STEP_HEIGHT), Vector(0, 0, 2 * STEP_HEIGHT)
 local JUMP_PENALTY = 2
 
--- A goal off the mesh (a guard's spot on a ring round its charge that falls
--- in or behind a wall) is walked to as the first point on the mesh along the
--- line back from it toward the bot, looked for OFF_MESH_STEP apart: else the
--- bot presses into the wall for as long as it guards.
+-- A goal off the mesh is walked to as the nearest point of an area within
+-- OFF_MESH_NEAR of it (a flag a unit past its area's edge: ctf_2fort's
+-- intel, which sent couriers to a point beside themselves), else as the
+-- first point on the mesh along the line back from it toward the bot,
+-- looked for OFF_MESH_STEP apart up to OFF_MESH_BACK (a guard's spot on a
+-- ring round its charge that falls in or behind a wall: else the bot
+-- presses into the wall for as long as it guards), else as itself, which
+-- the route search takes to its nearest area.
 local OFF_MESH_STEP, OFF_MESH_HEIGHT, OFF_MESH_LIFT = 16, 60, Vector(0, 0, 20)
+local OFF_MESH_NEAR, OFF_MESH_BACK = 64, 256
 
 local function OnMesh(p) return navmesh.GetNavArea(p + OFF_MESH_LIFT, OFF_MESH_HEIGHT) ~= nil end
 
@@ -222,14 +227,20 @@ end
 
 function BotSoldier:Repath() self.repath = true end
 
--- Where to walk for goal (a point): itself on the mesh, else the first
--- point on the mesh back from it toward where it stands, else itself.
+-- Where to walk for goal (a point): itself on the mesh, else the nearest
+-- point of an area close to it, else the first point on the mesh back from
+-- it toward where it stands, not far back, else itself.
 function BotSoldier:MeshGoal(goal)
 	local to = ToVector(goal)
 	if OnMesh(to) then return goal end
+	local area = navmesh.GetNearestNavArea(to, false, OFF_MESH_NEAR, false, true)
+	if IsValid(area) then
+		local near = area:GetClosestPointOnArea(to)
+		if near:Distance(to) <= OFF_MESH_NEAR then return Point(near) end
+	end
 	local from = self.ent:GetPos()
 	local length = from:Distance(to)
-	for along = OFF_MESH_STEP, length, OFF_MESH_STEP do
+	for along = OFF_MESH_STEP, math.min(length, OFF_MESH_BACK), OFF_MESH_STEP do
 		local p = to + (from - to) * (along / length)
 		if OnMesh(p) then return Point(p) end
 	end
