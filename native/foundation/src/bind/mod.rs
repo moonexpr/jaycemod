@@ -19,6 +19,7 @@ mod schedule;
 mod state_chart;
 mod state_machine;
 mod pathfinder;
+mod paths;
 mod search;
 mod select;
 mod slots;
@@ -65,6 +66,8 @@ unsafe fn module(l: L) {
     (api.setfield)(l, -2, c"pathfinder".as_ptr());
     search::push_module(l);
     (api.setfield)(l, -2, c"search".as_ptr());
+    paths::push_module(l);
+    (api.setfield)(l, -2, c"paths".as_ptr());
     (api.setfield)(l, -2, c"graph".as_ptr());
     nodegraph::push_module(l);
     (api.setfield)(l, -2, c"nodegraph".as_ptr());
@@ -127,6 +130,8 @@ unsafe fn provide(l: L) {
     crate::module::provide(l, Some(c"graph"), c"pathfinder");
     search::push_module(l);
     crate::module::provide(l, Some(c"graph"), c"search");
+    paths::push_module(l);
+    crate::module::provide(l, Some(c"graph"), c"paths");
     provide_all(l, c"list", list::push_modules, list::NAMES);
     nodegraph::push_module(l);
     crate::module::provide(l, None, c"nodegraph");

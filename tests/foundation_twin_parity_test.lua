@@ -322,6 +322,7 @@ local LIBRARIES = {
 	["foundation.math.weighted"] = true,
 	["foundation.math.polynomial"] = true,
 	["foundation.graph.search"] = true,
+	["foundation.graph.paths"] = true,
 	["foundation.encoding.utf16"] = true,
 	["foundation.encoding.keyvalues"] = true,
 	["foundation.encoding.consolecfg"] = true,

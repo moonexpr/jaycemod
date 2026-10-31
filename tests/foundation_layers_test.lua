@@ -30,6 +30,7 @@ local CATEGORY = {
 	["world/lease"] = "structures",
 	["world/grid"] = "structures",
 	["graph/search"] = "structures",
+	["graph/paths"] = "structures",
 	["math/weighted"] = "structures",
 	["math/polynomial"] = "structures",
 	["math/matrix"] = "structures",

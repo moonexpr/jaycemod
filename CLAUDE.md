@@ -186,6 +186,7 @@ Tests are `tests/<namespace>_<module>_test.lua`.
 | Module | API |
 |---|---|
 | `graph.search` | `Flood(starts, neighbors, admit, limit[, stop])` → reached, cut; `Components(nodes, neighbors)` → node → group number; `Distances(starts, edges, limit)` → node → cheapest walk from the nearest start (Dijkstra; `edges(node)` → `{ node, cost }`s) |
+| `graph.paths` | Weighted directed graphs and the paths across them, native only (the Lua twin a `TODO(Claude)` stub that refuses; its tests run in the native pass): `New(count)` → nodes 1..n, `Step(from, to, cost)` one way, `Nodes` (`__len`); `Tree(starts)` → the shortest-path walk (ties to the earlier start, then push): `Path`, `Distance`, `Distances`, `Parents`, `Branches(floor)` → `{ children, weight, roots }`, `Forks(floor, share)`; `Alternatives(starts, target, k, detour, penalty)` (the penalty method), `Near(reach)`, `Cover(tree, floor, share[, reach])` (maximum coverage by paths along the tree). The incursion's (`docs/incursion-native-plan.md`) |
 | `graph.pathfinder` | NavAreaBuildPath's A* over a graph port (`Neighbors`, `Cost`, `Estimate`): `New(graph, start, goal[, maxExpanded])` → a search (`status`, `expanded`, `maxExpanded`, `start`, `goal`, `closest`, `parent`, `Step(budget)`, `Route([last])`, `CostSoFar(node)`), `Find`; `RUNNING`, `FOUND`, `FAILED`, `MAX_EXPANDED`, `NAN_COST`. The routes of HL2 NPCs (`features/npc/sv_routes.lua`) |
 
 ### math, in Lua's math table
