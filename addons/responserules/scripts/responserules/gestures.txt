@@ -1,0 +1,69 @@
+// Gestures: the sound a soldier's gesture plays (TLK_NS_GESTURE, the gesture
+// criterion nextsoldier.gestures' Name gives), TF2's, whoever the speaker:
+// a body's sound, not a voice, played beside its lines (features/aiwar/
+// sv_gestures.lua). A gesture with no rule here plays nothing.
+
+criterion "IsDance" "gesture" "dance" required
+criterion "IsMuscle" "gesture" "muscle" required
+criterion "IsZombie" "gesture" "zombie" required
+criterion "IsRobot" "gesture" "robot" required
+criterion "IsLaugh" "gesture" "laugh" required
+
+// The dance: the Halloween dance's howl, or Demo shaking it
+response GestureDance
+{
+	speak "Halloween.dance_howl" nodelay
+	speak "Taunt.DemoShakeIt" nodelay
+}
+rule GestureDance
+{
+	criteria ConceptGesture IsDance
+	response GestureDance
+}
+
+// Flexing: a chest thump, a strongman's rep, the yeti's chest hit
+response GestureMuscle
+{
+	speak "Taunt.SoldierChestThump" nodelay
+	speak "Taunt.SovietStrongArmRep" nodelay
+	speak "Taunt.YetiChestHit" nodelay
+}
+rule GestureMuscle
+{
+	criteria ConceptGesture IsMuscle
+	response GestureMuscle
+}
+
+// The zombie: a Halloween skeleton's laugh
+response GestureZombie
+{
+	speak "Halloween.skeleton_laugh_small" nodelay
+	speak "Halloween.skeleton_laugh_medium" nodelay
+}
+rule GestureZombie
+{
+	criteria ConceptGesture IsZombie
+	response GestureZombie
+}
+
+// The robot: Mann vs. Machine's tiny robot
+response GestureRobot
+{
+	speak "Robot.Greeting" nodelay
+}
+rule GestureRobot
+{
+	criteria ConceptGesture IsRobot
+	response GestureRobot
+}
+
+// Laughing: Halloween's crazy laugh
+response GestureLaugh
+{
+	speak "Halloween.CrazyLaugh" nodelay
+}
+rule GestureLaugh
+{
+	criteria ConceptGesture IsLaugh
+	response GestureLaugh
+}

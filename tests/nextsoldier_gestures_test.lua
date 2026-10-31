@@ -78,6 +78,14 @@ T.test("grenades and signals play every time", function()
 	end
 end)
 
+T.test("a gesture's name is its act's, lower case, the player model's prefixes left off", function()
+	T.eq(Gestures.Name("ACT_GMOD_TAUNT_DANCE"), "dance")
+	T.eq(Gestures.Name("ACT_GMOD_TAUNT_MUSCLE"), "muscle")
+	T.eq(Gestures.Name("ACT_GMOD_GESTURE_TAUNT_ZOMBIE"), "zombie")
+	T.eq(Gestures.Name("ACT_GMOD_GESTURE_WAVE"), "wave")
+	T.eq(Gestures.Name("ACT_SIGNAL_FORWARD"), "signal_forward")
+end)
+
 T.test("a taunt is played standing still; a gesture on the move", function()
 	T.eq(Gestures.Still("ACT_GMOD_TAUNT_MUSCLE"), true)
 	T.eq(Gestures.Still("ACT_GMOD_TAUNT_DANCE"), true)

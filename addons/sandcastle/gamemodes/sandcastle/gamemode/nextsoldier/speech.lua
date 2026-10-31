@@ -41,6 +41,11 @@ CONCEPT_REGROUP = "TLK_NS_REGROUP"
 -- features/aiwar/sv_gestures.lua) says a long line to go with it, heard by
 -- all near.
 CONCEPT_TAUNT = "TLK_NS_TAUNT"
+-- A soldier gesturing (any occasion's act: nextsoldier.gestures' Name gives
+-- the gesture criterion) plays the gesture's sound, TF2's (a dance's
+-- music, a flex's chest thump, the zombie's skeleton laugh), heard by all
+-- near; a gesture with none plays nothing.
+CONCEPT_GESTURE = "TLK_NS_GESTURE"
 
 CONCEPT_ENEMY_KILLED = "TLK_NS_ENEMY_KILLED"
 CONCEPT_ALLY_DOWN = "TLK_NS_ALLY_DOWN"
@@ -64,12 +69,13 @@ end
 -- A soldier's criteria set: its voice's affiliation and name
 -- (ws.voices), its team's role, a random draw 0..100 (TF2's
 -- randomnum), and whether the enemy holds the cart.
-function Criteria(voice, role, randomnum, blocked)
+function Criteria(voice, role, randomnum, blocked, gesture)
 	return {
 		affiliation = voice.affiliation,
 		voice = voice.name,
 		teamrole = role,
 		randomnum = randomnum,
 		cartblocked = blocked and 1 or 0,
+		gesture = gesture,
 	}
 end

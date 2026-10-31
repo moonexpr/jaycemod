@@ -39,6 +39,33 @@ local function Say(voice, role, concept, blocked, speaker)
 	return system:Speak(speaker or Speaker(), concept, Speech.Criteria(voice, role, SURE, blocked), First, 0)
 end
 
+-- A gesture's sound: TF2's, by the gesture alone, any voice.
+local function Sound(voice, gesture)
+	return system:Speak(Speaker(), Speech.CONCEPT_GESTURE, Speech.Criteria(voice, Speech.OFFENSE, SURE, false, gesture),
+		First, 0)
+end
+
+T.test("dancing, flexing, the zombie and the robot play TF2's sounds, whoever plays them", function()
+	for _, voice in ipairs(VOICES) do
+		for _, gesture in ipairs({ "dance", "muscle", "zombie", "robot" }) do
+			local said = Sound(voice, gesture)
+			T.eq(said ~= nil, true, voice.name .. ": " .. gesture)
+			T.eq(said.response.kind, "speak", gesture .. ": a sound")
+			T.eq(said.response.value:match("^[%w_]+%.[%w_]+$") ~= nil, true, gesture .. ": a sound script, " .. said.response.value)
+		end
+	end
+end)
+
+T.test("a gesture with no sound of its own plays none", function()
+	T.eq(Sound(VOICES[1], "wave"), nil)
+	T.eq(Sound(VOICES[1], nil), nil, "no gesture")
+end)
+
+T.test("the gesture is in the criteria set only when given", function()
+	T.eq(Speech.Criteria(VOICES[1], Speech.OFFENSE, SURE, false).gesture, nil)
+	T.eq(Speech.Criteria(VOICES[1], Speech.OFFENSE, SURE, false, "dance").gesture, "dance")
+end)
+
 T.test("every voice says something for every cart concept, in either role", function()
 	for _, voice in ipairs(VOICES) do
 		for _, role in ipairs({ Speech.OFFENSE, Speech.DEFENSE }) do

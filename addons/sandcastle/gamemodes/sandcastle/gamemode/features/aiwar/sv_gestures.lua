@@ -4,7 +4,9 @@
 -- bot player as a player taunts (the animation event every client plays),
 -- at the model's own rate. A model without the act (a vortigaunt) plays
 -- nothing. A taunt (nextsoldier.gestures' Still) holds the soldier still
--- while it plays, and it says a long line with it (TLK_NS_TAUNT). A soldier nods at a teammate's kill or capture near it, and
+-- while it plays, and it says a long line with it (TLK_NS_TAUNT); every
+-- gesture plays its sound, TF2's (TLK_NS_GESTURE: a dance's howl, a flex's
+-- chest thump, the zombie's skeleton laugh). A soldier nods at a teammate's kill or capture near it, and
 -- celebrates once calm after wiping out a squad; the greetings, the battle
 -- stance (sv_speech.lua) and the grenades (sv_gadgets.lua) gesture too.
 local Controller = ...
@@ -24,6 +26,7 @@ function Controller:Gesture(ent, occasion, now)
 	local act = _G[name]
 	local sequence = ent:SelectWeightedSequence(act)
 	if sequence < 0 then return end
+	self:GestureSound(ent, Gestures.Name(name), now)
 	-- a taunt is the whole body's: it stands still while it plays, and says a
 	-- long line with it
 	if Gestures.Still(name) then

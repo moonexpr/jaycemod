@@ -16,6 +16,8 @@
 //   teamrole     offense (the cart's own team), defense
 //   randomnum    0..100
 //   cartblocked  1 while the enemy holds the cart
+//   gesture      the gesture a soldier plays (dance, muscle, zombie, ...),
+//                for TLK_NS_GESTURE alone
 // plus the contexts its rules applied.
 
 // Concepts ---------------------------------------------------------------
@@ -48,6 +50,8 @@ criterion "ConceptMoveOut" "Concept" "TLK_NS_MOVE_OUT" required
 criterion "ConceptRegroup" "Concept" "TLK_NS_REGROUP" required
 // a soldier taunting, a long line to go with the taunt
 criterion "ConceptTaunt" "Concept" "TLK_NS_TAUNT" required
+// a soldier gesturing, the gesture's sound (gestures.txt)
+criterion "ConceptGesture" "Concept" "TLK_NS_GESTURE" required
 
 // Chances (randomnum, 0..100) ------------------------------------------------
 
@@ -107,3 +111,7 @@ criterion "NotSaidTaunt" "SaidTaunt" "!=1" required weight 0
 
 #include "responserules/combine.txt"
 #include "responserules/rebel.txt"
+
+// Gestures, whoever plays them ---------------------------------------------------
+
+#include "responserules/gestures.txt"

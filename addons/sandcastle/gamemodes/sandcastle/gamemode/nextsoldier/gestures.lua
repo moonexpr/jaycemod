@@ -17,7 +17,10 @@
 -- Throw(distance) -> GRENADE_ROLL within ROLL_RANGE, else GRENADE_THROW
 -- DEATHS, Death(critical, randomInt) -> a crit's canned death (a player
 --   model's sequence name), or nil for any other death
-local error, setmetatable, tostring, sub = error, setmetatable, tostring, string.sub
+-- Name(act name) -> the gesture's own name, for the response rules'
+--   gesture criterion: lower case, the player model's prefixes left off
+--   (ACT_GMOD_TAUNT_DANCE: dance; ACT_GMOD_GESTURE_TAUNT_ZOMBIE: zombie)
+local error, setmetatable, tostring, sub, lower, ipairs = error, setmetatable, tostring, string.sub, string.lower, ipairs
 module(...)
 
 -- Witnessing a teammate's kill or capture; a squad wiped out with time to
@@ -81,6 +84,16 @@ local TAUNT_PREFIX = "ACT_GMOD_TAUNT_"
 
 function Still(act)
 	return sub(act, 1, #TAUNT_PREFIX) == TAUNT_PREFIX
+end
+
+-- the longest first
+local NAME_PREFIXES = { "ACT_GMOD_GESTURE_TAUNT_", "ACT_GMOD_GESTURE_", TAUNT_PREFIX, "ACT_" }
+
+function Name(act)
+	for _, prefix in ipairs(NAME_PREFIXES) do
+		if sub(act, 1, #prefix) == prefix then return lower(sub(act, #prefix + 1)) end
+	end
+	return lower(act)
 end
 
 -- Grenades within ROLL_RANGE are rolled underhand, farther ones thrown.

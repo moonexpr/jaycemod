@@ -54,6 +54,22 @@ function Controller:SpeakConcept(ent, concept, role, blocked, now, listener)
 	speaker.busyUntil = now + length + said.delay
 end
 
+-- A gesture's sound (TLK_NS_GESTURE, gestures.txt): the rules' answer for
+-- the gesture, played as the body's (CHAN_BODY) beside the soldier's lines,
+-- never making it busy; whatever its voice, a model with none too.
+local NO_VOICE = {}
+
+function Controller:GestureSound(ent, gesture, now)
+	local entry = self.soldiers[ent]
+	if not (entry and entry.soldier:IsAlive()) then return end
+	local criteria = Speech.Criteria(ent.NSVoiceLines or NO_VOICE, self:RoleOf(entry), math.random(0, 100), false, gesture)
+	local said = Rules:Speak(Speaker(entry), Speech.CONCEPT_GESTURE, criteria, now,
+		string.format("#%d gesture %s", ent:EntIndex(), gesture))
+	if said and said.response.kind == "speak" then
+		ent:EmitSound(said.response.value, said.soundLevel, 100, 1, CHAN_BODY)
+	end
+end
+
 -- A soldier's team is on offense when it has a cart, as for the cart's lines.
 function Controller:RoleOf(entry)
 	local field = self.war and self.war:Field()
