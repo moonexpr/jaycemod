@@ -71,7 +71,7 @@ def Run(dump, found):
     classed = classes.Classify(edges, region, fields, restricted, highways, owner, outdoor,
                                FRONT_SHARE * separation, FAR_SHARE * separation)
     forks = sorted({a for tree in trees.values() for a in tree.Forks(FORK_SHARE)})
-    junctions = classes.Junctions(forks, dump.graph, edges, region, classed, JUNCTION_REACH, JUNCTION_FLOOR)
+    junctions = classes.Junctions(forks, dump.graph, edges, region, JUNCTION_REACH, JUNCTION_FLOOR)
     return classed, junctions, branches, highways
 
 
@@ -152,7 +152,7 @@ def Draw(dump, found, classed: dict, junctions: list, branches: dict, out: Path)
         "red and blue lines: each team's incursion tree over the rooms and corridors, from the entry of each to "
         "the entry of the space its walk enters it from (dots: entries)",
         f"black hatched: junction rooms, carved around incursion forks (each way {FORK_SHARE:.0%} of the map) in "
-        f"corridors or unoccupied ground, the floor within {JUNCTION_REACH} units of the fork",
+        f"any room or corridor, the floor within {JUNCTION_REACH} units of the fork",
     ]
     for i, text in enumerate(lines):
         pen.text((MARGIN, top + 4 + i * KEY_LINE), text, fill=(0, 0, 0), font=font)

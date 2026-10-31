@@ -120,7 +120,7 @@ class JunctionsTest(unittest.TestCase):
     def test_a_fork_in_a_corridor_carves_a_room_of_the_floor_within_reach(self):
         graph = Line(9)
         region = {i: (P, 1) for i in graph}
-        found = classes.Junctions([4], graph, incursion.Edges(graph), region, {}, reach=1.5 * CELL,
+        found = classes.Junctions([4], graph, incursion.Edges(graph), region, reach=1.5 * CELL,
                                   floor=3 * CELL * CELL)
         self.assertEqual([j.areas for j in found], [(3, 4, 5)])
         self.assertEqual(found[0].space, (P, 1), "carved out of the corridor")
@@ -128,23 +128,19 @@ class JunctionsTest(unittest.TestCase):
     def test_too_little_floor_within_reach_carves_nothing(self):
         graph = Line(9)
         region = {i: (P, 1) for i in graph}
-        self.assertEqual(classes.Junctions([4], graph, incursion.Edges(graph), region, {}, reach=1.5 * CELL,
+        self.assertEqual(classes.Junctions([4], graph, incursion.Edges(graph), region, reach=1.5 * CELL,
                                            floor=4 * CELL * CELL), [])
 
-    def test_a_fork_in_an_occupied_room_carves_nothing_in_unoccupied_ground_it_does(self):
+    def test_a_fork_in_any_room_carves_a_junction_whatever_its_class(self):
         graph = Line(9)
         region = {i: (R, 1) for i in graph}
-        held = {(R, 1): Classed(classes.STRONGHOLD, RED, 0.8)}
-        self.assertEqual(classes.Junctions([4], graph, incursion.Edges(graph), region, held, reach=CELL, floor=CELL),
-                         [])
-        open_ground = {(R, 1): Classed(classes.WILDS, None, 0.0)}
-        self.assertEqual(len(classes.Junctions([4], graph, incursion.Edges(graph), region, open_ground, reach=CELL,
-                                               floor=CELL)), 1)
+        found = classes.Junctions([4], graph, incursion.Edges(graph), region, reach=CELL, floor=CELL)
+        self.assertEqual([(j.space, j.areas) for j in found], [((R, 1), (3, 4, 5))], "a stronghold's too")
 
     def test_two_forks_within_one_junction_carve_it_once(self):
         graph = Line(9)
         region = {i: (P, 1) for i in graph}
-        found = classes.Junctions([4, 5], graph, incursion.Edges(graph), region, {}, reach=1.5 * CELL,
+        found = classes.Junctions([4, 5], graph, incursion.Edges(graph), region, reach=1.5 * CELL,
                                   floor=3 * CELL * CELL)
         self.assertEqual([j.areas for j in found], [(3, 4, 5)])
 

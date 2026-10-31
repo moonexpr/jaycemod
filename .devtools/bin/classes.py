@@ -24,10 +24,11 @@ In order, each stage on what the ones before it found:
    half or more it is the team's STRONGHOLD, below it COMMONS. A room
    farther than far from both is no one's ground: UNOCCUPIED indoors,
    WILDS outdoors.
-5. Junctions: where a team's tree forks in a corridor or in unoccupied
-   ground, the floor within reach of the fork, in the same space, is carved
-   into a room of its own if it has floor enough (Junctions): the places
-   the ways part, to plan lanes and ambushes on.
+5. Junctions: where a team's tree forks, in any room or corridor, the
+   floor within reach of the fork, in the same space, is carved into a
+   room of its own if it has floor enough (Junctions): the places the ways
+   part, to plan lanes and ambushes on. The gradient is for the ground
+   outside buildings only, for simplicity: a building is its team's.
 
 Spaces are ("room" | "passage", id); walks go over incursion.Edges.
 """
@@ -152,22 +153,18 @@ def Classify(edges: dict, region: dict, fields: dict, restricted: dict, highways
 
 @dataclass(frozen=True)
 class Junction:
-    space: tuple      # the corridor or unoccupied room it is carved out of
+    space: tuple      # the room or corridor it is carved out of
     areas: tuple      # its areas, ascending
     fork: int         # the fork it is carved around
 
 
-def Junctions(forks: list, graph: dict, edges: dict, region: dict, classed: dict, reach: float,
-              floor: float) -> list:
-    """The rooms carved around the forks that stand in a corridor or in unoccupied ground (UNOCCUPIED,
-    WILDS): the areas of the fork's space within reach of it, when their floor is at least floor; a fork
-    already carved into one is not carved again."""
+def Junctions(forks: list, graph: dict, edges: dict, region: dict, reach: float, floor: float) -> list:
+    """The rooms carved around the forks, in any room or corridor: the areas of the fork's space within
+    reach of it, when their floor is at least floor; a fork already carved into one is not carved again."""
     carved, found = set(), []
     for fork in forks:
         space = region.get(fork)
         if fork in carved or space is None:
-            continue
-        if space[0] != "passage" and classed.get(space, Classed(None, None, 0)).cls not in (UNOCCUPIED, WILDS):
             continue
         near = incursion.Incursion({a: [s for s in steps if region.get(s.to) == space]
                                     for a, steps in edges.items()}, [fork]).distance

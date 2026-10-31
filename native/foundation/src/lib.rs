@@ -28,6 +28,7 @@ pub mod heap;
 pub mod lua;
 pub mod module;
 pub mod nearest;
+pub mod paths;
 pub mod userdata;
 
 #[cfg(feature = "entry")]
