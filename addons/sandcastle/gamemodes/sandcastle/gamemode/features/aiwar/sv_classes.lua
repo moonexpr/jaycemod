@@ -3,7 +3,7 @@
 -- and the ambush hints (docs/incursion-native-plan.md; wartactics.incursion,
 -- classes and ambush). Found once a map on the slow lane, after the rooms,
 -- from the room graph again (RoomGraph: the saved rooms keep no links), the
--- hiding spots' sight traced a slice at a time. They stand on graph.paths,
+-- hiding spots' sight traced only where an ambush asks it. They stand on graph.paths,
 -- native: a server without the foundation binary finds none, and says so.
 -- ns_classes_print says what was found.
 local Controller = ...
@@ -27,7 +27,6 @@ local COVER_SHARE, COVER_REACH = 0.9, 256
 local APPROACH, AMBUSH_NEAR, AMBUSH_FAR, AMBUSH_KEEP = 384, 48, 384, 3
 local SIGHT_RANGE, EYE, CHEST = 1024, Vector(0, 0, 64), Vector(0, 0, 48)
 local IN_COVER, EXPOSED = 1, 8
-local TRACES_A_SLICE = 64
 
 -- Each team's spawn areas, by RED and BLU: those its func_respawnroom holds
 -- (the npc controller's SpawnRooms) and those its spawns stand on
@@ -85,32 +84,40 @@ function Controller:Visualizers()
 end
 
 -- The nav mesh's hiding spots on the room graph's areas, in cover or
--- exposed, each with the areas it sees (traced against what is opaque).
+-- exposed, each with what it sees: an area is traced the first time it is
+-- asked of the spot (against what is opaque; within SIGHT_RANGE), and the
+-- answer kept, since the ambushes ask only of the few spots near each
+-- entrance, of the area just inside it.
+local function Sight(graph, pos)
+	return setmetatable({}, { __index = function(sees, id)
+		local data = graph[id]
+		local seen = false
+		if data then
+			local c = Vector(data.center.x, data.center.y, data.center.z)
+			seen = c:DistToSqr(pos) <= SIGHT_RANGE * SIGHT_RANGE
+				and not util.TraceLine({ start = pos + EYE, endpos = c + CHEST, mask = MASK_OPAQUE }).Hit
+		end
+		rawset(sees, id, seen)
+		return seen
+	end })
+end
+
 local function HidingSpots(graph, work)
-	local spots, traces = {}, 0
-	local ids = {}
+	local spots, ids = {}, {}
 	for id in pairs(graph) do ids[#ids + 1] = id end
 	table.sort(ids)
-	for _, id in ipairs(ids) do
+	for i, id in ipairs(ids) do
 		local area, seen = navmesh.GetNavAreaByID(id), {}
 		for _, kind in ipairs({ IN_COVER, EXPOSED }) do
 			for _, pos in ipairs(area:GetHidingSpots(kind) or {}) do
 				local key = tostring(pos)
 				if not seen[key] then
 					seen[key] = true
-					local sees, eye = {}, pos + EYE
-					for other, data in pairs(graph) do
-						local c = Vector(data.center.x, data.center.y, data.center.z)
-						if c:DistToSqr(pos) <= SIGHT_RANGE * SIGHT_RANGE then
-							if not util.TraceLine({ start = eye, endpos = c + CHEST, mask = MASK_OPAQUE }).Hit then sees[other] = true end
-							traces = traces + 1
-							if traces % TRACES_A_SLICE == 0 then work:CheckYield() end
-						end
-					end
-					spots[#spots + 1] = { pos = { x = pos.x, y = pos.y, z = pos.z }, area = id, sees = sees }
+					spots[#spots + 1] = { pos = { x = pos.x, y = pos.y, z = pos.z }, area = id, sees = Sight(graph, pos) }
 				end
 			end
 		end
+		if i % 64 == 0 then work:CheckYield() end
 	end
 	return spots
 end

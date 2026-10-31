@@ -373,6 +373,27 @@ end
 
 local function V(p) return Vector(p.x, p.y, p.z) end
 
+-- Whether any of the points (a room's middle, its block's corners) is
+-- in the viewer's PVS: the overlay draws only what the player
+-- could see from where he stands (ROOMS). A point is lifted ROOM_SIGHT_LIFT
+-- off the floor it lies on.
+local ROOM_SIGHT_LIFT = Vector(0, 0, 40)
+
+local function InSight(viewer, ...)
+	for _, p in ipairs({ ... }) do
+		if viewer:TestPVS(p + ROOM_SIGHT_LIFT) then return true end
+	end
+	return false
+end
+
+local function Kept(list, keep)
+	local kept = {}
+	for _, item in ipairs(list) do
+		if keep(item) then kept[#kept + 1] = item end
+	end
+	return kept
+end
+
 -- A room's place in the overlay before the classes are found.
 local UNCLASSED = { class = "", team = 0, gradient = 0 }
 
@@ -409,9 +430,19 @@ function Controller:SendRoomsDebug(viewers, now)
 		passages[i] = { lo = V(passage.lo), hi = V(passage.hi),
 			label = string.format("%s %d: joins %s", passage.kind, passage.id, table.concat(passage.joins, ", ")) }
 	end
-	WS.Events.Fire("game_aiwar_rooms", { rooms = rooms, passages = passages,
-		branches = classes and classes.branches or {}, junctions = classes and classes.junctions or {},
-		ambushes = classes and classes.ambushes or {} }, viewers)
+	local branches = classes and classes.branches or {}
+	local junctions = classes and classes.junctions or {}
+	local ambushes = classes and classes.ambushes or {}
+	for _, viewer in ipairs(viewers) do
+		local function Seen(...) return InSight(viewer, ...) end
+		WS.Events.Fire("game_aiwar_rooms", {
+			rooms = Kept(rooms, function(r) return Seen(r.center, r.lo, r.hi) end),
+			passages = Kept(passages, function(p) return Seen(p.lo, p.hi) end),
+			branches = Kept(branches, function(b) return Seen(b.from, b.to) end),
+			junctions = Kept(junctions, function(j) return Seen(j.lo, j.hi) end),
+			ambushes = Kept(ambushes, function(a) return Seen(a.spot, a.via) end),
+		}, { viewer })
+	end
 end
 
 -- ns_rooms_print's lines: how many rooms of each kind, indoors and out, the
