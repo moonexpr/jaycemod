@@ -199,12 +199,24 @@ local function Five()
 	return Player("Alice"), Player("Bob"), Player("Carol"), Player("Dave"), Player("Erin")
 end
 
-T.test("a new player hears the map cycle's maps, comments and blanks left out", function()
+T.test("a new player hears the maps a vote may name: the cycle's and the rounds' maplist, once each, sorted", function()
 	local alice = Player("Alice")
 	local s = Load({ alice })
 	s.listeners.system_client_ready({}, alice)
 	local maps = Last(alice, "game_vote_maps").maps
-	T.eq(table.concat(maps, ","), "cp_dustbowl,pl_badwater")
+	T.eq(table.concat(maps, ","), "cp_dustbowl,cp_steel,koth_viaduct,pl_badwater,pl_goldrush,pl_upward",
+		"the cycle's comments and blanks left out, pl_badwater in both once")
+end)
+
+T.test("a map vote may name a maplist map not in the cycle, never one in neither", function()
+	local alice = Player("Alice")
+	local s = Load({ alice })
+	CallVote(s, alice, Vote.KIND_MAP, "pl_upward")
+	T.eq(Last(alice, "game_vote_state").running, true, "a maplist map")
+	local bob = Player("Bob")
+	local t = Load({ bob })
+	CallVote(t, bob, Vote.KIND_MAP, "gm_nowhere")
+	T.eq(Last(bob, "game_vote_refused") ~= nil, true, "a map the server does not play")
 end)
 
 T.test("a call starts the vote for everyone, the caller's yes counted", function()

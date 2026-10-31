@@ -8,6 +8,9 @@
 -- Every player hears the vote as game_vote_state; holders of the players
 -- privilege (admins, by default) are never put to a kick vote.
 --
+-- A map vote names a map the server plays: the map cycle's or the rounds'
+-- maplist (VoteMaps), the list the Server tab shows.
+--
 -- The next-map vote (mp_vote_nextmap_enabled): once a map, as soon as the
 -- match is one round from its end or over (Rounds.MapVoteDue), the server
 -- calls a vote of choices among maplist maps (Rounds.MapVoteChoices: two of
@@ -42,9 +45,23 @@ local function ReadCycle()
 	return maps
 end
 
-local MAPS = ReadCycle()
-local IN_CYCLE = {}
-for _, map in ipairs(MAPS) do IN_CYCLE[map] = true end
+-- The maps a map vote may name: the map cycle's, and the rounds' maplist
+-- (the installed maps the gamemode plays, Rounds.MapsMatching's), since
+-- GMod's own mapcycle.txt is empty. Read once a map, when first asked.
+local voteMaps, inVoteMaps
+
+local function VoteMaps()
+	if voteMaps then return voteMaps, inVoteMaps end
+	local rounds = WS.Feature("rounds")
+	voteMaps, inVoteMaps = {}, {}
+	for _, list in ipairs({ ReadCycle(), rounds and rounds.Maplist and (rounds:Maplist()) or {} }) do
+		for _, map in ipairs(list) do
+			if not inVoteMaps[map] then voteMaps[#voteMaps + 1], inVoteMaps[map] = map, true end
+		end
+	end
+	table.sort(voteMaps)
+	return voteMaps, inVoteMaps
+end
 
 local function Facts()
 	local humans = player.GetHumans()
@@ -171,8 +188,9 @@ E.Listen("game_vote_call", "ws_votes", function(fields, ply)
 	if not kind then return E.Fire("game_vote_refused", { text = "That is not a vote." }, ply) end
 	local subject = ""
 	if kind == Vote.KIND_MAP then
-		if not IN_CYCLE[fields.subject] then
-			return E.Fire("game_vote_refused", { text = "That map was not found in the server's map cycle." }, ply)
+		local _, known = VoteMaps()
+		if not known[fields.subject] then
+			return E.Fire("game_vote_refused", { text = "That map is not one the server plays." }, ply)
 		end
 		subject = fields.subject
 	end
@@ -256,6 +274,6 @@ hook.Add("WSChangeLevel", "ws_votes", function()
 end)
 
 E.Listen("system_client_ready", "ws_votes", function(_, ply)
-	E.Fire("game_vote_maps", { maps = MAPS }, ply)
+	E.Fire("game_vote_maps", { maps = (VoteMaps()) }, ply)
 	E.Fire("game_vote_state", StateFor(Vote.Current(book), ply), ply)
 end)

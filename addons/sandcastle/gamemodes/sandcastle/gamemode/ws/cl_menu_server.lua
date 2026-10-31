@@ -2,7 +2,11 @@
 -- A tile a vote; picking one shows its choices, and clicking a choice
 -- calls the vote (a map vote's maps, or Call Vote). Votes the server
 -- disabled, or that have no system behind them yet, stay on show but say
--- so. Players are reported, never voted off, from the scoreboard.
+-- so. Players are reported, never voted off, from the scoreboard. Maps are
+-- shown as the spawn menu shows entities: an icon a map (ContentIcon), its
+-- thumbnail (maps/thumb/<map>.png, GMod's "no icon" where it has none) and
+-- its name, a search box over them; while the next-map vote runs, the tab
+-- is its ballot, the maps it offers as icons, the player's pick outlined.
 local Vote = gameplay.vote
 local UI = WS.UI
 local THEME = UI.THEME
@@ -33,11 +37,28 @@ local NOT_READY = "Coming soon."
 local DISABLED = "Server has disabled that issue."
 local RUNNING = "A vote is currently in progress."
 local NO_MAPS = "No maps available"
+local THUMB, NO_THUMB = "maps/thumb/%s.png", "maps/thumb/noicon.png"
+local PICKED_EDGE, PICKED_WIDTH = Color(255, 210, 60), 3
+local DIMMED = 90 -- a map's icon while no vote can be called
 local DIFFICULTY = GetConVar("tf_bot_difficulty")
 local OTHER_TEAM = {
 	[WS.TEAM_RED] = WS.TEAM_BLUE,
 	[WS.TEAM_BLUE] = WS.TEAM_RED,
 }
+
+-- A map's thumbnail, or GMod's "no icon".
+local function Thumb(map)
+	local path = THUMB:format(map)
+	return file.Exists(path, "GAME") and path or NO_THUMB
+end
+
+-- The running next-map vote, if the player may vote in it: its state.
+local function NextMapBallot()
+	local state = WS.VoteState
+	if not (state.running and state.mine and #state.options > 0) then return nil end
+	if WS.VOTE_KINDS[state.kind + 1] ~= Vote.KIND_NEXTMAP then return nil end
+	return state
+end
 
 local function Call(kind, subject)
 	E.Request("game_vote_call", {
@@ -85,16 +106,24 @@ UI.Define("ServerMenu", "DPanel", {
 		self.prompt = vgui.Create(UI.Name("Label"), self)
 		self.prompt:SetContentAlignment(4)
 		self.prompt:Dock(TOP)
-		self.choices = vgui.Create("DIconLayout", self)
-		self.choices:Dock(TOP)
-		self.choices:DockMargin(0, LAYOUT.GAP, 0, 0)
-		self.choices:SetSpaceX(LAYOUT.GAP)
-		self.choices:SetSpaceY(LAYOUT.GAP)
+		self.search = vgui.Create("DTextEntry", self)
+		self.search:Dock(TOP)
+		self.search:DockMargin(0, LAYOUT.GAP, 0, 0)
+		self.search:SetPlaceholderText("Search maps...")
+		self.search:SetUpdateOnType(true)
+		self.search.OnValueChange = function() self:Refresh() end
 		local hint = vgui.Create(UI.Name("Label"), self)
 		hint:SetTextColor(THEME.muted)
 		hint:SetContentAlignment(4)
 		hint:SetText("To report a player, hold Tab and right-click them.")
 		hint:Dock(BOTTOM)
+		self.scroll = vgui.Create("DScrollPanel", self)
+		self.scroll:Dock(FILL)
+		self.scroll:DockMargin(0, LAYOUT.GAP, 0, 0)
+		self.choices = self.scroll:Add("DIconLayout")
+		self.choices:Dock(TOP)
+		self.choices:SetSpaceX(LAYOUT.GAP)
+		self.choices:SetSpaceY(LAYOUT.GAP)
 		self.picked = Vote.CALLABLE[1]
 		hook.Add("WSVoteChanged", self, function() self:Refresh() end)
 		self.refreshAt = 0
@@ -121,17 +150,60 @@ UI.Define("ServerMenu", "DPanel", {
 		return button
 	end,
 
+	-- A map as the spawn menu shows an entity: its thumbnail and name; a
+	-- click runs onClick while enabled; picked, it is outlined.
+	MapChoice = function(self, map, onClick, enabled, picked)
+		local icon = self.choices:Add("ContentIcon")
+		icon:SetContentType("map")
+		icon:SetSpawnName(map)
+		icon:SetName(map)
+		icon:SetMaterial(Thumb(map))
+		icon:SetTooltip(map)
+		icon:SetAlpha(enabled and 255 or DIMMED)
+		icon.DoClick = function()
+			if enabled then onClick() end
+		end
+		icon.OpenMenu = function() end
+		if picked then
+			icon.PaintOver = function(_, w, h)
+				surface.SetDrawColor(PICKED_EDGE)
+				for i = 0, PICKED_WIDTH - 1 do surface.DrawOutlinedRect(i, i, w - i * 2, h - i * 2) end
+			end
+		end
+		return icon
+	end,
+
+	-- The map list's search, or nil when empty.
+	Wanted = function(self)
+		local text = string.Trim(self.search:GetValue() or ""):lower()
+		return text ~= "" and text or nil
+	end,
+
 	Refresh = function(self)
 		for kind, tile in pairs(self.buttons) do tile:SetSelected(kind == self.picked) end
 		local kind = self.picked
 		local blocked = Blocked(kind)
 		self.choices:Clear()
-		if blocked == NOT_READY then
+		self.search:SetVisible(false)
+		local ballot = NextMapBallot()
+		if ballot then
+			self.prompt:SetText("Vote for the next map:")
+			for i, map in ipairs(ballot.options) do
+				self:MapChoice(map, function() E.Request("game_vote_cast", { yes = false, choice = i }) end, true,
+					ballot.cast == i)
+			end
+		elseif blocked == NOT_READY then
 			self.prompt:SetText(WS.VOTE_NAMES[kind] .. ": " .. NOT_READY)
 		elseif kind == Vote.KIND_MAP then
 			self.prompt:SetText(blocked or "Set the next map to:")
 			if #WS.VoteMaps == 0 then self.prompt:SetText(NO_MAPS) end
-			for _, map in ipairs(WS.VoteMaps) do self:Choice(map, function() Call(kind, map) end, blocked == nil) end
+			self.search:SetVisible(#WS.VoteMaps > 0)
+			local wanted = self:Wanted()
+			for _, map in ipairs(WS.VoteMaps) do
+				if not wanted or map:find(wanted, 1, true) then
+					self:MapChoice(map, function() Call(kind, map) end, blocked == nil, false)
+				end
+			end
 		elseif kind == Vote.KIND_DIFFICULTY then
 			local now = Vote.DIFFICULTIES[DIFFICULTY:GetInt() + 1]
 			self.prompt:SetText(blocked or ("Set the soldiers' difficulty (now " .. now .. ") to:"))
@@ -150,6 +222,7 @@ UI.Define("ServerMenu", "DPanel", {
 			self.prompt:SetText(blocked or WS.VoteQuestion(kind, "", nil))
 			self:Choice("Call Vote", function() Call(kind) end, blocked == nil)
 		end
+		self:InvalidateLayout(true)
 		self.choices:InvalidateLayout(true)
 		self.choices:SizeToChildren(false, true)
 	end,
