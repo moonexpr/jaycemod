@@ -88,7 +88,14 @@ local function NoticeIcon(credited, flags, inflictor, attacker)
 	return Icons.For(ICONS, Feed.Icon(flags) or inflictor, Class(attacker))
 end
 
+-- GMod's base notice names a valid entity, but passes on one this client
+-- has not been sent (a NULL entity): no name, as for the world.
+local function Named(who)
+	return isstring(who) and who or nil
+end
+
 function GM:AddDeathNotice(attacker, attackerTeam, inflictor, victim, victimTeam, flags)
+	attacker, victim = Named(attacker), Named(victim)
 	local me = Me()
 	local killer = Name(attacker)
 	if killer == Name(victim) then killer = nil end
