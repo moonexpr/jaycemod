@@ -60,13 +60,11 @@ local maxrounds = ConVarOrCreate("mp_maxrounds", "0", { FCVAR_REPLICATED, FCVAR_
 local timelimit = ConVarOrCreate("mp_timelimit", "30", { FCVAR_NOTIFY, FCVAR_REPLICATED }, 
 	"Game time per map in minutes")
 local fraglimit = ConVarOrCreate("mp_fraglimit", "0", { FCVAR_NOTIFY, FCVAR_REPLICATED },
-	"Frags a team needed to win a round"
-0)
+	"Frags a team needed to win a round")
 local creditlimit =  ConVarOrCreate("mp_creditlimit", "0", { FCVAR_NOTIFY, FCVAR_REPLICATED },
-	"Credits needs to win a round"
-
+	"Credits needs to win a round")
 local casualWinConditions = ConVarOrCreate("mp_casual_win_conditions", "1", FCVAR_NOTIFY,
-	"1: each map sets mp_winlimit and mp_maxrounds as TF2's casual matches do for its kind; 0: they stay as set")
+	"Applies win conditions per on a per-map basis after server.cfg and autoexec.cfg.")
 -- GMod defines mp_timelimit itself, at 0 (no limit); Sandcastle's default
 -- is DEFAULT_TIMELIMIT minutes, taken while the server leaves it at GMod's.
 local DEFAULT_TIMELIMIT = 30
@@ -535,8 +533,8 @@ end
 
 -- What decides the map's casual win conditions (Limits.WinConditions), once
 -- the objective features have set the mode and the master is bound.
-local function MapKind()
-	local mode, master = Controller:Mode().NAME, ents.FindByClass(MASTER_CLASS)[1]
+function Controller:MapKind()
+	local mode, master = self:Mode().NAME, ents.FindByClass(MASTER_CLASS)[1]
 	return {
 		mvm = mode == "mvm",
 		hostage = mode == "hostage", defuse = mode == "defuse",
@@ -555,12 +553,14 @@ end
 -- start: once a map, so an admin's change holds until the next.
 local function ApplyWinConditions()
 	if not casualWinConditions:GetBool() then return end
-	local conditions = Limits.WinConditions(MapKind())
+	local conditions = Limits.WinConditions(Controller:MapKind())
 	if not conditions then return end
-	winlimit:SetInt(conditions.winlimit)
-	maxrounds:SetInt(conditions.maxrounds)
-	print(string.format("Win conditions (TF2 casual, %s): mp_winlimit %d, mp_maxrounds %d",
-		conditions.name, conditions.winlimit, conditions.maxrounds))
+	winlimit:SetInt(conditions.wins)
+	maxrounds:SetInt(conditions.rounds)
+	fraglimit:SetInt(conditions.frags)
+	creditlimit:SetInt(conditions.credits)
+	print(string.format("Win conditions (TF2 casual, %s): mp_winlimit %d, mp_maxrounds %d, mp_fraglimit %d, mp_creditlimit %d",
+		conditions.name, conditions.wins, conditions.rounds, conditions.frags, conditions.credits))
 end
 
 -- Loaded during the map's spawn this waits for InitPostEntity; loaded later,

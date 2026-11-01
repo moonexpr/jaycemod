@@ -110,18 +110,23 @@ end
 -- TF2's casual matches: mp_winlimit and mp_maxrounds as the
 -- server_casual_*_win_conditions.cfg for the map's kind sets them, over
 -- server_matchmaking_base.cfg's zeroes. name: the cfg's.
+
+local N = 0
+
 WIN_CONDITIONS = {
-	ROUNDS = { name = "rounds", winlimit = 2, maxrounds = 0 },
-	STOPWATCH = { name = "stopwatch", winlimit = 0, maxrounds = 2 },
-	MAX_ROUNDS = { name = "max_rounds", winlimit = 0, maxrounds = 1 },
+	ROUNDS          = { name = "rounds",        wins = 2, rounds =  N, frags =  N, credits = N },
+	STOPWATCH       = { name = "stopwatch",     wins = N, rounds = 02, frags =  N, credits = N  },
+	MAX_ROUNDS      = { name = "max_rounds",    wins = 0, rounds = 01, frags =  N, credits = N  },
 	-- Sandcastle's own, for a control-point map TF2 would play to the win
 	-- limit: a capture can be a point on the score (score_style 1), so a
 	-- win limit would end the match a few captures in; mp_timelimit ends it.
-	CONTROL_POINTS = { name = "control_points", winlimit = 0, maxrounds = 0 },
+	CONTROL_POINTS  = { name = "ctrl_points",   wins = 0, rounds = 00, frags =  N, credits = N  },
 	-- Sandcastle's own, for a hostage map, or a bomb defusal map (defuse): a
 	-- round is won by rescue or the bomb, or by killing, so the match is ten
 	-- rounds, not a count of wins.
-	HOSTAGE = { name = "hostage", winlimit = 0, maxrounds = 10 },
+	HOSTAGE         = { name = "hostage",       wins = 0, rounds = 10, frags =  N, credits = N },
+	TEAMDM          = { name = "teamdm",        wins = 0, rounds = 05, frags = 60, credits = N },
+	PLAYDM          = { name = "playdm",        wins = 0, rounds = 05, frags =  N, credits = 500 },
 }
 
 -- map = { mvm, hostage, defuse, payload, ctf, controlPoints (the round's mode: KOTH and
@@ -130,9 +135,9 @@ WIN_CONDITIONS = {
 -- score_style 1) }. TF2's choice (CTFMatchDescCasual's
 -- InitGameRulesSettingsPostEntity): an attack/defend map
 -- (CTFGameRules::IsAttackDefenseMode) plays stopwatch; a payload race in
--- stages and CTF play one round; any other map goes to the first team to
--- the win limit, but for control-point maps and a score per capture
--- (CONTROL_POINTS). nil for MvM, whose waves decide.
+-- stages and CTF play one round; control-point maps and a score per capture
+-- use CONTROL_POINTS. Unmatched maps use TEAMDM; nil for MvM, whose waves
+-- decide.
 function WinConditions(map)
 	if map.mvm then return nil end
 	if map.hostage or map.defuse then return WIN_CONDITIONS.HOSTAGE end
@@ -140,7 +145,7 @@ function WinConditions(map)
 	local raceInStages = map.payload and map.multipleTrains and map.miniRounds and map.stages > 1
 	if raceInStages or map.ctf then return WIN_CONDITIONS.MAX_ROUNDS end
 	if map.controlPoints or map.scorePerCapture then return WIN_CONDITIONS.CONTROL_POINTS end
-	return WIN_CONDITIONS.ROUNDS
+	return WIN_CONDITIONS.TEAMDM
 end
 
 -------------------------------------------------------------------------------

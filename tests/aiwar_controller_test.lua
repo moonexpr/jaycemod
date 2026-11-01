@@ -33,7 +33,6 @@ local REAL = {
 
 local RED, BLUE, NOBODY = Teams.RED, Teams.BLUE, Teams.UNASSIGNED
 local SOURCE = T.ROOT .. "features/aiwar/sv.lua"
-local NO_SPAWNS = "this map has no spawn points for both teams, where the AI war's soldiers join the fight"
 local NO_POINTS = "this map's round has no control points for the AI war to fight over"
 local SOLDIERS = 8
 local ZONE_INSET = 0.8 -- the controller's, docs/aiwar-koth-cp.md §2.4
@@ -355,6 +354,10 @@ local function Load(w)
 	local controller = setfenv(chunk, Env(w))()
 	controller.slotStore = MemoryStore()
 	controller.hazardStore = MemoryStore()
+	controller.PlaceSpawnBases = function()
+		if w.placeSpawnBases then return w.placeSpawnBases() end
+		return 0
+	end
 	return controller
 end
 
@@ -749,7 +752,7 @@ T.test("the point scenarios refuse a map whose round has no points", function()
 	end
 end)
 
-T.test("any scenario refuses a map without both teams' spawns", function()
+T.test("any scenario uses runtime-generated bases when the map lacks a team's spawns", function()
 	for _, mode in ipairs({ PayloadMode.Mode, ControlPointsMode.Mode }) do
 		RealVariant(mode)
 		local w = World()
@@ -757,10 +760,13 @@ T.test("any scenario refuses a map without both teams' spawns", function()
 		w.spawns[BLUE] = {}
 		w:Load("rounds", FakeRounds(mode, w))
 		local controller = Load(w)
-		local ok, why = controller:Start()
-		T.eq(ok, false, mode.NAME .. ": refused")
-		T.eq(why, NO_SPAWNS, mode.NAME)
-		T.eq(controller.war, nil, mode.NAME .. ": no war")
+		w.placeSpawnBases = function()
+			w.spawns[BLUE] = { Ent(Vector(FP.BASES[BLUE].x, FP.BASES[BLUE].y, 0)) }
+			w.spawnBasesPlaced = true
+		end
+		T.eq(controller:Start(), true, mode.NAME .. ": starts")
+		T.eq(w.spawnBasesPlaced, true, mode.NAME .. ": runtime placement ran before the base check")
+		T.eq(controller.war ~= nil, true, mode.NAME .. ": war started")
 	end
 end)
 

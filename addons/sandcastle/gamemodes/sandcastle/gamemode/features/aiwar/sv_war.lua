@@ -140,7 +140,7 @@ end
 
 -- Why a map lacking a part its scenario needs (Scenario:MapLacks) is refused.
 local MAP_LACKS = {
-	[Scenario.BASES] = "this map has no spawn points for both teams, where the AI war's soldiers join the fight",
+	[Scenario.BASES] = "the AI war could not create spawn bases for both teams on this map",
 	[Scenario.POINTS] = "this map's round has no control points for the AI war to fight over",
 	[Scenario.FLAGS] = "this map has no intelligence for both teams for the AI war to fight over",
 	[Scenario.BOMB] = "this map has no bomb and hatch for the AI war's robots to deliver it to",
@@ -167,10 +167,12 @@ end
 function Controller:Start()
 	if self.war then return false, "the war is already on" end
 	if not WS.SoldiersEnabled() then return false, "NextSoldier is switched off on this server (ns_soldiers_enabled 0)" end
+	if not WS.NavMeshUsable() then return false, NO_NAV_MESH end
+	self:PlaceSpawnBases()
+	self.baseCache = nil
 	-- a map whose mode is none the war knows is fought freeform
 	self:CompileRegistries()
 	local _, variant = Scenario.Entry(self.scenarios, { mode = RoundsModeName() })
-	self.baseCache = nil
 	local flags, zones = self:FlagsSnapshot()
 	local hostages, hostageZones = self:HostagesSnapshot()
 	local lacks = variant:MapLacks({
@@ -182,7 +184,6 @@ function Controller:Start()
 		waypoints = self:Waypoints(),
 	})
 	if lacks then return false, MAP_LACKS[lacks] end
-	if not WS.NavMeshUsable() then return false, NO_NAV_MESH end
 	self.scenario = variant:New()
 	self.winner = nil
 	self.waitingFor = nil

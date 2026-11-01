@@ -214,7 +214,7 @@ T.test("a game's countdown runs MatchStart once, at its first pre-round, before 
 	local w = World()
 	local controller = Load(w)
 	controller:Request(Gamemode.GAMEPLAY, Gamemode.SOURCE_BUTTON, nil)
-	w.now = w.now + Gamemode.ADMIN_LINE_AT - Gamemode.PREROUND_AT - 1
+	w.now = w.now + Gamemode.COUNTDOWN - Gamemode.PREROUND_AT - 1
 	controller:Tick()
 	T.eq(table.concat(w.heard, " "), HOOK, "not before the pre-round")
 	w.now = w.now + 1
