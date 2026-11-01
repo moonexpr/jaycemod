@@ -19,7 +19,7 @@ local WALK_MAX_RISE = 40
 local SPAWN_MINS, SPAWN_MAXS = Vector(-16, -16, 0), Vector(16, 16, 72)
 local SPAWN_LIFT = Vector(0, 0, 4)
 local SPAWN_SPREAD, SPAWN_TRIES = 48, 8
-local PLAYER_CLEAR_MINS, PLAYER_CLEAR_MAXS = Vector(-36, -36, 0), Vector(36, 36, 72)
+local PLAYER_CLEAR_MINS, PLAYER_CLEAR_MAXS = Vector(-42.5, -42.5, 0), Vector(42.5, 42.5, 85)
 
 local GROUND_PROBE = 256
 
@@ -299,12 +299,13 @@ local function PlaceSpawnBases()
 			local points = {}
 			for i, spot in ipairs(HidingSpotsOf(team)) do points[i] = spot.pos end
 			for _, point in ipairs(world.grid.Thin(points, BASE_SPACING)) do
-				local pos = ClearSpotNear(ToVector(point))
+				local pos = ClearSpotNear(ToVector(point), PLAYER_CLEAR_MINS, PLAYER_CLEAR_MAXS)
 				if pos then
 					local ent = ents.Create("info_player_teamspawn")
 					ent:SetKeyValue("TeamNum", tostring(team))
 					ent:SetPos(pos)
 					ent:Spawn()
+					WS.SpawnState(ent).team = team
 					placed = placed + 1
 				end
 			end
