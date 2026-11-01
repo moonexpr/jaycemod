@@ -221,6 +221,7 @@ local function Env(w)
 		-- the real loader would load a missing feature: the fake refuses, so
 		-- a query of a feature not loaded fails the test
 		Feature = function(name) return w.features[name] or error("loaded a feature to check it: " .. name) end,
+		TeamOf = function(ply) return ply.team end,
 		-- the admin notices it sends (ws.admin_notices), in order
 		Notify = function(notices)
 			for _, n in ipairs(notices) do w.notified[#w.notified + 1] = n.text end
@@ -306,7 +307,8 @@ local function Env(w)
 			FindByClass = function() return {} end,
 			GetAll = function() return {} end,
 		},
-		player = { GetAll = function() return {} end },
+		player = { GetAll = function() return w.players or {} end },
+		game = { MaxPlayers = function() return 32 end },
 		util = {
 			TraceLine = function() return { Hit = false } end,
 			-- what a hull sweep hits: w.trace(t), else nothing
@@ -768,6 +770,35 @@ T.test("any scenario uses runtime-generated bases when the map lacks a team's sp
 		T.eq(w.spawnBasesPlaced, true, mode.NAME .. ": runtime placement ran before the base check")
 		T.eq(controller.war ~= nil, true, mode.NAME .. ": war started")
 	end
+end)
+
+T.test("the countdown waits for every quota bot to spawn and enlist", function()
+	local w = World()
+	w.players = { { team = RED } }
+	local controller = Load(w)
+	controller.war = {
+		Faction = function(_, team) return AiWar.HomeFaction(team) end,
+	}
+	local bots = {}
+	for _ = 1, SOLDIERS * 2 do
+		local bot = {
+			alive = true,
+			Alive = function(self) return self.alive end,
+		}
+		bots[bot] = true
+		controller.soldiers[bot] = {}
+	end
+	controller.bots = bots
+	T.eq(controller:BotsSpawned(), true, "full quota, spawned and enlisted")
+	local first = next(bots)
+	first.alive = false
+	T.eq(controller:BotsSpawned(), false, "dead bot is not spawned")
+	first.alive = true
+	controller.soldiers[first] = nil
+	T.eq(controller:BotsSpawned(), false, "unenlisted bot is not ready")
+	controller.soldiers[first] = {}
+	bots[first] = nil
+	T.eq(controller:BotsSpawned(), false, "short quota is not ready")
 end)
 
 T.test("starting and ending the war tells everyone visitors arrived and left", function()

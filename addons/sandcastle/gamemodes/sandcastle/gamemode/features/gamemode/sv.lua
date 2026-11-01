@@ -390,11 +390,14 @@ local CUES = {
 	end,
 }
 
--- A map's load countdown is cut short once the players expected from the
--- previous map are in (games.system.gamemode's Hurry; ws/sv_arrivals.lua).
+-- Long countdowns shorten once their expected players, when any, and all
+-- AI War bots are ready.
 function Controller:Tick()
 	local now = CurTime()
-	if WS.ExpectedPlayersIn() then self.mode:Hurry(now) end
+	local expectedPlayersIn = not self.mode:WaitsForExpectedPlayers() or WS.ExpectedPlayersIn()
+	if self.mode:TransitionEnd() and expectedPlayersIn and hook.Run("WSGameplayBotsReady") ~= false then
+		self.mode:Hurry(now)
+	end
 	for _, cue in ipairs(self.mode:Advance(now)) do CUES[cue.kind](self, cue) end
 	self:Publish()
 end

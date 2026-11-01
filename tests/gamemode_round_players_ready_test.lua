@@ -59,6 +59,7 @@ local function World(over)
 		needed = Rounds.Mode.PLAYERS_NEEDED,
 		players = {},
 		expectedIn = false,
+		botsReady = true,
 		ready = 0,
 		heard = {},
 	}
@@ -84,6 +85,7 @@ local function Load(w)
 		w.ready = w.ready + 1
 		w.heard[#w.heard + 1] = HOOK
 	end)
+	hook.Add("WSGameplayBotsReady", "test_bots", function() return w.botsReady end)
 	hook.Add("MatchStart", "test_addon", function() w.heard[#w.heard + 1] = "MatchStart" end)
 	local rounds = {
 		Mode = function()
@@ -147,20 +149,45 @@ T.test("an admin's Begin Game, in Sandbox mode with the players there, runs it o
 	local w = World()
 	local controller = Load(w)
 	T.eq(controller:Request(Gamemode.GAMEPLAY, Gamemode.SOURCE_BUTTON, nil), true, "granted")
+	T.eq(w.ready, 0, "the long countdown opens when bot readiness is checked")
+	w.now = w.now + 1
+	controller:Tick()
 	T.eq(w.ready, 1, "ran once")
 	controller:Request(Gamemode.GAMEPLAY, Gamemode.SOURCE_BUTTON, nil)
+	controller:Tick()
 	T.eq(w.ready, 1, "a second request, refused as already counting, does not run it again")
+end)
+
+T.test("Begin Game only shortens its long countdown after the bots are ready", function()
+	local w = World({ botsReady = false })
+	local controller = Load(w)
+	controller:Request(Gamemode.GAMEPLAY, Gamemode.SOURCE_BUTTON, nil)
+	local finish = w.now + Gamemode.LOAD_COUNTDOWN
+	T.eq(controller.mode:TransitionEnd(), finish, "starts at the long countdown")
+	w.now = w.now + 1
+	controller:Tick()
+	T.eq(controller.mode:TransitionEnd(), finish, "not shortened while bots are still spawning")
+	T.eq(w.ready, 0, "not announced before the bots are ready")
+	w.botsReady = true
+	w.now = w.now + 1
+	controller:Tick()
+	T.eq(controller.mode:TransitionEnd(), w.now + Gamemode.HURRIED_COUNTDOWN, "shortened after bots spawn")
+	T.eq(w.ready, 1, "announced once")
 end)
 
 T.test("an admin setting sv_gameplay_enabled 1 in the console runs it", function()
 	local w = World()
-	Load(w):SettingChanged(true, nil)
+	local controller = Load(w)
+	controller:SettingChanged(true, nil)
+	controller:Tick()
 	T.eq(w.ready, 1, "ran once")
 end)
 
 T.test("the AI war's request for Gameplay mode runs it", function()
 	local w = World()
-	Load(w):Request(Gamemode.GAMEPLAY, Gamemode.SOURCE_AI_WAR, nil, { title = "AI war", lines = {} })
+	local controller = Load(w)
+	controller:Request(Gamemode.GAMEPLAY, Gamemode.SOURCE_AI_WAR, nil, { title = "AI war", lines = {} })
+	controller:Tick()
 	T.eq(w.ready, 1, "ran once")
 end)
 
@@ -173,6 +200,8 @@ T.test("an MvM game waits for its defenders, and runs it once the last one readi
 	controller:WaitTick()
 	T.eq(w.ready, 0, "nor while the defender is not ready")
 	controller:ToggleReady(pat)
+	T.eq(w.ready, 0, "the long countdown opens on the next tick")
+	controller:Tick()
 	T.eq(w.ready, 1, "ran once the defender readied up")
 	controller:WaitTick()
 	T.eq(w.ready, 1, "once")
@@ -185,11 +214,13 @@ T.test("a game waiting for players runs it once they come", function()
 	T.eq(w.ready, 0, "one of two: it waits")
 	w.players[2] = Player(Teams.BLUE)
 	controller:WaitTick()
+	T.eq(w.ready, 0, "the long countdown opens on the next tick")
+	controller:Tick()
 	T.eq(w.ready, 1, "ran once the second came")
 end)
 
 T.test("a map loading in Gameplay mode runs it as the expected players hurry its countdown, not at load", function()
-	local w = World({ enabled = true })
+	local w = World({ enabled = true, botsReady = false })
 	local controller = Load(w)
 	controller:StartAtLoad()
 	T.eq(w.ready, 0, "not as the load's countdown starts")
@@ -197,6 +228,10 @@ T.test("a map loading in Gameplay mode runs it as the expected players hurry its
 	controller:Tick()
 	T.eq(w.ready, 0, "nor while the players are still loading")
 	w.expectedIn = true
+	w.now = w.now + 1
+	controller:Tick()
+	T.eq(w.ready, 0, "expected players do not hurry it before the bots spawn")
+	w.botsReady = true
 	w.now = w.now + 1
 	controller:Tick()
 	T.eq(w.ready, 1, "ran once they were in")
@@ -214,7 +249,10 @@ T.test("a game's countdown runs MatchStart once, at its first pre-round, before 
 	local w = World()
 	local controller = Load(w)
 	controller:Request(Gamemode.GAMEPLAY, Gamemode.SOURCE_BUTTON, nil)
-	w.now = w.now + Gamemode.COUNTDOWN - Gamemode.PREROUND_AT - 1
+	w.now = w.now + Gamemode.LOAD_COUNTDOWN - Gamemode.HURRIED_COUNTDOWN - 1
+	controller:Tick()
+	T.eq(table.concat(w.heard, " "), HOOK, "opened after bot readiness, before the pre-round")
+	w.now = w.now + Gamemode.HURRIED_COUNTDOWN - Gamemode.PREROUND_AT - 1
 	controller:Tick()
 	T.eq(table.concat(w.heard, " "), HOOK, "not before the pre-round")
 	w.now = w.now + 1

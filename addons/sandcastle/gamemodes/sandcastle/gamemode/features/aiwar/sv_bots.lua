@@ -156,15 +156,33 @@ function Controller:KickBot(team)
 	if pick then pick:Kick("tf_bot_quota") end
 end
 
-function Controller:MaintainBotQuota()
+local function QuotaSettings(self)
 	local sizes = self:Sizes()
-	local step = Quota.Step({
+	return {
 		mode = Quota.Mode(QUOTA_MODE:GetString()),
 		quota = QUOTA:GetInt(),
 		joinAfterPlayer = JOIN_AFTER_PLAYER:GetBool(),
 		actors = self:Actors(),
 		soldiers = sizes[RED] + sizes[BLUE],
-	}, self:Population())
+	}, sizes
+end
+
+function Controller:BotsSpawned()
+	if not self.war or self:Actors() ~= Quota.BOT then return true end
+	local wanted = Quota.Wanted(QuotaSettings(self), self:Population())
+	local spawned = 0
+	for bot in pairs(self.bots) do
+		if IsValid(bot) then
+			spawned = spawned + 1
+			if not bot:Alive() or not self.soldiers[bot] then return false end
+		end
+	end
+	return spawned >= wanted
+end
+
+function Controller:MaintainBotQuota()
+	local settings, sizes = QuotaSettings(self)
+	local step = Quota.Step(settings, self:Population())
 	if step == Quota.ADD then
 		self:AddBot()
 	elseif step == Quota.KICK then
@@ -176,6 +194,10 @@ function Controller:MaintainBotQuota()
 		if over then self:KickBot(over) end
 	end
 end
+
+hook.Add("WSGameplayBotsReady", "ws_aiwar_bots", function()
+	return Controller:BotsSpawned()
+end)
 
 -- A bot alive on a game team but not a soldier (it spawned before it had a
 -- team, and joining one did not spawn it again) is enlisted.

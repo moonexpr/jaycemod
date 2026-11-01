@@ -23,10 +23,9 @@
 -- (Players); a map loading in Gameplay mode without them waits too (Load).
 -- Once Gameplay mode has begun, players leaving change nothing.
 --
--- A map loading in Gameplay mode (a map change) counts down too, longer, as
--- its players are still loading (Load: LOAD_COUNTDOWN), and the controller
--- cuts it short once those expected from the previous map are in (Hurry:
--- HURRIED_COUNTDOWN). A requested countdown keeps its length.
+-- A map loading in Gameplay mode, or a request to begin one, counts down
+-- LOAD_COUNTDOWN seconds. It opens and shortens to HURRIED_COUNTDOWN only
+-- when the relevant players are ready and every AI War bot has spawned.
 --
 -- Every countdown readies the game in stages, each cued once as the time
 -- left reaches it (a request's first two as it starts): the map cleaned up
@@ -55,8 +54,8 @@ SOURCE_BUTTON, SOURCE_CONSOLE, SOURCE_AI_WAR = "button", "console", "ai_war"
 
 -- What the controller does on an answer.
 STAY = "stay" -- nothing changes
-START_TRANSITION = "start_transition" -- the transition's opening cues, then its countdown
-START_LOAD_COUNTDOWN = "start_load_countdown" -- the load's countdown, its opening cued later (CUE_OPENING)
+START_TRANSITION = "start_transition" -- a short transition whose opening cues play at once
+START_LOAD_COUNTDOWN = "start_load_countdown" -- a quiet long countdown, opened later (CUE_OPENING)
 CANCEL_TRANSITION = "cancel_transition" -- silence the countdown; halt the rounds, a pre-round it began too
 ENTER_SANDBOX = "enter_sandbox" -- halt the rounds
 WAIT = "wait" -- wait for players, the rounds halted
@@ -86,12 +85,11 @@ SANDBOX_DISABLED = "Sandbox mode is disabled (sv_gameplay_disable_sandbox 1)"
 -- The transition: a count each second down to 1, the last SPOKEN_COUNT
 -- spoken (the announcer's lines exist for 5..1), and at its end
 -- (TransitionEnd, which the round timer shows) the Administrator's line and
--- Gameplay mode. A request counts down COUNTDOWN seconds; a map's load
--- counts down LOAD_COUNTDOWN, or HURRIED_COUNTDOWN from when its expected
--- players are in, if that is sooner.
+-- Gameplay mode. Requests and map loads count down LOAD_COUNTDOWN seconds,
+-- and may shorten to HURRIED_COUNTDOWN once their readiness conditions are met.
 LOAD_COUNTDOWN = 180
 HURRIED_COUNTDOWN = 30
-COUNTDOWN = HURRIED_COUNTDOWN
+COUNTDOWN = LOAD_COUNTDOWN
 
 SPOKEN_COUNT = 5
 ADMIN_LINE_AT = 13
@@ -100,7 +98,7 @@ ANNOUNCE_AT = ADMIN_LINE_AT
 PREROUND_AT = 10
 
 -- Cues Advance returns, in order.
-CUE_OPENING = "opening" -- the load countdown's opening cues, as a request's (START_TRANSITION)
+CUE_OPENING = "opening" -- the long countdown's opening cues
 CUE_CLEANUP = "cleanup" -- the map cleaned up, the rounds still halted
 CUE_ANNOUNCE = "announce" -- the match announced: the matchmaking sting and the announcer
 CUE_PREROUND = "preround" -- everyone on a team: the first pre-round, held until CUE_BEGIN
@@ -140,7 +138,7 @@ local QUIET = Answer(STAY, NOTICE_NONE)
 -- RULES[wanted mode][current mode][source]
 local RULES = {
 	[GAMEPLAY] = {
-		[SANDBOX] = BySource(Answer(START_TRANSITION, NOTICE_NONE), Answer(START_TRANSITION, NOTICE_REQUEST_CHAT)),
+		[SANDBOX] = BySource(Answer(START_LOAD_COUNTDOWN, NOTICE_NONE), Answer(START_LOAD_COUNTDOWN, NOTICE_REQUEST_CHAT)),
 		[TRANSITION] = BySource(Answer(STAY, NOTICE_REFUSED, ALREADY_COUNTING), Answer(STAY, NOTICE_REQUEST_CHAT)),
 		[GAMEPLAY] = BySource(Answer(STAY, NOTICE_REFUSED, ALREADY_GAMEPLAY), Answer(STAY, NOTICE_REQUEST_ANNOUNCEMENT)),
 		[WAITING] = BySource(Answer(STAY, NOTICE_REFUSED, ALREADY_WAITING), Answer(STAY, NOTICE_REQUEST_CHAT)),
@@ -155,13 +153,14 @@ local RULES = {
 
 -- Without rounds: Gameplay mode loads them; Sandbox mode is already so.
 local WITHOUT_ROUNDS = {
-	[GAMEPLAY] = BySource(Answer(START_TRANSITION, NOTICE_NONE, nil, true), Answer(START_TRANSITION, NOTICE_REQUEST_CHAT, nil, true)),
+	[GAMEPLAY] = BySource(Answer(START_LOAD_COUNTDOWN, NOTICE_NONE, nil, true), Answer(START_LOAD_COUNTDOWN, NOTICE_REQUEST_CHAT, nil, true)),
 	[SANDBOX] = BySource(Answer(STAY, NOTICE_REFUSED, NO_ROUNDS), Answer(STAY, NOTICE_NONE, NO_ROUNDS)),
 }
 local SANDBOX_OFF = BySource(Answer(STAY, NOTICE_DENIED, SANDBOX_DISABLED))
 
 local NEXT_MODE = {
 	[START_TRANSITION] = TRANSITION,
+	[START_LOAD_COUNTDOWN] = TRANSITION,
 	[CANCEL_TRANSITION] = SANDBOX,
 	[ENTER_SANDBOX] = SANDBOX,
 	[WAIT] = WAITING,
@@ -224,18 +223,18 @@ local function Decide(self, want, source, sandboxDisabled)
 end
 
 -- A countdown of length seconds from now.
--- A request's opens as it starts; the load's later (CUE_OPENING).
-local function Start(self, now, length, atLoad)
+-- quiet defers its opening; waitForExpectedPlayers marks an actual map load.
+local function Start(self, now, length, quiet, waitForExpectedPlayers)
 	self.endsAt = now + length
-	-- A requested countdown cues its opening count immediately, as Hurry does.
-	self.cued = length + (atLoad and 0 or 1)
-	self.atLoad = atLoad
-	self.opened = not atLoad
+	self.cued = length + (quiet and 0 or 1)
+	self.atLoad = waitForExpectedPlayers
+	self.opened = not quiet
 	self.stage = 1
 end
 
 local function Apply(self, answer, now)
 	if answer.action == START_TRANSITION then Start(self, now, COUNTDOWN, false) end
+	if answer.action == START_LOAD_COUNTDOWN then Start(self, now, LOAD_COUNTDOWN, true, false) end
 	local nextMode = NEXT_MODE[answer.action]
 	if nextMode then self.modes:Enter(nextMode) end
 	return answer
@@ -248,14 +247,16 @@ end
 function Mode:Request(want, source, now, sandboxDisabled, ready)
 	local answer = Decide(self, want, source, sandboxDisabled)
 	-- the rounds still load for a game that waits
-	if answer.action == START_TRANSITION and not ready then answer = Answer(WAIT, NOTICE_WAITING, nil, answer.loadRounds) end
+	if (answer.action == START_TRANSITION or answer.action == START_LOAD_COUNTDOWN) and not ready then
+		answer = Answer(WAIT, NOTICE_WAITING, nil, answer.loadRounds)
+	end
 	return Apply(self, answer, now)
 end
 
-local START_ANSWER = Answer(START_TRANSITION, NOTICE_NONE)
+local START_ANSWER = Answer(START_LOAD_COUNTDOWN, NOTICE_NONE)
 
 -- Whether the player requirement is met at time now: met while waiting,
--- the countdown starts (START_TRANSITION); else nothing changes (STAY).
+-- the long countdown starts; else nothing changes (STAY).
 function Mode:Players(ready, now)
 	if not (ready and self.modes:Is(WAITING)) then return QUIET end
 	return Apply(self, START_ANSWER, now)
@@ -278,7 +279,7 @@ function Mode:Load(now, ready)
 		self.modes:Enter(WAITING)
 		return WAIT_ANSWER
 	end
-	Start(self, now, LOAD_COUNTDOWN, true)
+	Start(self, now, LOAD_COUNTDOWN, true, true)
 	self.modes:Enter(TRANSITION)
 	return LOAD_ANSWER
 end
@@ -288,11 +289,15 @@ end
 -- HURRIED_COUNTDOWN from now, the time left cued at once. Returns whether
 -- its end moved.
 function Mode:Hurry(now)
-	if not (self.atLoad and self.modes:Is(TRANSITION)) then return false end
+	if not self.modes:Is(TRANSITION) then return false end
 	if self.endsAt - now <= HURRIED_COUNTDOWN then return false end
 	self.endsAt = now + HURRIED_COUNTDOWN
 	self.cued = HURRIED_COUNTDOWN + 1
 	return true
+end
+
+function Mode:WaitsForExpectedPlayers()
+	return self.atLoad and self.modes:Is(TRANSITION)
 end
 
 -- When the transition ends and Gameplay mode begins (the time Advance
@@ -311,8 +316,8 @@ local function Stages(self, cues, left)
 end
 
 -- The transition's cues due by time now since the last call, in order: the
--- load countdown's opening once its players are in (Hurry) or
--- HURRIED_COUNTDOWN seconds before its end; a count for each whole second
+-- long countdown's opening once it is hurried, or HURRIED_COUNTDOWN seconds
+-- before its end; a count for each whole second
 -- left passed, a stage before the count it comes at; at its end the last,
 -- CUE_BEGIN, puts the model in Gameplay mode. None outside the transition.
 function Mode:Advance(now)
