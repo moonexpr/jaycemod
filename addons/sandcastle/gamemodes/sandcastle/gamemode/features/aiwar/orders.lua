@@ -41,7 +41,8 @@
 --   NextSoldier          ends when the soldier dies (CTFBotMainAction)
 --     StrategyMonitor      applies the war's allocation: the member's job
 --       TacticalMonitor    self-preservation (CTFBotTacticalMonitor): the
---                          humiliated SuspendFor Humiliated
+--                          humiliated SuspendFor Humiliated; opening an
+--                          unlocked door SuspendFor OpenDoor
 --         SquadMonitor     leader, member or solo (wartactics.squad)
 --           SquadLeader | SquadMember | Solo   a member takes its bound line
 --                          from its leader, regroups on it in a fight, and
@@ -2334,9 +2335,32 @@ function CallMedic:OnStart(me)
 	return self:Done("called for a medic")
 end
 
+-- OpenDoor: hold the player's eyes on the unlocked door its movement trace
+-- hit. The player body presses IN_USE while it moves into that door.
+local OpenDoor = SoldierChart:State("OpenDoor")
+local OPEN_DOOR_TIMEOUT, OPEN_DOOR_RETRY = STUCK_TIME, STUCK_TIME
+
+function OpenDoor:Init(state) self.state = state end
+
+function OpenDoor:OnStart(me)
+	self.untilAt = me:Now() + OPEN_DOOR_TIMEOUT
+	return self:Update(me)
+end
+
+function OpenDoor:Update(me)
+	local door = me:DoorToOpen()
+	if not door then return self:Done("the door is opening") end
+	if me:Now() >= self.untilAt then
+		self.state.doorOpenRetryAt = me:Now() + OPEN_DOOR_RETRY
+		return self:Done("the door did not open")
+	end
+	me:LookAt(door, 1, true)
+	return self:Continue()
+end
+
 -- TacticalMonitor: what keeps the soldier alive comes before its squad and
 -- its job: humiliation, then the hunt of the losers, then retreat, which
--- what it runs may refuse (ShouldRetreat NO).
+-- what it runs may refuse (ShouldRetreat NO); then opening an unlocked door.
 local TacticalMonitor = PassthroughMonitor("TacticalMonitor", function(state) return SquadMonitor:New(state) end)
 
 -- The damage it took, kept for RETREAT_WINDOW (OnInjured, from DrGBase).
@@ -2372,6 +2396,9 @@ function TacticalMonitor:Update(me)
 	end
 	if HealthShare(me) < CALL_MEDIC_HEALTH and now >= (state.medicCallReadyAt or 0) and not Treated(state.member, now) then
 		return self:SuspendFor(CallMedic:New(state), "hurt: calling for a medic")
+	end
+	if now >= (state.doorOpenRetryAt or 0) and me:DoorToOpen() then
+		return self:SuspendFor(OpenDoor:New(state), "opening an unlocked door")
 	end
 	return self:Continue()
 end

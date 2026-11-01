@@ -201,10 +201,32 @@ T.test("a low obstacle ahead is jumped, one at head height ducked under, a door 
 	T.eq(wall.jump or wall.duck, false, "a wall is neither: being stuck deals with it")
 	T.eq(Body.New():Command(0, TICK, Sense({ lowBlocked = true })).jump, false, "standing still, nothing")
 	local body = Body.New()
-	T.eq(body:Command(0, TICK, Sense({ target = EAST, doorAhead = true })).use, true, "uses the door")
-	T.eq(body:Command(TICK, TICK, Sense({ target = EAST, doorAhead = true })).use, false, "once, not held")
-	T.eq(body:Command(Body.USE_INTERVAL - TICK, TICK, Sense({ target = EAST, doorAhead = true })).use, false, "not again while it swings")
-	T.eq(body:Command(Body.USE_INTERVAL + TICK, TICK, Sense({ target = EAST, doorAhead = true })).use, true, "again when it stayed shut")
+	local door = { x = 100, y = 0, z = 64 }
+	local focused = { target = EAST, doorAhead = true, look = door, lookPriority = true }
+	T.eq(body:Command(0, TICK, Sense(focused)).use, true, "uses the door while looking at it")
+	T.eq(body:Command(TICK, TICK, Sense(focused)).use, false, "once, not held")
+	T.eq(body:Command(Body.USE_INTERVAL - TICK, TICK, Sense(focused)).use, false, "not again while it swings")
+	T.eq(body:Command(Body.USE_INTERVAL + TICK, TICK, Sense(focused)).use, true, "again when it stayed shut")
+end)
+
+T.test("door focus takes priority over an enemy until the body can use it", function()
+	local body = Body.New()
+	local door = { x = 0, y = 1000, z = 64 }
+	local fields = {
+		target = EAST,
+		doorAhead = true,
+		look = door,
+		lookPriority = true,
+		aim = EAST,
+		aimRadius = 16,
+	}
+	local first = body:Command(0, TICK, Sense(fields))
+	T.eq(first.use, false, "does not use before turning")
+	T.eq(first.yaw > 0, true, "turns toward the door instead of the enemy")
+	fields.eye = { pitch = 0, yaw = 90 }
+	local command = body:Command(1, TICK, Sense(fields))
+	T.near(command.yaw, 90, 1e-6, "looks directly at the door")
+	T.eq(command.use, true, "uses once it is looking at the door")
 end)
 
 T.test("a hop its orders ask for is a jump toward its target", function()

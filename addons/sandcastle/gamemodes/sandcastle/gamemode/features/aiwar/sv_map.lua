@@ -6,6 +6,7 @@ local Slots = WS.require("features.aiwar.slots")
 local AiWar = WS.require("features.aiwar.model")
 local HL2Path = WS.require("foundation.wetsands.path.hl2")
 local Path = wetsands.path
+local Doors = nextsoldier.doors
 
 -- CanWalkTo's and the lanes' sweep: the standard body's width (a TF2
 -- player's, gameplay.movement; the bot soldiers' own, and wider than the NPC
@@ -122,6 +123,16 @@ local DOOR_CLASSES = { func_door = true, func_door_rotating = true, prop_door_ro
 
 local function IsDoor(ent)
 	return DOOR_CLASSES[ent:GetClass()] == true
+end
+
+local function DoorOpenable(door)
+	if not IsValid(door) or not IsDoor(door) or door:GetInternalVariable("m_bLocked") == true then return false end
+	if door:GetClass() == "prop_door_rotating" then
+		local state = door:GetInternalVariable("m_eDoorState")
+		return state == nil or state == 0
+	end
+	local state = door:GetInternalVariable("m_toggle_state")
+	return state == nil or state == Doors.TS_AT_BOTTOM
 end
 
 -- Two entities that no longer collide, in physics or in an engine NPC's
@@ -329,6 +340,7 @@ return {
 	Masks = Masks,
 	SpawnSpots = SpawnSpots,
 	IsDoor = IsDoor,
+	DoorOpenable = DoorOpenable,
 	PassThrough = PassThrough,
 	WorldWalkClear = WorldWalkClear,
 	OnFloor = OnFloor,

@@ -31,6 +31,7 @@ function Fake.Soldier(t)
 	return setmetatable({
 		now = t.now or 1,
 		pos = t.pos or Fake.Point(0, 0, 0),
+		doorToOpen = t.doorToOpen,
 		alive = true,
 		enemy = false,
 		route = t.route or function(from, goal) return { goal } end,
@@ -65,6 +66,7 @@ function Soldier:Now() return self.now end
 function Soldier:IsAlive() return self.alive end
 function Soldier:Position() return { x = self.pos.x, y = self.pos.y, z = self.pos.z } end
 function Soldier:RangeTo(p) return Distance(self.pos, p) end
+function Soldier:DoorToOpen() return self.doorToOpen end
 function Soldier:HasEnemy() return self.enemy end
 
 function Soldier:RequestRoute(goal)

@@ -21,7 +21,7 @@ local Marksmanship = WS.require("features.aiwar.marksmanship")
 local Orders = WS.require("features.aiwar.orders")
 local Profiles = WS.require("features.aiwar.profiles")
 local NpcSystem = npc.nextbot
-local Point = Map.Point
+local DoorOpenable, Point = Map.DoorOpenable, Map.Point
 local RED, BLUE = Map.RED, Map.BLUE
 
 local FLAGS = { FCVAR_ARCHIVE, FCVAR_NOTIFY }
@@ -400,7 +400,9 @@ function Controller:FeelAhead(ply, soldier)
 	local low = util.TraceHull({ start = pos + KNEE_LIFT, endpos = pos + KNEE_LIFT + ahead, mins = KNEE_MINS, maxs = KNEE_MAXS, mask = MASK_PLAYERSOLID, filter = Obstacle })
 	local head = util.TraceHull({ start = pos + HEAD_LIFT, endpos = pos + HEAD_LIFT + ahead, mins = HEAD_MINS, maxs = HEAD_MAXS, mask = MASK_PLAYERSOLID, filter = Obstacle })
 	soldier.lowBlocked, soldier.headBlocked = low.Hit, head.Hit
-	soldier.doorAhead = (IsValid(low.Entity) and Map.IsDoor(low.Entity)) or (IsValid(head.Entity) and Map.IsDoor(head.Entity)) or false
+	local door = IsValid(low.Entity) and Map.IsDoor(low.Entity) and low.Entity
+		or IsValid(head.Entity) and Map.IsDoor(head.Entity) and head.Entity
+	soldier.doorAhead = DoorOpenable(door) and door or false
 end
 
 -- Every look due, the fighters gathered once for all of them.
@@ -443,8 +445,9 @@ function Controller:Drive(ply, entry, cmd)
 	sense.walk = soldier.gait == Orders.WALK
 	sense.crouchArea, sense.jumpArea = soldier.crouchArea, soldier.jumpArea
 	sense.hop = soldier:Hopping(now)
-	sense.lowBlocked, sense.headBlocked, sense.doorAhead = soldier.lowBlocked, soldier.headBlocked, soldier.doorAhead
+	sense.lowBlocked, sense.headBlocked, sense.doorAhead = soldier.lowBlocked, soldier.headBlocked, soldier:DoorToOpen() ~= nil
 	sense.look = soldier:Looking(now)
+	sense.lookPriority = soldier.glancePriority and now < (soldier.glanceUntil or 0)
 	sense.aim, sense.aimRadius = aim, AIM_RADIUS
 	local ranges = arm and Arms.Ranges(weapon:GetClass())
 	sense.chase, sense.avoid = ranges and ranges.chase, ranges and ranges.avoid

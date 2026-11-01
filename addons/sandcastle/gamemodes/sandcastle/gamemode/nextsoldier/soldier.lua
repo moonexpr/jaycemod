@@ -19,6 +19,8 @@
 --     IsSeated() -> whether I sit on it
 --   Position() -> my origin
 --   RangeTo(p) -> the distance from my origin to p
+--   DoorToOpen() -> the point to look at while approaching an unlocked door,
+--     else nil
 --   HasEnemy() -> I have an enemy in sight (the engine's COND_SEE_ENEMY)
 --   RequestRoute(goal): start a route search from here to goal, dropping
 --     any search still running
@@ -77,8 +79,9 @@
 --     while, and my teammates see that I called
 --   Announce(concept): call out what I am doing (a nextsoldier.speech
 --     concept), if my voice has a line for it
---   LookAt(p, seconds): look at p a while, unless I fight (my head, a
---     NextBot's; my eyes, a bot player's), whatever Watch says
+--   LookAt(p, seconds[, priority]): look at p a while, unless I fight
+--     (my head, a NextBot's; my eyes, a bot player's), whatever Watch says;
+--     priority keeps a bot player's eyes there over its combat aim
 --   Gesture(occasion): play a nextsoldier.gestures occasion (a squad
 --     leader's signals among them), if my model has it and it is not
 --     cooling down
@@ -105,6 +108,7 @@ METHODS = {
 	"IsSeated",
 	"Position",
 	"RangeTo",
+	"DoorToOpen",
 	"HasEnemy",
 	"RequestRoute",
 	"RouteResult",

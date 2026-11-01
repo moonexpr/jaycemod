@@ -284,6 +284,24 @@ T.test("DrGBase asks the orders whether to attack: the humiliated hold fire", fu
 	T.eq(Orders.JobOf(npc:Describe()) ~= nil, true, "back to its job")
 end)
 
+T.test("the tactical monitor looks at an unlocked door while the player uses it", function()
+	local door = P(120, 0)
+	local me, npc = Enlist({ role = AiWar.PUSH, doorToOpen = door })
+	Tick(me, npc)
+	T.eq(npc:Describe():find("/OpenDoor", 1, true) ~= nil, true, npc:Describe())
+	T.eq(#me.lookedAt, 1, "looks toward the door")
+	Near(me.lookedAt[1].p, door, "door look target")
+	me.doorToOpen = nil
+	Tick(me, npc)
+	T.eq(Orders.JobOf(npc:Describe()), "Travel", "the job resumes once clear")
+end)
+
+T.test("a door that never opens does not hold the tactical monitor indefinitely", function()
+	local me, npc = Enlist({ role = AiWar.PUSH, doorToOpen = P(120, 0) })
+	Tick(me, npc, math.ceil((Orders.STUCK_TIME + 1) / TICK))
+	T.eq(npc:Describe():find("/OpenDoor", 1, true) ~= nil, false, "gives the job time to recover")
+end)
+
 T.test("a route planned before a door shut is planned again", function()
 	local me, npc = Enlist({ role = AiWar.PUSH, field = Field({}) })
 	Tick(me, npc, 3)

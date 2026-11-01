@@ -178,6 +178,7 @@ end
 function Soldier:IsAlive() return IsValid(self.ent) and self.ent:Health() > 0 end
 function Soldier:Position() return Point(self.ent:GetPos()) end
 function Soldier:RangeTo(p) return self.ent:GetPos():Distance(ToVector(p)) end
+function Soldier:DoorToOpen() return nil end
 
 function Soldier:HasEnemy()
 	local ent = self.ent

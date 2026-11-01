@@ -17,6 +17,7 @@ local Geometry = math.geometry
 local Teams = gameplay.teams
 local Movement = gameplay.movement
 local ToVector, Point = Map.ToVector, Map.Point
+local DoorOpenable = Map.DoorOpenable
 local WALK_MAXS, WALK_LIFT, WALK_MAX_RISE = Map.WALK_MAXS, Map.WALK_LIFT, Map.WALK_MAX_RISE
 
 -- How long it keeps the jump key's wish when its orders ask a hop: long
@@ -109,6 +110,12 @@ end
 function BotSoldier:HasEnemy()
 	local enemy = self:Enemy()
 	return enemy ~= nil and self.vision:Visible(enemy)
+end
+
+function BotSoldier:DoorToOpen()
+	local door = self.doorAhead
+	if not DoorOpenable(door) then return nil end
+	return Point(door:WorldSpaceCenter())
 end
 
 function BotSoldier:EnemyHealth()
@@ -294,8 +301,9 @@ function BotSoldier:Watch(p)
 end
 
 -- Its eyes go to p a while, over where Watch points them (Looking).
-function BotSoldier:LookAt(p, seconds)
+function BotSoldier:LookAt(p, seconds, priority)
 	self.glance, self.glanceUntil = ToVector(p), CurTime() + seconds
+	self.glancePriority = priority == true
 end
 
 -- It stands still for seconds (a taunt played whole): no steering while it

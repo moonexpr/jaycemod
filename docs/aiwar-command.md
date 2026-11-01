@@ -69,7 +69,7 @@ files under LuaJIT; controllers feed them; entities bind; views draw.
 |---|---|---|---|---|---|
 | `NextSoldier` | `CTFBotMainAction` | life and death | port | — | — |
 | `StrategyMonitor` | — (new) | my job, my squad | Commander's allocation | `OnCommand*` from the Commander | — |
-| `TacticalMonitor` | `CTFBotTacticalMonitor` | survival: humiliation, retreat to cover | my health, threats, round state | `OnInjured`, `OnSight`, `OnOtherKilled` | `ShouldRetreat` (default rule) |
+| `TacticalMonitor` | `CTFBotTacticalMonitor` | survival: humiliation, retreat to cover; open an unlocked door | my health, threats, round state, the door ahead | `OnInjured`, `OnSight`, `OnOtherKilled` | `ShouldRetreat` (default rule) |
 | `SquadMonitor` | squad branch of `CTFBotScenarioMonitor::InitialContainedAction` | leader, member or solo | squad roster | squad formed, disbanded, leader lost | — |
 | `SquadLeader` | — | the squad's intent: where it goes, bound or flank, target | squad blackboard, job | reports from members | `ShouldAttack` (squad's target first) |
 | `SquadMember` | `CTFBotEscortSquadLeader` | keeping formation or element on the leader's intent | leader's intent, claims | leader's orders | `ShouldRetreat` = NO while its element holds |
@@ -104,6 +104,9 @@ Self-preservation lives here, as it does in TF2
   under `RETREAT_HEALTH`, suspend for `RetreatToCover`: the port's
   `CoverSpot` away from the threat, held until healed or `RETREAT_TIME`
   passes. Not built yet.
+- **Doors:** when the player's movement trace meets an unlocked door,
+  suspend for `OpenDoor`, look at it, and let the player body press Use as
+  it moves into the door. Locked doors are not used.
 
 A monitor's `SuspendFor` buries the monitor itself and everything under
 it, as TF2's `SuspendFor( new CTFBotRetreatToCover )` does. The squad and

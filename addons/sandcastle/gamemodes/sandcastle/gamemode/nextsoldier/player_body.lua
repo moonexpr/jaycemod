@@ -31,8 +31,8 @@ BACKOFF_TIME = 0.6
 -- FIRE_CONE degrees of its centre, whichever is wider; a melee weapon
 -- strikes within MELEE_CONE degrees.
 FIRE_CONE, MELEE_CONE = 2, 30
--- A door ahead is used once, and again only after USE_INTERVAL seconds if
--- it still stands in the way (GLambda's players' door check).
+-- A door ahead is used once while it is in view, and again only after
+-- USE_INTERVAL seconds if it still stands in the way.
 USE_INTERVAL = 2
 
 local Body = {}
@@ -96,6 +96,11 @@ local function OnTarget(sense, pitch, yaw)
 	return off <= cone
 end
 
+local function LookingAt(sense, pitch, yaw, target)
+	local toPitch, toYaw = AnglesTo(sense.eyePos, target)
+	return abs(toPitch - pitch) <= FIRE_CONE and abs(Normal(toYaw - yaw)) <= FIRE_CONE
+end
+
 -- The jump key this tick: pressed for one tick, let go the next.
 local function Jump(self, now, want)
 	if want and not self.jumped then
@@ -126,7 +131,8 @@ end
 -- target (where it is sent, or nil),
 -- walk (at a walk), crouchArea, jumpArea (the nav mesh's where it stands),
 -- hop (its orders ask a jump), lowBlocked, headBlocked (something ahead at
--- its knees, at its head), doorAhead, look (where to face, or nil), aim
+-- its knees, at its head), doorAhead, look (where to face, or nil),
+-- lookPriority (hold that look over an enemy's aim), aim
 -- (its enemy's centre while it is recognized and in sight, or nil),
 -- aimRadius, chase, avoid (its weapon's ranges, or nil), fire (it may
 -- shoot), weapon = { automatic, melee, reach, clip (-1: none), reserve } or
@@ -169,13 +175,16 @@ function Body:Command(now, dt, sense)
 	local wantJump = sense.onGround and (stuck or enteredJumpArea or sense.hop or hurdle or false)
 	local jump = Jump(self, now, wantJump)
 	local crouchJump = not sense.onGround and self.jumpedAt ~= nil and now - self.jumpedAt <= CROUCH_JUMP_TIME
-	local use = moving and sense.doorAhead and (self.usedAt == nil or now - self.usedAt >= USE_INTERVAL) or false
+	local eye = sense.eye
+	local usingDoor = sense.doorAhead and sense.lookPriority and sense.look and LookingAt(sense, eye.pitch, eye.yaw, sense.look)
+	local use = moving and usingDoor and (self.usedAt == nil or now - self.usedAt >= USE_INTERVAL) or false
 	if use then self.usedAt = now end
 
-	-- eyes: on the enemy, else where told, else the way it goes
-	local eye = sense.eye
+	-- A priority look wins over combat aim while the bot uses a door.
 	local toPitch, toYaw = eye.pitch, eye.yaw
-	if sense.aim then
+	if sense.lookPriority and sense.look then
+		toPitch, toYaw = AnglesTo(sense.eyePos, sense.look)
+	elseif sense.aim then
 		toPitch, toYaw = AnglesTo(sense.eyePos, sense.aim)
 	elseif sense.look then
 		toPitch, toYaw = AnglesTo(sense.eyePos, sense.look)
