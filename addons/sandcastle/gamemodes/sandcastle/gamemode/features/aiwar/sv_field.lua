@@ -308,6 +308,7 @@ function Controller:Survey(now)
 	local entry, variant = Scenario.Entry(self.scenarios, { mode = RoundsModeName(), field = field })
 	field.scenario = entry
 	if getmetatable(self.scenario) ~= variant then self.scenario = variant:New() end
+	self.scenarioEntry = entry
 	self.waitingFor = self.scenario:Lacks(field)
 	if self.waitingFor then return nil end
 	self.scenario:Command(self.war, field, now)

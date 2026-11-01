@@ -160,6 +160,56 @@ function Controller:CompileRegistries()
 	self.scenarios = Scenario.Compile(self.behaviors)
 end
 
+-- Reload module-backed scenario classes and compile a fresh decision
+-- structure. If the selected scenario is unchanged, keep its round state
+-- (notably the exploration board) while giving it the new class.
+function Controller:ReloadScenarios()
+	if not self.war then return false, "the AI war is not running" end
+	if not self.scenarios then return false, "the scenario registry is not compiled" end
+
+	local modules, seen = {}, {}
+	for _, entry in ipairs(self.scenarios:Entries()) do
+		local name = type(entry.scenario) == "string" and entry.scenario
+		if name and not seen[name] then
+			seen[name] = true
+			modules[#modules + 1] = name
+		end
+	end
+
+	local previous = {}
+	for _, name in ipairs(modules) do previous[#previous + 1] = { name = name, value = package.loaded[name] } end
+	local ok, behaviors, scenarios, entry, variant = pcall(function()
+		for _, name in ipairs(modules) do
+			package.loaded[name] = nil
+			WS.require(name)
+		end
+		local compiledBehaviors = Behaviors.Shared:Compile()
+		local compiledScenarios = Scenario.Compile(compiledBehaviors)
+		local now = CurTime()
+		local phase = AiWar.PhaseOf(WS.Active(), WS.State(), self.winner, Map.StalemateIsRound())
+		local field = self:Field(phase, now)
+		local selected, class = Scenario.Entry(compiledScenarios, { mode = RoundsModeName(), field = field })
+		return compiledBehaviors, compiledScenarios, selected, class
+	end)
+	if not ok then
+		for _, loaded in ipairs(previous) do package.loaded[loaded.name] = loaded.value end
+		error("nb_scenarios_reload: " .. tostring(behaviors), 2)
+	end
+
+	local active = self.scenario
+	local sameEntry = self.scenarioEntry and self.scenarioEntry.name == entry.name
+		or (not self.scenarioEntry and active and active.NAME == variant.NAME)
+	if sameEntry and active then
+		setmetatable(active, variant)
+	else
+		active = variant:New()
+	end
+	self.behaviors, self.scenarios = behaviors, scenarios
+	self.scenario, self.scenarioEntry = active, entry
+	return true, string.format("reloaded %d scenario modules; compiled %d scenarios; active %s",
+		#modules, #scenarios:Entries(), entry.name)
+end
+
 -- Starts the war at once and requests Gameplay mode, whose countdown
 -- restarts the rounds. The scenario is the rounds mode's (the map's own
 -- entities chose it), never the map's name. Returns true, or false and why

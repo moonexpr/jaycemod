@@ -81,6 +81,12 @@ WarCommand("ns_lanes_replan", function()
 	return { "ns_lanes_replan: every team's lanes are planned again at the next think" }
 end, "Plan every team's lanes again; the lanes found stand until the new ones are ready")
 
+WarCommand("nb_scenarios_reload", function()
+	local ok, result = Controller:ReloadScenarios()
+	if not ok then return { "nb_scenarios_reload: " .. result } end
+	return { "nb_scenarios_reload: " .. result }
+end, "Reload module-backed scenario behavior and recompile the scenario registry without changing maps")
+
 -- Squads and jobs by hand, for testing how squads work: soldiers named by
 -- entity index (the AI War panel's slot list sends them).
 local function Indexes(command, args, from)

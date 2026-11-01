@@ -1,12 +1,11 @@
 -- The freeform scenario (features.aiwar.scenario): the war on a map whose
 -- rounds mode is none the war knows (no rounds at all, or no standard
 -- objective). Nothing is fought over, so every squad explores
--- (wartactics.explore), in squads of SQUAD_SIZE: a squad follows the
--- nearest living player of its team (field.players), and without one its
--- leader explores as arena's do, walking its lane toward the enemy's base
--- (Front; none where both teams start in the same place), then the
--- waypoints. A squad in a fight fights first. The war's soldiers respawn at
--- once without gamerules (the controller's WaveLength).
+-- (wartactics.explore), in squads of SQUAD_SIZE, walking its lane toward
+-- the enemy's base (Front; none where both teams start in the same place),
+-- then the waypoints, without waiting for any player. A squad in a fight
+-- fights first. The war's soldiers respawn at once without gamerules (the
+-- controller's WaveLength).
 local ipairs = ipairs
 local AiWar = require("features.aiwar.model")
 local Explore = wartactics.explore
@@ -14,7 +13,6 @@ local Orders = require("features.aiwar.orders")
 local Teams = gameplay.teams
 local Base = require("features.aiwar.scenario")
 local Distance = math.geometry.Distance
-local Select = list.select
 module(...)
 
 MODE = "freeform"
@@ -28,17 +26,9 @@ local TEAMS = { Teams.RED, Teams.BLUE }
 local EnemyOf = Teams.EnemyOf
 local EXPLORE = AiWar.EXPLORE
 
--- The nearest of players ({ handle, pos }) to pos, or nil.
-local function PlayerPos(p) return p.pos end
-
-local function Nearest(players, pos)
-	return (Select.Nearest(players, pos, PlayerPos))
-end
-
 -- The doctrine ---------------------------------------------------------------------
 
--- An explorer squad fights where it is in a fight, else follows the nearest
--- player of its team, else explores.
+-- An explorer squad fights where it is in a fight, else explores.
 local ROLE = {
 	name = "Explore",
 	chases = "opportunist",
@@ -47,13 +37,7 @@ local ROLE = {
 	arrive = Orders.ESCORT_ARRIVE,
 	leash = Orders.ESCORT_LEASH,
 	rushes = false,
-	Goal = function(field, member)
-		local fight = Explore.Fight(field, member)
-		if fight then return fight end
-		local player = Nearest(field.players[member.team], member.pos or field.bases[member.team])
-		if player then return player.pos end
-		return Explore.Goal(field, member)
-	end,
+	Goal = Explore.Goal,
 	LeavesLane = Explore.LeavesLane,
 }
 

@@ -49,6 +49,9 @@ Admins, while the war runs; printed to your console and the server's.
   until the new ones are ready.
 - `ns_battlelines_print`: per team, its front, its posts' width and depth
   (or ring size), and every squad in contact or falling back.
+- `nb_scenarios_reload`: reloads module-backed scenario behavior and
+  recompiles the scenario registry without changing maps. When the selected
+  scenario is unchanged, its current round state is preserved.
 - `ws_aiwar_report`, `ws_aiwar_trace`: every soldier, and one
   soldier's queries and events (unchanged).
 

@@ -609,6 +609,30 @@ T.test("a map without rounds loaded is fought freeform, in its bigger squads", f
 	T.eq(#w.requests, 1, "Gameplay mode asked for")
 end)
 
+T.test("reloading scenarios recompiles the registry and preserves active scenario state", function()
+	local controller = Load(World())
+	controller.war = AiWar.War.New()
+	controller:CompileRegistries()
+	local old = Freeform.Scenario:New()
+	old.board = { explored = true }
+	controller.scenario = old
+	controller.scenarioEntry = { name = "freeform" }
+	controller.Field = function() return { waypoints = {} } end
+
+	local oldClass = getmetatable(old)
+	local module = Base.FREEFORM
+	local cached = package.loaded[module]
+	local ok, result = controller:ReloadScenarios()
+	package.loaded[module] = cached
+
+	T.eq(ok, true, "reloaded")
+	T.eq(result:find("reloaded 10 scenario modules", 1, true) ~= nil, true, result)
+	T.eq(controller.scenario, old, "same scenario instance")
+	T.eq(controller.scenario.board.explored, true, "scenario state kept")
+	T.eq(getmetatable(controller.scenario) ~= oldClass, true, "new scenario class")
+	T.eq(controller.scenarioEntry.name, "freeform", "active scenario recorded")
+end)
+
 T.test("a rounds mode without a standard objective is fought freeform; without a nav mesh it is refused", function()
 	local w = World()
 	OneNavArea(w)

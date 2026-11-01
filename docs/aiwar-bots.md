@@ -49,6 +49,9 @@ Bots pass through their teammates (`SetNoCollideWithTeammates`), as TF2's
 teammates do: one held up behind another in a doorway crouch-jumped onto
 its head and stayed there.
 
+Freeform squads explore their lanes and waypoints without waiting for or
+following any player.
+
 Why the bots plan with the engine: the orders' own route walking
 (`PlansRoutes` false, `Travel:FollowRoute`) asks the war's Lua route search,
 whose queue the lane planning keeps 20 to 30 deep on `pl_upward`; a trip the

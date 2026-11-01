@@ -1,7 +1,6 @@
 -- The AI war where the rounds mode is none the war knows (no rounds, or a
 -- map without a standard objective): features.aiwar.scenario.freeform.
--- Every squad explores, in bigger squads; a squad follows the nearest
--- living player of its team, and without one explores as arena's do. The
+-- Every squad explores, in bigger squads, without waiting for any player. The
 -- soldiers join the fight where the map has no TF2 team spawns at their
 -- team's HL2 deathmatch spawns, else at the nav mesh's hiding spots split
 -- between the teams (features.aiwar.spawns).
@@ -84,32 +83,23 @@ T.test("a squad of the war's forming holds SQUAD_SIZE soldiers", function()
 	for _, s in ipairs(battle.soldiers) do T.eq(s.member.fireTeam, first, s.member.handle .. " in one squad") end
 end)
 
-T.test("a squad follows the nearest living player of its team, not the enemy's", function()
+T.test("a squad explores without following a living teammate", function()
 	local battle = SquadOf(4)
 	local leader = Squad.Leader(battle.soldiers[1].member.fireTeam)
 	leader.pos = P(0, 0)
 	local field = Brief(Field({ players = {
-		[RED] = { { handle = "far", pos = P(3000, 0) }, { handle = "near", pos = P(800, 200) } },
+		[RED] = { { handle = "near", pos = P(800, 200) } },
 		[BLUE] = { { handle = "enemy", pos = P(100, 0) } },
 	} }))
-	local goal = ROLE.Goal(field, leader)
-	T.eq(goal.x == 800 and goal.y == 200, true, "the nearest teammate")
-end)
-
-T.test("without a player of its team, a squad explores", function()
-	local battle = SquadOf(4)
-	local leader = Squad.Leader(battle.soldiers[1].member.fireTeam)
-	leader.pos = P(0, 0)
-	local field = Brief(Field({ players = { [RED] = {}, [BLUE] = { { handle = "enemy", pos = P(100, 0) } } } }))
 	local goal = ROLE.Goal(field, leader)
 	local waypoint = false
 	for _, w in ipairs(WAYPOINTS) do
 		if w.x == goal.x and w.y == goal.y then waypoint = true end
 	end
-	T.eq(waypoint, true, "a waypoint")
+	T.eq(waypoint, true, "a waypoint despite a teammate being available")
 end)
 
-T.test("a squad in a fight fights before it follows its player", function()
+T.test("a squad fights first, then explores instead of following a player", function()
 	local battle = SquadOf(4)
 	local fireTeam = battle.soldiers[1].member.fireTeam
 	local leader = Squad.Leader(fireTeam)
@@ -124,7 +114,8 @@ T.test("a squad in a fight fights before it follows its player", function()
 	T.eq(ROLE.Goal(field, leader).x, seen.x, "engaged: where it was")
 	field = Field({ now = battle.now + Explore.ENGAGED_FOR + 1, players = { [RED] = { { handle = "near", pos = P(800, 200) } }, [BLUE] = {} } })
 	scenario:Command(battle.war, field, field.now)
-	T.eq(ROLE.Goal(field, leader).x, 800, "then its player again")
+	local goal = ROLE.Goal(field, leader)
+	T.eq(goal.x == 800 and goal.y == 200, false, "then a waypoint, not the player")
 end)
 
 -- Spawns ---------------------------------------------------------------------------
