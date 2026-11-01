@@ -11,7 +11,7 @@
 -- WSGameplayRulesPanel(panel) and WSMatchControlPanel(panel).
 local Permissions = system.permissions
 
-local NOT_ALLOWED = "Your rank may not change these. An admin mod can give it the privilege "
+local NOT_ALLOWED = "Gameplay privileges required, please ask an administrator."
 
 -- A collapsible section of panel; its controls build into the returned form.
 local function Section(panel, title, expanded)
@@ -92,8 +92,8 @@ local RULES = {
 			Check(f, "Deathmatch after a tied match", "mp_deathmatch_enable",
 				"A round of frags alone, with respawns: the first team to the frag limit wins the match.")
 			Slider(f, "Sudden death length (seconds)", "mp_stalemate_timelimit", "How long sudden death lasts before a draw.")
-			Slider(f, "Frags to win a round", "mp_round_fraglimit", "A team wins the round, or the deathmatch, at this many kills. 0: off.")
-			Slider(f, "Money to win a round", "mp_round_cashlimit", "A team wins the round when it earns this much. 0: off.")
+			Slider(f, "Frags to win a round", "mp_fraglimit", "A team wins the round, or the deathmatch, at this many kills. 0: off.")
+			Slider(f, "Money to win a round", "mp_creditlimit", "A team wins the round when it earns this much. 0: off.")
 			Slider(f, "Bonus time after a win (seconds)", "mp_bonusroundtime", "The winners hunt the losers before the next round.")
 		end,
 	},
