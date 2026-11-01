@@ -13,7 +13,7 @@ criterion "IsLaugh" "gesture" "laugh" required
 response GestureDance
 {
 	speak "Halloween.dance_howl" nodelay
-	speak "Taunt.DemoShakeIt" nodelay
+	speak "scout.boombox"
 }
 rule GestureDance
 {
@@ -24,9 +24,7 @@ rule GestureDance
 // Flexing: a chest thump, a strongman's rep, the yeti's chest hit
 response GestureMuscle
 {
-	speak "Taunt.SoldierChestThump" nodelay
-	speak "Taunt.SovietStrongArmRep" nodelay
-	speak "Taunt.YetiChestHit" nodelay
+	speak "scout.boombox"
 }
 rule GestureMuscle
 {
@@ -37,8 +35,7 @@ rule GestureMuscle
 // The zombie: a Halloween skeleton's laugh
 response GestureZombie
 {
-	speak "Halloween.skeleton_laugh_small" nodelay
-	speak "Halloween.skeleton_laugh_medium" nodelay
+	speak "Soldier.Robot29" nodelay
 }
 rule GestureZombie
 {
