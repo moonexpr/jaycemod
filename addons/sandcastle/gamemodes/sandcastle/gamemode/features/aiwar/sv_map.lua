@@ -19,6 +19,7 @@ local WALK_MAX_RISE = 40
 local SPAWN_MINS, SPAWN_MAXS = Vector(-16, -16, 0), Vector(16, 16, 72)
 local SPAWN_LIFT = Vector(0, 0, 4)
 local SPAWN_SPREAD, SPAWN_TRIES = 48, 8
+local PLAYER_CLEAR_MINS, PLAYER_CLEAR_MAXS = Vector(-36, -36, 0), Vector(36, 36, 72)
 
 local GROUND_PROBE = 256
 
@@ -105,7 +106,7 @@ local function EntitiesOf(classes)
 	return spots
 end
 
-local function SpawnSpots(team)
+local function CandidateSpots(team)
 	local teamSpawns = WS.SpawnPoints(team)
 	if #teamSpawns > 0 or Present("info_player_teamspawn") then return teamSpawns end
 	local sides = Spawns.TeamClasses(team, Present)
@@ -220,26 +221,44 @@ local function StalemateIsRound()
 	return rounds ~= nil and rounds:Mode().STALEMATE_IS_ROUND and not rounds:InSuddenDeath()
 end
 
-local function Clear(pos)
+local function Clear(pos, mins, maxs)
 	local tr = util.TraceHull({
 		start = pos + SPAWN_LIFT,
 		endpos = pos + SPAWN_LIFT,
-		mins = SPAWN_MINS,
-		maxs = SPAWN_MAXS,
+		mins = mins or SPAWN_MINS,
+		maxs = maxs or SPAWN_MAXS,
 		mask = Masks().solid,
 	})
-	return not tr.Hit
+	return not (tr.Hit or tr.StartSolid or tr.AllSolid)
 end
 
 -- The spot itself, else the first clear point on a ring around it.
-local function ClearSpotNear(pos)
-	if Clear(pos) then return pos end
+local function ClearSpotNear(pos, mins, maxs)
+	if Clear(pos, mins, maxs) then return pos end
 	for i = 1, SPAWN_TRIES do
 		local angle = (i / SPAWN_TRIES) * math.pi * 2
 		local candidate = pos + Vector(math.cos(angle), math.sin(angle), 0) * SPAWN_SPREAD
-		if Clear(candidate) then return candidate end
+		if Clear(candidate, mins, maxs) then return candidate end
 	end
 	return nil
+end
+
+local SpawnSpot = {}
+SpawnSpot.__index = SpawnSpot
+function SpawnSpot:GetPos() return self.pos end
+function SpawnSpot:GetAngles() return self.source:GetAngles() end
+
+-- Keep only candidates with room for a 72-unit clearance cube. If the
+-- original position is blocked, ClearSpotNear finds a nearby place that fits.
+local function SpawnSpots(team)
+	local spots = {}
+	for _, source in ipairs(CandidateSpots(team)) do
+		local pos = ClearSpotNear(source:GetPos(), PLAYER_CLEAR_MINS, PLAYER_CLEAR_MAXS)
+		if pos then
+			spots[#spots + 1] = setmetatable({ source = source, pos = pos }, SpawnSpot)
+		end
+	end
+	return spots
 end
 
 local function GroundBelow(pos)

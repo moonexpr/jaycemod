@@ -86,14 +86,15 @@ SANDBOX_DISABLED = "Sandbox mode is disabled (sv_gameplay_disable_sandbox 1)"
 -- The transition: a count each second down to 1, the last SPOKEN_COUNT
 -- spoken (the announcer's lines exist for 5..1), and at its end
 -- (TransitionEnd, which the round timer shows) the Administrator's line and
--- Gameplay mode. A request's lasts ADMIN_LINE_AT seconds, counting from
--- COUNTDOWN; a map's load LOAD_COUNTDOWN, or HURRIED_COUNTDOWN from when its
--- expected players are in, if that is sooner.
-COUNTDOWN = 12
-SPOKEN_COUNT = 5
-ADMIN_LINE_AT = 13
+-- Gameplay mode. A request counts down COUNTDOWN seconds; a map's load
+-- counts down LOAD_COUNTDOWN, or HURRIED_COUNTDOWN from when its expected
+-- players are in, if that is sooner.
 LOAD_COUNTDOWN = 180
 HURRIED_COUNTDOWN = 30
+COUNTDOWN = HURRIED_COUNTDOWN
+
+SPOKEN_COUNT = 5
+ADMIN_LINE_AT = 13
 CLEANUP_AT = ADMIN_LINE_AT + 1
 ANNOUNCE_AT = ADMIN_LINE_AT
 PREROUND_AT = 10
@@ -226,14 +227,15 @@ end
 -- A request's opens as it starts; the load's later (CUE_OPENING).
 local function Start(self, now, length, atLoad)
 	self.endsAt = now + length
-	self.cued = length
+	-- A requested countdown cues its opening count immediately, as Hurry does.
+	self.cued = length + (atLoad and 0 or 1)
 	self.atLoad = atLoad
 	self.opened = not atLoad
 	self.stage = 1
 end
 
 local function Apply(self, answer, now)
-	if answer.action == START_TRANSITION then Start(self, now, ADMIN_LINE_AT, false) end
+	if answer.action == START_TRANSITION then Start(self, now, COUNTDOWN, false) end
 	local nextMode = NEXT_MODE[answer.action]
 	if nextMode then self.modes:Enter(nextMode) end
 	return answer

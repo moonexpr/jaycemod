@@ -15,7 +15,11 @@ local BUTTON, CONSOLE, AI_WAR = Gamemode.SOURCE_BUTTON, Gamemode.SOURCE_CONSOLE,
 -- The cues from START until the transition ends, each with the second it falls on.
 local function RunCountdown(mode)
 	local seen = {}
-	for second = 1, Gamemode.ADMIN_LINE_AT do
+	for _, cue in ipairs(mode:Advance(START)) do
+		cue.second = 0
+		seen[#seen + 1] = cue
+	end
+	for second = 1, Gamemode.COUNTDOWN do
 		for _, cue in ipairs(mode:Advance(START + second)) do
 			cue.second = second
 			seen[#seen + 1] = cue
@@ -49,7 +53,7 @@ T.test("a map with rounds starts in the mode sv_gameplay_enabled holds; without 
 	T.eq(Gamemode.New(ROUNDS, DISABLED):Mode(), SANDBOX, "setting off")
 	T.eq(Gamemode.New(ROUNDS, ENABLED):Mode(), GAMEPLAY, "setting on: the map's normal round start")
 	T.eq(Gamemode.New(NO_ROUNDS, ENABLED):Mode(), SANDBOX, "no rounds")
-	T.eq(#Gamemode.New(ROUNDS, ENABLED):Advance(START + Gamemode.ADMIN_LINE_AT), 0, "no countdown at load")
+	T.eq(#Gamemode.New(ROUNDS, ENABLED):Advance(START + Gamemode.COUNTDOWN), 0, "no countdown at load")
 end)
 
 T.test("the setting reads each settled mode; the transition leaves it as it was", function()
@@ -79,19 +83,19 @@ T.test("the button in Sandbox mode starts the transition, which counts down and 
 	local counts = Kinds(cues, Gamemode.CUE_COUNT)
 	T.eq(#counts, Gamemode.COUNTDOWN, "one count a second")
 	T.eq(counts[1].left, Gamemode.COUNTDOWN, "first count")
-	T.eq(counts[1].second, 1, "a second in")
+	T.eq(counts[1].second, 0, "the hurried countdown's first count")
 	T.eq(counts[Gamemode.COUNTDOWN].left, 1, "last count")
 	for _, count in ipairs(counts) do
 		T.eq(count.spoken, count.left <= Gamemode.SPOKEN_COUNT, "spoken at " .. count.left)
 	end
 	local admin = Kinds(cues, Gamemode.CUE_ADMIN_LINE)
 	T.eq(#admin, 1, "one Administrator line")
-	T.eq(admin[1].second, Gamemode.ADMIN_LINE_AT, "Administrator line's time")
+	T.eq(admin[1].second, Gamemode.COUNTDOWN, "Administrator line's time")
 	local begin = Kinds(cues, Gamemode.CUE_BEGIN)
 	T.eq(#begin, 1, "one begin")
 	T.eq(cues[#cues], begin[1], "begin comes last")
 	T.eq(mode:Mode(), GAMEPLAY, "in Gameplay mode")
-	T.eq(#mode:Advance(START + Gamemode.ADMIN_LINE_AT + 5), 0, "nothing after it began")
+	T.eq(#mode:Advance(START + Gamemode.COUNTDOWN + 5), 0, "nothing after it began")
 end)
 
 T.test("the console's sv_gameplay_enabled 1 is a request like the button", function()
@@ -105,11 +109,13 @@ end)
 T.test("a late tick catches up on every cue it missed, in order", function()
 	local mode = Gamemode.New(ROUNDS, DISABLED)
 	mode:Request(GAMEPLAY, BUTTON, START, SANDBOX_ALLOWED, READY)
-	T.eq(#Kinds(mode:Advance(START + 0.5), Gamemode.CUE_COUNT), 0, "no count before the first second")
-	local cues = mode:Advance(START + Gamemode.ADMIN_LINE_AT + 3)
+	local opening = Kinds(mode:Advance(START + 0.5), Gamemode.CUE_COUNT)
+	T.eq(#opening, 1, "the opening count")
+	T.eq(opening[1].left, Gamemode.COUNTDOWN, "the hurried countdown begins at 30")
+	local cues = mode:Advance(START + Gamemode.COUNTDOWN + 3)
 	local counts = Kinds(cues, Gamemode.CUE_COUNT)
-	T.eq(#counts, Gamemode.COUNTDOWN, "every count")
-	T.eq(counts[1].left, Gamemode.COUNTDOWN, "counts from the top")
+	T.eq(#counts, Gamemode.COUNTDOWN - 1, "every remaining count")
+	T.eq(counts[1].left, Gamemode.COUNTDOWN - 1, "continues after the opening count")
 	T.eq(#Kinds(cues, Gamemode.CUE_PREROUND), 1, "the pre-round")
 	T.eq(cues[#cues].kind, Gamemode.CUE_BEGIN, "then begins")
 	T.eq(mode:Mode(), GAMEPLAY, "in Gameplay mode")
@@ -124,19 +130,30 @@ local function Positions(cues)
 	return at
 end
 
-T.test("a requested countdown cleans the map up as it starts, then holds the pre-round until it ends", function()
+T.test("a requested countdown cleans up before its last stretch and holds the pre-round", function()
 	local mode = Gamemode.New(ROUNDS, DISABLED)
 	mode:Request(GAMEPLAY, BUTTON, START, SANDBOX_ALLOWED, READY)
 	local first = mode:Advance(START + 0.1)
-	T.eq(#first, 2, "two cues at once")
-	T.eq(first[1].kind, Gamemode.CUE_CLEANUP, "the cleanup")
-	T.eq(first[2].kind, Gamemode.CUE_ANNOUNCE, "then the match announced")
-	local cues = RunCountdown(mode)
-	T.eq(#Kinds(cues, Gamemode.CUE_CLEANUP), 0, "cleaned up once")
-	T.eq(#Kinds(cues, Gamemode.CUE_ANNOUNCE), 0, "announced once")
+	T.eq(#Kinds(first, Gamemode.CUE_CLEANUP), 0, "not cleaned up at the opening")
+	T.eq(#Kinds(first, Gamemode.CUE_ANNOUNCE), 0, "not announced at the opening")
+	local cues = {}
+	for _, cue in ipairs(first) do
+		cue.second = 0
+		cues[#cues + 1] = cue
+	end
+	for second = 1, Gamemode.COUNTDOWN do
+		for _, cue in ipairs(mode:Advance(START + second)) do
+			cue.second = second
+			cues[#cues + 1] = cue
+		end
+	end
+	T.eq(#Kinds(cues, Gamemode.CUE_CLEANUP), 1, "cleaned up once")
+	T.eq(#Kinds(cues, Gamemode.CUE_ANNOUNCE), 1, "announced once")
+	T.eq(Kinds(cues, Gamemode.CUE_CLEANUP)[1].second, Gamemode.COUNTDOWN - Gamemode.CLEANUP_AT, "cleanup timing")
+	T.eq(Kinds(cues, Gamemode.CUE_ANNOUNCE)[1].second, Gamemode.COUNTDOWN - Gamemode.ANNOUNCE_AT, "announcement timing")
 	local preround = Kinds(cues, Gamemode.CUE_PREROUND)
 	T.eq(#preround, 1, "one pre-round")
-	T.eq(preround[1].second, Gamemode.ADMIN_LINE_AT - Gamemode.PREROUND_AT, "PREROUND_AT seconds before the end")
+	T.eq(preround[1].second, Gamemode.COUNTDOWN - Gamemode.PREROUND_AT, "PREROUND_AT seconds before the end")
 	local at = Positions(cues)
 	T.eq(at[Gamemode.CUE_PREROUND] < at.count[Gamemode.PREROUND_AT], true, "with its count")
 	T.eq(at[Gamemode.CUE_PREROUND] > at.count[Gamemode.PREROUND_AT + 1], true, "after the count before")
@@ -164,11 +181,12 @@ end)
 T.test("a countdown called off and asked for again cleans up and holds the pre-round again", function()
 	local mode = Gamemode.New(ROUNDS, DISABLED)
 	mode:Request(GAMEPLAY, BUTTON, START, SANDBOX_ALLOWED, READY)
-	mode:Advance(START + Gamemode.ADMIN_LINE_AT - Gamemode.PREROUND_AT)
-	mode:Request(SANDBOX, BUTTON, START + 5, SANDBOX_ALLOWED, READY)
-	local again = START + 10
+	local calledOff = START + Gamemode.COUNTDOWN - Gamemode.PREROUND_AT + 1
+	mode:Advance(calledOff - 1)
+	mode:Request(SANDBOX, BUTTON, calledOff, SANDBOX_ALLOWED, READY)
+	local again = calledOff + 5
 	mode:Request(GAMEPLAY, BUTTON, again, SANDBOX_ALLOWED, READY)
-	local cues = mode:Advance(again + Gamemode.ADMIN_LINE_AT)
+	local cues = mode:Advance(again + Gamemode.COUNTDOWN)
 	T.eq(#Kinds(cues, Gamemode.CUE_CLEANUP), 1, "cleaned up")
 	T.eq(#Kinds(cues, Gamemode.CUE_ANNOUNCE), 1, "announced")
 	T.eq(#Kinds(cues, Gamemode.CUE_PREROUND), 1, "the pre-round")
@@ -188,7 +206,7 @@ T.test("AI war during the transition joins it without restarting the countdown",
 	Expect(mode:Request(GAMEPLAY, AI_WAR, START + 4, SANDBOX_ALLOWED, READY), Gamemode.STAY, Gamemode.NOTICE_REQUEST_CHAT, nil,
 		"already under way")
 	local cues = mode:Advance(START + 5)
-	T.eq(cues[1].left, Gamemode.COUNTDOWN - 4, "the countdown goes on")
+	T.eq(cues[1].left, Gamemode.COUNTDOWN - 5, "the countdown goes on")
 end)
 
 T.test("AI war in Gameplay mode is announced", function()
@@ -205,7 +223,7 @@ T.test("Stop during the transition calls it off and stays in Sandbox mode", func
 	Expect(mode:Request(SANDBOX, BUTTON, START + 3, SANDBOX_ALLOWED, READY), Gamemode.CANCEL_TRANSITION,
 		Gamemode.NOTICE_CALLED_OFF, nil, "called off")
 	T.eq(mode:Mode(), SANDBOX, "Sandbox mode")
-	T.eq(#mode:Advance(START + Gamemode.ADMIN_LINE_AT + 1), 0, "no cues after it was called off")
+	T.eq(#mode:Advance(START + Gamemode.COUNTDOWN + 1), 0, "no cues after it was called off")
 	T.eq(mode:Mode(), SANDBOX, "never began")
 end)
 
@@ -213,10 +231,10 @@ T.test("the transition ends when Gameplay mode begins; outside it there is no en
 	local mode = Gamemode.New(ROUNDS, DISABLED)
 	T.eq(mode:TransitionEnd(), nil, "Sandbox mode")
 	mode:Request(GAMEPLAY, BUTTON, START, SANDBOX_ALLOWED, READY)
-	T.eq(mode:TransitionEnd(), START + Gamemode.ADMIN_LINE_AT, "counting down")
+	T.eq(mode:TransitionEnd(), START + Gamemode.COUNTDOWN, "counting down")
 	mode:Advance(START + 4)
-	T.eq(mode:TransitionEnd(), START + Gamemode.ADMIN_LINE_AT, "unmoved by the ticks")
-	local begin = Kinds(mode:Advance(START + Gamemode.ADMIN_LINE_AT), Gamemode.CUE_BEGIN)
+	T.eq(mode:TransitionEnd(), START + Gamemode.COUNTDOWN, "unmoved by the ticks")
+	local begin = Kinds(mode:Advance(START + Gamemode.COUNTDOWN), Gamemode.CUE_BEGIN)
 	T.eq(#begin, 1, "begins at that end")
 	T.eq(mode:TransitionEnd(), nil, "Gameplay mode")
 end)
@@ -234,9 +252,12 @@ T.test("a new transition after one was called off counts from its own start", fu
 	mode:Request(GAMEPLAY, BUTTON, START, SANDBOX_ALLOWED, READY)
 	mode:Request(SANDBOX, BUTTON, START + 6, SANDBOX_ALLOWED, READY)
 	mode:Request(GAMEPLAY, BUTTON, START + 20, SANDBOX_ALLOWED, READY)
+	local opening = Kinds(mode:Advance(START + 20), Gamemode.CUE_COUNT)
+	T.eq(#opening, 1, "the new countdown opens at once")
+	T.eq(opening[1].left, Gamemode.COUNTDOWN, "from the top")
 	local counts = Kinds(mode:Advance(START + 21), Gamemode.CUE_COUNT)
 	T.eq(#counts, 1, "one count")
-	T.eq(counts[1].left, Gamemode.COUNTDOWN, "from the top")
+	T.eq(counts[1].left, Gamemode.COUNTDOWN - 1, "one second later")
 end)
 
 T.test("Stop in Gameplay mode, or the console's sv_gameplay_enabled 0, enters Sandbox mode with its notice", function()
@@ -276,7 +297,7 @@ T.test("with sandbox disabled, no request enters Sandbox mode, and the requester
 	counting:Request(GAMEPLAY, BUTTON, START, SANDBOX_OFF, READY)
 	Expect(counting:Request(SANDBOX, BUTTON, START + 3, SANDBOX_OFF, READY), Gamemode.STAY, Gamemode.NOTICE_DENIED,
 		Gamemode.SANDBOX_DISABLED, "during the transition")
-	T.eq(#Kinds(counting:Advance(START + Gamemode.ADMIN_LINE_AT), Gamemode.CUE_BEGIN), 1, "the countdown goes on")
+	T.eq(#Kinds(counting:Advance(START + Gamemode.COUNTDOWN), Gamemode.CUE_BEGIN), 1, "the countdown goes on")
 	T.eq(counting:Mode(), GAMEPLAY, "and begins")
 end)
 
@@ -303,7 +324,7 @@ T.test("a game begun on a map without rounds loads them and counts down, from an
 		T.eq(answer.loadRounds, true, "the rounds load")
 		T.eq(answer.refusal, nil, "granted")
 		T.eq(mode:Mode(), Gamemode.TRANSITION, "counting down")
-		local cues = mode:Advance(START + Gamemode.ADMIN_LINE_AT)
+		local cues = mode:Advance(START + Gamemode.COUNTDOWN)
 		T.eq(cues[#cues].kind, Gamemode.CUE_BEGIN, "then Gameplay mode")
 		local again = mode:Request(GAMEPLAY, BUTTON, START, SANDBOX_ALLOWED, READY)
 		T.eq(again.loadRounds, nil, "loaded once")
@@ -319,7 +340,7 @@ end)
 T.test("once loaded, the rounds stay: Stop Game returns to Sandbox mode as on a map with rounds", function()
 	local mode = Gamemode.New(NO_ROUNDS, DISABLED)
 	mode:Request(GAMEPLAY, BUTTON, START, SANDBOX_ALLOWED, READY)
-	mode:Advance(START + Gamemode.ADMIN_LINE_AT)
+	mode:Advance(START + Gamemode.COUNTDOWN)
 	T.eq(mode:Request(SANDBOX, BUTTON, START + 30, SANDBOX_ALLOWED, READY).action, Gamemode.ENTER_SANDBOX, "Sandbox mode")
 end)
 
@@ -333,13 +354,13 @@ T.test("asked for Gameplay mode without the players it needs, the map waits, the
 		Expect(mode:Request(GAMEPLAY, source, START, SANDBOX_ALLOWED, MISSING), Gamemode.WAIT, Gamemode.NOTICE_WAITING, nil,
 			"waits, " .. source)
 		T.eq(mode:Mode(), WAITING, "waiting, " .. source)
-		T.eq(#mode:Advance(START + Gamemode.ADMIN_LINE_AT), 0, "no countdown while waiting, " .. source)
+		T.eq(#mode:Advance(START + Gamemode.COUNTDOWN), 0, "no countdown while waiting, " .. source)
 		T.eq(mode:TransitionEnd(), nil, "no end to show, " .. source)
 		T.eq(mode:Players(MISSING, START + 20).action, Gamemode.STAY, "still missing, " .. source)
 		local came = START + 30
 		Expect(mode:Players(READY, came), Gamemode.START_TRANSITION, Gamemode.NOTICE_NONE, nil, "they came, " .. source)
-		T.eq(mode:TransitionEnd(), came + Gamemode.ADMIN_LINE_AT, "counting from their coming, " .. source)
-		local cues = mode:Advance(came + Gamemode.ADMIN_LINE_AT)
+		T.eq(mode:TransitionEnd(), came + Gamemode.COUNTDOWN, "counting from their coming, " .. source)
+		local cues = mode:Advance(came + Gamemode.COUNTDOWN)
 		T.eq(cues[#cues].kind, Gamemode.CUE_BEGIN, "then Gameplay mode, " .. source)
 		T.eq(mode:Players(MISSING, came + 60).action, Gamemode.STAY, "once begun, players leaving change nothing, " .. source)
 		T.eq(mode:Mode(), GAMEPLAY, "still Gameplay mode, " .. source)
@@ -390,7 +411,7 @@ T.test("a map loading in Gameplay mode without its players waits for them, then 
 	T.eq(mode:Mode(), WAITING, "waiting")
 	T.eq(mode:Players(READY, START).action, Gamemode.START_TRANSITION, "they came")
 	T.eq(mode:Mode(), Gamemode.TRANSITION, "counting down")
-	T.eq(mode:TransitionEnd(), START + Gamemode.ADMIN_LINE_AT, "a request's length")
+	T.eq(mode:TransitionEnd(), START + Gamemode.COUNTDOWN, "a request's length")
 end)
 
 -- On a map change the players are still loading: the countdown is long
@@ -459,12 +480,12 @@ T.test("a load countdown already within HURRIED_COUNTDOWN is not lengthened", fu
 	T.eq(mode:TransitionEnd(), START + Gamemode.LOAD_COUNTDOWN, "its end")
 end)
 
-T.test("a requested countdown keeps its length: only the load's is hurried", function()
+T.test("a requested countdown matches the load's hurried length", function()
 	local mode = Gamemode.New(ROUNDS, DISABLED)
 	mode:Load(START, READY)
 	mode:Request(GAMEPLAY, BUTTON, START, SANDBOX_ALLOWED, READY)
 	T.eq(mode:Hurry(START), false, "not hurried")
-	T.eq(mode:TransitionEnd(), START + Gamemode.ADMIN_LINE_AT, "a request's length")
+	T.eq(mode:TransitionEnd(), START + Gamemode.COUNTDOWN, "a request's length")
 	T.eq(Gamemode.New(ROUNDS, ENABLED):Hurry(START), false, "no countdown")
 end)
 

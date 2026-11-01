@@ -57,7 +57,7 @@ local SANDBOX_SOUNDS = {
 local TRANSITION_MUSIC = "MatchMaking.RoundStartCasual"
 local TRANSITION_VOICE = "Announcer.TournamentModeStart"
 -- The competitive announcer's countdown, by seconds left: the transition
--- voices those it reaches (it lasts Gamemode.ADMIN_LINE_AT seconds), and
+-- voices those it reaches (it lasts Gamemode.COUNTDOWN seconds), and
 -- [0] as Gameplay mode begins.
 local ADMIN_LINES = {
 	[60] = "Announcer.CompGame1Begins60Seconds",
@@ -340,8 +340,8 @@ local NOTICES = {
 	end,
 	[Gamemode.NOTICE_REFUSED] = function(requester, _, refusal) Tell(requester, "Gameplay: " .. refusal) end,
 	[Gamemode.NOTICE_WAITING] = function()
-		local have, need = PlayersNeeded()
-		WS.Announce(string.format("Waiting for players (%d/%d): the game begins once they are here.", have, need))
+		local _, need = PlayersNeeded()
+		WS.Announce(string.format("Waiting for %d players.", need))
 	end,
 	[Gamemode.NOTICE_DENIED] = function(requester, _, refusal)
 		Tell(requester, "Gameplay: " .. refusal)
