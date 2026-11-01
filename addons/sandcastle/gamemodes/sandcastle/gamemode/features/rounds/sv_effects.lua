@@ -332,10 +332,10 @@ local EFFECTS = {
 		self:FinishSetup(now)
 		self:OpenSpawnDoors(now)
 	end,
-	-- a tied match's deathmatch: frags alone, to mp_round_fraglimit
+	-- a tied match's deathmatch: frags alone, to mp_fraglimit
 	deathmatch = function()
 		WS.BroadcastSoundscape(UNASSIGNED, SUDDEN_DEATH)
-		WS.Announce(Text.DeathmatchNote(GetConVar("mp_round_fraglimit"):GetInt()), UNASSIGNED, UNASSIGNED, ICON_SUDDEN_DEATH)
+		WS.Announce(Text.DeathmatchNote(GetConVar("mp_fraglimit"):GetInt()), UNASSIGNED, UNASSIGNED, ICON_SUDDEN_DEATH)
 	end,
 	hide_timers = function(self) self:HideActiveTimer() end,
 	restore_timers = function(self) self:RestoreActiveTimer() end,

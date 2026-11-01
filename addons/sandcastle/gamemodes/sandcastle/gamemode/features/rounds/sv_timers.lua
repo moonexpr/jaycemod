@@ -8,12 +8,20 @@ local S = WS.STATE
 local UNASSIGNED, SPECTATOR = WS.TEAM_UNASSIGNED, WS.TEAM_SPECTATOR
 local RED, BLUE = WS.TEAM_RED, WS.TEAM_BLUE
 
+
+-- TF2's own convars, as teamplayroundbased_gamerules.cpp and
+-- multiplay_gamerules.cpp define them. GMod's engine may already define some
+-- of the multiplay ones; those are used as they are.
+local function ConVarOrCreate(name, ...)
+	return GetConVar(name) or CreateConVar(name, ...)
+end
+
 -- The round limits (games.gameplay.rounds.limits): only a map without an
 -- objective plays to them. Both on by default, the frag limit the one
 -- reached first.
-local roundFraglimit = CreateConVar("mp_round_fraglimit", "30", { FCVAR_NOTIFY, FCVAR_REPLICATED },
+local roundFraglimit = ConVarOrCreate("mp_fraglimit", "0", { FCVAR_NOTIFY, FCVAR_REPLICATED },
 	"Frags a team needs in a round to win it, on a map without an objective; 0: no frag limit.", 0)
-local roundCashlimit = CreateConVar("mp_round_cashlimit", "10000", { FCVAR_NOTIFY, FCVAR_REPLICATED },
+local roundCashlimit = ConVarOrCreate("mp_creditlimit", "0", { FCVAR_NOTIFY, FCVAR_REPLICATED },
 	"Money a team must earn in a round to win it, on a map without an objective (frags decide first); 0: no cash limit.", 0)
 
 local TIMER_CLASS = "team_round_timer"

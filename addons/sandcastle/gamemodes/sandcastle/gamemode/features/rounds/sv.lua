@@ -47,15 +47,24 @@ local stalemateEnable = ConVarOrCreate("mp_stalemate_enable", "0", FCVAR_NOTIFY,
 -- Sandcastle's tie-breaker for a match (games.gameplay.rounds' Deathmatch), as
 -- sudden death is for a stalemated round: a round of frags alone.
 local deathmatchEnable = ConVarOrCreate("mp_deathmatch_enable", "1", FCVAR_NOTIFY,
-	"1: a tied match goes to a deathmatch round, won by the first team to mp_round_fraglimit frags")
+	"1: a tied match goes to a deathmatch round, won by the first team to mp_fraglimit frags")
 local stalemateTimelimit = ConVarOrCreate("mp_stalemate_timelimit", "240", FCVAR_REPLICATED, "Timelimit (in seconds) of the stalemate round.")
 local scrambleAuto = ConVarOrCreate("mp_scrambleteams_auto", "1", FCVAR_NOTIFY,
 	"Server will automatically scramble the teams if criteria met.  Only works on dedicated servers.")
 local scrambleWinDifference = ConVarOrCreate("mp_scrambleteams_auto_windifference", "2", FCVAR_NOTIFY,
 	"Number of round wins a team must lead by in order to trigger an auto scramble.", 0)
-local winlimit = ConVarOrCreate("mp_winlimit", "0", { FCVAR_REPLICATED, FCVAR_NOTIFY }, "Max score one team can reach before server changes maps", 0)
-local maxrounds = ConVarOrCreate("mp_maxrounds", "0", { FCVAR_REPLICATED, FCVAR_NOTIFY }, "max number of rounds to play before server changes maps", 0)
-local timelimit = ConVarOrCreate("mp_timelimit", "30", { FCVAR_NOTIFY, FCVAR_REPLICATED }, "game time per map in minutes")
+local winlimit = ConVarOrCreate("mp_winlimit", "0", { FCVAR_REPLICATED, FCVAR_NOTIFY }, 
+	"Max score one team can reach before server changes maps", 0)
+local maxrounds = ConVarOrCreate("mp_maxrounds", "0", { FCVAR_REPLICATED, FCVAR_NOTIFY }, 
+	"Max number of rounds to play before server changes maps", 0)
+local timelimit = ConVarOrCreate("mp_timelimit", "30", { FCVAR_NOTIFY, FCVAR_REPLICATED }, 
+	"Game time per map in minutes")
+local fraglimit = ConVarOrCreate("mp_fraglimit", "0", { FCVAR_NOTIFY, FCVAR_REPLICATED },
+	"Frags a team needed to win a round"
+0)
+local creditlimit =  ConVarOrCreate("mp_creditlimit", "0", { FCVAR_NOTIFY, FCVAR_REPLICATED },
+	"Credits needs to win a round"
+
 local casualWinConditions = ConVarOrCreate("mp_casual_win_conditions", "1", FCVAR_NOTIFY,
 	"1: each map sets mp_winlimit and mp_maxrounds as TF2's casual matches do for its kind; 0: they stay as set")
 -- GMod defines mp_timelimit itself, at 0 (no limit); Sandcastle's default

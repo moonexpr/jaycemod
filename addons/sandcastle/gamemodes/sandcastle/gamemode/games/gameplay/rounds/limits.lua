@@ -1,4 +1,4 @@
--- Round limits: mp_round_fraglimit and mp_round_cashlimit win a round for
+-- Round limits: mp_fraglimit and mp_creditlimit win a round for
 -- the first team to reach them (0: off), counted from the round's start by
 -- a Tally: each team's frags (its kills of the enemy) and the money it has
 -- earned (not what it held to begin with). Frags decide before money; both
@@ -90,7 +90,7 @@ local function AtLimit(limit, counts, reason)
 	return { team = BLUE, reason = reason }
 end
 
--- The limits a mode plays to: mp_round_fraglimit and mp_round_cashlimit on
+-- The limits a mode plays to: mp_fraglimit and mp_creditlimit on
 -- a map without an objective, both 0 where an objective decides the round
 -- (mode.OBJECTIVE), so they never compete with it.
 function Of(mode, fraglimit, cashlimit)

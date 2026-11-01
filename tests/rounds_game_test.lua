@@ -620,7 +620,7 @@ T.test("at the time limit a tie with no sudden death is the stalemate's bonus ti
 end)
 
 -- Deathmatch (mp_deathmatch_enable) breaks a tied match: a round of frags
--- alone (mp_round_fraglimit), with respawns and no objective, whose winner
+-- alone (mp_fraglimit), with respawns and no objective, whose winner
 -- wins the match. Sudden death stays for a stalemated round.
 local function Effect(effects, kind)
 	for _, e in ipairs(effects) do

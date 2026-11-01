@@ -33,7 +33,7 @@ WINREASON = {
 	TIMELIMIT = 6,
 	WINLIMIT = 7,
 	WINDIFFLIMIT = 8,
-	-- games.gameplay.rounds.limits': mp_round_fraglimit and mp_round_cashlimit
+	-- games.gameplay.rounds.limits': mp_fraglimit and mp_creditlimit
 	FRAGLIMIT = 9,
 	CASHLIMIT = 10,
 	-- CTF's time limit: the team with more captures wins (features/flag)
@@ -512,7 +512,7 @@ function Mode:StalemateSeconds(settings)
 end
 
 -- Deathmatch (mp_deathmatch_enable): the bonus round that breaks a tied
--- match. Frags alone decide it (mp_round_fraglimit, games.gameplay.rounds.limits),
+-- match. Frags alone decide it (mp_fraglimit, games.gameplay.rounds.limits),
 -- so its mode has no objective: no point wins it, no flag scores.
 DEATHMATCH = "deathmatch"
 DeathmatchMode = Mode:Extend(DEATHMATCH)

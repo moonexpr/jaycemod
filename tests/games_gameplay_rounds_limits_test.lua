@@ -1,5 +1,5 @@
--- Round limits (games.gameplay.rounds.limits): mp_round_fraglimit and
--- mp_round_cashlimit win a round for the first team to reach them, counted
+-- Round limits (games.gameplay.rounds.limits): mp_fraglimit and
+-- mp_creditlimit win a round for the first team to reach them, counted
 -- from the round's start: its frags (kills of the enemy), and the money it
 -- has earned (not what it held to begin with). Frags decide before money; a
 -- tie at a limit is a stalemate (games.gameplay.rounds breaks it with sudden
