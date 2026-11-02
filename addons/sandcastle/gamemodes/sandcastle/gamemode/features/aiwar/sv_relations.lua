@@ -140,7 +140,7 @@ function Controller:GadgetDamage(target, dmg)
 	return info.team == self:TeamOf(target)
 end
 
--- TF2's NPCs (Sandcastle's ws_nextbot variants: tf_zombie's skeletons
+-- TF2's NPCs (Sandcastle's base_nextsoldier_npc variants: tf_zombie's skeletons
 -- and whatever joins them) take sides by their team: a RED or BLU one is
 -- a teammate or an enemy as a player of that team is; any other (the
 -- HALLOWEEN team's) is everyone's enemy. Soldiers and their gadgets are

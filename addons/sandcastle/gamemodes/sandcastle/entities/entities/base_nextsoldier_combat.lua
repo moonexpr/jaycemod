@@ -1,13 +1,13 @@
--- ws_combat_nextbot: an NPC that takes sides. It is a ws_nextbot
--- that also implements the combatant port (games.npc.combatant) through
+-- base_nextsoldier_combat: a base_nextsoldier_npc that also implements the
+-- combatant port (games.npc.combatant) through
 -- the combat, holiday and npc controllers and the gamemode's player
--- conditions. A subclass sets ENT.Variant as for ws_nextbot.
+-- conditions. A subclass sets ENT.Variant as for base_nextsoldier_npc.
 --
 -- Its team is config.team when its config has one, else its TeamNum
 -- keyvalue, else UNASSIGNED.
 AddCSLuaFile()
 
-ENT.Base = "ws_nextbot"
+ENT.Base = "base_nextsoldier_npc"
 ENT.Type = "nextbot"
 ENT.Spawnable = false
 
@@ -16,7 +16,7 @@ if CLIENT then return end
 -- GMod looks up Entity and NextBot methods before the entity's own table,
 -- so no port method here may share an engine method's name (games_gameplay_combat_test
 -- checks the port's names against foundation.npc.actor.ENGINE).
-local Base = baseclass.Get("ws_nextbot")
+local Base = baseclass.Get("base_nextsoldier_npc")
 
 -- TeamNum is read as TF2 reads it (atoi): a non-number is 0, UNASSIGNED.
 function ENT:KeyValue(key, value)
@@ -39,6 +39,7 @@ end
 
 -- sides
 function ENT:GetTeamNumber() return self.team end
+function ENT:Team() return self.team end
 function ENT:TeamOf(t) return self.combat:TeamOf(t) end
 
 function ENT:CollectPlayers(team)

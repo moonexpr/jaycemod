@@ -206,11 +206,12 @@ T.test("the fake combatant implements every actor and combatant method", functio
 	end
 end)
 
-T.test("ws_combat_nextbot defines every combatant method", function()
-	local text = ReadFile(ENTITIES .. "ws_combat_nextbot.lua")
+T.test("base_nextsoldier_combat defines every combatant method", function()
+	local text = ReadFile(ENTITIES .. "base_nextsoldier_combat.lua")
 	for _, name in ipairs(Combatant.METHODS) do
-		T.eq(text:find("function ENT:" .. name .. "(", 1, true) ~= nil, true, "ws_combat_nextbot " .. name)
+		T.eq(text:find("function ENT:" .. name .. "(", 1, true) ~= nil, true, "base_nextsoldier_combat " .. name)
 	end
+	T.eq(text:find('ENT.Base = "base_nextsoldier_npc"', 1, true) ~= nil, true, "model-backed NPC base")
 end)
 
 T.test("no combatant method shadows an actor or engine method", function()
@@ -237,7 +238,7 @@ T.test("a top-level load is caught", function()
 end)
 
 T.test("the combat and holiday bindings load nothing at top level", function()
-	for _, file in ipairs({ "ws_combat_nextbot.lua", "tf_logic_holiday.lua" }) do
+	for _, file in ipairs({ "base_nextsoldier_combat.lua", "tf_logic_holiday.lua" }) do
 		for line in ReadFile(ENTITIES .. file):gmatch("[^\n]+") do
 			T.eq(LoadsAtTopLevel(line), false, file .. ": " .. line)
 		end

@@ -1,5 +1,5 @@
--- ws_nextbot: the base of every NPC, a thin binding from a GMod NextBot
--- to its games.npc.nextbot model. It implements the actor port
+-- base_nextsoldier_npc: a model-backed NPC binding, under base_nextsoldier.
+-- It implements the actor port
 -- (games.npc.actor) with GMod's NextBot machinery, forwards the engine's
 -- events to the model, and ticks the model's Behavior from BehaveUpdate (no
 -- coroutine). It knows no teams.
@@ -10,12 +10,14 @@
 -- by overriding Config().
 AddCSLuaFile()
 
-ENT.Base = "base_nextbot"
+ENT.Base = "base_nextsoldier"
 ENT.Type = "nextbot"
 ENT.Spawnable = false
 
--- Clients draw it with base_nextbot's defaults; the rest is the server's.
-if CLIENT then return end
+if CLIENT then
+	function ENT:Draw() self:DrawModel() end
+	return
+end
 
 -- GMod looks up Entity and NextBot methods before the entity's own table,
 -- so the port methods the engine already has (actor.ENGINE) are not defined
@@ -45,6 +47,8 @@ end
 function ENT:Config()
 	return self.configured
 end
+
+function ENT:GetFactions() return {} end
 
 -------------------------------------------------------------------------------
 -- Motion: the variant's LOCOMOTION drives GMod's ground locomotor; HOVER
@@ -187,6 +191,8 @@ function ENT:BehaveUpdate(interval)
 	self.npc:Update(interval)
 	self.motion.Update(self, interval)
 end
+
+function ENT:Think() end
 
 -- CHeadlessHatmanBody::Update
 function ENT:BodyUpdate()

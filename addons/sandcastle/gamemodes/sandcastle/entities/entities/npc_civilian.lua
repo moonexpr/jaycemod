@@ -51,7 +51,7 @@ function ENT:CustomInitialize()
 	SoldierInitialize(self)
 	self:SetModel(WS.require("features.hostage.models").Pick(self:EntIndex()))
 	self:SetNoTarget(true)
-	-- players walk through it (ws_nextbot's PLAYERS_PASS_THROUGH group): a
+	-- players walk through it (base_nextsoldier_npc's PLAYERS_PASS_THROUGH group): a
 	-- rescuer turning back for it in a narrow hall is not walled in by it
 	self:SetCollisionGroup(COLLISION_GROUP_PASSABLE_DOOR)
 	self.NSRun = true

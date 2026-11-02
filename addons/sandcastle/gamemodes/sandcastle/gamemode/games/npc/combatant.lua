@@ -1,5 +1,5 @@
 -- The combatant port: what an NPC that takes sides may ask beyond the actor
--- port (games.npc.actor). ws_combat_nextbot implements it through
+-- port (games.npc.actor). base_nextsoldier_combat implements it through
 -- the combat, holiday and npc controllers, and tests/fake_combatant.lua
 -- fakes it. Method names are TF2's wherever TF2 has one.
 --

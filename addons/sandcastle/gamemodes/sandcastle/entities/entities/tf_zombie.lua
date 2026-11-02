@@ -1,4 +1,4 @@
--- tf_zombie (CZombie): TF2's skeleton, a ws_combat_nextbot bound to
+-- tf_zombie (CZombie): TF2's skeleton, a base_nextsoldier_combat bound to
 -- features.haunting.zombie, which holds every rule.
 --
 -- Config, given with Configure before Spawn by its spawner or skull
@@ -9,14 +9,14 @@
 -- else (precipice sends Enable) is refused.
 AddCSLuaFile()
 
-ENT.Base = "ws_combat_nextbot"
+ENT.Base = "base_nextsoldier_combat"
 ENT.Type = "nextbot"
 ENT.Spawnable = false
 ENT.Variant = "features.haunting.zombie"
 
 if CLIENT then return end
 
-local Base = baseclass.Get("ws_combat_nextbot")
+local Base = baseclass.Get("base_nextsoldier_combat")
 
 local MAX_ACTIVE_NAME = "tf_max_active_zombie"
 local MAX_ACTIVE_HELP = "Skeletons over this many make the oldest (except kings) suicide"

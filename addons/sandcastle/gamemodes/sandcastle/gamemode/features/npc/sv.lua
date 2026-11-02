@@ -12,7 +12,7 @@ local NpcSystem = npc.nextbot
 local Scheduler = list.schedule
 local Spawner = WS.require("features.npc.spawner")
 
-local NAV_MESSAGE = "ws_nextbot: %s has no usable navigation mesh; run mp_nav_generate (or .devtools/bin/nav_convert.py for TF2's own)"
+local NAV_MESSAGE = "base_nextsoldier_npc: %s has no usable navigation mesh; run mp_nav_generate (or .devtools/bin/nav_convert.py for TF2's own)"
 local BOSS_HEALTH = "ws_boss_health" -- the boss bar's fraction; 0 hides it
 
 local Controller = {

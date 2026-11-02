@@ -1,5 +1,5 @@
 -- halloween_base_boss (CHalloweenBaseBoss): the base of the Halloween
--- bosses, a ws_combat_nextbot whose variant is a
+-- bosses, a base_nextsoldier_combat whose variant is a
 -- features.haunting.halloween_boss part. It implements the boss port
 -- (foundation.npc.halloween_boss.METHODS) and passes the boss's convars in
 -- its config. A subclass sets ENT.Variant. The npc feature adds the
@@ -10,7 +10,7 @@
 -- takes its team from TeamNum/teamnum, else UNASSIGNED.
 AddCSLuaFile()
 
-ENT.Base = "ws_combat_nextbot"
+ENT.Base = "base_nextsoldier_combat"
 ENT.Type = "nextbot"
 ENT.Spawnable = false
 
@@ -18,7 +18,7 @@ if CLIENT then return end
 
 -- GMod looks up Entity and NextBot methods before the entity's own table,
 -- so no port method here shares an engine method's name.
-local Base = baseclass.Get("ws_combat_nextbot")
+local Base = baseclass.Get("base_nextsoldier_combat")
 
 -- TF2's convars for this boss (its variant's CONVARS), created by the first
 -- binding, and their values now (the npc controller's BossConvars); and

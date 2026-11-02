@@ -1,24 +1,23 @@
 # base_nextsoldier: NextSoldier's own NextBot base (issue #8 L1, L2)
 
-**Status: plan, the operator's decisions taken (§4): TF2's organization in
-source-sdk-2013 over DrGBase's. Nothing below is built but the interface
-(`nextsoldier.base`), already reorganised by it.**
+**Status: implementation in progress.** `nextsoldier.base` and
+`base_nextsoldier` are implemented. The remaining component and migration
+work below is still planned.
 
-The soldiers run on DrGBase today, and after foundation went native its
-think is most of the Lua left on the server thread (the bench: its
-per-entity think 19 to 23 %, enemy handling 9 to 10 %, path following 7 to
-8 %). DrGBase is to go entirely; NextSoldier keeps only its interface
-(`nextsoldier.base`, L0), implemented from scratch with high-level models,
-native where that pays. The soldiers' classes are DrGBase's until the new
-base passes the same contract and the bench.
+The NextSoldier base replaces DrGBase for the gamemode's soldier entities.
+The Halloween NPCs retain their `games.npc.nextbot` behavior through
+`base_nextsoldier_npc`, which derives from `base_nextsoldier` and overrides
+its incompatible lifecycle. `base_nextsoldier_combat` adds the combatant
+port for those NPCs.
 
 ## 1. What we already have
 
-- **`ws_nextbot`**: our own GMod NextBot entity, the base of the bosses: a
+- **`base_nextsoldier_npc`**: a GMod NextBot entity, the base of the
+  Halloween NPC binding: a
   thin binding from GMod's NextBot to a `games.npc.nextbot` model. It
   implements an actor port with GMod's machinery, forwards the engine's
   events, and ticks the model's behaviour from `BehaveUpdate` (no
-  coroutine). The pattern `base_nextsoldier` follows.
+  coroutine). It inherits `base_nextsoldier` but keeps that model lifecycle.
 - **The contract**: `nextsoldier.base` (seven components, the methods
   required and the posture optional), the in-game check
   `ns_base_contract`, and `drg_interface.py check`.

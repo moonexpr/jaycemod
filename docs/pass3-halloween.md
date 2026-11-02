@@ -93,8 +93,9 @@ from `.devtools/bin/bsp_entities.py "$TF2/tf/maps/<map>.bsp" --class C | --io`.
 | existing | `foundation.teams` (HALLOWEEN = 5 already), `foundation.players` (W3 adds COND/STUN names), `foundation.rounds` | |
 
 **Engine-neutral** (grep-checked in section 11): `foundation.npc`, `.actor`,
-`.path*`, `.hover`, `.spawner`, and `foundation.projectile`. The entities
-`ws_nextbot` and `ws_projectile` are neutral too. The
+`.path*`, `.hover`, `.spawner`, and `foundation.projectile`. The
+`base_nextsoldier_npc` entity is the model binding hosted by the
+`base_nextsoldier` hierarchy; `ws_projectile` is neutral too. The
 `foundation.spells` flow is neutral except for its `.tf2` set and its spell
 strategies. TF2 content lives in parts and data: a TF2 variant or set, and the
 TF2 numbers inside a system's tables.
@@ -208,7 +209,7 @@ are `NONE`, `DETONATE`, `BOUNCE` and `EXPIRE`.
 
 ### 1.4 Ports (implemented by entities or controllers, faked in tests)
 
-`foundation.npc.actor.METHODS` is implemented by `ws_nextbot` and faked
+`foundation.npc.actor.METHODS` is implemented by `base_nextsoldier_npc` and faked
 by `tests/fake_actor.lua`. Method names are TF2's wherever TF2 has one:
 
 | group | methods |
@@ -229,7 +230,7 @@ by `tests/fake_actor.lua`. Method names are TF2's wherever TF2 has one:
   - OnContact gets `(other)`.
 
 `foundation.npc.combatant.METHODS` extends the actor for team combat. It is
-implemented by `ws_combat_nextbot` using `foundation.teams` and
+implemented by `base_nextsoldier_combat` using `foundation.teams` and
 `foundation.players` data, and faked by `tests/fake_combatant.lua`:
 
 - `GetTeamNumber()`, `TeamOf(t)`, `CollectPlayers(team)` (living; nil means
@@ -304,7 +305,7 @@ when idle and 1.5–3 s after a spawn. A finite spawner spawns while
 `spawned < max`; an infinite one while `active < max`. `teamOf` is the
 variant's team strategy.
 
-**`ws_nextbot` entity** (`base_nextbot`, `ENT.Type = "nextbot"`; neutral).
+**`base_nextsoldier_npc` entity** (inherits `base_nextsoldier`; neutral model binding).
 A subclass sets `ENT.Variant = "foundation.npc.<variant>"`. It works as
 follows:
 
@@ -312,7 +313,7 @@ follows:
   - `self.npc = WS.Feature("npc"):Bind(self, self.Variant, self:Config())`;
   - applies the variant's `LOCOMOTION` to `self.loco`;
   - checks the nav mesh, printing one line per map:
-    `ws_nextbot: <map> has no usable navigation mesh; run .devtools/bin/nav_convert.py or nav_generate`.
+    `base_nextsoldier_npc: <map> has no usable navigation mesh; run .devtools/bin/nav_convert.py or nav_generate`.
 - `BehaveUpdate(interval)` calls `self.npc:Update(interval)`. There is no
   coroutine.
 - `BodyUpdate()` ports `CHeadlessHatmanBody::Update`: `move_x`/`move_y` from
@@ -333,7 +334,7 @@ follows:
   `function ENT:<Name>(`.
 - It knows no teams.
 
-**`ws_combat_nextbot`** derives from `ws_nextbot` and implements
+**`base_nextsoldier_combat`** derives from `base_nextsoldier_npc` and implements
 `foundation.npc.combatant.METHODS` through the `combat`, `holiday` and `npc`
 controllers. Its team comes from the `TeamNum`/`teamnum` keyvalue or from
 config.
@@ -519,7 +520,7 @@ The model is a timed grenade: `{ fuse, explodeOnTouch=false }`. Tick gives
 
 ### Bindings
 
-- **tf_zombie** (`ws_combat_nextbot`, `Variant="foundation.npc.zombie"`):
+- **tf_zombie** (`base_nextsoldier_combat`, `Variant="foundation.npc.zombie"`):
   - Keyvalues: `TeamNum`, `modelscale`. `health`/`max_health` are overwritten
     by NewState, as in TF2.
   - `Configure{ team, lifetime, owner, skeletonType }` before Spawn.
@@ -555,7 +556,7 @@ How the maps drive them:
   `ModifyDamage`.
 - `IsSpell = team ~= Teams.HALLOWEEN`.
 - At spawn: `SetHealth(Health(players, level))`.
-- Entity binding `halloween_base_boss` (a `ws_combat_nextbot`):
+- Entity binding `halloween_base_boss` (a `base_nextsoldier_combat`):
   - `Configure{ team, owner }` (`SpawnBossAtPos`: the caller spawns at pos+10 z).
   - A map-spawned boss takes its team from `TeamNum`/`teamnum`, else
     UNASSIGNED; the maps' eyeballs set 5.
@@ -1081,9 +1082,9 @@ models' tests never need.
 
 | pkg | owns | depends on |
 |---|---|---|
-| **W1 npc framework** | foundation/npc.lua, foundation/npc/{actor,path,hover,spawner}.lua, foundation/npc/path/{ground,scatter}.lua, foundation/projectile.lua, foundation/projectile/grenade.lua; entities/{ws_nextbot,ws_projectile}.lua; features/npc (controller registry, spawner ticking, nav check; no view yet); tests/{npc,npc_path,npc_spawner,npc_hover,projectile}_test.lua, tests/fake_actor.lua | lands first |
+| **W1 npc framework** | foundation/npc.lua, foundation/npc/{actor,path,hover,spawner}.lua, foundation/npc/path/{ground,scatter}.lua, foundation/projectile.lua, foundation/projectile/grenade.lua; entities/{base_nextsoldier_npc,ws_projectile}.lua; features/npc (controller registry, spawner ticking, nav check; no view yet); tests/{npc,npc_path,npc_spawner,npc_hover,projectile}_test.lua, tests/fake_actor.lua | lands first |
 | **W2 tools** | .devtools/bin/{nav_convert,tf2_content}.py and their test_*.py | any time |
-| **W3 combat and holiday** | foundation/{combat,holiday}.lua, foundation/holiday/halloween.lua, foundation/npc/{combatant,targeting}.lua, additions to foundation/players.lua; entities/{ws_combat_nextbot,tf_logic_holiday}.lua; features/{combat,holiday}; tests/{combat,holiday,targeting}_test.lua, tests/fake_combatant.lua; deletes foundation/halloween.lua, ws/sv_halloween.lua, tests/halloween_entities_test.lua | W1 |
+| **W3 combat and holiday** | foundation/{combat,holiday}.lua, foundation/holiday/halloween.lua, foundation/npc/{combatant,targeting}.lua, additions to foundation/players.lua; entities/{base_nextsoldier_combat,tf_logic_holiday}.lua; features/{combat,holiday}; tests/{combat,holiday,targeting}_test.lua, tests/fake_combatant.lua; deletes foundation/halloween.lua, ws/sv_halloween.lua, tests/halloween_entities_test.lua | W1 |
 | **W4 skeletons (P0)** | foundation/npc/zombie.lua; entities/{tf_zombie,tf_zombie_spawner,tf_projectile_spellspawnzombie}.lua; tests/zombie_test.lua | W1, W3 |
 | **W5 bosses** | foundation/npc/{halloween_boss,headless_hatman,eyeball_boss,tag}.lua, foundation/projectile/rocket.lua; entities/{halloween_base_boss,headless_hatman,eyeball_boss,teleport_vortex,tf_projectile_rocket}.lua; features/tag; the npc feature's view (boss bar); tests/{halloween_boss,headless_hatman,eyeball_boss,tag}_test.lua | W1, W3 |
 | **W6 hazards and gifts** | foundation/hazards.lua, foundation/hazards/{pumpkin_bomb,generic_bomb,zapper}.lua; entities/{tf_pumpkin_bomb,tf_generic_bomb,halloween_zapper,tf_halloween_gift_spawn_location,tf_halloween_gift_pickup}.lua; features/hazards; tests/hazards_test.lua | W3 |
@@ -1126,7 +1127,7 @@ clock and a scripted random source.
 - `npc_hover_test`: altitude clamped to ±acceleration, and damping.
 - `projectile_test`: fuse and touch rules.
 - A contract test finds every name in `foundation.npc.actor.METHODS` in
-  `tests/fake_actor.lua`, and `function ENT:<Name>(` in `ws_nextbot.lua`
+  `tests/fake_actor.lua`, and `function ENT:<Name>(` in `base_nextsoldier_npc.lua`
   (read as text).
 - Neutrality: this must print nothing:
   `grep -nE 'Teams|TEAM_|[Hh]alloween|tf_|TF2|skeleton|spell|WS\.(Team|Halloween|Rules|FireOutput|KeyValues|State)'`
@@ -1152,7 +1153,7 @@ clock and a scripted random source.
 - `targeting_test`: the four stealth exceptions, ghost mode, and EnemyTeamsOf
   for all teams.
 - A contract test: `fake_combatant` implements
-  `foundation.npc.combatant.METHODS`, and `ws_combat_nextbot.lua` defines
+  `foundation.npc.combatant.METHODS`, and `base_nextsoldier_combat.lua` defines
   each one.
 
 **W4 skeletons: `zombie_test` scenarios on `fake_combatant`**
@@ -1275,10 +1276,10 @@ P1:
 A CS:S mode, or any later NPC, can reuse these unchanged:
 
 - `foundation.npc` (Behavior, actor port, path strategies, spawner, hover)
-  with `ws_nextbot` and the `npc` controller. A CS:S hostage is a new
+  with `base_nextsoldier_npc` and the `npc` controller. A CS:S hostage is a new
   NPC variant, `foundation.npc.hostage`, whose Behavior follows its rescuer,
   bound by a `hostage_entity` entity.
-- `ws_combat_nextbot` and `foundation.combat`, given CS:S team data in
+- `base_nextsoldier_combat` and `foundation.combat`, given CS:S team data in
   `foundation.teams`.
 - `foundation.projectile` and `ws_projectile`, for grenades: HE, flash
   and smoke would be variants.

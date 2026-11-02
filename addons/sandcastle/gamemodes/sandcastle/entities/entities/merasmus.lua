@@ -56,7 +56,7 @@ function ENT:Initialize()
 end
 
 -- UpdateOnRemove: the behavior ends, then the model hides his bar, blows
--- the bomb heads and takes his props. One whose bind failed (ws_nextbot)
+-- the bomb heads and takes his props. One whose bind failed (base_nextsoldier_npc)
 -- has neither model nor loop.
 function ENT:OnRemove()
 	if not self.npc then return Base.OnRemove(self) end

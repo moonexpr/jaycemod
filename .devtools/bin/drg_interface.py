@@ -38,10 +38,10 @@ GENERIC = frozenset({"Initialize", "Think", "Draw", "OnRemove", "Use", "SetupDat
 COLLISIONS = {
     **dict.fromkeys(("Approach", "SetDesiredSpeed", "SetAcceleration", "SetDeceleration", "SetJumpHeight",
                      "SetMaxYawRate", "SetStepHeight", "SetDeathDropHeight"),
-                    "GMod's locomotion (CLuaLocomotion), on our own NextBots (ws_nextbot, the bosses)"),
+                    "GMod's locomotion (CLuaLocomotion), on our own NextBots (base_nextsoldier_npc, the bosses)"),
     **dict.fromkeys(("BehaveUpdate", "BodyUpdate", "OnContact", "OnInjured", "OnKilled", "OnLeaveGround"),
-                    "GMod's NextBot hooks, on our own NextBots (ws_nextbot, the bosses)"),
-    "PlaySequence": "our own NextBots' (ws_nextbot, eyeball_boss)",
+                    "GMod's NextBot hooks, on our own NextBots (base_nextsoldier_npc, the bosses)"),
+    "PlaySequence": "our own NextBots' (base_nextsoldier_npc, eyeball_boss)",
     **dict.fromkeys(("Alive", "SetTeam", "Kill", "GetShootPos", "GetAimVector", "GetWeapon", "HasWeapon"),
                     "GMod's Player and NPC methods, on players, bots and HL2's NPCs"),
     **dict.fromkeys(("Base", "Type", "PrintName", "Category", "ModelScale"), "GMod's scripted entity keys"),
@@ -52,7 +52,7 @@ COLLISIONS = {
                      "SetHealth", "SetMaxHealth", "SetPos"),
                     "GMod's entity methods, which DrGBase redefines on its NextBots; NextSoldier's base keeps GMod's"),
     "SetVelocity": "GMod's locomotion (self.loco)", "ClearStuck": "GMod's locomotion (self.loco)", "OnGround": "GMod's Player:OnGround, on bot players",
-    "ScreenShake": "our own NextBots' (ws_nextbot, the bosses)",
+    "ScreenShake": "our own NextBots' (base_nextsoldier_npc, the bosses)",
     **dict.fromkeys(("DrG_JoinFaction", "DrG_LeaveFaction"),
                     "DrGBase's player factions, which only its own NextBots read (ws/sh_factions.lua)"),
 }

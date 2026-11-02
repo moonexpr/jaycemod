@@ -51,7 +51,7 @@ local function Advance(me, npc, dt)
 	npc:Update(TICK)
 end
 
--- The damage event ws_nextbot builds, from an attacker that is a
+-- The damage event base_nextsoldier_npc builds, from an attacker that is a
 -- player or NPC unless said otherwise.
 local function Kill(attacker, isCharacter)
 	return {

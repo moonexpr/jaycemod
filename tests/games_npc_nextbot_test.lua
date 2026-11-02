@@ -743,18 +743,24 @@ T.test("a variant's fake actor dispatches only the particle systems its variant 
 	T.eq(#plain:Called("DispatchParticleEffect"), 1, "an actor with no variant checks nothing")
 end)
 
-T.test("ws_nextbot defines every actor method the engine does not already provide", function()
-	local text = ReadFile("addons/sandcastle/gamemodes/sandcastle/entities/entities/ws_nextbot.lua")
+T.test("base_nextsoldier_npc defines every actor method the engine does not already provide", function()
+	local text = ReadFile("addons/sandcastle/gamemodes/sandcastle/entities/entities/base_nextsoldier_npc.lua")
 	for _, name in ipairs(Actor.METHODS) do
 		local defined = text:find("function ENT:" .. name .. "(", 1, true) ~= nil
-		T.eq(defined or Actor.ENGINE[name] == true, true, "ws_nextbot " .. name)
+		T.eq(defined or Actor.ENGINE[name] == true, true, "base_nextsoldier_npc " .. name)
 		-- GMod looks up the engine's metatable before the entity's table, so
 		-- an ENT function of an engine method's name would never run.
 		T.eq(defined and Actor.ENGINE[name] == true, false, "no shadowed definition of " .. name)
 	end
 end)
 
--- ws_nextbot's binding run under LuaJIT: the file's ENT against a stub
+T.test("the model-backed NPC binding inherits the NextSoldier base and owns its Think lifecycle", function()
+	local text = ReadFile("addons/sandcastle/gamemodes/sandcastle/entities/entities/base_nextsoldier_npc.lua")
+	T.eq(text:find('ENT.Base = "base_nextsoldier"', 1, true) ~= nil, true, "shared base")
+	T.eq(text:find("function ENT:Think() end", 1, true) ~= nil, true, "NextSoldier Think is not run")
+end)
+
+-- base_nextsoldier_npc's binding run under LuaJIT: the file's ENT against a stub
 -- of the GMod globals it touches, with an npc controller whose Bind fails.
 T.test("a nextbot whose binding fails reports it once from Initialize, then removes itself without erroring", function()
 	local bindError = "bind failed"
@@ -772,7 +778,7 @@ T.test("a nextbot whose binding fails reports it once from Initialize, then remo
 			require = function(name) return T.require(name) end,
 		},
 	}, { __index = _G })
-	local chunk = assert(loadfile("addons/sandcastle/gamemodes/sandcastle/entities/entities/ws_nextbot.lua"))
+	local chunk = assert(loadfile("addons/sandcastle/gamemodes/sandcastle/entities/entities/base_nextsoldier_npc.lua"))
 	setfenv(chunk, env)()
 
 	local ent = setmetatable({

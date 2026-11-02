@@ -60,7 +60,7 @@ function Controller:FireWeaponMimic(ent, mimic, count)
 end
 
 -- A player's team; an entity that takes sides reports its own through
--- GetTeamNumber (ws_combat_nextbot does); anything else has none.
+-- GetTeamNumber (base_nextsoldier_combat does); anything else has none.
 function Controller:TeamOf(ent)
 	if ent:IsPlayer() then return ent:Team() end
 	if ent.GetTeamNumber then return ent:GetTeamNumber() end

@@ -70,7 +70,7 @@ function Controller:PathWatch(ent)
 	return self.pathWatch[ent:EntIndex()]
 end
 
--- A watched NextBot's Path:Compute (ws_nextbot's FollowPath). An open
+-- A watched NextBot's Path:Compute (base_nextsoldier_npc's FollowPath). An open
 -- path profile records it too.
 function Controller:ObserveCompute(watch, bot, path, goal, compute)
 	local Debug = WS.require("features.nbdebug.model")

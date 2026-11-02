@@ -1,17 +1,17 @@
--- ghost (CGhost): a Halloween ghost, a ws_combat_nextbot bound to
+-- ghost (CGhost): a Halloween ghost, a base_nextsoldier_combat bound to
 -- features.haunting.ghost, which holds its rules. It is solid to nothing
 -- (CGhost::ShouldCollide), and implements the ghost's port: FeelerHit.
 -- Configure{ lifetime } before Spawn (the haunting controller does).
 AddCSLuaFile()
 
-ENT.Base = "ws_combat_nextbot"
+ENT.Base = "base_nextsoldier_combat"
 ENT.Type = "nextbot"
 ENT.Spawnable = false
 ENT.Variant = "features.haunting.ghost"
 
 if CLIENT then return end
 
-local Base = baseclass.Get("ws_combat_nextbot")
+local Base = baseclass.Get("base_nextsoldier_combat")
 
 function ENT:Initialize()
 	self:SetModel(WS.require(self.Variant).MODEL)
