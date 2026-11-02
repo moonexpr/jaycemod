@@ -29,19 +29,21 @@ end, nil, "Print every AI war soldier's role, action, route and last trip to the
 
 -- NextSoldier's commands (docs/ns-debugging.md), for admins, printed to the
 -- caller's console (and the server's). Named ns_<subject>_<verb>.
-local function AdminCommand(name, run, help)
+local function AdminCommand(name, run, help, options)
 	concommand.Add(name, function(ply, _, args)
 		if not WS.Can(ply, NEXTSOLDIER) then return end
 		Tell(ply, run(args))
-	end, nil, help)
+	end, options and function(command, args)
+		return WS.CompleteOptions(command, args, options)
+	end or nil, help)
 end
 
 -- Those that read the soldiers run while the war is on.
-local function WarCommand(name, run, help)
+local function WarCommand(name, run, help, options)
 	AdminCommand(name, function(args)
 		if not Controller.war then return { name .. ": the AI war is not running" } end
 		return run(args)
-	end, help)
+	end, help, options)
 end
 
 local TEAM_NAMED = {
@@ -54,7 +56,8 @@ WarCommand("ns_squads_print", function(args)
 	local team = args[1] and TEAM_NAMED[string.upper(args[1])]
 	if args[1] and not team then return { "ns_squads_print: RED, BLU, or nothing for both" } end
 	return Controller:SquadReport(team)
-end, "Print each NextSoldier squad: its leader, formation spread, bound, flank, fall back, lane and each member's place; RED or BLU for one side")
+end, "Print each NextSoldier squad: its leader, formation spread, bound, flank, fall back, lane and each member's place; RED or BLU for one side",
+	{ { "RED", "BLU" } })
 
 WarCommand("ns_lanes_print", function()
 	return Controller:LaneReport()

@@ -20,7 +20,7 @@ end
 
 -- A console command for holders of privilege; run(args) answers true, or
 -- false and why.
-local function Command(name, privilege, help, run)
+local function Command(name, privilege, help, run, options)
 	concommand.Add(name, function(ply, _, args)
 		if not WS.Can(ply, privilege) then return Reply(ply, name .. ": you may not do that") end
 		local ok, why = run(args)
@@ -29,7 +29,9 @@ local function Command(name, privilege, help, run)
 		else
 			Reply(ply, name .. ": " .. why)
 		end
-	end, nil, help)
+	end, options and function(command, args)
+		return WS.CompleteOptions(command, args, { options })
+	end or nil, help)
 end
 
 local NO_ROUNDS = "this map has no rounds"
@@ -67,7 +69,7 @@ Command("mp_match_forcewin", Permissions.MATCH,
 		local team = MATCH_TARGETS[target]
 		if not team then return false, "red, blue or sudden" end
 		return rounds:ForceMatchWin(team)
-	end)
+	end, { "red", "blue", "blu", "sudden" })
 
 -- Round rewards: the money setting, then whatever a server adds.
 hook.Add("WSRoundWin", "ws_match_control", function(winner)

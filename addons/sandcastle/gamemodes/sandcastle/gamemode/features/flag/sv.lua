@@ -20,6 +20,14 @@ local NOBODY, RED, BLUE = WS.TEAM_UNASSIGNED, WS.TEAM_RED, WS.TEAM_BLUE
 local GAME_TEAMS = { RED, BLUE }
 local THINK_INTERVAL = 0.1
 local THINK_HOOK = "ws_flag"
+local Log = WS.Logger("flag")
+
+local function TeamName(team)
+	if team == RED then return "RED" end
+	if team == BLUE then return "BLU" end
+	if team == NOBODY then return "unassigned" end
+	return "team " .. tostring(team)
+end
 
 local caplimit = CreateConVar("tf_flag_caplimit", tostring(Flag.CAPLIMIT_DEFAULT), { FCVAR_NOTIFY, FCVAR_REPLICATED },
 	"Number of captures to win")
@@ -196,6 +204,9 @@ local function Apply(self, ent, events, activator)
 	-- a new carrier, or none: its path through the reset zones starts afresh
 	self.carriedAt[ent] = nil
 	for _, e in ipairs(events) do
+		local action = e.kind == Flag.PICKUP and "picked up" or e.kind == Flag.DROP and "dropped"
+			or e.kind == Flag.CAPTURE and "captured" or e.kind == Flag.RETURN and "returned" or tostring(e.kind)
+		Log("flag #%d for %s %s by %s", ent:EntIndex(), TeamName(flag:Team()), action, TeamName(e.team))
 		if e.kind == Flag.PICKUP then
 			Carry(ent, flag:Carrier())
 		elseif e.kind == Flag.DROP then

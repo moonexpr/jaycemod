@@ -51,6 +51,7 @@ local function Load()
 		end,
 	}
 	local heard = { order = {} }
+	local logs = {}
 	for _, name in ipairs(HOOKS) do
 		heard[name] = {}
 		hook.Add(name, "test_addon", function(...)
@@ -58,6 +59,7 @@ local function Load()
 			heard.order[#heard.order + 1] = name
 		end)
 	end
+	local env
 	local ws = setmetatable({
 		require = T.require,
 		FeatureParts = T.FeatureParts,
@@ -68,10 +70,15 @@ local function Load()
 		TEAM_RED = Teams.RED,
 		TEAM_BLUE = Teams.BLUE,
 		State = function() return STATE.RND_RUNNING end,
+		Logger = function(subsystem)
+			return function(message, ...)
+				env.print(subsystem .. ": " .. string.format(message, ...))
+			end
+		end,
 		-- the gamerules' fact watch is a transaction on the slow lane
 		SlowTransactions = list.schedule.New({ Now = function() return 0 end }),
 	}, { __index = function() return Inert end })
-	local env = setmetatable({
+	env = setmetatable({
 		WS = ws,
 		hook = hook,
 		concommand = wiring.concommand,
@@ -80,6 +87,11 @@ local function Load()
 		GetConVar = function() return nil end,
 		CreateConVar = function(_, default) return ConVar(default) end,
 		CurTime = function() return 0 end,
+		print = function(...)
+			local values = {}
+			for i = 1, select("#", ...) do values[i] = tostring(select(i, ...)) end
+			logs[#logs + 1] = table.concat(values, " ")
+		end,
 		IsValid = function() return false end,
 		player = { GetAll = function() return {} end, GetHumans = function() return {} end },
 		ents = { FindByClass = function() return {} end, GetAll = function() return {} end },
@@ -91,7 +103,7 @@ local function Load()
 			return value
 		end,
 	})
-	return setfenv(assert(loadfile(SOURCE)), env)(), heard
+	return setfenv(assert(loadfile(SOURCE)), env)(), heard, logs
 end
 
 local function Hook(name, args) return { kind = "hook", name = name, args = args } end
@@ -132,6 +144,12 @@ T.test("every round state change runs RoundStateChanged (previous, next), after 
 	T.eq(table.concat(heard.order, " "), "RoundStart RoundStateChanged", "after the round's start")
 	T.eq(heard.RoundStateChanged[1][1] .. " " .. heard.RoundStateChanged[1][2], STATE.PREROUND .. " " .. STATE.RND_RUNNING,
 		"the states before and after")
+end)
+
+T.test("round state changes are written to the server log by name", function()
+	local controller, _, logs = Load()
+	controller:Apply({ { kind = "state", from = STATE.PREROUND, to = STATE.RND_RUNNING } })
+	T.eq(logs[1], "rounds: state PREROUND -> RND_RUNNING", "state transition log")
 end)
 
 T.test("a batch of several changes runs RoundStateChanged for each, in order, once all are applied", function()

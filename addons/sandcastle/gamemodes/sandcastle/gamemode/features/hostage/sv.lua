@@ -43,6 +43,7 @@ local THINK_HOOK = "ws_hostage"
 local ZONE_MARGIN = 150
 
 local BLUE = WS.TEAM_BLUE
+local Log = WS.Logger("hostage")
 
 -- Its voice carries as a voice does, and it calls for help to a BLU soldier
 -- within CALL_RANGE of it, in sight.
@@ -228,6 +229,7 @@ function Controller:Killed(id)
 	local state = round:StateOf(id)
 	if state == Rescue.HELD or state == Rescue.FOLLOWING then
 		self.round = round:Kill(id)
+		Log("hostage %q killed", id)
 		self:Announce(state, Rescue.KILLED)
 	end
 	local pistol = self.pistol
@@ -389,6 +391,9 @@ function Controller:Observe(id, info, body, observer)
 	end
 	self.round = round
 	local after = round:StateOf(id)
+	if before ~= after then
+		Log("hostage %q %s -> %s", id, before, after)
+	end
 	if body.SetLeader then body:SetLeader(after == Rescue.FOLLOWING and round:RescuerOf(id) or nil) end
 	self:Voice(body, before, after)
 	self:Announce(before, after)

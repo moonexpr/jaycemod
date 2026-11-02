@@ -33,6 +33,10 @@ if SERVER then
 		if IsValid(ply) then ply:ChatPrint("Settings: " .. text) else print("Settings: " .. text) end
 	end
 
+	local settingNames = {}
+	for name in Settings.SETTINGS() do settingNames[#settingNames + 1] = name end
+	table.sort(settingNames)
+
 	concommand.Add(COMMAND, function(ply, _, args)
 		local name = args[1] or ""
 		if IsValid(ply) and not Settings.Allowed(name, function(privilege) return WS.Can(ply, privilege) == true end) then
@@ -41,7 +45,9 @@ if SERVER then
 		local value, why = Settings.Parse(name, args[2] or "")
 		if not value then return Tell(ply, why) end
 		RunConsoleCommand(name, value)
-	end, nil, "Set a server setting the menus offer: " .. COMMAND .. " <convar> <value>")
+	end, function(command, args)
+		return WS.CompleteOptions(command, args, { settingNames, {} })
+	end, "Set a server setting the menus offer: " .. COMMAND .. " <convar> <value>")
 
 	local watched = {}
 

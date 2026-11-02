@@ -9,6 +9,20 @@ local SwitchTeams, ScrambleTeams = Players.SwitchTeams, Players.ScrambleTeams
 local S = WS.STATE
 local UNASSIGNED, SPECTATOR = WS.TEAM_UNASSIGNED, WS.TEAM_SPECTATOR
 local RED, BLUE = WS.TEAM_RED, WS.TEAM_BLUE
+local Log = WS.Logger("rounds")
+local STATE_NAMES = {
+	[S.INIT] = "INIT",
+	[S.PREGAME] = "PREGAME",
+	[S.STARTGAME] = "STARTGAME",
+	[S.PREROUND] = "PREROUND",
+	[S.RND_RUNNING] = "RND_RUNNING",
+	[S.TEAM_WIN] = "TEAM_WIN",
+	[S.RESTART] = "RESTART",
+	[S.STALEMATE] = "STALEMATE",
+	[S.GAME_OVER] = "GAME_OVER",
+	[S.BONUS] = "BONUS",
+	[S.BETWEEN_RNDS] = "BETWEEN_RNDS",
+}
 
 local LOGIC_AUTO_CLASS = "logic_auto"
 local COMPETITIVE_CLASS = "tf_logic_competitive"
@@ -206,6 +220,7 @@ local EFFECTS = {
 		SetGlobal2Int("ws_round_state", e.to)
 		PublishLimits()
 		self:RetellDead()
+		Log("state %s -> %s", STATE_NAMES[e.from] or tostring(e.from), STATE_NAMES[e.to] or tostring(e.to))
 		if e.from == S.TEAM_WIN then hook.Run("BonusRoundEnd") end
 		if e.to == S.PREROUND then
 			self:RestoreSpawnDoors()

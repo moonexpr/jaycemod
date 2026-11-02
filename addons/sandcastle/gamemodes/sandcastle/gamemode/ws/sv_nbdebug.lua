@@ -10,6 +10,7 @@ local COMMANDS = {
 	{
 		name = "ws_nb_debug",
 		help = "Toggle NPC debug layers: PATH, COST, BEHAVIOR, NAV, AIWAR, MARKS, or ALL; OFF or no argument stops",
+		options = { { "PATH", "COST", "BEHAVIOR", "NAV", "AIWAR", "MARKS", "ALL", "OFF" } },
 	},
 	{
 		name = "ws_nb_debug_filter",
@@ -40,5 +41,7 @@ for _, command in ipairs(COMMANDS) do
 			return
 		end
 		WS.Feature("nbdebug"):Command(command.name, ply, args)
-	end, nil, command.help)
+	end, command.options and function(name, args)
+		return WS.CompleteOptions(name, args, command.options)
+	end or nil, command.help)
 end

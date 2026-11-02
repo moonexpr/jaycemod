@@ -142,7 +142,9 @@ end
 concommand.Add("jointeam", function(ply, _, args)
 	if not IsValid(ply) or not WS.MayPickTeam() or not args[1] then return end
 	WS.JoinTeam(ply, args[1])
-end, nil, "Join a team: red, blue, auto or spectate")
+end, function(command, args)
+	return WS.CompleteOptions(command, args, { { "red", "blue", "auto", "spectate" } })
+end, "Join a team: red, blue, auto or spectate")
 
 -- Balancing ----------------------------------------------------------------
 

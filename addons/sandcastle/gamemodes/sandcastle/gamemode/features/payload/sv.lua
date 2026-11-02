@@ -20,12 +20,14 @@ local PUBLISH_INTERVAL = 0.1 -- the HUD's 10 Hz
 local THINK_HOOK = "ws_payload"
 local HOLD_NAME = "payload"
 local NOT_A_CAPTURE_HOLD = false -- a pushed cart holds only while pushed, with no 0.1 s buffer
+local Log = WS.Logger("payload")
 
 local Controller = {
 	rounds = WS.Feature("rounds"),
 	capture = WS.Feature("capture"),
 	cartSpeedScale = Payload.CART_SPEED_DEFAULT,
 	watchers = {}, -- the bound team_train_watchers, in the order they bound
+	loggedProgress = {}, -- watcher -> last whole-percent progress logged
 	nextPublish = 0,
 }
 
@@ -42,6 +44,7 @@ end
 
 function Controller:UnbindWatcher(ent)
 	table.RemoveByValue(self.watchers, ent)
+	self.loggedProgress[ent] = nil
 end
 
 function Controller:BindEscort(ent)
@@ -125,6 +128,13 @@ function Controller:PublishCarts()
 		if payload and watcher:IsActive() then
 			KeepProxies(watcher)
 			local hud = watcher:HudState()
+			local percent = math.floor(hud.progress * 100 + 0.5)
+			local previous = self.loggedProgress[watcher]
+			if previous and (previous.percent ~= percent or previous.team ~= hud.team) then
+				local teamName = hud.team == WS.TEAM_RED and "RED" or hud.team == WS.TEAM_BLUE and "BLU" or tostring(hud.team)
+				Log("cart #%d (%s) progress %d%%", watcher:EntIndex(), teamName, percent)
+			end
+			self.loggedProgress[watcher] = { percent = percent, team = hud.team }
 			active[#active + 1] = {
 				team = hud.team,
 				index = watcher:EntIndex(),
@@ -133,6 +143,7 @@ function Controller:PublishCarts()
 			}
 		end
 	end
+	if not payload then self.loggedProgress = {} end
 	local distances = {}
 	local carts = Hud.Order(active)
 	for i, cart in ipairs(carts) do

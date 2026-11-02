@@ -8,6 +8,7 @@ local Rounds = gameplay.rounds
 
 local POINT_CLASS = "team_control_point"
 local NOBODY, RED, BLUE = WS.TEAM_UNASSIGNED, WS.TEAM_RED, WS.TEAM_BLUE
+local Log = WS.Logger("capture")
 local TEAM_OUTPUT = {
 	[RED] = "Team1",
 	[BLUE] = "Team2",
@@ -350,6 +351,8 @@ local POINT_EVENTS = {
 	-- master's win check.
 	owner = function(self, e)
 		local point = e.id
+		local owner = e.team == RED and "RED" or e.team == BLUE and "BLU" or "unassigned"
+		Log("control point %q owner changed to %s", self.set:PrintName(point), owner)
 		PlayLines(self, point, e.lines)
 		-- the capture bell, everyone's own sound wherever they are
 		if e.bell then WS.BroadcastSoundscape(NOBODY, e.bell) end

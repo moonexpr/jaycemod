@@ -108,7 +108,7 @@ if SERVER then
 
 	-- The slot list's edits, for admins: each runs the aiwar controller's,
 	-- which says how it went, in the caller's console.
-	local function SlotCommand(name, run, help)
+	local function SlotCommand(name, run, help, options)
 		concommand.Add(name, function(ply, _, args)
 			if not WS.Can(ply, Permissions.NEXTSOLDIER) then
 				Tell(ply, "AI war: you may not change the slots")
@@ -117,7 +117,9 @@ if SERVER then
 			for _, line in ipairs(run(WS.Feature("aiwar"), args)) do
 				if IsValid(ply) then ply:PrintMessage(HUD_PRINTCONSOLE, line) else print(line) end
 			end
-		end, nil, help)
+		end, options and function(command, args)
+			return WS.CompleteOptions(command, args, options)
+		end or nil, help)
 	end
 
 	-- The ids a command names, or nil after saying it named none.
@@ -134,7 +136,8 @@ if SERVER then
 			return { string.format("mp_aiwar_slots_size: RED or BLU, then 0 to %d slots", AiWar.TEAM_SIZE_MAX) }
 		end
 		return war:SetSlotCount(team, count)
-	end, "Set how many slots RED's or BLU's faction keeps (RED or BLU, then a count); the team size becomes -1, each side's own slots")
+	end, "Set how many slots RED's or BLU's faction keeps (RED or BLU, then a count); the team size becomes -1, each side's own slots",
+		{ { "RED", "BLU" }, {} })
 
 	SlotCommand("mp_aiwar_slots_remove", function(war, args)
 		local ids, told = Ids("mp_aiwar_slots_remove", args)

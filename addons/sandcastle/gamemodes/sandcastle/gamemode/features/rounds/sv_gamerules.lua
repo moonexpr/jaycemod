@@ -11,6 +11,7 @@ local TeamPlayers, EachPlayer = Players.TeamPlayers, Players.EachPlayer
 
 local UNASSIGNED, SPECTATOR = WS.TEAM_UNASSIGNED, WS.TEAM_SPECTATOR
 local RED, BLUE = WS.TEAM_RED, WS.TEAM_BLUE
+local Log = WS.Logger("gamerules")
 
 local HALT_DOORS_INTERVAL = 2
 local ROLE_NONE = 0 -- TEAM_ROLE_NONE
@@ -168,7 +169,7 @@ function Controller:EndEarly(why)
 	local effects = self.round:EndEarly(CurTime(), leader, self.objective)
 	if #effects == 0 then return false end
 	PrintMessage(HUD_PRINTTALK, "The match has ended early.") -- all a player is told: any reason is an admin's to give, outside the game
-	print("gamerules: the match ended early (" .. why .. "), " .. (leader and ("won by team " .. leader) or "a sudden death deciding it"))
+	Log("the match ended early (%s), %s", why, leader and ("won by team " .. leader) or "a sudden death deciding it")
 	self:Apply(effects)
 	return true
 end

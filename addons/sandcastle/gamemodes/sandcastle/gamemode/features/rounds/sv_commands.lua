@@ -23,7 +23,7 @@ end
 -- ends it a stalemate, and with no team the first player's team wins.
 -- Sandcastle's own: the teams' names, and sudden for the running round's
 -- sudden death, called by the Administrator. Admins only, as Match Control.
-local FORCE_WIN_OPTIONS = { "red", "blue", "sudden", tostring(UNASSIGNED) }
+local FORCE_WIN_OPTIONS = { "red", "blue", "blu", "sudden", "stalemate", "2", "3", tostring(UNASSIGNED) }
 
 local function FirstPlayerTeam()
 	local first = Entity(1)
@@ -45,10 +45,8 @@ concommand.Add("mp_forcewin", function(ply, _, args)
 		return
 	end
 	Controller:Apply(Controller.round:ForceWin(CurTime(), target, Controller.objective))
-end, function(cmd)
-	local options = {}
-	for i, option in ipairs(FORCE_WIN_OPTIONS) do options[i] = cmd .. " " .. option end
-	return options
+end, function(cmd, args)
+	return WS.CompleteOptions(cmd, args, { FORCE_WIN_OPTIONS }, true)
 end, "Force the round's end: mp_forcewin [2 red | 3 blue | 0 stalemate | sudden]; the first player's team with none; admins only")
 
 return RestartAsked

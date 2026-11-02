@@ -30,6 +30,7 @@ local THINK_INTERVAL = 0.1
 local THINK_HOOK = "ws_defuse"
 local LOGIC_CLASS = "cs_defuse_logic"
 local RED, BLUE = WS.TEAM_RED, WS.TEAM_BLUE
+local Log = WS.Logger("defuse")
 
 -- CS:S's bomb: carried, planted, and its sounds.
 local BOMB_MODEL = "models/weapons/w_c4.mdl"
@@ -210,6 +211,7 @@ function Controller:Plant(site)
 	local carrier = self:Carrier()
 	local at = IsValid(carrier) and carrier:GetPos() or site:WorldSpaceCenter()
 	self.bomb = self.bomb:Plant(site, CurTime(), config.c4Timer)
+	Log("bomb planted at site %s", self.sites[site].name)
 	SafeRemoveEntity(self.bombEnt)
 	self.bombEnt = nil
 	local prop = ents.Create("prop_dynamic")
@@ -243,6 +245,7 @@ end
 -- BLU's capture of the planted site: the bomb is defused.
 function Controller:Defused()
 	self.bomb = self.bomb:Defuse()
+	Log("bomb defused at site %s", self.sites[self.bomb:Site()].name)
 	if IsValid(self.planted) then self.planted:EmitSound(DEFUSE_SOUND) end
 	self.rounds:SetObjectiveState({ bomb = self.bomb })
 	hook.Run("WSBombDefused", self.bomb:Site())
@@ -252,6 +255,7 @@ end
 -- The planted bomb's timer has run out: the blast, and RED wins.
 function Controller:Explode(now)
 	self.bomb = self.bomb:Explode(now)
+	Log("bomb exploded at site %s", self.sites[self.bomb:Site()].name)
 	local pos = IsValid(self.planted) and self.planted:GetPos() or self.bomb:Site():WorldSpaceCenter()
 	local effect = EffectData()
 	effect:SetOrigin(pos)
