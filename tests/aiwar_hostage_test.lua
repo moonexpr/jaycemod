@@ -369,16 +369,28 @@ end)
 -- medic keeps its faction's kit, and other scenarios keep theirs.
 T.test("hostage rescue's soldiers carry CS:S's arms, each side its own", function()
 	local Arms = T.require("features.aiwar.arms")
-	local Css = gameplay.cstrike_weapons
 	local scenario = Hostage.Scenario:New()
-	local sides = { [RED] = Css.Set(Css.For(Css.TERRORIST)), [BLUE] = Css.Set(Css.For(Css.CT)) }
-	for team, allowed in pairs(sides) do
+	local sides = { [RED] = "TERRORIST", [BLUE] = "CT" }
+	local definitions = {}
+	local function Definition(class)
+		if definitions[class] then return definitions[class] end
+		local path = "addons/sandcastle/gamemodes/sandcastle/entities/weapons/" .. class .. ".lua"
+		local env = { SWEP = {}, AddCSLuaFile = function() end, Model = function(path) return path end }
+		setmetatable(env, { __index = _G })
+		setfenv(assert(loadfile(path)), env)()
+		definitions[class] = env.SWEP
+		return env.SWEP
+	end
+	for team, faction in pairs(sides) do
 		for _, role in ipairs({ AiWar.BLOCK, AiWar.HOLD, AiWar.RAID, AiWar.SUPPORT, AiWar.PUSH, false }) do
 			local kit = scenario:Kit(team, role)
 			T.eq(kit ~= nil, true, tostring(role) .. " has a kit")
 			for _, primary in ipairs(kit.primary) do
 				local loadout = Arms.Loadout({ primary = { primary }, secondary = kit.secondary, melee = kit.melee }, function() return 1 end)
-				for _, class in ipairs(Arms.Classes(loadout)) do T.eq(allowed[class], true, team .. " may use " .. class) end
+				for _, class in ipairs(Arms.Classes(loadout)) do
+					local weapon = Definition(class)
+					T.eq(weapon.CStrikeTeam == faction or weapon.CStrikeTeam == "ANY", true, team .. " may use " .. class)
+				end
 			end
 		end
 		T.eq(scenario:Kit(team, AiWar.MEDIC), nil, "a medic's is its faction's")

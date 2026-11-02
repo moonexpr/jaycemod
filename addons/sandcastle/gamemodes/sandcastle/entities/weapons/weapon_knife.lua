@@ -1,81 +1,40 @@
--- weapon_knife: CS:S's knife (gameplay.cstrike_weapons' KNIFE_STATS). The
--- primary slashes (harder the first time in a while), the secondary stabs;
--- either hits three times as hard from behind. A strike traces a line from
--- the eye, then a hull as wide as a head when the line finds nothing, as
--- CS:S's does, lag compensated.
+-- weapon_knife: a standard CS:S SWEP; its base owns shared behavior.
 AddCSLuaFile()
 
-local Css = gameplay.cstrike_weapons
-local K = Css.KNIFE_STATS
-
-WS.CSSWeapon(SWEP, "weapon_knife")
-SWEP.DrawAmmo = false
-
-local HULL = Vector(16, 16, 18)
-
-function SWEP:SetupDataTables()
-	self:NetworkVar("Float", 0, "LastStrike")
-end
-
-function SWEP:Initialize()
-	self:SetHoldType(self.HoldType)
-end
-
-function SWEP:Deploy()
-	self:SetHoldType(self.HoldType)
-	self:SendWeaponAnim(ACT_VM_DRAW)
-	self:EmitSound("Weapon_Knife.Deploy")
-	return true
-end
-
-function SWEP:PrimaryAttack() self:Strike(K.slash, ACT_VM_PRIMARYATTACK, ACT_VM_PRIMARYATTACK, "Weapon_Knife.Hit") end
-function SWEP:SecondaryAttack() self:Strike(K.stab, ACT_VM_SECONDARYATTACK, ACT_VM_MISSCENTER, "Weapon_Knife.Stab") end
-
-local function Fighter(ent)
-	return IsValid(ent) and (ent:IsPlayer() or ent:IsNPC() or ent:IsNextBot())
-end
-
--- The way an entity faces across the ground, as { x, y } of length 1.
-local function Flat(v)
-	v = Vector(v.x, v.y, 0)
-	v:Normalize()
-	return { x = v.x, y = v.y }
-end
-
-function SWEP:Strike(strike, hitAct, missAct, hitSound)
-	local owner, now = self:GetOwner(), CurTime()
-	local src, dir = owner:GetShootPos(), owner:GetAimVector()
-	local to = src + dir * strike.reach
-	if owner:IsPlayer() then owner:LagCompensation(true) end
-	local tr = util.TraceLine({ start = src, endpos = to, filter = owner, mask = MASK_SHOT_HULL })
-	if not tr.Hit then
-		tr = util.TraceHull({ start = src, endpos = to, filter = owner, mins = -HULL, maxs = HULL, mask = MASK_SHOT_HULL })
-	end
-	if owner:IsPlayer() then owner:LagCompensation(false) end
-	local fresh = now - self:GetLastStrike() >= (strike.fresh or math.huge)
-	self:SetLastStrike(now)
-	self:SetNextPrimaryFire(now + strike.interval)
-	self:SetNextSecondaryFire(now + strike.interval)
-	owner:SetAnimation(PLAYER_ATTACK1)
-	if not tr.Hit then
-		self:SendWeaponAnim(missAct)
-		self:EmitSound("Weapon_Knife.Slash")
-		return
-	end
-	self:SendWeaponAnim(hitAct)
-	local victim = tr.Entity
-	self:EmitSound(Fighter(victim) and hitSound or "Weapon_Knife.HitWall")
-	if not Fighter(victim) then util.Decal("ManhackCut", tr.HitPos + tr.HitNormal, tr.HitPos - tr.HitNormal) end
-	if CLIENT or not IsValid(victim) then return end
-	local facing = victim:IsPlayer() and victim:EyeAngles():Forward() or victim:GetForward()
-	local back = Fighter(victim) and Css.Backstab(Flat(victim:GetPos() - owner:GetPos()), Flat(facing))
-	local dmg = DamageInfo()
-	dmg:SetDamage(Css.KnifeDamage(strike, back, fresh))
-	dmg:SetAttacker(owner)
-	dmg:SetInflictor(self)
-	dmg:SetDamageType(DMG_SLASH)
-	dmg:SetDamagePosition(tr.HitPos)
-	dmg:SetDamageForce(dir * 1000)
-	if Css.SkillShot(Css.WEAPONS.weapon_knife, { back = back }) then WS.SkillShot(victim) end
-	victim:DispatchTraceAttack(dmg, tr, dir)
-end
+SWEP.Base = "base_cstrike_melee"
+SWEP.CStrikeWeapon = true
+SWEP.PrintName = "KNIFE"
+SWEP.Category = "Counter-Strike: Source"
+SWEP.Spawnable = true
+SWEP.Slot = 2
+SWEP.SlotPos = 1
+SWEP.ViewModel = Model("models/weapons/cstrike/c_knife_t.mdl")
+SWEP.WorldModel = Model("models/weapons/w_knife_t.mdl")
+SWEP.ViewModelFOV = 54
+SWEP.ViewModelFlip = false
+SWEP.UseHands = true
+SWEP.HoldType = "knife"
+SWEP.DrawCrosshair = true
+SWEP.CStrikeType = "Knife"
+SWEP.CStrikeTeam = "ANY"
+SWEP.Price = 0
+SWEP.MaxPlayerSpeed = 250
+SWEP.ReloadSound = "Default.Reload"
+SWEP.EmptySound = "Default.ClipEmpty_Rifle"
+SWEP.SingleShotSound = "Weapon_DEagle.Single"
+SWEP.Primary = { ClipSize = -1, DefaultClip = -1, Automatic = true, Ammo = "none" }
+SWEP.Secondary = { ClipSize = -1, DefaultClip = -1, Automatic = true, Ammo = "none" }
+SWEP.StabReach = 32
+SWEP.StabDamage = 65
+SWEP.StabInterval = 1
+SWEP.SlashFreshWindow = 0.4
+SWEP.SlashReach = 48
+SWEP.SlashDamage = 15
+SWEP.SlashFirstDamage = 20
+SWEP.SlashInterval = 0.4
+SWEP.BackstabMultiplier = 3
+SWEP.BackstabDot = 0.8
+SWEP.AIAutomatic = true
+SWEP.AIInterval = 0.4
+SWEP.AIDamage = 15
+SWEP.AIMelee = true

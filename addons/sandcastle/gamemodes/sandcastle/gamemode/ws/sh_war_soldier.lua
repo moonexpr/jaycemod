@@ -162,7 +162,9 @@ function WS.WarSoldier(ENT)
 	function ENT:NSArm(enemy)
 		local loadout = self.NSLoadout
 		if not loadout or not IsValid(enemy) then return end
-		local class = Arms.Choose(loadout, self:GetPos():Distance(enemy:GetPos()))
+		local weapons = self:GetWeapons()
+		local class = Arms.Choose(loadout, self:GetPos():Distance(enemy:GetPos()),
+			weapons[loadout.primary], weapons[loadout.secondary])
 		local active = self:GetActiveWeapon()
 		if not (IsValid(active) and active:GetClass() == class) then self:SelectWeapon(class) end
 	end
@@ -170,7 +172,7 @@ function WS.WarSoldier(ENT)
 	-- A weapon in hand: its ranges are the arms' (a gun fires at any enemy in
 	-- sight); a weapon the arms do not know keeps the class's.
 	function ENT:OnWeaponChange(old, new)
-		local ranges = IsValid(new) and Arms.Ranges(new:GetClass())
+		local ranges = IsValid(new) and Arms.Ranges(new)
 		if not ranges then return end
 		self.RangeAttackRange = ranges.attack
 		self.MeleeAttackRange = ranges.melee
@@ -341,18 +343,19 @@ function WS.WarSoldier(ENT)
 	function ENT:OnMeleeAttack(enemy, weapon)
 		if self.NSFrozen then return true end
 		if Answered(Ask(self, "ShouldAttack", self:GetEnemy()), "ANSWER_NO") then return true end
-		local arm = IsValid(weapon) and Arms.WEAPONS[weapon:GetClass()]
+		local arm = IsValid(weapon) and weapon
 		local now = CurTime()
-		if not (arm and arm.melee) or now < (self.NSNextStrike or 0) or not IsValid(enemy) then return true end
-		self.NSNextStrike = now + arm.interval
+		if not (arm and Arms.Melee(arm)) or now < (self.NSNextStrike or 0) or not IsValid(enemy) then return true end
+		local damage = Arms.Damage(arm)
+		self.NSNextStrike = now + Arms.Interval(arm)
 		self:FaceTowards(enemy)
 		self:AddGesture(ACT_HL2MP_GESTURE_RANGE_ATTACK_MELEE)
 		local dmg = DamageInfo()
-		dmg:SetDamage(arm.damage)
+		dmg:SetDamage(damage)
 		dmg:SetDamageType(DMG_CLUB)
 		dmg:SetAttacker(self)
 		dmg:SetInflictor(weapon)
-		dmg:SetDamageForce(self:GetForward() * arm.damage * 100)
+		dmg:SetDamageForce(self:GetForward() * damage * 100)
 		dmg:SetDamagePosition(enemy:WorldSpaceCenter())
 		enemy:TakeDamageInfo(dmg)
 		return true

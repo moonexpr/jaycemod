@@ -5,31 +5,28 @@
 -- (WaitsForRest: the smoke).
 AddCSLuaFile()
 
-local Css = gameplay.cstrike_weapons
-
 ENT.Type = "anim"
 ENT.PrintName = "CS:S grenade"
 ENT.Spawnable = false
-ENT.CSSClass = "weapon_hegrenade"
 ENT.Model = "models/weapons/w_eq_fraggrenade_thrown.mdl"
 ENT.BounceSound = "HEGrenade.Bounce"
 ENT.WaitsForRest = false
+ENT.CStrikeWeapon = true
 
 local REST = 10 -- units a second: slower is at rest
 local BOUNCE_SPEED = 50 -- units a second of impact: slower makes no sound
 
-function ENT:Grenade() return Css.WEAPONS[self.CSSClass].grenade end
-
 function ENT:Initialize()
 	self:SetModel(self.Model)
 	if CLIENT then return end
+	if not self.GrenadeFuse then error(self:GetClass() .. " has no CS:S grenade fuse") end
 	self:PhysicsInit(SOLID_VPHYSICS)
 	self:SetMoveType(MOVETYPE_VPHYSICS)
 	self:SetSolid(SOLID_VPHYSICS)
 	self:SetCollisionGroup(COLLISION_GROUP_PROJECTILE)
 	local phys = self:GetPhysicsObject()
 	if IsValid(phys) then phys:Wake() end
-	self.DetonateAt = CurTime() + self:Grenade().fuse
+	self.DetonateAt = CurTime() + self.GrenadeFuse
 end
 
 function ENT:PhysicsCollide(data)

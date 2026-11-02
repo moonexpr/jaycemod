@@ -363,7 +363,9 @@ function Controller:Look(ply, entry, enemies, now)
 	local contact = soldier:Enemy()
 	soldier.mayFire = contact ~= nil and not soldier.disarmed and entry.npc:Query("ShouldAttack", contact) ~= NpcSystem.ANSWER_NO
 	if soldier.loadout then
-		local class = contact and Arms.Choose(soldier.loadout, ply:GetPos():Distance(contact:GetPos())) or soldier.loadout.primary
+		local primary, secondary = ply:GetWeapon(soldier.loadout.primary), ply:GetWeapon(soldier.loadout.secondary)
+		local class = contact and Arms.Choose(soldier.loadout, ply:GetPos():Distance(contact:GetPos()), primary, secondary)
+			or soldier.loadout.primary
 		soldier.wantWeapon = ply:GetWeapon(class)
 	end
 
@@ -434,7 +436,7 @@ function Controller:Drive(ply, entry, cmd)
 	local vision = soldier.vision
 	local aim = enemy and vision:Visible(enemy) and vision:Recognized(enemy, now) and enemy:WorldSpaceCenter() or nil
 	local weapon = ply:GetActiveWeapon()
-	local arm = IsValid(weapon) and Arms.WEAPONS[weapon:GetClass()]
+	local arm = IsValid(weapon) and weapon
 	local sense, eye = soldier.sense, ply:EyeAngles()
 	sense.pos, sense.eyePos = ply:GetPos(), ply:EyePos()
 	sense.eye.pitch, sense.eye.yaw = eye.p, eye.y
@@ -449,13 +451,13 @@ function Controller:Drive(ply, entry, cmd)
 	sense.look = soldier:Looking(now)
 	sense.lookPriority = soldier.glancePriority and now < (soldier.glanceUntil or 0)
 	sense.aim, sense.aimRadius = aim, AIM_RADIUS
-	local ranges = arm and Arms.Ranges(weapon:GetClass())
+	local ranges = arm and Arms.Ranges(weapon)
 	sense.chase, sense.avoid = ranges and ranges.chase, ranges and ranges.avoid
 	sense.fire = soldier.mayFire
 	sense.weapon = arm and {
-		automatic = arm.automatic == true,
-		melee = arm.melee == true,
-		reach = arm.melee and Arms.MELEE_REACH or arm.reach,
+		automatic = Arms.Automatic(arm),
+		melee = Arms.Melee(arm),
+		reach = Arms.Melee(arm) and Arms.MELEE_REACH or Arms.Reach(arm),
 		clip = weapon:Clip1(),
 		reserve = ply:GetAmmoCount(weapon:GetPrimaryAmmoType()),
 	} or nil

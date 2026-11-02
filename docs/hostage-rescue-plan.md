@@ -93,10 +93,9 @@ round cannot stall with BLU alive. BLU takes 60% of the soldiers.
   it cannot be hurt.
 - Human players using a hostage (the controller takes any BLU player within
   `USE_RANGE`) is untested.
-- **CS:S's weapons are built, unchecked in game** (`gameplay.cstrike_weapons`,
-  below); the buy menu is not started: players get them from the spawn menu
-  (category Counter-Strike: Source), the war's soldiers from the scenario's
-  kits.
+- **CS:S's weapons are ordinary SWEPs**; the buy menu is not started: players
+  get them from the spawn menu (category Counter-Strike: Source), the war's
+  soldiers from the scenario's kits.
 
 ## CS:S's weapons
 
@@ -106,27 +105,26 @@ shown by GMod's own c_ models (`models/weapons/cstrike/c_*.mdl`, which GMod
 ships: they take the player's hands, and need CS:S mounted for their
 textures), with CS:S's sounds.
 
-- **From the game's files.** `.devtools/bin/cstrike_weapons.py` reads CS:S's
-  weapon scripts out of `cstrike_pak_dir.vpk` (`scripts/weapon_*.ctx`,
-  ICE-encrypted: `.devtools/bin/ice.py`) and its English names, and writes
-  `games/gameplay/cstrike_weapons/scripts.lua`: price, team, damage, pellets,
-  cycle, range and range modifier, clip, ammo, speed, and the accuracy
-  model's numbers (spread; standing, crouching, moving, jumping, landing,
-  ladder and firing inaccuracy; recovery times; a second set for the second
-  mode). Run it again after a CS:S update.
-- **The accuracy model** is the scripts', played as CS:S's successor plays
-  it: a shot's inaccuracy is the penalty, plus movement past a third of the
+- **One terminal SWEP per weapon.** Each `weapon_*.lua` owns its tuning as
+  direct fields and uses GMod's standard `Primary` and `Secondary` SWEP
+  tables. Firearms share `base_cstrike`; the knife and grenades use
+  `base_cstrike_melee` and `base_cstrike_grenade`. The shared bases implement
+  firing, melee hit simulation and grenade throwing. View and world models
+  are wrapped with `Model(...)` for precaching. There is no class-keyed
+  weapon registry or extraction from `weapons.GetStored`.
+- **The accuracy model** follows CS:S's scripts: a shot's inaccuracy is the
+  penalty, plus movement past a third of the
   weapon's speed, plus the air or a ladder; each shot adds its fire penalty
   and the excess falls ninefold over the recovery time. Bullets spray from
   one offset in the inaccuracy, each within the spread, aimed along the view
   plus its punch. Damage falls by the range modifier every 500 units, times
   CS:S's hit groups (head 4, stomach 1.25, legs 0.75); the balance leaves it
   whole and a headshot is no TF2 crit on top.
-- **Tuning, not from the game** (`cstrike_weapons.lua`, near CS:S as it plays,
-  never read from its code, which is not public): recoil (KickBack for the
-  automatics, a punch a shot for the rest), burst timings, scope fields of
-  view, ammo carried, reload seconds for NPC soldiers, the knife's strikes
-  and backstab, the grenades' damage, radius, blindness and smoke.
+- **Tuning, not from the game:** recoil (KickBack for the automatics, a punch
+  a shot for the rest), burst timings, scope fields of view, ammo carried,
+  reload seconds for NPC soldiers, the knife's strikes and backstab, the
+  grenades' damage, radius, blindness and smoke. These values live directly
+  on their terminal SWEPs; AI and NextSoldier read the live weapon instance.
 - **No shot kills from full health but a skill shot** (for every weapon,
   HL2's too: `weapon_balance` `Cap`, applied last in `ws/sv_hits.lua`): a
   player's or soldier's shot, its pellets together, deals a fighter at most
@@ -134,7 +132,8 @@ textures), with CS:S's sounds.
   staggers instead (`OVERFLOW`, the stronger of that and the weapon's own
   knockback). The skill shots, uncapped: a bolt-action sniper rifle's (AWP,
   Scout) through its scope and the knife's backstab; not the automatic
-  snipers, which CS:S's players call skill-free (`Css.SkillShot`, told by `WS.SkillShot`). Before
+  snipers, which CS:S's players call skill-free (`base_cstrike`, told by
+  `WS.SkillShot`). Before
   it, 22 of the 24 CS:S guns killed with one headshot at 100 health, and the
   M3, XM1014 and AWP with one body shot; of HL2's, the .357's headshot (225),
   the shotgun's close crit (168) and the frag, SLAM and RPG blasts.
@@ -152,7 +151,7 @@ textures), with CS:S's sounds.
   primary, "unpopular"), the Five-seveN (among "the least popular
   pistols"); the P228 split opinion and is next if one more is wanted.
 - **The least loved get a twist, not damage, and each twist is a TF2
-  player condition** its hit inflicts (`Css.TWISTS`, `weapon_cstrike_base`'s
+  player condition** its hit inflicts (`base_cstrike`'s
   `Hit`, `WS.Inflict`; a hit while one is held lasts the longer,
   `gameplay.players` `Inflict`): the UMP-45, `MAD_MILK` (3 s; whoever
   hurts its victim heals 60 % of the damage, TF2's ApplyOnHitAttributes,

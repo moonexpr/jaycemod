@@ -15,6 +15,7 @@ NextSoldier, the AI-war's NextBot soldiers. The gamemode lives at
 | `gamemode/wartactics/` | The AI war's tactics engine: the strategy soldiers are organised by (fire teams, squads, lanes, posts, scenarios), on NextSoldier, published as `wartactics.<module>` (index below) |
 | `gamemode/foundation/` | Nothing but its namespaces and three plain globals at its root (`transaction`, `configstore`, `nodegraph`): foundation is copied to the globals, so it stays small and generic. A feature's or mode's model is the feature's `model.lua` and its parts (`docs/foundation-game-split-plan.md`) |
 | `gamemode/features/<feature>/` | Controllers: `sv.lua`/`cl.lua`/`sh.lua` composition roots and their `<realm>_<part>.lua` parts |
+| `gamemode/entities/weapons/` | Standard SWEPs: CS:S stats are grouped on terminal weapons; `base_cstrike`, `base_cstrike_melee` and `base_cstrike_grenade` own shared behavior |
 | `gamemode/ws/` | Always-loaded glue |
 | `gamemode/entities/` | Map entity bindings |
 | `addons/teamtint/` | Team Tint, its own addon: RED/BLU NPCs in TF2's shading, a tuning tool and debug views; pure modules in `lua/includes/modules/`, textures baked by `.devtools/bin/teamtint_bake.py` (`docs/team-theming-plan.md`) |
@@ -257,7 +258,7 @@ never features or ws; a published foundation module never requires games;
 | Namespace | Modules |
 |---|---|
 | `system` | The gamemode core: `events` (the game event registry, `WS.Events`), `features` (per-map feature loading), `gamemode`, `permissions`, `play_mode`, `spawn_manager`, `idle` |
-| `gameplay` | `rounds` (+ `state`, `timer`, `limits`), `teams`, `players` (+ `attributes`, `condition_effects`), `spawn`, `spectate`, `respawn_modifiers`, `arrivals`, `loadout`, `economy`, `kill_credit`, `kill_icons`, `vote`, `reports`, `player_analytics`, `capture` (+ `area`, `master`, `point_timer`), `combat` (+ 9 parts), `projectile` (+ 4 parts), `tactics`, `movement` (TF2's player movement, the standard), `standing` (which team is nearer to completing its objective), `handicap`, `capabilities`, `cstrike_weapons` (+ `scripts`: CS:S's weapon scripts, written by `.devtools/bin/cstrike_weapons.py`) |
+| `gameplay` | `rounds` (+ `state`, `timer`, `limits`), `teams`, `players` (+ `attributes`, `condition_effects`), `spawn`, `spectate`, `respawn_modifiers`, `arrivals`, `loadout`, `economy`, `kill_credit`, `kill_icons`, `vote`, `reports`, `player_analytics`, `capture` (+ `area`, `master`, `point_timer`), `combat` (+ 9 parts), `projectile` (+ 4 parts), `tactics`, `movement` (TF2's player movement, the standard), `standing` (which team is nearer to completing its objective), `handicap`, `capabilities` |
 | `npc` | `nextbot` (the NextBot NPC system), `actor`, `combatant`, `targeting` |
 
 | Module | API |
@@ -268,7 +269,6 @@ never features or ws; a published foundation module never requires games;
 | `generator.hfsm` | NextBot Action/Behavior engine: `generator.state_chart` with stacks. `Action` adds `SuspendFor`/`TrySuspendFor`, `OnSuspend`/`OnResume`, buried actions hearing events and queries after the one covering them; `Behavior`; `Chart` as state_chart's; NextBot's timers as `CountdownTimer`, `IntervalTimer` |
 | `world.io` | A map's entity lookups and output connections, through a world port |
 | `gameplay.tactics` | The tactics engine interface: `ENGINE` (a port), `Check(engine)` |
-| `gameplay.cstrike_weapons` | CS:S's weapons from the game's own scripts (`cstrike_weapons/scripts`), the rest (recoil, second modes, ammo, knife, grenades) as tuning: `CLASSES` (buy order), `WEAPONS[class]` (`kind` `GUN`/`KNIFE`/`GRENADE`, `team`, `price`, `damage`, `accuracy`, `alt`, `second`, `kick`, GMod's c_ `viewModel`, ...), `For(team)`, `Damage(weapon, distance, hitgroup)` (falloff and `HITGROUPS`), the accuracy model (`Accuracy`, `Base`, `Inaccuracy`, `Fired`, `Landed`, `Recover`), `Spray(inaccuracy, spread, bullets, random)`, `Kick`, `Backstab`, `KnifeDamage`, `FlashBlind`, `Throw`. Played by the SWEPs `weapon_cstrike_base` (CS:S's class names: `weapon_ak47`, ...), `weapon_knife`, `weapon_cstrike_grenade_base` and `base_cstrike_grenade`'s projectiles (`ws/sh_cstrike_weapons.lua`), by bots through `features.aiwar.arms` and by NPCs through `nextsoldier.weapons` |
 | `list.drawlist` | `New()` → draw callbacks named by dotted paths, run in order (by order, a tie by path): `Add(path, order, draw[, when])` (a path again replaces it), `HideElements(path)`/`ShowElements(path)` (the code's: a path hides all under it), `SetHidden(paths)` (the player's, apart), `Draw(...)`, `Entries()`; `ParseNames(text)`. The HUD's (`WS.HUD`, `cl_hud_hidden`) |
 
 Rationale, what stays out of foundation's namespaces, and what to evaluate

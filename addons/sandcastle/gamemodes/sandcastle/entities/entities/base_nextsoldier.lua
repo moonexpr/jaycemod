@@ -465,7 +465,7 @@ function ENT:GiveWeapon(class)
 	weapon:AddEffects(EF_BONEMERGE)
 	weapon:SetNoDraw(true)
 	self.nsWeapons[class] = weapon
-	local stats = Weapons.STATS[class]
+	local stats = weapon.SoldierDamage and weapon or Weapons.STATS[class]
 	if stats then self.nsMagazines[weapon] = Weapons.Magazine(stats) end
 	return weapon
 end
@@ -791,12 +791,12 @@ function ENT:RangeAttack(enemy, weapon)
 	if not self:LineOfFire(src, enemy, weapon) then return end
 	magazine:Fire(now)
 	local stats = magazine.stats
-	if stats.projectile then
+	if Weapons.Stat(stats, "projectile") then
 		self:Throw(stats, src, enemy)
 	else
 		self:Shoot(stats, src, enemy, weapon)
 	end
-	weapon:EmitSound(stats.sound)
+	weapon:EmitSound(Weapons.Stat(stats, "sound"))
 	weapon:MuzzleFlash()
 	self:AddGesture(self:HoldAct("ACT_HL2MP_GESTURE_RANGE_ATTACK_"), true)
 	-- the last round: it reloads, the hold type's reload played
@@ -822,30 +822,30 @@ end
 -- A gun's projectile (HL2's crossbow's bolt), aimed where the enemy will be
 -- (Weapons.Lead), owned by the soldier so the hit is its.
 function ENT:Throw(stats, src, enemy)
-	local projectile = stats.projectile
+	local projectile = Weapons.Stat(stats, "projectile")
 	local aim = Weapons.Lead(src, enemy:WorldSpaceCenter(), VelocityOf(enemy), projectile.speed)
 	local dir = (Vector(aim.x, aim.y, aim.z) - src):GetNormalized()
 	local thrown = ents.Create(projectile.class)
 	thrown:SetPos(src)
 	thrown:SetAngles(dir:Angle())
 	thrown:SetOwner(self)
-	thrown:Fire("SetDamage", tostring(stats.damage))
+	thrown:Fire("SetDamage", tostring(Weapons.Stat(stats, "damage")))
 	thrown:Spawn()
 	thrown:SetVelocity(dir * projectile.speed)
 end
 
 -- A gun's bullets at the enemy's centre within its spread.
 function ENT:Shoot(stats, src, enemy, weapon)
-	local spread = math.tan(math.rad(stats.spread / 2))
+	local spread = math.tan(math.rad(Weapons.Stat(stats, "spread") / 2))
 	self:FireBullets({
 		Attacker = self,
-		Damage = stats.damage,
-		Num = stats.bullets,
+		Damage = Weapons.Stat(stats, "damage"),
+		Num = Weapons.Stat(stats, "bullets"),
 		Src = src,
 		Dir = (enemy:WorldSpaceCenter() - src):GetNormalized(),
 		Spread = Vector(spread, spread, 0),
 		Tracer = 1,
-		TracerName = stats.tracer,
+		TracerName = Weapons.Stat(stats, "tracer"),
 		IgnoreEntity = weapon,
 		-- struck by its gun, as a player's shot is (the kill feed's icon)
 		Callback = function(_, _, dmg) dmg:SetInflictor(weapon) end,

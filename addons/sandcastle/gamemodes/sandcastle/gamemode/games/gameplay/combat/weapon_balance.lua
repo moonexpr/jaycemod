@@ -9,9 +9,8 @@
 -- player or an NPC for its own damage and throws them hard enough to be
 -- slammed dead into a wall. The controller
 -- (ws/sv_hits.lua, ws/sh_weapon_balance.lua) applies it to each hit and shot.
-local math, pairs = math, pairs
+local math = math
 local Scalar = math.scalar
-local Css = gameplay.cstrike_weapons
 module(...)
 
 -- damage: a hit's damage, in place of HL2's; cone: the full spread in
@@ -113,14 +112,6 @@ INFLICTORS = {
 	rpg_missile = "weapon_rpg",
 }
 
--- CS:S's weapons deal their own damage (gameplay.cstrike_weapons: by range and
--- hit group, a headshot already four times), so none is balanced here and a
--- headshot is no crit on top.
-for class, weapon in pairs(Css.WEAPONS) do
-	WEAPONS[class] = { headshotCrit = false }
-	if weapon.grenade then INFLICTORS[weapon.grenade.projectile] = class end
-end
-
 -- By range: full damage to start units, falling to floor of it at finish
 -- and beyond. A long range has none.
 FALLOFF = {
@@ -144,9 +135,9 @@ CLOSE_CRITS = {
 }
 
 -- The weapon class a hit's inflictor is balanced as, or nil.
-function Weapon(class)
+function Weapon(class, cstrike)
 	if WEAPONS[class] then return class end
-	return INFLICTORS[class]
+	return INFLICTORS[class] or (cstrike and class or nil)
 end
 
 -- 0 at from, 1 at to, clamped.
@@ -171,6 +162,7 @@ end
 -- headshot, roll (in [0, 1), drawn by the caller) } -> its damage, whether
 -- its headshot counts, and whether it is a crit by distance.
 function Shot(class, hit)
+	if hit.cstrike then return hit.damage, false, false end
 	local weapon = WEAPONS[class]
 	if not weapon then return hit.damage, hit.headshot, false end
 	local damage = hit.damage
@@ -221,7 +213,7 @@ function Knockback(class, headshot, excess)
 end
 
 -- No hit kills from full health but a skill shot (a scoped sniper's, a
--- backstab: gameplay.cstrike_weapons' SkillShot): one shot deals a victim at
+-- backstab): one shot deals a victim at
 -- most HIT_CAP of its most health, its pellets together (dealt: what the
 -- shot has dealt it already), and the rest is its excess, which pushes
 -- rather than hurts (Knockback). -> damage dealt, excess.

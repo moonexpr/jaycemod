@@ -1,36 +1,51 @@
--- weapon_cstrike_base: CS:S's guns (gameplay.cstrike_weapons), each a SWEP on this
--- base named as CS:S names it (weapon_ak47, weapon_m4a1, ...), shown by
--- GMod's c_ model of it in the player's own hands. Everything that decides
--- a shot is predicted, on both realms: the accuracy model's penalty (kept
--- with the time it was set, and recovered from it when read), the spray
--- from the command's shared random seed, recoil as the view's punch, which
--- the shot is aimed along, as CS:S aims. A bullet's damage is the model's
--- by its distance and hit group, set as it hits.
---
--- The least loved guns have a twist (Css.TWISTS), a TF2 player condition
--- each hit inflicts (WS.Inflict): the UMP-45's milks (its hurters heal), the
--- TMP's bleeds, the Five-seveN's marks for death; none stuns.
---
--- The second attack is the weapon's second mode: the M4A1's and USP's
--- silencer, the Glock's and FAMAS's burst, the scopes' zoom (a sniper rifle
--- cycling its bolt drops its scope until it may fire again). Shotguns load
--- a shell at a time, and firing stops the loading.
+-- Shared CS:S firearm behavior. Each terminal SWEP owns its grouped stats.
 AddCSLuaFile()
 
-local Css = gameplay.cstrike_weapons
-
-SWEP.PrintName = "CS:S gun"
+SWEP.PrintName = "CS:S firearm"
+SWEP.Category = "Counter-Strike: Source"
 SWEP.Spawnable = false
-SWEP.ViewModel = "models/weapons/cstrike/c_rif_ak47.mdl"
-SWEP.WorldModel = "models/weapons/w_rif_ak47.mdl"
+SWEP.CStrikeWeapon = true
+SWEP.DrawAmmo = true
 SWEP.UseHands = true
-SWEP.Primary = { ClipSize = -1, DefaultClip = -1, Automatic = false, Ammo = "none" }
-SWEP.Secondary = { ClipSize = -1, DefaultClip = -1, Automatic = false, Ammo = "none" }
 
-local EMPTY_DELAY = 0.2 -- seconds between clicks of an empty gun
-local MODE_DELAY = 0.3 -- seconds between changes of mode
-local MOVING = 5 -- units a second across the ground: CS:S kicks a gun moving past it as moving
+local AMMO = {
+	BULLET_PLAYER_50AE = 35,
+	BULLET_PLAYER_762MM = 90,
+	BULLET_PLAYER_556MM = 90,
+	BULLET_PLAYER_556MM_BOX = 200,
+	BULLET_PLAYER_338MAG = 30,
+	BULLET_PLAYER_9MM = 120,
+	BULLET_PLAYER_BUCKSHOT = 32,
+	BULLET_PLAYER_45ACP = 100,
+	BULLET_PLAYER_357SIG = 52,
+	BULLET_PLAYER_57MM = 100,
+}
+
+for name, maxcarry in pairs(AMMO) do
+	game.AddAmmoType({ name = name, dmgtype = DMG_BULLET, tracer = TRACER_LINE_AND_WHIZ, maxcarry = maxcarry })
+end
+
+local EMPTY_DELAY, MODE_DELAY = 0.2, 0.3
+local MOVING = 5
 local LOAD_NONE, LOAD_STARTING, LOAD_INSERTING = 0, 1, 2
+local SILENCER, BURST, SCOPE = "silencer", "burst", "scope"
+local STANCES = { stand = 1, crouch = 0.9, move = 1.5, air = 2 }
+local HITGROUPS = {
+	[HITGROUP_GENERIC] = 1,
+	[HITGROUP_HEAD] = 4,
+	[HITGROUP_CHEST] = 1,
+	[HITGROUP_STOMACH] = 1.25,
+	[HITGROUP_LEFTARM] = 1,
+	[HITGROUP_RIGHTARM] = 1,
+	[HITGROUP_LEFTLEG] = 0.75,
+	[HITGROUP_RIGHTLEG] = 0.75,
+	[HITGROUP_GEAR] = 1,
+}
+local TENTH = math.log(10)
+
+local function Clamp(value, low, high)
+	return math.max(low, math.min(value, high))
+end
 
 function SWEP:SetupDataTables()
 	self:NetworkVar("Float", 0, "Penalty")
@@ -47,28 +62,46 @@ function SWEP:SetupDataTables()
 	self:NetworkVar("Bool", 2, "Grounded")
 end
 
-function SWEP:CSS() return Css.WEAPONS[self.CSSClass] end
-
 function SWEP:Mode()
-	local second = self:CSS().second
-	return second and second.mode or nil
+	return self.Stats.Mode and self.Stats.Mode.Type
 end
 
-function SWEP:Silenced() return self:Mode() == Css.SILENCER and self:GetSecond() end
+function SWEP:GetMaxSpeed()
+	local mode = self.Stats.Mode
+	if self:Mode() == SCOPE and self:GetZoom() > 0 and self:GetRezoom() == 0 and mode.Speed then
+		return mode.Speed
+	end
+	return self.MaxPlayerSpeed
+end
 
--- Whether the script's second accuracy is in use: silenced, or scoped.
-function SWEP:UsesSecond()
+function SWEP:Silenced()
+	return self:Mode() == SILENCER and self:GetSecond()
+end
+
+function SWEP:UsesSecondAccuracy()
 	local mode = self:Mode()
-	if mode == Css.SCOPE then return self:GetZoom() > 0 and self:GetRezoom() == 0 end
-	return mode == Css.SILENCER and self:GetSecond()
+	if mode == SCOPE then return self:GetZoom() > 0 and self:GetRezoom() == 0 end
+	return mode == SILENCER and self:GetSecond()
 end
 
-function SWEP:Model() return Css.Accuracy(self:CSS(), self:UsesSecond()) end
+function SWEP:AccuracyValue(name)
+	local alternate = self.Stats.AlternateAccuracy
+	local value
+	if self:UsesSecondAccuracy() and alternate then value = alternate[name] end
+	if value ~= nil then return value end
+	return self.Stats.Accuracy[name]
+end
 
-local function Crouching(owner) return owner:IsPlayer() and owner:Crouching() end
+function SWEP:BaseAccuracy(crouching)
+	return crouching and self:AccuracyValue("Crouch") or self:AccuracyValue("Stand")
+end
 
 function SWEP:CurrentPenalty()
-	return Css.Recover(self:Model(), self:GetPenalty(), Crouching(self:GetOwner()), CurTime() - self:GetPenaltyAt())
+	local crouching = self:GetOwner():IsPlayer() and self:GetOwner():Crouching()
+	local base = self:BaseAccuracy(crouching)
+	local duration = crouching and self:AccuracyValue("RecoveryCrouch") or self:AccuracyValue("RecoveryStand")
+	local elapsed = CurTime() - self:GetPenaltyAt()
+	return base + (self:GetPenalty() - base) * math.exp(-elapsed * TENTH / duration)
 end
 
 function SWEP:SetPenaltyNow(penalty)
@@ -76,14 +109,15 @@ function SWEP:SetPenaltyNow(penalty)
 	self:SetPenaltyAt(CurTime())
 end
 
--- The view model's current sequence's length, for what waits on it.
 function SWEP:ViewDuration()
 	local owner = self:GetOwner()
 	local vm = IsValid(owner) and owner.GetViewModel and owner:GetViewModel()
 	return IsValid(vm) and vm:SequenceDuration() or 0
 end
 
-function SWEP:Act(plain, silenced) return self:Silenced() and silenced or plain end
+function SWEP:Act(plain, silenced)
+	return self:Silenced() and silenced or plain
+end
 
 function SWEP:Initialize()
 	self:SetHoldType(self.HoldType)
@@ -96,7 +130,7 @@ function SWEP:Deploy()
 	self:SetRezoom(0)
 	self:SetBurstLeft(0)
 	self:SetLoading(LOAD_NONE)
-	self:SetPenaltyNow(Css.Base(self:Model(), false))
+	self:SetPenaltyNow(self:BaseAccuracy(false))
 	self:SendWeaponAnim(self:Act(ACT_VM_DRAW, ACT_VM_DRAW_SILENCED))
 	local ready = CurTime() + self:ViewDuration()
 	self:SetNextPrimaryFire(ready)
@@ -115,11 +149,8 @@ function SWEP:OnRemove()
 	if IsValid(self:GetOwner()) then self:Unzoom() end
 end
 
--- Firing ----------------------------------------------------------------------
-
 function SWEP:EmptyClick()
-	local w = self:CSS()
-	self:EmitSound(w.type == "Pistol" and "Default.ClipEmpty_Pistol" or "Default.ClipEmpty_Rifle")
+	self:EmitSound(self.CStrikeType == "Pistol" and "Default.ClipEmpty_Pistol" or "Default.ClipEmpty_Rifle")
 	self:SetNextPrimaryFire(CurTime() + EMPTY_DELAY)
 	if self:Ammo1() > 0 then self:Reload() end
 end
@@ -130,16 +161,16 @@ function SWEP:PrimaryAttack()
 		self:SetLoading(LOAD_NONE)
 	end
 	if self:Clip1() <= 0 then return self:EmptyClick() end
-	local w = self:CSS()
-	if self:Mode() == Css.BURST and self:GetSecond() then
-		self:SetBurstLeft(w.second.rounds - 1)
-		self:SetNextBurst(CurTime() + w.second.gap)
+	if self:Mode() == BURST and self:GetSecond() then
+		local burst = self.Stats.Mode.Burst
+		self:SetBurstLeft(burst.Rounds - 1)
+		self:SetNextBurst(CurTime() + burst.Gap)
 		self:Shoot()
-		self:SetNextPrimaryFire(CurTime() + w.second.after)
+		self:SetNextPrimaryFire(CurTime() + burst.After)
 		return
 	end
 	self:Shoot()
-	self:SetNextPrimaryFire(CurTime() + w.cycle)
+	self:SetNextPrimaryFire(CurTime() + self.Stats.Ballistics.CycleTime)
 end
 
 local function Random(name)
@@ -150,40 +181,59 @@ local function Random(name)
 	end
 end
 
--- Whether this weapon's owner may hurt victim (mp_friendlyfire), so its
--- twist touches only those its bullets may.
 function SWEP:Hurts(victim)
 	local owner = self:GetOwner()
 	return not WS.TeamRules.FriendlySpared(WS.FriendlyFire(), WS.TeamNumber(owner), WS.TeamNumber(victim), owner == victim)
 end
 
--- What a bullet does to victim beside its damage, on the server: tells a
--- skill shot (ws/sv_hits.lua's cap lets it kill) as it hits, and keeps
--- victim for the gun's twist (Twist).
 function SWEP:Hit(victim, scoped)
-	if Css.SkillShot(self:CSS(), { scoped = scoped }) then WS.SkillShot(victim) end
-	if not Css.Twist(self:GetClass()) then return end
+	if self.CStrikeType == "SniperRifle" and scoped and not self.Primary.Automatic then WS.SkillShot(victim) end
+	if not self.TwistCondition then return end
 	self.wsTwisted = self.wsTwisted or {}
 	self.wsTwisted[victim] = true
 end
 
--- The gun's twist on each fighter the shot hit and may hurt, once the shot's
--- damage is dealt, as TF2 adds a hit's condition after its damage: the hit
--- that marks or milks is not itself a mini-crit or a heal.
 function SWEP:Twist()
-	local twisted, twist = self.wsTwisted, Css.Twist(self:GetClass())
+	local twisted = self.wsTwisted
 	self.wsTwisted = nil
 	if not twisted then return end
 	for victim in pairs(twisted) do
 		if IsValid(victim) and WS.Combatant(victim) and victim:Health() > 0 and self:Hurts(victim) then
-			WS.Inflict(victim, self:GetOwner(), twist.cond, twist.seconds)
+			WS.Inflict(victim, self:GetOwner(), self.TwistCondition, self.TwistDuration)
 		end
 	end
 end
 
+function SWEP:Inaccuracy(state)
+	local speed = self.MaxPlayerSpeed
+	local moving = Clamp((state.speed - speed * 0.34) / (speed * (0.95 - 0.34)), 0, 1)
+	local inaccuracy = state.penalty
+	if moving > 0 then inaccuracy = inaccuracy + moving ^ 0.25 * self:AccuracyValue("Move") end
+	if not state.onGround then inaccuracy = inaccuracy + self:AccuracyValue("Jump") end
+	if state.ladder then inaccuracy = inaccuracy + self:AccuracyValue("Ladder") end
+	return math.min(inaccuracy, 1)
+end
+
+function SWEP:Spray(inaccuracy)
+	local random, result = Random("cstrike_spray"), {}
+	local theta, radius = random() * 2 * math.pi, random() * inaccuracy
+	local x0, y0 = radius * math.cos(theta), radius * math.sin(theta)
+	local spread = self:AccuracyValue("Spread")
+	for i = 1, self.Stats.Ballistics.BulletCount do
+		local angle, length = random() * 2 * math.pi, random() * spread
+		result[i] = { x = x0 + length * math.cos(angle), y = y0 + length * math.sin(angle) }
+	end
+	return result
+end
+
+function SWEP:DamageAt(distance, hitgroup)
+	local ballistics = self.Stats.Ballistics
+	if distance > ballistics.Range then return 0 end
+	return ballistics.Damage * ballistics.RangeModifier ^ (distance / 500) * (HITGROUPS[hitgroup] or 1)
+end
+
 function SWEP:Shoot()
-	local w, owner = self:CSS(), self:GetOwner()
-	local acc, silenced = self:Model(), self:Silenced()
+	local owner, silenced = self:GetOwner(), self:Silenced()
 	local penalty = self:CurrentPenalty()
 	local state = {
 		penalty = penalty,
@@ -191,14 +241,16 @@ function SWEP:Shoot()
 		onGround = owner:IsOnGround(),
 		ladder = owner:GetMoveType() == MOVETYPE_LADDER,
 	}
-	local spray = Css.Spray(Css.Inaccuracy(w, acc, state), acc.spread, w.bullets, Random("cstrike_spray"))
+	local inaccuracy = self:Inaccuracy(state)
+	local spray = self:Spray(inaccuracy)
 	local aim = owner:EyeAngles()
 	if owner:IsPlayer() then aim = aim + owner:GetViewPunchAngles() end
 	local forward, right, up = aim:Forward(), aim:Right(), aim:Up()
 	local src = owner:GetShootPos()
-	local scoped = self:Mode() == Css.SCOPE and self:GetZoom() > 0
+	local scoped = self:Mode() == SCOPE and self:GetZoom() > 0
+	local ballistics = self.Stats.Ballistics
 	local callback = function(_, tr, dmginfo)
-		dmginfo:SetDamage(Css.Damage(w, tr.HitPos:Distance(tr.StartPos), tr.HitGroup))
+		dmginfo:SetDamage(self:DamageAt(tr.HitPos:Distance(tr.StartPos), tr.HitGroup))
 		if SERVER and IsValid(tr.Entity) then self:Hit(tr.Entity, scoped) end
 	end
 	if owner:IsPlayer() then owner:LagCompensation(true) end
@@ -210,26 +262,26 @@ function SWEP:Shoot()
 			Dir = dir,
 			Num = 1,
 			Spread = vector_origin,
-			Damage = w.damage,
-			Distance = w.range,
-			Force = w.damage * 0.1,
+			Damage = ballistics.Damage,
+			Distance = ballistics.Range,
+			Force = ballistics.Damage * 0.1,
 			Tracer = silenced and 0 or 1,
-			AmmoType = w.ammo,
+			AmmoType = self.Primary.Ammo,
 			Callback = callback,
 		})
 	end
 	if owner:IsPlayer() then owner:LagCompensation(false) end
 	if SERVER then self:Twist() end
 	self:TakePrimaryAmmo(1)
-	self:SetPenaltyNow(Css.Fired(acc, penalty))
+	self:SetPenaltyNow(penalty + self:AccuracyValue("Fire"))
 	self:SetShots(self:GetShots() + 1)
 	self:ShootAnimation(silenced)
-	self:EmitSound(silenced and w.sounds.special1 or w.sounds.single_shot)
+	self:EmitSound(silenced and (self.SpecialSound1 or self.SingleShotSound) or self.SingleShotSound)
 	if not silenced then owner:MuzzleFlash() end
 	owner:SetAnimation(PLAYER_ATTACK1)
 	if owner:IsPlayer() then self:Recoil(owner, state) end
-	if self:Mode() == Css.SCOPE and self:GetZoom() > 0 and not w.fullAuto then
-		self:SetRezoom(CurTime() + w.cycle)
+	if self:Mode() == SCOPE and self:GetZoom() > 0 and not self.Primary.Automatic then
+		self:SetRezoom(CurTime() + ballistics.CycleTime)
 		self:ApplyZoom()
 	end
 end
@@ -243,84 +295,93 @@ function SWEP:ShootAnimation(silenced)
 end
 
 function SWEP:Recoil(owner, state)
-	local w = self:CSS()
-	local stance = (not state.onGround and Css.AIR) or (state.speed > MOVING and Css.MOVE)
-		or (owner:Crouching() and Css.CROUCH) or Css.STAND
-	local roll
-	if w.kick.punch then
-		roll = util.SharedRandom("cstrike_kick", 0, 1)
-	else
-		roll = math.floor(util.SharedRandom("cstrike_kick", 0, w.kick.flip + 1))
-	end
+	local kick = self.Stats.Kick
+	local stance = (not state.onGround and "air") or (state.speed > MOVING and "move")
+		or (owner:Crouching() and "crouch") or "stand"
+	local scale = STANCES[stance]
 	local p = owner:GetViewPunchAngles()
-	local punch, left = Css.Kick(w, stance, self:GetShots(), { pitch = p.p, yaw = p.y }, self:GetKickLeft(), roll)
+	local pitch, yaw = p.p, p.y
+	local left = self:GetKickLeft()
+	local roll
+	if kick.PunchMin then
+		roll = util.SharedRandom("cstrike_kick", 0, 1)
+		pitch = pitch - (kick.PunchMin + (kick.PunchMax - kick.PunchMin) * roll) * scale
+	else
+		roll = math.floor(util.SharedRandom("cstrike_kick", 0, kick.Flip + 1))
+		local extra = self:GetShots() > 1 and self:GetShots() or 0
+		local up = (kick.UpBase + extra * kick.UpModifier) * scale
+		local lateral = (kick.LateralBase + extra * kick.LateralModifier) * scale
+		pitch = math.max(pitch - up, -kick.UpMax * scale)
+		yaw = Clamp(yaw + (left and lateral or -lateral), -kick.LateralMax * scale, kick.LateralMax * scale)
+		if roll == 0 then left = not left end
+	end
 	self:SetKickLeft(left)
-	owner:SetViewPunchAngles(Angle(punch.pitch, punch.yaw, 0))
+	owner:SetViewPunchAngles(Angle(pitch, yaw, 0))
 end
-
--- Second modes ----------------------------------------------------------------
 
 function SWEP:SecondaryAttack()
 	local mode = self:Mode()
-	if mode == nil then return end
+	if not mode then return end
 	local owner, now = self:GetOwner(), CurTime()
-	if mode == Css.SILENCER then
+	if mode == SILENCER then
 		local on = not self:GetSecond()
 		self:SetSecond(on)
 		self:SendWeaponAnim(on and ACT_VM_ATTACH_SILENCER or ACT_VM_DETACH_SILENCER)
+		local sound = on and self.SpecialSound3 or self.SpecialSound2
+		if sound then self:EmitSound(sound) end
 		local ready = now + self:ViewDuration()
 		self:SetNextPrimaryFire(ready)
 		self:SetNextSecondaryFire(ready)
-	elseif mode == Css.BURST then
+	elseif mode == BURST then
 		local on = not self:GetSecond()
 		self:SetSecond(on)
 		if SERVER and owner:IsPlayer() then
 			owner:PrintMessage(HUD_PRINTCENTER, on and "Switched to burst-fire mode"
-				or (self:CSS().fullAuto and "Switched to full auto" or "Switched to semi-automatic"))
+				or (self.Primary.Automatic and "Switched to full auto" or "Switched to semi-automatic"))
 		end
 		self:SetNextSecondaryFire(now + MODE_DELAY)
 	else
-		self:SetZoom((self:GetZoom() + 1) % (#self:CSS().second.fov + 1))
+		self:SetZoom((self:GetZoom() + 1) % (self:ZoomLevels() + 1))
 		self:SetRezoom(0)
 		self:ApplyZoom()
-		self:EmitSound("Default.Zoom")
+		self:EmitSound(self.SpecialSound3 or "Default.Zoom")
 		self:SetNextSecondaryFire(now + MODE_DELAY)
 	end
+end
+
+function SWEP:ZoomLevels()
+	local mode = self.Stats.Mode
+	return mode and mode.FOV and #mode.FOV or 0
 end
 
 function SWEP:ApplyZoom()
 	local owner = self:GetOwner()
 	if not (IsValid(owner) and owner:IsPlayer()) then return end
 	local level = self:GetRezoom() == 0 and self:GetZoom() or 0
-	owner:SetFOV(level > 0 and self:CSS().second.fov[level] or 0, 0.1)
+	owner:SetFOV(level > 0 and self.Stats.Mode.FOV[level] or 0, 0.1)
 end
 
 function SWEP:Unzoom()
-	if self:Mode() ~= Css.SCOPE then return end
+	if self:Mode() ~= SCOPE then return end
 	self:SetZoom(0)
 	self:SetRezoom(0)
 	self:ApplyZoom()
 end
 
--- Reloading -------------------------------------------------------------------
-
 function SWEP:Reload()
-	local w, owner = self:CSS(), self:GetOwner()
-	if self:Clip1() >= w.clip or self:Ammo1() <= 0 then return end
+	if self:Clip1() >= self.Primary.ClipSize or self:Ammo1() <= 0 then return end
 	if self:GetLoading() ~= LOAD_NONE or self:GetBurstLeft() > 0 or self:GetNextPrimaryFire() > CurTime() then return end
 	self:Unzoom()
-	if w.type == "Shotgun" then
+	if self.CStrikeType == "Shotgun" then
 		self:SetLoading(LOAD_STARTING)
 		self:SendWeaponAnim(ACT_SHOTGUN_RELOAD_START)
 		self:SetLoadAt(CurTime() + self:ViewDuration())
-		owner:SetAnimation(PLAYER_RELOAD)
+		self:GetOwner():SetAnimation(PLAYER_RELOAD)
 		return
 	end
 	if self:DefaultReload(self:Act(ACT_VM_RELOAD, ACT_VM_RELOAD_SILENCED)) then self:SetShots(0) end
 end
 
--- A shotgun's loading: started, then a shell a turn of the insert, then
--- finished when full or out of shells.
 function SWEP:Load(now)
 	local loading = self:GetLoading()
 	if loading == LOAD_NONE or now < self:GetLoadAt() then return end
@@ -329,7 +390,7 @@ function SWEP:Load(now)
 		self:SetClip1(self:Clip1() + 1)
 		owner:RemoveAmmo(1, ammo)
 	end
-	if self:Clip1() >= self:CSS().clip or owner:GetAmmoCount(ammo) <= 0 then
+	if self:Clip1() >= self.Primary.ClipSize or owner:GetAmmoCount(ammo) <= 0 then
 		self:SetLoading(LOAD_NONE)
 		self:SendWeaponAnim(ACT_SHOTGUN_RELOAD_FINISH)
 		self:SetNextPrimaryFire(now + self:ViewDuration())
@@ -340,20 +401,18 @@ function SWEP:Load(now)
 	self:SetLoadAt(now + self:ViewDuration())
 end
 
--- Each tick -------------------------------------------------------------------
-
 function SWEP:Think()
 	local owner = self:GetOwner()
 	if not IsValid(owner) or not owner:IsPlayer() then return end
 	local now = CurTime()
 	local grounded = owner:IsOnGround()
-	if grounded and not self:GetGrounded() then self:SetPenaltyNow(Css.Landed(self:Model(), self:CurrentPenalty())) end
+	if grounded and not self:GetGrounded() then self:SetPenaltyNow(self:GetPenalty() + self:AccuracyValue("Land")) end
 	self:SetGrounded(grounded)
 	if self:GetBurstLeft() > 0 and now >= self:GetNextBurst() then
 		if self:Clip1() > 0 then
 			self:Shoot()
 			self:SetBurstLeft(self:GetBurstLeft() - 1)
-			self:SetNextBurst(now + self:CSS().second.gap)
+			self:SetNextBurst(now + self.Stats.Mode.Burst.Gap)
 		else
 			self:SetBurstLeft(0)
 		end
@@ -367,15 +426,11 @@ function SWEP:Think()
 	self:Load(now)
 end
 
--- The scope -------------------------------------------------------------------
-
 if CLIENT then
 	local ARC = Material("sprites/scope_arc")
 
-	-- A sniper rifle's scope covers the view, its gun hidden; a rifle's
-	-- zoom does not.
 	function SWEP:Scoped()
-		return self:CSS().type == "SniperRifle" and self:GetZoom() > 0 and self:GetRezoom() == 0
+		return self.CStrikeType == "SniperRifle" and self:GetZoom() > 0 and self:GetRezoom() == 0
 	end
 
 	function SWEP:PreDrawViewModel()
@@ -384,7 +439,7 @@ if CLIENT then
 
 	function SWEP:AdjustMouseSensitivity()
 		if self:GetZoom() == 0 or self:GetRezoom() > 0 then return nil end
-		return self:CSS().second.fov[self:GetZoom()] / LocalPlayer():GetInfoNum("fov_desired", 90)
+		return self.Stats.Mode.FOV[self:GetZoom()] / LocalPlayer():GetInfoNum("fov_desired", 90)
 	end
 
 	function SWEP:DrawHUD()

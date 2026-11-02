@@ -4,6 +4,15 @@
 local T = dofile("tests/harness.lua")
 local Weapons = nextsoldier.weapons
 
+local function Definition(class)
+	local path = "addons/sandcastle/gamemodes/sandcastle/entities/weapons/" .. class .. ".lua"
+	local definition = { SWEP = {}, AddCSLuaFile = function() end, Model = function(path) return path end }
+	setmetatable(definition, { __index = _G })
+	local chunk = assert(loadfile(path))
+	setfenv(chunk, definition)()
+	return definition.SWEP
+end
+
 local GUN = Weapons.Stats({ damage = 5, bullets = 1, interval = 0.1, clip = 3, reload = 2,
 	sound = "Weapon_Test.Single", tracer = "Tracer", hold = "ar2", spread = 3 })
 
@@ -43,24 +52,20 @@ T.test("HL2's guns the soldiers carry have stats", function()
 	end
 end)
 
--- CS:S's guns fire as gameplay.cstrike_weapons has them: its damage, pellets,
--- cycle, clip, sound and standing spread.
-T.test("CS:S's guns have stats, CS:S's own", function()
-	local Css = gameplay.cstrike_weapons
-	for _, class in ipairs(Css.CLASSES) do
-		local w = Css.WEAPONS[class]
-		local stats = Weapons.STATS[class]
-		if w.kind == Css.GUN then
-			T.eq(stats ~= nil, true, class)
-			T.eq(stats.damage, w.damage, class .. " damage")
-			T.eq(stats.bullets, w.bullets, class .. " pellets")
-			T.eq(stats.interval, w.cycle, class .. " cycle")
-			T.eq(stats.clip, w.clip, class .. " clip")
-			T.eq(stats.sound, w.sounds.single_shot, class .. " sound")
-		else
-			T.eq(stats, nil, class .. " is no gun")
-		end
+T.test("CS:S NextSoldier stats live on each terminal weapon", function()
+	for _, class in ipairs({ "weapon_ak47", "weapon_m3", "weapon_awp", "weapon_usp" }) do
+		local definition = Definition(class)
+		T.eq(definition.CStrikeWeapon, true, class)
+		T.eq(Weapons.Stat(definition, "damage"), definition.Stats.Ballistics.Damage, class .. " damage")
+		T.eq(Weapons.Stat(definition, "bullets"), definition.Stats.Ballistics.BulletCount, class .. " bullets")
+		T.eq(Weapons.Stat(definition, "interval"), definition.Stats.Ballistics.CycleTime, class .. " cycle")
+		T.eq(Weapons.Stat(definition, "clip"), definition.Primary.ClipSize, class .. " clip")
+		T.eq(Weapons.Stat(definition, "sound"), definition.SingleShotSound, class .. " sound")
+		T.eq(Weapons.STATS[class], nil, class .. " is not copied into a class map")
+		T.eq(definition.NextSoldier, nil, class .. " has no nested stats table")
+		T.eq(definition.CSS, nil, class .. " has no CSS stats table")
 	end
+	T.eq(Definition("weapon_knife").SoldierDamage, nil, "the knife is not a gun")
 end)
 
 T.test("the crossbow throws a bolt that flies; the guns fire bullets", function()

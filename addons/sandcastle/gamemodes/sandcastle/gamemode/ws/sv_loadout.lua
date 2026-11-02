@@ -134,6 +134,7 @@ end
 -- stays drawn if it is still equipped, else the first equipped is.
 function WS.RestockLoadout(ply)
 	if not WS.EconomyEnabled() then
+		GM:PlayerLoadout(ply)
 		return
 	end
 

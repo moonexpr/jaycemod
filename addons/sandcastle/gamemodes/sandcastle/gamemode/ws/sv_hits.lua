@@ -39,7 +39,7 @@ end
 function GM:ScalePlayerDamage(ply, hitgroup) WS.TraceHit(ply, hitgroup) end
 function GM:ScaleNPCDamage(npc, hitgroup) WS.TraceHit(npc, hitgroup) end
 
--- A skill shot on ent this tick (gameplay.cstrike_weapons' SkillShot: a scoped
+-- A skill shot on ent this tick (a scoped sniper shot or a knife's backstab),
 -- sniper's, a backstab), told by the weapon before its damage: the one hit
 -- the cap lets kill from full health.
 local skilled = setmetatable({}, { __mode = "k" }) -- entity -> tick
@@ -76,10 +76,13 @@ local taking = setmetatable({}, { __mode = "k" })
 -- for a bullet the attacker fired itself, the weapon it holds.
 local function WeaponClass(dmg)
 	local inflictor, attacker = dmg:GetInflictor(), dmg:GetAttacker()
-	if IsValid(inflictor) and inflictor ~= attacker then return inflictor:GetClass() end
+	if IsValid(inflictor) and inflictor ~= attacker then
+		return inflictor:GetClass(), inflictor.CStrikeWeapon == true
+	end
 	if not IsValid(attacker) or not attacker.GetActiveWeapon then return nil end
 	local weapon = attacker:GetActiveWeapon()
-	return IsValid(weapon) and weapon:GetClass() or nil
+	if not IsValid(weapon) then return nil end
+	return weapon:GetClass(), weapon.CStrikeWeapon == true
 end
 
 local function Distance(attacker, target)
@@ -110,12 +113,13 @@ end
 -- its damage, whether its headshot counts, and its scale and kind
 -- (games.gameplay.players' Hit). shot: { damage, bullet, blast, punt (the
 -- gravity gun's), headshot, critical (marked a crit already) }.
-local function Judge(target, attacker, class, shot)
+local function Judge(target, attacker, class, cstrike, shot)
 	local damage, headshot, rolled = Balance.Shot(class, {
 		damage = shot.damage,
 		bullet = shot.bullet,
 		blast = shot.blast,
 		punt = shot.punt,
+		cstrike = cstrike,
 		distance = Distance(attacker, target),
 		headshot = shot.headshot,
 		roll = Roll(attacker),
@@ -137,8 +141,9 @@ hook.Add("EntityTakeDamage", "ws_hits", function(target, dmg)
 	local attacker = dmg:GetAttacker()
 	if Spared(target, attacker) then return true end
 	-- a strike is its own hit, of no weapon: it neither throws nor is balanced
-	local class = striking ~= target and Balance.Weapon(WeaponClass(dmg)) or nil
-	local damage, headshot, scale, kind = Judge(target, attacker, class, {
+	local weaponClass, cstrike = WeaponClass(dmg)
+	local class = striking ~= target and Balance.Weapon(weaponClass, cstrike) or nil
+	local damage, headshot, scale, kind = Judge(target, attacker, class, cstrike, {
 		damage = dmg:GetDamage(),
 		bullet = dmg:IsBulletDamage(),
 		blast = dmg:IsDamageType(DMG_BLAST),
@@ -343,7 +348,8 @@ local function CritBullet(attacker, tr, dmginfo)
 	if P.CritBoosted(WS.ConditionsOf(attacker), CurTime()) then return true end
 	local target = tr.Entity
 	if not (IsValid(target) and Combatant(target)) or target == attacker or Spared(target, attacker) then return false end
-	local _, _, _, kind = Judge(target, attacker, Balance.Weapon(WeaponClass(dmginfo)), {
+	local weaponClass, cstrike = WeaponClass(dmginfo)
+	local _, _, _, kind = Judge(target, attacker, Balance.Weapon(weaponClass, cstrike), cstrike, {
 		damage = dmginfo:GetDamage(),
 		bullet = true,
 		blast = false,

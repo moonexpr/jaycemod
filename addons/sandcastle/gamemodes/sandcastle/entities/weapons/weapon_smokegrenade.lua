@@ -1,5 +1,28 @@
--- weapon_smokegrenade: CS:S's, on weapon_cstrike_grenade_base (gameplay.cstrike_weapons).
+-- weapon_smokegrenade: a standard CS:S SWEP; its base owns shared behavior.
 AddCSLuaFile()
 
 SWEP.Base = "base_cstrike_grenade"
-WS.CSSWeapon(SWEP, "weapon_smokegrenade")
+SWEP.CStrikeWeapon = true
+SWEP.PrintName = "SMOKE GRENADE"
+SWEP.Category = "Counter-Strike: Source"
+SWEP.Spawnable = true
+SWEP.Slot = 3
+SWEP.SlotPos = 3
+SWEP.ViewModel = Model("models/weapons/cstrike/c_eq_smokegrenade.mdl")
+SWEP.WorldModel = Model("models/weapons/w_eq_smokegrenade.mdl")
+SWEP.ViewModelFOV = 54
+SWEP.ViewModelFlip = false
+SWEP.UseHands = true
+SWEP.HoldType = "grenade"
+SWEP.DrawCrosshair = true
+SWEP.CStrikeType = "Grenade"
+SWEP.CStrikeTeam = "ANY"
+SWEP.Price = 300
+SWEP.MaxPlayerSpeed = 245
+SWEP.Primary = { ClipSize = -1, DefaultClip = -1, Automatic = false, Ammo = "none" }
+SWEP.Secondary = { ClipSize = -1, DefaultClip = -1, Automatic = false, Ammo = "none" }
+SWEP.GrenadeSpeed = 750
+SWEP.GrenadeFuse = 1.5
+SWEP.GrenadeDuration = 15
+SWEP.GrenadeProjectile = "smokegrenade_projectile"
+SWEP.GrenadeRadius = 150

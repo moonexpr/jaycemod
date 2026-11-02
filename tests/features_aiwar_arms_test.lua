@@ -7,6 +7,15 @@
 local T = dofile("tests/harness.lua")
 local Arms = T.require("features.aiwar.arms")
 
+local function Definition(class)
+	local path = "addons/sandcastle/gamemodes/sandcastle/entities/weapons/" .. class .. ".lua"
+	local definition = { SWEP = {}, AddCSLuaFile = function() end, Model = function(path) return path end }
+	setmetatable(definition, { __index = _G })
+	local chunk = assert(loadfile(path))
+	setfenv(chunk, definition)()
+	return definition.SWEP
+end
+
 local function Refused(fn, ...)
 	local ok = pcall(fn, ...)
 	T.eq(ok, false, "refused")
@@ -22,7 +31,7 @@ T.test("a loadout is a primary, a secondary and a melee weapon, all three known"
 	T.eq(table.concat(Arms.Classes(loadout), " "), "weapon_shotgun weapon_pistol weapon_stunstick", "carried, in slot order")
 	Refused(Arms.Loadout, { primary = { "weapon_shotgun" }, melee = "weapon_stunstick" }, First)
 	Refused(Arms.Loadout, { primary = { "weapon_shotgun" }, secondary = "weapon_pistol" }, First)
-	Refused(Arms.Loadout, { primary = { "weapon_nothing" }, secondary = "weapon_pistol", melee = "weapon_crowbar" }, First)
+	Refused(Arms.Loadout, { primary = { "not_a_weapon" }, secondary = "weapon_pistol", melee = "weapon_crowbar" }, First)
 	Refused(Arms.Loadout, { primary = { "weapon_crowbar" }, secondary = "weapon_pistol", melee = "weapon_stunstick" }, First)
 	Refused(Arms.Loadout, { primary = { "weapon_ar2" }, secondary = "weapon_pistol", melee = "weapon_pistol" }, First)
 end)
@@ -43,7 +52,7 @@ end)
 
 T.test("within its primary's reach it holds the primary; beyond, the more precise gun", function()
 	local shotgunner = Arms.Loadout({ primary = { "weapon_shotgun" }, secondary = "weapon_pistol", melee = "weapon_stunstick" }, First)
-	local reach = Arms.WEAPONS.weapon_shotgun.reach
+	local reach = Arms.Reach("weapon_shotgun")
 	T.eq(Arms.Choose(shotgunner, reach), "weapon_shotgun", "within the shotgun's reach")
 	T.eq(Arms.Choose(shotgunner, reach + 1), "weapon_pistol", "beyond it, the pistol")
 	local rifleman = Arms.Loadout({ primary = { "weapon_ar2" }, secondary = "weapon_pistol", melee = "weapon_stunstick" }, First)
@@ -56,7 +65,7 @@ end)
 T.test("precision runs crossbow, 357, pistol, rifle, smg, shotgun", function()
 	local order = { "weapon_crossbow", "weapon_357", "weapon_pistol", "weapon_ar2", "weapon_smg1", "weapon_shotgun" }
 	for i = 1, #order - 1 do
-		T.eq(Arms.WEAPONS[order[i]].cone < Arms.WEAPONS[order[i + 1]].cone, true, order[i] .. " before " .. order[i + 1])
+		T.eq(Arms.Cone(order[i]) < Arms.Cone(order[i + 1]), true, order[i] .. " before " .. order[i + 1])
 	end
 end)
 
@@ -73,40 +82,33 @@ end)
 
 -- Half-Life's crowbar (CCrowbar::Swing): a hit swings again 0.25 seconds on.
 T.test("a melee weapon strikes for its damage, as fast as Half-Life's crowbar", function()
-	T.eq(Arms.WEAPONS.weapon_crowbar.damage > 0, true, "the crowbar hurts")
-	T.eq(Arms.WEAPONS.weapon_crowbar.interval, 0.25, "the crowbar")
-	T.eq(Arms.WEAPONS.weapon_stunstick.interval, 0.25, "the stunstick too")
+	T.eq(Arms.Damage("weapon_crowbar") > 0, true, "the crowbar hurts")
+	T.eq(Arms.Interval("weapon_crowbar"), 0.25, "the crowbar")
+	T.eq(Arms.Interval("weapon_stunstick"), 0.25, "the stunstick too")
 end)
 
 T.test("the automatic arms are the SMG, the AR2 and the melee weapons; the rest fire once a press", function()
 	for _, class in ipairs({ "weapon_smg1", "weapon_ar2", "weapon_crowbar", "weapon_stunstick" }) do
-		T.eq(Arms.WEAPONS[class].automatic, true, class)
+		T.eq(Arms.Automatic(class), true, class)
 	end
 	for _, class in ipairs({ "weapon_crossbow", "weapon_357", "weapon_pistol", "weapon_shotgun" }) do
-		T.eq(Arms.WEAPONS[class].automatic, nil, class)
+		T.eq(Arms.Automatic(class), false, class)
 	end
 end)
 
--- CS:S's weapons (gameplay.cstrike_weapons), for the CS:S modes' soldiers: each
--- gun known by its type's reach and its own precision, fired held when
--- CS:S fires it so; the knife a melee weapon striking as its slash does.
-T.test("the soldiers know CS:S's guns and knife", function()
-	local Css = gameplay.cstrike_weapons
+-- CS:S stats come from terminal SWEP fields; no class registry is involved.
+T.test("the soldiers choose among CS:S weapons from their SWEP fields", function()
 	local loadout = Arms.Loadout({ primary = { "weapon_ak47" }, secondary = "weapon_glock", melee = "weapon_knife" }, First)
 	T.eq(loadout.primary, "weapon_ak47", "a CS:S kit")
-	for _, class in ipairs(Css.CLASSES) do
-		local w = Css.WEAPONS[class]
-		if w.kind == Css.GUN then
-			T.eq(Arms.WEAPONS[class].automatic == true, w.fullAuto, class .. " automatic")
-			T.eq(type(Arms.WEAPONS[class].reach), "number", class .. " reach")
-		end
-	end
-	T.eq(Arms.WEAPONS.weapon_knife.melee, true, "the knife")
-	T.eq(Arms.WEAPONS.weapon_knife.damage, Css.KNIFE_STATS.slash.damage, "a slash")
-	T.eq(Arms.WEAPONS.weapon_glock.cone < Arms.WEAPONS.weapon_mac10.cone, true, "a pistol's precision over a MAC-10's")
-	local steadier = Arms.WEAPONS.weapon_glock.cone < Arms.WEAPONS.weapon_ak47.cone and "weapon_glock" or "weapon_ak47"
-	T.eq(Arms.Choose(loadout, Arms.WEAPONS.weapon_ak47.reach + 1), steadier, "past the rifle's reach, the steadier gun")
-	T.eq(Arms.WEAPONS.weapon_hegrenade, nil, "no grenades")
+	local ak, glock, mac = Definition("weapon_ak47"), Definition("weapon_glock"), Definition("weapon_mac10")
+	local knife = Definition("weapon_knife")
+	T.eq(Arms.Automatic(ak), true, "the AK fires automatically")
+	T.eq(type(Arms.Reach(ak)), "number", "the AK has an AI reach")
+	T.eq(Arms.Melee(knife), true, "the knife")
+	T.eq(Arms.Damage(knife), 15, "a slash")
+	T.eq(Arms.Cone(glock) < Arms.Cone(mac), true, "a pistol's precision over a MAC-10's")
+	local steadier = Arms.Cone(glock) < Arms.Cone(ak) and "weapon_glock" or "weapon_ak47"
+	T.eq(Arms.Choose(loadout, Arms.Reach(ak) + 1, ak, glock), steadier, "past the rifle's reach, the steadier gun")
 end)
 
 T.finish()

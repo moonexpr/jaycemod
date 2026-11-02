@@ -1,12 +1,10 @@
 -- smokegrenade_projectile: CS:S's smoke grenade, thrown. Once its fuse is
 -- spent and it has come to rest, it pours a cloud of CS:S's smoke
--- (particle/particle_smokegrenade) its radius wide that stands for its
--- duration (gameplay.cstrike_weapons' GRENADES), then goes. The cloud is each
--- client's own; bot soldiers still see through it.
+-- (particle/particle_smokegrenade) for the duration in its weapon stats.
+-- The cloud is each client's own; bot soldiers still see through it.
 AddCSLuaFile()
 
 ENT.Base = "base_cstrike_grenade"
-ENT.CSSClass = "weapon_smokegrenade"
 ENT.Model = "models/weapons/w_eq_smokegrenade_thrown.mdl"
 ENT.BounceSound = "SmokeGrenade.Bounce"
 ENT.WaitsForRest = true
@@ -22,7 +20,7 @@ end
 function ENT:Detonate()
 	self:EmitSound("BaseSmokeEffect.Sound")
 	self:SetSmokedAt(CurTime())
-	SafeRemoveEntityDelayed(self, self:Grenade().duration + FADE)
+	SafeRemoveEntityDelayed(self, self.GrenadeDuration + FADE)
 end
 
 if CLIENT then
@@ -31,18 +29,18 @@ if CLIENT then
 	function ENT:Think()
 		if self.Smoked or self:GetSmokedAt() == 0 then return end
 		self.Smoked = true
-		local grenade, pos = self:Grenade(), self:GetPos()
+		local pos = self:GetPos()
 		local emitter = ParticleEmitter(pos)
 		for _ = 1, PUFFS do
 			local p = emitter:Add(MATERIAL, pos + VectorRand() * 8)
 			if p then
 				local out = VectorRand()
 				out.z = math.abs(out.z) * 0.5
-				p:SetVelocity(out * grenade.radius * math.Rand(0.5, 1))
+				p:SetVelocity(out * self.GrenadeRadius * math.Rand(0.5, 1))
 				p:SetAirResistance(100)
 				p:SetCollide(true)
 				p:SetBounce(0.2)
-				p:SetDieTime(grenade.duration + math.Rand(0, FADE))
+				p:SetDieTime(self.GrenadeDuration + math.Rand(0, FADE))
 				p:SetStartAlpha(255)
 				p:SetEndAlpha(0)
 				p:SetStartSize(PUFF_SIZE)
