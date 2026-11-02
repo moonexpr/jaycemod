@@ -8,8 +8,6 @@ ENT.Base = "base_cstrike_grenade"
 ENT.Model = "models/weapons/w_eq_flashbang_thrown.mdl"
 ENT.BounceSound = "Flashbang.Bounce"
 
-local WHITE = Color(255, 255, 255, 255)
-local FADE = 1.5 -- the fade out is this many times the blindness
 local RINGING, RING_DSP = 1, 35 -- seconds of blindness from which the ears ring, and the ringing's DSP
 
 local function BlindSeconds(radius, blind, distance, facing)
@@ -21,6 +19,11 @@ end
 function ENT:Detonate()
 	local pos = self:GetPos()
 	self:EmitSound("Flashbang.Explode")
+	local particle = EffectData()
+	particle:SetOrigin(pos)
+	particle:SetScale(0)
+	util.Effect("cstrike_flashbang", particle, true, true)
+
 	for _, ply in ipairs(player.GetAll()) do
 		local eye = ply:EyePos()
 		local distance = eye:Distance(pos)
@@ -30,7 +33,12 @@ function ENT:Detonate()
 				local toward = (pos - eye):GetNormalized()
 				local seconds = BlindSeconds(self.GrenadeRadius, self.GrenadeBlind, distance, ply:GetAimVector():Dot(toward))
 				if seconds > 0 then
-					ply:ScreenFade(SCREENFADE.IN, WHITE, seconds * FADE, seconds)
+					local effect = EffectData()
+					effect:SetOrigin(pos)
+					effect:SetScale(seconds)
+					local recipients = RecipientFilter()
+					recipients:AddPlayer(ply)
+					util.Effect("cstrike_flashbang", effect, true, recipients)
 					if seconds >= RINGING then ply:SetDSP(RING_DSP, false) end
 				end
 			end
