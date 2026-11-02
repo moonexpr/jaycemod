@@ -244,7 +244,8 @@ function Told(mesh, told)
 	}, ToldClass)
 end
 
--- The engine's path-cost callback takes an optional sixth hull-fit verdict.
+-- The engine's path-cost callback takes an optional sixth collision-clearance
+-- verdict, including both the destination area and its incoming opening.
 function Calculator(known, strategy, limits, bot)
 	if getmetatable(known) ~= ToldClass then error("a calculator prices over a Told", 2) end
 	local mesh = known.mesh

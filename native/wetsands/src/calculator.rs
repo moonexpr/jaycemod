@@ -115,7 +115,8 @@ impl Calculator {
     }
 
     /// The total cost of moving from area `from` into `to` with `so_far`
-    /// spent, or IMPASSABLE. `fits` is the caller's collision-hull verdict.
+    /// spent, or IMPASSABLE. `fits` is the caller's destination-and-link
+    /// collision-hull verdict; the Lua twin receives the same input.
     pub fn price(
         &self,
         from: u32,
@@ -210,6 +211,13 @@ mod tests {
             calculator.price(1, 3, 0.0, Move::Ladder { length: 50.0, rise: 30.0 }, true),
             Ok(100.0)
         );
+    }
+
+    #[test]
+    fn refuses_moves_when_the_callers_collision_hull_does_not_fit() {
+        let calculator = Calculator::new(Arc::new(Known::new(mesh())), walker());
+        assert_eq!(calculator.price(1, 2, 0.0, Move::Floor { length: -1.0 }, false), Ok(IMPASSABLE));
+        assert_eq!(calculator.price(1, 2, 0.0, Move::Ladder { length: 10.0, rise: 0.0 }, false), Ok(IMPASSABLE));
     }
 
     #[test]
