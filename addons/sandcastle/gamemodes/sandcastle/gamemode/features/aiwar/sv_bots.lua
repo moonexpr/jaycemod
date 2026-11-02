@@ -20,6 +20,7 @@ local Arms = WS.require("features.aiwar.arms")
 local Marksmanship = WS.require("features.aiwar.marksmanship")
 local Orders = WS.require("features.aiwar.orders")
 local Profiles = WS.require("features.aiwar.profiles")
+local PlayerModels = WS.PlayerModels
 local NpcSystem = npc.nextbot
 local DoorOpenable, Point = Map.DoorOpenable, Map.Point
 local RED, BLUE = Map.RED, Map.BLUE
@@ -277,17 +278,18 @@ function Controller:UnpinBots(indexes)
 	return lines
 end
 
--- The model a recruit of the faction wears (its kind's profile's).
-local function FactionModel(faction)
-	local models = Profiles.PROFILES[faction.recruits[1].kind].Models
-	return models[math.random(#models)]
+-- The model a recruit wears: CS:S sides for hostage and defuse, else its
+-- faction's player-model category.
+local function FactionModel(faction, scenario, team)
+	local category = Profiles.ModelCategory(faction.recruits[1].kind, scenario and scenario.MODE, team == RED)
+	return PlayerModels.Pick(category)
 end
 
 -- A role's kit on a bot (Equip; a NextBot soldier's is its NSKit): its
 -- model, its loadout's weapons with ammunition, its health. A kit with no
 -- arms (the vortigaunt medic's) leaves what it carries.
 function Controller:KitBot(ply, soldier, kit)
-	ply:SetModel(kit.model or FactionModel(self:Faction(soldier.team)))
+	ply:SetModel(kit.model or FactionModel(self:Faction(soldier.team), self.scenario, soldier.team))
 	if kit.primary then
 		local loadout = Arms.Loadout(kit, math.random)
 		ply:StripWeapons()

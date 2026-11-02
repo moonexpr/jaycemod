@@ -1,6 +1,8 @@
 -- Part of the AI war controller (sv.lua): enlisting, kits, medics, discharge, spawning, waves and seats.
 local Controller, Map = ...
 local AiWar = WS.require("features.aiwar.model")
+local Profiles = WS.require("features.aiwar.profiles")
+local PlayerModels = WS.PlayerModels
 local Teams = gameplay.teams
 local Quota = wartactics.bot_quota
 local Orders = WS.require("features.aiwar.orders")
@@ -229,6 +231,8 @@ function Controller:Draft(team, pos, ang)
 	local ent = ents.Create(AiWar.SOLDIER_CLASS)
 	if not IsValid(ent) then return end
 	ent:NSProfile(draft.recruit.kind)
+	local category = Profiles.ModelCategory(draft.recruit.kind, self.scenario and self.scenario.MODE, team == RED)
+	if category then ent.Models = PlayerModels.For(category) end
 	ent:SetPos(pos + SPAWN_LIFT)
 	ent:SetAngles(ang)
 	ent:Spawn()
