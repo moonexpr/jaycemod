@@ -6,8 +6,8 @@ whose PvE runs on it. This is how to see what NS is doing and change its
 constants while it plays. Everything here is also on the spawn menu's
 **Utilities › Sandcastle › Debug NextSoldier** panel as buttons.
 
-For now NS runs only inside the AI war, whose feature registers these
-commands: they exist once the war has started on the map.
+The AI-war commands and convars here exist once the war has started on the
+map.
 Some names still say `aiwar` (the overlay's command, its layer, the soldier
 report and trace, and the modules the tactics live in) until the split in
 `docs/ns-split.md`.
@@ -74,3 +74,36 @@ The tunables are the module constants read at each call: `tactics.*`
 regrouping, cover, the defenders' rows), `lanes.*` (planning and walking) and
 `squad.CLAIM_GRID`. The post scoring constants are not, because posts are
 cached per checkpoint.
+
+## Path follower stool
+
+In the toolgun's **NextSoldier** category, **Path Follower** spawns
+`npc_pathfollower` entities using one of six selectable models. Left-click
+empty ground to spawn and select a follower; left-click an existing tool
+follower to add or remove it from the selection. Right-click sends every
+selected follower to the position, and later right-clicks change that goal.
+Reload clears the selection. Followers use active lanes for the tool user's
+team when available, then travel directly to the clicked goal; without a
+usable lane they route directly. Their engine path search uses the same
+soldier path costs and link rules as combat soldiers even when the war is
+inactive, with no extra
+center-to-center hull sweep that would reject stair steps. Each model gets a
+fitted collision hull; the Tank's large hull can limit which routes it can
+use.
+New followers start **Idle**, switch to **Travel** on a right-click, and
+return to **Idle** when they reach the goal. Spawned followers are added to
+the player's cleanup list and can be undone with **Z**.
+Scout and Headless Hatman use their `Run_MELEE` animation while moving.
+
+The always-on debug overlay draws the current generated path in thick cyan
+lines, the active lane's waypoints in thicker amber lines, the clicked goal
+in green, and the local movement command as a thick magenta arrow from the
+feet.
+
+## Inspecting NextSoldiers
+
+`ws_nb_select <entity index>` can select any live entity derived from
+`base_nextsoldier`, including tool-managed path followers. The existing
+`ws_nb_debug BEHAVIOR|NAV|PATH|COST` layers then show its behavior state,
+nearby nav areas, generated engine path, and the areas considered by its path
+cost callback. AI-war soldiers retain their full action-stack report.

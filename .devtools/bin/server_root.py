@@ -93,6 +93,7 @@ SERVER_WORKSHOP = {
 # models of the hostage rescue mode (features/hostage/resources.lua).
 SERVER_DOWNLOADS = {
     "hostage_civilian": "3172805326",  # TF2 Classified Civilian/VIP, its npc_civilian models
+    "easy_navmesh_editor": "527885257",
 }
 # Packs of loose sounds from another app's Workshop, downloaded by steamcmd
 # (steamcmd +login anonymous +workshop_download_item <app> <item> +quit) beside

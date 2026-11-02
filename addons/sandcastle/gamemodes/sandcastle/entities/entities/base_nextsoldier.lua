@@ -274,6 +274,71 @@ end
 
 function ENT:GetPath() return self.nsPath end
 
+-- The generic debug layer's behavior view. Classes with their own behavior
+-- state can expose it through nsBehavior; AI-war soldiers supply their richer
+-- action stack through WSNbDebugNpcs instead.
+function ENT:NSDebugStack()
+	local name = self.nsBehavior or self:GetClass()
+	return self:GetClass(), {
+		{ depth = 0, name = name, short = name },
+	}
+end
+
+function ENT:NSDebugWatch(log)
+	self.NSDebugBehaviorLog = log
+end
+
+function ENT:NSDebugBehaviorChanged(from, to)
+	local log = self.NSDebugBehaviorLog
+	if log and from ~= to then
+		log:Event((from or "(none)") .. " -> " .. to)
+	end
+end
+
+local function ComputeDebugPath(self, path, goal)
+	local watch = self.NSDebugPathWatch
+	if not watch then return path:Compute(self, goal, self:GetPathGenerator()) end
+
+	local Debug = WS.require("features.nbdebug.model")
+	local start = self:GetPos()
+	local generator = self:GetPathGenerator()
+	local recorder = watch.costs and generator and Debug.NewCostRecorder() or nil
+	if recorder then
+		local cost = generator
+		generator = function(area, fromArea, ...)
+			local result = cost(area, fromArea, ...)
+			recorder:Record(area:GetID(), IsValid(fromArea) and fromArea:GetID() or nil, result)
+			return result
+		end
+	end
+
+	local began = SysTime()
+	local found = path:Compute(self, goal, generator)
+	local segments, points, areaIds, lastArea = path:GetAllSegments() or {}, {}, {}, nil
+	for i, segment in ipairs(segments) do
+		points[i] = { pos = segment.pos, move = Debug.MoveOfSegment(segment.type) }
+		if IsValid(segment.area) then
+			lastArea = segment.area
+			areaIds[#areaIds + 1] = lastArea:GetID()
+		end
+	end
+	hook.Run("WSNpcPathComputed", self, Debug.NewPathReport({
+		source = Debug.SOURCE_ENGINE,
+		strategy = generator and self:GetClass() .. ":GetPathGenerator()" or "engine default",
+		start = start,
+		goal = goal,
+		found = found,
+		points = points,
+		areaIds = areaIds,
+		totalCost = IsValid(lastArea) and lastArea:GetCostSoFar() or nil,
+		microseconds = (SysTime() - began) * 1e6,
+		nodesExpanded = recorder and recorder:Expanded() or nil,
+		explored = recorder and recorder:Explored() or nil,
+		computedAt = CurTime(),
+	}))
+	return found
+end
+
 -- Locomotion's update, every tick (TF2's ILocomotion::Update): a scramble
 -- under way, else the path its intention follows.
 function ENT:Think()
@@ -341,7 +406,7 @@ function ENT:FollowPath(goal, tolerance)
 		path = Path("Follow")
 		path:SetMinLookAheadDistance(PATH_LOOKAHEAD)
 		path:SetGoalTolerance(tolerance or 20)
-		path:Compute(self, goal, self:GetPathGenerator())
+		ComputeDebugPath(self, path, goal)
 		self.nsPath, self.nsPathGoal = path, goal
 		if not path:IsValid() then return "unreachable" end
 		if afresh then self:LookAt(path:GetPositionOnPath(PATH_LOOKAHEAD) + LOOK_HEIGHT, Gaze.HINT_SECONDS) end

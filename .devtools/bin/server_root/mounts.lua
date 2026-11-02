@@ -16,6 +16,7 @@ for _, archive in ipairs(file.Find("cache/*.gma", "GAME")) do
 		if path:match("^lua/autorun/") then autoruns[#autoruns + 1] = path end
 		if item and path == "maps/" .. game.GetMap() .. ".bsp" then resource.AddWorkshop(item) end
 	end
+	if archive == "easy_navmesh_editor.gma" then resource.AddWorkshop("527885257") end
 	print("server_root: mounted " .. archive .. " (" .. #files .. " files)")
 end
 table.sort(autoruns)

@@ -1,11 +1,8 @@
--- npc_pathfollower: NextSoldier's base on an errand, a bench for its
--- navigation (the operator's). It walks to a goal by the base's
--- locomotion and the war soldier's movement (WS.WarSoldier: its climbs,
--- vaults, hops and rappels), fights nothing and is no one's target, and
--- when it arrives or its time runs out it reports how it went: whether it
--- arrived, and every failure, recovery, nudge and mark on the way, each
--- with when and where. The report is printed, saved under data/ (REPORTS)
--- and told (hook NSPathFollowerDone(follower, report)); then it goes.
+-- npc_pathfollower: NextSoldier's non-combat pathing bench. Console errands
+-- report their route and remove themselves; tool-managed followers switch
+-- between Idle and Travel, optionally following the AI war's active lanes,
+-- and remain alive for retargeting. The stool also draws their generated
+-- path and local movement command.
 --
 -- follower:NSErrand(goal, seconds) sends a spawned one. From the console:
 -- ns_pathfollower_send fromX fromY fromZ toX toY toZ [seconds].
@@ -23,8 +20,51 @@ ENT.DefaultRelationship = D_NU
 ENT.RagdollOnDeath = false
 
 WS.WarSoldier(ENT)
+local WarSoldierUpdateAnimation = ENT.OnUpdateAnimation
 
-if CLIENT then return end
+if CLIENT then
+	local PATH_COLOR = Color(80, 220, 255)
+	local LANE_COLOR = Color(255, 190, 60)
+	local COMMAND_COLOR = Color(255, 90, 210)
+	local TARGET_COLOR = Color(120, 255, 120)
+	local BEAM_MATERIAL = Material("models/wireframe")
+
+	local function DrawLine(from, to, color, width)
+		render.DrawLine(from, to, color)
+	end
+
+	local function DrawPoints(points, color, radius, width)
+		for i, point in ipairs(points) do
+			if points[i + 1] then DrawLine(point, points[i + 1], color, width) end
+			render.DrawWireframeSphere(point, radius, 5, 5, color, false)
+		end
+	end
+
+	function ENT:Draw()
+		self:DrawModel()
+		if not self:GetNW2Bool("NSPathFollowerDebug", false) then return end
+
+		DrawPoints(self.nsDebugPathPoints or {}, PATH_COLOR, 3, 6)
+		DrawPoints(self.nsDebugLanePoints or {}, LANE_COLOR, 5, 8)
+
+		local origin = self:GetPos() + Vector(0, 0, 3)
+		local direction = self:GetNW2Vector("NSPathFollowerCommand", vector_origin)
+		direction.z = 0
+		if direction:Length2DSqr() > 0 then
+			direction:Normalize()
+			local tip = origin + direction * 80
+			local side = Vector(-direction.y, direction.x, 0) * 9
+			DrawLine(origin, tip, COMMAND_COLOR, 6)
+			DrawLine(tip, tip - direction * 16 + side, COMMAND_COLOR, 6)
+			DrawLine(tip, tip - direction * 16 - side, COMMAND_COLOR, 6)
+		end
+
+		if self:GetNW2String("NSPathFollowerBehavior", "Idle") == "Travel" then
+			render.DrawWireframeSphere(self:GetNW2Vector("NSPathFollowerGoal", vector_origin), 12, 8, 8, TARGET_COLOR, false)
+		end
+	end
+	return
+end
 
 -- Within ARRIVE of its goal it has arrived.
 local ARRIVE = 48
@@ -37,11 +77,109 @@ local PROGRESS, RECOVER_AFTER, NUDGE_AFTER = 32, 3, 2
 local DROP_MARK = 64
 local DEFAULT_SECONDS = 60
 local REPORTS = "sandcastle/pathfollower/"
+local DEBUG_PATH_SYNC = 0.25
+local DEBUG_COMMAND_SYNC = 0.1
+local MAX_DEBUG_POINTS = 2047
+local debugEventWarningSent = false
+local RUN_ACTIVITY_MODELS = {
+	["models/player/scout.mdl"] = true,
+	["models/bots/headless_hatman.mdl"] = true,
+}
 
 local function Point(v) return { x = math.Round(v.x), y = math.Round(v.y), z = math.Round(v.z) } end
+local function AsVector(p) return Vector(p.x, p.y, p.z) end
 
 -- A path's waypoints by kind (the engine's segment types).
 local SEGMENT_KINDS = { [0] = "ground", "drop", "climb", "gap", "ladder up", "ladder down" }
+local Lanes = wartactics.lanes
+local SoldierSteer = ENT.NSSteer
+
+function ENT:OnUpdateAnimation()
+	local act, rate = WarSoldierUpdateAnimation(self)
+	if act ~= nil then return act, rate end
+	if RUN_ACTIVITY_MODELS[self:GetModel()] then
+		if self.loco:GetVelocity():Length2D() > 1 then
+			return ACT_MP_RUN_PRIMARY, 1.0
+		else
+			return ACT_MP_STAND_PRIMARY, 1.0
+		end
+	end
+end
+
+local function NearestPoint(points, position)
+	local best, distance
+	for i, point in ipairs(points) do
+		local candidate = position:DistToSqr(AsVector(point))
+		if not distance or candidate < distance then best, distance = i, candidate end
+	end
+	return best, distance and math.sqrt(distance) or math.huge
+end
+
+local function LaneRoute(team, from, goal)
+	local aiwar = WS.Feature("aiwar")
+	if not aiwar.war then return nil, aiwar end
+	local lanes = aiwar.laneSets and aiwar.laneSets[team]
+	if not lanes then return nil, aiwar end
+
+	local best, bestCost
+	for _, lane in ipairs(lanes) do
+		if #lane.points > 1 then
+			local first, fromDistance = NearestPoint(lane.points, from)
+			local last, goalDistance = NearestPoint(lane.points, goal)
+			if last >= first then
+				local distance = fromDistance + goalDistance
+				for i = first + 1, last do
+					distance = distance + AsVector(lane.points[i - 1]):Distance(AsVector(lane.points[i]))
+				end
+				if not bestCost or distance < bestCost then
+					best, bestCost = { kind = lane.kind, points = {} }, distance
+					for i = first, last do best.points[#best.points + 1] = lane.points[i] end
+				end
+			end
+		end
+	end
+	return best, aiwar
+end
+
+local function PathPoints(path)
+	local points = {}
+	for _, segment in ipairs(path:GetAllSegments()) do
+		points[#points + 1] = Point(segment.pos)
+	end
+	return points
+end
+
+local function EncodePoints(points)
+	return util.TableToJSON(points) or ""
+end
+
+local function EventPoints(points)
+	local result = {}
+	for i = 1, math.min(#points, MAX_DEBUG_POINTS) do result[i] = AsVector(points[i]) end
+	return result
+end
+
+local function SendDebug(self)
+	if not WS.PathFollowerDebugEventReady then
+		if not debugEventWarningSent then
+			ErrorNoHalt("[npc_pathfollower] debug event is not loaded; the overlay needs the gamemode's shared files to reload\n")
+			debugEventWarningSent = true
+		end
+		return
+	end
+	WS.Events.Fire("game_ns_pathfollower_debug", {
+		follower = self,
+		path = EventPoints(self.nsDebugPathPoints or {}),
+		lane = EventPoints(self.nsDebugLanePoints or {}),
+	}, self:GetPos())
+end
+
+local function NearestLaneTarget(route, position, index)
+	if not route then return nil, index end
+	index = Lanes.Next(route, { x = position.x, y = position.y, z = position.z }, index)
+	local point = Lanes.Target(route, { x = position.x, y = position.y, z = position.z }, index)
+	return point, index
+end
 
 local function PathKinds(path)
 	local kinds = {}
@@ -70,6 +208,130 @@ function ENT:CustomInitialize()
 	SoldierInitialize(self)
 	self:SetNoTarget(true)
 	self.NSRun = true
+	if self.NSToolManaged then
+		self:SetNW2Bool("NSPathFollowerDebug", true)
+		self:NSSetBehavior("Idle")
+	end
+end
+
+function ENT:NSSetBehavior(name)
+	local previous = self.nsBehavior
+	self.nsBehavior = name
+	self:NSDebugBehaviorChanged(previous, name)
+	self:SetNW2String("NSPathFollowerBehavior", name)
+	if name == "Idle" then
+		self.NSTarget = nil
+		self.nsGoal = nil
+		self.nsLaneRoute = nil
+		self.nsLaneIndex = nil
+		self.NSPathCost = nil
+		self:SetNW2Vector("NSPathFollowerGoal", vector_origin)
+		self:SetNW2Vector("NSPathFollowerCommand", vector_origin)
+		self.nsDebugPath = ""
+		self.nsDebugPathPoints = {}
+		self.nsDebugLanePoints = {}
+		SendDebug(self)
+		self:NSRepath()
+		self.nsFollowedAt = 0
+	elseif name ~= "Travel" then
+		error("unknown path follower behavior " .. tostring(name), 2)
+	end
+end
+
+function ENT:NSSetGoal(goal)
+	local route, aiwar = LaneRoute(self.NSLaneTeam, self:GetPos(), goal)
+	local previous = self.nsBehavior
+	self.nsGoal = goal
+	self.nsLaneRoute = route
+	self.nsLaneIndex = 1
+	self.nsBehavior = "Travel"
+	self:NSDebugBehaviorChanged(previous, "Travel")
+	self:SetNW2String("NSPathFollowerBehavior", "Travel")
+	self:SetNW2Vector("NSPathFollowerGoal", goal)
+	self.nsDebugLanePoints = route and route.points or {}
+	self.nsDebugPathPoints = {}
+	self:SetNW2Vector("NSPathFollowerCommand", vector_origin)
+	self.nsDebugPath = ""
+	SendDebug(self)
+	self.NSPathCost = nil
+	if aiwar and self.NSLaneTeam ~= nil then
+		local TFBot = WS.require("foundation.wetsands.path.tfbot")
+		local team = self.NSLaneTeam
+		self.NSPathCost = aiwar:SoldierPathCost(team, function()
+			return {
+				entIndex = self:EntIndex(),
+				now = CurTime(),
+				team = team,
+				route = TFBot.FASTEST_ROUTE,
+				miniBoss = false,
+				roundWon = false,
+				winningTeam = WS.TEAM_UNASSIGNED,
+			}
+		end)
+	end
+	self.NSPathGoal = nil
+	self:NSRepath()
+end
+
+local function StopAt(self)
+	self:NSSetBehavior("Idle")
+	local velocity = self.loco:GetVelocity()
+	self.loco:SetVelocity(Vector(0, 0, velocity.z))
+end
+
+function ENT:NSUpdateToolBehavior()
+	if self.nsBehavior == "Idle" then
+		local velocity = self.loco:GetVelocity()
+		if velocity.x ~= 0 or velocity.y ~= 0 then self.loco:SetVelocity(Vector(0, 0, velocity.z)) end
+		return
+	end
+
+	local target = self.nsGoal
+	local lanePoint
+	lanePoint, self.nsLaneIndex = NearestLaneTarget(self.nsLaneRoute, self:GetPos(), self.nsLaneIndex)
+	if lanePoint then
+		target = AsVector(lanePoint)
+	else
+		self.nsLaneRoute = nil
+	end
+	self.NSTarget = target
+	self:NSSteer()
+
+	if self:GetPos():DistToSqr(self.nsGoal) <= ARRIVE * ARRIVE then
+		StopAt(self)
+	end
+end
+
+function ENT:NSSyncDebug()
+	local now = CurTime()
+	if now >= (self.nsNextDebugPath or 0) then
+		self.nsNextDebugPath = now + DEBUG_PATH_SYNC
+		local path = self:GetPath()
+		local points = path and path:IsValid() and PathPoints(path) or {}
+		local encoded = EncodePoints(points)
+		if encoded ~= self.nsDebugPath then
+			self.nsDebugPath = encoded
+			self.nsDebugPathPoints = points
+			SendDebug(self)
+		end
+	end
+
+	if now >= (self.nsNextDebugCommand or 0) then
+		self.nsNextDebugCommand = now + DEBUG_COMMAND_SYNC
+		local path = self:GetPath()
+		local goal = path and path:IsValid() and path:GetCurrentGoal()
+		local target = goal and goal.pos or self.NSTarget
+		local direction = target and (target - self:GetPos()) or vector_origin
+		direction.z = 0
+		if direction:Length2DSqr() > 0 then direction:Normalize() end
+		self:SetNW2Vector("NSPathFollowerCommand", direction)
+	end
+end
+
+function ENT:NSSteer(enemy)
+	local result = SoldierSteer(self, enemy)
+	if self.NSToolManaged then self:NSSyncDebug() end
+	return result
 end
 
 -- One entry of the report's lists, with when (seconds into the errand) and
@@ -97,6 +359,7 @@ end
 
 -- Its one behaviour, in place of the base's intention: the errand.
 function ENT:IntentionUpdate()
+	if self.NSToolManaged then return self:NSUpdateToolBehavior() end
 	local errand = self.nsErrand
 	if not errand or errand.done then return end
 	local now, pos = CurTime(), self:GetPos()
@@ -186,5 +449,6 @@ concommand.Add("ns_pathfollower_send", function(ply, _, args)
 	follower:SetPos(Vector(n[1], n[2], n[3]))
 	follower:Spawn()
 	follower:NSErrand(Vector(n[4], n[5], n[6]), n[7])
+	ply:AddCleanup("NPC", follower)
 	print(string.format("ns_pathfollower_send: #%d sent", follower:EntIndex()))
 end, nil, "Send a path follower (NextSoldier's base, no fighting) from one point to another; it reports how it went when it arrives or its time runs out")

@@ -24,6 +24,18 @@ local NW, NE, SE, SW = 0, 1, 2, 3 -- CNavArea::GetCorner's NavCornerType
 
 local NPCS_HOOK = "WSNbDebugNpcs"
 
+local function NextSoldierNpc(ent)
+	return {
+		variant = { _NAME = ent:GetClass() },
+		Stack = function()
+			return ent:NSDebugStack()
+		end,
+		Watch = function(_, log)
+			ent:NSDebugWatch(log)
+		end,
+	}
+end
+
 -- Where the NAV layer takes an area's attribute names: :Of(area) -> list.
 -- GMod's nav mesh has no TF2 attributes (TF_NAV_*); they will come from a
 -- sidecar written beside the converted mesh, through a source like this.
@@ -75,6 +87,9 @@ end
 function Controller:Collect()
 	local found = {}
 	hook.Run(NPCS_HOOK, found)
+	for ent in pairs(WS.NextSoldierBots or {}) do
+		if IsValid(ent) and found[ent] == nil then found[ent] = NextSoldierNpc(ent) end
+	end
 	local bots = {}
 	for ent, npc in pairs(found) do
 		bots[ent] = {
@@ -95,6 +110,7 @@ end
 function Controller:SetPathWatch(ent, index, watch)
 	if SameWatch(self.pathWatches[ent], watch) then return end
 	WS.Feature("npc"):WatchPaths(index, watch)
+	if ent.IsNextSoldier then ent.NSDebugPathWatch = watch end
 	self.pathWatches[ent] = watch
 	if watch == nil then self.reports[ent] = nil end
 end
@@ -121,6 +137,7 @@ end
 
 function Controller:Forget(ent)
 	if self.pathWatches[ent] then WS.Feature("npc"):WatchPaths(ent:EntIndex(), nil) end
+	if IsValid(ent) and ent.IsNextSoldier then ent.NSDebugPathWatch = nil end
 	self.pathWatches[ent], self.reports[ent], self.logs[ent] = nil, nil, nil
 	self.bots[ent], self.npcs[ent] = nil, nil
 	for _, sub in pairs(self.subscriptions) do sub:Forget(ent) end
