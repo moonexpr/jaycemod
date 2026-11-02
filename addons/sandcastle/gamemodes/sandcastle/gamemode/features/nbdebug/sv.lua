@@ -108,10 +108,11 @@ local function SameWatch(a, b)
 end
 
 function Controller:SetPathWatch(ent, index, watch)
-	if SameWatch(self.pathWatches[ent], watch) then return end
+	local same = SameWatch(self.pathWatches[ent], watch)
 	local playerBot = ent:IsPlayer() and ent:IsBot()
-	if not playerBot then WS.Feature("npc"):WatchPaths(index, watch) end
+	if not same and not playerBot then WS.Feature("npc"):WatchPaths(index, watch) end
 	if ent.IsNextSoldier or playerBot then ent.NSDebugPathWatch = watch end
+	if same then return end
 	self.pathWatches[ent] = watch
 	if watch == nil then self.reports[ent] = nil end
 end

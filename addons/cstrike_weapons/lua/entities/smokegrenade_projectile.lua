@@ -16,18 +16,10 @@ end
 
 function ENT:Detonate()
 	self:EmitSound("BaseSmokeEffect.Sound")
-	self:SetSmokedAt(CurTime())
+	local effect = EffectData()
+	effect:SetOrigin(self:GetPos())
+	effect:SetScale(self.GrenadeRadius)
+	effect:SetMagnitude(self.GrenadeDuration)
+	util.Effect("cstrike_smoke", effect, true, true)
 	SafeRemoveEntityDelayed(self, self.GrenadeDuration + 3)
-end
-
-if CLIENT then
-	function ENT:Think()
-		if self.Smoked or self:GetSmokedAt() == 0 then return end
-		self.Smoked = true
-		local effect = EffectData()
-		effect:SetOrigin(self:GetPos())
-		effect:SetScale(self.GrenadeRadius)
-		effect:SetMagnitude(self.GrenadeDuration)
-		util.Effect("cstrike_smoke", effect, true, true)
-	end
 end

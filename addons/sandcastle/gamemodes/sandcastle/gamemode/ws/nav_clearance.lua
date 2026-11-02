@@ -28,8 +28,13 @@ Clearance.__index = Clearance
 
 function New(entity, mask, traceHull, vector)
 	local mins, maxs = entity:GetCollisionBounds()
+	-- Walkable floors can overlap the hull below a step; retain its top and width.
+	local step = NavGaps.STEP_HEIGHT
+	local halfHeight = (maxs.z - mins.z) / 2
+	if step > halfHeight then step = halfHeight end
+	local traceMins = vector(mins.x, mins.y, mins.z + step)
 	local clearance = {
-		mins = mins,
+		mins = traceMins,
 		maxs = maxs,
 		mask = mask,
 		traceHull = traceHull,

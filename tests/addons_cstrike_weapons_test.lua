@@ -119,4 +119,52 @@ T.test("CS:S grenade effects are distributed and flash postprocess fades out", f
 	T.eq(color, previous, "postprocess stops after the flash")
 end)
 
+T.test("smoke grenade sends its particle effect with numeric weapon stats", function()
+	local values, effectName, delay
+	local data = {
+		SetOrigin = function(_, value) values.origin = value end,
+		SetScale = function(_, value) values.radius = value end,
+		SetMagnitude = function(_, value) values.duration = value end,
+	}
+	local env = setmetatable({
+		ENT = {},
+		AddCSLuaFile = function() end,
+		EffectData = function() return data end,
+		SafeRemoveEntityDelayed = function(_, seconds) delay = seconds end,
+		util = { Effect = function(name, effect)
+			effectName = name
+			T.eq(effect, data, "smoke particle receives the effect data")
+		end },
+	}, { __index = _G })
+	local chunk = assert(loadfile(LUA_ROOT .. "entities/smokegrenade_projectile.lua"))
+	setfenv(chunk, env)()
+	local projectile = setmetatable({
+		GrenadeRadius = 150,
+		GrenadeDuration = 15,
+		EmitSound = function() end,
+		GetPos = function() return "ground position" end,
+	}, { __index = env.ENT })
+	values = {}
+	projectile:Detonate()
+	T.eq(effectName, "cstrike_smoke")
+	T.eq(values.origin, "ground position")
+	T.eq(values.radius, 150)
+	T.eq(values.duration, 15)
+	T.eq(delay, 18)
+end)
+
+T.test("CS:S weapon photo grid command is registered", function()
+	local command, callback
+	local env = setmetatable({
+		SERVER = true,
+		concommand = { Add = function(name, fn)
+			command, callback = name, fn
+		end },
+	}, { __index = _G })
+	local chunk = assert(loadfile(LUA_ROOT .. "autorun/server/cstrike_weapon_grid.lua"))
+	setfenv(chunk, env)()
+	T.eq(command, "cstrike_weapon_grid")
+	T.eq(type(callback), "function")
+end)
+
 T.finish()

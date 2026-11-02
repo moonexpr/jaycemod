@@ -49,7 +49,9 @@ T.test("nav clearance accepts an ordinary entity and checks its collision hull",
 	T.eq(#calls, 1)
 	T.eq(calls[1].mask, 7)
 	T.eq(calls[1].mins.x, -10)
+	T.eq(calls[1].mins.z, nextsoldier.nav_gaps.STEP_HEIGHT)
 	T.eq(calls[1].maxs.y, 8)
+	T.eq(calls[1].maxs.z, 64)
 	local world = { IsWorld = function() return true end }
 	local brush = { IsWorld = function() return false end, GetClass = function() return "func_brush" end }
 	local door = { IsWorld = function() return false end, GetClass = function() return "func_door" end }
@@ -71,6 +73,14 @@ T.test("nav clearance uses the collision trace instead of a nav area's bounding 
 	T.eq(calls, 2)
 end)
 
+T.test("nav clearance tolerates floor overlap within the walkable step height", function()
+	local clearance = NewClearance(Agent(V(-10, -8, 0), V(10, 8, 64)), function(data)
+		return { Hit = false, StartSolid = data.mins.z == 0 }
+	end)
+	T.eq(clearance:Area(Area(4, 0, 0, 19, 100, 0)), true,
+		"the lower step-height portion of the hull may overlap sloped ground")
+end)
+
 T.test("nav clearance uses each entity's hull to admit a link opening", function()
 	local from, to = Area(3, 0, 0, 100, 100, 0), Area(4, 100, 0, 200, 100, 0)
 	from.sides[1] = to
@@ -87,6 +97,19 @@ T.test("nav clearance uses each entity's hull to admit a link opening", function
 	T.eq(small:Link(from, to), true, "the small body clears the opening")
 	T.eq(large:Link(from, to), false, "the larger body cannot fit")
 	T.eq(large:Link(to, from), false, "the reverse link is checked separately")
+end)
+
+T.test("nav clearance preserves each entity's overhead clearance", function()
+	local from, to = Area(7, 0, 0, 100, 100, 0), Area(8, 100, 0, 200, 100, 0)
+	from.sides[1] = to
+	to.sides[3] = from
+	local function Trace(data)
+		return { Hit = data.maxs.z > 40, StartSolid = false }
+	end
+	local standing = NewClearance(Agent(V(-10, -8, 0), V(10, 8, 64)), Trace)
+	local crouching = NewClearance(Agent(V(-10, -8, 0), V(10, 8, 36)), Trace)
+	T.eq(standing:Link(from, to), false, "the standing hull does not fit")
+	T.eq(crouching:Link(from, to), true, "the crouching hull fits")
 end)
 
 T.test("nav clearance sweeps height-changing links at the higher floor", function()

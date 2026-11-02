@@ -294,9 +294,9 @@ function BotSoldier:Steer(now)
 		self.steer = goal
 		return
 	end
-	-- with no route there, straight at it, for the orders to unstick
+	-- A failed route does not make a direct walk safe.
 	local walk = self.walk
-	self.steer = walk and walk:Next(Point(self.ent:GetPos()), function(q) return self:CanWalkTo(q) end) or goal
+	self.steer = walk and walk:Next(Point(self.ent:GetPos()), function(q) return self:CanWalkTo(q) end) or nil
 end
 
 function BotSoldier:Watch(p)
