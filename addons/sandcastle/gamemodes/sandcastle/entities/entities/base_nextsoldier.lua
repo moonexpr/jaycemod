@@ -173,7 +173,14 @@ function ENT:Initialize()
 	self:AddFlags(FL_NPC)
 	self.nsAlive = true
 	self.nsRelations = Relations.New({ default = self.DefaultRelationship or D_NU, ally = D_LI })
-	for _, faction in ipairs(self.Factions) do self.nsRelations:Join(faction) end
+	for _, faction in ipairs(self.Factions) do
+		self.nsRelations:Join(faction)
+		if faction == Factions.HL2_COMBINE then
+			self.nsRelations:SetFaction(Factions.HL2_REBELS, D_HT)
+		elseif faction == Factions.HL2_REBELS then
+			self.nsRelations:SetFaction(Factions.HL2_COMBINE, D_HT)
+		end
+	end
 	self.nsVision = Vision.New(VISION)
 	self.nsBetter = function(a, b) return self:IsMoreDangerous(a, b) end
 	self.nsNextLook = 0

@@ -111,6 +111,14 @@ T.test("every setting the soldier classes and profiles give the base is declared
 	end
 end)
 
+T.test("war soldiers hate the opposing HL2 faction and default to hostility", function()
+	local base = Read(ENTITIES .. "base_nextsoldier.lua")
+	local soldier = Read(ENTITIES .. "npc_nextsoldier.lua")
+	T.eq(soldier:find("ENT.DefaultRelationship = D_HT", 1, true) ~= nil, true)
+	T.eq(base:find("SetFaction(Factions.HL2_REBELS, D_HT)", 1, true) ~= nil, true)
+	T.eq(base:find("SetFaction(Factions.HL2_COMBINE, D_HT)", 1, true) ~= nil, true)
+end)
+
 T.test("a name the base replaces is declared by none", function()
 	for name in pairs(Base.REPLACED) do T.eq(Base.ComponentOf(name), nil, name) end
 end)

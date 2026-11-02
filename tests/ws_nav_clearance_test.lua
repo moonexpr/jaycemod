@@ -58,15 +58,17 @@ T.test("nav clearance accepts an ordinary entity and checks its collision hull",
 	T.eq(calls[1].filter(door), false)
 end)
 
-T.test("nav clearance rejects areas narrower than an ordinary entity's hull", function()
+T.test("nav clearance uses the collision trace instead of a nav area's bounding box", function()
 	local calls = 0
-	local clearance = NewClearance(Agent(V(-10, -8, 0), V(10, 8, 64)), function()
+	local clearance = NewClearance(Agent(V(-10, -8, 0), V(10, 8, 64)), function(data)
 		calls = calls + 1
-		return { Hit = false, StartSolid = false }
+		return { Hit = data.start.x == 20, StartSolid = false }
 	end)
-	T.eq(clearance:Area(Area(2, 0, 0, 19, 100, 0)), false)
-	T.eq(clearance:Area(Area(2, 0, 0, 19, 100, 0)), false, "cached rejection")
-	T.eq(calls, 0, "extent rejects without a world trace")
+	T.eq(clearance:Area(Area(2, 0, 0, 19, 100, 0)), true, "a narrow nav polygon can still have physical clearance")
+	T.eq(clearance:Area(Area(2, 0, 0, 19, 100, 0)), true, "cached admission")
+	T.eq(clearance:Area(Area(3, 10, 0, 30, 100, 0)), false, "the world trace rejects a blocked area")
+	T.eq(clearance:Area(Area(3, 10, 0, 30, 100, 0)), false, "cached rejection")
+	T.eq(calls, 2)
 end)
 
 T.test("nav clearance uses each entity's hull to admit a link opening", function()
@@ -85,6 +87,20 @@ T.test("nav clearance uses each entity's hull to admit a link opening", function
 	T.eq(small:Link(from, to), true, "the small body clears the opening")
 	T.eq(large:Link(from, to), false, "the larger body cannot fit")
 	T.eq(large:Link(to, from), false, "the reverse link is checked separately")
+end)
+
+T.test("nav clearance sweeps height-changing links at the higher floor", function()
+	local lower, upper = Area(5, 0, 0, 100, 100, 0), Area(6, 100, 0, 200, 100, 24)
+	lower.sides[1] = upper
+	upper.sides[3] = lower
+	local function Trace(data)
+		T.eq(data.start.z, 25, "start at the higher floor")
+		T.eq(data.endpos.z, 25, "keep the hull level while crossing")
+		return { Hit = false, StartSolid = false }
+	end
+	local clearance = NewClearance(Agent(V(-10, -8, 0), V(10, 8, 64)), Trace)
+	T.eq(clearance:Link(lower, upper), true)
+	T.eq(clearance:Link(upper, lower), true)
 end)
 
 T.finish()

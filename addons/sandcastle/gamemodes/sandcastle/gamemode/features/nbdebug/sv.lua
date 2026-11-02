@@ -109,8 +109,9 @@ end
 
 function Controller:SetPathWatch(ent, index, watch)
 	if SameWatch(self.pathWatches[ent], watch) then return end
-	WS.Feature("npc"):WatchPaths(index, watch)
-	if ent.IsNextSoldier then ent.NSDebugPathWatch = watch end
+	local playerBot = ent:IsPlayer() and ent:IsBot()
+	if not playerBot then WS.Feature("npc"):WatchPaths(index, watch) end
+	if ent.IsNextSoldier or playerBot then ent.NSDebugPathWatch = watch end
 	self.pathWatches[ent] = watch
 	if watch == nil then self.reports[ent] = nil end
 end
@@ -145,8 +146,9 @@ function Controller:ApplyWatches(subs)
 end
 
 function Controller:Forget(ent)
-	if self.pathWatches[ent] then WS.Feature("npc"):WatchPaths(ent:EntIndex(), nil) end
-	if IsValid(ent) and ent.IsNextSoldier then ent.NSDebugPathWatch = nil end
+	local playerBot = IsValid(ent) and ent:IsPlayer() and ent:IsBot()
+	if self.pathWatches[ent] and not playerBot then WS.Feature("npc"):WatchPaths(ent:EntIndex(), nil) end
+	if IsValid(ent) and (ent.IsNextSoldier or playerBot) then ent.NSDebugPathWatch = nil end
 	if IsValid(ent) and ent.IsNextSoldier then ent.NSDebugDrawPath = nil end
 	self.pathWatches[ent], self.reports[ent], self.logs[ent] = nil, nil, nil
 	self.bots[ent], self.npcs[ent] = nil, nil

@@ -12,6 +12,7 @@ ENT.PrintName = "NextSoldier"
 ENT.Category = "Sandcastle"
 ENT.Spawnable = false
 ENT.RagdollOnDeath = false -- dies into clientside ragdolls (WS.WarSoldier)
+ENT.DefaultRelationship = D_HT
 
 -- Loaded with the map, in both realms, so the first to spawn does not hang the game.
 for _, profile in pairs(Profiles.PROFILES) do

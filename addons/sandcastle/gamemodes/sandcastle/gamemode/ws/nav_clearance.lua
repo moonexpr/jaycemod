@@ -9,8 +9,9 @@ end
 local function HullLineFits(from, to, start, finish, mins, maxs, mask, traceHull, vector)
 	start = vector(start.x, start.y, 0)
 	finish = vector(finish.x, finish.y, 0)
-	start.z = from:GetZ(start) + 1
-	finish.z = to:GetZ(finish) + 1
+	local fromZ, toZ = from:GetZ(start), to:GetZ(finish)
+	local height = (fromZ > toZ and fromZ or toZ) + 1
+	start.z, finish.z = height, height
 	local trace = traceHull({
 		start = start,
 		endpos = finish,
@@ -44,12 +45,6 @@ function Clearance:Area(area)
 	local id = area:GetID()
 	local known = self.areas[id]
 	if known ~= nil then return known end
-	local extent = area:GetExtentInfo()
-	if extent.hi.x - extent.lo.x < self.maxs.x - self.mins.x
-		or extent.hi.y - extent.lo.y < self.maxs.y - self.mins.y then
-		self.areas[id] = false
-		return false
-	end
 	local center = area:GetCenter()
 	center.z = area:GetZ(center)
 	local start = center + self.vector(0, 0, 1)

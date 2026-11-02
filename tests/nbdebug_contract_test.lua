@@ -12,6 +12,7 @@ local PATHFOLLOWER = ROOT .. "../entities/entities/npc_pathfollower.lua"
 local NAV_CLEARANCE = ROOT .. "ws/nav_clearance.lua"
 local NAV = ROOT .. "ws/sv_nav.lua"
 local BOT_SOLDIER = ROOT .. "features/aiwar/sv_bot_soldier.lua"
+local BOT_NAVIGATOR = ROOT .. "../entities/entities/ws_bot_navigator.lua"
 
 local function ReadFile(path)
 	local f = assert(io.open(path, "r"))
@@ -33,6 +34,7 @@ local aiwar = T.RealmSource("aiwar", "sv")
 local nextsoldier, warSoldier = ReadFile(NEXTSOLDIER), ReadFile(WAR_SOLDIER)
 local pathfollower = ReadFile(PATHFOLLOWER)
 local navClearance, nav, botSoldier = ReadFile(NAV_CLEARANCE), ReadFile(NAV), ReadFile(BOT_SOLDIER)
+local botNavigator = ReadFile(BOT_NAVIGATOR)
 
 -- What the nbdebug controller fires, and the AI war's overlay.
 local function Fired()
@@ -91,6 +93,15 @@ T.test("the PATH layer draws each watched NextSoldier's live engine path and goa
 	T.eq(nextsoldier:find("if self.NSDebugDrawPath then", 1, true) ~= nil, true, "base draws only while watched")
 	T.eq(nextsoldier:find("path:Draw()", 1, true) ~= nil, true, "engine path overlay")
 	T.eq(view:find("render.DrawWireframeSphere(path.goal", 1, true) ~= nil, true, "client goal sphere")
+end)
+
+T.test("bot player path searches report to the PATH layer", function()
+	T.eq(controller:find("ent:IsPlayer() and ent:IsBot()", 1, true) ~= nil, true, "recognizes AI-war player bots")
+	T.eq(controller:find("ent.NSDebugPathWatch = watch", 1, true) ~= nil, true, "passes the watch to the navigator owner")
+	T.eq(botNavigator:find('WS.require("features.nbdebug.model")', 1, true) ~= nil, true, "uses the PATH report contract")
+	T.eq(botNavigator:find('hook.Run("WSNpcPathComputed", owner', 1, true) ~= nil, true, "reports the search as the player bot")
+	T.eq(botNavigator:find("Debug.MoveOfSegment(segment.type)", 1, true) ~= nil, true, "preserves route move types")
+	T.eq(aiwar:find('found[ent] = entry.npc', 1, true) ~= nil, true, "bot players are registered for selection")
 end)
 
 T.test("the path follower exposes its Idle and Travel behavior transitions", function()

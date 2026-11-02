@@ -17,6 +17,14 @@ end
 local controller = T.RealmSource("aiwar", "sv")
 local soldier = ReadFile(ROOT .. "ws/sh_war_soldier.lua")
 
+T.test("bot fighters include live NPCs and health-bearing GM13 entities", function()
+	T.eq(controller:find("local function IsGM13Entity", 1, true) ~= nil, true)
+	T.eq(controller:find('string.sub(class, 1, 5) == "gm13_"', 1, true) ~= nil, true)
+	T.eq(controller:find('string.sub(class, 1, 4) == "sev_"', 1, true) ~= nil, true)
+	T.eq(controller:find("ent:Health() > 0", 1, true) ~= nil, true)
+	T.eq(controller:find("ent:IsNPC() or ent:IsNextBot() or IsGM13Entity(ent)", 1, true) ~= nil, true)
+end)
+
 T.test("the soldier reads every steering field the controller sets on it", function()
 	local count = 0
 	for field in controller:gmatch("self%.ent%.([%w_]+)%s*=[^=]") do

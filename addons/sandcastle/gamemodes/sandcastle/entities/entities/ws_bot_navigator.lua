@@ -63,10 +63,51 @@ end
 -- by cost (Path:Compute's generator: area, fromArea, ladder, elevator,
 -- length -> cost, or -1 where it may not go), or nil when there is none.
 function ENT:PlanRoute(goal, cost)
+	local owner = self:GetOwner()
+	local watch = IsValid(owner) and owner.NSDebugPathWatch
+	local Debug = watch and WS.require("features.nbdebug.model") or nil
+	local recorder = Debug and watch.costs and cost and Debug.NewCostRecorder() or nil
+	if recorder then
+		local routeCost = cost
+		cost = function(area, fromArea, ladder, elevator, length)
+			local price = routeCost(area, fromArea, ladder, elevator, length)
+			recorder:Record(area:GetID(), IsValid(fromArea) and fromArea:GetID() or nil, price)
+			return price
+		end
+	end
+
 	local path = Path("Follow")
-	path:Compute(self, goal, cost)
-	if not path:IsValid() then return nil end
-	local points = {}
-	for i, segment in ipairs(path:GetAllSegments()) do points[i] = segment.pos end
-	return points
+	local began = Debug and SysTime()
+	local found = path:Compute(self, goal, cost)
+	local points, reportPoints, areaIds, lastArea = {}, {}, {}, nil
+	for i, segment in ipairs(path:GetAllSegments() or {}) do
+		points[i] = segment.pos
+		if Debug then
+			reportPoints[i] = {
+				pos = segment.pos,
+				move = Debug.MoveOfSegment(segment.type),
+			}
+			if IsValid(segment.area) then
+				lastArea = segment.area
+				areaIds[#areaIds + 1] = lastArea:GetID()
+			end
+		end
+	end
+	if Debug then
+		hook.Run("WSNpcPathComputed", owner, Debug.NewPathReport({
+			source = Debug.SOURCE_ENGINE,
+			strategy = "AI War player:RouteCost",
+			start = owner:GetPos(),
+			goal = goal,
+			found = found,
+			points = reportPoints,
+			areaIds = areaIds,
+			totalCost = lastArea and lastArea:GetCostSoFar() or nil,
+			microseconds = (SysTime() - began) * 1e6,
+			nodesExpanded = recorder and recorder:Expanded() or nil,
+			explored = recorder and recorder:Explored() or nil,
+			computedAt = CurTime(),
+		}))
+	end
+	return path:IsValid() and points or nil
 end

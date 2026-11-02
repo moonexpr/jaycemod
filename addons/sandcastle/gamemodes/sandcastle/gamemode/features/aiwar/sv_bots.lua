@@ -306,6 +306,11 @@ end
 
 -- Looking ------------------------------------------------------------------------
 
+local function IsGM13Entity(ent)
+	local class = ent:GetClass()
+	return string.sub(class, 1, 5) == "gm13_" or string.sub(class, 1, 4) == "sev_"
+end
+
 -- The live fighters of each game team, players (bots included), the war's
 -- NPC soldiers, and those a hook WSWarFighters(fighters) adds.
 function Controller:Fighters()
@@ -317,6 +322,13 @@ function Controller:Fighters()
 	for ent, entry in pairs(self.soldiers) do
 		local list = fighters[entry.soldier.team]
 		if list and IsValid(ent) and not ent:IsPlayer() and ent:Health() > 0 then list[#list + 1] = ent end
+	end
+	for ent in ents.Iterator() do
+		if IsValid(ent) and not self.soldiers[ent] and ent:Health() > 0
+			and (ent:IsNPC() or ent:IsNextBot() or IsGM13Entity(ent)) then
+			fighters[RED][#fighters[RED] + 1] = ent
+			fighters[BLUE][#fighters[BLUE] + 1] = ent
+		end
 	end
 	-- others a mode makes fight for a side (an armed hostage: features.hostage)
 	hook.Run("WSWarFighters", fighters)
