@@ -3,9 +3,9 @@
 -- other volumes are asked rather than touched; a hostage led into it is
 -- rescued. The hostage controller also reads it as a box (features/hostage/
 -- sv.lua's RescueBoxes), for where the war leads the hostages. Nothing
--- collides with it; Enable and Disable as any volume (ws_brush_volume).
+-- collides with it; Enable and Disable as any volume (base_brush2).
 ENT.Type = "brush"
-ENT.Base = "ws_brush_volume"
+ENT.Base = "base_brush2"
 
 -- Whether ent's centre is inside it, while it is enabled.
 function ENT:Holds(ent)

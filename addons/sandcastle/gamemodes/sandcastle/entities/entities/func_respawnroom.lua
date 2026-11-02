@@ -2,7 +2,7 @@
 -- active state drive the func_respawnroomvisualizer forcefields that name it;
 -- a change of either is told (WSSpawnRoomsChanged).
 ENT.Type = "brush"
-ENT.Base = "ws_brush_volume"
+ENT.Base = "base_brush2"
 
 function ENT:VolumeInit()
 	self.originalTeam = self.team

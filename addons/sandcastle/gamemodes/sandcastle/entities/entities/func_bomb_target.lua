@@ -4,7 +4,7 @@
 -- this brush. It is asked whether it holds an entity (Holds), as the
 -- gamemode's other volumes are; nothing collides with it.
 ENT.Type = "brush"
-ENT.Base = "ws_brush_volume"
+ENT.Base = "base_brush2"
 
 function ENT:VolumeInit()
 	self.defuse = WS.Feature("defuse")

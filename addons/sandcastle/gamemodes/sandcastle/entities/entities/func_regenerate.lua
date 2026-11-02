@@ -5,7 +5,7 @@
 -- Regenerate.Touch alone, and the locker prop opens, then closes a second
 -- before the next use.
 ENT.Type = "brush"
-ENT.Base = "ws_brush_volume"
+ENT.Base = "base_brush2"
 
 local NEXT_USE_TIME = 3.0
 local SOUND = "Regenerate.Touch"

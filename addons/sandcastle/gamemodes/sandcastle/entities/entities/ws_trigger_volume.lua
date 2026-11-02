@@ -4,7 +4,7 @@
 -- it names a Lua filter (filter_activator_tfteam); an engine filter cannot
 -- be asked from Lua and lets everyone through.
 ENT.Type = "brush"
-ENT.Base = "ws_brush_volume"
+ENT.Base = "base_brush2"
 
 local THINK_INTERVAL = 0.1
 
