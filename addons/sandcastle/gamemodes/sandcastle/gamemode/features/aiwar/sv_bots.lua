@@ -325,7 +325,7 @@ function Controller:Fighters()
 		local list = fighters[entry.soldier.team]
 		if list and IsValid(ent) and not ent:IsPlayer() and ent:Health() > 0 then list[#list + 1] = ent end
 	end
-	for ent in ents.Iterator() do
+	for _, ent in ents.Iterator() do
 		if IsValid(ent) and not self.soldiers[ent] and ent:Health() > 0
 			and (ent:IsNPC() or ent:IsNextBot() or IsGM13Entity(ent)) then
 			fighters[RED][#fighters[RED] + 1] = ent
@@ -338,7 +338,7 @@ function Controller:Fighters()
 end
 
 -- Tells a bot's orders what its vision saw, and the war its contacts (its
--- call-outs: sv_speech.lua).
+-- call-outs: sv_responserules.lua).
 function Controller:TellSight(ply, entry, events)
 	for _, e in ipairs(events) do
 		entry.npc:Event(e.kind, e.handle)

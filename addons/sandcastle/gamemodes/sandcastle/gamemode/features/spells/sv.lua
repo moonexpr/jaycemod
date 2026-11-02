@@ -478,6 +478,6 @@ timer.Create(THINK_TIMER, THINK_INTERVAL, 0, function()
 	Controller:Think(CurTime())
 end)
 
-Controller:Sync()
+timer.Simple(0, function() Controller:Sync() end)
 
 return Controller

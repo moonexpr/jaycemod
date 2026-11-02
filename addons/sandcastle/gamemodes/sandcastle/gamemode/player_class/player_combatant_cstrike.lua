@@ -5,7 +5,7 @@ local Weapons = GM.SimpleWeaponLoadout
 function PLAYER:Loadout()
 	self.Player:RemoveAllAmmo()
 	Weapons.GiveCStrike(self.Player)
-	Weapons.GiveHL2Extended(self.Player)
+	-- Weapons.GiveHL2Extended(self.Player)
 	self.Player:Give( "weapon_physcannon" )
 	Weapons.GiveCombatantTools(self.Player)
 	-- self.Player:Give( "weapon_physgun" )

@@ -10,7 +10,7 @@
 // applyContextToWorld.
 //
 // A speaker's criteria set, as Sandcastle's AI war gives it
-// (features/aiwar/sv_speech.lua, foundation.aiwar.speech):
+// (features/aiwar/sv_responserules.lua, foundation.aiwar.speech):
 //   affiliation  combine, rebel (foundation.npc.voices)
 //   voice        combine, metrocop, male, female, alyx, vortigaunt
 //   teamrole     offense (the cart's own team), defense

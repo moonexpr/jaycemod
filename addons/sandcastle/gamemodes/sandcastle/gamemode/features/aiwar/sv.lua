@@ -15,7 +15,7 @@
 
 local Controller = {
 	war = nil, -- a features.aiwar.model War while the war runs
-	soldiers = {}, -- NPC entity or bot player -> { soldier = port, npc = games.npc.nextbot Npc, speaker (sv_speech) }
+	soldiers = {}, -- NPC entity or bot player -> { soldier = port, npc = games.npc.nextbot Npc, speaker (sv_responserules) }
 	bots = {}, -- bot players tf_bot_quota made -> true (sv_bots.lua)
 	doorFlags = {}, -- trigger_multiple -> its spawnflags before the war
 	tracks = setmetatable({}, { __mode = "k" }), -- a watcher's path node list -> Track
@@ -146,7 +146,7 @@ Controller.BotSoldier = Part("sv_bot_soldier", Map, Soldier)
 Part("sv_relations", Controller, Map)
 Part("sv_enlist", Controller, Map)
 Part("sv_bots", Controller, Map)
-Part("sv_speech", Controller)
+Part("sv_responserules", Controller)
 Part("sv_gestures", Controller)
 Part("sv_missions", Controller)
 Part("sv_rooms", Controller)

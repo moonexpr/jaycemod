@@ -57,7 +57,7 @@ function Soldier:Burning() return WS.InCondition(self.ent, WS.PlayerRules.COND.B
 -- MEDIC!: its side's medics answer it first for MEDIC_CALL_SHOWN seconds
 -- (the field's patients' calling), its teammates see TF2's bubble over it
 -- that long (ws_medic_call_end, ws/cl_medic_call.lua), and it calls out
--- if its voice has a line (features/aiwar/sv_speech.lua).
+-- if its voice has a line (features/aiwar/sv_responserules.lua).
 local MEDIC_CALL_SHOWN = 3
 
 function Soldier:CallMedic()
@@ -67,7 +67,7 @@ function Soldier:CallMedic()
 end
 
 -- Calls out what it is doing (falling back, going for health), if its voice
--- has a line (features/aiwar/sv_speech.lua).
+-- has a line (features/aiwar/sv_responserules.lua).
 function Soldier:Announce(concept)
 	self.controller:AnnounceLine(self.ent, concept)
 end

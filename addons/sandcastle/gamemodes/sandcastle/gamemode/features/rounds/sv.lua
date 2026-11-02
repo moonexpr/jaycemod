@@ -495,12 +495,13 @@ function Controller:SetUpMap()
 	-- Gameplay mode (StartAtLoad is idempotent).
 	if Active() then
 		WS.Feature("gamemode"):StartAtLoad()
-		return
+	else
+		local now = CurTime()
+		for _, ent in ipairs(self.timerList) do
+			if IsValid(ent) then self:ApplyTimerEvents(ent, self.timers[ent]:RoundSpawn(now)) end
+		end
 	end
-	local now = CurTime()
-	for _, ent in ipairs(self.timerList) do
-		if IsValid(ent) then self:ApplyTimerEvents(ent, self.timers[ent]:RoundSpawn(now)) end
-	end
+	if self.round:Halted() then self:OpenSpawnDoors(CurTime()) end
 end
 
 -- An admin's round time (the Round Timer Editor's Set Round Time) on a map

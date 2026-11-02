@@ -8,7 +8,7 @@
 -- gesture plays its sound, TF2's (TLK_NS_GESTURE: a dance's howl, a flex's
 -- chest thump, the zombie's skeleton laugh). A soldier nods at a teammate's kill or capture near it, and
 -- celebrates once calm after wiping out a squad; the greetings, the battle
--- stance (sv_speech.lua) and the grenades (sv_gadgets.lua) gesture too.
+-- stance (sv_responserules.lua) and the grenades (sv_gadgets.lua) gesture too.
 local Controller = ...
 local Gestures = nextsoldier.gestures
 local Speech = nextsoldier.speech

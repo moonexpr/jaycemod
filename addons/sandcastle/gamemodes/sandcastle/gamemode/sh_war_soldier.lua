@@ -387,7 +387,7 @@ function WS.WarSoldier(ENT)
 	function ENT:OnSpotted(ent) Tell(self, "OnSight", ent) end
 	function ENT:OnLost(ent) Tell(self, "OnLostSight", ent) end
 	-- a new enemy: its orders hear of it, and the AI war may have it call it
-	-- out (WSSoldierContact: features/aiwar/sv_speech.lua)
+	-- out (WSSoldierContact: features/aiwar/sv_responserules.lua)
 	function ENT:OnNewEnemy(ent)
 		-- the weapon for it at once: it fires as it calls them out
 		self:NSArm(ent)
