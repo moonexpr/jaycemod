@@ -11,9 +11,12 @@ DeriveGamemode("sandbox")
 
 local PLAYER_CLASSES = {
 	"player_class/player_combatant.lua",
+	"player_class/player_combatant_cstrike.lua",
 	"player_class/player_sandcastle.lua",
 	"player_class/player_spectator.lua",
 }
+
+if SERVER then AddCSLuaFile("player_class/simple_weapon_loadout.lua") end
 
 for _, path in ipairs(PLAYER_CLASSES) do
 	if SERVER then AddCSLuaFile(path) end

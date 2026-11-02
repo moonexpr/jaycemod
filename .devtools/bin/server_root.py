@@ -89,11 +89,21 @@ SERVER_WORKSHOP = {
     "sound_browser": "2718685926",
 }
 # Workshop addons the server needs whether or not the operator subscribed to
-# them, downloaded by steamcmd beside the maps: name -> item id. The hostage
-# models of the hostage rescue mode (features/hostage/resources.lua).
+# them, downloaded by steamcmd beside the maps: name -> item id. Includes the
+# hostage models and the Simple Weapons collection used by the player classes.
 SERVER_DOWNLOADS = {
     "hostage_civilian": "3172805326",  # TF2 Classified Civilian/VIP, its npc_civilian models
     "easy_navmesh_editor": "527885257",
+    # All items in the Simple Weapons collection; only the base, CS:S, and
+    # HL2 Extended packs are used by the player-class loadouts.
+    "simple_weapons": "2821862386",
+    "simple_weapons_css": "2821865508",
+    "simple_weapons_hl2e": "2832566843",
+    "simple_weapons_glowsticks": "2843530927",
+    "simple_weapons_entropy_zero": "2853242748",
+    "simple_weapons_xm25": "2857030603",
+    "simple_weapons_toybox": "3272572694",
+    "simple_weapons_kill_icons": "3461175264",
 }
 # Packs of loose sounds from another app's Workshop, downloaded by steamcmd
 # (steamcmd +login anonymous +workshop_download_item <app> <item> +quit) beside

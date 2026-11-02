@@ -329,8 +329,8 @@ def test_the_override_is_read_from_the_environment(monkeypatch, tmp_path):
 
 
 # Addons the server needs whether or not the operator subscribed to them
-# (SERVER_DOWNLOADS: the hostage models), downloaded by steamcmd beside the
-# maps and mounted from cache/ under their own names.
+# (SERVER_DOWNLOADS), downloaded by steamcmd beside the maps and mounted from
+# cache/ under their own names.
 def test_the_downloaded_addons_land_in_cache_named_for_themselves(layout):
     root = build(layout)
     cache = root / "garrysmod" / "cache"
@@ -339,6 +339,19 @@ def test_the_downloaded_addons_land_in_cache_named_for_themselves(layout):
             assert (cache / f"{name}.gma").read_bytes() == LEGACY_GMA, name
         else:
             assert (cache / f"{name}.gma").resolve() == layout.maps / item / "addon.gma", name
+
+
+def test_the_server_downloads_every_item_in_the_simple_weapons_collection():
+    assert {
+        "simple_weapons": "2821862386",
+        "simple_weapons_css": "2821865508",
+        "simple_weapons_hl2e": "2832566843",
+        "simple_weapons_glowsticks": "2843530927",
+        "simple_weapons_entropy_zero": "2853242748",
+        "simple_weapons_xm25": "2857030603",
+        "simple_weapons_toybox": "3272572694",
+        "simple_weapons_kill_icons": "3461175264",
+    }.items() <= SERVER_DOWNLOADS.items()
 
 
 def test_a_downloaded_addon_not_fetched_is_refused_with_how_to_fetch_it(layout):
