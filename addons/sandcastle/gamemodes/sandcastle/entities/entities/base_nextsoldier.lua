@@ -887,15 +887,55 @@ function ENT:OnSound(ent, sound)
 	self:VisionTell(self.nsVision:Hear(now, ent, sound.Pos, self.nsBetter))
 end
 function ENT:OnLost(ent) end
+
+local STATIC_BRUSHES = { func_brush = true, func_wall = true }
+
+local function StaticMap(ent)
+	return ent:IsWorld() or STATIC_BRUSHES[ent:GetClass()] == true
+end
+
+local function FitsArea(area, mins, maxs, mask)
+	local extent = area:GetExtentInfo()
+	if extent.hi.x - extent.lo.x < maxs.x - mins.x
+		or extent.hi.y - extent.lo.y < maxs.y - mins.y then
+		return false
+	end
+	local center = area:GetCenter()
+	center.z = area:GetZ(center)
+	local start = center + Vector(0, 0, 1)
+	local trace = util.TraceHull({
+		start = start,
+		endpos = start,
+		mins = mins,
+		maxs = maxs,
+		mask = mask,
+		filter = StaticMap,
+	})
+	return not trace.Hit and not trace.StartSolid
+end
+
 -- The path's cost by default: the length of each link, with the class's
 -- OnComputePath added (-1 refuses the link, as DrGBase's contract has it).
-function ENT:GetPathGenerator()
-	return function(area, fromArea, ladder, elevator, length)
+-- Every destination must also fit this entity's collision hull.
+function ENT:GetPathGenerator(cost)
+	local mins, maxs = self:GetCollisionBounds()
+	local mask, clearance = WS.ClipMasks().brushes, {}
+	cost = cost or function(area, fromArea, ladder, elevator, length, fits)
 		if not IsValid(fromArea) then return 0 end
+		if fits == false then return -1 end
 		local extra = self:OnComputePath(fromArea, area)
 		if extra ~= nil and extra < 0 then return -1 end
 		local link = length and length > 0 and length or area:GetCenter():Distance(fromArea:GetCenter())
 		return fromArea:GetCostSoFar() + link + (extra or 0)
+	end
+	return function(area, fromArea, ladder, elevator, length)
+		local fits
+		if IsValid(fromArea) then
+			local id = area:GetID()
+			if clearance[id] == nil then clearance[id] = FitsArea(area, mins, maxs, mask) end
+			fits = clearance[id]
+		end
+		return cost(area, fromArea, ladder, elevator, length, fits)
 	end
 end
 function ENT:OnComputePath(from, to) return nil end

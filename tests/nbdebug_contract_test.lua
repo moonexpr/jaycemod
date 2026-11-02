@@ -7,6 +7,7 @@ local T = dofile("tests/harness.lua")
 local ROOT = T.ROOT
 local COMMANDS = ROOT .. "ws/sv_nbdebug.lua"
 local NEXTSOLDIER = ROOT .. "../entities/entities/base_nextsoldier.lua"
+local WAR_SOLDIER = ROOT .. "ws/sh_war_soldier.lua"
 local PATHFOLLOWER = ROOT .. "../entities/entities/npc_pathfollower.lua"
 
 local function ReadFile(path)
@@ -26,7 +27,8 @@ end
 local controller, view = T.RealmSource("nbdebug", "sv"), T.RealmSource("nbdebug", "cl")
 local shared = T.RealmSource("nbdebug", "sh")
 local aiwar = T.RealmSource("aiwar", "sv")
-local nextsoldier, pathfollower = ReadFile(NEXTSOLDIER), ReadFile(PATHFOLLOWER)
+local nextsoldier, warSoldier = ReadFile(NEXTSOLDIER), ReadFile(WAR_SOLDIER)
+local pathfollower = ReadFile(PATHFOLLOWER)
 
 -- What the nbdebug controller fires, and the AI war's overlay.
 local function Fired()
@@ -92,11 +94,19 @@ T.test("the path follower exposes its Idle and Travel behavior transitions", fun
 	T.eq(pathfollower:find('self:NSDebugBehaviorChanged(previous, "Travel")', 1, true) ~= nil, true, "Travel transition")
 end)
 
-T.test("the path follower uses the combat soldier's path costs without its own hull-based link rejection", function()
+T.test("the shared path generator rejects areas the agent's collision hull cannot fit", function()
+	T.eq(nextsoldier:find("self:GetCollisionBounds()", 1, true) ~= nil, true, "uses the agent's current hull")
+	T.eq(nextsoldier:find("FitsArea(area, mins, maxs, mask)", 1, true) ~= nil, true, "tests destination clearance")
+	T.eq(nextsoldier:find("return cost(area, fromArea, ladder, elevator, length, fits)", 1, true) ~= nil, true, "passes clearance to the cost pipeline")
+	T.eq(nextsoldier:find("if fits == false then return -1 end", 1, true) ~= nil, true, "default generator rejects an unfit area")
+	T.eq(warSoldier:find("Base().GetPathGenerator(self, self.NSPathCost() or NoPath)", 1, true) ~= nil, true, "combat costs go through the shared generator")
+	T.eq(pathfollower:find("FitsArea", 1, true), nil, "the probe adds no clearance rule")
+end)
+
+T.test("the path follower uses the combat soldier's path costs", function()
 	T.eq(pathfollower:find('WS.Feature("aiwar")', 1, true) ~= nil, true, "AI-war path cost provider")
 	T.eq(pathfollower:find("if not aiwar.war then return nil, aiwar end", 1, true) ~= nil, true, "cost provider without active war")
 	T.eq(pathfollower:find("aiwar:SoldierPathCost(team", 1, true) ~= nil, true, "shared soldier path cost")
-	T.eq(pathfollower:find("HasPathClearance", 1, true), nil, "no additional link rejection")
 	T.eq(pathfollower:find("function ENT:OnComputePath", 1, true), nil, "inherits the combat soldier's link rule")
 end)
 

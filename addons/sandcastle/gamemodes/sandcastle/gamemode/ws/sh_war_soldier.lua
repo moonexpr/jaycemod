@@ -577,7 +577,7 @@ function WS.WarSoldier(ENT)
 	local function NoPath(area, fromArea) return fromArea == nil and 0 or -1 end
 	function ENT:GetPathGenerator()
 		if not self.NSPathCost then return Base().GetPathGenerator(self) end
-		return self.NSPathCost() or NoPath
+		return Base().GetPathGenerator(self, self.NSPathCost() or NoPath)
 	end
 
 	-- The base's cost of each link, for a soldier no controller enlisted: none

@@ -244,6 +244,7 @@ function Told(mesh, told)
 	}, ToldClass)
 end
 
+-- The engine's path-cost callback takes an optional sixth hull-fit verdict.
 function Calculator(known, strategy, limits, bot)
 	if getmetatable(known) ~= ToldClass then error("a calculator prices over a Told", 2) end
 	local mesh = known.mesh
@@ -259,7 +260,7 @@ function Calculator(known, strategy, limits, bot)
 		roomOf = {},
 	}, Graph)
 	local step = { hasFrom = true }
-	return function(area, fromArea, ladder, elevator, length)
+	return function(area, fromArea, ladder, elevator, length, fits)
 		if fromArea == nil then return 0 end
 		local from, to = fromArea:GetID(), area:GetID()
 		if ladder ~= nil then
@@ -275,6 +276,7 @@ function Calculator(known, strategy, limits, bot)
 			step.centerDistance = link.distance
 			step.heightChange = link.rise
 		end
+		if fits == false then return Path.IMPASSABLE end
 		step.traversable = graph:Traversable(to)
 		step.length = length or 0
 		step.fromCostSoFar = fromArea:GetCostSoFar()

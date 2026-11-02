@@ -115,8 +115,15 @@ impl Calculator {
     }
 
     /// The total cost of moving from area `from` into `to` with `so_far`
-    /// spent, or IMPASSABLE.
-    pub fn price(&self, from: u32, to: u32, so_far: f64, step: Move) -> Result<f64, CalculatorError> {
+    /// spent, or IMPASSABLE. `fits` is the caller's collision-hull verdict.
+    pub fn price(
+        &self,
+        from: u32,
+        to: u32,
+        so_far: f64,
+        step: Move,
+        fits: bool,
+    ) -> Result<f64, CalculatorError> {
         let known = &*self.known;
         let (distance, rise) = match step {
             Move::Floor { length } => {
@@ -131,6 +138,9 @@ impl Calculator {
         };
         let area = known.area(to)?;
         let index = area as usize;
+        if !fits {
+            return Ok(IMPASSABLE);
+        }
         Ok(self.walker.price(&Step {
             traversable: !known.closed[index],
             room: known.rooms[index],
@@ -176,11 +186,30 @@ mod tests {
         let mut known = Known::new(mesh());
         known.close_link(2, 3).unwrap();
         let calculator = Calculator::new(Arc::new(known), walker());
-        assert_eq!(calculator.price(1, 2, 5.0, Move::Floor { length: -1.0 }), Ok(105.0));
-        assert_eq!(calculator.price(1, 2, 5.0, Move::Floor { length: 40.0 }), Ok(45.0));
-        assert_eq!(calculator.price(2, 3, 0.0, Move::Floor { length: -1.0 }), Ok(IMPASSABLE));
-        assert_eq!(calculator.price(1, 3, 0.0, Move::Floor { length: -1.0 }), Err(CalculatorError::NoSuchLink(1, 3)));
-        assert_eq!(calculator.price(1, 3, 0.0, Move::Ladder { length: 50.0, rise: 30.0 }), Ok(100.0));
+        assert_eq!(
+            calculator.price(1, 2, 5.0, Move::Floor { length: -1.0 }, true),
+            Ok(105.0)
+        );
+        assert_eq!(
+            calculator.price(1, 2, 5.0, Move::Floor { length: 40.0 }, true),
+            Ok(45.0)
+        );
+        assert_eq!(
+            calculator.price(2, 3, 0.0, Move::Floor { length: -1.0 }, true),
+            Ok(IMPASSABLE)
+        );
+        assert_eq!(
+            calculator.price(1, 2, 0.0, Move::Floor { length: -1.0 }, false),
+            Ok(IMPASSABLE)
+        );
+        assert_eq!(
+            calculator.price(1, 3, 0.0, Move::Floor { length: -1.0 }, true),
+            Err(CalculatorError::NoSuchLink(1, 3))
+        );
+        assert_eq!(
+            calculator.price(1, 3, 0.0, Move::Ladder { length: 50.0, rise: 30.0 }, true),
+            Ok(100.0)
+        );
     }
 
     #[test]

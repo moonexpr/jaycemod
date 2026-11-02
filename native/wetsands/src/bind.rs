@@ -672,10 +672,11 @@ unsafe fn area_id(l: L, area: c_int) -> u32 {
 }
 
 /// The calculator's cost function (upvalue 1 the calculator): (area,
-/// fromArea, ladder, elevator, length) -> cost, as Path:Compute calls it.
+/// fromArea, ladder, elevator, length, optional hull-fit verdict) -> cost,
+/// as Path:Compute calls it.
 unsafe extern "C-unwind" fn calculate(l: L) -> c_int {
     let api = api();
-    (api.settop)(l, 5);
+    (api.settop)(l, 6);
     if (api.type_of)(l, 2) == TNIL {
         return number(l, 0.0);
     }
@@ -687,8 +688,9 @@ unsafe extern "C-unwind" fn calculate(l: L) -> c_int {
         Move::Floor { length: (api.tonumber)(l, 5) }
     };
     let so_far = ask_method(l, 2, c"GetCostSoFar", None);
+    let fits = (api.type_of)(l, 6) == TNIL || (api.toboolean)(l, 6) != 0;
     let calculator = &userdata::check::<CalculatorHandle>(l, foundation::lua::GLOBALSINDEX - 1).0;
-    let cost = calculator_ok(l, calculator.price(from, to, so_far, step));
+    let cost = calculator_ok(l, calculator.price(from, to, so_far, step, fits));
     number(l, cost)
 }
 
