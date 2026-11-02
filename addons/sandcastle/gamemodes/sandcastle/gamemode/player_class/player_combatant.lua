@@ -1,4 +1,5 @@
-DEFINE_BASECLASS( "player_base" )
+DEFINE_BASECLASS( "player_sandbox" )
+local PLAYER = {}
 
 function PLAYER:Loadout()
 
@@ -40,4 +41,4 @@ function PLAYER:Loadout()
 	self.Player:SwitchToDefaultWeapon()
 
 end
-player_manager.RegisterClass( "player_combatant", PLAYER, "player_base" )
+player_manager.RegisterClass( "player_combatant", PLAYER, "player_sandbox" )

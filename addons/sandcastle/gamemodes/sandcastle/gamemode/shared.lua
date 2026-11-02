@@ -9,6 +9,17 @@ GM.Website = ""
 
 DeriveGamemode("sandbox")
 
+local PLAYER_CLASSES = {
+	"player_class/player_combatant.lua",
+	"player_class/player_sandcastle.lua",
+	"player_class/player_spectator.lua",
+}
+
+for _, path in ipairs(PLAYER_CLASSES) do
+	if SERVER then AddCSLuaFile(path) end
+	include(path)
+end
+
 -- The gamemode's require, and foundation's namespaces, before anything else.
 include("shared_loader.lua")
 
