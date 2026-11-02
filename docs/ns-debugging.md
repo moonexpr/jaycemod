@@ -95,10 +95,10 @@ return to **Idle** when they reach the goal. Spawned followers are added to
 the player's cleanup list and can be undone with **Z**.
 Scout and Headless Hatman use their `Run_MELEE` animation while moving.
 
-The always-on debug overlay draws the current generated path in thick cyan
-lines, the active lane's waypoints in thicker amber lines, the clicked goal
-in green, and the local movement command as a thick magenta arrow from the
-feet.
+The always-on debug overlay draws the generated path with
+`PathFollower:Draw()` and `debugoverlay`, the active lane's waypoints in amber,
+the clicked goal as a green sphere, and the local movement command as a thick
+magenta arrow from the feet.
 
 ## Inspecting NextSoldiers
 
@@ -106,4 +106,6 @@ feet.
 `base_nextsoldier`, including tool-managed path followers. The existing
 `ws_nb_debug BEHAVIOR|NAV|PATH|COST` layers then show its behavior state,
 nearby nav areas, generated engine path, and the areas considered by its path
-cost callback. AI-war soldiers retain their full action-stack report.
+cost callback. PATH draws the live engine path while it is enabled for a
+NextSoldier, with the goal sphere shown in the viewer's overlay. AI-war
+soldiers retain their full action-stack report.

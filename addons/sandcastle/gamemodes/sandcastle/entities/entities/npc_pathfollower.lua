@@ -23,7 +23,6 @@ WS.WarSoldier(ENT)
 local WarSoldierUpdateAnimation = ENT.OnUpdateAnimation
 
 if CLIENT then
-	local PATH_COLOR = Color(80, 220, 255)
 	local LANE_COLOR = Color(255, 190, 60)
 	local COMMAND_COLOR = Color(255, 90, 210)
 	local TARGET_COLOR = Color(120, 255, 120)
@@ -44,7 +43,6 @@ if CLIENT then
 		self:DrawModel()
 		if not self:GetNW2Bool("NSPathFollowerDebug", false) then return end
 
-		DrawPoints(self.nsDebugPathPoints or {}, PATH_COLOR, 3, 6)
 		DrawPoints(self.nsDebugLanePoints or {}, LANE_COLOR, 5, 8)
 
 		local origin = self:GetPos() + Vector(0, 0, 3)
@@ -77,7 +75,6 @@ local PROGRESS, RECOVER_AFTER, NUDGE_AFTER = 32, 3, 2
 local DROP_MARK = 64
 local DEFAULT_SECONDS = 60
 local REPORTS = "sandcastle/pathfollower/"
-local DEBUG_PATH_SYNC = 0.25
 local DEBUG_COMMAND_SYNC = 0.1
 local MAX_DEBUG_POINTS = 2047
 local debugEventWarningSent = false
@@ -141,25 +138,13 @@ local function LaneRoute(team, from, goal)
 	return best, aiwar
 end
 
-local function PathPoints(path)
-	local points = {}
-	for _, segment in ipairs(path:GetAllSegments()) do
-		points[#points + 1] = Point(segment.pos)
-	end
-	return points
-end
-
-local function EncodePoints(points)
-	return util.TableToJSON(points) or ""
-end
-
 local function EventPoints(points)
 	local result = {}
 	for i = 1, math.min(#points, MAX_DEBUG_POINTS) do result[i] = AsVector(points[i]) end
 	return result
 end
 
-local function SendDebug(self)
+local function SendLaneDebug(self)
 	if not WS.PathFollowerDebugEventReady then
 		if not debugEventWarningSent then
 			ErrorNoHalt("[npc_pathfollower] debug event is not loaded; the overlay needs the gamemode's shared files to reload\n")
@@ -169,7 +154,8 @@ local function SendDebug(self)
 	end
 	WS.Events.Fire("game_ns_pathfollower_debug", {
 		follower = self,
-		path = EventPoints(self.nsDebugPathPoints or {}),
+		-- Keep the event shape stable; PathFollower:Draw handles the live path.
+		path = {},
 		lane = EventPoints(self.nsDebugLanePoints or {}),
 	}, self:GetPos())
 end
@@ -227,10 +213,8 @@ function ENT:NSSetBehavior(name)
 		self.NSPathCost = nil
 		self:SetNW2Vector("NSPathFollowerGoal", vector_origin)
 		self:SetNW2Vector("NSPathFollowerCommand", vector_origin)
-		self.nsDebugPath = ""
-		self.nsDebugPathPoints = {}
 		self.nsDebugLanePoints = {}
-		SendDebug(self)
+		SendLaneDebug(self)
 		self:NSRepath()
 		self.nsFollowedAt = 0
 	elseif name ~= "Travel" then
@@ -249,10 +233,8 @@ function ENT:NSSetGoal(goal)
 	self:SetNW2String("NSPathFollowerBehavior", "Travel")
 	self:SetNW2Vector("NSPathFollowerGoal", goal)
 	self.nsDebugLanePoints = route and route.points or {}
-	self.nsDebugPathPoints = {}
 	self:SetNW2Vector("NSPathFollowerCommand", vector_origin)
-	self.nsDebugPath = ""
-	SendDebug(self)
+	SendLaneDebug(self)
 	self.NSPathCost = nil
 	if aiwar and self.NSLaneTeam ~= nil then
 		local TFBot = WS.require("foundation.wetsands.path.tfbot")
@@ -304,21 +286,11 @@ end
 
 function ENT:NSSyncDebug()
 	local now = CurTime()
-	if now >= (self.nsNextDebugPath or 0) then
-		self.nsNextDebugPath = now + DEBUG_PATH_SYNC
-		local path = self:GetPath()
-		local points = path and path:IsValid() and PathPoints(path) or {}
-		local encoded = EncodePoints(points)
-		if encoded ~= self.nsDebugPath then
-			self.nsDebugPath = encoded
-			self.nsDebugPathPoints = points
-			SendDebug(self)
-		end
-	end
+	local path = self:GetPath()
+	if path and path:IsValid() then path:Draw() end
 
 	if now >= (self.nsNextDebugCommand or 0) then
 		self.nsNextDebugCommand = now + DEBUG_COMMAND_SYNC
-		local path = self:GetPath()
 		local goal = path and path:IsValid() and path:GetCurrentGoal()
 		local target = goal and goal.pos or self.NSTarget
 		local direction = target and (target - self:GetPos()) or vector_origin

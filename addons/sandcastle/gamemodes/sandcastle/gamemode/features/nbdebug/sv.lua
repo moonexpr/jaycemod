@@ -131,6 +131,15 @@ end
 function Controller:ApplyWatches(subs)
 	for ent, bot in pairs(self.bots) do
 		self:SetPathWatch(ent, bot.index, Debug.PathWatch(subs, bot))
+		if ent.IsNextSoldier then
+			ent.NSDebugDrawPath = false
+			for _, sub in ipairs(subs) do
+				if sub:Wants(bot, Debug.PATH) then
+					ent.NSDebugDrawPath = true
+					break
+				end
+			end
+		end
 		self:SetBehaviorWatch(ent, self.npcs[ent], Debug.WatchesBehavior(subs, bot))
 	end
 end
@@ -138,6 +147,7 @@ end
 function Controller:Forget(ent)
 	if self.pathWatches[ent] then WS.Feature("npc"):WatchPaths(ent:EntIndex(), nil) end
 	if IsValid(ent) and ent.IsNextSoldier then ent.NSDebugPathWatch = nil end
+	if IsValid(ent) and ent.IsNextSoldier then ent.NSDebugDrawPath = nil end
 	self.pathWatches[ent], self.reports[ent], self.logs[ent] = nil, nil, nil
 	self.bots[ent], self.npcs[ent] = nil, nil
 	for _, sub in pairs(self.subscriptions) do sub:Forget(ent) end

@@ -79,6 +79,14 @@ T.test("base_nextsoldier reports watched path searches and records the passed co
 	T.eq(nextsoldier:find('hook.Run("WSNpcPathComputed"', 1, true) ~= nil, true, "path report")
 end)
 
+T.test("the PATH layer draws each watched NextSoldier's live engine path and goal sphere", function()
+	T.eq(controller:find("sub:Wants(bot, Debug.PATH)", 1, true) ~= nil, true, "only PATH viewers enable it")
+	T.eq(controller:find("ent.NSDebugDrawPath = true", 1, true) ~= nil, true, "sets the base draw flag")
+	T.eq(nextsoldier:find("if self.NSDebugDrawPath then", 1, true) ~= nil, true, "base draws only while watched")
+	T.eq(nextsoldier:find("path:Draw()", 1, true) ~= nil, true, "engine path overlay")
+	T.eq(view:find("render.DrawWireframeSphere(path.goal", 1, true) ~= nil, true, "client goal sphere")
+end)
+
 T.test("the path follower exposes its Idle and Travel behavior transitions", function()
 	T.eq(pathfollower:find("self:NSDebugBehaviorChanged(previous, name)", 1, true) ~= nil, true, "Idle transition")
 	T.eq(pathfollower:find('self:NSDebugBehaviorChanged(previous, "Travel")', 1, true) ~= nil, true, "Travel transition")

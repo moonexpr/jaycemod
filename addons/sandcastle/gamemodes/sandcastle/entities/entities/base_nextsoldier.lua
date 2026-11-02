@@ -342,6 +342,10 @@ end
 -- Locomotion's update, every tick (TF2's ILocomotion::Update): a scramble
 -- under way, else the path its intention follows.
 function ENT:Think()
+	if self.NSDebugDrawPath then
+		local path = self.nsPath
+		if path and path:IsValid() then path:Draw() end
+	end
 	if self:IsAlive() and not self:ScrambleUpdate() then
 		local path = self.nsPath
 		if path and path:IsValid() and CurTime() - (self.nsFollowedAt or 0) <= FOLLOW_HOLD then path:Update(self) end
