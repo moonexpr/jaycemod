@@ -96,6 +96,26 @@ T.test("the root returns a table", function()
 	T.eq(type(controller), "table", "the controller")
 end)
 
+T.test("a map loaded in Sandbox holds spawn doors open", function()
+	local started, openedAt
+	local map = Load({
+		ents = { FindByClass = function() return {} end },
+	}, {
+		Feature = function(name)
+			T.eq(name, "gamemode", "loaded feature")
+			return { StartAtLoad = function() started = true end }
+		end,
+	})
+	map.rounds = true
+	map.round = { Halted = function() return true end }
+	map.EnsureProxy = function() end
+	map.ActivateTimers = function() end
+	map.OpenSpawnDoors = function(_, now) openedAt = now end
+	map:SetUpMap()
+	T.eq(started, true, "Sandbox mode initialized")
+	T.eq(openedAt, 0, "spawn doors opened at map setup")
+end)
+
 T.test("no wiring key is registered twice", function()
 	local duplicates = wiring:Duplicates()
 	T.eq(#duplicates, 0, "duplicates (" .. table.concat(duplicates, ", ") .. ")")

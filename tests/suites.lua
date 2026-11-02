@@ -101,7 +101,7 @@ return {
 			G .. "includes/sound_paths.lua", G .. "includes/soundscapes.lua",
 			G .. "includes/tf_hud.lua", G .. "includes/tf_materials.lua",
 			G .. "includes/voices.lua", G .. "includes/vote_hud.lua",
-			E .. "entities/ws_editor", E .. "entities/ws_gameplay_settings", E .. "entities/ws_proxy",
+			E .. "entities/info_ladder", E .. "entities/ws_editor", E .. "entities/ws_gameplay_settings", E .. "entities/ws_proxy",
 		},
 	},
 	{
