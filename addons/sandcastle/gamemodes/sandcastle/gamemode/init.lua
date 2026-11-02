@@ -78,6 +78,9 @@ end
 
 -- CTFPlayer::Event_Killed drops an ammo pack where the player died.
 function GM:DoPlayerDeath(ply, attacker, dmg)
+	if ply:Team() == WS.TEAM_SPECTATOR or player_manager.GetPlayerClass(ply) == "player_spectator" then
+		dmg:SetDamageType(bit.bor(dmg:GetDamageType(), DMG_REMOVENORAGDOLL))
+	end
 	self.BaseClass.DoPlayerDeath(self, ply, attacker, dmg)
 	if WS.Active() and not ply.wsChangingTeam then WS.DropAmmoPack(ply) end
 end
