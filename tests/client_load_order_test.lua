@@ -105,7 +105,7 @@ end)
 
 T.test("a module failing at load is reported and every other still loads", function()
 	local all = clientOrder()
-	for _, failing in ipairs({ "ws/cl_ui.lua", "ws/cl_freeze_panel.lua", all[#all] }) do
+	for _, failing in ipairs({ "ws/cl_ui.lua", "ws/cl_teams.lua", all[#all] }) do
 		local order, reported = clientOrder(failing)
 		T.eq(#order, #all, failing .. " failing: every module still included")
 		T.eq(#reported, 1, failing .. " failing: reported once")

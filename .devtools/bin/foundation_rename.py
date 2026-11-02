@@ -178,7 +178,6 @@ MOVES = tuple(
         ("rounds/limits", "gameplay/rounds/limits"),
         ("teams", "gameplay/teams"),
         ("spawn", "gameplay/spawn"),
-        ("spectate", "gameplay/spectate"),
         ("respawn_modifiers", "gameplay/respawn_modifiers"),
         ("arrivals", "gameplay/arrivals"),
         ("loadout", "gameplay/loadout"),

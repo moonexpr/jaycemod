@@ -83,15 +83,6 @@ local function Living(ent, ply)
 	return OtherPlayer(ent, ply) and ent:Alive()
 end
 
-WS.AdminProperty("ws_admin_spectate", {
-	label = "Spectate",
-	icon = "icon16/eye.png",
-	order = ORDER,
-	privilege = PLAYERS,
-	filter = Living,
-	run = function(ply, ent) WS.SpectateNpc(ply, ent) end,
-})
-
 WS.AdminProperty("ws_admin_bring", {
 	label = "Bring",
 	icon = "icon16/arrow_in.png",

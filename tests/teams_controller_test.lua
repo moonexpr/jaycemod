@@ -29,11 +29,10 @@ local function Load(active, choice)
 		ForceAutoTeam = { GetBool = function() return false end },
 		AllowSpectators = { GetBool = function() return true end },
 		JoinTeamFaction = function() end,
-		StartObserving = function() end,
-		StopObserving = function() end,
 	}
 	local env = setmetatable({
 		WS = ws,
+		player_manager = { SetPlayerClass = function(ply, class) ply.playerClass = class end },
 		hook = {
 			Add = function(event, id, fn)
 				hooks[event] = hooks[event] or {}
@@ -49,9 +48,11 @@ local function Load(active, choice)
 		CreateConVar = function() return { GetBool = function() return true end } end,
 		FCVAR_NOTIFY = 256,
 		IsValid = function(v) return v ~= nil end,
+		OBS_MODE_FIXED = 1,
+		OBS_MODE_ROAMING = 5,
 	}, { __index = _G })
 	setfenv(assert(loadfile(SOURCE)), env)()
-	local world = { hooks = hooks, commands = commands }
+	local world = { hooks = hooks, commands = commands, ws = ws }
 	-- every hook on event, as GMod calls them
 	function world:Call(event, ...)
 		for _, fn in pairs(self.hooks[event] or {}) do fn(...) end
@@ -73,6 +74,10 @@ local function Player(own, current)
 	}
 	function ply:Team() return self.team end
 	function ply:SetTeam(t) self.team = t end
+	function ply:Spectate(mode) self.observerMode = mode end
+	function ply:UnSpectate() self.observerMode = nil end
+	function ply:Alive() return self.alive == true end
+	function ply:KillSilent() self.alive = false end
 	return ply
 end
 
@@ -108,10 +113,20 @@ end)
 T.test("with team play off but team choice on, jointeam puts a player on the team", function()
 	local world = Load(false, true)
 	local ply = Player(Teams.UNASSIGNED, Teams.UNASSIGNED)
-	function ply:Alive() return true end
-	function ply:KillSilent() end
+	ply.alive = true
 	world.commands.jointeam(ply, "jointeam", { "red" })
 	T.eq(ply:Team(), Teams.RED, "on RED")
+	T.eq(ply.observerMode, nil, "leaves native observer mode")
+end)
+
+T.test("unassigned and spectator teams use native fixed and roaming observer modes", function()
+	local world = Load(true)
+	local ply = Player(Teams.RED, Teams.RED)
+	world.ws.SetPlayerTeam(ply, Teams.UNASSIGNED, true)
+	T.eq(ply.playerClass, "player_spectator", "unassigned spectator class")
+	T.eq(ply.observerMode, 1, "unassigned fixed observer")
+	world.ws.SetPlayerTeam(ply, Teams.SPECTATOR, true)
+	T.eq(ply.observerMode, 5, "spectator team roaming observer")
 end)
 
 T.test("without team choice, jointeam changes nothing", function()

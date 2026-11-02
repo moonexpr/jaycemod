@@ -50,7 +50,6 @@ start with `addons/`, `tests/`, `docs/` or `.devtools/`.
 ### 1.2 What the C menu has today
 
 - **Properties** (right-click an entity while holding C):
-  - `ws_spectate_npc`: admin, living NPC or NextBot (`ws/cl_spectate.lua:132`).
   - `ws_nb_select` and `ws_nb_debug`: superadmin or listen host, NextBots (`ws/cl_nb_menu.lua:122,132`).
   - Editor actions on `ws_editor` entities, payload carts and control points: admin, through `WS.EditorAction` (`ws/sh_editors.lua:10`).
 - **None of these**: `list.Set("DesktopWindows", ...)`, a `PopulateMenuBar` hook, or `ContextMenuOpen`, `OnContextMenuOpen` or `ContextMenuShowTool` hooks.

@@ -64,7 +64,7 @@ New modules need no wiring: drop a correctly prefixed file into gamemode/ws/, or
 | **A payload** | entities: team_train_watcher, trigger_capture_area, mapobj_cart_dispenser, dispenser_touch_trigger, NEW tf_logic_multiple_escort; modules: cl_hud.lua, NEW sv_payload*/cl_payload*/foundation/payload*, foundation/capture |
 | **B rounds** | entities: tf_gamerules, team_round_timer, team_control_point_master, team_control_point_round, game_round_win, NEW game_forcerespawn, NEW tf_logic_holiday; modules: sv_controlpoint.lua, cl_announcer.lua, NEW sv_rounds*/cl_rounds*/foundation/rounds* |
 | **C players** | entities: func_regenerate, func_respawnroom, func_respawnroomvisualizer, func_nobuild, ws_brush_volume, ws_inert_point, ws_pickup_base, ws_trigger_volume, item_*, filter_activator_tfteam, NEW misc (trigger_stun, trigger_add/remove_tf_player_condition, trigger_catapult if GMod lacks it, func_nogrenades, bot_hint_*/func_nav_*/func_tfbot_hint no-ops, entity_spawn_point/manager, tf_ammo_pack); modules: sv_world.lua, sh_core.lua, gamemode/init.lua, NEW sv_teams*/cl_teams*/foundation/teams, foundation/spawn, foundation/players |
-| **D spectator** | entities: info_observer_point; modules: NEW sv_spectate*/cl_spectate*/foundation/spectate* (hooks only; no GM overrides) |
+| **D spectator** | no custom observer entity or controller; GMod's native observer modes and player classes |
 | integrator | gamemode/shared.lua, gamemode/cl_init.lua, sh_soundscripts.lua, docs/, .devtools/ |
 
 ## Interfaces
@@ -88,8 +88,7 @@ New, each provided by its owner exactly as named (others may call them):
 - **B** hook `WSOvertime(active)` when the timer enters/leaves overtime.
 - **C** `WS.SetPlayerTeam(ply, team)`: the one way to change a player's TF2 team (TF2 semantics: a live player switching teams dies and respawns with the waves; spectator).
 - **C** `WS.RoundSpawnFilter` is not an API; C decides spawn selection per round from `WS.CurrentRound()`.
-- **D** `WS.StartObserving(ply)` / `WS.StopObserving(ply)`: put a player into / out of observer mode (dead players and the spectator team). C's `WS.SetPlayerTeam` calls them for team 1.
-- **D** `WS.SetRequiredObserverTarget(name)` (name, or "" to clear): B's tf_gamerules input SetRequiredObserverTarget calls it.
+- **D** provides no observer API. `GM:DoPlayerDeath`, `GM:PlayerSpawn`, and `WS.SetPlayerTeam` select player classes and use GMod's native `Spectate`/`UnSpectate` behavior.
 - **A** each watcher entity: `:TimerMayExpire()`, `:IsWatching(train)`, `:SetNumTrainCappers(num, area)` (existing).
 
 ## Networked keys (Global2 vars)

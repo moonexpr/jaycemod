@@ -122,7 +122,6 @@ local GAMES = {
 	["gameplay/player_analytics"] = "gameplay",
 	["gameplay/respawn_modifiers"] = "gameplay",
 	["gameplay/spawn"] = "gameplay",
-	["gameplay/spectate"] = "gameplay",
 	["gameplay/economy"] = "gameplay",
 	["gameplay/arrivals"] = "gameplay",
 	["gameplay/reports"] = "gameplay",

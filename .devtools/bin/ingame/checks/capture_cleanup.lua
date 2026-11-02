@@ -1,7 +1,6 @@
 -- A map cleanup outside a round reset (game.CleanUpMap: an admin's cleanup,
 -- or any path that skips RoundSpawn) recreates every team_control_point;
--- the capture set must hold the new entities, or the spectator's
--- observer-point descriptor indexes a missing point (capture.lua's Owner).
+-- the capture set must hold the new entities.
 local POINT_CLASS = "team_control_point"
 local SETTLE = 1
 
@@ -20,12 +19,4 @@ return function(t)
 	t:Check("every " .. POINT_CLASS .. " is in the capture set after a cleanup", #missing == 0,
 		string.format("%d of %d missing: %s", #missing, #points, table.concat(missing, ", ")))
 
-	for _, observer in ipairs(ents.FindByClass("info_observer_point")) do
-		local point = observer:AssociatedEntity()
-		if IsValid(point) and point:GetClass() == POINT_CLASS then
-			local ok, owner = pcall(capture.Owner, capture, point)
-			t:Check("the owner of " .. tostring(point) .. " (an observer point's) is known", ok and owner ~= nil,
-				tostring(owner))
-		end
-	end
 end

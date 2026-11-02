@@ -51,12 +51,14 @@ return {
 		tests = {
 			"rounds_*", "gamemode_ready", "gamemode_round_players_ready", "gamemode_tournament", "gameplay",
 			"games_gameplay_rounds_*", "games_gameplay_capture_*", "capture_*", "objective_snapshots", "koth", "flag",
-			"mvm", "payload_mode", "spawn_*", "spectate_controller", "teams_controller", "players_teams*",
+			"mvm", "payload_mode", "spawn_*", "teams_controller", "players_teams*",
 			"features_rounds_*", "features_capture_*", "features_arena_*", "features_payload_*",
 		},
 		sources = {
-			G .. "games/gameplay/rounds", G .. "games/gameplay/capture", G .. "games/gameplay/spawn", G .. "games/gameplay/spectate",
+			G .. "games/gameplay/rounds", G .. "games/gameplay/capture", G .. "games/gameplay/spawn",
 			G .. "games/gameplay/teams",
+			G .. "init.lua", G .. "player_class/",
+			G .. "ws/sv_spawn_manager.lua", G .. "ws/sv_teams.lua",
 			G .. "features/rounds/", G .. "features/capture/", G .. "features/koth/", G .. "features/flag/",
 			G .. "features/payload/", G .. "features/arena/", G .. "features/mvm/", G .. "features/gamemode/",
 			"tests/fake_objective.lua", "tests/fake_points.lua",
@@ -81,7 +83,7 @@ return {
 		tests = {
 			"ws_*", "proxy", "proxy_registry", "radio_gesture", "match_control", "players_menu", "ui",
 			"admin_properties", "permissions_adapter", "editor_*", "gameplay_settings", "tf_hud", "tf_materials",
-			"vote_hud", "votes_controller", "freeze_panel", "sound_paths", "voices_controller", "nav_generate",
+			"vote_hud", "votes_controller", "sound_paths", "voices_controller", "nav_generate",
 			"nav_progress_replay",
 		},
 		sources = { G .. "ws/", E .. "entities/ws_editor", E .. "entities/ws_gameplay_settings", E .. "entities/ws_proxy" },
@@ -102,7 +104,7 @@ return {
 		},
 		sources = {
 			"tests/harness.lua", "tests/suites.lua", "tests/fixtures/", "addons/sandcastle_dev/", ".devtools/bin/",
-			"addons/sandcastle/cfg/", G .. "init.lua", G .. "cl_init.lua", G .. "shared.lua",
+			"addons/sandcastle/cfg/", G .. "cl_init.lua", G .. "shared.lua",
 		},
 	},
 }

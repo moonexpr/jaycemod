@@ -235,12 +235,6 @@ local function OpenMenu(list, side, node)
 		Run("mp_aiwar_slots_remove", unpack(ids))
 		Pick(list, side, {})
 	end):SetIcon(ICONS.remove)
-	-- a bot player is watched as any player is, not by ws_spectate_npc
-	local holder = #soldiers == 1 and Entity(soldiers[1].index)
-	if holder and not (IsValid(holder) and holder:IsPlayer()) then
-		menu:AddSpacer()
-		menu:AddOption("Spectate NPC", function() Run("ws_spectate_npc", soldiers[1].index) end):SetIcon("icon16/eye.png")
-	end
 	-- one soldier: the debugging its NPC's own context menu offers
 	if #soldiers == 1 and WS.NpcDebugAllowed(LocalPlayer()) then
 		WS.NpcSelectOption(menu, soldiers[1].index)

@@ -4,7 +4,7 @@
 -- spawns them with WS.Respawn; GMod's own spawns, respawn clicks and team
 -- requests pass the gate's hooks. A lock (WS.LockSpawns: the nav mesh being
 -- generated, ws/sv_nav.lua) holds everyone back, a player who would spawn
--- watching meanwhile; lifting it (WS.UnlockSpawns) spawns all of them.
+-- uses native observer mode meanwhile; lifting it (WS.UnlockSpawns) spawns all of them.
 -- Every client is told the lock (the global ws_spawn_lock) and each player
 -- why they are not spawning (WS.SetSpawnStatus), for ws/sh_spawn_manager.lua
 -- to put in words.
@@ -33,7 +33,7 @@ function WS.UnlockSpawns(lock)
 	Publish()
 	for _, ply in ipairs(released) do
 		if IsValid(ply) then
-			WS.StopObserving(ply)
+			ply:UnSpectate()
 			ply:Spawn()
 		end
 	end
@@ -62,7 +62,9 @@ end
 
 hook.Add("PlayerSpawn", "ws_spawn_manager", function(ply)
 	if manager:Admit(ply) then return end
-	WS.StartObserving(ply)
+	player_manager.SetPlayerClass(ply, "player_spectator")
+	ply:StripWeapons()
+	ply:Spectate(ply:Team() == TEAM_SPECTATOR and OBS_MODE_ROAMING or OBS_MODE_FIXED)
 	return true
 end)
 

@@ -30,20 +30,25 @@ function GM:PlayerInitialSpawn(ply, transition)
 end
 
 function GM:PlayerSpawn(ply, transition)
-	if not WS.TeamPlay() then
+	local teamPlay = WS.TeamPlay()
+	local spectator = teamPlay and (ply.wsTeam == WS.TEAM_UNASSIGNED
+		or ply:Team() == WS.TEAM_UNASSIGNED or ply:Team() == WS.TEAM_SPECTATOR)
+	local class = WS.PlayMode() == system.play_mode.SANDBOX and "player_sandcastle"
+		or spectator and "player_spectator"
+		or "player_combatant"
+	player_manager.SetPlayerClass(ply, class)
+
+	if not teamPlay then
 		self.BaseClass.PlayerSpawn(self, ply, transition)
 		WS.ApplyMovement(ply)
 		return
 	end
-	-- CTFPlayer::StateEnterWELCOME: a player without a team is an observer,
-	-- never a live Sandbox player.
-	if ply.wsTeam == WS.TEAM_UNASSIGNED then
-		WS.StartObserving(ply)
-	else
-		self.BaseClass.PlayerSpawn(self, ply, transition)
-		WS.ApplyMovement(ply)
-		if ply:Team() == WS.TEAM_SPECTATOR then WS.StartObserving(ply) end
+	if spectator then
+		self.BaseClass.PlayerSpawnAsSpectator(self, ply)
+		return
 	end
+	self.BaseClass.PlayerSpawn(self, ply, transition)
+	WS.ApplyMovement(ply)
 	-- another addon's team change is undone by ws/sv_teams.lua's hooks
 end
 
@@ -78,9 +83,8 @@ end
 
 -- CTFPlayer::Event_Killed drops an ammo pack where the player died.
 function GM:DoPlayerDeath(ply, attacker, dmg)
-	if ply:Team() == WS.TEAM_SPECTATOR or player_manager.GetPlayerClass(ply) == "player_spectator" then
-		dmg:SetDamageType(bit.bor(dmg:GetDamageType(), DMG_REMOVENORAGDOLL))
-	end
+	player_manager.SetPlayerClass(ply, "player_spectator")
+	dmg:SetDamageType(bit.bor(dmg:GetDamageType(), DMG_REMOVENORAGDOLL))
 	self.BaseClass.DoPlayerDeath(self, ply, attacker, dmg)
 	if WS.Active() and not ply.wsChangingTeam then WS.DropAmmoPack(ply) end
 end

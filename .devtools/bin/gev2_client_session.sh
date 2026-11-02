@@ -5,7 +5,7 @@
 #   gev2_client_session.sh [--dry-run] t1     T1
 #   gev2_client_session.sh [--dry-run] t2t4   T2 and T4
 #
-# t1:   set the sent- markers in ws/cl_spectate.lua (include) and
+# t1:   set the sent- markers in ws/cl_teams.lua (include) and
 #       features/capture/cl.lua (CompileFile); srcds.py start --map
 #       koth_viaduct --no-lua-refresh; the server half of client_t1; rewrite
 #       both markers to disk-; gmod_client.py start; the client half.
@@ -69,7 +69,7 @@ GONE_WAIT="${GEV2_SESSION_GONE_WAIT:-30}"  # s for gmod_win64.exe and its launch
 export GIT_OPTIONAL_LOCKS=0                # git status never takes main's index.lock
 
 readonly GAMEMODE="$MAIN/addons/sandcastle/gamemodes/sandcastle/gamemode"
-readonly SPECTATE="$GAMEMODE/ws/cl_spectate.lua"
+readonly TEAM_MENU="$GAMEMODE/ws/cl_teams.lua"
 readonly CAPTURE="$GAMEMODE/features/capture/cl.lua"
 readonly CAPTURE_REFRESH="gamemodes/sandcastle/gamemode/features/capture/cl.lua"  # lua_refresh_file's form (research §3)
 readonly MAP="koth_viaduct"
@@ -216,12 +216,12 @@ cleanup() {
 
 session_t1() {
   local nonce=$1
-  run tool gev2_marker.py set "$SPECTATE" "WS_T1_INCLUDE = \"sent-$nonce\""
+  run tool gev2_marker.py set "$TEAM_MENU" "WS_T1_INCLUDE = \"sent-$nonce\""
   run tool gev2_marker.py set "$CAPTURE" "WS_T1_COMPILE = \"sent-$nonce\""
   run tool srcds.py start --map "$MAP" --no-lua-refresh
   run tool gev2_probe.py run client_t1
   run tool gev2_marker.py restore
-  run tool gev2_marker.py set "$SPECTATE" "WS_T1_INCLUDE = \"disk-$nonce\""
+  run tool gev2_marker.py set "$TEAM_MENU" "WS_T1_INCLUDE = \"disk-$nonce\""
   run tool gev2_marker.py set "$CAPTURE" "WS_T1_COMPILE = \"disk-$nonce\""
   client_start
   run tool gev2_probe.py run --client client_t1

@@ -58,7 +58,8 @@ function WS.SetPlayerTeam(ply, newTeam, force)
 		-- HandleCommand_JoinTeam: a live player dies before becoming a spectator.
 		if not force and Playing(old) and ply:Alive() then Die(ply) end
 		ply:SetTeam(newTeam)
-		WS.StartObserving(ply)
+		player_manager.SetPlayerClass(ply, "player_spectator")
+		ply:Spectate(newTeam == UNASSIGNED and OBS_MODE_FIXED or OBS_MODE_ROAMING)
 		return
 	end
 	ply:SetTeam(newTeam)
@@ -66,7 +67,7 @@ function WS.SetPlayerTeam(ply, newTeam, force)
 		-- The engine needs a spawn or a kill after leaving observer mode; the
 		-- player waits, dead, for the new team's respawn wave. The kill comes
 		-- after the team change so the wave is the new team's.
-		WS.StopObserving(ply)
+		ply:UnSpectate()
 		if ply:Alive() then
 			ply.wsChangingTeam = true
 			ply:KillSilent()

@@ -75,7 +75,7 @@ class Session:
         gamemode = self.main / "addons" / "sandcastle" / "gamemodes" / "sandcastle" / "gamemode"
         (gamemode / "ws").mkdir(parents=True)
         (gamemode / "features" / "capture").mkdir(parents=True)
-        (gamemode / "ws" / "cl_spectate.lua").write_text("local lastMode\n")
+        (gamemode / "ws" / "cl_teams.lua").write_text("local lastMode\n")
         (gamemode / "features" / "capture" / "cl.lua").write_text("local View = {}\nreturn View\n")
         git(self.main, "init", "-q")
         git(self.main, "add", "-A")
@@ -175,9 +175,9 @@ def test_t1_runs_its_steps_in_order_then_cleans_up_in_order(session):
     ] + CLEANUP
     calls = session.calls()
     assert "--no-lua-refresh" in calls[4] and "koth_viaduct" in calls[4]
-    spectate = str(session.main / "addons/sandcastle/gamemodes/sandcastle/gamemode/ws/cl_spectate.lua")
+    team_menu = str(session.main / "addons/sandcastle/gamemodes/sandcastle/gamemode/ws/cl_teams.lua")
     capture = str(session.main / "addons/sandcastle/gamemodes/sandcastle/gamemode/features/capture/cl.lua")
-    assert calls[2].startswith(f"gev2_marker.py set {spectate} WS_T1_INCLUDE = \"sent-")
+    assert calls[2].startswith(f"gev2_marker.py set {team_menu} WS_T1_INCLUDE = \"sent-")
     assert calls[3].startswith(f"gev2_marker.py set {capture} WS_T1_COMPILE = \"sent-")
     assert "\"disk-" in calls[7] and "\"disk-" in calls[8]
     assert calls[5] == "gev2_probe.py run client_t1"

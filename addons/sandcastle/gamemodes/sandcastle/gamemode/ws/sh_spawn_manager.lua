@@ -6,8 +6,7 @@
 local S = system.spawn_manager
 
 -- Why ply is held out of play (games.system.spawn_manager's Reason), NONE
--- when nothing holds them: the server spawns a watcher held for nothing
--- (ws/sv_spectate.lua), and the client says the reason (SpawnMessage).
+-- when nothing holds them; the client says the reason (SpawnMessage).
 function WS.HoldReason(ply)
 	local team = ply:Team()
 	return S.Reason({

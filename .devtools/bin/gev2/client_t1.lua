@@ -19,12 +19,12 @@ local DIR = "ws_tests/gev2/"
 local SERVER_LIST = DIR .. "out/" .. NAME .. ".txt"
 local CACHE_PATH = "MOD" -- garrysmod/; the research timed GAME at 463 ms for 191 misses
 local MARKERS = {
-	"WS_T1_INCLUDE", -- ws/cl_spectate.lua, include
+	"WS_T1_INCLUDE", -- ws/cl_teams.lua, include
 	"WS_T1_COMPILE", -- features/capture/cl.lua, the feature loader's CompileFile
 	"WS_T1_REQUIRE", -- optional: a foundation module, WS.require's CompileFile (set as _G.WS_T1_REQUIRE)
 }
 local MARKED_KEYS = {
-	"gamemode/ws/cl_spectate.lua",
+	"gamemode/ws/cl_teams.lua",
 	"gamemode/features/capture/cl.lua",
 }
 local folder = GAMEMODE.FolderName

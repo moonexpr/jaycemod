@@ -399,7 +399,6 @@ local PROXY_INPUTS = {
 	setblueteamrole = RoleSetter(BLUE),
 	addredteamscore = ScoreAdder(RED),
 	addblueteamscore = ScoreAdder(BLUE),
-	setrequiredobservertarget = function(self, v) WS.SetRequiredObserverTarget(tostring(v or "")) end,
 	setstalemateontimelimit = function(self, v)
 		self.round:SetStalemateOnTimelimit(tonumber(v) == 1 or tostring(v) == "true")
 	end,
