@@ -13,33 +13,14 @@ local ENTITY_CLASSES = {
 	"base_cstrike_grenade", "hegrenade_projectile", "flashbang_projectile", "smokegrenade_projectile",
 }
 
-local function LoadAddon(server)
-	local weapons, entities, sent = {}, {}, {}
-	local env
-	local function Include(path)
-		local chunk = assert(loadfile(LUA_ROOT .. path), path)
-		setfenv(chunk, env)
-		chunk()
-	end
-	local function Register(registry, definition, class, label)
-		T.eq(type(definition), "table", label .. " definition")
-		if definition.Base and definition.Base ~= "weapon_base" then
-			T.eq(registry[definition.Base] ~= nil, true, label .. " registers after its base")
-		end
-		registry[class] = definition
-	end
-
-	env = setmetatable({
-		SERVER = server,
-		CLIENT = not server,
-		AddCSLuaFile = function(path) sent[path or "<autorun>"] = true end,
-		include = Include,
-		weapons = { Register = function(definition, class)
-			Register(weapons, definition, class, "weapon " .. class)
-		end },
-		scripted_ents = { Register = function(definition, class)
-			Register(entities, definition, class, "entity " .. class)
-		end },
+local function LoadDefinition(kind, class)
+	local sent = false
+	local env = {
+		SWEP = {},
+		ENT = {},
+		SERVER = true,
+		CLIENT = false,
+		AddCSLuaFile = function() sent = true end,
 		game = { AddAmmoType = function() end },
 		Model = function(model) return { precached = model } end,
 		Material = function(material) return { name = material } end,
@@ -56,45 +37,39 @@ local function LoadAddon(server)
 		HITGROUP_LEFTLEG = 6,
 		HITGROUP_RIGHTLEG = 7,
 		HITGROUP_GEAR = 10,
-	}, { __index = _G })
-
-	local chunk = assert(loadfile(LUA_ROOT .. "autorun/cstrike_weapons.lua"))
-	setfenv(chunk, env)
-	chunk()
-	return weapons, entities, sent
+	}
+	setmetatable(env, { __index = _G })
+	local path = LUA_ROOT .. kind .. "/" .. class .. ".lua"
+	local chunk = assert(loadfile(path), "standard GMod definition path missing: " .. path)
+	setfenv(chunk, env)()
+	T.eq(sent, true, path .. " sends its shared definition to clients")
+	return kind == "weapons" and env.SWEP or env.ENT
 end
 
-T.test("the cstrike_weapons addon registers and distributes its classes", function()
-	for _, server in ipairs({ true, false }) do
-		local weapons, entities, sent = LoadAddon(server)
-		for _, class in ipairs(WEAPON_BASES) do
-			T.eq(weapons[class] ~= nil, true, class .. " is registered")
-		end
-		for _, class in ipairs(WEAPON_CLASSES) do
-			T.eq(weapons[class] ~= nil, true, class .. " is registered")
-			T.eq(weapons[class].CStrikeWeapon, true, class .. " is a CS:S weapon")
-		end
-		for _, class in ipairs(ENTITY_CLASSES) do
-			T.eq(entities[class] ~= nil, true, class .. " is registered")
-		end
+T.test("the cstrike_weapons addon uses GMod's standard auto-loaded folders", function()
+	local addon = assert(io.open("addons/cstrike_weapons/addon.json"))
+	local metadata = addon:read("*a")
+	addon:close()
+	T.eq(metadata:find('"type": "weapon"', 1, true) ~= nil, true, "Workshop metadata uses the weapon type")
 
-		local expected_files = 0
-		for _, class in ipairs(WEAPON_BASES) do
-			expected_files = expected_files + 1
-			T.eq(sent["cstrike_weapons/weapons/" .. class .. ".lua"] == true, server, class .. " distribution")
+	local weapons = {}
+	for _, class in ipairs(WEAPON_BASES) do
+		weapons[class] = LoadDefinition("weapons", class)
+	end
+	for _, class in ipairs(WEAPON_CLASSES) do
+		weapons[class] = LoadDefinition("weapons", class)
+		T.eq(weapons[class].CStrikeWeapon, true, class .. " is a CS:S weapon")
+		if weapons[class].Base ~= "weapon_base" then
+			T.eq(weapons[weapons[class].Base] ~= nil, true, class .. " uses a base loaded from lua/weapons")
 		end
-		for _, class in ipairs(WEAPON_CLASSES) do
-			expected_files = expected_files + 1
-			T.eq(sent["cstrike_weapons/weapons/" .. class .. ".lua"] == true, server, class .. " distribution")
-		end
-		for _, class in ipairs(ENTITY_CLASSES) do
-			expected_files = expected_files + 1
-			T.eq(sent["cstrike_weapons/entities/" .. class .. ".lua"] == true, server, class .. " distribution")
-		end
-		T.eq(sent["<autorun>"] == true, server, "autorun distribution")
-		local sent_count = 0
-		for _ in pairs(sent) do sent_count = sent_count + 1 end
-		T.eq(sent_count, server and expected_files + 1 or 0, "only server distributes shared files")
+	end
+
+	local entities = {}
+	for _, class in ipairs(ENTITY_CLASSES) do
+		entities[class] = LoadDefinition("entities", class)
+	end
+	for _, class in ipairs({ "hegrenade_projectile", "flashbang_projectile", "smokegrenade_projectile" }) do
+		T.eq(entities[entities[class].Base] ~= nil, true, class .. " uses the base loaded from lua/entities")
 	end
 end)
 

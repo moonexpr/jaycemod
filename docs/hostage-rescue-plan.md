@@ -111,11 +111,11 @@ textures), with CS:S's sounds.
   `base_cstrike_melee` and `base_cstrike_grenade`. The shared bases implement
   firing, melee hit simulation and grenade throwing. View and world models
   are wrapped with `Model(...)` for precaching. The standalone
-  `cstrike_weapons` addon registers these definitions from its autorun file,
-  including the grenade projectiles, and sends their shared Lua files to
-  clients. Their original class names keep them available to NextSoldier's
-  `ents.Create` path. There is no class-keyed stats registry or extraction
-  from `weapons.GetStored`.
+  `cstrike_weapons` addon places SWEPs and grenade entities in GMod's
+  automatically loaded `lua/weapons/` and `lua/entities/` folders and sends
+  their shared Lua files to clients. Their original class names keep them
+  available to NextSoldier's `ents.Create` path. There is no class-keyed
+  stats registry or extraction from `weapons.GetStored`.
 - **The accuracy model** follows CS:S's scripts: a shot's inaccuracy is the
   penalty, plus movement past a third of the
   weapon's speed, plus the air or a ladder; each shot adds its fire penalty
