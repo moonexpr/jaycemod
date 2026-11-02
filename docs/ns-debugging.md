@@ -99,6 +99,8 @@ The always-on debug overlay draws the generated path with
 `PathFollower:Draw()` and `debugoverlay`, the active lane's waypoints in amber,
 the clicked goal as a green sphere, and the local movement command as a thick
 magenta arrow from the feet.
+Console errands (`ns_pathfollower_send`) do not hop toward the raw goal when
+their failed search has no reachable waypoint.
 
 ## Inspecting NextSoldiers
 

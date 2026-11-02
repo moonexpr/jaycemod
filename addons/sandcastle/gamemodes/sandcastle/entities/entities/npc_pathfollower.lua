@@ -376,8 +376,10 @@ function ENT:IntentionUpdate()
 		self:NSNote("recoveries", "no headway: path planned again", string.format("%.0f units from the goal", distance))
 		if errand.recoveriesRunning >= NUDGE_AFTER then
 			local waypoint = path and path:IsValid() and path:GetCurrentGoal()
-			self:NSHop(waypoint and waypoint.pos or errand.goal)
-			self:NSNote("nudges", "hop toward the next waypoint", self.NSHopWhy)
+			if waypoint then
+				self:NSHop(waypoint.pos)
+				self:NSNote("nudges", "hop toward the next waypoint", self.NSHopWhy)
+			end
 		end
 	end
 end

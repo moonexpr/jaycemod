@@ -9,6 +9,23 @@
 criterion "IsCombine" "affiliation" "combine" required
 criterion "IsSoldierVoice" "voice" "combine" required
 criterion "IsMetrocopVoice" "voice" "metrocop" required
+criterion "IsWave" "gesture" "wave" required
+criterion "IsSalute" "gesture" "salute" required
+
+
+// Wave to the player
+response PlayerGreetingsCombine
+{
+	speak "npc/combine_soldier/vo/stayalertreportsightlines.wav" nodelay
+	speak "npc/combine_soldier/vo/weaponsoffsafeprepforcontact.wav" nodelay
+	speak "npc/combine_soldier/vo/weaponsoffsafeprepforcontact.wav" nodelay
+}
+rule PlayerGreetingsCombine
+{
+	criteria ConceptGesture IsWave IsCombine
+	criteria ConceptGesture IsSalute IsCombine
+	response GestureDance
+}
 
 // CartMovingForwardOffense: the cart's moving: keep pushing
 response CartMovingForwardOffenseCombine

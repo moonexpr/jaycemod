@@ -48,27 +48,22 @@ function HidingSpot:GetAngles() return Angle(0, 0, 0) end
 -- team -> its hiding spots, split once the nav mesh has any
 local hidingSpots
 
--- The areas a soldier crosses to from an area, as its routes do (rises it
--- climbs, drops as deep as it rappels, crossings clear of walls): read from
--- the npc controller's mesh snapshot once it is built, else from the mesh.
+-- The areas a soldier crosses to from an area, as its routes do. Once the
+-- NPC snapshot is built, reuse its blocked-link results; otherwise trace them.
 local function SoldierNeighbors()
 	local npcs = WS.Feature("npc")
-	local mesh, uncrossable = npcs.navMesh, npcs.navUncrossable
-	if mesh then
-		return function(id)
-			local list, links, refused = {}, mesh.links[id], uncrossable[id]
-			for _, to in ipairs(mesh.neighbors[id] or {}) do
-				if Path.Walkable(links[to].rise, HL2Path.SOLDIER_LIMITS) and not (refused and refused[to]) then list[#list + 1] = to end
-			end
-			return list
-		end
-	end
+	local snapshot, uncrossable = npcs.navMesh, npcs.navUncrossable
 	return function(id)
 		local area, list = navmesh.GetNavAreaByID(id), {}
+		local refused = uncrossable and uncrossable[id]
 		for _, other in ipairs(area:GetAdjacentAreas()) do
-			if Path.Walkable(area:ComputeAdjacentConnectionHeightChange(other), HL2Path.SOLDIER_LIMITS)
-				and WS.NavLinkCrossable(area, other) then
-				list[#list + 1] = other:GetID()
+			local to = other:GetID()
+			if Path.Walkable(area:ComputeAdjacentConnectionHeightChange(other), HL2Path.SOLDIER_LIMITS) then
+				if snapshot then
+					if not (refused and refused[to]) then list[#list + 1] = to end
+				elseif WS.NavLinkCrossable(area, other) then
+					list[#list + 1] = to
+				end
 			end
 		end
 		return list

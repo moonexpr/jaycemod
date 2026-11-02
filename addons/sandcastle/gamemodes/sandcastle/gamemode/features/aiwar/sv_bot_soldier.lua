@@ -180,11 +180,14 @@ function BotSoldier:RouteCost()
 	local npcs = WS.Feature("npc")
 	local enemy = Teams.EnemyOf(team)
 	local reach = JumpReachOf(self.ent)
+	local clearance = WS.NavHullClearance(self.ent, WS.ClipMasks().brushes)
 	return function(area, fromArea, ladder, _, length)
 		if not IsValid(fromArea) then return 0 end
 		if npcs:NavBlocks(area, team) or controller:ShutDoorIn(area, team) or npcs:SpawnRoomTeam(area) == enemy then return -1 end
+		if not clearance:Area(area) then return -1 end
 		-- a link its body does not fit through, or that crosses a clip or a wall's end
-		if not WS.NavLinkCrossable(fromArea, area) then return -1 end
+		if not IsValid(ladder) and (not WS.NavLinkCrossable(fromArea, area)
+			or not clearance:Link(fromArea, area)) then return -1 end
 		local distance
 		if IsValid(ladder) then
 			distance = ladder:GetLength()

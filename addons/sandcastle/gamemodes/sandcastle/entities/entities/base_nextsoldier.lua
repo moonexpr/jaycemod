@@ -888,87 +888,12 @@ function ENT:OnSound(ent, sound)
 end
 function ENT:OnLost(ent) end
 
-local STATIC_BRUSHES = { func_brush = true, func_wall = true }
-local NavGaps = nextsoldier.nav_gaps
-
-local function StaticMap(ent)
-	return ent:IsWorld() or STATIC_BRUSHES[ent:GetClass()] == true
-end
-
-local function HullLineFits(from, to, line, mins, maxs, mask)
-	local start = Vector(line.start.x, line.start.y, 0)
-	local finish = Vector(line.finish.x, line.finish.y, 0)
-	start.z = from:GetZ(start) + 1
-	finish.z = to:GetZ(finish) + 1
-	-- TraceHull sweeps the full box along the crossing, independent of waypoint placement.
-	local trace = util.TraceHull({
-		start = start,
-		endpos = finish,
-		mins = mins,
-		maxs = maxs,
-		mask = mask,
-		filter = StaticMap,
-	})
-	return not trace.Hit and not trace.StartSolid
-end
-
-local function FitsLink(from, to, mins, maxs, mask)
-	local side
-	for dir = 0, 3 do
-		if from:IsConnectedAtSide(to, dir) then
-			side = dir
-			break
-		end
-	end
-	if side == nil then
-		local start = from:GetClosestPointOnArea(to:GetCenter())
-		local finish = to:GetClosestPointOnArea(from:GetCenter())
-		local line = { start = { x = start.x, y = start.y }, finish = { x = finish.x, y = finish.y } }
-		return HullLineFits(from, to, line, mins, maxs, mask)
-	end
-
-	local extent, other = from:GetExtentInfo(), to:GetExtentInfo()
-	local lines = NavGaps.FitLines(
-		{ x = extent.lo.x, y = extent.lo.y },
-		{ x = extent.hi.x, y = extent.hi.y },
-		side,
-		{ x = other.lo.x, y = other.lo.y },
-		{ x = other.hi.x, y = other.hi.y },
-		0
-	)
-	for _, line in ipairs(lines) do
-		if HullLineFits(from, to, line, mins, maxs, mask) then return true end
-	end
-	return false
-end
-
-local function FitsArea(area, mins, maxs, mask)
-	local extent = area:GetExtentInfo()
-	if extent.hi.x - extent.lo.x < maxs.x - mins.x
-		or extent.hi.y - extent.lo.y < maxs.y - mins.y then
-		return false
-	end
-	local center = area:GetCenter()
-	center.z = area:GetZ(center)
-	local start = center + Vector(0, 0, 1)
-	local trace = util.TraceHull({
-		start = start,
-		endpos = start,
-		mins = mins,
-		maxs = maxs,
-		mask = mask,
-		filter = StaticMap,
-	})
-	return not trace.Hit and not trace.StartSolid
-end
-
 -- The path's cost by default: the length of each link, with the class's
 -- OnComputePath added (-1 refuses the link, as DrGBase's contract has it).
 -- Lua traces the engine's collision hull through each destination and
 -- opening, then passes that verdict to the native or Lua-twin cost function.
 function ENT:GetPathGenerator(cost)
-	local mins, maxs = self:GetCollisionBounds()
-	local mask, clearance, crossings = WS.ClipMasks().brushes, {}, {}
+	local clearance = WS.NavHullClearance(self, WS.ClipMasks().brushes)
 	cost = cost or function(area, fromArea, ladder, elevator, length, fits)
 		if not IsValid(fromArea) then return 0 end
 		if fits == false then return -1 end
@@ -980,19 +905,8 @@ function ENT:GetPathGenerator(cost)
 	return function(area, fromArea, ladder, elevator, length)
 		local fits
 		if IsValid(fromArea) then
-			local id = area:GetID()
-			if clearance[id] == nil then clearance[id] = FitsArea(area, mins, maxs, mask) end
-			fits = clearance[id]
-			if fits then
-				local fromId = fromArea:GetID()
-				local links = crossings[fromId]
-				if not links then
-					links = {}
-					crossings[fromId] = links
-				end
-				if links[id] == nil then links[id] = FitsLink(fromArea, area, mins, maxs, mask) end
-				fits = links[id]
-			end
+			fits = clearance:Area(area)
+			if fits and not IsValid(ladder) then fits = clearance:Link(fromArea, area) end
 		end
 		return cost(area, fromArea, ladder, elevator, length, fits)
 	end

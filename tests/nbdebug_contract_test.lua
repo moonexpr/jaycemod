@@ -9,6 +9,9 @@ local COMMANDS = ROOT .. "ws/sv_nbdebug.lua"
 local NEXTSOLDIER = ROOT .. "../entities/entities/base_nextsoldier.lua"
 local WAR_SOLDIER = ROOT .. "ws/sh_war_soldier.lua"
 local PATHFOLLOWER = ROOT .. "../entities/entities/npc_pathfollower.lua"
+local NAV_CLEARANCE = ROOT .. "ws/nav_clearance.lua"
+local NAV = ROOT .. "ws/sv_nav.lua"
+local BOT_SOLDIER = ROOT .. "features/aiwar/sv_bot_soldier.lua"
 
 local function ReadFile(path)
 	local f = assert(io.open(path, "r"))
@@ -29,6 +32,7 @@ local shared = T.RealmSource("nbdebug", "sh")
 local aiwar = T.RealmSource("aiwar", "sv")
 local nextsoldier, warSoldier = ReadFile(NEXTSOLDIER), ReadFile(WAR_SOLDIER)
 local pathfollower = ReadFile(PATHFOLLOWER)
+local navClearance, nav, botSoldier = ReadFile(NAV_CLEARANCE), ReadFile(NAV), ReadFile(BOT_SOLDIER)
 
 -- What the nbdebug controller fires, and the AI war's overlay.
 local function Fired()
@@ -95,16 +99,19 @@ T.test("the path follower exposes its Idle and Travel behavior transitions", fun
 end)
 
 T.test("the shared path generator rejects areas and openings the agent's collision hull cannot fit", function()
-	T.eq(nextsoldier:find("self:GetCollisionBounds()", 1, true) ~= nil, true, "uses the agent's current hull")
-	T.eq(nextsoldier:find("FitsArea(area, mins, maxs, mask)", 1, true) ~= nil, true, "tests destination clearance")
-	T.eq(nextsoldier:find("local function FitsLink(from, to, mins, maxs, mask)", 1, true) ~= nil, true, "tests crossing clearance")
-	T.eq(nextsoldier:find("local function HullLineFits(from, to, line, mins, maxs, mask)", 1, true) ~= nil, true, "sweeps the collision box")
-	T.eq(nextsoldier:find("NavGaps.FitLines(", 1, true) ~= nil, true, "checks possible crossings along an opening")
-	T.eq(nextsoldier:find("endpos = finish", 1, true) ~= nil, true, "sweeps along the crossing direction")
-	T.eq(nextsoldier:find("FitsLink(fromArea, area, mins, maxs, mask)", 1, true) ~= nil, true, "checks each directed link")
+	T.eq(navClearance:find("entity:GetCollisionBounds()", 1, true) ~= nil, true, "reads any entity's current hull")
+	T.eq(navClearance:find("function Clearance:Area(area)", 1, true) ~= nil, true, "tests destination clearance")
+	T.eq(navClearance:find("function Clearance:Link(from, to)", 1, true) ~= nil, true, "tests crossing clearance")
+	T.eq(navClearance:find("NavGaps.FitLines(", 1, true) ~= nil, true, "checks possible crossings along an opening")
+	T.eq(navClearance:find("endpos = finish", 1, true) ~= nil, true, "sweeps along the crossing direction")
+	T.eq(nav:find("function WS.NavHullClearance(entity, mask)", 1, true) ~= nil, true, "navigation-layer API")
+	T.eq(nextsoldier:find("WS.NavHullClearance(self, WS.ClipMasks().brushes)", 1, true) ~= nil, true, "NextBot uses the shared primitive")
 	T.eq(nextsoldier:find("return cost(area, fromArea, ladder, elevator, length, fits)", 1, true) ~= nil, true, "passes clearance to the cost pipeline")
 	T.eq(nextsoldier:find("if fits == false then return -1 end", 1, true) ~= nil, true, "default generator rejects an unfit area")
 	T.eq(warSoldier:find("Base().GetPathGenerator(self, self.NSPathCost() or NoPath)", 1, true) ~= nil, true, "combat costs go through the shared generator")
+	T.eq(botSoldier:find("WS.NavHullClearance(self.ent, WS.ClipMasks().brushes)", 1, true) ~= nil, true, "bot players use their player hull")
+	T.eq(botSoldier:find("not clearance:Area(area)", 1, true) ~= nil, true, "bot player routes reject an unfit area")
+	T.eq(botSoldier:find("not clearance:Link(fromArea, area)", 1, true) ~= nil, true, "bot player routes reject an unfit opening")
 	T.eq(pathfollower:find("FitsArea", 1, true), nil, "the probe adds no clearance rule")
 end)
 

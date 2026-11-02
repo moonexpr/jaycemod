@@ -36,6 +36,7 @@ local Doors = nextsoldier.doors
 local Progress = WS.require("ws.nav_progress")
 local Clip = nextsoldier.clip
 local NavGaps = nextsoldier.nav_gaps
+local NavClearance = WS.require("ws.nav_clearance")
 local PairMap = world.pairmap
 
 local SEEDS = { "info_player_teamspawn", "info_player_start", "team_control_point", "item_healthkit_small",
@@ -73,6 +74,10 @@ function WS.ClipMasks()
 		clipMasks = CLIP_MASKS[Clip.For(classes)]
 	end
 	return clipMasks
+end
+
+function WS.NavHullClearance(entity, mask)
+	return NavClearance.New(entity, mask, util.TraceHull, Vector)
 end
 
 -- The mesh's seams (nextsoldier.nav_gaps), linked both ways where a walker

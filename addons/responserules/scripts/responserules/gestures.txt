@@ -12,8 +12,7 @@ criterion "IsLaugh" "gesture" "laugh" required
 // The dance: the Halloween dance's howl, or Demo shaking it
 response GestureDance
 {
-	speak "Halloween.dance_howl" nodelay
-	speak "scout.boombox"
+	speak "scout.boombox" nodelay
 }
 rule GestureDance
 {
