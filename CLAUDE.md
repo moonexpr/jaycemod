@@ -21,7 +21,7 @@ NextSoldier, the AI-war's NextBot soldiers. The gamemode lives at
 | `addons/teamtint/` | Team Tint, its own addon: RED/BLU NPCs in TF2's shading, a tuning tool and debug views; pure modules in `lua/includes/modules/`, textures baked by `.devtools/bin/teamtint_bake.py` (`docs/team-theming-plan.md`) |
 | `tests/*_test.lua` | LuaJIT tests, `tests/harness.lua`; `tests/foundation_layers_test.lua` guards foundation's layers |
 | `native/` | Rust binary modules, each a drop-in that a server's `require` installs over the globals its Lua twins publish: `foundation` (foundation's structures), `wetsands` (foundation.wetsands' systems, on the foundation crate), `ws_profile` (the sampling profiler); `vendor/source-sdk-2013` the raw Source SDK headers they read Source's values from (`docs/native-foundation-plan.md`) |
-| `docs/` | Design notes; `docs/research/foundation-admission-rule.md` decides what belongs in foundation |
+| `docs/` | Design notes; `docs/research/foundation-admission-rule.md` decides what belongs in foundation; `docs/combat-repath-optimization.md` is the handoff for profiling and optimizing AI-war combat repaths |
 | `.devtools/bin/` | Project tools; `.devtools/artifacts/` generated output |
 
 Game events (`WS.Events`, `foundation.events`) are namespaced by kind, and
