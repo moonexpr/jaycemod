@@ -374,7 +374,7 @@ T.test("hostage rescue's soldiers carry CS:S's arms, each side its own", functio
 	local definitions = {}
 	local function Definition(class)
 		if definitions[class] then return definitions[class] end
-		local path = "addons/sandcastle/gamemodes/sandcastle/entities/weapons/" .. class .. ".lua"
+		local path = "addons/cstrike_weapons/lua/cstrike_weapons/weapons/" .. class .. ".lua"
 		local env = { SWEP = {}, AddCSLuaFile = function() end, Model = function(path) return path end }
 		setmetatable(env, { __index = _G })
 		setfenv(assert(loadfile(path)), env)()

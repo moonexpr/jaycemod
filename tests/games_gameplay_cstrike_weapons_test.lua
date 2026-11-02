@@ -10,7 +10,7 @@ local CLASSES = {
 }
 
 local function Definition(class)
-	local path = "addons/sandcastle/gamemodes/sandcastle/entities/weapons/" .. class .. ".lua"
+	local path = "addons/cstrike_weapons/lua/cstrike_weapons/weapons/" .. class .. ".lua"
 	local env = {
 		SWEP = {},
 		AddCSLuaFile = function() end,
@@ -45,7 +45,7 @@ local function Base()
 		util = { SharedRandom = function() return 0.5 end },
 	}
 	setmetatable(env, { __index = _G })
-	setfenv(assert(loadfile("addons/sandcastle/gamemodes/sandcastle/entities/weapons/base_cstrike.lua")), env)()
+	setfenv(assert(loadfile("addons/cstrike_weapons/lua/cstrike_weapons/weapons/base_cstrike.lua")), env)()
 	return env.SWEP
 end
 

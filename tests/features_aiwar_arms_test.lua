@@ -8,7 +8,7 @@ local T = dofile("tests/harness.lua")
 local Arms = T.require("features.aiwar.arms")
 
 local function Definition(class)
-	local path = "addons/sandcastle/gamemodes/sandcastle/entities/weapons/" .. class .. ".lua"
+	local path = "addons/cstrike_weapons/lua/cstrike_weapons/weapons/" .. class .. ".lua"
 	local definition = { SWEP = {}, AddCSLuaFile = function() end, Model = function(path) return path end }
 	setmetatable(definition, { __index = _G })
 	local chunk = assert(loadfile(path))
