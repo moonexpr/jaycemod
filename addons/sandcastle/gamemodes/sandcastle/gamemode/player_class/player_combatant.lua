@@ -1,6 +1,6 @@
 DEFINE_BASECLASS( "player_sandbox" )
 local PLAYER = {}
-local Weapons = include("player_class/simple_weapon_loadout.lua")
+local Weapons = GM.SimpleWeaponLoadout
 
 function PLAYER:Loadout()
 

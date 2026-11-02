@@ -1,6 +1,7 @@
 local T = dofile("tests/harness.lua")
 
 local ROOT = T.ROOT
+local WEAPON_HELPER = "player_class/simple_weapon_loadout.lua"
 local CLASS_FILES = {
 	{ path = "player_class/player_combatant.lua", name = "player_combatant", base = "player_sandbox", driver = true },
 	{ path = "player_class/player_combatant_cstrike.lua", name = "player_combatant_cstrike", base = "player_base", driver = true },
@@ -11,16 +12,20 @@ local CLASS_FILES = {
 local file = assert(io.open(ROOT .. "shared.lua"))
 local shared = file:read("*a")
 file:close()
-local Weapons = dofile(ROOT .. "player_class/simple_weapon_loadout.lua")
+local gamemode = {}
+local helper = assert(loadfile(ROOT .. WEAPON_HELPER))
+setfenv(helper, setmetatable({ GM = gamemode }, { __index = _G }))()
+local Weapons = gamemode.SimpleWeaponLoadout
 
 T.test("shared loader includes and sends every selected player class", function()
+	local helper_position = assert(shared:find('"' .. WEAPON_HELPER .. '"', 1, true))
+	local first_class = assert(shared:find('"' .. CLASS_FILES[1].path .. '"', 1, true))
+	T.eq(helper_position < first_class, true, "loadout driver loads before player classes")
 	for _, class in ipairs(CLASS_FILES) do
 		T.eq(shared:find('"' .. class.path .. '"', 1, true) ~= nil, true, class.name .. " path is listed")
 	end
 	T.eq(shared:find("if SERVER then AddCSLuaFile(path) end", 1, true) ~= nil, true, "sent to clients")
 	T.eq(shared:find("include(path)", 1, true) ~= nil, true, "included in both realms")
-	T.eq(shared:find('AddCSLuaFile("player_class/simple_weapon_loadout.lua")', 1, true) ~= nil, true,
-		"the shared loadout driver is sent to clients")
 end)
 
 T.test("selected player classes register under distinct names and bases", function()
@@ -28,12 +33,7 @@ T.test("selected player classes register under distinct names and bases", functi
 		local registered
 		local env = setmetatable({
 			DEFINE_BASECLASS = function() end,
-			include = function(path)
-				if class.driver then
-					T.eq(path, "player_class/simple_weapon_loadout.lua", class.path .. " loadout driver")
-					return Weapons
-				end
-			end,
+			GM = gamemode,
 			player_manager = {
 				RegisterClass = function(name, definition, base)
 					registered = { name = name, definition = definition, base = base }
@@ -114,7 +114,7 @@ T.test("default combatant, CS:S combatant, and Sandcastle use their weapon drive
 		local definition
 		local env = setmetatable({
 			DEFINE_BASECLASS = function() end,
-			include = function() return Weapons end,
+			GM = gamemode,
 			player_manager = {
 				RegisterClass = function(_, registered) definition = registered end,
 			},

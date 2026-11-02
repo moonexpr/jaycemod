@@ -71,7 +71,7 @@ local function GiveHL2Ammo(ply)
 	ply:GiveAmmo(100, "AR2", true)
 end
 
-return {
+GM.SimpleWeaponLoadout = {
 	GiveHL2 = function(ply)
 		GiveHL2Ammo(ply)
 		GiveAll(ply, HL2_WEAPONS)
