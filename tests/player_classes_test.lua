@@ -20,7 +20,7 @@ local Weapons = gamemode.SimpleWeaponLoadout
 T.test("shared loader includes and sends every selected player class", function()
 	local helper_position = assert(shared:find('"' .. WEAPON_HELPER .. '"', 1, true))
 	local first_class = assert(shared:find('"' .. CLASS_FILES[1].path .. '"', 1, true))
-	local ws_core = assert(shared:find('include("ws/sh_core.lua")', 1, true))
+	local ws_core = assert(shared:find('include("sh_core.lua")', 1, true))
 	local class_list = assert(shared:find("local PLAYER_CLASS_FILES", 1, true))
 	T.eq(helper_position < first_class, true, "loadout driver loads before player classes")
 	T.eq(ws_core < class_list, true, "WS exists before player classes load")

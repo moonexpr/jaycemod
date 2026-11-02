@@ -15,9 +15,20 @@ WS = WS or {}
 local GAMEMODE_ROOT = GM.FolderName .. "/gamemode/"
 local CHUNK_ENV = setmetatable({}, { __index = _G })
 
+local API_EXTENSIONS = { list = true, timer = true, world = true, generator = true }
+local function ModulePath(name)
+	local path = name
+	local namespace = name:match("^games%.([%w_]+)%.")
+	if namespace then
+		path = name:gsub("^games%.", "includes.")
+		if API_EXTENSIONS[namespace] then path = path:gsub("^includes%.", "includes.extensions.") end
+	end
+	return path:gsub("%.", "/") .. ".lua"
+end
+
 function WS.require(name)
 	if package.loaded[name] == nil then
-		local chunk = CompileFile(GAMEMODE_ROOT .. name:gsub("%.", "/") .. ".lua")
+		local chunk = CompileFile(GAMEMODE_ROOT .. ModulePath(name))
 		setfenv(chunk, CHUNK_ENV)(name)
 	end
 	return package.loaded[name]
@@ -62,13 +73,13 @@ Index("foundation/sh_index.lua")
 
 -- game: published at once, each module loaded the first time it is read,
 -- so a map pays only for the gameplay it uses.
-Index("games/system/sh_init.lua")
-Index("games/list/sh_init.lua")
-Index("games/timer/sh_init.lua")
-Index("games/world/sh_init.lua")
-Index("games/generator/sh_init.lua")
-Index("games/gameplay/sh_init.lua")
-Index("games/npc/sh_init.lua")
+Index("includes/system/sh_init.lua")
+Index("includes/extensions/list/sh_init.lua")
+Index("includes/extensions/timer/sh_init.lua")
+Index("includes/extensions/world/sh_init.lua")
+Index("includes/extensions/generator/sh_init.lua")
+Index("includes/gameplay/sh_init.lua")
+Index("includes/npc/sh_init.lua")
 
 -- NextSoldier, the soldier itself, beside foundation and games, on both;
 -- then the war's tactics engine, on NextSoldier.

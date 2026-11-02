@@ -12,7 +12,7 @@ local INDEX_CALL = "Index%(%s*\"([%w_/.]+)\"%s*%)"
 -- Each tree's index files, and how a module of it is published.
 local TREES = {
 	{ root = "foundation", file = "_index.lua", lazy = false },
-	{ root = "games", file = "_init.lua", lazy = true },
+	{ root = "includes", file = "_init.lua", lazy = true },
 	{ root = "nextsoldier", file = "_init.lua", lazy = true },
 	{ root = "wartactics", file = "_init.lua", lazy = true },
 }
@@ -24,6 +24,13 @@ local ROOT_FOLDER = "foundation/"
 local function NamespaceOf(globals, folder)
 	if folder == ROOT_FOLDER then return globals end
 	return globals[folder:match("([%w_]+)/$")]
+end
+
+local function ModuleName(folder, key)
+	local namespace = folder:match("^includes/extensions/([%w_]+)/$")
+	if not namespace then namespace = folder:match("^includes/([%w_]+)/$") end
+	if namespace then return "games." .. namespace .. "." .. key end
+	return folder:gsub("/", ".") .. key
 end
 
 local function Read(path)
@@ -123,7 +130,7 @@ T.test("foundation's indexes publish each module of their folder at once", funct
 		local folder = path:match("^(.-)[%a]+_index%.lua$")
 		local ns = NamespaceOf(globals, folder)
 		for _, key in ipairs(ModulesIn(folder)) do
-			local name = folder:gsub("/", ".") .. key
+			local name = ModuleName(folder, key)
 			T.eq(rawget(ns, key), T.require(name), folder .. key .. " is published")
 		end
 	end
@@ -142,7 +149,7 @@ T.test("the lazy trees' inits publish each module of their folder, loaded on fir
 				local ns = globals[folder:match("([%w_]+)/$")]
 				for _, key in ipairs(ModulesIn(folder)) do
 					T.eq(rawget(ns, key), nil, folder .. key .. " is not loaded before it is read")
-					local name = folder:gsub("/", ".") .. key
+					local name = ModuleName(folder, key)
 					T.eq(ns[key], T.require(name), folder .. key .. " is published")
 				end
 			end

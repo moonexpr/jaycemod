@@ -2,8 +2,8 @@
 -- where, when HL2's files of the same names hide TF2's (GMod searches HL2's
 -- content first).
 local T = dofile("tests/harness.lua")
-local Materials = T.require("ws.tf_materials")
-local SoundPaths = T.require("ws.sound_paths")
+local Materials = T.require("includes.tf_materials")
+local SoundPaths = T.require("includes.sound_paths")
 
 local function Set(list)
 	local set = {}

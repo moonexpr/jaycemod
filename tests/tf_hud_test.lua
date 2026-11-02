@@ -5,7 +5,7 @@
 -- progress pie (CTFProgressBar), KOTH's two clocks, the respawn label
 -- (spectator.res), the win panel (winpanel.res) and the boss meter.
 local T = dofile("tests/harness.lua")
-local Hud = T.require("ws.tf_hud")
+local Hud = T.require("includes.tf_hud")
 
 local RED, BLUE = 2, 3
 

@@ -19,7 +19,7 @@ include("sh_events.lua")
 -- left as they are), and the server tells each ready client the ones only
 -- it has (system_server_convars), which the client creates too.
 do
-	local Replicated = WS.require("ws.replicated")
+	local Replicated = WS.require("includes.replicated")
 	local E = WS.Events
 	local FOLDER = GM.FolderName
 	local CONVAR_BITS = 12

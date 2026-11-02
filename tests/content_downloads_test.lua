@@ -26,7 +26,7 @@ local function Load()
 		},
 		resource = { AddFile = function(p) sent[#sent + 1] = p end },
 	}, { __index = _G })
-	setfenv(assert(loadfile("addons/sandcastle/gamemodes/sandcastle/gamemode/ws/sv_content.lua")), env)()
+	setfenv(assert(loadfile("addons/sandcastle/gamemodes/sandcastle/gamemode/sv_content.lua")), env)()
 	return sent
 end
 

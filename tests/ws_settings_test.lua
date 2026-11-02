@@ -2,7 +2,7 @@
 -- Utilities menu on a dedicated server (ws_server_set), each held to
 -- the range its menu control offers.
 local T = dofile("tests/harness.lua")
-local Settings = T.require("ws.settings")
+local Settings = T.require("includes.settings")
 local AiWar = T.require("features.aiwar.model")
 local Slots = T.require("features.aiwar.slots")
 

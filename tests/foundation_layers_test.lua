@@ -1,4 +1,4 @@
--- foundation/'s, games/', nextsoldier/'s and wartactics/' layers
+-- foundation/, includes/, nextsoldier/ and wartactics/ layers
 -- (docs/research/foundation-admission-rule.md): every module is in one of
 -- five categories, ranked bottom-up, or is pending a move out of
 -- foundation. A category may require only itself and the categories below
@@ -7,7 +7,7 @@ local T = dofile("tests/harness.lua")
 
 local FOUNDATION = T.ROOT .. "foundation/"
 local FOUNDATION_PREFIX = "^foundation%."
-local OUTSIDE_PREFIXES = { "^features%.", "^ws%." }
+local OUTSIDE_PREFIXES = { "^features%.", "^includes%." }
 
 local RANK = {
 	structures = 1,
@@ -223,12 +223,13 @@ local INDEX = "_index%.lua$"
 
 -- A games tree's init (sh_init.lua) publishes modules and is not one.
 local INIT = "_init%.lua$"
+local API_EXTENSIONS = { list = true, timer = true, world = true, generator = true }
 
 -- The trees: where each lives, the dotted prefix of its module names, and
 -- its categories.
 local TREES = {
 	{ dir = FOUNDATION, prefix = FOUNDATION_PREFIX, category = CATEGORY, pending = PENDING },
-	{ dir = T.ROOT .. "games/", prefix = "^games%.", category = GAMES, pending = {} },
+	{ dir = T.ROOT .. "includes/", prefix = "^games%.", category = GAMES, pending = {} },
 	{ dir = T.ROOT .. "nextsoldier/", prefix = "^nextsoldier%.", category = NEXTSOLDIER, pending = {} },
 	{ dir = T.ROOT .. "wartactics/", prefix = "^wartactics%.", category = WARTACTICS, pending = {} },
 }
@@ -238,7 +239,13 @@ local function Modules(tree)
 	local modules = {}
 	for path in list:lines() do
 		if not path:match(INDEX) and not path:match(INIT) then
-			modules[path:sub(#tree.dir + 1, -#".lua" - 1)] = true
+			local module = path:sub(#tree.dir + 1, -#".lua" - 1)
+			if tree.prefix == "^games%." then
+				module = module:gsub("^extensions/", "")
+				if module:find("/", 1, true) then modules[module] = true end
+			else
+				modules[module] = true
+			end
 		end
 	end
 	list:close()
@@ -246,14 +253,18 @@ local function Modules(tree)
 end
 
 local function Exists(tree, module)
-	local file = io.open(tree.dir .. module .. ".lua")
+	local namespace = module:match("^([%w_]+)/")
+	local directory = tree.prefix == "^games%." and API_EXTENSIONS[namespace] and "extensions/" or ""
+	local file = io.open(tree.dir .. directory .. module .. ".lua")
 	if file then file:close() end
 	return file ~= nil
 end
 
 -- The modules a module uses: by require, or by reading its global.
 local function Requires(tree, module)
-	local file = assert(io.open(tree.dir .. module .. ".lua"))
+	local namespace = module:match("^([%w_]+)/")
+	local directory = tree.prefix == "^games%." and API_EXTENSIONS[namespace] and "extensions/" or ""
+	local file = assert(io.open(tree.dir .. directory .. module .. ".lua"))
 	local text = file:read("*a")
 	file:close()
 	return T.Uses(text)

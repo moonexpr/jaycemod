@@ -11,7 +11,7 @@
 -- the screen, the team scores' slot, the scores and the round timer giving
 -- way to it (features/rounds/cl.lua), and goes while a win panel is up.
 local Tournament = WS.require("features.gamemode.tournament")
-local Hud = WS.require("ws.tf_hud")
+local Hud = WS.require("includes.tf_hud")
 local Text = WS.require("features.rounds.text")
 local Permissions = system.permissions
 local Font, DrawBorder = WS.TFHud.Font, WS.TFHud.DrawBorder

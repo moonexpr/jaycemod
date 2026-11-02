@@ -1,4 +1,4 @@
--- ws/sh_radio_gesture.lua: GMod's chat gesture (base GM:GrabEarAnimation, a
+-- sh_radio_gesture.lua: GMod's chat gesture (base GM:GrabEarAnimation, a
 -- hand to the ear) is a radio call, so only a player dressed as the Combine
 -- (ws.voices: its soldiers and metrocops) makes it. Run against a
 -- fake gamemode.
@@ -11,7 +11,7 @@ local function Load()
 		grabbed[#grabbed + 1] = { ply = ply, plyTable = plyTable }
 	end
 	local env = setmetatable({ GM = GM, WS = { require = T.require } }, { __index = _G })
-	setfenv(assert(loadfile("addons/sandcastle/gamemodes/sandcastle/gamemode/ws/sh_radio_gesture.lua")), env)()
+	setfenv(assert(loadfile("addons/sandcastle/gamemodes/sandcastle/gamemode/sh_radio_gesture.lua")), env)()
 	return GM, grabbed
 end
 

@@ -545,15 +545,15 @@ T.test("(c) a part, a non-root, or a root passing another name calling WS.Featur
 		["features/fixture_a/sv_x.lua"] = 'local Part = WS.FeatureParts(getfenv(1), "fixture_a")',
 		["features/fixture_b/sv.lua"] = 'local Part = WS.FeatureParts(getfenv(2), "fixture_b")\nreturn {}',
 		["features/fixture_c/sv.lua"] = 'local Part = WS.FeatureParts(getfenv(1), "fixture_c")\nreturn {}',
-		["ws/sh_core.lua"] = "function WS.FeatureParts(env, name) end",
-		["ws/sv_x.lua"] = 'WS.FeatureParts(getfenv(1), "fixture_a")',
+		["sh_core.lua"] = "function WS.FeatureParts(env, name) end",
+		["sv_x.lua"] = 'WS.FeatureParts(getfenv(1), "fixture_a")',
 	})
 	local root = tree.gamemode
 	Same(PartsCallers(tree), {
 		root .. 'features/fixture_a/sv.lua must call WS.FeatureParts(getfenv(1), "fixture_a")',
 		root .. "features/fixture_a/sv_x.lua calls WS.FeatureParts but is not a feature's realm root",
 		root .. 'features/fixture_b/sv.lua must call WS.FeatureParts(getfenv(1), "fixture_b")',
-		root .. "ws/sv_x.lua calls WS.FeatureParts but is not a feature's realm root",
+		root .. "sv_x.lua calls WS.FeatureParts but is not a feature's realm root",
 	})
 end)
 

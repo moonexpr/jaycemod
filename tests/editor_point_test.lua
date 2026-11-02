@@ -1,4 +1,4 @@
--- A control point's right-click entries (ws/sh_editors_point.lua), for
+-- A control point's right-click entries (sh_editors_point.lua), for
 -- admins: its owner, and whether it is locked. They show on a point's proxy
 -- (ws_proxy, kind "point") and on the props of its base, which name it,
 -- and act on the point through the capture feature.
@@ -17,7 +17,7 @@ local function Load(capture)
 		},
 		IsValid = function(v) return v ~= nil end,
 	}, { __index = _G })
-	setfenv(assert(loadfile("addons/sandcastle/gamemodes/sandcastle/gamemode/ws/sh_editors_point.lua")), env)()
+	setfenv(assert(loadfile("addons/sandcastle/gamemodes/sandcastle/gamemode/sh_editors_point.lua")), env)()
 	return added
 end
 

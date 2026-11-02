@@ -6,7 +6,7 @@
 -- client asks, then each as it changes); a setting whose convar this map
 -- has not created (its feature not loaded) is left out and its control
 -- disabled.
-local Settings = WS.require("ws.settings")
+local Settings = WS.require("includes.settings")
 local E = WS.Events
 local COMMAND = "ws_server_set"
 local SEND_AFTER = 0.3 -- seconds a slider rests before its value is sent

@@ -2,7 +2,7 @@
 -- changes the game from the editors, as TF2 tells a scramble: an announcer
 -- line and a notification card with an icon.
 local T = dofile("tests/harness.lua")
-local Notices = T.require("ws.admin_notices")
+local Notices = T.require("includes.admin_notices")
 
 local NOBODY, RED, BLU = 0, 2, 3
 

@@ -7,7 +7,7 @@
 -- handed to GMod's language.Add, so language.GetPhrase and VGUI labels that
 -- say "#Badwater_cap_1" show it too. The server never localizes: it sends
 -- tokens, and each client words them.
-local L = WS.require("ws.localization")
+local L = WS.require("includes.localization")
 
 local MOUNT = "tf" -- the mounted TF2's path id
 local LANGUAGE_CONVAR = "gmod_language"

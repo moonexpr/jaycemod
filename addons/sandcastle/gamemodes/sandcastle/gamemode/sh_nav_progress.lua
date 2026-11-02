@@ -16,7 +16,7 @@ E.Define("game_nav_progress", {
 })
 
 if SERVER then
-	local P = WS.require("ws.nav_progress")
+	local P = WS.require("includes.nav_progress")
 	-- The stage last told, for a client that loads while it runs; kept on
 	-- WS so a Lua refresh mid-run keeps it.
 	function WS.NavProgress(stage, areas)

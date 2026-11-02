@@ -1,7 +1,7 @@
 -- GMod's chat gesture (base GM:GrabEarAnimation: a hand to the ear while the
 -- player types) is a radio call, so only a player dressed as the Combine
 -- (ws.voices: its soldiers' and metrocops' models) makes it.
-local Voices = WS.require("ws.voices")
+local Voices = WS.require("includes.voices")
 
 function GM:GrabEarAnimation(ply, plyTable)
 	local voice = Voices.For(ply:GetModel())

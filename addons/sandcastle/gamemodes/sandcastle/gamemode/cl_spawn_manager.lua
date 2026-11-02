@@ -12,7 +12,7 @@
 -- and red when later, and whether a limit cut the total.
 local M = gameplay.respawn_modifiers
 local S = system.spawn_manager
-local Hud = WS.require("ws.tf_hud")
+local Hud = WS.require("includes.tf_hud")
 
 local TAN_LIGHT = Color(235, 226, 202)
 local SOONER, LATER = Color(153, 204, 102), Color(224, 96, 96)

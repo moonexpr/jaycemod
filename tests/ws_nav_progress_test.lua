@@ -3,7 +3,7 @@
 -- progress, so it tells the stage and the time it has taken, and the areas
 -- made at the end.
 local T = dofile("tests/harness.lua")
-local P = T.require("ws.nav_progress")
+local P = T.require("includes.nav_progress")
 
 T.test("each stage says what is happening, with the time taken", function()
 	T.eq(P.Body(P.OPENING, 5, 0), "Opening doors and laying bridges... 0:05")

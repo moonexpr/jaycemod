@@ -3,7 +3,7 @@
 -- its scalable borders, the timer's outline and progress pie, the boss
 -- meter's frame and its labels' drop shadow, for the views that draw TF2's
 -- panels.
-local Hud = WS.require("ws.tf_hud")
+local Hud = WS.require("includes.tf_hud")
 
 local TAN_LIGHT = Color(Hud.TAN_LIGHT.r, Hud.TAN_LIGHT.g, Hud.TAN_LIGHT.b)
 

@@ -4,22 +4,34 @@ AddCSLuaFile("cl_init.lua")
 
 include("shared.lua")
 
--- Clients are sent every file under foundation/, features/ and ws/ but the
+-- Clients are sent every file under foundation/, includes/, features/ and
+-- the root's ws modules, but the
 -- server's (sv.lua, sv_*), as source: foundation and feature modules, feature
--- client and shared parts, and ws/ sh_, cl_ and unprefixed modules. Nothing
+-- client and shared parts, and root sh_, cl_ and unprefixed modules. Nothing
 -- runs until a client loads it (WS.require, or WS.Feature once the server
 -- loads the feature, sh_core.lua).
 do
 	local Features = system.features
 	local root = GM.FolderName .. "/gamemode/"
 	local GamemodeFiles = {}
+	local BOOTSTRAP = {
+		["cl_init.lua"] = true,
+		["init.lua"] = true,
+		["shared.lua"] = true,
+		["shared_loader.lua"] = true,
+	}
 	function GamemodeFiles:Find(dir)
 		return file.Find(root .. dir .. "*", "LUA")
 	end
 	for _, path in ipairs(Features.ClientFiles(GamemodeFiles, Features.CLIENT_DIRS)) do AddCSLuaFile(path) end
+	for _, fileName in ipairs(GM:WSModules("")) do
+		if not BOOTSTRAP[fileName] and Features.Ships(fileName) then AddCSLuaFile(fileName) end
+	end
 end
 
-for _, f in ipairs(GM:WSModules("sv_")) do include("ws/" .. f) end
+WS.Feature("system")
+
+for _, f in ipairs(GM:WSModules("sv_")) do include(f) end
 
 -- As in TF2, a new player joins no team: they watch until they pick one
 -- from the team menu (auto-assign is one click there). Only in team play
@@ -46,20 +58,21 @@ function GM:PlayerSpawn(ply, transition)
 	end
 	self.BaseClass.BaseClass.PlayerSpawn(self, ply, transition)
 	WS.ApplyMovement(ply)
-	-- another addon's team change is undone by ws/sv_teams.lua's hooks
+	-- another addon's team change is undone by sv_teams.lua's hooks
 end
 
 -- A player spawns with Sandbox's loadout (its Half-Life 2 set and tools)
 -- while sbox_weapons is on, as it is by default, and in Sandbox mode; on TF2
--- maps with it off, with their loadout (ws/sv_loadout.lua, the Player tab),
+-- maps with it off, with their loadout (sv_loadout.lua, the Player tab),
 -- keeping Sandbox's tools.
 local SANDBOX_TOOLS = { "gmod_camera", "gmod_tool", "weapon_physgun" }
 
-function GM:PlayerLoadout(ply)
-	if not WS.Active() or cvars.Bool("sbox_weapons", true) then return self.BaseClass.PlayerLoadout(self, ply) end
-	for _, class in ipairs(SANDBOX_TOOLS) do ply:Give(class) end
-	WS.GiveLoadout(ply)
-end
+-- Disabled because this strips weapons
+-- function GM:PlayerLoadout(ply)
+-- 	if not WS.Active() or cvars.Bool("sbox_weapons", true) then return self.BaseClass.PlayerLoadout(self, ply) end
+-- 	for _, class in ipairs(SANDBOX_TOOLS) do ply:Give(class) end
+-- 	WS.GiveLoadout(ply)
+-- end
 
 -- Spawn at the team's next valid info_player_teamspawn for this round.
 function GM:PlayerSelectSpawn(ply, transition)
@@ -95,7 +108,7 @@ function GM:PostPlayerDeath(ply)
 end
 
 -- On maps with rounds the team keys (F2's gm_showteam, changeteam) open the
--- team menu on the client (ws/cl_teams.lua), never through here:
+-- team menu on the client (cl_teams.lua), never through here:
 -- Sandbox's own team menu stays shut.
 function GM:ShowTeam(ply)
 	if WS.Active() then return end

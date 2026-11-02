@@ -7,7 +7,7 @@
 -- TF2 shows bots). Below: anyone on no team, the spectators, the map, and the
 -- match's win conditions. Shown wherever teams play (a TF2 map's rounds, the
 -- AI war); elsewhere Sandbox's own.
-local Scoreboard = WS.require("ws.scoreboard")
+local Scoreboard = WS.require("includes.scoreboard")
 local Teams = gameplay.teams
 local Economy = gameplay.economy
 

@@ -370,7 +370,7 @@ end
 
 T.test("the legacy payload files are gone", function()
 	for _, name in ipairs({ "sv_payload", "cl_payload", "cl_hud" }) do
-		T.eq(Exists(T.ROOT .. "ws/" .. name .. ".lua"), false, name)
+		T.eq(Exists(T.ROOT .. name .. ".lua"), false, name)
 	end
 end)
 

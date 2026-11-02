@@ -7,6 +7,11 @@ defaults, and which the coming binary module will back. `game/` takes the
 specialised code built from it (timers, the world's I/O, the NS brain,
 gameplay). Both publish their modules as globals.
 
+Current layout note: the modules described as `games.<namespace>.<module>`
+now live under `gamemode/includes/`; `list`, `timer`, `world` and `generator`
+live under `gamemode/includes/extensions/`. The `games.` module names and
+global namespaces are unchanged.
+
 ## Decisions (operator, 2026-10-22)
 
 1. **foundation loads eagerly, game lazily.** `shared_loader.lua` loads

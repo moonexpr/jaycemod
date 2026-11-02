@@ -70,9 +70,9 @@ local BASE = "base_nextsoldier"
 function WS.WarSoldier(ENT)
 	ENT.WSSoldier = true -- on both realms: the NPC context menu offers its trace
 	if CLIENT then return end
-	local Ragdoll = WS.require("ws.ragdoll")
+	local Ragdoll = WS.require("includes.ragdoll")
 	local Gestures = nextsoldier.gestures
-	local Voices = WS.require("ws.voices")
+	local Voices = WS.require("includes.voices")
 	local HL2Path = WS.require("foundation.wetsands.path.hl2")
 	local Leap = nextsoldier.leap
 	local Noise = nextsoldier.noise

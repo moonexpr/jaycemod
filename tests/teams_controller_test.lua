@@ -4,7 +4,7 @@
 local T = dofile("tests/harness.lua")
 local Teams = gameplay.teams
 
-local SOURCE = T.ROOT .. "ws/sv_teams.lua"
+local SOURCE = T.ROOT .. "sv_teams.lua"
 local RUNNER = 21 -- ULX's team for a user group, as one server has it
 
 -- active: whether a game is on (WS.Active, and WS.TeamPlay: Gameplay mode);

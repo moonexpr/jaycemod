@@ -1,15 +1,15 @@
--- The Debug NextSoldier panel (ws/cl_ns_debug.lua), the NPC context
--- menu (ws/cl_nb_menu.lua) and the AI War panel's slot list
--- (ws/sh_aiwar.lua, ws/cl_aiwar_slots.lua) run only commands and
+-- The Debug NextSoldier panel (cl_ns_debug.lua), the NPC context
+-- menu (cl_nb_menu.lua) and the AI War panel's slot list
+-- (sh_aiwar.lua, cl_aiwar_slots.lua) run only commands and
 -- convars the gamemode registers; the menu has a toggle for every debug
 -- layer and every part of the overlay, and the panel a checkbox per part.
 local T = dofile("tests/harness.lua")
 
 local ROOT = T.ROOT
-local PANEL = ROOT .. "ws/cl_ns_debug.lua"
-local MENU = ROOT .. "ws/cl_nb_menu.lua"
-local AIWAR_PANEL = ROOT .. "ws/sh_aiwar.lua"
-local SLOT_LIST = ROOT .. "ws/cl_aiwar_slots.lua"
+local PANEL = ROOT .. "cl_ns_debug.lua"
+local MENU = ROOT .. "cl_nb_menu.lua"
+local AIWAR_PANEL = ROOT .. "sh_aiwar.lua"
+local SLOT_LIST = ROOT .. "cl_aiwar_slots.lua"
 
 local function ReadFile(path)
 	local f = assert(io.open(path, "r"))

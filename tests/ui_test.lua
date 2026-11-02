@@ -1,4 +1,4 @@
--- WS.UI (ws/cl_ui.lua): Sandcastle's TF2-styled panels as derma
+-- WS.UI (cl_ui.lua): Sandcastle's TF2-styled panels as derma
 -- prototypes. UI.Define(name, base, proto) registers "WS<name>" on base (a
 -- UI name, else a derma class); a panel derives from one and overrides only
 -- what differs. Run against a fake derma.
@@ -26,7 +26,7 @@ local function Load(polys, texts)
 		ScrH = function() return 1080 end,
 		vgui = { Register = function() end },
 	}, { __index = _G })
-	setfenv(assert(loadfile("addons/sandcastle/gamemodes/sandcastle/gamemode/ws/cl_ui.lua")), env)()
+	setfenv(assert(loadfile("addons/sandcastle/gamemodes/sandcastle/gamemode/cl_ui.lua")), env)()
 	return env.WS.UI, defined
 end
 

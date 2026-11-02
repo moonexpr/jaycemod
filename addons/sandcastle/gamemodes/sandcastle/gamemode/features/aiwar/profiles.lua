@@ -3,7 +3,7 @@
 -- its player-model category, weapons, factions, health and speeds, and for
 -- the vortigaunt its own animations, blood and hull. A kind is the name
 -- features.aiwar.model knows it by.
-local Factions = require("ws.factions")
+local Factions = require("includes.factions")
 local ACT_IDLE, ACT_WALK, ACT_RUN, BLOOD_COLOR_GREEN = ACT_IDLE, ACT_WALK, ACT_RUN, BLOOD_COLOR_GREEN
 module(...)
 

@@ -11,7 +11,7 @@ local NO_TIMER = "no round timer is showing"
 -- Everyone is told what the admin changed (ws.admin_notices). A
 -- field sends a change at every step of its slider, so its notice waits
 -- until the admin has left the fields alone SETTLE seconds.
-local Notices = WS.require("ws.admin_notices")
+local Notices = WS.require("includes.admin_notices")
 local SETTLE = 3
 
 local function Settled(key, notices)

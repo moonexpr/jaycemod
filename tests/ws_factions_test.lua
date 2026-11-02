@@ -1,7 +1,7 @@
 -- ws.factions: the DrGBase factions of TF2's two teams, "Team RED"
 -- and "Team BLU": which a team's members join, and which they leave.
 local T = dofile("tests/harness.lua")
-local Factions = T.require("ws.factions")
+local Factions = T.require("includes.factions")
 local Teams = gameplay.teams
 
 T.test("each playing team has a faction of its own, named as the team", function()

@@ -6,7 +6,7 @@
 -- patch; that one's TF2 textures are theirs.
 local bit, gmatch, gsub, ipairs, lower, match, pairs = bit, string.gmatch, string.gsub, ipairs, string.lower, string.match, pairs
 local tonumber, type = tonumber, type
-local SoundPaths = require("ws.sound_paths")
+local SoundPaths = require("includes.sound_paths")
 module(...)
 
 -- The texture parameters TF2's world shaders take; the map's own cubemap

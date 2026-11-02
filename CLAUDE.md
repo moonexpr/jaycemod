@@ -10,13 +10,15 @@ NextSoldier, the AI-war's NextBot soldiers. The gamemode lives at
 |---|---|
 | `gamemode/shared_loader.lua` | Runs first: the gamemode's `WS.require`, then foundation's namespace indexes, each named by hand |
 | `gamemode/foundation/<namespace>/` | The generic base: data structures, algorithms, codecs, maths, classes, loaded at start and published as globals (`list.queue`) by `sh_index.lua` (index below) |
-| `gamemode/games/<namespace>/` | Models built on foundation: pure Lua systems, no GMod globals, I/O through ports (the gamemode core, gameplay, NPCs, timers, the world's I/O), published as globals by `sh_init.lua` and loaded on first read (index below) |
+| `gamemode/includes/{gameplay,npc,system}/` | Gamemode models built on foundation: pure Lua systems, no GMod globals, I/O through ports; published as globals by `sh_init.lua` and loaded on first read (index below) |
+| `gamemode/includes/extensions/{generator,list,timer,world}/` | Gamemode extensions to GMod/Lua global tables, published by their `sh_init.lua` indexes |
+| `gamemode/includes/*.lua` | Gamemode glue models, required by their stable module names |
 | `gamemode/nextsoldier/` | NextSoldier, the soldier itself (movement, senses, body, behaviours): its own subsystem on foundation and games that runs without the tactics engine, published as `nextsoldier.<module>` by `sh_init.lua` and loaded on first read (index below) |
 | `gamemode/wartactics/` | The AI war's tactics engine: the strategy soldiers are organised by (fire teams, squads, lanes, posts, scenarios), on NextSoldier, published as `wartactics.<module>` (index below) |
 | `gamemode/foundation/` | Nothing but its namespaces and three plain globals at its root (`transaction`, `configstore`, `nodegraph`): foundation is copied to the globals, so it stays small and generic. A feature's or mode's model is the feature's `model.lua` and its parts (`docs/foundation-game-split-plan.md`) |
 | `gamemode/features/<feature>/` | Controllers: `sv.lua`/`cl.lua`/`sh.lua` composition roots and their `<realm>_<part>.lua` parts |
 | `gamemode/entities/weapons/` | Standard SWEPs: CS:S stats are grouped on terminal weapons; `base_cstrike`, `base_cstrike_melee` and `base_cstrike_grenade` own shared behavior |
-| `gamemode/ws/` | Always-loaded glue |
+| `gamemode/*.lua` | Always-loaded glue and its `sh_`, `cl_`, `sv_` realm modules |
 | `gamemode/entities/` | Map entity bindings |
 | `addons/teamtint/` | Team Tint, its own addon: RED/BLU NPCs in TF2's shading, a tuning tool and debug views; pure modules in `lua/includes/modules/`, textures baked by `.devtools/bin/teamtint_bake.py` (`docs/team-theming-plan.md`) |
 | `tests/*_test.lua` | LuaJIT tests, `tests/harness.lua`; `tests/foundation_layers_test.lua` guards foundation's layers |
@@ -125,7 +127,7 @@ Code reads a published module by its global, bound to a local at the top
 of the file: `local Geometry = math.geometry`, never
 `require("foundation.math.geometry")`. `require` (`WS.require`, the harness's
 `T.require`) is for what has no global: a module's own parts, features' and
-`ws/`'s modules. The rule holds for the game's code, the tests and the
+glue modules (stored directly under `includes/`). The rule holds for the game's code, the tests and the
 tools alike: only the loader, the indexes and the test harness require a
 published module by name (`tests/foundation_index_test.lua`;
 `.devtools/bin/foundation_globals.py` rewrites old requires).
@@ -242,9 +244,11 @@ the native code is tested against, and what runs without the binary.
 
 ## games index
 
-`gamemode/games/<namespace>/<module>.lua`: the specialised code built on
-foundation (named `games/`, not `game/`: GMod has a `game` library, and
-`module(...)` builds a module's dotted path in the globals).
+`gamemode/includes/<namespace>/<module>.lua` (or
+`gamemode/includes/extensions/<namespace>/<module>.lua` for `list`, `timer`,
+`world` and `generator`): the specialised code built on foundation. Its
+logical module names still start with `games.` (not `game.`: GMod has a
+`game` library, and `module(...)` builds a module's dotted path in the globals).
 `shared_loader.lua` runs each namespace's `sh_init.lua`, which `Defer`s a
 module a line: module `games.<namespace>.<module>` is the global
 `<namespace>.<module>`, loaded the first time it is read, so a map pays only

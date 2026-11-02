@@ -44,7 +44,7 @@ local function load()
 		OBS_MODE_ROAMING = 5,
 		TEAM_SPECTATOR = 1,
 	}, { __index = _G })
-	setfenv(assert(loadfile("addons/sandcastle/gamemodes/sandcastle/gamemode/ws/sv_spawn_manager.lua")), env)()
+	setfenv(assert(loadfile("addons/sandcastle/gamemodes/sandcastle/gamemode/sv_spawn_manager.lua")), env)()
 	return s
 end
 

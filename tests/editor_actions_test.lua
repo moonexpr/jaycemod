@@ -1,4 +1,4 @@
--- WS.EditorAction (ws/sh_editors.lua): a right-click entry on an editor's
+-- WS.EditorAction (sh_editors.lua): a right-click entry on an editor's
 -- class, or on whatever its match(ent) accepts (a payload cart), for players
 -- holding its privilege: tampering unless it names another. Run against a
 -- fake properties library and a fake WS.Can.
@@ -15,7 +15,7 @@ local function Load()
 		properties = { Add = function(name, def) added[name] = def end },
 		IsValid = function(v) return v ~= nil end,
 	}, { __index = _G })
-	setfenv(assert(loadfile("addons/sandcastle/gamemodes/sandcastle/gamemode/ws/sh_editors.lua")), env)()
+	setfenv(assert(loadfile("addons/sandcastle/gamemodes/sandcastle/gamemode/sh_editors.lua")), env)()
 	return env.WS, added
 end
 

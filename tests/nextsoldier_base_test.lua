@@ -90,7 +90,7 @@ T.test("no coroutine: the behaviour coroutine's names are replaced, by Reset and
 end)
 
 T.test("every hook the soldier defines on the base is declared", function()
-	local text = Read(GAMEMODE .. "ws/sh_war_soldier.lua")
+	local text = Read(GAMEMODE .. "sh_war_soldier.lua")
 	for _, name in ipairs(SOLDIER_CLASSES) do text = text .. Read(ENTITIES .. name .. ".lua") end
 	for name in text:gmatch("function%s+ENT:([%w_]+)%s*%(") do
 		T.eq(Ours(name) or GMOD[name] == true or Base.HOOKS:Has(name), true, "ENT:" .. name .. " is a declared hook")

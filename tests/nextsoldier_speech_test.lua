@@ -8,7 +8,7 @@ local T = dofile("tests/harness.lua")
 local Response = T.require("responserules")
 local Script = T.require("responserules_script")
 local Speech = nextsoldier.speech
-local Voices = T.require("ws.voices")
+local Voices = T.require("includes.voices")
 local Payload = T.require("features.payload.model")
 
 local SCRIPTS = "addons/responserules/scripts/"

@@ -12,8 +12,8 @@
 --     copy. A map's patched materials
 --     (its cubemaps') take those of the material they include.
 local Gma = encoding.gma
-local SoundPaths = WS.require("ws.sound_paths")
-local Materials = WS.require("ws.tf_materials")
+local SoundPaths = WS.require("includes.sound_paths")
+local Materials = WS.require("includes.tf_materials")
 
 local DIR = "sandcastle"
 
@@ -48,6 +48,7 @@ end
 local sounds = {}
 for name in pairs(WS.HiddenTFSounds) do sounds[#sounds + 1] = "sound/" .. name end
 MountCopies("sounds", sounds)
+MountCopies("sounds_misc", sounds)
 
 -- The TF2 material a world material draws as: itself, or for a map's
 -- patched one, the material it includes; nil for one TF2 lacks.

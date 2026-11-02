@@ -4,7 +4,7 @@
 -- bomb heads' bombs; and Merasmus's body effects (C_Merasmus). The particle
 -- files are sh.lua's, in both realms.
 local BOSS_HEALTH = "ws_boss_health"
-local Hud = WS.require("ws.tf_hud")
+local Hud = WS.require("includes.tf_hud")
 
 -- TF2's boss meter as cooler-hud draws it (CHudBossHealthMeter; ws.tf_hud's
 -- BossMeter): its bar, cut to the boss's health, under its frame.

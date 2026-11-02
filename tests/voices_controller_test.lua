@@ -2,9 +2,9 @@
 -- the engine would, with fake players.
 local T = dofile("tests/harness.lua")
 local Teams = gameplay.teams
-local Voices = T.require("ws.voices")
+local Voices = T.require("includes.voices")
 
-local SOURCE = T.ROOT .. "ws/sv_voices.lua"
+local SOURCE = T.ROOT .. "sv_voices.lua"
 local UNVOICED_MODEL = "models/editor/playerstart.mdl"
 
 -- war: whether the AI war is on; its faction for each fighting team.

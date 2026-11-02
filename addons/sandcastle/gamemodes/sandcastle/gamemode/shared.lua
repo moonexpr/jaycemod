@@ -12,12 +12,12 @@ DeriveGamemode("sandbox")
 -- The gamemode's require, and foundation's namespaces, before anything else.
 include("shared_loader.lua")
 
--- Modules in gamemode/ws/ load by prefix: sh_ on both realms, sv_ on the
+-- Root modules load by prefix: sh_ on both realms, sv_ on the
 -- server, cl_ on clients. sh_core defines the WS table and loads first,
 -- including sh_events (the game event library) itself; the rest load in
 -- name order.
 function GM:WSModules(prefix)
-	local files = file.Find(self.FolderName .. "/gamemode/ws/" .. prefix .. "*.lua", "LUA")
+	local files = file.Find(self.FolderName .. "/gamemode/" .. prefix .. "*.lua", "LUA")
 	table.sort(files)
 	return files
 end
@@ -27,9 +27,9 @@ local LOADED_FIRST = {
 	["sh_events.lua"] = true,
 }
 
-include("ws/sh_core.lua")
+include("sh_core.lua")
 for _, f in ipairs(GM:WSModules("sh_")) do
-	if not LOADED_FIRST[f] then include("ws/" .. f) end
+	if not LOADED_FIRST[f] then include(f) end
 end
 
 local PLAYER_CLASS_FILES = {

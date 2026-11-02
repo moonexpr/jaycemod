@@ -1,4 +1,4 @@
--- ws/sh_spawn_manager.lua: why a player is not spawning, in TF2's words,
+-- sh_spawn_manager.lua: why a player is not spawning, in TF2's words,
 -- from what the server shares: the lock (the global ws_spawn_lock) and
 -- each player's status and respawn time (NW2), their team and whether
 -- teams are played (WS.TeamPlay). Run against fakes.
@@ -32,7 +32,7 @@ local function load(lock, teamPlay)
 		OBS_MODE_NONE = OBS_MODE_NONE,
 		GetGlobal2String = function(_, default) return lock or default end,
 	}, { __index = _G })
-	setfenv(assert(loadfile("addons/sandcastle/gamemodes/sandcastle/gamemode/ws/sh_spawn_manager.lua")), env)()
+	setfenv(assert(loadfile("addons/sandcastle/gamemodes/sandcastle/gamemode/sh_spawn_manager.lua")), env)()
 	return ws
 end
 

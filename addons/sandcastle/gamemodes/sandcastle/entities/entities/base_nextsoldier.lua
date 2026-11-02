@@ -83,7 +83,7 @@ WS.NextSoldierBots = WS.NextSoldierBots or setmetatable({}, { __mode = "k" })
 local Vision = nextsoldier.vision
 local Intention = nextsoldier.intention
 local Weapons = nextsoldier.weapons
-local Factions = WS.require("ws.factions")
+local Factions = WS.require("includes.factions")
 
 -- Its sight: how far, how wide (the whole cone), and how often it looks
 -- (TF2's IVision update), how soon it recognizes what it sees and how long

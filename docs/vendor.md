@@ -1,7 +1,7 @@
 # Vendored libraries
 
 `gamemode/vendor/` holds other people's GMod Lua, copied in as it was
-written. The gamemode reaches it only through `ws/sh_vendor.lua`, which
+written. The gamemode reaches it only through `sh_vendor.lua`, which
 includes it the first time something asks (`WS.MapFile`, `WS.MapQuery`,
 `WS.UseVendored`). Clients are sent every file (`Features.CLIENT_DIRS`).
 

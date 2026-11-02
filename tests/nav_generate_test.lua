@@ -1,4 +1,4 @@
--- mp_nav_generate (ws/sv_nav.lua): an admin, or the server console,
+-- mp_nav_generate (sv_nav.lua): an admin, or the server console,
 -- builds the map's navigation mesh. GMod's generator walks out from seeds,
 -- and TF2 maps spawn players at info_player_teamspawn, which it does not
 -- seed from: every spawn point and control point is a seed. It walks only
@@ -223,7 +223,7 @@ local function load(t)
 		IsValid = function(p) return p ~= nil end,
 		print = function(...) s.printed[#s.printed + 1] = table.concat({ ... }, " ") end,
 	}, { __index = _G })
-	setfenv(assert(loadfile("addons/sandcastle/gamemodes/sandcastle/gamemode/ws/sv_nav.lua")), env)()
+	setfenv(assert(loadfile("addons/sandcastle/gamemodes/sandcastle/gamemode/sv_nav.lua")), env)()
 	-- one poll of its timer, a second on, the doors moving meanwhile
 	function s.Poll()
 		s.now = s.now + 1
@@ -520,7 +520,7 @@ T.test("every spawn limit is 0 while it generates, and put back after", function
 end)
 
 T.test("every client is told each stage: opening the doors, generating, done with the areas made", function()
-	local Progress = T.require("ws.nav_progress")
+	local Progress = T.require("includes.nav_progress")
 	local s = load({ entities = SPAWNS })
 	s.commands.mp_nav_generate(nil)
 	s.Poll()
@@ -637,7 +637,7 @@ T.test("a mesh just generated has its seams linked too", function()
 end)
 
 -- An idle server builds its own mesh: once it is idle (WSServerIdle,
--- ws/sv_idle.lua), with no mesh, it runs mp_nav_generate as the console
+-- sv_idle.lua), with no mesh, it runs mp_nav_generate as the console
 -- would, and goes back to Gameplay mode after when it left it to generate.
 local function Idle(s)
 	s.hooks.WSServerIdle()

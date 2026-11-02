@@ -5,12 +5,12 @@
 local T = dofile("tests/harness.lua")
 
 local ROOT = T.ROOT
-local COMMANDS = ROOT .. "ws/sv_nbdebug.lua"
+local COMMANDS = ROOT .. "sv_nbdebug.lua"
 local NEXTSOLDIER = ROOT .. "../entities/entities/base_nextsoldier.lua"
-local WAR_SOLDIER = ROOT .. "ws/sh_war_soldier.lua"
+local WAR_SOLDIER = ROOT .. "sh_war_soldier.lua"
 local PATHFOLLOWER = ROOT .. "../entities/entities/npc_pathfollower.lua"
-local NAV_CLEARANCE = ROOT .. "ws/nav_clearance.lua"
-local NAV = ROOT .. "ws/sv_nav.lua"
+local NAV_CLEARANCE = ROOT .. "nav_clearance.lua"
+local NAV = ROOT .. "sv_nav.lua"
 local BOT_SOLDIER = ROOT .. "features/aiwar/sv_bot_soldier.lua"
 local BOT_NAVIGATOR = ROOT .. "../entities/entities/ws_bot_navigator.lua"
 

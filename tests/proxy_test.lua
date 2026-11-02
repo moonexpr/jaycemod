@@ -47,7 +47,7 @@ T.test("it is no spawnable thing and takes no tools", function()
 	T.eq(next(ENT.m_tblToolsAllowed), nil, "no tool works on it")
 end)
 
--- The cart's right-click entries (ws/sh_editors_cart.lua) show on a
+-- The cart's right-click entries (sh_editors_cart.lua) show on a
 -- proxy for a cart's watcher.
 local function LoadCart()
 	local added = {}
@@ -55,7 +55,7 @@ local function LoadCart()
 		WS = { EditorAction = function(name, def) added[name] = def end },
 		IsValid = function(v) return v ~= nil end,
 	}, { __index = _G })
-	setfenv(assert(loadfile("addons/sandcastle/gamemodes/sandcastle/gamemode/ws/sh_editors_cart.lua")), env)()
+	setfenv(assert(loadfile("addons/sandcastle/gamemodes/sandcastle/gamemode/sh_editors_cart.lua")), env)()
 	return added
 end
 

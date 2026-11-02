@@ -53,7 +53,7 @@ E.Define("game_points_awarded", {
 })
 
 if CLIENT then
-	local Soundscapes = WS.require("ws.soundscapes")
+	local Soundscapes = WS.require("includes.soundscapes")
 
 	-- system.local_player's engine: the soundscripts loaded, their files
 	-- precached, played on the local player.

@@ -1,7 +1,7 @@
 -- ws.scoreboard: who goes in which team's column and in what order,
 -- and the match's win conditions as TF2's scoreboard words them.
 local T = dofile("tests/harness.lua")
-local Board = T.require("ws.scoreboard")
+local Board = T.require("includes.scoreboard")
 local Teams = gameplay.teams
 local Rounds = gameplay.rounds
 local RED, BLUE, SPECTATOR, UNASSIGNED = Teams.RED, Teams.BLUE, Teams.SPECTATOR, Teams.UNASSIGNED

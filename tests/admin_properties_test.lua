@@ -1,4 +1,4 @@
--- ws/sh_admin_properties.lua: admins' C-click options on players. Each
+-- sh_admin_properties.lua: admins' C-click options on players. Each
 -- shows only on what its filter accepts, to holders of its privilege, and
 -- the server checks both again before running it. Run against fake
 -- properties, events and players.
@@ -51,7 +51,7 @@ local function Load()
 		isfunction = function(v) return type(v) == "function" end,
 		print = function() end,
 	}, { __index = _G })
-	setfenv(assert(loadfile("addons/sandcastle/gamemodes/sandcastle/gamemode/ws/sh_admin_properties.lua")), env)()
+	setfenv(assert(loadfile("addons/sandcastle/gamemodes/sandcastle/gamemode/sh_admin_properties.lua")), env)()
 	function s.Use(name, ply, target, value)
 		s.listeners.game_admin_property({ name = name, target = target, value = value or 0 }, ply)
 	end

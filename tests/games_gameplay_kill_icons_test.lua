@@ -160,7 +160,7 @@ end)
 -- The layout the gamemode ships (ws/kill_icons_sheet.lua, written by
 -- .devtools/bin/kill_icons_art.py) and the sheets it names, under content/.
 T.test("the shipped layout has every icon an alias or boss names, on sheets that exist", function()
-	local icons = Icons.Parse(T.require("ws.kill_icons_sheet").TEXT)
+	local icons = Icons.Parse(T.require("includes.kill_icons_sheet").TEXT)
 	local names = { prop_physics = true }
 	for _, name in pairs(Icons.HL2) do names[name] = true end
 	for name in pairs(Icons.BOSSES) do names[name] = true end

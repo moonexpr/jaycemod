@@ -333,25 +333,25 @@ T.test("client files: every shipping .lua file under the folders, recursively, s
 			files = { "sv.lua" },
 			dirs = {},
 		},
-		["ws/"] = {
+		["includes/"] = {
 			files = { "sv_world.lua", "sound_paths.lua", "sh_core.lua" },
 			dirs = {},
 		},
 	})
-	T.eq(List(Features.ClientFiles(port, { "ws/", "features/", "foundation/" })), List({
+	T.eq(List(Features.ClientFiles(port, { "includes/", "features/", "foundation/" })), List({
 		"features/a/cl.lua",
 		"features/a/cl_x.lua",
 		"features/a/model.lua",
 		"features/a/scenario/koth.lua",
 		"features/a/sh.lua",
 		"foundation/sample.lua",
-		"ws/sh_core.lua",
-		"ws/sound_paths.lua",
+		"includes/sh_core.lua",
+		"includes/sound_paths.lua",
 	}))
 end)
 
-T.test("client files walk the gamemode's seven folders", function()
-	T.eq(List(Features.CLIENT_DIRS), "foundation/,games/,nextsoldier/,wartactics/,features/,ws/,vendor/")
+T.test("client files walk the gamemode's six folders", function()
+	T.eq(List(Features.CLIENT_DIRS), "foundation/,includes/,nextsoldier/,wartactics/,features/,vendor/")
 end)
 
 -- Realm parts ----------------------------------------------------------------

@@ -13,7 +13,7 @@
 --  * a serverside ragdoll the engine or an addon made for a dead NPC or
 --    NextBot: its pose and velocities travel in the message and it is
 --    removed at once.
-local Ragdoll = WS.require("ws.ragdoll")
+local Ragdoll = WS.require("includes.ragdoll")
 
 -- The body's looks, the force to push it with, and the pose if the
 -- clients are to take it from the event, to the players whose PVS holds it.

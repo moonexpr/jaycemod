@@ -6,7 +6,7 @@
 -- sounds in place of HL2's of the same name (ws.sound_paths' TF2Wins). This
 -- runs before map entities spawn, so they precache the sounds by name as
 -- they would in TF2.
-local SoundPaths = WS.require("ws.sound_paths")
+local SoundPaths = WS.require("includes.sound_paths")
 
 local NAMED = {
 	VOL_NORM = 1.0,

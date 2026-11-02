@@ -21,13 +21,16 @@ return {
 	},
 	{
 		name = "games",
-		about = "games/: the gamemode core, gameplay models, combat and projectiles",
+		about = "includes/: the gamemode core, gameplay models and Lua API extensions",
 		tests = {
 			"games_*", "bullet_steps", "combat_text", "crit_effects", "fixed_spread", "hit_sound", "jar",
 			"weapon_*", "player_attributes", "players_conditions", "players_pickups", "players_ctf_capture_crits",
 			"targeting",
 		},
-		sources = { G .. "games/", E .. "entities/tf_projectile_" },
+		sources = {
+			G .. "includes/gameplay/", G .. "includes/npc/", G .. "includes/system/",
+			G .. "includes/extensions/", E .. "entities/tf_projectile_",
+		},
 	},
 	{
 		name = "nextsoldier",
@@ -43,7 +46,7 @@ return {
 		name = "war",
 		about = "the AI war: the tactics engine (wartactics/) and features/aiwar",
 		tests = { "wartactics_*", "aiwar_*", "features_aiwar_*" },
-		sources = { G .. "wartactics/", G .. "features/aiwar/", G .. "ws/sh_war_soldier.lua", G .. "ws/sh_aiwar.lua", G .. "ws/cl_aiwar_slots.lua" },
+		sources = { G .. "wartactics/", G .. "features/aiwar/", G .. "sh_war_soldier.lua", G .. "sh_aiwar.lua", G .. "cl_aiwar_slots.lua" },
 	},
 	{
 		name = "rounds",
@@ -56,10 +59,10 @@ return {
 			"features_rounds_*", "features_capture_*", "features_arena_*", "features_payload_*",
 		},
 		sources = {
-			G .. "games/gameplay/rounds", G .. "games/gameplay/capture", G .. "games/gameplay/spawn",
-			G .. "games/gameplay/teams",
+			G .. "includes/gameplay/rounds", G .. "includes/gameplay/capture", G .. "includes/gameplay/spawn",
+			G .. "includes/gameplay/teams",
 			G .. "init.lua", G .. "shared.lua", G .. "player_class/",
-			G .. "ws/sv_spawn_manager.lua", G .. "ws/sv_teams.lua",
+			G .. "sv_spawn_manager.lua", G .. "sv_teams.lua",
 			G .. "features/rounds/", G .. "features/capture/", G .. "features/koth/", G .. "features/flag/",
 			G .. "features/payload/", G .. "features/arena/", G .. "features/mvm/", G .. "features/gamemode/",
 			"tests/fake_objective.lua", "tests/fake_points.lua",
@@ -81,14 +84,25 @@ return {
 	},
 	{
 		name = "ws",
-		about = "ws/: the always-loaded glue, the HUD, menus, editors and admin tools",
+		about = "the gamemode's root modules: always-loaded glue, the HUD, menus, editors and admin tools",
 		tests = {
 			"ws_*", "proxy", "proxy_registry", "radio_gesture", "match_control", "players_menu", "ui",
 			"admin_properties", "permissions_adapter", "editor_*", "gameplay_settings", "tf_hud", "tf_materials",
 			"vote_hud", "votes_controller", "sound_paths", "voices_controller", "nav_generate",
 			"nav_progress_replay",
 		},
-		sources = { G .. "ws/", E .. "entities/ws_editor", E .. "entities/ws_gameplay_settings", E .. "entities/ws_proxy" },
+		sources = {
+			G .. "cl_", G .. "sh_", G .. "sv_",
+			G .. "includes/admin_notices.lua", G .. "includes/factions.lua",
+			G .. "includes/kill_icons_sheet.lua", G .. "includes/localization.lua",
+			G .. "includes/nav_clearance.lua", G .. "includes/nav_progress.lua",
+			G .. "includes/ragdoll.lua", G .. "includes/replicated.lua",
+			G .. "includes/scoreboard.lua", G .. "includes/settings.lua",
+			G .. "includes/sound_paths.lua", G .. "includes/soundscapes.lua",
+			G .. "includes/tf_hud.lua", G .. "includes/tf_materials.lua",
+			G .. "includes/voices.lua", G .. "includes/vote_hud.lua",
+			E .. "entities/ws_editor", E .. "entities/ws_gameplay_settings", E .. "entities/ws_proxy",
+		},
 	},
 	{
 		name = "addons",

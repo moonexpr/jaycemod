@@ -103,7 +103,7 @@ end)
 
 -- An ambient_generic naming a voice line TF2 has since made an .mp3
 -- (ws.sound_paths) plays the .mp3.
-local SoundPaths = WS.require("ws.sound_paths")
+local SoundPaths = WS.require("includes.sound_paths")
 local function GameFileExists(path) return file.Exists(path, "GAME") end
 
 hook.Add("EntityKeyValue", "ws_sound_paths", function(ent, key, value)
@@ -148,7 +148,7 @@ end
 -- soundscapes on their scripts' channels (the neutral alert once in a while:
 -- Spoken), then its card, to its audience. The alert's time is kept for
 -- the map: the first neutral notice on a new map speaks it.
-local AdminNotices = WS.require("ws.admin_notices")
+local AdminNotices = WS.require("includes.admin_notices")
 local neutralLineAt
 
 function WS.Notify(notices)

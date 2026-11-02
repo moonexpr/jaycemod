@@ -111,7 +111,7 @@ T.test("the flag is one GMod's notices leave free, within their byte", function(
 	end
 end)
 
--- A victim thrown and slammed dead into a surface (ws/sv_hits.lua's
+-- A victim thrown and slammed dead into a surface (sv_hits.lua's
 -- strike) shows the impact's own icon, not its thrower's weapon.
 T.test("a death by impact shows the impact's icon", function()
 	T.eq(Feed.Icon(Feed.SLAMMED), Feed.IMPACT_ICON, "slammed")

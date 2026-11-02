@@ -24,7 +24,7 @@ local Profiles = WS.require("features.aiwar.profiles")
 for kind in pairs(Feed.SOLDIERS) do language.Add(kind, Profiles.PROFILES[kind].PrintName) end
 
 local ICONS = Icons.Over(Icons.Parse(file.Read("scripts/mod_textures.txt", "tf")),
-	Icons.Parse(WS.require("ws.kill_icons_sheet").TEXT))
+	Icons.Parse(WS.require("includes.kill_icons_sheet").TEXT))
 
 local LIFETIME, MOST = 6, 6
 -- TF2's 480-tall units: a row, the gap under it, its icon, its padding and

@@ -9,8 +9,8 @@
 -- (ws/cl_menu_server.lua) reads WS.VoteState and WS.VoteMaps and hears
 -- WSVoteChanged.
 local Vote = gameplay.vote
-local VoteHud = WS.require("ws.vote_hud")
-local Hud = WS.require("ws.tf_hud")
+local VoteHud = WS.require("includes.vote_hud")
+local Hud = WS.require("includes.tf_hud")
 local E = WS.Events
 local UI = WS.UI
 local Font, DrawImage, DrawPanel = WS.TFHud.Font, WS.TFHud.DrawImage, WS.TFHud.DrawPanel

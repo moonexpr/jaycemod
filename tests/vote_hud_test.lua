@@ -5,7 +5,7 @@
 -- lit, the yes/no counts beside the vote bar, and the passed or failed
 -- panel.
 local T = dofile("tests/harness.lua")
-local VoteHud = T.require("ws.vote_hud")
+local VoteHud = T.require("includes.vote_hud")
 local Vote = gameplay.vote
 
 local NOW = 100

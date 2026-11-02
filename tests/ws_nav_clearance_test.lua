@@ -1,5 +1,5 @@
 local T = dofile("tests/harness.lua")
-local Clearance = T.require("ws.nav_clearance")
+local Clearance = T.require("includes.nav_clearance")
 
 local Vec = {}
 Vec.__index = Vec

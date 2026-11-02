@@ -35,10 +35,10 @@
 -- the next-map vote carry on.
 local Gamemode = system.gamemode
 local Doors = nextsoldier.doors
-local Progress = WS.require("ws.nav_progress")
+local Progress = WS.require("includes.nav_progress")
 local Clip = nextsoldier.clip
 local NavGaps = nextsoldier.nav_gaps
-local NavClearance = WS.require("ws.nav_clearance")
+local NavClearance = WS.require("includes.nav_clearance")
 local PairMap = world.pairmap
 
 local SEEDS = { "info_player_teamspawn", "info_player_start", "team_control_point", "item_healthkit_small",

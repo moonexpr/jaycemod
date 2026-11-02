@@ -1,4 +1,4 @@
--- WS.WeaponIcon (ws/cl_loadout.lua): a catalog weapon's spawn icon. A melee
+-- WS.WeaponIcon (cl_loadout.lua): a catalog weapon's spawn icon. A melee
 -- weapon's leans 30 degrees counter-clockwise, as HL2's weapon selection
 -- draws the crowbar; the rest stand upright. Run against a fake derma.
 local T = dofile("tests/harness.lua")
@@ -37,7 +37,7 @@ local function Load(drawn)
 			end,
 		},
 	}, { __index = _G })
-	setfenv(assert(loadfile("addons/sandcastle/gamemodes/sandcastle/gamemode/ws/cl_loadout.lua")), env)()
+	setfenv(assert(loadfile("addons/sandcastle/gamemodes/sandcastle/gamemode/cl_loadout.lua")), env)()
 	return env.WS
 end
 

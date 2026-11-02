@@ -10,7 +10,7 @@ local LOADED_FIRST = { "cl_client_settings.lua", "cl_hits.lua", "cl_ui.lua", "cl
 -- A module failing at load is reported with its stack, and the rest load
 -- on: one broken panel takes no other module with it.
 local function Load(f)
-	xpcall(include, ErrorNoHaltWithStack, "ws/" .. f)
+	xpcall(include, ErrorNoHaltWithStack, f)
 end
 
 local loaded = {}

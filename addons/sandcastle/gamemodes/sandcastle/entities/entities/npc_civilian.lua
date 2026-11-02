@@ -43,7 +43,7 @@ local ARMED_HEALTH = 100
 -- soldiers shot out, or one still whole.
 local GLASS_REACH = 32
 local GLASS_DAMAGE = 100
-local Factions = WS.require("ws.factions")
+local Factions = WS.require("includes.factions")
 local Weapons = nextsoldier.weapons
 
 local SoldierInitialize = ENT.CustomInitialize

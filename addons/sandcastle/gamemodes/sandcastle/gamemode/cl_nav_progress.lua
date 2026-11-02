@@ -16,7 +16,7 @@
 -- ws.nav_progress's volume on a BASS channel looping it (the file
 -- has no loop of its own, and a sound patch restarted at its end did not
 -- play again in game), and fades out once done.
-local P = WS.require("ws.nav_progress")
+local P = WS.require("includes.nav_progress")
 local E = WS.Events
 
 -- TF2's 480-tall units; its scheme's colours, WS.UI's theme.

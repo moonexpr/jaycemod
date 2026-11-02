@@ -5,7 +5,7 @@ local function Load()
 	local value = ""
 	local ws = {}
 	local consoleEnv = setmetatable({ WS = ws }, { __index = _G })
-	local consoleChunk = assert(loadfile("addons/sandcastle/gamemodes/sandcastle/gamemode/ws/sh_console.lua"))
+	local consoleChunk = assert(loadfile("addons/sandcastle/gamemodes/sandcastle/gamemode/sh_console.lua"))
 	setfenv(consoleChunk, consoleEnv)()
 	local env = setmetatable({
 		WS = ws,
@@ -22,7 +22,7 @@ local function Load()
 		},
 		Msg = function(text) output[#output + 1] = text end,
 	}, { __index = _G })
-	local chunk = assert(loadfile("addons/sandcastle/gamemodes/sandcastle/gamemode/ws/sv_logging.lua"))
+	local chunk = assert(loadfile("addons/sandcastle/gamemodes/sandcastle/gamemode/sv_logging.lua"))
 	setfenv(chunk, env)()
 	return env.WS, callbacks, commands, output, function(nextValue)
 		value = nextValue

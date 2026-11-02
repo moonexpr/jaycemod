@@ -29,8 +29,17 @@ local function Path(name)
 			end
 		end
 	end
-	return T.ROOT .. name:gsub("%.", "/") .. ".lua"
+	local path = name
+	local namespace = name:match("^games%.([%w_]+)%.")
+	if namespace then
+		path = name:gsub("^games%.", "includes.")
+		if namespace == "list" or namespace == "timer" or namespace == "world" or namespace == "generator" then
+			path = path:gsub("^includes%.", "includes.extensions.")
+		end
+	end
+	return T.ROOT .. path:gsub("%.", "/") .. ".lua"
 end
+T.Path = Path
 
 function T.require(name)
 	if package.loaded[name] == nil then

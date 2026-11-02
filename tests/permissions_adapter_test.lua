@@ -1,4 +1,4 @@
--- ws/sh_permissions.lua: registers every privilege with CAMI at its default
+-- sh_permissions.lua: registers every privilege with CAMI at its default
 -- rank, and answers WS.Can(ply, privilege) by asking CAMI synchronously and
 -- applying games.system.permissions. Run against a fake CAMI and fake
 -- replicated state.
@@ -38,7 +38,7 @@ local function Load(state)
 		FCVAR_NOTIFY = 2,
 		FCVAR_ARCHIVE = 4,
 	}, { __index = _G })
-	setfenv(assert(loadfile("addons/sandcastle/gamemodes/sandcastle/gamemode/ws/sh_permissions.lua")), env)()
+	setfenv(assert(loadfile("addons/sandcastle/gamemodes/sandcastle/gamemode/sh_permissions.lua")), env)()
 	return env.WS, registered, asked, convars
 end
 

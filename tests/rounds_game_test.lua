@@ -531,7 +531,7 @@ T.test("a map off the filter, or a pool of one, still gives what there is", func
 end)
 
 -- An empty server's next map: one without a nav mesh, so the idle server
--- builds it one (ws/sv_nav.lua).
+-- builds it one (sv_nav.lua).
 T.test("an empty server's next map is one without a nav mesh, at random, never this one", function()
 	local maps = { "cp_steel", "koth_viaduct", "pl_badwater", "pl_goldrush", "pl_upward" }
 	local navs = { cp_steel = true, pl_badwater = true }

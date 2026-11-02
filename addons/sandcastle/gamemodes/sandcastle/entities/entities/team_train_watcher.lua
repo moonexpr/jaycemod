@@ -392,12 +392,12 @@ end
 local Notices
 
 function ENT:AnnounceRetract()
-	Notices = Notices or WS.require("ws.admin_notices")
+	Notices = Notices or WS.require("includes.admin_notices")
 	WS.Notify(Notices.CartRetracted(self.team, WS.EnemyOf(self.team)))
 end
 
 function ENT:AnnounceAdvance()
-	Notices = Notices or WS.require("ws.admin_notices")
+	Notices = Notices or WS.require("includes.admin_notices")
 	WS.Notify(Notices.CartAdvanced(self.team, WS.EnemyOf(self.team)))
 end
 

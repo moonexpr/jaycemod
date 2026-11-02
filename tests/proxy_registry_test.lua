@@ -1,4 +1,4 @@
--- WS.Proxy (ws/sv_proxy.lua): one proxy (ws_proxy) per
+-- WS.Proxy (sv_proxy.lua): one proxy (ws_proxy) per
 -- entity it stands at, made when missing; a cart's (a payload checkpoint is
 -- a control point too) takes the place of a point's, never the other way.
 -- Run against fakes of ents.Create and IsValid.
@@ -31,7 +31,7 @@ local function Load()
 		end,
 		setmetatable = setmetatable,
 	}, { __index = _G })
-	setfenv(assert(loadfile("addons/sandcastle/gamemodes/sandcastle/gamemode/ws/sv_proxy.lua")), env)()
+	setfenv(assert(loadfile("addons/sandcastle/gamemodes/sandcastle/gamemode/sv_proxy.lua")), env)()
 	return env.WS, made, env
 end
 

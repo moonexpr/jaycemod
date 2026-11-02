@@ -7,7 +7,7 @@
 -- dies as one: in its model's voice, or in a model of none, its side's (the
 -- faction fighting for its team, Voices.ForAffiliation); a spectator keeps
 -- the engine's.
-local Voices = WS.require("ws.voices")
+local Voices = WS.require("includes.voices")
 
 -- The factions by name (features.aiwar.model's FACTIONS), and the sides they
 -- start on, which hold while no war is on to trade them.

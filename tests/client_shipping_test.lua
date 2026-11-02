@@ -1,5 +1,5 @@
 -- What the server sends clients: Features.ClientFiles over the real tree sends every file under
--- foundation/, features/ and ws/ except server ones (sv.lua, sv_*), and every
+-- foundation/, includes/, features/ and vendor/ except server ones (sv.lua, sv_*), and every
 -- module a shipped file requires is itself shipped.
 local T = dofile("tests/harness.lua")
 local Features = system.features
@@ -65,14 +65,20 @@ local function Read(path)
 end
 
 local shipped = Features.ClientFiles(DiskPort, Features.CLIENT_DIRS)
+local bootstrap = { ["cl_init.lua"] = true, ["init.lua"] = true, ["shared.lua"] = true, ["shared_loader.lua"] = true }
+for _, name in ipairs(Names(T.ROOT, "f")) do
+	if not bootstrap[name] and name:match("%.lua$") and Features.Ships(name) then shipped[#shipped + 1] = name end
+end
+table.sort(shipped)
 local ships = Set(shipped)
 
 T.test("the files clients need are sent", function()
 	for _, path in ipairs({
 		"features/tag/model.lua",
-		"ws/sound_paths.lua",
+		"includes/sound_paths.lua",
 		"features/capture/cl.lua",
-		"games/gameplay/teams.lua",
+		"includes/gameplay/teams.lua",
+		"includes/extensions/list/drawlist.lua",
 	}) do
 		T.eq(ships[path], true, path)
 	end
@@ -86,13 +92,13 @@ T.test("no server file is sent", function()
 	T.eq(table.concat(server, ", "), "", "server files sent")
 end)
 
--- init.lua's former rule: all of foundation/ (and of games/, split from
--- it), each feature's sh.lua and cl.lua, and ws/sh_* and ws/cl_*. The new
--- rule adds the modules (the files under features/ and ws/ with no realm),
+-- init.lua's former rule: all of foundation/, includes/, each feature's
+-- sh.lua and cl.lua, and root sh_* and cl_* files. The new rule adds the
+-- modules (the files under features/ and at the root with no realm),
 -- the features' client and shared parts, and the vendored libraries.
 T.test("the sent set is the old rule's set plus the feature and ws modules", function()
 	local expected = Set(LuaFilesUnder(T.ROOT .. "foundation/", T.ROOT))
-	for _, path in ipairs(LuaFilesUnder(T.ROOT .. "games/", T.ROOT)) do expected[path] = true end
+	for _, path in ipairs(LuaFilesUnder(T.ROOT .. "includes/", T.ROOT)) do expected[path] = true end
 	for _, path in ipairs(LuaFilesUnder(T.ROOT .. "nextsoldier/", T.ROOT)) do expected[path] = true end
 	for _, path in ipairs(LuaFilesUnder(T.ROOT .. "wartactics/", T.ROOT)) do expected[path] = true end
 	for _, name in ipairs(Names(T.ROOT .. Features.ROOT, "d")) do
@@ -105,10 +111,10 @@ T.test("the sent set is the old rule's set plus the feature and ws modules", fun
 			end
 		end
 	end
-	for _, name in ipairs(Names(T.ROOT .. "ws/", "f")) do
-		if name:match("^sh_.*" .. LUA) or name:match("^cl_.*" .. LUA) then expected["ws/" .. name] = true end
+	for _, name in ipairs(Names(T.ROOT, "f")) do
+		if not bootstrap[name] and name:match("%.lua$") and Features.Ships(name) then expected[name] = true end
 	end
-	for _, dir in ipairs({ Features.ROOT, "ws/" }) do
+	for _, dir in ipairs({ Features.ROOT }) do
 		for _, path in ipairs(LuaFilesUnder(T.ROOT .. dir, T.ROOT)) do
 			if Features.Realm(Basename(path)) == nil then expected[path] = true end
 		end
@@ -135,7 +141,12 @@ T.test("every module a shipped file or an entity uses is shipped", function()
 	local unshipped = {}
 	for _, source in ipairs(sources) do
 		for _, name in ipairs(T.Uses(Read(source[2]))) do
-			local target = name:gsub("%.", "/") .. ".lua"
+			local target
+			if name:match("^games%.") or name:match("^includes%.") then
+				target = T.Path(name):sub(#T.ROOT + 1)
+			else
+				target = name:gsub("%.", "/") .. ".lua"
+			end
 			if not ships[target] then unshipped[#unshipped + 1] = source[1] .. " -> " .. target end
 		end
 	end

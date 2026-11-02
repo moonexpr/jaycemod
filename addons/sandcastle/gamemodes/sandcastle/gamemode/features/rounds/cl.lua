@@ -25,7 +25,7 @@
 local Rounds = gameplay.rounds
 local Timer = WS.require("games.gameplay.rounds.timer")
 local Text = WS.require("features.rounds.text")
-local Hud = WS.require("ws.tf_hud")
+local Hud = WS.require("includes.tf_hud")
 
 local S = WS.STATE
 local UNASSIGNED = WS.TEAM_UNASSIGNED

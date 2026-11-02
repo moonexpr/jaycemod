@@ -2,7 +2,7 @@
 -- UTF-16LE KeyValues) read once into a token table, the player's GMod
 -- language mapped to TF2's file, and tokens looked up with English behind.
 local T = dofile("tests/harness.lua")
-local L = T.require("ws.localization")
+local L = T.require("includes.localization")
 
 local BOM = "\255\254"
 
