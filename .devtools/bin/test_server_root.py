@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from server_root import GAMEMODE_ENV, LUADEV_PORT_FILE, REPO_ADDONS, REPO_DATA, ROOT, ROOT_WINDOWS, SERVER_BINARIES, SERVER_LUA, SERVER_EXE, SERVER_WORKSHOP, TF_SCRIPTS,\
+from server_root import GAMEMODE_ENV, LUADEV_PORT_FILE, REPO, REPO_ADDONS, REPO_DATA, ROOT, ROOT_WINDOWS, SERVER_BINARIES, SERVER_LUA, SERVER_EXE, SERVER_WORKSHOP, TF_SCRIPTS,\
     TF_SCRIPTS_DIR, SERVER_DOWNLOADS, SERVER_MAPS, SERVER_PACKS, map_archive_name, Instance, Layout, NotAnExe, build, console_exe
 from test_vpk import DIR_ARCHIVE, entry, write_pak
 
@@ -147,6 +147,7 @@ def test_an_archive_the_server_no_longer_mounts_leaves_cache(layout):
 def test_the_repos_own_addons_are_linked_into_the_servers_addons(layout):
     addons = build(layout) / "garrysmod" / "addons"
     assert REPO_ADDONS, "the repo has addons of its own"
+    assert REPO_ADDONS["cstrike_weapons"] == REPO / "addons" / "cstrike_weapons"
     for name, source in REPO_ADDONS.items():
         assert (addons / name).resolve() == source, name
 

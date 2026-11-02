@@ -132,6 +132,7 @@ NATIVE_BINARIES = {
 }
 # addons built in this repo, linked into the server's addons/: name -> folder
 REPO_ADDONS = {
+    "cstrike_weapons": REPO / "addons" / "cstrike_weapons",  # CS:S weapons and grenade effects
     "responserules": REPO / "addons" / "responserules",  # TF2's response rules; the AI war's soldiers speak by them
     "sandcastle_dev": REPO / "addons" / "sandcastle_dev",  # the dev workbench, run by sandcastle_dev.lua; never released
 }
