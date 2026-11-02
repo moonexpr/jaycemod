@@ -31,12 +31,8 @@ end
 
 function GM:PlayerSpawn(ply, transition)
 	local teamPlay = WS.TeamPlay()
-	local spectator = teamPlay and (ply.wsTeam == WS.TEAM_UNASSIGNED
-		or ply:Team() == WS.TEAM_UNASSIGNED or ply:Team() == WS.TEAM_SPECTATOR)
-	local class = WS.PlayMode() == system.play_mode.SANDBOX and "player_sandcastle"
-		or spectator and "player_spectator"
-		or "player_combatant"
-	player_manager.SetPlayerClass(ply, class)
+	local spectator = WS.Spectator.SelectSpawnClass(ply, teamPlay,
+		WS.PlayMode() == system.play_mode.SANDBOX)
 
 	if not teamPlay then
 		self.BaseClass.PlayerSpawn(self, ply, transition)
@@ -44,7 +40,7 @@ function GM:PlayerSpawn(ply, transition)
 		return
 	end
 	if spectator then
-		self.BaseClass.PlayerSpawnAsSpectator(self, ply)
+		WS.Spectator.SpawnAsSpectator(ply)
 		return
 	end
 	self.BaseClass.PlayerSpawn(self, ply, transition)
@@ -83,8 +79,7 @@ end
 
 -- CTFPlayer::Event_Killed drops an ammo pack where the player died.
 function GM:DoPlayerDeath(ply, attacker, dmg)
-	player_manager.SetPlayerClass(ply, "player_spectator")
-	dmg:SetDamageType(bit.bor(dmg:GetDamageType(), DMG_REMOVENORAGDOLL))
+	WS.Spectator.DoPlayerDeath(ply, dmg)
 	self.BaseClass.DoPlayerDeath(self, ply, attacker, dmg)
 	if WS.Active() and not ply.wsChangingTeam then WS.DropAmmoPack(ply) end
 end

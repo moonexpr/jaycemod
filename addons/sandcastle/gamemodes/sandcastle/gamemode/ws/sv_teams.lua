@@ -58,8 +58,7 @@ function WS.SetPlayerTeam(ply, newTeam, force)
 		-- HandleCommand_JoinTeam: a live player dies before becoming a spectator.
 		if not force and Playing(old) and ply:Alive() then Die(ply) end
 		ply:SetTeam(newTeam)
-		player_manager.SetPlayerClass(ply, "player_spectator")
-		ply:Spectate(newTeam == UNASSIGNED and OBS_MODE_FIXED or OBS_MODE_ROAMING)
+		WS.Spectator.Enter(ply, newTeam)
 		return
 	end
 	ply:SetTeam(newTeam)

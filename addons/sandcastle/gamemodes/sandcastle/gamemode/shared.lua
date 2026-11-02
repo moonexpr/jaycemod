@@ -9,19 +9,6 @@ GM.Website = ""
 
 DeriveGamemode("sandbox")
 
-local PLAYER_CLASS_FILES = {
-	"player_class/simple_weapon_loadout.lua",
-	"player_class/player_combatant.lua",
-	"player_class/player_combatant_cstrike.lua",
-	"player_class/player_sandcastle.lua",
-	"player_class/player_spectator.lua",
-}
-
-for _, path in ipairs(PLAYER_CLASS_FILES) do
-	if SERVER then AddCSLuaFile(path) end
-	include(path)
-end
-
 -- The gamemode's require, and foundation's namespaces, before anything else.
 include("shared_loader.lua")
 
@@ -43,6 +30,19 @@ local LOADED_FIRST = {
 include("ws/sh_core.lua")
 for _, f in ipairs(GM:WSModules("sh_")) do
 	if not LOADED_FIRST[f] then include("ws/" .. f) end
+end
+
+local PLAYER_CLASS_FILES = {
+	"player_class/simple_weapon_loadout.lua",
+	"player_class/player_combatant.lua",
+	"player_class/player_combatant_cstrike.lua",
+	"player_class/player_sandcastle.lua",
+	"player_class/player_spectator.lua",
+}
+
+for _, path in ipairs(PLAYER_CLASS_FILES) do
+	if SERVER then AddCSLuaFile(path) end
+	include(path)
 end
 
 -- TF2's team numbers (1 spectator, 2 RED, 3 BLU); GMod reserves only 0, 1001 and 1002.

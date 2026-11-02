@@ -52,7 +52,7 @@ return {
 			"rounds_*", "gamemode_ready", "gamemode_round_players_ready", "gamemode_tournament", "gameplay",
 			"games_gameplay_rounds_*", "games_gameplay_capture_*", "capture_*", "objective_snapshots", "koth", "flag",
 			"mvm", "payload_mode", "spawn_*", "teams_controller", "players_teams*",
-			"player_classes",
+			"player_classes", "player_spectator",
 			"features_rounds_*", "features_capture_*", "features_arena_*", "features_payload_*",
 		},
 		sources = {

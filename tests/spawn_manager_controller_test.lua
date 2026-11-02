@@ -25,6 +25,13 @@ local function load()
 	local s = { hooks = {}, globals = {}, classes = {} }
 	s.ws = {
 		require = T.require,
+		Spectator = {
+			Enter = function(ply, team)
+				s.classes[ply] = "player_spectator"
+				ply:StripWeapons()
+				ply:Spectate(team == 1 and 5 or 1)
+			end,
+		},
 	}
 	local env = setmetatable({
 		WS = s.ws,

@@ -62,9 +62,7 @@ end
 
 hook.Add("PlayerSpawn", "ws_spawn_manager", function(ply)
 	if manager:Admit(ply) then return end
-	player_manager.SetPlayerClass(ply, "player_spectator")
-	ply:StripWeapons()
-	ply:Spectate(ply:Team() == TEAM_SPECTATOR and OBS_MODE_ROAMING or OBS_MODE_FIXED)
+	WS.Spectator.Enter(ply, ply:Team())
 	return true
 end)
 

@@ -29,6 +29,13 @@ local function Load(active, choice)
 		ForceAutoTeam = { GetBool = function() return false end },
 		AllowSpectators = { GetBool = function() return true end },
 		JoinTeamFaction = function() end,
+		Spectator = {
+			Enter = function(ply, team)
+				ply.playerClass = "player_spectator"
+				ply:StripWeapons()
+				ply:Spectate(team == Teams.SPECTATOR and 5 or 1)
+			end,
+		},
 	}
 	local env = setmetatable({
 		WS = ws,
@@ -76,6 +83,7 @@ local function Player(own, current)
 	function ply:SetTeam(t) self.team = t end
 	function ply:Spectate(mode) self.observerMode = mode end
 	function ply:UnSpectate() self.observerMode = nil end
+	function ply:StripWeapons() self.stripped = true end
 	function ply:Alive() return self.alive == true end
 	function ply:KillSilent() self.alive = false end
 	return ply
