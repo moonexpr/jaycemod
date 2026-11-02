@@ -25,12 +25,23 @@ local function Walk(dir, list)
 	return list
 end
 
+local function ClientFile(name)
+	return name ~= "sv.lua" and not name:find("^sv_")
+end
+
 local function IsSent(path, text)
 	local rel = path:sub(#ROOT + 1)
-	if rel == "gamemode/shared.lua" or rel == "gamemode/cl_init.lua" then return true end
-	if rel:find("^gamemode/foundation/") then return true end
-	if rel:find("^gamemode/features/[^/]+/sh%.lua$") or rel:find("^gamemode/features/[^/]+/cl%.lua$") then return true end
-	if rel:find("^gamemode/ws/sh_") or rel:find("^gamemode/ws/cl_") then return true end
+	if rel == "gamemode/shared.lua" or rel == "gamemode/cl_init.lua" or rel == "gamemode/shared_loader.lua" then return true end
+	local name = rel:match("^gamemode/([^/]+)$")
+	if name then
+		return name ~= "init.lua" and name ~= "cl_init.lua" and name ~= "shared.lua"
+			and name ~= "shared_loader.lua" and ClientFile(name)
+	end
+	local folder = rel:match("^gamemode/([^/]+)/")
+	if folder == "foundation" or folder == "includes" or folder == "nextsoldier" or folder == "wartactics"
+		or folder == "features" or folder == "vendor" then
+		return ClientFile(rel:match("([^/]+)$") or "")
+	end
 	if rel:find("^entities/") and text:find("AddCSLuaFile", 1, true) then return true end
 	return false
 end

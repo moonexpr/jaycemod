@@ -11,8 +11,8 @@ ADDON = Path("/repo/addons/sandcastle")
 
 
 def test_a_gamemode_file_is_known_by_its_path_under_the_addon():
-    assert gmod_path(ADDON, ADDON / "gamemodes/sandcastle/gamemode/ws/sv_teams.lua") == \
-        "gamemodes/sandcastle/gamemode/ws/sv_teams.lua"
+    assert gmod_path(ADDON, ADDON / "gamemodes/sandcastle/gamemode/sv_teams.lua") == \
+        "gamemodes/sandcastle/gamemode/sv_teams.lua"
 
 
 def test_a_file_under_the_addons_lua_folder_is_known_by_its_path_under_lua():

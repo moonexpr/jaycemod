@@ -74,7 +74,7 @@ Source("lua/includes net.WriteEntity", net.WriteEntity)
 
 Say("--- chunk names given by the loader functions")
 Source("this probe (RunString name)", debug.getinfo(1, "f").func)
-Source("CompileFile('sandcastle/gamemode/games/gameplay/teams.lua')", CompileFile("sandcastle/gamemode/games/gameplay/teams.lua"))
+Source("CompileFile('sandcastle/gamemode/includes/gameplay/teams.lua')", CompileFile("sandcastle/gamemode/includes/gameplay/teams.lua"))
 Source("CompileString(code, 'x/y.lua')", CompileString("return function() end", "x/y.lua"))
 
 Say("--- file.Read on the server")

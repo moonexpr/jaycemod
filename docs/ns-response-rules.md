@@ -33,7 +33,7 @@ each line said and the rule that chose it.
 | Cart concepts | `foundation/payload.lua` `SpeedConcepts` | when the train watcher has players speak, as `team_train_watcher.cpp` does |
 | Watcher | `entities/entities/team_train_watcher.lua` | raises `WSCartConcept(watcher, concept, audience, blocked)` |
 | Criteria | `foundation/aiwar/speech.lua` | a soldier's criteria set |
-| Speakers | `features/aiwar/sv_speech.lua` | who hears a concept; plays the line |
+| Speakers | `features/aiwar/sv_responserules.lua` | who hears a concept; plays the line |
 | Sides | `foundation/npc/voices.lua` | each voice's name and affiliation |
 
 A soldier's criteria set: `affiliation` (`combine`, `rebel`), `voice`

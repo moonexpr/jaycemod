@@ -16,7 +16,7 @@
 --     again under their ids, now closing over the live state
 --   an entity file: registered again (scripted_ents.Register; live
 --     entities get the new class, ENT:OnReloaded runs, Initialize does not)
--- Refused, with the reason: ws/ and the gamemode's root files (GMod's own
+-- Refused, with the reason: the gamemode's root files (GMod's own
 -- refresh runs the whole gamemode again), cl_ and sh_ files (clients keep
 -- what they were sent: changelevel), files of features or modules this map
 -- has not loaded (nothing to reload; they load fresh when needed).
@@ -36,12 +36,13 @@ end
 
 -- The gamemode's paths, from WS.require, once the gamemode is up (the
 -- workbench loads before it).
-local ROOT, CHUNK_ENV, ENTITIES
+local ROOT, CHUNK_ENV, ENTITIES, MODULE_PATH
 
 local function Paths()
 	if ROOT then return end
 	ROOT = Upvalue(WS.require, "GAMEMODE_ROOT") -- "sandcastle/gamemode/"
 	CHUNK_ENV = Upvalue(WS.require, "CHUNK_ENV")
+	MODULE_PATH = Upvalue(WS.require, "ModulePath")
 	ENTITIES = string.gsub(ROOT, "gamemode/$", "entities/entities/")
 end
 
@@ -96,10 +97,15 @@ local function Classify(path)
 	if string.match(rel, "_index%.lua$") or string.match(rel, "_init%.lua$") then
 		return { kind = "refused", why = "a namespace's index runs with the loader; changelevel" }
 	end
-	if string.StartWith(rel, "foundation/") or string.StartWith(rel, "games/") or string.StartWith(rel, "nextsoldier/") or string.StartWith(rel, "wartactics/") then
+	if string.StartWith(rel, "foundation/") or string.StartWith(rel, "nextsoldier/") or string.StartWith(rel, "wartactics/") then
 		return { kind = "module", name = string.gsub(string.gsub(rel, "%.lua$", ""), "/", ".") }
 	end
-	return { kind = "refused", why = "the gamemode's own files (ws/, init.lua) run again only with the whole gamemode; changelevel" }
+	local namespace, module = string.match(rel, "^includes/extensions/([%w_]+)/(.+)%.lua$")
+	if not namespace then namespace, module = string.match(rel, "^includes/([%w_]+)/(.+)%.lua$") end
+	if namespace then
+		return { kind = "module", name = "games." .. namespace .. "." .. string.gsub(module, "/", ".") }
+	end
+	return { kind = "refused", why = "the gamemode's root files (init.lua and realm modules) run again only with the whole gamemode; changelevel" }
 end
 
 -- Class tables a module keeps in upvalues, by upvalue name: every table
@@ -141,7 +147,7 @@ local function ReloadModule(name)
 	local module = package.loaded[name]
 	if module == nil then return { skipped = name .. " is not loaded on this map" } end
 	local old = Classes(FunctionsOf(module))
-	local chunk = CompileFile(ROOT .. string.gsub(name, "%.", "/") .. ".lua")
+	local chunk = CompileFile(ROOT .. MODULE_PATH(name))
 	if not isfunction(chunk) then dev.Fail(name .. " did not compile; see the console") end
 	setfenv(chunk, CHUNK_ENV)(name)
 	local patched = {}

@@ -19,12 +19,12 @@ local DIR = "ws_tests/gev2/"
 local SERVER_LIST = DIR .. "out/" .. NAME .. ".txt"
 local CACHE_PATH = "MOD" -- garrysmod/; the research timed GAME at 463 ms for 191 misses
 local MARKERS = {
-	"WS_T1_INCLUDE", -- ws/cl_teams.lua, include
+	"WS_T1_INCLUDE", -- cl_teams.lua, include
 	"WS_T1_COMPILE", -- features/capture/cl.lua, the feature loader's CompileFile
 	"WS_T1_REQUIRE", -- optional: a foundation module, WS.require's CompileFile (set as _G.WS_T1_REQUIRE)
 }
 local MARKED_KEYS = {
-	"gamemode/ws/cl_teams.lua",
+	"gamemode/cl_teams.lua",
 	"gamemode/features/capture/cl.lua",
 }
 local folder = GAMEMODE.FolderName
@@ -59,30 +59,28 @@ Say("realm", SERVER and "server" or "client", "VERSION", VERSION, "BRANCH", BRAN
 Say("time", os.date("!%Y-%m-%dT%H:%M:%SZ"), "sv_allowcslua", GetConVarString("sv_allowcslua"))
 for _, global in ipairs(MARKERS) do Say("marker", global, tostring(_G[global])) end
 
--- The files the server sends, by init.lua's rules (research §2): the two
--- entry files, foundation/ recursively, each feature's sh.lua and cl.lua,
--- ws/'s sh_ and cl_ files, and every entity or weapon with a line
+-- The files the server sends: the entry files, the client-safe gamemode
+-- trees, root modules, and every entity or weapon with a line
 -- starting AddCSLuaFile().
 local function SentKeys()
-	local keys = { "gamemode/cl_init.lua", "gamemode/shared.lua" }
+	local keys = { "gamemode/cl_init.lua", "gamemode/shared.lua", "gamemode/shared_loader.lua" }
 	local function Add(key)
 		keys[#keys + 1] = key
 	end
 	local function Walk(dir)
-		for _, f in ipairs(file.Find(LuaPath(dir) .. "*.lua", "LUA")) do Add(dir .. f) end
+		for _, f in ipairs(file.Find(LuaPath(dir) .. "*.lua", "LUA")) do
+			if f ~= "sv.lua" and not f:match("^sv_") then Add(dir .. f) end
+		end
 		local _, dirs = file.Find(LuaPath(dir) .. "*", "LUA")
 		for _, d in ipairs(dirs) do Walk(dir .. d .. "/") end
 	end
-	Walk("gamemode/foundation/")
-	local _, features = file.Find(LuaPath("gamemode/features/") .. "*", "LUA")
-	for _, feature in ipairs(features) do
-		for _, part in ipairs({ "sh", "cl" }) do
-			local key = "gamemode/features/" .. feature .. "/" .. part .. ".lua"
-			if file.Exists(LuaPath(key), "LUA") then Add(key) end
-		end
+	for _, dir in ipairs({ "gamemode/foundation/", "gamemode/includes/", "gamemode/nextsoldier/",
+		"gamemode/wartactics/", "gamemode/features/", "gamemode/vendor/" }) do
+		Walk(dir)
 	end
-	for _, prefix in ipairs({ "sh_", "cl_" }) do
-		for _, f in ipairs(file.Find(LuaPath("gamemode/ws/") .. prefix .. "*.lua", "LUA")) do Add("gamemode/ws/" .. f) end
+	local bootstrap = { ["cl_init.lua"] = true, ["init.lua"] = true, ["shared.lua"] = true, ["shared_loader.lua"] = true }
+	for _, f in ipairs(file.Find(LuaPath("gamemode/") .. "*.lua", "LUA")) do
+		if not bootstrap[f] and f ~= "sv.lua" and not f:match("^sv_") then Add("gamemode/" .. f) end
 	end
 	for _, kind in ipairs({ "entities", "weapons" }) do
 		for _, f in ipairs(file.Find(LuaPath("entities/" .. kind .. "/") .. "*.lua", "LUA")) do
@@ -107,12 +105,17 @@ end
 
 -- The client ---------------------------------------------------------------------------------
 
--- Whether this client ran the file in this session: a foundation module is
--- in package.loaded, a feature part ran if its feature loaded here, and the
--- entry files, ws/ and the entities always run.
+-- Whether this client ran the file in this session: a foundation or includes
+-- module is in package.loaded, a feature part ran if its feature loaded here,
+-- and the entry files, root modules and entities always run.
 local function Ran(key)
 	local module = key:match("^gamemode/(foundation/.+)%.lua$")
 	if module then return package.loaded[module:gsub("/", ".")] ~= nil end
+	module = key:match("^gamemode/includes/(.+)%.lua$")
+	if module then
+		module = module:gsub("^extensions/", "")
+		return package.loaded["games." .. module:gsub("/", ".")] ~= nil
+	end
 	local feature = key:match("^gamemode/features/([^/]+)/")
 	if feature then return WS.FeatureLoaded(feature) end
 	return true

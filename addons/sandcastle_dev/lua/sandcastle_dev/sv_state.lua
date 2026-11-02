@@ -298,7 +298,9 @@ end, function(players, _, report)
 			if not p.alive and ply:Alive() then ply:KillSilent() end
 			if p.loadout then
 				WS.Loadouts[ply] = Loadout.FromState(WS.LoadoutCatalog, p.loadout.owned, p.loadout.equipped)
-				if p.alive then
+				-- With the economy off, Sandbox owns the live inventory; WS.Loadouts
+				-- is only a model and must not replace the weapons the player holds.
+				if p.alive and WS.EconomyEnabled() then
 					ply:StripWeapons()
 					WS.GiveLoadout(ply)
 				end

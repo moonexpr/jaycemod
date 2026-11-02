@@ -16,7 +16,7 @@ Writes, under the gamemode:
   content/materials/sandcastle/kill_icons/hl2_<hash>.png, hl2_<hash>_neg.png
       the sheets, named for what they hold so a client downloads a changed
       one again; the last ones are removed
-  gamemode/ws/kill_icons_sheet.lua    their layout, in TF2's
+  gamemode/kill_icons_sheet.lua       their layout, in TF2's
       scripts/mod_textures.txt format, which foundation.kill_icons reads
 
 Needs photocraft-cli on PATH.
@@ -42,7 +42,7 @@ CONTENT = ROOT / "addons" / "sandcastle" / "gamemodes" / "sandcastle" / "content
 SHEETS = CONTENT / "materials" / "sandcastle" / "kill_icons"
 SHEET_PREFIX = "hl2_"
 # The layout ships as Lua, which clients are sent fresh every join.
-LAYOUT = ROOT / "addons" / "sandcastle" / "gamemodes" / "sandcastle" / "gamemode" / "ws" / "kill_icons_sheet.lua"
+LAYOUT = ROOT / "addons" / "sandcastle" / "gamemodes" / "sandcastle" / "gamemode" / "kill_icons_sheet.lua"
 MASTERS = ROOT / ".devtools" / "artifacts" / "kill_icons"
 
 UNIT_TALL = 32  # TF2's kill icon height, in the units the designs are drawn in
