@@ -31,11 +31,12 @@ end
 
 function GM:PlayerSpawn(ply, transition)
 	local teamPlay = WS.TeamPlay()
+	WS.Spectator.PrepareSpawn(ply)
 	local spectator = WS.Spectator.SelectSpawnClass(ply, teamPlay,
 		WS.PlayMode() == system.play_mode.SANDBOX)
 
 	if not teamPlay then
-		self.BaseClass.PlayerSpawn(self, ply, transition)
+		self.BaseClass.BaseClass.PlayerSpawn(self, ply, transition)
 		WS.ApplyMovement(ply)
 		return
 	end
@@ -43,7 +44,7 @@ function GM:PlayerSpawn(ply, transition)
 		WS.Spectator.SpawnAsSpectator(ply)
 		return
 	end
-	self.BaseClass.PlayerSpawn(self, ply, transition)
+	self.BaseClass.BaseClass.PlayerSpawn(self, ply, transition)
 	WS.ApplyMovement(ply)
 	-- another addon's team change is undone by ws/sv_teams.lua's hooks
 end
@@ -79,7 +80,6 @@ end
 
 -- CTFPlayer::Event_Killed drops an ammo pack where the player died.
 function GM:DoPlayerDeath(ply, attacker, dmg)
-	WS.Spectator.DoPlayerDeath(ply, dmg)
 	self.BaseClass.DoPlayerDeath(self, ply, attacker, dmg)
 	if WS.Active() and not ply.wsChangingTeam then WS.DropAmmoPack(ply) end
 end
@@ -91,6 +91,7 @@ hook.Add("InitPostEntity", "ws_gamerules", function() WS.Feature("rounds"):SetUp
 -- Neither Sandbox nor base defines PostPlayerDeath.
 function GM:PostPlayerDeath(ply)
 	WS.Rules:OnPlayerDeath(ply)
+	WS.Spectator.AfterPlayerDeath(ply)
 end
 
 -- On maps with rounds the team keys (F2's gm_showteam, changeteam) open the

@@ -65,6 +65,7 @@ return {
 			"tests/fake_objective.lua", "tests/fake_points.lua",
 			E .. "entities/team_", E .. "entities/tf_logic_", E .. "entities/game_", E .. "entities/func_respawnroom",
 			E .. "entities/func_capturezone", E .. "entities/trigger_capture_area", E .. "entities/item_teamflag",
+			E .. "entities/info_observer_point",
 			E .. "entities/tf_gamerules", E .. "entities/ws_gamerules", E .. "entities/edit_",
 		},
 	},

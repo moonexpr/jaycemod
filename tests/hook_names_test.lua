@@ -14,7 +14,7 @@ for _, name in ipairs({
 	"HUDPaint", "InitPostEntity", "KeyPress", "OnContextMenuOpen", "OnEntityCreated", "OnScreenSizeChanged",
 	"PlayerBindPress", "PlayerCanPickupWeapon", "PlayerDeath", "PlayerDeathSound", "PlayerDeathThink", "PlayerDisconnected",
 	"PlayerEndVoice", "PlayerFootstep", "PlayerHurt", "PlayerInitialSpawn", "PlayerLoadout",
-	"PlayerRequestTeam", "PlayerSpawn", "PlayerStartVoice", "PopulateMenuBar", "PopulateToolMenu",
+	"PlayerRequestTeam", "PlayerSpawn", "PlayerStartVoice", "PlayerUse", "PopulateMenuBar", "PopulateToolMenu",
 	"PostCleanupMap", "PostDrawTranslucentRenderables", "PostEntityTakeDamage", "PostPlayerDeath",
 	"PostPlayerDraw", "PostRender", "PreCleanupMap", "PrePlayerDraw", "PreDrawHUD", "PreDrawViewModel", "PreRender",
 	"RenderScreenspaceEffects", "SetupMove", "SetupPlayerVisibility", "ShouldCollide", "ShowSpare2",
