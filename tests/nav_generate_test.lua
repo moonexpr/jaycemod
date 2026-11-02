@@ -64,10 +64,20 @@ local function Barrier()
 	return b
 end
 
+local function BspEntity(class, values)
+	local entity = { { key = "classname", value = class } }
+	for key, value in pairs(values or {}) do entity[#entity + 1] = { key = key, value = value } end
+	return entity
+end
+
 -- A vector with the arithmetic the seam sweep does.
 local Vec = {}
 Vec.__index = Vec
 local function V(x, y, z) return setmetatable({ x = x, y = y, z = z }, Vec) end
+function Vec:DistToSqr(other)
+	local x, y, z = self.x - other.x, self.y - other.y, self.z - other.z
+	return x * x + y * y + z * z
+end
 Vec.__add = function(a, b) return V(a.x + b.x, a.y + b.y, a.z + b.z) end
 Vec.__sub = function(a, b) return V(a.x - b.x, a.y - b.y, a.z - b.z) end
 Vec.__div = function(a, n) return V(a.x / n, a.y / n, a.z / n) end
@@ -77,6 +87,9 @@ local GENERATE_POLL = "ws_nav_generate"
 local function load(t)
 	local s = { commands = {}, seeds = {}, timers = {}, delays = {}, cleaned = 0, now = 0, hooks = {}, sweeps = {}, ran = {} }
 	s.humans = t.humans or {}
+	s.mapEntities = t.mapEntities or {}
+	s.ladders, s.lifecycle, s.printed = {}, {}, {}
+	s.ladderAreas = t.ladderAreas or {}
 	-- the mesh's areas (NavArea fakes) and what a sweep across a seam hits:
 	-- trace(t) -> { Hit, StartSolid }
 	s.navAreas = t.navAreas or {}
@@ -94,6 +107,10 @@ local function load(t)
 		require = T.require,
 		LockSpawns = function(lock) s.locks[#s.locks + 1] = "lock " .. lock end,
 		UnlockSpawns = function(lock) s.locks[#s.locks + 1] = "unlock " .. lock end,
+		MapFile = function(names)
+			T.eq(names[1], "ENTITIES")
+			return { ENTITIES = s.mapEntities }
+		end,
 		-- The server console (nil) may; a player as their admin flag says.
 		Can = function(ply) return ply == nil or ply:IsAdmin() end,
 		NavProgress = function(stage, areas, extra)
@@ -142,6 +159,34 @@ local function load(t)
 		},
 		navmesh = {
 			AddWalkableSeed = function(pos, normal) s.seeds[#s.seeds + 1] = { pos = pos, normal = normal } end,
+			GetNearestNavArea = function(pos, _, maxDistance)
+				local nearest, distance
+				for _, area in ipairs(s.ladderAreas) do
+					local candidate = area:GetClosestPointOnArea(pos)
+					local candidateDistance = candidate:DistToSqr(pos)
+					if not distance or candidateDistance < distance then
+						nearest, distance = area, candidateDistance
+					end
+				end
+				return distance and distance <= maxDistance * maxDistance and nearest or nil
+			end,
+			CreateNavLadder = function(top, bottom, width, direction, topAdjust)
+				local ladder = { top = top, bottom = bottom, width = width, direction = direction, topAdjust = topAdjust }
+				local middle = (top.z + bottom.z) / 2
+				function ladder:ConnectTo(area)
+					if area:GetCenter().z > middle then self.topArea = area else self.bottomArea = area end
+				end
+				function ladder:GetBottomArea() return self.bottomArea end
+				function ladder:GetTopForwardArea() return self.topArea end
+				function ladder:GetTopLeftArea() return nil end
+				function ladder:GetTopRightArea() return nil end
+				function ladder:GetTopBehindArea() return nil end
+				function ladder:Remove() self.removed = true end
+				s.ladders[#s.ladders + 1] = ladder
+				s.lifecycle[#s.lifecycle + 1] = "ladder"
+				return ladder
+			end,
+			Save = function() s.lifecycle[#s.lifecycle + 1] = "save" end,
 			BeginGeneration = function() s.nav.began = s.nav.began + 1 s.nav.generating = true end,
 			IsGenerating = function() return s.nav.generating end,
 			IsLoaded = function() return s.nav.areas > 0 end,
@@ -169,11 +214,14 @@ local function load(t)
 			Remove = function(name) s.timers[name] = nil end,
 		},
 		player = { GetHumans = function() return s.humans end },
-		game = { GetMap = function() return "cp_steel" end, CleanUpMap = function() s.cleaned = s.cleaned + 1 end },
+		game = {
+			GetMap = function() return "cp_steel" end,
+			CleanUpMap = function() s.cleaned = s.cleaned + 1 s.lifecycle[#s.lifecycle + 1] = "cleanup" end,
+		},
 		CurTime = function() return s.now end,
 		Vector = V,
 		IsValid = function(p) return p ~= nil end,
-		print = function() end,
+		print = function(...) s.printed[#s.printed + 1] = table.concat({ ... }, " ") end,
 	}, { __index = _G })
 	setfenv(assert(loadfile("addons/sandcastle/gamemodes/sandcastle/gamemode/ws/sv_nav.lua")), env)()
 	-- one poll of its timer, a second on, the doors moving meanwhile
@@ -194,6 +242,14 @@ local SPAWNS = {
 	Ent("prop_physics", 0, 0, 0),
 }
 
+local function LadderArea(z)
+	local area = { center = V(0, 0, z), ladders = {} }
+	function area:GetCenter() return self.center end
+	function area:GetClosestPointOnArea(pos) return V(pos.x, pos.y, self.center.z) end
+	function area:ConnectTo(ladder) self.ladders[ladder] = true end
+	return area
+end
+
 T.test("an admin's mp_nav_generate seeds every spawn and control point, facing up, and begins", function()
 	local s = load({ entities = SPAWNS })
 	local admin = Player(true)
@@ -203,6 +259,111 @@ T.test("an admin's mp_nav_generate seeds every spawn and control point, facing u
 	for _, seed in ipairs(s.seeds) do T.eq(seed.normal.z, 1, "facing up") end
 	T.eq(s.nav.began, 1, "generation began")
 	T.eq(#admin.said >= 1, true, "told it began")
+end)
+
+T.test("nav generation seeds existing hiding spots and BSP ladder endpoints, then saves connected ladders", function()
+	local spots = { V(100, 200, 30), V(300, 400, 50) }
+	local hidingArea = {
+		GetHidingSpots = function(_, kind)
+			T.eq(kind, 255, "all hiding spot types")
+			return spots
+		end,
+	}
+	local mapEntities = {
+		BspEntity("func_useableladder", {
+			point0 = "32 0 128",
+			point1 = "0 0 0",
+			normal = "0 1 0",
+			hammerid = "sloped",
+		}),
+		BspEntity("func_useableladder", {
+			point0 = "0 0 128",
+			point1 = "0 0 0",
+			origin = "-32 0 36",
+			hammerid = "vertical",
+		}),
+		BspEntity("info_ladder", {
+			["mins.x"] = "-2932.00",
+			["mins.y"] = "-1058.00",
+			["mins.z"] = "-144.00",
+			["maxs.x"] = "-2908.00",
+			["maxs.y"] = "-1056.00",
+			["maxs.z"] = "-16.00",
+			hammerid = "legacy",
+		}),
+		BspEntity("info_ladder_dismount", { origin = "-2920 -1033 -12", hammerid = "dismount" }),
+		BspEntity("info_ladder_dismount", { origin = "32 0 64", hammerid = "endpoint-dismount" }),
+		BspEntity("func_useableladder", {
+			point0 = "-2920 -1076 -151.64",
+			point1 = "-2920 -1076 -54.36",
+			origin = "-2920 -1076 -103",
+			hammerid = "legacy-duplicate",
+		}),
+	}
+	local bottom, top = LadderArea(-140), LadderArea(-20)
+	local ground, upper = LadderArea(0), LadderArea(128)
+	local s = load({
+		entities = SPAWNS,
+		navAreas = { hidingArea },
+		mapEntities = mapEntities,
+		ladderAreas = { bottom, top, ground, upper },
+	})
+	s.commands.mp_nav_generate(Player(true))
+	s.Poll()
+	T.eq(#s.seeds, 12, "four map seeds, two hiding spots and endpoints for three unique ladders")
+	T.eq(s.seeds[5].pos, spots[1])
+	T.eq(s.seeds[6].pos, spots[2])
+	T.eq(s.seeds[7].pos.z, -16, "the legacy ladder's top bound")
+	T.eq(s.seeds[8].pos.z, -144, "the legacy ladder's bottom bound")
+	T.eq(s.seeds[9].pos.z, 128, "the first endpoint ladder's top")
+	T.eq(s.seeds[10].pos.z, 0, "the first endpoint ladder's bottom")
+	T.eq(s.seeds[11].pos.z, 128, "the second endpoint ladder's top")
+	T.eq(s.seeds[12].pos.z, 0, "the second endpoint ladder's bottom")
+	T.eq(s.ladders[1], nil, "ladder objects wait until the generated areas exist")
+
+	s.navAreas = {}
+	s.nav.generating, s.nav.areas = false, 20
+	s.Poll()
+	T.eq(#s.ladders, 3)
+	T.eq(s.ladders[1].topAdjust, 128)
+	T.eq(s.ladders[1].width, 24)
+	T.eq(s.ladders[1].direction.y, 1, "the closest legacy dismount identifies the ladder's facing")
+	T.eq(s.ladders[1].top.z, -16)
+	T.eq(s.ladders[1].bottom.z, -144)
+	T.eq(s.ladders[2].width, 32)
+	T.eq(s.ladders[2].direction.y, 1, "an explicit ladder normal gives its cardinal facing")
+	T.eq(s.ladders[3].direction.x, 1, "the nearest dismount gives a vertical ladder's facing")
+	T.eq(s.ladders[1].bottomArea, bottom, "the ladder connects to its bottom area")
+	T.eq(s.ladders[1].topArea, top, "the ladder connects to its top area")
+	T.eq(bottom.ladders[s.ladders[1]], true, "the bottom area connects back to the ladder")
+	T.eq(top.ladders[s.ladders[1]], true, "the top area connects back to the ladder")
+	T.eq(s.ladders[2].bottomArea, ground, "endpoint ladders attach to the lower area")
+	T.eq(s.ladders[2].topArea, upper, "endpoint ladders attach to the upper area")
+	T.eq(table.concat(s.lifecycle, ","), "ladder,ladder,ladder,save,cleanup", "connected ladders are saved before map cleanup")
+end)
+
+T.test("ladders without nearby areas are skipped and not saved", function()
+	local mapEntities = {
+		BspEntity("func_useableladder", {
+			point0 = "0 0 128",
+			point1 = "0 0 0",
+			normal = "0 1 0",
+			hammerid = "unconnected",
+		}),
+	}
+	local s = load({ entities = SPAWNS, mapEntities = mapEntities })
+	s.commands.mp_nav_generate(nil)
+	s.Poll()
+	s.nav.generating, s.nav.areas = false, 20
+	s.Poll()
+	T.eq(#s.ladders, 1, "the native ladder was attempted")
+	T.eq(s.ladders[1].removed, true, "the unattached ladder is removed")
+	T.eq(table.concat(s.lifecycle, ","), "ladder,cleanup", "no invalid nav mesh is saved")
+	local reported = false
+	for _, message in ipairs(s.printed) do
+		if message:find("could not connect ladder unconnected", 1, true) then reported = true end
+	end
+	T.eq(reported, true, "the skipped ladder is reported")
 end)
 
 T.test("the server console may run it too", function()
@@ -399,6 +560,7 @@ local function NavArea(id, x0, y0, x1, y1, z)
 	function a:GetID() return self.id end
 	function a:GetExtentInfo() return { lo = V(x0, y0, z or 0), hi = V(x1, y1, z or 0) } end
 	function a:GetZ() return z or 0 end
+	function a:GetHidingSpots() return {} end
 	function a:IsConnected(other) return self.links[other] == true end
 	function a:ConnectTo(other) self.links[other] = true end
 	return a

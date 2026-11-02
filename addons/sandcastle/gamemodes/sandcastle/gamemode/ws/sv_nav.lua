@@ -4,11 +4,13 @@
 -- converts those). mp_nav_generate, for admins and the server console,
 -- builds one: GMod's generator walks out from seeds, and TF2 maps spawn
 -- players at info_player_teamspawn, which it does not seed from, so every
--- spawn point and control point is a seed, and every health and ammo pack:
+-- spawn point and control point is a seed, as is every health and ammo pack:
 -- a map puts them where players are meant to get, and some only by ways
 -- the generator cannot walk up (arena_watchtower's west pipe, reached by
 -- logs too narrow for its 25-unit steps). It walks only what stands in
--- place, and a map's spawn doors, setup gates and bridges (cp_steel's slide
+-- place. Existing hiding spots and BSP ladder endpoints are seeds too;
+-- native nav ladders are connected to the generated areas and saved after
+-- generation. A map's spawn doors, setup gates and bridges (cp_steel's slide
 -- out to its last point as the others fall) stand shut or drawn back: every
 -- door is unlocked, and opened, or closed when it is a floor (flat and
 -- wide: a bridge, laid out by closing it), spawn barriers are made
@@ -41,6 +43,11 @@ local PairMap = world.pairmap
 
 local SEEDS = { "info_player_teamspawn", "info_player_start", "team_control_point", "item_healthkit_small",
 	"item_healthkit_medium", "item_healthkit_full", "item_ammopack_small", "item_ammopack_medium", "item_ammopack_full" }
+local LADDER_CLASSES = { func_ladder = true, func_useableladder = true, info_ladder = true }
+local LADDER_WIDTH = 32
+local LADDER_TOP_ADJUST = 128
+local LADDER_DISMOUNT_REACH = 128
+local LADDER_AREA_REACH = 128
 local DOORS = { "func_door", "func_door_rotating", "prop_door_rotating" }
 local BARRIERS = { "func_respawnroomvisualizer" }
 local DOOR_WAIT = 60
@@ -129,13 +136,14 @@ local FLOOR_DEPTH = 1000
 -- weighs, so looked up without building a key
 local crossable = PairMap.New()
 
--- Whether the standard body (CROSS_MINS, CROSS_MAXS: a TF2 player's box
--- above a step) fits through the opening somewhere along it
--- (nextsoldier.nav_gaps' FitLines, middle first): an opening the mesh,
--- generated for a narrower walker, leaves too narrow for its shoulders is no
--- way at all for now, until a soldier's locomotion squeezes through.
-local function BodyFits(lo, hi, side, otherLo, otherHi, z, mask)
-	for _, line in ipairs(NavGaps.FitLines(lo, hi, side, otherLo, otherHi, z)) do
+-- Whether the standard body fits, or a supplied agent hull fits, somewhere
+-- along the opening (nextsoldier.nav_gaps' FitLines, middle first).
+local function BodyFits(lo, hi, side, otherLo, otherHi, z, mask, hullMins, hullMaxs)
+	local lines = NavGaps.FitLines(lo, hi, side, otherLo, otherHi, z)
+	if hullMins and hullMaxs then
+		return NavClearance.FitsLines(lines, hullMins, hullMaxs, mask, util.TraceHull, Vector)
+	end
+	for _, line in ipairs(lines) do
 		local sweep = util.TraceHull({ start = V(line.start) + STEP, endpos = V(line.finish) + STEP,
 			mins = CROSS_MINS, maxs = CROSS_MAXS, mask = mask, filter = StaticMap })
 		if not sweep.Hit and not sweep.StartSolid then return true end
@@ -143,9 +151,11 @@ local function BodyFits(lo, hi, side, otherLo, otherHi, z, mask)
 	return false
 end
 
-function WS.NavLinkCrossable(a, b)
+function WS.NavLinkCrossable(a, b, hullMins, hullMaxs)
 	local aId, bId = a:GetID(), b:GetID()
-	local known = crossable:Get(aId, bId)
+	local agentHull = hullMins ~= nil and hullMaxs ~= nil
+	local known
+	if not agentHull then known = crossable:Get(aId, bId) end
 	if known ~= nil then return known end
 	-- across the side the link leaves by (filed on none: the side toward b),
 	-- where b borders it
@@ -179,8 +189,8 @@ function WS.NavLinkCrossable(a, b)
 		local floor = util.TraceLine({ start = V(finish) + STEP, endpos = V(finish) - Vector(0, 0, FLOOR_DEPTH), mask = mask, filter = StaticMap })
 		clear = NavGaps.FallsAway(seamFrom, seamTo, floor.Hit and floor.HitPos.z or nil)
 	end
-	clear = clear and BodyFits(lo, hi, side, otherLo, otherHi, z, mask)
-	crossable:Set(aId, bId, clear)
+	clear = clear and BodyFits(lo, hi, side, otherLo, otherHi, z, mask, hullMins, hullMaxs)
+	if not agentHull then crossable:Set(aId, bId, clear) end
 	return clear
 end
 
@@ -243,6 +253,207 @@ local function IsFloor(door)
 	return Doors.IsFloor({ x = maxs.x - mins.x, y = maxs.y - mins.y, z = maxs.z - mins.z })
 end
 
+local function ParseVector(value)
+	local x, y, z = string.match(value or "", "^%s*(%S+)%s+(%S+)%s+(%S+)%s*$")
+	x, y, z = tonumber(x), tonumber(y), tonumber(z)
+	if not x or not y or not z or x ~= x or y ~= y or z ~= z
+		or math.abs(x) == math.huge or math.abs(y) == math.huge or math.abs(z) == math.huge then
+		return nil
+	end
+	return Vector(x, y, z)
+end
+
+local function Cardinal(vector)
+	if not vector then return nil end
+	if math.abs(vector.x) >= math.abs(vector.y) and math.abs(vector.x) > 0 then
+		return Vector(vector.x > 0 and 1 or -1, 0, 0)
+	elseif math.abs(vector.y) > 0 then
+		return Vector(0, vector.y > 0 and 1 or -1, 0)
+	end
+	return nil
+end
+
+local function ParseBounds(values)
+	local function Coordinate(key)
+		local value = tonumber(values[key])
+		if not value or value ~= value or math.abs(value) == math.huge then return nil end
+		return value
+	end
+	local minX, minY, minZ = Coordinate("mins.x"), Coordinate("mins.y"), Coordinate("mins.z")
+	local maxX, maxY, maxZ = Coordinate("maxs.x"), Coordinate("maxs.y"), Coordinate("maxs.z")
+	if not (minX and minY and minZ and maxX and maxY and maxZ) then return nil end
+	local mins, maxs = Vector(minX, minY, minZ), Vector(maxX, maxY, maxZ)
+	if mins.x > maxs.x or mins.y > maxs.y or mins.z >= maxs.z then return nil end
+	return mins, maxs
+end
+
+local function BoundsDistance(pos, mins, maxs)
+	local x = math.max(mins.x - pos.x, 0, pos.x - maxs.x)
+	local y = math.max(mins.y - pos.y, 0, pos.y - maxs.y)
+	local z = math.max(mins.z - pos.z, 0, pos.z - maxs.z)
+	return math.sqrt(x * x + y * y + z * z)
+end
+
+local function BoundsDirection(mins, maxs, dismounts)
+	local xSize, ySize = maxs.x - mins.x, maxs.y - mins.y
+	local axis = xSize <= ySize and "x" or "y"
+	local center = (mins[axis] + maxs[axis]) / 2
+	local nearest, nearestDistance
+	for _, pos in ipairs(dismounts) do
+		local distance = BoundsDistance(pos, mins, maxs)
+		if not nearestDistance or distance < nearestDistance then
+			nearest, nearestDistance = pos, distance
+		end
+	end
+	if not nearest or nearestDistance > LADDER_DISMOUNT_REACH then return nil end
+	local offset = nearest[axis] - center
+	if offset == 0 then return nil end
+	if axis == "x" then return Vector(offset > 0 and 1 or -1, 0, 0) end
+	return Vector(0, offset > 0 and 1 or -1, 0)
+end
+
+local function LadderDirection(normal)
+	return Cardinal(normal)
+end
+
+local function Ladders()
+	local entities = WS.MapFile({ "ENTITIES" }).ENTITIES
+	local ladders, dismounts, records = {}, {}, {}
+	for _, pairs in ipairs(entities) do
+		local values = {}
+		for _, pair in ipairs(pairs) do values[pair.key] = pair.value end
+		if values.classname == "info_ladder_dismount" then
+			local pos = ParseVector(values.origin)
+			if pos then dismounts[#dismounts + 1] = pos end
+		elseif LADDER_CLASSES[values.classname] then
+			records[#records + 1] = values
+		end
+	end
+	for _, values in ipairs(records) do
+		if values.classname == "info_ladder" then
+			local mins, maxs = ParseBounds(values)
+			if mins and maxs then
+				ladders[#ladders + 1] = {
+					top = Vector((mins.x + maxs.x) / 2, (mins.y + maxs.y) / 2, maxs.z),
+					bottom = Vector((mins.x + maxs.x) / 2, (mins.y + maxs.y) / 2, mins.z),
+					width = math.max(maxs.x - mins.x, maxs.y - mins.y),
+					direction = BoundsDirection(mins, maxs, dismounts),
+					mins = mins,
+					maxs = maxs,
+					id = values.hammerid or values.targetname or values.classname,
+				}
+			end
+		end
+	end
+	for _, values in ipairs(records) do
+		if values.classname == "func_ladder" or values.classname == "func_useableladder" then
+			local first, second = ParseVector(values.point0), ParseVector(values.point1)
+			if first and second and first.z ~= second.z then
+				local top, bottom = first, second
+				if top.z < bottom.z then top, bottom = bottom, top end
+				local duplicatesBounds = false
+				for _, ladder in ipairs(ladders) do
+					if ladder.mins then
+						local overlap = math.min(top.z, ladder.maxs.z) - math.max(bottom.z, ladder.mins.z)
+						if overlap > 0 and BoundsDistance(Vector((top.x + bottom.x) / 2, (top.y + bottom.y) / 2, (top.z + bottom.z) / 2), ladder.mins, ladder.maxs) <= LADDER_WIDTH then
+							duplicatesBounds = true
+							break
+						end
+					end
+				end
+				if not duplicatesBounds then
+					local midpoint = (top + bottom) / 2
+					local nearest, nearestDistance
+					for _, pos in ipairs(dismounts) do
+						local distance = pos:DistToSqr(midpoint)
+						if not nearestDistance or distance < nearestDistance then
+							nearest, nearestDistance = pos, distance
+						end
+					end
+					ladders[#ladders + 1] = {
+						top = top,
+						bottom = bottom,
+						direction = LadderDirection(ParseVector(values.normal))
+							or (nearestDistance and nearestDistance <= LADDER_DISMOUNT_REACH * LADDER_DISMOUNT_REACH
+								and Cardinal(nearest - midpoint) or nil),
+						id = values.hammerid or values.targetname or values.classname,
+					}
+				end
+			end
+		end
+	end
+	return ladders
+end
+
+local function AddWalkableSeeds(ladders)
+	local up, count, hidingSpots = Vector(0, 0, 1), 0, 0
+	local function Add(pos)
+		navmesh.AddWalkableSeed(pos, up)
+		count = count + 1
+	end
+	Each(SEEDS, function(ent) Add(ent:GetPos()) end)
+	for _, area in ipairs(navmesh.GetAllNavAreas()) do
+		for _, pos in ipairs(area:GetHidingSpots(255) or {}) do
+			Add(pos)
+			hidingSpots = hidingSpots + 1
+		end
+	end
+	for _, ladder in ipairs(ladders) do
+		Add(ladder.top)
+		Add(ladder.bottom)
+	end
+	return count, hidingSpots
+end
+
+local function LadderArea(pos)
+	local area = navmesh.GetNearestNavArea(pos, true, LADDER_AREA_REACH, false, false)
+	if not IsValid(area) or area:GetClosestPointOnArea(pos):DistToSqr(pos) > LADDER_AREA_REACH * LADDER_AREA_REACH then
+		return nil
+	end
+	return area
+end
+
+local function ConnectLadder(native, ladder)
+	local middle = (ladder.top.z + ladder.bottom.z) / 2
+	local bottom = LadderArea(ladder.bottom)
+	local top = LadderArea(ladder.top)
+	if not IsValid(bottom) or not IsValid(top) or bottom == top
+		or bottom:GetCenter().z >= middle or top:GetCenter().z <= middle then
+		return false
+	end
+	native:ConnectTo(bottom)
+	bottom:ConnectTo(native)
+	native:ConnectTo(top)
+	top:ConnectTo(native)
+	local topConnected = native:GetTopForwardArea() == top or native:GetTopLeftArea() == top
+		or native:GetTopRightArea() == top or native:GetTopBehindArea() == top
+	return native:GetBottomArea() == bottom and topConnected
+end
+
+local function CreateLadders(ladders)
+	local created, skipped = 0, 0
+	for _, ladder in ipairs(ladders) do
+		if ladder.direction then
+			local native = navmesh.CreateNavLadder(ladder.top, ladder.bottom, ladder.width or LADDER_WIDTH, ladder.direction, LADDER_TOP_ADJUST)
+			if not IsValid(native) then
+				skipped = skipped + 1
+				print("Navigation mesh: could not create ladder " .. ladder.id)
+			elseif ConnectLadder(native, ladder) then
+				created = created + 1
+			else
+				skipped = skipped + 1
+				native:Remove()
+				print("Navigation mesh: could not connect ladder " .. ladder.id .. " to nav areas")
+			end
+		else
+			skipped = skipped + 1
+			print("Navigation mesh: ladder " .. ladder.id .. " has no cardinal facing direction")
+		end
+	end
+	if created > 0 then navmesh.Save() end
+	return created, skipped
+end
+
 local function AnyDoorMoving()
 	local moving = false
 	Each(DOORS, function(door)
@@ -271,6 +482,8 @@ local function Generate(ply, resume)
 	else
 		resume = false
 	end
+	local ladders = Ladders()
+	local seeds, hidingSpots = AddWalkableSeeds(ladders)
 	underWay = true
 	WS.LockSpawns("nav")
 	local limits = {}
@@ -281,17 +494,15 @@ local function Generate(ply, resume)
 			limit:SetString("0")
 		end
 	end
-	local up, seeds = Vector(0, 0, 1), 0
-	Each(SEEDS, function(ent)
-		navmesh.AddWalkableSeed(ent:GetPos(), up)
-		seeds = seeds + 1
-	end)
 	Each(DOORS, function(door)
 		door:Fire("Unlock")
 		door:Fire(IsFloor(door) and "Close" or "Open")
 	end)
 	Each(BARRIERS, function(barrier) barrier:SetNotSolid(true) end)
-	Tell(ply, "Navigation mesh: opening " .. game.GetMap() .. "'s doors, then generating from " .. seeds .. " seeds; this takes a few minutes")
+	local seedDetails = hidingSpots > 0 and (", including " .. hidingSpots .. " hiding spots") or ""
+	local ladderDetails = #ladders > 0 and (", including endpoints of " .. #ladders .. " ladders") or ""
+	Tell(ply, "Navigation mesh: opening " .. game.GetMap() .. "'s doors, then generating from " .. seeds
+		.. " seeds" .. seedDetails .. ladderDetails .. "; this takes a few minutes")
 	local started = CurTime()
 	WS.NavProgress(Progress.OPENING)
 	local giveUp, began = started + DOOR_WAIT, false
@@ -315,12 +526,15 @@ local function Generate(ply, resume)
 		if navmesh.IsGenerating() then return end
 		timer.Remove(POLL)
 		underWay = false
+		local laddersCreated, laddersSkipped = CreateLadders(ladders)
 		for limit, value in pairs(limits) do limit:SetString(value) end
 		game.CleanUpMap()
 		WS.UnlockSpawns("nav")
 		WS.BridgeNavGaps()
 		WS.NavProgress(Progress.DONE, navmesh.GetNavAreaCount())
-		Tell(ply, "Navigation mesh: done, " .. navmesh.GetNavAreaCount() .. " areas, saved as maps/" .. game.GetMap() .. ".nav; the map was reset")
+		local ladderSummary = #ladders > 0 and (", " .. laddersCreated .. " ladders created, " .. laddersSkipped .. " skipped") or ""
+		Tell(ply, "Navigation mesh: done, " .. navmesh.GetNavAreaCount() .. " areas" .. ladderSummary
+			.. ", saved as maps/" .. game.GetMap() .. ".nav; the map was reset")
 		if resume then WS.Feature("gamemode"):Request(Gamemode.GAMEPLAY, Gamemode.SOURCE_CONSOLE, nil) end
 	end)
 	return true
@@ -332,7 +546,7 @@ concommand.Add("mp_nav_generate", function(ply)
 		return
 	end
 	Generate(ply, false)
-end, nil, "Generate this map's navigation mesh from its spawn and control points, its doors open (admins); takes a few minutes and resets the map")
+end, nil, "Generate this map's navigation mesh from its seeds and ladder entities, its doors open (admins); takes a few minutes and resets the map")
 
 -- The idle server's own run (ws/sv_idle.lua).
 hook.Add("WSServerIdle", "ws_nav", function()

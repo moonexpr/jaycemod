@@ -37,6 +37,20 @@ local function NewClearance(agent, trace)
 	return Clearance.New(agent, 7, trace, V)
 end
 
+T.test("nav clearance sweeps an opening with the supplied agent hull", function()
+	local lines = { { start = V(0, 0, 0), finish = V(100, 0, 0) } }
+	local function Trace(data)
+		T.eq(data.start.z, 1)
+		T.eq(data.mins.z, nextsoldier.nav_gaps.STEP_HEIGHT)
+		T.eq(data.maxs.z, 72)
+		return { Hit = data.mins.x < -15, StartSolid = false }
+	end
+	T.eq(Clearance.FitsLines(lines, V(-13, -13, 0), V(13, 13, 72), 7, Trace, V), true,
+		"the narrower agent fits")
+	T.eq(Clearance.FitsLines(lines, V(-24, -24, 0), V(24, 24, 72), 7, Trace, V), false,
+		"the wider agent does not fit")
+end)
+
 T.test("nav clearance accepts an ordinary entity and checks its collision hull", function()
 	local calls = {}
 	local clearance = NewClearance(Agent(V(-10, -8, 0), V(10, 8, 64)), function(data)

@@ -573,7 +573,8 @@ function WS.WarSoldier(ENT)
 	-- strategy its routes are planned by, priced natively by
 	-- wetsands.navsearch's Calculator), and while the mesh snapshot is still
 	-- built, none: every move refused, no path yet. A soldier no controller
-	-- enlisted keeps the base's own, with the link rule below.
+	-- enlisted keeps the base's own, with the link rule below. Link clearance
+	-- uses this entity's collision hull, as the base generator does.
 	local function NoPath(area, fromArea) return fromArea == nil and 0 or -1 end
 	function ENT:GetPathGenerator()
 		if not self.NSPathCost then return Base().GetPathGenerator(self) end
@@ -585,7 +586,8 @@ function WS.WarSoldier(ENT)
 	-- rail, which the nav mesh links a drop past, so it would ram the rail
 	-- for good).
 	function ENT:OnComputePath(from, to)
-		if not WS.NavLinkCrossable(from, to) then return -1 end
+		local mins, maxs = self:GetCollisionBounds()
+		if not WS.NavLinkCrossable(from, to, mins, maxs) then return -1 end
 		return 0
 	end
 
