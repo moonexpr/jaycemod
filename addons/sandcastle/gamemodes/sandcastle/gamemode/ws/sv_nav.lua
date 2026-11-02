@@ -197,6 +197,7 @@ end
 function WS.BridgeNavGaps()
 	timer.Remove(GAP_TIMER)
 	crossable:Clear()
+	NavClearance.Clear()
 	if not WS.NavMeshUsable() then return end
 	local byId, areas = {}, {}
 	for i, area in ipairs(navmesh.GetAllNavAreas()) do

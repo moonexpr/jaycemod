@@ -1,5 +1,6 @@
 local NavGaps = nextsoldier.nav_gaps
 local STATIC_BRUSHES = { func_brush = true, func_wall = true }
+local ipairs = ipairs
 module(...)
 
 local function StaticMap(ent)
@@ -25,6 +26,7 @@ end
 
 local Clearance = {}
 Clearance.__index = Clearance
+local clearances = {}
 
 local function StepMins(mins, maxs, vector)
 	local step = NavGaps.STEP_HEIGHT
@@ -54,8 +56,19 @@ end
 
 function New(entity, mask, traceHull, vector)
 	local mins, maxs = entity:GetCollisionBounds()
+	for _, clearance in ipairs(clearances) do
+		local cachedMins, cachedMaxs = clearance.hullMins, clearance.hullMaxs
+		if clearance.mask == mask
+			and clearance.traceHull == traceHull and clearance.vector == vector
+			and cachedMins.x == mins.x and cachedMins.y == mins.y and cachedMins.z == mins.z
+			and cachedMaxs.x == maxs.x and cachedMaxs.y == maxs.y and cachedMaxs.z == maxs.z then
+			return clearance
+		end
+	end
 	local traceMins = StepMins(mins, maxs, vector)
 	local clearance = {
+		hullMins = mins,
+		hullMaxs = maxs,
 		mins = traceMins,
 		maxs = maxs,
 		mask = mask,
@@ -65,7 +78,12 @@ function New(entity, mask, traceHull, vector)
 		links = {},
 	}
 	clearance.Area, clearance.Link = Clearance.Area, Clearance.Link
+	clearances[#clearances + 1] = clearance
 	return clearance
+end
+
+function Clear()
+	clearances = {}
 end
 
 function Clearance:Area(area)

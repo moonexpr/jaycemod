@@ -34,6 +34,7 @@ local function Agent(mins, maxs)
 end
 
 local function NewClearance(agent, trace)
+	Clearance.Clear()
 	return Clearance.New(agent, 7, trace, V)
 end
 
@@ -72,6 +73,37 @@ T.test("nav clearance accepts an ordinary entity and checks its collision hull",
 	T.eq(calls[1].filter(world), true)
 	T.eq(calls[1].filter(brush), true)
 	T.eq(calls[1].filter(door), false)
+end)
+
+T.test("nav clearance results are reused across repaths for the same hull and reset with the mesh", function()
+	Clearance.Clear()
+	local calls = 0
+	local agent = Agent(V(-10, -8, 0), V(10, 8, 64))
+	local trace = function()
+		calls = calls + 1
+		return { Hit = false, StartSolid = false }
+	end
+	local area = Area(40, 0, 0, 100, 100, 0)
+	local from, to = Area(41, 0, 0, 100, 100, 0), Area(42, 100, 0, 200, 100, 0)
+	from.sides[1], to.sides[3] = to, from
+	local first = Clearance.New(agent, 7, trace, V)
+	T.eq(first:Area(area), true)
+	T.eq(first:Link(from, to), true)
+	local afterFirstSearch = calls
+	local second = Clearance.New(agent, 7, trace, V)
+	T.eq(second, first, "same hull shares its spatial cache")
+	T.eq(second:Area(area), true, "area clearance is reused after repathing")
+	T.eq(second:Link(from, to), true, "link clearance is reused after repathing")
+	T.eq(calls, afterFirstSearch, "no additional traces")
+	local crouching = Clearance.New(Agent(V(-10, -8, 0), V(10, 8, 36)), 7, trace, V)
+	T.eq(crouching == first, false, "a changed collision hull gets its own cache")
+	T.eq(crouching:Area(area), true)
+	T.eq(calls, afterFirstSearch + 1, "the changed hull gets a fresh trace")
+	Clearance.Clear()
+	local rebuilt = Clearance.New(agent, 7, trace, V)
+	T.eq(rebuilt == first, false, "mesh reset discards cached answers")
+	T.eq(rebuilt:Area(area), true)
+	T.eq(calls, afterFirstSearch + 2, "clearance is recomputed for the new mesh")
 end)
 
 T.test("nav clearance uses the collision trace instead of a nav area's bounding box", function()
