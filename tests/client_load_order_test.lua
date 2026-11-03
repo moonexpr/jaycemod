@@ -119,4 +119,13 @@ T.test("a module failing at load is reported and every other still loads", funct
 	end
 end)
 
+-- cl_init.lua is itself a cl_ file of the root: including it again would
+-- load the whole gamemode over, and that load include it again, without
+-- end (a client hung at "Lua Started!").
+T.test("cl_init.lua never includes itself among the cl_ modules", function()
+	local order = clientOrder()
+	T.eq(indexOf(order, "cl_init.lua"), nil, "not among the modules it loads")
+	T.eq(#order > 10, true, "the cl_ modules were found: " .. #order)
+end)
+
 T.finish()

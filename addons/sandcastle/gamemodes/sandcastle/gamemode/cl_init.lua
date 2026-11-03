@@ -15,7 +15,9 @@ local function Load(f)
 	xpcall(include, ErrorNoHaltWithStack, f)
 end
 
-local loaded = {}
+-- This file is a cl_ file of the root too: loading it again would load the
+-- whole gamemode over, without end.
+local loaded = { ["cl_init.lua"] = true }
 for _, f in ipairs(LOADED_FIRST) do
 	Load(f)
 	loaded[f] = true
