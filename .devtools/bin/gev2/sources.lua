@@ -35,7 +35,7 @@ Say("GM.FolderName", GAMEMODE.FolderName)
 Say("--- gamemode files (include)")
 Source("init.lua GM:PlayerSpawn", GAMEMODE.PlayerSpawn)
 Source("shared.lua GM:StartCommand", GAMEMODE.StartCommand)
-Source("shared.lua GM:WSModules", GAMEMODE.WSModules)
+Source("shared.lua GM:CreateTeams", GAMEMODE.CreateTeams)
 Source("ws/sh_core.lua WS.require", WS.require)
 Source("ws/sh_events.lua Events.Fire", WS.Events and WS.Events.Fire)
 

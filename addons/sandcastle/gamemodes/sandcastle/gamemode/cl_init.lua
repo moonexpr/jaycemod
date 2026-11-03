@@ -5,7 +5,6 @@ include("shared.lua")
 -- of the HUD and loads before any of it. Then cl_ui (WS.UI), which other
 -- cl_ modules build their panels on, and cl_tf_hud (WS.TFHud), which the
 -- HUD panels draw with; then the rest.
-local LOADED_FIRST = { "cl_client_settings.lua", "cl_hits.lua", "cl_ui.lua", "cl_tf_hud.lua" }
 
 -- A module failing at load is reported with its stack, and the rest load
 -- on: one broken panel takes no other module with it.
@@ -15,16 +14,40 @@ local function Load(f)
 	xpcall(include, ErrorNoHaltWithStack, f)
 end
 
--- This file is a cl_ file of the root too: loading it again would load the
--- whole gamemode over, without end.
-local loaded = { ["cl_init.lua"] = true }
-for _, f in ipairs(LOADED_FIRST) do
-	Load(f)
-	loaded[f] = true
-end
-for _, f in ipairs(GM:WSModules("cl_")) do
-	if not loaded[f] then Load(f) end
-end
+
+-- The root's cl_ modules, a line each, written by hand
+-- (tests/ws_root_modules_test.lua holds the list to the files); a new one
+-- is a line here and its AddCSLuaFile line in init.lua.
+Load("cl_client_settings.lua")
+Load("cl_hits.lua")
+Load("cl_ui.lua")
+Load("cl_tf_hud.lua")
+Load("cl_admin_panels.lua")
+Load("cl_aiwar_slots.lua")
+Load("cl_conditions.lua")
+Load("cl_economy_tabs.lua")
+Load("cl_gaze.lua")
+Load("cl_hud_hidden.lua")
+Load("cl_kill_feed.lua")
+Load("cl_loadout.lua")
+Load("cl_localization.lua")
+Load("cl_medic_effects.lua")
+Load("cl_menu_inventory.lua")
+Load("cl_menu_player.lua")
+Load("cl_menu_server.lua")
+Load("cl_menu_utilities.lua")
+Load("cl_menubar.lua")
+Load("cl_nav_progress.lua")
+Load("cl_nb_menu.lua")
+Load("cl_npc_ragdolls.lua")
+Load("cl_ns_debug.lua")
+Load("cl_players_menu.lua")
+Load("cl_scoreboard.lua")
+Load("cl_spawn_manager.lua")
+Load("cl_teams.lua")
+Load("cl_tf_content.lua")
+Load("cl_voice.lua")
+Load("cl_votes.lua")
 
 -- Every HUD element of the gamemode, in order (WS.HUD, ws/sh_core.lua).
 function GM:HUDPaint()

@@ -18,17 +18,16 @@ setfenv(helper, setmetatable({ GM = gamemode }, { __index = _G }))()
 local Weapons = gamemode.SimpleWeaponLoadout
 
 T.test("shared loader includes and sends every selected player class", function()
-	local helper_position = assert(shared:find('"' .. WEAPON_HELPER .. '"', 1, true))
-	local first_class = assert(shared:find('"' .. CLASS_FILES[1].path .. '"', 1, true))
-	local ws_core = assert(shared:find('include("sh_core.lua")', 1, true))
-	local class_list = assert(shared:find("local PLAYER_CLASS_FILES", 1, true))
-	T.eq(helper_position < first_class, true, "loadout driver loads before player classes")
-	T.eq(ws_core < class_list, true, "WS exists before player classes load")
+	local ws_core = assert(shared:find('Include("sh_core.lua")', 1, true))
+	local helper_included = assert(shared:find('Include("' .. WEAPON_HELPER .. '")', 1, true))
+	T.eq(shared:find('AddCSLuaFile("' .. WEAPON_HELPER .. '")', 1, true) ~= nil, true, "the loadout driver is sent to clients")
+	T.eq(ws_core < helper_included, true, "WS exists before player classes load")
 	for _, class in ipairs(CLASS_FILES) do
-		T.eq(shared:find('"' .. class.path .. '"', 1, true) ~= nil, true, class.name .. " path is listed")
+		local included = shared:find('Include("' .. class.path .. '")', 1, true)
+		T.eq(included ~= nil, true, class.name .. " is included in both realms")
+		T.eq(helper_included < (included or 0), true, class.name .. " loads after the loadout driver")
+		T.eq(shared:find('AddCSLuaFile("' .. class.path .. '")', 1, true) ~= nil, true, class.name .. " is sent to clients")
 	end
-	T.eq(shared:find("if SERVER then AddCSLuaFile(path) end", 1, true) ~= nil, true, "sent to clients")
-	T.eq(shared:find("include(path)", 1, true) ~= nil, true, "included in both realms")
 end)
 
 T.test("selected player classes register under distinct names and bases", function()

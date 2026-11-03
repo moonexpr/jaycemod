@@ -17,43 +17,67 @@ DeriveGamemode("sandbox")
 
 include("shared_loader.lua")
 
--- Root modules load by prefix: sh_ on both realms, sv_ on the
--- server, cl_ on clients. sh_core defines the WS table and loads first,
--- including sh_events (the game event library) itself; the rest load in
--- name order.
-function GM:WSModules(prefix)
-	local files = file.Find(self.FolderName .. "/gamemode/" .. prefix .. "*.lua", "LUA")
-	table.sort(files)
-	return files
-end
-
-local LOADED_FIRST = {
-	["sh_core.lua"] = true,
-	["sh_events.lua"] = true,
-}
-
-Boot("include sh_core.lua")
-include("sh_core.lua")
-for _, f in ipairs(GM:WSModules("sh_")) do
-	if not LOADED_FIRST[f] then
-		Boot("include %s", f)
-		include(f)
-	end
-end
-
-local PLAYER_CLASS_FILES = {
-	"player_class/simple_weapon_loadout.lua",
-	"player_class/player_combatant.lua",
-	"player_class/player_combatant_cstrike.lua",
-	"player_class/player_sandcastle.lua",
-	"player_class/player_spectator.lua",
-}
-
-for _, path in ipairs(PLAYER_CLASS_FILES) do
-	if SERVER then AddCSLuaFile(path) end
+-- The root's sh_ modules, on both realms, a line each, written by hand
+-- (tests/ws_root_modules_test.lua holds the list to the files): sh_core
+-- defines the WS table and loads first, including sh_events (the game
+-- event library) itself; the rest in name order. A new sh_ module is a line
+-- here and its AddCSLuaFile line in init.lua.
+local function Include(path)
 	Boot("include %s", path)
-	include(path)
+	return include(path)
 end
+
+Include("sh_core.lua")
+Include("sh_admin_properties.lua")
+Include("sh_aiwar.lua")
+Include("sh_announcer.lua")
+Include("sh_bullets.lua")
+Include("sh_cami.lua")
+Include("sh_condition_menu.lua")
+Include("sh_console.lua")
+Include("sh_crit_effects.lua")
+Include("sh_editors.lua")
+Include("sh_editors_cart.lua")
+Include("sh_editors_point.lua")
+Include("sh_factions.lua")
+Include("sh_footsteps.lua")
+Include("sh_gameplay.lua")
+Include("sh_hits.lua")
+Include("sh_kill_credit.lua")
+Include("sh_loadout.lua")
+Include("sh_movement.lua")
+Include("sh_nav_progress.lua")
+Include("sh_nodegraph.lua")
+Include("sh_npc_ragdolls.lua")
+Include("sh_pathfollower.lua")
+Include("sh_permissions.lua")
+Include("sh_player_models.lua")
+Include("sh_players_menu.lua")
+Include("sh_radio_gesture.lua")
+Include("sh_respawn_modifiers.lua")
+Include("sh_settings.lua")
+Include("sh_soundscripts.lua")
+Include("sh_spawn_manager.lua")
+Include("sh_teamtint.lua")
+Include("sh_toggles.lua")
+Include("sh_vendor.lua")
+Include("sh_votes.lua")
+Include("sh_war_soldier.lua")
+Include("sh_weapon_balance.lua")
+
+-- The player classes, the weapon helper they share first.
+if SERVER then
+	AddCSLuaFile("player_class/simple_weapon_loadout.lua")
+	AddCSLuaFile("player_class/player_combatant.lua")
+	AddCSLuaFile("player_class/player_combatant_cstrike.lua")
+	AddCSLuaFile("player_class/player_sandcastle.lua")
+	AddCSLuaFile("player_class/player_spectator.lua")
+end
+Include("player_class/simple_weapon_loadout.lua")
+Include("player_class/player_combatant.lua")
+Include("player_class/player_combatant_cstrike.lua")
+Include("player_class/player_sandcastle.lua")
+Include("player_class/player_spectator.lua")
 
 -- TF2's team numbers (1 spectator, 2 RED, 3 BLU); GMod reserves only 0, 1001 and 1002.
 function GM:CreateTeams()

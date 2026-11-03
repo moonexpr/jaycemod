@@ -5,35 +5,135 @@ AddCSLuaFile("cl_init.lua")
 
 include("shared.lua")
 
--- Clients are sent every file under foundation/, includes/, features/ and
--- the root's ws modules, but the
--- server's (sv.lua, sv_*), as source: foundation and feature modules, feature
--- client and shared parts, and root sh_, cl_ and unprefixed modules. Nothing
--- runs until a client loads it (WS.require, or WS.Feature once the server
--- loads the feature, sh_core.lua).
+-- Clients are sent every file under the module folders (foundation/,
+-- includes/, nextsoldier/, wartactics/, features/, vendor/) but the
+-- server's (sv.lua, sv_*), as source: nothing there runs until a client
+-- loads it (WS.require, or WS.Feature once the server loads the feature,
+-- sh_core.lua). This sends them; it includes nothing.
 do
 	local Features = system.features
 	local root = GM.FolderName .. "/gamemode/"
 	local GamemodeFiles = {}
-	local BOOTSTRAP = {
-		["cl_init.lua"] = true,
-		["init.lua"] = true,
-		["logging.lua"] = true,
-		["shared.lua"] = true,
-		["shared_loader.lua"] = true,
-	}
 	function GamemodeFiles:Find(dir)
 		return file.Find(root .. dir .. "*", "LUA")
 	end
 	for _, path in ipairs(Features.ClientFiles(GamemodeFiles, Features.CLIENT_DIRS)) do AddCSLuaFile(path) end
-	for _, fileName in ipairs(GM:WSModules("")) do
-		if not BOOTSTRAP[fileName] and Features.Ships(fileName) then AddCSLuaFile(fileName) end
-	end
 end
+
+-- The root's modules clients run, a line each, written by hand
+-- (tests/ws_root_modules_test.lua holds the list to the files): every sh_
+-- and cl_ one.
+AddCSLuaFile("sh_admin_properties.lua")
+AddCSLuaFile("sh_aiwar.lua")
+AddCSLuaFile("sh_announcer.lua")
+AddCSLuaFile("sh_bullets.lua")
+AddCSLuaFile("sh_cami.lua")
+AddCSLuaFile("sh_condition_menu.lua")
+AddCSLuaFile("sh_console.lua")
+AddCSLuaFile("sh_core.lua")
+AddCSLuaFile("sh_crit_effects.lua")
+AddCSLuaFile("sh_editors.lua")
+AddCSLuaFile("sh_editors_cart.lua")
+AddCSLuaFile("sh_editors_point.lua")
+AddCSLuaFile("sh_events.lua")
+AddCSLuaFile("sh_factions.lua")
+AddCSLuaFile("sh_footsteps.lua")
+AddCSLuaFile("sh_gameplay.lua")
+AddCSLuaFile("sh_hits.lua")
+AddCSLuaFile("sh_kill_credit.lua")
+AddCSLuaFile("sh_loadout.lua")
+AddCSLuaFile("sh_movement.lua")
+AddCSLuaFile("sh_nav_progress.lua")
+AddCSLuaFile("sh_nodegraph.lua")
+AddCSLuaFile("sh_npc_ragdolls.lua")
+AddCSLuaFile("sh_pathfollower.lua")
+AddCSLuaFile("sh_permissions.lua")
+AddCSLuaFile("sh_player_models.lua")
+AddCSLuaFile("sh_players_menu.lua")
+AddCSLuaFile("sh_radio_gesture.lua")
+AddCSLuaFile("sh_respawn_modifiers.lua")
+AddCSLuaFile("sh_settings.lua")
+AddCSLuaFile("sh_soundscripts.lua")
+AddCSLuaFile("sh_spawn_manager.lua")
+AddCSLuaFile("sh_teamtint.lua")
+AddCSLuaFile("sh_toggles.lua")
+AddCSLuaFile("sh_vendor.lua")
+AddCSLuaFile("sh_votes.lua")
+AddCSLuaFile("sh_war_soldier.lua")
+AddCSLuaFile("sh_weapon_balance.lua")
+AddCSLuaFile("cl_admin_panels.lua")
+AddCSLuaFile("cl_aiwar_slots.lua")
+AddCSLuaFile("cl_client_settings.lua")
+AddCSLuaFile("cl_conditions.lua")
+AddCSLuaFile("cl_economy_tabs.lua")
+AddCSLuaFile("cl_gaze.lua")
+AddCSLuaFile("cl_hits.lua")
+AddCSLuaFile("cl_hud_hidden.lua")
+AddCSLuaFile("cl_kill_feed.lua")
+AddCSLuaFile("cl_loadout.lua")
+AddCSLuaFile("cl_localization.lua")
+AddCSLuaFile("cl_medic_effects.lua")
+AddCSLuaFile("cl_menu_inventory.lua")
+AddCSLuaFile("cl_menu_player.lua")
+AddCSLuaFile("cl_menu_server.lua")
+AddCSLuaFile("cl_menu_utilities.lua")
+AddCSLuaFile("cl_menubar.lua")
+AddCSLuaFile("cl_nav_progress.lua")
+AddCSLuaFile("cl_nb_menu.lua")
+AddCSLuaFile("cl_npc_ragdolls.lua")
+AddCSLuaFile("cl_ns_debug.lua")
+AddCSLuaFile("cl_players_menu.lua")
+AddCSLuaFile("cl_scoreboard.lua")
+AddCSLuaFile("cl_spawn_manager.lua")
+AddCSLuaFile("cl_teams.lua")
+AddCSLuaFile("cl_tf_content.lua")
+AddCSLuaFile("cl_tf_hud.lua")
+AddCSLuaFile("cl_ui.lua")
+AddCSLuaFile("cl_voice.lua")
+AddCSLuaFile("cl_votes.lua")
 
 WS.Feature("system")
 
-for _, f in ipairs(GM:WSModules("sv_")) do include(f) end
+-- The root's sv_ modules, a line each, written by hand
+-- (tests/ws_root_modules_test.lua holds the list to the files); a new one
+-- is a line here.
+local Boot = WS.Logger("boot")
+local function Include(path)
+	Boot("include %s", path)
+	return include(path)
+end
+
+Include("sv_analytics.lua")
+Include("sv_arrivals.lua")
+Include("sv_content.lua")
+Include("sv_defaults.lua")
+Include("sv_economy.lua")
+Include("sv_handicap.lua")
+Include("sv_hits.lua")
+Include("sv_idle.lua")
+Include("sv_jit.lua")
+Include("sv_kill_credit.lua")
+Include("sv_loadout.lua")
+Include("sv_maps.lua")
+Include("sv_match_control.lua")
+Include("sv_medic_call.lua")
+Include("sv_nav.lua")
+Include("sv_nbdebug.lua")
+Include("sv_npc_ragdolls.lua")
+Include("sv_player_analytics.lua")
+Include("sv_players_menu.lua")
+Include("sv_proxy.lua")
+Include("sv_respawn_modifiers.lua")
+Include("sv_scoreboard.lua")
+Include("sv_spawn_manager.lua")
+Include("sv_teams.lua")
+Include("sv_teams_conditions.lua")
+Include("sv_teams_pickups.lua")
+Include("sv_teams_spawn.lua")
+Include("sv_use.lua")
+Include("sv_voices.lua")
+Include("sv_votes.lua")
+Include("sv_world.lua")
 
 -- As in TF2, a new player joins no team: they watch until they pick one
 -- from the team menu (auto-assign is one click there). Only in team play

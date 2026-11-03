@@ -52,7 +52,7 @@ if SERVER then
 else
 	Source("cl_init.lua GM:HUDPaint", GAMEMODE.HUDPaint)
 end
-Source("shared.lua GM:WSModules", GAMEMODE.WSModules)
+Source("shared.lua GM:CreateTeams", GAMEMODE.CreateTeams)
 Source("ws/sh_core.lua WS.require", WS.require)
 Source("ws/sh_events.lua Events.Fire", WS.Events and WS.Events.Fire)
 

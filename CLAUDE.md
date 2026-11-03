@@ -18,7 +18,7 @@ NextSoldier, the AI-war's NextBot soldiers. The gamemode lives at
 | `gamemode/foundation/` | Nothing but its namespaces and three plain globals at its root (`transaction`, `configstore`, `nodegraph`): foundation is copied to the globals, so it stays small and generic. A feature's or mode's model is the feature's `model.lua` and its parts (`docs/foundation-game-split-plan.md`) |
 | `gamemode/features/<feature>/` | Controllers: `sv.lua`/`cl.lua`/`sh.lua` composition roots and their `<realm>_<part>.lua` parts |
 | `gamemode/entities/weapons/` | Standard SWEPs: CS:S stats are grouped on terminal weapons; `base_cstrike`, `base_cstrike_melee` and `base_cstrike_grenade` own shared behavior |
-| `gamemode/*.lua` | Always-loaded glue and its `sh_`, `cl_`, `sv_` realm modules |
+| `gamemode/*.lua` | Always-loaded glue and its `sh_`, `cl_`, `sv_` realm modules, each loaded by a line written by hand, never a loop or a folder scan: `shared.lua` includes the `sh_` ones, `cl_init.lua` the `cl_` ones, `init.lua` the `sv_` ones and sends clients the rest (`tests/ws_root_modules_test.lua`) |
 | `gamemode/entities/` | Map entity bindings |
 | `addons/teamtint/` | Team Tint, its own addon: RED/BLU NPCs in TF2's shading, a tuning tool and debug views; pure modules in `lua/includes/modules/`, textures baked by `.devtools/bin/teamtint_bake.py` (`docs/team-theming-plan.md`) |
 | `tests/*_test.lua` | LuaJIT tests, `tests/harness.lua`; `tests/foundation_layers_test.lua` guards foundation's layers |
