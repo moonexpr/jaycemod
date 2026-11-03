@@ -60,10 +60,12 @@ You'll need LuaJIT, plus Cargo for the native pass.
 
 ## Plans
 
-The work ahead is tracked as
-[GitHub issues](https://github.com/moonexpr/sandcastle-public/issues),
-with the larger efforts as epics. Each plan in `docs/` explains its own
-design.
+The work ahead is in [ROADMAP.md](ROADMAP.md), in the order it comes. Each
+plan in `docs/` explains its own design.
+
+## License
+
+[Apache License 2.0](LICENSE).
 
 ## Credits
 
