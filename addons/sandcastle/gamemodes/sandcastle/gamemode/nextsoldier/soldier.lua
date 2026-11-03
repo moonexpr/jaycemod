@@ -77,7 +77,7 @@
 --   Burning() -> whether I am on fire
 --   CallMedic(): call for a medic: my side's medics answer me first a
 --     while, and my teammates see that I called
---   Announce(concept): call out what I am doing (a nextsoldier.speech
+--   Announce(concept): call out what I am doing (a nextsoldier.responserules
 --     concept), if my voice has a line for it
 --   LookAt(p, seconds[, priority]): look at p a while, unless I fight
 --     (my head, a NextBot's; my eyes, a bot player's), whatever Watch says;

@@ -24,6 +24,12 @@ E.Define("game_teamplay_broadcast_audio", {
 	others = E.Default(E.Bool(), false),
 })
 
+E.Define("game_teamplay_broadcast_text", {
+	team = E.Team(),
+	message = E.String(),
+	others = E.Default(E.Bool(), false),
+})
+
 -- A sound file to team, on channel (CHAN_AUTO when not given). Source's
 -- channels fit in a byte.
 local CHANNEL_BITS = 8
@@ -95,6 +101,10 @@ if CLIENT then
 
 	E.Listen("game_teamplay_broadcast_audio", "ws_announcer", function(fields)
 		if Hears(LocalPlayer(), fields.team, fields.others) then WS.PlaySoundscape(fields.sound) end
+	end)
+
+	E.Listen("game_teamplay_broadcast_text", "ws_announcer", function(fields)
+		if Hears(LocalPlayer(), fields.team, fields.others) then chat.AddText(fields.message) end
 	end)
 
 	E.Listen("game_sound_file", "ws_announcer", function(fields)

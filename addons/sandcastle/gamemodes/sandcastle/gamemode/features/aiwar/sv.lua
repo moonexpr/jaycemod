@@ -70,6 +70,7 @@ local Controller = {
 	-- cartEntities = nil, -- team -> its cart in the last field (Field)
 	-- waypointCache = nil, -- the waypoints squads explore, sampled once a map (Waypoints)
 	-- scenario = nil, -- the round mode's scenario while the war runs (Start)
+	-- scenarioEntry = nil, -- the registry entry that scenario was chosen from (Survey, ReloadScenarios)
 	-- waitingFor = nil, -- the part of the field the scenario lacks (Survey)
 	-- nextWatch = nil, -- when the observer next watches the soldiers (Think)
 	-- nextDebug = nil, -- when the debug overlay is next sent (SendDebug)

@@ -1,5 +1,5 @@
 -- Part of the rounds controller (sv.lua): the timers, the team clocks and the round limits.
-local Controller, Active, GAME_TEAMS = ...
+local Controller, Active, GAME_TEAMS, roundFraglimit, roundCashlimit = ...
 local Rounds = gameplay.rounds
 local Timer = WS.require("games.gameplay.rounds.timer")
 local Limits = WS.require("games.gameplay.rounds.limits")
@@ -8,21 +8,9 @@ local S = WS.STATE
 local UNASSIGNED, SPECTATOR = WS.TEAM_UNASSIGNED, WS.TEAM_SPECTATOR
 local RED, BLUE = WS.TEAM_RED, WS.TEAM_BLUE
 
-
--- TF2's own convars, as teamplayroundbased_gamerules.cpp and
--- multiplay_gamerules.cpp define them. GMod's engine may already define some
--- of the multiplay ones; those are used as they are.
-local function ConVarOrCreate(name, ...)
-	return GetConVar(name) or CreateConVar(name, ...)
-end
-
--- The round limits (games.gameplay.rounds.limits): only a map without an
--- objective plays to them. Both on by default, the frag limit the one
--- reached first.
-local roundFraglimit = ConVarOrCreate("mp_fraglimit", "0", { FCVAR_NOTIFY, FCVAR_REPLICATED },
-	"Frags a team needs in a round to win it, on a map without an objective; 0: no frag limit.", 0)
-local roundCashlimit = ConVarOrCreate("mp_creditlimit", "0", { FCVAR_NOTIFY, FCVAR_REPLICATED },
-	"Money a team must earn in a round to win it, on a map without an objective (frags decide first); 0: no cash limit.", 0)
+-- The round limits (games.gameplay.rounds.limits), mp_fraglimit and
+-- mp_creditlimit, are the root's convars (sv.lua): only a map without an
+-- objective plays to them, the frag limit the one reached first.
 
 local TIMER_CLASS = "team_round_timer"
 local TIMELIMIT_TIMER_NAME = "zz_teamplay_timelimit_timer"
@@ -46,6 +34,16 @@ local function AnnounceTimeAdded(t)
 		WS.BroadcastSoundscape(SPECTATOR, TIME_ADDED)
 	else
 		WS.BroadcastSoundscape(UNASSIGNED, TIME_ADDED)
+	end
+end
+
+local function AnnounceTimeSubtracted(t)
+	if t == RED or t == BLUE then
+		WS.BroadcastText(t, "Alert! The mission time has been shortened!")
+		WS.BroadcastText(WS.EnemyOf(t), "Congratulations. The enemy has less time for the mission.")
+		WS.BroadcastText(SPECTATOR, "The mission has lost time!")
+	else
+		WS.BroadcastText(UNASSIGNED, "The mission has lost time!")
 	end
 end
 
@@ -130,6 +128,10 @@ local TIMER_EVENTS = {
 	length_changed = function() end,
 	time_added = function(self, ent, e)
 		AnnounceTimeAdded(e.team)
+		Notify(e.team, e.seconds)
+	end,
+	time_subtracted = function(self, ent, e)
+		AnnounceTimeSubtracted(e.team)
 		Notify(e.team, e.seconds)
 	end,
 }
@@ -421,5 +423,7 @@ hook.Add("WSMoneyEarned", "ws_rounds_limits", function(ent, amount)
 	Controller.tally:Earn(team, amount)
 	Controller:Counted()
 end)
+
+
 
 return RoundWon, PublishOvertime, TIMELIMIT_TIMER_NAME

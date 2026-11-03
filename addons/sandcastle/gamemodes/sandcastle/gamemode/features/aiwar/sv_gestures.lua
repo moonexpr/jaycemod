@@ -11,7 +11,7 @@
 -- stance (sv_responserules.lua) and the grenades (sv_gadgets.lua) gesture too.
 local Controller = ...
 local Gestures = nextsoldier.gestures
-local Speech = nextsoldier.speech
+local Speech = nextsoldier.responserules
 
 local function Memory(entry)
 	if not entry.gestures then entry.gestures = Gestures.Memory() end

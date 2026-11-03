@@ -15,6 +15,13 @@ function WS.BroadcastSoundscape(team, name)
 	})
 end
 
+function WS.BroadcastText(team, message)
+	WS.Events.Fire("game_teamplay_broadcast_text", {
+		team = team,
+		message = message,
+	})
+end
+
 -- A soundscape every player not on the team hears as their own
 -- (CLocalPlayerFilter lines: the capture's lines for the other team).
 function WS.BroadcastSoundscapeToOthers(team, name)

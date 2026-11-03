@@ -12,7 +12,7 @@
 -- chatters (Speech.CONCEPT_ENEMY_KILLED and the rest): a kill, a teammate
 -- down, an enemy slipped out of sight, the radio between fights.
 local Controller = ...
-local Speech = nextsoldier.speech
+local Speech = nextsoldier.responserules
 local Gestures = nextsoldier.gestures
 local Payload = WS.require("features.payload.model")
 local Teams = gameplay.teams
@@ -28,6 +28,22 @@ local function Speaker(entry)
 	end
 	return entry.speaker
 end
+
+-- A line of a kind not played yet (HandleOperators), told to everyone as
+-- text: who would have said it, the kind, and what.
+local function Broadcast(operator, ent, response)
+	local name = 0 < #ent:GetName() and ent:GetName() or ent:GetClass()
+	local line = string.format("%s: %s(%s)", name, operator, tostring(response.value))
+	WS.BroadcastText(WS.TEAM_UNASSIGNED, line)
+end
+local HandleOperators = {
+	sentence 		= "Sentence",
+	scene 			= "Scene",
+	response 		= "Response",
+	entityio 		= "EntityIO",
+	vscript 		= "VScript",
+	vscript_file 	= "VScript_File",
+}
 
 -- The soldier speaks concept in role, if a rule has it say something and
 -- it is not still speaking; to listener alone when given (a greeting), and
@@ -51,8 +67,14 @@ function Controller:SpeakConcept(ent, concept, role, blocked, now, listener, ges
 		end
 		ent:EmitSound(line.value, said.soundLevel, 100, 1, CHAN_VOICE, 0, 0, filter)
 		length = SoundDuration(line.value)
+		speaker.busyUntil = now + length + said.delay
+		return
 	end
-	speaker.busyUntil = now + length + said.delay
+	local operator = HandleOperators[line.kind]
+	if operator then
+		Broadcast(operator, ent, line)
+		speaker.busyUntil = now + length + said.delay
+	end
 end
 
 -- A gesture's sound (TLK_NS_GESTURE, gestures.txt): the rules' answer for

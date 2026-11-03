@@ -395,8 +395,9 @@ local CUES = {
 function Controller:Tick()
 	local now = CurTime()
 	local expectedPlayersIn = not self.mode:WaitsForExpectedPlayers() or WS.ExpectedPlayersIn()
-	if self.mode:TransitionEnd() and expectedPlayersIn and hook.Run("WSGameplayBotsReady") ~= false then
-		self.mode:Hurry(now)
+	if self.mode:TransitionEnd() and expectedPlayersIn and hook.Run("WSGameplayBotsReady") ~= false
+		and self.mode:Hurry(now) then
+		hook.Run("MatchTimerHurried")
 	end
 	for _, cue in ipairs(self.mode:Advance(now)) do CUES[cue.kind](self, cue) end
 	self:Publish()
@@ -438,5 +439,12 @@ hook.Add("ShowSpare2", "ws_gamemode_ready", function(ply) Controller:ToggleReady
 concommand.Add("player_ready_toggle", function(ply)
 	if IsValid(ply) then Controller:ToggleReady(ply) end
 end, nil, "Toggle your team's ready, or in MvM your own, while a game waits for players")
+
+-- The load's countdown cut short as its expected players came in (Tick):
+-- everyone told.
+hook.Add("MatchTimerHurried", "ws_announcer", function()
+	WS.BroadcastSoundscape(WS.TEAM_UNASSIGNED, "Hud.Hint")
+	WS.BroadcastText(WS.TEAM_UNASSIGNED, "Gentlemen, all your allies and adversaries have arrived. Are you ready?")
+end)
 
 return Controller

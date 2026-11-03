@@ -62,6 +62,7 @@ local function World(over)
 		botsReady = true,
 		ready = 0,
 		heard = {},
+		hurried = 0,
 	}
 	for k, v in pairs(over or {}) do w[k] = v end
 	return w
@@ -87,6 +88,7 @@ local function Load(w)
 	end)
 	hook.Add("WSGameplayBotsReady", "test_bots", function() return w.botsReady end)
 	hook.Add("MatchStart", "test_addon", function() w.heard[#w.heard + 1] = "MatchStart" end)
+	hook.Add("MatchTimerHurried", "test_addon", function() w.hurried = w.hurried + 1 end)
 	local rounds = {
 		Mode = function()
 			return { PLAYERS_NEEDED = w.needed, OBJECTIVE = true }
@@ -240,6 +242,21 @@ T.test("a map loading in Gameplay mode runs it as the expected players hurry its
 		controller:Tick()
 	end
 	T.eq(w.ready, 1, "once, through the countdown's end")
+end)
+
+T.test("a load's countdown its expected players hurry is told so once (MatchTimerHurried)", function()
+	local w = World({ enabled = true })
+	local controller = Load(w)
+	controller:StartAtLoad()
+	w.now = w.now + 1
+	controller:Tick()
+	T.eq(w.hurried, 0, "not while the players are still loading")
+	w.expectedIn = true
+	for _ = 1, Gamemode.HURRIED_COUNTDOWN + 1 do
+		w.now = w.now + 1
+		controller:Tick()
+	end
+	T.eq(w.hurried, 1, "once, as they came in")
 end)
 
 -- The match starts with the countdown's first pre-round (the scores

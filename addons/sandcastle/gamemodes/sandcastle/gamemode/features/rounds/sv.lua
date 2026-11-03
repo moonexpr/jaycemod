@@ -60,9 +60,9 @@ local maxrounds = ConVarOrCreate("mp_maxrounds", "0", { FCVAR_REPLICATED, FCVAR_
 local timelimit = ConVarOrCreate("mp_timelimit", "30", { FCVAR_NOTIFY, FCVAR_REPLICATED }, 
 	"Game time per map in minutes")
 local fraglimit = ConVarOrCreate("mp_fraglimit", "0", { FCVAR_NOTIFY, FCVAR_REPLICATED },
-	"Frags a team needed to win a round")
-local creditlimit =  ConVarOrCreate("mp_creditlimit", "0", { FCVAR_NOTIFY, FCVAR_REPLICATED },
-	"Credits needs to win a round")
+	"Frags a team needs in a round to win it, on a map without an objective; 0: no frag limit.", 0)
+local creditlimit = ConVarOrCreate("mp_creditlimit", "0", { FCVAR_NOTIFY, FCVAR_REPLICATED },
+	"Money a team must earn in a round to win it, on a map without an objective (frags decide first); 0: no cash limit.", 0)
 local casualWinConditions = ConVarOrCreate("mp_casual_win_conditions", "1", FCVAR_NOTIFY,
 	"Applies win conditions per on a per-map basis after server.cfg and autoexec.cfg.")
 -- GMod defines mp_timelimit itself, at 0 (no limit); Sandcastle's default
@@ -252,7 +252,7 @@ end
 local Part = WS.FeatureParts(getfenv(1), "rounds")
 local Players = Part("sv_players", GAME_TEAMS)
 local HavePlayers, TeamLife, Scores = Players.HavePlayers, Players.TeamLife, Players.Scores
-local RoundWon, PublishOvertime, TIMELIMIT_TIMER_NAME = Part("sv_timers", Controller, Active, GAME_TEAMS)
+local RoundWon, PublishOvertime, TIMELIMIT_TIMER_NAME = Part("sv_timers", Controller, Active, GAME_TEAMS, fraglimit, creditlimit)
 Part("sv_effects", Controller, Players, PublishLimits, PublishOvertime, TIMELIMIT_TIMER_NAME, RULES_CLASSES)
 Part("sv_gamerules", Controller, Players, Active)
 Part("sv_snapshot", Controller, PublishState)

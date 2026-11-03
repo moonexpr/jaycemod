@@ -131,13 +131,20 @@ T.test("default combatant, CS:S combatant, and Sandcastle use their weapon drive
 		T.eq(Contains(captured.weapons, "weapon_physcannon"), true, path .. " keeps the physcannon")
 		T.eq(Contains(captured.weapons, "gmod_tool"), true, path .. " keeps the tool")
 		T.eq(Contains(captured.weapons, "gmod_camera"), true, path .. " keeps the camera")
-		if path == "player_class/player_combatant_cstrike.lua" then
-			T.eq(captured.weapons[1], "simple_css_ak47", "CS:S combatant uses CS:S weapons")
-			T.eq(captured.weapons[29], "simple_hl2e_alyxgun", "CS:S combatant includes HL2 Extended")
-		else
-			T.eq(captured.weapons[1], "simple_hl2_crowbar", path .. " uses Simple HL2 weapons")
-			T.eq(captured.weapons[10], "simple_hl2e_alyxgun", path .. " includes HL2 Extended")
+		-- each class its families of Simple Weapons: the combatant HL2's and
+		-- HL2 Extended's, the CS:S combatant CS:S's, Sandcastle HL2 Extended's
+		local FAMILIES = {
+			["player_class/player_combatant.lua"] = { simple_hl2_ = true, simple_hl2e_ = true },
+			["player_class/player_combatant_cstrike.lua"] = { simple_css_ = true },
+			["player_class/player_sandcastle.lua"] = { simple_hl2e_ = true },
+		}
+		local families = {}
+		for _, weapon in ipairs(captured.weapons) do
+			local family = weapon:match("^(simple_[%w]+_)")
+			if family then families[family] = true end
 		end
+		for family in pairs(FAMILIES[path]) do T.eq(families[family], true, path .. " carries " .. family .. " weapons") end
+		for family in pairs(families) do T.eq(FAMILIES[path][family], true, path .. " carries no " .. family .. " weapons") end
 		T.eq(Contains(captured.weapons, "weapon_physgun"), path == "player_class/player_sandcastle.lua",
 			path .. " preserves its physgun policy")
 	end

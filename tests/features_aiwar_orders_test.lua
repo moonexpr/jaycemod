@@ -11,7 +11,7 @@ local BEHAVIORS = nextsoldier.behaviors.Shared:Compile()
 local Soldier = nextsoldier.soldier
 local Track = math.polyline
 local Teams = gameplay.teams
-local Speech = nextsoldier.speech
+local Speech = nextsoldier.responserules
 
 local RED, BLUE = Teams.RED, Teams.BLUE
 local P = FS.Point
