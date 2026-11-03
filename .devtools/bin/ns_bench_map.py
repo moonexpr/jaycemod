@@ -44,7 +44,7 @@ HAMMER = Path.home() / "Repositories" / "hammer-mcp"
 OUT = REPO / ".devtools" / "artifacts" / "maps" / "benches"
 BSPSRC_JAR = Path(os.environ.get("BSPSRC_JAR", Path.home() / ".local/share/bspsrc-1.4.8/bspsrc.jar"))
 BSPSRC_MAIN = "info.ata4.bspsrc.app.src.cli.BspSourceCli"
-TF_MAPS = Path.home() / "Library/Application Support/CrossOver/Bottles/Steam/drive_c/Program Files (x86)/Steam/steamapps/common/Team Fortress 2/tf/maps"
+TF_MAPS = Path.home() / "Library/Application Support/CrossOver/Bottles/Steam/drive_c/Steam/steamapps/common/Team Fortress 2/tf/maps"
 SERVER_MAPS = Path.home() / "Library/Application Support/CrossOver/Bottles/GModServer/drive_c/Steam/steamapps/common/GarrysModServer/garrysmod/maps"
 
 RED, BLU = 2, 3
