@@ -6,7 +6,7 @@ local T = dofile("tests/harness.lua")
 
 local ROOT = T.ROOT
 local COMMANDS = ROOT .. "sv_nbdebug.lua"
-local NEXTSOLDIER = ROOT .. "../entities/entities/base_nextsoldier.lua"
+local NEXTSOLDIER = T.ADDON_TREES.nextsoldier .. "entities/base_nextsoldier.lua"
 local WAR_SOLDIER = ROOT .. "sh_war_soldier.lua"
 local PATHFOLLOWER = ROOT .. "../entities/entities/npc_pathfollower.lua"
 local NAV_CLEARANCE = ROOT .. "nav_clearance.lua"

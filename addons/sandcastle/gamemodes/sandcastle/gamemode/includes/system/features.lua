@@ -49,7 +49,8 @@ function ResourcesPath(name)
 	return ROOT .. name .. "/resources.lua"
 end
 
--- The folders, relative to the gamemode folder, whose files clients are sent.
+-- The folders whose files clients are sent, as the loader names them
+-- (relative to the gamemode folder, or an addon's tree: WS.LoaderFile).
 CLIENT_DIRS = { "foundation/", "includes/", "nextsoldier/", "wartactics/", "features/", "vendor/" }
 
 local REALM_OF = {

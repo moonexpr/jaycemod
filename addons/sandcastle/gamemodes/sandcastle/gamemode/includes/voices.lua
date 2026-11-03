@@ -21,7 +21,7 @@ end
 -- A rebel's sharpest cries of pain stand for its death: HL2's citizens have
 -- no death lines of their own.
 -- HL2's sides, a voice's affiliation: the speech rules answer by it first
--- (addons/responserules: scripts/responserules/<affiliation>.txt), so a
+-- (addons/nextsoldier: scripts/responserules/<affiliation>.txt), so a
 -- model of either side fits whichever team it fights for.
 COMBINE, REBEL = "combine", "rebel"
 

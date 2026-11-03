@@ -51,8 +51,9 @@ end
 -- A tree's index files on disk, as paths under the gamemode, sorted.
 local function IndexFiles(tree)
 	local paths = {}
-	local command = "find " .. T.ROOT .. tree.root .. " -name '*" .. tree.file .. "' | sort"
-	for _, path in ipairs(Lines(command)) do paths[#paths + 1] = path:sub(#T.ROOT + 1) end
+	local base = T.File(tree.root .. "/")
+	local command = "find " .. base .. " -name '*" .. tree.file .. "' | sort"
+	for _, path in ipairs(Lines(command)) do paths[#paths + 1] = tree.root .. "/" .. path:sub(#base + 1) end
 	return paths
 end
 
@@ -92,7 +93,7 @@ end
 local function RunIndexes(globals)
 	local env = Namespace.Environment(globals, T.require)
 	for _, path in ipairs(LoaderIndexes()) do
-		local chunk = assert(loadfile(T.ROOT .. path))
+		local chunk = assert(loadfile(T.File(path)))
 		setfenv(chunk, env)()
 	end
 end
@@ -100,7 +101,7 @@ end
 -- folder (under the gamemode, ending in "/") -> the module keys in it
 local function ModulesIn(folder)
 	local keys = {}
-	for _, file in ipairs(Lines("ls " .. T.ROOT .. folder .. " | grep '%.lua$'")) do
+	for _, file in ipairs(Lines("ls " .. T.File(folder) .. " | grep '%.lua$'")) do
 		local key = file:sub(1, -#".lua" - 1)
 		if not key:match("_index$") and not key:match("_init$") then keys[#keys + 1] = key end
 	end
@@ -192,7 +193,7 @@ T.test("a published foundation module uses only foundation", function()
 	for _, path in ipairs(IndexFiles(TREES[1])) do
 		local folder = path:match("^(.-)[%a]+_index%.lua$")
 		for _, key in ipairs(ModulesIn(folder)) do
-			for _, name in ipairs(T.Uses(Read(T.ROOT .. folder .. key .. ".lua"))) do
+			for _, name in ipairs(T.Uses(Read(T.File(folder .. key .. ".lua")))) do
 				T.eq(name:match("^foundation%.") ~= nil, true, folder .. key .. " uses " .. name)
 			end
 		end
@@ -226,8 +227,8 @@ T.test("each foundation module is published after every module it uses", functio
 	local published = {}
 	for _, path in ipairs(LoaderIndexes()) do
 		if path:match("^foundation/") then
-			for module in Read(T.ROOT .. path):gmatch('require%(%s*"([%w_.]+)"%s*%)') do
-				for _, used in ipairs(T.Uses(Read(T.ROOT .. module:gsub("%.", "/") .. ".lua"))) do
+			for module in Read(T.File(path)):gmatch('require%(%s*"([%w_.]+)"%s*%)') do
+				for _, used in ipairs(T.Uses(Read(T.File(module:gsub("%.", "/") .. ".lua")))) do
 					if used ~= module and used:match("^foundation%.") then
 						T.eq(published[used], true, module .. " uses " .. used .. " before it is published")
 					end
@@ -242,7 +243,7 @@ T.test("neither the loader nor an index loops or scans", function()
 	local paths = AllIndexFiles()
 	paths[#paths + 1] = "shared_loader.lua"
 	for _, path in ipairs(paths) do
-		local code = WithoutComments(Read(T.ROOT .. path))
+		local code = WithoutComments(Read(T.File(path)))
 		for _, word in ipairs({ "for", "while", "repeat", "pairs", "ipairs", "next" }) do
 			T.eq(code:find("%f[%w_]" .. word .. "%f[^%w_]") == nil, true, path .. " has no " .. word)
 		end

@@ -8,7 +8,7 @@ addons for the ones we call, define and set, and lists their intersection.
 
   drg_interface.py inventory [--gma PATH]   the names, by kind, with where we use them
   drg_interface.py check [--gma PATH]       fail (exit 1) naming each one
-                                            nextsoldier/base.lua does not declare
+                                            nextsoldier.base does not declare
 
 A name GMod gives every entity (Initialize, Think, Draw...) is left out.
 A name only shared with DrGBase (GMod's, Lua's or our own, used on
@@ -28,9 +28,9 @@ REPO = Path(__file__).resolve().parents[2]
 GMA = (Path.home() / "Library/Application Support/CrossOver/Bottles/Steam/drive_c/Steam/steamapps"
        / "workshop/content/4000/1560118657/gmpublisher.gma")
 NEXTBOT_DIRS = ("lua/entities/drgbase_nextbot/", "lua/entities/drgbase_nextbot_human/", "lua/drgbase/")
-OUR_ROOTS = ("addons/sandcastle", "addons/sandcastle_dev")
+OUR_ROOTS = ("addons/sandcastle", "addons/nextsoldier", "addons/sandcastle_dev")
 SKIP = ("/vendor/",)
-BASE = REPO / "addons/sandcastle/gamemodes/sandcastle/gamemode/nextsoldier/base.lua"
+BASE = REPO / "addons/nextsoldier/lua/nextsoldier/base.lua"
 GENERIC = frozenset({"Initialize", "Think", "Draw", "OnRemove", "Use", "SetupDataTables",
                      "DrawTranslucent", "UpdateTransmitState", "KeyValue", "AcceptInput"})
 

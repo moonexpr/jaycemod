@@ -47,7 +47,7 @@ end
 local function Twins()
 	local modules = {}
 	for _, path in ipairs(T.Indexes()) do
-		for module in ReadFile(T.ROOT .. path):gmatch('Twin%(%s*[%w_]+%s*,%s*"[%w_]+"%s*,%s*require%(%s*"([%w_.]+)"%s*%)%s*%)') do
+		for module in ReadFile(T.File(path)):gmatch('Twin%(%s*[%w_]+%s*,%s*"[%w_]+"%s*,%s*require%(%s*"([%w_.]+)"%s*%)%s*%)') do
 			modules[#modules + 1] = module
 		end
 	end

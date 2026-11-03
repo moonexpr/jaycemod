@@ -13,10 +13,21 @@ local CHUNK_ENV = setmetatable({}, { __index = _G })
 -- The repo's own addons' GMod modules (lua/includes/modules/<name>.lua,
 -- which GMod's require loads by a name without dots).
 T.MODULE_DIRS = {
-	"addons/responserules/lua/includes/modules/",
+	"addons/nextsoldier/lua/includes/modules/",
 	"addons/teamtint/lua/includes/modules/",
 	"addons/sandcastle_dev/lua/includes/modules/",
 }
+
+-- The trees an addon ships under its own lua/ that the gamemode's loader
+-- reads from the LUA path's root (shared_loader.lua's ADDON_TREES): tree ->
+-- the addon's lua/ folder.
+T.ADDON_TREES = { nextsoldier = "addons/nextsoldier/lua/" }
+
+-- A gamemode-relative path, as shared_loader.lua's LoaderFile reads it, as
+-- a repo path.
+function T.File(path)
+	return (T.ADDON_TREES[path:match("^([%w_]+)/")] or T.ROOT) .. path
+end
 
 local function Path(name)
 	if not name:find(".", 1, true) then
@@ -37,7 +48,7 @@ local function Path(name)
 			path = path:gsub("^includes%.", "includes.extensions.")
 		end
 	end
-	return T.ROOT .. path:gsub("%.", "/") .. ".lua"
+	return T.File(path:gsub("%.", "/") .. ".lua")
 end
 T.Path = Path
 
@@ -90,7 +101,7 @@ end
 -- T.Published.module[global] -> the module name, read from the indexes.
 T.Published = { global = {}, module = {} }
 for _, path in ipairs(T.Indexes()) do
-	local text = ReadFile(T.ROOT .. path)
+	local text = ReadFile(T.File(path))
 	local namespaces = { _G = "" }
 	for var, name in text:gmatch('local%s+([%w_]+)%s*=%s*Namespace%(%s*"([%w_]+)"%s*%)') do namespaces[var] = name .. "." end
 	local function Publish(var, key, module)
@@ -157,7 +168,7 @@ do
 	local Namespaces = T.NATIVE and core.namespace or T.require("foundation.core.namespace")
 	local env = Namespaces.Environment(_G, T.require)
 	for _, path in ipairs(T.Indexes()) do
-		local chunk = assert(loadfile(T.ROOT .. path))
+		local chunk = assert(loadfile(T.File(path)))
 		setfenv(chunk, env)()
 	end
 end

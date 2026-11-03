@@ -12,8 +12,9 @@ local Features = system.features
 
 local ROOT = "sandcastle/gamemode/"
 
--- files: path -> source; the server's WS.require keeps GAMEMODE_ROOT
--- and CHUNK_ENV as upvalues, as sh_core's does. WS.FeatureParts runs a
+-- files: path -> source; the server's WS.require keeps CHUNK_ENV as an
+-- upvalue, and the loader resolves files with WS.LoaderFile and
+-- WS.ModuleFile, as shared_loader's do. WS.FeatureParts runs a
 -- root's parts from files, as sh_core's does from disk. The fake
 -- WS.Events records every Listen and Define call.
 -- Returns the commands registered, CHUNK_ENV, the count of hooks added, and
@@ -27,14 +28,15 @@ local function Load(files, features)
 		listeners = {},
 		defines = 0,
 	}
-	local GAMEMODE_ROOT = ROOT
 	local CHUNK_ENV = setmetatable({}, { __index = _G })
 	local function CompileFile(path) return assert(loadstring(files[path], path)) end
 	local WS = {}
 	function WS.require(name)
-		local _ = GAMEMODE_ROOT, CHUNK_ENV
+		local _ = CHUNK_ENV
 		return package.loaded[name]
 	end
+	function WS.LoaderFile(path) return ROOT .. path end
+	function WS.ModuleFile(name) return ROOT .. name:gsub("%.", "/") .. ".lua" end
 	WS.Feature = function(name) return features[name] end
 	local port = {}
 	function port:Compile(path) return CompileFile(ROOT .. path) end

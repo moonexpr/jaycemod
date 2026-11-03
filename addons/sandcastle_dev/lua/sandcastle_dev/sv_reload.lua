@@ -2,7 +2,8 @@
 -- state, loads the gamemode's changed Lua again, and restores the state.
 -- Changed files are found by their times since the last reload (or since
 -- the workbench loaded); opts.files names them instead, as repo paths
--- (addons/sandcastle/gamemodes/...) or LUA paths, which skips the scan.
+-- (addons/sandcastle/gamemodes/..., addons/nextsoldier/lua/...) or LUA
+-- paths, which skips the scan.
 --   foundation and games modules, and a feature's own modules
 --   (features/<f>/model.lua):
 --     run again in place; module(...) keeps the table, so every holder sees
@@ -34,20 +35,24 @@ local function Upvalue(fn, wanted)
 	end
 end
 
--- The gamemode's paths, from WS.require, once the gamemode is up (the
--- workbench loads before it).
-local ROOT, CHUNK_ENV, ENTITIES, MODULE_PATH
+-- The gamemode's paths, from its loader, once the gamemode is up (the
+-- workbench loads before it). NextSoldier is its own addon: its modules are
+-- under the LUA path's nextsoldier/ (WS.LoaderFile reads them there), its
+-- base entities under entities/, beside every other addon's.
+local ROOT, CHUNK_ENV, ENTITIES
+local NEXTSOLDIER = "nextsoldier/"
+local ADDON_ENTITIES, ADDON_ENTITY_CLASSES = "entities/", "^base_nextsoldier"
 
 local function Paths()
 	if ROOT then return end
-	ROOT = Upvalue(WS.require, "GAMEMODE_ROOT") -- "sandcastle/gamemode/"
+	ROOT = WS.LoaderFile("") -- "sandcastle/gamemode/"
 	CHUNK_ENV = Upvalue(WS.require, "CHUNK_ENV")
-	MODULE_PATH = Upvalue(WS.require, "ModulePath")
 	ENTITIES = string.gsub(ROOT, "gamemode/$", "entities/entities/")
 end
 
 local SOURCE_PREFIX = "gamemodes/" -- how CompileFile names a gamemode file
 local REPO_GAMEMODES = "addons/sandcastle/gamemodes/" -- a repo path's prefix before the LUA path
+local REPO_ADDON_LUA = "^addons/[%w_]+/lua/" -- an addon's, before its LUA path (NextSoldier's)
 local ADOPT_FROM = "\nlocal Controller = {"
 local ADOPT_TO = "\nlocal Controller = __dev_adopt {"
 local CLEANUP_SETTLE = 0.1 -- s: the map's entities made again before the state goes back
@@ -68,6 +73,12 @@ local function Stamps()
 	local stamps = {}
 	for _, path in ipairs(Files(ROOT)) do stamps[path] = file.Time(path, "LUA") end
 	for _, path in ipairs(Files(ENTITIES)) do stamps[path] = file.Time(path, "LUA") end
+	for _, path in ipairs(Files(NEXTSOLDIER)) do stamps[path] = file.Time(path, "LUA") end
+	for _, name in ipairs((file.Find(ADDON_ENTITIES .. "*.lua", "LUA"))) do
+		if string.match(name, ADDON_ENTITY_CLASSES) then
+			stamps[ADDON_ENTITIES .. name] = file.Time(ADDON_ENTITIES .. name, "LUA")
+		end
+	end
 	return stamps
 end
 
@@ -82,8 +93,14 @@ end
 
 -- What a changed file is, and what reloading it means.
 local function Classify(path)
-	if string.StartWith(path, ENTITIES) then
-		return { kind = "entity", class = string.match(path, "([^/]+)%.lua$") }
+	if string.StartWith(path, ENTITIES) or string.match(path, "^" .. ADDON_ENTITIES .. "[^/]+%.lua$") then
+		return { kind = "entity", class = string.match(path, "([^/]+)%.lua$"), path = path }
+	end
+	if string.StartWith(path, NEXTSOLDIER) then
+		if string.match(path, "_init%.lua$") then
+			return { kind = "refused", why = "a namespace's index runs with the loader; changelevel" }
+		end
+		return { kind = "module", name = string.gsub(string.gsub(path, "%.lua$", ""), "/", ".") }
 	end
 	local rel = string.sub(path, #ROOT + 1)
 	local feature, fileName = string.match(rel, "^features/([^/]+)/([^/]+)%.lua$")
@@ -97,7 +114,7 @@ local function Classify(path)
 	if string.match(rel, "_index%.lua$") or string.match(rel, "_init%.lua$") then
 		return { kind = "refused", why = "a namespace's index runs with the loader; changelevel" }
 	end
-	if string.StartWith(rel, "foundation/") or string.StartWith(rel, "nextsoldier/") or string.StartWith(rel, "wartactics/") then
+	if string.StartWith(rel, "foundation/") or string.StartWith(rel, "wartactics/") then
 		return { kind = "module", name = string.gsub(string.gsub(rel, "%.lua$", ""), "/", ".") }
 	end
 	local namespace, module = string.match(rel, "^includes/extensions/([%w_]+)/(.+)%.lua$")
@@ -147,7 +164,7 @@ local function ReloadModule(name)
 	local module = package.loaded[name]
 	if module == nil then return { skipped = name .. " is not loaded on this map" } end
 	local old = Classes(FunctionsOf(module))
-	local chunk = CompileFile(ROOT .. MODULE_PATH(name))
+	local chunk = CompileFile(WS.ModuleFile(name))
 	if not isfunction(chunk) then dev.Fail(name .. " did not compile; see the console") end
 	setfenv(chunk, CHUNK_ENV)(name)
 	local patched = {}
@@ -188,8 +205,7 @@ local function ReloadFeature(feature)
 	return { feature = feature }
 end
 
-local function ReloadEntity(class)
-	local path = ENTITIES .. class .. ".lua"
+local function ReloadEntity(class, path)
 	if not scripted_ents.GetStored(class) then return { skipped = class .. " is not registered" } end
 	local previous = ENT
 	ENT = { Folder = "entities/" .. class }
@@ -207,7 +223,7 @@ end
 local RELOAD = {
 	module = function(c) return ReloadModule(c.name) end,
 	feature = function(c) return ReloadFeature(c.feature) end,
-	entity = function(c) return ReloadEntity(c.class) end,
+	entity = function(c) return ReloadEntity(c.class, c.path) end,
 }
 -- modules first, so a feature run again builds on the new models
 local ORDER = {
@@ -238,7 +254,7 @@ function dev.reload(opts)
 		-- named: no scan (reading every file's time costs ~0.5 ms a file under CrossOver)
 		changed, stamps = {}, live.stamps
 		for i, path in ipairs(opts.files) do
-			changed[i] = string.gsub(path, "^" .. string.PatternSafe(REPO_GAMEMODES), "")
+			changed[i] = string.gsub(string.gsub(path, "^" .. string.PatternSafe(REPO_GAMEMODES), ""), REPO_ADDON_LUA, "")
 			stamps[changed[i]] = file.Time(changed[i], "LUA")
 		end
 	else

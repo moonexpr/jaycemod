@@ -1,4 +1,4 @@
--- responserules_script (addons/responserules): TF2's talker script files
+-- responserules_script (addons/nextsoldier): TF2's talker script files
 -- (scripts/talker/*.txt, the grammar AI_ResponseSystem.cpp parses) into the
 -- definitions foundation.responserules builds a system from.
 local T = dofile("tests/harness.lua")

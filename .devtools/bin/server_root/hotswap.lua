@@ -44,7 +44,7 @@ end
 concommand.Add("ws_hotswap_module", function(ply, _, args)
 	if not Allowed(ply) then return end
 	local name = args[1]
-	local chunk = CompileFile(RequireUpvalue("GAMEMODE_ROOT") .. name:gsub("%.", "/") .. ".lua")
+	local chunk = CompileFile(WS.ModuleFile(name))
 	setfenv(chunk, RequireUpvalue("CHUNK_ENV"))(name)
 	Tell(ply, "hotswap: " .. name .. " reloaded")
 end)
@@ -203,7 +203,7 @@ concommand.Add("ws_hotswap_feature", function(ply, _, args)
 	if not Allowed(ply) then return end
 	local feature = args[1]
 	local live = WS.Feature(feature)
-	local chunk = CompileFile(RequireUpvalue("GAMEMODE_ROOT") .. "features/" .. feature .. "/sv.lua")
+	local chunk = CompileFile(WS.LoaderFile("features/" .. feature .. "/sv.lua"))
 	local fresh = setfenv(chunk, RerunEnv())()
 	if #args < 2 then
 		TellListing(ply, feature, ResolveAll(AllNames(fresh, live), fresh, live))

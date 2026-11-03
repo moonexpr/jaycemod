@@ -1,8 +1,8 @@
 -- Part of the AI war controller (sv.lua): its soldiers speak the concepts
 -- a cart's watcher raises (WSCartConcept: team_train_watcher, as TF2's has
--- its players speak them), by the response rules of the responserules
--- addon (addons/responserules: its ResponseRules service, and its rules by
--- the speaker model's affiliation). The cart's own team is on offense, its
+-- its players speak them), by NextSoldier's response rules
+-- (addons/nextsoldier: its ResponseRules service, and its rules by the
+-- speaker model's affiliation). The cart's own team is on offense, its
 -- enemy on defense; a concept for the pushers goes to the soldiers in the
 -- cart's capture area. A soldier speaks one line at a time and waits,
 -- after it, the delay its rule's group sets; the group sets how loud it is
@@ -18,7 +18,7 @@ local Payload = WS.require("features.payload.model")
 local Teams = gameplay.teams
 
 -- The AI war needs the responserules addon, as it needs DrGBase.
-local Rules = ResponseRules or error("the AI war's speech needs the responserules addon (addons/responserules)")
+local Rules = ResponseRules or error("the AI war's speech needs NextSoldier's response rules (addons/nextsoldier)")
 
 -- The soldier's speaker: its contexts, and when it may speak again.
 local function Speaker(entry)

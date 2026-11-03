@@ -1,6 +1,6 @@
 -- The AI war's soldiers on the payload cart: their criteria set
 -- (nextsoldier.responserules) against the rules in the responserules addon
--- (addons/responserules/scripts/responserules/: response_rules.txt and the
+-- (addons/nextsoldier/scripts/responserules/: response_rules.txt and the
 -- affiliation files it includes), as the server loads them: what they say
 -- when the cart moves, stops, rolls back or is cut off by the enemy, by the
 -- side their model belongs to, as TF2's rules have its classes say it.
@@ -11,7 +11,7 @@ local Speech = nextsoldier.responserules
 local Voices = T.require("includes.voices")
 local Payload = T.require("features.payload.model")
 
-local SCRIPTS = "addons/responserules/scripts/"
+local SCRIPTS = "addons/nextsoldier/scripts/"
 local ROOT = "responserules/response_rules.txt"
 
 local function Read(path)

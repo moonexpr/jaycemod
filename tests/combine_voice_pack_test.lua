@@ -4,7 +4,7 @@
 -- line it lacks would play HL2's own voice.
 local T = dofile("tests/harness.lua")
 
-local RULES = "addons/responserules/scripts/responserules/combine.txt"
+local RULES = "addons/nextsoldier/scripts/responserules/combine.txt"
 local PACK = T.ROOT .. "../content/sound/"
 
 local function Read(path)

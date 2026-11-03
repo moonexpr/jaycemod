@@ -233,7 +233,7 @@ local API_EXTENSIONS = { list = true, timer = true, world = true, generator = tr
 local TREES = {
 	{ dir = FOUNDATION, prefix = FOUNDATION_PREFIX, category = CATEGORY, pending = PENDING },
 	{ dir = T.ROOT .. "includes/", prefix = "^games%.", category = GAMES, pending = {} },
-	{ dir = T.ROOT .. "nextsoldier/", prefix = "^nextsoldier%.", category = NEXTSOLDIER, pending = {} },
+	{ dir = T.File("nextsoldier/"), prefix = "^nextsoldier%.", category = NEXTSOLDIER, pending = {} },
 	{ dir = T.ROOT .. "wartactics/", prefix = "^wartactics%.", category = WARTACTICS, pending = {} },
 }
 

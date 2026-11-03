@@ -13,7 +13,7 @@ NextSoldier, the AI-war's NextBot soldiers. The gamemode lives at
 | `gamemode/includes/{gameplay,npc,system}/` | Gamemode models built on foundation: pure Lua systems, no GMod globals, I/O through ports; published as globals by `sh_init.lua` and loaded on first read (index below) |
 | `gamemode/includes/extensions/{generator,list,timer,world}/` | Gamemode extensions to GMod/Lua global tables, published by their `sh_init.lua` indexes |
 | `gamemode/includes/*.lua` | Gamemode glue models, required by their stable module names |
-| `gamemode/nextsoldier/` | NextSoldier, the soldier itself (movement, senses, body, behaviours): its own subsystem on foundation and games that runs without the tactics engine, published as `nextsoldier.<module>` by `sh_init.lua` and loaded on first read (index below) |
+| `addons/nextsoldier/` | NextSoldier, the soldier itself (movement, senses, body, behaviours), its own addon: its modules in `lua/nextsoldier/`, on foundation and games and run without the tactics engine, published as `nextsoldier.<module>` by `sh_init.lua` and loaded on first read (index below); its base entities (`base_nextsoldier`, `_npc`, `_combat`) in `lua/entities/`; the response rules it speaks by, their GMod modules, autorun and `scripts/responserules/` (`docs/ns-response-rules.md`) |
 | `gamemode/wartactics/` | The AI war's tactics engine: the strategy soldiers are organised by (fire teams, squads, lanes, posts, scenarios), on NextSoldier, published as `wartactics.<module>` (index below) |
 | `gamemode/foundation/` | Nothing but its namespaces and three plain globals at its root (`transaction`, `configstore`, `nodegraph`): foundation is copied to the globals, so it stays small and generic. A feature's or mode's model is the feature's `model.lua` and its parts (`docs/foundation-game-split-plan.md`) |
 | `gamemode/features/<feature>/` | Controllers: `sv.lua`/`cl.lua`/`sh.lua` composition roots and their `<realm>_<part>.lua` parts |
@@ -281,9 +281,12 @@ foundation and game: `docs/foundation-game-split-plan.md`.
 
 ## nextsoldier index
 
-`gamemode/nextsoldier/<module>.lua`: NextSoldier, the soldier itself, its
-own subsystem beside foundation and games, built on both, which runs
-without the war's tactics engine (`docs/ns-split.md`, issue #8).
+`addons/nextsoldier/lua/nextsoldier/<module>.lua`: NextSoldier, the soldier
+itself, its own addon beside the gamemode, built on foundation and games,
+which runs without the war's tactics engine (`docs/ns-split.md`, issue #8).
+The gamemode's loader reads it from the LUA path's `nextsoldier/`, not its
+own folder (`shared_loader.lua`'s `ADDON_TREES`; `WS.LoaderFile` names a
+file where the loader reads it; `T.File` in the tests).
 `shared_loader.lua` runs `nextsoldier/sh_init.lua` after games' inits, which
 `Defer`s a module a line: module `nextsoldier.<module>` is the global of
 that name, loaded on first read. Its module names are its globals', so

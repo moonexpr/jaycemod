@@ -744,7 +744,7 @@ T.test("a variant's fake actor dispatches only the particle systems its variant 
 end)
 
 T.test("base_nextsoldier_npc defines every actor method the engine does not already provide", function()
-	local text = ReadFile("addons/sandcastle/gamemodes/sandcastle/entities/entities/base_nextsoldier_npc.lua")
+	local text = ReadFile("addons/nextsoldier/lua/entities/base_nextsoldier_npc.lua")
 	for _, name in ipairs(Actor.METHODS) do
 		local defined = text:find("function ENT:" .. name .. "(", 1, true) ~= nil
 		T.eq(defined or Actor.ENGINE[name] == true, true, "base_nextsoldier_npc " .. name)
@@ -755,7 +755,7 @@ T.test("base_nextsoldier_npc defines every actor method the engine does not alre
 end)
 
 T.test("the model-backed NPC binding inherits the NextSoldier base and owns its Think lifecycle", function()
-	local text = ReadFile("addons/sandcastle/gamemodes/sandcastle/entities/entities/base_nextsoldier_npc.lua")
+	local text = ReadFile("addons/nextsoldier/lua/entities/base_nextsoldier_npc.lua")
 	T.eq(text:find('ENT.Base = "base_nextsoldier"', 1, true) ~= nil, true, "shared base")
 	T.eq(text:find("function ENT:Think() end", 1, true) ~= nil, true, "NextSoldier Think is not run")
 end)
@@ -778,7 +778,7 @@ T.test("a nextbot whose binding fails reports it once from Initialize, then remo
 			require = function(name) return T.require(name) end,
 		},
 	}, { __index = _G })
-	local chunk = assert(loadfile("addons/sandcastle/gamemodes/sandcastle/entities/entities/base_nextsoldier_npc.lua"))
+	local chunk = assert(loadfile("addons/nextsoldier/lua/entities/base_nextsoldier_npc.lua"))
 	setfenv(chunk, env)()
 
 	local ent = setmetatable({

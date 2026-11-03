@@ -1,4 +1,4 @@
--- responserules (addons/responserules): TF2's response rules (the Source engine's
+-- responserules (addons/nextsoldier): TF2's response rules (the Source engine's
 -- AI_ResponseSystem): criteria over a speaker's criteria set, rules scored by
 -- the criteria they match, response groups, and contexts a rule applies.
 local T = dofile("tests/harness.lua")

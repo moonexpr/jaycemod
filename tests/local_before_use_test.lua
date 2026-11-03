@@ -58,7 +58,7 @@ local function Misuses(path)
 end
 
 T.test("no file calls a local function above its declaration", function()
-	local list = assert(io.popen("find " .. T.ROOT .. " " .. T.ROOT .. "../entities -name '*.lua'"))
+	local list = assert(io.popen("find " .. T.ROOT .. " " .. T.ROOT .. "../entities " .. T.ADDON_TREES.nextsoldier .. " -name '*.lua'"))
 	local files, misuses = 0, {}
 	for path in list:lines() do
 		files = files + 1

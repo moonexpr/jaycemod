@@ -34,17 +34,20 @@ local globals = setmetatable({}, {
 })
 
 local events = setmetatable({}, { __index = function(_, name) return Stub("WS.Events." .. name) end })
-local GAMEMODE_ROOT, CHUNK_ENV = T.ROOT, globals
+local CHUNK_ENV = globals
 local WS = setmetatable({
 	FeatureParts = T.FeatureParts,
 	Events = events,
 	Feature = function(name) return Stub("feature " .. name) end,
 }, { __index = function(_, name) return Stub("WS." .. name) end })
--- hotswap.lua reads the root and the module environment off WS.require's upvalues
+-- hotswap.lua reads the module environment off WS.require's upvalues, and
+-- files through the loader's WS.LoaderFile and WS.ModuleFile
 function WS.require(name)
-	local _ = GAMEMODE_ROOT, CHUNK_ENV
+	local _ = CHUNK_ENV
 	return T.require(name)
 end
+WS.LoaderFile = T.File
+WS.ModuleFile = T.Path
 
 local liveEnv = setmetatable({ WS = WS }, { __index = globals })
 local live = setfenv(assert(loadfile(T.ROOT .. ROOT_FILE)), liveEnv)()

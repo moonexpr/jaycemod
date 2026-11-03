@@ -3,6 +3,7 @@ local Base = nextsoldier.base
 
 local GAMEMODE = T.ROOT
 local ENTITIES = "addons/sandcastle/gamemodes/sandcastle/entities/entities/"
+local NEXTSOLDIER_ENTITIES = T.ADDON_TREES.nextsoldier .. "entities/"
 -- The war's soldier classes, on NextSoldier's base.
 local SOLDIER_CLASSES = { "npc_nextsoldier", "npc_path_probe" }
 
@@ -112,7 +113,7 @@ T.test("every setting the soldier classes and profiles give the base is declared
 end)
 
 T.test("war soldiers hate the opposing HL2 faction and default to hostility", function()
-	local base = Read(ENTITIES .. "base_nextsoldier.lua")
+	local base = Read(NEXTSOLDIER_ENTITIES .. "base_nextsoldier.lua")
 	local soldier = Read(ENTITIES .. "npc_nextsoldier.lua")
 	T.eq(soldier:find("ENT.DefaultRelationship = D_HT", 1, true) ~= nil, true)
 	T.eq(base:find("SetFaction(Factions.HL2_REBELS, D_HT)", 1, true) ~= nil, true)

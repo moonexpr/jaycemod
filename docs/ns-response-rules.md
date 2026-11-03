@@ -3,7 +3,7 @@
 The AI war's soldiers speak through response rules modelled on TF2's (the
 Source engine's `AI_ResponseSystem`, documented in TF2's
 `scripts/talker/response_rules.txt`). The engine, the parser and every rule
-live in their own addon, `addons/responserules/`; nothing a soldier says is
+live in NextSoldier's addon, `addons/nextsoldier/`; nothing a soldier says is
 written in Lua.
 
 ## The addon

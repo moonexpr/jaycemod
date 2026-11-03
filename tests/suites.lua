@@ -34,11 +34,11 @@ return {
 	},
 	{
 		name = "nextsoldier",
-		about = "NextSoldier, the soldier itself: movement, senses, body, behaviours",
-		tests = { "nextsoldier_*" },
+		about = "NextSoldier, the soldier itself (its addon): movement, senses, body, behaviours, the response rules it speaks by",
+		tests = { "nextsoldier_*", "addons_nextsoldier", "responserules*", "combine_voice_pack" },
 		sources = {
-			G .. "nextsoldier/", "tests/fake_soldier.lua",
-			E .. "entities/base_nextsoldier", E .. "entities/npc_nextsoldier", E .. "entities/npc_path",
+			"addons/nextsoldier/", "tests/fake_soldier.lua",
+			E .. "entities/npc_nextsoldier", E .. "entities/npc_path",
 			E .. "entities/ws_bot_navigator",
 		},
 	},
@@ -106,9 +106,9 @@ return {
 	},
 	{
 		name = "addons",
-		about = "the addons beside the gamemode: Team Tint and the response rules",
-		tests = { "teamtint_*", "responserules*", "combine_voice_pack", "addons_cstrike_weapons*" },
-		sources = { "addons/teamtint/", "addons/responserules/", "addons/cstrike_weapons/" },
+		about = "the addons beside the gamemode: Team Tint and the CS:S weapons",
+		tests = { "teamtint_*", "addons_cstrike_weapons*" },
+		sources = { "addons/teamtint/", "addons/cstrike_weapons/" },
 	},
 	{
 		name = "tooling",

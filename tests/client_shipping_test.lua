@@ -5,6 +5,7 @@ local T = dofile("tests/harness.lua")
 local Features = system.features
 
 local ENTITIES = T.ROOT .. "../entities/"
+local ADDON_ENTITIES = T.ADDON_TREES.nextsoldier .. "entities/" -- NextSoldier's base entities
 local LUA = "%.lua$"
 
 -- The lines a shell command prints.
@@ -34,10 +35,11 @@ local function LuaFilesUnder(folder, strip)
 	return paths
 end
 
--- The real tree, as file.Find would see it from the gamemode folder.
+-- The real tree, as file.Find would see it through the loader's paths
+-- (WS.LoaderFile: NextSoldier's folder is its addon's).
 local DiskPort = {}
 function DiskPort:Find(dir)
-	return Names(T.ROOT .. dir, "f"), Names(T.ROOT .. dir, "d")
+	return Names(T.File(dir), "f"), Names(T.File(dir), "d")
 end
 
 local function Set(list)
@@ -99,7 +101,7 @@ end)
 T.test("the sent set is the old rule's set plus the feature and ws modules", function()
 	local expected = Set(LuaFilesUnder(T.ROOT .. "foundation/", T.ROOT))
 	for _, path in ipairs(LuaFilesUnder(T.ROOT .. "includes/", T.ROOT)) do expected[path] = true end
-	for _, path in ipairs(LuaFilesUnder(T.ROOT .. "nextsoldier/", T.ROOT)) do expected[path] = true end
+	for _, path in ipairs(LuaFilesUnder(T.File("nextsoldier/"), T.ADDON_TREES.nextsoldier)) do expected[path] = true end
 	for _, path in ipairs(LuaFilesUnder(T.ROOT .. "wartactics/", T.ROOT)) do expected[path] = true end
 	for _, name in ipairs(Names(T.ROOT .. Features.ROOT, "d")) do
 		for _, part in ipairs(Features.CLIENT_PARTS) do
@@ -134,9 +136,12 @@ end)
 -- shipped, so neither a server part nor a missing file is loaded on a client.
 T.test("every module a shipped file or an entity uses is shipped", function()
 	local sources = {}
-	for _, path in ipairs(shipped) do sources[#sources + 1] = { path, T.ROOT .. path } end
+	for _, path in ipairs(shipped) do sources[#sources + 1] = { path, T.File(path) } end
 	for _, path in ipairs(LuaFilesUnder(ENTITIES, ENTITIES)) do
 		sources[#sources + 1] = { "../entities/" .. path, ENTITIES .. path }
+	end
+	for _, path in ipairs(LuaFilesUnder(ADDON_ENTITIES, ADDON_ENTITIES)) do
+		sources[#sources + 1] = { "entities/" .. path, ADDON_ENTITIES .. path }
 	end
 	local unshipped = {}
 	for _, source in ipairs(sources) do

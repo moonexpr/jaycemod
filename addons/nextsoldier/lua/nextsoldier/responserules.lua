@@ -1,6 +1,6 @@
--- What the AI war's soldiers bring to the response rules (the
--- responserules addon, addons/responserules): their criteria set. The rules
--- and lines are data in that addon (scripts/responserules/), by the speaker
+-- What the AI war's soldiers bring to the response rules (this addon's
+-- lua/includes/modules/responserules.lua): their criteria set. The rules
+-- and lines are data in this addon (scripts/responserules/), by the speaker
 -- model's affiliation, not its team, as a team may wear either side's models.
 module(...)
 

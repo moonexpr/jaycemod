@@ -9,15 +9,17 @@ include("shared.lua")
 -- includes/, nextsoldier/, wartactics/, features/, vendor/) but the
 -- server's (sv.lua, sv_*), as source: nothing there runs until a client
 -- loads it (WS.require, or WS.Feature once the server loads the feature,
--- sh_core.lua). This sends them; it includes nothing.
+-- sh_core.lua). This sends them; it includes nothing. Each folder is read
+-- where the loader reads it (WS.LoaderFile): NextSoldier's from its addon.
 do
 	local Features = system.features
-	local root = GM.FolderName .. "/gamemode/"
 	local GamemodeFiles = {}
 	function GamemodeFiles:Find(dir)
-		return file.Find(root .. dir .. "*", "LUA")
+		return file.Find(WS.LoaderFile(dir) .. "*", "LUA")
 	end
-	for _, path in ipairs(Features.ClientFiles(GamemodeFiles, Features.CLIENT_DIRS)) do AddCSLuaFile(path) end
+	for _, path in ipairs(Features.ClientFiles(GamemodeFiles, Features.CLIENT_DIRS)) do
+		AddCSLuaFile(WS.LoaderFile(path))
+	end
 end
 
 -- The root's modules clients run, a line each, written by hand

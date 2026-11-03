@@ -21,7 +21,7 @@ end
 -- Every command and convar registered anywhere in the gamemode.
 local function Registered()
 	local names = {}
-	local list = assert(io.popen("find " .. ROOT .. " -name '*.lua'"))
+	local list = assert(io.popen("find " .. ROOT .. " " .. T.ADDON_TREES.nextsoldier .. " -name '*.lua'"))
 	for path in list:lines() do
 		local text = ReadFile(path)
 		for name in text:gmatch('concommand%.Add%(%s*"([%w_]+)"') do names[name] = true end

@@ -10,7 +10,7 @@ WS = WS or {}
 -- passes no name to the chunk, so load it here, once, calling it with the
 -- dotted name. Above its module(...) call the chunk sees this require
 -- (GMod's own looks only in includes/modules/), to load its siblings.
--- sandcastle_dev's reload reads GAMEMODE_ROOT and CHUNK_ENV off it.
+-- sandcastle_dev's reload reads CHUNK_ENV off it.
 -- GM exists only while the gamemode loads.
 local GAMEMODE_ROOT = GM.FolderName .. "/gamemode/"
 local Boot = WS.Logger("boot")
@@ -27,10 +27,30 @@ local function ModulePath(name)
 	return path:gsub("%.", "/") .. ".lua"
 end
 
+-- The trees an addon of the repo ships under its own lua/, on the LUA
+-- path's root rather than the gamemode's folder: NextSoldier
+-- (addons/nextsoldier/lua/nextsoldier/).
+local ADDON_TREES = { nextsoldier = true }
+
+-- A gamemode-relative path (nextsoldier/sh_init.lua, includes/npc/actor.lua)
+-- as a LUA path. What sends clients the module folders, and sandcastle_dev's
+-- reload, read files through it too.
+local function LoaderFile(path)
+	if ADDON_TREES[path:match("^([%w_]+)/")] then return path end
+	return GAMEMODE_ROOT .. path
+end
+WS.LoaderFile = LoaderFile
+
+-- A module's file as a LUA path.
+local function ModuleFile(name)
+	return LoaderFile(ModulePath(name))
+end
+WS.ModuleFile = ModuleFile
+
 function WS.require(name)
 	if package.loaded[name] == nil then
 		Boot("require %s", name)
-		local chunk = CompileFile(GAMEMODE_ROOT .. ModulePath(name))
+		local chunk = CompileFile(ModuleFile(name))
 		setfenv(chunk, CHUNK_ENV)(name)
 	end
 	return package.loaded[name]
@@ -54,7 +74,7 @@ local INDEX_ENV = Namespaces.Environment(_G, WS.require)
 
 local function Index(path)
 	Boot("index %s", path)
-	setfenv(CompileFile(GAMEMODE_ROOT .. path), INDEX_ENV)()
+	setfenv(CompileFile(LoaderFile(path)), INDEX_ENV)()
 end
 
 -- A module reads the modules it uses by their globals as it loads, so a
@@ -84,7 +104,8 @@ Index("includes/extensions/generator/sh_init.lua")
 Index("includes/gameplay/sh_init.lua")
 Index("includes/npc/sh_init.lua")
 
--- NextSoldier, the soldier itself, beside foundation and games, on both;
--- then the war's tactics engine, on NextSoldier.
+-- NextSoldier, the soldier itself, beside foundation and games, on both
+-- (its own addon, addons/nextsoldier); then the war's tactics engine, on
+-- NextSoldier.
 Index("nextsoldier/sh_init.lua")
 Index("wartactics/sh_init.lua")

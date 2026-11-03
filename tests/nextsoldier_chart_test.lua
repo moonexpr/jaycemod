@@ -58,7 +58,7 @@ end)
 T.test("no NextSoldier behaviour extends npc.nextbot's Action past the chart", function()
 	local paths = { GAMEMODE .. "features/aiwar/orders.lua" }
 	for _, dir in ipairs({ "nextsoldier/", "wartactics/", "features/aiwar/scenario/" }) do
-		for _, path in ipairs(Lines("ls " .. GAMEMODE .. dir .. "*.lua")) do paths[#paths + 1] = path end
+		for _, path in ipairs(Lines("ls " .. T.File(dir) .. "*.lua")) do paths[#paths + 1] = path end
 	end
 	for _, path in ipairs(paths) do
 		T.eq(Code(path):find("Action:Extend%(") == nil, true, path .. " extends Action directly")

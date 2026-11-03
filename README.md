@@ -14,9 +14,9 @@ teams.
 
 | Path | What |
 |---|---|
-| `addons/sandcastle/` | The gamemode: rounds and objectives, the HUD and menus, NextSoldier and the tactics engine |
+| `addons/sandcastle/` | The gamemode: rounds and objectives, the HUD and menus, the tactics engine |
+| `addons/nextsoldier/` | NextSoldier, the NextBot soldier: its modules, its base entities, and the TF2 response rules it speaks by |
 | `addons/teamtint/` | RED/BLU team shading for NPCs in TF2's style |
-| `addons/responserules/` | TF2's response-rules grammar for NPC speech |
 | `addons/cstrike_weapons/` | CS:S's weapons as SWEPs, from the game's own weapon scripts |
 | `addons/sandcastle_dev/` | For development only, a workbench: live reloads that keep the game's state, saved scenarios, a gamerules harness |
 | `native/` | Rust binary modules a server can load in place of the Lua twins of the core data structures and route searches |
