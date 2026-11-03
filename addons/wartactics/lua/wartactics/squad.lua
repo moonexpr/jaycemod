@@ -12,6 +12,9 @@ local ipairs, pairs = ipairs, pairs
 local floor, HUGE = math.floor, math.huge
 module(...)
 
+-- The most a fire team holds, unless its war is set another.
+FIRE_TEAM_SIZE = 4
+
 -- A member's pin: it leads its fire team (LEADER), or never leads while
 -- another is in it (MEMBER).
 LEADER, MEMBER = "leader", "member"

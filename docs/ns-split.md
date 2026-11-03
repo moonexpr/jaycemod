@@ -15,8 +15,9 @@ one (NextSoldier as the soldier AI with its tactical planning):
 - **The war tactics engine** (`wartactics`) is the high-level strategy the
   soldiers are organised by: a fire team's doctrine, squads, lanes, posts
   and battle lines, the setup zone, the hunt, the scenarios, the bot quota.
-  It stands on NextSoldier, never under it
-  (`tests/foundation_layers_test.lua` ranks it above). `addons/wartactics/`.
+  It stands apart from NextSoldier since 2026-11-03, each reading nothing of
+  the other but in `wartactics.bridge` (`tests/foundation_layers_test.lua`).
+  `addons/wartactics/`.
 - **AIWar** is a multiplayer system. It adds PvE that plays like PvP: bot
   sides fighting the map's own round. It decides who fights, for which side,
   in which job, and when the dead come back. It uses NS for the soldiers.

@@ -4,7 +4,7 @@
 -- (features.aiwar.scenario.arena): every squad explores the map and hunts
 -- what it sees. The map's objective counts for nothing, so its points are
 -- none to the scenario, and none are needed.
-local Base = require("features.aiwar.scenario")
+local Base = wartactics.scenario
 local Arena = require("features.aiwar.scenario.arena")
 module(...)
 

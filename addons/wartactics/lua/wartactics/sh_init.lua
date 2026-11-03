@@ -1,12 +1,14 @@
--- The AI war's tactics engine: the strategy NextSoldier's soldiers are
--- organised by (a fire team's doctrine, squads, lanes, posts, the setup
--- zone, the hunt, the scenarios and their monitors, the bot quota and the
--- tuning of them all), on NextSoldier and never under it, each loaded the
--- first time it is read. Its own addon, which the gamemode's loader reads
--- (shared_loader.lua's ADDON_TREES). One line a module, never a loop:
+-- The tactics engine: the strategy soldiers are organised by (a fire team's
+-- doctrine, squads, lanes, posts, the setup zone, the hunt, the scenarios and
+-- their monitors, the bot quota and the tuning of them all), each loaded the
+-- first time it is read. NextSoldier's sibling: neither reads the other, but
+-- for the bridge, which meets it. Its own addon, which the gamemode's loader
+-- reads (shared_loader.lua's ADDON_TREES). One line a module, never a loop:
 -- docs/foundation-game-split-plan.md.
 local wartactics = Namespace("wartactics")
 Defer(wartactics, "monitors", "wartactics.monitors")
+Defer(wartactics, "bridge", "wartactics.bridge")
+Defer(wartactics, "scenario", "wartactics.scenario")
 Defer(wartactics, "fireteam", "wartactics.fireteam")
 Defer(wartactics, "tuning", "wartactics.tuning")
 Defer(wartactics, "squad", "wartactics.squad")

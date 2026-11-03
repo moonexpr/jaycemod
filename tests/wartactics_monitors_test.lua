@@ -1,12 +1,37 @@
 -- wartactics.monitors: the tactical, squad and scenario monitors a soldier
--- runs under its mode's strategy, driven here by a mode of the test's own, so
--- they stand without the AI war: what they need of a mode is the behaviours
--- it registered and its host (wartactics.monitors.HOST).
+-- runs under its mode's strategy, built here on a chart of the test's own and
+-- driven by a mode of its own, with NextSoldier out of reach: what they need
+-- is a chart (Build's kit), the behaviours a mode gives them by name, and its
+-- host (wartactics.monitors.HOST).
 local T = dofile("tests/harness.lua")
 local FS = dofile("tests/fake_soldier.lua")
+nextsoldier = setmetatable({}, { __index = function(_, key) error("read nextsoldier." .. key, 2) end })
 local N = npc.nextbot
-local Chart = nextsoldier.chart.CHART
 local Monitors = wartactics.monitors
+
+local Chart = generator.hfsm.Chart({
+	name = "Monitors under test",
+	port = core.port.New("a soldier under test", { "Now" }),
+	events = { "OnInjured" },
+	queries = { "ShouldRetreat", "SelectMoreDangerousThreat" },
+	initial = function(first) return first end,
+})
+
+local function Holding(name, contains)
+	local class = Chart:State(name)
+	function class:Init(state) self.state = state end
+	function class:InitialContainedAction(me) return contains(self.state) end
+	return class
+end
+
+local Tree = Monitors.Build({
+	Monitor = Holding,
+	Passthrough = function(name, contains)
+		local class = Holding(name, contains)
+		class.passthrough = true
+		return class
+	end,
+})
 
 local TICK = 0.25
 
@@ -19,12 +44,15 @@ end
 local Side = Standing("Side")
 local OwnMonitor = Standing("OwnMonitor")
 local BEHAVIORS = (function()
-	local registry = nextsoldier.behaviors.New()
+	local behaviors = { OwnMonitor = OwnMonitor }
 	for _, name in ipairs({ "Humiliated", "SeekAndDestroy", "RetreatToCover", "CallMedic", "OpenDoor" }) do
-		registry:Register({ name = name, behavior = Standing(name) })
+		behaviors[name] = Standing(name)
 	end
-	registry:Register({ name = "OwnMonitor", behavior = OwnMonitor })
-	return registry:Compile()
+	return {
+		Get = function(_, name)
+			return behaviors[name] or error("no behaviour " .. tostring(name) .. " is registered", 2)
+		end,
+	}
 end)()
 
 -- A mode: its host answers from t, its soldiers start at the tactical monitor.
@@ -37,7 +65,7 @@ local function Soldier(t)
 	}
 	local mode = {
 		NewState = function(config) return { member = config.member, behaviors = config.behaviors, host = host } end,
-		InitialAction = function(state) return Monitors.TacticalMonitor:New(state) end,
+		InitialAction = function(state) return Tree.TacticalMonitor:New(state) end,
 	}
 	local me = FS.Soldier(t)
 	me.disarmed, me.health = t.disarmed, t.health
@@ -53,13 +81,6 @@ end
 T.test("the monitors load without the war's feature", function()
 	T.eq(package.loaded["features.aiwar.orders"], nil, "orders")
 	T.eq(package.loaded["features.aiwar.model"], nil, "model")
-end)
-
-T.test("the three monitors are registered with NextSoldier", function()
-	local compiled = nextsoldier.behaviors.Shared:Compile()
-	T.eq(compiled:Get("TacticalMonitor"), Monitors.TacticalMonitor, "tactical")
-	T.eq(compiled:Get("SquadMonitor"), Monitors.SquadMonitor, "squad")
-	T.eq(compiled:Get("ScenarioMonitor"), Monitors.ScenarioMonitor, "scenario")
 end)
 
 T.test("the tree runs tactical, squad, a role, scenario, then the mode's side", function()

@@ -162,7 +162,7 @@ T.test("the allocated capturers rise with the enemy's clock falling; the last st
 	end
 	for _, clock in ipairs({ 170, 100, 60 }) do
 		scenario:Command(war, Field(Hill({ owner = RED }), FP.Clocks(clock, 180)), now)
-		now = now + Scenario.ALLOCATION_HOLD
+		now = now + wartactics.scenario.ALLOCATION_HOLD
 		scenario:Command(war, Field(Hill({ owner = RED }), FP.Clocks(clock, 180)), now)
 		local n = Capturers()
 		T.eq(n >= last, true, "clock " .. clock .. ": " .. n .. " capturers, " .. last .. " before")
@@ -203,7 +203,7 @@ T.test("a locked hill: capturers stage outside it on their own side, then take i
 	hill.locked = false
 	-- the "open" stance, with a capturer more, waits ALLOCATION_HOLD; then
 	-- the new capturer comes too
-	battle:Tick(field, Scenario.ALLOCATION_HOLD / FP.TICK + 15)
+	battle:Tick(field, wartactics.scenario.ALLOCATION_HOLD / FP.TICK + 15)
 	T.eq(battle.scenario.current[BLUE].key, Koth.OPEN, "open")
 	for _, team in ipairs({ RED, BLUE }) do
 		for _, s in ipairs(battle:Of(team, AiWar.CAPTURE)) do
@@ -278,7 +278,7 @@ T.test("holding the hill: holders ring it, go onto it when the enemy caps, and r
 	end
 	hill.capping, hill.progress = Teams.UNASSIGNED, 0
 	field.clocks = FP.Clocks(150, Koth.KOTH_TURTLE_TIME - 5)
-	battle:Tick(field, Scenario.ALLOCATION_HOLD / FP.TICK + 1)
+	battle:Tick(field, wartactics.scenario.ALLOCATION_HOLD / FP.TICK + 1)
 	T.eq(battle.scenario.current[BLUE].key, Koth.TURTLE, "turtling")
 	T.eq(battle:Count(BLUE, AiWar.RAID), 0, "no raiders left")
 end)

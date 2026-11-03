@@ -3,7 +3,6 @@ local Controller, Map = ...
 local AiWar = WS.require("features.aiwar.model")
 local Squad = wartactics.squad
 local Slots = WS.require("features.aiwar.slots")
-local Scenario = WS.require("features.aiwar.scenario")
 local RED, BLUE = Map.RED, Map.BLUE
 local TeamSize = Map.TeamSize
 
@@ -47,7 +46,7 @@ end
 -- soldiers whose slots go leave. Returns whether a faction's size changed.
 function Controller:ResizeSlots(size)
 	local plan, changed = self:SlotPlan(), false
-	local sizes = (self.scenario or Scenario.Scenario):TeamSizes(size)
+	local sizes = (self.scenario or wartactics.scenario.Scenario):TeamSizes(size)
 	for _, team in ipairs({ RED, BLUE }) do
 		local faction = self:FactionName(team)
 		local before = plan:Size(faction)

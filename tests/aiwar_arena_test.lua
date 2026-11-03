@@ -124,7 +124,7 @@ T.test("the arena variant is the rounds mode's and a control point scenario that
 	T.eq(Scenario.For("arena"), Arena.Scenario, "chosen by the mode's NAME")
 	T.eq(getmetatable(Arena.Scenario), CP.Scenario, "a control point scenario")
 	local field = Field(Point({}), nil, { waypoints = {} })
-	T.eq(Arena.Scenario:MapLacks(field), Scenario.WAYPOINTS, "no nav mesh, no war")
+	T.eq(Arena.Scenario:MapLacks(field), wartactics.scenario.WAYPOINTS, "no nav mesh, no war")
 	T.eq(Arena.Scenario:MapLacks(Field(Point({}), nil)), nil, "with waypoints it may start")
 	T.eq(Brief(Field(Point({}), nil)).doctrine, Arena.DOCTRINE, "the arena doctrine")
 end)

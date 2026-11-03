@@ -90,6 +90,7 @@ local MonitorLib = nextsoldier.monitor
 local SoldierChart = nextsoldier.chart.CHART
 local Behaviors = nextsoldier.behaviors.Shared
 local Monitors = wartactics.monitors
+local Tree = wartactics.bridge
 local HealthShare = Monitors.HealthShare
 local Debug = require("features.nbdebug.model")
 local AiWar = require("features.aiwar.model")
@@ -2310,7 +2311,7 @@ end
 -- StrategyMonitor: applies the war's allocation for this soldier. It
 -- decides nothing: the War (later the Commander) decides, and each job
 -- checks the member's job itself (ChangeTo on "new role").
-local StrategyMonitor = PassthroughMonitor("StrategyMonitor", function(state) return Monitors.TacticalMonitor:New(state) end)
+local StrategyMonitor = PassthroughMonitor("StrategyMonitor", function(state) return Tree.TacticalMonitor:New(state) end)
 
 -- It also keeps the member's record current with what its squad reads of
 -- it: where it is and the enemy it fights (wartactics.squad); and

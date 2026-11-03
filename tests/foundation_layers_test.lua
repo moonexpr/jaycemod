@@ -1,6 +1,6 @@
 -- foundation/, includes/, nextsoldier/ and wartactics/ layers
 -- (docs/research/foundation-admission-rule.md): every module is in one of
--- five categories, ranked bottom-up, or is pending a move out of
+-- six categories, ranked bottom-up, or is pending a move out of
 -- foundation. A category may require only itself and the categories below
 -- it, in any tree, and no tree requires a feature or a ws/ file.
 local T = dofile("tests/harness.lua")
@@ -14,7 +14,8 @@ local RANK = {
 	formalisms = 2,
 	gameplay = 3,
 	nextsoldier = 4,
-	wartactics = 5,
+	wartactics = 4,
+	bridge = 5,
 }
 
 -- The modules that stay, by category.
@@ -198,6 +199,8 @@ local WARTACTICS = {
 	["fireteam"] = "wartactics",
 	["scenarios"] = "wartactics",
 	["monitors"] = "wartactics",
+	["scenario"] = "wartactics",
+	["bridge"] = "bridge",
 	["squad"] = "wartactics",
 	["mission"] = "wartactics",
 	["rooms"] = "wartactics",
@@ -307,6 +310,22 @@ T.test("foundation, games, nextsoldier and wartactics require nothing from featu
 			for _, name in ipairs(Requires(tree, module)) do
 				for _, prefix in ipairs(OUTSIDE_PREFIXES) do
 					T.eq(name:match(prefix), nil, tree.dir .. module .. " requires " .. name)
+				end
+			end
+		end
+	end
+end)
+
+-- NextSoldier and the tactics engine are siblings, on what is below them and
+-- reading nothing of each other; only the bridge knows both.
+T.test("nextsoldier and wartactics read nothing of each other", function()
+	local APART = { nextsoldier = "^wartactics%.", wartactics = "^nextsoldier%." }
+	for _, tree in ipairs(TREES) do
+		for module, category in pairs(tree.category) do
+			local other = APART[category]
+			if other then
+				for _, name in ipairs(Requires(tree, module)) do
+					T.eq(name:match(other), nil, module .. " (" .. category .. ") reads " .. name)
 				end
 			end
 		end

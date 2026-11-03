@@ -367,7 +367,7 @@ end
 -- mode: Brief puts parts.objectives(field) on the field; Stances,
 -- Front and SetupAttacks answer from parts; Reset is counted.
 local function FakeVariant(mode, parts)
-	local V = Base.Scenario:Extend(mode.NAME)
+	local V = wartactics.scenario.Scenario:Extend(mode.NAME)
 	V.GUARDS_ALL_ROUND = parts.guardsAllRound or false
 	function V:Brief(field)
 		field.doctrine = Orders.PAYLOAD
@@ -377,7 +377,7 @@ local function FakeVariant(mode, parts)
 	function V:Front(_, team) return parts.fronts and parts.fronts[team] end
 	function V:SetupAttacks() return parts.attacks or {} end
 	function V:Reset()
-		Base.Scenario.Reset(self)
+		wartactics.scenario.Scenario.Reset(self)
 		self.resets = (self.resets or 0) + 1
 	end
 	package.loaded[Base.VARIANTS[mode.NAME]] = { Scenario = V }
@@ -846,7 +846,7 @@ end)
 -- whose war autostarts at load) is in the compile the players' readiness
 -- makes (RoundPlayersReady), and the next think plays it.
 T.test("a scenario registered after the war started is played once the scenarios compile again", function()
-	local Late = Base.Scenario:Extend("late_addon")
+	local Late = wartactics.scenario.Scenario:Extend("late_addon")
 	function Late:Brief(field) field.doctrine = Orders.PAYLOAD end
 	function Late:Stances() return {}, {} end
 	function Late:Front() return nil end
@@ -855,7 +855,7 @@ T.test("a scenario registered after the war started is played once the scenarios
 	local controller = Started(World(), PayloadMode.Mode)
 	wartactics.scenarios.Shared:Register({
 		name = "late_addon",
-		priority = Base.MODE_PRIORITY + 1,
+		priority = wartactics.scenarios.MODE_PRIORITY + 1,
 		mode = PayloadMode.Mode.NAME,
 		active = function() return registered end,
 		scenario = Late,
@@ -1431,7 +1431,7 @@ T.test("KOTH through the controller: Sandbox waits for the clocks, the round bri
 	local battle, controller = ControllerBattle(w, KothMode.Mode)
 	local Koth = REAL[KothMode.Mode.NAME]
 	battle:Command()
-	T.eq(controller.waitingFor, Base.CLOCKS, "waiting for the clocks")
+	T.eq(controller.waitingFor, wartactics.scenario.CLOCKS, "waiting for the clocks")
 	T.eq(battle.war:Field(), nil, "no field for the soldiers")
 	T.eq(next(battle.war.stances), nil, "no commands")
 	T.eq(next(controller.scenario.current), nil, "nothing allocated")
@@ -1460,7 +1460,7 @@ T.test("KOTH through the controller: Sandbox waits for the clocks, the round bri
 	w.state = STATE.PREROUND
 	w.hooks.WSRoundActivate()
 	battle:Tick(nil, 2)
-	T.eq(controller.waitingFor, Base.CLOCKS, "between the clocks")
+	T.eq(controller.waitingFor, wartactics.scenario.CLOCKS, "between the clocks")
 	w.timers = {
 		[RED] = Timer(Koth.KOTH_TURTLE_TIME * 6, true),
 		[BLUE] = Timer(Koth.KOTH_TURTLE_TIME * 6, true),

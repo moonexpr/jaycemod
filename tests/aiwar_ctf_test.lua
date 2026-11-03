@@ -52,7 +52,7 @@ local function Stage(field, member) return field.doctrine.ROLES[member.role].Sta
 
 T.test("CTF has its own scenario, and needs flags on the map", function()
 	T.eq(Scenario.For(T.require("features.flag.model").Mode.NAME), Ctf.Scenario, "the ctf mode's")
-	T.eq(Ctf.Scenario:MapLacks({ bases = { [RED] = P(0, 0), [BLUE] = P(1, 0) } }), Scenario.FLAGS, "no flags")
+	T.eq(Ctf.Scenario:MapLacks({ bases = { [RED] = P(0, 0), [BLUE] = P(1, 0) } }), wartactics.scenario.FLAGS, "no flags")
 	T.eq(Ctf.Scenario:MapLacks(Field()), nil, "flags and bases")
 end)
 

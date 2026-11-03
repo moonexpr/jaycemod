@@ -2,6 +2,7 @@
 local Controller, Map = ...
 local AiWar = WS.require("features.aiwar.model")
 local Scenario = WS.require("features.aiwar.scenario")
+local Base = wartactics.scenario
 local Behaviors = nextsoldier.behaviors
 local Notices = WS.require("includes.admin_notices")
 local Gamemode = system.gamemode
@@ -140,16 +141,16 @@ end
 
 -- Why a map lacking a part its scenario needs (Scenario:MapLacks) is refused.
 local MAP_LACKS = {
-	[Scenario.BASES] = "the AI war could not create spawn bases for both teams on this map",
-	[Scenario.POINTS] = "this map's round has no control points for the AI war to fight over",
-	[Scenario.FLAGS] = "this map has no intelligence for both teams for the AI war to fight over",
-	[Scenario.BOMB] = "this map has no bomb and hatch for the AI war's robots to deliver it to",
-	[Scenario.HOSTAGES] = "this map has no hostages, and BLU spawns to lead them to, for the AI war to fight over",
+	[Base.BASES] = "the AI war could not create spawn bases for both teams on this map",
+	[Base.POINTS] = "this map's round has no control points for the AI war to fight over",
+	[Base.FLAGS] = "this map has no intelligence for both teams for the AI war to fight over",
+	[Base.BOMB] = "this map has no bomb and hatch for the AI war's robots to deliver it to",
+	[Base.HOSTAGES] = "this map has no hostages, and BLU spawns to lead them to, for the AI war to fight over",
 }
 local NO_NAV_MESH = "this map has no navigation mesh for the soldiers to walk; "
 	.. "run mp_nav_generate in the console to make one (a few minutes), then start the war"
 -- arena's squads explore the nav mesh's waypoints
-MAP_LACKS[Scenario.WAYPOINTS] = NO_NAV_MESH
+MAP_LACKS[Base.WAYPOINTS] = NO_NAV_MESH
 
 -- The registered scenarios and behaviours compiled again, what each think
 -- decides from and what each soldier enlisted runs: as the war starts, and

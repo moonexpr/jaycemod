@@ -25,8 +25,8 @@ T.test("the variant comes from the rounds mode's name; any other is freeform", f
 end)
 
 T.test("a scenario a script registers, with its own criteria, takes over where they hold", function()
-	local Holdout = Scenario.Scenario:Extend("holdout")
-	wartactics.scenarios.Shared:Register({ name = "test_holdout", priority = Scenario.MODE_PRIORITY + 1, mode = "payload",
+	local Holdout = wartactics.scenario.Scenario:Extend("holdout")
+	wartactics.scenarios.Shared:Register({ name = "test_holdout", priority = wartactics.scenarios.MODE_PRIORITY + 1, mode = "payload",
 		active = function(c) return c.field ~= nil and c.field.testHoldout == true end, scenario = Holdout })
 	local entry, class = Scenario.Entry(Scenario.Compile(nextsoldier.behaviors.Shared:Compile()), { mode = "payload", field = { testHoldout = true } })
 	T.eq(class, Holdout, "where its criteria hold")
@@ -45,7 +45,7 @@ T.test("the variants are keyed by the rounds modes' NAMEs", function()
 end)
 
 T.test("the base leaves the scenario's parts to its variants", function()
-	local base = Scenario.Scenario:New()
+	local base = wartactics.scenario.Scenario:New()
 	for _, name in ipairs({ "Brief", "Stances", "Front", "SetupAttacks" }) do
 		local ok, err = pcall(base[name], base, {}, 0)
 		T.eq(ok, false, name .. " raises")
@@ -55,7 +55,7 @@ end)
 
 -- The Commander's damping, with a variant whose stances the test sets -------
 
-local Probe = Scenario.Scenario:Extend("probe")
+local Probe = wartactics.scenario.Scenario:Extend("probe")
 function Probe:Brief(field, now) field.briefed = now end
 function Probe:Stances(field, now) return field.stances, field.defense end
 
@@ -109,9 +109,9 @@ T.test("a team's first stance applies at once; a new one waits ALLOCATION_HOLD",
 	Tick(scenario, war, 1, Entry(CAPTURING, "capture"), 0)
 	T.eq(member.role, AiWar.HOLD, "a new key waits")
 	T.eq(war.defense[RED], 1, "and so does its share")
-	Tick(scenario, war, 1 + Scenario.ALLOCATION_HOLD - 0.1, Entry(CAPTURING, "capture"), 0)
+	Tick(scenario, war, 1 + wartactics.scenario.ALLOCATION_HOLD - 0.1, Entry(CAPTURING, "capture"), 0)
 	T.eq(member.role, AiWar.HOLD, "still waiting just short of the hold")
-	Tick(scenario, war, 1 + Scenario.ALLOCATION_HOLD, Entry(CAPTURING, "capture"), 0)
+	Tick(scenario, war, 1 + wartactics.scenario.ALLOCATION_HOLD, Entry(CAPTURING, "capture"), 0)
 	T.eq(member.role, AiWar.CAPTURE, "held long enough: applied")
 	T.eq(war.defense[RED], 0, "with its share")
 end)
@@ -131,9 +131,9 @@ T.test("a key that flickers back restarts the wait", function()
 	Tick(scenario, war, 1, Entry(CAPTURING, "capture"), 0)
 	Tick(scenario, war, 2, Entry(HOLDING, "hold"), 1)
 	Tick(scenario, war, 3, Entry(CAPTURING, "capture"), 0)
-	Tick(scenario, war, 1 + Scenario.ALLOCATION_HOLD, Entry(CAPTURING, "capture"), 0)
+	Tick(scenario, war, 1 + wartactics.scenario.ALLOCATION_HOLD, Entry(CAPTURING, "capture"), 0)
 	T.eq(member.role, AiWar.HOLD, "the wait counts from the last change")
-	Tick(scenario, war, 3 + Scenario.ALLOCATION_HOLD, Entry(CAPTURING, "capture"), 0)
+	Tick(scenario, war, 3 + wartactics.scenario.ALLOCATION_HOLD, Entry(CAPTURING, "capture"), 0)
 	T.eq(member.role, AiWar.CAPTURE, "then applies")
 end)
 
@@ -143,9 +143,9 @@ T.test("a pending key replaced by another waits for the new one", function()
 	Tick(scenario, war, 0, Entry(HOLDING, "hold"), 1)
 	Tick(scenario, war, 1, Entry(CAPTURING, "capture"), 0)
 	Tick(scenario, war, 2, Entry(ASSAULTING, "assault"), 0)
-	Tick(scenario, war, 1 + Scenario.ALLOCATION_HOLD, Entry(ASSAULTING, "assault"), 0)
+	Tick(scenario, war, 1 + wartactics.scenario.ALLOCATION_HOLD, Entry(ASSAULTING, "assault"), 0)
 	T.eq(member.role, AiWar.HOLD, "assault seen only since 2")
-	Tick(scenario, war, 2 + Scenario.ALLOCATION_HOLD, Entry(ASSAULTING, "assault"), 0)
+	Tick(scenario, war, 2 + wartactics.scenario.ALLOCATION_HOLD, Entry(ASSAULTING, "assault"), 0)
 	T.eq(member.role, AiWar.ASSAULT, "then applies")
 end)
 
@@ -316,11 +316,11 @@ T.test("every scenario needs both teams' bases on the map", function()
 		T.eq(variant:MapLacks(Parts({
 			bases = false,
 			points = ONE_POINT,
-		})), Scenario.BASES, variant.NAME)
+		})), wartactics.scenario.BASES, variant.NAME)
 	end
 	local oneBase = Parts({ points = ONE_POINT })
 	oneBase.bases[BLUE] = nil
-	T.eq(ControlPoints.Scenario:MapLacks(oneBase), Scenario.BASES, "one team's base")
+	T.eq(ControlPoints.Scenario:MapLacks(oneBase), wartactics.scenario.BASES, "one team's base")
 end)
 
 T.test("payload needs no points or clocks", function()
@@ -330,8 +330,8 @@ end)
 
 T.test("the point scenarios need points on the map: at least one", function()
 	for _, variant in ipairs({ ControlPoints.Scenario, Koth.Scenario }) do
-		T.eq(variant:MapLacks(Parts({})), Scenario.POINTS, variant.NAME .. ": none")
-		T.eq(variant:MapLacks(Parts({ points = {} })), Scenario.POINTS, variant.NAME .. ": an empty list")
+		T.eq(variant:MapLacks(Parts({})), wartactics.scenario.POINTS, variant.NAME .. ": none")
+		T.eq(variant:MapLacks(Parts({ points = {} })), wartactics.scenario.POINTS, variant.NAME .. ": an empty list")
 		T.eq(variant:MapLacks(Parts({ points = ONE_POINT })), nil, variant.NAME .. ": may start")
 	end
 	T.eq(ControlPoints.Scenario:Lacks(Parts({ points = ONE_POINT })), nil, "a CP field is whole without clocks")
@@ -340,14 +340,14 @@ end)
 T.test("KOTH may start without clocks, but its field is whole only with both teams'", function()
 	local sandbox = Parts({ points = ONE_POINT })
 	T.eq(Koth.Scenario:MapLacks(sandbox), nil, "may start")
-	T.eq(Koth.Scenario:Lacks(sandbox), Scenario.CLOCKS, "waits for the clocks")
+	T.eq(Koth.Scenario:Lacks(sandbox), wartactics.scenario.CLOCKS, "waits for the clocks")
 	local round = Parts({
 		points = ONE_POINT,
 		clocks = true,
 	})
 	T.eq(Koth.Scenario:Lacks(round), nil, "whole")
 	round.clocks[RED] = nil
-	T.eq(Koth.Scenario:Lacks(round), Scenario.CLOCKS, "one clock")
+	T.eq(Koth.Scenario:Lacks(round), wartactics.scenario.CLOCKS, "one clock")
 end)
 
 -- A tied match's deathmatch is fought as arena's round before its point

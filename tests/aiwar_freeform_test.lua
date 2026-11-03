@@ -48,7 +48,7 @@ T.test("freeform needs both bases and the nav mesh's waypoints, and fights in bi
 	T.eq(Freeform.Scenario:MapLacks(Field()), nil, "may start")
 	local bare = Field()
 	bare.waypoints = {}
-	T.eq(Freeform.Scenario:MapLacks(bare), Scenario.WAYPOINTS, "no nav mesh, no war")
+	T.eq(Freeform.Scenario:MapLacks(bare), wartactics.scenario.WAYPOINTS, "no nav mesh, no war")
 	T.eq(Freeform.Scenario.SQUAD_SIZE > AiWar.FIRE_TEAM_SIZE, true, "bigger squads")
 end)
 

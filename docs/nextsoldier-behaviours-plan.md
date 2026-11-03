@@ -13,7 +13,8 @@ war's behaviours read.
 
 Since 2026-11-03 the tactical, squad and scenario monitors are the tactics
 engine's (`wartactics.monitors`, in `addons/wartactics`), which a mode hosts;
-the rest, `StrategyMonitor` among them, stay the war's.
+the rest, `StrategyMonitor` among them, stay the war's. The engine reads
+nothing of NextSoldier: `wartactics.bridge` builds them on its chart.
 
 The operator's distinction (2026-10-27): NextSoldier concerns the agent
 itself and runs on its own, without the tactics engine; the tactics engine

@@ -5,17 +5,9 @@
 -- choice, which is all a decision mid-game reads.
 local T = dofile("tests/harness.lua")
 local Scenarios = wartactics.scenarios
-local Monitor = nextsoldier.monitor
-local Behaviors = nextsoldier.behaviors
 
--- What NextSoldier's soldiers can run here: Holdout, a monitor, and Travel.
-local HOLD = Monitor.New("Holdout", function() return nil end)
-local BEHAVIORS = (function()
-	local registry = Behaviors.New()
-	registry:Register({ name = "Holdout", behavior = HOLD })
-	registry:Register({ name = "Travel", behavior = nextsoldier.chart.CHART:State("Travel") })
-	return registry:Compile(BEHAVIORS)
-end)()
+-- What soldiers can run here, as a compiled registry answers: Holdout and Travel.
+local BEHAVIORS = { Has = function(_, name) return name == "Holdout" or name == "Travel" end }
 
 local function Class(name) return { NAME = name } end
 
@@ -137,19 +129,6 @@ end)
 T.test("the shared registry is the one the war compiles", function()
 	T.eq(type(Scenarios.Shared.Register), "function", "Register")
 	T.eq(type(Scenarios.Shared.Compile), "function", "Compile")
-end)
-
-T.test("a monitor holds the state and contains the behaviour contains(state) gives", function()
-	local Inner = npc.nextbot.Action:Extend("Inner")
-	local Outer = Monitor.New("Outer", function(state) return Inner:New(state) end)
-	local Through = Monitor.Passthrough("Through", function(state) return Inner:New(state) end)
-	local state = {}
-	local outer = Outer:New(state)
-	T.eq(outer.state, state, "held")
-	T.eq(getmetatable(outer:InitialContainedAction({})), Inner, "contains")
-	T.eq(Outer.passthrough, false, "a monitor shows in the debug layer")
-	T.eq(Through.passthrough, true, "a passthrough one does not")
-	T.eq(core.class.IsA(Outer, npc.nextbot.Action), true, "a behaviour")
 end)
 
 T.finish()

@@ -11,7 +11,7 @@ local AiWar = require("features.aiwar.model")
 local Explore = wartactics.explore
 local Orders = require("features.aiwar.orders")
 local Teams = gameplay.teams
-local Base = require("features.aiwar.scenario")
+local Base = wartactics.scenario
 local Distance = math.geometry.Distance
 module(...)
 

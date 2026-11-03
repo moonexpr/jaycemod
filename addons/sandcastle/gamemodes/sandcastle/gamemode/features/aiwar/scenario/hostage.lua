@@ -39,7 +39,7 @@ local Orders = require("features.aiwar.orders")
 local Rescue = require("features.hostage.model")
 local Groups = require("features.hostage.groups")
 local Teams = gameplay.teams
-local Base = require("features.aiwar.scenario")
+local Base = wartactics.scenario
 local Ctf = require("features.aiwar.scenario.ctf")
 local Distance = math.geometry.Distance
 module(...)

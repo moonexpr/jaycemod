@@ -21,7 +21,7 @@ local floor, max, min = math.floor, math.max, math.min
 local ipairs = ipairs
 local AiWar = require("features.aiwar.model")
 local Teams = gameplay.teams
-local Base = require("features.aiwar.scenario")
+local Base = wartactics.scenario
 local CP = require("features.aiwar.scenario.control_points")
 module(...)
 

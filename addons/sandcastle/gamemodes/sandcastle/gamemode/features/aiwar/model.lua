@@ -72,7 +72,7 @@ TEAM_SIZE_MAX = 32
 -- Fire teams: a side's soldiers fight in teams of at most FIRE_TEAM_SIZE
 -- (unless the war is set another: SetFireTeamSize), each with one role, so
 -- teammates are soldiers fighting together.
-FIRE_TEAM_SIZE = 4
+FIRE_TEAM_SIZE = Squad.FIRE_TEAM_SIZE
 -- The most and the fewest squads a team forms (ns_squads_max and
 -- ns_squads_min; War:SetSquadsMax and SetSquadsMin).
 SQUADS_MAX_DEFAULT = 3

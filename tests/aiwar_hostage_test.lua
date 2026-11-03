@@ -67,9 +67,9 @@ local function Near(a, b, within) return Distance(a, b) <= within end
 T.test("the hostage mode has its own scenario, and needs hostages with a BLU zone", function()
 	T.eq(Scenario.For("hostage"), Hostage.Scenario, "the hostage mode's")
 	local bare = { bases = { [RED] = RED_BASE, [BLUE] = BLUE_BASE }, waypoints = Field().waypoints }
-	T.eq(Hostage.Scenario:MapLacks(bare), Scenario.HOSTAGES, "no hostages")
+	T.eq(Hostage.Scenario:MapLacks(bare), wartactics.scenario.HOSTAGES, "no hostages")
 	bare.hostages = Hostages()
-	T.eq(Hostage.Scenario:MapLacks(bare), Scenario.HOSTAGES, "no zone to lead them to")
+	T.eq(Hostage.Scenario:MapLacks(bare), wartactics.scenario.HOSTAGES, "no zone to lead them to")
 	bare.zones = { [BLUE] = ZONE }
 	T.eq(Hostage.Scenario:MapLacks(bare), nil, "whole")
 end)
@@ -396,7 +396,7 @@ T.test("hostage rescue's soldiers carry CS:S's arms, each side its own", functio
 		T.eq(scenario:Kit(team, AiWar.MEDIC), nil, "a medic's is its faction's")
 	end
 	T.eq(scenario:Kit(RED, false).primary[1] ~= scenario:Kit(BLUE, false).primary[1], true, "the sides differ")
-	T.eq(Scenario.Scenario:New():Kit(RED, false), nil, "another scenario's soldiers keep their faction's")
+	T.eq(wartactics.scenario.Scenario:New():Kit(RED, false), nil, "another scenario's soldiers keep their faction's")
 end)
 
 T.finish()

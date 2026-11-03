@@ -9,7 +9,7 @@ local max, pairs = math.max, pairs
 local AiWar = require("features.aiwar.model")
 local Teams = gameplay.teams
 local Orders = require("features.aiwar.orders")
-local Base = require("features.aiwar.scenario")
+local Base = wartactics.scenario
 module(...)
 
 MODE = "payload"

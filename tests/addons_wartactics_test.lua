@@ -58,4 +58,30 @@ T.test("the addon reaches nothing of the war's feature", function()
 	end
 end)
 
+-- Every module of tree, read with the other tree's global refusing any read.
+local function LoadsApart(tree, other, except)
+	local kept = _G[other]
+	_G[other] = setmetatable({}, { __index = function(_, key) error("read " .. other .. "." .. key, 2) end })
+	local count, refused = 0, {}
+	for module in pairs(T.Published.global) do
+		local key = module:match("^" .. tree .. "%.(.+)$")
+		if key and key ~= except then
+			count = count + 1
+			local loaded, why = pcall(function() return _G[tree][key] end)
+			if not loaded then refused[#refused + 1] = module .. ": " .. tostring(why) end
+		end
+	end
+	_G[other] = kept
+	T.eq(table.concat(refused, "\n"), "", tree .. " modules read " .. other)
+	T.eq(count > 0, true, tree .. " modules published")
+end
+
+T.test("the tactics engine loads with NextSoldier out of reach, but for the bridge", function()
+	LoadsApart("wartactics", "nextsoldier", "bridge")
+end)
+
+T.test("NextSoldier loads with the tactics engine out of reach", function()
+	LoadsApart("nextsoldier", "wartactics")
+end)
+
 T.finish()

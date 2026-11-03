@@ -51,7 +51,7 @@ local function Stage(field, member) return Role(field, member).Stage(field, memb
 T.test("MvM has its own scenario, and needs BLU's bomb and its hatch", function()
 	T.eq(Scenario.For(T.require("features.mvm.model").Mode.NAME), Mvm.Scenario, "the mvm mode's")
 	local bare = { bases = { [RED] = P(0, 0), [BLUE] = P(1, 0) } }
-	T.eq(Mvm.Scenario:MapLacks(bare), Scenario.BOMB, "no bomb")
+	T.eq(Mvm.Scenario:MapLacks(bare), wartactics.scenario.BOMB, "no bomb")
 	T.eq(Mvm.Scenario:MapLacks(Field()), nil, "BLU's bomb alone is enough: RED has none")
 end)
 
@@ -157,7 +157,7 @@ T.test("MvM gives BLU INVADER_SHARE of both sides' soldiers; other scenarios spl
 	T.eq(sizes[BLUE] + sizes[RED], 16, "the war's total kept")
 	T.eq(sizes[BLUE], math.floor(16 * Mvm.INVADER_SHARE + 0.5), "BLU's share")
 	T.eq(sizes[BLUE] > sizes[RED], true, "more robots than defenders")
-	local even = Scenario.Scenario:TeamSizes(8)
+	local even = wartactics.scenario.Scenario:TeamSizes(8)
 	T.eq(even[RED] .. " " .. even[BLUE], "8 8", "elsewhere, even")
 	local none = Mvm.Scenario:TeamSizes(0)
 	T.eq(none[RED] .. " " .. none[BLUE], "0 0", "no soldiers, none either side")

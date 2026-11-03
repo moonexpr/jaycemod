@@ -1,10 +1,9 @@
--- The scenarios NextSoldier's soldiers play, which any script registers:
--- each with its activation criteria, its Scenario class (the Commander's:
--- features.aiwar.scenario's base) and, optionally, its own monitor, the
--- behaviour its soldiers' ScenarioMonitor runs in place of the doctrine's
--- sides, and the other behaviours it relies on. A behaviour is named as it
--- is registered with NextSoldier (nextsoldier.behaviors), the only way a
--- soldier is given one.
+-- The scenarios soldiers play, which any script registers: each with its
+-- activation criteria, its Scenario class (the Commander's, on
+-- wartactics.scenario) and, optionally, its own monitor, the behaviour its
+-- soldiers' ScenarioMonitor runs in place of the doctrine's sides, and the
+-- other behaviours it relies on. A behaviour is named as the mode's soldiers
+-- were given it: with NextSoldier's, nextsoldier.behaviors.
 --
 -- Registering is open while the game loads. At the game's beginning (the
 -- war's start, and RoundPlayersReady, as a game's players are ready: a late
@@ -20,9 +19,13 @@
 -- war can start (InitPostEntity); the behaviours its scenarios name go to
 -- nextsoldier.behaviors.Shared there too:
 --   hook.Add("Initialize", "my_addon_scenarios", function()
---       wartactics.scenarios.Shared:Register({ name = "holdout", ... })
+--       local Holdout = wartactics.scenario.Scenario:Extend("holdout")
+--       wartactics.scenarios.Shared:Register({ name = "holdout",
+--           priority = wartactics.scenarios.MODE_PRIORITY + 1, scenario = Holdout })
 --   end)
 --
+--   FREEFORM_PRIORITY, MODE_PRIORITY: the war's own, a fallback for any mode
+--     and each mode's; above MODE_PRIORITY takes over from them
 --   New() -> a registry; Shared is the one the war compiles
 --   registry:Register{ name, priority, mode?, active?(context) -> truthy,
 --     scenario, monitor?, behaviors? }: mode, the rounds mode's NAME it is
@@ -33,9 +36,9 @@
 --     when chosen (a map loads only its own). A name registered again
 --     replaces its entry (a live reload). A spec missing a part is refused,
 --     blamed on the caller
---   registry:Compile(behaviors) -> compiled, behaviors NextSoldier's
---     compiled behaviours: an entry naming one not among them is refused,
---     naming the scenario and the behaviour.
+--   registry:Compile(behaviors) -> compiled, behaviors what answers Has(name)
+--     for the behaviours soldiers were given: an entry naming one not among
+--     them is refused, naming the scenario and the behaviour.
 --   compiled:
 --     compiled:Choose(context) -> the active entry of highest priority, a
 --       tie to the name first; none active is refused. context = { mode
@@ -49,6 +52,8 @@
 local error, ipairs, pairs, require, setmetatable, sort, tostring, type =
 	error, ipairs, pairs, require, setmetatable, table.sort, tostring, type
 module(...)
+
+FREEFORM_PRIORITY, MODE_PRIORITY = 0, 10
 
 local Registry = {}
 Registry.__index = Registry
