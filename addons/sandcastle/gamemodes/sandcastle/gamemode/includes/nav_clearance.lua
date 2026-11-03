@@ -1,4 +1,5 @@
 local NavGaps = nextsoldier.nav_gaps
+local HL2 = require("foundation.wetsands.path.hl2")
 local STATIC_BRUSHES = { func_brush = true, func_wall = true }
 local ipairs = ipairs
 module(...)
@@ -54,11 +55,14 @@ function FitsLines(lines, mins, maxs, mask, traceHull, vector)
 	return false
 end
 
+-- A body that crouches (its NSCrouchHeight) passes a crouch area crouched, as
+-- it walks there (OnNavAreaChanged); elsewhere it is measured by its hull.
 function New(entity, mask, traceHull, vector)
 	local mins, maxs = entity:GetCollisionBounds()
+	local crouchHeight = entity.NSCrouchHeight
 	for _, clearance in ipairs(clearances) do
 		local cachedMins, cachedMaxs = clearance.hullMins, clearance.hullMaxs
-		if clearance.mask == mask
+		if clearance.mask == mask and clearance.crouchHeight == crouchHeight
 			and clearance.traceHull == traceHull and clearance.vector == vector
 			and cachedMins.x == mins.x and cachedMins.y == mins.y and cachedMins.z == mins.z
 			and cachedMaxs.x == maxs.x and cachedMaxs.y == maxs.y and cachedMaxs.z == maxs.z then
@@ -66,11 +70,16 @@ function New(entity, mask, traceHull, vector)
 		end
 	end
 	local traceMins = StepMins(mins, maxs, vector)
+	local crouchMaxs = maxs
+	if crouchHeight and crouchHeight < maxs.z then crouchMaxs = vector(maxs.x, maxs.y, crouchHeight) end
 	local clearance = {
 		hullMins = mins,
 		hullMaxs = maxs,
 		mins = traceMins,
 		maxs = maxs,
+		crouchHeight = crouchHeight,
+		crouchMins = StepMins(mins, crouchMaxs, vector),
+		crouchMaxs = crouchMaxs,
 		mask = mask,
 		traceHull = traceHull,
 		vector = vector,
@@ -93,11 +102,12 @@ function Clearance:Area(area)
 	local center = area:GetCenter()
 	center.z = area:GetZ(center)
 	local start = center + self.vector(0, 0, 1)
+	local crouched = HL2.MustCrouch(area:GetAttributes())
 	local trace = self.traceHull({
 		start = start,
 		endpos = start,
-		mins = self.mins,
-		maxs = self.maxs,
+		mins = crouched and self.crouchMins or self.mins,
+		maxs = crouched and self.crouchMaxs or self.maxs,
 		mask = self.mask,
 		filter = StaticMap,
 	})
@@ -124,11 +134,15 @@ function Clearance:Link(from, to)
 		end
 	end
 
+	local crouched = HL2.MustCrouch(from:GetAttributes()) or HL2.MustCrouch(to:GetAttributes())
+	local mins, maxs = self.mins, self.maxs
+	if crouched then mins, maxs = self.crouchMins, self.crouchMaxs end
+
 	local fits = false
 	if side == nil then
 		local start = from:GetClosestPointOnArea(to:GetCenter())
 		local finish = to:GetClosestPointOnArea(from:GetCenter())
-		fits = HullLineFits(from, to, start, finish, self.mins, self.maxs,
+		fits = HullLineFits(from, to, start, finish, mins, maxs,
 			self.mask, self.traceHull, self.vector)
 	else
 		local extent, other = from:GetExtentInfo(), to:GetExtentInfo()
@@ -142,7 +156,7 @@ function Clearance:Link(from, to)
 		)
 		for i = 1, #lines do
 			local line = lines[i]
-			if HullLineFits(from, to, line.start, line.finish, self.mins, self.maxs,
+			if HullLineFits(from, to, line.start, line.finish, mins, maxs,
 				self.mask, self.traceHull, self.vector) then
 				fits = true
 				break

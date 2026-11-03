@@ -20,6 +20,7 @@ local function Area(id, x0, y0, x1, y1, z)
 	function area:GetExtentInfo() return { lo = self.lo, hi = self.hi } end
 	function area:GetCenter() return V((self.lo.x + self.hi.x) / 2, (self.lo.y + self.hi.y) / 2, self.lo.z) end
 	function area:GetZ() return self.lo.z end
+	function area:GetAttributes() return self.attributes or 0 end
 	function area:IsConnectedAtSide(other, side) return self.sides[side] == other end
 	function area:GetClosestPointOnArea(point)
 		return V(Clamp(point.x, self.lo.x, self.hi.x), Clamp(point.y, self.lo.y, self.hi.y), self.lo.z)
@@ -156,6 +157,53 @@ T.test("nav clearance preserves each entity's overhead clearance", function()
 	local crouching = NewClearance(Agent(V(-10, -8, 0), V(10, 8, 36)), Trace)
 	T.eq(standing:Link(from, to), false, "the standing hull does not fit")
 	T.eq(crouching:Link(from, to), true, "the crouching hull fits")
+end)
+
+local NAV_MESH_CROUCH = T.require("foundation.wetsands.path.hl2").NAV_MESH_CROUCH
+local CROUCH_HEIGHT = 36
+
+local function Crouching(mins, maxs)
+	local agent = Agent(mins, maxs)
+	agent.NSCrouchHeight = CROUCH_HEIGHT
+	return agent
+end
+
+-- Fits below the crouch height, not at a standing height.
+local function LowCeiling(data)
+	return { Hit = data.maxs.z > CROUCH_HEIGHT, StartSolid = false }
+end
+
+T.test("a body that crouches is measured crouched in a crouch area, standing elsewhere", function()
+	local clearance = NewClearance(Crouching(V(-10, -10, 0), V(10, 10, 72)), LowCeiling)
+	local low, open = Area(9, 0, 0, 100, 100, 0), Area(10, 0, 0, 100, 100, 0)
+	low.attributes = NAV_MESH_CROUCH
+	T.eq(clearance:Area(low), true, "it crouches under the ceiling")
+	T.eq(clearance:Area(open), false, "with no crouch flag it stands")
+end)
+
+T.test("a body that does not crouch is not excused by a crouch area", function()
+	local clearance = NewClearance(Agent(V(-10, -10, 0), V(10, 10, 72)), LowCeiling)
+	local low = Area(11, 0, 0, 100, 100, 0)
+	low.attributes = NAV_MESH_CROUCH
+	T.eq(clearance:Area(low), false)
+end)
+
+T.test("a link into or out of a crouch area is measured crouched", function()
+	local clearance = NewClearance(Crouching(V(-10, -10, 0), V(10, 10, 72)), LowCeiling)
+	local open, low, far = Area(12, 0, 0, 100, 100, 0), Area(13, 100, 0, 200, 100, 0), Area(14, 200, 0, 300, 100, 0)
+	low.attributes = NAV_MESH_CROUCH
+	open.sides[1], low.sides[3], low.sides[1], far.sides[3] = low, open, far, low
+	T.eq(clearance:Link(open, low), true, "ducking in")
+	T.eq(clearance:Link(low, open), true, "and out")
+	T.eq(clearance:Link(far, open) , false, "neither end low, it stands")
+end)
+
+T.test("bodies crouching to different heights keep apart caches", function()
+	Clearance.Clear()
+	local trace = function() return { Hit = false, StartSolid = false } end
+	local a, b = Crouching(V(-10, -10, 0), V(10, 10, 72)), Crouching(V(-10, -10, 0), V(10, 10, 72))
+	b.NSCrouchHeight = CROUCH_HEIGHT + 10
+	T.eq(Clearance.New(a, 7, trace, V) == Clearance.New(b, 7, trace, V), false)
 end)
 
 T.test("nav clearance sweeps height-changing links at the higher floor", function()

@@ -584,8 +584,9 @@ function WS.WarSoldier(ENT)
 	-- The base's cost of each link, for a soldier no controller enlisted: none
 	-- it cannot cross (WS.NavLinkCrossable: a players' map's clip along a
 	-- rail, which the nav mesh links a drop past, so it would ram the rail
-	-- for good).
-	function ENT:OnComputePath(from, to)
+	-- for good). A ladder climbed crosses no opening.
+	function ENT:OnComputePath(from, to, ladder)
+		if IsValid(ladder) then return 0 end
 		local mins, maxs = self:GetCollisionBounds()
 		if not WS.NavLinkCrossable(from, to, mins, maxs) then return -1 end
 		return 0

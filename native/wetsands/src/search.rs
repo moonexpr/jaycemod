@@ -371,7 +371,7 @@ mod tests {
 
     fn walker() -> Walker {
         Walker {
-            limits: Limits { step_height: 18.0, jump_height: 56.0, death_drop_height: 1000.0, crouches: true },
+            limits: Limits { step_height: 18.0, jump_height: 56.0, death_drop_height: 1000.0, crouches: true, ladders: true },
             jump: Jump::Scaled(2.0),
             attribute_rule: true,
             rooms: None,

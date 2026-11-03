@@ -38,6 +38,8 @@ ENT.Factions = {}
 -- soldiers' size, which the war's routes and posts were tuned against.
 local HULL_MINS, HULL_MAXS = Vector(-10, -10, 0), Vector(10, 10, 72)
 local CROUCH_HEIGHT = 36
+-- Routes measure it crouched in a crouch area (includes.nav_clearance).
+ENT.NSCrouchHeight = CROUCH_HEIGHT
 -- A path is computed again for a goal moved this far, or this old.
 local REPATH_DISTANCE, REPATH_AGE = 64, 2
 local PATH_LOOKAHEAD = 300
@@ -49,6 +51,9 @@ local FOLLOW_HOLD = 0.5
 local CLIMB_UP = 2
 -- A climb begins this near the ledge's foot.
 local CLIMB_REACH = 48
+-- What a body plays on a ladder, a model that has it (a player model's
+-- climbing loop).
+local LADDER_ACT = ACT_ZOMBIE_CLIMB_UP
 -- It steps and jumps as a TF2 player (games.gameplay.movement): a stair
 -- step, and as high as a crouch jump reaches (it does not tuck its legs).
 local Movement = gameplay.movement
@@ -75,6 +80,7 @@ end
 
 local Relations = nextsoldier.relations
 local Gaze = nextsoldier.gaze
+local Ladder = nextsoldier.ladder
 -- A point looked at along a path, at eye height.
 local LOOK_HEIGHT = Vector(0, 0, 64)
 -- The live bots on this base, which others' noises reach (DrGBase keeps
@@ -355,7 +361,10 @@ function ENT:Think()
 	end
 	if self:IsAlive() and not self:ScrambleUpdate() then
 		local path = self.nsPath
-		if path and path:IsValid() and CurTime() - (self.nsFollowedAt or 0) <= FOLLOW_HOLD then path:Update(self) end
+		if path and path:IsValid() and CurTime() - (self.nsFollowedAt or 0) <= FOLLOW_HOLD
+			and not self:ClimbPathLadder(path) then
+			path:Update(self)
+		end
 		-- an enemy in sight is faced, the path walked sideways or backing
 		-- (BodyMoveXY), as a player fights: the path's own turn comes first
 		local enemy = self:GetEnemy()
@@ -367,10 +376,11 @@ end
 
 -- A scramble (TF2's ClimbUpToLedge, JumpAcrossGap: a locomotion process
 -- carried out over ticks, no coroutine): { duration, at(t) -> position,
--- done() }, its momentum stopped each step; nothing else moves it, and its
--- intention waits, until it ends.
+-- done(), act (what its body plays, or its usual animation) }, its momentum
+-- stopped each step; nothing else moves it, and its intention waits, until
+-- it ends.
 function ENT:Scramble(motion)
-	self.nsScramble = { duration = motion.duration, at = motion.at, done = motion.done, began = CurTime() }
+	self.nsScramble = { duration = motion.duration, at = motion.at, done = motion.done, act = motion.act, began = CurTime() }
 end
 
 function ENT:IsScrambling() return self.nsScramble ~= nil end
@@ -403,6 +413,53 @@ function ENT:ClimbPathGoal(path)
 	return self:IsScrambling()
 end
 
+-- The ladder move its path comes to next: the goal it walks to, or the one
+-- after, reached before the engine's follower would take hold of the ladder.
+local function NextLadderMove(path)
+	local goal = path:GetCurrentGoal()
+	if not goal then return nil end
+	if IsValid(goal.ladder) then return goal end
+	local after = path:NextSegment(goal)
+	return after and IsValid(after.ladder) and after or nil
+end
+
+-- A climb of the ladder its path has brought it to (nextsoldier.ladder), onto
+-- the area the move enters, crouched if that area asks it; its path planned
+-- again from there: whether it began one. Facing the ladder all the way.
+function ENT:ClimbPathLadder(path)
+	local move = NextLadderMove(path)
+	if not move then return false end
+	local mins, maxs = self:GetCollisionBounds()
+	if not Ladder.CanMount(self:GetPos(), move.pos, maxs.z - mins.z) then return false end
+	local ladder, area = move.ladder, move.area
+	local q = {
+		from = self:GetPos(),
+		bottom = ladder:GetBottom(),
+		top = ladder:GetTop(),
+		normal = ladder:GetNormal(),
+		halfWidth = math.max(maxs.x, maxs.y),
+		down = move.type == Ladder.DOWN,
+	}
+	local near = q.down and q.bottom or q.top
+	q.landing = Ladder.Landing(area:GetClosestPointOnArea(near), area:GetCenter(), q.halfWidth)
+	local climb = Ladder.Climb(q)
+	self:SetAngles(Angle(0, (-q.normal):Angle().y, 0))
+	self:Scramble({
+		duration = climb.duration,
+		at = function(t)
+			local p = climb:At(t)
+			return Vector(p.x, p.y, p.z)
+		end,
+		act = self:SelectWeightedSequence(LADDER_ACT) >= 0 and LADDER_ACT or nil,
+		done = function()
+			self:SetCrouching(area:HasAttributes(NAV_MESH_CROUCH))
+			local current = self:GetPath()
+			if current and current:IsValid() then current:Invalidate() end
+		end,
+	})
+	return true
+end
+
 -- Follows a path to goal, computed again when the goal has moved or the path
 -- has aged: "unreachable" (no path), "reached", "obstacle" (stuck against
 -- something on its way) or "moving". A path made afresh (none, or for a
@@ -426,6 +483,7 @@ function ENT:FollowPath(goal, tolerance)
 	-- a taunt is played standing still (HoldStill)
 	if CurTime() < (self.nsStillUntil or 0) then return "moving" end
 	self.nsFollowedAt = CurTime()
+	if self:ClimbPathLadder(path) then return "moving" end
 	path:Update(self)
 	if not path:IsValid() then return "reached" end
 	if self.loco:IsStuck() then
@@ -573,7 +631,8 @@ function ENT:BodyUpdate()
 		return
 	end
 	self:AimUpdate()
-	local act, rate = self:OnUpdateAnimation()
+	local act, rate = self.nsScramble and self.nsScramble.act, 1
+	if not act then act, rate = self:OnUpdateAnimation() end
 	if act == nil then act, rate = self:DefaultAnimation() end
 	if self:GetActivity() ~= act then self:StartActivity(act) end
 	if rate then self:SetPlaybackRate(rate) end
@@ -895,8 +954,9 @@ function ENT:OnSound(ent, sound)
 end
 function ENT:OnLost(ent) end
 
--- The path's cost by default: the length of each link, with the class's
--- OnComputePath added (-1 refuses the link, as DrGBase's contract has it).
+-- The path's cost by default: the length of each link (or the ladder it
+-- climbs), with the class's OnComputePath added (-1 refuses the link, as
+-- DrGBase's contract has it; ladder, a third argument, when it climbs one).
 -- Lua traces the engine's collision hull through each destination and
 -- opening, then passes that verdict to the native or Lua-twin cost function.
 function ENT:GetPathGenerator(cost)
@@ -904,9 +964,10 @@ function ENT:GetPathGenerator(cost)
 	cost = cost or function(area, fromArea, ladder, elevator, length, fits)
 		if not IsValid(fromArea) then return 0 end
 		if fits == false then return -1 end
-		local extra = self:OnComputePath(fromArea, area)
+		local extra = self:OnComputePath(fromArea, area, ladder)
 		if extra ~= nil and extra < 0 then return -1 end
-		local link = length and length > 0 and length or area:GetCenter():Distance(fromArea:GetCenter())
+		local link = IsValid(ladder) and ladder:GetLength()
+			or length and length > 0 and length or area:GetCenter():Distance(fromArea:GetCenter())
 		return fromArea:GetCostSoFar() + link + (extra or 0)
 	end
 	return function(area, fromArea, ladder, elevator, length)
@@ -918,7 +979,7 @@ function ENT:GetPathGenerator(cost)
 		return cost(area, fromArea, ladder, elevator, length, fits)
 	end
 end
-function ENT:OnComputePath(from, to) return nil end
+function ENT:OnComputePath(from, to, ladder) return nil end
 function ENT:OnStartClimbing(ledge, height, down) return false end
 function ENT:CustomClimbing(ledge) return false end
 function ENT:OnWeaponChange(old, new) end

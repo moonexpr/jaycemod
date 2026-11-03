@@ -174,7 +174,7 @@ unsafe fn required(l: L, index: c_int, name: &CStr) -> f64 {
 }
 
 /// The walker a model table describes (a strategy's Model(limits, bot)):
-/// stepHeight, jumpHeight, deathDropHeight, crouches; jumpAdded or
+/// stepHeight, jumpHeight, deathDropHeight, crouches, ladders; jumpAdded or
 /// jumpScaled; attributeRule; rooms (team, winners); scatter (entIndex,
 /// now); lanePenalty.
 unsafe fn walker_from(l: L, index: c_int) -> Walker {
@@ -184,6 +184,7 @@ unsafe fn walker_from(l: L, index: c_int) -> Walker {
         jump_height: required(l, index, c"jumpHeight"),
         death_drop_height: required(l, index, c"deathDropHeight"),
         crouches: field_truthy(l, index, c"crouches"),
+        ladders: field_truthy(l, index, c"ladders"),
     };
     let jump = match (field_number(l, index, c"jumpAdded"), field_number(l, index, c"jumpScaled")) {
         (Some(added), None) => Jump::Added(added),
@@ -682,8 +683,7 @@ unsafe extern "C-unwind" fn calculate(l: L) -> c_int {
     }
     let (from, to) = (area_id(l, 2), area_id(l, 1));
     let step = if (api.type_of)(l, 3) != TNIL {
-        let length = ask_method(l, 3, c"GetLength", None);
-        Move::Ladder { length, rise: ask_method(l, 2, c"ComputeAdjacentConnectionHeightChange", Some(1)) }
+        Move::Ladder { length: ask_method(l, 3, c"GetLength", None) }
     } else {
         Move::Floor { length: (api.tonumber)(l, 5) }
     };

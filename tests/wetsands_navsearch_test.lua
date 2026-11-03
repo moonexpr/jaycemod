@@ -246,10 +246,14 @@ local CASES = {
 		local cost = Calculator(N, { mesh = mesh })
 		return { cost(EngineArea(2), EngineArea(1)), cost(EngineArea(3), EngineArea(2)), cost(EngineArea(4), EngineArea(1)) }
 	end },
-	{ "a ladder move is priced by its length and the engine's height change", function(N)
+	{ "a ladder move is priced by its length, whatever the engine's height change", function(N)
 		local cost = Calculator(N, { strategy = HL2 })
 		return { cost(EngineArea(4), EngineArea(1, 10, { [4] = 40 }), EngineLadder(250), nil, -1),
 			cost(EngineArea(4), EngineArea(1, 10, { [4] = 4000 }), EngineLadder(250), nil, -1) }
+	end },
+	{ "a walker that climbs no ladders is refused a ladder move", function(N)
+		local cost = Calculator(N, { strategy = HL2, limits = HL2.LIMITS })
+		return { cost(EngineArea(4), EngineArea(1, 10), EngineLadder(250), nil, -1) }
 	end },
 	{ "a calculator refuses a move the mesh lacks, and a Told what it names amiss", function(N)
 		local cost = Calculator(N)
@@ -349,7 +353,8 @@ T.test("the Lua implementation's answers are the expected ones", function()
 	T.eq(seen["rules are asked only of what a search's Told leaves open"].lua, "1 5 3 4 | true | true", "rules after a Told")
 	T.eq(seen["a search refuses a Told of another mesh"].lua, "false", "another mesh's Told")
 	T.eq(seen["a calculator prices a climb, a jump and a fall by the mesh's rise"].lua, "200 | -1 | -1", "rise")
-	T.eq(seen["a ladder move is priced by its length and the engine's height change"].lua, "510 | -1", "ladder")
+	T.eq(seen["a ladder move is priced by its length, whatever the engine's height change"].lua, "260 | 260", "ladder")
+	T.eq(seen["a walker that climbs no ladders is refused a ladder move"].lua, "-1", "no ladders")
 	T.eq(seen["a calculator refuses a move the mesh lacks, and a Told what it names amiss"].lua, "false | false | false | false | false", "refused moves")
 	T.eq(seen["distances walk from the nearest start, up to the limit"].lua,
 		"1=0.000000 2=100.000000 3=200.000000 4=300.000000 5=200.000000"

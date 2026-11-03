@@ -37,9 +37,9 @@
 --     elevator, length): the IPathCost the engine's Path:Compute takes, a
 --     consumer of the strategy's cost model over a Told. The engine is asked
 --     only area:GetID(), fromArea:GetID() and fromArea:GetCostSoFar() (and,
---     for a ladder move, ladder:GetLength() and
---     fromArea:ComputeAdjacentConnectionHeightChange(area)); the rest is the
---     mesh's and the Told's. It prices a move as strategy.Cost prices the
+--     for a ladder move, ladder:GetLength(), priced for a walker whose limits
+--     say ladders and refused any other); the rest is the mesh's and the
+--     Told's. It prices a move as strategy.Cost prices the
 --     step the npc controller's FillStep builds from it: the first area
 --     (no fromArea) costs nothing, a length above 0 is the step's length,
 --     a floor move the mesh lacks is refused. Cheap to make: one a
@@ -266,9 +266,12 @@ function Calculator(known, strategy, limits, bot)
 		local from, to = fromArea:GetID(), area:GetID()
 		if ladder ~= nil then
 			if not mesh.areas[to] then error("no area " .. tostring(to) .. " in the mesh", 2) end
+			-- a ladder is no jump or fall: the engine calls its two areas
+			-- FLT_MAX apart, and the walker's rise rule would refuse it
+			if not limits.ladders then return Path.IMPASSABLE end
 			step.ladderLength = ladder:GetLength()
 			step.centerDistance = 0
-			step.heightChange = fromArea:ComputeAdjacentConnectionHeightChange(area)
+			step.heightChange = 0
 		else
 			local link = mesh.links[from] and mesh.links[from][to]
 			if not link then error("no link " .. tostring(from) .. " -> " .. tostring(to) .. " in the mesh", 2) end

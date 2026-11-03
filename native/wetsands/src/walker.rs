@@ -18,6 +18,8 @@ pub struct Limits {
     pub jump_height: f64,
     pub death_drop_height: f64,
     pub crouches: bool,
+    /// Climbs nav ladders; a walker that does not is refused a ladder move.
+    pub ladders: bool,
 }
 
 /// How a jump up (a rise of at least a step) weighs a step's distance.
@@ -139,7 +141,7 @@ mod tests {
 
     const CROUCH: u32 = NAV_MESH_CROUCH as u32;
     const JUMP: u32 = NAV_MESH_JUMP as u32;
-    const LIMITS: Limits = Limits { step_height: 18.0, jump_height: 56.0, death_drop_height: 1000.0, crouches: true };
+    const LIMITS: Limits = Limits { step_height: 18.0, jump_height: 56.0, death_drop_height: 1000.0, crouches: true, ladders: true };
 
     fn soldier() -> Walker {
         Walker {
@@ -197,7 +199,7 @@ mod tests {
     #[test]
     fn hl2s_attribute_rule_closes_crouch_areas_to_a_walker_that_cannot_crouch() {
         let engine_npc = Walker {
-            limits: Limits { step_height: 18.0, jump_height: 18.0, death_drop_height: 18.0, crouches: false },
+            limits: Limits { step_height: 18.0, jump_height: 18.0, death_drop_height: 18.0, crouches: false, ladders: false },
             ..soldier()
         };
         assert_eq!(engine_npc.price(&Step { attributes: CROUCH, ..step() }), IMPASSABLE);

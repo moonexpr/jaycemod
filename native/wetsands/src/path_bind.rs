@@ -87,8 +87,10 @@ unsafe fn push_model(l: L, limits: c_int) {
         (api.getfield)(l, limits, key.as_ptr());
         (api.setfield)(l, -2, key.as_ptr());
     }
-    (api.pushboolean)(l, field_truthy(l, limits, c"crouches") as c_int);
-    (api.setfield)(l, -2, c"crouches".as_ptr());
+    for key in [c"crouches", c"ladders"] {
+        (api.pushboolean)(l, field_truthy(l, limits, key) as c_int);
+        (api.setfield)(l, -2, key.as_ptr());
+    }
 }
 
 /// path.Model(limits, fields) -> a walker model
@@ -280,16 +282,18 @@ unsafe extern "C-unwind" fn hl2_model(l: L) -> c_int {
     1
 }
 
-unsafe fn push_limits(l: L, step: f64, jump: f64, drop: f64, crouches: bool) {
+unsafe fn push_limits(l: L, step: f64, jump: f64, drop: f64, soldier: bool) {
     let api = api();
-    (api.createtable)(l, 0, 4);
+    (api.createtable)(l, 0, 5);
     for (key, value) in [(c"stepHeight", step), (c"jumpHeight", jump), (c"deathDropHeight", drop)] {
         (api.pushnumber)(l, value);
         (api.setfield)(l, -2, key.as_ptr());
     }
-    if crouches {
-        (api.pushboolean)(l, 1);
-        (api.setfield)(l, -2, c"crouches".as_ptr());
+    if soldier {
+        for key in [c"crouches", c"ladders"] {
+            (api.pushboolean)(l, 1);
+            (api.setfield)(l, -2, key.as_ptr());
+        }
     }
 }
 

@@ -89,8 +89,9 @@ pub enum Move {
     /// Across a floor link; `length` is the engine's (above 0, the step's
     /// length; else the link's distance).
     Floor { length: f64 },
-    /// Up or down a ladder, of its length, changing height by `rise`.
-    Ladder { length: f64, rise: f64 },
+    /// Up or down a ladder, of its length: no jump or fall, whatever the
+    /// height it changes (the engine calls its two areas FLT_MAX apart).
+    Ladder { length: f64 },
 }
 
 pub struct Calculator {
@@ -135,7 +136,13 @@ impl Calculator {
                 let distance = if length > 0.0 { length } else { known.mesh.distance(link) };
                 (distance, known.mesh.rise(link))
             }
-            Move::Ladder { length, rise } => (length, rise),
+            Move::Ladder { length } => {
+                if !self.walker.limits.ladders {
+                    known.area(to)?;
+                    return Ok(IMPASSABLE);
+                }
+                (length, 0.0)
+            }
         };
         let area = known.area(to)?;
         let index = area as usize;
@@ -173,7 +180,7 @@ mod tests {
 
     fn walker() -> Walker {
         Walker {
-            limits: Limits { step_height: 18.0, jump_height: 56.0, death_drop_height: 1000.0, crouches: true },
+            limits: Limits { step_height: 18.0, jump_height: 56.0, death_drop_height: 1000.0, crouches: true, ladders: true },
             jump: Jump::Scaled(2.0),
             attribute_rule: false,
             rooms: None,
@@ -208,16 +215,25 @@ mod tests {
             Err(CalculatorError::NoSuchLink(1, 3))
         );
         assert_eq!(
-            calculator.price(1, 3, 0.0, Move::Ladder { length: 50.0, rise: 30.0 }, true),
-            Ok(100.0)
+            calculator.price(1, 3, 0.0, Move::Ladder { length: 50.0 }, true),
+            Ok(50.0)
         );
+    }
+
+    #[test]
+    fn refuses_a_ladder_to_a_walker_that_climbs_none() {
+        let mut grounded = walker();
+        grounded.limits.ladders = false;
+        let calculator = Calculator::new(Arc::new(Known::new(mesh())), grounded);
+        assert_eq!(calculator.price(1, 3, 0.0, Move::Ladder { length: 50.0 }, true), Ok(IMPASSABLE));
+        assert_eq!(calculator.price(1, 3, 0.0, Move::Floor { length: 1.0 }, true).is_err(), true);
     }
 
     #[test]
     fn refuses_moves_when_the_callers_collision_hull_does_not_fit() {
         let calculator = Calculator::new(Arc::new(Known::new(mesh())), walker());
         assert_eq!(calculator.price(1, 2, 0.0, Move::Floor { length: -1.0 }, false), Ok(IMPASSABLE));
-        assert_eq!(calculator.price(1, 2, 0.0, Move::Ladder { length: 10.0, rise: 0.0 }, false), Ok(IMPASSABLE));
+        assert_eq!(calculator.price(1, 2, 0.0, Move::Ladder { length: 10.0 }, false), Ok(IMPASSABLE));
     }
 
     #[test]

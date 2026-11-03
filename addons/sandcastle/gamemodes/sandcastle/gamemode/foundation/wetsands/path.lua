@@ -3,7 +3,8 @@
 -- Cost(step, limits, bot) -> cost or IMPASSABLE, where
 --   step   = { hasFrom, traversable, ladderLength, length, centerDistance,
 --              heightChange, fromCostSoFar, areaId } for the move into an area,
---   limits = the variant's LOCOMOTION (stepHeight, jumpHeight, deathDropHeight),
+--   limits = the variant's LOCOMOTION (stepHeight, jumpHeight, deathDropHeight,
+--            and whether it crouches and climbs ladders),
 --   bot    = { entIndex, now }.
 -- The binding builds `step` from the engine's navigation areas; a variant
 -- names its strategy in PATH. A strategy the native search can run also
@@ -31,6 +32,7 @@ function Model(limits, fields)
 		jumpHeight = limits.jumpHeight,
 		deathDropHeight = limits.deathDropHeight,
 		crouches = limits.crouches == true,
+		ladders = limits.ladders == true,
 	}
 	for key, value in pairs(fields) do model[key] = value end
 	return model

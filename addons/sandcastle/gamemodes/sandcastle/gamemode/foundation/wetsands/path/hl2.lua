@@ -33,7 +33,7 @@ LIMITS = { stepHeight = STEP_HEIGHT, jumpHeight = STEP_HEIGHT, deathDropHeight =
 -- low ceiling, so a crouch area only needs it to crouch; it jumps a ledge
 -- lower than SOLDIER_JUMP_HEIGHT, a TF2 player's crouch jump (the
 -- gamemode's movement, games.gameplay.movement; CTFBotLocomotion's
--- GetMaxJumpHeight).
+-- GetMaxJumpHeight); it climbs nav ladders (nextsoldier.ladder).
 SOLDIER_DROP_HEIGHT = 1000
 SOLDIER_JUMP_HEIGHT = 72
 SOLDIER_LIMITS = {
@@ -41,6 +41,7 @@ SOLDIER_LIMITS = {
 	jumpHeight = SOLDIER_JUMP_HEIGHT,
 	deathDropHeight = SOLDIER_DROP_HEIGHT,
 	crouches = true,
+	ladders = true,
 }
 
 -- Whether a walker within limits cannot cross an area of these NAV_MESH_*

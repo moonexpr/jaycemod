@@ -173,6 +173,7 @@ local NEXTSOLDIER = {
 	["hearing"] = "nextsoldier",
 	["route_record"] = "nextsoldier",
 	["reach_memo"] = "nextsoldier",
+	["ladder"] = "nextsoldier",
 	["leap"] = "nextsoldier",
 	["detour"] = "nextsoldier",
 	["noise"] = "nextsoldier",
