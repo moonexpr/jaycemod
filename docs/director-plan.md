@@ -6,7 +6,7 @@ to be redone from them. Nothing below is built.**
 
 The operator's request (2026-10-27): "next up for the tactics engine... we
 will begin work on incorporating the same director tech as left4dead2."
-The director belongs to the tactics engine (`gamemode/wartactics/`): it is
+The director belongs to the tactics engine (`addons/wartactics/`): it is
 strategy over soldiers, not a soldier (NextSoldier stays unaware of it).
 
 ## 1. What Left 4 Dead's director is

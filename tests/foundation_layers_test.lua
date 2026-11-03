@@ -195,6 +195,7 @@ local NEXTSOLDIER = {
 local WARTACTICS = {
 	["fireteam"] = "wartactics",
 	["scenarios"] = "wartactics",
+	["monitors"] = "wartactics",
 	["squad"] = "wartactics",
 	["mission"] = "wartactics",
 	["rooms"] = "wartactics",
@@ -234,7 +235,7 @@ local TREES = {
 	{ dir = FOUNDATION, prefix = FOUNDATION_PREFIX, category = CATEGORY, pending = PENDING },
 	{ dir = T.ROOT .. "includes/", prefix = "^games%.", category = GAMES, pending = {} },
 	{ dir = T.File("nextsoldier/"), prefix = "^nextsoldier%.", category = NEXTSOLDIER, pending = {} },
-	{ dir = T.ROOT .. "wartactics/", prefix = "^wartactics%.", category = WARTACTICS, pending = {} },
+	{ dir = T.File("wartactics/"), prefix = "^wartactics%.", category = WARTACTICS, pending = {} },
 }
 
 local function Modules(tree)

@@ -29,8 +29,9 @@ end
 
 -- The trees an addon of the repo ships under its own lua/, on the LUA
 -- path's root rather than the gamemode's folder: NextSoldier
--- (addons/nextsoldier/lua/nextsoldier/).
-local ADDON_TREES = { nextsoldier = true }
+-- (addons/nextsoldier/lua/nextsoldier/) and the tactics engine
+-- (addons/wartactics/lua/wartactics/).
+local ADDON_TREES = { nextsoldier = true, wartactics = true }
 
 -- A gamemode-relative path (nextsoldier/sh_init.lua, includes/npc/actor.lua)
 -- as a LUA path. What sends clients the module folders, and sandcastle_dev's
@@ -106,6 +107,6 @@ Index("includes/npc/sh_init.lua")
 
 -- NextSoldier, the soldier itself, beside foundation and games, on both
 -- (its own addon, addons/nextsoldier); then the war's tactics engine, on
--- NextSoldier.
+-- NextSoldier (its own addon too, addons/wartactics).
 Index("nextsoldier/sh_init.lua")
 Index("wartactics/sh_init.lua")

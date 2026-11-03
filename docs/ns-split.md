@@ -16,7 +16,7 @@ one (NextSoldier as the soldier AI with its tactical planning):
   soldiers are organised by: a fire team's doctrine, squads, lanes, posts
   and battle lines, the setup zone, the hunt, the scenarios, the bot quota.
   It stands on NextSoldier, never under it
-  (`tests/foundation_layers_test.lua` ranks it above). `gamemode/wartactics/`.
+  (`tests/foundation_layers_test.lua` ranks it above). `addons/wartactics/`.
 - **AIWar** is a multiplayer system. It adds PvE that plays like PvP: bot
   sides fighting the map's own round. It decides who fights, for which side,
   in which job, and when the dead come back. It uses NS for the soldiers.

@@ -28,7 +28,7 @@ REPO = Path(__file__).resolve().parents[2]
 GMA = (Path.home() / "Library/Application Support/CrossOver/Bottles/Steam/drive_c/Steam/steamapps"
        / "workshop/content/4000/1560118657/gmpublisher.gma")
 NEXTBOT_DIRS = ("lua/entities/drgbase_nextbot/", "lua/entities/drgbase_nextbot_human/", "lua/drgbase/")
-OUR_ROOTS = ("addons/sandcastle", "addons/nextsoldier", "addons/sandcastle_dev")
+OUR_ROOTS = ("addons/sandcastle", "addons/nextsoldier", "addons/wartactics", "addons/sandcastle_dev")
 SKIP = ("/vendor/",)
 BASE = REPO / "addons/nextsoldier/lua/nextsoldier/base.lua"
 GENERIC = frozenset({"Initialize", "Think", "Draw", "OnRemove", "Use", "SetupDataTables",

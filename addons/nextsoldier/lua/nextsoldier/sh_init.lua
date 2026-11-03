@@ -1,5 +1,5 @@
 -- NextSoldier: the soldier itself, which runs without the war's tactics
--- engine (wartactics/): how a soldier moves (doors, leaps, rappels, its
+-- engine (addons/wartactics): how a soldier moves (doors, leaps, rappels, its
 -- route), what it senses (sight, hearing), its body, voice and behaviours,
 -- each loaded the first time it is read; the path costs it moves by are
 -- foundation.wetsands.path. One line a module, never a loop:

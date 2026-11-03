@@ -14,7 +14,7 @@ NextSoldier, the AI-war's NextBot soldiers. The gamemode lives at
 | `gamemode/includes/extensions/{generator,list,timer,world}/` | Gamemode extensions to GMod/Lua global tables, published by their `sh_init.lua` indexes |
 | `gamemode/includes/*.lua` | Gamemode glue models, required by their stable module names |
 | `addons/nextsoldier/` | NextSoldier, the soldier itself (movement, senses, body, behaviours), its own addon: its modules in `lua/nextsoldier/`, on foundation and games and run without the tactics engine, published as `nextsoldier.<module>` by `sh_init.lua` and loaded on first read (index below); its base entities (`base_nextsoldier`, `_npc`, `_combat`) in `lua/entities/`; the response rules it speaks by, their GMod modules, autorun and `scripts/responserules/` (`docs/ns-response-rules.md`) |
-| `gamemode/wartactics/` | The AI war's tactics engine: the strategy soldiers are organised by (fire teams, squads, lanes, posts, scenarios), on NextSoldier, published as `wartactics.<module>` (index below) |
+| `addons/wartactics/` | The tactics engine, its own addon: the strategy soldiers are organised by (fire teams, squads, lanes, posts, scenarios, the tactical, squad and scenario monitors), on NextSoldier, its modules in `lua/wartactics/`, published as `wartactics.<module>` (index below) |
 | `gamemode/foundation/` | Nothing but its namespaces and three plain globals at its root (`transaction`, `configstore`, `nodegraph`): foundation is copied to the globals, so it stays small and generic. A feature's or mode's model is the feature's `model.lua` and its parts (`docs/foundation-game-split-plan.md`) |
 | `gamemode/features/<feature>/` | Controllers: `sv.lua`/`cl.lua`/`sh.lua` composition roots and their `<realm>_<part>.lua` parts |
 | `gamemode/entities/weapons/` | Standard SWEPs: CS:S stats are grouped on terminal weapons; `base_cstrike`, `base_cstrike_melee` and `base_cstrike_grenade` own shared behavior |
@@ -314,10 +314,11 @@ requires it (`tests/foundation_layers_test.lua`). Tests are
 
 ## wartactics index
 
-`gamemode/wartactics/<module>.lua`: the AI war's tactics engine, the
-high-level strategy NextSoldier's soldiers are organised by, standing on
-NextSoldier and never under it. `shared_loader.lua` runs
-`wartactics/sh_init.lua` after NextSoldier's; it publishes
+`addons/wartactics/lua/wartactics/<module>.lua`: the tactics engine, the
+high-level strategy NextSoldier's soldiers are organised by, its own addon
+beside the gamemode, standing on NextSoldier and never under it. The
+gamemode's loader reads it from the LUA path's `wartactics/`, as it does
+NextSoldier's, and runs `wartactics/sh_init.lua` after NextSoldier's; it publishes
 `wartactics.<module>` and loads each on first read, as NextSoldier's does.
 wartactics may require foundation, games and nextsoldier, never
 features or ws. Tests are `tests/wartactics_<module>_test.lua`.
@@ -326,11 +327,13 @@ features or ws. Tests are `tests/wartactics_<module>_test.lua`.
 |---|---|
 | Fire teams and squads | `fireteam` (a fire team's doctrine in a fight, the engine `gameplay.tactics` names), `squad`, `mission` (a squad's mission, the wait for its members by the waves, when it must regroup: `docs/squad-missions-plan.md`) |
 | The field | `lanes`, `posts` (where a line is established), `zone` (the ground behind the setup gates), `explore`, `hunt` (post-round carnage), `rooms` (the map's rooms, indoors and outdoors, as big blocks on its levels, with the corridors, stairwells, doors and windows joining them; found from the mesh's shape and the BSP's areaportals; `.devtools/bin/rooms_view.py` draws them from a dump), `incursion` (how each team walks in from its spawns over the room graph, breakable windows included, on `graph.paths`: its walk, highways and other routes, the front, traffic, its tree and the fewest breaching paths; tested in the native pass, `docs/incursion-native-plan.md`), `classes` (what each room is for when a round starts: restricted and highways, each team's spanning tree over the rooms and corridors, buildings and their owners, strongholds and commons as a gradient between them, junctions carved at the tree's forks), `ambush` (hiding spots beside the entrances an enemy squad comes through, out of the frustum through the doorway), `intel` (what a team knows of the enemy by room: how strongly held, traffic, support bases) |
+| The monitors | `monitors` (`TacticalMonitor`, `SquadMonitor` and its roles, `ScenarioMonitor`, under a mode's strategy) |
 | The war | `scenarios`, `bot_quota` (tf_bot_quota's rules, `docs/aiwar-bots.md`), `tuning` (live tuning of fireteam, lanes and squad), `hazards` (nav areas that keep forcing soldiers to respawn, disabled and saved until inspected) |
 
 | Module | API |
 |---|---|
-| `wartactics.scenarios` | The scenarios soldiers play, which any script registers while the game loads: `New()` → a registry (`Shared` is the war's): `Register{ name, priority, mode?, active?(context), scenario (a Scenario class or its module, required when chosen), monitor? (the name of a behaviour registered with NextSoldier, which ScenarioMonitor runs in place of the doctrine's sides), behaviors? (the names of those it relies on) }` (a name again replaces it); `Compile(behaviors)` at the game's beginning, against NextSoldier's compiled behaviours (an entry naming one not among them is refused) → an immutable structure, entries by priority and indexed by mode, all a decision mid-game reads: `Choose(context)` → the active entry of highest priority (context: `mode`, `field`; never the map's name), `Class(entry)`, `Behaviors(entry)`, `Entries()`. The AI war's own register at `MODE_PRIORITY` and compile when it starts (`features.aiwar.scenario`) |
+| `wartactics.scenarios` | The scenarios soldiers play, which any script registers while the game loads: `New()` → a registry (`Shared` is the war's): `Register{ name, priority, mode?, active?(context), scenario (a Scenario class or its module, required when chosen), monitor? (the name of a behaviour registered with NextSoldier, which ScenarioMonitor runs in place of the doctrine's sides), behaviors? (the names of those it relies on) }` (a name again replaces it); an addon registers in its `Initialize` hook (its autorun runs before the gamemode's loader publishes the module); `Compile(behaviors)` at the game's beginning, against NextSoldier's compiled behaviours (an entry naming one not among them is refused) → an immutable structure, entries by priority and indexed by mode, all a decision mid-game reads: `Choose(context)` → the active entry of highest priority (context: `mode`, `field`; never the map's name), `Class(entry)`, `Behaviors(entry)`, `Entries()`. The AI war's own register at `MODE_PRIORITY` and compile when it starts (`features.aiwar.scenario`) |
+| `wartactics.monitors` | The tree's levels a soldier runs under its mode's strategy: `TacticalMonitor` > `SquadMonitor` > `SquadLeader`, `SquadMember` or `Solo` > `ScenarioMonitor` > the scenario's monitor or the mode's side. A mode registers what they suspend for (`Humiliated`, `SeekAndDestroy`, `RetreatToCover`, `CallMedic`, `OpenDoor`), enters at `TacticalMonitor` and puts a `HOST` (`Sides`, `Hunting`, `Treated`, `Scenario`) on the soldier's state as `state.host`; `HealthShare(me)`, `RETREAT_HEALTH`, `RETREAT_BURST`, `RETREAT_WINDOW`, `CALL_MEDIC_HEALTH` |
 
 ## Adding to foundation
 

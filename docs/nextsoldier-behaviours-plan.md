@@ -11,6 +11,10 @@ the war's fifteen behaviours registered (the monitors among them), roots
 taken from it. §2's split is not done; §1 stands as the map of what the
 war's behaviours read.
 
+Since 2026-11-03 the tactical, squad and scenario monitors are the tactics
+engine's (`wartactics.monitors`, in `addons/wartactics`), which a mode hosts;
+the rest, `StrategyMonitor` among them, stay the war's.
+
 The operator's distinction (2026-10-27): NextSoldier concerns the agent
 itself and runs on its own, without the tactics engine; the tactics engine
 (`wartactics`) is the strategy that organises soldiers. NextSoldier's chart

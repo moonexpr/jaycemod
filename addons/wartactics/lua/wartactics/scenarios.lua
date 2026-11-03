@@ -14,6 +14,15 @@
 -- so a choice asks only the scenarios of the context's mode and those of
 -- any mode. A registration after it reaches the next compile, not this one.
 --
+-- An addon registers its scenarios during initialization. Its autorun runs
+-- before the gamemode's loader publishes this module, so it registers from
+-- the Initialize hook, which runs once the gamemode has loaded and before the
+-- war can start (InitPostEntity); the behaviours its scenarios name go to
+-- nextsoldier.behaviors.Shared there too:
+--   hook.Add("Initialize", "my_addon_scenarios", function()
+--       wartactics.scenarios.Shared:Register({ name = "holdout", ... })
+--   end)
+--
 --   New() -> a registry; Shared is the one the war compiles
 --   registry:Register{ name, priority, mode?, active?(context) -> truthy,
 --     scenario, monitor?, behaviors? }: mode, the rounds mode's NAME it is

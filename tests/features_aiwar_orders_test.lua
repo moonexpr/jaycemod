@@ -2088,10 +2088,10 @@ end)
 -- CALL_MEDIC_COOLDOWN, and goes on with what it was doing.
 T.test("a hurt soldier calls for a medic, then gets on with its job", function()
 	local me, npc = Enlist({ role = AiWar.DEFEND, team = RED })
-	me.health = Orders.CALL_MEDIC_HEALTH * 100 + 1
+	me.health = wartactics.monitors.CALL_MEDIC_HEALTH * 100 + 1
 	Tick(me, npc)
 	T.eq(#(me.medicCalls or {}), 0, "not hurt enough")
-	me.health = Orders.CALL_MEDIC_HEALTH * 100 - 5
+	me.health = wartactics.monitors.CALL_MEDIC_HEALTH * 100 - 5
 	Tick(me, npc, 2)
 	T.eq(#me.medicCalls, 1, "MEDIC!")
 	T.eq(Orders.JobOf(npc:Describe()) ~= nil, true, "back to its job")

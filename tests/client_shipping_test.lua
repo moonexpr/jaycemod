@@ -102,7 +102,7 @@ T.test("the sent set is the old rule's set plus the feature and ws modules", fun
 	local expected = Set(LuaFilesUnder(T.ROOT .. "foundation/", T.ROOT))
 	for _, path in ipairs(LuaFilesUnder(T.ROOT .. "includes/", T.ROOT)) do expected[path] = true end
 	for _, path in ipairs(LuaFilesUnder(T.File("nextsoldier/"), T.ADDON_TREES.nextsoldier)) do expected[path] = true end
-	for _, path in ipairs(LuaFilesUnder(T.ROOT .. "wartactics/", T.ROOT)) do expected[path] = true end
+	for _, path in ipairs(LuaFilesUnder(T.File("wartactics/"), T.ADDON_TREES.wartactics)) do expected[path] = true end
 	for _, name in ipairs(Names(T.ROOT .. Features.ROOT, "d")) do
 		for _, part in ipairs(Features.CLIENT_PARTS) do
 			local path = Features.PartPath(name, part)

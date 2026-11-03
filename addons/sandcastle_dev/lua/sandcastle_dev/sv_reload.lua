@@ -36,11 +36,12 @@ local function Upvalue(fn, wanted)
 end
 
 -- The gamemode's paths, from its loader, once the gamemode is up (the
--- workbench loads before it). NextSoldier is its own addon: its modules are
--- under the LUA path's nextsoldier/ (WS.LoaderFile reads them there), its
--- base entities under entities/, beside every other addon's.
+-- workbench loads before it). NextSoldier and the tactics engine are their
+-- own addons: their modules are under the LUA path's nextsoldier/ and
+-- wartactics/ (WS.LoaderFile reads them there), NextSoldier's base entities
+-- under entities/, beside every other addon's.
 local ROOT, CHUNK_ENV, ENTITIES
-local NEXTSOLDIER = "nextsoldier/"
+local NEXTSOLDIER, WARTACTICS = "nextsoldier/", "wartactics/"
 local ADDON_ENTITIES, ADDON_ENTITY_CLASSES = "entities/", "^base_nextsoldier"
 
 local function Paths()
@@ -74,6 +75,7 @@ local function Stamps()
 	for _, path in ipairs(Files(ROOT)) do stamps[path] = file.Time(path, "LUA") end
 	for _, path in ipairs(Files(ENTITIES)) do stamps[path] = file.Time(path, "LUA") end
 	for _, path in ipairs(Files(NEXTSOLDIER)) do stamps[path] = file.Time(path, "LUA") end
+	for _, path in ipairs(Files(WARTACTICS)) do stamps[path] = file.Time(path, "LUA") end
 	for _, name in ipairs((file.Find(ADDON_ENTITIES .. "*.lua", "LUA"))) do
 		if string.match(name, ADDON_ENTITY_CLASSES) then
 			stamps[ADDON_ENTITIES .. name] = file.Time(ADDON_ENTITIES .. name, "LUA")
@@ -96,7 +98,7 @@ local function Classify(path)
 	if string.StartWith(path, ENTITIES) or string.match(path, "^" .. ADDON_ENTITIES .. "[^/]+%.lua$") then
 		return { kind = "entity", class = string.match(path, "([^/]+)%.lua$"), path = path }
 	end
-	if string.StartWith(path, NEXTSOLDIER) then
+	if string.StartWith(path, NEXTSOLDIER) or string.StartWith(path, WARTACTICS) then
 		if string.match(path, "_init%.lua$") then
 			return { kind = "refused", why = "a namespace's index runs with the loader; changelevel" }
 		end
@@ -114,7 +116,7 @@ local function Classify(path)
 	if string.match(rel, "_index%.lua$") or string.match(rel, "_init%.lua$") then
 		return { kind = "refused", why = "a namespace's index runs with the loader; changelevel" }
 	end
-	if string.StartWith(rel, "foundation/") or string.StartWith(rel, "wartactics/") then
+	if string.StartWith(rel, "foundation/") then
 		return { kind = "module", name = string.gsub(string.gsub(rel, "%.lua$", ""), "/", ".") }
 	end
 	local namespace, module = string.match(rel, "^includes/extensions/([%w_]+)/(.+)%.lua$")

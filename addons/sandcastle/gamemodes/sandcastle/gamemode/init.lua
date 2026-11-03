@@ -10,7 +10,8 @@ include("shared.lua")
 -- server's (sv.lua, sv_*), as source: nothing there runs until a client
 -- loads it (WS.require, or WS.Feature once the server loads the feature,
 -- sh_core.lua). This sends them; it includes nothing. Each folder is read
--- where the loader reads it (WS.LoaderFile): NextSoldier's from its addon.
+-- where the loader reads it (WS.LoaderFile): NextSoldier's and the tactics
+-- engine's from their addons.
 do
 	local Features = system.features
 	local GamemodeFiles = {}

@@ -44,9 +44,9 @@ return {
 	},
 	{
 		name = "war",
-		about = "the AI war: the tactics engine (wartactics/) and features/aiwar",
-		tests = { "wartactics_*", "aiwar_*", "features_aiwar_*" },
-		sources = { G .. "wartactics/", G .. "features/aiwar/", G .. "sh_war_soldier.lua", G .. "sh_aiwar.lua", G .. "cl_aiwar_slots.lua" },
+		about = "the AI war: the tactics engine (its addon) and features/aiwar",
+		tests = { "wartactics_*", "addons_wartactics", "aiwar_*", "features_aiwar_*" },
+		sources = { "addons/wartactics/", G .. "features/aiwar/", G .. "sh_war_soldier.lua", G .. "sh_aiwar.lua", G .. "cl_aiwar_slots.lua" },
 	},
 	{
 		name = "rounds",

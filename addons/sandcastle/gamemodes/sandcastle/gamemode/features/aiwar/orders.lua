@@ -40,9 +40,10 @@
 --
 --   NextSoldier          ends when the soldier dies (CTFBotMainAction)
 --     StrategyMonitor      applies the war's allocation: the member's job
---       TacticalMonitor    self-preservation (CTFBotTacticalMonitor): the
---                          humiliated SuspendFor Humiliated; opening an
---                          unlocked door SuspendFor OpenDoor
+--       TacticalMonitor    self-preservation (wartactics.monitors, with the
+--                          two below; CTFBotTacticalMonitor): the humiliated
+--                          SuspendFor Humiliated; opening an unlocked door
+--                          SuspendFor OpenDoor
 --         SquadMonitor     leader, member or solo (wartactics.squad)
 --           SquadLeader | SquadMember | Solo   a member takes its bound line
 --                          from its leader, regroups on it in a fight, and
@@ -88,6 +89,8 @@ local N = npc.nextbot
 local MonitorLib = nextsoldier.monitor
 local SoldierChart = nextsoldier.chart.CHART
 local Behaviors = nextsoldier.behaviors.Shared
+local Monitors = wartactics.monitors
+local HealthShare = Monitors.HealthShare
 local Debug = require("features.nbdebug.model")
 local AiWar = require("features.aiwar.model")
 local Teams = gameplay.teams
@@ -990,7 +993,7 @@ function ChaseWanted(role, me, field, member)
 	if not profile or not me:HasEnemy() then return nil end
 	local share, pos = me:EnemyHealth(), me:EnemyPosition()
 	if not share or not pos or share >= profile.health or me:RangeTo(pos) > profile.range then return nil end
-	if me:Health() / max(me:MaxHealth(), 1) < max(profile.fit, RETREAT_HEALTH) then return nil end
+	if me:Health() / max(me:MaxHealth(), 1) < max(profile.fit, Monitors.RETREAT_HEALTH) then return nil end
 	if not (Leashed(field, member, pos) and Leashed(field, member, me:Position())) then return nil end
 	return profile
 end
@@ -1951,73 +1954,6 @@ local function SideFor(state)
 	return classes[side]:New(state)
 end
 
--- The war's scenario entry (wartactics.scenarios), which the
--- controller puts on the field; nil in a field without one.
-local function ScenarioOf(state)
-	return state.war:Field().scenario
-end
-
--- ScenarioMonitor: runs the scenario's own monitor when it registered one
--- (by the name it was given NextSoldier under), else the member's side;
--- begins again when the scenario changes.
-local ScenarioMonitor = PassthroughMonitor("ScenarioMonitor", function(state)
-	local scenario = ScenarioOf(state)
-	if scenario and scenario.monitor then return state.behaviors:Get(scenario.monitor):New(state) end
-	return SideFor(state)
-end)
-
-function ScenarioMonitor:OnStart(me)
-	self.scenario = ScenarioOf(self.state)
-	return self:Continue()
-end
-
-function ScenarioMonitor:Update(me)
-	if ScenarioOf(self.state) ~= self.scenario then
-		return self:ChangeTo(ScenarioMonitor:New(self.state), "scenario changed")
-	end
-	return self:Continue()
-end
-
--- The squad roles: each runs the job; which one runs follows the member's
--- place in its squad (wartactics.squad's Kind), changing itself when
--- that changes (a leader died, a hero joined, a new job's squad).
-local SquadRoles = {}
-
-local function SquadRole(kind, name)
-	local class = Monitor(name, function(state) return ScenarioMonitor:New(state) end)
-	class.kind = kind
-	function class:Update(me)
-		local now = Squad.Kind(self.state.member)
-		if now ~= self.kind then return self:ChangeTo(SquadRoles[now]:New(self.state), "now " .. now) end
-		return self:Continue()
-	end
-	SquadRoles[kind] = class
-	return class
-end
-
--- SquadLeader: does its job; its squad takes its line, place and enemy from it.
-SquadRole("leader", "SquadLeader")
-
--- SquadMember (TF2's CTFBotEscortSquadLeader): does its job, and fights the
--- enemy its leader fights when that is one of the two DrGBase compares.
-local SquadMember = SquadRole("member", "SquadMember")
-
-function SquadMember:SelectMoreDangerousThreat(me, a, b)
-	local fireTeam = self.state.member.fireTeam
-	local leader = fireTeam and Squad.Leader(fireTeam)
-	local focus = leader and leader ~= self.state.member and leader.enemy
-	if focus ~= nil and (a == focus or b == focus) then return focus end
-	return N.ANSWER_UNDEFINED
-end
-
--- Solo: in no squad (no job yet).
-SquadRole("solo", "Solo")
-
--- SquadMonitor: leader, member or solo.
-local SquadMonitor = PassthroughMonitor("SquadMonitor", function(state)
-	return SquadRoles[Squad.Kind(state.member)]:New(state)
-end)
-
 -- Post-round carnage (features.aiwar.model's PHASES.humiliation,
 -- wartactics.hunt; TF2's CTFBotTacticalMonitor "Get the losers!").
 -- The winners SeekAndDestroy: at a loser in sight, reporting it on the
@@ -2196,22 +2132,14 @@ function SeekAndDestroy:ShouldAttack(me, them) return N.ANSWER_YES end
 function SeekAndDestroy:ShouldRetreat(me) return N.ANSWER_NO end
 function SeekAndDestroy:ShouldHurry(me) return N.ANSWER_YES end
 
--- TacticalMonitor: what keeps the soldier alive comes before its squad and
--- its job.
--- RetreatToCover (CTFBotRetreatToCover): a soldier hurt badly (under
--- RETREAT_HEALTH of its most) or hard (RETREAT_BURST of its most in the
--- last RETREAT_WINDOW seconds) gets off the cart and runs to cover from its
--- threat (else RETREAT_DISTANCE away from it), and stays there until healed
--- back to RETREAT_RECOVER (its medics come to the most hurt) or RETREAT_TIME
--- passes; then back to its squad and job, and no retreat for
+-- RetreatToCover (CTFBotRetreatToCover): a soldier hurt badly or hard
+-- (wartactics.monitors' TacticalMonitor) gets off the cart and runs to cover
+-- from its threat (else RETREAT_DISTANCE away from it), and stays there until
+-- healed back to RETREAT_RECOVER (its medics come to the most hurt) or
+-- RETREAT_TIME passes; then back to its squad and job, and no retreat for
 -- RETREAT_COOLDOWN.
-RETREAT_HEALTH, RETREAT_BURST, RETREAT_WINDOW = 0.35, 0.4, 3
 RETREAT_RECOVER, RETREAT_TIME, RETREAT_COOLDOWN = 0.7, 12, 8
 RETREAT_DISTANCE, RETREAT_COVER = 400, 480
-
-local function HealthShare(me)
-	return me:Health() / max(me:MaxHealth(), 1)
-end
 
 local RetreatToCover = SoldierChart:State("RetreatToCover")
 local FindHealth = SoldierChart:State("FindHealth")
@@ -2321,11 +2249,11 @@ end
 
 function FindHealth:ShouldHurry(me) return N.ANSWER_YES end
 
--- CallMedic (TF2's "MEDIC!"): under CALL_MEDIC_HEALTH of its most it calls
+-- CallMedic (TF2's "MEDIC!"): hurt enough (wartactics.monitors) it calls
 -- for a medic (the port's CallMedic: its side's medics answer callers
 -- first, its teammates see TF2's bubble over it), once a
 -- CALL_MEDIC_COOLDOWN, and goes on with what it was doing.
-CALL_MEDIC_HEALTH, CALL_MEDIC_COOLDOWN = 0.75, 10
+CALL_MEDIC_COOLDOWN = 10
 
 function CallMedic:Init(state) self.state = state end
 
@@ -2358,51 +2286,6 @@ function OpenDoor:Update(me)
 	return self:Continue()
 end
 
--- TacticalMonitor: what keeps the soldier alive comes before its squad and
--- its job: humiliation, then the hunt of the losers, then retreat, which
--- what it runs may refuse (ShouldRetreat NO); then opening an unlocked door.
-local TacticalMonitor = PassthroughMonitor("TacticalMonitor", function(state) return SquadMonitor:New(state) end)
-
--- The damage it took, kept for RETREAT_WINDOW (OnInjured, from DrGBase).
-function TacticalMonitor:OnInjured(me, attacker, amount)
-	local log = self.state.hurtLog or {}
-	log[#log + 1] = { at = me:Now(), amount = amount or 0 }
-	self.state.hurtLog = log
-	return self:TryContinue()
-end
-
-local function RecentDamage(state, now)
-	local total, kept = 0, {}
-	for _, hurt in ipairs(state.hurtLog or {}) do
-		if now - hurt.at <= RETREAT_WINDOW then
-			total = total + hurt.amount
-			kept[#kept + 1] = hurt
-		end
-	end
-	state.hurtLog = kept
-	return total
-end
-
-function TacticalMonitor:Update(me)
-	local state, now = self.state, me:Now()
-	if me:IsDisarmed() then return self:SuspendFor(Humiliated:New(state), "humiliated") end
-	if Hunting(state.war:Field(), state.member) then return self:SuspendFor(SeekAndDestroy:New(state), "get the losers") end
-	if now >= (state.retreatReadyAt or 0) then
-		local badly = HealthShare(me) < RETREAT_HEALTH
-		local hard = RecentDamage(state, now) >= RETREAT_BURST * me:MaxHealth()
-		if (badly or hard) and self:QueryBelow(me, "ShouldRetreat") ~= N.ANSWER_NO then
-			return self:SuspendFor(RetreatToCover:New(state), badly and "badly hurt" or "hurt hard")
-		end
-	end
-	if HealthShare(me) < CALL_MEDIC_HEALTH and now >= (state.medicCallReadyAt or 0) and not Treated(state.member, now) then
-		return self:SuspendFor(CallMedic:New(state), "hurt: calling for a medic")
-	end
-	if now >= (state.doorOpenRetryAt or 0) and me:DoorToOpen() then
-		return self:SuspendFor(OpenDoor:New(state), "opening an unlocked door")
-	end
-	return self:Continue()
-end
-
 -- `to` turned `degrees` about `from`, level (left for a positive turn).
 local function Turn(from, to, degrees)
 	if degrees == 0 then return to end
@@ -2427,7 +2310,7 @@ end
 -- StrategyMonitor: applies the war's allocation for this soldier. It
 -- decides nothing: the War (later the Commander) decides, and each job
 -- checks the member's job itself (ChangeTo on "new role").
-local StrategyMonitor = PassthroughMonitor("StrategyMonitor", function(state) return TacticalMonitor:New(state) end)
+local StrategyMonitor = PassthroughMonitor("StrategyMonitor", function(state) return Monitors.TacticalMonitor:New(state) end)
 
 -- It also keeps the member's record current with what its squad reads of
 -- it: where it is and the enemy it fights (wartactics.squad); and
@@ -2472,9 +2355,7 @@ end
 -- runs the NextSoldier its compiled behaviours give, and the tree below it.
 Behaviors:Register({ name = "NextSoldier", behavior = NextSoldier })
 Behaviors:Register({ name = "StrategyMonitor", behavior = StrategyMonitor })
-Behaviors:Register({ name = "TacticalMonitor", behavior = TacticalMonitor })
-Behaviors:Register({ name = "SquadMonitor", behavior = SquadMonitor })
-Behaviors:Register({ name = "ScenarioMonitor", behavior = ScenarioMonitor })
+Behaviors:Register({ name = "OpenDoor", behavior = OpenDoor })
 Behaviors:Register({ name = "Travel", behavior = Travel })
 Behaviors:Register({ name = "WeakTravel", behavior = WeakTravel })
 Behaviors:Register({ name = "Chase", behavior = Chase })
@@ -2486,10 +2367,19 @@ Behaviors:Register({ name = "RetreatToCover", behavior = RetreatToCover })
 Behaviors:Register({ name = "FindHealth", behavior = FindHealth })
 Behaviors:Register({ name = "CallMedic", behavior = CallMedic })
 
+-- What wartactics.monitors asks of the war, which hosts them.
+local HOST = Monitors.HOST:Check({
+	Sides = SideFor,
+	Hunting = function(state) return Hunting(state.war:Field(), state.member) end,
+	Treated = function(state, now) return Treated(state.member, now) end,
+	-- the entry the controller puts on the field; nil in a field without one
+	Scenario = function(state) return state.war:Field().scenario end,
+})
+
 -- config = { war (features.aiwar.model War), member (its roster entry),
 -- behaviors (nextsoldier.behaviors, compiled) }
 function NewState(config, me)
-	return { war = config.war, member = config.member, behaviors = config.behaviors }
+	return { war = config.war, member = config.member, behaviors = config.behaviors, host = HOST }
 end
 
 function InitialAction(state)
