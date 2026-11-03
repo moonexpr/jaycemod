@@ -28,6 +28,16 @@ LOOKAHEAD = 3
 -- way (a TF2 crouch jump): one on an area's edge lies below a bot already
 -- up the log it leads onto, and in 3D it was never reached.
 REACH_HEIGHT = 72
+
+-- Trivial(points, from, near) -> whether a planned route is the engine's
+-- trivial path: two points, the first where the body stands (within
+-- RADIUS of from) and the goal farther than near. Path:Compute builds one
+-- when it finds no way (its start off the mesh, every way out priced
+-- closed), and walking it runs the body straight into whatever lies
+-- between: it stands for no route.
+function Trivial(points, from, near)
+	return #points == 2 and Distance(points[1], from) <= RADIUS and Distance(points[1], points[2]) > near
+end
 -- With no clear line to the waypoint it makes for and standing more than
 -- LINE_OFF off the route's line there (from the last waypoint to it), it is
 -- led back onto that line, to the point LINE_LEAD beyond where it stands

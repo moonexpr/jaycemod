@@ -286,6 +286,9 @@ function BotSoldier:Steer(now)
 		-- its turns pushed out off the inside walls until its body passes them
 		-- (the map's, not who stands there now)
 		points = Corners.Route(points, function(a, b) return self:WalkClear(ToVector(a), ToVector(b), Unmoving) end)
+		-- the engine's trivial path (its start and the goal, straight, where it
+		-- found no way) is none
+		if route and RouteWalk.Trivial(points, pos, DIRECT_RANGE) then route = nil end
 		self.walk = route and RouteWalk.New(points) or nil
 		-- none found: planned again after REPATH_INTERVAL
 		if not route then self.planned = nil end

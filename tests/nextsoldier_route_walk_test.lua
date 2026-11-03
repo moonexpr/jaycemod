@@ -15,6 +15,15 @@ local ROUTE = { P(STEP), P(2 * STEP), P(3 * STEP), P(4 * STEP) }
 local NEVER = function() return false end
 local ALWAYS = function() return true end
 
+T.test("the body's own spot and a goal far off are the engine's trivial path, no route", function()
+	local here = P(0)
+	T.eq(Walk.Trivial({ P(0), P(1000) }, here, 256), true, "its start and the goal, straight across the map")
+	T.eq(Walk.Trivial({ P(0), P(200) }, here, 256), false, "a goal near: a straight walk is the route")
+	T.eq(Walk.Trivial({ P(0), P(500), P(1000) }, here, 256), false, "a turn between: a route")
+	T.eq(Walk.Trivial({ P(300), P(1000) }, here, 256), false, "starting at a waypoint, not where it stands: a route")
+	T.eq(Walk.Trivial({ P(0) }, here, 256), false, "already there")
+end)
+
 T.test("it makes for the first waypoint, and passes each it has reached", function()
 	local walk = Walk.New(ROUTE)
 	T.eq(walk:Next(P(0), NEVER), ROUTE[1], "the first")

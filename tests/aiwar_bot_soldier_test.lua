@@ -5,6 +5,7 @@ local goal = { x = 1000, y = 0, z = 400 }
 local position = { x = 0, y = 0, z = 0 }
 
 local routeWalk = {
+	Trivial = nextsoldier.route_walk.Trivial,
 	New = function(points)
 		return {
 			Next = function() return points[1] end,
@@ -67,6 +68,14 @@ T.test("an exhausted partial route does not steer directly at its goal", functio
 	local soldier = NewSoldier({})
 	soldier:Steer(1)
 	T.eq(soldier.steer, nil, "do not bypass obstacles after the last partial waypoint")
+end)
+
+T.test("the engine's trivial path, from where it stands straight to a far goal, is no route", function()
+	local soldier = NewSoldier({ position, goal })
+	soldier:Steer(1)
+	T.eq(soldier.walk, nil, "not walked: it runs into whatever lies between")
+	T.eq(soldier.steer, nil, "waits for a route, as when none was found")
+	T.eq(soldier.planned, nil, "planned again after the route interval")
 end)
 
 T.test("a found route steers to its first waypoint", function()

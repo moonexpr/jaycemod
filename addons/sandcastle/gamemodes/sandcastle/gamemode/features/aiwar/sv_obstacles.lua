@@ -370,17 +370,14 @@ function Controller:SoldierPathCost(team, bot)
 	end
 end
 
+-- Whether area lies under a door noted shut to team: read from
+-- ShutDoorAreas, which lets a door seen open since go for every team (the
+-- bot players' routes and the soldiers' route requests ask this; it once
+-- read the noted doors alone, so a door seen open stayed shut to them for
+-- the round).
 function Controller:ShutDoorIn(area, team)
 	if not self.shutDoors then return false end
-	local id = area:GetID()
-	for door, noted in pairs(self.shutDoors) do
-		if not IsValid(door) then
-			self.shutDoors[door] = nil
-		elseif noted.areas[id] and noted.teams[team] then
-			return true
-		end
-	end
-	return false
+	return self:ShutDoorAreas(team).areas[area:GetID()] == true
 end
 
 -- Spawn doors ---------------------------------------------------------------------
