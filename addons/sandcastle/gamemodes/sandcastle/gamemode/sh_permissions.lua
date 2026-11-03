@@ -21,7 +21,7 @@ function WS.PlayMode()
 	return PlayMode.Of({
 		roundsActive = WS.Active(),
 		gameplayStopped = WS.GameplayStopped(),
-		aiwar = WS.AiWarActive(),
+		aiwar = WS.Match:IsRunning(PlayMode.AIWAR),
 		arena = GetGlobal2Bool("ws_round_arena", false),
 	})
 end

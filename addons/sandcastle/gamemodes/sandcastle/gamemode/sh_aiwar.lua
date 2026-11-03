@@ -44,6 +44,10 @@ function WS.AiWarActive()
 	return GetGlobal2Bool(ACTIVE_KEY, false)
 end
 
+-- The rest of the game asks the match whether the war is on, not this file,
+-- which may have failed to load.
+WS.Match:Subscribe(system.play_mode.AIWAR, WS.AiWarActive)
+
 local SLOT_TEAM_COUNT_BITS = 2
 local SLOT_INDEX_BITS = 16 -- entity indexes
 local SLOT_JOB_COUNT_BITS = 5

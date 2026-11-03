@@ -110,6 +110,7 @@ local GAMES = {
 	["system/idle"] = "formalisms",
 	["system/spawn_manager"] = "formalisms",
 	["system/play_mode"] = "formalisms",
+	["system/match"] = "formalisms",
 	["system/permissions"] = "formalisms",
 	["system/local_player"] = "formalisms",
 	["system/local_player"] = "formalisms",

@@ -20,7 +20,7 @@ local function PlayerVoice(ply)
 	local team = ply:Team()
 	-- no faction fights for a spectator or the unassigned
 	if STARTING[team] == nil then return nil end
-	if WS.AiWarActive() then return Voices.ForAffiliation(AFFILIATION[WS.Feature("aiwar"):FactionName(team)]) end
+	if WS.Match:IsRunning(system.play_mode.AIWAR) then return Voices.ForAffiliation(AFFILIATION[WS.Feature("aiwar"):FactionName(team)]) end
 	return Voices.ForAffiliation(STARTING[team])
 end
 

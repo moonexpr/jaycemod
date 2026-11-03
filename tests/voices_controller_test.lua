@@ -14,7 +14,7 @@ local function Load(war)
 		require = T.require,
 		TEAM_RED = Teams.RED,
 		TEAM_BLUE = Teams.BLUE,
-		AiWarActive = function() return war end,
+		Match = { IsRunning = function(_, name) return war and name == system.play_mode.AIWAR end },
 		Feature = function()
 			return {
 				FactionName = function(_, team)

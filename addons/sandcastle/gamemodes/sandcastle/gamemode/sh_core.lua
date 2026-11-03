@@ -105,6 +105,13 @@ if CLIENT then
 	}
 end
 
+-- What the game is running, asked of the systems that run it, a broken one
+-- reported and not breaking the rest (games.system.match); kept across a
+-- reload, with its subscribers.
+WS.Match = WS.Match or system.match.New(function(name, err)
+	ErrorNoHalt("match: " .. name .. " broke when asked whether it is running: " .. tostring(err) .. "\n")
+end)
+
 local Features = system.features
 local FEATURE_COUNT_BITS = 16
 

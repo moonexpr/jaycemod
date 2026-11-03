@@ -83,7 +83,7 @@ end)
 
 if SERVER then
 	cvars.AddChangeCallback("ns_soldiers_enabled", function(_, _, new)
-		if new == "0" and WS.AiWarActive() then
+		if new == "0" and WS.Match:IsRunning(PlayMode.AIWAR) then
 			local ok, why = WS.Feature("aiwar"):End()
 			if not ok then print("NextSoldier: " .. why) end
 		end

@@ -14,7 +14,7 @@ local function Load(state)
 			require = T.require,
 			Active = function() return state.roundsActive end,
 			GameplayStopped = function() return state.gameplayStopped end,
-			AiWarActive = function() return state.aiwar end,
+			Match = system.match.New(function() end),
 		},
 		CAMI = {
 			RegisterPrivilege = function(p) registered[#registered + 1] = p end,
@@ -94,6 +94,15 @@ T.test("mp_tampering_enabled 0 refuses tampering to every player, superadmins to
 	T.eq(W.Can(Ply(Permissions.TAMPER), Permissions.TAMPER), true)
 end)
 
+T.test("a broken AI war leaves the play mode and permissions standing", function()
+	local state = State({ roundsActive = true })
+	local W = Load(state)
+	T.eq(W.PlayMode(), PlayMode.GAMEPLAY, "no AI war subscribed: it failed to load")
+	W.Match:Subscribe(PlayMode.AIWAR, function() error("no war", 0) end)
+	T.eq(W.PlayMode(), PlayMode.GAMEPLAY, "subscribed and breaking")
+	T.eq(W.Can(Ply(), Permissions.SPAWN), false)
+end)
+
 T.test("WS.PlayMode reads the replicated state; everyone spawns in Sandbox mode", function()
 	local state = State({ roundsActive = false })
 	local W = Load(state)
@@ -102,6 +111,7 @@ T.test("WS.PlayMode reads the replicated state; everyone spawns in Sandbox mode"
 	state.roundsActive = true
 	T.eq(W.PlayMode(), PlayMode.GAMEPLAY)
 	T.eq(W.Can(Ply(), Permissions.SPAWN), false)
+	W.Match:Subscribe(PlayMode.AIWAR, function() return state.aiwar end)
 	state.aiwar = true
 	T.eq(W.PlayMode(), PlayMode.AIWAR)
 	state.aiwar, state.arena = false, true

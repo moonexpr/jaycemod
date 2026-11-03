@@ -11,6 +11,6 @@ if CLIENT then
 	end)
 else
 	hook.Add("TeamTintCanOverride", "ws_teamtint", function(ply)
-		if WS.AiWarActive() and not ply:IsAdmin() then return false end
+		if WS.Match:IsRunning(system.play_mode.AIWAR) and not ply:IsAdmin() then return false end
 	end)
 end

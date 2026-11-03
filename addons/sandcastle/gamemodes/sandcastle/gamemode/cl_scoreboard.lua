@@ -143,7 +143,7 @@ end
 local snapshot = { serial = 0 }
 
 local function TeamsPlay()
-	return WS.Active() or WS.AiWarActive()
+	return WS.Active() or WS.Match:IsRunning(system.play_mode.AIWAR)
 end
 
 local function Gather()

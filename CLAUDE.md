@@ -261,7 +261,7 @@ never features or ws; a published foundation module never requires games;
 
 | Namespace | Modules |
 |---|---|
-| `system` | The gamemode core: `events` (the game event registry, `WS.Events`), `features` (per-map feature loading), `gamemode`, `permissions`, `play_mode`, `spawn_manager`, `idle` |
+| `system` | The gamemode core: `events` (the game event registry, `WS.Events`), `features` (per-map feature loading), `gamemode`, `permissions`, `play_mode`, `match` (what the game is running, `WS.Match`: `Subscribe(name, running)`, `Running()` → a transaction asking each subscriber in its own, a broken one reported and not running, `IsRunning(name)`), `spawn_manager`, `idle` |
 | `gameplay` | `rounds` (+ `state`, `timer`, `limits`), `teams`, `players` (+ `attributes`, `condition_effects`), `spawn`, `spectate`, `respawn_modifiers`, `arrivals`, `loadout`, `economy`, `kill_credit`, `kill_icons`, `vote`, `reports`, `player_analytics`, `capture` (+ `area`, `master`, `point_timer`), `combat` (+ 9 parts), `projectile` (+ 4 parts), `tactics`, `movement` (TF2's player movement, the standard), `standing` (which team is nearer to completing its objective), `handicap`, `capabilities` |
 | `npc` | `nextbot` (the NextBot NPC system), `actor`, `combatant`, `targeting` |
 
