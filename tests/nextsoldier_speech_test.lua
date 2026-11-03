@@ -61,6 +61,25 @@ T.test("a gesture with no sound of its own plays none", function()
 	T.eq(Sound(VOICES[1], nil), nil, "no gesture")
 end)
 
+-- A taunt danced or flexed to the boombox: a cheer of the voice's own
+-- ("yeah"), in place of its long taunt; any other gesture, the taunt.
+T.test("a taunt danced or flexed is cheered, each voice with lines its own", function()
+	local OWN = { combine = "CombineSoldier", metrocop = "CombineMetrocop", male = "RebelMale", female = "RebelFemale",
+		vortigaunt = "RebelVortigaunt" }
+	for _, voice in ipairs(VOICES) do
+		for _, gesture in ipairs({ "dance", "muscle" }) do
+			local said = system:Speak(Speaker(), Speech.CONCEPT_TAUNT, Speech.Criteria(voice, Speech.OFFENSE, SURE, false, gesture), First, 0)
+			T.eq(said ~= nil, true, voice.name .. ": " .. gesture)
+			if OWN[voice.name] then
+				T.eq(said.rule:match("^Cheer" .. OWN[voice.name]) ~= nil, true, voice.name .. " " .. gesture .. ": its cheer, " .. said.rule)
+				T.eq(said.response.kind, "speak", "a sound")
+			end
+		end
+		local said = system:Speak(Speaker(), Speech.CONCEPT_TAUNT, Speech.Criteria(voice, Speech.OFFENSE, SURE, false, "zombie"), First, 0)
+		T.eq(said.rule:match("^Taunt") ~= nil, true, voice.name .. " as a zombie: the taunt, " .. said.rule)
+	end
+end)
+
 T.test("the gesture is in the criteria set only when given", function()
 	T.eq(Speech.Criteria(VOICES[1], Speech.OFFENSE, SURE, false).gesture, nil)
 	T.eq(Speech.Criteria(VOICES[1], Speech.OFFENSE, SURE, false, "dance").gesture, "dance")

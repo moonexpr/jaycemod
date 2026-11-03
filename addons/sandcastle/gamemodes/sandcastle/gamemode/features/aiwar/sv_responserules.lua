@@ -30,15 +30,16 @@ local function Speaker(entry)
 end
 
 -- The soldier speaks concept in role, if a rule has it say something and
--- it is not still speaking; to listener alone when given (a greeting).
-function Controller:SpeakConcept(ent, concept, role, blocked, now, listener)
+-- it is not still speaking; to listener alone when given (a greeting), and
+-- with the gesture it plays (a taunt danced, gestures.txt) when given.
+function Controller:SpeakConcept(ent, concept, role, blocked, now, listener, gesture)
 	local entry = self.soldiers[ent]
 	-- an enlisted NPC that is no NextBot soldier, or a model with no voice, says nothing
 	local voice = ent.NSVoiceLines
 	if not (voice and voice.name and entry.soldier:IsAlive()) then return end
 	local speaker = Speaker(entry)
 	if now < speaker.busyUntil then return end
-	local criteria = Speech.Criteria(voice, role, math.random(0, 100), blocked)
+	local criteria = Speech.Criteria(voice, role, math.random(0, 100), blocked, gesture)
 	local said = Rules:Speak(speaker, concept, criteria, now, string.format("#%d %s %s on %s", ent:EntIndex(), voice.affiliation, voice.name, role))
 	if not said then return end
 	local line, length = said.response, 0

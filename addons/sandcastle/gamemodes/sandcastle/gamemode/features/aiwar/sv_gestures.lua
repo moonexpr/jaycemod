@@ -26,13 +26,14 @@ function Controller:Gesture(ent, occasion, now)
 	local act = _G[name]
 	local sequence = ent:SelectWeightedSequence(act)
 	if sequence < 0 then return end
-	self:GestureSound(ent, Gestures.Name(name), now)
+	local gesture = Gestures.Name(name)
+	self:GestureSound(ent, gesture, now)
 	-- a taunt is the whole body's: it stands still while it plays, and says a
-	-- long line with it
+	-- long line with it (danced or flexed, a cheer: gestures.txt)
 	if Gestures.Still(name) then
 		local playing = ent:IsPlayer() and 1 or rate
 		entry.soldier:HoldStill(ent:SequenceDuration(sequence) / playing)
-		self:SpeakConcept(ent, Speech.CONCEPT_TAUNT, self:RoleOf(entry), false, now)
+		self:SpeakConcept(ent, Speech.CONCEPT_TAUNT, self:RoleOf(entry), false, now, nil, gesture)
 	end
 	if ent:IsPlayer() then
 		ent:DoAnimationEvent(act)

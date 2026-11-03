@@ -63,3 +63,92 @@ rule GestureLaugh
 	criteria ConceptGesture IsLaugh
 	response GestureLaugh
 }
+
+// A taunt danced or flexed to the boombox (TLK_NS_TAUNT with the gesture,
+// features/aiwar/sv_gestures.lua): the soldier cheers along in its own
+// voice, in place of its long taunt. One rule a gesture, as a criterion
+// matches one value; each outranks the voice's taunt by its gesture.
+response CheerRebelMale
+{
+	speak "vo/npc/male01/yeah02.wav" defaultdelay
+	speak "vo/npc/male01/nice.wav" defaultdelay
+}
+rule CheerRebelMale
+{
+	criteria ConceptTaunt IsRebel NotSaidTaunt IsMaleVoice IsDance
+	ApplyContext "SaidTaunt:1:20"
+	response CheerRebelMale
+}
+rule CheerRebelMaleFlexing
+{
+	criteria ConceptTaunt IsRebel NotSaidTaunt IsMaleVoice IsMuscle
+	ApplyContext "SaidTaunt:1:20"
+	response CheerRebelMale
+}
+response CheerRebelFemale
+{
+	speak "vo/npc/female01/yeah02.wav" defaultdelay
+	speak "vo/npc/female01/nice01.wav" defaultdelay
+}
+rule CheerRebelFemale
+{
+	criteria ConceptTaunt IsRebel NotSaidTaunt IsFemaleVoice IsDance
+	ApplyContext "SaidTaunt:1:20"
+	response CheerRebelFemale
+}
+rule CheerRebelFemaleFlexing
+{
+	criteria ConceptTaunt IsRebel NotSaidTaunt IsFemaleVoice IsMuscle
+	ApplyContext "SaidTaunt:1:20"
+	response CheerRebelFemale
+}
+response CheerRebelVortigaunt
+{
+	speak "vo/npc/vortigaunt/yes.wav" defaultdelay
+}
+rule CheerRebelVortigaunt
+{
+	criteria ConceptTaunt IsRebel NotSaidTaunt IsVortigauntVoice IsDance
+	ApplyContext "SaidTaunt:1:20"
+	response CheerRebelVortigaunt
+}
+rule CheerRebelVortigauntFlexing
+{
+	criteria ConceptTaunt IsRebel NotSaidTaunt IsVortigauntVoice IsMuscle
+	ApplyContext "SaidTaunt:1:20"
+	response CheerRebelVortigaunt
+}
+response CheerCombineSoldier
+{
+	speak "npc/combine_soldier/vo/affirmative.wav" defaultdelay
+	speak "npc/combine_soldier/vo/affirmative2.wav" defaultdelay
+}
+rule CheerCombineSoldier
+{
+	criteria ConceptTaunt IsCombine NotSaidTaunt IsSoldierVoice IsDance
+	ApplyContext "SaidTaunt:1:20"
+	response CheerCombineSoldier
+}
+rule CheerCombineSoldierFlexing
+{
+	criteria ConceptTaunt IsCombine NotSaidTaunt IsSoldierVoice IsMuscle
+	ApplyContext "SaidTaunt:1:20"
+	response CheerCombineSoldier
+}
+response CheerCombineMetrocop
+{
+	speak "npc/metropolice/vo/affirmative.wav" defaultdelay
+	speak "npc/metropolice/vo/affirmative2.wav" defaultdelay
+}
+rule CheerCombineMetrocop
+{
+	criteria ConceptTaunt IsCombine NotSaidTaunt IsMetrocopVoice IsDance
+	ApplyContext "SaidTaunt:1:20"
+	response CheerCombineMetrocop
+}
+rule CheerCombineMetrocopFlexing
+{
+	criteria ConceptTaunt IsCombine NotSaidTaunt IsMetrocopVoice IsMuscle
+	ApplyContext "SaidTaunt:1:20"
+	response CheerCombineMetrocop
+}
