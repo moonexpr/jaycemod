@@ -19,6 +19,11 @@ def test_a_generated_with_footer_goes_too():
     assert stripped(message) == "Add x\n"
 
 
+def test_a_copilot_co_author_goes_too():
+    message = "Add x\n\nCo-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>\n"
+    assert stripped(message) == "Add x\n"
+
+
 def test_a_message_without_attribution_is_unchanged():
     assert stripped("Add x\n\nCo-authored by the map's I/O.\n") == "Add x\n\nCo-authored by the map's I/O.\n"
 
@@ -55,3 +60,23 @@ def test_a_rewrite_keeps_trees_merges_and_authors_and_drops_attribution(tmp_path
     assert git(repo, "rev-list", "--merges", "--count", after) == "1"
     assert git(repo, "log", "--format=%an %ae %ad", before) == git(repo, "log", "--format=%an %ae %ad", after)
     assert git(repo, "rev-parse", f"{after}~3") == git(repo, "rev-parse", f"{before}~3")  # base untouched
+
+
+def test_a_commit_by_claude_becomes_the_owners_with_its_dates(tmp_path):
+    repo = tmp_path / "r"
+    repo.mkdir()
+    git(repo, "init", "-q", "-b", "main")
+    git(repo, "config", "user.name", "Op")
+    git(repo, "config", "user.email", "op@example.com")
+    commit(repo, "a", "base")
+    git(repo, "config", "user.name", "Claude")
+    git(repo, "config", "user.email", "noreply@anthropic.com")
+    commit(repo, "b", "by the assistant")
+    before = git(repo, "rev-parse", "main")
+
+    after = rewrite(Git(repo, sign=False), before, before)
+
+    assert git(repo, "log", "-1", "--format=%an <%ae>|%cn <%ce>", after) == \
+        "John Chandara <john.chandara@icloud.com>|John Chandara <john.chandara@icloud.com>"
+    assert git(repo, "log", "-1", "--format=%ad %cd", after) == git(repo, "log", "-1", "--format=%ad %cd", before)
+    assert git(repo, "rev-parse", f"{after}~1") == git(repo, "rev-parse", f"{before}~1")

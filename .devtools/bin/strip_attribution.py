@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""Rewrite a branch's history without Claude attribution in its messages.
+"""Rewrite a branch's history without Claude or Copilot attribution.
 
     strip_attribution.py OLDEST [TIP]
 
 Every commit from OLDEST to TIP (default HEAD's branch) is rebuilt with
 git commit-tree: the same tree, parents mapped to their rewrites, the same
-author and committer and dates, and the message without its Co-Authored-By,
-Claude-Session and "Generated with Claude Code" lines. A commit whose message
+author and committer and dates (Claude's commits the owner's, OWNER), and
+the message without its Claude or Copilot Co-Authored-By, Claude-Session and
+"Generated with Claude Code" lines. A commit whose message
 and parents are unchanged is kept as it is, signature and all. The working
 tree and index are never touched, so uncommitted work survives; the branch
 moves only if it still points at TIP. Prints the new tip; pushing it is the
@@ -19,16 +20,25 @@ import os
 import re
 import subprocess
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 ATTRIBUTION = re.compile(
-    r"^(Co-Authored-By: .*(Claude|anthropic\.com).*"
+    r"^(Co-Authored-By: .*(Claude|anthropic\.com|Copilot).*"
     r"|Claude-Session: .*"
     r"|🤖 Generated with \[Claude Code\].*"
     r"|https://claude\.ai/code/session_\S+)$",
     re.IGNORECASE,
 )
+
+
+OWNER = {("Claude", "noreply@anthropic.com"): ("John Chandara", "john.chandara@icloud.com")}
+
+
+def owned(person: tuple[str, str, str]) -> tuple[str, str, str]:
+    """The person, or the owner in an assistant's place, at the same date."""
+    name, email = OWNER.get(person[:2], person[:2])
+    return name, email, person[2]
 
 
 def stripped(message: str) -> str:
@@ -82,10 +92,11 @@ def rewrite(git: Git, oldest: str, tip: str) -> str:
         c = git.read(sha)
         parents = tuple(mapped.get(p, p) for p in c.parents)
         message = stripped(c.message)
-        if parents == c.parents and message == c.message:
+        author, committer = owned(c.author), owned(c.committer)
+        if parents == c.parents and message == c.message and (author, committer) == (c.author, c.committer):
             mapped[sha] = sha
             continue
-        mapped[sha] = git.write(c, parents, message)
+        mapped[sha] = git.write(replace(c, author=author, committer=committer), parents, message)
     return mapped[git.run("rev-parse", tip).strip()]
 
 
