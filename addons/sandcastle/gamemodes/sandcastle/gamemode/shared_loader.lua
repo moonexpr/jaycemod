@@ -13,6 +13,7 @@ WS = WS or {}
 -- sandcastle_dev's reload reads GAMEMODE_ROOT and CHUNK_ENV off it.
 -- GM exists only while the gamemode loads.
 local GAMEMODE_ROOT = GM.FolderName .. "/gamemode/"
+local Boot = WS.Logger("boot")
 local CHUNK_ENV = setmetatable({}, { __index = _G })
 
 local API_EXTENSIONS = { list = true, timer = true, world = true, generator = true }
@@ -28,6 +29,7 @@ end
 
 function WS.require(name)
 	if package.loaded[name] == nil then
+		Boot("require %s", name)
 		local chunk = CompileFile(GAMEMODE_ROOT .. ModulePath(name))
 		setfenv(chunk, CHUNK_ENV)(name)
 	end
@@ -51,6 +53,7 @@ local Namespaces = NATIVE and core.namespace or WS.require("foundation.core.name
 local INDEX_ENV = Namespaces.Environment(_G, WS.require)
 
 local function Index(path)
+	Boot("index %s", path)
 	setfenv(CompileFile(GAMEMODE_ROOT .. path), INDEX_ENV)()
 end
 

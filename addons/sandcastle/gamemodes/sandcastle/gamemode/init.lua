@@ -1,4 +1,5 @@
 AddCSLuaFile("shared.lua")
+AddCSLuaFile("logging.lua")
 AddCSLuaFile("shared_loader.lua")
 AddCSLuaFile("cl_init.lua")
 
@@ -17,6 +18,7 @@ do
 	local BOOTSTRAP = {
 		["cl_init.lua"] = true,
 		["init.lua"] = true,
+		["logging.lua"] = true,
 		["shared.lua"] = true,
 		["shared_loader.lua"] = true,
 	}

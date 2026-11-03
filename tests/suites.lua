@@ -92,7 +92,7 @@ return {
 			"nav_progress_replay",
 		},
 		sources = {
-			G .. "cl_", G .. "sh_", G .. "sv_",
+			G .. "cl_", G .. "sh_", G .. "sv_", G .. "logging.lua",
 			G .. "includes/admin_notices.lua", G .. "includes/factions.lua",
 			G .. "includes/kill_icons_sheet.lua", G .. "includes/localization.lua",
 			G .. "includes/nav_clearance.lua", G .. "includes/nav_progress.lua",

@@ -7,9 +7,14 @@ GM.Author = "moonexpr"
 GM.Email = ""
 GM.Website = ""
 
+-- The gamemode's logging first, so the load itself can log (the boot
+-- subsystem); then the gamemode's require, and foundation's namespaces.
+include("logging.lua")
+local Boot = WS.Logger("boot")
+Boot("shared.lua: %s, the gamemode's load begins", SERVER and "server" or "client")
+
 DeriveGamemode("sandbox")
 
--- The gamemode's require, and foundation's namespaces, before anything else.
 include("shared_loader.lua")
 
 -- Root modules load by prefix: sh_ on both realms, sv_ on the
@@ -27,9 +32,13 @@ local LOADED_FIRST = {
 	["sh_events.lua"] = true,
 }
 
+Boot("include sh_core.lua")
 include("sh_core.lua")
 for _, f in ipairs(GM:WSModules("sh_")) do
-	if not LOADED_FIRST[f] then include(f) end
+	if not LOADED_FIRST[f] then
+		Boot("include %s", f)
+		include(f)
+	end
 end
 
 local PLAYER_CLASS_FILES = {
@@ -42,6 +51,7 @@ local PLAYER_CLASS_FILES = {
 
 for _, path in ipairs(PLAYER_CLASS_FILES) do
 	if SERVER then AddCSLuaFile(path) end
+	Boot("include %s", path)
 	include(path)
 end
 

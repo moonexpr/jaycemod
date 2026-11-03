@@ -41,7 +41,7 @@ T.test("WS.require keeps logical module names while resolving the new directory 
 		GM = { FolderName = "sandcastle" },
 		SERVER = false,
 		CLIENT = false,
-		WS = {},
+		WS = { Logger = function() return function() end end },
 		package = fakePackage,
 		util = { IsBinaryModuleInstalled = function() return false end },
 		CompileFile = function(path)

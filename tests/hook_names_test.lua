@@ -11,7 +11,7 @@ local FIRED_ELSEWHERE = {}
 for _, name in ipairs({
 	"AcceptInput", "CalcView", "CreateClientsideRagdoll", "CreateEntityRagdoll", "EntityFireBullets",
 	"EntityKeyValue", "EntityNetworkedVarChanged", "EntityRemoved", "EntityTakeDamage", "GetFallDamage",
-	"HUDPaint", "InitPostEntity", "KeyPress", "OnContextMenuOpen", "OnEntityCreated", "OnScreenSizeChanged",
+	"HUDPaint", "Initialize", "InitPostEntity", "KeyPress", "OnContextMenuOpen", "OnEntityCreated", "OnScreenSizeChanged",
 	"PlayerBindPress", "PlayerCanPickupWeapon", "PlayerDeath", "PlayerDeathSound", "PlayerDeathThink", "PlayerDisconnected",
 	"PlayerEndVoice", "PlayerFootstep", "PlayerHurt", "PlayerInitialSpawn", "PlayerLoadout",
 	"PlayerRequestTeam", "PlayerSpawn", "PlayerStartVoice", "PlayerUse", "PopulateMenuBar", "PopulateToolMenu",

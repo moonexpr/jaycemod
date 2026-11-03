@@ -121,7 +121,9 @@ end
 -- CompileFile rather than include, so an error in the file reaches the
 -- caller. CompileFile prints a syntax error itself and returns no function:
 -- the file's chunk, or nil.
+local Boot = WS.Logger("boot")
 function FeatureFiles:Compile(path)
+	Boot("feature file %s", path)
 	local chunk = CompileFile(GAMEMODE_ROOT .. path)
 	if isfunction(chunk) then return chunk end
 end

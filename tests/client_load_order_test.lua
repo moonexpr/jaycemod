@@ -41,6 +41,12 @@ local function clientOrder(failing)
 				setfenv(assert(loadfile(ROOT .. path)), env)()
 				return
 			end
+			-- the logger, as logging.lua publishes it: silent
+			if path == "logging.lua" then
+				env.WS = env.WS or {}
+				env.WS.Logger = function() return function() end end
+				return
+			end
 			order[#order + 1] = path
 			if path == failing then error(path .. ": failed at load") end
 		end,

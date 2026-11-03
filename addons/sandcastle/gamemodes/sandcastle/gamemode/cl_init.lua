@@ -9,7 +9,9 @@ local LOADED_FIRST = { "cl_client_settings.lua", "cl_hits.lua", "cl_ui.lua", "cl
 
 -- A module failing at load is reported with its stack, and the rest load
 -- on: one broken panel takes no other module with it.
+local Boot = WS.Logger("boot")
 local function Load(f)
+	Boot("include %s", f)
 	xpcall(include, ErrorNoHaltWithStack, f)
 end
 
