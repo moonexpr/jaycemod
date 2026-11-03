@@ -68,6 +68,13 @@ def test_published_history_names_no_assistant(tmp_path):
     assert "The body stays, CLAUDE.md and all." in log
 
 
+def test_a_message_naming_an_assistant_in_its_prose_is_published(tmp_path):
+    repo, remote = project(tmp_path)
+    commit(repo, ["c.lua"], "Map Claude <noreply@anthropic.com> to the owner, drop Copilot's co-author lines")
+    publish(repo, remote)
+    assert "noreply@anthropic.com" in git(remote, "log", "-1", "main", "--format=%B")
+
+
 def test_a_later_publish_fast_forwards_the_one_before(tmp_path):
     repo, remote = project(tmp_path)
     publish(repo, remote)

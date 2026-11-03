@@ -36,7 +36,8 @@ if git log --name-only --format= | grep -qE "$EXCLUDED"; then
 	echo "publish_public.sh: an excluded path survived the filter" >&2
 	exit 1
 fi
-if git log --format='%an %ae %cn %ce%n%B' | grep -qiE 'anthropic\.com|co-authored-by: .*copilot|claude-session:'; then
+if git log --format='%an <%ae>%n%cn <%ce>' | grep -qiE 'anthropic\.com|copilot' ||
+	git log --format=%B | grep -qiE '^(co-authored-by: .*(claude|anthropic|copilot)|claude-session:)'; then
 	echo "publish_public.sh: attribution survived the filter" >&2
 	exit 1
 fi
