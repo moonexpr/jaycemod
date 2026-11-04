@@ -134,6 +134,15 @@ class CommandLine(unittest.TestCase):
         return self.argv[self.argv.index("+" + name) + 1]
 
 
+class AServerOnAnotherGamemode(unittest.TestCase):
+    def test_starts_the_gamemode_it_names(self):
+        make_server = srcds.make_server
+        self.assertIn("gamemode", make_server.__code__.co_varnames)
+        config = srcds.ServerConfig("gm_construct", 27025, "pw", 24, gamemode="base")
+        argv = srcds.command_line(INSTALL, config)
+        self.assertEqual(argv[argv.index("+gamemode") + 1], "base")
+
+
 class ServerConfigRefuses(unittest.TestCase):
     def test_a_password_with_a_space(self):
         with self.assertRaises(ValueError):

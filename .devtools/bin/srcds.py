@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 r"""Run Garry's Mod's dedicated server under CrossOver and drive it with RCON.
 
-  srcds.py start [--map gm_construct] [--port 27025] [--maxplayers 32] [--ip 0.0.0.0] [--no-lua-refresh] [--no-p2p]
+  srcds.py start [--gamemode base] [--map gm_construct] [--port 27025] [--maxplayers 32] [--ip 0.0.0.0] [--no-lua-refresh] [--no-p2p]
                                                        start, wait for the map
   srcds.py rcon 'status'                               run a console command
   srcds.py stop                                        quit the server we started
@@ -659,12 +659,13 @@ def rcon_command(instance: Instance, text: str, timeout: float = 10) -> str:
 
 
 def make_server(map_name: str, port: int, lua_refresh: bool = True, maxplayers: int = DEFAULT_MAXPLAYERS,
-                ip: Optional[str] = None, instance: Instance = MAIN, p2p: bool = True) -> Server:
+                ip: Optional[str] = None, instance: Instance = MAIN, p2p: bool = True,
+                gamemode: str = "sandcastle") -> Server:
     """ip: the address to bind; by default the running server's (rcon, stop), else 127.0.0.1."""
     install = Install.discover(instance)
     ip = ip or started_host(instance)
     config = ServerConfig(map_name, port, password(), maxplayers, lua_refresh=lua_refresh, ip=ip, p2p=p2p,
-                          steam_account=steam_account(instance))
+                          steam_account=steam_account(instance), gamemode=gamemode)
     return Server(install, config, reach_address(ip), instance)
 
 
@@ -687,6 +688,8 @@ def main() -> int:
     start.add_argument("--console", action="store_true", help="follow the console in an iTerm window")
     start.add_argument("--no-p2p", dest="p2p", action="store_false",
                        help="leave out -p2p: no joining through Steam's relays, only at the address")
+    start.add_argument("--gamemode", default="sandcastle",
+                       help="the gamemode to run; base loads quickest, for engineering what needs no game")
     rcon = sub.add_parser("rcon")
     rcon.add_argument("command")
     sub.add_parser("stop")
@@ -698,7 +701,7 @@ def main() -> int:
         if args.action == "start":
             port = args.port or files.port
             server = make_server(args.map, port, args.lua_refresh, args.maxplayers, bind_address(args.ip), instance,
-                                 args.p2p)
+                                 args.p2p, args.gamemode)
             server.start()
             if args.console:
                 open_console(files.log)
