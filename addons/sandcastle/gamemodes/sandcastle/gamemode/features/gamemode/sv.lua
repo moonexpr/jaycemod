@@ -313,11 +313,23 @@ end
 
 local ACTIONS = {
 	[Gamemode.STAY] = function() end,
-	[Gamemode.START_TRANSITION] = function(self) self:OpenTransition() end,
+	[Gamemode.START_TRANSITION] = function(self)
+		hook.Run("WSGameStarting")
+		self:OpenTransition()
+	end,
 	-- the load's: its opening comes once the players are in (CUE_OPENING)
-	[Gamemode.START_LOAD_COUNTDOWN] = function(self) self:OpenClock() end,
-	[Gamemode.CANCEL_TRANSITION] = function(self) self:CancelTransition() end,
-	[Gamemode.ENTER_SANDBOX] = function() WS.Rules:Halt() end,
+	[Gamemode.START_LOAD_COUNTDOWN] = function(self)
+		hook.Run("WSGameStarting")
+		self:OpenClock()
+	end,
+	[Gamemode.CANCEL_TRANSITION] = function(self)
+		self:CancelTransition()
+		hook.Run("WSGameStopped")
+	end,
+	[Gamemode.ENTER_SANDBOX] = function()
+		WS.Rules:Halt()
+		hook.Run("WSGameStopped")
+	end,
 	[Gamemode.WAIT] = function(self) self:OpenWait() end,
 	[Gamemode.STOP_WAITING] = function(self)
 		timer.Remove(WAIT_TIMER)

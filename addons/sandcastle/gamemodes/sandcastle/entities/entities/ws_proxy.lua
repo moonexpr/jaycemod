@@ -9,6 +9,8 @@
 AddCSLuaFile()
 
 ENT.Type = "anim"
+-- A save holds what makes it: its target makes it again.
+ENT.DoNotDuplicate = true
 ENT.Base = "base_anim"
 ENT.Spawnable = false
 ENT.PhysgunDisabled = true

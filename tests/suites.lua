@@ -80,7 +80,7 @@ return {
 			"zombie", "fortune", "holiday_on_holiday", "spells_cast", "tag", "wheel", "trigger_ignite", "npc_*",
 			"ns_debug_panel", "nbdebug_contract",
 		},
-		sources = { G .. "features/", G .. "vendor/", E, "tests/fake_actor.lua", "tests/fake_combatant.lua", "tests/fake_caster.lua" },
+		sources = { G .. "features/", G .. "vendor/", E, "tests/fake_actor.lua", "tests/fake_builder.lua", "tests/fake_combatant.lua", "tests/fake_caster.lua" },
 	},
 	{
 		name = "ws",

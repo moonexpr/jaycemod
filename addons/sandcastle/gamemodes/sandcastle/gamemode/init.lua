@@ -108,6 +108,7 @@ end
 
 Include("sv_analytics.lua")
 Include("sv_arrivals.lua")
+Include("sv_builder.lua")
 Include("sv_content.lua")
 Include("sv_defaults.lua")
 Include("sv_economy.lua")

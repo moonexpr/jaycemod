@@ -158,6 +158,12 @@ local function FireNewRoundOutputs()
 	end
 end
 
+-- What a feature's own entities last a round's cleanup as (the game
+-- builder's pieces, and what is wired to them).
+function Controller:KeepThroughCleanup(class)
+	if not table.HasValue(CLEANUP_KEEPS, class) then CLEANUP_KEEPS[#CLEANUP_KEEPS + 1] = class end
+end
+
 function Controller:CleanUpMap()
 	self.suppressNewMap = true
 	game.CleanUpMap(false, CLEANUP_KEEPS)

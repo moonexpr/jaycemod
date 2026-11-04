@@ -493,6 +493,16 @@ The rule is a constant, `MODE_CATEGORIES[category] = { [mode] = true }`, read by
 
 Admins place the gamemode's TF2 map entities with the toolgun, to set up a game on a non-TF2 map: payload on `gm_construct`, or CTF. This section is preliminary; open questions are marked **B1** and up.
 
+**Built so far (`features/builder`, the Gameplay tools `build_spawn`, `build_trolley`, `build_point`, `build_flag`, `build_sign`, and the Scenario Editor `edit_scenario`).** Any player may use them in Sandbox mode, on a map holding no objective of its own. Each helper is a folder entity of its own (`shared.lua`, `init.lua`, `cl_init.lua`) on `base_gameplay_piece`, a real thing in the world that does its own work: it holds its properties, the keyvalues of the Hammer entity it stands for, edited through Edit Properties; its Wire ports; its placement; its drawing; and what it makes as a game starts and after each cleanup. `features/builder` holds only what spans them. The tools only place helpers. **Layouts are saved with GMod's saves and dupes** (decided by the operator, 2026-11-03, over the JSON files this section first proposed, as they can be shared): the properties are network variables, which the duplicator carries, and the compiled entities are `DoNotDuplicate`. What building it settled:
+
+- **B1, R11:** a Lua `func_tracktrain` with a studio model follows its path and answers the watcher, given `manualaccelspeed`. Every `path_track` must exist before any activates, or it links to nothing.
+- **R9:** Sandbox loads stools from the gamemode's `entities/weapons/gmod_tool/stools/`.
+- **R10:** `ents.Create` works for the engine classes, but a Lua `SetKeyValue` does not reach `EntityKeyValue`: the builder records their keyvalues itself.
+- **R14:** the builder rebuilds in `PostCleanupMap` and calls `capture:Rebuild()` itself, so the hooks' order does not matter.
+- `Remove` takes effect at the frame's end, so building twice in a frame leaves the first build's points in the capture set.
+- A point on a track needs `team_previouspoint_3_0`: BLU has no base point there, so linear capture gives it none otherwise.
+- **R8:** a save's `duplicator.Paste` honours `DoNotDuplicate`, and each helper class registers its own paste, since the generic one refuses what is not spawnable to anyone but admins. Pasted helpers keep their ids unless one is taken, and a checkpoint finds its node by the entity index the duplicator keys pastes by.
+
 **Principle.** The builder places the same entities a TF2 map would hold, with the same keyvalues, so the same features load and run them (the entity-driven direction and `foundation/features.lua`'s lazy loader). It adds no game logic of its own. What it adds is a **layout**: a pure value describing the pieces, which is validated, saved, and turned into entities, and which is rebuilt after every round cleanup (gap 17).
 
 **Entities a game needs, and what the gamemode has today.**
@@ -550,6 +560,8 @@ Tool modes are named `build_*`, with no `ws` prefix, and any setting a tool adds
 4. **Every cleanup rebuilds the layout (gap 17).** The full reset runs `CleanUpMap`, which removes every placed entity. The builder recreates them from the layout in a `PostCleanupMap` listener, then asks the loaded features that index placed classes to re-read them (today `capture:Rebuild()`, which already runs on `PostCleanupMap` and on `RoundSpawn`). Whether a single `PostCleanupMap` pass can be ordered reliably after the builder's, or whether the rounds controller should call a registered restorer inside `CleanUpMap`, is research item R14.
 
 **Saving and loading a layout per map: JSON under `data/`, not dupes or saves.**
+
+*Superseded: saves and dupes hold layouts (above). What follows is the first proposal, kept for its reasoning.*
 
 - **The choice.** `data/sandcastle/layouts/<map>.json`, the `ToData` form, written and read by the builder controller. Console commands, admin-only (`GAME_BUILD`): `mp_layout_save`, `mp_layout_load`, `mp_layout_clear`, `mp_layout_check` (prints `Check`'s reasons). A saved layout loads at map start when `mp_layout_autoload` is 1 (the default); the map then starts in the mode `sv_gameplay_enabled` holds, as a TF2 map does.
 - **Why JSON and not Sandbox dupes or saves:**
