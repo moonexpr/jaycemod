@@ -52,4 +52,25 @@ T.test("the tuning is defined", function()
 	T.defined(Locomotion.RAPPEL_SPEED, "RAPPEL_SPEED")
 end)
 
+T.test("a rappel's rope is tied where the soldier left the ground", function()
+	local anchor = Locomotion.RappelAnchor({ x = 90, y = 0, z = -400 }, { x = 0, y = 0, z = 100 }, 72)
+	T.eq(anchor.x, 0, "over the ledge")
+	T.eq(anchor.y, 0)
+	T.eq(anchor.z > 100, true, "above its surface")
+end)
+
+T.test("a soldier that never stood goes down a rope from a body's height above it", function()
+	local anchor = Locomotion.RappelAnchor({ x = 90, y = 5, z = -400 }, nil, 72)
+	T.eq(anchor.x, 90)
+	T.eq(anchor.y, 5)
+	T.eq(anchor.z, -328)
+end)
+
+T.test("a rappel's sounds are there to play", function()
+	for _, name in ipairs({ "clip", "run", "land" }) do
+		T.eq(#Noise.RAPPEL_SOUNDS[name] > 0, true, name)
+	end
+	T.defined(Noise.RAPPEL_RUN_EVERY, "RAPPEL_RUN_EVERY")
+end)
+
 T.finish()

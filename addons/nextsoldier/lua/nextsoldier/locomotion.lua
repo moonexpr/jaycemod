@@ -58,6 +58,24 @@ function RappelDescent(downSpeed, height, gravity, rappelling)
 	return downSpeed < RAPPEL_SPEED and downSpeed or RAPPEL_SPEED, true
 end
 
+-- Where a rappel's rope is tied: where it left the ground (leftGround), a little
+-- above the surface, else, never having stood, a body's height above it.
+local ANCHOR_RISE = 4
+function RappelAnchor(pos, leftGround, height)
+	if leftGround then return { x = leftGround.x, y = leftGround.y, z = leftGround.z + ANCHOR_RISE } end
+	return { x = pos.x, y = pos.y, z = pos.z + height }
+end
+
+-- A hard landing: a body is held to IMPACT_SPEED for IMPACT_RECOVERY seconds.
+IMPACT_SPEED = 100
+IMPACT_RECOVERY = 0.45
+
+-- The speed a body in this gait moves at now, recovering until recoveredAt (nil: not).
+function Recovering(gait, now, recoveredAt)
+	if recoveredAt and now < recoveredAt and gait > IMPACT_SPEED then return IMPACT_SPEED end
+	return gait
+end
+
 -- A route's turns rounded outward until the body passes them. The engine's
 -- route points sit on the openings between nav areas, nearest where the
 -- route comes from: round a corner, by its inside wall, where a body as wide

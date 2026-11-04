@@ -83,7 +83,7 @@ NEXTBOT = Component("nextbot", {
 LOCOMOTION = Component("locomotion", {
 	methods = { "FollowPath", "GetPath", "FaceTowards", "IsMoving", "Jump", "GetStepHeight", "GetDeathDropHeight",
 		"IsOnGround", "TraceHull", "TraceLine" },
-	hooks = { "GetPathGenerator", "OnComputePath", "CustomClimbing", "OnStartClimbing", "OnLandOnGround",
+	hooks = { "GetPathGenerator", "OnComputePath", "CustomClimbing", "OnStartClimbing", "OnLandOnGround", "OnLeaveGround",
 		"OnNavAreaChanged" },
 	fields = { "WalkSpeed", "RunSpeed", "ClimbLedges", "ClimbLedgesMaxHeight", "DeathDropHeight" },
 })

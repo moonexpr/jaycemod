@@ -50,6 +50,15 @@ local LANDING_VOLUME, HARDER_VOLUME, UNSAFE_VOLUME = 0.5, 0.85, 1.0
 -- A jump onto a ledge (nextsoldier.locomotion.leap) lands as a jump does.
 JUMP_LANDING_VOLUME = LANDING_VOLUME
 
+-- A rappel's sounds, HL2's Combine zipline: the clip catching the rope, the rope
+-- running through it (again every RAPPEL_RUN_EVERY seconds), boots on the floor.
+RAPPEL_SOUNDS = {
+	clip = { "npc/combine_soldier/zipline_clip1.wav", "npc/combine_soldier/zipline_clip2.wav" },
+	run = { "npc/combine_soldier/zipline1.wav", "npc/combine_soldier/zipline2.wav" },
+	land = { "npc/combine_soldier/zipline_hitground1.wav", "npc/combine_soldier/zipline_hitground2.wav" },
+}
+RAPPEL_RUN_EVERY = 1.3
+
 -- The volume of the step a landing at fallSpeed makes; 0, none.
 function Landing(fallSpeed)
 	if fallSpeed > MAX_SAFE_FALL_SPEED then return UNSAFE_VOLUME end

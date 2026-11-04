@@ -165,4 +165,19 @@ T.test("a path's climb lands past the ledge's foot, and plans its path again fro
 	T.eq(base:find("end, ledge, function() PathAgain(self) end)", 1, true) ~= nil, true, "its path planned again")
 end)
 
+T.test("a rappel shows a rope and sounds, for as long as it lasts", function()
+	local war = Code(T.ROOT .. "sh_war_soldier.lua")
+	T.eq(war:find('ents.Create("keyframe_rope")', 1, true) ~= nil, true, "the rope")
+	T.eq(war:find("self:DeleteOnRemove(self.nsRope)", 1, true) ~= nil, true, "gone with the soldier")
+	T.eq(war:find("if self.NSRappelling then self:NSRappelEnd(true) end", 1, true) ~= nil, true, "gone on landing")
+	T.eq(war:find("if self.NSRappelling then self:NSRappelEnd(false) end", 1, true) ~= nil, true, "gone on death")
+end)
+
+T.test("a hard landing slows the body while it recovers", function()
+	local base = Code(ADDON .. "lua/entities/base_nextsoldier.lua")
+	local war = Code(T.ROOT .. "sh_war_soldier.lua")
+	T.eq(base:find("Locomotion.Recovering(", 1, true) ~= nil, true, "its speed each tick")
+	T.eq(war:find("if Noise.HardLanding(fall) then self:NSImpact() end", 1, true) ~= nil, true, "on a hard landing")
+end)
+
 T.finish()

@@ -88,6 +88,7 @@ end
 local Behavior = nextsoldier.behavior
 local Gaze = nextsoldier.body.gaze
 local Ladder = nextsoldier.locomotion.ladder
+local Locomotion = nextsoldier.locomotion
 local Leap = nextsoldier.locomotion.leap
 local JumpActs = nextsoldier.body.jump
 -- A point looked at along a path, at eye height.
@@ -278,7 +279,8 @@ function ENT:BehaveUpdate(interval)
 	self:CustomThink()
 	if self:IsScrambling() then return end
 	if self:IsAIDisabled() then return end
-	self.loco:SetDesiredSpeed(self:ShouldRun() and self.RunSpeed or self.WalkSpeed)
+	local gait = self:ShouldRun() and self.RunSpeed or self.WalkSpeed
+	self.loco:SetDesiredSpeed(Locomotion.Recovering(gait, CurTime(), self.nsImpactUntil))
 	self:IntentionUpdate(interval)
 end
 
@@ -406,6 +408,11 @@ function ENT:ScrambleUpdate()
 		if scramble.done then scramble.done() end
 	end
 	return true
+end
+
+-- It hit the ground hard: slowed while it recovers (nextsoldier.locomotion).
+function ENT:NSImpact()
+	self.nsImpactUntil = CurTime() + Locomotion.IMPACT_RECOVERY
 end
 
 -- Its path planned again, from where a scramble has set it.

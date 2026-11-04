@@ -118,12 +118,65 @@ function WS.WarSoldier(ENT)
 			self:NSRappel(velocity)
 			return
 		end
-		self.NSRappelling = nil
+		if self.NSRappelling then self:NSRappelEnd(true) end
 		local step = Noise.Step(velocity:Length2D(), self.IsCrouching ~= nil and self:IsCrouching())
 		if step and now >= (self.NSNextStep or 0) then
 			PlayStep(self, Noise.Played(step.volume), self:NSGear(step.running))
 			self.NSNextStep = now + step.interval
 		end
+	end
+
+	-- Where it left the ground, where a rappel's rope is tied.
+	function ENT:OnLeaveGround() self.NSLeftGroundAt = self:GetPos() end
+
+	-- A rappel shows: a rope from where it left the ground to its waist, for as long
+	-- as it lasts, and the sounds of one (Noise.RAPPEL_SOUNDS).
+	local ROPE_MATERIAL, ROPE_WIDTH, ROPE_SUBDIVISIONS = "cable/cable2", 1.5, 2
+	local WAIST = 0.55 -- of its height
+	local function PlayRappel(self, sounds)
+		local sound = sounds[math.random(#sounds)]
+		self:EmitSound(sound, STEP_PLAY_LEVEL)
+		return sound
+	end
+
+	function ENT:NSRappelBegin()
+		local mins, maxs = self:GetCollisionBounds()
+		local height = maxs.z - mins.z
+		local tied = Locomotion.RappelAnchor(self:GetPos(), self.NSLeftGroundAt, height)
+		local anchor = Vector(tied.x, tied.y, tied.z)
+		local rope = ents.Create("keyframe_rope")
+		rope:SetPos(anchor)
+		rope:SetKeyValue("RopeMaterial", ROPE_MATERIAL)
+		rope:SetKeyValue("Width", ROPE_WIDTH)
+		rope:SetKeyValue("Subdiv", ROPE_SUBDIVISIONS)
+		rope:SetKeyValue("Slack", 0)
+		rope:SetEntity("StartEntity", game.GetWorld())
+		rope:SetKeyValue("StartOffset", tostring(anchor))
+		rope:SetEntity("EndEntity", self)
+		rope:SetKeyValue("EndOffset", tostring(Vector(0, 0, height * WAIST)))
+		rope:Spawn()
+		rope:Activate()
+		self.nsRope = rope
+		self:DeleteOnRemove(self.nsRope)
+		PlayRappel(self, Noise.RAPPEL_SOUNDS.clip)
+		self.NSNextRappelRun = 0
+	end
+
+	-- The rope running through its clip, over and over.
+	function ENT:NSRappelRun(now)
+		if now < self.NSNextRappelRun then return end
+		self.NSNextRappelRun = now + Noise.RAPPEL_RUN_EVERY
+		self.nsRappelRunning = PlayRappel(self, Noise.RAPPEL_SOUNDS.run)
+	end
+
+	-- Its rappel over, on the floor or not.
+	function ENT:NSRappelEnd(landed)
+		self.NSRappelling = nil
+		SafeRemoveEntity(self.nsRope)
+		self.nsRope = nil
+		if self.nsRappelRunning then self:StopSound(self.nsRappelRunning) end
+		self.nsRappelRunning = nil
+		if landed then PlayRappel(self, Noise.RAPPEL_SOUNDS.land) end
 	end
 
 	-- Going down a drop that would kill a player, it comes down no faster than
@@ -135,7 +188,9 @@ function WS.WarSoldier(ENT)
 		local floor = util.TraceLine({ start = pos, endpos = pos - Vector(0, 0, RAPPEL_LOOK), mask = self:GetSolidMask(), filter = self })
 		local height = floor.Hit and pos.z - floor.HitPos.z or RAPPEL_LOOK
 		local speed, rappelling = Locomotion.RappelDescent(-velocity.z, height, GetConVar("sv_gravity"):GetFloat(), self.NSRappelling)
+		if rappelling and not self.NSRappelling then self:NSRappelBegin() end
 		self.NSRappelling = rappelling or nil
+		if rappelling then self:NSRappelRun(CurTime()) end
 		if speed < -velocity.z then self.loco:SetVelocity(Vector(velocity.x, velocity.y, -speed)) end
 	end
 
@@ -186,6 +241,7 @@ function WS.WarSoldier(ENT)
 		PlayStep(self, Noise.Played(volume), self:NSGear(true))
 		local landing = self:JumpSequence(JumpActs.LAND)
 		if landing then self:AddGestureSequence(landing, true) end
+		if Noise.HardLanding(fall) then self:NSImpact() end
 		if fall > Noise.MAX_SAFE_FALL_SPEED then
 			Say(self, self.NSVoiceLines.fall)
 		elseif Noise.HardLanding(fall) then
@@ -542,6 +598,7 @@ function WS.WarSoldier(ENT)
 	end
 
 	function ENT:OnDeath(dmg)
+		if self.NSRappelling then self:NSRappelEnd(false) end
 		WS.PlayDeath(self:GetPos(), self.NSVoiceLines)
 		if self:NSCannedDeath(dmg) then return end
 		if self:NSClientRagdoll(dmg) then self:Linger(Ragdoll.HANDOFF) end
