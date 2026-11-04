@@ -95,6 +95,14 @@ return to **Idle** when they reach the goal. Spawned followers are added to
 the player's cleanup list and can be undone with **Z**.
 Scout and Headless Hatman use their `Run_MELEE` animation while moving.
 
+The panel's checkboxes are what selected followers answer the yes-or-no
+queries (`nextsoldier.behavior.Responder`, the follower's `NSBrain`), yes when
+checked and no when not, a change at once. **Should hurry?** picks its gait:
+checked it runs, unchecked it walks. A follower asks only that and **Should
+attack?**, and has no weapon to attack with; the others are shown but change
+nothing, as only a soldier's chart asks them. Aim at a follower with the tool
+for its answers. An errand (`ns_pathfollower_send`) has no responder and runs.
+
 The always-on debug overlay draws the generated path with
 `PathFollower:Draw()` and `debugoverlay`, the active lane's waypoints in amber,
 the clicked goal as a green sphere, and the local movement command as a thick

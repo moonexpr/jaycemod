@@ -7,6 +7,25 @@ TOOL.ConfigName = ""
 TOOL.ClientConVar = {
 	model = "models/player/p2_chell.mdl",
 }
+
+-- The yes-or-no queries a follower answers, a checkbox each, unchecked by default.
+local QUERIES = nextsoldier.behavior.YES_NO_QUERIES
+local QUERY_LABELS = {
+	ShouldAttack = "Should attack?",
+	ShouldHurry = "Should hurry?",
+	ShouldRetreat = "Should retreat?",
+	ShouldPickUp = "Should pick up?",
+}
+local QUERY_HELP = {
+	ShouldHurry = "Should hurry? (runs when checked, walks when not)",
+}
+
+local function QueryConVar(name) return "query_" .. name:lower() end
+
+for _, name in ipairs(QUERIES) do
+	TOOL.ClientConVar[QueryConVar(name)] = "0"
+end
+
 TOOL.Information = {
 	{ name = "left" },
 	{ name = "right" },
@@ -139,11 +158,49 @@ function TOOL:Reload()
 	return true
 end
 
+-- Its selected followers answer as the boxes say, a change at once.
+function TOOL:Think()
+	if CLIENT then return end
+	local selected = selections[self:GetOwner()]
+	if not selected then return end
+	for follower in pairs(selected) do
+		if IsValid(follower) then
+			for _, name in ipairs(QUERIES) do
+				follower:NSRespond(name, self:GetClientNumber(QueryConVar(name)) ~= 0)
+			end
+		else
+			selected[follower] = nil
+		end
+	end
+end
+
+if CLIENT then
+	local YES_COLOR, NO_COLOR = Color(120, 255, 120), Color(255, 140, 140)
+	local QUERY_LINE_HEIGHT, QUERY_OFFSET = 16, 24
+
+	-- What the follower under the crosshair answers.
+	function TOOL:DrawHUD()
+		local follower = self:GetOwner():GetEyeTrace().Entity
+		if not IsValid(follower) or follower:GetClass() ~= "npc_pathfollower" then return end
+		local x, y = ScrW() / 2 + QUERY_OFFSET, ScrH() / 2 + QUERY_OFFSET
+		for i, name in ipairs(QUERIES) do
+			local yes = follower:GetNW2Bool("NSQuery" .. name, false)
+			draw.SimpleTextOutlined(QUERY_LABELS[name] .. " " .. (yes and "yes" or "no"), "DermaDefaultBold",
+				x, y + (i - 1) * QUERY_LINE_HEIGHT, yes and YES_COLOR or NO_COLOR,
+				TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP, 1, color_black)
+		end
+	end
+end
+
 function TOOL.BuildCPanel(panel)
 	panel:Help("Left-click to spawn a follower or add/remove one from your selection. Right-click sends all selected followers; right-click again changes their target. Reload clears the selection.")
 	panel:Help("The overlay shows the generated path in cyan, an active AI-war lane in amber, and the local movement command at the follower's feet in magenta.")
 	local combo = panel:ComboBox("Model", "ns_pathfollower_model")
 	for _, model in ipairs(MODELS) do
 		combo:AddChoice(MODEL_NAMES[model], model)
+	end
+	panel:Help("What the selected followers answer when asked. Aim at a follower to see its answers.")
+	for _, name in ipairs(QUERIES) do
+		panel:CheckBox(QUERY_HELP[name] or QUERY_LABELS[name], "ns_pathfollower_" .. QueryConVar(name))
 	end
 end

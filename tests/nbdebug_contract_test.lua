@@ -129,6 +129,14 @@ T.test("the shared path generator rejects areas and openings the agent's collisi
 	T.eq(pathfollower:find("FitsArea", 1, true), nil, "the probe adds no clearance rule")
 end)
 
+T.test("the path follower stool sets what its selected followers answer", function()
+	local stool = ReadFile("addons/sandcastle/gamemodes/sandcastle/entities/weapons/gmod_tool/stools/ns_pathfollower.lua")
+	T.eq(stool:find("nextsoldier.behavior.YES_NO_QUERIES", 1, true) ~= nil, true, "a box for each yes-or-no query")
+	T.eq(stool:find("panel:CheckBox(", 1, true) ~= nil, true, "the boxes")
+	T.eq(stool:find("follower:NSRespond(name,", 1, true) ~= nil, true, "the boxes reach the follower")
+	T.eq(pathfollower:find("self.NSBrain = Behavior.Responder()", 1, true) ~= nil, true, "a tool follower is asked")
+end)
+
 T.test("the path follower uses the combat soldier's path costs", function()
 	T.eq(pathfollower:find('WS.Feature("aiwar")', 1, true) ~= nil, true, "AI-war path cost provider")
 	T.eq(pathfollower:find("if not aiwar.war then return nil, aiwar end", 1, true) ~= nil, true, "cost provider without active war")

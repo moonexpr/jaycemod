@@ -90,6 +90,7 @@ local function AsVector(p) return Vector(p.x, p.y, p.z) end
 local SEGMENT_KINDS = { [0] = "ground", "drop", "climb", "gap", "ladder up", "ladder down" }
 local Lanes = wartactics.lanes
 local Locomotion = nextsoldier.locomotion
+local Behavior = nextsoldier.behavior
 local SoldierSteer = ENT.NSSteer
 
 function ENT:OnUpdateAnimation()
@@ -197,8 +198,16 @@ function ENT:CustomInitialize()
 	self.NSRun = true
 	if self.NSToolManaged then
 		self:SetNW2Bool("NSPathFollowerDebug", true)
+		self.NSBrain = Behavior.Responder()
 		self:NSSetBehavior("Idle")
 	end
+end
+
+-- What a tool follower answers a query (its stool's checkboxes), and shows it
+-- answers: ShouldHurry yes runs, no walks.
+function ENT:NSRespond(name, yes)
+	self.NSBrain:Set(name, yes)
+	self:SetNW2Bool("NSQuery" .. name, yes)
 end
 
 function ENT:NSSetBehavior(name)

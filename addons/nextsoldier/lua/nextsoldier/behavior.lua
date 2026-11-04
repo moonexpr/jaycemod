@@ -171,6 +171,41 @@ EVENTS = { "OnInjured", "OnSight", "OnLostSight", "OnContact", "OnContactLost", 
 	"OnOtherKilled" }
 
 QUERIES = { "ShouldAttack", "ShouldHurry", "ShouldRetreat", "ShouldPickUp", "SelectMoreDangerousThreat" }
+-- Those answered yes or no (SelectMoreDangerousThreat picks between two threats).
+YES_NO_QUERIES = { "ShouldAttack", "ShouldHurry", "ShouldRetreat", "ShouldPickUp" }
+
+-- A brain with no chart behind it (a soldier's NSBrain): it answers the
+-- yes-or-no queries as it is set, no until then, and hears events as nothing.
+-- The path follower tool's checkboxes set it.
+local ResponderClass = {}
+ResponderClass.__index = ResponderClass
+
+local function AsksYesOrNo(name)
+	for _, query in ipairs(YES_NO_QUERIES) do
+		if query == name then return true end
+	end
+	return false
+end
+
+function Responder()
+	return setmetatable({ answers = {} }, ResponderClass)
+end
+
+function ResponderClass:Set(name, yes)
+	if not AsksYesOrNo(name) then error("no soldier asks " .. name, 2) end
+	self.answers[name] = yes
+end
+
+function ResponderClass:Answers(name)
+	return self.answers[name] == true
+end
+
+function ResponderClass:Query(name)
+	if not AsksYesOrNo(name) then return StateChart.ANSWER_UNDEFINED end
+	return self:Answers(name) and StateChart.ANSWER_YES or StateChart.ANSWER_NO
+end
+
+function ResponderClass:Event() end
 
 CHART = StateChart.Chart({
 	name = "NextSoldier",
