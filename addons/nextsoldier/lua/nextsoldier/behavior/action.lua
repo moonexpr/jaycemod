@@ -2,7 +2,8 @@
 -- hooks, which the engine calls with the action, then the soldier and what the hook
 -- is told. OnStart, Update, OnSuspend and OnResume answer a result, an event's hook
 -- (OnInjured) a Try result, a query's (ShouldHurry) an answer. NextBotBehavior.h's.
-local setmetatable = setmetatable
+local ipairs, setmetatable = ipairs, setmetatable
+local concat = table.concat
 module("nextsoldier.behavior.action")
 
 CONTINUE, CHANGE_TO, SUSPEND_FOR, DONE = 0, 1, 2, 3
@@ -36,3 +37,30 @@ function Base:TrySuspendFor(action, priority, reason)
 	return { type = SUSPEND_FOR, action = action, priority = priority, reason = reason }
 end
 function Base:TryDone(priority, reason) return { type = DONE, priority = priority, reason = reason } end
+
+local function Shape(frames)
+	local parts = {}
+	for i, frame in ipairs(frames) do
+		parts[i] = frame.name .. (frame.suspended and " (suspended)" or "")
+	end
+	return concat(parts, " > ")
+end
+
+-- What the debug layer shows of ent, whose actions the engine runs: stack(ent) gives
+-- them (engine.Stack). The engine tells nothing as it changes them, so a watched log
+-- hears each change as the layer looks.
+function DebugNpc(ent, stack)
+	local log, shape
+	local npc = { variant = { _NAME = ent:GetClass() } }
+	function npc:Stack()
+		local frames = stack(ent)
+		local now = Shape(frames)
+		if log and now ~= shape then log:Event(now) end
+		shape = now
+		return ent:GetClass(), frames
+	end
+	function npc:Watch(watching)
+		log, shape = watching, nil
+	end
+	return npc
+end

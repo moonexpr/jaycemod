@@ -145,6 +145,14 @@ T.test("a class's first engine action goes in as the bot starts, after it resets
 	T.eq(base:find("function ENT:NSInitialAction()", 1, true) ~= nil, true, "none by default")
 end)
 
+T.test("a class the engine runs shows the debug layer the engine's stack", function()
+	local base = Read(NEXTSOLDIER_ENTITIES .. "base_nextsoldier.lua")
+	local stack = base:match("function ENT:NSDebugStack%(%)(.-)\nend")
+	T.eq(stack:find("self.nsEngineDebug:Stack()", 1, true) ~= nil, true, "its actions, not its class's name")
+	local start = base:match("function ENT:BehaveStart%(%)(.-)\nend")
+	T.eq(start:find("Action.DebugNpc(self, nextsoldier.engine.Stack)", 1, true) ~= nil, true, "made as they go in")
+end)
+
 -- BehaveUpdate waits while a body scrambles, but an engine action is updated by the
 -- engine whatever it is doing, and each new leap starts over: one asking every update
 -- never lands.

@@ -86,6 +86,7 @@ if CLIENT then
 end
 
 local Behavior = nextsoldier.behavior
+local Action = nextsoldier.behavior.action
 local Gaze = nextsoldier.body.gaze
 local Ladder = nextsoldier.locomotion.ladder
 local Locomotion = nextsoldier.locomotion
@@ -275,7 +276,10 @@ function ENT:GetFactions() return self.nsRelations:Factions() end
 function ENT:BehaveStart()
 	self:Reset()
 	local action = self:NSInitialAction()
-	if action then nextsoldier.engine.Insert(self, action) end
+	if action then
+		nextsoldier.engine.Insert(self, action)
+		self.nsEngineDebug = Action.DebugNpc(self, nextsoldier.engine.Stack)
+	end
 end
 
 -- The first of this class's behaviours as the engine's own Actions (a table of
@@ -301,6 +305,7 @@ function ENT:GetPath() return self.nsPath end
 -- state can expose it through nsBehavior; AI-war soldiers supply their richer
 -- action stack through WSNbDebugNpcs instead.
 function ENT:NSDebugStack()
+	if self.nsEngineDebug then return self.nsEngineDebug:Stack() end
 	local name = self.nsBehavior or self:GetClass()
 	return self:GetClass(), {
 		{ depth = 0, name = name, short = name },
@@ -308,6 +313,7 @@ function ENT:NSDebugStack()
 end
 
 function ENT:NSDebugWatch(log)
+	if self.nsEngineDebug then self.nsEngineDebug:Watch(log) end
 	self.NSDebugBehaviorLog = log
 end
 

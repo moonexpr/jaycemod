@@ -262,6 +262,15 @@ function WS.AddNextSoldier(team, name)
 	return ply
 end
 
+hook.Add("WSNbDebugNpcs", "ws_next_soldiers", function(found)
+	for ply, soldier in pairs(soldiers) do
+		if IsValid(ply) then
+			soldier.debug = soldier.debug or nextsoldier.behavior.action.DebugNpc(ply, nextsoldier.engine.Stack)
+			found[ply] = soldier.debug
+		end
+	end
+end)
+
 hook.Add("StartCommand", "ws_next_soldiers", function(ply, cmd)
 	local soldier = soldiers[ply]
 	if not soldier then return end

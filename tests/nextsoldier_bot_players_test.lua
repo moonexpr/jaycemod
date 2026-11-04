@@ -24,9 +24,11 @@ local function ValidPlayer()
 	function ply:Team() return 3 end
 	function ply:EntIndex() return 7 end
 	function ply:GetHull() return Vec(-24, -24, 0), Vec(24, 24, 82) end
+	function ply:GetClass() return "player" end
 	return ply
 end
 local added
+local hooks = {}
 local environment = setmetatable({
 	Vector = Vec,
 	IsValid = function(value) return value ~= nil end,
@@ -34,7 +36,7 @@ local environment = setmetatable({
 	MASK_PLAYERSOLID = 1,
 	util = { TraceHull = function(trace) swept = trace return { Hit = false } end, TraceLine = function() return { Hit = true } end },
 	navmesh = { GetNearestNavArea = function() return nil end },
-	hook = { Add = function() end },
+	hook = { Add = function(name, _, run) hooks[name] = run end },
 	concommand = { Add = function() end },
 	player = { CreateNextSoldier = function() return added end },
 	wartactics = { scenarios = {} },
@@ -66,8 +68,14 @@ local environment = setmetatable({
 		end,
 	},
 	nextsoldier = setmetatable({
-		engine = { Insert = function() end },
-		behavior = { ctfbot = { Compile = function() return {} end, InitialAction = function() return {} end } },
+		engine = {
+			Insert = function() end,
+			Stack = function() return { { name = "TacticalMonitor", depth = 1 } } end,
+		},
+		behavior = {
+			action = nextsoldier.behavior.action,
+			ctfbot = { Compile = function() return {} end, InitialAction = function() return {} end },
+		},
 	}, { __index = nextsoldier }),
 }, { __index = _G })
 
@@ -204,6 +212,15 @@ T.test("nor is a point moved off the floor to fit", function()
 	soldier:Steer(1)
 	T.eq(soldier.walk.points[2].x, 100, "no floor anywhere near: left as planned")
 	T.eq(soldier.walk.points[2].y, 0, "left as planned")
+end)
+
+T.test("the debug layer shows a bot player's engine stack", function()
+	local soldier = New()
+	local found = {}
+	hooks.WSNbDebugNpcs(found)
+	local name, frames = found[soldier.ent]:Stack()
+	T.eq(name, "player", "its class")
+	T.eq(frames[1].name, "TacticalMonitor", "what the engine runs")
 end)
 
 T.finish()

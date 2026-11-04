@@ -66,13 +66,14 @@ MvM's bomb carrier, as TF2's tree, with no round or wave around it:
 CLuaBehaviour                 GMod's, calling BehaveUpdate
   TacticalMonitor             Rust (native/nextsoldier: tactical.rs, engine.rs)
     DeliverFlag               Lua (nextsoldier.behavior.ctfbot), with the flag
-    ScenarioMonitor (buried)  Lua
+    ScenarioMonitor (buried)  Rust (scenario_monitor.rs), over a registry in Rust (scenarios.rs)
       FetchFlag (buried)      Lua
 ```
 
-`npc_ctfbot`, on `base_nextsoldier`, is the running entity. The monitor is one native
+`npc_ctfbot`, on `base_nextsoldier`, is the running entity. Each monitor is one native
 action: `engine.TacticalMonitor{ scenario, never_retreats, retreat, commands }` is its
-config, and only what it runs and suspends for is Lua. Its `Update` asks the engine's
+config, as `engine.ScenarioMonitor{ scenarios, context, behaviors, interrupts }` is the
+other's, and only what they run and suspend for is Lua. Its `Update` asks the engine's
 query walk `ShouldRetreat`, and its `OnCommandString` suspends for what `commands` names,
 over everything it runs (`engine.Command(bot, "taunt")`, or the engine's `nb_command`).
 The rest of TF2's monitor waits on what it needs from the game.
@@ -86,6 +87,41 @@ What the run found: `FollowPath` must leave a leap alone, since an engine action
 updated whatever the body is doing; and with no war to open them, a NextBot takes a
 forcefield for a wall and the nav mesh the areas under it for blocked, until it next
 looks. Until then a path is the straight line the engine falls back on.
+
+## A player on it: a round of ctf_2fort
+
+`WS.AddNextSoldier(team, name)` (`gamemode/sv_next_soldiers.lua`) is a bot player on the
+same tree, `TacticalMonitor > ScenarioMonitor > FetchFlag`, with `DeliverFlag` over them
+while it has the flag. GMod has no `PlayerLocomotion`, so its body is keys from
+`nextsoldier.body.player_body` through `StartCommand`, and its routes are planned on a
+`ws_bot_navigator`.
+
+`.devtools/bin/next_soldier_round_check.lua` is the assessment: `mp_winlimit 1`, one
+player, on BLU. It writes to `data/ns_round_check.txt` as it goes. On instance 2, at
+commit 2f80dcbe, it captured three times in 408 s and won by `FLAG_CAPTURE_LIMIT`, then
+the rotation moved the map on. A map can load with its rounds off when nobody is
+connected: toggling `sv_gameplay_enabled` to 0 and back to 1 starts the game.
+
+What the runs found, each fixed in Lua on the shared terms:
+
+- **Blocked door areas.** The engine's search refuses an `IsBlocked` area before asking
+  the cost function, and the flag outlasts the door opening. `RefreshBlockers` clears it
+  on door areas, or a closed spawn door cuts the whole spawn off the mesh.
+- **Route price.** A bot player prices routes as TF2's bots do, with
+  `wetsands.path.tfbot` over `wetsands.navsearch`'s `Told` and `Calculator`, told whether
+  its body fits each step. No new foundation structure was needed.
+- **The engine's points are for a narrower body.** The search's width is the navigator's,
+  and a TF2 hull is 48 wide. `Locomotion.StepOff` walks past a drop's ledge,
+  `Locomotion.StandPoints` moves a point the body cannot stand on (ctf_2fort's pillars by
+  the battlements), and `Locomotion.Avoid` veers off a jamb. Its shape and constants are
+  from memory of TF2's `PathFollower`, since the vendored SDK does not include it.
+- **A seam deadlock.** `ws_bot_navigator`'s `Settled` waited forever when the nearest area
+  and the last known one lay either side of a seam at the same distance.
+
+Each lap still stalls about 0.9 s in four places, at STUCK_TIME, until `player_body`'s
+jump clears it. The first order after setup also stood 9.9 s at the spawn, not yet
+explained. A war's bot player has the door and seam fixes but not `StepOff`,
+`StandPoints` or `Avoid`.
 
 ## What was proved
 
