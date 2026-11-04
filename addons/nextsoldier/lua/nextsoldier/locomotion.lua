@@ -1,6 +1,6 @@
 -- How a soldier gets there: its parts ladder, leap, probe, reach_memo,
--- route_record and route_walk; here, the way round a blocker, a drop rappelled
--- and a route's corners rounded.
+-- route_record and route_walk; here, the way round a blocker, a drop rappelled,
+-- a route's corners rounded and a goal arrived at.
 local Geometry = math.geometry
 local Noise = nextsoldier.body.noise
 local ipairs, sqrt = ipairs, math.sqrt
@@ -117,6 +117,15 @@ function RoundCorner(prev, p, nxt, clear)
 		if clear(prev, a) and clear(a, b) and clear(b, nxt) then return { a, b }, true end
 	end
 	return { p }, false
+end
+
+-- Whether a body at pos has come to its goal: within `within` across the ground,
+-- and the goal no further below its feet than its height (a wide body rides a
+-- slope well above the floor under it; a deck overhead is another place) nor
+-- further above them than `within`.
+function Arrived(pos, goal, within, height)
+	local dx, dy, rise = pos.x - goal.x, pos.y - goal.y, pos.z - goal.z
+	return dx * dx + dy * dy <= within * within and rise <= height and rise >= -within
 end
 
 -- The route with each of its turns rounded, each from the point before it as

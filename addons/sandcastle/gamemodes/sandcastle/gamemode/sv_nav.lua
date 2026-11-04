@@ -107,6 +107,7 @@ local GAP_TIMER = "ws_nav_gaps"
 -- narrower box crosses can be too narrow for the bots' shoulders
 local BODY = gameplay.movement.TF2
 local CROSS_MINS, CROSS_MAXS = Vector(BODY.hullMin.x, BODY.hullMin.y, 0), Vector(BODY.hullMax.x, BODY.hullMax.y, 72 - NavGaps.STEP_HEIGHT)
+local BODY_MAXS = Vector(BODY.hullMax.x, BODY.hullMax.y, 72)
 local STEP = Vector(0, 0, NavGaps.STEP_HEIGHT)
 -- the floor under a seam is looked for under the feet, not the shoulders
 local FLOOR_MINS, FLOOR_MAXS = Vector(-12, -12, 0), Vector(12, 12, 1)
@@ -149,18 +150,7 @@ local crossable = PairMap.New()
 -- along the opening (nextsoldier.world.nav_gaps' FitLines, middle first).
 local function BodyFits(lo, hi, side, otherLo, otherHi, z, mask, hullMins, hullMaxs)
 	local lines = NavGaps.FitLines(lo, hi, side, otherLo, otherHi, z)
-	if hullMins and hullMaxs then
-		return NavClearance.FitsLines(lines, hullMins, hullMaxs, mask, util.TraceHull, Vector)
-	end
-	for _, line in ipairs(lines) do
-		for _, lift in ipairs(NavClearance.RIDES) do
-			local up = STEP + Vector(0, 0, lift)
-			local sweep = util.TraceHull({ start = V(line.start) + up, endpos = V(line.finish) + up,
-				mins = CROSS_MINS, maxs = CROSS_MAXS, mask = mask, filter = StaticMap })
-			if not sweep.Hit and not sweep.StartSolid then return true end
-		end
-	end
-	return false
+	return NavClearance.FitsLines(lines, hullMins or CROSS_MINS, hullMaxs or BODY_MAXS, mask, util.TraceHull, Vector)
 end
 
 function WS.NavLinkCrossable(a, b, hullMins, hullMaxs)

@@ -58,6 +58,7 @@ local LADDER_DOWN_ACT = ACT_CLIMB_DOWN
 local LADDER_ACTS = { ACT_ZOMBIE_CLIMB_UP, ACT_CLIMB_UP, ACT_MP_JUMP_FLOAT_PRIMARY }
 -- The mode hosting the soldier gives what NextSoldier does not read for itself.
 local Host = nextsoldier.host
+local Walkable = wetsands.path.Walkable
 -- It steps and jumps as its host says: a stair step, and as high as a crouch
 -- jump reaches (it does not tuck its legs).
 local STEP_HEIGHT, JUMP_HEIGHT = Host.current:Movement()
@@ -1235,13 +1236,17 @@ function ENT:OnLost(ent) end
 -- The path's cost by default: the length of each link (or the ladder it
 -- climbs), with the class's OnComputePath added (-1 refuses the link, as
 -- DrGBase's contract has it; ladder, a third argument, when it climbs one).
+-- A link rising past its jump or falling past its death drop is refused: the
+-- mesh links a slope up to a deck beside it that no body climbs.
 -- Lua traces the engine's collision hull through each destination and
 -- opening, then passes that verdict to the native or Lua-twin cost function.
 function ENT:GetPathGenerator(cost)
 	local clearance = Host.current:PathClearance(self)
+	local limits = { jumpHeight = self.loco:GetJumpHeight(), deathDropHeight = self.loco:GetDeathDropHeight() }
 	cost = cost or function(area, fromArea, ladder, elevator, length, fits)
 		if not IsValid(fromArea) then return 0 end
 		if fits == false then return -1 end
+		if not IsValid(ladder) and not Walkable(fromArea:ComputeAdjacentConnectionHeightChange(area), limits) then return -1 end
 		local extra = self:OnComputePath(fromArea, area, ladder)
 		if extra ~= nil and extra < 0 then return -1 end
 		local link = IsValid(ladder) and ladder:GetLength()

@@ -89,6 +89,7 @@ local function AsVector(p) return Vector(p.x, p.y, p.z) end
 -- A path's waypoints by kind (the engine's segment types).
 local SEGMENT_KINDS = { [0] = "ground", "drop", "climb", "gap", "ladder up", "ladder down" }
 local Lanes = wartactics.lanes
+local Locomotion = nextsoldier.locomotion
 local SoldierSteer = ENT.NSSteer
 
 function ENT:OnUpdateAnimation()
@@ -279,7 +280,7 @@ function ENT:NSUpdateToolBehavior()
 	self.NSTarget = target
 	self:NSSteer()
 
-	if self:GetPos():DistToSqr(self.nsGoal) <= ARRIVE * ARRIVE then
+	if Locomotion.Arrived(self:GetPos(), self.nsGoal, ARRIVE, self.nsHullMaxs.z) then
 		StopAt(self)
 	end
 end
@@ -337,7 +338,7 @@ function ENT:IntentionUpdate()
 	local now, pos = CurTime(), self:GetPos()
 	local distance = pos:Distance(errand.goal)
 	if distance < errand.nearest then errand.nearest = distance end
-	if distance <= ARRIVE then return self:NSFinish("arrived") end
+	if Locomotion.Arrived(pos, errand.goal, ARRIVE, self.nsHullMaxs.z) then return self:NSFinish("arrived") end
 	if now >= errand.deadline then return self:NSFinish("timed out") end
 	if errand.lastZ and errand.lastZ - pos.z > DROP_MARK then self:NSNote("marks", "dropped", string.format("%.0f units", errand.lastZ - pos.z)) end
 	errand.lastZ = pos.z
