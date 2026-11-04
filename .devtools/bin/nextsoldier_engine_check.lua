@@ -142,6 +142,9 @@ local InnerP = {
 	ShouldHurry = function() return NO end,
 }
 NSEngineSoldier = player.CreateNextSoldier("NSEngineSoldier")
+-- A dead body runs no actions: in a countdown a new player is a spectator, and every
+-- soldier_ check after this one fails for that reason.
+local soldierBornAlive = NSEngineSoldier:Alive()
 E.Insert(NSEngineSoldier, Action("Outer", {
 	InitialContainedAction = function() return Action("Inner", InnerP) end,
 	OnStart = function() Note("P Outer start") return { type = CONTINUE } end,
@@ -184,6 +187,7 @@ function NSEngineCheck.Finish()
 		event_changes_at_the_next_update = Has("Calm end for Hurt") and Has("Hurt start"),
 		failing_hook_goes_on = failing > 2,
 		lua_behaviour_still_runs = (bots.Outer.behaved or 0) > 0,
+		soldier_born_alive = soldierBornAlive,
 		soldier_suspends_and_resumes = Has("P Inner suspend for Cover") and Has("P Cover start after Inner") and Has("P Inner resume from Cover"),
 		soldier_me_is_the_player = Has("P Inner start, me the player true"),
 		soldier_hears_damage = Has("P Inner injured") and Has("P Hurt start"),

@@ -168,7 +168,8 @@ own field offsets are not checked at run time, only against this build.
 7. **Platforms and updates.** This is the win64 binary only: a Linux server needs its
    own binding, and a GMod update can move what is checked and refuse. Where it
    refuses or does not exist, a soldier needs a fallback, and the Lua chart is it.
-   A player's actions also keep running through a respawn, and nothing resets them.
+   A player's actions also keep running through a respawn, and nothing resets them;
+   while it is dead they are not updated at all.
 8. **Testing.** The LuaJIT tests cannot reach the engine. The Lua twin stays as what
    they run, and each difference from the engine is a live check.
 9. **Not measured.** The cost per update against our chart, real soldiers, and many
