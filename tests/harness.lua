@@ -15,6 +15,7 @@ local CHUNK_ENV = setmetatable({}, { __index = _G })
 T.MODULE_DIRS = {
 	"addons/nextsoldier/lua/includes/modules/",
 	"addons/teamtint/lua/includes/modules/",
+	"addons/model_viewer/lua/includes/modules/",
 	"addons/sandcastle_dev/lua/includes/modules/",
 }
 

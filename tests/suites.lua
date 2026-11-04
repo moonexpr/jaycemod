@@ -106,9 +106,9 @@ return {
 	},
 	{
 		name = "addons",
-		about = "the addons beside the gamemode: Team Tint and the CS:S weapons",
-		tests = { "teamtint_*", "addons_cstrike_weapons*" },
-		sources = { "addons/teamtint/", "addons/cstrike_weapons/" },
+		about = "the addons beside the gamemode: Team Tint, the CS:S weapons and the model viewer",
+		tests = { "teamtint_*", "addons_cstrike_weapons*", "model_viewer_*" },
+		sources = { "addons/teamtint/", "addons/cstrike_weapons/", "addons/model_viewer/" },
 	},
 	{
 		name = "tooling",

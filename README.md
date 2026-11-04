@@ -19,6 +19,7 @@ teams.
 | `addons/wartactics/` | The tactics engine: the strategy the soldiers are organised by (fire teams, squads, lanes, posts), the scenarios addons register, and the tactical, squad and scenario monitors |
 | `addons/teamtint/` | RED/BLU team shading for NPCs in TF2's style |
 | `addons/cstrike_weapons/` | CS:S's weapons as SWEPs, from the game's own weapon scripts |
+| `addons/model_viewer/` | A client's window on a model, to click through its acts and watch each animation (`cl_model_viewer <model>`, or a model's right-click menu in the spawn menu) |
 | `addons/sandcastle_dev/` | For development only, a workbench: live reloads that keep the game's state, saved scenarios, a gamerules harness |
 | `native/` | Rust binary modules a server can load in place of the Lua twins of the core data structures and route searches |
 | `tests/` | LuaJIT tests, run against the Lua modules and again against their native twins |
