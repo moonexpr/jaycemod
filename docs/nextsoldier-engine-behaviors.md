@@ -34,15 +34,34 @@ No detour is needed. `native/nextsoldier` builds objects laid out as
 `Action<CLuaNextBot>`, with a copy of that class's vtable in which the hooks are
 ours, and links one under the bot's `CLuaBehaviour` (`parent` and `child`). The
 engine does the rest, through virtual calls it already makes. No engine code or
-engine vtable is written, so the only writes to engine memory are that one link.
+shared vtable is written: what changes is that one link on a NextBot, and one
+intention's vtable pointer on a player bot.
 
 An action's fields live in the engine's object, and its Lua table only holds what
 the behaviour itself keeps. Hooks answer `{ type, action, reason, priority }`,
 decoded once at the boundary.
 
+## Where a soldier plugs in
+
+- **An entity:** `base_nextsoldier`. A class's `ENT:NSInitialAction()` returns its first
+  action, inserted in `BehaveStart`, which is the first moment a link holds: the root's
+  `InvokeOnStart` sets its child from `InitialContainedAction` just before calling it.
+- **A player bot:** `player.CreateNextSoldier(botName)`, then `nextsoldier.engine.Insert`.
+  A `NextBotPlayer<CGMOD_Player>` has a plain `IIntention` and no statechart, so it gets
+  one: the engine's `Behavior`, updated by `CLuaNextBotIntention::Update` on a shadow of
+  its intention, whose vtable pointer is swapped for a copy answering
+  `FirstContainedResponder` and `Update`. That code reaches its actor only at +0x2240, so
+  it is handed the player's `INextBot` less that. Its actions are the root: no
+  `CLuaBehaviour`, no `BehaveUpdate`.
+- **Ending a player's actions:** from `EntityRemoved`, while the player is whole. Inside
+  `~INextBot`, `GetEntity` is pure, and `InvokeOnEnd` reaches it logging (a
+  `CLuaNextBot` ends its actions earlier, from its own destructor). A destructor that
+  gets there first clears the `Behavior`'s actor, which skips `InvokeOnEnd`.
+
 ## What was proved
 
-On a live server (instance 3) with bare `base_nextbot` bots.
+On a live server (instance 3), on `srcds.py start --gamemode base` for the bare NextBots
+and player bots and the full gamemode for `base_nextsoldier`.
 `.devtools/bin/nextsoldier_engine_check.lua` repeats all but the map change.
 
 - A child starts before its container; `SuspendFor` buries and `Done` resumes, with
@@ -63,9 +82,9 @@ own field offsets are not checked at run time, only against this build.
 
 ## What stands between this and soldiers
 
-1. **Bot players.** Only `Action<CLuaNextBot>` and `Behavior<CLuaNextBot>` exist in
-   the binary. `NextBotPlayer<CGMOD_Player>` has no statechart to join, so a bot
-   player needs our chart or its own answer.
+1. **NextSoldier on its own.** `base_nextsoldier` needs foundation and the gamemode's
+   loader, so it does not load on `base` or `sandbox`. A development kit has to load
+   itself.
 2. **Update order.** The engine updates a child before its container, so actions
    run *before* `CLuaBehaviour::Update` calls `BehaveUpdate`, the reverse of
    `base_nextsoldier` today, which runs its chart from inside it.
@@ -84,6 +103,7 @@ own field offsets are not checked at run time, only against this build.
 7. **Platforms and updates.** This is the win64 binary only: a Linux server needs its
    own binding, and a GMod update can move what is checked and refuse. Where it
    refuses or does not exist, a soldier needs a fallback, and the Lua chart is it.
+   A player's actions also keep running through a respawn, and nothing resets them.
 8. **Testing.** The LuaJIT tests cannot reach the engine. The Lua twin stays as what
    they run, and each difference from the engine is a live check.
 9. **Not measured.** The cost per update against our chart, real soldiers, and many

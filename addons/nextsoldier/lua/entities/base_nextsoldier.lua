@@ -272,7 +272,15 @@ function ENT:GetFactions() return self.nsRelations:Factions() end
 -- No coroutine: BehaveStart (the engine's, once at spawn) resets the bot,
 -- and BehaveUpdate updates it each tick, as TF2's INextBot::Update does its
 -- components.
-function ENT:BehaveStart() self:Reset() end
+function ENT:BehaveStart()
+	self:Reset()
+	local action = self:NSInitialAction()
+	if action then nextsoldier.engine.Insert(self, action) end
+end
+
+-- The first of this class's behaviours as the engine's own Actions (a table of
+-- hooks, native/nextsoldier), which needs the binary; none by default.
+function ENT:NSInitialAction() end
 
 function ENT:BehaveUpdate(interval)
 	if not self:IsAlive() then return end

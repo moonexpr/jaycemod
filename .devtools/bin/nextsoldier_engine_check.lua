@@ -5,7 +5,7 @@
 --   dt gmod lua_run instance=N code='return NSEngineCheck.Finish()'
 -- Finish returns every check with whether it held and removes its bots; half a
 -- second on, NSEngineCheck.removal says whether the removed one's actions ended,
--- and how many the engine deleted (2).
+-- and how many the engine deleted (the Doomed bot's 2 and the soldier's).
 local MODULE = NS_ENGINE_MODULE or "nextsoldier"
 require(MODULE)
 local E = nextsoldier.engine
@@ -19,16 +19,23 @@ local log, bots = {}, {}
 local function Note(entry) log[#log + 1] = entry end
 local function Action(name, hooks) return setmetatable({ name = name }, { __index = hooks }) end
 
+-- On base_nextsoldier where the server has it (the gamemode loads it), which
+-- resets as it starts; on a bare NextBot where it runs no game (--gamemode base).
+local ON_SOLDIER = nextsoldier.host ~= nil
 scripted_ents.Register({
-	Base = "base_nextbot",
+	Base = ON_SOLDIER and "base_nextsoldier" or "base_nextbot",
 	Type = "nextbot",
-	Initialize = function(self) self:SetModel("models/kleiner.mdl") end,
-	BehaveStart = function(self) E.Insert(self, self.Plan()) end,
+	Initialize = not ON_SOLDIER and function(self) self:SetModel("models/kleiner.mdl") end or nil,
+	BehaveStart = function(self)
+		if ON_SOLDIER then self:Reset() end
+		E.Insert(self, self.Plan())
+	end,
 	BehaveUpdate = function(self) self.behaved = (self.behaved or 0) + 1 end,
 	RunBehaviour = function() while true do coroutine.yield() end end,
 }, CLASS)
 
-local FROM = navmesh.GetAllNavAreas()[1]:GetCenter()
+local AREA = navmesh.GetAllNavAreas()[1]
+local FROM = (AREA and AREA:GetCenter() or ents.FindByClass("info_player_start")[1]:GetPos()) + Vector(0, 0, 16)
 local function Bot(name, hooks)
 	local bot = ents.Create(CLASS)
 	bot.Plan = function() return Action(name, hooks) end
@@ -110,6 +117,46 @@ Bot("Doomed", {
 	OnEnd = function() doomedEnded = true end,
 })
 
+-- A NextSoldier: a player bot on the engine's statechart, with no CLuaBehaviour.
+local CoverP = {
+	OnStart = function(_, _, prior) Note("P Cover start after " .. tostring(prior and prior.name)) return { type = CONTINUE } end,
+	Update = function() return { type = DONE, reason = "uncovered" } end,
+	OnEnd = function(_, _, following) Note("P Cover end for " .. tostring(following and following.name)) end,
+}
+local HurtP = {
+	OnStart = function() Note("P Hurt start") return { type = CONTINUE } end,
+	Update = function() return { type = CONTINUE } end,
+	ShouldHurry = function() return YES end,
+	OnEnd = function() Note("P Hurt end") end,
+}
+local InnerP = {
+	OnStart = function(self, me) self.n = 0 Note("P Inner start, me the player " .. tostring(me == NSEngineSoldier)) return { type = CONTINUE } end,
+	Update = function(self)
+		self.n = self.n + 1
+		if self.n == 1 then return { type = SUSPEND_FOR, action = Action("Cover", CoverP), reason = "cover" } end
+		return { type = CONTINUE }
+	end,
+	OnSuspend = function(_, _, other) Note("P Inner suspend for " .. tostring(other and other.name)) return { type = CONTINUE } end,
+	OnResume = function(_, _, other) Note("P Inner resume from " .. tostring(other and other.name)) return { type = CONTINUE } end,
+	OnInjured = function() Note("P Inner injured") return { type = CHANGE_TO, action = Action("Hurt", HurtP), reason = "ow", priority = 2 } end,
+	ShouldHurry = function() return NO end,
+}
+NSEngineSoldier = player.CreateNextSoldier("NSEngineSoldier")
+E.Insert(NSEngineSoldier, Action("Outer", {
+	InitialContainedAction = function() return Action("Inner", InnerP) end,
+	OnStart = function() Note("P Outer start") return { type = CONTINUE } end,
+	Update = function() return { type = CONTINUE } end,
+	OnEnd = function(_, me) Note("P Outer end, its player whole " .. tostring(IsValid(me))) end,
+}))
+local plainBot = player.CreateNextBot("NSEnginePlain")
+local plainRefused = not pcall(E.Stack, plainBot)
+timer.Simple(2, function()
+	if IsValid(NSEngineSoldier) then
+		NSEngineSoldier:SetHealth(1000)
+		NSEngineSoldier:TakeDamage(1, game.GetWorld())
+	end
+end)
+
 local function Has(entry)
 	for _, seen in ipairs(log) do
 		if seen == entry then return true end
@@ -137,11 +184,18 @@ function NSEngineCheck.Finish()
 		event_changes_at_the_next_update = Has("Calm end for Hurt") and Has("Hurt start"),
 		failing_hook_goes_on = failing > 2,
 		lua_behaviour_still_runs = (bots.Outer.behaved or 0) > 0,
+		soldier_suspends_and_resumes = Has("P Inner suspend for Cover") and Has("P Cover start after Inner") and Has("P Inner resume from Cover"),
+		soldier_me_is_the_player = Has("P Inner start, me the player true"),
+		soldier_hears_damage = Has("P Inner injured") and Has("P Hurt start"),
+		soldier_query_walks = E.ShouldHurry(NSEngineSoldier) == YES,
+		a_plain_bot_is_refused = plainRefused,
 	}
 	local live = E.Live()
 	bots.Doomed:Remove()
+	NSEngineSoldier:Kick("the check is over")
+	plainBot:Kick("the check is over")
 	timer.Simple(0.5, function()
-		NSEngineCheck.removal = { ended = doomedEnded, deleted = live - E.Live() }
+		NSEngineCheck.removal = { ended = doomedEnded, deleted = live - E.Live(), soldier_ended = Has("P Hurt end") and Has("P Outer end, its player whole true") }
 		for _, bot in pairs(bots) do
 			if IsValid(bot) then bot:Remove() end
 		end

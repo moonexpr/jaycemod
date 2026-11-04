@@ -11,6 +11,9 @@ pub const ROOT_CLASS: &str = ".?AVCLuaBehaviour@@";
 pub const BOT_CLASS: &str = ".?AVCLuaNextBot@@";
 pub const INTENTION_CLASS: &str = ".?AVCLuaNextBotIntention@CLuaNextBot@@";
 pub const ENTITY_LIST_CLASS: &str = ".?AVCGlobalEntityList@@";
+pub const PLAYER_CLASS: &str = ".?AV?$NextBotPlayer@VCGMOD_Player@@@@";
+pub const BASE_INTENTION_CLASS: &str = ".?AVIIntention@@";
+pub const BEHAVIOR_CLASS: &str = ".?AV?$Behavior@VCLuaNextBot@@@@";
 
 /// INextBotEventResponder's 42, then Action's own.
 pub const ACTION_SLOTS: usize = 91;
@@ -42,6 +45,25 @@ pub const RETURNS_BEHAVIOR: [u8; 5] = [0x48, 0x8B, 0x41, 0x28, 0xC3];
 
 // Behavior<CLuaNextBot>: the action at its root.
 pub const BEHAVIOR_ACTION: usize = 0x10;
+pub const BEHAVIOR_WORDS: usize = 14; // CLuaNextBotIntention::Reset allocates 0x70
+                                      // The actor it last updated with; ~Behavior ends its actions only when one is set.
+pub const BEHAVIOR_ME: usize = 0x48;
+
+// NextBotPlayer<CGMOD_Player>'s INextBot, and the plain IIntention it holds: 46
+// slots, its fields those of INextBotComponent (0x28 bytes). A player has no
+// statechart of its own, so CreateNextSoldier gives it one: the engine's Behavior,
+// run by CLuaNextBotIntention::Update on a shadow of the intention. That code takes
+// its actor from GetBot() - INEXTBOT_OFFSET and reaches it only at + INEXTBOT_OFFSET,
+// so it never sees that the actor is no CLuaNextBot.
+pub const PLAYER_INEXTBOT_OFFSET: usize = 0x32C0;
+pub const INTENTION_SLOTS: usize = 46;
+pub const INTENTION_UPDATE: usize = 43;
+pub const COMPONENT_GET_BOT: usize = 45;
+pub const COMPONENT_INTERVAL: usize = 0x0C;
+pub const COMPONENT_BOT: usize = 0x10;
+pub const INTENTION_QUERY: usize = 0x20;
+pub const SHADOW_WORDS: usize = 6;
+pub const RETURNS_BOT: [u8; 5] = [0x48, 0x8B, 0x41, 0x10, 0xC3];
 
 // CBaseEntityList: its vtable, then CEntInfo { entity, serial, prev, next } by entindex.
 pub const ENTITY_LIST_ENTRIES: usize = 8;

@@ -145,6 +145,7 @@ NATIVE_BINARIES = {
     "gmsv_wsprofile_win64.dll": REPO / "native/ws_profile/target/x86_64-pc-windows-msvc/release/wsprofile.dll",
     "gmsv_foundation_win64.dll": REPO / "native/foundation/target/x86_64-pc-windows-msvc/release/foundation.dll",
     "gmsv_wetsands_win64.dll": REPO / "native/wetsands/target/x86_64-pc-windows-msvc/release/wetsands.dll",
+    "gmsv_nextsoldier_win64.dll": REPO / "native/nextsoldier/target/x86_64-pc-windows-msvc/release/nextsoldier.dll",
 }
 # addons built in this repo, linked into the server's addons/: name -> folder
 REPO_ADDONS = {

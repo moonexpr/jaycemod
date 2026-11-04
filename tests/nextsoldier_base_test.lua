@@ -133,6 +133,18 @@ T.test("a body moves under the mask its host names, whoever spawned it", functio
 	T.eq(initialize:find("self:SetSolidMask(Host.current:SolidMask())", 1, true) ~= nil, true, "set as it is made")
 end)
 
+-- GMod's CLuaBehaviour sets its child from InitialContainedAction just before it
+-- calls BehaveStart, so that is the first moment a link under it holds.
+T.test("a class's first engine action goes in as the bot starts, after it resets", function()
+	local base = Read(NEXTSOLDIER_ENTITIES .. "base_nextsoldier.lua")
+	local start = base:match("function ENT:BehaveStart%(%)(.-)\nend")
+	local reset = start:find("self:Reset()", 1, true)
+	local asked = start:find("self:NSInitialAction()", 1, true)
+	local inserted = start:find("nextsoldier.engine.Insert(self, action)", 1, true)
+	T.eq(reset ~= nil and asked ~= nil and inserted ~= nil and reset < asked and asked < inserted, true, start)
+	T.eq(base:find("function ENT:NSInitialAction()", 1, true) ~= nil, true, "none by default")
+end)
+
 T.test("a name the base replaces is declared by none", function()
 	for name in pairs(Base.REPLACED) do T.eq(Base.ComponentOf(name), nil, name) end
 end)

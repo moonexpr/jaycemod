@@ -10,6 +10,10 @@
 -- file, never a loop; a collection comes after the ones its files read.
 nextsoldier = nextsoldier or {}
 
+-- The engine's own statechart, where the server has the binary (native/nextsoldier):
+-- nextsoldier.engine, and player.CreateNextSoldier.
+if SERVER and util.IsBinaryModuleInstalled("nextsoldier") then require("nextsoldier") end
+
 -- The live bots on this base, which others' noises reach.
 nextsoldier.bots = nextsoldier.bots or setmetatable({}, { __mode = "k" })
 

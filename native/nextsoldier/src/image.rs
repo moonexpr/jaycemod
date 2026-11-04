@@ -4,6 +4,7 @@
 //! (the tests) and a mapped module's (the server), which differ only in where a
 //! section starts.
 
+use std::collections::{HashMap, HashSet};
 use std::ops::Range;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -107,45 +108,70 @@ impl<'a> Image<'a> {
     /// The vtables of the class whose decorated name is `name`
     /// (`.?AVCLuaNextBot@@`): (RVA, the offset in the object it sits at).
     pub fn vtables(&self, name: &str) -> Result<Vec<(usize, usize)>, ImageError> {
-        let descriptor = self
-            .descriptor(name)
-            .ok_or_else(|| ImageError::NoClass(name.to_string()))?;
-        let mut found = Vec::new();
-        for s in self.sections.iter().filter(|s| !s.executable) {
-            let bytes = &self.bytes[self.range(s)];
-            for at in (0..bytes.len().saturating_sub(24)).step_by(4) {
-                if u32_at(bytes, at) != Some(1) || u32_at(bytes, at + 12) != Some(descriptor as u32)
-                {
-                    continue;
-                }
-                // a locator names itself last: what tells it from any other data
-                let own = s.rva + at;
-                if u32_at(bytes, at + 20) != Some(own as u32) {
-                    continue;
-                }
-                let offset = u32_at(bytes, at + 4).unwrap_or(0) as usize;
-                if let Some(table) = self.pointer_to(own) {
-                    found.push((table + 8, offset));
-                }
-            }
-        }
-        if found.is_empty() {
-            return Err(ImageError::NoClass(name.to_string()));
-        }
-        found.sort_by_key(|&(_, offset)| offset);
-        Ok(found)
+        self.classes(&[name])
+            .remove(name)
+            .ok_or_else(|| ImageError::NoClass(name.to_string()))
     }
 
-    fn descriptor(&self, name: &str) -> Option<usize> {
-        let mut wanted = name.as_bytes().to_vec();
-        wanted.push(0);
-        for s in self.sections.iter().filter(|s| !s.executable) {
+    /// The vtables of each of `names` found, in one pass over the image for each of
+    /// its three layers (descriptors, locators, the pointers to them), whatever
+    /// their number: a server reads this as a map loads.
+    pub fn classes(&self, names: &[&str]) -> HashMap<String, Vec<(usize, usize)>> {
+        let data: Vec<&Section> = self.sections.iter().filter(|s| !s.executable).collect();
+        let wanted: HashSet<&[u8]> = names.iter().map(|n| n.as_bytes()).collect();
+        let mut named: HashMap<u32, &str> = HashMap::new();
+        for s in &data {
             let bytes = &self.bytes[self.range(s)];
-            if let Some(at) = bytes.windows(wanted.len()).position(|w| w == wanted) {
-                return Some(s.rva + at - 16);
+            for at in 0..bytes.len().saturating_sub(4) {
+                if &bytes[at..at + 3] != b".?A" {
+                    continue;
+                }
+                let Some(end) = bytes[at..].iter().take(512).position(|b| *b == 0) else {
+                    continue;
+                };
+                let name = &bytes[at..at + end];
+                if wanted.contains(name) && at >= 16 {
+                    if let Ok(text) = std::str::from_utf8(name) {
+                        named.entry((s.rva + at - 16) as u32).or_insert(text);
+                    }
+                }
             }
         }
-        None
+        // locator -> (its class, the offset of its vtable in the object)
+        let mut located: HashMap<u64, (&str, usize)> = HashMap::new();
+        for s in &data {
+            let bytes = &self.bytes[self.range(s)];
+            for at in (0..bytes.len().saturating_sub(24)).step_by(4) {
+                if u32_at(bytes, at) != Some(1) {
+                    continue;
+                }
+                let Some(class) = u32_at(bytes, at + 12).and_then(|d| named.get(&d)) else {
+                    continue;
+                };
+                // a locator names itself last: what tells it from any other data
+                let own = s.rva + at;
+                if u32_at(bytes, at + 20) == Some(own as u32) {
+                    let offset = u32_at(bytes, at + 4).unwrap_or(0) as usize;
+                    located.insert(self.base + own as u64, (class, offset));
+                }
+            }
+        }
+        let mut found: HashMap<String, Vec<(usize, usize)>> = HashMap::new();
+        for s in &data {
+            let bytes = &self.bytes[self.range(s)];
+            for at in (0..bytes.len().saturating_sub(8)).step_by(8) {
+                if let Some(&(class, offset)) = u64_at(bytes, at).and_then(|v| located.get(&v)) {
+                    let tables = found.entry(class.to_string()).or_default();
+                    if !tables.iter().any(|t| t.1 == offset) {
+                        tables.push((s.rva + at + 8, offset));
+                    }
+                }
+            }
+        }
+        for tables in found.values_mut() {
+            tables.sort_by_key(|&(_, offset)| offset);
+        }
+        found
     }
 
     /// The first place in the image's data holding a pointer to `rva`.
@@ -241,6 +267,15 @@ mod tests {
     }
 
     #[test]
+    fn several_classes_come_from_one_pass_and_a_missing_one_is_left_out() {
+        let bytes = widget();
+        let image = Image::new(&bytes, BASE, sections());
+        let found = image.classes(&[NAME, ".?AVGadget@@"]);
+        assert_eq!(found[NAME], vec![(0x2208, 0x40)]);
+        assert!(!found.contains_key(".?AVGadget@@"));
+    }
+
+    #[test]
     fn a_class_it_does_not_hold_is_refused_by_name() {
         let bytes = widget();
         let image = Image::new(&bytes, BASE, sections());
@@ -314,5 +349,21 @@ mod tests {
         assert_eq!(bot[1].1, crate::layout::INEXTBOT_OFFSET);
         assert!(image.vtables(crate::layout::ENTITY_LIST_CLASS).is_ok());
         assert!(image.vtables(crate::layout::ROOT_CLASS).is_ok());
+        let player = image.vtables(crate::layout::PLAYER_CLASS).unwrap();
+        assert!(player
+            .iter()
+            .any(|t| t.1 == crate::layout::PLAYER_INEXTBOT_OFFSET));
+        let base = image.vtables(crate::layout::BASE_INTENTION_CLASS).unwrap();
+        let slots = image.slots(base[0].0);
+        assert_eq!(slots.len(), crate::layout::INTENTION_SLOTS);
+        assert_eq!(
+            image.code(slots[crate::layout::COMPONENT_GET_BOT], 5),
+            Some(&crate::layout::RETURNS_BOT[..])
+        );
+        assert_eq!(base[1].1, crate::layout::INTENTION_QUERY);
+        assert_eq!(
+            image.vtables(crate::layout::BEHAVIOR_CLASS).unwrap().len(),
+            2
+        );
     }
 }

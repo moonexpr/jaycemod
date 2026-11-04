@@ -1,6 +1,7 @@
 //! The binding: finds the classes in the running server.dll, clones
 //! Action<CLuaNextBot>'s vtable with hooks that call Lua, and links Actions under a
-//! bot's CLuaBehaviour. Nothing in the engine's code is patched.
+//! bot's CLuaBehaviour. No engine code or shared vtable is written: what changes is
+//! one link on a NextBot, and one intention's vtable pointer on a NextSoldier.
 //!
 //! The engine's frames do not expect a Lua error to pass through them, so each
 //! hook is a pcall: a hook that fails is reported and answers as if undefined.
@@ -34,6 +35,21 @@ struct Binding {
     free_ids: Vec<u32>,
     live: HashSet<*mut LuaAction>,
     reasons: HashMap<Vec<u8>, &'static CStr>,
+    player_vtable: usize,
+    base_intention_vtable: usize,
+    base_intention_destructor: usize,
+    player_intention: Box<[usize]>,
+    intention_update: usize,
+    intention_query_vtable: usize,
+    behavior_vtables: (usize, usize),
+    soldiers: HashMap<usize, Soldier>,
+}
+
+/// What a player bot has that a plain NextBotPlayer has not: a Behavior, and the
+/// shadow of its intention that CLuaNextBotIntention::Update runs it through.
+struct Soldier {
+    behavior: *mut u64,
+    shadow: *mut u64,
 }
 
 static mut BINDING: Option<Binding> = None;
@@ -400,46 +416,206 @@ unsafe extern "win64" fn should_hurry(this: *mut u8, _me: *const c_void) -> i32 
 
 // What Lua calls -----------------------------------------------------------------------
 
-/// The Behavior of the bot at `index`, or a Lua error naming what did not check out.
-unsafe fn behavior_of(l: L, index: c_int) -> *mut u8 {
+/// The entity at `index` as the engine holds it: null when empty.
+unsafe fn entity_at(l: L, index: c_int) -> (usize, usize) {
     let api = api();
-    let b = binding();
     (api.getfield)(l, index, c"EntIndex".as_ptr());
     (api.pushvalue)(l, index);
     (api.call)(l, 1, 1);
     let entindex = (api.tonumber)(l, -1) as usize;
     (api.settop)(l, -2);
-    let info = b.entity_list + ENTITY_LIST_ENTRIES + entindex * ENTITY_INFO_SIZE;
-    let bot = *(info as *const usize);
-    if bot == 0 || *(bot as *const usize) != b.bot_vtable {
-        foundation::lua::raise_where(l, format!("entity {entindex} is not a CLuaNextBot"));
-    }
-    let nextbot = bot + INEXTBOT_OFFSET;
+    let info = binding().entity_list + ENTITY_LIST_ENTRIES + entindex * ENTITY_INFO_SIZE;
+    (*(info as *const usize), entindex)
+}
+
+/// The INextBot at `nextbot`'s intention.
+unsafe fn intention_of(nextbot: usize) -> usize {
     let table = *(nextbot as *const *const usize);
     let get: unsafe extern "win64" fn(usize) -> usize =
         std::mem::transmute(*table.add(GET_INTENTION));
-    let intention = get(nextbot);
-    if intention == 0 || *(intention as *const usize) != b.intention_vtable {
+    get(nextbot)
+}
+
+/// A bot's or a NextSoldier's Behavior, and whether a CLuaBehaviour holds its root.
+/// Anything else is a Lua error naming what did not check out.
+unsafe fn behavior_of(l: L, index: c_int) -> (*mut u8, bool) {
+    let b = binding();
+    let (entity, entindex) = entity_at(l, index);
+    let vtable = if entity == 0 {
+        0
+    } else {
+        *(entity as *const usize)
+    };
+    if vtable == b.bot_vtable {
+        let intention = intention_of(entity + INEXTBOT_OFFSET);
+        if intention == 0 || *(intention as *const usize) != b.intention_vtable {
+            foundation::lua::raise_where(
+                l,
+                format!("entity {entindex}'s intention is not CLuaNextBotIntention"),
+            );
+        }
+        return (*((intention + INTENTION_BEHAVIOR) as *const *mut u8), true);
+    }
+    if vtable == b.player_vtable {
+        let intention = intention_of(entity + PLAYER_INEXTBOT_OFFSET);
+        if let Some(soldier) = b.soldiers.get(&intention) {
+            return (soldier.behavior.cast(), false);
+        }
         foundation::lua::raise_where(
             l,
-            format!("entity {entindex}'s intention is not CLuaNextBotIntention"),
+            format!("player {entindex} was not made with player.CreateNextSoldier"),
         );
     }
-    *((intention + INTENTION_BEHAVIOR) as *const *mut u8)
+    foundation::lua::raise_where(
+        l,
+        format!("entity {entindex} is not a CLuaNextBot or a NextSoldier"),
+    )
+}
+
+// A NextSoldier: a player bot's intention, with a Behavior ----------------------------
+
+unsafe extern "win64" fn soldier_first_contained(this: usize) -> *mut u64 {
+    binding()
+        .soldiers
+        .get(&this)
+        .map_or(null_mut(), |s| s.behavior)
+}
+
+unsafe extern "win64" fn soldier_update(this: usize) {
+    let b = binding();
+    let Some(soldier) = b.soldiers.get(&this) else {
+        return;
+    };
+    let shadow = soldier.shadow;
+    // what INextBot::Update computed for the component, for the shadow it runs on
+    let interval = *((this + COMPONENT_INTERVAL) as *const f32);
+    *(shadow.cast::<u8>().add(COMPONENT_INTERVAL).cast::<f32>()) = interval;
+    let run: unsafe extern "win64" fn(*mut u64) = std::mem::transmute(b.intention_update);
+    run(shadow);
+}
+
+/// The engine's own ~Behavior ends and deletes the actions; then what we allocated.
+unsafe fn release_soldier(soldier: Soldier) {
+    let table = *(soldier.behavior as *const *const usize);
+    let destroy: unsafe extern "win64" fn(*mut u64, u32) -> *mut u64 =
+        std::mem::transmute(*table.add(DESTRUCTOR));
+    destroy(soldier.behavior, 0);
+    drop(Box::from_raw(std::ptr::slice_from_raw_parts_mut(
+        soldier.behavior,
+        BEHAVIOR_WORDS,
+    )));
+    drop(Box::from_raw(std::ptr::slice_from_raw_parts_mut(
+        soldier.shadow,
+        SHADOW_WORDS,
+    )));
+}
+
+/// The player is being destroyed without EntityRemoved having told us: inside
+/// ~INextBot, GetEntity is pure, and InvokeOnEnd reaches it logging. With no actor
+/// set, ~Behavior deletes the actions without ending them.
+unsafe extern "win64" fn soldier_destructor(this: usize, flags: u32) -> usize {
+    let b = binding();
+    let original = b.base_intention_destructor;
+    if let Some(soldier) = b.soldiers.remove(&this) {
+        *(soldier
+            .behavior
+            .cast::<u8>()
+            .add(BEHAVIOR_ME)
+            .cast::<usize>()) = 0;
+        release_soldier(soldier);
+    }
+    *(this as *mut usize) = binding().base_intention_vtable;
+    let destroy: unsafe extern "win64" fn(usize, u32) -> usize = std::mem::transmute(original);
+    destroy(this, flags)
+}
+
+/// EntityRemoved: a NextSoldier's actions end while the player is still whole.
+unsafe extern "C-unwind" fn entity_removed(l: L) -> c_int {
+    let b = binding();
+    if b.soldiers.is_empty() {
+        return 0;
+    }
+    let (entity, _) = entity_at(l, 1);
+    if entity == 0 || *(entity as *const usize) != b.player_vtable {
+        return 0;
+    }
+    let intention = intention_of(entity + PLAYER_INEXTBOT_OFFSET);
+    if let Some(soldier) = b.soldiers.remove(&intention) {
+        *(intention as *mut usize) = b.base_intention_vtable;
+        release_soldier(soldier);
+    }
+    0
+}
+
+/// player.CreateNextSoldier(botName) -> a bot player whose intention runs the
+/// engine's statechart, as a NextBot's does; nil when GMod made no player. Its
+/// behaviours go on with nextsoldier.engine.Insert.
+unsafe extern "C-unwind" fn create_next_soldier(l: L) -> c_int {
+    let api = api();
+    (api.settop)(l, 1);
+    (api.getfield)(l, GLOBALSINDEX, c"player".as_ptr());
+    (api.getfield)(l, -1, c"CreateNextBot".as_ptr());
+    (api.pushvalue)(l, 1);
+    (api.call)(l, 1, 1);
+    let player = (api.gettop)(l);
+    if (api.type_of)(l, player) != foundation::lua::TUSERDATA {
+        (api.pushnil)(l);
+        return 1;
+    }
+    let b = binding();
+    let (entity, entindex) = entity_at(l, player);
+    if entity == 0 || *(entity as *const usize) != b.player_vtable {
+        foundation::lua::raise_where(
+            l,
+            format!("player.CreateNextBot gave entity {entindex}, not a NextBotPlayer"),
+        );
+    }
+    let nextbot = entity + PLAYER_INEXTBOT_OFFSET;
+    let intention = intention_of(nextbot);
+    if intention == 0 || *(intention as *const usize) != b.base_intention_vtable {
+        foundation::lua::raise_where(
+            l,
+            format!("player {entindex}'s intention is not a plain IIntention"),
+        );
+    }
+    let behavior = Box::into_raw(vec![0u64; BEHAVIOR_WORDS].into_boxed_slice()).cast::<u64>();
+    *behavior = b.behavior_vtables.0 as u64;
+    *behavior.add(1) = b.behavior_vtables.1 as u64;
+    let shadow = Box::into_raw(vec![0u64; SHADOW_WORDS].into_boxed_slice()).cast::<u64>();
+    *shadow = b.intention_vtable as u64;
+    *shadow.cast::<u8>().add(COMPONENT_BOT).cast::<usize>() = nextbot;
+    *shadow.cast::<u8>().add(INTENTION_QUERY).cast::<usize>() = b.intention_query_vtable;
+    *shadow
+        .cast::<u8>()
+        .add(INTENTION_BEHAVIOR)
+        .cast::<*mut u64>() = behavior;
+    b.soldiers.insert(intention, Soldier { behavior, shadow });
+    *(intention as *mut usize) = b.player_intention.as_ptr() as usize;
+    (api.settop)(l, player);
+    1
 }
 
 unsafe fn root_of(behavior: *mut u8) -> *mut Action {
     *(behavior.add(BEHAVIOR_ACTION) as *const *mut Action)
 }
 
-/// engine.Insert(bot, action): action, a table of hooks, runs under the bot's
-/// CLuaBehaviour from its next update: the engine starts it. From the bot's
-/// BehaveStart or later.
+/// engine.Insert(bot, action): action, a table of hooks, runs from the bot's next
+/// update: the engine starts it. On a NextBot it goes under its CLuaBehaviour, from
+/// its BehaveStart or later; on a NextSoldier it is the root.
 unsafe extern "C-unwind" fn insert(l: L) -> c_int {
     let api = api();
     (api.settop)(l, 2);
     (api.checktype)(l, 2, TTABLE);
-    let root = root_of(behavior_of(l, 1));
+    let (behavior, under_lua) = behavior_of(l, 1);
+    let root = root_of(behavior);
+    if !under_lua {
+        if !root.is_null() {
+            foundation::lua::raise_where(l, "the bot already runs an action".into());
+        }
+        let action = new_action(l, 2, 1).cast::<Action>();
+        *(behavior.add(BEHAVIOR_ACTION) as *mut *mut Action) = action;
+        return 0;
+    }
     if root.is_null() || (*root).vtable as usize != binding().root_vtable {
         foundation::lua::raise_where(l, "the bot's root action is not CLuaBehaviour".into());
     }
@@ -489,7 +665,7 @@ unsafe fn push_frames(l: L, action: *mut Action, depth: f64, frames: c_int, coun
 unsafe extern "C-unwind" fn stack(l: L) -> c_int {
     let api = api();
     (api.settop)(l, 1);
-    let root = root_of(behavior_of(l, 1));
+    let root = root_of(behavior_of(l, 1).0);
     (api.createtable)(l, 0, 0);
     let frames = (api.gettop)(l);
     let mut count = 0;
@@ -502,7 +678,7 @@ unsafe extern "C-unwind" fn stack(l: L) -> c_int {
 unsafe extern "C-unwind" fn query_hurry(l: L) -> c_int {
     let api = api();
     (api.settop)(l, 1);
-    let behavior = behavior_of(l, 1);
+    let behavior = behavior_of(l, 1).0;
     let query = behavior.add(8);
     let table = *(query as *const *const usize);
     let ask: unsafe extern "win64" fn(*mut u8, *const c_void) -> i32 =
@@ -540,14 +716,28 @@ unsafe fn module_bytes<'a>() -> Option<(&'a [u8], u64)> {
 unsafe fn bind(l: L) -> Result<Binding, String> {
     let (bytes, base) = module_bytes().ok_or("server.dll is not loaded")?;
     let image = Image::parse(bytes, Some(base)).map_err(|e| format!("{e:?}"))?;
+    let classes = image.classes(&[
+        ACTION_CLASS,
+        ROOT_CLASS,
+        BOT_CLASS,
+        INTENTION_CLASS,
+        ENTITY_LIST_CLASS,
+        PLAYER_CLASS,
+        BASE_INTENTION_CLASS,
+        BEHAVIOR_CLASS,
+    ]);
+    let tables = |name: &str| -> Result<&Vec<(usize, usize)>, String> {
+        classes
+            .get(name)
+            .ok_or_else(|| format!("{name} is not in server.dll"))
+    };
     let vtable = |name: &str, at: usize| -> Result<usize, String> {
-        let tables = image.vtables(name).map_err(|e| format!("{e:?}"))?;
-        tables
+        tables(name)?
             .get(at)
             .map(|t| t.0)
             .ok_or_else(|| format!("{name} has no vtable {at}"))
     };
-    let action = image.vtables(ACTION_CLASS).map_err(|e| format!("{e:?}"))?;
+    let action = tables(ACTION_CLASS)?;
     if action.len() != 2 || action[1].1 != 8 {
         return Err("Action<CLuaNextBot> is not an event responder and a query at +8".into());
     }
@@ -565,12 +755,33 @@ unsafe fn bind(l: L) -> Result<Binding, String> {
     if image.code(first, RETURNS_BEHAVIOR.len()) != Some(&RETURNS_BEHAVIOR[..]) {
         return Err("CLuaNextBotIntention no longer holds its Behavior at +0x28".into());
     }
-    let bots = image.vtables(BOT_CLASS).map_err(|e| format!("{e:?}"))?;
+    let bots = tables(BOT_CLASS)?;
     if bots.get(1).map(|t| t.1) != Some(INEXTBOT_OFFSET) {
         return Err("CLuaNextBot no longer holds its INextBot at +0x2240".into());
     }
     let list_table = vtable(ENTITY_LIST_CLASS, 0)?;
     let list = image.pointer_to(list_table).ok_or("no CGlobalEntityList")?;
+
+    let players = tables(PLAYER_CLASS)?;
+    if !players.iter().any(|t| t.1 == PLAYER_INEXTBOT_OFFSET) {
+        return Err("NextBotPlayer no longer holds its INextBot at +0x32c0".into());
+    }
+    let base_intention = tables(BASE_INTENTION_CLASS)?;
+    let base_slots = image.slots(base_intention[0].0);
+    if base_slots.len() != INTENTION_SLOTS
+        || image.code(base_slots[COMPONENT_GET_BOT], RETURNS_BOT.len()) != Some(&RETURNS_BOT[..])
+    {
+        return Err("IIntention is not as it was read".into());
+    }
+    let intention_tables = tables(INTENTION_CLASS)?;
+    if intention_tables.get(1).map(|t| t.1) != Some(INTENTION_QUERY) {
+        return Err("CLuaNextBotIntention no longer holds its query at +0x20".into());
+    }
+    let behaviors = tables(BEHAVIOR_CLASS)?;
+    if behaviors.len() != 2 || behaviors[1].1 != 8 {
+        return Err("Behavior<CLuaNextBot> is not an event responder and a query at +8".into());
+    }
+    let intention_update = base as usize + image.slots(intention)[INTENTION_UPDATE];
 
     let absolute_slots =
         |slots: &[usize]| -> Box<[usize]> { slots.iter().map(|rva| base as usize + rva).collect() };
@@ -588,6 +799,11 @@ unsafe fn bind(l: L) -> Result<Binding, String> {
     primary[ON_STUCK] = on_stuck as *const () as usize;
     primary[ON_INJURED] = on_injured as *const () as usize;
     query[SHOULD_HURRY] = should_hurry as *const () as usize;
+    let mut player_intention = absolute_slots(&base_slots);
+    let base_intention_destructor = player_intention[DESTRUCTOR];
+    player_intention[DESTRUCTOR] = soldier_destructor as *const () as usize;
+    player_intention[FIRST_CONTAINED] = soldier_first_contained as *const () as usize;
+    player_intention[INTENTION_UPDATE] = soldier_update as *const () as usize;
     Ok(Binding {
         lua: l,
         primary,
@@ -601,6 +817,17 @@ unsafe fn bind(l: L) -> Result<Binding, String> {
         free_ids: Vec::new(),
         live: HashSet::new(),
         reasons: HashMap::new(),
+        player_vtable: base as usize + players[0].0,
+        base_intention_vtable: base as usize + base_intention[0].0,
+        base_intention_destructor,
+        player_intention,
+        intention_update,
+        intention_query_vtable: base as usize + intention_tables[1].0,
+        behavior_vtables: (
+            base as usize + behaviors[0].0,
+            base as usize + behaviors[1].0,
+        ),
+        soldiers: HashMap::new(),
     })
 }
 
@@ -622,6 +849,16 @@ pub unsafe extern "C-unwind" fn gmod13_open(l: L) -> c_int {
             for (name, function) in FUNCTIONS {
                 set_function(l, name, *function);
             }
+            (api.getfield)(l, GLOBALSINDEX, c"player".as_ptr());
+            set_function(l, c"CreateNextSoldier", create_next_soldier);
+            (api.settop)(l, -2);
+            (api.getfield)(l, GLOBALSINDEX, c"hook".as_ptr());
+            (api.getfield)(l, -1, c"Add".as_ptr());
+            push_str(l, "EntityRemoved");
+            push_str(l, "nextsoldier.engine");
+            (api.pushcclosure)(l, entity_removed, 0);
+            (api.call)(l, 3, 0);
+            (api.settop)(l, -2);
         }
         Err(why) => {
             push_str(l, &why);
@@ -632,12 +869,20 @@ pub unsafe extern "C-unwind" fn gmod13_open(l: L) -> c_int {
     0
 }
 
-/// The code the engine's Actions point at is about to unload: every Action of
-/// ours goes first, through the engine's own destructor, each one a tree's top.
+/// The code the engine's Actions point at is about to unload: every NextSoldier's
+/// intention goes back as it was, and every Action of ours goes, through the
+/// engine's own destructors, each one a tree's top.
 #[no_mangle]
 #[allow(static_mut_refs)]
 pub unsafe extern "C-unwind" fn gmod13_close(_l: L) -> c_int {
     let Some(b) = BINDING.as_mut() else { return 0 };
+    let intentions: Vec<usize> = b.soldiers.keys().copied().collect();
+    for intention in intentions {
+        if let Some(soldier) = b.soldiers.remove(&intention) {
+            release_soldier(soldier);
+        }
+        *(intention as *mut usize) = b.base_intention_vtable;
+    }
     loop {
         let top = b.live.iter().copied().find(|&a| {
             let parent = (*a).base.parent;
