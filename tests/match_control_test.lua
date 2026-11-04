@@ -6,6 +6,7 @@ local T = dofile("tests/harness.lua")
 local Permissions = system.permissions
 
 local RED, BLUE, UNASSIGNED, SPECTATOR = 2, 3, 0, 1
+local GAME_RUNNING, GAME_OVER = 4, 8
 
 local function Player(name, held, t)
 	local p = {
@@ -32,12 +33,16 @@ local function Load(players, opts)
 		SuddenDeathNow = function(_, forMatch) s.ran[#s.ran + 1] = "sudden " .. tostring(forMatch) return true end,
 		RestartRound = function() s.ran[#s.ran + 1] = "restart" end,
 		ForceMatchWin = function(_, t) s.ran[#s.ran + 1] = "match " .. t return true end,
+		ScramblePending = function() return opts.scramblePending == true end,
+		ScheduleScramble = function() s.ran[#s.ran + 1] = "scramble" end,
 	}
 	local env = setmetatable({
 		WS = {
 			require = T.require,
 			Can = function(ply, name) return ply == nil or ply.held[name] == true end,
 			Active = function() return opts.active ~= false end,
+			State = function() return opts.state or GAME_RUNNING end,
+			STATE = { GAME_OVER = GAME_OVER },
 			Feature = function(name)
 				if name == "rounds" then return rounds end
 				error("feature " .. name)
@@ -63,6 +68,7 @@ local function Load(players, opts)
 			return found
 		end },
 		IsValid = function(v) return v ~= nil end,
+		RunConsoleCommand = function(...) s.ran[#s.ran + 1] = table.concat({ ... }, " ") end,
 		print = function() end,
 	}, { __index = _G })
 	setfenv(assert(loadfile("addons/sandcastle/gamemodes/sandcastle/gamemode/sv_match_control.lua")), env)()
@@ -102,6 +108,49 @@ T.test("a map without rounds says so", function()
 	local s = Load({ admin }, { active = false })
 	s.Run("mp_round_suddendeath", admin)
 	T.eq(admin.said[1], "mp_round_suddendeath: this map has no rounds")
+end)
+
+T.test("restarting the match asks TF2's immediate restart, for a holder of the match privilege", function()
+	local roundOnly = Player("Round", { [Permissions.ROUND] = true })
+	local matchAdmin = Player("Match", { [Permissions.MATCH] = true })
+	local s = Load({ roundOnly, matchAdmin })
+	s.Run("mp_match_restart", roundOnly)
+	T.eq(#s.ran, 0)
+	s.Run("mp_match_restart", matchAdmin)
+	T.eq(s.ran[1], "mp_restartgame_immediate 1")
+end)
+
+T.test("a match already over cannot restart: the rounds read no restart then, and it would wait for a later map", function()
+	local admin = Player("Admin", { [Permissions.MATCH] = true })
+	local s = Load({ admin }, { state = GAME_OVER })
+	s.Run("mp_match_restart", admin)
+	T.eq(#s.ran, 0)
+	T.eq(admin.said[1], "mp_match_restart: the match is over; start a new game")
+end)
+
+T.test("a scramble goes the way a passed vote's does, at the next round", function()
+	local admin = Player("Admin", { [Permissions.MATCH] = true })
+	local s = Load({ admin })
+	s.Run("mp_teams_scramble", admin)
+	T.eq(s.ran[1], "scramble")
+end)
+
+T.test("a scramble already due is not scheduled twice, and the admin is told", function()
+	local admin = Player("Admin", { [Permissions.MATCH] = true })
+	local s = Load({ admin }, { scramblePending = true })
+	s.Run("mp_teams_scramble", admin)
+	T.eq(#s.ran, 0)
+	T.eq(admin.said[1], "mp_teams_scramble: the teams are already to be scrambled")
+end)
+
+T.test("restart and scramble need a map with rounds", function()
+	local admin = Player("Admin", { [Permissions.MATCH] = true })
+	local s = Load({ admin }, { active = false })
+	s.Run("mp_match_restart", admin)
+	s.Run("mp_teams_scramble", admin)
+	T.eq(#s.ran, 0)
+	T.eq(admin.said[1], "mp_match_restart: this map has no rounds")
+	T.eq(admin.said[2], "mp_teams_scramble: this map has no rounds")
 end)
 
 T.test("a round's winners are each paid the reward, then the server's own rewards run", function()

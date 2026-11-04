@@ -4,7 +4,9 @@
 --   mp_round_reward_money, paid to every player of the round's winners.
 --   WSRoundRewards(winner) lets a server add its own rewards.
 -- - match: mp_match_forcewin red|blue|sudden (sudden: a sudden death whose
---   winner wins the match). Begin and Stop Game are ws/sh_gameplay.lua's.
+--   winner wins the match), mp_match_restart (TF2's mp_restartgame_immediate),
+--   mp_teams_scramble (the next round's, as a passed vote's). Begin and Stop
+--   Game are ws/sh_gameplay.lua's.
 -- - tamper (refused to every player while mp_tampering_enabled is 0): the
 --   payload carts (mp_cart_advance, mp_cart_retract), the round clock
 --   (mp_round_timer_add, mp_round_timer_pause), and respawns
@@ -70,6 +72,22 @@ Command("mp_match_forcewin", Permissions.MATCH,
 		if not team then return false, "red, blue or sudden" end
 		return rounds:ForceMatchWin(team)
 	end, { "red", "blue", "blu", "sudden" })
+
+Command("mp_match_restart", Permissions.MATCH, "Restart the match now: scores and rounds played start over", function()
+	if not RoundsFeature() then return false, NO_ROUNDS end
+	-- the rounds read no restart once it is over: the convar would wait for a later map
+	if WS.State() == WS.STATE.GAME_OVER then return false, "the match is over; start a new game" end
+	RunConsoleCommand("mp_restartgame_immediate", "1")
+	return true
+end)
+
+Command("mp_teams_scramble", Permissions.MATCH, "Scramble the teams as the next round starts", function()
+	local rounds = RoundsFeature()
+	if not rounds then return false, NO_ROUNDS end
+	if rounds:ScramblePending() then return false, "the teams are already to be scrambled" end
+	rounds:ScheduleScramble()
+	return true
+end)
 
 -- Round rewards: the money setting, then whatever a server adds.
 hook.Add("WSRoundWin", "ws_match_control", function(winner)

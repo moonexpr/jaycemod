@@ -9,6 +9,7 @@
 --   already had).
 -- An admin mod or server adds its own sections through the hooks
 -- WSGameplayRulesPanel(panel) and WSMatchControlPanel(panel).
+-- With ULX, its menu (XGUI) has a Match tab of the same commands and settings.
 local Permissions = system.permissions
 
 local NOT_ALLOWED = "Gameplay privileges required, please ask an administrator."
@@ -250,4 +251,153 @@ hook.Add("PopulateToolMenu", "ws_admin_panels", function()
 		function(panel) Build(panel, RULES, "WSGameplayRulesPanel") end)
 	spawnmenu.AddToolMenuOption("Utilities", "Admin", "ws_match_control", "Match Control", "", "",
 		function(panel) Build(panel, MATCH, "WSMatchControlPanel") end)
+end)
+
+-- XGUI's Match tab --------------------------------------------------------------------
+
+local TAB_NAME, TAB_ICON = "Match", "icon16/flag_green.png"
+local TAB_WIDTH, TAB_HEIGHT = 585, 345
+-- As XGUI's own Client settings: a titled list on the left, each row a pane on
+-- the right, its controls placed in rows.
+local LIST_TITLE = "Match Control"
+local LIST_X, LIST_WIDTH = 5, 150
+local PANE_X, PANE_WIDTH = 160, 420
+local PANE_Y, PANE_HEIGHT = 5, 335
+local ROW_X = 10
+local BUTTON_WIDTH, BUTTON_ROW = 150, 20
+local LABEL_ROW, SLIDER_ROW = 16, 26
+local SLIDER_WIDTH, SLIDER_LABEL = 300, "<--->"
+local HELP_GAP, HELP_WIDTH, HELP_ROW = 10, 370, 40
+
+-- What the sections build on, as DForm's Button, NumSlider and Help, but in
+-- XGUI's controls down a pane.
+local function PaneForm(pane)
+	local y = ROW_X
+	local function Row(height)
+		local at = y
+		y = y + height
+		return at
+	end
+	return {
+		Button = function(_, label)
+			return xlib.makebutton({ x = ROW_X, y = Row(BUTTON_ROW), w = BUTTON_WIDTH, label = label, parent = pane })
+		end,
+		NumSlider = function(_, label, _, low, high, decimals)
+			xlib.makelabel({ x = ROW_X, y = Row(LABEL_ROW), label = label .. ":", parent = pane })
+			return xlib.makeslider({
+				x = ROW_X,
+				y = Row(SLIDER_ROW),
+				w = SLIDER_WIDTH,
+				label = SLIDER_LABEL,
+				min = low,
+				max = high,
+				decimal = decimals,
+				parent = pane,
+			})
+		end,
+		Help = function(_, text)
+			y = y + HELP_GAP
+			return xlib.makelabel({ x = ROW_X, y = Row(HELP_ROW), w = HELP_WIDTH, wordwrap = true, label = text, parent = pane })
+		end,
+	}
+end
+
+local MATCH_TAB = {
+	{
+		title = "Game",
+		privilege = Permissions.MATCH,
+		build = function(f)
+			Buttons(f, {
+				{
+					label = "Start Game",
+					command = { "mp_gameplay_begin" },
+					help = "Counts down to Gameplay mode. Money and weapons reset.",
+				},
+				{
+					label = "Stop Game",
+					command = { "mp_gameplay_stop" },
+					help = "Back to Sandbox mode.",
+				},
+				{
+					label = "Scramble Teams",
+					command = { "mp_teams_scramble" },
+					help = "Deals players to RED and BLU afresh as the next round starts.",
+				},
+				{
+					label = "Restart Match",
+					command = { "mp_match_restart" },
+					help = "Now: scores and rounds played start over.",
+				},
+			})
+			f:Help("A scramble waits for the next round to start. Restarting the match starts scores and rounds played over, now.")
+		end,
+	},
+	{
+		title = "Round",
+		privilege = Permissions.ROUND,
+		build = function(f)
+			Buttons(f, {
+				{
+					label = "Restart Round",
+					command = { "mp_round_restart" },
+					help = "Starts the round over. Money and weapons are kept.",
+				},
+			})
+			f:Help("A round with players ends as a stalemate first. Money and weapons are kept.")
+		end,
+	},
+	{
+		title = "Win conditions",
+		privilege = Permissions.RULES,
+		build = function(f)
+			Slider(f, "Rounds to win the match", "mp_winlimit", "The match ends when a team wins this many rounds. 0: no limit.")
+			Slider(f, "Most rounds in a match", "mp_maxrounds", "The match ends after this many rounds. 0: no limit.")
+			Slider(f, "Time limit (minutes)", "mp_timelimit", "The map changes after this long. 0: no limit.")
+			Slider(f, "Frags to win a round", "mp_fraglimit", "A team wins the round when it reaches this many frags. 0: no limit.")
+			Slider(f, "Credit to win a round", "mp_creditlimit", "A team wins the round when it earns this much. 0: no limit.")
+			f:Help("0 on any of these: no limit. Frags and credit win a round, not the match.")
+		end,
+	},
+}
+
+local matchTab
+
+local function BuildMatchTab()
+	matchTab = xlib.makepanel({ parent = xgui.null })
+	matchTab:SetSize(TAB_WIDTH, TAB_HEIGHT)
+	local list = xlib.makelistview({ x = LIST_X, y = PANE_Y, w = LIST_WIDTH, h = PANE_HEIGHT, parent = matchTab })
+	list:AddColumn(LIST_TITLE)
+	list.Columns[1].DoClick = function() end
+	local panes = {}
+	for _, section in ipairs(MATCH_TAB) do
+		if WS.Can(LocalPlayer(), section.privilege) then
+			local pane = xlib.makepanel({ x = PANE_X, y = PANE_Y, w = PANE_WIDTH, h = PANE_HEIGHT, parent = matchTab })
+			section.build(PaneForm(pane))
+			list:AddLine(section.title)
+			panes[#panes + 1] = pane
+		end
+	end
+	local function Show(row)
+		for i, pane in ipairs(panes) do pane:SetVisible(i == row) end
+	end
+	function list:OnRowSelected(row) Show(row) end
+	list:SelectFirstItem()
+	Show(1)
+	xgui.addModule(TAB_NAME, matchTab, TAB_ICON)
+	-- XGUI draws only what moduleOrder names, and fills it just once, as it starts
+	if not table.HasValue(xgui.settings.moduleOrder, TAB_NAME) then
+		table.insert(xgui.settings.moduleOrder, TAB_NAME)
+	end
+	xgui.processModules()
+end
+
+-- The menu is built as the local player is ready, in an order of hooks this
+-- file cannot rely on, and is there by its first opening.
+local function OnMenuOpen()
+	WS.RequestServerSettings()
+	if not matchTab and WS.Can(LocalPlayer(), Permissions.MATCH) then BuildMatchTab() end
+end
+
+hook.Add("Initialize", "ws_admin_panels", function()
+	if xgui then xgui.hookEvent("onOpen", nil, OnMenuOpen, "ws_match_tab") end
 end)

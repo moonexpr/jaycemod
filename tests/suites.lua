@@ -86,7 +86,7 @@ return {
 		name = "ws",
 		about = "the gamemode's root modules: always-loaded glue, the HUD, menus, editors and admin tools",
 		tests = {
-			"ws_*", "proxy", "proxy_registry", "radio_gesture", "match_control", "players_menu", "ui",
+			"ws_*", "proxy", "proxy_registry", "radio_gesture", "match_control", "match_tab", "players_menu", "ui",
 			"admin_properties", "permissions_adapter", "editor_*", "gameplay_settings", "tf_hud", "tf_materials",
 			"vote_hud", "votes_controller", "sound_paths", "voices_controller", "nav_generate",
 			"nav_progress_replay",
