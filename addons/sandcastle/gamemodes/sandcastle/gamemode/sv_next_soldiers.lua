@@ -78,7 +78,7 @@ function Soldier:Stands(q)
 	local hullMin, hullMax = self.ent:GetHull()
 	local mins, maxs = Movement.Sweep(hullMin, hullMax, SWEEP_HEIGHT)
 	local at = ToVector(q)
-	if util.TraceHull({ start = at + LIFT, endpos = at + LIFT, mins = mins, maxs = maxs, mask = MASK_PLAYERSOLID, filter = self.ent }).Hit then
+	if util.TraceHull({ start = at + LIFT, endpos = at + LIFT, mins = ToVector(mins), maxs = ToVector(maxs), mask = MASK_PLAYERSOLID, filter = self.ent }).Hit then
 		return false
 	end
 	return util.TraceLine({ start = at + FOOTING_ABOVE, endpos = at - FOOTING_BELOW, mask = MASK_PLAYERSOLID, filter = self.ent }).Hit

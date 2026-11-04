@@ -30,6 +30,11 @@ hook.Add("WSMatchWin", "ns_round_check", function(winner)
 	Note("MATCH WON by team " .. tostring(winner))
 end)
 
+gameevent.Listen("player_disconnect")
+hook.Add("player_disconnect", "ns_round_check", function(data)
+	Note("left: " .. tostring(data.name) .. ", " .. tostring(data.reason))
+end)
+
 local function Shape(frames)
 	local parts = {}
 	for _, frame in ipairs(frames) do parts[#parts + 1] = frame.name .. (frame.suspended and "(s)" or "") end

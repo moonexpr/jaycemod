@@ -173,8 +173,10 @@ end
 local function BesidePillar(gap)
 	environment.util.TraceHull = function(trace)
 		local at = trace.start
+		-- the engine reads a box only from Vectors: anything else sweeps a point
+		local half = getmetatable(trace.mins) == Meta and 24 or 0
 		return { Hit = trace.start.x == trace.endpos.x and trace.start.y == trace.endpos.y
-			and math.abs(at.x - 100) < 24 and math.abs(at.y) < 24 }
+			and math.abs(at.x - 100) < half and math.abs(at.y) < half }
 	end
 	environment.util.TraceLine = function(trace)
 		if trace.start.z ~= trace.endpos.z then return { Hit = not gap } end
