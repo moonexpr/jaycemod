@@ -33,4 +33,37 @@ T.test("nowhere to fall within reach is no step", function()
 	T.eq(Locomotion.StepOff(FROM, LANDING, Open, function() return false end), nil, "nothing to walk to")
 end)
 
+-- Heading along +x from the origin, whose left is +y.
+local AHEAD = { x = 500, y = 0, z = 0 }
+local ORIGIN = { x = 0, y = 0, z = 0 }
+
+local function WallOn(side)
+	return function(from) return (from.y > 0) == (side == "left") end
+end
+
+T.test("a jamb on one side veers it to the other", function()
+	local veered = Locomotion.Avoid(ORIGIN, AHEAD, 24, WallOn("left"))
+	T.eq(veered.y < 0, true, "away from the wall on its left")
+	T.eq(veered.x > 0, true, "and still on its way")
+	veered = Locomotion.Avoid(ORIGIN, AHEAD, 24, WallOn("right"))
+	T.eq(veered.y > 0, true, "away from the wall on its right")
+end)
+
+T.test("a way clear on both sides, or shut on both, is left as it is", function()
+	T.eq(Locomotion.Avoid(ORIGIN, AHEAD, 24, function() return false end), AHEAD, "nothing to avoid")
+	T.eq(Locomotion.Avoid(ORIGIN, AHEAD, 24, function() return true end), AHEAD, "no side is better")
+end)
+
+T.test("feelers start from its shoulders, level with it, and look ahead", function()
+	local seen = {}
+	Locomotion.Avoid(ORIGIN, AHEAD, 24, function(from, to) seen[#seen + 1] = { from = from, to = to } return false end)
+	T.eq(#seen, 2, "one a side")
+	T.eq(seen[1].from.y * seen[2].from.y < 0, true, "on either side of it")
+	T.eq(seen[1].to.x > seen[1].from.x, true, "the way it is going")
+end)
+
+T.test("a target it stands on is left as it is", function()
+	T.eq(Locomotion.Avoid(ORIGIN, ORIGIN, 24, function() return true end), ORIGIN, "no way to feel along")
+end)
+
 T.finish()

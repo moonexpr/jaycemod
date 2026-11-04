@@ -147,4 +147,22 @@ T.test("a route's drop right below it is stepped off, past the ledge, not stood 
 	T.eq(soldier.steer.x - 24 >= ledge, true, "its whole body past the edge")
 end)
 
+T.test("a jamb beside its way veers its steering away", function()
+	ready, planned = true, nil
+	local soldier = New()
+	environment.util.TraceHull = function(trace)
+		-- going +x, its left is +y: a wall along that side
+		return { Hit = trace.start.y > 0 }
+	end
+	soldier.walk = {
+		Stalled = function() return false end,
+		Next = function() return { x = 500, y = 0, z = 0 } end,
+	}
+	soldier.planned = Vec(5000, 0, 0)
+	soldier.nextPlan = 100
+	soldier:FollowPath(Vec(5000, 0, 0))
+	soldier:Steer(1)
+	T.eq(soldier.steer.y < 0, true, "toward the open side")
+end)
+
 T.finish()

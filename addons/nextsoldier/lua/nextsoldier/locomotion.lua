@@ -197,3 +197,28 @@ function StepOff(pos, landing, clear, falls)
 	local nearest = Select.Lowest(ways, function(way) return Geometry.Distance2D(way.falls, landing) end)
 	return nearest and nearest.walk
 end
+
+-- PathFollower::Avoid's feelers: from either shoulder a body feels AVOID_RANGE ahead,
+-- and with one side blocked and the other not it veers off the blocked side, so a line
+-- grazing a door's jamb passes it instead of pressing into it. AVOID_LEAD is how far
+-- ahead the veered point stands.
+local AVOID_RANGE, AVOID_LEAD, AVOID_MARGIN = 50, 100, 2
+
+-- The point to make for on the way from pos to target: target, or a point veered off
+-- the one side blocked(from, to) says is. halfWidth: the body's.
+function Avoid(pos, target, halfWidth, blocked)
+	local way = Unit(pos, target)
+	if not way then return target end
+	local left = { x = -way.y, y = way.x }
+	local offset = halfWidth / 2 + AVOID_MARGIN
+	local fromLeft, fromRight = Pushed(pos, left, offset), Pushed(pos, left, -offset)
+	local leftBlocked = blocked(fromLeft, Pushed(fromLeft, way, AVOID_RANGE))
+	local rightBlocked = blocked(fromRight, Pushed(fromRight, way, AVOID_RANGE))
+	if leftBlocked == rightBlocked then return target end
+	local side = leftBlocked and -1 or 1
+	return {
+		x = pos.x + AVOID_LEAD * (way.x + side * left.x),
+		y = pos.y + AVOID_LEAD * (way.y + side * left.y),
+		z = target.z,
+	}
+end

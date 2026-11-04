@@ -98,6 +98,24 @@ function Soldier:RouteCost()
 	end
 end
 
+-- The point it makes for on its way to point, veered off a jamb on one side of it.
+function Soldier:Avoid(pos, point)
+	local ply = self.ent
+	local _, hullMax = ply:GetHull()
+	local half = hullMax.x
+	local mins, maxs = Vector(-half / 2, -half / 2, 0), Vector(half / 2, half / 2, SWEEP_HEIGHT)
+	return Locomotion.Avoid(Point(pos), point, half, function(from, to)
+		return util.TraceHull({
+			start = ToVector(from) + LIFT,
+			endpos = ToVector(to) + LIFT,
+			mins = mins,
+			maxs = maxs,
+			mask = MASK_PLAYERSOLID,
+			filter = ply,
+		}).Hit
+	end)
+end
+
 -- Where to walk to fall to a drop's landing, kept for that landing: nil with no way off.
 function Soldier:StepOff(pos, landing)
 	if self.stepOffOf == landing then return self.stepOffTo end
@@ -167,6 +185,8 @@ function Soldier:Steer(now)
 	local point = self.walk and self.walk:Next(Point(pos), function(q) return self:WalkClear(pos, ToVector(q)) end) or nil
 	if point and Locomotion.DropBelow(Point(pos), point, DROP_DEPTH, DROP_NEAR) then
 		point = self:StepOff(pos, point) or point
+	elseif point then
+		point = self:Avoid(pos, point)
 	end
 	self.steer = point
 end

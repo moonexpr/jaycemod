@@ -14,6 +14,8 @@ local MODEL = "models/player/police.mdl"
 -- The nav area its owner stands on is the nearest within this (a curved
 -- pipe's area can lie further below than a step).
 local SETTLE_REACH = 64
+-- How much farther than the nearest (squared) an area still counts as under its owner.
+local SEAM_SQR = 1
 
 if SERVER then AddCSLuaFile() end
 
@@ -50,13 +52,19 @@ function ENT:Think()
 end
 
 -- Whether it knows where its owner stands: its last known nav area (where
--- Path:Compute starts) is the nearest to its owner, or the owner is near
--- none. It follows its owner on its next think and the engine
--- catches its area up after that, so a tick or two after the owner is set
--- down elsewhere.
+-- Path:Compute starts) is as near its owner as the nearest area is, or the owner is
+-- near none. It follows its owner on its next think and the engine catches its area
+-- up after that, so a tick or two after the owner is set down elsewhere. As near, not
+-- the same: on the seam between two areas the engine keeps the one it was on and the
+-- search may name the other, for as long as the owner stands there.
 function ENT:Settled()
-	local here = navmesh.GetNearestNavArea(self:GetOwner():GetPos(), false, SETTLE_REACH)
-	return not IsValid(here) or self:GetLastKnownArea() == here
+	local pos = self:GetOwner():GetPos()
+	local here = navmesh.GetNearestNavArea(pos, false, SETTLE_REACH)
+	if not IsValid(here) then return true end
+	local last = self:GetLastKnownArea()
+	if last == here then return true end
+	if not IsValid(last) then return false end
+	return last:GetClosestPointOnArea(pos):DistToSqr(pos) <= here:GetClosestPointOnArea(pos):DistToSqr(pos) + SEAM_SQR
 end
 
 -- The waypoints (Vectors) of a route from where it stands to goal, priced
