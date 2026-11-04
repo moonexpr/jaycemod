@@ -30,9 +30,14 @@ pub const ON_RESUME: usize = 49;
 pub const INITIAL_CONTAINED: usize = 50;
 pub const ON_STUCK: usize = 56;
 pub const ON_INJURED: usize = 63;
+pub const ON_COMMAND_STRING: usize = 82;
 
 // IContextualQuery's slots, in the vtable at +8.
 pub const SHOULD_HURRY: usize = 2;
+pub const SHOULD_RETREAT: usize = 3;
+
+// INextBotEventResponder's OnCommandString, on an INextBot: the event's way in.
+pub const RESPONDER_COMMAND_STRING: usize = 34;
 
 // INextBot, at INEXTBOT_OFFSET in a CLuaNextBot.
 pub const INEXTBOT_OFFSET: usize = 0x2240;
@@ -71,7 +76,10 @@ pub const ENTITY_INFO_SIZE: usize = 0x20;
 
 // ActionResultType, EventResultPriorityType, QueryResultType
 pub const CONTINUE: i32 = 0;
+pub const SUSPEND_FOR: i32 = 2;
 pub const RESULT_TRY: i32 = 1;
+pub const ANSWER_NO: i32 = 0;
+pub const ANSWER_YES: i32 = 1;
 pub const ANSWER_UNDEFINED: i32 = 2;
 
 /// ActionResult<Actor>, returned through a hidden pointer.
@@ -114,6 +122,8 @@ pub struct Action {
 pub struct LuaAction {
     pub base: Action,
     pub id: u32,
+    /// The native TacticalMonitor's: a mode whose soldiers never retreat.
+    pub never_retreats: bool,
 }
 
 #[cfg(test)]

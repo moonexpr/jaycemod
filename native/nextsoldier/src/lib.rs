@@ -7,6 +7,7 @@
 
 pub mod image;
 pub mod layout;
+pub mod tactical;
 
 #[cfg(all(windows, target_arch = "x86_64"))]
 mod engine;

@@ -242,6 +242,10 @@ end
 -- tf_flag_caplimit: the captures that win (0: none).
 function Controller:CapLimit() return caplimit:GetInt() end
 
+-- A flag's model (features.flag.model), a zone's team: what a soldier's behaviour asks.
+function Controller:FlagAt(ent) return self.flags[ent] end
+function Controller:ZoneTeam(ent) return self.zones[ent].team end
+
 function Controller:UnbindFlag(ent)
 	self.flags[ent] = nil
 end
