@@ -398,6 +398,13 @@ class BindAddress(unittest.TestCase):
         self.assertIn("--ip", str(caught.exception))
 
 
+class MapWorker(unittest.TestCase):
+    def test_each_server_has_add_map_answering_for_its_own_instance(self):
+        command = srcds.map_worker_command(Instance(2))
+        self.assertEqual(Path(command[1]).name, "add_map.py")
+        self.assertEqual(command[2:], ["--instance", "2", "--serve"])
+
+
 class ConsoleWindow(unittest.TestCase):
     def test_the_console_follows_the_log_from_its_start_across_restarts(self):
         self.assertEqual(console_command(Path("/repo/srcds.log")), "tail -n +1 -F /repo/srcds.log")

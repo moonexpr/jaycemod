@@ -14,7 +14,7 @@ shared addons, the repo's own (REPO_ADDONS), and server_mounts, whose lua/ links
 server_root/ (SERVER_LUA): an autorun (mounts.lua) that mounts each Workshop
 archive in SERVER_WORKSHOP, linked as cache/<name>.gma (GMod ignores a loose
 .gma in addons/; an archive no longer listed leaves cache/, since every one
-there is mounted), and each map pool map in SERVER_MAPS, from steamcmd's
+there is mounted), and each map pool map in SERVER_MAPS and each map add_map.py listed in ADDED_MAPS, from steamcmd's
 downloads, as cache/workshop_map_<item>.gma, the gamemode's entities winning over a mounted addon's of
 the same name, luadev's access on a LAN server, ULX's luadev commands, and
 luadev's socket for server_lua.py. lua/ is its own too, every entry a link
@@ -33,14 +33,16 @@ program started from srcds.py's pty it writes to that pty, colors and all.
 """
 from __future__ import annotations
 
+import json
 import lzma
 import os
 import zipfile
 import struct
 import sys
 import argparse
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Mapping
 
 from gma import Gma, GmaFile, write_gma
 from vpk import Vpk
@@ -121,6 +123,7 @@ SERVER_LUA = {
     "autorun/server/hotswap.lua": "hotswap.lua",  # ws_hotswap_module, ws_hotswap_feature
     "autorun/gamemode_entities.lua": "gamemode_entities.lua",  # shared: the gamemode's entities win
     "ulx/modules/sh/luadev.lua": "ulx_luadev.lua",  # ULX includes every module it finds, on both sides
+    "ulx/modules/sh/add_map.lua": "ulx_add_map.lua",  # ulx addmap, answered by add_map.py --serve
     "autorun/server/luadev_socket.lua": "luadev_socket.lua",  # server_lua.py's listener on 127.0.0.1:27098
     "autorun/server/sandcastle_watch.lua": "sandcastle_watch.lua",  # Watch: events server_watch.py follows
     "autorun/server/sandcastle_debug.lua": "sandcastle_debug.lua",  # breakpoints and Lua errors, for gmod_mcp.py
@@ -135,6 +138,9 @@ SERVER_BINARIES = {"gmsv_luasocket_win64.dll": "gmcl_luasocket_win64.dll"}
 # server's lua/bin -> the build's output (native/<crate>, cargo xwin build
 # --release --target x86_64-pc-windows-msvc)
 REPO = Path(__file__).resolve().parents[2]
+# Maps being tried out, which add_map.py lists here (gitignored): every instance
+# mounts them as it does SERVER_MAPS; one that stays moves to SERVER_MAPS
+ADDED_MAPS = REPO / ".devtools" / "artifacts" / "added_maps.json"
 NATIVE_BINARIES = {
     "gmsv_wsprofile_win64.dll": REPO / "native/ws_profile/target/x86_64-pc-windows-msvc/release/wsprofile.dll",
     "gmsv_foundation_win64.dll": REPO / "native/foundation/target/x86_64-pc-windows-msvc/release/foundation.dll",
@@ -228,12 +234,23 @@ class Layout:
     luadev_port: int  # luadev_socket.lua's, written to LUADEV_PORT_FILE
     maps: Path  # steamcmd's workshop/content/4000, which holds SERVER_MAPS
     gamemode: Path | None = None  # another checkout's gamemode/sandcastle folder this root runs, or the shared install's
+    added_maps: Mapping[str, str] = field(default_factory=dict)  # add_map.py's, mounted beside SERVER_MAPS
 
     @classmethod
     def of(cls, instance: Instance) -> "Layout":
         override = os.environ.get(GAMEMODE_ENV)
         return cls(SHARED, instance.root, WORKSHOP, SERVER_LUA_DIR, TF, instance.luadev_port, STEAMCMD_WORKSHOP,
-                   Path(override) if override else None)
+                   Path(override) if override else None, read_added_maps(ADDED_MAPS))
+
+
+def read_added_maps(path: Path) -> dict[str, str]:
+    """The maps add_map.py added: map -> item id; none before the first."""
+    return json.loads(path.read_text()) if path.exists() else {}
+
+
+def write_added_maps(path: Path, maps: Mapping[str, str]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(maps, indent=1, sort_keys=True) + "\n")
 
 
 def map_archive_name(item: str) -> str:
@@ -301,6 +318,12 @@ def place_pack(path: Path, archive: Path) -> None:
     path.write_bytes(write_gma(Gma(path.stem, tuple(files))))
 
 
+def archive_bytes(archive: Path) -> bytes:
+    """A download as GMA bytes: a .gma as it is, a legacy .bin decompressed."""
+    data = archive.read_bytes()
+    return data if archive.suffix == ".gma" else lzma.decompress(data, format=lzma.FORMAT_ALONE)
+
+
 def place_archive(path: Path, archive: Path) -> None:
     """A .gma is linked; a legacy .bin is decompressed, again only when the download is newer."""
     if archive.suffix == ".gma":
@@ -310,7 +333,7 @@ def place_archive(path: Path, archive: Path) -> None:
         path.unlink()
     if path.exists() and path.stat().st_mtime >= archive.stat().st_mtime:
         return
-    path.write_bytes(lzma.decompress(archive.read_bytes(), format=lzma.FORMAT_ALONE))
+    path.write_bytes(archive_bytes(archive))
 
 
 class NotAnExe(ValueError):
@@ -374,13 +397,14 @@ def build(layout: Layout) -> Path:
         link(target, source)
     cache = game / "cache"
     cache.mkdir(exist_ok=True)
-    listed = {f"{name}.gma" for name in SERVER_WORKSHOP | SERVER_DOWNLOADS.keys() | SERVER_PACKS.keys()} | {map_archive_name(item) for item in SERVER_MAPS.values()}
+    maps = SERVER_MAPS | layout.added_maps
+    listed = {f"{name}.gma" for name in SERVER_WORKSHOP | SERVER_DOWNLOADS.keys() | SERVER_PACKS.keys()} | {map_archive_name(item) for item in maps.values()}
     for archive in cache.glob("*.gma"):
         if archive.name not in listed:
             archive.unlink()
     for name, item in SERVER_WORKSHOP.items():
         place_archive(cache / f"{name}.gma", workshop_archive(layout.workshop, item))
-    for name, item in SERVER_MAPS.items():
+    for name, item in maps.items():
         place_archive(game / "cache" / map_archive_name(item), downloaded_archive(layout, name, item))
     for name, item in SERVER_DOWNLOADS.items():
         place_archive(cache / f"{name}.gma", downloaded_archive(layout, name, item))

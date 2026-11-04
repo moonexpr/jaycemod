@@ -64,6 +64,28 @@ dt srcds stop
 dt srcds console                    # follow the console, in color, in iTerm
 ```
 
+**A new Workshop map, to try it out**, with no restart: `dt add_map`
+downloads the item, lists it in `.devtools/artifacts/added_maps.json` (so a
+later build keeps it, on every instance), mounts it on the running server and
+changes to it. With players on the server it mounts the map and leaves them
+where they are, unless `--change`; a server a bench has leased is left alone.
+A map that stays moves to `SERVER_MAPS` in `server_root.py`. A map may come
+with no nav mesh: `mp_nav_generate` builds one.
+
+In game it is `ulx addmap <item> [map] [change]`, `!addmap` in chat
+(superadmins): alone on the server the map changes; with others on, only when
+asked. Lua cannot download an item, so the command writes a request to the watch
+log and `add_map.py --serve`, which `srcds.py` starts with each server and which
+ends with it, answers in chat. In-game replies say if no worker answered: run
+`dt add_map --serve` (its output: `.devtools/artifacts/add_map[-n].log`).
+
+```bash
+dt add_map 3632274158           # an item id or its Workshop link
+dt add_map ITEM --map gm_b      # an item of several maps: which to change to
+dt add_map ITEM --change        # change map though players are on it
+dt add_map --instance 2 ITEM    # a second server's
+```
+
 **A second server beside the first** (when another agent is testing on
 it): `--instance 2` before the action, on every command for that server.
 

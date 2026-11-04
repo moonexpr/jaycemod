@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 
 from server_root import GAMEMODE_ENV, LUADEV_PORT_FILE, REPO, REPO_ADDONS, REPO_DATA, ROOT, ROOT_WINDOWS, SERVER_BINARIES, SERVER_LUA, SERVER_EXE, SERVER_WORKSHOP, TF_SCRIPTS,\
-    TF_SCRIPTS_DIR, SERVER_DOWNLOADS, SERVER_MAPS, SERVER_PACKS, map_archive_name, Instance, Layout, NotAnExe, build, console_exe
+    TF_SCRIPTS_DIR, SERVER_DOWNLOADS, SERVER_MAPS, SERVER_PACKS, map_archive_name, Instance, Layout, NotAnExe, build, console_exe, read_added_maps, write_added_maps
 from test_vpk import DIR_ARCHIVE, entry, write_pak
 
 # a Workshop item from before .gma downloads: one LZMA-compressed .gma, as .bin
@@ -286,6 +286,43 @@ def test_the_workshop_maps_land_in_cache_named_for_their_items(layout):
     for name, item in SERVER_MAPS.items():
         assert (cache / map_archive_name(item)).resolve() == layout.maps / item / f"{name}.gma", name
     assert map_archive_name("266666023") == "workshop_map_266666023.gma"
+
+
+# Maps add_map.py added (ADDED_MAPS) land beside the pool's, and a build keeps
+# them: it removes every archive in cache/ it does not list.
+def test_an_added_map_lands_in_cache_and_survives_a_build(layout):
+    (layout.maps / "999").mkdir()
+    (layout.maps / "999" / "addon.gma").write_bytes(b"GMAD added")
+    added = replace(layout, added_maps={"gm_added": "999"})
+    cache = build(added) / "garrysmod" / "cache"
+    assert (cache / map_archive_name("999")).resolve() == layout.maps / "999" / "addon.gma"
+    build(added)
+    assert (cache / map_archive_name("999")).resolve() == layout.maps / "999" / "addon.gma"
+
+
+def test_a_map_no_longer_added_leaves_cache(layout):
+    (layout.maps / "999").mkdir()
+    (layout.maps / "999" / "addon.gma").write_bytes(b"GMAD added")
+    cache = build(replace(layout, added_maps={"gm_added": "999"})) / "garrysmod" / "cache"
+    build(layout)
+    assert not (cache / map_archive_name("999")).exists()
+
+
+def test_no_added_maps_file_is_no_added_maps(tmp_path):
+    assert read_added_maps(tmp_path / "absent.json") == {}
+
+
+def test_added_maps_read_back_as_written(tmp_path):
+    path = tmp_path / "deeper" / "added.json"
+    write_added_maps(path, {"gm_added": "999"})
+    assert read_added_maps(path) == {"gm_added": "999"}
+
+
+def test_a_layout_reads_the_added_maps(tmp_path, monkeypatch):
+    path = tmp_path / "added.json"
+    write_added_maps(path, {"gm_added": "999"})
+    monkeypatch.setattr("server_root.ADDED_MAPS", path)
+    assert Layout.of(Instance(2)).added_maps == {"gm_added": "999"}
 
 
 def test_a_workshop_map_not_downloaded_is_refused_with_how_to_fetch_it(layout, tmp_path):

@@ -505,6 +505,7 @@ class Server:
             server = new_server(read_launched(pid_file), before, running_processes())
             if server is not None:
                 pid_file.write_text(dataclasses.replace(read_launched(pid_file), server=server).text())
+                start_map_worker(self.instance)
                 return
             time.sleep(0.5)
         raise ServerDown("no new server process appeared on the port; see " + str(log))
@@ -565,6 +566,17 @@ def console_pty() -> Tuple[int, int]:
     master, slave = pty.openpty()
     fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", CONSOLE_ROWS, CONSOLE_COLUMNS, 0, 0))
     return master, slave
+
+
+def map_worker_command(instance: Instance) -> List[str]:
+    return [sys.executable, str(Path(__file__).resolve().with_name("add_map.py")), "--instance", str(instance.number), "--serve"]
+
+
+def start_map_worker(instance: Instance) -> None:
+    """add_map.py's worker, answering `ulx addmap` until this server stops."""
+    with open(ARTIFACTS / f"add_map{instance.suffix}.log", "ab") as log:
+        subprocess.Popen(map_worker_command(instance), stdin=subprocess.DEVNULL, stdout=log, stderr=log,
+                         start_new_session=True)
 
 
 def supervise(log_path: Path, pid_file: Path, port: int, argv: List[str]) -> int:
