@@ -165,6 +165,9 @@ function ENT:Initialize()
 	self.nsHullMaxs = bounds and Vector(bounds.x, bounds.y, bounds.z) or HULL_MAXS
 	self:SetCollisionBounds(self.nsHullMins, self.nsHullMaxs)
 	if self.BloodColor then self:SetBloodColor(self.BloodColor) end
+	-- what it walks on: under the engine's NPC mask a body on a map built for
+	-- players walks a stair's bare treads, not the clip laid over them
+	self:SetSolidMask(Host.current:SolidMask())
 	self.loco:SetStepHeight(STEP_HEIGHT)
 	self.loco:SetJumpHeight(JUMP_HEIGHT)
 	self.loco:SetDeathDropHeight(self.DeathDropHeight)

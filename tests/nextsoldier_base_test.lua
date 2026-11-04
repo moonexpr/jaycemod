@@ -123,6 +123,16 @@ T.test("war soldiers hate the opposing HL2 faction and default to hostility", fu
 	T.eq(host:find("[Factions.HL2_REBELS] = Factions.HL2_COMBINE", 1, true) ~= nil, true)
 end)
 
+-- Its locomotion moves under its solid mask, the engine's NPC mask until told: on
+-- a map built for players a body under that walks a stair's bare treads, not the
+-- clip laid over them, and one wider than it is deep stops at a riser. So it is
+-- the base's, not only for those the war enlists.
+T.test("a body moves under the mask its host names, whoever spawned it", function()
+	local base = Read(NEXTSOLDIER_ENTITIES .. "base_nextsoldier.lua")
+	local initialize = base:match("function ENT:Initialize%(%)(.-)\nend")
+	T.eq(initialize:find("self:SetSolidMask(Host.current:SolidMask())", 1, true) ~= nil, true, "set as it is made")
+end)
+
 T.test("a name the base replaces is declared by none", function()
 	for name in pairs(Base.REPLACED) do T.eq(Base.ComponentOf(name), nil, name) end
 end)
