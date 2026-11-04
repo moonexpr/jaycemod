@@ -1,8 +1,8 @@
 -- The gamemode feature's view: TF2's tournament panel in cooler-hud v2.6's
--- look (features.gamemode.tournament lays it out and words it) while the
--- game is not in Gameplay mode: Sandbox mode, the wait for players
--- (ws_gamemode_waiting_have and _need) and the countdown to Gameplay mode
--- (ws_gamemode_transition_end), with each team's name and players or, while
+-- look (features.gamemode.tournament lays it out and words it) before a
+-- game: the wait for players (ws_gamemode_waiting_have and _need) and the
+-- countdown to Gameplay mode (ws_gamemode_transition_end), never in Sandbox
+-- mode, chiming as it appears or goes, with each team's name and players or, while
 -- the game waits, whether it is ready (ws_ready_team_<team>), the match's
 -- win conditions (the rounds controller's ws_match_timelimit, _winlimit and
 -- _maxrounds) and, on TF2's help strip, the key for what the player may do.
@@ -13,14 +13,13 @@
 local Tournament = WS.require("features.gamemode.tournament")
 local Hud = WS.require("includes.tf_hud")
 local Text = WS.require("features.rounds.text")
-local Permissions = system.permissions
 local Font, DrawBorder = WS.TFHud.Font, WS.TFHud.DrawBorder
 local TAN_LIGHT = WS.TFHud.TAN_LIGHT
 local RED_SOLID = Color(192, 28, 0) -- clientscheme.res's RedSolid, HudReadyPulse's red
 
 local TEAMS = { WS.TEAM_BLUE, WS.TEAM_RED }
 
-local View = {}
+local View = { shown = false }
 
 -- The key bound to a command, as TF2 names F4 in "F4 = Toggle Ready"; nil unbound.
 local function Key(...)
@@ -47,7 +46,6 @@ local function Common()
 		waitingNeed = GetGlobal2Int("ws_gamemode_waiting_need", 0),
 		halted = WS.GameplayStopped(),
 		winPanel = not Text.ShowsTeamBar(WS.State()),
-		mayBegin = WS.Can(LocalPlayer(), Permissions.MATCH) == true,
 		readyKey = ReadyKey(),
 		teamKey = TeamKey(),
 	}
@@ -178,14 +176,21 @@ function View:DrawMvM(panel, players, w, h)
 	draw.SimpleText(panel.instructions, font, layout.instructions.x, layout.instructions.y, color, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 end
 
+function View:Hint(panel)
+	if Tournament.Toggled(self.shown, panel) then WS.PlaySoundscape(Tournament.HINT_SOUND) end
+	self.shown = panel ~= nil
+end
+
 function View:Draw(w, h)
 	if GetGlobal2Bool("ws_mvm", false) then
 		local q = MvMFacts()
 		local panel = Tournament.MvMPanel(q)
+		self:Hint(panel)
 		if panel then self:DrawMvM(panel, q.defenderPlayers, w, h) end
 		return
 	end
 	local panel = Tournament.Panel(Facts())
+	self:Hint(panel)
 	if panel then self:DrawTournament(panel, w, h) end
 end
 

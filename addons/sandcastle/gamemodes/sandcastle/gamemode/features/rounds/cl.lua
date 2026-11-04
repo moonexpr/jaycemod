@@ -5,9 +5,10 @@
 --     on the team's outlined background, its PREPARE, SETUP, OVERTIME and
 --     GAME OVER labels in a box under it, and the "+m:ss" flash beside it
 --     when time is added (game_teamplay_timer_time_added);
---     the koth HUD replaces the timer; before a game (Sandbox mode, the
---     wait for players, the countdown to Gameplay mode) the pregame panel
---     (features/gamemode/cl.lua) takes the scores' and the timer's place;
+--     the koth HUD replaces the timer; before a game the scores and the
+--     timer give way: in the wait for players and the countdown to Gameplay
+--     mode to the pregame panel (features/gamemode/cl.lua), in Sandbox mode
+--     to nothing;
 --   - the pre-round and respawn countdowns and the announcement line;
 --   - the round limits' counters (games.gameplay.rounds.limits), as TF2's Player
 --     Destruction panel (HudObjectivePlayerDestruction.res), in cl_limits;
@@ -81,8 +82,8 @@ function View:ScoresTop(h)
 	return ScoresTop(h)
 end
 
--- features.rounds.text's Pregame: before a game, while the pregame panel
--- has the top of the screen; nil in Gameplay mode.
+-- features.rounds.text's Pregame: before a game, while the scores and timer
+-- leave the top of the screen; nil in Gameplay mode.
 function View:Pregame()
 	return Text.Pregame({
 		now = CurTime(),

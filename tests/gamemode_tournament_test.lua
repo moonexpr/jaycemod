@@ -1,9 +1,8 @@
 -- features.gamemode.tournament: TF2's tournament panel (CHudTournament,
 -- hudtournament.res as cooler-hud v2.6 lays it out) over Sandcastle's own
--- ready-up, Sandbox mode, the wait for players and the countdown to
--- Gameplay mode: the state in the gamemode's own words, each team's name
--- and players, TF2's win conditions from the match's limits, and how to
--- begin a game for a player who may.
+-- ready-up, the wait for players and the countdown to Gameplay mode: the
+-- state in the gamemode's own words, each team's name and players, and TF2's
+-- win conditions from the match's limits. Sandbox mode shows no panel.
 local T = dofile("tests/harness.lua")
 local Tournament = T.require("features.gamemode.tournament")
 local Teams = gameplay.teams
@@ -11,6 +10,7 @@ local Text = T.require("features.rounds.text")
 
 local RED, BLUE = Teams.RED, Teams.BLUE
 local NOW = 100
+local COUNTING = NOW + 5
 
 local function Q(over)
 	local q = {
@@ -23,7 +23,6 @@ local function Q(over)
 		players = { [RED] = 2, [BLUE] = 1 },
 		names = { [RED] = "RED", [BLUE] = "BLU" },
 		limits = { timelimit = 0, winlimit = 0, maxrounds = 0 },
-		mayBegin = false,
 		humans = { [RED] = 2, [BLUE] = 1 },
 		teamReady = { [RED] = false, [BLUE] = false },
 		localTeam = BLUE,
@@ -38,8 +37,8 @@ T.test("Gameplay mode shows no panel", function()
 	T.eq(Tournament.Panel(Q({ halted = false })), nil, "the rounds run")
 end)
 
-T.test("Sandbox mode says so", function()
-	T.eq(Tournament.Panel(Q()).state, "Sandbox mode", "state")
+T.test("Sandbox mode shows no panel", function()
+	T.eq(Tournament.Panel(Q()), nil, "the rounds stand still")
 end)
 
 T.test("a game waiting for players counts them, in the round timer's words", function()
@@ -58,25 +57,34 @@ end)
 
 T.test("a countdown that has ended is no countdown", function()
 	T.eq(Tournament.Panel(Q({ halted = false, transitionEnd = NOW })), nil, "Gameplay mode")
-	T.eq(Tournament.Panel(Q({ transitionEnd = NOW - 1 })).state, "Sandbox mode", "a stale end in Sandbox mode")
+	T.eq(Tournament.Panel(Q({ transitionEnd = NOW - 1 })), nil, "a stale end in Sandbox mode")
 end)
 
 T.test("a win panel hides it", function()
-	T.eq(Tournament.Panel(Q({ winPanel = true })), nil, "Sandbox mode")
-	T.eq(Tournament.Panel(Q({ winPanel = true, transitionEnd = NOW + 5 })), nil, "counting down")
+	T.eq(Tournament.Panel(Q({ winPanel = true, waitingHave = 1, waitingNeed = 2 })), nil, "waiting")
+	T.eq(Tournament.Panel(Q({ winPanel = true, transitionEnd = COUNTING })), nil, "counting down")
+end)
+
+T.test("the hint plays as the panel appears or goes, not while it stays", function()
+	local showing = Tournament.Panel(Q({ transitionEnd = COUNTING }))
+	T.eq(Tournament.Toggled(false, showing), true, "appears")
+	T.eq(Tournament.Toggled(true, nil), true, "goes")
+	T.eq(Tournament.Toggled(true, showing), false, "stays up")
+	T.eq(Tournament.Toggled(false, nil), false, "stays away")
+	T.eq(Tournament.HINT_SOUND, "Hud.Hint", "a soundscript, as every chime")
 end)
 
 T.test("each team's strip names it and counts its players", function()
-	local panel = Tournament.Panel(Q())
+	local panel = Tournament.Panel(Q({ transitionEnd = COUNTING }))
 	T.eq(panel.teams[BLUE].name, "BLU", "BLU's name")
 	T.eq(panel.teams[RED].name, "RED", "RED's name")
 	T.eq(panel.teams[RED].state, "2 players", "RED's players")
 	T.eq(panel.teams[BLUE].state, "1 player", "one")
-	T.eq(Tournament.Panel(Q({ players = { [RED] = 0, [BLUE] = 0 } })).teams[RED].state, "0 players", "none")
+	T.eq(Tournament.Panel(Q({ transitionEnd = COUNTING, players = { [RED] = 0, [BLUE] = 0 } })).teams[RED].state, "0 players", "none")
 end)
 
 T.test("the win conditions are the match's limits, in TF2's words", function()
-	local function Conditions(limits) return Tournament.Panel(Q({ limits = limits })).conditions end
+	local function Conditions(limits) return Tournament.Panel(Q({ transitionEnd = COUNTING, limits = limits })).conditions end
 	T.eq(Conditions({ timelimit = 0, winlimit = 0, maxrounds = 0 }), "Win Conditions: None", "none")
 	T.eq(Conditions({ timelimit = 30, winlimit = 0, maxrounds = 0 }), "Win Conditions: 30 minutes", "the time limit")
 	T.eq(Conditions({ timelimit = 1, winlimit = 1, maxrounds = 1 }), "Win Conditions: 1 minute, 1 win, 1 round", "ones")
@@ -84,12 +92,9 @@ T.test("the win conditions are the match's limits, in TF2's words", function()
 	T.eq(Conditions({ timelimit = 0, winlimit = 3, maxrounds = 5 }), "Win Conditions: 3 wins, 5 rounds", "no time limit")
 end)
 
-T.test("a player who may begin a game is told how in Sandbox mode, not once a game is asked for", function()
-	T.eq(Tournament.Panel(Q({ mayBegin = true })).instructions, Tournament.BEGIN_INSTRUCTIONS, "Sandbox mode")
-	T.eq(Tournament.Panel(Q()).instructions, nil, "a player who may not")
-	T.eq(Tournament.Panel(Q({ mayBegin = true, waitingHave = 1, waitingNeed = 2 })).instructions, "F4 = Toggle Team Ready",
-		"waiting: the ready key instead")
-	T.eq(Tournament.Panel(Q({ mayBegin = true, transitionEnd = NOW + 5 })).instructions, nil, "counting down")
+T.test("the countdown has no line under the panel", function()
+	T.eq(Tournament.Panel(Q({ transitionEnd = COUNTING })).instructions, nil, "on a team")
+	T.eq(Tournament.Panel(Q({ transitionEnd = COUNTING, localTeam = Teams.UNASSIGNED })).instructions, nil, "on no team")
 end)
 
 -- The ready-up (features.gamemode.ready): while the game waits, each team
@@ -102,7 +107,7 @@ T.test("while the game waits, a team with players says whether it is ready", fun
 	local empty = Tournament.Panel(Q({ waitingHave = 1, waitingNeed = 6, humans = { [RED] = 0, [BLUE] = 1 },
 		players = { [RED] = 0, [BLUE] = 1 } }))
 	T.eq(empty.teams[RED].state, "0 players", "a team nobody plays on has nothing to ready")
-	T.eq(Tournament.Panel(Q()).teams[BLUE].state, "1 player", "Sandbox mode: the count")
+	T.eq(Tournament.Panel(Q({ transitionEnd = COUNTING })).teams[BLUE].state, "1 player", "counting down: the count")
 end)
 
 T.test("while the game waits, the line under the panel names the ready key, or how to pick a team", function()
@@ -114,12 +119,6 @@ T.test("while the game waits, the line under the panel names the ready key, or h
 	T.eq(Instructions({ readyKey = false }), "Toggle Team Ready: bind a key to player_ready_toggle", "no key bound")
 	T.eq(Instructions({ localTeam = Teams.UNASSIGNED }), "F2 = Pick a Team", "on no team")
 	T.eq(Instructions({ localTeam = Teams.UNASSIGNED, teamKey = false }), "Pick a Team: bind a key to changeteam", "no team key")
-end)
-
-T.test("in Sandbox mode a player on no team is told how to pick one", function()
-	T.eq(Tournament.Panel(Q({ localTeam = Teams.UNASSIGNED })).instructions, "F2 = Pick a Team", "on no team")
-	T.eq(Tournament.Panel(Q({ localTeam = Teams.UNASSIGNED, mayBegin = true })).instructions,
-		Tournament.BEGIN_INSTRUCTIONS, "how to begin a game first")
 end)
 
 T.test("the line sits on TF2's help strip under the panel, inside its width", function()
@@ -152,7 +151,6 @@ local function M(over)
 		waitingNeed = 6,
 		halted = true,
 		winPanel = false,
-		mayBegin = false,
 		defenders = { { name = "Ann", ready = true }, { name = "Bo", ready = false } },
 		localDefender = true,
 		localReady = false,
@@ -186,11 +184,10 @@ T.test("MvM: then the ready key, pulsing until the player readies", function()
 	T.eq(M({ localDefender = false }).pulse, false, "not a defender")
 end)
 
-T.test("MvM: the countdown and Sandbox mode, in TF2's and the gamemode's words", function()
+T.test("MvM: the countdown in TF2's words, and no panel in Sandbox mode", function()
 	T.eq(M({ waitingNeed = 0, transitionEnd = NOW + 4.5 }).instructions, "Starting in 5 seconds...", "counting")
 	T.eq(M({ waitingNeed = 0, transitionEnd = NOW + 0.5 }).instructions, "Starting in 1 second...", "one")
-	T.eq(M({ waitingNeed = 0 }).instructions, "Sandbox mode", "Sandbox mode")
-	T.eq(M({ waitingNeed = 0, mayBegin = true }).instructions, Tournament.BEGIN_INSTRUCTIONS, "how to begin")
+	T.eq(M({ waitingNeed = 0 }), nil, "Sandbox mode")
 	T.eq(M({ waitingNeed = 0, halted = false }), nil, "Gameplay mode")
 	T.eq(M({ winPanel = true }), nil, "a win panel")
 end)

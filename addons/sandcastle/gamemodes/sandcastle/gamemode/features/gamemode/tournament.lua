@@ -1,10 +1,10 @@
 -- TF2's tournament panel (CHudTournament, tf_hud_tournament.cpp) as
 -- cooler-hud v2.6 lays it out (resource/ui/hudtournament.res), in TF2's
 -- proportional units of a 480-tall screen, over Sandcastle's stand-in for
--- TF2's tournament ready-up: Sandbox mode, a game waiting for players and
--- the countdown to Gameplay mode (games.system.gamemode, Pregame in
--- features.rounds.text). While the game waits, each team with players says
--- whether it is ready (features.gamemode.ready), else each counts its
+-- TF2's tournament ready-up: a game waiting for players and the countdown
+-- to Gameplay mode (games.system.gamemode, Pregame in features.rounds.text).
+-- Sandbox mode shows no panel. While the game waits, each team with players
+-- says whether it is ready (features.gamemode.ready), else each counts its
 -- players; the state line is in the gamemode's own words, the win
 -- conditions TF2's from the match's limits, and the instructions line, on
 -- TF2's stock help strip, names the key for what the player may do. MvM
@@ -47,10 +47,12 @@ CONDITION_X, CONDITION_Y, CONDITION_FONT_TALL = 8, 42, 8
 HELP_Y, HELP_H = 51, 17
 INSTRUCTIONS_Y, INSTRUCTIONS_TALL, INSTRUCTIONS_FONT_TALL = 54, 10, 8
 
--- The state line: Sandbox mode as the gamemode's notices name it, the
--- wait in the round timer's words (features.rounds.text), the countdown
--- as the transition's opening line words it (features/gamemode/sv.lua).
-SANDBOX = "Sandbox mode"
+-- The chime as the panel appears or goes (Hud.Hint, ui/hint.wav).
+HINT_SOUND = "Hud.Hint"
+
+-- The state line: the wait in the round timer's words
+-- (features.rounds.text), the countdown as the transition's opening line
+-- words it (features/gamemode/sv.lua).
 local WAITING = Text.LABEL_WAITING .. " (%d/%d)"
 local COUNTDOWN, COUNTDOWN_ONE = "Gameplay mode begins in %d seconds", "Gameplay mode begins in %d second"
 
@@ -67,10 +69,6 @@ local CONDITION_WORDS = {
 	{ key = "winlimit", one = "win", many = "wins" },
 	{ key = "maxrounds", one = "round", many = "rounds" },
 }
-
--- The Match Control panel's Begin Game button (ws/cl_admin_panels.lua),
--- for a player with the match privilege.
-BEGIN_INSTRUCTIONS = "Begin Game: Utilities > Admin > Match Control"
 
 -- What the player may do, with the key bound to it (input.LookupBinding),
 -- or without one, the command to bind: TF2's "F4 = Toggle Ready" and
@@ -92,7 +90,6 @@ end
 local MODE_SANDBOX, MODE_WAITING, MODE_COUNTDOWN = Text.PREGAME_SANDBOX, Text.PREGAME_WAITING, Text.PREGAME_COUNTDOWN
 
 local STATE_LINES = {
-	[MODE_SANDBOX] = function() return SANDBOX end,
 	[MODE_WAITING] = function(q) return format(WAITING, q.waitingHave, q.waitingNeed) end,
 	[MODE_COUNTDOWN] = function(q)
 		local left = ceil(q.transitionEnd - q.now)
@@ -118,19 +115,25 @@ local function TeamState(q, mode, t)
 	return Count(q.players[t], PLAYER, PLAYERS)
 end
 
--- The line under the panel: how to begin a game in Sandbox mode, for a
--- player who may; while the game waits, the ready key for a player on a
--- team; before the countdown, the team key for a player on none.
+-- The line under the panel: while the game waits, the ready key for a
+-- player on a team, the team key for a player on none.
 local function Instructions(q, mode)
-	if mode == MODE_COUNTDOWN then return nil end
-	if mode == MODE_SANDBOX and q.mayBegin then return BEGIN_INSTRUCTIONS end
+	if mode ~= MODE_WAITING then return nil end
 	if not OnGameTeam(q.localTeam) then return Keyed(q.teamKey, PICK_TEAM, TEAM_COMMAND) end
-	if mode == MODE_WAITING then return Keyed(q.readyKey, TOGGLE_TEAM_READY, READY_COMMAND) end
-	return nil
+	return Keyed(q.readyKey, TOGGLE_TEAM_READY, READY_COMMAND)
 end
 
+-- The pregame a panel shows for, nil in Gameplay mode and Sandbox mode.
 local function Pregame(q)
-	return Text.Pregame(q)
+	local mode = Text.Pregame(q)
+	if mode == MODE_SANDBOX then return nil end
+	return mode
+end
+
+-- Whether the panel appeared or went since the last look: shown (it was up
+-- then), panel (Panel's or MvMPanel's answer now).
+function Toggled(shown, panel)
+	return shown ~= (panel ~= nil)
 end
 
 -- q = { now, transitionEnd (ws_gamemode_transition_end, 0 outside the
@@ -138,11 +141,10 @@ end
 -- _need; need 0 outside the wait), halted (WS.GameplayStopped), winPanel (a
 -- win panel or the match's end is up), players, humans (the human players),
 -- teamReady and names (each by team), limits ({ timelimit, winlimit,
--- maxrounds }: the match's), mayBegin (the player holds the match
--- privilege), localTeam (the player's), readyKey and teamKey (the keys
--- bound to player_ready_toggle or gm_showspare2, and to the team menu; nil
--- unbound) }. Returns nil when no panel shows, else { state, teams (by
--- team: { name, state }), conditions, instructions (nil for none) }.
+-- maxrounds }: the match's), localTeam (the player's), readyKey and teamKey
+-- (the keys bound to player_ready_toggle or gm_showspare2, and to the team
+-- menu; nil unbound) }. Returns nil when no panel shows, else { state, teams
+-- (by team: { name, state }), conditions, instructions (nil for none) }.
 function Panel(q)
 	local mode = Pregame(q)
 	if mode == nil or q.winPanel then return nil end
@@ -173,16 +175,15 @@ local function MvMInstructions(q, mode)
 		local left = ceil(q.transitionEnd - q.now)
 		return format(left == 1 and MVM_COUNTDOWN_ONE or MVM_COUNTDOWN, left), false
 	end
-	if mode == MODE_SANDBOX then return q.mayBegin and BEGIN_INSTRUCTIONS or SANDBOX, false end
 	if q.waitingHave < q.waitingNeed then return MVM_WAITING, true end
 	if not q.localDefender then return Keyed(q.teamKey, PICK_TEAM, TEAM_COMMAND), false end
 	return Keyed(q.readyKey, TOGGLE_READY, READY_COMMAND), not q.localReady
 end
 
--- q = { now, transitionEnd, waitingHave, waitingNeed, halted, winPanel and
--- mayBegin (as Panel takes them), defenders (the human defenders, each
--- { name, ready }), localDefender and localReady (the player is one, and
--- ready), readyKey, teamKey }. Returns nil when no panel shows, else
+-- q = { now, transitionEnd, waitingHave, waitingNeed, halted, winPanel (as
+-- Panel takes them), defenders (the human defenders, each { name, ready }),
+-- localDefender and localReady (the player is one, and ready), readyKey,
+-- teamKey }. Returns nil when no panel shows, else
 -- { players (each { name, ready }), instructions, pulse (the line pulses
 -- red: CHudTournament's HudReadyPulse while the player is not ready) }.
 function MvMPanel(q)

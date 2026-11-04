@@ -130,11 +130,9 @@ E.Listen("game_gameplay_chat", "ws_gameplay", function(fields)
 	for _, line in ipairs(fields.lines) do chat.AddText(LINE_COLOR, line) end
 end)
 
-local CALLED_OFF_SOUND = "Hud.Hint"
-
+-- The pregame panel going chimes (features/gamemode/cl.lua).
 E.Listen("game_gameplay_called_off", "ws_gameplay", function()
 	chat.AddText(TITLE_COLOR, "Game called off. Carry on.")
-	WS.PlaySoundscape(CALLED_OFF_SOUND)
 end)
 
 -- A countdown called off: silence what it played.

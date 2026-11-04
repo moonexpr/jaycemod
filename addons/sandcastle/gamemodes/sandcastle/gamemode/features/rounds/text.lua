@@ -152,9 +152,9 @@ function NextMapNote(map)
 	return string.format("Next map: %s", map)
 end
 
--- Before a game, the pregame (tournament) panel shows in place of the top
--- timer and scores (features.gamemode.tournament): the wait for players,
--- the countdown to Gameplay mode, or Sandbox mode.
+-- Before a game the top timer and scores draw nothing: in the wait for
+-- players and the countdown to Gameplay mode the pregame (tournament) panel
+-- shows in their place (features.gamemode.tournament); Sandbox mode shows none.
 PREGAME_WAITING, PREGAME_COUNTDOWN, PREGAME_SANDBOX = "waiting", "countdown", "sandbox"
 
 -- The pregame now, or nil in Gameplay mode. q = { now, transitionEnd (the
