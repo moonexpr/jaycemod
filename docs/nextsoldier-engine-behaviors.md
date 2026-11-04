@@ -58,6 +58,35 @@ decoded once at the boundary.
   `CLuaNextBot` ends its actions earlier, from its own destructor). A destructor that
   gets there first clears the `Behavior`'s actor, which skips `InvokeOnEnd`.
 
+## A carrier on it: npc_ctfbot
+
+MvM's bomb carrier, as TF2's tree, with no round or wave around it:
+
+```
+CLuaBehaviour                 GMod's, calling BehaveUpdate
+  TacticalMonitor             Rust (native/nextsoldier: tactical.rs, engine.rs)
+    DeliverFlag               Lua (nextsoldier.behavior.ctfbot), with the flag
+    ScenarioMonitor (buried)  Lua
+      FetchFlag (buried)      Lua
+```
+
+`npc_ctfbot`, on `base_nextsoldier`, is the running entity. The monitor is one native
+action: `engine.TacticalMonitor{ scenario, never_retreats, retreat, commands }` is its
+config, and only what it runs and suspends for is Lua. Its `Update` asks the engine's
+query walk `ShouldRetreat`, and its `OnCommandString` suspends for what `commands` names,
+over everything it runs (`engine.Command(bot, "taunt")`, or the engine's `nb_command`).
+The rest of TF2's monitor waits on what it needs from the game.
+
+`.devtools/bin/ctfbot_check.lua` on `mvm_decoy` watches one go: given the bomb at 0.1 s,
+`ScenarioMonitor` suspends for `DeliverFlag`; told to taunt at 6 s, the monitor suspends
+over all of it and it resumes at 7.6 s; at about 33 s, 5,621 units on, the zone fires
+`OnCapture` and `ScenarioMonitor` resumes.
+
+What the run found: `FollowPath` must leave a leap alone, since an engine action is
+updated whatever the body is doing; and with no war to open them, a NextBot takes a
+forcefield for a wall and the nav mesh the areas under it for blocked, until it next
+looks. Until then a path is the straight line the engine falls back on.
+
 ## What was proved
 
 On a live server (instance 3), on `srcds.py start --gamemode base` for the bare NextBots
