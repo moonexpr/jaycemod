@@ -142,6 +142,111 @@ T.test("losing a point moves a team's spawn back", function()
 	T.eq(spawns[2].disabled, true, "lost forward spawn")
 end)
 
+-- sv_teams_spawn.lua on cp_5gorge's entities: its point_index runs 1..5, and
+-- the master renumbers the points from 0 (FindControlPoints) before the
+-- spawns walk them.
+local function Gorge()
+	local POINTS = {
+		{ name = "cap_blue_1", index = 1, default = BLU },
+		{ name = "cap_blue_2", index = 2, default = BLU },
+		{ name = "cap_middle", index = 3, default = NOBODY },
+		{ name = "cap_red_2", index = 4, default = RED },
+		{ name = "cap_red_1", index = 5, default = RED },
+	}
+	local SPAWNS = {
+		{ RED, "cap_red_1" }, { RED, "cap_middle" }, { RED, "cap_blue_2" },
+		{ BLU, "cap_blue_1" }, { BLU, "cap_middle" }, { BLU, "cap_red_2" },
+	}
+	local byClass = { team_control_point_master = { {} }, team_control_point = {}, info_player_teamspawn = {} }
+	local byName, owner = {}, {}
+	local function Entity(class, name, kv)
+		local ent = { name = name, kv = kv }
+		function ent:GetClass() return class end
+		function ent:GetName() return name end
+		return ent
+	end
+	for _, p in ipairs(POINTS) do
+		local ent = Entity("team_control_point", p.name, { point_default_owner = KV(p.default) })
+		ent.index = p.index
+		owner[ent] = p.default
+		byClass.team_control_point[#byClass.team_control_point + 1] = ent
+		byName[p.name] = { ent }
+	end
+	for _, s in ipairs(SPAWNS) do
+		local list = byClass.info_player_teamspawn
+		list[#list + 1] = Entity("info_player_teamspawn", s[2], { teamnum = KV(s[1]), controlpoint = s[2] })
+	end
+
+	local capture = {}
+	function capture:Index(point) return point.index end
+	function capture:Rank(point) return point.index - 1 end
+	function capture:Owner(point) return owner[point] end
+	function capture:CurrentRound() return nil end
+
+	local hooks = {}
+	local env = setmetatable({
+		NULL = {},
+		Vector = function() end,
+		WS = {
+			TEAM_UNASSIGNED = NOBODY,
+			KeyValues = function(ent) return ent.kv end,
+			Feature = function() return capture end,
+		},
+		ents = {
+			FindByClass = function(class) return byClass[class] or {} end,
+			FindByName = function(name) return byName[name] or {} end,
+		},
+		hook = {
+			Add = function(event, _, fn) hooks[event] = fn end,
+			Run = function() end,
+		},
+		IsValid = function(ent) return ent ~= nil and next(ent) ~= nil end,
+	}, { __index = _G })
+	setfenv(assert(loadfile(T.ROOT .. "sv_teams_spawn.lua")), env)()
+
+	local gorge = {}
+	function gorge.Capture(name, team)
+		owner[byName[name][1]] = team
+		hooks.WSPointCaptured()
+	end
+	function gorge.SpawnsAt(team)
+		local names = {}
+		for _, ent in ipairs(env.WS.SpawnPoints(team)) do names[#names + 1] = ent:GetName() end
+		return table.concat(names, " ")
+	end
+	return gorge
+end
+
+T.test("cp_5gorge: each team starts at its last point", function()
+	local gorge = Gorge()
+	T.eq(gorge.SpawnsAt(RED), "cap_red_1", "RED")
+	T.eq(gorge.SpawnsAt(BLU), "cap_blue_1", "BLU")
+end)
+
+T.test("cp_5gorge: BLU's spawn moves forward with its captures, and back", function()
+	local gorge = Gorge()
+	gorge.SpawnsAt(BLU)
+	gorge.Capture("cap_middle", BLU)
+	T.eq(gorge.SpawnsAt(BLU), "cap_middle", "holding the mid")
+	gorge.Capture("cap_red_2", BLU)
+	T.eq(gorge.SpawnsAt(BLU), "cap_red_2", "holding RED's second")
+	gorge.Capture("cap_red_2", RED)
+	gorge.Capture("cap_middle", RED)
+	T.eq(gorge.SpawnsAt(BLU), "cap_blue_1", "pushed back to its last")
+end)
+
+T.test("cp_5gorge: RED's spawn moves forward with its captures, and back", function()
+	local gorge = Gorge()
+	gorge.SpawnsAt(RED)
+	gorge.Capture("cap_middle", RED)
+	T.eq(gorge.SpawnsAt(RED), "cap_middle", "holding the mid")
+	gorge.Capture("cap_blue_2", RED)
+	T.eq(gorge.SpawnsAt(RED), "cap_blue_2", "holding BLU's second")
+	gorge.Capture("cap_blue_2", BLU)
+	gorge.Capture("cap_middle", BLU)
+	T.eq(gorge.SpawnsAt(RED), "cap_red_1", "pushed back to its last")
+end)
+
 -- CTFPlayer::SelectSpawnSpotByType: round-robin after the last spot used,
 -- first a clear spot, then any valid one
 

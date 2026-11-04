@@ -64,9 +64,11 @@ local function PointOwner(name)
 	return nil
 end
 
+-- The master's number for a point, from 0: GetFarthestOwnedControlPoint walks
+-- those, and a map's own point_index may start anywhere.
 local function PointIndex(name)
 	local point = ControlPoint(name)
-	if IsValid(point) then return Capture():Index(point) end
+	if IsValid(point) then return Capture():Rank(point) end
 	return nil
 end
 
@@ -74,7 +76,7 @@ local function ControlPoints()
 	local points = {}
 	for _, ent in ipairs(ents.FindByClass("team_control_point")) do
 		points[#points + 1] = {
-			index = Capture():Index(ent),
+			index = Capture():Rank(ent),
 			owner = Capture():Owner(ent),
 			defaultOwner = tonumber(WS.KeyValues(ent).point_default_owner) or WS.TEAM_UNASSIGNED,
 		}
