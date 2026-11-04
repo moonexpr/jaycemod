@@ -9,6 +9,8 @@ local CTFBot = nextsoldier.behavior.ctfbot
 local PlayerBody = nextsoldier.body.player_body
 local RouteWalk = nextsoldier.locomotion.route_walk
 local Locomotion = nextsoldier.locomotion
+local Movement = gameplay.movement
+local TFBot = WS.require("foundation.wetsands.path.tfbot")
 
 -- A route is planned at most this often, and again when its goal moved this far.
 local REPLAN, REPLAN_DISTANCE = 1, 128
@@ -17,14 +19,16 @@ local FOLLOW_LAPSES = 0.5
 -- A goal off the mesh is walked to as the nearest point of an area this near
 -- (ctf_2fort's intel lies a unit past its area's edge).
 local OFF_MESH_NEAR = 96
--- Its way is swept from a step above the floor, a player's width, to its head; a
+-- Its way is swept from a step above the floor, its own width, to its head; a
 -- straight walk rises no more than a stair flight's step (the war's WalkClear), its
 -- floor looked for a step above to two below its line, and a goal this near in a clear
 -- line is walked straight at.
-local LIFT, RISE = Vector(0, 0, 20), 40
-local SWEEP_MINS, SWEEP_MAXS = Vector(-16, -16, 0), Vector(16, 16, 36)
+local LIFT, RISE, SWEEP_HEIGHT = Vector(0, 0, 20), 40, 36
 local FOOTING_ABOVE, FOOTING_BELOW = Vector(0, 0, 18), Vector(0, 0, 36)
 local DIRECT_RANGE = 256
+-- Its body is TF2's, so it is priced as TF2's bots are: a stair's step, its crouch
+-- jump, the fall it survives unhurt, and no ladder (its keys climb none).
+local LIMITS = { stepHeight = Movement.TF2.stepHeight, jumpHeight = Movement.CrouchJump(Movement.TF2), deathDropHeight = 300 }
 
 local Soldier = {}
 Soldier.__index = Soldier
@@ -46,11 +50,13 @@ local function ToVector(p) return Vector(p.x, p.y, p.z) end
 
 function Soldier:WalkClear(from, to)
 	if math.abs(to.z - from.z) > RISE then return false end
+	local hullMin, hullMax = self.ent:GetHull()
+	local mins, maxs = Movement.Sweep(hullMin, hullMax, SWEEP_HEIGHT)
 	local tr = util.TraceHull({
 		start = from + LIFT,
 		endpos = to + LIFT,
-		mins = SWEEP_MINS,
-		maxs = SWEEP_MAXS,
+		mins = ToVector(mins),
+		maxs = ToVector(maxs),
 		mask = MASK_PLAYERSOLID,
 		filter = self.ent,
 	})
@@ -61,6 +67,31 @@ function Soldier:WalkClear(from, to)
 		if not floor.Hit then return false end
 	end
 	return true
+end
+
+-- What a route is priced by (Path:Compute's generator): TF2's own path cost over what
+-- its team knows, each step told whether its body fits; nil until the mesh is ready.
+function Soldier:RouteCost()
+	local ply = self.ent
+	local team = ply:Team()
+	local cost = WS.Feature("npc"):EngineCost(team, TFBot, LIMITS, {
+		entIndex = ply:EntIndex(),
+		now = CurTime(),
+		team = team,
+		route = TFBot.FASTEST_ROUTE,
+		miniBoss = false,
+		roundWon = false,
+	})
+	if not cost then return nil end
+	local clearance = WS.NavHullClearance(ply, WS.ClipMasks().brushes)
+	return function(area, fromArea, ladder, elevator, length)
+		local fits
+		if fromArea then
+			fits = clearance:Area(area)
+			if fits and not ladder then fits = clearance:Link(fromArea, area) end
+		end
+		return cost(area, fromArea, ladder, elevator, length, fits)
+	end
 end
 
 function Soldier:Navigator()
@@ -91,9 +122,10 @@ function Soldier:Steer(now)
 	local goal = OnMesh(self.goal)
 	if self.walk and self.walk:Stalled(Point(pos), now) then self.walk, self.planned = nil, nil end
 	local stale = not self.planned or self.planned:Distance(goal) > REPLAN_DISTANCE
-	if stale and now >= self.nextPlan and self:Navigator():Settled() then
+	local cost = stale and now >= self.nextPlan and self:Navigator():Settled() and self:RouteCost()
+	if cost then
 		self.planned, self.nextPlan = goal, now + REPLAN
-		local route = self:Navigator():PlanRoute(goal)
+		local route = self:Navigator():PlanRoute(goal, cost)
 		local points = {}
 		for i, v in ipairs(route or {}) do points[i] = Point(v) end
 		points = Locomotion.RoundCorners(points, function(a, b) return self:WalkClear(ToVector(a), ToVector(b)) end)
@@ -137,6 +169,8 @@ end
 
 local soldiers = setmetatable({}, { __mode = "k" })
 local compiled
+
+function WS.NextSoldierOf(ply) return soldiers[ply] end
 
 function WS.AddNextSoldier(team, name)
 	if not player.CreateNextSoldier then return nil end

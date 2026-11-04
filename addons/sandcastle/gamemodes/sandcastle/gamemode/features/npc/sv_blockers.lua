@@ -185,6 +185,9 @@ function Controller:RefreshBlockers(now)
 		if state.floor then mins, maxs = FloorSpan(door, mins, maxs) end
 		for _, area in ipairs(navmesh.FindInBox(mins - DOOR_FLOOR, maxs)) do
 			doorAreas[area:GetID()] = true
+			-- doors are judged here, not by the engine's flag, which holds long after a
+			-- door has opened and which its search refuses before asking a path's price
+			area:MarkAsUnblocked()
 			if team then Block(blocked, area, team) end
 			if Doors.IsWall(state) then walls[area:GetID()] = true end
 		end
