@@ -44,7 +44,8 @@ local function GorgeAreas()
 		Area(36, -6500, 1350, -6425, 1375, -96, -96, { 38 }), -- the floor at the foot
 		Area(38, -6500, 1300, -6425, 1325, -48, -64, { 50, 36 }),
 		Area(50, -6475, 1250, -6450, 1275, 0, -16, { 38 }),
-		Area(42, -6500, 1150, -6425, 1200, 96, 64, {}), -- the landing
+		Area(42, -6500, 1150, -6425, 1200, 96, 64, {}), -- warped, the flight's last
+		Area(77, -6500, 1125, -6425, 1150, 96, 96, {}), -- the landing
 		Area(80, -6500, 1250, -6450, 1275, -96, -96, {}), -- the floor under the stairs
 		Area(99, -6000, 1200, -5900, 1300, 0, 0, {}), -- elsewhere
 	}
@@ -103,38 +104,83 @@ end)
 
 T.test("a broken flight becomes one ramp between the floor and the landing", function()
 	local plan = NavStairs.Plan(NavStairs.Slope(GorgeStair()), GorgeAreas())
-	T.eq(Sorted(plan.remove), "38,50", "the fragments go; the floor under the stairs stays")
-	T.eq(Sorted(plan.connect), "36,42", "the foot and the landing")
+	T.eq(Sorted(plan.remove), "38,42,50", "what lies warped on the flight goes; the floor under the stairs stays")
+	T.eq(Sorted(plan.connect), "36,77", "the floor and the landing")
 	T.eq(plan.lo.x .. "," .. plan.hi.x, "-6500,-6425", "as wide as the fragments, not the clip")
-	T.eq(plan.lo.y .. "," .. plan.hi.y, "1200,1350", "from the foot's edge to the landing's")
-	T.near(plan.z.nw, 64, 0.01, "flush with the landing's edge")
-	T.near(plan.z.ne, 64, 0.01)
-	T.near(plan.z.sw, -96, 0.01, "and with the floor's")
-	T.near(plan.z.se, -96, 0.01)
+	T.eq(plan.lo.y .. "," .. plan.hi.y, "1150,1350", "from the foot's edge to the landing's")
+	T.near(plan.z.nw, 96, 0.01, "no higher than the landing")
+	T.near(plan.z.ne, 96, 0.01)
+	T.near(plan.z.sw, -86, 0.01, "on the clip, above the floor")
+	T.near(plan.z.se, -86, 0.01)
 end)
 
-T.test("a ramp meets areas standing below the clip flush, so it is whole once laid", function()
+T.test("an area warped across the flight's foot is no floor, and goes with the rest", function()
 	local slope = NavStairs.Slope(GorgeStair())
-	-- long areas on the treads, 15 below the clip at the edges they leave a gap between
-	local foot = Area(1, -6500, 1270, -6425, 1400, -21, -96, {})
-	local top = Area(2, -6500, 1100, -6425, 1250, 90, -1, {})
-	local plan = NavStairs.Plan(slope, { foot, top })
-	T.near(plan.z.nw, -1, 0.01, "the top's edge, not the clip's 14")
-	T.near(plan.z.sw, -21, 0.01, "the foot's edge, not the clip's -6")
-	foot.links, top.links = { 3 }, { 3 }
-	local ramp = { id = 3, lo = plan.lo, hi = plan.hi, z = plan.z, links = { 1, 2 } }
-	T.eq(NavStairs.Plan(slope, { foot, top, ramp }), nil)
+	local plan = NavStairs.Plan(slope, {
+		Area(10, -6500, 1375, -6425, 1400, -96, -96, { 11 }), -- the floor
+		Area(11, -6500, 1325, -6425, 1375, -64, -96, { 10 }), -- warped, over the foot
+		Area(77, -6500, 1125, -6425, 1150, 96, 96, {}),
+	})
+	T.eq(Sorted(plan.remove), "11")
+	T.eq(Sorted(plan.connect), "10,77")
+	T.eq(plan.lo.y .. "," .. plan.hi.y, "1150,1375")
+end)
+
+T.test("a floor running on under the flight is joined where the clip rises from it, not under the stairs", function()
+	local slope = NavStairs.Slope(GorgeStair())
+	local plan = NavStairs.Plan(slope, {
+		Area(10, -6500, 1130, -6425, 1400, -96, -96, {}),
+		Area(77, -6500, 1125, -6425, 1150, 96, 96, {}),
+	})
+	T.eq(Sorted(plan.connect), "10,77")
+	T.near(plan.z.sw - (-96), 18, 0.01, "within a step of the floor")
+end)
+
+T.test("the row nearest the foot is the one joined, not a floor farther off", function()
+	local slope = NavStairs.Slope(GorgeStair())
+	local plan = NavStairs.Plan(slope, {
+		Area(36, -6500, 1350, -6425, 1375, -96, -96, {}),
+		Area(15, -6500, 1380, -6425, 1400, -96, -96, {}),
+		Area(77, -6500, 1125, -6425, 1150, 96, 96, {}),
+	})
+	T.eq(Sorted(plan.connect), "36,77")
 end)
 
 T.test("a ramp already laid needs no repair, so a repaired map is not saved again", function()
 	local slope = NavStairs.Slope(GorgeStair())
 	local plan = NavStairs.Plan(slope, GorgeAreas())
 	local foot = Area(36, -6500, 1350, -6425, 1375, -96, -96, { 1 })
-	local ramp = {
-		id = 1, lo = plan.lo, hi = plan.hi, z = plan.z, links = { 36, 42 },
-	}
-	local landing = Area(42, -6500, 1150, -6425, 1200, 96, 64, { 1 })
+	local ramp = { id = 1, lo = plan.lo, hi = plan.hi, z = plan.z, links = { 36, 77 } }
+	local landing = Area(77, -6500, 1125, -6425, 1150, 96, 96, { 1 })
 	T.eq(NavStairs.Plan(slope, { foot, ramp, landing }), nil)
+end)
+
+T.test("a ramp already over the planned footprint is not laid again, whatever its links", function()
+	local slope = NavStairs.Slope(GorgeStair())
+	local plan = NavStairs.Plan(slope, GorgeAreas())
+	local foot = Area(36, -6500, 1350, -6425, 1375, -96, -96, {})
+	local ramp = { id = 1, lo = plan.lo, hi = plan.hi, z = plan.z, links = {} }
+	local landing = Area(77, -6500, 1125, -6425, 1150, 96, 96, {})
+	T.eq(NavStairs.Plan(slope, { foot, ramp, landing }), nil)
+end)
+
+T.test("a floor overlapping the flight by less than a walker's width is no end of it", function()
+	local slope = NavStairs.Slope(GorgeStair()) -- x from -6524
+	T.eq(NavStairs.Plan(slope, {
+		Area(36, -6600, 1350, -6517, 1375, -96, -96, {}),
+		Area(77, -6500, 1125, -6425, 1150, 96, 96, {}),
+	}), nil, "7 of it at the foot")
+end)
+
+T.test("a flight whose links walk but whose areas lie far under the clip is repaired again", function()
+	local slope = NavStairs.Slope(GorgeStair())
+	local plan = NavStairs.Plan(slope, {
+		Area(10, -6500, 1375, -6425, 1400, -96, -96, { 11 }),
+		Area(11, -6500, 1325, -6425, 1375, -80, -96, { 10, 12 }), -- 19 below the clip at its upper edge
+		Area(12, -6500, 1150, -6425, 1325, 96, -80, { 11, 77 }),
+		Area(77, -6500, 1125, -6425, 1150, 96, 96, { 12 }),
+	})
+	T.eq(Sorted(plan.remove), "11,12")
 end)
 
 T.test("a flight linked only by jumps is still broken", function()
@@ -143,9 +189,10 @@ T.test("a flight linked only by jumps is still broken", function()
 		Area(36, -6500, 1350, -6425, 1375, -96, -96, { 38 }),
 		Area(38, -6500, 1300, -6425, 1325, -48, -64, { 50, 36 }),
 		Area(50, -6500, 1250, -6425, 1275, 0, -16, { 42, 38 }),
-		Area(42, -6500, 1150, -6425, 1200, 96, 64, { 50 }),
+		Area(42, -6500, 1150, -6425, 1200, 96, 64, { 50, 77 }),
+		Area(77, -6500, 1125, -6425, 1150, 96, 96, { 42 }),
 	}
-	T.eq(Sorted(NavStairs.Plan(slope, areas).remove), "38,50", "rises of 32 are no walk")
+	T.eq(Sorted(NavStairs.Plan(slope, areas).remove), "38,42,50", "rises of 32 are no walk")
 end)
 
 T.test("a stair with no floor at either end is left alone", function()
@@ -163,7 +210,7 @@ end)
 T.test("a flight with nothing on it is bridged as wide as its ends meet", function()
 	local plan = NavStairs.Plan(NavStairs.Slope(GorgeStair()), {
 		Area(36, -6500, 1350, -6425, 1375, -96, -96, {}),
-		Area(42, -6475, 1150, -6400, 1200, 96, 64, {}),
+		Area(77, -6475, 1125, -6400, 1150, 96, 96, {}),
 	})
 	T.eq(#plan.remove, 0)
 	T.eq(plan.lo.x .. "," .. plan.hi.x, "-6475,-6425")
@@ -184,14 +231,14 @@ T.test("a stair along x rising toward higher x", function()
 	local plan = NavStairs.Plan(slope, {
 		AlongX(1, 975, 1025, 0, 0, { 2 }),
 		AlongX(2, 1075, 1100, 75, 100, { 1 }),
-		AlongX(3, 1175, 1225, 175, 200, {}),
+		AlongX(3, 1200, 1225, 200, 200, {}),
 	})
 	T.eq(Sorted(plan.remove), "2")
-	T.eq(plan.lo.x .. "," .. plan.hi.x, "1025,1175")
-	T.near(plan.z.nw, 0, 0.01)
-	T.near(plan.z.sw, 0, 0.01)
-	T.near(plan.z.ne, 175, 0.01)
-	T.near(plan.z.se, 175, 0.01)
+	T.eq(plan.lo.x .. "," .. plan.hi.x, "1018,1200", "where the clip is a step above the floor")
+	T.near(plan.z.nw, 18, 0.01)
+	T.near(plan.z.sw, 18, 0.01)
+	T.near(plan.z.ne, 200, 0.01)
+	T.near(plan.z.se, 200, 0.01)
 end)
 
 T.finish()

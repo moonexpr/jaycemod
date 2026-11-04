@@ -190,7 +190,10 @@ local function load(t)
 				if t.engineConnects then t.engineConnects(ladder) end
 				return ladder
 			end,
-			FindInBox = function() return s.stairAreas or {} end,
+			FindInBox = function(mins, maxs)
+				s.stairBox = { mins = mins, maxs = maxs }
+				return s.stairAreas or {}
+			end,
 			GetNavAreaByID = function(id)
 				for _, area in ipairs(s.stairAreas or {}) do
 					if area:GetID() == id then return area end
@@ -799,6 +802,15 @@ T.test("a broken flight is laid as a ramp, saved once its fragments are gone, th
 	s.nextTick()
 	T.eq(table.concat(s.lifecycle, ","), "ramp,save")
 	T.eq(s.timers.ws_nav_gaps ~= nil, true, "then the seams")
+end)
+
+T.test("a flight's floors are looked for past the clip's ends, where the mesh's areas stop short", function()
+	local s = load({ areas = 2, navAreas = {}, brushes = { ClippedStair() }, stairAreas = {} })
+	s.hooks.InitPostEntity()
+	s.timers.ws_nav_gaps()
+	T.eq(s.stairBox.mins.y < 800, true, "beyond the top")
+	T.eq(s.stairBox.maxs.y > 1000, true, "and beyond the foot")
+	T.eq(s.stairBox.mins.x < 0 and s.stairBox.maxs.x > 100, true, "and to either side")
 end)
 
 T.test("a map with no broken flight is not saved", function()

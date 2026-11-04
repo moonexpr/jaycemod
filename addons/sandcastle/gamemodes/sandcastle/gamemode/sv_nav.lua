@@ -241,8 +241,9 @@ function WS.BridgeNavGaps()
 	end)
 end
 
--- How far above and below a clip's bounds a flight's floors are looked for.
-local STAIR_REACH = Vector(0, 0, 32)
+-- How far around a clip's bounds a flight's floors are looked for: the mesh's areas
+-- stop short of a clip's end, and they stand up to a step or so off its height.
+local STAIR_REACH = Vector(NavStairs.END_REACH, NavStairs.END_REACH, 32)
 local CORNER_NW, CORNER_NE, CORNER_SE, CORNER_SW = 0, 1, 2, 3
 
 local function StairArea(area)

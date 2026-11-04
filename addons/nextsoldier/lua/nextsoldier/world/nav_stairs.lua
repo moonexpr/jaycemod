@@ -21,6 +21,7 @@ local ipairs = ipairs
 module("nextsoldier.world.nav_stairs")
 
 PLAYER_CLIP = 0x10000 -- CONTENTS_PLAYERCLIP
+END_REACH = 32 -- how far past a clip's end a floor still meets it: a generator step and a bit
 
 local AXIAL = 0.999 -- a side's normal this close to an axis bounds the brush there
 local ALIGNED = 0.01 -- a slant's normal this close to nothing along an axis runs along the other
@@ -28,6 +29,11 @@ local STANDABLE = 0.7 -- the steepest floor a player stands on
 local NEARLY_FLAT = 0.95 -- flatter than this, the generator walks it without trouble
 local STEP_HEIGHT = 18 -- nav.h's StepHeight
 local BODY_WIDTH = 48 -- a TF2 player's: narrower is a rail's clip
+local FLAT_SPREAD = 4 -- corners this close in height are a floor, not a piece of a flight
+local FRAGMENT_REACH = 32 -- how far under the clip a warped area is still the flight's: two treads
+local ROW_TOLERANCE = 1 -- ends this close to the same edge are one row
+local END_OVERLAP = 24 -- how much of a flight's width a floor must meet: room for a walker to pass
+local SAME_FOOTPRINT = 1 -- a ramp this close to the planned bounds is that ramp, laid already
 
 local function HasClip(contents)
 	return floor(contents / PLAYER_CLIP) % 2 == 1
@@ -102,42 +108,95 @@ local function Rise(a, b)
 	return abs(onA - onB)
 end
 
--- Which areas lie on the flight: those it starts from (over its foot), ends at
--- (over its top) and between.
+local function IsFlat(area)
+	local z = area.z
+	return max(z.nw, z.ne, z.se, z.sw) - min(z.nw, z.ne, z.se, z.sw) <= FLAT_SPREAD
+end
+
+-- The clip's height at a coordinate along the flight, midway across the two.
+local function SurfaceAlong(slope, coordinate, middle)
+	if slope.along == "y" then return Surface(slope, middle, coordinate) end
+	return Surface(slope, coordinate, middle)
+end
+
+-- The edge of an area facing up (rising 1) or down the flight.
+local function Facing(slope, area, rising)
+	return rising > 0 and area.hi[slope.along] or area.lo[slope.along]
+end
+
+-- Of the ends found, the row nearest where the flight meets them.
+local function NearestRow(slope, ends, at, rising)
+	local best = huge
+	for _, area in ipairs(ends) do best = min(best, abs(Facing(slope, area, rising) - at)) end
+	local row = {}
+	for _, area in ipairs(ends) do
+		if abs(Facing(slope, area, rising) - at) <= best + ROW_TOLERANCE then row[#row + 1] = area end
+	end
+	return row
+end
+
+-- Which areas lie on the flight. Only a flat area is a floor to start from or end
+-- at: over the foot or the top, or within END_REACH of it, at the clip's height
+-- there. An area warped across the flight is what the generator left of it, even
+-- over the foot. Returns the feet, the tops, the fragments and how far each
+-- fragment lies from the clip.
 local function Sorted(slope, areas)
 	local along, across = slope.along, slope.across
 	local footAt = slope.rising > 0 and slope.lo[along] or slope.hi[along]
 	local topAt = slope.rising > 0 and slope.hi[along] or slope.lo[along]
-	local feet, tops, fragments = {}, {}, {}
+	local feet, tops, fragments, offClip = {}, {}, {}, {}
 	for _, area in ipairs(areas) do
 		local acrossLo = max(area.lo[across], slope.lo[across])
 		local acrossHi = min(area.hi[across], slope.hi[across])
-		local alongLo = max(area.lo[along], slope.lo[along])
-		local alongHi = min(area.hi[along], slope.hi[along])
-		if acrossHi > acrossLo and alongHi > alongLo then
+		if acrossHi > acrossLo then
 			local middle = (acrossLo + acrossHi) / 2
-			local low, high = Offset(slope, area, alongLo, middle), Offset(slope, area, alongHi, middle)
-			local overFoot = area.lo[along] <= footAt and footAt <= area.hi[along]
-			local overTop = area.lo[along] <= topAt and topAt <= area.hi[along]
-			if overFoot ~= overTop and min(low, high) <= STEP_HEIGHT then
-				local ends = overFoot and feet or tops
-				ends[#ends + 1] = area
-			elseif not overFoot and not overTop and max(low, high) <= STEP_HEIGHT then
-				fragments[#fragments + 1] = area
+			if IsFlat(area) then
+				local height = area.z.nw
+				local wide = acrossHi - acrossLo >= END_OVERLAP
+				local function Meets(at)
+					return area.lo[along] - END_REACH <= at and at <= area.hi[along] + END_REACH
+						and abs(SurfaceAlong(slope, at, middle) - height) <= STEP_HEIGHT
+				end
+				if wide and Meets(footAt) then
+					feet[#feet + 1] = area
+				elseif wide and Meets(topAt) then
+					tops[#tops + 1] = area
+				end
+			else
+				local alongLo = max(area.lo[along], slope.lo[along])
+				local alongHi = min(area.hi[along], slope.hi[along])
+				if alongHi > alongLo then
+					local off = max(Offset(slope, area, alongLo, middle), Offset(slope, area, alongHi, middle))
+					if off <= FRAGMENT_REACH then
+						fragments[#fragments + 1] = area
+						offClip[area] = off
+					end
+				end
 			end
 		end
 	end
-	return feet, tops, fragments
+	-- a foot faces up the flight, a top down it
+	return NearestRow(slope, feet, footAt, slope.rising), NearestRow(slope, tops, topAt, -slope.rising), fragments, offClip
 end
 
--- Whether a walk climbs from the foot to the top, by the flight's own areas and
--- links, no step higher than a step.
-local function Whole(feet, tops, fragments)
-	local byId, isTop = {}, {}
-	for _, list in ipairs({ feet, tops, fragments }) do
+-- Whether the flight needs nothing: one area joining a foot to a top (a ramp laid),
+-- or a walk climbing from foot to top by the flight's own areas and links, no step
+-- higher than a step, on areas no farther than a step from the clip bodies walk.
+local function Whole(feet, tops, fragments, offClip)
+	local byId, isFoot, isTop = {}, {}, {}
+	for _, list in ipairs({ feet, tops }) do
 		for _, area in ipairs(list) do byId[area.id] = area end
 	end
-	for _, area in ipairs(tops) do isTop[area] = true end
+	for _, area in ipairs(feet) do isFoot[area.id] = true end
+	for _, area in ipairs(tops) do isTop[area.id] = true end
+	for _, area in ipairs(fragments) do
+		local joinsFoot, joinsTop = false, false
+		for _, id in ipairs(area.links) do
+			joinsFoot, joinsTop = joinsFoot or isFoot[id] == true, joinsTop or isTop[id] == true
+		end
+		if joinsFoot and joinsTop then return true end
+		if offClip[area] <= STEP_HEIGHT then byId[area.id] = area end
+	end
 	local function Neighbors(area)
 		local list = {}
 		for _, id in ipairs(area.links) do
@@ -147,7 +206,7 @@ local function Whole(feet, tops, fragments)
 		return list
 	end
 	local _, reachedTop = Search.Flood(feet, Neighbors, function() return true end, huge,
-		function(area) return isTop[area] end)
+		function(area) return isTop[area.id] end)
 	return reachedTop
 end
 
@@ -159,22 +218,23 @@ local function Ids(lists)
 	return ids
 end
 
--- How high the areas stand, on average, at an edge along the flight.
-local function EdgeHeight(list, along, edge, middle)
+-- How high flat areas stand, on average.
+local function Height(list)
 	local sum = 0
-	for _, area in ipairs(list) do
-		local x, y = edge, middle
-		if along == "y" then x, y = middle, edge end
-		sum = sum + HeightOn(area, x, y)
-	end
+	for _, area in ipairs(list) do sum = sum + area.z.nw end
 	return sum / #list
 end
 
+local function Near(a, b)
+	return abs(a.x - b.x) <= SAME_FOOTPRINT and abs(a.y - b.y) <= SAME_FOOTPRINT
+end
+
 function Plan(slope, areas)
-	local feet, tops, fragments = Sorted(slope, areas)
-	if #feet == 0 or #tops == 0 or Whole(feet, tops, fragments) then return nil end
+	local feet, tops, fragments, offClip = Sorted(slope, areas)
+	if #feet == 0 or #tops == 0 or Whole(feet, tops, fragments, offClip) then return nil end
 	local along, across, rising = slope.along, slope.across, slope.rising
-	-- from the foot's edge facing up the flight, to the top's facing down it
+	-- from the foot's edge facing up the flight, to the top's facing down it; a floor
+	-- running on under the flight is left where the clip is a step above it
 	local footEdge, topEdge = -huge * rising, huge * rising
 	for _, area in ipairs(feet) do
 		local edge = rising > 0 and area.hi[along] or area.lo[along]
@@ -184,6 +244,9 @@ function Plan(slope, areas)
 		local edge = rising > 0 and area.lo[along] or area.hi[along]
 		topEdge = rising > 0 and min(topEdge, edge) or max(topEdge, edge)
 	end
+	local footAt = rising > 0 and slope.lo[along] or slope.hi[along]
+	local run = STEP_HEIGHT * slope.normal.z / abs(slope.normal[along])
+	footEdge = rising > 0 and min(footEdge, footAt + run) or max(footEdge, footAt - run)
 	if (topEdge - footEdge) * rising <= 0 then return nil end
 	-- as wide as what stood on it, else as its ends meet
 	local acrossLo, acrossHi = huge, -huge
@@ -202,9 +265,13 @@ function Plan(slope, areas)
 	if acrossHi <= acrossLo then return nil end
 	local alongLo, alongHi = min(footEdge, topEdge), max(footEdge, topEdge)
 	local lo, hi = { [along] = alongLo, [across] = acrossLo }, { [along] = alongHi, [across] = acrossHi }
-	-- each end flush with what it joins, which stands up to a step below the clip
+	for _, area in ipairs(fragments) do
+		if Near(area.lo, lo) and Near(area.hi, hi) then return nil end
+	end
+	-- along the clip bodies walk, but never under the floor or over the landing
 	local middle = (acrossLo + acrossHi) / 2
-	local footZ, topZ = EdgeHeight(feet, along, footEdge, middle), EdgeHeight(tops, along, topEdge, middle)
+	local footZ = max(SurfaceAlong(slope, footEdge, middle), Height(feet))
+	local topZ = min(SurfaceAlong(slope, topEdge, middle), Height(tops))
 	local loZ, hiZ = footZ, topZ
 	if rising < 0 then loZ, hiZ = topZ, footZ end
 	local z = { nw = loZ, ne = loZ, se = hiZ, sw = hiZ }
