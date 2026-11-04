@@ -18,7 +18,7 @@ for _, name in ipairs({
 	"PostCleanupMap", "PostDrawTranslucentRenderables", "PostEntityTakeDamage", "PostPlayerDeath",
 	"PostPlayerDraw", "PostRender", "PreCleanupMap", "PrePlayerDraw", "PreDrawHUD", "PreDrawViewModel", "PreRender",
 	"RenderScreenspaceEffects", "SetupMove", "SetupPlayerVisibility", "ShouldCollide", "ShowSpare2",
-	"ShowTeam", "ShutDown", "StartCommand", "Think", "Tick", "TranslateActivity",
+	"ShowTeam", "ShutDown", "SpawnmenuIconMenuOpen", "StartCommand", "Think", "Tick", "TranslateActivity",
 	"UCLAuthed", -- ULib
 	"player_disconnect", -- a game event (gameevent.Listen)
 }) do
