@@ -9,7 +9,7 @@
 local sqrt = math.sqrt
 local min = math.min
 local Lerp = math.scalar.Lerp
-module(...)
+module("nextsoldier.locomotion.leap")
 
 CLEARANCE = 10 -- how far above the lip the arc ends
 OVER = 16 -- how far past the lip, across, the arc ends

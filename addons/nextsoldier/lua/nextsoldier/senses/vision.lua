@@ -12,7 +12,7 @@
 -- soldier's behaviour each one, with the enemy's handle.
 local pairs = pairs
 local setmetatable = setmetatable
-module(...)
+module("nextsoldier.senses.vision")
 
 SIGHT, LOST_SIGHT = "OnSight", "OnLostSight"
 CONTACT, CONTACT_LOST = "OnContact", "OnContactLost"

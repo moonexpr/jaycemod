@@ -14,7 +14,7 @@
 --   (true or false, nil to leave it), then the higher priority, then the
 --   nearer
 local error, ipairs, type = error, ipairs, type
-module(...)
+module("nextsoldier.behavior.intention")
 
 CHASE, AVOID, HOLD = "chase", "avoid", "hold"
 MELEE, RANGED = "melee", "ranged"

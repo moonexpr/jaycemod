@@ -3,8 +3,8 @@
 -- orders walk theirs (features.aiwar.orders' Travel:Advance): a waypoint
 -- within RADIUS is passed when the next is in a clear line, and one round a
 -- corner only once it is within ON, as near as the body comes when it
--- arrives (nextsoldier.player_body's ARRIVE: the engine's route points sit
--- on area edges, by walls, and nextsoldier.corners pushes a turn's off the
+-- arrives (nextsoldier.body.player_body's ARRIVE: the engine's route points sit
+-- on area edges, by walls, and nextsoldier.locomotion pushes a turn's off the
 -- inside wall just enough for the body, so leaving for the next from
 -- farther short of it runs the body into the corner); the farthest of the
 -- next LOOKAHEAD in a clear line is made for, and the last is held until
@@ -17,14 +17,14 @@ local abs, floor, max, min, sqrt = math.abs, math.floor, math.max, math.min, mat
 local Distance, Distance2D = math.geometry.Distance, math.geometry.Distance2D
 local setmetatable = setmetatable
 local HUGE = math.huge
-local ARRIVE = nextsoldier.player_body.ARRIVE
-module(...)
+local ARRIVE = nextsoldier.body.player_body.ARRIVE
+module("nextsoldier.locomotion.route_walk")
 
 RADIUS = 48
 ON = ARRIVE
 LOOKAHEAD = 3
 -- A waypoint is stood on, or within RADIUS, across the ground, as the body
--- arrives (nextsoldier.player_body's ARRIVE), with this much height either
+-- arrives (nextsoldier.body.player_body's ARRIVE), with this much height either
 -- way (a TF2 crouch jump): one on an area's edge lies below a bot already
 -- up the log it leads onto, and in 3D it was never reached.
 REACH_HEIGHT = 72

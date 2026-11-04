@@ -13,7 +13,7 @@
 -- the other way round: closed is laid out, and open (drawn back) it blocks
 -- everyone from its span, the areas where it lies closed.
 local band, ipairs, lower, min, pairs, sub = bit.band, ipairs, string.lower, math.min, pairs, string.sub
-module(...)
+module("nextsoldier.world.doors")
 
 -- CBaseToggle's m_toggle_state
 TS_AT_TOP, TS_AT_BOTTOM, TS_GOING_UP, TS_GOING_DOWN = 0, 1, 2, 3

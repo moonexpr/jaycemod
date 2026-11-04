@@ -1,5 +1,5 @@
 -- NextSoldier's monitors (docs/aiwar-command.md §1; TF2's CTFBot*Monitor):
--- a monitor is a behaviour, a state of NextSoldier's chart (nextsoldier.chart:
+-- a monitor is a behaviour, a state of NextSoldier's chart (nextsoldier.behavior:
 -- generator.hfsm's Action, on generator.state_chart), holding the soldier's
 -- state and containing one
 -- behaviour, which contains(state) gives; a monitor's own Update changes
@@ -8,11 +8,11 @@
 --     InitialContainedAction gives contains(state)
 --   Passthrough(name, contains) -> the same, only passing through to what
 --     it contains, which the debug layer's TDBN leaves out (Action.passthrough)
-local Chart = nextsoldier.chart
-module(...)
+local Behavior = nextsoldier.behavior
+module("nextsoldier.behavior.monitor")
 
 function New(name, contains)
-	local class = Chart.CHART:State(name)
+	local class = Behavior.CHART:State(name)
 	function class:Init(state) self.state = state end
 	function class:InitialContainedAction(me) return contains(self.state) end
 	return class

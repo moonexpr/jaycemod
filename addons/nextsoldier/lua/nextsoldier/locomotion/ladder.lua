@@ -7,7 +7,7 @@
 local max, sqrt = math.max, math.sqrt
 local Polyline = math.polyline
 local setmetatable = setmetatable
-module(...)
+module("nextsoldier.locomotion.ladder")
 
 -- Path::SegmentType's ladder moves (NextBotPath.h).
 UP, DOWN = 4, 5

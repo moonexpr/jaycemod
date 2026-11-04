@@ -33,7 +33,7 @@ local Buffer = file.buffer
 local Pathfinder = graph.pathfinder
 local LuaNavSearch = wetsands.navsearch
 local error, format, ipairs, pairs, pcall, setmetatable, sort, tonumber, tostring = error, string.format, ipairs, pairs, pcall, setmetatable, table.sort, tonumber, tostring
-module(...)
+module("nextsoldier.locomotion.route_record")
 
 FORMAT, VERSION = "ws_route_record", 1
 

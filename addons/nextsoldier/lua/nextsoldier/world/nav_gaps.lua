@@ -14,7 +14,7 @@ local max, min, abs, ceil = math.max, math.min, math.abs, math.ceil
 local ipairs = ipairs
 local Grid = world.grid
 local PairMap = world.pairmap
-module(...)
+module("nextsoldier.world.nav_gaps")
 
 GAP_MAX = 50 -- two of the generator's 25-unit steps
 OVERLAP_MIN = 24 -- room for a walker to pass

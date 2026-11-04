@@ -10,7 +10,7 @@
 local abs, atan2, deg, sqrt = math.abs, math.atan2, math.deg, math.sqrt
 local setmetatable = setmetatable
 local Distance2D = math.geometry.Distance2D
-module(...)
+module("nextsoldier.body.player_body")
 
 -- How fast it turns its eyes, degrees a second (CTFBot's head turning,
 -- about a human's flick).

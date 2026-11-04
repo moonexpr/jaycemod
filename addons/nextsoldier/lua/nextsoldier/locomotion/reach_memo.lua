@@ -41,7 +41,7 @@ local Class = core.class
 local Expiring = cache.expiring
 local Geometry = math.geometry
 local concat, ipairs, pairs, rawget, setmetatable, type = table.concat, ipairs, pairs, rawget, setmetatable, type
-module(...)
+module("nextsoldier.locomotion.reach_memo")
 
 REGIONS_PER_KEY = 4
 

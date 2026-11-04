@@ -20,7 +20,7 @@
 --   turning body does not drag the head past its goal, held to YAW_LIMIT
 --   (C_HL2MP_Player::UpdateLookAt)
 local atan2, deg, sqrt, huge, ipairs = math.atan2, math.deg, math.sqrt, math.huge, ipairs
-module(...)
+module("nextsoldier.body.gaze")
 
 YAW_LIMIT, PITCH_LIMIT = 75, 45
 -- People within LOOK_RANGE are looked at as they pass; a hint holds the

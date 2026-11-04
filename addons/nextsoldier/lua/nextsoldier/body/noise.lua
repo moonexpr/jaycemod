@@ -5,7 +5,7 @@
 -- it fell (CGameMovement::CheckFalling, shareddefs.h's HL2 fall speeds),
 -- and how far a noise carries to a listener (DrGBase's hearing of a
 -- player's sounds).
-module(...)
+module("nextsoldier.body.noise")
 
 -- A step below WALK_SPEED is silent; from RUN_SPEED on it is a run (crouched:
 -- the crouched speeds).
@@ -46,7 +46,7 @@ MAX_SAFE_FALL_SPEED = 526.5
 HARD_LANDING_SPEED = 303
 -- CheckFalling's volumes: a landing, one past half a safe fall, one past it.
 local LANDING_VOLUME, HARDER_VOLUME, UNSAFE_VOLUME = 0.5, 0.85, 1.0
--- A jump onto a ledge (nextsoldier.leap) lands as a jump does.
+-- A jump onto a ledge (nextsoldier.locomotion.leap) lands as a jump does.
 JUMP_LANDING_VOLUME = LANDING_VOLUME
 
 -- The volume of the step a landing at fallSpeed makes; 0, none.

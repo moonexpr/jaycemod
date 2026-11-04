@@ -21,7 +21,7 @@
 --   gesture criterion: lower case, the player model's prefixes left off
 --   (ACT_GMOD_TAUNT_DANCE: dance; ACT_GMOD_GESTURE_TAUNT_ZOMBIE: zombie)
 local error, setmetatable, tostring, sub, lower, ipairs = error, setmetatable, tostring, string.sub, string.lower, ipairs
-module(...)
+module("nextsoldier.body.gestures")
 
 -- Witnessing a teammate's kill or capture; a squad wiped out with time to
 -- spare; greeting a teammate player or lining up in a battle stance; a

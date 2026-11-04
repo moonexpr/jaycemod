@@ -16,7 +16,7 @@
 local Geometry = math.geometry
 local abs = math.abs
 local setmetatable = setmetatable
-module(...)
+module("nextsoldier.locomotion.probe")
 
 ARRIVE = 48 -- across the ground
 HEIGHT = 36 -- up or down: a stair's or a slope's difference from the lane's point

@@ -1,5 +1,5 @@
 -- The behaviours NextSoldier's soldiers run, which the mode hosting them
--- provides: NextSoldier owns the contract (nextsoldier.chart) and the
+-- provides: NextSoldier owns the contract (nextsoldier.behavior) and the
 -- soldier, the mode owns the behaviours (the AI war's orders register
 -- theirs, its monitors among them) and NextSoldier runs them by name. Each
 -- is a state of NextSoldier's chart.
@@ -20,8 +20,8 @@
 --   The compiled structure refuses any change.
 local error, ipairs, pairs, setmetatable, sort, tostring, type = error, ipairs, pairs, setmetatable, table.sort, tostring, type
 local Class = core.class
-local SoldierChart = nextsoldier.chart
-module(...)
+local Behavior = nextsoldier.behavior
+module("nextsoldier.behavior.registry")
 
 local Registry = {}
 Registry.__index = Registry
@@ -37,7 +37,7 @@ end
 function Registry:Register(spec)
 	Check(type(spec) == "table", "is a table")
 	Check(type(spec.name) == "string" and spec.name ~= "", "needs a name")
-	Check(type(spec.behavior) == "table" and Class.IsA(spec.behavior, SoldierChart.CHART.base),
+	Check(type(spec.behavior) == "table" and Class.IsA(spec.behavior, Behavior.CHART.base),
 		"gives a behaviour that is a state of NextSoldier's chart")
 	self.behaviors[spec.name] = spec.behavior
 end

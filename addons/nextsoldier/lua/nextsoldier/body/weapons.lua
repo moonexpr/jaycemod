@@ -18,7 +18,7 @@
 local error, setmetatable, type = error, setmetatable, type
 local deg, atan = math.deg, math.atan
 local Geometry = math.geometry
-module(...)
+module("nextsoldier.body.weapons")
 
 local PARTS = { "damage", "bullets", "interval", "clip", "reload", "sound", "tracer", "hold", "spread" }
 local SWEP_FIELDS = {

@@ -2,7 +2,7 @@
 -- lua/includes/modules/responserules.lua): their criteria set. The rules
 -- and lines are data in this addon (scripts/responserules/), by the speaker
 -- model's affiliation, not its team, as a team may wear either side's models.
-module(...)
+module("nextsoldier.body.responserules")
 
 -- TF2's teamrole criterion: the cart's own team is on offense.
 OFFENSE, DEFENSE = "offense", "defense"
@@ -41,7 +41,7 @@ CONCEPT_REGROUP = "TLK_NS_REGROUP"
 -- features/aiwar/sv_gestures.lua) says a long line to go with it, heard by
 -- all near.
 CONCEPT_TAUNT = "TLK_NS_TAUNT"
--- A soldier gesturing (any occasion's act: nextsoldier.gestures' Name gives
+-- A soldier gesturing (any occasion's act: nextsoldier.body.gestures' Name gives
 -- the gesture criterion) plays the gesture's sound, TF2's (a dance's
 -- music, a flex's chest thump, the zombie's skeleton laugh), heard by all
 -- near; a gesture with none plays nothing.

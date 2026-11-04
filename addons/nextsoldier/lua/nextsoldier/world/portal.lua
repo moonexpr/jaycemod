@@ -11,7 +11,7 @@
 -- when `to` has no neighbour on that side (CNavArea::IsEdge).
 local Scalar = math.scalar
 local Interval = math.interval
-module(...)
+module("nextsoldier.world.portal")
 
 -- NavDirType: north is -y, east is +x.
 NORTH, EAST, SOUTH, WEST = 0, 1, 2, 3
