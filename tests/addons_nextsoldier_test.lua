@@ -152,4 +152,17 @@ T.test("the response rules are merged into the addon", function()
 	T.eq(T.Path("responserules"), ADDON .. "lua/includes/modules/responserules.lua", "GMod's require finds it")
 end)
 
+T.test("the base takes the one model it is given and falls as a player falls", function()
+	local base = Code(ADDON .. "lua/entities/base_nextsoldier.lua")
+	T.eq(base:find("self:SetModel(self.Model)", 1, true) ~= nil, true, "its model")
+	T.eq(base:find("Models", 1, true), nil, "no list to draw one from")
+	T.eq(base:find('self.loco:SetGravity(GetConVar("sv_gravity"):GetFloat())', 1, true) ~= nil, true, "a player's gravity")
+end)
+
+T.test("a path's climb lands past the ledge's foot, and plans its path again from there", function()
+	local base = Code(ADDON .. "lua/entities/base_nextsoldier.lua")
+	T.eq(base:find("Leap.Landing(after, pos, goal.type == CLIMB_UP)", 1, true) ~= nil, true, "where it lands")
+	T.eq(base:find("end, ledge, function() PathAgain(self) end)", 1, true) ~= nil, true, "its path planned again")
+end)
+
 T.finish()

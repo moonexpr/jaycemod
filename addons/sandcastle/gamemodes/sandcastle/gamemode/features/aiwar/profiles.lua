@@ -24,7 +24,7 @@ PROFILES = {
 	},
 	vortigaunt = {
 		PrintName = "Vortigaunt Medic",
-		Models = { "models/vortigaunt.mdl" },
+		Model = "models/vortigaunt.mdl",
 		Weapons = {},
 		Factions = { Factions.RED, Factions.HL2_REBELS },
 		SpawnHealth = 150, WalkSpeed = 80, RunSpeed = 210,

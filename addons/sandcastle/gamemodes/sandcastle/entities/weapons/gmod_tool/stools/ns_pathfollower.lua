@@ -111,7 +111,7 @@ function TOOL:LeftClick(trace)
 	follower.NSToolManaged = true
 	follower.NSLaneTeam = WS.TeamOf(ply) or WS.TEAM_UNASSIGNED
 	follower:SetNW2Int("ws_team", follower.NSLaneTeam)
-	follower.Models = { model }
+	follower.Model = model
 	follower.CollisionBounds = MODEL_COLLISION_BOUNDS[model]
 	follower:SetPos(trace.HitPos + Vector(0, 0, 1))
 	follower:Spawn()

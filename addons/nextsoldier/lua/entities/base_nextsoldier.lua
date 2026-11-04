@@ -7,7 +7,7 @@
 -- runs none per bot.
 --
 -- A soldier class sets ENT.Base = "base_nextsoldier", its fields (the
--- profile: Models, Weapons, Factions, SpawnHealth, speeds and ranges) and
+-- profile: Model, Weapons, Factions, SpawnHealth, speeds and ranges) and
 -- defines the hooks it wants (nextsoldier.base's HOOKS); the base raises
 -- them and keeps its own defaults for the ones a class calls through.
 AddCSLuaFile()
@@ -19,7 +19,7 @@ ENT.Spawnable = false
 ENT.IsNextSoldier = true
 
 -- The profile's defaults (nextsoldier.base's FIELDS).
-ENT.Models = { "models/player/kleiner.mdl" }
+ENT.Model = "models/player/kleiner.mdl"
 ENT.Weapons = {}
 ENT.SpawnHealth = 100
 ENT.WalkSpeed = 90
@@ -156,7 +156,7 @@ end
 -- The bot: setup, life, relations
 
 function ENT:Initialize()
-	self:SetModel(self.Models[math.random(#self.Models)])
+	self:SetModel(self.Model)
 	self:SetHealth(self.SpawnHealth)
 	self:SetMaxHealth(self.SpawnHealth)
 	-- a profile's hull (its half width and height, as DrGBase's CollisionBounds), else a player's
@@ -168,6 +168,8 @@ function ENT:Initialize()
 	self.loco:SetStepHeight(STEP_HEIGHT)
 	self.loco:SetJumpHeight(JUMP_HEIGHT)
 	self.loco:SetDeathDropHeight(self.DeathDropHeight)
+	-- it falls as a player falls (the engine's NextBots fall at 1000)
+	self.loco:SetGravity(GetConVar("sv_gravity"):GetFloat())
 	self.loco:SetDesiredSpeed(self.WalkSpeed)
 	self.loco:SetAcceleration(ACCELERATION)
 	self.loco:SetDeceleration(DECELERATION)
@@ -403,6 +405,12 @@ function ENT:ScrambleUpdate()
 	return true
 end
 
+-- Its path planned again, from where a scramble has set it.
+local function PathAgain(self)
+	local path = self:GetPath()
+	if path and path:IsValid() then path:Invalidate() end
+end
+
 -- A jump its path's next goal asks for, when the class jumps ledges (ClimbLedges),
 -- asks to (OnStartClimbing) and begins one (CustomClimbing): up a ledge, or over a
 -- gap to the goal after, as the engine's follower jumps it (JumpOverGaps). Whether
@@ -413,12 +421,9 @@ function ENT:ClimbPathGoal(path)
 	if not goal or (goal.type ~= CLIMB_UP and goal.type ~= JUMP_OVER_GAP) then return false end
 	local pos = self:GetPos()
 	if (pos - goal.pos):Length2D() > CLIMB_REACH then return false end
-	local onto = goal.pos
-	if goal.type == JUMP_OVER_GAP then
-		local landing = path:NextSegment(goal)
-		if not landing then return false end
-		onto = landing.pos
-	end
+	local after = path:NextSegment(goal)
+	if not after then return false end
+	local onto = Leap.Landing(after, pos, goal.type == CLIMB_UP)
 	local height = onto.z - pos.z
 	if height > self.ClimbLedgesMaxHeight or not self:OnStartClimbing(onto, height, false) then return false end
 	self:CustomClimbing(onto)
@@ -468,8 +473,7 @@ function ENT:ClimbPathLadder(path)
 		rate = rate,
 		done = function()
 			self:SetCrouching(area:HasAttributes(NAV_MESH_CROUCH))
-			local current = self:GetPath()
-			if current and current:IsValid() then current:Invalidate() end
+			PathAgain(self)
 		end,
 	})
 	return true
@@ -581,7 +585,7 @@ function ENT:CustomClimbing(ledge)
 	Move(self, Leap.DURATION, function(t)
 		local p = Leap.Arc(from, ledge, t)
 		return Vector(p.x, p.y, p.z)
-	end, ledge)
+	end, ledge, function() PathAgain(self) end)
 end
 
 -- A vault over what stands toward dir (flat, of unit length) along

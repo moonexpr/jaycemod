@@ -37,7 +37,7 @@ GENERIC = frozenset({"Initialize", "Think", "Draw", "OnRemove", "Use", "SetupDat
 # Names our code uses that are DrGBase's only by coincidence: name -> why.
 COLLISIONS = {
     **dict.fromkeys(("Approach", "SetDesiredSpeed", "SetAcceleration", "SetDeceleration", "SetJumpHeight",
-                     "SetMaxYawRate", "SetStepHeight", "SetDeathDropHeight"),
+                     "SetMaxYawRate", "SetStepHeight", "SetDeathDropHeight", "GetJumpHeight"),
                     "GMod's locomotion (CLuaLocomotion), on our own NextBots (base_nextsoldier_npc, the bosses)"),
     **dict.fromkeys(("BehaveUpdate", "BodyUpdate", "OnContact", "OnInjured", "OnKilled", "OnLeaveGround"),
                     "GMod's NextBot hooks, on our own NextBots (base_nextsoldier_npc, the bosses)"),

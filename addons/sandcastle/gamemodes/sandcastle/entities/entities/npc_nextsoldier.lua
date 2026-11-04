@@ -16,9 +16,10 @@ ENT.DefaultRelationship = D_HT
 
 local PlayerModels = WS.PlayerModels
 
-local function Models(kind, profile)
+-- Every model a kind may wear.
+local function KindModels(kind, profile)
 	local category = Profiles.MODEL_CATEGORIES[kind]
-	if not category then return profile.Models end
+	if not category then return { profile.Model } end
 
 	local models = PlayerModels.For(category)
 	if #models == 0 then error("NextSoldier profile " .. kind .. " has no models in category " .. category, 2) end
@@ -36,7 +37,7 @@ local function Precache(models)
 	end
 end
 for kind, profile in pairs(Profiles.PROFILES) do
-	Precache(Models(kind, profile))
+	Precache(KindModels(kind, profile))
 end
 Precache(PlayerModels.For(PlayerModels.TERRORIST))
 Precache(PlayerModels.For(PlayerModels.COUNTER_TERRORISTS))
@@ -48,7 +49,8 @@ if SERVER then
 		local profile = Profiles.PROFILES[kind]
 		if not profile then error("no NextSoldier profile " .. tostring(kind), 2) end
 		for key, value in pairs(profile) do self[key] = value end
-		self.Models = Models(kind, profile)
+		local category = Profiles.MODEL_CATEGORIES[kind]
+		if category then self.Model = PlayerModels.Pick(category) end
 		self:SetNW2String("NSKind", kind)
 	end
 end

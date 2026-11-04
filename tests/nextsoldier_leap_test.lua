@@ -100,4 +100,21 @@ T.test("a vault never dips below the top while over it", function()
 	end
 end)
 
+T.test("a climb lands on the area above, nearest the walker, not at the ledge's foot", function()
+	local from = { x = 0, y = 0, z = 0 }
+	local lip = { x = 30, y = 0, z = 60 }
+	local asked
+	local after = {
+		pos = { x = 200, y = 0, z = 60 },
+		area = { GetClosestPointOnArea = function(_, point) asked = point return lip end },
+	}
+	T.eq(Leap.Landing(after, from, true), lip, "the lip, however far on the path goes")
+	T.eq(asked, from, "nearest where it stands")
+end)
+
+T.test("a gap lands where the path goes on", function()
+	local after = { pos = { x = 200, y = 0, z = 0 } }
+	T.eq(Leap.Landing(after, { x = 0, y = 0, z = 0 }, false), after.pos)
+end)
+
 T.finish()

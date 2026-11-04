@@ -39,10 +39,11 @@ function Step(speed, crouched)
 	return { interval = running and RUN_INTERVAL or WALK_INTERVAL, volume = volume, running = running }
 end
 
--- PLAYER_MIN_BOUNCE_SPEED, PLAYER_MAX_SAFE_FALL_SPEED and
--- PLAYER_FALL_PUNCH_THRESHOLD (HL2's), in units a second.
+-- PLAYER_MIN_BOUNCE_SPEED, PLAYER_MAX_SAFE_FALL_SPEED, PLAYER_FATAL_FALL_SPEED
+-- and PLAYER_FALL_PUNCH_THRESHOLD (HL2's), in units a second.
 MIN_BOUNCE_SPEED = 173
 MAX_SAFE_FALL_SPEED = 526.5
+FATAL_FALL_SPEED = 922.5
 HARD_LANDING_SPEED = 303
 -- CheckFalling's volumes: a landing, one past half a safe fall, one past it.
 local LANDING_VOLUME, HARDER_VOLUME, UNSAFE_VOLUME = 0.5, 0.85, 1.0

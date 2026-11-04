@@ -126,8 +126,8 @@ function WS.WarSoldier(ENT)
 		end
 	end
 
-	-- Going down a drop it would land from faster than a safe fall, it comes
-	-- down no faster than a rappel (nextsoldier.locomotion), to the floor.
+	-- Going down a drop that would kill a player, it comes down no faster than
+	-- a rappel (nextsoldier.locomotion), to the floor.
 	local RAPPEL_LOOK = 4096
 	function ENT:NSRappel(velocity)
 		if velocity.z >= 0 then return end

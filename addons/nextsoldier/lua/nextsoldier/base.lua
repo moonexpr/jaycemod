@@ -94,7 +94,7 @@ LOCOMOTION = Component("locomotion", {
 BODY = Component("body", {
 	methods = { "GetActiveWeapon", "GetWeapons", "GiveWeapon", "RemoveWeapon", "SelectWeapon", "SetScale" },
 	hooks = { "OnWeaponChange", "OnUpdateAnimation", "PlaysJump", "OnAnimEvent" },
-	fields = { "Models", "Weapons", "BloodColor", "CollisionBounds", "IdleAnimation", "WalkAnimation",
+	fields = { "Model", "Weapons", "BloodColor", "CollisionBounds", "IdleAnimation", "WalkAnimation",
 		"RunAnimation", "OnDamageSounds", "OnDeathSounds" },
 })
 
@@ -167,4 +167,7 @@ REPLACED = {
 	BehaveStart = "Reset (INextBot::Reset): the components and the behaviour begin again",
 	YieldCoroutine = "a locomotion process, ticked in ILocomotion's Update (as ClimbUpToLedge)",
 	PauseCoroutine = "a behaviour that waits, ticked in IIntention's Update",
+	-- DrGBase's list a model is drawn from: what chooses a soldier's model
+	-- chooses one (its profile, its kit).
+	Models = "Model: the one it is given",
 }

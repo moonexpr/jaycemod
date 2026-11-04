@@ -36,6 +36,16 @@ function Arc(from, ledge, t)
 	}
 end
 
+-- Where a jump its path asks for lands, the path's segment after the jump's
+-- being `after`: a climb's segment stands at the ledge's foot, so it lands on
+-- the area above, where it is nearest the walker (the lip, as the engine's
+-- PathFollower::Climbing finds it; the path may go on far across it); a gap's,
+-- where the path goes on.
+function Landing(after, from, climbing)
+	if climbing then return after.area:GetClosestPointOnArea(from) end
+	return after.pos
+end
+
 -- A vault: over an obstacle the walker cannot stand on (a railing, its top
 -- at `top`), onto the floor beyond (`land`), which may lie far lower. Up
 -- to VAULT_RISE of the way it rises straight up to CLEARANCE above the top;
