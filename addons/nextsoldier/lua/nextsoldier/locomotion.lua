@@ -3,6 +3,7 @@
 -- a route's corners rounded and a goal arrived at.
 local Geometry = math.geometry
 local Noise = nextsoldier.body.noise
+local Select = list.select
 local ipairs, sqrt = ipairs, math.sqrt
 module("nextsoldier.locomotion")
 
@@ -157,4 +158,42 @@ function RoundCorners(points, clear)
 	end
 	out[#out + 1] = points[#points]
 	return out
+end
+
+-- Stepping off a ledge: the engine's drop stands a route's point over the landing for
+-- the width it searched with, so a wider body stood there is still on the ledge. Each
+-- way round is looked along every STEP_SCAN as far as STEP_REACH, for where it falls;
+-- its walk ends STEP_PAST beyond, so it is still walking as it does.
+local STEP_SCAN, STEP_REACH, STEP_PAST = 8, 96, 24
+local DIAGONAL = sqrt(0.5)
+local COMPASS = {
+	{ 1, 0 }, { DIAGONAL, DIAGONAL }, { 0, 1 }, { -DIAGONAL, DIAGONAL },
+	{ -1, 0 }, { -DIAGONAL, -DIAGONAL }, { 0, -1 }, { DIAGONAL, -DIAGONAL },
+}
+
+-- Whether a route's point is a drop it has come to: more than depth below it, and
+-- within near across the ground.
+function DropBelow(pos, point, depth, near)
+	return pos.z - point.z > depth and Geometry.Distance2D(pos, point) <= near
+end
+
+-- The point to walk to from pos to fall to landing, or nil with no way within reach:
+-- of the ways clear(q) lets it go on until falls(q), the one falling nearest the landing.
+function StepOff(pos, landing, clear, falls)
+	local ways = {}
+	for _, way in ipairs(COMPASS) do
+		for along = STEP_SCAN, STEP_REACH, STEP_SCAN do
+			local q = { x = pos.x + way[1] * along, y = pos.y + way[2] * along, z = pos.z }
+			if not clear(q) then break end
+			if falls(q) then
+				ways[#ways + 1] = {
+					falls = q,
+					walk = { x = q.x + way[1] * STEP_PAST, y = q.y + way[2] * STEP_PAST, z = pos.z },
+				}
+				break
+			end
+		end
+	end
+	local nearest = Select.Lowest(ways, function(way) return Geometry.Distance2D(way.falls, landing) end)
+	return nearest and nearest.walk
 end

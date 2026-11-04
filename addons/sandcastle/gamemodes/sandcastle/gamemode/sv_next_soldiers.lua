@@ -26,6 +26,10 @@ local OFF_MESH_NEAR = 96
 local LIFT, RISE, SWEEP_HEIGHT = Vector(0, 0, 20), 40, 36
 local FOOTING_ABOVE, FOOTING_BELOW = Vector(0, 0, 18), Vector(0, 0, 36)
 local DIRECT_RANGE = 256
+-- A route's point this far below and this near is a drop to step off; a floor this far
+-- beneath its feet still bears it, and a landing this far from the one meant is another.
+local DROP_DEPTH, DROP_NEAR = 40, 48
+local SOLE, FOOTHOLD, LANDING_SLACK = 2, 18, 24
 -- Its body is TF2's, so it is priced as TF2's bots are: a stair's step, its crouch
 -- jump, the fall it survives unhurt, and no ladder (its keys climb none).
 local LIMITS = { stepHeight = Movement.TF2.stepHeight, jumpHeight = Movement.CrouchJump(Movement.TF2), deathDropHeight = 300 }
@@ -94,6 +98,29 @@ function Soldier:RouteCost()
 	end
 end
 
+-- Where to walk to fall to a drop's landing, kept for that landing: nil with no way off.
+function Soldier:StepOff(pos, landing)
+	if self.stepOffOf == landing then return self.stepOffTo end
+	local ply = self.ent
+	local hullMin, hullMax = ply:GetHull()
+	local mins, maxs = Vector(hullMin.x, hullMin.y, 0), Vector(hullMax.x, hullMax.y, SWEEP_HEIGHT)
+	local function Trace(from, to)
+		return util.TraceHull({ start = from, endpos = to, mins = mins, maxs = maxs, mask = MASK_PLAYERSOLID, filter = ply })
+	end
+	local function Clear(q)
+		return not Trace(pos + LIFT, ToVector(q) + LIFT).Hit
+	end
+	local function Falls(q)
+		local at = ToVector(q)
+		local above = at + Vector(0, 0, SOLE)
+		if Trace(above, at - Vector(0, 0, FOOTHOLD)).Hit then return false end
+		local under = Trace(above, Vector(at.x, at.y, landing.z - LANDING_SLACK))
+		return under.Hit and math.abs(under.HitPos.z - landing.z) <= LANDING_SLACK
+	end
+	self.stepOffOf, self.stepOffTo = landing, Locomotion.StepOff(Point(pos), landing, Clear, Falls)
+	return self.stepOffTo
+end
+
 function Soldier:Navigator()
 	local ply = self.ent
 	if IsValid(ply.NSNavigator) then return ply.NSNavigator end
@@ -137,7 +164,11 @@ function Soldier:Steer(now)
 		self.steer = Point(goal)
 		return
 	end
-	self.steer = self.walk and self.walk:Next(Point(pos), function(q) return self:WalkClear(pos, ToVector(q)) end) or nil
+	local point = self.walk and self.walk:Next(Point(pos), function(q) return self:WalkClear(pos, ToVector(q)) end) or nil
+	if point and Locomotion.DropBelow(Point(pos), point, DROP_DEPTH, DROP_NEAR) then
+		point = self:StepOff(pos, point) or point
+	end
+	self.steer = point
 end
 
 -- This tick's keys, from its body's command.

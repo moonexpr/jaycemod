@@ -124,4 +124,27 @@ T.test("no route is planned until the mesh is ready", function()
 	T.eq(planned, nil, "a route without its price would walk into what TF2's refuses")
 end)
 
+T.test("a route's drop right below it is stepped off, past the ledge, not stood over", function()
+	ready, planned = true, nil
+	local soldier = New()
+	local ledge = 30
+	environment.util.TraceHull = function(trace)
+		-- the floor ends at the ledge, and the landing lies far below it
+		if trace.start.z == trace.endpos.z then return { Hit = false } end
+		if trace.start.x + trace.mins.x < ledge then return { Hit = true, HitPos = trace.start } end
+		if trace.endpos.z < -100 then return { Hit = true, HitPos = Vec(trace.start.x, trace.start.y, -188) } end
+		return { Hit = false }
+	end
+	soldier.walk = {
+		Stalled = function() return false end,
+		Next = function() return { x = 20, y = 0, z = -188 } end,
+	}
+	soldier.planned = Vec(5000, 0, 0)
+	soldier.nextPlan = 100
+	soldier:FollowPath(Vec(5000, 0, 0))
+	soldier:Steer(1)
+	T.eq(soldier.steer.z, 0, "a point on its own level")
+	T.eq(soldier.steer.x - 24 >= ledge, true, "its whole body past the edge")
+end)
+
 T.finish()
