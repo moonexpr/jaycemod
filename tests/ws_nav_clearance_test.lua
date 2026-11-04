@@ -41,16 +41,33 @@ end
 
 T.test("nav clearance sweeps an opening with the supplied agent hull", function()
 	local lines = { { start = V(0, 0, 0), finish = V(100, 0, 0) } }
+	local heights = {}
 	local function Trace(data)
-		T.eq(data.start.z, 1)
-		T.eq(data.mins.z, nextsoldier.nav_gaps.STEP_HEIGHT)
+		heights[#heights + 1] = data.start.z
+		T.eq(data.mins.z, nextsoldier.world.nav_gaps.STEP_HEIGHT)
 		T.eq(data.maxs.z, 72)
 		return { Hit = data.mins.x < -15, StartSolid = false }
 	end
 	T.eq(Clearance.FitsLines(lines, V(-13, -13, 0), V(13, 13, 72), 7, Trace, V), true,
 		"the narrower agent fits")
+	T.eq(heights[1], 1, "on the floor first")
 	T.eq(Clearance.FitsLines(lines, V(-24, -24, 0), V(24, 24, 72), 7, Trace, V), false,
 		"the wider agent does not fit")
+end)
+
+T.test("an opening on a stair is swept a step up too, with room for the head", function()
+	local STEP = nextsoldier.world.nav_gaps.STEP_HEIGHT
+	local lines = { { start = V(0, 0, 0), finish = V(100, 0, 0) } }
+	local function Room(top, ceiling)
+		return function(data)
+			local hit = data.start.z + data.mins.z < top or data.start.z + data.maxs.z > ceiling
+			return { Hit = hit, StartSolid = false }
+		end
+	end
+	local mins, maxs = V(-24, -24, 0), V(24, 24, 82)
+	T.eq(Clearance.FitsLines(lines, mins, maxs, 7, Room(STEP + 8, 1000), V), true, "over the next steps")
+	T.eq(Clearance.FitsLines(lines, mins, maxs, 7, Room(STEP + 8, maxs.z + STEP / 2), V), false, "no room for the head")
+	T.eq(Clearance.FitsLines(lines, mins, maxs, 7, Room(2 * STEP + 8, 1000), V), false, "more than a stair")
 end)
 
 T.test("nav clearance accepts an ordinary entity and checks its collision hull", function()
@@ -65,7 +82,7 @@ T.test("nav clearance accepts an ordinary entity and checks its collision hull",
 	T.eq(#calls, 1)
 	T.eq(calls[1].mask, 7)
 	T.eq(calls[1].mins.x, -10)
-	T.eq(calls[1].mins.z, nextsoldier.nav_gaps.STEP_HEIGHT)
+	T.eq(calls[1].mins.z, nextsoldier.world.nav_gaps.STEP_HEIGHT)
 	T.eq(calls[1].maxs.y, 8)
 	T.eq(calls[1].maxs.z, 64)
 	local world = { IsWorld = function() return true end }
@@ -117,7 +134,7 @@ T.test("nav clearance uses the collision trace instead of a nav area's bounding 
 	T.eq(clearance:Area(Area(2, 0, 0, 19, 100, 0)), true, "cached admission")
 	T.eq(clearance:Area(Area(3, 10, 0, 30, 100, 0)), false, "the world trace rejects a blocked area")
 	T.eq(clearance:Area(Area(3, 10, 0, 30, 100, 0)), false, "cached rejection")
-	T.eq(calls, 2)
+	T.eq(calls, 3, "once for the admitted area; on the floor and a step up for the refused; none when cached")
 end)
 
 T.test("nav clearance tolerates floor overlap within the walkable step height", function()
@@ -205,6 +222,47 @@ T.test("bodies crouching to different heights keep apart caches", function()
 	b.NSCrouchHeight = CROUCH_HEIGHT + 10
 	T.eq(Clearance.New(a, 7, trace, V) == Clearance.New(b, 7, trace, V), false)
 end)
+
+-- A stair's next steps stand within a wide hull's reach of a point on it or at
+-- its foot; the body rides up on them, its feet and head a step higher.
+do
+	local STEP = nextsoldier.world.nav_gaps.STEP_HEIGHT
+	local TF2_MINS, TF2_MAXS = V(-24, -24, 0), V(24, 24, 82)
+
+	-- A trace hitting a solid up to `top` above the floor and a ceiling at `ceiling`.
+	local function Room(top, ceiling)
+		return function(data)
+			local hit = data.start.z + data.mins.z < top or data.start.z + data.maxs.z > ceiling
+			return { Hit = hit, StartSolid = false }
+		end
+	end
+
+	-- Two areas a link joins, side by side.
+	local function Linked()
+		local from, to = Area(1, 0, 0, 100, 100, 0), Area(2, 100, 0, 200, 100, 0)
+		from.sides[1] = to
+		return from, to
+	end
+
+	T.test("a body fits on and at the foot of a stair, whose steps it rides up", function()
+		local clearance = NewClearance(Agent(TF2_MINS, TF2_MAXS), Room(STEP + 8, 1000))
+		T.eq(clearance:Area(Area(1, 0, 0, 100, 100, 0)), true, "the area")
+		T.eq(clearance:Link(Linked()), true, "the link")
+	end)
+
+	T.test("a body riding a step still needs room for its head", function()
+		local ceiling = TF2_MAXS.z + STEP / 2
+		local clearance = NewClearance(Agent(TF2_MINS, TF2_MAXS), Room(STEP + 8, ceiling))
+		T.eq(clearance:Area(Area(1, 0, 0, 100, 100, 0)), false, "the area")
+		T.eq(clearance:Link(Linked()), false, "the link")
+	end)
+
+	T.test("what rises more than a step above a body's step is no stair to it", function()
+		local clearance = NewClearance(Agent(TF2_MINS, TF2_MAXS), Room(2 * STEP + 8, 1000))
+		T.eq(clearance:Area(Area(1, 0, 0, 100, 100, 0)), false, "the area")
+		T.eq(clearance:Link(Linked()), false, "the link")
+	end)
+end
 
 T.test("nav clearance sweeps height-changing links at the higher floor", function()
 	local lower, upper = Area(5, 0, 0, 100, 100, 0), Area(6, 100, 0, 200, 100, 24)

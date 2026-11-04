@@ -1,4 +1,4 @@
-local NavGaps = nextsoldier.nav_gaps
+local NavGaps = nextsoldier.world.nav_gaps
 local HL2 = require("foundation.wetsands.path.hl2")
 local STATIC_BRUSHES = { func_brush = true, func_wall = true }
 local ipairs = ipairs
@@ -8,21 +8,31 @@ local function StaticMap(ent)
 	return ent:IsWorld() or STATIC_BRUSHES[ent:GetClass()] == true
 end
 
+-- How high a body stands over the floor measured: on it, or a step up. A hull
+-- is wider than a stair's tread, so on a stair or at its foot the next steps
+-- stand within its reach; the body rides up on them, feet and head a step
+-- higher, where a hull on the floor would be stopped by them.
+RIDES = { 0, NavGaps.STEP_HEIGHT }
+
 local function HullLineFits(from, to, start, finish, mins, maxs, mask, traceHull, vector)
 	start = vector(start.x, start.y, 0)
 	finish = vector(finish.x, finish.y, 0)
 	local fromZ, toZ = from:GetZ(start), to:GetZ(finish)
 	local height = (fromZ > toZ and fromZ or toZ) + 1
-	start.z, finish.z = height, height
-	local trace = traceHull({
-		start = start,
-		endpos = finish,
-		mins = mins,
-		maxs = maxs,
-		mask = mask,
-		filter = StaticMap,
-	})
-	return not trace.Hit and not trace.StartSolid
+	-- on the floor, else riding a step (Clearance:Area)
+	for _, lift in ipairs(RIDES) do
+		start.z, finish.z = height + lift, height + lift
+		local trace = traceHull({
+			start = start,
+			endpos = finish,
+			mins = mins,
+			maxs = maxs,
+			mask = mask,
+			filter = StaticMap,
+		})
+		if not trace.Hit and not trace.StartSolid then return true end
+	end
+	return false
 end
 
 local Clearance = {}
@@ -40,17 +50,19 @@ function FitsLines(lines, mins, maxs, mask, traceHull, vector)
 	local traceMins = StepMins(mins, maxs, vector)
 	for i = 1, #lines do
 		local line = lines[i]
-		local start = vector(line.start.x, line.start.y, line.start.z + 1)
-		local finish = vector(line.finish.x, line.finish.y, line.finish.z + 1)
-		local trace = traceHull({
-			start = start,
-			endpos = finish,
-			mins = traceMins,
-			maxs = maxs,
-			mask = mask,
-			filter = StaticMap,
-		})
-		if not trace.Hit and not trace.StartSolid then return true end
+		for _, lift in ipairs(RIDES) do
+			local start = vector(line.start.x, line.start.y, line.start.z + 1 + lift)
+			local finish = vector(line.finish.x, line.finish.y, line.finish.z + 1 + lift)
+			local trace = traceHull({
+				start = start,
+				endpos = finish,
+				mins = traceMins,
+				maxs = maxs,
+				mask = mask,
+				filter = StaticMap,
+			})
+			if not trace.Hit and not trace.StartSolid then return true end
+		end
 	end
 	return false
 end
@@ -101,17 +113,23 @@ function Clearance:Area(area)
 	if known ~= nil then return known end
 	local center = area:GetCenter()
 	center.z = area:GetZ(center)
-	local start = center + self.vector(0, 0, 1)
 	local crouched = HL2.MustCrouch(area:GetAttributes())
-	local trace = self.traceHull({
-		start = start,
-		endpos = start,
-		mins = crouched and self.crouchMins or self.mins,
-		maxs = crouched and self.crouchMaxs or self.maxs,
-		mask = self.mask,
-		filter = StaticMap,
-	})
-	local fits = not trace.Hit and not trace.StartSolid
+	local fits = false
+	for _, lift in ipairs(RIDES) do
+		local start = center + self.vector(0, 0, 1 + lift)
+		local trace = self.traceHull({
+			start = start,
+			endpos = start,
+			mins = crouched and self.crouchMins or self.mins,
+			maxs = crouched and self.crouchMaxs or self.maxs,
+			mask = self.mask,
+			filter = StaticMap,
+		})
+		if not trace.Hit and not trace.StartSolid then
+			fits = true
+			break
+		end
+	end
 	self.areas[id] = fits
 	return fits
 end
