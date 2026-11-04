@@ -71,12 +71,12 @@ function WS.WarSoldier(ENT)
 	ENT.WSSoldier = true -- on both realms: the NPC context menu offers its trace
 	if CLIENT then return end
 	local Ragdoll = WS.require("includes.ragdoll")
-	local Gestures = nextsoldier.gestures
+	local Gestures = nextsoldier.body.gestures
 	local Voices = WS.require("includes.voices")
 	local HL2Path = WS.require("foundation.wetsands.path.hl2")
-	local Leap = nextsoldier.leap
-	local Noise = nextsoldier.noise
-	local Rappel = nextsoldier.rappel
+	local Leap = nextsoldier.locomotion.leap
+	local Noise = nextsoldier.body.noise
+	local Locomotion = nextsoldier.locomotion
 	local Arms = WS.require("features.aiwar.arms")
 	local SILENT = { grunt = {}, pain = {}, death = {}, fall = {} }
 
@@ -141,14 +141,14 @@ function WS.WarSoldier(ENT)
 	end
 
 	-- Going down a drop it would land from faster than a safe fall, it comes
-	-- down no faster than a rappel (nextsoldier.rappel), to the floor.
+	-- down no faster than a rappel (nextsoldier.locomotion), to the floor.
 	local RAPPEL_LOOK = 4096
 	function ENT:NSRappel(velocity)
 		if velocity.z >= 0 then return end
 		local pos = self:GetPos()
 		local floor = util.TraceLine({ start = pos, endpos = pos - Vector(0, 0, RAPPEL_LOOK), mask = self:GetSolidMask(), filter = self })
 		local height = floor.Hit and pos.z - floor.HitPos.z or RAPPEL_LOOK
-		local speed, rappelling = Rappel.Descent(-velocity.z, height, GetConVar("sv_gravity"):GetFloat(), self.NSRappelling)
+		local speed, rappelling = Locomotion.RappelDescent(-velocity.z, height, GetConVar("sv_gravity"):GetFloat(), self.NSRappelling)
 		self.NSRappelling = rappelling or nil
 		if speed < -velocity.z then self.loco:SetVelocity(Vector(velocity.x, velocity.y, -speed)) end
 	end
@@ -214,7 +214,7 @@ function WS.WarSoldier(ENT)
 		local pos = self:GetPos()
 		local sound = { Entity = self, Pos = pos, SoundLevel = level, Volume = volume }
 		local reach = Noise.HearingRange(level, volume)
-		for bot in pairs(WS.NextSoldierBots) do
+		for bot in pairs(nextsoldier.bots) do
 			if IsValid(bot) and bot ~= self and not bot:IsAIDisabled() and not bot:IsDeaf() then
 				local coefficient = bot:GetHearingCoefficient()
 				local distance = bot:GetRangeTo(pos)
@@ -430,7 +430,7 @@ function WS.WarSoldier(ENT)
 		end })
 	end
 
-	-- Jumps onto the ledge along nextsoldier.leap's arc (Move): if the way straight up to the arc's top and
+	-- Jumps onto the ledge along nextsoldier.locomotion.leap's arc (Move): if the way straight up to the arc's top and
 	-- across to its landing is clear (the arc stays inside that, and clears
 	-- the lip), else it stays.
 	function ENT:CustomClimbing(ledge)
@@ -463,7 +463,7 @@ function WS.WarSoldier(ENT)
 	end
 
 	-- A vault over what stands toward dir (flat, of unit length) along
-	-- nextsoldier.leap's arc: when the obstacle's top is no higher than it
+	-- nextsoldier.locomotion.leap's arc: when the obstacle's top is no higher than it
 	-- climbs (ClimbLedgesMaxHeight), the floor beyond is on the nav mesh no
 	-- farther down than it falls (the death drop), and its hull clears the
 	-- way up, over and down (Leap.VaultFits). The plan, { from, top, land },
@@ -722,7 +722,7 @@ function WS.WarSoldier(ENT)
 	end
 
 	-- A crit's death (DMG_CRITICAL, DMG_ACID's bit) is canned: the body
-	-- plays one of the player model's deaths (nextsoldier.gestures' Death),
+	-- plays one of the player model's deaths (nextsoldier.body.gestures' Death),
 	-- not solid, and is handed to the clients' ragdolls where it ends. A
 	-- body that leaves none, or a model with no such death, falls at once.
 	function ENT:NSCannedDeath(dmg)

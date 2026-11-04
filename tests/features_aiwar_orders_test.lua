@@ -7,11 +7,11 @@ local Debug = T.require("features.nbdebug.model")
 local AiWar = T.require("features.aiwar.model")
 local Orders = T.require("features.aiwar.orders")
 -- what the war registered, compiled as the controller compiles it
-local BEHAVIORS = nextsoldier.behaviors.Shared:Compile()
-local Soldier = nextsoldier.soldier
+local BEHAVIORS = nextsoldier.behavior.registry.Shared:Compile()
+local Behavior = nextsoldier.behavior
 local Track = math.polyline
 local Teams = gameplay.teams
-local Speech = nextsoldier.responserules
+local Speech = nextsoldier.body.responserules
 
 local RED, BLUE = Teams.RED, Teams.BLUE
 local P = FS.Point
@@ -89,8 +89,8 @@ end
 -- has ScenarioMonitor run it in place of the doctrine's side.
 T.test("a registered scenario's own monitor runs under ScenarioMonitor, and leaves with its scenario", function()
 	local HoldLine = N.Action:Extend("HoldLine")
-	local Holdout = nextsoldier.monitor.New("Holdout", function(state) return HoldLine:New(state) end)
-	local registry = nextsoldier.behaviors.New()
+	local Holdout = nextsoldier.behavior.monitor.New("Holdout", function(state) return HoldLine:New(state) end)
+	local registry = nextsoldier.behavior.registry.New()
 	for _, name in ipairs(BEHAVIORS:Names()) do registry:Register({ name = name, behavior = BEHAVIORS:Get(name) }) end
 	registry:Register({ name = "Holdout", behavior = Holdout })
 	local field = Field({})
@@ -152,7 +152,7 @@ end)
 
 T.test("the fake soldier implements the whole port", function()
 	local me = FS.Soldier()
-	for _, name in ipairs(Soldier.METHODS) do
+	for _, name in ipairs(Behavior.METHODS) do
 		T.eq(type(me[name]), "function", name)
 	end
 end)
@@ -797,7 +797,7 @@ end)
 -- Missions (docs/squad-missions-plan.md): a squad musters where its lanes
 -- leave its spawn, its leader asks for a mission and waits for its members.
 local Mission = wartactics.mission
-local Gestures = nextsoldier.gestures
+local Gestures = nextsoldier.body.gestures
 local MUSTER = P(500, 0)
 
 local function MusterField()
@@ -2109,8 +2109,8 @@ T.test("the war owns its behaviours and gives them to NextSoldier through its re
 end)
 
 T.test("a soldier's root is the NextSoldier its compiled behaviours give", function()
-	local registry = nextsoldier.behaviors.New()
-	local Stand = nextsoldier.chart.CHART:State("StandIn")
+	local registry = nextsoldier.behavior.registry.New()
+	local Stand = nextsoldier.behavior.CHART:State("StandIn")
 	registry:Register({ name = "NextSoldier", behavior = Stand })
 	local war = AiWar.War.New()
 	war:Assign({ [BLUE] = true })

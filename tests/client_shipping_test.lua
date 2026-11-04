@@ -101,7 +101,6 @@ end)
 T.test("the sent set is the old rule's set plus the feature and ws modules", function()
 	local expected = Set(LuaFilesUnder(T.ROOT .. "foundation/", T.ROOT))
 	for _, path in ipairs(LuaFilesUnder(T.ROOT .. "includes/", T.ROOT)) do expected[path] = true end
-	for _, path in ipairs(LuaFilesUnder(T.File("nextsoldier/"), T.ADDON_TREES.nextsoldier)) do expected[path] = true end
 	for _, path in ipairs(LuaFilesUnder(T.File("wartactics/"), T.ADDON_TREES.wartactics)) do expected[path] = true end
 	for _, name in ipairs(Names(T.ROOT .. Features.ROOT, "d")) do
 		for _, part in ipairs(Features.CLIENT_PARTS) do
@@ -142,6 +141,10 @@ T.test("every module a shipped file or an entity uses is shipped", function()
 	end
 	for _, path in ipairs(LuaFilesUnder(ADDON_ENTITIES, ADDON_ENTITIES)) do
 		sources[#sources + 1] = { "entities/" .. path, ADDON_ENTITIES .. path }
+	end
+	-- NextSoldier sends its own, a Load line a file (nextsoldier/sh_init.lua)
+	for module in pairs(T.Published.global) do
+		if module:match("^nextsoldier%.") then ships[module:gsub("%.", "/") .. ".lua"] = true end
 	end
 	local unshipped = {}
 	for _, source in ipairs(sources) do

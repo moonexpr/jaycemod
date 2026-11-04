@@ -1,4 +1,4 @@
--- Nav gaps (nextsoldier.nav_gaps): GMod's generator leaves seams between
+-- Nav gaps (nextsoldier.world.nav_gaps): GMod's generator leaves seams between
 -- areas at the same height (a crack a player walks over, often covered by a
 -- clip brush), so routes cannot cross them: arena_well's point was one-way
 -- out. Candidates are the pairs of areas a narrow seam apart, side by side
@@ -6,7 +6,7 @@
 -- each comes with where to cross, from just inside one to just inside the
 -- other, for the server to sweep a walker across before it links them.
 local T = dofile("tests/harness.lua")
-local Gaps = nextsoldier.nav_gaps
+local Gaps = nextsoldier.world.nav_gaps
 
 -- An area from its extent, flat at z.
 local function Area(id, x0, y0, x1, y1, z)

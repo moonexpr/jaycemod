@@ -9,11 +9,11 @@
 -- rounds' rules (freezes, stuns, humiliation) reach their keys as anyone's.
 --
 -- A bot soldier (sv_bot_soldier.lua) looks around every LOOK_INTERVAL (its
--- nextsoldier.vision), and every tick its body
--- (nextsoldier.player_body) presses its keys (StartCommand).
+-- nextsoldier.senses.vision), and every tick its body
+-- (nextsoldier.body.player_body) presses its keys (StartCommand).
 local Controller, Map = ...
 local Quota = wartactics.bot_quota
-local Vision = nextsoldier.vision
+local Vision = nextsoldier.senses.vision
 local Teams = gameplay.teams
 local HL2Path = WS.require("foundation.wetsands.path.hl2")
 local Arms = WS.require("features.aiwar.arms")

@@ -6,7 +6,7 @@ local Debug = WS.require("features.nbdebug.model")
 local TFBot = WS.require("foundation.wetsands.path.tfbot")
 local HL2Path = WS.require("foundation.wetsands.path.hl2")
 local Zone = wartactics.zone
-local Doors = nextsoldier.doors
+local Doors = nextsoldier.world.doors
 local Geometry = math.geometry
 local Select = list.select
 local WALK_MAX_RISE, SPAWN_LIFT = Map.WALK_MAX_RISE, Map.SPAWN_LIFT
@@ -384,7 +384,7 @@ end
 
 -- A team's spawn doors open through trigger_multiples filtered by
 -- filter_activator_tfteam, other doors through a trigger_multiple around
--- them that opens them (nextsoldier.doors Opens; an unnamed door, which
+-- them that opens them (nextsoldier.world.doors Opens; an unnamed door, which
 -- no output names, by any around it), and NPCs only touch triggers flagged
 -- for them. A trigger beside a door that only closes it is left alone.
 local function OpensADoor(trigger, doors)

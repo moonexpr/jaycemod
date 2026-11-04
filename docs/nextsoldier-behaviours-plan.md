@@ -4,7 +4,7 @@
 provide these behaviors to nextsoldier via the registry", "so war uses
 nextsoldier and owns the behaviors", "as well as the squad monitor". The
 behaviours stay the war's; NextSoldier owns the contract (the chart), the
-soldier and a registry (`nextsoldier.behaviors`) through which the war
+soldier and a registry (`nextsoldier.behavior.registry`) through which the war
 gives it its behaviours, compiled with the scenarios as the war starts, a
 soldier's root being the registered `NextSoldier`. Built: the registry,
 the war's fifteen behaviours registered (the monitors among them), roots
@@ -19,7 +19,7 @@ nothing of NextSoldier: `wartactics.bridge` builds them on its chart.
 The operator's distinction (2026-10-27): NextSoldier concerns the agent
 itself and runs on its own, without the tactics engine; the tactics engine
 (`wartactics`) is the strategy that organises soldiers. NextSoldier's chart
-(`nextsoldier.chart`, S2) is in place: every behaviour is one of its states.
+(`nextsoldier.behavior`, S2) is in place: every behaviour is one of its states.
 What is left is where each behaviour lives, which today is all
 `features/aiwar/orders.lua` (2,100 lines).
 

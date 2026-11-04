@@ -67,7 +67,11 @@ local function LoadsApart(tree, other, except)
 		local key = module:match("^" .. tree .. "%.(.+)$")
 		if key and key ~= except then
 			count = count + 1
-			local loaded, why = pcall(function() return _G[tree][key] end)
+			-- NextSoldier loaded whole already, so its file runs again here
+			local loaded, why = pcall(function()
+				if tree == "nextsoldier" then return dofile(T.Path(module)) end
+				return _G[tree][key]
+			end)
 			if not loaded then refused[#refused + 1] = module .. ": " .. tostring(why) end
 		end
 	end

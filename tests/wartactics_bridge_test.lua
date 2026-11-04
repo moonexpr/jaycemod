@@ -5,7 +5,7 @@
 local T = dofile("tests/harness.lua")
 local Class = core.class
 local Bridge = wartactics.bridge
-local CHART = nextsoldier.chart.CHART
+local CHART = nextsoldier.behavior.CHART
 
 local MONITORS = { "TacticalMonitor", "SquadMonitor", "ScenarioMonitor" }
 
@@ -16,7 +16,7 @@ T.test("the monitors are states of NextSoldier's chart", function()
 end)
 
 T.test("the registry gives the classes themselves, with no wrapper", function()
-	local compiled = nextsoldier.behaviors.Shared:Compile()
+	local compiled = nextsoldier.behavior.registry.Shared:Compile()
 	for _, name in ipairs(MONITORS) do T.eq(compiled:Get(name), Bridge[name], name) end
 end)
 

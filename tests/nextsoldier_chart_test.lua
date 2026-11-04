@@ -1,6 +1,6 @@
 local T = dofile("tests/harness.lua")
-local Chart = nextsoldier.chart
-local Soldier = nextsoldier.soldier
+local Behavior = nextsoldier.behavior
+
 
 local GAMEMODE = T.ROOT
 
@@ -19,15 +19,15 @@ local function Lines(command)
 end
 
 T.test("the chart sees the soldier through the soldier port", function()
-	T.eq(Chart.CHART.port, Soldier.PORT)
-	T.eq(table.concat(Soldier.PORT:Methods(), " "), table.concat(Soldier.METHODS, " "))
+	T.eq(Behavior.CHART.port, Behavior.PORT)
+	T.eq(table.concat(Behavior.PORT:Methods(), " "), table.concat(Behavior.METHODS, " "))
 end)
 
 T.test("a behaviour handles the chart's events and is refused any other", function()
-	local Listening = Chart.CHART:State("Listening")
+	local Listening = Behavior.CHART:State("Listening")
 	function Listening:OnHeard(me, pos) return self:Continue() end
 	function Listening:OnInjured(me, attacker, amount) return self:Continue() end
-	local Deaf = Chart.CHART:State("Deaf")
+	local Deaf = Behavior.CHART:State("Deaf")
 	T.eq(pcall(function() function Deaf:OnTeleported(me) end end), false, "an undeclared event")
 end)
 
@@ -38,7 +38,7 @@ T.test("every event the soldier and the war send its orders is declared", functi
 		for name in Code(path):gmatch(':Event%(%s*"(On%u[%w_]*)"') do sent[name] = true end
 	end
 	local declared = {}
-	for _, name in ipairs(Chart.EVENTS) do declared[name] = true end
+	for _, name in ipairs(Behavior.EVENTS) do declared[name] = true end
 	for name in pairs(sent) do T.eq(declared[name], true, name .. " is a declared event") end
 	T.eq(next(sent) ~= nil, true, "events were found")
 end)
@@ -50,7 +50,7 @@ T.test("every query the soldier and the war ask its orders is declared", functio
 		for name in Code(path):gmatch(':Query%(%s*"([%w_]+)"') do asked[name] = true end
 	end
 	local declared = {}
-	for _, name in ipairs(Chart.QUERIES) do declared[name] = true end
+	for _, name in ipairs(Behavior.QUERIES) do declared[name] = true end
 	for name in pairs(asked) do T.eq(declared[name], true, name .. " is a declared query") end
 	T.eq(next(asked) ~= nil, true, "queries were found")
 end)

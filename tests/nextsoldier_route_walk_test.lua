@@ -1,9 +1,9 @@
--- nextsoldier.route_walk: a route walked waypoint by waypoint, by a
+-- nextsoldier.locomotion.route_walk: a route walked waypoint by waypoint, by a
 -- body that plans its own way (a bot player): reached waypoints are passed,
 -- the farthest of the next few in a clear line is made for, and the last
 -- is held until reached.
 local T = dofile("tests/harness.lua")
-local Walk = nextsoldier.route_walk
+local Walk = nextsoldier.locomotion.route_walk
 
 T.defined(Walk.RADIUS, "RADIUS")
 T.defined(Walk.LOOKAHEAD, "LOOKAHEAD")
@@ -50,7 +50,7 @@ end)
 -- for the body, and leaving for the next from farther short of it cuts back
 -- across the corner.
 T.test("a waypoint is stood on as near as the body arrives", function()
-	T.eq(Walk.ON, nextsoldier.player_body.ARRIVE, "ON is the body's ARRIVE")
+	T.eq(Walk.ON, nextsoldier.body.player_body.ARRIVE, "ON is the body's ARRIVE")
 end)
 
 T.test("a waypoint round a corner is passed only once it stands on it", function()

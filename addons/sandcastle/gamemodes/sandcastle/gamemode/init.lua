@@ -6,12 +6,12 @@ AddCSLuaFile("cl_init.lua")
 include("shared.lua")
 
 -- Clients are sent every file under the module folders (foundation/,
--- includes/, nextsoldier/, wartactics/, features/, vendor/) but the
--- server's (sv.lua, sv_*), as source: nothing there runs until a client
--- loads it (WS.require, or WS.Feature once the server loads the feature,
--- sh_core.lua). This sends them; it includes nothing. Each folder is read
--- where the loader reads it (WS.LoaderFile): NextSoldier's and the tactics
--- engine's from their addons.
+-- includes/, wartactics/, features/, vendor/) but the server's (sv.lua,
+-- sv_*), as source: nothing there runs until a client loads it (WS.require,
+-- or WS.Feature once the server loads the feature, sh_core.lua). This sends
+-- them; it includes nothing. Each folder is read where the loader reads it
+-- (WS.LoaderFile): the tactics engine's from its addon. NextSoldier sends its
+-- own (nextsoldier/sh_init.lua).
 do
 	local Features = system.features
 	local GamemodeFiles = {}
@@ -62,6 +62,7 @@ AddCSLuaFile("sh_teamtint.lua")
 AddCSLuaFile("sh_toggles.lua")
 AddCSLuaFile("sh_vendor.lua")
 AddCSLuaFile("sh_votes.lua")
+AddCSLuaFile("sh_nextsoldier_host.lua")
 AddCSLuaFile("sh_war_soldier.lua")
 AddCSLuaFile("sh_weapon_balance.lua")
 AddCSLuaFile("cl_admin_panels.lua")

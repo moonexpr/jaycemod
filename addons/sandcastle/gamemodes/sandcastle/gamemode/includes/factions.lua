@@ -2,7 +2,7 @@
 -- (ws/sh_factions.lua makes them FACTION_TEAM_RED and FACTION_TEAM_BLU,
 -- beside HL2's). A soldier or player on a playing team is in its team's
 -- faction and no other, so its teammates are its allies (D_LI for a shared
--- faction, nextsoldier.relations); the AI war relates each soldier to each
+-- faction, nextsoldier.behavior); the AI war relates each soldier to each
 -- faction (ALL). Names are upper case, as DrGBase, whose names we keep,
 -- wrote them.
 local ipairs = ipairs

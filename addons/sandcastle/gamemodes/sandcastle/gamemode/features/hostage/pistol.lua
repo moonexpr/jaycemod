@@ -4,14 +4,14 @@
 -- hostage still held or following rushes for it (Rushers), and the nearest
 -- within PICKUP_RANGE takes it up (Claimant, PickUp).
 --
--- It is HL2's pistol as the soldiers fire it (nextsoldier.weapons), but for
+-- It is HL2's pistol as the soldiers fire it (nextsoldier.body.weapons), but for
 -- its reload: RELOAD seconds, a civilian's fumbling, not a soldier's drill.
 --
 -- A pistol is immutable: each move returns a new one, and refuses what does
 -- not follow (dropping one lying, taking up one held) as an error at the
 -- caller's line.
 local error, ipairs, pairs, require, setmetatable = error, ipairs, pairs, require, setmetatable
-local Weapons = nextsoldier.weapons
+local Weapons = nextsoldier.body.weapons
 local Geometry = math.geometry
 local Rescue = require("features.hostage.model")
 module(...)

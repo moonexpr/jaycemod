@@ -41,10 +41,10 @@ Leading ──the engine replaces the mission──▶ Halt (signal) ──▶ L
   transaction on the slow lane, and a leader has at most one in flight.
 - **Waiting.** It holds at the muster spot, its members gathering on it in
   their battle stance (`Pose`). Its head looks down each lane's first leg
-  in turn (the soldier port's new `LookAt`, through `nextsoldier.gaze`'s
+  in turn (the soldier port's new `LookAt`, through `nextsoldier.body.gaze`'s
   hint). It aims at nothing. It waits until the mission has come and either
   the squad is the size the mission asks or the wait has elapsed.
-- **Leading.** It signals forward (`nextsoldier.gestures`' `SIGNAL_FORWARD`)
+- **Leading.** It signals forward (`nextsoldier.body.gestures`' `SIGNAL_FORWARD`)
   and calls out (a new concept, `TLK_NS_MOVE_OUT`). Then the squad runs the
   mission as it runs its lane today (bounds, contact, regrouping on a far
   leader).
@@ -117,12 +117,12 @@ defined and tested for being defined; the tests derive from it.
 
 ## 4. What the soldier port gains
 
-Both are soldier-level, so they are NextSoldier's (`nextsoldier.soldier`):
+Both are soldier-level, so they are NextSoldier's (`nextsoldier.behavior`):
 
 - `LookAt(p, seconds)`: look at p a while, unless fighting (a NextBot
   soldier: `base_nextsoldier`'s `LookAt`; a bot player: its eyes, which
   steer nothing while it stands still).
-- `Gesture(occasion)`: play a `nextsoldier.gestures` occasion (the
+- `Gesture(occasion)`: play a `nextsoldier.body.gestures` occasion (the
   controller's `Gesture`). The signals go through it.
 
 `tests/fake_soldier.lua` records both.

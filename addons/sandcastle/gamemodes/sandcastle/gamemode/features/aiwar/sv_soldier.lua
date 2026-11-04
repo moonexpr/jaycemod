@@ -4,13 +4,13 @@ local TFBot = WS.require("foundation.wetsands.path.tfbot")
 local HL2Path = WS.require("foundation.wetsands.path.hl2")
 local Random = math.weighted
 local Debug = WS.require("features.nbdebug.model")
-local Detour = nextsoldier.detour
+local Locomotion = nextsoldier.locomotion
 local WALK_MINS, WALK_MAXS, WALK_LIFT, WALK_MAX_RISE = Map.WALK_MINS, Map.WALK_MAXS, Map.WALK_LIFT, Map.WALK_MAX_RISE
 local Point, ToVector, Masks, IsDoor = Map.Point, Map.ToVector, Map.Masks, Map.IsDoor
 local OnFloor, PassThrough = Map.OnFloor, Map.PassThrough
 
 -------------------------------------------------------------------------------
--- The soldier port (nextsoldier.soldier) over a DrGBase soldier
+-- The soldier port (nextsoldier.behavior) over a DrGBase soldier
 -- (npc_nextsoldier): orders set its target and gait; it walks there on
 -- the nav mesh as a NextBot, fighting on the way as DrGBase's human AI.
 
@@ -392,7 +392,7 @@ end
 
 -- Stuck against a solid entity the nav mesh does not know of (a crate
 -- across a lane; not map geometry, nor a door, which the door watchdog
--- opens): the first point beside it (nextsoldier.detour) I can walk to
+-- opens): the first point beside it (nextsoldier.locomotion) I can walk to
 -- and that is on the nav mesh, or nil.
 function Soldier:Detour(p)
 	local heading = self:Heading(p)
@@ -401,7 +401,7 @@ function Soldier:Detour(p)
 	local mins, maxs = blocker:OBBMins(), blocker:OBBMaxs()
 	local extent = Vector(maxs.x - mins.x, maxs.y - mins.y, 0):Length() / 2
 	local here = self.ent:GetPos()
-	for _, side in ipairs(Detour.Beside(Point(here), Point(heading), Point(blocker:WorldSpaceCenter()), extent, HOP_MAXS.x)) do
+	for _, side in ipairs(Locomotion.DetourBeside(Point(here), Point(heading), Point(blocker:WorldSpaceCenter()), extent, HOP_MAXS.x)) do
 		local at = ToVector(side)
 		if self:CanWalkTo(side) and IsValid(navmesh.GetNearestNavArea(at, false, ARRIVED, true, true)) then return side end
 	end

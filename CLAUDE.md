@@ -13,7 +13,7 @@ NextSoldier, the AI-war's NextBot soldiers. The gamemode lives at
 | `gamemode/includes/{gameplay,npc,system}/` | Gamemode models built on foundation: pure Lua systems, no GMod globals, I/O through ports; published as globals by `sh_init.lua` and loaded on first read (index below) |
 | `gamemode/includes/extensions/{generator,list,timer,world}/` | Gamemode extensions to GMod/Lua global tables, published by their `sh_init.lua` indexes |
 | `gamemode/includes/*.lua` | Gamemode glue models, required by their stable module names |
-| `addons/nextsoldier/` | NextSoldier, the soldier itself (movement, senses, body, behaviours), its own addon: its modules in `lua/nextsoldier/`, on foundation and games and run without the tactics engine, published as `nextsoldier.<module>` by `sh_init.lua` and loaded on first read (index below); its base entities (`base_nextsoldier`, `_npc`, `_combat`) in `lua/entities/`; the response rules it speaks by, their GMod modules, autorun and `scripts/responserules/` (`docs/ns-response-rules.md`) |
+| `addons/nextsoldier/` | NextSoldier, the soldier itself, its own addon: its collections in `lua/nextsoldier/` (`world`, `body`, `locomotion`, `senses`, `behavior`), on foundation and sharing nothing with the gamemode but what its `host` port hands it (index below); its base entity `base_nextsoldier` in `lua/entities/` (the gamemode's `base_nextsoldier_npc` and `_combat` extend it in the gamemode's `entities/`); the response rules it speaks by, their GMod modules, autorun and `scripts/responserules/` (`docs/ns-response-rules.md`) |
 | `addons/wartactics/` | The tactics engine, its own addon: the strategy soldiers are organised by (fire teams, squads, lanes, posts, scenarios, the tactical, squad and scenario monitors), apart from NextSoldier but for one bridge module, its modules in `lua/wartactics/`, published as `wartactics.<module>` (index below) |
 | `gamemode/foundation/` | Nothing but its namespaces and three plain globals at its root (`transaction`, `configstore`, `nodegraph`): foundation is copied to the globals, so it stays small and generic. A feature's or mode's model is the feature's `model.lua` and its parts (`docs/foundation-game-split-plan.md`) |
 | `gamemode/features/<feature>/` | Controllers: `sv.lua`/`cl.lua`/`sh.lua` composition roots and their `<realm>_<part>.lua` parts |
@@ -282,45 +282,49 @@ foundation and game: `docs/foundation-game-split-plan.md`.
 
 ## nextsoldier index
 
-`addons/nextsoldier/lua/nextsoldier/<module>.lua`: NextSoldier, the soldier
-itself, its own addon beside the gamemode, built on foundation and games,
-which runs without the war's tactics engine (`docs/ns-split.md`, issue #8).
-The gamemode's loader reads it from the LUA path's `nextsoldier/`, not its
-own folder (`shared_loader.lua`'s `ADDON_TREES`; `WS.LoaderFile` names a
-file where the loader reads it; `T.File` in the tests).
-`shared_loader.lua` runs `nextsoldier/sh_init.lua` after games' inits, which
-`Defer`s a module a line: module `nextsoldier.<module>` is the global of
-that name, loaded on first read. Its module names are its globals', so
-`module(...)` builds a module's table at its key in the `nextsoldier`
-namespace as it loads, the same table the deferred load keeps
-(`tests/foundation_index_test.lua`). nextsoldier may require foundation and
-games, never wartactics, features or ws; neither foundation nor games
-requires it (`tests/foundation_layers_test.lua`). Tests are
-`tests/nextsoldier_<module>_test.lua`.
+`addons/nextsoldier/lua/nextsoldier/`: NextSoldier, the soldier itself, its own
+addon beside the gamemode on foundation, which runs without the war's tactics
+engine (`docs/ns-split.md`, issue #8). It shares no structure with the
+gamemode: no `WS`, no `WS.require`, no `Defer`, no read of games but its
+chart's engine (`generator.hfsm`, until that has the native twin foundation
+asks; `tests/addons_nextsoldier_test.lua` holds all of it). `shared_loader.lua`
+plainly includes `nextsoldier/sh_init.lua`, which loads every file by a `Load`
+line, written by hand, and sends clients each. A file names its module
+(`module("nextsoldier.world.doors")`), which builds its table at that path.
+What the soldier needs of the mode hosting it comes through `nextsoldier.host`;
+the gamemode's host is `gamemode/sh_nextsoldier_host.lua`, its one place of
+wiring. The gamemode may read NextSoldier's collections; never the reverse.
+nextsoldier may require foundation, never wartactics, features or ws; neither
+foundation nor games requires it (`tests/foundation_layers_test.lua`). Tests
+are `tests/nextsoldier_<part>_test.lua`.
 
-| Modules | |
-|---|---|
-| Movement (on `wetsands.path`'s costs) | `brushes`, `clip`, `detour`, `doors`, `ladder` (a nav ladder's climb, a line it is moved along: the engine's own hold never climbs), `leap`, `noise`, `portal`, `probe` (a path follower walking points), `rappel`, `reach_memo`, `route_record`, `route_walk` (a route walked waypoint by waypoint), `corners` (a route's turns pushed out until the body passes them), `nav_gaps` |
-| Senses and body | `hearing`, `vision` (seen or heard, recognized, remembered: the contact, pursued out of sight when asked), `player_body` (a bot player's moves, aim and fire as a player's keys), `responserules` (its criteria for the response rules), `gestures` (what an occasion plays, how fast, how often; a squad wiped out; a crit's canned death), `gaze` (where a head looks apart from the aim, turned on clients) |
-| Behaviours | `chart` (the contract every behaviour is a state of), `soldier` (the port behaviours drive a soldier through), `behaviors` (the registry the hosting mode gives its behaviours through), `monitor` |
-| The base | `base` (the interface NextSoldier's own NextBot base implements) |
+A module's exports are collected by what they are about. A module used through
+a single export is that export on its collection, not a module of its own.
+
+| Collection | On it | Its parts |
+|---|---|---|
+| `nextsoldier.world` (the map as a walker meets it) | `ClipFor(classes)`, `CLIP_PLAYER`, `CLIP_NPC`; `BrushSweep(nw, ne, se, sw, sizeX, sizeY)` (TF2's TestAndBlockOverlappingAreas) | `doors`, `portal`, `nav_gaps` |
+| `nextsoldier.body` | | `gaze` (where a head looks apart from the aim, turned on clients), `gestures` (what an occasion plays, how fast, how often; a squad wiped out; a crit's canned death), `noise`, `player_body` (a bot player's moves, aim and fire as a player's keys), `responserules` (its criteria for the response rules), `weapons` |
+| `nextsoldier.locomotion` (on `wetsands.path`'s costs) | `DetourBeside(from, to, center, extent, radius)`; `RappelDescent(downSpeed, height, gravity, rappelling)`, `Rappels(depth, gravity)`; `RoundCorners(points, clear)` (a route's turns pushed out until the body passes them), `RoundCorner` | `ladder` (a nav ladder's climb, a line it is moved along: the engine's own hold never climbs), `leap`, `probe` (a path follower walking points), `reach_memo`, `route_record`, `route_walk` (a route walked waypoint by waypoint) |
+| `nextsoldier.senses` | `HeardLookAt(listener, shot)` | `vision` (seen or heard, recognized, remembered: the contact, pursued out of sight when asked) |
+| `nextsoldier.behavior` | `CHART`, `EVENTS`, `QUERIES`; `PORT`, `METHODS`; `Relations{ default, ally }` | `intention`, `monitor`, `registry` |
 
 | Module | API |
 |---|---|
+| `nextsoldier.host` | What a soldier needs of its mode: `PORT` (`Movement`, `PlayerFactions`, `FactionEnemy`, `PathClearance`, `PathDebug`, `GazeUpdate`), `Install(host)` (checked), `current` |
+| `nextsoldier.bots` | The live soldiers on the base (a weak set), which others' noises reach |
 | `nextsoldier.base` | The interface our code keeps of DrGBase's NextBot, names and hook contracts only, which NextSoldier's own base implements from scratch, native where it pays: `COMPONENTS` as TF2's NextBot in source-sdk-2013 (`NEXTBOT`: life and relations, `LOCOMOTION`, `BODY`, `POSTURE` (the body's, optional while DrGBase's classes stand in), `VISION`, `INTENTION`), each with `methods` (a `core.port`), `hooks` and `fields` (named sets, or nil); `METHODS` (every required method), `Has(soldier, c)` (an optional component, whole or refused), `HOOKS`, `FIELDS`, `Hooks(c)`, `Fields(c)`, `ComponentOf(name)`, `REPLACED` (DrGBase names the base drops, with what replaces each: no coroutine, as TF2). `.devtools/bin/drg_interface.py check` refuses a DrGBase name our code uses that it does not declare |
-| `nextsoldier.chart` | NextSoldier's chart (`generator.hfsm`'s `Chart`): `CHART` over `nextsoldier.soldier`'s port, with `EVENTS` (what the soldier and the war tell its behaviours: `OnInjured`, `OnSight`, `OnLostSight`, `OnContact`, `OnContactLost`, `OnNavAreaChanged`, `OnHeard`, `OnOtherKilled`) and `QUERIES` (`ShouldAttack`, `ShouldHurry`, `ShouldRetreat`, `ShouldPickUp`, `SelectMoreDangerousThreat`). A behaviour is `CHART:State(name)`; an undeclared `On*` on one is refused as it is written. The orders' actions, the monitors and a scenario's monitor are its states |
-| `nextsoldier.behaviors` | The behaviours a soldier runs, which the mode hosting it owns and gives NextSoldier (the AI war's orders register theirs, their monitors among them): `New()` → a registry (`Shared` is the war's): `Register{ name, behavior }` (a state of NextSoldier's chart, else refused; a name again replaces it), `Compile()` → fixed: `Get(name)` (unknown refused), `Has`, `Names`. The war compiles it with its scenarios (`CompileRegistries`) and gives each soldier it, whose root is its `NextSoldier` |
-| `nextsoldier.soldier` | The soldier port: `METHODS` (the names), `PORT` (a `core.port`). The controller implements it over an npc_nextsoldier and a bot player; `tests/fake_soldier.lua` fakes it |
-| `nextsoldier.monitor` | A monitor: a behaviour (npc.nextbot Action) holding the soldier's state and containing one: `New(name, contains)`, `Passthrough(name, contains)` (left out of the debug layer's TDBN) |
+| `nextsoldier.behavior` | NextSoldier's chart (`generator.hfsm`'s `Chart`): `CHART` over `PORT`, the soldier port (`METHODS` its names; the controller implements it over an npc_nextsoldier and a bot player; `tests/fake_soldier.lua` fakes it), with `EVENTS` (what the soldier and the war tell its behaviours: `OnInjured`, `OnSight`, `OnLostSight`, `OnContact`, `OnContactLost`, `OnNavAreaChanged`, `OnHeard`, `OnOtherKilled`) and `QUERIES` (`ShouldAttack`, `ShouldHurry`, `ShouldRetreat`, `ShouldPickUp`, `SelectMoreDangerousThreat`). A behaviour is `CHART:State(name)`; an undeclared `On*` on one is refused as it is written. The orders' actions, the monitors and a scenario's monitor are its states |
+| `nextsoldier.behavior.registry` | The behaviours a soldier runs, which the mode hosting it owns and gives NextSoldier (the AI war's orders register theirs, their monitors among them): `New()` → a registry (`Shared` is the war's): `Register{ name, behavior }` (a state of NextSoldier's chart, else refused; a name again replaces it), `Compile()` → fixed: `Get(name)` (unknown refused), `Has`, `Names`. The war compiles it with its scenarios (`CompileRegistries`) and gives each soldier it, whose root is its `NextSoldier` |
+| `nextsoldier.behavior.monitor` | A monitor: a behaviour (npc.nextbot Action) holding the soldier's state and containing one: `New(name, contains)`, `Passthrough(name, contains)` (left out of the debug layer's TDBN) |
 
 ## wartactics index
 
 `addons/wartactics/lua/wartactics/<module>.lua`: the tactics engine, the
 high-level strategy soldiers are organised by, its own addon beside the
-gamemode. The gamemode's loader reads it from the LUA path's `wartactics/`, as
-it does NextSoldier's, and runs `wartactics/sh_init.lua` after NextSoldier's; it
-publishes `wartactics.<module>` and loads each on first read, as NextSoldier's
-does. wartactics may require foundation and games, never nextsoldier, features
+gamemode. The gamemode's loader reads it from the LUA path's `wartactics/` and runs
+`wartactics/sh_init.lua` after NextSoldier loads; it publishes
+`wartactics.<module>` and loads each on first read. wartactics may require foundation and games, never nextsoldier, features
 or ws, and loads with NextSoldier out of reach (`tests/addons_wartactics_test.lua`);
 they meet in `wartactics.bridge` alone, read by a mode hosting soldiers, which
 wires them once at load so a soldier's tick passes through nothing between.
@@ -338,7 +342,7 @@ Tests are `tests/wartactics_<module>_test.lua`.
 | `wartactics.scenario` | The class a scenario extends: `Scenario` (`Extend(name)`, `New`, `Reset`, `Command(war, field, now)`, a template method over what a variant fills in: `Brief`, `Stances`, `Front`, `SetupAttacks`; `NEEDS`, `AWAITS`, `SQUAD_SIZE`, `MapLacks`, `Lacks`, `TeamSizes`, `Kit`, `Damp`, `Allocate`), the field's `PARTS` (`POINTS`, `BASES`, `CLOCKS`, `WAYPOINTS`, `FLAGS`, `BOMB`, `HOSTAGES`), `ALLOCATION_HOLD`. The war it commands answers `Members` and `AssignStances` |
 | `wartactics.scenarios` | The scenarios soldiers play, which any script registers while the game loads: `New()` → a registry (`Shared` is the war's), `FREEFORM_PRIORITY`, `MODE_PRIORITY`: `Register{ name, priority, mode?, active?(context), scenario (a Scenario class or its module, required when chosen), monitor? (the name of a behaviour soldiers were given, which ScenarioMonitor runs in place of the doctrine's sides), behaviors? (the names of those it relies on) }` (a name again replaces it); an addon registers in its `Initialize` hook (its autorun runs before the gamemode's loader publishes the module); `Compile(behaviors)` at the game's beginning, against what answers `Has(name)` for the behaviours soldiers were given (an entry naming one not among them is refused) → an immutable structure, entries by priority and indexed by mode, all a decision mid-game reads: `Choose(context)` → the active entry of highest priority (context: `mode`, `field`; never the map's name), `Class(entry)`, `Behaviors(entry)`, `Entries()`. The AI war's own register at `MODE_PRIORITY` and compile when it starts (`features.aiwar.scenario`) |
 | `wartactics.monitors` | The tree's levels a soldier runs under its mode's strategy: `Build(kit)` (`kit.Monitor`, `kit.Passthrough`: a chart's state constructors) → `TacticalMonitor` > `SquadMonitor` > `SquadLeader`, `SquadMember` or `Solo` > `ScenarioMonitor` > the scenario's monitor or the mode's side. A mode gives what they suspend for by name (`Humiliated`, `SeekAndDestroy`, `RetreatToCover`, `CallMedic`, `OpenDoor`), enters at `TacticalMonitor` and puts a `HOST` (`Sides`, `Hunting`, `Treated`, `Scenario`) on the soldier's state as `state.host`; `HealthShare(me)`, `RETREAT_HEALTH`, `RETREAT_BURST`, `RETREAT_WINDOW`, `CALL_MEDIC_HEALTH` |
-| `wartactics.bridge` | Where the tactics engine meets NextSoldier, the one module reading both: `TacticalMonitor`, `SquadMonitor`, `ScenarioMonitor` built once on NextSoldier's chart and registered with `nextsoldier.behaviors.Shared`. After a live reload of `wartactics.monitors`, reload this too |
+| `wartactics.bridge` | Where the tactics engine meets NextSoldier, the one module reading both: `TacticalMonitor`, `SquadMonitor`, `ScenarioMonitor` built once on NextSoldier's chart and registered with `nextsoldier.behavior.registry.Shared`. After a live reload of `wartactics.monitors`, reload this too |
 
 ## Adding to foundation
 

@@ -1,17 +1,17 @@
 -- Part of the AI war controller (sv.lua): its soldiers' gestures
--- (nextsoldier.gestures), each soldier's memory of them in its entry. A
+-- (nextsoldier.body.gestures), each soldier's memory of them in its entry. A
 -- NextBot soldier plays one on a layer of its own at the gesture's rate; a
 -- bot player as a player taunts (the animation event every client plays),
 -- at the model's own rate. A model without the act (a vortigaunt) plays
--- nothing. A taunt (nextsoldier.gestures' Still) holds the soldier still
+-- nothing. A taunt (nextsoldier.body.gestures' Still) holds the soldier still
 -- while it plays, and it says a long line with it (TLK_NS_TAUNT); every
 -- gesture plays its sound, TF2's (TLK_NS_GESTURE: a dance's howl, a flex's
 -- chest thump, the zombie's skeleton laugh). A soldier nods at a teammate's kill or capture near it, and
 -- celebrates once calm after wiping out a squad; the greetings, the battle
 -- stance (sv_responserules.lua) and the grenades (sv_gadgets.lua) gesture too.
 local Controller = ...
-local Gestures = nextsoldier.gestures
-local Speech = nextsoldier.responserules
+local Gestures = nextsoldier.body.gestures
+local Speech = nextsoldier.body.responserules
 
 local function Memory(entry)
 	if not entry.gestures then entry.gestures = Gestures.Memory() end

@@ -70,7 +70,7 @@ them before relying on any.
 | L4D | Sandcastle today |
 |---|---|
 | Flow distance, escape route | `wetsands.navsearch.Distances(mesh, starts, limit, limits[, told])`: walk distance over the mesh snapshot from a set of start areas, native on a server. TF2's per-team incursion distance (`CTFNavArea::GetIncursionDistance`) is the same idea; GMod's nav has none, so guard posts use distance from base as its stand-in (`features/aiwar/sv_posts.lua`). |
-| AAS | Nothing by that name. `wartactics.zone` floods the mesh from spawn areas up to the setup gates; `nextsoldier.vision` knows what a soldier sees. |
+| AAS | Nothing by that name. `wartactics.zone` floods the mesh from spawn areas up to the setup gates; `nextsoldier.senses.vision` knows what a soldier sees. |
 | Mobs | Respawn waves (`features/aiwar/sv_enlist.lua`, TF2's `GetRespawnWaveMaxLength`) and the reserve of fallen soldiers they revive (`features/aiwar/reserve.lua`). Reinforcements enter at team spawns, or spawn bases on maps without them (`features/aiwar/spawns.lua`). |
 | Pacing | None. The Commander (`features/aiwar/scenario.lua`) sets each team's stance per mode, damped by `ALLOCATION_HOLD`; nothing reads how hard the humans are pressed. |
 | Specials, bosses | Gadgets, medics and engineers (`docs/engineers-plan.md`); the haunting bosses (`features/haunting`). |

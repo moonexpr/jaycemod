@@ -56,16 +56,17 @@ local CLIMB_REACH = 48
 -- ladders), and hang as they do in a jump.
 local LADDER_DOWN_ACT = ACT_CLIMB_DOWN
 local LADDER_ACTS = { ACT_ZOMBIE_CLIMB_UP, ACT_CLIMB_UP, ACT_MP_JUMP_FLOAT_PRIMARY }
--- It steps and jumps as a TF2 player (games.gameplay.movement): a stair
--- step, and as high as a crouch jump reaches (it does not tuck its legs).
-local Movement = gameplay.movement
-local STEP_HEIGHT, JUMP_HEIGHT = Movement.TF2.stepHeight, Movement.CrouchJump(Movement.TF2)
+-- The mode hosting the soldier gives what NextSoldier does not read for itself.
+local Host = nextsoldier.host
+-- It steps and jumps as its host says: a stair step, and as high as a crouch
+-- jump reaches (it does not tuck its legs).
+local STEP_HEIGHT, JUMP_HEIGHT = Host.current:Movement()
 -- How fast it gets up to speed and stops, and turns (degrees a second).
 local ACCELERATION, DECELERATION, MAX_YAW_RATE = 1000, 1000, 250
 
 if CLIENT then
-	-- Its head turns to what interests it apart from its aim (WS.GazeUpdate),
-	-- here on the client and only while it is drawn: the server says only
+	-- Its head turns to what interests it apart from its aim (its host's
+	-- GazeUpdate), here on the client and only while it is drawn: the server says only
 	-- whether it fights (NSFighting) and where it was told to look, until
 	-- when, and whether at once (NSGaze, NSGazeUntil, NSGazeUrgent: LookAt).
 	-- Teammate players are looked at. Fighting, or told urgently, the head
@@ -74,24 +75,23 @@ if CLIENT then
 		local hint = self:GetNW2Float("NSGazeUntil", 0) > CurTime() and self:GetNW2Vector("NSGaze") or nil
 		local fighting = self:GetNW2Bool("NSFighting")
 		local urgent = fighting or (hint ~= nil and self:GetNW2Bool("NSGazeUrgent"))
-		WS.GazeUpdate(self, self:GetAngles().y, fighting, hint, self:GetNW2Int("ws_team", TEAM_UNASSIGNED), urgent)
+		Host.current:GazeUpdate(self, self:GetAngles().y, fighting, hint, self:GetNW2Int("ws_team", TEAM_UNASSIGNED), urgent)
 		self:DrawModel()
 	end
 	return
 end
 
-local Relations = nextsoldier.relations
-local Gaze = nextsoldier.gaze
-local Ladder = nextsoldier.ladder
+local Behavior = nextsoldier.behavior
+local Gaze = nextsoldier.body.gaze
+local Ladder = nextsoldier.locomotion.ladder
 -- A point looked at along a path, at eye height.
 local LOOK_HEIGHT = Vector(0, 0, 64)
 -- The live bots on this base, which others' noises reach (DrGBase keeps
 -- its own: DrGBase.GetNextbots).
-WS.NextSoldierBots = WS.NextSoldierBots or setmetatable({}, { __mode = "k" })
-local Vision = nextsoldier.vision
-local Intention = nextsoldier.intention
-local Weapons = nextsoldier.weapons
-local Factions = WS.require("includes.factions")
+local Bots = nextsoldier.bots
+local Vision = nextsoldier.senses.vision
+local Intention = nextsoldier.behavior.intention
+local Weapons = nextsoldier.body.weapons
 
 -- Its sight: how far, how wide (the whole cone), and how often it looks
 -- (TF2's IVision update), how soon it recognizes what it sees and how long
@@ -138,20 +138,10 @@ local CALM_HOLDS = {
 -- Faster than its walk by this, it runs (the run acts).
 local RUN_OVER_WALK = 10
 
--- Each team's faction, for a player's (a player's faction is its team's).
-local function TeamFaction(team)
-	for _, entry in ipairs(Factions.ALL) do
-		if entry.team == team then return entry.faction end
-	end
-end
-
 -- The factions another entity is in, for a disposition toward it.
 local function FactionsOf(other)
 	if other.nsRelations then return other.nsRelations:Factions() end
-	if other:IsPlayer() then
-		local faction = TeamFaction(WS.TeamOf(other))
-		return faction and { faction } or {}
-	end
+	if other:IsPlayer() then return Host.current:PlayerFactions(other) end
 	if other.GetFactions then return other:GetFactions() end
 	return {}
 end
@@ -180,14 +170,11 @@ function ENT:Initialize()
 	-- the AI war flags) sees it only so
 	self:AddFlags(FL_NPC)
 	self.nsAlive = true
-	self.nsRelations = Relations.New({ default = self.DefaultRelationship or D_NU, ally = D_LI })
+	self.nsRelations = Behavior.Relations({ default = self.DefaultRelationship or D_NU, ally = D_LI })
 	for _, faction in ipairs(self.Factions) do
 		self.nsRelations:Join(faction)
-		if faction == Factions.HL2_COMBINE then
-			self.nsRelations:SetFaction(Factions.HL2_REBELS, D_HT)
-		elseif faction == Factions.HL2_REBELS then
-			self.nsRelations:SetFaction(Factions.HL2_COMBINE, D_HT)
-		end
+		local enemy = Host.current:FactionEnemy(faction)
+		if enemy then self.nsRelations:SetFaction(enemy, D_HT) end
 	end
 	self.nsVision = Vision.New(VISION)
 	self.nsBetter = function(a, b) return self:IsMoreDangerous(a, b) end
@@ -195,7 +182,7 @@ function ENT:Initialize()
 	self.nsWeapons = {}
 	self.nsMagazines = setmetatable({}, { __mode = "k" })
 	self.nsNoticed = setmetatable({}, { __mode = "k" })
-	WS.NextSoldierBots[self] = true
+	Bots[self] = true
 	self:ReadRanges()
 	if #self.Weapons > 0 then self:SelectWeapon(self:GiveWeapon(self.Weapons[math.random(#self.Weapons)])) end
 	self:CustomInitialize()
@@ -203,8 +190,8 @@ end
 
 function ENT:IsAlive() return self.nsAlive == true end
 
--- The team it fights for: the one the war set (WS.SetTeamMember's ws_team),
--- which WS.TeamOf reads through Team as it does a player's.
+-- The team it fights for: the one its host set (its ws_team), read through
+-- Team as a player's is.
 function ENT:Team() return self:GetNW2Int("ws_team", TEAM_UNASSIGNED) end
 
 -- Hurt (the engine raises this before the damage is taken): whoever did it
@@ -314,7 +301,7 @@ local function ComputeDebugPath(self, path, goal)
 	local watch = self.NSDebugPathWatch
 	if not watch then return path:Compute(self, goal, self:GetPathGenerator()) end
 
-	local Debug = WS.require("features.nbdebug.model")
+	local Debug = Host.current:PathDebug()
 	local start = self:GetPos()
 	local generator = self:GetPathGenerator()
 	local recorder = watch.costs and generator and Debug.NewCostRecorder() or nil
@@ -432,7 +419,7 @@ local function NextLadderMove(path)
 	return after and IsValid(after.ladder) and after or nil
 end
 
--- A climb of the ladder its path has brought it to (nextsoldier.ladder), onto
+-- A climb of the ladder its path has brought it to (nextsoldier.locomotion.ladder), onto
 -- the area the move enters, crouched if that area asks it; its path planned
 -- again from there: whether it began one. Facing the ladder all the way.
 function ENT:ClimbPathLadder(path)
@@ -550,11 +537,11 @@ end
 -- A weapon a soldier holds is no one else's to pick up.
 hook.Add("PlayerCanPickupWeapon", "base_nextsoldier", function(_, weapon)
 	local holder = weapon:GetOwner()
-	if IsValid(holder) and WS.NextSoldierBots[holder] then return false end
+	if IsValid(holder) and Bots[holder] then return false end
 end)
 
 -- No longer one of the live bots others' noises reach.
-function ENT:OnRemove() WS.NextSoldierBots[self] = nil end
+function ENT:OnRemove() Bots[self] = nil end
 
 -- DrGBase's helpers our code uses: fn(self, ...) after delay seconds, while
 -- it is valid; a hull or line from data.start (else where it stands) along
@@ -677,7 +664,7 @@ function ENT:AimUpdate()
 end
 
 -- Its head looks at pos for seconds unless it fights (the clients turn it:
--- nextsoldier.gaze), if the head turns that far; urgent, it snaps there.
+-- nextsoldier.body.gaze), if the head turns that far; urgent, it snaps there.
 function ENT:LookAt(pos, seconds, urgent)
 	self:SetNW2Vector("NSGaze", pos)
 	self:SetNW2Float("NSGazeUntil", CurTime() + seconds)
@@ -804,7 +791,7 @@ function ENT:VisionTell(events)
 end
 
 -- Which of two threats is the more dangerous: the class's OnFetchEnemy,
--- then the higher priority, then the nearer (nextsoldier.intention).
+-- then the higher priority, then the nearer (nextsoldier.behavior.intention).
 function ENT:IsMoreDangerous(a, b)
 	return Intention.Better(a, b,
 		function(x, y) return self:OnFetchEnemy(x, y) end,
@@ -858,7 +845,7 @@ function ENT:IntentionUpdate(interval)
 end
 
 -- The body's own shot (TF2's split: the intention decides, the body fires):
--- one of its gun's (nextsoldier.weapons) when the magazine is ready, from
+-- one of its gun's (nextsoldier.body.weapons) when the magazine is ready, from
 -- the muzzle, its bullets (Shoot) or its projectile (Throw), with the gun's
 -- sound, flash and the hold type's firing gesture. A weapon that is not one
 -- of NextSoldier's guns is not fired.
@@ -977,7 +964,7 @@ function ENT:OnLost(ent) end
 -- Lua traces the engine's collision hull through each destination and
 -- opening, then passes that verdict to the native or Lua-twin cost function.
 function ENT:GetPathGenerator(cost)
-	local clearance = WS.NavHullClearance(self, WS.ClipMasks().brushes)
+	local clearance = Host.current:PathClearance(self)
 	cost = cost or function(area, fromArea, ladder, elevator, length, fits)
 		if not IsValid(fromArea) then return 0 end
 		if fits == false then return -1 end

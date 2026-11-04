@@ -1,9 +1,9 @@
--- nextsoldier.noise: the noises a walker's body makes, by Source's
+-- nextsoldier.body.noise: the noises a walker's body makes, by Source's
 -- player rules (CBasePlayer::UpdateStepSound, CGameMovement's landing):
 -- footsteps by its speed, a landing by how fast it fell, and how far
 -- either carries to a listener (DrGBase's hearing).
 local T = dofile("tests/harness.lua")
-local Noise = nextsoldier.noise
+local Noise = nextsoldier.body.noise
 
 for _, name in ipairs({ "WALK_SPEED", "RUN_SPEED", "CROUCH_WALK_SPEED", "CROUCH_RUN_SPEED", "MIN_BOUNCE_SPEED",
 	"MAX_SAFE_FALL_SPEED", "HARD_LANDING_SPEED", "JUMP_LANDING_VOLUME", "HIDDEN_HEARING" }) do

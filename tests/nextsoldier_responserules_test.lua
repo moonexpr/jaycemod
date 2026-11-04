@@ -1,5 +1,5 @@
 -- The AI war's soldiers on the payload cart: their criteria set
--- (nextsoldier.responserules) against the rules in the responserules addon
+-- (nextsoldier.body.responserules) against the rules in the responserules addon
 -- (addons/nextsoldier/scripts/responserules/: response_rules.txt and the
 -- affiliation files it includes), as the server loads them: what they say
 -- when the cart moves, stops, rolls back or is cut off by the enemy, by the
@@ -7,7 +7,7 @@
 local T = dofile("tests/harness.lua")
 local Response = T.require("responserules")
 local Script = T.require("responserules_script")
-local Speech = nextsoldier.responserules
+local Speech = nextsoldier.body.responserules
 local Voices = T.require("includes.voices")
 local Payload = T.require("features.payload.model")
 

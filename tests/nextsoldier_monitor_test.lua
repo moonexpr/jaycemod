@@ -1,6 +1,6 @@
--- nextsoldier.monitor: a behaviour holding a soldier's state and containing one.
+-- nextsoldier.behavior.monitor: a behaviour holding a soldier's state and containing one.
 local T = dofile("tests/harness.lua")
-local Monitor = nextsoldier.monitor
+local Monitor = nextsoldier.behavior.monitor
 
 T.test("a monitor holds the state and contains the behaviour contains(state) gives", function()
 	local Inner = npc.nextbot.Action:Extend("Inner")

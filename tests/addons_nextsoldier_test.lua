@@ -6,7 +6,10 @@
 local T = dofile("tests/harness.lua")
 
 local ADDON = "addons/nextsoldier/"
-local BASES = { "base_nextsoldier", "base_nextsoldier_npc", "base_nextsoldier_combat" }
+local GAMEMODE_BASES = { "base_nextsoldier_npc", "base_nextsoldier_combat" }
+-- What NextSoldier still reads of games: its chart's engine, which stays there
+-- until it has its native twin, the price of a place in foundation.
+local GAMES_KEPT = { ["games.generator.hfsm"] = true }
 local RESPONSE_RULES = {
 	"lua/includes/modules/responserules.lua",
 	"lua/includes/modules/responserules_script.lua",
@@ -56,12 +59,82 @@ T.test("the gamemode keeps no NextSoldier module", function()
 	T.eq(#Lines("ls " .. T.ROOT .. "nextsoldier/ 2>/dev/null"), 0, T.ROOT .. "nextsoldier/")
 end)
 
-T.test("the base entities are the addon's, and the gamemode's no longer", function()
-	for _, class in ipairs(BASES) do
-		T.eq(Exists(ADDON .. "lua/entities/" .. class .. ".lua"), true, class .. " in the addon")
-		T.eq(Exists("addons/sandcastle/gamemodes/sandcastle/entities/entities/" .. class .. ".lua"), false,
-			class .. " out of the gamemode")
+T.test("the soldier's base is the addon's; the gamemode's actors and combatants are the gamemode's", function()
+	local GAMEMODE_ENTITIES = "addons/sandcastle/gamemodes/sandcastle/entities/entities/"
+	T.eq(Exists(ADDON .. "lua/entities/base_nextsoldier.lua"), true, "the base in the addon")
+	T.eq(Exists(GAMEMODE_ENTITIES .. "base_nextsoldier.lua"), false, "the base out of the gamemode")
+	for _, class in ipairs(GAMEMODE_BASES) do
+		T.eq(Exists(GAMEMODE_ENTITIES .. class .. ".lua"), true, class .. " in the gamemode")
+		T.eq(Exists(ADDON .. "lua/entities/" .. class .. ".lua"), false, class .. " out of the addon")
 	end
+end)
+
+local function Read(path)
+	local file = assert(io.open(path))
+	local text = file:read("*a")
+	file:close()
+	return text
+end
+
+local function Code(path)
+	return (Read(path):gsub("%-%-%[%[.-%]%]", ""):gsub("%-%-[^\n]*", ""))
+end
+
+T.test("NextSoldier reads nothing of the gamemode, whose host hands it what it needs", function()
+	for _, path in ipairs(Lines("find " .. ADDON .. "lua/nextsoldier " .. ADDON .. "lua/entities -name '*.lua'")) do
+		local code = Code(path)
+		T.eq(code:find("%f[%w_]WS%f[^%w_]"), nil, path .. " reads WS")
+		T.eq(code:find("%f[%w_]GAMEMODE%f[^%w_]"), nil, path .. " reads GAMEMODE")
+		for _, used in ipairs(T.Uses(code)) do
+			if not GAMES_KEPT[used] then
+				T.eq(used:match("^games%.") or used:match("^features%.") or used:match("^includes%."), nil,
+					path .. " reads " .. used)
+			end
+		end
+	end
+end)
+
+T.test("NextSoldier loads by plain includes, a line a file, each its own module's name", function()
+	local init = Code(T.File("nextsoldier/sh_init.lua"))
+	T.eq(init:find("Defer", 1, true), nil, "no Defer")
+	T.eq(init:find("Namespace", 1, true), nil, "no Namespace")
+	T.eq(Code(T.ROOT .. "shared_loader.lua"):find('Index("nextsoldier/', 1, true), nil, "not an Index of the gamemode's")
+
+	local lines, order = {}, {}
+	for path in init:gmatch('Load%("([%w_/.]+)"%)') do
+		T.eq(lines[path], nil, path .. " loaded once")
+		lines[path] = true
+		order[#order + 1] = path
+	end
+	for _, full in ipairs(Lines("find " .. ADDON .. "lua/nextsoldier -name '*.lua'")) do
+		local path = full:sub(#ADDON + #"lua/" + 1)
+		if path ~= "nextsoldier/sh_init.lua" then
+			T.eq(lines[path], true, path .. " has its line")
+			local name = path:gsub("%.lua$", ""):gsub("/", ".")
+			T.eq(Code(full):match('module%("([%w_.]+)"%)'), name, path .. " names its module")
+		end
+	end
+	T.eq(#order > 0, true, "the lines were read")
+end)
+
+T.test("the collections are the addon's only exports, each file a part at its path", function()
+	local keys = {}
+	for key in pairs(nextsoldier) do keys[#keys + 1] = key end
+	table.sort(keys)
+	T.eq(table.concat(keys, ","), "base,behavior,body,bots,host,locomotion,senses,world")
+	T.eq(nextsoldier.world.doors, package.loaded["nextsoldier.world.doors"], "a part is its module")
+	T.eq(type(nextsoldier.world.BrushSweep), "function", "a single export is a function of its collection")
+end)
+
+T.test("a host is held to the port before a soldier reads it", function()
+	local Host = nextsoldier.host
+	T.eq(pcall(Host.Install, {}), false, "a host lacking the port's methods is refused")
+	local kept = Host.current
+	local host = {}
+	for _, method in ipairs(Host.PORT:Methods()) do host[method] = function() end end
+	T.eq(Host.Install(host), host)
+	T.eq(Host.current, host)
+	Host.current = kept
 end)
 
 T.test("the response rules are merged into the addon", function()

@@ -87,7 +87,7 @@ end
 function Controller:Collect()
 	local found = {}
 	hook.Run(NPCS_HOOK, found)
-	for ent in pairs(WS.NextSoldierBots or {}) do
+	for ent in pairs(nextsoldier.bots) do
 		if IsValid(ent) and found[ent] == nil then found[ent] = NextSoldierNpc(ent) end
 	end
 	local bots = {}

@@ -138,7 +138,7 @@ function Battle:Start(field)
 		s.npc = N.Npc.New(Orders, {
 			war = self.war,
 			member = s.member,
-			behaviors = nextsoldier.behaviors.Shared:Compile(),
+			behaviors = nextsoldier.behavior.registry.Shared:Compile(),
 		}, s.me)
 		s.npc:Update(FP.TICK)
 	end

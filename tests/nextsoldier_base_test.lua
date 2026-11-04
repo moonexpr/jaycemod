@@ -116,8 +116,11 @@ T.test("war soldiers hate the opposing HL2 faction and default to hostility", fu
 	local base = Read(NEXTSOLDIER_ENTITIES .. "base_nextsoldier.lua")
 	local soldier = Read(ENTITIES .. "npc_nextsoldier.lua")
 	T.eq(soldier:find("ENT.DefaultRelationship = D_HT", 1, true) ~= nil, true)
-	T.eq(base:find("SetFaction(Factions.HL2_REBELS, D_HT)", 1, true) ~= nil, true)
-	T.eq(base:find("SetFaction(Factions.HL2_COMBINE, D_HT)", 1, true) ~= nil, true)
+	T.eq(base:find("local enemy = Host.current:FactionEnemy(faction)", 1, true) ~= nil, true)
+	T.eq(base:find("SetFaction(enemy, D_HT)", 1, true) ~= nil, true)
+	local host = Read(T.ROOT .. "sh_nextsoldier_host.lua")
+	T.eq(host:find("[Factions.HL2_COMBINE] = Factions.HL2_REBELS", 1, true) ~= nil, true)
+	T.eq(host:find("[Factions.HL2_REBELS] = Factions.HL2_COMBINE", 1, true) ~= nil, true)
 end)
 
 T.test("a name the base replaces is declared by none", function()

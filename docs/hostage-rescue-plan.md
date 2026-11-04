@@ -174,7 +174,7 @@ textures), with CS:S's sounds.
   `mark_for_death` 20 units over the eyes, seen by all but its holder. Mad
   Milk keeps its drips and loses its screen overlay, which TF2 left
   commented out. The NPC
-  soldiers' guns (`nextsoldier.weapons`) have no twist; the war's bot
+  soldiers' guns (`nextsoldier.body.weapons`) have no twist; the war's bot
   players do.
 - **Second modes**: the M4A1's and USP's silencer (its own animations,
   sound, no tracer, the script's second accuracy, which keeps the gun's one

@@ -1,10 +1,10 @@
 -- Heads turn to what interests them apart from where they aim
--- (nextsoldier.gaze), on each client and only while drawn, as
+-- (nextsoldier.body.gaze), on each client and only while drawn, as
 -- C_HL2MP_Player::UpdateLookAt turns a player's: every player's toward the
 -- nearest other player in front of it within reach, else ahead; a
 -- NextSoldier soldier's (base_nextsoldier's Draw) also along its aim in a
 -- fight and where the server told it to look, and toward teammates alone.
-local Gaze = nextsoldier.gaze
+local Gaze = nextsoldier.body.gaze
 local EYE_HEIGHT = Vector(0, 0, 64)
 local LOOK_RANGE_SQR = Gaze.LOOK_RANGE * Gaze.LOOK_RANGE
 

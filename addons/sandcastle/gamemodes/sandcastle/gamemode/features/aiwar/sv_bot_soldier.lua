@@ -1,18 +1,18 @@
 -- Part of the AI war controller (sv.lua): the soldier port
--- (nextsoldier.soldier) over a bot player (player.CreateNextBot, kept
+-- (nextsoldier.behavior) over a bot player (player.CreateNextBot, kept
 -- by tf_bot_quota: sv_bots.lua), beside sv_soldier.lua's over a DrGBase
 -- NextBot. It is that port where the two agree (routes, cover, kits,
 -- gadgets, health kits) and differs where the body does: it walks a route
 -- of its own to the goal its orders give (as DrGBase plans its own), sees
--- and fights through its vision and body (nextsoldier.vision,
+-- and fights through its vision and body (nextsoldier.senses.vision,
 -- player_body; sv_bots.lua presses its keys), and neither sits on carts
 -- nor takes poses.
 local Map, Soldier = ...
-local Vision = nextsoldier.vision
-local PlayerBody = nextsoldier.player_body
+local Vision = nextsoldier.senses.vision
+local PlayerBody = nextsoldier.body.player_body
 local Movement = gameplay.movement
-local RouteWalk = nextsoldier.route_walk
-local Corners = nextsoldier.corners
+local RouteWalk = nextsoldier.locomotion.route_walk
+local Locomotion = nextsoldier.locomotion
 local Geometry = math.geometry
 local Teams = gameplay.teams
 local Movement = gameplay.movement
@@ -89,7 +89,7 @@ function BotSoldier.New(ent, controller, team, reaction)
 		look = nil, -- where it faces with no enemy (Watch), a Vector
 		hopUntil = 0,
 		steer = nil, -- the point its body makes for (Steer)
-		walk = nil, -- the route of its own it walks (nextsoldier.route_walk)
+		walk = nil, -- the route of its own it walks (nextsoldier.locomotion.route_walk)
 		planned = nil, -- the goal that route was planned for
 		-- its first route waits a moment: a navigator just made knows no nav area yet
 		nextPlan = CurTime() + FIRST_PLAN,
@@ -135,7 +135,7 @@ end
 
 -- A player's body plans its own way, as DrGBase's does: the orders give it
 -- the goal itself (their Chase), and it walks a route of its own there
--- (nextsoldier.route_walk), or straight at a goal near and in a clear
+-- (nextsoldier.locomotion.route_walk), or straight at a goal near and in a clear
 -- line. The route is the engine's path search's, through its navigator
 -- (ws_bot_navigator), priced by RouteCost, as DrGBase's paths are: the
 -- war's own Lua route searches queue behind its lane planning for tens of
@@ -285,7 +285,7 @@ function BotSoldier:Steer(now)
 		for i, v in ipairs(route or {}) do points[i] = Point(v) end
 		-- its turns pushed out off the inside walls until its body passes them
 		-- (the map's, not who stands there now)
-		points = Corners.Route(points, function(a, b) return self:WalkClear(ToVector(a), ToVector(b), Unmoving) end)
+		points = Locomotion.RoundCorners(points, function(a, b) return self:WalkClear(ToVector(a), ToVector(b), Unmoving) end)
 		-- the engine's trivial path (its start and the goal, straight, where it
 		-- found no way) is none
 		if route and RouteWalk.Trivial(points, pos, DIRECT_RANGE) then route = nil end

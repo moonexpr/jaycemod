@@ -1,9 +1,9 @@
--- nextsoldier.gestures: what a soldier's body says without words: the
+-- nextsoldier.body.gestures: what a soldier's body says without words: the
 -- gesture an occasion plays (by act name), how fast, how long before that
 -- occasion moves it again, the celebration a squad wiped out earns, the
 -- roll or throw of a grenade, and the canned death a crit plays.
 local T = dofile("tests/harness.lua")
-local Gestures = nextsoldier.gestures
+local Gestures = nextsoldier.body.gestures
 
 local OCCASIONS = { Gestures.AGREE, Gestures.CELEBRATE, Gestures.GREET, Gestures.GRENADE_ROLL,
 	Gestures.GRENADE_THROW, Gestures.SIGNAL_FORWARD, Gestures.SIGNAL_GROUP, Gestures.SIGNAL_HALT }

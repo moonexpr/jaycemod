@@ -145,7 +145,7 @@ local function Enlist(war, t)
 	local npc = N.Npc.New(Orders, {
 		war = war,
 		member = member,
-		behaviors = nextsoldier.behaviors.Shared:Compile(),
+		behaviors = nextsoldier.behavior.registry.Shared:Compile(),
 	}, me)
 	npc:Update(TICK)
 	return me, npc, member

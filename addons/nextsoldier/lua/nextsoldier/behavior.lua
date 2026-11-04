@@ -1,5 +1,13 @@
+-- NextSoldier's behaviour: the contract every behaviour of a soldier keeps,
+-- whom it fights, and what it decides (its parts: intention, monitor,
+-- registry).
+local Port = core.port
+local Hfsm = generator.hfsm
+local error, ipairs, pairs, setmetatable, sort, type = error, ipairs, pairs, setmetatable, table.sort, type
+module("nextsoldier.behavior")
+
 -- The soldier port: what a NextSoldier soldier's behaviours (the states of
--- nextsoldier.chart, features.aiwar.orders' among them) may ask of the
+-- nextsoldier.behavior, features.aiwar.orders' among them) may ask of the
 -- soldier they drive. The features/aiwar controller implements it over a
 -- NextBot soldier (npc_nextsoldier) and over a bot player, and
 -- tests/fake_soldier.lua fakes it. Some of it is still the war's, not the
@@ -77,12 +85,12 @@
 --   Burning() -> whether I am on fire
 --   CallMedic(): call for a medic: my side's medics answer me first a
 --     while, and my teammates see that I called
---   Announce(concept): call out what I am doing (a nextsoldier.responserules
+--   Announce(concept): call out what I am doing (a nextsoldier.body.responserules
 --     concept), if my voice has a line for it
 --   LookAt(p, seconds[, priority]): look at p a while, unless I fight
 --     (my head, a NextBot's; my eyes, a bot player's), whatever Watch says;
 --     priority keeps a bot player's eyes there over its combat aim
---   Gesture(occasion): play a nextsoldier.gestures occasion (a squad
+--   Gesture(occasion): play a nextsoldier.body.gestures occasion (a squad
 --     leader's signals among them), if my model has it and it is not
 --     cooling down
 --   Hop(p) -> whether I will be carried to p: only where a player could
@@ -94,9 +102,6 @@
 --   Mark(kind, detail, to): tell whoever debugs me that my orders stepped
 --     in on my movement (a features.nbdebug.model MARK_* kind), what happened,
 --     and where I am sent (nil: nowhere)
-local Port = core.port
-module(...)
-
 METHODS = {
 	"Now",
 	"IsAlive",
@@ -146,3 +151,104 @@ METHODS = {
 }
 
 PORT = Port.New("NextSoldier soldier", METHODS)
+
+-- NextSoldier's chart: the contract every behaviour of a soldier is a state
+-- of (generator.hfsm's Chart, NextBot's Action/Behavior engine with its
+-- stacks). It declares, before any behaviour exists:
+--   the port    nextsoldier.behavior's: all a behaviour may ask of its soldier
+--   EVENTS      what the soldier and the war tell its behaviours: what the
+--               soldier suffers and senses (OnInjured, OnSight, OnLostSight,
+--               OnContact, OnContactLost, OnNavAreaChanged), a shot heard
+--               (OnHeard) and a death seen (OnOtherKilled)
+--   QUERIES     what the soldier asks them, as TF2's bots' contextual
+--               queries: ShouldAttack, ShouldHurry, ShouldRetreat,
+--               ShouldPickUp, SelectMoreDangerousThreat
+-- A behaviour is CHART:State(name), further extended with :Extend(name); one
+-- defining an On* that is neither one of these events nor a lifecycle hook
+-- (OnStart, OnEnd, OnSuspend, OnResume) is refused as it is written.
+-- CHART:New(soldier, first) runs a soldier's chart from its first behaviour.
+EVENTS = { "OnInjured", "OnSight", "OnLostSight", "OnContact", "OnContactLost", "OnNavAreaChanged", "OnHeard",
+	"OnOtherKilled" }
+
+QUERIES = { "ShouldAttack", "ShouldHurry", "ShouldRetreat", "ShouldPickUp", "SelectMoreDangerousThreat" }
+
+CHART = Hfsm.Chart({
+	name = "NextSoldier",
+	port = PORT,
+	events = EVENTS,
+	queries = QUERIES,
+	initial = function(first) return first end,
+})
+
+-- Whom a soldier fights: its dispositions toward entities and factions,
+-- answered when asked, as TF2's INextBot::IsEnemy and IsFriend are, never
+-- pushed to every entity on the map as they change (DrGBase's way, about
+-- 34 ms a change in the war). Dispositions are the caller's values (GMod's
+-- D_HT, D_LI, D_FR, D_NU); priorities are numbers, 0 when none is given.
+--
+-- Relations{ default, ally } -> relations: default, the disposition toward
+--   anyone nothing else names; ally, toward one sharing a faction with it
+-- relations:SetEntity(other, disposition[, priority]) (nil disposition: clear)
+-- relations:SetFaction(faction, disposition[, priority]) (likewise)
+-- relations:Join(faction), Leave(faction), InFaction(faction), Factions()
+--   (sorted)
+-- relations:Disposition(other, factionsOf) -> disposition, priority: its own
+--   entity disposition when set; else, of its factions (factionsOf(other)
+--   -> a list, asked only then), the highest priority faction disposition,
+--   a tie to the faction first by name; else the ally disposition when it
+--   shares one of them; else the default.
+local Dispositions = {}
+Dispositions.__index = Dispositions
+
+function Relations(spec)
+	if type(spec) ~= "table" or spec.default == nil then error("relations need a default disposition", 2) end
+	if spec.ally == nil then error("relations need an ally disposition", 2) end
+	return setmetatable({
+		default = spec.default,
+		ally = spec.ally,
+		entities = setmetatable({}, { __mode = "k" }),
+		factions = {},
+		joined = {},
+	}, Dispositions)
+end
+
+local function Entry(disposition, priority)
+	if disposition == nil then return nil end
+	return { disposition = disposition, priority = priority or 0 }
+end
+
+function Dispositions:SetEntity(other, disposition, priority)
+	self.entities[other] = Entry(disposition, priority)
+end
+
+function Dispositions:SetFaction(faction, disposition, priority)
+	self.factions[faction] = Entry(disposition, priority)
+end
+
+function Dispositions:Join(faction) self.joined[faction] = true end
+function Dispositions:Leave(faction) self.joined[faction] = nil end
+function Dispositions:InFaction(faction) return self.joined[faction] == true end
+
+function Dispositions:Factions()
+	local list = {}
+	for faction in pairs(self.joined) do list[#list + 1] = faction end
+	sort(list)
+	return list
+end
+
+function Dispositions:Disposition(other, factionsOf)
+	local own = self.entities[other]
+	if own then return own.disposition, own.priority end
+	local best, bestName, shared
+	for _, faction in ipairs(factionsOf(other)) do
+		local entry = self.factions[faction]
+		if entry and (best == nil or entry.priority > best.priority
+			or (entry.priority == best.priority and faction < bestName)) then
+			best, bestName = entry, faction
+		end
+		if self.joined[faction] then shared = true end
+	end
+	if best then return best.disposition, best.priority end
+	if shared then return self.ally, 0 end
+	return self.default, 0
+end

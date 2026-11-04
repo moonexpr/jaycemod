@@ -5,7 +5,7 @@ local goal = { x = 1000, y = 0, z = 400 }
 local position = { x = 0, y = 0, z = 0 }
 
 local routeWalk = {
-	Trivial = nextsoldier.route_walk.Trivial,
+	Trivial = nextsoldier.locomotion.route_walk.Trivial,
 	New = function(points)
 		return {
 			Next = function() return points[1] end,
@@ -21,10 +21,12 @@ local environment = setmetatable({
 		end,
 	},
 	nextsoldier = {
-		vision = {},
-		player_body = {},
-		route_walk = routeWalk,
-		corners = { Route = function(points) return points end },
+		senses = { vision = {} },
+		body = { player_body = {} },
+		locomotion = {
+			route_walk = routeWalk,
+			RoundCorners = function(points) return points end,
+		},
 	},
 	gameplay = { movement = {}, teams = {} },
 }, { __index = _G })

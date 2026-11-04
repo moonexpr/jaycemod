@@ -3,7 +3,7 @@
 -- wartactics.scenario) and, optionally, its own monitor, the behaviour its
 -- soldiers' ScenarioMonitor runs in place of the doctrine's sides, and the
 -- other behaviours it relies on. A behaviour is named as the mode's soldiers
--- were given it: with NextSoldier's, nextsoldier.behaviors.
+-- were given it: with NextSoldier's, nextsoldier.behavior.registry.
 --
 -- Registering is open while the game loads. At the game's beginning (the
 -- war's start, and RoundPlayersReady, as a game's players are ready: a late
@@ -17,7 +17,7 @@
 -- before the gamemode's loader publishes this module, so it registers from
 -- the Initialize hook, which runs once the gamemode has loaded and before the
 -- war can start (InitPostEntity); the behaviours its scenarios name go to
--- nextsoldier.behaviors.Shared there too:
+-- nextsoldier.behavior.registry.Shared there too:
 --   hook.Add("Initialize", "my_addon_scenarios", function()
 --       local Holdout = wartactics.scenario.Scenario:Extend("holdout")
 --       wartactics.scenarios.Shared:Register({ name = "holdout",

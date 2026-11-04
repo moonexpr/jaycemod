@@ -41,7 +41,7 @@
 -- uses, and its check refuses one this file does not declare.
 local Port, Sets = core.port, world.sets
 local concat, error, ipairs = table.concat, error, ipairs
-module(...)
+module("nextsoldier.base")
 
 local function Named(name, members)
 	if members == nil then return nil end
@@ -113,7 +113,7 @@ VISION = Component("vision", {
 })
 
 -- What it wants (IIntention): its enemy, its AI on or off, and the stages
--- of fighting an enemy; the behaviours themselves are nextsoldier.chart's
+-- of fighting an enemy; the behaviours themselves are nextsoldier.behavior's
 -- states, run from its Update.
 INTENTION = Component("intention", {
 	methods = { "GetEnemy", "HasEnemy", "SetAIDisabled", "IsAIDisabled" },

@@ -29,6 +29,7 @@ end
 
 Include("sh_core.lua")
 Include("sh_admin_properties.lua")
+Include("sh_nextsoldier_host.lua")
 Include("sh_aiwar.lua")
 Include("sh_announcer.lua")
 Include("sh_bullets.lua")

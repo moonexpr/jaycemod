@@ -1,8 +1,8 @@
--- nextsoldier.reach_memo: the regions failed route searches walked to
+-- nextsoldier.locomotion.reach_memo: the regions failed route searches walked to
 -- the end, kept so a goal outside one is known out of reach without a
 -- search.
 local T = dofile("tests/harness.lua")
-local ReachMemo = nextsoldier.reach_memo
+local ReachMemo = nextsoldier.locomotion.reach_memo
 local Expiring = cache.expiring
 local Class = core.class
 local HL2 = T.require("foundation.wetsands.path.hl2")

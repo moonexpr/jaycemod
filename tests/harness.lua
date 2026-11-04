@@ -87,7 +87,8 @@ local function ReadFile(path)
 	return text
 end
 
--- The index and init files shared_loader.lua runs, in its order.
+-- The index and init files shared_loader.lua runs, in its order. NextSoldier's
+-- loads itself: T.NEXTSOLDIER_INIT, whose Load lines name its files.
 function T.Indexes()
 	local paths = {}
 	for path in ReadFile(T.ROOT .. "shared_loader.lua"):gmatch('Index%(%s*"([%w_/.]+)"%s*%)') do
@@ -95,6 +96,7 @@ function T.Indexes()
 	end
 	return paths
 end
+T.NEXTSOLDIER_INIT = "nextsoldier/sh_init.lua"
 
 -- Every published module: T.Published.global[module name] -> its global
 -- ("math.geometry", or "transaction" at foundation's root), and
@@ -111,6 +113,10 @@ for _, path in ipairs(T.Indexes()) do
 	for var, key, module in text:gmatch('Export%(%s*([%w_]+)%s*,%s*"([%w_]+)"%s*,%s*require%(%s*"([%w_.]+)"%s*%)%s*%)') do Publish(var, key, module) end
 	for var, key, module in text:gmatch('Twin%(%s*([%w_]+)%s*,%s*"([%w_]+)"%s*,%s*require%(%s*"([%w_.]+)"%s*%)%s*%)') do Publish(var, key, module) end
 	for var, key, module in text:gmatch('Defer%(%s*([%w_]+)%s*,%s*"([%w_]+)"%s*,%s*"([%w_.]+)"%s*%)') do Publish(var, key, module) end
+end
+for path in ReadFile(T.File(T.NEXTSOLDIER_INIT)):gmatch('Load%(%s*"([%w_/.]+)%.lua"%s*%)') do
+	local module = path:gsub("/", ".")
+	T.Published.global[module], T.Published.module[module] = module, module
 end
 
 -- The modules a source text uses, each once: every require of one, and
@@ -167,9 +173,19 @@ end
 do
 	local Namespaces = T.NATIVE and core.namespace or T.require("foundation.core.namespace")
 	local env = Namespaces.Environment(_G, T.require)
-	for _, path in ipairs(T.Indexes()) do
+	local function RunIndex(path)
 		local chunk = assert(loadfile(T.File(path)))
 		setfenv(chunk, env)()
+	end
+	for _, path in ipairs(T.Indexes()) do
+		-- where shared_loader.lua includes NextSoldier: after games, before the tactics engine
+		if path == "wartactics/sh_init.lua" then
+			local init = assert(loadfile(T.File(T.NEXTSOLDIER_INIT)))
+			setfenv(init, setmetatable({
+				include = function(file) return dofile(T.File(file)) end,
+			}, { __index = _G, __newindex = _G }))()
+		end
+		RunIndex(path)
 	end
 end
 

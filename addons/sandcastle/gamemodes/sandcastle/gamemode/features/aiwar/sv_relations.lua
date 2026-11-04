@@ -4,7 +4,7 @@
 local Controller, Map = ...
 local AiWar = WS.require("features.aiwar.model")
 local Rounds = gameplay.rounds
-local Hearing = nextsoldier.hearing
+local Senses = nextsoldier.senses
 local Factions = WS.require("includes.factions")
 local Marksmanship = WS.require("features.aiwar.marksmanship")
 local BulletSteps = WS.require("games.gameplay.combat.bullet_steps")
@@ -109,7 +109,7 @@ function Controller:TeamOf(ent)
 	return info and info.team or nil
 end
 
--- Gunfire (nextsoldier.hearing): each soldier in earshot of a shot is
+-- Gunfire (nextsoldier.senses): each soldier in earshot of a shot is
 -- told where to look (OnHeard). A shooter is heard once every
 -- HEAR_INTERVAL, however fast it fires.
 local HEAR_INTERVAL = 0.5
@@ -123,7 +123,7 @@ function Controller:HearShot(shooter, data)
 	local shot = { team = self:TeamOf(shooter), pos = Point(shooter:GetPos()), dir = Point(data.Dir:GetNormalized()) }
 	for ent, entry in pairs(self.soldiers) do
 		if ent ~= shooter and IsValid(ent) then
-			local look = Hearing.LookAt({ team = entry.soldier.team, pos = Point(ent:GetPos()) }, shot)
+			local look = Senses.HeardLookAt({ team = entry.soldier.team, pos = Point(ent:GetPos()) }, shot)
 			if look then entry.npc:Event("OnHeard", look) end
 		end
 	end

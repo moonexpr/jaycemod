@@ -1,7 +1,7 @@
--- nextsoldier.doors: TF2's rule for which doors close the nav mesh to
+-- nextsoldier.world.doors: TF2's rule for which doors close the nav mesh to
 -- whom (CTFNavMesh::ComputeBlockedAreas).
 local T = dofile("tests/harness.lua")
-local Doors = nextsoldier.doors
+local Doors = nextsoldier.world.doors
 
 local RED, BLUE = 2, 3
 

@@ -1,12 +1,12 @@
 local T = dofile("tests/harness.lua")
-local Behaviors = nextsoldier.behaviors
-local Chart = nextsoldier.chart
+local Behaviors = nextsoldier.behavior.registry
+local Behavior = nextsoldier.behavior
 
-local function Behavior(name) return Chart.CHART:State(name) end
+local function State(name) return Behavior.CHART:State(name) end
 
 T.test("a registered behaviour is got by its name once compiled", function()
 	local registry = Behaviors.New()
-	local Travel = Behavior("Travel")
+	local Travel = State("Travel")
 	registry:Register({ name = "Travel", behavior = Travel })
 	local compiled = registry:Compile()
 	T.eq(compiled:Get("Travel"), Travel)
@@ -25,22 +25,22 @@ T.test("a behaviour that is not a state of NextSoldier's chart is refused", func
 	local registry = Behaviors.New()
 	T.eq(pcall(registry.Register, registry, { name = "Loose", behavior = npc.nextbot.Action:Extend("Loose") }), false)
 	T.eq(pcall(registry.Register, registry, { name = "Nothing" }), false)
-	T.eq(pcall(registry.Register, registry, { behavior = Behavior("Nameless") }), false)
+	T.eq(pcall(registry.Register, registry, { behavior = State("Nameless") }), false)
 end)
 
 T.test("a name registered again replaces its behaviour", function()
 	local registry = Behaviors.New()
-	registry:Register({ name = "Chase", behavior = Behavior("Chase") })
-	local Again = Behavior("Chase")
+	registry:Register({ name = "Chase", behavior = State("Chase") })
+	local Again = State("Chase")
 	registry:Register({ name = "Chase", behavior = Again })
 	T.eq(registry:Compile():Get("Chase"), Again)
 end)
 
 T.test("the compiled behaviours are fixed: a later registration reaches the next compile only", function()
 	local registry = Behaviors.New()
-	registry:Register({ name = "Travel", behavior = Behavior("Travel") })
+	registry:Register({ name = "Travel", behavior = State("Travel") })
 	local compiled = registry:Compile()
-	registry:Register({ name = "Chase", behavior = Behavior("Chase") })
+	registry:Register({ name = "Chase", behavior = State("Chase") })
 	T.eq(compiled:Has("Chase"), false)
 	T.eq(registry:Compile():Has("Chase"), true)
 	T.eq(pcall(function() compiled.extra = true end), false, "the compiled structure refuses a change")
@@ -48,8 +48,8 @@ end)
 
 T.test("the names, in order", function()
 	local registry = Behaviors.New()
-	registry:Register({ name = "Travel", behavior = Behavior("Travel") })
-	registry:Register({ name = "Chase", behavior = Behavior("Chase") })
+	registry:Register({ name = "Travel", behavior = State("Travel") })
+	registry:Register({ name = "Chase", behavior = State("Chase") })
 	T.eq(table.concat(registry:Compile():Names(), " "), "Chase Travel")
 end)
 

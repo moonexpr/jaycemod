@@ -2,8 +2,8 @@
 -- blockers on the nav mesh (func_door and func_brush), as the path costs
 -- and route searches see them.
 local Controller = ...
-local Doors = nextsoldier.doors
-local Brushes = nextsoldier.brushes
+local Doors = nextsoldier.world.doors
+local World = nextsoldier.world
 
 local NOBODY = WS.TEAM_UNASSIGNED
 
@@ -63,8 +63,8 @@ end
 
 -- Blockers on the nav mesh, as TF2's nav mesh has them
 -- (CTFNavMesh::ComputeBlockedAreas): which areas each func_door blocks to
--- whom (nextsoldier.doors), and which a solid func_brush stands in
--- (nextsoldier.brushes), taken again every BLOCKER_REFRESH seconds a
+-- whom (nextsoldier.world.doors), and which a solid func_brush stands in
+-- (nextsoldier.world), taken again every BLOCKER_REFRESH seconds a
 -- route is asked for, as doors open and shut and brushes are toggled with
 -- the round (setup gates, doors opened by captures, walls map logic turns
 -- on). The box searched reaches DOOR_FLOOR below a door, so the areas on
@@ -100,7 +100,7 @@ end
 local NW, NE, SE, SW = 0, 1, 2, 3
 
 local function BrushIn(brush, area)
-	local from, to, mins, maxs = Brushes.Sweep(area:GetCorner(NW), area:GetCorner(NE), area:GetCorner(SE), area:GetCorner(SW),
+	local from, to, mins, maxs = World.BrushSweep(area:GetCorner(NW), area:GetCorner(NE), area:GetCorner(SE), area:GetCorner(SW),
 		area:GetSizeX(), area:GetSizeY())
 	local tr = util.TraceHull({
 		start = from,
@@ -128,7 +128,7 @@ function Controller:BrushAreas(brush)
 	return areas
 end
 
--- A floor door's span (nextsoldier.doors): the box of areas on it where
+-- A floor door's span (nextsoldier.world.doors): the box of areas on it where
 -- it lies closed (m_vecPosition1, a func_door's; a rotating door has none
 -- and is taken where it stands), inset FLOOR_INSET so the
 -- ground it bridges stays open, and up to a step above its top.
@@ -275,7 +275,7 @@ end
 -- The engine's own blocked flag (CNavArea::IsBlocked), without what it
 -- makes of doors: it marks an area blocked wherever its hull test finds a
 -- solid entity, a shut door among them, and TF2 maps put an area under
--- every door. Doors are judged by nextsoldier.doors instead; the
+-- every door. Doors are judged by nextsoldier.world.doors instead; the
 -- map's func_nav_blockers still count.
 function Controller:EngineBlocks(area, team)
 	if not area:IsBlocked(team) then return false end

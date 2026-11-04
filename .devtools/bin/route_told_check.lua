@@ -12,7 +12,7 @@
 --   dt lua -f .devtools/bin/route_told_check.lua     defines WSRouteToldCheck
 --   dt lua 'return WSRouteToldCheck.Run(40)'         40 pairs a team: a report
 local Pathfinder = graph.pathfinder
-local Doors = nextsoldier.doors
+local Doors = nextsoldier.world.doors
 local HL2 = WS.require("foundation.wetsands.path.hl2")
 
 WSRouteToldCheck = WSRouteToldCheck or {}

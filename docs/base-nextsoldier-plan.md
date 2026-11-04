@@ -21,7 +21,7 @@ port for those NPCs.
 - **The contract**: `nextsoldier.base` (seven components, the methods
   required and the posture optional), the in-game check
   `ns_base_contract`, and `drg_interface.py check`.
-- **Models a component stands on**: `nextsoldier.vision` and `.hearing`
+- **Models a component stands on**: `nextsoldier.senses.vision` and `.hearing`
   (the senses, TF2's IVision), the movement modules (`leap`, `rappel`,
   `noise`, `detour`, `doors`, `portal`), `wetsands.navsearch.Calculator`
   (the path cost, native), `list.schedule` (cooperative tasks in a time
@@ -42,11 +42,11 @@ organised so).
 
 | Component (TF2) | Model | What it holds | Native (L2) |
 |---|---|---|---|
-| the bot (`INextBot`) | `nextsoldier.relations`, `nextsoldier.life` | alive, down, dead; damage and death; whom it fights: dispositions by entity, then faction, then default (`IsEnemy`, `IsFriend`) | yes: the relations table by entity and faction |
+| the bot (`INextBot`) | `nextsoldier.behavior`, `nextsoldier.life` | alive, down, dead; damage and death; whom it fights: dispositions by entity, then faction, then default (`IsEnemy`, `IsFriend`) | yes: the relations table by entity and faction |
 | `ILocomotion` | `nextsoldier.locomotion` | following a path (GMod's PathFollower, priced by the native calculator), facing, speeds; climbs, jumps, leaps, vaults and rappels as its own processes started by `ClimbUpToLedge`, `JumpAcrossGap`, `Jump` and carried out over ticks in its `Update` (the movement modules) | the path cost (done) |
 | `IBody` | `nextsoldier.body` | posture (stand, crouch), head aim (`AimHeadTowards`, `IsHeadAimingOnTarget`), weapons held and the active one, animation | no |
-| `IVision` | `nextsoldier.vision`, `.hearing` (exist) | seen, recognized, remembered (`GetPrimaryKnownThreat`), heard, ignored (`IsIgnored`) | yes: the sight checks over the soldiers |
-| `IIntention` | `nextsoldier.intention` | the enemy, AI on or off, the queries; the behaviours (the chart's states, the war's) run from its `Update` | the enemy choice |
+| `IVision` | `nextsoldier.senses.vision`, `.hearing` (exist) | seen, recognized, remembered (`GetPrimaryKnownThreat`), heard, ignored (`IsIgnored`) | yes: the sight checks over the soldiers |
+| `IIntention` | `nextsoldier.behavior.intention` | the enemy, AI on or off, the queries; the behaviours (the chart's states, the war's) run from its `Update` | the enemy choice |
 
 **No coroutine** (TF2 runs none per bot): DrGBase's `BehaveStart` becomes
 the bot's `Reset`, and what yielded through `YieldCoroutine` (our leaps and
@@ -79,7 +79,7 @@ Each ships alone, tests first; nothing switches a soldier until the last.
 1. **The skeleton**: `base_nextsoldier` on GMod's NextBot, every required
    method present and delegating to stub models; `ns_base_contract`
    checks it beside DrGBase's classes.
-2. **Relations**: `nextsoldier.relations` and the war's relations
+2. **Relations**: `nextsoldier.behavior` and the war's relations
    (`features/aiwar/sv_relations.lua`) on it.
 3. **Intention**: the enemy and the stages of fighting it, on the senses
    and relations.

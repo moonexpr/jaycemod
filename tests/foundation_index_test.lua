@@ -13,7 +13,6 @@ local INDEX_CALL = "Index%(%s*\"([%w_/.]+)\"%s*%)"
 local TREES = {
 	{ root = "foundation", file = "_index.lua", lazy = false },
 	{ root = "includes", file = "_init.lua", lazy = true },
-	{ root = "nextsoldier", file = "_init.lua", lazy = true },
 	{ root = "wartactics", file = "_init.lua", lazy = true },
 }
 
@@ -141,8 +140,7 @@ end)
 T.test("the lazy trees' inits publish each module of their folder, loaded on first read", function()
 	local globals = Globals()
 	RunIndexes(globals)
-	T.eq(#IndexFiles(TREES[3]), 1, "nextsoldier/ has its init")
-	T.eq(#IndexFiles(TREES[4]), 1, "wartactics/ has its init")
+	T.eq(#IndexFiles(TREES[3]), 1, "wartactics/ has its init")
 	for _, tree in ipairs(TREES) do
 		if tree.lazy then
 			for _, path in ipairs(IndexFiles(tree)) do
@@ -159,7 +157,7 @@ T.test("the lazy trees' inits publish each module of their folder, loaded on fir
 end)
 
 -- nextsoldier/'s and wartactics/' module names are their globals'
--- (nextsoldier.leap, wartactics.lanes), so module(...) builds each module's
+-- (nextsoldier.locomotion.leap, wartactics.lanes), so module(...) builds each module's
 -- table at its key in the namespace as it loads, before the deferred load
 -- keeps it there: the same table.
 T.test("a nextsoldier or wartactics module required by name is the one at its global", function()

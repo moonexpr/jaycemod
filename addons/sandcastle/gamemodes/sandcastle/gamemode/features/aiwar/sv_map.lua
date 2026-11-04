@@ -6,7 +6,7 @@ local Slots = WS.require("features.aiwar.slots")
 local AiWar = WS.require("features.aiwar.model")
 local HL2Path = WS.require("foundation.wetsands.path.hl2")
 local Path = wetsands.path
-local Doors = nextsoldier.doors
+local Doors = nextsoldier.world.doors
 
 -- CanWalkTo's and the lanes' sweep: the standard body's width (a TF2
 -- player's, gameplay.movement; the bot soldiers' own, and wider than the NPC

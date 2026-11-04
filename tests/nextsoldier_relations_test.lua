@@ -1,13 +1,13 @@
--- nextsoldier.relations: whom a soldier fights, answered when asked (TF2's
+-- nextsoldier.behavior: whom a soldier fights, answered when asked (TF2's
 -- INextBot::IsEnemy and IsFriend), never pushed to every entity as it
 -- changes. Dispositions are the caller's values (GMod's D_HT, D_LI...).
 local T = dofile("tests/harness.lua")
-local Relations = nextsoldier.relations
+local Behavior = nextsoldier.behavior
 
 local HATE, LIKE, NEUTRAL, FEAR = "hate", "like", "neutral", "fear"
 
 local function New(t)
-	return Relations.New({ default = t and t.default or NEUTRAL, ally = LIKE })
+	return Behavior.Relations({ default = t and t.default or NEUTRAL, ally = LIKE })
 end
 
 local function None() return {} end
@@ -85,8 +85,8 @@ T.test("a disposition without a priority has priority 0", function()
 end)
 
 T.test("a relations without its default or ally is refused", function()
-	T.eq(pcall(Relations.New, { ally = LIKE }), false)
-	T.eq(pcall(Relations.New, { default = NEUTRAL }), false)
+	T.eq(pcall(Behavior.Relations, { ally = LIKE }), false)
+	T.eq(pcall(Behavior.Relations, { default = NEUTRAL }), false)
 end)
 
 T.finish()

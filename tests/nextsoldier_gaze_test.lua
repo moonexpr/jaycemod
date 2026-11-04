@@ -1,10 +1,10 @@
--- nextsoldier.gaze: where a soldier's head looks apart from its aim (the
+-- nextsoldier.body.gaze: where a soldier's head looks apart from its aim (the
 -- player model's head_yaw and head_pitch over aim_yaw and aim_pitch): along
 -- its aim in a fight; else where it was told to look (a repath's new way);
 -- else the nearest person passing it; else ahead; never past what a head
 -- turns.
 local T = dofile("tests/harness.lua")
-local Gaze = nextsoldier.gaze
+local Gaze = nextsoldier.body.gaze
 
 local EYE = { x = 0, y = 0, z = 64 }
 local function P(x, y, z) return { x = x, y = y, z = z or 64 } end

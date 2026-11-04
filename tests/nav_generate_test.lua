@@ -716,7 +716,7 @@ T.test("a mesh is usable once it has areas", function()
 	T.eq(load({ areas = 12 }).ws.NavMeshUsable(), true)
 end)
 
--- Seams (nextsoldier.nav_gaps) -------------------------------------------------------
+-- Seams (nextsoldier.world.nav_gaps) -------------------------------------------------------
 
 -- A flat nav area over x0..x1, y0..y1 at height z.
 local function NavArea(id, x0, y0, x1, y1, z)

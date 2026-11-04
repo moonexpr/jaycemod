@@ -1,7 +1,7 @@
--- nextsoldier.ladder: a walker's climb of a nav ladder as a line it is moved
+-- nextsoldier.locomotion.ladder: a walker's climb of a nav ladder as a line it is moved
 -- along: to the ladder's foot or head, along the ladder, onto the far area.
 local T = dofile("tests/harness.lua")
-local Ladder = nextsoldier.ladder
+local Ladder = nextsoldier.locomotion.ladder
 
 T.defined(Ladder.UP, "UP")
 T.defined(Ladder.DOWN, "DOWN")

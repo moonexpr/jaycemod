@@ -1,8 +1,8 @@
--- nextsoldier.weapons: the soldiers' own guns (issue #8 L3), HL2's fired by
+-- nextsoldier.body.weapons: the soldiers' own guns (issue #8 L3), HL2's fired by
 -- a NextBot: each class's stats, and a magazine per weapon held that fires
 -- at its pace, empties and reloads.
 local T = dofile("tests/harness.lua")
-local Weapons = nextsoldier.weapons
+local Weapons = nextsoldier.body.weapons
 
 local function Definition(class)
 	local path = "addons/cstrike_weapons/lua/weapons/" .. class .. ".lua"

@@ -1,9 +1,9 @@
--- nextsoldier.player_body: a soldier in a player's body, as TF2's
+-- nextsoldier.body.player_body: a soldier in a player's body, as TF2's
 -- bots drive theirs (PlayerBody, PlayerLocomotion): where it is sent, where
 -- it looks and what it shoots become the command a player's keys would
 -- make, every tick.
 local T = dofile("tests/harness.lua")
-local Body = nextsoldier.player_body
+local Body = nextsoldier.body.player_body
 
 for _, name in ipairs({ "TURN_RATE", "ARRIVE", "STUCK_SPEED", "STUCK_TIME", "CROUCH_JUMP_TIME", "FIRE_CONE", "MELEE_CONE", "USE_INTERVAL", "BACKOFF_TIME" }) do
 	T.defined(Body[name], name)

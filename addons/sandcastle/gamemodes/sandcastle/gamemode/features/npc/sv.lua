@@ -34,7 +34,7 @@ local Controller = {
 	navMeshGeneration = 0, -- counts the mesh's link changes (WSNavLinked): a snapshot of an older one is dropped
 	-- navUncrossable = nil, -- nav area id -> id -> true: the links WS.NavLinkCrossable refuses, gathered with navMesh
 	-- navMeshBuilding = nil, -- the generation a snapshot is being built for, set by sv_routes
-	navBlocked = {}, -- nav area id -> the teams its doors and brushes block (nextsoldier.doors)
+	navBlocked = {}, -- nav area id -> the teams its doors and brushes block (nextsoldier.world.doors)
 	navDisabled = {}, -- nav area id -> true: closed to every team by the AI war's hazards (SetDisabledAreas)
 	nextBlockerRefresh = 0,
 	closedFor = {}, -- team -> nav area id -> true: closed to it by the blockers or the engine, until the blockers are taken again
@@ -43,7 +43,7 @@ local Controller = {
 	engineClosedFor = {}, -- team -> nav area id -> true: closed to it by the engine alone, as long
 	blockerGeneration = 0,
 	blockerLog = {}, -- the latest generations: { generation, changes = area id -> true, or nil when not known }
-	-- reach = nil, -- the regions failed route searches walked (nextsoldier.reach_memo), set by sv_routes
+	-- reach = nil, -- the regions failed route searches walked (nextsoldier.locomotion.reach_memo), set by sv_routes
 	reachStats = { answered = 0, retargeted = 0, learned = 0 }, -- requests answered from them, searches sent to a region's nearest area, regions learned
 	brushAreas = setmetatable({}, { __mode = "k" }), -- func_brush -> { pos, areas it stands in }
 	-- doorAreas = nil, -- nav area id -> true under a func_door, set by RefreshBlockers

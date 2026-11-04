@@ -1,8 +1,8 @@
--- nextsoldier.intention: what a soldier with an enemy does about it (TF2's
+-- nextsoldier.behavior.intention: what a soldier with an enemy does about it (TF2's
 -- IIntention for base_nextsoldier): the stage of fighting it by distance,
 -- whether it attacks, and which of two threats is the more dangerous.
 local T = dofile("tests/harness.lua")
-local Intention = nextsoldier.intention
+local Intention = nextsoldier.behavior.intention
 
 local RANGES = Intention.Ranges({ reach = 600, avoid = 150, range = 1500, melee = 60 })
 

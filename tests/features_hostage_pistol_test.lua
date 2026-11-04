@@ -12,7 +12,7 @@ T.defined(Pistol.RELOAD, "RELOAD")
 local function P(x, y) return { x = x, y = y, z = 0 } end
 
 T.test("its reload is slower than a soldier's pistol", function()
-	local soldiers = nextsoldier.weapons.STATS.weapon_pistol
+	local soldiers = nextsoldier.body.weapons.STATS.weapon_pistol
 	T.eq(Pistol.STATS.reload, Pistol.RELOAD, "its own reload")
 	T.eq(Pistol.STATS.reload > soldiers.reload, true, "slower")
 	T.eq(Pistol.STATS.damage, soldiers.damage, "otherwise the soldiers' pistol")

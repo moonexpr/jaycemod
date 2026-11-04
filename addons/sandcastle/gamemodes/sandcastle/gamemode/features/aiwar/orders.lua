@@ -1,6 +1,6 @@
 -- The orders of an AI war soldier: an NPC variant (games.npc.nextbot) whose
--- Actions, the states of NextSoldier's chart (nextsoldier.chart), run over
--- the soldier port (nextsoldier.soldier). The engine's
+-- Actions, the states of NextSoldier's chart (nextsoldier.behavior), run over
+-- the soldier port (nextsoldier.behavior). The engine's
 -- own AI does the fighting; the orders decide where a soldier should be and
 -- walk it there over the nav mesh, since TF2 maps have no AI node graph for
 -- the engine's pathfinder.
@@ -86,9 +86,9 @@ local abs, ceil, cos, floor, max, min, pi, sin, sqrt = math.abs, math.ceil, math
 local ipairs, pairs = ipairs, pairs
 local format = string.format
 local N = npc.nextbot
-local MonitorLib = nextsoldier.monitor
-local SoldierChart = nextsoldier.chart.CHART
-local Behaviors = nextsoldier.behaviors.Shared
+local MonitorLib = nextsoldier.behavior.monitor
+local SoldierChart = nextsoldier.behavior.CHART
+local Behaviors = nextsoldier.behavior.registry.Shared
 local Monitors = wartactics.monitors
 local Tree = wartactics.bridge
 local HealthShare = Monitors.HealthShare
@@ -102,8 +102,8 @@ local Squad = wartactics.squad
 local Lanes = wartactics.lanes
 local Hunt = wartactics.hunt
 local Health = require("features.aiwar.health")
-local Speech = nextsoldier.responserules
-local Gestures = nextsoldier.gestures
+local Speech = nextsoldier.body.responserules
+local Gestures = nextsoldier.body.gestures
 local Explore = wartactics.explore
 local Mission = wartactics.mission
 module(...)
@@ -1926,7 +1926,7 @@ end
 -- The monitors (docs/aiwar-command.md §1)
 
 -- A monitor holds the state and contains one action; a passthrough one is
--- left out by the debug layer's TDBN (nextsoldier.monitor).
+-- left out by the debug layer's TDBN (nextsoldier.behavior.monitor).
 local Monitor, PassthroughMonitor = MonitorLib.New, MonitorLib.Passthrough
 
 -- The side actions (PayloadAttacker, PayloadDefender, ...): each runs the
@@ -2352,7 +2352,7 @@ function JobOf(fullName)
 end
 
 -- The behaviours the war owns, given to NextSoldier through its registry
--- (nextsoldier.behaviors), which the war compiles as it starts: a soldier
+-- (nextsoldier.behavior.registry), which the war compiles as it starts: a soldier
 -- runs the NextSoldier its compiled behaviours give, and the tree below it.
 Behaviors:Register({ name = "NextSoldier", behavior = NextSoldier })
 Behaviors:Register({ name = "StrategyMonitor", behavior = StrategyMonitor })
@@ -2378,7 +2378,7 @@ local HOST = Monitors.HOST:Check({
 })
 
 -- config = { war (features.aiwar.model War), member (its roster entry),
--- behaviors (nextsoldier.behaviors, compiled) }
+-- behaviors (nextsoldier.behavior.registry, compiled) }
 function NewState(config, me)
 	return { war = config.war, member = config.member, behaviors = config.behaviors, host = HOST }
 end

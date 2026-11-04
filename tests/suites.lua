@@ -37,8 +37,8 @@ return {
 		about = "NextSoldier, the soldier itself (its addon): movement, senses, body, behaviours, the response rules it speaks by",
 		tests = { "nextsoldier_*", "addons_nextsoldier", "responserules*", "combine_voice_pack" },
 		sources = {
-			"addons/nextsoldier/", "tests/fake_soldier.lua",
-			E .. "entities/npc_nextsoldier", E .. "entities/npc_path",
+			"addons/nextsoldier/", G .. "sh_nextsoldier_host.lua", "tests/fake_soldier.lua",
+			E .. "entities/base_nextsoldier", E .. "entities/npc_nextsoldier", E .. "entities/npc_path",
 			E .. "entities/ws_bot_navigator",
 		},
 	},

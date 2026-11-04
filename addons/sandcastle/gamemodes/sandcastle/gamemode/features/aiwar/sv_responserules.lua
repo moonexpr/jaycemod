@@ -12,8 +12,8 @@
 -- chatters (Speech.CONCEPT_ENEMY_KILLED and the rest): a kill, a teammate
 -- down, an enemy slipped out of sight, the radio between fights.
 local Controller = ...
-local Speech = nextsoldier.responserules
-local Gestures = nextsoldier.gestures
+local Speech = nextsoldier.body.responserules
+local Gestures = nextsoldier.body.gestures
 local Payload = WS.require("features.payload.model")
 local Teams = gameplay.teams
 

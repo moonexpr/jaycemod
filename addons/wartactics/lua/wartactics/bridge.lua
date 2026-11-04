@@ -7,8 +7,8 @@
 -- The classes are built here, so a live reload of wartactics.monitors takes
 -- effect with this module reloaded after it.
 local Monitors = wartactics.monitors
-local MonitorLib = nextsoldier.monitor
-local Behaviors = nextsoldier.behaviors.Shared
+local MonitorLib = nextsoldier.behavior.monitor
+local Behaviors = nextsoldier.behavior.registry.Shared
 module(...)
 
 local Tree = Monitors.Build({ Monitor = MonitorLib.New, Passthrough = MonitorLib.Passthrough })

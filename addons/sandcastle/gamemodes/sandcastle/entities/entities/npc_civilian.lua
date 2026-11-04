@@ -44,7 +44,7 @@ local ARMED_HEALTH = 100
 local GLASS_REACH = 32
 local GLASS_DAMAGE = 100
 local Factions = WS.require("includes.factions")
-local Weapons = nextsoldier.weapons
+local Weapons = nextsoldier.body.weapons
 
 local SoldierInitialize = ENT.CustomInitialize
 function ENT:CustomInitialize()
@@ -66,7 +66,7 @@ function ENT:OnInjured(dmg)
 	self.BaseClass.OnInjured(self, dmg)
 end
 
--- Armed with class's gun, its magazine stats (nextsoldier.weapons'): BLU's
+-- Armed with class's gun, its magazine stats (nextsoldier.body.weapons'): BLU's
 -- side, hostile to RED, its gun hidden until it fires.
 function ENT:Arm(class, stats)
 	local weapon = self:GiveWeapon(class)

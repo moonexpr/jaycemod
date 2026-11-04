@@ -1,5 +1,5 @@
 -- Records the server's Lua route searches so they replay offline
--- (nextsoldier.route_record; .devtools/bin/route_replay.lua), through
+-- (nextsoldier.locomotion.route_record; .devtools/bin/route_replay.lua), through
 -- server_lua.py:
 --
 --   server_lua.py -f .devtools/bin/record_routes.lua          defines WSRouteRecord
@@ -19,7 +19,7 @@
 WSRouteRecord = WSRouteRecord or {}
 local R = WSRouteRecord
 
-local Record = nextsoldier.route_record
+local Record = nextsoldier.locomotion.route_record
 local NavSearch = wetsands.navsearch
 local Pathfinder = graph.pathfinder
 local HL2 = WS.require("foundation.wetsands.path.hl2")

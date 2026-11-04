@@ -74,7 +74,7 @@ T.test("every command the realm file registers has a handler in the controller",
 end)
 
 T.test("the debug controller includes every live base_nextsoldier not already registered", function()
-	T.eq(controller:find("WS.NextSoldierBots", 1, true) ~= nil, true, "base registry")
+	T.eq(controller:find("nextsoldier.bots", 1, true) ~= nil, true, "base registry")
 	T.eq(controller:find("found[ent] == nil", 1, true) ~= nil, true, "preserves richer providers")
 	T.eq(controller:find("ent:NSDebugStack()", 1, true) ~= nil, true, "generic behavior stack")
 	T.eq(controller:find("ent:NSDebugWatch(log)", 1, true) ~= nil, true, "generic behavior watch")
@@ -118,7 +118,7 @@ T.test("the shared path generator rejects areas and openings the agent's collisi
 	T.eq(navClearance:find("NavGaps.FitLines(", 1, true) ~= nil, true, "checks possible crossings along an opening")
 	T.eq(navClearance:find("endpos = finish", 1, true) ~= nil, true, "sweeps along the crossing direction")
 	T.eq(nav:find("function WS.NavHullClearance(entity, mask)", 1, true) ~= nil, true, "navigation-layer API")
-	T.eq(nextsoldier:find("WS.NavHullClearance(self, WS.ClipMasks().brushes)", 1, true) ~= nil, true, "NextBot uses the shared primitive")
+	T.eq(nextsoldier:find("Host.current:PathClearance(self)", 1, true) ~= nil, true, "NextBot uses the shared primitive")
 	T.eq(nextsoldier:find("return cost(area, fromArea, ladder, elevator, length, fits)", 1, true) ~= nil, true, "passes clearance to the cost pipeline")
 	T.eq(nextsoldier:find("if fits == false then return -1 end", 1, true) ~= nil, true, "default generator rejects an unfit area")
 	T.eq(warSoldier:find("Base().GetPathGenerator(self, self.NSPathCost() or NoPath)", 1, true) ~= nil, true, "combat costs go through the shared generator")

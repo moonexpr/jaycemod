@@ -3,7 +3,7 @@
 -- first use so a map loads only its own. They register as any script's do
 -- (wartactics.scenarios), which is all the war decides from.
 local Scenarios = wartactics.scenarios
-local Behaviors = nextsoldier.behaviors
+local Behaviors = nextsoldier.behavior.registry
 module(...)
 
 -- games.gameplay.rounds Mode NAMEs -> the variant's module; any other mode, or

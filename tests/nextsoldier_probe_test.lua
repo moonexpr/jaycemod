@@ -1,8 +1,8 @@
--- nextsoldier.probe: a path follower stripped of the war (ns_lanes_probe's
+-- nextsoldier.locomotion.probe: a path follower stripped of the war (ns_lanes_probe's
 -- probes): it walks a list of points in order, and where it stalls it says
 -- so, after the soldier's own remedies, then goes on to the next point.
 local T = dofile("tests/harness.lua")
-local Probe = nextsoldier.probe
+local Probe = nextsoldier.locomotion.probe
 
 local function P(x, y, z) return { x = x, y = y, z = z or 0 } end
 

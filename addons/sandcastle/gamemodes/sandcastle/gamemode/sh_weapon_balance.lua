@@ -3,7 +3,7 @@
 -- own, and it fires no faster than its interval. A player's attack button
 -- is held back until the weapon may fire again (HL2's pistol refires on
 -- every click, whatever its next attack time says); a soldier's gun keeps
--- its own pace (nextsoldier.weapons).
+-- its own pace (nextsoldier.body.weapons).
 -- Its hits are ws/sv_hits.lua's.
 local Balance = WS.require("games.gameplay.combat.weapon_balance")
 local BulletSteps = WS.require("games.gameplay.combat.bullet_steps")

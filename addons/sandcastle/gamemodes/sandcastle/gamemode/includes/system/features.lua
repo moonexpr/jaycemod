@@ -51,7 +51,7 @@ end
 
 -- The folders whose files clients are sent, as the loader names them
 -- (relative to the gamemode folder, or an addon's tree: WS.LoaderFile).
-CLIENT_DIRS = { "foundation/", "includes/", "nextsoldier/", "wartactics/", "features/", "vendor/" }
+CLIENT_DIRS = { "foundation/", "includes/", "wartactics/", "features/", "vendor/" }
 
 local REALM_OF = {
 	[SERVER] = SERVER,
