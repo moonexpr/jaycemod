@@ -1081,11 +1081,9 @@ T.test("respawn waves scale with the team, and admins and maps set them", functi
 	T.eq(round:WaveDue(RED, now, 8), true, "the first wave is due at once")
 	T.eq(round:WaveDue(RED, now + 1, 8), false, "the next is a wave later")
 	T.eq(round:WaveDue(RED, now + 20, 8), true, "a wave later")
-	-- died at now + 21: may spawn at now + 21 + 6.4 + 20, on a wave boundary
-	T.eq(round:NextRespawn(RED, now + 21, 8), now + 60, "the wave after the death animation and a wave")
-	T.eq(round:MayRespawn(RED, now + 21, now + 47), false, "too soon")
-	T.eq(round:MayRespawn(RED, now + 21, now + 48), true, "after the animation and a wave")
-	T.eq(round:RespawnAt(RED, now + 21, 8), now + 60, "the respawn time shown")
+	-- died at now + 21: may spawn at now + 21 + 6.4, and the next wave is at now + 40
+	T.eq(round:NextRespawn(RED, now + 21, 8), now + 40, "the next wave after the death animation")
+	T.eq(round:RespawnAt(RED, now + 21, 8), now + 40, "the respawn time shown")
 end)
 
 -- The controller checks the waves each round think, a little after one
@@ -1114,33 +1112,98 @@ T.test("the respawn time shown is the wave that brings the player back", functio
 	local t = now
 	while true do
 		t = t + THINK
-		if round:WaveDue(RED, t, 8) and round:MayRespawn(RED, death, t) then break end
+		if round:WaveDue(RED, t, 8) and t >= death + Rounds.DEATH_ANIM_LENGTH then break end
 	end
 	T.near(t, shown, THINK, "back on the wave shown")
 end)
 
--- A player who switches teams dies at once and comes back with the new
--- team's next wave, not a whole wave after: only the death animation must
--- pass first (switched).
-T.test("a player who switched teams comes back with the new team's next wave", function()
+-- Each team's waves are a looping timer: the dead wait out the death
+-- animation, then come back when the timer next reaches zero.
+T.test("the dead come back with their team's next wave, once the death animation has passed", function()
 	local round = Running()
 	local now = T0 + 20
 	round:SetTeamWaveTime(RED, 20)
 	T.eq(round:WaveDue(RED, now, 8), true, "a wave now, the next at now + 20")
-	T.eq(round:NextRespawn(RED, now + 1, 8, true), now + 20, "switched at now + 1: the next wave")
-	T.eq(round:RespawnAt(RED, now + 1, 8, true), now + 20, "the respawn time shown")
-	T.eq(round:MayRespawn(RED, now + 1, now + 20, true), true, "spawns with it")
-	T.eq(round:MayRespawn(RED, now + 1, now + 7, true), false, "not before the death animation")
-	T.eq(round:NextRespawn(RED, now + 1, 8, false), now + 40, "killed instead: a whole wave after")
-	T.eq(round:NextRespawn(RED, now + 18, 8, true), now + 40, "switched as the wave comes: the one after the animation")
+	T.eq(round:NextRespawn(RED, now + 1, 8), now + 20, "died at now + 1: the next wave")
+	T.eq(round:RespawnAt(RED, now + 1, 8), now + 20, "the respawn time shown")
+	T.eq(round:NextRespawn(RED, now + 18, 8), now + 40, "died as the wave comes: the one after the animation")
+end)
+
+T.test("a wait is never longer than the death animation and one wave", function()
+	local round = Running()
+	local now = T0 + 20
+	local wave = 20
+	round:SetTeamWaveTime(RED, wave)
+	round:WaveDue(RED, now, 8)
+	for offset = 0, wave - 1 do
+		local death = now + offset
+		local wait = round:NextRespawn(RED, death, 8) - death
+		T.eq(wait >= Rounds.DEATH_ANIM_LENGTH, true, "at least the animation, dead at +" .. offset)
+		T.eq(wait <= Rounds.DEATH_ANIM_LENGTH + wave, true, "at most a wave more, dead at +" .. offset)
+	end
+end)
+
+-- The team's timer is the same for all its dead; a player's respawn time is
+-- that timer translated by their respawn modifiers (shift).
+T.test("a player's respawn time is the team's timer, translated by their modifiers", function()
+	local round = Running()
+	local now = T0 + 20
+	local wave = 20
+	round:SetTeamWaveTime(RED, wave)
+	round:WaveDue(RED, now, 8)
+	local nextWave = now + wave
+	local death = now + 1
+	T.eq(round:NextRespawn(RED, death, 8, -3), nextWave - 3, "sooner than the team's zero")
+	T.eq(round:NextRespawn(RED, death, 8, 5), nextWave + 5, "later than the team's zero")
+	T.eq(round:RespawnAt(RED, death, 8, -3), nextWave - 3, "the respawn time shown")
+	local status, at = round:RespawnStatus(RED, death, 8, 5)
+	T.eq(status, Spawns.WAVE, "said: a wave")
+	T.eq(at, nextWave + 5, "at the player's own time")
+	T.eq(round:WaveDue(RED, nextWave - 3, 8), false, "the team's timer has not moved")
+	T.eq(round:WaveDue(RED, nextWave, 8), true, "it reaches zero when it always would")
+end)
+
+T.test("a reward stops at the end of the death animation, and is never worse than none", function()
+	local round = Running()
+	local now = T0 + 20
+	local wave = 20
+	round:SetTeamWaveTime(RED, wave)
+	round:WaveDue(RED, now, 8)
+	local nextWave = now + wave
+	local death = nextWave - Rounds.DEATH_ANIM_LENGTH - 1
+	T.eq(round:NextRespawn(RED, death, 8, -wave), death + Rounds.DEATH_ANIM_LENGTH, "no sooner than the animation's end")
+	for offset = 0, wave - 1 do
+		local died = now + offset
+		local base = round:NextRespawn(RED, died, 8)
+		T.eq(round:NextRespawn(RED, died, 8, -3) <= base, true, "a reward, dead at +" .. offset)
+		T.eq(round:NextRespawn(RED, died, 8, 5), base + 5, "a penalty, dead at +" .. offset)
+	end
+end)
+
+-- The controller brings each player back at their own time only while the
+-- waves run, so nobody spawns into a win's humiliation.
+T.test("the dead come back on their own time only while the waves run", function()
+	local preround = Rounds.New(Settings({ respawnWaveTime = 20 }))
+	preround:Think(T0, World())
+	T.eq(preround:WavesRun(), true, "the pre-round's quick waves")
+	local round = Running()
+	T.eq(round:WavesRun(), true, "a running round")
+	round:SetRespawnsDisabled(true)
+	T.eq(round:WavesRun(), false, "an admin stopped respawns")
+	round:SetRespawnsDisabled(false)
+	round:SetWinningTeam(T0 + 20, BLUE, W.ALL_POINTS_CAPTURED, false, false, false, FakeObjective.Objective())
+	T.eq(round:State(), State.TEAM_WIN, "a win")
+	T.eq(round:WavesRun(), false, "no respawn in the humiliation")
+	local suddenDeath = Running()
+	suddenDeath:SetStalemate(T0 + 20, SM.TIMER, false, false)
+	T.eq(suddenDeath:WavesRun(), false, "no respawn in sudden death")
 end)
 
 T.test("setup respawns at once, and sudden death or an admin stops respawns", function()
 	local round = Running()
 	local now = T0 + 20
 	round:SetSetup(true)
-	T.eq(round:MayRespawn(RED, now, now), true, "setup: no wait of their own")
-	T.eq(round:NextRespawn(RED, now, 8), now, "the first quick wave")
+	T.eq(round:NextRespawn(RED, now, 8), now, "setup: no wait of their own, the first quick wave")
 	T.eq(round:PointsMayBeCaptured(), false, "setup")
 	round:SetSetup(false)
 	T.eq(round:SetRespawnsDisabled(true), false, "disabling reschedules nobody")
@@ -1162,12 +1225,11 @@ T.test("the pre-round and setup respawn the dead with a wave every QUICK_WAVE", 
 	local preround = Rounds.New(Settings({ respawnWaveTime = 20 }))
 	preround:Think(T0, World())
 	T.eq(preround:State(), State.PREROUND, "the pre-round")
-	T.eq(preround:MayRespawn(RED, T0 + 0.5, T0 + 0.5), true, "pre-round: no wait of their own")
+	T.eq(preround:NextRespawn(RED, T0 + 0.5, 8), T0 + 0.5, "pre-round: no wait of their own")
 	Expect(preround:Think(T0 + 0.5, World()), WAVES, "a quick wave")
 	local round = Running({ respawnWaveTime = 20 })
 	local now = T0 + 20
 	round:SetSetup(true)
-	T.eq(round:MayRespawn(RED, now, now, true), true, "switched teams: no wait either")
 	Expect(round:Think(now, World()), WAVES, "a wave now")
 	Expect(round:Think(now + Rounds.QUICK_WAVE / 2, World()), {}, "none between")
 	T.eq(round:RespawnAt(RED, now + 0.1, 8), now + Rounds.QUICK_WAVE, "the respawn time shown: the next quick wave")

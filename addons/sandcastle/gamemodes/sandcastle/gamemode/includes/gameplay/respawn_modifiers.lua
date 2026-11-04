@@ -1,10 +1,9 @@
 -- Respawn modifiers: what a player did since their last spawn moves their
 -- respawn sooner or later, each reason told on the respawn screen. TF2 has
 -- none of its own (its waves vary by team: team size, captures' team_spawn);
--- these are Sandcastle's. The total moves the time a dead player's wait
--- counts from (games.gameplay.rounds' MinSpawnTime), so the waves keep their
--- rules: sooner by at most the team's wave, never into the death animation,
--- later by at most MOST_PENALTY.
+-- these are Sandcastle's. The total translates the team's constant timer for
+-- this player (games.gameplay.rounds' NextRespawn): sooner by at most the
+-- team's wave, never into the death animation, later by at most MOST_PENALTY.
 local format, ipairs, max, min = string.format, ipairs, math.max, math.min
 local Credit = gameplay.kill_credit
 module(...)

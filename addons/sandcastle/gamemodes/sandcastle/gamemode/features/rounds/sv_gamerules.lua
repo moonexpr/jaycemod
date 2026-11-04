@@ -52,21 +52,25 @@ end
 
 -- The gamerules surface the gamerules forward ------------------------------------------
 
+-- A dead player's status, and the time of their own that brings them back
+-- (Controller:RespawnDue) when it is a wave's.
+local function TellRespawn(ply, status, at)
+	ply.wsRespawnAt = status == Spawns.WAVE and at or nil
+	WS.SetSpawnStatus(ply, status, at)
+end
+
 -- Without rounds there are no respawn waves: the player clicks to respawn,
 -- as in Sandbox.
 function Controller:OnPlayerDeath(ply)
 	if not Active() then return end
 	local now = CurTime()
 	ply.wsDeathTime = now
-	-- a death that changed the player's team (WS.SetPlayerTeam) waits only
-	-- for the new team's next wave
-	ply.wsSwitchedTeam = ply.wsChangingTeam == true
 	local t = WS.TeamOf(ply)
 	-- Sandbox mode: no waves, the player clicks to respawn (GM:PlayerDeathThink)
-	if t == UNASSIGNED or WS.GameplayStopped() then return WS.SetSpawnStatus(ply, Spawns.NONE, 0) end
-	-- what the player did moves their wait, at most a wave sooner (ws/sv_respawn_modifiers.lua)
-	local countsFrom = now + WS.RespawnAdjust(ply, now, self.round:WaveMaxLength(t, 0, false))
-	WS.SetSpawnStatus(ply, self.round:RespawnStatus(t, countsFrom, #TeamPlayers(t), ply.wsSwitchedTeam))
+	if t == UNASSIGNED or WS.GameplayStopped() then return TellRespawn(ply, Spawns.NONE, 0) end
+	-- what the player did translates the team's timer, at most a wave sooner (ws/sv_respawn_modifiers.lua)
+	local shift = WS.RespawnAdjust(ply, now, self.round:WaveMaxLength(t, 0, false))
+	TellRespawn(ply, self.round:RespawnStatus(t, now, #TeamPlayers(t), shift))
 end
 
 -- mp_round_restart, the reset vote and the editors: a round
@@ -338,9 +342,8 @@ end
 -- A dead player's respawn time again, from their death.
 function Controller:OnPlayerDeathTime(ply)
 	local t = WS.TeamOf(ply)
-	if WS.GameplayStopped() then return WS.SetSpawnStatus(ply, Spawns.NONE, 0) end
-	WS.SetSpawnStatus(ply, self.round:RespawnStatus(t, WS.RespawnCountsFrom(ply, ply.wsDeathTime or CurTime()), #TeamPlayers(t),
-		ply.wsSwitchedTeam == true))
+	if WS.GameplayStopped() then return TellRespawn(ply, Spawns.NONE, 0) end
+	TellRespawn(ply, self.round:RespawnStatus(t, ply.wsDeathTime or CurTime(), #TeamPlayers(t), WS.RespawnShift(ply)))
 end
 
 -- The Game Rules editor's override: seconds >= 0, or nil for the map's.

@@ -451,6 +451,7 @@ function Controller:ThinkRound(now)
 	local state = self.round:State()
 	if state == S.GAME_OVER or state == S.STALEMATE or (state == S.TEAM_WIN and self.round:Winner() ~= UNASSIGNED) then self:KeepSpawnDoorsOpen(now) end
 	self:Apply(self.round:Think(now, self:World(now)))
+	self:RespawnDue(now)
 end
 
 hook.Add("Think", THINK_HOOK, function()

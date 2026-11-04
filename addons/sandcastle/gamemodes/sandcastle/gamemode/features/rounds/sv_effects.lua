@@ -198,12 +198,27 @@ local function FireCompetitive(output)
 	for _, logic in ipairs(ents.FindByClass(COMPETITIVE_CLASS)) do logic:TriggerOutput(output, logic) end
 end
 
--- The team's wave: its dead whose wait is over, through the spawn manager.
-local function RespawnTeam(self, t, now)
+-- The team's wave: its dead with no time of their own (dead since before the
+-- waves ran, or held by a spawn lock), through the spawn manager.
+local function RespawnTeam(t)
 	local due = {}
 	for _, ply in ipairs(TeamPlayers(t)) do
-		if not ply:Alive() and self.round:MayRespawn(t, WS.RespawnCountsFrom(ply, ply.wsDeathTime or 0), now, ply.wsSwitchedTeam == true) then
-			due[#due + 1] = ply
+		if not ply:Alive() and not ply.wsRespawnAt then due[#due + 1] = ply end
+	end
+	WS.Respawn(due)
+end
+
+-- The dead whose own time has come (OnPlayerDeath's): the team's timer,
+-- translated by their respawn modifiers. Each time brings a player back once.
+function Controller:RespawnDue(now)
+	if not self.round:WavesRun() then return end
+	local due = {}
+	for _, t in ipairs({ RED, BLUE }) do
+		for _, ply in ipairs(TeamPlayers(t)) do
+			if not ply:Alive() and ply.wsRespawnAt and ply.wsRespawnAt <= now then
+				ply.wsRespawnAt = nil
+				due[#due + 1] = ply
+			end
 		end
 	end
 	WS.Respawn(due)
@@ -302,7 +317,7 @@ local EFFECTS = {
 		end)
 		WS.Respawn(due)
 	end,
-	respawn_team = function(self, e, now) RespawnTeam(self, e.team, now) end,
+	respawn_team = function(_, e) RespawnTeam(e.team) end,
 	-- Sudden death over: its survivors, players and the AI war's soldiers
 	-- (WSSuddenDeathOver), overhealed (Rounds.SurvivorHealth), then
 	-- every dead player on a team back, to enjoy the victory or the

@@ -66,8 +66,8 @@ function WS.RespawnAdjust(ply, deathTime, wave)
 	return total
 end
 
--- The time a player dead since deathTime counts their respawn from: their
--- death, moved by their modifiers (none before their first death).
-function WS.RespawnCountsFrom(ply, deathTime)
-	return deathTime + (ply.wsRespawnAdjust or 0)
+-- The seconds a dead player's modifiers translate their team's timer by
+-- (none before their first death).
+function WS.RespawnShift(ply)
+	return ply.wsRespawnAdjust or 0
 end

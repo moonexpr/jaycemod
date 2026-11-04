@@ -58,8 +58,8 @@ T.test("reasons come in a fixed order: sooner first, then later", function()
 	T.eq(table.concat(order, ","), table.concat({ M.KILLS, M.CAPTURE, M.DEFENSE, M.FINISHED_OFF, M.SUICIDE }, ","))
 end)
 
--- The total moves when the wait counts from: sooner by at most the team's
--- wave (the death animation stays), later by at most MOST_PENALTY.
+-- The total translates the team's timer for the player: sooner by at most
+-- the team's wave, later by at most MOST_PENALTY.
 T.test("the total is the sum, at most a wave sooner and MOST_PENALTY later", function()
 	local wave = 10
 	local list = { { seconds = -2 }, { seconds = 5 } }

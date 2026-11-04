@@ -148,8 +148,8 @@ PREROUND_SECONDS = 1
 -- The bonus rounds, deathmatch and sudden death, open frozen this long in
 -- place of setup, so everyone reads the rules (bonus_freeze).
 BONUS_FREEZE_SECONDS = 3
--- GetMinTimeWhenPlayerMaySpawn: 2 s death animation plus the freezecam's
--- spec_freeze_traveltime (0.4) and spec_freeze_time (4).
+-- 2 s death animation plus the freezecam's spec_freeze_traveltime (0.4) and
+-- spec_freeze_time (4), as GetMinTimeWhenPlayerMaySpawn's.
 DEATH_ANIM_LENGTH = 2.0 + 0.4 + 4.0
 -- GetRespawnTimeScalar: teams this big wait the whole wave.
 OPTIMAL_TEAM_SIZE = 8
@@ -1712,52 +1712,61 @@ function Round:SetWaveScale(team, scale)
 	self.waveScale[team] = scale
 end
 
--- CTFGameRules::GetMinTimeWhenPlayerMaySpawn: the earliest a player dead
--- since deathTime may spawn: with the next quick wave in the pre-round and
--- setup (RespawnsAtOnce), else after the death animation and a whole wave;
--- switched (a player who died changing teams) waits only the animation, so
--- the new team's next wave brings them back.
-local function MinSpawnTime(self, team, deathTime, switched)
+-- The earliest a player dead since deathTime may spawn: with the next quick
+-- wave in the pre-round and setup (RespawnsAtOnce), else after the death
+-- animation. Sandcastle's own: TF2's GetMinTimeWhenPlayerMaySpawn adds a
+-- whole wave, so a wave's length here is the longest wait past the animation
+-- and mp_respawnwavetime dials the fight's intensity directly.
+local function MinSpawnTime(self, deathTime)
 	if self:RespawnsAtOnce() then return deathTime end -- the next quick wave
-	local delay = DEATH_ANIM_LENGTH
-	if not switched then delay = delay + self:WaveMaxLength(team, 0, false) end
-	return deathTime + delay
+	return deathTime + DEATH_ANIM_LENGTH
 end
 
-function Round:MayRespawn(team, deathTime, now, switched)
-	return now >= MinSpawnTime(self, team, deathTime, switched)
-end
-
--- GetNextRespawnWave
-function Round:NextRespawn(team, deathTime, teamSize, switched)
-	local minTime = MinSpawnTime(self, team, deathTime, switched)
-	if self:RespawnsAtOnce() then return math.max(self.nextWave[team], minTime) end
+-- When a player dead since deathTime comes back: the team's timer, a
+-- constant loop, translated by shift, the seconds of their own respawn
+-- modifiers (negative: sooner, never into the death animation; none in the
+-- quick waves). The wave is chosen before the shift, so a reward can never
+-- cost a wave.
+function Round:NextRespawn(team, deathTime, teamSize, shift)
+	local minTime = MinSpawnTime(self, deathTime)
 	local nextWave = self.nextWave[team]
+	if self:RespawnsAtOnce() then return math.max(nextWave, minTime) end
 	local waveLength = self:WaveMaxLength(team, teamSize, true)
-	if waveLength <= 0 then return math.max(nextWave, minTime) end
-	while nextWave < minTime do
-		nextWave = nextWave + waveLength
+	if waveLength <= 0 then
+		nextWave = math.max(nextWave, minTime)
+	else
+		while nextWave < minTime do
+			nextWave = nextWave + waveLength
+		end
 	end
-	return nextWave
+	return math.max(nextWave + (shift or 0), minTime)
 end
 
 -- The respawn time a dead player is shown: 0 in sudden death (the arena
 -- round, out of its setup) and while an admin has stopped respawns.
-function Round:RespawnAt(team, deathTime, teamSize, switched)
+function Round:RespawnAt(team, deathTime, teamSize, shift)
 	if (self:State() == State.STALEMATE and not self.inSetup) or self.respawnsDisabled then return 0 end
-	return self:NextRespawn(team, deathTime, teamSize, switched)
+	return self:NextRespawn(team, deathTime, teamSize, shift)
+end
+
+-- Whether the dead are coming back now, each at their own time: the states
+-- whose think checks the waves, unless an admin has stopped respawns.
+function Round:WavesRun()
+	if self.respawnsDisabled then return false end
+	local state = self:State()
+	return state == State.PREROUND or state == State.RND_RUNNING or (state == State.STALEMATE and self.inSetup)
 end
 
 -- Why a dead player is not spawning (games.system.spawn_manager's
 -- statuses) and, waiting for a wave, when it comes: none in an arena round
 -- (STALEMATE is the mode's round) or sudden death, out of setup; none
 -- until the next round while an admin has stopped respawns.
-function Round:RespawnStatus(team, deathTime, teamSize, switched)
+function Round:RespawnStatus(team, deathTime, teamSize, shift)
 	if self:State() == State.STALEMATE and not self.inSetup then
 		return self:Mode().STALEMATE_IS_ROUND and Spawns.ARENA or Spawns.SUDDEN_DEATH, 0
 	end
 	if self.respawnsDisabled then return Spawns.NEXT_ROUND, 0 end
-	return Spawns.WAVE, self:NextRespawn(team, deathTime, teamSize, switched)
+	return Spawns.WAVE, self:NextRespawn(team, deathTime, teamSize, shift)
 end
 
 -- Whether the team's wave comes now; if so the next is set a wave after the
