@@ -8,7 +8,7 @@
 
 use crate::image::Image;
 use crate::layout::*;
-use crate::tactical::{self, Step};
+use crate::{scenario_monitor, tactical};
 use foundation::lua::{
     api, push_str, set_function, string_at, CFunction, GLOBALSINDEX, L, TFUNCTION, TTABLE,
 };
@@ -18,7 +18,7 @@ use std::ptr::null_mut;
 
 const REGISTRY: c_int = -10000;
 const ACTIONS: &CStr = c"nextsoldier.engine.actions";
-const NATIVE_MONITOR: &CStr = c"_native_monitor";
+const NATIVE_KIND: &CStr = c"_native_kind";
 
 extern "system" {
     fn GetModuleHandleA(name: *const c_char) -> *mut c_void;
@@ -28,8 +28,7 @@ struct Binding {
     lua: L,
     primary: Box<[usize]>,
     query: Box<[usize]>,
-    tactical_primary: Box<[usize]>,
-    tactical_query: Box<[usize]>,
+    natives: Vec<NativeTables>,
     original_destructor: usize,
     bot_vtable: usize,
     root_vtable: usize,
@@ -54,6 +53,26 @@ struct Binding {
 struct Soldier {
     behavior: *mut u64,
     shadow: *mut u64,
+}
+
+/// A kind of action implemented in Rust. Its Lua table is only its config; what it
+/// overrides of Action<CLuaNextBot> is its own module's. `engine.<name>` makes a config.
+pub(crate) struct Kind {
+    pub name: &'static CStr,
+    /// (slot of the primary vtable, what answers it)
+    pub slots: fn() -> Vec<(usize, usize)>,
+    /// The action's `state`, from its config at the given index.
+    pub init: unsafe fn(L, c_int) -> u64,
+    pub constructor: CFunction,
+}
+
+const KINDS: &[&Kind] = &[&tactical::KIND, &scenario_monitor::KIND];
+
+struct NativeTables {
+    name: &'static CStr,
+    primary: Box<[usize]>,
+    query: Box<[usize]>,
+    init: unsafe fn(L, c_int) -> u64,
 }
 
 static mut BINDING: Option<Binding> = None;
@@ -95,7 +114,7 @@ fn ours(action: *mut Action) -> bool {
     !action.is_null()
         && unsafe {
             let (vtable, b) = ((*action).vtable, binding());
-            vtable == b.primary.as_ptr() || vtable == b.tactical_primary.as_ptr()
+            vtable == b.primary.as_ptr() || b.natives.iter().any(|n| vtable == n.primary.as_ptr())
         }
 }
 
@@ -128,17 +147,15 @@ unsafe fn new_action(l: L, table: c_int, me: c_int) -> *mut LuaAction {
         b.next_id += 1;
         b.next_id
     });
-    // engine.TacticalMonitor's config: its hooks are ours, not its table's
-    (api.getfield)(l, table, NATIVE_MONITOR.as_ptr());
-    let native = (api.toboolean)(l, -1) != 0;
-    (api.getfield)(l, table, c"never_retreats".as_ptr());
-    let never_retreats = native && (api.toboolean)(l, -1) != 0;
-    (api.settop)(l, top);
-    let (vtable, query_vtable) = if native {
-        (b.tactical_primary.as_ptr(), b.tactical_query.as_ptr())
-    } else {
-        (b.primary.as_ptr(), b.query.as_ptr())
+    // a native kind's config: its hooks are that kind's, not its table's
+    (api.getfield)(l, table, NATIVE_KIND.as_ptr());
+    let kind = string_at(l, -1);
+    let native = b.natives.iter().find(|n| kind == Some(n.name.to_bytes()));
+    let (vtable, query_vtable, state) = match native {
+        Some(n) => (n.primary.as_ptr(), n.query.as_ptr(), (n.init)(l, table)),
+        None => (b.primary.as_ptr(), b.query.as_ptr(), 0),
     };
+    (api.settop)(l, top);
     push_actions(l);
     (api.pushvalue)(l, table);
     (api.rawseti)(l, -2, id as c_int * 2);
@@ -165,7 +182,7 @@ unsafe fn new_action(l: L, table: c_int, me: c_int) -> *mut LuaAction {
             suspended: false,
         },
         id,
-        never_retreats,
+        state,
     }));
     b.live.insert(action);
     action
@@ -465,10 +482,22 @@ unsafe extern "win64" fn should_retreat(this: *mut u8, _me: *const c_void) -> i3
     query_answer(this, c"ShouldRetreat")
 }
 
-// The TacticalMonitor, native: its config table is what it holds of Lua ---------------
+// What a native action has of the binding ---------------------------------------------
 
-/// A new action from the table at the top of the stack, nil or any other making none.
-unsafe fn action_from_top(l: L, this: *mut LuaAction) -> *mut Action {
+/// Runs `f` with the action's config table at the top of the stack, then puts the
+/// stack back.
+pub(crate) unsafe fn with_config<R>(this: *mut LuaAction, f: impl FnOnce(L) -> R) -> R {
+    let l = binding().lua;
+    let top = (api().gettop)(l);
+    push_table(l, this.cast());
+    let result = f(l);
+    (api().settop)(l, top);
+    result
+}
+
+/// A new action of the table at the top of the stack, for this action's soldier; nil
+/// or any other value makes none.
+pub(crate) unsafe fn action_from_top(l: L, this: *mut LuaAction) -> *mut Action {
     let api = api();
     if (api.type_of)(l, -1) != TTABLE {
         return null_mut();
@@ -477,106 +506,91 @@ unsafe fn action_from_top(l: L, this: *mut LuaAction) -> *mut Action {
     new_action(l, -2, -1).cast()
 }
 
-/// Calls the function at the top of the stack (protected) with the soldier; the
-/// action it makes. One that fails is reported, and makes none.
-unsafe fn made_by(l: L, this: *mut LuaAction) -> *mut Action {
+/// Calls the function at the top of the stack with `this`'s soldier and `count` more
+/// arguments pushed above it by `args`, protected: the engine's frames do not expect a
+/// Lua error. One that fails is reported. Its result is left on the stack, or false.
+pub(crate) unsafe fn call_with_me(
+    l: L,
+    this: *mut LuaAction,
+    args: impl FnOnce(L) -> c_int,
+) -> bool {
     let api = api();
     let function = (api.gettop)(l);
-    if (api.type_of)(l, function) != TFUNCTION {
-        return null_mut();
+    if (api.iscfunction)(l, function) == 0 && (api.type_of)(l, function) != TFUNCTION {
+        return false;
     }
     (api.getfield)(l, GLOBALSINDEX, c"debug".as_ptr());
     (api.getfield)(l, -1, c"traceback".as_ptr());
     (api.remove)(l, -2);
     (api.insert)(l, function);
     push_me(l, this);
-    if (api.pcall)(l, 1, 1, function) != 0 {
+    let count = args(l);
+    if (api.pcall)(l, count + 1, 1, function) != 0 {
         (api.getfield)(l, GLOBALSINDEX, c"ErrorNoHalt".as_ptr());
         (api.pushvalue)(l, -2);
         push_str(l, "\n");
         (api.call)(l, 2, 0);
-        return null_mut();
+        return false;
     }
-    action_from_top(l, this)
+    true
 }
 
-/// InitialContainedAction: what the scenario runs, as CTFBotTacticalMonitor's
-/// `new CTFBotScenarioMonitor`.
-unsafe extern "win64" fn tactical_initial(this: *mut LuaAction, _me: *mut c_void) -> *mut Action {
-    let l = binding().lua;
-    let top = (api().gettop)(l);
-    push_table(l, this.cast());
-    (api().getfield)(l, -1, c"scenario".as_ptr());
-    let child = action_from_top(l, this);
-    (api().settop)(l, top);
-    child
+/// As call_with_me, with the config at `config` first: a native C function's arguments.
+pub(crate) unsafe fn call_with_config(l: L, this: *mut LuaAction, config: c_int) -> bool {
+    let api = api();
+    let function = (api.gettop)(l);
+    (api.getfield)(l, GLOBALSINDEX, c"debug".as_ptr());
+    (api.getfield)(l, -1, c"traceback".as_ptr());
+    (api.remove)(l, -2);
+    (api.insert)(l, function);
+    (api.pushvalue)(l, config);
+    push_me(l, this);
+    if (api.pcall)(l, 2, 1, function) != 0 {
+        (api.getfield)(l, GLOBALSINDEX, c"ErrorNoHalt".as_ptr());
+        (api.pushvalue)(l, -2);
+        push_str(l, "\n");
+        (api.call)(l, 2, 0);
+        return false;
+    }
+    true
 }
 
-/// CTFBotTacticalMonitor::Update: asks the actions it runs, through the engine's own
-/// query walk, whether to retreat.
-unsafe extern "win64" fn tactical_update(
-    this: *mut LuaAction,
-    ret: *mut ActionResult,
-    me: *mut u8,
-    _interval: f32,
-) -> *mut ActionResult {
-    let behavior = (*this).base.behavior.cast::<u8>();
-    let query = behavior.add(8);
+/// The action the function at the top of the stack makes for this action's soldier.
+pub(crate) unsafe fn made_by(l: L, this: *mut LuaAction) -> *mut Action {
+    if call_with_me(l, this, |_| 0) {
+        action_from_top(l, this)
+    } else {
+        null_mut()
+    }
+}
+
+/// What the engine's Behavior answers to the IContextualQuery at `slot`, walking from
+/// the innermost action out. `me` is the actor the action was handed.
+pub(crate) unsafe fn behavior_answer(this: *mut LuaAction, me: *mut u8, slot: usize) -> i32 {
+    let query = (*this).base.behavior.cast::<u8>().add(8);
     let table = *(query as *const *const usize);
     let ask: unsafe extern "win64" fn(*mut u8, *const c_void) -> i32 =
-        std::mem::transmute(*table.add(SHOULD_RETREAT));
-    let answer = ask(query, me.add(INEXTBOT_OFFSET).cast());
-    let mut result = CONTINUING;
-    if tactical::step(answer, (*this).never_retreats) == Step::Retreat {
-        let l = binding().lua;
-        let top = (api().gettop)(l);
-        push_table(l, this.cast());
-        (api().getfield)(l, -1, c"retreat".as_ptr());
-        let action = made_by(l, this);
-        (api().settop)(l, top);
-        if !action.is_null() {
-            result = ActionResult {
-                kind: SUSPEND_FOR,
-                action,
-                reason: c"Backing off".as_ptr(),
-            };
-        }
-    }
-    ret.write(result);
-    ret
+        std::mem::transmute(*table.add(slot));
+    ask(query, me.add(INEXTBOT_OFFSET).cast())
 }
 
-/// CTFBotTacticalMonitor::OnCommandString: the command its config names, suspended
-/// for at the next update, over everything it runs.
-unsafe extern "win64" fn tactical_command(
-    this: *mut LuaAction,
-    ret: *mut EventResult,
-    _me: *mut c_void,
-    command: *const c_char,
-) -> *mut EventResult {
-    let l = binding().lua;
+/// Marks the table at 1 as a config of `kind`.
+pub(crate) unsafe fn mark_config(l: L, kind: &CStr) {
     let api = api();
-    let top = (api.gettop)(l);
-    let mut result = EventResult {
-        kind: CONTINUE,
-        action: null_mut(),
-        reason: std::ptr::null(),
-        priority: RESULT_TRY,
-    };
-    push_table(l, this.cast());
-    (api.getfield)(l, -1, c"commands".as_ptr());
-    if (api.type_of)(l, -1) == TTABLE {
-        (api.getfield)(l, -1, command);
-        let action = made_by(l, this);
-        if !action.is_null() {
-            result.kind = SUSPEND_FOR;
-            result.action = action;
-            result.reason = intern(CStr::from_ptr(command).to_bytes());
-        }
-    }
-    (api.settop)(l, top);
-    ret.write(result);
-    ret
+    (api.pushlstring)(l, kind.as_ptr(), kind.to_bytes().len());
+    (api.setfield)(l, 1, c"name".as_ptr());
+    (api.pushlstring)(l, kind.as_ptr(), kind.to_bytes().len());
+    (api.setfield)(l, 1, NATIVE_KIND.as_ptr());
+}
+
+/// A new action of the kind and config this one has: a monitor starting over.
+pub(crate) unsafe fn same_again(this: *mut LuaAction) -> *mut Action {
+    with_config(this, |l| action_from_top(l, this))
+}
+
+/// What the binding keeps for names and reasons, which the engine holds by pointer.
+pub(crate) fn interned(bytes: &[u8]) -> *const c_char {
+    intern(bytes)
 }
 
 // What Lua calls -----------------------------------------------------------------------
@@ -764,20 +778,26 @@ unsafe fn root_of(behavior: *mut u8) -> *mut Action {
     *(behavior.add(BEHAVIOR_ACTION) as *const *mut Action)
 }
 
-/// engine.Insert(bot, action): action, a table of hooks, runs from the bot's next
-/// update: the engine starts it. On a NextBot it goes under its CLuaBehaviour, from
-/// its BehaveStart or later; on a NextSoldier it is the root.
+/// engine.Insert(bot, action[, me]): action, a table of hooks, runs from the bot's next
+/// update: the engine starts it, and its hooks are given me (by default the bot). On a
+/// NextBot it goes under its CLuaBehaviour, from its BehaveStart or later; on a
+/// NextSoldier it is the root.
 unsafe extern "C-unwind" fn insert(l: L) -> c_int {
     let api = api();
-    (api.settop)(l, 2);
+    (api.settop)(l, 3);
     (api.checktype)(l, 2, TTABLE);
+    let me = if (api.type_of)(l, 3) == foundation::lua::TNIL {
+        1
+    } else {
+        3
+    };
     let (behavior, under_lua) = behavior_of(l, 1);
     let root = root_of(behavior);
     if !under_lua {
         if !root.is_null() {
             foundation::lua::raise_where(l, "the bot already runs an action".into());
         }
-        let action = new_action(l, 2, 1).cast::<Action>();
+        let action = new_action(l, 2, me).cast::<Action>();
         *(behavior.add(BEHAVIOR_ACTION) as *mut *mut Action) = action;
         return 0;
     }
@@ -795,7 +815,7 @@ unsafe extern "C-unwind" fn insert(l: L) -> c_int {
     if !(*root).child.is_null() {
         foundation::lua::raise_where(l, "the bot already runs an action".into());
     }
-    let action = new_action(l, 2, 1).cast::<Action>();
+    let action = new_action(l, 2, me).cast::<Action>();
     (*action).parent = root;
     (*root).child = action;
     0
@@ -858,28 +878,6 @@ unsafe extern "C-unwind" fn live(l: L) -> c_int {
     1
 }
 
-/// engine.TacticalMonitor{ scenario, never_retreats, retreat, commands } -> the
-/// monitor to Insert or return as an action: `scenario` the action it runs, `retreat`
-/// and each of `commands` a function of the soldier making what it suspends for.
-unsafe extern "C-unwind" fn tactical_monitor(l: L) -> c_int {
-    let api = api();
-    (api.settop)(l, 1);
-    (api.checktype)(l, 1, TTABLE);
-    (api.getfield)(l, 1, c"scenario".as_ptr());
-    if (api.type_of)(l, -1) != TTABLE {
-        foundation::lua::raise_where(
-            l,
-            "TacticalMonitor needs the scenario action it runs".into(),
-        );
-    }
-    (api.settop)(l, 1);
-    push_str(l, "TacticalMonitor");
-    (api.setfield)(l, 1, c"name".as_ptr());
-    (api.pushboolean)(l, 1);
-    (api.setfield)(l, 1, NATIVE_MONITOR.as_ptr());
-    1
-}
-
 /// engine.Command(bot, text): the engine's own OnCommandString on the bot, as `nb_command`.
 unsafe extern "C-unwind" fn command(l: L) -> c_int {
     let api = api();
@@ -903,7 +901,6 @@ unsafe extern "C-unwind" fn command(l: L) -> c_int {
 
 const FUNCTIONS: &[(&CStr, CFunction)] = &[
     (c"Insert", insert),
-    (c"TacticalMonitor", tactical_monitor),
     (c"Command", command),
     (c"Stack", stack),
     (c"ShouldHurry", query_hurry),
@@ -998,8 +995,24 @@ unsafe fn bind(l: L) -> Result<Binding, String> {
     let mut primary = absolute_slots(&primary);
     let mut query = absolute_slots(&query);
     let original_destructor = primary[DESTRUCTOR];
-    let mut tactical_primary = primary.clone();
-    let tactical_query = query.clone();
+    // each native kind's: the base Action's, but for what it answers itself
+    let natives = KINDS
+        .iter()
+        .map(|kind| {
+            let mut own = primary.clone();
+            own[DESTRUCTOR] = destructor as *const () as usize;
+            own[GET_NAME] = get_name as *const () as usize;
+            for (slot, answer) in (kind.slots)() {
+                own[slot] = answer;
+            }
+            NativeTables {
+                name: kind.name,
+                primary: own,
+                query: query.clone(),
+                init: kind.init,
+            }
+        })
+        .collect();
     primary[DESTRUCTOR] = destructor as *const () as usize;
     primary[GET_NAME] = get_name as *const () as usize;
     primary[ON_START] = on_start as *const () as usize;
@@ -1014,12 +1027,6 @@ unsafe fn bind(l: L) -> Result<Binding, String> {
     primary[GET_NAME] = get_name as *const () as usize;
     query[SHOULD_HURRY] = should_hurry as *const () as usize;
     query[SHOULD_RETREAT] = should_retreat as *const () as usize;
-    // what a monitor is, it answers itself; the base Action's for all else
-    tactical_primary[DESTRUCTOR] = destructor as *const () as usize;
-    tactical_primary[GET_NAME] = get_name as *const () as usize;
-    tactical_primary[UPDATE] = tactical_update as *const () as usize;
-    tactical_primary[INITIAL_CONTAINED] = tactical_initial as *const () as usize;
-    tactical_primary[ON_COMMAND_STRING] = tactical_command as *const () as usize;
     let mut player_intention = absolute_slots(&base_slots);
     let base_intention_destructor = player_intention[DESTRUCTOR];
     player_intention[DESTRUCTOR] = soldier_destructor as *const () as usize;
@@ -1029,8 +1036,7 @@ unsafe fn bind(l: L) -> Result<Binding, String> {
         lua: l,
         primary,
         query,
-        tactical_primary,
-        tactical_query,
+        natives,
         original_destructor,
         bot_vtable: base as usize + bots[0].0,
         root_vtable: base as usize + vtable(ROOT_CLASS, 0)?,
@@ -1072,6 +1078,9 @@ pub unsafe extern "C-unwind" fn gmod13_open(l: L) -> c_int {
             for (name, function) in FUNCTIONS {
                 set_function(l, name, *function);
             }
+            for kind in KINDS {
+                set_function(l, kind.name, kind.constructor);
+            }
             (api.getfield)(l, GLOBALSINDEX, c"player".as_ptr());
             set_function(l, c"CreateNextSoldier", create_next_soldier);
             (api.settop)(l, -2);
@@ -1089,6 +1098,8 @@ pub unsafe extern "C-unwind" fn gmod13_open(l: L) -> c_int {
         }
     }
     foundation::module::provide(l, Some(c"nextsoldier"), c"engine");
+    crate::scenarios_bind::push_module(l);
+    foundation::module::provide(l, Some(c"wartactics"), c"scenarios");
     0
 }
 

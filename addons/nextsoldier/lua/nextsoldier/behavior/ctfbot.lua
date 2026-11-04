@@ -1,13 +1,14 @@
--- TF2's bomb carrier as the engine's own actions, from tf/bot/behavior:
+-- TF2's flag carrier as the engine's own actions, from tf/bot/behavior:
 --
---   CLuaBehaviour (GMod's) > TacticalMonitor (native/nextsoldier)
---     > ScenarioMonitor > FetchFlag
---                       > DeliverFlag, burying them while it has the flag
+--   CLuaBehaviour (a NextBot's; a NextSoldier has none) > TacticalMonitor (native)
+--     > ScenarioMonitor (native) > FetchFlag
+--                                > DeliverFlag, burying them while it has the flag
 --
--- What they ask of the soldier: HasTheFlag(), IsFlagHome(), SecondsAlive(),
--- PickUpFlag(), LooseFlag() -> where it lies or nil, FlagCaptureZone() -> where it is
--- or nil, FollowPath(goal), Now().
+-- What they ask of the soldier: HasTheFlag(), IsFlagHome(), GetsFlagAsItSpawns(),
+-- SecondsAlive(), PickUpFlag(), FlagToFetch() -> where it lies or nil,
+-- FlagCaptureZone() -> where it is or nil, FollowPath(goal), Now(), RoundMode().
 local Action = nextsoldier.behavior.action
+local ipairs = ipairs
 module("nextsoldier.behavior.ctfbot")
 
 -- CTFBotFetchFlag gives a robot the bomb only just as it spawns.
@@ -42,40 +43,57 @@ end
 function DeliverFlag:ShouldHurry() return Action.ANSWER_YES end
 function DeliverFlag:ShouldRetreat() return Action.ANSWER_NO end
 
--- CTFBotFetchFlag: the bomb as it spawns, else a dropped one. Who has it then is the
--- scenario monitor's to see.
+-- CTFBotFetchFlag: MvM's bomb as it spawns, else the flag where it lies. Who has it
+-- then is the scenario monitor's to see.
 FetchFlag = Action.Extend("FetchFlag")
 
 function FetchFlag:Update(me)
 	if me:HasTheFlag() then return self:Continue() end
-	if me:IsFlagHome() then
-		if me:SecondsAlive() < JUST_SPAWNED then me:PickUpFlag() end
+	if me:IsFlagHome() and me:GetsFlagAsItSpawns() and me:SecondsAlive() < JUST_SPAWNED then
+		me:PickUpFlag()
 		return self:Continue()
 	end
-	local loose = me:LooseFlag()
-	if loose then me:FollowPath(loose) end
+	local flag = me:FlagToFetch()
+	if flag then me:FollowPath(flag) end
 	return self:Continue()
 end
 
 function FetchFlag:ShouldHurry() return Action.ANSWER_YES end
 function FetchFlag:ShouldRetreat() return Action.ANSWER_NO end
 
--- CTFBotScenarioMonitor: what the scenario wants, over what its class is doing.
-ScenarioMonitor = Action.Extend("ScenarioMonitor")
+-- What a scenario's monitor may name.
+local BEHAVIORS = {
+	FetchFlag = function() return FetchFlag:New() end,
+}
 
-function ScenarioMonitor:InitialContainedAction() return FetchFlag:New() end
+local GIVEN = { Has = function(_, name) return BEHAVIORS[name] ~= nil end }
 
-function ScenarioMonitor:Update(me)
-	if me:HasTheFlag() then
-		return self:SuspendFor(DeliverFlag:New(), "I've picked up the flag! Running it in...")
+-- The scenarios this soldier plays, on wartactics.scenarios as its host gives it (no
+-- war class is asked of them): the flag in MvM and CTF, and elsewhere nothing.
+function Compile(Scenarios)
+	local registry = Scenarios.New()
+	for _, mode in ipairs({ "mvm", "ctf" }) do
+		registry:Register({ name = mode, priority = Scenarios.MODE_PRIORITY, mode = mode, monitor = "FetchFlag", scenario = {} })
 	end
-	return self:Continue()
+	registry:Register({ name = "nothing", priority = Scenarios.FREEFORM_PRIORITY, scenario = {} })
+	return registry:Compile(GIVEN)
 end
 
--- The tree a robot runs: the native monitor over the scenario's.
-function InitialAction(engine)
+-- The tree it runs, the native monitors over the scenario chosen from compiled.
+function InitialAction(engine, compiled)
 	return engine.TacticalMonitor({
-		scenario = ScenarioMonitor:New(),
+		scenario = engine.ScenarioMonitor({
+			scenarios = compiled,
+			context = function(me) return { mode = me:RoundMode() } end,
+			behaviors = BEHAVIORS,
+			interrupts = {
+				{
+					when = function(me) return me:HasTheFlag() end,
+					action = function() return DeliverFlag:New() end,
+					reason = "I've picked up the flag! Running it in...",
+				},
+			},
+		}),
 		never_retreats = true,
 		commands = {
 			taunt = function() return Taunt:New() end,

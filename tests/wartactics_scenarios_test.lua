@@ -126,6 +126,39 @@ T.test("a spec missing a part is refused, blamed on the caller", function()
 	end
 end)
 
+T.test("a server has the native twin, whole; elsewhere it is the Lua one", function()
+	T.eq(debug.getinfo(Scenarios.New, "S").what == "C", T.NATIVE, "New")
+	local compiled = Registry({ ANY }):Compile(BEHAVIORS)
+	T.eq(compiled:Choose({}), compiled:Entries()[1], "one entry is one value, however it is reached")
+	T.eq(Scenarios.FREEFORM_PRIORITY, 0, "the war's own")
+	T.eq(Scenarios.MODE_PRIORITY, 10, "each mode's")
+end)
+
+T.test("an entry reads as the spec it was made from", function()
+	local active = function() return true end
+	local class = Class("full")
+	local compiled = Registry({ { name = "full", priority = 3, mode = "koth", active = active, scenario = class,
+		monitor = "Holdout", behaviors = { "Travel" } } }):Compile(BEHAVIORS)
+	local entry = compiled:Choose({ mode = "koth" })
+	T.eq(entry.name .. entry.priority .. entry.mode .. entry.monitor, "full3kothHoldout", "its values")
+	T.eq(entry.active, active, "its criteria")
+	T.eq(entry.scenario, class, "its class")
+	T.eq(entry.behaviors[1], "Travel", "what it relies on")
+	T.eq(entry.nothing, nil, "nothing else")
+	local bare = Registry({ ANY }):Compile(BEHAVIORS):Entries()[1]
+	T.eq(bare.mode, nil, "no mode")
+	T.eq(bare.active, nil, "no criteria")
+	T.eq(bare.monitor, nil, "no monitor")
+end)
+
+T.test("a scenario registered again leaves no trace of what it replaced", function()
+	local registry = Registry({ { name = "a", priority = 1, active = function() return false end, scenario = Class("old") } })
+	registry:Register({ name = "a", priority = 1, scenario = Class("new") })
+	local compiled = registry:Compile(BEHAVIORS)
+	T.eq(compiled:Choose({}).active, nil, "the old criteria went with it")
+	T.eq(compiled:Class(compiled:Choose({})).NAME, "new", "the new class")
+end)
+
 T.test("the shared registry is the one the war compiles", function()
 	T.eq(type(Scenarios.Shared.Register), "function", "Register")
 	T.eq(type(Scenarios.Shared.Compile), "function", "Compile")

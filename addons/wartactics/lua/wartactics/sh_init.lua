@@ -24,5 +24,12 @@ Defer(wartactics, "hunt", "wartactics.hunt")
 Defer(wartactics, "posts", "wartactics.posts")
 Defer(wartactics, "zone", "wartactics.zone")
 Defer(wartactics, "bot_quota", "wartactics.bot_quota")
-Defer(wartactics, "scenarios", "wartactics.scenarios")
+-- On a server with native/nextsoldier, its twin is already here, which the native
+-- ScenarioMonitor reads. No Twin line: the Lua one's module(...) builds at this path.
+local scenarios = wartactics.scenarios
+if scenarios and scenarios.UseRequire then
+	scenarios.UseRequire(require)
+else
+	Defer(wartactics, "scenarios", "wartactics.scenarios")
+end
 Defer(wartactics, "hazards", "wartactics.hazards")

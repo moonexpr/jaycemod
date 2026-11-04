@@ -76,6 +76,7 @@ pub const ENTITY_INFO_SIZE: usize = 0x20;
 
 // ActionResultType, EventResultPriorityType, QueryResultType
 pub const CONTINUE: i32 = 0;
+pub const CHANGE_TO: i32 = 1;
 pub const SUSPEND_FOR: i32 = 2;
 pub const RESULT_TRY: i32 = 1;
 pub const ANSWER_NO: i32 = 0;
@@ -122,8 +123,8 @@ pub struct Action {
 pub struct LuaAction {
     pub base: Action,
     pub id: u32,
-    /// The native TacticalMonitor's: a mode whose soldiers never retreat.
-    pub never_retreats: bool,
+    /// A native action's own (its `Kind` says what it means); nothing for a Lua one.
+    pub state: u64,
 }
 
 #[cfg(test)]

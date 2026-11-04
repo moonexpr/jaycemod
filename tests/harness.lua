@@ -148,7 +148,7 @@ end
 -- second pass).
 T.NATIVE = os.getenv("WS_NATIVE") == "1"
 if T.NATIVE then
-	for _, crate in ipairs({ "foundation", "wetsands" }) do
+	for _, crate in ipairs({ "foundation", "wetsands", "nextsoldier" }) do
 		local loaded = T.native(crate)
 		for global in pairs(T.Published.module) do
 			local value = loaded
@@ -194,7 +194,7 @@ end
 -- native twin to: every key of the Lua twin's, or the harness refuses it.
 if T.NATIVE then
 	local MODULE_KEYS = { _M = true, _NAME = true, _PACKAGE = true }
-	for _, crate in ipairs({ "foundation", "wetsands" }) do
+	for _, crate in ipairs({ "foundation", "wetsands", "nextsoldier" }) do
 		for name, part in pairs(T.native(crate).preload or {}) do
 			local chunk = assert(loadfile(Path(name)))
 			setfenv(chunk, CHUNK_ENV)("ws_native_check." .. name)
