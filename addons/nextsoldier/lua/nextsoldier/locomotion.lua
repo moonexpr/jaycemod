@@ -171,6 +171,40 @@ local COMPASS = {
 	{ -1, 0 }, { -DIAGONAL, -DIAGONAL }, { 0, -1 }, { DIAGONAL, -DIAGONAL },
 }
 
+-- Standing on a route's points: the engine lays them for the width it searched with, so
+-- a wider body may not fit on one beside a wall or a pillar, and pressing for a point it
+-- can never reach holds it there. STAND_STEP, as far as STAND_REACH: where it looks.
+local STAND_STEP, STAND_REACH = 8, 56
+
+local function StandOn(prev, p, nxt, stands, reaches)
+	if stands(p) then return p end
+	for distance = STAND_STEP, STAND_REACH, STAND_STEP do
+		local places = {}
+		for _, way in ipairs(COMPASS) do
+			local q = Pushed(p, { x = way[1], y = way[2] }, distance)
+			if stands(q) and reaches(p, q) then places[#places + 1] = q end
+		end
+		local nearest = Select.Lowest(places, function(q)
+			return Geometry.Distance2D(prev, q) + Geometry.Distance2D(q, nxt)
+		end)
+		if nearest then return nearest end
+	end
+	return p
+end
+
+-- The route with each point its body cannot stand on moved to the nearest place it can,
+-- each from the point before it as moved; its first and last points stay. stands(q):
+-- whether the body fits at q. reaches(p, q): no wall between them.
+function StandPoints(points, stands, reaches)
+	if #points <= 2 then return points end
+	local out = { points[1] }
+	for i = 2, #points - 1 do
+		out[i] = StandOn(out[i - 1], points[i], points[i + 1], stands, reaches)
+	end
+	out[#points] = points[#points]
+	return out
+end
+
 -- Whether a route's point is a drop it has come to: more than depth below it, and
 -- within near across the ground.
 function DropBelow(pos, point, depth, near)

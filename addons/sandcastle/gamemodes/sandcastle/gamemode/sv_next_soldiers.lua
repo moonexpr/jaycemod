@@ -73,6 +73,22 @@ function Soldier:WalkClear(from, to)
 	return true
 end
 
+-- Whether its whole body fits at q, over a floor.
+function Soldier:Stands(q)
+	local hullMin, hullMax = self.ent:GetHull()
+	local mins, maxs = Movement.Sweep(hullMin, hullMax, SWEEP_HEIGHT)
+	local at = ToVector(q)
+	if util.TraceHull({ start = at + LIFT, endpos = at + LIFT, mins = mins, maxs = maxs, mask = MASK_PLAYERSOLID, filter = self.ent }).Hit then
+		return false
+	end
+	return util.TraceLine({ start = at + FOOTING_ABOVE, endpos = at - FOOTING_BELOW, mask = MASK_PLAYERSOLID, filter = self.ent }).Hit
+end
+
+-- Whether no wall stands between two places on a route.
+function Soldier:Reaches(p, q)
+	return not util.TraceLine({ start = ToVector(p) + LIFT, endpos = ToVector(q) + LIFT, mask = MASK_PLAYERSOLID, filter = self.ent }).Hit
+end
+
 -- What a route is priced by (Path:Compute's generator): TF2's own path cost over what
 -- its team knows, each step told whether its body fits; nil until the mesh is ready.
 function Soldier:RouteCost()
@@ -173,6 +189,7 @@ function Soldier:Steer(now)
 		local route = self:Navigator():PlanRoute(goal, cost)
 		local points = {}
 		for i, v in ipairs(route or {}) do points[i] = Point(v) end
+		points = Locomotion.StandPoints(points, function(q) return self:Stands(q) end, function(p, q) return self:Reaches(p, q) end)
 		points = Locomotion.RoundCorners(points, function(a, b) return self:WalkClear(ToVector(a), ToVector(b)) end)
 		if route and RouteWalk.Trivial(points, Point(pos), DIRECT_RANGE) then route = nil end
 		self.walk = route and RouteWalk.New(points) or nil

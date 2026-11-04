@@ -165,4 +165,43 @@ T.test("a jamb beside its way veers its steering away", function()
 	T.eq(soldier.steer.y < 0, true, "toward the open side")
 end)
 
+local function Route(points)
+	navigator.PlanRoute = function(_, _, cost) planned = cost return points end
+end
+
+-- A pillar at x = 100 on the route's line: a floor everywhere, no wall but it.
+local function BesidePillar(gap)
+	environment.util.TraceHull = function(trace)
+		local at = trace.start
+		return { Hit = trace.start.x == trace.endpos.x and trace.start.y == trace.endpos.y
+			and math.abs(at.x - 100) < 24 and math.abs(at.y) < 24 }
+	end
+	environment.util.TraceLine = function(trace)
+		if trace.start.z ~= trace.endpos.z then return { Hit = not gap } end
+		return { Hit = false }
+	end
+end
+
+T.test("a route's point its body does not fit on is walked to where it does", function()
+	ready, planned = true, nil
+	BesidePillar(false)
+	Route({ Vec(0, 0, 0), Vec(100, 0, 0), Vec(500, 0, 0) })
+	local soldier = New()
+	soldier:FollowPath(Vec(5000, 0, 0))
+	soldier:Steer(1)
+	local point = soldier.walk.points[2]
+	T.eq(math.abs(point.x - 100) >= 24 or math.abs(point.y) >= 24, true, "clear of the pillar")
+end)
+
+T.test("nor is a point moved off the floor to fit", function()
+	ready, planned = true, nil
+	BesidePillar(true)
+	Route({ Vec(0, 0, 0), Vec(100, 0, 0), Vec(500, 0, 0) })
+	local soldier = New()
+	soldier:FollowPath(Vec(5000, 0, 0))
+	soldier:Steer(1)
+	T.eq(soldier.walk.points[2].x, 100, "no floor anywhere near: left as planned")
+	T.eq(soldier.walk.points[2].y, 0, "left as planned")
+end)
+
 T.finish()

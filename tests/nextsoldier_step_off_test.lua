@@ -33,6 +33,62 @@ T.test("nowhere to fall within reach is no step", function()
 	T.eq(Locomotion.StepOff(FROM, LANDING, Open, function() return false end), nil, "nothing to walk to")
 end)
 
+-- A route along x = 0 past a pillar the body cannot stand within 24 of, as a route's
+-- points are laid for a narrower width than the body walking them.
+local function ClearOfPillar(q) return math.abs(q.x) >= 24 or math.abs(q.y) >= 24 end
+local function Unwalled() return true end
+local PAST_PILLAR = {
+	{ x = 0, y = -200, z = 0 },
+	{ x = 0, y = 0, z = 0 },
+	{ x = 0, y = 200, z = 0 },
+}
+
+T.test("a route's point its body cannot stand on moves to where it can", function()
+	local moved = Locomotion.StandPoints(PAST_PILLAR, ClearOfPillar, Unwalled)
+	T.eq(ClearOfPillar(moved[2]), true, "the body fits there")
+	T.eq(moved[2].z, 0, "at the point's height")
+	T.eq(math.abs(moved[2].x) + math.abs(moved[2].y) < 96, true, "near the point it replaces")
+end)
+
+T.test("a point its body can stand on stays, and so do a route's two ends", function()
+	local fits = {
+		{ x = 0, y = -200, z = 0 },
+		{ x = 0, y = 50, z = 0 },
+		{ x = 0, y = 200, z = 0 },
+	}
+	T.eq(Locomotion.StandPoints(fits, ClearOfPillar, Unwalled)[2], fits[2], "kept")
+	local ends = { { x = 0, y = 0, z = 0 }, { x = 5, y = 0, z = 0 } }
+	local kept = Locomotion.StandPoints(ends, ClearOfPillar, Unwalled)
+	T.eq(kept[1], ends[1], "its start")
+	T.eq(kept[2], ends[2], "its end")
+end)
+
+T.test("of the places as near, the one keeping the route shortest", function()
+	-- The way on bends east, so east of the pillar is the shorter way round.
+	local moved = Locomotion.StandPoints({
+		{ x = 0, y = -200, z = 0 },
+		{ x = 0, y = 0, z = 0 },
+		{ x = 300, y = 200, z = 0 },
+	}, ClearOfPillar, Unwalled)
+	T.eq(moved[2].x > 0, true, "toward the way on")
+end)
+
+T.test("a place across a wall is no place to move to", function()
+	local function NotAcrossEast(_, q) return q.x <= 0 end
+	local moved = Locomotion.StandPoints({
+		{ x = 0, y = -200, z = 0 },
+		{ x = 0, y = 0, z = 0 },
+		{ x = 300, y = 0, z = 0 },
+	}, ClearOfPillar, NotAcrossEast)
+	T.eq(moved[2].x <= 0, true, "stays on its side")
+	T.eq(ClearOfPillar(moved[2]), true, "and fits")
+end)
+
+T.test("with nowhere near to stand, the point stays as planned", function()
+	local moved = Locomotion.StandPoints(PAST_PILLAR, function() return false end, Unwalled)
+	T.eq(moved[2], PAST_PILLAR[2], "kept")
+end)
+
 -- Heading along +x from the origin, whose left is +y.
 local AHEAD = { x = 500, y = 0, z = 0 }
 local ORIGIN = { x = 0, y = 0, z = 0 }
