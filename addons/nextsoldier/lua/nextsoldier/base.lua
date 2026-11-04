@@ -93,7 +93,7 @@ LOCOMOTION = Component("locomotion", {
 -- its scale, models, animations and sounds.
 BODY = Component("body", {
 	methods = { "GetActiveWeapon", "GetWeapons", "GiveWeapon", "RemoveWeapon", "SelectWeapon", "SetScale" },
-	hooks = { "OnWeaponChange", "OnUpdateAnimation", "OnAnimEvent" },
+	hooks = { "OnWeaponChange", "OnUpdateAnimation", "PlaysJump", "OnAnimEvent" },
 	fields = { "Models", "Weapons", "BloodColor", "CollisionBounds", "IdleAnimation", "WalkAnimation",
 		"RunAnimation", "OnDamageSounds", "OnDeathSounds" },
 })

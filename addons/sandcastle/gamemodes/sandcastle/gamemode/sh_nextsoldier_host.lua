@@ -30,4 +30,6 @@ function Host:PathDebug() return WS.require("features.nbdebug.model") end
 
 function Host:GazeUpdate(...) return WS.GazeUpdate(...) end
 
+function Host:SolidMask() return WS.ClipMasks().solid end
+
 nextsoldier.host.Install(Host)

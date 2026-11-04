@@ -31,6 +31,7 @@ Load("nextsoldier/world/nav_stairs.lua")
 
 Load("nextsoldier/body/gaze.lua")
 Load("nextsoldier/body/gestures.lua")
+Load("nextsoldier/body/jump.lua")
 Load("nextsoldier/body/noise.lua")
 Load("nextsoldier/body/player_body.lua")
 Load("nextsoldier/body/responserules.lua")

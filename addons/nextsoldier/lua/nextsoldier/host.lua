@@ -8,6 +8,7 @@
 --   PathDebug() -> what records a watched path search: NewCostRecorder(),
 --     NewPathReport(report)
 --   GazeUpdate(ent, facing, fighting, hint, team, urgent): turn a head (client)
+--   SolidMask() -> what a body collides with on this map, player clips or not
 local Port = core.port
 module("nextsoldier.host")
 
@@ -18,6 +19,7 @@ PORT = Port.New("NextSoldier host", {
 	"PathClearance",
 	"PathDebug",
 	"GazeUpdate",
+	"SolidMask",
 })
 
 -- The installed host, read as nextsoldier.host.current.

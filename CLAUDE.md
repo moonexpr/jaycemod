@@ -289,6 +289,8 @@ gamemode: no `WS`, no `WS.require`, no `Defer`, no read of games
 plainly includes `nextsoldier/sh_init.lua`, which loads every file by a `Load`
 line, written by hand, and sends clients each. A file names its module
 (`module("nextsoldier.world.doors")`), which builds its table at that path.
+Jumping is the base's (`base_nextsoldier`: `NSHop(p)` commands one, a path's climbs and
+gaps ask for one when the class sets `ClimbLedges`), so any class on it can.
 What the soldier needs of the mode hosting it comes through `nextsoldier.host`;
 the gamemode's host is `gamemode/sh_nextsoldier_host.lua`, its one place of
 wiring. The gamemode may read NextSoldier's collections; never the reverse.
@@ -302,14 +304,14 @@ a single export is that export on its collection, not a module of its own.
 | Collection | On it | Its parts |
 |---|---|---|
 | `nextsoldier.world` (the map as a walker meets it) | `ClipFor(classes)`, `CLIP_PLAYER`, `CLIP_NPC`; `BrushSweep(nw, ne, se, sw, sizeX, sizeY)` (TF2's TestAndBlockOverlappingAreas) | `doors`, `portal`, `nav_gaps`, `nav_stairs` (a map's slanted player clips read as stairs, and the ramp area replacing what the generator left of one: `Slopes(brushes)`, `Plan(slope, areas)`; `WS.RepairNavStairs` lays them after generation and as a map loads, saving when it did) |
-| `nextsoldier.body` | | `gaze` (where a head looks apart from the aim, turned on clients), `gestures` (what an occasion plays, how fast, how often; a squad wiped out; a crit's canned death), `noise`, `player_body` (a bot player's moves, aim and fire as a player's keys), `responserules` (its criteria for the response rules), `weapons` |
+| `nextsoldier.body` | | `gaze` (where a head looks apart from the aim, turned on clients), `gestures` (what an occasion plays, how fast, how often; a squad wiped out; a crit's canned death), `jump` (the activity a jump plays by hold type and what the model has: TF2's, GMod players' and HL2 NPCs' name theirs differently), `noise`, `player_body` (a bot player's moves, aim and fire as a player's keys), `responserules` (its criteria for the response rules), `weapons` |
 | `nextsoldier.locomotion` (on `wetsands.path`'s costs) | `DetourBeside(from, to, center, extent, radius)`; `RappelDescent(downSpeed, height, gravity, rappelling)`, `Rappels(depth, gravity)`; `RoundCorners(points, clear)` (a route's turns pushed out until the body passes them), `RoundCorner` | `ladder` (a nav ladder's climb, a line it is moved along: the engine's own hold never climbs), `leap`, `probe` (a path follower walking points), `reach_memo`, `route_record`, `route_walk` (a route walked waypoint by waypoint) |
 | `nextsoldier.senses` | `HeardLookAt(listener, shot)` | `vision` (seen or heard, recognized, remembered: the contact, pursued out of sight when asked) |
 | `nextsoldier.behavior` | `CHART`, `EVENTS`, `QUERIES`; `PORT`, `METHODS`; `Relations{ default, ally }` | `intention`, `monitor`, `registry` |
 
 | Module | API |
 |---|---|
-| `nextsoldier.host` | What a soldier needs of its mode: `PORT` (`Movement`, `PlayerFactions`, `FactionEnemy`, `PathClearance`, `PathDebug`, `GazeUpdate`), `Install(host)` (checked), `current` |
+| `nextsoldier.host` | What a soldier needs of its mode: `PORT` (`Movement`, `PlayerFactions`, `FactionEnemy`, `PathClearance`, `PathDebug`, `GazeUpdate`, `SolidMask`), `Install(host)` (checked), `current` |
 | `nextsoldier.bots` | The live soldiers on the base (a weak set), which others' noises reach |
 | `nextsoldier.base` | The interface our code keeps of DrGBase's NextBot, names and hook contracts only, which NextSoldier's own base implements from scratch, native where it pays: `COMPONENTS` as TF2's NextBot in source-sdk-2013 (`NEXTBOT`: life and relations, `LOCOMOTION`, `BODY`, `POSTURE` (the body's, optional while DrGBase's classes stand in), `VISION`, `INTENTION`), each with `methods` (a `core.port`), `hooks` and `fields` (named sets, or nil); `METHODS` (every required method), `Has(soldier, c)` (an optional component, whole or refused), `HOOKS`, `FIELDS`, `Hooks(c)`, `Fields(c)`, `ComponentOf(name)`, `REPLACED` (DrGBase names the base drops, with what replaces each: no coroutine, as TF2). `.devtools/bin/drg_interface.py check` refuses a DrGBase name our code uses that it does not declare |
 | `nextsoldier.behavior` | NextSoldier's chart (`generator.state_chart`'s `Chart`): `CHART` over `PORT`, the soldier port (`METHODS` its names; the controller implements it over an npc_nextsoldier and a bot player; `tests/fake_soldier.lua` fakes it), with `EVENTS` (what the soldier and the war tell its behaviours: `OnInjured`, `OnSight`, `OnLostSight`, `OnContact`, `OnContactLost`, `OnNavAreaChanged`, `OnHeard`, `OnOtherKilled`) and `QUERIES` (`ShouldAttack`, `ShouldHurry`, `ShouldRetreat`, `ShouldPickUp`, `SelectMoreDangerousThreat`). A behaviour is `CHART:State(name)`; an undeclared `On*` on one is refused as it is written. The orders' actions, the monitors and a scenario's monitor are its states |

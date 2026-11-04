@@ -132,6 +132,20 @@ T.test("a host is held to the port before a soldier reads it", function()
 	Host.current = kept
 end)
 
+T.test("jumping is the base's, whatever class asks it to", function()
+	local base = Code(ADDON .. "lua/entities/base_nextsoldier.lua")
+	local war = Code(T.ROOT .. "sh_war_soldier.lua")
+	for _, method in ipairs({
+		"OnStartClimbing", "CustomClimbing", "NSVaultPlan", "NSVaultRun", "NSVault", "NSHop", "NSHopPlain", "NSTakeHop",
+		"JumpAct", "JumpSequence", "PlaysJump",
+	}) do
+		T.eq(base:find("function ENT:" .. method .. "(", 1, true) ~= nil, true, method .. " in the base")
+	end
+	for _, method in ipairs({ "CustomClimbing", "NSVaultPlan", "NSVaultRun", "NSVault", "NSHop", "NSHopPlain" }) do
+		T.eq(war:find("function ENT:" .. method .. "(", 1, true), nil, method .. " out of the war's soldier")
+	end
+end)
+
 T.test("the response rules are merged into the addon", function()
 	for _, path in ipairs(RESPONSE_RULES) do T.eq(Exists(ADDON .. path), true, path) end
 	T.eq(#Lines("ls addons/responserules/ 2>/dev/null"), 0, "addons/responserules/ is gone")

@@ -18,20 +18,6 @@ local PATH_TOLERANCE = 12
 -- thrown clear of a cart: any SetPos), the soldier plans its path afresh:
 -- the old one led from where it was.
 local TELEPORT = 128
--- A ledge jump (CustomClimbing): how far in from its hull a soldier checks
--- the way up and the landing, so the wall it stands against is not in the
--- way; how long after a jump it found no way for it does not try another.
-local LEAP_INSET, LEAP_RETRY = 2, 1
--- A vault (NSVault) over what it cannot stand on, a railing: how far ahead
--- it looks for the obstacle; past its face, how far it looks for the floor
--- beyond, in steps of how much; and how far onto that floor it lands.
-local VAULT_REACH, VAULT_SCAN, VAULT_SCAN_STEP, VAULT_LAND_IN = 48, 64, 8, 8
--- An obstacle's top is looked for along this far past where the hull met it,
--- this often: a rail a few units thick stands between lines farther apart.
-local TOP_SCAN, TOP_SCAN_STEP = 16, 2
--- A plain hop when no vault fits: this fast the way it heads, up as high as
--- it jumps.
-local HOP_SPEED = 200
 -- The sound level of its steps and landings (PlayStepSound's SNDLVL_NORM),
 -- as the soldiers in earshot hear them (NSNotice), and of its grunts and cries.
 local STEP_LEVEL, VOICE_LEVEL = 75, 75
@@ -74,7 +60,7 @@ function WS.WarSoldier(ENT)
 	local Gestures = nextsoldier.body.gestures
 	local Voices = WS.require("includes.voices")
 	local HL2Path = WS.require("foundation.wetsands.path.hl2")
-	local Leap = nextsoldier.locomotion.leap
+	local JumpActs = nextsoldier.body.jump
 	local Noise = nextsoldier.body.noise
 	local Locomotion = nextsoldier.locomotion
 	local Arms = WS.require("features.aiwar.arms")
@@ -198,8 +184,8 @@ function WS.WarSoldier(ENT)
 		if volume <= 0 then return end
 		-- a landing jolts its gear as a run does
 		PlayStep(self, Noise.Played(volume), self:NSGear(true))
-		local landing = self:SelectWeightedSequence(ACT_LAND)
-		if landing and landing > 0 then self:AddGestureSequence(landing, true) end
+		local landing = self:JumpSequence(JumpActs.LAND)
+		if landing then self:AddGestureSequence(landing, true) end
 		if fall > Noise.MAX_SAFE_FALL_SPEED then
 			Say(self, self.NSVoiceLines.fall)
 		elseif Noise.HardLanding(fall) then
@@ -247,16 +233,9 @@ function WS.WarSoldier(ENT)
 			return true
 		end
 		-- the orders' hop, planned when it was stuck (NSHop)
-		if self.NSHopPlan then
-			local plan = self.NSHopPlan
-			self.NSHopPlan = nil
-			if plan.dir then
-				self:NSHopPlain(plan.dir)
-				self.NSMoveResult = "hopped"
-			else
-				self:NSVaultRun(plan)
-				self.NSMoveResult = "vaulted"
-			end
+		local hop = self:NSTakeHop()
+		if hop then
+			self.NSMoveResult = hop
 			return true
 		end
 		local target = self.NSTarget
@@ -409,145 +388,6 @@ function WS.WarSoldier(ENT)
 		Tell(self, "OnNavAreaChanged", old, new)
 	end
 
-	-- A ledge it jumps: CustomClimbing; not again for LEAP_RETRY after a jump
-	-- with no way up.
-	function ENT:OnStartClimbing(ledge, height, down)
-		if isvector(ledge) and not down then
-			if CurTime() < (self.NSLeapRetry or 0) then return false end
-			return true
-		end
-		return Base().OnStartClimbing(self, ledge, height, down)
-	end
-
-	-- A motion along at(t) (t from 0 to 1 over duration seconds), facing
-	-- toward: a scramble its locomotion steps each tick (TF2's climbs and
-	-- jumps, no coroutine). done() runs as it ends.
-	local function Move(self, duration, at, toward, done)
-		self:FaceTowards(toward)
-		self:Scramble({ duration = duration, at = at, done = function()
-			self.NSLeapt = true
-			if done then done() end
-		end })
-	end
-
-	-- Jumps onto the ledge along nextsoldier.locomotion.leap's arc (Move): if the way straight up to the arc's top and
-	-- across to its landing is clear (the arc stays inside that, and clears
-	-- the lip), else it stays.
-	function ENT:CustomClimbing(ledge)
-		local from = self:GetPos()
-		local mins, maxs = self:GetCollisionBounds()
-		-- from step height up: a sloped floor is no wall
-		local hull = {
-			mins = Vector(mins.x + LEAP_INSET, mins.y + LEAP_INSET, self.loco:GetStepHeight()),
-			maxs = maxs - Vector(LEAP_INSET, LEAP_INSET, LEAP_INSET),
-		}
-		local function Clear(a, b)
-			hull.start = a
-			return not self:TraceHull(b - a, hull).Hit
-		end
-		-- and its body fits where it lands, from step height up as the rest (a
-		-- slope under it is no wall): a ledge that is a thin plate's edge (a
-		-- stage over open space) would leave it set inside the plate
-		local function Fits(p) return Clear(p, p) end
-		local land = Leap.Arc(from, ledge, 1)
-		land = Vector(land.x, land.y, land.z)
-		local top = Vector(from.x, from.y, land.z)
-		if not (Clear(from, top) and Clear(top, land) and Fits(land)) then
-			self.NSLeapRetry = CurTime() + LEAP_RETRY
-			return
-		end
-		Move(self, Leap.DURATION, function(t)
-			local p = Leap.Arc(from, ledge, t)
-			return Vector(p.x, p.y, p.z)
-		end, ledge)
-	end
-
-	-- A vault over what stands toward dir (flat, of unit length) along
-	-- nextsoldier.locomotion.leap's arc: when the obstacle's top is no higher than it
-	-- climbs (ClimbLedgesMaxHeight), the floor beyond is on the nav mesh no
-	-- farther down than it falls (the death drop), and its hull clears the
-	-- way up, over and down (Leap.VaultFits). The plan, { from, top, land },
-	-- or nil and why there is no way over.
-	function ENT:NSVaultPlan(dir)
-		local from = self:GetPos()
-		-- what it collides with here: a players' map's player clips too (the
-		-- rail along a walkway a bullet passes), which MASK_NPCSOLID misses
-		local mask = WS.ClipMasks().solid
-		local mins, maxs = self:GetCollisionBounds()
-		local step = self.loco:GetStepHeight()
-		local hull = {
-			mins = Vector(mins.x + LEAP_INSET, mins.y + LEAP_INSET, step),
-			maxs = maxs - Vector(LEAP_INSET, LEAP_INSET, LEAP_INSET),
-		}
-		-- nil when the hull passes from a to b, else what it hit
-		local function Sweep(a, b)
-			return util.TraceHull({ start = a, endpos = b, mins = hull.mins, maxs = hull.maxs, mask = mask, filter = self })
-		end
-		local function Hits(a, b)
-			local tr = Sweep(a, b)
-			if not tr.Hit then return nil end
-			return tr.HitWorld and "the map" or tostring(tr.Entity)
-		end
-		local blocked = Sweep(from, from + dir * VAULT_REACH)
-		if not blocked.Hit then return nil, "nothing in the way" end
-		-- the obstacle's face, and its top: the highest point of it above a
-		-- step and within reach, over TOP_SCAN past the face, each line down
-		-- from under whatever hangs above (a ceiling, a pipe)
-		local face = from + dir * (blocked.Fraction * VAULT_REACH + maxs.x)
-		local reach = self.ClimbLedgesMaxHeight
-		local top
-		for d = -LEAP_INSET, TOP_SCAN, TOP_SCAN_STEP do
-			local p = face + dir * d
-			local floorStep, ceiling = p + Vector(0, 0, step), p + Vector(0, 0, reach + 1)
-			-- over the obstacle the line up starts inside it: down from reach
-			local up = util.TraceLine({ start = floorStep, endpos = ceiling, mask = mask, filter = self })
-			local start = (up.Hit and not up.StartSolid) and up.HitPos - Vector(0, 0, 1) or ceiling
-			local down = util.TraceLine({ start = start, endpos = floorStep, mask = mask, filter = self })
-			if down.Hit and not down.StartSolid and (not top or down.HitPos.z > top.z) then top = down.HitPos end
-		end
-		-- none (a rail whose bars no line found, a lip it cannot stand on):
-		-- it hops anyway, as high as it jumps, rather than ram it, the floor
-		-- beyond and the way over checked as for a vault
-		if not top then top = face + Vector(0, 0, HL2Path.SOLDIER_LIMITS.jumpHeight) end
-		-- the floor beyond: the first lower than the top, landed on a hull's width in
-		local drop = self.loco:GetDeathDropHeight()
-		local land
-		for d = VAULT_SCAN_STEP, VAULT_SCAN, VAULT_SCAN_STEP do
-			local p = face + dir * d
-			local floor = util.TraceLine({ start = Vector(p.x, p.y, top.z + Leap.CLEARANCE), endpos = Vector(p.x, p.y, from.z - drop - 1), mask = mask, filter = self })
-			if floor.Hit and not floor.StartSolid and floor.HitPos.z < top.z - 1 then
-				local q = p + dir * (maxs.x + VAULT_LAND_IN)
-				local under = util.TraceLine({ start = Vector(q.x, q.y, top.z + Leap.CLEARANCE), endpos = Vector(q.x, q.y, from.z - drop - 1), mask = mask, filter = self })
-				if under.Hit and not under.StartSolid then land = under.HitPos end
-				break
-			end
-		end
-		if not land then return nil, "no floor beyond" end
-		if not Leap.VaultFits({ from = from, top = top, land = land, maxHeight = reach, maxDrop = drop }) then return nil, "too high or too far down" end
-		if not IsValid(navmesh.GetNearestNavArea(land, false, VAULT_SCAN, true, true)) then return nil, "beyond is off the nav mesh" end
-		local apex = Vector(from.x, from.y, top.z + Leap.CLEARANCE)
-		local over = Leap.Vault(from, top, land, Leap.VAULT_CROSS)
-		over = Vector(over.x, over.y, over.z)
-		local up, across, down = Hits(from, apex), Hits(apex, over), Hits(over, land)
-		if up then return nil, string.format("%s in the way up (%d above)", up, top.z + Leap.CLEARANCE - from.z) end
-		if across then return nil, string.format("%s in the way across", across) end
-		if down then return nil, string.format("%s in the way down (%d below)", down, from.z - land.z) end
-		return { from = from, top = top, land = land }
-	end
-
-	-- A vault planned (NSVaultPlan), moved as CustomClimbing moves it (Move);
-	-- its path is planned again from where it lands.
-	function ENT:NSVaultRun(plan)
-		local from, top, land = plan.from, plan.top, plan.land
-		Move(self, Leap.VAULT_DURATION, function(t)
-			local p = Leap.Vault(from, top, land, t)
-			return Vector(p.x, p.y, p.z)
-		end, land, function()
-			local path = self:GetPath()
-			if IsValid(path) then path:Invalidate() end
-		end)
-	end
-
 	-- What it stands on, for Lua: a soldier on a control point's base, a
 	-- prop or another soldier stands as firm as on the world, so anything
 	-- that is not moving counts as the world (a moving cart or lift is
@@ -590,48 +430,6 @@ function WS.WarSoldier(ENT)
 		local mins, maxs = self:GetCollisionBounds()
 		if not WS.NavLinkCrossable(from, to, mins, maxs) then return -1 end
 		return 0
-	end
-
-	-- Its path held up by an obstacle it cannot stand on (a railing, where
-	-- its route drops to the floor beyond, as a player jumps it), it vaults
-	-- it toward its path's next goal (NSVaultPlan). Not again for LEAP_RETRY
-	-- after finding no way over. Whether it vaulted.
-	function ENT:NSVault()
-		if CurTime() < (self.NSLeapRetry or 0) then return false end
-		self.NSLeapRetry = CurTime() + LEAP_RETRY
-		local path = self:GetPath()
-		if not IsValid(path) then return false end
-		local dir = path:GetCurrentGoal().pos - self:GetPos()
-		dir.z = 0
-		if dir:Length2DSqr() < 1 then return false end
-		local plan = self:NSVaultPlan(dir:GetNormalized())
-		if not plan then return false end
-		self.NSLeapRetry = nil
-		self:NSVaultRun(plan)
-		return true
-	end
-
-	-- The orders' hop when stuck (features.aiwar.orders' Unstick, through
-	-- the soldier port's Hop): toward p, a vault if one fits, else a plain hop
-	-- (a soldier hopping beats one ramming a wall), run at its next step
-	-- (NSSteer). NSHopWhy says why no vault fitted, for the AI war's report.
-	-- Whether it hops: always, but at p itself.
-	function ENT:NSHop(p)
-		local dir = p - self:GetPos()
-		dir.z = 0
-		if dir:Length2DSqr() < 1 then return false end
-		dir:Normalize()
-		local vault, why = self:NSVaultPlan(dir)
-		self.NSHopPlan = vault or { dir = dir }
-		self.NSHopWhy = why
-		return true
-	end
-
-	-- A plain hop the way dir points: up as high as it jumps, HOP_SPEED across.
-	function ENT:NSHopPlain(dir)
-		local up = math.sqrt(2 * self.loco:GetGravity() * HL2Path.SOLDIER_LIMITS.jumpHeight)
-		self.loco:Jump()
-		self.loco:SetVelocity(dir * HOP_SPEED + Vector(0, 0, up))
 	end
 
 	-- ShouldHurry, else the controller's gait (NSRun), else run at an enemy.
@@ -693,6 +491,9 @@ function WS.WarSoldier(ENT)
 	-- loser on its feet (WS.IsLoser): the loser state's, scared standing
 	-- and panicked on the move, as a player's (sh_core.lua); in a battle
 	-- stance, its crouch.
+	-- Riding the cart its feet are off the ground, and it is no jump.
+	function ENT:PlaysJump() return not self.NSSeated end
+
 	function ENT:OnUpdateAnimation()
 		if self.NSSeated then return ACT_HL2MP_SIT, 1 end
 		if WS.IsLoser(self) and self:IsOnGround() and not (self:IsDown() or self:IsDead()) then

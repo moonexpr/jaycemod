@@ -169,6 +169,7 @@ local NEXTSOLDIER = {
 	["world/nav_stairs"] = "nextsoldier",
 	["body/gaze"] = "nextsoldier",
 	["body/gestures"] = "nextsoldier",
+	["body/jump"] = "nextsoldier",
 	["body/noise"] = "nextsoldier",
 	["body/player_body"] = "nextsoldier",
 	["body/responserules"] = "nextsoldier",
