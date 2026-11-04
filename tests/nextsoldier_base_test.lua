@@ -145,6 +145,16 @@ T.test("a class's first engine action goes in as the bot starts, after it resets
 	T.eq(base:find("function ENT:NSInitialAction()", 1, true) ~= nil, true, "none by default")
 end)
 
+-- BehaveUpdate waits while a body scrambles, but an engine action is updated by the
+-- engine whatever it is doing, and each new leap starts over: one asking every update
+-- never lands.
+T.test("following a path leaves a leap under way alone", function()
+	local base = Read(NEXTSOLDIER_ENTITIES .. "base_nextsoldier.lua")
+	local follow = base:match("function ENT:FollowPath%(goal, tolerance%)(.-)\nend")
+	local waits = follow:find("if self:IsScrambling() then return \"moving\" end", 1, true)
+	T.eq(waits ~= nil and waits < follow:find("local path", 1, true), true, "before anything else")
+end)
+
 T.test("a name the base replaces is declared by none", function()
 	for name in pairs(Base.REPLACED) do T.eq(Base.ComponentOf(name), nil, name) end
 end)

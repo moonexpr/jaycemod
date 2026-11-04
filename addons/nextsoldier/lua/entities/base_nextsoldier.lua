@@ -503,6 +503,8 @@ end
 -- goal moved), not one merely aged, has it look PATH_LOOKAHEAD along its
 -- new way a while (LookAt).
 function ENT:FollowPath(goal, tolerance)
+	-- what asks may be the engine's action, updated whatever the body is doing
+	if self:IsScrambling() then return "moving" end
 	if isentity(goal) then goal = goal:GetPos() end
 	local path = self.nsPath
 	local afresh = not (path and path:IsValid())

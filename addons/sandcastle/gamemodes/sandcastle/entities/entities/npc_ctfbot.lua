@@ -29,6 +29,10 @@ function ENT:CustomInitialize()
 	self.NSRun = true
 	self.ctfbotSpawnedAt = CurTime()
 	WS.SetTeamMember(self, WS.TEAM_BLUE)
+	-- with no war to do it (its SetForcefieldsPassable): TF2's forcefields stop only
+	-- players, but a NextBot's movement takes one for a wall, and the nav mesh, until
+	-- it next looks, the areas under it for blocked
+	for _, forcefield in ipairs(ents.FindByClass("func_respawnroomvisualizer")) do forcefield:SetNotSolid(true) end
 end
 
 function ENT:NSInitialAction() return CTFBot.InitialAction(nextsoldier.engine) end
