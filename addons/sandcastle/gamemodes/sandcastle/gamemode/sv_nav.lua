@@ -48,6 +48,14 @@ local LADDER_WIDTH = 32
 local LADDER_TOP_ADJUST = 128
 local LADDER_DISMOUNT_REACH = 128
 local LADDER_AREA_REACH = 128
+-- How far off a ladder's brush its wall is looked for (GenerationStepSize).
+local LADDER_WALL_STEP = 25
+-- How far over its wall a ladder's upper floor is looked for.
+local LADDER_OVER = 32
+local LADDERS_REBUILD = "ws_nav_ladders"
+-- Seconds a removed ladder is waited for: it goes after the frame's timers, so
+-- a timer of 0 would save it beside its replacement.
+local LADDERS_REMOVED_WAIT = 0.5
 local DOORS = { "func_door", "func_door_rotating", "prop_door_rotating" }
 local BARRIERS = { "func_respawnroomvisualizer" }
 local DOOR_WAIT = 60
@@ -317,6 +325,26 @@ local function LadderDirection(normal)
 	return Cardinal(normal)
 end
 
+-- A ladder's facing with no dismount beside it (any plain CS map), as
+-- CNavMesh::BuildLadders finds it: a line up each side of the brush, one step
+-- off and clear of the floor and ceiling. The side that hits is its wall, and
+-- it faces the other; both or neither says nothing.
+local function WallFacing(mins, maxs)
+	local axis = maxs.x - mins.x <= maxs.y - mins.y and "x" or "y"
+	local center = Vector((mins.x + maxs.x) / 2, (mins.y + maxs.y) / 2, 0)
+	local function Walled(sign)
+		local from, to = Vector(center.x, center.y, mins.z + LADDER_WALL_STEP / 2), Vector(center.x, center.y, maxs.z - LADDER_WALL_STEP / 2)
+		from[axis], to[axis] = center[axis] + sign * LADDER_WALL_STEP, center[axis] + sign * LADDER_WALL_STEP
+		local trace = util.TraceLine({ start = from, endpos = to, mask = MASK_NPCSOLID_BRUSHONLY })
+		return trace.Hit or trace.StartSolid
+	end
+	local plus, minus = Walled(1), Walled(-1)
+	if plus == minus then return nil end
+	local away = plus and -1 or 1
+	if axis == "x" then return Vector(away, 0, 0) end
+	return Vector(0, away, 0)
+end
+
 local function Ladders()
 	local entities = WS.MapFile({ "ENTITIES" }).ENTITIES
 	local ladders, dismounts, records = {}, {}, {}
@@ -338,7 +366,7 @@ local function Ladders()
 					top = Vector((mins.x + maxs.x) / 2, (mins.y + maxs.y) / 2, maxs.z),
 					bottom = Vector((mins.x + maxs.x) / 2, (mins.y + maxs.y) / 2, mins.z),
 					width = math.max(maxs.x - mins.x, maxs.y - mins.y),
-					direction = BoundsDirection(mins, maxs, dismounts),
+					direction = BoundsDirection(mins, maxs, dismounts) or WallFacing(mins, maxs),
 					mins = mins,
 					maxs = maxs,
 					id = values.hammerid or values.targetname or values.classname,
@@ -414,21 +442,48 @@ local function LadderArea(pos)
 	return area
 end
 
+local function TopConnected(native)
+	return IsValid(native:GetTopForwardArea()) or IsValid(native:GetTopLeftArea())
+		or IsValid(native:GetTopRightArea()) or IsValid(native:GetTopBehindArea())
+end
+
+-- The area a ladder's foot stands on: the nearest below its middle, else, for
+-- one hanging over a floor far beneath, the floor under it out from its wall.
+local function FootArea(ladder, middle)
+	local nearest = LadderArea(ladder.bottom)
+	if IsValid(nearest) and nearest:GetCenter().z < middle then return nearest end
+	local out = ladder.direction
+	local from = Vector(ladder.bottom.x + out.x * LADDER_OVER, ladder.bottom.y + out.y * LADDER_OVER, ladder.bottom.z)
+	local floor = util.TraceLine({ start = from, endpos = Vector(from.x, from.y, from.z - FLOOR_DEPTH), mask = MASK_NPCSOLID_BRUSHONLY })
+	local beneath = LadderArea(floor.HitPos)
+	if IsValid(beneath) and beneath:GetCenter().z < middle then return beneath end
+	return nil
+end
+
+-- The engine connects a ladder as it creates it, both ways, to the areas it
+-- finds; those stand (the area nearest a foot can be a nook no body walks out
+-- of), but for a foot above the ladder's middle, the floor over a hanging
+-- ladder, which moves to the floor beneath. An end it left gets the nearest
+-- area on that side of the middle: the upper floor looked for over the wall,
+-- behind the ladder.
 local function ConnectLadder(native, ladder)
 	local middle = (ladder.top.z + ladder.bottom.z) / 2
-	local bottom = LadderArea(ladder.bottom)
-	local top = LadderArea(ladder.top)
-	if not IsValid(bottom) or not IsValid(top) or bottom == top
-		or bottom:GetCenter().z >= middle or top:GetCenter().z <= middle then
-		return false
+	local bottom = native:GetBottomArea()
+	if not IsValid(bottom) or bottom:GetCenter().z >= middle then
+		local foot = FootArea(ladder, middle)
+		if not foot then return false end
+		if IsValid(bottom) then bottom:Disconnect(native) end
+		native:ConnectTo(foot)
+		foot:ConnectTo(native)
 	end
-	native:ConnectTo(bottom)
-	bottom:ConnectTo(native)
-	native:ConnectTo(top)
-	top:ConnectTo(native)
-	local topConnected = native:GetTopForwardArea() == top or native:GetTopLeftArea() == top
-		or native:GetTopRightArea() == top or native:GetTopBehindArea() == top
-	return native:GetBottomArea() == bottom and topConnected
+	if not TopConnected(native) then
+		local over = ladder.direction
+		local top = LadderArea(Vector(ladder.top.x - over.x * LADDER_OVER, ladder.top.y - over.y * LADDER_OVER, ladder.top.z))
+		if not IsValid(top) or top == native:GetBottomArea() or top:GetCenter().z <= middle then return false end
+		native:ConnectTo(top)
+		top:ConnectTo(native)
+	end
+	return IsValid(native:GetBottomArea()) and TopConnected(native)
 end
 
 local function CreateLadders(ladders)
@@ -548,6 +603,34 @@ concommand.Add("mp_nav_generate", function(ply)
 	end
 	Generate(ply, false)
 end, nil, "Generate this map's navigation mesh from its seeds and ladder entities, its doors open (admins); takes a few minutes and resets the map")
+
+-- The map's ladders built again over the mesh as it stands, its areas kept and
+-- the map not reset; saved, as a generation saves them. A ladder removed does
+-- not go at once, its areas holding it till then, so the new ones wait.
+concommand.Add("mp_nav_ladders", function(ply)
+	if not WS.Can(ply, system.permissions.RULES) then
+		Tell(ply, "Navigation mesh: you may not build its ladders")
+		return
+	end
+	if underWay or navmesh.IsGenerating() then
+		Tell(ply, "Navigation mesh: a generation is under way, and builds them")
+		return
+	end
+	local removed = {}
+	for _, area in ipairs(navmesh.GetAllNavAreas()) do
+		for _, ladder in ipairs(area:GetLadders()) do
+			if not removed[ladder] then
+				removed[ladder] = true
+				ladder:Remove()
+			end
+		end
+	end
+	timer.Create(LADDERS_REBUILD, LADDERS_REMOVED_WAIT, 1, function()
+		local ladders = Ladders()
+		local created, skipped = CreateLadders(ladders)
+		Tell(ply, "Navigation mesh: " .. created .. " ladders built, " .. skipped .. " skipped of the map's " .. #ladders)
+	end)
+end, nil, "Build this map's ladders again over its navigation mesh and save it, keeping its areas and not resetting the map (admins)")
 
 -- The idle server's own run (ws/sv_idle.lua).
 hook.Add("WSServerIdle", "ws_nav", function()

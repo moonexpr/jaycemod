@@ -184,6 +184,8 @@ local function load(t)
 				function ladder:Remove() self.removed = true end
 				s.ladders[#s.ladders + 1] = ladder
 				s.lifecycle[#s.lifecycle + 1] = "ladder"
+				-- the engine connects what it finds as it creates a ladder
+				if t.engineConnects then t.engineConnects(ladder) end
 				return ladder
 			end,
 			Save = function() s.lifecycle[#s.lifecycle + 1] = "save" end,
@@ -205,7 +207,16 @@ local function load(t)
 			end,
 			Run = function(event) s.ran[#s.ran + 1] = event end,
 		},
-		util = { TraceHull = function(tr) s.sweeps[#s.sweeps + 1] = tr return s.trace(tr) end },
+		util = {
+			TraceHull = function(tr) s.sweeps[#s.sweeps + 1] = tr return s.trace(tr) end,
+			TraceLine = function(tr)
+				return {
+					Hit = t.wall ~= nil and t.wall(tr.start),
+					StartSolid = false,
+					HitPos = t.floorZ and V(tr.start.x, tr.start.y, t.floorZ) or tr.endpos,
+				}
+			end,
+		},
 		MASK_PLAYERSOLID = 1, MASK_PLAYERSOLID_BRUSHONLY = 2, MASK_NPCSOLID = 3, MASK_NPCSOLID_BRUSHONLY = 4,
 		timer = {
 			Create = function(name, delay, reps, fn)
@@ -247,6 +258,7 @@ local function LadderArea(z)
 	function area:GetCenter() return self.center end
 	function area:GetClosestPointOnArea(pos) return V(pos.x, pos.y, self.center.z) end
 	function area:ConnectTo(ladder) self.ladders[ladder] = true end
+	function area:Disconnect(ladder) self.ladders[ladder] = nil end
 	return area
 end
 
@@ -364,6 +376,158 @@ T.test("ladders without nearby areas are skipped and not saved", function()
 		if message:find("could not connect ladder unconnected", 1, true) then reported = true end
 	end
 	T.eq(reported, true, "the skipped ladder is reported")
+end)
+
+-- A map's ladder with no dismount beside it (any plain CS map): thin across
+-- y, 24 wide across x, standing at y 0.
+local function PlainLadder(id)
+	return BspEntity("info_ladder", {
+		["mins.x"] = "-12",
+		["mins.y"] = "-1",
+		["mins.z"] = "0",
+		["maxs.x"] = "12",
+		["maxs.y"] = "1",
+		["maxs.z"] = "128",
+		hammerid = id,
+	})
+end
+
+local function GeneratedLadders(t)
+	t.entities = SPAWNS
+	local s = load(t)
+	s.commands.mp_nav_generate(nil)
+	s.Poll()
+	s.nav.generating, s.nav.areas = false, 20
+	s.Poll()
+	return s
+end
+
+T.test("a ladder with no dismount faces away from the wall beside it", function()
+	local s = GeneratedLadders({
+		mapEntities = { PlainLadder("plain") },
+		ladderAreas = { LadderArea(0), LadderArea(128) },
+		wall = function(point) return point.y > 0 end,
+	})
+	T.eq(s.ladders[1].direction.y, -1, "the wall on +y, it faces -y")
+	T.eq(s.ladders[1].direction.x, 0)
+	T.eq(s.ladders[1].removed, nil)
+end)
+
+T.test("a ladder with a wall on neither side or both says no facing and is skipped", function()
+	for _, wall in ipairs({ function() return false end, function() return true end }) do
+		local s = GeneratedLadders({
+			mapEntities = { PlainLadder("plain") },
+			ladderAreas = { LadderArea(0), LadderArea(128) },
+			wall = wall,
+		})
+		T.eq(#s.ladders, 0)
+		local reported = false
+		for _, message in ipairs(s.printed) do
+			if message:find("no cardinal facing", 1, true) then reported = true end
+		end
+		T.eq(reported, true)
+	end
+end)
+
+T.test("what the engine connects a ladder to stands; only an end it left is filled", function()
+	local nook, foot, top = LadderArea(0), LadderArea(0), LadderArea(128)
+	local s = GeneratedLadders({
+		mapEntities = { PlainLadder("plain") },
+		-- the nook lies nearest the ladder's foot
+		ladderAreas = { nook, top },
+		wall = function(point) return point.y > 0 end,
+		engineConnects = function(ladder) ladder.bottomArea = foot end,
+	})
+	T.eq(s.ladders[1].bottomArea, foot, "the engine's foot kept, not the nearest area")
+	T.eq(nook.ladders[s.ladders[1]], nil)
+	T.eq(s.ladders[1].topArea, top, "the top it left is filled")
+	T.eq(top.ladders[s.ladders[1]], true, "and connected back, for the way down")
+	T.eq(s.ladders[1].removed, nil)
+end)
+
+T.test("a ladder the engine connected at both ends needs nothing more", function()
+	local foot, head, nearer = LadderArea(0), LadderArea(128), LadderArea(128)
+	local s = GeneratedLadders({
+		mapEntities = { PlainLadder("plain") },
+		ladderAreas = { nearer },
+		wall = function(point) return point.y > 0 end,
+		engineConnects = function(ladder) ladder.bottomArea, ladder.topArea = foot, head end,
+	})
+	T.eq(s.ladders[1].topArea, head)
+	T.eq(nearer.ladders[s.ladders[1]], nil)
+end)
+
+T.test("a hanging ladder's foot, which the engine puts on the floor above, moves to the floor beneath", function()
+	local floor, upper = LadderArea(-200), LadderArea(128)
+	local s = GeneratedLadders({
+		mapEntities = { PlainLadder("hanging") },
+		-- the upper floor nearer the foot (at 0) than the floor beneath
+		ladderAreas = { floor, upper },
+		floorZ = -200,
+		wall = function(point) return point.y > 0 and point.z > 0 end,
+		engineConnects = function(ladder)
+			ladder.bottomArea = upper
+			upper.ladders[ladder] = true
+		end,
+	})
+	local ladder = s.ladders[1]
+	T.eq(ladder.removed, nil, "it is kept")
+	T.eq(ladder.bottomArea, floor, "its foot on the floor beneath")
+	T.eq(floor.ladders[ladder], true, "which climbs it")
+	T.eq(ladder.topArea, upper, "its top on the upper floor")
+	T.eq(upper.ladders[ladder], true, "which climbs down it")
+end)
+
+T.test("a hanging ladder with no floor beneath it is skipped", function()
+	local upper = LadderArea(128)
+	local s = GeneratedLadders({
+		mapEntities = { PlainLadder("hanging") },
+		ladderAreas = { upper },
+		wall = function(point) return point.y > 0 and point.z > 0 end,
+		engineConnects = function(ladder) ladder.bottomArea = upper end,
+	})
+	T.eq(s.ladders[1].removed, true)
+end)
+
+-- A mesh area holding ladders, as the engine lists them.
+local function MeshArea(ladders)
+	return { GetLadders = function() return ladders end }
+end
+
+T.test("mp_nav_ladders builds the ladders again over the mesh, with no generation and no reset", function()
+	local old = { removedAt = nil }
+	function old:Remove() self.removed = true end
+	local s = load({
+		entities = SPAWNS,
+		areas = 20,
+		mapEntities = { PlainLadder("plain") },
+		ladderAreas = { LadderArea(0), LadderArea(128) },
+		navAreas = { MeshArea({ old }), MeshArea({ old }) },
+		wall = function(point) return point.y > 0 end,
+	})
+	s.commands.mp_nav_ladders(nil)
+	T.eq(old.removed, true, "the old ladder goes")
+	T.eq(#s.ladders, 0, "a ladder removed does not go at once, so its areas still hold it now")
+	T.eq(s.delays.ws_nav_ladders > 0, true, "a timer of 0 runs before the removal, and would save the old beside the new")
+	s.timers.ws_nav_ladders()
+	T.eq(#s.ladders, 1)
+	T.eq(s.ladders[1].removed, nil)
+	T.eq(table.concat(s.lifecycle, ","), "ladder,save", "saved; the map is not reset")
+	T.eq(s.nav.began, 0, "no generation")
+	T.eq(s.cleaned, 0)
+end)
+
+T.test("mp_nav_ladders refuses a player who is not an admin, and a mesh being generated", function()
+	local s = load({ entities = SPAWNS, areas = 20, mapEntities = { PlainLadder("plain") } })
+	local ply = Player(false)
+	s.commands.mp_nav_ladders(ply)
+	T.eq(s.timers.ws_nav_ladders, nil)
+	T.eq(ply.said[1] ~= nil, true, "told why")
+	s.commands.mp_nav_generate(nil)
+	local admin = Player(true)
+	s.commands.mp_nav_ladders(admin)
+	T.eq(s.timers.ws_nav_ladders, nil)
+	T.eq(admin.said[1]:find("under way") ~= nil, true, admin.said[1] or "")
 end)
 
 T.test("the server console may run it too", function()

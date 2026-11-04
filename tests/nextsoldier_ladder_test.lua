@@ -102,4 +102,35 @@ T.test("a landing is the closest point moved in from the edge toward the area's 
 	T.eq(same.x, 5, "already at the centre")
 end)
 
+-- Acts as a body's model has them.
+local function Has(...)
+	local held = {}
+	for _, act in ipairs({ ... }) do held[act] = true end
+	return function(act) return held[act] == true end
+end
+local CLIMB_DOWN, LOOP, HL2, FLOAT = 1, 2, 3, 4
+local CLIMBS = { LOOP, HL2, FLOAT }
+
+T.test("a body climbs up by the first climb its model has", function()
+	T.eq(Ladder.Animation(Has(LOOP, HL2, FLOAT), CLIMB_DOWN, CLIMBS, false), LOOP, "a player model's")
+	T.eq(Ladder.Animation(Has(HL2, FLOAT), CLIMB_DOWN, CLIMBS, false), HL2, "an NPC's")
+	local act, rate = Ladder.Animation(Has(FLOAT), CLIMB_DOWN, CLIMBS, false)
+	T.eq(act, FLOAT, "a TF2 body's")
+	T.eq(rate, 1)
+end)
+
+T.test("a body climbs down by its own climb down, else its climb up played backward", function()
+	local act, rate = Ladder.Animation(Has(CLIMB_DOWN, LOOP), CLIMB_DOWN, CLIMBS, true)
+	T.eq(act, CLIMB_DOWN)
+	T.eq(rate, 1)
+	act, rate = Ladder.Animation(Has(LOOP), CLIMB_DOWN, CLIMBS, true)
+	T.eq(act, LOOP)
+	T.eq(rate, -1)
+end)
+
+T.test("a body with no climb has no ladder animation, and keeps its usual one", function()
+	T.eq(Ladder.Animation(Has(), CLIMB_DOWN, CLIMBS, false), nil)
+	T.eq(Ladder.Animation(Has(), CLIMB_DOWN, CLIMBS, true), nil)
+end)
+
 T.finish()

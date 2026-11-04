@@ -59,6 +59,17 @@ function CanMount(from, waypoint, height)
 	return dz > -height and dz < height
 end
 
+-- What a body plays on a ladder -> act, rate: going down, its own climb down;
+-- else the first of climbs its model has (has(act)), played backward going
+-- down; nil for a body with none.
+function Animation(has, climbDown, climbs, down)
+	if down and has(climbDown) then return climbDown, 1 end
+	for i = 1, #climbs do
+		if has(climbs[i]) then return climbs[i], down and -1 or 1 end
+	end
+	return nil
+end
+
 -- A point of the far area to land on: the point closest to the ladder, moved
 -- in from the edge by inset toward the area's centre, and no farther.
 function Landing(closest, center, inset)

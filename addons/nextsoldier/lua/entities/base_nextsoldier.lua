@@ -51,9 +51,11 @@ local FOLLOW_HOLD = 0.5
 local CLIMB_UP = 2
 -- A climb begins this near the ledge's foot.
 local CLIMB_REACH = 48
--- What a body plays on a ladder, a model that has it (a player model's
--- climbing loop).
-local LADDER_ACT = ACT_ZOMBIE_CLIMB_UP
+-- What a body plays on a ladder, the first its model has: a player model's
+-- climbing loop, an HL2 NPC's climb; TF2's bodies have no climb (TF2 has no
+-- ladders), and hang as they do in a jump.
+local LADDER_DOWN_ACT = ACT_CLIMB_DOWN
+local LADDER_ACTS = { ACT_ZOMBIE_CLIMB_UP, ACT_CLIMB_UP, ACT_MP_JUMP_FLOAT_PRIMARY }
 -- It steps and jumps as a TF2 player (games.gameplay.movement): a stair
 -- step, and as high as a crouch jump reaches (it does not tuck its legs).
 local Movement = gameplay.movement
@@ -376,11 +378,18 @@ end
 
 -- A scramble (TF2's ClimbUpToLedge, JumpAcrossGap: a locomotion process
 -- carried out over ticks, no coroutine): { duration, at(t) -> position,
--- done(), act (what its body plays, or its usual animation) }, its momentum
--- stopped each step; nothing else moves it, and its intention waits, until
--- it ends.
+-- done(), act and rate (what its body plays, or its usual animation) }, its
+-- momentum stopped each step; nothing else moves it, and its intention waits,
+-- until it ends.
 function ENT:Scramble(motion)
-	self.nsScramble = { duration = motion.duration, at = motion.at, done = motion.done, act = motion.act, began = CurTime() }
+	self.nsScramble = {
+		duration = motion.duration,
+		at = motion.at,
+		done = motion.done,
+		act = motion.act,
+		rate = motion.rate,
+		began = CurTime(),
+	}
 end
 
 function ENT:IsScrambling() return self.nsScramble ~= nil end
@@ -443,6 +452,8 @@ function ENT:ClimbPathLadder(path)
 	local near = q.down and q.bottom or q.top
 	q.landing = Ladder.Landing(area:GetClosestPointOnArea(near), area:GetCenter(), q.halfWidth)
 	local climb = Ladder.Climb(q)
+	local act, rate = Ladder.Animation(function(candidate) return self:SelectWeightedSequence(candidate) >= 0 end,
+		LADDER_DOWN_ACT, LADDER_ACTS, q.down)
 	self:SetAngles(Angle(0, (-q.normal):Angle().y, 0))
 	self:Scramble({
 		duration = climb.duration,
@@ -450,7 +461,8 @@ function ENT:ClimbPathLadder(path)
 			local p = climb:At(t)
 			return Vector(p.x, p.y, p.z)
 		end,
-		act = self:SelectWeightedSequence(LADDER_ACT) >= 0 and LADDER_ACT or nil,
+		act = act,
+		rate = rate,
 		done = function()
 			self:SetCrouching(area:HasAttributes(NAV_MESH_CROUCH))
 			local current = self:GetPath()
@@ -631,9 +643,14 @@ function ENT:BodyUpdate()
 		return
 	end
 	self:AimUpdate()
-	local act, rate = self.nsScramble and self.nsScramble.act, 1
-	if not act then act, rate = self:OnUpdateAnimation() end
-	if act == nil then act, rate = self:DefaultAnimation() end
+	local scramble = self.nsScramble
+	local act, rate
+	if scramble and scramble.act then
+		act, rate = scramble.act, scramble.rate
+	else
+		act, rate = self:OnUpdateAnimation()
+		if act == nil then act, rate = self:DefaultAnimation() end
+	end
 	if self:GetActivity() ~= act then self:StartActivity(act) end
 	if rate then self:SetPlaybackRate(rate) end
 	if self:IsMoving() then self:BodyMoveXY() else self:FrameAdvance() end
