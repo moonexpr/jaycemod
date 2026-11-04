@@ -101,6 +101,7 @@ local function load(t)
 	}
 	for name, value in pairs(t.limits or {}) do s.convars[name] = value end
 	s.requests, s.sent, s.created = {}, {}, {}
+	s.ramps, s.stairAreas = {}, t.stairAreas
 	s.stages = {}
 	s.locks = {}
 	s.ws = {
@@ -108,6 +109,7 @@ local function load(t)
 		LockSpawns = function(lock) s.locks[#s.locks + 1] = "lock " .. lock end,
 		UnlockSpawns = function(lock) s.locks[#s.locks + 1] = "unlock " .. lock end,
 		MapFile = function(names)
+			if names[1] == "BRUSHES" then return { BRUSHES = t.brushes or {} } end
 			T.eq(names[1], "ENTITIES")
 			return { ENTITIES = s.mapEntities }
 		end,
@@ -188,6 +190,21 @@ local function load(t)
 				if t.engineConnects then t.engineConnects(ladder) end
 				return ladder
 			end,
+			FindInBox = function() return s.stairAreas or {} end,
+			GetNavAreaByID = function(id)
+				for _, area in ipairs(s.stairAreas or {}) do
+					if area:GetID() == id then return area end
+				end
+			end,
+			CreateNavArea = function()
+				local ramp = { attributes = 0, links = {} }
+				function ramp:SetCorner() end
+				function ramp:AddAttributes(attributes) self.attributes = attributes end
+				function ramp:ConnectTo(other) self.links[other] = true end
+				s.ramps[#s.ramps + 1] = ramp
+				s.lifecycle[#s.lifecycle + 1] = "ramp"
+				return ramp
+			end,
 			Save = function() s.lifecycle[#s.lifecycle + 1] = "save" end,
 			BeginGeneration = function() s.nav.began = s.nav.began + 1 s.nav.generating = true end,
 			IsGenerating = function() return s.nav.generating end,
@@ -223,7 +240,9 @@ local function load(t)
 				s.timers[name], s.delays[name] = fn, delay
 			end,
 			Remove = function(name) s.timers[name] = nil end,
+			Simple = function(_, fn) s.nextTick = fn end,
 		},
+		NAV_MESH_STAIRS = 4096,
 		player = { GetHumans = function() return s.humans end },
 		game = {
 			GetMap = function() return "cp_steel" end,
@@ -738,6 +757,58 @@ end
 local function TwoAcrossASeam()
 	return NavArea(1, 0, 0, 100, 100), NavArea(2, 125, 0, 225, 100)
 end
+
+-- A flight: a slanted player clip rising toward lower y, z = 1000 - y.
+local function ClippedStair()
+	local function Side(x, y, z, dist) return { plane = { normal = V(x, y, z), dist = dist }, bevel = 0 } end
+	local ROOT2 = math.sqrt(2) / 2
+	return {
+		contents = nextsoldier.world.nav_stairs.PLAYER_CLIP,
+		sides = {
+			Side(1, 0, 0, 100), Side(-1, 0, 0, 0), Side(0, 1, 0, 1000), Side(0, -1, 0, -800),
+			Side(0, 0, 1, 200), Side(0, 0, -1, 0), Side(0, ROOT2, ROOT2, 1000 * ROOT2),
+		},
+	}
+end
+
+local function StairArea(id, y0, y1, zLowY, zHighY, s)
+	local a = NavArea(id, 0, y0, 100, y1, zLowY)
+	function a:GetExtentInfo() return { lo = V(0, y0, zLowY), hi = V(100, y1, zHighY) } end
+	function a:GetCorner(corner) return { z = (corner == 0 or corner == 1) and zLowY or zHighY } end
+	function a:GetAdjacentAreas() return {} end
+	function a:Remove() s.lifecycle[#s.lifecycle + 1] = "remove " .. id end
+	return a
+end
+
+T.test("a broken flight is laid as a ramp, saved once its fragments are gone, then its seams linked", function()
+	local log = {}
+	local areas = {
+		StairArea(1, 990, 1020, 0, 0, { lifecycle = log }),
+		StairArea(2, 900, 925, 100, 75, { lifecycle = log }),
+		StairArea(3, 780, 820, 200, 200, { lifecycle = log }),
+	}
+	local s = load({ areas = 3, navAreas = {}, brushes = { ClippedStair() }, stairAreas = areas })
+	s.hooks.InitPostEntity()
+	s.timers.ws_nav_gaps()
+	T.eq(table.concat(s.lifecycle, ","), "ramp", "not saved in the tick an area is removed, which lingers until the next")
+	T.eq(table.concat(log, ","), "remove 2", "the fragment")
+	T.eq(s.ramps[1].attributes, 4096, "marked as stairs")
+	T.eq(s.ramps[1].links[areas[1]] and s.ramps[1].links[areas[3]], true, "joined to the floor and the landing")
+	T.eq(areas[1].links[s.ramps[1]] and areas[3].links[s.ramps[1]], true, "both ways")
+	T.eq(s.timers.ws_nav_gaps, nil, "the seams wait for the save")
+	s.nextTick()
+	T.eq(table.concat(s.lifecycle, ","), "ramp,save")
+	T.eq(s.timers.ws_nav_gaps ~= nil, true, "then the seams")
+end)
+
+T.test("a map with no broken flight is not saved", function()
+	local s = load({ areas = 2, navAreas = {}, brushes = { ClippedStair() }, stairAreas = {} })
+	s.hooks.InitPostEntity()
+	s.timers.ws_nav_gaps()
+	T.eq(table.concat(s.lifecycle, ","), "", "nothing laid, nothing saved")
+	T.eq(s.nextTick, nil)
+	T.eq(s.timers.ws_nav_gaps ~= nil, true, "the seams go on at once")
+end)
 
 T.test("once the map has loaded, a seam a walker crosses is linked both ways", function()
 	local a, b = TwoAcrossASeam()

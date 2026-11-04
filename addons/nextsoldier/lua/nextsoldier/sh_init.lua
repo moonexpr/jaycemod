@@ -27,6 +27,7 @@ Load("nextsoldier/world.lua")
 Load("nextsoldier/world/doors.lua")
 Load("nextsoldier/world/portal.lua")
 Load("nextsoldier/world/nav_gaps.lua")
+Load("nextsoldier/world/nav_stairs.lua")
 
 Load("nextsoldier/body/gaze.lua")
 Load("nextsoldier/body/gestures.lua")

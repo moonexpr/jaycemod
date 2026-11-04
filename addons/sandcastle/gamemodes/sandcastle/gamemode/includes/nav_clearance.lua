@@ -9,9 +9,10 @@ local function StaticMap(ent)
 end
 
 -- How high a body stands over the floor measured: on it, or a step up. A hull
--- is wider than a stair's tread, so on a stair or at its foot the next steps
--- stand within its reach; the body rides up on them, feet and head a step
--- higher, where a hull on the floor would be stopped by them.
+-- is wider than a stair's tread, so on a stair or at its foot the next steps,
+-- or the clip a map lays over them, stand within its reach; the body rides up
+-- on them, feet and head a step higher, where a hull on the floor would be
+-- stopped by them.
 RIDES = { 0, NavGaps.STEP_HEIGHT }
 
 local function HullLineFits(from, to, start, finish, mins, maxs, mask, traceHull, vector)

@@ -38,6 +38,7 @@ local Doors = nextsoldier.world.doors
 local Progress = WS.require("includes.nav_progress")
 local World = nextsoldier.world
 local NavGaps = nextsoldier.world.nav_gaps
+local NavStairs = nextsoldier.world.nav_stairs
 local NavClearance = WS.require("includes.nav_clearance")
 local PairMap = world.pairmap
 
@@ -240,13 +241,75 @@ function WS.BridgeNavGaps()
 	end)
 end
 
+-- How far above and below a clip's bounds a flight's floors are looked for.
+local STAIR_REACH = Vector(0, 0, 32)
+local CORNER_NW, CORNER_NE, CORNER_SE, CORNER_SW = 0, 1, 2, 3
+
+local function StairArea(area)
+	local extent, links = area:GetExtentInfo(), {}
+	for i, other in ipairs(area:GetAdjacentAreas()) do links[i] = other:GetID() end
+	return {
+		id = area:GetID(), lo = Point(extent.lo), hi = Point(extent.hi), links = links,
+		z = {
+			nw = area:GetCorner(CORNER_NW).z, ne = area:GetCorner(CORNER_NE).z,
+			se = area:GetCorner(CORNER_SE).z, sw = area:GetCorner(CORNER_SW).z,
+		},
+	}
+end
+
+-- The ramp a plan lays (nextsoldier.world.nav_stairs), in place of the fragments.
+local function LayRamp(plan)
+	local nw = Vector(plan.lo.x, plan.lo.y, plan.z.nw)
+	local se = Vector(plan.hi.x, plan.hi.y, plan.z.se)
+	local ramp = navmesh.CreateNavArea(nw, se)
+	if not IsValid(ramp) then return false end
+	ramp:SetCorner(CORNER_NW, nw)
+	ramp:SetCorner(CORNER_NE, Vector(plan.hi.x, plan.lo.y, plan.z.ne))
+	ramp:SetCorner(CORNER_SE, se)
+	ramp:SetCorner(CORNER_SW, Vector(plan.lo.x, plan.hi.y, plan.z.sw))
+	ramp:AddAttributes(NAV_MESH_STAIRS)
+	for _, id in ipairs(plan.remove) do navmesh.GetNavAreaByID(id):Remove() end
+	for _, id in ipairs(plan.connect) do
+		local other = navmesh.GetNavAreaByID(id)
+		ramp:ConnectTo(other)
+		other:ConnectTo(ramp)
+	end
+	return true
+end
+
+-- The stairs the generator broke, by the map's slanted player clips, each made
+-- one ramp; the mesh saved when any was, so a map is repaired once. An area
+-- removed leaves the mesh a tick later, so the save and then done wait for it.
+function WS.RepairNavStairs(done)
+	local brushes = WS.MapFile({ "BRUSHES", "BRUSHSIDES", "PLANES" }).BRUSHES
+	local slopes = NavStairs.Slopes(brushes)
+	local repaired = 0
+	for _, slope in ipairs(slopes) do
+		local mins = Vector(slope.lo.x, slope.lo.y, slope.lo.z) - STAIR_REACH
+		local maxs = Vector(slope.hi.x, slope.hi.y, slope.hi.z) + STAIR_REACH
+		local areas = {}
+		for i, area in ipairs(navmesh.FindInBox(mins, maxs)) do areas[i] = StairArea(area) end
+		local plan = NavStairs.Plan(slope, areas)
+		if plan and LayRamp(plan) then repaired = repaired + 1 end
+	end
+	print(string.format("Navigation mesh: %d of %d clipped stairs repaired", repaired, #slopes))
+	if repaired == 0 then return done() end
+	timer.Simple(0, function()
+		navmesh.Save()
+		done()
+	end)
+end
+
 -- GMod loads the mesh after the map's entities: the sweep waits for it, a
 -- second at a time, up to NAV_LOAD_WAIT (a map without one never has it).
 local NAV_LOAD_WAIT = 60
 
 hook.Add("InitPostEntity", "ws_nav_gaps", function()
 	timer.Create(GAP_TIMER, 1, NAV_LOAD_WAIT, function()
-		if WS.NavMeshUsable() then WS.BridgeNavGaps() end
+		if WS.NavMeshUsable() then
+			timer.Remove(GAP_TIMER)
+			WS.RepairNavStairs(WS.BridgeNavGaps)
+		end
 	end)
 end)
 
@@ -589,7 +652,7 @@ local function Generate(ply, resume)
 		for limit, value in pairs(limits) do limit:SetString(value) end
 		game.CleanUpMap()
 		WS.UnlockSpawns("nav")
-		WS.BridgeNavGaps()
+		WS.RepairNavStairs(WS.BridgeNavGaps)
 		WS.NavProgress(Progress.DONE, navmesh.GetNavAreaCount())
 		local ladderSummary = #ladders > 0 and (", " .. laddersCreated .. " ladders created, " .. laddersSkipped .. " skipped") or ""
 		Tell(ply, "Navigation mesh: done, " .. navmesh.GetNavAreaCount() .. " areas" .. ladderSummary
