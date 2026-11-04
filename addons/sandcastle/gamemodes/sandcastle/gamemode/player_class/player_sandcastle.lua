@@ -4,7 +4,7 @@ local Weapons = GM.SimpleWeaponLoadout
 
 function PLAYER:Loadout()
 	self.Player:RemoveAllAmmo()
-	Weapons.GiveHL2Extended(self.Player)
+	Weapons.GiveHL2(self.Player)
 	self.Player:Give("weapon_physcannon")
 	Weapons.GiveSandboxTools(self.Player)
 	self.Player:SwitchToDefaultWeapon()

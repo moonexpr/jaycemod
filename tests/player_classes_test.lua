@@ -64,15 +64,27 @@ T.test("Simple Weapons player-class driver uses the published HL2, HL2 Extended,
 	end
 
 	Weapons.GiveHL2(ply)
-	T.eq(#given, 18)
-	for _, class in ipairs({
-		"simple_hl2_crowbar", "simple_hl2_pistol", "simple_hl2_smg1", "simple_hl2_frag",
+	local HL2 = {
+		"simple_hl2_crowbar", "simple_hl2_stunstick", "simple_hl2_pistol", "simple_hl2_smg1", "simple_hl2_frag",
 		"simple_hl2_crossbow", "simple_hl2_shotgun", "simple_hl2_357", "simple_hl2_rpg", "simple_hl2_ar2",
+	}
+	T.eq(#given, #HL2, "HL2's standard weapons and no others")
+	for _, class in ipairs(HL2) do
+		T.eq(Contains(given, class), true, class .. " is in the HL2 loadout")
+	end
+
+	given = {}
+	Weapons.GiveHL2AndExtended(ply)
+	T.eq(#given, #HL2 + 9, "HL2's and HL2 Extended's")
+	for _, class in ipairs(HL2) do
+		T.eq(Contains(given, class), true, class .. " is in the HL2 and Extended loadout")
+	end
+	for _, class in ipairs({
 		"simple_hl2e_alyxgun", "simple_hl2e_ar1", "simple_hl2e_ar3", "simple_hl2e_ar3_sniper",
 		"simple_hl2e_arp", "simple_hl2e_autogun", "simple_hl2e_crossbow_he", "simple_hl2e_csniper",
 		"simple_hl2e_oicw",
 	}) do
-		T.eq(Contains(given, class), true, class .. " is in the HL2 loadout")
+		T.eq(Contains(given, class), true, class .. " is in the HL2 and Extended loadout")
 	end
 
 	given = {}
@@ -131,11 +143,11 @@ T.test("default combatant, CS:S combatant, and Sandcastle use their weapon drive
 		T.eq(Contains(captured.weapons, "gmod_tool"), true, path .. " keeps the tool")
 		T.eq(Contains(captured.weapons, "gmod_camera"), true, path .. " keeps the camera")
 		-- each class its families of Simple Weapons: the combatant HL2's and
-		-- HL2 Extended's, the CS:S combatant CS:S's, Sandcastle HL2 Extended's
+		-- HL2 Extended's, the CS:S combatant CS:S's, Sandcastle HL2's
 		local FAMILIES = {
 			["player_class/player_combatant.lua"] = { simple_hl2_ = true, simple_hl2e_ = true },
 			["player_class/player_combatant_cstrike.lua"] = { simple_css_ = true },
-			["player_class/player_sandcastle.lua"] = { simple_hl2e_ = true },
+			["player_class/player_sandcastle.lua"] = { simple_hl2_ = true },
 		}
 		local families = {}
 		for _, weapon in ipairs(captured.weapons) do

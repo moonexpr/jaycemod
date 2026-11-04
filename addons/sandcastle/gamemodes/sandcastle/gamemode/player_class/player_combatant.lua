@@ -8,7 +8,7 @@ function PLAYER:Loadout()
 	--self.Player:StripWeapons()
 	self.Player:RemoveAllAmmo()
 
-    Weapons.GiveHL2(self.Player)
+    Weapons.GiveHL2AndExtended(self.Player)
     self.Player:Give( "weapon_physcannon" )
 
 	Weapons.GiveCombatantTools(self.Player)

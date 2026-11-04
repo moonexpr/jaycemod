@@ -1,5 +1,6 @@
 local HL2_WEAPONS = {
 	"simple_hl2_crowbar",
+	"simple_hl2_stunstick",
 	"simple_hl2_pistol",
 	"simple_hl2_smg1",
 	"simple_hl2_frag",
@@ -73,6 +74,10 @@ end
 
 GM.SimpleWeaponLoadout = {
 	GiveHL2 = function(ply)
+		GiveHL2Ammo(ply)
+		GiveAll(ply, HL2_WEAPONS)
+	end,
+	GiveHL2AndExtended = function(ply)
 		GiveHL2Ammo(ply)
 		GiveAll(ply, HL2_WEAPONS)
 		GiveAll(ply, HL2_EXTENDED_WEAPONS)
