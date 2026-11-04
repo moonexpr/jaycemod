@@ -585,6 +585,51 @@ T.test("the scenario tells the rules what a map's outputs would", function()
 	T.eq(by.SetStalemateOnTimelimit, "1", "the time limit's stalemate")
 end)
 
+T.test("every field of the scenario has Hammer's help", function()
+	for _, prop in ipairs(Classes[Builder.SCENARIO].Properties) do
+		T.eq(type(prop.help), "string", prop.name)
+		Holds(#prop.help > 0, prop.name .. " says something")
+	end
+end)
+
+T.test("the scenario's goals are chosen from TF2's own, or none", function()
+	for _, name in ipairs({ "RedGoal", "BluGoal" }) do
+		local prop
+		for _, candidate in ipairs(Classes[Builder.SCENARIO].Properties) do
+			if candidate.name == name then prop = candidate end
+		end
+		T.eq(prop.default, "", name .. " starts with none")
+		local none, tokens = false, 0
+		for label, value in pairs(prop.values) do
+			T.eq(type(label), "string", name .. " label")
+			if value == "" then none = true else
+				Holds(value:sub(1, 1) == "#", name .. " " .. value .. " is a token")
+				tokens = tokens + 1
+			end
+		end
+		Holds(none, name .. " may have none")
+		Holds(tokens > 1, name .. " has a choice")
+	end
+end)
+
+T.test("restricting a team takes Hammer's values", function()
+	local values
+	for _, prop in ipairs(Classes[Builder.SCENARIO].Properties) do
+		if prop.name == "RestrictWin" then values = prop.values end
+	end
+	T.eq(values.Neither, 0, "neither is restricted")
+	T.eq(values.Both, 1, "both are")
+	T.eq(values.Red, RED, "RED")
+	T.eq(values.Blue, BLUE, "BLU")
+end)
+
+T.test("help is wrapped to lines a tooltip can show", function()
+	local wrapped = Builder.WrapHelp("one two three four five six", 9)
+	T.eq(wrapped, "one two\nthree\nfour five\nsix", "at the words")
+	T.eq(Builder.WrapHelp("short", 60), "short", "alone")
+	T.eq(Builder.WrapHelp("averyveryverylongword x", 4), "averyveryverylongword\nx", "a long word stands alone")
+end)
+
 T.test("the scenario makes no objective of its own", function()
 	local compiled = Builder.Compile({ Piece(1, Builder.SCENARIO) })
 	T.eq(#compiled.specs, 0, "no entities")

@@ -197,6 +197,8 @@ function Controller:Build()
 			self.hadPoints = true
 			WS.Feature("capture"):Rebuild()
 		end
+		-- a watcher would choose it next tick; the AI war asks in this one
+		if spec.class == "team_train_watcher" then WS.Feature("payload"):ChooseMode() end
 	end
 	for _, input in ipairs(compiled.rules) do WS.Rules:Fire(input.input, input.param) end
 	for _, problem in ipairs(compiled.problems) do PrintMessage(HUD_PRINTTALK, PREFIX .. problem) end
@@ -220,13 +222,30 @@ end
 hook.Add("WSGameStarting", HOOK, Start)
 hook.Add("MatchStart", HOOK, Start)
 
-hook.Add("WSGameStopped", HOOK, function()
+local function Stop()
 	SetPlaying(Controller, false)
 	Controller:Clear()
 	if not Controller.hadPoints then return end
 	Controller.hadPoints = false
 	-- the points are gone next frame, and the capture set with them
 	timer.Simple(0, function() WS.Feature("capture"):Rebuild() end)
+end
+
+hook.Add("WSGameStopped", HOOK, Stop)
+
+-- The AI war reads a game's spawns and objectives before it starts one: they are
+-- made for it, and taken back if it is refused, unless a game already had them.
+local builtForWar = false
+
+hook.Add("WSWarStarting", HOOK, function()
+	builtForWar = not Controller.running
+	Start()
+	-- the spawn bases it retires are gone next frame: the war looks again
+	timer.Simple(0, function() WS.Feature("aiwar").baseCache = nil end)
+end)
+
+hook.Add("WSWarRefused", HOOK, function()
+	if builtForWar then Stop() end
 end)
 
 hook.Add("PostCleanupMap", HOOK, function()

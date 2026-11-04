@@ -219,6 +219,10 @@ function Controller:Start()
 	if self.war then return false, "the war is already on" end
 	if not WS.SoldiersEnabled() then return false, "NextSoldier is switched off on this server (ns_soldiers_enabled 0)" end
 	if not WS.NavMeshUsable() then return false, NO_NAV_MESH end
+	-- A layout built with the Gameplay tools is made as a game starts, and this
+	-- one starts below: it is made first, for the war to read its spawns and
+	-- objectives, and taken back if the war is refused.
+	hook.Run("WSWarStarting")
 	self:PlaceSpawnBases()
 	self.baseCache = nil
 	-- a map whose mode is none the war knows is fought freeform
@@ -234,7 +238,10 @@ function Controller:Start()
 		bases = self:Bases().bases,
 		waypoints = self:Waypoints(),
 	})
-	if lacks then return false, MAP_LACKS[lacks] end
+	if lacks then
+		hook.Run("WSWarRefused")
+		return false, MAP_LACKS[lacks]
+	end
 	self.scenario = variant:New()
 	self.winner = nil
 	self.waitingFor = nil

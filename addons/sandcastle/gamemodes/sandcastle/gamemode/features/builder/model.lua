@@ -2,8 +2,8 @@
 -- its classes each hold their own properties, ports and rules): which maps it
 -- runs on, the Hammer keyvalues of a property list, the game helpers make together,
 -- and the Wire commands they name.
-local error, format, ipairs, setmetatable, sort, sub, tostring, type =
-	error, string.format, ipairs, setmetatable, table.sort, string.sub, tostring, type
+local concat, error, format, gmatch, ipairs, setmetatable, sort, sub, tostring, type =
+	table.concat, error, string.format, string.gmatch, ipairs, setmetatable, table.sort, string.sub, tostring, type
 local scripted_ents = scripted_ents
 local Teams = gameplay.teams
 module(...)
@@ -83,6 +83,21 @@ function Keys(properties, read, target)
 		if prop.key and prop.target == target and value ~= prop.auto then keys[prop.key] = Text(value) end
 	end
 	return keys
+end
+
+-- Text as lines of at most width characters, broken between words.
+function WrapHelp(text, width)
+	local lines, line = {}, nil
+	for word in gmatch(text, "%S+") do
+		if line and #line + 1 + #word > width then
+			lines[#lines + 1] = line
+			line = word
+		else
+			line = line and line .. " " .. word or word
+		end
+	end
+	lines[#lines + 1] = line
+	return concat(lines, "\n")
 end
 
 -- The game: what the helpers make together. A spec: { class, name, pos, ang,

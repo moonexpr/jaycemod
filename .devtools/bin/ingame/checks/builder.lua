@@ -134,4 +134,16 @@ function builder_push(on)
 	return "pushing as " .. bot:Nick()
 end
 
+-- Spawners for one team, or both, and the war asked to start before any game:
+-- what it answers, and what it left.
+function builder_war_start(teams)
+	local bot, Trace = Open()
+	for i, team in ipairs(teams) do Builder:Place(bot, Trace(i * 200, 0), Model.SPAWN, { TeamNum = team }) end
+	local war = WS.Feature("aiwar")
+	local ok, why = war:Start()
+	local spawns = {}
+	for _, spawn in ipairs(ents.FindByClass("info_player_teamspawn")) do spawns[#spawns + 1] = WS.SpawnState(spawn).team end
+	return util.TableToJSON({ ok = ok, why = why, running = Builder.running, compiled = table.Count(Builder.compiled), spawns = #spawns, mode = WS.Feature("rounds"):Mode().NAME, war = WS.AiWarActive() })
+end
+
 return "loaded"

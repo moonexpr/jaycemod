@@ -298,6 +298,10 @@ local function Env(w)
 		SetGlobal2Int = function(key, value) w.globals[key] = value end,
 		concommand = wiring.concommand,
 		hook = {
+			Run = function(event)
+				w.fired = w.fired or {}
+				w.fired[#w.fired + 1] = event
+			end,
 			Add = function(event, id, fn)
 				wiring.hook.Add(event, id, fn)
 				w.hooks[event] = fn
@@ -763,6 +767,18 @@ T.test("control point and KOTH maps start their own scenario", function()
 		local controller = Started(w, mode)
 		T.eq(getmetatable(controller.scenario), REAL[mode.NAME].Scenario, mode.NAME)
 	end
+end)
+
+T.test("the war has a built layout made before it reads the map, and taken back if refused", function()
+	local started = World()
+	Started(started, PayloadMode.Mode)
+	T.eq(started.fired[1], "WSWarStarting", "told first")
+	T.eq(#started.fired, 1, "not refused")
+	RealVariant(ControlPointsMode.Mode)
+	local refused = World()
+	refused:Load("rounds", FakeRounds(ControlPointsMode.Mode, refused))
+	T.eq((Load(refused):Start()), false, "refused")
+	T.eq(refused.fired[2], "WSWarRefused", "told so")
 end)
 
 T.test("the point scenarios refuse a map whose round has no points", function()

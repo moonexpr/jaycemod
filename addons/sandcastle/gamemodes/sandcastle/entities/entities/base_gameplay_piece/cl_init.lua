@@ -1,5 +1,18 @@
 include("shared.lua")
 
+-- Edit Properties' rows that show a property's help on their tooltip, as Hammer
+-- does beside a keyvalue. A row's type names its control; each of these is the
+-- plain one with the help on the row, which its label and field both ask.
+for _, kind in ipairs({ "Generic", "Int", "Float", "Boolean", "Combo" }) do
+	local plain = "DProperty_" .. kind
+	derma.DefineControl("DProperty_Help" .. kind, "", {
+		Setup = function(self, vars)
+			vgui.GetControlTable(plain).Setup(self, vars)
+			self:GetRow():SetTooltip(vars.help)
+		end,
+	}, plain)
+end
+
 -- Its model, and a volume's box.
 function ENT:Draw()
 	self:DrawModel()

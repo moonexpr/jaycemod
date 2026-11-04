@@ -62,6 +62,30 @@ T.test("a helper declares its properties as edited network variables", function(
 	T.eq(declared.PieceId.options, nil, "its id is no property to edit")
 end)
 
+T.test("a property with help has it on its row, wrapped, and a row type that shows it", function()
+	local piece = NewPiece(Builder.SCENARIO)
+	local edits = {}
+	piece.NetworkVar = function(_, _, _, name, options) edits[name] = options and options.Edit end
+	piece.NetworkVarNotify = function() end
+	piece:SetupDataTables()
+	T.eq(edits.CapLayout.type, "HelpGeneric", "a text field")
+	T.eq(edits.ScoreStyle.type, "HelpCombo", "a choice")
+	T.eq(edits.SwitchTeams.type, "HelpBoolean", "a switch")
+	T.eq(edits.TimerLength.type, "HelpInt", "a whole number")
+	T.eq(edits.PartialCapRate.type, "HelpFloat", "a number")
+	T.eq(edits.CapLayout.help:find("\n", 1, true) ~= nil, true, "wrapped")
+end)
+
+T.test("a property without help keeps the plain row", function()
+	local piece = NewPiece(Builder.SPAWN)
+	local edits = {}
+	piece.NetworkVar = function(_, _, _, name, options) edits[name] = options and options.Edit end
+	piece.NetworkVarNotify = function() end
+	piece:SetupDataTables()
+	T.eq(edits.TeamNum.type, "Combo", "a choice")
+	T.eq(edits.StartDisabled.type, "Boolean", "a switch")
+end)
+
 T.test("a new helper takes its properties' defaults", function()
 	local piece, vars = NewPiece(Builder.POINT)
 	vars.TimeToCap = 99
