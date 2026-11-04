@@ -2,6 +2,8 @@
 -- gives the time (an NPC's actor port is a clock, as is any port with Now).
 --   New(clock): Start, Reset, Invalidate, HasStarted, GetElapsedTime
 --     (INTERVAL_UNSTARTED when unstarted), IsLessThen, IsGreaterThen.
+-- This is the Lua twin, which clients run; a server with native/foundation has
+-- the native one in its place, which keeps this contract.
 local setmetatable = setmetatable
 module(...)
 

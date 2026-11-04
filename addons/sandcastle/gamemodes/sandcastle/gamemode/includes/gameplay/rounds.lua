@@ -16,7 +16,7 @@ local error, ipairs, math, pairs, setmetatable, tostring = error, ipairs, math, 
 local find, gmatch, sort, table_remove = string.find, string.gmatch, table.sort, table.remove
 local Teams = gameplay.teams
 local State = require("games.gameplay.rounds.state")
-local Cfsm = generator.state_machine
+local StateMachine = generator.state_machine
 local Snapshot = world.snapshot
 local Class = core.class
 local Spawns = system.spawn_manager
@@ -1803,7 +1803,7 @@ end
 -- decided (a win, a stalemate, a limit, an admin), so every declared state
 -- may follow any other; what the machine holds is the states themselves and
 -- one handler of each kind per state.
-ROUND_STATES = Cfsm.Define({
+ROUND_STATES = StateMachine.Define({
 	name = "round",
 	states = {
 		State.INIT,

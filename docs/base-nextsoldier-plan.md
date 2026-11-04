@@ -25,7 +25,7 @@ port for those NPCs.
   (the senses, TF2's IVision), the movement modules (`leap`, `rappel`,
   `noise`, `detour`, `doors`, `portal`), `wetsands.navsearch.Calculator`
   (the path cost, native), `list.schedule` (cooperative tasks in a time
-  slice), `generator.state_machine` and `generator.hfsm`.
+  slice), `generator.state_machine` and `generator.state_chart`.
 
 ## 2. The design
 

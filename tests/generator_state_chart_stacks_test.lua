@@ -1,8 +1,8 @@
--- games.generator.hfsm: the Chart seam over the Action/Behavior engine. The
+-- generator.state_chart with its stacks: the Chart seam over the Action/Behavior engine. The
 -- engine itself is tested through games.npc.nextbot (games_npc_nextbot_test.lua), which runs
 -- on it.
 local T = dofile("tests/harness.lua")
-local Hfsm = generator.hfsm
+local StateChart = generator.state_chart
 local Port = core.port
 
 -- A soldier the port is checked against: more methods than any chart needs.
@@ -19,7 +19,7 @@ local SOLDIER_PORT = Port.New("Soldier", { "Now", "IsAlive", "Shoot" })
 
 -- Patrol until stuck, then Unstick, then back; an engagement asks to shoot.
 local function PatrolChart()
-	local chart = Hfsm.Chart({
+	local chart = StateChart.Chart({
 		name = "Patrol",
 		port = SOLDIER_PORT,
 		events = { "OnStuck" },
@@ -28,8 +28,8 @@ local function PatrolChart()
 	})
 	local Patrol = chart:State("Patrol")
 	local Unstick = chart:State("Unstick")
-	function Patrol:OnStuck(me) return self:TryChangeTo(Unstick:New(), Hfsm.RESULT_IMPORTANT, "stuck") end
-	function Patrol:ShouldShoot(me) return Hfsm.ANSWER_YES end
+	function Patrol:OnStuck(me) return self:TryChangeTo(Unstick:New(), StateChart.RESULT_IMPORTANT, "stuck") end
+	function Patrol:ShouldShoot(me) return StateChart.ANSWER_YES end
 	function Patrol:Update(me)
 		me:Shoot()
 		return self:Continue()
@@ -57,11 +57,11 @@ T.test("a machine runs the chart's states over its actor, as a scenario", functi
 	T.eq(machine:Describe(), "Unstick", "stuck")
 	machine:Update(0.1)
 	T.eq(machine:Describe(), "Patrol", "free again")
-	T.eq(machine:Query("ShouldShoot"), Hfsm.ANSWER_YES, "query answered")
+	T.eq(machine:Query("ShouldShoot"), StateChart.ANSWER_YES, "query answered")
 end)
 
 T.test("a state sees only the methods its chart's port declares", function()
-	local chart = Hfsm.Chart({
+	local chart = StateChart.Chart({
 		name = "Nosy",
 		port = SOLDIER_PORT,
 		initial = function(state) return state.Nosy:New() end,
@@ -95,9 +95,9 @@ T.test("a port needs a name and at least one method", function()
 end)
 
 T.test("a chart needs a name, a port and an initial state", function()
-	Raises(Hfsm.Chart, { port = SOLDIER_PORT, initial = function() end })
-	Raises(Hfsm.Chart, { name = "NoPort", initial = function() end })
-	Raises(Hfsm.Chart, { name = "NoInitial", port = SOLDIER_PORT })
+	Raises(StateChart.Chart, { port = SOLDIER_PORT, initial = function() end })
+	Raises(StateChart.Chart, { name = "NoPort", initial = function() end })
+	Raises(StateChart.Chart, { name = "NoInitial", port = SOLDIER_PORT })
 end)
 
 T.test("a state may not define a handler for an event its chart does not declare", function()
@@ -130,7 +130,7 @@ end)
 
 T.test("the initial state must be one of the chart's own", function()
 	local _, states = PatrolChart()
-	local other = Hfsm.Chart({
+	local other = StateChart.Chart({
 		name = "Other",
 		port = SOLDIER_PORT,
 		initial = function(state) return state.Patrol:New() end,
@@ -139,7 +139,7 @@ T.test("the initial state must be one of the chart's own", function()
 end)
 
 T.test("a destroyed machine ends its states", function()
-	local chart = Hfsm.Chart({
+	local chart = StateChart.Chart({
 		name = "Ends",
 		port = SOLDIER_PORT,
 		initial = function(state) return state.Idle:New() end,
@@ -155,7 +155,7 @@ T.test("a destroyed machine ends its states", function()
 end)
 
 T.test("a change to no action is refused, naming the state and its reason", function()
-	local chart = Hfsm.Chart({
+	local chart = StateChart.Chart({
 		name = "Lost",
 		port = SOLDIER_PORT,
 		initial = function(state) return state.Lost:New() end,

@@ -1,6 +1,6 @@
 -- NextSoldier's monitors (docs/aiwar-command.md §1; TF2's CTFBot*Monitor):
 -- a monitor is a behaviour, a state of NextSoldier's chart (nextsoldier.behavior:
--- generator.hfsm's Action, on generator.state_chart), holding the soldier's
+-- generator.state_chart's Action), holding the soldier's
 -- state and containing one
 -- behaviour, which contains(state) gives; a monitor's own Update changes
 -- what it contains when what it watches changes.

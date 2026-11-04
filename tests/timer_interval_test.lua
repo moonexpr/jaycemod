@@ -1,4 +1,4 @@
--- games.timer.interval: NextBot's IntervalTimer (util_shared.h), on a clock
+-- timer.interval: NextBot's IntervalTimer (util_shared.h), on a clock
 -- port.
 local T = dofile("tests/harness.lua")
 local Fake = dofile("tests/fake_actor.lua")

@@ -11,7 +11,7 @@ NextSoldier, the AI-war's NextBot soldiers. The gamemode lives at
 | `gamemode/shared_loader.lua` | Runs first: the gamemode's `WS.require`, then foundation's namespace indexes, each named by hand |
 | `gamemode/foundation/<namespace>/` | The generic base: data structures, algorithms, codecs, maths, classes, loaded at start and published as globals (`list.queue`) by `sh_index.lua` (index below) |
 | `gamemode/includes/{gameplay,npc,system}/` | Gamemode models built on foundation: pure Lua systems, no GMod globals, I/O through ports; published as globals by `sh_init.lua` and loaded on first read (index below) |
-| `gamemode/includes/extensions/{generator,list,timer,world}/` | Gamemode extensions to GMod/Lua global tables, published by their `sh_init.lua` indexes |
+| `gamemode/includes/extensions/{list,world}/` | Gamemode extensions to GMod/Lua global tables, published by their `sh_init.lua` indexes |
 | `gamemode/includes/*.lua` | Gamemode glue models, required by their stable module names |
 | `addons/nextsoldier/` | NextSoldier, the soldier itself, its own addon: its collections in `lua/nextsoldier/` (`world`, `body`, `locomotion`, `senses`, `behavior`), on foundation and sharing nothing with the gamemode but what its `host` port hands it (index below); its base entity `base_nextsoldier` in `lua/entities/` (the gamemode's `base_nextsoldier_npc` and `_combat` extend it in the gamemode's `entities/`); the response rules it speaks by, their GMod modules, autorun and `scripts/responserules/` (`docs/ns-response-rules.md`) |
 | `addons/wartactics/` | The tactics engine, its own addon: the strategy soldiers are organised by (fire teams, squads, lanes, posts, scenarios, the tactical, squad and scenario monitors), apart from NextSoldier but for one bridge module, its modules in `lua/wartactics/`, published as `wartactics.<module>` (index below) |
@@ -220,12 +220,14 @@ Tests are `tests/<namespace>_<module>_test.lua`.
 | `encoding.consolecfg` | `Commands(text)`: cfg text → console commands, chained `;` refused |
 | `encoding.cvarfile` | `Write(names, values)` → cfg text, a `name "value"` a line; `Read(text, names)` → name → value for only those names. Client settings saved in data/ (`WS.PersistClientConVars`) |
 
-### generator, analysis, and the root
+### generator, timer, analysis, and the root
 
 | Module | API |
 |---|---|
 | `generator.state_machine` | Flat state machine: `Define(spec)` → `New(initial)`: `Transition`, `Enter`, `Think`, `Can`, `State`, `Is` |
-| `generator.state_chart` | Hierarchical statechart (NextBot's engine without stacks): `Chart{ name, port, events, queries, initial }` → `State(name)` (hooks `Init`, `InitialContainedAction`, `OnStart`, `Update`, `OnEnd`; results `Continue`, `ChangeTo`, `Done`, `Try*`; `QueryBelow`), `Owns`, `New(actor, states)` → a machine: `Update`, `Event`, `Query`, `Describe`, `Stack`, `Watch`, `Destroy`. An engine with more extends `State`, `Root` and `transitions` and makes charts with `ChartsOf{ state, root, lifecycle }` |
+| `generator.state_chart` | Hierarchical statechart, NextBot's Action/Behavior engine: `Chart{ name, port, events, queries, initial }` → `State(name)` (hooks `Init`, `InitialContainedAction`, `OnStart`, `Update`, `OnEnd`; results `Continue`, `ChangeTo`, `Done`, `Try*`; `QueryBelow`), `Owns`, `New(actor, states)` → a machine: `Update`, `Event`, `Query`, `Describe`, `Stack`, `Watch`, `Destroy`. `Chart`'s states are `Action`s, with NextBot's stacks: `SuspendFor`/`TrySuspendFor`, `OnSuspend`/`OnResume`, buried actions hearing events and queries after the one covering them; `Behavior`; NextBot's timers as `CountdownTimer`, `IntervalTimer`. `State` and `Root` are its base, without stacks; an engine with more extends them and `transitions` and makes charts with `ChartsOf{ state, root, lifecycle }` |
+| `timer.countdown` | NextBot's CountdownTimer on a clock port (`Now()`): `New(clock)` → `Start(duration)`, `Reset`, `Invalidate`, `HasStarted`, `IsElapsed` (an unstarted one has), `GetElapsedTime`, `GetRemainingTime`, `GetCountdownDuration`. `generator.state_chart` hands it on as `CountdownTimer` |
+| `timer.interval` | NextBot's IntervalTimer: `New(clock)` → `Start`, `Reset`, `Invalidate`, `HasStarted`, `GetElapsedTime` (`INTERVAL_UNSTARTED` when unstarted), `IsLessThen`, `IsGreaterThen`. `generator.state_chart` hands it on as `IntervalTimer` |
 | `analysis.analytics` | Timers, counters, tick pressure, memory samples; clock and memory are ports |
 | `analysis.memory` | `Measure(roots)` → estimated bytes per named root (each object once); `Format(report, rows)`. `ws_analytics_memory` runs it over the loaded foundation modules |
 | `transaction` | Exchanges between user and system or between modules, settling once as committed (value), declined (a refusal: the caller's mistake) or failed (our bug). Refusals: `Refuse(kind, detail)`, `IsRefusal(err, kinds)`, `Message`, `Explain`, `Detail`. `New()` → `Commit`/`Decline`/`Fail`, `State`, `Value`, `Refusal`, `Error`, `OnSettle`, `Await(scheduler)` (in a task); `Run(fn, ...)`, `Spawn(scheduler, fn, ...)` with `fn(work, ...)` and `work:Undo(fn)` compensations; `All(list)`. A spawned transaction is a coroutine object: `tx:Within(countdown)` gives it a deadline, a started `timer.countdown`, and one unfinished when it elapses is ended at its next turn, its steps undone, and declined as `TIMED_OUT`; `tx:Remaining()`; its work yields (`work:Yield`, `CheckYield`, `Wait`, `WaitFor(countdown)`, `Await(tx)`, `Remaining`), so systems that need not run every tick (admin operations, the gamerules, the tactics engine, anti-cheat) run on `WS.SlowTransactions` with a `WS.Deadline(seconds)` and leave the tick to combat, pathfinding and feedback. The scheduler's `Limit(task, countdown, onExpire)` is what ends a task out of time. Wire: `Ledger()` (`Open`, `Settle`, `Expire`, `Count`), `Reply(tx[, kinds])`. Over the network: `WS.Events.Transact` (client) and `WS.Events.Serve` (server), events defined with `transaction = true` |
@@ -246,8 +248,8 @@ the native code is tested against, and what runs without the binary.
 ## games index
 
 `gamemode/includes/<namespace>/<module>.lua` (or
-`gamemode/includes/extensions/<namespace>/<module>.lua` for `list`, `timer`,
-`world` and `generator`): the specialised code built on foundation. Its
+`gamemode/includes/extensions/<namespace>/<module>.lua` for `list` and
+`world`): the specialised code built on foundation. Its
 logical module names still start with `games.` (not `game.`: GMod has a
 `game` library, and `module(...)` builds a module's dotted path in the globals).
 `shared_loader.lua` runs each namespace's `sh_init.lua`, which `Defer`s a
@@ -255,7 +257,7 @@ module a line: module `games.<namespace>.<module>` is the global
 `<namespace>.<module>`, loaded the first time it is read, so a map pays only
 for what it uses. A module's parts (`gameplay/rounds/state`) load through it
 and are not published. A namespace may be foundation's (`list`,
-`world`, `generator`) or GMod's (`timer`, `system`). games may require foundation,
+`world`) or GMod's (`system`). games may require foundation,
 never features or ws; a published foundation module never requires games;
 `tests/foundation_layers_test.lua` ranks every tree. Tests are
 `tests/games_<namespace>_<module>_test.lua`.
@@ -268,10 +270,7 @@ never features or ws; a published foundation module never requires games;
 
 | Module | API |
 |---|---|
-| `timer.countdown` | NextBot's CountdownTimer on a clock port (`Now()`): `New(clock)` → `Start(duration)`, `Reset`, `Invalidate`, `HasStarted`, `IsElapsed` (an unstarted one has), `GetElapsedTime`, `GetRemainingTime`, `GetCountdownDuration`. `hfsm` hands it on as `CountdownTimer` |
-| `timer.interval` | NextBot's IntervalTimer: `New(clock)` → `Start`, `Reset`, `Invalidate`, `HasStarted`, `GetElapsedTime` (`INTERVAL_UNSTARTED` when unstarted), `IsLessThen`, `IsGreaterThen`. `hfsm` hands it on as `IntervalTimer` |
-| `world.snapshot` | A model's state as plain data and back: `Spec{ name, skip, times, machines }`, `Take(model, spec, now[, refs])`, `Apply(model, snapshot, spec, now[, refs])`. Times kept as seconds from now, cfsm machines as their state (`Machine:Restore`), entities and other non-data through `refs` (`Encode`, `Decode`), weak tables as data; Apply writes raw and clears what the snapshot lacks. The models' `Snapshot`/`Restore` (the dev workbench's capture) |
-| `generator.hfsm` | NextBot Action/Behavior engine: `generator.state_chart` with stacks. `Action` adds `SuspendFor`/`TrySuspendFor`, `OnSuspend`/`OnResume`, buried actions hearing events and queries after the one covering them; `Behavior`; `Chart` as state_chart's; NextBot's timers as `CountdownTimer`, `IntervalTimer` |
+| `world.snapshot` | A model's state as plain data and back: `Spec{ name, skip, times, machines }`, `Take(model, spec, now[, refs])`, `Apply(model, snapshot, spec, now[, refs])`. Times kept as seconds from now, state_machine machines as their state (`Machine:Restore`), entities and other non-data through `refs` (`Encode`, `Decode`), weak tables as data; Apply writes raw and clears what the snapshot lacks. The models' `Snapshot`/`Restore` (the dev workbench's capture) |
 | `world.io` | A map's entity lookups and output connections, through a world port |
 | `gameplay.tactics` | The tactics engine interface: `ENGINE` (a port), `Check(engine)` |
 | `list.drawlist` | `New()` → draw callbacks named by dotted paths, run in order (by order, a tie by path): `Add(path, order, draw[, when])` (a path again replaces it), `HideElements(path)`/`ShowElements(path)` (the code's: a path hides all under it), `SetHidden(paths)` (the player's, apart), `Draw(...)`, `Entries()`; `ParseNames(text)`. The HUD's (`WS.HUD`, `cl_hud_hidden`) |
@@ -285,9 +284,8 @@ foundation and game: `docs/foundation-game-split-plan.md`.
 `addons/nextsoldier/lua/nextsoldier/`: NextSoldier, the soldier itself, its own
 addon beside the gamemode on foundation, which runs without the war's tactics
 engine (`docs/ns-split.md`, issue #8). It shares no structure with the
-gamemode: no `WS`, no `WS.require`, no `Defer`, no read of games but its
-chart's engine (`generator.hfsm`, until that has the native twin foundation
-asks; `tests/addons_nextsoldier_test.lua` holds all of it). `shared_loader.lua`
+gamemode: no `WS`, no `WS.require`, no `Defer`, no read of games
+(`tests/addons_nextsoldier_test.lua` holds all of it). `shared_loader.lua`
 plainly includes `nextsoldier/sh_init.lua`, which loads every file by a `Load`
 line, written by hand, and sends clients each. A file names its module
 (`module("nextsoldier.world.doors")`), which builds its table at that path.
@@ -314,7 +312,7 @@ a single export is that export on its collection, not a module of its own.
 | `nextsoldier.host` | What a soldier needs of its mode: `PORT` (`Movement`, `PlayerFactions`, `FactionEnemy`, `PathClearance`, `PathDebug`, `GazeUpdate`), `Install(host)` (checked), `current` |
 | `nextsoldier.bots` | The live soldiers on the base (a weak set), which others' noises reach |
 | `nextsoldier.base` | The interface our code keeps of DrGBase's NextBot, names and hook contracts only, which NextSoldier's own base implements from scratch, native where it pays: `COMPONENTS` as TF2's NextBot in source-sdk-2013 (`NEXTBOT`: life and relations, `LOCOMOTION`, `BODY`, `POSTURE` (the body's, optional while DrGBase's classes stand in), `VISION`, `INTENTION`), each with `methods` (a `core.port`), `hooks` and `fields` (named sets, or nil); `METHODS` (every required method), `Has(soldier, c)` (an optional component, whole or refused), `HOOKS`, `FIELDS`, `Hooks(c)`, `Fields(c)`, `ComponentOf(name)`, `REPLACED` (DrGBase names the base drops, with what replaces each: no coroutine, as TF2). `.devtools/bin/drg_interface.py check` refuses a DrGBase name our code uses that it does not declare |
-| `nextsoldier.behavior` | NextSoldier's chart (`generator.hfsm`'s `Chart`): `CHART` over `PORT`, the soldier port (`METHODS` its names; the controller implements it over an npc_nextsoldier and a bot player; `tests/fake_soldier.lua` fakes it), with `EVENTS` (what the soldier and the war tell its behaviours: `OnInjured`, `OnSight`, `OnLostSight`, `OnContact`, `OnContactLost`, `OnNavAreaChanged`, `OnHeard`, `OnOtherKilled`) and `QUERIES` (`ShouldAttack`, `ShouldHurry`, `ShouldRetreat`, `ShouldPickUp`, `SelectMoreDangerousThreat`). A behaviour is `CHART:State(name)`; an undeclared `On*` on one is refused as it is written. The orders' actions, the monitors and a scenario's monitor are its states |
+| `nextsoldier.behavior` | NextSoldier's chart (`generator.state_chart`'s `Chart`): `CHART` over `PORT`, the soldier port (`METHODS` its names; the controller implements it over an npc_nextsoldier and a bot player; `tests/fake_soldier.lua` fakes it), with `EVENTS` (what the soldier and the war tell its behaviours: `OnInjured`, `OnSight`, `OnLostSight`, `OnContact`, `OnContactLost`, `OnNavAreaChanged`, `OnHeard`, `OnOtherKilled`) and `QUERIES` (`ShouldAttack`, `ShouldHurry`, `ShouldRetreat`, `ShouldPickUp`, `SelectMoreDangerousThreat`). A behaviour is `CHART:State(name)`; an undeclared `On*` on one is refused as it is written. The orders' actions, the monitors and a scenario's monitor are its states |
 | `nextsoldier.behavior.registry` | The behaviours a soldier runs, which the mode hosting it owns and gives NextSoldier (the AI war's orders register theirs, their monitors among them): `New()` → a registry (`Shared` is the war's): `Register{ name, behavior }` (a state of NextSoldier's chart, else refused; a name again replaces it), `Compile()` → fixed: `Get(name)` (unknown refused), `Has`, `Names`. The war compiles it with its scenarios (`CompileRegistries`) and gives each soldier it, whose root is its `NextSoldier` |
 | `nextsoldier.behavior.monitor` | A monitor: a behaviour (npc.nextbot Action) holding the soldier's state and containing one: `New(name, contains)`, `Passthrough(name, contains)` (left out of the debug layer's TDBN) |
 

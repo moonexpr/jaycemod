@@ -292,6 +292,8 @@ local RECIPES = {
 			return { chart = chart, state = states.Watch, action = states.Watch:New(), machine = machine }
 		end,
 	},
+	["foundation.timer.countdown"] = { Make = function(M) return { countdown = M.New(Clock()) } end },
+	["foundation.timer.interval"] = { Make = function(M) return { interval = M.New(Clock()) } end },
 	["foundation.transaction"] = { Make = function(M) return { transaction = M.New(), ledger = M.Ledger() } end },
 	["foundation.analysis.analytics"] = {
 		Make = function(M) return { analytics = M.New(Clock(), { Kilobytes = function() return 1000 end }) } end,

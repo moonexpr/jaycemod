@@ -1,7 +1,7 @@
 //! generator.state_chart, native: the hierarchical statechart, the Lua
 //! twin's contract (foundation/generator/state_chart.lua). State and Root
 //! are class tables of C functions, extended with core.class as the Lua
-//! twin's are (games' generator.hfsm extends both), so every step the engine
+//! twin's are (state_chart_stacks extends both), so every step the engine
 //! takes on a state or a root is a method call looked up on it: a subclass's
 //! override runs in its place. States, roots, results, charts and machines
 //! are Lua tables with the Lua twin's fields.
@@ -16,10 +16,10 @@ use std::ffi::{c_int, CStr};
 const REGISTRY: c_int = -10000;
 const SHARED: &CStr = c"foundation.generator.state_chart";
 
-// ActionResultType, in NextBot's numbers (2 is a stack's SUSPEND_FOR).
-const CONTINUE: f64 = 0.0;
-const CHANGE_TO: f64 = 1.0;
-const DONE: f64 = 3.0;
+// ActionResultType, in NextBot's numbers (2, SUSPEND_FOR, is the stacks').
+pub(super) const CONTINUE: f64 = 0.0;
+pub(super) const CHANGE_TO: f64 = 1.0;
+pub(super) const DONE: f64 = 3.0;
 const SUSTAIN: f64 = 4.0;
 
 // EventResultPriorityType
@@ -39,7 +39,7 @@ fn upvalue(i: c_int) -> c_int {
 
 /// Pushes one of the values the module shares by identity (`continue`,
 /// `no_event`, `ChartClass`, `MachineClass`).
-unsafe fn shared(l: L, name: &CStr) {
+pub(super) unsafe fn shared(l: L, name: &CStr) {
     let api = api();
     (api.getfield)(l, REGISTRY, SHARED.as_ptr());
     (api.getfield)(l, -1, name.as_ptr());
@@ -59,23 +59,23 @@ unsafe fn core_fn(l: L, module: &CStr, name: &CStr) {
 
 /// Pushes obj.name and obj: a method call's function and receiver, ready
 /// for its arguments.
-unsafe fn prep(l: L, obj: c_int, name: &CStr) {
+pub(super) unsafe fn prep(l: L, obj: c_int, name: &CStr) {
     let api = api();
     (api.getfield)(l, obj, name.as_ptr());
     (api.pushvalue)(l, obj);
 }
 
-unsafe fn push_range(l: L, from: c_int, to: c_int) {
+pub(super) unsafe fn push_range(l: L, from: c_int, to: c_int) {
     for i in from..=to {
         (api().pushvalue)(l, i);
     }
 }
 
-unsafe fn truthy(l: L, index: c_int) -> bool {
+pub(super) unsafe fn truthy(l: L, index: c_int) -> bool {
     (api().toboolean)(l, index) != 0
 }
 
-unsafe fn is_nil(l: L, index: c_int) -> bool {
+pub(super) unsafe fn is_nil(l: L, index: c_int) -> bool {
     (api().type_of)(l, index) == TNIL
 }
 
@@ -86,7 +86,7 @@ unsafe fn is_number(l: L, index: c_int, n: f64) -> bool {
 }
 
 /// Whether obj.name is the number `n`.
-unsafe fn field_is(l: L, obj: c_int, name: &CStr, n: f64) -> bool {
+pub(super) unsafe fn field_is(l: L, obj: c_int, name: &CStr, n: f64) -> bool {
     let api = api();
     (api.getfield)(l, obj, name.as_ptr());
     let is = is_number(l, -1, n);
@@ -94,7 +94,7 @@ unsafe fn field_is(l: L, obj: c_int, name: &CStr, n: f64) -> bool {
     is
 }
 
-unsafe fn field_truthy(l: L, obj: c_int, name: &CStr) -> bool {
+pub(super) unsafe fn field_truthy(l: L, obj: c_int, name: &CStr) -> bool {
     let api = api();
     (api.getfield)(l, obj, name.as_ptr());
     let is = truthy(l, -1);
@@ -102,7 +102,7 @@ unsafe fn field_truthy(l: L, obj: c_int, name: &CStr) -> bool {
     is
 }
 
-unsafe fn field_string(l: L, obj: c_int, name: &CStr) -> String {
+pub(super) unsafe fn field_string(l: L, obj: c_int, name: &CStr) -> String {
     let api = api();
     (api.getfield)(l, obj, name.as_ptr());
     let text = tostring(l, -1);
@@ -126,7 +126,7 @@ unsafe fn innermost(l: L, slot: c_int) {
 
 /// Pushes { type, action, reason, priority }: `action` and `reason` stack
 /// indices (0 for none), `priority` one too, 0 for RESULT_TRY.
-unsafe fn push_result(l: L, kind: f64, action: c_int, reason: c_int, priority: c_int) {
+pub(super) unsafe fn push_result(l: L, kind: f64, action: c_int, reason: c_int, priority: c_int) {
     let api = api();
     (api.createtable)(l, 0, 4);
     (api.pushnumber)(l, kind);
@@ -148,7 +148,7 @@ unsafe fn push_result(l: L, kind: f64, action: c_int, reason: c_int, priority: c
 }
 
 /// `priority or RESULT_TRY`, for push_result.
-unsafe fn or_try(l: L, index: c_int) -> c_int {
+pub(super) unsafe fn or_try(l: L, index: c_int) -> c_int {
     if truthy(l, index) { index } else { 0 }
 }
 
@@ -194,7 +194,7 @@ unsafe extern "C-unwind" fn state_new(l: L) -> c_int {
     1
 }
 
-unsafe extern "C-unwind" fn state_fields(l: L) -> c_int {
+pub(super) unsafe extern "C-unwind" fn state_fields(l: L) -> c_int {
     let api = api();
     (api.createtable)(l, 0, 2);
     (api.pushboolean)(l, 0);
@@ -213,7 +213,7 @@ unsafe extern "C-unwind" fn no_state(l: L) -> c_int {
     1
 }
 
-unsafe extern "C-unwind" fn continue_result(l: L) -> c_int {
+pub(super) unsafe extern "C-unwind" fn continue_result(l: L) -> c_int {
     shared(l, c"continue");
     1
 }
@@ -296,7 +296,7 @@ unsafe extern "C-unwind" fn never(l: L) -> c_int {
     boolean(l, false)
 }
 
-unsafe extern "C-unwind" fn process_pending_events(l: L) -> c_int {
+pub(super) unsafe extern "C-unwind" fn process_pending_events(l: L) -> c_int {
     let api = api();
     (api.settop)(l, 1);
     prep(l, 1, c"_RequestsChange");
@@ -331,7 +331,7 @@ unsafe extern "C-unwind" fn store_pending_event_result(l: L) -> c_int {
 
 /// _InvokeOnStart(me, root, priorState): the child starts before my own
 /// OnStart.
-unsafe extern "C-unwind" fn invoke_on_start(l: L) -> c_int {
+pub(super) unsafe extern "C-unwind" fn invoke_on_start(l: L) -> c_int {
     let api = api();
     (api.settop)(l, 4);
     (api.pushboolean)(l, 1);
@@ -573,7 +573,7 @@ unsafe extern "C-unwind" fn process_event(l: L) -> c_int {
 }
 
 /// _AskHere(me, name, ...): my answer to a query, or nil.
-unsafe extern "C-unwind" fn ask_here(l: L) -> c_int {
+pub(super) unsafe extern "C-unwind" fn ask_here(l: L) -> c_int {
     let api = api();
     let n = (api.gettop)(l).max(3);
     (api.settop)(l, n);
@@ -657,7 +657,7 @@ unsafe extern "C-unwind" fn root_watch(l: L) -> c_int {
     0
 }
 
-unsafe fn append(l: L, list: c_int) {
+pub(super) unsafe fn append(l: L, list: c_int) {
     let api = api();
     let n = (api.objlen)(l, list);
     (api.rawseti)(l, list, n as c_int + 1);
@@ -1147,7 +1147,7 @@ unsafe extern "C-unwind" fn machine_destroy(l: L) -> c_int {
 // The module ------------------------------------------------------------------------
 
 /// Pushes a class table, its own __index, holding `methods`.
-unsafe fn class(l: L, methods: &[(&CStr, CFunction)]) {
+pub(super) unsafe fn class(l: L, methods: &[(&CStr, CFunction)]) {
     let api = api();
     (api.createtable)(l, 0, methods.len() as c_int + 2);
     (api.pushvalue)(l, -1);
@@ -1157,7 +1157,7 @@ unsafe fn class(l: L, methods: &[(&CStr, CFunction)]) {
     }
 }
 
-unsafe fn set_getter(l: L, method: &CStr, field: &str) {
+pub(super) unsafe fn set_getter(l: L, method: &CStr, field: &str) {
     let api = api();
     push_str(l, field);
     (api.pushcclosure)(l, getter, 1);
@@ -1247,7 +1247,7 @@ pub unsafe fn push_module(l: L) {
 
 /// The values the module shares by identity, one set a Lua state, kept in
 /// the registry: a module opened again (a reload) hands out the same
-/// CONTINUE_RESULT, which hfsm compares results to.
+/// CONTINUE_RESULT, which the stacks compare results to.
 unsafe fn push_shared(l: L) {
     let api = api();
     (api.createtable)(l, 0, 4);
@@ -1306,18 +1306,5 @@ unsafe fn push_api(l: L) {
     push_root(l);
     (api.setfield)(l, module, c"Root".as_ptr());
 
-    (api.pushcclosure)(l, charts_of, 0);
-    (api.createtable)(l, 0, 3);
-    (api.getfield)(l, module, c"State".as_ptr());
-    (api.setfield)(l, -2, c"state".as_ptr());
-    (api.getfield)(l, module, c"Root".as_ptr());
-    (api.setfield)(l, -2, c"root".as_ptr());
-    (api.createtable)(l, 2, 0);
-    push_str(l, "OnStart");
-    (api.rawseti)(l, -2, 1);
-    push_str(l, "OnEnd");
-    (api.rawseti)(l, -2, 2);
-    (api.setfield)(l, -2, c"lifecycle".as_ptr());
-    (api.call)(l, 1, 1);
-    (api.setfield)(l, module, c"Chart".as_ptr());
+    super::state_chart_stacks::add_to(l, module);
 }

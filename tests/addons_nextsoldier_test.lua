@@ -7,9 +7,6 @@ local T = dofile("tests/harness.lua")
 
 local ADDON = "addons/nextsoldier/"
 local GAMEMODE_BASES = { "base_nextsoldier_npc", "base_nextsoldier_combat" }
--- What NextSoldier still reads of games: its chart's engine, which stays there
--- until it has its native twin, the price of a place in foundation.
-local GAMES_KEPT = { ["games.generator.hfsm"] = true }
 local RESPONSE_RULES = {
 	"lua/includes/modules/responserules.lua",
 	"lua/includes/modules/responserules_script.lua",
@@ -86,10 +83,8 @@ T.test("NextSoldier reads nothing of the gamemode, whose host hands it what it n
 		T.eq(code:find("%f[%w_]WS%f[^%w_]"), nil, path .. " reads WS")
 		T.eq(code:find("%f[%w_]GAMEMODE%f[^%w_]"), nil, path .. " reads GAMEMODE")
 		for _, used in ipairs(T.Uses(code)) do
-			if not GAMES_KEPT[used] then
-				T.eq(used:match("^games%.") or used:match("^features%.") or used:match("^includes%."), nil,
-					path .. " reads " .. used)
-			end
+			T.eq(used:match("^games%.") or used:match("^features%.") or used:match("^includes%."), nil,
+				path .. " reads " .. used)
 		end
 	end
 end)

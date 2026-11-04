@@ -1,10 +1,10 @@
 -- games.world.snapshot: a model's state as plain data and back.
 local T = dofile("tests/harness.lua")
 local Snapshot = world.snapshot
-local Cfsm = generator.state_machine
+local StateMachine = generator.state_machine
 
 local IDLE, BUSY = "idle", "busy"
-local LIGHT = Cfsm.Define({
+local LIGHT = StateMachine.Define({
 	name = "light",
 	states = { IDLE, BUSY },
 	transitions = { [IDLE] = { BUSY } },

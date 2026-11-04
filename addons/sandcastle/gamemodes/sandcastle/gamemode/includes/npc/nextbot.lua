@@ -1,6 +1,6 @@
 -- The NPC system: the Npc model that runs one variant's Behavior against an
 -- actor port. The Action/Behavior engine and its timers are
--- games.generator.hfsm's; this module hands on their NextBot names so a
+-- generator.state_chart's; this module hands on their NextBot names so a
 -- variant reads Npc.Action, Npc.CHANGE_TO, Npc.CountdownTimer.
 --
 -- An NPC variant is a part of this system (games.npc.nextbot.<variant>) and
@@ -12,17 +12,17 @@
 -- refuses players). Actions receive the actor as `me`.
 local ipairs, setmetatable = ipairs, setmetatable
 local remove = table.remove
-local Hfsm = generator.hfsm
+local StateChart = generator.state_chart
 module(...)
 
 CONTINUE, CHANGE_TO, SUSPEND_FOR, DONE, SUSTAIN =
-	Hfsm.CONTINUE, Hfsm.CHANGE_TO, Hfsm.SUSPEND_FOR, Hfsm.DONE, Hfsm.SUSTAIN
+	StateChart.CONTINUE, StateChart.CHANGE_TO, StateChart.SUSPEND_FOR, StateChart.DONE, StateChart.SUSTAIN
 RESULT_NONE, RESULT_TRY, RESULT_IMPORTANT, RESULT_CRITICAL =
-	Hfsm.RESULT_NONE, Hfsm.RESULT_TRY, Hfsm.RESULT_IMPORTANT, Hfsm.RESULT_CRITICAL
-ANSWER_NO, ANSWER_YES, ANSWER_UNDEFINED = Hfsm.ANSWER_NO, Hfsm.ANSWER_YES, Hfsm.ANSWER_UNDEFINED
-INTERVAL_UNSTARTED = Hfsm.INTERVAL_UNSTARTED
-Action, Behavior = Hfsm.Action, Hfsm.Behavior
-CountdownTimer, IntervalTimer = Hfsm.CountdownTimer, Hfsm.IntervalTimer
+	StateChart.RESULT_NONE, StateChart.RESULT_TRY, StateChart.RESULT_IMPORTANT, StateChart.RESULT_CRITICAL
+ANSWER_NO, ANSWER_YES, ANSWER_UNDEFINED = StateChart.ANSWER_NO, StateChart.ANSWER_YES, StateChart.ANSWER_UNDEFINED
+INTERVAL_UNSTARTED = StateChart.INTERVAL_UNSTARTED
+Action, Behavior = StateChart.Action, StateChart.Behavior
+CountdownTimer, IntervalTimer = StateChart.CountdownTimer, StateChart.IntervalTimer
 
 -------------------------------------------------------------------------------
 -- Npc: one NPC's variant, state and Behavior

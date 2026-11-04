@@ -1,4 +1,4 @@
--- games.timer.countdown: NextBot's CountdownTimer (util_shared.h), on a clock
+-- timer.countdown: NextBot's CountdownTimer (util_shared.h), on a clock
 -- port.
 local T = dofile("tests/harness.lua")
 local Fake = dofile("tests/fake_actor.lua")

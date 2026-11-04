@@ -17,7 +17,9 @@ mod namespace;
 mod nodegraph;
 mod schedule;
 mod state_chart;
+mod state_chart_stacks;
 mod state_machine;
+mod timer;
 mod pathfinder;
 mod paths;
 mod search;
@@ -80,6 +82,7 @@ unsafe fn module(l: L) {
     namespace(l, c"math", math::push_modules);
     namespace(l, c"core", core::push_modules);
     namespace(l, c"cache", cache::push_modules);
+    namespace(l, c"timer", timer::push_modules);
     namespace(l, c"generator", generator_modules);
     namespace(l, c"analysis", analysis::push_modules);
     namespace(l, c"file", codec::push_file);
@@ -143,6 +146,7 @@ unsafe fn provide(l: L) {
     provide_all(l, c"math", math::push_modules, math::NAMES);
     provide_all(l, c"core", core::push_modules, core::NAMES);
     provide_all(l, c"cache", cache::push_modules, cache::NAMES);
+    provide_all(l, c"timer", timer::push_modules, timer::NAMES);
     provide_all(l, c"generator", generator_modules, GENERATOR_NAMES);
     provide_all(l, c"analysis", analysis::push_modules, analysis::NAMES);
     provide_all(l, c"file", codec::push_file, codec::FILE_NAMES);

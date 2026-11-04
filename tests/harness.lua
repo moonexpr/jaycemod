@@ -44,7 +44,7 @@ local function Path(name)
 	local namespace = name:match("^games%.([%w_]+)%.")
 	if namespace then
 		path = name:gsub("^games%.", "includes.")
-		if namespace == "list" or namespace == "timer" or namespace == "world" or namespace == "generator" then
+		if namespace == "list" or namespace == "world" then
 			path = path:gsub("^includes%.", "includes.extensions.")
 		end
 	end

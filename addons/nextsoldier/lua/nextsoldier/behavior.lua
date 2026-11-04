@@ -2,7 +2,7 @@
 -- whom it fights, and what it decides (its parts: intention, monitor,
 -- registry).
 local Port = core.port
-local Hfsm = generator.hfsm
+local StateChart = generator.state_chart
 local error, ipairs, pairs, setmetatable, sort, type = error, ipairs, pairs, setmetatable, table.sort, type
 module("nextsoldier.behavior")
 
@@ -153,7 +153,7 @@ METHODS = {
 PORT = Port.New("NextSoldier soldier", METHODS)
 
 -- NextSoldier's chart: the contract every behaviour of a soldier is a state
--- of (generator.hfsm's Chart, NextBot's Action/Behavior engine with its
+-- of (generator.state_chart's Chart, NextBot's Action/Behavior engine with its
 -- stacks). It declares, before any behaviour exists:
 --   the port    nextsoldier.behavior's: all a behaviour may ask of its soldier
 --   EVENTS      what the soldier and the war tell its behaviours: what the
@@ -172,7 +172,7 @@ EVENTS = { "OnInjured", "OnSight", "OnLostSight", "OnContact", "OnContactLost", 
 
 QUERIES = { "ShouldAttack", "ShouldHurry", "ShouldRetreat", "ShouldPickUp", "SelectMoreDangerousThreat" }
 
-CHART = Hfsm.Chart({
+CHART = StateChart.Chart({
 	name = "NextSoldier",
 	port = PORT,
 	events = EVENTS,

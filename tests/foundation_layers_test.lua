@@ -71,6 +71,8 @@ local CATEGORY = {
 
 	["generator/state_machine"] = "formalisms",
 	["generator/state_chart"] = "formalisms",
+	["timer/countdown"] = "structures",
+	["timer/interval"] = "structures",
 
 	-- foundation.wetsands: systems moved out of games/ for native backing
 	-- (docs/native-foundation-plan.md), the one part that names game things.
@@ -84,14 +86,11 @@ local CATEGORY = {
 
 -- games/'s modules, by the same categories (docs/foundation-game-split-plan.md).
 local GAMES = {
-	["timer/countdown"] = "structures",
-	["timer/interval"] = "structures",
 	["world/snapshot"] = "structures",
 	["world/nav_attributes"] = "structures",
 
 	["list/drawlist"] = "formalisms",
 	["world/io"] = "formalisms",
-	["generator/hfsm"] = "formalisms",
 	["gameplay/tactics"] = "formalisms",
 	["gameplay/rounds"] = "formalisms",
 	["gameplay/rounds/state"] = "formalisms",
@@ -229,7 +228,7 @@ local INDEX = "_index%.lua$"
 
 -- A games tree's init (sh_init.lua) publishes modules and is not one.
 local INIT = "_init%.lua$"
-local API_EXTENSIONS = { list = true, timer = true, world = true, generator = true }
+local API_EXTENSIONS = { list = true, world = true }
 
 -- The trees: where each lives, the dotted prefix of its module names, and
 -- its categories.

@@ -15,7 +15,7 @@ return {
 		about = "foundation's structures, formalisms and wetsands, Lua and native twins",
 		tests = {
 			"core_*", "list_*", "tree_*", "world_*", "cache_*", "graph_*", "math_*", "file_*", "encoding_*",
-			"generator_*", "analysis_*", "transaction*", "configstore", "nodegraph", "wetsands_*", "foundation_*",
+			"generator_*", "timer_*", "analysis_*", "transaction*", "configstore", "nodegraph", "wetsands_*", "foundation_*",
 		},
 		sources = { G .. "foundation/", G .. "shared_loader.lua", "native/" },
 	},

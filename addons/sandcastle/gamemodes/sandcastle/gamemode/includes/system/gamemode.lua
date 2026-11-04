@@ -36,7 +36,7 @@
 -- The transition's timing lives here; the controller feeds it the time
 -- (Advance) and plays the cues it returns.
 local ceil, ipairs, max, min, setmetatable = math.ceil, ipairs, math.max, math.min, setmetatable
-local Cfsm = generator.state_machine
+local StateMachine = generator.state_machine
 module(...)
 
 -- Modes.
@@ -171,7 +171,7 @@ local NEXT_MODE = {
 -- Sandbox mode or the wait, or Gameplay mode at load, and ends in Gameplay
 -- mode or, called off, back in Sandbox; the wait starts from Sandbox mode,
 -- or Gameplay mode at load.
-local MODES = Cfsm.Define({
+local MODES = StateMachine.Define({
 	name = "gamemode",
 	states = { SANDBOX, TRANSITION, GAMEPLAY, WAITING },
 	transitions = {

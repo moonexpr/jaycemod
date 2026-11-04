@@ -16,7 +16,7 @@ local GAMEMODE_ROOT = GM.FolderName .. "/gamemode/"
 local Boot = WS.Logger("boot")
 local CHUNK_ENV = setmetatable({}, { __index = _G })
 
-local API_EXTENSIONS = { list = true, timer = true, world = true, generator = true }
+local API_EXTENSIONS = { list = true, world = true }
 local function ModulePath(name)
 	local path = name
 	local namespace = name:match("^games%.([%w_]+)%.")
@@ -89,6 +89,7 @@ Index("foundation/file/sh_index.lua")
 Index("foundation/core/sh_index.lua")
 Index("foundation/graph/sh_index.lua")
 Index("foundation/cache/sh_index.lua")
+Index("foundation/timer/sh_index.lua")
 Index("foundation/generator/sh_index.lua")
 Index("foundation/encoding/sh_index.lua")
 Index("foundation/analysis/sh_index.lua")
@@ -99,9 +100,7 @@ Index("foundation/sh_index.lua")
 -- so a map pays only for the gameplay it uses.
 Index("includes/system/sh_init.lua")
 Index("includes/extensions/list/sh_init.lua")
-Index("includes/extensions/timer/sh_init.lua")
 Index("includes/extensions/world/sh_init.lua")
-Index("includes/extensions/generator/sh_init.lua")
 Index("includes/gameplay/sh_init.lua")
 Index("includes/npc/sh_init.lua")
 

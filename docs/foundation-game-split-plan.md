@@ -53,7 +53,7 @@ global namespaces are unchanged.
 
 - Stage 1: done.
 - Stage 2: done. `foundation.generator.state_chart` is the statechart
-  without stacks; `games.generator.hfsm` extends it with NextBot's
+  without stacks; `games.generator.state_chart` extends it with NextBot's
   suspend/resume stacks, its behaviour unchanged (its tests and the NPC
   system's pass as they were).
 - Stage 3: done, as the table below proposed.
@@ -198,7 +198,7 @@ after the merge.
 | `core/timers` | `game/timer/countdown`, `game/timer/interval` | `timer.countdown`, `timer.interval` |
 | `core/map_io` | `game/world/io` | `world.io` |
 | `core/snapshot` | `game/world/snapshot` | `world.snapshot` |
-| `core/hfsm` | `foundation/generator/state_chart` + `game/generator/hfsm` | `generator.state_chart`, `generator.hfsm` |
+| `core/hfsm` | `foundation/generator/state_chart` + `game/generator/hfsm` | `generator.state_chart`, `generator.state_chart` |
 | `core/tactics` | `game/gameplay/tactics` | `gameplay.tactics` |
 | `pathfinder/astar` | `game/npc/astar` | `npc.astar` |
 

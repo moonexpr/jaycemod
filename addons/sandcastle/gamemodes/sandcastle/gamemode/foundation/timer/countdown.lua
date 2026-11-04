@@ -3,6 +3,8 @@
 --   New(clock): Start(duration), Reset (again for the same duration),
 --     Invalidate, HasStarted, IsElapsed (an unstarted one has),
 --     GetElapsedTime, GetRemainingTime, GetCountdownDuration.
+-- This is the Lua twin, which clients run; a server with native/foundation has
+-- the native one in its place, which keeps this contract.
 local setmetatable = setmetatable
 module(...)
 

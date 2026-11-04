@@ -1,7 +1,11 @@
 -- foundation.generator.state_chart: a hierarchical statechart, NextBot's
--- Action/Behavior engine without its stacks (games.generator.hfsm adds them).
+-- Action/Behavior engine, here its base, without its stacks
+-- (generator_state_chart_stacks_test.lua has those).
 local T = dofile("tests/harness.lua")
-local Chart = generator.state_chart
+local Engine = generator.state_chart
+local Chart = setmetatable({
+	Chart = Engine.ChartsOf({ state = Engine.State, root = Engine.Root, lifecycle = { "OnStart", "OnEnd" } }),
+}, { __index = Engine })
 local Port = core.port
 
 local function Raises(fn, ...)

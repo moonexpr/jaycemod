@@ -158,9 +158,9 @@ end
 -- The action engine, by action: what each Update costs with its children,
 -- each event and query by name.
 local function WrapActions(seen)
-	local Hfsm = package.loaded["games.generator.hfsm"]
-	if not Hfsm then return end
-	local Action, Behavior = Hfsm.Action, Hfsm.Behavior
+	local StateChart = generator.state_chart
+	if not StateChart then return end
+	local Action, Behavior = StateChart.Action, StateChart.Behavior
 	seen[Action], seen[Behavior] = true, true
 	local update, event, query = Action._InvokeUpdate, Action._ProcessEvent, Behavior.Query
 	restore[#restore + 1] = { Action, "_InvokeUpdate", update }

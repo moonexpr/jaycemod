@@ -12,7 +12,7 @@
 --   { kind = "length_changed" }      CalculateOutputMessages: the serial bumped
 --   { kind = "time_added", team, seconds }  the announced AddTimerSeconds
 local ipairs, math, pairs, setmetatable, sort = ipairs, math, pairs, setmetatable, table.sort
-local Cfsm = generator.state_machine
+local StateMachine = generator.state_machine
 local Snapshot = world.snapshot
 module(...)
 
@@ -85,7 +85,7 @@ local LENGTH_CHANGED = { kind = "length_changed" }
 -- CTeamRoundTimer::SetState: every move, a state entered again included,
 -- tells the gamerules whether the timer is in setup, and may fire
 -- OnSetupStart or OnRoundStart.
-local TIMER_STATES = Cfsm.Define({
+local TIMER_STATES = StateMachine.Define({
 	name = "round timer",
 	states = { STATE_SETUP, STATE_NORMAL },
 	changing = function(_, state, events, fireOutput)

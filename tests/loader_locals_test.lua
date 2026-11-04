@@ -67,7 +67,6 @@ T.test("WS.require keeps logical module names while resolving the new directory 
 		["includes.replicated"] = "includes/replicated.lua",
 		["games.gameplay.teams"] = "includes/gameplay/teams.lua",
 		["games.list.drawlist"] = "includes/extensions/list/drawlist.lua",
-		["games.generator.hfsm"] = "includes/extensions/generator/hfsm.lua",
 	}) do
 		env.WS.require(name)
 		T.eq(compiled[#compiled], "sandcastle/gamemode/" .. path, name)

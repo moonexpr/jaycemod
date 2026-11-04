@@ -9,7 +9,7 @@ nextsoldier = setmetatable({}, { __index = function(_, key) error("read nextsold
 local N = npc.nextbot
 local Monitors = wartactics.monitors
 
-local Chart = generator.hfsm.Chart({
+local Chart = generator.state_chart.Chart({
 	name = "Monitors under test",
 	port = core.port.New("a soldier under test", { "Now" }),
 	events = { "OnInjured" },
