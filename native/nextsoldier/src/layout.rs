@@ -1,0 +1,133 @@
+//! The engine's NextBot objects as GMod's win64 server.dll lays them out: the
+//! SDK's NextBotBehavior.h with Dota's #ifdef block out, read from the binary
+//! (CLuaNextBotIntention::Reset constructs both, and its slots 1 and 43 read them).
+//! A GMod update can move any of this: `engine::open` checks what it can against
+//! the running binary and refuses to bind otherwise.
+
+use std::ffi::{c_char, c_void};
+
+pub const ACTION_CLASS: &str = ".?AV?$Action@VCLuaNextBot@@@@";
+pub const ROOT_CLASS: &str = ".?AVCLuaBehaviour@@";
+pub const BOT_CLASS: &str = ".?AVCLuaNextBot@@";
+pub const INTENTION_CLASS: &str = ".?AVCLuaNextBotIntention@CLuaNextBot@@";
+pub const ENTITY_LIST_CLASS: &str = ".?AVCGlobalEntityList@@";
+
+/// INextBotEventResponder's 42, then Action's own.
+pub const ACTION_SLOTS: usize = 91;
+pub const QUERY_SLOTS: usize = 9;
+
+// Action's slots.
+pub const DESTRUCTOR: usize = 0;
+pub const GET_NAME: usize = 42;
+pub const ON_START: usize = 45;
+pub const UPDATE: usize = 46;
+pub const ON_END: usize = 47;
+pub const ON_SUSPEND: usize = 48;
+pub const ON_RESUME: usize = 49;
+pub const INITIAL_CONTAINED: usize = 50;
+pub const ON_STUCK: usize = 56;
+pub const ON_INJURED: usize = 63;
+
+// IContextualQuery's slots, in the vtable at +8.
+pub const SHOULD_HURRY: usize = 2;
+
+// INextBot, at INEXTBOT_OFFSET in a CLuaNextBot.
+pub const INEXTBOT_OFFSET: usize = 0x2240;
+pub const GET_INTENTION: usize = 50;
+
+// CLuaNextBotIntention: slot FIRST_CONTAINED is `mov rax, [rcx + 0x28]; ret`.
+pub const FIRST_CONTAINED: usize = 1;
+pub const INTENTION_BEHAVIOR: usize = 0x28;
+pub const RETURNS_BEHAVIOR: [u8; 5] = [0x48, 0x8B, 0x41, 0x28, 0xC3];
+
+// Behavior<CLuaNextBot>: the action at its root.
+pub const BEHAVIOR_ACTION: usize = 0x10;
+
+// CBaseEntityList: its vtable, then CEntInfo { entity, serial, prev, next } by entindex.
+pub const ENTITY_LIST_ENTRIES: usize = 8;
+pub const ENTITY_INFO_SIZE: usize = 0x20;
+
+// ActionResultType, EventResultPriorityType, QueryResultType
+pub const CONTINUE: i32 = 0;
+pub const RESULT_TRY: i32 = 1;
+pub const ANSWER_UNDEFINED: i32 = 2;
+
+/// ActionResult<Actor>, returned through a hidden pointer.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct ActionResult {
+    pub kind: i32,
+    pub action: *mut Action,
+    pub reason: *const c_char,
+}
+
+/// EventDesiredResult<Actor>, returned through a hidden pointer.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct EventResult {
+    pub kind: i32,
+    pub action: *mut Action,
+    pub reason: *const c_char,
+    pub priority: i32,
+}
+
+/// Action<CLuaNextBot>'s fields: the engine owns what they mean.
+#[repr(C)]
+pub struct Action {
+    pub vtable: *const usize,
+    pub query_vtable: *const usize,
+    pub behavior: *mut c_void,
+    pub parent: *mut Action,
+    pub child: *mut Action,
+    pub buried: *mut Action,
+    pub covering: *mut Action,
+    pub actor: *mut c_void,
+    pub event: EventResult,
+    pub started: bool,
+    pub suspended: bool,
+}
+
+/// An Action of ours: the engine's, and the slot of its Lua table.
+#[repr(C)]
+pub struct LuaAction {
+    pub base: Action,
+    pub id: u32,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::mem::{offset_of, size_of};
+
+    #[test]
+    fn an_action_is_laid_out_as_the_binary_constructs_it() {
+        assert_eq!(offset_of!(Action, query_vtable), 0x08);
+        assert_eq!(offset_of!(Action, behavior), 0x10);
+        assert_eq!(offset_of!(Action, parent), 0x18);
+        assert_eq!(offset_of!(Action, child), 0x20);
+        assert_eq!(offset_of!(Action, buried), 0x28);
+        assert_eq!(offset_of!(Action, covering), 0x30);
+        assert_eq!(offset_of!(Action, actor), 0x38);
+        assert_eq!(offset_of!(Action, event), 0x40);
+        assert_eq!(offset_of!(Action, started), 0x60);
+        assert_eq!(offset_of!(Action, suspended), 0x61);
+        assert_eq!(
+            size_of::<Action>(),
+            0x68,
+            "CLuaNextBotIntention::Reset allocates 0x68"
+        );
+    }
+
+    #[test]
+    fn a_result_is_laid_out_as_the_hooks_fill_it() {
+        assert_eq!(size_of::<ActionResult>(), 0x18);
+        assert_eq!(offset_of!(EventResult, action), 0x08);
+        assert_eq!(offset_of!(EventResult, reason), 0x10);
+        assert_eq!(offset_of!(EventResult, priority), 0x18);
+    }
+
+    #[test]
+    fn our_fields_come_after_the_engines() {
+        assert_eq!(offset_of!(LuaAction, id), 0x68);
+    }
+}

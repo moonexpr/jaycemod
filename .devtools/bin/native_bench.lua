@@ -347,7 +347,68 @@ local CASES = {
 			local after = { a = "b", b = "c", c = "a" }
 			for _ = 1, N do machine:Transition(after[machine:State()]) end
 		end },
+		{ "20k machines of one definition", N, function(Machine)
+			local definition = Machine.Define({ name = "bench", states = { "a", "b" } })
+			for _ = 1, N do definition:New("a") end
+		end },
 	},
+	["generator.state_chart"] = (function()
+		-- A soldier's depth: monitors, each containing the next, the last with
+		-- an action buried under it.
+		local DEPTH = 6
+		local function Running(M)
+			local chart = M.Chart({
+				name = "bench",
+				port = core.port.New("Bench", { "Note" }),
+				events = { "OnNoise" },
+				queries = { "ShouldShout" },
+				initial = function(levels) return levels[1]:New() end,
+			})
+			local levels = {}
+			for i = 1, DEPTH do
+				levels[i] = chart:State("Level" .. i)
+				if i > 1 then
+					local inner = levels[i]
+					levels[i - 1].InitialContainedAction = function() return inner:New() end
+				end
+			end
+			local Bottom = chart:State("Bottom")
+			local Top = levels[DEPTH]
+			function Top:OnStart() return self:SuspendFor(Bottom:New(), "cover") end
+			function Bottom:OnNoise() return self:TryContinue() end
+			function Bottom:ShouldShout(me) return M.ANSWER_YES end
+			local machine = chart:New({ Note = function() end }, levels)
+			machine:Update(0.1)
+			return machine, chart, levels, Bottom
+		end
+		return {
+			{ "20k updates, 6 deep", N, function(M)
+				local machine = Running(M)
+				for _ = 1, N do machine:Update(0.1) end
+			end },
+			{ "20k events, 6 deep", N, function(M)
+				local machine = Running(M)
+				for _ = 1, N do machine:Event("OnNoise") end
+			end },
+			{ "20k queries, 6 deep", N, function(M)
+				local machine = Running(M)
+				for _ = 1, N do machine:Query("ShouldShout") end
+			end },
+			{ "20k changes of the innermost", N, function(M)
+				local machine, _, _, Bottom = Running(M)
+				function Bottom:Update() return self:ChangeTo(Bottom:New(), "swap") end
+				for _ = 1, N do machine:Update(0.1) end
+			end },
+			{ "2k machines started and destroyed", 2000, function(M)
+				local _, chart, levels = Running(M)
+				for _ = 1, 2000 do
+					local machine = chart:New({ Note = function() end }, levels)
+					machine:Update(0.1)
+					machine:Destroy()
+				end
+			end },
+		}
+	end)(),
 	["configstore"] = {
 		{ "parse 20k texts over 50 keys", N, function(Store)
 			local store = Store.New("bench")
