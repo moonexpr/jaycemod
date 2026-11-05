@@ -72,6 +72,8 @@ struct Soldier {
     group: Option<Tree>,
     /// Its main tree runs when engine.Update says, not on the engine's own turn.
     paced: bool,
+    /// Which way its group pushes it, from its last update.
+    push: [f32; 2],
 }
 
 /// A tree beside its main one: a Behavior and the shadow it updates through.
@@ -798,9 +800,18 @@ unsafe extern "win64" fn soldier_first_contained(this: usize) -> *mut u64 {
 
 unsafe extern "win64" fn soldier_update(this: usize) {
     let b = binding();
-    let Some(soldier) = b.soldiers.get(&this) else {
+    let Some(soldier) = b.soldiers.get_mut(&this) else {
         return;
     };
+    if soldier.group.is_some() {
+        let entity = soldier.entity;
+        soldier.push = group::separation(
+            eye_position(entity),
+            &teammates(entity),
+            (entity >> 4) as u32,
+        );
+    }
+    let soldier = &binding().soldiers[&this];
     let main = (!soldier.paced).then_some(soldier.shadow);
     let group = soldier.group.as_ref().map(|tree| tree.shadow);
     // what INextBot::Update computed for the component, for the shadow it runs on
@@ -861,23 +872,30 @@ unsafe fn team_of(entity: usize) -> i32 {
     *((entity + ENTITY_TEAM) as *const i32)
 }
 
-/// The nearest live player of `me`'s team within range of its eye.
-unsafe fn nearest_friend(me: usize, eye: Point, range: f32) -> Option<Point> {
+/// Where the eyes of the other live players of `me`'s team are.
+unsafe fn teammates(me: usize) -> Vec<Point> {
     let list = binding().entity_list + ENTITY_LIST_ENTRIES;
     let team = team_of(me);
-    let mut best = None;
-    let mut nearest = range;
+    let mut found = Vec::new();
     for index in 1..=MAX_PLAYERS {
         let other = *((list + index * ENTITY_INFO_SIZE) as *const usize);
-        if other == 0
-            || other == me
-            || !is_player(other)
-            || team_of(other) != team
-            || !is_alive(other)
+        if other != 0
+            && other != me
+            && is_player(other)
+            && team_of(other) == team
+            && is_alive(other)
         {
-            continue;
+            found.push(eye_position(other));
         }
-        let at = eye_position(other);
+    }
+    found
+}
+
+/// The nearest live player of `me`'s team within range of its eye.
+unsafe fn nearest_friend(me: usize, eye: Point, range: f32) -> Option<Point> {
+    let mut best = None;
+    let mut nearest = range;
+    for at in teammates(me) {
         let far =
             ((at[0] - eye[0]).powi(2) + (at[1] - eye[1]).powi(2) + (at[2] - eye[2]).powi(2)).sqrt();
         if far < nearest {
@@ -1029,6 +1047,7 @@ unsafe extern "C-unwind" fn create_next_soldier(l: L) -> c_int {
             head: None,
             group: None,
             paced: false,
+            push: [0.0, 0.0],
         },
     );
     *(intention as *mut usize) = b.player_intention.as_ptr() as usize;
@@ -1324,6 +1343,23 @@ unsafe extern "C-unwind" fn insert_group(l: L) -> c_int {
     0
 }
 
+/// engine.GroupPush(bot) -> x, y: which way its group pushes it, from 0 to 1 long; none on a
+/// bot without a group's tree.
+unsafe extern "C-unwind" fn group_push(l: L) -> c_int {
+    let api = api();
+    let (entity, _) = entity_at(l, 1);
+    let mut push = [0.0, 0.0];
+    if entity != 0 && *(entity as *const usize) == binding().player_vtable {
+        let intention = intention_of(entity + PLAYER_INEXTBOT_OFFSET);
+        if let Some(soldier) = binding().soldiers.get(&intention) {
+            push = soldier.push;
+        }
+    }
+    (api.pushnumber)(l, push[0] as f64);
+    (api.pushnumber)(l, push[1] as f64);
+    2
+}
+
 /// engine.GroupStack(bot) -> the actions of the tree beside its main one; none on a bot
 /// without one, so the debug layer may ask of any it shows.
 unsafe extern "C-unwind" fn group_stack(l: L) -> c_int {
@@ -1485,6 +1521,7 @@ const FUNCTIONS: &[(&CStr, CFunction)] = &[
     (c"Update", update_now),
     (c"InsertGroup", insert_group),
     (c"GroupStack", group_stack),
+    (c"GroupPush", group_push),
     (c"Look", look_config),
     (c"LookWatch", look_watch),
     (c"LookClock", look_clock),

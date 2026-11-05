@@ -152,4 +152,19 @@ T.test("a nearby clear goal still uses the direct walk", function()
 	T.eq(soldier.steer, goal, "keep the short clear-walk behavior")
 end)
 
+T.test("with nowhere to be it steps aside from a teammate, unless it has a fight to see to", function()
+	local engine = nextsoldier.engine
+	nextsoldier.engine = { GroupPush = function() return 1, 0 end }
+	local soldier = NewSoldier(nil)
+	soldier.moveTarget = nil
+	soldier.ent.GetPos = function() return Vec(0, 0, 0) end
+	soldier.HasEnemy = function() return false end
+	soldier:Steer(1)
+	T.eq(soldier.steer.x > 16, true, "aside")
+	soldier.HasEnemy = function() return true end
+	soldier:Steer(2)
+	T.eq(soldier.steer, nil, "the fight is its body's to steer")
+	nextsoldier.engine = engine
+end)
+
 T.finish()

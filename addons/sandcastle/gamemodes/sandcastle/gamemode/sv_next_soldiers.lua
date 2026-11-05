@@ -117,7 +117,8 @@ end
 -- The point its body makes for now on its way to its goal.
 function Soldier:Steer(now)
 	if not self.goal or now - self.followedAt > FOLLOW_LAPSES then
-		self.goal, self.walk, self.steer = nil, nil, nil
+		self.goal, self.walk = nil, nil
+		self.steer = self:Spread(self.ent:GetPos())
 		return
 	end
 	local ply = self.ent

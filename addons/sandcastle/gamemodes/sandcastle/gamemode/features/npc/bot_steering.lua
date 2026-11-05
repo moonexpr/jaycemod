@@ -3,7 +3,8 @@
 -- player as self.ent: a NextSoldier's (sv_next_soldiers.lua) and an AI war bot's.
 local Locomotion = nextsoldier.locomotion
 local Movement = gameplay.movement
-local abs = math.abs
+local abs, sqrt = math.abs, math.sqrt
+local kit = nextsoldier
 module(...)
 
 local SWEEP_HEIGHT = 36
@@ -12,6 +13,16 @@ local DROP_DEPTH, DROP_NEAR = 40, 48
 local SOLE, FOOTHOLD, LANDING_SLACK = 2, 18, 24
 
 local function Point(v) return { x = v.x, y = v.y, z = v.z } end
+
+-- How far off its way its group's push leans it, and the least push it moves aside for: its
+-- teammates do not block it (they pass through), so this is spread, never a wall.
+local PUSH_LEAD, PUSH_LEAST = 64, 0.15
+
+local function GroupPush(ent)
+	local engine = kit.engine
+	if not (engine and engine.GroupPush) then return 0, 0 end
+	return engine.GroupPush(ent)
+end
 
 -- world: { util, Vector, mask } as the realm has them.
 function Apply(class, world)
@@ -83,7 +94,18 @@ function Apply(class, world)
 		if Locomotion.DropBelow(Point(pos), point, DROP_DEPTH, DROP_NEAR) then
 			return self:StepOff(pos, point) or point
 		end
-		return self:Avoid(pos, point)
+		local way = self:Avoid(pos, point)
+		local x, y = GroupPush(self.ent)
+		if x == 0 and y == 0 then return way end
+		return { x = way.x + x * PUSH_LEAD, y = way.y + y * PUSH_LEAD, z = way.z }
+	end
+
+	-- Where it steps to, standing with a teammate on it: nil with room enough. pos: a Vector.
+	function class:Spread(pos)
+		local x, y = GroupPush(self.ent)
+		local length = sqrt(x * x + y * y)
+		if length < PUSH_LEAST then return nil end
+		return { x = pos.x + x / length * PUSH_LEAD, y = pos.y + y / length * PUSH_LEAD, z = pos.z }
 	end
 
 	-- The route with each point its body cannot stand on moved to where it can.

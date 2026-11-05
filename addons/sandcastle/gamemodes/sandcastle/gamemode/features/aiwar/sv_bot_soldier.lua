@@ -269,7 +269,8 @@ function BotSoldier:Steer(now)
 	-- wedged): planned anew from where it is
 	if self.walk and self.walk:Stalled(pos, now) then self.walk = nil end
 	if not goal then
-		self.steer = nil
+		-- nowhere to be: aside from a teammate standing on it, unless it has a fight to see to
+		self.steer = not self:HasEnemy() and self:Spread(self.ent:GetPos()) or nil
 		return
 	end
 	if now >= self.nextPlan and self:Navigator():Settled() then
