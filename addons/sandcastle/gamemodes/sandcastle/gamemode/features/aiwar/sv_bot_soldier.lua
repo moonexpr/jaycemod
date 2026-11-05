@@ -304,6 +304,8 @@ function BotSoldier:Steer(now)
 	local walk = self.walk
 	local at = self.ent:GetPos()
 	local point = walk and walk:Next(Point(at), function(q) return self:CanWalkTo(q) end)
+	-- its route over and its goal not reached (a goal moved less than plans anew): planned again
+	if walk and not point then self.planned = nil end
 	self.steer = point and self:SteerOn(at, point) or nil
 end
 

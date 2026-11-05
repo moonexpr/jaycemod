@@ -80,6 +80,16 @@ T.test("the engine's trivial path, from where it stands straight to a far goal, 
 	T.eq(soldier.planned, nil, "planned again after the route interval")
 end)
 
+T.test("a route run out short of its goal is planned again, not stood at", function()
+	local soldier = NewSoldier(nil)
+	-- its goal has moved less than it takes to plan anew, and the walk is over
+	soldier.walk = { Next = function() return nil end, Stalled = function() return false end }
+	soldier.planned, soldier.nextPlan = goal, 100
+	soldier:Steer(2)
+	T.eq(soldier.steer, nil, "nothing to walk to this moment")
+	T.eq(soldier.planned, nil, "so it plans again")
+end)
+
 T.test("a found route steers to its first waypoint", function()
 	local waypoint = { x = 200, y = 50, z = 0 }
 	local soldier = NewSoldier({ waypoint, goal })

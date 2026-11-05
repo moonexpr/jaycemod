@@ -297,6 +297,18 @@ T.test("the debug layer reads its head's lines, only when it has one", function(
 	T.eq(found[soldier.ent]:LookLines(7)[1], "bot 7", "its name and the game's time")
 end)
 
+T.test("a route run out short of its goal is planned again, not stood at", function()
+	ready, planned = true, nil
+	local soldier = New()
+	soldier.walk = { Next = function() return nil end, Stalled = function() return false end }
+	soldier.planned = Vec(5000, 0, 0)
+	soldier.nextPlan = 100
+	soldier:FollowPath(Vec(5000, 0, 0))
+	soldier:Steer(1)
+	T.eq(soldier.steer, nil, "nothing to walk to this moment")
+	T.eq(soldier.planned, nil, "so it plans again")
+end)
+
 T.test("it is given its group's tree beside its orders", function()
 	givenGroup = nil
 	local soldier = New()

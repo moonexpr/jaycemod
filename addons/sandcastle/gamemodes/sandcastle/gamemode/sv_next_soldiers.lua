@@ -142,6 +142,8 @@ function Soldier:Steer(now)
 		return
 	end
 	local point = self.walk and self.walk:Next(Point(pos), function(q) return self:WalkClear(pos, ToVector(q)) end) or nil
+	-- its route over and its goal not reached: planned again
+	if self.walk and not point then self.planned = nil end
 	self.steer = point and self:SteerOn(pos, point)
 end
 
