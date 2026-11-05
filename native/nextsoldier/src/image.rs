@@ -188,6 +188,23 @@ impl<'a> Image<'a> {
         None
     }
 
+    /// The C function of the Lua method `name`, as an RVA: its entry in a class's static
+    /// table holds a pointer to its name, an empty string, then the function.
+    pub fn lua_method(&self, name: &str) -> Option<usize> {
+        const FUNCTION_AFTER_NAME: usize = 16;
+        let wanted = [b"\0", name.as_bytes(), b"\0"].concat();
+        for s in self.sections.iter().filter(|s| !s.executable) {
+            let bytes = &self.bytes[self.range(s)];
+            let Some(at) = bytes.windows(wanted.len()).position(|w| w == wanted) else {
+                continue;
+            };
+            let entry = self.pointer_to(s.rva + at + 1)?;
+            let function = u64_at(self.bytes, self.at(entry + FUNCTION_AFTER_NAME)?)?;
+            return Some(function.wrapping_sub(self.base) as usize);
+        }
+        None
+    }
+
     /// The slots of the vtable at `rva`, as RVAs, up to the first not in code.
     pub fn slots(&self, rva: usize) -> Vec<usize> {
         let mut found = Vec::new();

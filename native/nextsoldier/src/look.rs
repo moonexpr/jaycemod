@@ -37,11 +37,31 @@ impl Priority {
     }
 }
 
+/// What makes a source ask.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Kind {
+    /// While it moves, the way it goes.
+    BodyFacing,
+    /// Every `every` seconds, a friend within `range`.
+    Friend { range: f32, every: f32 },
+    /// Only when asked.
+    Asked,
+}
+
 #[derive(Clone, Debug)]
 pub struct Source {
     pub reason: String,
     pub priority: Priority,
     pub seconds: f32,
+    pub kind: Kind,
+}
+
+/// What a head sees this tick. `friend`: the one found, when friend_range asked.
+#[derive(Clone, Copy, Debug)]
+pub struct View {
+    pub eye: Point,
+    pub head: Angles,
+    pub friend: Option<Point>,
 }
 
 /// The tuning PlayerBody reads from its convars.
@@ -77,6 +97,10 @@ const LOG_SIZE: usize = 32;
 /// Within this of the point it looks at, a request is the same one, its time renewed.
 const SAME_TARGET: f32 = 1.0;
 const MIN_SECONDS: f32 = 0.1;
+/// Moving less than this in a tick, it is standing.
+const MOVED: f32 = 0.5;
+/// How far ahead the point stands that it faces.
+const FACING_REACH: f32 = 500.0;
 
 /// An angle in (-180, 180].
 fn normal(angle: f32) -> f32 {
@@ -107,6 +131,8 @@ pub struct Look {
     priority: Priority,
     expires: f32,
     steady_since: Option<f32>,
+    next_friend: f32,
+    last_eye: Option<Point>,
     watched: bool,
     log: VecDeque<Entry>,
 }
@@ -120,6 +146,8 @@ impl Look {
             priority: Priority::Boring,
             expires: 0.0,
             steady_since: None,
+            next_friend: 0.0,
+            last_eye: None,
             watched: false,
             log: VecDeque::new(),
         }
@@ -190,6 +218,52 @@ impl Look {
             .is_some_and(|since| now - since >= self.tuning.settle)
     }
 
+    fn source_where(&self, is: impl Fn(&Kind) -> bool) -> Option<usize> {
+        self.sources.iter().position(|source| is(&source.kind))
+    }
+
+    /// How far to look for a friend this tick, when one is due.
+    pub fn friend_range(&self, now: f32) -> Option<f32> {
+        if now < self.next_friend {
+            return None;
+        }
+        self.sources.iter().find_map(|source| match source.kind {
+            Kind::Friend { range, .. } => Some(range),
+            _ => None,
+        })
+    }
+
+    /// One tick: what its sources ask of what it sees, then the head's turn.
+    pub fn upkeep(&mut self, now: f32, interval: f32, view: View) -> Angles {
+        if self.friend_range(now).is_some() {
+            let friendly = self.source_where(|kind| matches!(kind, Kind::Friend { .. }));
+            if let Some(source) = friendly {
+                if let Kind::Friend { every, .. } = self.sources[source].kind {
+                    self.next_friend = now + every;
+                }
+                if let Some(friend) = view.friend {
+                    self.aim(now, source, friend);
+                }
+            }
+        }
+        let facing = self.source_where(|kind| *kind == Kind::BodyFacing);
+        if let (Some(source), Some(last)) = (facing, self.last_eye) {
+            let (dx, dy) = (view.eye[0] - last[0], view.eye[1] - last[1]);
+            let moved = (dx * dx + dy * dy).sqrt();
+            if moved > MOVED && now >= self.expires {
+                let ahead = FACING_REACH / moved;
+                let point = [
+                    view.eye[0] + dx * ahead,
+                    view.eye[1] + dy * ahead,
+                    view.eye[2],
+                ];
+                self.aim(now, source, point);
+            }
+        }
+        self.last_eye = Some(view.eye);
+        self.turn(now, interval, view.eye, view.head)
+    }
+
     pub fn target(&self) -> Option<Point> {
         self.target
     }
@@ -203,14 +277,14 @@ impl Look {
     }
 
     /// The LOOK_AT layer's lines, oldest first, in the engine's own words.
-    pub fn lines(&self, name: &str) -> Vec<String> {
+    pub fn lines(&self, name: &str, time_offset: f32) -> Vec<String> {
         self.log
             .iter()
             .map(|entry| {
                 let source = &self.sources[entry.source];
                 format!(
                     "{:.2}: {} Look At ( {}, {}, {} ), Pri = {}, Reason = {}",
-                    entry.time,
+                    entry.time + time_offset,
                     name,
                     entry.target[0],
                     entry.target[1],
@@ -243,20 +317,33 @@ mod tests {
         yaw: 0.0,
     };
 
-    fn source(reason: &str, priority: Priority, seconds: f32) -> Source {
+    fn source(reason: &str, priority: Priority, seconds: f32, kind: Kind) -> Source {
         Source {
             reason: reason.to_string(),
             priority,
             seconds,
+            kind,
         }
+    }
+
+    fn view(eye: Point, head: Angles, friend: Option<Point>) -> View {
+        View { eye, head, friend }
     }
 
     fn look() -> Look {
         Look::new(
             vec![
-                source("Body facing", Priority::Boring, 1.0),
-                source("Looking around at friend", Priority::Boring, 2.0),
-                source("Looking at threat", Priority::Critical, 1.0),
+                source("Body facing", Priority::Boring, 1.0, Kind::BodyFacing),
+                source(
+                    "Looking around at friend",
+                    Priority::Boring,
+                    2.0,
+                    Kind::Friend {
+                        range: 600.0,
+                        every: 5.0,
+                    },
+                ),
+                source("Looking at threat", Priority::Critical, 1.0, Kind::Asked),
             ],
             TUNING,
         )
@@ -391,7 +478,7 @@ mod tests {
     fn unwatched_it_logs_nothing() {
         let mut look = look();
         look.aim(0.0, BODY, FAR);
-        assert!(look.lines("Coach").is_empty());
+        assert!(look.lines("Coach", 0.0).is_empty());
     }
 
     #[test]
@@ -401,7 +488,7 @@ mod tests {
         look.aim(954.6, BODY, [254.0, 5866.0, 2910.5]);
         look.aim(954.7, FRIEND, LEFT);
         assert_eq!(
-            look.lines("Ellis"),
+            look.lines("Ellis", 0.0),
             vec!["954.60: Ellis Look At ( 254, 5866, 2910.5 ), Pri = BORING, Reason = Body facing"],
             "the refused one is not logged"
         );
@@ -416,11 +503,88 @@ mod tests {
             assert!(look.aim(now, THREAT, [i as f32 * 10.0, 0.0, 0.0]));
             now = settled(&mut look, now);
         }
-        let lines = look.lines("Coach");
+        let lines = look.lines("Coach", 0.0);
         assert_eq!(lines.len(), LOG_SIZE);
         assert!(lines[0].contains("( 50, 0, 0 )"), "{}", lines[0]);
         look.watch(false);
-        assert!(look.lines("Coach").is_empty());
+        assert!(look.lines("Coach", 0.0).is_empty());
+    }
+
+    #[test]
+    fn walking_it_faces_the_way_it_goes() {
+        let mut look = look();
+        look.upkeep(0.0, 0.015, view(EYE, AHEAD, None));
+        let head = look.upkeep(0.015, 0.015, view([0.0, 3.0, 0.0], AHEAD, None));
+        assert!(head.yaw > 0.0, "turning to +y: {head:?}");
+        let target = look.target().expect("a point ahead of it");
+        assert!(target[1] > 100.0 && target[0].abs() < 0.001, "{target:?}");
+        assert_eq!(target[2], 0.0, "level with its eyes");
+    }
+
+    #[test]
+    fn standing_still_it_keeps_looking_where_it_was() {
+        let mut look = look();
+        look.upkeep(0.0, 0.015, view(EYE, AHEAD, None));
+        look.upkeep(0.015, 0.015, view(EYE, AHEAD, None));
+        assert_eq!(look.target(), None);
+    }
+
+    #[test]
+    fn facing_waits_out_what_it_looks_at() {
+        let mut look = look();
+        look.aim(0.0, THREAT, LEFT);
+        look.upkeep(0.0, 0.015, view(EYE, AHEAD, None));
+        look.upkeep(0.5, 0.015, view([3.0, 0.0, 0.0], AHEAD, None));
+        assert_eq!(look.target(), Some(LEFT), "held a second");
+    }
+
+    #[test]
+    fn it_asks_for_a_friend_when_one_is_due() {
+        let mut look = look();
+        assert_eq!(look.friend_range(0.0), Some(600.0), "at once");
+        look.upkeep(0.0, 0.015, view(EYE, AHEAD, Some(FAR)));
+        assert_eq!(look.target(), Some(FAR), "looks at them");
+        assert_eq!(look.friend_range(1.0), None, "not again so soon");
+        assert_eq!(
+            look.friend_range(5.1),
+            Some(600.0),
+            "its time has come round"
+        );
+    }
+
+    #[test]
+    fn with_no_friend_near_it_looks_for_one_again_later() {
+        let mut look = look();
+        look.upkeep(0.0, 0.015, view(EYE, AHEAD, None));
+        assert_eq!(look.friend_range(1.0), None, "not every tick");
+    }
+
+    #[test]
+    fn a_friend_is_not_looked_away_from_by_walking() {
+        let mut look = look();
+        look.upkeep(0.0, 0.015, view(EYE, AHEAD, Some(FAR)));
+        look.upkeep(1.0, 0.015, view([0.0, 3.0, 0.0], AHEAD, None));
+        assert_eq!(look.target(), Some(FAR), "two seconds it holds");
+    }
+
+    #[test]
+    fn with_no_source_for_it_nothing_is_asked() {
+        let mut look = Look::new(vec![], TUNING);
+        assert_eq!(look.friend_range(0.0), None);
+        let head = look.upkeep(0.0, 0.015, view(EYE, AHEAD, Some(FAR)));
+        assert_eq!(head, AHEAD);
+    }
+
+    #[test]
+    fn its_log_reads_in_the_games_time() {
+        let mut look = look();
+        look.watch(true);
+        look.aim(10.0, BODY, FAR);
+        assert!(
+            look.lines("Coach", 100.0)[0].starts_with("110.00:"),
+            "{:?}",
+            look.lines("Coach", 100.0)
+        );
     }
 
     #[test]

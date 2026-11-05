@@ -8,6 +8,7 @@
 pub mod image;
 pub mod layout;
 pub mod look;
+pub mod reach;
 pub mod scenario_monitor;
 pub mod scenarios;
 pub mod scenarios_bind;

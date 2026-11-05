@@ -249,6 +249,8 @@ unsafe extern "C-unwind" fn compile(l: L) -> c_int {
 
 /// The place of the first active entry, asked with the context at `context`; None
 /// when none is. Exposed for the native ScenarioMonitor.
+/// # Safety
+/// Called by Lua with a live state.
 pub unsafe fn choose(l: L, compiled: c_int, context: c_int) -> Option<u32> {
     let api = api();
     let (compiled, context) = (absolute(l, compiled), absolute(l, context));
@@ -285,6 +287,8 @@ unsafe extern "C-unwind" fn choose_method(l: L) -> c_int {
 }
 
 /// Pushes the entry at `place` of the compiled structure at `compiled`.
+/// # Safety
+/// Called by Lua with a live state.
 pub unsafe fn push_entry(l: L, compiled: c_int, place: u32) {
     let api = api();
     (api.getfenv)(l, compiled);
@@ -295,6 +299,8 @@ pub unsafe fn push_entry(l: L, compiled: c_int, place: u32) {
 }
 
 /// The name of the monitor the entry at `place` runs, on the stack, or nil.
+/// # Safety
+/// Called by Lua with a live state.
 pub unsafe fn push_monitor(l: L, compiled: c_int, place: u32) {
     let data = userdata::check::<CompiledData>(l, compiled);
     match &data.model.entries[place as usize].monitor {
@@ -431,6 +437,8 @@ unsafe extern "C-unwind" fn new(l: L) -> c_int {
 
 /// Pushes the wartactics.scenarios module. Its Shared is one a Lua state, so a module
 /// opened again goes on with what was registered.
+/// # Safety
+/// Called by Lua with a live state.
 pub unsafe fn push_module(l: L) {
     let api = api();
     module::push(l, &[(c"New", new), (c"UseRequire", use_require)], None);

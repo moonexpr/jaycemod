@@ -39,6 +39,13 @@ pub const SHOULD_RETREAT: usize = 3;
 // INextBotEventResponder's OnCommandString, on an INextBot: the event's way in.
 pub const RESPONDER_COMMAND_STRING: usize = 34;
 
+// CBaseEntity's slots and field, checked by reach.rs against the Lua methods' calls.
+pub const IS_ALIVE: usize = 66;
+pub const IS_PLAYER: usize = 81;
+pub const EYE_POSITION: usize = 132;
+pub const EYE_ANGLES: usize = 133;
+pub const ENTITY_TEAM: usize = 0x2A4;
+
 // INextBot, at INEXTBOT_OFFSET in a CLuaNextBot.
 pub const INEXTBOT_OFFSET: usize = 0x2240;
 pub const GET_INTENTION: usize = 50;
