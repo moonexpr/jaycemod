@@ -5,6 +5,7 @@
 //! starts, updates, suspends, ends and deletes them. A bot player has no statechart
 //! of its own, so `player.CreateNextSoldier` gives it one.
 
+pub mod group;
 pub mod image;
 pub mod layout;
 pub mod look;

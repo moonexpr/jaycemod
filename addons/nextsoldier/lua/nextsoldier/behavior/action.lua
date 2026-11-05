@@ -48,12 +48,15 @@ end
 
 -- What the debug layer shows of ent, whose actions the engine runs: stack(ent) gives
 -- them (engine.Stack). The engine tells nothing as it changes them, so a watched log
--- hears each change as the layer looks.
-function DebugNpc(ent, stack)
+-- hears each change as the layer looks. groupStack(ent), if any: the tree beside them.
+function DebugNpc(ent, stack, groupStack)
 	local log, shape
 	local npc = { variant = { _NAME = ent:GetClass() } }
 	function npc:Stack()
 		local frames = stack(ent)
+		if groupStack then
+			for _, frame in ipairs(groupStack(ent)) do frames[#frames + 1] = frame end
+		end
 		local now = Shape(frames)
 		if log and now ~= shape then log:Event(now) end
 		shape = now
@@ -78,7 +81,7 @@ function EngineBehavior(ent, initial, me, kind, engine)
 		me = me,
 		name = kind,
 		engine = engine,
-		debug = DebugNpc(ent, engine.Stack),
+		debug = DebugNpc(ent, engine.Stack, engine.GroupStack),
 	}, EngineRoot)
 end
 
@@ -95,7 +98,7 @@ function EngineRoot:Stack()
 end
 
 -- A bot's stack holds its own CLuaBehaviour under what it runs.
-function EngineRoot:IsEmpty() return #self:Stack() <= 1 end
+function EngineRoot:IsEmpty() return #self.engine.Stack(self.ent) <= 1 end
 
 function EngineRoot:Describe()
 	local frames = self:Stack()

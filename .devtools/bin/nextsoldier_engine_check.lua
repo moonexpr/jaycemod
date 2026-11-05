@@ -221,6 +221,16 @@ E.Insert(NSEngineSoldier, Action("Outer", {
 	Update = function() return { type = CONTINUE } end,
 	OnEnd = function(_, me) Note("P Outer end, its player whole " .. tostring(IsValid(me))) end,
 }))
+-- The tree beside its main one, on the same soldier: updated, and hearing what it hears.
+E.InsertGroup(NSEngineSoldier, E.GroupIdentityBehavior({
+	initial = Action("Legs", {
+		OnStart = function() Note("G Legs start") return { type = CONTINUE } end,
+		Update = function() Note("G Legs update") return { type = CONTINUE } end,
+		OnThing = function(_, _, word) Note("G Legs told " .. word) return { type = CONTINUE } end,
+		OnEnd = function() Note("G Legs end") end,
+	}),
+}))
+timer.Simple(3, function() E.Event(NSEngineSoldier, "OnThing", "both") end)
 local plainBot = player.CreateNextBot("NSEnginePlain")
 local plainRefused = not pcall(E.Stack, plainBot)
 timer.Simple(2, function()
@@ -271,6 +281,11 @@ function NSEngineCheck.Finish()
 		chart_buried_reads_the_engine = buriedName ~= nil,
 		chart_suspended_reads_the_engine = suspendedSeen == true,
 		a_new_tree_replaces_an_ended_one = secondLife == true,
+		group_tree_starts = Has("G Legs start"),
+		group_tree_updates = Has("G Legs update"),
+		group_tree_hears_events = Has("G Legs told both"),
+		group_tree_shows_its_stack = #E.GroupStack(NSEngineSoldier) == 2,
+		group_stack_of_a_bot_is_empty = #E.GroupStack(bots.Told) == 0,
 		event_carries_its_arguments = Has("Listener thing one 2"),
 		event_reaches_the_container = Has("Teller thing one"),
 		event_changes_at_the_next_update_too = Has("Changed start"),
@@ -282,7 +297,7 @@ function NSEngineCheck.Finish()
 	NSEngineSoldier:Kick("the check is over")
 	plainBot:Kick("the check is over")
 	timer.Simple(0.5, function()
-		NSEngineCheck.removal = { ended_again = endings ~= 2, ended = doomedEnded, deleted = live - E.Live(), soldier_ended = Has("P Hurt end") and Has("P Outer end, its player whole true") }
+		NSEngineCheck.removal = { ended_again = endings ~= 2, ended = doomedEnded, deleted = live - E.Live(), group_ended = Has("G Legs end"), soldier_ended = Has("P Hurt end") and Has("P Outer end, its player whole true") }
 		for _, bot in pairs(bots) do
 			if IsValid(bot) then bot:Remove() end
 		end

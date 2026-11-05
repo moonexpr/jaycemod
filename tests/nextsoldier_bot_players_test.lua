@@ -29,6 +29,7 @@ local function ValidPlayer()
 end
 local added
 local hooks = {}
+local givenGroup
 local environment = setmetatable({
 	Vector = Vec,
 	IsValid = function(value) return value ~= nil end,
@@ -74,6 +75,7 @@ local environment = setmetatable({
 		},
 		behavior = {
 			action = nextsoldier.behavior.action,
+			group_identity = { Give = function(ent) givenGroup = ent return true end },
 			ctfbot = { Compile = function() return {} end, InitialAction = function() return {} end },
 		},
 	}, { __index = nextsoldier }),
@@ -293,6 +295,12 @@ T.test("the debug layer reads its head's lines, only when it has one", function(
 	function soldier.ent:Nick() return "bot" end
 	hooks.WSNbDebugNpcs(found)
 	T.eq(found[soldier.ent]:LookLines(7)[1], "bot 7", "its name and the game's time")
+end)
+
+T.test("it is given its group's tree beside its orders", function()
+	givenGroup = nil
+	local soldier = New()
+	T.eq(givenGroup, soldier.ent, "on it")
 end)
 
 T.finish()

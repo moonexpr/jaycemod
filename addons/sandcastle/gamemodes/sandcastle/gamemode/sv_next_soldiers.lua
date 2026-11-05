@@ -281,6 +281,7 @@ function WS.AddNextSoldier(team, name)
 	soldiers[ply] = soldier
 	compiled = compiled or CTFBot.Compile(wartactics.scenarios)
 	nextsoldier.engine.Insert(ply, CTFBot.InitialAction(nextsoldier.engine, compiled), soldier)
+	nextsoldier.behavior.group_identity.Give(ply, nextsoldier.engine, ply)
 	if nextsoldier.engine.Look then
 		nextsoldier.engine.Look(ply, LookConfig())
 		soldier.head = true
@@ -295,7 +296,7 @@ hook.Add("WSNbDebugNpcs", "ws_next_soldiers", function(found)
 	for ply, soldier in pairs(soldiers) do
 		if IsValid(ply) then
 			if not soldier.debug then
-				soldier.debug = nextsoldier.behavior.action.DebugNpc(ply, nextsoldier.engine.Stack)
+				soldier.debug = nextsoldier.behavior.action.DebugNpc(ply, nextsoldier.engine.Stack, nextsoldier.engine.GroupStack)
 				if soldier.head then
 					function soldier.debug:LookLines(now) return nextsoldier.engine.LookLines(ply, ply:Nick(), now) end
 					function soldier.debug:WatchLook(on) nextsoldier.engine.LookWatch(ply, on) end

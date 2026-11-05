@@ -9,7 +9,7 @@
 use crate::image::Image;
 use crate::layout::*;
 use crate::look::{Angles, Kind as SourceKind, Look, Point, Priority, Source, Tuning, View};
-use crate::{scenario_monitor, tactical};
+use crate::{group, scenario_monitor, tactical};
 use foundation::lua::{
     api, push_str, set_function, string_at, CFunction, GLOBALSINDEX, L, TFUNCTION, TTABLE,
 };
@@ -69,6 +69,30 @@ struct Soldier {
     shadow: *mut u64,
     entity: usize,
     head: Option<Head>,
+    group: Option<Tree>,
+}
+
+/// A tree beside its main one: a Behavior and the shadow it updates through.
+struct Tree {
+    behavior: *mut u64,
+    shadow: *mut u64,
+}
+
+/// A new Behavior for the INextBot at `nextbot`, and the shadow of its intention.
+unsafe fn new_tree(nextbot: usize) -> Tree {
+    let b = binding();
+    let behavior = Box::into_raw(vec![0u64; BEHAVIOR_WORDS].into_boxed_slice()).cast::<u64>();
+    *behavior = b.behavior_vtables.0 as u64;
+    *behavior.add(1) = b.behavior_vtables.1 as u64;
+    let shadow = Box::into_raw(vec![0u64; SHADOW_WORDS].into_boxed_slice()).cast::<u64>();
+    *shadow = b.intention_vtable as u64;
+    *shadow.cast::<u8>().add(COMPONENT_BOT).cast::<usize>() = nextbot;
+    *shadow.cast::<u8>().add(INTENTION_QUERY).cast::<usize>() = b.intention_query_vtable;
+    *shadow
+        .cast::<u8>()
+        .add(INTENTION_BEHAVIOR)
+        .cast::<*mut u64>() = behavior;
+    Tree { behavior, shadow }
 }
 
 /// A soldier's head, once its config is given, on a clock of its own ticks: a player's
@@ -90,7 +114,7 @@ pub(crate) struct Kind {
     pub constructor: CFunction,
 }
 
-const KINDS: &[&Kind] = &[&tactical::KIND, &scenario_monitor::KIND];
+const KINDS: &[&Kind] = &[&tactical::KIND, &scenario_monitor::KIND, &group::KIND];
 
 struct NativeTables {
     name: &'static CStr,
@@ -776,11 +800,25 @@ unsafe extern "win64" fn soldier_update(this: usize) {
         return;
     };
     let shadow = soldier.shadow;
+    let group = soldier.group.as_ref().map(|tree| tree.shadow);
     // what INextBot::Update computed for the component, for the shadow it runs on
     let interval = *((this + COMPONENT_INTERVAL) as *const f32);
-    *(shadow.cast::<u8>().add(COMPONENT_INTERVAL).cast::<f32>()) = interval;
     let run: unsafe extern "win64" fn(*mut u64) = std::mem::transmute(b.intention_update);
-    run(shadow);
+    for tree in std::iter::once(shadow).chain(group) {
+        *(tree.cast::<u8>().add(COMPONENT_INTERVAL).cast::<f32>()) = interval;
+        run(tree);
+    }
+}
+
+/// After its main tree, its group's: so an event reaches both.
+unsafe extern "win64" fn soldier_next_contained(this: usize, current: *mut u64) -> *mut u64 {
+    let Some(soldier) = binding().soldiers.get(&this) else {
+        return null_mut();
+    };
+    match soldier.group.as_ref() {
+        Some(tree) if current == soldier.behavior => tree.behavior,
+        _ => null_mut(),
+    }
 }
 
 unsafe fn virtual_at(entity: usize, slot: usize) -> usize {
@@ -887,16 +925,26 @@ unsafe extern "win64" fn soldier_upkeep(this: usize) {
 
 /// The engine's own ~Behavior ends and deletes the actions; then what we allocated.
 unsafe fn release_soldier(soldier: Soldier) {
-    let table = *(soldier.behavior as *const *const usize);
+    if let Some(tree) = soldier.group {
+        release_tree(tree);
+    }
+    release_tree(Tree {
+        behavior: soldier.behavior,
+        shadow: soldier.shadow,
+    });
+}
+
+unsafe fn release_tree(tree: Tree) {
+    let table = *(tree.behavior as *const *const usize);
     let destroy: unsafe extern "win64" fn(*mut u64, u32) -> *mut u64 =
         std::mem::transmute(*table.add(DESTRUCTOR));
-    destroy(soldier.behavior, 0);
+    destroy(tree.behavior, 0);
     drop(Box::from_raw(std::ptr::slice_from_raw_parts_mut(
-        soldier.behavior,
+        tree.behavior,
         BEHAVIOR_WORDS,
     )));
     drop(Box::from_raw(std::ptr::slice_from_raw_parts_mut(
-        soldier.shadow,
+        tree.shadow,
         SHADOW_WORDS,
     )));
 }
@@ -908,11 +956,11 @@ unsafe extern "win64" fn soldier_destructor(this: usize, flags: u32) -> usize {
     let b = binding();
     let original = b.base_intention_destructor;
     if let Some(soldier) = b.soldiers.remove(&this) {
-        *(soldier
-            .behavior
-            .cast::<u8>()
-            .add(BEHAVIOR_ME)
-            .cast::<usize>()) = 0;
+        for behavior in std::iter::once(soldier.behavior)
+            .chain(soldier.group.as_ref().map(|tree| tree.behavior))
+        {
+            *(behavior.cast::<u8>().add(BEHAVIOR_ME).cast::<usize>()) = 0;
+        }
         release_soldier(soldier);
     }
     *(this as *mut usize) = binding().base_intention_vtable;
@@ -969,17 +1017,7 @@ unsafe extern "C-unwind" fn create_next_soldier(l: L) -> c_int {
             format!("player {entindex}'s intention is not a plain IIntention"),
         );
     }
-    let behavior = Box::into_raw(vec![0u64; BEHAVIOR_WORDS].into_boxed_slice()).cast::<u64>();
-    *behavior = b.behavior_vtables.0 as u64;
-    *behavior.add(1) = b.behavior_vtables.1 as u64;
-    let shadow = Box::into_raw(vec![0u64; SHADOW_WORDS].into_boxed_slice()).cast::<u64>();
-    *shadow = b.intention_vtable as u64;
-    *shadow.cast::<u8>().add(COMPONENT_BOT).cast::<usize>() = nextbot;
-    *shadow.cast::<u8>().add(INTENTION_QUERY).cast::<usize>() = b.intention_query_vtable;
-    *shadow
-        .cast::<u8>()
-        .add(INTENTION_BEHAVIOR)
-        .cast::<*mut u64>() = behavior;
+    let Tree { behavior, shadow } = new_tree(nextbot);
     b.soldiers.insert(
         intention,
         Soldier {
@@ -987,6 +1025,7 @@ unsafe extern "C-unwind" fn create_next_soldier(l: L) -> c_int {
             shadow,
             entity,
             head: None,
+            group: None,
         },
     );
     *(intention as *mut usize) = b.player_intention.as_ptr() as usize;
@@ -1242,6 +1281,53 @@ unsafe extern "C-unwind" fn query(l: L) -> c_int {
     0
 }
 
+/// engine.InsertGroup(soldier, action[, me]): the tree beside its main one, as its next
+/// update: the engine starts it. Refused on a soldier that has one.
+unsafe extern "C-unwind" fn insert_group(l: L) -> c_int {
+    let api = api();
+    (api.settop)(l, 3);
+    (api.checktype)(l, 2, TTABLE);
+    let me = if (api.type_of)(l, 3) == foundation::lua::TNIL {
+        1
+    } else {
+        3
+    };
+    let (entity, _) = entity_at(l, 1);
+    let soldier = soldier_at(l, 1);
+    if soldier.group.is_some() {
+        foundation::lua::raise_where(l, "the soldier already runs a group's tree".into());
+    }
+    let tree = new_tree(entity + PLAYER_INEXTBOT_OFFSET);
+    let action = new_action(l, 2, me).cast::<Action>();
+    *(tree.behavior.cast::<u8>().add(BEHAVIOR_ACTION) as *mut *mut Action) = action;
+    soldier.group = Some(tree);
+    0
+}
+
+/// engine.GroupStack(bot) -> the actions of the tree beside its main one; none on a bot
+/// without one, so the debug layer may ask of any it shows.
+unsafe extern "C-unwind" fn group_stack(l: L) -> c_int {
+    let api = api();
+    (api.settop)(l, 1);
+    let (entity, _) = entity_at(l, 1);
+    (api.createtable)(l, 0, 0);
+    if entity == 0 || *(entity as *const usize) != binding().player_vtable {
+        return 1;
+    }
+    let intention = intention_of(entity + PLAYER_INEXTBOT_OFFSET);
+    let Some(tree) = binding()
+        .soldiers
+        .get(&intention)
+        .and_then(|s| s.group.as_ref())
+    else {
+        return 1;
+    };
+    let frames = (api.gettop)(l);
+    let mut count = 0;
+    push_frames(l, root_of(tree.behavior.cast()), 1.0, frames, &mut count);
+    1
+}
+
 /// The soldier the player at `index` is, or a Lua error.
 unsafe fn soldier_at<'a>(l: L, index: c_int) -> &'a mut Soldier {
     let (entity, entindex) = entity_at(l, index);
@@ -1375,6 +1461,8 @@ unsafe extern "C-unwind" fn look_lines(l: L) -> c_int {
 }
 
 const FUNCTIONS: &[(&CStr, CFunction)] = &[
+    (c"InsertGroup", insert_group),
+    (c"GroupStack", group_stack),
     (c"Look", look_config),
     (c"LookWatch", look_watch),
     (c"LookClock", look_clock),
@@ -1513,6 +1601,7 @@ unsafe fn bind(l: L) -> Result<Binding, String> {
     let base_intention_destructor = player_intention[DESTRUCTOR];
     player_intention[DESTRUCTOR] = soldier_destructor as *const () as usize;
     player_intention[FIRST_CONTAINED] = soldier_first_contained as *const () as usize;
+    player_intention[NEXT_CONTAINED] = soldier_next_contained as *const () as usize;
     player_intention[INTENTION_UPDATE] = soldier_update as *const () as usize;
     player_intention[INTENTION_UPKEEP] = soldier_upkeep as *const () as usize;
     let reach = crate::reach::read(&image)?;

@@ -142,6 +142,7 @@ function Controller:AddBot()
 	local bot = create(string.format("%s %d", self:FactionName(team), self.botSerial))
 	if not IsValid(bot) then return end
 	self.bots[bot] = true
+	if player.CreateNextSoldier then nextsoldier.behavior.group_identity.Give(bot, nextsoldier.engine, bot) end
 	-- the body it was made with goes quietly: joining a team alive would
 	-- kill it, a suicide on the scoreboard
 	bot:KillSilent()

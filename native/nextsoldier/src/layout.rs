@@ -52,6 +52,7 @@ pub const GET_INTENTION: usize = 50;
 
 // CLuaNextBotIntention: slot FIRST_CONTAINED is `mov rax, [rcx + 0x28]; ret`.
 pub const FIRST_CONTAINED: usize = 1;
+pub const NEXT_CONTAINED: usize = 2;
 pub const INTENTION_BEHAVIOR: usize = 0x28;
 pub const RETURNS_BEHAVIOR: [u8; 5] = [0x48, 0x8B, 0x41, 0x28, 0xC3];
 
