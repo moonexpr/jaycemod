@@ -150,11 +150,18 @@ function Controller:RefreshBlockers(now)
 	self.doorStates = states
 	self.doorWalls = walls
 	-- exactly func_brush: func_respawnroomvisualizer, a func_brush too, is not one
+	local solidBrushes = {}
 	for _, brush in ipairs(ents.FindByClass("func_brush")) do
 		if brush:IsSolid() then
+			solidBrushes[#solidBrushes + 1] = brush:EntIndex()
 			for _, area in ipairs(self:BrushAreas(brush)) do Block(blocked, area, Doors.ANY) end
 		end
 	end
+	-- What fits and what crosses are measured once against the map's brushes, but a map may
+	-- switch a brush (cp_dustbowl's stages): measured again when it has.
+	local brushes = table.concat(solidBrushes, ",")
+	if self.solidBrushes and self.solidBrushes ~= brushes then WS.BridgeNavGaps() end
+	self.solidBrushes = brushes
 	-- areas the AI war disabled (wartactics.hazards): closed to every team
 	for id in pairs(self.navDisabled) do
 		local area = navmesh.GetNavAreaByID(id)
