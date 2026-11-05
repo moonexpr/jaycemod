@@ -806,4 +806,24 @@ T.test("the damage types keep Source's bits", function()
 	T.eq(Actor.DMG_CLUB, 128, "club")
 end)
 
+T.test("a variant runs on the behaviour it is given, started when its bot starts", function()
+	local started
+	local behavior = { Start = function() started = true end }
+	local kinds = {}
+	local npc = N.Npc.New(Variant(), { health = 50 }, Setup(), function(initial, kind)
+		kinds.initial, kinds.kind = initial, kind
+		return behavior
+	end)
+	T.eq(npc.behavior, behavior, "what it was given")
+	T.eq(kinds.initial ~= nil, true, "its first action to run")
+	npc:Start()
+	T.eq(started, true, "started")
+end)
+
+T.test("on the chart's own behaviour, starting asks nothing", function()
+	local npc = N.Npc.New(Variant(), { health = 50 }, Setup())
+	npc:Start()
+	T.eq(npc.behavior.Start, nil, "the chart starts with its first update")
+end)
+
 T.finish()

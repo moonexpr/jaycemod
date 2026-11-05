@@ -64,3 +64,40 @@ function DebugNpc(ent, stack)
 	end
 	return npc
 end
+
+-- A behaviour the engine runs, answering what generator.state_chart's root does, so what
+-- was written for the chart runs on it: me is told to its actions, and the bot's start
+-- (Start) is the first moment a link under its CLuaBehaviour holds.
+local EngineRoot = {}
+EngineRoot.__index = EngineRoot
+
+function EngineBehavior(ent, initial, me, kind, engine)
+	return setmetatable({
+		ent = ent,
+		initial = initial,
+		me = me,
+		name = kind,
+		engine = engine,
+		debug = DebugNpc(ent, engine.Stack),
+	}, EngineRoot)
+end
+
+function EngineRoot:Start() self.engine.Insert(self.ent, self.initial, self.me) end
+function EngineRoot:Update() end
+function EngineRoot:Event(_, name, ...) self.engine.Event(self.ent, name, ...) end
+function EngineRoot:Query(_, name, ...) return self.engine.Query(self.ent, name, ...) end
+function EngineRoot:Destroy() self.engine.End(self.ent) end
+function EngineRoot:Watch(log) self.debug:Watch(log) end
+
+function EngineRoot:Stack()
+	local _, frames = self.debug:Stack()
+	return frames
+end
+
+-- A bot's stack holds its own CLuaBehaviour under what it runs.
+function EngineRoot:IsEmpty() return #self:Stack() <= 1 end
+
+function EngineRoot:Describe()
+	local frames = self:Stack()
+	return Shape(frames)
+end

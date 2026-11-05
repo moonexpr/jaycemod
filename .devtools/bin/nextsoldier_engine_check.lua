@@ -104,6 +104,23 @@ Bot("Told", {
 })
 timer.Simple(3, function() E.Event(bots.Told, "OnThing", "one", 2) end)
 
+-- engine.End: each OnEnd now, innermost first, and not again as the bot goes.
+local endings = 0
+local endingWhole
+Bot("Ending", {
+	InitialContainedAction = function()
+		return Action("EndingInner", {
+			Update = function() return { type = CONTINUE } end,
+			OnEnd = function(_, me)
+				endings = endings + 1
+				endingWhole = IsValid(me)
+			end,
+		})
+	end,
+	Update = function() return { type = CONTINUE } end,
+	OnEnd = function() endings = endings + 1 end,
+})
+
 -- A damage event fired inside a hook: stored, and its change made at the next update.
 local Hurt = { OnStart = function() Note("Hurt start") return { type = CONTINUE } end, Update = function() return { type = CONTINUE } end }
 Bot("Calm", {
@@ -213,18 +230,22 @@ function NSEngineCheck.Finish()
 		soldier_hears_damage = Has("P Inner injured") and Has("P Hurt start"),
 		soldier_query_walks = E.ShouldHurry(NSEngineSoldier) == YES,
 		a_plain_bot_is_refused = plainRefused,
+		end_runs_each_ending_once = endedOnce,
+		end_finds_its_bot_whole = endingWhole,
 		event_carries_its_arguments = Has("Listener thing one 2"),
 		event_reaches_the_container = Has("Teller thing one"),
 		event_changes_at_the_next_update_too = Has("Changed start"),
 		query_answers_with_its_arguments = E.Query(bots.Told, "Undecided") == "the container's",
 		query_nobody_answers_is_nil = E.Query(bots.Told, "Nobody") == nil,
 	}
+	E.End(bots.Ending)
+	local endedOnce = endings == 2
 	local live = E.Live()
 	bots.Doomed:Remove()
 	NSEngineSoldier:Kick("the check is over")
 	plainBot:Kick("the check is over")
 	timer.Simple(0.5, function()
-		NSEngineCheck.removal = { ended = doomedEnded, deleted = live - E.Live(), soldier_ended = Has("P Hurt end") and Has("P Outer end, its player whole true") }
+		NSEngineCheck.removal = { ended_again = endings ~= 2, ended = doomedEnded, deleted = live - E.Live(), soldier_ended = Has("P Hurt end") and Has("P Outer end, its player whole true") }
 		for _, bot in pairs(bots) do
 			if IsValid(bot) then bot:Remove() end
 		end

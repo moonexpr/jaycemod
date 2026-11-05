@@ -178,7 +178,9 @@ function ENT:OnRemove()
 	if self.npc then self.npcs:Unbind(self) end
 end
 
-function ENT:BehaveStart() end
+function ENT:BehaveStart()
+	if self.npc then self.npc:Start() end
+end
 
 function ENT:BehaveUpdate(interval)
 	if not self.npc then

@@ -90,11 +90,20 @@ function Controller:PrecacheParticles(variantName, variant)
 	for _, name in ipairs(NpcSystem.Particles(variant)) do PrecacheParticleSystem(name) end
 end
 
+-- The engine runs a variant's actions where its binary is bound; else the chart does.
+local function EngineBehaviorOf(ent)
+	local engine = nextsoldier.engine
+	if not (engine and engine.Insert) then return nil end
+	return function(initial, kind)
+		return nextsoldier.behavior.action.EngineBehavior(ent, initial, ent, kind, engine)
+	end
+end
+
 function Controller:Bind(ent, variantName, config)
 	self:CheckNavMesh()
 	local variant = WS.require(variantName)
 	self:PrecacheParticles(variantName, variant)
-	local npc = NpcSystem.Npc.New(variant, config, ent)
+	local npc = NpcSystem.Npc.New(variant, config, ent, EngineBehaviorOf(ent))
 	self.npcs[ent] = npc
 	self.variantNames[ent] = variantName
 	self.kinds[variant.KIND] = self.kinds[variant.KIND] or {}

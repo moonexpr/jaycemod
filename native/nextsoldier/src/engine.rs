@@ -207,6 +207,7 @@ unsafe fn new_action(l: L, table: c_int, me: c_int) -> *mut LuaAction {
         },
         id,
         state,
+        ended: false,
     }));
     b.live.insert(action);
     action
@@ -394,6 +395,9 @@ unsafe extern "win64" fn update(
 }
 
 unsafe extern "win64" fn on_end(this: *mut LuaAction, _me: *mut c_void, next: *mut Action) {
+    if (*this).ended {
+        return;
+    }
     let l = binding().lua;
     let top = (api().gettop)(l);
     hook(l, this, c"OnEnd", |l| {
@@ -1108,6 +1112,29 @@ unsafe fn ask(l: L, action: *mut Action, name: &CStr, first: c_int, last: c_int)
     false
 }
 
+/// Runs each action's OnEnd, what it contains first, and marks it as ended.
+unsafe fn end_actions(l: L, action: *mut Action) {
+    let mut at = action;
+    while !at.is_null() {
+        end_actions(l, (*at).child);
+        if ours(at) && !(*at.cast::<LuaAction>()).ended {
+            let top = (api().gettop)(l);
+            hook(l, at.cast(), c"OnEnd", |_| 0);
+            (api().settop)(l, top);
+            (*at.cast::<LuaAction>()).ended = true;
+        }
+        at = (*at).buried;
+    }
+}
+
+/// engine.End(bot): its actions' OnEnd now, while the bot is whole. The engine would run
+/// them from the bot's destructor, when an OnEnd could no longer use it.
+unsafe extern "C-unwind" fn end(l: L) -> c_int {
+    let root = root_of(behavior_of(l, 1).0);
+    end_actions(l, root);
+    0
+}
+
 /// engine.Query(bot, name, ...) -> the first answer from the innermost action out, or nil.
 unsafe extern "C-unwind" fn query(l: L) -> c_int {
     let api = api();
@@ -1261,6 +1288,7 @@ const FUNCTIONS: &[(&CStr, CFunction)] = &[
     (c"Insert", insert),
     (c"Command", command),
     (c"Event", event),
+    (c"End", end),
     (c"Query", query),
     (c"Stack", stack),
     (c"ShouldHurry", query_hurry),

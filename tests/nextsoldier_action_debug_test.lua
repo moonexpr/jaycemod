@@ -46,4 +46,63 @@ T.test("unwatched, nothing is logged", function()
 	T.eq(logged, 0, "no log to write to")
 end)
 
+-- An engine as the behaviour sees it, recording what it is told.
+local function Engine(frames)
+	local told = {}
+	return told, {
+		Insert = function(ent, action, me) told.inserted = { ent, action, me } end,
+		Event = function(ent, name, ...) told.event = { ent, name, ... } end,
+		Query = function(ent, name, ...) told.query = { ent, name, ... } return "answered" end,
+		Stack = function() return frames end,
+		End = function(ent) told.ended = ent end,
+	}
+end
+
+T.test("a behaviour on the engine goes in only when it is started", function()
+	local told, engine = Engine({})
+	local behavior = Action.EngineBehavior(ENT, "first", "actor", "KIND", engine)
+	T.eq(told.inserted, nil, "not before the bot's own start")
+	behavior:Start()
+	T.eq(told.inserted[1], ENT, "on the bot")
+	T.eq(told.inserted[2], "first", "its first action")
+	T.eq(told.inserted[3], "actor", "told to the actor, as the chart's are")
+end)
+
+T.test("its events and queries are the engine's, the actor left to the engine", function()
+	local told, engine = Engine({})
+	local behavior = Action.EngineBehavior(ENT, "first", "actor", "KIND", engine)
+	behavior:Event("actor", "OnContact", "other")
+	T.eq(told.event[2], "OnContact", "by name")
+	T.eq(told.event[3], "other", "with what it was told")
+	T.eq(behavior:Query("actor", "ShouldHurry", 1), "answered", "the engine's answer")
+	T.eq(told.query[3], 1, "with what it was asked")
+end)
+
+T.test("the engine updates it: updating does nothing more", function()
+	local told, engine = Engine({})
+	Action.EngineBehavior(ENT, "first", "actor", "KIND", engine):Update("actor", 0.1)
+	T.eq(next(told), nil, "nothing told")
+end)
+
+T.test("it is empty when only the engine's own root is left", function()
+	local _, none = Engine({ { name = "CLuaBehaviour", depth = 1 } })
+	T.eq(Action.EngineBehavior(ENT, "first", "actor", "KIND", none):IsEmpty(), true, "its root alone")
+	local _, some = Engine({ { name = "CLuaBehaviour", depth = 1 }, { name = "Attack", depth = 2 } })
+	T.eq(Action.EngineBehavior(ENT, "first", "actor", "KIND", some):IsEmpty(), false, "an action on it")
+end)
+
+T.test("destroying it ends its actions, while its bot is whole", function()
+	local told, engine = Engine({})
+	Action.EngineBehavior(ENT, "first", "actor", "KIND", engine):Destroy()
+	T.eq(told.ended, ENT, "the engine's would come too late")
+end)
+
+T.test("it describes and shows itself by the engine's stack, under its kind", function()
+	local _, engine = Engine({ { name = "CLuaBehaviour", depth = 1 }, { name = "Attack", depth = 2 } })
+	local behavior = Action.EngineBehavior(ENT, "first", "actor", "KIND", engine)
+	T.eq(behavior.name, "KIND", "its name")
+	T.eq(behavior:Stack()[2].name, "Attack", "the engine's frames")
+	T.eq(behavior:Describe():find("Attack", 1, true) ~= nil, true, "named")
+end)
+
 T.finish()

@@ -135,6 +135,8 @@ pub struct LuaAction {
     pub id: u32,
     /// A native action's own (its `Kind` says what it means); nothing for a Lua one.
     pub state: u64,
+    /// engine.End has run its OnEnd: the destructor's own, later, is not to.
+    pub ended: bool,
 }
 
 #[cfg(test)]

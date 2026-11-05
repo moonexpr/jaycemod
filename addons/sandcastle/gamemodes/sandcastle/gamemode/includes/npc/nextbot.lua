@@ -30,15 +30,24 @@ CountdownTimer, IntervalTimer = StateChart.CountdownTimer, StateChart.IntervalTi
 Npc = {}
 Npc.__index = Npc
 
-function Npc.New(variant, config, actor)
+-- newBehavior(initial, kind): what runs its actions, where not the chart's (the engine's,
+-- nextsoldier.behavior.action.EngineBehavior), answering what the chart's root does.
+function Npc.New(variant, config, actor, newBehavior)
 	local state = variant.NewState(config, actor)
+	local initial = variant.InitialAction(state)
 	return setmetatable({
 		variant = variant,
 		state = state,
 		actor = actor,
-		behavior = Behavior:New(variant.InitialAction(state), variant.KIND),
+		behavior = newBehavior and newBehavior(initial, variant.KIND) or Behavior:New(initial, variant.KIND),
 	}, Npc)
 end
+
+-- Its bot has started: what must wait for that does, as the engine's actions.
+function Npc:Start()
+	if self.behavior.Start then self.behavior:Start() end
+end
+
 
 function Npc:Update(interval) self.behavior:Update(self.actor, interval) end
 function Npc:Event(name, ...) self.behavior:Event(self.actor, name, ...) end
