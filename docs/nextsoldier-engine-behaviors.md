@@ -199,6 +199,8 @@ intention is the engine's own.
 A bot player's waits, for now. `npc_squadmember` (the Local Behavior Tool, `docs/ns-debugging.md`)
 runs it alone, starting at `LegsAtEase`: told an order (`group_identity.Muster(point)`,
 `FallBack(point, from)`), it changes to `LegsMuster` or `LegsFallBack`, and dissolved, back to ease.
+On an order, its squad's mode (`MODE`, one whole number on the order: stationary, alert, cautious,
+panic) says where the member heads about its place.
 An order's `Places(members, spacing)` gives each member a place. `engine.Separation(me, others, tie)`
 and `engine.GroupSpacing()` give Lua the push that `GroupPush` holds. To come under it, replacing `SquadMonitor`: boids on a chase path for a squad's
 cohesion, filling a room when a squad assaults or ambushes one, and the set-up's stances.

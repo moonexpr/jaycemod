@@ -1,5 +1,6 @@
 -- npc_squadmember on a live server, as the Local Behavior Tool drives it: three members crowded
--- together and one apart, told to muster, to fall back, and dissolved, each read back as data.
+-- together and one apart, told to muster (stationary, alert, cautious), to fall back (stationary,
+-- panicked), and dissolved, each read back as data.
 -- Leaves nothing behind. Run it, wait for its steps, then read the result:
 --   python3 .devtools/bin/instances.py MAP - < .devtools/bin/squad_member_check.lua
 --   python3 .devtools/bin/instances.py MAP 'return NSSquadCheck'
@@ -41,15 +42,21 @@ local function Read()
 		for j, frame in ipairs(nextsoldier.engine.Stack(member)) do names[j] = frame.name end
 		local push = member:GetNW2Vector("NSLegsPush", vector_origin)
 		local place = member:GetNW2Vector("NSLegsPlace", vector_origin)
-		out[i] = string.format("%s | order %q place %.0f,%.0f,%.0f stands %s | moved %.0f | push %.2f,%.2f spacing %.0f",
-			table.concat(names, " > "), member:GetNW2String("NSLegsOrder", ""), place.x, place.y, place.z,
+		local spot = member:GetNW2Vector("NSLegsSpot", vector_origin)
+		local path = member:GetPath()
+		out[i] = string.format("%s | order %q mode %d place %.0f,%.0f,%.0f spot %.0f from it, path %s, stands %s | moved %.0f | push %.2f,%.2f spacing %.0f",
+			table.concat(names, " > "), member:GetNW2String("NSLegsOrder", ""), member:GetNW2Int("NSLegsMode", -1),
+			place.x, place.y, place.z, spot:Distance(place), tostring(path and path:IsValid()),
 			tostring(member:GetNW2Bool("NSLegsStands", false)), member:GetPos():Distance2D(spots[i]),
 			push.x, push.y, member:GetNW2Float("NSLegsSpacing", 0))
 	end
 	return table.concat(out, "\n")
 end
 
+local current
+
 local function Tell(order)
+	current = order
 	local positions = {}
 	for i, member in ipairs(members) do positions[i] = Point(member:GetPos()) end
 	local places = order:Places(positions, nextsoldier.engine.GroupSpacing(), members[1]:NSLegsAdmit(Vector(order.point.x, order.point.y, order.point.z)))
@@ -60,8 +67,11 @@ NSSquadCheck = "running"
 local result = {}
 local steps = {
 	function() result[#result + 1] = "AT EASE\n" .. Read() Tell(Legs.Muster(Point(center))) end,
-	function() result[#result + 1] = "MUSTER\n" .. Read() Tell(Legs.FallBack(Point(center), Point(center + Vector(600, 0, 0)))) end,
-	function() result[#result + 1] = "FALL BACK\n" .. Read() for _, member in ipairs(members) do member:NSLegsGive(nil) end end,
+	function() result[#result + 1] = "MUSTER\n" .. Read() current:SetMode(Legs.MODE.ALERT) end,
+	function() result[#result + 1] = "ALERT\n" .. Read() current:SetMode(Legs.MODE.CAUTIOUS) end,
+	function() result[#result + 1] = "CAUTIOUS\n" .. Read() current:SetMode(Legs.MODE.STATIONARY) Tell(Legs.FallBack(Point(center), Point(center + Vector(600, 0, 0)))) end,
+	function() result[#result + 1] = "FALL BACK\n" .. Read() current:SetMode(Legs.MODE.PANIC) end,
+	function() result[#result + 1] = "PANIC\n" .. Read() for _, member in ipairs(members) do member:NSLegsGive(nil) end end,
 	function()
 		result[#result + 1] = "DISSOLVED\n" .. Read()
 		for _, member in ipairs(members) do member:Remove() end

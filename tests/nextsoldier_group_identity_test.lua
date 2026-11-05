@@ -150,12 +150,24 @@ T.test("a fall back onto the threat has no way to fall: there is no such order",
 	T.eq(GroupIdentity.FallBack({ x = 1, y = 2, z = 3 }, { x = 1, y = 2, z = 90 }), nil, "no direction across the ground")
 end)
 
--- A member as its legs see it: told an order, and asked to sense its group each update.
-local function Member(order)
-	local me = { order = order, sensed = 0, headed = 0 }
+-- A member as its legs see it: told an order and its place in it, asked to sense its group each
+-- update, and heading where they say; its clock, its draws (0 to 1, in turn) and the map's word
+-- on a spot (admit) are the test's.
+local function Member(order, place)
+	local me = { order = order, place = place or { x = 100, y = 0, z = 0 }, sensed = 0, headed = 0, now = 0,
+		draws = { 0.5 }, drawn = 0, refuse = function() return false end }
 	function me:NSLegsOrder() return self.order end
 	function me:NSLegsSense() self.sensed = self.sensed + 1 end
-	function me:NSLegsHeadForPlace() self.headed = self.headed + 1 end
+	function me:NSLegsPlace() return self.place end
+	function me:Now() return self.now end
+	function me:NSLegsDraw()
+		self.drawn = self.drawn + 1
+		return self.draws[(self.drawn - 1) % #self.draws + 1]
+	end
+	function me:NSLegsAdmit()
+		return function(spot) if self.refuse(spot) then return nil end return spot end
+	end
+	function me:NSLegsHeadFor(spot) self.headed, self.spot = self.headed + 1, spot end
 	return me
 end
 
@@ -202,6 +214,106 @@ T.test("dissolved, a member goes back to ease", function()
 	local action = GroupIdentity.LegsAtEase:New():Update(me).action
 	me.order = nil
 	T.eq(action:Update(me).action.name, "LegsAtEase", "at ease")
+end)
+
+T.test("dissolved, a member heads nowhere before it goes back to ease", function()
+	local me = Member(ORDERS.Muster)
+	local action = GroupIdentity.LegsAtEase:New():Update(me).action
+	me.order = nil
+	action:Update(me)
+	T.eq(me.headed, 0, "not for the order it no longer has")
+end)
+
+-- The squad's mode: one whole number on its order, what its members do about their places.
+local MODE = GroupIdentity.MODE
+
+T.test("a squad's mode is a whole number, stationary unless it is told otherwise", function()
+	T.eq(MODE.STATIONARY .. MODE.ALERT .. MODE.CAUTIOUS .. MODE.PANIC, "0123", "its numbers")
+	local order = GroupIdentity.Muster({ x = 0, y = 0, z = 0 })
+	T.eq(order.mode, MODE.STATIONARY, "stationary at first")
+	order:SetMode(MODE.PANIC)
+	T.eq(order.mode, MODE.PANIC, "told")
+	T.eq(pcall(order.SetMode, order, 9), false, "no such mode")
+end)
+
+local function OnOrder(order, place)
+	local me = Member(order, place)
+	local action = GroupIdentity.LegsAtEase:New():Update(me).action
+	return me, action
+end
+
+local function Distance(a, b) return math.sqrt((a.x - b.x) ^ 2 + (a.y - b.y) ^ 2) end
+
+T.test("stationary, a member waits at its place", function()
+	local me, action = OnOrder(GroupIdentity.Muster({ x = 0, y = 0, z = 0 }))
+	action:Update(me)
+	T.eq(me.spot, me.place, "its place")
+end)
+
+T.test("alert, a member patrols round the squad's point on its own side, a spot at a time", function()
+	local order = GroupIdentity.Muster({ x = 0, y = 0, z = 0 })
+	order:SetMode(MODE.ALERT)
+	local me, action = OnOrder(order, { x = 100, y = 0, z = 0 })
+	me.draws = { 0.1, 0.9, 0.6 }
+	action:Update(me)
+	local first = me.spot
+	T.eq(Distance(first, order.point) <= GroupIdentity.PATROL_RADIUS + 0.001, true, "within the patrol's reach")
+	T.eq(first.x > 0, true, "on its own side of the point")
+	me.now = GroupIdentity.PATROL_REST - 0.1
+	action:Update(me)
+	T.eq(me.spot, first, "rests there")
+	me.now = GroupIdentity.PATROL_REST
+	action:Update(me)
+	T.eq(me.spot ~= first, true, "then the next")
+end)
+
+T.test("cautious, a member wanders near its own place, resting longer", function()
+	local order = GroupIdentity.Muster({ x = 0, y = 0, z = 0 })
+	order:SetMode(MODE.CAUTIOUS)
+	local me, action = OnOrder(order, { x = 1000, y = 0, z = 0 })
+	me.draws = { 0.3, 0.8 }
+	action:Update(me)
+	local first = me.spot
+	T.eq(Distance(first, me.place) <= GroupIdentity.WANDER_RADIUS + 0.001, true, "near its place")
+	me.now = GroupIdentity.WANDER_REST - 0.1
+	action:Update(me)
+	T.eq(me.spot, first, "rests there")
+	T.eq(GroupIdentity.WANDER_REST > GroupIdentity.PATROL_REST, true, "longer than a patrol's")
+end)
+
+T.test("panicked, a member makes for the way out furthest from the threat", function()
+	local order = GroupIdentity.FallBack({ x = 0, y = 0, z = 0 }, { x = -500, y = 0, z = 0 })
+	order:SetMode(MODE.PANIC)
+	order:SetExits({ { x = -300, y = 50, z = 0 }, { x = 400, y = -50, z = 0 } })
+	local me, action = OnOrder(order, { x = 50, y = 0, z = 0 })
+	action:Update(me)
+	T.eq(me.spot.x, 400, "the far way out")
+end)
+
+T.test("panicked with no way out known, a member runs straight away from the threat", function()
+	local order = GroupIdentity.FallBack({ x = 0, y = 0, z = 0 }, { x = -500, y = 0, z = 0 })
+	order:SetMode(MODE.PANIC)
+	local me, action = OnOrder(order, { x = 50, y = 0, z = 0 })
+	action:Update(me)
+	T.eq(me.spot.x > me.place.x, true, "further from the threat than its place")
+end)
+
+T.test("where the map refuses every spot it draws, a member keeps to its place", function()
+	local order = GroupIdentity.Muster({ x = 0, y = 0, z = 0 })
+	order:SetMode(MODE.CAUTIOUS)
+	local me, action = OnOrder(order, { x = 100, y = 0, z = 0 })
+	me.refuse = function(spot) return spot ~= me.place end
+	action:Update(me)
+	T.eq(me.spot, me.place, "its place")
+end)
+
+T.test("a member with no place heads nowhere", function()
+	local order = GroupIdentity.Muster({ x = 0, y = 0, z = 0 })
+	order:SetMode(MODE.ALERT)
+	local me, action = OnOrder(order)
+	me.place = nil
+	action:Update(me)
+	T.eq(me.spot, nil, "nowhere")
 end)
 
 local ENT = { GetClass = function() return "player" end }

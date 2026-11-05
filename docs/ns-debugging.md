@@ -132,8 +132,19 @@ left with no place gets a red cross at its own feet. Members furthest from the p
 places first, so a straggler keeps to its own side. **Show spacing** draws
 each member's spacing ring, pink with an arrow where a teammate pushes it.
 That is `engine.Separation`, the same Rust as a bot player's `GroupPush`.
-`.devtools/bin/squad_member_check.lua` runs the same steps on a server and
-returns them as data.
+
+The panel's **Mode** is the squad's mode, one whole number on its order
+(`group_identity.MODE`), and says what members do about their places.
+**Stationary** (0): they wait at them. **Alert** (1): each patrols spots
+round the order's point on its own side, resting `PATROL_RADIUS` and
+`PATROL_REST` as the war's defenders do (384 units, 6 s). **Cautious** (2):
+each wanders near its own place, as attackers wander in setup (300 units,
+12 s). **Panic** (3): each makes for the way out furthest from the threat (a
+fall back's threat is you; a muster's, its point): the doors of the room it
+is in, where the AI war has found the map's rooms, else straight away from
+the threat. A white ring marks where a member is going now, and its path
+there is drawn. `.devtools/bin/squad_member_check.lua` runs the orders and
+modes on a server and returns them as data.
 
 ## Tactical Behavior Tool
 

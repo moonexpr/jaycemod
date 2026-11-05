@@ -5,14 +5,33 @@
 -- A group's orders: Muster(point), FallBack(point, from) -> an order, whose Places(members,
 -- spacing) gives each member, by its position, a place of its own. A member on orders is told
 -- them by NSLegsOrder(), senses its group by NSLegsSense() each update and, on an order, heads
--- for its place by NSLegsHeadForPlace() (npc_squadmember only plans and shows its way).
+-- where its squad's mode says, by NSLegsHeadFor(spot) (npc_squadmember only plans and shows
+-- its way).
+--
+-- A squad's mode is one whole number on its order (SetMode, MODE): STATIONARY, its members wait
+-- at their places; ALERT, each patrols spots round the squad's point on its own side; CAUTIOUS,
+-- each wanders near its own place; PANIC, each makes for the way out furthest from the threat
+-- (SetExits; with none known, straight away from it). A member's place is NSLegsPlace(), its
+-- clock Now(), its draws NSLegsDraw() (0 to 1), and NSLegsAdmit(around) the map's word on a
+-- spot near around, as Places takes it.
 local Action = nextsoldier.behavior.action
+local Enum = core.enum
 local Geometry = math.geometry
 local Select = list.select
-local floor, ceil, pi = math.floor, math.ceil, math.pi
-local ipairs, setmetatable = ipairs, setmetatable
+local floor, ceil, pi, atan2 = math.floor, math.ceil, math.pi, math.atan2
+local ipairs, setmetatable, error, tostring = ipairs, setmetatable, error, tostring
 local remove = table.remove
 module("nextsoldier.behavior.group_identity")
+
+MODE = Enum.New("LegsMode", 0, { "STATIONARY", "ALERT", "CAUTIOUS", "PANIC" })
+
+-- The war's own: a defender's rounds near its post, an attacker's wander in setup.
+PATROL_RADIUS, PATROL_REST = 384, 6
+WANDER_RADIUS, WANDER_REST = 300, 12
+-- How far from the threat a panicked member runs with no way out known.
+EVACUATE_DISTANCE = 768
+-- How many spots a member draws before it keeps to its place.
+local TRIES = 6
 
 -- How many stand abreast falling back, the rest in rows behind them.
 local ROW = 4
@@ -40,10 +59,72 @@ local function Orders(self, me)
 	return self:ChangeTo(ActionFor(order), order and ("Told to " .. order.kind) or "Dissolved")
 end
 
--- On orders, it heads for its place, then hears whether they have changed.
+-- A spot drawn around center, angle within half a turn of side (or any way, for none), radius
+-- between least and most, its height place's; nil if the map refuses TRIES of them.
+local function Drawn(me, admit, center, z, side, least, most)
+	for _ = 1, TRIES do
+		local angle = side and side + (me:NSLegsDraw() - 0.5) * pi or me:NSLegsDraw() * 2 * pi
+		local spot = Geometry.Polar(center, least + (most - least) * me:NSLegsDraw(), angle)
+		local admitted = admit({ x = spot.x, y = spot.y, z = z })
+		if admitted then return admitted end
+	end
+	return nil
+end
+
+-- The side of point place stands on, an angle; nil on the point itself.
+local function Side(point, place)
+	if place.x == point.x and place.y == point.y then return nil end
+	return atan2(place.y - point.y, place.x - point.x)
+end
+
+-- Where each mode sends a member at place: a spot (nil: its place) and how long it keeps to it.
+local PACES = {
+	[MODE.ALERT] = function(order, place, me)
+		local point = order.point
+		return Drawn(me, me:NSLegsAdmit(point), point, place.z, Side(point, place), PATROL_RADIUS / 2, PATROL_RADIUS),
+			PATROL_REST
+	end,
+	[MODE.CAUTIOUS] = function(_, place, me)
+		return Drawn(me, me:NSLegsAdmit(place), place, place.z, nil, 0, WANDER_RADIUS), WANDER_REST
+	end,
+	[MODE.PANIC] = function(order, place, me)
+		local threat, admit = order.from or order.point, me:NSLegsAdmit(place)
+		local exits = Select.Order(order.exits or {}, function(a, b)
+			return Geometry.Distance2D(threat, a) - Geometry.Distance2D(place, a)
+				> Geometry.Distance2D(threat, b) - Geometry.Distance2D(place, b)
+		end)
+		for _, i in ipairs(exits) do
+			local spot = admit(order.exits[i])
+			if spot then return spot, PATROL_REST end
+		end
+		for try = 0, TRIES - 1 do
+			local spot = admit(Geometry.Offset2D(place, threat, EVACUATE_DISTANCE / 2 ^ try, 0))
+			if spot then return spot, PATROL_REST end
+		end
+		return nil, PATROL_REST
+	end,
+}
+
+-- Where the member goes now, by its squad's mode: its place, or a spot it keeps to a while.
+local function Pace(self, me)
+	local place = me:NSLegsPlace()
+	if not place then return nil end
+	local order, now = self.order, me:Now()
+	if order.mode == MODE.STATIONARY then return place end
+	if self.spot and self.spotMode == order.mode and now < self.spotUntil then return self.spot end
+	local spot, rest = PACES[order.mode](order, place, me)
+	self.spot, self.spotMode, self.spotUntil = spot or place, order.mode, now + rest
+	return self.spot
+end
+
+-- On orders, it hears whether they have changed, and kept to them, heads where its squad's
+-- mode says.
 local function OnOrders(self, me)
-	me:NSLegsHeadForPlace()
-	return Orders(self, me)
+	local result = Orders(self, me)
+	if result.type ~= Action.CONTINUE then return result end
+	local spot = Pace(self, me)
+	if spot then me:NSLegsHeadFor(spot) end
+	return result
 end
 
 LegsAtEase.Update = Orders
@@ -76,6 +157,15 @@ local function Anywhere(slot) return slot end
 
 local Order = {}
 Order.__index = Order
+
+-- The squad's mode, a MODE number.
+function Order:SetMode(mode)
+	if not MODE(mode) then error("no squad mode " .. tostring(mode), 2) end
+	self.mode = mode
+end
+
+-- The ways out a panicked squad makes for (points), or nil for none known.
+function Order:SetExits(exits) self.exits = exits end
 
 -- Each member's place, by its index in members (a point each), or none where the map had no
 -- room: admit(slot) -> where a body would stand for it, or nil where it cannot.
@@ -141,13 +231,13 @@ function Withdraw:Candidates(count, spacing)
 end
 
 function Muster(point)
-	return setmetatable({ kind = "Muster", point = point }, Gather)
+	return setmetatable({ kind = "Muster", point = point, mode = MODE.STATIONARY }, Gather)
 end
 
 -- Nil where point is on the threat, which leaves no way across the ground to fall.
 function FallBack(point, from)
 	if point.x == from.x and point.y == from.y then return nil end
-	return setmetatable({ kind = "FallBack", point = point, from = from }, Withdraw)
+	return setmetatable({ kind = "FallBack", point = point, from = from, mode = MODE.STATIONARY }, Withdraw)
 end
 
 function InitialAction(engine, first)

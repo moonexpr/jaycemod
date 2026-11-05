@@ -1,6 +1,7 @@
 -- npc_squadmember: a probe of the legs alone. An npc_pathfollower whose only tree is
 -- GroupIdentityBehavior, it never moves: where an order would put it is shown as a cross
--- (the Local Behavior Tool), its path there as a path follower's, and its spacing beside it.
+-- (the Local Behavior Tool), where its squad's mode sends it now as a ring and its path there
+-- as a path follower's, and its spacing beside it.
 --
 -- member:NSLegsGive(order, place) tells it an order and its place in it; nil dissolves it.
 AddCSLuaFile()
@@ -19,6 +20,8 @@ if CLIENT then
 	local SELECTED_COLOR = Color(90, 220, 255)
 	local RING_COLOR, CROWDED_COLOR = Color(160, 160, 160), Color(255, 90, 210)
 	local CROSS_SIZE, SELECTED_RADIUS, FEET = 16, 22, Vector(0, 0, 3)
+	-- where its squad's mode sends it now, when that is not its place
+	local SPOT_COLOR, SPOT_RADIUS = Color(255, 255, 255), 10
 	local RING_STEPS = 32
 
 	local function Cross(at, color)
@@ -48,6 +51,12 @@ if CLIENT then
 				local place = member:GetNW2Vector("NSLegsPlace", vector_origin)
 				local color = member:GetNW2Bool("NSLegsStands", false) and ORDER_COLORS[kind] or CANNOT_STAND_COLOR
 				Cross(place, color)
+			end
+			if kind ~= "" then
+				local spot = member:GetNW2Vector("NSLegsSpot", vector_origin)
+				if spot ~= vector_origin and spot:DistToSqr(member:GetNW2Vector("NSLegsPlace", vector_origin)) > 1 then
+					Ring(spot + FEET, SPOT_RADIUS, SPOT_COLOR)
+				end
 			end
 			if member:GetNW2Bool("NSSquadSelected", false) then Ring(feet, SELECTED_RADIUS, SELECTED_COLOR) end
 			if showSpacing and showSpacing:GetBool() then
@@ -132,16 +141,22 @@ function ENT:NSLegsGive(order, place)
 	self.nsLegsOrder = order
 	self:SetNW2String("NSLegsOrder", order and order.kind or "")
 	if not order then return end
-	self.nsLegsPlace = place and Vector(place.x, place.y, place.z)
+	self.nsLegsPlace = place
 	self:SetNW2Bool("NSLegsStands", place ~= nil)
-	self:SetNW2Vector("NSLegsPlace", self.nsLegsPlace or self:GetPos())
+	self:SetNW2Vector("NSLegsPlace", place and Vector(place.x, place.y, place.z) or self:GetPos())
 end
 
--- Its way to its place, planned and shown as a path follower's, walked by none: it stands.
-function ENT:NSLegsHeadForPlace()
-	local place = self.nsLegsPlace
-	if not place then return end
-	self:PlanPath(place)
+function ENT:NSLegsPlace() return self.nsLegsPlace end
+function ENT:Now() return CurTime() end
+function ENT:NSLegsDraw() return math.random() end
+
+-- Its way to where its squad's mode sends it, planned and shown as a path follower's, walked by
+-- none: it stands. The spot and the mode are shown beside its place.
+function ENT:NSLegsHeadFor(spot)
+	local at = Vector(spot.x, spot.y, spot.z)
+	self:SetNW2Vector("NSLegsSpot", at)
+	self:SetNW2Int("NSLegsMode", self.nsLegsOrder.mode)
+	self:PlanPath(at)
 	self:NSSyncDebug()
 end
 
