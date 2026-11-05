@@ -340,8 +340,17 @@ function ENT:NSErrand(goal, seconds)
 end
 
 -- Its one behaviour, in place of the base's intention: the errand.
-function ENT:IntentionUpdate()
-	if self.NSToolManaged then return self:NSUpdateToolBehavior() end
+-- Its actions run it (nextsoldier.behavior.pathfollower); the base's looking and attacking
+-- are not a bench's.
+function ENT:IntentionUpdate() end
+
+function ENT:NSInitialAction()
+	return nextsoldier.behavior.pathfollower.InitialAction(self.NSToolManaged)
+end
+
+function ENT:NSWantedBehavior() return self.nsBehavior end
+
+function ENT:NSUpdateErrand()
 	local errand = self.nsErrand
 	if not errand or errand.done then return end
 	local now, pos = CurTime(), self:GetPos()

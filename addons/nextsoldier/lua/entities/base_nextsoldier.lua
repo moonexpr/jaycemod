@@ -286,6 +286,12 @@ end
 -- hooks, native/nextsoldier), which needs the binary; none by default.
 function ENT:NSInitialAction() end
 
+-- Whether an engine action may steer its body: the engine updates one whatever the body
+-- is doing, where BehaveUpdate waits.
+function ENT:NSMayAct()
+	return self:IsAlive() and not self:IsScrambling() and not self:IsAIDisabled()
+end
+
 function ENT:BehaveUpdate(interval)
 	if not self:IsAlive() then return end
 	self:CustomThink()
