@@ -82,6 +82,9 @@ In the toolgun's **NextSoldier** category, **Path Follower** spawns
 empty ground to spawn and select a follower; left-click an existing tool
 follower to add or remove it from the selection. Right-click sends every
 selected follower to the position, and later right-clicks change that goal.
+With **Show the path only** checked, the selected followers plan and draw their
+path to the goal (`ENT:PlanPath`, which `FollowPath` follows) but stand still.
+Uncheck it and they walk the path.
 Reload clears the selection. Followers use active lanes for the tool user's
 team when available, then travel directly to the clicked goal; without a
 usable lane they route directly. Their engine path search uses the same

@@ -6,6 +6,7 @@ TOOL.Command = nil
 TOOL.ConfigName = ""
 TOOL.ClientConVar = {
 	model = "models/player/p2_chell.mdl",
+	pathonly = "0",
 }
 
 -- The yes-or-no queries a follower answers, a checkbox each, unchecked by default.
@@ -158,13 +159,15 @@ function TOOL:Reload()
 	return true
 end
 
--- Its selected followers answer as the boxes say, a change at once.
+-- Its selected followers answer as the boxes say, and walk or only show their path, a change at once.
 function TOOL:Think()
 	if CLIENT then return end
 	local selected = selections[self:GetOwner()]
 	if not selected then return end
+	local pathOnly = self:GetClientNumber("pathonly") ~= 0
 	for follower in pairs(selected) do
 		if IsValid(follower) then
+			follower:NSShowPathOnly(pathOnly)
 			for _, name in ipairs(QUERIES) do
 				follower:NSRespond(name, self:GetClientNumber(QueryConVar(name)) ~= 0)
 			end
@@ -195,6 +198,7 @@ end
 function TOOL.BuildCPanel(panel)
 	panel:Help("Left-click to spawn a follower or add/remove one from your selection. Right-click sends all selected followers; right-click again changes their target. Reload clears the selection.")
 	panel:Help("The overlay shows the generated path in cyan, an active AI-war lane in amber, and the local movement command at the follower's feet in magenta.")
+	panel:CheckBox("Show the path only (the selected followers plan it and stand still)", "ns_pathfollower_pathonly")
 	local combo = panel:ComboBox("Model", "ns_pathfollower_model")
 	for _, model in ipairs(MODELS) do
 		combo:AddChoice(MODEL_NAMES[model], model)

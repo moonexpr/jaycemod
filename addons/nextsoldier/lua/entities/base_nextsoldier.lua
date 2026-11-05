@@ -514,10 +514,9 @@ end
 -- something on its way) or "moving". A path made afresh (none, or for a
 -- goal moved), not one merely aged, has it look PATH_LOOKAHEAD along its
 -- new way a while (LookAt).
-function ENT:FollowPath(goal, tolerance)
-	-- what asks may be the engine's action, updated whatever the body is doing
-	if self:IsScrambling() then return "moving" end
-	if isentity(goal) then goal = goal:GetPos() end
+-- Its path to goal, planned again when the goal has moved or the path has aged, and whether
+-- it was made afresh (none, or for a goal moved): planned only, not followed.
+function ENT:PlanPath(goal, tolerance)
 	local path = self.nsPath
 	local afresh = not (path and path:IsValid())
 		or (self.nsPathGoal and self.nsPathGoal:DistToSqr(goal) > REPATH_DISTANCE * REPATH_DISTANCE)
@@ -527,6 +526,17 @@ function ENT:FollowPath(goal, tolerance)
 		path:SetGoalTolerance(tolerance or 20)
 		ComputeDebugPath(self, path, goal)
 		self.nsPath, self.nsPathGoal = path, goal
+		return path, afresh, true
+	end
+	return path, false, false
+end
+
+function ENT:FollowPath(goal, tolerance)
+	-- what asks may be the engine's action, updated whatever the body is doing
+	if self:IsScrambling() then return "moving" end
+	if isentity(goal) then goal = goal:GetPos() end
+	local path, afresh, planned = self:PlanPath(goal, tolerance)
+	if planned then
 		if not path:IsValid() then return "unreachable" end
 		if afresh then self:LookAt(path:GetPositionOnPath(PATH_LOOKAHEAD) + LOOK_HEIGHT, Gaze.HINT_SECONDS) end
 	end

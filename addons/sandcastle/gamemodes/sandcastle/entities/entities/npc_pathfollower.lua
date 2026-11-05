@@ -271,10 +271,25 @@ local function StopAt(self)
 	self.loco:SetVelocity(Vector(0, 0, velocity.z))
 end
 
+-- Its stool's "show the path only": sent, it plans and shows its path but stands where it is.
+function ENT:NSShowPathOnly(on)
+	self.nsPathOnly = on
+end
+
+local function HoldStill(self)
+	local velocity = self.loco:GetVelocity()
+	if velocity.x ~= 0 or velocity.y ~= 0 then self.loco:SetVelocity(Vector(0, 0, velocity.z)) end
+end
+
 function ENT:NSUpdateToolBehavior()
 	if self.nsBehavior == "Idle" then
-		local velocity = self.loco:GetVelocity()
-		if velocity.x ~= 0 or velocity.y ~= 0 then self.loco:SetVelocity(Vector(0, 0, velocity.z)) end
+		HoldStill(self)
+		return
+	end
+	if self.nsPathOnly then
+		HoldStill(self)
+		self:PlanPath(self.nsGoal)
+		self:NSSyncDebug()
 		return
 	end
 
