@@ -178,6 +178,12 @@ T.test("what it holds it keeps while it still covers the distance, so it does no
 	T.eq(Arms.Pick(ALL, Arms.MELEE_SWITCH - 1, MP5, Usable), CROWBAR, "at arm's length it swings")
 end)
 
+T.test("a long gun in hand is not kept for an enemy well within what fits it", function()
+	T.eq(Arms.Pick(ALL, Arms.MELEE_SWITCH + 1, CROSSBOW, Usable), SHOTGUN, "a crossbow, face to face")
+	T.eq(Arms.Pick({ RPG, MP5 }, Arms.Reach(MP5) / 2, RPG, Usable), MP5, "a rocket, at a rifle's distance")
+	T.eq(Arms.Pick(ALL, Arms.IDLE_DISTANCE, RPG, Usable), MP5, "and with no enemy it readies itself")
+end)
+
 T.test("a rocket is not fired nor kept in hand inside its blast", function()
 	local near = Arms.Minimum(RPG) - 1
 	T.eq(Arms.Pick({ RPG, MP5 }, near, RPG, Usable), MP5, "it swaps away from one in hand")

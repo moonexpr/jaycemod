@@ -32,7 +32,10 @@ WEAPONS = {
 
 MELEE_REACH, MELEE_SWITCH = 64, 80
 -- The distance it readies itself for with no enemy.
-IDLE_DISTANCE = 500
+IDLE_DISTANCE = 1000
+-- A gun it holds is kept over a better fit while the enemy is past this share of that one's
+-- reach: an enemy moving about a reach's end does not have it swapping back and forth.
+local KEEP_NEAR = 0.75
 
 local FIELDS = {
 	cone = "AICone",
@@ -111,9 +114,9 @@ function Minimum(weapon) return Value(weapon, "minimum") or 0 end
 
 -- Which of what it carries a soldier holds at this distance from its enemy, nil with nothing
 -- to fight with; a player class gives whatever it gives, tools among them, and what this
--- cannot measure is no weapon. Face to face, its melee weapon. Else what it holds, while that
--- still covers the distance; else the gun with the shortest reach that does, the one made for
--- this distance; else its longest. Nothing inside its Minimum. usable(weapon): whether it can
+-- cannot measure is no weapon. Face to face, its melee weapon. Else the gun with the shortest
+-- reach that covers the distance, the one made for it, or what it holds when that is close;
+-- else its longest. Nothing inside its Minimum. usable(weapon): whether it can
 -- fire.
 function Pick(weapons, distance, held, usable)
 	local melee, covering, longest
@@ -132,7 +135,7 @@ function Pick(weapons, distance, held, usable)
 	if melee and distance <= MELEE_SWITCH then return melee end
 	if held and usable(held) and not Value(held, "melee") and distance >= Minimum(held) then
 		local reach = Value(held, "reach")
-		if reach and reach >= distance then return held end
+		if reach and reach >= distance and (held == covering or distance > coveringReach * KEEP_NEAR) then return held end
 	end
 	return covering or longest or melee
 end
