@@ -1,10 +1,11 @@
 -- The assessment of bot players on the engine's statechart, as data a map change does
--- not lose: on a CTF map, mp_winlimit 1 and one player, a NextSoldier on BLU, it plays
--- the round. Each change of its stack, of the flag and of the round is written to
+-- not lose: on a CTF map, mp_winlimit 1, tf_flag_caplimit 1 and one player, a NextSoldier
+-- on BLU, it plays the round. Each change of its stack, of the flag and of the round is written to
 -- data/ns_round_check.txt as it happens.
 --   dt gmod lua_run instance=N code="$(cat .devtools/bin/next_soldier_round_check.lua)"
 local E = nextsoldier.engine
 RunConsoleCommand("mp_winlimit", "1")
+RunConsoleCommand("tf_flag_caplimit", "1")
 RunConsoleCommand("mp_timelimit", "0")
 RunConsoleCommand("mp_maxrounds", "0")
 local FILE = "ns_round_check.txt"
