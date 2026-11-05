@@ -291,14 +291,15 @@ end
 function Controller:KitBot(ply, soldier, kit)
 	ply:SetModel(kit.model or FactionModel(self:Faction(soldier.team), self.scenario, soldier.team))
 	if kit.primary then
-		local loadout = Arms.Loadout(kit, math.random)
-		ply:StripWeapons()
-		for _, class in ipairs(Arms.Classes(loadout)) do
-			local weapon = ply:Give(class)
-			if IsValid(weapon) and weapon:GetPrimaryAmmoType() >= 0 then ply:GiveAmmo(AMMO_RESERVE, weapon:GetPrimaryAmmoType(), true) end
-		end
-		ply:SelectWeapon(loadout.primary)
-		soldier.loadout = loadout
+		-- local loadout = Arms.Loadout(kit, math.random)
+		-- ply:StripWeapons()
+		-- for _, class in ipairs(Arms.Classes(loadout)) do
+		-- 	local weapon = ply:Give(class)
+		-- 	if IsValid(weapon) and weapon:GetPrimaryAmmoType() >= 0 then ply:GiveAmmo(AMMO_RESERVE, weapon:GetPrimaryAmmoType(), true) end
+		-- end
+		-- ply:SelectWeapon(loadout.primary)
+		-- soldier.loadout = loadout
+		player_manager.RunClass( ply, "Loadout" )
 	end
 	if kit.health and ply:GetMaxHealth() ~= kit.health then
 		ply:SetMaxHealth(kit.health)

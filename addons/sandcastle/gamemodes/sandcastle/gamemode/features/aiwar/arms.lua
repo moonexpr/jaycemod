@@ -12,6 +12,22 @@ WEAPONS = {
 	weapon_shotgun = { cone = 10, reach = 325, chase = 250, avoid = 175 },
 	weapon_crowbar = { melee = true, damage = 25, interval = 0.25, automatic = true },
 	weapon_stunstick = { melee = true, damage = 30, interval = 0.25, automatic = true },
+
+
+	-- TODO
+	-- weapon_bmesa_frag 
+	-- weapon_bmesa_satchel
+	-- weapon_bmesa_tripmine
+	weapon_bmesa_crowbar = { melee = true, damage = 30, interval = 0.25, automatic = true },
+	weapon_bmesa_glock = { cone = 5, reach = 750, chase = 500, avoid = 350 },
+	weapon_bmesa_357 = { cone = 5, reach = 750, chase = 500, avoid = 350 },
+	weapon_bmesa_crossbow = { cone = 0, reach = 3000, chase = 2000, avoid = 750 },
+	weapon_bmesa_shotgun = { cone = 20, reach = 325, chase = 250, avoid = 175 },
+	weapon_bmesa_mp5 = { cone = 20, reach = 1500, chase = 1000, avoid = 750, automatic = true },
+	weapon_bmesa_gluon = { cone = 0, reach = 1000, chase = 250, avoid = 175, automatic = true },
+	weapon_bmesa_hivehand = { cone = 10, reach = 200, chase = 200, avoid = 200, automatic = true },
+	weapon_bmesa_rpg = { cone = 0, reach = 4000, chase = 1000, avoid = 1000 },
+	weapon_bmesa_tau = { cone = 5, reach = 1500, chase = 1000, avoid = 750, automatic = true },
 }
 
 MELEE_REACH, MELEE_SWITCH = 64, 80
