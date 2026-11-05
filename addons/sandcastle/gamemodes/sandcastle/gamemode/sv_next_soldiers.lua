@@ -13,8 +13,8 @@ local Movement = gameplay.movement
 local BotSteering = WS.require("features.npc.bot_steering")
 local TFBot = WS.require("foundation.wetsands.path.tfbot")
 
--- A route is planned at most this often, and again when its goal moved this far.
-local REPLAN, REPLAN_DISTANCE = 1, 128
+-- A route is planned again this often, as TF2's actions do theirs, its goal moved or not.
+local REPLAN_LEAST, REPLAN_MOST = 1, 2
 -- FollowPath is asked each update of its action: not asked for this long, it stands.
 local FOLLOW_LAPSES = 0.5
 -- A goal off the mesh is walked to as the nearest point of an area this near
@@ -117,33 +117,29 @@ end
 -- The point its body makes for now on its way to its goal.
 function Soldier:Steer(now)
 	if not self.goal or now - self.followedAt > FOLLOW_LAPSES then
-		self.goal, self.walk, self.planned, self.steer = nil, nil, nil, nil
+		self.goal, self.walk, self.steer = nil, nil, nil
 		return
 	end
 	local ply = self.ent
 	local pos = ply:GetPos()
 	local goal = OnMesh(self.goal)
-	if self.walk and self.walk:Stalled(Point(pos), now) then self.walk, self.planned = nil, nil end
-	local stale = not self.planned or self.planned:Distance(goal) > REPLAN_DISTANCE
-	local cost = stale and now >= self.nextPlan and self:Navigator():Settled() and self:RouteCost()
+	if self.walk and self.walk:Stalled(Point(pos), now) then self.walk = nil end
+	local cost = now >= self.nextPlan and self:Navigator():Settled() and self:RouteCost()
 	if cost then
-		self.planned, self.nextPlan = goal, now + REPLAN
-		local route = self:Navigator():PlanRoute(goal, cost)
+		self.nextPlan = now + REPLAN_LEAST + math.random() * (REPLAN_MOST - REPLAN_LEAST)
+		local route, found = self:Navigator():PlanRoute(goal, cost)
 		local points = {}
 		for i, v in ipairs(route or {}) do points[i] = Point(v) end
 		points = self:StandOnRoute(points)
 		points = Locomotion.RoundCorners(points, function(a, b) return self:WalkClear(ToVector(a), ToVector(b)) end)
-		if route and RouteWalk.Trivial(points, Point(pos), DIRECT_RANGE) then route = nil end
+		if route and not found and RouteWalk.Trivial(points, Point(pos), DIRECT_RANGE) then route = nil end
 		self.walk = route and RouteWalk.New(points) or nil
-		if not route then self.planned = nil end
 	end
 	if pos:Distance(goal) <= DIRECT_RANGE and self:WalkClear(pos, goal) then
 		self.steer = Point(goal)
 		return
 	end
 	local point = self.walk and self.walk:Next(Point(pos), function(q) return self:WalkClear(pos, ToVector(q)) end) or nil
-	-- its route over and its goal not reached: planned again
-	if self.walk and not point then self.planned = nil end
 	self.steer = point and self:SteerOn(pos, point)
 end
 
@@ -256,7 +252,7 @@ end)
 
 hook.Add("PlayerSpawn", "ws_next_soldiers", function(ply)
 	local soldier = soldiers[ply]
-	if soldier then soldier.spawnedAt, soldier.walk, soldier.planned = CurTime(), nil, nil end
+	if soldier then soldier.spawnedAt, soldier.walk = CurTime(), nil end
 end)
 
 concommand.Add("ns_soldier_add", function(ply, _, args)

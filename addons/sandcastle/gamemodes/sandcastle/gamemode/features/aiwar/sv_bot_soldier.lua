@@ -29,10 +29,10 @@ local HOP_CLEAR = Vector(0, 0, 56)
 local HOP_RETRY = 6
 -- How long it remembers an enemy out of sight, where last seen.
 local MEMORY = 5
--- Its own routes (Steer): asked again when the goal moved this far, at
--- most every REPATH_INTERVAL seconds; a goal within DIRECT_RANGE in a clear
--- line is walked straight at (the orders' CHASE_RANGE).
-local REPATH_DISTANCE, REPATH_INTERVAL = 128, 1
+-- Its own routes (Steer): asked again every REPATH_LEAST to REPATH_MOST seconds, as TF2's
+-- actions do theirs, its goal moved or not; a goal within DIRECT_RANGE in a clear line is
+-- walked straight at (the orders' CHASE_RANGE).
+local REPATH_LEAST, REPATH_MOST = 1, 2
 -- Moved farther than this between two looks, it was set down elsewhere (a
 -- respawn, a side swap, a bench): its route is dropped and planned anew.
 local TELEPORTED = 256
@@ -91,7 +91,6 @@ function BotSoldier.New(ent, controller, team, reaction)
 		hopUntil = 0,
 		steer = nil, -- the point its body makes for (Steer)
 		walk = nil, -- the route of its own it walks (nextsoldier.locomotion.route_walk)
-		planned = nil, -- the goal that route was planned for
 		-- its first route waits a moment: a navigator just made knows no nav area yet
 		nextPlan = CurTime() + FIRST_PLAN,
 		mayFire = false, -- its orders let it fire at its contact (sv_bots.lua asks them)
@@ -141,10 +140,8 @@ end
 -- (ws_bot_navigator), priced by RouteCost, as DrGBase's paths are: the
 -- war's own Lua route searches queue behind its lane planning for tens of
 -- seconds, which a body waiting on them spends standing still. It is
--- planned again only when the goal has moved REPATH_DISTANCE, what blocks
--- the nav mesh has changed (a door, setup's gates: the npc feature's
--- BlockerGeneration), or its orders ask (Repath), at most every
--- REPATH_INTERVAL.
+-- planned again on a timer (REPATH_LEAST to REPATH_MOST), sooner when its orders ask
+-- (Repath).
 function BotSoldier:PlansRoutes() return true end
 
 -- Its navigator, made with its first route and kept with the bot player
@@ -226,17 +223,16 @@ end
 -- say, its route planned afresh, until unpinned (ns_bots_release).
 function BotSoldier:Pin(p)
 	self.pin = p
-	self.moveTarget, self.gait, self.planned = p, "run", nil
+	self.moveTarget, self.gait = p, "run"
 	-- the route it was on goes; the new one is planned once it has settled
 	self.walk, self.steer, self.nextPlan = nil, nil, CurTime() + SETTLE_DELAY
 end
 
 function BotSoldier:Unpin()
 	self.pin = nil
-	self.planned = nil
 end
 
-function BotSoldier:Repath() self.repath = true end
+function BotSoldier:Repath() self.nextPlan = math.min(self.nextPlan, CurTime() + REPATH_LEAST) end
 
 -- Where to walk for goal (a point): itself on the mesh, else the nearest
 -- point of an area close to it, else the first point on the mesh back from
@@ -266,22 +262,19 @@ function BotSoldier:Steer(now)
 	local goal = self.moveTarget and self:MeshGoal(self.moveTarget)
 	local pos = Point(self.ent:GetPos())
 	if self.lookedFrom and Geometry.Distance(pos, self.lookedFrom) > TELEPORTED then
-		self.walk, self.planned, self.nextPlan = nil, nil, now + SETTLE_DELAY
+		self.walk, self.nextPlan = nil, now + SETTLE_DELAY
 	end
 	self.lookedFrom = pos
 	-- no nearer its waypoint for a while (fallen off beneath its route,
 	-- wedged): planned anew from where it is
-	if self.walk and self.walk:Stalled(pos, now) then self.walk, self.planned = nil, nil end
+	if self.walk and self.walk:Stalled(pos, now) then self.walk = nil end
 	if not goal then
 		self.steer = nil
 		return
 	end
-	local generation = WS.Feature("npc"):BlockerGeneration()
-	local stale = self.planned == nil or self.repath or generation ~= self.routeGeneration
-		or Geometry.Distance(goal, self.planned) > REPATH_DISTANCE
-	if stale and now >= self.nextPlan and self:Navigator():Settled() then
-		self.planned, self.repath, self.routeGeneration, self.nextPlan = goal, false, generation, now + REPATH_INTERVAL
-		local route = self:Navigator():PlanRoute(ToVector(goal), self:RouteCost())
+	if now >= self.nextPlan and self:Navigator():Settled() then
+		self.nextPlan = now + REPATH_LEAST + math.random() * (REPATH_MOST - REPATH_LEAST)
+		local route, found = self:Navigator():PlanRoute(ToVector(goal), self:RouteCost())
 		local points = {}
 		for i, v in ipairs(route or {}) do points[i] = Point(v) end
 		-- each point where its body fits, then its turns pushed out off the inside walls
@@ -289,12 +282,10 @@ function BotSoldier:Steer(now)
 		points = self:StandOnRoute(points)
 		-- (the map's, not who stands there now)
 		points = Locomotion.RoundCorners(points, function(a, b) return self:WalkClear(ToVector(a), ToVector(b), Unmoving) end)
-		-- the engine's trivial path (its start and the goal, straight, where it
-		-- found no way) is none
-		if route and RouteWalk.Trivial(points, pos, DIRECT_RANGE) then route = nil end
+		-- the engine's trivial path, straight from its start to the goal, is a route when it
+		-- found one (both in one area); where it found no way it is none
+		if route and not found and RouteWalk.Trivial(points, pos, DIRECT_RANGE) then route = nil end
 		self.walk = route and RouteWalk.New(points) or nil
-		-- none found: planned again after REPATH_INTERVAL
-		if not route then self.planned = nil end
 	end
 	if self:RangeTo(goal) <= DIRECT_RANGE and self:CanWalkTo(goal) then
 		self.steer = goal
@@ -304,8 +295,6 @@ function BotSoldier:Steer(now)
 	local walk = self.walk
 	local at = self.ent:GetPos()
 	local point = walk and walk:Next(Point(at), function(q) return self:CanWalkTo(q) end)
-	-- its route over and its goal not reached (a goal moved less than plans anew): planned again
-	if walk and not point then self.planned = nil end
 	self.steer = point and self:SteerOn(at, point) or nil
 end
 

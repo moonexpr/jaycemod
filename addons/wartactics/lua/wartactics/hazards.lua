@@ -1,8 +1,7 @@
--- The nav areas that keep forcing the war's soldiers to respawn: a soldier
--- dead to the world (a fall, a pit, a trigger; not an enemy's push, which
--- kill credit gives the enemy) or recovered back to its spawn is laid on
--- the last area it stood on, and an area that has done so THRESHOLD times
--- is disabled: its routes keep out of it (the caller closes it, unless it
+-- The nav areas that keep killing the war's soldiers: a soldier dead to the world (a fall,
+-- a pit, a trigger; not an enemy's push, which kill credit gives the enemy) is laid on the
+-- last area it stood on, as is one recovered back to its spawn, and an area with THRESHOLD
+-- deaths is disabled: its routes keep out of it (the caller closes it, unless it
 -- is a spawn room's or blocked already). The hazards are kept across maps
 -- (Encode, Decode) until someone inspects the areas and clears them; and
 -- when closing them cuts a team's spawns off from the objective it fights
@@ -31,6 +30,12 @@ function New()
 	return setmetatable({ areas = {} }, Hazards)
 end
 
+-- Whether what happened on an area closes it: its deaths. A recovery is a body's failure to
+-- get on, which says nothing of the ground; it is counted for whoever inspects the area.
+local function Deadly(entry)
+	return (entry.causes[FELL] or 0) >= THRESHOLD
+end
+
 -- A soldier forced to respawn by area id (cause, the area's centre where):
 -- whether this disables the area now.
 function Hazards:Record(id, cause, where)
@@ -42,7 +47,7 @@ function Hazards:Record(id, cause, where)
 	end
 	entry.count = entry.count + 1
 	entry.causes[cause] = (entry.causes[cause] or 0) + 1
-	if entry.disabled or entry.spared or entry.count < THRESHOLD then return false end
+	if entry.disabled or entry.spared or not Deadly(entry) then return false end
 	entry.disabled = true
 	return true
 end
@@ -114,7 +119,8 @@ function Decode(data)
 			count = saved.count,
 			causes = causes,
 			where = { x = saved.where.x, y = saved.where.y, z = saved.where.z },
-			disabled = saved.disabled == true,
+			-- saved before recoveries stopped closing an area: open again
+			disabled = saved.disabled == true and Deadly({ causes = causes }),
 			spared = saved.spared == true,
 		}
 	end

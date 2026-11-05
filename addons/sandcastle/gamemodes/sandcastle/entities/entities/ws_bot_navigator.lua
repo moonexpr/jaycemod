@@ -117,5 +117,5 @@ function ENT:PlanRoute(goal, cost)
 			computedAt = CurTime(),
 		}))
 	end
-	return path:IsValid() and points or nil
+	return path:IsValid() and points or nil, found
 end

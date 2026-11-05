@@ -95,11 +95,11 @@ end)
 -- open again and never disabled after, so the map stays playable.
 T.test("a keystone area is spared: open again, and never disabled after", function()
 	local h = Hazards.New()
-	for _ = 1, Hazards.THRESHOLD do h:Record(7, Hazards.RECOVERED, WHERE) end
+	for _ = 1, Hazards.THRESHOLD do h:Record(7, Hazards.FELL, WHERE) end
 	T.eq(h:IsDisabled(7), true, "disabled")
 	T.eq(h:Spare(7), true, "spared")
 	T.eq(h:IsDisabled(7), false, "open again")
-	for _ = 1, Hazards.THRESHOLD * 3 do T.eq(h:Record(7, Hazards.RECOVERED, WHERE), false, "never disabled again") end
+	for _ = 1, Hazards.THRESHOLD * 3 do T.eq(h:Record(7, Hazards.FELL, WHERE), false, "never disabled again") end
 	T.eq(h:IsDisabled(7), false, "still open")
 	T.eq(h:Spare(99), false, "an area never laid on is not spared")
 end)
@@ -111,6 +111,36 @@ T.test("a spared area stays spared through a save", function()
 	local back = Hazards.Decode(Hazards.Encode(h))
 	T.eq(back:Record(7, Hazards.RECOVERED, WHERE), false, "spared")
 	T.eq(back:Entries()[1].spared, true, "kept")
+end)
+
+T.test("being recovered from an area is noted, and never closes it: that is a body's failure", function()
+	local hazards = Hazards.New()
+	local at = { x = 0, y = 0, z = 0 }
+	for _ = 1, Hazards.THRESHOLD * 3 do T.eq(hazards:Record(7, Hazards.RECOVERED, at), false, "not closed") end
+	T.eq(hazards:IsDisabled(7), false, "open")
+	T.eq(hazards:Entries()[1].causes[Hazards.RECOVERED], Hazards.THRESHOLD * 3, "still counted, for who inspects it")
+end)
+
+T.test("deaths close an area however many recoveries came before them", function()
+	local hazards = Hazards.New()
+	local at = { x = 0, y = 0, z = 0 }
+	hazards:Record(7, Hazards.RECOVERED, at)
+	for _ = 1, Hazards.THRESHOLD - 1 do T.eq(hazards:Record(7, Hazards.FELL, at), false, "not yet") end
+	T.eq(hazards:Record(7, Hazards.FELL, at), true, "its deaths alone count")
+end)
+
+T.test("a saved area closed only by recoveries opens again as it loads", function()
+	local saved = {
+		version = Hazards.VERSION,
+		areas = {
+			{ id = 1, count = 13, causes = { [Hazards.RECOVERED] = 13 }, where = { x = 0, y = 0, z = 0 }, disabled = true },
+			{ id = 2, count = Hazards.THRESHOLD, causes = { [Hazards.FELL] = Hazards.THRESHOLD }, where = { x = 0, y = 0, z = 0 }, disabled = true },
+		},
+	}
+	local hazards = Hazards.Decode(saved)
+	T.eq(hazards:IsDisabled(1), false, "recoveries: open")
+	T.eq(hazards:IsDisabled(2), true, "deaths: still closed")
+	T.eq(hazards:Entries()[1].count, 13, "its record kept")
 end)
 
 T.finish()

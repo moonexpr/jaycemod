@@ -297,16 +297,40 @@ T.test("the debug layer reads its head's lines, only when it has one", function(
 	T.eq(found[soldier.ent]:LookLines(7)[1], "bot 7", "its name and the game's time")
 end)
 
-T.test("a route run out short of its goal is planned again, not stood at", function()
+T.test("its route is planned again on a timer, whether or not its goal has moved", function()
 	ready, planned = true, nil
+	local plans = 0
+	navigator.PlanRoute = function(_, _, cost)
+		planned, plans = cost, plans + 1
+		return { Vec(0, 0, 0), Vec(100, 0, 0), Vec(500, 0, 0) }
+	end
 	local soldier = New()
-	soldier.walk = { Next = function() return nil end, Stalled = function() return false end }
-	soldier.planned = Vec(5000, 0, 0)
-	soldier.nextPlan = 100
 	soldier:FollowPath(Vec(5000, 0, 0))
 	soldier:Steer(1)
-	T.eq(soldier.steer, nil, "nothing to walk to this moment")
-	T.eq(soldier.planned, nil, "so it plans again")
+	T.eq(plans, 1, "its first")
+	soldier.followedAt = 3
+	soldier:Steer(1.5)
+	T.eq(plans, 1, "not within the least of its interval")
+	soldier:Steer(3.1)
+	T.eq(plans, 2, "and again, its goal where it was")
+end)
+
+T.test("a straight path the engine found, within one area, is a route however far", function()
+	ready, planned = true, nil
+	navigator.PlanRoute = function() return { Vec(0, 0, 0), Vec(5000, 0, 0) }, true end
+	local soldier = New()
+	soldier:FollowPath(Vec(5000, 0, 0))
+	soldier:Steer(1)
+	T.eq(soldier.walk ~= nil, true, "walked")
+end)
+
+T.test("one it did not find is no route", function()
+	ready, planned = true, nil
+	navigator.PlanRoute = function() return { Vec(0, 0, 0), Vec(5000, 0, 0) }, false end
+	local soldier = New()
+	soldier:FollowPath(Vec(5000, 0, 0))
+	soldier:Steer(1)
+	T.eq(soldier.walk, nil, "not walked: it runs into whatever lies between")
 end)
 
 T.test("it is given its group's tree beside its orders", function()
