@@ -13,31 +13,21 @@ WEAPONS = {
 	weapon_crowbar = { melee = true, damage = 25, interval = 0.25, automatic = true },
 	weapon_stunstick = { melee = true, damage = 30, interval = 0.25, automatic = true },
 
-	-- the player classes' own HL2 weapons, measured as the built-in ones
-	simple_hl2_crossbow = { cone = 0, reach = 3000, chase = 2000, avoid = 750 },
-	simple_hl2_357 = { cone = 1, reach = 750, chase = 500, avoid = 350 },
-	simple_hl2_pistol = { cone = 2, reach = 750, chase = 500, avoid = 350 },
-	simple_hl2_ar2 = { cone = 3, reach = 1500, chase = 1000, avoid = 750, automatic = true },
-	simple_hl2_smg1 = { cone = 5, reach = 1500, chase = 1000, avoid = 750, automatic = true },
-	simple_hl2_shotgun = { cone = 10, reach = 325, chase = 250, avoid = 175 },
-	simple_hl2_crowbar = { melee = true, damage = 25, interval = 0.25, automatic = true },
-	simple_hl2_stunstick = { melee = true, damage = 30, interval = 0.25, automatic = true },
-
-
-	-- TODO
-	-- weapon_bmesa_frag 
-	-- weapon_bmesa_satchel
-	-- weapon_bmesa_tripmine
-	weapon_bmesa_crowbar = { melee = true, damage = 30, interval = 0.25, automatic = true },
-	weapon_bmesa_glock = { cone = 5, reach = 750, chase = 500, avoid = 350 },
-	weapon_bmesa_357 = { cone = 5, reach = 750, chase = 500, avoid = 350 },
-	weapon_bmesa_crossbow = { cone = 0, reach = 3000, chase = 2000, avoid = 750 },
-	weapon_bmesa_shotgun = { cone = 20, reach = 325, chase = 250, avoid = 175 },
-	weapon_bmesa_mp5 = { cone = 20, reach = 1500, chase = 1000, avoid = 750, automatic = true },
-	weapon_bmesa_gluon = { cone = 0, reach = 1000, chase = 250, avoid = 175, automatic = true },
-	weapon_bmesa_hivehand = { cone = 10, reach = 200, chase = 200, avoid = 200, automatic = true },
-	weapon_bmesa_rpg = { cone = 0, reach = 4000, chase = 1000, avoid = 1000 },
-	weapon_bmesa_tau = { cone = 5, reach = 1500, chase = 1000, avoid = 750, automatic = true },
+	-- Black Mesa's, from their own code. A cone is its Spread's full angle, as HL2's above.
+	-- TODO: weapon_bmesa_frag, weapon_bmesa_satchel, weapon_bmesa_tripmine
+	weapon_bmesa_crowbar = { melee = true, damage = 10, interval = 0.25, automatic = true },
+	weapon_bmesa_glock = { cone = 6, reach = 750, chase = 500, avoid = 350, automatic = true }, -- 8 damage, 0.3 s
+	weapon_bmesa_357 = { cone = 1, reach = 2000, chase = 1200, avoid = 500, automatic = true }, -- 45, 0.75 s
+	weapon_bmesa_mp5 = { cone = 5, reach = 1500, chase = 1000, avoid = 750, automatic = true }, -- 8, 0.1 s
+	weapon_bmesa_shotgun = { cone = 11, reach = 325, chase = 250, avoid = 175, automatic = true }, -- 7 x 8, 0.6 s
+	-- a bolt flies at 2500 a second, and it reloads for 2.1: not for what moves far off
+	weapon_bmesa_crossbow = { cone = 0, reach = 2500, chase = 1800, avoid = 750, automatic = true },
+	-- a rocket starts at 192 a second, and its blast reaches 300
+	weapon_bmesa_rpg = { cone = 0, reach = 3000, chase = 1500, avoid = 500, minimum = 400, automatic = true },
+	weapon_bmesa_tau = { cone = 1, reach = 2000, chase = 1200, avoid = 500, automatic = true }, -- 25, 0.32 s
+	weapon_bmesa_gluon = { cone = 0, reach = 1000, chase = 600, avoid = 200, automatic = true },
+	-- a hornet flies at 1200 a second, seeking, about a cone of 6 off its aim
+	weapon_bmesa_hivehand = { cone = 6, reach = 800, chase = 500, avoid = 200, automatic = true },
 }
 
 MELEE_REACH, MELEE_SWITCH = 64, 80
@@ -116,16 +106,20 @@ function Choose(loadout, distance, primaryWeapon, secondaryWeapon)
 	return loadout.primary
 end
 
+-- How near an enemy may be for it to be fired at all: a blast's reach, else nothing.
+function Minimum(weapon) return Value(weapon, "minimum") or 0 end
+
 -- Which of what it carries a soldier holds at this distance from its enemy, nil with nothing
 -- to fight with; a player class gives whatever it gives, tools among them, and what this
 -- cannot measure is no weapon. Face to face, its melee weapon. Else what it holds, while that
 -- still covers the distance; else the gun with the shortest reach that does, the one made for
--- this distance; else its longest. usable(weapon): whether it can fire.
+-- this distance; else its longest. Nothing inside its Minimum. usable(weapon): whether it can
+-- fire.
 function Pick(weapons, distance, held, usable)
 	local melee, covering, longest
 	local coveringReach, longestReach = huge, -huge
 	for _, weapon in ipairs(weapons) do
-		if usable(weapon) then
+		if usable(weapon) and distance >= Minimum(weapon) then
 			local reach = Value(weapon, "reach")
 			if Value(weapon, "melee") then
 				melee = melee or weapon
@@ -136,7 +130,7 @@ function Pick(weapons, distance, held, usable)
 		end
 	end
 	if melee and distance <= MELEE_SWITCH then return melee end
-	if held and usable(held) and not Value(held, "melee") then
+	if held and usable(held) and not Value(held, "melee") and distance >= Minimum(held) then
 		local reach = Value(held, "reach")
 		if reach and reach >= distance then return held end
 	end
