@@ -10,6 +10,7 @@ local PlayerBody = nextsoldier.body.player_body
 local RouteWalk = nextsoldier.locomotion.route_walk
 local Locomotion = nextsoldier.locomotion
 local Movement = gameplay.movement
+local BotSteering = WS.require("features.npc.bot_steering")
 local TFBot = WS.require("foundation.wetsands.path.tfbot")
 
 -- A route is planned at most this often, and again when its goal moved this far.
@@ -26,10 +27,6 @@ local OFF_MESH_NEAR = 96
 local LIFT, RISE, SWEEP_HEIGHT = Vector(0, 0, 20), 40, 36
 local FOOTING_ABOVE, FOOTING_BELOW = Vector(0, 0, 18), Vector(0, 0, 36)
 local DIRECT_RANGE = 256
--- A route's point this far below and this near is a drop to step off; a floor this far
--- beneath its feet still bears it, and a landing this far from the one meant is another.
-local DROP_DEPTH, DROP_NEAR = 40, 48
-local SOLE, FOOTHOLD, LANDING_SLACK = 2, 18, 24
 -- Its body is TF2's, so it is priced as TF2's bots are: a stair's step, its crouch
 -- jump, the fall it survives unhurt, and no ladder (its keys climb none).
 local LIMITS = { stepHeight = Movement.TF2.stepHeight, jumpHeight = Movement.CrouchJump(Movement.TF2), deathDropHeight = 300 }
@@ -43,6 +40,8 @@ function Soldier:FlagCarrier() return self.ent end
 function Soldier:SecondsAlive() return CurTime() - self.spawnedAt end
 function Soldier:Now() return CurTime() end
 function Soldier:RoundMode() return WS.Feature("rounds"):Mode().NAME end
+
+BotSteering.Apply(Soldier, { util = util, Vector = Vector, mask = MASK_PLAYERSOLID })
 
 function Soldier:FollowPath(goal)
 	self.goal, self.followedAt = goal, CurTime()
@@ -73,22 +72,6 @@ function Soldier:WalkClear(from, to)
 	return true
 end
 
--- Whether its whole body fits at q, over a floor.
-function Soldier:Stands(q)
-	local hullMin, hullMax = self.ent:GetHull()
-	local mins, maxs = Movement.Sweep(hullMin, hullMax, SWEEP_HEIGHT)
-	local at = ToVector(q)
-	if util.TraceHull({ start = at + LIFT, endpos = at + LIFT, mins = ToVector(mins), maxs = ToVector(maxs), mask = MASK_PLAYERSOLID, filter = self.ent }).Hit then
-		return false
-	end
-	return util.TraceLine({ start = at + FOOTING_ABOVE, endpos = at - FOOTING_BELOW, mask = MASK_PLAYERSOLID, filter = self.ent }).Hit
-end
-
--- Whether no wall stands between two places on a route.
-function Soldier:Reaches(p, q)
-	return not util.TraceLine({ start = ToVector(p) + LIFT, endpos = ToVector(q) + LIFT, mask = MASK_PLAYERSOLID, filter = self.ent }).Hit
-end
-
 -- What a route is priced by (Path:Compute's generator): TF2's own path cost over what
 -- its team knows, each step told whether its body fits; nil until the mesh is ready.
 function Soldier:RouteCost()
@@ -112,47 +95,6 @@ function Soldier:RouteCost()
 		end
 		return cost(area, fromArea, ladder, elevator, length, fits)
 	end
-end
-
--- The point it makes for on its way to point, veered off a jamb on one side of it.
-function Soldier:Avoid(pos, point)
-	local ply = self.ent
-	local _, hullMax = ply:GetHull()
-	local half = hullMax.x
-	local mins, maxs = Vector(-half / 2, -half / 2, 0), Vector(half / 2, half / 2, SWEEP_HEIGHT)
-	return Locomotion.Avoid(Point(pos), point, half, function(from, to)
-		return util.TraceHull({
-			start = ToVector(from) + LIFT,
-			endpos = ToVector(to) + LIFT,
-			mins = mins,
-			maxs = maxs,
-			mask = MASK_PLAYERSOLID,
-			filter = ply,
-		}).Hit
-	end)
-end
-
--- Where to walk to fall to a drop's landing, kept for that landing: nil with no way off.
-function Soldier:StepOff(pos, landing)
-	if self.stepOffOf == landing then return self.stepOffTo end
-	local ply = self.ent
-	local hullMin, hullMax = ply:GetHull()
-	local mins, maxs = Vector(hullMin.x, hullMin.y, 0), Vector(hullMax.x, hullMax.y, SWEEP_HEIGHT)
-	local function Trace(from, to)
-		return util.TraceHull({ start = from, endpos = to, mins = mins, maxs = maxs, mask = MASK_PLAYERSOLID, filter = ply })
-	end
-	local function Clear(q)
-		return not Trace(pos + LIFT, ToVector(q) + LIFT).Hit
-	end
-	local function Falls(q)
-		local at = ToVector(q)
-		local above = at + Vector(0, 0, SOLE)
-		if Trace(above, at - Vector(0, 0, FOOTHOLD)).Hit then return false end
-		local under = Trace(above, Vector(at.x, at.y, landing.z - LANDING_SLACK))
-		return under.Hit and math.abs(under.HitPos.z - landing.z) <= LANDING_SLACK
-	end
-	self.stepOffOf, self.stepOffTo = landing, Locomotion.StepOff(Point(pos), landing, Clear, Falls)
-	return self.stepOffTo
 end
 
 function Soldier:Navigator()
@@ -189,7 +131,7 @@ function Soldier:Steer(now)
 		local route = self:Navigator():PlanRoute(goal, cost)
 		local points = {}
 		for i, v in ipairs(route or {}) do points[i] = Point(v) end
-		points = Locomotion.StandPoints(points, function(q) return self:Stands(q) end, function(p, q) return self:Reaches(p, q) end)
+		points = self:StandOnRoute(points)
 		points = Locomotion.RoundCorners(points, function(a, b) return self:WalkClear(ToVector(a), ToVector(b)) end)
 		if route and RouteWalk.Trivial(points, Point(pos), DIRECT_RANGE) then route = nil end
 		self.walk = route and RouteWalk.New(points) or nil
@@ -200,12 +142,7 @@ function Soldier:Steer(now)
 		return
 	end
 	local point = self.walk and self.walk:Next(Point(pos), function(q) return self:WalkClear(pos, ToVector(q)) end) or nil
-	if point and Locomotion.DropBelow(Point(pos), point, DROP_DEPTH, DROP_NEAR) then
-		point = self:StepOff(pos, point) or point
-	elseif point then
-		point = self:Avoid(pos, point)
-	end
-	self.steer = point
+	self.steer = point and self:SteerOn(pos, point)
 end
 
 -- This tick's keys, from its body's command.

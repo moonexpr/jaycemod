@@ -69,6 +69,7 @@ local function Unmoving(ent) return not (ent:IsPlayer() or ent:IsNPC() or ent:Is
 
 local BotSoldier = setmetatable({}, { __index = Soldier })
 BotSoldier.__index = BotSoldier
+WS.require("features.npc.bot_steering").Apply(BotSoldier, { util = util, Vector = Vector, mask = MASK_PLAYERSOLID })
 
 -- reaction: the difficulty's (features.aiwar.marksmanship), before it
 -- recognizes an enemy it sees.
@@ -283,7 +284,9 @@ function BotSoldier:Steer(now)
 		local route = self:Navigator():PlanRoute(ToVector(goal), self:RouteCost())
 		local points = {}
 		for i, v in ipairs(route or {}) do points[i] = Point(v) end
-		-- its turns pushed out off the inside walls until its body passes them
+		-- each point where its body fits, then its turns pushed out off the inside walls
+		-- until its body passes them
+		points = self:StandOnRoute(points)
 		-- (the map's, not who stands there now)
 		points = Locomotion.RoundCorners(points, function(a, b) return self:WalkClear(ToVector(a), ToVector(b), Unmoving) end)
 		-- the engine's trivial path (its start and the goal, straight, where it
@@ -299,7 +302,9 @@ function BotSoldier:Steer(now)
 	end
 	-- A failed route does not make a direct walk safe.
 	local walk = self.walk
-	self.steer = walk and walk:Next(Point(self.ent:GetPos()), function(q) return self:CanWalkTo(q) end) or nil
+	local at = self.ent:GetPos()
+	local point = walk and walk:Next(Point(at), function(q) return self:CanWalkTo(q) end)
+	self.steer = point and self:SteerOn(at, point) or nil
 end
 
 function BotSoldier:Watch(p)

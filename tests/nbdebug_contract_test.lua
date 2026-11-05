@@ -144,6 +144,12 @@ T.test("the path follower uses the combat soldier's path costs", function()
 	T.eq(pathfollower:find("function ENT:OnComputePath", 1, true), nil, "inherits the combat soldier's link rule")
 end)
 
+T.test("a war's bot player steers as a NextSoldier does, on the shared steering", function()
+	T.eq(botSoldier:find("BotSteering.Apply", 1, true) ~= nil, true, "its traces")
+	T.eq(botSoldier:find("Locomotion.StandPoints", 1, true) ~= nil, true, "its route's points where its body fits")
+	T.eq(botSoldier:find("self:SteerOn(", 1, true) ~= nil, true, "off a ledge and off a jamb")
+end)
+
 T.test("what a head logged reaches the overlay beside the behaviour's lines", function()
 	local file = assert(io.open(ROOT .. "features/nbdebug/sv.lua"))
 	local controller = file:read("*a")
