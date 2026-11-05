@@ -6,6 +6,7 @@
 --   OpenDoors(now, kinds): kinds a list of Doors.KIND; SETUP is the timers'
 --   (the rounds' FinishSetup fires their OnSetupFinished)
 --   CloseDoors(): what was held open, shut, its triggers back as the map left them
+--   Each(class, fn): fn(ent) for each entity of class, as the rounds' EachPlayer
 local Doors = WS.require("features.world.doors")
 
 local Overlap = math.box.Overlaps
@@ -22,20 +23,26 @@ local Controller = {
 	nextHold = 0,
 }
 
+-- fn(ent) for each of the map's entities of class (a Source wildcard, "func_door*", too).
+local function Each(class, fn)
+	for _, ent in ipairs(ents.FindByClass(class)) do fn(ent) end
+end
+Controller.Each = Each
+
 -- The doors a team's trigger stands at ({ key = the door, name }), and those
 -- triggers: func_doors overlapped by a trigger_multiple whose filter is a
 -- filter_activator_tfteam.
 local function Guarded()
 	local triggers = {}
-	for _, trigger in ipairs(ents.FindByClass("trigger_multiple")) do
+	Each("trigger_multiple", function(trigger)
 		local filter = trigger:GetInternalVariable("m_hFilter")
 		if IsValid(filter) and filter:GetClass() == "filter_activator_tfteam" then
 			local mins, maxs = trigger:WorldSpaceAABB()
 			triggers[#triggers + 1] = { ent = trigger, mins = mins, maxs = maxs }
 		end
-	end
+	end)
 	local doors, doorTriggers = {}, {}
-	for _, door in ipairs(ents.FindByClass("func_door*")) do
+	Each("func_door*", function(door)
 		local mins, maxs = door:WorldSpaceAABB()
 		local found = false
 		for _, trigger in ipairs(triggers) do
@@ -45,16 +52,16 @@ local function Guarded()
 			end
 		end
 		if found then doors[#doors + 1] = { key = door, name = door:GetName() } end
-	end
+	end)
 	return doors, doorTriggers
 end
 
 local function Openers()
 	local openers = {}
 	for _, class in ipairs(Doors.OpenerClasses()) do
-		for _, ent in ipairs(ents.FindByClass(class)) do
+		Each(class, function(ent)
 			openers[#openers + 1] = { ent = ent, class = class, outputs = WS.KeyValues(ent).outputs }
-		end
+		end)
 	end
 	return openers
 end
