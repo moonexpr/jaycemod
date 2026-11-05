@@ -34,6 +34,133 @@ T.test("where the binary lacks it, a soldier goes without", function()
 	T.eq(GroupIdentity.Give("ent", nil, "me"), false, "nor with no engine")
 end)
 
+T.test("it can be started on what it is given, for a soldier with no other tree", function()
+	local given
+	local engine = { GroupIdentityBehavior = function(config) given = config return "root" end }
+	GroupIdentity.InitialAction(engine, GroupIdentity.LegsAtEase:New())
+	T.eq(given.initial.name, "LegsAtEase", "what it was given")
+end)
+
+local SPACING = 72
+
+local function Crowd(count)
+	local crowd = {}
+	for i = 1, count do crowd[i] = { x = i * 10, y = -i * 7, z = 5 } end
+	return crowd
+end
+
+local function Distance2D(a, b)
+	return math.sqrt((a.x - b.x) ^ 2 + (a.y - b.y) ^ 2)
+end
+
+local function HeldApart(places, spacing)
+	for i = 1, #places do
+		for j = i + 1, #places do
+			T.eq(Distance2D(places[i], places[j]) >= spacing - 0.001, true, "places " .. i .. " and " .. j .. " apart")
+		end
+	end
+end
+
+local ORDERS = {
+	Muster = GroupIdentity.Muster({ x = 500, y = 200, z = 40 }),
+	FallBack = GroupIdentity.FallBack({ x = 500, y = 200, z = 40 }, { x = 900, y = 200, z = 40 }),
+}
+
+for kind, order in pairs(ORDERS) do
+	T.test(kind .. " gives each member a place of its own, its spacing apart, at the order's height", function()
+		for _, count in ipairs({ 1, 2, 6, 7, 8, 20 }) do
+			local places = order:Places(Crowd(count), SPACING)
+			T.eq(#places, count, "one each")
+			HeldApart(places, SPACING)
+			for _, place in ipairs(places) do T.eq(place.z, 40, "at its height") end
+		end
+	end)
+
+	T.test(kind .. " has a member's place near it where it can", function()
+		local members = { { x = 0, y = -5000, z = 0 }, { x = 0, y = 5000, z = 0 } }
+		local places = order:Places(members, SPACING)
+		T.eq(places[1].y <= places[2].y, true, "the one to the south stays south of the one to the north")
+	end)
+
+	T.test(kind .. " has a straggler choose first, so it keeps to its own side", function()
+		local members = { { x = 500, y = 200, z = 40 }, { x = 530, y = 200, z = 40 }, { x = 500, y = 230, z = 40 }, { x = 500, y = 5000, z = 40 } }
+		local places = order:Places(members, SPACING)
+		for i = 1, 3 do
+			T.eq(places[4].y >= places[i].y, true, "north of the crowd's place " .. i)
+		end
+	end)
+
+	T.test(kind .. " has no places for nobody", function()
+		T.eq(#order:Places({}, SPACING), 0, "none")
+	end)
+end
+
+T.test("a muster fills from its point outward", function()
+	local places = ORDERS.Muster:Places(Crowd(1), SPACING)
+	T.eq(places[1].x, 500, "the first on the point")
+	T.eq(places[1].y, 200, "the first on the point")
+end)
+
+T.test("a muster stays gathered: none further out than it needs for its number", function()
+	for _, place in ipairs(ORDERS.Muster:Places(Crowd(7), SPACING)) do
+		T.eq(Distance2D(place, { x = 500, y = 200 }) <= SPACING + 0.001, true, "the point and the ring around it")
+	end
+end)
+
+T.test("a fall back forms across the way from the threat, nobody nearer it than the point", function()
+	for _, place in ipairs(ORDERS.FallBack:Places(Crowd(8), SPACING)) do
+		T.eq(place.x <= 500 + 0.001, true, "on the point's far side from the threat")
+	end
+end)
+
+T.test("a fall back onto the threat has no way to fall: there is no such order", function()
+	T.eq(GroupIdentity.FallBack({ x = 1, y = 2, z = 3 }, { x = 1, y = 2, z = 90 }), nil, "no direction across the ground")
+end)
+
+-- A member as its legs see it: told an order, and asked to sense its group each update.
+local function Member(order)
+	local me = { order = order, sensed = 0 }
+	function me:NSLegsOrder() return self.order end
+	function me:NSLegsSense() self.sensed = self.sensed + 1 end
+	return me
+end
+
+T.test("at ease, a member stays so and senses its group", function()
+	local me = Member(nil)
+	T.eq(GroupIdentity.LegsAtEase:New():Update(me).type, Action.CONTINUE, "stays")
+	T.eq(me.sensed, 1, "sensed")
+end)
+
+T.test("told an order, a member takes the action for it", function()
+	local result = GroupIdentity.LegsAtEase:New():Update(Member(ORDERS.Muster))
+	T.eq(result.type, Action.CHANGE_TO, "changes")
+	T.eq(result.action.name, "LegsMuster", "to muster")
+	T.eq(GroupIdentity.LegsAtEase:New():Update(Member(ORDERS.FallBack)).action.name, "LegsFallBack", "or fall back")
+end)
+
+T.test("on its order, a member keeps to it and senses its group", function()
+	local me = Member(ORDERS.Muster)
+	local action = GroupIdentity.LegsAtEase:New():Update(me).action
+	T.eq(action:Update(me).type, Action.CONTINUE, "stays")
+	T.eq(me.sensed, 2, "each update")
+end)
+
+T.test("a new order, even of the same kind, replaces the one it is on", function()
+	local me = Member(ORDERS.Muster)
+	local action = GroupIdentity.LegsAtEase:New():Update(me).action
+	me.order = GroupIdentity.Muster({ x = 0, y = 0, z = 0 })
+	local result = action:Update(me)
+	T.eq(result.type, Action.CHANGE_TO, "changes")
+	T.eq(result.action.order, me.order, "on the new one")
+end)
+
+T.test("dissolved, a member goes back to ease", function()
+	local me = Member(ORDERS.FallBack)
+	local action = GroupIdentity.LegsAtEase:New():Update(me).action
+	me.order = nil
+	T.eq(action:Update(me).action.name, "LegsAtEase", "at ease")
+end)
+
 local ENT = { GetClass = function() return "player" end }
 
 T.test("the debug layer shows both trees, the group's after the main's", function()

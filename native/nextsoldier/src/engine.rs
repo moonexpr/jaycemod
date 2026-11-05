@@ -1360,6 +1360,44 @@ unsafe extern "C-unwind" fn group_push(l: L) -> c_int {
     2
 }
 
+/// engine.GroupSpacing() -> how near a teammate pushes.
+unsafe extern "C-unwind" fn group_spacing(l: L) -> c_int {
+    (api().pushnumber)(l, group::SPACING as f64);
+    1
+}
+
+/// The point `{ x, y, z }` at `index` (an absolute index).
+unsafe fn point_at(l: L, index: c_int) -> [f32; 3] {
+    [
+        number_field(l, index, c"x"),
+        number_field(l, index, c"y"),
+        number_field(l, index, c"z"),
+    ]
+}
+
+/// engine.Separation(me, others, tie) -> x, y: what GroupPush holds for a soldier at the point
+/// `me` among the list of points `others`, for whoever has no tree of the engine's to run it.
+unsafe extern "C-unwind" fn separation(l: L) -> c_int {
+    let api = api();
+    (api.settop)(l, 3);
+    (api.checktype)(l, 1, TTABLE);
+    (api.checktype)(l, 2, TTABLE);
+    let me = point_at(l, 1);
+    let tie = (api.checknumber)(l, 3) as u32;
+    let others: Vec<[f32; 3]> = (1..=(api.objlen)(l, 2) as c_int)
+        .map(|i| {
+            (api.rawgeti)(l, 2, i);
+            let point = point_at(l, 4);
+            (api.settop)(l, 3);
+            point
+        })
+        .collect();
+    let push = group::separation(me, &others, tie);
+    (api.pushnumber)(l, push[0] as f64);
+    (api.pushnumber)(l, push[1] as f64);
+    2
+}
+
 /// engine.GroupStack(bot) -> the actions of the tree beside its main one; none on a bot
 /// without one, so the debug layer may ask of any it shows.
 unsafe extern "C-unwind" fn group_stack(l: L) -> c_int {
@@ -1522,6 +1560,8 @@ const FUNCTIONS: &[(&CStr, CFunction)] = &[
     (c"InsertGroup", insert_group),
     (c"GroupStack", group_stack),
     (c"GroupPush", group_push),
+    (c"GroupSpacing", group_spacing),
+    (c"Separation", separation),
     (c"Look", look_config),
     (c"LookWatch", look_watch),
     (c"LookClock", look_clock),

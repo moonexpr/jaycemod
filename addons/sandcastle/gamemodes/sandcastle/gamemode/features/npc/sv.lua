@@ -37,6 +37,7 @@ local Controller = {
 	navBlocked = {}, -- nav area id -> the teams its doors and brushes block (nextsoldier.world.doors)
 	navDisabled = {}, -- nav area id -> true: closed to every team by the AI war's hazards (SetDisabledAreas)
 	nextBlockerRefresh = 0,
+	-- solidBrushes = nil, -- the solid brushes' indexes at the last refresh, joined: a change rebuilds what was measured against them
 	closedFor = {}, -- team -> nav area id -> true: closed to it by the blockers or the engine, until the blockers are taken again
 	searchKnown = setmetatable({}, { __mode = "k" }), -- a ClosedFor table -> { mesh, rooms, crossing, walking }: what route searches with it know (SearchKnown's Told)
 	engineKnown = {}, -- team -> { mesh, closed, rooms, also, stamp, known }: what its engine path computations know (EngineCost's Told), made again when one changes
