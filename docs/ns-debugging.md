@@ -113,9 +113,10 @@ magenta arrow from the feet.
 Console errands (`ns_pathfollower_send`) do not hop toward the raw goal when
 their failed search has no reachable waypoint.
 
-## Squad creator stool
+## Local Behavior Tool
 
-**Squad Creator**, in the same category, tests the legs
+**Local Behavior Tool**, in the same category, inspects how members place
+themselves within a room or enclosed area. It tests the legs
 (`GroupIdentityBehavior`) alone. It spawns `npc_squadmember`, an
 `npc_pathfollower` whose only tree is the legs. Members never move, and they
 take no damage. Left-click spawns a member or toggles its selection (a cyan

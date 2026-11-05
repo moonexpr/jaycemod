@@ -196,7 +196,7 @@ gives it to NextSoldiers and war bots for the player's whole life, not each spaw
 shows it, and the debug layer lists it after the main tree. Only players have one: a `CLuaNextBot`'s
 intention is the engine's own.
 
-A bot player's waits, for now. `npc_squadmember` (the Squad Creator stool, `docs/ns-debugging.md`)
+A bot player's waits, for now. `npc_squadmember` (the Local Behavior Tool, `docs/ns-debugging.md`)
 runs it alone, starting at `LegsAtEase`: told an order (`group_identity.Muster(point)`,
 `FallBack(point, from)`), it changes to `LegsMuster` or `LegsFallBack`, and dissolved, back to ease.
 An order's `Places(members, spacing)` gives each member a place. `engine.Separation(me, others, tie)`

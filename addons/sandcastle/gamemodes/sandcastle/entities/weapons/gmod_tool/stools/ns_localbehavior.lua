@@ -1,7 +1,7 @@
 AddCSLuaFile()
 
 TOOL.Category = "NextSoldier"
-TOOL.Name = "#tool.ns_squadcreator.name"
+TOOL.Name = "#tool.ns_localbehavior.name"
 TOOL.Command = nil
 TOOL.ConfigName = ""
 TOOL.ClientConVar = {
@@ -24,11 +24,11 @@ local ORDER_NAMES = {
 }
 
 if CLIENT then
-	language.Add("tool.ns_squadcreator.name", "Squad Creator")
-	language.Add("tool.ns_squadcreator.desc", "Give a group of squad members orders, and see where the legs would put each")
-	language.Add("tool.ns_squadcreator.left", "Spawn a squad member, or add/remove one from your selection")
-	language.Add("tool.ns_squadcreator.right", "Give the selected members the chosen order here")
-	language.Add("tool.ns_squadcreator.reload", "Dissolve the selected members and clear your selection")
+	language.Add("tool.ns_localbehavior.name", "Local Behavior Tool")
+	language.Add("tool.ns_localbehavior.desc", "Inspect how members place themselves within a room or enclosed area: muster, fall back, spacing")
+	language.Add("tool.ns_localbehavior.left", "Spawn a squad member, or add/remove one from your selection")
+	language.Add("tool.ns_localbehavior.right", "Give the selected members the chosen order here")
+	language.Add("tool.ns_localbehavior.reload", "Dissolve the selected members and clear your selection")
 end
 
 local selections = setmetatable({}, { __mode = "k" })
@@ -72,7 +72,7 @@ function TOOL:LeftClick(trace)
 
 	local member = ents.Create(SQUAD_MEMBER)
 	if not IsValid(member) then
-		ply:ChatPrint("[Squad Creator] Could not create " .. SQUAD_MEMBER .. ".")
+		ply:ChatPrint("[Local Behavior] Could not create " .. SQUAD_MEMBER .. ".")
 		return false
 	end
 	member.NSLaneTeam = WS.TeamOf(ply) or WS.TEAM_UNASSIGNED
@@ -80,7 +80,7 @@ function TOOL:LeftClick(trace)
 	member:SetPos(trace.HitPos + LIFT)
 	member:Spawn()
 	member:Activate()
-	ply:AddCleanup("ns_squadcreator", member)
+	ply:AddCleanup("ns_localbehavior", member)
 	undo.Create("Squad Member")
 	undo.AddEntity(member)
 	undo.SetPlayer(ply)
@@ -98,7 +98,7 @@ function TOOL:RightClick(trace)
 
 	local members = Members(Selection(ply))
 	if #members == 0 then
-		ply:ChatPrint("[Squad Creator] Spawn or select a squad member with left-click first.")
+		ply:ChatPrint("[Local Behavior] Spawn or select a squad member with left-click first.")
 		return false
 	end
 	local Legs = nextsoldier.behavior.group_identity
@@ -107,7 +107,7 @@ function TOOL:RightClick(trace)
 	if self:GetClientInfo("order") == "FallBack" then
 		order = Legs.FallBack(point, Point(ply:GetPos()))
 		if not order then
-			ply:ChatPrint("[Squad Creator] A fall back needs a point away from you: aim further off.")
+			ply:ChatPrint("[Local Behavior] A fall back needs a point away from you: aim further off.")
 			return false
 		end
 	else
@@ -134,7 +134,7 @@ end
 
 function TOOL.BuildCPanel(panel)
 	panel:Help("A test of the legs alone: members stand still and a cross shows where an order would put each, red at its feet where no place near had room. A place is only where a body fits with no wall between it and the order's point. Left-click to spawn or select, right-click to give the order, reload to dissolve.")
-	local combo = panel:ComboBox("Order", "ns_squadcreator_order")
+	local combo = panel:ComboBox("Order", "ns_localbehavior_order")
 	for order, name in pairs(ORDER_NAMES) do combo:AddChoice(name, order) end
-	panel:CheckBox("Show spacing (a ring its radius, pink with an arrow when a teammate pushes)", "ns_squadcreator_spacing")
+	panel:CheckBox("Show spacing (a ring its radius, pink with an arrow when a teammate pushes)", "ns_localbehavior_spacing")
 end

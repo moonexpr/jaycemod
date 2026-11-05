@@ -1,6 +1,6 @@
 -- npc_squadmember: a probe of the legs alone. An npc_pathfollower whose only tree is
 -- GroupIdentityBehavior, it never moves: where an order would put it is shown as a cross
--- (the Squad Creator stool), its path there as a path follower's, and its spacing beside it.
+-- (the Local Behavior Tool), its path there as a path follower's, and its spacing beside it.
 --
 -- member:NSLegsGive(order, place) tells it an order and its place in it; nil dissolves it.
 AddCSLuaFile()
@@ -40,7 +40,7 @@ if CLIENT then
 	-- Drawn apart from the model, so a place shows with its member out of view.
 	hook.Add("PostDrawTranslucentRenderables", "npc_squadmember", function(_, sky)
 		if sky then return end
-		local showSpacing = GetConVar("ns_squadcreator_spacing")
+		local showSpacing = GetConVar("ns_localbehavior_spacing")
 		for _, member in ipairs(ents.FindByClass("npc_squadmember")) do
 			local feet = member:GetPos() + FEET
 			local kind = member:GetNW2String("NSLegsOrder", "")

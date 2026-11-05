@@ -1,4 +1,4 @@
--- npc_squadmember on a live server, as the Squad Creator stool drives it: three members crowded
+-- npc_squadmember on a live server, as the Local Behavior Tool drives it: three members crowded
 -- together and one apart, told to muster, to fall back, and dissolved, each read back as data.
 -- Leaves nothing behind. Run it, wait for its steps, then read the result:
 --   python3 .devtools/bin/instances.py MAP - < .devtools/bin/squad_member_check.lua
@@ -66,7 +66,7 @@ local steps = {
 		result[#result + 1] = "DISSOLVED\n" .. Read()
 		for _, member in ipairs(members) do member:Remove() end
 		local tool = weapons.GetStored("gmod_tool")
-		result[#result + 1] = "stool registered: " .. tostring(tool and tool.Tool and tool.Tool.ns_squadcreator ~= nil)
+		result[#result + 1] = "stool registered: " .. tostring(tool and tool.Tool and tool.Tool.ns_localbehavior ~= nil)
 		NSSquadCheck = table.concat(result, "\n\n")
 	end,
 }
