@@ -122,7 +122,8 @@ take no damage. Left-click spawns a member or toggles its selection (a cyan
 ring). Right-click gives the selected members the panel's order at the aim:
 **Muster** (the point, then rings around it) or **Fall back** (rows across the
 way from you, the threat). Reload dissolves them. Each member's place shows as
-a cross joined to its feet, green for muster and orange for fall back. A
+a cross, green for muster and orange for fall back, and its way there as the
+path follower's path, planned (`PlanPath`) but not walked. A
 place is only where a body fits, with no wall between it and the order's
 point (`NSLegsAdmit`). An order skips the places the map refuses and looks
 further out, up to three rings or rows past what its members need. A member

@@ -1,6 +1,6 @@
 -- npc_squadmember: a probe of the legs alone. An npc_pathfollower whose only tree is
 -- GroupIdentityBehavior, it never moves: where an order would put it is shown as a cross
--- (the Squad Creator stool), with its spacing beside it.
+-- (the Squad Creator stool), its path there as a path follower's, and its spacing beside it.
 --
 -- member:NSLegsGive(order, place) tells it an order and its place in it; nil dissolves it.
 AddCSLuaFile()
@@ -48,7 +48,6 @@ if CLIENT then
 				local place = member:GetNW2Vector("NSLegsPlace", vector_origin)
 				local color = member:GetNW2Bool("NSLegsStands", false) and ORDER_COLORS[kind] or CANNOT_STAND_COLOR
 				Cross(place, color)
-				render.DrawLine(feet, place, color)
 			end
 			if member:GetNW2Bool("NSSquadSelected", false) then Ring(feet, SELECTED_RADIUS, SELECTED_COLOR) end
 			if showSpacing and showSpacing:GetBool() then
@@ -133,8 +132,17 @@ function ENT:NSLegsGive(order, place)
 	self.nsLegsOrder = order
 	self:SetNW2String("NSLegsOrder", order and order.kind or "")
 	if not order then return end
+	self.nsLegsPlace = place and Vector(place.x, place.y, place.z)
 	self:SetNW2Bool("NSLegsStands", place ~= nil)
-	self:SetNW2Vector("NSLegsPlace", place and Vector(place.x, place.y, place.z) or self:GetPos())
+	self:SetNW2Vector("NSLegsPlace", self.nsLegsPlace or self:GetPos())
+end
+
+-- Its way to its place, planned and shown as a path follower's, walked by none: it stands.
+function ENT:NSLegsHeadForPlace()
+	local place = self.nsLegsPlace
+	if not place then return end
+	self:PlanPath(place)
+	self:NSSyncDebug()
 end
 
 -- What its team's spacing would do to it where it stands, as a soldier's tree works it out.

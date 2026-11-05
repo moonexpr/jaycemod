@@ -4,7 +4,8 @@
 --
 -- A group's orders: Muster(point), FallBack(point, from) -> an order, whose Places(members,
 -- spacing) gives each member, by its position, a place of its own. A member on orders is told
--- them by NSLegsOrder() and senses its group by NSLegsSense() each update (npc_squadmember).
+-- them by NSLegsOrder(), senses its group by NSLegsSense() each update and, on an order, heads
+-- for its place by NSLegsHeadForPlace() (npc_squadmember only plans and shows its way).
 local Action = nextsoldier.behavior.action
 local Geometry = math.geometry
 local Select = list.select
@@ -39,9 +40,15 @@ local function Orders(self, me)
 	return self:ChangeTo(ActionFor(order), order and ("Told to " .. order.kind) or "Dissolved")
 end
 
+-- On orders, it heads for its place, then hears whether they have changed.
+local function OnOrders(self, me)
+	me:NSLegsHeadForPlace()
+	return Orders(self, me)
+end
+
 LegsAtEase.Update = Orders
-LegsMuster.Update = Orders
-LegsFallBack.Update = Orders
+LegsMuster.Update = OnOrders
+LegsFallBack.Update = OnOrders
 
 -- How much further out than its members need an order looks for places the map refuses
 -- nearer: rings around a muster, rows behind a fall back.

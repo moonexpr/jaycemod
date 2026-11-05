@@ -152,11 +152,21 @@ end)
 
 -- A member as its legs see it: told an order, and asked to sense its group each update.
 local function Member(order)
-	local me = { order = order, sensed = 0 }
+	local me = { order = order, sensed = 0, headed = 0 }
 	function me:NSLegsOrder() return self.order end
 	function me:NSLegsSense() self.sensed = self.sensed + 1 end
+	function me:NSLegsHeadForPlace() self.headed = self.headed + 1 end
 	return me
 end
+
+T.test("on its order, a member heads for its place each update; at ease, it does not", function()
+	local me = Member(ORDERS.Muster)
+	local action = GroupIdentity.LegsAtEase:New():Update(me).action
+	T.eq(me.headed, 0, "not while at ease")
+	action:Update(me)
+	action:Update(me)
+	T.eq(me.headed, 2, "each update on it")
+end)
 
 T.test("at ease, a member stays so and senses its group", function()
 	local me = Member(nil)
