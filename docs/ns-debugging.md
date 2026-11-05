@@ -135,6 +135,31 @@ That is `engine.Separation`, the same Rust as a bot player's `GroupPush`.
 `.devtools/bin/squad_member_check.lua` runs the same steps on a server and
 returns them as data.
 
+## Tactical Behavior Tool
+
+**Tactical Behavior Tool**, in the same category, tests the war's squads under
+the war's own orders, in the running AI war. Left-click enlists an
+`npc_squadfollower` (an `npc_pathfollower` the war steers) on the panel's
+team, or selects one of the war's own soldiers (a cyan ring). Selected
+soldiers' feet are held (`NSFeetHeld`): their orders run as ever, and each
+one's path to its orders' target is planned and drawn but not walked, the
+target a yellow cross. Uncheck **Hold their feet** to let them walk. Command
+mode sets the conditions the orders meet: one squad of the selection, its
+job, lanes on or off (`fireTeam.lanesOff`: no lane, no muster along them),
+missions on or off, a contact reported at the aim (right-click), a recall to
+regroup. Reload removes squad followers and lets the war's soldiers walk.
+
+Annotate mode marks the map for the war, by the panel's team. Objectives
+are placed as the Gameplay tools place them: control points, spawners and
+spawn rooms, flags and capture zones, track nodes, signs. The marks go
+through the war's own inputs (`features.aiwar.marks`, `sv_marks.lua`):
+a **post** is one of the field's posts for the team; a **rally** is where its
+recalled squads regroup; an **enemy** is a contact reported to its squads
+while the mark stands; **avoid** closes the areas there to every team, as a
+disabled hazard. A **mission** goes to the selected squads: the room at the
+aim and its kind, issued through `Mission.Issue` (`spec.given`). Reload
+removes the marks or the piece near the aim.
+
 ## Inspecting NextSoldiers
 
 `ws_nb_select <entity index>` can select any live entity derived from
