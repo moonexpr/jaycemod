@@ -145,8 +145,8 @@ T.test("the path follower uses the combat soldier's path costs", function()
 end)
 
 T.test("a war's bot player steers as a NextSoldier does, on the shared steering", function()
-	T.eq(botSoldier:find("BotSteering.Apply", 1, true) ~= nil, true, "its traces")
-	T.eq(botSoldier:find("Locomotion.StandPoints", 1, true) ~= nil, true, "its route's points where its body fits")
+	T.eq(botSoldier:find("features.npc.bot_steering", 1, true) ~= nil, true, "its traces")
+	T.eq(botSoldier:find("self:StandOnRoute(", 1, true) ~= nil, true, "its route's points where its body fits")
 	T.eq(botSoldier:find("self:SteerOn(", 1, true) ~= nil, true, "off a ledge and off a jamb")
 end)
 

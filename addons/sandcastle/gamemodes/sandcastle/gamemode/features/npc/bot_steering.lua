@@ -3,9 +3,8 @@
 -- player as self.ent: a NextSoldier's (sv_next_soldiers.lua) and an AI war bot's.
 local Locomotion = nextsoldier.locomotion
 local Movement = gameplay.movement
-local math = math
-
-local M = {}
+local abs = math.abs
+module(...)
 
 local SWEEP_HEIGHT = 36
 -- How deep and how near a route's point is a drop to step off.
@@ -15,7 +14,7 @@ local SOLE, FOOTHOLD, LANDING_SLACK = 2, 18, 24
 local function Point(v) return { x = v.x, y = v.y, z = v.z } end
 
 -- world: { util, Vector, mask } as the realm has them.
-function M.Apply(class, world)
+function Apply(class, world)
 	local util, Vector, mask = world.util, world.Vector, world.mask
 	local LIFT = Vector(0, 0, 20)
 	local FOOTING_ABOVE, FOOTING_BELOW = Vector(0, 0, 18), Vector(0, 0, 36)
@@ -72,7 +71,7 @@ function M.Apply(class, world)
 			local above = at + Vector(0, 0, SOLE)
 			if Trace(above, at - Vector(0, 0, FOOTHOLD)).Hit then return false end
 			local under = Trace(above, Vector(at.x, at.y, landing.z - LANDING_SLACK))
-			return under.Hit and math.abs(under.HitPos.z - landing.z) <= LANDING_SLACK
+			return under.Hit and abs(under.HitPos.z - landing.z) <= LANDING_SLACK
 		end
 		self.stepOffOf, self.stepOffTo = landing, Locomotion.StepOff(Point(pos), landing, Clear, Falls)
 		return self.stepOffTo
@@ -92,5 +91,3 @@ function M.Apply(class, world)
 		return Locomotion.StandPoints(points, function(q) return self:Stands(q) end, function(p, q) return self:Reaches(p, q) end)
 	end
 end
-
-return M
