@@ -8,6 +8,7 @@
 
 use crate::image::Image;
 use crate::layout::*;
+use crate::look::{Angles, Kind as SourceKind, Look, Point, Priority, Source, Tuning, View};
 use crate::{scenario_monitor, tactical};
 use foundation::lua::{
     api, push_str, set_function, string_at, CFunction, GLOBALSINDEX, L, TFUNCTION, TTABLE,
@@ -43,6 +44,7 @@ struct Binding {
     base_intention_destructor: usize,
     player_intention: Box<[usize]>,
     intention_update: usize,
+    set_eye_angles: usize,
     intention_query_vtable: usize,
     behavior_vtables: (usize, usize),
     soldiers: HashMap<usize, Soldier>,
@@ -53,6 +55,16 @@ struct Binding {
 struct Soldier {
     behavior: *mut u64,
     shadow: *mut u64,
+    entity: usize,
+    head: Option<Head>,
+}
+
+/// A soldier's head, once its config is given, on a clock of its own ticks: a player's
+/// Upkeep runs only while it lives, and every time in the model is relative.
+struct Head {
+    look: Look,
+    now: f32,
+    interval: f32,
 }
 
 /// A kind of action implemented in Rust. Its Lua table is only its config; what it
@@ -673,6 +685,108 @@ unsafe extern "win64" fn soldier_update(this: usize) {
     run(shadow);
 }
 
+unsafe fn virtual_at(entity: usize, slot: usize) -> usize {
+    *(*(entity as *const *const usize)).add(slot)
+}
+
+unsafe fn eye_position(entity: usize) -> Point {
+    let get: unsafe extern "win64" fn(usize, *mut Point) -> *mut Point =
+        std::mem::transmute(virtual_at(entity, EYE_POSITION));
+    let mut at = [0.0; 3];
+    get(entity, &mut at);
+    at
+}
+
+unsafe fn eye_angles(entity: usize) -> Angles {
+    let get: unsafe extern "win64" fn(usize) -> *const [f32; 3] =
+        std::mem::transmute(virtual_at(entity, EYE_ANGLES));
+    let angles = *get(entity);
+    Angles {
+        pitch: angles[0],
+        yaw: angles[1],
+    }
+}
+
+unsafe fn is_alive(entity: usize) -> bool {
+    let get: unsafe extern "win64" fn(usize) -> bool =
+        std::mem::transmute(virtual_at(entity, IS_ALIVE));
+    get(entity)
+}
+
+unsafe fn is_player(entity: usize) -> bool {
+    let get: unsafe extern "win64" fn(usize) -> bool =
+        std::mem::transmute(virtual_at(entity, IS_PLAYER));
+    get(entity)
+}
+
+unsafe fn team_of(entity: usize) -> i32 {
+    *((entity + ENTITY_TEAM) as *const i32)
+}
+
+/// The nearest live player of `me`'s team within range of its eye.
+unsafe fn nearest_friend(me: usize, eye: Point, range: f32) -> Option<Point> {
+    let list = binding().entity_list + ENTITY_LIST_ENTRIES;
+    let team = team_of(me);
+    let mut best = None;
+    let mut nearest = range;
+    for index in 1..=MAX_PLAYERS {
+        let other = *((list + index * ENTITY_INFO_SIZE) as *const usize);
+        if other == 0
+            || other == me
+            || !is_player(other)
+            || team_of(other) != team
+            || !is_alive(other)
+        {
+            continue;
+        }
+        let at = eye_position(other);
+        let far =
+            ((at[0] - eye[0]).powi(2) + (at[1] - eye[1]).powi(2) + (at[2] - eye[2]).powi(2)).sqrt();
+        if far < nearest {
+            nearest = far;
+            best = Some(at);
+        }
+    }
+    best
+}
+
+/// INextBot::Upkeep's call on a soldier: its head, with no Lua in between.
+unsafe extern "win64" fn soldier_upkeep(this: usize) {
+    let b = binding();
+    let set_eye_angles = b.set_eye_angles;
+    let Some(soldier) = b.soldiers.get_mut(&this) else {
+        return;
+    };
+    let entity = soldier.entity;
+    let Some(head) = soldier.head.as_mut() else {
+        return;
+    };
+    if !is_alive(entity) {
+        return;
+    }
+    head.now += head.interval;
+    let eye = eye_position(entity);
+    let friend = head
+        .look
+        .friend_range(head.now)
+        .and_then(|range| nearest_friend(entity, eye, range));
+    let was = eye_angles(entity);
+    let turned = head.look.upkeep(
+        head.now,
+        head.interval,
+        View {
+            eye,
+            head: was,
+            friend,
+        },
+    );
+    if turned != was {
+        let set: unsafe extern "win64" fn(usize, *const [f32; 3]) =
+            std::mem::transmute(set_eye_angles);
+        set(entity, &[turned.pitch, turned.yaw, 0.0]);
+    }
+}
+
 /// The engine's own ~Behavior ends and deletes the actions; then what we allocated.
 unsafe fn release_soldier(soldier: Soldier) {
     let table = *(soldier.behavior as *const *const usize);
@@ -768,7 +882,15 @@ unsafe extern "C-unwind" fn create_next_soldier(l: L) -> c_int {
         .cast::<u8>()
         .add(INTENTION_BEHAVIOR)
         .cast::<*mut u64>() = behavior;
-    b.soldiers.insert(intention, Soldier { behavior, shadow });
+    b.soldiers.insert(
+        intention,
+        Soldier {
+            behavior,
+            shadow,
+            entity,
+            head: None,
+        },
+    );
     *(intention as *mut usize) = b.player_intention.as_ptr() as usize;
     (api.settop)(l, player);
     1
@@ -899,7 +1021,143 @@ unsafe extern "C-unwind" fn command(l: L) -> c_int {
     0
 }
 
+/// The soldier the player at `index` is, or a Lua error.
+unsafe fn soldier_at<'a>(l: L, index: c_int) -> &'a mut Soldier {
+    let (entity, entindex) = entity_at(l, index);
+    let intention = if entity != 0 && *(entity as *const usize) == binding().player_vtable {
+        intention_of(entity + PLAYER_INEXTBOT_OFFSET)
+    } else {
+        0
+    };
+    match binding().soldiers.get_mut(&intention) {
+        Some(soldier) => soldier,
+        None => foundation::lua::raise_where(l, format!("entity {entindex} is no NextSoldier")),
+    }
+}
+
+unsafe fn number_field(l: L, table: c_int, name: &CStr) -> f32 {
+    let api = api();
+    (api.getfield)(l, table, name.as_ptr());
+    if (api.type_of)(l, -1) != foundation::lua::TNUMBER {
+        foundation::lua::raise_where(l, format!("Look needs {} a number", name.to_string_lossy()));
+    }
+    let value = (api.tonumber)(l, -1) as f32;
+    (api.settop)(l, -2);
+    value
+}
+
+unsafe fn text_field(l: L, table: c_int, name: &CStr) -> String {
+    let api = api();
+    (api.getfield)(l, table, name.as_ptr());
+    let Some(text) = foundation::lua::string_at(l, -1) else {
+        foundation::lua::raise_where(l, format!("Look needs {} a string", name.to_string_lossy()));
+    };
+    let text = String::from_utf8_lossy(text).into_owned();
+    (api.settop)(l, -2);
+    text
+}
+
+/// One of a config's sources, the table on the stack's top. Anything else is refused,
+/// so what the model holds is valid.
+unsafe fn read_source(l: L) -> Source {
+    let table = (api().gettop)(l);
+    let priority = text_field(l, table, c"priority");
+    let Some(priority) = Priority::parse(&priority) else {
+        foundation::lua::raise_where(l, format!("Look has no priority {priority}"));
+    };
+    let kind = text_field(l, table, c"kind");
+    let kind = match kind.as_str() {
+        "BodyFacing" => SourceKind::BodyFacing,
+        "Friend" => SourceKind::Friend {
+            range: number_field(l, table, c"range"),
+            every: number_field(l, table, c"every"),
+        },
+        "Asked" => SourceKind::Asked,
+        other => foundation::lua::raise_where(l, format!("Look has no source kind {other}")),
+    };
+    Source {
+        reason: text_field(l, table, c"reason"),
+        priority,
+        seconds: number_field(l, table, c"seconds"),
+        kind,
+    }
+}
+
+/// engine.Look(soldier, { settle, steady_rate, turn_rate, interval, sources = { { kind,
+/// priority, reason, seconds[, range, every] }, ... } }): from now its head is Rust's.
+/// Lua configures it here, once, and is asked nothing after.
+unsafe extern "C-unwind" fn look_config(l: L) -> c_int {
+    let api = api();
+    (api.settop)(l, 2);
+    (api.checktype)(l, 2, TTABLE);
+    let tuning = Tuning {
+        settle: number_field(l, 2, c"settle"),
+        steady_rate: number_field(l, 2, c"steady_rate"),
+        turn_rate: number_field(l, 2, c"turn_rate"),
+    };
+    let interval = number_field(l, 2, c"interval");
+    (api.getfield)(l, 2, c"sources".as_ptr());
+    (api.checktype)(l, 3, TTABLE);
+    let mut sources = Vec::new();
+    loop {
+        (api.rawgeti)(l, 3, sources.len() as c_int + 1);
+        if (api.type_of)(l, -1) != TTABLE {
+            break;
+        }
+        sources.push(read_source(l));
+        (api.settop)(l, 3);
+    }
+    soldier_at(l, 1).head = Some(Head {
+        look: Look::new(sources, tuning),
+        now: 0.0,
+        interval,
+    });
+    0
+}
+
+unsafe fn head_at<'a>(l: L, index: c_int) -> &'a mut Head {
+    match soldier_at(l, index).head.as_mut() {
+        Some(head) => head,
+        None => foundation::lua::raise_where(l, "this soldier's head has no config".into()),
+    }
+}
+
+/// engine.LookWatch(soldier, on): whether its head logs, for the LOOK_AT layer.
+unsafe extern "C-unwind" fn look_watch(l: L) -> c_int {
+    let on = (api().toboolean)(l, 2) != 0;
+    head_at(l, 1).look.watch(on);
+    0
+}
+
+/// engine.LookClock(soldier) -> the head's own clock, as far as its ticks have taken it.
+unsafe extern "C-unwind" fn look_clock(l: L) -> c_int {
+    let now = head_at(l, 1).now;
+    (api().pushnumber)(l, now as f64);
+    1
+}
+
+/// engine.LookLines(soldier, name, now) -> the LOOK_AT layer's lines, in the game's time.
+unsafe extern "C-unwind" fn look_lines(l: L) -> c_int {
+    let api = api();
+    let name = foundation::lua::string_at(l, 2)
+        .map(|text| String::from_utf8_lossy(text).into_owned())
+        .unwrap_or_default();
+    let game_now = (api.tonumber)(l, 3) as f32;
+    let head = head_at(l, 1);
+    let lines = head.look.lines(&name, game_now - head.now);
+    (api.createtable)(l, lines.len() as c_int, 0);
+    for (place, line) in lines.iter().enumerate() {
+        foundation::lua::push_str(l, line);
+        (api.rawseti)(l, -2, place as c_int + 1);
+    }
+    1
+}
+
 const FUNCTIONS: &[(&CStr, CFunction)] = &[
+    (c"Look", look_config),
+    (c"LookWatch", look_watch),
+    (c"LookClock", look_clock),
+    (c"LookLines", look_lines),
     (c"Insert", insert),
     (c"Command", command),
     (c"Stack", stack),
@@ -1032,6 +1290,8 @@ unsafe fn bind(l: L) -> Result<Binding, String> {
     player_intention[DESTRUCTOR] = soldier_destructor as *const () as usize;
     player_intention[FIRST_CONTAINED] = soldier_first_contained as *const () as usize;
     player_intention[INTENTION_UPDATE] = soldier_update as *const () as usize;
+    player_intention[INTENTION_UPKEEP] = soldier_upkeep as *const () as usize;
+    let reach = crate::reach::read(&image)?;
     Ok(Binding {
         lua: l,
         primary,
@@ -1051,6 +1311,7 @@ unsafe fn bind(l: L) -> Result<Binding, String> {
         base_intention_destructor,
         player_intention,
         intention_update,
+        set_eye_angles: base as usize + reach.set_eye_angles,
         intention_query_vtable: base as usize + intention_tables[1].0,
         behavior_vtables: (
             base as usize + behaviors[0].0,

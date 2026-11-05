@@ -52,6 +52,7 @@ local Controller = {
 	pathWatches = {}, -- entity -> { costs }, as last given to the npc controller
 	reports = {}, -- entity -> its last path report, while watched
 	logs = {}, -- entity -> its BehaviorLog, while watched
+	lookWatches = {}, -- entity -> whether its head logs
 	nextTick = 0,
 	nextNav = 0,
 	navAttributes = NoAttributes,
@@ -143,6 +144,14 @@ function Controller:ApplyWatches(subs)
 			end
 		end
 		self:SetBehaviorWatch(ent, self.npcs[ent], Debug.WatchesBehavior(subs, bot))
+		local npc = self.npcs[ent]
+		if npc.WatchLook then
+			local on = Debug.WatchesLookAt(subs, bot)
+			if self.lookWatches[ent] ~= on then
+				self.lookWatches[ent] = on
+				npc:WatchLook(on)
+			end
+		end
 	end
 end
 
@@ -152,6 +161,7 @@ function Controller:Forget(ent)
 	if IsValid(ent) and (ent.IsNextSoldier or playerBot) then ent.NSDebugPathWatch = nil end
 	if IsValid(ent) and ent.IsNextSoldier then ent.NSDebugDrawPath = nil end
 	self.pathWatches[ent], self.reports[ent], self.logs[ent] = nil, nil, nil
+	self.lookWatches[ent] = nil
 	self.bots[ent], self.npcs[ent] = nil, nil
 	for _, sub in pairs(self.subscriptions) do sub:Forget(ent) end
 end
@@ -241,10 +251,17 @@ end
 function Controller:SendBehavior(ply, sub, now)
 	local items = {}
 	for ent, bot in pairs(self.bots) do
-		local log = self.logs[ent]
-		if log and sub:Wants(bot, Debug.BEHAVIOR) and #items < MAX_NPCS then
-			local name, frames = self.npcs[ent]:Stack()
-			local all, lines = Debug.BehaviorLines(name, frames, log:Entries(), now), {}
+		local log, npc = self.logs[ent], self.npcs[ent]
+		local all = {}
+		if log and sub:Wants(bot, Debug.BEHAVIOR) then
+			local name, frames = npc:Stack()
+			all = Debug.BehaviorLines(name, frames, log:Entries(), now)
+		end
+		if npc.LookLines and sub:Wants(bot, Debug.LOOK_AT) then
+			for _, line in ipairs(npc:LookLines(now)) do all[#all + 1] = line end
+		end
+		if #all > 0 and #items < MAX_NPCS then
+			local lines = {}
 			for i = 1, math.min(#all, MAX_LINES) do lines[i] = all[i] end
 			items[#items + 1] = {
 				index = bot.index,
@@ -291,7 +308,7 @@ function Controller:Tick(now)
 	local sendNav = now >= self.nextNav
 	if sendNav then self.nextNav = now + NAV_INTERVAL end
 	for ply, sub in pairs(self.subscriptions) do
-		if sub:Shows(Debug.BEHAVIOR) then self:SendBehavior(ply, sub, now) end
+		if sub:Shows(Debug.BEHAVIOR) or sub:Shows(Debug.LOOK_AT) then self:SendBehavior(ply, sub, now) end
 		if sendNav and sub:Shows(Debug.NAV) and IsValid(sub.selected) then self:SendNav(ply, sub) end
 	end
 end

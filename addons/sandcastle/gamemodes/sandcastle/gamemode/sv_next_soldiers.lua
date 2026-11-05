@@ -221,7 +221,15 @@ function Soldier:Drive(cmd)
 	sense.speed, sense.climb, sense.onGround = velocity:Length2D(), velocity.z, ply:OnGround()
 	sense.target = self.steer
 	local out = self.body:Command(now, engine.TickInterval(), sense)
-	if out.moveYaw then
+	if self.head then
+		-- its eyes are its head's, in Rust: its feet go their way under them
+		cmd:SetViewAngles(Angle(eye.p, eye.y, 0))
+		if out.moveYaw then
+			local off = math.rad(out.moveYaw - eye.y)
+			cmd:SetForwardMove(ply:GetRunSpeed() * math.cos(off))
+			cmd:SetSideMove(-ply:GetRunSpeed() * math.sin(off))
+		end
+	elseif out.moveYaw then
 		cmd:SetViewAngles(Angle(0, out.moveYaw, 0))
 		cmd:SetForwardMove(ply:GetRunSpeed())
 	else
@@ -232,7 +240,24 @@ function Soldier:Drive(cmd)
 	if out.jump then buttons = bit.bor(buttons, IN_JUMP) end
 	if out.use then buttons = bit.bor(buttons, IN_USE) end
 	cmd:SetButtons(buttons)
-	ply:SetEyeAngles(Angle(out.pitch, out.yaw, 0))
+	if not self.head then ply:SetEyeAngles(Angle(out.pitch, out.yaw, 0)) end
+end
+
+-- Its head, configured once and Rust's after: a request's priority, the seconds it holds
+-- and what the LOOK_AT layer says of it.
+local LOOK_SOURCES = {
+	{ kind = "BodyFacing", priority = "BORING", seconds = 0.25, reason = "Body facing" },
+	{ kind = "Friend", priority = "BORING", seconds = 2, range = 600, every = 8, reason = "Looking around at friend" },
+}
+
+local function LookConfig()
+	return {
+		settle = GetConVar("nb_head_aim_settle_duration"):GetFloat(),
+		steady_rate = GetConVar("nb_head_aim_steady_max_rate"):GetFloat(),
+		turn_rate = PlayerBody.TURN_RATE,
+		interval = engine.TickInterval(),
+		sources = LOOK_SOURCES,
+	}
 end
 
 local soldiers = setmetatable({}, { __mode = "k" })
@@ -256,6 +281,10 @@ function WS.AddNextSoldier(team, name)
 	soldiers[ply] = soldier
 	compiled = compiled or CTFBot.Compile(wartactics.scenarios)
 	nextsoldier.engine.Insert(ply, CTFBot.InitialAction(nextsoldier.engine, compiled), soldier)
+	if nextsoldier.engine.Look then
+		nextsoldier.engine.Look(ply, LookConfig())
+		soldier.head = true
+	end
 	-- the body it was made with goes quietly: joining a team alive would kill it
 	ply:KillSilent()
 	WS.SetPlayerTeam(ply, team)
@@ -265,7 +294,13 @@ end
 hook.Add("WSNbDebugNpcs", "ws_next_soldiers", function(found)
 	for ply, soldier in pairs(soldiers) do
 		if IsValid(ply) then
-			soldier.debug = soldier.debug or nextsoldier.behavior.action.DebugNpc(ply, nextsoldier.engine.Stack)
+			if not soldier.debug then
+				soldier.debug = nextsoldier.behavior.action.DebugNpc(ply, nextsoldier.engine.Stack)
+				if soldier.head then
+					function soldier.debug:LookLines(now) return nextsoldier.engine.LookLines(ply, ply:Nick(), now) end
+					function soldier.debug:WatchLook(on) nextsoldier.engine.LookWatch(ply, on) end
+				end
+			end
 			found[ply] = soldier.debug
 		end
 	end

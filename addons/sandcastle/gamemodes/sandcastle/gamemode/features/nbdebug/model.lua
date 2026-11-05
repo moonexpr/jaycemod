@@ -25,8 +25,8 @@ module(...)
 -------------------------------------------------------------------------------
 -- Layers (nb_debug)
 
-PATH, COST, BEHAVIOR, NAV, AIWAR, MARKS = "PATH", "COST", "BEHAVIOR", "NAV", "AIWAR", "MARKS"
-LAYERS = { PATH, COST, BEHAVIOR, NAV, AIWAR, MARKS }
+PATH, COST, BEHAVIOR, LOOK_AT, NAV, AIWAR, MARKS = "PATH", "COST", "BEHAVIOR", "LOOK_AT", "NAV", "AIWAR", "MARKS"
+LAYERS = { PATH, COST, BEHAVIOR, LOOK_AT, NAV, AIWAR, MARKS }
 local LAYER = Sets.Named("ws_nb_debug layer", LAYERS)
 
 -- Tokens beside the layers' names: nb_debug's "*" means all.
@@ -321,6 +321,13 @@ function PathWatch(subscriptions, bot)
 	end
 	if not watched then return nil end
 	return { costs = costs }
+end
+
+function WatchesLookAt(subscriptions, bot)
+	for _, sub in ipairs(subscriptions) do
+		if sub:Wants(bot, LOOK_AT) then return true end
+	end
+	return false
 end
 
 function WatchesBehavior(subscriptions, bot)

@@ -223,4 +223,76 @@ T.test("the debug layer shows a bot player's engine stack", function()
 	T.eq(frames[1].name, "TacticalMonitor", "what the engine runs")
 end)
 
+-- A command as Drive writes it: what the engine's move reads.
+local function Command()
+	local cmd = {}
+	function cmd:SetViewAngles(angles) self.view = angles end
+	function cmd:SetForwardMove(speed) self.forward = speed end
+	function cmd:SetSideMove(speed) self.side = speed end
+	function cmd:SetButtons(buttons) self.buttons = buttons end
+	return cmd
+end
+
+-- A soldier told to walk +y, with its eyes along +x.
+local function Driven()
+	local soldier = New()
+	local ply = soldier.ent
+	function ply:EyeAngles() return { p = 3, y = 0, r = 0 } end
+	function ply:EyePos() return Vec(0, 0, 64) end
+	function ply:GetVelocity() return { Length2D = function() return 0 end, z = 0 } end
+	function ply:OnGround() return true end
+	function ply:GetRunSpeed() return 300 end
+	function ply:SetEyeAngles() self.eyesSet = true end
+	soldier.nextSteer = 100
+	soldier.steer = { x = 0, y = 500, z = 0 }
+	return soldier
+end
+
+T.test("its feet go their way whatever its eyes look at", function()
+	environment.Angle = function(p, y, r) return { p = p, y = y, r = r } end
+	environment.engine = { TickInterval = function() return 0.015 end }
+	environment.bit = { bor = function(a, b) return a + b end }
+	local soldier = Driven()
+	local cmd = Command()
+	soldier.head = true
+	soldier:Drive(cmd)
+	T.eq(cmd.view.y, 0, "looking where its head was left looking")
+	T.eq(math.abs(cmd.forward) < 0.001, true, "not forward: its way is off to the side")
+	T.eq(cmd.side < -299, true, "to its left, a negative side move")
+	T.eq(soldier.ent.eyesSet, nil, "its eyes are the head's to set")
+end)
+
+T.test("with no head its eyes go where it walks, as they did", function()
+	local soldier = Driven()
+	local cmd = Command()
+	soldier:Drive(cmd)
+	T.eq(cmd.view.y, 90, "along its way")
+	T.eq(cmd.forward, 300, "forward")
+end)
+
+T.test("a soldier's head is given its config as it is added", function()
+	local given
+	environment.nextsoldier.engine.Look = function(_, config) given = config end
+	environment.GetConVar = function() return { GetFloat = function() return 0.5 end } end
+	environment.engine = { TickInterval = function() return 0.015 end }
+	local soldier = New()
+	T.eq(soldier.head, true, "its head is Rust's")
+	T.eq(given.interval, 0.015, "ticked at the server's rate")
+	T.eq(given.settle, 0.5, "the engine's own convars")
+	T.eq(given.sources[1].kind, "BodyFacing", "what makes it look")
+	environment.nextsoldier.engine.Look = nil
+end)
+
+T.test("the debug layer reads its head's lines, only when it has one", function()
+	local soldier = New()
+	local found = {}
+	hooks.WSNbDebugNpcs(found)
+	T.eq(found[soldier.ent].LookLines, nil, "no head, no lines")
+	soldier.head, soldier.debug = true, nil
+	environment.nextsoldier.engine.LookLines = function(_, name, now) return { name .. " " .. now } end
+	function soldier.ent:Nick() return "bot" end
+	hooks.WSNbDebugNpcs(found)
+	T.eq(found[soldier.ent]:LookLines(7)[1], "bot 7", "its name and the game's time")
+end)
+
 T.finish()

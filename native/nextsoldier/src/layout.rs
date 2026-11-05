@@ -70,6 +70,7 @@ pub const BEHAVIOR_ME: usize = 0x48;
 pub const PLAYER_INEXTBOT_OFFSET: usize = 0x32C0;
 pub const INTENTION_SLOTS: usize = 46;
 pub const INTENTION_UPDATE: usize = 43;
+pub const INTENTION_UPKEEP: usize = 44;
 pub const COMPONENT_GET_BOT: usize = 45;
 pub const COMPONENT_INTERVAL: usize = 0x0C;
 pub const COMPONENT_BOT: usize = 0x10;
@@ -80,6 +81,8 @@ pub const RETURNS_BOT: [u8; 5] = [0x48, 0x8B, 0x41, 0x10, 0xC3];
 // CBaseEntityList: its vtable, then CEntInfo { entity, serial, prev, next } by entindex.
 pub const ENTITY_LIST_ENTRIES: usize = 8;
 pub const ENTITY_INFO_SIZE: usize = 0x20;
+/// A player's entity index is at most this: Source's MAX_PLAYERS, as GMod has it.
+pub const MAX_PLAYERS: usize = 128;
 
 // ActionResultType, EventResultPriorityType, QueryResultType
 pub const CONTINUE: i32 = 0;

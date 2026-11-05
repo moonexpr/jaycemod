@@ -589,4 +589,14 @@ T.test("a position is a vector whatever type GMod gives it, and a number is not"
 	T.eq(Fresh.IsVector(nil), false, "nothing")
 end)
 
+T.test("a head is watched only while someone draws the LOOK_AT layer for it", function()
+	T.eq(Debug.LOOK_AT, "LOOK_AT", "the engine's own name for it")
+	local sub = Debug.NewSubscription()
+	T.eq(Debug.WatchesLookAt({ sub }, ZOMBIE), false, "off")
+	sub:SetLayers({ "look_at" })
+	T.eq(Debug.WatchesLookAt({ sub }, ZOMBIE), true, "on")
+	sub:Select(HATMAN.key)
+	T.eq(Debug.WatchesLookAt({ sub }, ZOMBIE), false, "another selected")
+end)
+
 T.finish()

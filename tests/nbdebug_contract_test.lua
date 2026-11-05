@@ -144,4 +144,12 @@ T.test("the path follower uses the combat soldier's path costs", function()
 	T.eq(pathfollower:find("function ENT:OnComputePath", 1, true), nil, "inherits the combat soldier's link rule")
 end)
 
+T.test("what a head logged reaches the overlay beside the behaviour's lines", function()
+	local file = assert(io.open(ROOT .. "features/nbdebug/sv.lua"))
+	local controller = file:read("*a")
+	file:close()
+	T.eq(controller:find("npc:LookLines(now)", 1, true) ~= nil, true, "read as the layer sends")
+	T.eq(controller:find("npc:WatchLook(", 1, true) ~= nil, true, "logged only while wanted")
+end)
+
 T.finish()

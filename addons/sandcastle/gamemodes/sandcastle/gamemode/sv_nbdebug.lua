@@ -10,7 +10,7 @@ local COMMANDS = {
 	{
 		name = "ws_nb_debug",
 		help = "Toggle NPC debug layers: PATH, COST, BEHAVIOR, NAV, AIWAR, MARKS, or ALL; OFF or no argument stops",
-		options = { { "PATH", "COST", "BEHAVIOR", "NAV", "AIWAR", "MARKS", "ALL", "OFF" } },
+		options = { { "PATH", "COST", "BEHAVIOR", "LOOK_AT", "NAV", "AIWAR", "MARKS", "ALL", "OFF" } },
 	},
 	{
 		name = "ws_nb_debug_filter",

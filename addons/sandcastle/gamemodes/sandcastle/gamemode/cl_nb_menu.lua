@@ -21,6 +21,7 @@ for _, part in ipairs(Overlay.PARTS) do
 end
 
 local LAYER_LABELS = {
+	[Debug.LOOK_AT] = "Look at: what its head was asked to look at, and why",
 	[Debug.AIWAR] = "NextSoldier overlay",
 	[Debug.PATH] = "Paths: each NPC's last path search",
 	[Debug.COST] = "Search cost: this NPC's explored areas",
@@ -109,6 +110,7 @@ function WS.NpcDebugMenu(menu, index, soldier)
 		end)
 	end
 	menu:AddSpacer()
+	LayerOption(menu, Debug.LOOK_AT)
 	LayerOption(menu, Debug.AIWAR)
 	OverlayMenu(menu)
 	menu:AddSpacer()
