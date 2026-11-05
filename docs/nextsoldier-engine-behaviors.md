@@ -123,6 +123,43 @@ jump clears it. The first order after setup also stood 9.9 s at the spawn, not y
 explained. A war's bot player has the door and seam fixes but not `StepOff`,
 `StandPoints` or `Avoid`.
 
+## The rest on it
+
+**npc_pathfollower** is `nextsoldier.behavior.pathfollower`: `Idle`, `Travel` and `Errand`.
+
+**The Halloween bots** (`tf_zombie`, `ghost`, `eyeball_boss`, `headless_hatman`, `merasmus`)
+run unchanged. `Action.EngineBehavior` answers what `generator.state_chart`'s root does, and
+`Controller:Bind` gives it to an NPC variant wherever the binary is bound, so what is written
+for the chart runs on the engine. The chart stays where it is not bound, and in the tests.
+
+**Events and queries from Lua.** `engine.Event(bot, name, ...)` goes through the engine's own
+`OnCommandString` under a private mark, its arguments left on the Lua stack, so its priorities
+and pending results are the engine's and no `CTakeDamageInfo` needs bridging.
+`engine.Query(bot, name, ...)` walks from the innermost action out. `engine.End(bot)` runs each
+`OnEnd` while the bot is whole, since the engine's own would come from its destructor.
+
+**The debug layer.** `Action.DebugNpc` shows the engine's stack for bot players and any class
+the engine runs, logging each change as the layer looks.
+
+## LOOK_AT: a head in Rust
+
+`look.rs` is `IBody::AimHeadTowards` as `PlayerBody` decides it: a request of a higher priority
+takes over, a lower one waits for the current to run out, an equal one for the head to settle.
+Lua gives its config once, in `engine.Look(soldier, { settle, steady_rate, turn_rate, interval,
+sources })`, and is asked nothing after. Each tick `INextBot::Upkeep` reaches slot 44 of the
+soldier's intention, which runs the model and sets the eyes, with no Lua in between. Its feet go
+their way under its eyes: `Drive` turns where it walks into forward and side moves.
+
+`reach.rs` reads what it needs from `server.dll`, whose Lua methods are entries in static tables
+(`.devtools/bin/lua_glue.py` disassembles them): `EyePos`, `EyeAngles` and `Alive` give virtual
+slots, `Team` a field, `SetEyeAngles` a function no vtable holds. A binary where these differ is
+refused at bind. The priorities' names and order are from memory of the SDK: GMod's binary holds
+only the `nb_head_aim_*` convars and the `LOOK_AT` debug category.
+
+`ws_nb_debug LOOK_AT` shows the requests, in the words of the engine's own debug line. Only bot
+players on NextSoldier have a head so far; a threat's source waits for combat, and an NPC's head
+for where it turns (the clients', `nextsoldier.body.gaze`).
+
 ## What was proved
 
 On a live server (instance 3), on `srcds.py start --gamemode base` for the bare NextBots
@@ -156,7 +193,8 @@ own field offsets are not checked at run time, only against this build.
 3. **Events.** `OnInjured`, `OnSight`, `OnLostSight`, `OnContact`, `OnNavAreaChanged`
    and `OnOtherKilled` are the engine's. `OnHeard` and `OnContactLost` are ours, and
    need a route through it (`OnSound`, `OnCommandString`). Only `OnInjured` and
-   `OnStuck` are wired so far, and the `CTakeDamageInfo` is not yet passed to Lua.
+   `OnStuck` are wired from the engine so far, and the `CTakeDamageInfo` is not passed to Lua;
+   what Lua hears itself goes through `engine.Event`.
 4. **Queries.** `ShouldAttack`, `ShouldHurry`, `ShouldRetreat`, `ShouldPickUp` and
    `SelectMoreDangerousThreat` are all `IContextualQuery`'s. Only `ShouldHurry` is
    wired. The two taking a `CKnownEntity` need that bridged.

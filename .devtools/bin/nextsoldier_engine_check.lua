@@ -179,9 +179,8 @@ local InnerP = {
 	ShouldHurry = function() return NO end,
 }
 NSEngineSoldier = player.CreateNextSoldier("NSEngineSoldier")
--- A dead body runs no actions: in a countdown a new player is a spectator, and every
--- soldier_ check after this one fails for that reason.
-local soldierBornAlive = NSEngineSoldier:Alive()
+-- A dead body runs no actions: once a game is on, a new player unassigned to a team dies
+-- and stays so, and every soldier_ check after this one fails for that reason.
 E.Insert(NSEngineSoldier, Action("Outer", {
 	InitialContainedAction = function() return Action("Inner", InnerP) end,
 	OnStart = function() Note("P Outer start") return { type = CONTINUE } end,
@@ -213,6 +212,8 @@ end
 NSEngineCheck = {}
 
 function NSEngineCheck.Finish()
+	E.End(bots.Ending)
+	local endedOnce = endings == 2
 	local checks = {
 		child_starts_before_its_container = Has("Inner start") and Has("Outer start"),
 		suspends_for_cover = Has("Inner suspend for Cover") and Has("Cover start after Inner"),
@@ -224,7 +225,7 @@ function NSEngineCheck.Finish()
 		event_changes_at_the_next_update = Has("Calm end for Hurt") and Has("Hurt start"),
 		failing_hook_goes_on = failing > 2,
 		lua_behaviour_still_runs = (bots.Outer.behaved or 0) > 0,
-		soldier_born_alive = soldierBornAlive,
+		soldier_stayed_alive = NSEngineSoldier:Alive(),
 		soldier_suspends_and_resumes = Has("P Inner suspend for Cover") and Has("P Cover start after Inner") and Has("P Inner resume from Cover"),
 		soldier_me_is_the_player = Has("P Inner start, me the player true"),
 		soldier_hears_damage = Has("P Inner injured") and Has("P Hurt start"),
@@ -238,8 +239,6 @@ function NSEngineCheck.Finish()
 		query_answers_with_its_arguments = E.Query(bots.Told, "Undecided") == "the container's",
 		query_nobody_answers_is_nil = E.Query(bots.Told, "Nobody") == nil,
 	}
-	E.End(bots.Ending)
-	local endedOnce = endings == 2
 	local live = E.Live()
 	bots.Doomed:Remove()
 	NSEngineSoldier:Kick("the check is over")
