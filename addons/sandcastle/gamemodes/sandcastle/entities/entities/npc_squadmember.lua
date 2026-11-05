@@ -66,6 +66,8 @@ end
 -- A place is looked for from this far above it to this far below, a body's own hull fitting.
 local SEARCH_ABOVE, SEARCH_BELOW = 64, 256
 local LIFT = Vector(0, 0, 1)
+-- Its way to a place is swept a stair's step above the floor, so a step does not wall it off.
+local STEP = 18
 local GroupIdentity = nextsoldier.behavior.group_identity
 
 -- A probe is not hurt: a stray shot would take it off the bench.
@@ -84,15 +86,15 @@ end
 
 function ENT:NSLegsOrder() return self.nsLegsOrder end
 
--- The ground under a place, and whether its body fits there: the map's, not who stands there now.
-local function Ground(self, place)
-	local at = Vector(place.x, place.y, place.z)
+-- The ground under a slot where its body fits there, or nil: the map's, not who stands there now.
+local function Ground(self, slot)
+	local at = Vector(slot.x, slot.y, slot.z)
 	local floor = util.TraceLine({
 		start = at + Vector(0, 0, SEARCH_ABOVE),
 		endpos = at - Vector(0, 0, SEARCH_BELOW),
 		mask = MASK_NPCSOLID_BRUSHONLY,
 	})
-	if not floor.Hit or floor.StartSolid then return at, false end
+	if not floor.Hit or floor.StartSolid then return nil end
 	local mins, maxs = self:GetCollisionBounds()
 	local fit = util.TraceHull({
 		start = floor.HitPos + LIFT,
@@ -101,16 +103,38 @@ local function Ground(self, place)
 		maxs = maxs,
 		mask = MASK_NPCSOLID_BRUSHONLY,
 	})
-	return floor.HitPos, not fit.Hit
+	if fit.Hit then return nil end
+	return floor.HitPos
 end
 
+-- What an order around point may give a body of its size: admit(slot) -> the ground it would
+-- stand on, where it fits and no wall stands between it and point; nil elsewhere.
+function ENT:NSLegsAdmit(point)
+	local mins, maxs = self:GetCollisionBounds()
+	local from = Ground(self, point)
+	local sweepMins, sweepMaxs = Vector(mins.x, mins.y, 0), Vector(maxs.x, maxs.y, maxs.z - STEP)
+	return function(slot)
+		local ground = from and Ground(self, slot)
+		if not ground then return nil end
+		local reach = util.TraceHull({
+			start = from + Vector(0, 0, STEP),
+			endpos = ground + Vector(0, 0, STEP),
+			mins = sweepMins,
+			maxs = sweepMaxs,
+			mask = MASK_NPCSOLID_BRUSHONLY,
+		})
+		if reach.Hit then return nil end
+		return { x = ground.x, y = ground.y, z = ground.z }
+	end
+end
+
+-- Its order and its place in it: nil, it has no room near; no order dissolves it.
 function ENT:NSLegsGive(order, place)
 	self.nsLegsOrder = order
 	self:SetNW2String("NSLegsOrder", order and order.kind or "")
 	if not order then return end
-	local ground, stands = Ground(self, place)
-	self:SetNW2Vector("NSLegsPlace", ground)
-	self:SetNW2Bool("NSLegsStands", stands)
+	self:SetNW2Bool("NSLegsStands", place ~= nil)
+	self:SetNW2Vector("NSLegsPlace", place and Vector(place.x, place.y, place.z) or self:GetPos())
 end
 
 -- What its team's spacing would do to it where it stands, as a soldier's tree works it out.

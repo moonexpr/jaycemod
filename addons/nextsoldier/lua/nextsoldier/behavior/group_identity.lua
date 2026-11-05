@@ -43,8 +43,13 @@ LegsAtEase.Update = Orders
 LegsMuster.Update = Orders
 LegsFallBack.Update = Orders
 
+-- How much further out than its members need an order looks for places the map refuses
+-- nearer: rings around a muster, rows behind a fall back.
+local SPARE_RINGS, SPARE_ROWS = 3, 3
+
 -- Each member in turn, the furthest from point first, takes the nearest slot left, so a
--- straggler keeps to its own side and the crowd fills in around it.
+-- straggler keeps to its own side and the crowd fills in around it. Members left when the
+-- slots run out have none.
 local function Assign(point, slots, members)
 	local places, open = {}, {}
 	for i = 1, #slots do open[i] = slots[i] end
@@ -53,51 +58,79 @@ local function Assign(point, slots, members)
 	end)
 	for _, member in ipairs(order) do
 		local slot, _, place = Select.Lowest(open, function(s) return Geometry.DistanceSquared(members[member], s) end)
+		if not slot then break end
 		places[member] = slot
 		remove(open, place)
 	end
 	return places
 end
 
+local function Anywhere(slot) return slot end
+
 local Order = {}
 Order.__index = Order
 
-function Order:Places(members, spacing)
-	return Assign(self.point, self:Slots(#members, spacing), members)
+-- Each member's place, by its index in members (a point each), or none where the map had no
+-- room: admit(slot) -> where a body would stand for it, or nil where it cannot.
+function Order:Places(members, spacing, admit)
+	admit = admit or Anywhere
+	local slots = {}
+	for candidate in self:Candidates(#members, spacing) do
+		local slot = admit(candidate)
+		if slot then slots[#slots + 1] = slot end
+		if #slots == #members then break end
+	end
+	return Assign(self.point, slots, members)
 end
 
 local Gather = setmetatable({}, Order)
 Gather.__index = Gather
 
--- Its point, then whole rings around it, each with room for as many as fit its spacing apart.
-function Gather:Slots(count, spacing)
-	local point = self.point
-	local slots = {}
-	if count > 0 then slots[1] = { x = point.x, y = point.y, z = point.z } end
-	local ring = 1
-	while #slots < count do
-		local around = Geometry.Circle(point, ring * spacing, floor(2 * pi * ring), 0)
-		for _, slot in ipairs(around) do
-			if #slots < count then slots[#slots + 1] = { x = slot.x, y = slot.y, z = point.z } end
-		end
-		ring = ring + 1
+-- How many rings around a point hold count, each with room for as many as fit spacing apart.
+local function RingsFor(count)
+	local rings, held = 0, 1
+	while held < count do
+		rings = rings + 1
+		held = held + floor(2 * pi * rings)
 	end
-	return slots
+	return rings
+end
+
+-- Its point, then whole rings around it, out to SPARE_RINGS past those count needs.
+function Gather:Candidates(count, spacing)
+	local point = self.point
+	local ring, around, index = 0, { point }, 0
+	local last = RingsFor(count) + SPARE_RINGS
+	return function()
+		index = index + 1
+		while index > #around do
+			ring, index = ring + 1, 1
+			if ring > last then return nil end
+			around = Geometry.Circle(point, ring * spacing, floor(2 * pi * ring), 0)
+		end
+		local slot = around[index]
+		return { x = slot.x, y = slot.y, z = point.z }
+	end
 end
 
 local Withdraw = setmetatable({}, Order)
 Withdraw.__index = Withdraw
 
--- Rows across the way from the threat, from its point away, each centred.
-function Withdraw:Slots(count, spacing)
-	local slots = {}
-	for row = 0, ceil(count / ROW) - 1 do
-		local abreast = row == ceil(count / ROW) - 1 and count - row * ROW or ROW
-		for column = 0, abreast - 1 do
-			slots[#slots + 1] = Geometry.Offset2D(self.point, self.from, row * spacing, (column - (abreast - 1) / 2) * spacing)
-		end
+-- Rows of ROW across the way from the threat, from its point away, each centred, out to
+-- SPARE_ROWS past those count needs.
+function Withdraw:Candidates(count, spacing)
+	local rows = ceil(count / ROW)
+	local last = rows + SPARE_ROWS
+	local row, column = 0, -1
+	return function()
+		-- the last row count needs holds what is left of count, every row after it a full one
+		local abreast = row == rows - 1 and count - row * ROW or ROW
+		column = column + 1
+		if column >= abreast then row, column = row + 1, 0 end
+		if row >= last then return nil end
+		abreast = row == rows - 1 and count - row * ROW or ROW
+		return Geometry.Offset2D(self.point, self.from, row * spacing, (column - (abreast - 1) / 2) * spacing)
 	end
-	return slots
 end
 
 function Muster(point)

@@ -52,7 +52,7 @@ end
 local function Tell(order)
 	local positions = {}
 	for i, member in ipairs(members) do positions[i] = Point(member:GetPos()) end
-	local places = order:Places(positions, nextsoldier.engine.GroupSpacing())
+	local places = order:Places(positions, nextsoldier.engine.GroupSpacing(), members[1]:NSLegsAdmit(Vector(order.point.x, order.point.y, order.point.z)))
 	for i, member in ipairs(members) do member:NSLegsGive(order, places[i]) end
 end
 

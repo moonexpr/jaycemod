@@ -115,7 +115,7 @@ function TOOL:RightClick(trace)
 	end
 	local positions = {}
 	for i, member in ipairs(members) do positions[i] = Point(member:GetPos()) end
-	local places = order:Places(positions, nextsoldier.engine.GroupSpacing())
+	local places = order:Places(positions, nextsoldier.engine.GroupSpacing(), members[1]:NSLegsAdmit(trace.HitPos))
 	for i, member in ipairs(members) do member:NSLegsGive(order, places[i]) end
 	return true
 end
@@ -133,7 +133,7 @@ function TOOL:Reload()
 end
 
 function TOOL.BuildCPanel(panel)
-	panel:Help("A test of the legs alone: members stand still and a cross shows where an order would put each, red where a body would not fit. Left-click to spawn or select, right-click to give the order, reload to dissolve.")
+	panel:Help("A test of the legs alone: members stand still and a cross shows where an order would put each, red at its feet where no place near had room. A place is only where a body fits with no wall between it and the order's point. Left-click to spawn or select, right-click to give the order, reload to dissolve.")
 	local combo = panel:ComboBox("Order", "ns_squadcreator_order")
 	for order, name in pairs(ORDER_NAMES) do combo:AddChoice(name, order) end
 	panel:CheckBox("Show spacing (a ring its radius, pink with an arrow when a teammate pushes)", "ns_squadcreator_spacing")

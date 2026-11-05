@@ -122,8 +122,11 @@ take no damage. Left-click spawns a member or toggles its selection (a cyan
 ring). Right-click gives the selected members the panel's order at the aim:
 **Muster** (the point, then rings around it) or **Fall back** (rows across the
 way from you, the threat). Reload dissolves them. Each member's place shows as
-a cross joined to its feet, green for muster and orange for fall back, or red
-where its body would not fit. Members furthest from the point choose their
+a cross joined to its feet, green for muster and orange for fall back. A
+place is only where a body fits, with no wall between it and the order's
+point (`NSLegsAdmit`). An order skips the places the map refuses and looks
+further out, up to three rings or rows past what its members need. A member
+left with no place gets a red cross at its own feet. Members furthest from the point choose their
 places first, so a straggler keeps to its own side. **Show spacing** draws
 each member's spacing ring, pink with an arrow where a teammate pushes it.
 That is `engine.Separation`, the same Rust as a bot player's `GroupPush`.

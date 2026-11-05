@@ -90,6 +90,39 @@ for kind, order in pairs(ORDERS) do
 		end
 	end)
 
+	-- A wall along x = 520: only ground to its west is a place.
+	local function WestOfWall(slot)
+		if slot.x >= 520 then return nil end
+		return { x = slot.x, y = slot.y, z = slot.z }
+	end
+
+	T.test(kind .. " leaves out what the map refuses, and still places everyone, spaced apart", function()
+		for _, count in ipairs({ 1, 4, 7, 12 }) do
+			local places = order:Places(Crowd(count), SPACING, WestOfWall)
+			local placed = 0
+			for i = 1, count do
+				if places[i] then
+					placed = placed + 1
+					T.eq(places[i].x < 520, true, "no place past the wall")
+				end
+			end
+			T.eq(placed, count, "everyone has a place")
+			local list = {}
+			for i = 1, count do list[i] = places[i] end
+			HeldApart(list, SPACING)
+		end
+	end)
+
+	T.test(kind .. " takes a place where the map puts it", function()
+		local places = order:Places(Crowd(3), SPACING, function(slot) return { x = slot.x, y = slot.y, z = -99 } end)
+		for i = 1, 3 do T.eq(places[i].z, -99, "on the ground the map found") end
+	end)
+
+	T.test(kind .. " leaves a member without a place where the map has no room near", function()
+		local places = order:Places(Crowd(3), SPACING, function() return nil end)
+		for i = 1, 3 do T.eq(places[i], nil, "none") end
+	end)
+
 	T.test(kind .. " has no places for nobody", function()
 		T.eq(#order:Places({}, SPACING), 0, "none")
 	end)
