@@ -74,8 +74,9 @@ end
 local EngineRoot = {}
 EngineRoot.__index = EngineRoot
 
-function EngineBehavior(ent, initial, me, kind, engine)
+function EngineBehavior(ent, initial, me, kind, engine, paced)
 	return setmetatable({
+		paced = paced,
 		ent = ent,
 		initial = initial,
 		me = me,
@@ -85,8 +86,16 @@ function EngineBehavior(ent, initial, me, kind, engine)
 	}, EngineRoot)
 end
 
-function EngineRoot:Start() self.engine.Insert(self.ent, self.initial, self.me) end
-function EngineRoot:Update() end
+function EngineRoot:Start()
+	self.engine.Insert(self.ent, self.initial, self.me)
+	if self.paced then self.engine.Pace(self.ent) end
+end
+
+-- Paced, it runs now, for whoever paces it (the AI war, whose orders run only while it has a
+-- field and is not paused); else the engine updates it on its own turn.
+function EngineRoot:Update(_, interval)
+	if self.paced then self.engine.Update(self.ent, interval) end
+end
 function EngineRoot:Event(_, name, ...) self.engine.Event(self.ent, name, ...) end
 function EngineRoot:Query(_, name, ...) return self.engine.Query(self.ent, name, ...) end
 function EngineRoot:Destroy() self.engine.End(self.ent) end
@@ -107,7 +116,7 @@ end
 
 -- What Npc.New takes to run a variant on the engine, telling its actions me: nil where the
 -- binary is not bound, so the chart runs it.
-function EngineBehaviorFor(ent, me, engine)
+function EngineBehaviorFor(ent, me, engine, paced)
 	if not (engine and engine.Insert) then return nil end
-	return function(initial, kind) return EngineBehavior(ent, initial, me, kind, engine) end
+	return function(initial, kind) return EngineBehavior(ent, initial, me, kind, engine, paced) end
 end

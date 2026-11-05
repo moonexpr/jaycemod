@@ -152,7 +152,7 @@ end
 -- What runs a bot player's orders: the engine, for the NextSoldiers AddBot makes.
 function Controller:BotBehavior(ply, soldier)
 	if not (player.CreateNextSoldier and self.bots[ply]) then return nil end
-	return nextsoldier.behavior.action.EngineBehaviorFor(ply, soldier, nextsoldier.engine)
+	return nextsoldier.behavior.action.EngineBehaviorFor(ply, soldier, nextsoldier.engine, true)
 end
 
 -- A bot of the team (by default the one TeamToKick names), a dead one first;

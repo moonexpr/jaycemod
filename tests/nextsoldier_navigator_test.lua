@@ -17,6 +17,7 @@ local function Area(lo, hi)
 end
 
 local nearest
+local clock = 0
 local ENT = {}
 local environment = setmetatable({
 	ENT = ENT,
@@ -25,6 +26,7 @@ local environment = setmetatable({
 	AddCSLuaFile = function() end,
 	IsValid = function(value) return value ~= nil end,
 	hook = { Add = function() end },
+	CurTime = function() return clock end,
 	navmesh = { GetNearestNavArea = function() return nearest end },
 }, { __index = _G })
 setfenv(assert(loadfile("addons/sandcastle/gamemodes/sandcastle/entities/entities/ws_bot_navigator.lua")), environment)()
@@ -62,6 +64,34 @@ end)
 T.test("no last area yet, and one is near, it waits", function()
 	nearest = WEST
 	T.eq(Navigator(Vec(-350, 0, 0), nil):Settled(), false, "the engine has not told it")
+end)
+
+T.test("it does not wait for ever on an area the engine will not catch up to", function()
+	nearest = EAST
+	clock = 100
+	-- the owner stands well inside EAST, and the engine keeps WEST: a body it found no floor under
+	local navigator = Navigator(Vec(-150, 0, 0), WEST)
+	T.eq(navigator:Settled(), false, "a moment to catch up, as when set down elsewhere")
+	clock = 100 + environment.ENT.SETTLE_PATIENCE - 0.01
+	T.eq(navigator:Settled(), false, "still within it")
+	clock = 100 + environment.ENT.SETTLE_PATIENCE
+	T.eq(navigator:Settled(), true, "planning from where it knows is better than never planning")
+end)
+
+T.test("having caught up, its patience starts over", function()
+	nearest = EAST
+	clock = 200
+	local last = WEST
+	local navigator = setmetatable({}, { __index = ENT })
+	function navigator:GetOwner() return { GetPos = function() return Vec(-150, 0, 0) end } end
+	function navigator:GetLastKnownArea() return last end
+	T.eq(navigator:Settled(), false, "waiting")
+	last = EAST
+	clock = 200.1
+	T.eq(navigator:Settled(), true, "caught up")
+	last = WEST
+	clock = 300
+	T.eq(navigator:Settled(), false, "set down elsewhere much later: a moment again")
 end)
 
 T.finish()

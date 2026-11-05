@@ -118,4 +118,27 @@ T.test("where it is, a variant's behaviour is the engine's, telling its actions 
 	T.eq(behavior.name, "KIND", "its kind")
 end)
 
+T.test("a paced behaviour is updated by whoever paces it, and not by the engine's own turn", function()
+	local told, engine = Engine({})
+	engine.Pace = function(ent) told.paced = ent end
+	engine.Update = function(ent, interval) told.updated = { ent, interval } end
+	local behavior = Action.EngineBehaviorFor(ENT, "actor", engine, true)("first", "KIND")
+	behavior:Start()
+	T.eq(told.paced, ENT, "taken off the engine's own turn as it starts")
+	behavior:Update("actor", 0.25)
+	T.eq(told.updated[1], ENT, "run now, on the bot")
+	T.eq(told.updated[2], 0.25, "for the time it was given")
+end)
+
+T.test("an unpaced one is left to the engine", function()
+	local told, engine = Engine({})
+	engine.Pace = function(ent) told.paced = ent end
+	engine.Update = function() told.updated = true end
+	local behavior = Action.EngineBehaviorFor(ENT, "actor", engine)("first", "KIND")
+	behavior:Start()
+	behavior:Update("actor", 0.25)
+	T.eq(told.paced, nil, "not paced")
+	T.eq(told.updated, nil, "not run")
+end)
+
 T.finish()

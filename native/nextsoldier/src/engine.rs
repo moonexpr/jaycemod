@@ -70,6 +70,8 @@ struct Soldier {
     entity: usize,
     head: Option<Head>,
     group: Option<Tree>,
+    /// Its main tree runs when engine.Update says, not on the engine's own turn.
+    paced: bool,
 }
 
 /// A tree beside its main one: a Behavior and the shadow it updates through.
@@ -799,12 +801,12 @@ unsafe extern "win64" fn soldier_update(this: usize) {
     let Some(soldier) = b.soldiers.get(&this) else {
         return;
     };
-    let shadow = soldier.shadow;
+    let main = (!soldier.paced).then_some(soldier.shadow);
     let group = soldier.group.as_ref().map(|tree| tree.shadow);
     // what INextBot::Update computed for the component, for the shadow it runs on
     let interval = *((this + COMPONENT_INTERVAL) as *const f32);
     let run: unsafe extern "win64" fn(*mut u64) = std::mem::transmute(b.intention_update);
-    for tree in std::iter::once(shadow).chain(group) {
+    for tree in main.into_iter().chain(group) {
         *(tree.cast::<u8>().add(COMPONENT_INTERVAL).cast::<f32>()) = interval;
         run(tree);
     }
@@ -1026,6 +1028,7 @@ unsafe extern "C-unwind" fn create_next_soldier(l: L) -> c_int {
             entity,
             head: None,
             group: None,
+            paced: false,
         },
     );
     *(intention as *mut usize) = b.player_intention.as_ptr() as usize;
@@ -1281,6 +1284,23 @@ unsafe extern "C-unwind" fn query(l: L) -> c_int {
     0
 }
 
+/// engine.Pace(soldier): its main tree runs when engine.Update says, as its mode allows, and
+/// not on the engine's own turn. Its group's tree stays on the engine's.
+unsafe extern "C-unwind" fn pace(l: L) -> c_int {
+    soldier_at(l, 1).paced = true;
+    0
+}
+
+/// engine.Update(soldier, interval): its main tree, now, as the engine's own update would.
+unsafe extern "C-unwind" fn update_now(l: L) -> c_int {
+    let interval = (api().tonumber)(l, 2) as f32;
+    let shadow = soldier_at(l, 1).shadow;
+    *(shadow.cast::<u8>().add(COMPONENT_INTERVAL).cast::<f32>()) = interval;
+    let run: unsafe extern "win64" fn(*mut u64) = std::mem::transmute(binding().intention_update);
+    run(shadow);
+    0
+}
+
 /// engine.InsertGroup(soldier, action[, me]): the tree beside its main one, as its next
 /// update: the engine starts it. Refused on a soldier that has one.
 unsafe extern "C-unwind" fn insert_group(l: L) -> c_int {
@@ -1461,6 +1481,8 @@ unsafe extern "C-unwind" fn look_lines(l: L) -> c_int {
 }
 
 const FUNCTIONS: &[(&CStr, CFunction)] = &[
+    (c"Pace", pace),
+    (c"Update", update_now),
     (c"InsertGroup", insert_group),
     (c"GroupStack", group_stack),
     (c"Look", look_config),

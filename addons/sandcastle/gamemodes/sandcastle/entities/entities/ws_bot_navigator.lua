@@ -14,6 +14,10 @@ local MODEL = "models/player/police.mdl"
 -- The nav area its owner stands on is the nearest within this (a curved
 -- pipe's area can lie further below than a step).
 local SETTLE_REACH = 64
+-- How long it waits for the engine to catch its area up. The engine finds no floor under a
+-- body at times and keeps the area it had, for as long as the body stands there, and a body
+-- with no route stands there for good.
+ENT.SETTLE_PATIENCE = 1
 -- How much farther than the nearest (squared) an area still counts as under its owner.
 local SEAM_SQR = 1
 
@@ -58,6 +62,16 @@ end
 -- the same: on the seam between two areas the engine keeps the one it was on and the
 -- search may name the other, for as long as the owner stands there.
 function ENT:Settled()
+	if self:CaughtUp() then
+		self.catchingUpSince = nil
+		return true
+	end
+	local now = CurTime()
+	self.catchingUpSince = self.catchingUpSince or now
+	return now - self.catchingUpSince >= self.SETTLE_PATIENCE
+end
+
+function ENT:CaughtUp()
 	local pos = self:GetOwner():GetPos()
 	local here = navmesh.GetNearestNavArea(pos, false, SETTLE_REACH)
 	if not IsValid(here) then return true end

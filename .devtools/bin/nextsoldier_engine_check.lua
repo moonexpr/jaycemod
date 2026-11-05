@@ -231,6 +231,20 @@ E.InsertGroup(NSEngineSoldier, E.GroupIdentityBehavior({
 	}),
 }))
 timer.Simple(3, function() E.Event(NSEngineSoldier, "OnThing", "both") end)
+-- A paced soldier's main tree runs only when told, and its group's tree goes on.
+local pacedUpdates, pacedGroup, pacedAlive = 0, 0, nil
+NSEnginePaced = player.CreateNextSoldier("NSEnginePaced")
+E.Insert(NSEnginePaced, Action("PacedMain", { Update = function() pacedUpdates = pacedUpdates + 1 return { type = CONTINUE } end }))
+E.InsertGroup(NSEnginePaced, E.GroupIdentityBehavior({
+	initial = Action("PacedLegs", { Update = function() pacedGroup = pacedGroup + 1 return { type = CONTINUE } end }),
+}))
+E.Pace(NSEnginePaced)
+local pacedBefore
+timer.Simple(4, function()
+	pacedAlive = NSEnginePaced:Alive()
+	pacedBefore = pacedUpdates
+	for _ = 1, 3 do E.Update(NSEnginePaced, 0.25) end
+end)
 local plainBot = player.CreateNextBot("NSEnginePlain")
 local plainRefused = not pcall(E.Stack, plainBot)
 timer.Simple(2, function()
@@ -286,6 +300,9 @@ function NSEngineCheck.Finish()
 		group_tree_hears_events = Has("G Legs told both"),
 		group_tree_shows_its_stack = #E.GroupStack(NSEngineSoldier) == 2,
 		group_stack_of_a_bot_is_empty = #E.GroupStack(bots.Told) == 0,
+		paced_tree_waits_for_its_update = pacedBefore == 0,
+		paced_tree_runs_when_told = pacedUpdates == 3 or pacedUpdates == 2,
+		paced_group_tree_goes_on = pacedAlive == false or pacedGroup > 0,
 		event_carries_its_arguments = Has("Listener thing one 2"),
 		event_reaches_the_container = Has("Teller thing one"),
 		event_changes_at_the_next_update_too = Has("Changed start"),
@@ -295,6 +312,7 @@ function NSEngineCheck.Finish()
 	local live = E.Live()
 	bots.Doomed:Remove()
 	NSEngineSoldier:Kick("the check is over")
+	NSEnginePaced:Kick("the check is over")
 	plainBot:Kick("the check is over")
 	timer.Simple(0.5, function()
 		NSEngineCheck.removal = { ended_again = endings ~= 2, ended = doomedEnded, deleted = live - E.Live(), group_ended = Has("G Legs end"), soldier_ended = Has("P Hurt end") and Has("P Outer end, its player whole true") }
