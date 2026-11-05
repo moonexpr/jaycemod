@@ -111,4 +111,52 @@ T.test("the soldiers choose among CS:S weapons from their SWEP fields", function
 	T.eq(Arms.Choose(loadout, Arms.Reach(ak) + 1, ak, glock), steadier, "past the rifle's reach, the steadier gun")
 end)
 
+-- What a bot picks of what its class gave it.
+local function Carried(class) return { GetClass = function() return class end, class = class } end
+local function Usable() return true end
+local SMG, SHOTGUN, CROSSBOW, CROWBAR = Carried("simple_hl2_smg1"), Carried("simple_hl2_shotgun"), Carried("simple_hl2_crossbow"), Carried("simple_hl2_crowbar")
+local PHYSGUN, TOOL = Carried("weapon_physgun"), Carried("gmod_tool")
+local ALL = { PHYSGUN, TOOL, CROSSBOW, SMG, SHOTGUN, CROWBAR }
+
+T.test("a class's weapons have the built-in ones' measures", function()
+	for _, name in ipairs({ "pistol", "smg1", "ar2", "shotgun", "357", "crossbow" }) do
+		T.eq(Arms.Reach(Carried("simple_hl2_" .. name)), Arms.WEAPONS["weapon_" .. name].reach, name)
+	end
+	T.eq(Arms.Melee(CROWBAR), true, "its crowbar is one")
+end)
+
+T.test("it picks the weapon made for the distance: the shortest reach that covers it", function()
+	T.eq(Arms.Pick(ALL, 200, nil, Usable), SHOTGUN, "close")
+	T.eq(Arms.Pick(ALL, 1000, nil, Usable), SMG, "middling")
+	T.eq(Arms.Pick(ALL, 2500, nil, Usable), CROSSBOW, "far")
+end)
+
+T.test("beyond every reach, the longest it has", function()
+	T.eq(Arms.Pick({ SMG, SHOTGUN }, 5000, nil, Usable), SMG, "the nearest it can come")
+end)
+
+T.test("within arm's length it takes its melee weapon", function()
+	T.eq(Arms.Pick(ALL, Arms.MELEE_SWITCH - 1, nil, Usable), CROWBAR, "swinging")
+end)
+
+T.test("tools and what it cannot measure are never picked", function()
+	T.eq(Arms.Pick({ PHYSGUN, TOOL }, 500, nil, Usable), nil, "nothing to fight with")
+end)
+
+T.test("an empty gun is passed over, and with none left it takes its melee weapon", function()
+	local function NotShotgun(weapon) return weapon ~= SHOTGUN end
+	T.eq(Arms.Pick(ALL, 200, nil, NotShotgun), SMG, "the next that covers it")
+	local function NoGuns(weapon) return weapon == CROWBAR end
+	T.eq(Arms.Pick(ALL, 200, nil, NoGuns), CROWBAR, "swinging")
+end)
+
+T.test("what it holds it keeps while it still covers the distance, so it does not fidget", function()
+	T.eq(Arms.Pick(ALL, 200, SMG, Usable), SMG, "the shotgun would fit better, not enough to swap")
+	T.eq(Arms.Pick(ALL, 2500, SMG, Usable), CROSSBOW, "out of its reach, it swaps")
+	T.eq(Arms.Pick(ALL, 200, TOOL, Usable), SHOTGUN, "a tool is no weapon to keep")
+	local function NotSmg(weapon) return weapon ~= SMG end
+	T.eq(Arms.Pick(ALL, 200, SMG, NotSmg), SHOTGUN, "nor is an empty one")
+	T.eq(Arms.Pick(ALL, Arms.MELEE_SWITCH - 1, SMG, Usable), CROWBAR, "at arm's length it swings")
+end)
+
 T.finish()

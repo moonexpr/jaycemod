@@ -1,6 +1,6 @@
 -- AI war weapon selection: CS:S stats come from the live SWEP instance,
--- while these profiles describe only the built-in HL2 weapons.
-local error, format, huge, type = error, string.format, math.huge, type
+-- while these profiles describe the HL2 and Black Mesa weapons.
+local error, format, huge, ipairs, type = error, string.format, math.huge, ipairs, type
 module(...)
 
 WEAPONS = {
@@ -12,6 +12,16 @@ WEAPONS = {
 	weapon_shotgun = { cone = 10, reach = 325, chase = 250, avoid = 175 },
 	weapon_crowbar = { melee = true, damage = 25, interval = 0.25, automatic = true },
 	weapon_stunstick = { melee = true, damage = 30, interval = 0.25, automatic = true },
+
+	-- the player classes' own HL2 weapons, measured as the built-in ones
+	simple_hl2_crossbow = { cone = 0, reach = 3000, chase = 2000, avoid = 750 },
+	simple_hl2_357 = { cone = 1, reach = 750, chase = 500, avoid = 350 },
+	simple_hl2_pistol = { cone = 2, reach = 750, chase = 500, avoid = 350 },
+	simple_hl2_ar2 = { cone = 3, reach = 1500, chase = 1000, avoid = 750, automatic = true },
+	simple_hl2_smg1 = { cone = 5, reach = 1500, chase = 1000, avoid = 750, automatic = true },
+	simple_hl2_shotgun = { cone = 10, reach = 325, chase = 250, avoid = 175 },
+	simple_hl2_crowbar = { melee = true, damage = 25, interval = 0.25, automatic = true },
+	simple_hl2_stunstick = { melee = true, damage = 30, interval = 0.25, automatic = true },
 
 
 	-- TODO
@@ -31,6 +41,8 @@ WEAPONS = {
 }
 
 MELEE_REACH, MELEE_SWITCH = 64, 80
+-- The distance it readies itself for with no enemy.
+IDLE_DISTANCE = 500
 
 local FIELDS = {
 	cone = "AICone",
@@ -102,6 +114,33 @@ function Choose(loadout, distance, primaryWeapon, secondaryWeapon)
 	if secondaryCone == nil then error("arms: the secondary SWEP instance is unavailable", 2) end
 	if secondaryCone < primaryCone then return loadout.secondary end
 	return loadout.primary
+end
+
+-- Which of what it carries a soldier holds at this distance from its enemy, nil with nothing
+-- to fight with; a player class gives whatever it gives, tools among them, and what this
+-- cannot measure is no weapon. Face to face, its melee weapon. Else what it holds, while that
+-- still covers the distance; else the gun with the shortest reach that does, the one made for
+-- this distance; else its longest. usable(weapon): whether it can fire.
+function Pick(weapons, distance, held, usable)
+	local melee, covering, longest
+	local coveringReach, longestReach = huge, -huge
+	for _, weapon in ipairs(weapons) do
+		if usable(weapon) then
+			local reach = Value(weapon, "reach")
+			if Value(weapon, "melee") then
+				melee = melee or weapon
+			elseif reach then
+				if reach >= distance and reach < coveringReach then covering, coveringReach = weapon, reach end
+				if reach > longestReach then longest, longestReach = weapon, reach end
+			end
+		end
+	end
+	if melee and distance <= MELEE_SWITCH then return melee end
+	if held and usable(held) and not Value(held, "melee") then
+		local reach = Value(held, "reach")
+		if reach and reach >= distance then return held end
+	end
+	return covering or longest or melee
 end
 
 function Ranges(weapon)

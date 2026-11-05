@@ -385,12 +385,16 @@ function Controller:Look(ply, entry, enemies, now)
 
 	local contact = soldier:Enemy()
 	soldier.mayFire = contact ~= nil and not soldier.disarmed and entry.npc:Query("ShouldAttack", contact) ~= NpcSystem.ANSWER_NO
-	if soldier.loadout then
-		local primary, secondary = ply:GetWeapon(soldier.loadout.primary), ply:GetWeapon(soldier.loadout.secondary)
-		local class = contact and Arms.Choose(soldier.loadout, ply:GetPos():Distance(contact:GetPos()), primary, secondary)
-			or soldier.loadout.primary
-		soldier.wantWeapon = ply:GetWeapon(class)
-	end
+	local held = ply:GetActiveWeapon()
+	soldier.wantWeapon = Arms.Pick(
+		ply:GetWeapons(),
+		contact and ply:GetPos():Distance(contact:GetPos()) or Arms.IDLE_DISTANCE,
+		IsValid(held) and held or nil,
+		function(weapon)
+			local ammo = weapon:GetPrimaryAmmoType()
+			return ammo < 0 or weapon:Clip1() > 0 or ply:GetAmmoCount(ammo) > 0
+		end
+	)
 
 	local area = navmesh.GetNavArea(ply:GetPos(), HL2Path.LIMITS.stepHeight * 2)
 	if area ~= soldier.navArea then
