@@ -120,8 +120,12 @@ What the runs found, each fixed in Lua on the shared terms:
 
 Each lap still stalls about 0.9 s in four places, at STUCK_TIME, until `player_body`'s
 jump clears it. The first order after setup also stood 9.9 s at the spawn, not yet
-explained. A war's bot player steers by its own code (`features/aiwar/sv_bot_soldier.lua`), with
-the door and seam fixes but not `StepOff`, `StandPoints` or `Avoid`.
+explained. A war's bot player steers on the same traces (`features/npc/bot_steering.lua`).
+
+**Hazards.** A war's bots stuck at a corner are recovered, and `wartactics.hazards` disables an
+area after two recoveries from it, saved across maps. With war bots lacking these steering fixes,
+23 areas of ctf_2fort's courtyard closed in an afternoon and every route went through the sewers,
+18,000 units where 10,000 would do, which looked like a slow bot. `ns_hazards_print` shows them.
 
 ## The rest on it
 
@@ -168,6 +172,26 @@ only the `nb_head_aim_*` convars and the `LOOK_AT` debug category.
 `ws_nb_debug LOOK_AT` shows the requests, in the words of the engine's own debug line. Only bot
 players on NextSoldier have a head so far; a threat's source waits for combat, and an NPC's head
 for where it turns (the clients', `nextsoldier.body.gaze`).
+
+## GroupIdentityBehavior: the tree beside the main one
+
+A bot player runs two trees, as L4D2's survivors run `SurvivorBehavior` and `SurvivorLegs`:
+
+```
+TacticalMonitor > ... > FetchFlag        what it is doing
+GroupIdentityBehavior > LegsWait         who it is with, and where that puts its feet
+```
+
+`engine.InsertGroup(soldier, action[, me])` gives it the second: another `Behavior` and shadow on
+the same soldier. `soldier_update` runs both; `NextContainedResponder` (slot 2 of its intention)
+hands events on from the first to the second, so it hears what the main tree hears. Its root is
+native (`group.rs`, `engine.GroupIdentityBehavior{ initial }`), and `nextsoldier.behavior.group_identity`
+gives it to NextSoldiers and war bots for the player's whole life, not each spawn. `engine.GroupStack`
+shows it, and the debug layer lists it after the main tree. Only players have one: a `CLuaNextBot`'s
+intention is the engine's own.
+
+It waits, for now. To come under it, replacing `SquadMonitor`: boids on a chase path for a squad's
+cohesion, filling a room when a squad assaults or ambushes one, and the set-up's stances.
 
 ## What was proved
 
