@@ -116,7 +116,7 @@ return {
 		tests = {
 			"dev_*", "server_*", "harness", "suites", "loader_locals", "local_before_use", "hook_names",
 			"client_load_order", "client_shipping", "content_downloads", "cfg_defaults", "feature_parts",
-			"gamemode_manifest",
+			"gamemode_manifest", "entity_baseclass",
 		},
 		sources = {
 			"tests/harness.lua", "tests/suites.lua", "tests/fixtures/", "addons/sandcastle_dev/", ".devtools/bin/",

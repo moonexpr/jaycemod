@@ -12,17 +12,19 @@ ENT.Spawnable = false
 
 if CLIENT then return end
 
-local Soldier = baseclass.Get("base_nextsoldier")
+-- The soldier base, reached as it is called: baseclass.Get at the top of this file would make it
+-- this class's base (as DEFINE_BASECLASS does), skipping the path follower and the war soldier.
+local function Soldier() return baseclass.Get("base_nextsoldier") end
 
 -- The base's intention, which the path follower's bench sets aside: its looks, then its idle
 -- or fighting hooks, which the war's orders answer.
-ENT.IntentionUpdate = Soldier.IntentionUpdate
+function ENT:IntentionUpdate(interval) return Soldier().IntentionUpdate(self, interval) end
 
 -- No bench of its own: the war's orders are its behaviour.
 function ENT:NSInitialAction() end
 
 -- A bench war the tool started for squad followers ends with the last of them.
 function ENT:OnRemove()
-	Soldier.OnRemove(self)
+	Soldier().OnRemove(self)
 	WS.Feature("aiwar"):EndBenchWhenEmpty(self)
 end
