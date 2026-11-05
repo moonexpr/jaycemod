@@ -138,7 +138,12 @@ returns them as data.
 ## Tactical Behavior Tool
 
 **Tactical Behavior Tool**, in the same category, tests the war's squads under
-the war's own orders, in the running AI war. Left-click enlists an
+the war's own orders. With no war running, its first squad follower starts a
+bench war (`Controller:Start{ bench = true }`): the war's models, scenario,
+field, orders, lanes and rooms, without the bot quota, the reinforcement
+waves, the gameplay request or any other NPC enlisted, so the followers are
+the war's only soldiers; it ends with the last of them. A war started with
+`mp_aiwar_start` takes them in instead. Left-click enlists an
 `npc_squadfollower` (an `npc_pathfollower` the war steers) on the panel's
 team, or selects one of the war's own soldiers (a cyan ring). Selected
 soldiers' feet are held (`NSFeetHeld`): their orders run as ever, and each

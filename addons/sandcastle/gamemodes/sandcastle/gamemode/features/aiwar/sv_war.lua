@@ -213,9 +213,11 @@ end
 
 -- Starts the war at once and requests Gameplay mode, whose countdown
 -- restarts the rounds. The scenario is the rounds mode's (the map's own
--- entities chose it), never the map's name. Returns true, or false and why
--- not.
-function Controller:Start()
+-- entities chose it), never the map's name. opts.bench: a bench war, for the
+-- Tactical Behavior Tool's squad followers alone: no gameplay request, no
+-- bots, waves or other NPCs enlisted, no notices. Returns true, or false and
+-- why not.
+function Controller:Start(opts)
 	if self.war then return false, "the war is already on" end
 	if not WS.SoldiersEnabled() then return false, "NextSoldier is switched off on this server (ns_soldiers_enabled 0)" end
 	if not WS.NavMeshUsable() then return false, NO_NAV_MESH end
@@ -246,6 +248,7 @@ function Controller:Start()
 	self.winner = nil
 	self.waitingFor = nil
 	self.war = AiWar.War.New()
+	self.bench = opts and opts.bench or nil
 	self.war:SetAutoSquads(GetConVar("ns_squads_auto_enabled"):GetBool())
 	self.war:SetSquadsMax(GetConVar("ns_squads_max"):GetInt())
 	self.war:SetSquadsMin(GetConVar("ns_squads_min"):GetInt())
@@ -254,15 +257,25 @@ function Controller:Start()
 	self.gates = nil
 	SetGlobal2Bool(ACTIVE_KEY, true)
 	self:PublishSides()
-	WS.Notify(Notices.WarStarted())
+	if not self.bench then WS.Notify(Notices.WarStarted()) end
 	self:OpenDoorsToSoldiers()
 	self:SetForcefieldsPassable(true)
 	for _, ent in ipairs(ents.GetAll()) do
-		self:Consider(ent)
+		if not self.bench then self:Consider(ent) end
 		self:NoteMonster(ent)
 	end
-	WS.Feature("gamemode"):Request(Gamemode.GAMEPLAY, Gamemode.SOURCE_AI_WAR, nil, Story())
+	if not self.bench then WS.Feature("gamemode"):Request(Gamemode.GAMEPLAY, Gamemode.SOURCE_AI_WAR, nil, Story()) end
 	return true
+end
+
+-- A bench war ends with its last squad follower (leaving: the one going); a war started
+-- by mp_aiwar_start goes on.
+function Controller:EndBenchWhenEmpty(leaving)
+	if not (self.war and self.bench) then return end
+	for _, ent in ipairs(ents.FindByClass("npc_squadfollower")) do
+		if ent ~= leaving then return end
+	end
+	self:End()
 end
 
 -- The war's own soldiers leave; the ones players spawned stay, back under
@@ -291,7 +304,8 @@ function Controller:End()
 	self.winner = nil
 	SetGlobal2Bool(ACTIVE_KEY, false)
 	self:PublishSides()
-	WS.Notify(Notices.WarEnded())
+	if not self.bench then WS.Notify(Notices.WarEnded()) end
+	self.bench = nil
 	return true
 end
 

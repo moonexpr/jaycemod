@@ -530,8 +530,10 @@ hook.Add("Think", "ws_aiwar_bots", function()
 	local now = CurTime()
 	if now >= (Controller.nextQuota or 0) then
 		Controller.nextQuota = now + QUOTA_INTERVAL
-		Controller:MaintainBotQuota()
-		Controller:EnlistStrays()
+		if not Controller.bench then
+			Controller:MaintainBotQuota()
+			Controller:EnlistStrays()
+		end
 	end
 	if not Controller.paused then Controller:LookAround(now) end
 end)

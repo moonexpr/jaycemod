@@ -335,7 +335,7 @@ function Controller:Think(now)
 	self:MissionsThink(now)
 	self:HazardsThink()
 	self:MarksThink(now)
-	if field.phase.reinforce then self:Reinforce(now) end
+	if field.phase.reinforce and not self.bench then self:Reinforce(now) end
 	if field.phase.sightAll then self:SightAll(now) end
 	for ent, entry in pairs(self.soldiers) do
 		if IsValid(ent) then

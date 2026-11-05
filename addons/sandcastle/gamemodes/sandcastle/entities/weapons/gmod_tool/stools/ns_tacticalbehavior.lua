@@ -129,7 +129,7 @@ end
 local function War(ply)
 	local controller = WS.Feature("aiwar")
 	if controller and controller.war then return controller end
-	ply:ChatPrint("[Tactical Behavior] No AI war is running: start one first (mp_aiwar_start).")
+	ply:ChatPrint("[Tactical Behavior] No war is running: left-click to enlist a squad follower, which starts a bench war.")
 	return nil
 end
 
@@ -194,13 +194,14 @@ local function Annotate(tool, ply, trace)
 	if not entry then return false end
 	local kind, what = entry[1], entry[3]
 	if what == "piece" then return PlacePiece(tool, ply, trace, kind) end
-	local controller = War(ply)
-	if not controller then return false end
 	local at = { x = trace.HitPos.x, y = trace.HitPos.y, z = trace.HitPos.z }
 	if what == "mark" then
-		controller:Mark(kind, MarkTeam(tool), at)
+		-- kept by the war's controller with or without a war, for the next one to read
+		WS.Feature("aiwar"):Mark(kind, MarkTeam(tool), at)
 		return true
 	end
+	local controller = War(ply)
+	if not controller then return false end
 	local fireTeams = FireTeams(controller, Soldiers(ply, controller))
 	if #fireTeams == 0 then
 		ply:ChatPrint("[Tactical Behavior] Select soldiers in a squad first: a mission is a squad's.")
@@ -219,8 +220,16 @@ function TOOL:LeftClick(trace)
 	local ply = self:GetOwner()
 	if not IsValid(ply) then return false end
 	if Annotating(self) then return trace.Hit and not trace.HitSky and Annotate(self, ply, trace) end
-	local controller = War(ply)
-	if not controller then return false end
+	local controller = WS.Feature("aiwar")
+	if not controller.war then
+		-- the war's models and orders for squad followers alone: no bots, waves or gameplay request
+		local ok, why = controller:Start({ bench = true })
+		if not ok then
+			ply:ChatPrint("[Tactical Behavior] The war's models could not start: " .. tostring(why))
+			return false
+		end
+		ply:ChatPrint("[Tactical Behavior] A bench war started for squad followers; it ends with the last of them.")
+	end
 
 	local hit = trace.Entity
 	if IsValid(hit) and controller.soldiers[hit] then
@@ -276,7 +285,7 @@ function TOOL:Reload(trace)
 	if not IsValid(ply) then return false end
 	if Annotating(self) then
 		local controller = WS.Feature("aiwar")
-		local removed = controller and controller.war and controller:Unmark(trace.HitPos, UNMARK_REACH) or 0
+		local removed = controller and controller:Unmark(trace.HitPos, UNMARK_REACH) or 0
 		if removed > 0 then return true end
 		return WS.Feature("builder"):Do("RemoveAt", ply, trace)
 	end

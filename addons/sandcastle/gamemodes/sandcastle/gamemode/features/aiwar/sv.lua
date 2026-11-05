@@ -33,6 +33,7 @@ local Controller = {
 	-- classesFailed = nil, -- why they were not found, the last time (Classes)
 	-- intel = nil, -- team -> its wartactics.intel, what it knows of the enemy by room (Intel)
 	-- nextRoomsDebug = nil, -- when the rooms are next sent to the overlay's viewers (SendRoomsDebug)
+	-- bench = nil, -- a bench war (Start{ bench = true }): the Tactical Behavior Tool's squad followers alone, no quota, waves or gameplay request
 	-- marks = nil, -- what the Tactical Behavior Tool tells the war by hand, a features.aiwar.marks (MarksOf)
 	-- nextMarkReport = nil, -- when the ENEMY marks are next reported (MarksThink)
 	-- musters = nil, -- Lanes.MusterKey -> where a team's squads muster from that spawn, read from its save when first asked (Muster)
