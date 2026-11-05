@@ -569,7 +569,7 @@ end
 
 -- The member's team's lanes while its squad musters for a mission
 -- (Objective:Muster), else nil: a squad of a lane job, its lanes with a
--- muster, its mission not yet led nor given up, out of setup, not hurrying
+-- muster, its lanes not off, its mission not yet led nor given up, out of setup, not hurrying
 -- and in no fight, unless it is regrouping (wartactics.mission's Recall),
 -- which it does under fire.
 local function MusterLanes(state, me, field, urgent)
@@ -577,7 +577,7 @@ local function MusterLanes(state, me, field, urgent)
 	local fireTeam = member.fireTeam
 	local lanes = field and field.lanes and field.lanes[member.team]
 	if not (OrdersRun(field) and fireTeam and Lanes.JOBS[member.role] and lanes and lanes.muster) or field.setup or urgent
-		or fireTeam.missionLed or fireTeam.missionsOff or (not fireTeam.regrouping and TeamContact(state, me)) then
+		or fireTeam.missionLed or fireTeam.missionsOff or fireTeam.lanesOff or (not fireTeam.regrouping and TeamContact(state, me)) then
 		return nil
 	end
 	return lanes

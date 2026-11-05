@@ -283,6 +283,9 @@ function WS.WarSoldier(ENT)
 	function ENT:NSSteer(enemy)
 		-- frozen (the match's end): it stands where it is
 		if self.NSFrozen then return true end
+		-- held by the Tactical Behavior Tool: its orders run as ever, and its path to their
+		-- target is planned and shown, but not walked
+		if self.NSFeetHeld then return self:NSShowHeldPath(enemy) end
 		-- riding the cart: the controller carries it; it only turns to fight
 		if self.NSSeated then
 			if IsValid(enemy) then self:FaceTowards(enemy) end
@@ -309,6 +312,26 @@ function WS.WarSoldier(ENT)
 			self:FaceTowards(self.NSLook)
 		end
 		return true
+	end
+
+	-- Its feet held (NSFeetHeld): its path to its target planned and drawn where it stands, its
+	-- target shown to clients (NSHeldTarget), and an enemy faced.
+	function ENT:NSShowHeldPath(enemy)
+		local target = self.NSTarget
+		self:SetNW2Vector("NSHeldTarget", target or vector_origin)
+		if target and self:GetPos():DistToSqr(target) > GOAL_TOLERANCE * GOAL_TOLERANCE then
+			local path = self:PlanPath(target, PATH_TOLERANCE)
+			if path:IsValid() then path:Draw() end
+		end
+		if IsValid(enemy) then self:FaceTowards(enemy) end
+		self.NSMoveResult = target and "moving" or nil
+		return target ~= nil
+	end
+
+	function ENT:NSHoldFeet(held)
+		self.NSFeetHeld = held or nil
+		self:SetNW2Bool("NSFeetHeld", held)
+		if not held then self:NSRepath() end
 	end
 
 	-- No enemy: the target, else stand watching NSLook.

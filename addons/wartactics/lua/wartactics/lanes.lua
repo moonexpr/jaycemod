@@ -274,7 +274,8 @@ end
 -- while its team's lanes are the same plan (lanes.key): of the kinds its
 -- job takes, the least taken, the first planned on a tie. A squad on a
 -- mission (wartactics.mission) walks its mission's way, which counts as
--- taken while it is one of the plan's. fireTeams: features.aiwar.model's;
+-- taken while it is one of the plan's. A squad with its lanes off (lanesOff,
+-- by hand) takes none and goes straight. fireTeams: features.aiwar.model's;
 -- lanesByTeam: team -> lanes.
 function Assign(fireTeams, lanesByTeam)
 	local taken = {}
@@ -289,7 +290,7 @@ function Assign(fireTeams, lanesByTeam)
 					taken[lanes][i] = (taken[lanes][i] or 0) + 1
 				end
 			end
-		elseif JOBS[fireTeam.role] and lanes and #lanes > 0 then
+		elseif JOBS[fireTeam.role] and lanes and #lanes > 0 and not fireTeam.lanesOff then
 			if fireTeam.laneKey == lanes.key and lanes[fireTeam.laneIndex] then
 				taken[lanes] = taken[lanes] or {}
 				taken[lanes][fireTeam.laneIndex] = (taken[lanes][fireTeam.laneIndex] or 0) + 1

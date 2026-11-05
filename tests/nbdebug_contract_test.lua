@@ -167,4 +167,15 @@ T.test("what a head logged reaches the overlay beside the behaviour's lines", fu
 	T.eq(controller:find("npc:WatchLook(", 1, true) ~= nil, true, "logged only while wanted")
 end)
 
+T.test("the tactical behavior stool holds the war's own soldiers and sets their conditions", function()
+	local stool = ReadFile("addons/sandcastle/gamemodes/sandcastle/entities/weapons/gmod_tool/stools/ns_tacticalbehavior.lua")
+	T.eq(stool:find("controller:Draft(team,", 1, true) ~= nil, true, "drafted as the war's waves draft")
+	T.eq(stool:find("ent:NSHoldFeet(", 1, true) ~= nil, true, "their feet held")
+	T.eq(stool:find("wartactics.fireteam.Report(", 1, true) ~= nil, true, "a contact reported as a member's sighting is")
+	T.eq(stool:find("fireTeam.lanesOff", 1, true) ~= nil, true, "lanes toggled on their squads")
+	T.eq(warSoldier:find("if self.NSFeetHeld then return self:NSShowHeldPath(enemy) end", 1, true) ~= nil, true,
+		"a held soldier plans and shows its path instead of walking it")
+	T.eq(warSoldier:find("self:PlanPath(target, PATH_TOLERANCE)", 1, true) ~= nil, true, "the path it would walk")
+end)
+
 T.finish()

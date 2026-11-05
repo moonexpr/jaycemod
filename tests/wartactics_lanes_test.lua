@@ -159,6 +159,18 @@ T.test("escorts take the direct lane and the flanks, least taken first, and stay
 	T.eq(b.lane, replanned[1], "a new plan: a new lane")
 end)
 
+T.test("a squad with its lanes off takes none, and does not count against the others", function()
+	local lanes = { key = "k", Kind("direct", 1000), Kind("flank", 1200) }
+	local off = { team = 3, role = "escort", lanesOff = true, lane = lanes[2], laneKey = "k", laneIndex = 2 }
+	local other = { team = 3, role = "escort" }
+	Lanes.Assign({ off, other }, { [3] = lanes })
+	T.eq(off.lane, nil, "no lane, the one it had dropped")
+	T.eq(other.laneIndex, 1, "the direct lane, free of it")
+	off.lanesOff = nil
+	Lanes.Assign({ off, other }, { [3] = lanes })
+	T.eq(off.laneIndex, 2, "on again: the least taken")
+end)
+
 T.test("raiders take the tours, and assault squads take lanes as escorts do", function()
 	local lanes = { key = "k", Kind("direct", 1000), Kind("flank", 1200), Kind("tour", 2000), Kind("tour", 2100) }
 	local r1, r2, r3 = { team = 3, role = "raid" }, { team = 3, role = "raid" }, { team = 3, role = "raid" }
