@@ -1,14 +1,21 @@
 AddCSLuaFile()
 
--- The war's own soldiers, in the running AI war, under the war's own orders, with their feet
--- held: each one's path to the target its orders give it is planned and drawn, not walked. The
+-- Squad followers (npc_squadfollower) enlisted in the running AI war, or its own soldiers, under
+-- the war's own orders, with their feet held: each one's path to the target its orders give it is planned and drawn, not walked. The
 -- tool sets the conditions: who is in the squad, its job, whether it takes lanes and missions,
 -- a contact, a recall. The AI war's overlay (ws_aiwar_debug) tells what each is doing.
+--
+-- Annotating, it marks the map for the war instead: its objectives, as the Gameplay tools place
+-- them (features.builder), and by hand what a commander would tell its squads (features.aiwar's
+-- marks: posts, rallies, enemies seen, areas to avoid), and the selected squads' next mission.
 TOOL.Category = "NextSoldier"
 TOOL.Name = "#tool.ns_tacticalbehavior.name"
 TOOL.Command = nil
 TOOL.ConfigName = ""
 TOOL.ClientConVar = {
+	mode = "command",
+	mark = "post",
+	team = "3",
 	hold = "1",
 	lanes = "1",
 	missions = "1",
@@ -26,12 +33,36 @@ local JOBS = {
 	"courier", "ctf_defend", "operative",
 }
 
+-- What annotating places: a mark of the war's by hand, a mission for the selected squads, or a
+-- Gameplay tool's objective (the builder's kind).
+local MARKS = {
+	{ "post", "Post: its team's defenders hold it", "mark" },
+	{ "rally", "Rally: its team's recalled squads regroup here", "mark" },
+	{ "enemy", "Enemy: its team's squads have seen one here", "mark" },
+	{ "avoid", "Avoid: the areas here are closed to every team", "mark" },
+	{ "assault", "Mission: the selection's squads assault the room here", "mission" },
+	{ "topple", "Mission: the selection's squads topple the room here", "mission" },
+	{ "ambush", "Mission: the selection's squads ambush in the room here", "mission" },
+	{ "advance", "Mission: the selection's squads advance as the war has them", "mission" },
+	{ "point", "Objective: a control point", "piece" },
+	{ "spawn", "Objective: its team's spawner", "piece" },
+	{ "room", "Objective: its team's spawn room (two corners)", "piece" },
+	{ "flag", "Objective: its team's flag", "piece" },
+	{ "zone", "Objective: its team's flag capture zone", "piece" },
+	{ "node", "Objective: a cart track's next node", "piece" },
+	{ "sign", "Objective: a sign to the objective", "piece" },
+}
+local MARK_OF = {}
+for _, entry in ipairs(MARKS) do MARK_OF[entry[1]] = entry end
+-- Reload while annotating takes the marks this near the aim.
+local UNMARK_REACH = 96
+
 if CLIENT then
 	language.Add("tool.ns_tacticalbehavior.name", "Tactical Behavior Tool")
 	language.Add("tool.ns_tacticalbehavior.desc", "Hold the war's soldiers in place and see where its orders send them")
-	language.Add("tool.ns_tacticalbehavior.left", "Draft a soldier of your team here, or add/remove a soldier of the war from your selection")
+	language.Add("tool.ns_tacticalbehavior.left", "Enlist a squad follower of the panel's team here, or add/remove a soldier of the war from your selection")
 	language.Add("tool.ns_tacticalbehavior.right", "Report an enemy contact here to the selected soldiers' squads")
-	language.Add("tool.ns_tacticalbehavior.reload", "Release your selection: drafted soldiers are dismissed, others walk again")
+	language.Add("tool.ns_tacticalbehavior.reload", "Release your selection: squad followers are removed, the war's soldiers walk again (annotating: remove the marks or piece here)")
 
 	local TARGET_COLOR, SELECTED_COLOR = Color(255, 220, 60), Color(90, 220, 255)
 	local CROSS_SIZE, SELECTED_RADIUS, RING_STEPS = 16, 22, 32
@@ -60,12 +91,35 @@ if CLIENT then
 	end)
 end
 
+if CLIENT then
+	local MARK_COLORS = { [2] = Color(255, 110, 100), [3] = Color(110, 170, 255) }
+	local MARK_NAMES = { post = "POST", rally = "RALLY", enemy = "ENEMY SEEN", avoid = "AVOID" }
+
+	-- The war's marks by hand, named over their spots for whoever has the tool out.
+	hook.Add("HUDPaint", "ns_tacticalbehavior", function()
+		local weapon = LocalPlayer():GetActiveWeapon()
+		if not (IsValid(weapon) and weapon:GetClass() == "gmod_tool" and weapon:GetMode() == "ns_tacticalbehavior") then return end
+		local text = GetGlobal2String("ns_marks", "")
+		if text == "" then return end
+		for kind, team, x, y, z in text:gmatch("(%a+) (%-?%d+) (%-?%d+) (%-?%d+) (%-?%d+)") do
+			local screen = Vector(tonumber(x), tonumber(y), tonumber(z) + 24):ToScreen()
+			if screen.visible then
+				draw.SimpleTextOutlined(MARK_NAMES[kind] or kind, "DermaDefaultBold", screen.x, screen.y,
+					MARK_COLORS[tonumber(team)] or color_white, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER, 1, color_black)
+			end
+		end
+	end)
+end
+
+local SQUAD_FOLLOWER = "npc_squadfollower"
+local LIFT = Vector(0, 0, 1)
+
 local selections = setmetatable({}, { __mode = "k" })
 
 local function Selection(ply)
 	local selected = selections[ply]
 	if not selected then
-		selected = { soldiers = {}, drafted = {}, applied = {} }
+		selected = { soldiers = {}, spawned = {}, applied = {} }
 		selections[ply] = selected
 	end
 	return selected
@@ -116,10 +170,55 @@ local function Tell(ply, lines)
 	for _, line in ipairs(lines or {}) do ply:ChatPrint("[Tactical Behavior] " .. line) end
 end
 
+local function Annotating(tool) return tool:GetClientInfo("mode") == "annotate" end
+
+local function MarkTeam(tool)
+	return tool:GetClientNumber("team") == WS.TEAM_RED and WS.TEAM_RED or WS.TEAM_BLUE
+end
+
+-- A Gameplay tool's objective, placed as that tool places it.
+local function PlacePiece(tool, ply, trace, kind)
+	local Builder = WS.require("features.builder.model")
+	local values = { TeamNum = MarkTeam(tool) }
+	local kinds = {
+		point = { Builder.POINT }, spawn = { Builder.SPAWN, values }, room = { Builder.ROOM, values },
+		flag = { Builder.FLAG, values }, zone = { Builder.ZONE, values }, node = { Builder.NODE }, sign = { Builder.SIGN },
+	}
+	if kind == "spawn" then values.BodyModel = Builder.SpawnModel(Builder.SPAWN_MODELS[1]) end
+	local piece = kinds[kind]
+	return WS.Feature("builder"):Do("Place", ply, trace, piece[1], piece[2])
+end
+
+local function Annotate(tool, ply, trace)
+	local entry = MARK_OF[tool:GetClientInfo("mark")]
+	if not entry then return false end
+	local kind, what = entry[1], entry[3]
+	if what == "piece" then return PlacePiece(tool, ply, trace, kind) end
+	local controller = War(ply)
+	if not controller then return false end
+	local at = { x = trace.HitPos.x, y = trace.HitPos.y, z = trace.HitPos.z }
+	if what == "mark" then
+		controller:Mark(kind, MarkTeam(tool), at)
+		return true
+	end
+	local fireTeams = FireTeams(controller, Soldiers(ply, controller))
+	if #fireTeams == 0 then
+		ply:ChatPrint("[Tactical Behavior] Select soldiers in a squad first: a mission is a squad's.")
+		return false
+	end
+	for _, fireTeam in ipairs(fireTeams) do
+		local ok, why = controller:GiveMission(fireTeam, kind, at)
+		ply:ChatPrint("[Tactical Behavior] " .. (ok and ("a squad's next mission: " .. kind) or why))
+		if not ok then return false end
+	end
+	return true
+end
+
 function TOOL:LeftClick(trace)
 	if CLIENT then return true end
 	local ply = self:GetOwner()
 	if not IsValid(ply) then return false end
+	if Annotating(self) then return trace.Hit and not trace.HitSky and Annotate(self, ply, trace) end
 	local controller = War(ply)
 	if not controller then return false end
 
@@ -128,21 +227,23 @@ function TOOL:LeftClick(trace)
 		local selected = Selection(ply)
 		local on = not hit:GetNW2Bool("NSTacticalSelected", false)
 		Select(ply, hit, on)
-		if not on and selected.drafted[hit] then selected.drafted[hit] = nil end
+		if not on and selected.spawned[hit] then selected.spawned[hit] = nil end
 		return true
 	end
 	if not trace.Hit or trace.HitSky then return false end
-	local team = WS.TeamOf(ply)
-	if team ~= WS.TEAM_RED and team ~= WS.TEAM_BLUE then
-		ply:ChatPrint("[Tactical Behavior] Join RED or BLU first: soldiers are drafted to your team.")
-		return false
-	end
-	local ent = controller:Draft(team, trace.HitPos, Angle(0, ply:EyeAngles().y, 0))
+	local ent = ents.Create(SQUAD_FOLLOWER)
 	if not IsValid(ent) then
-		ply:ChatPrint("[Tactical Behavior] The war could not draft a soldier here.")
+		ply:ChatPrint("[Tactical Behavior] Could not create " .. SQUAD_FOLLOWER .. ".")
 		return false
 	end
-	Selection(ply).drafted[ent] = true
+	ent:SetPos(trace.HitPos + LIFT)
+	ent:SetAngles(Angle(0, ply:EyeAngles().y, 0))
+	ent:Spawn()
+	ent:Activate()
+	-- enlisted as the war enlists any NextBot that joins a side
+	controller:Enlist(ent, MarkTeam(self), false)
+	ply:AddCleanup("ns_tacticalbehavior", ent)
+	Selection(ply).spawned[ent] = true
 	Select(ply, ent, true)
 	return true
 end
@@ -151,6 +252,10 @@ function TOOL:RightClick(trace)
 	if CLIENT then return true end
 	local ply = self:GetOwner()
 	if not IsValid(ply) or not trace.Hit or trace.HitSky then return false end
+	if Annotating(self) then
+		ply:ChatPrint("[Tactical Behavior] Annotating: left-click places, reload removes; a piece's properties are its Edit Properties (hold C, right-click it).")
+		return false
+	end
 	local controller = War(ply)
 	if not controller then return false end
 	local fireTeams = FireTeams(controller, Soldiers(ply, controller))
@@ -165,16 +270,22 @@ function TOOL:RightClick(trace)
 	return true
 end
 
-function TOOL:Reload()
+function TOOL:Reload(trace)
 	if CLIENT then return true end
 	local ply = self:GetOwner()
 	if not IsValid(ply) then return false end
+	if Annotating(self) then
+		local controller = WS.Feature("aiwar")
+		local removed = controller and controller.war and controller:Unmark(trace.HitPos, UNMARK_REACH) or 0
+		if removed > 0 then return true end
+		return WS.Feature("builder"):Do("RemoveAt", ply, trace)
+	end
 	local controller = WS.Feature("aiwar")
 	local selected = Selection(ply)
 	for _, ent in ipairs(selected.soldiers) do
 		if IsValid(ent) then
 			Select(ply, ent, false)
-			if selected.drafted[ent] then
+			if selected.spawned[ent] then
 				if controller and controller.soldiers[ent] then controller:Discharge(ent) end
 				ent:Remove()
 			end
@@ -250,7 +361,16 @@ if SERVER then
 end
 
 function TOOL.BuildCPanel(panel)
-	panel:Help("The war's own soldiers under its own orders, held in place: a yellow cross is where its orders send each one, and its path there is drawn. Left-click drafts a soldier of your team or selects one of the war's (a cyan ring); right-click reports an enemy contact at the aim to their squads; reload releases them.")
+	local mode = panel:ComboBox("Mode", "ns_tacticalbehavior_mode")
+	mode:AddChoice("Command: the soldiers and their squads", "command")
+	mode:AddChoice("Annotate: mark the map for the war", "annotate")
+	panel:Help("Annotating: left-click places, reload removes what is near the aim. Squad followers, marks and objectives are of the team below; a mission is the selected squads'.")
+	local mark = panel:ComboBox("Annotation", "ns_tacticalbehavior_mark")
+	for _, entry in ipairs(MARKS) do mark:AddChoice(entry[2], entry[1]) end
+	local team = panel:ComboBox("Team", "ns_tacticalbehavior_team")
+	team:AddChoice("RED", 2)
+	team:AddChoice("BLU", 3)
+	panel:Help("The war's own soldiers under its own orders, held in place: a yellow cross is where its orders send each one, and its path there is drawn. Left-click enlists a squad follower of the team below or selects one of the war's soldiers (a cyan ring); right-click reports an enemy contact at the aim to their squads; reload releases them.")
 	panel:CheckBox("Hold their feet (uncheck: they walk)", "ns_tacticalbehavior_hold")
 	panel:CheckBox("Lanes (uncheck: their squads go straight)", "ns_tacticalbehavior_lanes")
 	panel:CheckBox("Missions (uncheck: their squads ask for none)", "ns_tacticalbehavior_missions")

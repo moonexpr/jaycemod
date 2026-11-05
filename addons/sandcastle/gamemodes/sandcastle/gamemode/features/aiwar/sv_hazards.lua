@@ -81,8 +81,11 @@ function Controller:DisabledAreas()
 	return set
 end
 
+-- The disabled hazards' areas, and those the AVOID marks close (sv_marks.lua).
 function Controller:ApplyHazards()
-	WS.Feature("npc"):SetDisabledAreas(self:DisabledAreas())
+	local set = self:DisabledAreas()
+	for id in pairs(self:MarkedAvoid()) do set[id] = true end
+	WS.Feature("npc"):SetDisabledAreas(set)
 end
 
 -- Every think: the area each soldier stands on, kept while it is on the ground.

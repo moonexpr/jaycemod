@@ -106,6 +106,7 @@ local Speech = nextsoldier.body.responserules
 local Gestures = nextsoldier.body.gestures
 local Explore = wartactics.explore
 local Mission = wartactics.mission
+local Select = list.select
 module(...)
 
 KIND = "aiwar"
@@ -1543,10 +1544,14 @@ end
 -- Recalled to regroup (wartactics.mission's Recall), the leader signals the
 -- group and calls it, once, and musters at a hiding spot within
 -- REGROUP_RADIUS out of the threat's sight (its squad's contact, else its
--- way's end), else where it stands.
+-- way's end), else where it stands. With rallies marked for its team (the
+-- field's, by hand), at the nearest of those.
 local REGROUP_RADIUS = 600
 
 function Objective:RegroupSpot(me, fireTeam)
+	local field = self.state.war:Field()
+	local rallies = field and field.rallies and field.rallies[fireTeam.team]
+	if rallies then return (Select.Nearest(rallies, me:Position())) end
 	local contact = Tactics.Contact(fireTeam, me:Now())
 	local way = fireTeam.mission and fireTeam.mission.way.points
 	local threat = contact and contact.pos or (way and way[#way])

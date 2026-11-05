@@ -226,7 +226,7 @@ end
 
 -- Spawning ------------------------------------------------------------------------
 
--- A recruit: a new soldier with its kind's profile, returned.
+-- A recruit: a new soldier with its kind's profile.
 function Controller:Draft(team, pos, ang)
 	local draft = self.war:Draft(team)
 	local ent = ents.Create(AiWar.SOLDIER_CLASS)
@@ -239,7 +239,6 @@ function Controller:Draft(team, pos, ang)
 	ent:Spawn()
 	ent:Activate()
 	self:Enlist(ent, team, true, draft.role)
-	return ent
 end
 
 -- TF2's respawn wave for the team (0 during setup, when TF2 respawns at

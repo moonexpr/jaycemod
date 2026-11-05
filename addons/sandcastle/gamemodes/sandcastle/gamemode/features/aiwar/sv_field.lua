@@ -209,6 +209,12 @@ function Controller:Field(phase, now)
 		if enemyCart then posts[team] = self:DefendersPosts(team, enemyCart) end
 		if ownCart then forwardPosts[team] = self:ForwardPosts(team, ownCart) end
 	end
+	-- posts and rallies marked by hand (the Tactical Behavior Tool) stand, as payload's written posts do
+	local marks, rallies = self:MarksOf(), {}
+	for _, team in ipairs({ RED, BLUE }) do
+		posts[team] = marks:Posts(team) or posts[team]
+		rallies[team] = marks:Rallies(team)
+	end
 	local rounds = LoadedFeature("rounds")
 	local bases = self:Bases()
 	local flags, zones, captures, caplimit = self:FlagsSnapshot()
@@ -220,6 +226,7 @@ function Controller:Field(phase, now)
 		carts = carts,
 		gates = self.gates or {},
 		posts = posts,
+		rallies = rallies,
 		forwardPosts = forwardPosts,
 		patients = self:Patients(),
 		players = self:Players(),
@@ -327,6 +334,7 @@ function Controller:Think(now)
 	self.war:SetField(field)
 	self:MissionsThink(now)
 	self:HazardsThink()
+	self:MarksThink(now)
 	if field.phase.reinforce then self:Reinforce(now) end
 	if field.phase.sightAll then self:SightAll(now) end
 	for ent, entry in pairs(self.soldiers) do

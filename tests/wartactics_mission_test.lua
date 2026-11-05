@@ -158,6 +158,27 @@ local function Ask(fireTeam, fireTeams, lanes, extra)
 	return Mission.Issue(spec)
 end
 
+local ROOM = { id = 7, center = { x = 800, y = 0, z = 0 },
+	doors = { { pos = { x = 700, y = 0, z = 0 } }, { pos = { x = 900, y = 0, z = 0 } } } }
+
+T.test("a mission's target in a room is its door toward where the squad comes from", function()
+	local target = Mission.Target(ROOM, { x = 0, y = 0, z = 0 })
+	T.eq(target.room, 7, "the room")
+	T.eq(target.pos, ROOM.center, "its centre")
+	T.eq(target.door, ROOM.doors[1], "the near door")
+	T.eq(Mission.Target(ROOM, { x = 2000, y = 0, z = 0 }).door, ROOM.doors[2], "from the far side, the far door")
+end)
+
+T.test("a mission given by hand is issued as given, on the squad's way", function()
+	local lanes = TeamLanes()
+	local squad = { team = 2, role = "escort" }
+	local target = Mission.Target(ROOM, { x = 0, y = 0, z = 0 })
+	local m = Ask(squad, { squad }, lanes, { given = { kind = Mission.ASSAULT, target = target } })
+	T.eq(m.kind, Mission.ASSAULT, "its kind")
+	T.eq(m.target, target, "its target")
+	T.eq(m.way, lanes[1], "the alpha's way still")
+end)
+
 T.test("with no lanes yet the request is declined, NO_LANES", function()
 	local squad = { team = 2, role = "escort" }
 	local ok, err = pcall(Ask, squad, { squad }, { key = "none" })

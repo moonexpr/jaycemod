@@ -10,6 +10,8 @@
 --   ({ room, pos, door }); a kind it does not know, a way without points, a
 --   size under 1, a negative wait or a special mission with no target is
 --   our bug
+-- Target(room, from) -> a special mission's target: { room (its id), pos (its
+--   centre), door (its door nearest from) }.
 -- Choose{ rooms, size, defending, taken, enemyFrom, ourFrom[, kinds] } ->
 --   the special mission worth most, and its target, or nil: rooms are the
 --   candidates with what the team knows of each ({ id, center, doors,
@@ -23,10 +25,11 @@
 --   a room taken (room id -> true), only the kinds given (kind -> true; all
 --   when nil), the lower room on a tie
 -- Issue{ fireTeam, fireTeams, lanes, now, nextWave, travel, missing, size,
---   regrouped[, special] } -> the mission a squad leader asked for; a squad
---   other than the alpha is given Choose's special mission when one is worth
---   it (special: Choose's spec; rooms other squads of the team hold missions
---   in are taken), else it advances. The squad is its
+--   regrouped[, special][, given] } -> the mission a squad leader asked for; a
+--   squad other than the alpha is given Choose's special mission when one is
+--   worth it (special: Choose's spec; rooms other squads of the team hold
+--   missions in are taken), else it advances. given ({ kind, target }, by
+--   hand, its target a Target) is issued whatever the squad is. The squad is its
 --   team's alpha, on the direct lane (else the first), when its job comes at
 --   the objective directly (its lane kinds hold DIRECT: never raiders) and
 --   no other squad
@@ -161,6 +164,12 @@ local function DoorToward(room, p)
 	return best
 end
 
+-- A mission's target in a room ({ id, center, doors }): the room, its centre, and its door
+-- nearest from, where the squad comes from (the enemy's way in, for an ambush).
+function Target(room, from)
+	return { room = room.id, pos = room.center, door = DoorToward(room, from) }
+end
+
 -- Each kind's worth in a room, 0 when it is none of it.
 local function Worth(room, spec)
 	local odds = spec.size * ASSAULT_ODDS
@@ -185,7 +194,7 @@ function Choose(spec)
 	end
 	if not bestKind then return nil end
 	local from = bestKind == AMBUSH and spec.enemyFrom or spec.ourFrom
-	return bestKind, { room = bestRoom.id, pos = bestRoom.center, door = DoorToward(bestRoom, from) }
+	return bestKind, Target(bestRoom, from)
 end
 
 -- The rooms other squads of the team hold missions in, beside those given.
@@ -205,7 +214,10 @@ function Issue(spec)
 	if not (lanes and lanes[1]) then Transaction.Refuse(NO_LANES, "its team has no lanes planned yet") end
 	local alpha = MayLead(fireTeam.role) and not AlphaOut(spec.fireTeams, fireTeam.team, fireTeam)
 	local kind, target = ADVANCE, nil
-	if not alpha and spec.special then
+	if spec.given then
+		-- by hand (the Tactical Behavior Tool): its kind and target, on the way it would take
+		kind, target = spec.given.kind, spec.given.target
+	elseif not alpha and spec.special then
 		local special = {}
 		for k, v in pairs(spec.special) do special[k] = v end
 		special.taken = Taken(spec.fireTeams, fireTeam, spec.special.taken)

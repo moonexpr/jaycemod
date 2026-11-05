@@ -38,7 +38,7 @@ return {
 		tests = { "nextsoldier_*", "addons_nextsoldier", "responserules*", "combine_voice_pack" },
 		sources = {
 			"addons/nextsoldier/", G .. "sh_nextsoldier_host.lua", "tests/fake_soldier.lua",
-			E .. "entities/base_nextsoldier", E .. "entities/npc_nextsoldier", E .. "entities/npc_path", E .. "entities/npc_squadmember", E .. "entities/npc_ctfbot",
+			E .. "entities/base_nextsoldier", E .. "entities/npc_nextsoldier", E .. "entities/npc_path", E .. "entities/npc_squadmember", E .. "entities/npc_squadfollower", E .. "entities/npc_ctfbot",
 			E .. "entities/ws_bot_navigator",
 		},
 	},

@@ -923,6 +923,13 @@ T.test("a recalled squad's leader signals the group, calls it and takes it to a 
 	Near(s.meA.moving, HIDE, "to the hiding spot")
 end)
 
+T.test("a recalled squad whose team has rallies marked regroups at the nearest, not a hiding spot", function()
+	local s = Led()
+	s.war.field.rallies = { [BLUE] = { P(3000, 3000), P(600, -200) } }
+	s.Tick(2)
+	Near(s.meA.moving, P(600, -200), "the nearer rally")
+end)
+
 T.test("hidden, it asks again", function()
 	local s = Led()
 	s.Tick(2)

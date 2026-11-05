@@ -115,6 +115,7 @@ function Controller:MissionSpec(fireTeam, now)
 		size = size,
 		regrouped = fireTeam.regrouping ~= nil,
 		special = self:SpecialSpec(fireTeam, size, now),
+		given = self:GivenMission(fireTeam, field and field.lanes and field.lanes[fireTeam.team]),
 	}
 end
 

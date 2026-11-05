@@ -1,0 +1,60 @@
+-- features.aiwar.marks: what the Tactical Behavior Tool tells the war by hand, by team.
+local T = dofile("tests/harness.lua")
+local Marks = T.require("features.aiwar.marks")
+
+local RED, BLUE = 2, 3
+local function P(x, y) return { x = x, y = y, z = 0 } end
+
+T.test("a mark is of a known kind and a team, at a point", function()
+	local marks = Marks.New()
+	marks:Add(Marks.POST, BLUE, P(10, 0))
+	T.eq(#marks:Of(BLUE, Marks.POST), 1, "listed")
+	T.eq(#marks:Of(RED, Marks.POST), 0, "only its team's")
+	T.eq(pcall(marks.Add, marks, "nonsense", BLUE, P(0, 0)), false, "an unknown kind is refused")
+end)
+
+T.test("posts by hand are the team's posts, in the order they were marked", function()
+	local marks = Marks.New()
+	T.eq(marks:Posts(BLUE), nil, "none: the war finds its own")
+	marks:Add(Marks.POST, BLUE, P(10, 0))
+	marks:Add(Marks.POST, BLUE, P(20, 0))
+	local posts = marks:Posts(BLUE)
+	T.eq(posts[1].x .. "," .. posts[2].x, "10,20")
+end)
+
+T.test("rallies are the team's, each a point", function()
+	local marks = Marks.New()
+	marks:Add(Marks.RALLY, RED, P(5, 5))
+	T.eq(marks:Rallies(RED)[1].x, 5)
+	T.eq(marks:Rallies(BLUE), nil, "none for the other team")
+end)
+
+T.test("removing near a point takes the marks within reach, of any kind", function()
+	local marks = Marks.New()
+	marks:Add(Marks.POST, BLUE, P(0, 0))
+	marks:Add(Marks.AVOID, RED, P(30, 0))
+	marks:Add(Marks.ENEMY, BLUE, P(500, 0))
+	T.eq(marks:RemoveNear(P(10, 0), 64), 2, "two in reach")
+	T.eq(#marks:All(), 1, "one left")
+end)
+
+T.test("every change counts, so what reads them knows to read again", function()
+	local marks = Marks.New()
+	local before = marks:Version()
+	marks:Add(Marks.ENEMY, BLUE, P(0, 0))
+	T.eq(marks:Version() > before, true, "added")
+	local after = marks:Version()
+	marks:RemoveNear(P(900, 900), 1)
+	T.eq(marks:Version(), after, "nothing removed, nothing changed")
+end)
+
+T.test("they are written for clients as text and read back the same", function()
+	local marks = Marks.New()
+	marks:Add(Marks.AVOID, RED, P(1, 2))
+	marks:Add(Marks.RALLY, BLUE, P(-3, 4))
+	local back = Marks.Decode(marks:Encode())
+	T.eq(#back, 2)
+	T.eq(back[2].kind .. back[2].team .. back[2].pos.x .. back[2].pos.y, Marks.RALLY .. BLUE .. "-34")
+end)
+
+T.finish()
