@@ -21,7 +21,6 @@ local WIRING = {
 	"cvars mp_maxrounds ws_rounds_limits",
 	"cvars mp_timelimit ws_rounds_limits",
 	"cvars mp_winlimit ws_rounds_limits",
-	"hook AcceptInput ws_rounds_spawn_doors",
 	"hook EntityKeyValue ws_rounds_new_map",
 	"hook InitPostEntity ws_rounds",
 	"hook PostCleanupMap ws_rounds_proxy",
@@ -96,24 +95,28 @@ T.test("the root returns a table", function()
 	T.eq(type(controller), "table", "the controller")
 end)
 
-T.test("a map loaded in Sandbox holds spawn doors open", function()
-	local started, openedAt
+T.test("a map loaded in Sandbox has the world hold its spawn doors open", function()
+	local started, openedAt, openedKinds
+	local features = {
+		gamemode = { StartAtLoad = function() started = true end },
+		world = { OpenDoors = function(_, now, kinds) openedAt, openedKinds = now, kinds end },
+	}
 	local map = Load({
 		ents = { FindByClass = function() return {} end },
 	}, {
-		Feature = function(name)
-			T.eq(name, "gamemode", "loaded feature")
-			return { StartAtLoad = function() started = true end }
-		end,
+		Feature = function(name) return assert(features[name], "an unexpected feature " .. tostring(name)) end,
 	})
 	map.rounds = true
 	map.round = { Halted = function() return true end }
 	map.EnsureProxy = function() end
 	map.ActivateTimers = function() end
-	map.OpenSpawnDoors = function(_, now) openedAt = now end
 	map:SetUpMap()
 	T.eq(started, true, "Sandbox mode initialized")
-	T.eq(openedAt, 0, "spawn doors opened at map setup")
+	T.eq(openedAt, 0, "the world opened the doors at map setup")
+	local Kind = T.require("features.world.doors").KIND
+	local asked = {}
+	for _, kind in ipairs(openedKinds) do asked[kind] = true end
+	T.eq(asked[Kind.SPAWN] and asked[Kind.ROUND] and not asked[Kind.SETUP], true, "the spawn and round doors; setup gates are the timers'")
 end)
 
 T.test("no wiring key is registered twice", function()

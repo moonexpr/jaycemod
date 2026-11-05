@@ -30,6 +30,10 @@ local Limits = WS.require("games.gameplay.rounds.limits")
 
 local S = WS.STATE
 local UNASSIGNED = WS.TEAM_UNASSIGNED
+local DOOR = WS.require("features.world.doors").KIND
+-- The doors the world holds open while the game is stopped; its setup gates
+-- are the timers' (FinishSetup).
+local HALTED_DOORS = { DOOR.SPAWN, DOOR.ROUND }
 local RED, BLUE = WS.TEAM_RED, WS.TEAM_BLUE
 local GAME_TEAMS = { RED, BLUE }
 
@@ -147,11 +151,6 @@ local Controller = {
 	roundTime = 0, -- an admin's round time on a map without an objective (0: untimed)
 	roundTimer = NULL, -- its timer this round
 	multipleTrains = false,
-	spawnDoors = nil,
-	spawnTriggers = nil, -- the open doors' triggers: trigger -> true
-	spawnHold = nil, -- which of them come back on (features.rounds.spawn_doors)
-	switchingTriggers = false, -- our own Enable/Disable, not the map's
-	nextDoorsOpen = 0,
 	suppressNewMap = false,
 	nextRoundThink = 0,
 	nextTimerThink = 0,
@@ -254,7 +253,7 @@ local Players = Part("sv_players", GAME_TEAMS)
 local HavePlayers, TeamLife, Scores = Players.HavePlayers, Players.TeamLife, Players.Scores
 local RoundWon, PublishOvertime, TIMELIMIT_TIMER_NAME = Part("sv_timers", Controller, Active, GAME_TEAMS, fraglimit, creditlimit)
 Part("sv_effects", Controller, Players, PublishLimits, PublishOvertime, TIMELIMIT_TIMER_NAME, RULES_CLASSES)
-Part("sv_gamerules", Controller, Players, Active)
+Part("sv_gamerules", Controller, Players, Active, HALTED_DOORS)
 Part("sv_snapshot", Controller, PublishState)
 local RestartAsked = Part("sv_commands", Controller, Active, ConVarOrCreate)
 
@@ -449,7 +448,6 @@ function Controller:ThinkRound(now)
 		return
 	end
 	local state = self.round:State()
-	if state == S.GAME_OVER or state == S.STALEMATE or (state == S.TEAM_WIN and self.round:Winner() ~= UNASSIGNED) then self:KeepSpawnDoorsOpen(now) end
 	self:Apply(self.round:Think(now, self:World(now)))
 	self:RespawnDue(now)
 end
@@ -472,12 +470,11 @@ end)
 -- game.CleanUpMap (TF2 Multi-Fix's, 5 s into every TF2 map) keeps none:
 -- the map's own come back with its entities, but those made here would be
 -- gone; they are made again, and bind to the rounds as they stand. The
--- spawn doors come back shut, their triggers on: halted, a new game's
--- cleanup among them, they are held open again.
+-- doors come back shut: halted, a new game's cleanup among them, the world
+-- holds them open again.
 function Controller:AfterCleanup()
 	self:EnsureProxy()
-	self.spawnDoors, self.spawnTriggers, self.spawnHold = nil, nil, nil
-	if Active() and self.round:Halted() then self:OpenSpawnDoors(CurTime()) end
+	if Active() and self.round:Halted() then WS.Feature("world"):OpenDoors(CurTime(), HALTED_DOORS) end
 end
 
 hook.Add("PostCleanupMap", "ws_rounds_proxy", function() Controller:AfterCleanup() end)
@@ -502,7 +499,7 @@ function Controller:SetUpMap()
 			if IsValid(ent) then self:ApplyTimerEvents(ent, self.timers[ent]:RoundSpawn(now)) end
 		end
 	end
-	if self.round:Halted() then self:OpenSpawnDoors(CurTime()) end
+	if self.round:Halted() then WS.Feature("world"):OpenDoors(CurTime(), HALTED_DOORS) end
 end
 
 -- An admin's round time (the Round Timer Editor's Set Round Time) on a map

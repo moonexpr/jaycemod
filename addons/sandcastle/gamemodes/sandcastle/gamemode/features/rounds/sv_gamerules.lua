@@ -1,54 +1,18 @@
 -- Part of the rounds controller (sv.lua): the gamerules surface the gamerules
--- (tf_gamerules, ws_gamerules) forward, the spawn doors of a stopped game,
--- and their inputs, tf_gamerules'.
-local Controller, Players, Active = ...
+-- (tf_gamerules, ws_gamerules) forward, a stopped game, and their inputs,
+-- tf_gamerules'.
+local Controller, Players, Active, HALTED_DOORS = ...
 local Rounds = gameplay.rounds
 local Standing = gameplay.standing
 local Transaction = transaction
 local Spawns = system.spawn_manager
-local SpawnHold = WS.require("features.rounds.spawn_doors")
 local TeamPlayers, EachPlayer = Players.TeamPlayers, Players.EachPlayer
 
 local UNASSIGNED, SPECTATOR = WS.TEAM_UNASSIGNED, WS.TEAM_SPECTATOR
 local RED, BLUE = WS.TEAM_RED, WS.TEAM_BLUE
 local Log = WS.Logger("gamerules")
 
-local HALT_DOORS_INTERVAL = 2
 local ROLE_NONE = 0 -- TEAM_ROLE_NONE
-
--- The spawn doors of a stopped game ---------------------------------------------------
-
-local Overlap = math.box.Overlaps
-
--- func_doors overlapped by a trigger_multiple whose filter is a
--- filter_activator_tfteam, and those triggers.
-local function SpawnDoors()
-	local triggers = {}
-	for _, trigger in ipairs(ents.FindByClass("trigger_multiple")) do
-		local filter = trigger:GetInternalVariable("m_hFilter")
-		if IsValid(filter) and filter:GetClass() == "filter_activator_tfteam" then
-			local mins, maxs = trigger:WorldSpaceAABB()
-			triggers[#triggers + 1] = {
-				ent = trigger,
-				mins = mins,
-				maxs = maxs,
-			}
-		end
-	end
-	local doors, doorTriggers = {}, {}
-	for _, door in ipairs(ents.FindByClass("func_door*")) do
-		local mins, maxs = door:WorldSpaceAABB()
-		local found = false
-		for _, trigger in ipairs(triggers) do
-			if Overlap(mins, maxs, trigger.mins, trigger.maxs) then
-				found = true
-				doorTriggers[trigger.ent] = true
-			end
-		end
-		if found then doors[#doors + 1] = door end
-	end
-	return doors, doorTriggers
-end
 
 -- The gamerules surface the gamerules forward ------------------------------------------
 
@@ -201,9 +165,9 @@ end
 
 -- Stopping the game (non-gameplay mode): the round waits between rounds and
 -- every timer pauses. Setup, if it is on, ends as its clock running out
--- would, so the map opens its own setup gates. The spawn doors stand open:
--- their triggers, which would shut them as players leave, are off until the
--- next game's map reset restores them.
+-- would, so the map opens its own setup gates. The world holds every other
+-- door open (the spawn doors, those a round opens later) until the next
+-- game's map reset.
 function Controller:Halt()
 	local now = CurTime()
 	self:Apply(self.round:Halt(now))
@@ -212,7 +176,7 @@ function Controller:Halt()
 	for _, ent in ipairs(self.timerList) do
 		if IsValid(ent) then self.timers[ent]:Pause(now) end
 	end
-	self:OpenSpawnDoors(now)
+	WS.Feature("world"):OpenDoors(now, HALTED_DOORS)
 	self:PublishHudTimer(now)
 end
 
@@ -224,64 +188,6 @@ function Controller:FinishSetup(now)
 		if IsValid(ent) and timer:InSetup() then self:ApplyTimerEvents(ent, timer:FinishSetup(now)) end
 	end
 	self:SetSetup(false)
-end
-
--- Every spawn door unlocked and open, its triggers off so none shuts it
--- (KeepSpawnDoorsOpen holds them open), until RestoreSpawnDoors or the next
--- map reset. The triggers that were on are remembered, with what the map
--- does to them meanwhile.
-function Controller:OpenSpawnDoors(now)
-	if not self.spawnDoors then
-		local doors, triggers = SpawnDoors()
-		local on = {}
-		for trigger in pairs(triggers) do
-			if not trigger:GetInternalVariable("m_bDisabled") then on[#on + 1] = trigger end
-		end
-		self.spawnDoors, self.spawnTriggers, self.spawnHold = doors, triggers, SpawnHold.New(on)
-		self.switchingTriggers = true
-		for _, trigger in ipairs(on) do trigger:Input("Disable") end
-		self.switchingTriggers = false
-	end
-	for _, door in ipairs(self.spawnDoors) do
-		if IsValid(door) then
-			door:Fire("Unlock")
-			door:Fire("Open")
-		end
-	end
-	self.nextDoorsOpen = now + HALT_DOORS_INTERVAL
-end
-
--- The next round (a stage of a multi-stage map has no map reset): the
--- triggers that were on, on again unless the map has since turned them off,
--- with those it turned on, and the doors closed for them to open.
-function Controller:RestoreSpawnDoors()
-	if self.spawnHold then
-		self.switchingTriggers = true
-		for _, trigger in ipairs(self.spawnHold:ToEnable()) do
-			if IsValid(trigger) then trigger:Input("Enable") end
-		end
-		self.switchingTriggers = false
-	end
-	for _, door in ipairs(self.spawnDoors or {}) do
-		if IsValid(door) then door:Fire("Close") end
-	end
-	self.spawnDoors, self.spawnTriggers, self.spawnHold = nil, nil, nil
-end
-
--- The map's own Enable and Disable of a held trigger: a stage's handover in
--- the bonus time (pl_goldrush's cap_a_capture_relay) outlasts the hold.
-hook.Add("AcceptInput", "ws_rounds_spawn_doors", function(ent, input)
-	local self = Controller
-	if self.switchingTriggers or not (self.spawnTriggers and self.spawnTriggers[ent]) then return end
-	self.spawnHold:MapInput(ent, string.lower(input))
-end)
-
-function Controller:KeepSpawnDoorsOpen(now)
-	if now < self.nextDoorsOpen then return end
-	self.nextDoorsOpen = now + HALT_DOORS_INTERVAL
-	for _, door in ipairs(self.spawnDoors or {}) do
-		if IsValid(door) then door:Fire("Open") end
-	end
 end
 
 -- A new game readies in two steps (games.gameplay.rounds' CleanUp and
@@ -297,10 +203,9 @@ function Controller:BeginGame(preroundEnd)
 	self:Apply(self.round:BeginGame(now, preroundEnd, self:World(now)))
 end
 
--- A stopped game: the doors stay open, and a dead player on a team is back
--- after a pause, as no respawn wave comes.
+-- A stopped game: a dead player on a team is back after a pause, as no
+-- respawn wave comes.
 function Controller:HaltedThink(now)
-	self:KeepSpawnDoorsOpen(now)
 	EachPlayer(function(ply)
 		if not ply:Alive() and WS.TeamOf(ply) ~= UNASSIGNED and ply:Team() ~= SPECTATOR then
 			ply.wsHaltedDeath = ply.wsHaltedDeath or now

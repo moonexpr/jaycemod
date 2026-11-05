@@ -9,6 +9,9 @@ local SwitchTeams, ScrambleTeams = Players.SwitchTeams, Players.ScrambleTeams
 local S = WS.STATE
 local UNASSIGNED, SPECTATOR = WS.TEAM_UNASSIGNED, WS.TEAM_SPECTATOR
 local RED, BLUE = WS.TEAM_RED, WS.TEAM_BLUE
+-- A win, sudden death and a match's end open the setup gates (FinishSetup)
+-- and the world every spawn door: the losers have nowhere to hide.
+local WIN_DOORS = { WS.require("features.world.doors").KIND.SPAWN }
 local Log = WS.Logger("rounds")
 local STATE_NAMES = {
 	[S.INIT] = "INIT",
@@ -244,7 +247,7 @@ local EFFECTS = {
 		Log("state %s -> %s", STATE_NAMES[e.from] or tostring(e.from), STATE_NAMES[e.to] or tostring(e.to))
 		if e.from == S.TEAM_WIN then hook.Run("BonusRoundEnd") end
 		if e.to == S.PREROUND then
-			self:RestoreSpawnDoors()
+			WS.Feature("world"):CloseDoors()
 			SetGlobal2Float("ws_preround_end_time", e.preroundEnd)
 			SetGlobal2Int("ws_round_winner", UNASSIGNED)
 		end
@@ -351,7 +354,7 @@ local EFFECTS = {
 		-- side can hunt the humiliated losers down
 		if e.winner ~= UNASSIGNED then
 			self:FinishSetup(now)
-			self:OpenSpawnDoors(now)
+			WS.Feature("world"):OpenDoors(now, WIN_DOORS)
 		end
 	end,
 	win_song = function(self, e)
@@ -366,7 +369,7 @@ local EFFECTS = {
 		WS.BroadcastSoundscape(UNASSIGNED, SUDDEN_DEATH)
 		WS.Announce(Text.SuddenDeathNote(e.reason), UNASSIGNED, UNASSIGNED, ICON_SUDDEN_DEATH)
 		self:FinishSetup(now)
-		self:OpenSpawnDoors(now)
+		WS.Feature("world"):OpenDoors(now, WIN_DOORS)
 	end,
 	-- a tied match's deathmatch: frags alone, to mp_fraglimit
 	deathmatch = function()
@@ -402,7 +405,7 @@ local EFFECTS = {
 		-- is frozen for mp_chattime; a match ended drawn (a stalemate) is
 		-- bonus time for all to the stalemate music, frozen never
 		self:FinishSetup(now)
-		self:OpenSpawnDoors(now)
+		WS.Feature("world"):OpenDoors(now, WIN_DOORS)
 		if e.winner == UNASSIGNED then PlayWinSong(UNASSIGNED) else PlayMatchEnd(e.winner) end
 	end,
 	changelevel = function()
