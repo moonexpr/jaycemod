@@ -120,8 +120,8 @@ What the runs found, each fixed in Lua on the shared terms:
 
 Each lap still stalls about 0.9 s in four places, at STUCK_TIME, until `player_body`'s
 jump clears it. The first order after setup also stood 9.9 s at the spawn, not yet
-explained. A war's bot player has the door and seam fixes but not `StepOff`,
-`StandPoints` or `Avoid`.
+explained. A war's bot player steers by its own code (`features/aiwar/sv_bot_soldier.lua`), with
+the door and seam fixes but not `StepOff`, `StandPoints` or `Avoid`.
 
 ## The rest on it
 
@@ -131,6 +131,15 @@ explained. A war's bot player has the door and seam fixes but not `StepOff`,
 run unchanged. `Action.EngineBehavior` answers what `generator.state_chart`'s root does, and
 `Controller:Bind` gives it to an NPC variant wherever the binary is bound, so what is written
 for the chart runs on the engine. The chart stays where it is not bound, and in the tests.
+
+**The AI war's bot players** are NextSoldiers (`Controller:AddBot`), their orders and monitors
+unchanged. An action entering the engine gets `QueryBelow`, `GetActionBuriedUnderMe` and
+`IsSuspended` on its instance, reading the engine's links, since chart code reads its own. Its
+orders are made anew each life: `engine.End` ends a life's tree, and `Insert` puts the next in
+its place. On ctf_2fort, 8 a side: 66.7 ticks a second held, 12 deaths and their respawns with no
+errors, the engine's live actions steady. Each tree now updates about 9 times a second, at the
+engine's own pace, where the war's `THINK_INTERVAL` gave 4; the cost of that is not measured.
+The war's NPC soldiers (`npc_nextsoldier`) stay on the chart.
 
 **Events and queries from Lua.** `engine.Event(bot, name, ...)` goes through the engine's own
 `OnCommandString` under a private mark, its arguments left on the Lua stack, so its priorities
