@@ -215,6 +215,12 @@ function MapIO:FindByClass(class)
 	return self:_Find(self.classes, class)
 end
 
+-- fn(ent) for each entity of class, in map order (a trailing * a prefix), as
+-- the rounds' EachPlayer.
+function MapIO:Each(class, fn)
+	for _, ent in ipairs(self:FindByClass(class)) do fn(ent) end
+end
+
 function MapIO:FirstByName(name)
 	return self:FindByName(name)[1]
 end

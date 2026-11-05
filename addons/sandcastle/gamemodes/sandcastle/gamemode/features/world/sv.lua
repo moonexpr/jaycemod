@@ -6,10 +6,11 @@
 --   OpenDoors(now, kinds): kinds a list of Doors.KIND; SETUP is the timers'
 --   (the rounds' FinishSetup fires their OnSetupFinished)
 --   CloseDoors(): what was held open, shut, its triggers back as the map left them
---   Each(class, fn): fn(ent) for each entity of class, as the rounds' EachPlayer
 local Doors = WS.require("features.world.doors")
 
 local Overlap = math.box.Overlaps
+
+local function Each(class, fn) WS.MapIO:Each(class, fn) end
 
 -- How often held doors are told again to open, as a map may shut them.
 local HOLD_INTERVAL = 2
@@ -22,12 +23,6 @@ local Controller = {
 	switchingTriggers = false, -- our own Enable/Disable, not the map's
 	nextHold = 0,
 }
-
--- fn(ent) for each of the map's entities of class (a Source wildcard, "func_door*", too).
-local function Each(class, fn)
-	for _, ent in ipairs(ents.FindByClass(class)) do fn(ent) end
-end
-Controller.Each = Each
 
 -- The doors a team's trigger stands at ({ key = the door, name }), and those
 -- triggers: func_doors overlapped by a trigger_multiple whose filter is a

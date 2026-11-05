@@ -65,6 +65,20 @@ T.test("names and classes match without case, and a trailing * matches a prefix"
 	T.eq(#io:FindByClass("team_*"), 2, "class prefix")
 end)
 
+T.test("each entity of a class is handed to a function, in map order, a prefix too", function()
+	local world = World()
+	world:Add("door_red", "func_door")
+	world:Add("relay", "logic_relay")
+	world:Add("door_blu", "func_door_rotating")
+	local io = MapIO.New(world)
+	local seen = {}
+	io:Each("func_door*", function(ent) seen[#seen + 1] = ent end)
+	T.eq(Names(seen), "door_red,door_blu", "the doors")
+	local none = 0
+	io:Each("prop_physics", function() none = none + 1 end)
+	T.eq(none, 0, "none of a class the map lacks")
+end)
+
 T.test("an empty name finds nothing", function()
 	local world = World()
 	world:Add("", "info_target")
