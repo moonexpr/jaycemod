@@ -84,6 +84,26 @@ Bot("Asking", {
 	Update = function() return { type = CONTINUE } end,
 })
 
+-- An event from Lua, through the engine's own path: its arguments reach the innermost
+-- action and its container, and its change is made at the next update.
+Bot("Told", {
+	InitialContainedAction = function()
+		return Action("Listener", {
+			OnThing = function(_, _, word, number)
+				Note("Listener thing " .. word .. " " .. number)
+				return { type = CHANGE_TO, action = Action("Changed", { OnStart = function() Note("Changed start") return { type = CONTINUE } end }), reason = "told", priority = 1 }
+			end,
+			Which = function(_, _, word) return word .. "!" end,
+			Undecided = function() return UNDEFINED end,
+			Update = function() return { type = CONTINUE } end,
+		})
+	end,
+	OnThing = function(_, _, word) Note("Teller thing " .. word) return { type = CONTINUE } end,
+	Undecided = function() return "the container's" end,
+	Update = function() return { type = CONTINUE } end,
+})
+timer.Simple(3, function() E.Event(bots.Told, "OnThing", "one", 2) end)
+
 -- A damage event fired inside a hook: stored, and its change made at the next update.
 local Hurt = { OnStart = function() Note("Hurt start") return { type = CONTINUE } end, Update = function() return { type = CONTINUE } end }
 Bot("Calm", {
@@ -193,6 +213,11 @@ function NSEngineCheck.Finish()
 		soldier_hears_damage = Has("P Inner injured") and Has("P Hurt start"),
 		soldier_query_walks = E.ShouldHurry(NSEngineSoldier) == YES,
 		a_plain_bot_is_refused = plainRefused,
+		event_carries_its_arguments = Has("Listener thing one 2"),
+		event_reaches_the_container = Has("Teller thing one"),
+		event_changes_at_the_next_update_too = Has("Changed start"),
+		query_answers_with_its_arguments = E.Query(bots.Told, "Undecided") == "the container's",
+		query_nobody_answers_is_nil = E.Query(bots.Told, "Nobody") == nil,
 	}
 	local live = E.Live()
 	bots.Doomed:Remove()

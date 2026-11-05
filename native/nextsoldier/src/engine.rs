@@ -48,7 +48,19 @@ struct Binding {
     intention_query_vtable: usize,
     behavior_vtables: (usize, usize),
     soldiers: HashMap<usize, Soldier>,
+    event: Option<EventCall>,
 }
+
+/// An event from Lua on its way through the engine's OnCommandString, which carries its
+/// priorities and pending results: its name, and where its arguments lie on the stack.
+struct EventCall {
+    name: CString,
+    first: c_int,
+    last: c_int,
+}
+
+/// What engine.Event sends in place of a command; no command is called this.
+const EVENT_MARK: &CStr = c"\x01nextsoldier.event";
 
 /// What a player bot has that a plain NextBotPlayer has not: a Behavior, and the
 /// shadow of its intention that CLuaNextBotIntention::Update runs it through.
@@ -469,6 +481,18 @@ unsafe extern "win64" fn on_command_string(
     _me: *mut c_void,
     command: *const c_char,
 ) -> *mut EventResult {
+    if CStr::from_ptr(command) == EVENT_MARK {
+        if let Some(call) = binding().event.as_ref() {
+            let (first, last) = (call.first, call.last);
+            ret.write(event_result(this, &call.name, |l| {
+                for at in first..=last {
+                    (api().pushvalue)(l, at);
+                }
+                last - first + 1
+            }));
+            return ret;
+        }
+    }
     ret.write(event_result(this, c"OnCommandString", |l| {
         let text = CStr::from_ptr(command).to_bytes();
         (api().pushlstring)(l, text.as_ptr().cast(), text.len());
@@ -1006,8 +1030,14 @@ unsafe extern "C-unwind" fn command(l: L) -> c_int {
     (api.settop)(l, 2);
     (api.checktype)(l, 2, foundation::lua::TSTRING);
     behavior_of(l, 1);
+    send_command(l, 1, (api.tolstring)(l, 2, null_mut()));
+    0
+}
+
+/// Through the INextBot's own OnCommandString, down its actions.
+unsafe fn send_command(l: L, bot: c_int, command: *const c_char) {
     let b = binding();
-    let (entity, _) = entity_at(l, 1);
+    let (entity, _) = entity_at(l, bot);
     let offset = if *(entity as *const usize) == b.bot_vtable {
         INEXTBOT_OFFSET
     } else {
@@ -1017,7 +1047,77 @@ unsafe extern "C-unwind" fn command(l: L) -> c_int {
     let table = *(nextbot as *const *const usize);
     let send: unsafe extern "win64" fn(usize, *const c_char) =
         std::mem::transmute(*table.add(RESPONDER_COMMAND_STRING));
-    send(nextbot, (api.tolstring)(l, 2, null_mut()));
+    send(nextbot, command);
+}
+
+unsafe fn name_at(l: L, index: c_int) -> CString {
+    let text = string_at(l, index).unwrap_or_default();
+    match CString::new(text) {
+        Ok(name) => name,
+        Err(_) => foundation::lua::raise_where(l, "a name with a zero byte in it".into()),
+    }
+}
+
+/// engine.Event(bot, name, ...): name, with these arguments, as the engine's own event: to
+/// each action holding a hook of that name, its Try results stored and made at the next
+/// update.
+unsafe extern "C-unwind" fn event(l: L) -> c_int {
+    let api = api();
+    (api.checktype)(l, 2, foundation::lua::TSTRING);
+    behavior_of(l, 1);
+    let call = EventCall {
+        name: name_at(l, 2),
+        first: 3,
+        last: (api.gettop)(l),
+    };
+    let outer = binding().event.replace(call);
+    send_command(l, 1, EVENT_MARK.as_ptr());
+    binding().event = outer;
+    0
+}
+
+/// Asks name of `action`, what it contains first, then what it buries: leaves the first
+/// answer on the stack's top and says so. nil and ANSWER_UNDEFINED are no answer.
+unsafe fn ask(l: L, action: *mut Action, name: &CStr, first: c_int, last: c_int) -> bool {
+    let api = api();
+    let mut at = action;
+    while !at.is_null() {
+        if ask(l, (*at).child, name, first, last) {
+            return true;
+        }
+        if ours(at) {
+            let top = (api.gettop)(l);
+            let hooked = hook(l, at.cast(), name, |l| {
+                for place in first..=last {
+                    (api.pushvalue)(l, place);
+                }
+                last - first + 1
+            });
+            if hooked {
+                let kind = (api.type_of)(l, -1);
+                let undefined = kind == foundation::lua::TNUMBER
+                    && (api.tonumber)(l, -1) as i32 == ANSWER_UNDEFINED;
+                if kind != foundation::lua::TNIL && !undefined {
+                    return true;
+                }
+            }
+            (api.settop)(l, top);
+        }
+        at = (*at).buried;
+    }
+    false
+}
+
+/// engine.Query(bot, name, ...) -> the first answer from the innermost action out, or nil.
+unsafe extern "C-unwind" fn query(l: L) -> c_int {
+    let api = api();
+    (api.checktype)(l, 2, foundation::lua::TSTRING);
+    let last = (api.gettop)(l);
+    let root = root_of(behavior_of(l, 1).0);
+    let name = name_at(l, 2);
+    if ask(l, root, &name, 3, last) {
+        return 1;
+    }
     0
 }
 
@@ -1160,6 +1260,8 @@ const FUNCTIONS: &[(&CStr, CFunction)] = &[
     (c"LookLines", look_lines),
     (c"Insert", insert),
     (c"Command", command),
+    (c"Event", event),
+    (c"Query", query),
     (c"Stack", stack),
     (c"ShouldHurry", query_hurry),
     (c"Live", live),
@@ -1318,6 +1420,7 @@ unsafe fn bind(l: L) -> Result<Binding, String> {
             base as usize + behaviors[1].0,
         ),
         soldiers: HashMap::new(),
+        event: None,
     })
 }
 
