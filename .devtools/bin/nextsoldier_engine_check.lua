@@ -104,6 +104,40 @@ Bot("Told", {
 })
 timer.Simple(3, function() E.Event(bots.Told, "OnThing", "one", 2) end)
 
+-- What chart actions read of their links, and a new tree over an ended one.
+local below, buriedName, suspendedSeen
+Bot("Linked", {
+	InitialContainedAction = function()
+		return Action("Under", {
+			Whose = function() return "below" end,
+			Update = function() return { type = CONTINUE } end,
+		})
+	end,
+	Update = function(self, me)
+		below = self:QueryBelow(me, "Whose")
+		if not self.covered then
+			self.covered = true
+			return { type = SUSPEND_FOR, action = Action("Cover", {
+				Update = function(cover)
+					local under = cover:GetActionBuriedUnderMe()
+					buriedName = under and under.name
+					suspendedSeen = under and under:IsSuspended()
+					return { type = CONTINUE }
+				end,
+			}), reason = "covered" }
+		end
+		return { type = CONTINUE }
+	end,
+})
+local secondLife
+Bot("Reborn", {
+	Update = function() return { type = CONTINUE } end,
+})
+timer.Simple(4, function()
+	E.End(bots.Reborn)
+	E.Insert(bots.Reborn, Action("Second", { OnStart = function() secondLife = true return { type = CONTINUE } end, Update = function() return { type = CONTINUE } end }))
+end)
+
 -- engine.End: each OnEnd now, innermost first, and not again as the bot goes.
 local endings = 0
 local endingWhole
@@ -233,6 +267,10 @@ function NSEngineCheck.Finish()
 		a_plain_bot_is_refused = plainRefused,
 		end_runs_each_ending_once = endedOnce,
 		end_finds_its_bot_whole = endingWhole,
+		chart_query_below_reads_the_engine = below == "below",
+		chart_buried_reads_the_engine = buriedName ~= nil,
+		chart_suspended_reads_the_engine = suspendedSeen == true,
+		a_new_tree_replaces_an_ended_one = secondLife == true,
 		event_carries_its_arguments = Has("Listener thing one 2"),
 		event_reaches_the_container = Has("Teller thing one"),
 		event_changes_at_the_next_update_too = Has("Changed start"),

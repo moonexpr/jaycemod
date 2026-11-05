@@ -137,13 +137,21 @@ function Controller:AddBot()
 	local counts = self:TeamCounts()
 	local team = Quota.TeamToJoin({ [RED] = counts[RED].players, [BLUE] = counts[BLUE].players }, self:Sizes())
 	self.botSerial = (self.botSerial or 0) + 1
-	local bot = player.CreateNextBot(string.format("%s %d", self:FactionName(team), self.botSerial))
+	-- a NextSoldier where the binary is bound, whose orders the engine runs (BotBehavior)
+	local create = player.CreateNextSoldier or player.CreateNextBot
+	local bot = create(string.format("%s %d", self:FactionName(team), self.botSerial))
 	if not IsValid(bot) then return end
 	self.bots[bot] = true
 	-- the body it was made with goes quietly: joining a team alive would
 	-- kill it, a suicide on the scoreboard
 	bot:KillSilent()
 	WS.SetPlayerTeam(bot, team)
+end
+
+-- What runs a bot player's orders: the engine, for the NextSoldiers AddBot makes.
+function Controller:BotBehavior(ply, soldier)
+	if not (player.CreateNextSoldier and self.bots[ply]) then return nil end
+	return nextsoldier.behavior.action.EngineBehaviorFor(ply, soldier, nextsoldier.engine)
 end
 
 -- A bot of the team (by default the one TeamToKick names), a dead one first;

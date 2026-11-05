@@ -162,6 +162,72 @@ unsafe fn push_me(l: L, action: *mut LuaAction) {
 }
 
 /// A new Action of ours over the Lua table at `table`, for the actor at `me`.
+/// What generator.state_chart's actions read of their own links, which the engine holds
+/// here: on the instance, so what was written for the chart reads the engine's.
+const CHART_METHODS: &[(&CStr, CFunction)] = &[
+    (c"QueryBelow", chart_query_below),
+    (c"GetActionBuriedUnderMe", chart_buried_under),
+    (c"IsSuspended", chart_is_suspended),
+];
+const ACTION_POINTER: &CStr = c"_engine_action";
+
+unsafe fn give_chart_methods(l: L, table: c_int, action: *mut LuaAction) {
+    let api = api();
+    let top = (api.gettop)(l);
+    push_str(l, ACTION_POINTER.to_str().unwrap_or_default());
+    (api.pushnumber)(l, action as usize as f64);
+    (api.rawset)(l, table);
+    for (name, function) in CHART_METHODS {
+        push_str(l, name.to_str().unwrap_or_default());
+        (api.pushcclosure)(l, *function, 0);
+        (api.rawset)(l, table);
+    }
+    (api.settop)(l, top);
+}
+
+/// The action the table at index 1 is, while the engine holds it.
+unsafe fn action_of_table(l: L) -> *mut Action {
+    let api = api();
+    (api.getfield)(l, 1, ACTION_POINTER.as_ptr());
+    let pointer = (api.tonumber)(l, -1) as usize as *mut LuaAction;
+    (api.settop)(l, -2);
+    if binding().live.contains(&pointer) {
+        pointer.cast()
+    } else {
+        null_mut()
+    }
+}
+
+/// action:QueryBelow(me, name, ...) -> the first answer of what it contains, innermost out.
+unsafe extern "C-unwind" fn chart_query_below(l: L) -> c_int {
+    let api = api();
+    let last = (api.gettop)(l);
+    let action = action_of_table(l);
+    let name = name_at(l, 3);
+    if !action.is_null() && ask(l, (*action).child, &name, 4, last) {
+        return 1;
+    }
+    (api.pushnumber)(l, ANSWER_UNDEFINED as f64);
+    1
+}
+
+/// action:GetActionBuriedUnderMe() -> the table of what it buries, or nil.
+unsafe extern "C-unwind" fn chart_buried_under(l: L) -> c_int {
+    let action = action_of_table(l);
+    if action.is_null() {
+        return 0;
+    }
+    push_table(l, (*action).buried);
+    1
+}
+
+/// action:IsSuspended() -> whether something covers it.
+unsafe extern "C-unwind" fn chart_is_suspended(l: L) -> c_int {
+    let action = action_of_table(l);
+    (api().pushboolean)(l, (!action.is_null() && (*action).suspended) as c_int);
+    1
+}
+
 unsafe fn new_action(l: L, table: c_int, me: c_int) -> *mut LuaAction {
     let api = api();
     let top = (api.gettop)(l);
@@ -210,6 +276,7 @@ unsafe fn new_action(l: L, table: c_int, me: c_int) -> *mut LuaAction {
         ended: false,
     }));
     b.live.insert(action);
+    give_chart_methods(l, table, action);
     action
 }
 
@@ -301,6 +368,9 @@ unsafe fn action_result(
     name: &CStr,
     args: impl FnOnce(L) -> c_int,
 ) -> ActionResult {
+    if (*this).ended {
+        return CONTINUING;
+    }
     let l = binding().lua;
     let top = (api().gettop)(l);
     let result = if hook(l, this, name, args) {
@@ -325,7 +395,7 @@ unsafe fn event_result(
         reason: std::ptr::null(),
         priority: RESULT_TRY,
     };
-    let result = if hook(l, this, name, args) {
+    let result = if !(*this).ended && hook(l, this, name, args) {
         decode(l, this)
     } else {
         none
@@ -928,6 +998,18 @@ unsafe fn root_of(behavior: *mut u8) -> *mut Action {
     *(behavior.add(BEHAVIOR_ACTION) as *const *mut Action)
 }
 
+/// Whether engine.End has ended this tree, so a new one may take its place.
+unsafe fn is_ended(action: *mut Action) -> bool {
+    ours(action) && (*action.cast::<LuaAction>()).ended
+}
+
+/// The engine's own deleting destructor, which takes what the action holds with it.
+unsafe fn delete_action(action: *mut Action) {
+    let destroy: unsafe extern "win64" fn(*mut Action, u32) -> *mut Action =
+        std::mem::transmute(virtual_at(action as usize, DESTRUCTOR));
+    destroy(action, 1);
+}
+
 /// engine.Insert(bot, action[, me]): action, a table of hooks, runs from the bot's next
 /// update: the engine starts it, and its hooks are given me (by default the bot). On a
 /// NextBot it goes under its CLuaBehaviour, from its BehaveStart or later; on a
@@ -945,7 +1027,11 @@ unsafe extern "C-unwind" fn insert(l: L) -> c_int {
     let root = root_of(behavior);
     if !under_lua {
         if !root.is_null() {
-            foundation::lua::raise_where(l, "the bot already runs an action".into());
+            if !is_ended(root) {
+                foundation::lua::raise_where(l, "the bot already runs an action".into());
+            }
+            *(behavior.add(BEHAVIOR_ACTION) as *mut *mut Action) = null_mut();
+            delete_action(root);
         }
         let action = new_action(l, 2, me).cast::<Action>();
         *(behavior.add(BEHAVIOR_ACTION) as *mut *mut Action) = action;
@@ -962,8 +1048,14 @@ unsafe extern "C-unwind" fn insert(l: L) -> c_int {
             "the bot has not started: insert from its BehaveStart or later".into(),
         );
     }
-    if !(*root).child.is_null() {
-        foundation::lua::raise_where(l, "the bot already runs an action".into());
+    let running = (*root).child;
+    if !running.is_null() {
+        if !is_ended(running) {
+            foundation::lua::raise_where(l, "the bot already runs an action".into());
+        }
+        (*root).child = null_mut();
+        (*running).parent = null_mut();
+        delete_action(running);
     }
     let action = new_action(l, 2, me).cast::<Action>();
     (*action).parent = root;
@@ -1089,7 +1181,7 @@ unsafe fn ask(l: L, action: *mut Action, name: &CStr, first: c_int, last: c_int)
         if ask(l, (*at).child, name, first, last) {
             return true;
         }
-        if ours(at) {
+        if ours(at) && !(*at.cast::<LuaAction>()).ended {
             let top = (api.gettop)(l);
             let hooked = hook(l, at.cast(), name, |l| {
                 for place in first..=last {
@@ -1118,9 +1210,11 @@ unsafe fn end_actions(l: L, action: *mut Action) {
     while !at.is_null() {
         end_actions(l, (*at).child);
         if ours(at) && !(*at.cast::<LuaAction>()).ended {
-            let top = (api().gettop)(l);
-            hook(l, at.cast(), c"OnEnd", |_| 0);
-            (api().settop)(l, top);
+            if (*at).started {
+                let top = (api().gettop)(l);
+                hook(l, at.cast(), c"OnEnd", |_| 0);
+                (api().settop)(l, top);
+            }
             (*at.cast::<LuaAction>()).ended = true;
         }
         at = (*at).buried;

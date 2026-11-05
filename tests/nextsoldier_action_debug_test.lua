@@ -105,4 +105,17 @@ T.test("it describes and shows itself by the engine's stack, under its kind", fu
 	T.eq(behavior:Describe():find("Attack", 1, true) ~= nil, true, "named")
 end)
 
+T.test("where the binary is not bound, a variant is left to the chart", function()
+	T.eq(Action.EngineBehaviorFor(ENT, "actor", nil), nil, "no engine")
+	T.eq(Action.EngineBehaviorFor(ENT, "actor", { refused = "why" }), nil, "refused")
+end)
+
+T.test("where it is, a variant's behaviour is the engine's, telling its actions me", function()
+	local told, engine = Engine({})
+	local behavior = Action.EngineBehaviorFor(ENT, "actor", engine)("first", "KIND")
+	behavior:Start()
+	T.eq(told.inserted[3], "actor", "me")
+	T.eq(behavior.name, "KIND", "its kind")
+end)
+
 T.finish()

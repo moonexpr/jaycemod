@@ -30,8 +30,9 @@ function Controller:Enlist(ent, team, drafted, fixed)
 		local soldier = self:NewBotSoldier(ent, team)
 		self.soldiers[ent] = {
 			soldier = soldier,
-			npc = NpcSystem.Npc.New(Orders, { war = self.war, member = member, behaviors = self.behaviors }, soldier),
+			npc = NpcSystem.Npc.New(Orders, { war = self.war, member = member, behaviors = self.behaviors }, soldier, self:BotBehavior(ent, soldier)),
 		}
+		self.soldiers[ent].npc:Start()
 		self:ReadyBot(ent, self.soldiers[ent])
 	else
 		if self.paused then ent:SetAIDisabled(true) end

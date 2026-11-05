@@ -101,3 +101,10 @@ function EngineRoot:Describe()
 	local frames = self:Stack()
 	return Shape(frames)
 end
+
+-- What Npc.New takes to run a variant on the engine, telling its actions me: nil where the
+-- binary is not bound, so the chart runs it.
+function EngineBehaviorFor(ent, me, engine)
+	if not (engine and engine.Insert) then return nil end
+	return function(initial, kind) return EngineBehavior(ent, initial, me, kind, engine) end
+end
