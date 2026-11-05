@@ -122,10 +122,16 @@ Each lap still stalls about 0.9 s in four places, at STUCK_TIME, until `player_b
 jump clears it. The first order after setup also stood 9.9 s at the spawn, not yet
 explained. A war's bot player steers on the same traces (`features/npc/bot_steering.lua`).
 
-**Hazards.** A war's bots stuck at a corner are recovered, and `wartactics.hazards` disables an
-area after two recoveries from it, saved across maps. With war bots lacking these steering fixes,
-23 areas of ctf_2fort's courtyard closed in an afternoon and every route went through the sewers,
-18,000 units where 10,000 would do, which looked like a slow bot. `ns_hazards_print` shows them.
+**Hazards.** `wartactics.hazards` closes an area after two deaths on it, saved across maps. It
+used to count recoveries too, so a bot's failure to get on read as bad ground: with war bots
+stranded by their steering, 23 areas of ctf_2fort's courtyard closed in an afternoon and every
+route went through the sewers, 18,000 units where 10,000 would do, which looked like a slow bot.
+Recoveries are now only counted, for whoever inspects an area (`ns_hazards_print`), and saved
+closures they alone made open again as they load.
+
+**Replanning, as TF2's.** A route is planned again every 1 to 2 seconds whether or not its goal
+moved, and `Path:Compute`'s answer tells a straight path it found (both ends in one area) from
+one it did not. `.devtools/bin/war_round_check.lua` plays a war to one capture, BLU against nobody.
 
 ## The rest on it
 
