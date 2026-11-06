@@ -61,8 +61,8 @@ local COMMANDS = {
 	end },
 }
 
--- How long a line chat is given.
-local FEEDBACK_MAX = 200
+-- How long a line chat is given; a longer one is cut there, saying how many more it had.
+local FEEDBACK_MAX = 120
 local PRINTERS = { print = "\t", Msg = "", MsgN = "", MsgC = "" }
 local NEWLINE = { print = true, MsgN = true }
 
@@ -96,7 +96,7 @@ local function first_line(printed, values)
 		line = table.concat(parts, ", "):match("([^\n]*)")
 	end
 	line = line and line:match("^%s*(.-)%s*$") or "ok"
-	if #line > FEEDBACK_MAX then line = line:sub(1, FEEDBACK_MAX) .. "..." end
+	if #line > FEEDBACK_MAX then line = string.format("%s... (%d+ chars)", line:sub(1, FEEDBACK_MAX), #line - FEEDBACK_MAX) end
 	return line
 end
 

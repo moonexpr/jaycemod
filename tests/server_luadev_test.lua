@@ -369,4 +369,13 @@ T.test("work settled within the frame cues only how it settled, no blip", functi
 	T.eq(#cues, 1, "one cue")
 end)
 
+T.test("a long line is cut to 120 characters, saying how many more there were", function()
+	local commands, _, _, _, said = ulx_module({ prints = string.rep("a", 120) .. string.rep("b", 85) })
+	commands["ulx l"].fn(player(), "x()")
+	T.eq(said[1], string.rep("a", 120) .. "... (85+ chars)", "cut")
+	local exact, _, _, _, saidExact = ulx_module({ prints = string.rep("a", 120) })
+	exact["ulx l"].fn(player(), "x()")
+	T.eq(saidExact[1], string.rep("a", 120), "120 is whole")
+end)
+
 T.finish()
