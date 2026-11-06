@@ -170,8 +170,34 @@ squad (a leader and others) has lost half of those it placed
 (`CASUALTY_SHARE`), its leader calls the fall back once: "Fall back!" in the
 chat and the server's console, and the squad evacuates. A white ring marks
 where a member is going now, and its path there is drawn.
-`.devtools/bin/squad_member_check.lua` runs the orders and modes on a server,
-kills two of four to see the fall back called, and returns it all as data.
+A **danger** mark (Annotate) of the squad's team within a room's breadth of
+its point (768 units) has its leader call the fall back the same way, and the
+squad evacuates away from the mark: an object, or a place in the room. An
+evacuating member runs out by its way out and `EXIT_CLEARANCE` past it, clear
+of the room. `.devtools/bin/squad_member_check.lua` runs the orders and modes
+on a server, kills two of four to see the fall back called, and returns it all
+as data.
+
+#### dev_3house: the room bench
+
+`dev_3house` (`.devtools/bin/dev_3house_map.py`, through hammer-mcp) is three
+sealed houses on grass: RED's spawn room, the bench (one 768-square room, a
+128-wide doorway in each wall, glass windows), and BLU's spawn room. Each spawn
+room has twelve starts, a `func_respawnroom`, a resupply locker and its
+`func_regenerate`, and at its door a shutter (`func_door`) its team's trigger
+opens, behind a `func_respawnroomvisualizer`. The script renders it top-down,
+from the side, through the bench's doors and inside a spawn room, and draws
+its plan, before it compiles. The nav mesh is generated on the server with the
+shutters open and the fields passable (`.devtools/bin/dev_3house_nav.lua`).
+
+`.devtools/bin/dev_3house_bench.lua` runs five RED followers on their legs,
+feet free, through a room operation, stage by stage: spawn, muster, mobilize
+(out through the shutter to the grass), assault (into the bench), hold
+(alert), evacuate (a danger marked on BLU's side), rout (three of five
+killed) and remuster. Each stage sets up its own start, so any one runs alone
+(`NSRoomBench.Run("evacuate")`) or all in turn (`RunAll`), and checks its
+result as data (`NSRoomBench.Report()`). Like the war, it makes the forcefields
+passable: TF2's stop only players, and NextBots' movement takes them for walls.
 
 ### Tactical and Annotate
 
@@ -195,7 +221,8 @@ through the war's own inputs (`features.aiwar.marks`, `sv_marks.lua`):
 a **post** is one of the field's posts for the team; a **rally** is where its
 recalled squads regroup; an **enemy** is a contact reported to its squads
 while the mark stands; **avoid** closes the areas there to every team, as a
-disabled hazard. A **mission** goes to the selected squads: the room at the
+disabled hazard; a **danger** is what its squads on their legs retreat from
+(Local, above). A **mission** goes to the selected squads: the room at the
 aim and its kind, issued through `Mission.Issue` (`spec.given`). Reload
 removes the marks or the piece near the aim.
 
