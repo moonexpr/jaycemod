@@ -79,7 +79,7 @@ local function Runs(soldier, name)
 end
 
 T.test("the monitors load without the war's feature", function()
-	T.eq(package.loaded["features.aiwar.orders"], nil, "orders")
+	T.eq(package.loaded["features.aiwar.ns_behaviors"], nil, "orders")
 	T.eq(package.loaded["features.aiwar.model"], nil, "model")
 end)
 

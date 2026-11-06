@@ -1,5 +1,5 @@
 -- When a soldier retreating to cover leaves it for a health kit
--- (features.aiwar.orders' FindHealth), after TF2's CTFBotGetHealth
+-- (features.aiwar.ns_behaviors' FindHealth), after TF2's CTFBotGetHealth
 -- (tf_bot_get_health.cpp):
 --   urgency u = 1 - clamp((health - CRITICAL) / (OK - CRITICAL), 0, 1),
 --     1 on fire: 0 at TF2's ok health, 1 at its critical health;

@@ -1,11 +1,11 @@
--- features.aiwar.orders: the Actions a Combine or Resistance soldier
+-- features.aiwar.ns_behaviors: the Actions a Combine or Resistance soldier
 -- follows in the AI war, driven as scenarios against tests/fake_soldier.lua.
 local T = dofile("tests/harness.lua")
 local FS = dofile("tests/fake_soldier.lua")
 local N = npc.nextbot
 local Debug = T.require("features.nbdebug.model")
 local AiWar = T.require("features.aiwar.model")
-local Orders = T.require("features.aiwar.orders")
+local Orders = T.require("features.aiwar.ns_behaviors")
 -- what the war registered, compiled as the controller compiles it
 local BEHAVIORS = nextsoldier.behavior.registry.Shared:Compile()
 local Behavior = nextsoldier.behavior

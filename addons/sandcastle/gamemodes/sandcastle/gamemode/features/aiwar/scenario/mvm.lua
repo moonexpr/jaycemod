@@ -15,7 +15,7 @@
 -- home), escorts (BLU's) and outpost (RED's).
 local floor, ipairs, min, pairs, sort = math.floor, ipairs, math.min, pairs, table.sort
 local AiWar = require("features.aiwar.model")
-local Orders = require("features.aiwar.orders")
+local Orders = require("features.aiwar.ns_behaviors")
 local Teams = gameplay.teams
 local Base = wartactics.scenario
 local Ctf = require("features.aiwar.scenario.ctf")
@@ -44,7 +44,7 @@ local TEAMS = { RED, BLUE }
 local function ObjectivesOf(field, member) return field.objectives[member.team] end
 
 -------------------------------------------------------------------------------
--- The MvM doctrine (features.aiwar.orders' doctrine interface)
+-- The MvM doctrine (features.aiwar.ns_behaviors' doctrine interface)
 
 local function Carries(o, member) return o.carrying and o.bomb.carrier == member.handle end
 local function Escorts(o, member) return o.escorts ~= nil and o.escorts[member.handle] == true end

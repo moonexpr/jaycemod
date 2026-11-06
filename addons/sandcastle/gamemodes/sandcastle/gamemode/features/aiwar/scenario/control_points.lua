@@ -32,7 +32,7 @@
 local floor, max, min = math.floor, math.max, math.min
 local ipairs = ipairs
 local AiWar = require("features.aiwar.model")
-local Orders = require("features.aiwar.orders")
+local Orders = require("features.aiwar.ns_behaviors")
 local Tactics = wartactics.fireteam
 local Teams = gameplay.teams
 local Base = wartactics.scenario
@@ -92,7 +92,7 @@ local function Contested(point)
 end
 
 -------------------------------------------------------------------------------
--- The point doctrine (features.aiwar.orders' doctrine interface)
+-- The point doctrine (features.aiwar.ns_behaviors' doctrine interface)
 
 local function ObjectivesOf(field, member) return field.objectives[member.team] end
 
@@ -287,7 +287,7 @@ local ROLES = {
 		rushes = false,
 		Goal = SupportSpot,
 	},
-	-- every scenario's job (features.aiwar.orders)
+	-- every scenario's job (features.aiwar.ns_behaviors)
 	[AiWar.EXPLORE] = Orders.EXPLORE_ROLE,
 }
 

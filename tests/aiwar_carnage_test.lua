@@ -94,7 +94,7 @@ end)
 
 local N = npc.nextbot
 local AiWar = T.require("features.aiwar.model")
-local Orders = T.require("features.aiwar.orders")
+local Orders = T.require("features.aiwar.ns_behaviors")
 local Track = math.polyline
 local STATE = T.require("games.gameplay.rounds.state")
 

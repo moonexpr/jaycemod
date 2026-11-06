@@ -29,7 +29,7 @@
 -- enemy; carrying, the enemy's flag carried by one of its own; outpost.
 local abs, ceil, ipairs, min, pairs, sort = math.abs, math.ceil, ipairs, math.min, pairs, table.sort
 local AiWar = require("features.aiwar.model")
-local Orders = require("features.aiwar.orders")
+local Orders = require("features.aiwar.ns_behaviors")
 local Teams = gameplay.teams
 local Base = wartactics.scenario
 local Geometry = math.geometry
@@ -90,7 +90,7 @@ function Outpost(waypoints, home, enemyZone)
 end
 
 -------------------------------------------------------------------------------
--- The CTF doctrine (features.aiwar.orders' doctrine interface)
+-- The CTF doctrine (features.aiwar.ns_behaviors' doctrine interface)
 
 local function Carries(o, member) return o.carrying and o.enemy.carrier == member.handle end
 
@@ -239,7 +239,7 @@ local ROLES = {
 		STAGES = { ReturnHome = DELIVER },
 	},
 }
--- every scenario's job (features.aiwar.orders), delivering the flag too
+-- every scenario's job (features.aiwar.ns_behaviors), delivering the flag too
 do
 	local explore = {}
 	for k, v in pairs(Orders.EXPLORE_ROLE) do explore[k] = v end

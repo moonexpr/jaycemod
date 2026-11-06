@@ -1,6 +1,6 @@
 -- A route walked waypoint by waypoint, by a body that plans its own way
 -- (the AI war's bot soldiers: features/aiwar/sv_bot_soldier.lua), as the
--- orders walk theirs (features.aiwar.orders' Travel:Advance): a waypoint
+-- orders walk theirs (features.aiwar.ns_behaviors' Travel:Advance): a waypoint
 -- within RADIUS is passed when the next is in a clear line, and one round a
 -- corner only once it is within ON, as near as the body comes when it
 -- arrives (nextsoldier.body.player_body's ARRIVE: the engine's route points sit

@@ -56,7 +56,7 @@ T.test("every query the soldier and the war ask its orders is declared", functio
 end)
 
 T.test("no NextSoldier behaviour extends npc.nextbot's Action past the chart", function()
-	local paths = { GAMEMODE .. "features/aiwar/orders.lua" }
+	local paths = { GAMEMODE .. "features/aiwar/ns_behaviors.lua" }
 	for _, dir in ipairs({ "nextsoldier/", "wartactics/", "features/aiwar/scenario/" }) do
 		for _, path in ipairs(Lines("ls " .. T.File(dir) .. "*.lua")) do paths[#paths + 1] = path end
 	end

@@ -1,5 +1,5 @@
 -- The payload scenario (features.aiwar.scenario): the war fought over
--- carts, single or racing. Its doctrine is features.aiwar.orders'
+-- carts, single or racing. Its doctrine is features.aiwar.ns_behaviors'
 -- PAYLOAD, and it allocates as the aiwar controller always has, undamped:
 -- war:Assign on each team's cart (features.aiwar.model's Stance).
 --
@@ -8,7 +8,7 @@
 local max, pairs = math.max, pairs
 local AiWar = require("features.aiwar.model")
 local Teams = gameplay.teams
-local Orders = require("features.aiwar.orders")
+local Orders = require("features.aiwar.ns_behaviors")
 local Base = wartactics.scenario
 module(...)
 

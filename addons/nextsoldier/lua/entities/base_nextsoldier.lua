@@ -735,7 +735,7 @@ function ENT:NSVault()
 	return true
 end
 
--- The orders' hop when stuck (features.aiwar.orders' Unstick, through
+-- The orders' hop when stuck (features.aiwar.ns_behaviors' Unstick, through
 -- the soldier port's Hop): toward p, a vault if one fits, else a plain hop
 -- (a soldier hopping beats one ramming a wall), run at its next step
 -- (NSSteer). NSHopWhy says why no vault fitted, for the AI war's report.

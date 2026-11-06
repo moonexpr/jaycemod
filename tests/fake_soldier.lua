@@ -2,7 +2,7 @@
 -- position the test moves by hand, a scripted enemy, a route finder that
 -- answers after a set number of polls, and a log of the moves and releases
 -- the model asked for. It implements every name in
--- foundation.aiwar.soldier.METHODS (features_aiwar_orders_test checks that).
+-- foundation.aiwar.soldier.METHODS (features_aiwar_ns_behaviors_test checks that).
 local Fake = {}
 
 function Fake.Point(x, y, z)

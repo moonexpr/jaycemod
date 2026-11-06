@@ -16,12 +16,12 @@ CONCEPT_BATTLE_STANCE = "TLK_NS_BATTLE_STANCE"
 CONCEPT_PLAYER_PASSING = "TLK_NS_PLAYER_PASSING"
 CONCEPT_ENEMY_SPOTTED = "TLK_NS_ENEMY_SPOTTED"
 
--- A hurt soldier calls for a medic (features.aiwar.orders' CallMedic),
+-- A hurt soldier calls for a medic (features.aiwar.ns_behaviors' CallMedic),
 -- heard by all near.
 CONCEPT_CALL_MEDIC = "TLK_NS_CALL_MEDIC"
 
 -- A hurt soldier calls out as it falls back to cover, and as it leaves
--- cover (or its post) for a health kit (features.aiwar.orders'
+-- cover (or its post) for a health kit (features.aiwar.ns_behaviors'
 -- RetreatToCover and FindHealth), heard by all near.
 CONCEPT_RETREAT_TO_COVER = "TLK_NS_RETREAT_TO_COVER"
 CONCEPT_GET_HEALTH = "TLK_NS_GET_HEALTH"
@@ -32,7 +32,7 @@ CONCEPT_GET_HEALTH = "TLK_NS_GET_HEALTH"
 -- alive) says it lost contact; and between fights, every IDLE_INTERVAL,
 -- one soldier of each team not fighting talks on the radio.
 -- A squad leader calls its squad out on its mission, its wait over
--- (features.aiwar.orders' Muster), heard by all near.
+-- (features.aiwar.ns_behaviors' Muster), heard by all near.
 CONCEPT_MOVE_OUT = "TLK_NS_MOVE_OUT"
 -- A squad leader calls its squad together to a hiding spot, its mission
 -- gone wrong (heavy casualties, no progress), heard by all near.

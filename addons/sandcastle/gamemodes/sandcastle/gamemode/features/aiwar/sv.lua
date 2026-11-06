@@ -4,7 +4,7 @@
 -- War and the scenario (features.aiwar.scenario) the round's mode picks,
 -- spawns each side's soldiers at its team's spawns in TF2's respawn waves,
 -- enlists any soldier that appears while the war runs (a player's
--- included), gives each a features.aiwar.orders Behavior over the soldier
+-- included), gives each a features.aiwar.ns_behaviors Behavior over the soldier
 -- port (sv_soldier.lua), and sets who is friend or foe. The rules live in
 -- the models; this root declares the controller's state and runs its parts,
 -- which feed them the round, the carts and the points and turn their

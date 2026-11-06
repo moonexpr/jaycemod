@@ -15,7 +15,7 @@
 -- carrying (a RED soldier has the bomb).
 local ipairs = ipairs
 local AiWar = require("features.aiwar.model")
-local Orders = require("features.aiwar.orders")
+local Orders = require("features.aiwar.ns_behaviors")
 local Teams = gameplay.teams
 local Base = wartactics.scenario
 local Ctf = require("features.aiwar.scenario.ctf")
@@ -41,7 +41,7 @@ local function ObjectivesOf(field, member) return field.objectives[member.team] 
 local function Carries(o, member) return o.carrying and o.bomb.carrier == member.handle end
 
 -------------------------------------------------------------------------------
--- The doctrine (features.aiwar.orders' doctrine interface)
+-- The doctrine (features.aiwar.ns_behaviors' doctrine interface)
 
 -- RED's stages.
 local function BomberStage(field, member)

@@ -14,7 +14,7 @@ local UP = { x = 0, y = 0, z = 1 }
 -- The way round a solid entity standing in a walker's way (a crate across a
 -- lane, which the nav mesh does not know of): the points beside it, square to
 -- the way, far enough out for the walker to pass. The AI war's soldiers walk
--- to one when stuck against it (features.aiwar.orders' Unstick, through the
+-- to one when stuck against it (features.aiwar.ns_behaviors' Unstick, through the
 -- soldier port's Detour).
 -- from, to: the walker and where it is going; center, extent: the blocker's
 -- centre and how far it reaches from it across the ground; radius: the

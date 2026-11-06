@@ -4,7 +4,7 @@ local T = dofile("tests/harness.lua")
 local Tuning = wartactics.tuning
 local Tactics = wartactics.fireteam
 local Lanes = wartactics.lanes
-local Orders = T.require("features.aiwar.orders")
+local Orders = T.require("features.aiwar.ns_behaviors")
 local Squad = wartactics.squad
 
 local MODULES = {

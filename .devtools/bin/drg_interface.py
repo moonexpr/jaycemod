@@ -46,7 +46,7 @@ COLLISIONS = {
                     "GMod's Player and NPC methods, on players, bots and HL2's NPCs"),
     **dict.fromkeys(("Base", "Type", "PrintName", "Category", "ModelScale"), "GMod's scripted entity keys"),
     "Length": "GMod's Vector:Length", "Height": "our own (a size's height)",
-    **dict.fromkeys(("Attack", "Patrol", "IsStuck", "Wait"), "features.aiwar.orders' own actions and port"),
+    **dict.fromkeys(("Attack", "Patrol", "IsStuck", "Wait"), "features.aiwar.ns_behaviors' own actions and port"),
     "IsEnemy": "our projectiles' own (ws_projectile, tf_projectile_jar)",
     **dict.fromkeys(("EyeAngles", "EyePos", "GetMaxHealth", "GetModelScale", "GetVelocity", "Health", "Remove",
                      "SetHealth", "SetMaxHealth", "SetPos"),

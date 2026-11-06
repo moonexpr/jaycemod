@@ -335,7 +335,7 @@ T.test("every Combine soldier line the rules speak is in the gamemode's voice pa
 	T.eq(count >= 50, true, "the soldiers' lines were found: " .. count)
 end)
 
--- Falling back to cover and leaving it for a kit (features.aiwar.orders'
+-- Falling back to cover and leaving it for a kit (features.aiwar.ns_behaviors'
 -- RetreatToCover and FindHealth, through the soldier port's Announce).
 T.test("every voice calls out falling back to cover and going for health, each voice with lines its own", function()
 	local OWN = { combine = "CombineSoldier", metrocop = "CombineMetrocop", male = "RebelMale", female = "RebelFemale" }

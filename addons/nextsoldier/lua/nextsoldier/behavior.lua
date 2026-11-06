@@ -7,7 +7,7 @@ local error, ipairs, pairs, setmetatable, sort, type = error, ipairs, pairs, set
 module("nextsoldier.behavior")
 
 -- The soldier port: what a NextSoldier soldier's behaviours (the states of
--- nextsoldier.behavior, features.aiwar.orders' among them) may ask of the
+-- nextsoldier.behavior, features.aiwar.ns_behaviors' among them) may ask of the
 -- soldier they drive. The features/aiwar controller implements it over a
 -- NextBot soldier (npc_nextsoldier) and over a bot player, and
 -- tests/fake_soldier.lua fakes it. Some of it is still the war's, not the
@@ -37,7 +37,7 @@ module("nextsoldier.behavior")
 --     last being the goal, or the nearest reachable point when the goal
 --     is cut off
 --   CanWalkTo(p) -> nothing solid between me and p at walking height
---   MoveTo(p, gait): go to p at the gait (features.aiwar.orders' WALK,
+--   MoveTo(p, gait): go to p at the gait (features.aiwar.ns_behaviors' WALK,
 --     RUN, PANIC or RUSH; default RUN), letting my own AI fight on the way
 --     (at RUSH only once I am hit); a new p retargets the move
 --   Release(): end any move, handing me back to the engine's own AI,

@@ -13,7 +13,7 @@ local atan2, floor, max, min, sqrt, HUGE = math.atan2, math.floor, math.max, mat
 local format, concat = string.format, table.concat
 local Tactics = wartactics.fireteam
 local Squad = wartactics.squad
-local Orders = require("features.aiwar.orders")
+local Orders = require("features.aiwar.ns_behaviors")
 local Distance = math.geometry.Distance
 module(...)
 

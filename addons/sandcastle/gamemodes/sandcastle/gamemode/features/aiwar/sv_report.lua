@@ -1,7 +1,7 @@
 -- Part of the AI war controller (sv.lua): describing soldiers, the reports, and the debug overlay.
 local Controller, Map, ARRIVED = ...
 local AiWar = WS.require("features.aiwar.model")
-local Orders = WS.require("features.aiwar.orders")
+local Orders = WS.require("features.aiwar.ns_behaviors")
 local Tactics = wartactics.fireteam
 local Squad = wartactics.squad
 local Inspect = WS.require("features.aiwar.inspect")

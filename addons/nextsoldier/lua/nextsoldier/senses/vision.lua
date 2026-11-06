@@ -8,7 +8,7 @@
 -- (TF2's GetPrimaryKnownThreat with onlyVisibleThreats false) takes the most
 -- dangerous it remembers when none is in sight.
 --
--- Its events are the orders' (features.aiwar.orders): the caller tells the
+-- Its events are the orders' (features.aiwar.ns_behaviors): the caller tells the
 -- soldier's behaviour each one, with the enemy's handle.
 local pairs = pairs
 local setmetatable = setmetatable

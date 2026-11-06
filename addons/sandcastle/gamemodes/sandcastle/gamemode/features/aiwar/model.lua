@@ -3,7 +3,7 @@
 -- teams), trading sides when the defenders win. This model holds who fights
 -- for whom, what each soldier is for (its role), when each side's dead come
 -- back, and what the round state lets soldiers do. The soldiers' orders are
--- features.aiwar.orders; the features/aiwar controller spawns, enlists
+-- features.aiwar.ns_behaviors; the features/aiwar controller spawns, enlists
 -- and drives the NPCs.
 --
 -- Members are opaque handles (the NPC entities). Carts are given as the set
@@ -39,7 +39,7 @@ function LosersOf(winner)
 	return EnemyOf(winner)
 end
 
--- Roles: what a soldier is for. features.aiwar.orders gives each its goal.
+-- Roles: what a soldier is for. features.aiwar.ns_behaviors gives each its goal.
 PUSH, ESCORT, BLOCK, DEFEND = "push", "escort", "block", "defend"
 -- Raiders, on either side, go round the enemy's line and break it up;
 -- support stands behind its own line and hits hard from there (the
@@ -167,7 +167,7 @@ end
 -- leans on whichever cart matters more. Its blockers outnumber its
 -- defenders while the enemy's cart is close to its checkpoint. Every team
 -- keeps a fifth of its soldiers raiding and a tenth in support, whose
--- focus follows the share too (features.aiwar.orders' Focus).
+-- focus follows the share too (features.aiwar.ns_behaviors' Focus).
 --
 -- carts: team -> true, or { close = the cart is near its next checkpoint
 -- (CartClose), progress = how far along its track, 0 to 1 }, for each team

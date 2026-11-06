@@ -8,7 +8,7 @@ local H = dofile("tests/harness.lua")
 local FS = dofile("tests/fake_soldier.lua")
 local N = npc.nextbot
 local AiWar = H.require("features.aiwar.model")
-local Orders = H.require("features.aiwar.orders")
+local Orders = H.require("features.aiwar.ns_behaviors")
 local Teams = gameplay.teams
 
 local FP = {}

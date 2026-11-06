@@ -20,7 +20,7 @@
 --   "lost"     theirs
 local ipairs, pairs, setmetatable = ipairs, pairs, setmetatable
 local AiWar = require("features.aiwar.model")
-local Orders = require("features.aiwar.orders")
+local Orders = require("features.aiwar.ns_behaviors")
 local Teams = gameplay.teams
 local Base = wartactics.scenario
 local CP = require("features.aiwar.scenario.control_points")
@@ -50,7 +50,7 @@ end
 
 -- The doctrine ---------------------------------------------------------------------
 
--- The point doctrine's jobs, explore among them (features.aiwar.orders'
+-- The point doctrine's jobs, explore among them (features.aiwar.ns_behaviors'
 -- EXPLORE_ROLE): an explorer squad goes for where it fights, else its
 -- lane's end, else its waypoint (the scenario's board, field.explore).
 DOCTRINE = {}

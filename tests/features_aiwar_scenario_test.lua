@@ -3,7 +3,7 @@
 -- must allocate exactly as the controller did before it.
 local T = dofile("tests/harness.lua")
 local AiWar = T.require("features.aiwar.model")
-local Orders = T.require("features.aiwar.orders")
+local Orders = T.require("features.aiwar.ns_behaviors")
 local Scenario = T.require("features.aiwar.scenario")
 local Payload = T.require("features.aiwar.scenario.payload")
 local Track = math.polyline

@@ -1,6 +1,6 @@
 -- Part of the AI war controller (sv.lua): the ws_aiwar_* and ns_* console commands.
 local Controller, Map = ...
-local Orders = WS.require("features.aiwar.orders")
+local Orders = WS.require("features.aiwar.ns_behaviors")
 local Tactics = wartactics.fireteam
 local Squad = wartactics.squad
 local Slots = WS.require("features.aiwar.slots")

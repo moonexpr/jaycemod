@@ -3,7 +3,7 @@
 local T = dofile("tests/harness.lua")
 local Inspect = T.require("features.aiwar.inspect")
 local Tactics = wartactics.fireteam
-local Orders = T.require("features.aiwar.orders")
+local Orders = T.require("features.aiwar.ns_behaviors")
 
 local RED, BLUE = 2, 3
 

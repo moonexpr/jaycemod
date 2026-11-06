@@ -15,7 +15,7 @@
 -- orders), and it asks no more.
 local Controller = ...
 local Mission = wartactics.mission
-local Orders = WS.require("features.aiwar.orders")
+local Orders = WS.require("features.aiwar.ns_behaviors")
 local Lanes = wartactics.lanes
 local Squad = wartactics.squad
 local Tactics = wartactics.fireteam
