@@ -6,7 +6,8 @@
 -- chat, the first line it printed, else the values it returned, else that it ran; clients do
 -- not answer, so a run only on them tells nothing. Its caller's client hears how it went: a
 -- success cue, an error cue, or, for work it returned still going a frame later (the gamemode's
--- transactions), a blip, then the cue for how the work settled.
+-- transactions), a blip, then the cue for how the work settled; still going after LISTEN_FOR
+-- seconds, it is told so, with a neutral cue, and its end goes unheard.
 local CATEGORY = "LuaDev"
 
 local function who(ply, name) return luadev.GetPlayerIdentifier(ply, "cmd:" .. name) end
@@ -102,6 +103,10 @@ end
 
 -- What the caller's client plays: a run done, failed, or its work still going after a frame.
 local SUCCESS_SOUND, ERROR_SOUND, PROGRESS_SOUND = "buttons/button14.wav", "buttons/button10.wav", "buttons/blip1.wav"
+local NEUTRAL_SOUND = "buttons/button16.wav"
+-- How long a run's work is listened for.
+local LISTEN_FOR = 10
+local STILL_RUNNING = "Still running; no longer listening for its end."
 -- A transaction's states, as the gamemode's foundation names them.
 local PENDING, COMMITTED = "pending", "committed"
 
@@ -126,12 +131,22 @@ local function pending_work(values)
 end
 
 -- The caller's cue for a run that went through: success now, or, for work still going a frame
--- later, a blip, then the cue for how it settled.
+-- later, a blip, then the cue for how it settled; still going after LISTEN_FOR seconds, a word
+-- and a neutral cue, and no more.
 local function cue_done(ply, work)
 	if not work then return cue(ply, SUCCESS_SOUND) end
-	work:OnSettle(function(settled) cue(ply, settled:State() == COMMITTED and SUCCESS_SOUND or ERROR_SOUND) end)
+	local listening = true
+	work:OnSettle(function(settled)
+		if listening then cue(ply, settled:State() == COMMITTED and SUCCESS_SOUND or ERROR_SOUND) end
+	end)
 	timer.Simple(0, function()
 		if work:State() == PENDING then cue(ply, PROGRESS_SOUND) end
+	end)
+	timer.Simple(LISTEN_FOR, function()
+		if work:State() ~= PENDING then return end
+		listening = false
+		ULib.tsay(ply, STILL_RUNNING)
+		cue(ply, NEUTRAL_SOUND)
 	end)
 end
 

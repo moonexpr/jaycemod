@@ -108,7 +108,7 @@ local function ulx_module(t)
 		},
 		GetConVar = function() return convar(t.cslua) end,
 		IsValid = function(v) return v ~= nil and v.valid ~= false end,
-		timer = { Simple = function(_, fn) frames[#frames + 1] = fn end },
+		timer = { Simple = function(delay, fn) frames[#frames + 1] = { delay = delay, fn = fn } end },
 	}, { __index = _G })
 	setfenv(assert(loadfile(ULX_LUADEV)), env)()
 	return commands, ran, errors, hooks, said, cues, frames
@@ -121,12 +121,18 @@ local function sounds(cues)
 	return list
 end
 
--- runs the frames queued so far
-local function frame(frames)
-	local queued = { unpack(frames) }
+-- runs the timers queued so far that are due within seconds (a frame: 0), keeping the rest
+local function after(frames, seconds)
+	local due, kept = {}, {}
+	for _, t in ipairs(frames) do
+		if t.delay <= seconds then due[#due + 1] = t.fn else kept[#kept + 1] = t end
+	end
 	for i = #frames, 1, -1 do frames[i] = nil end
-	for _, fn in ipairs(queued) do fn() end
+	for i, t in ipairs(kept) do frames[i] = t end
+	for _, fn in ipairs(due) do fn() end
 end
+
+local function frame(frames) after(frames, 0) end
 
 -- a transaction as the gamemode's: pending until settled, telling who waits on it
 local function transaction(state)
@@ -376,6 +382,39 @@ T.test("a long line is cut to 120 characters, saying how many more there were", 
 	local exact, _, _, _, saidExact = ulx_module({ prints = string.rep("a", 120) })
 	exact["ulx l"].fn(player(), "x()")
 	T.eq(saidExact[1], string.rep("a", 120), "120 is whole")
+end)
+
+T.test("work still going after 10 seconds is told so, with a neutral cue, and listened for no more", function()
+	local tx = transaction()
+	local commands, _, _, _, said, cues, frames = ulx_module({ values = { tx } })
+	commands["ulx l"].fn(player(), "return work()")
+	frame(frames)
+	local blip = cues[1].sound
+	after(frames, 9)
+	T.eq(#cues, 1, "nothing before 10 seconds")
+	after(frames, 10)
+	T.eq(#cues, 2, "a cue at 10")
+	T.eq(cues[2].sound ~= blip, true, "not the blip")
+	local done, _, _, _, _, doneCues = ulx_module()
+	done["ulx l"].fn(player(), "x()")
+	local failing, _, _, _, _, errorCues = ulx_module({ fail = "boom" })
+	failing["ulx l"].fn(player(), "x()")
+	T.eq(cues[2].sound ~= doneCues[1].sound and cues[2].sound ~= errorCues[1].sound, true, "neither success nor error")
+	T.eq(said[#said]:lower():find("still running", 1, true) ~= nil, true, "told: " .. tostring(said[#said]))
+	tx:Settle("committed")
+	T.eq(#cues, 2, "its end unheard")
+end)
+
+T.test("work settled before 10 seconds is not told it is still going", function()
+	local tx = transaction()
+	local commands, _, _, _, said, cues, frames = ulx_module({ values = { tx } })
+	commands["ulx l"].fn(player(), "return work()")
+	frame(frames)
+	tx:Settle("committed")
+	local lines = #said
+	after(frames, 10)
+	T.eq(#cues, 2, "the blip and its end, no more")
+	T.eq(#said, lines, "nothing said")
 end)
 
 T.finish()
