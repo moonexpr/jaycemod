@@ -187,8 +187,15 @@ room has twelve starts, a `func_respawnroom`, a resupply locker and its
 `func_regenerate`, and at its door a shutter (`func_door`) its team's trigger
 opens, behind a `func_respawnroomvisualizer`. The script renders it top-down,
 from the side, through the bench's doors and inside a spawn room, and draws
-its plan, before it compiles. The nav mesh is generated on the server with the
-shutters open and the fields passable (`.devtools/bin/dev_3house_nav.lua`).
+its plan, before it compiles. The nav mesh is built on the server by
+`.devtools/bin/dev_3house_nav.lua`, run twice: first it generates the mesh with
+the shutters open and the fields passable; after the map reloads, it repairs
+it. The generator links a room's floor straight to the grass across a
+doorway's threshold (areas that do not touch), which the war's rooms read as
+an opening the breadth of the room's side, and lays floor on the windows'
+sills, which hides the windows from them. The repair cuts those links, removes
+what no walk from the seeds reaches, and saves the mesh, so the bench reads
+as a sealed indoor room with four doors and eight windows.
 
 `.devtools/bin/dev_3house_bench.lua` runs five RED followers on their legs,
 feet free, through a room operation, stage by stage: spawn, muster, mobilize
