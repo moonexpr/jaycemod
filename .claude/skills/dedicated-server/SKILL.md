@@ -123,7 +123,10 @@ caller in chat and with a sound cue; `server.cfg` tunes them with `sv_luadev_out
 0: none), `_maxchars` (120; 0: uncut), `_timeout` (10 s) and the sounds `_success`, `_error`,
 `_progress`, `_neutral` (empty: silent). Beside luadev's chat commands it gives `!lfile`, `!lent`,
 `!lwep`, `!leffect`, `!lwatch`, `!lunwatch`, `!lcopy` and `!lspawn` (luadev's console-only
-`lua_send_*`, `lua_watch` and easylua's helpers).
+`lua_send_*`, `lua_watch` and easylua's helpers). `!print this` (or `we`, `there`, `trace`, `me`...)
+also shows it to its caller for `sv_luadev_output_overlay` seconds: a box and lines describing each
+entity (an NPC's activity, animation, target and schedule; a NextSoldier's behaviour and group
+stacks), a line to each position.
 
 Useful after a map loads:
 

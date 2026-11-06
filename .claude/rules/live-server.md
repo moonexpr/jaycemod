@@ -143,6 +143,9 @@ players now; a method called on one runs on each of them (`RED:AddCondition("URI
 | `BLU` | BLU's players |
 | `SPEC` | The spectators |
 
+`!print` of a NextSoldier (ulx_luadev's overlay) adds its `behavior:` and `group:` stacks, through
+the `ULXLuaDevDescribe` hook the workbench answers.
+
 ### For the workbench's own code
 
 | Function | What |

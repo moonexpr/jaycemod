@@ -1,3 +1,5 @@
+if not Watch then return end
+
 -- `ulx addmap <item> [map] [change]`, "!addmap" in chat: a Workshop map onto this
 -- server, in the ulx_luadev addon server_root.py links into the dedicated server. Lua cannot download an item,
 -- so the command asks the host: a line of the watch log, which add_map.py --serve

@@ -17,6 +17,7 @@ T.MODULE_DIRS = {
 	"addons/teamtint/lua/includes/modules/",
 	"addons/model_viewer/lua/includes/modules/",
 	"addons/sandcastle_dev/lua/includes/modules/",
+	"addons/ulx_luadev/lua/includes/modules/",
 }
 
 -- The trees an addon ships under its own lua/ that the gamemode's loader

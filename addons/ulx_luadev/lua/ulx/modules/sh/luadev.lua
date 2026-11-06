@@ -13,6 +13,14 @@
 -- _success, _error, _progress and _neutral (a path, empty for none).
 local CATEGORY = "LuaDev"
 
+-- the library both sides run: what a run says, and what !print shows
+if SERVER then
+	AddCSLuaFile("includes/modules/luadev_output.lua")
+	AddCSLuaFile("includes/modules/luadev_show.lua")
+end
+local Output = require("luadev_output")
+local Show = require("luadev_show")
+
 local function who(ply, name) return luadev.GetPlayerIdentifier(ply, "cmd:" .. name) end
 
 -- ULib splits a chat command's arguments and drops their quotes (print"x"
@@ -52,7 +60,12 @@ local COMMANDS = {
 	{ "lb", "Runs lua on both the server and your own client, e.g. !lb print(SERVER, CLIENT)", function(line)
 		return { { "me", line }, { "server", line } }
 	end },
-	{ "print", "Prints a value on the server, told in chat, e.g. !print me:GetPos()", function(line)
+	{ "print", "Prints a value on the server, told in chat; one of easylua's (this, we, there, trace...) also shown"
+		.. " a moment where it is, e.g. !print this", function(line)
+		local name = line:match("^%s*(.-)%s*$")
+		if Show.RELATIVES[name] then
+			return { { "server", string.format("print(%s) require(%q).Show(me, %q, %s)", name, "luadev_show", name, name) } }
+		end
 		return { { "server", "print(" .. line .. ")" } }
 	end },
 	{ "table", "Prints a table on the server, its first lines told in chat, e.g. !table me:GetWeapons()", function(line)
@@ -77,66 +90,17 @@ if SERVER then
 	end
 	Setting("maxlines", "1", "How many lines of a luadev command's output its caller is told in chat; 0 for none", 0)
 	Setting("maxchars", "120", "How long a line of a luadev command's output in chat is: a longer one is cut, saying how many more it had; 0 for uncut", 0)
+	Setting("overlay", "2", "How long !print of one of easylua's relative names (this, we, there, trace...) is shown to its caller, in seconds; 0 for not", 0)
 	Setting("timeout", "10", "How long a luadev command listens for the work its run returned before saying it still runs", 0)
 	Setting("success", "buttons/button14.wav", "The sound a luadev command's caller hears when its run went through; empty for none")
 	Setting("error", "buttons/button10.wav", "The sound a luadev command's caller hears when its run did not compile, failed or was refused; empty for none")
 	Setting("progress", "buttons/blip1.wav", "The sound a luadev command's caller hears when the work its run returned is still going a frame later; empty for none")
 	Setting("neutral", "buttons/button16.wav", "The sound a luadev command's caller hears when it stops listening for work still going; empty for none")
 end
-local PRINTERS = { print = "\t", Msg = "", MsgN = "", MsgC = "" }
-local NEWLINE = { print = true, MsgN = true }
-
--- What fn printed while it ran, as text (still printed as ever), then what it returned.
-local function captured(fn)
-	local text, saved = {}, {}
-	for printer, sep in pairs(PRINTERS) do
-		saved[printer] = _G[printer]
-		_G[printer] = function(...)
-			local parts = {}
-			for i = 1, select("#", ...) do
-				local v = select(i, ...)
-				if type(v) ~= "table" then parts[#parts + 1] = tostring(v) end -- MsgC's colours
-			end
-			text[#text + 1] = table.concat(parts, sep) .. (NEWLINE[printer] and "\n" or "")
-			if saved[printer] then return saved[printer](...) end
-		end
-	end
-	local results = { pcall(fn) }
-	for printer in pairs(PRINTERS) do _G[printer] = saved[printer] end
-	if not results[1] then error(results[2], 0) end
-	return table.concat(text), unpack(results, 2)
-end
-
--- The lines a run on the server tells its caller: at most maxlines of those it printed (blank
--- ones left out), else its values, else "ok", each at most maxchars long (0: whole), then how
--- many more there were.
-local function output_lines(printed, values, maxlines, maxchars)
-	local lines = {}
-	for line in printed:gmatch("[^\n]+") do
-		if line:find("%S") then lines[#lines + 1] = line:match("^%s*(.-)%s*$") end
-	end
-	if not lines[1] and values and #values > 0 then
-		local parts = {}
-		for i, v in ipairs(values) do parts[i] = tostring(v) end
-		lines[1] = table.concat(parts, ", "):match("^%s*([^\n]-)%s*$")
-	end
-	if not lines[1] then lines[1] = "ok" end
-	local told = {}
-	for i = 1, math.min(#lines, maxlines) do
-		local line = lines[i]
-		if maxchars > 0 and #line > maxchars then
-			line = string.format("%s... (%d+ chars)", line:sub(1, maxchars), #line - maxchars)
-		end
-		told[i] = line
-	end
-	if #lines > maxlines then told[#told + 1] = string.format("... (%d+ lines)", #lines - maxlines) end
-	return told
-end
 
 -- What the caller's client plays: a run done, failed, or its work still going after a frame.
 local STILL_RUNNING = "Still running; no longer listening for its end."
--- A transaction's states, as the gamemode's foundation names them.
-local PENDING, COMMITTED = "pending", "committed"
+local PENDING, COMMITTED = Output.PENDING, Output.COMMITTED
 
 -- Plays the sound a setting names on ply's own client; the console has none, and an empty
 -- setting plays nothing.
@@ -150,15 +114,6 @@ local function failed(ply, why)
 	return ULib.tsayError(ply, why, true)
 end
 
--- Work a run returned that goes on after it: a value answering State() and OnSettle(fn), pending.
-local function pending_work(values)
-	if type(values) ~= "table" then return nil end
-	for _, v in ipairs(values) do
-		if type(v) == "table" and type(v.State) == "function" and type(v.OnSettle) == "function" and v:State() == PENDING then
-			return v
-		end
-	end
-end
 
 -- The caller's cue for a run that went through: success now, or, for work still going a frame
 -- later, a blip, then the cue for how it settled; still going after sv_luadev_output_timeout
@@ -184,7 +139,7 @@ end
 local function tell(ply, printed, values)
 	local maxlines = setting.maxlines:GetInt()
 	if maxlines <= 0 then return end
-	for _, line in ipairs(output_lines(printed, values, maxlines, setting.maxchars:GetInt())) do ULib.tsay(ply, line) end
+	for _, line in ipairs(Output.Lines(printed, values, maxlines, setting.maxchars:GetInt())) do ULib.tsay(ply, line) end
 end
 
 -- runs each of runs as ply, once every script compiles; tells ply why not, and a run on the
@@ -200,16 +155,16 @@ local function run(ply, name, runs)
 		local where, script = r[1], r[2]
 		local ok, why, printed
 		if where == "server" then
-			printed, ok, why = captured(function() return luadev.RunOnServer(script, who(ply, name), extra) end)
+			printed, ok, why = Output.Captured(function() return luadev.RunOnServer(script, who(ply, name), extra) end)
 		elseif where == "shared" then
-			printed, ok, why = captured(function() return luadev.RunOnShared(script, who(ply, name), extra) end)
+			printed, ok, why = Output.Captured(function() return luadev.RunOnShared(script, who(ply, name), extra) end)
 		elseif where == "clients" then ok, why = luadev.RunOnClients(script, who(ply, name), extra)
 		else ok, why = luadev.RunOnClient(script, where == "me" and ply or where, who(ply, name), extra)
 		end
 		if not ok then return failed(ply, tostring(why)) end
 		if printed then
 			tell(ply, printed, why)
-			work = work or pending_work(why)
+			work = work or Output.Work(why)
 		end
 	end
 	cue_done(ply, work)
@@ -271,7 +226,7 @@ local WHERE = { type = ULib.cmds.StringArg, hint = "server|shared|clients", comp
 -- it printed
 local function console(ply, file, command, args)
 	if not luadev.RealFilePath(file) then return failed(ply, "luadev finds no file " .. file) end
-	local printed = captured(function() concommand.Run(NULL, command, args, table.concat(args, " ")) end)
+	local printed = Output.Captured(function() concommand.Run(NULL, command, args, table.concat(args, " ")) end)
 	tell(ply, printed, nil)
 	cue_done(ply, nil)
 end
@@ -292,7 +247,7 @@ add("lwatch", "Sends a Lua file again each time it changes on disk, as lua_watch
 
 add("lunwatch", "Stops watching a file !lwatch watches, by its place in the list, or every one, e.g. !lunwatch 1",
 	function(ply, index)
-		local printed = captured(function() concommand.Run(NULL, "lua_watch_kill", { index or "" }, index or "") end)
+		local printed = Output.Captured(function() concommand.Run(NULL, "lua_watch_kill", { index or "" }, index or "") end)
 		tell(ply, printed, nil)
 		cue_done(ply, nil)
 	end, { { type = ULib.cmds.StringArg, hint = "index (none: all)", ULib.cmds.optional } })

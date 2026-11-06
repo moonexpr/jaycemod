@@ -69,7 +69,7 @@ end)
 local function ulx_module(t)
 	t = t or {}
 	local commands, ran, errors, said, cues, frames, created = {}, {}, {}, {}, {}, {}, {}
-	local consoled = {}
+	local consoled, sent = {}, {}
 	local function command(_, name, fn, say)
 		local c = { name = name, fn = fn, say = say, params = {} }
 		function c.addParam(self, p) self.params[#self.params + 1] = p end
@@ -120,6 +120,8 @@ local function ulx_module(t)
 			}
 		end,
 		SERVER = true,
+		require = T.require,
+		AddCSLuaFile = function(path) sent[#sent + 1] = path end,
 		concommand = { Run = function(ply, command, args, line)
 			consoled[#consoled + 1] = { ply = ply, command = command, args = args, line = line }
 		end },
@@ -127,7 +129,7 @@ local function ulx_module(t)
 		timer = { Simple = function(delay, fn) frames[#frames + 1] = { delay = delay, fn = fn } end },
 	}, { __index = _G })
 	setfenv(assert(loadfile(ULX_LUADEV)), env)()
-	return commands, ran, errors, hooks, said, cues, frames, created, consoled
+	return commands, ran, errors, hooks, said, cues, frames, created, consoled, sent
 end
 
 -- the cues' sounds in order
@@ -559,6 +561,22 @@ T.test("lcopy copies a value to the caller's clipboard; lspawn spawns a class or
 	T.eq(ran[1].script, "local v = me:GetPos() easylua.CopyToClipboard(v, me)", "the value, to me")
 	commands["ulx lspawn"].fn(player(), "models/props_c17/oildrum001.mdl")
 	T.eq(ran[2].script, 'easylua.CreateEntity("models/props_c17/oildrum001.mdl")', "spawned")
+end)
+
+T.test("!print of one of easylua's relative names also shows it to its caller; of anything else, prints only", function()
+	local commands, ran = ulx_module()
+	commands["ulx print"].fn(player(), "this")
+	T.eq(ran[1].script, 'print(this) require("luadev_show").Show(me, "this", this)', "shown")
+	commands["ulx print"].fn(player(), " there ")
+	T.eq(ran[2].script:find('Show(me, "there", there)', 1, true) ~= nil, true, "trimmed")
+	commands["ulx print"].fn(player(), "me:GetPos()")
+	T.eq(ran[3].script, "print(me:GetPos())", "printed only")
+end)
+
+T.test("the modules clients run are sent to them, and the overlay's time is a setting", function()
+	local _, _, _, _, _, _, _, created, _, sent = ulx_module()
+	T.eq(table.concat(sent, " "), "includes/modules/luadev_output.lua includes/modules/luadev_show.lua", "sent")
+	T.eq(created.sv_luadev_output_overlay, "2", "2 seconds")
 end)
 
 T.finish()
