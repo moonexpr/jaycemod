@@ -130,6 +130,17 @@ inputs, wins); `status`, `trace`, `timers` and the two proofs still work.
 | `PLAYER:RemoveCondition(cond)` | | Take a condition away (`WS.RemoveCondition`), by number or name |
 | `ENTITY:Teleport(target, facingTowards)` | | Put an entity before `target`, along the way it faces, the two clear of each other; turned to face it (`facingTowards`, true unless false) or the way it faces. Its hull is swept out from `target`, so a wall stops it short; its motion is stopped. Returns where it stands and its yaw |
 
+### easylua
+
+Players by team, made as easylua makes `all` (`CreateAllFunction`): called, each gives its team's
+players now; a method called on one runs on each of them (`RED:AddCondition("URINE", 5)`).
+
+| Global | What |
+|---|---|
+| `RED` | RED's players |
+| `BLU` | BLU's players |
+| `SPEC` | The spectators |
+
 ### For the workbench's own code
 
 | Function | What |

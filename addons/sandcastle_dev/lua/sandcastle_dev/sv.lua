@@ -19,6 +19,7 @@ local PARTS = {
 	"sv_scenarios",
 	"sv_reload",
 	"sv_entity",
+	"sv_easylua",
 }
 
 for _, part in ipairs(PARTS) do dev.load("sandcastle_dev/" .. part .. ".lua") end
