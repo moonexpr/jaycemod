@@ -145,17 +145,33 @@ each member's spacing ring, pink with an arrow where a teammate pushes it.
 That is `engine.Separation`, the same Rust as a bot player's `GroupPush`.
 
 The panel's **Mode** is the squad's mode, one whole number on its order
-(`group_identity.MODE`), and says what members do about their places.
-**Stationary** (0): they wait at them. **Alert** (1): each patrols spots
-round the order's point on its own side, resting `PATROL_RADIUS` and
-`PATROL_REST` as the war's defenders do (384 units, 6 s). **Cautious** (2):
-each wanders near its own place, as attackers wander in setup (300 units,
-12 s). **Panic** (3): each makes for the way out furthest from the threat (a
-fall back's threat is you; a muster's, its point): the doors of the room it
-is in, where the AI war has found the map's rooms, else straight away from
-the threat. A white ring marks where a member is going now, and its path
-there is drawn. `.devtools/bin/squad_member_check.lua` runs the orders and
-modes on a server and returns them as data.
+(`group_identity.MODE`). Each mode is the action members run under their
+order's (`nextsoldier.behavior.gib_behaviors`), moving them about the
+squad's point and their places, never the point itself. Picking a mode in
+the menu sets it on the squad once, so it does not undo the leader's fall back.
+**Stationary** (0, `LegsStationary`): each rests, crouched, at a seat near
+its place (a nav hiding spot within `REST_RADIUS`, by a wall or in a corner,
+that no other member holds), else at its place. **Alert** (1, `LegsPatrol`):
+each patrols spots round the order's point on its own side, using
+`PATROL_RADIUS` and `PATROL_REST` as the war's defenders do (384 units, 6 s).
+**Cautious** (2, `LegsWander`): each wanders near its own place, as attackers
+wander in setup (300 units, 12 s). **Panic** (3, `LegsEvacuate`): each runs
+from where it stands for the way out of the room furthest from the threat (a
+fall back's threat is you; a muster's, its point): the doors of its room
+where the AI war has found the map's rooms, else straight away from the
+threat. **Close** (4, `LegsStayClose`): each stays within `STAY_CLOSE_RANGE`
+of the squad's leader (the first picked), and runs back to it when further.
+A member that strays more than `REGROUP_RANGE` from the squad's point, while
+stationary, alert or cautious, suspends that action for `LegsRegroup` and
+runs back to its place.
+
+Members on legs can be hurt; followers on their bench cannot. When a full
+squad (a leader and others) has lost half of those it placed
+(`CASUALTY_SHARE`), its leader calls the fall back once: "Fall back!" in the
+chat and the server's console, and the squad evacuates. A white ring marks
+where a member is going now, and its path there is drawn.
+`.devtools/bin/squad_member_check.lua` runs the orders and modes on a server,
+kills two of four to see the fall back called, and returns it all as data.
 
 ### Tactical and Annotate
 

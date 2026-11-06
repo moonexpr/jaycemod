@@ -154,6 +154,7 @@ local Lanes = wartactics.lanes
 local Locomotion = nextsoldier.locomotion
 local Behavior = nextsoldier.behavior
 local GroupIdentity = nextsoldier.behavior.group_identity
+local GIB = nextsoldier.behavior.gib_behaviors
 -- A place is looked for from this far above it to this far below, a body's own hull fitting; its
 -- way there is swept a stair's step above the floor, so a step does not wall it off.
 local SEARCH_ABOVE, SEARCH_BELOW, STEP = 64, 256, 18
@@ -478,29 +479,50 @@ end
 -- Its driver's first action, or none in the war, whose orders are its behaviour.
 function ENT:NSInitialAction()
 	local driver = self:NSDriver()
-	if driver == "legs" then return GroupIdentity.InitialAction(nextsoldier.engine, GroupIdentity.LegsAtEase:New()) end
+	if driver == "legs" then return GroupIdentity.InitialAction(nextsoldier.engine, GIB.LegsAtEase:New()) end
 	if driver == "war" then return nil end
 	return nextsoldier.behavior.pathfollower.InitialAction(self.NSToolManaged)
 end
 
--- A bench war started for followers ends with the last soldier in it.
+-- A bench war started for followers ends with the last soldier in it; it leaves its squad.
 function ENT:OnRemove()
 	Soldier().OnRemove(self)
+	if self.nsLegsOrder then self.nsLegsOrder:Leave(self) end
 	if self:NSDriver() == "war" then WS.Feature("aiwar"):EndBenchWhenEmpty(self) end
 end
 
--- A tool's follower out of the war is not hurt: a stray shot would take it off the bench.
+-- A tool's follower on its bench is not hurt: a stray shot would take it off it. Its legs' and
+-- the war's are, so a squad takes casualties.
 hook.Add("EntityTakeDamage", "npc_pathfollower", function(ent)
-	if ent:GetClass() == "npc_pathfollower" and ent.NSToolManaged and ent:NSDriver() ~= "war" then return true end
+	if ent:GetClass() == "npc_pathfollower" and ent.NSToolManaged and ent:NSDriver() == "path" then return true end
 end)
 
+-- Killed on orders, a casualty of its squad's.
+local SoldierDeath = ENT.OnDeath
+
+function ENT:OnDeath(dmg)
+	if self.nsLegsOrder then self.nsLegsOrder:Casualty(self) end
+	return SoldierDeath(self, dmg)
+end
+
 -- Its legs (driven by them): its squad's order and its place in it, the map's word on a spot,
--- and its way to where its squad's mode sends it.
+-- the seats near its place, its way to where its squad's mode sends it, and what it calls out.
 
 function ENT:NSLegsOrder() return self.nsLegsOrder end
 function ENT:NSLegsPlace() return self.nsLegsPlace end
 function ENT:Now() return CurTime() end
 function ENT:NSLegsDraw() return math.random() end
+
+function ENT:NSLegsAt()
+	local at = self:GetPos()
+	return { x = at.x, y = at.y, z = at.z }
+end
+
+-- Its squad's call, to everyone's chat and the server's console.
+function ENT:NSLegsSay(line)
+	PrintMessage(HUD_PRINTTALK, line)
+	MsgN(tostring(self), ": ", line)
+end
 
 -- The ground under a slot where its body fits there, or nil: the map's, not who stands there now.
 local function Ground(self, slot)
@@ -544,12 +566,15 @@ function ENT:NSLegsAdmit(point)
 	end
 end
 
--- Its order and its place in it: nil, it has no room near; no order dissolves it.
+-- Its order and its place in it: nil, it has no room near; no order dissolves it. It leaves
+-- the squad it was in, and stands up at its own pace.
 function ENT:NSLegsGive(order, place)
+	local was = self.nsLegsOrder
+	if was and was ~= order then was:Leave(self) end
 	self.nsLegsOrder = order
 	self:SetNW2String("NSLegsOrder", order and order.kind or "")
 	if not order then
-		self.NSTarget = nil
+		self.NSTarget, self.NSStance, self.NSRun = nil, nil, true
 		return
 	end
 	self.nsLegsPlace = place
@@ -557,11 +582,32 @@ function ENT:NSLegsGive(order, place)
 	self:SetNW2Vector("NSLegsPlace", place and Vector(place.x, place.y, place.z) or self:GetPos())
 end
 
--- Where its squad's mode sends it: walked there, or, its feet held, its path planned and shown.
-function ENT:NSLegsHeadFor(spot)
+-- The hiding spots near its place it could reach from there: a nav area's own, by a wall or in
+-- a corner, where a body rests out of the way.
+function ENT:NSLegsSeats(place, radius)
+	local at = Vector(place.x, place.y, place.z)
+	local admit = self:NSLegsAdmit(at)
+	local seats = {}
+	for _, area in ipairs(navmesh.Find(at, radius, SEARCH_BELOW, SEARCH_ABOVE)) do
+		for _, spot in ipairs(area:GetHidingSpots()) do
+			local seat = spot:Distance(at) <= radius and admit({ x = spot.x, y = spot.y, z = spot.z })
+			if seat then seats[#seats + 1] = seat end
+		end
+	end
+	return seats
+end
+
+-- Within this of a seat it rests on, it crouches there.
+local REST_REACH = 24
+
+-- Where its squad's mode sends it, at the gait it says: walked there, or, its feet held, its path
+-- planned and shown. At the seat it rests on, it crouches.
+function ENT:NSLegsHeadFor(spot, gait)
 	local at = Vector(spot.x, spot.y, spot.z)
 	self:SetNW2Vector("NSLegsSpot", at)
 	self:SetNW2Int("NSLegsMode", self.nsLegsOrder.mode)
+	self.NSRun = gait == GIB.GAIT.RUN
+	self.NSStance = gait == GIB.GAIT.REST and self:GetPos():Distance2D(at) <= REST_REACH and "crouched" or nil
 	self.NSTarget = at
 	self:NSSteer()
 end

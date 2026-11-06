@@ -12,10 +12,6 @@ T.test("its root is the engine's own, holding what it does first", function()
 	T.eq(given.initial.name, "LegsWait", "it starts by waiting")
 end)
 
-T.test("with no group to be part of, it waits", function()
-	local wait = GroupIdentity.LegsWait:New()
-	T.eq(wait:Update({}).type, Action.CONTINUE, "stays")
-end)
 
 T.test("it is given to a soldier beside its main tree", function()
 	local placed
@@ -37,7 +33,7 @@ end)
 T.test("it can be started on what it is given, for a soldier with no other tree", function()
 	local given
 	local engine = { GroupIdentityBehavior = function(config) given = config return "root" end }
-	GroupIdentity.InitialAction(engine, GroupIdentity.LegsAtEase:New())
+	GroupIdentity.InitialAction(engine, nextsoldier.behavior.gib_behaviors.LegsAtEase:New())
 	T.eq(given.initial.name, "LegsAtEase", "what it was given")
 end)
 
@@ -150,85 +146,11 @@ T.test("a fall back onto the threat has no way to fall: there is no such order",
 	T.eq(GroupIdentity.FallBack({ x = 1, y = 2, z = 3 }, { x = 1, y = 2, z = 90 }), nil, "no direction across the ground")
 end)
 
--- A member as its legs see it: told an order and its place in it, asked to sense its group each
--- update, and heading where they say; its clock, its draws (0 to 1, in turn) and the map's word
--- on a spot (admit) are the test's.
-local function Member(order, place)
-	local me = { order = order, place = place or { x = 100, y = 0, z = 0 }, sensed = 0, headed = 0, now = 0,
-		draws = { 0.5 }, drawn = 0, refuse = function() return false end }
-	function me:NSLegsOrder() return self.order end
-	function me:NSLegsSense() self.sensed = self.sensed + 1 end
-	function me:NSLegsPlace() return self.place end
-	function me:Now() return self.now end
-	function me:NSLegsDraw()
-		self.drawn = self.drawn + 1
-		return self.draws[(self.drawn - 1) % #self.draws + 1]
-	end
-	function me:NSLegsAdmit()
-		return function(spot) if self.refuse(spot) then return nil end return spot end
-	end
-	function me:NSLegsHeadFor(spot) self.headed, self.spot = self.headed + 1, spot end
-	return me
-end
-
-T.test("on its order, a member heads for its place each update; at ease, it does not", function()
-	local me = Member(ORDERS.Muster)
-	local action = GroupIdentity.LegsAtEase:New():Update(me).action
-	T.eq(me.headed, 0, "not while at ease")
-	action:Update(me)
-	action:Update(me)
-	T.eq(me.headed, 2, "each update on it")
-end)
-
-T.test("at ease, a member stays so and senses its group", function()
-	local me = Member(nil)
-	T.eq(GroupIdentity.LegsAtEase:New():Update(me).type, Action.CONTINUE, "stays")
-	T.eq(me.sensed, 1, "sensed")
-end)
-
-T.test("told an order, a member takes the action for it", function()
-	local result = GroupIdentity.LegsAtEase:New():Update(Member(ORDERS.Muster))
-	T.eq(result.type, Action.CHANGE_TO, "changes")
-	T.eq(result.action.name, "LegsMuster", "to muster")
-	T.eq(GroupIdentity.LegsAtEase:New():Update(Member(ORDERS.FallBack)).action.name, "LegsFallBack", "or fall back")
-end)
-
-T.test("on its order, a member keeps to it and senses its group", function()
-	local me = Member(ORDERS.Muster)
-	local action = GroupIdentity.LegsAtEase:New():Update(me).action
-	T.eq(action:Update(me).type, Action.CONTINUE, "stays")
-	T.eq(me.sensed, 2, "each update")
-end)
-
-T.test("a new order, even of the same kind, replaces the one it is on", function()
-	local me = Member(ORDERS.Muster)
-	local action = GroupIdentity.LegsAtEase:New():Update(me).action
-	me.order = GroupIdentity.Muster({ x = 0, y = 0, z = 0 })
-	local result = action:Update(me)
-	T.eq(result.type, Action.CHANGE_TO, "changes")
-	T.eq(result.action.order, me.order, "on the new one")
-end)
-
-T.test("dissolved, a member goes back to ease", function()
-	local me = Member(ORDERS.FallBack)
-	local action = GroupIdentity.LegsAtEase:New():Update(me).action
-	me.order = nil
-	T.eq(action:Update(me).action.name, "LegsAtEase", "at ease")
-end)
-
-T.test("dissolved, a member heads nowhere before it goes back to ease", function()
-	local me = Member(ORDERS.Muster)
-	local action = GroupIdentity.LegsAtEase:New():Update(me).action
-	me.order = nil
-	action:Update(me)
-	T.eq(me.headed, 0, "not for the order it no longer has")
-end)
-
 -- The squad's mode: one whole number on its order, what its members do about their places.
 local MODE = GroupIdentity.MODE
 
 T.test("a squad's mode is a whole number, stationary unless it is told otherwise", function()
-	T.eq(MODE.STATIONARY .. MODE.ALERT .. MODE.CAUTIOUS .. MODE.PANIC, "0123", "its numbers")
+	T.eq(MODE.STATIONARY .. MODE.ALERT .. MODE.CAUTIOUS .. MODE.PANIC .. MODE.CLOSE, "01234", "its numbers")
 	local order = GroupIdentity.Muster({ x = 0, y = 0, z = 0 })
 	T.eq(order.mode, MODE.STATIONARY, "stationary at first")
 	order:SetMode(MODE.PANIC)
@@ -236,85 +158,69 @@ T.test("a squad's mode is a whole number, stationary unless it is told otherwise
 	T.eq(pcall(order.SetMode, order, 9), false, "no such mode")
 end)
 
-local function OnOrder(order, place)
-	local me = Member(order, place)
-	local action = GroupIdentity.LegsAtEase:New():Update(me).action
-	return me, action
+T.defined(GroupIdentity.CASUALTY_SHARE, "CASUALTY_SHARE")
+
+-- An order placing count members, led by the first given it.
+local function Squad(count)
+	local order = GroupIdentity.Muster({ x = 0, y = 0, z = 0 })
+	local members = Crowd(count)
+	order:Places(members, SPACING)
+	order:Lead(members[1])
+	return order, members
 end
 
-local function Distance(a, b) return math.sqrt((a.x - b.x) ^ 2 + (a.y - b.y) ^ 2) end
+-- The casualties a squad of count takes before they are heavy.
+local function Heavy(count) return math.ceil(count * GroupIdentity.CASUALTY_SHARE) end
 
-T.test("stationary, a member waits at its place", function()
-	local me, action = OnOrder(GroupIdentity.Muster({ x = 0, y = 0, z = 0 }))
-	action:Update(me)
-	T.eq(me.spot, me.place, "its place")
+T.test("a full squad's casualties are heavy once it has lost its share of those it placed", function()
+	local order, members = Squad(6)
+	for i = 2, Heavy(6) do order:Casualty(members[i]) end
+	T.eq(order:HeavyCasualties(), false, "one short")
+	order:Casualty(members[Heavy(6) + 1])
+	T.eq(order:HeavyCasualties(), true, "heavy")
 end)
 
-T.test("alert, a member patrols round the squad's point on its own side, a spot at a time", function()
+T.test("a squad with no leader, or of one, is no full squad: its casualties are never heavy", function()
+	local order, members = Squad(4)
+	order:Leave(members[1])
+	for i = 2, 4 do order:Casualty(members[i]) end
+	T.eq(order:HeavyCasualties(), false, "leaderless")
+	local alone = GroupIdentity.Muster({ x = 0, y = 0, z = 0 })
+	local me = { x = 0, y = 0, z = 0 }
+	alone:Places({ me }, SPACING)
+	alone:Lead(me)
+	alone:Casualty({})
+	T.eq(alone:HeavyCasualties(), false, "alone")
+end)
+
+T.test("its leader lost, a squad has none", function()
+	local order, members = Squad(3)
+	order:Casualty(members[1])
+	T.eq(order.leader, nil, "none")
+end)
+
+T.test("a squad routs once, on heavy casualties, and evacuates", function()
+	local order, members = Squad(4)
+	T.eq(order:Rout(), false, "not whole")
+	for i = 2, Heavy(4) + 1 do order:Casualty(members[i]) end
+	T.eq(order:Rout(), true, "routed")
+	T.eq(order.mode, MODE.PANIC, "evacuating")
+	order:SetMode(MODE.STATIONARY)
+	T.eq(order:Rout(), false, "once")
+end)
+
+T.test("a squad's members take seats apart: the nearest one no other holds", function()
 	local order = GroupIdentity.Muster({ x = 0, y = 0, z = 0 })
-	order:SetMode(MODE.ALERT)
-	local me, action = OnOrder(order, { x = 100, y = 0, z = 0 })
-	me.draws = { 0.1, 0.9, 0.6 }
-	action:Update(me)
-	local first = me.spot
-	T.eq(Distance(first, order.point) <= GroupIdentity.PATROL_RADIUS + 0.001, true, "within the patrol's reach")
-	T.eq(first.x > 0, true, "on its own side of the point")
-	me.now = GroupIdentity.PATROL_REST - 0.1
-	action:Update(me)
-	T.eq(me.spot, first, "rests there")
-	me.now = GroupIdentity.PATROL_REST
-	action:Update(me)
-	T.eq(me.spot ~= first, true, "then the next")
+	local a, b = {}, {}
+	local seats = function() return { { x = 10, y = 0, z = 0 }, { x = 200, y = 0, z = 0 } } end
+	T.eq(order:Seat(a, seats(), { x = 0, y = 0, z = 0 }).x, 10, "the nearest")
+	T.eq(order:Seat(b, seats(), { x = 0, y = 0, z = 0 }).x, 200, "the one left")
+	T.eq(order:Seat(a, seats(), { x = 0, y = 0, z = 0 }).x, 10, "its own again")
+	T.eq(order:Seat({}, seats(), { x = 0, y = 0, z = 0 }), nil, "none left")
+	order:Leave(b)
+	T.eq(order:Seat({}, seats(), { x = 0, y = 0, z = 0 }).x, 200, "freed as it leaves")
 end)
 
-T.test("cautious, a member wanders near its own place, resting longer", function()
-	local order = GroupIdentity.Muster({ x = 0, y = 0, z = 0 })
-	order:SetMode(MODE.CAUTIOUS)
-	local me, action = OnOrder(order, { x = 1000, y = 0, z = 0 })
-	me.draws = { 0.3, 0.8 }
-	action:Update(me)
-	local first = me.spot
-	T.eq(Distance(first, me.place) <= GroupIdentity.WANDER_RADIUS + 0.001, true, "near its place")
-	me.now = GroupIdentity.WANDER_REST - 0.1
-	action:Update(me)
-	T.eq(me.spot, first, "rests there")
-	T.eq(GroupIdentity.WANDER_REST > GroupIdentity.PATROL_REST, true, "longer than a patrol's")
-end)
-
-T.test("panicked, a member makes for the way out furthest from the threat", function()
-	local order = GroupIdentity.FallBack({ x = 0, y = 0, z = 0 }, { x = -500, y = 0, z = 0 })
-	order:SetMode(MODE.PANIC)
-	order:SetExits({ { x = -300, y = 50, z = 0 }, { x = 400, y = -50, z = 0 } })
-	local me, action = OnOrder(order, { x = 50, y = 0, z = 0 })
-	action:Update(me)
-	T.eq(me.spot.x, 400, "the far way out")
-end)
-
-T.test("panicked with no way out known, a member runs straight away from the threat", function()
-	local order = GroupIdentity.FallBack({ x = 0, y = 0, z = 0 }, { x = -500, y = 0, z = 0 })
-	order:SetMode(MODE.PANIC)
-	local me, action = OnOrder(order, { x = 50, y = 0, z = 0 })
-	action:Update(me)
-	T.eq(me.spot.x > me.place.x, true, "further from the threat than its place")
-end)
-
-T.test("where the map refuses every spot it draws, a member keeps to its place", function()
-	local order = GroupIdentity.Muster({ x = 0, y = 0, z = 0 })
-	order:SetMode(MODE.CAUTIOUS)
-	local me, action = OnOrder(order, { x = 100, y = 0, z = 0 })
-	me.refuse = function(spot) return spot ~= me.place end
-	action:Update(me)
-	T.eq(me.spot, me.place, "its place")
-end)
-
-T.test("a member with no place heads nowhere", function()
-	local order = GroupIdentity.Muster({ x = 0, y = 0, z = 0 })
-	order:SetMode(MODE.ALERT)
-	local me, action = OnOrder(order)
-	me.place = nil
-	action:Update(me)
-	T.eq(me.spot, nil, "nowhere")
-end)
 
 local ENT = { GetClass = function() return "player" end }
 

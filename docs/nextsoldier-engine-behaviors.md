@@ -199,8 +199,12 @@ intention is the engine's own.
 A bot player's waits, for now. `npc_pathfollower` driven by its legs (the Path Follower stool's Local mode, `docs/ns-debugging.md`)
 runs it alone, starting at `LegsAtEase`: told an order (`group_identity.Muster(point)`,
 `FallBack(point, from)`), it changes to `LegsMuster` or `LegsFallBack`, and dissolved, back to ease.
-On an order, its squad's mode (`MODE`, one whole number on the order: stationary, alert, cautious,
-panic) says where the member heads about its place.
+On an order, the order's action contains its squad's mode's (`MODE`, one whole number on the order),
+as L4D2's legs contain theirs: `LegsStationary` (rests at a seat near its place), `LegsPatrol`,
+`LegsWander`, `LegsEvacuate` (runs out of the room), `LegsStayClose` (keeps near its leader), and
+`LegsRegroup`, suspending the first three for a member strayed from the squad's point. A full squad's
+leader calls the fall back on heavy casualties (`Order:Rout`). The actions are
+`nextsoldier.behavior.gib_behaviors`; the orders they run on, `group_identity`.
 An order's `Places(members, spacing)` gives each member a place. `engine.Separation(me, others, tie)`
 and `engine.GroupSpacing()` give Lua the push that `GroupPush` holds. To come under it, replacing `SquadMonitor`: boids on a chase path for a squad's
 cohesion, filling a room when a squad assaults or ambushes one, and the set-up's stances.

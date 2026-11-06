@@ -93,10 +93,11 @@ local ORDER_NAMES = {
 
 -- The squad's mode (the legs' MODE, one whole number a squad): the menu's names by number.
 local LEGS_MODE_NAMES = {
-	[0] = "Stationary: wait at their places",
+	[0] = "Stationary: rest at seats near their places",
 	[1] = "Alert: patrol round the point, each on its side",
 	[2] = "Cautious: wander near their places",
-	[3] = "Panic: make for the way out furthest from the threat",
+	[3] = "Panic: evacuate by the way out furthest from the threat",
+	[4] = "Close: stay close to the leader",
 }
 
 -- The jobs a squad may be given; the war refuses one its scenario has not.
@@ -369,6 +370,7 @@ local function GiveOrder(tool, ply, trace)
 	for i, member in ipairs(members) do positions[i] = Point(member:GetPos()) end
 	local places = order:Places(positions, nextsoldier.engine.GroupSpacing(), members[1]:NSLegsAdmit(trace.HitPos))
 	for i, member in ipairs(members) do member:NSLegsGive(order, places[i]) end
+	order:Lead(members[1])
 	return true
 end
 
@@ -443,7 +445,9 @@ function TOOL:Think()
 			follower:NSRespond(name, self:GetClientNumber(QueryConVar(name)) ~= 0)
 		end
 	end
-	if legsMode then
+	-- the menu's mode as it is changed, so a squad's own (its leader's fall back) holds
+	if legsMode and applied.legsMode ~= legsMode then
+		applied.legsMode = legsMode
 		for _, member in ipairs(DrivenBy(ply, "legs")) do
 			local order = member:NSLegsOrder()
 			if order and order.mode ~= legsMode then order:SetMode(legsMode) end
@@ -518,7 +522,7 @@ function TOOL.BuildCPanel(panel)
 	local order = panel:ComboBox("Order", "ns_pathfollower_order")
 	for name, label in pairs(ORDER_NAMES) do order:AddChoice(label, name) end
 	local legsMode = panel:ComboBox("Squad mode", "ns_pathfollower_legsmode")
-	for number = 0, 3 do legsMode:AddChoice(LEGS_MODE_NAMES[number], number) end
+	for number = 0, nextsoldier.behavior.group_identity.MODE:Last() do legsMode:AddChoice(LEGS_MODE_NAMES[number], number) end
 	panel:CheckBox("Show spacing (a ring its radius, pink with an arrow when a teammate pushes)", "ns_pathfollower_spacing")
 
 	panel:Help("Tactical: the war's orders (a bench war, with no bots or waves, when none runs). A yellow cross is where its orders send a held soldier. Right-click reports an enemy contact at the aim to their squads.")
