@@ -3,14 +3,14 @@
 -- console, "!l" in chat. ULX includes this module on both sides; the commands
 -- run on the server. ULX's access decides who may call them, as aowl's groups
 -- did: lm is every player's, the rest are superadmins'. A run on the server tells its caller, in
--- chat, the first line it printed, else the values it returned, else that it ran; clients do
+-- chat, the lines it printed, else the values it returned, else that it ran; clients do
 -- not answer, so a run only on them tells nothing. Its caller's client hears how it went: a
 -- success cue, an error cue, or, for work it returned still going a frame later (the gamemode's
 -- transactions), a blip, then the cue for how the work settled; still going once it is no longer
 -- listened for, it is told so, with a neutral cue, and its end goes unheard. Each is a server convar
--- a server.cfg sets, read as it is used: ulx_luadev_chat_max (the line's length, 0 for none),
--- ulx_luadev_listen_seconds, ulx_luadev_sound_success, _error, _progress and _neutral (a sound
--- path, empty for none).
+-- a server.cfg sets, read as it is used: sv_luadev_output_maxlines (lines told, 0 for none),
+-- _maxchars (a line's length, 0 for whole), _timeout (seconds listened), and the sounds
+-- _success, _error, _progress and _neutral (a path, empty for none).
 local CATEGORY = "LuaDev"
 
 local function who(ply, name) return luadev.GetPlayerIdentifier(ply, "cmd:" .. name) end
@@ -20,7 +20,7 @@ local function who(ply, name) return luadev.GetPlayerIdentifier(ply, "cmd:" .. n
 -- line each player last typed, and a command typed in chat runs its lua as
 -- typed; from the console it runs the line it was given.
 local said = setmetatable({}, { __mode = "k" })
-hook.Add("PlayerSay", "ws_ulx_luadev_said", function(ply, text) said[ply] = text end, HOOK_MONITOR_HIGH)
+hook.Add("PlayerSay", "ulx_luadev_said", function(ply, text) said[ply] = text end, HOOK_MONITOR_HIGH)
 
 -- What ply typed after !name, as typed, once; nil when that line was not it.
 local function Typed(ply, name)
@@ -41,45 +41,47 @@ end
 -- name -> help and the runs it makes: each { where, script }, where is "server",
 -- "shared", "clients", "me" (the caller's client) or a player
 local COMMANDS = {
-	{ "l", "Runs lua on the server", function(line) return { { "server", line } } end },
-	{ "ls", "Runs lua shared (server and all clients)", function(line) return { { "shared", line } } end },
-	{ "lc", "Runs lua on all clients", function(line) return { { "clients", line } } end },
-	{ "lm", "Runs lua on your own client (me)", function(line) return { { "me", line } } end },
-	{ "lb", "Runs lua on both the server and your own client", function(line)
+	{ "l", "Runs lua on the server (easylua's me, this, there, trace), e.g. !l print(me:Nick())",
+		function(line) return { { "server", line } } end },
+	{ "ls", "Runs lua shared, on the server and every client, e.g. !ls print(SERVER)",
+		function(line) return { { "shared", line } } end },
+	{ "lc", "Runs lua on every client, e.g. !lc print(LocalPlayer():Nick())",
+		function(line) return { { "clients", line } } end },
+	{ "lm", "Runs lua on your own client (me), e.g. !lm print(ScrW(), ScrH())",
+		function(line) return { { "me", line } } end },
+	{ "lb", "Runs lua on both the server and your own client, e.g. !lb print(SERVER, CLIENT)", function(line)
 		return { { "me", line }, { "server", line } }
 	end },
-	{ "print", "Prints a value in the server console", function(line)
+	{ "print", "Prints a value on the server, told in chat, e.g. !print me:GetPos()", function(line)
 		return { { "server", "print(" .. line .. ")" } }
 	end },
-	{ "table", "Prints a table in the server console", function(line)
+	{ "table", "Prints a table on the server, its first lines told in chat, e.g. !table me:GetWeapons()", function(line)
 		return { { "server", "PrintTable(" .. line .. ")" } }
 	end },
-	{ "printc", "Prints a value from every client in the server console", function(line)
+	{ "printc", "Prints a value from every client in the server console, e.g. !printc LocalPlayer():Ping()", function(line)
 		return { { "clients", "easylua.PrintOnServer(" .. line .. ")" } }
 	end },
-	{ "printm", "Prints a value from your own client (me) in the server console", function(line)
+	{ "printm", "Prints a value from your own client (me) in the server console, e.g. !printm ScrW()", function(line)
 		return { { "me", "easylua.PrintOnServer(" .. line .. ")" } }
 	end },
-	{ "printb", "Prints a value on both the server and your own client", function(line)
+	{ "printb", "Prints a value on both the server and your own client, e.g. !printb CurTime()", function(line)
 		return { { "me", "easylua.PrintOnServer(" .. line .. ")" }, { "server", "print(" .. line .. ")" } }
 	end },
 }
 
--- The server's settings, created where the commands run.
+-- The server's settings, sv_luadev_output_*, created where the commands run.
 local setting = {}
 if SERVER then
-	setting.chat_max = CreateConVar("ulx_luadev_chat_max", "120", nil,
-		"How long a luadev command's line in chat is: a longer one is cut, saying how many more it had; 0 for none", 0)
-	setting.listen_seconds = CreateConVar("ulx_luadev_listen_seconds", "10", nil,
-		"How long a luadev command listens for the work its run returned before saying it still runs", 0)
-	setting.sound_success = CreateConVar("ulx_luadev_sound_success", "buttons/button14.wav", nil,
-		"The sound a luadev command's caller hears when its run went through; empty for none")
-	setting.sound_error = CreateConVar("ulx_luadev_sound_error", "buttons/button10.wav", nil,
-		"The sound a luadev command's caller hears when its run did not compile, failed or was refused; empty for none")
-	setting.sound_progress = CreateConVar("ulx_luadev_sound_progress", "buttons/blip1.wav", nil,
-		"The sound a luadev command's caller hears when the work its run returned is still going a frame later; empty for none")
-	setting.sound_neutral = CreateConVar("ulx_luadev_sound_neutral", "buttons/button16.wav", nil,
-		"The sound a luadev command's caller hears when it stops listening for work still going; empty for none")
+	local function Setting(name, default, help, min)
+		setting[name] = CreateConVar("sv_luadev_output_" .. name, default, nil, help, min)
+	end
+	Setting("maxlines", "1", "How many lines of a luadev command's output its caller is told in chat; 0 for none", 0)
+	Setting("maxchars", "120", "How long a line of a luadev command's output in chat is: a longer one is cut, saying how many more it had; 0 for uncut", 0)
+	Setting("timeout", "10", "How long a luadev command listens for the work its run returned before saying it still runs", 0)
+	Setting("success", "buttons/button14.wav", "The sound a luadev command's caller hears when its run went through; empty for none")
+	Setting("error", "buttons/button10.wav", "The sound a luadev command's caller hears when its run did not compile, failed or was refused; empty for none")
+	Setting("progress", "buttons/blip1.wav", "The sound a luadev command's caller hears when the work its run returned is still going a frame later; empty for none")
+	Setting("neutral", "buttons/button16.wav", "The sound a luadev command's caller hears when it stops listening for work still going; empty for none")
 end
 local PRINTERS = { print = "\t", Msg = "", MsgN = "", MsgC = "" }
 local NEWLINE = { print = true, MsgN = true }
@@ -105,17 +107,30 @@ local function captured(fn)
 	return table.concat(text), unpack(results, 2)
 end
 
--- The line a run on the server tells its caller, at most max long.
-local function first_line(printed, values, max)
-	local line = printed:match("([^\n]*%S[^\n]*)")
-	if not line and values and #values > 0 then
+-- The lines a run on the server tells its caller: at most maxlines of those it printed (blank
+-- ones left out), else its values, else "ok", each at most maxchars long (0: whole), then how
+-- many more there were.
+local function output_lines(printed, values, maxlines, maxchars)
+	local lines = {}
+	for line in printed:gmatch("[^\n]+") do
+		if line:find("%S") then lines[#lines + 1] = line:match("^%s*(.-)%s*$") end
+	end
+	if not lines[1] and values and #values > 0 then
 		local parts = {}
 		for i, v in ipairs(values) do parts[i] = tostring(v) end
-		line = table.concat(parts, ", "):match("([^\n]*)")
+		lines[1] = table.concat(parts, ", "):match("^%s*([^\n]-)%s*$")
 	end
-	line = line and line:match("^%s*(.-)%s*$") or "ok"
-	if #line > max then line = string.format("%s... (%d+ chars)", line:sub(1, max), #line - max) end
-	return line
+	if not lines[1] then lines[1] = "ok" end
+	local told = {}
+	for i = 1, math.min(#lines, maxlines) do
+		local line = lines[i]
+		if maxchars > 0 and #line > maxchars then
+			line = string.format("%s... (%d+ chars)", line:sub(1, maxchars), #line - maxchars)
+		end
+		told[i] = line
+	end
+	if #lines > maxlines then told[#told + 1] = string.format("... (%d+ lines)", #lines - maxlines) end
+	return told
 end
 
 -- What the caller's client plays: a run done, failed, or its work still going after a frame.
@@ -131,7 +146,7 @@ local function cue(ply, which)
 end
 
 local function failed(ply, why)
-	cue(ply, "sound_error")
+	cue(ply, "error")
 	return ULib.tsayError(ply, why, true)
 end
 
@@ -146,23 +161,30 @@ local function pending_work(values)
 end
 
 -- The caller's cue for a run that went through: success now, or, for work still going a frame
--- later, a blip, then the cue for how it settled; still going after ulx_luadev_listen_seconds, a
--- word and a neutral cue, and no more.
+-- later, a blip, then the cue for how it settled; still going after sv_luadev_output_timeout
+-- seconds, a word and a neutral cue, and no more.
 local function cue_done(ply, work)
-	if not work then return cue(ply, "sound_success") end
+	if not work then return cue(ply, "success") end
 	local listening = true
 	work:OnSettle(function(settled)
-		if listening then cue(ply, settled:State() == COMMITTED and "sound_success" or "sound_error") end
+		if listening then cue(ply, settled:State() == COMMITTED and "success" or "error") end
 	end)
 	timer.Simple(0, function()
-		if work:State() == PENDING then cue(ply, "sound_progress") end
+		if work:State() == PENDING then cue(ply, "progress") end
 	end)
-	timer.Simple(setting.listen_seconds:GetFloat(), function()
+	timer.Simple(setting.timeout:GetFloat(), function()
 		if work:State() ~= PENDING then return end
 		listening = false
 		ULib.tsay(ply, STILL_RUNNING)
-		cue(ply, "sound_neutral")
+		cue(ply, "neutral")
 	end)
+end
+
+-- tells ply what a run on the server printed or returned, as sv_luadev_output_* say
+local function tell(ply, printed, values)
+	local maxlines = setting.maxlines:GetInt()
+	if maxlines <= 0 then return end
+	for _, line in ipairs(output_lines(printed, values, maxlines, setting.maxchars:GetInt())) do ULib.tsay(ply, line) end
 end
 
 -- runs each of runs as ply, once every script compiles; tells ply why not, and a run on the
@@ -186,8 +208,7 @@ local function run(ply, name, runs)
 		end
 		if not ok then return failed(ply, tostring(why)) end
 		if printed then
-			local max = setting.chat_max:GetInt()
-			if max > 0 then ULib.tsay(ply, first_line(printed, why, max)) end
+			tell(ply, printed, why)
 			work = work or pending_work(why)
 		end
 	end
@@ -219,10 +240,10 @@ for _, c in ipairs(COMMANDS) do
 	add(name, help, fn, { LUA }, name == "lm" and ULib.ACCESS_ALL or nil)
 end
 
-add("lsc", "Runs lua on a specific player", function(ply, target, line)
+add("lsc", "Runs lua on one player's client, e.g. !lsc bob print(LocalPlayer():Nick())", function(ply, target, line)
 	local typed = Typed(ply, "lsc")
 	run(ply, "lsc", { { target, typed and typed:match("^%S+%s+(.+)$") or line } })
-end, { { type = ULib.cmds.PlayerArg }, LUA })
+end, { { type = ULib.cmds.PlayerArg, hint = "player" }, LUA })
 
 local function add_keys(name, help, where)
 	add(name, help, function(ply, expression, search)
@@ -232,5 +253,54 @@ local function add_keys(name, help, where)
 		{ type = ULib.cmds.StringArg, hint = "search", ULib.cmds.optional },
 	})
 end
-add_keys("keys", "Lists the keys of a table on the server", "server")
-add_keys("keysm", "Lists the keys of a table on your own client (me)", "me")
+add_keys("keys", "Lists the keys of a table on the server that contain a search, e.g. !keys player Get", "server")
+add_keys("keysm", "Lists the keys of a table on your own client (me) that contain a search, e.g. !keysm vgui Create", "me")
+
+-- luadev's console-only features: its own console commands (lua_send_*, lua_watch), run on the
+-- server as its console once ULX has let the caller (ULX's access decides, as for the commands
+-- above, not luadev's own check, which refuses a player Steam has not authenticated), told and
+-- cued as a run on the server is; and easylua's helpers.
+
+local FILE = { type = ULib.cmds.StringArg, hint = "file (lua/ path, or data/, ../)" }
+-- where a file runs: luadev's send command for each
+local SENDS = { server = "lua_send_sv", shared = "lua_send_sh", clients = "lua_send_clients" }
+local WHERE = { type = ULib.cmds.StringArg, hint = "server|shared|clients", completes = { "server", "shared", "clients" },
+	ULib.cmds.restrictToCompletes }
+
+-- runs luadev's console command as the console for ply, once luadev finds file, telling ply what
+-- it printed
+local function console(ply, file, command, args)
+	if not luadev.RealFilePath(file) then return failed(ply, "luadev finds no file " .. file) end
+	local printed = captured(function() concommand.Run(NULL, command, args, table.concat(args, " ")) end)
+	tell(ply, printed, nil)
+	cue_done(ply, nil)
+end
+
+add("lfile", "Runs a Lua file on the server, shared or on every client, as lua_send_* does, e.g. !lfile autorun/my_test.lua shared",
+	function(ply, file, where) console(ply, file, SENDS[where], { file }) end, { FILE, WHERE })
+
+for name, sent in pairs({
+	lent = { "lua_send_ent", "Registers a scripted entity from its file or folder, as lua_send_ent does, e.g. !lent entities/my_ent.lua" },
+	lwep = { "lua_send_wep", "Registers a weapon from its file or folder, as lua_send_wep does, e.g. !lwep weapons/my_gun.lua" },
+	leffect = { "lua_send_effect", "Registers an effect from its file or folder, as lua_send_effect does, e.g. !leffect effects/my_fx.lua" },
+}) do
+	add(name, sent[2], function(ply, file) console(ply, file, sent[1], { file }) end, { FILE })
+end
+
+add("lwatch", "Sends a Lua file again each time it changes on disk, as lua_watch does, e.g. !lwatch autorun/my_test.lua server",
+	function(ply, file, where) console(ply, file, "lua_watch", { file, SENDS[where], "PATH" }) end, { FILE, WHERE })
+
+add("lunwatch", "Stops watching a file !lwatch watches, by its place in the list, or every one, e.g. !lunwatch 1",
+	function(ply, index)
+		local printed = captured(function() concommand.Run(NULL, "lua_watch_kill", { index or "" }, index or "") end)
+		tell(ply, printed, nil)
+		cue_done(ply, nil)
+	end, { { type = ULib.cmds.StringArg, hint = "index (none: all)", ULib.cmds.optional } })
+
+add("lcopy", "Copies a value from the server to your clipboard, as easylua does, e.g. !lcopy me:GetPos()", function(ply, line)
+	run(ply, "lcopy", { { "server", "local v = " .. (Typed(ply, "lcopy") or line) .. " easylua.CopyToClipboard(v, me)" } })
+end, { LUA })
+
+add("lspawn", "Spawns an entity class or a model where you aim, undoable, as easylua does, e.g. !lspawn models/props_c17/oildrum001.mdl",
+	function(ply, class) run(ply, "lspawn", { { "server", string.format("easylua.CreateEntity(%q)", class) } }) end,
+	{ { type = ULib.cmds.StringArg, hint = "class or model" } })

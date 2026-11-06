@@ -69,6 +69,7 @@ end)
 local function ulx_module(t)
 	t = t or {}
 	local commands, ran, errors, said, cues, frames, created = {}, {}, {}, {}, {}, {}, {}
+	local consoled = {}
 	local function command(_, name, fn, say)
 		local c = { name = name, fn = fn, say = say, params = {} }
 		function c.addParam(self, p) self.params[#self.params + 1] = p end
@@ -105,6 +106,7 @@ local function ulx_module(t)
 				return true
 			end,
 			GetPlayerIdentifier = function(_, info) return info end,
+			RealFilePath = function(path) if (t.files or {})[path] then return path, "LUA" end end,
 		},
 		GetConVar = function() return convar(t.cslua) end,
 		-- the module's own settings: their defaults, unless the test sets one (t.convars)
@@ -118,11 +120,14 @@ local function ulx_module(t)
 			}
 		end,
 		SERVER = true,
+		concommand = { Run = function(ply, command, args, line)
+			consoled[#consoled + 1] = { ply = ply, command = command, args = args, line = line }
+		end },
 		IsValid = function(v) return v ~= nil and v.valid ~= false end,
 		timer = { Simple = function(delay, fn) frames[#frames + 1] = { delay = delay, fn = fn } end },
 	}, { __index = _G })
 	setfenv(assert(loadfile(ULX_LUADEV)), env)()
-	return commands, ran, errors, hooks, said, cues, frames, created
+	return commands, ran, errors, hooks, said, cues, frames, created, consoled
 end
 
 -- the cues' sounds in order
@@ -428,26 +433,44 @@ T.test("work settled before 10 seconds is not told it is still going", function(
 	T.eq(#said, lines, "nothing said")
 end)
 
-T.test("its settings are convars a server.cfg sets, prefixed with the addon's name", function()
+T.test("its settings are convars a server.cfg sets, under sv_luadev_output", function()
 	local _, _, _, _, _, _, _, created = ulx_module()
-	for _, name in ipairs({ "ulx_luadev_chat_max", "ulx_luadev_listen_seconds", "ulx_luadev_sound_success",
-		"ulx_luadev_sound_error", "ulx_luadev_sound_progress", "ulx_luadev_sound_neutral" }) do
+	for _, name in ipairs({ "sv_luadev_output_maxchars", "sv_luadev_output_maxlines", "sv_luadev_output_timeout",
+		"sv_luadev_output_success", "sv_luadev_output_error", "sv_luadev_output_progress", "sv_luadev_output_neutral" }) do
 		T.eq(created[name] ~= nil, true, name)
 	end
 end)
 
-T.test("the chat line is as long as ulx_luadev_chat_max, or none at 0", function()
-	local commands, _, _, _, said = ulx_module({ prints = string.rep("a", 30), convars = { ulx_luadev_chat_max = 10 } })
+T.test("a line in chat is as long as sv_luadev_output_maxchars, or whole at 0", function()
+	local commands, _, _, _, said = ulx_module({ prints = string.rep("a", 30), convars = { sv_luadev_output_maxchars = 10 } })
 	commands["ulx l"].fn(player(), "x()")
 	T.eq(said[1], string.rep("a", 10) .. "... (20+ chars)", "cut at 10")
-	local off, _, _, _, offSaid = ulx_module({ prints = "a line", convars = { ulx_luadev_chat_max = 0 } })
-	off["ulx l"].fn(player(), "x()")
-	T.eq(#offSaid, 0, "no line")
+	local whole, _, _, _, wholeSaid = ulx_module({ prints = string.rep("a", 300), convars = { sv_luadev_output_maxchars = 0 } })
+	whole["ulx l"].fn(player(), "x()")
+	T.eq(wholeSaid[1], string.rep("a", 300), "uncut")
 end)
 
-T.test("work is listened for ulx_luadev_listen_seconds", function()
+T.test("chat is told as many lines as sv_luadev_output_maxlines, saying how many more there were", function()
+	local commands, _, _, _, said = ulx_module({ prints = "one\ntwo\n\nthree\nfour", convars = { sv_luadev_output_maxlines = 2 } })
+	commands["ulx l"].fn(player(), "x()")
+	T.eq(table.concat(said, "|"), "one|two|... (2+ lines)", "two, then how many more")
+	local all, _, _, _, allSaid = ulx_module({ prints = "one\ntwo", convars = { sv_luadev_output_maxlines = 2 } })
+	all["ulx l"].fn(player(), "x()")
+	T.eq(table.concat(allSaid, "|"), "one|two", "all there were")
+	local off, _, _, _, offSaid = ulx_module({ prints = "a line", convars = { sv_luadev_output_maxlines = 0 } })
+	off["ulx l"].fn(player(), "x()")
+	T.eq(#offSaid, 0, "none at 0")
+end)
+
+T.test("one line by default", function()
+	local commands, _, _, _, said = ulx_module({ prints = "first\nsecond\nthird" })
+	commands["ulx l"].fn(player(), "x()")
+	T.eq(table.concat(said, "|"), "first|... (2+ lines)", "the first, then how many more")
+end)
+
+T.test("work is listened for sv_luadev_output_timeout seconds", function()
 	local tx = transaction()
-	local commands, _, _, _, said, _, frames = ulx_module({ values = { tx }, convars = { ulx_luadev_listen_seconds = 3 } })
+	local commands, _, _, _, said, _, frames = ulx_module({ values = { tx }, convars = { sv_luadev_output_timeout = 3 } })
 	commands["ulx l"].fn(player(), "return work()")
 	local lines = #said
 	after(frames, 3)
@@ -455,12 +478,87 @@ T.test("work is listened for ulx_luadev_listen_seconds", function()
 end)
 
 T.test("each cue is its convar's sound, and none when it is empty", function()
-	local commands, _, _, _, _, cues = ulx_module({ convars = { ulx_luadev_sound_success = "my/ok.wav" } })
+	local commands, _, _, _, _, cues = ulx_module({ convars = { sv_luadev_output_success = "my/ok.wav" } })
 	commands["ulx l"].fn(player(), "x()")
 	T.eq(cues[1].sound, "my/ok.wav", "its sound")
-	local quiet, _, _, _, _, quietCues = ulx_module({ convars = { ulx_luadev_sound_error = "" }, fail = "boom" })
+	local quiet, _, _, _, _, quietCues = ulx_module({ convars = { sv_luadev_output_error = "" }, fail = "boom" })
 	quiet["ulx l"].fn(player(), "x()")
 	T.eq(#quietCues, 0, "none")
+end)
+
+-- luadev's console-only features, as ULX commands
+local NEW = { "lfile", "lent", "lwep", "leffect", "lwatch", "lunwatch", "lcopy", "lspawn" }
+
+T.test("every command, luadev's console-only features among them, says what it does with an example", function()
+	local commands = ulx_module()
+	for _, name in ipairs(AOWL) do
+		T.eq(commands["ulx " .. name].text:find("e.g. !" .. name, 1, true) ~= nil, true, name .. ": " .. commands["ulx " .. name].text)
+	end
+	for _, name in ipairs(NEW) do
+		local c = commands["ulx " .. name]
+		T.eq(c ~= nil, true, name)
+		T.eq(c.say, "!" .. name, name .. "'s say command")
+		T.eq(c.access, "superadmin", name .. " is a superadmin's")
+		T.eq(c.text:find("e.g. !" .. name, 1, true) ~= nil, true, name .. ": " .. tostring(c.text))
+	end
+end)
+
+T.test("every parameter is named for the menu", function()
+	local commands = ulx_module()
+	for name, c in pairs(commands) do
+		for i, param in ipairs(c.params) do T.eq(type(param.hint), "string", name .. "'s parameter " .. i) end
+	end
+end)
+
+local SENDS = { server = "lua_send_sv", shared = "lua_send_sh", clients = "lua_send_clients" }
+
+T.test("lfile runs a Lua file where it is told, as luadev's lua_send_* does", function()
+	for where, command in pairs(SENDS) do
+		local commands, _, _, _, _, cues, _, _, consoled = ulx_module({ files = { ["my/file.lua"] = true } })
+		local me = player()
+		commands["ulx lfile"].fn(me, "my/file.lua", where)
+		T.eq(consoled[1].command, command, where)
+		T.eq(consoled[1].args[1], "my/file.lua", where .. ": the file")
+		T.eq(consoled[1].ply, nil, where .. ": as the console (NULL), ULX having let the caller")
+		T.eq(#cues, 1, where .. ": cued")
+	end
+end)
+
+T.test("a file luadev cannot find is refused with an error cue, and nothing runs", function()
+	local commands, _, errors, _, _, cues, _, _, consoled = ulx_module()
+	commands["ulx lfile"].fn(player(), "nowhere.lua", "server")
+	T.eq(#consoled, 0, "nothing")
+	T.eq(errors[1]:find("nowhere.lua", 1, true) ~= nil, true, "told why")
+	T.eq(#cues, 1, "cued")
+end)
+
+T.test("lent, lwep and leffect register a scripted class from a file, as luadev's sends do", function()
+	for name, command in pairs({ lent = "lua_send_ent", lwep = "lua_send_wep", leffect = "lua_send_effect" }) do
+		local commands, _, _, _, _, _, _, _, consoled = ulx_module({ files = { ["entities/x.lua"] = true } })
+		commands["ulx " .. name].fn(player(), "entities/x.lua")
+		T.eq(consoled[1].command, command, name)
+		T.eq(consoled[1].args[1], "entities/x.lua", name .. ": the file")
+	end
+end)
+
+T.test("lwatch sends a file again where it is told each time it changes; lunwatch stops", function()
+	local commands, _, _, _, _, _, _, _, consoled = ulx_module({ files = { ["my/file.lua"] = true } })
+	commands["ulx lwatch"].fn(player(), "my/file.lua", "shared")
+	T.eq(consoled[1].command, "lua_watch", "watched")
+	T.eq(table.concat(consoled[1].args, " "), "my/file.lua lua_send_sh PATH", "sent shared on each change")
+	commands["ulx lunwatch"].fn(player(), "2")
+	T.eq(consoled[2].command .. " " .. consoled[2].args[1], "lua_watch_kill 2", "one stopped")
+	commands["ulx lunwatch"].fn(player())
+	T.eq(consoled[3].args[1], "", "all stopped")
+end)
+
+T.test("lcopy copies a value to the caller's clipboard; lspawn spawns a class or model at the aim", function()
+	local commands, ran = ulx_module()
+	commands["ulx lcopy"].fn(player(), "me:GetPos()")
+	T.eq(ran[1].where, "server", "copied from the server")
+	T.eq(ran[1].script, "local v = me:GetPos() easylua.CopyToClipboard(v, me)", "the value, to me")
+	commands["ulx lspawn"].fn(player(), "models/props_c17/oildrum001.mdl")
+	T.eq(ran[2].script, 'easylua.CreateEntity("models/props_c17/oildrum001.mdl")', "spawned")
 end)
 
 T.finish()
