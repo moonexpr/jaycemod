@@ -16,11 +16,13 @@
 --     methods on it, and its hooks, timers, commands and listeners register
 --     again under their ids, now closing over the live state
 --   an entity file: registered again (scripted_ents.Register; live
---     entities get the new class, ENT:OnReloaded runs, Initialize does not)
+--     entities get the new class, ENT:OnReloaded runs, Initialize does not),
+--     and a shared one (AddCSLuaFile) on every client too (dev.run's)
 -- Refused, with the reason: the gamemode's root files (GMod's own
 -- refresh runs the whole gamemode again), cl_ and sh_ files (clients keep
--- what they were sent: changelevel), files of features or modules this map
--- has not loaded (nothing to reload; they load fresh when needed).
+-- what they were sent), files of features or modules this map has not loaded
+-- (nothing to reload; they load fresh when needed). A refused file is run
+-- again by hand with dev.run, where that is safe for it.
 -- opts.cleanup = true also cleans the map up (every map entity made again,
 -- Initialize run) before the state is restored, a tick later; the result is
 -- then dev.last_reload. Every step is timed.
@@ -100,7 +102,7 @@ local function Classify(path)
 	end
 	if string.StartWith(path, NEXTSOLDIER) or string.StartWith(path, WARTACTICS) then
 		if string.match(path, "_init%.lua$") then
-			return { kind = "refused", why = "a namespace's index runs with the loader; changelevel" }
+			return { kind = "refused", why = "a namespace's index runs with the loader; changelevel, or dev.run" }
 		end
 		return { kind = "module", name = string.gsub(string.gsub(path, "%.lua$", ""), "/", ".") }
 	end
@@ -109,12 +111,12 @@ local function Classify(path)
 	if feature then
 		if string.match(fileName, "^sv_") or fileName == "sv" then return { kind = "feature", feature = feature } end
 		if fileName == "sh" or fileName == "cl" or string.match(fileName, "^[sc][hl]_") then
-			return { kind = "refused", why = "a client or shared file: clients keep what they were sent; changelevel" }
+			return { kind = "refused", why = "a client or shared file: clients keep what they were sent; dev.run" }
 		end
 		return { kind = "module", name = "features." .. feature .. "." .. fileName }
 	end
 	if string.match(rel, "_index%.lua$") or string.match(rel, "_init%.lua$") then
-		return { kind = "refused", why = "a namespace's index runs with the loader; changelevel" }
+		return { kind = "refused", why = "a namespace's index runs with the loader; changelevel, or dev.run" }
 	end
 	if string.StartWith(rel, "foundation/") then
 		return { kind = "module", name = string.gsub(string.gsub(rel, "%.lua$", ""), "/", ".") }
@@ -124,7 +126,7 @@ local function Classify(path)
 	if namespace then
 		return { kind = "module", name = "games." .. namespace .. "." .. string.gsub(module, "/", ".") }
 	end
-	return { kind = "refused", why = "the gamemode's root files (init.lua and realm modules) run again only with the whole gamemode; changelevel" }
+	return { kind = "refused", why = "the gamemode's root files (init.lua and realm modules) run again only with the whole gamemode; changelevel, or dev.run" }
 end
 
 -- Class tables a module keeps in upvalues, by upvalue name: every table
@@ -219,7 +221,7 @@ local function ReloadEntity(class, path)
 	chunk()
 	scripted_ents.Register(ENT, class)
 	ENT = previous
-	return { entity = class }
+	return { entity = class, clients = dev.run_entity_on_clients(path) }
 end
 
 local RELOAD = {

@@ -59,9 +59,11 @@ in both directions. A new function or command needs a line here.
 
 | Function | Command | What |
 |---|---|---|
-| `dev.reload(opts)` | `dev_reload [cleanup]` | Capture the state, load the changed Lua again, restore the state; every step timed. `opts.files` names the files (repo or LUA paths) and skips the scan. `opts.cleanup` also cleans the map up first, and the result then lands in `dev.last_reload` a tick later. Refuses, with the reason: `ws/` and the gamemode's root files, `cl_` and `sh_` files (clients keep what they were sent), and files this map has not loaded |
+| `dev.reload(opts)` | `dev_reload [cleanup]` | Capture the state, load the changed Lua again, restore the state; every step timed. `opts.files` names the files (repo or LUA paths) and skips the scan. `opts.cleanup` also cleans the map up first, and the result then lands in `dev.last_reload` a tick later. A shared entity's new code reaches the clients too. Refuses, with the reason: `ws/` and the gamemode's root files, `cl_` and `sh_` files (clients keep what they were sent), and files this map has not loaded: `dev.run` runs those by hand |
 | `dev.reload_plan()` | `dev_reload_plan` | The changed files a reload would take, and what it would do with each |
 | `dev.reload_self()` | | Load the workbench's own files again |
+| `dev.run(file, realm)` | `dev_run <file> [sv\|cl\|sh]` | Run a Lua file again now, as it is on disk, where `dev.reload` refuses it (a root `sh_` file, a feature's `cl.lua`, a new file): on the server, every client (through luadev) or both, by its name unless `realm` is given. It runs as the gamemode ran it (`GM` the gamemode); an entity's or weapon's own file is registered again. A root file's state starts over; clients joining later get the file as the map loaded it |
+| `dev.run_entity_on_clients(file)` | | `dev.reload`'s: a shared entity's new code to every client, which registered the old one |
 
 ### State
 

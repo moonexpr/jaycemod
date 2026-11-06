@@ -17,6 +17,7 @@ local PARTS = {
 	"sv_harness",
 	"sv_state",
 	"sv_scenarios",
+	"sv_run",
 	"sv_reload",
 	"sv_entity",
 	"sv_easylua",
