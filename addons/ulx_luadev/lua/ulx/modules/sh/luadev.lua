@@ -4,7 +4,9 @@
 -- run on the server. ULX's access decides who may call them, as aowl's groups
 -- did: lm is every player's, the rest are superadmins'. A run on the server tells its caller, in
 -- chat, the first line it printed, else the values it returned, else that it ran; clients do
--- not answer, so a run only on them tells nothing.
+-- not answer, so a run only on them tells nothing. Its caller's client hears how it went: a
+-- success cue, an error cue, or, for work it returned still going a frame later (the gamemode's
+-- transactions), a blip, then the cue for how the work settled.
 local CATEGORY = "LuaDev"
 
 local function who(ply, name) return luadev.GetPlayerIdentifier(ply, "cmd:" .. name) end
@@ -98,13 +100,49 @@ local function first_line(printed, values)
 	return line
 end
 
+-- What the caller's client plays: a run done, failed, or its work still going after a frame.
+local SUCCESS_SOUND, ERROR_SOUND, PROGRESS_SOUND = "buttons/button14.wav", "buttons/button10.wav", "buttons/blip1.wav"
+-- A transaction's states, as the gamemode's foundation names them.
+local PENDING, COMMITTED = "pending", "committed"
+
+-- Plays sound on ply's own client; the console has none.
+local function cue(ply, sound)
+	if IsValid(ply) then ULib.clientRPC(ply, "surface.PlaySound", sound) end
+end
+
+local function failed(ply, why)
+	cue(ply, ERROR_SOUND)
+	return ULib.tsayError(ply, why, true)
+end
+
+-- Work a run returned that goes on after it: a value answering State() and OnSettle(fn), pending.
+local function pending_work(values)
+	if type(values) ~= "table" then return nil end
+	for _, v in ipairs(values) do
+		if type(v) == "table" and type(v.State) == "function" and type(v.OnSettle) == "function" and v:State() == PENDING then
+			return v
+		end
+	end
+end
+
+-- The caller's cue for a run that went through: success now, or, for work still going a frame
+-- later, a blip, then the cue for how it settled.
+local function cue_done(ply, work)
+	if not work then return cue(ply, SUCCESS_SOUND) end
+	work:OnSettle(function(settled) cue(ply, settled:State() == COMMITTED and SUCCESS_SOUND or ERROR_SOUND) end)
+	timer.Simple(0, function()
+		if work:State() == PENDING then cue(ply, PROGRESS_SOUND) end
+	end)
+end
+
 -- runs each of runs as ply, once every script compiles; tells ply why not, and a run on the
--- server's first line
+-- server's first line, and cues ply's client how it went
 local function run(ply, name, runs)
 	for _, r in ipairs(runs) do
 		local ok, why = luadev.ValidScript(r[2], name)
-		if not ok then return ULib.tsayError(ply, why, true) end
+		if not ok then return failed(ply, why) end
 	end
+	local work
 	local extra = { ply = ply }
 	for _, r in ipairs(runs) do
 		local where, script = r[1], r[2]
@@ -116,9 +154,13 @@ local function run(ply, name, runs)
 		elseif where == "clients" then ok, why = luadev.RunOnClients(script, who(ply, name), extra)
 		else ok, why = luadev.RunOnClient(script, where == "me" and ply or where, who(ply, name), extra)
 		end
-		if not ok then return ULib.tsayError(ply, tostring(why), true) end
-		if printed then ULib.tsay(ply, first_line(printed, why)) end
+		if not ok then return failed(ply, tostring(why)) end
+		if printed then
+			ULib.tsay(ply, first_line(printed, why))
+			work = work or pending_work(why)
+		end
 	end
+	cue_done(ply, work)
 end
 
 local sv_allowcslua = GetConVar("sv_allowcslua")
@@ -138,7 +180,7 @@ for _, c in ipairs(COMMANDS) do
 		fn = function(ply, line)
 			line = Typed(ply, name) or line
 			if not ply:IsAdmin() and not sv_allowcslua:GetBool() then
-				return ULib.tsayError(ply, "sv_allowcslua is 0", true)
+				return failed(ply, "sv_allowcslua is 0")
 			end
 			run(ply, name, runs(line))
 		end

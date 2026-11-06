@@ -68,7 +68,7 @@ end)
 -- loads ulx_luadev's luadev.lua over fakes of ULX, ULib and luadev that record what they are asked
 local function ulx_module(t)
 	t = t or {}
-	local commands, ran, errors, said = {}, {}, {}, {}
+	local commands, ran, errors, said, cues, frames = {}, {}, {}, {}, {}, {}
 	local function command(_, name, fn, say)
 		local c = { name = name, fn = fn, say = say, params = {} }
 		function c.addParam(self, p) self.params[#self.params + 1] = p end
@@ -95,6 +95,7 @@ local function ulx_module(t)
 			cmds = { StringArg = "string", PlayerArg = "player", takeRestOfLine = "rest", optional = "optional" },
 			tsayError = function(ply, msg) errors[#errors + 1] = msg end,
 			tsay = function(ply, msg) said[#said + 1] = msg end,
+			clientRPC = function(ply, fn, sound) cues[#cues + 1] = { ply = ply, fn = fn, sound = sound } end,
 		},
 		luadev = {
 			RunOnServer = runner("server"), RunOnShared = runner("shared"),
@@ -106,9 +107,34 @@ local function ulx_module(t)
 			GetPlayerIdentifier = function(_, info) return info end,
 		},
 		GetConVar = function() return convar(t.cslua) end,
+		IsValid = function(v) return v ~= nil and v.valid ~= false end,
+		timer = { Simple = function(_, fn) frames[#frames + 1] = fn end },
 	}, { __index = _G })
 	setfenv(assert(loadfile(ULX_LUADEV)), env)()
-	return commands, ran, errors, hooks, said
+	return commands, ran, errors, hooks, said, cues, frames
+end
+
+-- the cues' sounds in order
+local function sounds(cues)
+	local list = {}
+	for i, cue in ipairs(cues) do list[i] = cue.sound end
+	return list
+end
+
+-- runs the frames queued so far
+local function frame(frames)
+	local queued = { unpack(frames) }
+	for i = #frames, 1, -1 do frames[i] = nil end
+	for _, fn in ipairs(queued) do fn() end
+end
+
+-- a transaction as the gamemode's: pending until settled, telling who waits on it
+local function transaction(state)
+	local tx = { state = state or "pending", waiting = {} }
+	function tx:State() return self.state end
+	function tx:OnSettle(fn) if self.state == "pending" then self.waiting[#self.waiting + 1] = fn else fn(self) end end
+	function tx:Settle(to) self.state = to for _, fn in ipairs(self.waiting) do fn(self) end end
+	return tx
 end
 
 local AOWL = { "l", "ls", "lc", "lsc", "lm", "lb", "print", "table", "keys", "keysm", "printc", "printm", "printb" }
@@ -270,6 +296,77 @@ T.test("a failed run tells its error, not a line", function()
 	commands["ulx l"].fn(player(), "x()")
 	T.eq(errors[1], "boom", "the error")
 	T.eq(#said, 0, "no line")
+end)
+
+T.test("a run that ran cues its caller's client with success; one that failed, with an error", function()
+	local commands, _, _, _, _, cues = ulx_module()
+	local me = player()
+	commands["ulx l"].fn(me, "x()")
+	local failing, _, _, _, _, failed = ulx_module({ fail = "boom" })
+	failing["ulx l"].fn(me, "x()")
+	T.eq(cues[1].ply, me, "to the caller")
+	T.eq(cues[1].fn, "surface.PlaySound", "a sound on its client")
+	T.eq(failed[1].sound ~= cues[1].sound, true, "two cues")
+	T.eq(#cues .. #failed, "11", "one each")
+end)
+
+T.test("a script that does not compile cues an error", function()
+	local commands, _, _, _, _, cues = ulx_module()
+	commands["ulx l"].fn(player(), "((")
+	local failing, _, _, _, _, failed = ulx_module({ fail = "boom" })
+	failing["ulx l"].fn(player(), "x()")
+	T.eq(#cues, 1, "cued")
+	T.eq(cues[1].sound, failed[1].sound, "as an error")
+end)
+
+T.test("the console is cued nothing: it has no client", function()
+	local commands, _, _, _, _, cues = ulx_module()
+	commands["ulx l"].fn({ valid = false }, "x()") -- the console: NULL
+	T.eq(#cues, 0, "nothing")
+end)
+
+T.test("a run sent only to clients cues success once sent", function()
+	local commands, _, _, _, _, cues = ulx_module()
+	commands["ulx lc"].fn(player(), "x()")
+	T.eq(#cues, 1, "sent")
+end)
+
+T.test("a run returning work still pending after a frame blips, then cues how it settled", function()
+	local tx = transaction()
+	local commands, _, _, _, _, cues, frames = ulx_module({ values = { tx } })
+	commands["ulx l"].fn(player(), "return work()")
+	T.eq(#cues, 0, "nothing yet")
+	frame(frames)
+	T.eq(#cues, 1, "a blip after a frame")
+	local blip = cues[1].sound
+	tx:Settle("committed")
+	T.eq(#cues, 2, "then its end")
+	T.eq(cues[2].sound ~= blip, true, "not the blip")
+	local done, _, _, _, _, doneCues = ulx_module()
+	done["ulx l"].fn(player(), "x()")
+	T.eq(cues[2].sound, doneCues[1].sound, "success")
+end)
+
+T.test("pending work that is declined or fails cues an error as it settles", function()
+	local failing, _, _, _, _, errorCues = ulx_module({ fail = "boom" })
+	failing["ulx l"].fn(player(), "x()")
+	for _, ending in ipairs({ "declined", "failed" }) do
+		local tx = transaction()
+		local commands, _, _, _, _, cues, frames = ulx_module({ values = { tx } })
+		commands["ulx l"].fn(player(), "return work()")
+		frame(frames)
+		tx:Settle(ending)
+		T.eq(cues[2].sound, errorCues[1].sound, ending)
+	end
+end)
+
+T.test("work settled within the frame cues only how it settled, no blip", function()
+	local tx = transaction()
+	local commands, _, _, _, _, cues, frames = ulx_module({ values = { tx } })
+	commands["ulx l"].fn(player(), "return work()")
+	tx:Settle("committed")
+	frame(frames)
+	T.eq(#cues, 1, "one cue")
 end)
 
 T.finish()
