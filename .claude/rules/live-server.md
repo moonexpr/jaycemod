@@ -126,6 +126,8 @@ inputs, wins); `status`, `trace`, `timers` and the two proofs still work.
 
 | Function | Command | What |
 |---|---|---|
+| `PLAYER:AddCondition(cond, timeout)` | | Put a player in a TF2 condition (`WS.AddCondition`) for `timeout` seconds, -1 (the default) for good; `cond` its number or name (`URINE`, `TF_COND_URINE`), an unknown one refused |
+| `PLAYER:RemoveCondition(cond)` | | Take a condition away (`WS.RemoveCondition`), by number or name |
 | `ENTITY:Teleport(target, facingTowards)` | | Put an entity before `target`, along the way it faces, the two clear of each other; turned to face it (`facingTowards`, true unless false) or the way it faces. Its hull is swept out from `target`, so a wall stops it short; its motion is stopped. Returns where it stands and its yaw |
 
 ### For the workbench's own code
