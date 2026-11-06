@@ -117,8 +117,9 @@ iTerm window, profile "Dark", that `console` opens). It first builds the
 server's own GMod root (`server_root.py`). The server runs the gamemode
 that the shared install's `garrysmod/gamemodes/sandcastle` points to, which
 is the main checkout, not a worktree. Workshop addons (DrGBase), luadev
-access on LAN come from `server_root/`'s autorun; ULX's luadev commands and `ulx addmap` are
-the repo's `addons/ulx_luadev`, linked into the server's addons. A run on the server answers its
+access on LAN and `ulx addmap` come from `server_root/`'s autorun; ULX's luadev commands are
+`addons/ulx_luadev`, their own repository (github.com/moonexpr/ulx_luadev) checked out there,
+which Sandcastle does not track, linked into the server's addons. A run on the server answers its
 caller in chat and with a sound cue; `server.cfg` tunes them with `sv_luadev_output_maxlines` (1;
 0: none), `_maxchars` (120; 0: uncut), `_timeout` (10 s) and the sounds `_success`, `_error`,
 `_progress`, `_neutral` (empty: silent). Beside luadev's chat commands it gives `!lfile`, `!lent`,

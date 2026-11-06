@@ -10,3 +10,6 @@ native/*/target/
 
 # reference material kept beside the repo, never committed
 reference/**/*
+
+# ULX luadev: its own repository (github.com/moonexpr/ulx_luadev), checked out here
+addons/ulx_luadev/

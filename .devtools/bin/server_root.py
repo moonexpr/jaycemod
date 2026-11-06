@@ -122,6 +122,7 @@ SERVER_LUA = {
     "autorun/server/luadev_lan.lua": "luadev_lan.lua",
     "autorun/server/hotswap.lua": "hotswap.lua",  # ws_hotswap_module, ws_hotswap_feature
     "autorun/gamemode_entities.lua": "gamemode_entities.lua",  # shared: the gamemode's entities win
+    "ulx/modules/sh/add_map.lua": "ulx_add_map.lua",  # ulx addmap, answered by add_map.py --serve
     "autorun/server/luadev_socket.lua": "luadev_socket.lua",  # server_lua.py's listener on 127.0.0.1:27098
     "autorun/server/sandcastle_watch.lua": "sandcastle_watch.lua",  # Watch: events server_watch.py follows
     "autorun/server/sandcastle_debug.lua": "sandcastle_debug.lua",  # breakpoints and Lua errors, for gmod_mcp.py
@@ -152,7 +153,7 @@ REPO_ADDONS = {
     "wartactics": REPO / "addons" / "wartactics",  # the tactics engine: the strategy the soldiers are organised by, the scenarios and monitors
     "model_viewer": REPO / "addons" / "model_viewer",  # a client's window on a model's acts and animations
     "sandcastle_dev": REPO / "addons" / "sandcastle_dev",  # the dev workbench, run by sandcastle_dev.lua; never released
-    "ulx_luadev": REPO / "addons" / "ulx_luadev",  # ULX's luadev commands (!l, !lm...) and ulx addmap, ULX modules on both sides
+    "ulx_luadev": REPO / "addons" / "ulx_luadev",  # ULX's luadev commands (!l, !lm...): its own repo, checked out here
 }
 # data the server writes that the repo keeps: path under the server's data/ -> folder
 REPO_DATA = {
