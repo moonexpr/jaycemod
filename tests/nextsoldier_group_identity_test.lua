@@ -136,6 +136,47 @@ T.test("a muster stays gathered: none further out than it needs for its number",
 	end
 end)
 
+T.test("a muster's last ring, partly filled, faces the members it takes in", function()
+	local point = { x = 500, y = 200, z = 40 }
+	local fromSouth = {}
+	for i = 1, 5 do fromSouth[i] = { x = 400 + i * 40, y = -300, z = 40 } end
+	for _, place in ipairs(GroupIdentity.Muster(point):Places(fromSouth, SPACING)) do
+		T.eq(place.y <= point.y + 0.001, true, "on the members' side of the point: " .. place.x .. "," .. place.y)
+	end
+	local fromNorth = {}
+	for i = 1, 5 do fromNorth[i] = { x = 400 + i * 40, y = 700, z = 40 } end
+	for _, place in ipairs(GroupIdentity.Muster(point):Places(fromNorth, SPACING)) do
+		T.eq(place.y >= point.y - 0.001, true, "and from the north, the north: " .. place.x .. "," .. place.y)
+	end
+end)
+
+-- Whether segments ab and cd cross, apart from touching at an end.
+local function Cross(a, b, c, d)
+	local function Side(p, q, r) return (q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x) end
+	return Side(a, b, c) * Side(a, b, d) < 0 and Side(c, d, a) * Side(c, d, b) < 0
+end
+
+T.test("no two members' ways to their places cross", function()
+	-- five at a spawn room's starts, west and south-west of the muster's point, as on dev_3house
+	local members = { { x = -224, y = -216, z = 0 }, { x = -224, y = -72, z = 0 }, { x = -224, y = 72, z = 0 },
+		{ x = -224, y = 216, z = 0 }, { x = -128, y = -216, z = 0 } }
+	local places = GroupIdentity.Muster({ x = 0, y = 0, z = 0 }):Places(members, SPACING)
+	for i = 1, #members do
+		for j = i + 1, #members do
+			T.eq(Cross(members[i], places[i], members[j], places[j]), false, "members " .. i .. " and " .. j)
+		end
+	end
+end)
+
+T.test("a squad coming in single file sends its front deepest, so none stops in the way of those behind", function()
+	local file = {}
+	for i = 1, 5 do file[i] = { x = -228 - i * SPACING, y = 0, z = 0 } end -- member 1 at the front
+	local places = GroupIdentity.Muster({ x = 0, y = 0, z = 0 }):Places(file, SPACING)
+	for i = 2, #file do
+		T.eq(places[1].x >= places[i].x, true, "the front member's place is deepest: member " .. i .. "'s is not past it")
+	end
+end)
+
 T.test("a fall back forms across the way from the threat, nobody nearer it than the point", function()
 	for _, place in ipairs(ORDERS.FallBack:Places(Crowd(8), SPACING)) do
 		T.eq(place.x <= 500 + 0.001, true, "on the point's far side from the threat")

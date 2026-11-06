@@ -198,13 +198,22 @@ what no walk from the seeds reaches, and saves the mesh, so the bench reads
 as a sealed indoor room with four doors and eight windows.
 
 `.devtools/bin/dev_3house_bench.lua` runs five RED followers on their legs,
-feet free, through a room operation, stage by stage: spawn, muster, mobilize
-(out through the shutter to the grass), assault (into the bench), hold
-(alert), evacuate (a danger marked on BLU's side), rout (three of five
-killed) and remuster. Each stage sets up its own start, so any one runs alone
-(`NSRoomBench.Run("evacuate")`) or all in turn (`RunAll`), and checks its
-result as data (`NSRoomBench.Report()`). Like the war, it makes the forcefields
+feet free, through a room operation, stage by stage: spawn, muster (from
+RED's spawns, checking the placement: a place each, spaced apart, no two walks
+crossing, each resting at its own), mobilize (out through the shutter to the
+grass), assault (into the bench), hold (alert), evacuate (a danger marked on
+BLU's side), rout (three of five killed) and remuster. Each stage sets up its
+own start, so any one runs alone (`NSRoomBench.Run("evacuate")`) or all in turn
+(`RunAll`; a run started ends one still going), and checks its result as data
+(`NSRoomBench.Report()`, or one stage in full, passed or not,
+`NSRoomBench.Show("muster")`). Like the war, it makes the forcefields
 passable: TF2's stop only players, and NextBots' movement takes them for walls.
+
+An order's places come a group at a time (a muster's rings, a fall back's
+rows), whole but for the last, of which it keeps the slots nearest the
+members' middle, so a ring partly filled faces the squad coming in. Each
+member, the furthest from the point first, takes the slot nearest it, which
+sends the front of a file deepest; any two whose walks there cross swap.
 
 ### Tactical and Annotate
 

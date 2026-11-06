@@ -13,7 +13,7 @@
 local Enum = core.enum
 local Geometry = math.geometry
 local Select = list.select
-local floor, ceil, pi = math.floor, math.ceil, math.pi
+local floor, ceil, pi, min = math.floor, math.ceil, math.pi, math.min
 local ipairs, pairs, setmetatable, error, tostring = ipairs, pairs, setmetatable, error, tostring
 local remove = table.remove
 local nextsoldier = nextsoldier
@@ -34,9 +34,42 @@ local SPARE_RINGS, SPARE_ROWS = 3, 3
 -- How near another's seat a seat is that one: a body's breadth.
 local SEAT_CLEARANCE = 32
 
+-- Whether segments ab and cd cross, apart from touching or running along each other: a point
+-- within ON_LINE of a line (twice the area it makes with it) is on it, as a ring's slot due west
+-- of its point lies a rounding off the line through it.
+local ON_LINE = 1e-6
+
+local function Cross(a, b, c, d)
+	local function Side(p, q, r)
+		local side = (q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x)
+		return (side > ON_LINE and 1) or (side < -ON_LINE and -1) or 0
+	end
+	return Side(a, b, c) * Side(a, b, d) < 0 and Side(c, d, a) * Side(c, d, b) < 0
+end
+
+-- Swaps two members' places where their walks there cross, until none do. Uncrossed, the two
+-- walks are shorter together, so it ends; walks that cross nowhere are left as they were chosen.
+local function Untangle(places, members)
+	local placed = {}
+	for member in pairs(places) do placed[#placed + 1] = member end
+	local swapped = true
+	while swapped do
+		swapped = false
+		for i = 1, #placed do
+			for j = i + 1, #placed do
+				local a, b = placed[i], placed[j]
+				if Cross(members[a], places[a], members[b], places[b]) then
+					places[a], places[b], swapped = places[b], places[a], true
+				end
+			end
+		end
+	end
+	return places
+end
+
 -- Each member in turn, the furthest from point first, takes the nearest slot left, so a
--- straggler keeps to its own side and the crowd fills in around it. Members left when the
--- slots run out have none.
+-- straggler keeps to its own side and the crowd fills in around it; then their places are
+-- untangled. Members left when the slots run out have none.
 local function Assign(point, slots, members)
 	local places, open = {}, {}
 	for i = 1, #slots do open[i] = slots[i] end
@@ -49,7 +82,7 @@ local function Assign(point, slots, members)
 		places[member] = slot
 		remove(open, place)
 	end
-	return places
+	return Untangle(places, members)
 end
 
 local function Anywhere(slot) return slot end
@@ -77,11 +110,27 @@ function Order:SetExits(exits) self.exits = exits end
 function Order:Places(members, spacing, admit)
 	admit = admit or Anywhere
 	self.size = #members
-	local slots = {}
-	for candidate in self:Candidates(#members, spacing) do
+	-- a group (a muster's ring, a fall back's row) at a time, whole but for the last that is
+	-- wanted: of it, as many as are left to place, those nearest the members' middle, so a ring
+	-- partly filled faces those coming in
+	local slots, group, current = {}, {}, nil
+	for candidate, of in self:Candidates(#members, spacing) do
+		if of ~= current then
+			if #slots + #group >= #members then break end
+			for _, slot in ipairs(group) do slots[#slots + 1] = slot end
+			group, current = {}, of
+		end
 		local slot = admit(candidate)
-		if slot then slots[#slots + 1] = slot end
-		if #slots == #members then break end
+		if slot then group[#group + 1] = slot end
+	end
+	local wanted = min(#members - #slots, #group)
+	if wanted > 0 then
+		local middle = { x = 0, y = 0 }
+		for _, member in ipairs(members) do middle.x, middle.y = middle.x + member.x / #members, middle.y + member.y / #members end
+		local nearest = Select.Order(group, function(a, b)
+			return Geometry.Distance2D(a, middle) < Geometry.Distance2D(b, middle)
+		end)
+		for i = 1, wanted do slots[#slots + 1] = group[nearest[i]] end
 	end
 	return Assign(self.point, slots, members)
 end
@@ -150,7 +199,8 @@ local function RingsFor(count)
 	return rings
 end
 
--- Its point, then whole rings around it, out to SPARE_RINGS past those count needs.
+-- Its point, then whole rings around it, out to SPARE_RINGS past those count needs: each slot
+-- and its ring (the point's is 0).
 function Gather:Candidates(count, spacing)
 	local point = self.point
 	local ring, around, index = 0, { point }, 0
@@ -163,7 +213,7 @@ function Gather:Candidates(count, spacing)
 			around = Geometry.Circle(point, ring * spacing, floor(2 * pi * ring), 0)
 		end
 		local slot = around[index]
-		return { x = slot.x, y = slot.y, z = point.z }
+		return { x = slot.x, y = slot.y, z = point.z }, ring
 	end
 end
 
@@ -171,7 +221,7 @@ local Withdraw = setmetatable({}, Order)
 Withdraw.__index = Withdraw
 
 -- Rows of ROW across the way from the threat, from its point away, each centred, out to
--- SPARE_ROWS past those count needs.
+-- SPARE_ROWS past those count needs: each slot and its row (the point's is 0).
 function Withdraw:Candidates(count, spacing)
 	local rows = ceil(count / ROW)
 	local last = rows + SPARE_ROWS
@@ -183,7 +233,7 @@ function Withdraw:Candidates(count, spacing)
 		if column >= abreast then row, column = row + 1, 0 end
 		if row >= last then return nil end
 		abreast = row == rows - 1 and count - row * ROW or ROW
-		return Geometry.Offset2D(self.point, self.from, row * spacing, (column - (abreast - 1) / 2) * spacing)
+		return Geometry.Offset2D(self.point, self.from, row * spacing, (column - (abreast - 1) / 2) * spacing), row
 	end
 end
 

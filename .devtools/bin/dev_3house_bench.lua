@@ -5,7 +5,8 @@
 -- result as data, so any stage runs alone or all in turn.
 --
 --   spawn      at RED's spawns, at ease, in RED's spawn room
---   muster     mustered at RED's spawn room's middle, each at its place, still in the room
+--   muster     from RED's spawns, mustered at its spawn room's middle: each given a place of its
+--              own, spaced apart, its walk there crossing no other's, resting there, in the room
 --   mobilize   out through RED's shutter to the staging point on the grass west of the bench
 --   assault    from the staging point into the bench, each at its place inside
 --   hold       in the bench, alert: patrolling, none leaving the room
@@ -20,6 +21,7 @@
 --   python3 .devtools/bin/instances.py dev_3house 'return NSRoomBench.Run("evacuate")'
 --   python3 .devtools/bin/instances.py dev_3house 'return NSRoomBench.RunAll()'
 --   python3 .devtools/bin/instances.py dev_3house 'return NSRoomBench.Report()'
+--   python3 .devtools/bin/instances.py dev_3house 'return NSRoomBench.Show("muster")'
 local Legs = nextsoldier.behavior.group_identity
 local Rooms = wartactics.rooms
 
@@ -31,6 +33,8 @@ local ARRIVED, GATHERED = 96, 320
 local STAGING_OFFSET = Vector(-640, 0, 0)
 -- Where members stand outside the bench's west door, evacuated, before they muster again.
 local OUTSIDE_WEST = Vector(-520, 0, 0)
+-- How much nearer than the squad's spacing two places may be: rounding.
+local PLACE_SLACK = 1
 -- How near the danger's spot its mark is taken after, and how many of the squad the rout kills.
 local DANGER_UNMARK = 32
 local ROUT_KILLS = 3
@@ -101,7 +105,7 @@ local function Give(order)
 	local places = order:Places(positions, nextsoldier.engine.GroupSpacing(), members[1]:NSLegsAdmit(at))
 	for i, member in ipairs(members) do member:NSLegsGive(order, places[i]) end
 	order:Lead(members[1])
-	B.order = order
+	B.order, B.starts, B.places = order, positions, places
 	return order
 end
 
@@ -158,6 +162,45 @@ end
 
 local function Staging() return Named("bench_room") + STAGING_OFFSET end
 
+-- Whether segments ab and cd cross, apart from touching or running along each other (a point
+-- within ON_LINE of a line is on it: rounding).
+local ON_LINE = 1e-6
+
+local function Cross(a, b, c, d)
+	local function Side(p, q, r)
+		local side = (q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x)
+		return (side > ON_LINE and 1) or (side < -ON_LINE and -1) or 0
+	end
+	return Side(a, b, c) * Side(a, b, d) < 0 and Side(c, d, a) * Side(c, d, b) < 0
+end
+
+-- The places the squad was given, as failures: one left without, two nearer than its spacing,
+-- two members' walks there crossing.
+local function Placement()
+	local failures, starts, places = {}, B.starts, B.places
+	local spacing = nextsoldier.engine.GroupSpacing()
+	for i = 1, #starts do
+		if not places[i] then failures[#failures + 1] = string.format("member %d: no place", i) end
+	end
+	for i = 1, #starts do
+		for j = i + 1, #starts do
+			local a, b = places[i], places[j]
+			if a and b then
+				local apart = math.sqrt((a.x - b.x) ^ 2 + (a.y - b.y) ^ 2)
+				if apart < spacing - PLACE_SLACK then
+					failures[#failures + 1] = string.format("members %d and %d: places %.0f apart, under %.0f", i, j, apart, spacing)
+				end
+				if Cross(starts[i], a, starts[j], b) then
+					failures[#failures + 1] = string.format("members %d and %d: their walks cross", i, j)
+				end
+			end
+		end
+	end
+	return failures
+end
+
+local function Resting(member) return member.NSStance ~= nil, "not resting at its place" end
+
 B.STAGES = {
 	{
 		name = "spawn",
@@ -180,11 +223,24 @@ B.STAGES = {
 	{
 		name = "muster",
 		seconds = 10,
-		setup = function() Spawn(Around(Named("red_muster") + Vector(-192, 0, 0), SIZE, 72)) end,
+		setup = function()
+			local spots = {}
+			for i, spawn in ipairs(ents.FindByName("red_spawn")) do
+				if i > SIZE then break end
+				spots[i] = spawn:GetPos()
+			end
+			Spawn(spots)
+		end,
 		act = function() Give(Legs.Muster(Point(Named("red_muster")))) end,
 		check = function()
-			return Verdict(Each({ Arrived, Runs("LegsStationary"),
-				function(m) return InSpawnRoom(m), "left the spawn room" end }))
+			local lines, failures = Each({ Arrived, Runs("LegsStationary"), Resting,
+				function(m) return InSpawnRoom(m), "left the spawn room" end })
+			for _, failure in ipairs(Placement()) do failures[#failures + 1] = failure end
+			for i, place in ipairs(B.places) do
+				local start = B.starts[i]
+				lines[i] = lines[i] .. string.format(" | from %.0f,%.0f placed %.0f,%.0f", start.x, start.y, place.x, place.y)
+			end
+			return Verdict(lines, failures)
 		end,
 	},
 	{
@@ -279,17 +335,27 @@ for _, stage in ipairs(B.STAGES) do BY_NAME[stage.name] = stage end
 local SETTLE = 1
 
 -- Runs a stage; its result lands in B.results[name], and then done(result) if given.
-function B.Run(name, done)
+-- Each run started is numbered, and a run's timers act only while it is the newest: one started
+-- over another ends the older, which would otherwise drive the same squad.
+B.runs = B.runs or 0
+
+function B.Run(name, done, run)
 	local stage = BY_NAME[name]
 	if not stage then error("no stage " .. tostring(name) .. "; stages: spawn muster mobilize assault hold evacuate rout remuster", 2) end
 	if game.GetMap() ~= "dev_3house" then error("the bench runs on dev_3house, not " .. game.GetMap(), 2) end
+	if not run then
+		B.runs = B.runs + 1
+		run = B.runs
+	end
 	B.results[name] = { running = true }
 	-- TF2's forcefields stop only players, as the war has them while it runs
 	WS.Feature("aiwar"):SetForcefieldsPassable(true)
 	stage.setup()
 	timer.Simple(SETTLE, function()
+		if run ~= B.runs then return end
 		if stage.act then stage.act() end
 		timer.Simple(stage.seconds, function()
+			if run ~= B.runs then return end
 			local ok, result = pcall(stage.check)
 			if stage.cleanup then stage.cleanup() end
 			B.results[name] = ok and result or { passed = false, failures = { "check failed: " .. tostring(result) } }
@@ -299,8 +365,12 @@ function B.Run(name, done)
 	return "running " .. name .. " (" .. (SETTLE + stage.seconds) .. " s)"
 end
 
--- Runs every stage in turn, each from its own set-up, and clears the squad after.
+-- Runs every stage in turn, each from its own set-up, and clears the squad after; the last run's
+-- results go first, so none is read as this one's.
 function B.RunAll()
+	B.results = {}
+	B.runs = B.runs + 1
+	local run = B.runs
 	local total = 0
 	for _, stage in ipairs(B.STAGES) do total = total + SETTLE + stage.seconds end
 	local i = 0
@@ -308,7 +378,7 @@ function B.RunAll()
 		i = i + 1
 		local stage = B.STAGES[i]
 		if not stage then Clear() return end
-		B.Run(stage.name, Next)
+		B.Run(stage.name, Next, run)
 	end
 	Next()
 	return "running all " .. #B.STAGES .. " stages (" .. total .. " s)"
@@ -330,6 +400,17 @@ function B.Report()
 			for _, member in ipairs(result.members or {}) do lines[#lines + 1] = "  " .. member end
 		end
 	end
+	return table.concat(lines, "\n")
+end
+
+-- One stage's result in full, passed or not: its failures, then each member's line.
+function B.Show(name)
+	local result = B.results[name]
+	if not result then return name .. ": not run" end
+	if result.running then return name .. ": running" end
+	local lines = { name .. ": " .. (result.passed and "passed" or "FAILED") }
+	for _, failure in ipairs(result.failures or {}) do lines[#lines + 1] = "  " .. failure end
+	for _, member in ipairs(result.members or {}) do lines[#lines + 1] = "  " .. member end
 	return table.concat(lines, "\n")
 end
 
