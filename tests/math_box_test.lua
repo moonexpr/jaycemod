@@ -36,4 +36,16 @@ T.test("LongestAxis2D is the longer of x and y across the ground; x on a tie", f
 	T.eq(Box.LongestAxis2D(P(0, 0, 0), P(7, 7, 0)), "x", "a tie")
 end)
 
+T.test("a centred box is a cube of the size about a point, as a hull's mins and maxs", function()
+	local mins, maxs = Box.Centered(10)
+	T.eq(mins.x .. "," .. mins.y .. "," .. mins.z, "-5,-5,-5", "mins")
+	T.eq(maxs.x .. "," .. maxs.y .. "," .. maxs.z, "5,5,5", "maxs")
+end)
+
+T.test("a standing box is a body of the width and height on its feet at a point", function()
+	local mins, maxs = Box.Standing(32, 72)
+	T.eq(mins.x .. "," .. mins.y .. "," .. mins.z, "-16,-16,0", "mins: its feet")
+	T.eq(maxs.x .. "," .. maxs.y .. "," .. maxs.z, "16,16,72", "maxs: its head")
+end)
+
 T.finish()

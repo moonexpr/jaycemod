@@ -187,6 +187,70 @@ unsafe extern "C-unwind" fn circle(l: L) -> c_int {
     1
 }
 
+/// A whole count of at least 1 at `index`, else raised naming `what`.
+unsafe fn count_at(l: L, index: c_int, what: &str) -> c_int {
+    let count = (api().checknumber)(l, index);
+    if !(count >= 1.0) || count.floor() != count {
+        raise_where(l, format!("{what} is a whole number of at least 1, not {}", tostring(l, index)));
+    }
+    count as c_int
+}
+
+fn normalized(a: &Point) -> Option<Point> {
+    let length = dot_of(a, a).sqrt();
+    if length == 0.0 {
+        return None;
+    }
+    let s = 1.0 / length;
+    Some([a[0] * s, a[1] * s, a[2] * s])
+}
+
+fn crossed(a: &Point, b: &Point) -> Point {
+    [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]
+}
+
+unsafe extern "C-unwind" fn sphere(l: L) -> c_int {
+    let api = api();
+    let center = point_at(l, 1);
+    let radius = (api.checknumber)(l, 2);
+    let count = count_at(l, 3, "a sphere's count");
+    let golden = std::f64::consts::PI * (3.0 - 5f64.sqrt());
+    let n = count as f64;
+    (api.createtable)(l, count, 0);
+    for i in 0..count {
+        let z = 1.0 - (2.0 * i as f64 + 1.0) / n;
+        let (across, turn) = ((1.0 - z * z).sqrt(), i as f64 * golden);
+        push_point(l, center[0] + turn.cos() * across * radius, center[1] + turn.sin() * across * radius, Some(center[2] + z * radius));
+        (api.rawseti)(l, -2, i + 1);
+    }
+    1
+}
+
+unsafe extern "C-unwind" fn frustum(l: L) -> c_int {
+    let api = api();
+    let (eye, forward) = (point_at(l, 1), point_at(l, 2));
+    let (hfov, vfov, range) = ((api.checknumber)(l, 3), (api.checknumber)(l, 4), (api.checknumber)(l, 5));
+    let cols = count_at(l, 6, "a frustum's columns");
+    let rows = count_at(l, 7, "a frustum's rows");
+    let Some(ahead) = normalized(&forward) else { raise_where(l, "a frustum's forward has no direction".into()) };
+    let right = normalized(&crossed(&ahead, &[0.0, 0.0, 1.0])).unwrap_or([0.0, -1.0, 0.0]);
+    let up = crossed(&right, &ahead);
+    let (across, high) = ((hfov / 2.0).tan(), (vfov / 2.0).tan());
+    (api.createtable)(l, cols * rows, 0);
+    let mut at = 0;
+    for row in 0..rows {
+        let v = if rows == 1 { 0.0 } else { (1.0 - 2.0 * row as f64 / (rows - 1) as f64) * high };
+        for col in 0..cols {
+            let u = if cols == 1 { 0.0 } else { (-1.0 + 2.0 * col as f64 / (cols - 1) as f64) * across };
+            let p: Vec<f64> = (0..3).map(|k| eye[k] + (ahead[k] + right[k] * u + up[k] * v) * range).collect();
+            push_point(l, p[0], p[1], Some(p[2]));
+            at += 1;
+            (api.rawseti)(l, -2, at);
+        }
+    }
+    1
+}
+
 // math.scalar ---------------------------------------------------------------
 
 unsafe extern "C-unwind" fn clamp(l: L) -> c_int {
@@ -300,6 +364,21 @@ unsafe extern "C-unwind" fn box_extent(l: L) -> c_int {
             2
         }
     }
+}
+
+unsafe extern "C-unwind" fn box_centered(l: L) -> c_int {
+    let half = (api().checknumber)(l, 1) / 2.0;
+    push_point(l, -half, -half, Some(-half));
+    push_point(l, half, half, Some(half));
+    2
+}
+
+unsafe extern "C-unwind" fn box_standing(l: L) -> c_int {
+    let api = api();
+    let (half, height) = ((api.checknumber)(l, 1) / 2.0, (api.checknumber)(l, 2));
+    push_point(l, -half, -half, Some(0.0));
+    push_point(l, half, half, Some(height));
+    2
 }
 
 unsafe extern "C-unwind" fn box_longest_axis_2d(l: L) -> c_int {
@@ -947,6 +1026,8 @@ pub unsafe fn push_modules(l: L) {
             (c"ClosestOnSegment", closest_on_segment),
             (c"Polar", polar),
             (c"Circle", circle),
+            (c"Sphere", sphere),
+            (c"Frustum", frustum),
         ],
         None,
     );
@@ -977,7 +1058,14 @@ pub unsafe fn push_modules(l: L) {
     (api.setfield)(l, -2, c"interval".as_ptr());
     module::push(
         l,
-        &[(c"Overlaps", box_overlaps), (c"Contains", box_contains), (c"Extent", box_extent), (c"LongestAxis2D", box_longest_axis_2d)],
+        &[
+            (c"Overlaps", box_overlaps),
+            (c"Contains", box_contains),
+            (c"Extent", box_extent),
+            (c"LongestAxis2D", box_longest_axis_2d),
+            (c"Centered", box_centered),
+            (c"Standing", box_standing),
+        ],
         None,
     );
     (api.setfield)(l, -2, c"box".as_ptr());

@@ -7,6 +7,10 @@
 --     for no points
 --   LongestAxis2D(mins, maxs) -> "x" or "y", whichever the box is longer
 --     along across the ground; "x" on a tie
+--   Centered(size) -> mins, maxs of a cube of that size about a point: a
+--     hull's bounds, relative to where it is traced
+--   Standing(width, height) -> mins, maxs of a body that wide and tall on its
+--     feet at a point
 -- This is the Lua twin, which clients run; a server with native/foundation
 -- has the native one in its place, which keeps this contract.
 local ipairs = ipairs
@@ -40,4 +44,14 @@ end
 
 function LongestAxis2D(mins, maxs)
 	return (maxs.x - mins.x >= maxs.y - mins.y) and "x" or "y"
+end
+
+function Centered(size)
+	local half = size / 2
+	return { x = -half, y = -half, z = -half }, { x = half, y = half, z = half }
+end
+
+function Standing(width, height)
+	local half = width / 2
+	return { x = -half, y = -half, z = 0 }, { x = half, y = half, z = height }
 end

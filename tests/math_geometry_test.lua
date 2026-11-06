@@ -146,4 +146,42 @@ T.test("Circle refuses a count that is not a whole number of at least 1", functi
 	T.eq(pcall(Geometry.Circle, V(0, 0, 0), 1, 2.5, 0), false, "a fraction")
 end)
 
+T.test("Sphere is count points spread over a sphere round a centre, from its top down", function()
+	local center = V(10, -20, 30)
+	local points = Geometry.Sphere(center, 50, 64)
+	T.eq(#points, 64, "count of them")
+	local sx, sy, sz = 0, 0, 0
+	for i, p in ipairs(points) do
+		T.near(Geometry.Distance(p, center), 50, 1e-9, "point " .. i .. " on the sphere")
+		sx, sy, sz = sx + p.x, sy + p.y, sz + p.z
+	end
+	T.near(sx / 64, 10, 2, "spread evenly: their middle is the centre's, across")
+	T.near(sy / 64, -20, 2, "and along")
+	T.near(sz / 64, 30, 1e-9, "and up")
+	T.eq(points[1].z > points[64].z, true, "the first at the top")
+	T.eq(pcall(Geometry.Sphere, center, 50, 0), false, "no points is refused")
+	T.eq(pcall(Geometry.Sphere, center, 50, 2.5), false, "nor part of one")
+end)
+
+T.test("Frustum is a grid of points on its far plane, top row first, left to right", function()
+	local eye, ahead = V(0, 0, 0), V(1, 0, 0)
+	local points = Geometry.Frustum(eye, ahead, math.pi / 2, math.pi / 2, 100, 3, 3)
+	T.eq(#points, 9, "rows by columns")
+	Same(points[5], 100, 0, 0, "the middle straight ahead, the range away")
+	Same(points[1], 100, 100, 100, "the first top left: left is +y")
+	Same(points[9], 100, -100, -100, "the last bottom right")
+	Same(points[2], 100, 0, 100, "the top row's middle")
+end)
+
+T.test("Frustum of one point looks straight ahead, whichever way", function()
+	local points = Geometry.Frustum(V(1, 2, 3), V(0, 0, 2), 1, 1, 10, 1, 1)
+	Same(points[1], 1, 2, 13, "straight up, the range away")
+end)
+
+T.test("Frustum refuses a forward with no direction and a grid of no points", function()
+	T.eq(pcall(Geometry.Frustum, V(0, 0, 0), V(0, 0, 0), 1, 1, 10, 2, 2), false, "no direction")
+	T.eq(pcall(Geometry.Frustum, V(0, 0, 0), V(1, 0, 0), 1, 1, 10, 0, 2), false, "no columns")
+	T.eq(pcall(Geometry.Frustum, V(0, 0, 0), V(1, 0, 0), 1, 1, 10, 2, 1.5), false, "part of a row")
+end)
+
 T.finish()

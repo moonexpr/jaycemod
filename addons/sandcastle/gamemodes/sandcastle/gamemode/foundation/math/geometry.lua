@@ -3,10 +3,11 @@
 -- vectors: Add, Sub, Scale, Dot, Cross, Length and Normalize (nil for the
 -- zero vector, which has no direction) return new points. The ground-plane
 -- ones (Normalize2D, Left2D, Offset2D, Polar, Circle) leave height out of the
--- direction and keep a point's own z.
+-- direction and keep a point's own z. Sphere and Frustum are points to look
+-- toward: over a sphere round a centre, and across a view's far plane.
 -- This is the Lua twin, which clients run; a server with native/foundation
 -- has the native one in its place, which keeps this contract.
-local cos, error, floor, sin, sqrt, tostring, type = math.cos, error, math.floor, math.sin, math.sqrt, tostring, type
+local cos, error, floor, sin, sqrt, tan, tostring, type = math.cos, error, math.floor, math.sin, math.sqrt, math.tan, tostring, type
 local pi = math.pi
 module(...)
 
@@ -119,5 +120,55 @@ function Circle(center, radius, count, start)
 	end
 	local points = {}
 	for i = 0, count - 1 do points[i + 1] = Polar(center, radius, start + i * (2 * pi) / count) end
+	return points
+end
+
+local function Count(count, what, level)
+	if type(count) ~= "number" or count < 1 or floor(count) ~= count then
+		error(what .. " is a whole number of at least 1, not " .. tostring(count), level + 1)
+	end
+end
+
+-- The turn between one point and the next on a Fibonacci lattice: the golden angle.
+local GOLDEN = pi * (3 - sqrt(5))
+
+-- count points spread evenly over the sphere of radius round center (a Fibonacci lattice),
+-- from its top down.
+function Sphere(center, radius, count)
+	Count(count, "a sphere's count", 2)
+	local points, cz = {}, center.z or 0
+	for i = 0, count - 1 do
+		local z = 1 - (2 * i + 1) / count
+		local across, turn = sqrt(1 - z * z), i * GOLDEN
+		points[i + 1] = { x = center.x + cos(turn) * across * radius, y = center.y + sin(turn) * across * radius,
+			z = cz + z * radius }
+	end
+	return points
+end
+
+-- A view from eye toward forward, hfov across and vfov up (radians), as cols by rows points on
+-- its far plane range ahead: the top row first, each left to right. Its right is level (forward
+-- across world up); looking straight up or down, -y.
+function Frustum(eye, forward, hfov, vfov, range, cols, rows)
+	Count(cols, "a frustum's columns", 2)
+	Count(rows, "a frustum's rows", 2)
+	local ahead = Normalize(forward)
+	if not ahead then error("a frustum's forward has no direction", 2) end
+	local right = Normalize(Cross(ahead, { x = 0, y = 0, z = 1 })) or { x = 0, y = -1, z = 0 }
+	local up = Cross(right, ahead)
+	local across, high = tan(hfov / 2), tan(vfov / 2)
+	local ex, ey, ez = eye.x, eye.y, eye.z or 0
+	local points = {}
+	for row = 0, rows - 1 do
+		local v = rows == 1 and 0 or (1 - 2 * row / (rows - 1)) * high
+		for col = 0, cols - 1 do
+			local u = cols == 1 and 0 or (-1 + 2 * col / (cols - 1)) * across
+			points[#points + 1] = {
+				x = ex + (ahead.x + right.x * u + up.x * v) * range,
+				y = ey + (ahead.y + right.y * u + up.y * v) * range,
+				z = ez + (ahead.z + right.z * u + up.z * v) * range,
+			}
+		end
+	end
 	return points
 end

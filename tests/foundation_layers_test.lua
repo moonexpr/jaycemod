@@ -91,6 +91,7 @@ local GAMES = {
 
 	["list/drawlist"] = "formalisms",
 	["world/io"] = "formalisms",
+	["world/trace"] = "formalisms",
 	["gameplay/tactics"] = "formalisms",
 	["gameplay/rounds"] = "formalisms",
 	["gameplay/rounds/state"] = "formalisms",
