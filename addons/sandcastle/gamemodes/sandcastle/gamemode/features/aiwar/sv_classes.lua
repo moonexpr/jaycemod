@@ -7,7 +7,7 @@
 -- native: a server without the foundation binary finds none, and says so.
 -- ns_classes_print says what was found.
 local Controller = ...
-local Incursion, Classes, Ambush = wartactics.incursion, wartactics.classes, wartactics.ambush
+local Incursion, Classes, Ambush, Rooms = wartactics.incursion, wartactics.classes, wartactics.ambush, wartactics.rooms
 local Transaction = transaction
 
 local CLASSES_TIME = 900
@@ -220,9 +220,10 @@ function Controller:Classes()
 	return nil
 end
 
--- A room's or corridor's name as the tooling's pictures label it.
+-- A room's or passage's name as the tooling's pictures label it: a corridor's C, a seam's M.
 local function Name(space)
-	if space.kind == "corridor" then return "C" .. space.id end
+	if space.kind == Rooms.CORRIDOR then return "C" .. space.id end
+	if space.kind == Rooms.SEAM then return "M" .. space.id end
 	return (space.kind == "stairwell" and "S" or space.outdoor and "O" or "R") .. space.id
 end
 

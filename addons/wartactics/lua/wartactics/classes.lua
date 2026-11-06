@@ -28,7 +28,7 @@
 -- region(area) is the space an area is in.
 local ipairs, pairs, next, sort, huge, sqrt, min = ipairs, pairs, next, table.sort, math.huge, math.sqrt, math.min
 local Distances = graph.search.Distances
-local RoomOf, PassageOf = wartactics.rooms.RoomOf, wartactics.rooms.PassageOf
+local RoomOf, PassageOf, IsPassage = wartactics.rooms.RoomOf, wartactics.rooms.PassageOf, wartactics.rooms.IsPassage
 module(...)
 
 RESTRICTED, STRONGHOLD, OUTPOST, HIGHWAY = "restricted", "stronghold", "outpost", "highway"
@@ -55,7 +55,7 @@ end
 
 -- Spaces in a fixed order: rooms by id, then passages by id.
 local function Before(a, b)
-	if (a.kind == "corridor") ~= (b.kind == "corridor") then return b.kind == "corridor" end
+	if IsPassage(a) ~= IsPassage(b) then return IsPassage(b) end
 	return a.id < b.id
 end
 
@@ -64,7 +64,7 @@ function Region(partition, area)
 	return RoomOf(partition, area) or PassageOf(partition, area)
 end
 
-local function IsRoom(space) return space.kind ~= "corridor" end
+local function IsRoom(space) return not IsPassage(space) end
 
 local function Pop(list)
 	local last = list[#list]

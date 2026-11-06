@@ -26,6 +26,7 @@
 --   incursion's graph.
 -- Positions are { x, y, z }, judged across the ground.
 local ipairs, pairs, sort, huge, sqrt, abs = ipairs, pairs, table.sort, math.huge, math.sqrt, math.abs
+local IsPassage = wartactics.rooms.IsPassage
 module(...)
 
 local function Ground(a, b)
@@ -46,7 +47,7 @@ function Entrances(paths, crossings, region, approach)
 		for i = 2, #areas do
 			local outside, inside = areas[i - 1], areas[i]
 			local room = region(inside)
-			if room and room.kind ~= "corridor" and region(outside) ~= room then
+			if room and not IsPassage(room) and region(outside) ~= room then
 				local door = crossings[outside][inside]
 				local points, walked, j = {}, 0, i - 1
 				while j > 1 do

@@ -20,7 +20,10 @@
 -- more is a room, which reaches out from its core to its walls, ROOM_REACH.
 -- What no room reaches: a run of flights (areas steeper than STAIR_SLOPE)
 -- and the landings between them climbing STOREY_RISE is a stairwell, a room
--- of its own; the rest falls in pieces, a long narrow one (twice
+-- of its own; the floor under a door no deeper across it than SEAM_DEPTH,
+-- its strips indoors and out together, is a seam: the threshold as near a
+-- plane as the mesh lays it, a passage joining the spaces either side (a
+-- spawn's shutter onto the wilds). The rest falls in pieces, a long narrow one (twice
 -- CORRIDOR_WIDTH long, its floor no wider on the whole) a corridor (a
 -- hallway, an alley) unless it is a dead end, and any other part of the
 -- room it shares the widest edge with on its side, or a room of its own. A
@@ -34,7 +37,8 @@
 --   (its floor's size), outdoor, bsp (the map's own area it stands in, which
 --   areaportals seal; nil for none), wall (for an area by a wall, a side not
 --   wholly met by neighbours or by the threshold: its middle's distance to
---   it), open (the width of its sides onto the open air, no area there: a
+--   it), door (true where a func_door stands over it), open (the width of
+--   its sides onto the open air, no area there: a
 --   balcony's front; nil for none), links = { { to, width (of the shared
 --   edge), middle (of it), door (a func_door over either area) } } }, a
 --   link listed from each side. yield(),
@@ -46,7 +50,8 @@
 --   floor, center (the floor-weighted middle), lo, hi (its block: its areas'
 --   extent), doors, windows }, the rooms numbered in order of their lowest
 --   open area, then the stairwells, then the rooms found in what was left.
---   passages: { id, kind (CORRIDOR), outdoor, level, top, areas, floor,
+--   passages: { id, kind (CORRIDOR or SEAM), outdoor (a seam: wholly
+--   outdoors), level, top, areas, floor,
 --   center, lo, hi, joins (the ids of the rooms it opens on, ascending),
 --   doors }. levels: { id, low, high (its rooms' floor heights), rooms (the
 --   ids of the rooms on it, stairwells left out) }, from the ground up. A door
@@ -59,6 +64,7 @@
 --   passage.
 -- RoomOf(partition, areaId) -> the area's room, or nil (in a passage).
 -- PassageOf(partition, areaId) -> the area's passage, or nil.
+-- IsPassage(space) -> whether a room or passage is a passage (CORRIDOR or SEAM).
 -- Positions are { x, y, z } tables.
 local ipairs, pairs, setmetatable = ipairs, pairs, setmetatable
 local huge, sqrt, max, min = math.huge, math.sqrt, math.max, math.min
@@ -78,7 +84,13 @@ CORRIDOR_WIDTH, ROOM_REACH, STOREY_RISE, STAIR_SLOPE = 160, 100, 96, 0.15
 -- Floors no further apart than a player standing, less a step, are one
 -- level: no floor can lie over another so close.
 LEVEL_GAP = 64
-ROOM, STAIRWELL, CORRIDOR = "room", "stairwell", "corridor"
+-- The floor under a door no deeper across the doorway than about a wall's thickness and a
+-- door's: a seam, as near a plane as the mesh lays floor there.
+SEAM_DEPTH = 64
+ROOM, STAIRWELL, CORRIDOR, SEAM = "room", "stairwell", "corridor", "seam"
+
+-- Corridors and seams are passages, between rooms and in none; rooms and stairwells are rooms.
+function IsPassage(space) return space.kind == CORRIDOR or space.kind == SEAM end
 local YIELD_EVERY = 64
 
 -- A link a room or passage never crosses: through a func_door, over the
@@ -205,6 +217,44 @@ local function Rise(graph, areas)
 	return high - low
 end
 
+-- How deep a piece is: its block's narrower side across the ground.
+local function Depth(graph, areas)
+	local x0, y0, x1, y1 = huge, huge, -huge, -huge
+	for _, id in ipairs(areas) do
+		local a = graph[id]
+		x0, y0, x1, y1 = min(x0, a.lo.x), min(y0, a.lo.y), max(x1, a.hi.x), max(y1, a.hi.y)
+	end
+	return min(x1 - x0, y1 - y0)
+end
+
+-- The floor under doors not yet a room's, in pieces joined over any link but a drop: a doorway's
+-- strips indoors and out, across a threshold and the door itself, are one piece.
+local function DoorFloors(graph, ids, free)
+	local member = function(id) return free(id) and graph[id].door == true end
+	local group = Components(ids, function(id)
+		local next = {}
+		if member(id) then
+			local area = graph[id]
+			for _, link in ipairs(area.links) do
+				local to = graph[link.to]
+				if to and member(link.to) and not Drop(area, to) then next[#next + 1] = link.to end
+			end
+		end
+		return next
+	end)
+	local members, order = {}, {}
+	for _, id in ipairs(ids) do
+		if member(id) then
+			local g = group[id]
+			if not members[g] then members[g], order[#order + 1] = {}, g end
+			members[g][#members[g] + 1] = id
+		end
+	end
+	local pieces = {}
+	for i, g in ipairs(order) do pieces[i] = members[g] end
+	return pieces
+end
+
 local function Length(graph, areas)
 	local x0, y0, x1, y1 = huge, huge, -huge, -huge
 	for _, id in ipairs(areas) do
@@ -301,7 +351,7 @@ local function Doors(graph, space, of, passageOf)
 			local to = graph[link.to]
 			local other, passage = of[link.to], passageOf[link.to]
 			if to and (other or passage) and other ~= space and passage ~= space then
-				local leads = other and { other.id } or Without(passage.joins, space.kind ~= CORRIDOR and space.id)
+				local leads = other and { other.id } or Without(passage.joins, not IsPassage(space) and space.id)
 				local key = (passage and "p" or "r") .. concat(leads, ",")
 				local found
 				for _, door in ipairs(space.doors) do
@@ -471,11 +521,23 @@ function Partition(graph, yield, windows)
 			for _, id in ipairs(run) do of[id] = room end
 		end
 	end
+	-- the floor under a door, as thin as a seam, is one: the threshold the
+	-- spaces either side of it meet at, a passage between them
+	local passages, passageOf, left = {}, {}, {}
+	for _, piece in ipairs(DoorFloors(graph, ids, function(id) return not of[id] end)) do
+		if Depth(graph, piece) <= SEAM_DEPTH then
+			local outdoor = true
+			for _, id in ipairs(piece) do outdoor = outdoor and graph[id].outdoor == true end
+			local passage = { id = #passages + 1, kind = SEAM, outdoor = outdoor, areas = piece }
+			passages[passage.id] = passage
+			Measure(graph, passage)
+			for _, id in ipairs(piece) do passageOf[id] = passage end
+		end
+	end
 	-- then the rest, in pieces: a long narrow one a corridor, any other part
 	-- of the room it shares the widest edge with; while none has a room to
 	-- join, the largest left is a room of its own, the rest joining it
-	local passages, passageOf, left = {}, {}, {}
-	for _, piece in ipairs(Groups(graph, ids, function(id) return not of[id] end)) do
+	for _, piece in ipairs(Groups(graph, ids, function(id) return not of[id] and not passageOf[id] end)) do
 		if Elongated(graph, piece, clearance) then
 			local passage = { id = #passages + 1, kind = CORRIDOR, outdoor = graph[piece[1]].outdoor == true,
 				areas = piece }

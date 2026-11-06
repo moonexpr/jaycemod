@@ -61,6 +61,13 @@ KEY_LINE = 22
 KEY_HEIGHT = TITLE + KEY_LINE * ((len(KEY) + 1) // 2) + MARGIN
 
 
+def Tag(space) -> str:
+    """A room's or passage's name as the pictures label it: S a stairwell, C a corridor, M a seam
+    (the threshold under a door), O a room outdoors, R one indoors."""
+    kind = {"stairwell": "S", "corridor": "C", "seam": "M"}.get(space.kind)
+    return (kind or ("O" if space.outdoor else "R")) + str(space.id)
+
+
 def AreaLevels(dump, found) -> dict:
     """Each area's level: its space's, or for a space spanning levels the one its floor is nearest."""
     heights = {}
@@ -202,8 +209,7 @@ def Summary(dump, found, fields, routes, side) -> list:
     crossed = {}
     for route in routes:
         for space in {found.region[a] for a in route.areas if a in found.region}:
-            key = ("S" if space.kind == "stairwell" else "C" if space.kind == "corridor" else
-                   "O" if space.outdoor else "R") + str(space.id)
+            key = Tag(space)
             counts = crossed.setdefault(key, {})
             counts[route.team] = counts.get(route.team, 0) + 1
     busiest = sorted(crossed.items(), key=lambda kv: -sum(kv[1].values()))[:12]
@@ -344,8 +350,7 @@ def TreeSummary(found, trees: dict, breaches: dict) -> list:
         space = found.region.get(aid)
         if space is None:
             return f"area {aid}"
-        return ("S" if space.kind == "stairwell" else "C" if space.kind == "corridor" else
-                "O" if space.outdoor else "R") + str(space.id)
+        return Tag(space)
     lines = []
     for team, tree in sorted(trees.items()):
         total = sum(tree.weight[r] for r in tree.roots)

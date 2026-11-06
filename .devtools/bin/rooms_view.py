@@ -282,7 +282,7 @@ KEY = [KeyEntry(f"{cls}{' ' + team if team else ''}", CLASS_MEANS[cls], Swatch(f
        for (cls, team), fill in CLASS_FILL.items()] + [
     KeyEntry("stairwell", "hatched over its class: a room between levels, drawn on each it joins",
              lambda pen, box: (pen.rectangle(box, fill=CLASS_FILL[(places.WILDS, None)], outline=EDGE), Hatch(pen, box))),
-    KeyEntry("corridor", "a hallway or alley between rooms, no room's",
+    KeyEntry("corridor", "a hallway or alley between rooms, or a seam, the threshold under a door; no room's",
              lambda pen, box: pen.rectangle(box, fill=CORRIDOR_FILL, outline=EDGE)),
     KeyEntry("area in no room", "a nav area left out: a bug to report",
              lambda pen, box: pen.rectangle(box, fill=(255, 255, 255), outline=LOOSE_EDGE)),

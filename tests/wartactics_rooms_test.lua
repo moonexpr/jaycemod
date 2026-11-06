@@ -83,7 +83,7 @@ end
 
 T.test("the tuning is defined", function()
 	for _, name in ipairs({ "DOOR_WIDTH", "ROOM_MIN_FLOOR", "DOOR_MERGE", "SEAL_OPENING", "CORRIDOR_WIDTH", "ROOM_REACH",
-		"STOREY_RISE", "STAIR_SLOPE", "LEVEL_GAP" }) do
+		"STOREY_RISE", "STAIR_SLOPE", "LEVEL_GAP", "SEAM_DEPTH" }) do
 		T.defined(Rooms[name], name)
 	end
 	T.eq(Rooms.STOREY_RISE * 1.5 / 11 / CELL > Rooms.STAIR_SLOPE, true, "the fixtures' stairs: steeper than a stair")
@@ -532,6 +532,72 @@ end)
 
 T.test("a side met wholly has nothing to probe", function()
 	T.eq(#Rooms.OpenProbes(0, 400, { 0.25, 0.5, 0.75 }, { { 0, 200 }, { 200, 400 } }), 0, "none")
+end)
+
+-- A hall indoors (cols 0-9) and a yard outdoors (cols 11-20), their rows 0-9, and between them,
+-- on rows, a doorway under a door `depth` deep, in `layers` strips across it (an indoor one, then
+-- outdoor ones, as the generator lays them under a spawn's shutter): the areas a door stands over.
+local function Doorway(rows, depth, layers)
+	local mesh = Mesh()
+	mesh:Block(0, 0, 10, 10)
+	mesh:Block(11, 0, 10, 10, 0, true)
+	local from, step = 9.5 * CELL, depth / layers
+	local strips = {}
+	for layer = 1, layers do
+		strips[layer] = {}
+		for _, row in ipairs(rows) do
+			local id = mesh:Cell(100 + layer, row, 0, layer > 1)
+			local area = mesh.graph[id]
+			area.door = true
+			area.center.x = from + step * (layer - 0.5)
+			area.lo.x, area.hi.x = from + step * (layer - 1), from + step * layer
+			area.floor = step * CELL
+			strips[layer][#strips[layer] + 1] = id
+		end
+	end
+	for i, row in ipairs(rows) do
+		mesh:Join(mesh:Id(9, row), strips[1][i], true)
+		for layer = 2, layers do mesh:Join(strips[layer - 1][i], strips[layer][i], true) end
+		mesh:Join(strips[layers][i], mesh:Id(11, row), true)
+		if i > 1 then
+			for layer = 1, layers do mesh:Join(strips[layer][i - 1], strips[layer][i], true) end
+		end
+	end
+	return mesh, strips
+end
+
+T.test("the floor under a door between a hall and a yard is a seam joining them, in neither", function()
+	local mesh, strips = Doorway({ 4, 5 }, CELL, 2)
+	local p = Rooms.Partition(mesh:Graph())
+	T.eq(#p.rooms, 2, "the hall and the yard, and no room of the doorway")
+	local hall, yard = Rooms.RoomOf(p, mesh:Id(0, 0)), Rooms.RoomOf(p, mesh:Id(20, 9))
+	local seam = Rooms.PassageOf(p, strips[1][1])
+	T.eq(seam.kind, Rooms.SEAM)
+	for _, layer in ipairs(strips) do
+		for _, id in ipairs(layer) do
+			T.eq(Rooms.PassageOf(p, id), seam, "one seam, indoors and out, along the doorway")
+			T.eq(Rooms.RoomOf(p, id), nil, "in no room")
+		end
+	end
+	T.eq(table.concat(seam.joins, ","), hall.id .. "," .. yard.id, "joining the hall and the yard")
+	T.eq(hall.outdoor, false, "the hall sealed")
+	T.eq(#hall.doors, 1, "the hall's one door")
+	T.eq(hall.doors[1].passage, seam.id, "through the seam")
+	T.eq(hall.doors[1].leads[1], yard.id, "to the yard")
+end)
+
+T.test("the floor under a door deeper than a seam is no seam", function()
+	local mesh, strips = Doorway({ 4, 5 }, Rooms.SEAM_DEPTH * 2, 4)
+	local p = Rooms.Partition(mesh:Graph())
+	local passage = Rooms.PassageOf(p, strips[1][1])
+	T.eq(passage == nil or passage.kind ~= Rooms.SEAM, true, "not a seam")
+end)
+
+T.test("corridors and seams are passages; rooms and stairwells are not", function()
+	T.eq(Rooms.IsPassage({ kind = Rooms.CORRIDOR }), true, "a corridor")
+	T.eq(Rooms.IsPassage({ kind = Rooms.SEAM }), true, "a seam")
+	T.eq(Rooms.IsPassage({ kind = Rooms.ROOM }), false, "a room")
+	T.eq(Rooms.IsPassage({ kind = Rooms.STAIRWELL }), false, "a stairwell")
 end)
 
 T.finish()

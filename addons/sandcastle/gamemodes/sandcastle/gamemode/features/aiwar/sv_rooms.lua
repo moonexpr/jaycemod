@@ -254,7 +254,7 @@ function Controller:RoomGraph(work)
 		end
 		local extent = area:GetExtentInfo()
 		graph[id] = { center = Point(area:GetCenter()), floor = area:GetSizeX() * area:GetSizeY(),
-			outdoor = not indoor[id], lo = Point(extent.lo), hi = Point(extent.hi), open = Open(area),
+			outdoor = not indoor[id], door = under[id] == true, lo = Point(extent.lo), hi = Point(extent.hi), open = Open(area),
 			bsp = AreaAt(area:GetCenter() + AREA_LIFT), wall = WallDistance(area, Across), links = links }
 		i = i + 1
 		if i % 64 == 0 then work:CheckYield() end
