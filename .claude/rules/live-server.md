@@ -122,6 +122,12 @@ inputs, wins); `status`, `trace`, `timers` and the two proofs still work.
 | `dev.harness.check_off()` | `dev_harness_check_off` | Prove the harness, off, left the gamerules as they were |
 | `dev.harness.check_equivalence()` | `dev_harness_check_equivalence` | Prove map inputs do the same with the harness on and off |
 
+### Entities
+
+| Function | Command | What |
+|---|---|---|
+| `ENTITY:Teleport(target, facingTowards)` | | Put an entity before `target`, along the way it faces, the two clear of each other; turned to face it (`facingTowards`, true unless false) or the way it faces. Its hull is swept out from `target`, so a wall stops it short; its motion is stopped. Returns where it stands and its yaw |
+
 ### For the workbench's own code
 
 | Function | What |
