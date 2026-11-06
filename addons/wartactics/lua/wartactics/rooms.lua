@@ -561,6 +561,34 @@ function Partition(graph, yield, windows)
 	return { rooms = rooms, passages = passages, levels = levels, of = of, passageOf = passageOf }
 end
 
+-- Where along a side from lo to hi to look for open air (a balcony's front): at each of shares
+-- (0 to 1) along it, but not within a span ({ lo, hi }) a neighbour on its floor meets, where the
+-- floor goes on through a doorway; where every share falls on one, the middle of each gap left.
+function OpenProbes(lo, hi, shares, spans)
+	local function Met(at)
+		for _, span in ipairs(spans) do
+			if at >= span[1] and at <= span[2] then return true end
+		end
+		return false
+	end
+	local probes = {}
+	for _, share in ipairs(shares) do
+		local at = lo + (hi - lo) * share
+		if not Met(at) then probes[#probes + 1] = at end
+	end
+	if probes[1] then return probes end
+	local ordered = {}
+	for i, span in ipairs(spans) do ordered[i] = span end
+	sort(ordered, function(a, b) return a[1] < b[1] end)
+	local from = lo
+	for _, span in ipairs(ordered) do
+		if span[1] > from then probes[#probes + 1] = (from + span[1]) / 2 end
+		from = max(from, span[2])
+	end
+	if from < hi then probes[#probes + 1] = (from + hi) / 2 end
+	return probes
+end
+
 function RoomOf(partition, areaId)
 	return partition.of[areaId]
 end

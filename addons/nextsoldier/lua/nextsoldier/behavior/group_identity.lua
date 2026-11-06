@@ -6,8 +6,9 @@
 -- A group's orders: Muster(point), FallBack(point, from) -> an order, whose Places(members,
 -- spacing) gives each member, by its position, a place of its own. A squad's mode is one whole
 -- number on its order (SetMode, MODE): STATIONARY, ALERT, CAUTIOUS, PANIC or CLOSE, each the
--- action its members run (gib_behaviors). Its leader (Lead) calls the fall back once its
--- casualties are heavy (Casualty, HeavyCasualties, Rout); its members resting take seats apart
+-- action its members run (gib_behaviors). Its leader (Lead) calls the fall back once, when its
+-- casualties are heavy (Casualty, HeavyCasualties, Rout) or a danger is near (Endanger); its
+-- members resting take seats apart
 -- (Seat), given up as they leave it (Leave).
 local Enum = core.enum
 local Geometry = math.geometry
@@ -109,6 +110,14 @@ end
 function Order:Rout()
 	if self.routed or not self:HeavyCasualties() then return false end
 	self.routed = true
+	self:SetMode(MODE.PANIC)
+	return true
+end
+
+-- A danger near, the squad evacuates away from it: true the once it does (a rout's call counts).
+function Order:Endanger(threat)
+	if self.routed then return false end
+	self.routed, self.from = true, threat
 	self:SetMode(MODE.PANIC)
 	return true
 end

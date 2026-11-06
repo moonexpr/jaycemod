@@ -7,7 +7,7 @@ local GIB = nextsoldier.behavior.gib_behaviors
 local MODE, GAIT = GroupIdentity.MODE, GIB.GAIT
 
 for _, name in ipairs({ "PATROL_RADIUS", "PATROL_REST", "WANDER_RADIUS", "WANDER_REST", "EVACUATE_DISTANCE",
-	"REST_RADIUS", "STAY_CLOSE_RANGE", "STAY_CLOSE_RADIUS", "REGROUP_RANGE", "REGROUP_NEAR" }) do
+	"REST_RADIUS", "EXIT_CLEARANCE", "STAY_CLOSE_RANGE", "STAY_CLOSE_RADIUS", "REGROUP_RANGE", "REGROUP_NEAR" }) do
 	T.defined(GIB[name], name)
 end
 
@@ -36,6 +36,7 @@ local function Member(order, place)
 	function me:NSLegsSeats() self.asked = self.asked + 1 return self.seats end
 	function me:NSLegsHeadFor(spot, gait) self.headed, self.spot, self.gait = self.headed + 1, spot, gait end
 	function me:NSLegsSay(line) self.said[#self.said + 1] = line end
+	function me:NSLegsDanger() return self.danger end
 	return me
 end
 
@@ -212,11 +213,19 @@ local function Panicked(exits)
 	return order
 end
 
-T.test("evacuating, a member runs for the way out furthest from the threat", function()
+T.test("evacuating, a member runs out by the way out furthest from the threat", function()
 	local me, action = OnOrder(Panicked({ { x = -300, y = 50, z = 0 }, { x = 400, y = -50, z = 0 } }), { x = 50, y = 0, z = 0 })
 	action:Update(me)
-	T.eq(me.spot.x, 400, "the far way out")
+	T.eq(me.spot.x > 400, true, "past the far way out, out of the room")
+	T.near(math.sqrt((me.spot.x - 400) ^ 2 + (me.spot.y + 50) ^ 2), GIB.EXIT_CLEARANCE, 0.001, "clear of it")
 	T.eq(me.gait, GAIT.RUN, "running")
+end)
+
+T.test("evacuating where the map refuses the ground past a way out, a member makes for the way out itself", function()
+	local me, action = OnOrder(Panicked({ { x = 400, y = 0, z = 0 } }), { x = 50, y = 0, z = 0 })
+	me.refuse = function(spot) return spot.x > 400 end
+	action:Update(me)
+	T.eq(me.spot.x, 400, "the way out")
 end)
 
 T.test("evacuating, a member leaves by the way out from where it stands, not its place", function()
@@ -224,7 +233,7 @@ T.test("evacuating, a member leaves by the way out from where it stands, not its
 	local me, action = OnOrder(Panicked(exits), { x = 0, y = 500, z = 0 })
 	me.at = { x = 0, y = -500, z = 0 }
 	action:Update(me)
-	T.eq(me.spot.y, -600, "the one beside it")
+	T.eq(me.spot.y < -600, true, "out by the one beside it")
 end)
 
 T.test("evacuating with no way out known, a member runs straight away from the threat", function()
@@ -238,9 +247,10 @@ T.test("evacuating, a member keeps to the way out it chose", function()
 	local exits = { { x = 400, y = 0, z = 0 } }
 	local me, action = OnOrder(Panicked(exits), { x = 50, y = 0, z = 0 })
 	action:Update(me)
+	local first = me.spot
 	exits[1] = { x = 900, y = 0, z = 0 }
 	action:Update(me)
-	T.eq(me.spot.x, 400, "the first")
+	T.eq(me.spot, first, "the first")
 end)
 
 -- A squad of count members staying close, the first its leader, each standing where at says.
@@ -353,6 +363,26 @@ T.test("a member who does not lead never calls the fall back", function()
 	T.eq(#me.said, 0, "not its call")
 	T.eq(order.mode, MODE.STATIONARY, "nor its squad's")
 	T.eq(leader ~= me, true, "another leads")
+end)
+
+T.test("a squad's leader told of a danger near its point calls the fall back once, the squad evacuating away from it", function()
+	local order, leader, orders = Squad(4)
+	leader.danger = { x = 300, y = 0, z = 0 }
+	orders:Update(leader)
+	T.eq(leader.said[1], GIB.FALL_BACK_LINE, "called")
+	T.eq(order.mode, MODE.PANIC, "evacuating")
+	T.eq(order.from, leader.danger, "away from it")
+	orders:Update(leader)
+	T.eq(#leader.said, 1, "once")
+end)
+
+T.test("a member who does not lead is not the one to call a danger", function()
+	local order = Squad(4)
+	local me, _, orders = OnOrder(order)
+	me.danger = { x = 300, y = 0, z = 0 }
+	orders:Update(me)
+	T.eq(#me.said, 0, "not its call")
+	T.eq(order.mode, MODE.STATIONARY, "nor its squad's")
 end)
 
 T.finish()

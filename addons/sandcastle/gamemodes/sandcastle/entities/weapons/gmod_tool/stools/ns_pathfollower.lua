@@ -113,6 +113,7 @@ local MARKS = {
 	{ "rally", "Rally: its team's recalled squads regroup here", "mark" },
 	{ "enemy", "Enemy: its team's squads have seen one here", "mark" },
 	{ "avoid", "Avoid: the areas here are closed to every team", "mark" },
+	{ "danger", "Danger: its team's squads near it retreat from it", "mark" },
 	{ "assault", "Mission: the selection's squads assault the room here", "mission" },
 	{ "topple", "Mission: the selection's squads topple the room here", "mission" },
 	{ "ambush", "Mission: the selection's squads ambush in the room here", "mission" },

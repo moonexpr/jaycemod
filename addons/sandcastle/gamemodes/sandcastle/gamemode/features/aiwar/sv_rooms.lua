@@ -181,7 +181,9 @@ end
 -- front over a drop): on each side neighbours on its floor (within
 -- LEVEL_GAP; the yard a drop lands in is none) do not wholly meet, a trace out from points along it at OPEN_HEIGHT, over a
 -- railing, that goes OPEN_REACH without meeting anything and ends under the
--- sky (no roof within ROOF_HEIGHT) is that share of the side open. Every
+-- sky (no roof within ROOF_HEIGHT) is that share of the side open. A point
+-- where a neighbour meets the side is not looked from: the floor goes on
+-- there, through a doorway (Rooms.OpenProbes). Every
 -- area is measured: a strip of outdoors too small to stand alone takes the
 -- side of the roofed room around it, its open front with it.
 local OPEN_HEIGHT, OPEN_REACH, OPEN_INSET = 64, 256, 2
@@ -194,20 +196,21 @@ local function Open(area)
 	for dir = 0, 3 do
 		local alongX = dir == 0 or dir == 2
 		local along = alongX and area:GetSizeX() or area:GetSizeY()
-		local met = 0
+		local met, spans = 0, {}
 		for _, other in ipairs(area:GetAdjacentAreasAtSide(dir) or {}) do
 			local oe = other:GetExtentInfo()
 			if math.max(oe.lo.z - extent.hi.z, extent.lo.z - oe.hi.z) <= Rooms.LEVEL_GAP then
 				met = met + (SharedEdge(area, other))
+				spans[#spans + 1] = alongX and { oe.lo.x, oe.hi.x } or { oe.lo.y, oe.hi.y }
 			end
 		end
 		if met < along - EDGE_SLACK then
 			local out, clear = OUTWARD[dir], 0
-			for _, t in ipairs(OPEN_SAMPLES) do
-				local x = alongX and extent.lo.x + (extent.hi.x - extent.lo.x) * t
-					or (dir == 1 and extent.hi.x - OPEN_INSET or extent.lo.x + OPEN_INSET)
-				local y = alongX and (dir == 2 and extent.hi.y - OPEN_INSET or extent.lo.y + OPEN_INSET)
-					or extent.lo.y + (extent.hi.y - extent.lo.y) * t
+			local lo, hi = alongX and extent.lo.x or extent.lo.y, alongX and extent.hi.x or extent.hi.y
+			local probes = Rooms.OpenProbes(lo, hi, OPEN_SAMPLES, spans)
+			for _, at in ipairs(probes) do
+				local x = alongX and at or (dir == 1 and extent.hi.x - OPEN_INSET or extent.lo.x + OPEN_INSET)
+				local y = alongX and (dir == 2 and extent.hi.y - OPEN_INSET or extent.lo.y + OPEN_INSET) or at
 				local from = Vector(x, y, area:GetZ(Vector(x, y, 0)) + OPEN_HEIGHT)
 				local across = util.TraceLine({ start = from, endpos = from + out * OPEN_REACH, mask = MASK_SOLID })
 				if not across.Hit then
@@ -216,7 +219,7 @@ local function Open(area)
 					if not up.Hit or up.HitSky then clear = clear + 1 end
 				end
 			end
-			open = open + (along - met) * clear / #OPEN_SAMPLES
+			if probes[1] then open = open + (along - met) * clear / #probes end
 		end
 	end
 	return open > 0 and open or nil

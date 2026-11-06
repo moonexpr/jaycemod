@@ -4,18 +4,19 @@
 --   STATIONARY  LegsStationary  rests at a seat near its place, one no other member holds
 --   ALERT       LegsPatrol      patrols spots round the squad's point on its own side
 --   CAUTIOUS    LegsWander      wanders near its own place
---   PANIC       LegsEvacuate    runs for the way out of the room furthest from the threat
+--   PANIC       LegsEvacuate    runs out of the room by the way out furthest from the threat
 --   CLOSE       LegsStayClose   keeps near its leader, running to it when too far
 -- A member strayed far from its squad's point suspends what it does for LegsRegroup, running
--- back to its place. A full squad's leader, its casualties heavy, calls the fall back once
--- (FALL_BACK_LINE) and its squad evacuates.
+-- back to its place. A full squad's leader calls the fall back once (FALL_BACK_LINE) and its
+-- squad evacuates: its casualties heavy, or a danger near its squad's point, which it evacuates
+-- away from.
 --
 -- A member on orders is told them by NSLegsOrder(), senses its group by NSLegsSense() each
 -- update, and heads where its action says by NSLegsHeadFor(spot, gait). Its place is
 -- NSLegsPlace(), where it stands NSLegsAt(), its clock Now(), its draws NSLegsDraw() (0 to 1),
 -- NSLegsAdmit(around) the map's word on a spot near around, as Places takes it,
--- NSLegsSeats(place, radius) the spots near its place it could rest at, and NSLegsSay(line)
--- what it calls out.
+-- NSLegsSeats(place, radius) the spots near its place it could rest at, NSLegsDanger(point) a
+-- danger near point its squad should leave (nil for none), and NSLegsSay(line) what it calls out.
 local Action = nextsoldier.behavior.action
 local GroupIdentity = nextsoldier.behavior.group_identity
 local Enum = core.enum
@@ -33,8 +34,9 @@ GAIT = Enum.New("LegsGait", 0, { "WALK", "RUN", "REST" })
 -- The war's own: a defender's rounds near its post, an attacker's wander in setup.
 PATROL_RADIUS, PATROL_REST = 384, 6
 WANDER_RADIUS, WANDER_REST = 300, 12
--- How far from the threat an evacuating member runs with no way out known.
-EVACUATE_DISTANCE = 768
+-- How far from the threat an evacuating member runs with no way out known, and how far past a
+-- way out it runs, clear of the room.
+EVACUATE_DISTANCE, EXIT_CLEARANCE = 768, 192
 -- How far from its place a member looks for a seat.
 REST_RADIUS = 192
 -- How far from its leader a member staying close lets itself be, and how near it runs back.
@@ -88,7 +90,9 @@ local function OnOrders(self, me)
 	local result = Orders(self, me)
 	if result.type ~= Action.CONTINUE then return result end
 	local order = self.order
-	if order.leader == me and order:Rout() then me:NSLegsSay(FALL_BACK_LINE) end
+	if order.leader ~= me then return result end
+	local danger = not order.routed and me:NSLegsDanger(order.point)
+	if (danger and order:Endanger(danger)) or order:Rout() then me:NSLegsSay(FALL_BACK_LINE) end
 	return result
 end
 
@@ -167,17 +171,22 @@ function LegsWander:Head(me, place)
 	end), GAIT.WALK
 end
 
--- The way out from at furthest from the threat, beyond it the nearer; with none the map
--- admits, straight away from the threat, nearer each try.
-local function WayOut(order, at, admit)
+-- The way out from at furthest from the threat, beyond it the nearer, and past it, clear of the
+-- room (EXIT_CLEARANCE out from the squad's point, where the map admits it), else the way out
+-- itself; with none the map admits, straight away from the threat, nearer each try.
+local function WayOut(me, order, at, admit)
 	local threat, exits = order.from or order.point, order.exits or {}
 	local ranked = Select.Order(exits, function(a, b)
 		return Geometry.Distance2D(threat, a) - Geometry.Distance2D(at, a)
 			> Geometry.Distance2D(threat, b) - Geometry.Distance2D(at, b)
 	end)
 	for _, i in ipairs(ranked) do
-		local spot = admit(exits[i])
-		if spot then return spot end
+		local exit = exits[i]
+		local spot = admit(exit)
+		if spot then
+			local past = me:NSLegsAdmit(exit)(Geometry.Offset2D(exit, order.point, EXIT_CLEARANCE, 0))
+			return past or spot
+		end
 	end
 	for try = 0, TRIES - 1 do
 		local spot = admit(Geometry.Offset2D(at, threat, EVACUATE_DISTANCE / 2 ^ try, 0))
@@ -189,7 +198,7 @@ end
 function LegsEvacuate:Head(me, place)
 	if not self.exit then
 		local at = me:NSLegsAt()
-		self.exit = WayOut(self.order, at, me:NSLegsAdmit(at)) or place
+		self.exit = WayOut(me, self.order, at, me:NSLegsAdmit(at)) or place
 	end
 	return self.exit, GAIT.RUN
 end

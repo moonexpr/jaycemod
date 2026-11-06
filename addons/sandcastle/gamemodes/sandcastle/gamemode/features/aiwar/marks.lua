@@ -1,17 +1,20 @@
 -- What the Path Follower stool tells the war by hand, each mark of a team at a point: a POST
 -- its defenders hold (the field's posts), a RALLY a recalled squad regroups at, an ENEMY its
--- squads have seen there (a contact), an area to AVOID (closed to every team, as a hazard).
+-- squads have seen there (a contact), an area to AVOID (closed to every team, as a hazard), a
+-- DANGER its squads retreat from (an object, or a place in a room).
 -- Positions are plain { x, y, z } tables.
 --   New() -> marks: Add(kind, team, pos), RemoveNear(pos, reach) -> how many, All(), Of(team,
---   kind), Posts(team), Rallies(team) (nil for none), Version() (each change counts), Encode()
+--   kind), Posts(team), Rallies(team) (nil for none), DangerNear(team, pos, reach) (the nearest
+--   of the team's dangers within reach of pos, across the ground; nil for none), Version() (each
+--   change counts), Encode()
 --   -> text; Decode(text) -> marks as { kind, team, pos }.
 local ipairs, setmetatable, error, tostring, tonumber = ipairs, setmetatable, error, tostring, tonumber
 local concat, format = table.concat, string.format
 module(...)
 
-POST, RALLY, ENEMY, AVOID = "post", "rally", "enemy", "avoid"
-KINDS = { POST, RALLY, ENEMY, AVOID }
-local KNOWN = { [POST] = true, [RALLY] = true, [ENEMY] = true, [AVOID] = true }
+POST, RALLY, ENEMY, AVOID, DANGER = "post", "rally", "enemy", "avoid", "danger"
+KINDS = { POST, RALLY, ENEMY, AVOID, DANGER }
+local KNOWN = { [POST] = true, [RALLY] = true, [ENEMY] = true, [AVOID] = true, [DANGER] = true }
 
 local Marks = {}
 Marks.__index = Marks
@@ -55,6 +58,16 @@ end
 
 function Marks:Posts(team) return Points(self, team, POST) end
 function Marks:Rallies(team) return Points(self, team, RALLY) end
+
+function Marks:DangerNear(team, pos, reach)
+	local nearest, best = nil, reach * reach
+	for _, mark in ipairs(self:Of(team, DANGER)) do
+		local dx, dy = mark.pos.x - pos.x, mark.pos.y - pos.y
+		local d = dx * dx + dy * dy
+		if d <= best then nearest, best = mark.pos, d end
+	end
+	return nearest
+end
 
 function Marks:Encode()
 	local parts = {}

@@ -255,4 +255,14 @@ T.test("an engine behaviour counts as empty by its main tree alone", function()
 	T.eq(Action.EngineBehavior(ENT, "first", "actor", "KIND", engine):IsEmpty(), true, "the group's tree does not keep it going")
 end)
 
+T.test("a squad endangered evacuates away from the danger, once", function()
+	local order = Squad(4)
+	local danger = { x = 300, y = 0, z = 0 }
+	T.eq(order:Endanger(danger), true, "endangered")
+	T.eq(order.mode, MODE.PANIC, "evacuating")
+	T.eq(order.from, danger, "away from it")
+	T.eq(order:Endanger({ x = 0, y = 300, z = 0 }), false, "once")
+	T.eq(order:Rout(), false, "its fall back called already")
+end)
+
 T.finish()

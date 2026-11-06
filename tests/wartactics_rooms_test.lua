@@ -513,4 +513,25 @@ T.test("the work yields to its caller as it goes", function()
 	T.eq(yields > 0, true)
 end)
 
+-- Where a side is looked along for open air (a balcony's front): its shares along it, but not
+-- where a neighbour on its floor meets it, the floor going on through a doorway.
+T.test("a side is looked along for open air at its shares, all of them where nothing meets it", function()
+	local at = Rooms.OpenProbes(0, 400, { 0.25, 0.5, 0.75 }, {})
+	T.eq(table.concat(at, " "), "100 200 300", "each share")
+end)
+
+T.test("a doorway in the middle of a side is no open air: the probe there is left out", function()
+	local at = Rooms.OpenProbes(0, 400, { 0.25, 0.5, 0.75 }, { { 150, 250 } })
+	T.eq(table.concat(at, " "), "100 300", "either side of it")
+end)
+
+T.test("a side met where every share falls is probed in the middle of each gap left", function()
+	local at = Rooms.OpenProbes(0, 400, { 0.25, 0.5, 0.75 }, { { 50, 350 } })
+	T.eq(table.concat(at, " "), "25 375", "the gaps at its ends")
+end)
+
+T.test("a side met wholly has nothing to probe", function()
+	T.eq(#Rooms.OpenProbes(0, 400, { 0.25, 0.5, 0.75 }, { { 0, 200 }, { 200, 400 } }), 0, "none")
+end)
+
 T.finish()

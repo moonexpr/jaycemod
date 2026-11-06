@@ -279,12 +279,13 @@ function ENT:NSRespond(name, yes)
 	self:SetNW2Bool("NSQuery" .. name, yes)
 end
 
--- The team it is of: the stool's, or none.
+-- The team it is of: the stool's, or none. It is the team's member, as a soldier is, so its
+-- doors open for it and its forcefields let it by.
 function ENT:NSTeam() return self.NSLaneTeam or WS.TEAM_UNASSIGNED end
 
 function ENT:NSSetTeam(team)
 	self.NSLaneTeam = team
-	self:SetNW2Int("ws_team", team)
+	WS.SetTeamMember(self, team ~= WS.TEAM_UNASSIGNED and team or nil)
 end
 
 -- What drives it: "path", "legs" or "war" (above).
@@ -517,6 +518,9 @@ function ENT:NSLegsAt()
 	local at = self:GetPos()
 	return { x = at.x, y = at.y, z = at.z }
 end
+
+-- A danger marked for its team near its squad's point (the stool's Annotate), or nil.
+function ENT:NSLegsDanger(point) return WS.Feature("aiwar"):DangerNear(self:NSTeam(), point) end
 
 -- Its squad's call, to everyone's chat and the server's console.
 function ENT:NSLegsSay(line)

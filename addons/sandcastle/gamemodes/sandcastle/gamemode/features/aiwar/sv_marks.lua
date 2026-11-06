@@ -16,6 +16,9 @@ local AVOID_REACH, AVOID_HEIGHT = 128, 64
 -- An ENEMY mark is reported this often, well within a contact's memory.
 local ENEMY_EVERY = 2
 local MARKS_GLOBAL = "ns_marks"
+-- A DANGER mark this near a squad's point, across the ground, is its to retreat from: about a
+-- room's breadth.
+local DANGER_REACH = 768
 
 function Controller:MarksOf()
 	self.marks = self.marks or Marks.New()
@@ -31,6 +34,11 @@ end
 function Controller:Mark(kind, team, pos)
 	self:MarksOf():Add(kind, team, pos)
 	self:MarksChanged()
+end
+
+-- The DANGER mark of team's nearest point, within DANGER_REACH, or nil.
+function Controller:DangerNear(team, point)
+	return self:MarksOf():DangerNear(team, point, DANGER_REACH)
 end
 
 -- How many marks near pos were taken.
