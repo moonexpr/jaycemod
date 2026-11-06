@@ -1,4 +1,4 @@
--- .devtools/bin/server_root/ulx_add_map.lua: `ulx addmap` asks the host's
+-- addons/ulx_luadev's ulx/modules/sh/add_map.lua: `ulx addmap` asks the host's
 -- add_map.py through the watch log, and tells the game if nothing answers.
 -- Run against fake ULX, ULib, Watch and timers.
 local T = dofile("tests/harness.lua")
@@ -28,7 +28,7 @@ local function Load(humans)
 		player = { GetHumans = function() return humans end },
 		timer = { Create = function(name, seconds, _, fn) s.timers[name] = { seconds = seconds, fn = fn } end },
 	}, { __index = _G })
-	setfenv(assert(loadfile(".devtools/bin/server_root/ulx_add_map.lua")), env)()
+	setfenv(assert(loadfile("addons/ulx_luadev/lua/ulx/modules/sh/add_map.lua")), env)()
 	return s
 end
 

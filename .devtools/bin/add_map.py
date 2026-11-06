@@ -16,7 +16,7 @@ each map, and sends it to clients as its Workshop item when it is the current
 map. Others share the dev server, so players on it keep their map unless asked
 (--change), and a server a bench has leased (instances.py) is left alone.
 
-`ulx addmap` (server_root/ulx_add_map.lua) asks the same from in game. Lua cannot
+`ulx addmap` (addons/ulx_luadev's add_map.lua) asks the same from in game. Lua cannot
 download an item, so it writes a request to the watch log, and a worker here
 follows the log and answers in chat; srcds.py starts one with each server, and
 it ends with the server.
@@ -47,8 +47,8 @@ GMOD_APP = "4000"
 WORKSHOP_HOST = "steamcommunity.com"
 MAP_FILE = re.compile(r"maps/([^/]+)\.bsp")
 LUA_TIMEOUT = 30  # seconds for the server to answer
-REQUEST = "add_map_request"  # ulx_add_map.lua's, a line of the watch log
-ACK_TIMER = "ws_add_map_ack"  # ulx_add_map.lua's, which tells the game if it is not removed
+REQUEST = "add_map_request"  # add_map.lua's (addons/ulx_luadev), a line of the watch log
+ACK_TIMER = "ws_add_map_ack"  # add_map.lua's, which tells the game if it is not removed
 POLLS_PER_CHECK = 25  # how many of the log's polls pass between asking if the server is up
 
 

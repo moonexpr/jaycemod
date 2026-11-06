@@ -117,7 +117,8 @@ iTerm window, profile "Dark", that `console` opens). It first builds the
 server's own GMod root (`server_root.py`). The server runs the gamemode
 that the shared install's `garrysmod/gamemodes/sandcastle` points to, which
 is the main checkout, not a worktree. Workshop addons (DrGBase), luadev
-access on LAN and ULX's luadev commands come from `server_root/`'s autorun.
+access on LAN come from `server_root/`'s autorun; ULX's luadev commands and `ulx addmap` are
+the repo's `addons/ulx_luadev`, linked into the server's addons.
 
 Useful after a map loads:
 

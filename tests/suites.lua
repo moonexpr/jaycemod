@@ -119,7 +119,7 @@ return {
 			"gamemode_manifest", "entity_baseclass",
 		},
 		sources = {
-			"tests/harness.lua", "tests/suites.lua", "tests/fixtures/", "addons/sandcastle_dev/", ".devtools/bin/",
+			"tests/harness.lua", "tests/suites.lua", "tests/fixtures/", "addons/sandcastle_dev/", "addons/ulx_luadev/", ".devtools/bin/",
 			"addons/sandcastle/cfg/", G .. "cl_init.lua",
 		},
 	},

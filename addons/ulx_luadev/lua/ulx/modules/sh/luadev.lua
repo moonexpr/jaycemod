@@ -1,8 +1,10 @@
--- ULX variants of luadev's aowl chat commands (luadev_chatcmds.lua), for the
--- dedicated server (server_root.py), which has ULX and no aowl: "ulx l" in the
+-- ULX variants of luadev's aowl chat commands (luadev_chatcmds.lua), in the ulx_luadev addon
+-- that server_root.py links into the dedicated server, which has ULX and no aowl: "ulx l" in the
 -- console, "!l" in chat. ULX includes this module on both sides; the commands
 -- run on the server. ULX's access decides who may call them, as aowl's groups
--- did: lm is every player's, the rest are superadmins'.
+-- did: lm is every player's, the rest are superadmins'. A run on the server tells its caller, in
+-- chat, the first line it printed, else the values it returned, else that it ran; clients do
+-- not answer, so a run only on them tells nothing.
 local CATEGORY = "LuaDev"
 
 local function who(ply, name) return luadev.GetPlayerIdentifier(ply, "cmd:" .. name) end
@@ -57,7 +59,47 @@ local COMMANDS = {
 	end },
 }
 
--- runs each of runs as ply, once every script compiles; tells ply why not
+-- How long a line chat is given.
+local FEEDBACK_MAX = 200
+local PRINTERS = { print = "\t", Msg = "", MsgN = "", MsgC = "" }
+local NEWLINE = { print = true, MsgN = true }
+
+-- What fn printed while it ran, as text (still printed as ever), then what it returned.
+local function captured(fn)
+	local text, saved = {}, {}
+	for printer, sep in pairs(PRINTERS) do
+		saved[printer] = _G[printer]
+		_G[printer] = function(...)
+			local parts = {}
+			for i = 1, select("#", ...) do
+				local v = select(i, ...)
+				if type(v) ~= "table" then parts[#parts + 1] = tostring(v) end -- MsgC's colours
+			end
+			text[#text + 1] = table.concat(parts, sep) .. (NEWLINE[printer] and "\n" or "")
+			if saved[printer] then return saved[printer](...) end
+		end
+	end
+	local results = { pcall(fn) }
+	for printer in pairs(PRINTERS) do _G[printer] = saved[printer] end
+	if not results[1] then error(results[2], 0) end
+	return table.concat(text), unpack(results, 2)
+end
+
+-- The line a run on the server tells its caller.
+local function first_line(printed, values)
+	local line = printed:match("([^\n]*%S[^\n]*)")
+	if not line and values and #values > 0 then
+		local parts = {}
+		for i, v in ipairs(values) do parts[i] = tostring(v) end
+		line = table.concat(parts, ", "):match("([^\n]*)")
+	end
+	line = line and line:match("^%s*(.-)%s*$") or "ok"
+	if #line > FEEDBACK_MAX then line = line:sub(1, FEEDBACK_MAX) .. "..." end
+	return line
+end
+
+-- runs each of runs as ply, once every script compiles; tells ply why not, and a run on the
+-- server's first line
 local function run(ply, name, runs)
 	for _, r in ipairs(runs) do
 		local ok, why = luadev.ValidScript(r[2], name)
@@ -66,13 +108,16 @@ local function run(ply, name, runs)
 	local extra = { ply = ply }
 	for _, r in ipairs(runs) do
 		local where, script = r[1], r[2]
-		local ok, why
-		if where == "server" then ok, why = luadev.RunOnServer(script, who(ply, name), extra)
-		elseif where == "shared" then ok, why = luadev.RunOnShared(script, who(ply, name), extra)
+		local ok, why, printed
+		if where == "server" then
+			printed, ok, why = captured(function() return luadev.RunOnServer(script, who(ply, name), extra) end)
+		elseif where == "shared" then
+			printed, ok, why = captured(function() return luadev.RunOnShared(script, who(ply, name), extra) end)
 		elseif where == "clients" then ok, why = luadev.RunOnClients(script, who(ply, name), extra)
 		else ok, why = luadev.RunOnClient(script, where == "me" and ply or where, who(ply, name), extra)
 		end
 		if not ok then return ULib.tsayError(ply, tostring(why), true) end
+		if printed then ULib.tsay(ply, first_line(printed, why)) end
 	end
 end
 

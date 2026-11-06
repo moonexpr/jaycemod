@@ -1,5 +1,5 @@
 -- `ulx addmap <item> [map] [change]`, "!addmap" in chat: a Workshop map onto this
--- server, for the dedicated server (server_root.py). Lua cannot download an item,
+-- server, in the ulx_luadev addon server_root.py links into the dedicated server. Lua cannot download an item,
 -- so the command asks the host: a line of the watch log, which add_map.py --serve
 -- follows, answering in chat. Alone on the server the map changes; with others on
 -- it only when asked. ULX includes this module on both sides; the command runs on

@@ -144,6 +144,20 @@ def test_an_archive_the_server_no_longer_mounts_leaves_cache(layout):
     assert other.exists(), "what is not an archive stays"
 
 
+def test_a_link_the_server_no_longer_mounts_leaves_server_mounts(layout):
+    lua = layout.root / "garrysmod" / "addons" / "server_mounts" / "lua"
+    retired = lua / "ulx" / "modules" / "sh" / "retired.lua"
+    retired.parent.mkdir(parents=True)
+    retired.symlink_to(layout.lua / "moved_away.lua")
+    own = lua / "notes.txt"
+    own.write_text("not a link")
+    build(layout)
+    assert not retired.is_symlink(), "a module moved out of SERVER_LUA would still be mounted, or dangle"
+    assert own.exists(), "what is not a link stays"
+    for path, source in SERVER_LUA.items():
+        assert (lua / path).resolve() == layout.lua / source, path
+
+
 def test_the_repos_own_addons_are_linked_into_the_servers_addons(layout):
     addons = build(layout) / "garrysmod" / "addons"
     assert REPO_ADDONS, "the repo has addons of its own"

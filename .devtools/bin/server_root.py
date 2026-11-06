@@ -16,8 +16,8 @@ archive in SERVER_WORKSHOP, linked as cache/<name>.gma (GMod ignores a loose
 .gma in addons/; an archive no longer listed leaves cache/, since every one
 there is mounted), and each map pool map in SERVER_MAPS and each map add_map.py listed in ADDED_MAPS, from steamcmd's
 downloads, as cache/workshop_map_<item>.gma, the gamemode's entities winning over a mounted addon's of
-the same name, luadev's access on a LAN server, ULX's luadev commands, and
-luadev's socket for server_lua.py. lua/ is its own too, every entry a link
+the same name, luadev's access on a LAN server, and
+luadev's socket for server_lua.py (ULX's luadev commands are an addon of the repo's, ulx_luadev). lua/ is its own too, every entry a link
 but bin/, which adds SERVER_BINARIES (the server's LuaSocket) beside links to
 the shared binaries.
 A legacy Workshop item, downloaded as an LZMA-compressed .bin, is
@@ -122,8 +122,6 @@ SERVER_LUA = {
     "autorun/server/luadev_lan.lua": "luadev_lan.lua",
     "autorun/server/hotswap.lua": "hotswap.lua",  # ws_hotswap_module, ws_hotswap_feature
     "autorun/gamemode_entities.lua": "gamemode_entities.lua",  # shared: the gamemode's entities win
-    "ulx/modules/sh/luadev.lua": "ulx_luadev.lua",  # ULX includes every module it finds, on both sides
-    "ulx/modules/sh/add_map.lua": "ulx_add_map.lua",  # ulx addmap, answered by add_map.py --serve
     "autorun/server/luadev_socket.lua": "luadev_socket.lua",  # server_lua.py's listener on 127.0.0.1:27098
     "autorun/server/sandcastle_watch.lua": "sandcastle_watch.lua",  # Watch: events server_watch.py follows
     "autorun/server/sandcastle_debug.lua": "sandcastle_debug.lua",  # breakpoints and Lua errors, for gmod_mcp.py
@@ -154,6 +152,7 @@ REPO_ADDONS = {
     "wartactics": REPO / "addons" / "wartactics",  # the tactics engine: the strategy the soldiers are organised by, the scenarios and monitors
     "model_viewer": REPO / "addons" / "model_viewer",  # a client's window on a model's acts and animations
     "sandcastle_dev": REPO / "addons" / "sandcastle_dev",  # the dev workbench, run by sandcastle_dev.lua; never released
+    "ulx_luadev": REPO / "addons" / "ulx_luadev",  # ULX's luadev commands (!l, !lm...) and ulx addmap, ULX modules on both sides
 }
 # data the server writes that the repo keeps: path under the server's data/ -> folder
 REPO_DATA = {
@@ -389,10 +388,17 @@ def build(layout: Layout) -> Path:
         link(addons / entry.name, entry)
     for name, source in REPO_ADDONS.items():
         link(addons / name, source)
+    mounts = addons / "server_mounts" / "lua"
     for path, source in SERVER_LUA.items():
-        target = addons / "server_mounts" / "lua" / path
+        target = mounts / path
         target.parent.mkdir(parents=True, exist_ok=True)
         link(target, layout.lua / source)
+    # a module moved out of SERVER_LUA (ulx_luadev's, now an addon) leaves: mounted, it would be
+    # loaded twice, and a link to where it was dangles
+    mounted = {mounts / path for path in SERVER_LUA}
+    for entry in mounts.rglob("*"):
+        if entry.is_symlink() and entry not in mounted:
+            entry.unlink()
     for path, source in REPO_DATA.items():
         target = game / "data" / path
         target.parent.mkdir(parents=True, exist_ok=True)

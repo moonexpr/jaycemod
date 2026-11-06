@@ -5,6 +5,7 @@
 local T = dofile("tests/harness.lua")
 
 local DIR = ".devtools/bin/server_root/"
+local ULX_LUADEV = "addons/ulx_luadev/lua/ulx/modules/sh/luadev.lua"
 
 local function player(t)
 	t = t or {}
@@ -64,10 +65,10 @@ T.test("on a LAN server with sv_allowcslua anyone may run lua on their own clien
 	T.eq(luadev.CanLuaDev(me, "x", nil, 2, player()) and true or false, false, "someone else's client")
 end)
 
--- loads ulx_luadev.lua over fakes of ULX, ULib and luadev that record what they are asked
+-- loads ulx_luadev's luadev.lua over fakes of ULX, ULib and luadev that record what they are asked
 local function ulx_module(t)
 	t = t or {}
-	local commands, ran, errors = {}, {}, {}
+	local commands, ran, errors, said = {}, {}, {}, {}
 	local function command(_, name, fn, say)
 		local c = { name = name, fn = fn, say = say, params = {} }
 		function c.addParam(self, p) self.params[#self.params + 1] = p end
@@ -79,7 +80,9 @@ local function ulx_module(t)
 	local function runner(where)
 		return function(script, a, b, c)
 			ran[#ran + 1] = { where = where, script = script, args = { a, b, c } }
-			return t.fail == nil, t.fail
+			if t.prints and MsgN then MsgN(t.prints) end
+			if t.fail then return false, t.fail end
+			return true, t.values or {}
 		end
 	end
 	local hooks = {}
@@ -91,6 +94,7 @@ local function ulx_module(t)
 			ACCESS_ALL = "user", ACCESS_SUPERADMIN = "superadmin",
 			cmds = { StringArg = "string", PlayerArg = "player", takeRestOfLine = "rest", optional = "optional" },
 			tsayError = function(ply, msg) errors[#errors + 1] = msg end,
+			tsay = function(ply, msg) said[#said + 1] = msg end,
 		},
 		luadev = {
 			RunOnServer = runner("server"), RunOnShared = runner("shared"),
@@ -103,8 +107,8 @@ local function ulx_module(t)
 		},
 		GetConVar = function() return convar(t.cslua) end,
 	}, { __index = _G })
-	setfenv(assert(loadfile(DIR .. "ulx_luadev.lua")), env)()
-	return commands, ran, errors, hooks
+	setfenv(assert(loadfile(ULX_LUADEV)), env)()
+	return commands, ran, errors, hooks, said
 end
 
 local AOWL = { "l", "ls", "lc", "lsc", "lm", "lb", "print", "table", "keys", "keysm", "printc", "printm", "printb" }
@@ -238,6 +242,34 @@ T.test("a chat line is used once", function()
 	commands["ulx l"].fn(me, "print once")
 	commands["ulx l"].fn(me, "print(again)")
 	T.eq(ran[2].script, "print(again)")
+end)
+
+T.test("a run on the server tells the caller the first line it printed, in chat", function()
+	local commands, _, _, _, said = ulx_module({ prints = "first\nsecond" })
+	commands["ulx l"].fn(player(), "x()")
+	T.eq(said[1], "first", "just the first line")
+end)
+
+T.test("printing nothing, a run tells the values it returned, else that it ran", function()
+	local commands, _, _, _, said = ulx_module({ values = { 1, "two" } })
+	commands["ulx l"].fn(player(), "return 1, 'two'")
+	T.eq(said[1], "1, two", "its values")
+	commands, _, _, _, said = ulx_module()
+	commands["ulx l"].fn(player(), "x()")
+	T.eq(said[1], "ok", "that it ran")
+end)
+
+T.test("a run only on clients tells nothing: they do not answer", function()
+	local commands, _, _, _, said = ulx_module({ prints = "on a client" })
+	commands["ulx lc"].fn(player(), "x()")
+	T.eq(#said, 0, "nothing")
+end)
+
+T.test("a failed run tells its error, not a line", function()
+	local commands, _, errors, _, said = ulx_module({ fail = "boom" })
+	commands["ulx l"].fn(player(), "x()")
+	T.eq(errors[1], "boom", "the error")
+	T.eq(#said, 0, "no line")
 end)
 
 T.finish()
