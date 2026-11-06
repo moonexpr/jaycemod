@@ -5,7 +5,7 @@
 -- A group's orders: Muster(point), FallBack(point, from) -> an order, whose Places(members,
 -- spacing) gives each member, by its position, a place of its own. A member on orders is told
 -- them by NSLegsOrder(), senses its group by NSLegsSense() each update and, on an order, heads
--- where its squad's mode says, by NSLegsHeadFor(spot) (npc_squadmember only plans and shows
+-- where its squad's mode says, by NSLegsHeadFor(spot) (npc_pathfollower, its feet held, only plans and shows
 -- its way).
 --
 -- A squad's mode is one whole number on its order (SetMode, MODE): STATIONARY, its members wait

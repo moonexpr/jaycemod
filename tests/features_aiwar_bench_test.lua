@@ -1,5 +1,5 @@
--- The bench war (Controller:Start{ bench = true }): the war's models and orders for the Tactical
--- Behavior Tool's squad followers alone, without what brings soldiers or changes the game.
+-- The bench war (Controller:Start{ bench = true }): the war's models and orders for the path
+-- followers the Path Follower tool puts in the war, without what brings soldiers or changes the game.
 local T = dofile("tests/harness.lua")
 
 local function ReadFile(path)
@@ -12,8 +12,7 @@ end
 local AIWAR = T.ROOT .. "features/aiwar/"
 local war, bots, field, enlist = ReadFile(AIWAR .. "sv_war.lua"), ReadFile(AIWAR .. "sv_bots.lua"),
 	ReadFile(AIWAR .. "sv_field.lua"), ReadFile(AIWAR .. "sv_enlist.lua")
-local stool = ReadFile(T.ROOT .. "../entities/weapons/gmod_tool/stools/ns_tacticalbehavior.lua")
-local follower = ReadFile(T.ROOT .. "../entities/entities/npc_squadfollower.lua")
+local follower = ReadFile(T.ROOT .. "../entities/entities/npc_pathfollower.lua")
 
 T.test("a bench war is started as the war is, by its own call", function()
 	T.eq(war:find("function Controller:Start(opts)", 1, true) ~= nil, true, "Start takes it")
@@ -31,10 +30,11 @@ T.test("it brings no bots and drafts no waves", function()
 	T.eq(field:find("if field.phase.reinforce and not self.bench then self:Reinforce(now) end", 1, true) ~= nil, true, "no waves")
 end)
 
-T.test("the tool starts one for its first squad follower, and the last one gone ends it", function()
-	T.eq(stool:find("controller:Start({ bench = true })", 1, true) ~= nil, true, "started")
-	T.eq(follower:find("WS.Feature(\"aiwar\"):EndBenchWhenEmpty(self)", 1, true) ~= nil, true, "ended")
+T.test("a follower put in the war starts one when none runs, and the last soldier gone ends it", function()
+	T.eq(follower:find("controller:Start({ bench = true })", 1, true) ~= nil, true, "started")
+	T.eq(follower:find("controller:EndBenchWhenEmpty(self)", 1, true) ~= nil, true, "ended")
 	T.eq(war:find("function Controller:EndBenchWhenEmpty(leaving)", 1, true) ~= nil, true, "only a bench war")
+	T.eq(war:find("npc_squadfollower", 1, true), nil, "by its soldiers, of whatever class")
 end)
 
 T.finish()

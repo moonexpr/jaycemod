@@ -283,7 +283,7 @@ function WS.WarSoldier(ENT)
 	function ENT:NSSteer(enemy)
 		-- frozen (the match's end): it stands where it is
 		if self.NSFrozen then return true end
-		-- held by the Tactical Behavior Tool: its orders run as ever, and its path to their
+		-- held by the Path Follower stool: its orders run as ever, and its path to their
 		-- target is planned and shown, but not walked
 		if self.NSFeetHeld then return self:NSShowHeldPath(enemy) end
 		-- riding the cart: the controller carries it; it only turns to fight

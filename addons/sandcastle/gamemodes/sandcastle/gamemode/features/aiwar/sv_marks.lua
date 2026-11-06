@@ -1,8 +1,9 @@
--- Part of the AI war controller (sv.lua): what the Tactical Behavior Tool tells the war by hand
+-- Part of the AI war controller (sv.lua): what the Path Follower stool tells the war by hand
 -- (features.aiwar.marks), each through the war's own inputs: posts are the field's posts for
 -- the team, rallies where its recalled squads regroup (both read by the orders from the field),
 -- an area to avoid closed as a disabled hazard is, an enemy seen a contact reported to the
--- team's squads; and a squad's next mission, the room and kind it is issued for.
+-- team's squads; a squad's next mission, the room and kind it is issued for; and the ways out of
+-- a room, for the legs' panic.
 local Controller = ...
 local Marks = WS.require("features.aiwar.marks")
 local Tactics = wartactics.fireteam
@@ -94,4 +95,15 @@ function Controller:GivenMission(fireTeam, lanes)
 		from = theirs and theirs[1] and theirs[1].points[1] or from
 	end
 	return { kind = given.kind, target = Mission.Target(given.room, from or given.room.center) }
+end
+
+-- The doors of the room at point, as the ways out a panicked squad makes for (the legs'
+-- SetExits), or nil where the map's rooms are not found or none is there.
+function Controller:ExitsAt(point)
+	local area = navmesh.GetNearestNavArea(Vector(point.x, point.y, point.z))
+	local room = self.rooms and IsValid(area) and Rooms.RoomOf(self.rooms, area:GetID())
+	if not (room and room.doors and room.doors[1]) then return nil end
+	local exits = {}
+	for i, door in ipairs(room.doors) do exits[i] = door.pos end
+	return exits
 end

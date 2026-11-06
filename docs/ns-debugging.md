@@ -78,53 +78,64 @@ cached per checkpoint.
 ## Path follower stool
 
 In the toolgun's **NextSoldier** category, **Path Follower** spawns
-`npc_pathfollower` entities using one of six selectable models. Left-click
-empty ground to spawn and select a follower; left-click an existing tool
-follower to add or remove it from the selection. Right-click sends every
-selected follower to the position, and later right-clicks change that goal.
-With **Show the path only** checked, the selected followers plan and draw their
-path to the goal (`ENT:PlanPath`, which `FollowPath` follows) but stand still.
-Uncheck it and they walk the path.
-Reload clears the selection. Followers use active lanes for the tool user's
-team when available, then travel directly to the clicked goal; without a
-usable lane they route directly. Their engine path search uses the same
-soldier path costs and link rules as combat soldiers even when the war is
-inactive, with no extra
-center-to-center hull sweep that would reject stair steps. Each model gets a
-fitted collision hull; the Tank's large hull can limit which routes it can
-use.
-New followers start **Idle**, switch to **Travel** on a right-click, and
-return to **Idle** when they reach the goal. Spawned followers are added to
-the player's cleanup list and can be undone with **Z**.
-Scout and Headless Hatman use their `Run_MELEE` animation while moving.
+`npc_pathfollower`, NextSoldier's probe, in one of six models, and drives the
+followers selected. Left-click empty ground spawns one (of the panel's team)
+and selects it; left-click a follower adds it to or removes it from the
+selection (a cyan ring). Reload releases the selection. Spawned followers are
+on the player's cleanup list and undone with **Z**.
 
-The panel's checkboxes are what selected followers answer the yes-or-no
-queries (`nextsoldier.behavior.Responder`, the follower's `NSBrain`), yes when
-checked and no when not, a change at once. **Should hurry?** picks its gait:
-checked it runs, unchecked it walks. A follower asks only that and **Should
-attack?**, and has no weapon to attack with; the others are shown but change
-nothing, as only a soldier's chart asks them. Aim at a follower with the tool
-for its answers. An errand (`ns_pathfollower_send`) has no responder and runs.
+The panel's **Mode** drives the whole selection its way (`ENT:NSSetDriver`):
+switching modes switches what drives the followers, without respawning them.
 
-The always-on debug overlay draws the generated path with
-`PathFollower:Draw()` and `debugoverlay`, the active lane's waypoints in amber,
-the clicked goal as a green sphere, and the local movement command as a thick
-magenta arrow from the feet.
-Console errands (`ns_pathfollower_send`) do not hop toward the raw goal when
-their failed search has no reachable waypoint.
+- **Path** (driver `path`): their bench. Right-click sends them to the aim,
+  and later right-clicks change the goal.
+- **Local** (driver `legs`): `GroupIdentityBehavior` alone. Right-click gives
+  their squad an order at the aim.
+- **Tactical** (driver `war`): the AI war's own orders. Right-click reports an
+  enemy contact at the aim.
+- **Annotate**: marks the map for the war. Followers keep their driver.
 
-## Local Behavior Tool
+**Hold their feet** is one setting for every mode (`NSHoldFeet`, the war
+soldier's `NSFeetHeld`): held, a follower plans and draws its path to where
+its driver sends it (`ENT:PlanPath`, which `FollowPath` follows) but does not
+walk it. Uncheck it and they walk. Out of the war, a tool's follower takes no
+damage.
 
-**Local Behavior Tool**, in the same category, inspects how members place
-themselves within a room or enclosed area. It tests the legs
-(`GroupIdentityBehavior`) alone. It spawns `npc_squadmember`, an
-`npc_pathfollower` whose only tree is the legs. Members never move, and they
-take no damage. Left-click spawns a member or toggles its selection (a cyan
-ring). Right-click gives the selected members the panel's order at the aim:
+### Path
+
+Followers use active lanes for their team when available, then travel
+directly to the clicked goal; without a usable lane they route directly. Their
+engine path search uses the same soldier path costs and link rules as combat
+soldiers even when the war is inactive, with no extra center-to-center hull
+sweep that would reject stair steps. Each model gets a fitted collision hull;
+the Tank's large hull can limit which routes it can use. New followers start
+**Idle**, switch to **Travel** on a right-click, and return to **Idle** when
+they reach the goal. Scout and Headless Hatman use their `Run_MELEE`
+animation while moving.
+
+The panel's query checkboxes are what followers on their bench answer the
+yes-or-no queries (`nextsoldier.behavior.Responder`), yes when checked and no
+when not, a change at once. **Should hurry?** picks its gait: checked it
+runs, unchecked it walks. A follower asks only that and **Should attack?**,
+and has no weapon to attack with; the others are shown but change nothing, as
+only a soldier's chart asks them. Aim at a follower with the tool for its
+answers. An errand (`ns_pathfollower_send`) has no responder and runs.
+
+The debug overlay draws the generated path with `PathFollower:Draw()` and
+`debugoverlay`, the active lane's waypoints in amber, the clicked goal as a
+green sphere, and the local movement command as a thick magenta arrow from
+the feet. Console errands (`ns_pathfollower_send`) do not hop toward the raw
+goal when their failed search has no reachable waypoint.
+
+### Local
+
+Local mode inspects how members place themselves within a room or enclosed
+area: the legs (`GroupIdentityBehavior`) alone, the followers' only tree.
+Right-click gives the selected members the panel's order at the aim:
 **Muster** (the point, then rings around it) or **Fall back** (rows across the
 way from you, the threat). Reload dissolves them. Each member's place shows as
-a cross, green for muster and orange for fall back, and its way there as the
-path follower's path, planned (`PlanPath`) but not walked. A
+a cross, green for muster and orange for fall back, and its way there as its
+path. A
 place is only where a body fits, with no wall between it and the order's
 point (`NSLegsAdmit`). An order skips the places the map refuses and looks
 further out, up to three rings or rows past what its members need. A member
@@ -146,24 +157,20 @@ the threat. A white ring marks where a member is going now, and its path
 there is drawn. `.devtools/bin/squad_member_check.lua` runs the orders and
 modes on a server and returns them as data.
 
-## Tactical Behavior Tool
+### Tactical and Annotate
 
-**Tactical Behavior Tool**, in the same category, tests the war's squads under
-the war's own orders. With no war running, its first squad follower starts a
-bench war (`Controller:Start{ bench = true }`): the war's models, scenario,
+Tactical mode tests the war's squads under the war's own orders. With no war
+running, the first follower put in the war starts a bench war (`Controller:Start{ bench = true }`): the war's models, scenario,
 field, orders, lanes and rooms, without the bot quota, the reinforcement
 waves, the gameplay request or any other NPC enlisted, so the followers are
-the war's only soldiers; it ends with the last of them. A war started with
-`mp_aiwar_start` takes them in instead. Left-click enlists an
-`npc_squadfollower` (an `npc_pathfollower` the war steers) on the panel's
-team, or selects one of the war's own soldiers (a cyan ring). Selected
-soldiers' feet are held (`NSFeetHeld`): their orders run as ever, and each
-one's path to its orders' target is planned and drawn but not walked, the
-target a yellow cross. Uncheck **Hold their feet** to let them walk. Command
-mode sets the conditions the orders meet: one squad of the selection, its
-job, lanes on or off (`fireTeam.lanesOff`: no lane, no muster along them),
-missions on or off, a contact reported at the aim (right-click), a recall to
-regroup. Reload removes squad followers and lets the war's soldiers walk.
+the war's only soldiers; it ends with the last of them, removed or driven
+otherwise. A war started with `mp_aiwar_start` takes them in instead.
+Left-click also selects one of the war's own soldiers, whose feet the setting
+holds too. A held soldier's orders run as ever; the target they give it is a
+yellow cross. The panel sets the conditions the orders meet: one squad of the
+selection, its job, lanes on or off (`fireTeam.lanesOff`: no lane, no muster
+along them), missions on or off, a contact reported at the aim
+(right-click), a recall to regroup. Reload lets the war's soldiers walk again.
 
 Annotate mode marks the map for the war, by the panel's team. Objectives
 are placed as the Gameplay tools place them: control points, spawners and

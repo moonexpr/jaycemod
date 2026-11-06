@@ -1,4 +1,5 @@
--- npc_squadmember on a live server, as the Local Behavior Tool drives it: three members crowded
+-- npc_pathfollower driven by its legs on a live server, as the Path Follower stool's Local mode
+-- drives it, its feet held: three members crowded
 -- together and one apart, told to muster (stationary, alert, cautious), to fall back (stationary,
 -- panicked), and dissolved, each read back as data.
 -- Leaves nothing behind. Run it, wait for its steps, then read the result:
@@ -28,10 +29,14 @@ local straggler = navmesh.GetNearestNavArea(center + Vector(400, 400, 0)):GetClo
 local spots = { center, center + Vector(CROWD, 0, 0), center + Vector(0, CROWD, 0), straggler }
 local members = {}
 for i, spot in ipairs(spots) do
-	local member = ents.Create("npc_squadmember")
+	local member = ents.Create("npc_pathfollower")
+	member.NSToolManaged = true
 	member:SetPos(spot + Vector(0, 0, 1))
 	member:Spawn()
 	member:Activate()
+	member:NSSetTeam(WS.TEAM_BLUE)
+	member:NSSetDriver("legs")
+	member:NSHoldFeet(true)
 	members[i] = member
 end
 
@@ -76,7 +81,7 @@ local steps = {
 		result[#result + 1] = "DISSOLVED\n" .. Read()
 		for _, member in ipairs(members) do member:Remove() end
 		local tool = weapons.GetStored("gmod_tool")
-		result[#result + 1] = "stool registered: " .. tostring(tool and tool.Tool and tool.Tool.ns_localbehavior ~= nil)
+		result[#result + 1] = "stool registered: " .. tostring(tool and tool.Tool and tool.Tool.ns_pathfollower ~= nil)
 		NSSquadCheck = table.concat(result, "\n\n")
 	end,
 }

@@ -213,10 +213,10 @@ end
 
 -- Starts the war at once and requests Gameplay mode, whose countdown
 -- restarts the rounds. The scenario is the rounds mode's (the map's own
--- entities chose it), never the map's name. opts.bench: a bench war, for the
--- Tactical Behavior Tool's squad followers alone: no gameplay request, no
--- bots, waves or other NPCs enlisted, no notices. Returns true, or false and
--- why not.
+-- entities chose it), never the map's name. opts.bench: a bench war, whose only
+-- soldiers are the path followers the Path Follower stool puts in it: no
+-- gameplay request, no bots, waves or other NPCs enlisted, no notices. Returns
+-- true, or false and why not.
 function Controller:Start(opts)
 	if self.war then return false, "the war is already on" end
 	if not WS.SoldiersEnabled() then return false, "NextSoldier is switched off on this server (ns_soldiers_enabled 0)" end
@@ -268,12 +268,12 @@ function Controller:Start(opts)
 	return true
 end
 
--- A bench war ends with its last squad follower (leaving: the one going); a war started
--- by mp_aiwar_start goes on.
+-- A bench war ends with its last soldier (leaving: the one going, removed or discharged); a
+-- war started by mp_aiwar_start goes on.
 function Controller:EndBenchWhenEmpty(leaving)
 	if not (self.war and self.bench) then return end
-	for _, ent in ipairs(ents.FindByClass("npc_squadfollower")) do
-		if ent ~= leaving then return end
+	for ent in pairs(self.soldiers) do
+		if ent ~= leaving and IsValid(ent) then return end
 	end
 	self:End()
 end

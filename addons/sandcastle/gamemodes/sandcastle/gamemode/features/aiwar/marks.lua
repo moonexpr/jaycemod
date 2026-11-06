@@ -1,4 +1,4 @@
--- What the Tactical Behavior Tool tells the war by hand, each mark of a team at a point: a POST
+-- What the Path Follower stool tells the war by hand, each mark of a team at a point: a POST
 -- its defenders hold (the field's posts), a RALLY a recalled squad regroups at, an ENEMY its
 -- squads have seen there (a contact), an area to AVOID (closed to every team, as a hazard).
 -- Positions are plain { x, y, z } tables.

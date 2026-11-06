@@ -1,8 +1,16 @@
--- npc_pathfollower: NextSoldier's non-combat pathing bench. Console errands
--- report their route and remove themselves; tool-managed followers switch
--- between Idle and Travel, optionally following the AI war's active lanes,
--- and remain alive for retargeting. The stool also draws their generated
--- path and local movement command.
+-- npc_pathfollower: NextSoldier's probe. Console errands report their route
+-- and remove themselves; tool-managed followers (the Path Follower stool)
+-- stay, driven by one of three (NSSetDriver):
+--   "path": its bench, between Idle and Travel, optionally following the AI
+--     war's active lanes, sent to a goal and retargeted (NSSetGoal);
+--   "legs": GroupIdentityBehavior alone, told an order and its place in it
+--     (NSLegsGive), heading where its squad's mode says;
+--   "war": enlisted in the AI war (a bench war, when none runs), under the
+--     war's own orders.
+-- Its feet may be held (NSHoldFeet, the war soldier's): whatever drives it,
+-- it then plans and shows its path but does not walk it. The stool draws its
+-- path, its local movement command, its place and spot on orders, its
+-- spacing and its held target.
 --
 -- follower:NSErrand(goal, seconds) sends a spawned one. From the console:
 -- ns_pathfollower_send fromX fromY fromZ toX toY toZ [seconds].
@@ -38,6 +46,60 @@ if CLIENT then
 			render.DrawWireframeSphere(point, radius, 5, 5, color, false)
 		end
 	end
+
+	local ORDER_COLORS = { Muster = Color(120, 255, 120), FallBack = Color(255, 170, 60) }
+	local CANNOT_STAND_COLOR, HELD_COLOR = Color(255, 70, 70), Color(255, 220, 60)
+	local SELECTED_COLOR = Color(90, 220, 255)
+	local RING_COLOR, CROWDED_COLOR = Color(160, 160, 160), Color(255, 90, 210)
+	local CROSS_SIZE, SELECTED_RADIUS, FEET = 16, 22, Vector(0, 0, 3)
+	-- where its squad's mode sends it now, when that is not its place
+	local SPOT_COLOR, SPOT_RADIUS = Color(255, 255, 255), 10
+	local RING_STEPS = 32
+
+	local function Cross(at, color)
+		render.DrawLine(at - Vector(CROSS_SIZE, 0, 0), at + Vector(CROSS_SIZE, 0, 0), color)
+		render.DrawLine(at - Vector(0, CROSS_SIZE, 0), at + Vector(0, CROSS_SIZE, 0), color)
+		render.DrawLine(at, at + Vector(0, 0, CROSS_SIZE * 2), color)
+	end
+
+	local function Ring(center, radius, color)
+		local last = center + Vector(radius, 0, 0)
+		for i = 1, RING_STEPS do
+			local angle = i / RING_STEPS * 2 * math.pi
+			local point = center + Vector(math.cos(angle) * radius, math.sin(angle) * radius, 0)
+			render.DrawLine(last, point, color)
+			last = point
+		end
+	end
+
+	-- Drawn apart from the model, so a place shows with its follower out of view: its place on
+	-- orders and where its squad's mode sends it, its selection, its spacing, its held target.
+	hook.Add("PostDrawTranslucentRenderables", "npc_pathfollower", function(_, sky)
+		if sky then return end
+		local showSpacing = GetConVar("ns_pathfollower_spacing")
+		for _, follower in ipairs(ents.FindByClass("npc_pathfollower")) do
+			local feet = follower:GetPos() + FEET
+			local kind = follower:GetNW2String("NSLegsOrder", "")
+			if kind ~= "" then
+				local place = follower:GetNW2Vector("NSLegsPlace", vector_origin)
+				Cross(place, follower:GetNW2Bool("NSLegsStands", false) and ORDER_COLORS[kind] or CANNOT_STAND_COLOR)
+				local spot = follower:GetNW2Vector("NSLegsSpot", vector_origin)
+				if spot ~= vector_origin and spot:DistToSqr(place) > 1 then Ring(spot + FEET, SPOT_RADIUS, SPOT_COLOR) end
+			end
+			if follower:GetNW2String("NSProbeDriver", "path") == "war" and follower:GetNW2Bool("NSFeetHeld", false) then
+				local target = follower:GetNW2Vector("NSHeldTarget", vector_origin)
+				if target ~= vector_origin then Cross(target, HELD_COLOR) end
+			end
+			if follower:GetNW2Bool("NSProbeSelected", false) then Ring(feet, SELECTED_RADIUS, SELECTED_COLOR) end
+			if showSpacing and showSpacing:GetBool() and follower:GetNW2String("NSProbeDriver", "path") == "legs" then
+				local spacing = follower:GetNW2Float("NSLegsSpacing", 0)
+				local push = follower:GetNW2Vector("NSLegsPush", vector_origin)
+				local crowded = push:LengthSqr() > 0
+				Ring(feet, spacing, crowded and CROWDED_COLOR or RING_COLOR)
+				if crowded then render.DrawLine(feet, feet + push * spacing, CROWDED_COLOR) end
+			end
+		end
+	end)
 
 	function ENT:Draw()
 		self:DrawModel()
@@ -91,6 +153,11 @@ local SEGMENT_KINDS = { [0] = "ground", "drop", "climb", "gap", "ladder up", "la
 local Lanes = wartactics.lanes
 local Locomotion = nextsoldier.locomotion
 local Behavior = nextsoldier.behavior
+local GroupIdentity = nextsoldier.behavior.group_identity
+-- A place is looked for from this far above it to this far below, a body's own hull fitting; its
+-- way there is swept a stair's step above the floor, so a step does not wall it off.
+local SEARCH_ABOVE, SEARCH_BELOW, STEP = 64, 256, 18
+local LIFT = Vector(0, 0, 1)
 local SoldierSteer = ENT.NSSteer
 
 function ENT:OnUpdateAnimation()
@@ -198,16 +265,65 @@ function ENT:CustomInitialize()
 	self.NSRun = true
 	if self.NSToolManaged then
 		self:SetNW2Bool("NSPathFollowerDebug", true)
-		self.NSBrain = Behavior.Responder()
+		self.nsResponder = Behavior.Responder()
+		self.NSBrain = self.nsResponder
 		self:NSSetBehavior("Idle")
 	end
 end
 
 -- What a tool follower answers a query (its stool's checkboxes), and shows it
--- answers: ShouldHurry yes runs, no walks.
+-- answers: ShouldHurry yes runs, no walks. The war asks its own, while it is in it.
 function ENT:NSRespond(name, yes)
-	self.NSBrain:Set(name, yes)
+	self.nsResponder:Set(name, yes)
 	self:SetNW2Bool("NSQuery" .. name, yes)
+end
+
+-- The team it is of: the stool's, or none.
+function ENT:NSTeam() return self.NSLaneTeam or WS.TEAM_UNASSIGNED end
+
+function ENT:NSSetTeam(team)
+	self.NSLaneTeam = team
+	self:SetNW2Int("ws_team", team)
+end
+
+-- What drives it: "path", "legs" or "war" (above).
+local DRIVERS = { path = true, legs = true, war = true }
+
+function ENT:NSDriver() return self.nsDriver or "path" end
+
+-- Driven by another: it lets go of what drove it (stops travelling, leaves its squad's order,
+-- is discharged from the war), its tree is ended and the driver's put in, and into the war it is
+-- enlisted, a bench war started for it when none runs. Returns true, or false and why not.
+function ENT:NSSetDriver(driver)
+	if not DRIVERS[driver] then error("no path follower driver " .. tostring(driver), 2) end
+	local was = self:NSDriver()
+	if was == driver then return true end
+	local controller = WS.Feature("aiwar")
+	if driver == "war" and not controller.war then
+		local ok, why = controller:Start({ bench = true })
+		if not ok then return false, why end
+	end
+	if was == "path" then
+		self:NSSetBehavior("Idle")
+	elseif was == "legs" then
+		self:NSLegsGive(nil)
+	elseif was == "war" then
+		controller:Discharge(self)
+		self.NSBrain = self.nsResponder
+		self:NSSetTeam(self:NSTeam())
+	end
+	self.NSTarget = nil
+	self.nsDriver = driver
+	self:SetNW2String("NSProbeDriver", driver)
+	-- not started yet (spawned this tick), its start puts the driver's tree in
+	if self.nsStarted then
+		nextsoldier.engine.End(self)
+		local action = self:NSInitialAction()
+		if action then nextsoldier.engine.Insert(self, action) end
+	end
+	if driver == "war" then controller:Enlist(self, self:NSTeam(), false) end
+	if was == "war" then controller:EndBenchWhenEmpty(self) end
+	return true
 end
 
 function ENT:NSSetBehavior(name)
@@ -271,11 +387,6 @@ local function StopAt(self)
 	self.loco:SetVelocity(Vector(0, 0, velocity.z))
 end
 
--- Its stool's "show the path only": sent, it plans and shows its path but stands where it is.
-function ENT:NSShowPathOnly(on)
-	self.nsPathOnly = on
-end
-
 local function HoldStill(self)
 	local velocity = self.loco:GetVelocity()
 	if velocity.x ~= 0 or velocity.y ~= 0 then self.loco:SetVelocity(Vector(0, 0, velocity.z)) end
@@ -286,13 +397,6 @@ function ENT:NSUpdateToolBehavior()
 		HoldStill(self)
 		return
 	end
-	if self.nsPathOnly then
-		HoldStill(self)
-		self:PlanPath(self.nsGoal)
-		self:NSSyncDebug()
-		return
-	end
-
 	local target = self.nsGoal
 	local lanePoint
 	lanePoint, self.nsLaneIndex = NearestLaneTarget(self.nsLaneRoute, self:GetPos(), self.nsLaneIndex)
@@ -354,13 +458,129 @@ function ENT:NSErrand(goal, seconds)
 	self.NSTarget = goal
 end
 
--- Its one behaviour, in place of the base's intention: the errand.
--- Its actions run it (nextsoldier.behavior.pathfollower); the base's looking and attacking
--- are not a bench's.
-function ENT:IntentionUpdate() end
+-- The soldier base, reached as it is called: baseclass.Get at the top of this file would make it
+-- this class's base (as DEFINE_BASECLASS does).
+local function Soldier() return baseclass.Get("base_nextsoldier") end
 
+-- In the war, the base's intention: its looks, then its idle or fighting hooks, which the war's
+-- orders answer. Driven by its bench or its legs, none: their actions run it
+-- (nextsoldier.behavior.pathfollower, group_identity), and looking and attacking are not theirs.
+function ENT:IntentionUpdate(interval)
+	if self:NSDriver() == "war" then return Soldier().IntentionUpdate(self, interval) end
+end
+
+-- Started (the engine's BehaveStart, its first think): its driver's tree is put in, by the base.
+function ENT:BehaveStart()
+	Soldier().BehaveStart(self)
+	self.nsStarted = true
+end
+
+-- Its driver's first action, or none in the war, whose orders are its behaviour.
 function ENT:NSInitialAction()
+	local driver = self:NSDriver()
+	if driver == "legs" then return GroupIdentity.InitialAction(nextsoldier.engine, GroupIdentity.LegsAtEase:New()) end
+	if driver == "war" then return nil end
 	return nextsoldier.behavior.pathfollower.InitialAction(self.NSToolManaged)
+end
+
+-- A bench war started for followers ends with the last soldier in it.
+function ENT:OnRemove()
+	Soldier().OnRemove(self)
+	if self:NSDriver() == "war" then WS.Feature("aiwar"):EndBenchWhenEmpty(self) end
+end
+
+-- A tool's follower out of the war is not hurt: a stray shot would take it off the bench.
+hook.Add("EntityTakeDamage", "npc_pathfollower", function(ent)
+	if ent:GetClass() == "npc_pathfollower" and ent.NSToolManaged and ent:NSDriver() ~= "war" then return true end
+end)
+
+-- Its legs (driven by them): its squad's order and its place in it, the map's word on a spot,
+-- and its way to where its squad's mode sends it.
+
+function ENT:NSLegsOrder() return self.nsLegsOrder end
+function ENT:NSLegsPlace() return self.nsLegsPlace end
+function ENT:Now() return CurTime() end
+function ENT:NSLegsDraw() return math.random() end
+
+-- The ground under a slot where its body fits there, or nil: the map's, not who stands there now.
+local function Ground(self, slot)
+	local at = Vector(slot.x, slot.y, slot.z)
+	local floor = util.TraceLine({
+		start = at + Vector(0, 0, SEARCH_ABOVE),
+		endpos = at - Vector(0, 0, SEARCH_BELOW),
+		mask = MASK_NPCSOLID_BRUSHONLY,
+	})
+	if not floor.Hit or floor.StartSolid then return nil end
+	local mins, maxs = self:GetCollisionBounds()
+	local fit = util.TraceHull({
+		start = floor.HitPos + LIFT,
+		endpos = floor.HitPos + LIFT,
+		mins = mins,
+		maxs = maxs,
+		mask = MASK_NPCSOLID_BRUSHONLY,
+	})
+	if fit.Hit then return nil end
+	return floor.HitPos
+end
+
+-- What an order around point may give a body of its size: admit(slot) -> the ground it would
+-- stand on, where it fits and no wall stands between it and point; nil elsewhere.
+function ENT:NSLegsAdmit(point)
+	local mins, maxs = self:GetCollisionBounds()
+	local from = Ground(self, point)
+	local sweepMins, sweepMaxs = Vector(mins.x, mins.y, 0), Vector(maxs.x, maxs.y, maxs.z - STEP)
+	return function(slot)
+		local ground = from and Ground(self, slot)
+		if not ground then return nil end
+		local reach = util.TraceHull({
+			start = from + Vector(0, 0, STEP),
+			endpos = ground + Vector(0, 0, STEP),
+			mins = sweepMins,
+			maxs = sweepMaxs,
+			mask = MASK_NPCSOLID_BRUSHONLY,
+		})
+		if reach.Hit then return nil end
+		return { x = ground.x, y = ground.y, z = ground.z }
+	end
+end
+
+-- Its order and its place in it: nil, it has no room near; no order dissolves it.
+function ENT:NSLegsGive(order, place)
+	self.nsLegsOrder = order
+	self:SetNW2String("NSLegsOrder", order and order.kind or "")
+	if not order then
+		self.NSTarget = nil
+		return
+	end
+	self.nsLegsPlace = place
+	self:SetNW2Bool("NSLegsStands", place ~= nil)
+	self:SetNW2Vector("NSLegsPlace", place and Vector(place.x, place.y, place.z) or self:GetPos())
+end
+
+-- Where its squad's mode sends it: walked there, or, its feet held, its path planned and shown.
+function ENT:NSLegsHeadFor(spot)
+	local at = Vector(spot.x, spot.y, spot.z)
+	self:SetNW2Vector("NSLegsSpot", at)
+	self:SetNW2Int("NSLegsMode", self.nsLegsOrder.mode)
+	self.NSTarget = at
+	self:NSSteer()
+end
+
+-- What its team's spacing would do to it where it stands, as a soldier's tree works it out,
+-- among the followers its legs drive.
+function ENT:NSLegsSense()
+	local engine = nextsoldier.engine
+	local pos = self:GetPos()
+	local others = {}
+	for _, other in ipairs(ents.FindByClass("npc_pathfollower")) do
+		if other ~= self and other:NSDriver() == "legs" and other:NSTeam() == self:NSTeam() then
+			local at = other:GetPos()
+			others[#others + 1] = { x = at.x, y = at.y, z = at.z }
+		end
+	end
+	local x, y = engine.Separation({ x = pos.x, y = pos.y, z = pos.z }, others, self:EntIndex())
+	self:SetNW2Float("NSLegsSpacing", engine.GroupSpacing())
+	self:SetNW2Vector("NSLegsPush", Vector(x, y, 0))
 end
 
 function ENT:NSWantedBehavior() return self.nsBehavior end

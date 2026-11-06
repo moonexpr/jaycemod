@@ -209,7 +209,7 @@ function Controller:Field(phase, now)
 		if enemyCart then posts[team] = self:DefendersPosts(team, enemyCart) end
 		if ownCart then forwardPosts[team] = self:ForwardPosts(team, ownCart) end
 	end
-	-- posts and rallies marked by hand (the Tactical Behavior Tool) stand, as payload's written posts do
+	-- posts and rallies marked by hand (the Path Follower stool) stand, as payload's written posts do
 	local marks, rallies = self:MarksOf(), {}
 	for _, team in ipairs({ RED, BLUE }) do
 		posts[team] = marks:Posts(team) or posts[team]

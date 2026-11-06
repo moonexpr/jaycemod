@@ -219,7 +219,7 @@ end
 -- A Combine or Resistance NPC that appeared on its own (a player spawned
 -- it) joins its side, once its spawn has finished.
 function Controller:Consider(ent)
-	-- a bench war's soldiers are the Tactical Behavior Tool's squad followers alone
+	-- a bench war's only soldiers are the path followers the Path Follower stool puts in it
 	if self.bench then return end
 	if not self.war or self.soldiers[ent] or not IsValid(ent) or not (ent:IsNPC() or ent:IsNextBot()) then return end
 	local team = self.war:FactionTeam(WS.SoldierKind(ent))

@@ -1,4 +1,4 @@
--- features.aiwar.marks: what the Tactical Behavior Tool tells the war by hand, by team.
+-- features.aiwar.marks: what the Path Follower stool tells the war by hand, by team.
 local T = dofile("tests/harness.lua")
 local Marks = T.require("features.aiwar.marks")
 

@@ -1,6 +1,6 @@
--- The Tactical Behavior Tool's steps on a live server, read back as data: squad followers
--- enlisted on BLU start a bench war; they form one squad with its feet held; it is given a lane job,
--- a contact, its lanes off and on, a post and a rally marked; the last one removed ends the war.
+-- The Path Follower stool's Tactical mode on a live server, read back as data: followers put in
+-- the war on BLU start a bench war; they form one squad with its feet held; it is given a lane job,
+-- a contact, its lanes off and on, a post and a rally marked; back on their legs, the last out ends the war.
 -- Leaves nothing behind. Run it, wait, then read the result:
 --   python3 .devtools/bin/instances.py MAP - < .devtools/bin/tactical_behavior_check.lua
 --   python3 .devtools/bin/instances.py MAP 'return NSTacticalCheck'
@@ -71,15 +71,19 @@ local steps = {
 			dev.harness.enable(false)
 		end
 		Note("round state " .. tostring(WS.State()))
-		local ok, why = Controller:Start({ bench = true })
-		Note(string.format("bench start: %s %s; bots %d; gamemode request skipped", tostring(ok), tostring(why), #player.GetBots()))
 		for i = 1, COUNT do
-			local ent = ents.Create("npc_squadfollower")
+			local ent = ents.Create("npc_pathfollower")
+			ent.NSToolManaged = true
 			ent:SetPos(at + Vector(i * 60, 0, 1))
 			ent:Spawn()
 			ent:Activate()
 			ent.nsCheckFrom = ent:GetPos()
-			Controller:Enlist(ent, team, false)
+			ent:NSSetTeam(team)
+			-- the first into the war starts a bench war
+			local ok, why = ent:NSSetDriver("war")
+			if i == 1 then
+				Note(string.format("into the war: %s %s; bench %s; bots %d", tostring(ok), tostring(why), tostring(Controller.bench), #player.GetBots()))
+			end
 			ent:NSHoldFeet(true)
 			followers[i] = ent
 		end
@@ -109,6 +113,14 @@ local steps = {
 			tostring(field.posts[team] and #field.posts[team]), tostring(field.rallies[team] and #field.rallies[team]), Members()))
 		Controller:Unmark({ x = at.x, y = at.y + 300, z = at.z }, 64)
 		Controller:Unmark({ x = at.x - 200, y = at.y, z = at.z }, 64)
+		-- out of the war again: the last out ends the bench war
+		for _, ent in ipairs(followers) do ent:NSSetDriver("legs") end
+		Note(string.format("all to their legs: war %s, drivers %s, stacks %s", tostring(Controller.war ~= nil),
+			followers[1]:NSDriver(), (function()
+				local names = {}
+				for i, frame in ipairs(nextsoldier.engine.Stack(followers[1])) do names[i] = frame.name end
+				return table.concat(names, " > ")
+			end)()))
 		for _, ent in ipairs(followers) do ent:Remove() end
 	end,
 	function()

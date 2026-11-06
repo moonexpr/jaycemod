@@ -215,7 +215,7 @@ function Issue(spec)
 	local alpha = MayLead(fireTeam.role) and not AlphaOut(spec.fireTeams, fireTeam.team, fireTeam)
 	local kind, target = ADVANCE, nil
 	if spec.given then
-		-- by hand (the Tactical Behavior Tool): its kind and target, on the way it would take
+		-- by hand (the Path Follower stool): its kind and target, on the way it would take
 		kind, target = spec.given.kind, spec.given.target
 	elseif not alpha and spec.special then
 		local special = {}
