@@ -68,7 +68,7 @@ end)
 -- loads ulx_luadev's luadev.lua over fakes of ULX, ULib and luadev that record what they are asked
 local function ulx_module(t)
 	t = t or {}
-	local commands, ran, errors, said, cues, frames = {}, {}, {}, {}, {}, {}
+	local commands, ran, errors, said, cues, frames, created = {}, {}, {}, {}, {}, {}, {}
 	local function command(_, name, fn, say)
 		local c = { name = name, fn = fn, say = say, params = {} }
 		function c.addParam(self, p) self.params[#self.params + 1] = p end
@@ -107,11 +107,22 @@ local function ulx_module(t)
 			GetPlayerIdentifier = function(_, info) return info end,
 		},
 		GetConVar = function() return convar(t.cslua) end,
+		-- the module's own settings: their defaults, unless the test sets one (t.convars)
+		CreateConVar = function(name, default)
+			created[name] = default
+			local function value() local set = (t.convars or {})[name] if set == nil then return default end return set end
+			return {
+				GetString = function() return tostring(value()) end,
+				GetFloat = function() return tonumber(value()) end,
+				GetInt = function() return math.floor(tonumber(value())) end,
+			}
+		end,
+		SERVER = true,
 		IsValid = function(v) return v ~= nil and v.valid ~= false end,
 		timer = { Simple = function(delay, fn) frames[#frames + 1] = { delay = delay, fn = fn } end },
 	}, { __index = _G })
 	setfenv(assert(loadfile(ULX_LUADEV)), env)()
-	return commands, ran, errors, hooks, said, cues, frames
+	return commands, ran, errors, hooks, said, cues, frames, created
 end
 
 -- the cues' sounds in order
@@ -415,6 +426,41 @@ T.test("work settled before 10 seconds is not told it is still going", function(
 	after(frames, 10)
 	T.eq(#cues, 2, "the blip and its end, no more")
 	T.eq(#said, lines, "nothing said")
+end)
+
+T.test("its settings are convars a server.cfg sets, prefixed with the addon's name", function()
+	local _, _, _, _, _, _, _, created = ulx_module()
+	for _, name in ipairs({ "ulx_luadev_chat_max", "ulx_luadev_listen_seconds", "ulx_luadev_sound_success",
+		"ulx_luadev_sound_error", "ulx_luadev_sound_progress", "ulx_luadev_sound_neutral" }) do
+		T.eq(created[name] ~= nil, true, name)
+	end
+end)
+
+T.test("the chat line is as long as ulx_luadev_chat_max, or none at 0", function()
+	local commands, _, _, _, said = ulx_module({ prints = string.rep("a", 30), convars = { ulx_luadev_chat_max = 10 } })
+	commands["ulx l"].fn(player(), "x()")
+	T.eq(said[1], string.rep("a", 10) .. "... (20+ chars)", "cut at 10")
+	local off, _, _, _, offSaid = ulx_module({ prints = "a line", convars = { ulx_luadev_chat_max = 0 } })
+	off["ulx l"].fn(player(), "x()")
+	T.eq(#offSaid, 0, "no line")
+end)
+
+T.test("work is listened for ulx_luadev_listen_seconds", function()
+	local tx = transaction()
+	local commands, _, _, _, said, _, frames = ulx_module({ values = { tx }, convars = { ulx_luadev_listen_seconds = 3 } })
+	commands["ulx l"].fn(player(), "return work()")
+	local lines = #said
+	after(frames, 3)
+	T.eq(#said, lines + 1, "told at 3")
+end)
+
+T.test("each cue is its convar's sound, and none when it is empty", function()
+	local commands, _, _, _, _, cues = ulx_module({ convars = { ulx_luadev_sound_success = "my/ok.wav" } })
+	commands["ulx l"].fn(player(), "x()")
+	T.eq(cues[1].sound, "my/ok.wav", "its sound")
+	local quiet, _, _, _, _, quietCues = ulx_module({ convars = { ulx_luadev_sound_error = "" }, fail = "boom" })
+	quiet["ulx l"].fn(player(), "x()")
+	T.eq(#quietCues, 0, "none")
 end)
 
 T.finish()

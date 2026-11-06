@@ -118,7 +118,10 @@ server's own GMod root (`server_root.py`). The server runs the gamemode
 that the shared install's `garrysmod/gamemodes/sandcastle` points to, which
 is the main checkout, not a worktree. Workshop addons (DrGBase), luadev
 access on LAN come from `server_root/`'s autorun; ULX's luadev commands and `ulx addmap` are
-the repo's `addons/ulx_luadev`, linked into the server's addons.
+the repo's `addons/ulx_luadev`, linked into the server's addons. A run on the server answers its
+caller with a line in chat and a sound cue; `server.cfg` tunes them with `ulx_luadev_chat_max` (0:
+no line), `ulx_luadev_listen_seconds` and `ulx_luadev_sound_success`, `_error`, `_progress`,
+`_neutral` (empty: silent).
 
 Useful after a map loads:
 

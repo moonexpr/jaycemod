@@ -6,8 +6,11 @@
 -- chat, the first line it printed, else the values it returned, else that it ran; clients do
 -- not answer, so a run only on them tells nothing. Its caller's client hears how it went: a
 -- success cue, an error cue, or, for work it returned still going a frame later (the gamemode's
--- transactions), a blip, then the cue for how the work settled; still going after LISTEN_FOR
--- seconds, it is told so, with a neutral cue, and its end goes unheard.
+-- transactions), a blip, then the cue for how the work settled; still going once it is no longer
+-- listened for, it is told so, with a neutral cue, and its end goes unheard. Each is a server convar
+-- a server.cfg sets, read as it is used: ulx_luadev_chat_max (the line's length, 0 for none),
+-- ulx_luadev_listen_seconds, ulx_luadev_sound_success, _error, _progress and _neutral (a sound
+-- path, empty for none).
 local CATEGORY = "LuaDev"
 
 local function who(ply, name) return luadev.GetPlayerIdentifier(ply, "cmd:" .. name) end
@@ -62,8 +65,22 @@ local COMMANDS = {
 	end },
 }
 
--- How long a line chat is given; a longer one is cut there, saying how many more it had.
-local FEEDBACK_MAX = 120
+-- The server's settings, created where the commands run.
+local setting = {}
+if SERVER then
+	setting.chat_max = CreateConVar("ulx_luadev_chat_max", "120", nil,
+		"How long a luadev command's line in chat is: a longer one is cut, saying how many more it had; 0 for none", 0)
+	setting.listen_seconds = CreateConVar("ulx_luadev_listen_seconds", "10", nil,
+		"How long a luadev command listens for the work its run returned before saying it still runs", 0)
+	setting.sound_success = CreateConVar("ulx_luadev_sound_success", "buttons/button14.wav", nil,
+		"The sound a luadev command's caller hears when its run went through; empty for none")
+	setting.sound_error = CreateConVar("ulx_luadev_sound_error", "buttons/button10.wav", nil,
+		"The sound a luadev command's caller hears when its run did not compile, failed or was refused; empty for none")
+	setting.sound_progress = CreateConVar("ulx_luadev_sound_progress", "buttons/blip1.wav", nil,
+		"The sound a luadev command's caller hears when the work its run returned is still going a frame later; empty for none")
+	setting.sound_neutral = CreateConVar("ulx_luadev_sound_neutral", "buttons/button16.wav", nil,
+		"The sound a luadev command's caller hears when it stops listening for work still going; empty for none")
+end
 local PRINTERS = { print = "\t", Msg = "", MsgN = "", MsgC = "" }
 local NEWLINE = { print = true, MsgN = true }
 
@@ -88,8 +105,8 @@ local function captured(fn)
 	return table.concat(text), unpack(results, 2)
 end
 
--- The line a run on the server tells its caller.
-local function first_line(printed, values)
+-- The line a run on the server tells its caller, at most max long.
+local function first_line(printed, values, max)
 	local line = printed:match("([^\n]*%S[^\n]*)")
 	if not line and values and #values > 0 then
 		local parts = {}
@@ -97,26 +114,24 @@ local function first_line(printed, values)
 		line = table.concat(parts, ", "):match("([^\n]*)")
 	end
 	line = line and line:match("^%s*(.-)%s*$") or "ok"
-	if #line > FEEDBACK_MAX then line = string.format("%s... (%d+ chars)", line:sub(1, FEEDBACK_MAX), #line - FEEDBACK_MAX) end
+	if #line > max then line = string.format("%s... (%d+ chars)", line:sub(1, max), #line - max) end
 	return line
 end
 
 -- What the caller's client plays: a run done, failed, or its work still going after a frame.
-local SUCCESS_SOUND, ERROR_SOUND, PROGRESS_SOUND = "buttons/button14.wav", "buttons/button10.wav", "buttons/blip1.wav"
-local NEUTRAL_SOUND = "buttons/button16.wav"
--- How long a run's work is listened for.
-local LISTEN_FOR = 10
 local STILL_RUNNING = "Still running; no longer listening for its end."
 -- A transaction's states, as the gamemode's foundation names them.
 local PENDING, COMMITTED = "pending", "committed"
 
--- Plays sound on ply's own client; the console has none.
-local function cue(ply, sound)
-	if IsValid(ply) then ULib.clientRPC(ply, "surface.PlaySound", sound) end
+-- Plays the sound a setting names on ply's own client; the console has none, and an empty
+-- setting plays nothing.
+local function cue(ply, which)
+	local sound = setting[which]:GetString()
+	if IsValid(ply) and sound ~= "" then ULib.clientRPC(ply, "surface.PlaySound", sound) end
 end
 
 local function failed(ply, why)
-	cue(ply, ERROR_SOUND)
+	cue(ply, "sound_error")
 	return ULib.tsayError(ply, why, true)
 end
 
@@ -131,22 +146,22 @@ local function pending_work(values)
 end
 
 -- The caller's cue for a run that went through: success now, or, for work still going a frame
--- later, a blip, then the cue for how it settled; still going after LISTEN_FOR seconds, a word
--- and a neutral cue, and no more.
+-- later, a blip, then the cue for how it settled; still going after ulx_luadev_listen_seconds, a
+-- word and a neutral cue, and no more.
 local function cue_done(ply, work)
-	if not work then return cue(ply, SUCCESS_SOUND) end
+	if not work then return cue(ply, "sound_success") end
 	local listening = true
 	work:OnSettle(function(settled)
-		if listening then cue(ply, settled:State() == COMMITTED and SUCCESS_SOUND or ERROR_SOUND) end
+		if listening then cue(ply, settled:State() == COMMITTED and "sound_success" or "sound_error") end
 	end)
 	timer.Simple(0, function()
-		if work:State() == PENDING then cue(ply, PROGRESS_SOUND) end
+		if work:State() == PENDING then cue(ply, "sound_progress") end
 	end)
-	timer.Simple(LISTEN_FOR, function()
+	timer.Simple(setting.listen_seconds:GetFloat(), function()
 		if work:State() ~= PENDING then return end
 		listening = false
 		ULib.tsay(ply, STILL_RUNNING)
-		cue(ply, NEUTRAL_SOUND)
+		cue(ply, "sound_neutral")
 	end)
 end
 
@@ -171,7 +186,8 @@ local function run(ply, name, runs)
 		end
 		if not ok then return failed(ply, tostring(why)) end
 		if printed then
-			ULib.tsay(ply, first_line(printed, why))
+			local max = setting.chat_max:GetInt()
+			if max > 0 then ULib.tsay(ply, first_line(printed, why, max)) end
 			work = work or pending_work(why)
 		end
 	end
