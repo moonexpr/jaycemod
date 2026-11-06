@@ -8,7 +8,8 @@
 --   muster     from RED's spawns, mustered at its spawn room's middle: each given a place of its
 --              own, spaced apart, its walk there crossing no other's, resting there, in the room
 --   mobilize   out through RED's shutter to the staging point on the grass west of the bench
---   assault    from the staging point into the bench, each at its place inside
+--   assault    from the staging point: staged around the bench's west door out of its sight, none
+--              in before the leader's signal, then in, each at its place, spread over the room
 --   hold       in the bench, alert: patrolling, none leaving the room
 --   evacuate   in the bench, a danger marked at its east side (the war's DANGER mark, as the
 --              Path Follower stool's Annotate places it): the leader calls the fall back, all
@@ -102,7 +103,8 @@ local function Give(order)
 	local positions = {}
 	for i, member in ipairs(members) do positions[i] = Point(member:GetPos()) end
 	local at = Vector(order.point.x, order.point.y, order.point.z)
-	local places = order:Places(positions, nextsoldier.engine.GroupSpacing(), members[1]:NSLegsAdmit(at))
+	local places = order:Places(positions, nextsoldier.engine.GroupSpacing(), members[1]:NSLegsAdmit(at),
+		function(around) return members[1]:NSLegsAdmit(around) end)
 	for i, member in ipairs(members) do member:NSLegsGive(order, places[i]) end
 	order:Lead(members[1])
 	B.order, B.starts, B.places = order, positions, places
@@ -175,8 +177,8 @@ local function Cross(a, b, c, d)
 end
 
 -- The places the squad was given, as failures: one left without, two nearer than its spacing,
--- two members' walks there crossing.
-local function Placement()
+-- two members' walks there crossing (not where they file through a doorway).
+local function Placement(throughDoor)
 	local failures, starts, places = {}, B.starts, B.places
 	local spacing = nextsoldier.engine.GroupSpacing()
 	for i = 1, #starts do
@@ -190,7 +192,7 @@ local function Placement()
 				if apart < spacing - PLACE_SLACK then
 					failures[#failures + 1] = string.format("members %d and %d: places %.0f apart, under %.0f", i, j, apart, spacing)
 				end
-				if Cross(starts[i], a, starts[j], b) then
+				if not throughDoor and Cross(starts[i], a, starts[j], b) then
 					failures[#failures + 1] = string.format("members %d and %d: their walks cross", i, j)
 				end
 			end
@@ -200,6 +202,31 @@ local function Placement()
 end
 
 local function Resting(member) return member.NSStance ~= nil, "not resting at its place" end
+
+-- How often an assault is watched: who is in the room before the signal, and who the room sees
+-- while staged.
+local WATCH_EVERY = 0.25
+
+-- Watches the assault on room from now until its check: B.watch holds what it found.
+local function WatchAssault(room, run)
+	local watch = { early = {}, seen = {} }
+	B.watch = watch
+	local name = "dev_3house_bench_assault"
+	timer.Create(name, WATCH_EVERY, 0, function()
+		if run ~= B.runs or not B.order then timer.Remove(name) return end
+		local order = B.order
+		if order:Signalled() then
+			if not watch.signalledAt then watch.signalledAt = CurTime() end
+			return
+		end
+		for i, member in ipairs(B.members) do
+			if IsValid(member) then
+				if InBench(member) then watch.early[i] = true end
+				if order:StagedAt(member) and room.seen(Point(member:GetPos())) then watch.seen[i] = true end
+			end
+		end
+	end)
+end
 
 B.STAGES = {
 	{
@@ -257,11 +284,29 @@ B.STAGES = {
 	},
 	{
 		name = "assault",
-		seconds = 15,
+		seconds = 25,
 		setup = function() Spawn(Around(Staging(), SIZE, 72)) end,
-		act = function() Give(Legs.Muster(Point(Named("bench_room")))) end,
+		act = function(run)
+			local room = WS.Feature("aiwar"):RoomToAssault(Point(Named("bench_room")), Point(Staging()))
+			B.room = room
+			Give(Legs.Assault(room))
+			WatchAssault(room, run)
+		end,
 		check = function()
-			return Verdict(Each({ Arrived, function(m) return InBench(m), "not in the bench" end }))
+			timer.Remove("dev_3house_bench_assault")
+			local lines, failures = Each({ Arrived, Runs("LegsStationary"), Resting,
+				function(m) return InBench(m), "not in the bench" end })
+			local watch = B.watch
+			if not B.order:Signalled() then failures[#failures + 1] = "the leader never signalled" end
+			for i in pairs(watch.early) do failures[#failures + 1] = string.format("member %d: in before the signal", i) end
+			for i in pairs(watch.seen) do failures[#failures + 1] = string.format("member %d: staged in the room's sight", i) end
+			for _, failure in ipairs(Placement(true)) do failures[#failures + 1] = failure end
+			for i, place in ipairs(B.places) do
+				local stage = B.order:StagingOf(place)
+				lines[i] = lines[i] .. string.format(" | staged %s placed %.0f,%.0f",
+					stage and string.format("%.0f,%.0f", stage.x, stage.y) or "none", place.x, place.y)
+			end
+			return Verdict(lines, failures)
 		end,
 	},
 	{
@@ -353,7 +398,7 @@ function B.Run(name, done, run)
 	stage.setup()
 	timer.Simple(SETTLE, function()
 		if run ~= B.runs then return end
-		if stage.act then stage.act() end
+		if stage.act then stage.act(run) end
 		timer.Simple(stage.seconds, function()
 			if run ~= B.runs then return end
 			local ok, result = pcall(stage.check)

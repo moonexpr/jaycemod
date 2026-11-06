@@ -7,11 +7,13 @@ local GIB = nextsoldier.behavior.gib_behaviors
 local MODE, GAIT = GroupIdentity.MODE, GIB.GAIT
 
 for _, name in ipairs({ "PATROL_RADIUS", "PATROL_REST", "WANDER_RADIUS", "WANDER_REST", "EVACUATE_DISTANCE",
-	"REST_RADIUS", "EXIT_CLEARANCE", "STAY_CLOSE_RANGE", "STAY_CLOSE_RADIUS", "REGROUP_RANGE", "REGROUP_NEAR" }) do
+	"REST_RADIUS", "EXIT_CLEARANCE", "STAY_CLOSE_RANGE", "STAY_CLOSE_RADIUS", "REGROUP_RANGE", "REGROUP_NEAR",
+	"STACK_PATIENCE", "STAGE_REACH", "ENTER_REACH" }) do
 	T.defined(GIB[name], name)
 end
 
 T.eq(type(GIB.FALL_BACK_LINE), "string", "the line its leader calls")
+T.eq(type(GIB.SIGNAL_LINE), "string", "the line its leader signals an assault in by")
 
 local function Distance(a, b) return math.sqrt((a.x - b.x) ^ 2 + (a.y - b.y) ^ 2) end
 
@@ -383,6 +385,113 @@ T.test("a member who does not lead is not the one to call a danger", function()
 	orders:Update(me)
 	T.eq(#me.said, 0, "not its call")
 	T.eq(order.mode, MODE.STATIONARY, "nor its squad's")
+end)
+
+-- An assault on a room 800 square about the origin, its door in the west wall, seeing nothing
+-- outside it; four members on the grass west of it, the first leading. Each member as its legs
+-- see it, told its place in the room.
+local function Assault()
+	local room = { center = { x = 0, y = 0, z = 0 }, lo = { x = -400, y = -400, z = 0 }, hi = { x = 400, y = 400, z = 0 },
+		entry = { x = -400, y = 0, z = 0 }, seen = function(p) return p.x > -432 end }
+	local order = GroupIdentity.Assault(room)
+	local at = {}
+	for i = 1, 4 do at[i] = { x = -700, y = -120 + i * 60, z = 0 } end
+	local any = function(slot) return slot end
+	local places = order:Places(at, 72, any, function() return any end)
+	local squad = {}
+	for i = 1, 4 do
+		local me, action, orders = OnOrder(order, places[i])
+		me.at = at[i]
+		squad[i] = { me = me, action = action, orders = orders }
+	end
+	order:Lead(squad[1].me)
+	return order, squad
+end
+
+T.test("told an assault, a member takes it, and stages first", function()
+	local _, squad = Assault()
+	T.eq(squad[1].orders.name, "LegsAssault", "the assault")
+	T.eq(squad[1].action.name, "LegsStage", "staging first")
+end)
+
+T.test("staging, a member walks to its place in the stack, not the room; there it is staged, ready", function()
+	local order, squad = Assault()
+	local me, stage = squad[2].me, squad[2].action
+	local staging = order:StagingOf(me.place)
+	stage:Update(me)
+	T.eq(me.spot, staging, "for the stack")
+	T.eq(me.gait, GAIT.WALK, "walking")
+	T.eq(order:StagedAt(me), nil, "not staged on its way")
+	me.at, me.now = staging, 3
+	T.eq(stage:Update(me).type, Action.CONTINUE, "waiting")
+	T.eq(me.gait, GAIT.REST, "ready there")
+	T.eq(order:StagedAt(me), 3, "staged")
+end)
+
+T.test("staged, a member waits for the signal, then goes in", function()
+	local order, squad = Assault()
+	local me, stage = squad[2].me, squad[2].action
+	me.at = order:StagingOf(me.place)
+	stage:Update(me)
+	order:Signal()
+	local result = stage:Update(me)
+	T.eq(result.type, Action.CHANGE_TO, "goes")
+	T.eq(result.action.name, "LegsEnter", "in")
+end)
+
+T.test("going in, a member runs for its place in the room, and there does what its squad's mode says", function()
+	local order, squad = Assault()
+	local me = squad[3].me
+	local enter = GIB.LegsEnter:New({ order = order })
+	T.eq(enter:Update(me).type, Action.CONTINUE, "on its way")
+	T.eq(me.spot, me.place, "for its place")
+	T.eq(me.gait, GAIT.RUN, "running")
+	me.at = me.place
+	local result = enter:Update(me)
+	T.eq(result.type, Action.CHANGE_TO, "there")
+	T.eq(result.action.name, "LegsStationary", "its squad's mode")
+end)
+
+T.test("the leader signals the assault in once its whole squad is staged, once", function()
+	local order, squad = Assault()
+	local leader, orders = squad[1].me, squad[1].orders
+	for i = 1, 3 do order:Staged(squad[i].me, 0) end
+	orders:Update(leader)
+	T.eq(order:Signalled(), false, "three of four staged")
+	order:Staged(squad[4].me, 0)
+	orders:Update(leader)
+	T.eq(order:Signalled(), true, "all four")
+	T.eq(leader.said[1], GIB.SIGNAL_LINE, "called")
+	orders:Update(leader)
+	T.eq(#leader.said, 1, "once")
+end)
+
+T.test("the leader staged and waiting STACK_PATIENCE signals with those it has", function()
+	local order, squad = Assault()
+	local leader, orders = squad[1].me, squad[1].orders
+	order:Staged(leader, 0)
+	leader.now = GIB.STACK_PATIENCE - 0.1
+	orders:Update(leader)
+	T.eq(order:Signalled(), false, "not yet")
+	leader.now = GIB.STACK_PATIENCE
+	orders:Update(leader)
+	T.eq(order:Signalled(), true, "signalled")
+end)
+
+T.test("a member who does not lead never signals", function()
+	local order, squad = Assault()
+	for i = 1, 4 do order:Staged(squad[i].me, 0) end
+	squad[2].orders:Update(squad[2].me)
+	T.eq(order:Signalled(), false, "not its call")
+end)
+
+T.test("a member with no place in the stack is staged where it stands", function()
+	local order, squad = Assault()
+	local me = squad[2].me
+	order.staging[me.place] = nil
+	squad[2].action:Update(me)
+	T.eq(order:StagedAt(me) ~= nil, true, "staged")
+	T.eq(me.spot, me.at, "where it stands")
 end)
 
 T.finish()

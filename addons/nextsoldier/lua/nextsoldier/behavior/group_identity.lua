@@ -3,8 +3,10 @@
 -- what it does under that is nextsoldier.behavior.gib_behaviors'. With no group to be part of
 -- yet, it waits.
 --
--- A group's orders: Muster(point), FallBack(point, from) -> an order, whose Places(members,
--- spacing) gives each member, by its position, a place of its own. A squad's mode is one whole
+-- A group's orders: Muster(point), FallBack(point, from), Assault(room) -> an order, whose
+-- Places(members, spacing[, admit[, admitAt]]) gives each member, by its position, a place of its
+-- own. An assault fills its room and first stages its squad around the entrance, out of the
+-- room's sight (StagingOf(place)), until its leader signals it in (Staged, AllStaged, Signal). A squad's mode is one whole
 -- number on its order (SetMode, MODE): STATIONARY, ALERT, CAUTIOUS, PANIC or CLOSE, each the
 -- action its members run (gib_behaviors). Its leader (Lead) calls the fall back once, when its
 -- casualties are heavy (Casualty, HeavyCasualties, Rout) or a danger is near (Endanger); its
@@ -13,7 +15,7 @@
 local Enum = core.enum
 local Geometry = math.geometry
 local Select = list.select
-local floor, ceil, pi, min = math.floor, math.ceil, math.pi, math.min
+local floor, ceil, pi, min, cos, sin = math.floor, math.ceil, math.pi, math.min, math.cos, math.sin
 local ipairs, pairs, setmetatable, error, tostring = ipairs, pairs, setmetatable, error, tostring
 local remove = table.remove
 local nextsoldier = nextsoldier
@@ -30,6 +32,11 @@ local ROW = 4
 -- How much further out than its members need an order looks for places the map refuses
 -- nearer: rings around a muster, rows behind a fall back.
 local SPARE_RINGS, SPARE_ROWS = 3, 3
+
+-- An assault's places keep ROOM_INSET clear of the room's walls, and its stack within
+-- STACK_REACH of the entrance, each place hidden from the room with STACK_COVER to spare all
+-- round it: a member stops near its place, not on it.
+ROOM_INSET, STACK_REACH, STACK_COVER = 48, 384, 32
 
 -- How near another's seat a seat is that one: a body's breadth.
 local SEAT_CLEARANCE = 32
@@ -135,12 +142,41 @@ function Order:Places(members, spacing, admit)
 	return Assign(self.point, slots, members)
 end
 
+-- Where the member given place waits to go in, staged (an assault's), or nil.
+function Order:StagingOf(place) return self.staging and self.staging[place] end
+
+-- member at its staging place, from now on.
+function Order:Staged(member, now)
+	self.stagedAt = self.stagedAt or {}
+	self.stagedAt[member] = self.stagedAt[member] or now
+end
+
+-- When member was staged, or nil.
+function Order:StagedAt(member) return self.stagedAt and self.stagedAt[member] end
+
+-- Every member left alive staged.
+function Order:AllStaged()
+	local staged = 0
+	for _ in pairs(self.stagedAt or {}) do staged = staged + 1 end
+	return staged > 0 and staged >= self.size - self.lost
+end
+
+-- The signal to go in: true the once it is given.
+function Order:Signal()
+	if self.signalled then return false end
+	self.signalled = true
+	return true
+end
+
+function Order:Signalled() return self.signalled == true end
+
 -- The member who leads the squad, and calls its fall back.
 function Order:Lead(member) self.leader = member end
 
 -- A member gone from the squad: no longer its leader, its seat free.
 function Order:Leave(member)
 	if self.leader == member then self.leader = nil end
+	if self.stagedAt then self.stagedAt[member] = nil end
 	self.seats[member] = nil
 end
 
@@ -237,6 +273,115 @@ function Withdraw:Candidates(count, spacing)
 	end
 end
 
+local Breach = setmetatable({}, Order)
+Breach.__index = Breach
+
+-- Of slots, count spacing apart: the first the furthest from from, then each the one furthest
+-- from all those chosen and from; fewer where the slots run out.
+local function Farthest(slots, from, count, spacing)
+	local chosen, near = {}, {}
+	for i, slot in ipairs(slots) do near[i] = Geometry.Distance2D(slot, from) end
+	while #chosen < count do
+		local best
+		for i = 1, #slots do
+			if near[i] >= spacing and (not best or near[i] > near[best]) then best = i end
+		end
+		if not best then break end
+		local pick = slots[best]
+		chosen[#chosen + 1] = pick
+		for i, slot in ipairs(slots) do near[i] = min(near[i], Geometry.Distance2D(slot, pick)) end
+	end
+	return chosen
+end
+
+-- Of slots, count spacing apart, the nearest to from first; fewer where the slots run out.
+local function Nearest(slots, from, count, spacing)
+	local order = Select.Order(slots, function(a, b) return Geometry.Distance2D(a, from) < Geometry.Distance2D(b, from) end)
+	local chosen = {}
+	for _, i in ipairs(order) do
+		if #chosen == count then break end
+		local slot, clear = slots[i], true
+		for _, other in ipairs(chosen) do
+			if Geometry.Distance2D(slot, other) < spacing then clear = false break end
+		end
+		if clear then chosen[#chosen + 1] = slot end
+	end
+	return chosen
+end
+
+-- Through one doorway: the members nearest it first, each to the deepest place left, so none
+-- stops in the way of those behind. Members left when the slots run out have none.
+local function Pair(entry, slots, starts)
+	local Depth = function(p) return Geometry.Distance2D(p, entry) end
+	local first = Select.Order(starts, function(a, b) return Depth(a) < Depth(b) end)
+	local deepest = Select.Order(slots, function(a, b) return Depth(a) > Depth(b) end)
+	local places = {}
+	for rank, member in ipairs(first) do places[member] = slots[deepest[rank]] end
+	return places
+end
+
+-- The room's floor in a lattice spacing / 2 apart, ROOM_INSET clear of its walls, that admit lets.
+local function Floor(room, spacing, admit)
+	local slots, step = {}, spacing / 2
+	for x = room.lo.x + ROOM_INSET, room.hi.x - ROOM_INSET + 0.001, step do
+		for y = room.lo.y + ROOM_INSET, room.hi.y - ROOM_INSET + 0.001, step do
+			local slot = admit({ x = x, y = y, z = room.center.z })
+			if slot then slots[#slots + 1] = slot end
+		end
+	end
+	return slots
+end
+
+-- Whether the room sees p, or the ground STACK_COVER round it.
+local AROUND = {}
+for i = 0, 7 do AROUND[i + 1] = { cos(i * pi / 4) * STACK_COVER, sin(i * pi / 4) * STACK_COVER } end
+
+local function InSight(room, p)
+	if room.seen(p) then return true end
+	for _, d in ipairs(AROUND) do
+		if room.seen({ x = p.x + d[1], y = p.y + d[2], z = p.z }) then return true end
+	end
+	return false
+end
+
+-- The ground outside the entrance within STACK_REACH of it, in a lattice spacing / 2 apart, that
+-- admit lets and the room does not see, with STACK_COVER to spare.
+local function Outside(room, spacing, admit)
+	local out = Geometry.Normalize2D(Geometry.Sub(room.entry, room.center))
+	local side = Geometry.Left2D(out)
+	local slots, step = {}, spacing / 2
+	for along = step, STACK_REACH, step do
+		for across = -STACK_REACH, STACK_REACH, step do
+			if along * along + across * across <= STACK_REACH * STACK_REACH then
+				local p = { x = room.entry.x + out.x * along + side.x * across, y = room.entry.y + out.y * along + side.y * across,
+					z = room.entry.z }
+				local slot = not InSight(room, p) and admit(p)
+				if slot and not InSight(room, slot) then slots[#slots + 1] = slot end
+			end
+		end
+	end
+	return slots
+end
+
+-- Each member's place filling the room, its stack around the entrance first: the stack taken
+-- nearest the entrance, its places matched from where the members stand; the room's places taken
+-- deepest first, paired with the stack in turn through the doorway, its front deepest. admitAt(around) -> the map's
+-- word on slots around a point, for the ground outside the entrance.
+function Breach:Places(members, spacing, admit, admitAt)
+	if not admitAt then error("an assault is placed around its entrance as well as in its room: admitAt", 2) end
+	admit = admit or Anywhere
+	self.size = #members
+	local out = Geometry.Normalize2D(Geometry.Sub(self.entry, self.point))
+	local outside = { x = self.entry.x + out.x * spacing, y = self.entry.y + out.y * spacing, z = self.entry.z }
+	local stack = Assign(self.entry, Nearest(Outside(self.room, spacing, admitAt(outside)), self.entry, #members, spacing), members)
+	local starts = {}
+	for i, member in ipairs(members) do starts[i] = stack[i] or member end
+	local places = Pair(self.entry, Farthest(Floor(self.room, spacing, admit), self.entry, #members, spacing), starts)
+	self.staging = {}
+	for i, place in pairs(places) do self.staging[place] = stack[i] end
+	return places
+end
+
 function Muster(point)
 	return NewOrder(Gather, { kind = "Muster", point = point })
 end
@@ -245,6 +390,13 @@ end
 function FallBack(point, from)
 	if point.x == from.x and point.y == from.y then return nil end
 	return NewOrder(Withdraw, { kind = "FallBack", point = point, from = from })
+end
+
+-- room: { center, lo, hi (its block), entry (the doorway the squad comes in by), seen(point) (whether
+-- the room's inside sees a point outside, through its doorways) }; refused without seen.
+function Assault(room)
+	if not room.seen then error("an assault stages out of its room's sight: the room's seen", 2) end
+	return NewOrder(Breach, { kind = "Assault", point = room.center, entry = room.entry, room = room })
 end
 
 -- Its root, holding first (gib_behaviors' LegsWait, for none).

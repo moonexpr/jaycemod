@@ -47,7 +47,7 @@ if CLIENT then
 		end
 	end
 
-	local ORDER_COLORS = { Muster = Color(120, 255, 120), FallBack = Color(255, 170, 60) }
+	local ORDER_COLORS = { Muster = Color(120, 255, 120), FallBack = Color(255, 170, 60), Assault = Color(190, 120, 255) }
 	local CANNOT_STAND_COLOR, HELD_COLOR = Color(255, 70, 70), Color(255, 220, 60)
 	local SELECTED_COLOR = Color(90, 220, 255)
 	local RING_COLOR, CROWDED_COLOR = Color(160, 160, 160), Color(255, 90, 210)

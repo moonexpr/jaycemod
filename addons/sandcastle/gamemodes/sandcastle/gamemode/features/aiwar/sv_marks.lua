@@ -105,6 +105,42 @@ function Controller:GivenMission(fireTeam, lanes)
 	return { kind = given.kind, target = Mission.Target(given.room, from or given.room.center) }
 end
 
+-- What sees a point from a room: eyes on a lattice EYES across its block, ROOM_EYES_INSET clear of
+-- its walls, at a standing eye's height; a point is seen when a line from any of them to its own
+-- eye height meets no wall (glass and other breakables are seen through).
+local EYES, ROOM_EYES_INSET, EYE_HEIGHT = 3, 48, Vector(0, 0, 64)
+
+-- The room at point as a squad's assault takes it (the legs' Assault): its block and middle, the
+-- doorway nearest from it comes in by, and what it sees; nil where the map's rooms are not found,
+-- none is there, or it has no door.
+function Controller:RoomToAssault(point, from)
+	local area = navmesh.GetNearestNavArea(Vector(point.x, point.y, point.z))
+	local room = self.rooms and IsValid(area) and Rooms.RoomOf(self.rooms, area:GetID())
+	if not (room and room.doors and room.doors[1]) then return nil end
+	local entry
+	for _, door in ipairs(room.doors) do
+		local d = (door.pos.x - from.x) ^ 2 + (door.pos.y - from.y) ^ 2
+		if not entry or d < entry.d then entry = { pos = door.pos, d = d } end
+	end
+	local eyes = {}
+	for i = 0, EYES - 1 do
+		for j = 0, EYES - 1 do
+			local t, u = i / (EYES - 1), j / (EYES - 1)
+			eyes[#eyes + 1] = Vector(room.lo.x + ROOM_EYES_INSET + (room.hi.x - room.lo.x - 2 * ROOM_EYES_INSET) * t,
+				room.lo.y + ROOM_EYES_INSET + (room.hi.y - room.lo.y - 2 * ROOM_EYES_INSET) * u, room.center.z) + EYE_HEIGHT
+		end
+	end
+	local function Seen(p)
+		local target = Vector(p.x, p.y, p.z) + EYE_HEIGHT
+		for _, eye in ipairs(eyes) do
+			if not util.TraceLine({ start = eye, endpos = target, mask = MASK_SOLID_BRUSHONLY }).Hit then return true end
+		end
+		return false
+	end
+	local at = function(p) return { x = p.x, y = p.y, z = p.z } end
+	return { center = at(room.center), lo = at(room.lo), hi = at(room.hi), entry = at(entry.pos), seen = Seen }
+end
+
 -- The doors of the room at point, as the ways out a panicked squad makes for (the legs'
 -- SetExits), or nil where the map's rooms are not found or none is there.
 function Controller:ExitsAt(point)

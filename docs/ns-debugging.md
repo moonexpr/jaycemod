@@ -132,10 +132,15 @@ goal when their failed search has no reachable waypoint.
 Local mode inspects how members place themselves within a room or enclosed
 area: the legs (`GroupIdentityBehavior`) alone, the followers' only tree.
 Right-click gives the selected members the panel's order at the aim:
-**Muster** (the point, then rings around it) or **Fall back** (rows across the
-way from you, the threat). Reload dissolves them. Each member's place shows as
-a cross, green for muster and orange for fall back, and its way there as its
-path. A
+**Muster** (the point, then rings around it), **Fall back** (rows across the
+way from you, the threat) or **Assault** (the room at the aim, found by the
+war's rooms: the squad stages around the door nearest it, out of the room's
+sight, and goes in on its leader's "Move in!", given once all are staged or
+`STACK_PATIENCE` after it is, each running to its place in the room, the room
+filled deepest first, the front of the stack deepest). Reload dissolves them.
+Each member's place shows as a cross, green for muster, orange for fall back
+and violet for an assault, and its way there as its path; a member staging
+heads for its place in the stack, the white ring. A
 place is only where a body fits, with no wall between it and the order's
 point (`NSLegsAdmit`). An order skips the places the map refuses and looks
 further out, up to three rings or rows past what its members need. A member
@@ -201,7 +206,8 @@ as a sealed indoor room with four doors and eight windows.
 feet free, through a room operation, stage by stage: spawn, muster (from
 RED's spawns, checking the placement: a place each, spaced apart, no two walks
 crossing, each resting at its own), mobilize (out through the shutter to the
-grass), assault (into the bench), hold (alert), evacuate (a danger marked on
+grass), assault (staged around the bench's west door out of its sight, none in
+before the leader's signal, then spread over the room), hold (alert), evacuate (a danger marked on
 BLU's side), rout (three of five killed) and remuster. Each stage sets up its
 own start, so any one runs alone (`NSRoomBench.Run("evacuate")`) or all in turn
 (`RunAll`; a run started ends one still going), and checks its result as data

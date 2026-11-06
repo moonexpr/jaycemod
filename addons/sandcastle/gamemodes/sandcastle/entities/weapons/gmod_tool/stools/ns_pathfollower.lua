@@ -89,6 +89,7 @@ local MODEL_COLLISION_BOUNDS = {
 local ORDER_NAMES = {
 	Muster = "Muster at the aim",
 	FallBack = "Fall back to the aim, away from you",
+	Assault = "Assault the room at the aim: stage at its nearest door, then in on the leader's signal",
 }
 
 -- The squad's mode (the legs' MODE, one whole number a squad): the menu's names by number.
@@ -355,8 +356,22 @@ local function GiveOrder(tool, ply, trace)
 	end
 	local Legs = nextsoldier.behavior.group_identity
 	local point = Point(trace.HitPos)
+	local positions = {}
+	for i, member in ipairs(members) do positions[i] = Point(member:GetPos()) end
 	local order
-	if tool:GetClientInfo("order") == "FallBack" then
+	local kind = tool:GetClientInfo("order")
+	if kind == "Assault" then
+		local controller = WS.Feature("aiwar")
+		if not controller.rooms then controller:FindRoomsNow() end
+		local middle = { x = 0, y = 0, z = 0 }
+		for _, p in ipairs(positions) do middle.x, middle.y = middle.x + p.x / #positions, middle.y + p.y / #positions end
+		local room = controller:RoomToAssault(point, middle)
+		if not room then
+			Tell(ply, "An assault needs a room with a door at the aim.")
+			return false
+		end
+		order = Legs.Assault(room)
+	elseif kind == "FallBack" then
 		order = Legs.FallBack(point, Point(ply:GetPos()))
 		if not order then
 			Tell(ply, "A fall back needs a point away from you: aim further off.")
@@ -367,9 +382,8 @@ local function GiveOrder(tool, ply, trace)
 	end
 	order:SetMode(Legs.MODE(tool:GetClientNumber("legsmode")) or Legs.MODE.STATIONARY)
 	order:SetExits(WS.Feature("aiwar"):ExitsAt(point))
-	local positions = {}
-	for i, member in ipairs(members) do positions[i] = Point(member:GetPos()) end
-	local places = order:Places(positions, nextsoldier.engine.GroupSpacing(), members[1]:NSLegsAdmit(trace.HitPos))
+	local places = order:Places(positions, nextsoldier.engine.GroupSpacing(), members[1]:NSLegsAdmit(trace.HitPos),
+		function(around) return members[1]:NSLegsAdmit(around) end)
 	for i, member in ipairs(members) do member:NSLegsGive(order, places[i]) end
 	order:Lead(members[1])
 	return true

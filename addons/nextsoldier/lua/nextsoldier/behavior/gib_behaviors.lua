@@ -1,5 +1,5 @@
 -- What GroupIdentityBehavior does under its root (group_identity), as L4D2's survivors' legs:
--- an order's action (LegsMuster, LegsFallBack), and under it the action its squad's mode says,
+-- an order's action (LegsMuster, LegsFallBack, LegsAssault), and under it the action its squad's mode says,
 -- each moving its member about the squad's point and its place, never the point itself:
 --   STATIONARY  LegsStationary  rests at a seat near its place, one no other member holds
 --   ALERT       LegsPatrol      patrols spots round the squad's point on its own side
@@ -10,6 +10,11 @@
 -- back to its place. A full squad's leader calls the fall back once (FALL_BACK_LINE) and its
 -- squad evacuates: its casualties heavy, or a danger near its squad's point, which it evacuates
 -- away from.
+--
+-- An assault comes first: under LegsAssault each member stages (LegsStage) at its place in the
+-- stack around the entrance, out of the room's sight, and waits there ready; its leader signals
+-- (SIGNAL_LINE) once all are staged, or STACK_PATIENCE after it is; then each goes in (LegsEnter),
+-- running for its place in the room, and there runs its squad's mode's action.
 --
 -- A member on orders is told them by NSLegsOrder(), senses its group by NSLegsSense() each
 -- update, and heads where its action says by NSLegsHeadFor(spot, gait). Its place is
@@ -44,6 +49,11 @@ STAY_CLOSE_RANGE, STAY_CLOSE_RADIUS = 256, 128
 -- How far from its squad's point a member has strayed, and how near its place it has regrouped.
 REGROUP_RANGE, REGROUP_NEAR = 1024, 96
 FALL_BACK_LINE = "Fall back!"
+-- An assault: how near its place in the stack a member is staged, how long its leader waits there
+-- for the rest before it signals with those it has, the line it signals by, and how near its place
+-- in the room a member going in has arrived.
+STAGE_REACH, STACK_PATIENCE, ENTER_REACH = 24, 10, 48
+SIGNAL_LINE = "Move in!"
 -- How many spots a member draws before it keeps to its place.
 local TRIES = 6
 
@@ -60,8 +70,11 @@ LegsWander = Action.Extend("LegsWander")
 LegsEvacuate = Action.Extend("LegsEvacuate")
 LegsStayClose = Action.Extend("LegsStayClose")
 LegsRegroup = Action.Extend("LegsRegroup")
+LegsAssault = Action.Extend("LegsAssault")
+LegsStage = Action.Extend("LegsStage")
+LegsEnter = Action.Extend("LegsEnter")
 
-local ORDER_ACTIONS = { Muster = LegsMuster, FallBack = LegsFallBack }
+local ORDER_ACTIONS = { Muster = LegsMuster, FallBack = LegsFallBack, Assault = LegsAssault }
 
 MODE_ACTIONS = {
 	[MODE.STATIONARY] = LegsStationary,
@@ -102,6 +115,58 @@ local function ModeAction(self) return MODE_ACTIONS[self.order.mode]:New({ order
 LegsAtEase.Update = Orders
 LegsMuster.Update, LegsMuster.InitialContainedAction = OnOrders, ModeAction
 LegsFallBack.Update, LegsFallBack.InitialContainedAction = OnOrders, ModeAction
+
+-- An assault: its members stage around the entrance, out of the room's sight, then go in on its
+-- leader's signal, given once all are staged, or STACK_PATIENCE after the leader is.
+function LegsAssault:Update(me)
+	local result = OnOrders(self, me)
+	if result.type ~= Action.CONTINUE then return result end
+	local order = self.order
+	if order.leader ~= me or order:Signalled() then return result end
+	local since = order:StagedAt(me)
+	if order:AllStaged() or (since and me:Now() - since >= STACK_PATIENCE) then
+		order:Signal()
+		me:NSLegsSay(SIGNAL_LINE)
+	end
+	return result
+end
+
+function LegsAssault:InitialContainedAction() return LegsStage:New({ order = self.order }) end
+
+-- To its place in the stack, walking, and there staged, ready; with none, staged where it stands.
+-- Signalled, it goes in.
+function LegsStage:Update(me)
+	local order = self.order
+	if me:NSLegsOrder() ~= order then return self:Continue() end
+	if order:Signalled() then return self:ChangeTo(LegsEnter:New({ order = order }), "Signalled") end
+	local place = me:NSLegsPlace()
+	local at = me:NSLegsAt()
+	local staging = place and order:StagingOf(place)
+	if not staging then
+		order:Staged(me, me:Now())
+		me:NSLegsHeadFor(at, GAIT.REST)
+		return self:Continue()
+	end
+	if Geometry.Distance2D(at, staging) <= STAGE_REACH then
+		order:Staged(me, me:Now())
+		me:NSLegsHeadFor(staging, GAIT.REST)
+	else
+		me:NSLegsHeadFor(staging, GAIT.WALK)
+	end
+	return self:Continue()
+end
+
+-- Into the room, running for its place; there, its squad's mode's.
+function LegsEnter:Update(me)
+	local order = self.order
+	if me:NSLegsOrder() ~= order then return self:Continue() end
+	local place = me:NSLegsPlace()
+	if not place or Geometry.Distance2D(me:NSLegsAt(), place) <= ENTER_REACH then
+		return self:ChangeTo(ModeAction(self), "In")
+	end
+	me:NSLegsHeadFor(place, GAIT.RUN)
+	return self:Continue()
+end
 
 -- A spot drawn around center, angle within half a turn of side (or any way, for none), radius
 -- between least and most, its height z; nil if the map refuses TRIES of them.

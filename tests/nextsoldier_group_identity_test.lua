@@ -177,6 +177,119 @@ T.test("a squad coming in single file sends its front deepest, so none stops in 
 	end
 end)
 
+-- A room 800 square about the origin, its door in the west wall (a doorway 128 wide through a
+-- wall 32 thick), what its inside sees out through the doorway (a wedge widening four times as
+-- fast as it goes out), and the map's word on a slot around a point: inside the room, or outside
+-- it beyond the wall, not across it.
+local DOOR_HALF, WALL, SLANT = 64, 32, 4
+
+local function Seen(p)
+	if p.x > -400 then return true end
+	local out = -400 - WALL - p.x
+	if out < 0 then return math.abs(p.y) < DOOR_HALF end -- in the wall: only its doorway
+	return math.abs(p.y) < DOOR_HALF + out * SLANT
+end
+
+local ROOM = { center = { x = 0, y = 0, z = 0 }, lo = { x = -400, y = -400, z = 0 }, hi = { x = 400, y = 400, z = 0 },
+	entry = { x = -400, y = 0, z = 0 }, seen = Seen }
+
+local function Inside(p) return p.x > ROOM.lo.x and p.x < ROOM.hi.x and p.y > ROOM.lo.y and p.y < ROOM.hi.y end
+
+local function AdmitAt(around)
+	local inside = Inside(around)
+	return function(slot) if Inside(slot) == inside then return { x = slot.x, y = slot.y, z = slot.z } end return nil end
+end
+
+-- Five members on the grass west of the room, coming to its door.
+local function Squad5()
+	local squad = {}
+	for i = 1, 5 do squad[i] = { x = -700 - (i % 2) * 60, y = -120 + i * 40, z = 0 } end
+	return squad
+end
+
+local function Assaulting()
+	local order = GroupIdentity.Assault(ROOM)
+	local squad = Squad5()
+	local places = order:Places(squad, SPACING, AdmitAt(ROOM.center), AdmitAt)
+	return order, squad, places
+end
+
+T.test("the tuning of an assault is defined", function()
+	for _, name in ipairs({ "ROOM_INSET", "STACK_REACH", "STACK_COVER" }) do T.defined(GroupIdentity[name], name) end
+end)
+
+T.test("an assault fills its room: each a place inside, spread over the floor, none at the door", function()
+	local _, _, places = Assaulting()
+	T.eq(#places, 5, "one each")
+	for i, place in ipairs(places) do
+		T.eq(Inside(place), true, "inside: " .. i)
+		T.eq(math.max(math.abs(place.x), math.abs(place.y)) <= 400 - GroupIdentity.ROOM_INSET + 0.001, true, "clear of the walls: " .. i)
+		T.eq(Distance2D(place, ROOM.entry) >= 2 * SPACING, true, "clear of the doorway: " .. i)
+	end
+	HeldApart(places, 2 * SPACING)
+	local deepest = 0
+	for _, place in ipairs(places) do deepest = math.max(deepest, Distance2D(place, ROOM.entry)) end
+	T.eq(deepest >= 800 - 2 * GroupIdentity.ROOM_INSET, true, "out to the far side: " .. deepest)
+end)
+
+T.test("an assault stages its squad around the entrance, outside and hidden from the room", function()
+	local order, _, places = Assaulting()
+	local staged = {}
+	for i, place in ipairs(places) do
+		local stage = order:StagingOf(place)
+		T.eq(stage ~= nil, true, "a staging place: " .. i)
+		T.eq(stage.x < ROOM.lo.x, true, "outside, beyond the wall: " .. i)
+		T.eq(Seen(stage), false, "out of the room's sight through the doorway: " .. i)
+		local cover = GroupIdentity.STACK_COVER
+		for _, d in ipairs({ { cover, 0 }, { -cover, 0 }, { 0, cover }, { 0, -cover } }) do
+			T.eq(Seen({ x = stage.x + d[1], y = stage.y + d[2], z = 0 }), false, "with a body's breadth to spare: " .. i)
+		end
+		T.eq(Distance2D(stage, ROOM.entry) <= GroupIdentity.STACK_REACH + 0.001, true, "around the entrance: " .. i)
+		staged[i] = stage
+	end
+	HeldApart(staged, SPACING)
+end)
+
+T.test("an assault on a room with no word on what it sees is refused", function()
+	local blind = { center = ROOM.center, lo = ROOM.lo, hi = ROOM.hi, entry = ROOM.entry }
+	T.eq(pcall(GroupIdentity.Assault, blind), false, "refused")
+end)
+
+T.test("the member at the front of the stack, nearest the door, goes deepest", function()
+	local order, _, places = Assaulting()
+	local front, deepest
+	for i, place in ipairs(places) do
+		local stage = order:StagingOf(place)
+		if not front or Distance2D(stage, ROOM.entry) < Distance2D(order:StagingOf(places[front]), ROOM.entry) then front = i end
+		if not deepest or Distance2D(place, ROOM.entry) > Distance2D(places[deepest], ROOM.entry) then deepest = i end
+	end
+	T.eq(front, deepest, "the front goes deepest")
+end)
+
+T.test("an assault is placed around its door as well as its room, or refused", function()
+	T.eq(pcall(GroupIdentity.Assault(ROOM).Places, GroupIdentity.Assault(ROOM), Squad5(), SPACING, AdmitAt(ROOM.center)), false,
+		"no word on the ground outside")
+end)
+
+T.test("an assault waits staged until it is signalled, once", function()
+	local order = Assaulting()
+	T.eq(order:AllStaged(), false, "none staged yet")
+	for i = 1, 4 do order:Staged("m" .. i, 0) end
+	T.eq(order:AllStaged(), false, "four of five")
+	order:Casualty("m5")
+	T.eq(order:AllStaged(), true, "all the living")
+	T.eq(order:Signalled(), false, "not yet signalled")
+	T.eq(order:Signal(), true, "signalled")
+	T.eq(order:Signal(), false, "once")
+	T.eq(order:Signalled(), true)
+end)
+
+T.test("a muster has no staging", function()
+	local order = GroupIdentity.Muster({ x = 0, y = 0, z = 0 })
+	local places = order:Places(Crowd(2), SPACING)
+	T.eq(order:StagingOf(places[1]), nil, "none")
+end)
+
 T.test("a fall back forms across the way from the threat, nobody nearer it than the point", function()
 	for _, place in ipairs(ORDERS.FallBack:Places(Crowd(8), SPACING)) do
 		T.eq(place.x <= 500 + 0.001, true, "on the point's far side from the threat")
