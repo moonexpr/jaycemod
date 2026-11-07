@@ -78,7 +78,7 @@ return {
 		tests = {
 			"features_*", "boss_*", "croc", "eyeball_boss", "ghost", "halloween_boss", "headless_hatman", "merasmus",
 			"zombie", "fortune", "holiday_on_holiday", "spells_cast", "tag", "wheel", "trigger_ignite", "npc_*",
-			"ns_debug_panel", "nbdebug_contract",
+			"ns_debug_panel", "nbdebug_contract", "fgd_sandcastle",
 		},
 		sources = { G .. "features/", G .. "vendor/", E, "tests/fake_actor.lua", "tests/fake_builder.lua", "tests/fake_combatant.lua", "tests/fake_caster.lua" },
 	},
