@@ -243,7 +243,7 @@ function Controller:ClassReport()
 		return { "ns_classes_print: the rooms and their classes are being found; ask again in a moment" }
 	end
 	local counts = {}
-	for _, placed in pairs(found.classed) do
+	for _, placed in pairs(self:Classed()) do
 		local name = placed.cls .. (placed.team and " " .. placed.team or "")
 		counts[name] = (counts[name] or 0) + 1
 	end
@@ -296,9 +296,9 @@ function Controller:ClassesDebug()
 	local found = self:Classes()
 	if not found then return nil end
 	local rooms = {}
-	for room, placed in pairs(found.classed) do
+	for room, placed in pairs(self:Classed()) do
 		rooms[room.id] = { class = placed.cls, team = TEAM_ID[placed.team] or 0,
-			gradient = math.Round(math.Clamp(placed.gradient, 0, 1) * 100) }
+			gradient = math.Round(math.Clamp(placed.gradient, 0, 1) * 100), label = placed.label }
 	end
 	local branches = {}
 	for _, team in ipairs(Teams(found.trees)) do

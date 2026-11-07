@@ -229,9 +229,11 @@ function Controller:RoomForSquad(point, from, team)
 	-- its own nav areas, which a squad staging round it keeps out of
 	local inside = {}
 	for _, id in ipairs(room.areas) do inside[id] = true end
+	-- its name, as the map gives it (info_room)
+	local hinted = (self:RoomHints() or {})[room]
 	return { center = at(room.center), lo = at(room.lo), hi = at(room.hi), entry = at(entry.pos), exits = exits,
 		entrances = entrances, inside = inside, seen = Seen, watched = Watched, score = Score,
-		enemy = enemy and at(enemy) }
+		enemy = enemy and at(enemy), label = hinted and hinted.label }
 end
 
 -- The doors of the room at point, as the ways out a panicked squad makes for (the legs'

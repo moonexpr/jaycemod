@@ -221,6 +221,7 @@ local WARTACTICS = {
 	["classes"] = "wartactics",
 	["ambush"] = "wartactics",
 	["overwatch"] = "wartactics",
+	["room_hints"] = "wartactics",
 	["lanes"] = "wartactics",
 	["explore"] = "wartactics",
 	["hunt"] = "wartactics",

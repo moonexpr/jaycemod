@@ -217,7 +217,17 @@ behind a `func_respawnroomvisualizer`. The stronghold and lobby mark the
 support's works for its builders: `<team>_sentry` (a `bot_hint_sentrygun` in
 each, covering the way in from the front), `<team>_teleporter_entrance`
 (beside the spawn's door) and `<team>_access_door` (in their doorways toward
-the front). The script renders it top-down,
+the front). `<team>_nest` (a `bot_hint_engineer_nest` in the
+stronghold) and `<team>_teleporter_exit` (a `bot_hint_teleporter_exit` in the
+lobby) mark where a support sets up and where its teleporter comes out. Every
+room is described by an `info_room` (the gamemode's entity: `label`, `class`,
+`TeamNum`, `controlpoint`): the war places each in the room it stands in, and its
+class and holder stand over the ones the war finds (`wartactics.room_hints`,
+`features/aiwar/sv_room_hints.lua`); one tied to a `team_control_point` is held
+by the point's owner. Its label leads the room's line on the rooms overlay, and
+goes with a squad's room (`RoomForSquad`'s `label`). A hint that is wrong (a
+class the war has not, a second in a room, one in no room) is printed as the
+rooms are found. The script renders it top-down,
 from the side, through the bench's doors and inside a spawn room, and draws
 its plan, before it compiles. The nav mesh is built on the server by
 `.devtools/bin/dev_3house_nav.lua`, run twice: first it generates the mesh with

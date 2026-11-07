@@ -33,9 +33,11 @@ func_respawnroomvisualizer across the doorway outside it.
 
 Each building marks its support's works (the gamemode's TFBot hints and info_targets, by
 team): <team>_sentry (bot_hint_sentrygun, one in the stronghold covering the way to the lobby,
-one in the lobby covering its door out), <team>_teleporter_entrance (beside the spawn's door, in
-the stronghold) and <team>_access_door (in the stronghold's and the lobby's doorways toward the
-front).
+one in the lobby covering its door out), <team>_nest (bot_hint_engineer_nest, in the stronghold),
+<team>_teleporter_entrance (beside the spawn's door, in the stronghold), <team>_teleporter_exit
+(bot_hint_teleporter_exit, in the lobby by its door out) and <team>_access_door (in the
+stronghold's and the lobby's doorways toward the front). Every room is described for the war by
+an info_room: its label, its team and, for a stronghold and the bench, its class.
 
 Named points for a bench's checks: red_muster (RED's stronghold's middle),
 bench_room (the bench's middle) and bench_danger (outside the bench on
@@ -237,6 +239,13 @@ def spawn_building(team, side):
     mark(stronghold, "info_target", "access_door", stronghold_x + inward * (STRONGHOLD_SIZE / 2 + WALL_T / 2), 0)
     mark(lobby, "bot_hint_sentrygun", "sentry", lobby_x - inward * (LOBBY_SIZE / 2 - 64), -128)
     mark(lobby, "info_target", "access_door", lobby_x + inward * (LOBBY_SIZE / 2 + WALL_T / 2), 0)
+    mark(stronghold, "bot_hint_engineer_nest", "nest", stronghold_x - inward * 160, 0)
+    mark(lobby, "bot_hint_teleporter_exit", "teleporter_exit", lobby_x + inward * (LOBBY_SIZE / 2 - 64), 128)
+    # each room described for the war (info_room): its label, the team holding it, and the
+    # stronghold's class; what is left out is the war's to find
+    for room, label, cls in ((spawn, "spawn", ""), (stronghold, "stronghold", "stronghold"), (lobby, "lobby", "")):
+        room.points.append({"classname": "info_room", "targetname": f"{team}_{label}_room", "label": f"{team.upper()} {label}",
+                            "class": cls, "TeamNum": number, "origin": f"{room.cx} {SPAWN_SIZE // 4} {FLOOR_TOP + 16}"})
     for room in (stronghold, lobby):
         room.points.append({"classname": "light", "origin": f"{room.cx} 0 {FLOOR_TOP + HOUSE_HEIGHT - 24}",
                             "_light": "255 240 220 300"})
@@ -305,6 +314,8 @@ def bench_house():
         openings += [(side, 0, "door"), (side, -224, "window"), (side, 224, "window")]
     house = House(0, ROOM_SIZE, openings)
     house.points.append({"classname": "info_target", "targetname": "bench_room", "origin": f"0 0 {FLOOR_TOP}"})
+    house.points.append({"classname": "info_room", "targetname": "bench_info_room", "label": "Bench", "class": "commons",
+                         "origin": f"0 {ROOM_SIZE // 4} {FLOOR_TOP + 16}"})
     # its alarm, which the squad holding it raises when it stacks up, a guard missing
     house.points.append({"classname": "ent_room_alarm", "targetname": "bench_alarm",
                          "origin": f"0 0 {FLOOR_TOP + HOUSE_HEIGHT - 32}"})

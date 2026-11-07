@@ -420,6 +420,8 @@ function Controller:SendRoomsDebug(viewers, now)
 		local room = partition.rooms[i]
 		local placed = classes and classes.rooms[room.id] or UNCLASSED
 		local label = self:RoomLabel(room, now)
+		-- the map's name for it (info_room) first
+		if placed.label then label = placed.label .. ": " .. label end
 		if placed.class ~= "" then
 			label = label .. "; " .. placed.class .. (TEAM_TAG[placed.team] and " " .. TEAM_TAG[placed.team] or "")
 				.. ((placed.class == "stronghold" or placed.class == "commons") and string.format(" %.2f", placed.gradient / 100) or "")
