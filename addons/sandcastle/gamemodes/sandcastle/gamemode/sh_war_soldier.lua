@@ -302,7 +302,9 @@ function WS.WarSoldier(ENT)
 		if self.NSLastPos and here:DistToSqr(self.NSLastPos) > TELEPORT * TELEPORT then self:NSRepath() end
 		self.NSLastPos = here
 		if not target then return false end
-		if here:DistToSqr(target) > GOAL_TOLERANCE * GOAL_TOLERANCE then
+		-- its own, where what drives it counts it there only nearer (a follower's legs)
+		local tolerance = self.NSGoalTolerance or GOAL_TOLERANCE
+		if here:DistToSqr(target) > tolerance * tolerance then
 			local result = self:FollowPath(target, PATH_TOLERANCE)
 			if result == "obstacle" and self:NSVault() then result = "vaulted" end
 			self.NSMoveResult = result

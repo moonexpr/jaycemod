@@ -453,6 +453,35 @@ T.test("the rest stage hidden at the other entrances, split across them", functi
 	T.eq(used[2] and used[3] and used[4], true, "at every one of the others")
 end)
 
+-- FourDoors, with the enemy's flow into the room by each door.
+local function EnemyComes(room, enemyFlows)
+	for i, entrance in ipairs(room.entrances) do entrance.enemyFlow = enemyFlows[i] end
+	return room
+end
+
+T.test("none stages at an entrance the enemy comes in by: it would meet them on the way in", function()
+	local order = GroupIdentity.Assault(EnemyComes(FourDoors({ 2, 0, 0, 0 }), { 0, 0, 3, 0 }))
+	local places = order:Places(Squad5(), SPACING, AdmitAt(ROOM.center), AdmitAt)
+	local used, decoy = {}, Decoys(order, places)[1]
+	for i, place in ipairs(places) do
+		if i ~= decoy then
+			local stage = order:StagingOf(place)
+			T.eq(DoorOf(stage) ~= 3, true, "not at the enemy's: " .. i)
+			used[DoorOf(stage)] = true
+		end
+	end
+	T.eq(used[2] and used[4], true, "at the others")
+end)
+
+T.test("where the enemy comes in by every other entrance, the squad stages at them still", function()
+	local order = GroupIdentity.Assault(EnemyComes(FourDoors({ 2, 0, 0, 0 }), { 0, 1, 1, 1 }))
+	local places = order:Places(Squad5(), SPACING, AdmitAt(ROOM.center), AdmitAt)
+	local decoy = Decoys(order, places)[1]
+	for i, place in ipairs(places) do
+		if i ~= decoy then T.eq(order:StagingOf(place) ~= nil, true, "staged: " .. i) end
+	end
+end)
+
 T.test("the front is the entrance the most of the squad's flow comes in by", function()
 	local order = GroupIdentity.Assault(FourDoors({ 1, 3, 0, 0 }))
 	local places = order:Places(Squad5(), SPACING, AdmitAt(ROOM.center), AdmitAt)

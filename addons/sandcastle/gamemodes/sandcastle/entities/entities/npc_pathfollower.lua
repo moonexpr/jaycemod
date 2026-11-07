@@ -286,7 +286,14 @@ function ENT:NSTeam() return self.NSLaneTeam or WS.TEAM_UNASSIGNED end
 function ENT:NSSetTeam(team)
 	self.NSLaneTeam = team
 	WS.SetTeamMember(self, team ~= WS.TEAM_UNASSIGNED and team or nil)
+	WS.Feature("aiwar"):RelateToFactions(self, team)
 end
+
+-- Within this of a seat it rests on, it crouches there.
+local REST_REACH = 24
+-- On its legs it walks to within LEGS_REACH of a spot, inside the reach they count it there and past
+-- its path's end: the soldier's own tolerance would stop it short of its stack or its seat.
+local LEGS_REACH = math.min(GIB.STAGE_REACH, REST_REACH) * 3 / 4
 
 -- What drives it: "path", "legs" or "war" (above).
 local DRIVERS = { path = true, legs = true, war = true }
@@ -316,6 +323,9 @@ function ENT:NSSetDriver(driver)
 	end
 	self.NSTarget = nil
 	self.nsDriver = driver
+	-- on its bench it is no one's target, as it is no one's to hurt; on its legs or in the war, it is
+	self:SetNoTarget(self.NSToolManaged and driver == "path")
+	self.NSGoalTolerance = driver == "legs" and LEGS_REACH or nil
 	self:SetNW2String("NSProbeDriver", driver)
 	-- not started yet (spawned this tick), its start puts the driver's tree in
 	if self.nsStarted then
@@ -464,11 +474,23 @@ end
 -- this class's base (as DEFINE_BASECLASS does).
 local function Soldier() return baseclass.Get("base_nextsoldier") end
 
--- In the war, the base's intention: its looks, then its idle or fighting hooks, which the war's
--- orders answer. Driven by its bench or its legs, none: their actions run it
--- (nextsoldier.behavior.pathfollower, group_identity), and looking and attacking are not theirs.
+-- The base's intention: its looks, then its idle or fighting hooks, then its attack. In the war,
+-- the war's orders answer the hooks. On its legs, they walk it (NSLegsHeadFor steers), so the
+-- hooks only say its feet are taken and it fights where they take it, as L4D2's main tree fights
+-- while its legs walk. On its bench, none: an errand's probe neither looks nor fights.
 function ENT:IntentionUpdate(interval)
-	if self:NSDriver() == "war" then return Soldier().IntentionUpdate(self, interval) end
+	local driver = self:NSDriver()
+	if driver == "path" then return end
+	return Soldier().IntentionUpdate(self, interval)
+end
+
+local SoldierHooks = { OnIdle = ENT.OnIdle, OnChaseEnemy = ENT.OnChaseEnemy, OnAvoidEnemy = ENT.OnAvoidEnemy,
+	OnIdleEnemy = ENT.OnIdleEnemy }
+for name, hook in pairs(SoldierHooks) do
+	ENT[name] = function(self, enemy)
+		if self:NSDriver() == "legs" then return true end
+		return hook(self, enemy)
+	end
 end
 
 -- Started (the engine's BehaveStart, its first think): its driver's tree is put in, by the base.
@@ -611,9 +633,6 @@ function ENT:NSLegsSeats(place, radius)
 	end
 	return seats
 end
-
--- Within this of a seat it rests on, it crouches there.
-local REST_REACH = 24
 
 -- Where its squad's mode sends it, at the gait it says, its way there kept out of keepOut's nav areas
 -- (id -> true; nil for none): walked there, or, its feet held, its path planned and shown. At the

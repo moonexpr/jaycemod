@@ -158,11 +158,34 @@ T.test("one follower is driven by the stool's mode: its bench, its legs alone, o
 	T.eq(pathfollower:find("controller:Discharge(self)", 1, true) ~= nil, true, "and let go")
 end)
 
+T.test("a follower on its legs fights where they take it, as a soldier on the cart does", function()
+	T.eq(pathfollower:find('if driver == "path" then return end', 1, true) ~= nil, true,
+		"it looks and attacks unless on its bench")
+	T.eq(pathfollower:find('if self:NSDriver() == "legs" then return true end\n\t\treturn hook(self, enemy)', 1, true) ~= nil,
+		true, "its legs keep its feet: the intention's idle and fighting hooks leave them be")
+	T.eq(pathfollower:find("function ENT:NSSteer(enemy)\n\tlocal result = SoldierSteer(self, enemy)", 1, true) ~= nil, true,
+		"and its legs still walk it by the soldier's steering")
+	T.eq(pathfollower:find('self:SetNoTarget(self.NSToolManaged and driver == "path")', 1, true) ~= nil, true,
+		"only its bench keeps it out of sight, as only its bench keeps it unhurt")
+	T.eq(pathfollower:find('WS.Feature("aiwar"):RelateToFactions(self, team)', 1, true) ~= nil, true,
+		"its team's enemies are its own, as a soldier's are")
+end)
+
+T.test("a follower on its legs walks to within the legs' reach of its spot, not the soldier's tolerance", function()
+	T.eq(warSoldier:find("local tolerance = self.NSGoalTolerance or GOAL_TOLERANCE", 1, true) ~= nil, true,
+		"a soldier's goal tolerance may be its own")
+	T.eq(pathfollower:find('self.NSGoalTolerance = driver == "legs" and LEGS_REACH or nil', 1, true) ~= nil, true,
+		"its legs set theirs, and give it back")
+	T.eq(pathfollower:find("local LEGS_REACH = math.min(GIB.STAGE_REACH, REST_REACH) * 3 / 4", 1, true) ~= nil, true,
+		"within the reach its legs count as there")
+end)
+
 T.test("the path follower uses the combat soldier's path costs", function()
 	T.eq(pathfollower:find('WS.Feature("aiwar")', 1, true) ~= nil, true, "AI-war path cost provider")
 	T.eq(pathfollower:find("if not aiwar.war then return nil, aiwar end", 1, true) ~= nil, true, "cost provider without active war")
 	T.eq(pathfollower:find("aiwar:SoldierPathCost(team", 1, true) ~= nil, true, "shared soldier path cost")
-	T.eq(pathfollower:find("function ENT:OnComputePath", 1, true), nil, "inherits the combat soldier's link rule")
+	T.eq(pathfollower:find("return SoldierComputePath(self, from, to, ladder)", 1, true) ~= nil, true,
+		"keeps the combat soldier's link rule, past its legs' kept-out areas")
 end)
 
 T.test("a war's bot player steers as a NextSoldier does, on the shared steering", function()

@@ -188,20 +188,25 @@ function Controller:RoomForSquad(point, from, team)
 	end
 	local exits = {}
 	for i, door in ipairs(room.doors) do exits[i] = at(door.pos) end
-	-- each door with the team's flow into the room by it: its incursion routes and breaches
-	-- entering there (the classes' entrances, once found; none while they are not)
+	-- each door with the team's flow into the room by it, and the enemy's: their incursion routes
+	-- and breaches entering there (the classes' entrances, once found; none while they are not)
 	local entrances = {}
-	for i, door in ipairs(room.doors) do entrances[i] = { pos = exits[i], flow = 0 } end
+	for i, door in ipairs(room.doors) do entrances[i] = { pos = exits[i], flow = 0, enemyFlow = 0 } end
 	local classes = team and self:Classes()
-	for _, e in ipairs(classes and classes.entrances or {}) do
-		if e.room == room and e.team == TEAM_NAMES[team] then
-			local nearest
-			for _, entrance in ipairs(entrances) do
-				if not nearest or math.geometry.Distance2D(entrance.pos, e.via) < math.geometry.Distance2D(nearest.pos, e.via) then
-					nearest = entrance
+	if team then
+		local ourName = TEAM_NAMES[team]
+		local enemyName = TEAM_NAMES[Teams.EnemyOf(team)]
+		for _, e in ipairs(classes and classes.entrances or {}) do
+			if e.room == room and (e.team == ourName or e.team == enemyName) then
+				local nearest
+				for _, entrance in ipairs(entrances) do
+					if not nearest or math.geometry.Distance2D(entrance.pos, e.via) < math.geometry.Distance2D(nearest.pos, e.via) then
+						nearest = entrance
+					end
 				end
+				if e.team == ourName then nearest.flow = nearest.flow + e.paths end
+				if e.team == enemyName then nearest.enemyFlow = nearest.enemyFlow + e.paths end
 			end
-			nearest.flow = nearest.flow + e.paths
 		end
 	end
 	-- its own nav areas, which a squad staging round it keeps out of

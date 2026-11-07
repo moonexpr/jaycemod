@@ -239,6 +239,20 @@ marked at the bench's centre, rear, front, left and right
 (`NSRoomBench.Placements()`, into `.devtools/artifacts/maps/dev_3house_assault.png`). Like the war, it makes the forcefields
 passable: TF2's stop only players, and NextBots' movement takes them for walls.
 
+`.devtools/bin/dev_3house_trial.lua` puts the pieces together against a real
+enemy: five RED followers on their legs, armed, leave RED's spawn for the
+staging point and are given the assault on the bench; once the first stages,
+one BLU follower, armed, with five times a soldier's health, leaves BLU's spawn
+for the bench's middle and patrols it. Both fight as the base fights (no aim
+error, no reaction time: tf_bot_difficulty's EXPERT). A member lost before the
+leader's "Move in!" fails it; then the expert killed wins it, and a fall back
+or the squad killed loses it (`NSAssaultTrial.Start()`, `NSAssaultTrial.Report()`:
+the log of stages, sightings and kills, and the damage each dealt). A follower
+on its legs looks and fires as the war's soldiers do while they walk it, and
+walks to within `LEGS_REACH` of its spot, inside the reach they count it
+there. An assault keeps its stacks off the entrances the enemy's flow comes in by
+(`RoomForSquad`'s `enemyFlow`), where it would meet them on its way in.
+
 An order's places come a group at a time (a muster's rings, a fall back's
 rows), whole but for the last, of which it keeps the slots nearest the
 members' middle, so a ring partly filled faces the squad coming in. Each

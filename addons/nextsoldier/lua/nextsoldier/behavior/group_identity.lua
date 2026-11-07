@@ -564,7 +564,9 @@ end
 -- deepest first, paired with the stack in turn through the doorway, its front deepest. admitAt(around) -> the map's
 -- word on slots around a point, for the ground outside the entrance.
 -- The front, the entrance the most of the squad's flow comes in by (the nearest the squad's
--- approach, room.entry, where the flow ties), and the others; nil for a room with one entrance.
+-- approach, room.entry, where the flow ties), and the others the rest stage at: those the enemy's
+-- flow does not come in by (enemyFlow), where it would meet them on its way in, unless it comes in
+-- by all of them; nil for a room with one entrance.
 local function Fronts(room)
 	local entrances = room.entrances
 	if not entrances or #entrances < 2 then return nil end
@@ -576,11 +578,14 @@ local function Fronts(room)
 			front = e
 		end
 	end
-	local others = {}
+	local others, theirs = {}, {}
 	for _, e in ipairs(entrances) do
-		if e ~= front then others[#others + 1] = e.pos end
+		if e ~= front then
+			local into = (e.enemyFlow or 0) > 0 and theirs or others
+			into[#into + 1] = e.pos
+		end
 	end
-	return front.pos, others
+	return front.pos, #others > 0 and others or theirs
 end
 
 -- The way out of the room through entrance.
