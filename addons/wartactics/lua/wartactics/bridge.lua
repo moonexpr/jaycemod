@@ -23,13 +23,14 @@ Behaviors:Register({ name = "ScenarioMonitor", behavior = ScenarioMonitor })
 
 -- A squad's director on Overwatch's policy (wartactics.overwatch), for a mode to give its squads
 -- (nextsoldier.squad.interactions.director's Set): each request is answered at once over the radio,
--- from the squad's size and losses, the guards it has lost holding its place (each request one more),
+-- from the squad's size and losses, the guards it has lost holding its place (as many as the request
+-- reports, all told; else one more each request),
 -- whether it has met the enemy, and where to strike (opts.target(order), nil for nowhere known).
 function Overwatch(opts)
 	local missing = setmetatable({}, { __mode = "k" })
 	return {
-		Request = function(_, order)
-			missing[order] = (missing[order] or 0) + 1
+		Request = function(_, order, request)
+			missing[order] = request and request.missing or (missing[order] or 0) + 1
 			local decision = Policy.Decide({ size = order.size, lost = order.lost, missing = missing[order],
 				contact = order:Engaged(), target = opts.target(order) })
 			Director.Answer(order, decision.kind, decision)

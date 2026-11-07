@@ -242,6 +242,27 @@ T.test("contact while stacked up engages the squad where it stands", function()
 	T.eq(order:Signalled(), false, "not vacating")
 end)
 
+T.test("guards silent together are all missing, and the leader's request counts each lost", function()
+	local asked = {}
+	local order, squad = Squad()
+	Director.Set(order, { Request = function(_, _, request) asked[#asked + 1] = request end })
+	local leader, guards = squad[1], {}
+	for _, member in ipairs(squad) do
+		if member ~= leader then
+			member.action = Occupy.LegsGuard:New({ order = order, stop = #guards + 1 })
+			member.action:Update(member.me)
+			order:Ask(member.me, 0)
+			guards[#guards + 1] = member
+		end
+	end
+	order:Answered(guards[1].me, guards[1].me:NSLegsAt())
+	leader.me.now = Occupy.CHECK_TIMEOUT + 1
+	leader.orders:Update(leader.me)
+	T.eq(#F.Calls(leader.me, "LOST"), #guards - 1, "the director told of each")
+	leader.orders:Update(leader.me)
+	T.eq(asked[1] and asked[1].missing, #guards - 1, "each counted in the request")
+end)
+
 T.test("the tuning of an occupation is defined", function()
 	for _, name in ipairs({ "PATROL_OUT", "GUARD_SPAN", "PATROL_STOP", "CHECK_INTERVAL", "CHECK_TIMEOUT" }) do
 		T.defined(Occupy[name], name)

@@ -42,6 +42,17 @@ T.test("Overwatch answers a squad's request to vacate over its radio, its losses
 	T.eq(Director.Directive(order).kind, "DEFEND", "a second lost and nowhere to strike: lie in wait")
 end)
 
+T.test("Overwatch takes the guards the squad reports lost", function()
+	local Director = nextsoldier.squad.interactions.director
+	local order = nextsoldier.behavior.group_identity.Muster({ x = 0, y = 0, z = 0 })
+	order:Lead({})
+	order.size = 6
+	local target = { x = 5, y = 5, z = 0 }
+	Director.Set(order, Bridge.Overwatch({ target = function() return target end }))
+	Director.Request(order, { kind = "VACATE", missing = 2 })
+	T.eq(Director.Directive(order).kind, "ATTACK", "two lost at once: assault")
+end)
+
 T.test("Overwatch strikes where the mode says the enemy comes from", function()
 	local Director = nextsoldier.squad.interactions.director
 	local order = nextsoldier.behavior.group_identity.Muster({ x = 0, y = 0, z = 0 })

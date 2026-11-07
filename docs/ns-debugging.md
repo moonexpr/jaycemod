@@ -313,9 +313,12 @@ Overwatch's policy is the war's (`wartactics.overwatch`: an enemy met, defend in
 ambush; fewer than `VACATE_FLOOR` left, stand by; `ATTACK_AFTER` guards lost,
 attack where the enemy comes from, else defend; otherwise vacate), given to a
 squad through `wartactics.bridge.Overwatch{ target }`.
-`NSAssaultTrial.Start("occupy")` has six BLU occupy the bench with Overwatch as
-their director and silences a guard 40 s in; `"occupy_short"` has three, too few
-to leave, so Overwatch answers stand by.
+Guards silent together are all missing, each reported to the director, and the
+request counts every guard lost holding the place. `NSAssaultTrial.Start("occupy")`
+has six BLU occupy the bench with Overwatch as their director and silences a guard
+40 s in; `"occupy_short"` has three, too few to leave, so Overwatch answers stand
+by; `"occupy_attack"` silences two together with RED's spawn room where the enemy
+comes from, so Overwatch answers attack and the squad assaults it.
 
 Followers pass
 through each other (`COLLISION_GROUP_NPC_SCRIPTED`: a NextBot's movement asks the

@@ -16,6 +16,8 @@
 --            Overwatch answered: cleared, reached where the guard was last heard from; told to stand
 --            by, a relief on the missing guard's round; told to defend or attack, the order it brings
 --   occupy_short  the same with three BLU, too few to leave: Overwatch answers stand by
+--   occupy_attack the same, two guards silenced together and RED's spawn room where the enemy comes
+--            from: Overwatch answers attack, and the squad is given the assault on it
 --
 -- In each, RED's squad leaves its spawn for the staging point on the grass west of the bench, then
 -- is given the assault: it stages round the bench, hopping door to door out of its sight, and goes
@@ -40,6 +42,7 @@ local TRIALS = {
 	expert = { red = 5, blue = 1, health = 5, kit = RIFLE, blue_order = "patrol" },
 	occupy = { red = 0, blue = 6, health = 1, kit = KIT, blue_order = "occupy" },
 	occupy_short = { red = 0, blue = 3, health = 1, kit = KIT, blue_order = "occupy" },
+	occupy_attack = { red = 0, blue = 6, health = 1, kit = KIT, blue_order = "occupy", silence = 2, strike = "red_muster" },
 }
 -- The occupation: how long after it is given a guard is silenced, how long the squad has after to
 -- reach where it was last heard from, and how near that it has.
@@ -260,7 +263,9 @@ local function Occupation(now)
 		if not WS.Feature("aiwar"):Classes() then return end
 		local room = WS.Feature("aiwar"):RoomForSquad(Point(Named("bench_room")), Point(Named("blu_muster")), WS.TEAM_BLUE)
 		T.room, T.blueOrder, T.occupiedAt = room, Give(Occupations.Occupy(room), T.blue), now
-		Director.Set(T.blueOrder, wartactics.bridge.Overwatch({ target = function() return nil end }))
+		local strike = T.spec.strike and WS.Feature("aiwar"):RoomForSquad(Point(Named(T.spec.strike)), Point(Named("bench_room")),
+			WS.TEAM_BLUE)
+		Director.Set(T.blueOrder, wartactics.bridge.Overwatch({ target = function() return strike end }))
 		local guards = 0
 		for _, member in ipairs(T.blue) do
 			if T.blueOrder:PatrolOf(member:NSLegsPlace()) then guards = guards + 1 end
@@ -270,12 +275,12 @@ local function Occupation(now)
 	end
 	Calls(order, "blue")
 	if not T.silenced and now - T.occupiedAt >= SILENCE_AFTER then
+		local silenced = 0
 		for i, member in ipairs(T.blue) do
-			if IsValid(member) and member:Health() > 0 and order:PatrolOf(member:NSLegsPlace()) then
-				T.silenced = member
+			if silenced < (T.spec.silence or 1) and IsValid(member) and member:Health() > 0 and order:PatrolOf(member:NSLegsPlace()) then
+				T.silenced, silenced = member, silenced + 1
 				Log(string.format("blue %d silenced at %.0f,%.0f", i, member:GetPos().x, member:GetPos().y))
 				member:TakeDamage(10000)
-				break
 			end
 		end
 	end
@@ -299,7 +304,7 @@ local function Occupation(now)
 			end
 		end
 	elseif directive and (directive.kind == "DEFEND" or directive.kind == "ATTACK") and order.alarm then
-		local given = directive.kind == "DEFEND" and Ambushes.Ambush(T.room) or Legs.Assault(T.room)
+		local given = directive.kind == "DEFEND" and Ambushes.Ambush(T.room) or Legs.Assault(directive.target)
 		T.blueOrder = Give(given, Living(T.blue))
 		return Finish("passed: Overwatch's " .. directive.kind .. " given as " .. given.kind)
 	end

@@ -103,7 +103,8 @@ end
 function Hold:Miss(member)
 	local guard = self.guards[member]
 	self.guards[member] = nil
-	self.missing = { member = member, heard = guard.heard, stop = guard.stop }
+	self.lostGuards = (self.lostGuards or 0) + 1
+	self.missing = self.missing or { member = member, heard = guard.heard, stop = guard.stop }
 end
 
 function Hold:Ask(member, now) self.guards[member].asked = now end
@@ -200,7 +201,7 @@ end
 local function Clearance(order, me, now)
 	if not Director.Requested(order) then
 		Legs.Speak(me, order, Radio.DIRECTOR, "REQUEST_VACATE")
-		Director.Request(order, { kind = "VACATE", at = order.alarm.at })
+		Director.Request(order, { kind = "VACATE", at = order.alarm.at, missing = order.lostGuards })
 	end
 	local directive = Director.Directive(order)
 	if not directive then return end
@@ -236,11 +237,16 @@ function LegsOccupy:Update(me)
 				Legs.Speak(me, order, guard, "STATUS")
 			end
 		end
-		local missing = order:Silent(now, CHECK_TIMEOUT)
-		if missing then
-			local heard = order:LastHeard(missing)
-			Legs.Speak(me, order, Radio.DIRECTOR, "LOST", me:NSLegsNameOf(missing))
-			order:Miss(missing)
+		-- every guard silent now is missing, each told of; the alarm where the first was last heard
+		local first = order:Silent(now, CHECK_TIMEOUT)
+		if first then
+			local heard = order:LastHeard(first)
+			local missing = first
+			while missing do
+				Legs.Speak(me, order, Radio.DIRECTOR, "LOST", me:NSLegsNameOf(missing))
+				order:Miss(missing)
+				missing = order:Silent(now, CHECK_TIMEOUT)
+			end
 			order:Alarm(heard, order.spacing, me:NSLegsAdmit(order.point))
 			Legs.Speak(me, order, Radio.SQUAD, "STACK_UP")
 		end
