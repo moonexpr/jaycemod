@@ -14,14 +14,16 @@
 -- An assault comes first: under LegsAssault each member stages (LegsStage) at its place in the
 -- stack around the entrance, out of the room's sight, and waits there ready; its leader signals
 -- (SIGNAL_LINE) once all are staged, or STACK_PATIENCE after it is; then each goes in (LegsEnter),
--- running for its place in the room, and there runs its squad's mode's action.
+-- running for its assault point, and holds it (LegsClear) until the room is clear (CLEAR_LINE),
+-- then runs its squad's mode's action about its place in the room.
 --
 -- A member on orders is told them by NSLegsOrder(), senses its group by NSLegsSense() each
 -- update, and heads where its action says by NSLegsHeadFor(spot, gait). Its place is
 -- NSLegsPlace(), where it stands NSLegsAt(), its clock Now(), its draws NSLegsDraw() (0 to 1),
 -- NSLegsAdmit(around) the map's word on a spot near around, as Places takes it,
 -- NSLegsSeats(place, radius) the spots near its place it could rest at, NSLegsDanger(point) a
--- danger near point its squad should leave (nil for none), and NSLegsSay(line) what it calls out.
+-- danger near point its squad should leave (nil for none), NSLegsContact() whether it is fighting
+-- an enemy now, and NSLegsSay(line) what it calls out.
 local Action = nextsoldier.behavior.action
 local GroupIdentity = nextsoldier.behavior.group_identity
 local Enum = core.enum
@@ -54,6 +56,10 @@ FALL_BACK_LINE = "Fall back!"
 -- in the room a member going in has arrived.
 STAGE_REACH, STACK_PATIENCE, ENTER_REACH = 24, 10, 48
 SIGNAL_LINE = "Move in!"
+-- Going in: the room is clear once every member holds its assault point and none has met the
+-- enemy for CLEAR_GRACE; its leader calls it so.
+CLEAR_GRACE = 5
+CLEAR_LINE = "Room clear!"
 -- How many spots a member draws before it keeps to its place.
 local TRIES = 6
 
@@ -73,6 +79,7 @@ LegsRegroup = Action.Extend("LegsRegroup")
 LegsAssault = Action.Extend("LegsAssault")
 LegsStage = Action.Extend("LegsStage")
 LegsEnter = Action.Extend("LegsEnter")
+LegsClear = Action.Extend("LegsClear")
 
 local ORDER_ACTIONS = { Muster = LegsMuster, FallBack = LegsFallBack, Assault = LegsAssault }
 
@@ -156,15 +163,36 @@ function LegsStage:Update(me)
 	return self:Continue()
 end
 
--- Into the room, running for its place; there, its squad's mode's.
+-- Into the room, running for its assault point, and there holding it until the room is clear;
+-- with no point, straight for its place and its squad's mode's.
 function LegsEnter:Update(me)
 	local order = self.order
 	if me:NSLegsOrder() ~= order then return self:Continue() end
 	local place = me:NSLegsPlace()
-	if not place or Geometry.Distance2D(me:NSLegsAt(), place) <= ENTER_REACH then
-		return self:ChangeTo(ModeAction(self), "In")
+	local point = place and order:BreachOf(place)
+	local goal = point or place
+	if not goal or Geometry.Distance2D(me:NSLegsAt(), goal) <= ENTER_REACH then
+		if not point then return self:ChangeTo(ModeAction(self), "In") end
+		order:Breached(me, me:Now())
+		return self:ChangeTo(LegsClear:New({ order = order, point = point }), "On its point")
 	end
-	me:NSLegsHeadFor(place, GAIT.RUN)
+	me:NSLegsHeadFor(goal, GAIT.RUN)
+	return self:Continue()
+end
+
+-- On its assault point, ready, telling of any enemy met, until every member holds its own and
+-- none has met one for CLEAR_GRACE: then the leader calls the room clear, and each goes on to its
+-- squad's mode's.
+function LegsClear:Update(me)
+	local order = self.order
+	if me:NSLegsOrder() ~= order then return self:Continue() end
+	local now = me:Now()
+	if me:NSLegsContact() then order:Contact(now) end
+	if order:AllBreached() and now - order:QuietSince() >= CLEAR_GRACE then
+		if order.leader == me and order:CallClear() then me:NSLegsSay(CLEAR_LINE) end
+		return self:ChangeTo(ModeAction(self), "Clear")
+	end
+	me:NSLegsHeadFor(self.point, GAIT.REST)
 	return self:Continue()
 end
 

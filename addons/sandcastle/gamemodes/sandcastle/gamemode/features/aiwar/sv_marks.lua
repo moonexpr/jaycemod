@@ -109,11 +109,18 @@ end
 -- its walls, at a standing eye's height; a point is seen when a line from any of them to its own
 -- eye height meets no wall (glass and other breakables are seen through).
 local EYES, ROOM_EYES_INSET, EYE_HEIGHT = 3, 48, Vector(0, 0, 64)
+-- What a point in a room is worth to fight from: the share of the room's other ways in (its doors
+-- and windows but the one the squad comes by) a standing eye there sees, weighed THREAT_WEIGHT;
+-- the share of a FLOOR_SAMPLES-square lattice over its floor it sees; and the share of COVER_RAYS
+-- directions in which a wall stands within COVER_REACH at the chest, weighed COVER_WEIGHT.
+local THREAT_WEIGHT, COVER_WEIGHT = 2, 0.5
+local FLOOR_SAMPLES, COVER_RAYS, COVER_REACH, CHEST = 5, 8, 64, Vector(0, 0, 40)
 
 -- The room at point as a squad's assault takes it (the legs' Assault): its block and middle, the
--- doorway nearest from it comes in by, and what it sees; nil where the map's rooms are not found,
+-- doorway nearest from it comes in by, what it sees, what a point in it is worth to fight from, and,
+-- given the squad's team, the enemy that team has marked in it nearest its middle (an ENEMY mark); nil where the map's rooms are not found,
 -- none is there, or it has no door.
-function Controller:RoomToAssault(point, from)
+function Controller:RoomToAssault(point, from, team)
 	local area = navmesh.GetNearestNavArea(Vector(point.x, point.y, point.z))
 	local room = self.rooms and IsValid(area) and Rooms.RoomOf(self.rooms, area:GetID())
 	if not (room and room.doors and room.doors[1]) then return nil end
@@ -137,8 +144,47 @@ function Controller:RoomToAssault(point, from)
 		end
 		return false
 	end
+	local threats = {}
+	for _, door in ipairs(room.doors) do
+		if door.pos ~= entry.pos then threats[#threats + 1] = Vector(door.pos.x, door.pos.y, door.pos.z) + EYE_HEIGHT end
+	end
+	for _, window in ipairs(room.windows or {}) do threats[#threats + 1] = Vector(window.pos.x, window.pos.y, window.pos.z) end
+	local floor = {}
+	for i = 0, FLOOR_SAMPLES - 1 do
+		for j = 0, FLOOR_SAMPLES - 1 do
+			local t, u = (i + 0.5) / FLOOR_SAMPLES, (j + 0.5) / FLOOR_SAMPLES
+			floor[#floor + 1] = Vector(room.lo.x + (room.hi.x - room.lo.x) * t, room.lo.y + (room.hi.y - room.lo.y) * u, room.center.z) + EYE_HEIGHT
+		end
+	end
+	local function Sees(from, targets)
+		if #targets == 0 then return 0 end
+		local seen = 0
+		for _, target in ipairs(targets) do
+			if not util.TraceLine({ start = from, endpos = target, mask = MASK_SOLID_BRUSHONLY }).Hit then seen = seen + 1 end
+		end
+		return seen / #targets
+	end
+	local function Score(p)
+		local eye, chest = Vector(p.x, p.y, p.z) + EYE_HEIGHT, Vector(p.x, p.y, p.z) + CHEST
+		local walls = 0
+		for k = 0, COVER_RAYS - 1 do
+			local angle = k / COVER_RAYS * 2 * math.pi
+			local reach = chest + Vector(math.cos(angle), math.sin(angle), 0) * COVER_REACH
+			if util.TraceLine({ start = chest, endpos = reach, mask = MASK_SOLID_BRUSHONLY }).Hit then walls = walls + 1 end
+		end
+		return THREAT_WEIGHT * Sees(eye, threats) + Sees(eye, floor) + COVER_WEIGHT * walls / COVER_RAYS
+	end
 	local at = function(p) return { x = p.x, y = p.y, z = p.z } end
-	return { center = at(room.center), lo = at(room.lo), hi = at(room.hi), entry = at(entry.pos), seen = Seen }
+	local enemy
+	for _, mark in ipairs(team and self:MarksOf():Of(team, Marks.ENEMY) or {}) do
+		local p = mark.pos
+		if p.x >= room.lo.x and p.x <= room.hi.x and p.y >= room.lo.y and p.y <= room.hi.y
+			and (not enemy or math.geometry.Distance2D(p, room.center) < math.geometry.Distance2D(enemy, room.center)) then
+			enemy = p
+		end
+	end
+	return { center = at(room.center), lo = at(room.lo), hi = at(room.hi), entry = at(entry.pos), seen = Seen, score = Score,
+		enemy = enemy and at(enemy) }
 end
 
 -- The doors of the room at point, as the ways out a panicked squad makes for (the legs'

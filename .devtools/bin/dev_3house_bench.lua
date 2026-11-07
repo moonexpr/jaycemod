@@ -9,7 +9,9 @@
 --              own, spaced apart, its walk there crossing no other's, resting there, in the room
 --   mobilize   out through RED's shutter to the staging point on the grass west of the bench
 --   assault    from the staging point: staged around the bench's west door out of its sight, none
---              in before the leader's signal, then in, each at its place, spread over the room
+--              in before the leader's signal, then in, each to its assault point (off the line in
+--              through the door, sides alternating in turn), held until the leader calls the room
+--              clear, then each at its place, spread over the room
 --   hold       in the bench, alert: patrolling, none leaving the room
 --   evacuate   in the bench, a danger marked at its east side (the war's DANGER mark, as the
 --              Path Follower stool's Annotate places it): the leader calls the fall back, all
@@ -203,13 +205,44 @@ end
 
 local function Resting(member) return member.NSStance ~= nil, "not resting at its place" end
 
+-- The assault points planned, as failures: one without, one on the line in through the doorway,
+-- two in turn on the same side of it.
+local function AssaultPoints()
+	local failures, order, room = {}, B.order, B.room
+	local into = math.geometry.Normalize2D(math.geometry.Sub(room.center, room.entry))
+	local left = math.geometry.Left2D(into)
+	local turn = {}
+	for i in ipairs(B.places) do turn[i] = i end
+	local function Stage(i) return order:StagingOf(B.places[i]) or B.starts[i] end
+	local Depth = function(i) return math.geometry.Distance2D(Stage(i), room.entry) end
+	table.sort(turn, function(a, b) return Depth(a) < Depth(b) end)
+	local last
+	for k, i in ipairs(turn) do
+		local point = order:BreachOf(B.places[i])
+		if not point then
+			failures[#failures + 1] = string.format("member %d: no assault point", i)
+		else
+			local across = (point.x - room.entry.x) * left.x + (point.y - room.entry.y) * left.y
+			if math.abs(across) < Legs.BREACH_FUNNEL - PLACE_SLACK then
+				failures[#failures + 1] = string.format("member %d: its point on the line in through the door", i)
+			end
+			local side = across > 0 and 1 or -1
+			if last and side == last then
+				failures[#failures + 1] = string.format("member %d, %d in turn: on the same side as the one before", i, k)
+			end
+			last = side
+		end
+	end
+	return failures
+end
+
 -- How often an assault is watched: who is in the room before the signal, and who the room sees
 -- while staged.
 local WATCH_EVERY = 0.25
 
 -- Watches the assault on room from now until its check: B.watch holds what it found.
 local function WatchAssault(room, run)
-	local watch = { early = {}, seen = {} }
+	local watch = { early = {}, seen = {}, held = {} }
 	B.watch = watch
 	local name = "dev_3house_bench_assault"
 	timer.Create(name, WATCH_EVERY, 0, function()
@@ -217,6 +250,9 @@ local function WatchAssault(room, run)
 		local order = B.order
 		if order:Signalled() then
 			if not watch.signalledAt then watch.signalledAt = CurTime() end
+			for i, member in ipairs(B.members) do
+				if IsValid(member) and Stack(member):find("LegsClear", 1, true) then watch.held[i] = true end
+			end
 			return
 		end
 		for i, member in ipairs(B.members) do
@@ -284,7 +320,7 @@ B.STAGES = {
 	},
 	{
 		name = "assault",
-		seconds = 25,
+		seconds = 35,
 		setup = function() Spawn(Around(Staging(), SIZE, 72)) end,
 		act = function(run)
 			local room = WS.Feature("aiwar"):RoomToAssault(Point(Named("bench_room")), Point(Staging()))
@@ -301,10 +337,16 @@ B.STAGES = {
 			for i in pairs(watch.early) do failures[#failures + 1] = string.format("member %d: in before the signal", i) end
 			for i in pairs(watch.seen) do failures[#failures + 1] = string.format("member %d: staged in the room's sight", i) end
 			for _, failure in ipairs(Placement(true)) do failures[#failures + 1] = failure end
+			for _, failure in ipairs(AssaultPoints()) do failures[#failures + 1] = failure end
+			for i in ipairs(B.places) do
+				if not watch.held[i] then failures[#failures + 1] = string.format("member %d: never held its assault point", i) end
+			end
+			if not B.order.cleared then failures[#failures + 1] = "the leader never called the room clear" end
 			for i, place in ipairs(B.places) do
-				local stage = B.order:StagingOf(place)
-				lines[i] = lines[i] .. string.format(" | staged %s placed %.0f,%.0f",
-					stage and string.format("%.0f,%.0f", stage.x, stage.y) or "none", place.x, place.y)
+				local stage, point = B.order:StagingOf(place), B.order:BreachOf(place)
+				lines[i] = lines[i] .. string.format(" | staged %s point %s placed %.0f,%.0f",
+					stage and string.format("%.0f,%.0f", stage.x, stage.y) or "none",
+					point and string.format("%.0f,%.0f", point.x, point.y) or "none", place.x, place.y)
 			end
 			return Verdict(lines, failures)
 		end,
@@ -457,6 +499,60 @@ function B.Show(name)
 	for _, failure in ipairs(result.failures or {}) do lines[#lines + 1] = "  " .. failure end
 	for _, member in ipairs(result.members or {}) do lines[#lines + 1] = "  " .. member end
 	return table.concat(lines, "\n")
+end
+
+-- Where an enemy is marked for Placements, about the bench's middle, the squad coming in from
+-- the west: its centre, rear (east), front (by the west door), left (north) and right (south).
+local ENEMY_AT = {
+	{ "center", Vector(0, 0, 0) }, { "rear", Vector(300, 0, 0) }, { "front", Vector(-260, 0, 0) },
+	{ "left", Vector(0, 300, 0) }, { "right", Vector(0, -300, 0) },
+}
+
+-- An assault's placements on the bench, planned for an enemy marked at each of ENEMY_AT, no one
+-- moving: JSON for .devtools/bin/assault_view.py, which draws them. Each case: the room (block,
+-- entry, doors, windows), the enemy and the ring round it, and each member's start, its place in
+-- the stack, its assault point and its place in the room.
+function B.Placements()
+	if game.GetMap() ~= "dev_3house" then error("the bench runs on dev_3house, not " .. game.GetMap(), 2) end
+	local controller = WS.Feature("aiwar")
+	if not controller.rooms then controller:FindRoomsNow() end
+	local middle, staging = Named("bench_room"), Staging()
+	local starts = Around(staging, SIZE, 72)
+	local probe = ents.Create("npc_pathfollower")
+	probe.NSToolManaged = true
+	probe:SetPos(staging)
+	probe:Spawn()
+	local function P(v) return { x = v.x, y = v.y } end
+	local cases = {}
+	for _, at in ipairs(ENEMY_AT) do
+		local enemy = Ground(middle + at[2])
+		controller:Mark("enemy", WS.TEAM_RED, Point(enemy))
+		local ok, why = pcall(function()
+			local room = controller:RoomToAssault(Point(middle), Point(staging), WS.TEAM_RED)
+			local order = Legs.Assault(room)
+			local positions = {}
+			for i, start in ipairs(starts) do positions[i] = Point(start) end
+			local places = order:Places(positions, nextsoldier.engine.GroupSpacing(), probe:NSLegsAdmit(middle),
+				function(around) return probe:NSLegsAdmit(around) end)
+			local case = { name = at[1], lo = P(room.lo), hi = P(room.hi), entry = P(room.entry),
+				enemy = room.enemy and P(room.enemy), ring = Legs.ENCIRCLE_RADIUS, band = Legs.ENCIRCLE_BAND, members = {} }
+			for i, start in ipairs(positions) do
+				local place = places[i]
+				case.members[i] = { start = P(start), stage = place and order:StagingOf(place) and P(order:StagingOf(place)),
+					point = place and order:BreachOf(place) and P(order:BreachOf(place)), place = place and P(place) }
+			end
+			cases[#cases + 1] = case
+		end)
+		controller:Unmark(enemy, DANGER_UNMARK)
+		if not ok then probe:Remove() error(why, 0) end
+	end
+	probe:Remove()
+	local area = navmesh.GetNearestNavArea(middle)
+	local room = Rooms.RoomOf(controller.rooms, area:GetID())
+	local doors, windows = {}, {}
+	for i, door in ipairs(room.doors) do doors[i] = P(door.pos) end
+	for i, window in ipairs(room.windows or {}) do windows[i] = P(window.pos) end
+	return util.TableToJSON({ map = game.GetMap(), doors = doors, windows = windows, cases = cases })
 end
 
 B.Clear = Clear

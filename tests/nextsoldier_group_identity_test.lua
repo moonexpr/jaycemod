@@ -190,8 +190,12 @@ local function Seen(p)
 	return math.abs(p.y) < DOOR_HALF + out * SLANT
 end
 
+-- What a point in the room is worth to fight from: in the test, the nearer the east wall's
+-- middle (a door the enemy would come by), the more.
+local function Score(p) return -math.sqrt((p.x - 400) ^ 2 + p.y ^ 2) end
+
 local ROOM = { center = { x = 0, y = 0, z = 0 }, lo = { x = -400, y = -400, z = 0 }, hi = { x = 400, y = 400, z = 0 },
-	entry = { x = -400, y = 0, z = 0 }, seen = Seen }
+	entry = { x = -400, y = 0, z = 0 }, seen = Seen, score = Score }
 
 local function Inside(p) return p.x > ROOM.lo.x and p.x < ROOM.hi.x and p.y > ROOM.lo.y and p.y < ROOM.hi.y end
 
@@ -215,7 +219,8 @@ local function Assaulting()
 end
 
 T.test("the tuning of an assault is defined", function()
-	for _, name in ipairs({ "ROOM_INSET", "STACK_REACH", "STACK_COVER" }) do T.defined(GroupIdentity[name], name) end
+	for _, name in ipairs({ "ROOM_INSET", "STACK_REACH", "STACK_COVER", "BREACH_REACH", "BREACH_FUNNEL", "ENCIRCLE_RADIUS",
+		"ENCIRCLE_BAND", "ENCIRCLE_MIN" }) do T.defined(GroupIdentity[name], name) end
 end)
 
 T.test("an assault fills its room: each a place inside, spread over the floor, none at the door", function()
@@ -250,9 +255,122 @@ T.test("an assault stages its squad around the entrance, outside and hidden from
 	HeldApart(staged, SPACING)
 end)
 
-T.test("an assault on a room with no word on what it sees is refused", function()
-	local blind = { center = ROOM.center, lo = ROOM.lo, hi = ROOM.hi, entry = ROOM.entry }
-	T.eq(pcall(GroupIdentity.Assault, blind), false, "refused")
+T.test("an assault on a room with no word on what it sees, or on what a point is worth, is refused", function()
+	local blind = { center = ROOM.center, lo = ROOM.lo, hi = ROOM.hi, entry = ROOM.entry, score = Score }
+	T.eq(pcall(GroupIdentity.Assault, blind), false, "no seen")
+	local unscored = { center = ROOM.center, lo = ROOM.lo, hi = ROOM.hi, entry = ROOM.entry, seen = Seen }
+	T.eq(pcall(GroupIdentity.Assault, unscored), false, "no score")
+end)
+
+-- The side of the line in through the doorway a point is on: 1 left (north), -1 right, 0 on it.
+local function SideOf(p)
+	if math.abs(p.y - ROOM.entry.y) < GroupIdentity.BREACH_FUNNEL then return 0 end
+	return p.y > ROOM.entry.y and 1 or -1
+end
+
+T.test("going in, each member takes an assault point by the entrance, off the line in, apart", function()
+	local order, _, places = Assaulting()
+	local points = {}
+	for i, place in ipairs(places) do
+		local point = order:BreachOf(place)
+		T.eq(point ~= nil, true, "a point: " .. i)
+		T.eq(Inside(point), true, "inside: " .. i)
+		T.eq(Distance2D(point, ROOM.entry) <= GroupIdentity.BREACH_REACH + 0.001, true, "by the entrance: " .. i)
+		T.eq(SideOf(point) ~= 0, true, "off the line in through the doorway: " .. i)
+		points[i] = point
+	end
+	HeldApart(points, SPACING)
+end)
+
+T.test("the front of the stack takes the best point; then they fan out, alternating sides", function()
+	local order, _, places = Assaulting()
+	local ranked = {}
+	for i, place in ipairs(places) do ranked[i] = i end
+	table.sort(ranked, function(a, b)
+		return Distance2D(order:StagingOf(places[a]), ROOM.entry) < Distance2D(order:StagingOf(places[b]), ROOM.entry)
+	end)
+	local best
+	for _, place in ipairs(places) do
+		local point = order:BreachOf(place)
+		if not best or Score(point) > best then best = Score(point) end
+	end
+	T.eq(Score(order:BreachOf(places[ranked[1]])), best, "the front's is the best")
+	for k = 2, #ranked do
+		T.eq(SideOf(order:BreachOf(places[ranked[k]])) ~= SideOf(order:BreachOf(places[ranked[k - 1]])), true,
+			"in turn, the other side: " .. k)
+	end
+end)
+
+-- An enemy marked in the room where the squad comes in from the west: at its centre, its rear
+-- (east), its front (west, by the door), its left (north) and its right (south).
+local ENEMIES = {
+	center = { x = 0, y = 0, z = 0 }, rear = { x = 300, y = 0, z = 0 }, front = { x = -260, y = 0, z = 0 },
+	left = { x = 0, y = 300, z = 0 }, right = { x = 0, y = -300, z = 0 },
+}
+
+-- The widest gap in angle round enemy between the points, in radians.
+local function WidestGap(enemy, points)
+	local angles = {}
+	for i, p in ipairs(points) do angles[i] = math.atan2(p.y - enemy.y, p.x - enemy.x) end
+	table.sort(angles)
+	local widest = angles[1] + 2 * math.pi - angles[#angles]
+	for i = 2, #angles do widest = math.max(widest, angles[i] - angles[i - 1]) end
+	return widest
+end
+
+-- The room cut to `half` each way about its middle (dev_3house's bench is 375), its door where it was.
+local function Cut(half)
+	local room = {}
+	for k, v in pairs(ROOM) do room[k] = v end
+	room.lo, room.hi = { x = -half, y = -half, z = 0 }, { x = half, y = half, z = 0 }
+	return room
+end
+
+for _, half in ipairs({ 400, 375 }) do for where, enemy in pairs(ENEMIES) do
+	T.test("with an enemy marked at the " .. where .. " of a room " .. 2 * half .. " square, the assault points encircle it", function()
+		local room = Cut(half)
+		room.enemy = enemy
+		local order = GroupIdentity.Assault(room)
+		local places = order:Places(Squad5(), SPACING, AdmitAt(ROOM.center), AdmitAt)
+		local points = {}
+		for i, place in ipairs(places) do
+			local point = order:BreachOf(place)
+			T.eq(point ~= nil, true, "a point: " .. i)
+			T.eq(Inside(point), true, "in the room: " .. i)
+			local d = Distance2D(point, enemy)
+			T.eq(d >= GroupIdentity.ENCIRCLE_MIN - GroupIdentity.ENCIRCLE_BAND - 0.001
+				and d <= GroupIdentity.ENCIRCLE_RADIUS + GroupIdentity.ENCIRCLE_BAND + 0.001, true, "on a ring round it: " .. i .. " at " .. d)
+			points[i] = point
+		end
+		HeldApart(points, SPACING)
+		T.eq(WidestGap(enemy, points) < math.pi, true, "all round it, no half of the ring empty: " .. WidestGap(enemy, points))
+	end)
+end end
+
+T.test("encircling, the front of the stack goes the furthest round", function()
+	local room = {}
+	for k, v in pairs(ROOM) do room[k] = v end
+	room.enemy = ENEMIES.center
+	local order = GroupIdentity.Assault(room)
+	local places = order:Places(Squad5(), SPACING, AdmitAt(ROOM.center), AdmitAt)
+	local front, furthest
+	for i, place in ipairs(places) do
+		if not front or Distance2D(order:StagingOf(place), ROOM.entry) < Distance2D(order:StagingOf(places[front]), ROOM.entry) then front = i end
+		if not furthest or Distance2D(order:BreachOf(place), ROOM.entry) > Distance2D(order:BreachOf(places[furthest]), ROOM.entry) then furthest = i end
+	end
+	T.eq(front, furthest, "the front")
+end)
+
+T.test("going in, the room is clear once all the living hold their points and none has met the enemy since", function()
+	local order = Assaulting()
+	T.eq(order:AllBreached(), false, "none in")
+	for i = 1, 4 do order:Breached("m" .. i, i) end
+	T.eq(order:AllBreached(), false, "four of five")
+	order:Casualty("m5")
+	T.eq(order:AllBreached(), true, "all the living")
+	T.eq(order:QuietSince(), 4, "since the last went in")
+	order:Contact(9)
+	T.eq(order:QuietSince(), 9, "since the last contact")
 end)
 
 T.test("the member at the front of the stack, nearest the door, goes deepest", function()

@@ -136,8 +136,14 @@ Right-click gives the selected members the panel's order at the aim:
 way from you, the threat) or **Assault** (the room at the aim, found by the
 war's rooms: the squad stages around the door nearest it, out of the room's
 sight, and goes in on its leader's "Move in!", given once all are staged or
-`STACK_PATIENCE` after it is, each running to its place in the room, the room
-filled deepest first, the front of the stack deepest). Reload dissolves them.
+`STACK_PATIENCE` after it is). Going in, each runs to an assault point: with no
+enemy known, the floor's best by the entrance, off the line in through the
+door, the front of the stack first, the rest alternating sides; with an enemy
+marked in the room (Annotate's **enemy**, the squad's team), a ring round it,
+drawn in where the walls leave too little of it, the points spread over all
+the arc the floor covers. Each holds its point until all do and none has met
+the enemy for `CLEAR_GRACE`; its leader calls "Room clear!" and each goes on to
+its place in the room, filled deepest first. Reload dissolves them.
 Each member's place shows as a cross, green for muster, orange for fall back
 and violet for an assault, and its way there as its path; a member staging
 heads for its place in the stack, the white ring. A
@@ -212,7 +218,10 @@ BLU's side), rout (three of five killed) and remuster. Each stage sets up its
 own start, so any one runs alone (`NSRoomBench.Run("evacuate")`) or all in turn
 (`RunAll`; a run started ends one still going), and checks its result as data
 (`NSRoomBench.Report()`, or one stage in full, passed or not,
-`NSRoomBench.Show("muster")`). Like the war, it makes the forcefields
+`NSRoomBench.Show("muster")`). `.devtools/bin/assault_view.py` draws an
+assault's placements and paths from above, with no one moving, for an enemy
+marked at the bench's centre, rear, front, left and right
+(`NSRoomBench.Placements()`, into `.devtools/artifacts/maps/dev_3house_assault.png`). Like the war, it makes the forcefields
 passable: TF2's stop only players, and NextBots' movement takes them for walls.
 
 An order's places come a group at a time (a muster's rings, a fall back's

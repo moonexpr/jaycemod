@@ -8,12 +8,13 @@ local MODE, GAIT = GroupIdentity.MODE, GIB.GAIT
 
 for _, name in ipairs({ "PATROL_RADIUS", "PATROL_REST", "WANDER_RADIUS", "WANDER_REST", "EVACUATE_DISTANCE",
 	"REST_RADIUS", "EXIT_CLEARANCE", "STAY_CLOSE_RANGE", "STAY_CLOSE_RADIUS", "REGROUP_RANGE", "REGROUP_NEAR",
-	"STACK_PATIENCE", "STAGE_REACH", "ENTER_REACH" }) do
+	"STACK_PATIENCE", "STAGE_REACH", "ENTER_REACH", "CLEAR_GRACE" }) do
 	T.defined(GIB[name], name)
 end
 
 T.eq(type(GIB.FALL_BACK_LINE), "string", "the line its leader calls")
 T.eq(type(GIB.SIGNAL_LINE), "string", "the line its leader signals an assault in by")
+T.eq(type(GIB.CLEAR_LINE), "string", "the line its leader calls a room clear by")
 
 local function Distance(a, b) return math.sqrt((a.x - b.x) ^ 2 + (a.y - b.y) ^ 2) end
 
@@ -39,6 +40,7 @@ local function Member(order, place)
 	function me:NSLegsHeadFor(spot, gait) self.headed, self.spot, self.gait = self.headed + 1, spot, gait end
 	function me:NSLegsSay(line) self.said[#self.said + 1] = line end
 	function me:NSLegsDanger() return self.danger end
+	function me:NSLegsContact() return self.contact == true end
 	return me
 end
 
@@ -392,7 +394,7 @@ end)
 -- see it, told its place in the room.
 local function Assault()
 	local room = { center = { x = 0, y = 0, z = 0 }, lo = { x = -400, y = -400, z = 0 }, hi = { x = 400, y = 400, z = 0 },
-		entry = { x = -400, y = 0, z = 0 }, seen = function(p) return p.x > -432 end }
+		entry = { x = -400, y = 0, z = 0 }, seen = function(p) return p.x > -432 end, score = function(p) return p.x end }
 	local order = GroupIdentity.Assault(room)
 	local at = {}
 	for i = 1, 4 do at[i] = { x = -700, y = -120 + i * 60, z = 0 } end
@@ -439,17 +441,77 @@ T.test("staged, a member waits for the signal, then goes in", function()
 	T.eq(result.action.name, "LegsEnter", "in")
 end)
 
-T.test("going in, a member runs for its place in the room, and there does what its squad's mode says", function()
+T.test("going in, a member runs for its assault point, and there holds it", function()
 	local order, squad = Assault()
 	local me = squad[3].me
+	local point = order:BreachOf(me.place)
 	local enter = GIB.LegsEnter:New({ order = order })
 	T.eq(enter:Update(me).type, Action.CONTINUE, "on its way")
-	T.eq(me.spot, me.place, "for its place")
+	T.eq(me.spot, point, "for its assault point, not its place")
 	T.eq(me.gait, GAIT.RUN, "running")
-	me.at = me.place
+	me.at, me.now = point, 7
 	local result = enter:Update(me)
 	T.eq(result.type, Action.CHANGE_TO, "there")
-	T.eq(result.action.name, "LegsStationary", "its squad's mode")
+	T.eq(result.action.name, "LegsClear", "holding it")
+	T.eq(order:AllBreached(), false, "the others not yet")
+end)
+
+-- Every member of the squad holding its assault point from `at`, each with its LegsClear.
+local function Holding(order, squad, at)
+	for _, m in ipairs(squad) do
+		m.me.at, m.me.now = order:BreachOf(m.me.place), at
+		m.clear = GIB.LegsEnter:New({ order = order }):Update(m.me).action
+	end
+end
+
+T.test("holding its point, a member waits for the room to be clear, then goes to its place", function()
+	local order, squad = Assault()
+	Holding(order, squad, 0)
+	local me, clear = squad[2].me, squad[2].clear
+	me.now = GIB.CLEAR_GRACE - 0.1
+	T.eq(clear:Update(me).type, Action.CONTINUE, "not clear yet")
+	T.eq(me.spot, order:BreachOf(me.place), "holding")
+	me.now = GIB.CLEAR_GRACE
+	local result = clear:Update(me)
+	T.eq(result.type, Action.CHANGE_TO, "clear")
+	T.eq(result.action.name, "LegsStationary", "its squad's mode, about its place")
+end)
+
+T.test("a member meeting the enemy on its point keeps the room from being clear", function()
+	local order, squad = Assault()
+	Holding(order, squad, 0)
+	local me, clear = squad[2].me, squad[2].clear
+	me.contact, me.now = true, GIB.CLEAR_GRACE
+	T.eq(clear:Update(me).type, Action.CONTINUE, "fighting")
+	me.contact, me.now = false, GIB.CLEAR_GRACE * 2 - 0.1
+	T.eq(clear:Update(me).type, Action.CONTINUE, "not clear so soon after")
+	me.now = GIB.CLEAR_GRACE * 2
+	T.eq(clear:Update(me).type, Action.CHANGE_TO, "clear at last")
+end)
+
+T.test("the leader calls the room clear, once", function()
+	local order, squad = Assault()
+	Holding(order, squad, 0)
+	local leader = squad[1].me
+	leader.now = GIB.CLEAR_GRACE
+	squad[1].clear:Update(leader)
+	T.eq(leader.said[#leader.said], GIB.CLEAR_LINE, "called")
+	local said = #leader.said
+	squad[2].me.now = GIB.CLEAR_GRACE
+	squad[2].clear:Update(squad[2].me)
+	T.eq(#squad[2].me.said, 0, "by the leader alone")
+	T.eq(#leader.said, said, "once")
+end)
+
+T.test("a member with no assault point goes straight to its place", function()
+	local order, squad = Assault()
+	local me = squad[3].me
+	order.breach[me.place] = nil
+	local enter = GIB.LegsEnter:New({ order = order })
+	enter:Update(me)
+	T.eq(me.spot, me.place, "for its place")
+	me.at = me.place
+	T.eq(enter:Update(me).action.name, "LegsStationary", "and its squad's mode")
 end)
 
 T.test("the leader signals the assault in once its whole squad is staged, once", function()

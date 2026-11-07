@@ -6,7 +6,9 @@
 -- A group's orders: Muster(point), FallBack(point, from), Assault(room) -> an order, whose
 -- Places(members, spacing[, admit[, admitAt]]) gives each member, by its position, a place of its
 -- own. An assault fills its room and first stages its squad around the entrance, out of the
--- room's sight (StagingOf(place)), until its leader signals it in (Staged, AllStaged, Signal). A squad's mode is one whole
+-- room's sight (StagingOf(place)), until its leader signals it in (Staged, AllStaged, Signal);
+-- going in, each takes an assault point (BreachOf(place)) until the room is clear (Breached,
+-- AllBreached, Contact, QuietSince, CallClear). A squad's mode is one whole
 -- number on its order (SetMode, MODE): STATIONARY, ALERT, CAUTIOUS, PANIC or CLOSE, each the
 -- action its members run (gib_behaviors). Its leader (Lead) calls the fall back once, when its
 -- casualties are heavy (Casualty, HeavyCasualties, Rout) or a danger is near (Endanger); its
@@ -15,9 +17,11 @@
 local Enum = core.enum
 local Geometry = math.geometry
 local Select = list.select
-local floor, ceil, pi, min, cos, sin = math.floor, math.ceil, math.pi, math.min, math.cos, math.sin
+local floor, ceil, pi, min, max, cos, sin, atan2, abs = math.floor, math.ceil, math.pi, math.min, math.max, math.cos,
+	math.sin, math.atan2, math.abs
+local huge = math.huge
 local ipairs, pairs, setmetatable, error, tostring = ipairs, pairs, setmetatable, error, tostring
-local remove = table.remove
+local remove, sort = table.remove, table.sort
 local nextsoldier = nextsoldier
 module("nextsoldier.behavior.group_identity")
 
@@ -37,6 +41,13 @@ local SPARE_RINGS, SPARE_ROWS = 3, 3
 -- STACK_REACH of the entrance, each place hidden from the room with STACK_COVER to spare all
 -- round it: a member stops near its place, not on it.
 ROOM_INSET, STACK_REACH, STACK_COVER = 48, 384, 32
+-- Going in, its assault points lie within BREACH_REACH of the entrance, BREACH_FUNNEL or more
+-- to either side of the line in through the doorway, where those behind come.
+BREACH_REACH, BREACH_FUNNEL = 288, 96
+-- With an enemy known in the room, its assault points ring it ENCIRCLE_RADIUS off, give or take
+-- ENCIRCLE_BAND: a room's breadth to fight across, not on top of it; drawn in by ENCIRCLE_STEP
+-- down to ENCIRCLE_MIN where the walls leave too little of the ring to surround it.
+ENCIRCLE_RADIUS, ENCIRCLE_BAND, ENCIRCLE_MIN, ENCIRCLE_STEP = 192, 48, 96, 24
 
 -- How near another's seat a seat is that one: a body's breadth.
 local SEAT_CLEARANCE = 32
@@ -170,6 +181,37 @@ end
 
 function Order:Signalled() return self.signalled == true end
 
+-- The assault point the member given place takes going in (an assault's), or nil.
+function Order:BreachOf(place) return self.breach and self.breach[place] end
+
+-- member holding its assault point, from now on.
+function Order:Breached(member, now)
+	self.breachedAt = self.breachedAt or {}
+	if self.breachedAt[member] then return end
+	self.breachedAt[member] = now
+	self.quiet = max(self.quiet or now, now)
+end
+
+-- Every member left alive holding its assault point.
+function Order:AllBreached()
+	local held = 0
+	for _ in pairs(self.breachedAt or {}) do held = held + 1 end
+	return held > 0 and held >= self.size - self.lost
+end
+
+-- A member met the enemy now.
+function Order:Contact(now) self.quiet = max(self.quiet or now, now) end
+
+-- Since when nothing has happened going in: the last member taking its point, or the last contact.
+function Order:QuietSince() return self.quiet end
+
+-- The room called clear: true the once it is.
+function Order:CallClear()
+	if self.cleared then return false end
+	self.cleared = true
+	return true
+end
+
 -- The member who leads the squad, and calls its fall back.
 function Order:Lead(member) self.leader = member end
 
@@ -177,6 +219,7 @@ function Order:Lead(member) self.leader = member end
 function Order:Leave(member)
 	if self.leader == member then self.leader = nil end
 	if self.stagedAt then self.stagedAt[member] = nil end
+	if self.breachedAt then self.breachedAt[member] = nil end
 	self.seats[member] = nil
 end
 
@@ -363,6 +406,109 @@ local function Outside(room, spacing, admit)
 	return slots
 end
 
+-- The assault points going in, for the members ranked by turn through the doorway (each a
+-- start): of the floor within BREACH_REACH of the entrance and off the line in through it, the
+-- first the best the room scores, each next the best on the other side of the line from the one
+-- before (the best anywhere where that side has none left), spacing apart.
+local function BreachPoints(room, floor, turn, starts, spacing)
+	local into = Geometry.Normalize2D(Geometry.Sub(room.center, room.entry))
+	local left = Geometry.Left2D(into)
+	local candidates = {}
+	for _, p in ipairs(floor) do
+		local d = Geometry.Sub(p, room.entry)
+		local across = d.x * left.x + d.y * left.y
+		if Geometry.Distance2D(p, room.entry) <= BREACH_REACH and (across >= BREACH_FUNNEL or across <= -BREACH_FUNNEL) then
+			candidates[#candidates + 1] = { point = p, side = across > 0 and 1 or -1, score = room.score(p) }
+		end
+	end
+	local points, chosen, side = {}, {}, nil
+	for _, member in ipairs(turn) do
+		local best
+		-- the other side first, then either (0)
+		for _, wanted in ipairs(side and { -side, 0 } or { 0 }) do
+			for _, c in ipairs(candidates) do
+				local clear = (wanted == 0 or c.side == wanted) and (not best or c.score > best.score)
+				for _, other in ipairs(chosen) do
+					if clear and Geometry.Distance2D(c.point, other) < spacing then clear = false end
+				end
+				if clear then best = c end
+			end
+			if best then break end
+		end
+		if not best then break end
+		points[member], side = best.point, best.side
+		chosen[#chosen + 1] = best.point
+	end
+	return points
+end
+
+-- How far apart two angles are, the short way round.
+local function AngleApart(a, b)
+	local d = abs(a - b) % (2 * pi)
+	return d > pi and 2 * pi - d or d
+end
+
+-- The floor on a ring radius round enemy, ENCIRCLE_BAND either side, each with its angle round it.
+local function Ring(floor, enemy, radius)
+	local ring = {}
+	for _, p in ipairs(floor) do
+		local off = abs(Geometry.Distance2D(p, enemy) - radius)
+		if off <= ENCIRCLE_BAND then ring[#ring + 1] = { point = p, angle = atan2(p.y - enemy.y, p.x - enemy.x), off = off } end
+	end
+	sort(ring, function(a, b) return a.angle < b.angle end)
+	return ring
+end
+
+-- The arc of the ring the floor covers: where it starts (the angle after the widest stretch with
+-- no floor), how far round it goes, and that widest stretch.
+local function Arc(ring)
+	local gap, after = ring[1].angle + 2 * pi - ring[#ring].angle, 1
+	for i = 2, #ring do
+		if ring[i].angle - ring[i - 1].angle > gap then gap, after = ring[i].angle - ring[i - 1].angle, i end
+	end
+	return ring[after].angle, 2 * pi - gap, gap
+end
+
+-- With an enemy in the room, count assault points round it, spacing apart, surrounding it as the
+-- walls allow: on a ring ENCIRCLE_RADIUS off, drawn in while the walls leave half of it or more
+-- with no floor; the points spread evenly over the arc the floor covers, both its ends taken, or,
+-- on a whole ring, evenly round from its far side from the entrance.
+local function EncirclePoints(room, floor, count, spacing)
+	local enemy = room.enemy
+	local ring
+	for radius = ENCIRCLE_RADIUS, ENCIRCLE_MIN, -ENCIRCLE_STEP do
+		local candidates = Ring(floor, enemy, radius)
+		if candidates[1] then
+			ring = candidates
+			local _, _, gap = Arc(candidates)
+			if gap < pi then break end
+		end
+	end
+	if not ring then return {} end
+	local first, span, gap = Arc(ring)
+	local targets = {}
+	if gap <= 2 * pi / count then
+		local far = atan2(enemy.y - room.entry.y, enemy.x - room.entry.x)
+		for k = 0, count - 1 do targets[k + 1] = far + 2 * pi * k / count end
+	else
+		for k = 0, count - 1 do targets[k + 1] = first + (count > 1 and span * k / (count - 1) or span / 2) end
+	end
+	local points = {}
+	for _, target in ipairs(targets) do
+		local best, bestApart
+		for _, c in ipairs(ring) do
+			local clear = true
+			for _, other in ipairs(points) do
+				if Geometry.Distance2D(c.point, other) < spacing then clear = false break end
+			end
+			local apart = AngleApart(c.angle, target)
+			if clear and (not best or apart < bestApart or (apart == bestApart and c.off < best.off)) then best, bestApart = c, apart end
+		end
+		if best then points[#points + 1] = best.point end
+	end
+	return points
+end
+
 -- Each member's place filling the room, its stack around the entrance first: the stack taken
 -- nearest the entrance, its places matched from where the members stand; the room's places taken
 -- deepest first, paired with the stack in turn through the doorway, its front deepest. admitAt(around) -> the map's
@@ -376,9 +522,15 @@ function Breach:Places(members, spacing, admit, admitAt)
 	local stack = Assign(self.entry, Nearest(Outside(self.room, spacing, admitAt(outside)), self.entry, #members, spacing), members)
 	local starts = {}
 	for i, member in ipairs(members) do starts[i] = stack[i] or member end
-	local places = Pair(self.entry, Farthest(Floor(self.room, spacing, admit), self.entry, #members, spacing), starts)
-	self.staging = {}
-	for i, place in pairs(places) do self.staging[place] = stack[i] end
+	local floor = Floor(self.room, spacing, admit)
+	local places = Pair(self.entry, Farthest(floor, self.entry, #members, spacing), starts)
+	local turn = Select.Order(starts, function(a, b)
+		return Geometry.Distance2D(a, self.entry) < Geometry.Distance2D(b, self.entry)
+	end)
+	local points = self.room.enemy and Pair(self.entry, EncirclePoints(self.room, floor, #members, spacing), starts)
+		or BreachPoints(self.room, floor, turn, starts, spacing)
+	self.staging, self.breach = {}, {}
+	for i, place in pairs(places) do self.staging[place], self.breach[place] = stack[i], points[i] end
 	return places
 end
 
@@ -393,9 +545,12 @@ function FallBack(point, from)
 end
 
 -- room: { center, lo, hi (its block), entry (the doorway the squad comes in by), seen(point) (whether
--- the room's inside sees a point outside, through its doorways) }; refused without seen.
+-- the room's inside sees a point outside, through its doorways), score(point) (what a point inside
+-- is worth to fight from: higher, better), enemy (where one is known in it, which the assault points
+-- then encircle; nil for none) }; refused without seen or score.
 function Assault(room)
 	if not room.seen then error("an assault stages out of its room's sight: the room's seen", 2) end
+	if not room.score then error("an assault goes in to the points best to fight from: the room's score", 2) end
 	return NewOrder(Breach, { kind = "Assault", point = room.center, entry = room.entry, room = room })
 end
 

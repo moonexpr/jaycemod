@@ -519,6 +519,9 @@ function ENT:NSLegsAt()
 	return { x = at.x, y = at.y, z = at.z }
 end
 
+-- Whether it is fighting an enemy now: the base's own.
+function ENT:NSLegsContact() return self:HasEnemy() end
+
 -- A danger marked for its team near its squad's point (the stool's Annotate), or nil.
 function ENT:NSLegsDanger(point) return WS.Feature("aiwar"):DangerNear(self:NSTeam(), point) end
 
