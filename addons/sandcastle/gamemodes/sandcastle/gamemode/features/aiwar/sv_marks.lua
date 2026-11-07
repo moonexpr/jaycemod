@@ -204,8 +204,11 @@ function Controller:RoomForSquad(point, from, team)
 			nearest.flow = nearest.flow + e.paths
 		end
 	end
+	-- its own nav areas, which a squad staging round it keeps out of
+	local inside = {}
+	for _, id in ipairs(room.areas) do inside[id] = true end
 	return { center = at(room.center), lo = at(room.lo), hi = at(room.hi), entry = at(entry.pos), exits = exits,
-		entrances = entrances, seen = Seen, score = Score, enemy = enemy and at(enemy) }
+		entrances = entrances, inside = inside, seen = Seen, score = Score, enemy = enemy and at(enemy) }
 end
 
 -- The doors of the room at point, as the ways out a panicked squad makes for (the legs'

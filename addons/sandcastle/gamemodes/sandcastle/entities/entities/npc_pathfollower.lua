@@ -498,6 +498,14 @@ hook.Add("EntityTakeDamage", "npc_pathfollower", function(ent)
 	if ent:GetClass() == "npc_pathfollower" and ent.NSToolManaged and ent:NSDriver() == "path" then return true end
 end)
 
+-- Its way kept out of the areas its legs say (NSLegsHeadFor's keepOut), else the war soldier's cost.
+local SoldierComputePath = ENT.OnComputePath
+
+function ENT:OnComputePath(from, to, ladder)
+	if self.nsLegsKeepOut and self.nsLegsKeepOut[to:GetID()] then return -1 end
+	return SoldierComputePath(self, from, to, ladder)
+end
+
 -- Killed on orders, a casualty of its squad's.
 local SoldierDeath = ENT.OnDeath
 
@@ -607,9 +615,15 @@ end
 -- Within this of a seat it rests on, it crouches there.
 local REST_REACH = 24
 
--- Where its squad's mode sends it, at the gait it says: walked there, or, its feet held, its path
--- planned and shown. At the seat it rests on, it crouches.
-function ENT:NSLegsHeadFor(spot, gait)
+-- Where its squad's mode sends it, at the gait it says, its way there kept out of keepOut's nav areas
+-- (id -> true; nil for none): walked there, or, its feet held, its path planned and shown. At the
+-- seat it rests on, it crouches.
+function ENT:NSLegsHeadFor(spot, gait, keepOut)
+	if keepOut ~= self.nsLegsKeepOut then
+		self.nsLegsKeepOut = keepOut
+		local path = self:GetPath()
+		if IsValid(path) then path:Invalidate() end
+	end
 	local at = Vector(spot.x, spot.y, spot.z)
 	self:SetNW2Vector("NSLegsSpot", at)
 	self:SetNW2Int("NSLegsMode", self.nsLegsOrder.mode)

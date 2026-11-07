@@ -199,6 +199,14 @@ function Order:BreachOf(place) return self.breach and self.breach[place] end
 -- in the room's sight), hide (where it hides beside the front) }; nil for any other member.
 function Order:DecoyOf(place) return self.decoys and self.decoys[place] end
 
+-- member is the squad's decoy: falling, it has drawn the enemy.
+function Order:Decoy(member) self.decoy = member end
+
+-- The enemy drawn by the decoy (its contact, or its showing long enough), so the rest may go in.
+function Order:Engage() self.engaged = true end
+
+function Order:Engaged() return self.engaged == true end
+
 -- member holding its assault point, from now on.
 function Order:Breached(member, now)
 	self.breachedAt = self.breachedAt or {}
@@ -233,6 +241,7 @@ function Order:Lead(member) self.leader = member end
 -- A member gone from the squad: no longer its leader, its seat free.
 function Order:Leave(member)
 	if self.leader == member then self.leader = nil end
+	if self.decoy ~= nil and self.decoy == member then self.engaged = true end
 	if self.stagedAt then self.stagedAt[member] = nil end
 	if self.breachedAt then self.breachedAt[member] = nil end
 	self.seats[member] = nil
@@ -711,7 +720,7 @@ end
 function Assault(room)
 	if not room.seen then error("an assault stages out of its room's sight: the room's seen", 2) end
 	if not room.score then error("an assault goes in to the points best to fight from: the room's score", 2) end
-	return NewOrder(Breach, { kind = "Assault", point = room.center, entry = room.entry, room = room })
+	return NewOrder(Breach, { kind = "Assault", point = room.center, entry = room.entry, room = room, exits = room.exits })
 end
 
 -- Its root, holding first (gib_behaviors' LegsWait, for none).

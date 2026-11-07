@@ -8,10 +8,13 @@
 --   muster     from RED's spawns, mustered at its spawn room's middle: each given a place of its
 --              own, spaced apart, its walk there crossing no other's, resting there, in the room
 --   mobilize   out through RED's shutter to the staging point on the grass west of the bench
---   assault    from the staging point: staged around the bench's west door out of its sight, none
---              in before the leader's signal, then in, each to its assault point (off the line in
---              through the door, sides alternating in turn), held until the leader calls the room
---              clear, then each at its place, spread over the room
+--   assault    from the staging point: RED's flow coming in by the west door, a decoy hidden
+--              beside it shows itself there, the rest stage at the north, south and east doors
+--              out of the room's sight; none in before the leader's signal, given once the decoy
+--              has drawn the enemy (or waited) and hidden again; then in, each to its assault
+--              point, held until the leader calls the room clear, then each at its place
+--   assault_rout  the assault, and as the rest go in, the leader and two more fall: one of the
+--              living takes the lead and calls the fall back, and they leave the room to hide
 --   hold       in the bench, alert: patrolling, none leaving the room
 --   evacuate   in the bench, a danger marked at its east side (the war's DANGER mark, as the
 --              Path Follower stool's Annotate places it): the leader calls the fall back, all
@@ -251,15 +254,33 @@ end
 local WATCH_EVERY = 0.25
 
 -- Watches the assault on room from now until its check: B.watch holds what it found.
-local function WatchAssault(room, run)
+-- The member who is the assault's decoy, by index, or nil.
+local function DecoyIndex()
+	for i, place in ipairs(B.places or {}) do
+		if B.order:DecoyOf(place) then return i end
+	end
+end
+
+-- Watches the assault on room from now until its check (B.watch holds what it found): who is in
+-- the room before the signal, who the room sees while staged (the decoy apart), whether the decoy
+-- showed itself, and whether it was hidden again when the rest went in; signalled(watch) is told
+-- once, as the rest go in.
+local function WatchAssault(room, run, signalled)
 	local watch = { early = {}, seen = {}, held = {} }
 	B.watch = watch
+	local decoy = DecoyIndex()
 	local name = "dev_3house_bench_assault"
 	timer.Create(name, WATCH_EVERY, 0, function()
 		if run ~= B.runs or not B.order then timer.Remove(name) return end
 		local order = B.order
 		if order:Signalled() then
-			if not watch.signalledAt then watch.signalledAt = CurTime() end
+			if not watch.signalledAt then
+				watch.signalledAt = CurTime()
+				if signalled then signalled(watch) end
+			end
+			-- the decoy backs off as the rest go in: hidden again at some time after
+			local d = decoy and B.members[decoy]
+			if not d or not IsValid(d) or not room.seen(Point(d:GetPos())) then watch.hidAgain = true end
 			for i, member in ipairs(B.members) do
 				if IsValid(member) and Stack(member):find("LegsClear", 1, true) then watch.held[i] = true end
 			end
@@ -268,10 +289,48 @@ local function WatchAssault(room, run)
 		for i, member in ipairs(B.members) do
 			if IsValid(member) then
 				if InBench(member) then watch.early[i] = true end
-				if order:StagedAt(member) and room.seen(Point(member:GetPos())) then watch.seen[i] = true end
+				if i == decoy then
+					local part = order:DecoyOf(B.places[i])
+					if part.show and member:GetPos():Distance2D(Vector(part.show.x, part.show.y, 0)) <= Legs.STACK_COVER then
+						watch.shown = true
+					end
+				elseif order:StagedAt(member) and room.seen(Point(member:GetPos())) then
+					watch.seen[i] = true
+				end
 			end
 		end
 	end)
+end
+
+-- The stacks, as failures, where there is a decoy: a member other than it staged at the front.
+local function Flanks()
+	local failures, room = {}, B.room
+	local front
+	for _, e in ipairs(room.entrances) do
+		if not front or e.flow > front.flow then front = e end
+	end
+	for i, place in ipairs(B.places) do
+		local stage = not B.order:DecoyOf(place) and B.order:StagingOf(place)
+		if stage then
+			local nearest
+			for _, e in ipairs(room.entrances) do
+				if not nearest or math.geometry.Distance2D(e.pos, stage) < math.geometry.Distance2D(nearest.pos, stage) then nearest = e end
+			end
+			if nearest == front then failures[#failures + 1] = string.format("member %d: staged at the front", i) end
+		end
+	end
+	return failures
+end
+
+-- The squad's assault on the bench, from the staging point: the war's classes asked for first,
+-- so the entrances carry RED's flow.
+local function AssaultTheBench()
+	local controller = WS.Feature("aiwar")
+	controller:Classes()
+	local room = controller:RoomForSquad(Point(Named("bench_room")), Point(Staging()), WS.TEAM_RED)
+	B.room = room
+	Give(Legs.Assault(room))
+	return room
 end
 
 B.STAGES = {
@@ -330,34 +389,60 @@ B.STAGES = {
 	},
 	{
 		name = "assault",
-		seconds = 35,
+		seconds = 60,
 		setup = function() Spawn(Around(Staging(), SIZE, 72)) end,
-		act = function(run)
-			local room = WS.Feature("aiwar"):RoomForSquad(Point(Named("bench_room")), Point(Staging()), WS.TEAM_RED)
-			B.room = room
-			Give(Legs.Assault(room))
-			WatchAssault(room, run)
-		end,
+		act = function(run) WatchAssault(AssaultTheBench(), run) end,
 		check = function()
 			timer.Remove("dev_3house_bench_assault")
 			local lines, failures = Each({ Arrived, Runs("LegsStationary"), Resting,
 				function(m) return InBench(m), "not in the bench" end })
-			local watch = B.watch
+			local watch, decoy = B.watch, DecoyIndex()
 			if not B.order:Signalled() then failures[#failures + 1] = "the leader never signalled" end
 			for i in pairs(watch.early) do failures[#failures + 1] = string.format("member %d: in before the signal", i) end
 			for i in pairs(watch.seen) do failures[#failures + 1] = string.format("member %d: staged in the room's sight", i) end
 			for _, failure in ipairs(Placement(true)) do failures[#failures + 1] = failure end
-			for _, failure in ipairs(AssaultPoints()) do failures[#failures + 1] = failure end
+			if decoy then
+				if not watch.shown then failures[#failures + 1] = string.format("member %d, the decoy: never showed itself", decoy) end
+				if not watch.hidAgain then failures[#failures + 1] = string.format("member %d, the decoy: never hid again", decoy) end
+				for _, failure in ipairs(Flanks()) do failures[#failures + 1] = failure end
+			else
+				for _, failure in ipairs(AssaultPoints()) do failures[#failures + 1] = failure end
+			end
 			for i in ipairs(B.places) do
-				if not watch.held[i] then failures[#failures + 1] = string.format("member %d: never held its assault point", i) end
+				if i ~= decoy and not watch.held[i] then
+					failures[#failures + 1] = string.format("member %d: never held its assault point", i)
+				end
 			end
 			if not B.order.cleared then failures[#failures + 1] = "the leader never called the room clear" end
 			for i, place in ipairs(B.places) do
 				local stage, point = B.order:StagingOf(place), B.order:BreachOf(place)
-				lines[i] = lines[i] .. string.format(" | staged %s point %s placed %.0f,%.0f",
+				lines[i] = lines[i] .. string.format(" | %sstaged %s point %s placed %.0f,%.0f", i == decoy and "decoy, " or "",
 					stage and string.format("%.0f,%.0f", stage.x, stage.y) or "none",
 					point and string.format("%.0f,%.0f", point.x, point.y) or "none", place.x, place.y)
 			end
+			return Verdict(lines, failures)
+		end,
+	},
+	{
+		name = "assault_rout",
+		seconds = 45,
+		setup = function() Spawn(Around(Staging(), SIZE, 72)) end,
+		act = function(run)
+			local room = AssaultTheBench()
+			-- as the rest go in, the leader and two more fall: half the squad and more
+			WatchAssault(room, run, function()
+				for i = 1, ROUT_KILLS do
+					if IsValid(B.members[i]) then B.members[i]:TakeDamage(10000) end
+				end
+			end)
+		end,
+		check = function()
+			timer.Remove("dev_3house_bench_assault")
+			local lines, failures = Each({ Runs("LegsEvacuate"), Hidden,
+				function(m) return not InBench(m), "still in the bench" end })
+			if not B.watch.signalledAt then failures[#failures + 1] = "the squad never went in" end
+			if not B.order.routed then failures[#failures + 1] = "no one called the fall back" end
+			if B.order.leader == B.members[1] then failures[#failures + 1] = "the lead not taken from the fallen leader" end
 			return Verdict(lines, failures)
 		end,
 	},
@@ -437,7 +522,7 @@ B.runs = B.runs or 0
 
 function B.Run(name, done, run)
 	local stage = BY_NAME[name]
-	if not stage then error("no stage " .. tostring(name) .. "; stages: spawn muster mobilize assault hold evacuate rout remuster", 2) end
+	if not stage then error("no stage " .. tostring(name) .. "; stages: spawn muster mobilize assault assault_rout hold evacuate rout remuster", 2) end
 	if game.GetMap() ~= "dev_3house" then error("the bench runs on dev_3house, not " .. game.GetMap(), 2) end
 	if not run then
 		B.runs = B.runs + 1

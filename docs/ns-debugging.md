@@ -143,7 +143,17 @@ marked in the room (Annotate's **enemy**, the squad's team), a ring round it,
 drawn in where the walls leave too little of it, the points spread over all
 the arc the floor covers. Each holds its point until all do and none has met
 the enemy for `CLEAR_GRACE`; its leader calls "Room clear!" and each goes on to
-its place in the room, filled deepest first. Reload dissolves them.
+its place in the room, filled deepest first. A room with more than one entrance
+is taken stealthily: the front is the entrance the most of the squad's team's
+incursion flow comes in by (the war's classes, `RoomForSquad`'s `entrances`),
+where the member nearest it, the decoy (`LegsDecoy`), hides; the rest split
+over the other entrances, walking round the room (its own nav areas kept out
+of), and stage there out of its sight. Once they are, the decoy shows itself
+`SHOW_OUT` outside the front until it meets the enemy or `DECOY_PATIENCE`
+passes, then hides again, and the leader signals the rest in by the sides and
+back. Half the squad lost at any part of an assault, its leader calls "Fall
+back!" (the first of the living to see the leader lost takes the lead) and all
+leave the room to hide out of its sight. Reload dissolves them.
 Each member's place shows as a cross, green for muster, orange for fall back
 and violet for an assault, and its way there as its path; a member staging
 heads for its place in the stack, the white ring. A
@@ -214,8 +224,11 @@ as a sealed indoor room with four doors and eight windows.
 feet free, through a room operation, stage by stage: spawn, muster (from
 RED's spawns, checking the placement: a place each, spaced apart, no two walks
 crossing, each resting at its own), mobilize (out through the shutter to the
-grass), assault (staged around the bench's west door out of its sight, none in
-before the leader's signal, then spread over the room), hold (alert), evacuate (a danger marked on
+grass), assault (a decoy at the west door, the rest staged at the north,
+south and east doors out of the room's sight, none in before the leader's
+signal, then spread over the room), assault_rout (the leader and two more
+killed as they go in: the lead taken, the fall back called, the rest hidden),
+hold (alert), evacuate (a danger marked on
 BLU's side), rout (three of five killed) and remuster. Each stage sets up its
 own start, so any one runs alone (`NSRoomBench.Run("evacuate")`) or all in turn
 (`RunAll`; a run started ends one still going), and checks its result as data

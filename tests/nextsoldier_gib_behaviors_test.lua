@@ -8,7 +8,7 @@ local MODE, GAIT = GroupIdentity.MODE, GIB.GAIT
 
 for _, name in ipairs({ "PATROL_RADIUS", "PATROL_REST", "WANDER_RADIUS", "WANDER_REST", "EVACUATE_DISTANCE",
 	"REST_RADIUS", "EXIT_CLEARANCE", "HIDE_APART", "STAY_CLOSE_RANGE", "STAY_CLOSE_RADIUS", "REGROUP_RANGE", "REGROUP_NEAR",
-	"STACK_PATIENCE", "STAGE_REACH", "ENTER_REACH", "CLEAR_GRACE" }) do
+	"STACK_PATIENCE", "STAGE_REACH", "ENTER_REACH", "CLEAR_GRACE", "DECOY_PATIENCE" }) do
 	T.defined(GIB[name], name)
 end
 
@@ -37,7 +37,7 @@ local function Member(order, place)
 		return function(spot) if self.refuse(spot) then return nil end return spot end
 	end
 	function me:NSLegsSeats() self.asked = self.asked + 1 return self.seats end
-	function me:NSLegsHeadFor(spot, gait) self.headed, self.spot, self.gait = self.headed + 1, spot, gait end
+	function me:NSLegsHeadFor(spot, gait, keepOut) self.headed, self.spot, self.gait, self.keepOut = self.headed + 1, spot, gait, keepOut end
 	function me:NSLegsSay(line) self.said[#self.said + 1] = line end
 	function me:NSLegsDanger() return self.danger end
 	function me:NSLegsContact() return self.contact == true end
@@ -566,6 +566,173 @@ T.test("evacuating, with its room's sight known, a member runs out of the room t
 	T.eq(me.spot.x < -400, true, "out of the room")
 	T.eq(seen(me.spot), false, "out of its sight")
 	T.eq(me.gait, GAIT.RUN, "running")
+end)
+
+-- An assault on a room with a door in each wall, RED's flow coming in by the west, which sees
+-- out of each doorway a wedge; four members on the grass west of it, the first leading.
+local DOORS4 = { { x = -400, y = 0, z = 0 }, { x = 0, y = 400, z = 0 }, { x = 0, y = -400, z = 0 }, { x = 400, y = 0, z = 0 } }
+
+local function Seen4(p)
+	if math.abs(p.x) < 400 and math.abs(p.y) < 400 then return true end
+	for _, door in ipairs(DOORS4) do
+		local nx, ny = door.x / 400, door.y / 400
+		local along, across = p.x * nx + p.y * ny, math.abs(p.x * ny - p.y * nx)
+		if along > 400 and across < 64 + math.max(0, along - 432) * 4 then return true end
+	end
+	return false
+end
+
+local function Flanking()
+	local room = { center = { x = 0, y = 0, z = 0 }, lo = { x = -400, y = -400, z = 0 }, hi = { x = 400, y = 400, z = 0 },
+		entry = DOORS4[1], seen = Seen4, score = function(p) return p.x end, exits = DOORS4, entrances = {},
+		inside = { [1] = true } }
+	for i, door in ipairs(DOORS4) do room.entrances[i] = { pos = door, flow = i == 1 and 2 or 0 } end
+	local order = GroupIdentity.Assault(room)
+	local at = {}
+	for i = 1, 4 do at[i] = { x = -700, y = -120 + i * 60, z = 0 } end
+	local inside = function(p) return math.abs(p.x) < 400 and math.abs(p.y) < 400 end
+	local admitAt = function(around)
+		local within = inside(around)
+		return function(slot) if inside(slot) == within then return slot end end
+	end
+	local places = order:Places(at, 72, admitAt({ x = 0, y = 0 }), admitAt)
+	local squad, decoy = {}, nil
+	for i = 1, 4 do
+		local me, action, orders = OnOrder(order, places[i])
+		me.at = at[i]
+		squad[i] = { me = me, action = action, orders = orders }
+		if order:DecoyOf(places[i]) then decoy = squad[i] end
+	end
+	order:Lead(squad[1].me == decoy.me and squad[2].me or squad[1].me)
+	return order, squad, decoy
+end
+
+T.test("the decoy goes to hide beside the front first, staged there", function()
+	local order, _, decoy = Flanking()
+	T.eq(decoy.action.name, "LegsDecoy", "its own part")
+	local part = order:DecoyOf(decoy.me.place)
+	decoy.action:Update(decoy.me)
+	T.eq(decoy.me.spot, part.hide, "for its hiding place")
+	decoy.me.at = part.hide
+	decoy.action:Update(decoy.me)
+	T.eq(order:StagedAt(decoy.me) ~= nil, true, "staged")
+	T.eq(decoy.me.spot, part.hide, "and waits there while the rest stage")
+end)
+
+-- Every member staged where it is to be, the decoy hidden.
+local function AllStaged(order, squad, decoy)
+	for _, m in ipairs(squad) do
+		m.me.at = m == decoy and order:DecoyOf(m.me.place).hide or order:StagingOf(m.me.place)
+		m.action:Update(m.me)
+	end
+end
+
+T.test("the rest staged, the decoy runs out to show itself; drawing the enemy, it runs back to hide", function()
+	local order, squad, decoy = Flanking()
+	AllStaged(order, squad, decoy)
+	local part = order:DecoyOf(decoy.me.place)
+	decoy.action:Update(decoy.me)
+	T.eq(decoy.me.spot, part.show, "out to show itself")
+	T.eq(decoy.me.gait, GAIT.RUN, "running")
+	decoy.me.at = part.show
+	decoy.action:Update(decoy.me)
+	T.eq(order:Engaged(), false, "seen by none yet")
+	decoy.me.contact = true
+	decoy.action:Update(decoy.me)
+	T.eq(order:Engaged(), true, "the enemy drawn")
+	T.eq(decoy.me.spot, part.hide, "back to hide")
+	T.eq(decoy.me.gait, GAIT.RUN, "running")
+end)
+
+T.test("shown and drawing no one for DECOY_PATIENCE, the decoy takes the enemy as drawn", function()
+	local order, squad, decoy = Flanking()
+	AllStaged(order, squad, decoy)
+	decoy.action:Update(decoy.me)
+	decoy.me.at, decoy.me.now = order:DecoyOf(decoy.me.place).show, 1
+	decoy.action:Update(decoy.me)
+	decoy.me.now = 1 + GIB.DECOY_PATIENCE
+	decoy.action:Update(decoy.me)
+	T.eq(order:Engaged(), true, "drawn, or never there")
+end)
+
+T.test("with a decoy, the leader signals once all are staged and the enemy is engaged", function()
+	local order, squad, decoy = Flanking()
+	AllStaged(order, squad, decoy)
+	local leader = order.leader
+	local mine
+	for _, m in ipairs(squad) do if m.me == leader then mine = m end end
+	mine.orders:Update(leader)
+	T.eq(order:Signalled(), false, "staged, the enemy not engaged")
+	order:Engage()
+	mine.orders:Update(leader)
+	T.eq(order:Signalled(), true, "signalled")
+end)
+
+T.test("hidden again once the rest go in, the decoy waits out the clearing, then goes to its place", function()
+	local order, squad, decoy = Flanking()
+	AllStaged(order, squad, decoy)
+	order:Engage()
+	order:Signal()
+	decoy.me.at = order:DecoyOf(decoy.me.place).hide
+	decoy.action:Update(decoy.me)
+	T.eq(order.breachedAt[decoy.me] ~= nil, true, "holding its hiding place as its point")
+	order.cleared = true
+	for _, m in ipairs(squad) do order:Breached(m.me, 0) end
+	decoy.me.now = GIB.CLEAR_GRACE
+	local result = decoy.action:Update(decoy.me)
+	T.eq(result.type, Action.CHANGE_TO, "on")
+	T.eq(result.action.name, "LegsStationary", "to its place")
+end)
+
+T.test("an assault falling back leaves off staging, going in and holding, and evacuates", function()
+	local order, squad = Flanking()
+	order:SetMode(MODE.PANIC)
+	local stage = GIB.LegsStage:New({ order = order })
+	T.eq(stage:Update(squad[2].me).action.name, "LegsEvacuate", "staging")
+	T.eq(GIB.LegsEnter:New({ order = order }):Update(squad[2].me).action.name, "LegsEvacuate", "going in")
+	T.eq(GIB.LegsClear:New({ order = order, point = squad[2].me.place }):Update(squad[2].me).action.name, "LegsEvacuate",
+		"holding")
+end)
+
+T.test("half an assaulting squad lost, its leader calls the fall back and the squad evacuates", function()
+	local order, squad = Flanking()
+	order:Casualty({})
+	order:Casualty({})
+	local leader = order.leader
+	for _, m in ipairs(squad) do
+		if m.me == leader then m.orders:Update(leader) end
+	end
+	T.eq(order.mode, MODE.PANIC, "falling back")
+	T.eq(leader.said[#leader.said], GIB.FALL_BACK_LINE, "called")
+end)
+
+T.test("its leader lost, the first of the squad to see it takes the lead and calls the fall back", function()
+	local order, squad = Muster(), {}
+	local members = {}
+	for i = 1, 4 do members[i] = { x = i * 80, y = 0, z = 0 } end
+	order:Places(members, 72)
+	for i = 1, 2 do
+		local me, _, orders = OnOrder(order)
+		squad[i] = { me = me, orders = orders }
+	end
+	order:Lead(squad[1].me)
+	order:Casualty(squad[1].me)
+	order:Casualty({})
+	squad[2].orders:Update(squad[2].me)
+	T.eq(order.leader, squad[2].me, "the lead taken")
+	T.eq(squad[2].me.said[1], GIB.FALL_BACK_LINE, "the fall back called")
+	T.eq(order.mode, MODE.PANIC, "evacuating")
+end)
+
+T.test("staging and hiding, a member keeps out of the room; going in, it does not", function()
+	local order, squad, decoy = Flanking()
+	local member = squad[1] == decoy and squad[2] or squad[1]
+	member.action:Update(member.me)
+	T.eq(member.me.keepOut, order.room.inside, "staging: the room's own ground kept out of")
+	decoy.action:Update(decoy.me)
+	T.eq(decoy.me.keepOut, order.room.inside, "the decoy hiding, too")
+	GIB.LegsEnter:New({ order = order }):Update(member.me)
+	T.eq(member.me.keepOut, nil, "going in, the room open to it")
 end)
 
 T.finish()

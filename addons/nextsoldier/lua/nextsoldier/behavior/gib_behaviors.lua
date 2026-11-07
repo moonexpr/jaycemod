@@ -16,10 +16,16 @@
 -- stack around the entrance, out of the room's sight, and waits there ready; its leader signals
 -- (SIGNAL_LINE) once all are staged, or STACK_PATIENCE after it is; then each goes in (LegsEnter),
 -- running for its assault point, and holds it (LegsClear) until the room is clear (CLEAR_LINE),
--- then runs its squad's mode's action about its place in the room.
+-- then runs its squad's mode's action about its place in the room. With more than one entrance,
+-- the member nearest the front is the decoy (LegsDecoy): hidden beside it until the rest are
+-- staged, it shows itself there until it draws the enemy or DECOY_PATIENCE passes, then hides
+-- again, and the rest go in by the sides and back only once it has. Falling back (half the squad
+-- lost: its leader calls it, the first to see the leader lost taking the lead), every part of an
+-- assault leaves off and evacuates.
 --
 -- A member on orders is told them by NSLegsOrder(), senses its group by NSLegsSense() each
--- update, and heads where its action says by NSLegsHeadFor(spot, gait). Its place is
+-- update, and heads where its action says by NSLegsHeadFor(spot, gait[, keepOut]) (keepOut: nav area ids
+-- its way there keeps out of). Its place is
 -- NSLegsPlace(), where it stands NSLegsAt(), its clock Now(), its draws NSLegsDraw() (0 to 1),
 -- NSLegsAdmit(around) the map's word on a spot near around, as Places takes it,
 -- NSLegsSeats(place, radius) the spots near its place it could rest at, NSLegsDanger(point) a
@@ -63,6 +69,9 @@ SIGNAL_LINE = "Move in!"
 -- enemy for CLEAR_GRACE; its leader calls it so.
 CLEAR_GRACE = 5
 CLEAR_LINE = "Room clear!"
+-- Shown at the front and drawing no one for DECOY_PATIENCE, the decoy takes the enemy as drawn
+-- (or never there) and hides again.
+DECOY_PATIENCE = 4
 -- How many spots a member draws before it keeps to its place.
 local TRIES = 6
 
@@ -83,6 +92,7 @@ LegsAssault = Action.Extend("LegsAssault")
 LegsStage = Action.Extend("LegsStage")
 LegsEnter = Action.Extend("LegsEnter")
 LegsClear = Action.Extend("LegsClear")
+LegsDecoy = Action.Extend("LegsDecoy")
 
 local ORDER_ACTIONS = { Muster = LegsMuster, FallBack = LegsFallBack, Assault = LegsAssault }
 
@@ -113,6 +123,8 @@ local function OnOrders(self, me)
 	local result = Orders(self, me)
 	if result.type ~= Action.CONTINUE then return result end
 	local order = self.order
+	-- its leader lost, the first of the squad to see it takes the lead
+	if order.leader == nil then order:Lead(me) end
 	if order.leader ~= me then return result end
 	local danger = not order.routed and me:NSLegsDanger(order.point)
 	if (danger and order:Endanger(danger)) or order:Rout() then me:NSLegsSay(FALL_BACK_LINE) end
@@ -132,36 +144,103 @@ function LegsAssault:Update(me)
 	local result = OnOrders(self, me)
 	if result.type ~= Action.CONTINUE then return result end
 	local order = self.order
-	if order.leader ~= me or order:Signalled() then return result end
+	if order.leader ~= me or order:Signalled() or order.mode == MODE.PANIC then return result end
 	local since = order:StagedAt(me)
-	if order:AllStaged() or (since and me:Now() - since >= STACK_PATIENCE) then
+	local staged = order:AllStaged() or (since and me:Now() - since >= STACK_PATIENCE)
+	-- with a decoy, the rest go in only once it has drawn the enemy
+	if staged and (not order.decoy or order:Engaged()) then
 		order:Signal()
 		me:NSLegsSay(SIGNAL_LINE)
 	end
 	return result
 end
 
-function LegsAssault:InitialContainedAction() return LegsStage:New({ order = self.order }) end
+-- The decoy's own part, or staging with the rest.
+function LegsAssault:InitialContainedAction(me)
+	local place = me and me:NSLegsPlace()
+	if place and self.order:DecoyOf(place) then return LegsDecoy:New({ order = self.order }) end
+	return LegsStage:New({ order = self.order })
+end
+
+-- The ground a member staging or hiding keeps out of: the room's own (room.inside, area ids), so
+-- a flank walks round it, not through; nil where the room gives none.
+local function KeepOut(order) return order.room and order.room.inside end
+
+-- Falling back, an assault leaves off whatever part it is at and evacuates.
+local function Evacuating(self)
+	if self.order.mode ~= MODE.PANIC then return nil end
+	return self:ChangeTo(LegsEvacuate:New({ order = self.order }), "Fall back")
+end
+
+-- The decoy: hidden beside the front, staged, until the rest are; then out to show itself in the
+-- room's sight, until it draws the enemy (its contact) or DECOY_PATIENCE passes; then back to hide,
+-- holding there as the rest's points are held, until the room is clear; then its squad's mode's.
+function LegsDecoy:Update(me)
+	local order = self.order
+	if me:NSLegsOrder() ~= order then return self:Continue() end
+	local fall = Evacuating(self)
+	if fall then return fall end
+	order:Decoy(me)
+	local part, now, at = order:DecoyOf(me:NSLegsPlace()), me:Now(), me:NSLegsAt()
+	if order.cleared then return self:ChangeTo(ModeAction(self), "Clear") end
+	if me:NSLegsContact() then
+		order:Engage()
+		order:Contact(now)
+	end
+	if not order:Engaged() then
+		if order:StagedAt(me) and order:AllStaged() and part.show then
+			if Geometry.Distance2D(at, part.show) <= STAGE_REACH then
+				self.shownAt = self.shownAt or now
+				if now - self.shownAt >= DECOY_PATIENCE then order:Engage() end
+			end
+			if not order:Engaged() then
+				me:NSLegsHeadFor(part.show, GAIT.RUN, KeepOut(order))
+				return self:Continue()
+			end
+		elseif part.hide and Geometry.Distance2D(at, part.hide) > STAGE_REACH then
+			me:NSLegsHeadFor(part.hide, GAIT.WALK, KeepOut(order))
+			return self:Continue()
+		else
+			order:Staged(me, now)
+			me:NSLegsHeadFor(part.hide or at, GAIT.REST, KeepOut(order))
+			return self:Continue()
+		end
+	end
+	local hide = part.hide or at
+	if Geometry.Distance2D(at, hide) <= STAGE_REACH then
+		order:Breached(me, now)
+		if order:AllBreached() and now - order:QuietSince() >= CLEAR_GRACE then
+			if order.leader == me and order:CallClear() then me:NSLegsSay(CLEAR_LINE) end
+			return self:ChangeTo(ModeAction(self), "Clear")
+		end
+		me:NSLegsHeadFor(hide, GAIT.REST, KeepOut(order))
+	else
+		me:NSLegsHeadFor(hide, GAIT.RUN, KeepOut(order))
+	end
+	return self:Continue()
+end
 
 -- To its place in the stack, walking, and there staged, ready; with none, staged where it stands.
 -- Signalled, it goes in.
 function LegsStage:Update(me)
 	local order = self.order
 	if me:NSLegsOrder() ~= order then return self:Continue() end
+	local fall = Evacuating(self)
+	if fall then return fall end
 	if order:Signalled() then return self:ChangeTo(LegsEnter:New({ order = order }), "Signalled") end
 	local place = me:NSLegsPlace()
 	local at = me:NSLegsAt()
 	local staging = place and order:StagingOf(place)
 	if not staging then
 		order:Staged(me, me:Now())
-		me:NSLegsHeadFor(at, GAIT.REST)
+		me:NSLegsHeadFor(at, GAIT.REST, KeepOut(order))
 		return self:Continue()
 	end
 	if Geometry.Distance2D(at, staging) <= STAGE_REACH then
 		order:Staged(me, me:Now())
-		me:NSLegsHeadFor(staging, GAIT.REST)
+		me:NSLegsHeadFor(staging, GAIT.REST, KeepOut(order))
 	else
-		me:NSLegsHeadFor(staging, GAIT.WALK)
+		me:NSLegsHeadFor(staging, GAIT.WALK, KeepOut(order))
 	end
 	return self:Continue()
 end
@@ -171,6 +250,8 @@ end
 function LegsEnter:Update(me)
 	local order = self.order
 	if me:NSLegsOrder() ~= order then return self:Continue() end
+	local fall = Evacuating(self)
+	if fall then return fall end
 	local place = me:NSLegsPlace()
 	local point = place and order:BreachOf(place)
 	local goal = point or place
@@ -189,6 +270,8 @@ end
 function LegsClear:Update(me)
 	local order = self.order
 	if me:NSLegsOrder() ~= order then return self:Continue() end
+	local fall = Evacuating(self)
+	if fall then return fall end
 	local now = me:Now()
 	if me:NSLegsContact() then order:Contact(now) end
 	if order:AllBreached() and now - order:QuietSince() >= CLEAR_GRACE then

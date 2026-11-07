@@ -482,6 +482,25 @@ T.test("going in from the sides and back, the rest encircle a known enemy", func
 	T.eq(WidestGap(enemy, points) < math.pi, true, "round it: " .. WidestGap(enemy, points))
 end)
 
+T.test("the enemy is engaged once the decoy draws it, or once the decoy falls", function()
+	local order = GroupIdentity.Assault(FourDoors({ 2, 0, 0, 0 }))
+	order:Places(Squad5(), SPACING, AdmitAt(ROOM.center), AdmitAt)
+	T.eq(order:Engaged(), false, "not yet")
+	order:Engage()
+	T.eq(order:Engaged(), true, "drawn")
+	local again = GroupIdentity.Assault(FourDoors({ 2, 0, 0, 0 }))
+	again:Places(Squad5(), SPACING, AdmitAt(ROOM.center), AdmitAt)
+	again:Decoy("d")
+	again:Casualty("d")
+	T.eq(again:Engaged(), true, "the decoy shot: the enemy has shown itself")
+end)
+
+T.test("an assault's ways out are its room's doors", function()
+	local room = FourDoors({ 2, 0, 0, 0 })
+	room.exits = DOORS
+	T.eq(GroupIdentity.Assault(room).exits, DOORS, "its doors")
+end)
+
 T.test("going in, the room is clear once all the living hold their points and none has met the enemy since", function()
 	local order = Assaulting()
 	T.eq(order:AllBreached(), false, "none in")
