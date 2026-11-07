@@ -9,6 +9,9 @@
 local Monitors = wartactics.monitors
 local MonitorLib = nextsoldier.behavior.monitor
 local Behaviors = nextsoldier.behavior.registry.Shared
+local Policy = wartactics.overwatch
+local Director = nextsoldier.squad.interactions.director
+local setmetatable = setmetatable
 module(...)
 
 local Tree = Monitors.Build({ Monitor = MonitorLib.New, Passthrough = MonitorLib.Passthrough })
@@ -17,3 +20,19 @@ TacticalMonitor, SquadMonitor, ScenarioMonitor = Tree.TacticalMonitor, Tree.Squa
 Behaviors:Register({ name = "TacticalMonitor", behavior = TacticalMonitor })
 Behaviors:Register({ name = "SquadMonitor", behavior = SquadMonitor })
 Behaviors:Register({ name = "ScenarioMonitor", behavior = ScenarioMonitor })
+
+-- A squad's director on Overwatch's policy (wartactics.overwatch), for a mode to give its squads
+-- (nextsoldier.squad.interactions.director's Set): each request is answered at once over the radio,
+-- from the squad's size and losses, the guards it has lost holding its place (each request one more),
+-- whether it has met the enemy, and where to strike (opts.target(order), nil for nowhere known).
+function Overwatch(opts)
+	local missing = setmetatable({}, { __mode = "k" })
+	return {
+		Request = function(_, order)
+			missing[order] = (missing[order] or 0) + 1
+			local decision = Policy.Decide({ size = order.size, lost = order.lost, missing = missing[order],
+				contact = order:Engaged(), target = opts.target(order) })
+			Director.Answer(order, decision.kind, decision)
+		end,
+	}
+end

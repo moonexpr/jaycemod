@@ -994,10 +994,16 @@ unsafe extern "win64" fn soldier_destructor(this: usize, flags: u32) -> usize {
 /// EntityRemoved: a NextSoldier's actions end while the player is still whole.
 unsafe extern "C-unwind" fn entity_removed(l: L) -> c_int {
     let b = binding();
-    if b.soldiers.is_empty() {
+    if b.soldiers.is_empty() && b.bot_groups.is_empty() {
         return 0;
     }
     let (entity, _) = entity_at(l, 1);
+    // a CLuaNextBot's tree beside its main one, whatever its Lua did as it went: a bot made
+    // later at the same address starts without it
+    if let Some(tree) = b.bot_groups.remove(&entity) {
+        release_tree(tree);
+        return 0;
+    }
     if entity == 0 || *(entity as *const usize) != b.player_vtable {
         return 0;
     }

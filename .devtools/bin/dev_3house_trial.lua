@@ -1,6 +1,6 @@
 -- dev_3house's assault trials (.devtools/bin/dev_3house_bench.lua's map and helpers' kin): a RED
 -- squad of followers on their legs, armed, assaults the bench, held by BLU followers, armed. Each
--- runs two stacks: its main stack fights (nextsoldier.behavior.squad_member: holding its fire on a
+-- runs two stacks: its main stack fights (nextsoldier.squad.behaviors.member: holding its fire on a
 -- mission its leader has yet to activate), its leggings put its feet where its order says. Both
 -- sides fight as the base fights: no aim error and no reaction time, which is tf_bot_difficulty's
 -- EXPERT; neither side is blinded or held.
@@ -10,9 +10,12 @@
 --   expert   five RED against one BLU of five times a soldier's health, which leaves its spawn for
 --            the bench's middle once RED's first member stages, patrolling it (alert)
 --   occupy   six BLU occupying the bench, guards patrolling round it and their leader checking in
---            on them; SILENCE_AFTER in, one guard is killed unheard: passed once its leader has told
---            the director, the squad has stacked up (the bench's alarm sounding) and, on its word,
---            reached where the guard was last heard from
+--            on them, Overwatch their director (wartactics.bridge's); SILENCE_AFTER in, one guard is
+--            killed unheard: its leader tells Overwatch, the squad stacks up (the bench's alarm
+--            sounding) and its leader asks clearance to leave. Passed once the squad has done what
+--            Overwatch answered: cleared, reached where the guard was last heard from; told to stand
+--            by, a relief on the missing guard's round; told to defend or attack, the order it brings
+--   occupy_short  the same with three BLU, too few to leave: Overwatch answers stand by
 --
 -- In each, RED's squad leaves its spawn for the staging point on the grass west of the bench, then
 -- is given the assault: it stages round the bench, hopping door to door out of its sight, and goes
@@ -24,6 +27,10 @@
 --   python3 .devtools/bin/instances.py dev_3house 'return NSAssaultTrial.Start("ambush")'
 --   python3 .devtools/bin/instances.py dev_3house 'return NSAssaultTrial.Report()'
 local Legs = nextsoldier.behavior.group_identity
+local Ambushes = nextsoldier.squad.behaviors.ambush
+local Occupations = nextsoldier.squad.behaviors.occupy
+local Radio = nextsoldier.squad.comms.radio
+local Director = nextsoldier.squad.interactions.director
 
 local KIT = { primary = { "weapon_smg1", "weapon_ar2" }, secondary = "weapon_pistol", melee = "weapon_crowbar" }
 local RIFLE = { primary = { "weapon_ar2" }, secondary = "weapon_pistol", melee = "weapon_crowbar" }
@@ -32,6 +39,7 @@ local TRIALS = {
 	ambush = { red = 12, blue = 6, health = 1, kit = KIT, blue_order = "ambush" },
 	expert = { red = 5, blue = 1, health = 5, kit = RIFLE, blue_order = "patrol" },
 	occupy = { red = 0, blue = 6, health = 1, kit = KIT, blue_order = "occupy" },
+	occupy_short = { red = 0, blue = 3, health = 1, kit = KIT, blue_order = "occupy" },
 }
 -- The occupation: how long after it is given a guard is silenced, how long the squad has after to
 -- reach where it was last heard from, and how near that it has.
@@ -168,7 +176,7 @@ local function Ambush()
 	local controller = WS.Feature("aiwar")
 	controller:Classes()
 	local room = controller:RoomForSquad(Point(Named("bench_room")), Point(Named("blu_muster")), WS.TEAM_BLUE)
-	T.blueOrder = Give(Legs.Ambush(room), T.blue)
+	T.blueOrder = Give(Ambushes.Ambush(room), T.blue)
 	Log(string.format("BLU given the ambush at %.0f,%.0f", T.blueOrder.entrance.x, T.blueOrder.entrance.y))
 end
 
@@ -236,12 +244,13 @@ end
 local function Calls(order, key)
 	if not order then return end
 	T.heard[key] = T.heard[key] or 0
-	for i = T.heard[key] + 1, #order.radio do
-		local call = order.radio[i]
+	local channel = Radio.Calls(order)
+	for i = T.heard[key] + 1, #channel do
+		local call = channel[i]
 		local namer = IsValid(order.leader) and order.leader or T.blue[1]
 		Log(string.format("radio %s -> %s: %s", namer:NSLegsNameOf(call.from), namer:NSLegsNameOf(call.to), call.text))
 	end
-	T.heard[key] = #order.radio
+	T.heard[key] = #channel
 end
 
 -- The occupation: BLU holds the bench; a guard silenced SILENCE_AFTER in, the squad's response.
@@ -250,7 +259,8 @@ local function Occupation(now)
 	if not order then
 		if not WS.Feature("aiwar"):Classes() then return end
 		local room = WS.Feature("aiwar"):RoomForSquad(Point(Named("bench_room")), Point(Named("blu_muster")), WS.TEAM_BLUE)
-		T.blueOrder, T.occupiedAt = Give(Legs.Occupy(room), T.blue), now
+		T.room, T.blueOrder, T.occupiedAt = room, Give(Occupations.Occupy(room), T.blue), now
+		Director.Set(T.blueOrder, wartactics.bridge.Overwatch({ target = function() return nil end }))
 		local guards = 0
 		for _, member in ipairs(T.blue) do
 			if T.blueOrder:PatrolOf(member:NSLegsPlace()) then guards = guards + 1 end
@@ -274,6 +284,24 @@ local function Occupation(now)
 		local bench = ents.FindByName("bench_alarm")[1]
 		Log(string.format("alarm raised at %.0f,%.0f, by the exit at %.0f,%.0f; the bench's alarm %s", order.alarm.at.x,
 			order.alarm.at.y, order.alarm.exit.x, order.alarm.exit.y, IsValid(bench) and (bench.sounding and "sounding" or "silent") or "missing"))
+	end
+	-- Overwatch's answer, as the leader heard it over the radio (stood down, the order forgets it)
+	if not T.answer then
+		for _, call in ipairs(Radio.Calls(order)) do
+			if call.from == Radio.DIRECTOR then T.answer = call.call end
+		end
+	end
+	local directive = Director.Directive(order)
+	if T.answer == "STANDBY" and not order.alarm then
+		for _, member in ipairs(Living(T.blue)) do
+			if order:AppointedTo(member) and Legging(member) == "LegsGuard" then
+				return Finish("passed: stood by, " .. Label(member) .. " on the missing guard's round")
+			end
+		end
+	elseif directive and (directive.kind == "DEFEND" or directive.kind == "ATTACK") and order.alarm then
+		local given = directive.kind == "DEFEND" and Ambushes.Ambush(T.room) or Legs.Assault(T.room)
+		T.blueOrder = Give(given, Living(T.blue))
+		return Finish("passed: Overwatch's " .. directive.kind .. " given as " .. given.kind)
 	end
 	if order:Signalled() then
 		local there = 0
@@ -336,7 +364,7 @@ function T.Start(name)
 	Clear()
 	WS.Feature("aiwar"):SetForcefieldsPassable(true)
 	T.spec, T.log, T.trail, T.dead, T.contact, T.steps, T.damage, T.heard = spec, {}, {}, {}, {}, {}, {}, {}
-	T.silenced, T.occupiedAt = nil, nil
+	T.silenced, T.occupiedAt, T.answer = nil, nil, nil
 	T.outcome, T.released, T.order, T.blueOrder = nil, false, nil, nil
 	T.started, T.nextLook, T.nextTrail = CurTime(), 0, 0
 	local reds, blues = ents.FindByName("red_spawn"), ents.FindByName("blu_spawn")

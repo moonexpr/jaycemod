@@ -253,41 +253,69 @@ RED member lost before the leader's "Move in!" fails it; BLU dead or the room
 called clear wins it; a fall back or RED dead loses it (`NSAssaultTrial.Report()`:
 the log of stages, sightings and kills, and the damage each dealt).
 
-A follower on its legs runs two stacks, as a bot player does: its main stack,
-`nextsoldier.behavior.squad_member` (`SquadMember`), fights, and its
-`TacticalLeggings` beside it (`engine.InsertGroup`, updated each tick by
-`engine.UpdateGroup` from its `BehaveUpdate`, ended by `engine.EndGroup`) put its
-feet where its squad's order says. While its order is a mission its leader has
-yet to activate (an assault before "Move in!", an ambush before "Now!"), its
-main stack listens (`SquadMemberListen`: `ShouldAttack` no); then it fights
-(`SquadMemberCombat`). Its leader killed with the mission under way, the first
-to see it abandons the mission and calls the fall back. Staging, a member hops
-door to door round the room: crouched `HOP_PAUSE` beside a doorway's near side,
-then across its sight at a run, each hop a spot clear of every stack. An
-assault keeps its stacks off the entrances the enemy's flow comes in by
-(`RoomForSquad`'s `enemyFlow`). An ambush (`group_identity.Ambush(room)`,
-`LegsAmbush`) lies in wait beside the entrance the enemy comes in by, where one
-walking up to it does not see (`RoomForSquad`'s `watched`); an enemy seen within
-`SPRING_RANGE` of it, or a member hurt, has its leader spring it. An occupation (`group_identity.Occupy(room)`, `LegsOccupy`) holds a room: a
-guard for each `GUARD_SPAN` of a loop `PATROL_OUT` round it outside, up to half
-the squad, walk it one way round from stops evenly apart, standing
-`PATROL_STOP` at each corner (`LegsGuard`); the rest hold inside (`LegsHold`).
-Every `CHECK_INTERVAL` the leader asks each guard for a status report, and each
-answers ("All clear.", or "Contact!"); one silent `CHECK_TIMEOUT` after is
-missing: the leader tells its director ("Lost contact with blue 2."), and the
-squad stacks up inside by the exit nearest where it was last heard from, out of
-sight from outside (`LegsStackUp`), listening, until the leader's "Move in!"
-(all stacked, `STACK_PATIENCE` after it is, or on contact) sends it there at a
-run. Stacking up raises the room's alarms (`ent_room_alarm`: a klaxon and
-`OnAlarm`; the map's `Trigger` and `Silence`). `NSAssaultTrial.Start("occupy")`
-has six BLU occupy the bench and silences a guard 40 s in.
+A follower on its legs runs two stacks, as a bot player does: its main stack
+fights, and its `TacticalLeggings` beside it (`engine.InsertGroup`, updated each
+tick by `engine.UpdateGroup` from its `BehaveUpdate`, ended by `engine.EndGroup`,
+or by the binary when the engine removes it) put its feet where its squad's
+order says. The leggings' base (`behavior.group_identity`, `gib_behaviors`) is
+Muster, FallBack and Assault: staging, a member hops door to door round the
+room, crouched `HOP_PAUSE` beside a doorway's near side, then across its sight
+at a run, each hop a spot clear of every stack; an assault keeps its stacks off
+the entrances the enemy's flow comes in by (`RoomForSquad`'s `enemyFlow`).
 
-Every squad call goes over its radio (`Order:Radio`, kept on the order): the
-leader speaks to its director (Overwatch, for the Combine; else Command), the
-squad or a member; a member speaks only to its leader; anything else is refused
-as a bug. A follower says each in chat and the server's console, as
-`[BLU radio] blue 1 -> Overwatch: Lost contact with blue 2.`, a member by its
-`NSRadioName`.
+Everything a squad does as a squad is `nextsoldier.squad`, on one seam:
+`squad.orders`, where a kind of order the base does not know registers its
+leggings' action (the base looks it up there) and any kind its mission's rules
+(`Awaiting`, `Underway`). Its parts:
+
+- `squad/behaviors/member.lua`: the main stack (`SquadMember`). While its order
+  is a mission its leader has yet to activate (an assault before "Move in!", an
+  ambush before "Now!", an occupation stacked up before its word), it listens
+  (`SquadMemberListen`: `ShouldAttack` no); then it fights (`SquadMemberCombat`).
+- `squad/behaviors/assault.lua`: the base's assault as a mission.
+- `squad/behaviors/ambush.lua`: `Ambush(room)`, `LegsAmbush`. It lies in wait
+  beside the entrance the enemy comes in by, where one walking up to it does not
+  see (`RoomForSquad`'s `watched`); an enemy seen within `SPRING_RANGE` of it,
+  or a member hurt, has its leader spring it.
+- `squad/behaviors/occupy.lua`: `Occupy(room)`, `LegsOccupy`. A guard for each
+  `GUARD_SPAN` of a loop `PATROL_OUT` round the room outside, up to half the
+  squad, walks it one way round from stops evenly apart, standing `PATROL_STOP`
+  at each corner (`LegsGuard`); the rest hold inside (`LegsHold`). Every
+  `CHECK_INTERVAL` the leader asks each guard for a status report; one silent
+  `CHECK_TIMEOUT` after is missing: the leader tells its director ("Lost contact
+  with blue 2."), and the squad stacks up inside by the exit nearest where it was
+  last heard from, out of sight from outside (`LegsStackUp`), raising the room's
+  alarms (`ent_room_alarm`: a klaxon and `OnAlarm`; the map's `Trigger` and
+  `Silence`). Its leader then asks its director for clearance to vacate and
+  waits. Cleared, it gives the word once all are stacked (or `STACK_PATIENCE`
+  after it is) and the squad runs to where the guard was last heard from. Told
+  to stand by, the squad stands down and the leader appoints the holder nearest
+  the missing guard's round to take it up ("Take over the patrol."). Told to
+  defend or attack, it acknowledges ("Copy.") and waits for the order that
+  brings, which the mode hosting it gives. Contact while stacked up, it fights.
+- `squad/behaviors/legs.lua`: what those actions share.
+- `squad/comms/radio.lua`: every squad call (`Say`, kept on the order's channel,
+  `Calls`). The leader speaks to its director (Overwatch, for the Combine; else
+  Command), the squad or a member; a member only to its leader; the director only
+  to the leader; anything else is refused as a bug. The base leggings' lines
+  ("Move in!", "Fall back!", "Room clear!") are their leader's calls to the squad
+  (`Line`). A follower says each in chat and the server's console, as
+  `[BLU radio] blue 1 -> Overwatch: Lost contact with blue 2.`, a member by its
+  `NSRadioName`.
+- `squad/interactions/director.lua`: the director's port (`Request`) and its
+  answers: `VACATE`, `DEFEND` (with a plan), `ATTACK` (with a target), `STANDBY`.
+  With none, the leader's own word stands.
+- `squad/interactions/command.lua`: its leader killed with the mission under
+  way, the first to hear of it abandons the mission and calls the fall back,
+  away from where its leader fell.
+
+Overwatch's policy is the war's (`wartactics.overwatch`: an enemy met, defend in
+ambush; fewer than `VACATE_FLOOR` left, stand by; `ATTACK_AFTER` guards lost,
+attack where the enemy comes from, else defend; otherwise vacate), given to a
+squad through `wartactics.bridge.Overwatch{ target }`.
+`NSAssaultTrial.Start("occupy")` has six BLU occupy the bench with Overwatch as
+their director and silences a guard 40 s in; `"occupy_short"` has three, too few
+to leave, so Overwatch answers stand by.
 
 Followers pass
 through each other (`COLLISION_GROUP_NPC_SCRIPTED`: a NextBot's movement asks the

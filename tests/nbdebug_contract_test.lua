@@ -191,7 +191,7 @@ T.test("a follower speaks its squad's radio calls in chat and the console, and r
 end)
 
 T.test("a follower on its legs runs two stacks: a squad member's main stack and its leggings beside it", function()
-	T.eq(pathfollower:find('if driver == "legs" then return nextsoldier.behavior.squad_member.SquadMember:New() end', 1, true) ~= nil,
+	T.eq(pathfollower:find('if driver == "legs" then return nextsoldier.squad.behaviors.member.SquadMember:New() end', 1, true) ~= nil,
 		true, "its main stack fights")
 	T.eq(pathfollower:find("nextsoldier.engine.InsertGroup(self, GroupIdentity.InitialAction(", 1, true) ~= nil, true,
 		"its leggings beside it")

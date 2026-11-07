@@ -200,7 +200,7 @@ engine's own, so its second tree is kept apart (`engine.InsertGroup` on one), ru
 soldier through its own port.
 
 A bot player's waits, for now. `npc_pathfollower` driven by its legs (the Path Follower stool's Local mode, `docs/ns-debugging.md`)
-runs it beside its main stack, a squad member's (`nextsoldier.behavior.squad_member`), starting at `LegsAtEase`: told an order (`group_identity.Muster(point)`,
+runs it beside its main stack, a squad member's (`nextsoldier.squad.behaviors.member`), starting at `LegsAtEase`: told an order (`group_identity.Muster(point)`,
 `FallBack(point, from)`), it changes to `LegsMuster` or `LegsFallBack`, and dissolved, back to ease.
 On an order, the order's action contains its squad's mode's (`MODE`, one whole number on the order),
 as L4D2's legs contain theirs: `LegsStationary` (rests at a seat near its place), `LegsPatrol`,

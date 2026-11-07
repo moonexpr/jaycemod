@@ -155,6 +155,8 @@ local Locomotion = nextsoldier.locomotion
 local Behavior = nextsoldier.behavior
 local GroupIdentity = nextsoldier.behavior.group_identity
 local GIB = nextsoldier.behavior.gib_behaviors
+local Radio = nextsoldier.squad.comms.radio
+local Command = nextsoldier.squad.interactions.command
 -- A place is looked for from this far above it to this far below, a body's own hull fitting; its
 -- way there is swept a stair's step above the floor, so a step does not wall it off.
 local SEARCH_ABOVE, SEARCH_BELOW, STEP = 64, 256, 18
@@ -538,19 +540,19 @@ function ENT:BehaveUpdate(interval)
 end
 
 -- Its driver's first action, or none in the war, whose orders are its behaviour. On its legs, its
--- main stack is a squad member's, which fights while its leggings walk it (squad_member).
+-- main stack is a squad member's, which fights while its leggings walk it (nextsoldier.squad.behaviors.member).
 function ENT:NSInitialAction()
 	local driver = self:NSDriver()
-	if driver == "legs" then return nextsoldier.behavior.squad_member.SquadMember:New() end
+	if driver == "legs" then return nextsoldier.squad.behaviors.member.SquadMember:New() end
 	if driver == "war" then return nil end
 	return nextsoldier.behavior.pathfollower.InitialAction(self.NSToolManaged)
 end
 
 -- A bench war started for followers ends with the last soldier in it; it leaves its squad.
 function ENT:OnRemove()
+	if self.nsLeggings then nextsoldier.engine.EndGroup(self) end
 	Soldier().OnRemove(self)
 	if self.nsLegsOrder then self.nsLegsOrder:Leave(self) end
-	if self.nsLeggings then nextsoldier.engine.EndGroup(self) end
 	if self:NSDriver() == "war" then WS.Feature("aiwar"):EndBenchWhenEmpty(self) end
 end
 
@@ -572,7 +574,10 @@ end
 local SoldierDeath = ENT.OnDeath
 
 function ENT:OnDeath(dmg)
-	if self.nsLegsOrder then self.nsLegsOrder:Casualty(self) end
+	if self.nsLegsOrder then
+		Command.Casualty(self.nsLegsOrder, self, self:NSLegsAt())
+		self.nsLegsOrder:Casualty(self)
+	end
 	return SoldierDeath(self, dmg)
 end
 
@@ -608,8 +613,8 @@ function ENT:NSLegsDanger(point) return WS.Feature("aiwar"):DangerNear(self:NSTe
 -- Its name on its squad's radio: the one it is given (NSRadioName), else its entity's number; kept
 -- by the entity (RadioNames, set as it starts), so one killed and gone is still named.
 function ENT:NSLegsNameOf(member)
-	if member == GroupIdentity.DIRECTOR then return self:NSDirector() end
-	if member == GroupIdentity.SQUAD then return "squad" end
+	if member == Radio.DIRECTOR then return self:NSDirector() end
+	if member == Radio.SQUAD then return "squad" end
 	return RadioNames[member] or "?"
 end
 
@@ -628,9 +633,11 @@ local function RaiseAlarms(order)
 	end
 end
 
--- Its squad's call over the radio (call: group_identity's Radio entry), to everyone's chat and the
--- server's console, as "[RED radio] red 1 -> red 4: Status report."; stacking up, the room's alarms.
+-- Its squad's call over the radio (call: nextsoldier.squad.comms.radio's entry; a line its leggings
+-- call out aloud is its leader's to the squad, Radio.Line), to everyone's chat and the server's
+-- console, as "[RED radio] red 1 -> red 4: Status report."; stacking up, the room's alarms.
 function ENT:NSLegsSay(line, call)
+	call = call or Radio.Line(self:NSLegsOrder(), self, line)
 	local said = line
 	if call then
 		said = string.format("[%s radio] %s -> %s: %s", team.GetName(self:NSTeam()), self:NSLegsNameOf(call.from),
