@@ -1,5 +1,5 @@
 -- The tree a soldier runs beside its main one, as L4D2's survivors run their legs: who it
--- is with, and where that puts its feet. Its root is native (engine.GroupIdentityBehavior);
+-- is with, and where that puts its feet. Its root is native (engine.TacticalLeggings);
 -- what it does under that is nextsoldier.behavior.gib_behaviors'. With no group to be part of
 -- yet, it waits.
 --
@@ -22,6 +22,7 @@ local floor, ceil, pi, min, max, cos, sin, atan2, abs = math.floor, math.ceil, m
 local huge = math.huge
 local ipairs, pairs, setmetatable, error, tostring = ipairs, pairs, setmetatable, error, tostring
 local remove, sort = table.remove, table.sort
+local format = string.format
 local nextsoldier = nextsoldier
 module("nextsoldier.behavior.group_identity")
 
@@ -51,6 +52,28 @@ ENCIRCLE_RADIUS, ENCIRCLE_BAND, ENCIRCLE_MIN, ENCIRCLE_STEP = 192, 48, 96, 24
 -- A room with more than one entrance is taken from those off the squad's flow, while one member,
 -- its decoy, shows itself SHOW_OUT outside the front, in the doorway's line.
 SHOW_OUT = 64
+-- An ambush lies in wait inside the room within AMBUSH_REACH of the entrance the enemy comes by.
+AMBUSH_REACH = 320
+-- An occupation patrols a loop PATROL_OUT outside its room's block, a guard for each GUARD_SPAN of
+-- it, up to half the squad.
+PATROL_OUT, GUARD_SPAN = 160, 1200
+
+-- A squad's radio: its leader speaks to its director (DIRECTOR: Overwatch, for the Combine), to the
+-- whole squad (SQUAD) or to one member; a member speaks only to its leader, and the director only
+-- to the leader. CALLS are what is said, a call with %s naming who it is about.
+DIRECTOR, SQUAD = "director", "squad"
+CALLS = {
+	STATUS = "Status report.",
+	ALL_CLEAR = "All clear.",
+	CONTACT = "Contact!",
+	IN_POSITION = "In position.",
+	LOST = "Lost contact with %s.",
+	STACK_UP = "Stack up, prepare to move.",
+	MOVE_IN = "Move in!",
+	NOW = "Now!",
+	FALL_BACK = "Fall back!",
+	ROOM_CLEAR = "Room clear!",
+}
 
 -- How near another's seat a seat is that one: a body's breadth.
 local SEAT_CLEARANCE = 32
@@ -112,7 +135,7 @@ local Order = {}
 Order.__index = Order
 
 local function NewOrder(class, fields)
-	fields.mode, fields.size, fields.lost, fields.seats = MODE.STATIONARY, 0, 0, {}
+	fields.mode, fields.size, fields.lost, fields.seats, fields.radio = MODE.STATIONARY, 0, 0, {}, {}
 	return setmetatable(fields, class)
 end
 
@@ -250,6 +273,7 @@ end
 -- A member killed: a casualty, and gone.
 function Order:Casualty(member)
 	self.lost = self.lost + 1
+	if member == self.leader then self.leaderKilled = true end
 	self:Leave(member)
 end
 
@@ -262,6 +286,37 @@ end
 function Order:Rout()
 	if self.routed or not self:HeavyCasualties() then return false end
 	self.routed = true
+	self:SetMode(MODE.PANIC)
+	return true
+end
+
+-- A call over the squad's radio, from and to a member, DIRECTOR or (from the leader) SQUAD, its
+-- words CALLS[call] with ... in them: { from, to, call, text }, kept on the channel (radio).
+-- Refused, as our bug: an unknown call, a member speaking to any but its leader, the director to
+-- any but the leader.
+function Order:Radio(from, to, call, ...)
+	local words = CALLS[call]
+	if not words then error("no squad call " .. tostring(call), 2) end
+	if from ~= self.leader and to ~= self.leader then
+		error(from == DIRECTOR and "the director speaks only to the squad's leader"
+			or "a member speaks only to its leader", 2)
+	end
+	local entry = { from = from, to = to, call = call, text = format(words, ...) }
+	self.radio[#self.radio + 1] = entry
+	return entry
+end
+
+-- A mission (an assault, an ambush) its leader has yet to activate, its members holding their
+-- fire and keeping still to their places until it does; and one not yet over. A muster and a fall
+-- back are no mission.
+function Order:Awaiting() return false end
+function Order:Underway() return false end
+
+-- Its leader lost while the mission is under way, the squad abandons it and falls back: true the
+-- once it does (a rout's call counts).
+function Order:Abandon()
+	if self.routed then return false end
+	self.routed, self.abandoned = true, true
 	self:SetMode(MODE.PANIC)
 	return true
 end
@@ -342,6 +397,10 @@ end
 
 local Breach = setmetatable({}, Order)
 Breach.__index = Breach
+
+-- An assault awaits its leader's signal, and is under way until the room is called clear.
+function Breach:Awaiting() return not self.routed and not self.signalled end
+function Breach:Underway() return not self.routed and not self.cleared end
 
 -- Of slots, count spacing apart: the first the furthest from from, then each the one furthest
 -- from all those chosen and from; fewer where the slots run out.
@@ -648,6 +707,68 @@ function Breach:ThroughOne(members, spacing, floor, admitAt)
 	return places
 end
 
+-- Where p lies round the room's middle, an angle; and how far angle a lies on from b, the short
+-- way round (-pi to pi).
+local function Bearing(room, p) return atan2(p.y - room.center.y, p.x - room.center.x) end
+
+local function Turn(a, b)
+	local d = (a - b) % (2 * pi)
+	return d > pi and d - 2 * pi or d
+end
+
+-- Stealth on the way to its stack: the entrances a member passes walking round the room from start
+-- to goal the short way, leaving out those in skip (entrance -> true), and beside each, of the
+-- ground the room does not see there (beside(entrance)), the spot nearest it on its near side,
+-- where the member stops (pause), then the one on its far side, crossing the doorway's sight to it
+-- (cross). A spot is spacing clear of every stack (stacks), and of the hops already given (taken,
+-- which each it picks joins) where the ground leaves one, else shares the nearest.
+-- -> hops in the order walked.
+local function Clear(p, others, spacing)
+	for _, other in ipairs(others) do
+		if Geometry.Distance2D(p, other) < spacing then return false end
+	end
+	return true
+end
+
+local function Hops(room, start, goal, skip, beside, stacks, taken, spacing)
+	local from = Bearing(room, start)
+	local span = Turn(Bearing(room, goal), from)
+	local way = span >= 0 and 1 or -1
+	local passed = {}
+	for _, e in ipairs(room.entrances) do
+		local along = Turn(Bearing(room, e.pos), from) * way
+		if not skip[e.pos] and along > 0 and along < abs(span) then passed[#passed + 1] = { along = along, pos = e.pos } end
+	end
+	sort(passed, function(a, b) return a.along < b.along end)
+	local hops = {}
+	for _, p in ipairs(passed) do
+		local door = Bearing(room, p.pos)
+		-- the nearest on each side, of those clear of the stacks and the hops given, else of the stacks
+		local near, far
+		for _, avoid in ipairs({ taken, {} }) do
+			for _, slot in ipairs(beside(p.pos)) do
+				local side, d = Turn(Bearing(room, slot), door) * way, Geometry.Distance2D(slot, p.pos)
+				if Clear(slot, stacks, spacing) and Clear(slot, avoid, spacing) then
+					if not near and side < 0 or near and side < 0 and d < Geometry.Distance2D(near, p.pos) then near = slot end
+					if not far and side > 0 or far and side > 0 and d < Geometry.Distance2D(far, p.pos) then far = slot end
+				end
+			end
+			if near and far then break end
+			near, far = nil, nil
+		end
+		if near and far then
+			hops[#hops + 1] = { point = near, pause = true }
+			hops[#hops + 1] = { point = far, cross = true }
+			taken[#taken + 1], taken[#taken + 2] = near, far
+		end
+	end
+	return hops
+end
+
+-- The hops the member given place takes to its stack (an assault's): { point, pause or cross }s,
+-- none where it passes no entrance.
+function Order:HopsOf(place) return self.hops and self.hops[place] or {} end
+
 -- Each member's place filling the room, and first its part going in. Through one entrance, as
 -- ThroughOne. With more: the member nearest the front is the decoy, hiding beside it and showing
 -- itself outside it; the rest split over the others, each staged around its own out of the
@@ -703,13 +824,198 @@ function Breach:Places(members, spacing, admit, admitAt)
 		end
 	end
 	for i, place in pairs(places) do self.staging[place], self.breach[place] = stack[i], points[i] end
+	-- the rest hop door to door round the room to their stacks, past any entrance but the front
+	-- (their own too, where the stack lies past it); the ground hidden beside each found once
+	local beside = {}
+	local function Beside(entrance)
+		if not beside[entrance] then
+			local out = OutOf(self.room, entrance)
+			beside[entrance] = Outside({ entry = entrance, center = self.room.center, seen = self.room.seen }, spacing,
+				admitAt({ x = entrance.x + out.x * spacing, y = entrance.y + out.y * spacing, z = entrance.z }))
+		end
+		return beside[entrance]
+	end
+	-- each hop a spot of its member's own, clear of every stack and of the hops given before it
+	local stacks, taken = {}, {}
+	for _, m in ipairs(rest) do stacks[#stacks + 1] = stack[m] end
+	if hide then stacks[#stacks + 1] = hide end
+	self.hops = {}
+	for _, m in ipairs(rest) do
+		if places[m] and stack[m] then
+			self.hops[places[m]] = Hops(self.room, members[m], stack[m], { [front] = true }, Beside, stacks, taken, spacing)
+		end
+	end
 	if places[decoy] then self.staging[places[decoy]], self.breach[places[decoy]] = hide, nil end
 	if places[decoy] then self.decoys[places[decoy]] = { show = show, hide = hide } end
 	return places
 end
 
+local Lurk = setmetatable({}, Order)
+Lurk.__index = Lurk
+
+-- An ambush awaits its springing, and is fought out where it lies.
+function Lurk:Awaiting() return not self.routed and not self.sprung end
+function Lurk:Underway() return not self.routed end
+
+-- Each member's place lying in wait: of the room's floor within AMBUSH_REACH of the entrance, that
+-- one walking up to it does not see through it (room.watched), with STACK_COVER to spare, the
+-- nearest the entrance, spacing apart, matched from where the members stand.
+function Lurk:Places(members, spacing, admit)
+	admit = admit or Anywhere
+	self.size = #members
+	local room, entrance = self.room, self.entrance
+	local hidden = {}
+	for _, p in ipairs(Floor(room, spacing, admit)) do
+		local clear = Geometry.Distance2D(p, entrance) <= AMBUSH_REACH and not room.watched(p, entrance)
+		for _, d in ipairs(AROUND) do
+			if clear and room.watched({ x = p.x + d[1], y = p.y + d[2], z = p.z }, entrance) then clear = false end
+		end
+		if clear then hidden[#hidden + 1] = p end
+	end
+	return Assign(entrance, Nearest(hidden, entrance, #members, spacing), members)
+end
+
+-- Sprung (an enemy met by the entrance, or a member hurt): true the once it is.
+function Order:Spring()
+	if self.sprung then return false end
+	self.sprung = true
+	return true
+end
+
+function Order:Sprung() return self.sprung == true end
+
+local Hold = setmetatable({}, Order)
+Hold.__index = Hold
+
+-- An occupation is no mission until a guard goes missing: then its squad awaits its leader's word
+-- to move, and is under way until it falls back.
+function Hold:Awaiting() return self.alarm ~= nil and not self.routed and not self.signalled end
+function Hold:Underway() return self.alarm ~= nil and not self.routed end
+
+-- The loop round the room PATROL_OUT outside its block: its corners, where a guard stops, and its
+-- sides' middles, each where admitAt lets, counter-clockwise from the south-west.
+local function Loop(room, admitAt)
+	local x0, y0 = room.lo.x - PATROL_OUT, room.lo.y - PATROL_OUT
+	local x1, y1 = room.hi.x + PATROL_OUT, room.hi.y + PATROL_OUT
+	local mx, my, z = (x0 + x1) / 2, (y0 + y1) / 2, room.center.z
+	local loop = {}
+	for _, at in ipairs({ { x0, y0, true }, { mx, y0 }, { x1, y0, true }, { x1, my }, { x1, y1, true }, { mx, y1 },
+		{ x0, y1, true }, { x0, my } }) do
+		local p = { x = at[1], y = at[2], z = z }
+		local spot = admitAt(p)(p)
+		if spot then loop[#loop + 1] = { point = spot, stop = at[3] == true } end
+	end
+	return loop
+end
+
+-- Each member's place: its guards' first stops on the loop, evenly round it (the members furthest
+-- from the room's middle, never the first, its leader to be), the rest's spread over its floor.
+-- Guards, one for each GUARD_SPAN of the loop, up to half the squad.
+function Hold:Places(members, spacing, admit, admitAt)
+	if not admitAt then error("an occupation patrols round its room as well as holding it: admitAt", 2) end
+	admit = admit or Anywhere
+	self.size, self.spacing = #members, spacing
+	self.loop, self.patrol, self.guards = Loop(self.room, admitAt), {}, {}
+	local length = 0
+	for i, stop in ipairs(self.loop) do
+		length = length + Geometry.Distance2D(stop.point, self.loop[i % #self.loop + 1].point)
+	end
+	local count = #self.loop > 0 and min(floor(#members / 2), max(1, floor(length / GUARD_SPAN + 0.5))) or 0
+	local rest = {}
+	for i = 2, #members do rest[#rest + 1] = i end
+	local center = self.room.center
+	sort(rest, function(a, b) return Geometry.Distance2D(members[a], center) > Geometry.Distance2D(members[b], center) end)
+	local places, holders, positions = {}, {}, {}
+	for k = 1, #rest do
+		local m = rest[k]
+		if k <= count then
+			local start = floor((k - 1) * #self.loop / count) + 1
+			places[m] = self.loop[start].point
+			self.patrol[places[m]] = start
+		else
+			holders[#holders + 1] = m
+		end
+	end
+	holders[#holders + 1] = 1
+	for i, m in ipairs(holders) do positions[i] = members[m] end
+	for i, slot in pairs(Assign(center, Farthest(Floor(self.room, spacing, admit), center, #holders, spacing), positions)) do
+		places[holders[i]] = slot
+	end
+	return places
+end
+
+-- The stop of the loop the guard given place starts from, or nil for one holding inside.
+function Hold:PatrolOf(place) return self.patrol and self.patrol[place] end
+
+-- Its guards on patrol, and what the leader last heard from each: member, on patrol at at (from
+-- its first round), asked for a report now (Ask), answering from at (Answered); Asked(member)
+-- whether it owes one; Silent(now, timeout) one owing a report longer than timeout, else nil;
+-- LastHeard(member) where it last answered from.
+function Hold:OnPatrol(member, at)
+	if not self.guards[member] then self.guards[member] = { heard = at } end
+end
+
+function Hold:Ask(member, now) self.guards[member].asked = now end
+function Hold:Asked(member) return self.guards[member] ~= nil and self.guards[member].asked ~= nil end
+
+function Hold:Answered(member, at)
+	local guard = self.guards[member]
+	guard.asked, guard.heard = nil, at
+end
+
+function Hold:Silent(now, timeout)
+	for member, guard in pairs(self.guards) do
+		if guard.asked and now - guard.asked > timeout then return member end
+	end
+	return nil
+end
+
+function Hold:LastHeard(member) return self.guards[member].heard end
+
+-- A guard missing, last heard from at: the squad stacks up inside by the exit nearest it, out of
+-- sight from outside it (room.watched), for its leader's word. The spots to stack on, spacing
+-- apart, nearest the exit, where admit lets. True the once it is raised.
+function Hold:Alarm(at, spacing, admit)
+	if self.alarm then return false end
+	local exit = Select.Nearest(self.exits or {}, at)
+	local hidden = {}
+	for _, p in ipairs(Floor(self.room, spacing, admit)) do
+		if not exit or not self.room.watched(p, exit) then hidden[#hidden + 1] = p end
+	end
+	self.alarm = { at = at, exit = exit, spots = Nearest(hidden, exit or at, self.size, spacing), taken = {} }
+	return true
+end
+
+-- The spot member stacks on, the alarm raised: the one it took, else the nearest left to it.
+function Hold:StackAt(member)
+	local alarm = self.alarm
+	if alarm.taken[member] then return alarm.taken[member] end
+	local held = {}
+	for _, spot in pairs(alarm.taken) do held[spot] = true end
+	for _, spot in ipairs(alarm.spots) do
+		if not held[spot] then
+			alarm.taken[member] = spot
+			return spot
+		end
+	end
+	return nil
+end
+
 function Muster(point)
 	return NewOrder(Gather, { kind = "Muster", point = point })
+end
+
+-- room: as an assault's, with watched(point, entrance) (whether one walking up to the entrance
+-- sees point through it) and its entrances' enemyFlow; the squad lies in wait by the entrance the
+-- most of the enemy's flow comes in by. Refused where it cannot hide, or no enemy is known to come.
+function Ambush(room)
+	if not room.watched then error("an ambush lies out of its enemy's sight: the room's watched", 2) end
+	local entrance
+	for _, e in ipairs(room.entrances or {}) do
+		if (e.enemyFlow or 0) > 0 and (not entrance or e.enemyFlow > entrance.enemyFlow) then entrance = e end
+	end
+	if not entrance then error("an ambush waits where the enemy comes in: no entrance has the enemy's flow", 2) end
+	return NewOrder(Lurk, { kind = "Ambush", point = room.center, entrance = entrance.pos, room = room, exits = room.exits })
 end
 
 -- Nil where point is on the threat, which leaves no way across the ground to fall.
@@ -728,9 +1034,15 @@ function Assault(room)
 	return NewOrder(Breach, { kind = "Assault", point = room.center, entry = room.entry, room = room, exits = room.exits })
 end
 
+-- room: as an ambush's (watched), with its exits; the squad holds it, a share patrolling round it.
+function Occupy(room)
+	if not room.watched then error("an occupation stacks up out of sight from outside: the room's watched", 2) end
+	return NewOrder(Hold, { kind = "Occupy", point = room.center, room = room, exits = room.exits })
+end
+
 -- Its root, holding first (gib_behaviors' LegsWait, for none).
 function InitialAction(engine, first)
-	return engine.GroupIdentityBehavior({ initial = first or nextsoldier.behavior.gib_behaviors.LegsWait:New() })
+	return engine.TacticalLeggings({ initial = first or nextsoldier.behavior.gib_behaviors.LegsWait:New() })
 end
 
 -- Puts the tree on ent, telling its actions me. Whether it could: where the binary is not

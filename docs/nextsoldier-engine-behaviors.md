@@ -179,25 +179,28 @@ only the `nb_head_aim_*` convars and the `LOOK_AT` debug category.
 players on NextSoldier have a head so far; a threat's source waits for combat, and an NPC's head
 for where it turns (the clients', `nextsoldier.body.gaze`).
 
-## GroupIdentityBehavior: the tree beside the main one
+## TacticalLeggings: the tree beside the main one
 
 A bot player runs two trees, as L4D2's survivors run `SurvivorBehavior` and `SurvivorLegs`:
 
 ```
 TacticalMonitor > ... > FetchFlag        what it is doing
-GroupIdentityBehavior > LegsWait         who it is with, and where that puts its feet
+TacticalLeggings > LegsWait         who it is with, and where that puts its feet
 ```
 
 `engine.InsertGroup(soldier, action[, me])` gives it the second: another `Behavior` and shadow on
 the same soldier. `soldier_update` runs both; `NextContainedResponder` (slot 2 of its intention)
 hands events on from the first to the second, so it hears what the main tree hears. Its root is
-native (`group.rs`, `engine.GroupIdentityBehavior{ initial }`), and `nextsoldier.behavior.group_identity`
+native (`group.rs`, `engine.TacticalLeggings{ initial }`), and `nextsoldier.behavior.group_identity`
 gives it to NextSoldiers and war bots for the player's whole life, not each spawn. `engine.GroupStack`
-shows it, and the debug layer lists it after the main tree. Only players have one: a `CLuaNextBot`'s
-intention is the engine's own.
+shows it, and the debug layer lists it after the main tree. A `CLuaNextBot`'s intention is the
+engine's own, so its second tree is kept apart (`engine.InsertGroup` on one), run when Lua says
+(`engine.UpdateGroup`, from its `BehaveUpdate`, at its main tree's interval) and ended with it
+(`engine.EndGroup`, from its `OnRemove`); it hears none of the main tree's events, and reads its
+soldier through its own port.
 
 A bot player's waits, for now. `npc_pathfollower` driven by its legs (the Path Follower stool's Local mode, `docs/ns-debugging.md`)
-runs it alone, starting at `LegsAtEase`: told an order (`group_identity.Muster(point)`,
+runs it beside its main stack, a squad member's (`nextsoldier.behavior.squad_member`), starting at `LegsAtEase`: told an order (`group_identity.Muster(point)`,
 `FallBack(point, from)`), it changes to `LegsMuster` or `LegsFallBack`, and dissolved, back to ease.
 On an order, the order's action contains its squad's mode's (`MODE`, one whole number on the order),
 as L4D2's legs contain theirs: `LegsStationary` (rests at a seat near its place), `LegsPatrol`,

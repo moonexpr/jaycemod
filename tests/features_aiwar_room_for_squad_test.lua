@@ -13,4 +13,10 @@ T.test("each entrance carries the squad's flow and the enemy's into the room", f
 		true, "its routes and breaches entering by each")
 end)
 
+T.test("what one walking up to an entrance sees inside, for an ambush to hide from", function()
+	T.eq(marks:find("local function Watched(p, entrance)", 1, true) ~= nil, true, "watched")
+	T.eq(marks:find("for _, along in ipairs(LOOKOUT_ALONG) do", 1, true) ~= nil, true, "from lookouts along its approach")
+	T.eq(marks:find("watched = Watched", 1, true) ~= nil, true, "given with the room")
+end)
+
 T.finish()

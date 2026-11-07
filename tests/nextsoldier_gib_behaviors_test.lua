@@ -1,4 +1,4 @@
--- nextsoldier.behavior.gib_behaviors: what GroupIdentityBehavior does under its root, as L4D2's
+-- nextsoldier.behavior.gib_behaviors: what TacticalLeggings does under its root, as L4D2's
 -- legs do beside its survivors' behaviour: an order's action, and under it its squad's mode's.
 local T = dofile("tests/harness.lua")
 local Action = nextsoldier.behavior.action
@@ -38,9 +38,16 @@ local function Member(order, place)
 	end
 	function me:NSLegsSeats() self.asked = self.asked + 1 return self.seats end
 	function me:NSLegsHeadFor(spot, gait, keepOut) self.headed, self.spot, self.gait, self.keepOut = self.headed + 1, spot, gait, keepOut end
-	function me:NSLegsSay(line) self.said[#self.said + 1] = line end
+	function me:NSLegsSay(line, call)
+		self.said[#self.said + 1] = line
+		self.calls = self.calls or {}
+		self.calls[#self.calls + 1] = call
+	end
 	function me:NSLegsDanger() return self.danger end
 	function me:NSLegsContact() return self.contact == true end
+	function me:NSLegsEnemyAt() return self.enemyAt end
+	function me:NSLegsHurt() return self.hurt == true end
+	function me:NSLegsNameOf(other) return other.name or "?" end
 	return me
 end
 
@@ -55,7 +62,7 @@ end
 
 T.test("its root is the engine's own, waiting first", function()
 	local given
-	local engine = { GroupIdentityBehavior = function(config) given = config return "root" end }
+	local engine = { TacticalLeggings = function(config) given = config return "root" end }
 	GroupIdentity.InitialAction(engine)
 	T.eq(given.initial.name, "LegsWait", "it starts by waiting")
 end)
@@ -430,6 +437,28 @@ T.test("staging, a member walks to its place in the stack, not the room; there i
 	T.eq(order:StagedAt(me), 3, "staged")
 end)
 
+T.test("on its way to the stack, a member hops: crouched on a doorway's near side a while, across at a run", function()
+	local order, squad = Assault()
+	local me, stage = squad[2].me, squad[2].action
+	local near, far = { x = -100, y = 450, z = 0 }, { x = 100, y = 450, z = 0 }
+	order.hops = { [me.place] = { { point = near, pause = true }, { point = far, cross = true } } }
+	stage:Update(me)
+	T.eq(me.spot, near, "to the near side first")
+	T.eq(me.gait, GAIT.WALK, "walking")
+	me.at, me.now = near, 10
+	stage:Update(me)
+	T.eq(me.spot, near, "there, it waits")
+	T.eq(me.gait, GAIT.REST, "crouched")
+	me.now = 10 + GIB.HOP_PAUSE
+	stage:Update(me)
+	T.eq(me.spot, far, "then for the far side")
+	T.eq(me.gait, GAIT.RUN, "across at a run")
+	me.at = far
+	stage:Update(me)
+	T.eq(me.spot, order:StagingOf(me.place), "then on to its stack")
+	T.eq(order:StagedAt(me), nil, "not staged on its way")
+end)
+
 T.test("staged, a member waits for the signal, then goes in", function()
 	local order, squad = Assault()
 	local me, stage = squad[2].me, squad[2].action
@@ -724,6 +753,101 @@ T.test("its leader lost, the first of the squad to see it takes the lead and cal
 	T.eq(order.mode, MODE.PANIC, "evacuating")
 end)
 
+T.test("its leader killed with the mission under way, the squad abandons it and falls back", function()
+	local order, squad = Assault()
+	order:Casualty(squad[1].me)
+	squad[2].orders:Update(squad[2].me)
+	T.eq(order.leader, squad[2].me, "the lead taken")
+	T.eq(squad[2].me.said[1], GIB.FALL_BACK_LINE, "the fall back called, one of four lost")
+	T.eq(order.abandoned, true, "the mission abandoned")
+	T.eq(order.mode, MODE.PANIC, "evacuating")
+	squad[3].orders:Update(squad[3].me)
+	T.eq(#squad[3].me.said, 0, "called the once")
+end)
+
+T.test("its leader killed once the room is clear, the squad takes a new lead and stays", function()
+	local order, squad = Assault()
+	order:Signal()
+	order:CallClear()
+	order:Casualty(squad[1].me)
+	squad[2].orders:Update(squad[2].me)
+	T.eq(order.leader, squad[2].me, "the lead taken")
+	T.eq(#squad[2].me.said, 0, "no fall back")
+	T.eq(order.abandoned, nil, "the mission done, not abandoned")
+end)
+
+-- Three lying in wait by the west door of a room with one entrance, which the enemy comes in by.
+local function Lurking()
+	local room = { center = { x = 0, y = 0, z = 0 }, lo = { x = -400, y = -400, z = 0 }, hi = { x = 400, y = 400, z = 0 },
+		entry = { x = -400, y = 0, z = 0 }, seen = function() return false end, score = function() return 0 end,
+		entrances = { { pos = { x = -400, y = 0, z = 0 }, flow = 0, enemyFlow = 2 } },
+		watched = function(p) return math.abs(p.y) < 64 + (p.x + 400) end }
+	local order = GroupIdentity.Ambush(room)
+	local at = {}
+	for i = 1, 3 do at[i] = { x = 700, y = -60 + i * 40, z = 0 } end
+	local places = order:Places(at, 72, function(slot) return slot end)
+	local squad = {}
+	for i = 1, 3 do
+		local me, action, orders = OnOrder(order, places[i])
+		me.at = at[i]
+		squad[i] = { me = me, action = action, orders = orders }
+	end
+	order:Lead(squad[1].me)
+	return order, squad
+end
+
+T.test("told an ambush, a member runs to its place and lies in wait there, crouched", function()
+	local order, squad = Lurking()
+	local me, ambush = squad[2].me, squad[2].orders
+	T.eq(squad[2].orders.name, "LegsAmbush", "the ambush")
+	ambush:Update(me)
+	T.eq(me.spot, me.place, "to its place")
+	T.eq(me.gait, GAIT.RUN, "running")
+	me.at = me.place
+	ambush:Update(me)
+	T.eq(me.gait, GAIT.REST, "lying in wait")
+	T.eq(order:Sprung(), false, "not sprung")
+end)
+
+T.test("an enemy seen by the entrance, its leader springs the ambush", function()
+	local order, squad = Lurking()
+	local member, leader = squad[2], squad[1]
+	member.me.at, leader.me.at = member.me.place, leader.me.place
+	member.me.enemyAt = { x = 600, y = 0, z = 0 }
+	member.orders:Update(member.me)
+	leader.orders:Update(leader.me)
+	T.eq(order:Sprung(), false, "an enemy far off is let come on")
+	member.me.enemyAt = { x = -400 - GIB.SPRING_RANGE + 10, y = 0, z = 0 }
+	member.orders:Update(member.me)
+	T.eq(order:Sprung(), false, "the leader springs it, not the member")
+	leader.orders:Update(leader.me)
+	T.eq(order:Sprung(), true, "sprung")
+	T.eq(leader.me.said[1], GIB.SPRING_LINE, "on its call")
+end)
+
+T.test("a member hurt lying in wait, its leader springs the ambush", function()
+	local order, squad = Lurking()
+	squad[3].me.hurt = true
+	squad[3].orders:Update(squad[3].me)
+	squad[1].orders:Update(squad[1].me)
+	T.eq(order:Sprung(), true, "sprung")
+end)
+
+T.test("sprung, each fights from where it lies", function()
+	local order, squad = Lurking()
+	local me = squad[2].me
+	me.at = me.place
+	order:Spring()
+	squad[2].orders:Update(me)
+	T.eq(me.spot, me.place, "at its place")
+	T.eq(me.gait, GAIT.REST, "crouched")
+end)
+
+T.test("the tuning of an ambush's spring is defined", function()
+	T.defined(GIB.SPRING_RANGE, "SPRING_RANGE")
+	T.eq(type(GIB.SPRING_LINE), "string", "the line its leader springs it by")
+end)
+
 T.test("staging and hiding, a member keeps out of the room; going in, it does not", function()
 	local order, squad, decoy = Flanking()
 	local member = squad[1] == decoy and squad[2] or squad[1]
@@ -733,6 +857,148 @@ T.test("staging and hiding, a member keeps out of the room; going in, it does no
 	T.eq(decoy.me.keepOut, order.room.inside, "the decoy hiding, too")
 	GIB.LegsEnter:New({ order = order }):Update(member.me)
 	T.eq(member.me.keepOut, nil, "going in, the room open to it")
+end)
+
+-- Four occupying the four-door room of group_identity's tests, standing outside its east door:
+-- the leader holding inside, guards on the loop.
+local function Occupying()
+	local doors = { { x = -400, y = 0, z = 0 }, { x = 0, y = 400, z = 0 }, { x = 0, y = -400, z = 0 }, { x = 400, y = 0, z = 0 } }
+	local room = { center = { x = 0, y = 0, z = 0 }, lo = { x = -400, y = -400, z = 0 }, hi = { x = 400, y = 400, z = 0 },
+		entry = doors[1], exits = doors, seen = function() return false end, score = function() return 0 end,
+		watched = function(p, door)
+			local inward = { x = -door.x / 400, y = -door.y / 400 }
+			local dx, dy = p.x - door.x, p.y - door.y
+			local depth = dx * inward.x + dy * inward.y
+			return depth < 0 or math.abs(dx * inward.y - dy * inward.x) < 64 + depth
+		end }
+	local inside = function(p) return math.abs(p.x) < 400 and math.abs(p.y) < 400 end
+	local admitAt = function(around)
+		local within = inside(around)
+		return function(slot) if inside(slot) == within then return slot end return nil end
+	end
+	local order = GroupIdentity.Occupy(room)
+	local at = {}
+	for i = 1, 4 do at[i] = { x = 600, y = -150 + i * 60, z = 0 } end
+	local places = order:Places(at, 72, admitAt(room.center), admitAt)
+	local squad = {}
+	for i = 1, 4 do
+		local me, action, orders = OnOrder(order, places[i])
+		me.at, me.name = places[i], "red " .. i
+		me.NSLegsAdmit = function() return admitAt(room.center) end
+		squad[i] = { me = me, action = action, orders = orders }
+	end
+	order:Lead(squad[1].me)
+	return order, squad
+end
+
+local function GuardOf(order, squad)
+	for _, member in ipairs(squad) do
+		if order:PatrolOf(member.me.place) then return member end
+	end
+end
+
+T.test("occupying, the leader holds inside and a guard patrols", function()
+	local order, squad = Occupying()
+	T.eq(squad[1].orders.name, "LegsOccupy", "the occupation")
+	T.eq(squad[1].action.name, "LegsHold", "its leader holds")
+	T.eq(GuardOf(order, squad).action.name, "LegsGuard", "a guard patrols")
+end)
+
+T.test("a guard walks the loop one way round, stopping a while at each corner", function()
+	local order, squad = Occupying()
+	local guard = GuardOf(order, squad)
+	local me, start = guard.me, order:PatrolOf(guard.me.place)
+	local index, now, stops = start, 0, 0
+	for _ = 1, #order.loop do
+		local stop = order.loop[index]
+		me.at, me.now = stop.point, now
+		guard.action:Update(me)
+		if stop.stop then
+			stops = stops + 1
+			T.eq(me.spot, stop.point, "it stands at a corner a while")
+			now = now + GIB.PATROL_STOP
+			me.now = now
+			guard.action:Update(me)
+		end
+		index = index % #order.loop + 1
+		T.eq(me.spot, order.loop[index].point, "then on to the next stop, one way round")
+	end
+	T.eq(stops, 4, "a stop at each corner")
+end)
+
+T.test("the leader asks its guards for a status report a while apart, and each answers it", function()
+	local order, squad = Occupying()
+	local leader, guard = squad[1], GuardOf(order, squad)
+	guard.action:Update(guard.me)
+	leader.action:Update(leader.me)
+	leader.orders:Update(leader.me)
+	T.eq(#leader.me.said, 0, "not asked at once")
+	leader.me.now = GIB.CHECK_INTERVAL
+	leader.orders:Update(leader.me)
+	T.eq(leader.me.calls[1].call, "STATUS", "asked")
+	T.eq(leader.me.calls[1].to, guard.me, "of the guard, over the radio")
+	guard.me.now = GIB.CHECK_INTERVAL + 1
+	guard.action:Update(guard.me)
+	T.eq(guard.me.calls[1].call, "ALL_CLEAR", "it answers")
+	T.eq(guard.me.calls[1].to, leader.me, "to its leader")
+	leader.me.now = GIB.CHECK_INTERVAL + GIB.CHECK_TIMEOUT + 1
+	leader.orders:Update(leader.me)
+	T.eq(order.alarm, nil, "answered, no alarm")
+end)
+
+T.test("a guard silent past the timeout is missing: the leader tells the director and the squad stacks up", function()
+	local order, squad = Occupying()
+	local leader, guard = squad[1], GuardOf(order, squad)
+	guard.me.at = { x = 0, y = -560, z = 0 }
+	guard.action:Update(guard.me)
+	leader.me.now = GIB.CHECK_INTERVAL
+	leader.orders:Update(leader.me)
+	leader.me.now = GIB.CHECK_INTERVAL + GIB.CHECK_TIMEOUT + 1
+	leader.orders:Update(leader.me)
+	local lost, stack
+	for _, call in ipairs(leader.me.calls) do
+		if call.call == "LOST" then lost = call end
+		if call.call == "STACK_UP" then stack = call end
+	end
+	T.eq(lost and lost.to, GroupIdentity.DIRECTOR, "the director told")
+	T.eq(lost and lost.text, "Lost contact with " .. guard.me.name .. ".", "of whom")
+	T.eq(stack and stack.to, GroupIdentity.SQUAD, "the squad told to stack up")
+	T.eq(order.alarm.exit.y, -400, "by the south door, where it was last heard from")
+	local result = leader.action:Update(leader.me)
+	T.eq(result.type, Action.CHANGE_TO, "the leader leaves off holding")
+	T.eq(result.action.name, "LegsStackUp", "to stack up")
+end)
+
+T.test("stacked up, the squad moves in on its leader's word, to where the guard was last heard from", function()
+	local order, squad = Occupying()
+	order:Alarm({ x = 0, y = -560, z = 0 }, 72, squad[1].me:NSLegsAdmit())
+	local stacking = {}
+	for i, member in ipairs(squad) do
+		if not order:PatrolOf(member.me.place) then
+			stacking[#stacking + 1] = { me = member.me, action = GIB.LegsStackUp:New({ order = order }) }
+		end
+	end
+	for _, member in ipairs(stacking) do
+		member.action:Update(member.me)
+		local spot = order:StackAt(member.me)
+		T.eq(member.me.spot, spot, "to its spot by the exit")
+		member.me.at = spot
+		member.action:Update(member.me)
+		T.eq(member.me.gait, GIB.GAIT.REST, "there, ready")
+	end
+	order.size = #stacking
+	squad[1].orders:Update(squad[1].me)
+	T.eq(order:Signalled(), true, "all stacked, the leader's word")
+	T.eq(squad[1].me.calls[#squad[1].me.calls].call, "MOVE_IN", "over the radio")
+	stacking[1].action:Update(stacking[1].me)
+	T.eq(stacking[1].me.spot, order.alarm.at, "to where the guard was last heard from")
+	T.eq(stacking[1].me.gait, GIB.GAIT.RUN, "at a run")
+end)
+
+T.test("the tuning of a patrol is defined", function()
+	T.defined(GIB.PATROL_STOP, "PATROL_STOP")
+	T.defined(GIB.CHECK_INTERVAL, "CHECK_INTERVAL")
+	T.defined(GIB.CHECK_TIMEOUT, "CHECK_TIMEOUT")
 end)
 
 T.finish()

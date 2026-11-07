@@ -1,5 +1,5 @@
 //! The root of the tree a soldier runs beside its main one, as L4D2's survivors run their
-//! legs: GroupIdentityBehavior. It runs what its config starts it on; what it holds of a
+//! legs: TacticalLeggings. It runs what its config starts it on; what it holds of a
 //! soldier's group grows here, in Rust, since it runs every update.
 
 /// How near a teammate pushes, and how far above or below one no longer does.
@@ -52,7 +52,7 @@ mod hooks {
     use foundation::lua::{api, raise_where, L, TTABLE};
     use std::ffi::{c_int, c_void, CStr};
 
-    const NAME: &CStr = c"GroupIdentityBehavior";
+    const NAME: &CStr = c"TacticalLeggings";
 
     pub(crate) const KIND: Kind = Kind {
         name: NAME,
@@ -69,7 +69,7 @@ mod hooks {
         0
     }
 
-    /// engine.GroupIdentityBehavior{ initial } -> the root, for engine.InsertGroup: `initial`
+    /// engine.TacticalLeggings{ initial } -> the root, for engine.InsertGroup: `initial`
     /// the action it runs first.
     unsafe extern "C-unwind" fn constructor(l: L) -> c_int {
         let api = api();
@@ -79,7 +79,7 @@ mod hooks {
         if (api.type_of)(l, -1) != TTABLE {
             raise_where(
                 l,
-                "GroupIdentityBehavior needs the action it runs first".into(),
+                "TacticalLeggings needs the action it runs first".into(),
             );
         }
         (api.settop)(l, 1);

@@ -8,6 +8,11 @@ y -1024..1024, the ground's top at z 0):
   the bench     x  -384..384    one room, a doorway in each wall
   BLU's house   x  1120..1760   BLU's spawn room, its door west
 
+The bench stands in a walled court, its wall COURT out from the bench's on every side and a
+house's height, so neither spawn sees the bench nor the other (their doors and the bench's lie on
+one line); its east and west walls each have two gateways, GATE wide, near their ends, none on
+that line.
+
 Every doorway is DOOR wide and DOOR_HEIGHT high, room for TF2's shutter
 doors; every wall has windows of breakable glass (func_breakable, which the
 war's rooms read as windows). Each house stands on a floor slab FLOOR_TOP
@@ -23,7 +28,7 @@ func_respawnroomvisualizer across the doorway outside it.
 
 Named points for a bench's checks: red_muster (RED's spawn room's middle),
 bench_room (the bench's middle) and bench_danger (outside the bench on
-BLU's side).
+BLU's side); bench_alarm, the bench's ent_room_alarm.
 
 Writes .devtools/artifacts/maps/dev_3house.vmf (anew: an old one is moved
 aside), renders it top-down, from the side and through the bench's doors,
@@ -78,6 +83,9 @@ SPAWN_COLUMNS, SPAWN_ROWS = (96, 192, 288), (-216, -72, 72, 216)
 LOCKER_BACK, REGEN_ALONG, REGEN_ACROSS, REGEN_UP = 16.25, (-16, 72), 48, 113
 # Where a door's trigger reaches from the doorway, each side.
 DOOR_TRIGGER_REACH = 96
+# The bench's court: how far out from the bench's walls its wall stands, its gateways' width, and
+# how far from the court's axis each gateway's middle is.
+COURT, GATE, GATE_OFF = 288, 128, 512
 TEAMS = {"red": 2, "blu": 3}
 
 
@@ -240,6 +248,9 @@ def bench_house():
         openings += [(side, 0, "door"), (side, -224, "window"), (side, 224, "window")]
     house = House(0, ROOM_SIZE, openings)
     house.points.append({"classname": "info_target", "targetname": "bench_room", "origin": f"0 0 {FLOOR_TOP}"})
+    # its alarm, which the squad holding it raises when it stacks up, a guard missing
+    house.points.append({"classname": "ent_room_alarm", "targetname": "bench_alarm",
+                         "origin": f"0 0 {FLOOR_TOP + HOUSE_HEIGHT - 32}"})
     house.points.append({"classname": "info_target", "targetname": "bench_danger",
                          "origin": f"{ROOM_SIZE // 2 + WALL_T + 256} 0 0"})
     for x, y in ((-192, -192), (192, -192), (-192, 192), (192, 192)):
@@ -250,6 +261,18 @@ def bench_house():
 
 def houses():
     return [spawn_house("red", -1), bench_house(), spawn_house("blu", 1)]
+
+
+def court():
+    """The court's wall round the bench, its east and west walls cut at their gateways."""
+    inner = ROOM_SIZE // 2 + WALL_T + COURT
+    outer, top = inner + WALL_T, HOUSE_HEIGHT
+    shapes = [box((-outer, inner, 0), (outer, outer, top)), box((-outer, -outer, 0), (outer, -inner, top))]
+    cuts = sorted([-GATE_OFF - GATE // 2, -GATE_OFF + GATE // 2, GATE_OFF - GATE // 2, GATE_OFF + GATE // 2])
+    spans = [(-inner, cuts[0]), (cuts[1], cuts[2]), (cuts[3], inner)]
+    for x0, x1 in ((-outer, -inner), (inner, outer)):
+        shapes += [box((x0, y0, 0), (x1, y1, top)) for y0, y1 in spans]
+    return shapes
 
 
 def calls(built):
@@ -266,6 +289,7 @@ def calls(built):
                  materials={"top": GRASS, "sides": NODRAW, "bottom": NODRAW})
     for house in built:
         yield from house.calls()
+    yield solids(court(), WALL)
     ops = [entity(classname="info_player_start", origin=f"{-SPAWN_X} 0 {FLOOR_TOP + 8}", angles="0 0 0"),
            entity(classname="light_environment", origin="0 0 900", angles="-50 30 0", pitch=-50,
                   _light="255 244 222 450", _ambient="160 180 210 120")]

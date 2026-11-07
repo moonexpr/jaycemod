@@ -117,6 +117,9 @@ local THREAT_WEIGHT, COVER_WEIGHT = 2, 0.5
 -- The classes' names of the teams (sv_classes' TEAMS), by number.
 local TEAM_NAMES = { [WS.TEAM_RED] = "RED", [WS.TEAM_BLUE] = "BLU" }
 local FLOOR_SAMPLES, COVER_RAYS, COVER_REACH, CHEST = 5, 8, 64, Vector(0, 0, 40)
+-- Where one walking up to an entrance looks in from: LOOKOUT_ALONG out from it, LOOKOUT_ACROSS to
+-- either side.
+local LOOKOUT_ALONG, LOOKOUT_ACROSS = { 96, 192, 384 }, { -128, 0, 128 }
 
 -- The room at point as a squad takes it (the legs' Assault and SetRoom; RoomAt is the war's room at a point): its block and middle, its
 -- doors as its ways out and its entrances (each with the team's incursion flow into it there), the
@@ -209,11 +212,26 @@ function Controller:RoomForSquad(point, from, team)
 			end
 		end
 	end
+	-- what one walking up to an entrance sees inside through it: a line from any lookout on its
+	-- approach (LOOKOUT_ALONG out from it, LOOKOUT_ACROSS either side) to the point, at eye height
+	local function Watched(p, entrance)
+		local out = math.geometry.Normalize2D(math.geometry.Sub(entrance, room.center))
+		local target = Vector(p.x, p.y, p.z) + EYE_HEIGHT
+		for _, along in ipairs(LOOKOUT_ALONG) do
+			for _, across in ipairs(LOOKOUT_ACROSS) do
+				local eye = Vector(entrance.x + out.x * along - out.y * across, entrance.y + out.y * along + out.x * across,
+					entrance.z) + EYE_HEIGHT
+				if not util.TraceLine({ start = eye, endpos = target, mask = MASK_SOLID_BRUSHONLY }).Hit then return true end
+			end
+		end
+		return false
+	end
 	-- its own nav areas, which a squad staging round it keeps out of
 	local inside = {}
 	for _, id in ipairs(room.areas) do inside[id] = true end
 	return { center = at(room.center), lo = at(room.lo), hi = at(room.hi), entry = at(entry.pos), exits = exits,
-		entrances = entrances, inside = inside, seen = Seen, score = Score, enemy = enemy and at(enemy) }
+		entrances = entrances, inside = inside, seen = Seen, watched = Watched, score = Score,
+		enemy = enemy and at(enemy) }
 end
 
 -- The doors of the room at point, as the ways out a panicked squad makes for (the legs'

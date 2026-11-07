@@ -222,7 +222,7 @@ E.Insert(NSEngineSoldier, Action("Outer", {
 	OnEnd = function(_, me) Note("P Outer end, its player whole " .. tostring(IsValid(me))) end,
 }))
 -- The tree beside its main one, on the same soldier: updated, and hearing what it hears.
-E.InsertGroup(NSEngineSoldier, E.GroupIdentityBehavior({
+E.InsertGroup(NSEngineSoldier, E.TacticalLeggings({
 	initial = Action("Legs", {
 		OnStart = function() Note("G Legs start") return { type = CONTINUE } end,
 		Update = function() Note("G Legs update") return { type = CONTINUE } end,
@@ -235,7 +235,7 @@ timer.Simple(3, function() E.Event(NSEngineSoldier, "OnThing", "both") end)
 local pacedUpdates, pacedGroup, pacedAlive = 0, 0, nil
 NSEnginePaced = player.CreateNextSoldier("NSEnginePaced")
 E.Insert(NSEnginePaced, Action("PacedMain", { Update = function() pacedUpdates = pacedUpdates + 1 return { type = CONTINUE } end }))
-E.InsertGroup(NSEnginePaced, E.GroupIdentityBehavior({
+E.InsertGroup(NSEnginePaced, E.TacticalLeggings({
 	initial = Action("PacedLegs", { Update = function() pacedGroup = pacedGroup + 1 return { type = CONTINUE } end }),
 }))
 E.Pace(NSEnginePaced)

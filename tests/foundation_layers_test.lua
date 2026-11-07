@@ -187,6 +187,7 @@ local NEXTSOLDIER = {
 	["behavior"] = "nextsoldier",
 	["behavior/action"] = "nextsoldier",
 	["behavior/ctfbot"] = "nextsoldier",
+	["behavior/squad_member"] = "nextsoldier",
 	["behavior/pathfollower"] = "nextsoldier",
 	["behavior/group_identity"] = "nextsoldier",
 	["behavior/gib_behaviors"] = "nextsoldier",

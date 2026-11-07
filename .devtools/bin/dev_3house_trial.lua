@@ -1,31 +1,50 @@
--- dev_3house's assault trial (.devtools/bin/dev_3house_bench.lua's map and helpers' kin): a squad
--- of SIZE RED followers on their legs, armed, against one BLU expert, armed, with EXPERT_HEALTH_SCALE times a soldier's own health.
--- Both sides fight as the base fights (looks, then fires on what it sees): no aim error and no
--- reaction time, which is tf_bot_difficulty's EXPERT; neither side is blinded or held.
+-- dev_3house's assault trials (.devtools/bin/dev_3house_bench.lua's map and helpers' kin): a RED
+-- squad of followers on their legs, armed, assaults the bench, held by BLU followers, armed. Each
+-- runs two stacks: its main stack fights (nextsoldier.behavior.squad_member: holding its fire on a
+-- mission its leader has yet to activate), its leggings put its feet where its order says. Both
+-- sides fight as the base fights: no aim error and no reaction time, which is tf_bot_difficulty's
+-- EXPERT; neither side is blinded or held.
 --
---   muster   the squad leaves RED's spawn for the staging point on the grass west of the bench
---   assault  the squad is given the assault on the bench; once its first member stages, the
---            expert leaves BLU's spawn for the bench's middle, patrolling it (alert)
---   end      the expert killed (won), a member killed before the leader's signal (failed), the squad
---            fallen back or killed (lost), or TIMEOUT
+--   ambush   twelve RED against six BLU lying in ambush inside the bench by the entrance RED's
+--            flow comes in by, from the start
+--   expert   five RED against one BLU of five times a soldier's health, which leaves its spawn for
+--            the bench's middle once RED's first member stages, patrolling it (alert)
+--   occupy   six BLU occupying the bench, guards patrolling round it and their leader checking in
+--            on them; SILENCE_AFTER in, one guard is killed unheard: passed once its leader has told
+--            the director, the squad has stacked up (the bench's alarm sounding) and, on its word,
+--            reached where the guard was last heard from
+--
+-- In each, RED's squad leaves its spawn for the staging point on the grass west of the bench, then
+-- is given the assault: it stages round the bench, hopping door to door out of its sight, and goes
+-- in on its leader's signal. The trial ends failed with a RED member killed before the signal, won
+-- with BLU dead or the room called clear (BLU fled), lost with RED fallen back or dead, or at TIMEOUT.
 --
 -- Load it, start a trial, then read its log:
 --   python3 .devtools/bin/instances.py dev_3house - < .devtools/bin/dev_3house_trial.lua
---   python3 .devtools/bin/instances.py dev_3house 'return NSAssaultTrial.Start()'
+--   python3 .devtools/bin/instances.py dev_3house 'return NSAssaultTrial.Start("ambush")'
 --   python3 .devtools/bin/instances.py dev_3house 'return NSAssaultTrial.Report()'
 local Legs = nextsoldier.behavior.group_identity
 
-local SIZE = 5
--- The expert's health, as many times a soldier's own.
-local EXPERT_HEALTH_SCALE = 5
-local SQUAD_KIT = { primary = { "weapon_smg1", "weapon_ar2" }, secondary = "weapon_pistol", melee = "weapon_crowbar" }
-local EXPERT_KIT = { primary = { "weapon_ar2" }, secondary = "weapon_pistol", melee = "weapon_crowbar" }
--- The staging point: the grass west of the bench, beyond its west door; how near it a squad has
+local KIT = { primary = { "weapon_smg1", "weapon_ar2" }, secondary = "weapon_pistol", melee = "weapon_crowbar" }
+local RIFLE = { primary = { "weapon_ar2" }, secondary = "weapon_pistol", melee = "weapon_crowbar" }
+-- red, blue: how many of each; health: BLU's, as many times a soldier's own; blue: BLU's order.
+local TRIALS = {
+	ambush = { red = 12, blue = 6, health = 1, kit = KIT, blue_order = "ambush" },
+	expert = { red = 5, blue = 1, health = 5, kit = RIFLE, blue_order = "patrol" },
+	occupy = { red = 0, blue = 6, health = 1, kit = KIT, blue_order = "occupy" },
+}
+-- The occupation: how long after it is given a guard is silenced, how long the squad has after to
+-- reach where it was last heard from, and how near that it has.
+local SILENCE_AFTER, RESPOND_SECONDS, REACHED = 40, 60, 160
+-- The staging point: the grass west of the bench's court, out of its sight; how near it a squad has
 -- gathered, and how long it has to.
-local STAGING_OFFSET = Vector(-640, 0, 0)
-local GATHERED, MUSTER_SECONDS = 320, 40
+local STAGING_OFFSET = Vector(-900, 0, 0)
+local GATHERED, MUSTER_SECONDS = 384, 40
 -- How often the trial looks, how long an assault may take, and how often it keeps where each is.
-local TICK, TIMEOUT, TRAIL_EVERY = 0.25, 150, 2
+local TICK, TIMEOUT, TRAIL_EVERY = 0.25, 180, 2
+-- An ambush is laid before RED sets out: RED waits until each of BLU lies at its place (within
+-- LAID of it), or LAY_SECONDS.
+local LAID, LAY_SECONDS = 48, 30
 
 NSAssaultTrial = NSAssaultTrial or {}
 local T = NSAssaultTrial
@@ -49,30 +68,31 @@ local function Log(what)
 	T.log[#T.log + 1] = string.format("%6.2f %s", CurTime() - T.started, what)
 end
 
--- The member's legs, deepest action last.
-local function Stack(member)
-	local frames = nextsoldier.engine.Stack(member)
+-- What its leggings do now, deepest action last.
+local function Legging(member)
+	local frames = nextsoldier.engine.GroupStack(member)
 	return frames[#frames] and frames[#frames].name or "?"
 end
 
 local function Label(ent)
-	if ent == T.expert then return "expert" end
-	for i, member in ipairs(T.members) do
-		if member == ent then return "member " .. i end
+	for i, member in ipairs(T.red or {}) do
+		if member == ent then return "red " .. i end
+	end
+	for i, member in ipairs(T.blue or {}) do
+		if member == ent then return "blue " .. i end
 	end
 	return IsValid(ent) and ent:GetClass() or "world"
 end
 
-local function Follower(spot, team, kit)
+local function Follower(spot, team, kit, name)
 	local follower = ents.Create("npc_pathfollower")
-	follower.NSToolManaged = true
+	follower.NSToolManaged, follower.NSRadioName = true, name
 	follower:SetPos(spot)
 	follower:Spawn()
 	follower:Activate()
 	follower:NSSetTeam(team)
 	follower:NSSetDriver("legs")
 	follower:NSHoldFeet(false)
-	follower:NSRespond("ShouldAttack", true)
 	follower:NSKit(kit)
 	return follower
 end
@@ -80,15 +100,17 @@ end
 local function Clear()
 	hook.Remove("Think", "dev_3house_trial")
 	hook.Remove("EntityTakeDamage", "dev_3house_trial")
-	for _, member in ipairs(T.members or {}) do
-		if IsValid(member) then member:Remove() end
+	for _, side in ipairs({ T.red or {}, T.blue or {} }) do
+		for _, member in ipairs(side) do
+			if IsValid(member) then member:Remove() end
+		end
 	end
-	if IsValid(T.expert) then T.expert:Remove() end
+	T.red, T.blue = {}, {}
 end
 
-local function Living()
+local function Living(side)
 	local living = {}
-	for _, member in ipairs(T.members) do
+	for _, member in ipairs(side) do
 		if IsValid(member) and member:Health() > 0 then living[#living + 1] = member end
 	end
 	return living
@@ -108,8 +130,26 @@ end
 
 local function Gathered()
 	local staging = Staging()
-	for _, member in ipairs(Living()) do
+	for _, member in ipairs(Living(T.red)) do
 		if member:GetPos():Distance2D(staging) > GATHERED then return false end
+	end
+	return true
+end
+
+local function Entrances(room)
+	local flows = {}
+	for _, e in ipairs(room.entrances or {}) do
+		flows[#flows + 1] = string.format("%.0f,%.0f ours %d theirs %d", e.pos.x, e.pos.y, e.flow, e.enemyFlow)
+	end
+	return table.concat(flows, "; ")
+end
+
+-- Each of BLU at its place in the ambush.
+local function Laid()
+	if not T.blueOrder then return false end
+	for _, member in ipairs(Living(T.blue)) do
+		local place = member:NSLegsPlace()
+		if place and member:GetPos():Distance2D(Vector(place.x, place.y, place.z)) > LAID then return false end
 	end
 	return true
 end
@@ -118,65 +158,70 @@ local function Assault()
 	local controller = WS.Feature("aiwar")
 	controller:Classes()
 	T.room = controller:RoomForSquad(Point(Named("bench_room")), Point(Staging()), WS.TEAM_RED)
-	T.order = Give(Legs.Assault(T.room), Living())
+	T.order = Give(Legs.Assault(T.room), Living(T.red))
 	T.phase, T.assaultAt = "assault", CurTime()
-	local flows = {}
-	for _, e in ipairs(T.room.entrances or {}) do
-		flows[#flows + 1] = string.format("%.0f,%.0f ours %d theirs %d", e.pos.x, e.pos.y, e.flow, e.enemyFlow)
-	end
-	Log("assault given: entrances " .. table.concat(flows, "; "))
+	Log("RED given the assault: entrances " .. Entrances(T.room))
 end
 
-local function ReleaseExpert()
+-- BLU's order: lying in ambush at once, or, released as RED's first stages, patrolling the bench.
+local function Ambush()
+	local controller = WS.Feature("aiwar")
+	controller:Classes()
+	local room = controller:RoomForSquad(Point(Named("bench_room")), Point(Named("blu_muster")), WS.TEAM_BLUE)
+	T.blueOrder = Give(Legs.Ambush(room), T.blue)
+	Log(string.format("BLU given the ambush at %.0f,%.0f", T.blueOrder.entrance.x, T.blueOrder.entrance.y))
+end
+
+local function Patrol()
 	local order = Legs.Muster(Point(Named("bench_room")))
 	order:SetMode(Legs.MODE.ALERT)
-	Give(order, { T.expert })
+	T.blueOrder = Give(order, T.blue)
 	T.released = true
-	Log("expert released: to the bench's middle, alert")
+	Log("BLU released: to the bench's middle, alert")
 end
 
--- What changed since the last look: the order's steps, each member's first sight of the enemy and
--- the expert's of each member, and the dead.
+local function Once(key, what)
+	if T.steps[key] then return end
+	T.steps[key] = true
+	Log(what)
+end
+
+-- What changed since the last look: each side's orders' steps, first sightings, and the dead.
 local function Watch(now)
-	local order = T.order
-	for i, member in ipairs(T.members) do
-		local alive = IsValid(member) and member:Health() > 0
-		if not alive and not T.dead[i] then
-			T.dead[i] = true
-			Log(string.format("member %d killed", i))
-		elseif alive then
-			if member:HasEnemy() and not T.contact[i] then
-				T.contact[i] = true
-				Log(string.format("member %d sees the expert (%s)", i, Stack(member)))
+	local order, blue = T.order, T.blueOrder
+	for side, members in pairs({ red = T.red, blue = T.blue }) do
+		for i, member in ipairs(members) do
+			local key = side .. " " .. i
+			local alive = IsValid(member) and member:Health() > 0
+			if not alive and not T.dead[key] then
+				T.dead[key] = now
+				Log(key .. " killed" .. (side == "red" and order and not order:Signalled() and " before the signal" or ""))
+			elseif alive and member:HasEnemy() and not T.contact[key] then
+				T.contact[key] = true
+				Log(string.format("%s sees %s (%s)", key, Label(member:GetEnemy()), Legging(member)))
 			end
-			if order and order:StagedAt(member) and not T.staged[i] then
-				T.staged[i] = true
-				Log(string.format("member %d staged", i))
-			end
-			if IsValid(T.expert) and T.expert:GetEnemy() == member and T.expertTarget ~= member then
-				T.expertTarget = member
-				Log(string.format("expert targets member %d (%s)%s", i, Stack(member),
-					order and not order:Signalled() and " before the signal" or ""))
-			end
+			if alive and side == "red" and order and order:StagedAt(member) then Once("staged " .. i, key .. " staged") end
 		end
 	end
 	if order then
-		for _, step in ipairs({ { "Signalled", "leader signals: Move in!" }, { "Engaged", "decoy has drawn the enemy" } }) do
-			if order[step[1]](order) and not T.steps[step[1]] then
-				T.steps[step[1]] = true
-				Log(step[2])
-			end
-		end
-		if order.cleared and not T.steps.cleared then T.steps.cleared = true Log("leader calls: Room clear!") end
-		if order.routed and not T.steps.routed then T.steps.routed = true Log("leader calls: Fall back!") end
+		if order:Signalled() then Once("signal", "RED leader: Move in!") end
+		if order:Engaged() then Once("engaged", "RED decoy has drawn the enemy") end
+		if order.cleared then Once("cleared", "RED leader: Room clear!") end
+		if order.abandoned then Once("abandoned", "RED leader lost: mission abandoned, Fall back!")
+		elseif order.routed then Once("routed", "RED: Fall back!") end
+	end
+	if blue then
+		if blue.Sprung and blue:Sprung() then Once("sprung", "BLU leader: Now!") end
+		if blue.routed then Once("blue routed", "BLU: Fall back!") end
 	end
 	if now >= T.nextTrail then
 		T.nextTrail = now + TRAIL_EVERY
-		local frame = { t = math.Round(now - T.started, 1), members = {} }
-		for i, member in ipairs(T.members) do
-			frame.members[i] = IsValid(member) and member:Health() > 0 and Point(member:GetPos()) or false
+		local frame = { t = math.Round(now - T.started, 1), red = {}, blue = {} }
+		for side, members in pairs({ red = T.red, blue = T.blue }) do
+			for i, member in ipairs(members) do
+				frame[side][i] = IsValid(member) and member:Health() > 0 and Point(member:GetPos()) or false
+			end
 		end
-		frame.expert = IsValid(T.expert) and T.expert:Health() > 0 and Point(T.expert:GetPos()) or false
 		T.trail[#T.trail + 1] = frame
 	end
 end
@@ -187,55 +232,134 @@ local function Finish(outcome)
 	Log("ended: " .. outcome)
 end
 
+-- Each call over a squad's radio since the last look, into the log.
+local function Calls(order, key)
+	if not order then return end
+	T.heard[key] = T.heard[key] or 0
+	for i = T.heard[key] + 1, #order.radio do
+		local call = order.radio[i]
+		local namer = IsValid(order.leader) and order.leader or T.blue[1]
+		Log(string.format("radio %s -> %s: %s", namer:NSLegsNameOf(call.from), namer:NSLegsNameOf(call.to), call.text))
+	end
+	T.heard[key] = #order.radio
+end
+
+-- The occupation: BLU holds the bench; a guard silenced SILENCE_AFTER in, the squad's response.
+local function Occupation(now)
+	local order = T.blueOrder
+	if not order then
+		if not WS.Feature("aiwar"):Classes() then return end
+		local room = WS.Feature("aiwar"):RoomForSquad(Point(Named("bench_room")), Point(Named("blu_muster")), WS.TEAM_BLUE)
+		T.blueOrder, T.occupiedAt = Give(Legs.Occupy(room), T.blue), now
+		local guards = 0
+		for _, member in ipairs(T.blue) do
+			if T.blueOrder:PatrolOf(member:NSLegsPlace()) then guards = guards + 1 end
+		end
+		Log(string.format("BLU given the occupation: %d of %d on patrol round a loop of %d stops", guards, #T.blue, #T.blueOrder.loop))
+		return
+	end
+	Calls(order, "blue")
+	if not T.silenced and now - T.occupiedAt >= SILENCE_AFTER then
+		for i, member in ipairs(T.blue) do
+			if IsValid(member) and member:Health() > 0 and order:PatrolOf(member:NSLegsPlace()) then
+				T.silenced = member
+				Log(string.format("blue %d silenced at %.0f,%.0f", i, member:GetPos().x, member:GetPos().y))
+				member:TakeDamage(10000)
+				break
+			end
+		end
+	end
+	if order.alarm and not T.steps.alarm then
+		T.steps.alarm = true
+		local bench = ents.FindByName("bench_alarm")[1]
+		Log(string.format("alarm raised at %.0f,%.0f, by the exit at %.0f,%.0f; the bench's alarm %s", order.alarm.at.x,
+			order.alarm.at.y, order.alarm.exit.x, order.alarm.exit.y, IsValid(bench) and (bench.sounding and "sounding" or "silent") or "missing"))
+	end
+	if order:Signalled() then
+		local there = 0
+		for _, member in ipairs(Living(T.blue)) do
+			if member:GetPos():Distance2D(Vector(order.alarm.at.x, order.alarm.at.y, 0)) <= REACHED then there = there + 1 end
+		end
+		if there == #Living(T.blue) then return Finish(string.format("passed: %d of BLU reached where the guard was last heard from", there)) end
+	end
+	if T.silenced and now - T.occupiedAt - SILENCE_AFTER >= RESPOND_SECONDS then return Finish("timed out: the squad never reached it") end
+end
+
 local function Step()
 	local now = CurTime()
 	if now < T.nextLook then return end
 	T.nextLook = now + TICK
 	Watch(now)
-	-- before the leader's signal, one member lost fails the mission; going in, losses are the assault's
-	local lost = next(T.dead)
-	if lost and not T.steps.Signalled then return Finish(string.format("failed: member %d killed before the assault", lost)) end
-	if not (IsValid(T.expert) and T.expert:Health() > 0) then
-		return Finish(string.format("won: the expert is dead, %d of %d left", #Living(), SIZE))
+	if T.spec.blue_order == "occupy" then
+		if T.outcome == nil then Occupation(now) end
+		return
 	end
-	if #Living() == 0 then return Finish("lost: the squad is dead") end
-	if T.phase == "muster" then
+	Calls(T.order, "red")
+	Calls(T.blueOrder, "blue")
+	local order = T.order
+	for key in pairs(T.dead) do
+		if key:find("^red") and not (order and order:Signalled()) then return Finish("failed: " .. key .. " killed before the assault") end
+	end
+	if #Living(T.blue) == 0 then return Finish(string.format("won: BLU dead, %d of %d RED left", #Living(T.red), #T.red)) end
+	if order and order.cleared then
+		return Finish(string.format("won: the room clear, %d of %d RED left, %d of %d BLU fled", #Living(T.red), #T.red,
+			#Living(T.blue), #T.blue))
+	end
+	if #Living(T.red) == 0 then return Finish("lost: RED dead") end
+	-- BLU lies in ambush once the war's classes know which way RED comes in (worked out as the map loads)
+	if T.spec.blue_order == "ambush" and not T.blueOrder and WS.Feature("aiwar"):Classes() then Ambush() end
+	if T.phase == "lay" and (Laid() or now - T.layAt >= LAY_SECONDS) then
+		Log(Laid() and "BLU lies in wait" or "BLU's ambush not laid in time")
+		T.phase = "set out"
+	end
+	if T.phase == "set out" then
+		T.phase, T.musterAt = "muster", now
+		Give(Legs.Muster(Point(Staging())), Living(T.red))
+		Log("RED given the muster: to the staging point")
+	elseif T.phase == "muster" then
 		if Gathered() or now - T.musterAt >= MUSTER_SECONDS then
-			Log(Gathered() and "squad gathered at the staging point" or "muster timed out")
+			Log(Gathered() and "RED gathered at the staging point" or "RED's muster timed out")
 			Assault()
 		end
 	elseif T.phase == "assault" then
-		if not T.released and next(T.staged) then ReleaseExpert() end
-		if T.order.routed then return Finish("lost: the squad fell back") end
+		if T.spec.blue_order == "patrol" and not T.released and next(order.stagedAt or {}) then Patrol() end
+		if order.routed then return Finish(order.abandoned and "lost: RED's leader killed, the mission abandoned" or "lost: RED fell back") end
 		if now - T.assaultAt >= TIMEOUT then return Finish("timed out") end
 	end
 end
 
-function T.Start()
+function T.Start(name)
+	name = name or "ambush"
+	local spec = TRIALS[name]
+	if not spec then error("no trial " .. tostring(name) .. ": ambush or expert", 2) end
 	if game.GetMap() ~= "dev_3house" then error("the trial runs on dev_3house, not " .. game.GetMap(), 2) end
 	Clear()
 	WS.Feature("aiwar"):SetForcefieldsPassable(true)
-	T.members, T.log, T.trail, T.dead, T.contact, T.staged, T.steps = {}, {}, {}, {}, {}, {}, {}
-	T.damage, T.outcome, T.released, T.order, T.expertTarget = {}, nil, false, nil, nil
+	T.spec, T.log, T.trail, T.dead, T.contact, T.steps, T.damage, T.heard = spec, {}, {}, {}, {}, {}, {}, {}
+	T.silenced, T.occupiedAt = nil, nil
+	T.outcome, T.released, T.order, T.blueOrder = nil, false, nil, nil
 	T.started, T.nextLook, T.nextTrail = CurTime(), 0, 0
-	local spawns = ents.FindByName("red_spawn")
-	for i = 1, SIZE do T.members[i] = Follower(spawns[i]:GetPos(), WS.TEAM_RED, SQUAD_KIT) end
-	T.expert = Follower(ents.FindByName("blu_spawn")[1]:GetPos(), WS.TEAM_BLUE, EXPERT_KIT)
-	T.expert:NSKit({ health = EXPERT_HEALTH_SCALE * T.expert:GetMaxHealth() })
-	T.expert:SetHealth(T.expert:GetMaxHealth())
+	local reds, blues = ents.FindByName("red_spawn"), ents.FindByName("blu_spawn")
+	for i = 1, spec.red do T.red[i] = Follower(reds[i]:GetPos(), WS.TEAM_RED, KIT, "red " .. i) end
+	for i = 1, spec.blue do
+		local blue = Follower(blues[i]:GetPos(), WS.TEAM_BLUE, spec.kit, "blue " .. i)
+		blue:NSKit({ health = spec.health * blue:GetMaxHealth() })
+		blue:SetHealth(blue:GetMaxHealth())
+		T.blue[i] = blue
+	end
 	hook.Add("EntityTakeDamage", "dev_3house_trial", function(target, dmg)
-		if target ~= T.expert and not table.HasValue(T.members, target) then return end
-		local key = Label(dmg:GetAttacker()) .. " > " .. Label(target)
+		local victim = Label(target)
+		if not (victim:find("^red") or victim:find("^blue")) then return end
+		local key = Label(dmg:GetAttacker()) .. " > " .. victim
 		T.damage[key] = (T.damage[key] or 0) + dmg:GetDamage()
 	end)
-	-- a tick for the bodies to settle and their trees to start, then out of spawn
+	-- a tick for the bodies to settle and their trees to start; then BLU lays its ambush, if it
+	-- has one, before RED sets out
 	timer.Simple(1, function()
-		T.phase, T.musterAt = "muster", CurTime()
-		Give(Legs.Muster(Point(Staging())), Living())
-		Log("muster given: to the staging point")
+		T.phase, T.layAt = spec.blue_order == "ambush" and "lay" or "set out", CurTime()
 		hook.Add("Think", "dev_3house_trial", Step)
 	end)
-	return "trial started: " .. SIZE .. " RED on their legs against one BLU expert of " .. T.expert:Health() .. " health"
+	return string.format("trial %s started: %d RED, %d BLU of %d health", name, spec.red, spec.blue, T.blue[1]:Health())
 end
 
 function T.Stop()
@@ -244,12 +368,16 @@ function T.Stop()
 end
 
 function T.Report()
-	local damage = {}
-	for key, amount in SortedPairs(T.damage or {}) do damage[#damage + 1] = string.format("%s: %.0f", key, amount) end
+	local damage, dealt = {}, {}
+	for key, amount in pairs(T.damage or {}) do
+		local by = key:match("^(.-) >")
+		dealt[by] = (dealt[by] or 0) + amount
+	end
+	for by, amount in SortedPairs(dealt) do damage[#damage + 1] = string.format("%s dealt %.0f", by, amount) end
 	return util.TableToJSON({
 		outcome = T.outcome or "running",
-		expert = IsValid(T.expert) and T.expert:Health() or 0,
-		squad = #Living(),
+		red = #Living(T.red or {}),
+		blue = #Living(T.blue or {}),
 		log = T.log,
 		damage = damage,
 	}, true)

@@ -278,7 +278,7 @@ function ENT:BehaveStart()
 	local action = self:NSInitialAction()
 	if action then
 		nextsoldier.engine.Insert(self, action)
-		self.nsEngineDebug = Action.DebugNpc(self, nextsoldier.engine.Stack)
+		self.nsEngineDebug = Action.DebugNpc(self, nextsoldier.engine.Stack, nextsoldier.engine.GroupStack)
 	end
 end
 

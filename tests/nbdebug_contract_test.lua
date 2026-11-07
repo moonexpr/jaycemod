@@ -171,6 +171,35 @@ T.test("a follower on its legs fights where they take it, as a soldier on the ca
 		"its team's enemies are its own, as a soldier's are")
 end)
 
+T.test("followers pass through each other, as an engine group of scripted NPCs", function()
+	T.eq(pathfollower:find("self:SetCollisionGroup(COLLISION_GROUP_NPC_SCRIPTED)", 1, true) ~= nil, true,
+		"a NextBot's own movement asks the engine's collision groups, not GMod's ShouldCollide")
+	T.eq(pathfollower:find("ShouldCollide", 1, true), nil, "no hook its movement would not ask")
+end)
+
+T.test("a follower speaks its squad's radio calls in chat and the console, and raises its room's alarms", function()
+	T.eq(pathfollower:find("function ENT:NSLegsSay(line, call)", 1, true) ~= nil, true, "a call and who it is between")
+	T.eq(pathfollower:find("function ENT:NSLegsNameOf(member)", 1, true) ~= nil, true, "each named on the radio")
+	T.eq(pathfollower:find("RadioNames[self] = self.NSRadioName", 1, true) ~= nil, true,
+		"its name kept apart from it, so one gone missing is still named")
+	T.eq(pathfollower:find('"Overwatch"', 1, true) ~= nil, true, "the Combine's director")
+	T.eq(pathfollower:find('if call and call.call == "STACK_UP" then RaiseAlarms(self:NSLegsOrder()) end', 1, true) ~= nil, true,
+		"stacking up raises the room's alarms")
+	local alarm = ReadFile(ROOT .. "../entities/entities/ent_room_alarm.lua")
+	T.eq(alarm:find("function ENT:Raise()", 1, true) ~= nil, true, "an alarm raised")
+	T.eq(alarm:find('self:TriggerOutput("OnAlarm"', 1, true) ~= nil, true, "its output for the map")
+end)
+
+T.test("a follower on its legs runs two stacks: a squad member's main stack and its leggings beside it", function()
+	T.eq(pathfollower:find('if driver == "legs" then return nextsoldier.behavior.squad_member.SquadMember:New() end', 1, true) ~= nil,
+		true, "its main stack fights")
+	T.eq(pathfollower:find("nextsoldier.engine.InsertGroup(self, GroupIdentity.InitialAction(", 1, true) ~= nil, true,
+		"its leggings beside it")
+	T.eq(pathfollower:find("nextsoldier.engine.UpdateGroup(self)", 1, true) ~= nil, true, "updated each tick")
+	T.eq(pathfollower:find("nextsoldier.engine.EndGroup(self)", 1, true) ~= nil, true, "and ended with it")
+	T.eq(pathfollower:find("self.NSBrain = self.nsStackBrain", 1, true) ~= nil, true, "its main stack answers what it is asked")
+end)
+
 T.test("a follower on its legs walks to within the legs' reach of its spot, not the soldier's tolerance", function()
 	T.eq(warSoldier:find("local tolerance = self.NSGoalTolerance or GOAL_TOLERANCE", 1, true) ~= nil, true,
 		"a soldier's goal tolerance may be its own")

@@ -48,6 +48,9 @@ struct Binding {
     intention_query_vtable: usize,
     behavior_vtables: (usize, usize),
     soldiers: HashMap<usize, Soldier>,
+    /// A CLuaNextBot's tree beside its main one, by the bot's address: updated when
+    /// engine.UpdateGroup says (its BehaveUpdate), released by engine.EndGroup (its OnRemove).
+    bot_groups: HashMap<usize, Tree>,
     event: Option<EventCall>,
 }
 
@@ -1321,7 +1324,8 @@ unsafe extern "C-unwind" fn update_now(l: L) -> c_int {
 }
 
 /// engine.InsertGroup(soldier, action[, me]): the tree beside its main one, as its next
-/// update: the engine starts it. Refused on a soldier that has one.
+/// update: the engine starts it. A player's runs on the engine's turn, after its main tree; a
+/// CLuaNextBot's when engine.UpdateGroup says. Refused on a soldier that has one.
 unsafe extern "C-unwind" fn insert_group(l: L) -> c_int {
     let api = api();
     (api.settop)(l, 3);
@@ -1332,6 +1336,16 @@ unsafe extern "C-unwind" fn insert_group(l: L) -> c_int {
         3
     };
     let (entity, _) = entity_at(l, 1);
+    if entity != 0 && *(entity as *const usize) == binding().bot_vtable {
+        if binding().bot_groups.contains_key(&entity) {
+            foundation::lua::raise_where(l, "the bot already runs a group's tree".into());
+        }
+        let tree = new_tree(entity + INEXTBOT_OFFSET);
+        let action = new_action(l, 2, me).cast::<Action>();
+        *(tree.behavior.cast::<u8>().add(BEHAVIOR_ACTION) as *mut *mut Action) = action;
+        binding().bot_groups.insert(entity, tree);
+        return 0;
+    }
     let soldier = soldier_at(l, 1);
     if soldier.group.is_some() {
         foundation::lua::raise_where(l, "the soldier already runs a group's tree".into());
@@ -1340,6 +1354,38 @@ unsafe extern "C-unwind" fn insert_group(l: L) -> c_int {
     let action = new_action(l, 2, me).cast::<Action>();
     *(tree.behavior.cast::<u8>().add(BEHAVIOR_ACTION) as *mut *mut Action) = action;
     soldier.group = Some(tree);
+    0
+}
+
+/// The CLuaNextBot at `index`'s tree beside its main one, or a Lua error.
+unsafe fn bot_group_at<'a>(l: L, index: c_int) -> (usize, &'a Tree) {
+    let (entity, entindex) = entity_at(l, index);
+    match binding().bot_groups.get(&entity) {
+        Some(tree) => (entity, tree),
+        None => foundation::lua::raise_where(l, format!("entity {entindex} runs no group's tree")),
+    }
+}
+
+/// engine.UpdateGroup(bot): a CLuaNextBot's tree beside its main one, now, at its main
+/// tree's interval.
+unsafe extern "C-unwind" fn update_group(l: L) -> c_int {
+    let (entity, tree) = bot_group_at(l, 1);
+    let shadow = tree.shadow;
+    let intention = intention_of(entity + INEXTBOT_OFFSET);
+    let interval = *((intention + COMPONENT_INTERVAL) as *const f32);
+    *(shadow.cast::<u8>().add(COMPONENT_INTERVAL).cast::<f32>()) = interval;
+    let run: unsafe extern "win64" fn(*mut u64) = std::mem::transmute(binding().intention_update);
+    run(shadow);
+    0
+}
+
+/// engine.EndGroup(bot): a CLuaNextBot's tree beside its main one ended, while the bot is
+/// whole (its OnRemove), and let go; nothing for a bot without one.
+unsafe extern "C-unwind" fn end_group(l: L) -> c_int {
+    let (entity, _) = entity_at(l, 1);
+    if let Some(tree) = binding().bot_groups.remove(&entity) {
+        release_tree(tree);
+    }
     0
 }
 
@@ -1405,15 +1451,15 @@ unsafe extern "C-unwind" fn group_stack(l: L) -> c_int {
     (api.settop)(l, 1);
     let (entity, _) = entity_at(l, 1);
     (api.createtable)(l, 0, 0);
-    if entity == 0 || *(entity as *const usize) != binding().player_vtable {
-        return 1;
-    }
-    let intention = intention_of(entity + PLAYER_INEXTBOT_OFFSET);
-    let Some(tree) = binding()
-        .soldiers
-        .get(&intention)
-        .and_then(|s| s.group.as_ref())
-    else {
+    let tree = if entity == 0 {
+        None
+    } else if *(entity as *const usize) == binding().player_vtable {
+        let intention = intention_of(entity + PLAYER_INEXTBOT_OFFSET);
+        binding().soldiers.get(&intention).and_then(|s| s.group.as_ref())
+    } else {
+        binding().bot_groups.get(&entity)
+    };
+    let Some(tree) = tree else {
         return 1;
     };
     let frames = (api.gettop)(l);
@@ -1558,6 +1604,8 @@ const FUNCTIONS: &[(&CStr, CFunction)] = &[
     (c"Pace", pace),
     (c"Update", update_now),
     (c"InsertGroup", insert_group),
+    (c"UpdateGroup", update_group),
+    (c"EndGroup", end_group),
     (c"GroupStack", group_stack),
     (c"GroupPush", group_push),
     (c"GroupSpacing", group_spacing),
@@ -1730,6 +1778,7 @@ unsafe fn bind(l: L) -> Result<Binding, String> {
             base as usize + behaviors[1].0,
         ),
         soldiers: HashMap::new(),
+        bot_groups: HashMap::new(),
         event: None,
     })
 }

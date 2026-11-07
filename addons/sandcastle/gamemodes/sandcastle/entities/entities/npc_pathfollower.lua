@@ -3,7 +3,7 @@
 -- stay, driven by one of three (NSSetDriver):
 --   "path": its bench, between Idle and Travel, optionally following the AI
 --     war's active lanes, sent to a goal and retargeted (NSSetGoal);
---   "legs": GroupIdentityBehavior alone, told an order and its place in it
+--   "legs": TacticalLeggings alone, told an order and its place in it
 --     (NSLegsGive), heading where its squad's mode says;
 --   "war": enlisted in the AI war (a bench war, when none runs), under the
 --     war's own orders.
@@ -260,13 +260,28 @@ end
 
 local SoldierInitialize = ENT.CustomInitialize
 
+-- Each follower's name on its squad's radio, by the entity, which outlives its fields once removed.
+local RadioNames = setmetatable({}, { __mode = "k" })
+
 function ENT:CustomInitialize()
 	SoldierInitialize(self)
+	RadioNames[self] = self.NSRadioName or ("#" .. self:EntIndex())
 	self:SetNoTarget(true)
 	self.NSRun = true
 	if self.NSToolManaged then
 		self:SetNW2Bool("NSPathFollowerDebug", true)
+		-- followers pass through each other, as TF2's teammates do: two walking one way would hold
+		-- each other where they met. A NextBot's own movement asks the engine's collision groups (not
+		-- GMod's collision hook, nor the war's collision pairs, which need a physics object), and
+		-- scripted NPCs' is the one whose members pass, every other body and every shot meeting them
+		self:SetCollisionGroup(COLLISION_GROUP_NPC_SCRIPTED)
 		self.nsResponder = Behavior.Responder()
+		-- its main stack, asked and told as a brain is, while it is on its legs
+		local engine = nextsoldier.engine
+		self.nsStackBrain = {
+			Query = function(_, name, ...) return engine.Query(self, name, ...) end,
+			Event = function(_, name, ...) engine.Event(self, name, ...) end,
+		}
 		self.NSBrain = self.nsResponder
 		self:NSSetBehavior("Idle")
 	end
@@ -323,6 +338,12 @@ function ENT:NSSetDriver(driver)
 	end
 	self.NSTarget = nil
 	self.nsDriver = driver
+	-- on its legs, its main stack answers what the soldier asks (ShouldAttack), else its stool's boxes
+	if driver == "legs" then
+		self.NSBrain = self.nsStackBrain
+	elseif driver == "path" then
+		self.NSBrain = self.nsResponder
+	end
 	-- on its bench it is no one's target, as it is no one's to hurt; on its legs or in the war, it is
 	self:SetNoTarget(self.NSToolManaged and driver == "path")
 	self.NSGoalTolerance = driver == "legs" and LEGS_REACH or nil
@@ -332,6 +353,7 @@ function ENT:NSSetDriver(driver)
 		nextsoldier.engine.End(self)
 		local action = self:NSInitialAction()
 		if action then nextsoldier.engine.Insert(self, action) end
+		if driver == "legs" then self:NSPutOnLeggings() end
 	end
 	if driver == "war" then controller:Enlist(self, self:NSTeam(), false) end
 	if was == "war" then controller:EndBenchWhenEmpty(self) end
@@ -493,16 +515,33 @@ for name, hook in pairs(SoldierHooks) do
 	end
 end
 
--- Started (the engine's BehaveStart, its first think): its driver's tree is put in, by the base.
+-- Started (the engine's BehaveStart, its first think): its driver's tree is put in, by the base,
+-- and on its legs, its leggings beside it.
 function ENT:BehaveStart()
 	Soldier().BehaveStart(self)
 	self.nsStarted = true
+	if self:NSDriver() == "legs" then self:NSPutOnLeggings() end
 end
 
--- Its driver's first action, or none in the war, whose orders are its behaviour.
+-- Its leggings (TacticalLeggings): the tree beside its main one that puts its feet where its
+-- squad's order says, once for its life, at ease while it has no order.
+function ENT:NSPutOnLeggings()
+	if self.nsLeggings then return end
+	nextsoldier.engine.InsertGroup(self, GroupIdentity.InitialAction(nextsoldier.engine, GIB.LegsAtEase:New()))
+	self.nsLeggings = true
+end
+
+-- Each tick, after the base's update, its leggings, while they drive it.
+function ENT:BehaveUpdate(interval)
+	Soldier().BehaveUpdate(self, interval)
+	if self.nsLeggings and self:NSDriver() == "legs" and self:IsAlive() then nextsoldier.engine.UpdateGroup(self) end
+end
+
+-- Its driver's first action, or none in the war, whose orders are its behaviour. On its legs, its
+-- main stack is a squad member's, which fights while its leggings walk it (squad_member).
 function ENT:NSInitialAction()
 	local driver = self:NSDriver()
-	if driver == "legs" then return GroupIdentity.InitialAction(nextsoldier.engine, GIB.LegsAtEase:New()) end
+	if driver == "legs" then return nextsoldier.behavior.squad_member.SquadMember:New() end
 	if driver == "war" then return nil end
 	return nextsoldier.behavior.pathfollower.InitialAction(self.NSToolManaged)
 end
@@ -511,6 +550,7 @@ end
 function ENT:OnRemove()
 	Soldier().OnRemove(self)
 	if self.nsLegsOrder then self.nsLegsOrder:Leave(self) end
+	if self.nsLeggings then nextsoldier.engine.EndGroup(self) end
 	if self:NSDriver() == "war" then WS.Feature("aiwar"):EndBenchWhenEmpty(self) end
 end
 
@@ -549,16 +589,56 @@ function ENT:NSLegsAt()
 	return { x = at.x, y = at.y, z = at.z }
 end
 
--- Whether it is fighting an enemy now: the base's own.
+-- Whether it is fighting an enemy now, the base's own; where that enemy is; and whether it has
+-- been hurt.
 function ENT:NSLegsContact() return self:HasEnemy() end
+
+function ENT:NSLegsEnemyAt()
+	local enemy = self:GetEnemy()
+	if not enemy then return nil end
+	local at = enemy:GetPos()
+	return { x = at.x, y = at.y, z = at.z }
+end
+
+function ENT:NSLegsHurt() return self:Health() < self:GetMaxHealth() end
 
 -- A danger marked for its team near its squad's point (the stool's Annotate), or nil.
 function ENT:NSLegsDanger(point) return WS.Feature("aiwar"):DangerNear(self:NSTeam(), point) end
 
--- Its squad's call, to everyone's chat and the server's console.
-function ENT:NSLegsSay(line)
-	PrintMessage(HUD_PRINTTALK, line)
-	MsgN(tostring(self), ": ", line)
+-- Its name on its squad's radio: the one it is given (NSRadioName), else its entity's number; kept
+-- by the entity (RadioNames, set as it starts), so one killed and gone is still named.
+function ENT:NSLegsNameOf(member)
+	if member == GroupIdentity.DIRECTOR then return self:NSDirector() end
+	if member == GroupIdentity.SQUAD then return "squad" end
+	return RadioNames[member] or "?"
+end
+
+-- Who its squad's leader answers to: Overwatch, for the Combine; else Command.
+function ENT:NSDirector()
+	return self:GetModel():find("combine", 1, true) and "Overwatch" or "Command"
+end
+
+-- The alarms (ent_room_alarm) in the room an order holds, raised.
+local function RaiseAlarms(order)
+	local room = order and order.room
+	if not (room and room.lo and room.hi) then return end
+	for _, alarm in ipairs(ents.FindByClass("ent_room_alarm")) do
+		local at = alarm:GetPos()
+		if at.x >= room.lo.x and at.x <= room.hi.x and at.y >= room.lo.y and at.y <= room.hi.y then alarm:Raise() end
+	end
+end
+
+-- Its squad's call over the radio (call: group_identity's Radio entry), to everyone's chat and the
+-- server's console, as "[RED radio] red 1 -> red 4: Status report."; stacking up, the room's alarms.
+function ENT:NSLegsSay(line, call)
+	local said = line
+	if call then
+		said = string.format("[%s radio] %s -> %s: %s", team.GetName(self:NSTeam()), self:NSLegsNameOf(call.from),
+			self:NSLegsNameOf(call.to), line)
+	end
+	PrintMessage(HUD_PRINTTALK, said)
+	MsgN(said)
+	if call and call.call == "STACK_UP" then RaiseAlarms(self:NSLegsOrder()) end
 end
 
 -- The ground under a slot where its body fits there, or nil: the map's, not who stands there now.

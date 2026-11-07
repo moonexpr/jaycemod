@@ -89,7 +89,7 @@ switching modes switches what drives the followers, without respawning them.
 
 - **Path** (driver `path`): their bench. Right-click sends them to the aim,
   and later right-clicks change the goal.
-- **Local** (driver `legs`): `GroupIdentityBehavior` alone. Right-click gives
+- **Local** (driver `legs`): `TacticalLeggings` alone. Right-click gives
   their squad an order at the aim.
 - **Tactical** (driver `war`): the AI war's own orders. Right-click reports an
   enemy contact at the aim.
@@ -130,7 +130,7 @@ goal when their failed search has no reachable waypoint.
 ### Local
 
 Local mode inspects how members place themselves within a room or enclosed
-area: the legs (`GroupIdentityBehavior`) alone, the followers' only tree.
+area: the legs (`TacticalLeggings`) alone, the followers' only tree.
 Right-click gives the selected members the panel's order at the aim:
 **Muster** (the point, then rings around it), **Fall back** (rows across the
 way from you, the threat) or **Assault** (the room at the aim, found by the
@@ -205,7 +205,9 @@ as data.
 
 `dev_3house` (`.devtools/bin/dev_3house_map.py`, through hammer-mcp) is three
 sealed houses on grass: RED's spawn room, the bench (one 768-square room, a
-128-wide doorway in each wall, glass windows), and BLU's spawn room. Each spawn
+128-wide doorway in each wall, glass windows, in a walled court whose
+gateways, near the ends of its east and west walls, leave no line from either
+spawn to the bench or the other spawn), and BLU's spawn room. Each spawn
 room has twelve starts, a `func_respawnroom`, a resupply locker and its
 `func_regenerate`, and at its door a shutter (`func_door`) its team's trigger
 opens, behind a `func_respawnroomvisualizer`. The script renders it top-down,
@@ -240,18 +242,57 @@ marked at the bench's centre, rear, front, left and right
 passable: TF2's stop only players, and NextBots' movement takes them for walls.
 
 `.devtools/bin/dev_3house_trial.lua` puts the pieces together against a real
-enemy: five RED followers on their legs, armed, leave RED's spawn for the
-staging point and are given the assault on the bench; once the first stages,
-one BLU follower, armed, with five times a soldier's health, leaves BLU's spawn
-for the bench's middle and patrols it. Both fight as the base fights (no aim
-error, no reaction time: tf_bot_difficulty's EXPERT). A member lost before the
-leader's "Move in!" fails it; then the expert killed wins it, and a fall back
-or the squad killed loses it (`NSAssaultTrial.Start()`, `NSAssaultTrial.Report()`:
-the log of stages, sightings and kills, and the damage each dealt). A follower
-on its legs looks and fires as the war's soldiers do while they walk it, and
-walks to within `LEGS_REACH` of its spot, inside the reach they count it
-there. An assault keeps its stacks off the entrances the enemy's flow comes in by
-(`RoomForSquad`'s `enemyFlow`), where it would meet them on its way in.
+enemy, followers on their legs, armed, on both sides. `NSAssaultTrial.Start("ambush")`:
+six BLU lie in ambush inside the bench by the door RED's flow comes in by, and
+once they are laid, twelve RED leave their spawn for the staging point outside
+the court and are given the assault on the bench. `Start("expert")`: five RED
+against one BLU with five times a soldier's health, which leaves its spawn for
+the bench's middle once RED's first stages, and patrols it. Both sides fight as
+the base fights (no aim error, no reaction time: tf_bot_difficulty's EXPERT). A
+RED member lost before the leader's "Move in!" fails it; BLU dead or the room
+called clear wins it; a fall back or RED dead loses it (`NSAssaultTrial.Report()`:
+the log of stages, sightings and kills, and the damage each dealt).
+
+A follower on its legs runs two stacks, as a bot player does: its main stack,
+`nextsoldier.behavior.squad_member` (`SquadMember`), fights, and its
+`TacticalLeggings` beside it (`engine.InsertGroup`, updated each tick by
+`engine.UpdateGroup` from its `BehaveUpdate`, ended by `engine.EndGroup`) put its
+feet where its squad's order says. While its order is a mission its leader has
+yet to activate (an assault before "Move in!", an ambush before "Now!"), its
+main stack listens (`SquadMemberListen`: `ShouldAttack` no); then it fights
+(`SquadMemberCombat`). Its leader killed with the mission under way, the first
+to see it abandons the mission and calls the fall back. Staging, a member hops
+door to door round the room: crouched `HOP_PAUSE` beside a doorway's near side,
+then across its sight at a run, each hop a spot clear of every stack. An
+assault keeps its stacks off the entrances the enemy's flow comes in by
+(`RoomForSquad`'s `enemyFlow`). An ambush (`group_identity.Ambush(room)`,
+`LegsAmbush`) lies in wait beside the entrance the enemy comes in by, where one
+walking up to it does not see (`RoomForSquad`'s `watched`); an enemy seen within
+`SPRING_RANGE` of it, or a member hurt, has its leader spring it. An occupation (`group_identity.Occupy(room)`, `LegsOccupy`) holds a room: a
+guard for each `GUARD_SPAN` of a loop `PATROL_OUT` round it outside, up to half
+the squad, walk it one way round from stops evenly apart, standing
+`PATROL_STOP` at each corner (`LegsGuard`); the rest hold inside (`LegsHold`).
+Every `CHECK_INTERVAL` the leader asks each guard for a status report, and each
+answers ("All clear.", or "Contact!"); one silent `CHECK_TIMEOUT` after is
+missing: the leader tells its director ("Lost contact with blue 2."), and the
+squad stacks up inside by the exit nearest where it was last heard from, out of
+sight from outside (`LegsStackUp`), listening, until the leader's "Move in!"
+(all stacked, `STACK_PATIENCE` after it is, or on contact) sends it there at a
+run. Stacking up raises the room's alarms (`ent_room_alarm`: a klaxon and
+`OnAlarm`; the map's `Trigger` and `Silence`). `NSAssaultTrial.Start("occupy")`
+has six BLU occupy the bench and silences a guard 40 s in.
+
+Every squad call goes over its radio (`Order:Radio`, kept on the order): the
+leader speaks to its director (Overwatch, for the Combine; else Command), the
+squad or a member; a member speaks only to its leader; anything else is refused
+as a bug. A follower says each in chat and the server's console, as
+`[BLU radio] blue 1 -> Overwatch: Lost contact with blue 2.`, a member by its
+`NSRadioName`.
+
+Followers pass
+through each other (`COLLISION_GROUP_NPC_SCRIPTED`: a NextBot's movement asks the
+engine's collision groups, so neither GMod's collision hook nor the war's
+collision pairs reach it).
 
 An order's places come a group at a time (a muster's rings, a fall back's
 rows), whole but for the last, of which it keeps the slots nearest the

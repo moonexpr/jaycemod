@@ -150,7 +150,8 @@ T.test("a class the engine runs shows the debug layer the engine's stack", funct
 	local stack = base:match("function ENT:NSDebugStack%(%)(.-)\nend")
 	T.eq(stack:find("self.nsEngineDebug:Stack()", 1, true) ~= nil, true, "its actions, not its class's name")
 	local start = base:match("function ENT:BehaveStart%(%)(.-)\nend")
-	T.eq(start:find("Action.DebugNpc(self, nextsoldier.engine.Stack)", 1, true) ~= nil, true, "made as they go in")
+	T.eq(start:find("Action.DebugNpc(self, nextsoldier.engine.Stack, nextsoldier.engine.GroupStack)", 1, true) ~= nil, true,
+		"made as they go in, its leggings after them")
 end)
 
 -- BehaveUpdate waits while a body scrambles, but an engine action is updated by the
