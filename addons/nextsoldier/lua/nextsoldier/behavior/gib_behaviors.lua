@@ -4,7 +4,8 @@
 --   STATIONARY  LegsStationary  rests at a seat near its place, one no other member holds
 --   ALERT       LegsPatrol      patrols spots round the squad's point on its own side
 --   CAUTIOUS    LegsWander      wanders near its own place
---   PANIC       LegsEvacuate    runs out of the room by the way out furthest from the threat
+--   PANIC       LegsEvacuate    runs out of the room by the way out furthest from the threat, to
+--                               hide out of its sight where its room is known (else past the door)
 --   CLOSE       LegsStayClose   keeps near its leader, running to it when too far
 -- A member strayed far from its squad's point suspends what it does for LegsRegroup, running
 -- back to its place. A full squad's leader calls the fall back once (FALL_BACK_LINE) and its
@@ -44,6 +45,8 @@ WANDER_RADIUS, WANDER_REST = 300, 12
 -- How far from the threat an evacuating member runs with no way out known, and how far past a
 -- way out it runs, clear of the room.
 EVACUATE_DISTANCE, EXIT_CLEARANCE = 768, 192
+-- How far apart the members of a squad hide, evacuated.
+HIDE_APART = 72
 -- How far from its place a member looks for a seat.
 REST_RADIUS = 192
 -- How far from its leader a member staying close lets itself be, and how near it runs back.
@@ -277,6 +280,8 @@ local function WayOut(me, order, at, admit)
 		local exit = exits[i]
 		local spot = admit(exit)
 		if spot then
+			local hideout = order:Hideout(me, exit, HIDE_APART, function(around) return me:NSLegsAdmit(around) end)
+			if hideout then return hideout end
 			local past = me:NSLegsAdmit(exit)(Geometry.Offset2D(exit, order.point, EXIT_CLEARANCE, 0))
 			return past or spot
 		end

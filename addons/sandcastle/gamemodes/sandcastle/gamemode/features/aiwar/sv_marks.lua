@@ -116,11 +116,11 @@ local EYES, ROOM_EYES_INSET, EYE_HEIGHT = 3, 48, Vector(0, 0, 64)
 local THREAT_WEIGHT, COVER_WEIGHT = 2, 0.5
 local FLOOR_SAMPLES, COVER_RAYS, COVER_REACH, CHEST = 5, 8, 64, Vector(0, 0, 40)
 
--- The room at point as a squad's assault takes it (the legs' Assault): its block and middle, the
--- doorway nearest from it comes in by, what it sees, what a point in it is worth to fight from, and,
+-- The room at point as a squad takes it (the legs' Assault and SetRoom; RoomAt is the war's room at a point): its block and middle, its
+-- doors as its ways out, the doorway nearest from it comes in by, what it sees, what a point in it is worth to fight from, and,
 -- given the squad's team, the enemy that team has marked in it nearest its middle (an ENEMY mark); nil where the map's rooms are not found,
 -- none is there, or it has no door.
-function Controller:RoomToAssault(point, from, team)
+function Controller:RoomForSquad(point, from, team)
 	local area = navmesh.GetNearestNavArea(Vector(point.x, point.y, point.z))
 	local room = self.rooms and IsValid(area) and Rooms.RoomOf(self.rooms, area:GetID())
 	if not (room and room.doors and room.doors[1]) then return nil end
@@ -183,8 +183,10 @@ function Controller:RoomToAssault(point, from, team)
 			enemy = p
 		end
 	end
-	return { center = at(room.center), lo = at(room.lo), hi = at(room.hi), entry = at(entry.pos), seen = Seen, score = Score,
-		enemy = enemy and at(enemy) }
+	local exits = {}
+	for i, door in ipairs(room.doors) do exits[i] = at(door.pos) end
+	return { center = at(room.center), lo = at(room.lo), hi = at(room.hi), entry = at(entry.pos), exits = exits, seen = Seen,
+		score = Score, enemy = enemy and at(enemy) }
 end
 
 -- The doors of the room at point, as the ways out a panicked squad makes for (the legs'

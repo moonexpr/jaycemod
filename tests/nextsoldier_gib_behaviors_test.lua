@@ -7,7 +7,7 @@ local GIB = nextsoldier.behavior.gib_behaviors
 local MODE, GAIT = GroupIdentity.MODE, GIB.GAIT
 
 for _, name in ipairs({ "PATROL_RADIUS", "PATROL_REST", "WANDER_RADIUS", "WANDER_REST", "EVACUATE_DISTANCE",
-	"REST_RADIUS", "EXIT_CLEARANCE", "STAY_CLOSE_RANGE", "STAY_CLOSE_RADIUS", "REGROUP_RANGE", "REGROUP_NEAR",
+	"REST_RADIUS", "EXIT_CLEARANCE", "HIDE_APART", "STAY_CLOSE_RANGE", "STAY_CLOSE_RADIUS", "REGROUP_RANGE", "REGROUP_NEAR",
 	"STACK_PATIENCE", "STAGE_REACH", "ENTER_REACH", "CLEAR_GRACE" }) do
 	T.defined(GIB[name], name)
 end
@@ -554,6 +554,18 @@ T.test("a member with no place in the stack is staged where it stands", function
 	squad[2].action:Update(me)
 	T.eq(order:StagedAt(me) ~= nil, true, "staged")
 	T.eq(me.spot, me.at, "where it stands")
+end)
+
+T.test("evacuating, with its room's sight known, a member runs out of the room to hide out of its sight", function()
+	local seen = function(p) return p.x > -432 or (p.x > -560 and math.abs(p.y) < 64 + (-432 - p.x) * 4) end
+	local order = GroupIdentity.FallBack({ x = 0, y = 0, z = 0 }, { x = 300, y = 0, z = 0 })
+	order:SetMode(MODE.PANIC)
+	order:SetRoom({ center = { x = 0, y = 0, z = 0 }, seen = seen, exits = { { x = -400, y = 0, z = 0 } } })
+	local me, action = OnOrder(order, { x = 0, y = 0, z = 0 })
+	action:Update(me)
+	T.eq(me.spot.x < -400, true, "out of the room")
+	T.eq(seen(me.spot), false, "out of its sight")
+	T.eq(me.gait, GAIT.RUN, "running")
 end)
 
 T.finish()

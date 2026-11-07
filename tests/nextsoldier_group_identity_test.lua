@@ -361,6 +361,26 @@ T.test("encircling, the front of the stack goes the furthest round", function()
 	T.eq(front, furthest, "the front")
 end)
 
+T.test("an order told its room hides each member that evacuates out of its sight, past its way out, apart", function()
+	local order = GroupIdentity.FallBack({ x = 0, y = 0, z = 0 }, { x = 300, y = 0, z = 0 })
+	T.eq(order:Hideout("m1", ROOM.entry, SPACING, AdmitAt), nil, "no room told, no hideout")
+	order:SetRoom({ center = ROOM.center, seen = Seen, exits = { ROOM.entry } })
+	T.eq(order.exits[1], ROOM.entry, "its ways out are the room's")
+	local hideouts = {}
+	for i = 1, 3 do
+		local h = order:Hideout("m" .. i, ROOM.entry, SPACING, AdmitAt)
+		T.eq(h ~= nil, true, "a hideout: " .. i)
+		T.eq(h.x < ROOM.lo.x, true, "out of the room: " .. i)
+		local cover = GroupIdentity.STACK_COVER
+		for _, d in ipairs({ { 0, 0 }, { cover, 0 }, { -cover, 0 }, { 0, cover }, { 0, -cover } }) do
+			T.eq(Seen({ x = h.x + d[1], y = h.y + d[2], z = 0 }), false, "out of its sight, cover to spare: " .. i)
+		end
+		hideouts[i] = h
+	end
+	HeldApart(hideouts, SPACING)
+	T.eq(order:Hideout("m1", ROOM.entry, SPACING, AdmitAt), hideouts[1], "each keeps its own")
+end)
+
 T.test("going in, the room is clear once all the living hold their points and none has met the enemy since", function()
 	local order = Assaulting()
 	T.eq(order:AllBreached(), false, "none in")

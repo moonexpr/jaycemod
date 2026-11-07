@@ -15,8 +15,9 @@
 --   hold       in the bench, alert: patrolling, none leaving the room
 --   evacuate   in the bench, a danger marked at its east side (the war's DANGER mark, as the
 --              Path Follower stool's Annotate places it): the leader calls the fall back, all
---              out of the room by a way away from it
+--              out of the room by a way away from it, hidden out of its sight
 --   rout       in the bench, half the squad killed: the leader calls the fall back, the rest leave
+--              and hide out of the room's sight
 --   remuster   from outside the bench's west door to the rally point, each at its place
 --
 -- Load it, run a stage or all, then read the report:
@@ -165,6 +166,15 @@ local function Runs(action)
 end
 
 local function Staging() return Named("bench_room") + STAGING_OFFSET end
+
+-- The squad's order told the bench is the room it is in, and B.room that room.
+local function InTheBench(order)
+	B.room = WS.Feature("aiwar"):RoomForSquad(Point(Named("bench_room")), Point(Staging()), WS.TEAM_RED)
+	order:SetRoom(B.room)
+end
+
+-- Out of the bench's sight, where an evacuating member hides.
+local function Hidden(member) return not B.room.seen(Point(member:GetPos())), "in the room's sight" end
 
 -- Whether segments ab and cd cross, apart from touching or running along each other (a point
 -- within ON_LINE of a line is on it: rounding).
@@ -323,7 +333,7 @@ B.STAGES = {
 		seconds = 35,
 		setup = function() Spawn(Around(Staging(), SIZE, 72)) end,
 		act = function(run)
-			local room = WS.Feature("aiwar"):RoomToAssault(Point(Named("bench_room")), Point(Staging()))
+			local room = WS.Feature("aiwar"):RoomForSquad(Point(Named("bench_room")), Point(Staging()), WS.TEAM_RED)
 			B.room = room
 			Give(Legs.Assault(room))
 			WatchAssault(room, run)
@@ -371,13 +381,13 @@ B.STAGES = {
 			Give(Legs.Muster(Point(Named("bench_room"))))
 		end,
 		act = function()
-			B.order:SetExits(WS.Feature("aiwar"):ExitsAt(B.order.point))
+			InTheBench(B.order)
 			WS.Feature("aiwar"):Mark("danger", WS.TEAM_RED, Point(Named("bench_danger")))
 		end,
 		check = function()
 			local danger, room = Named("bench_danger"), Named("bench_room")
 			local away = room:Distance2D(danger)
-			local lines, failures = Each({ Runs("LegsEvacuate"),
+			local lines, failures = Each({ Runs("LegsEvacuate"), Hidden,
 				function(m) return not InBench(m), "still in the bench" end,
 				function(m) return m:GetPos():Distance2D(danger) > away, "no further from the danger than the room" end })
 			if not B.order.routed then failures[#failures + 1] = "the leader did not call the fall back" end
@@ -390,14 +400,13 @@ B.STAGES = {
 		seconds = 12,
 		setup = function()
 			Spawn(Around(Named("bench_room"), SIZE, 96))
-			local order = Give(Legs.Muster(Point(Named("bench_room"))))
-			order:SetExits(WS.Feature("aiwar"):ExitsAt(order.point))
+			InTheBench(Give(Legs.Muster(Point(Named("bench_room")))))
 		end,
 		act = function()
 			for i = SIZE - ROUT_KILLS + 1, SIZE do B.members[i]:TakeDamage(10000) end
 		end,
 		check = function()
-			local lines, failures = Each({ Runs("LegsEvacuate"), function(m) return not InBench(m), "still in the bench" end })
+			local lines, failures = Each({ Runs("LegsEvacuate"), Hidden, function(m) return not InBench(m), "still in the bench" end })
 			if not B.order.routed then failures[#failures + 1] = "the leader did not call the fall back" end
 			return Verdict(lines, failures)
 		end,
@@ -528,7 +537,7 @@ function B.Placements()
 		local enemy = Ground(middle + at[2])
 		controller:Mark("enemy", WS.TEAM_RED, Point(enemy))
 		local ok, why = pcall(function()
-			local room = controller:RoomToAssault(Point(middle), Point(staging), WS.TEAM_RED)
+			local room = controller:RoomForSquad(Point(middle), Point(staging), WS.TEAM_RED)
 			local order = Legs.Assault(room)
 			local positions = {}
 			for i, start in ipairs(starts) do positions[i] = Point(start) end

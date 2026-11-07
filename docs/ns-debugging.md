@@ -170,7 +170,9 @@ wander in setup (300 units, 12 s). **Panic** (3, `LegsEvacuate`): each runs
 from where it stands for the way out of the room furthest from the threat (a
 fall back's threat is you; a muster's, its point): the doors of its room
 where the AI war has found the map's rooms, else straight away from the
-threat. **Close** (4, `LegsStayClose`): each stays within `STAY_CLOSE_RANGE`
+threat; where the order knows its room (`SetRoom`, the war controller's
+`RoomForSquad`), past the way out to hide out of the room's sight with cover to
+spare, each apart (`Hideout`), not just out of the doorway. **Close** (4, `LegsStayClose`): each stays within `STAY_CLOSE_RANGE`
 of the squad's leader (the first picked), and runs back to it when further.
 A member that strays more than `REGROUP_RANGE` from the squad's point, while
 stationary, alert or cautious, suspends that action for `LegsRegroup` and

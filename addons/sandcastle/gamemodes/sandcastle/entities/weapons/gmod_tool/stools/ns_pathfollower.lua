@@ -360,12 +360,13 @@ local function GiveOrder(tool, ply, trace)
 	for i, member in ipairs(members) do positions[i] = Point(member:GetPos()) end
 	local order
 	local kind = tool:GetClientInfo("order")
+	local controller = WS.Feature("aiwar")
+	local middle = { x = 0, y = 0, z = 0 }
+	for _, p in ipairs(positions) do middle.x, middle.y = middle.x + p.x / #positions, middle.y + p.y / #positions end
+	if kind == "Assault" and not controller.rooms then controller:FindRoomsNow() end
+	-- the room at the aim, its known enemy the squad's team's
+	local room = controller:RoomForSquad(point, middle, members[1]:NSTeam())
 	if kind == "Assault" then
-		local controller = WS.Feature("aiwar")
-		if not controller.rooms then controller:FindRoomsNow() end
-		local middle = { x = 0, y = 0, z = 0 }
-		for _, p in ipairs(positions) do middle.x, middle.y = middle.x + p.x / #positions, middle.y + p.y / #positions end
-		local room = controller:RoomToAssault(point, middle)
 		if not room then
 			Tell(ply, "An assault needs a room with a door at the aim.")
 			return false
@@ -381,7 +382,8 @@ local function GiveOrder(tool, ply, trace)
 		order = Legs.Muster(point)
 	end
 	order:SetMode(Legs.MODE(tool:GetClientNumber("legsmode")) or Legs.MODE.STATIONARY)
-	order:SetExits(WS.Feature("aiwar"):ExitsAt(point))
+	-- a panicked squad leaves by the room's doors and hides out of its sight
+	if room then order:SetRoom(room) else order:SetExits(controller:ExitsAt(point)) end
 	local places = order:Places(positions, nextsoldier.engine.GroupSpacing(), members[1]:NSLegsAdmit(trace.HitPos),
 		function(around) return members[1]:NSLegsAdmit(around) end)
 	for i, member in ipairs(members) do member:NSLegsGive(order, places[i]) end

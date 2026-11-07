@@ -122,6 +122,14 @@ end
 -- The ways out a panicked squad makes for (points), or nil for none known.
 function Order:SetExits(exits) self.exits = exits end
 
+-- The room the squad is in: { center, seen(point) (what it sees), exits (its ways out) }. Its ways
+-- out are the order's, and a member evacuating it hides out of its sight (Hideout).
+function Order:SetRoom(room)
+	self.room = room
+	self.exits = room.exits
+end
+
+
 -- Each member's place, by its index in members (a point each), or none where the map had no
 -- room: admit(slot) -> where a body would stand for it, or nil where it cannot. The squad is as
 -- many as it places.
@@ -440,6 +448,32 @@ local function BreachPoints(room, floor, turn, starts, spacing)
 		chosen[#chosen + 1] = best.point
 	end
 	return points
+end
+
+-- Where member hides, having evacuated the room by exit: the ground past it, out of the room's
+-- sight with STACK_COVER to spare, nearest the way out and apart from where the others hide;
+-- kept once found. Nil with no room told, or none such. admitAt(around) -> the map's word on
+-- ground around a point.
+function Order:Hideout(member, exit, apart, admitAt)
+	local room = self.room
+	if not (room and room.seen) then return nil end
+	self.hideouts = self.hideouts or {}
+	if self.hideouts[member] then return self.hideouts[member] end
+	local out = Geometry.Normalize2D(Geometry.Sub(exit, room.center))
+	local outside = { x = exit.x + out.x * apart, y = exit.y + out.y * apart, z = exit.z }
+	local ground = Outside({ entry = exit, center = room.center, seen = room.seen }, apart, admitAt(outside))
+	local nearest = Select.Order(ground, function(a, b) return Geometry.Distance2D(a, exit) < Geometry.Distance2D(b, exit) end)
+	for _, i in ipairs(nearest) do
+		local spot, clear = ground[i], true
+		for other, taken in pairs(self.hideouts) do
+			if other ~= member and Geometry.Distance2D(spot, taken) < apart then clear = false break end
+		end
+		if clear then
+			self.hideouts[member] = spot
+			return spot
+		end
+	end
+	return nil
 end
 
 -- How far apart two angles are, the short way round.
