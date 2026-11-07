@@ -4,6 +4,11 @@
 -- run here against fakes of luadev, ULX and the GMod globals they call.
 local T = dofile("tests/harness.lua")
 
+-- GMod's AddCSLuaFile, which each of ulx_luadev's modules calls for itself as it loads (no path:
+-- the file calling it): what it was asked to send, by path, or "itself".
+local sentByModules = {}
+AddCSLuaFile = function(path) sentByModules[#sentByModules + 1] = path or "itself" end
+
 local DIR = ".devtools/bin/server_root/"
 local ULX_LUADEV = "addons/ulx_luadev/lua/ulx/modules/sh/luadev.lua"
 
@@ -566,16 +571,18 @@ end)
 T.test("!print of one of easylua's relative names also shows it to its caller; of anything else, prints only", function()
 	local commands, ran = ulx_module()
 	commands["ulx print"].fn(player(), "this")
-	T.eq(ran[1].script, 'print(this) require("luadev_show").Show(me, "this", this)', "shown")
+	-- GMod's require returns nothing: the module is its global table
+	T.eq(ran[1].script, 'print(this) require("luadev_show") luadev_show.Show(me, "this", this)', "shown")
 	commands["ulx print"].fn(player(), " there ")
 	T.eq(ran[2].script:find('Show(me, "there", there)', 1, true) ~= nil, true, "trimmed")
 	commands["ulx print"].fn(player(), "me:GetPos()")
 	T.eq(ran[3].script, "print(me:GetPos())", "printed only")
 end)
 
-T.test("the modules clients run are sent to them, and the overlay's time is a setting", function()
+T.test("each module clients run sends itself to them as it loads, and the overlay's time is a setting", function()
 	local _, _, _, _, _, _, _, created, _, sent = ulx_module()
-	T.eq(table.concat(sent, " "), "includes/modules/luadev_output.lua includes/modules/luadev_show.lua", "sent")
+	T.eq(table.concat(sentByModules, " "), "itself itself", "luadev_output and luadev_show, each itself")
+	T.eq(#sent, 0, "the ULX module sends none of them")
 	T.eq(created.sv_luadev_output_overlay, "2", "2 seconds")
 end)
 

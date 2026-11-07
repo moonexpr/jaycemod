@@ -1,6 +1,8 @@
 -- luadev_show (ulx_luadev's): what !print of one of easylua's relative names (this, we, there, trace...)
 -- draws for its caller: a box and lines for each entity, a line to each position.
 local T = dofile("tests/harness.lua")
+-- GMod's AddCSLuaFile, which the module calls for itself as it loads.
+AddCSLuaFile = function() end
 local Show = T.require("luadev_show")
 
 local function V(x, y, z) return { x = x, y = y, z = z } end
