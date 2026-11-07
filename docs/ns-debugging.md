@@ -204,13 +204,20 @@ as data.
 #### dev_3house: the room bench
 
 `dev_3house` (`.devtools/bin/dev_3house_map.py`, through hammer-mcp) is three
-sealed houses on grass: RED's spawn room, the bench (one 768-square room, a
-128-wide doorway in each wall, glass windows, in a walled court whose
-gateways, near the ends of its east and west walls, leave no line from either
-spawn to the bench or the other spawn), and BLU's spawn room. Each spawn
-room has twelve starts, a `func_respawnroom`, a resupply locker and its
-`func_regenerate`, and at its door a shutter (`func_door`) its team's trigger
-opens, behind a `func_respawnroomvisualizer`. The script renders it top-down,
+buildings on grass: RED's, the bench (one 768-square room, a 128-wide doorway
+in each wall, glass windows, in a walled court whose gateways, near the ends of
+its east and west walls, leave no line from either spawn to the bench or the
+other spawn), and BLU's. A team's building is three rooms in a row, sharing
+their walls: its spawn room (the bedroom), its stronghold (the living room,
+where its squads muster: `<team>_muster`) and its lobby, whose door opens onto
+the grass facing the court. Each spawn room has twelve starts, a
+`func_respawnroom`, a resupply locker and its `func_regenerate`, and at its
+door into the stronghold a shutter (`func_door`) its team's trigger opens,
+behind a `func_respawnroomvisualizer`. The stronghold and lobby mark the
+support's works for its builders: `<team>_sentry` (a `bot_hint_sentrygun` in
+each, covering the way in from the front), `<team>_teleporter_entrance`
+(beside the spawn's door) and `<team>_access_door` (in their doorways toward
+the front). The script renders it top-down,
 from the side, through the bench's doors and inside a spawn room, and draws
 its plan, before it compiles. The nav mesh is built on the server by
 `.devtools/bin/dev_3house_nav.lua`, run twice: first it generates the mesh with
@@ -224,7 +231,7 @@ as a sealed indoor room with four doors and eight windows.
 
 `.devtools/bin/dev_3house_bench.lua` runs five RED followers on their legs,
 feet free, through a room operation, stage by stage: spawn, muster (from
-RED's spawns, checking the placement: a place each, spaced apart, no two walks
+RED's spawns into its stronghold, checking the placement: a place each, spaced apart, no two walks
 crossing, each resting at its own), mobilize (out through the shutter to the
 grass), assault (a decoy at the west door, the rest staged at the north,
 south and east doors out of the room's sight, none in before the leader's

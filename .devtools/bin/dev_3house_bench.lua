@@ -5,7 +5,7 @@
 -- result as data, so any stage runs alone or all in turn.
 --
 --   spawn      at RED's spawns, at ease, in RED's spawn room
---   muster     from RED's spawns, mustered at its spawn room's middle: each given a place of its
+--   muster     from RED's spawns, mustered at its stronghold's middle: each given a place of its
 --              own, spaced apart, its walk there crossing no other's, resting there, in the room
 --   mobilize   out through RED's shutter to the staging point on the grass west of the bench
 --   assault    from the staging point: RED's flow coming in by the west door, a decoy hidden
@@ -127,6 +127,8 @@ end
 
 local function InBench(member) return RoomAt(member:GetPos()) == RoomAt(Named("bench_room")) end
 
+local function InStronghold(member) return RoomAt(member:GetPos()) == RoomAt(Named("red_stronghold")) end
+
 local function InSpawnRoom(member)
 	local room = ents.FindByName("red_spawnroom")[1]
 	local lo, hi = room:WorldSpaceAABB()
@@ -135,7 +137,8 @@ end
 
 local function Stack(member)
 	local names = {}
-	for i, frame in ipairs(nextsoldier.engine.Stack(member)) do names[i] = frame.name end
+	-- its leggings' stack: its main one is its squad member's (nextsoldier.squad.behaviors.member)
+	for i, frame in ipairs(nextsoldier.engine.GroupStack(member)) do names[i] = frame.name end
 	return table.concat(names, " > ")
 end
 
@@ -366,7 +369,7 @@ B.STAGES = {
 		act = function() Give(Legs.Muster(Point(Named("red_muster")))) end,
 		check = function()
 			local lines, failures = Each({ Arrived, Runs("LegsStationary"), Resting,
-				function(m) return InSpawnRoom(m), "left the spawn room" end })
+				function(m) return InStronghold(m), "not in the stronghold" end })
 			for _, failure in ipairs(Placement()) do failures[#failures + 1] = failure end
 			for i, place in ipairs(B.places) do
 				local start = B.starts[i]
@@ -383,7 +386,7 @@ B.STAGES = {
 		check = function()
 			local staging = Staging()
 			return Verdict(Each({ Arrived,
-				function(m) return not InSpawnRoom(m), "still in the spawn room" end,
+				function(m) return not InStronghold(m), "still in the stronghold" end,
 				function(m) return m:GetPos():Distance2D(staging) <= GATHERED, "not at the staging point" end }))
 		end,
 	},

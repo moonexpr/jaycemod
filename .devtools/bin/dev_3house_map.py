@@ -1,12 +1,17 @@
 #!/usr/bin/env python3
 """Build dev_3house, the room-operations bench map, through hammer-mcp.
 
-Three sealed houses in a row on grass, under a sky box (x -2048..2048,
+Three buildings in a row on grass, under a sky box (x -HALF_X..HALF_X,
 y -1024..1024, the ground's top at z 0):
 
-  RED's house   x -1760..-1120  RED's spawn room, its door east
-  the bench     x  -384..384    one room, a doorway in each wall
-  BLU's house   x  1120..1760   BLU's spawn room, its door west
+  RED's building  x -2912..-1120  three rooms in a row, their doors on one line east:
+                  its spawn room (the bedroom), its stronghold (the living room, where
+                  its squads muster) and its lobby, its door out to the grass
+  the bench       x  -384..384    one room, a doorway in each wall
+  BLU's building  x  1120..2912   the same, mirrored, its door out west
+
+A building's rooms share their walls: each is a sealed house, the next standing with
+its wall in the last's, so the war's rooms find three rooms joined by doorways.
 
 The bench stands in a walled court, its wall COURT out from the bench's on every side and a
 house's height, so neither spawn sees the bench nor the other (their doors and the bench's lie on
@@ -26,7 +31,13 @@ func_regenerate, and at its door a shutter (func_door rising into the wall)
 opened by a trigger_multiple for its own team (filter_activator_tfteam), a
 func_respawnroomvisualizer across the doorway outside it.
 
-Named points for a bench's checks: red_muster (RED's spawn room's middle),
+Each building marks its support's works (the gamemode's TFBot hints and info_targets, by
+team): <team>_sentry (bot_hint_sentrygun, one in the stronghold covering the way to the lobby,
+one in the lobby covering its door out), <team>_teleporter_entrance (beside the spawn's door, in
+the stronghold) and <team>_access_door (in the stronghold's and the lobby's doorways toward the
+front).
+
+Named points for a bench's checks: red_muster (RED's stronghold's middle),
 bench_room (the bench's middle) and bench_danger (outside the bench on
 BLU's side); bench_alarm, the bench's ent_room_alarm.
 
@@ -67,15 +78,16 @@ TRIGGER = "TOOLS/TOOLSTRIGGER"
 LOCKER = "models/props_gameplay/resupply_locker.mdl"
 
 # The world's extent, the sky's height, and the ground's depth.
-HALF_X, HALF_Y, SKY_TOP, GROUND = 2048, 1024, 1024, 64
+HALF_X, HALF_Y, SKY_TOP, GROUND = 3200, 1024, 1024, 64
 # A house: its floor slab's top, its walls' thickness and height above the slab, its roof's
 # thickness and overhang.
 FLOOR_TOP, WALL_T, HOUSE_HEIGHT, ROOF_T, EAVE = 8, 32, 192, 16, 16
 # A doorway, room for a TF2 shutter; a window, its sill above the floor; a pane's thickness.
 DOOR, DOOR_HEIGHT = 128, 144
 WINDOW, WINDOW_SILL, WINDOW_HEIGHT, PANE = 96, 48, 64, 4
-# The bench's room (its inside), the spawn rooms' (theirs), and where a spawn house stands.
-ROOM_SIZE, SPAWN_SIZE, SPAWN_X = 768, 640, 1440
+# The bench's room (its inside), a spawn building's rooms' (the spawn room, the stronghold and the
+# lobby), and how far from the middle a spawn building's lobby's outer wall stands.
+ROOM_SIZE, SPAWN_SIZE, STRONGHOLD_SIZE, LOBBY_SIZE, BUILDING_FRONT = 768, 640, 640, 384, 1120
 # A spawn room's starts: columns in from its back wall, rows across it.
 SPAWN_COLUMNS, SPAWN_ROWS = (96, 192, 288), (-216, -72, 72, 216)
 # The resupply locker's reach behind its origin, and the volume before it it serves
@@ -185,12 +197,58 @@ class House:
         ]
 
 
-def spawn_house(team, side):
-    """A team's spawn house on side (-1 west, 1 east), its door facing the bench."""
+def centres(side):
+    """A spawn building's rooms' middles on side (-1 west, 1 east): its lobby, outermost from its
+    front, then its stronghold and spawn room behind, each the next's wall in the last's."""
+    lobby = side * (BUILDING_FRONT + WALL_T + LOBBY_SIZE / 2)
+    stronghold = lobby + side * (LOBBY_SIZE / 2 + WALL_T + STRONGHOLD_SIZE / 2)
+    spawn = stronghold + side * (STRONGHOLD_SIZE / 2 + WALL_T + SPAWN_SIZE / 2)
+    return spawn, stronghold, lobby
+
+
+def spawn_building(team, side):
+    """A team's building on side: its spawn room, its stronghold and its lobby, in a row toward
+    the bench, a doorway through each wall between them and the lobby's out to the grass."""
+    spawn_x, stronghold_x, lobby_x = centres(side)
+    toward = "east" if side < 0 else "west"
+    back = "west" if side < 0 else "east"
+    number = TEAMS[team]
+    spawn = spawn_house(team, side, spawn_x)
+    stronghold = House(stronghold_x, STRONGHOLD_SIZE,
+                       [(back, 0, "door"), (toward, 0, "door"), ("north", -160, "window"), ("north", 160, "window"),
+                        ("south", -160, "window"), ("south", 160, "window")])
+    stronghold.points.append({"classname": "info_target", "targetname": f"{team}_muster",
+                              "origin": f"{stronghold_x} 0 {FLOOR_TOP}"})
+    stronghold.points.append({"classname": "info_target", "targetname": f"{team}_stronghold",
+                              "origin": f"{stronghold_x} 0 {FLOOR_TOP}"})
+    lobby = House(lobby_x, LOBBY_SIZE, [(back, 0, "door"), (toward, 0, "door"), ("north", 0, "window"),
+                                        ("south", 0, "window")])
+    lobby.points.append({"classname": "info_target", "targetname": f"{team}_lobby", "origin": f"{lobby_x} 0 {FLOOR_TOP}"})
+    # the support's works, marked for its builders: a sentry in each room covering the way in from
+    # the front, the teleporter's start beside the spawn's door, an access door in the stronghold's
+    # and the lobby's doorways toward the front; each facing the front
+    yaw = 0 if side < 0 else 180
+    inward = -side
+    def mark(room, classname, name, x, y):
+        room.points.append({"classname": classname, "targetname": f"{team}_{name}", "TeamNum": number,
+                            "origin": f"{x} {y} {FLOOR_TOP}", "angles": f"0 {yaw} 0"})
+    mark(stronghold, "bot_hint_sentrygun", "sentry", stronghold_x - inward * 64, 160)
+    mark(stronghold, "info_target", "teleporter_entrance", stronghold_x - inward * (STRONGHOLD_SIZE / 2 - 96), -160)
+    mark(stronghold, "info_target", "access_door", stronghold_x + inward * (STRONGHOLD_SIZE / 2 + WALL_T / 2), 0)
+    mark(lobby, "bot_hint_sentrygun", "sentry", lobby_x - inward * (LOBBY_SIZE / 2 - 64), -128)
+    mark(lobby, "info_target", "access_door", lobby_x + inward * (LOBBY_SIZE / 2 + WALL_T / 2), 0)
+    for room in (stronghold, lobby):
+        room.points.append({"classname": "light", "origin": f"{room.cx} 0 {FLOOR_TOP + HOUSE_HEIGHT - 24}",
+                            "_light": "255 240 220 300"})
+    return [spawn, stronghold, lobby]
+
+
+def spawn_house(team, side, cx):
+    """A team's spawn room on side (-1 west, 1 east), at cx, its door toward the bench."""
     toward = "east" if side < 0 else "west"
     windows = [("north", -160, "window"), ("north", 160, "window"), ("south", -160, "window"),
                ("south", 160, "window"), (("west" if side < 0 else "east"), 0, "window")]
-    house = House(side * SPAWN_X, SPAWN_SIZE, [(toward, 0, "door")] + windows)
+    house = House(cx, SPAWN_SIZE, [(toward, 0, "door")] + windows)
     number, h, cx = TEAMS[team], house.h, house.cx
     inward = -side  # from its back wall toward its door
     back = cx - inward * h
@@ -200,7 +258,6 @@ def spawn_house(team, side):
         for row in SPAWN_ROWS:
             house.points.append({"classname": "info_player_teamspawn", "origin": f"{back + inward * column} {row} {stand}",
                                  "angles": f"0 {yaw} 0", "TeamNum": number, "targetname": f"{team}_spawn"})
-    house.points.append({"classname": "info_target", "targetname": f"{team}_muster", "origin": f"{cx} 0 {FLOOR_TOP}"})
     # the spawn room, filling the house
     house.brushes.append(({"classname": "func_respawnroom", "targetname": f"{team}_spawnroom", "TeamNum": number,
                            "StartDisabled": 0}, [box(*house.inside())], TRIGGER))
@@ -260,7 +317,7 @@ def bench_house():
 
 
 def houses():
-    return [spawn_house("red", -1), bench_house(), spawn_house("blu", 1)]
+    return spawn_building("red", -1) + [bench_house()] + spawn_building("blu", 1)
 
 
 def court():
@@ -290,7 +347,7 @@ def calls(built):
     for house in built:
         yield from house.calls()
     yield solids(court(), WALL)
-    ops = [entity(classname="info_player_start", origin=f"{-SPAWN_X} 0 {FLOOR_TOP + 8}", angles="0 0 0"),
+    ops = [entity(classname="info_player_start", origin=f"{centres(-1)[0]} 0 {FLOOR_TOP + 8}", angles="0 0 0"),
            entity(classname="light_environment", origin="0 0 900", angles="-50 30 0", pitch=-50,
                   _light="255 244 222 450", _ambient="160 180 210 120")]
     for house in built:
@@ -345,12 +402,11 @@ VIEWS = {
     "top": {"origin": [0, 0, SKY_TOP - 32], "angles": [90, 90, 0], "fov": 125, "width": 1024, "height": 512},
     # from the south, just inside the sky box, level with the houses, looking north at the row
     "side": {"origin": [0, -HALF_Y + 32, 72], "angles": [0, 90, 0], "fov": 125, "width": 1024, "height": 384},
-    # from the grass between RED's house and the bench, looking east through the bench's west
-    # and east doors at BLU's door
-    "through": {"origin": [-SPAWN_X + 560, 0, 64], "angles": [0, 0, 0], "fov": 70, "width": 768, "height": 384},
+    # from the grass before RED's lobby, looking east through the court's wall line at the bench
+    "through": {"origin": [-BUILDING_FRONT + 64, 0, 64], "angles": [0, 0, 0], "fov": 70, "width": 768, "height": 384},
     # inside RED's spawn room, from its back corner toward its door: starts, locker, shutter
-    "spawn": {"origin": [-SPAWN_X - SPAWN_SIZE / 2 + 24, -SPAWN_SIZE / 2 + 24, FLOOR_TOP + 120],
-              "lookAt": [-SPAWN_X + SPAWN_SIZE / 2, 0, FLOOR_TOP + 48], "fov": 100, "width": 768, "height": 432},
+    "spawn": {"origin": [centres(-1)[0] - SPAWN_SIZE / 2 + 24, -SPAWN_SIZE / 2 + 24, FLOOR_TOP + 120],
+              "lookAt": [centres(-1)[0] + SPAWN_SIZE / 2, 0, FLOOR_TOP + 48], "fov": 100, "width": 768, "height": 432},
 }
 
 
@@ -367,9 +423,9 @@ def main():
     run(brush_entities(built))
     for view, camera in VIEWS.items():
         save_image(run([("render_vmf_view", {"path": str(VMF), **camera})]), OUT / f"{NAME}_{view}.png")
-    save_image(run([("render_vmf_plan", {"path": str(VMF), "grid": 256, "width": 1400, "height": 800})]),
+    save_image(run([("render_vmf_plan", {"path": str(VMF), "grid": 256, "width": 1400, "height": 600, "rooms": False})]),
                OUT / f"{NAME}_plan.png")
-    report = run([("read_vmf_leak", {"path": str(VMF)}), ("read_vmf_lint", {"path": str(VMF)})])
+    report = run([("read_vmf_leak", {"path": str(VMF), "maxCells": 6000000}), ("read_vmf_lint", {"path": str(VMF)})])
     print("\n".join(line for line in report.splitlines() if "unknown-classname" not in line)[-3000:])
     if args.no_compile:
         return
