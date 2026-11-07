@@ -513,19 +513,63 @@ end
 -- Where an enemy is marked for Placements, about the bench's middle, the squad coming in from
 -- the west: its centre, rear (east), front (by the west door), left (north) and right (south).
 local ENEMY_AT = {
-	{ "center", Vector(0, 0, 0) }, { "rear", Vector(300, 0, 0) }, { "front", Vector(-260, 0, 0) },
+	{ "nowhere known" }, { "center", Vector(0, 0, 0) }, { "rear", Vector(300, 0, 0) }, { "front", Vector(-260, 0, 0) },
 	{ "left", Vector(0, 300, 0) }, { "right", Vector(0, -300, 0) },
 }
 
+-- The nav mesh as graph.pathfinder's graph: areas by id, each step across the ground between
+-- their middles; with closed (id -> true), never into those areas.
+local NavGraph = {}
+NavGraph.__index = NavGraph
+
+function NavGraph:Neighbors(id)
+	local list = {}
+	for i, other in ipairs(navmesh.GetNavAreaByID(id):GetAdjacentAreas()) do list[i] = other:GetID() end
+	return list
+end
+
+function NavGraph:Cost(from, to, costSoFar)
+	if self.closed and self.closed[to] then return -1 end
+	return costSoFar + navmesh.GetNavAreaByID(from):GetCenter():Distance(navmesh.GetNavAreaByID(to):GetCenter())
+end
+
+function NavGraph:Estimate(id, goal)
+	return navmesh.GetNavAreaByID(id):GetCenter():Distance(navmesh.GetNavAreaByID(goal):GetCenter())
+end
+
+-- The route a body walks from a to b on the nav mesh, never into closed's areas (id -> true; none
+-- for nil): its points, a first, each the nearest point of the next area along the way to the
+-- last, then b; straight across where none is found.
+local function Route(a, b, closed)
+	local from, to = navmesh.GetNearestNavArea(a), navmesh.GetNearestNavArea(b)
+	local nav = setmetatable({ closed = closed }, NavGraph)
+	local areas = IsValid(from) and IsValid(to) and graph.pathfinder.Find(nav, from:GetID(), to:GetID())
+	if not areas then return { { x = a.x, y = a.y }, { x = b.x, y = b.y } } end
+	local points, last = { { x = a.x, y = a.y } }, a
+	for k = 2, #areas do
+		last = navmesh.GetNavAreaByID(areas[k]):GetClosestPointOnArea(last)
+		points[#points + 1] = { x = last.x, y = last.y }
+	end
+	points[#points + 1] = { x = b.x, y = b.y }
+	return points
+end
+
 -- An assault's placements on the bench, planned for an enemy marked at each of ENEMY_AT, no one
--- moving: JSON for .devtools/bin/assault_view.py, which draws them. Each case: the room (block,
+-- moving: JSON for .devtools/bin/assault_view.py, which draws them, each member's legs as the nav
+-- mesh routes them (graph.pathfinder over its areas). Each case: the room (block,
 -- entry, doors, windows), the enemy and the ring round it, and each member's start, its place in
 -- the stack, its assault point and its place in the room.
 function B.Placements()
 	if game.GetMap() ~= "dev_3house" then error("the bench runs on dev_3house, not " .. game.GetMap(), 2) end
 	local controller = WS.Feature("aiwar")
 	if not controller.rooms then controller:FindRoomsNow() end
+	-- the entrances' flow is the classes' incursion: found on the slow lane, the first ask starting it
+	if not controller:Classes() then
+		return util.TableToJSON({ error = "the war's classes are still being found: ask again shortly" })
+	end
 	local middle, staging = Named("bench_room"), Staging()
+	local inside = {}
+	for _, id in ipairs(Rooms.RoomOf(controller.rooms, navmesh.GetNearestNavArea(middle):GetID()).areas) do inside[id] = true end
 	local starts = Around(staging, SIZE, 72)
 	local probe = ents.Create("npc_pathfollower")
 	probe.NSToolManaged = true
@@ -534,8 +578,8 @@ function B.Placements()
 	local function P(v) return { x = v.x, y = v.y } end
 	local cases = {}
 	for _, at in ipairs(ENEMY_AT) do
-		local enemy = Ground(middle + at[2])
-		controller:Mark("enemy", WS.TEAM_RED, Point(enemy))
+		local enemy = at[2] and Ground(middle + at[2])
+		if enemy then controller:Mark("enemy", WS.TEAM_RED, Point(enemy)) end
 		local ok, why = pcall(function()
 			local room = controller:RoomForSquad(Point(middle), Point(staging), WS.TEAM_RED)
 			local order = Legs.Assault(room)
@@ -544,15 +588,44 @@ function B.Placements()
 			local places = order:Places(positions, nextsoldier.engine.GroupSpacing(), probe:NSLegsAdmit(middle),
 				function(around) return probe:NSLegsAdmit(around) end)
 			local case = { name = at[1], lo = P(room.lo), hi = P(room.hi), entry = P(room.entry),
-				enemy = room.enemy and P(room.enemy), ring = Legs.ENCIRCLE_RADIUS, band = Legs.ENCIRCLE_BAND, members = {} }
+				enemy = room.enemy and P(room.enemy), ring = Legs.ENCIRCLE_RADIUS, band = Legs.ENCIRCLE_BAND, members = {},
+				entrances = {} }
+			local front
+			for _, e in ipairs(room.entrances) do
+				if not front or e.flow > front.flow then front = e end
+			end
+			for i, e in ipairs(room.entrances) do case.entrances[i] = { pos = P(e.pos), flow = e.flow, front = e == front } end
+			-- the entrance nearest p
+			local function EntranceOf(p)
+				local best
+				for _, e in ipairs(room.entrances) do
+					if not best or math.geometry.Distance2D(e.pos, p) < math.geometry.Distance2D(best.pos, p) then best = e end
+				end
+				return best and P(best.pos)
+			end
 			for i, start in ipairs(positions) do
 				local place = places[i]
-				case.members[i] = { start = P(start), stage = place and order:StagingOf(place) and P(order:StagingOf(place)),
-					point = place and order:BreachOf(place) and P(order:BreachOf(place)), place = place and P(place) }
+				local stage, point = place and order:StagingOf(place), place and order:BreachOf(place)
+				local decoy = place and order:DecoyOf(place)
+				case.members[i] = { start = P(start), stage = stage and P(stage), point = point and P(point), place = place and P(place),
+					entrance = stage and EntranceOf(stage), show = decoy and decoy.show and P(decoy.show),
+					hide = decoy and decoy.hide and P(decoy.hide) }
+				-- its legs in turn, the last (on to its place once the room is clear) drawn dotted
+				local V = function(p) return p and Vector(p.x, p.y, p.z or middle.z) end
+				local stops = decoy and { start, decoy.hide, decoy.show, decoy.hide, place } or { start, stage, point, place }
+				-- the first leg, the approach, keeps out of the room: a flank walks round it
+				local legs, from = {}, nil
+				for _, stop in ipairs(stops) do
+					if stop then
+						if from then legs[#legs + 1] = Route(V(from), V(stop), #legs == 0 and inside or nil) end
+						from = stop
+					end
+				end
+				case.members[i].legs = legs
 			end
 			cases[#cases + 1] = case
 		end)
-		controller:Unmark(enemy, DANGER_UNMARK)
+		if enemy then controller:Unmark(enemy, DANGER_UNMARK) end
 		if not ok then probe:Remove() error(why, 0) end
 	end
 	probe:Remove()

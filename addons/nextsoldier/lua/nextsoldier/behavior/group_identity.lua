@@ -48,6 +48,9 @@ BREACH_REACH, BREACH_FUNNEL = 288, 96
 -- ENCIRCLE_BAND: a room's breadth to fight across, not on top of it; drawn in by ENCIRCLE_STEP
 -- down to ENCIRCLE_MIN where the walls leave too little of the ring to surround it.
 ENCIRCLE_RADIUS, ENCIRCLE_BAND, ENCIRCLE_MIN, ENCIRCLE_STEP = 192, 48, 96, 24
+-- A room with more than one entrance is taken from those off the squad's flow, while one member,
+-- its decoy, shows itself SHOW_OUT outside the front, in the doorway's line.
+SHOW_OUT = 64
 
 -- How near another's seat a seat is that one: a body's breadth.
 local SEAT_CLEARANCE = 32
@@ -191,6 +194,10 @@ function Order:Signalled() return self.signalled == true end
 
 -- The assault point the member given place takes going in (an assault's), or nil.
 function Order:BreachOf(place) return self.breach and self.breach[place] end
+
+-- The decoy's part, for the member given place: { show (where it shows itself, outside the front,
+-- in the room's sight), hide (where it hides beside the front) }; nil for any other member.
+function Order:DecoyOf(place) return self.decoys and self.decoys[place] end
 
 -- member holding its assault point, from now on.
 function Order:Breached(member, now)
@@ -547,24 +554,143 @@ end
 -- nearest the entrance, its places matched from where the members stand; the room's places taken
 -- deepest first, paired with the stack in turn through the doorway, its front deepest. admitAt(around) -> the map's
 -- word on slots around a point, for the ground outside the entrance.
-function Breach:Places(members, spacing, admit, admitAt)
-	if not admitAt then error("an assault is placed around its entrance as well as in its room: admitAt", 2) end
-	admit = admit or Anywhere
-	self.size = #members
-	local out = Geometry.Normalize2D(Geometry.Sub(self.entry, self.point))
-	local outside = { x = self.entry.x + out.x * spacing, y = self.entry.y + out.y * spacing, z = self.entry.z }
-	local stack = Assign(self.entry, Nearest(Outside(self.room, spacing, admitAt(outside)), self.entry, #members, spacing), members)
+-- The front, the entrance the most of the squad's flow comes in by (the nearest the squad's
+-- approach, room.entry, where the flow ties), and the others; nil for a room with one entrance.
+local function Fronts(room)
+	local entrances = room.entrances
+	if not entrances or #entrances < 2 then return nil end
+	local front
+	for _, e in ipairs(entrances) do
+		local flow, best = e.flow or 0, front and (front.flow or 0)
+		if not front or flow > best
+			or (flow == best and Geometry.Distance2D(e.pos, room.entry) < Geometry.Distance2D(front.pos, room.entry)) then
+			front = e
+		end
+	end
+	local others = {}
+	for _, e in ipairs(entrances) do
+		if e ~= front then others[#others + 1] = e.pos end
+	end
+	return front.pos, others
+end
+
+-- The way out of the room through entrance.
+local function OutOf(room, entrance) return Geometry.Normalize2D(Geometry.Sub(entrance, room.center)) end
+
+-- count places to stage at around entrance: the ground outside it the room does not see, nearest it.
+local function StackAt(room, entrance, count, spacing, admitAt)
+	local out = OutOf(room, entrance)
+	local outside = { x = entrance.x + out.x * spacing, y = entrance.y + out.y * spacing, z = entrance.z }
+	return Nearest(Outside({ entry = entrance, center = room.center, seen = room.seen }, spacing, admitAt(outside)),
+		entrance, count, spacing)
+end
+
+-- The members (indices of starts) split over entrances: each entrance first takes the nearest
+-- left (the farthest from them choosing first), so none is empty while members last; the rest
+-- each the nearest entrance with room for its share. -> member -> entrance index.
+local function Split(starts, members, entrances)
+	local share = ceil(#members / #entrances)
+	local of, count, left = {}, {}, {}
+	for _, m in ipairs(members) do left[m] = true end
+	local middle = { x = 0, y = 0 }
+	for _, m in ipairs(members) do middle.x, middle.y = middle.x + starts[m].x / #members, middle.y + starts[m].y / #members end
+	local far = Select.Order(entrances, function(a, b) return Geometry.Distance2D(a, middle) > Geometry.Distance2D(b, middle) end)
+	for _, e in ipairs(far) do
+		local nearest
+		for _, m in ipairs(members) do
+			if left[m] and (not nearest or Geometry.Distance2D(starts[m], entrances[e]) < Geometry.Distance2D(starts[nearest], entrances[e])) then
+				nearest = m
+			end
+		end
+		if nearest then of[nearest], count[e], left[nearest] = e, 1, nil end
+	end
+	for _, m in ipairs(members) do
+		if left[m] then
+			local best
+			for e = 1, #entrances do
+				if (count[e] or 0) < share and (not best or Geometry.Distance2D(starts[m], entrances[e]) < Geometry.Distance2D(starts[m], entrances[best])) then
+					best = e
+				end
+			end
+			of[m], count[best] = best, (count[best] or 0) + 1
+		end
+	end
+	return of
+end
+
+-- Through its one entrance (or a squad of one): the stack nearest it, the room's places taken
+-- deepest first, the assault points encircling a known enemy or else the best by the entrance.
+function Breach:ThroughOne(members, spacing, floor, admitAt)
+	local stack = Assign(self.entry, StackAt(self.room, self.entry, #members, spacing, admitAt), members)
 	local starts = {}
 	for i, member in ipairs(members) do starts[i] = stack[i] or member end
-	local floor = Floor(self.room, spacing, admit)
 	local places = Pair(self.entry, Farthest(floor, self.entry, #members, spacing), starts)
 	local turn = Select.Order(starts, function(a, b)
 		return Geometry.Distance2D(a, self.entry) < Geometry.Distance2D(b, self.entry)
 	end)
 	local points = self.room.enemy and Pair(self.entry, EncirclePoints(self.room, floor, #members, spacing), starts)
 		or BreachPoints(self.room, floor, turn, starts, spacing)
-	self.staging, self.breach = {}, {}
 	for i, place in pairs(places) do self.staging[place], self.breach[place] = stack[i], points[i] end
+	return places
+end
+
+-- Each member's place filling the room, and first its part going in. Through one entrance, as
+-- ThroughOne. With more: the member nearest the front is the decoy, hiding beside it and showing
+-- itself outside it; the rest split over the others, each staged around its own out of the
+-- room's sight, their assault points encircling a known enemy, else the best by each entrance.
+-- admitAt(around) -> the map's word on slots around a point, for the ground outside.
+function Breach:Places(members, spacing, admit, admitAt)
+	if not admitAt then error("an assault is placed around its entrance as well as in its room: admitAt", 2) end
+	admit = admit or Anywhere
+	self.size = #members
+	self.staging, self.breach, self.decoys = {}, {}, {}
+	local floor = Floor(self.room, spacing, admit)
+	local front, others = Fronts(self.room)
+	if not front or #members < 2 then return self:ThroughOne(members, spacing, floor, admitAt) end
+	local decoy = Select.Lowest(members, function(m) return Geometry.Distance2D(m, front) end)
+	local rest = {}
+	for i, member in ipairs(members) do
+		if member == decoy then decoy = i else rest[#rest + 1] = i end
+	end
+	local of = Split(members, rest, others)
+	local starts, stack = {}, {}
+	for e, entrance in ipairs(others) do
+		local group, positions = {}, {}
+		for _, m in ipairs(rest) do
+			if of[m] == e then group[#group + 1], positions[#positions + 1] = m, members[m] end
+		end
+		for k, slot in pairs(Assign(entrance, StackAt(self.room, entrance, #group, spacing, admitAt), positions)) do
+			stack[group[k]] = slot
+		end
+	end
+	for _, m in ipairs(rest) do starts[m] = stack[m] or members[m] end
+	local hide = StackAt(self.room, front, 1, spacing, admitAt)[1]
+	local out = OutOf(self.room, front)
+	local shown = { x = front.x + out.x * SHOW_OUT, y = front.y + out.y * SHOW_OUT, z = front.z }
+	local show = admitAt({ x = front.x + out.x * spacing, y = front.y + out.y * spacing, z = front.z })(shown)
+	starts[decoy] = hide or members[decoy]
+	local places = Pair(self.entry, Farthest(floor, self.entry, #members, spacing), starts)
+	local points = {}
+	if self.room.enemy then
+		local going, from = {}, {}
+		for k, m in ipairs(rest) do going[k], from[k] = m, starts[m] end
+		for k, point in pairs(Assign(self.room.enemy, EncirclePoints(self.room, floor, #rest, spacing), from)) do
+			points[going[k]] = point
+		end
+	else
+		for e, entrance in ipairs(others) do
+			local group = {}
+			for _, m in ipairs(rest) do
+				if of[m] == e then group[#group + 1] = m end
+			end
+			sort(group, function(a, b) return Geometry.Distance2D(starts[a], entrance) < Geometry.Distance2D(starts[b], entrance) end)
+			local by = setmetatable({ entry = entrance }, { __index = self.room })
+			for m, point in pairs(BreachPoints(by, floor, group, starts, spacing)) do points[m] = point end
+		end
+	end
+	for i, place in pairs(places) do self.staging[place], self.breach[place] = stack[i], points[i] end
+	if places[decoy] then self.staging[places[decoy]], self.breach[places[decoy]] = hide, nil end
+	if places[decoy] then self.decoys[places[decoy]] = { show = show, hide = hide } end
 	return places
 end
 

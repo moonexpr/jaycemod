@@ -114,10 +114,13 @@ local EYES, ROOM_EYES_INSET, EYE_HEIGHT = 3, 48, Vector(0, 0, 64)
 -- the share of a FLOOR_SAMPLES-square lattice over its floor it sees; and the share of COVER_RAYS
 -- directions in which a wall stands within COVER_REACH at the chest, weighed COVER_WEIGHT.
 local THREAT_WEIGHT, COVER_WEIGHT = 2, 0.5
+-- The classes' names of the teams (sv_classes' TEAMS), by number.
+local TEAM_NAMES = { [WS.TEAM_RED] = "RED", [WS.TEAM_BLUE] = "BLU" }
 local FLOOR_SAMPLES, COVER_RAYS, COVER_REACH, CHEST = 5, 8, 64, Vector(0, 0, 40)
 
 -- The room at point as a squad takes it (the legs' Assault and SetRoom; RoomAt is the war's room at a point): its block and middle, its
--- doors as its ways out, the doorway nearest from it comes in by, what it sees, what a point in it is worth to fight from, and,
+-- doors as its ways out and its entrances (each with the team's incursion flow into it there), the
+-- doorway nearest from it comes in by, what it sees, what a point in it is worth to fight from, and,
 -- given the squad's team, the enemy that team has marked in it nearest its middle (an ENEMY mark); nil where the map's rooms are not found,
 -- none is there, or it has no door.
 function Controller:RoomForSquad(point, from, team)
@@ -185,8 +188,24 @@ function Controller:RoomForSquad(point, from, team)
 	end
 	local exits = {}
 	for i, door in ipairs(room.doors) do exits[i] = at(door.pos) end
-	return { center = at(room.center), lo = at(room.lo), hi = at(room.hi), entry = at(entry.pos), exits = exits, seen = Seen,
-		score = Score, enemy = enemy and at(enemy) }
+	-- each door with the team's flow into the room by it: its incursion routes and breaches
+	-- entering there (the classes' entrances, once found; none while they are not)
+	local entrances = {}
+	for i, door in ipairs(room.doors) do entrances[i] = { pos = exits[i], flow = 0 } end
+	local classes = team and self:Classes()
+	for _, e in ipairs(classes and classes.entrances or {}) do
+		if e.room == room and e.team == TEAM_NAMES[team] then
+			local nearest
+			for _, entrance in ipairs(entrances) do
+				if not nearest or math.geometry.Distance2D(entrance.pos, e.via) < math.geometry.Distance2D(nearest.pos, e.via) then
+					nearest = entrance
+				end
+			end
+			nearest.flow = nearest.flow + e.paths
+		end
+	end
+	return { center = at(room.center), lo = at(room.lo), hi = at(room.hi), entry = at(entry.pos), exits = exits,
+		entrances = entrances, seen = Seen, score = Score, enemy = enemy and at(enemy) }
 end
 
 -- The doors of the room at point, as the ways out a panicked squad makes for (the legs'

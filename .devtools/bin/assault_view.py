@@ -6,10 +6,13 @@ dev_3house_bench.lua, loaded on the server first): the legs' assault planned on 
 for an enemy marked at its centre, rear, front, left and right, no one moving. Each panel is
 the room seen from above, north up: its block (grey), its doors (orange) and windows (blue), the
 door the squad comes in by (a thicker orange bar), the enemy (a red cross) and the ring the
-assault points keep to round it (red, dashed band); and each member's path in a colour of its
-own: from its start (hollow circle) to its place in the stack (square), through the door it goes
-in by to its assault point (filled circle, numbered as the member is), and on to its place in
-the room once it is clear (small dot), that last leg dotted. Paths are straight between those
+assault points keep to round it (red, dashed band); the entrances, the front (red, where the most
+of the squad's incursion flow comes in) and the others (green), each with its flow; and each
+member's path in a colour of its own: from its start (hollow circle) to its place in the stack
+(square), through the entrance it goes in by to its assault point (filled circle, numbered as the
+member is), and on to its place in the room once it is clear (small dot), that last leg dotted.
+The decoy's goes to its hiding place beside the front, out to show itself (a triangle) and back.
+Each leg is the route the nav mesh plans for it, where the bench gives them; else straight. Paths are straight between those
 points: where the member walks, not the steps of its route.
 
 Writes .devtools/artifacts/maps/dev_3house_assault.png.
@@ -34,6 +37,8 @@ PANEL, MARGIN, CAPTION = 420, 24, 28
 ROOM_FILL, EDGE = (232, 232, 232), (90, 90, 90)
 DOOR, ENTRY, WINDOW = (240, 150, 40), (220, 110, 0), (70, 130, 220)
 ENEMY, RING = (215, 40, 40), (235, 150, 150)
+# An entrance: the front (the most of the squad's flow) and the others, hidden from the enemy's eye.
+FRONT, HIDDEN = (200, 30, 30), (30, 150, 60)
 # Each member's colour, in turn.
 MEMBERS = ((140, 80, 220), (40, 150, 70), (30, 120, 200), (210, 120, 20), (200, 50, 140), (90, 90, 90))
 DOT_EVERY = 8
@@ -47,6 +52,17 @@ class Member:
     stage: tuple | None
     point: tuple | None
     place: tuple | None
+    entrance: tuple | None = None  # the entrance it goes in by
+    show: tuple | None = None  # the decoy's: where it shows itself
+    hide: tuple | None = None  # the decoy's: where it hides beside the front
+    legs: tuple = ()  # its walk, leg by leg, as the nav mesh routes it: points each
+
+
+@dataclass(frozen=True)
+class Entrance:
+    pos: tuple
+    flow: int  # the squad's team's incursion routes coming in by it
+    front: bool
 
 
 @dataclass(frozen=True)
@@ -59,6 +75,7 @@ class Case:
     ring: float
     band: float
     members: tuple
+    entrances: tuple = ()
 
 
 @dataclass(frozen=True)
@@ -79,9 +96,15 @@ def Parse(stdout: str) -> Placements:
         line = line.strip().removeprefix("=> ")
         if line.startswith("{"):
             data = json.loads(line)
+            if "error" in data:
+                raise ValueError(data["error"])
             cases = tuple(Case(c["name"], _xy(c["lo"]), _xy(c["hi"]), _xy(c["entry"]), _xy(c.get("enemy")), c["ring"],
                                c["band"], tuple(Member(_xy(m["start"]), _xy(m.get("stage")), _xy(m.get("point")),
-                                                       _xy(m.get("place"))) for m in c["members"]))
+                                                       _xy(m.get("place")), _xy(m.get("entrance")), _xy(m.get("show")),
+                                                       _xy(m.get("hide")),
+                                                       tuple(tuple(map(_xy, leg)) for leg in m.get("legs", [])))
+                                                for m in c["members"]),
+                               tuple(Entrance(_xy(e["pos"]), e["flow"], e["front"]) for e in c.get("entrances", [])))
                           for c in data["cases"])
             return Placements(data["map"], tuple(map(_xy, data["doors"])), tuple(map(_xy, data["windows"])), cases)
     raise ValueError("no placements in the server's answer: " + stdout[-300:])
@@ -89,7 +112,9 @@ def Parse(stdout: str) -> Placements:
 
 def Reach(case: Case) -> tuple:
     """The corners of what a panel shows: the room and every member's points, PAD round them."""
-    points = [case.lo, case.hi, case.entry] + [p for m in case.members for p in (m.start, m.stage, m.point, m.place) if p]
+    points = [case.lo, case.hi, case.entry] + [p for m in case.members
+                                               for p in (m.start, m.stage, m.point, m.place, m.show, m.hide) if p]
+    points += [p for m in case.members for leg in m.legs for p in leg]
     xs, ys = [p[0] for p in points], [p[1] for p in points]
     return (min(xs) - PAD, min(ys) - PAD), (max(xs) + PAD, max(ys) + PAD)
 
@@ -117,8 +142,14 @@ def _panel(placements: Placements, case: Case) -> Image.Image:
     for door in placements.doors:
         x, y = At(door)
         pen.ellipse((x - 5, y - 5, x + 5, y + 5), fill=DOOR)
-    x, y = At(case.entry)
-    pen.ellipse((x - 8, y - 8, x + 8, y + 8), outline=ENTRY, width=3)
+    for e in case.entrances or ():
+        x, y = At(e.pos)
+        r = 12 if e.front else 9
+        pen.ellipse((x - r, y - r, x + r, y + r), outline=FRONT if e.front else HIDDEN, width=4 if e.front else 2)
+        pen.text((x + r + 2, y - 6), ("front " if e.front else "") + f"flow {e.flow}", fill=FRONT if e.front else HIDDEN)
+    if not case.entrances:
+        x, y = At(case.entry)
+        pen.ellipse((x - 8, y - 8, x + 8, y + 8), outline=ENTRY, width=3)
     for window in placements.windows:
         x, y = At(window)
         pen.rectangle((x - 4, y - 4, x + 4, y + 4), fill=WINDOW)
@@ -134,13 +165,33 @@ def _panel(placements: Placements, case: Case) -> Image.Image:
         pen.line((ex - 9, ey + 9, ex + 9, ey - 9), fill=ENEMY, width=4)
     for i, member in enumerate(case.members, 1):
         colour = MEMBERS[(i - 1) % len(MEMBERS)]
-        way = [At(p) for p in (member.start, member.stage) if p]
-        if member.point:
-            way += [At(case.entry), At(member.point)]
-        if len(way) > 1:
+        if member.legs:
+            for k, leg in enumerate(member.legs):
+                points = [At(p) for p in leg]
+                if k == len(member.legs) - 1:
+                    for a, b in zip(points, points[1:]):
+                        Dotted(pen, a, b, colour)
+                else:
+                    pen.line(points, fill=colour, width=2, joint="curve")
+            if member.show:
+                x, y = At(member.show)
+                pen.polygon([(x, y - 10), (x - 9, y + 7), (x + 9, y + 7)], fill=colour)
+        elif member.show:
+            # the decoy: to its hiding place, out to show itself, back, and once the room is clear in
+            way = [At(p) for p in (member.start, member.hide, member.show, member.hide) if p]
             pen.line(way, fill=colour, width=2, joint="curve")
-        if member.point and member.place:
-            Dotted(pen, At(member.point), At(member.place), colour)
+            if member.hide and member.place:
+                Dotted(pen, At(member.hide), At(member.place), colour)
+            x, y = At(member.show)
+            pen.polygon([(x, y - 10), (x - 9, y + 7), (x + 9, y + 7)], fill=colour)
+        else:
+            way = [At(p) for p in (member.start, member.stage) if p]
+            if member.point:
+                way += [At(member.entrance or case.entry), At(member.point)]
+            if len(way) > 1:
+                pen.line(way, fill=colour, width=2, joint="curve")
+            if member.point and member.place:
+                Dotted(pen, At(member.point), At(member.place), colour)
         x, y = At(member.start)
         pen.ellipse((x - 5, y - 5, x + 5, y + 5), outline=colour, width=2)
         if member.stage:
@@ -159,7 +210,8 @@ def _panel(placements: Placements, case: Case) -> Image.Image:
         if angles:
             widest = max([angles[0] + 2 * math.pi - angles[-1]] + [b - a for a, b in zip(angles, angles[1:])])
             gap = f", widest gap round it {math.degrees(widest):.0f}°"
-    pen.text((MARGIN, PANEL + 6), f"enemy at the {case.name}{gap}", fill=(0, 0, 0))
+    where = "no enemy known" if case.name == "nowhere known" else f"enemy at the {case.name}"
+    pen.text((MARGIN, PANEL + 6), f"{where}{gap}", fill=(0, 0, 0))
     return image
 
 

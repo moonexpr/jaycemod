@@ -220,7 +220,7 @@ end
 
 T.test("the tuning of an assault is defined", function()
 	for _, name in ipairs({ "ROOM_INSET", "STACK_REACH", "STACK_COVER", "BREACH_REACH", "BREACH_FUNNEL", "ENCIRCLE_RADIUS",
-		"ENCIRCLE_BAND", "ENCIRCLE_MIN" }) do T.defined(GroupIdentity[name], name) end
+		"ENCIRCLE_BAND", "ENCIRCLE_MIN", "SHOW_OUT" }) do T.defined(GroupIdentity[name], name) end
 end)
 
 T.test("an assault fills its room: each a place inside, spread over the floor, none at the door", function()
@@ -379,6 +379,107 @@ T.test("an order told its room hides each member that evacuates out of its sight
 	end
 	HeldApart(hideouts, SPACING)
 	T.eq(order:Hideout("m1", ROOM.entry, SPACING, AdmitAt), hideouts[1], "each keeps its own")
+end)
+
+-- The room with a door in each wall, each 128 wide through a wall 32 thick, flow the squad's
+-- team's routes coming in by each (west first, then north, south, east), and what it sees out of
+-- each doorway: a wedge widening four times as fast as it goes out.
+local DOORS = { { x = -400, y = 0, z = 0 }, { x = 0, y = 400, z = 0 }, { x = 0, y = -400, z = 0 }, { x = 400, y = 0, z = 0 } }
+
+local function SeenFromAll(p)
+	if Inside(p) then return true end
+	for _, door in ipairs(DOORS) do
+		local nx, ny = door.x / 400, door.y / 400
+		local out = (p.x * nx + p.y * ny) - 400 - WALL
+		local across = math.abs(p.x * ny - p.y * nx)
+		if out < 0 and (p.x * nx + p.y * ny) > 400 and across < DOOR_HALF then return true end
+		if out >= 0 and across < DOOR_HALF + out * SLANT then return true end
+	end
+	return false
+end
+
+local function FourDoors(flows, enemy)
+	local room = {}
+	for k, v in pairs(ROOM) do room[k] = v end
+	room.seen, room.enemy, room.entrances = SeenFromAll, enemy, {}
+	for i, door in ipairs(DOORS) do room.entrances[i] = { pos = door, flow = flows[i] } end
+	return room
+end
+
+-- The door nearest p.
+local function DoorOf(p)
+	local best
+	for i, door in ipairs(DOORS) do
+		if not best or Distance2D(p, door) < Distance2D(p, DOORS[best]) then best = i end
+	end
+	return best
+end
+
+local function Decoys(order, places)
+	local decoys = {}
+	for i, place in ipairs(places) do
+		if order:DecoyOf(place) then decoys[#decoys + 1] = i end
+	end
+	return decoys
+end
+
+T.test("off the squad's flow: one decoy at the front, shown in the room's sight, hiding beside it", function()
+	local order = GroupIdentity.Assault(FourDoors({ 2, 0, 0, 0 }))
+	local places = order:Places(Squad5(), SPACING, AdmitAt(ROOM.center), AdmitAt)
+	local decoys = Decoys(order, places)
+	T.eq(#decoys, 1, "one")
+	local decoy = order:DecoyOf(places[decoys[1]])
+	T.eq(DoorOf(decoy.show), 1, "shown at the front, where the flow comes in")
+	T.eq(SeenFromAll(decoy.show), true, "in the room's sight")
+	T.eq(Inside(decoy.show), false, "outside it")
+	T.eq(DoorOf(decoy.hide), 1, "hiding beside the front")
+	T.eq(SeenFromAll(decoy.hide), false, "out of the room's sight")
+	T.eq(order:BreachOf(places[decoys[1]]), nil, "it does not go in with the rest")
+end)
+
+T.test("the rest stage hidden at the other entrances, split across them", function()
+	local order = GroupIdentity.Assault(FourDoors({ 2, 0, 0, 0 }))
+	local places = order:Places(Squad5(), SPACING, AdmitAt(ROOM.center), AdmitAt)
+	local used, decoy = {}, Decoys(order, places)[1]
+	for i, place in ipairs(places) do
+		if i ~= decoy then
+			local stage = order:StagingOf(place)
+			T.eq(stage ~= nil, true, "staged: " .. i)
+			T.eq(DoorOf(stage) ~= 1, true, "not at the front: " .. i)
+			T.eq(SeenFromAll(stage), false, "out of the room's sight: " .. i)
+			used[DoorOf(stage)] = true
+		end
+	end
+	T.eq(used[2] and used[3] and used[4], true, "at every one of the others")
+end)
+
+T.test("the front is the entrance the most of the squad's flow comes in by", function()
+	local order = GroupIdentity.Assault(FourDoors({ 1, 3, 0, 0 }))
+	local places = order:Places(Squad5(), SPACING, AdmitAt(ROOM.center), AdmitAt)
+	T.eq(DoorOf(order:DecoyOf(places[Decoys(order, places)[1]]).show), 2, "the north, though the squad comes from the west")
+end)
+
+T.test("with no flow known, the front is the entrance nearest the squad's approach", function()
+	local order = GroupIdentity.Assault(FourDoors({ 0, 0, 0, 0 }))
+	local places = order:Places(Squad5(), SPACING, AdmitAt(ROOM.center), AdmitAt)
+	T.eq(DoorOf(order:DecoyOf(places[Decoys(order, places)[1]]).show), 1, "the west")
+end)
+
+T.test("a room with one entrance has no decoy: all go in by it", function()
+	local order, _, places = Assaulting()
+	T.eq(#Decoys(order, places), 0, "none")
+end)
+
+T.test("going in from the sides and back, the rest encircle a known enemy", function()
+	local enemy = { x = 0, y = 0, z = 0 }
+	local order = GroupIdentity.Assault(FourDoors({ 2, 0, 0, 0 }, enemy))
+	local places = order:Places(Squad5(), SPACING, AdmitAt(ROOM.center), AdmitAt)
+	local points = {}
+	for _, place in ipairs(places) do
+		if not order:DecoyOf(place) then points[#points + 1] = order:BreachOf(place) end
+	end
+	T.eq(#points, 4, "the four")
+	T.eq(WidestGap(enemy, points) < math.pi, true, "round it: " .. WidestGap(enemy, points))
 end)
 
 T.test("going in, the room is clear once all the living hold their points and none has met the enemy since", function()
