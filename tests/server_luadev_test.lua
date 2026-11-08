@@ -12,12 +12,24 @@ AddCSLuaFile = function(path) sentByModules[#sentByModules + 1] = path or "itsel
 local DIR = ".devtools/bin/server_root/"
 local ULX_LUADEV = "addons/ulx_luadev/lua/ulx/modules/sh/luadev.lua"
 
+-- what a client's copy of ulx_luadev made its preferences, set once ulx_module is defined
+local clientPreferences = {}
+
+-- A player as the server sees one: GetInfo answers its client's preferences (t.prefs, else as its
+-- copy of the module made them), as GMod's does: text, a number's default when it is not one.
 local function player(t)
 	t = t or {}
+	local function info(name)
+		local set = (t.prefs or {})[name]
+		if set ~= nil then return tostring(set) end
+		return clientPreferences[name] and clientPreferences[name].default or ""
+	end
 	return {
 		IsFullyAuthenticated = function() return t.authenticated or false end,
 		IsSuperAdmin = function() return t.superadmin or false end,
 		IsAdmin = function() return t.admin or t.superadmin or false end,
+		GetInfo = function(_, name) return info(name) end,
+		GetInfoNum = function(_, name, default) return tonumber(info(name)) or default end,
 	}
 end
 
@@ -114,17 +126,12 @@ local function ulx_module(t)
 			RealFilePath = function(path) if (t.files or {})[path] then return path, "LUA" end end,
 		},
 		GetConVar = function() return convar(t.cslua) end,
-		-- the module's own settings: their defaults, unless the test sets one (t.convars)
-		CreateConVar = function(name, default)
-			created[name] = default
-			local function value() local set = (t.convars or {})[name] if set == nil then return default end return set end
-			return {
-				GetString = function() return tostring(value()) end,
-				GetFloat = function() return tonumber(value()) end,
-				GetInt = function() return math.floor(tonumber(value())) end,
-			}
+		-- the module's preferences, made on a client (t.client)
+		CreateClientConVar = function(name, default, save, userinfo)
+			created[name] = { default = default, save = save, userinfo = userinfo }
 		end,
-		SERVER = true,
+		SERVER = not t.client,
+		CLIENT = t.client or false,
 		require = T.require,
 		AddCSLuaFile = function(path) sent[#sent + 1] = path end,
 		concommand = { Run = function(ply, command, args, line)
@@ -136,6 +143,8 @@ local function ulx_module(t)
 	setfenv(assert(loadfile(ULX_LUADEV)), env)()
 	return commands, ran, errors, hooks, said, cues, frames, created, consoled, sent
 end
+
+clientPreferences = select(8, ulx_module({ client = true }))
 
 -- the cues' sounds in order
 local function sounds(cues)
@@ -440,32 +449,64 @@ T.test("work settled before 10 seconds is not told it is still going", function(
 	T.eq(#said, lines, "nothing said")
 end)
 
-T.test("its settings are convars a server.cfg sets, under sv_luadev_output", function()
-	local _, _, _, _, _, _, _, created = ulx_module()
-	for _, name in ipairs({ "sv_luadev_output_maxchars", "sv_luadev_output_maxlines", "sv_luadev_output_timeout",
-		"sv_luadev_output_success", "sv_luadev_output_error", "sv_luadev_output_progress", "sv_luadev_output_neutral" }) do
+local PREFERENCES = { "cl_luadev_output_maxchars", "cl_luadev_output_maxlines", "cl_luadev_output_timeout", "cl_luadev_output_overlay",
+	"cl_luadev_output_success", "cl_luadev_output_error", "cl_luadev_output_progress", "cl_luadev_output_neutral" }
+
+T.test("its settings are preferences each client saves and tells the server, under cl_luadev_output", function()
+	local _, _, _, _, _, _, _, created = ulx_module({ client = true })
+	for _, name in ipairs(PREFERENCES) do
 		T.eq(created[name] ~= nil, true, name)
+		T.eq(created[name].save, true, name .. " is saved")
+		T.eq(created[name].userinfo, true, name .. " reaches the server")
 	end
 end)
 
-T.test("a line in chat is as long as sv_luadev_output_maxchars, or whole at 0", function()
-	local commands, _, _, _, said = ulx_module({ prints = string.rep("a", 30), convars = { sv_luadev_output_maxchars = 10 } })
+T.test("the server makes none of them", function()
+	local _, _, _, _, _, _, _, created = ulx_module()
+	T.eq(next(created), nil, "none")
+end)
+
+T.test("each caller goes by its own preferences", function()
+	local commands, _, _, _, said = ulx_module({ prints = "one\ntwo" })
+	commands["ulx l"].fn(player({ prefs = { cl_luadev_output_maxlines = 2 } }), "x()")
+	T.eq(table.concat(said, "|"), "one|two", "the one who asked for two")
+	for i = #said, 1, -1 do said[i] = nil end
 	commands["ulx l"].fn(player(), "x()")
+	T.eq(table.concat(said, "|"), "one|... (1+ lines)", "the one who did not")
+end)
+
+T.test("the console, which has no client, goes by the defaults", function()
+	local commands, _, _, _, said, cues = ulx_module({ prints = "first\nsecond" })
+	commands["ulx l"].fn({ valid = false }, "x()")
+	T.eq(table.concat(said, "|"), "first|... (1+ lines)", "one line")
+	T.eq(#cues, 0, "nothing to hear it")
+end)
+
+T.test("a number preference that is not one goes by its default", function()
+	local commands, _, _, _, said = ulx_module({ prints = "first\nsecond" })
+	commands["ulx l"].fn(player({ prefs = { cl_luadev_output_maxlines = "lots" } }), "x()")
+	T.eq(table.concat(said, "|"), "first|... (1+ lines)", "one line")
+end)
+
+T.test("a line in chat is as long as cl_luadev_output_maxchars, or whole at 0", function()
+	local commands, _, _, _, said = ulx_module({ prints = string.rep("a", 30) })
+	commands["ulx l"].fn(player({ prefs = { cl_luadev_output_maxchars = 10 } }), "x()")
 	T.eq(said[1], string.rep("a", 10) .. "... (20+ chars)", "cut at 10")
-	local whole, _, _, _, wholeSaid = ulx_module({ prints = string.rep("a", 300), convars = { sv_luadev_output_maxchars = 0 } })
-	whole["ulx l"].fn(player(), "x()")
+	local whole, _, _, _, wholeSaid = ulx_module({ prints = string.rep("a", 300) })
+	whole["ulx l"].fn(player({ prefs = { cl_luadev_output_maxchars = 0 } }), "x()")
 	T.eq(wholeSaid[1], string.rep("a", 300), "uncut")
 end)
 
-T.test("chat is told as many lines as sv_luadev_output_maxlines, saying how many more there were", function()
-	local commands, _, _, _, said = ulx_module({ prints = "one\ntwo\n\nthree\nfour", convars = { sv_luadev_output_maxlines = 2 } })
-	commands["ulx l"].fn(player(), "x()")
+T.test("chat is told as many lines as cl_luadev_output_maxlines, saying how many more there were", function()
+	local two = player({ prefs = { cl_luadev_output_maxlines = 2 } })
+	local commands, _, _, _, said = ulx_module({ prints = "one\ntwo\n\nthree\nfour" })
+	commands["ulx l"].fn(two, "x()")
 	T.eq(table.concat(said, "|"), "one|two|... (2+ lines)", "two, then how many more")
-	local all, _, _, _, allSaid = ulx_module({ prints = "one\ntwo", convars = { sv_luadev_output_maxlines = 2 } })
-	all["ulx l"].fn(player(), "x()")
+	local all, _, _, _, allSaid = ulx_module({ prints = "one\ntwo" })
+	all["ulx l"].fn(two, "x()")
 	T.eq(table.concat(allSaid, "|"), "one|two", "all there were")
-	local off, _, _, _, offSaid = ulx_module({ prints = "a line", convars = { sv_luadev_output_maxlines = 0 } })
-	off["ulx l"].fn(player(), "x()")
+	local off, _, _, _, offSaid = ulx_module({ prints = "a line" })
+	off["ulx l"].fn(player({ prefs = { cl_luadev_output_maxlines = 0 } }), "x()")
 	T.eq(#offSaid, 0, "none at 0")
 end)
 
@@ -475,21 +516,21 @@ T.test("one line by default", function()
 	T.eq(table.concat(said, "|"), "first|... (2+ lines)", "the first, then how many more")
 end)
 
-T.test("work is listened for sv_luadev_output_timeout seconds", function()
+T.test("work is listened for cl_luadev_output_timeout seconds", function()
 	local tx = transaction()
-	local commands, _, _, _, said, _, frames = ulx_module({ values = { tx }, convars = { sv_luadev_output_timeout = 3 } })
-	commands["ulx l"].fn(player(), "return work()")
+	local commands, _, _, _, said, _, frames = ulx_module({ values = { tx } })
+	commands["ulx l"].fn(player({ prefs = { cl_luadev_output_timeout = 3 } }), "return work()")
 	local lines = #said
 	after(frames, 3)
 	T.eq(#said, lines + 1, "told at 3")
 end)
 
 T.test("each cue is its convar's sound, and none when it is empty", function()
-	local commands, _, _, _, _, cues = ulx_module({ convars = { sv_luadev_output_success = "my/ok.wav" } })
-	commands["ulx l"].fn(player(), "x()")
+	local commands, _, _, _, _, cues = ulx_module()
+	commands["ulx l"].fn(player({ prefs = { cl_luadev_output_success = "my/ok.wav" } }), "x()")
 	T.eq(cues[1].sound, "my/ok.wav", "its sound")
-	local quiet, _, _, _, _, quietCues = ulx_module({ convars = { sv_luadev_output_error = "" }, fail = "boom" })
-	quiet["ulx l"].fn(player(), "x()")
+	local quiet, _, _, _, _, quietCues = ulx_module({ fail = "boom" })
+	quiet["ulx l"].fn(player({ prefs = { cl_luadev_output_error = "" } }), "x()")
 	T.eq(#quietCues, 0, "none")
 end)
 
@@ -579,11 +620,10 @@ T.test("!print of one of easylua's relative names also shows it to its caller; o
 	T.eq(ran[3].script, "print(me:GetPos())", "printed only")
 end)
 
-T.test("each module clients run sends itself to them as it loads, and the overlay's time is a setting", function()
-	local _, _, _, _, _, _, _, created, _, sent = ulx_module()
+T.test("each module clients run sends itself to them as it loads", function()
+	local _, _, _, _, _, _, _, _, _, sent = ulx_module()
 	T.eq(table.concat(sentByModules, " "), "itself itself", "luadev_output and luadev_show, each itself")
 	T.eq(#sent, 0, "the ULX module sends none of them")
-	T.eq(created.sv_luadev_output_overlay, "2", "2 seconds")
 end)
 
 T.finish()

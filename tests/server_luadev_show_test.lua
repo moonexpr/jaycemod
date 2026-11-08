@@ -123,4 +123,62 @@ T.test("nothing to show is no shapes", function()
 	T.eq(#Show.Shapes("this", nil, EYE, {}), 0, "none")
 end)
 
+-- The module as a server loads it, the one side with Show, and the seconds each send carried.
+local function ServerShow()
+	local seconds = {}
+	local saved = package.loaded.luadev_show
+	package.loaded.luadev_show = nil
+	local env = setmetatable({
+		SERVER = true,
+		IsValid = function(v) return v ~= nil and v.valid ~= false end,
+		util = { AddNetworkString = function() end },
+		hook = { Run = function() end },
+		net = {
+			Start = function() end,
+			WriteFloat = function(s) seconds[#seconds + 1] = s end,
+			WriteTable = function() end,
+			Send = function() end,
+		},
+	}, { __index = _G })
+	setfenv(assert(loadfile("addons/ulx_luadev/lua/includes/modules/luadev_show.lua")), env)()
+	local server = package.loaded.luadev_show
+	package.loaded.luadev_show = saved
+	return server, seconds
+end
+
+-- A caller whose client's overlay preference is seconds.
+local function Caller(seconds)
+	local ply = {}
+	function ply:EyePos() return EYE end
+	function ply:GetInfoNum(name, default)
+		if name == "cl_luadev_output_overlay" and seconds then return seconds end
+		return default
+	end
+	return ply
+end
+
+T.test("the overlay stays as long as its caller's cl_luadev_output_overlay", function()
+	local server, seconds = ServerShow()
+	server.Show(Caller(7), "this", nil)
+	T.eq(seconds[1], 7, "7 seconds")
+end)
+
+T.test("a caller whose overlay is 0 is sent nothing", function()
+	local server, seconds = ServerShow()
+	server.Show(Caller(0), "this", nil)
+	T.eq(#seconds, 0, "nothing")
+end)
+
+T.test("a caller with no such preference is sent nothing", function()
+	local server, seconds = ServerShow()
+	server.Show(Caller(nil), "this", nil)
+	T.eq(#seconds, 0, "nothing")
+end)
+
+T.test("the console is sent nothing", function()
+	local server, seconds = ServerShow()
+	server.Show({ valid = false }, "this", nil)
+	T.eq(#seconds, 0, "nothing")
+end)
+
 T.finish()

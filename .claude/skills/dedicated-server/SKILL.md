@@ -120,12 +120,13 @@ is the main checkout, not a worktree. Workshop addons (DrGBase), luadev
 access on LAN and `ulx addmap` come from `server_root/`'s autorun; ULX's luadev commands are
 `addons/ulx_luadev`, their own repository (github.com/moonexpr/ulx_luadev) checked out there,
 which Sandcastle does not track, linked into the server's addons. A run on the server answers its
-caller in chat and with a sound cue; `server.cfg` tunes them with `sv_luadev_output_maxlines` (1;
-0: none), `_maxchars` (120; 0: uncut), `_timeout` (10 s) and the sounds `_success`, `_error`,
-`_progress`, `_neutral` (empty: silent). Beside luadev's chat commands it gives `!lfile`, `!lent`,
+caller in chat and with a sound cue; each caller tunes them on its own client with
+`cl_luadev_output_maxlines` (1; 0: none), `_maxchars` (120; 0: uncut), `_timeout` (10 s) and the
+sounds `_success`, `_error`, `_progress`, `_neutral` (empty: silent); the console goes by those
+defaults. Beside luadev's chat commands it gives `!lfile`, `!lent`,
 `!lwep`, `!leffect`, `!lwatch`, `!lunwatch`, `!lcopy` and `!lspawn` (luadev's console-only
 `lua_send_*`, `lua_watch` and easylua's helpers). `!print this` (or `we`, `there`, `trace`, `me`...)
-also shows it to its caller for `sv_luadev_output_overlay` seconds: a box and lines describing each
+also shows it to its caller for its `cl_luadev_output_overlay` seconds: a box and lines describing each
 entity (an NPC's activity, animation, target and schedule; a NextSoldier's behaviour and group
 stacks), a line to each position.
 
