@@ -613,7 +613,7 @@ T.test("!print of one of easylua's relative names also shows it to its caller; o
 	local commands, ran = ulx_module()
 	commands["ulx print"].fn(player(), "this")
 	-- GMod's require returns nothing: the module is its global table
-	T.eq(ran[1].script, 'print(this) require("luadev_show") luadev_show.Show(me, "this", this)', "shown")
+	T.eq(ran[1].script, 'print(this) require("luadev_overlay") luadev_overlay.Show(me, "this", this)', "shown")
 	commands["ulx print"].fn(player(), " there ")
 	T.eq(ran[2].script:find('Show(me, "there", there)', 1, true) ~= nil, true, "trimmed")
 	commands["ulx print"].fn(player(), "me:GetPos()")
@@ -622,7 +622,7 @@ end)
 
 T.test("each module clients run sends itself to them as it loads", function()
 	local _, _, _, _, _, _, _, _, _, sent = ulx_module()
-	T.eq(table.concat(sentByModules, " "), "itself itself", "luadev_output and luadev_show, each itself")
+	T.eq(table.concat(sentByModules, " "), "itself itself", "luadev_output and luadev_overlay, each itself")
 	T.eq(#sent, 0, "the ULX module sends none of them")
 end)
 

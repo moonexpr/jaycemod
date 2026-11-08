@@ -1,9 +1,9 @@
--- luadev_show (ulx_luadev's): what !print of one of easylua's relative names (this, we, there, trace...)
+-- luadev_overlay (ulx_luadev's): what !print of one of easylua's relative names (this, we, there, trace...)
 -- draws for its caller: a box and lines for each entity, a line to each position.
 local T = dofile("tests/harness.lua")
 -- GMod's AddCSLuaFile, which the module calls for itself as it loads.
 AddCSLuaFile = function() end
-local Show = T.require("luadev_show")
+local Show = T.require("luadev_overlay")
 
 local function V(x, y, z) return { x = x, y = y, z = z } end
 
@@ -123,11 +123,46 @@ T.test("nothing to show is no shapes", function()
 	T.eq(#Show.Shapes("this", nil, EYE, {}), 0, "none")
 end)
 
+T.test("a line's columns meet at its first colon", function()
+	local rows = Show.Columns({ "name: crate", "class: a:b" })
+	T.eq(rows[1].key, "name:", "up to the colon")
+	T.eq(rows[1].value, "crate", "what follows, without its space")
+	T.eq(rows[2].key, "class:", "the first colon")
+	T.eq(rows[2].value, "a:b", "the rest whole")
+end)
+
+T.test("a line with no colon is all value", function()
+	local rows = Show.Columns({ "patrolling" })
+	T.eq(rows[1].key, "", "no key")
+	T.eq(rows[1].value, "patrolling", "the line")
+end)
+
+T.test("a box's text starts to its right, clear of it however it turns, level with its middle", function()
+	local box = { kind = "box", pos = V(100, 0, 10), mins = V(-16, -16, 0), maxs = V(16, 16, 72) }
+	local at = Show.TextAt(box, V(0, -1, 0))
+	T.eq(at.x, 100, "not along the view")
+	T.eq(at.y < -math.sqrt(16 * 16 + 16 * 16), true, "past its farthest corner, on the right")
+	T.eq(at.z, 46, "its middle")
+end)
+
+T.test("a box off its origin is still cleared on the side it reaches farthest", function()
+	local box = { kind = "box", pos = V(0, 0, 0), mins = V(-4, -4, 0), maxs = V(40, 4, 8) }
+	T.eq(Show.TextAt(box, V(1, 0, 0)).x > 40, true, "past its long side")
+end)
+
+T.test("a line's text starts to the right of its end", function()
+	local line = { kind = "line", from = EYE, to = V(10, 20, 30) }
+	local at = Show.TextAt(line, V(1, 0, 0))
+	T.eq(at.x, 10 + Show.TEXT_GAP, "beside it")
+	T.eq(at.y, 20, "not along the view")
+	T.eq(at.z, 30, "level with it")
+end)
+
 -- The module as a server loads it, the one side with Show, and the seconds each send carried.
 local function ServerShow()
 	local seconds = {}
-	local saved = package.loaded.luadev_show
-	package.loaded.luadev_show = nil
+	local saved = package.loaded.luadev_overlay
+	package.loaded.luadev_overlay = nil
 	local env = setmetatable({
 		SERVER = true,
 		IsValid = function(v) return v ~= nil and v.valid ~= false end,
@@ -140,11 +175,70 @@ local function ServerShow()
 			Send = function() end,
 		},
 	}, { __index = _G })
-	setfenv(assert(loadfile("addons/ulx_luadev/lua/includes/modules/luadev_show.lua")), env)()
-	local server = package.loaded.luadev_show
-	package.loaded.luadev_show = saved
+	setfenv(assert(loadfile("addons/ulx_luadev/lua/includes/modules/luadev_overlay.lua")), env)()
+	local server = package.loaded.luadev_overlay
+	package.loaded.luadev_overlay = saved
 	return server, seconds
 end
+
+-- The module as a client loads it: Receive(shapes) as a message from Show, Draw() a frame, which
+-- answers how many shapes' text it drew.
+local function ClientOverlay()
+	local receive, render3D
+	local incoming, drawn = {}, 0
+	local function Vec(x, y, z)
+		return { x = x, y = y, z = z, Distance = function() return 100 end }
+	end
+	local function Ang()
+		return { Forward = function() return Vec(1, 0, 0) end, Right = function() return Vec(0, -1, 0) end,
+			RotateAroundAxis = function() end }
+	end
+	local saved = package.loaded.luadev_overlay
+	package.loaded.luadev_overlay = nil
+	local env = setmetatable({
+		CLIENT = true,
+		CurTime = function() return 0 end,
+		EyePos = function() return Vec(0, 0, 0) end,
+		EyeAngles = Ang,
+		Vector = Vec,
+		Angle = Ang,
+		Color = function() return {} end,
+		net = {
+			Receive = function(_, fn) receive = fn end,
+			ReadFloat = function() return 120 end,
+			ReadTable = function() return incoming end,
+		},
+		hook = { Add = function(name, _, fn) if name == "PostDrawTranslucentRenderables" then render3D = fn end end },
+		surface = { SetFont = function() end, GetTextSize = function() return 10, 10 end },
+		cam = { IgnoreZ = function() end, Start3D2D = function() drawn = drawn + 1 end, End3D2D = function() end },
+		draw = { SimpleTextOutlined = function() end },
+		render = { DrawWireframeBox = function() end, DrawLine = function() end, DrawWireframeSphere = function() end },
+	}, { __index = _G })
+	setfenv(assert(loadfile("addons/ulx_luadev/lua/includes/modules/luadev_overlay.lua")), env)()
+	package.loaded.luadev_overlay = saved
+	return function(shapes) incoming = shapes receive() end, function()
+		drawn = 0
+		render3D(false, false)
+		return drawn
+	end
+end
+
+local function Point2Shape() return { kind = "line", from = EYE, to = V(1, 2, 3), lines = { "there: 1 2 3" } } end
+
+T.test("a new overlay replaces what was shown, ending its draws", function()
+	local Receive, Draw = ClientOverlay()
+	Receive({ Point2Shape(), Point2Shape() })
+	T.eq(Draw(), 2, "the first overlay's two")
+	Receive({ Point2Shape() })
+	T.eq(Draw(), 1, "only the new one")
+end)
+
+T.test("an overlay of nothing ends what was shown", function()
+	local Receive, Draw = ClientOverlay()
+	Receive({ Point2Shape() })
+	Receive({})
+	T.eq(Draw(), 0, "none")
+end)
 
 -- A caller whose client's overlay preference is seconds.
 local function Caller(seconds)
