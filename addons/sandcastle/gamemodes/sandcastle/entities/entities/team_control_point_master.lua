@@ -13,6 +13,7 @@ function ENT:KeyValue(key, value)
 end
 
 function ENT:Initialize()
+	game_manager.Enable("game_control_points")
 	self.capture = WS.Feature("capture")
 	self.capture:BindMaster(self, self.wsKv or {})
 end

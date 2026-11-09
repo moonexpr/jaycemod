@@ -212,8 +212,4 @@ local function Draw(w, h)
 	end
 end
 
-local View = { Draw = Draw }
-
-WS.HUD:Add("game.objective.flags", WS.HUD_ORDER.OBJECTIVES, function(...) View.Draw(...) end, WS.Active)
-
-return View
+return { Draw = Draw }

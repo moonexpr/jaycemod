@@ -81,7 +81,7 @@ end
 -- CTFBotFetchFlag: a bomb at home goes to an invader that has just spawned.
 function Controller:HandOutBombs(invaders)
 	if #invaders == 0 then return end
-	for ent, flag in pairs(self.flag.flags) do
+	for ent, flag in pairs(self.flag:Flags()) do
 		if IsValid(ent) and flag:Enabled() and flag:Team() == INVADERS and flag:State() == Flag.HOME then
 			local candidates = {}
 			for _, invader in ipairs(invaders) do
@@ -94,7 +94,7 @@ function Controller:HandOutBombs(invaders)
 end
 
 function Controller:Carrying(ent)
-	for _, flag in pairs(self.flag.flags) do
+	for _, flag in pairs(self.flag:Flags()) do
 		if flag:Carrier() == ent then return true end
 	end
 	return false

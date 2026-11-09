@@ -298,8 +298,4 @@ local function DrawCarts(w, h)
 	end
 end
 
-local View = { Draw = DrawCarts }
-
-WS.HUD:Add("game.objective.carts", WS.HUD_ORDER.OBJECTIVES, function(...) View.Draw(...) end, WS.Active)
-
-return View
+return { Draw = DrawCarts }

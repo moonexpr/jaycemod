@@ -8,6 +8,7 @@
 local T = dofile("tests/harness.lua")
 local Mvm = T.require("features.mvm.model")
 local Flag = T.require("features.flag.model")
+local FlagState = dofile("addons/sandcastle/gamemodes/sandcastle/entities/entities/item_teamflag/state.lua")
 local Teams = gameplay.teams
 local Players = gameplay.players
 local State = T.require("games.gameplay.rounds.state")
@@ -39,10 +40,10 @@ end)
 -- drop nothing, so the bomb, which starts in BLU's, stays with its carrier.
 T.test("BLU's bomb carrier keeps the bomb in BLU's spawn room; CTF's carriers still drop it", function()
 	T.eq(Mvm.Mode.FLAG_INVADERS, BLUE, "BLU invades")
-	T.eq(Flag.DropsIn(BLUE, BLUE, Mvm.Mode.FLAG_INVADERS), false, "the invaders' room keeps it")
-	T.eq(Flag.DropsIn(RED, RED, Mvm.Mode.FLAG_INVADERS), true, "a defender's own room still drops it")
-	T.eq(Flag.DropsIn(BLUE, BLUE, Flag.Mode.FLAG_INVADERS), true, "CTF: its own room drops it")
-	T.eq(Flag.DropsIn(RED, BLUE, Mvm.Mode.FLAG_INVADERS), false, "an enemy room never")
+	T.eq(FlagState.DropsIn(BLUE, BLUE, Mvm.Mode.FLAG_INVADERS), false, "the invaders' room keeps it")
+	T.eq(FlagState.DropsIn(RED, RED, Mvm.Mode.FLAG_INVADERS), true, "a defender's own room still drops it")
+	T.eq(FlagState.DropsIn(BLUE, BLUE, Flag.Mode.FLAG_INVADERS), true, "CTF: its own room drops it")
+	T.eq(FlagState.DropsIn(RED, BLUE, Mvm.Mode.FLAG_INVADERS), false, "an enemy room never")
 end)
 
 -- No bomb is taken before the wave: setup stands in for the ready-up, with
@@ -56,7 +57,7 @@ T.test("no bomb is picked up in setup in MvM; CTF's flags are", function()
 end)
 
 T.test("a bomb given to a carrier is carried, as a pickup", function()
-	local bomb = Flag.New({ team = BLUE })
+	local bomb = FlagState.New({ team = BLUE })
 	local carrier = {}
 	local events = bomb:PickUp(carrier, BLUE, { ownersCarry = true, mayBeCapped = true })
 	T.eq(#events, 1, "one event")

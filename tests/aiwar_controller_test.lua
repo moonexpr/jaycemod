@@ -701,7 +701,7 @@ local function BombAndHatch(w, noHatch)
 	hatch.WorldSpaceCenter = function() return Vector(-100, 0, 0) end
 	w:Load("flag", {
 		flags = { [bombEnt] = bomb },
-		zones = noHatch and {} or { [hatch] = { enabled = true, team = BLUE } },
+		zones = noHatch and {} or { [hatch] = { enabled = true, team = BLUE, MayCapture = function(_, team) return team == BLUE end } },
 		tally = { Captures = function() return 0 end },
 		CapLimit = function() return 0 end,
 	})

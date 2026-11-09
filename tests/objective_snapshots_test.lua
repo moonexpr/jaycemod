@@ -9,6 +9,7 @@ local Area = T.require("games.gameplay.capture.area")
 local Master = T.require("games.gameplay.capture.master")
 local PointTimer = T.require("games.gameplay.capture.point_timer")
 local Flag = T.require("features.flag.model")
+local FlagState = dofile("addons/sandcastle/gamemodes/sandcastle/entities/entities/item_teamflag/state.lua")
 local Teams = gameplay.teams
 
 local NOBODY, RED, BLU = Teams.UNASSIGNED, Teams.RED, Teams.BLUE
@@ -143,14 +144,14 @@ end)
 
 T.test("a dropped flag returns when the original would", function()
 	local ents, refs = Entities({ "carrier" })
-	local flag = Flag.New({ team = RED })
+	local flag = FlagState.New({ team = RED })
 	flag:PickUp(ents.carrier, BLU, {
 		ownersCarry = false,
 		mayBeCapped = true,
 	})
 	flag:Drop(T0, false)
-	local copy = Flag.New({ team = RED })
-	copy:Restore(flag:Snapshot(T0 + 1, refs), LATER + 1, refs)
+	local copy = FlagState.New({ team = RED })
+	Flag.RestoreFlag(copy, Flag.SnapshotFlag(flag, T0 + 1, refs), LATER + 1, refs)
 	T.eq(copy:State(), Flag.DROPPED, "dropped")
 	for t = 2, flag:ReturnTime() + 2 do
 		local a, b = flag:Think(T0 + t), copy:Think(LATER + t)
@@ -162,13 +163,13 @@ end)
 
 T.test("a carried flag keeps its carrier", function()
 	local ents, refs = Entities({ "carrier" })
-	local flag = Flag.New({ team = RED })
+	local flag = FlagState.New({ team = RED })
 	flag:PickUp(ents.carrier, BLU, {
 		ownersCarry = false,
 		mayBeCapped = true,
 	})
-	local copy = Flag.New({ team = RED })
-	copy:Restore(flag:Snapshot(T0, refs), LATER, refs)
+	local copy = FlagState.New({ team = RED })
+	Flag.RestoreFlag(copy, Flag.SnapshotFlag(flag, T0, refs), LATER, refs)
 	T.eq(copy:Carrier(), ents.carrier, "carrier")
 	T.eq(copy:CarrierTeam(), BLU, "carrier's team")
 end)

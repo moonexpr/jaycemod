@@ -5,6 +5,13 @@ local T = { passed = 0, failed = 0 }
 
 T.ROOT = "addons/sandcastle/gamemodes/wetsands/gamemode/"
 
+-- Sandcastle's, which the game's models read.
+TEAM_RED, TEAM_BLUE, TF_TEAM_UNASSIGNED = 2, 3, 0
+baseclass = baseclass or { Set = function() end }
+dofile("addons/sandcastle/gamemodes/sandcastle/gamemode/includes/modules/game_manager.lua")
+dofile("addons/sandcastle/gamemodes/sandcastle/gamemode/gamerules/game_default.lua")
+dofile("addons/sandcastle/gamemodes/sandcastle/gamemode/gamerules/game_ctf.lua")
+
 -- Lua 5.1's require for a module(...) file under T.ROOT, as WS.require
 -- does in the game: once, calling the chunk with its dotted name. Above its
 -- module(...) call the chunk sees this require, to load its siblings.

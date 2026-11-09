@@ -6,7 +6,11 @@
 -- name replaces Sandcastle's, for the classes derived from it too.
 --
 -- A class has Applies(self) -> whether this map plays it. More than one may
--- apply: a payload map has control points too.
+-- apply: a payload map has control points too. A map's entities say which it
+-- plays with Enable. CreatePanel(self) builds the game's objective vgui.
+--
+-- A class with bonus_suddendeath can settle a tie, and is only ever played
+-- as that bonus round, never as a normal one.
 local baseclass, error, format, ipairs, setmetatable, sort, tostring, type =
 	baseclass, error, string.format, ipairs, setmetatable, table.sort, tostring, type
 local insert = table.insert
@@ -35,13 +39,42 @@ function GetClass(name)
 	return Type[name]
 end
 
--- The names of the classes this map plays, in name order.
+local ENABLED = "game_manager.enabled."
+local BONUS = "game_manager.bonus"
+
+-- On the server: this map plays the game.
+function Enable(name)
+	SetGlobal2Bool(ENABLED .. name, true)
+end
+
+function Enabled(name)
+	return GetGlobal2Bool(ENABLED .. name, false)
+end
+
+-- The names of the classes being played, in name order: during a bonus round
+-- that round's alone, otherwise every normal one this map plays.
 function Active()
+	local bonus = GetGlobal2String(BONUS, "")
+	if bonus ~= "" then return { bonus } end
 	local active = {}
 	for _, name in ipairs(names) do
-		if Type[name]:Applies() then active[#active + 1] = name end
+		local class = Type[name]
+		if not class.bonus_suddendeath and class:Applies() then active[#active + 1] = name end
 	end
 	return active
+end
+
+-- The bonus round that can settle a tie on this map, or nil.
+function Tiebreaker()
+	for _, name in ipairs(names) do
+		local class = Type[name]
+		if class.bonus_suddendeath and class:Applies() then return name end
+	end
+end
+
+-- On the server: begins the bonus round, or ends it with nil.
+function SetBonus(name)
+	SetGlobal2String(BONUS, name or "")
 end
 
 function RunClass(name, funcname, ...)
@@ -55,4 +88,41 @@ end
 -- The method on each class this map plays.
 function RunActive(funcname, ...)
 	for _, name in ipairs(Active()) do RunClass(name, funcname, ...) end
+end
+
+local Scenario = {}
+
+-- What the classes this map plays ask of it, merged. Every key is optional:
+-- a map's entity reads one with a default of its own, assuming no game.
+function Scenario:GetRules()
+	local rules = {}
+	for _, name in ipairs(Active()) do
+		for key, value in pairs(RunClass(name, "GetRules")) do rules[key] = value end
+	end
+	return rules
+end
+
+function GetCurrentScenario()
+	return Scenario
+end
+
+local panels = {}
+
+-- On the client, each Think: every game being played has its panel, and a
+-- game no longer played has none.
+function UpdatePanels()
+	local active = {}
+	for _, name in ipairs(Active()) do
+		active[name] = true
+		if panels[name] == nil then
+			panels[name] = false
+			panels[name] = RunClass(name, "CreatePanel") or false
+		end
+	end
+	for name, panel in pairs(panels) do
+		if not active[name] then
+			if IsValid(panel) then panel:Remove() end
+			panels[name] = nil
+		end
+	end
 end

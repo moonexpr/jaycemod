@@ -96,16 +96,6 @@ Include("player_class/player_combatant_cstrike.lua")
 Include("player_class/player_sandcastle.lua")
 Include("player_class/player_spectator.lua")
 
--- This game's scenarios, on Sandcastle's game_manager.
-if SERVER then
-	AddCSLuaFile("gamerules/game_control_points.lua")
-	AddCSLuaFile("gamerules/game_ctf.lua")
-	AddCSLuaFile("gamerules/game_payload.lua")
-end
-Include("gamerules/game_control_points.lua")
-Include("gamerules/game_ctf.lua")
-Include("gamerules/game_payload.lua")
-
 -- TF2's team numbers (1 spectator, 2 RED, 3 BLU); GMod reserves only 0, 1001 and 1002.
 function GM:CreateTeams()
 	BaseClass.CreateTeams(self)

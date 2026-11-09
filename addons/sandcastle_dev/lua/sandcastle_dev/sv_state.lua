@@ -520,7 +520,7 @@ function dev.state(opts)
 	end
 	if WS.FeatureLoaded("flag") then
 		summary.flags = {}
-		for ent, flag in pairs(WS.Feature("flag").flags) do
+		for ent, flag in pairs(WS.Feature("flag"):Flags()) do
 			if IsValid(ent) then summary.flags[ent:GetName() ~= "" and ent:GetName() or tostring(ent:EntIndex())] = flag:State() end
 		end
 	end
@@ -655,7 +655,7 @@ local function Disturb()
 	end
 	if WS.FeatureLoaded("flag") then
 		local F = WS.Feature("flag")
-		for ent, flag in pairs(F.flags) do
+		for ent, flag in pairs(F:Flags()) do
 			if IsValid(ent) and flag:State() ~= "carried" then
 				for _, ply in ipairs(player.GetAll()) do
 					if ply:Alive() and F:Give(ent, ply) then

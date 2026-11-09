@@ -176,7 +176,7 @@ end
 
 -- Who carries the bomb now, or nil.
 function Controller:Carrier()
-	local flag = IsValid(self.bombEnt) and self.flag.flags[self.bombEnt]
+	local flag = IsValid(self.bombEnt) and self.flag:FlagAt(self.bombEnt)
 	return flag and flag:Carrier() or nil
 end
 

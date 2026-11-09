@@ -15,6 +15,7 @@ function ENT:KeyValue(key, value)
 end
 
 function ENT:Initialize()
+	game_manager.Enable("game_control_points")
 	if self.brushModel then self:SetModel(self.brushModel) end
 	self:SetSolid(SOLID_NONE)
 	self:SetNoDraw(true)

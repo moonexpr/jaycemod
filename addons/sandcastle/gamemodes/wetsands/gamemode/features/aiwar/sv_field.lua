@@ -143,9 +143,8 @@ end
 function Controller:FlagsSnapshot()
 	local feature = LoadedFeature("flag")
 	if not feature then return nil, nil, nil, nil end
-	local Flag = WS.require("features.flag.model")
 	local flags, zones = {}, {}
-	for ent, flag in pairs(feature.flags) do
+	for ent, flag in pairs(feature:Flags()) do
 		local team, carrier = flag:Team(), flag:Carrier()
 		if IsValid(ent) and flag:Enabled() and (team == RED or team == BLUE) and not flags[team] then
 			flags[team] = {
@@ -158,9 +157,9 @@ function Controller:FlagsSnapshot()
 			}
 		end
 	end
-	for ent, zone in pairs(feature.zones) do
+	for ent, zone in pairs(feature:Zones()) do
 		for _, team in ipairs({ RED, BLUE }) do
-			if IsValid(ent) and zone.enabled and not zones[team] and Flag.MayCapture(zone.team, team) then
+			if IsValid(ent) and zone.enabled and not zones[team] and zone:MayCapture(team) then
 				zones[team] = Point(GroundBelow(ent:WorldSpaceCenter()))
 			end
 		end

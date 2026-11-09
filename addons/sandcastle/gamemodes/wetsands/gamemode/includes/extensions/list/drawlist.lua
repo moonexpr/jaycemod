@@ -71,6 +71,11 @@ local function Hidden(self, entry)
 	return false
 end
 
+-- Whether a path is hidden, at it or an ancestor, for what draws apart from the list.
+function List:IsHidden(path)
+	return Hidden(self, { lineage = Lineage(path) })
+end
+
 function List:Draw(...)
 	for _, entry in ipairs(self.sorted) do
 		if not Hidden(self, entry) and (entry.when == nil or entry.when()) then entry.draw(...) end

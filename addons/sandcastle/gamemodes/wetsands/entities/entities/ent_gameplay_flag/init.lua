@@ -20,6 +20,6 @@ function ENT:Compile(game)
 end
 
 function ENT:WireStatus(target)
-	local flag = WS.Feature("flag").flags[target]
+	local flag = WS.Feature("flag"):FlagAt(target)
 	return { State = STATES[flag:State()], CarrierTeam = flag:CarrierTeam() }
 end

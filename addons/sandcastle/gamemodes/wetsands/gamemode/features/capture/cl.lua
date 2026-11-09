@@ -384,12 +384,12 @@ end
 -- Every round mode that loads capture (control points, KOTH, payload)
 -- shows its points; payload's cart points come hidden. The panel is drawn
 -- here only without an anchor in the world: above the crosshair.
-WS.HUD:Add("game.objective.points", WS.HUD_ORDER.OBJECTIVES, function(w, h)
+function View.Draw(w, h)
 	DrawIcons(w, h)
 	local ply = LocalPlayer()
 	local rank = PanelRank(ply)
 	if rank and not IsValid(PanelAnchor(ply)) then DrawPanelAt(ply, rank, w / 2, h / 2 - PANEL_ABOVE_CROSSHAIR) end
-end, WS.Active)
+end
 
 -- With an anchor, the panel stands in the world above it, as TF2's target
 -- ID does: fixed there, turned to face the camera, PANEL_SCALE world units

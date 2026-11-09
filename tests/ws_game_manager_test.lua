@@ -4,6 +4,7 @@ local T = dofile("tests/harness.lua")
 
 local published
 baseclass = { Set = function(name, tab) published[name] = tab end }
+GetGlobal2String = function(_, default) return default end
 
 -- The library starts empty, as it does on each map.
 local function Fresh()
@@ -28,6 +29,18 @@ end
 local function Has(text, part, what)
 	T.eq(text:find(part, 1, true) ~= nil, true, what)
 end
+
+T.test("the current scenario's rules are those of every game being played", function()
+	local Games = Fresh()
+	local function Rules(rules) return function() return rules end end
+	Games.RegisterClass("game_ctf", Game(true, { GetRules = Rules({ FlagScores = false }) }))
+	Games.RegisterClass("game_elimination", Game(true, { GetRules = Rules({}) }))
+	Games.RegisterClass("game_koth", Game(false, { GetRules = Rules({ HillTime = 1 }) }))
+	local rules = Games.GetCurrentScenario():GetRules()
+	T.eq(rules.FlagScores, false, "a game's")
+	T.eq(rules.HillTime, nil, "a game not played")
+	T.eq(rules.Missing, nil, "what no game says")
+end)
 
 T.test("a registered class is found by its name", function()
 	local Games = Fresh()

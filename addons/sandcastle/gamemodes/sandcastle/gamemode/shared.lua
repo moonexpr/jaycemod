@@ -32,13 +32,18 @@ GM.Website 	= "www.garrysmod.com"
 
 GM.IsSandboxDerived = true
 
-include( "includes/modules/game_manager.lua" )
-include( "gamerules/game_default.lua" )
-include( "gamerules/game_elimination.lua" )
-
 -- TF2's team numbers, which map keyvalues use
 TEAM_RED, TEAM_BLUE = 2, 3
 TF_TEAM_UNASSIGNED, TF_TEAM_SPECTATOR = 0, 1
+
+include( "includes/modules/game_manager.lua" )
+include( "includes/modules/game_timer.lua" )
+include( "controllers.lua" )
+include( "gamerules/game_default.lua" )
+include( "gamerules/game_elimination.lua" )
+include( "gamerules/game_control_points.lua" )
+include( "gamerules/game_ctf.lua" )
+include( "gamerules/game_payload.lua" )
 
 ROUND_WAITING, ROUND_PREPARE, ROUND_ACTIVE, ROUND_OVER = 0, 1, 2, 3
 
@@ -53,7 +58,7 @@ function GM:GetRoundState()
 end
 
 function GM:GetRoundEnd()
-	return GetGlobal2Float( "SandcastleRoundEnd", 0 )
+	return game_timer.EndTime( game_timer.ROUND )
 end
 
 function GM:CreateTeams()
@@ -72,7 +77,13 @@ function GM:Think()
 	-- base reads this for its team menu, team spawns and team scoreboard
 	self.TeamBased = self:IsGameplay()
 
-	if ( SERVER ) then self:RoundThink() end
+	if ( SERVER ) then
+		game_timer.Think()
+		self:RoundThink()
+		game_manager.RunActive( "Think" )
+	else
+		game_manager.UpdatePanels()
+	end
 
 end
 

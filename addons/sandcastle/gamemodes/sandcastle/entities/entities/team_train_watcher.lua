@@ -34,6 +34,7 @@ local function Flag(value)
 end
 
 function ENT:Initialize()
+	game_manager.Enable("game_payload")
 	P = WS.require("features.payload.model")
 	self.capture = WS.Feature("capture")
 	self.payload = WS.Feature("payload")

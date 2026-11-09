@@ -2,7 +2,7 @@
 local GAME = {}
 
 function GAME:Applies()
-	return WS.FeatureLoaded("payload")
+	return game_manager.Enabled("game_payload")
 end
 
 -- Each team's furthest active cart.
@@ -15,6 +15,13 @@ function GAME:Standing(objective)
 		end
 	end
 	if next(carts) then objective.carts = carts end
+end
+
+function GAME:CreatePanel()
+	local view = WS.Feature("payload")
+	return self:ObjectivePanel(function(w, h)
+		if WS.Active() and not WS.HUD:IsHidden("game.objective.carts") then view.Draw(w, h) end
+	end)
 end
 
 game_manager.RegisterClass("game_payload", GAME, "game_default")

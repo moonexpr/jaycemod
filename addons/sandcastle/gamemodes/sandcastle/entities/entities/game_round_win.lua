@@ -1,11 +1,7 @@
--- game_round_win: ends the round (CTeamplayRoundWin, server/tf/entity_roundwin.cpp),
--- bound to the rounds feature, whose Round decides what the win means: a
--- team wins, or TeamNum 0 is a stalemate (sudden death with
--- mp_stalemate_enable), and only a full-reset win switches teams.
+-- game_round_win: ends the round (CTeamplayRoundWin, server/tf/entity_roundwin.cpp).
+-- A team wins, or TeamNum 0 is a stalemate. Output: OnRoundWin.
 ENT.Type = "point"
 ENT.Base = "base_point"
-
-local Rounds
 
 -- WINREASON_DEFEND_UNTIL_TIME_LIMIT, the entity's default win_reason.
 local DEFEND_UNTIL_TIME_LIMIT = 4
@@ -26,7 +22,6 @@ function ENT:KeyValue(key, value)
 end
 
 function ENT:Initialize()
-	Rounds = WS.Feature("rounds")
 	self.team = self.team or TF_TEAM_UNASSIGNED
 	if self.forceMapReset == nil then self.forceMapReset = true end
 	self.switchTeams = self.switchTeams or false
@@ -39,12 +34,13 @@ end
 
 local INPUTS = {
 	roundwin = function(self)
-		Rounds:GameRoundWin(self, {
+		round_manager.RoundOutcome({
 			team = self.team,
 			reason = self.winReason,
 			forceMapReset = self.forceMapReset,
 			switchTeams = self.switchTeams,
 		})
+		self:TriggerOutput("OnRoundWin", self)
 	end,
 	setteam = function(self, value) self.team = tonumber(value) or TF_TEAM_UNASSIGNED end,
 }

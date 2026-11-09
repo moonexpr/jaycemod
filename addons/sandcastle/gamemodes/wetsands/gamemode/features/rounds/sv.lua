@@ -306,6 +306,17 @@ function Controller:RunListeners(phase)
 	for _, l in ipairs(self.listeners[phase]) do l.fn() end
 end
 
+-- The games being played (game_manager) hear of the round.
+Controller:AddRoundListener(gameplay.rounds.PHASE_SPAWN, gameplay.rounds.LISTEN_LOGIC, function()
+	game_manager.RunActive("RoundPrepare")
+end)
+Controller:AddRoundListener(gameplay.rounds.PHASE_ACTIVATE, gameplay.rounds.LISTEN_LOGIC, function()
+	game_manager.RunActive("RoundStart")
+end)
+hook.Add("WSRoundWin", "ws_game_manager", function(winner)
+	game_manager.RunActive("RoundEnd", winner)
+end)
+
 -- fn() returns true while it holds the clock at zero. A capture hold
 -- (isCapture) also holds it for the 0.1 s after (TimerMayExpire).
 function Controller:AddTimerHold(name, fn, isCapture)
@@ -381,9 +392,8 @@ function Controller:SetStalemate(reason, forceMapReset, switchTeams)
 end
 
 -- game_round_win: win = { team, reason, forceMapReset, switchTeams }.
-function Controller:GameRoundWin(ent, win)
+function Controller:GameRoundWin(win)
 	if Active() then self:Apply(self.round:GameRoundWin(CurTime(), win, self.objective)) end
-	ent:TriggerOutput("OnRoundWin", ent)
 end
 
 -- Thinking ----------------------------------------------------------------------------

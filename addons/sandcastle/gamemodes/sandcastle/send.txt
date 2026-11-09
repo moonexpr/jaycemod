@@ -117,3 +117,7 @@ gamemodes\sandcastle\entities\effects\wheel_indicator.lua
 gamemodes\sandcastle\gamemode\includes\modules\game_manager.lua
 gamemodes\sandcastle\gamemode\gamerules\game_default.lua
 gamemodes\sandcastle\gamemode\gamerules\game_elimination.lua
+gamemodes\sandcastle\gamemode\gamerules\game_control_points.lua
+gamemodes\sandcastle\gamemode\gamerules\game_ctf.lua
+gamemodes\sandcastle\gamemode\gamerules\game_payload.lua
+gamemodes\sandcastle\gamemode\controllers.lua

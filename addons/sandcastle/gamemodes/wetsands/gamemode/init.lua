@@ -220,6 +220,21 @@ end
 -- or those the rounds controller makes (its SetUpMap).
 hook.Add("InitPostEntity", "ws_gamerules", function() WS.Feature("rounds"):SetUpMap() end)
 
+-- A map with a flag: this game's answers to it.
+hook.Add("OnControllerAdded", "ws_flag_feature", function(controller)
+	if controller.type == "flag" then WS.Feature("flag") end
+end)
+
+-- A map ended the round: the Round decides what that means.
+function GM:RoundWin(winner, info)
+	WS.Feature("rounds"):GameRoundWin({
+		team = winner,
+		reason = info.reason,
+		forceMapReset = info.forceMapReset,
+		switchTeams = info.switchTeams,
+	})
+end
+
 -- Neither Sandbox nor base defines PostPlayerDeath.
 function GM:PostPlayerDeath(ply)
 	WS.Rules:OnPlayerDeath(ply)
