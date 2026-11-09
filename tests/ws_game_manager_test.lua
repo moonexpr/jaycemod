@@ -8,8 +8,9 @@ baseclass = { Set = function(name, tab) published[name] = tab end }
 -- The library starts empty, as it does on each map.
 local function Fresh()
 	published = {}
-	package.loaded["includes.game_manager"] = nil
-	return T.require("includes.game_manager")
+	package.loaded.game_manager, game_manager = nil, nil
+	dofile("addons/sandcastle/gamemodes/sandcastle/gamemode/includes/modules/game_manager.lua")
+	return package.loaded.game_manager
 end
 
 local function Game(applies, fields)

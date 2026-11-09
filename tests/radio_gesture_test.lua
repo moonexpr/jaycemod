@@ -14,7 +14,7 @@ local function Load()
 		GM = GM, WS = { require = T.require },
 		BaseClass = BaseClass, DEFINE_BASECLASS = function() end,
 	}, { __index = _G })
-	setfenv(assert(loadfile("addons/sandcastle/gamemodes/sandcastle/gamemode/sh_radio_gesture.lua")), env)()
+	setfenv(assert(loadfile("addons/sandcastle/gamemodes/wetsands/gamemode/sh_radio_gesture.lua")), env)()
 	return GM, grabbed
 end
 

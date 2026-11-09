@@ -20,7 +20,7 @@ local Buildings = gameplay.buildings
 local Factions = WS.require("includes.factions")
 
 -- TF2's buildables are skinned RED 0, BLU 1.
-local SKINS = { [WS.TEAM_RED] = 0, [WS.TEAM_BLUE] = 1 }
+local SKINS = { [TEAM_RED] = 0, [TEAM_BLUE] = 1 }
 -- How far above its origin the space it needs starts.
 local FLOOR_CLEAR = 2
 
@@ -121,7 +121,7 @@ if SERVER then
 
 	function ENT:OnTakeDamage(dmg)
 		local attacker = dmg:GetAttacker()
-		local team = IsValid(attacker) and WS.TeamNumber(attacker) or WS.TEAM_UNASSIGNED
+		local team = IsValid(attacker) and WS.TeamNumber(attacker) or TF_TEAM_UNASSIGNED
 		if not Buildings.Harms(self:GetObjTeam(), team) then return 0 end
 		self:SetHealth(self:Health() - dmg:GetDamage())
 		if self:Health() <= 0 and not self.objDestroyed then

@@ -8,6 +8,6 @@ ENT.Spawnable = false
 ENT.Variant = "games.gameplay.projectile.jar"
 ENT.ModelScale = 0.01 -- GetModelScale
 ENT.Trails = {
-	[WS.TEAM_RED] = "spell_batball_throw_red",
-	[WS.TEAM_BLUE] = "spell_batball_throw_blue",
+	[TEAM_RED] = "spell_batball_throw_red",
+	[TEAM_BLUE] = "spell_batball_throw_blue",
 }

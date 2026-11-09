@@ -72,7 +72,6 @@ local function ToAngle(t) return Angle(t.p, t.y, t.r) end
 -- report:Note(text) for what it could not do.
 
 local GAMEPLAY_CONVARS = {
-	"sv_gameplay_enabled",
 	"mp_capstyle",
 	"mp_blockstyle",
 	"mp_capdeteriorate_time",
@@ -504,7 +503,7 @@ function dev.state(opts)
 			red = team.GetScore(WS.TEAM_RED),
 			blue = team.GetScore(WS.TEAM_BLUE),
 		},
-		gameplay = GetConVar("sv_gameplay_enabled"):GetInt(),
+		gameplay = 1,
 		frozen = dev.harness and dev.harness.live.frozen or false,
 		harness = dev.harness and dev.harness.live.on or false,
 		players = {},

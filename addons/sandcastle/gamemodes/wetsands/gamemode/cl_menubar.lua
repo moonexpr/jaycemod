@@ -77,17 +77,6 @@ local MENUS = {
 				name = "tf_use_fixed_weaponspreads",
 				on = "1",
 			},
-			{ spacer = true },
-			{
-				text = "Disable Sandbox Mode",
-				name = "sv_gameplay_disable_sandbox",
-				on = "1",
-			},
-			{
-				text = "Force Gameplay Mode",
-				name = "sv_gameplay_enabled",
-				on = "1",
-			},
 		},
 	},
 }

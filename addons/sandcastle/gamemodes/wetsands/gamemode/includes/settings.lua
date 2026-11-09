@@ -86,8 +86,6 @@ SETTINGS:Switch("mp_tampering_enabled", GAMEPLAY)
 SETTINGS:Switch("ns_soldiers_enabled", GAMEPLAY)
 SETTINGS:Switch("tf_weapon_criticals", GAMEPLAY)
 SETTINGS:Switch("tf_use_fixed_weaponspreads", GAMEPLAY)
-SETTINGS:Switch("sv_gameplay_disable_sandbox", GAMEPLAY)
-SETTINGS:Switch("sv_gameplay_enabled", GAMEPLAY)
 
 -- GMod's NPCs and Server menus' options, behind server_options.
 for i = 1, #PROXIED do SETTINGS:Switch(PROXIED[i], Permissions.SERVER_OPTIONS) end

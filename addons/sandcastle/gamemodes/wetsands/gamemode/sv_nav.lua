@@ -586,15 +586,7 @@ local function Generate(ply, resume)
 		Tell(ply, "Navigation mesh: already being generated")
 		return false
 	end
-	if GetConVar("sv_gameplay_enabled"):GetBool() then
-		if GetConVar("sv_gameplay_disable_sandbox"):GetBool() then
-			Tell(ply, "Navigation mesh: it is generated in Sandbox mode, which sv_gameplay_disable_sandbox 1 forbids; set it to 0 first")
-			return false
-		end
-		WS.Feature("gamemode"):Request(Gamemode.SANDBOX, Gamemode.SOURCE_BUTTON, ply)
-	else
-		resume = false
-	end
+	resume = false
 	local ladders = Ladders()
 	local seeds, hidingSpots = AddWalkableSeeds(ladders)
 	underWay = true

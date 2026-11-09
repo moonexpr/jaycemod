@@ -29,7 +29,7 @@ function ENT:Key(name, default)
 end
 
 function ENT:Initialize()
-	self.team = tonumber(self:Key("teamnum", WS.TEAM_RED)) or WS.TEAM_RED
+	self.team = tonumber(self:Key("teamnum", TEAM_RED)) or TEAM_RED
 	self.spawnflags = tonumber(self:Key("spawnflags", 0)) or 0
 	self.level = FIRST_LEVEL
 	self.disabled = false

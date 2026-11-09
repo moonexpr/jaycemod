@@ -20,7 +20,7 @@ function ENT:Initialize()
 	local kv = self.wsKv or {}
 	self.flag = WS.Feature("flag")
 	self.flag:BindZone(self, {
-		team = tonumber(kv.teamnum) or WS.TEAM_UNASSIGNED,
+		team = tonumber(kv.teamnum) or TF_TEAM_UNASSIGNED,
 		disabled = kv.startdisabled == "1",
 	})
 end

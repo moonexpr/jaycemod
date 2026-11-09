@@ -81,7 +81,7 @@ end
 -- whether it is alive and holds a book.
 function ENT:OpenTo(other)
 	if self.disabled or self.respawning then return false end
-	return self.team == WS.TEAM_UNASSIGNED or WS.Feature("combat"):TeamOf(other) == self.team
+	return self.team == TF_TEAM_UNASSIGNED or WS.Feature("combat"):TeamOf(other) == self.team
 end
 
 -- CSpellPickup::MyTouch: a rare pickup's sound is _rare.

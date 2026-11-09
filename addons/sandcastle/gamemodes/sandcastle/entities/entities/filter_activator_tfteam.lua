@@ -9,7 +9,7 @@ ENT.Base = "base_filter"
 function ENT:KeyValue(key, value)
 	local k = string.lower(key)
 	if k == "teamnum" then
-		self.team = tonumber(value) or WS.TEAM_UNASSIGNED
+		self.team = tonumber(value) or TF_TEAM_UNASSIGNED
 	elseif k == "negated" then
 		-- Hammer sometimes stores the choice's label ("Allow entities that
 		-- match criteria") rather than 0/1; only "1" negates.
@@ -22,7 +22,7 @@ function ENT:KeyValue(key, value)
 end
 
 function ENT:Initialize()
-	self.team = self.team or WS.TEAM_UNASSIGNED
+	self.team = self.team or TF_TEAM_UNASSIGNED
 	self.negated = self.negated or false
 end
 
@@ -32,7 +32,7 @@ end
 function ENT:PassesFilter(trigger, ent)
 	-- out of gameplay, every door opens for everyone
 	if WS.GameplayStopped() then return true end
-	return WS.TeamRules.FilterPasses(self.team, self.negated, WS.TeamNumber(ent), WS.State(), GetGlobal2Int("ws_round_winner", WS.TEAM_UNASSIGNED))
+	return WS.TeamRules.FilterPasses(self.team, self.negated, WS.TeamNumber(ent), WS.State(), GetGlobal2Int("ws_round_winner", TF_TEAM_UNASSIGNED))
 end
 
 -- CFilterTFTeam::InputRoundActivate
@@ -43,7 +43,7 @@ function ENT:RoundActivate()
 end
 
 local INPUTS = {
-	setteam = function(self, value) self.team = tonumber(value) or WS.TEAM_UNASSIGNED end,
+	setteam = function(self, value) self.team = tonumber(value) or TF_TEAM_UNASSIGNED end,
 	roundactivate = function(self) self:RoundActivate() end,
 	-- CFilterTFTeam::InputRoundSpawn does nothing.
 	roundspawn = function() end,

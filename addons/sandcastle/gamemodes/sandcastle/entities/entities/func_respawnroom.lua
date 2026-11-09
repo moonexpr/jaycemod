@@ -42,11 +42,11 @@ end
 -- CFuncRespawnRoom::InputRoundActivate: a room placed with no team takes the
 -- team of an enabled spawn point inside it, as the round has set them up.
 function ENT:RoundActivate()
-	if self.originalTeam ~= WS.TEAM_UNASSIGNED then return end
-	self:ChangeTeam(WS.TEAM_UNASSIGNED)
+	if self.originalTeam ~= TF_TEAM_UNASSIGNED then return end
+	self:ChangeTeam(TF_TEAM_UNASSIGNED)
 	for _, spawn in ipairs(ents.FindByClass("info_player_teamspawn")) do
 		local s = WS.SpawnState(spawn)
-		if not s.disabled and s.team > WS.TEAM_SPECTATOR and self:PointIsWithin(spawn:GetPos()) then
+		if not s.disabled and s.team > TF_TEAM_SPECTATOR and self:PointIsWithin(spawn:GetPos()) then
 			self:ChangeTeam(s.team)
 			return
 		end
@@ -58,5 +58,5 @@ ENT.Inputs = {
 	setinactive = function(self) self:SetActive(false) end,
 	toggleactive = function(self) self:SetActive(not self.active) end,
 	roundactivate = function(self) self:RoundActivate() end,
-	setteam = function(self, value) self:ChangeTeam(tonumber(value) or WS.TEAM_UNASSIGNED) end,
+	setteam = function(self, value) self:ChangeTeam(tonumber(value) or TF_TEAM_UNASSIGNED) end,
 }

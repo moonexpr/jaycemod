@@ -28,10 +28,6 @@ local Gameplay = WS.require("features.gamemode.gameplay")
 local Ready = WS.require("features.gamemode.ready")
 local Rounds = gameplay.rounds
 
--- Both made in ws/sh_gameplay.lua.
-local ENABLED = GetConVar("sv_gameplay_enabled")
-local SANDBOX_DISABLED = GetConVar("sv_gameplay_disable_sandbox")
-
 local TRANSITION_TIMER = "ws_gamemode_transition"
 -- ws_gamemode_transition_end outside a transition.
 local NO_TRANSITION = 0
@@ -72,7 +68,7 @@ local ADMIN_LINES = {
 }
 
 local Controller = {
-	mode = Gamemode.New(WS.Active(), ENABLED:GetBool()),
+	mode = Gamemode.New(WS.Active(), true),
 	transitionSounds = {}, -- what the transition has played, to silence if it is called off
 	teamReady = { [WS.TEAM_RED] = false, [WS.TEAM_BLUE] = false },
 }
@@ -192,12 +188,8 @@ local function PlayersReady()
 	return Ready.Met(ReadyQuery())
 end
 
--- sv_gameplay_enabled follows a settled mode; the transition and the wait
--- leave it. The transition's end and the wait's count go to the clients'
--- round timer.
+-- The transition's end and the wait's count go to the clients' round timer.
 function Controller:Publish()
-	local setting = Gamemode.SETTING[self.mode:Mode()]
-	if setting ~= nil and ENABLED:GetBool() ~= setting then ENABLED:SetBool(setting) end
 	SetGlobal2Float("ws_gamemode_transition_end", self.mode:TransitionEnd() or NO_TRANSITION)
 	local have, need = 0, 0
 	if self.mode:Mode() == Gamemode.WAITING then 
@@ -366,7 +358,7 @@ local NOTICES = {
 -- NOTICES takes it. Returns true, or false and why not (the requester has
 -- been told, when the model says so).
 function Controller:Request(want, source, requester, story)
-	local answer = self.mode:Request(want, source, CurTime(), SANDBOX_DISABLED:GetBool(), PlayersReady())
+	local answer = self.mode:Request(want, source, CurTime(), true, PlayersReady())
 	-- a game begun on a map without rounds: they load, halted until it begins
 	if answer.loadRounds then WS.Feature("rounds"):EnsureRules() end
 	ACTIONS[answer.action](self)
@@ -374,13 +366,6 @@ function Controller:Request(want, source, requester, story)
 	self:Publish()
 	if answer.refusal then return false, answer.refusal end
 	return true
-end
-
--- sv_gameplay_enabled changed: an admin's request, unless it was our own
--- write. Publish puts a refused one back.
-function Controller:SettingChanged(enabled, requester)
-	local want = self.mode:SettingWants(enabled)
-	if want then self:Request(want, Gamemode.SOURCE_CONSOLE, requester) end
 end
 
 local CUES = {
@@ -434,8 +419,7 @@ function Controller:Begin()
 	hook.Run("WSGameBegin")
 end
 
--- A map with rounds starts in the mode sv_gameplay_enabled holds: Sandbox
--- mode halts the rounds; Gameplay mode counts down while the players load
+-- A map with rounds starts in Gameplay mode, which counts down while the players load
 -- (games.system.gamemode's Load), or waits for the players its mode needs,
 -- the rounds halted until it begins. Rounds loaded for a game counting
 -- down (a map without them) stay halted until it begins.

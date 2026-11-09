@@ -80,7 +80,7 @@ ALREADY_COUNTING = "Gameplay mode is already counting down"
 ALREADY_WAITING = "Gameplay mode is already waiting for players"
 ALREADY_GAMEPLAY = "already in Gameplay mode"
 ALREADY_SANDBOX = "already in Sandbox mode"
-SANDBOX_DISABLED = "Sandbox mode is disabled (sv_gameplay_disable_sandbox 1)"
+SANDBOX_DISABLED = "Wetsands is always in Gameplay mode"
 
 -- The transition: a count each second down to 1, the last SPOKEN_COUNT
 -- spoken (the announcer's lines exist for 5..1), and at its end

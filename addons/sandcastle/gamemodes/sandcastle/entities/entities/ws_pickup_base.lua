@@ -34,7 +34,7 @@ local SOUNDS = {
 function ENT:KeyValue(key, value)
 	local k = string.lower(key)
 	if k == "teamnum" then
-		self.team = tonumber(value) or WS.TEAM_UNASSIGNED
+		self.team = tonumber(value) or TF_TEAM_UNASSIGNED
 	elseif k == "startdisabled" then
 		self.startDisabled = value == "1"
 	elseif k == "automaterialize" then
@@ -66,7 +66,7 @@ function ENT:Initialize()
 	self:SetTrigger(true)
 	self:AddSolidFlags(FSOLID_NOT_SOLID)
 	self:ResetSequence(self:LookupSequence("idle"))
-	self.team = self.team or WS.TEAM_UNASSIGNED
+	self.team = self.team or TF_TEAM_UNASSIGNED
 	if self.autoMaterialize == nil then self.autoMaterialize = true end
 	self.respawning = false
 	self:SetDisabled(self.startDisabled == true)
@@ -112,13 +112,13 @@ end
 local function Taker(ent)
 	if not IsValid(ent) then return false end
 	if ent:IsPlayer() then return WS.IsAliveInGame(ent) end
-	return WS.TeamNumber(ent) ~= WS.TEAM_UNASSIGNED and ent:Health() > 0
+	return WS.TeamNumber(ent) ~= TF_TEAM_UNASSIGNED and ent:Health() > 0
 end
 
 -- CTFPowerup::ValidTouch
 function ENT:ValidTouch(ent)
 	if self.disabled or self.respawning or not Taker(ent) then return false end
-	return self.team == WS.TEAM_UNASSIGNED or WS.TeamNumber(ent) == self.team
+	return self.team == TF_TEAM_UNASSIGNED or WS.TeamNumber(ent) == self.team
 end
 
 -- CHealthKit::MyTouch / CAmmoPack::MyTouch: whether the pickup was used. A
@@ -147,7 +147,7 @@ local INPUTS = {
 	enable = function(self) self:SetDisabled(false) end,
 	disable = function(self) self:SetDisabled(true) end,
 	toggle = function(self) self:SetDisabled(not self.disabled) end,
-	setteam = function(self, value) self.team = tonumber(value) or WS.TEAM_UNASSIGNED end,
+	setteam = function(self, value) self.team = tonumber(value) or TF_TEAM_UNASSIGNED end,
 }
 
 function ENT:AcceptInput(name, activator, caller, value)

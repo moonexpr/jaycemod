@@ -9,6 +9,6 @@ ENT.Variant = "games.gameplay.projectile.jar"
 ENT.Model = "models/weapons/w_models/w_cannonball.mdl"
 ENT.ModelScale = 0.9
 ENT.Trails = {
-	[WS.TEAM_RED] = "unusual_bubbles_green_fumes",
-	[WS.TEAM_BLUE] = "unusual_bubbles_green_fumes",
+	[TEAM_RED] = "unusual_bubbles_green_fumes",
+	[TEAM_BLUE] = "unusual_bubbles_green_fumes",
 }

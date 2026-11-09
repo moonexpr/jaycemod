@@ -25,10 +25,10 @@ local visualizers = setmetatable({}, { __mode = "k" })
 
 -- The team this forcefield stops the enemies of, or nobody.
 function ENT:CollisionTeam()
-	if not (self:GetEnabled() and self:GetFieldOn()) then return WS.TEAM_UNASSIGNED end
-	if WS.State() == WS.STATE.TEAM_WIN then return WS.TEAM_UNASSIGNED end
+	if not (self:GetEnabled() and self:GetFieldOn()) then return TF_TEAM_UNASSIGNED end
+	if WS.State() == WS.STATE.TEAM_WIN then return TF_TEAM_UNASSIGNED end
 	-- out of gameplay the spawn rooms are open to everyone
-	if WS.GameplayStopped() then return WS.TEAM_UNASSIGNED end
+	if WS.GameplayStopped() then return TF_TEAM_UNASSIGNED end
 	return self:GetRoomTeam()
 end
 
@@ -97,7 +97,7 @@ function ENT:KeyValue(key, value)
 	elseif k == "startdisabled" then
 		self.startDisabled = value == "1"
 	elseif k == "teamnum" then
-		self.keyTeam = tonumber(value) or WS.TEAM_UNASSIGNED
+		self.keyTeam = tonumber(value) or TF_TEAM_UNASSIGNED
 	elseif string.sub(key, 1, 2) == "On" then
 		self:StoreOutput(key, value)
 	end
@@ -109,7 +109,7 @@ function ENT:Initialize()
 	self:SetSolid(SOLID_BSP)
 	if self.solidToEnemies == nil then self.solidToEnemies = true end
 	self:SetEnabled(not self.startDisabled)
-	self:SetRoomTeam(self.keyTeam or WS.TEAM_UNASSIGNED)
+	self:SetRoomTeam(self.keyTeam or TF_TEAM_UNASSIGNED)
 	self:SetRoomActive(true)
 	self:SetFieldOn(true)
 	self:InitCollision()

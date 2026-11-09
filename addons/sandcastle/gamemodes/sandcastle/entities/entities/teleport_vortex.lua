@@ -94,7 +94,7 @@ function ENT:CollectPlayers(team)
 		local playerTeam = ply:Team()
 		local wanted
 		if team == nil then
-			wanted = playerTeam == WS.TEAM_RED or playerTeam == WS.TEAM_BLUE
+			wanted = playerTeam == TEAM_RED or playerTeam == TEAM_BLUE
 		else
 			wanted = playerTeam == team
 		end

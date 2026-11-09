@@ -13,7 +13,7 @@ end
 function ENT:Initialize()
 	local kv = self.wsKv or {}
 	self.enabled = kv.startdisabled ~= "1"
-	self.team = tonumber(kv.teamnum) or WS.TEAM_UNASSIGNED
+	self.team = tonumber(kv.teamnum) or TF_TEAM_UNASSIGNED
 end
 
 function ENT:UpdateTransmitState()
@@ -24,7 +24,7 @@ local INPUTS = {
 	enable = function(self) self.enabled = true end,
 	disable = function(self) self.enabled = false end,
 	toggle = function(self) self.enabled = not self.enabled end,
-	setteam = function(self, value) self.team = tonumber(value) or WS.TEAM_UNASSIGNED end,
+	setteam = function(self, value) self.team = tonumber(value) or TF_TEAM_UNASSIGNED end,
 }
 
 function ENT:AcceptInput(name, activator, caller, value)

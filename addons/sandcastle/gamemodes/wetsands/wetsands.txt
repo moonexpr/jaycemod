@@ -15,21 +15,13 @@
 	{
 		1
 		{
-			"name"		"sv_gameplay_enabled"
-			"text"		"Gameplay mode"
-			"help"		"1: Gameplay mode, the rounds run; 0: Sandbox mode, no rounds and spawn doors open"
-			"type"		"CheckBox"
-			"default"	"0"
-		}
-		2
-		{
 			"name"		"mp_aiwar_autostart"
 			"text"		"Start the AI war"
 			"help"		"1: start the AI war on every map as it loads"
 			"type"		"CheckBox"
 			"default"	"0"
 		}
-		3
+		2
 		{
 			"name"		"mp_aiwar_team_size"
 			"text"		"AI war soldiers per side"
@@ -37,7 +29,7 @@
 			"type"		"Numeric"
 			"default"	"8"
 		}
-		4
+		3
 		{
 			"name"		"mp_autoteambalance"
 			"text"		"Balance the teams"
@@ -45,7 +37,7 @@
 			"type"		"CheckBox"
 			"default"	"1"
 		}
-		5
+		4
 		{
 			"name"		"tf_weapon_criticals"
 			"text"		"Critical hits"
@@ -53,7 +45,7 @@
 			"type"		"CheckBox"
 			"default"	"1"
 		}
-		6
+		5
 		{
 			"name"		"mp_economy_enabled"
 			"text"		"Economy"
@@ -61,7 +53,7 @@
 			"type"		"CheckBox"
 			"default"	"0"
 		}
-		7
+		6
 		{
 			"name"		"mp_maplist_enabled"
 			"text"		"Rotate through installed maps"

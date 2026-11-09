@@ -14,6 +14,19 @@ include("logging.lua")
 local Boot = WS.Logger("boot")
 Boot("shared.lua: %s, the gamemode's load begins", SERVER and "server" or "client")
 
+-- Wetsands is one game, never Sandcastle's sandbox or gameplay mode: its
+-- switch is not created, and reads off so that Sandcastle's own rounds and
+-- gameplay restrictions stay out of Wetsands'. Before DeriveGamemode, which
+-- runs the file creating it.
+do
+	local CreateEngineConVar = CreateConVar
+	local OFF = { GetBool = function() return false end }
+	function CreateConVar(name, ...)
+		if name == "sandcastle_gameplay" then return OFF end
+		return CreateEngineConVar(name, ...)
+	end
+end
+
 DeriveGamemode("sandcastle")
 DEFINE_BASECLASS("gamemode_sandcastle")
 

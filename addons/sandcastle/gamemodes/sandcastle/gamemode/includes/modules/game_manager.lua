@@ -10,7 +10,7 @@
 local baseclass, error, format, ipairs, setmetatable, sort, tostring, type =
 	baseclass, error, string.format, ipairs, setmetatable, table.sort, tostring, type
 local insert = table.insert
-module("game_manager")
+module( "game_manager", package.seeall )
 
 local Type = {}
 local names = {}

@@ -11,8 +11,8 @@ ENT.Base = "base_anim"
 local MODEL_DEFAULT = "models/flag/briefcase.mdl"
 -- The briefcase's skins: RED's, BLU's, then the neutral one.
 local SKINS = {
-	[WS.TEAM_RED] = 0,
-	[WS.TEAM_BLUE] = 1,
+	[TEAM_RED] = 0,
+	[TEAM_BLUE] = 1,
 }
 local SKIN_NEUTRAL = 2
 
@@ -38,7 +38,7 @@ function ENT:Initialize()
 	self:SetMoveType(MOVETYPE_NONE)
 	self:SetSolid(SOLID_NONE)
 	self:DrawShadow(false)
-	local team = tonumber(kv.teamnum) or WS.TEAM_UNASSIGNED
+	local team = tonumber(kv.teamnum) or TF_TEAM_UNASSIGNED
 	self:SetSkin(self:WsSkin(team))
 	self.flag = WS.Feature("flag")
 	self.flag:BindFlag(self, {

@@ -15,12 +15,12 @@ end
 function ENT:ForceRespawn(switchTeams, onlyTeam)
 	for _, ply in ipairs(player.GetAll()) do
 		local team = WS.TeamOf(ply)
-		if team ~= WS.TEAM_UNASSIGNED then
+		if team ~= TF_TEAM_UNASSIGNED then
 			if switchTeams then
 				WS.SetPlayerTeam(ply, WS.EnemyOf(team), true)
 				team = WS.EnemyOf(team)
 			end
-			if onlyTeam == WS.TEAM_UNASSIGNED or (team == onlyTeam and not ply:Alive()) then
+			if onlyTeam == TF_TEAM_UNASSIGNED or (team == onlyTeam and not ply:Alive()) then
 				ply:Spawn()
 			end
 		end
@@ -31,9 +31,9 @@ function ENT:ForceRespawn(switchTeams, onlyTeam)
 end
 
 local INPUTS = {
-	forcerespawn = function(self) self:ForceRespawn(false, WS.TEAM_UNASSIGNED) end,
-	forcerespawnswitchteams = function(self) self:ForceRespawn(true, WS.TEAM_UNASSIGNED) end,
-	forceteamrespawn = function(self, value) self:ForceRespawn(false, tonumber(value) or WS.TEAM_UNASSIGNED) end,
+	forcerespawn = function(self) self:ForceRespawn(false, TF_TEAM_UNASSIGNED) end,
+	forcerespawnswitchteams = function(self) self:ForceRespawn(true, TF_TEAM_UNASSIGNED) end,
+	forceteamrespawn = function(self, value) self:ForceRespawn(false, tonumber(value) or TF_TEAM_UNASSIGNED) end,
 }
 
 function ENT:AcceptInput(name, activator, caller, value)

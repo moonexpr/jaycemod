@@ -44,7 +44,7 @@ function ENT:Initialize()
 		if IsValid(self) and self:IsObjective() then self.payload:ChooseMode() end
 	end)
 	self.disabled = self:Key("startdisabled", "0") == "1"
-	self.team = tonumber(self:Key("teamnum", WS.TEAM_BLUE)) or WS.TEAM_BLUE
+	self.team = tonumber(self:Key("teamnum", TEAM_BLUE)) or TEAM_BLUE
 	self.handleMovement = self:Key("handle_train_movement", "0") == "1"
 	self.canRecede = Flag(self:Key("train_can_recede", "1"))
 	self.trainRecedeTime = tonumber(self:Key("train_recede_time", 0)) or 0
@@ -440,7 +440,7 @@ end
 function ENT:PlayCaptureAlert(cp)
 	if WS.State() ~= WS.STATE.RND_RUNNING then return end
 	local final = self.capture:FinalPointInMap(cp)
-	WS.BroadcastSoundscape(WS.TEAM_UNASSIGNED, final and "Announcer.Cart.FinalWarning" or "Announcer.Cart.Warning")
+	WS.BroadcastSoundscape(TF_TEAM_UNASSIGNED, final and "Announcer.Cart.FinalWarning" or "Announcer.Cart.Warning")
 end
 
 function ENT:FinalLinkedPoint()

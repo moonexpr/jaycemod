@@ -38,6 +38,7 @@ include( "gamerules/game_elimination.lua" )
 
 -- TF2's team numbers, which map keyvalues use
 TEAM_RED, TEAM_BLUE = 2, 3
+TF_TEAM_UNASSIGNED, TF_TEAM_SPECTATOR = 0, 1
 
 ROUND_WAITING, ROUND_PREPARE, ROUND_ACTIVE, ROUND_OVER = 0, 1, 2, 3
 

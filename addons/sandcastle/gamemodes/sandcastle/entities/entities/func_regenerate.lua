@@ -17,7 +17,7 @@ end
 function ENT:Think()
 	self:NextThink(CurTime() + 0.1)
 	if not self.enabled then return true end
-	local now, state, winner = CurTime(), WS.State(), GetGlobal2Int("ws_round_winner", WS.TEAM_UNASSIGNED)
+	local now, state, winner = CurTime(), WS.State(), GetGlobal2Int("ws_round_winner", TF_TEAM_UNASSIGNED)
 	for _, ply in ipairs(WS.PlayersInside(self)) do
 		if now >= (ply.wsNextRegen or 0) and WS.TeamRules.RegenerateAllowed(self.team, ply:Team(), state, winner) then
 			self:Regenerate(ply)

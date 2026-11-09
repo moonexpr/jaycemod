@@ -23,20 +23,20 @@ function ENT:Initialize()
 	self:SetSolid(SOLID_NONE)
 	self:SetNoDraw(true)
 	self.enabled = self:Key("startdisabled", "0") ~= "1"
-	self.team = tonumber(self:Key("teamnum", WS.TEAM_UNASSIGNED)) or WS.TEAM_UNASSIGNED
+	self.team = tonumber(self:Key("teamnum", TF_TEAM_UNASSIGNED)) or TF_TEAM_UNASSIGNED
 	if self.VolumeInit then self:VolumeInit() end
 end
 
 -- TeamNum 0 means any team.
 function ENT:AllowsTeam(team)
-	return self.team == WS.TEAM_UNASSIGNED or self.team == team
+	return self.team == TF_TEAM_UNASSIGNED or self.team == team
 end
 
 local BASE_INPUTS = {
 	enable = function(self) self.enabled = true end,
 	disable = function(self) self.enabled = false end,
 	toggle = function(self) self.enabled = not self.enabled end,
-	setteam = function(self, value) self.team = tonumber(value) or WS.TEAM_UNASSIGNED end,
+	setteam = function(self, value) self.team = tonumber(value) or TF_TEAM_UNASSIGNED end,
 }
 
 function ENT:AcceptInput(name, activator, caller, value)

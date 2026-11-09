@@ -9,6 +9,6 @@ ENT.Spawnable = false
 ENT.Variant = "games.gameplay.projectile.jar"
 ENT.ModelScale = 0.01
 ENT.Trails = {
-	[WS.TEAM_RED] = "spell_fireball_small_red",
-	[WS.TEAM_BLUE] = "spell_fireball_small_blue",
+	[TEAM_RED] = "spell_fireball_small_red",
+	[TEAM_BLUE] = "spell_fireball_small_blue",
 }

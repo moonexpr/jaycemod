@@ -17,7 +17,7 @@ end
 
 function ENT:Initialize()
 	self.enabled = self:Key("startdisabled", "0") ~= "1"
-	self.team = tonumber(self:Key("teamnum", WS.TEAM_UNASSIGNED)) or WS.TEAM_UNASSIGNED
+	self.team = tonumber(self:Key("teamnum", TF_TEAM_UNASSIGNED)) or TF_TEAM_UNASSIGNED
 	self.fov = tonumber(self:Key("fov", 0)) or 0
 	if self:Key("match_summary", "0") == "1" then self.enabled = false end
 end
@@ -48,7 +48,7 @@ end
 local INPUTS = {
 	enable = function(self) self.enabled = true end,
 	disable = function(self) self.enabled = false end,
-	setteam = function(self, value) self.team = tonumber(value) or WS.TEAM_UNASSIGNED end,
+	setteam = function(self, value) self.team = tonumber(value) or TF_TEAM_UNASSIGNED end,
 }
 
 function ENT:AcceptInput(name, activator, caller, value)

@@ -12,6 +12,6 @@ ENT.Model = "models/weapons/w_models/w_rocket.mdl"
 ENT.ModelScale = 0.01
 ENT.CollisionGroup = COLLISION_GROUP_DEBRIS
 ENT.Trails = {
-	[WS.TEAM_RED] = "spell_lightningball_parent_red",
-	[WS.TEAM_BLUE] = "spell_lightningball_parent_blue",
+	[TEAM_RED] = "spell_lightningball_parent_red",
+	[TEAM_BLUE] = "spell_lightningball_parent_blue",
 }

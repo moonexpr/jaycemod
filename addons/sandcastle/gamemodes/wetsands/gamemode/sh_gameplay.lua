@@ -1,11 +1,7 @@
--- The Gameplay Settings: the gamemode's Sandbox or Gameplay mode
--- (games.system.gamemode, run by features/gamemode). sv_gameplay_enabled
--- holds it, replicated for the menu and HUD; an admin setting it in the
--- server console, or pressing Begin Game or Stop Game (mp_gameplay_begin,
--- mp_gameplay_stop: clients cannot set a server setting), requests the
--- change. sv_gameplay_disable_sandbox keeps anything from entering Sandbox
--- mode. On a map with rounds the feature loads at map start and puts the map
--- in the mode the setting holds. The server keeps the map's Gameplay
+-- The Gameplay Settings: Wetsands is always in Gameplay mode
+-- (games.system.gamemode, run by features/gamemode), and nothing enters
+-- Sandbox mode. Begin Game (mp_gameplay_begin) starts a new game. On a map
+-- with rounds the feature loads at map start. The server keeps the map's Gameplay
 -- Settings entity (ws_gameplay_settings: the round timer, respawn
 -- times, win conditions and team scores). On clients: the Utilities menu's
 -- Admin > Gameplay Settings, the modes and those settings, and a note on the
@@ -14,10 +10,6 @@ local Gamemode = system.gamemode
 local Permissions = system.permissions
 
 local SETTINGS = "ws_gameplay_settings"
-
-local ENABLED = CreateConVar("sv_gameplay_enabled", "0", { FCVAR_REPLICATED, FCVAR_NOTIFY },
-	"1: Gameplay mode, the rounds run; 0: Sandbox mode, no rounds and spawn doors open. "
-		.. "Setting it requests the change: 1 counts down to Gameplay mode.", 0, 1)
 
 -- The gamemode feature's game events (features/gamemode/sv.lua fires
 -- them): a title and lines for every player's chat (a new game's
@@ -38,9 +30,6 @@ E.Define("game_gameplay_transition_cancelled", {
 E.Define("game_gameplay_called_off", {})
 
 if SERVER then
-	CreateConVar("sv_gameplay_disable_sandbox", "0", FCVAR_NOTIFY,
-		"1: nothing enters Sandbox mode (Stop Game, sv_gameplay_enabled 0)", 0, 1)
-
 	local function Command(name, want, help)
 		concommand.Add(name, function(ply)
 			if not WS.Can(ply, Permissions.MATCH) then
@@ -53,20 +42,16 @@ if SERVER then
 
 	Command("mp_gameplay_begin", Gamemode.GAMEPLAY,
 		"Begin Gameplay mode: a countdown, then the rounds restart and everyone chooses a team")
-	Command("mp_gameplay_stop", Gamemode.SANDBOX, "Enter Sandbox mode: no rounds or timer, spawn doors open")
-
-	-- Who changed a server setting from a console: the listen server's host,
-	-- or nil for the server console (rcon, a dedicated server).
-	local function ConsoleRequester()
-		for _, ply in ipairs(player.GetHumans()) do
-			if ply:IsListenServerHost() then return ply end
-		end
-	end
 
 	-- Kept in WS across a Lua refresh: whether the map has loaded. The
 	-- rounds controller applies the mode (StartAtLoad) once its rules exist.
 	hook.Add("InitPostEntity", "ws_gamemode", function()
 		WS.gamemodeLoaded = true
+		-- A map with no tf_gamerules starts no game of its own. The next tick,
+		-- as the gamerules are made in this same hook.
+		timer.Simple(0, function()
+			if not WS.Active() then WS.Feature("gamemode"):Request(Gamemode.GAMEPLAY, Gamemode.SOURCE_CONSOLE) end
+		end)
 	end)
 
 	-- One settings entity a map, made again when a cleanup removes it.
@@ -76,21 +61,12 @@ if SERVER then
 	end
 	hook.Add("InitPostEntity", "ws_gameplay_settings", KeepSettings)
 	hook.Add("PostCleanupMap", "ws_gameplay_settings", KeepSettings)
-
-	-- Before the map has loaded (server.cfg) a change only sets the mode the map starts in.
-	cvars.AddChangeCallback(ENABLED:GetName(), function(_, _, value)
-		if not WS.gamemodeLoaded then return end
-		WS.Feature("gamemode"):SettingChanged(tobool(value), ConsoleRequester())
-	end, "ws_gamemode")
 	return
 end
 
-local HELP = "Sandcastle plays in Sandbox mode or Gameplay mode (sv_gameplay_enabled). "
-	.. "Sandbox mode has no rounds and pauses the timer: the map plays like Sandbox, "
-	.. "with spawn doors and forcefields open to everyone. Begin Game announces a new game, "
+local HELP = "Begin Game announces a new game, "
 	.. "counts down from " .. Gamemode.COUNTDOWN .. ", clears the scores, restarts the rounds and sends everyone "
-	.. "back to the team menu, without a team, until they choose one. Stop Game returns to Sandbox mode, "
-	.. "unless sv_gameplay_disable_sandbox is 1."
+	.. "back to the team menu, without a team, until they choose one."
 
 local PROPERTIES_TALL = 420
 
@@ -99,18 +75,10 @@ local function BuildPanel(panel)
 	panel:Help(HELP)
 	local status = panel:Help("")
 	function status:Think()
-		local text
-		if not WS.Active() then
-			text = "This map has no rounds: Sandbox mode."
-		elseif ENABLED:GetBool() then
-			text = "Status: Gameplay mode"
-		else
-			text = "Status: Sandbox mode"
-		end
+		local text = WS.Active() and "Status: Gameplay mode" or "This map has no rounds."
 		if self:GetText() ~= text then self:SetText(text) end
 	end
 	panel:Button("Begin Game", "mp_gameplay_begin")
-	panel:Button("Stop Game", "mp_gameplay_stop")
 	-- the settings entity's fields, admins' to edit; it arrives with the map,
 	-- and again after a cleanup
 	local settings = vgui.Create("DEntityProperties", panel)
