@@ -188,7 +188,7 @@ end
 local function ReloadFeature(feature)
 	if not WS.FeatureLoaded(feature) then return { skipped = "the " .. feature .. " feature is not loaded on this map" } end
 	local controller = WS.Feature(feature)
-	local path = ROOT .. "features/" .. feature .. "/sv.lua"
+	local path = WS.LoaderFile("features/" .. feature .. "/sv.lua")
 	local source, count = string.gsub(file.Read(path, "LUA"), ADOPT_FROM, ADOPT_TO, 1)
 	if count ~= 1 then dev.Fail(path .. " has no `local Controller = {` for the reload to adopt") end
 	local env = setmetatable({

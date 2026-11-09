@@ -6,11 +6,14 @@ local T = dofile("tests/harness.lua")
 
 local function Load()
 	local grabbed = {}
-	local GM = { BaseClass = {} }
-	function GM.BaseClass:GrabEarAnimation(ply, plyTable)
+	local GM, BaseClass = {}, {}
+	function BaseClass:GrabEarAnimation(ply, plyTable)
 		grabbed[#grabbed + 1] = { ply = ply, plyTable = plyTable }
 	end
-	local env = setmetatable({ GM = GM, WS = { require = T.require } }, { __index = _G })
+	local env = setmetatable({
+		GM = GM, WS = { require = T.require },
+		BaseClass = BaseClass, DEFINE_BASECLASS = function() end,
+	}, { __index = _G })
 	setfenv(assert(loadfile("addons/sandcastle/gamemodes/sandcastle/gamemode/sh_radio_gesture.lua")), env)()
 	return GM, grabbed
 end

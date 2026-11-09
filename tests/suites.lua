@@ -29,7 +29,7 @@ return {
 		},
 		sources = {
 			G .. "includes/gameplay/", G .. "includes/npc/", G .. "includes/system/",
-			G .. "includes/extensions/", E .. "entities/tf_projectile_",
+			G .. "includes/extensions/", E .. "entities/tf_projectile_", E .. "entities/ent_projectile_",
 		},
 	},
 	{
@@ -89,11 +89,11 @@ return {
 			"ws_*", "proxy", "proxy_registry", "radio_gesture", "match_control", "match_tab", "players_menu", "ui",
 			"admin_properties", "permissions_adapter", "editor_*", "gameplay_settings", "tf_hud", "tf_materials",
 			"vote_hud", "votes_controller", "sound_paths", "voices_controller", "nav_generate",
-			"nav_progress_replay",
+			"nav_progress_replay", "demo_autorecord",
 		},
 		sources = {
-			G .. "cl_", G .. "sh_", G .. "sv_", G .. "logging.lua",
-			G .. "includes/admin_notices.lua", G .. "includes/factions.lua",
+			G .. "cl_", G .. "sh_", G .. "sv_", G .. "logging.lua", G .. "gamerules/", G .. "includes/game_manager.lua",
+			G .. "includes/admin_notices.lua", G .. "includes/demo_autorecord.lua", G .. "includes/factions.lua", G .. "includes/friendly_id.lua",
 			G .. "includes/kill_icons_sheet.lua", G .. "includes/localization.lua",
 			G .. "includes/nav_clearance.lua", G .. "includes/nav_progress.lua",
 			G .. "includes/ragdoll.lua", G .. "includes/replicated.lua",

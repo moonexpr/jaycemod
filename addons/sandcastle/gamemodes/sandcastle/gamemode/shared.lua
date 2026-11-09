@@ -1,95 +1,368 @@
--- Sandcastle: Sandbox, plus working TF2 gameplay entities. Every map has
--- gamerules: on a map with a tf_gamerules (any TF2 map) the round runs as in
--- TF2; on any other map Sandcastle's (ws_gamerules) leave it plain Sandbox
--- until a game begins. Every override below defers to Sandbox first.
-GM.Name = "Sandcastle"
-GM.Author = "moonexpr"
-GM.Email = ""
-GM.Website = ""
+--[[---------------------------------------------------------
 
--- The gamemode's logging first, so the load itself can log (the boot
--- subsystem); then the gamemode's require, and foundation's namespaces.
-include("logging.lua")
-local Boot = WS.Logger("boot")
-Boot("shared.lua: %s, the gamemode's load begins", SERVER and "server" or "client")
+  Sandbox Gamemode
 
-DeriveGamemode("sandbox")
+  This is GMod's default gamemode
 
-include("shared_loader.lua")
+-----------------------------------------------------------]]
 
--- The root's sh_ modules, on both realms, a line each, written by hand
--- (tests/ws_root_modules_test.lua holds the list to the files): sh_core
--- defines the WS table and loads first, including sh_events (the game
--- event library) itself; the rest in name order. A new sh_ module is a line
--- here and its AddCSLuaFile line in init.lua.
-local function Include(path)
-	Boot("include %s", path)
-	return include(path)
+include( "player_extension.lua" )
+include( "persistence.lua" )
+include( "save_load.lua" )
+include( "player_class/player_sandbox.lua" )
+include( "drive/drive_sandbox.lua" )
+include( "editor_player.lua" )
+
+--
+-- Make BaseClass available
+--
+DEFINE_BASECLASS( "gamemode_base" )
+
+GM.Name 	= "Sandcastle"
+GM.Author 	= "TEAM GARRY"
+GM.Email 	= "teamgarry@garrysmod.com"
+GM.Website 	= "www.garrysmod.com"
+
+--[[
+ Note: This is so that in addons you can do stuff like
+
+ if ( !GAMEMODE.IsSandboxDerived ) then return end
+
+--]]
+
+GM.IsSandboxDerived = true
+
+include( "includes/modules/game_manager.lua" )
+include( "gamerules/game_default.lua" )
+include( "gamerules/game_elimination.lua" )
+
+-- TF2's team numbers, which map keyvalues use
+TEAM_RED, TEAM_BLUE = 2, 3
+
+ROUND_WAITING, ROUND_PREPARE, ROUND_ACTIVE, ROUND_OVER = 0, 1, 2, 3
+
+local gameplay = CreateConVar( "sandcastle_gameplay", "0", { FCVAR_ARCHIVE, FCVAR_NOTIFY, FCVAR_REPLICATED }, "1: gameplay mode, with teams and rounds; 0: Sandbox mode" )
+
+function GM:IsGameplay()
+	return gameplay:GetBool()
 end
 
-Include("sh_core.lua")
-Include("sh_admin_properties.lua")
-Include("sh_nextsoldier_host.lua")
-Include("sh_aiwar.lua")
-Include("sh_announcer.lua")
-Include("sh_bullets.lua")
-Include("sh_cami.lua")
-Include("sh_condition_menu.lua")
-Include("sh_console.lua")
-Include("sh_crit_effects.lua")
-Include("sh_editors.lua")
-Include("sh_editors_cart.lua")
-Include("sh_editors_point.lua")
-Include("sh_factions.lua")
-Include("sh_footsteps.lua")
-Include("sh_gameplay.lua")
-Include("sh_hits.lua")
-Include("sh_kill_credit.lua")
-Include("sh_loadout.lua")
-Include("sh_movement.lua")
-Include("sh_nav_progress.lua")
-Include("sh_nodegraph.lua")
-Include("sh_npc_ragdolls.lua")
-Include("sh_pathfollower.lua")
-Include("sh_permissions.lua")
-Include("sh_player_models.lua")
-Include("sh_players_menu.lua")
-Include("sh_radio_gesture.lua")
-Include("sh_respawn_modifiers.lua")
-Include("sh_settings.lua")
-Include("sh_soundscripts.lua")
-Include("sh_spawn_manager.lua")
-Include("sh_teamtint.lua")
-Include("sh_toggles.lua")
-Include("sh_traces.lua")
-Include("sh_vendor.lua")
-Include("sh_votes.lua")
-Include("sh_war_soldier.lua")
-Include("sh_weapon_balance.lua")
-
--- The player classes, the weapon helper they share first.
-if SERVER then
-	AddCSLuaFile("player_class/simple_weapon_loadout.lua")
-	AddCSLuaFile("player_class/player_combatant.lua")
-	AddCSLuaFile("player_class/player_combatant_cstrike.lua")
-	AddCSLuaFile("player_class/player_sandcastle.lua")
-	AddCSLuaFile("player_class/player_spectator.lua")
+function GM:GetRoundState()
+	return GetGlobal2Int( "SandcastleRoundState", ROUND_WAITING )
 end
-Include("player_class/simple_weapon_loadout.lua")
-Include("player_class/player_combatant.lua")
-Include("player_class/player_combatant_cstrike.lua")
-Include("player_class/player_sandcastle.lua")
-Include("player_class/player_spectator.lua")
 
--- TF2's team numbers (1 spectator, 2 RED, 3 BLU); GMod reserves only 0, 1001 and 1002.
+function GM:GetRoundEnd()
+	return GetGlobal2Float( "SandcastleRoundEnd", 0 )
+end
+
 function GM:CreateTeams()
-	self.BaseClass.CreateTeams(self)
-	team.SetUp(WS.TEAM_SPECTATOR, "Spectator", Color(200, 200, 200), true)
-	team.SetUp(WS.TEAM_RED, "RED", WS.TeamColor[WS.TEAM_RED], false)
-	team.SetUp(WS.TEAM_BLUE, "BLU", WS.TeamColor[WS.TEAM_BLUE], false)
+
+	team.SetUp( TEAM_RED, "RED", Color( 184, 56, 59 ) )
+	team.SetUp( TEAM_BLUE, "BLU", Color( 88, 133, 162 ) )
+	team.SetSpawnPoint( TEAM_RED, { "info_player_terrorist", "info_player_rebel", "info_player_teamspawn" } )
+	team.SetSpawnPoint( TEAM_BLUE, { "info_player_counterterrorist", "info_player_combine", "info_player_teamspawn" } )
+
 end
 
--- Neither Sandbox nor base defines StartCommand, so there is nothing to defer to.
-function GM:StartCommand(ply, cmd)
-	if WS.Active() then WS.RestrictCommand(ply, cmd) end
+function GM:Think()
+
+	BaseClass.Think( self )
+
+	-- base reads this for its team menu, team spawns and team scoreboard
+	self.TeamBased = self:IsGameplay()
+
+	if ( SERVER ) then self:RoundThink() end
+
+end
+
+cleanup.Register( "props" )
+cleanup.Register( "ragdolls" )
+cleanup.Register( "effects" )
+cleanup.Register( "npcs" )
+cleanup.Register( "constraints" )
+cleanup.Register( "ropeconstraints" )
+cleanup.Register( "sents" )
+cleanup.Register( "vehicles" )
+
+
+local physgun_limited = CreateConVar( "physgun_limited", "0", FCVAR_REPLICATED, "Prevent the Physics Gun from picking up certain map entities." )
+
+--[[---------------------------------------------------------
+   Name: gamemode:CanTool( ply, trace, mode, tool, button )
+   Return true if the player is allowed to use this tool
+-----------------------------------------------------------]]
+function GM:CanTool( ply, trace, mode, tool, button )
+
+	-- The jeep spazzes out when applying something
+	-- todo: Find out what it's reacting badly to and change it in _physprops
+	if ( mode == "physprop" && trace.Entity:IsValid() && ( trace.Entity:GetClass() == "prop_vehicle_jeep" || trace.Entity:GetClass() == "prop_vehicle_apc" ) ) then
+		return false
+	end
+
+	-- If we have a toolsallowed table, check to make sure the toolmode is in it
+	if ( trace.Entity.m_tblToolsAllowed ) then
+
+		local vFound = false
+		for k, v in pairs( trace.Entity.m_tblToolsAllowed ) do
+			if ( mode == v ) then vFound = true end
+		end
+
+		if ( !vFound ) then return false end
+
+	end
+
+	-- Give the entity a chance to decide
+	if ( trace.Entity.CanTool ) then
+		return trace.Entity:CanTool( ply, trace, mode, tool, button )
+	end
+
+	return true
+
+end
+
+
+--[[---------------------------------------------------------
+   Name: gamemode:GravGunPunt( )
+   Desc: We're about to punt an entity (primary fire).
+		 Return true if we're allowed to.
+-----------------------------------------------------------]]
+function GM:GravGunPunt( ply, ent )
+
+	if ( ent:IsValid() && ent.GravGunPunt ) then
+		return ent:GravGunPunt( ply )
+	end
+
+	return BaseClass.GravGunPunt( self, ply, ent )
+
+end
+
+--[[---------------------------------------------------------
+   Name: gamemode:GravGunPickupAllowed( )
+   Desc: Return true if we're allowed to pickup entity
+-----------------------------------------------------------]]
+function GM:GravGunPickupAllowed( ply, ent )
+
+	if ( ent:IsValid() && ent.GravGunPickupAllowed ) then
+		return ent:GravGunPickupAllowed( ply )
+	end
+
+	return BaseClass.GravGunPickupAllowed( self, ply, ent )
+
+end
+
+
+--[[---------------------------------------------------------
+   Name: gamemode:PhysgunPickup( )
+   Desc: Return true if player can pickup entity
+-----------------------------------------------------------]]
+function GM:PhysgunPickup( ply, ent )
+
+	-- Don't pick up persistent props
+	if ( ent:GetPersistent() && GetConVarString( "sbox_persist" ):Trim() != "" ) then return false end
+
+	if ( ent:IsValid() && ent.PhysgunPickup ) then
+		return ent:PhysgunPickup( ply )
+	end
+
+	-- Some entities specifically forbid physgun interaction
+	if ( ent.PhysgunDisabled ) then return false end
+
+	local EntClass = ent:GetClass()
+
+	-- Never pick up players
+	if ( EntClass == "player" ) then return false end
+
+	if ( physgun_limited:GetBool() ) then
+
+		if ( string.find( EntClass, "prop_dynamic" ) ) then return false end
+		if ( string.find( EntClass, "prop_door" ) ) then return false end
+
+		-- Don't move physboxes if the mapper logic says no
+		if ( EntClass == "func_physbox" && ent:HasSpawnFlags( SF_PHYSBOX_MOTIONDISABLED ) ) then return false  end
+
+		-- If the physics object is frozen by the mapper, don't allow us to move it.
+		if ( string.find( EntClass, "prop_" ) && ( ent:HasSpawnFlags( SF_PHYSPROP_MOTIONDISABLED ) || ent:HasSpawnFlags( SF_PHYSPROP_PREVENT_PICKUP ) ) ) then return false end
+
+		-- Allow physboxes, but get rid of all other func_'s (ladder etc)
+		if ( EntClass != "func_physbox" && string.find( EntClass, "func_" ) ) then return false end
+
+
+	end
+
+	if ( SERVER ) then
+
+		ply:SendHint( "PhysgunFreeze", 2 )
+		ply:SendHint( "PhysgunUse", 8 )
+
+	end
+
+	return true
+
+end
+
+
+--[[---------------------------------------------------------
+   Name: gamemode:EntityKeyValue( ent, key, value )
+   Desc: Called when an entity has a keyvalue set
+	      Returning a string it will override the value
+-----------------------------------------------------------]]
+function GM:EntityKeyValue( ent, key, value )
+
+	-- Physgun not allowed on this prop..
+	if ( key == "gmod_allowphysgun" && value == "0" ) then
+		ent.PhysgunDisabled = true
+	end
+
+	-- Prop has a list of tools that are allowed on it.
+	if ( key == "gmod_allowtools" ) then
+		ent.m_tblToolsAllowed = string.Explode( " ", value )
+	end
+
+end
+
+--[[---------------------------------------------------------
+   Name: gamemode:PlayerNoClip( player, bool )
+   Desc: Player pressed the noclip key, return true if
+		  the player is allowed to noclip, false to block
+-----------------------------------------------------------]]
+function GM:PlayerNoClip( pl, on )
+
+	-- Don't allow if player is in vehicle
+	if ( !IsValid( pl ) || pl:InVehicle() || !pl:Alive() ) then return false end
+
+	-- Always allow to turn off noclip, and in single player
+	if ( !on || game.SinglePlayer() ) then return true end
+
+	if ( self:IsGameplay() ) then return false end
+
+	return GetConVarNumber( "sbox_noclip" ) > 0
+
+end
+
+--[[---------------------------------------------------------
+   Name: gamemode:CanProperty( pl, property, ent )
+   Desc: Can the player do this property, to this entity?
+-----------------------------------------------------------]]
+function GM:CanProperty( pl, property, ent )
+
+	--
+	-- Always a chance some bastard got through
+	--
+	if ( !IsValid( ent ) ) then return false end
+
+
+	--
+	-- If we have a toolsallowed table, check to make sure the toolmode is in it
+	-- This is used by things like map entities
+	--
+	if ( ent.m_tblToolsAllowed ) then
+
+		local vFound = false
+		for k, v in pairs( ent.m_tblToolsAllowed ) do
+			if ( property == v ) then vFound = true end
+		end
+
+		if ( !vFound ) then return false end
+
+	end
+
+	--
+	-- Who can who bone manipulate?
+	--
+	if ( property == "bonemanipulate" ) then
+
+		if ( game.SinglePlayer() ) then return true end
+
+		if ( ent:IsNPC() ) then return GetConVarNumber( "sbox_bonemanip_npc" ) != 0 end
+		if ( ent:IsPlayer() ) then return GetConVarNumber( "sbox_bonemanip_player" ) != 0 end
+
+		return GetConVarNumber( "sbox_bonemanip_misc" ) != 0
+
+	end
+
+	--
+	-- Weapons can only be property'd if nobody is holding them
+	--
+	if ( ent:IsWeapon() and IsValid( ent:GetOwner() ) ) then
+		return false
+	end
+
+	-- Give the entity a chance to decide
+	if ( ent.CanProperty ) then
+		return ent:CanProperty( pl, property )
+	end
+
+	return true
+
+end
+
+--[[---------------------------------------------------------
+   Name: gamemode:CanDrive( pl, ent )
+   Desc: Return true to let the entity drive.
+-----------------------------------------------------------]]
+function GM:CanDrive( pl, ent )
+
+	local classname = ent:GetClass()
+
+	--
+	-- Only let physics based NPCs be driven for now
+	--
+	if ( ent:IsNPC() ) then
+
+		if ( classname == "npc_cscanner" ) then return true end
+		if ( classname == "npc_clawscanner" ) then return true end
+		if ( classname == "npc_manhack" ) then return true end
+		if ( classname == "npc_turret_floor" ) then return true end
+		if ( classname == "npc_rollermine" ) then return true end
+
+		return false
+
+	end
+
+	if ( classname == "prop_dynamic" ) then return false end
+	if ( classname == "prop_door" ) then return false end
+
+	--
+	-- I'm guessing we'll find more things we don't want the player to fly around during development
+	--
+
+	return true
+
+end
+
+
+--[[---------------------------------------------------------
+	To update the player's animation during a drive
+-----------------------------------------------------------]]
+function GM:PlayerDriveAnimate( ply )
+
+	local driving = ply:GetDrivingEntity()
+	if ( !IsValid( driving ) ) then return end
+
+	ply:SetPlaybackRate( 1 )
+	ply:ResetSequence( ply:SelectWeightedSequence( ACT_HL2MP_IDLE_MAGIC ) )
+
+	--
+	-- Work out the direction from the player to the entity, and set parameters
+	--
+	local DirToEnt = driving:GetPos() - ( ply:GetPos() + Vector( 0, 0, 50 ) )
+	local AimAng = DirToEnt:Angle()
+
+	if ( AimAng.p > 180 ) then
+		AimAng.p = AimAng.p - 360
+	end
+
+	ply:SetPoseParameter( "aim_yaw",		0 )
+	ply:SetPoseParameter( "aim_pitch",		AimAng.p )
+	ply:SetPoseParameter( "move_x",			0 )
+	ply:SetPoseParameter( "move_y",			0 )
+	ply:SetPoseParameter( "move_yaw",		0 )
+	ply:SetPoseParameter( "move_scale",		0 )
+
+	AimAng.p = 0
+	AimAng.r = 0
+
+	ply:SetRenderAngles( AimAng )
+	ply:SetEyeTarget( driving:GetPos() )
+
 end

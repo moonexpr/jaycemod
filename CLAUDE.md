@@ -1,8 +1,12 @@
 # CLAUDE.md
 
-Sandcastle: a Garry's Mod gamemode hosting TF2 (and later CS:S) modes, with
-NextSoldier, the AI-war's NextBot soldiers. The gamemode lives at
-`addons/sandcastle/gamemodes/sandcastle/gamemode/` (below: `gamemode/`).
+Two Garry's Mod gamemodes. Sandcastle (`addons/sandcastle/gamemodes/sandcastle/`)
+is a remaster of Sandbox: GMod's own Sandbox code, forked and changed in place,
+with a gameplay mode (`sandcastle_gameplay`: teams, rounds, a match) on GMod's
+own systems. Wetsands (`addons/sandcastle/gamemodes/wetsands/`, `base`
+`sandcastle`) is the game built on it: TF2 (and later CS:S) modes, with
+NextSoldier, the AI-war's NextBot soldiers. Below, `gamemode/` is
+`addons/sandcastle/gamemodes/wetsands/gamemode/`.
 
 ## Layout
 
@@ -16,6 +20,9 @@ NextSoldier, the AI-war's NextBot soldiers. The gamemode lives at
 | `addons/nextsoldier/` | NextSoldier, the soldier itself, its own addon: its collections in `lua/nextsoldier/` (`world`, `body`, `locomotion`, `senses`, `behavior`, `squad`), on foundation and sharing nothing with the gamemode but what its `host` port hands it (index below); its base entity `base_nextsoldier` in `lua/entities/` (the gamemode's `base_nextsoldier_npc` and `_combat` extend it in the gamemode's `entities/`); the response rules it speaks by, their GMod modules, autorun and `scripts/responserules/` (`docs/ns-response-rules.md`) |
 | `addons/wartactics/` | The tactics engine, its own addon: the strategy soldiers are organised by (fire teams, squads, lanes, posts, scenarios, the tactical, squad and scenario monitors), apart from NextSoldier but for one bridge module, its modules in `lua/wartactics/`, published as `wartactics.<module>` (index below) |
 | `gamemode/foundation/` | Nothing but its namespaces and three plain globals at its root (`transaction`, `configstore`, `nodegraph`): foundation is copied to the globals, so it stays small and generic. A feature's or mode's model is the feature's `model.lua` and its parts (`docs/foundation-game-split-plan.md`) |
+| `gamemodes/sandcastle/gamemode/` | Sandbox's own files, changed where the gameplay mode needs it, plus `rounds.lua` (rounds, match) and `includes/modules/game_manager.lua`. Nothing of Wetsands': no `WS`, no foundation, no feature loader |
+| `gamemode/includes/modules/<name>.lua` (either gamemode) | The convention for models: each a global library declared with a named `module("<name>")`, never `module(...)`, loaded by `include` from `shared.lua` (GMod's `require` searches only `lua/includes/modules/`, which a gamemode's folder is not). Wetsands' existing models have yet to move here |
+| `gamerules/game_*.lua` (either gamemode) | The games a map can play (payload and the like), classes registered with `game_manager` as `player_class/` files are with `player_manager`, each included by hand in `shared.lua`; a class of the same name registered by a derived gamemode replaces it |
 | `gamemode/features/<feature>/` | Controllers: `sv.lua`/`cl.lua`/`sh.lua` composition roots and their `<realm>_<part>.lua` parts |
 | `gamemode/entities/weapons/` | Standard SWEPs: CS:S stats are grouped on terminal weapons; `base_cstrike`, `base_cstrike_melee` and `base_cstrike_grenade` own shared behavior |
 | `gamemode/*.lua` | Always-loaded glue and its `sh_`, `cl_`, `sv_` realm modules, each loaded by a line written by hand, never a loop or a folder scan: `shared.lua` includes the `sh_` ones, `cl_init.lua` the `cl_` ones, `init.lua` the `sv_` ones and sends clients the rest (`tests/ws_root_modules_test.lua`) |
@@ -268,7 +275,7 @@ never features or ws; a published foundation module never requires games;
 | Namespace | Modules |
 |---|---|
 | `system` | The gamemode core: `events` (the game event registry, `WS.Events`), `features` (per-map feature loading), `gamemode`, `permissions`, `play_mode`, `match` (what the game is running, `WS.Match`: `Subscribe(name, running)`, `Running()` → a transaction asking each subscriber in its own, a broken one reported and not running, `IsRunning(name)`), `spawn_manager`, `idle` |
-| `gameplay` | `rounds` (+ `state`, `timer`, `limits`), `teams`, `players` (+ `attributes`, `condition_effects`), `spawn`, `spectate`, `respawn_modifiers`, `arrivals`, `loadout`, `economy`, `kill_credit`, `kill_icons`, `vote`, `reports`, `player_analytics`, `capture` (+ `area`, `master`, `point_timer`), `combat` (+ 9 parts), `projectile` (+ 4 parts), `tactics`, `movement` (TF2's player movement, the standard), `standing` (which team is nearer to completing its objective), `handicap`, `capabilities` |
+| `gameplay` | `rounds` (+ `state`, `timer`, `limits`), `teams`, `players` (+ `attributes`, `condition_effects`), `spawn`, `spectate`, `respawn_modifiers`, `arrivals`, `loadout`, `economy`, `kill_credit`, `kill_icons`, `vote`, `reports`, `player_analytics`, `capture` (+ `area`, `master`, `point_timer`), `combat` (+ 9 parts), `projectile` (+ 4 parts), `tactics`, `movement` (TF2's player movement, the standard), `standing` (which team is nearer to completing its objective), `handicap`, `capabilities`, `buildings` (what a support unit builds, the rules of `base_obj`'s `obj_sentrygun`, `obj_teleporter` and `obj_door`: health, construction, a sentry's target and turn, a teleporter's charge, who a door lets through) |
 | `npc` | `nextbot` (the NextBot NPC system), `actor`, `combatant`, `targeting` |
 
 | Module | API |
