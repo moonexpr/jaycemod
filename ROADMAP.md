@@ -8,9 +8,10 @@ names under `docs/`.
 1. **net2** (`docs/net2.md`, superseding game events v2). The last system
    before the playtest: local dispatch, self-describing encoding, replicated
    tables, calls, admission and rate limits, in the Sandcastle base gamemode.
-   - [x] The library and its tests; the round's end announced through it.
+   - [x] net2 the transport and game_events on it, with their tests; the round's end announced through them.
    - [ ] Check it in game: the unreliable cap, the per-tick budget, prediction, the world and `NULL` entities.
-   - [ ] Move Wetsands' `WS.Events` onto net2 and retire v1's `includes/system/events.lua`.
+   - [ ] Move Wetsands' `WS.Events` onto game_events and retire v1's `includes/system/events.lua`.
+   - [ ] Cancelling a transfer, a declared schema per name for hot messages.
    - [ ] Move presentation (the announcer, the HUD's reactions) to client listeners.
 2. **Multi-file controllers, checked in game**
    (`docs/multi-file-controllers-plan.md`).

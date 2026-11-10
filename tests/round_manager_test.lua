@@ -14,7 +14,7 @@ GetGlobal2Float = function(name, default)
 	if globals[name] == nil then return default end
 	return globals[name]
 end
-net2 = { Fire = function(name, fields) fired[#fired + 1] = { name = name, fields = fields } end }
+game_events = { Fire = function(name, fields) fired[#fired + 1] = { name = name, fields = fields } end }
 player = { GetAll = function() return {} end }
 game = { CleanUpMap = function() end, LoadNextMap = function() end }
 function coroutine.wait(seconds)

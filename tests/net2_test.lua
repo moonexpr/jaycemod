@@ -1,4 +1,4 @@
--- net2: the base gamemode's events over GMod's net library, held on a fake
+-- net2: messages between the realms over GMod's net library, held on a fake
 -- world of one server realm and client realms joined by a fake transport.
 local T = dofile("tests/harness.lua")
 
@@ -49,7 +49,6 @@ local function World(options)
 		reports = {},
 		sent = { count = 0, bytes = 0 },
 		predicting = nil,
-		firstTime = true,
 	}
 
 	local function Common(server)
@@ -90,6 +89,7 @@ local function World(options)
 		return seen
 	end
 	serverHost.PredictionPlayer = function() return w.predicting end
+	if options.budget then serverHost.Budget = function() return options.budget end end
 	serverHost.Kick = function(ply, reason) w.kicked[#w.kicked + 1] = { ply = ply, reason = reason } end
 	w.server = Net2.New(serverHost)
 
@@ -103,7 +103,6 @@ local function World(options)
 			w.sent.count = w.sent.count + 1
 			w.sent.bytes = w.sent.bytes + #data
 		end
-		host.FirstTimePredicted = function() return w.firstTime end
 		local client = Net2.New(host)
 		if version then client:SetVersion(version) end
 		self.clients[ply] = client
@@ -124,9 +123,9 @@ local function World(options)
 		self.wire = {}
 		for _, m in ipairs(wire) do
 			if m.from then
-				self.server:Receive(m.data, m.from)
+				self.server:Incoming(m.data, m.from)
 			elseif self.clients[m.to] then
-				self.clients[m.to]:Receive(m.data)
+				self.clients[m.to]:Incoming(m.data)
 			end
 		end
 	end
@@ -157,7 +156,7 @@ end
 -- What a realm hears of an event: a list of { fields, ply }.
 local function Hear(realm, name)
 	local heard = {}
-	realm:Listen(name, "test", function(fields, ply) heard[#heard + 1] = { fields = fields, ply = ply } end)
+	realm:Receive(name, function(fields, ply) heard[#heard + 1] = { fields = fields, ply = ply } end)
 	return heard
 end
 
@@ -174,7 +173,7 @@ T.test("every kind of value arrives as it was fired", function()
 	local ply, client = w:Ready(1, 2)
 	local heard = Hear(client, "values")
 	local nan = 0 / 0
-	w.server:Fire("values", {
+	w.server:Send("values", {
 		no = false,
 		yes = true,
 		zero = 0,
@@ -239,49 +238,64 @@ end)
 T.test("a value the wire cannot carry is refused at Fire, before any listener runs", function()
 	local w = World()
 	local ran = 0
-	w.server:Listen("bad", "test", function() ran = ran + 1 end)
-	Raises(function() w.server:Fire("bad", { f = print }) end, "bad_fields")
+	w.server:Receive("bad", function() ran = ran + 1 end)
+	Raises(function() w.server:Send("bad", { f = print }) end, "bad_fields")
 	local cycle = {}
 	cycle.self = cycle
-	Raises(function() w.server:Fire("bad", { c = cycle }) end, "bad_fields")
-	Raises(function() w.server:Fire("bad", { m = { 1, x = 2 } }) end, "bad_fields")
-	Raises(function() w.server:Fire("bad", { s = { [1] = 1, [3] = 3 } }) end, "bad_fields")
-	Raises(function() w.server:Fire("bad", { k = { [{}] = 1 } }) end, "bad_fields")
-	Raises(function() w.server:Fire("bad", "fields") end, "bad_fields")
+	Raises(function() w.server:Send("bad", { c = cycle }) end, "bad_fields")
+	Raises(function() w.server:Send("bad", { m = { 1, x = 2 } }) end, "bad_fields")
+	Raises(function() w.server:Send("bad", { s = { [1] = 1, [3] = 3 } }) end, "bad_fields")
+	Raises(function() w.server:Send("bad", { k = { [{}] = 1 } }) end, "bad_fields")
+	Raises(function() w.server:Send("bad", "fields") end, "bad_fields")
 	T.eq(ran, 0, "no listener ran, though no client is there")
 end)
 
 T.test("names are strings, and net2_ is the library's own", function()
 	local w = World()
-	Raises(function() w.server:Fire(7, {}) end, "bad_name")
-	Raises(function() w.server:Fire("", {}) end, "bad_name")
-	Raises(function() w.server:Fire("net2_hello", {}) end, "bad_name")
-	Raises(function() w.server:Fire("x", {}, { colour = 1 }) end, "bad_options")
+	Raises(function() w.server:Send(7, {}) end, "bad_name")
+	Raises(function() w.server:Send("", {}) end, "bad_name")
+	Raises(function() w.server:Send("net2_hello", {}) end, "bad_name")
+	Raises(function() w.server:Send("x", {}, { colour = 1 }) end, "bad_options")
 end)
 
--- Local dispatch
+-- Receivers
 
-T.test("Fire runs the realm's listeners at once, in the order added", function()
+T.test("a name has one receiver, and one that raises is reported", function()
 	local w = World()
-	local order = {}
-	w.server:Listen("e", "a", function() order[#order + 1] = "a" end)
-	w.server:Listen("e", "b", function() order[#order + 1] = "b" end)
-	w.server:Listen("e", "a", function() order[#order + 1] = "a2" end)
-	w.server:Fire("e", {})
-	T.eq(table.concat(order, ","), "a2,b", "a replaced listener keeps its place")
-	w.server:Ignore("e", "a")
-	w.server:Fire("e", {})
-	T.eq(table.concat(order, ","), "a2,b,b", "an ignored one no longer runs")
+	local _, client = w:Ready(1, 2)
+	local got
+	client:Receive("e", function() got = "first" end)
+	client:Receive("e", function() error("boom") end)
+	w.server:Send("e", {})
+	w:Step()
+	T.eq(got, nil, "the first was replaced")
+	T.eq(#w.reports, 1, "the raise reported")
+	client:Receive("e", nil)
+	w.server:Send("e", {})
+	w:Step()
+	T.eq(#w.reports, 1, "none: nothing runs")
 end)
 
-T.test("a listener that raises is reported, and the others still run", function()
+T.test("a name is made up where it is used: nothing registers it", function()
 	local w = World()
-	local ran = false
-	w.server:Listen("e", "a", function() error("boom") end)
-	w.server:Listen("e", "b", function() ran = true end)
-	w.server:Fire("e", {})
-	T.eq(ran, true, "the next listener ran")
-	T.eq(#w.reports, 1, "reported")
+	local _, client = w:Ready(1, 2)
+	local name = "made/up at run time #" .. 12345
+	T.eq(w.server:Send(name, { n = 1 }), true, "sent, though no receiver is there yet")
+	w:Step()
+	local heard = Hear(client, name)
+	w.server:Send(name, { n = 2 })
+	w:Step()
+	T.eq(heard[1].fields.n, 2, "heard once a receiver is there")
+end)
+
+T.test("Send says whether it went anywhere, and why not", function()
+	local w = World()
+	local sent, why = w.server:Send("e", {})
+	T.eq(sent, false, "nobody is there")
+	T.eq(why, "nobody", "why")
+	local _, early = w:Join(9, 2)
+	sent, why = early:Send("e", {})
+	T.eq(why, "not_ready", "a client before its hello is answered")
 end)
 
 -- Batching and the shape cache
@@ -290,12 +304,12 @@ T.test("a tick's events go out together, in the order fired", function()
 	local w = World()
 	local _, client = w:Ready(1, 2)
 	local heard = {}
-	client:Listen("a", "t", function(f) heard[#heard + 1] = "a" .. f.n end)
-	client:Listen("b", "t", function(f) heard[#heard + 1] = "b" .. f.n end)
+	client:Receive("a", function(f) heard[#heard + 1] = "a" .. f.n end)
+	client:Receive("b", function(f) heard[#heard + 1] = "b" .. f.n end)
 	local before = w.sent.count
-	w.server:Fire("a", { n = 1 })
-	w.server:Fire("b", { n = 2 })
-	w.server:Fire("a", { n = 3 })
+	w.server:Send("a", { n = 1 })
+	w.server:Send("b", { n = 2 })
+	w.server:Send("a", { n = 3 })
 	T.eq(#heard, 0, "the other realm hears nothing before the tick")
 	w:Step()
 	T.eq(w.sent.count - before, 1, "one message")
@@ -308,11 +322,11 @@ T.test("a record's keys go over once a connection, then by number", function()
 	local heard = Hear(client, "spot")
 	local fields = { alpha_long_key = 1, beta_long_key = 2, gamma_long_key = 3 }
 	local before = w.sent.bytes
-	w.server:Fire("spot", fields)
+	w.server:Send("spot", fields)
 	w:Step()
 	local first = w.sent.bytes - before
 	before = w.sent.bytes
-	w.server:Fire("spot", fields)
+	w.server:Send("spot", fields)
 	w:Step()
 	local second = w.sent.bytes - before
 	T.eq(second < first - 30, true, "the second is smaller: " .. first .. " then " .. second)
@@ -322,24 +336,29 @@ end)
 
 -- The ready gate and the handshake
 
-T.test("a client hears nothing until it is ready, and both realms hear it become ready", function()
+T.test("a client is sent nothing until it is ready, and both realms are told when it is", function()
 	local w = World()
-	local readyOnServer = Hear(w.server, "net2_ready")
+	local readyOnServer, readyOnClient = {}, 0
+	w.server:OnReady("t", function(ply) readyOnServer[#readyOnServer + 1] = ply end)
 	local ply, client = w:Join(1, 2)
 	local heard = Hear(client, "e")
-	local readyOnClient = Hear(client, "net2_ready")
-	w.server:Fire("e", { n = 1 })
+	client:OnReady("t", function() readyOnClient = readyOnClient + 1 end)
+	w.server:Send("e", { n = 1 })
 	w:Step()
 	T.eq(#heard, 0, "not ready: not sent")
 	client:Start()
 	w:Step(3)
-	T.eq(#readyOnServer, 1, "the server heard it")
-	T.eq(readyOnServer[1].ply, ply, "with the player")
-	T.eq(#readyOnClient, 1, "the client heard it")
-	w.server:Fire("e", { n = 2 })
+	T.eq(readyOnServer[1], ply, "the server told, with the player")
+	T.eq(readyOnClient, 1, "the client told")
+	w.server:Send("e", { n = 2 })
 	w:Step()
 	T.eq(#heard, 1, "now it hears")
-	T.eq(heard[1].fields.n, 2, "the event fired after")
+	T.eq(heard[1].fields.n, 2, "what was sent after")
+	local late, lateClient = {}, 0
+	w.server:OnReady("late", function(p) late[#late + 1] = p end)
+	client:OnReady("late", function() lateClient = lateClient + 1 end)
+	T.eq(late[1], ply, "OnReady runs at once for a client already ready")
+	T.eq(lateClient, 1, "and on a client already ready")
 end)
 
 T.test("a client on another version is kicked, told to update", function()
@@ -357,11 +376,11 @@ T.test("a client that starts again (a Lua refresh) still decodes what follows", 
 	local w = World()
 	local _, client = w:Ready(1, 2)
 	local heard = Hear(client, "e")
-	w.server:Fire("e", { key = 1 })
+	w.server:Send("e", { key = 1 })
 	w:Step()
 	client:Start()
 	w:Step(3)
-	w.server:Fire("e", { key = 2 })
+	w.server:Send("e", { key = 2 })
 	w:Step()
 	T.eq(#heard, 2, "both heard")
 	T.eq(heard[2].fields.key, 2, "the record after the restart")
@@ -375,10 +394,10 @@ T.test("to picks who hears: a team, a player, a list, the players who can see a 
 	local b, cb = w:Ready(2, 3)
 	a.pos, b.pos = Vec(0, 0, 0), Vec(5000, 0, 0)
 	local ha, hb = Hear(ca, "e"), Hear(cb, "e")
-	w.server:Fire("e", { n = 1 }, { to = 3 })
-	w.server:Fire("e", { n = 2 }, { to = a })
-	w.server:Fire("e", { n = 3 }, { to = { a, b } })
-	w.server:Fire("e", { n = 4 }, { to = Vec(10, 0, 0) })
+	w.server:Send("e", { n = 1 }, { to = 3 })
+	w.server:Send("e", { n = 2 }, { to = a })
+	w.server:Send("e", { n = 3 }, { to = { a, b } })
+	w.server:Send("e", { n = 4 }, { to = Vec(10, 0, 0) })
 	w:Step()
 	T.eq(#ha, 3, "a heard three")
 	T.eq(ha[1].fields.n, 2, "the one to it")
@@ -389,16 +408,16 @@ end)
 
 -- Clients to the server
 
-T.test("a client's event the server does not accept stays on the client", function()
+T.test("what the server does not accept is not sent", function()
 	local w = World()
 	local _, client = w:Ready(1, 2)
-	local local_ = Hear(client, "menu")
 	local heard = Hear(w.server, "menu")
 	local before = w.sent.count
-	client:Fire("menu", { choice = 1 })
+	local sent, why = client:Send("menu", { choice = 1 })
 	w:Step()
-	T.eq(#local_, 1, "the client heard it")
-	T.eq(#heard, 0, "the server did not")
+	T.eq(sent, false, "not sent")
+	T.eq(why, "not_accepted", "why")
+	T.eq(#heard, 0, "the server did not hear")
 	T.eq(w.sent.count, before, "nothing on the wire")
 end)
 
@@ -408,7 +427,7 @@ T.test("an accepted event reaches the server's listeners with its sender, within
 	local ply, client = w:Ready(1, 2)
 	local heard = Hear(w.server, "menu")
 	local refused = Hear(client, "net2_refused")
-	for n = 1, 4 do client:Fire("menu", { choice = n }) end
+	for n = 1, 4 do client:Send("menu", { choice = n }) end
 	w:Step(2)
 	T.eq(#heard, 2, "two within the rate")
 	T.eq(heard[1].ply, ply, "with its sender")
@@ -416,7 +435,7 @@ T.test("an accepted event reaches the server's listeners with its sender, within
 	T.eq(#refused, 1, "the client told once")
 	T.eq(refused[1].fields.name, "menu", "which event")
 	w.now = w.now + 10
-	client:Fire("menu", { choice = 5 })
+	client:Send("menu", { choice = 5 })
 	w:Step()
 	T.eq(#heard, 3, "the rate refills")
 end)
@@ -427,7 +446,7 @@ T.test("an Accept after clients are ready reaches them", function()
 	local heard = Hear(w.server, "late")
 	w.server:Accept("late", { count = 5, seconds = 1 })
 	w:Step()
-	client:Fire("late", {})
+	client:Send("late", {})
 	w:Step()
 	T.eq(#heard, 1, "heard")
 end)
@@ -449,7 +468,8 @@ T.test("bytes a client forges are dropped and reported, and the server goes on",
 	local heard = Hear(w.server, "menu")
 	-- a frame defining the name "menu" (under an id the client has not used),
 	-- then lists nested 200 deep
-	local deep = string.char(1, 0, 1, 100, 4) .. "menu" .. string.char(0, 1, 100, 0) .. string.char(9, 1):rep(200) .. string.char(0)
+	local nested = string.char(9, 1):rep(200)
+	local deep = string.char(1, 0, 1, 100, 4) .. "menu" .. string.char(0, 1, 100, 0) .. nested .. string.char(0)
 	for _, data in ipairs({
 		"",
 		string.char(99),
@@ -459,11 +479,11 @@ T.test("bytes a client forges are dropped and reported, and the server goes on",
 		string.char(3, 1, 0, 200) .. ("x"):rep(10),
 		string.char(2) .. ("\255x"):rep(10000),
 	}) do
-		local ok, err = pcall(w.server.Receive, w.server, data, ply)
+		local ok, err = pcall(w.server.Incoming, w.server, data, ply)
 		T.eq(ok, true, "no error escapes: " .. tostring(err))
 	end
 	T.eq(#w.reports > 0, true, "reported")
-	client:Fire("menu", { choice = 1 })
+	client:Send("menu", { choice = 1 })
 	w:Step()
 	T.eq(#heard, 1, "a good frame after is taken")
 end)
@@ -496,9 +516,9 @@ T.test("a client may define only so many names", function()
 	w.server:Accept("menu", { count = 100, seconds = 1 })
 	local ply = w:Ready(1, 2)
 	local heard = Hear(w.server, "menu")
-	w.server:Receive(string.char(1) .. MenuFrame(10, "fine"), ply)
+	w.server:Incoming(string.char(1) .. MenuFrame(10, "fine"), ply)
 	T.eq(#heard, 1, "a frame within the limit is taken")
-	w.server:Receive(string.char(1) .. MenuFrame(Net2.CLIENT_STRINGS + 10, "many"), ply)
+	w.server:Incoming(string.char(1) .. MenuFrame(Net2.CLIENT_STRINGS + 10, "many"), ply)
 	T.eq(#heard, 1, "one past it is dropped")
 end)
 
@@ -507,10 +527,22 @@ T.test("a client's compressed frame may not unpack past its limit", function()
 	w.server:Accept("menu", { count = 100, seconds = 1 })
 	local ply = w:Ready(1, 2)
 	local heard = Hear(w.server, "menu")
-	w.server:Receive(string.char(2) .. Compress(MenuFrame(2, ("b"):rep(1000))), ply)
+	w.server:Incoming(string.char(2) .. Compress(MenuFrame(2, ("b"):rep(1000))), ply)
 	T.eq(#heard, 1, "a small one is taken")
-	w.server:Receive(string.char(2) .. Compress(MenuFrame(2, ("b"):rep(Net2.CLIENT_TRANSFER_BYTES + 1))), ply)
+	w.server:Incoming(string.char(2) .. Compress(MenuFrame(2, ("b"):rep(Net2.CLIENT_TRANSFER_BYTES + 1))), ply)
 	T.eq(#heard, 1, "a bomb is dropped")
+end)
+
+T.test("a client may have only so many payloads arriving in parts at once", function()
+	local w = World()
+	local ply = w:Ready(1, 2)
+	local function Part(id)
+		return string.char(3) .. Varint(id) .. Varint(0) .. Varint(2) .. "part"
+	end
+	for id = 1, Net2.TRANSFERS do w.server:Incoming(Part(id), ply) end
+	T.eq(#w.reports, 0, "within the limit")
+	w.server:Incoming(Part(Net2.TRANSFERS + 1), ply)
+	T.eq(#w.reports, 1, "one more is dropped and reported")
 end)
 
 -- Unreliable
@@ -519,17 +551,17 @@ T.test("an unreliable event older than one already heard is dropped", function()
 	local w = World()
 	local _, client = w:Ready(1, 2)
 	local heard = Hear(client, "snap")
-	w.server:Fire("snap", { n = 1 }, { unreliable = true })
+	w.server:Send("snap", { n = 1 }, { unreliable = true })
 	w.server:Tick()
 	local first = w.wire
 	w.wire = {}
-	w.server:Fire("snap", { n = 2 }, { unreliable = true })
+	w.server:Send("snap", { n = 2 }, { unreliable = true })
 	w.server:Tick()
 	local second = w.wire
 	w.wire = {}
 	T.eq(first[1].unreliable, true, "sent unreliably")
-	for _, m in ipairs(second) do client:Receive(m.data) end
-	for _, m in ipairs(first) do client:Receive(m.data) end
+	for _, m in ipairs(second) do client:Incoming(m.data) end
+	for _, m in ipairs(first) do client:Incoming(m.data) end
 	T.eq(#heard, 1, "the late, older one dropped")
 	T.eq(heard[1].fields.n, 2, "the newest kept")
 end)
@@ -537,7 +569,7 @@ end)
 T.test("an unreliable event too big for a datagram is refused at Fire", function()
 	local w = World()
 	Raises(function()
-		w.server:Fire("snap", { s = ("x"):rep(Net2.UNRELIABLE_BYTES) }, { unreliable = true })
+		w.server:Send("snap", { s = ("x"):rep(Net2.UNRELIABLE_BYTES) }, { unreliable = true })
 	end, "too_large")
 end)
 
@@ -549,7 +581,7 @@ T.test("an event past one message's size arrives whole, over several ticks", fun
 	local heard = Hear(client, "big")
 	local parts = {}
 	for i = 1, 30000 do parts[i] = i end
-	w.server:Fire("big", { parts = parts, text = ("y"):rep(150000) })
+	w.server:Send("big", { parts = parts, text = ("y"):rep(150000) })
 	local before = w.sent.count
 	w:Step()
 	T.eq(#heard, 0, "not yet whole after one tick")
@@ -560,13 +592,42 @@ T.test("an event past one message's size arrives whole, over several ticks", fun
 	T.eq(w.sent.count - before > 3, true, "over several messages")
 end)
 
+T.test("a small message sent after a large one arrives before it", function()
+	local w = World()
+	local _, client = w:Ready(1, 2)
+	local order = {}
+	client:Receive("big", function() order[#order + 1] = "big" end)
+	client:Receive("small", function(f) order[#order + 1] = "small" .. f.n end)
+	w.server:Send("big", { text = ("y"):rep(300000), shape = { only_here = 1 } })
+	w.server:Send("small", { n = 1 })
+	w:Step()
+	w.server:Send("small", { n = 2, shape = { only_here = 2 } })
+	w:Step(30)
+	T.eq(table.concat(order, ","), "small1,small2,big", "the small ones passed it")
+end)
+
+T.test("a peer is sent what its budget allows a tick", function()
+	local w = World({ budget = 1000 })
+	local _, client = w:Ready(1, 2)
+	local heard = Hear(client, "e")
+	-- four frames' worth, queued in one tick
+	for n = 1, 10 do w.server:Send("e", { n = n, pad = ("p"):rep(20000) }) end
+	w:Step()
+	T.eq(#heard, 2, "one message in the first tick, whatever the budget")
+	w:Step()
+	T.eq(#heard, 4, "one more the next")
+	w:Step(5)
+	T.eq(#heard, 10, "the rest over the next ticks")
+	T.eq(heard[10].fields.n, 10, "in order")
+end)
+
 T.test("a large frame is compressed when that makes it smaller", function()
 	local plain, packed = World(), World({ compress = true })
 	for _, w in ipairs({ plain, packed }) do
 		local _, client = w:Ready(1, 2)
 		w.heard = Hear(client, "big")
 		w.before = w.sent.bytes
-		w.server:Fire("big", { text = ("z"):rep(20000) })
+		w.server:Send("big", { text = ("z"):rep(20000) })
 		w:Step(5)
 	end
 	T.eq(packed.heard[1].fields.text, ("z"):rep(20000), "arrives whole")
@@ -577,8 +638,8 @@ T.test("a client's event past its limit is refused at Fire when it would be sent
 	local w = World()
 	w.server:Accept("up", { count = 1, seconds = 1 })
 	local _, client = w:Ready(1, 2)
-	client:Fire("local_only", { s = ("x"):rep(Net2.CLIENT_TRANSFER_BYTES + 1) })
-	Raises(function() client:Fire("up", { s = ("x"):rep(Net2.CLIENT_TRANSFER_BYTES + 1) }) end, "too_large")
+	client:Send("local_only", { s = ("x"):rep(Net2.CLIENT_TRANSFER_BYTES + 1) })
+	Raises(function() client:Send("up", { s = ("x"):rep(Net2.CLIENT_TRANSFER_BYTES + 1) }) end, "too_large")
 end)
 
 -- Calls
@@ -684,8 +745,8 @@ T.test("an event's listeners read the tables as the tick left them", function()
 	local _, client = w:Ready(1, 2)
 	local score = w.server:Table("score")
 	local read
-	client:Listen("scored", "t", function() read = client:Table("score").red end)
-	w.server:Fire("scored", {})
+	client:Receive("scored", function() read = client:Table("score").red end)
+	w.server:Send("scored", {})
 	score.red = 5
 	w:Step()
 	T.eq(read, 5, "the value set in the same tick")
@@ -719,24 +780,23 @@ T.test("a predicted event is not sent back to the player who predicted it", func
 	local _, cb = w:Ready(2, 2)
 	local ha, hb = Hear(ca, "shot"), Hear(cb, "shot")
 	w.predicting = a
-	w.server:Fire("shot", {}, { predicted = true })
+	w.server:Send("shot", {}, { predicted = true })
 	w.predicting = nil
 	w:Step()
 	T.eq(#ha, 0, "not to the shooter")
 	T.eq(#hb, 1, "to the others")
 end)
 
-T.test("a client's predicted event runs the first time only, and stays on the client", function()
+T.test("a client sends nothing from predicted code: the server runs its own", function()
 	local w = World()
 	w.server:Accept("shot", { count = 10, seconds = 1 })
 	local _, client = w:Ready(1, 2)
-	local heard, server = Hear(client, "shot"), Hear(w.server, "shot")
-	client:Fire("shot", {}, { predicted = true })
-	w.firstTime = false
-	client:Fire("shot", {}, { predicted = true })
+	local server = Hear(w.server, "shot")
+	local sent, why = client:Send("shot", {}, { predicted = true })
 	w:Step()
-	T.eq(#heard, 1, "once")
-	T.eq(#server, 0, "the server runs its own")
+	T.eq(sent, false, "not sent")
+	T.eq(why, "predicted", "why")
+	T.eq(#server, 0, "nothing reached the server")
 end)
 
 -- Connections
@@ -745,7 +805,7 @@ T.test("a player who leaves is forgotten", function()
 	local w = World()
 	local a = w:Ready(1, 2)
 	w:Leave(a)
-	w.server:Fire("e", {})
+	w.server:Send("e", {})
 	local before = w.sent.count
 	w:Step()
 	T.eq(w.sent.count, before, "nothing sent")
@@ -755,11 +815,11 @@ T.test("Stats counts what each event cost", function()
 	local w = World()
 	w:Ready(1, 2)
 	w:Ready(2, 2)
-	w.server:Fire("e", { n = 1 })
-	w.server:Fire("e", { n = 2 })
+	w.server:Send("e", { n = 1 })
+	w.server:Send("e", { n = 2 })
 	w:Step()
 	local s = w.server:Stats().e
-	T.eq(s.fired, 2, "fired twice")
+	T.eq(s.sends, 2, "sent twice")
 	T.eq(s.sent, 4, "to two clients each")
 	T.eq(s.bytes > 0, true, "bytes counted")
 end)

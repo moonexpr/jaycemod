@@ -1,15 +1,16 @@
--- net2: events between the server and its clients, over GMod's net library
--- (docs/net2.md). Code fires and hears events as if both realms were one:
+-- net2: GMod's net library taken further (docs/net2.md): messages between
+-- the server and its clients as values, not as writes and reads in step.
 --
---   net2.Fire(name, fields[, options])   runs this realm's listeners at once,
---                                        then carries the event to the other
---   net2.Listen(name, id, fn), net2.Ignore(name, id)   fn(fields[, ply])
---   net2.Accept(name, rate)              server: clients may fire this, at
+--   net2.Send(name, payload[, options])  the payload, a table, to the other
+--                                        realm's receiver of that name; true,
+--                                        or false and why it went nowhere
+--   net2.Receive(name, fn)               fn(payload[, ply]); one a name
+--   net2.Accept(name, rate)              server: clients may send this, at
 --                                        rate { count, seconds } each
---   net2.Serve(name, fn, rate)           server: fn(fields, ply) answers a
+--   net2.Serve(name, fn, rate)           server: fn(payload, ply) answers a
 --                                        client's Call (a value, or nil and a
 --                                        refusal); it may yield, resumed a tick
---   net2.Call(name, fields[, callback[, timeout]])   client: the server's
+--   net2.Call(name, payload[, callback[, timeout]])   client: the server's
 --                                        answer, ok and value (or the reason),
 --                                        to the callback, or returned in a
 --                                        coroutine its owner resumes
@@ -17,33 +18,39 @@
 --                                        ready client reads, sent key by key;
 --                                        `for key, value in t() do` walks it
 --   net2.OnChange(name, id, fn)          fn(key, value, old) as a table changes
+--   net2.OnReady(id, fn)                 fn([ply]) as a connection becomes
+--                                        ready, and at once for one that is
 --   net2.SetVersion(n), net2.Stats()
+--
+-- A name is any string, made up where it is used: nothing registers it
+-- (no util.AddNetworkString, no precache at load), on either realm, at any
+-- time. It goes over once a connection, then as a number.
 --
 -- options: to (server: nil for every ready client, a team number, a player,
 -- a list of players, or a Vector for the players whose PVS holds it),
 -- unreliable (a snapshot small enough for a datagram; an older one arriving
--- after a newer is dropped), predicted (fired from predicted code on both
--- realms: a client runs it the first time predicted and sends nothing; the
--- server sends it to all but the player predicting it).
+-- after a newer is dropped), predicted (sent from predicted code: a client
+-- sends nothing; the server sends to all but the player predicting it).
 --
 -- Values: nil, booleans, numbers (whole ones to 2^52 as integers, others as
 -- doubles, exact), strings (any bytes), entities, vectors and angles (as
 -- three floats, exact), and tables of them: a list, or a record with string
 -- keys, nested without cycles. A record's keys go over once a connection,
--- then by number. Anything else is our bug, raised at Fire before any
--- listener runs. A tick's events go out together at its end, in order, and
--- an event past one message is sent in parts over the next ticks.
+-- then by number. Anything else is our bug, raised at Send. A tick's
+-- messages go out together at its end, in order, within the peer's budget
+-- (from its rate setting); a payload past one net message is sent in parts
+-- over the next ticks, and smaller messages sent after it pass it.
 --
 -- A client is ready once its hello is answered: until then it is sent
 -- nothing, and a client on another version (SetVersion) is kicked. What a
 -- client sends is held to what the server accepts and at what rate; a
 -- message that does not decode within the limits is dropped and reported.
--- Names beginning net2_ are the library's own: net2_ready (both realms, the
--- server's with the player) and net2_refused (a client, told why the server
--- dropped one of its events) may be heard.
+-- Names beginning net2_ are the library's own: a client may Receive
+-- net2_refused (why the server dropped one of its messages).
 --
--- net2.New(host) makes a realm over a host port (the GMod host below, or a
--- test's): the library itself reads no GMod global.
+-- Events (local dispatch, listeners in order) are game_events', built on
+-- this. net2.New(host) makes a realm over a host port (the GMod host below,
+-- or a test's): the library itself reads no GMod global.
 local SERVER, CLIENT = SERVER, CLIENT
 local coroutine, debug, error, ipairs, next, pairs, pcall, rawget, setmetatable, tostring, type, unpack, xpcall =
 	coroutine, debug, error, ipairs, next, pairs, pcall, rawget, setmetatable, tostring, type, unpack, xpcall
@@ -53,12 +60,15 @@ local ceil, floor, frexp, huge, ldexp, min = math.ceil, math.floor, math.frexp, 
 module("net2", package.seeall)
 
 WIRE_VERSION = 1 -- the wire's own; SetVersion is the game's
-NET_MESSAGE = "net2"
+NET_MESSAGE = "sandcastle/net2/message"
 MESSAGE_BYTES = 60000 -- one net message's payload (GMod's limit is 65533)
 UNRELIABLE_BYTES = 1000 -- one unreliable frame; under Source's datagram, unmeasured
 TRANSFER_BYTES = 16 * 1024 * 1024 -- a frame from the server, whole
 CLIENT_TRANSFER_BYTES = 256 * 1024 -- a frame from a client, whole
-PEER_BYTES_PER_TICK = 32 * 1024 -- sent to one peer a tick, but always one message
+PEER_BYTES_PER_TICK = 32 * 1024 -- sent to one peer a tick, but always one message, where the host gives no budget
+RATE_FRACTION = 0.3 -- of a client's rate setting that is ours to fill
+RATE_MIN, RATE_MAX = 10000, 60000 -- bytes a second, whatever its setting
+TRANSFERS = 4 -- payloads arriving in parts from one peer at once
 COMPRESS_OVER = 4096 -- frames longer are compressed when that makes them smaller
 CALL_SECONDS = 10 -- a call unanswered by then fails, timed out
 REPORT_SECONDS = 10 -- one report of a kind a peer, at most, in this time
@@ -75,6 +85,7 @@ HELLO_RATE = {
 RESERVED = "net2_"
 KICK_MESSAGE = "This server runs net2 wire %d, version %d; your game has wire %s, version %s. Reconnect to update."
 
+local STATS_LINE = "%-40s sends %6d  sent %6d  bytes %9d  received %6d  refused %4d"
 local CALLER = 3 -- an error's level from a realm's public method: the code calling net2
 local INT_LIMIT = 2 ^ 52
 local CLIENT_SLACK = 16 * 1024 -- what a frame adds to a client's event
@@ -97,28 +108,34 @@ local NO_OPTIONS = {}
 local NOBODY = {}
 
 -- Our bugs at a call: a named error, raised at the caller's line by Raise.
-local function Fault(kind, message)
+local function fault(kind, message)
 	error({ net2 = kind, message = message }, 0)
 end
 
-local function Raise(err, level)
-	if type(err) == "table" and err.net2 then error("net2: " .. err.net2 .. ": " .. err.message, level + 1) end
+local function raise(err, level)
+	if type(err) == "table" and err.net2 then
+		error("net2: " .. err.net2 .. ": " .. err.message, level + 1)
+	end
 	error(err, 0)
 end
 
 -- A message we will not take: dropped, and reported.
-local function Malformed(what)
+local function malformed(what)
 	error({ malformed = what }, 0)
 end
 
-local function CheckName(name)
-	if type(name) ~= "string" or name == "" then Fault("bad_name", "an event's name is a string, not " .. tostring(name)) end
-	if sub(name, 1, #RESERVED) == RESERVED then Fault("bad_name", name .. ": names beginning " .. RESERVED .. " are the library's") end
+local function checkName(name)
+	if type(name) ~= "string" or name == "" then
+		fault("bad_name", "an event's name is a string, not " .. tostring(name))
+	end
+	if sub(name, 1, #RESERVED) == RESERVED then
+		fault("bad_name", name .. ": names beginning " .. RESERVED .. " are the library's")
+	end
 end
 
 -- Writing
 
-local function Varint(buf, n)
+local function writeVarint(buf, n)
 	while n >= 128 do
 		buf[#buf + 1] = char(n % 128 + 128)
 		n = floor(n / 128)
@@ -126,13 +143,13 @@ local function Varint(buf, n)
 	buf[#buf + 1] = char(n)
 end
 
-local function Str(buf, s)
-	Varint(buf, #s)
+local function writeString(buf, s)
+	writeVarint(buf, #s)
 	buf[#buf + 1] = s
 end
 
 -- IEEE 754 single precision, little-endian, rounded to nearest.
-local function F32(buf, x)
+local function writeF32(buf, x)
 	local sign = 0
 	if x < 0 or (x == 0 and 1 / x < 0) then
 		sign = 1
@@ -157,11 +174,13 @@ local function F32(buf, x)
 			if mant >= 2 ^ 23 then mant, expo = 0, 1 else expo = 0 end
 		end
 	end
-	buf[#buf + 1] = char(mant % 256, floor(mant / 256) % 256, floor(mant / 65536) + (expo % 2) * 128, sign * 128 + floor(expo / 2))
+	local low, mid = mant % 256, floor(mant / 256) % 256
+	local high = floor(mant / 65536) + (expo % 2) * 128
+	buf[#buf + 1] = char(low, mid, high, sign * 128 + floor(expo / 2))
 end
 
 -- IEEE 754 double precision, little-endian: exact.
-local function F64(buf, x)
+local function writeF64(buf, x)
 	local sign = 0
 	if x < 0 or (x == 0 and 1 / x < 0) then
 		sign = 1
@@ -195,41 +214,43 @@ end
 
 -- Reading, bounded: a short or overlong message is Malformed, never an error of ours.
 
-local function Reader(s, at)
+local function newReader(s, at)
 	return { s = s, pos = at, size = #s }
 end
 
-local function Remaining(r)
+local function remaining(r)
 	return r.size - r.pos + 1
 end
 
-local function RByte(r)
+local function readByte(r)
 	local p = r.pos
-	if p > r.size then Malformed("it ends early") end
+	if p > r.size then malformed("it ends early") end
 	r.pos = p + 1
+
 	return byte(r.s, p)
 end
 
-local function RVarint(r)
+local function readVarint(r)
 	local n, scale = 0, 1
 	for _ = 1, 8 do
-		local b = RByte(r)
+		local b = readByte(r)
 		if b < 128 then return n + b * scale end
 		n = n + (b - 128) * scale
 		scale = scale * 128
 	end
-	Malformed("a number past 56 bits")
+	malformed("a number past 56 bits")
 end
 
-local function RBytes(r, n)
-	if n > Remaining(r) then Malformed("it ends early") end
+local function readBytes(r, n)
+	if n > remaining(r) then malformed("it ends early") end
 	local s = sub(r.s, r.pos, r.pos + n - 1)
 	r.pos = r.pos + n
+
 	return s
 end
 
-local function RF32(r)
-	local b1, b2, b3, b4 = byte(RBytes(r, 4), 1, 4)
+local function readF32(r)
+	local b1, b2, b3, b4 = byte(readBytes(r, 4), 1, 4)
 	local sign = b4 >= 128 and -1 or 1
 	local expo = (b4 % 128) * 2 + floor(b3 / 128)
 	local mant = (b3 % 128) * 65536 + b2 * 256 + b1
@@ -238,11 +259,12 @@ local function RF32(r)
 		if mant == 0 then return sign * huge end
 		return 0 / 0
 	end
+
 	return sign * ldexp(mant + 2 ^ 23, expo - 150)
 end
 
-local function RF64(r)
-	local b1, b2, b3, b4, b5, b6, b7, b8 = byte(RBytes(r, 8), 1, 8)
+local function readF64(r)
+	local b1, b2, b3, b4, b5, b6, b7, b8 = byte(readBytes(r, 8), 1, 8)
 	local sign = b8 >= 128 and -1 or 1
 	local expo = (b8 % 128) * 16 + floor(b7 / 16)
 	local mant = (b7 % 16) * 2 ^ 48 + b6 * 2 ^ 40 + b5 * 2 ^ 32 + b4 * 2 ^ 24 + b3 * 2 ^ 16 + b2 * 2 ^ 8 + b1
@@ -251,52 +273,55 @@ local function RF64(r)
 		if mant == 0 then return sign * huge end
 		return 0 / 0
 	end
+
 	return sign * ldexp(mant + 2 ^ 52, expo - 1075)
 end
 
 -- Small structures
 
-local function Queue()
+local function newQueue()
 	return { first = 1, last = 0 }
 end
 
-local function Enqueue(q, item)
+local function enqueue(q, item)
 	q.last = q.last + 1
 	q[q.last] = item
 end
 
-local function Dequeue(q)
+local function dequeue(q)
 	local i = q.first
 	if i > q.last then return nil end
 	local item = q[i]
 	q[i] = nil
 	q.first = i + 1
+
 	return item
 end
 
 -- What a peer is known to hold of our names (strings) and shapes.
-local function Known()
+local function newKnown()
 	return { strings = {}, shapes = {} }
 end
 
 -- What we hold of a peer's names and shapes, by its ids.
-local function Decoder()
+local function newDecoder()
 	return { strings = {}, shapes = {}, nStrings = 0, nShapes = 0, lastSeq = {} }
 end
 
 -- The other end of a connection: a client, on the server (ply), or the
 -- server, on a client (no ply).
-local function Peer(ply)
+local function newPeer(ply)
 	return {
 		ply = ply,
 		ready = false,
-		known = Known(),
+		known = newKnown(),
 		resetNext = true,
 		pending = {}, -- reliable events, framed at the tick
 		unreliable = {},
-		queue = Queue(), -- messages to send, in order
-		decoder = Decoder(),
-		transfer = nil, -- the parts of a frame arriving in parts
+		queue = newQueue(), -- messages to send, in order
+		slow = newQueue(), -- the parts of payloads past one message, which the queue passes
+		decoder = newDecoder(),
+		incoming = {}, -- payloads arriving in parts, by the sender's id
 		transfers = 0,
 		buckets = {},
 		toldAt = {},
@@ -306,7 +331,7 @@ end
 
 -- Listeners by name, each an ordered list of ids; replaced as a whole when
 -- it changes, so a dispatch walks the list it started with.
-local function AddListener(map, name, id, fn)
+local function addListener(map, name, id, fn)
 	local entry = map[name]
 	if not entry then
 		entry = { order = {}, fns = {} }
@@ -321,7 +346,7 @@ local function AddListener(map, name, id, fn)
 	entry.fns[id] = fn
 end
 
-local function RemoveListener(map, name, id)
+local function removeListener(map, name, id)
 	local entry = map[name]
 	if not entry or entry.fns[id] == nil then return end
 	entry.fns[id] = nil
@@ -332,16 +357,22 @@ local function RemoveListener(map, name, id)
 	entry.order = order
 end
 
-local function CheckListener(name, id, fn)
-	if type(name) ~= "string" or name == "" then Fault("bad_listener", "a name is a string, not " .. tostring(name)) end
-	if id == nil then Fault("bad_listener", name .. ": a listener needs an id") end
-	if type(fn) ~= "function" then Fault("bad_listener", name .. ": a listener is a function, not " .. type(fn)) end
+local function checkListener(name, id, fn)
+	if type(name) ~= "string" or name == "" then
+		fault("bad_listener", "a name is a string, not " .. tostring(name))
+	end
+	if id == nil then fault("bad_listener", name .. ": a listener needs an id") end
+	if type(fn) ~= "function" then
+		fault("bad_listener", name .. ": a listener is a function, not " .. type(fn))
+	end
 end
 
-local function CheckRate(name, rate)
-	if type(rate) ~= "table" or type(rate.count) ~= "number" or type(rate.seconds) ~= "number" or rate.count < 1 or rate.seconds <= 0 then
-		Fault("bad_options", name .. ": a rate is { count, seconds }")
+local function checkRate(name, rate)
+	local shaped = type(rate) == "table" and type(rate.count) == "number" and type(rate.seconds) == "number"
+	if not shaped or rate.count < 1 or rate.seconds <= 0 then
+		fault("bad_options", name .. ": a rate is { count, seconds }")
 	end
+
 	return {
 		count = rate.count,
 		seconds = rate.seconds,
@@ -358,7 +389,8 @@ function New(host)
 		host = host,
 		server = host.server and true or false,
 		version = 0,
-		listeners = {},
+		receivers = {},
+		readyFns = {},
 		watchers = {},
 		tables = {},
 		stats = {},
@@ -371,12 +403,13 @@ function New(host)
 		self.serves = {}
 		self.jobs = {}
 	else
-		self.peer = Peer(nil)
+		self.peer = newPeer(nil)
 		self.ready = false
 		self.accepted = {}
 		self.calls = {}
 		self.nextCall = 0
 	end
+
 	return self
 end
 
@@ -387,9 +420,10 @@ end
 function Realm:Count(name)
 	local stat = self.stats[name]
 	if not stat then
-		stat = { fired = 0, sent = 0, bytes = 0, received = 0, refused = 0 }
+		stat = { sends = 0, sent = 0, bytes = 0, received = 0, refused = 0 }
 		self.stats[name] = stat
 	end
+
 	return stat
 end
 
@@ -399,7 +433,7 @@ end
 
 function Realm:SetVersion(version)
 	if type(version) ~= "number" or version ~= floor(version) then
-		Raise({ net2 = "bad_options", message = "a version is a whole number" }, CALLER)
+		raise({ net2 = "bad_options", message = "a version is a whole number" }, CALLER)
 	end
 	self.version = version
 end
@@ -415,6 +449,7 @@ function Realm:StringId(s)
 		dict.ids[s] = id
 		dict.strings[id] = s
 	end
+
 	return id
 end
 
@@ -433,25 +468,29 @@ function Realm:ShapeId(keys)
 		for i, key in ipairs(keys) do keyIds[i] = self:StringId(key) end
 		dict.shapes[id] = keyIds
 	end
+
 	return id
 end
 
 -- Encoding
 
-local function Where(stack, depth)
+local function pathOf(stack, depth)
 	local parts = { "fields" }
 	for i = 1, depth do
 		local key = stack[i]
 		parts[#parts + 1] = type(key) == "number" and "[" .. key .. "]" or "." .. tostring(key)
 	end
+
 	return concat(parts)
 end
 
-local Encode
+local encode
 
-local function EncodeTable(self, buf, t, shapes, depth, stack, visiting)
-	if depth >= DEPTH then Fault("bad_fields", Where(stack, depth) .. " nests past " .. DEPTH .. " tables") end
-	if visiting[t] then Fault("bad_fields", Where(stack, depth) .. " is a cycle") end
+local function encodeTable(self, buf, t, shapes, depth, stack, visiting)
+	if depth >= DEPTH then
+		fault("bad_fields", pathOf(stack, depth) .. " nests past " .. DEPTH .. " tables")
+	end
+	if visiting[t] then fault("bad_fields", pathOf(stack, depth) .. " is a cycle") end
 	visiting[t] = true
 	local count, keys = 0, nil
 	for key in pairs(t) do
@@ -462,49 +501,49 @@ local function EncodeTable(self, buf, t, shapes, depth, stack, visiting)
 		elseif kind == "number" and key >= 1 and key == floor(key) then
 			count = count + 1
 		else
-			Fault("bad_fields", Where(stack, depth) .. " has a key the wire cannot carry: " .. tostring(key))
+			fault("bad_fields", pathOf(stack, depth) .. " has a key the wire cannot carry: " .. tostring(key))
 		end
 	end
-	if keys and count > 0 then Fault("bad_fields", Where(stack, depth) .. " mixes a list and a record") end
+	if keys and count > 0 then fault("bad_fields", pathOf(stack, depth) .. " mixes a list and a record") end
 	if keys then
 		sort(keys)
 		local id = self:ShapeId(keys)
 		shapes[id] = true
 		buf[#buf + 1] = char(T_RECORD)
-		Varint(buf, id)
+		writeVarint(buf, id)
 		for _, key in ipairs(keys) do
 			stack[depth + 1] = key
-			Encode(self, buf, t[key], shapes, depth + 1, stack, visiting)
+			encode(self, buf, t[key], shapes, depth + 1, stack, visiting)
 		end
 	else
 		for i = 1, count do
-			if t[i] == nil then Fault("bad_fields", Where(stack, depth) .. " is a list with holes") end
+			if t[i] == nil then fault("bad_fields", pathOf(stack, depth) .. " is a list with holes") end
 		end
 		buf[#buf + 1] = char(T_LIST)
-		Varint(buf, count)
+		writeVarint(buf, count)
 		for i = 1, count do
 			stack[depth + 1] = i
-			Encode(self, buf, t[i], shapes, depth + 1, stack, visiting)
+			encode(self, buf, t[i], shapes, depth + 1, stack, visiting)
 		end
 	end
 	visiting[t] = nil
 end
 
-function Encode(self, buf, v, shapes, depth, stack, visiting)
+function encode(self, buf, v, shapes, depth, stack, visiting)
 	local kind = type(v)
 	if kind == "boolean" then
 		buf[#buf + 1] = char(v and T_TRUE or T_FALSE)
 	elseif kind == "number" then
 		if v == floor(v) and v >= -INT_LIMIT and v <= INT_LIMIT then
 			buf[#buf + 1] = char(T_INT)
-			Varint(buf, v >= 0 and v * 2 or -v * 2 - 1)
+			writeVarint(buf, v >= 0 and v * 2 or -v * 2 - 1)
 		else
 			buf[#buf + 1] = char(T_DOUBLE)
-			F64(buf, v)
+			writeF64(buf, v)
 		end
 	elseif kind == "string" then
 		buf[#buf + 1] = char(T_STRING)
-		Str(buf, v)
+		writeString(buf, v)
 	elseif kind == "table" or kind == "userdata" then
 		local host = self.host
 		if host.IsEntity(v) then
@@ -513,27 +552,27 @@ function Encode(self, buf, v, shapes, depth, stack, visiting)
 				buf[#buf + 1] = char(T_NULL)
 			else
 				buf[#buf + 1] = char(T_ENTITY)
-				Varint(buf, index)
+				writeVarint(buf, index)
 			end
 		elseif host.IsVector(v) then
 			local x, y, z = host.VectorParts(v)
 			buf[#buf + 1] = char(T_VECTOR)
-			F32(buf, x)
-			F32(buf, y)
-			F32(buf, z)
+			writeF32(buf, x)
+			writeF32(buf, y)
+			writeF32(buf, z)
 		elseif host.IsAngle(v) then
 			local p, y, r = host.AngleParts(v)
 			buf[#buf + 1] = char(T_ANGLE)
-			F32(buf, p)
-			F32(buf, y)
-			F32(buf, r)
+			writeF32(buf, p)
+			writeF32(buf, y)
+			writeF32(buf, r)
 		elseif kind == "table" then
-			EncodeTable(self, buf, v, shapes, depth, stack, visiting)
+			encodeTable(self, buf, v, shapes, depth, stack, visiting)
 		else
-			Fault("bad_fields", Where(stack, depth) .. " is userdata the wire cannot carry")
+			fault("bad_fields", pathOf(stack, depth) .. " is userdata the wire cannot carry")
 		end
 	else
-		Fault("bad_fields", Where(stack, depth) .. " is a " .. kind)
+		fault("bad_fields", pathOf(stack, depth) .. " is a " .. kind)
 	end
 end
 
@@ -541,15 +580,18 @@ end
 -- events count up a name, reliable ones are 0), and its fields, encoded once
 -- for every recipient.
 function Realm:EncodeEvent(name, fields, unreliable)
-	if type(fields) ~= "table" then Fault("bad_fields", name .. ": fields are a table, not a " .. type(fields)) end
+	if type(fields) ~= "table" then
+		fault("bad_fields", name .. ": fields are a table, not a " .. type(fields))
+	end
 	local buf, shapes = {}, {}
-	EncodeTable(self, buf, fields, shapes, 0, {}, {})
+	encodeTable(self, buf, fields, shapes, 0, {}, {})
 	local payload = concat(buf)
 	local seq = 0
 	if unreliable then
 		seq = (self.seq[name] or 0) + 1
 		self.seq[name] = seq
 	end
+
 	return {
 		name = name,
 		nameId = self:StringId(name),
@@ -565,42 +607,43 @@ end
 function Realm:Frame(events, known, flags)
 	local dict = self.dict
 	local strings, shapes = {}, {}
-	local function NeedString(id)
+	local function needString(id)
 		if known.strings[id] then return end
 		known.strings[id] = true
 		strings[#strings + 1] = id
 	end
 	for _, ev in ipairs(events) do
-		NeedString(ev.nameId)
+		needString(ev.nameId)
 		for id in pairs(ev.shapes) do
 			if not known.shapes[id] then
 				known.shapes[id] = true
 				shapes[#shapes + 1] = id
-				for _, keyId in ipairs(dict.shapes[id]) do NeedString(keyId) end
+				for _, keyId in ipairs(dict.shapes[id]) do needString(keyId) end
 			end
 		end
 	end
 	sort(strings)
 	sort(shapes)
 	local buf = { char(flags) }
-	Varint(buf, #strings)
+	writeVarint(buf, #strings)
 	for _, id in ipairs(strings) do
-		Varint(buf, id)
-		Str(buf, dict.strings[id])
+		writeVarint(buf, id)
+		writeString(buf, dict.strings[id])
 	end
-	Varint(buf, #shapes)
+	writeVarint(buf, #shapes)
 	for _, id in ipairs(shapes) do
 		local keys = dict.shapes[id]
-		Varint(buf, id)
-		Varint(buf, #keys)
-		for _, keyId in ipairs(keys) do Varint(buf, keyId) end
+		writeVarint(buf, id)
+		writeVarint(buf, #keys)
+		for _, keyId in ipairs(keys) do writeVarint(buf, keyId) end
 	end
-	Varint(buf, #events)
+	writeVarint(buf, #events)
 	for _, ev in ipairs(events) do
-		Varint(buf, ev.nameId)
-		Varint(buf, ev.seq)
+		writeVarint(buf, ev.nameId)
+		writeVarint(buf, ev.seq)
 		buf[#buf + 1] = ev.payload
 	end
+
 	return concat(buf)
 end
 
@@ -611,24 +654,26 @@ function Realm:Wrap(content)
 		local packed = compress(content)
 		if packed and #packed < #content then return char(COMPRESSED) .. packed end
 	end
+
 	return char(FRAME) .. content
 end
 
 -- A message onto a peer's queue, in parts if it is past one net message.
-function Realm:Queue(peer, body)
+function Realm:Queue(peer, queue, body)
 	if #body <= MESSAGE_BYTES then
-		Enqueue(peer.queue, body)
+		enqueue(queue, body)
+
 		return
 	end
 	peer.transfers = peer.transfers + 1
 	local count = ceil(#body / CHUNK_BYTES)
 	for i = 0, count - 1 do
 		local head = { char(CHUNK) }
-		Varint(head, peer.transfers)
-		Varint(head, i)
-		Varint(head, count)
+		writeVarint(head, peer.transfers)
+		writeVarint(head, i)
+		writeVarint(head, count)
 		head[#head + 1] = sub(body, i * CHUNK_BYTES + 1, (i + 1) * CHUNK_BYTES)
-		Enqueue(peer.queue, concat(head))
+		enqueue(queue, concat(head))
 	end
 end
 
@@ -640,9 +685,16 @@ function Realm:Transmit(peer, data, unreliable)
 	end
 end
 
+-- What one peer may be sent a tick.
+function Realm:Budget(peer)
+	local budget = self.host.Budget
+
+	return budget and budget(peer.ply) or PEER_BYTES_PER_TICK
+end
+
 -- A peer's events this tick: the unreliable ones now, each frame defining
 -- all it uses; the reliable ones framed onto its queue; then its queue sent,
--- up to its budget.
+-- up to its budget, and with what is left the parts of its large payloads.
 function Realm:Flush(peer)
 	local list = peer.unreliable
 	if #list > 0 then
@@ -650,41 +702,50 @@ function Realm:Flush(peer)
 		local batch, size = {}, 0
 		for _, ev in ipairs(list) do
 			if size > 0 and size + ev.unreliableSize > UNRELIABLE_BYTES then
-				self:Transmit(peer, self:Wrap(self:Frame(batch, Known(), 0)), true)
+				self:Transmit(peer, self:Wrap(self:Frame(batch, newKnown(), 0)), true)
 				batch, size = {}, 0
 			end
 			batch[#batch + 1] = ev
 			size = size + ev.unreliableSize
 		end
-		self:Transmit(peer, self:Wrap(self:Frame(batch, Known(), 0)), true)
+		self:Transmit(peer, self:Wrap(self:Frame(batch, newKnown(), 0)), true)
 	end
 	list = peer.pending
 	if #list > 0 then
 		peer.pending = {}
 		local batch, size = {}, 0
-		local function Seal()
-			local flags = 0
-			if peer.resetNext then
-				flags = RESET
-				peer.resetNext = false
+		local function seal()
+			if size > MESSAGE_BYTES then
+				-- one event past a message: a frame defining all it uses, so
+				-- that frames sent after it may arrive before it
+				local body = self:Wrap(self:Frame(batch, newKnown(), 0))
+				self:Queue(peer, #body > MESSAGE_BYTES and peer.slow or peer.queue, body)
+			else
+				local flags = 0
+				if peer.resetNext then
+					flags = RESET
+					peer.resetNext = false
+				end
+				self:Queue(peer, peer.queue, self:Wrap(self:Frame(batch, peer.known, flags)))
 			end
-			self:Queue(peer, self:Wrap(self:Frame(batch, peer.known, flags)))
 			batch, size = {}, 0
 		end
 		for _, ev in ipairs(list) do
-			if size > 0 and size + ev.size > MESSAGE_BYTES then Seal() end
+			if size > 0 and size + ev.size > MESSAGE_BYTES then seal() end
 			batch[#batch + 1] = ev
 			size = size + ev.size
 		end
-		Seal()
+		seal()
 	end
-	local queue, spent = peer.queue, 0
-	while queue.first <= queue.last do
-		local data = queue[queue.first]
-		if spent > 0 and spent + #data > PEER_BYTES_PER_TICK then break end
-		Dequeue(queue)
-		self:Transmit(peer, data, false)
-		spent = spent + #data
+	local budget, spent = self:Budget(peer), 0
+	for _, queue in ipairs({ peer.queue, peer.slow }) do
+		while queue.first <= queue.last do
+			local data = queue[queue.first]
+			if spent > 0 and spent + #data > budget then return end
+			dequeue(queue)
+			self:Transmit(peer, data, false)
+			spent = spent + #data
+		end
 	end
 end
 
@@ -692,7 +753,7 @@ end
 function Realm:Recipients(to, predicted)
 	local host, peers, list, seen = self.host, self.peers, {}, {}
 	local exclude = predicted and host.PredictionPlayer() or nil
-	local function Add(ply)
+	local function add(ply)
 		local peer = peers[ply]
 		if peer and peer.ready and ply ~= exclude and not seen[peer] then
 			seen[peer] = true
@@ -700,70 +761,75 @@ function Realm:Recipients(to, predicted)
 		end
 	end
 	if to == nil then
-		for ply in pairs(peers) do Add(ply) end
+		for ply in pairs(peers) do add(ply) end
 	elseif type(to) == "number" then
 		for ply in pairs(peers) do
-			if host.Team(ply) == to then Add(ply) end
+			if host.Team(ply) == to then add(ply) end
 		end
 	elseif host.IsEntity(to) then
-		Add(to)
+		add(to)
 	elseif host.IsVector(to) then
-		for _, ply in ipairs(host.PVS(to)) do Add(ply) end
+		for _, ply in ipairs(host.PVS(to)) do add(ply) end
 	elseif type(to) == "table" then
-		for _, ply in ipairs(to) do Add(ply) end
+		for _, ply in ipairs(to) do add(ply) end
 	else
-		Fault("bad_options", "to is a team, a player, a list of players or a Vector, not a " .. type(to))
+		fault("bad_options", "to is a team, a player, a list of players or a Vector, not a " .. type(to))
 	end
+
 	return list
 end
 
 -- Firing
 
-function Realm:Dispatch(name, fields, ply)
-	local entry = self.listeners[name]
-	if not entry then return end
-	for _, id in ipairs(entry.order) do
-		local fn = entry.fns[id]
-		if fn then
-			local ok, err = xpcall(fn, debug.traceback, fields, ply)
-			if not ok then self:Report(format("listener %s of %s: %s", tostring(id), name, tostring(err))) end
-		end
-	end
+function Realm:Dispatch(name, payload, ply)
+	local fn = self.receivers[name]
+	if not fn then return end
+	local ok, err = xpcall(fn, debug.traceback, payload, ply)
+	if not ok then self:Report(format("receiver of %s: %s", name, tostring(err))) end
 end
 
--- What Fire checks and encodes before anything happens: the event, and the
--- peers it goes to (nil for a prediction already run).
+-- What Send checks and encodes before anything happens: the event, the
+-- peers it goes to, and why when that is nobody.
 function Realm:Prepare(name, fields, options)
-	CheckName(name)
+	checkName(name)
 	if options == nil then
 		options = NO_OPTIONS
 	elseif type(options) ~= "table" then
-		Fault("bad_options", name .. ": options are a table")
+		fault("bad_options", name .. ": options are a table")
 	else
 		for key in pairs(options) do
-			if not OPTION[key] then Fault("bad_options", name .. ": there is no option " .. tostring(key)) end
+			if not OPTION[key] then fault("bad_options", name .. ": there is no option " .. tostring(key)) end
 		end
 	end
 	local predicted, unreliable = options.predicted, options.unreliable
 	if not self.server then
-		if options.to ~= nil then Fault("bad_options", name .. ": a client's events go to the server, so take no to") end
-		if predicted and not self.host.FirstTimePredicted() then return nil end
+		if options.to ~= nil then
+			fault("bad_options", name .. ": a client's events go to the server, so take no to")
+		end
 	end
 	local ev = self:EncodeEvent(name, fields, unreliable)
 	if unreliable then
-		ev.unreliableSize = #self:Frame({ ev }, Known(), 0) + 1
+		ev.unreliableSize = #self:Frame({ ev }, newKnown(), 0) + 1
 		if ev.unreliableSize > UNRELIABLE_BYTES then
-			Fault("too_large", format("%s: %d bytes, past an unreliable frame's %d", name, ev.unreliableSize, UNRELIABLE_BYTES))
+			local message = "%s: %d bytes, past an unreliable frame's %d"
+			fault("too_large", format(message, name, ev.unreliableSize, UNRELIABLE_BYTES))
 		end
 	end
 	if self.server then
-		if ev.size > TRANSFER_BYTES then Fault("too_large", format("%s: %d bytes, past %d", name, ev.size, TRANSFER_BYTES)) end
-		return ev, self:Recipients(options.to, predicted)
+		if ev.size > TRANSFER_BYTES then
+			fault("too_large", format("%s: %d bytes, past %d", name, ev.size, TRANSFER_BYTES))
+		end
+
+		return ev, self:Recipients(options.to, predicted), "nobody"
 	end
-	if predicted or not self.ready or not self.accepted[name] then return ev, NOBODY end
+	if predicted then return ev, NOBODY, "predicted" end
+	if not self.ready then return ev, NOBODY, "not_ready" end
+	if not self.accepted[name] then return ev, NOBODY, "not_accepted" end
 	if ev.size > CLIENT_TRANSFER_BYTES - CLIENT_SLACK then
-		Fault("too_large", format("%s: %d bytes, past a client's %d", name, ev.size, CLIENT_TRANSFER_BYTES - CLIENT_SLACK))
+		local limit = CLIENT_TRANSFER_BYTES - CLIENT_SLACK
+		fault("too_large", format("%s: %d bytes, past a client's %d", name, ev.size, limit))
 	end
+
 	return ev, { self.peer }
 end
 
@@ -783,13 +849,14 @@ function Realm:Route(ev, peers, unreliable, first)
 	end
 end
 
-function Realm:Fire(name, fields, options)
-	local ok, ev, peers = pcall(self.Prepare, self, name, fields, options)
-	if not ok then Raise(ev, CALLER) end
-	if ev == nil then return end
-	self:Count(name).fired = self:Count(name).fired + 1
-	self:Dispatch(name, fields, nil)
+function Realm:Send(name, payload, options)
+	local ok, ev, peers, why = pcall(self.Prepare, self, name, payload, options)
+	if not ok then raise(ev, CALLER) end
+	self:Count(name).sends = self:Count(name).sends + 1
+	if #peers == 0 then return false, why end
 	self:Route(ev, peers, options and options.unreliable)
+
+	return true
 end
 
 -- The library's own events: to peers (the server's; nil for every ready
@@ -805,26 +872,51 @@ function Realm:Internal(name, fields, peers, first)
 	self:Route(ev, peers, false, first)
 end
 
-function Realm:Listen(name, id, fn)
-	local ok, err = pcall(CheckListener, name, id, fn)
-	if not ok then Raise(err, CALLER) end
-	AddListener(self.listeners, name, id, fn)
+-- fn: nil for no receiver.
+function Realm:Receive(name, fn)
+	if type(name) ~= "string" or name == "" or (fn ~= nil and type(fn) ~= "function") then
+		raise({ net2 = "bad_listener", message = "Receive takes a name and a function" }, CALLER)
+	end
+	self.receivers[name] = fn
 end
 
-function Realm:Ignore(name, id)
-	RemoveListener(self.listeners, name, id)
+function Realm:RunReady(ply)
+	local entry = self.readyFns.ready
+	if not entry then return end
+	for _, id in ipairs(entry.order) do
+		local fn = entry.fns[id]
+		if fn then
+			local ok, err = xpcall(fn, debug.traceback, ply)
+			if not ok then self:Report(format("OnReady %s: %s", tostring(id), tostring(err))) end
+		end
+	end
+end
+
+function Realm:OnReady(id, fn)
+	local ok, err = pcall(checkListener, "ready", id, fn)
+	if not ok then raise(err, CALLER) end
+	addListener(self.readyFns, "ready", id, fn)
+	if not self.server then
+		if self.ready then fn() end
+
+		return
+	end
+	for ply, peer in pairs(self.peers) do
+		if peer.ready then fn(ply) end
+	end
 end
 
 -- Receiving
 
 local SERVER_INTERNAL, CLIENT_INTERNAL = {}, {}
 
-function Realm:Receive(data, ply)
+-- A message off the wire.
+function Realm:Incoming(data, ply)
 	local peer = self.peer
 	if self.server then
 		peer = self.peers[ply]
 		if not peer then
-			peer = Peer(ply)
+			peer = newPeer(ply)
 			self.peers[ply] = peer
 		end
 	end
@@ -834,8 +926,10 @@ function Realm:Receive(data, ply)
 			local now = self.host.Now()
 			if not peer.reportedAt or now - peer.reportedAt >= REPORT_SECONDS then
 				peer.reportedAt = now
-				self:Report(format("dropped a message from %s: %s", ply and tostring(ply) or "the server", events.malformed))
+				local from = ply and tostring(ply) or "the server"
+				self:Report(format("dropped a message from %s: %s", from, events.malformed))
 			end
+
 			return
 		end
 		error(events, 0)
@@ -864,143 +958,156 @@ function Realm:Unwrap(peer, data, whole)
 	if kind == FRAME then return sub(data, 2) end
 	if kind == COMPRESSED then
 		local decompress = self.host.Decompress
-		if not decompress then Malformed("it is compressed, and this realm cannot decompress") end
+		if not decompress then malformed("it is compressed, and this realm cannot decompress") end
 		local content = decompress(sub(data, 2), limit)
-		if not content then Malformed("it does not decompress within " .. limit .. " bytes") end
+		if not content then malformed("it does not decompress within " .. limit .. " bytes") end
+
 		return content
 	end
-	if kind ~= CHUNK or whole then Malformed("it is no kind of message: " .. tostring(kind)) end
-	local r = Reader(data, 2)
-	local id, index, count = RVarint(r), RVarint(r), RVarint(r)
-	if count < 2 or index >= count or count > ceil(limit / CHUNK_BYTES) + 1 then Malformed("a part out of bounds") end
-	local transfer = peer.transfer
+	if kind ~= CHUNK or whole then malformed("it is no kind of message: " .. tostring(kind)) end
+	local r = newReader(data, 2)
+	local id, index, count = readVarint(r), readVarint(r), readVarint(r)
+	if count < 2 or index >= count or count > ceil(limit / CHUNK_BYTES) + 1 then
+		malformed("a part out of bounds")
+	end
+	local incoming = peer.incoming
+	local transfer = incoming[id]
 	if index == 0 then
-		transfer = { id = id, count = count, parts = {}, bytes = 0 }
-		peer.transfer = transfer
-	elseif not transfer or transfer.id ~= id or transfer.count ~= count or #transfer.parts ~= index then
-		peer.transfer = nil
-		Malformed("a part out of order")
+		incoming[id] = nil
+		local open = 0
+		for _ in pairs(incoming) do open = open + 1 end
+		if open >= TRANSFERS then malformed("more than " .. TRANSFERS .. " payloads in parts at once") end
+		transfer = { count = count, parts = {}, bytes = 0 }
+		incoming[id] = transfer
+	elseif not transfer or transfer.count ~= count or #transfer.parts ~= index then
+		incoming[id] = nil
+		malformed("a part out of order")
 	end
 	local part = sub(data, r.pos)
 	transfer.bytes = transfer.bytes + #part
 	if transfer.bytes > limit then
-		peer.transfer = nil
-		Malformed("parts past " .. limit .. " bytes")
+		incoming[id] = nil
+		malformed("parts past " .. limit .. " bytes")
 	end
 	transfer.parts[index + 1] = part
 	if index + 1 < count then return nil end
-	peer.transfer = nil
+	incoming[id] = nil
+
 	return self:Unwrap(peer, concat(transfer.parts), true)
 end
 
-local function SameKeys(a, b)
+local function sameKeys(a, b)
 	if #a ~= #b then return false end
 	for i = 1, #a do
 		if a[i] ~= b[i] then return false end
 	end
+
 	return true
 end
 
 -- A value; a table also answers true.
-function Realm:Read(r, Shape, limit, depth)
-	local tag = RByte(r)
+function Realm:Read(r, shapeOf, limit, depth)
+	local tag = readByte(r)
 	if tag == T_FALSE then return false end
 	if tag == T_TRUE then return true end
 	if tag == T_INT then
-		local z = RVarint(r)
+		local z = readVarint(r)
 		if z % 2 == 0 then return z / 2 end
 		return -(z + 1) / 2
 	end
-	if tag == T_DOUBLE then return RF64(r) end
-	if tag == T_STRING then return RBytes(r, RVarint(r)) end
+	if tag == T_DOUBLE then return readF64(r) end
+	if tag == T_STRING then return readBytes(r, readVarint(r)) end
 	local host = self.host
-	if tag == T_ENTITY then return host.Entity(RVarint(r)) end
+	if tag == T_ENTITY then return host.Entity(readVarint(r)) end
 	if tag == T_NULL then return host.NULL end
 	if tag == T_VECTOR or tag == T_ANGLE then
-		local a = RF32(r)
-		local b = RF32(r)
-		local c = RF32(r)
+		local a = readF32(r)
+		local b = readF32(r)
+		local c = readF32(r)
 		if tag == T_VECTOR then return host.Vector(a, b, c) end
 		return host.Angle(a, b, c)
 	end
 	if tag == T_LIST or tag == T_RECORD then
-		if depth >= limit then Malformed("tables nested past " .. limit) end
+		if depth >= limit then malformed("tables nested past " .. limit) end
 		local t = {}
 		if tag == T_LIST then
-			local count = RVarint(r)
-			if count > Remaining(r) then Malformed("a list longer than the message") end
-			for i = 1, count do t[i] = self:Read(r, Shape, limit, depth + 1) end
+			local count = readVarint(r)
+			if count > remaining(r) then malformed("a list longer than the message") end
+			for i = 1, count do t[i] = self:Read(r, shapeOf, limit, depth + 1) end
 		else
-			local keys = Shape(RVarint(r)) or Malformed("a record of a shape not defined")
-			for _, key in ipairs(keys) do t[key] = self:Read(r, Shape, limit, depth + 1) end
+			local keys = shapeOf(readVarint(r)) or malformed("a record of a shape not defined")
+			for _, key in ipairs(keys) do t[key] = self:Read(r, shapeOf, limit, depth + 1) end
 		end
+
 		return t, true
 	end
-	Malformed("an unknown tag " .. tostring(tag))
+	malformed("an unknown tag " .. tostring(tag))
 end
 
 -- A frame's events. What it defines is taken only once the whole frame reads.
 function Realm:Decode(peer, content)
 	local fromClient = self.server
-	local r = Reader(content, 1)
-	local flags = RByte(r)
+	local r = newReader(content, 1)
+	local flags = readByte(r)
 	local decoder = peer.decoder
 	local strings, shapes, nStrings, nShapes = decoder.strings, decoder.shapes, decoder.nStrings, decoder.nShapes
 	local reset = flags % 2 == RESET
 	if reset then strings, shapes, nStrings, nShapes = {}, {}, 0, 0 end
 	local newStrings, newShapes = {}, {}
-	local function String(id)
+	local function nameOf(id)
 		return newStrings[id] or strings[id]
 	end
-	local function Shape(id)
+	local function shapeOf(id)
 		return newShapes[id] or shapes[id]
 	end
 
-	local n = RVarint(r)
-	if n > Remaining(r) then Malformed("more names than bytes") end
+	local n = readVarint(r)
+	if n > remaining(r) then malformed("more names than bytes") end
 	for _ = 1, n do
-		local id, length = RVarint(r), RVarint(r)
-		if fromClient and length > CLIENT_KEY_BYTES then Malformed("a name past " .. CLIENT_KEY_BYTES .. " bytes") end
-		local s = RBytes(r, length)
-		local had = String(id)
+		local id, length = readVarint(r), readVarint(r)
+		if fromClient and length > CLIENT_KEY_BYTES then
+			malformed("a name past " .. CLIENT_KEY_BYTES .. " bytes")
+		end
+		local s = readBytes(r, length)
+		local had = nameOf(id)
 		if had == nil then
 			nStrings = nStrings + 1
 			newStrings[id] = s
 		elseif had ~= s then
-			Malformed("a name redefined")
+			malformed("a name redefined")
 		end
 	end
-	if fromClient and nStrings > CLIENT_STRINGS then Malformed("past " .. CLIENT_STRINGS .. " names") end
+	if fromClient and nStrings > CLIENT_STRINGS then malformed("past " .. CLIENT_STRINGS .. " names") end
 
-	n = RVarint(r)
-	if n > Remaining(r) then Malformed("more shapes than bytes") end
+	n = readVarint(r)
+	if n > remaining(r) then malformed("more shapes than bytes") end
 	for _ = 1, n do
-		local id, count = RVarint(r), RVarint(r)
-		if count > SHAPE_KEYS or count > Remaining(r) then Malformed("a shape of too many keys") end
+		local id, count = readVarint(r), readVarint(r)
+		if count > SHAPE_KEYS or count > remaining(r) then malformed("a shape of too many keys") end
 		local keys = {}
-		for i = 1, count do keys[i] = String(RVarint(r)) or Malformed("a key not defined") end
-		local had = Shape(id)
+		for i = 1, count do keys[i] = nameOf(readVarint(r)) or malformed("a key not defined") end
+		local had = shapeOf(id)
 		if had == nil then
 			nShapes = nShapes + 1
 			newShapes[id] = keys
-		elseif not SameKeys(had, keys) then
-			Malformed("a shape redefined")
+		elseif not sameKeys(had, keys) then
+			malformed("a shape redefined")
 		end
 	end
-	if fromClient and nShapes > CLIENT_SHAPES then Malformed("past " .. CLIENT_SHAPES .. " shapes") end
+	if fromClient and nShapes > CLIENT_SHAPES then malformed("past " .. CLIENT_SHAPES .. " shapes") end
 
 	local limit = fromClient and CLIENT_DEPTH or DEPTH
-	n = RVarint(r)
-	if n > Remaining(r) then Malformed("more events than bytes") end
+	n = readVarint(r)
+	if n > remaining(r) then malformed("more events than bytes") end
 	local events = {}
 	for i = 1, n do
-		local name = String(RVarint(r)) or Malformed("an event of a name not defined")
-		local seq = RVarint(r)
-		local fields, isTable = self:Read(r, Shape, limit, 0)
-		if not isTable then Malformed(name .. ": fields not a table") end
+		local name = nameOf(readVarint(r)) or malformed("an event of a name not defined")
+		local seq = readVarint(r)
+		local fields, isTable = self:Read(r, shapeOf, limit, 0)
+		if not isTable then malformed(name .. ": fields not a table") end
 		events[i] = { name = name, seq = seq, fields = fields }
 	end
-	if Remaining(r) ~= 0 then Malformed("bytes after the last event") end
+	if remaining(r) ~= 0 then malformed("bytes after the last event") end
 
 	if reset then
 		decoder.strings, decoder.shapes, decoder.lastSeq = strings, shapes, {}
@@ -1008,6 +1115,7 @@ function Realm:Decode(peer, content)
 	for id, s in pairs(newStrings) do decoder.strings[id] = s end
 	for id, keys in pairs(newShapes) do decoder.shapes[id] = keys end
 	decoder.nStrings, decoder.nShapes = nStrings, nShapes
+
 	return events
 end
 
@@ -1039,6 +1147,7 @@ function Realm:Take(peer, name, rate)
 	bucket.at = now
 	if bucket.tokens < 1 then return false end
 	bucket.tokens = bucket.tokens - 1
+
 	return true
 end
 
@@ -1056,22 +1165,25 @@ function Realm:AcceptedNames()
 	local names = {}
 	for name in pairs(self.accepted) do names[#names + 1] = name end
 	sort(names)
+
 	return names
 end
 
 function Realm:Accept(name, rate)
 	local ok, err = pcall(function()
-		if not self.server then Fault("not_server", "only the server accepts") end
-		CheckName(name)
-		self.accepted[name] = CheckRate(name, rate)
+		if not self.server then fault("not_server", "only the server accepts") end
+		checkName(name)
+		self.accepted[name] = checkRate(name, rate)
 	end)
-	if not ok then Raise(err, CALLER) end
+	if not ok then raise(err, CALLER) end
 	local peers = self:Recipients(nil)
 	if #peers > 0 then self:Internal("net2_accept", { names = { name } }, peers) end
 end
 
 function Realm:Serve(name, fn, rate)
-	if type(fn) ~= "function" then Raise({ net2 = "bad_call", message = tostring(name) .. ": a handler is a function" }, CALLER) end
+	if type(fn) ~= "function" then
+		raise({ net2 = "bad_call", message = tostring(name) .. ": a handler is a function" }, CALLER)
+	end
 	self:Accept(name, rate)
 	self.serves[name] = fn
 end
@@ -1088,13 +1200,17 @@ function Realm:Resume(job, ...)
 	local ok, value, refusal = coroutine.resume(job.co, ...)
 	if not ok then
 		self:Report(format("serving %s: %s", job.name, debug.traceback(job.co, tostring(value))))
+
 		return self:Reply(job.peer, job.id, false, "failed")
 	end
 	if coroutine.status(job.co) ~= "dead" then
 		self.jobs[#self.jobs + 1] = job
+
 		return
 	end
-	if value == nil then return self:Reply(job.peer, job.id, false, refusal ~= nil and tostring(refusal) or "refused") end
+	if value == nil then
+		return self:Reply(job.peer, job.id, false, refusal ~= nil and tostring(refusal) or "refused")
+	end
 	self:Reply(job.peer, job.id, true, value)
 end
 
@@ -1117,17 +1233,21 @@ SERVER_INTERNAL.net2_hello = function(self, peer, fields)
 	if not self:Take(peer, "net2_hello", HELLO_RATE) then return end
 	if fields.wire ~= WIRE_VERSION or fields.version ~= self.version then
 		peer.ready = false
-		self.host.Kick(peer.ply, format(KICK_MESSAGE, WIRE_VERSION, self.version, tostring(fields.wire), tostring(fields.version)))
+		local theirWire, theirVersion = tostring(fields.wire), tostring(fields.version)
+		self.host.Kick(peer.ply, format(KICK_MESSAGE, WIRE_VERSION, self.version, theirWire, theirVersion))
+
 		return
 	end
 	-- the client forgot what it held of ours: start it over
 	peer.ready = true
-	peer.known = Known()
+	peer.known = newKnown()
 	peer.resetNext = true
-	peer.queue = Queue()
+	peer.queue = newQueue()
+	peer.slow = newQueue()
+	peer.pending = {}
 	self:Internal("net2_welcome", { accepted = self:AcceptedNames() }, { peer })
 	for name, tbl in pairs(self.tables) do self:Snapshot(peer, name, tbl) end
-	self:Dispatch("net2_ready", {}, peer.ply)
+	self:RunReady(peer.ply)
 end
 
 SERVER_INTERNAL.net2_call = function(self, peer, fields)
@@ -1138,7 +1258,9 @@ SERVER_INTERNAL.net2_call = function(self, peer, fields)
 	end
 	local serve = self.serves[name]
 	if not serve then return self:Reply(peer, id, false, "not_accepted") end
-	if not self:Take(peer, name, self.accepted[name]) then return self:Reply(peer, id, false, "rate_limited") end
+	if not self:Take(peer, name, self.accepted[name]) then
+		return self:Reply(peer, id, false, "rate_limited")
+	end
 	self:Count(name).received = self:Count(name).received + 1
 	self:Resume({
 		co = coroutine.create(serve),
@@ -1168,19 +1290,20 @@ end
 
 function Realm:Start()
 	local peer = self.peer
-	peer.known = Known()
+	peer.known = newKnown()
 	peer.resetNext = true
-	peer.queue = Queue()
+	peer.queue = newQueue()
+	peer.slow = newQueue()
 	peer.pending = {}
 	peer.unreliable = {}
-	peer.decoder = Decoder()
-	peer.transfer = nil
+	peer.decoder = newDecoder()
+	peer.incoming = {}
 	self.ready = false
 	self.accepted = {}
 	self:Internal("net2_hello", { wire = WIRE_VERSION, version = self.version })
 end
 
-local function Settle(self, call, ok, value)
+local function settle(self, call, ok, value)
 	call.done, call.ok, call.value = true, ok, value
 	if call.callback then
 		local fine, err = xpcall(call.callback, debug.traceback, ok, value)
@@ -1190,30 +1313,33 @@ end
 
 function Realm:Call(name, fields, callback, timeout)
 	local ok, err = pcall(function()
-		if self.server then Fault("bad_call", "the server serves; clients call") end
-		CheckName(name)
-		if type(fields) ~= "table" then Fault("bad_fields", name .. ": fields are a table") end
-		if callback ~= nil and type(callback) ~= "function" then Fault("bad_call", name .. ": a callback is a function") end
+		if self.server then fault("bad_call", "the server serves; clients call") end
+		checkName(name)
+		if type(fields) ~= "table" then fault("bad_fields", name .. ": fields are a table") end
+		if callback ~= nil and type(callback) ~= "function" then
+			fault("bad_call", name .. ": a callback is a function")
+		end
 		if callback == nil and not coroutine.running() then
-			Fault("bad_call", name .. ": outside a coroutine, a call takes a callback")
+			fault("bad_call", name .. ": outside a coroutine, a call takes a callback")
 		end
 	end)
-	if not ok then Raise(err, CALLER) end
+	if not ok then raise(err, CALLER) end
 	local call = { callback = callback }
 	if not self.ready then
-		Settle(self, call, false, "not_ready")
+		settle(self, call, false, "not_ready")
 	elseif not self.accepted[name] then
-		Settle(self, call, false, "not_accepted")
+		settle(self, call, false, "not_accepted")
 	else
 		local id = self.nextCall + 1
 		local sent, why = pcall(self.Internal, self, "net2_call", { id = id, name = name, fields = fields })
-		if not sent then Raise(why, CALLER) end
+		if not sent then raise(why, CALLER) end
 		self.nextCall = id
 		call.deadline = self.host.Now() + (timeout or CALL_SECONDS)
 		self.calls[id] = call
 	end
 	if callback then return end
 	while not call.done do coroutine.yield() end
+
 	return call.ok, call.value
 end
 
@@ -1221,7 +1347,7 @@ function Realm:ExpireCalls(now)
 	for id, call in pairs(self.calls) do
 		if now >= call.deadline then
 			self.calls[id] = nil
-			Settle(self, call, false, "timeout")
+			settle(self, call, false, "timeout")
 		end
 	end
 end
@@ -1230,7 +1356,7 @@ CLIENT_INTERNAL.net2_welcome = function(self, _, fields)
 	self.accepted = {}
 	for _, name in ipairs(fields.accepted or {}) do self.accepted[name] = true end
 	self.ready = true
-	self:Dispatch("net2_ready", {})
+	self:RunReady(nil)
 end
 
 CLIENT_INTERNAL.net2_accept = function(self, _, fields)
@@ -1241,7 +1367,7 @@ CLIENT_INTERNAL.net2_reply = function(self, _, fields)
 	local call = self.calls[fields.id]
 	if not call then return end
 	self.calls[fields.id] = nil
-	Settle(self, call, fields.ok == true, fields.value)
+	settle(self, call, fields.ok == true, fields.value)
 end
 
 CLIENT_INTERNAL.net2_refused = function(self, _, fields)
@@ -1291,30 +1417,31 @@ function Realm:Watch(name, key, value, old)
 end
 
 function Realm:OnChange(name, id, fn)
-	local ok, err = pcall(CheckListener, name, id, fn)
-	if not ok then Raise(err, CALLER) end
-	AddListener(self.watchers, name, id, fn)
+	local ok, err = pcall(checkListener, name, id, fn)
+	if not ok then raise(err, CALLER) end
+	addListener(self.watchers, name, id, fn)
 end
 
-local function CountKeys(data)
+local function countKeys(data)
 	local n = 0
 	for _ in pairs(data) do n = n + 1 end
+
 	return n
 end
 
 function Realm:Set(tbl, key, value)
 	if not self.server then
-		Raise({ net2 = "read_only", message = "table " .. tbl.name .. " is the server's to write" }, 3)
+		raise({ net2 = "read_only", message = "table " .. tbl.name .. " is the server's to write" }, 3)
 	end
 	local kind = type(key)
 	if kind ~= "string" and not (kind == "number" and key == floor(key)) then
-		Raise({ net2 = "bad_fields", message = "table " .. tbl.name .. ": a key is a string or a whole number" }, 3)
+		raise({ net2 = "bad_fields", message = "table " .. tbl.name .. ": a key is a string or a whole number" }, 3)
 	end
 	local old = tbl.data[key]
 	if value == old and type(value) ~= "table" then return end
 	if value ~= nil then
-		local ok, err = pcall(Encode, self, {}, value, {}, 0, { key }, {})
-		if not ok then Raise(err, 3) end
+		local ok, err = pcall(encode, self, {}, value, {}, 0, { key }, {})
+		if not ok then raise(err, 3) end
 	end
 	tbl.data[key] = value
 	tbl.dirty[key] = true
@@ -1322,7 +1449,9 @@ function Realm:Set(tbl, key, value)
 end
 
 function Realm:Table(name)
-	if type(name) ~= "string" or name == "" then Raise({ net2 = "bad_name", message = "a table's name is a string" }, CALLER) end
+	if type(name) ~= "string" or name == "" then
+		raise({ net2 = "bad_name", message = "a table's name is a string" }, CALLER)
+	end
 	local tbl = self.tables[name]
 	if tbl then return tbl.proxy end
 	tbl = { name = name, data = {}, dirty = {} }
@@ -1330,10 +1459,11 @@ function Realm:Table(name)
 		__index = tbl.data,
 		__newindex = function(_, key, value) self:Set(tbl, key, value) end,
 		__call = function() return next, tbl.data, nil end,
-		__len = function() return CountKeys(tbl.data) end,
+		__len = function() return countKeys(tbl.data) end,
 		__tostring = function() return "net2 table " .. name end,
 	})
 	self.tables[name] = tbl
+
 	return tbl.proxy
 end
 
@@ -1365,7 +1495,8 @@ function Realm:FlushTables()
 			tbl.dirty = {}
 			local peers = self:Recipients(nil)
 			if #peers > 0 then
-				self:Internal("net2_table", { name = name, keys = keys, values = values, removed = removed }, peers, true)
+				local delta = { name = name, keys = keys, values = values, removed = removed }
+				self:Internal("net2_table", delta, peers, true)
 			end
 		end
 	end
@@ -1386,7 +1517,7 @@ end
 
 -- GMod
 
-local function GModHost()
+local function gmodHost()
 	local host = {
 		server = SERVER,
 		Now = SysTime,
@@ -1423,6 +1554,7 @@ local function GModHost()
 		host.PVS = function(pos)
 			local filter = RecipientFilter()
 			filter:AddPVS(pos)
+
 			return filter:GetPlayers()
 		end
 		host.PredictionPlayer = function()
@@ -1431,15 +1563,23 @@ local function GModHost()
 			return nil
 		end
 		host.Kick = function(ply, reason) ply:Kick(reason) end
+		-- a share of the rate the client asked for, a tick
+		host.Budget = function(ply)
+			local rate = ply:GetInfoNum("rate", 0) * RATE_FRACTION
+			if rate < RATE_MIN then rate = RATE_MIN elseif rate > RATE_MAX then rate = RATE_MAX end
+
+			return rate * engine.TickInterval()
+		end
 	else
 		host.FirstTimePredicted = IsFirstTimePredicted
 	end
+
 	return host
 end
 
 -- Each realm's, kept across a Lua refresh with what it holds.
-local function Install()
-	local host = GModHost()
+local function install()
+	local host = gmodHost()
 	local current = rawget(_M, "realm")
 	if current then
 		setmetatable(current, Realm)
@@ -1452,17 +1592,17 @@ local function Install()
 	net.Receive(NET_MESSAGE, function(bits, ply)
 		local size = net.ReadUInt(16)
 		if size * 8 + 16 > bits then return end
-		realm:Receive(size > 0 and net.ReadData(size) or "", ply)
+		realm:Incoming(size > 0 and net.ReadData(size) or "", ply)
 	end)
-	hook.Add("Tick", "net2", function() realm:Tick() end)
+	hook.Add("Tick", "sandcastle/net2/flush", function() realm:Tick() end)
 	if SERVER then
-		hook.Add("PlayerDisconnected", "net2", function(ply) realm:Disconnected(ply) end)
+		hook.Add("PlayerDisconnected", "sandcastle/net2/forget-peer", function(ply) realm:Disconnected(ply) end)
 	else
-		local function Start() realm:Start() end
+		local function start() realm:Start() end
 		if IsValid(LocalPlayer()) then
-			timer.Simple(0, Start)
+			timer.Simple(0, start)
 		else
-			hook.Add("InitPostEntity", "net2", Start)
+			hook.Add("InitPostEntity", "sandcastle/net2/hello", start)
 		end
 	end
 	concommand.Add("net2_print", function()
@@ -1471,22 +1611,25 @@ local function Install()
 		sort(names, function(a, b) return realm.stats[a].bytes > realm.stats[b].bytes end)
 		for _, name in ipairs(names) do
 			local s = realm.stats[name]
-			MsgN(format("%-40s fired %6d  sent %6d  bytes %9d  received %6d  refused %4d", name, s.fired, s.sent, s.bytes, s.received, s.refused))
+			MsgN(format(STATS_LINE, name, s.sends, s.sent, s.bytes, s.received, s.refused))
 		end
-	end, nil, "net2: what each event cost this realm")
+	end, nil, "net2: what each name cost this realm")
 end
 
 -- The module's functions, on this realm's net2 (none under plain LuaJIT).
-local function Pass(...)
+local function pass(...)
 	return ...
 end
 
-for _, method in ipairs({ "Fire", "Listen", "Ignore", "Accept", "Serve", "Call", "Table", "OnChange", "Stats", "SetVersion" }) do
+local METHODS = { "Send", "Receive", "Accept", "Serve", "Call", "Table", "OnChange", "OnReady", "Stats", "SetVersion" }
+
+for _, method in ipairs(METHODS) do
 	_M[method] = function(...)
 		local current = realm
 		if not current then error("net2: not installed in this realm", 2) end
-		return Pass(current[method](current, ...))
+
+		return pass(current[method](current, ...))
 	end
 end
 
-if SERVER or CLIENT then Install() end
+if SERVER or CLIENT then install() end

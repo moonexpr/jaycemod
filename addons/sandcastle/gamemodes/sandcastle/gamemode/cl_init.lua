@@ -117,19 +117,16 @@ end
 	      teamplay_round_win); winner is TF_TEAM_UNASSIGNED for
 	      a stalemate
 -----------------------------------------------------------]]
-function GM:RoundWinAnnounce( winner )
-
+function GM:RoundWinAnnounce(winner)
 	local text = "Stalemate"
-	if ( winner ~= TF_TEAM_UNASSIGNED ) then text = team.GetName( winner ) .. " wins the round" end
-	LocalPlayer():PrintMessage( HUD_PRINTCENTER, text )
+	if winner ~= TF_TEAM_UNASSIGNED then text = team.GetName(winner) .. " wins the round" end
 
+	LocalPlayer():PrintMessage(HUD_PRINTCENTER, text)
 end
 
-net2.Listen( "teamplay_round_win", "sandcastle_round_win", function( fields )
-
-	hook.Run( "RoundWinAnnounce", fields.team )
-
-end )
+game_events.Listen("teamplay_round_win", "sandcastle/rounds/announce-win", function(fields)
+	hook.Run("RoundWinAnnounce", fields.team)
+end)
 
 local ROUND_LABELS = {
 	[ ROUND_WAITING ] = "Waiting for players",
